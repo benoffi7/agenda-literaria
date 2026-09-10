@@ -21,7 +21,11 @@
       // Ídem con la lista blanca de chunks PNG seguros (B-323): el panel y la
       // Function de optimización comparten la misma lista, así una lista
       // negra desactualizada no vuelve a dejar pasar un chunk como `caBX`.
-      "@png-chunks-seguros": ["functions/png-chunks-seguros.js"]
+      "@png-chunks-seguros": ["functions/png-chunks-seguros.js"],
+      // Ídem con la lista blanca de segmentos APPn de un JPEG (B-869): el
+      // panel decide con ella qué conserva al sanear y la Function decide con
+      // ella si puede dar cuenta de todos los bytes. Una sola tabla.
+      "@jpeg-appn-seguros": ["functions/jpeg-appn-seguros.js"]
     }
   }
 }

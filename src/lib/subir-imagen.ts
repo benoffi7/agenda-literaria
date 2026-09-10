@@ -232,12 +232,32 @@ export const subirImagen = async (
    * si quedó algo, y falla cerrado a propósito — una foto que hoy no se puede
    * subir es un problema de una tarde; una foto con las coordenadas de una casa
    * particular en el `events.json` no se despublica.
+   *
+   * **El mensaje no diagnostica el teléfono, y eso es B-869.** Hasta ese ítem
+   * decía «algunos celulares le guardan una segunda copia adentro» y mandaba a
+   * abrir el editor de fotos, y para el caso que de verdad lo disparaba —una
+   * foto de Google Photos con su C2PA en APP11, que `sinMetadatos` no sacaba
+   * porque tiraba por lista negra— eso era **falso**: no había ninguna segunda
+   * copia. Con la lista invertida ese caso ya no llega hasta acá. Lo que queda
+   * es lo que el barrido existe para atrapar y no se puede nombrar de
+   * antemano: un archivo cuyo recorrido de marcadores no cierra, o una marca
+   * adentro de un bloque que sí conservamos. Por eso el texto dice lo único
+   * que sabemos —quedó un bloque que no supimos sacar— y pide reportarlo.
+   *
+   * **Y pide avisar, no mandar la foto**, que es una diferencia y no una
+   * cortesía: este mismo pipeline lo usa `/proponer` (`comoRuta =
+   * rutaDeImagenPropuesta`), así que quien lee este cartel puede ser alguien
+   * **sin cuenta** — pedirle que mande por mail el archivo que la oración
+   * anterior describió como portador de la ubicación sería mover un dato
+   * personal de un tercero a una casilla, fuera de la retención que B-838
+   * construyó para exactamente esta clase. Lo marcó el `auditor-privacidad`.
    */
   if (quedanMetadatos(limpio)) {
     throw new ImagenRechazada(
-      'No pudimos sacarle todos los datos ocultos a esta foto (algunos celulares le ' +
-        'guardan una segunda copia adentro). Abrila en el editor de fotos del teléfono, ' +
-        'guardala de nuevo o recortala, y volvé a intentar.',
+      'Esta foto tiene adentro un bloque de datos ocultos que no supimos sacar, así ' +
+        'que no la subimos: esos bloques pueden llevar la ubicación donde se sacó. ' +
+        'Volvé a guardarla o exportarla desde un editor de fotos y probá de nuevo; si ' +
+        'vuelve a pasar, avisanos así lo revisamos.',
       'metadatos',
     );
   }

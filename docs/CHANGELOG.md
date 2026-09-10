@@ -2,6 +2,74 @@
 
 ## Sin publicar
 
+- **El saneador de JPEG rechazaba fotos que no sabía limpiar, y ahora las limpia**
+  — **B-869**, **D-620**. El dueño subió una foto normal y el panel se la rechazó
+  diciéndole que su teléfono le guardaba «una segunda copia adentro». **Era
+  falso:** lo que traía era un manifiesto **C2PA** —el que exporta Google Fotos,
+  firmado por Google— que en JPEG viaja en **APP11**, y `APP_A_TIRAR` era una
+  lista **negra** de tres marcadores que no lo nombraba. `quedanMetadatos` sí lo
+  busca desde B-220, así que **el detector rechazaba un bloque que el saneador no
+  sabía sacar**.
+
+  El mismo agujero tenía una segunda mitad con el signo contrario, y es la que el
+  diagnóstico inicial tenía al revés: el índice **MPF** (APP2) tampoco se tiraba y
+  **no tiene centinela**, así que no se rechazaba — **se subía**. Una fuga
+  silenciosa, no un rechazo.
+
+  **B-323 había dejado escrito que el JPEG se quedaba con lista negra a propósito,
+  y ese párrafo se revierte** con su corrección fechada. Sus dos argumentos se
+  cayeron: la red que invocaba (`estructuraConocida`) corre en un
+  `onObjectFinalized`, o sea **después** de la subida, río abajo del punto que
+  falla; y la decisión **envejeció** —cuando se escribió, el detector tenía tres
+  centinelas y los tres estaban cubiertos; B-220 le agregó los dos de C2PA y nadie
+  volvió a mirar el saneador—. Ahí dejó de ser una decisión y pasó a ser una
+  inconsistencia.
+
+  **La regla nueva tiene dos mitades, y la segunda es la que responde al argumento
+  real de B-323** («la lista blanca de APPn sí se queda corta seguido»): lo que el
+  decodificador necesita —SOF, DHT, DAC, DQT, DNL, DRI, DHP, EXP, SOS, RSTn, TEM—
+  se conserva **por su marcador** y no pasa por la lista, porque la tabla B.1 del
+  spec está **cerrada**; y todo lo demás se tira salvo que la lista lo reconozca
+  **por su firma**. Así, quedarse corto cuesta perder una extensión de aplicación
+  que el navegador no mira, no una imagen rota — que es lo que habría costado en
+  PNG, y por eso allá la lista tiene que ser completa y acá lo estructural ni
+  pasa por ella.
+
+  **El cuidado que hace que esto no sea un `sed`: APP2 lleva también el perfil
+  ICC**, y tirarlo cambia los colores de una foto de gama amplia, contra lo que el
+  docblock de `sinMetadatos` promete. Por eso la lista es **por firma**: en un
+  mismo archivo el APP2 de `ICC_PROFILE\0` se conserva y el de `MPF\0` se va.
+  Ídem APP0: `JFIF\0` queda y `JFXX` se va.
+
+  **Una sola tabla, no dos** (clase de B-88, con el precedente de B-323): la
+  pregunta la hacían dos runtimes y solo uno tenía tabla. Salió a
+  `functions/jpeg-appn-seguros.js` con el alias `@jpeg-appn-seguros`; el panel la
+  importa y `estructuraConocida` borró su `BLOQUES_CONOCIDOS`. Lo que **no** se
+  comparte es la respuesta: ante un APPn desconocido el panel tira y la Function
+  recomprime.
+
+  **Y el cartel también estaba mal.** Ahora dice lo único que sabemos —quedó un
+  bloque que no supimos sacar, no lo subimos porque puede llevar la ubicación— y
+  pide **avisar, no mandar la foto**: este mismo pipeline lo usa `/proponer`, así
+  que quien lo lee puede ser alguien sin cuenta, y pedirle el archivo sería mover
+  un dato personal de un tercero a una casilla de mail, fuera de la retención de
+  B-838.
+
+  **Los auditores encontraron cuatro veces la misma forma de error sobre el propio
+  arreglo —la regla decía más de lo que el código chequeaba— y las cuatro están
+  corregidas:** el APP0/JFIF **también trae thumbnail** (hasta 195 KB de RGB de
+  antes de cualquier recorte) y la firma sola lo dejaba pasar por las dos capas;
+  **`0xC8` no es un SOF** sino un reservado, y se conservaba entero mientras su
+  gemelo `0xF7` se tiraba —lo encontraron los dos auditores por separado—;
+  **reconocer la firma no acota el cuerpo**, así que un JFIF con cola pegada se
+  copiaba completo; y el corte no podía ser «APPn o COM», porque dejaba
+  conservados los reservados igual que la lista negra. Se corrigió además la frase
+  «un perfil ICC no lleva ubicación, autor ni fecha», que es cierta de los
+  perfiles enlatados y **falsa del contenedor**.
+
+  Quince mutaciones probadas, una por aserto — y una de ellas nació de un hallazgo
+  del auditor que dejaba la suite **verde**: sacar `RST0` del conjunto estructural.
+
 - **Quedó una sola app web, y borrar primero dejó a la consola sin poder arreglar
   el vínculo** — **B-870**. El proyecto tenía dos apps web que diferían en una
   mayúscula, con **dos GA4 distintos**; el sitio usa `G-9CFMHSSGRC` —nombrado en

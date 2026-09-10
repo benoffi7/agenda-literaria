@@ -827,6 +827,104 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
+### B-869 · El saneador rechaza lo que no sabe sacar: `APP_A_TIRAR` es lista negra y C2PA viaja en APP11 — ✅ hecho (2026-09-10) · P1
+
+**Lo reportó el dueño el 2026-09-10 con una foto normal.** El panel se la rechazó
+con este cartel:
+
+> «No pudimos sacarle todos los datos ocultos a esta foto (algunos celulares le
+> guardan una segunda copia adentro). Abrila en el editor de fotos del teléfono,
+> guardala de nuevo o recortala, y volvé a intentar.»
+
+**Y era falso.** No había ninguna segunda copia: la foto traía un manifiesto
+**C2PA** —el que exporta Google Fotos, firmado por Google— y en JPEG eso viaja en
+**APP11** (`0xEB`).
+
+**El agujero, medido ejecutándolo:**
+
+| caso | `sinMetadatos` lo saca | `quedanMetadatos` lo ve | resultado |
+|---|---|---|---|
+| C2PA en APP11 (`0xEB`) | no | **sí** | la subida se **rechaza** |
+| índice MPF en APP2 (`0xE2`) | no | no | la foto **sube** con el bloque |
+
+`sinMetadatos` tiraba una lista **negra** de tres marcadores —APP1, APP13 y COM—
+y `quedanMetadatos` busca cinco cadenas. **Dos de las cinco no podían estar
+cubiertas por esa lista.** El detector rechazaba un bloque que el saneador no
+sabía sacar, y la persona pagaba con un cartel que le echaba la culpa a su
+teléfono. El caso del MPF es el mismo agujero con el signo contrario: no tiene
+centinela, así que no se rechaza — se sube.
+
+**La decisión que este ítem revierte, y por qué.** B-323 dejó escrito que el JPEG
+se quedaba con lista negra a propósito (ver la corrección fechada en ese ítem).
+Sus dos argumentos se cayeron:
+
+1. **La red que invocaba está río abajo del punto que falla.**
+   `estructuraConocida` vive en `functions/imagenes-optimizar.js` y la corre
+   `optimizarImagen`, un `onObjectFinalized`: **después** de la subida. Acá la
+   subida nunca llega, porque `quedanMetadatos` la corta antes.
+2. **Envejeció.** Cuando se escribió, el detector tenía **tres** centinelas y los
+   tres estaban cubiertos. **B-220 le agregó los dos de C2PA** —que viven en un
+   marcador que la lista no nombra— y nadie volvió a mirar el saneador.
+
+**Lo que se hizo**, en `functions/jpeg-appn-seguros.js` (nuevo) + alias
+`@jpeg-appn-seguros`:
+
+- **Lo estructural se conserva por su marcador** —los quince SOF más DHT y DAC,
+  DQT, DNL, DRI, DHP, EXP, SOS, los ocho RSTn y el TEM— y **no pasa por la
+  lista**. Es la tabla B.1 de ITU-T T.81, que está **cerrada**.
+- **Todo lo demás se tira** salvo que la lista lo reconozca **por su firma** y, en
+  los dos de forma fija, por su **largo declarado**: `JFIF\0` (16 bytes, sin
+  thumbnail), `ICC_PROFILE\0` y `Adobe` (14 bytes).
+- **Una sola tabla**: `estructuraConocida` borró su `BLOQUES_CONOCIDOS` y usa la
+  misma. Es el precedente de B-323 aplicado al lado JPEG.
+- **El cartel** dice ahora lo único que sabemos y pide **avisar**, no mandar la
+  foto: este pipeline lo usa también `/proponer`, así que quien lo lee puede ser
+  alguien sin cuenta.
+
+Decisión completa: **D-620**.
+
+> **2026-09-10 — hecho, y los auditores encontraron cuatro veces la misma forma de
+> error sobre el propio arreglo:** *la regla decía más de lo que el código
+> chequeaba*.
+>
+> 1. **El APP0/JFIF también trae thumbnail.** El NUL de `JFIF\0` deja afuera a
+>    `JFXX` —el thumbnail *de otro* APP0— pero el JFIF base tiene el suyo:
+>    `Xthumbnail`/`Ythumbnail` en los bytes 12 y 13 del cuerpo, más hasta
+>    255×255×3 ≈ 195 KB de RGB sin comprimir. Misma imagen-adentro-de-la-imagen de
+>    **antes** de cualquier recorte, y pasaba **las dos capas**.
+> 2. **`0xC8` no es un SOF.** El spec lo lista como `JPG`, «reserved for JPEG
+>    extensions». El primer conjunto estructural lo metió adentro «porque cae en el
+>    rango `0xC*`», así que se conservaba entero mientras su gemelo `0xF7` se
+>    tiraba. Lo encontraron los **dos** auditores por separado.
+> 3. **Reconocer la firma no acota el cuerpo.** Un APP0 con la firma buena y un
+>    largo de 500 se conservaba entero. Los dos de forma fija se acotan al byte.
+> 4. **El corte no podía ser «APPn o COM»:** dejaba conservados los `JPG0`–`JPG13`
+>    y los reservados, o sea exactamente lo que hacía la lista negra.
+>
+> Se corrigió además la frase «un perfil ICC no lleva ubicación, autor ni fecha»,
+> repetida en cuatro lugares: es cierta de los perfiles **enlatados** y falsa del
+> contenedor. Y el cartel dejó de pedir que manden la foto.
+>
+> **Quince mutaciones probadas**, y una nació de un hallazgo que dejaba la suite
+> **verde**: sacar `RST0` del conjunto estructural. Suite completa (4143) y `tsc`
+> en verde.
+
+**Dos residuos abiertos, aceptados y con dueño acá:**
+
+- **Un tope de bytes de ICC conservados.** El perfil es lo único de la lista que no
+  se puede acotar por largo —es variable por diseño y se parte en varios APP2
+  encadenados— y `quedanMetadatos` no tiene ningún centinela que caiga adentro de
+  un ICC. Un perfil **custom** (Lightroom, Capture One) puede llevar un nombre en
+  `cprt`. Se acepta porque los perfiles que emite un teléfono son enlatados y la
+  alternativa es publicar la foto con los colores cambiados.
+- **Los APPn intercalados entre scans de un JPEG progresivo no pasan por la
+  lista**, en ninguno de los dos runtimes. `quedanMetadatos` barre el archivo
+  completo, así que un EXIF o un C2PA puestos ahí se **rechazan** igual — pero se
+  rechazan, que es el modo de falla que este ítem vino a eliminar; lo que pasa en
+  silencio es lo que no tiene centinela (MPF, JFXX, un APPn de fabricante). No se
+  cerró acá porque tocar `finDelJpeg` es tocar la guarda que cierra el segundo
+  agujero de D-131 §3, y un error ahí corta el dato comprimido.
+
 ### B-870 · Hay dos apps web en el proyecto, con dos GA4 distintos, y Hosting apunta a la que el sitio no usa — ✅ hecho (2026-09-10) · P3
 
 > ✅ **Resuelto el 2026-09-10, y dejó una trampa escrita.**
@@ -11690,6 +11788,32 @@ fuentes.
 razón escrita —quedarse corto tira un bloque de más, que es una imagen que se ve
 igual— y la lista blanca de APPn sí se queda corta seguido. Lo que cubre ese lado
 es `estructuraConocida`, que ahora rechaza todo APPn que no reconozca.
+
+> ⚠️ **2026-09-10 — este párrafo se revierte: B-869 invirtió también el JPEG**
+> (**D-620**). Los dos argumentos se cayeron, y conviene decir cuál por cuál.
+>
+> **«Lo que cubre ese lado es `estructuraConocida`» era cierto y no alcanzaba: esa
+> red está río abajo del punto que falla.** Vive en
+> `functions/imagenes-optimizar.js` y la corre `optimizarImagen`, un
+> `onObjectFinalized` — o sea **después** de la subida. Y el punto que falla es
+> `quedanMetadatos`, que corta **antes** de `uploadBytes`. La subida nunca llegaba
+> a la Function.
+>
+> **Y la decisión envejeció por el ítem de al lado.** El argumento se apoyaba en
+> que las marcas del detector estuvieran cubiertas por la lista, y en ese momento
+> lo estaban: eran tres. **B-220 le agregó los dos centinelas de C2PA**, que viven
+> en **APP11** — un marcador que la lista negra no nombra. Ahí dejó de ser una
+> decisión y pasó a ser una inconsistencia: el detector rechazaba un bloque que el
+> saneador no sabía sacar, y el usuario se llevaba un cartel que le echaba la culpa
+> a su teléfono. Es lo que reportó el dueño el 2026-09-10.
+>
+> **«La lista blanca de APPn sí se queda corta seguido» sigue siendo cierto**, y no
+> se ignoró: se acotó el costo. La regla nueva no es una lista blanca de APPn, es
+> de **dos mitades** — lo estructural se conserva **por su marcador** y no pasa por
+> ninguna lista, porque la tabla B.1 del spec está **cerrada**; y de lo demás se
+> conserva solo lo que la lista reconoce por su firma. Quedarse corto acá cuesta
+> perder una extensión de aplicación que el navegador no mira, no una imagen rota.
+> Ésa es la asimetría con PNG, donde una lista corta tira un `PLTE`.
 
 > **2026-09-03 — hecho.** Se sacó la lista a `functions/png-chunks-seguros.js`
 > —cero dependencias binarias, ni `sharp` ni `firebase-admin`— exportando

@@ -175,7 +175,7 @@ no crece con esta página.
 | `propuestas[].revision.motivo` | por qué un admin la rechazó. Es una nota interna sobre el trabajo de otra persona, del mismo orden que `difusion.notas` | `firestore.rules` (nadie fuera del panel lee la colección) |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las dieciocho salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 | **Y desde B-734 esa ausencia es además el motivo por el que el `subEvent` de una actividad con más de una forma de cursar no puede decir en cuál ocurre:** repartir los lugares de verdad necesitaría estos dos campos en `ModalidadPublica`, o sea revisar esta misma celda. Mientras tanto el `location` se hereda solo cuando hay una fila.
-| **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
+| **los metadatos del archivo** (EXIF/GPS, XMP, IPTC, C2PA) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las cinco marcas: si alguna sobrevive, la subida se corta (D-131 §3). **Los dos formatos se limpian con lista blanca**: los chunks PNG desde B-323 y los segmentos APPn del JPEG desde **B-869** (**D-620**) — antes el JPEG iba por lista negra y no sacaba ni el APP11 de C2PA (que el barrido sí busca desde B-220, así que rechazaba la foto) ni el APP2 del índice MPF (que no busca, así que se subía) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`), `functions/png-chunks-seguros.js`, `functions/jpeg-appn-seguros.js` |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**; **medido contra producción el 2026-09-02** — el mismo objeto responde 200 con su token, sin token y con un token inventado) | `toPublic.ts` |
 | `imagenes[].storagePath`, por la puerta de la miniatura | la miniatura de B-220 vive en `miniaturas/<id>.jpg`, **derivado** del path del original, así que su URL se puede calcular sin conocer el path… y al revés: el path del original se puede calcular desde la URL de la miniatura. No agrega exposición —las dos URLs son públicas y el nombre sigue siendo opaco— pero sí agrega una razón más para que `allow list` siga cerrado en **los dos** prefijos: enumerar uno es enumerar el otro (**D-175**) | `imagenes.ts` (`urlDeMiniatura`), `storage.rules` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
@@ -537,6 +537,24 @@ Y tres cosas más que hacen que no filtre nada de más:
   es la que no se puede saltear, igual que las reglas frente al schema. Lo que se
   agregó acá es la primera capa, porque entre las dos tajadas hay imágenes propias
   públicas y el hueco no podía quedar abierto.
+  **Y desde B-869 los dos formatos se limpian con lista blanca** (D-620): del
+  JPEG se conserva lo **estructural** —la tabla B.1 del spec, que está cerrada:
+  SOF, DHT, DQT, DNL, DRI, DHP, EXP, SOS, RSTn, TEM— y de todo lo demás solo lo
+  que la lista reconoce **por su firma**: `JFIF\0` (y solo sin thumbnail
+  embebido), `ICC_PROFILE\0` y `Adobe`, los tres que cambian cómo se ve la
+  imagen. Se va el resto **de los segmentos anteriores al primer SOS**,
+  incluidos los que la lista negra anterior no nombraba (el APP11 de C2PA, el
+  APP2 del índice MPF) y los marcadores reservados. Lo de «anteriores al primer
+  SOS» es literal y está abierto: un APPn intercalado **entre scans** de un
+  JPEG progresivo no pasa por la lista en ninguno de los dos runtimes —lo
+  atrapa el barrido si lleva una de las cinco marcas, y se rechaza en vez de
+  sanearse—; el motivo de no cerrarlo acá está en D-620 § «Lo que queda
+  abierto». **El
+  residuo declarado es el perfil ICC**: no lleva ubicación, pero su header
+  lleva una fecha de creación y sus tags `cprt`/`desc` son texto libre, así que
+  un perfil custom puede llevar un nombre — se acepta porque los perfiles de un
+  teléfono son enlatados y la alternativa es publicar la foto con los colores
+  cambiados.
 - **Y desde el 2026-09-02 existe la segunda capa: la Function** (`optimizarImagen`,
   B-220 / D-175). Las dos se quedan, y no es duplicación: el panel se puede
   saltear abriendo la consola del navegador, la Function no. Tres cosas que
@@ -551,8 +569,14 @@ Y tres cosas más que hacen que no filtre nada de más:
     mostrarla se fue y el píxel nunca se movió. Es un bug de privacidad que se
     disfraza de bug visual.
   - **El perfil ICC se conserva**, misma decisión que el panel toma con el
-    marcador `0xE2`: descartarlo cambia los colores, y un perfil de color no
-    lleva ubicación, autor ni fecha.
+    `0xE2` que arranca con `ICC_PROFILE\0` (la lista blanca compartida de
+    B-869): descartarlo cambia los colores. **Con un residuo declarado**
+    (D-620): un perfil de color no lleva ubicación, y los enlatados que emite
+    un teléfono no llevan nada más, pero uno **custom** puede llevar la fecha
+    de creación del perfil y un nombre en `cprt`/`desc` — y acá es donde se
+    materializa, porque `.keepIccProfile()` lo re-embebe después de
+    recomprimir. Se acepta porque la alternativa es publicar la foto con los
+    colores cambiados; el tope de bytes quedó en el BACKLOG.
   - **Se reemplaza el original aunque no ahorre un byte** si traía metadatos. El
     corte por ahorro de bytes es una optimización; el de metadatos es una
     garantía y manda sobre el otro.

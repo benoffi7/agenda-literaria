@@ -356,6 +356,7 @@ describe('`campos/` no alcanza nada del panel ni el SDK pesado — B-841', () =>
     expect(Object.keys(ALIAS_A_ARCHIVO).sort()).toEqual([
       '@calendario',
       '@historial',
+      '@jpeg-appn-seguros',
       '@png-chunks-seguros',
     ]);
     // Y el que de verdad se usa desde `campos/`: si dejara de resolverse, el

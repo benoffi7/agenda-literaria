@@ -366,6 +366,58 @@ describe('lo que está escrito dos veces, atado', () => {
     const segundos = Number(/max-age=(\d+)/.exec(CACHE_AL_SUBIR)![1]);
     expect(segundos).toBeLessThanOrEqual(3600);
   });
+
+  it('el panel y la Function le hacen la misma pregunta a la misma tabla de APPn — B-869', async () => {
+    /*
+     * **Es la misma pregunta** —«¿este APPn es metadato, o hace falta para ver
+     * la imagen?»— hecha por dos runtimes: el panel para decidir qué conserva
+     * al sanear, la Function para decidir si puede dar cuenta de todos los
+     * bytes. Hasta B-869 la Function tenía su tabla (`BLOQUES_CONOCIDOS`) y el
+     * panel no tenía ninguna: tiraba por lista negra, y por eso no sacaba el
+     * APP11 de C2PA que el propio panel después rechazaba.
+     *
+     * El aserto que importa es el tercero: **lo que el panel sube, la Function
+     * lo entiende**. Si las dos tablas se separaran, el panel dejaría un APPn
+     * que la Function no reconoce y cada imagen subida se recomprimiría de más
+     * sin que nada se ponga rojo — la clase de B-88 con su costo puesto.
+     *
+     * MUTACIÓN PROBADA: sacarle el `0xe2` a `APPN_JPEG_SEGUROS` deja el
+     * `ICC_PROFILE` afuera y este caso en rojo; volver a darle una tabla propia
+     * a cualquiera de los dos lados rompe los dos últimos asertos.
+     */
+    const conIcc = await sharp({
+      create: { width: 120, height: 120, channels: 3, background: { r: 9, g: 9, b: 9 } },
+    })
+      .jpeg()
+      .withIccProfile('srgb')
+      .toBuffer();
+
+    // Un APP11 con la caja JUMBF de C2PA, metido justo después del SOI.
+    const cuerpo = Buffer.from('JP\u0000\u0000jumdc2pa/urn:c2pa:d3adb33f', 'binary');
+    const largo = cuerpo.length + 2;
+    const sucio = Buffer.concat([
+      conIcc.subarray(0, 2),
+      Buffer.from([0xff, 0xeb, (largo >> 8) & 0xff, largo & 0xff]),
+      cuerpo,
+      conIcc.subarray(2),
+    ]);
+    expect(contiene(sucio, 'ICC_PROFILE'), 'el fixture no quedó armado').toBe(true);
+    expect(estructuraConocida(sucio, 'jpeg'), 'la Function tiene que no entenderlo').toBe(false);
+
+    const limpio = Buffer.from(sinMetadatos('image/jpeg', new Uint8Array(sucio)));
+    expect(contiene(limpio, 'jumdc2pa'), 'el panel tiene que sacar el APP11').toBe(false);
+    expect(contiene(limpio, 'ICC_PROFILE'), 'y tiene que dejar el perfil').toBe(true);
+    expect(estructuraConocida(limpio, 'jpeg'), 'lo que el panel sube, la Function lo entiende').toBe(
+      true,
+    );
+
+    // Y una sola tabla, no dos copias: cada lado la importa del archivo
+    // compartido y ninguno declara la suya.
+    expect(fuente('src/lib/imagenes-archivo.ts')).toContain('@jpeg-appn-seguros');
+    expect(fuente('functions/imagenes-optimizar.js')).toContain('./jpeg-appn-seguros.js');
+    expect(fuente('src/lib/imagenes-archivo.ts')).not.toMatch(/const APP_A_TIRAR\s*=/);
+    expect(fuente('functions/imagenes-optimizar.js')).not.toMatch(/const BLOQUES_CONOCIDOS\s*=/);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────

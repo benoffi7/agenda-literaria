@@ -80,7 +80,7 @@ NO_AFECTAN='^docs/|^tests/|^\.github/|^\.claude/|^githooks/|\.md$|^\.gitignore$|
 RELEVANTES=$(
   printf '%s\n' "$CAMBIOS" \
     | grep -vE "$NO_AFECTAN" \
-    | awk '!/^functions\// || /^functions\/(calendario|historial|png-chunks-seguros)\.js$/' \
+    | awk '!/^functions\// || /^functions\/(calendario|historial|png-chunks-seguros|jpeg-appn-seguros)\.js$/' \
     | grep -v '^$' || true
 )
 

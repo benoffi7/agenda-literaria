@@ -24,9 +24,11 @@
  *    costado la publica girada 90°: el dato que decía cómo mostrarla se fue y el
  *    píxel nunca se movió.
  *  - **`.keepIccProfile()`** — el perfil de color se conserva, misma decisión que
- *    el panel toma con el marcador `0xE2` (`APP_A_TIRAR` no lo incluye):
- *    descartarlo cambia los colores. Un perfil ICC no lleva ubicación, autor ni
- *    fecha; no es de lo que este módulo tiene que proteger.
+ *    el panel toma con el `0xE2` que arranca con `ICC_PROFILE\0` (la lista
+ *    blanca compartida `APPN_JPEG_SEGUROS`, B-869): descartarlo cambia los
+ *    colores. Un perfil ICC no lleva ubicación, y los perfiles enlatados que emite un teléfono (sRGB, Display P3) no llevan nada más; uno **custom** puede llevar una fecha de creación y un nombre en `cprt`/`desc`, y eso se acepta como residuo declarado (D-620). **Ojo con esta
+ *    capa en particular:** `.keepIccProfile()` **re-embebe** el perfil después
+ *    de recomprimir, así que es acá donde el residuo se materializa.
  */
 import sharp from 'sharp';
 import {
@@ -38,6 +40,7 @@ import {
   formatoDeSalida,
 } from './imagenes.js';
 import { CHUNKS_PNG_SEGUROS } from './png-chunks-seguros.js';
+import { esMarcadorEstructural, esSegmentoSeguro } from './jpeg-appn-seguros.js';
 
 /** Fondo con el que se aplana un PNG opaco al pasarlo a JPEG. Ver `formatoDeSalida`. */
 const FONDO = { r: 255, g: 255, b: 255 };
@@ -48,8 +51,9 @@ const FONDO = { r: 255, g: 255, b: 255 };
  *
  * `comments` entra igual que el EXIF: el comentario libre de un JPEG es texto que
  * escribió el programa que lo exportó y no tiene por qué viajar. El **perfil
- * ICC** no entra: descartarlo cambia los colores y no lleva ubicación, autor ni
- * fecha (misma decisión que el panel toma con el marcador `0xE2`).
+ * ICC** no entra: descartarlo cambia los colores, y no lleva ubicación, y los perfiles enlatados que emite un teléfono (sRGB, Display P3) no llevan nada más; uno **custom** puede llevar una fecha de creación y un nombre en `cprt`/`desc`, y eso se acepta como residuo declarado (D-620)
+ * (misma decisión que el panel toma con el `0xE2` que arranca con
+ * `ICC_PROFILE\0` — la lista blanca compartida `APPN_JPEG_SEGUROS`, B-869).
  */
 /** @param {{ exif?: unknown, xmp?: unknown, iptc?: unknown, icc?: unknown, comments?: unknown[] }} meta */
 export const traeMetadatos = (meta = {}) =>
@@ -94,24 +98,23 @@ export const traeMetadatos = (meta = {}) =>
  * del EOI ni ningún APPn desconocido, así que esta regla **no recomprime ni una
  * imagen más** de las que ya están — y cierra el caso de la primera foto de
  * teléfono que se suba.
+ *
+ * ── La tabla de APPn vive afuera desde B-869 (D-620) ──────────────────────
+ * Era `BLOQUES_CONOCIDOS`, acá adentro, y el panel no tenía ninguna: tiraba
+ * por lista negra, así que no sacaba ni el APP11 de C2PA ni el APP2 del índice
+ * MPF. Es **la misma pregunta** hecha por dos runtimes —«¿este APPn es
+ * metadato, o hace falta para ver la imagen?»— así que ahora es una sola
+ * tabla: `functions/jpeg-appn-seguros.js`, que el panel importa por el alias
+ * `@jpeg-appn-seguros`. Mismo movimiento que B-323 hizo con los chunks PNG, y
+ * por lo mismo: dos copias de una lista se desincronizan (clase de B-88).
+ *
+ * Lo que **no** se comparte es qué hace cada lado con un APPn desconocido: el
+ * panel lo **tira** (es un saneador y el bloque sobra), esta Function
+ * **recomprime** (no puede dar cuenta de esos bytes). Dos respuestas distintas
+ * a la misma pregunta, que es justo lo que hace que se comparta la pregunta —
+ * y `tests/imagenes-function.test.ts` ata la mitad que importa: lo que el
+ * panel sube, esta Function lo entiende.
  */
-const BLOQUES_CONOCIDOS = {
-  // Densidad. La firma lleva el NUL a propósito: así `JFXX` —el thumbnail de
-  // APP0, que es una imagen adentro de la imagen y de **antes** de cualquier
-  // recorte— no matchea, y es justo el que no hay que dejar pasar.
-  0xe0: ['JFIF\u0000'],
-  // Perfil de color. `MPF\u0000` **no**: es el índice multi-imagen.
-  0xe2: ['ICC_PROFILE\u0000'],
-  // Sin él, un JPEG CMYK se ve invertido.
-  0xee: ['Adobe'],
-};
-
-const arranca = (b, desde, firma) => {
-  for (let i = 0; i < firma.length; i++) {
-    if (b[desde + i] !== firma.charCodeAt(i)) return false;
-  }
-  return true;
-};
 
 /**
  * ¿Se puede dar cuenta de **todos** los bytes del archivo?
@@ -169,10 +172,10 @@ export const estructuraConocida = (b, formato) => {
     const largo = (b[i + 2] << 8) | b[i + 3];
     if (largo < 2 || i + 2 + largo > b.length) return false;
 
-    if ((m >= 0xe0 && m <= 0xef) || m === 0xfe) {
-      const firmas = BLOQUES_CONOCIDOS[m];
-      if (!firmas || !firmas.some((f) => arranca(b, i + 4, f))) return false;
-    }
+    // La misma pregunta que hace el saneador del panel, con la misma tabla:
+    // un APPn o un COM que la lista blanca no reconozca por su firma es un
+    // bloque del que no podemos dar cuenta.
+    if (!esMarcadorEstructural(m) && !esSegmentoSeguro(b, m, i + 4)) return false;
 
     if (m === 0xda) {
       // A partir de acá empieza el dato comprimido: se busca el EOI **real**.

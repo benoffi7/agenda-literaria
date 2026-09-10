@@ -6649,6 +6649,14 @@ estrena la Function.
 > `functions/png-chunks-seguros.js`, que `estructuraConocida` ya usaba. Es la
 > misma lista de los catorce, ahora en un solo lugar y no en dos. El párrafo de
 > arriba queda como estaba escrito, para que se lea contra el hallazgo original.
+>
+> ⚠️ **Y B-869 hizo lo mismo del lado JPEG** (**D-620**, 2026-09-10), que es lo
+> que este ítem había dejado explícitamente afuera. El mismo manifiesto C2PA
+> viaja en JPEG en **APP11**, que `APP_A_TIRAR` —la lista negra de acá al
+> lado— no tiraba: el saneador se quedaba corto justo donde `quedanMetadatos`
+> ya miraba, así que la foto se rechazaba en vez de limpiarse. Hoy el JPEG
+> también va por lista blanca (`APPN_JPEG_SEGUROS`, `@jpeg-appn-seguros`) y por
+> **firma**, no por marcador.
 
 #### P1 · `.rotate()` transpone, y el argumento de «conserva la proporción» no lo cubría
 
@@ -9728,3 +9736,216 @@ igual que las entradas de novedades que citan el rótulo viejo. Lo que se corrig
 es lo que se afirma **en presente**: D-57, D-74, el § `aprobada` de
 `03-modelo-de-datos.md`, el § analítica de `07-seguridad.md`, las dos menciones
 de `04-funcionalidades.md` y los tres comentarios de `src/lib/`.
+
+
+## D-620 · La lista de segmentos JPEG también es blanca, y por firma — se revierte lo que B-323 dejó escrito
+
+Cierra **B-869**, reportado por el dueño el **2026-09-10** con una foto normal:
+el panel se la rechazó diciéndole que su teléfono le guardaba «una segunda copia
+adentro» y que la abriera en el editor de fotos. Era falso, y el modo de falla
+estaba escrito en el propio código desde B-220.
+
+### El agujero, y por qué era inevitable
+
+`sinMetadatos` (`src/lib/imagenes-archivo.ts`) tiraba, para JPEG, una lista
+**negra** de tres marcadores: `APP_A_TIRAR = new Set([0xe1, 0xed, 0xfe])` —
+APP1, APP13 y COM. `quedanMetadatos`, que corre después y **corta la subida**,
+busca cinco cadenas. **Dos de las cinco no podían estar cubiertas por esa
+lista:**
+
+| cadena | dónde viaja en JPEG | ¿la tiraba `APP_A_TIRAR`? |
+|---|---|---|
+| `Exif\0\0` | APP1 (`0xE1`) | sí |
+| `http://ns.adobe.com/xap/` | APP1 (`0xE1`) | sí |
+| `Photoshop 3.0` | APP13 (`0xED`) | sí |
+| `jumdc2pa` | **APP11** (`0xEB`) | **no** |
+| `urn:c2pa:` | **APP11** (`0xEB`) | **no** |
+
+O sea: **el detector rechazaba un bloque que el saneador no sabía sacar.** Una
+foto exportada de Google Photos lleva un manifiesto C2PA firmado por Google, así
+que no hacía falta nada exótico — es el mismo manifiesto que B-220 encontró
+**ya publicado** en la portada de una actividad real, ahí en PNG (D-175 §
+auditoría). La única salida que le quedaba a la persona era un cartel que le
+echaba la culpa a su teléfono.
+
+Y había un segundo bloque no cubierto, con el modo de falla al revés: el índice
+**MPF** viaja en **APP2** (`0xE2`), tampoco se tiraba, y `quedanMetadatos` no
+tiene centinela para él. Ese no se rechazaba: **se subía**.
+
+### Lo que decía B-323, por qué ya no aplica, y qué lo reemplaza
+
+B-323 invirtió la lista de PNG a blanca y **dejó escrito que el JPEG se quedaba
+como estaba, a propósito**:
+
+> «El JPEG queda como está, y a propósito: ahí `APP_A_TIRAR` es negra por una
+> razón escrita —quedarse corto tira un bloque de más, que es una imagen que se
+> ve igual— y la lista blanca de APPn sí se queda corta seguido. Lo que cubre
+> ese lado es `estructuraConocida`, que ahora rechaza todo APPn que no
+> reconozca.»
+
+Los dos argumentos se cayeron, y por motivos distintos:
+
+1. **La red que invocaba está río abajo del punto que falla.**
+   `estructuraConocida` vive en `functions/imagenes-optimizar.js`, o sea que
+   corre **después de la subida**, sobre el objeto ya en el bucket. Acá la
+   subida nunca llega: `quedanMetadatos` la corta antes. Verificado
+   ejecutándolo el 2026-09-10 — con un JPEG con APP11, `sinMetadatos` lo deja
+   pasar y `quedanMetadatos` da `true`.
+2. **La decisión envejeció y nadie volvió a mirar el saneador.** Cuando se
+   escribió, `quedanMetadatos` tenía **tres** centinelas y los tres estaban
+   cubiertos por la lista negra. **B-220 le agregó los dos de C2PA** —que viven
+   en un marcador que la lista no nombra— y ahí la lista negra dejó de ser una
+   decisión y pasó a ser una inconsistencia.
+
+**Lo que la reemplaza:** la lista blanca `APPN_JPEG_SEGUROS`
+(`functions/jpeg-appn-seguros.js`), **por firma y no por marcador**, con la
+regla partida en dos mitades:
+
+- **Lo que el decodificador necesita se conserva sin preguntar** — los quince
+  SOF, DHT, DAC, DQT, DNL, DRI, DHP, EXP, SOS, los RSTn y el TEM. Es la tabla
+  B.1 de ITU-T T.81, y **está cerrada**: el formato no agrega marcadores desde
+  hace treinta años porque una extensión nueva llega como APPn. Eso es lo que
+  hace seguro enumerarla, al revés de los chunks PNG, que son registrables por
+  diseño. **`0xC8` no está**, aunque caiga en el rango `0xC*`: el spec lo lista
+  como `JPG`, «reserved for JPEG extensions», o sea el mismo caso que los
+  `JPG0`–`JPG13`.
+- **Todo lo demás se tira** salvo que la firma con la que arranca su cuerpo esté
+  en la lista: `JFIF\0` (densidad), `ICC_PROFILE\0` (colores) y `Adobe` (sin él
+  un JPEG CMYK se ve invertido). Son los tres que **cambian cómo se ve la
+  imagen**. «Todo lo demás» incluye los APPn, el COM, los `JPG0`–`JPG13`
+  (`0xF0`–`0xFD`, reservados para extensiones: un contenedor sin reglas) y los
+  reservados `0x02`–`0xBF`.
+
+**Y las cuatro correcciones que los auditores le hicieron a la primera versión
+de esta decisión**, porque las cuatro desmentían lo que la decisión afirmaba —
+vale dejarlas escritas porque las cuatro son la misma forma de error: *la regla
+decía más de lo que el código chequeaba*:
+
+1. **El corte no podía ser «APPn y COM».** Escrito así dejaba conservados los
+   `JPG0`–`JPG13` y los reservados —el recorrido los trata como segmentos con
+   largo declarado y los copiaba enteros—, o sea exactamente lo que hacía la
+   lista negra. La propiedad que esta decisión vende es «lo que no está
+   enumerado se va», y solo es cierta si lo enumerado es lo **estructural**.
+2. **El APP0/JFIF también trae thumbnail, y la firma sola lo dejaba pasar.** El
+   NUL de `JFIF\0` deja afuera a `JFXX` —el thumbnail de *otro* APP0— pero el
+   JFIF base tiene el suyo: `Xthumbnail`/`Ythumbnail` en los bytes 12 y 13 del
+   cuerpo, y hasta 255×255×3 ≈ 195 KB de RGB sin comprimir. Es la misma
+   imagen-adentro-de-la-imagen de **antes** de cualquier recorte que el proyecto
+   ya había decidido no publicar, y **ninguna de las dos capas la sacaba** —
+   `estructuraConocida` también daba el segmento por conocido, así que
+   `conMetadatos` quedaba en `false` y la rama que no toca los bytes lo
+   publicaba. La entrada `0xE0` de la tabla tiene ahora, además de la firma, la
+   condición de que esos dos bytes estén en cero.
+3. **Reconocer la firma no acota el cuerpo.** Lo que se copia sale del **largo
+   declarado**, así que un APP0 con la firma buena, los dos bytes del thumbnail
+   en cero y un largo de 500 se conservaba entero: la misma clase, un nivel más
+   afuera. Los dos segmentos de forma fija del spec se acotan ahora al byte —
+   JFIF **16**, Adobe **14**—; el ICC no se puede acotar así porque es variable
+   por diseño, y ése es el residuo de la sección anterior.
+4. **`0xC8` no era un SOF.** El primer conjunto estructural lo metió adentro
+   «porque cae en el rango `0xC*`», así que se conservaba entero y sin mirarle
+   el cuerpo mientras su gemelo `0xF7` se tiraba — en las dos capas a la vez,
+   que es exactamente el costo del punto único de decisión que esta misma
+   decisión declara más abajo. Lo encontraron los **dos** auditores.
+
+### El residuo del ICC, declarado y no barrido debajo de la alfombra
+
+«Un perfil ICC no lleva ubicación, autor ni fecha» era la frase que este
+proyecto venía repitiendo desde B-220, y **es cierta de los perfiles enlatados
+y falsa del contenedor**: el header ICC lleva la fecha de creación del perfil
+(bytes 24–35) y los tags `cprt`, `desc`, `dmnd` y `dmdd` son texto libre, así
+que un perfil **custom** —el que exporta Lightroom o Capture One— puede llevar
+el nombre de quien fotografió. Ubicación no lleva.
+
+Se acepta el residuo, y conviene decir por qué y qué queda abierto: los
+perfiles que emite un teléfono son enlatados (sRGB, Display P3), la alternativa
+es publicar la foto con los colores cambiados, y **acá no hay segunda capa** —
+`quedanMetadatos` no tiene ningún centinela que caiga adentro de un ICC, y la
+Function hace `.keepIccProfile()`, o sea que si el perfil trae un nombre lo
+**re-embebe** después de recomprimir. La palanca barata, si algún día hace
+falta, es un tope de bytes de ICC conservados; quedó anotado y no se hizo acá.
+
+### El cuidado que hace que esto no sea un `sed`: APP2 lleva también el ICC
+
+Tirar `0xE2` entero habría sacado el **perfil ICC** junto con el índice MPF, y
+eso cambia los colores de una foto de gama amplia: degradar la imagen sin que
+nadie lo pida, que es exactamente lo que el docblock de `sinMetadatos` promete
+que no pasa («los píxeles salen byte por byte iguales a como entraron»). Por eso
+la lista es por firma: en un mismo archivo, el APP2 que arranca con
+`ICC_PROFILE\0` se conserva y el que arranca con `MPF\0` se va. Lo mismo del
+lado de APP0: `JFIF\0` queda, `JFXX` —el thumbnail del original **antes** de
+cualquier recorte— se va, aunque compartan marcador.
+
+### La respuesta al argumento que sí era real
+
+«La lista blanca de APPn sí se queda corta seguido» es cierto, y la respuesta no
+es negarlo sino acotar el costo: **un APPn legítimo que no esté en la lista se
+tira**, y un APPn es por el propio spec una extensión de aplicación que un
+decodificador puede ignorar. El peor caso es perder una extensión que el
+navegador no mira. En PNG el mismo error habría costado un `PLTE` o un `IDAT`
+—una imagen rota—, y por eso allá la lista tiene que ser completa y acá no: lo
+que un JPEG necesita para renderizar **no está en esta lista**, se conserva por
+clase. `tests/imagenes-archivo.test.ts` lo fija ejecutándolo, con la mutación
+anotada.
+
+### El cartel, que también estaba mal
+
+Decía «algunos celulares le guardan una segunda copia adentro» y mandaba a abrir
+el editor de fotos del teléfono. Para el caso que de verdad lo disparaba eso era
+**falso**, y le pedía a la persona que arreglara algo que no estaba roto de su
+lado. Ahora dice lo único que sabemos —quedó un bloque de datos ocultos que no
+supimos sacar, no lo subimos porque puede llevar la ubicación— y pide
+reportarlo. Y el caso en el que aparece es el que de verdad no podemos sanear:
+un archivo cuyo recorrido de marcadores no cierra, o una marca adentro de un
+bloque que sí conservamos. El de C2PA en APP11 ya no llega hasta ahí.
+
+### Una sola tabla, no dos — es la misma pregunta
+
+`estructuraConocida` (la Function) y `sinMetadatos` (el panel) hacen **la misma
+pregunta**: «¿este APPn es metadato, o hace falta para ver la imagen?». Hasta
+acá la Function tenía su propia tabla (`BLOQUES_CONOCIDOS`) y el panel no tenía
+ninguna. Es la clase de **B-88**, y el precedente de cómo resolverlo lo dejó
+**B-323**: la tabla sale a `functions/jpeg-appn-seguros.js` —sin `sharp` ni
+`firebase-admin`— y el panel la importa por el alias `@jpeg-appn-seguros`
+(`astro.config.mjs`, `tsconfig.json`, `vitest.config.ts`, y el `awk` de
+`scripts/que-deployar.sh`, que es lo que hace que un cambio a la tabla deploye
+Hosting **y** Functions). **No hay dos copias.**
+
+Lo que **no** se comparte es la respuesta: ante un APPn desconocido el panel lo
+**tira** (es un saneador y el bloque sobra) y la Function **recomprime** (no
+puede dar cuenta de esos bytes). Dos respuestas distintas a la misma pregunta es
+justamente lo que justifica compartir la pregunta y no la respuesta.
+
+El aserto que ata las dos mitades está en `tests/imagenes-function.test.ts` §
+«lo que está escrito dos veces, atado»: **lo que el panel sube, la Function lo
+entiende**. Si las tablas se separaran, el panel dejaría un APPn que la Function
+no reconoce y cada imagen subida se recomprimiría de más sin que nada se
+pusiera rojo.
+
+**Y compartirla tiene un costo que hay que tener escrito**, porque lo señaló el
+`auditor-privacidad` y es real: antes de B-869 la copia independiente de la
+Function fue lo que **salvó** el caso de C2PA —el panel lo dejaba pasar y la
+Function, al no reconocer el APP11, recomprimía—. Con una sola tabla, **una
+entrada floja es floja en las dos capas al mismo tiempo**: fue lo que pasó con
+la primera versión de la entrada `0xE0`. `APPN_JPEG_SEGUROS` es un punto único
+de decisión, así que agregarle una firma se decide con el criterio de una
+excepción de barrido y no como una config. La dirección neta sigue siendo la
+buena —el panel hoy tira estrictamente más que antes— pero el costo no es cero.
+
+### Lo que queda abierto, dicho acá y no descubierto después
+
+**Los APPn que aparecen después del primer SOS no pasan por la lista, en
+ninguno de los dos runtimes.** `sinMetadatos` aplica la regla al prefijo
+anterior al SOS y de ahí a `finDelJpeg` copia verbatim; el loop que busca el EOI
+real ya camina los segmentos que un JPEG **progresivo** intercala entre scans,
+pero los saltea por su largo sin consultar la lista, y `estructuraConocida`
+tiene el mismo hueco. Un APPn colocado ahí pasa entero.
+
+Lo que sí lo cubre a medias: `quedanMetadatos` barre el archivo **completo**,
+así que un EXIF, un XMP, un `Photoshop 3.0` o un C2PA puestos entre scans se
+**rechazan** igual — pero se rechazan, que es el modo de falla que este ítem
+vino a eliminar. Lo que pasa las dos capas en silencio es lo que no tiene
+centinela: el índice MPF, un JFXX, un APPn de fabricante. No se cierra acá
+porque tocar el recorrido de `finDelJpeg` es tocar la guarda que cierra el
+segundo agujero de D-131 §3, y un error ahí corta el dato comprimido. Queda
+anotado en el BACKLOG.

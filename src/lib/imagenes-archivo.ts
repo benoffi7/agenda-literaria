@@ -23,6 +23,7 @@
  */
 import { MAXIMO_BYTES } from '@/lib/imagenes';
 import { CHUNKS_PNG_SEGUROS } from '@png-chunks-seguros';
+import { esMarcadorEstructural, esSegmentoSeguro } from '@jpeg-appn-seguros';
 
 /**
  * Los tipos que se aceptan **al subir**.
@@ -164,19 +165,56 @@ const unir = (partes: Uint8Array[]): Uint8Array => {
 };
 
 /**
- * Los marcadores JPEG que se tiran. **Lista negra y no blanca, a propósito**:
- * quedarse corto tira un bloque de más (una imagen que se ve igual), y una lista
- * blanca que se queda corta deja pasar el EXIF, que es lo que este módulo existe
- * para evitar.
+ * ¿Este segmento JPEG se conserva? — **lista blanca desde B-869** (D-620).
  *
- *  - `0xE1` APP1 — Exif y XMP. **Es el que lleva el GPS.**
- *  - `0xED` APP13 — IPTC / Photoshop, que lleva autor y créditos.
- *  - `0xFE` COM — comentario libre.
+ * Hasta B-869 acá había una lista **negra**, `APP_A_TIRAR = new Set([0xe1,
+ * 0xed, 0xfe])`: APP1, APP13 y COM. Lo que no enumeraba, pasaba, y eso dejaba
+ * dos agujeros de signo opuesto:
  *
- * Se conservan a propósito `0xE0` (JFIF: densidad), `0xE2` (perfil ICC: sacarlo
- * cambia los colores) y `0xEE` (Adobe: sin él, un JPEG CMYK se ve invertido).
+ *  - **Dos de las cinco marcas que `quedanMetadatos` busca no podían estar
+ *    cubiertas por esa lista**: las de C2PA viajan en **APP11** (`0xEB`). El
+ *    detector rechazaba un bloque que el saneador no sabía sacar, así que la
+ *    persona se llevaba un cartel que le echaba la culpa a su teléfono por una
+ *    foto exportada de Google Photos (que lleva C2PA firmado por Google — el
+ *    mismo manifiesto que B-220 encontró ya publicado, ahí en PNG).
+ *  - **Y el índice de la imagen secundaria MPF, que viaja en APP2 (`0xE2`), no
+ *    tiene centinela**: ése no se rechazaba, se **subía**.
+ *
+ * La regla ahora tiene dos mitades, y la segunda es la que hace que invertir la
+ * lista no pueda romper una imagen:
+ *
+ *  - **Lo que el decodificador necesita se conserva sin preguntar** —
+ *    `esMarcadorEstructural`: los SOF, DHT, DQT, DNL, DRI, DHP, EXP, SOS, los
+ *    RSTn y el TEM. Es la tabla B.1 del spec, que está **cerrada**.
+ *  - **Todo lo demás se tira salvo que la lista blanca lo reconozca por su
+ *    firma —y, en los dos de forma fija, por su largo declarado**—
+ *    `APPN_JPEG_SEGUROS`, compartida con `estructuraConocida`
+ *    (`functions/imagenes-optimizar.js`) por el alias `@jpeg-appn-seguros`. Son
+ *    JFIF (densidad, y solo sin thumbnail embebido), ICC_PROFILE (colores) y
+ *    Adobe (CMYK): los tres que cambian cómo se ve la imagen. Por firma y no
+ *    por marcador, que es lo que deja afuera a `JFXX` (el thumbnail de APP0, de
+ *    **antes** de cualquier recorte) y a `MPF\0`, que comparte el `0xE2` del
+ *    perfil ICC. Y del lado que se tira caen también el COM, los `JPG0`–`JPG13`
+ *    y los reservados, que la primera versión de esta regla conservaba por no
+ *    ser APPn — lo marcó el `auditor-privacidad`.
+ *
+ * Por eso el argumento de B-323 para dejar el JPEG en negra —«la lista blanca
+ * de APPn sí se queda corta seguido»— no se aplica igual acá: un APPn que la
+ * lista no conozca se **tira**, y un APPn es por spec una extensión que un
+ * decodificador puede ignorar.
+ *
+ * **Y el alcance de todo esto es el prefijo anterior al primer SOS**, que es
+ * hasta donde llega `recorrerJpeg`: de ahí al EOI real va tal cual. Un APPn
+ * intercalado entre scans de un JPEG progresivo no pasa por esta regla — lo
+ * atrapa `quedanMetadatos` si lleva una de las cinco marcas, o sea que se
+ * rechaza en vez de sanearse. Queda abierto a propósito: el motivo está en
+ * D-620 § «Lo que queda abierto». El costo de quedarse corto es perder una
+ * extensión que el navegador no mira; en PNG habría sido tirar `PLTE` y romper
+ * la imagen. Y la red que ese argumento invocaba —`estructuraConocida`— corre
+ * **después** de la subida, río abajo del punto que fallaba.
  */
-const APP_A_TIRAR = new Set([0xe1, 0xed, 0xfe]);
+const seConserva = (datos: Uint8Array, marcador: number, desde: number): boolean =>
+  esMarcadorEstructural(marcador) || esSegmentoSeguro(datos, marcador, desde + 4);
 
 /** SOF — el marcador que trae alto y ancho. No son todos los `0xC*`. */
 const ES_SOF = (m: number): boolean =>
@@ -287,6 +325,22 @@ const MARCAS_DE_METADATOS: readonly string[] = [
   // numeros de falso positivo que las de arriba.
   'jumdc2pa',
   'urn:c2pa:',
+  /*
+   * **Y `MPF\0` NO está, con el número escrito** — B-869, lo pidió el
+   * `auditor-privacidad`. El índice de la imagen secundaria de un Samsung
+   * comparte el `0xE2` del perfil ICC y lo tira `sinMetadatos` desde B-869,
+   * pero acá no entra: son **cuatro** bytes, o sea del orden de 7·10⁻⁴ de
+   * falso positivo en un archivo de 3 MB — cuatro órdenes de magnitud peor que
+   * las cinco de arriba, y un falso positivo acá es una foto buena que no se
+   * puede subir.
+   *
+   * La consecuencia hay que decirla: **para MPF hay una sola capa**, el
+   * saneador, al revés del caso de C2PA (donde el barrido veía y el saneador
+   * no sacaba). El residuo es chico —el bloque de índice lleva offsets, no
+   * GPS; la imagen secundaria en sí la corta `finDelJpeg`, y si sobreviviera,
+   * su propio `Exif\0\0` sí dispararía el barrido— y por eso se acepta. Quien
+   * venga a agregar la sexta marca tiene que leer esto primero.
+   */
 ];
 
 const contieneCadena = (b: Uint8Array, cadena: string): boolean => {
@@ -390,7 +444,7 @@ export const sinMetadatos = (tipo: TipoSubible, datos: Uint8Array): Uint8Array =
     if (!esJpeg(datos)) return datos;
     const partes: Uint8Array[] = [datos.subarray(0, 2)];
     const fin = recorrerJpeg(datos, (marcador, desde, hasta) => {
-      if (APP_A_TIRAR.has(marcador)) return;
+      if (!seConserva(datos, marcador, desde)) return;
       partes.push(datos.subarray(desde, hasta));
     });
     // Desde SOS hasta el EOI **real** va tal cual: son los datos comprimidos.

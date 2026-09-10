@@ -103,6 +103,21 @@ export default defineConfig({
         '@png-chunks-seguros': fileURLToPath(
           new URL('./functions/png-chunks-seguros.js', import.meta.url),
         ),
+
+        /*
+         * `@jpeg-appn-seguros` es lo mismo del lado JPEG (B-869): la lista
+         * blanca de segmentos APPn que se conservan al limpiar una imagen
+         * antes de subirla, y la misma que `estructuraConocida` usa para
+         * decidir si un JPEG trae bloques de los que no puede dar cuenta.
+         * Hasta B-869 el panel tiraba por lista negra y no sacaba ni el APP11
+         * de C2PA ni el APP2 del índice MPF.
+         *
+         * No importa `sharp` ni `firebase-admin`, así que Vite la bundlea
+         * igual que las otras tres.
+         */
+        '@jpeg-appn-seguros': fileURLToPath(
+          new URL('./functions/jpeg-appn-seguros.js', import.meta.url),
+        ),
       },
     },
     // Guarda de §5.4: firebase-admin no puede terminar en un bundle de cliente.

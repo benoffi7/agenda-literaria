@@ -360,7 +360,12 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   con el rechazo diciendo cuánto pesa el archivo y cuánto es el máximo. **Al subir
   se le quitan los metadatos**, y eso no es cosmético: una foto de celular lleva las
   coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares
-  (D-131).
+  (D-131). **Se sacan con lista blanca en los dos formatos** —los chunks del PNG
+  desde B-323 y los segmentos APPn del JPEG desde **B-869** (D-620)—: se conserva
+  lo que cambia cómo se ve la imagen (densidad, perfil de color) y se tira todo el
+  resto, incluido lo que nadie enumeró. Antes el JPEG iba por lista negra, y por
+  eso una foto exportada de Google Fotos se **rechazaba** con un mensaje que le
+  echaba la culpa al teléfono.
 - **Y después de subirla, el servidor la optimiza sola** (B-220, **D-175**). No se
   ve ni se elige: unos segundos después de subir, una Function le vuelve a sacar
   los metadatos —esta vez del lado que no se puede saltear—, la recomprime si eso

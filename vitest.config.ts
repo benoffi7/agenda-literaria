@@ -18,6 +18,11 @@ export default defineConfig({
       '@png-chunks-seguros': fileURLToPath(
         new URL('./functions/png-chunks-seguros.js', import.meta.url),
       ),
+      // B-869 — la lista blanca de segmentos APPn seguros de un JPEG,
+      // compartida con la Function por el mismo motivo.
+      '@jpeg-appn-seguros': fileURLToPath(
+        new URL('./functions/jpeg-appn-seguros.js', import.meta.url),
+      ),
     },
   },
   test: {

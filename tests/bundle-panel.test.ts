@@ -208,16 +208,17 @@ describe('el recorrido del grafo ve lo que hay — B-117', () => {
      * Lo encontró el `auditor-privacidad` auditando B-323: `aArchivo` no
      * resolvía `@calendario`/`@historial`/`@png-chunks-seguros`, así que caían
      * del lado de "paquete de node_modules" y el recorrido se cortaba ahí. Hoy
-     * es inocuo porque esos tres archivos no importan nada más — pero un
+     * es inocuo porque esos archivos no importan nada más — pero un
      * import agregado adentro de cualquiera de ellos quedaría fuera del grafo
      * sin que este archivo lo note, salvo por este `it`.
      *
      * Mutación: comentar el `if (spec in ALIAS_A_ARCHIVO) …` de `aArchivo`.
-     * Los tres alias vuelven a contarse como paquete y este `it` se pone rojo.
+     * Todos los alias vuelven a contarse como paquete y este `it` se pone rojo.
      */
     expect(Object.keys(ALIAS_A_ARCHIVO).sort()).toEqual([
       '@calendario',
       '@historial',
+      '@jpeg-appn-seguros',
       '@png-chunks-seguros',
     ]);
     for (const archivo of Object.values(ALIAS_A_ARCHIVO)) {

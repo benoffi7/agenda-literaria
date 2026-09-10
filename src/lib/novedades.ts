@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'fotos-de-google-photos-ya-suben',
+    fecha: '2026-09-10',
+    version: '1.10.0',
+    titulo: 'Las fotos que antes se rechazaban «por datos ocultos» ya suben',
+    detalle:
+      'Algunas fotos —sobre todo las que salen de Google Fotos— traen adentro una firma que no ' +
+      'sabíamos sacar, y el panel las rechazaba pidiéndote que las abrieras en el editor del ' +
+      'teléfono. No era culpa de tu teléfono: ahora esa firma se saca sola, como el resto de ' +
+      'los datos ocultos. Los colores de la foto no cambian, que era lo que había que cuidar.',
+    donde: 'Cualquier formulario con foto: la galería de una actividad y la propuesta.',
+  },
+  {
     id: 'propuestas-avisan-antes-de-borrarse',
     fecha: '2026-09-09',
     version: '1.10.0',

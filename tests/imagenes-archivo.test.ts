@@ -59,7 +59,18 @@ const jpeg = (opts: { conExif?: boolean; alto?: number; ancho?: number } = {}): 
   const { conExif = true, alto = 800, ancho = 1200 } = opts;
   return new Uint8Array([
     0xff, 0xd8, // SOI
-    ...seg(0xe0, [0x4a, 0x46, 0x49, 0x46, 0x00]), // APP0 (JFIF): se conserva
+    // APP0 (JFIF): se conserva. **El cuerpo es el de un JFIF de verdad, de
+    // dieciséis bytes**, y no la firma sola: los dos ceros del final son
+    // `Xthumbnail`/`Ythumbnail`, y desde B-869 son la condición para
+    // conservarlo (un JFIF con thumbnail lleva una miniatura del original de
+    // antes del recorte, y se tira como `JFXX`).
+    ...seg(0xe0, [
+      0x4a, 0x46, 0x49, 0x46, 0x00, // 'JFIF\0'
+      0x01, 0x02, // versión
+      0x00, // unidades
+      0x00, 0x01, 0x00, 0x01, // densidad
+      0x00, 0x00, // sin thumbnail
+    ]),
     ...(conExif ? seg(0xe1, CUERPO_EXIF) : []), // APP1 (Exif): se tira
     ...seg(0xfe, [0x68, 0x6f, 0x6c, 0x61]), // COM: se tira
     // SOF0: precisión, alto, ancho, componentes
@@ -207,8 +218,10 @@ describe('los metadatos se van, y los píxeles no se tocan', () => {
   });
 
   it('JPEG: el APP0 de JFIF se conserva', () => {
-    // Lista negra y no blanca: se tira lo que se sabe que sobra, no se conserva
-    // solo lo que se sabe que sirve. Sacar JFIF cambiaría la densidad declarada.
+    // Es uno de los tres APPn de la lista **blanca** de B-869
+    // (`APPN_JPEG_SEGUROS`): sacarlo cambiaría la densidad declarada. Los otros
+    // dos —el perfil ICC y el Adobe— y la propiedad de fondo de la lista viven
+    // en el `describe` de B-869, más abajo.
     expect(contiene(sinMetadatos('image/jpeg', jpeg()), [0x4a, 0x46, 0x49, 0x46])).toBe(true);
   });
 
@@ -358,6 +371,389 @@ describe('los metadatos se van, y los píxeles no se tocan', () => {
     expect(sinMetadatos('image/png', basura)).toBe(basura);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────
+// La lista de segmentos JPEG, invertida a blanca — B-869 / D-620
+// ─────────────────────────────────────────────────────────────────
+
+const cadena = (s: string): number[] => [...s].map((c) => c.charCodeAt(0));
+
+/** `JFIF\0` + versión y densidad: el APP0 tal como lo escribe una cámara. */
+const CUERPO_JFIF = [...cadena('JFIF\u0000'), 0x01, 0x02, 0x00, 0x00, 0x01, 0x00, 0x01, 0, 0];
+
+/** `ICC_PROFILE\0` + número de trozo + payload reconocible. */
+const CUERPO_ICC = [...cadena('ICC_PROFILE\u0000'), 0x01, 0x01, 0xc0, 0x1c, 0xed];
+
+/**
+ * El índice multi-imagen de un Samsung, que **comparte el `0xE2` del perfil
+ * ICC**: es lo que obliga a que la lista blanca sea por firma y no por marcador.
+ */
+const CUERPO_MPF = [...cadena('MPF\u0000'), 0x49, 0x49, 0x2a, 0x00, 0xbe, 0xef];
+
+/**
+ * El APP11 de las credenciales de contenido C2PA: una caja JUMBF. Las dos
+ * cadenas son las que `quedanMetadatos` busca desde B-220.
+ */
+const CUERPO_C2PA = [
+  ...cadena('JP'),
+  0x00,
+  0x00,
+  ...cadena('jumdc2pa'),
+  ...cadena('urn:c2pa:d3adb33f'),
+];
+
+/**
+ * Un JPEG con **todos** los segmentos que un decodificador necesita, más los
+ * que le pasemos. El fixture de arriba (`jpeg()`) alcanza para el EXIF; este
+ * agrega las tablas para poder afirmar que la lista blanca no se las lleva.
+ */
+const jpegCompleto = (extra: number[] = []): Uint8Array =>
+  new Uint8Array([
+    0xff, 0xd8, // SOI
+    ...seg(0xe0, CUERPO_JFIF), // APP0/JFIF — se conserva
+    ...extra,
+    ...seg(0xdb, [0x00, 0x10, 0x0b, 0x0c]), // DQT — tabla de cuantización
+    ...seg(0xc4, [0x00, 0x01, 0x05, 0x01]), // DHT — tabla de Huffman
+    ...seg(0xdd, [0x00, 0x04]), // DRI — intervalo de reinicio
+    ...seg(0xc0, [0x08, 0x03, 0x20, 0x04, 0xb0, 0x03]), // SOF0
+    ...seg(0xda, [0x01, 0x01, 0x00]), // SOS
+    ...DATOS_COMPRIMIDOS,
+  ]);
+
+describe('la lista de segmentos JPEG es blanca — B-869 / D-620', () => {
+  it('el APP11 con las credenciales C2PA se va, y la subida deja de rechazarse', () => {
+    /*
+     * **Este es el bug del 2026-09-10, congelado como caso.** El dueño subió
+     * una foto normal y el panel se la rechazó diciéndole que su teléfono le
+     * guardaba «una segunda copia adentro», que era falso: lo que traía era un
+     * manifiesto C2PA —el que exporta Google Photos, firmado por Google— y
+     * viaja en **APP11** (`0xEB`).
+     *
+     * La lista negra que había hasta acá (`APP_A_TIRAR = {0xe1, 0xed, 0xfe}`)
+     * no lo tiraba, y `quedanMetadatos` sí lo busca desde B-220: el detector
+     * rechazaba un bloque que el saneador no sabía sacar. Los dos asertos de
+     * abajo son las dos mitades de eso —que el bloque se va, y que por lo
+     * tanto el barrido ya no corta la subida— y con la lista negra los dos
+     * fallaban.
+     *
+     * MUTACIÓN PROBADA: volver a la lista negra (o hacer que `seConserva`
+     * devuelva `true` para todo lo que no sea `0xe1`/`0xed`/`0xfe`, que es lo
+     * mismo con otra cara) pone los dos en rojo.
+     */
+    const conC2pa = jpegCompleto(seg(0xeb, CUERPO_C2PA));
+    // Controles positivos: el fixture lo trae, y el barrido lo ve.
+    expect(contiene(conC2pa, cadena('jumdc2pa'))).toBe(true);
+    expect(quedanMetadatos(conC2pa), 'el barrido tiene que ver el manifiesto').toBe(true);
+
+    const limpio = sinMetadatos('image/jpeg', conC2pa);
+    expect(contiene(limpio, cadena('jumdc2pa')), 'el APP11 tiene que irse').toBe(false);
+    expect(contiene(limpio, cadena('urn:c2pa:'))).toBe(false);
+    // Y por lo tanto la subida ya no se corta: es el rechazo que veía el dueño.
+    expect(quedanMetadatos(limpio), 'la subida se seguiría rechazando').toBe(false);
+    // La imagen sigue entera.
+    expect(contiene(limpio, DATOS_COMPRIMIDOS)).toBe(true);
+  });
+
+  it('el perfil ICC de APP2 sobrevive: sacarlo sería degradar la foto', () => {
+    /*
+     * **El cuidado que hace que invertir la lista no sea un `sed`.** APP2 lleva
+     * el índice MPF *y* el perfil ICC, y tirar el marcador entero cambiaría los
+     * colores de una foto de gama amplia — o sea degradar la imagen sin que
+     * nadie lo pida, justo lo que el docblock de `sinMetadatos` promete que no
+     * pasa («los píxeles salen byte por byte iguales»).
+     *
+     * MUTACIÓN PROBADA: sacar la entrada `0xe2` de `APPN_JPEG_SEGUROS` deja
+     * este caso en rojo (y ningún otro, que es lo que lo hace valer).
+     */
+    const conIcc = jpegCompleto(seg(0xe2, CUERPO_ICC));
+    const limpio = sinMetadatos('image/jpeg', conIcc);
+    expect(contiene(limpio, cadena('ICC_PROFILE')), 'se fue el perfil de color').toBe(true);
+    // Y entero, no solo la firma: el payload es el perfil.
+    expect(contiene(limpio, [0xc0, 0x1c, 0xed])).toBe(true);
+  });
+
+  it('el índice MPF se va aunque comparta el APP2 con el perfil ICC', () => {
+    /*
+     * La otra mitad del caso de arriba, y la razón por la que la lista blanca
+     * es **por firma** y no por marcador: la imagen secundaria MPF de un
+     * Samsung es un JPEG entero con su propio APP1 y su propio GPS, y este
+     * bloque es su índice. Con los dos APP2 en el mismo archivo, uno se
+     * conserva y el otro no.
+     *
+     * Y `quedanMetadatos` **no** lo ve —no hay centinela de MPF, y una firma de
+     * cuatro bytes tendría demasiados falsos positivos para agregarla—, así que
+     * acá el modo de falla no era un rechazo: era una fuga silenciosa.
+     *
+     * MUTACIÓN PROBADA: agregar `'MPF\u0000'` a las firmas del `0xe2` en
+     * `APPN_JPEG_SEGUROS` deja este caso en rojo y el resto en verde.
+     */
+    const conAmbos = jpegCompleto([...seg(0xe2, CUERPO_ICC), ...seg(0xe2, CUERPO_MPF)]);
+    expect(contiene(conAmbos, cadena('MPF\u0000'))).toBe(true);
+    // Control: hoy el barrido no lo atrapa, así que el saneador es lo único.
+    expect(quedanMetadatos(conAmbos)).toBe(false);
+
+    const limpio = sinMetadatos('image/jpeg', conAmbos);
+    expect(contiene(limpio, cadena('MPF\u0000')), 'el índice MPF tiene que irse').toBe(false);
+    expect(contiene(limpio, cadena('ICC_PROFILE')), 'y el perfil tiene que quedarse').toBe(true);
+  });
+
+  it('el thumbnail JFXX se va aunque comparta el APP0 con JFIF', () => {
+    // Mismo motivo que el MPF, del otro lado: `JFXX` es una miniatura del
+    // original **antes** de cualquier recorte, metida adentro del mismo
+    // marcador cuya densidad sí queremos conservar. La firma con NUL es lo que
+    // los separa.
+    const conJfxx = jpegCompleto(seg(0xe0, [...cadena('JFXX\u0000'), 0x10, 0xaa, 0xbb]));
+    // Control positivo, como en los otros tres casos de «esto se va»: sin él,
+    // un `jpegCompleto` que descartara el `extra` dejaría este `it` en verde
+    // sin haber saneado nada. Lo pidió el `auditor-trampas`.
+    expect(contiene(conJfxx, cadena('JFXX')), 'el fixture no quedó armado').toBe(true);
+    const limpio = sinMetadatos('image/jpeg', conJfxx);
+    expect(contiene(limpio, cadena('JFXX')), 'el thumbnail JFXX tiene que irse').toBe(false);
+    expect(contiene(limpio, cadena('JFIF')), 'y el JFIF tiene que quedarse').toBe(true);
+  });
+
+  it('un APP0/JFIF con thumbnail embebido NO se conserva — lo pidió el auditor-privacidad', () => {
+    /*
+     * **La firma sola no alcanzaba, y el docblock decía que sí.** El NUL de
+     * `JFIF\0` deja afuera a `JFXX` —el thumbnail de *otro* APP0— pero el JFIF
+     * base tiene el suyo: bytes 12 y 13 del cuerpo (`Xthumbnail`,
+     * `Ythumbnail`) y hasta 255×255×3 de RGB sin comprimir. Es la misma
+     * imagen-adentro-de-la-imagen de **antes** de cualquier recorte, y con la
+     * primera versión de la lista blanca pasaba las dos capas: la firma
+     * matcheaba y el segmento se copiaba entero.
+     *
+     * MUTACIÓN PROBADA: sacarle el `ademas: jfifSinThumbnail` a la entrada
+     * `0xe0` de `APPN_JPEG_SEGUROS` deja este caso en rojo y el par de control
+     * en verde.
+     */
+    const MINIATURA = [0xca, 0xfe, 0xba, 0xbe, 0x11, 0x22];
+    const conThumbnail = jpegCompleto(
+      seg(0xe0, [
+        ...cadena('JFIF\u0000'),
+        0x01, 0x02, 0x00, 0x00, 0x01, 0x00, 0x01,
+        0x01, 0x02, // Xthumbnail=1, Ythumbnail=2 → 6 bytes de RGB
+        ...MINIATURA,
+      ]),
+    );
+    expect(contiene(conThumbnail, MINIATURA), 'el fixture no quedó armado').toBe(true);
+
+    const limpio = sinMetadatos('image/jpeg', conThumbnail);
+    expect(contiene(limpio, MINIATURA), 'la miniatura embebida tiene que irse').toBe(false);
+    // Y el par de control, que es lo que hace que el caso no sea «se tira el
+    // APP0 y listo»: el JFIF sin thumbnail sigue conservándose.
+    expect(contiene(sinMetadatos('image/jpeg', jpegCompleto()), cadena('JFIF'))).toBe(true);
+  });
+
+  it('un marcador reservado tampoco se conserva: el corte es por estructura, no por «APPn»', () => {
+    /*
+     * **La primera versión de la regla decía «se tira lo que es APPn o COM», y
+     * eso dejaba conservados los `JPG0`–`JPG13` (`0xF0`–`0xFD`, «reserved for
+     * JPEG extensions»: un contenedor sin reglas) y los reservados
+     * `0x02`–`0xBF`.** El recorrido los trata como segmentos con largo
+     * declarado, así que se copiaban enteros — igual que con la lista negra, y
+     * desmintiendo la propiedad que este archivo vende. Lo marcó el
+     * `auditor-privacidad`.
+     *
+     * El corte ahora es al revés: se conserva lo que está en
+     * `MARCADORES_ESTRUCTURALES` (la tabla B.1 del spec, que es **cerrada**) y
+     * se tira todo lo demás.
+     *
+     * MUTACIÓN PROBADA: volver a `!((m >= 0xe0 && m <= 0xef) || m === 0xfe)`
+     * deja este caso en rojo y el resto del `describe` en verde.
+     */
+    const CARGA = cadena('reservado');
+    const conReservado = jpegCompleto(seg(0xf7, CARGA));
+    expect(contiene(conReservado, CARGA), 'el fixture no quedó armado').toBe(true);
+
+    const limpio = sinMetadatos('image/jpeg', conReservado);
+    expect(contiene(limpio, CARGA), 'un marcador reservado tiene que irse').toBe(false);
+    // Y la imagen sigue entera: lo estructural no pasa por la lista.
+    expect(dimensiones('image/jpeg', limpio)).toEqual({ ancho: 1200, alto: 800 });
+  });
+
+  it('el marcador JPG (0xC8) no es estructural y también se va — lo pidieron los dos auditores', () => {
+    /*
+     * **La primera versión del conjunto estructural lo metió adentro porque
+     * cae en el rango `0xC*`, y eso es falso**: la tabla B.1 lista `0xC8` como
+     * `JPG`, «reserved for JPEG extensions» — el mismo caso que los
+     * `JPG0`–`JPG13` de `0xF0`–`0xFD`, que el caso de acá abajo tira. Así que
+     * se conservaba entero y sin mirarle el cuerpo mientras su gemelo se
+     * tiraba, en las dos capas a la vez (es el costo del punto único de
+     * decisión que D-620 declara).
+     *
+     * El propio repo ya lo sabía: `ES_SOF` lo excluye junto a `0xC4` y `0xCC`,
+     * y por eso `dimensiones` nunca lo leyó como SOF.
+     *
+     * MUTACIÓN PROBADA: devolverle el `0xc8` a `MARCADORES_ESTRUCTURALES` deja
+     * este caso en rojo y el resto en verde.
+     */
+    const CARGA = cadena('extension-reservada');
+    const conJpg = jpegCompleto(seg(0xc8, CARGA));
+    expect(contiene(conJpg, CARGA), 'el fixture no quedó armado').toBe(true);
+
+    const limpio = sinMetadatos('image/jpeg', conJpg);
+    expect(contiene(limpio, CARGA), 'el 0xC8 tiene que irse como el 0xF7').toBe(false);
+    expect(dimensiones('image/jpeg', limpio)).toEqual({ ancho: 1200, alto: 800 });
+  });
+
+  it('un JFIF sin thumbnail pero con cola pegada tampoco se conserva', () => {
+    /*
+     * **Reconocer la firma no acota el cuerpo, y el docblock afirmaba que
+     * sí.** Lo que se copia sale del **largo declarado**, así que un APP0 que
+     * arranque con `JFIF\0`, tenga los dos bytes del thumbnail en cero y
+     * declare 500 bytes se conservaba entero: la misma clase que
+     * `jfifSinThumbnail` cierra, un nivel más afuera. Lo marcó el
+     * `auditor-privacidad` sobre el propio arreglo.
+     *
+     * Los dos segmentos de forma fija se acotan al byte: JFIF **16**, Adobe
+     * **14**. El ICC no, y ése es el residuo declarado de D-620.
+     *
+     * MUTACIÓN PROBADA: sacar el `deLargoExacto(16)` de `jfifDeVerdad` deja
+     * este caso en rojo; sacar el `deLargoExacto(14)` del `0xee` deja en rojo
+     * el segundo bloque.
+     */
+    const COLA = cadena('cola-pegada-al-JFIF');
+    const conCola = jpegCompleto(
+      seg(0xe0, [...cadena('JFIF\u0000'), 0x01, 0x02, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, ...COLA]),
+    );
+    expect(contiene(conCola, COLA), 'el fixture no quedó armado').toBe(true);
+    // El APP0 legítimo del fixture está antes, así que la salida conserva un
+    // JFIF: lo que no puede sobrevivir es el segundo, el de la cola.
+    expect(contiene(sinMetadatos('image/jpeg', conCola), COLA)).toBe(false);
+
+    // Y lo mismo con el Adobe de APP14, que también es de forma fija.
+    const COLA_ADOBE = cadena('cola-pegada-al-Adobe');
+    const conAdobe = jpegCompleto(
+      seg(0xee, [...cadena('Adobe'), 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, ...COLA_ADOBE]),
+    );
+    expect(contiene(conAdobe, COLA_ADOBE), 'el fixture no quedó armado').toBe(true);
+    expect(contiene(sinMetadatos('image/jpeg', conAdobe), COLA_ADOBE)).toBe(false);
+    // Control: un APP14 de Adobe legítimo (14 bytes) sí se conserva.
+    const adobeOk = jpegCompleto(
+      seg(0xee, [...cadena('Adobe'), 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    );
+    expect(contiene(sinMetadatos('image/jpeg', adobeOk), cadena('Adobe'))).toBe(true);
+  });
+
+  it('un APPn que nadie enumeró se va, y la imagen sigue entera', () => {
+    /*
+     * **La propiedad de fondo**, calcada del `'zzZZ'` que B-323 escribió para
+     * PNG: con la lista blanca, un APPn que no está enumerado se tira **lo
+     * haya visto alguien antes o no**. Es lo que hace que el próximo bloque
+     * que invente un fabricante no repita el caso de C2PA.
+     *
+     * `0xE7` (APP7) no lo usa nadie que nos importe y no está en la lista: está
+     * elegido para eso, igual que `'zzZZ'`.
+     *
+     * MUTACIÓN PROBADA: volver a cualquier lista negra —la vieja incluida—
+     * pone este caso en rojo aunque el de C2PA siga verde, porque ese se puede
+     * tapar a mano agregando `0xEB`.
+     */
+    const RAREZA = cadena('FabricanteX');
+    const conRareza = jpegCompleto(seg(0xe7, RAREZA));
+    expect(contiene(conRareza, RAREZA)).toBe(true);
+
+    const limpio = sinMetadatos('image/jpeg', conRareza);
+    expect(contiene(limpio, RAREZA), 'un APPn no enumerado tiene que irse').toBe(false);
+    expect(contiene(limpio, DATOS_COMPRIMIDOS)).toBe(true);
+  });
+
+  it('lo que hace falta para decodificar NO pasa por la lista: se conserva por clase', () => {
+    /*
+     * **La respuesta al argumento con el que B-323 dejó el JPEG en negra** —«la
+     * lista blanca de APPn sí se queda corta seguido»—. Es cierto, y acá el
+     * costo de quedarse corto es perder una extensión de aplicación que el
+     * navegador no mira, no romper la imagen: la lista blanca gobierna **solo**
+     * los APPn y el COM. Todo lo estructural —DQT, DHT, DRI, SOF, SOS y el dato
+     * comprimido— se conserva porque no es de esa clase, sin estar enumerado en
+     * ningún lado.
+     *
+     * MUTACIÓN PROBADA: hacer que `seConserva` consulte la lista para todos
+     * los marcadores (sacarle el `esMarcadorEstructural(marcador) ||`) deja
+     * este caso en rojo con un JPEG que ya no se puede decodificar.
+     */
+    const estructurales = [
+      [0xdb, 'DQT'],
+      [0xc4, 'DHT'],
+      [0xcc, 'DAC'],
+      [0xdd, 'DRI'],
+      [0xdc, 'DNL'],
+      [0xde, 'DHP'],
+      [0xdf, 'EXP'],
+      [0xc0, 'SOF0'],
+      [0xda, 'SOS'],
+    ] as const;
+    // Los que llevan cuerpo van al fixture; los sin cuerpo (RSTn, TEM) tienen
+    // su propio caso más abajo, porque `seg()` no sirve para armarlos.
+    const conTodos = jpegCompleto(
+      estructurales
+        .filter(([m]) => m !== 0xc0 && m !== 0xda && m !== 0xc4 && m !== 0xdb && m !== 0xdd)
+        .flatMap(([m]) => seg(m, [0x00, 0x01])),
+    );
+    const limpio = sinMetadatos('image/jpeg', conTodos);
+    for (const [marcador, nombre] of estructurales) {
+      expect(contiene(limpio, [0xff, marcador]), `se fue el ${nombre}`).toBe(true);
+    }
+    expect(contiene(limpio, DATOS_COMPRIMIDOS)).toBe(true);
+    // Y el alto y el ancho se siguen pudiendo leer, que es la prueba de que el
+    // SOF sobrevivió como segmento y no como coincidencia de dos bytes.
+    expect(dimensiones('image/jpeg', limpio)).toEqual({ ancho: 1200, alto: 800 });
+
+    /*
+     * **Los estructurales SIN cuerpo, que son los que ninguna otra cosa
+     * ejercita** — lo pidió el `auditor-trampas`: sacar `0xD0` del conjunto
+     * dejaba la suite entera en verde. No se arman con `seg()` porque no
+     * llevan largo declarado; el recorrido los pasa como dos bytes pelados.
+     */
+    const sinCuerpo = [0xd0, 0xd7, 0x01] as const;
+    const conSueltos = new Uint8Array([
+      ...jpegCompleto().slice(0, 2),
+      ...sinCuerpo.flatMap((m) => [0xff, m]),
+      ...jpegCompleto().slice(2),
+    ]);
+    const limpioSueltos = sinMetadatos('image/jpeg', conSueltos);
+    for (const m of sinCuerpo) {
+      expect(contiene(limpioSueltos, [0xff, m]), `se fue el 0x${m.toString(16)}`).toBe(true);
+    }
+    expect(dimensiones('image/jpeg', limpioSueltos)).toEqual({ ancho: 1200, alto: 800 });
+  });
+
+  it('el cartel del rechazo no le echa la culpa al teléfono — B-869', () => {
+    /*
+     * El mensaje viejo decía «algunos celulares le guardan una segunda copia
+     * adentro» y mandaba a abrir el editor de fotos: para el caso que de verdad
+     * lo disparaba —C2PA en APP11— eso era **falso**, y le pedía a la persona
+     * que arreglara algo que no estaba roto de su lado.
+     *
+     * Va sobre el fuente porque `subirImagen` habla con Storage y ningún test
+     * lo ejecuta, igual que los casos de B-324.
+     *
+     * MUTACIÓN PROBADA: restaurar el texto viejo deja este caso en rojo.
+     */
+    const src = readFileSync(`${process.cwd()}/src/lib/subir-imagen.ts`, 'utf8');
+    const desde = src.indexOf('if (quedanMetadatos(limpio))');
+    expect(desde, 'no está el barrido en la subida').toBeGreaterThan(-1);
+    const mensaje = src.slice(desde, desde + 600);
+    expect(mensaje, 'el cartel sigue diagnosticando el teléfono').not.toContain('segunda copia');
+    expect(mensaje).not.toContain('editor de fotos del teléfono');
+    // Y dice lo único que sabemos: quedó un bloque que no supimos sacar.
+    expect(mensaje).toContain('no supimos sacar');
+    /*
+     * **Y no pide que manden la foto.** Este mismo pipeline lo usa
+     * `/proponer`, así que quien lee el cartel puede ser alguien sin cuenta:
+     * pedirle el archivo que la oración anterior describió como portador de la
+     * ubicación mueve un dato personal de un tercero a una casilla de mail,
+     * fuera de la retención de B-838. Lo pidió el `auditor-privacidad`.
+     *
+     * MUTACIÓN PROBADA: volver a «avisá con esta foto» deja este aserto en
+     * rojo.
+     */
+    expect(mensaje, 'el cartel pide que manden el archivo').not.toMatch(
+      /avisá con esta foto|mandanos la foto|adjunt/i,
+    );
+  });
+});
+
 
 describe('alto y ancho salen del encabezado', () => {
   it('JPEG: los lee del SOF', () => {
