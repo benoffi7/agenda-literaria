@@ -827,7 +827,41 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
-### B-870 · Hay dos apps web en el proyecto, con dos GA4 distintos, y Hosting apunta a la que el sitio no usa · P3
+### B-870 · Hay dos apps web en el proyecto, con dos GA4 distintos, y Hosting apunta a la que el sitio no usa — ✅ hecho (2026-09-10) · P3
+
+> ✅ **Resuelto el 2026-09-10, y dejó una trampa escrita.**
+>
+> Se quitó «Agenda Literaria» (`…2e7ce6a6`, `G-GG31S5P1YY`), la que no usaba nadie
+> —el repo nombra a `G-9CFMHSSGRC` en ocho lugares y a la otra en ninguno—. Firebase
+> la deja **recuperable 30 días**: aparece como «app pendiente de eliminación», así
+> que la advertencia de «irreversible» con la que se planteó esto era **falsa** y
+> queda corregida.
+>
+> **La trampa: borrar primero deja a la consola sin poder arreglar el vínculo.** El
+> sitio de Hosting seguía apuntando a la app borrada, y al abrir «Vincular a un
+> sitio de Firebase Hosting» en la app buena, la única opción que ofrece es
+> `agenda-literaria (Ya vinculado)`, **deshabilitada**. O sea: la consola considera
+> el sitio ya vinculado —a un fantasma— y no da forma de repuntarlo. El orden que
+> lo evita es **vincular la buena antes de quitar la otra**; se propuso así y no se
+> siguió, y por eso quedó registrado.
+>
+> La salida fue la API de Hosting, que sí expone el campo:
+>
+> ```sh
+> curl -X PATCH -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+>   -H "x-goog-user-project: agenda-literaria" -H "Content-Type: application/json" \
+>   -d '{"appId":"1:1038157194972:web:5b52810ed763c2d3cd7619"}' \
+>   "https://firebasehosting.googleapis.com/v1beta1/projects/agenda-literaria/sites/agenda-literaria?updateMask=appId"
+> ```
+>
+> Verificado después: `hosting:sites:list` muestra la app buena, y el sitio entero
+> sigue en 200 (home, `/admin`, `/proponer`, `/cartelera`, `events.json`).
+> `/__/firebase/init.js` se sirve con `max-age=3600` y tarda hasta una hora en
+> reflejarlo — no hay que esperarlo, nada nuestro lo lee.
+>
+> **Y lo que este ítem existía para evitar, se evitó:** las métricas de App Check
+> ahora tienen una sola fila, así que la decisión del paso 6 de B-836a no se puede
+> tomar mirando la app equivocada.
 
 **Salió de mirar la consola de App Check el 2026-09-10**, cuando el dueño fue a
 verificar el paso 5 de B-836a. La pestaña «Apps» lista **dos**, que difieren en

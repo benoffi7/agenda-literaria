@@ -2,6 +2,34 @@
 
 ## Sin publicar
 
+- **Quedó una sola app web, y borrar primero dejó a la consola sin poder arreglar
+  el vínculo** — **B-870**. El proyecto tenía dos apps web que diferían en una
+  mayúscula, con **dos GA4 distintos**; el sitio usa `G-9CFMHSSGRC` —nombrado en
+  ocho lugares del repo— y la otra no aparecía en ninguno. Se quitó la que sobraba.
+  Apareció mirando la consola de App Check para el paso 5 de B-836a, y ahí estaba
+  el riesgo real: **las métricas se reparten por app**, así que quien decidiera
+  exigir mirando la fila equivocada concluiría que la verificación no funciona
+  cuando sí funciona.
+
+  **Dos correcciones a lo que se había dicho al plantearlo.** «Borrar una app web
+  es irreversible» era **falso**: Firebase la deja recuperable 30 días y la muestra
+  como «pendiente de eliminación». Y las dos apps tenían registrada **la misma**
+  clave de sitio de reCAPTCHA —verificado por API, no por la consola—, así que App
+  Check nunca estuvo en riesgo por esto.
+
+  **La trampa que quedó escrita:** el sitio de Hosting seguía apuntando a la app
+  borrada, y la consola **no da forma de repuntarlo** — el diálogo «Vincular a un
+  sitio» ofrece una sola opción, `agenda-literaria (Ya vinculado)`, deshabilitada.
+  Considera el sitio vinculado a un fantasma. El orden que lo evita es vincular la
+  buena **antes** de quitar la otra; se propuso así y no se siguió, y por eso ahora
+  hay prueba de por qué importaba. La salida fue la API de Hosting
+  (`projects.sites.patch` con `updateMask=appId`), que sí expone el campo — el
+  comando quedó en el ítem.
+
+  Verificado después: el sitio entero en 200 y `hosting:sites:list` mostrando la
+  app buena. `/__/firebase/init.js` tarda hasta una hora en reflejarlo por su
+  `max-age=3600`, y no hay que esperarlo: nada nuestro lo lee.
+
 - **App Check publicado y verificado contra producción; falta la consola y el
   enforcement** — **B-836a**, pasos 4 y 5. Se pushearon **44 commits** desde el
   2026-09-08: producción venía de antes de todo el cableado, así que publicar App
