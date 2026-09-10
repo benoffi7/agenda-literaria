@@ -301,10 +301,25 @@ activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
    el sitio —`agendaleh.ar`, `agendaleh.com.ar` y los dos de Firebase Hosting— y
    nada más. Que sean cuatro y no tres es lo que la primera versión de este paso
    no había previsto: el alias `.com.ar` también sirve el mismo HTML.
-4. ⬜ **Publicar.** Mientras el cableado no se deployee, la consola no puede ver
-   nada: el paso siguiente mide lo que llega de producción.
-5. ⬜ **Verificar en la consola** que llegan peticiones verificadas. Es el único
-   paso que dice si el 2 quedó bien, y el que no se puede saltear.
+4. ✅ **Publicar** — hecho el 2026-09-10. Eran **44 commits** desde el 2026-09-08:
+   producción venía de antes de todo el cableado, así que publicar App Check fue
+   publicar también la bandeja, la retención, `/proponer` y las dos tandas enteras.
+   El gate de pre-push y los seis jobs del workflow pasaron.
+5. 🔸 **Verificar que llegan peticiones verificadas.** La mitad mecánica está
+   hecha el 2026-09-10, contra el bundle de producción, y descarta los tres modos
+   de falla silenciosa: el chunk publicado tiene la clave inlineada, la pasa
+   `app()` a `activarAppCheck` con `usarEmuladores: false`, y el script que
+   referencia es `recaptcha/enterprise.js` y no el `api.js` del v3 clásico. O sea
+   que no es `sin-clave`, no es `emuladores` y no es el proveedor equivocado.
+
+   **La otra mitad es del dueño y no se puede saltear**: la consola de Firebase es
+   lo único que dice si los tokens **llegan y se aceptan**, y necesita tráfico real
+   —entrar al panel y guardar algo—. Lo que hay que ver antes del paso 6 es que las
+   peticiones propias figuren como **verificadas**; exigir con la consola en cero
+   deja el panel sin poder escribir y el diagnóstico cuesta arriba.
+
+   De verificar esto a mano salió **B-868**: nada en el repo sostiene que el
+   artefacto construido lleve App Check.
 6. ⬜ **Recién ahí, exigir.** Al revés, **el panel deja de poder escribir**: sus
    peticiones tampoco traen token y las reglas ni se evalúan.
 
@@ -811,6 +826,45 @@ leer, no la que una persona escribe.**
 > letras, así que ninguna versión de la guarda lo ve. Se dejó sin número; que la
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
+
+### B-868 · Nada sostiene que el bundle construido lleve App Check, y el modo de falla es «la aplicación entera deja de escribir» · P2
+
+**Salió de verificar a mano el paso 5 de B-836a** el 2026-09-10, que es
+justamente la señal de que falta la guarda: hubo que bajarse el chunk de
+producción y buscar la clave con `grep`.
+
+`scripts/verificar-bundle.sh` —el paso del gate que mira el artefacto— chequea
+**una sola cosa**: que no haya rastros del Admin SDK. Nada verifica lo simétrico:
+que lo que **tiene que estar**, esté.
+
+**Y acá el modo de falla es de los peores que tiene el proyecto.** Si
+`PUBLIC_RECAPTCHA_SITE_KEY` desaparece de `.env.production` —un merge, una
+limpieza de variables «que no se usan»—, o si alguien cambia el proveedor a
+`ReCaptchaV3Provider` porque le parece el nombre razonable:
+
+- la suite queda **verde** (`tests/appcheck.test.ts` mira el fuente, no el `dist/`);
+- el gate queda **verde** (solo busca el Admin SDK);
+- el deploy queda **verde**;
+- y **con el enforcement puesto, el panel y `/proponer` dejan de poder escribir**,
+  con la consola mostrando cero peticiones verificadas y ninguna pista de por qué.
+
+Hoy no muerde porque el enforcement está apagado. El día del paso 6 pasa a ser la
+diferencia entre un deploy y una caída.
+
+Lo que hay que agregar al barrido del artefacto, sobre `dist/`:
+
+1. la clave de sitio aparece en algún chunk;
+2. viaja a `activarAppCheck` con `usarEmuladores: false` —o sea que el build de
+   producción no quedó con la configuración de emuladores—;
+3. el proveedor es el de Enterprise (`recaptcha/enterprise.js`) y **no**
+   `recaptcha/api.js`, que es la distinción que `tests/appcheck.test.ts` ya fija
+   sobre el fuente y que nadie fija sobre lo que se publica.
+
+**Y el (3) tiene una trampa que hay que resolver antes de escribirlo:** el SDK de
+Auth trae su propio `recaptcha/api.js` para el reCAPTCHA v2 de sus flujos, así que
+la presencia de esa cadena **no** es evidencia de que estemos usando el proveedor
+equivocado. El aserto tiene que ser sobre `enterprise.js` presente, no sobre
+`api.js` ausente — verificado a mano el 2026-09-10, donde conviven los dos.
 
 ### B-866 · Convertir no renueva el plazo, así que el barrido se lleva la propuesta con el formulario abierto · P3
 

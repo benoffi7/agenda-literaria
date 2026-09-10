@@ -2,6 +2,40 @@
 
 ## Sin publicar
 
+- **App Check publicado y verificado contra producción; falta la consola y el
+  enforcement** — **B-836a**, pasos 4 y 5. Se pushearon **44 commits** desde el
+  2026-09-08: producción venía de antes de todo el cableado, así que publicar App
+  Check fue publicar también la bandeja, la retención, `/proponer` y las dos tandas
+  enteras. Gate de pre-push y los seis jobs del workflow, en verde.
+
+  **La mitad mecánica del paso 5 está hecha contra el bundle de producción**, y es
+  la que descarta los tres modos de falla silenciosa. El chunk publicado tiene la
+  clave inlineada y se la pasa `app()` a `activarAppCheck` con
+  `usarEmuladores: false`, y el script que referencia es `recaptcha/enterprise.js`.
+  O sea: no es `sin-clave`, no es `emuladores`, y no es el proveedor equivocado —
+  los tres casos en los que App Check simplemente no se activa y la consola queda
+  en cero sin decir por qué.
+
+  De paso quedó verificado en producción lo que B-841 hizo: **la home no carga
+  Firebase ni reCAPTCHA** (cero menciones en su HTML y en sus chunks), y
+  `/proponer` los trae **diferidos**, no en el chunk inicial. El tercero entra
+  cuando alguien va a escribir, no cuando alguien entra al sitio. Y `/proponer`
+  responde 200 y **no está en el sitemap**, que es exactamente el estado que
+  corresponde hasta que el enforcement exija.
+
+  **Lo que falta es del dueño y no se puede saltear:** la consola de Firebase es lo
+  único que dice si los tokens llegan y se aceptan, y necesita tráfico real. Antes
+  del paso 6 hay que ver las peticiones propias como **verificadas** — exigir con
+  la consola en cero deja el panel sin poder escribir.
+
+  **Y de verificar esto a mano salió B-868**, que es la señal de que falta una
+  guarda: hubo que bajarse el chunk y buscar la clave con `grep`.
+  `verificar-bundle.sh` chequea que **no** esté el Admin SDK y nada verifica lo
+  simétrico —que lo que tiene que estar, esté—. Si la clave desaparece de
+  `.env.production` o alguien cambia el proveedor a `ReCaptchaV3Provider`, la
+  suite, el gate y el deploy quedan **los tres en verde** y, con el enforcement
+  puesto, la aplicación entera deja de escribir.
+
 - **La lista de dominios de la clave de reCAPTCHA estaba mal, y el síntoma habría
   aparecido recién con el enforcement puesto** — **B-836a**, paso 3. Tenía los dos
   nombres propios (`agendaleh.ar`, `agendaleh.com.ar`) y **le faltaban los dos de
