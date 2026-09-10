@@ -2,6 +2,43 @@
 
 ## Sin publicar
 
+- **El paso «Correr los tests» estaba dos veces, y la guarda que existe para eso
+  estaba verde sobre la copia** — **B-858**. `docs/README.md` tenía el mismo paso
+  duplicado, uno detrás del otro, y la segunda copia es la que explica por qué el
+  número no se escribe: «en un merge este mismo paso llegó a estar **tres veces**
+  con tres números distintos (B-296)». **El documento tenía la cicatriz que él
+  mismo describe**, con una copia de menos.
+
+  **La copia vieja llevaba el conteo escrito a mano** —«**107** de esos tests …
+  repartidos en **9** archivos», más el desglose de dos parciales— cuando el §6.1
+  de [`10-salud-del-codigo.md`](10-salud-del-codigo.md), recién remedido, dice
+  **210 en 15** y tres parciales. Se fue entera. Lo único que decía y la que quedó
+  no —el puntero al desglose— se rescató sin números.
+
+  **Lo que importa no es el borrado: es que la guarda no lo veía.** El caso de
+  B-662 en `tests/salud-del-codigo.test.ts` pedía el número **pegado** al
+  sustantivo, y el texto real decía `**107** de esos tests`: ni la negrita de
+  markdown ni el «de esos» del medio entraban. La mitad colgada de «archivos»
+  tampoco, porque en su línea no aparece la palabra `test`. **Un chequeo que solo
+  reconoce la forma sintética no protege nada — la forma humana es la que llega al
+  documento**, y es la que ahora quedó escrita en el docblock junto a la vieja.
+
+  **La guarda se ensanchó en tres ejes sin volverse ruidosa:** se normaliza el
+  énfasis de markdown, se admite un nexo «de …» entre número y sustantivo con lista
+  **cerrada** de determinantes, y el conteo de archivos se reconoce por **párrafo**
+  en vez de por adyacencia. Las dos restricciones son las que evitan el ruido, y
+  las dos tienen su mutación en rojo: con un nexo libre entra «B-219 los tests
+  corren contra…» de `08-operacion.md` y el conteo sería el número del ticket; sin
+  contexto de párrafo entra «llegó a declarar 111 archivos de producción», que es
+  un relato fechado y sería B-180 otra vez. El alcance sigue siendo angosto —solo
+  `README.md` y `08-operacion.md`— porque el CHANGELOG y el BACKLOG citan conteos a
+  propósito.
+
+  Ocho mutaciones, seis de código y dos de texto. De paso salió un tercer conteo
+  viejo en la copia buena —«**Dos** archivos más se saltean sin un `dist/`», son
+  tres— que **ninguna versión de la guarda ve, porque está escrito con letras**; se
+  dejó sin número.
+
 - **El chequeo de la clase de B-85 sigue la llamada al módulo, y recién ahora ve
   los tres barridos** — **B-845**. Buscaba `.get()`, `.set()` y `.update()` **en el
   cuerpo del trigger**, y desde el corte puro/pegamento (B-77) esos verbos viven en

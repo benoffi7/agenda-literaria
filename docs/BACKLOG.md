@@ -753,6 +753,54 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-858 · `docs/README.md` tiene el paso «Correr los tests» dos veces, y la guarda que lo impide está verde sobre la copia — ✅ hecho (2026-09-09) · P2
+
+**Salió de integrar el frente de B-849**, y es la tercera vez en el día que
+aparece la misma clase: **un chequeo verde sobre exactamente el caso que existe
+para atrapar.**
+
+Dos partes que son la misma. `docs/README.md` tenía el paso «2. Correr los tests»
+**dos veces**, uno detrás del otro — y la segunda copia es la que explica que el
+número «no está escrito acá a propósito» porque «en un merge este mismo paso llegó
+a estar **tres veces** con tres números distintos (B-296)». El documento tenía la
+cicatriz que él mismo describe. Y la primera copia llevaba el conteo a mano:
+«**107** de esos tests … repartidos en **9** archivos», contra los **210 en 15**
+que mide el §6.1 remedido.
+
+**Lo que de verdad importa** es que existe una guarda para esto —el caso de B-662
+en `tests/salud-del-codigo.test.ts`— y estaba **verde**. Su regex pedía el número
+**pegado** al sustantivo y el texto real decía `**107** de esos tests`: ni la
+negrita ni las palabras del medio entraban. La mitad colgada de «archivos» tampoco,
+porque en su línea no aparece la palabra `test`. **La lección no es el regex: es
+que la mutación probada del docblock validaba la forma que el chequeo ya sabía
+leer, no la que una persona escribe.**
+
+> ✅ **Hecho, y el arreglo del documento es la parte chica.**
+>
+> La copia vieja se fue; la que quedó es la que no escribe números. El puntero al
+> desglose del §6.1 se rescató sin cifras y se verificó contra el documento
+> remedido. La guarda se ensanchó en tres ejes —énfasis de markdown normalizado,
+> nexo «de …» con lista cerrada de determinantes, conteo de archivos por **párrafo**
+> y no por adyacencia— con el alcance intacto.
+>
+> **Las dos restricciones que la mantienen no-ruidosa tienen su mutación en rojo:**
+> con nexo libre entra «B-219 los tests corren contra…» y el conteo sería el id del
+> ticket; sin contexto de párrafo entra «llegó a declarar 111 archivos de
+> producción», que es un relato fechado. Ocho mutaciones en total, seis de código y
+> dos de texto.
+>
+> **Y el docblock quedó con las dos formas.** La mutación original —«2.637 tests en
+> 118 archivos»— era cierta y no alcanzaba: probaba la forma que el chequeo ya
+> sabía leer. La que importa es la humana, porque es la que una persona escribe
+> cuando quiere que el dato se vea, y es la que estuvo meses en el documento con el
+> chequeo en verde.
+>
+> **De paso salió un tercer conteo viejo que sigue sin red:** la copia buena decía
+> «**Dos** archivos más se saltean sin un `dist/`» y son tres. Está escrito con
+> letras, así que ninguna versión de la guarda lo ve. Se dejó sin número; que la
+> guarda lea números escritos con palabras es otra pasada, y probablemente no valga
+> la pena.
+
 ### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` · P4
 
 **Lo midió el frente de B-845** al ensanchar el chequeo del otro lado.

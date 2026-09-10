@@ -1064,12 +1064,15 @@ los catorce chequeos son sobre la configuración y no sobre el emulador, y en
 `EXIGIR_EMULADOR=1` —como los corre el CI— ninguno de los 210 se saltea en
 silencio.
 
-> ⚠️ **Y esto deja un número viejo afuera de este archivo:** `docs/README.md`
-> manda a este §6.1 diciendo «**107** de esos tests necesitan los emuladores,
-> repartidos en **9** archivos», y detalla los dos parciales con las cifras
-> viejas. Hoy son **210 en 15**, y los parciales son tres. No se corrigió acá
-> porque ese documento estaba fuera del alcance de este frente; quedó reportado
-> al cerrar B-849.
+> ✅ **El número viejo que este §6.1 dejaba afuera ya no está (B-858).**
+> `docs/README.md` llevaba «**107** de esos tests … repartidos en **9** archivos»
+> —contra los **210 en 15** de esta tabla— y no en un párrafo cualquiera: en una
+> **copia duplicada** del paso «Correr los tests», al lado de la copia que explica
+> que ese número no se escribe justamente porque en un merge el paso llegó a estar
+> tres veces con tres cifras distintas. La copia se fue; la que quedó no escribe
+> ningún número y manda acá para el desglose. **La guarda de B-662 no lo veía** por
+> la negrita de markdown y por el «de esos» del medio: se ensanchó en el mismo
+> cambio.
 
 ### 6.2 Dependencias (2026-09-09): 2 altas en producción, las dos con parche
 

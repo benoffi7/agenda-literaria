@@ -183,31 +183,103 @@ describe('salud del código — la metodología escrita es la que se aplica (B-3
  * y ahí el número viejo es el dato. Prohibirlo en todos lados convertiría este
  * chequeo en el que hay que saltear.
  *
- * MUTACIÓN PROBADA: volver a escribir «2.637 tests en 118 archivos» en
- * `docs/README.md` pone este caso en rojo nombrando la línea.
+ * **Las dos formas, y por qué la segunda es la que importa (B-858).** La
+ * mutación original de este caso —volver a escribir «2.637 tests en 118
+ * archivos» en `docs/README.md`— era cierta, y no alcanzaba: probaba la forma
+ * que el chequeo ya sabía leer. El número **pegado** al sustantivo es la forma
+ * de laboratorio. La que una persona escribe de verdad, cuando quiere que el
+ * dato se vea, es «**107** de esos tests … repartidos en **9** archivos»: con
+ * la negrita de markdown en el medio, con un «de esos» entre el número y el
+ * sustantivo, y con la mitad del conteo colgada de «archivos» en otra oración.
+ * Ninguna de las tres entraba en el regex viejo, así que el chequeo estuvo en
+ * verde **sobre exactamente la copia que existe para atrapar**:
+ * `docs/README.md` llevaba escrito «107 en 9» cuando la medición decía 210 en
+ * 15. Un chequeo que solo reconoce la forma sintética no protege nada — la
+ * forma humana es la que llega al documento.
+ *
+ * MUTACIÓN PROBADA, las dos formas:
+ * - la pegada: escribir «2.637 tests en 118 archivos» en `docs/README.md`;
+ * - la humana: escribir «**107** de esos tests … repartidos en **9**
+ *   archivos» en el paso «Correr los tests».
+ * Cada una pone este caso en rojo nombrando la línea.
  */
 describe('el conteo de tests no se escribe a mano en la doc de uso — B-662', () => {
   const DOCUMENTOS_DE_USO = ['docs/README.md', 'docs/08-operacion.md'];
 
   /*
-   * Las formas en que este repo lo escribió: «2.173 tests», «97 archivos de
-   * test», «tests en 93 archivos». Se busca el número pegado al sustantivo, no
-   * cualquier número: `npm test` y `2 archivos que se saltean` no son conteos de
-   * la suite.
+   * La negrita de markdown no cambia el número: `**107**` es `107` escrito por
+   * alguien que quiere que se vea, que es justamente cómo llega al documento.
+   * Se saca antes de mirar la línea.
    */
-  const CONTEO = /\b\d[\d.,]{2,}\s+(?:tests|casos)\b|\btests\s+en\s+\d+\s+archivos\b|\b\d+\s+archivos\s+de\s+test\b/gi;
+  const sinEnfasis = (linea: string) => linea.replace(/\*+|_{2}/g, '');
+
+  /*
+   * Las formas en que este repo lo escribió: «2.173 tests», «97 archivos de
+   * test», «tests en 93 archivos» y —la que se le escapó al chequeo— «**107**
+   * de esos tests». Entre el número y el sustantivo se admite un «de …», que
+   * es el nexo que una persona escribe; la lista de determinantes es cerrada a
+   * propósito: con un comodín libre, «B-219 los tests corren contra…» de
+   * `08-operacion.md` entraría, y el número sería el del ticket.
+   */
+  const CONTEO =
+    /\b\d[\d.,]*(?:\s+de(?:\s+(?:esos|esas|estos|estas|los|las|sus))?)?\s+(?:tests|casos)\b|\btests\s+en\s+\d+\s+archivos\b|\b\d+\s+archivos\s+de\s+test\b/gi;
+
+  /*
+   * La otra mitad del conteo: «repartidos en **9** archivos». No lleva la
+   * palabra `test` al lado —puede estar dos oraciones más arriba—, así que no
+   * se puede reconocer por adyacencia. Se reconoce por el **párrafo**: un
+   * número pegado a «archivos» dentro de un párrafo que habla de la suite.
+   *
+   * El contexto no es decoración. Sin él, `08-operacion.md` § «Remedir la
+   * salud del código» se pondría rojo por «llegó a declarar 111 archivos de
+   * producción», que es un relato fechado y no un conteo de la suite: sería el
+   * chequeo ruidoso que se aprende a saltear (B-180).
+   */
+  const CONTEO_DE_ARCHIVOS = /\b\d[\d.,]*\s+archivos\b/gi;
+  const HABLA_DE_LA_SUITE = /\b(?:tests?|casos|suite|vitest)\b/i;
+
+  /** Para cada línea, si el párrafo que la contiene habla de la suite. */
+  const contextoDeSuite = (lineas: string[]): boolean[] => {
+    const marca = new Array<boolean>(lineas.length).fill(false);
+    let desde = 0;
+    const cerrar = (hasta: number) => {
+      if (HABLA_DE_LA_SUITE.test(lineas.slice(desde, hasta).join(' ')))
+        for (let i = desde; i < hasta; i++) marca[i] = true;
+    };
+    lineas.forEach((linea, i) => {
+      if (linea.trim() === '') {
+        cerrar(i);
+        desde = i + 1;
+      }
+    });
+    cerrar(lineas.length);
+    return marca;
+  };
+
+  /** Los conteos escritos a mano que tiene un documento, con línea y texto. */
+  const conteosEscritos = (documento: string, texto: string): string[] => {
+    const lineas = texto.split('\n');
+    const enSuite = contextoDeSuite(lineas);
+    const hallazgos = new Set<string>();
+    lineas.forEach((cruda, i) => {
+      // La nota que explica por qué no se escribe cita los números viejos: es
+      // el único lugar donde nombrarlos es el punto. Se reconoce por el `—`
+      // de la enumeración de valores caducados.
+      if (cruda.includes('quedaron viejas') || cruda.includes('quedó viejo')) return;
+      const linea = sinEnfasis(cruda);
+      for (const m of linea.matchAll(CONTEO)) hallazgos.add(`${documento}:${i + 1} → ${m[0]}`);
+      if (!enSuite[i]) return;
+      for (const m of linea.matchAll(CONTEO_DE_ARCHIVOS))
+        hallazgos.add(`${documento}:${i + 1} → ${m[0]}`);
+    });
+    return [...hallazgos];
+  };
 
   it('ninguno de los dos documentos de uso lleva un conteo escrito', () => {
     const hallazgos: string[] = [];
     for (const documento of DOCUMENTOS_DE_USO) {
       const texto = readFileSync(fileURLToPath(new URL(documento, raiz)), 'utf8');
-      for (const [i, linea] of texto.split('\n').entries()) {
-        // La nota que explica por qué no se escribe cita los números viejos: es
-        // el único lugar donde nombrarlos es el punto. Se reconoce por el `—`
-        // de la enumeración de valores caducados.
-        if (linea.includes('quedaron viejas') || linea.includes('quedó viejo')) continue;
-        for (const m of linea.matchAll(CONTEO)) hallazgos.push(`${documento}:${i + 1} → ${m[0]}`);
-      }
+      hallazgos.push(...conteosEscritos(documento, texto));
     }
     expect(
       hallazgos,
@@ -229,5 +301,32 @@ describe('el conteo de tests no se escribe a mano en la doc de uso — B-662', (
     expect('32 de los 59 archivos de test usan readFileSync'.match(CONTEO)).not.toBeNull();
     // Control negativo: no cualquier número es un conteo de la suite.
     expect('son 2 archivos que se saltean enteros'.match(CONTEO)).toBeNull();
+  });
+
+  /*
+   * La forma humana — B-858. Es la que estuvo escrita en `docs/README.md`
+   * mientras este chequeo daba verde, así que se prueba sobre texto sintético
+   * para que no vuelva a depender de que el documento la tenga.
+   */
+  it('reconoce el conteo con negrita y con nexo, que es como lo escribe una persona', () => {
+    expect(sinEnfasis('**107** de esos tests').match(CONTEO)).not.toBeNull();
+    expect(sinEnfasis('**210** de los casos').match(CONTEO)).not.toBeNull();
+    // Dos dígitos: el regex viejo exigía tres caracteres y no los veía.
+    expect(sinEnfasis('**15** tests').match(CONTEO)).not.toBeNull();
+    // Y el nexo no puede tragarse un id de ticket: «B-219 los tests corren…».
+    expect(sinEnfasis('Desde B-219 los tests corren contra otra base').match(CONTEO)).toBeNull();
+  });
+
+  it('la mitad colgada de «archivos» se reconoce por el párrafo, no por adyacencia', () => {
+    const conSuite = [
+      '2. **Correr los tests.** `npm test`.',
+      '   necesitan los emuladores, repartidos en **9** archivos: siete enteros.',
+    ].join('\n');
+    expect(conteosEscritos('doc.md', conSuite)).toEqual(['doc.md:2 → 9 archivos']);
+
+    // Mismo texto, párrafo que no habla de la suite: no es un conteo de la
+    // suite y no se reporta. Es el caso real de `08-operacion.md`.
+    const sinSuite = 'no se remedía: llegó a declarar 111 archivos de producción.';
+    expect(conteosEscritos('doc.md', sinSuite)).toEqual([]);
   });
 });

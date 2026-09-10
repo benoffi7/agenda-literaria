@@ -56,19 +56,6 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — la suite imprime al terminar cuántos son
-   (`Test Files` / `Tests`), y por eso el número **no se escribe acá**: envejeció
-   tres veces en una semana y mientras tanto mentía con autoridad (B-662, y el
-   chequeo que lo impide está en `tests/salud-del-codigo.test.ts`). **107** de esos tests
-   necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
-   también **Storage**), repartidos en **9** archivos: siete se saltean enteros
-   y dos parciales — de `events-json-endpoint.integracion.test.ts` se saltean 4
-   de sus 6 porque las dos ramas de credenciales no necesitan emulador, y de
-   `emulador-aislado.test.ts` 2 de sus 13 porque once chequean la configuración
-   y no el emulador. Si no están, se saltean solos — **salvo con
-   `EXIGIR_EMULADOR=1`**, que es como los corre el CI justamente para que no se
-   salteen en silencio. El desglose archivo por archivo está en
-   [`10-salud-del-codigo.md`](10-salud-del-codigo.md) § 6.1.
 2. **Correr los tests.** `npm test`. **El tamaño de la suite lo dice ella al
    terminar** (`Test Files` / `Tests`) y no está escrito acá a propósito: el
    conteo a mano quedó viejo cinco veces en dos semanas, y en un merge este mismo
@@ -80,8 +67,11 @@ si el modelo cambia al construir el sitio público, hay que revisar
    `*.integracion.test.ts` necesitan los emuladores corriendo (`npm run emu`, que
    desde B-167 levanta también **Storage**), y si no están **se saltean solos** —
    salvo con `EXIGIR_EMULADOR=1`, que es como los corre el CI justamente para que
-   no se salteen en silencio. Dos archivos más se saltean sin un `dist/`
-   construido, y esos los cubre el paso 4 del gate.
+   no se salteen en silencio. **Cuáles son, y cuáles se saltean solo en parte**,
+   está medido con fecha en [`10-salud-del-codigo.md`](10-salud-del-codigo.md)
+   § 6.1 — ahí y no acá, porque ese documento es el que se remide. Unos pocos
+   archivos más se saltean sin un `dist/` construido, y esos los cubre el paso 4
+   del gate.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
 4. **Antes de cerrar un cambio, pasar los auditores** de
