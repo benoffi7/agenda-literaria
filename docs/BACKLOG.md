@@ -872,6 +872,43 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
+### B-871 · Si el borrado del flyer aceptado falla, no reintenta nadie · P2
+
+**Sale de B-863, y es el precio de que la `aceptada` no venza.** El borrado del
+original ocurre en el trigger `borrarImagenAlCerrar`, y **no hay red debajo**: la
+retención no alcanza a la aceptada (`RETENCION_POR_ESTADO.aceptada === null`) y
+`limpiarImagenesHuerfanas` sólo recorre `imagenes/` y `miniaturas/`. Si el
+borrado no ocurre, la foto de un tercero se queda **para siempre** — que es
+exactamente el bug que B-863 vino a cerrar, entrando por otra puerta.
+
+Son **seis** caminos, todos con el mismo campo `alerta:
+"flyer-de-propuesta-sin-borrar"` y su fila en `08-operacion.md`. Los dos
+primeros no son fallas: **conservar el original cuando no hay copia verificada es
+lo correcto** (perderla no se deshace). Lo que falta no es la decisión, es que
+después **no pase nadie**.
+
+**Y hay un séptimo caso que no emite nada:** el trigger actúa sólo en la
+**transición**, así que toda propuesta que ya estuviera en `aceptada` antes del
+deploy no lo despierta nunca. Hoy la colección está vacía; el chequeo es
+`node scripts/borrar-propuestas-vencidas.mjs` sin `--aplicar`.
+
+Tres salidas, de menos a más:
+
+1. **Alerta de GCP sobre el campo `alerta`** — consola, no código, el mismo caso
+   que B-21. Convierte «está en el log» en «alguien se entera».
+2. **`retry: true` en el trigger.** Cubre el transitorio, que es el fallo más
+   probable, y **no** el permanente. Se evaluó en B-863 y se descartó: ninguna
+   Function del proyecto lo usa, y encenderlo reintentaría también cualquier bug
+   del handler durante siete días.
+3. **Que el barrido de huérfanas recorra `propuestas/`** — la única que cierra
+   los siete caminos, incluido el backfill. Es la más cara: hay que leer
+   `/propuestas` para saber qué objeto está referenciado y por una propuesta no
+   cerrada, y hay que decidir qué pasa con la aceptada que conservó su original a
+   propósito, que es una decisión de producto.
+
+Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
+los que lo correcto es **no** borrar.
+
 ### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? · P1
 
 **Bloquea el anuncio de `/proponer`, y es la única pregunta que queda entre el
@@ -1170,7 +1207,7 @@ mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que medir
 entra que hoy no entra **antes** de aplicarlo, no después. Es el mismo motivo por el
 que B-862 está anotado y no hecho.
 
-### B-863 · La propuesta aceptada conserva el contacto para siempre — y también la foto · P2
+### B-863 · La propuesta aceptada conserva el contacto para siempre — y también la foto — ✅ hecho (2026-09-10) · P2
 
 **Lo encontró el `auditor-privacidad` sobre B-844.** `aceptada: null` se decidió
 **por el contacto** («ahí sirve: la actividad existe y puede haber que
@@ -1205,6 +1242,27 @@ mandaron— así que va acá y no en B-844. Su test:
 > Y el orden importa igual que en B-838, en el sentido opuesto: acá lo barato es
 > **verificar la copia primero y borrar el original después**. Si el borrado del
 > original falla queda un duplicado, que es inofensivo; al revés se pierde la foto.
+>
+> ✅ **Hecho (2026-09-10).** El borrado vive en el trigger de `propuestas/{id}`
+> —renombrado a **`borrarImagenAlCerrar`**, porque el cierre dejó de ser uno
+> solo— y acierta el segundo momento **por construcción**: la transición a
+> `aceptada` **es**, por D-600, «la actividad ya se guardó». El panel no podría
+> hacerlo aunque quisiera: `storage.rules` cierra el `delete` de `propuestas/`
+> para todo cliente. Sigue siendo un trigger y no dos (B-89), partido en
+> `if/else` para que la aceptada no pueda caer en el borrado crudo del rechazo.
+>
+> **La verificación son dos y no una:** que la actividad nombre una imagen propia
+> **y** que ese objeto esté en el bucket, porque una copia promovida se va sola a
+> las 72 horas si el formulario queda abierto. Si no pasa, el original se
+> conserva. Lo que **no** puede afirmar, y va dicho: cuál de las imágenes es la
+> copia promovida.
+>
+> Su caso vive contra el emulador y afirma **las dos mitades en el mismo `it`** a
+> propósito: mirar sólo la foto pasaría en verde el día que alguien «arregle»
+> esto haciendo caducar la aceptada, que se llevaría puesta la decisión de B-844.
+>
+> **Deja un paso manual:** la Function vieja está desplegada y hay que borrarla
+> **después** del deploy de ésta. **Y lo que no cierra es B-871.**
 
 ### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja — ✅ hecho (2026-09-10) · P2
 

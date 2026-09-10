@@ -121,11 +121,23 @@ export interface Subida {
  * entra en el formulario **antes** de guardar, así que la actividad nace con
  * ella.
  *
- * El objeto viejo **no se borra acá**. Se lo lleva el ciclo de la propuesta:
- * si se acepta, la retención lo borra con el documento a los 30 días; si se
- * rechaza, el trigger lo borra en el acto. Borrarlo desde el panel además no se
- * puede —`storage.rules` cierra el `delete` para todo cliente—, y es a propósito:
- * así el borrado es consecuencia del estado y no de que alguien se acuerde.
+ * El objeto viejo **no se borra acá**, y desde **B-863** conviene decir bien por
+ * qué, porque la versión anterior de este párrafo se apoyaba en algo que dejó de
+ * ser cierto: decía «si se acepta, la retención lo borra con el documento a los
+ * 30 días», y desde B-844 la `aceptada` **no vence**, así que la retención no
+ * pasaba nunca por ahí. Lo que se lleva el original es el trigger
+ * `borrarImagenAlCerrar`, en los dos cierres: al rechazar, en el acto; al
+ * aceptar, cuando la actividad se guardó y la copia promovida ya la reemplaza.
+ *
+ * **Y no en esta función, que es el otro punto de B-863.** Acá estamos en el
+ * primer momento de la conversión (D-600): el formulario todavía no se guardó y
+ * el admin puede abandonarlo. Borrar el original ahora dejaría a la propuesta
+ * sin flyer y sin haber sido aceptada, con la copia promovida yéndose sola a las
+ * 72 horas por huérfana.
+ *
+ * Borrarlo desde el panel además no se puede —`storage.rules` cierra el `delete`
+ * para todo cliente—, y es a propósito: así el borrado es consecuencia del estado
+ * y no de que alguien se acuerde.
  */
 /**
  * La URL para **mirar** el flyer que mandaron con una propuesta.

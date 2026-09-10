@@ -2,6 +2,65 @@
 
 ## Sin publicar
 
+- **La propuesta aceptada ya no se queda con la foto del tercero** — **B-863**,
+  decisión del dueño del 2026-09-10. Al convertir se promovía una **copia** a
+  `imagenes/` y el original de `propuestas/` no se tocaba; con la `aceptada` sin
+  vencimiento (B-844) ese original **no lo borraba nadie nunca**, bajo un prefijo
+  que `limpiarImagenesHuerfanas` no recorre. Una decisión que se tomó mirando un
+  campo —el contacto, «ahí sirve: puede haber que repreguntar»— se estaba
+  aplicando a dos.
+
+  **Lo que la decisión no decía era el *cuándo*, y es la mitad del ítem.**
+  «Convertir» son dos momentos (D-600): al apretar el botón se promueve la copia
+  y se abre el formulario **sin escribir nada**, y recién al guardarse la
+  actividad la propuesta pasa a `aceptada`. Borrar en el primero deja a la
+  propuesta **sin flyer sin haber sido aceptada nunca** cada vez que alguien
+  abandona el formulario — la copia promovida, huérfana, se la lleva el barrido
+  de las 72 horas y no hay cómo reintentar. Por eso va en el segundo, y por eso
+  va en un **trigger** y no en el panel: la transición a `aceptada` **es**, por
+  D-600, «la actividad ya se guardó», así que el momento sale por construcción y
+  no por acordarse. `storage.rules` además cierra el `delete` de `propuestas/`
+  para todo cliente, incluido un admin — resultó ser más que una prolijidad.
+
+  **Y el orden es el de B-838 con la conclusión dada vuelta**, escrito donde vive
+  el código: allá los dos efectos borraban el **mismo** dato y había que elegir
+  qué huérfano dolía menos; acá no se borran dos cosas, se **afirma** una y se
+  borra la otra. Verificar-y-después-borrar deja, si falla, dos copias de la
+  misma foto —unos KB, reintentable—; al revés, si la copia no estaba, la foto de
+  un tercero deja de existir. La verificación son **dos** y no una: que el
+  documento de la actividad la nombre no alcanza —una copia promovida se va sola
+  a las 72 horas si el formulario queda abierto—, así que además se le pregunta
+  al bucket. Y si no pasa, el original **se conserva**.
+
+  **Lo que la verificación no puede afirmar, dicho:** cuál de las imágenes de la
+  actividad es la copia promovida. El id se genera nuevo y `revisionValida()`
+  acota el update a `estado`+`revision`, así que no hay dónde anotar el vínculo
+  sin ensanchar la regla.
+
+  **`borrarImagenAlRechazar` pasó a llamarse `borrarImagenAlCerrar`**: el nombre
+  mintió el día que el cierre dejó de ser uno solo. Sigue siendo **un** trigger
+  —dos `onDocumentWritten` sobre `propuestas/{id}` serían dos handlers del mismo
+  evento peleándose el mismo objeto (B-89)— partido en `if/else` y no en dos `if`
+  con `return`, para que borrar ese `return` en un refactor no pueda hacer que
+  una aceptada caiga en el borrado crudo del rechazo. **Deja un paso manual:** la
+  vieja está desplegada y hay que borrarla con `firebase functions:delete`,
+  **después** de que el deploy cree la nueva.
+
+  **Lo que NO cierra, y va medido en vez de supuesto: B-871.** Si el borrado
+  falla, o si la actividad se guardó sin ninguna imagen propia, el original
+  sobrevive **sin plazo**. Son seis caminos con el mismo campo
+  `alerta: "flyer-de-propuesta-sin-borrar"` y su tabla en `08-operacion.md`. Se
+  evaluó `retry: true` y se descartó con el argumento escrito: ninguna Function
+  del proyecto lo usa, y encenderlo por una rama reintentaría también cualquier
+  bug del handler durante siete días.
+
+  **Los tres hallazgos del `auditor-privacidad` sobre el propio arreglo están
+  adentro:** el ítem que la alerta nombraba era el de App Check, así que ocho
+  referencias apuntaban a un número ajeno; **dos caminos que dejan la foto viva
+  salían por `debug` y sin `alerta`**; y la guarda del prefijo había quedado
+  separada del `delete`. Diecinueve mutaciones, y la que importa es que mover el
+  `delete` arriba de la verificación deja **todo lo demás en verde**.
+
 - **App Check exige en Firestore, y el paso 1 se cerró con la prueba directa y no
   con la métrica** — **B-836a**, pasos 1 y 6. `firestore.googleapis.com` quedó en
   `ENFORCED`, con el panel verificado inmediatamente después: entra, lee y guarda.

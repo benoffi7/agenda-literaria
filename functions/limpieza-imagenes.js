@@ -55,8 +55,15 @@ export const MARGEN_DE_GRACIA_MS = 72 * 60 * 60 * 1000;
 export const MAX_BORRADOS_POR_CORRIDA = 20;
 
 /** ¿Este nombre es un objeto de primer nivel bajo ese prefijo? Mismo criterio
- * que `decidirOptimizacion` de `imagenes.js`: un solo segmento. */
-const esDePrimerNivel = (nombre, prefijo) =>
+ * que `decidirOptimizacion` de `imagenes.js`: un solo segmento.
+ *
+ * **Exportado desde B-863** para que el test pueda atarlo a los otros dos
+ * lugares donde el proyecto decide lo mismo —`objetoDePropuesta` en
+ * `retencion.js` y `copiasEnLaGaleria` en `propuestas.js`—. No se unifica el
+ * código, que devuelve cosas distintas en cada uno: se ata el **criterio**, que
+ * es lo que puede divergir en silencio (clase de B-88, lo vio el
+ * `auditor-trampas`). Nadie más lo importa en producción. */
+export const esDePrimerNivel = (nombre, prefijo) =>
   nombre.startsWith(prefijo) && !nombre.slice(prefijo.length).includes('/') && nombre !== prefijo;
 
 /**

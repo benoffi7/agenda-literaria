@@ -262,13 +262,17 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    *
    * **Lo único que sí toca el mundo es la imagen** (B-830 paso 8, DEC-11): si la
    * propuesta trajo una foto subida, se promueve a `imagenes/` acá, antes de
-   * abrir el formulario, para que la actividad nazca con ella. El objeto viejo no
-   * se toca: se lo lleva el ciclo de la propuesta (el rechazo o la retención).
+   * abrir el formulario, para que la actividad nazca con ella. **El objeto viejo
+   * no se toca acá, y eso es el punto de B-863**: el original se borra en el
+   * **segundo** momento —cuando la actividad ya se guardó y la transición a
+   * `aceptada` despierta a `borrarImagenAlCerrar`—, no en éste. Borrarlo acá
+   * dejaría a la propuesta sin flyer sin haber sido aceptada nunca cada vez que
+   * alguien abandona el formulario, y no habría cómo reintentar.
    *
    * Si la conversión se abandona, lo que queda es un objeto en `imagenes/` que
    * ninguna actividad referencia — exactamente lo mismo que subir una foto en el
    * formulario y no guardar, y lo barre `limpiarImagenesHuerfanas` a las 72 horas
-   * (B-221). No hace falta nada nuevo.
+   * (B-221). No hace falta nada nuevo, y la propuesta conserva su foto.
    */
   const convertir = async (p: PropuestaConId) => {
     /*
@@ -395,7 +399,9 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
         la actividad se publica como cualquier otra. El contacto de quien propuso es para
         repreguntar y no sale a ninguna parte. Rechazar borra la imagen <strong>en el acto</strong>
         y el resto a los {RETENCION_DIAS.rechazada} días: hasta entonces se puede reabrir, pero la
-        foto ya no vuelve. Y una que queda sin tocar se borra sola{' '}
+        foto ya no vuelve. Aceptar también se lleva la foto original, pero recién{' '}
+        <strong>al guardar la actividad</strong>: ahí ya hay una copia en su galería que la
+        reemplaza. Y una que queda sin tocar se borra sola{' '}
         {RETENCION_DIAS.nueva === RETENCION_DIAS.rechazada
           ? 'en el mismo plazo'
           : `a los ${RETENCION_DIAS.nueva} días`}

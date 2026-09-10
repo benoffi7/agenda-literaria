@@ -892,6 +892,48 @@ export const CAPITULOS: CapituloAyuda[] = [
         ],
       },
       {
+        /*
+         * **B-863.** El punto de arriba decía «las que aceptaste no se borran» y
+         * eso era cierto del documento y **falso de la intención**: la decisión
+         * de no hacerlas caducar se tomó por el contacto, y arrastraba también la
+         * foto de un tercero sin fecha de vencimiento. Ahora son dos cosas
+         * distintas y hay que decirlo separado, porque la consecuencia visible
+         * —reabrir una aceptada no trae la foto— aparece meses después.
+         */
+        texto:
+          'De una que aceptaste sí se borra una cosa: la foto original que mandaron. Cuando ' +
+          'guardás la actividad, la copia que quedó en su galería la reemplaza y el original se ' +
+          'va, así que si después reabrís esa propuesta la foto ya no está —igual que con una ' +
+          'rechazada—. Se borra recién al guardar, no al apretar «Convertir»: si abandonás el ' +
+          'formulario a mitad de camino, la propuesta se queda con su foto y podés volver a ' +
+          'intentarlo. Y si la actividad terminó sin ninguna imagen propia, el original tampoco ' +
+          'se borra: preferimos quedarnos con una foto de más que perderla.',
+        cuidado: true,
+        /*
+         * Los tres casos son las tres mitades de lo que promete el punto: que
+         * aceptar borre, que el borrado ocurra **después** de verificar la copia
+         * (o sea después de guardar), y que sin copia no borre. Van a los casos
+         * **puros** y no al de integración —que es el que mira el ciclo entero,
+         * `la aceptada conserva el contacto pero no la foto original`— porque un
+         * test de integración se saltea sin emuladores y no puede sostener un
+         * aviso: es la regla que `tests/ayuda.test.ts` hace cumplir.
+         */
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-imagen.test.ts',
+            it: 'aceptar también borra el original, y lleva el id de la actividad para verificar',
+          },
+          {
+            archivo: 'tests/propuestas-imagen.test.ts',
+            it: 'primero pregunta si la copia está, y recién entonces borra el original',
+          },
+          {
+            archivo: 'tests/propuestas-imagen.test.ts',
+            it: 'sin copia en la actividad no borra nada, que es el lado barato de equivocarse',
+          },
+        ],
+      },
+      {
         texto:
           'De «qué se llevan», entra lo que ya está en la lista de opciones. Lo que la persona ' +
           'escribió y no está aparece en el aviso de arriba del formulario, para que decidas vos ' +

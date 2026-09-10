@@ -1007,9 +1007,75 @@ persona sino el estado de su documento. Las cuatro piezas:
 |---|---|---|
 | **Sube** | a `propuestas/prop_<uuid>.jpg`, con el mismo tope de 3 MB y los mismos dos tipos que la galería | `storage.rules` |
 | **Se mira** | solo un admin, y solo por su ruta: `get: esAdmin()`, `list: false` | ídem |
-| **Se acepta** | el panel la baja y la vuelve a subir a `imagenes/` por `subirImagen` | `src/lib/subir-imagen.ts` |
-| **Se rechaza** | se borra en el acto | `borrarImagenAlRechazar` |
+| **Se acepta (1/2)** | el panel la baja y la vuelve a subir a `imagenes/` por `subirImagen`, y **no borra nada** | `src/lib/subir-imagen.ts` |
+| **Se acepta (2/2)** | al guardarse la actividad, se verifica que la copia esté y recién ahí se borra el original (**B-863**) | `borrarImagenAlCerrar` |
+| **Se rechaza** | se borra en el acto | `borrarImagenAlCerrar` |
 | **Nadie decide** | a los 30 días se va con el documento | `borrarPropuestasVencidas` |
+
+**Aceptar son dos filas y no una, y ése es todo el contenido de B-863.**
+«Convertir» son dos momentos (D-600): al apretar el botón se promueve la copia y
+se abre el formulario **sin escribir nada**, y recién cuando la actividad se
+guarda la propuesta pasa a `aceptada`. Si el original se borrara en el primer
+momento y el admin abandonara el formulario, la copia promovida —huérfana— se la
+lleva `limpiarImagenesHuerfanas` a las 72 horas y la propuesta se queda **sin
+flyer sin haber sido aceptada nunca**. El trigger acierta el momento por
+construcción: la transición a `aceptada` **es** «la actividad ya se guardó».
+
+Y el orden adentro del segundo momento también está decidido: **se verifica que
+la copia exista —en el documento de la actividad y en el bucket— y recién después
+se borra el original**. Si el borrado falla queda un duplicado, que es inofensivo;
+al revés se pierde la foto de un tercero y no hay de dónde sacarla. Cuando la
+verificación no pasa —la actividad se guardó sin ninguna imagen propia— el
+original **se conserva** y sale un `warn` con `alerta: "flyer-de-propuesta-sin-borrar"`:
+eso es **B-871**, porque la `aceptada` no vence y nadie más va a pasar por ahí.
+
+### Cuando suena `flyer-de-propuesta-sin-borrar`
+
+Son **seis** caminos, todos con el mismo estado del mundo —una propuesta
+`aceptada` con su flyer original vivo en `propuestas/`, y ningún barrido que vaya
+a pasar por ahí— y por eso comparten el campo `alerta`. Se distinguen por el
+`resultado` (cuando el borrado se intentó) o por el `motivo` (cuando la decisión
+ni siquiera llegó a intentarlo):
+
+| `resultado` / `motivo` | Qué pasó | Qué hacer |
+|---|---|---|
+| `sin-copia` | la actividad se guardó sin ninguna imagen propia (la promoción falló y el panel avisó, o el admin sacó la fila) | decidir si la foto se usa. Si no, borrar el objeto a mano |
+| `copia-sin-objeto` | el documento nombra una copia que ya no está en el bucket (el formulario quedó abierto más de 72 horas y `limpiarImagenesHuerfanas` se la llevó) | volver a subir la foto a la actividad desde el panel; después borrar el original a mano |
+| `sin-actividad` | el `revision.actividadId` apunta a una actividad que no existe (se borró, o se marcó a mano con un id equivocado) | buscar la actividad que salió de la propuesta; si no hay, borrar el objeto a mano |
+| `objeto-ajeno` | el `storagePath` no está bajo `propuestas/<un segmento>`. **No es un caso de operación: es un bug o un documento escrito a mano** | **no borrar nada** hasta saber a quién apunta ese path. La guarda existe justamente porque puede ser el flyer de una actividad publicada |
+| `aceptada-sin-actividad` | la propuesta quedó `aceptada` sin `revision.actividadId` (se la marcó a mano) | ídem `sin-actividad` |
+| `imagen-fuera-del-prefijo` | mismo desajuste que `objeto-ajeno`, detectado antes de intentar nada | **no borrar nada**, mismo motivo |
+| un `error` en vez de un `warn` | falló la lectura de la actividad o el `delete` | reintentar el borrado a mano; si se repite, mirar el IAM de `calendar-sync@` |
+
+**Y «a mano» es literal, porque no hay botón**: `storage.rules` cierra el
+`delete` de `propuestas/` para todo cliente, y `borrarPropuestasVencidas` no
+alcanza a la aceptada. Se borra desde la consola de Storage, o con
+`gsutil rm gs://<bucket>/propuestas/prop_<uuid>.jpg`. Que esto sea manual es
+justamente **B-871**.
+
+> **De dónde sacar el path, que no es el mismo lugar en los seis.** Los cuatro
+> primeros son `resultado`, y ahí el log trae el campo `objeto` con el path
+> exacto. Los dos últimos son `motivo`, y salen de la rama que **decidió no
+> hacer nada**: el log trae `propuesta` y `motivo`, y **no** `objeto` — porque
+> en esos dos casos el path o no existe o es justamente el que no sabemos de
+> quién es, y ponerlo en el log invitaría a copiarlo a un `gsutil rm`. Hay que
+> abrir la propuesta por su id y mirar su `imagen.storagePath` antes de tocar
+> nada.
+
+**Para el backfill de lo que ya está aceptado antes de este deploy** —el trigger
+actúa solo en la **transición**, así que una propuesta que ya estaba en
+`aceptada` no lo despierta nunca—: `node scripts/borrar-propuestas-vencidas.mjs`
+**sin `--aplicar`** lista cada propuesta con su motivo y su objeto, y una línea
+`aceptada-no-vence` con un `propuestas/…` al lado es un flyer huérfano vivo. Hoy
+la colección está vacía, así que probablemente no haya ninguno.
+
+> ⚠️ **Paso manual pendiente del renombre.** Hasta B-863 este trigger se llamaba
+> `borrarImagenAlRechazar`. Si CI llegó a desplegarlo con ese nombre, la Function
+> vieja **sigue desplegada** después del push: hay que borrarla a mano con
+> `firebase functions:delete borrarImagenAlRechazar --region southamerica-east1`.
+> Mientras tanto no rompe nada —las dos hacen el mismo borrado idempotente en el
+> rechazo, y solo la nueva actúa en la aceptación—, pero es una Function fantasma
+> cobrando invocaciones. Verificar con `firebase functions:list`.
 
 **Por qué se re-sube en vez de copiar del lado del servidor.** Copiar entre
 prefijos solo lo puede hacer el Admin SDK, o sea una Function, y esa Function
@@ -1027,7 +1093,8 @@ originales), que ya existía. La imagen **promovida** sí cae en `imagenes/` y s
 optimiza, que es lo que se quiere: es una imagen de galería como cualquier otra.
 
 **Y una consecuencia que la pantalla dice porque se descubre tarde:** reabrir una
-propuesta rechazada **no trae la foto de vuelta**. El documento sigue nombrando su
+propuesta cerrada —rechazada **o aceptada**, desde B-863— **no trae la foto de
+vuelta**. El documento sigue nombrando su
 `storagePath` y el objeto ya no está.
 
 **Lo que un `get: esAdmin()` no cierra** está en `07-seguridad.md`: la URL de
@@ -1052,7 +1119,7 @@ retención automática vino a no depender.
 | `rechazada` | 30 días (DEC-13) | `revision.en` — el rechazo |
 | `nueva` | 30 días | la última señal de vida |
 | `en-revision` | 30 días | la última señal de vida |
-| `aceptada` | **no vence** | — |
+| `aceptada` | **no vence** el documento; la **foto original** sí se va (B-863) | — |
 
 **Los 30 días de «sin tocar» los contestó el dueño el 2026-09-09** (la pregunta se
 le hizo con una hipótesis de 90 escrita en el código). Lo que **no** contestó es

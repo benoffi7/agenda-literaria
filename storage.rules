@@ -197,12 +197,19 @@ service firebase.storage {
         && (request.resource.metadata == null
             || !('optimizada' in request.resource.metadata));
 
-      // **Nadie borra desde un cliente, ni siquiera un admin.** Los dos borrados
-      // que existen son de Functions con el Admin SDK, que pasa por encima de
-      // estas reglas: el del rechazo (`borrarImagenAlRechazar`, en el acto) y el
-      // de la retención (`borrarPropuestasVencidas`, a los 30 días). Que el panel
-      // no pueda borrar es lo que hace que el borrado sea **una consecuencia del
-      // estado** y no un botón que alguien puede olvidarse de tocar.
+      // **Nadie borra desde un cliente, ni siquiera un admin.** Los borrados que
+      // existen son de Functions con el Admin SDK, que pasa por encima de estas
+      // reglas: los dos cierres de `borrarImagenAlCerrar` —el rechazo, en el
+      // acto, y **la aceptación** (B-863), cuando la copia promovida ya
+      // reemplaza al original— y el de la retención (`borrarPropuestasVencidas`,
+      // a los 30 días, que a la aceptada no la alcanza porque no vence). Que el
+      // panel no pueda borrar es lo que hace que el borrado sea **una
+      // consecuencia del estado** y no un botón que alguien puede olvidarse de
+      // tocar — y en B-863 eso resultó ser más que una prolijidad: el borrado
+      // tiene que ocurrir en el **segundo** momento de la conversión (cuando la
+      // actividad ya se guardó, D-600), y un trigger sobre la transición a
+      // `aceptada` acierta ese momento por construcción, mientras que un botón
+      // del panel habría borrado en el primero.
       allow update, delete: if false;
     }
 
