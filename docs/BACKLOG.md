@@ -753,6 +753,30 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-855 · Dos tests sobre fuente tienen su propio saneador, y uno de ellos ya puede dejarlo · P3
+
+**La segunda mitad de B-853.** `tests/listado-del-sitio.test.ts` y
+`tests/pagina-de-detalle.test.ts` se escribieron con un recorte de comentarios
+propio en vez del compartido, y ese esquive era la señal de que el problema de
+B-853 se conocía a medias. Con el saneador arreglado se probó sacarlos:
+
+- **`pagina-de-detalle` se puede y queda verde.** Verificado sobre los 26 `.astro`
+  de `src/`: lo único que el compartido saca de más son palabras de prosa adentro
+  de `<!-- -->`, que el recorte local **no** sacaba y debería. Ningún identificador
+  de código perdido.
+- **`listado-del-sitio` no todavía, y el motivo no es el bug**: el saneador
+  compartido **colapsa el espacio en blanco** (`\s+ → ' '`) y ese archivo tiene
+  regexes que dependen de la indentación literal —
+  `/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/` da `null` sobre el texto
+  colapsado—. El camino limpio es **exportar la variante sin colapsar**: el colapso
+  es la última línea del módulo, separarlo es trivial, y `listado-del-sitio` pasa a
+  usar esa.
+
+Lo que se gana no es dedupliar por deduplicar: es que los dos recortes locales
+**no tienen** la red de clase contra el parser de TypeScript que B-853 le puso al
+compartido, así que hoy son dos lugares donde el mismo bug puede volver a nacer sin
+que nada se ponga rojo.
+
 ### B-854 · El panel dice «tiene flyer» y «tiene tallerista» con un predicado distinto del que publica el JSON-LD · P3
 
 **Salió del frente de B-813**, que evitó esta clase donde estaba mirando —los tres
@@ -780,7 +804,7 @@ Las dos son la clase de **B-88** con la cara menos visible: no es una segunda li
 de reglas escrita a mano, es la **misma pregunta contestada por dos funciones** que
 nacieron para cosas distintas y hoy se leen como si fueran la misma.
 
-### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan · P2
+### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan — ✅ hecho (2026-09-09) · P2
 
 **Lo encontró el frente de B-798 midiendo**, y es previo a su cambio: verificado
 contra el archivo de `HEAD`. El saneador compartido reduce `Buscador.tsx` de
@@ -802,6 +826,39 @@ recorrido por texto no puede distinguir—, arreglarlo con su caso, y **barrer q
 más lo usa**: `tests/listado-del-sitio.test.ts` y `pagina-de-detalle.test.ts` ya lo
 esquivan con un recorte propio, y ese esquive es la señal de que el problema se
 conocía a medias.
+
+> ✅ **Arreglado (2026-09-09), y el disparador no era ninguno de los dos que este
+> ítem sospechaba.** No era un regex ni un string con `/*`: era el `\s*` del patrón
+> de JSX, que deja que `interface Props {` más el docblock de su primera propiedad
+> sean una apertura de comentario. Como el cierre exige el `*/` pegado a un `}`, la
+> búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**.
+>
+> **Se reemplazaron las cuatro pasadas de `replace` por un solo recorrido de
+> izquierda a derecha** sobre una alternación de tokens (comentarios + strings).
+> Eso cierra las **cuatro** instancias de la familia y no solo la de este ítem: el
+> `/*` adentro de un `//` (B-830), el `//` adentro de un bloque, el `{` de acá, y
+> el `//`/`*/` adentro de un string. **Y desmiente lo que este ítem daba por
+> hecho**: el arreglo de B-830 no «no lo cubrió» por casualidad, no podía cubrirlo,
+> porque el problema nunca fue el orden sino que cada pasada arranca de cero sobre
+> un texto que la anterior ya reinterpretó.
+>
+> La promesa «se audita de más y nunca de menos» se corrigió en el docblock: no hay
+> lado seguro al que apostar —los consumidores piden las dos direcciones— así que
+> hay que no equivocarse, y el error residual se elige del lado del residuo porque
+> es el único acotado.
+>
+> **No se escribió un parser**, y el argumento está en el módulo: lexear literales
+> de expresión regular necesita el token anterior, o sea medio parser de JS, que
+> además no cubriría `.astro` ni `firestore.rules`. En su lugar hay red de clase —
+> `tests/sin-comentarios.test.ts` compara contra el parser de TypeScript sobre los
+> 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de
+> código. Contra la implementación vieja da rojo en **23 archivos**.
+>
+> **Ningún consumidor actual estaba afectado: el agujero era latente.** Los cinco
+> dan salida idéntica antes y después. Lo que esperaba no era un bug con víctima
+> sino que alguien apuntara el saneador a cualquiera de esos 23 —`VisorDeGaleria`
+> al 91%, `PropuestasPanel` al 84%, `ActividadFormulario` al 78%—. La segunda mitad
+> del ítem, la de unificar los recortes locales, quedó como **B-855**.
 
 ### B-852 · Las versiones que quedaron rotas antes de B-560 siguen restaurando un 404 · P4
 
@@ -14392,9 +14449,10 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **El mismo saneador se comía el 83% de `Buscador.tsx`, y ningún consumidor lo estaba sufriendo** | la segunda cara de la fila de B-830, encontrada **midiendo** desde otro frente. El disparador no era un regex ni un string con `/*`: era el `\s*` del patrón de JSX, que deja que `interface Props {` más el docblock de su primera propiedad sean una apertura de comentario; como el cierre exige el `*/` pegado a un `}`, la búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**. Lo notable no es el caso sino que **el agujero estaba latente**: los cinco consumidores actuales daban salida idéntica antes y después, y el bug esperaba a que alguien apuntara el saneador compartido a cualquiera de los **23** archivos que destrozaba (`VisorDeGaleria.tsx` al 91%, `PropuestasPanel.tsx` al 84%, `ActividadFormulario.tsx` al 78%, y `sin-comentarios.mjs` a sí mismo al 96%). Cerrado reemplazando las cuatro pasadas de `replace` por **un solo recorrido de izquierda a derecha**, que cierra la familia entera en vez del caso, y con red de clase: un barrido que compara contra el **parser de TypeScript** sobre los 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de código | B-853, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |
 | **B-841 dejó la medición del panel colgando de una prop opcional que nadie verificaba** | lo encontró el `auditor-trampas` sobre el propio commit de B-841, y es la clase que ese refactor crea: sacar la medición a una prop **opcional** hace que dejar de pasarla se vea idéntico. Si un refactor deja el `medir={medirSeccion}` afuera, el build queda verde, `tsc` queda verde —son opcionales— y lo que se pierde es GA4 sin `funcion_usada` para **todas** las aperturas de sección y toda interacción de taxonomía del panel; se nota semanas después, mirando un hueco en el tablero. **Y de paso degradó un aserto existente**: «TagsInput mide la taxonomía» hace `toContain('taxonomia-nueva')` sobre el fuente, y esos literales siguen ahí como argumentos de `onMedir?.(…)` — o sea que seguía pasando y ya no probaba que se midiera, solo que el string existía. Cerrado con `tests/campos-del-panel.render.test.tsx`, que monta la capa y afirma **la llamada** (y el «?» de la guía, con su control negativo), más la otra dirección —que el control **genérico** no mida sin la prop, que es lo que hace que un formulario público pueda usarlo—; y el caso degradado se renombró a lo que de verdad prueba: que los dos widgets nombran el mismo vocabulario (B-72). Las tres ataduras verificadas por mutación | B-841, `tests/campos-del-panel.render.test.tsx`, `tests/taxonomia.test.ts` (2026-09-09) |
 | **El grafo de la red nueva no resolvía los alias a `functions/`, y uno de los tres archivos auditados usa uno** | `aArchivo` de `panel-fuera-del-sitio.test.ts` solo resolvía `@/` y los relativos, y `campos/TaxonomiaSelect.tsx` importa `desSlug` de **`@calendario`**. Sin resolverlo, el recorrido lo trata como paquete externo y se corta ahí — así que `caminoHasta` devolvía `null` por **no haber sabido resolver** y no por no haber camino: un verde falso. Hoy no era explotable porque `functions/calendario.js` no importa nada —y `bundle-panel.test.ts` lo exige—, pero es el mismo punto ciego que B-323 ya cerró para ese archivo, reintroducido al reusar el recorrido para una raíz nueva. Lo encontró el `auditor-trampas`. Cerrado leyendo los alias de `astro.config.mjs`, con el control positivo calcado del original y su mutación probada | B-841, `tests/panel-fuera-del-sitio.test.ts` (2026-09-09) |
-| **El saneador de comentarios se comía código, y el barrido habría pasado sin mirar nada** | **el peor de la tanda, y salió de arreglar otra cosa.** `sinComentarios` (`scripts/sin-comentarios.mjs`) sacaba los `/* … */` **antes** que los `//`, así que un `/*` escrito **adentro de un comentario de línea** abría un bloque que corría hasta el próximo `*/` del archivo. En `firestore.rules` pasó exactamente eso: el comentario `// … escribir en /opciones/*, que es de lectura pública` se llevó **quince cláusulas** de `propuestaValida()` —o sea de la regla que va a validar la primera escritura anónima— y el barrido de cotas que consumía el resultado habría dado **verde sin mirarlas** si la lista de esperadas hubiera sido más corta. Se encontró porque la comparación exhaustiva se puso roja con un número que no cerraba. **Y le invierte el argumento a su propio docblock**: «no pretende ser un parser… es el lado seguro del error, se audita de más y nunca de menos» era cierto cuando calculaba una huella (B-794), donde sacar de más solo hacía pedir la auditoría otra vez; como saneador de un barrido sobre el fuente, sacar de más es **auditar de menos**. Cerrado invirtiendo el orden —los `//` primero— con dos casos que fijan la **dirección** del error y su mutación probada en los dos sentidos. El caso simétrico (un `//` adentro de un bloque) cae del lado seguro: deja residuo, y un residuo hace fallar un barrido, no pasarlo. Lo consumen otros nueve archivos de test | B-830, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |
+| **El saneador de comentarios se comía código, y el barrido habría pasado sin mirar nada** | **el peor de la tanda, y salió de arreglar otra cosa.** `sinComentarios` (`scripts/sin-comentarios.mjs`) sacaba los `/* … */` **antes** que los `//`, así que un `/*` escrito **adentro de un comentario de línea** abría un bloque que corría hasta el próximo `*/` del archivo. En `firestore.rules` pasó exactamente eso: el comentario `// … escribir en /opciones/*, que es de lectura pública` se llevó **quince cláusulas** de `propuestaValida()` —o sea de la regla que va a validar la primera escritura anónima— y el barrido de cotas que consumía el resultado habría dado **verde sin mirarlas** si la lista de esperadas hubiera sido más corta. Se encontró porque la comparación exhaustiva se puso roja con un número que no cerraba. **Y le invierte el argumento a su propio docblock**: «no pretende ser un parser… es el lado seguro del error, se audita de más y nunca de menos» era cierto cuando calculaba una huella (B-794), donde sacar de más solo hacía pedir la auditoría otra vez; como saneador de un barrido sobre el fuente, sacar de más es **auditar de menos**. Cerrado invirtiendo el orden —los `//` primero— con dos casos que fijan la **dirección** del error y su mutación probada en los dos sentidos. El caso simétrico (un `//` adentro de un bloque) cae del lado seguro: deja residuo, y un residuo hace fallar un barrido, no pasarlo. Lo consumen otros nueve archivos de test. **⚠️ Corrección de B-853 (2026-09-09): invertir el orden no era el arreglo, era tapar una de cuatro instancias de la misma familia — el problema no es el orden de las pasadas sino que hay pasadas, cada una arrancando de cero sobre un texto que la anterior ya reinterpretó. Ver la fila de B-853** | B-830, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |
 | **El testigo que la regla nombraba para abrir la puerta anónima no se ponía rojo** | lo encontró el `auditor-privacidad`, y era **la única barrera que sostenía la decisión de secuencia de B-836a**. El paso 3 escrito en `firestore.rules` decía «`escritura-anonima.integracion.test.ts` se pone rojo — es su trabajo». No se pone: ese archivo prueba las escrituras con un documento sonda (`{ hola: 'mundo' }`), que `propuestaValida()` rechaza por `hasOnly` **con la puerta abierta o cerrada**. O sea que borrar el `esAdmin() &&` dejaba la suite entera en verde. Es la misma clase que las cláusulas muertas de `imagenValida()`: una afirmación que se lee como load-bearing y no puede fallar. Cerrado nombrando el testigo real —el caso «ni con el documento perfecto» de `propuestas.integracion.test.ts`—, con un aserto que exige que la regla lo nombre, y con el alcance de `escritura-anonima` escrito en su propio docblock: es testigo de la **lista** de colecciones, no de la forma de cada una | B-830, `firestore.rules`, `tests/propuestas.integracion.test.ts` (2026-09-09) |
 | **`imagen.storagePath` aceptaba cualquier path, y el flujo de rechazo borra lo que nombre** | lo encontró el `auditor-privacidad`, y es el hallazgo con la consecuencia más concreta: con la puerta abierta, un anónimo manda `storagePath: 'imagenes/img_<uuid>.jpg'` de una actividad **real y publicada** —y el path no hay que adivinarlo: `storage.rules` deja escrito que viaja adentro de la URL de descarga, y `rutaDeMiniatura` lo deriva al revés desde la miniatura— y con el flujo de DEC-11 (rechazar → borrar la imagen), **rechazar esa propuesta borra el flyer de otra actividad**, en vivo. Cerrado acotándolo al prefijo `propuestas/` con un `matches`, que es el idiom de `storage.rules`, con tres casos de rechazo y un control positivo. De paso caducó el aserto que pedía que la regla no tuviera **ningún** `matches`: ahora dice que hay uno solo y sobre la imagen, y ninguno sobre las claves de una fecha | B-830, `firestore.rules` (2026-09-09) |
 | **Diez cláusulas del bloque de `/propuestas` sin ningún caso que las ejercite** | el `auditor-privacidad` las enumeró una por una, y cada una **deja entrar algo** si se borra: `incluye: 'no vengan'` (un string de doce caracteres pasaba el tope de doce, porque `string.size()` existe), `requiere: 'si'`, un `telefono` colado en `organizador`, un `valor2` en `contacto` —el mapa del dato personal del tercero era el único de los cinco cuyo `hasOnly` no tenía caso—, `revision.motivo: 'ya lo aprobó el equipo'` escrito por un anónimo, `lugar: {}` y `lugar: { barrio: 'x' }` (que **entraban**: con `.get(k, '')` y solo `hasOnly`, el mapa vacío pasa las tres cotas). Cerrado con quince casos nuevos, y con algo más: **todo lo anidado pasó a leerse con `.get()`**, que es el idiom que el propio archivo prescribe en `esAdmin()` —del otro lado va a haber un navegador anónimo, y el campo opcional omitido fallaba con una traza de evaluación en vez de un permission-denied limpio—. Ese cambio es el que hace **mutables** los `hasAll`: con acceso directo, la obligatoriedad de cada clave la sostenía el error de evaluación, o sea nada declarado, y los `hasAll` no se podían verificar. Ahora cada uno se puede mutar y se pone rojo, y los que no frenaban nada no están: `contacto` no lleva `hasAll` (sus dos cotas ya exigen las claves) y el `revision` del `create` tampoco (el centinela `.get(k, 'x')` rechaza la ausencia sin necesidad de una cláusula aparte) | B-830, `firestore.rules`, `tests/propuestas.integracion.test.ts` (2026-09-09) |

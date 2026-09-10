@@ -2,6 +2,63 @@
 
 ## Sin publicar
 
+- **El saneador de los tests sobre fuente se comía el 83% de `Buscador.tsx`, y el
+  disparador era `interface Props {`** — **B-853**. `sinComentarios` reducía
+  `Buscador.tsx` de 41.363 a 6.904 caracteres, sin `export function Buscador` y con
+  una sola de sus tres `medirSitio`: cualquier test que lo usara sobre ese archivo
+  estaba afirmando sobre casi nada.
+
+  **No era un regex ni un string con `/*` adentro, que es lo que se buscaba.** El
+  patrón de JSX era `\{\s*\/\*[\s\S]*?\*\/\s*\}`, y ese `\s*` deja que el `{` de
+  `interface Props {` más el docblock de su primera propiedad sean una apertura
+  válida. Como el cierre exige el `*/` **pegado** a un `}`, la búsqueda no para en
+  el `*/` del docblock: sigue hasta el primer `*/}` del archivo, 464 líneas más
+  abajo.
+
+  **El arreglo no es un regex más: son cuatro pasadas menos.** El defecto es de
+  familia — cada `replace` global rebarre el archivo entero y ve como apertura algo
+  que vive adentro de otra construcción, y una apertura falsa con `[\s\S]*?` no
+  tiene cota. Hay **cuatro** instancias, no dos: el `/*` adentro de un `//`
+  (B-830), el `//` adentro de un bloque, el `{` de B-853, y el `//` o el `*/`
+  adentro de un **string** (`'a // b'` volvía `'a`). **Invertir el orden en B-830
+  arregló una y dejó tres, porque el problema nunca fue el orden**: era que cada
+  pasada arranca de cero sobre un texto que la anterior ya reinterpretó. Ahora es
+  un solo recorrido de izquierda a derecha sobre una alternación de tokens —en cada
+  posición gana una construcción, se consume completa, y el barrido sigue después
+  de ella—, y eso cierra la familia entera en vez del caso.
+
+  **La promesa del docblock —«se audita de más y nunca de menos»— se corrigió, no
+  se repitió.** Era cierta cuando esto calculaba una huella (B-794) y es falsa como
+  saneador de un barrido: un `not.toContain('online.url')` pasa **sin mirar nada**
+  si se borró de más, y un `toContain('setVistaDelPanel')` pasa con el cuerpo vacío
+  si quedó residuo. No hay un lado seguro al que apostar: hay que no equivocarse.
+  Lo que sí se elige es el error residual, y ahí el residuo es **acotado** al
+  comentario que lo produjo mientras que borrar código **no tiene cota**.
+
+  **Lo que NO se hizo es un parser, y está argumentado en el módulo.** Lexear
+  literales de expresión regular necesita saber qué token vino antes —medio parser
+  de JavaScript, que además no serviría para `.astro` ni para `firestore.rules`—.
+  En su lugar va la red: el último `describe` compara contra el **parser de
+  TypeScript** sobre los 418 `.ts/.tsx/.mjs/.js` del repo (lista derivada de
+  `git ls-files`, así que un archivo nuevo entra solo) y falla si el saneador borra
+  un identificador que el parser dice que es código. Contra la implementación vieja
+  da rojo en **23 archivos**: `VisorDeGaleria.tsx` (91% borrado),
+  `BuscadorDePasadas.tsx` (85%), `PropuestasPanel.tsx` (84%), `Buscador.tsx` (83%),
+  `ActividadFormulario.tsx` (78%) — y `sin-comentarios.mjs` a sí mismo, al 96%.
+
+  **Ninguno de los cinco consumidores actuales estaba afectado** —`historial.ts`,
+  `propuestas.ts`, `appcheck.ts`, los `scripts/*.mjs` y `firestore.rules` dan salida
+  idéntica antes y después—, y eso es lo incómodo: el agujero estaba **latente**,
+  esperando a que alguien apuntara el saneador compartido a cualquiera de esos 23.
+  Es la diferencia entre un bug que se cobra una víctima y uno que se cobra la
+  próxima.
+
+  **Lo que queda abierto es B-855:** `tests/pagina-de-detalle.test.ts` ya puede
+  dejar su recorte propio —probado, verde, y de yapa empieza a sacar los
+  `<!-- -->` que su recorte no sacaba— pero `tests/listado-del-sitio.test.ts` no
+  todavía, porque tiene regexes que dependen de la indentación literal y el
+  saneador compartido colapsa el espacio en blanco.
+
 - **Los cuatro avisos de Google que eran datos faltantes entran al tablero como
   proporciones, no como avisos** — **B-813**, la mitad del catálogo. `performer`
   (65), `image` (49), `url` del organizador (24) y `price` (20) no eran un bug del

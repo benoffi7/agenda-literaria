@@ -22,53 +22,137 @@
  * El módulo se llamaba `huella-de-auditoria.mjs`; se renombró al renombrar lo
  * que hace. Un archivo con el nombre de un mecanismo que ya no existe es el
  * drift que este repo persigue en la doc, y vale igual para el código.
+ *
+ * ── Cuál es el lado seguro del error, que cambió con el consumidor ─────────
+ * Mientras esto calculaba una huella, equivocarse **borrando de más** era
+ * gratis: se volvía a pedir la auditoría y listo. Por eso el docblock viejo
+ * prometía que «se audita de más y nunca de menos».
+ *
+ * **Como saneador de un barrido sobre el fuente esa promesa está al revés, y no
+ * hay un único lado seguro.** Los consumidores piden las dos direcciones:
+ *
+ * | El consumidor pregunta | Borrar de más | Dejar residuo de comentario |
+ * |---|---|---|
+ * | `not.toContain('online.url')` (barrido de privacidad) | **pasa sin mirar nada** | falla, y alguien mira |
+ * | `toContain('setVistaDelPanel')` (chequeo de presencia) | falla, y alguien mira | **pasa con el cuerpo vacío** |
+ *
+ * O sea que no alcanza con elegir una dirección: **hay que no equivocarse**. Lo
+ * que sí se puede elegir es qué pasa en el caso que igual se escape, y ahí el
+ * criterio es el de la tabla de `docs/05-patrones.md` §«Verificar la clase»:
+ * dejar residuo es un error **acotado** al comentario que lo produjo, y borrar
+ * código es un error **sin cota** —B-853 se llevó 34.459 de los 41.363
+ * caracteres de `Buscador.tsx`, o sea el 83%, y con ellos `export function
+ * Buscador`—. Cuando haya que apostar, se apuesta al residuo.
  */
+
+/**
+ * Los tokens que el recorrido reconoce, **en un solo barrido de izquierda a
+ * derecha**. Lo que se conserva y lo que se borra sale de cuál de estas
+ * alternativas ganó en cada posición.
+ *
+ * `RegExp#exec` con `g` devuelve siempre la coincidencia **más a la izquierda**,
+ * así que la alternativa que abre primero se lleva su interior entero: el `/*`
+ * escrito adentro de un `//` nunca se ve como apertura de bloque, el `//`
+ * escrito adentro de un `/* … *\/` nunca se ve como comentario de línea, y el
+ * `//` de un string nunca se ve, punto. **Ese es el arreglo estructural** — ver
+ * el bloque de abajo.
+ *
+ * Las comillas simples y dobles **no cruzan el salto de línea** a propósito: un
+ * apóstrofo suelto en prosa de markup no puede así abrir un «string» que se
+ * coma medio archivo; en el peor caso conserva de más una línea, que es el lado
+ * acotado del error.
+ */
+const TOKENS = new RegExp(
+  [
+    '<!--[\\s\\S]*?-->', // comentario de markup (`.astro`)
+    '/\\*[\\s\\S]*?\\*/', // bloque
+    '(?<!:)//[^\\n]*', // línea — el `(?<!:)` es para no comerse el `https://`
+    '"(?:\\\\[^\\n]|[^"\\\\\\n])*"',
+    "'(?:\\\\[^\\n]|[^'\\\\\\n])*'",
+    '`(?:\\\\[\\s\\S]|[^`\\\\])*`',
+  ].join('|'),
+  'g',
+);
+
 /**
  * El archivo **sin comentarios y sin espacios de más**.
  *
  * Cubre las cuatro sintaxis que aparecen en la lista de disparadores:
  * `{/* … *\/}` de JSX **como unidad** —sacando solo el interior quedan las llaves
  * sueltas, y dos llaves son un cambio de código—, `/* … *\/`, `//`, y
- * `<!-- -->` del markup de `.astro`. El `//` se pide precedido de algo que no sea `:` para no comerse el
- * `https://` de una URL.
+ * `<!-- -->` del markup de `.astro`.
  *
- * **No pretende ser un parser**, y no hace falta que lo sea: si alguna vez se le
- * pasa un `//` que estaba adentro de un string, el resultado es que la huella
- * cambia cuando no debía y el aviso vuelve. Es el lado seguro del error — se
- * audita de más, nunca de menos.
+ * ── Por qué es un recorrido y no cuatro `replace` — B-853 ──────────────────
+ * Antes eran cuatro `String#replace` globales, cada uno rebarriendo el archivo
+ * entero. Ese diseño tiene un agujero **de familia**, no un caso: cada pasada
+ * ve como apertura algo que vive adentro de otra construcción, y una apertura
+ * falsa con `[\s\S]*?` no se detiene donde debería sino en el próximo cierre
+ * que haya en el archivo. Salieron tres instancias de la misma familia:
+ *
+ * 1. Un `/*` adentro de un `//` abría un bloque. Pasó en `firestore.rules`
+ *    (`// … escribir en /opciones/*, …`) y se llevó **quince cláusulas** de una
+ *    regla de seguridad. Se «arregló» invirtiendo el orden de dos pasadas.
+ * 2. Un `//` adentro de un `/* … *\/` dejaba el bloque sin cerrar. Quedaba
+ *    residuo, que es el lado acotado, así que se documentó como aceptable.
+ * 3. **B-853:** el patrón de JSX era `\{\s*\/\*[\s\S]*?\*\/\s*\}`, y ese `\s*`
+ *    hace que `interface Props {` seguido del docblock de su primera propiedad
+ *    sea una apertura válida. Como el cierre exige `*\/` **pegado a** `}`, la
+ *    búsqueda no para en el `*\/` del docblock: sigue hasta el primer `*\/}` del
+ *    archivo, que en `Buscador.tsx` estaba 464 líneas más abajo.
+ * 4. Un `//` o un `*\/` adentro de un **string** se leía como comentario. Estaba
+ *    escrito como aceptable —«se equivoca del lado seguro»— y para un barrido de
+ *    privacidad ese lado es el inseguro.
+ *
+ * Invertir el orden arregló (1) y no tocó (3) ni (4), porque el problema nunca
+ * fue el orden: era que **cada pasada arranca de cero sobre un texto que la
+ * anterior ya reinterpretó**. Un solo recorrido con `TOKENS` cierra la familia
+ * entera: en cada posición gana una construcción, se consume completa, y el
+ * barrido sigue **después** de ella. Un `replace` más habría tapado (3) y dejado
+ * abierta (4).
+ *
+ * ── Lo que sigue sin cubrir, y por qué no es un parser ─────────────────────
+ * **No lexea literales de expresión regular.** Distinguir `/…/` de una división
+ * necesita saber qué token vino antes, y eso ya es la mitad de un parser de
+ * JavaScript — que además no serviría para los otros dos lenguajes que pasan por
+ * acá (`.astro` y `firestore.rules`, que no son JS). Así que un `//` o un `/*`
+ * escrito adentro de una expresión regular se lee como comentario y borra de
+ * más.
+ *
+ * Eso no se deja librado a la suerte: `tests/sin-comentarios.test.ts` corre un
+ * barrido sobre **todos** los `.ts`/`.tsx`/`.mjs`/`.js` del repo comparando
+ * contra el **parser** de TypeScript, y falla si el saneador borra un
+ * identificador que el parser dice que es código. El día que alguien escriba esa expresión regular, el test
+ * se pone rojo y viene a decidir acá — que es exactamente lo que B-853 no tuvo.
  */
-export const sinComentarios = (texto) =>
-  texto
-    // `{/* … */}` **primero y como unidad**: sacando solo el `/* … */` de adentro
-    // quedan las llaves sueltas, y dos llaves son un cambio de código. Lo agarró
-    // el caso del markup — `Buscador.tsx` está en la lista de disparadores y
-    // comenta así.
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')
-    /*
-     * **El `//` va ANTES del `/* … *\/`, y el orden es el arreglo de un bug que
-     * se comía código** — B-830.
-     *
-     * Estaba al revés, y con eso un `/*` escrito **adentro de un comentario de
-     * línea** abría un bloque que corría hasta el próximo `*\/` del archivo. En
-     * `firestore.rules` pasó exactamente eso: el comentario
-     * `// … escribir en /opciones/*, que es de lectura pública` se comió
-     * **quince cláusulas** de `propuestaValida()`, o sea de una regla de
-     * seguridad. Y el barrido que consumía esto —la comparación de cotas de
-     * `propuestas.test.ts`— habría pasado **sin mirar nada** si la lista de
-     * esperadas hubiera sido más corta.
-     *
-     * **Esto invierte el argumento del docblock de arriba.** «No pretende ser un
-     * parser… es el lado seguro del error, se audita de más y nunca de menos» era
-     * cierto cuando esto calculaba una huella (B-794): sacar de más solo hacía
-     * pedir la auditoría otra vez. Como saneador de un barrido sobre el fuente,
-     * sacar de más significa **auditar de menos**, que es el lado inseguro.
-     *
-     * Con el `//` primero, el caso simétrico —un `//` adentro de un `/* … *\/`—
-     * cae del lado seguro: deja un `/*` sin cerrar como residuo, y un residuo
-     * hace fallar un barrido, no pasarlo.
-     */
-    .replace(/(^|[^:])\/\/.*$/gm, '$1')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+export const sinComentarios = (texto) => {
+  let salida = '';
+  let ultimo = 0;
+  let m;
+  TOKENS.lastIndex = 0;
+
+  while ((m = TOKENS.exec(texto)) !== null) {
+    const token = m[0];
+    // Los strings se conservan tal cual: es lo que hace que un `//` o un `*/`
+    // escrito adentro de uno no se lea como comentario.
+    if (token[0] === '"' || token[0] === "'" || token[0] === '`') continue;
+
+    let inicio = m.index;
+    let fin = TOKENS.lastIndex;
+
+    // `{/* … */}` de JSX **como unidad**. Se exige el `{` y el `}` **pegados**,
+    // sin espacio en el medio: así se escriben los comentarios de JSX en este
+    // repo, y así un `{ /* nada */ }` —un objeto vacío con una nota adentro— no
+    // pierde las llaves. El `*/` que se mira es el del propio comentario, no
+    // «el próximo del archivo»: el token ya vino delimitado.
+    if (token.startsWith('/*') && texto[inicio - 1] === '{' && texto[fin] === '}') {
+      inicio -= 1;
+      fin += 1;
+      TOKENS.lastIndex = fin;
+    }
+
+    salida += texto.slice(ultimo, inicio);
+    ultimo = fin;
+  }
+
+  return (salida + texto.slice(ultimo)).replace(/\s+/g, ' ').trim();
+};
