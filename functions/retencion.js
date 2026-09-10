@@ -24,6 +24,14 @@
  * dónde volver a encontrarla para borrarla; y un documento que sobrevive a su
  * objeto muestra un flyer roto en la bandeja.
  *
+ * **Y no borra a ciegas** (B-864). El barrido decide al principio de la corrida y
+ * borra segundos después; en el medio un admin puede tocar una vencida y ver el
+ * plazo renovado. Desde B-864 la versión que la query vio viaja hasta el borrado
+ * (`visto`) y el borrado la exige: una relectura de metadata antes de tocar
+ * Storage, más `delete({ lastUpdateTime })` sobre el documento. El detalle —por
+ * qué son dos guardas y por qué el orden de B-838 se queda como está— en
+ * `borrarPropuesta`.
+ *
  * **Todo lo de acá es puro** salvo `propuestasVencibles` y `borrarPropuesta`, que
  * reciben el `db` y el `bucket` y no importan `firebase-admin` — mismo criterio
  * que `subcoleccionesHuerfanas` en `limpieza-versiones.js` y `referenciasEnUso`
@@ -275,13 +283,23 @@ const VENCIDA_POR = {
  * el margen entraba antes: un test no puede esperar treinta días
  * (`05-patrones.md` § «El reloj también es infraestructura»).
  *
+ * ── `visto` viaja pero no se juzga (B-864) ────────────────────────────────
+ * Cada entrada de `aBorrar` lleva el `updateTime` que la query vio, porque es lo
+ * que `borrarPropuesta` va a exigir como precondición. Acá **no** se valida: esta
+ * función contesta una pregunta temporal —qué caducó— y la versión del documento
+ * no es parte de ella. Quien la mira es quien borra, que es donde el dato hace
+ * falta y donde su ausencia tiene que ser ruidosa (`borrarPropuesta` tira).
+ * Meterlo en la decisión pura además obligaría a que el cruce de fixtures de
+ * `bandeja-de-propuestas.test.ts` —que compara plazos y no versiones— arrastrara
+ * un campo que no le importa.
+ *
  * @param {{
- *   propuestas?: { id: string, estado?: string, creadoEn?: unknown, revision?: unknown, imagen?: unknown }[],
+ *   propuestas?: { id: string, estado?: string, creadoEn?: unknown, revision?: unknown, imagen?: unknown, updateTime?: unknown }[],
  *   ahora?: number,
  *   plazos?: Record<string, number | null>,
  * }} _
  * @returns {{
- *   aBorrar: { id: string, objeto: string | null }[],
+ *   aBorrar: { id: string, objeto: string | null, visto: unknown }[],
  *   motivos: Record<string, string>,
  * }}
  */
@@ -374,7 +392,9 @@ export const decidirRetencion = ({
     }
 
     motivos[p.id] = VENCIDA_POR[reloj.campo];
-    aBorrar.push({ id: p.id, objeto });
+    // `visto` es la versión que la query trajo — ver el docblock. Pasa de largo,
+    // no se juzga acá.
+    aBorrar.push({ id: p.id, objeto, visto: p.updateTime });
   }
 
   if (aBorrar.length <= MAX_PROPUESTAS_POR_CORRIDA) return { aBorrar, motivos };
@@ -419,7 +439,22 @@ export const decidirRetencion = ({
  * El `where('estado','in', …)` es de un solo campo, así que no pide índice
  * compuesto — por eso tampoco lleva `orderBy`, que sí lo pediría.
  *
- * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown }[]>}
+ * ── `updateTime` es la sexta clave, y **no** afloja el `select`** (B-864) ──
+ * Es **metadata del snapshot**, no un campo del documento: viaja en la respuesta
+ * de Firestore aunque la máscara no pida nada, y por eso pedirlo no agrega ni un
+ * campo del documento a la memoria de la Function. El `select` sigue trayendo
+ * exactamente lo mismo que traía; lo que cambia es que ahora también se **guarda**
+ * la versión que esta corrida vio, que es lo que `borrarPropuesta` va a exigir
+ * como precondición.
+ *
+ * Sin esto el barrido borra «el id que decidí hace un rato», sin condición: entre
+ * esta query y el `delete()` un admin puede apretar «la estoy mirando» sobre una
+ * vencida, ver el plazo renovado en Firestore y **perder el documento igual**.
+ * B-844 ensanchó esa carrera de «solo las rechazadas» a toda la bandeja pendiente
+ * y le puso enfrente la promesa que la vuelve intolerable: «moverla de estado le
+ * renueva el plazo».
+ *
+ * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown, updateTime: unknown }[]>}
  */
 export const propuestasVencibles = async (db) => {
   // Un `in` vacío es un error de Firestore, no una query que no devuelve nada.
@@ -437,23 +472,156 @@ export const propuestasVencibles = async (db) => {
     creadoEn: d.get('creadoEn'),
     revision: d.get('revision'),
     imagen: d.get('imagen'),
+    // Metadata, no un campo: `d.get(...)` no lo alcanzaría ni haría falta que lo
+    // hiciera. Es la versión del documento que **esta** corrida vio.
+    updateTime: d.updateTime,
   }));
 };
 
 /**
- * Borra una propuesta caducada: **el objeto primero, el documento después**.
+ * El código gRPC de `FAILED_PRECONDITION`.
  *
- * El orden es la parte que importa y es al revés de lo intuitivo. Si fallara el
- * borrado del objeto con el documento ya borrado, la foto quedaría en el bucket
- * **sin nada que la nombre**: el barrido de huérfanas de B-221 solo recorre
- * `imagenes/` y `miniaturas/`, así que nadie la volvería a encontrar. Con este
- * orden, un fallo deja las dos cosas en pie y la corrida de mañana reintenta.
+ * **Y dice menos de lo que parece, que es el hallazgo del `auditor-trampas`.**
+ * La primera versión de este comentario afirmaba que en un
+ * `delete({ lastUpdateTime })` sólo puede significar «la versión no era la
+ * esperada», y es falso: Firestore devuelve **el mismo código** cuando el
+ * documento **ya no existe** (se verificó contra el emulador — el mensaje habla
+ * de `the stored version … does not match` en los dos casos). O sea que el
+ * código solo no distingue «un admin la tocó» de «otra corrida ya se la llevó
+ * entera», y son dos finales distintos con dos logs distintos. Por eso el
+ * `catch` vuelve a preguntar por la existencia en vez de suponer.
  *
- * `ignoreNotFound` es lo que hace que ese reintento funcione: si el objeto ya no
- * está —porque la corrida anterior murió justo en el medio— borrarlo de nuevo no
- * es un error, es el estado que se quería.
+ * El caso de las dos corridas no es teórico: el trigger corre por reloj **y**
+ * `scripts/borrar-propuestas-vencidas.mjs` se corre a mano, que es el uso que
+ * `08-operacion.md` describe como normal.
  */
-export const borrarPropuesta = async (db, bucket, { id, objeto }) => {
+const FALLO_DE_PRECONDICION = 9;
+
+/**
+ * Borra una propuesta caducada: **la relectura primero, después el objeto,
+ * después el documento** — y el documento con precondición.
+ *
+ * ── Lo que estaba y por qué no alcanzaba (B-864) ──────────────────────────
+ * Esto hacía `delete()` con el id que se decidió al principio de la corrida,
+ * **sin condición**. Entre `propuestasVencibles()` y esta línea pasan segundos, y
+ * en esos segundos un admin puede apretar «la estoy mirando» sobre una vencida:
+ * ve el plazo renovado en Firestore y **pierde el documento igual**. B-844 ensanchó
+ * esa carrera de «solo las rechazadas» a toda la bandeja pendiente y le puso
+ * enfrente la promesa que la vuelve intolerable —«moverla de estado le renueva el
+ * plazo»—, así que el barrido tiene que poder decir «no la borro, la tocaron».
+ *
+ * ── Por qué son DOS guardas y no una, y ahí está la decisión ──────────────
+ * Porque son **dos almacenes con capacidades distintas**, no cinturón y tiradores:
+ *
+ *  - **Firestore tiene precondición.** `delete({ lastUpdateTime })` compara y
+ *    borra en la misma operación, así que sobre el documento la garantía es
+ *    atómica y no hay ventana. Es la única forma de cumplir la promesa de B-844
+ *    de verdad.
+ *  - **Storage no tiene ninguna.** No hay `lastUpdateTime` que ponerle a
+ *    `file().delete()`, y el objeto se borra **antes** que el documento (la
+ *    decisión de B-838, abajo). O sea que con la precondición sola, una propuesta
+ *    rescatada en el último segundo conservaría el documento y **perdería el
+ *    flyer**: el huérfano que B-838 eligió como «el menos malo», cayendo justo
+ *    sobre la que un admin acaba de salvar. Al objeto solo se lo puede proteger
+ *    **no llegando hasta él**, y para eso está la relectura.
+ *
+ * La relectura no elimina la carrera —entre ella y el `delete` del objeto queda
+ * un viaje de ida y vuelta—, la **reduce de la corrida entera a un round-trip**.
+ * Eso importa porque la ventana real que este ítem ataca no es de microsegundos:
+ * la query trae hasta 50 documentos y cada uno se procesa con su borrado de
+ * Storage en el medio, así que el último de la lista se borra segundos después de
+ * haber sido leído. Lo que queda es la cuarta forma de perder la mitad del
+ * borrado, y está nombrada abajo.
+ *
+ * ── Lo que NO se cambió: el orden de B-838 ────────────────────────────────
+ * El objeto sigue yendo **primero** y el documento después. Se evaluó invertirlo
+ * cuando hay precondición —así una precondición que falla no toca nada— y no se
+ * hizo: eso hace catastrófico el fallo **más probable**. Un `delete` de Storage
+ * que falla por transitorio es un viaje de red que falla; una precondición que
+ * falla son segundos por día. Con el documento borrado primero, el transitorio de
+ * Storage deja la foto de una persona **sin nada que la nombre** —`propuestas/`
+ * no lo barre nadie (B-221 solo recorre `imagenes/` y `miniaturas/`)— y sin
+ * documento no hay corrida de mañana que reintente. El orden se queda donde
+ * estaba, la guarda nueva se pone **arriba de los dos**, y `retencion.test.ts`
+ * fija ahora las tres posiciones.
+ *
+ * ── Los cuatro finales ────────────────────────────────────────────────────
+ *  - `'borrada'`      — las dos mitades se fueron.
+ *  - `'la-tocaron'`   — la relectura vio otra versión. **No se tocó nada**: ni el
+ *                       documento ni la foto. Es el final que este ítem existe
+ *                       para producir.
+ *  - `'ya-no-esta'`   — el documento ya no está (una corrida anterior murió en el
+ *                       medio, o corrieron dos). Se llega por los **dos**
+ *                       caminos: la relectura de arriba, y la precondición que
+ *                       corta porque otra corrida lo borró en el medio. El objeto **sí** se borra: sin
+ *                       documento que lo nombre es exactamente el huérfano
+ *                       imposible de encontrar después, y acá todavía tenemos el
+ *                       path en la mano y pasado por las dos guardas del prefijo.
+ *  - `'la-tocaron-tarde'` — la precondición cortó el `delete` del documento, pero
+ *                       el objeto ya no estaba. Es la cuarta forma de perder la
+ *                       mitad, cae del lado tolerado por B-838 (documento vivo,
+ *                       flyer roto, se ve en la bandeja) y el trigger la loguea
+ *                       como `warn` porque cae sobre una propuesta rescatada.
+ *
+ * `ignoreNotFound` sigue siendo lo que hace que el reintento funcione: si el
+ * objeto ya no está —porque la corrida anterior murió justo en el medio— borrarlo
+ * de nuevo no es un error, es el estado que se quería.
+ *
+ * @param {{ id: string, objeto: string | null, visto: unknown }} caducada
+ * @returns {Promise<'borrada' | 'la-tocaron' | 'ya-no-esta' | 'la-tocaron-tarde'>}
+ */
+export const borrarPropuesta = async (db, bucket, { id, objeto, visto }) => {
+  if (!visto) {
+    /*
+     * **Falla ruidoso y no cerrado, que es la excepción de este archivo.**
+     * `sin-fecha-legible` e `imagen-fuera-del-prefijo` son datos del documento
+     * que pueden venir mal y se clasifican; esto es un **error de programación**
+     * del que llama —armó la lista sin pasar por `propuestasVencibles`— y
+     * clasificarlo lo dejaría pasar como «una que no se borró». Sin la versión
+     * vista este borrado es el de antes de B-864, o sea el que se lleva puesta
+     * una propuesta que un admin acaba de rescatar.
+     */
+    throw new Error(
+      `borrarPropuesta(${id}) sin la versión vista: sin precondición este borrado ` +
+        'puede llevarse una propuesta que un admin acaba de tocar (B-864).',
+    );
+  }
+
+  const ref = db.collection('propuestas').doc(id);
+
+  /*
+   * **La relectura, y trae metadata y nada más.** `fieldMask: []` devuelve el
+   * snapshot con `exists` y `updateTime` y **cero campos**: sin esto, un
+   * `ref.get()` traería el documento entero y con él el contacto del tercero,
+   * que es exactamente lo que el `select` de `propuestasVencibles` existe para
+   * evitar. Un `runTransaction` tendría el mismo problema —y encima no puede
+   * abarcar el borrado de Storage, así que no resolvería la tensión del orden—.
+   */
+  const [ahora] = await db.getAll(ref, { fieldMask: [] });
+
+  if (!ahora.exists) {
+    if (objeto) await bucket.file(objeto).delete({ ignoreNotFound: true });
+    return 'ya-no-esta';
+  }
+
+  if (!ahora.updateTime.isEqual(visto)) return 'la-tocaron';
+
   if (objeto) await bucket.file(objeto).delete({ ignoreNotFound: true });
-  await db.collection('propuestas').doc(id).delete();
+  try {
+    await ref.delete({ lastUpdateTime: visto });
+  } catch (e) {
+    if (e?.code !== FALLO_DE_PRECONDICION) throw e;
+    /*
+     * **Una relectura más, y solo en este camino** (`auditor-trampas`). El
+     * código 9 no distingue «otra versión» de «ya no existe», y la diferencia es
+     * la que decide el log: `la-tocaron-tarde` afirma que **una propuesta viva
+     * quedó con el flyer roto**, y si el documento se lo llevó otra corrida no
+     * hay nada que rescatar ni nadie a quien avisarle — el operador iría a
+     * buscar una propuesta que no está. Cuesta un viaje extra en un camino que
+     * casi nunca se toma.
+     */
+    const [despues] = await db.getAll(ref, { fieldMask: [] });
+    return despues.exists ? 'la-tocaron-tarde' : 'ya-no-esta';
+  }
+  return 'borrada';
 };

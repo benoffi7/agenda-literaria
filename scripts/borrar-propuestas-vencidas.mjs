@@ -31,6 +31,12 @@
  * de verdad mientras el informe dice «EMULADOR», que es la peor combinación
  * posible — un script que parece cuidado.
  *
+ * ── Y tampoco borra a ciegas (B-864) ──────────────────────────────────────
+ * Usa el mismo `borrarPropuesta` que la Function, así que hereda la precondición:
+ * si alguien toca una propuesta entre la lectura y el borrado, no se borra y el
+ * informe lo dice (`intacta:`). Acá pesa incluso más que en la Function, porque
+ * este script se corre **a mano y mientras alguien mira la bandeja**.
+ *
  * ── Lo que NO hace, a propósito ───────────────────────────────────────────
  * No reimplementa ni relaja el tope: `decidirRetencion` recorta a
  * `MAX_PROPUESTAS_POR_CORRIDA` y marca el resto, así que este script informa
@@ -156,12 +162,45 @@ console.log(
 
 if (aplicar) {
   let borradas = 0;
+  let rescatadas = 0;
+  /*
+   * **Contador aparte y no `rescatadas + 1`** — lo pidió el `auditor-trampas`.
+   * `la-tocaron-tarde` **no** es una propuesta intacta: el documento se salvó y
+   * el flyer no. Meterla en el mismo número dejaba la última línea del informe
+   * —que es justo la que se lee de apuro— diciendo «N intacta(s)» de algo que
+   * perdió una mitad.
+   */
+  let sinImagen = 0;
   for (const caducada of aBorrar) {
-    await borrarPropuesta(db, bucket, caducada);
+    /*
+     * **El informe dice qué pasó de verdad, no qué se pensaba hacer** (B-864).
+     * `borrarPropuesta` puede no borrar: si alguien tocó la propuesta entre la
+     * query de arriba y esta línea, la precondición la salva. Escribir
+     * «borrada:» igual sería la misma mentira que la guarda cruzada de este
+     * script vino a cerrar — un script que parece cuidado.
+     */
+    const final = await borrarPropuesta(db, bucket, caducada);
+    if (final === 'la-tocaron') {
+      rescatadas += 1;
+      console.log(`intacta: ${caducada.id}  ·  la tocaron mientras corría este script`);
+      continue;
+    }
+    if (final === 'la-tocaron-tarde') {
+      sinImagen += 1;
+      console.log(
+        `intacta: ${caducada.id}  ·  la tocaron en el último segundo` +
+          `${caducada.objeto ? ` — y su imagen ya se había borrado (${caducada.objeto})` : ''}`,
+      );
+      continue;
+    }
     borradas += 1;
     console.log(`borrada: ${caducada.id}${caducada.objeto ? ` (+ ${caducada.objeto})` : ''}`);
   }
-  console.log(`\n${borradas} propuesta(s) borrada(s).`);
+  console.log(
+    `\n${borradas} propuesta(s) borrada(s)` +
+      `${rescatadas > 0 ? `, ${rescatadas} intacta(s) porque las tocaron` : ''}` +
+      `${sinImagen > 0 ? `, ${sinImagen} salvada(s) SIN su imagen` : ''}.`,
+  );
 } else if (aBorrar.length > 0) {
   console.log('\nCorré de nuevo con --aplicar para borrarlas de verdad.');
 }

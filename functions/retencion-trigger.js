@@ -70,9 +70,61 @@ export const borrarPropuestasVencidas = onSchedule(
 
     let borradas = 0;
     let objetos = 0;
+    let rescatadas = 0;
+    /*
+     * **Aparte de `rescatadas`, y no es prolijidad** (`auditor-privacidad`).
+     * `la-tocaron-tarde` no es una propuesta intacta: el documento se salvó y su
+     * foto **ya se borró**. Sumarla a `rescatadas` diría que se salvó entera, y
+     * no sumarla a nada —que es lo que hacía— dejaba a la corrida sin contar la
+     * única foto de un tercero que destruyó de forma sorprendente. Es el mismo
+     * corte que hace el informe del script, a propósito: son dos
+     * implementaciones del mismo resumen y no pueden divergir.
+     */
+    let sinImagen = 0;
     for (const caducada of aBorrar) {
       try {
-        await borrarPropuesta(db, bucket, caducada);
+        const final = await borrarPropuesta(db, bucket, caducada);
+
+        if (final === 'la-tocaron') {
+          /*
+           * **La propuesta se salvó, y el log lo dice sin drama** (B-864): un
+           * admin la tocó entre la query y el borrado, así que el plazo se le
+           * renovó y no se tocó nada —ni el documento ni la foto—. Es el
+           * resultado correcto, no un fallo, y por eso va `info`: si algún día
+           * aparece seguido en los logs, lo que dice es que la bandeja se está
+           * mirando justo cuando corre el barrido.
+           */
+          rescatadas += 1;
+          logger.info('propuesta no borrada: la tocaron durante la corrida', {
+            propuesta: caducada.id,
+            causa: motivos[caducada.id],
+          });
+          continue;
+        }
+
+        if (final === 'la-tocaron-tarde') {
+          /*
+           * **`warn` y no `info`, y la diferencia importa.** Acá la tocaron en
+           * la ventana que queda entre la relectura y el borrado del documento:
+           * la precondición salvó el documento, pero el objeto ya se había ido.
+           * O sea que una propuesta que un admin acaba de rescatar se queda con
+           * el flyer roto — es la cuarta forma de perder la mitad del borrado y
+           * la única que este cambio agrega. Cae del lado tolerado por B-838
+           * (se ve en la bandeja, no es una foto que nadie puede encontrar) y no
+           * se puede arreglar sola, así que se avisa.
+           */
+          sinImagen += 1;
+          // La foto **sí** se fue: entra al conteo de objetos como cualquier
+          // otra, que es el único registro de cuánto borró esta corrida.
+          if (caducada.objeto) objetos += 1;
+          logger.warn('propuesta rescatada en el último segundo: quedó sin su imagen', {
+            propuesta: caducada.id,
+            conImagen: Boolean(caducada.objeto),
+            causa: motivos[caducada.id],
+          });
+          continue;
+        }
+
         borradas += 1;
         if (caducada.objeto) objetos += 1;
         logger.info('propuesta borrada por retención', {
@@ -82,11 +134,14 @@ export const borrarPropuestasVencidas = onSchedule(
           // que es una nota interna sobre el trabajo de otra persona y no tiene
           // por qué acercarse a un log (`auditor-privacidad`).
           causa: motivos[caducada.id],
+          // `ya-no-esta` es un documento que otra corrida ya se llevó; se cuenta
+          // como borrada porque el estado final es el que se quería.
+          final,
         });
       } catch (e) {
         // Una que falla no puede cortar el barrido de las demás, y el orden de
-        // `borrarPropuesta` (objeto primero) hace que un fallo deje las dos
-        // mitades en pie para la corrida siguiente.
+        // `borrarPropuesta` (relectura, objeto, documento) hace que un fallo deje
+        // las dos mitades en pie para la corrida siguiente.
         logger.error('no se pudo borrar una propuesta vencida', {
           propuesta: caducada.id,
           error: e?.message,
@@ -101,6 +156,8 @@ export const borrarPropuestasVencidas = onSchedule(
       logger.warn('la retención de propuestas se cortó por el tope de la corrida', {
         borradas,
         objetos,
+        rescatadas,
+        sinImagen,
         pendientesPorTope,
         tope: MAX_PROPUESTAS_POR_CORRIDA,
       });
@@ -108,6 +165,18 @@ export const borrarPropuestasVencidas = onSchedule(
       logger.info('retención de propuestas terminada', {
         borradas,
         objetos,
+        /*
+         * B-864 — las que se salvaron porque las tocaron mientras el barrido
+         * corría (`rescatadas`) y las que se salvaron **sin su imagen**
+         * (`sinImagen`, el cuarto final). `borradas + rescatadas + sinImagen`
+         * no tiene por qué dar `aBorrar.length`: lo que falta son las que
+         * fallaron, y ésas tienen su `error`. La primera versión de este
+         * comentario decía eso mismo sin nombrar a `sinImagen`, que también
+         * falta de la suma y **no** tiene `error` sino `warn`
+         * (`auditor-privacidad`).
+         */
+        rescatadas,
+        sinImagen,
         candidatas: propuestas.length,
       });
     }

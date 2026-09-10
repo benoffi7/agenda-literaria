@@ -801,6 +801,54 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
+### B-866 · Convertir no renueva el plazo, así que el barrido se lleva la propuesta con el formulario abierto · P3
+
+**Es la mitad de B-864 que la precondición no puede cubrir**, y sale de la misma
+lectura. `PropuestasPanel.convertir` **no escribe nada** en Firestore hasta que la
+actividad se guarda (**D-600**: «convertir es prellenar, no importar»), así que
+abrir el formulario sobre una propuesta vieja no mueve su `updateTime` y B-864 no
+tiene contra qué proteger: el barrido de esa noche se la lleva con el formulario
+abierto, y el `revisarPropuesta` de `alGuardar` falla con NOT_FOUND. Lo que queda
+es la actividad creada y la propuesta desaparecida — el catálogo bien y **la prueba
+de qué se pidió perdida** (§4.3 del PRD).
+
+**La ventana es más ancha que la de B-864**, y es lo que lo hace un ítem y no una
+nota: allá eran los segundos de una corrida, acá es todo el tiempo que el
+formulario quede abierto.
+
+Lo único que lo arregla es que abrir la conversión **sea** un movimiento de estado
+—pasar la propuesta a `en-revision`, que es literalmente lo que está pasando— y eso
+contradice D-600 tal como está escrita. Por eso es una decisión del dueño y no un
+renglón: la pregunta es si «convertir no escribe nada» es la decisión, o si lo era
+«convertir no escribe **la actividad**», que es el riesgo que D-600 argumenta (una
+conversión abandonada dejando una `aceptada` que apunta a una actividad que no
+existe). Marcarla `en-revision` al abrir no tiene ese problema: `en-revision` es
+reversible, se ve en la bandeja y ya renueva el plazo por el reloj de B-844.
+
+### B-867 · El detector de la clase de B-85 no ve un barrido que borra, y hay un caso que congela esa ceguera como garantía · P3
+
+**Lo encontró el `auditor-privacidad` sobre B-864.** `sintomasDeB85`
+(`tests/clases-de-bug.test.ts`) define el efecto como `/\.(set|update)\(/`, así que
+un barrido que **borra** lo que leyó sin comparar la versión es invisible para el
+chequeo. Y hay un caso que lo declara limpio con esas palabras: «los tres barridos
+entran al chequeo, y pasan **porque borran**».
+
+B-864 es el contraejemplo exacto: `borrarPropuestasVencidas` tenía la forma de B-85
+—leer al principio de la corrida, actuar segundos después sin comparar— y ese caso
+la daba por buena. **Es la misma clase que B-845 cerró hace un día, del otro lado:**
+allá el chequeo no veía el efecto porque estaba en el módulo de al lado, acá no lo
+ve porque el verbo es otro.
+
+Ahora **uno de los tres barridos tiene la guarda y los otros dos no**, y nada nombra
+la diferencia; `limpiarImagenesHuerfanas` mitiga con `MARGEN_DE_GRACIA_MS` (72 h),
+que es otra cosa y no cubre la ventana intra-corrida.
+
+El arreglo es sumar `\.delete\(` al síntoma y declarar por barrido cuál es su guarda
+—precondición, generación, o margen de gracia con el motivo escrito—. Y por eso
+mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que medir qué
+entra que hoy no entra **antes** de aplicarlo, no después. Es el mismo motivo por el
+que B-862 está anotado y no hecho.
+
 ### B-863 · La propuesta aceptada conserva el contacto para siempre — y también la foto · P2
 
 **Lo encontró el `auditor-privacidad` sobre B-844.** `aceptada: null` se decidió
@@ -837,7 +885,7 @@ mandaron— así que va acá y no en B-844. Su test:
 > **verificar la copia primero y borrar el original después**. Si el borrado del
 > original falla queda un duplicado, que es inofensivo; al revés se pierde la foto.
 
-### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja · P2
+### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja — ✅ hecho (2026-09-10) · P2
 
 **Lo encontró el `auditor-privacidad` sobre B-844.** `borrarPropuesta` hace
 `delete()` con el id que se decidió al principio de la corrida, sin condición.
@@ -863,6 +911,35 @@ documento a memoria) y borrar con `delete({ lastUpdateTime })`.
 > acaba de rescatar, que se queda con el flyer roto. La precondición tiene que
 > verificarse **antes** de tocar Storage (una relectura, o mover la guarda arriba),
 > y eso es rediseñar `borrarPropuesta`. Por eso se anota y no se hizo.
+
+> ✅ **Hecho (2026-09-10).** El barrido borra con **dos guardas y no una**, porque
+> son dos almacenes con capacidades distintas: `delete({ lastUpdateTime })` sobre
+> el documento —atómico, sin ventana— y una **relectura de metadata antes de tocar
+> Storage**, que es la única forma de proteger el objeto (Storage no tiene
+> precondición que ponerle a un `delete()`). **El orden de B-838 no se cambió**: el
+> objeto sigue primero, la guarda nueva va arriba de los dos, y su test sobre el
+> fuente pasó de fijar dos posiciones a fijar tres. Se evaluó invertir el orden
+> cuando hay precondición y se descartó con el argumento escrito: vuelve
+> catastrófico el fallo **más probable** —un transitorio de Storage—, que dejaría
+> la foto sin documento y sin corrida de mañana que reintente.
+>
+> La relectura es `getAll(ref, { fieldMask: [] })` y **no** un `ref.get()`: un
+> `get()` traería el contacto del tercero a la memoria de la Function y desharía la
+> garantía de B-838. El `updateTime` que la query ahora devuelve es metadata del
+> snapshot, no un campo.
+>
+> **Agrega una cuarta forma de perder la mitad del borrado, y va dicha:**
+> `la-tocaron-tarde` —documento vivo, foto muerta— si la tocan en la ventana que
+> queda entre la relectura y el `delete`. Cae del lado que B-838 eligió como el
+> menos malo pero sobre la peor propuesta posible; no se puede cerrar mientras
+> Storage no tenga precondición, así que se mide: `warn` con contador propio, y su
+> caso forzando la ventana con un `db` que mete la escritura del admin adentro del
+> `getAll`. Doce mutaciones probadas, tres siendo el argumento del diseño.
+>
+> **Lo que NO cierra es la variante de `convertir()`** —el barrido se la lleva con
+> el formulario abierto—: **B-866**. La precondición no puede cubrirla porque D-600
+> no escribe nada, así que no hay versión nueva contra la cual proteger. Y salió
+> **B-867**, del `auditor-privacidad`.
 
 ### B-865 · El barrido de retención no lleva `limit()` · P3
 

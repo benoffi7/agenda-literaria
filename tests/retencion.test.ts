@@ -25,6 +25,7 @@ import {
   MAX_PROPUESTAS_POR_CORRIDA,
   PREFIJO_PROPUESTAS,
   RETENCION_POR_ESTADO,
+  borrarPropuesta,
   decidirRetencion,
   objetoDePropuesta,
   relojDeRetencion,
@@ -49,6 +50,12 @@ const ts = (ms: number) => tsDe(new Date(ms));
 /**
  * Una propuesta con la forma que el trigger lee (`select`: estado, creadoEn,
  * revision.en, imagen.storagePath).
+ *
+ * **Sin `updateTime`, y a propósito** (B-864): estos casos son sobre el *plazo*,
+ * y `decidirRetencion` pasa la versión de largo sin juzgarla. Ponerla en el
+ * fixture obligaría a escribirla en la docena de `toEqual` de abajo, que hablan
+ * de otra cosa. El passthrough tiene su `describe` propio, con la versión
+ * puesta a mano.
  */
 const propuesta = (over: Record<string, unknown> = {}) => ({
   id: 'p1',
@@ -492,13 +499,13 @@ describe('relojDeRetencion — desde cuándo se cuenta', () => {
 });
 
 /**
- * **El orden de las dos mitades, afirmado sobre el fuente.**
+ * **El orden de las tres, afirmado sobre el fuente.**
  *
- * Lo señaló el `auditor-trampas`: `borrarPropuesta` escribe en dos lugares donde
- * ninguno se puede deshacer, y el orden elegido es lo único que decide el modo de
- * falla — pero **nada lo fijaba**. Invertirlo en un refactor deja toda la suite en
- * verde: los dos borrados ocurren igual, y la diferencia solo se ve el día que
- * uno de los dos falla.
+ * Lo señaló el `auditor-trampas` sobre las dos primeras: `borrarPropuesta` escribe
+ * en dos lugares donde ninguno se puede deshacer, y el orden elegido es lo único
+ * que decide el modo de falla — pero **nada lo fijaba**. Invertirlo en un refactor
+ * deja toda la suite en verde: los dos borrados ocurren igual, y la diferencia
+ * solo se ve el día que uno de los dos falla.
  *
  * Es la familia de la clase de B-71 («el efecto irreversible va último») **con la
  * conclusión al revés**, y por eso no entra en aquel registro: allá uno de los dos
@@ -509,21 +516,118 @@ describe('relojDeRetencion — desde cuándo se cuenta', () => {
  * nombre —el barrido de B-221 solo recorre `imagenes/` y `miniaturas/`— y no hay
  * desde dónde volver a encontrarla.
  *
- * MUTACIÓN PROBADA: invirtiendo las dos líneas de `borrarPropuesta`, este caso se
- * pone rojo y los tres de integración siguen verdes.
+ * ── Y desde B-864 son tres, con la relectura arriba ───────────────────────
+ * **El orden de B-838 no se cambió** —el objeto sigue primero y el documento
+ * después—; lo que se agregó es una guarda **arriba de los dos**. Esa posición es
+ * la decisión de B-864 y hay que fijarla igual que la otra: si la relectura cayera
+ * *entre* los dos borrados, la precondición seguiría salvando el documento y el
+ * objeto ya se habría ido, que es exactamente el huérfano que este ítem vino a no
+ * causar sobre una propuesta rescatada. Storage no tiene precondición: al objeto
+ * solo se lo puede proteger **no llegando hasta él**.
+ *
+ * MUTACIÓN PROBADA (dos): invirtiendo las dos líneas de borrado, este caso se pone
+ * rojo y los de integración siguen verdes; bajando el `getAll` a después del
+ * borrado del objeto, este caso se pone rojo y —lo importante— el caso de la
+ * carrera de `retencion.integracion.test.ts` se pone rojo **solo en la mitad de
+ * la imagen**, que es la prueba de que las dos guardas cubren cosas distintas.
  */
-describe('borrarPropuesta — el objeto primero, el documento después', () => {
+describe('borrarPropuesta — la relectura, después el objeto, después el documento', () => {
   it('el orden está en el fuente y no depende de que nadie lo toque', () => {
     const src = fuente('functions/retencion.js');
-    const objeto = src.indexOf('bucket.file(objeto).delete');
-    const documento = src.indexOf(".collection('propuestas').doc(id).delete");
+    const relectura = src.indexOf('db.getAll(ref, { fieldMask: [] })');
+    const guarda = src.indexOf("if (!ahora.updateTime.isEqual(visto)) return 'la-tocaron';");
+    /*
+     * **Desde la guarda y no desde el principio del archivo, y esto lo encontró
+     * una mutación.** `bucket.file(objeto).delete` aparece **dos** veces: en la
+     * rama `ya-no-esta` y en el camino principal. Con un `indexOf` pelado el
+     * aserto miraba la primera —que está antes del borrado del documento pase lo
+     * que pase— y **la inversión del orden pasaba en verde**, que es exactamente
+     * el falso verde que este caso existe para no tener. Se busca desde la
+     * guarda, o sea en el camino que de verdad borra las dos mitades.
+     */
+    const objeto = src.indexOf('bucket.file(objeto).delete', guarda);
+    const documento = src.indexOf('ref.delete({ lastUpdateTime: visto })');
 
-    // Control positivo: si alguno de los dos deja de encontrarse —porque el
-    // borrado se escribió de otra forma— el aserto de abajo compararía dos `-1`
-    // y pasaría sin mirar nada.
-    expect(objeto, 'no se encontró el borrado del objeto').toBeGreaterThan(0);
-    expect(documento, 'no se encontró el borrado del documento').toBeGreaterThan(0);
-    expect(objeto).toBeLessThan(documento);
+    // Control positivo: si alguno deja de encontrarse —porque el borrado se
+    // escribió de otra forma— los asertos de abajo compararían `-1` y pasarían
+    // sin mirar nada.
+    expect(relectura, 'no se encontró la relectura de metadata').toBeGreaterThan(0);
+    expect(guarda, 'no se encontró la guarda de la versión').toBeGreaterThan(0);
+    expect(objeto, 'no se encontró el borrado del objeto en el camino principal').toBeGreaterThan(0);
+    expect(documento, 'no se encontró el borrado del documento con precondición').toBeGreaterThan(0);
+
+    expect(relectura, 'la relectura tiene que ir antes de tocar Storage').toBeLessThan(objeto);
+    expect(objeto, 'el orden de B-838: el objeto primero').toBeLessThan(documento);
+  });
+
+  /**
+   * **La relectura trae metadata y nada más, y eso es la mitad de por qué se
+   * puede hacer.** Un `ref.get()` traería el documento entero —y con él el
+   * contacto del tercero—, que es justo lo que el `select` de
+   * `propuestasVencibles` existe para evitar: la guarda nueva no puede deshacer
+   * la garantía vieja. `fieldMask: []` devuelve `exists` y `updateTime` con cero
+   * campos (verificado contra el emulador).
+   *
+   * Se afirma sobre el fuente por lo mismo que el `select`: desde el resultado no
+   * se distingue un `getAll` con máscara vacía de uno sin máscara — los dos
+   * devuelven el `updateTime` correcto.
+   *
+   * MUTACIÓN PROBADA: cambiándolo por `await ref.get()`, este caso se pone rojo y
+   * todos los de integración siguen verdes.
+   */
+  it('y la relectura no trae ni un campo del documento', () => {
+    const src = fuente('functions/retencion.js');
+    expect(src).toContain('db.getAll(ref, { fieldMask: [] })');
+    expect(src, 'un `ref.get()` traería el contacto del tercero a la memoria').not.toMatch(
+      /await ref\.get\(\)/,
+    );
+  });
+});
+
+/**
+ * **La versión vista viaja de la query al borrado** — B-864.
+ *
+ * `propuestasVencibles` guarda el `updateTime` de cada candidata y
+ * `borrarPropuesta` lo exige como precondición. En el medio está esta función
+ * pura, que **no lo juzga**: lo pasa de largo. El modo de falla que este
+ * `describe` tapa es el de siempre en este archivo —el dato que la lógica de
+ * abajo necesita y que alguien saca de arriba «porque no se usa acá»—, con la
+ * diferencia de que este se nota: sin `visto` el borrado no ocurre, tira.
+ */
+describe('el `visto` pasa por la decisión sin que la decisión lo juzgue', () => {
+  it('la entrada a borrar lleva la versión que la query trajo', () => {
+    /*
+     * MUTACIÓN PROBADA: sacando `visto: p.updateTime` del `aBorrar.push` de
+     * `decidirRetencion`, este caso se pone rojo — y todos los demás de este
+     * archivo siguen verdes, porque comparan `{ id, objeto }` y `toEqual`
+     * ignora una clave `undefined`.
+     */
+    const version = { marca: 'la que vio la query' };
+    const { aBorrar } = decidirRetencion({
+      propuestas: [propuesta({ updateTime: version })],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([{ id: 'p1', objeto: null, visto: version }]);
+  });
+
+  it('y sin ella `borrarPropuesta` no borra: tira antes de tocar nada', async () => {
+    /*
+     * **Ruidoso y no «falla cerrado», y es a propósito** — ver el docblock de
+     * `borrarPropuesta`. Una lista armada sin `propuestasVencibles` es un error
+     * de programación, no un documento mal escrito, y clasificarlo como un
+     * motivo más lo dejaría pasar como «una que no se borró».
+     *
+     * `db` y `bucket` van en `null` porque la guarda es la **primera** línea: si
+     * alguna vez se moviera abajo de la relectura o del borrado del objeto, este
+     * caso reventaría con un `TypeError` en vez de con el mensaje, y eso también
+     * es rojo.
+     *
+     * MUTACIÓN PROBADA: sacando el `if (!visto) throw`, este caso se pone rojo
+     * (falla con `Cannot read properties of null`, no con el mensaje esperado).
+     */
+    await expect(
+      borrarPropuesta(null as never, null as never, { id: 'p1', objeto: null, visto: undefined }),
+    ).rejects.toThrow(/sin la versión vista/);
   });
 });
 

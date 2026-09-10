@@ -2,6 +2,124 @@
 
 ## Sin publicar
 
+- **El barrido de retención ya no borra a ciegas, y la promesa de B-844 pasó a ser
+  cierta también contra el reloj** — **B-864**. `borrarPropuesta` hacía `delete()`
+  con el id que se había decidido al principio de la corrida, **sin condición**.
+  B-844 ensanchó esa carrera de «solo las rechazadas» a **toda la bandeja
+  pendiente** y le puso enfrente la promesa que la vuelve intolerable —«moverla de
+  estado le renueva el plazo»—: entre `propuestasVencibles()` y el `delete()` un
+  admin podía apretar «la estoy mirando» sobre una vencida, ver el plazo renovado
+  en Firestore y **perder el documento igual**. Y la ventana no es de
+  microsegundos: la query trae hasta 50 documentos y cada uno se borra con un viaje
+  a Storage en el medio, así que el último de la lista se borra segundos después de
+  haber sido leído (medido: 41 documentos, ~1 s contra el emulador).
+
+  **El arreglo que el auditor proponía era una línea y no lo era, y el motivo está
+  en el orden de B-838.** `delete({ lastUpdateTime })` protege el documento, pero
+  `borrarPropuesta` borra **el objeto primero** —la decisión de B-838, que elige
+  cuál huérfano es peor—, así que una precondición que falla dejaría la foto
+  borrada y el documento vivo: el huérfano «menos malo», cayendo justo sobre la
+  propuesta que un admin acaba de rescatar.
+
+  **Son dos guardas y no una, porque son dos almacenes con capacidades
+  distintas.** Firestore tiene precondición: `delete({ lastUpdateTime })` compara y
+  borra en la misma operación, así que sobre el documento la garantía es
+  **atómica** y no hay ventana. Storage **no tiene ninguna** —no hay
+  `lastUpdateTime` que ponerle a un `file().delete()`—, así que al objeto solo se
+  lo puede proteger **no llegando hasta él**: una relectura antes de tocarlo. No es
+  cinturón y tiradores; cada una cubre lo que la otra no puede.
+
+  **Y el orden de B-838 no se tocó**, que era la otra salida posible. Invertirlo
+  cuando hay precondición —así una que falla no toca nada— vuelve catastrófico el
+  fallo **más probable**: un `delete` de Storage que falla por transitorio es un
+  viaje de red que falla, y una precondición que falla son segundos por día. Con el
+  documento borrado primero, ese transitorio deja la foto de una persona sin nada
+  que la nombre y **sin corrida de mañana que reintente**. La guarda nueva va
+  **arriba de los dos**, y el test de orden pasó de fijar dos posiciones a fijar
+  tres.
+
+  **La cuarta forma de perder la mitad del borrado, nombrada porque aparece.**
+  B-838 cerró tres formas de terminar con la foto viva y el documento muerto. Ésta
+  va al revés —documento vivo, foto muerta— y ocurre si la tocan en la ventana que
+  queda entre la relectura y el `delete`. Cae del lado que B-838 eligió como el
+  menos malo (un flyer roto se ve en la bandeja; una foto sin documento no la
+  encuentra nadie) pero cae sobre la peor propuesta posible. **No se puede cerrar**
+  mientras Storage no tenga precondición: lo que se puede es medirla, y el trigger
+  la loguea como `warn` con esas palabras y con contador propio. Tiene su caso,
+  forzando la ventana con un `db` que mete la escritura del admin adentro del
+  `getAll`.
+
+  **La relectura es `getAll(ref, { fieldMask: [] })` y no un `ref.get()`**, y esa
+  línea es la que hace que la guarda nueva no deshaga la vieja: un `get()` traería
+  el documento entero y con él el contacto del tercero, que es exactamente lo que
+  el `select` acotado de B-838 existe para evitar. Por lo mismo tampoco es una
+  transacción —leería todo, y encima no puede abarcar el borrado de Storage—. El
+  `updateTime` que la query ahora devuelve es **metadata del snapshot y no un
+  campo**: viaja igual con la máscara puesta, así que pedirlo no agranda lo que
+  entra a la memoria de la Function.
+
+  **Lo que esto NO arregla, y es la variante peor del ítem: convertir.**
+  `PropuestasPanel.convertir` no escribe nada hasta que la actividad se guarda
+  (**D-600**), así que abrir el formulario sobre una propuesta vieja **no le
+  renueva el plazo** y no hay versión nueva contra la cual proteger: el barrido se
+  la lleva con el formulario abierto y el `revisarPropuesta` de `alGuardar` falla
+  con NOT_FOUND. La precondición cumple la promesa de B-844 —«moverla de estado le
+  renueva el plazo»— y abrir un formulario no es un movimiento de estado.
+  Arreglarlo es tocar D-600, o sea una decisión de producto: **B-866**.
+
+  **Seis hallazgos de los auditores, cerrados acá mismo menos uno:**
+
+  1. **El código 9 de Firestore no significa lo que el comentario decía**
+     (`auditor-trampas`). `FAILED_PRECONDITION` sale igual cuando la versión cambió
+     y cuando el documento **ya no existe**, y el segundo caso es real —el trigger
+     corre por reloj y el script se corre a mano—. Sin distinguirlos, dos corridas
+     peleando por la misma propuesta dejaban un `warn` diciendo que una propuesta
+     viva quedó con el flyer roto **sobre una propuesta que ya no existe**, y el
+     operador iría a buscarla. Ahora el `catch` vuelve a preguntar por la
+     existencia, con su caso.
+  2. **El resumen del script llamaba «intacta» a la que perdió la imagen**
+     (`auditor-trampas`), agrupando los dos finales en un contador. Van separados.
+  3. **El log de la corrida no contaba la foto que sí se borró**
+     (`auditor-privacidad`): `la-tocaron-tarde` no sumaba a `borradas`, ni a
+     `rescatadas`, ni a `objetos`, o sea que **el único registro de cuánta foto de
+     un tercero destruyó el barrido subcontaba justo en el caso sorprendente**. Y el
+     comentario que justificaba la aritmética era falso. Los dos auditores llegaron
+     por caminos distintos al mismo corte.
+  4. **La garantía de la relectura estaba fijada solo por un aserto de texto**
+     (`auditor-privacidad`, y la objeción es exacta): que `fieldMask: []` no traiga
+     el contacto depende de que una `DocumentMask` vacía signifique «ningún campo»,
+     o sea de una promesa del SDK, y el `select` hermano tiene las **dos** mitades
+     —el aserto sobre el fuente y el `Object.keys` contra el emulador— mientras la
+     relectura tenía una sola. Ahora tiene las dos.
+  5. **`07-seguridad.md` decía «la salva entera» sin la excepción**
+     (`auditor-privacidad`): en `la-tocaron-tarde` el documento se salva y la foto
+     no. Es el modo de falla clásico de dos copias de la misma afirmación de
+     privacidad, y la celda que quedó sin la excepción era la autoritativa.
+  6. **El detector de la clase de B-85 no ve un barrido que borra** —su síntoma de
+     efecto es `/\.(set|update)\(/`— y hay un caso que **congela esa ceguera como
+     garantía** («los tres barridos … pasan porque borran»). B-864 es el
+     contraejemplo: tenía la forma de B-85 en su versión `delete`. Queda abierto
+     como **B-867**, porque ampliar el regex cambia el alcance del chequeo y hay que
+     medir qué entra antes y no después.
+
+  **Doce mutaciones probadas, y tres son el argumento del diseño**: con el
+  `delete()` de antes el caso de la carrera se pone rojo en las **dos** mitades;
+  con la precondición pero sin la relectura se pone rojo **solo en la de la
+  imagen** —que es la tensión con B-838 hecha ejecutable—; y con la relectura pero
+  sin el `{ lastUpdateTime }` ese caso queda verde y el de la ventana se pone rojo.
+  **Y una mutación encontró un falso verde en el aserto de orden que este mismo
+  cambio escribió**: `bucket.file(objeto).delete` aparece dos veces —la rama
+  temprana y el camino principal— y el `indexOf` pelado miraba la primera, así que
+  invertir el orden pasaba en verde; ahora se busca desde la guarda de la versión.
+
+  **Verificado a mano contra el emulador, con la carrera armada:** sembradas 41
+  vencidas con imagen y corrido `--aplicar` mientras un segundo proceso —un «admin
+  mirando la bandeja»— esperaba a ver que el barrido había empezado y apretaba «la
+  estoy mirando» sobre la última de la lista. El informe salió con **40 borradas y
+  `intacta: z_carrera · la tocaron mientras corría este script`**; el documento
+  quedó vivo, en `en-revision`, con su contacto **y con su imagen**, y la corrida
+  siguiente ya no lo marca. Con el `delete()` sin condición se perdía entera.
+
 - **La propuesta que nadie miró ya no guarda el contacto para siempre, y la bandeja
   dice cuándo se va** — **B-844** (y **B-859** de paso). DEC-13 había contestado la
   mitad de la pregunta: 30 días para la **rechazada**, desde el rechazo. Las otras

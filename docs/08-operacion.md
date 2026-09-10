@@ -1135,6 +1135,89 @@ bucket **sin nada que la nombre** —el barrido de huérfanas de B-221 solo reco
 orden un fallo deja las dos mitades en pie y la corrida de mañana reintenta;
 `ignoreNotFound` es lo que hace que ese reintento funcione.
 
+### Y no borra a ciegas: la propuesta que tocan mientras el barrido corre (B-864)
+
+El barrido decide al principio de la corrida y borra segundos después. Hasta
+B-864 borraba **el id que había decidido, sin condición**, y eso choca de frente
+con la promesa del párrafo de arriba: entre la lectura y el `delete()` un admin
+puede apretar «la estoy mirando» sobre una vencida, **ver el plazo renovado en
+Firestore y perder el documento igual**. B-844 ensanchó esa carrera de «solo las
+rechazadas» a toda la bandeja pendiente, que es lo que la volvió cobrable.
+
+Ahora la versión que la query vio (`updateTime`) viaja hasta el borrado y el
+borrado la exige. **Son dos guardas y no una, porque son dos almacenes con
+capacidades distintas:**
+
+| | Guarda | Qué garantiza |
+|---|---|---|
+| Firestore | `delete({ lastUpdateTime })` | **Atómica**: el documento no se puede borrar si la versión cambió. No hay ventana |
+| Storage | una **relectura** de metadata antes de tocar el objeto | Achica la ventana de la corrida entera a un round-trip. No hay precondición que ponerle a un `delete()` de Storage: al objeto solo se lo protege **no llegando hasta él** |
+
+**El orden de B-838 no cambió** —el objeto sigue primero— y la guarda nueva va
+**arriba de los dos**. Se evaluó invertir el orden cuando hay precondición (así
+una precondición que falla no toca nada) y se descartó: eso vuelve catastrófico
+el fallo **más probable**, un `delete` de Storage que falla por transitorio, que
+dejaría la foto sin documento y sin corrida de mañana que la reintente.
+
+La relectura usa `getAll(ref, { fieldMask: [] })` y **no un `ref.get()`**: trae
+`exists` y `updateTime` con cero campos del documento, así que la guarda nueva no
+deshace la garantía vieja de que el contacto del tercero no entra a la memoria de
+la Function. Por lo mismo tampoco es una transacción: una transacción leería el
+documento entero, y encima no puede abarcar el borrado de Storage. **Eso está
+afirmado por valor contra el emulador y no solo sobre el fuente** —lo pidió el
+`auditor-privacidad`, y la objeción es exacta: la garantía depende de que una
+`DocumentMask` vacía signifique «ningún campo», o sea de una promesa del SDK, y
+el día que un bump la cambie el contacto entraría a la memoria de la Function con
+toda la suite en verde. Es la misma pareja de asertos que ya tenía el `select`.
+
+**Los cuatro finales, que son los que aparecen en el log y en el informe del
+script:**
+
+| Final | Qué pasó | Dónde se ve |
+|---|---|---|
+| `borrada` | las dos mitades se fueron | `info` · `borrada:` |
+| `la-tocaron` | la relectura vio otra versión. **No se tocó nada** | `info` · `intacta:` |
+| `ya-no-esta` | el documento ya no estaba (otra corrida se lo llevó). El objeto se borra igual: sin documento que lo nombre es el huérfano que nadie encuentra después | `info` |
+| `la-tocaron-tarde` | la tocaron en la ventana entre la relectura y el borrado: el documento se salvó, el objeto ya no estaba | **`warn`** · `intacta: … SIN su imagen` |
+
+> **El código 9 de Firestore no distingue los dos últimos, y por eso el `catch`
+> vuelve a preguntar.** `FAILED_PRECONDITION` es lo que devuelve
+> `delete({ lastUpdateTime })` tanto cuando la versión cambió como cuando el
+> documento **ya no existe** (verificado contra el emulador). Y el segundo caso
+> es real, no teórico: el trigger corre por reloj y el script se corre a mano.
+> Sin esa segunda relectura, dos corridas peleando por la misma propuesta
+> dejaban un `warn` diciendo que una propuesta viva quedó con el flyer roto
+> —sobre una propuesta que ya no existe—, y el operador iría a buscarla. Lo
+> encontró el `auditor-trampas`.
+
+**Los contadores del cierre son cuatro y no tres, y `sinImagen` va aparte de
+`rescatadas`**: `la-tocaron-tarde` no es una propuesta intacta —el documento se
+salvó y la foto no—, así que sumarla a `rescatadas` diría que se salvó entera y
+no sumarla a nada dejaba a la corrida **sin contar la única foto de un tercero
+que destruyó de forma sorprendente**. El informe del script hace el mismo corte,
+a propósito: son dos implementaciones del mismo resumen. Lo encontraron los dos
+auditores, cada uno por su lado.
+
+> ⚠️ **La cuarta forma de perder la mitad del borrado, dicha de frente.** B-838
+> nombró tres formas de terminar con la **foto viva y el documento muerto** y las
+> cerró las tres. `la-tocaron-tarde` es la cuarta y va **al revés**: documento
+> vivo, foto muerta. Cae del lado que B-838 eligió como «el menos malo» —se ve en
+> la bandeja como un flyer roto, no es una foto de una persona que nadie puede
+> volver a encontrar— pero cae sobre la peor propuesta posible: la que un admin
+> acaba de rescatar. **No se puede cerrar** mientras Storage no tenga
+> precondición; lo que se puede es medirla, y por eso el trigger la loguea como
+> `warn` y el script la dice.
+
+> ⚠️ **Lo que B-864 NO arregla, y es la variante peor del ítem: convertir.**
+> `PropuestasPanel.convertir` **no escribe nada** hasta que la actividad se guarda
+> (**D-600**), así que abrir el formulario de conversión sobre una propuesta vieja
+> **no le renueva el plazo** y no hay versión nueva contra la cual la precondición
+> pueda proteger: el barrido se la lleva con el formulario abierto y el
+> `revisarPropuesta` de `alGuardar` falla con NOT_FOUND (la actividad queda
+> creada, la propuesta no). La precondición cumple la promesa de B-844 —«moverla
+> de estado le renueva el plazo»— y ésta no es un movimiento de estado. Arreglarlo
+> es tocar D-600, o sea una decisión de producto, y queda anotado.
+
 **Y lo que borra está acotado al prefijo `propuestas/`.** No es higiene: esta
 Function corre con el Admin SDK y **no pasa por `firestore.rules`**, así que el
 `matches('^propuestas/…')` que valida la escritura no la protege. Un documento que
@@ -1191,6 +1274,17 @@ abandonada hace 120 y una `aceptada` de 400—, el informe trae **cuatro** (la
 abandonada. **La mirada ayer queda en `dentro-del-plazo` pese a tener 200 días de
 antigüedad**, que es la decisión del reloj funcionando. `--aplicar` borra esas
 dos, la corrida siguiente ya no las ve.
+
+**La precondición de B-864 se verificó igual, contra el emulador, y la carrera se
+armó a mano.** Sembradas 41 vencidas con imagen, se corrió `--aplicar` mientras un
+segundo proceso —un «admin mirando la bandeja»— esperaba a ver que el barrido
+había empezado y apretaba «la estoy mirando» sobre la última de la lista. El
+informe salió con **40 borradas y `intacta: z_carrera · la tocaron mientras corría
+este script`**; después de la corrida el documento sigue vivo, en `en-revision`,
+**con su contacto y con su imagen**, y la corrida siguiente ya no lo marca (el
+plazo se le renovó). Con el `delete()` sin condición de antes, esa propuesta se
+perdía entera. Sin el `getAll` previo se perdía la imagen, que es la mitad que el
+orden de B-838 dejaba expuesta.
 
 **Lo que este barrido NO borra, dicho para que no se lea como olvido:** la
 propuesta `aceptada`. Es la decisión de B-844 y no lo que sobró: ahí el contacto
