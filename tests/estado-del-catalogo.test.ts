@@ -739,3 +739,162 @@ describe('las tres proporciones de inscripción (B-703)', () => {
     expect(estado.publicadas.completas).toBe(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────
+// Lo que Google puede mostrar (B-813)
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Los cuatro avisos del informe «Eventos» que **no** eran un bug del markup.
+ *
+ * Lo que estos tests atan, en orden:
+ *
+ * 1. **Que sean proporciones y no avisos.** Es la decisión del ítem, y es
+ *    D-273 aplicada de nuevo: una lista de 65 sobre 68 no es trabajo, es el
+ *    catálogo con otro nombre. Los dos `it` de «no dispara ningún aviso» son
+ *    los que la fijan: si mañana alguien agrega `sin-tallerista` o
+ *    `sin-precio`, se caen.
+ * 2. **Que cada número use la función que decide el JSON-LD** y no una copia
+ *    (`urlSegura`, `admiteMonto`) — la clase de B-88 donde muerde: si el
+ *    markup cambia de criterio, el tablero cambia con él.
+ * 3. **Que el denominador del monto sea el subconjunto que lo admite**, como
+ *    el de B-703: gratis y a la gorra no llevan monto y contarlas como «sin
+ *    precio» es la mentira que un denominador equivocado produce.
+ */
+describe('lo que Google puede mostrar (B-813)', () => {
+  const futuro = [sesion('2026-09-20T19:00:00Z')];
+  const conWeb = (id: string, web: string): ActividadConId =>
+    acto({
+      id,
+      sesiones: futuro,
+      organizador: { nombre: 'Casa X', instagram: '', web },
+    } as Partial<ActividadConId> & { id: string });
+
+  it('cuenta las publicadas que dicen quién la da, y mira el nombre y no el objeto', () => {
+    // `formADocumento` escribe `tallerista: null` sin nombre, pero un documento
+    // anterior a esa regla puede tener el objeto vacío: contarlo sería decir que
+    // publica un `performer` que sale con el nombre en blanco.
+    const con = acto({
+      id: 'con',
+      sesiones: futuro,
+      tallerista: { nombre: 'Ana Ríos', bio: '', instagram: '' },
+    } as Partial<ActividadConId> & { id: string });
+    const cascara = acto({
+      id: 'cascara',
+      sesiones: futuro,
+      tallerista: { nombre: '   ', bio: CENTINELAS.bio, instagram: '' },
+    } as Partial<ActividadConId> & { id: string });
+    const sin = acto({ id: 'sin', sesiones: futuro });
+
+    expect(estadoDelCatalogo([con, cascara, sin], AHORA).publicadas.enGoogle.conQuienLaDa).toBe(1);
+  });
+
+  it('solo cuenta las publicadas: un borrador con tallerista no está en Google', () => {
+    const borrador = acto({
+      id: 'b',
+      estado: 'borrador',
+      tallerista: { nombre: 'Ana Ríos', bio: '', instagram: '' },
+    } as Partial<ActividadConId> & { id: string });
+    expect(estadoDelCatalogo([borrador], AHORA).publicadas.enGoogle.conQuienLaDa).toBe(0);
+  });
+
+  it('una publicada sin tallerista NO dispara ningún aviso: no tenerlo no es un error', () => {
+    // La decisión del ítem, fijada. Un club de lectura no tiene tallerista, y
+    // 65 de 68 en una lista de pendientes es el catálogo con otro nombre (D-273).
+    expect(clases([acto({ id: 'sin', sesiones: futuro })])).toEqual([]);
+  });
+
+  it('la web del organizador se cuenta con el mismo saneador que publica el JSON-LD', () => {
+    // «casabrandon.com» sin esquema **sí** enlaza (`urlSegura` asume `https://`),
+    // y un texto con espacios no. Un `web.trim() !== ''` acá contaría las dos.
+    const estado = estadoDelCatalogo(
+      [
+        conWeb('sin-esquema', 'casabrandon.com'),
+        conWeb('con-esquema', 'https://casabrandon.com/agenda'),
+        conWeb('prosa', 'Casa Brandon / IG @casabrandon'),
+        acto({ id: 'sin-web', sesiones: futuro }),
+      ],
+      AHORA,
+    );
+    expect(estado.publicadas.enGoogle.conWebDelOrganizador).toBe(2);
+  });
+
+  it('el denominador del monto son las que lo admiten, no todas las publicadas', () => {
+    // Gratis y a la gorra no llevan monto —el schema las rechaza—, así que
+    // contarlas como «sin precio» sería el denominador equivocado de B-703.
+    const arancelada = (id: string, monto: number | null): ActividadConId =>
+      acto({
+        id,
+        sesiones: futuro,
+        arancel: { tipo: 'arancelado', notas: '', monto },
+      } as Partial<ActividadConId> & { id: string });
+    const estado = estadoDelCatalogo(
+      [
+        arancelada('con-monto', 15000),
+        arancelada('sin-monto', null),
+        acto({ id: 'gratis', sesiones: futuro }),
+        acto({
+          id: 'gorra',
+          sesiones: futuro,
+          arancel: { tipo: 'a-la-gorra', notas: '' },
+        } as Partial<ActividadConId> & { id: string }),
+      ],
+      AHORA,
+    );
+    expect(estado.publicadas.total).toBe(4);
+    expect(estado.publicadas.enGoogle.admitenMonto).toBe(2);
+    expect(estado.publicadas.enGoogle.conMonto).toBe(1);
+  });
+
+  it('una arancelada sin monto NO dispara ningún aviso: «a convenir» es legítimo', () => {
+    // B-114 dejó `arancel.monto` opcional a propósito. Que Google avise no lo
+    // convierte en un error nuestro, y ésta es la línea que lo fija.
+    const a = acto({
+      id: 'a-convenir',
+      sesiones: futuro,
+      arancel: { tipo: 'arancelado', notas: 'A convenir según el cupo', monto: null },
+    } as Partial<ActividadConId> & { id: string });
+    expect(clases([a])).toEqual([]);
+  });
+});
+
+describe('el aviso de la web que no enlaza (B-813)', () => {
+  const futuro = [sesion('2026-09-20T19:00:00Z')];
+  const conWeb = (id: string, web: string): ActividadConId =>
+    acto({
+      id,
+      sesiones: futuro,
+      organizador: { nombre: 'Casa X', instagram: '', web },
+    } as Partial<ActividadConId> & { id: string });
+
+  it('señala la que tiene una web cargada que no es una dirección', () => {
+    expect(aviso([conWeb('prosa', 'Casa Brandon / IG @casabrandon')], 'web-que-no-enlaza')
+      ?.actividades).toEqual([{ id: 'prosa', titulo: 'prosa' }]);
+  });
+
+  it('señala un esquema que no se puede publicar como link', () => {
+    // El caso filoso: `urlSegura` solo deja pasar http y https, así que esto
+    // desaparece de las tres salidas sin que nada lo diga.
+    expect(clases([conWeb('script', 'javascript:alert(1)')])).toEqual(['web-que-no-enlaza']);
+  });
+
+  it('NO señala la que no tiene web: no tenerla no es un defecto', () => {
+    // La mitad que hace que el aviso sea corto. Sin ella listaría a los 24 del
+    // informe, que es la mitad del circuito literario.
+    expect(clases([acto({ id: 'sin-web', sesiones: futuro })])).toEqual([]);
+    expect(clases([conWeb('vacia', '   ')])).toEqual([]);
+  });
+
+  it('NO señala una web sin esquema: «casabrandon.com» enlaza igual', () => {
+    expect(clases([conWeb('corta', 'casabrandon.com')])).toEqual([]);
+  });
+
+  it('solo mira las publicadas: un borrador con la web rota todavía no está en el sitio', () => {
+    const b = acto({
+      id: 'b',
+      estado: 'borrador',
+      organizador: { nombre: 'Casa X', instagram: '', web: 'Casa Brandon / IG' },
+    } as Partial<ActividadConId> & { id: string });
+    expect(clases([b])).toEqual([]);
+  });
+});

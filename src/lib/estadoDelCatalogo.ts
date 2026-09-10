@@ -1,3 +1,5 @@
+import { admiteMonto } from '@/lib/arancel';
+import { urlSegura } from '@/lib/enlaceSeguro';
 import { tieneFuturo } from '@/lib/filtrosActividades';
 import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
@@ -86,6 +88,7 @@ export const CLASES_DE_AVISO = [
   'sin-flyer',
   'sin-etiquetas',
   'descripcion-corta',
+  'web-que-no-enlaza',
   'esperando',
 ] as const;
 export type ClaseDeAviso = (typeof CLASES_DE_AVISO)[number];
@@ -130,6 +133,23 @@ const TEXTO: Record<ClaseDeAviso, { titulo: string; porque: string }> = {
     porque:
       `Menos de ${MINIMO_DESCRIPCION} caracteres: el resultado en Google queda flaco y ` +
       'es lo que decide el clic.',
+  },
+  /**
+   * B-813 — el único de los cuatro avisos de Google que **sí** es un defecto
+   * nuestro, y el motivo de que sea el único está en el docblock de `enGoogle`.
+   *
+   * No es «al organizador le falta la web»: es que **hay una cargada y no
+   * sirve**. Alguien la escribió, y las tres salidas la tiran sin decir nada —
+   * la página de detalle cae a texto plano, el JSON-LD no emite `organizer.url`
+   * y el texto para redes tampoco la enlaza—. `organizador.web` es texto libre
+   * de verdad (`schema.ts` lo valida como texto opcional, no como URL), así que
+   * nada lo frena en la carga.
+   */
+  'web-que-no-enlaza': {
+    titulo: 'Publicadas con una web del organizador que no enlaza',
+    porque:
+      'Está cargada pero no es una dirección: el sitio la muestra como texto y ' +
+      'Google no la recibe. Suele ser un espacio o una palabra de más.',
   },
   esperando: {
     titulo: `Sin publicar y sin tocarse hace más de ${DIAS_ESPERANDO} días`,
@@ -207,6 +227,64 @@ export interface EstadoDelCatalogo {
     conInscripcion: number;
     conCupo: number;
     completas: number;
+    /**
+     * B-813 — cuánto del catálogo publica un **resultado enriquecido** en Google.
+     *
+     * ── Qué son estos tres números ────────────────────────────────────
+     * Google muestra un evento con foto, con quién lo da y con precio; sin esos
+     * campos muestra un link. El informe «Eventos» del 2026-09-08 avisaba por
+     * cuatro (`performer` 65, `image` 49, `url` del organizador 24, `price` 20)
+     * y los cuatro son **el dato que falta, no el campo**: `datosEstructurados`
+     * los emite cuando están cargados (B-731). O sea que la pregunta no era del
+     * markup sino de la carga, y este tablero es donde vive.
+     *
+     * ── Por qué son proporciones y no cuatro avisos ───────────────────
+     * Es **D-273 otra vez**, el precedente escrito tres docblocks más arriba: un
+     * aviso que lista 65 de 68 publicadas no es una lista de pendientes, es el
+     * catálogo con otro nombre, y para casi ninguna de sus entradas hay algo que
+     * hacer. Una obra de teatro leída en voz alta no tiene tallerista, la mitad
+     * de los organizadores del circuito no tiene web, y **una actividad
+     * arancelada sin monto es legítima** («a convenir», «según el cupo»): el
+     * modelo dejó `arancel.monto` opcional a propósito (B-114) y que Google
+     * avise no lo convierte en un error nuestro.
+     *
+     * Por eso van con `Proporcion` y no con `Cobertura` en la pantalla —la
+     * distinción que ya existía: «12 de 20 piden inscripción» no tiene una
+     * acción pendiente detrás, «8 de 20 sin imagen» sí— y por eso **no se
+     * volvió obligatorio ningún campo**: cuatro obligatorios más en un
+     * formulario de treinta y pico se llenan con «foto» y quedan peor que
+     * vacíos, que es lo que D-440 ya decidió con el texto alternativo.
+     *
+     * El único que **sí** es un defecto —una web cargada que no enlaza— salió de
+     * acá y es un aviso propio (`web-que-no-enlaza`).
+     *
+     * ── La cuarta, `image`, no está acá y no es un olvido ─────────────
+     * Ya es la cobertura «Con imagen» de arriba y el aviso `sin-flyer`. Repetirla
+     * sería una segunda derivación de la misma pregunta, que es justo lo que
+     * B-813 pedía evitar.
+     *
+     * ── Y por eso no hay una segunda lista de reglas ──────────────────
+     * Cada número usa **la misma función que decide el JSON-LD**, no una copia:
+     * `urlSegura` es la que produce `organizer.url`, `admiteMonto` es la que el
+     * schema, el formulario y la descripción del evento ya comparten (B-114), y
+     * el nombre del tallerista es la condición de `formADocumento`. Es la clase
+     * de B-88 evitada donde de verdad muerde: si mañana el JSON-LD cambia de
+     * criterio, el tablero cambia con él.
+     */
+    enGoogle: {
+      /** Con tallerista o invitado: lo que se publica como `performer`. */
+      conQuienLaDa: number;
+      /** Con una web del organizador que `urlSegura` acepta. */
+      conWebDelOrganizador: number;
+      /**
+       * Denominador propio, como `conInscripcion`: solo las que **pueden**
+       * llevar monto. Gratis y a la gorra no lo admiten (el schema las rechaza),
+       * así que contarlas como «sin precio» sería el denominador equivocado que
+       * convierte una proporción en una mentira.
+       */
+      admitenMonto: number;
+      conMonto: number;
+    };
   };
   /** Solo los que tienen al menos una actividad, en el orden de `CLASES_DE_AVISO`. */
   avisos: Aviso[];
@@ -269,6 +347,38 @@ const inscripcionCerrada = (a: ActividadConId, ahora: Date): boolean => {
 };
 
 /**
+ * ¿Esta actividad dice quién la da? — B-813, lo que sale como `performer`.
+ *
+ * La condición es **el nombre**, no el objeto: `formADocumento` ya escribe
+ * `tallerista: null` cuando no hay nombre («el tallerista solo tiene sentido si
+ * tiene nombre», `actividades.ts`), así que mirar el objeto contaría de más
+ * cualquier documento anterior a esa regla.
+ */
+const diceQuienLaDa = (a: ActividadConId): boolean =>
+  (a.tallerista?.nombre ?? '').trim() !== '';
+
+/** Hay algo escrito en la web del organizador, sirva o no. */
+const webCargada = (a: ActividadConId): boolean =>
+  (a.organizador?.web ?? '').trim() !== '';
+
+/**
+ * ¿La web del organizador se puede enlazar? — con `urlSegura`, que es **la misma
+ * función** que produce el `organizer.url` del JSON-LD y el `href` de la página.
+ * Un tercer criterio acá y el tablero diría «tiene web» de algo que el sitio
+ * muestra como texto plano.
+ */
+const webEnlazable = (a: ActividadConId): boolean => urlSegura(a.organizador?.web) !== null;
+
+/**
+ * ¿Esta actividad publica un precio? — la regla del `Offer`, entera.
+ *
+ * `gratis` emite `price: '0'` sin monto cargado; el resto necesita el número. Es
+ * la condición de `datosEstructurados` dicha con los mismos dos datos.
+ */
+const publicaPrecio = (a: ActividadConId): boolean =>
+  a.arancel?.tipo === 'gratis' || a.arancel?.monto != null;
+
+/**
  * Los barrios en los que se dicta una actividad, **sin repetir** — B-702.
  *
  * Es el hermano de `modalidadesQueOfrece` un campo más abajo, y por el mismo
@@ -309,6 +419,8 @@ export const estadoDelCatalogo = (
   const publicadas = actividades.filter((a) => a.estado === 'publicado');
   /** B-703 — el subconjunto sobre el que `conCupo` y `completas` significan algo. */
   const conInscripcion = publicadas.filter((a) => a.inscripcion?.requiere === true);
+  /** B-813 — el subconjunto sobre el que «tiene precio» significa algo. */
+  const admitenMonto = publicadas.filter((a) => admiteMonto(a.arancel?.tipo ?? ''));
   const ventanas = encuentrosVivos(actividades).flat();
   const limite = ahora.getTime() + DIAS_PROXIMOS * MS_POR_DIA;
   const viejo = ahora.getTime() - DIAS_ESPERANDO * MS_POR_DIA;
@@ -321,6 +433,9 @@ export const estadoDelCatalogo = (
     'sin-flyer': publicadas.filter((a) => faltaElFlyer(imagenesDe(a))),
     'sin-etiquetas': publicadas.filter((a) => (a.tags ?? []).length === 0),
     'descripcion-corta': publicadas.filter(descripcionCorta),
+    // B-813 — cargada **y** rota. Sin la primera mitad esto listaría a los
+    // organizadores que simplemente no tienen web, que no es un defecto.
+    'web-que-no-enlaza': publicadas.filter((a) => webCargada(a) && !webEnlazable(a)),
     esperando: actividades.filter(
       (a) =>
         (a.estado === 'borrador' || a.estado === 'pendiente') &&
@@ -372,6 +487,16 @@ export const estadoDelCatalogo = (
       conInscripcion: conInscripcion.length,
       conCupo: conInscripcion.filter((a) => (a.inscripcion?.cupo ?? 0) > 0).length,
       completas: conInscripcion.filter((a) => a.inscripcion?.completo === true).length,
+      // B-813 — tres proporciones, no tres avisos: ver el docblock de `enGoogle`.
+      enGoogle: {
+        conQuienLaDa: publicadas.filter(diceQuienLaDa).length,
+        conWebDelOrganizador: publicadas.filter(webEnlazable).length,
+        admitenMonto: admitenMonto.length,
+        // Sobre `admitenMonto` y no sobre `publicadas`, y con la regla completa
+        // del `Offer`: adentro de ese subconjunto `gratis` no existe, así que
+        // esto es «tiene el número», dicho con la única derivación que hay.
+        conMonto: admitenMonto.filter(publicaPrecio).length,
+      },
     },
     avisos: CLASES_DE_AVISO.filter((clase) => candidatos[clase].length > 0).map((clase) => ({
       clase,

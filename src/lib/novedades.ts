@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'como-se-ve-en-google',
+    fecha: '2026-09-09',
+    version: '1.10.0',
+    titulo: 'El tablero te dice cuánto del catálogo sale lindo en Google',
+    detalle:
+      'En «Estadísticas» → «El catálogo» hay un bloque nuevo: cuántas publicadas dicen quién ' +
+      'la da, cuántas tienen la web del organizador y cuántas de las aranceladas tienen el ' +
+      'monto. Ninguna es obligatoria: con foto, nombre y precio Google muestra un evento y no ' +
+      'un link, nada más. Y hay un aviso nuevo para la web del organizador cargada pero mal ' +
+      'escrita: así no enlaza en ningún lado y antes no se notaba.',
+    donde: 'Estadísticas → «El catálogo».',
+  },
+  {
     /*
      * Entrada aparte y no una frase más en la de la bandeja: son dos cosas que se
      * usan en momentos distintos —una es «hay una pantalla nueva», la otra es

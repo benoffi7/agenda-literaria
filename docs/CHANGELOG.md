@@ -2,6 +2,54 @@
 
 ## Sin publicar
 
+- **Los cuatro avisos de Google que eran datos faltantes entran al tablero como
+  proporciones, no como avisos** — **B-813**, la mitad del catálogo. `performer`
+  (65), `image` (49), `url` del organizador (24) y `price` (20) no eran un bug del
+  markup: el código los emite cuando el dato está cargado, y no está (B-731). O sea
+  que la pregunta era de carga, y el lugar de una pregunta de carga es «Estado del
+  catálogo», que existe justamente para eso.
+
+  **Van con `Proporcion` y no como cuatro filas de aviso, y el precedente estaba
+  escrito en el mismo archivo: D-273.** Un aviso que lista 65 de 68 publicadas no es
+  una lista de trabajo, es el catálogo con otro nombre — y para casi ninguna de sus
+  entradas hay algo que hacer. Un club de lectura no tiene tallerista, la mitad de
+  los organizadores del circuito no tiene web, y una arancelada «a convenir» es
+  legítima: **B-114 dejó `arancel.monto` opcional a propósito, y que Google avise no
+  lo convierte en un error nuestro.** La distinción ya la tenía la pantalla
+  —`Cobertura` es lo que tiene una acción pendiente detrás, `Proporcion` es un dato—
+  y esto se apoya en ella en vez de inventar una tercera.
+
+  **Y no se volvió obligatorio ningún campo**, que era la salida fácil: cuatro
+  obligatorios más en un formulario de treinta y pico se llenan con «foto» y quedan
+  peor que vacíos. Es lo que D-440 ya decidió con el texto alternativo, y van dos.
+
+  **Son tres y no cuatro**: la imagen ya es la cobertura «Con imagen» y el aviso
+  `sin-flyer`. Una segunda derivación de la misma pregunta era exactamente lo que el
+  ítem pedía evitar.
+
+  **Lo que sí nació como aviso es el único que es un defecto nuestro:
+  `web-que-no-enlaza`.** No es «al organizador le falta la web» —eso no es un error—
+  sino que **hay una cargada y no sirve**: `organizador.web` es texto libre (el
+  schema lo valida como texto opcional, no como URL), así que «Casa Brandon / IG @…»
+  pasa la carga y después la página cae a texto plano, el JSON-LD no emite
+  `organizer.url` y nadie se entera. Es acotado, es accionable, y es un recorte mejor
+  apuntado que los 24 del informe.
+
+  **Ninguno de los tres números tiene una segunda lista de reglas**: usan la misma
+  función que decide el JSON-LD —`urlSegura`, `admiteMonto`, la condición de nombre
+  de `formADocumento`— así que si mañana el markup cambia de criterio, el tablero
+  cambia con él. Es la clase de B-88 evitada donde muerde. **Las tres mutaciones que
+  importan** de las once probadas no son de cálculo sino de decisión: hacer aparecer
+  un aviso `sin-tallerista`, uno `sin-precio`, o dejar que el aviso de la web señale
+  a quien simplemente no tiene. Las tres dan rojo.
+
+  **Lo que NO entró y queda abierto**, porque toca el formulario: la fila de la barra
+  de guardar —«esto se publica igual, pero en Google va a salir sin foto ni precio»—,
+  que es la mitad por-actividad de B-813. Y **B-854**, que salió de leer
+  `datosEstructurados`: `faltaElFlyer` y el `image` del JSON-LD **no son el mismo
+  predicado**, así que una portada con url inválida se anuncia como flyer en el panel
+  y no llega a Google.
+
 - **Las tres guardas de B-215, y las dos que daban verde sobre la copia que
   existen para atrapar** — **B-215**, cierre. Las tres unificaciones ya estaban
   hechas; lo que se auditó acá, mutación por mutación, es si sus guardas de verdad

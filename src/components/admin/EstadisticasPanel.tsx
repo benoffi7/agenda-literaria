@@ -224,8 +224,8 @@ function PanelCatalogo({
         <h2 className="font-serif text-lg font-semibold">Qué conviene mirar</h2>
         {estado.avisos.length === 0 ? (
           <p className="mt-2 text-sm text-tinta/60">
-            Nada pendiente: todo lo publicado tiene imagen, etiquetas, descripción y
-            encuentros por venir.
+            Nada pendiente: todo lo publicado tiene imagen, etiquetas, descripción,
+            encuentros por venir, y la web del organizador —donde hay una— enlaza.
           </p>
         ) : (
           /*
@@ -307,6 +307,61 @@ function PanelCatalogo({
                 falta="Las demás ya pasaron y quedaron como archivo."
               />
             </ul>
+            {/*
+              B-813 — «lo que Google puede mostrar», y son proporciones y no
+              avisos a propósito.
+
+              Los cuatro avisos del informe «Eventos» que no eran un bug del
+              markup —`performer`, `image`, `organizer.url`, `price`— son el
+              dato que falta y no el campo. Listarlos como pendientes sería
+              **D-273 otra vez**: 65 de 68 publicadas sin tallerista no es una
+              lista de trabajo, es el catálogo con otro nombre, y para casi
+              ninguna entrada hay algo que hacer (un club de lectura no tiene
+              tallerista, la mitad de los organizadores no tiene web, y una
+              arancelada «a convenir» es legítima — B-114 dejó el monto
+              opcional a propósito).
+
+              Por eso van con `Proporcion` y no con `Cobertura`: la distinción
+              es justamente si hay una acción pendiente detrás. Y por eso son
+              **tres** y no cuatro: la imagen ya es la primera cobertura de
+              acá arriba, y repetirla sería una segunda derivación de la misma
+              pregunta.
+            */}
+            <div className="mt-3 border-t border-borde pt-3">
+              <p className="text-sm font-medium">Lo que Google puede mostrar</p>
+              <p className="mt-0.5 text-xs text-tinta/50">
+                Con foto, con quién la da y con precio, un resultado de Google se ve
+                como un evento y no como un link. La foto es «Con imagen», acá
+                arriba; éstas son las otras tres. Ninguna es obligatoria: hay
+                actividades que legítimamente no tienen tallerista, ni web, ni un
+                monto cerrado.
+              </p>
+              <ul className="mt-3 space-y-3">
+                <Proporcion
+                  que="Dicen quién la da"
+                  cuantas={estado.publicadas.enGoogle.conQuienLaDa}
+                  total={estado.publicadas.total}
+                />
+                <Proporcion
+                  que="Con web del organizador"
+                  cuantas={estado.publicadas.enGoogle.conWebDelOrganizador}
+                  total={estado.publicadas.total}
+                />
+                {/*
+                  El denominador son las que **admiten** monto y no todas las
+                  publicadas: gratis y a la gorra no lo llevan (el schema las
+                  rechaza), así que contarlas como «sin precio» sería el
+                  denominador equivocado — el mismo cuidado que B-703.
+                */}
+                {estado.publicadas.enGoogle.admitenMonto > 0 && (
+                  <Proporcion
+                    que="Aranceladas con el monto cargado"
+                    cuantas={estado.publicadas.enGoogle.conMonto}
+                    total={estado.publicadas.enGoogle.admitenMonto}
+                  />
+                )}
+              </ul>
+            </div>
             {/*
               B-703 — las tres de inscripción van acá y **no** son un gráfico:
               son tres preguntas de sí/no independientes, no las partes de un

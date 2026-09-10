@@ -753,6 +753,33 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-854 · El panel dice «tiene flyer» y «tiene tallerista» con un predicado distinto del que publica el JSON-LD · P3
+
+**Salió del frente de B-813**, que evitó esta clase donde estaba mirando —los tres
+números nuevos usan `urlSegura` y `admiteMonto`, las mismas funciones que deciden
+el markup— y encontró dos instancias viejas al lado.
+
+1. **`faltaElFlyer` y el `image` del JSON-LD no son el mismo predicado.**
+   `faltaElFlyer` (`src/lib/imagenes.ts`) pregunta «¿la portada tiene una `url` no
+   vacía?»; `datosEstructurados` pregunta «¿hay alguna imagen que `urlSegura`
+   acepte?». Divergen en los dos sentidos, y el peligroso es éste: **una portada
+   con url no vacía pero inválida** —posible en los documentos con el `imagenUrl`
+   legacy, que nunca pasó por `esUrl`— hace que el panel diga «tiene flyer»,
+   `/cartelera` no la muestre y Google no reciba `image`. Nadie se entera.
+   El arreglo natural es que `faltaElFlyer` use `urlSegura`; toca tres consumidores
+   (el aviso del formulario, la marca del listado y `/cartelera`), así que la parte
+   fina es revisar qué se rompe en cada uno, no la línea.
+
+2. **`datosEstructurados` emite `performer` mirando el objeto y no el nombre**
+   (`d.tallerista ? { …, name: d.tallerista.nombre }`, `detallePublico.ts`). Hoy lo
+   tapa `formADocumento`, que escribe `tallerista: null` cuando no hay nombre
+   (`actividades.ts:116`), pero un documento **anterior a esa regla** publica
+   `performer.name: ''` en el JSON-LD. Es una línea, y merece su caso.
+
+Las dos son la clase de **B-88** con la cara menos visible: no es una segunda lista
+de reglas escrita a mano, es la **misma pregunta contestada por dos funciones** que
+nacieron para cosas distintas y hoy se leen como si fueran la misma.
+
 ### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan · P2
 
 **Lo encontró el frente de B-798 midiendo**, y es previo a su cambio: verificado
@@ -4191,6 +4218,38 @@ mapa de contenido —hoy pinta una y esconde ocho (`p.id === pestania ? … :
   D-490— pero hay que elegir por vista.
 
 ### B-813 · Cuatro de los nueve avisos de Google son datos que faltan, y el panel no los pide · P2
+
+> ✅ **La mitad del catálogo, hecha (2026-09-09). La del formulario sigue abierta.**
+>
+> El ítem pedía dos cosas que resultaron ser distintas, y la mejor planteada no era
+> la que el texto de abajo propone.
+>
+> 1. **El catálogo entero — hecho.** «Estado del catálogo» gana el bloque «Lo que
+>    Google puede mostrar»: tres proporciones (dice quién la da, web del
+>    organizador, aranceladas con el monto cargado). **Como proporciones y no como
+>    cuatro avisos, y el motivo estaba escrito en el mismo archivo: D-273.** Una
+>    lista de 65 sobre 68 publicadas no es trabajo pendiente, es el catálogo con
+>    otro nombre, y para casi ninguna de sus entradas hay algo que hacer. La cuarta,
+>    `image`, no se agregó: ya es la cobertura «Con imagen» y el aviso `sin-flyer`,
+>    y repetirla era la segunda derivación que el propio ítem pedía evitar.
+>    **No se volvió obligatorio ningún campo** (D-440, por segunda vez) y **una
+>    arancelada sin monto no se marca como error**: B-114 dejó el monto opcional a
+>    propósito y que Google avise no lo convierte en un defecto nuestro.
+>
+>    De ahí salió además **un aviso que el ítem no había visto**: `web-que-no-enlaza`,
+>    para la web del organizador que **está cargada y no es una dirección**. Ése sí
+>    es un defecto nuestro, y hoy es silencioso en las tres salidas.
+>
+> 2. **La fila en la barra de guardar — abierta.** Es la mitad por-actividad y vive
+>    en `src/lib/formulario/` + `ActividadFormulario.tsx`. Sigue valiendo lo que el
+>    ítem dice: **aviso y no validación de publicado** (D-440).
+>
+> **Y dos hallazgos de leer `datosEstructurados`, que no son de este ítem:**
+> `faltaElFlyer` y el `image` del JSON-LD **no son el mismo predicado** —aquél mira
+> «url no vacía», éste `urlSegura`, y divergen en los dos sentidos, así que una
+> portada con url inválida se anuncia como flyer y no llega a Google— y
+> `datosEstructurados` decide `performer` por el objeto y no por el nombre, así que
+> un documento anterior a `formADocumento` publicaría `performer.name: ''`.
 
 Sale del informe «Eventos» del 2026-09-08 (la lectura entera está en **B-731**).
 Cuatro avisos no son un bug del markup: el código emite el campo **cuando el dato
