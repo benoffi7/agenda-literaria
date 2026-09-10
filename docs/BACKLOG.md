@@ -276,7 +276,16 @@ activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
 
 **Lo que falta, y los tres son del dueño:**
 
-3. ⬜ **Verificar los dominios permitidos de la clave**, y es el paso del que
+3. ✅ **Verificar los dominios permitidos de la clave** — hecho el 2026-09-10, **y
+   estaba mal**: la lista tenía los dos nombres propios (`agendaleh.ar`,
+   `agendaleh.com.ar`) y **le faltaban los dos de Firebase Hosting**. Con el
+   enforcement puesto, entrar al panel por `agenda-literaria.web.app` —que según
+   `02-infraestructura.md` «no se apaga nunca»— habría dejado de poder escribir, y
+   habría fallado como «el panel no guarda» y no como «App Check te rechazó».
+   Corregido a los cuatro, con `allowAllDomains: false` e `integrationType: SCORE`
+   confirmados. El detalle —por qué van con el nombre completo del sitio y nunca
+   `web.app` pelado, y por qué el comando necesita `--web`— está en
+   `02-infraestructura.md` → «App Check». Era el paso del que
    depende que todo esto sirva. La clave de sitio es pública y viaja en el bundle,
    así que lo único que impide que un script la use desde su propia página es esa
    lista. Sin ella, App Check deja de frenar «al script que no pasa por la
@@ -288,8 +297,10 @@ activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
    gcloud recaptcha keys describe <clave> --project agenda-literaria
    ```
 
-   `webSettings.allowedDomains` tiene que listar `agendaleh.ar` y los dos dominios
-   de Firebase Hosting, y nada más.
+   `webSettings.allowedDomains` tiene que listar los **cuatro** nombres que sirven
+   el sitio —`agendaleh.ar`, `agendaleh.com.ar` y los dos de Firebase Hosting— y
+   nada más. Que sean cuatro y no tres es lo que la primera versión de este paso
+   no había previsto: el alias `.com.ar` también sirve el mismo HTML.
 4. ⬜ **Publicar.** Mientras el cableado no se deployee, la consola no puede ver
    nada: el paso siguiente mide lo que llega de producción.
 5. ⬜ **Verificar en la consola** que llegan peticiones verificadas. Es el único

@@ -208,8 +208,29 @@ de esta misma página colgada de que esté bien puesta. Verificarlo es del dueñ
 gcloud recaptcha keys describe <clave> --project agenda-literaria
 ```
 
-y mirar `webSettings.allowedDomains` — tiene que listar `agendaleh.ar` y los dos
-dominios de Firebase Hosting, y nada más. Queda como acción manual en **B-836a**.
+y mirar `webSettings.allowedDomains`.
+
+> ✅ **Verificado y corregido el 2026-09-10, y estaba mal.** La lista tenía
+> `agendaleh.ar` y `agendaleh.com.ar` — los dos nombres propios— y **le faltaban
+> los dos de Firebase Hosting**. Eso importa porque esta misma página dice que
+> `agenda-literaria.web.app` «no se apaga nunca» y sirve el mismo HTML: con el
+> enforcement puesto, entrar al panel por esa URL habría dejado de poder escribir.
+> Y habría fallado **mal**, porque `activarAppCheck` no propaga la excepción: el
+> síntoma es «el panel no guarda», no «App Check te rechazó».
+>
+> Hoy la lista es `agendaleh.ar`, `agendaleh.com.ar`, `agenda-literaria.web.app` y
+> `agenda-literaria.firebaseapp.com`, con `allowAllDomains: false` e
+> `integrationType: SCORE`.
+>
+> **Los dos de Firebase van con el nombre completo del sitio y nunca `web.app`
+> pelado:** gcloud permite automáticamente todos los subdominios de un dominio de
+> la lista, así que `web.app` habilitaría la clave para **cualquier** sitio de
+> Firebase Hosting del mundo — el agujero exacto que esta lista existe para tapar.
+>
+> Y se corrige con `--web`, que el mensaje de error no dice y el ejemplo de la
+> ayuda sí: `gcloud recaptcha keys update <clave> --project agenda-literaria --web
+> --domains=…`. **`--domains` reemplaza la lista entera**, así que van los cuatro y
+> no solo los que faltan.
 
 ### Qué pasa si se cae
 

@@ -2,6 +2,32 @@
 
 ## Sin publicar
 
+- **La lista de dominios de la clave de reCAPTCHA estaba mal, y el síntoma habría
+  aparecido recién con el enforcement puesto** — **B-836a**, paso 3. Tenía los dos
+  nombres propios (`agendaleh.ar`, `agendaleh.com.ar`) y **le faltaban los dos de
+  Firebase Hosting**. Como `agenda-literaria.web.app` «no se apaga nunca» y sirve
+  el mismo HTML —lo dice `02-infraestructura.md`—, entrar al panel por esa URL con
+  App Check exigiendo habría dejado de poder escribir. Y habría fallado **mal**:
+  `activarAppCheck` no propaga la excepción a propósito, así que el síntoma es «el
+  panel no guarda» y no «App Check te rechazó».
+
+  **Es exactamente la clase que el propio ítem anunciaba** (B-773/B-480):
+  configuración y no código, con una afirmación de la doc colgada de que esté bien
+  puesta y **ningún test que la sostenga**. La única forma de encontrarlo era ir a
+  mirar, y por eso el paso existía.
+
+  Quedó en los cuatro, con `allowAllDomains: false` e `integrationType: SCORE`
+  confirmados — el segundo importa porque es de lo que depende que
+  `ReCaptchaEnterpriseProvider` sea el proveedor correcto, y no es una bandera de
+  `update`, así que se verifica después y no se asume.
+
+  **Dos cosas del procedimiento quedaron escritas porque las dos muerden:** los de
+  Firebase van con el nombre completo del sitio y **nunca `web.app` pelado**
+  —gcloud permite todos los subdominios de un dominio de la lista, así que eso
+  habilitaría la clave para cualquier sitio de Firebase Hosting del mundo, el
+  agujero exacto que la lista existe para tapar— y **`--domains` reemplaza la lista
+  entera**, así que hay que mandar los cuatro y no los que faltan.
+
 - **El barrido de retención ya no borra a ciegas, y la promesa de B-844 pasó a ser
   cierta también contra el reloj** — **B-864**. `borrarPropuesta` hacía `delete()`
   con el id que se había decidido al principio de la corrida, **sin condición**.
