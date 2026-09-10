@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las dieciocho salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las diecinueve salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -114,7 +114,7 @@ el caso de B-88 para los alias a `functions/`.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **dieciocho salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **diecinueve salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
 para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
@@ -197,7 +197,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las dieciocho salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las diecinueve salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -323,7 +323,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las dieciocho salidas **antes** de escribir código, que
+arranca obligando a decidir las diecinueve salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -544,6 +544,7 @@ veces se los invoca** ahora que nada los llama.
 | Que un trigger nuevo con efecto duplicable nazca sin guarda, y las demás clases de bug del repo | `clases-de-bug.test.ts` (B-135). Descubre los triggers **del fuente** en vez de listarlos, así que un trigger nuevo entra al chequeo solo |
 | Que las opciones de `/opciones/*` no publiquen la huella del creador ni los campos de gestión | `barrido-de-salidas-publicas.test.ts` (B-212): `ValorOpcion` dejó de estar en la lista de interfaces AJENAS y pasó a estar anclada, con centinelas propios. El control negativo está **codificado** (no verificado a mano): un `it` mete el spread y exige que el barrido falle nombrando `opcion.huellaCreador`. Y la clase de B-212 en `clases-de-bug.test.ts` ata los **cuatro** caminos que proyectan una opción —`opcionesPublicas`, `labelsDeOpciones`, el `cargarLabels` de la Function (que no puede importar de `src/`, D-20) y `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`, sumado en **B-270**: alimenta la salida 6 y era el único sin nada que nombrara qué podía leer)— derivando del modelo qué campos están prohibidos. Desde D-150 la lista de lo permitido es **por camino** y no una sola: `tono` es público de **una sola salida**, y una lista compartida habría abierto los cuatro de golpe por un campo que necesita uno |
 | Que ninguna capa modal reimplemente el atrapar-el-Tab, el scroll y el foco | `foco.test.ts` (B-210). Afirma la **propiedad** (que la capa use `useCapaModal` y no tenga cableado propio), no el string de una implementación: la versión anterior buscaba `e.key==='Escape'` dentro de un `.tsx` y un refactor la ponía en rojo |
+| Que una **marca del navegador** nazca con la clave escrita al lado del `setItem`, o sin que nadie decida si lo que guarda es una marca o contenido | `clases-de-bug.test.ts` (**B-821**). Va en los dos sentidos contra la tabla «Las marcas, una por una» de `07-seguridad.md`: una clave nueva sin fila, y una fila que ya no exista en el código. **B-848 le ensanchó el ojo**: barría solo los archivos que llaman a `getItem`/`setItem`/`removeItem`, así que un módulo que **declara** la clave y delega el acceso en otro archivo se escapaba entero —y ése es el corte que ya tenían `analyticsSitio.ts`/`medicionSitio.ts` y el que estrenó `guardadosDelSitio.ts`/`guardadoDelNavegador.ts`—. Ahora también entra el que declara la constante. La mutación que lo demuestra es doble, porque con un solo archivo no se ve: sacarle el acceso al almacén al módulo puro **y** borrarle sus filas de la doc deja el barrido angosto en **verde** y el ensanchado en **rojo** |
 | Que nadie escriba un catorceavo doble de `Timestamp` | `clases-de-bug.test.ts` (B-211). Busca la **forma** —`toDate` y `toMillis` juntos— y no el nombre, así que también caza al que se llame `stamp` o `t`. Existe porque el fixture compartido ya se había escrito y **no se había adoptado**, que es un modo de falla que no tenía red |
 | Que el mapa de trampas → test → archivo diga la verdad | `mapa-de-trampas.test.ts` (B-119). Lee la lista de trampas del propio `CLAUDE.md` §13 y **calcula del repo** cuáles quedaron sin red, en las dos direcciones. Es el motivo por el que el `auditor-trampas` ya no reconstruye esa tabla con `grep` |
 | Que el **dominio del sitio** vuelva a escribirse en más de un lugar, o que la canónica salga relativa | `canonico.test.ts` (**B-109**, D-165). Cuatro salidas necesitan la URL absoluta —el `canonical`, el `og:url`, el `<loc>` del sitemap y el `url` del JSON-LD— y las cuatro copias fallan en silencio: un canonical viejo hace que Google indexe otro dominio. Barre **todo `src/`** buscando el dominio y exige que solo lo escriba el archivo que lo define, que `astro.config.mjs` lo **importe** en vez de copiarlo, y que la canónica sea absoluta y salga del layout una sola vez —una relativa se resuelve contra el host que la sirvió, o sea que en el espejo de Firebase diría que la página buena es la del espejo—. Cubre además el par que el repo no controla: `cleanUrls` y `trailingSlash` de `firebase.json` y el `build.format` de Astro, que son los que hacen cierta la barra final que `rutaCanonica` predice |

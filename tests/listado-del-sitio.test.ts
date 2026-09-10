@@ -812,6 +812,35 @@ describe('la estructura del listado — D-146', () => {
     expect(fila()).not.toMatch(/(?<!lg:|sm:|md:|xl:)grid-cols-[2-9]/);
   });
 
+  it('el control de la fila se pinta FUERA del enlace, nunca adentro — B-848', () => {
+    /*
+     * «En móvil un botón dentro de un link es un blanco ambiguo» (§4.2), y
+     * además un `<button>` adentro de un `<a>` es markup inválido: el navegador
+     * lo saca del enlace al parsear y el árbol que se ve no es el que se
+     * escribió. La prop `accion` existe justamente para que el «Quitar» de
+     * `/mis-favoritos` tenga dónde ir sin romper esa regla, y **es la clase de
+     * cosa que se ve bien igual si se pone en el lugar equivocado**: en
+     * escritorio, con mouse, un botón adentro de un link funciona.
+     *
+     * Se afirma sobre la posición en el fuente porque es lo único que lo dice:
+     * el componente no tiene test de render (`docs/05-patrones.md`).
+     *
+     * MUTACIÓN PROBADA: mover el `{accion && ...}` adentro del `<a>`, justo
+     * antes de su cierre, deja la página viéndose idéntica en escritorio y pone
+     * este caso en rojo.
+     */
+    const codigo = fila();
+    const cierre = codigo.indexOf('</a>');
+    const uso = codigo.indexOf('{accion &&');
+    expect(cierre, 'la fila sigue siendo un enlace').toBeGreaterThan(0);
+    expect(uso, 'la fila sigue teniendo el slot `accion`').toBeGreaterThan(0);
+    expect(
+      uso,
+      '`accion` se pinta adentro del `<a>`: un botón dentro de un link es un blanco ' +
+        'ambiguo en móvil (§4.2) y markup inválido en cualquier lado',
+    ).toBeGreaterThan(cierre);
+  });
+
   it('el marcador de mes va en `display-lg`, y es lo único que lo usa', () => {
     /*
      * Es el gesto más fuerte de la página. En la referencia el nombre del sitio va

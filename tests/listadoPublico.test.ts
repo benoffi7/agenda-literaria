@@ -21,6 +21,7 @@ import {
   chipsDe,
   cuandoDeDias,
   desdeQuery,
+  rutaCanonicaDeFiltros,
   diasDelCuando,
   etiquetaDeDias,
   ejeQueSobra,
@@ -899,5 +900,35 @@ describe('listaPublica filtra y ordena de una vez', () => {
     expect(
       listaPublica([lejana, pasada, proxima], filtrosVacios(), 'proxima', AHORA).map((e) => e.slug),
     ).toEqual(['proxima', 'lejana']);
+  });
+});
+
+describe('la ruta canónica de un listado filtrado — B-848', () => {
+  it('deja solo lo que `aQuery` escribiría, y tira lo que vino pegado', () => {
+    /*
+     * **El caso real y no el hipotético:** el efecto que reescribe la query
+     * saltea el primer render, así que en la primera visita lo que hay en la
+     * barra es la query **como llegó** — con el `utm_source` de quien la
+     * compartió, o con lo que traiga un link de mail. «Guardar esta búsqueda»
+     * guarda esa URL, y lo guardado no se puede inspeccionar salvo mirando el
+     * `href`. Lo señaló el `auditor-privacidad`.
+     *
+     * MUTACIÓN PROBADA: devolver `pathname + query` sin el viaje de ida y vuelta
+     * hace fallar este caso con el `utm_source` y el mail adentro.
+     */
+    expect(
+      rutaCanonicaDeFiltros('/', '?tag=poesia&utm_source=x&mail=juan@ejemplo.com'),
+    ).toBe('/?tag=poesia');
+  });
+
+  it('sin ningún filtro reconocible devuelve el `pathname` pelado', () => {
+    // Es la misma URL que canoniza el `<link rel="canonical">` de la home.
+    expect(rutaCanonicaDeFiltros('/', '?utm_source=x')).toBe('/');
+    expect(rutaCanonicaDeFiltros('/tipo/taller/', '')).toBe('/tipo/taller/');
+  });
+
+  it('y es idempotente: guardar lo ya canónico no lo cambia', () => {
+    const una = rutaCanonicaDeFiltros('/', '?tag=poesia&cuando=este-mes&orden=nuevas');
+    expect(rutaCanonicaDeFiltros('/', una.slice(una.indexOf('?')))).toBe(una);
   });
 });

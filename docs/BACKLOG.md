@@ -732,7 +732,7 @@ doble opt-in (debería) y quién es el remitente.
 >   pasa a ser falso y «semanal» sobrevive. La decisión es del dueño; lo que no
 >   vale es escribir el piso sin haberlo pensado.
 
-### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados · P2 — **idea del dueño (2026-09-09)**
+### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
 
 **El pedido, textual:** «empezar a tener un usuario en el frente público (por
 ahora sin login ni nada). la idea es que pueda guardar favoritos de lugares (y con
@@ -823,6 +823,33 @@ tipo, su JSON y su fila en la sección.
 contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt` y
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
+
+> ✅ **Hecho el 2026-09-10 — D-630, y las cuatro preguntas abiertas contestadas.**
+>
+> 1. **Un favorito cuyo slug ya no está se muestra igual**, con lo que sabemos de
+>    él y su botón para sacarlo. Esconderlo sería borrarle a alguien algo que
+>    guardó sin decirle nada; dejarlo sin botón, dejárselo para siempre. Y con el
+>    `events.json` caído el rótulo dice «No se pudo cargar la agenda» y no «ya no
+>    está»: con la CDN muerta todos resuelven a `null`.
+> 2. **Página propia `/mis-favoritos`**, con `noIndex` y fuera del sitemap —
+>    **sin** `Disallow`, que impediría leer el `noindex`. La afirmación de este
+>    ítem se verificó contra `sitemap.ts` y es correcta; lo que **faltaba** era la
+>    otra mitad y se agregó: estar fuera del sitemap no impide que un link de
+>    afuera la indexe.
+> 3. **Veinte búsquedas, sin tope de favoritos, y sin renombrar.** El tope
+>    **rechaza** en vez de descartar la más vieja: un dato que vive solo en el
+>    navegador de alguien no se puede devolver.
+> 4. **El botón de la ficha es un `<script>` liso**: 360 B gzip contra 57,3 KB
+>    del runtime de React. **El corazón no va en cada fila del listado**, y eso
+>    quedó afuera con motivo: la fila entera es un `<a>`.
+>
+> **El «griseado» no entró, y el ítem tenía razón sobre el piso pero no sobre
+> cuál era.** No es que baje del contraste mínimo: el sistema visual **prohíbe
+> las opacidades** (D-146, B-235), y el pedido idéntico para `/pasadas` ya se
+> había resuelto con **tinta** (D-167). No hizo falta agregar nada — la fila
+> distingue una pasada con la tinta **y con la palabra «Pasó»**.
+>
+> Es la **salida pública 19**, numerada por la promesa y no por la proyección.
 
 ### B-858 · `docs/README.md` tiene el paso «Correr los tests» dos veces, y la guarda que lo impide está verde sobre la copia — ✅ hecho (2026-09-09) · P2
 

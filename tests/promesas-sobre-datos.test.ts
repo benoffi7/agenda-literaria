@@ -148,8 +148,15 @@ const NEGACIONES: readonly { nombre: string; patron: RegExp }[] = [
 /**
  * Lo que vuelve verdadera a una negación: **la condición del consentimiento**.
  *
- * Es la forma que el banner ya usa («No se instala nada **hasta que elijas**») y
- * la que `/apoyar` tuvo que adoptar. No es una escapatoria del test: es la única
+ * Es la forma que el banner ya usa («No se instala ninguna medición **hasta que
+ * elijas**») y la que `/apoyar` tuvo que adoptar.
+ *
+ * **Ojo con lo que una condición NO arregla — B-848.** El banner decía «no se
+ * instala **nada** hasta que elijas», condicionado y todo, y dejó de ser cierto
+ * el día que existieron los favoritos: quien apretó «Rechazar» y después guardó
+ * una actividad tiene algo escrito en su navegador. La condición cubre *cuándo*;
+ * no cubre que el **objeto** de la negación sea el mundo entero. Eso lo mira el
+ * caso «una negación cuyo objeto es "nada"» de más abajo. No es una escapatoria del test: es la única
  * manera de decir la verdad sobre esto, porque el sitio no mide hasta que alguien
  * acepta y sí mide después.
  */
@@ -413,6 +420,59 @@ describe('ninguna página promete sobre datos algo que el sitio contradice — B
      * verdaderas y tienen que pasar.
      */
     expect(barrerPromesas(['tests/fixtures/promesa-condicionada.ts'])).toEqual([]);
+  });
+});
+
+describe('una negación cuyo objeto es «nada» no se salva con una condición — B-848', () => {
+  /*
+   * **La clase que el barrido de arriba no puede ver, y por qué es una clase.**
+   * Aquél pregunta *cuándo* vale la negación —«hasta que elijas», «si aceptás»—
+   * y con eso alcanzaba mientras el sitio no escribiera nada en el dispositivo
+   * sin permiso. Desde B-848 sí escribe: los favoritos y las búsquedas guardadas
+   * son almacenamiento **que la persona pidió**, funcional y exento del banner,
+   * pero escrito igual y también cuando apretó «Rechazar».
+   *
+   * O sea que «no se instala **nada** hasta que elijas» pasaba el barrido —tiene
+   * su condición— y era falsa. Lo que falla no es el *cuándo*: es que el
+   * **objeto** de la negación sea el mundo entero. Una frase así envejece sola
+   * en cuanto el sitio gana una función, sin que nadie la toque.
+   *
+   * La red es angosta a propósito: solo los verbos de «poner algo en el
+   * dispositivo o mandarlo afuera» seguidos de «nada». Se salva nombrando de qué
+   * habla —«ninguna medición», «ninguna cookie»—, que es lo que hace verdadera a
+   * la frase y no una excepción del test.
+   */
+  const OBJETO_ABSOLUTO =
+    /no se (instala|guarda|manda|env[íi]a|escribe|comparte)\w*\s+nada\b/gi;
+
+  it('ninguna página del sitio niega en absoluto sobre el dispositivo', () => {
+    /*
+     * MUTACIÓN PROBADA: volver a poner «No se instala nada hasta que elijas» en
+     * `AvisoDeCookies.astro` pone este caso en rojo — y el barrido de negaciones
+     * de arriba lo deja pasar, que es exactamente el agujero que este caso vino
+     * a tapar.
+     */
+    const hallazgos: string[] = [];
+    for (const { archivo, prosa } of deArchivos(archivosBarridos())) {
+      for (const m of prosa.matchAll(OBJETO_ABSOLUTO)) {
+        hallazgos.push(`${archivo}: «${ventana(prosa, m.index, m[0].length).trim()}»`);
+      }
+    }
+    expect(
+      hallazgos,
+      'el objeto de la negación es el mundo entero: nombrá de qué habla —«ninguna ' +
+        'medición», «ninguna cookie»—. Una condición dice *cuándo* vale, no *sobre qué*, ' +
+        'y esa frase envejece sola en cuanto el sitio gana una función (B-848)',
+    ).toEqual([]);
+  });
+
+  it('DETECTOR: la frase vieja del banner se agarra, y la corregida no', () => {
+    // Sin esto, un regex que dejó de matchear nada haría pasar el caso de arriba
+    // sin haber mirado.
+    const vieja = 'Usamos Google Analytics. No se instala nada hasta que elijas.';
+    const nueva = 'Usamos Google Analytics. No se instala ninguna medición hasta que elijas.';
+    expect([...vieja.matchAll(OBJETO_ABSOLUTO)]).toHaveLength(1);
+    expect([...nueva.matchAll(OBJETO_ABSOLUTO)]).toHaveLength(0);
   });
 });
 

@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **dieciocho** salidas, una por una:
+1. **¿Es público?** Resolvé las **diecinueve** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -40,6 +40,7 @@ no se pueden deshacer después.
    | 16 | el `/404` | `src/lib/noEncontrado.ts` |
    | 17 | la página de apoyo `/apoyar` | `src/lib/apoyoDelSitio.ts`, `src/lib/enlaces.ts` (el destino de cobro) |
    | 18 | la página comercial `/anunciar` | `src/lib/comercialDelSitio.ts`, `src/lib/enlaces.ts` (la casilla) |
+   | 19 | `/mis-favoritos` — lo guardado en el navegador de quien visita | `src/lib/guardadosDelSitio.ts`, `src/lib/guardadoDelNavegador.ts` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

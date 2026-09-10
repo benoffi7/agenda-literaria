@@ -2,6 +2,80 @@
 
 ## Sin publicar
 
+- **Un «usuario» en el sitio público, sin login: favoritos y búsquedas guardadas**
+  — **B-848**, **D-630**, idea del dueño. Quien visita puede marcar cualquier
+  actividad como favorita desde su ficha y guardar una búsqueda del listado con
+  un nombre; las dos cosas se ven y se sacan desde `/mis-favoritos`. **Todo vive
+  en el `localStorage` de su navegador**: no hay cuenta, no hay colección nueva,
+  no hay reglas ni retención, y el sitio sigue sin guardar un dato de nadie
+  (B-102). La página lo dice arriba y no en letra chica, porque es parte de la
+  funcionalidad.
+
+  **Lo guardado nace con `tipo` y versión** —`{ v, tipo, slug, guardadoEn }`—
+  aunque hoy la única entidad sea la actividad. Los dos campos parecen gratuitos
+  y no lo son: son datos que **no podemos ver ni migrar**, así que el día que la
+  forma cambie no se convierten solos. La llave es **tipo + slug**, y funciona
+  porque el slug es inmutable después de publicar (trampa 10). Una búsqueda
+  guardada **no** lleva `tipo` y sí `v`: de qué listado es ya está en el path.
+
+  **Guardar un filtro es guardar una URL con un nombre** —los filtros ya viajan
+  en la query string— y se guarda la **canónica**, no la barra tal cual: el
+  efecto que la reescribe saltea el primer render, así que en la primera visita
+  ahí está el `utm_source` de quien la compartió. Lo señaló el
+  `auditor-privacidad`.
+
+  **La actividad vencida sigue siendo favorita y no se esconde** (decisión del
+  dueño), y **no se grisea** — acá el frente corrigió la premisa: no es que baje
+  del contraste mínimo, es que el sistema visual **prohíbe las opacidades**
+  (D-146, B-235), y el pedido idéntico del §4.5 para `/pasadas` ya se había
+  resuelto con **tinta** (D-167). No hizo falta agregar nada: la fila ya
+  distingue una pasada por la tinta **y por la palabra «Pasó»** — el color nunca
+  es la única señal. Y **tolera que el slug ya no esté**. Con el `events.json`
+  caído el rótulo dice «No se pudo cargar la agenda» y no «ya no está»: con la
+  CDN muerta todos resuelven a `null`, y decirle a alguien que sus doce
+  actividades se dieron de baja es una mentira que asusta.
+
+  **La página no se indexa y está fuera del sitemap**, con `noIndex` y **sin**
+  `Disallow` —un `Disallow` impediría leer el `noindex`—: para Google, que llega
+  sin nada guardado, está siempre vacía. Queda escrita la regla general:
+  cualquier página cuyo contenido dependa del navegador de quien la abre sale del
+  sitemap y lleva `noindex`. Y es la **salida pública 19**, numerada por la
+  promesa y no por la proyección, con sus **tres tablas atadas** actualizadas.
+
+  **El botón de la ficha es un `<script>` liso y no una island** — 447 B sin
+  comprimir, **360 B gzip**, contra los 57,3 KB gzip del runtime de React, medido
+  en el build: B-239 ya había descartado el framework en la página más visitada.
+  La sección propia sí es island, porque no tiene nada que el build pueda
+  imprimir. Y el «Quitar» se pinta **fuera** del `<a>` de la fila: un botón
+  adentro de un link es un blanco ambiguo, además de markup inválido.
+
+  **Cuatro redes nuevas, y tres salieron de los auditores.** Que el control de la
+  fila se pinte fuera del enlace; que la página lleve `noIndex` **además** de
+  estar fuera del sitemap; que **ningún productor de la salida 19 mida ni haga
+  fetch afuera** —la promesa la sostenía un solo aserto y dos de los cuatro
+  productores no estaban nombrados por ningún test—; y que **una negación cuyo
+  objeto es «nada» no se salve con una condición**: el banner decía «no se
+  instala nada hasta que elijas», tenía su condición, pasaba el barrido, y dejó
+  de ser cierta el día que existieron los favoritos. Ahora dice «ninguna
+  medición».
+
+  **Tres mutaciones no salieron limpias a la primera, y son las que valieron.**
+  La del `noIndex` salió **verde**: el chequeo leía el fuente **con los
+  comentarios**, y el docblock de la página explica justamente por qué lleva
+  `noIndex` — el barrido pasaba leyendo la explicación de la regla en vez de la
+  regla. La del banner salió verde porque no había ninguna red para esa clase de
+  negación. Y la del barrido de claves de B-821 hubo que demostrarla **con un
+  par** de mutaciones, porque una sola no podía: el barrido miraba solo los
+  archivos que llaman a `getItem`/`setItem`, así que un módulo que **declara** la
+  clave y delega el acceso se escapaba entero — que es exactamente el corte
+  puro/transporte que el repo ya usa.
+
+  **Lo que quedó afuera, con motivo:** el corazón en cada fila del listado (la
+  fila entera es un `<a>`), renombrar una búsqueda (se borra y se vuelve a
+  guardar), `/mis-favoritos` en el encabezado (va en el pie, como `/pasadas`), y
+  analítica del evento — que además contradiría la promesa, y ahora hay un test
+  que lo impide.
+
 - **La propuesta aceptada ya no se queda con la foto del tercero** — **B-863**,
   decisión del dueño del 2026-09-10. Al convertir se promovía una **copia** a
   `imagenes/` y el original de `propuestas/` no se tocaba; con la `aceptada` sin

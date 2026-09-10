@@ -873,8 +873,10 @@ hay que cerrarla a mano o se convierte dos veces.
 **La imagen que mandan (DEC-11, paso 8) ya está**: la bandeja **muestra el
 flyer** —solo un admin puede verlo, y nadie puede enumerar el prefijo—, al
 convertir se copia sola a la galería de la actividad ya sin los datos ocultos que
-traía, y al rechazar se borra en el acto. Reabrir una rechazada no la trae de
-vuelta, y la pantalla lo dice.
+traía, y el original **se borra en los dos cierres**: al rechazar, en el acto; al
+aceptar (**B-863**, 2026-09-10), cuando la actividad se guardó y la copia
+promovida ya lo reemplaza. Reabrir una cerrada —rechazada o aceptada— no la trae
+de vuelta, y la pantalla lo dice.
 
 **El formulario público `/proponer` ya está escrito (paso 9), y todavía no se
 anuncia.** La página existe, valida, sube el flyer y escribe en `/propuestas`; lo
@@ -891,7 +893,9 @@ propuestas». **Y desde B-844 hay un segundo plazo**: la `nueva` o la
 vida** —el mismo número que la rechazada, contado distinto: el máximo entre
 `creadoEn` y `revision.en`, así que moverla de estado le renueva el plazo—,
 también con su imagen. La `aceptada` **no vence**: ahí el
-contacto sirve, porque la actividad existe y puede haber que repreguntar. La
+contacto sirve, porque la actividad existe y puede haber que repreguntar — pero
+eso vale para **el contacto y no para la foto**, que es lo que corrigió B-863: el
+original se borra al aceptar y lo que queda sin plazo es el documento. La
 ficha avisa «Se borra en N días» durante la última semana, y no antes —el
 precedente es **D-273**—. Ese aviso es la mitigación de lo que 30 días vuelve
 real: una propuesta puede caducar **antes de que nadie la haya abierto** si la
@@ -1791,6 +1795,64 @@ Dos cosas que no se ven mirando la página:
 búsqueda que las actividades) y **su entrada es el pie, no el encabezado**: la
 barra de arriba es para quien vino por una actividad. Ofrecer espacio y *servir*
 un anuncio siguen siendo dos cosas distintas — la segunda es **B-377**.
+
+### `/mis-favoritos` — lo que cada persona guardó (B-848)
+
+Un «usuario» en el sitio público **sin login, sin cuenta y sin ningún dato del
+lado nuestro**: todo lo que se guarda vive en el `localStorage` del navegador de
+quien lo guardó. Tres cosas se pueden hacer.
+
+| Qué | Dónde se hace | Dónde se ve |
+|---|---|---|
+| marcar y desmarcar una actividad | el botón «Guardar en mis favoritos» de la ficha, en `/actividad/{slug}` | `/mis-favoritos` |
+| guardar una búsqueda con un nombre | «Guardar esta búsqueda», al pie del riel de filtros de la home, y **solo con filtros puestos** | `/mis-favoritos` |
+| ver lo guardado y sacarlo | — | `/mis-favoritos`, con un «Quitar» por fila |
+
+**Guardar un filtro es guardar una URL con un nombre.** Los filtros del listado
+ya viajan en la query string, así que lo que se guarda es exactamente la
+dirección que se ve en la barra — la misma que se comparte por WhatsApp. No hay
+una segunda serialización que pueda desincronizarse.
+
+**Lo guardado lleva el tipo y la versión desde el día uno**
+(`{ v, tipo, slug, guardadoEn }`), aunque hoy la única entidad del sitio sea la
+actividad. El motivo no es prolijidad: son datos que **no podemos ver ni
+migrar**, así que el día que la forma cambie, lo guardado no se convierte solo —
+o se pierde, o hay que leerlo con un default para siempre. La llave es
+**tipo + slug**, y funciona porque el slug es inmutable después de publicar
+(trampa 10): un favorito sobrevive a que le cambien el título, la sede o la
+fecha.
+
+Cuatro comportamientos que no se adivinan mirando la pantalla:
+
+- **La actividad que ya pasó sigue siendo favorita y no se esconde** — decisión
+  del dueño. No se atenúa (el sistema visual prohíbe las opacidades, D-146 /
+  D-167): la fila ya distingue una pasada por la tinta del bloque de fecha **y
+  por la palabra** «Pasó», que es lo que pide la regla de que el color nunca sea
+  la única señal.
+- **Un favorito cuyo slug ya no está en la agenda se muestra igual**, con su
+  botón para sacarlo. Puede haberse despublicado o borrado; hacerlo desaparecer
+  sería borrarle a alguien algo que guardó sin decirle nada.
+- **Hay tope de 20 búsquedas guardadas y ninguno de favoritos**, y la asimetría
+  es a propósito: una lista de veinte filas ya no sirve para elegir, y una
+  colección de favoritos sí puede ser larga. Al llegar al tope **se rechaza con
+  un mensaje**; nunca se descarta la más vieja, porque un dato que vive solo en
+  el navegador de alguien no se puede devolver.
+- **Si el navegador no deja guardar** —ventana privada, almacenamiento del sitio
+  bloqueado, cuota llena— el botón vuelve solo al estado anterior en vez de
+  quedar prendido sobre nada. La página se dibuja bien sin nada guardado, que es
+  el caso normal de la primera visita.
+
+**No se indexa y no está en el sitemap**, y no es un olvido: para Google —que
+llega sin nada guardado— la página está siempre vacía. Va con `noindex` y **sin**
+`Disallow`, porque un `Disallow` impide leer el `noindex`. Se enlaza desde el pie
+y no desde el encabezado, el mismo criterio de `/pasadas` y `/anunciar`.
+
+La página **lo dice en pantalla, arriba y no en letra chica**: lo guardado es de
+ese navegador, no viaja al teléfono ni a otra computadora, y se va si se borran
+los datos del sitio. Es parte de la funcionalidad y no una advertencia legal — es
+también lo que la convierte en la **salida pública 19** de
+[`07-seguridad.md`](07-seguridad.md), numerada por la promesa y no por la
+proyección.
 
 ## Historial de versiones
 

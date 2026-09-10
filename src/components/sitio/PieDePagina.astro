@@ -48,6 +48,7 @@ import {
   RUTA_APOYAR,
   RUTA_AYUDA,
   RUTA_CONTACTO,
+  RUTA_MIS_FAVORITOS,
   RUTA_PASADAS,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
@@ -106,6 +107,18 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             ancho con lo que sí se busca.
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_PASADAS}>Lo que ya pasó</a>
+        </li>
+        <li>
+          {/*
+            **Lo guardado se enlaza desde el pie y no desde el encabezado** —
+            B-848, el mismo criterio con el que están acá `/pasadas` (B-229) y
+            `/anunciar` (B-770): es una sección que casi siempre está vacía —hasta
+            que alguien guarda su primera actividad no tiene nada— y en la barra
+            tendría el mismo peso que la agenda y la cartelera, que es lo que la
+            gente viene a buscar. El camino de ida es el botón de la ficha de cada
+            actividad, que es donde se guarda; éste es el de vuelta.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_MIS_FAVORITOS}>Mis favoritos</a>
         </li>
         <li>
           <a class={`${claseFila} sm:justify-end`} href={RUTA_SUSCRIBIRSE}>Suscribirse al calendario</a>

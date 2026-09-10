@@ -9949,3 +9949,129 @@ centinela: el índice MPF, un JFXX, un APPn de fabricante. No se cierra acá
 porque tocar el recorrido de `finDelJpeg` es tocar la guarda que cierra el
 segundo agujero de D-131 §3, y un error ahí corta el dato comprimido. Queda
 anotado en el BACKLOG.
+
+---
+
+## D-630 · El «usuario» del sitio público es `localStorage` y nada más, y lo guardado nace con `tipo` y versión
+
+Cierra la primera mitad de **B-848**, pedido del dueño el **2026-09-09**:
+«empezar a tener un usuario en el frente público (por ahora sin login ni nada)».
+
+### La decisión que hace barato a todo lo demás: no hay cuenta
+
+«Sin login» no es una etapa previa a tener cuentas: es lo que permite que esta
+funcionalidad **no toque nada**. Sin cuenta no hay nada que guardar del lado
+nuestro, así que no hay colección nueva, ni reglas de Firestore, ni retención,
+ni un dato de un tercero que administrar — y el sitio sigue **sin guardar un
+dato de nadie**, que es la promesa que sostiene B-102 y que afirma
+`07-seguridad.md`. Es el mismo patrón que el panel ya usa para los borradores
+(D-122) y el banner para el consentimiento.
+
+El precio está dicho en la pantalla y no en letra chica: lo guardado es de **ese
+navegador**, no viaja al teléfono, y se va si se borran los datos del sitio.
+
+### Lo guardado lleva `tipo` y `v` desde el día uno, con una sola entidad
+
+`{ v: 1, tipo, slug, guardadoEn }`. Hoy `tipo` solo puede valer `'actividad'` y
+`v` solo puede valer `1`, así que **los dos campos parecen gratuitos y
+sobrantes**. El argumento por el que están:
+
+> Son datos que **no podemos ver ni migrar**. El día que la forma cambie, lo
+> guardado no se convierte solo: o se pierde, o hay que leerlo con un default
+> para siempre.
+
+Las dos mitades, y no son la misma:
+
+| Campo | Qué pasa si no está |
+|---|---|
+| `v` | un formato nuevo tiene que **adivinar** si lo que leyó es viejo o corrupto, y las dos respuestas son destructivas |
+| `tipo` | el dueño ya contestó que el favorito es genérico —«puede ser un evento, una librería, una suscripción…»—, así que el día que existan las cuatro entidades de `docs/prd/` hay que adivinar de qué era cada slug guardado, sin nadie a quien preguntarle |
+
+La llave es **`tipo` + `slug`**, y funciona porque el slug es **inmutable
+después de publicar** (trampa 10): un favorito sobrevive a que le editen el
+título, la sede o la fecha. Es la misma clase de decisión que B-843 — una línea
+hoy, un rediseño después.
+
+**Una búsqueda guardada no lleva `tipo`, y eso también es una decisión.** De qué
+listado es ya está en el path que se guarda (`/` hoy, `/librerias` el día que
+exista); un slug suelto no dice de qué era, una ruta sí. `v` sí lleva, por el
+motivo de arriba.
+
+### Guardar un filtro es guardar una URL con un nombre
+
+Los filtros del listado **ya viajan en la query string** (`aQuery` / `desdeQuery`,
+§6.2 de `12-sitio-publico.md`), así que no hay nada que serializar. Y se lee de
+`window.location` al guardar, no se vuelve a derivar de los filtros: dos
+derivaciones del mismo formato —la de la barra de direcciones y la de lo
+guardado— es la clase de B-88, y se separarían el día que una de las dos cambie.
+
+### Lo que se lee de `localStorage` se valida como si viniera de afuera
+
+Es la parte que ninguna de las ocho marcas anteriores necesitaba: **el `url` de
+una búsqueda guardada y el `slug` de un favorito terminan en un `href`**. Lo
+escribe nuestro código y lo puede editar cualquiera con la consola abierta, así
+que `esRutaGuardable` exige una ruta interna —nada de `javascript:`, nada de
+`//otro.sitio` protocolo-relativo, nada de barra invertida— y `esSlugGuardable`
+el alfabeto que produce `slugify`. Lo que no pasa se descarta en silencio; nunca
+rompe la página.
+
+### El tope está en las búsquedas y no en los favoritos
+
+Veinte búsquedas guardadas, y **rechaza** en vez de descartar la más vieja. Los
+favoritos no tienen tope. La asimetría:
+
+- una búsqueda guardada es una fila de una lista que se mira entera para elegir:
+  pasadas veinte deja de servir para lo que existe;
+- un favorito es una colección — que alguien tenga ochenta es que el sitio le
+  sirve, y **descartar uno en silencio para hacer lugar sería perder un dato que
+  no tenemos cómo devolverle**.
+
+Es también lo que reemplaza al plazo de 30 días del borrador (D-122): acá no hay
+documento de respaldo en Firestore del cual recuperar nada.
+
+### La vencida sigue siendo favorita, y no se grisea
+
+Decisión del dueño: «la actividad vencida sigue siendo favorita», con la idea de
+«una diferenciación por color (tipo más griseada o algo). Hay que probar cómo
+queda». **Se probó contra el repo y no entra**: el sistema visual del sitio
+prohíbe las opacidades («tintas con nombre, no opacidades», D-146, B-235) y
+`tests/sistema-visual.test.ts` las frena. No es una regla nueva para este caso —
+el §4.5 de `12-sitio-publico.md` pedía las tarjetas de `/pasadas` «atenuadas» y
+se resolvió con **tinta**, no con opacidad (**D-167**).
+
+Y no hace falta agregar nada: la fila ya distingue una pasada con el bloque de
+fecha en `super` en vez del terracota de lo que se puede hacer, **y con la
+palabra** «Pasó» — que es lo que pide la regla de que el color nunca sea la
+única señal.
+
+### La página no se indexa, y la regla general que deja escrita
+
+`/mis-favoritos` va con `noindex` y **fuera del sitemap**. Para Googlebot —que
+llega sin nada guardado— está siempre vacía, y una página vacía indexada es peor
+que ninguna. **Sin `Disallow`**, porque un `Disallow` impide leer el `noindex`
+(el docblock de `textoDeRobots` ya lo tenía escrito para `/admin`).
+
+> **Regla general, y vale para lo que venga:** cualquier página cuyo contenido
+> dependa del navegador de quien la abre queda fuera del sitemap y lleva
+> `noindex`.
+
+### Y el botón de la ficha no es React
+
+El corazón va en la página de detalle, que es **la más visitada y la que no
+lleva framework**. B-239 ya descartó el runtime de React ahí, y el visor de la
+galería (D-430) sigue siendo la única excepción, con su costo medido. El botón
+es un `<script>` liso —la misma forma del aviso de cookies— y nace
+`hidden`: si el JavaScript no corre, no aparece un control que no hace nada. La
+sección propia **sí** es una island (`client:only="react"`), y ahí el argumento
+de B-239 no aplica: esa página no tiene contenido que el build pueda imprimir.
+
+**Y el costo está medido, no estimado** (build contra el emulador, 2026-09-10):
+
+| Qué | Dónde | Peso |
+|---|---|---|
+| el botón de la ficha | `/actividad/{slug}`, la página más visitada | **447 B** sin comprimir, **360 B** gzip |
+| «Guardar esta búsqueda» | el chunk del listado de la home, que ya existía | **+1.928 B** sin comprimir, **+678 B** gzip |
+| el runtime de React + la island | **solo** `/mis-favoritos` | 184,0 KB / **57,3 KB** gzip, más 3,7 KB / 1,6 KB de la island |
+
+O sea que la diferencia entre las dos formas, en la página que importa, es de
+**dos órdenes de magnitud y medio**.

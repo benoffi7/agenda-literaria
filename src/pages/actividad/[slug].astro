@@ -95,13 +95,14 @@ import {
   CLASES_DE_GALERIA,
   claseBloque,
   claseBloqueFecha,
+  claseBotonBloque,
   claseBotonPrimario,
   claseEnlace,
   claseRotulo,
   claseTituloSeccion,
   foco,
 } from '@/components/sitio/estilos';
-import { RUTA_AGENDA, rutaDeMes } from '@/lib/rutasPublicas';
+import { RUTA_AGENDA, RUTA_MIS_FAVORITOS, rutaDeMes } from '@/lib/rutasPublicas';
 
 export const prerender = true;
 
@@ -1135,6 +1136,51 @@ const gruposDeEncuentros =
             </p>
           )
         }
+
+        {/*
+          ══ Guardar en favoritos — B-848 ═══════════════════════════════════
+
+          **Un `<button>` con un script propio, y no una island.** Es la decisión
+          que mantiene a esta página sin framework: B-239 ya descartó el runtime
+          de React acá para la home, y el visor de la galería (B-720/D-430) es la
+          única excepción, con su costo medido y `client:idle`. Un corazón con
+          estado no vale 58,5 KB de framework en la página que más se visita.
+          La forma es la que ya usan el aviso de cookies y «copiar la dirección
+          del calendario»: markup en el HTML y un puñado de JavaScript liso.
+          (Sin contarlo en líneas: un número escrito acá caduca en cuanto el script
+          crezca una línea, y el dato que importa está medido en bytes más abajo.)
+
+          **Nace `hidden` y lo muestra el script**, igual que el banner de
+          cookies: si el JavaScript no corre —bloqueado, error, un `localStorage`
+          que tira— no aparece un botón que no hace nada. El estado por defecto
+          es el que no miente.
+
+          **`aria-pressed` y el texto cambian los dos.** El color solo no puede
+          ser la señal, así que el botón dice «Guardar» o «Guardada», y quien usa
+          lector de pantalla lo oye del `aria-pressed`.
+
+          La nota de abajo no es letra chica: es la mitad de la funcionalidad —lo
+          guardado es de **este** navegador—. Va acotada («en este navegador»,
+          «en ningún lado del servidor») porque una negación absoluta sobre
+          tratamiento de datos es la que nace falsa (B-781).
+        */}
+        <div class="regla-fina px-4 pt-3 pb-4">
+          <button
+            type="button"
+            id="guardar-favorito"
+            data-slug={detalle.slug}
+            aria-pressed="false"
+            hidden
+            class={`${claseBotonBloque} w-full justify-center`}
+          >
+            Guardar en mis favoritos
+          </button>
+          <p id="nota-favorito" hidden class="body-sm mt-2 text-super">
+            Se guarda en este navegador y en ningún lado del servidor: no hace
+            falta ninguna cuenta y no viaja a tu teléfono.
+            <a class={claseEnlace} href={RUTA_MIS_FAVORITOS}>Ver mis favoritos</a>.
+          </p>
+        </div>
       </aside>
     </div>
   </main>
@@ -1241,6 +1287,50 @@ const gruposDeEncuentros =
       if (!boton) return;
       medirSitio('clic_inscripcion', { via: boton.dataset.via });
     });
+  </script>
+
+  <script>
+    /*
+     * B-848 — «Guardar en mis favoritos», sin framework.
+     *
+     * Es el cuarto y último `<script>` de esta página (ver el contrato de
+     * `tests/detalle-visual.test.ts`), y es liso a propósito: B-239 descartó el
+     * runtime de React acá, y el visor de la galería sigue siendo la única
+     * excepción, con su costo medido. Éste también: **447 bytes sin comprimir,
+     * 360 gzip** (build contra el emulador, 2026-09-10), contra los 57,3 KB gzip
+     * que costaría montarlo como island. Todo lo que decide qué se guarda vive
+     * en `@/lib/guardadosDelSitio` (puro y testeado); esto es el cableado del
+     * DOM.
+     *
+     * **El botón nace `hidden` y lo muestra este script**, como el banner de
+     * cookies: si el JavaScript no corre no aparece un control que no hace nada.
+     * Y `alternarFavorito` devuelve **lo que quedó guardado de verdad**, no lo
+     * que se quiso guardar: con un `localStorage` que tira, el botón vuelve solo
+     * al estado anterior en vez de mentir hasta la visita siguiente.
+     */
+    import { alternarFavorito, leerFavoritos } from '@/lib/guardadoDelNavegador';
+    import { esFavorito } from '@/lib/guardadosDelSitio';
+
+    const boton = document.getElementById('guardar-favorito') as HTMLButtonElement | null;
+    const nota = document.getElementById('nota-favorito');
+    const slug = boton?.dataset.slug ?? '';
+
+    if (boton && slug) {
+      const pintar = (guardada: boolean): void => {
+        boton.setAttribute('aria-pressed', String(guardada));
+        // El texto cambia además del estado: el color solo no puede ser la
+        // señal, y acá ni siquiera hay un color distinto que mirar.
+        boton.textContent = guardada ? 'Guardada — quitar de favoritos' : 'Guardar en mis favoritos';
+      };
+
+      pintar(esFavorito(leerFavoritos(), 'actividad', slug));
+      boton.hidden = false;
+      if (nota) nota.hidden = false;
+
+      boton.addEventListener('click', () => {
+        pintar(esFavorito(alternarFavorito('actividad', slug), 'actividad', slug));
+      });
+    }
   </script>
 
   {/*

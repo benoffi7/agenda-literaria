@@ -1723,7 +1723,7 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
    * lugares—. La buena es la otra: llevar las fechas de cada fila al view-model y
    * repartir los lugares de verdad, y es más grande que este ítem porque hoy
    * `ModalidadPublica` ni siquiera trae la ventana (§5.1: «no sale a ninguna de
-   * las dieciocho salidas», y usarla acá aunque no se publique es una decisión de
+   * las diecinueve salidas», y usarla acá aunque no se publique es una decisión de
    * `toPublic`, no de este módulo).
    *
    * **`eventAttendanceMode` se queda, y no es un olvido**: con filas mixtas dice

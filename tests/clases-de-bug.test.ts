@@ -390,20 +390,30 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        * y acá lo único que se escribe es un borrado.
        */
       /*
-       * B-830 paso 8 / DEC-11 — rechazar borra la imagen en el acto. Es un
-       * trigger **de documento**, así que a diferencia de su vecino de arriba sí
-       * entra a los dos chequeos de abajo, y conviene saber cómo pasa cada uno:
+       * B-830 paso 8 / DEC-11 y **B-863** — cerrar una propuesta borra su
+       * imagen: al rechazarla en el acto, al aceptarla una vez verificada la
+       * copia promovida. **Se llamaba `borrarImagenAlRechazar`** hasta B-863; el
+       * nombre pasó a mentir el día que el cierre dejó de ser uno solo, y sigue
+       * siendo **un solo trigger** porque dos `onDocumentWritten` sobre
+       * `propuestas/{id}` serían dos handlers del mismo evento peleándose el
+       * mismo objeto (B-89).
+       *
+       * Es un trigger **de documento**, así que a diferencia de su vecino de
+       * arriba sí entra a los dos chequeos de abajo, y conviene saber cómo pasa
+       * cada uno:
        *
        *  - **B-82** (efecto duplicable sin guarda): el efecto es un `delete()`
        *    con `ignoreNotFound`, o sea idempotente — dos entregas del mismo
        *    evento dejan el mismo estado. Y la guarda que lo hace decidible está
        *    escrita igual: `decidirBorradoDeImagen` actúa **solo en la
-       *    transición** a `rechazada`, no en el estado.
-       *  - **B-85** (leer estado → red → escribir lo leído): no escribe nada. El
-       *    documento que lo dispara no se toca, y eso es deliberado — es prueba
-       *    de qué se pidió, y un write-back volvería a dispararlo (trampa 3).
+       *    transición** a un estado que cierra, no en el estado.
+       *  - **B-85** (leer estado → red → escribir lo leído): la rama de B-863
+       *    **lee** la actividad y **pregunta** al bucket, pero no escribe nada.
+       *    El documento que lo dispara no se toca, y eso es deliberado — es
+       *    prueba de qué se pidió, y un write-back volvería a dispararlo
+       *    (trampa 3).
        */
-      'borrarImagenAlRechazar',
+      'borrarImagenAlCerrar',
       'borrarPropuestasVencidas',
       'dispararRebuild',
       'guardarVersion',
@@ -2413,11 +2423,40 @@ describe('clase de la §5.1 · una marca del navegador tiene clave fija y está 
    */
   const CLAVES = /'(agenda[-:][A-Za-z0-9:.-]*)'/g;
 
-  /** Los archivos del panel y del sitio que tocan el almacenamiento del navegador. */
+  /**
+   * Los archivos del panel y del sitio que **tocan el almacenamiento del
+   * navegador o declaran una de sus claves**.
+   *
+   * ── Por qué las dos condiciones y no solo la primera — B-848 ────────────
+   * El barrido miraba únicamente los archivos que llaman a
+   * `getItem`/`setItem`/`removeItem`, y eso deja un agujero con la forma exacta
+   * de la clase que este bloque persigue: **un módulo que declara la clave y
+   * delega el acceso en otro archivo se escapa entero**. La clave existe, guarda
+   * lo que guarde, y no aparece en ninguna de las dos direcciones del chequeo —
+   * ni «te falta la fila en la doc», ni «esta fila ya no existe».
+   *
+   * Lo encontró B-848 sobre sí mismo: `lib/guardadosDelSitio.ts` (puro) declara
+   * las claves y `lib/guardadoDelNavegador.ts` (el transporte) toca
+   * `window.localStorage`, que es el mismo corte que ya tenían
+   * `analyticsSitio.ts` / `medicionSitio.ts`. Aquél no se escapaba **por
+   * casualidad**: el módulo puro recibe el almacén como puerto y le llama
+   * `getItem` adentro. O sea que la red dependía de un detalle de estilo del
+   * archivo auditado, y no de la regla.
+   *
+   * La segunda condición usa el **mismo patrón** que `declaradas()`: si un
+   * archivo declara una constante de clave, entra al barrido aunque no toque el
+   * almacén con sus propias manos.
+   */
   const conAlmacenamiento = (): string[] =>
     [...versionados('src/lib'), ...versionados('src/components')]
       .filter((f) => /\.(ts|tsx)$/.test(f))
-      .filter((f) => /\.(getItem|setItem|removeItem)\(/.test(sinComentarios(fuente(f))));
+      .filter((f) => {
+        const src = sinComentarios(fuente(f));
+        return (
+          /\.(getItem|setItem|removeItem)\(/.test(src) ||
+          /(?:export )?const [A-Z_][A-Z0-9_]* = 'agenda[-:]/.test(src)
+        );
+      });
 
   /**
    * Las claves declaradas como **constante del módulo**, con el archivo.

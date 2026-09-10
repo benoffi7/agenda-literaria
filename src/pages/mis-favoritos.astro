@@ -1,0 +1,110 @@
+---
+/**
+ * `/mis-favoritos` — lo que cada persona guardó. B-848, **D-630**.
+ *
+ * ── Un «usuario» sin login, y esa es la decisión que lo hace barato ──────
+ * No hay cuenta. Todo lo que esta página muestra sale del `localStorage` del
+ * navegador de quien la abre: **el sitio no guarda un dato de nadie**, que es la
+ * promesa que sostiene B-102 y que afirma `docs/07-seguridad.md`. Es el mismo
+ * patrón que el panel usa para los borradores (D-122) y el banner para el
+ * consentimiento.
+ *
+ * Y por eso la página **lo dice en pantalla**, arriba y no en letra chica: son
+ * de este navegador, no viajan al teléfono, y se van si se borran los datos del
+ * sitio. Es parte de la funcionalidad, no una advertencia legal.
+ *
+ * ── No se indexa, y no es una omisión ────────────────────────────────────
+ * `noIndex` y **fuera del sitemap**. Para Googlebot —que llega sin nada
+ * guardado— esta página está siempre vacía, y una página vacía indexada es peor
+ * que ninguna. Las dos mitades:
+ *
+ * | Mitad | Dónde |
+ * |---|---|
+ * | no se le ofrece al buscador | no está en `RUTAS_FIJAS` (`lib/sitemap.ts`), y la excepción está anotada con su motivo en `tests/sitemap.test.ts` |
+ * | y si alguien la enlaza igual, no se indexa | el `noIndex` de acá |
+ *
+ * **Sin `Disallow` en el `robots.txt`**, y eso es a propósito: un `Disallow`
+ * impide leer el `noindex` (ver el docblock de `textoDeRobots`), o sea que la
+ * señal que queremos que Google lea tiene que poder leerla.
+ *
+ * ── El HTML del build es el marco, no el contenido ───────────────────────
+ * Todas las demás páginas del sitio salen completas del build y la island solo
+ * re-renderiza (§6.3, «el HTML es la verdad»). Acá no hay verdad que imprimir:
+ * el contenido **no existe** hasta que el navegador de la persona lo aporta. Por
+ * eso `MisGuardados` va con `client:only="react"` —renderizar un esqueleto en el
+ * servidor sería dibujar dos veces una lista vacía— y por eso hay un `<noscript>`
+ * que dice qué pasa sin JavaScript, que es la única página del sitio donde eso
+ * hace falta.
+ *
+ * ── Y no lee Firestore ───────────────────────────────────────────────────
+ * Ni una lectura: lo único que necesita del build es la versión, para pedir el
+ * `/events.json` con la misma cache-key que el listado. La resolución contra el
+ * índice la hace la island con un `fetch`, igual que el buscador de la home.
+ */
+import Base from '@/layouts/Base.astro';
+import { MisGuardados } from '@/components/publico/MisGuardados';
+import { claseEnlace, claseSalto } from '@/components/sitio/estilos';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import { INFO_VERSION } from '@/lib/version';
+
+export const prerender = true;
+
+const TITULO = 'Mis favoritos';
+---
+
+<Base
+  seccion="mis-favoritos"
+  titulo={`${TITULO} · ${NOMBRE}`}
+  descripcion="Las actividades que guardaste y las búsquedas que dejaste anotadas, en este navegador."
+  noIndex={true}
+>
+  <a
+    href="#guardados"
+    class={`body-md border border-acento bg-papel px-3 py-2 text-acento ${claseSalto}`}
+  >
+    Saltar a lo guardado
+  </a>
+
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">{TITULO}</h1>
+
+      <p class="body-md mt-3 text-super">
+        Acá están las actividades que marcaste y las búsquedas que guardaste con
+        un nombre.
+      </p>
+
+      <p class="body-md mt-3 text-super">
+        {/*
+          **La promesa, dicha entera y arriba** — es lo que el ítem pide que se
+          diga en la pantalla, y la clase de texto que
+          `tests/promesas-sobre-datos.test.ts` custodia: una afirmación sobre
+          tratamiento de datos, escrita a mano, en una página pública. Por eso va
+          acotada («en este navegador», «en ningún lado del servidor») y no como
+          una negación absoluta, que es la forma que nace falsa.
+        */}
+        Todo esto vive <strong class="font-semibold text-tinta">en este navegador</strong>
+        y en ningún lado del servidor: no hace falta ninguna cuenta, no lo vemos
+        nosotros, no viaja a tu teléfono ni a otra computadora, y se va si borrás
+        los datos del sitio.
+      </p>
+
+      <p class="body-md mt-3 text-super">
+        <a href={RUTA_AGENDA} class={claseEnlace}>Volver a la agenda</a>
+      </p>
+    </div>
+
+    <div id="guardados" class="scroll-mt-4">
+      <noscript>
+        <p class="body-md regla-gruesa-arriba mt-8 px-4 py-12 text-center text-super">
+          Esta página necesita JavaScript: lo que guardaste está en tu navegador
+          y no en el servidor, así que sin JavaScript no hay de dónde leerlo. El
+          resto del sitio funciona igual sin él.
+        </p>
+      </noscript>
+
+      <MisGuardados client:only="react" version={INFO_VERSION.version} />
+    </div>
+  </main>
+</Base>

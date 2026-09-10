@@ -20,6 +20,18 @@ import { foco } from '@/components/sitio/estilos';
  * script puede terminar cargando un segundo script (`gtag.js`), y solo si la
  * persona acepta.
  *
+ * ── «Ninguna medición», y no «nada» — B-848 ───────────────────────────────
+ * La frase decía «no se instala **nada** hasta que elijas», y hasta B-848 era
+ * literalmente cierta: sin elección, el sitio público no escribía un byte en el
+ * dispositivo de nadie. Desde que existen los favoritos, alguien que apretó
+ * «Rechazar» y después guardó una actividad **sí** tiene algo escrito en su
+ * navegador — almacenamiento que pidió él, funcional y exento del banner, pero
+ * escrito—. El sujeto de la oración era Analytics y se leía de más: es la forma
+ * exacta con la que nació falsa la promesa de `/apoyar` (B-781), una negación
+ * absoluta en la misma pantalla que la desmiente. Se acota a la medición, que
+ * es de lo único que este banner puede hablar. Lo señaló el
+ * `auditor-privacidad`.
+ *
  * ── Sin flash de contenido, y fail-safe si el JavaScript no corre ──────────
  * Las dos piezas (el banner y el control de "Cookies" para reabrir) nacen con
  * `hidden` en el HTML del build. Si el JavaScript no corre —bloqueado, error,
@@ -44,7 +56,7 @@ import { foco } from '@/components/sitio/estilos';
   <div class="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <p class="body-sm text-tinta">
       Usamos Google Analytics para saber cuánta gente visita el sitio. No se
-      instala nada hasta que elijas, y se puede cambiar después.
+      instala ninguna medición hasta que elijas, y se puede cambiar después.
     </p>
     <div class="flex shrink-0 gap-2">
       <button

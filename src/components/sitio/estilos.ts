@@ -107,6 +107,25 @@ export const claseBotonPrimario = `inline-flex min-h-touch items-center justify-
 export const claseBotonSecundario = `inline-flex min-h-touch items-center justify-center px-2 py-2 text-center font-medium text-acento underline decoration-2 underline-offset-4 transition-colors hover:text-super hover:decoration-super ${foco}`;
 
 /**
+ * Un **botón rectangular de contorno**: la tercera forma de control del sitio,
+ * entre el bloque macizo de `claseBotonPrimario` y el texto subrayado del
+ * secundario. Es un control de la pantalla —«Filtros (3)», «Guardar en mis
+ * favoritos»— y no el llamado a la acción de la página.
+ *
+ * **Vivía en `Buscador.tsx` y se mudó acá con B-848**, cuando apareció el
+ * segundo consumidor. Es la regla del §«Estilo de UI» de `05-patrones.md`: las
+ * clases compartidas del sitio están en este archivo, y no se escriben clases de
+ * botón sueltas. Dos definiciones del mismo botón se separan en el primer
+ * retoque y nadie las ve juntas para notarlo.
+ *
+ * **Trae la forma y no la tinta**: quien la usa pone `bg-*`/`text-*` si necesita
+ * el estado macizo (el botón de filtros lo hace cuando hay filtros puestos). Es
+ * la trampa 1 de Tailwind del §«Estilo de UI» — dos utilidades del mismo tipo en
+ * un elemento no las resuelve el orden del atributo.
+ */
+export const claseBotonBloque = `label-caps inline-flex min-h-touch shrink-0 items-center justify-center gap-2 border border-borde px-4 transition-colors ${foco} disabled:opacity-60`;
+
+/**
  * Un bloque apoyado sobre el papel: **regla y capa tonal, nunca una sombra**.
  *
  * Sustituye a la `claseTarjeta` de D-141. No se llama «tarjeta» a propósito: en

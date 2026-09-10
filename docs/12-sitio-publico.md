@@ -143,6 +143,7 @@ que exista.
 > | `/acerca` | **`/ayuda`** + **`/contacto`** — el rol se repartió en dos | B-232, B-233 |
 > | *(no estaba)* | **`/cartelera`**, la pared de afiches | **D-148** (B-265) |
 > | *(no estaba)* | **`/anunciar`**, la sección comercial | **D-450** (B-770) |
+> | *(no estaba)* | **`/mis-favoritos`**, lo que cada persona guardó | **B-848** |
 > | `/404` | ~~**no existe todavía**~~ → **`/404.html`**, construida el 2026-09-03 | **B-310**, con **D-380** |
 >
 > La fuente de verdad de qué páginas hay es `src/pages/`, y la de qué se le ofrece
@@ -1141,6 +1142,49 @@ el subconjunto ya filtrado.
   > una prop, así que no hay un solo dato de una actividad que pueda tocar. Lo que
   > sí tiene es el riesgo del texto libre en una página pública (el ejemplo bien
   > intencionado), y de eso se ocupa el barrido de su test.
+
+- **`/mis-favoritos`** — **no estaba en este diseño**: nació con **B-848**, el
+  día que el sitio tuvo un «usuario» sin login. Es la sección propia de lo que
+  cada persona guardó: las actividades que marcó y las búsquedas que dejó
+  anotadas con un nombre.
+
+  > ✅ **Construida el 2026-09-10 — B-848.** Es la primera página del sitio cuyo
+  > contenido **no lo produce el build**: sale del `localStorage` de quien la
+  > abre. Eso da vuelta tres cosas que hasta acá valían para todas.
+  >
+  > | Regla del sitio | Acá |
+  > |---|---|
+  > | «el HTML es la verdad, la island solo re-renderiza» (§6.3) | no hay verdad que imprimir: el build emite el marco y el `<noscript>`, y la island (`client:only="react"`) pone el contenido |
+  > | toda página estática entra al `sitemap.xml` o se exceptúa con motivo (§5.6) | **se exceptúa, y para siempre**: para Googlebot —que llega sin nada guardado— está siempre vacía, y una página vacía indexada es peor que ninguna. Va con `noindex` y **sin** `Disallow`, porque un `Disallow` impide leer el `noindex` |
+  > | las páginas de texto no son una salida numerada | **sí lo es, la 19**, y por el criterio de las filas 13 a 18: se numera **por la promesa** («vive en este navegador y en ningún lado del servidor»), no por la proyección |
+  >
+  > **La regla general que deja escrita, y vale para lo que venga:** cualquier
+  > página cuyo contenido dependa del navegador de quien la abre queda fuera del
+  > sitemap y lleva `noindex`.
+  >
+  > **Dónde se guarda cada cosa, que no es acá:** el botón «Guardar en mis
+  > favoritos» vive en la ficha de `/actividad/{slug}` y es un `<script>` liso
+  > —**sin React**, que es lo que mantiene a la página más visitada sin framework
+  > (B-239): pesa **447 B** sin comprimir contra los 57,3 KB gzip que costaría el
+  > runtime, medido en el build del 2026-09-10—; el «Guardar esta búsqueda» vive al pie del riel de
+  > filtros de la home, y solo aparece con filtros puestos. Esta página es donde
+  > se ven y se sacan.
+  >
+  > **La actividad que ya pasó sigue siendo favorita y no se esconde** —decisión
+  > del dueño—. Lo que **no** se hace es griselas: el sistema visual prohíbe las
+  > opacidades (D-146, B-235) y ya hubo un pedido idéntico rechazado con ese
+  > argumento en `/pasadas` (**D-167**). La distinción la trae la fila y no es
+  > solo color: el bloque de fecha va en `super` **y dice la palabra** «Pasó».
+  >
+  > **Y tolera que el slug ya no esté** —despublicada, cancelada, borrada—: la
+  > fila se dibuja igual, dice qué pasó con palabras y tiene su botón para
+  > sacarla. Hacerla desaparecer sería borrarle a alguien algo que guardó sin
+  > decirle nada.
+  >
+  > Se enlaza desde el pie y **no desde el encabezado**, el mismo criterio con el
+  > que están ahí `/pasadas` (B-229) y `/anunciar` (B-770): hasta que alguien
+  > guarda su primera actividad no tiene nada, y en la barra tendría el mismo
+  > peso que la agenda y la cartelera.
 
 ---
 

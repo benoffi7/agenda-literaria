@@ -156,6 +156,28 @@ describe('las páginas fijas', () => {
       '/proponer/':
         'todavía no se anuncia: la escritura anónima está cerrada hasta que App Check exija ' +
         '(B-836a). Entra al sitemap el día que se abra',
+      /*
+       * **B-848, y es una exclusión permanente, no una espera como `/proponer`.**
+       *
+       * El contenido de esta página sale del `localStorage` de quien la abre, así
+       * que para Googlebot —que llega sin nada guardado— está **siempre vacía**.
+       * Ofrecerle esa URL es pedirle que rastree una página en blanco, y una
+       * página vacía indexada es peor que ninguna: compite con las que sí tienen
+       * algo y le enseña al buscador que este sitio publica huecos. Es el mismo
+       * criterio con el que un hub sin nada vigente sale con `noindex` (B-108),
+       * con la diferencia de que acá el vacío no es un estado pasajero de los
+       * datos: es lo que Google va a ver siempre.
+       *
+       * La regla general, escrita acá porque es donde se aplica: **cualquier
+       * página cuyo contenido dependa del navegador de quien la abre queda fuera
+       * del sitemap y lleva `noindex`.** Lo que **no** lleva es un `Disallow`:
+       * un `Disallow` impide leer el `noindex` (ver el docblock de
+       * `textoDeRobots`), y acá la señal que queremos que Google lea es
+       * justamente ésa.
+       */
+      '/mis-favoritos/':
+        'lo que muestra sale del `localStorage` de quien la abre, así que para Google está ' +
+        'siempre vacía: `noindex` y fuera del sitemap, sin `Disallow` (B-848)',
     };
 
     const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
@@ -185,6 +207,42 @@ describe('las páginas fijas', () => {
     for (const r of Object.keys(EXCEPTUADAS)) {
       expect(paginas.map(rutaDe)).toContain(r);
     }
+  });
+
+  it('la página que depende del navegador lleva además `noIndex` — B-848', () => {
+    /*
+     * **Son dos mitades y solo una la ata la lista de arriba.** Estar fuera del
+     * sitemap es «no se la ofrezco a Google»; el `noIndex` es «y si alguien la
+     * enlaza igual, no la indexes». Sin las dos, una página cuyo contenido sale
+     * del `localStorage` de quien la abre puede terminar indexada y vacía, que
+     * es exactamente lo que la excepción de arriba dice estar evitando — y la
+     * excepción seguiría verde, porque solo mira que la ruta esté declarada.
+     *
+     * Es el mismo par que el panel tiene desde B-109 (`Disallow` + `noindex`,
+     * ver el docblock de `textoDeRobots`) con la diferencia deliberada de que
+     * acá **no** hay `Disallow`: un `Disallow` impide leer el `noindex`, y acá
+     * la señal que queremos que lea es ésa.
+     *
+     * MUTACIÓN PROBADA: sacar `noIndex={true}` de `mis-favoritos.astro` deja
+     * verde todo el resto de la suite y pone este caso en rojo.
+     */
+    /*
+     * **Sin los comentarios**, y no es cosmético: el docblock de esa página
+     * explica justamente por qué lleva `noIndex`, así que un barrido sobre el
+     * texto crudo pasa leyendo la explicación de la regla en vez de la regla.
+     * Se descubrió probando la mutación —sacar el `noIndex={true}` dejaba este
+     * caso en **verde**—, que es el mismo recorte que ya hacen
+     * `sistema-visual.test.ts` y `pagina-de-detalle.test.ts` por el mismo motivo.
+     */
+    const src = readFileSync(raiz('src/pages/mis-favoritos.astro'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(src, 'la página existe y usa el layout').toContain('<Base');
+    expect(
+      /noIndex=\{true\}|noIndex\b(?!=)/.test(src),
+      '`/mis-favoritos` está fuera del sitemap porque para Google está siempre vacía: ' +
+        'sin `noIndex`, un link de afuera alcanza para que la indexe igual',
+    ).toBe(true);
   });
 });
 

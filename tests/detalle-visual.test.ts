@@ -298,25 +298,34 @@ describe('los `<script>` de esta página están contados, uno por uno (B-107/B-3
    * afirmaba que había un solo `<script>`. Dejó de ser cierto a propósito: el
    * dueño aceptó el costo de GA4 acá (D-251) y B-375 sumó el evento de clic
    * (D-252); y B-107 sumó un segundo bloque de datos estructurados, el
-   * `BreadcrumbList`. Hoy son **tres**: dos `application/ld+json` (los datos del
-   * evento y las migas de pan) y uno de comportamiento, el de la analítica.
+   * `BreadcrumbList`. **Y desde B-848 son cuatro**: el cuarto es el botón
+   * «Guardar en mis favoritos», y se declara acá con su motivo como pide este
+   * contrato. Es la misma clase que el de analítica —comportamiento, sin
+   * framework, sin island— y entró por la misma puerta: la alternativa era un
+   * componente de React con `client:`, o sea el runtime entero (58,5 KB gzip) en
+   * la página más visitada del sitio, que es lo que B-239 ya descartó una vez.
+   * No mide nada y no manda nada afuera: lo que guarda vive en el
+   * `localStorage` de quien lo aprieta.
+   *
+   * Hoy son **cuatro**: dos `application/ld+json` (los datos del evento y las
+   * migas de pan) y dos de comportamiento (la analítica y el favorito).
    *
    * Lo que este describe garantiza no es «cero scripts»: es que **no aparezca un
-   * cuarto sin que alguien venga a decidirlo acá**. Cada script nuevo se declara
+   * quinto sin que alguien venga a decidirlo acá**. Cada script nuevo se declara
    * en esta lista, con su motivo — la misma idea que `pagina-de-detalle.test.ts`
    * aplica a los imports.
    *
    * MUTACIÓN PROBADA: agregar un `<script>` de dos líneas para medir el scroll
    * (la barra que B-238/D-145 descartó) deja verde el test de islands de
-   * `pagina-de-detalle.test.ts` y pone el primer caso de acá en rojo (cuenta 4).
+   * `pagina-de-detalle.test.ts` y pone el primer caso de acá en rojo (cuenta 5).
    */
-  it('son exactamente tres: dos JSON-LD (datos + BreadcrumbList) y uno de analítica', () => {
+  it('son exactamente cuatro: dos JSON-LD (datos + BreadcrumbList), la analítica y el favorito', () => {
     const codigo = sinComentarios(src());
     // Etiquetas de **apertura**: los dos JSON-LD son self-closing
     // (`<script ... is:inline />`), sin `</script>` textual, así que un regex que
     // exigiera el cierre los dejaría afuera de la cuenta.
     const aperturas = [...codigo.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]!);
-    expect(aperturas).toHaveLength(3);
+    expect(aperturas).toHaveLength(4);
 
     // Dos son datos estructurados: el `Event` y el `BreadcrumbList` (B-107).
     const ldjson = aperturas.filter((a) => a.includes('application/ld+json'));
@@ -327,6 +336,18 @@ describe('los `<script>` de esta página están contados, uno por uno (B-107/B-3
     // `pagina-de-detalle.test.ts`) — y mide un solo evento declarado.
     expect(codigo).toContain("medirSitio('clic_inscripcion'");
     expect(codigo).toContain("from '@/lib/medicionSitio'");
+
+    /*
+     * El cuarto es el favorito (B-848), y se afirma **lo que lo hace aceptable**
+     * y no solo que exista: que la decisión de qué se guarda venga del módulo
+     * puro y no esté escrita en la plantilla, y que este script **no mida nada**
+     * — medir «guardó un favorito» sería mandar afuera la señal de la única
+     * función del sitio que existe justamente porque no manda nada afuera.
+     */
+    expect(codigo).toContain("from '@/lib/guardadoDelNavegador'");
+    expect(codigo).toContain("alternarFavorito('actividad', slug)");
+    const delFavorito = codigo.slice(codigo.indexOf("from '@/lib/guardadoDelNavegador'"));
+    expect(delFavorito).not.toContain('medirSitio');
   });
 
   it('cada bloque ld+json escapa el < antes del set:html (§5.5, trampa 5)', () => {

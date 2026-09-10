@@ -4,7 +4,7 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
-**Son dieciocho salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+**Son diecinueve salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
 esas. La **6** nació con B-227 y es la primera que es una *página* y no un
 archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
@@ -55,6 +55,7 @@ filtra — ver la advertencia después de la tabla.
 | 16 | El **`/404`** (B-310) — la única página del sitio con `noindex` | `src/lib/noEncontrado.ts`. Lleva el buscador, la tira de hubs —la misma de la home, ya recortada— y el enlace al archivo. **No entra al `sitemap.xml`** y está en la lista de excepciones de ese test con su motivo | `tests/no-encontrado.test.ts`, `tests/sitemap.test.ts` |
 | 17 | La página de **apoyo** `/apoyar` (B-780) — y la primera arista propia de esta clase: un destino de cobro | `src/lib/apoyoDelSitio.ts` y `src/lib/enlaces.ts` (`CAFECITO`, `urlDeCafecito()`: el **único** lugar donde ese destino se escribe). Es la página donde la promesa ya nació falsa una vez —decía «no se guarda quién entró» con el banner de GA4 en la misma pantalla— y de ahí salió el barrido de la salida 12 cruzado con esta clase | `tests/apoyo-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/terceros-antes-del-consentimiento.test.ts` |
 | 18 | La página **comercial** `/anunciar` (B-770) — ofrece espacio y la única acción es un mail | `src/lib/comercialDelSitio.ts` y `src/lib/enlaces.ts` (`CONTACTO`). **No inventa un número de audiencia** y el test lo prohíbe: la medición arrancó el 2026-08-21, así que cualquier cifra sería inventada hasta que haya historia (B-771). Y su texto está redactado **evitando** afirmar ajustes de consola que este repo no controla (B-773) | `tests/comercial-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
+| 19 | La página **`/mis-favoritos`** (B-848) — lo que cada persona guardó, y **la única página del sitio que no se indexa por lo que es y no por lo que le falta** | `src/lib/guardadosDelSitio.ts` (puro: la forma de lo guardado, `esRutaGuardable`/`esSlugGuardable`, y el acceso al almacén por puerto), `src/lib/guardadoDelNavegador.ts` (el `try`/`catch` alrededor de `window.localStorage`) y `src/components/publico/MisGuardados.tsx`, que resuelve contra el `events.json` — o sea que **deriva de la salida 1** y solo puede sacar campos que aquélla ya publicó. **No proyecta ningún documento y no manda nada a ninguna parte**: no hay fetch a un tercero, no hay Firestore, no hay analítica. Se numera **por la promesa** —«vive en este navegador y en ningún lado del servidor», el criterio con el que se numeraron las filas 13 a 18— y porque tiene un riesgo que ninguna otra tiene: **lo guardado se lee del `localStorage` y termina en un `href`**, así que la validación al leer es parte de esta salida y no un detalle del módulo. El botón que escribe vive en la salida 6 (un `<script>` de la página de detalle, el cuarto y último) y el que guarda una búsqueda, en la mitad HTML de la 1 (`GuardarBusqueda.tsx`) | `tests/guardados-del-sitio.test.ts`, `tests/sitemap.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/clases-de-bug.test.ts` |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.
@@ -84,8 +85,9 @@ que su view-model ya trae; lo que hay que mirar si aparece una prop nueva ahí e
 de dónde sale. Lo señaló el `auditor-privacidad`.
 
 > ⚠️ **Decisión del dueño el 2026-09-07: SÍ se numeran.** Son las filas **13 a
-> 18**, y este párrafo —que decía lo contrario— queda porque su argumento sigue
-> siendo el que hay que entender para leer bien esas seis filas.
+> 18** —y desde B-848 la **19**, que entró por este mismo criterio—, y este
+> párrafo —que decía lo contrario— queda porque su argumento sigue siendo el que
+> hay que entender para leer bien esas filas.
 >
 > **Lo que el argumento tenía bien:** estas páginas no proyectan ningún
 > documento, así que no hay campo que se cuele por un spread y **no hay proyección
@@ -171,17 +173,17 @@ no crece con esta página.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `material.items[].id` | id de cliente (B-342), de máquina — no dice nada sobre la actividad, pero tampoco aporta nada afuera: es la trampa 2 en miniatura, no un dato de contenido | `toPublic.ts` |
 | `createdBy` / `updatedBy` | uids | ambos |
-| `propuestas[].contacto` | **el primer dato personal de un tercero que el proyecto guarda** (B-830), y reabre a propósito lo que B-102 había cerrado: sin forma de repreguntarle a quien propuso, la bandeja no sirve. Es interno como `difusion`, con una diferencia — no es nuestro. `allow read: if esAdmin()` en la colección entera, así que ni un anónimo ni alguien logueado sin claim la ven. **Retención de 30 días: escrita, y se despliega con este commit** (DEC-13, **B-838**, 2026-09-09) — `borrarPropuestasVencidas` borra la rechazada y su imagen a los 30 días del rechazo, contados desde `revision.en`; el barrido **no lee el contacto** (`select` acotado a `estado`/`creadoEn`/`revision.en`/`imagen.storagePath` + mapeo de seis claves; los dos anidados van por su path para que `revision.motivo` y `revision.porUid` tampoco viajen; la sexta clave es el `updateTime` que **B-864** exige como precondición del borrado, y es metadata del snapshot y no un campo, así que no afloja nada de esto — la relectura que ese ítem agregó usa `getAll(ref, { fieldMask: [] })` **y no un `ref.get()`** por el mismo motivo). Esta fila decía «pendiente» y era cierto: el camino de admin estaba abierto desde el paso 5 y la Function no existía, así que el dato podía entrar y no había con qué sacarlo (lo cobró el `auditor-privacidad`, **B-843** punto 1, y por eso el dueño adelantó este paso). **La ventana entre «escrita» y «corriendo», dicha una vez acá:** el push a `main` la despliega solo (`push-main.yml`, job `functions`), y ese job va **después** de `hosting`, así que el panel sale con su promesa de los 30 días unos minutos antes que la Function. La promesa no puede ser falsa en esa ventana —la primera rechazada tendría que cumplir treinta días para que lo fuera, y hoy la colección está vacía—, pero si el job de `functions` falla, lo que queda es un panel prometiendo un borrado que nadie hace: **el rojo del CI es la señal, y `comparar-infra.sh` la confirma después**. Y hay que decir lo que **no** hay: mientras tanto —y también después— **no existe ninguna forma de borrar en el acto**. `allow delete: if false` y el `update` acotado a `estado`+`revision` son formas de **no poder** borrar desde el panel, no de borrar; para honrar un «borrame» hay que rechazar y esperar el plazo, o correr `scripts/borrar-propuestas-vencidas.mjs` a mano. **Y desde B-844 hay un segundo plazo:** la `nueva` y la `en-revision` se borran a los **30 días de su última señal de vida** —el mismo número que la rechazada, contado distinto— —el máximo entre `creadoEn` y `revision.en`, o sea que lo que renueva el plazo es **un cambio de estado** —marcarla «la estoy mirando», o reabrirla— y no abrir la ficha para leerla, que no escribe nada—, con su imagen. Cubre el caso que DEC-13 no contestó porque no se le preguntó: **la que nadie miró**, que conservaba el contacto para siempre con el único borrado dependiendo de que un admin apretara «rechazar». La `aceptada` **sigue sin vencer**, y eso ahora es una decisión escrita y no lo que sobró (ahí el contacto sirve: la actividad existe y puede haber que repreguntar). **Y conserva también la foto original**, que es la mitad que la decisión no cubrió y que señaló el `auditor-privacidad`: al convertir se promueve una **copia** a `imagenes/` y el objeto de `propuestas/` no se toca —«se lo lleva el ciclo de la propuesta», dice el panel— así que con `aceptada: null` ese ciclo no llega nunca y la foto de un tercero queda sin plazo bajo un prefijo que `limpiarImagenesHuerfanas` no barre. Está anotado como **B-863**: lo barato es borrar el original cuando la promoción sale bien, y es una decisión, no un arreglo. **El número lo contestó el dueño el 2026-09-09** (la pregunta se le hizo con una hipótesis de 90 escrita en el código); el «la aceptada no vence» **no**, y sigue marcado como argumento propio. Los dos viven en `RETENCION_POR_ESTADO` para que moverlos sea una línea, y **son dos constantes y no una** aunque hoy den el mismo número: son dos decisiones que pueden divergir. La bandeja avisa «Se borra en N días» durante la última semana, que es la mitigación de que con 30 días una propuesta pueda caducar **antes de que nadie la haya abierto**. **Y desde B-864 la promesa «moverla de estado le renueva el plazo» es cierta también contra la carrera**: el barrido borra con precondición sobre la versión que leyó, así que tocarla mientras corre **le salva el documento siempre**, y la imagen salvo en la ventana de un round-trip (el cuarto final, `la-tocaron-tarde`: la relectura protege el objeto pero no es atómica, y Storage no tiene precondición que ponerle — está dicho entero en [`08-operacion.md`](08-operacion.md) § «Y no borra a ciegas»). Antes veía el plazo renovado en Firestore y perdía el documento igual. Lo que eso **no** cubre es convertir, que por D-600 no escribe nada hasta guardar la actividad: ver el aviso en [`08-operacion.md`](08-operacion.md) § «Y no borra a ciegas» | `firestore.rules`, y **ninguna proyección**: `/propuestas` no tiene salida pública. Lo que se publica es la **actividad** que sale de ella, por el camino que ya existe |
+| `propuestas[].contacto` | **el primer dato personal de un tercero que el proyecto guarda** (B-830), y reabre a propósito lo que B-102 había cerrado: sin forma de repreguntarle a quien propuso, la bandeja no sirve. Es interno como `difusion`, con una diferencia — no es nuestro. `allow read: if esAdmin()` en la colección entera, así que ni un anónimo ni alguien logueado sin claim la ven. **Retención de 30 días: escrita, y se despliega con este commit** (DEC-13, **B-838**, 2026-09-09) — `borrarPropuestasVencidas` borra la rechazada y su imagen a los 30 días del rechazo, contados desde `revision.en`; el barrido **no lee el contacto** (`select` acotado a `estado`/`creadoEn`/`revision.en`/`imagen.storagePath` + mapeo de seis claves; los dos anidados van por su path para que `revision.motivo` y `revision.porUid` tampoco viajen; la sexta clave es el `updateTime` que **B-864** exige como precondición del borrado, y es metadata del snapshot y no un campo, así que no afloja nada de esto — la relectura que ese ítem agregó usa `getAll(ref, { fieldMask: [] })` **y no un `ref.get()`** por el mismo motivo). Esta fila decía «pendiente» y era cierto: el camino de admin estaba abierto desde el paso 5 y la Function no existía, así que el dato podía entrar y no había con qué sacarlo (lo cobró el `auditor-privacidad`, **B-843** punto 1, y por eso el dueño adelantó este paso). **La ventana entre «escrita» y «corriendo», dicha una vez acá:** el push a `main` la despliega solo (`push-main.yml`, job `functions`), y ese job va **después** de `hosting`, así que el panel sale con su promesa de los 30 días unos minutos antes que la Function. La promesa no puede ser falsa en esa ventana —la primera rechazada tendría que cumplir treinta días para que lo fuera, y hoy la colección está vacía—, pero si el job de `functions` falla, lo que queda es un panel prometiendo un borrado que nadie hace: **el rojo del CI es la señal, y `comparar-infra.sh` la confirma después**. Y hay que decir lo que **no** hay: mientras tanto —y también después— **no existe ninguna forma de borrar en el acto**. `allow delete: if false` y el `update` acotado a `estado`+`revision` son formas de **no poder** borrar desde el panel, no de borrar; para honrar un «borrame» hay que rechazar y esperar el plazo, o correr `scripts/borrar-propuestas-vencidas.mjs` a mano. **Y desde B-844 hay un segundo plazo:** la `nueva` y la `en-revision` se borran a los **30 días de su última señal de vida** —el mismo número que la rechazada, contado distinto— —el máximo entre `creadoEn` y `revision.en`, o sea que lo que renueva el plazo es **un cambio de estado** —marcarla «la estoy mirando», o reabrirla— y no abrir la ficha para leerla, que no escribe nada—, con su imagen. Cubre el caso que DEC-13 no contestó porque no se le preguntó: **la que nadie miró**, que conservaba el contacto para siempre con el único borrado dependiendo de que un admin apretara «rechazar». La `aceptada` **sigue sin vencer**, y eso ahora es una decisión escrita y no lo que sobró (ahí el contacto sirve: la actividad existe y puede haber que repreguntar). **Conservaba también la foto original hasta B-863**, y ésa era la mitad que la decisión no cubrió: al convertir se promueve una **copia** a `imagenes/` y el objeto de `propuestas/` no se tocaba —«se lo lleva el ciclo de la propuesta», decía el panel— así que con `aceptada: null` ese ciclo no llegaba nunca y la foto de un tercero quedaba sin plazo bajo un prefijo que `limpiarImagenesHuerfanas` no barre. Lo señaló el `auditor-privacidad` y **se cerró el 2026-09-10** con la decisión del dueño: se borra al convertir, la copia promovida alcanza. Está implementado como la segunda rama de `borrarImagenAlCerrar`, con las dos cosas que la decisión no decía resueltas —**cuándo** (en el segundo momento de D-600, cuando la actividad ya se guardó, y no al abrir el formulario) y **en qué orden** (verificar que la copia exista antes de borrar el original)— y con el agujero que queda nombrado: si el borrado falla o la actividad se guardó sin imagen propia, el original sobrevive sin plazo y sale un log con `alerta: "flyer-de-propuesta-sin-borrar"` (**B-871**). Ver más abajo, § «El ciclo del objeto». **El número lo contestó el dueño el 2026-09-09** (la pregunta se le hizo con una hipótesis de 90 escrita en el código); el «la aceptada no vence» **no**, y sigue marcado como argumento propio. Los dos viven en `RETENCION_POR_ESTADO` para que moverlos sea una línea, y **son dos constantes y no una** aunque hoy den el mismo número: son dos decisiones que pueden divergir. La bandeja avisa «Se borra en N días» durante la última semana, que es la mitigación de que con 30 días una propuesta pueda caducar **antes de que nadie la haya abierto**. **Y desde B-864 la promesa «moverla de estado le renueva el plazo» es cierta también contra la carrera**: el barrido borra con precondición sobre la versión que leyó, así que tocarla mientras corre **le salva el documento siempre**, y la imagen salvo en la ventana de un round-trip (el cuarto final, `la-tocaron-tarde`: la relectura protege el objeto pero no es atómica, y Storage no tiene precondición que ponerle — está dicho entero en [`08-operacion.md`](08-operacion.md) § «Y no borra a ciegas»). Antes veía el plazo renovado en Firestore y perdía el documento igual. Lo que eso **no** cubre es convertir, que por D-600 no escribe nada hasta guardar la actividad: ver el aviso en [`08-operacion.md`](08-operacion.md) § «Y no borra a ciegas» | `firestore.rules`, y **ninguna proyección**: `/propuestas` no tiene salida pública. Lo que se publica es la **actividad** que sale de ella, por el camino que ya existe |
 | `propuestas[].revision.motivo` | por qué un admin la rechazó. Es una nota interna sobre el trabajo de otra persona, del mismo orden que `difusion.notas` | `firestore.rules` (nadie fuera del panel lee la colección) |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
-| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las dieciocho salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 | **Y desde B-734 esa ausencia es además el motivo por el que el `subEvent` de una actividad con más de una forma de cursar no puede decir en cuál ocurre:** repartir los lugares de verdad necesitaría estos dos campos en `ModalidadPublica`, o sea revisar esta misma celda. Mientras tanto el `location` se hereda solo cuando hay una fila.
+| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las diecinueve salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 | **Y desde B-734 esa ausencia es además el motivo por el que el `subEvent` de una actividad con más de una forma de cursar no puede decir en cuál ocurre:** repartir los lugares de verdad necesitaría estos dos campos en `ModalidadPublica`, o sea revisar esta misma celda. Mientras tanto el `location` se hereda solo cuando hay una fila.
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC, C2PA) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las cinco marcas: si alguna sobrevive, la subida se corta (D-131 §3). **Los dos formatos se limpian con lista blanca**: los chunks PNG desde B-323 y los segmentos APPn del JPEG desde **B-869** (**D-620**) — antes el JPEG iba por lista negra y no sacaba ni el APP11 de C2PA (que el barrido sí busca desde B-220, así que rechazaba la foto) ni el APP2 del índice MPF (que no busca, así que se subía) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`), `functions/png-chunks-seguros.js`, `functions/jpeg-appn-seguros.js` |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**; **medido contra producción el 2026-09-02** — el mismo objeto responde 200 con su token, sin token y con un token inventado) | `toPublic.ts` |
 | `imagenes[].storagePath`, por la puerta de la miniatura | la miniatura de B-220 vive en `miniaturas/<id>.jpg`, **derivado** del path del original, así que su URL se puede calcular sin conocer el path… y al revés: el path del original se puede calcular desde la URL de la miniatura. No agrega exposición —las dos URLs son públicas y el nombre sigue siendo opaco— pero sí agrega una razón más para que `allow list` siga cerrado en **los dos** prefijos: enumerar uno es enumerar el otro (**D-175**) | `imagenes.ts` (`urlDeMiniatura`), `storage.rules` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los cuatro de abajo |
 
-**`incluye` sí sale, y solo a dos de las dieciocho** (B-830, **D-580**). Va a la
+**`incluye` sí sale, y solo a dos de las diecinueve** (B-830, **D-580**). Va a la
 proyección —de donde lo lee la **página de detalle**, que muestra la etiqueta y no
 el slug— y a la analítica del panel como **contador**. Y **no** va al índice del
 listado, a la tarjeta, al evento de Calendar, al texto para redes ni al JSON-LD:
@@ -639,12 +641,42 @@ campos que había».
 | `agenda:analitica:perfil` | el perfil de medición del panel | `lib/analytics.ts` |
 | `agenda:consentimiento-analitica` | si quien visita el sitio aceptó la analítica | `lib/analyticsSitio.ts` |
 | `agenda-literaria:novedad-vista` | qué novedad del panel ya se leyó | `lib/novedades.ts` |
+| `agenda:favoritos` | qué fichas del sitio guardó quien visita: `{ v, tipo, slug, guardadoEn }` (B-848) | `lib/guardadosDelSitio.ts` |
 | `agenda-literaria:borrador:` | **contenido** — el formulario a medio cargar (D-122) | `lib/formulario/borradoresDelNavegador.ts` |
+| `agenda:busquedas` | **contenido del visitante** — sus búsquedas guardadas: `{ v, nombre, url, guardadoEn }`, y el `nombre` lo escribe él (B-848) | `lib/guardadosDelSitio.ts` |
 
 Las siete primeras son marcas: clave fija —o un prefijo cerrado, con el sufijo
-saliendo de un vocabulario del propio módulo— y valor de un enum o un contador. La
-última es la excepción y la única que es contenido, así que es la única que lleva la
-huella del uid y los 30 días.
+saliendo de un vocabulario del propio módulo— y valor de un enum o un contador.
+`agenda:favoritos` es la octava y también es una marca, aunque no lo parezca: lo
+que guarda son **slugs de actividades publicadas**, o sea identificadores que ya
+son públicos, más un tipo de una lista cerrada y una fecha. Nada de eso lo tipeó
+nadie.
+
+Las dos últimas son contenido, y **no son el mismo caso** — B-848 abrió una clase
+que hasta ahora no existía (la fila de `agenda:favoritos` va **antes** del borrador
+justamente para que este corte sea el de la tabla y no una lista aparte):
+
+| | `agenda-literaria:borrador:` | `agenda:busquedas` |
+|---|---|---|
+| de quién es | de un **admin**, con dos cuentas posibles en la misma máquina (D-57) | de quien visita, y **no hay cuentas**: no hay a quién distinguir |
+| de qué habla | de datos del panel, con `difusion`, `inscripcion.destino` y `online.url` adentro | de un filtro del listado, y el texto libre es el nombre que él le puso |
+| huella del uid en la clave | **sí** — si no, la cuenta B recibe el borrador de la A | **no hay uid**: el sitio público no tiene login, que es la decisión entera de B-848 |
+| plazo de vencimiento | **30 días** — un borrador viejo aplicado sobre un formulario nuevo parece bueno | **ninguno**, y es deliberado: una búsqueda guardada no se «aplica» sobre nada, y borrarle a alguien lo que guardó es perder un dato que **no tenemos cómo devolverle** |
+
+O sea que la regla de arriba —«si una marca empieza a guardar algo que alguien
+tipeó, le corresponde el tratamiento del borrador»— sigue valiendo en lo que
+importa (es contenido y se dice que lo es) y **sus dos mecanismos no se pueden
+copiar acá**, porque los dos suponen una cuenta y un documento de respaldo en
+Firestore. Lo que reemplaza al plazo es el tope de veinte búsquedas, que
+**rechaza** en vez de descartar la más vieja (`MAXIMO_BUSQUEDAS`).
+
+Y hay algo que estas dos claves tienen y ninguna de las ocho anteriores: **se leen
+para pintar un `href`**. El `url` de una búsqueda guardada y el `slug` de un
+favorito terminan en un enlace, así que se validan al leer como si vinieran de la
+query string — `esRutaGuardable` exige una ruta interna (nada de `javascript:`,
+nada de `//otro.sitio` protocolo-relativo) y `esSlugGuardable` el alfabeto que
+produce `slugify`. Lo escribe nuestro código y lo puede editar cualquiera con la
+consola abierta.
 
 **Lo que el barrido NO puede ver, y conviene tenerlo escrito:** si el sufijo de un
 prefijo sale de verdad de un vocabulario cerrado. Un test puede exigir que la clave
@@ -1128,9 +1160,38 @@ CORS configurado en el bucket): es **B-846**.
 propuesta.** Se promueve a `imagenes/` al convertir —el panel lo baja y lo vuelve
 a subir por `subirImagen`, que le saca los metadatos: la foto de un taller en una
 casa lleva las coordenadas de esa casa, y esta vez la mandó alguien de afuera— y
-se borra al rechazar, en el acto (`borrarImagenAlRechazar`). El `delete` está en
-`false` para todo cliente, así que el borrado es **consecuencia del estado** y no
-un botón que alguien puede olvidarse de tocar.
+el original se borra **en los dos cierres** (`borrarImagenAlCerrar`): al
+rechazar, en el acto; al **aceptar**, cuando la actividad se guardó y la copia
+promovida ya lo reemplaza. El `delete` está en `false` para todo cliente, así que
+el borrado es **consecuencia del estado** y no un botón que alguien puede
+olvidarse de tocar.
+
+**Lo de la aceptación es B-863, y hasta el 2026-09-10 no existía.** El
+`auditor-privacidad` lo encontró sobre B-844: `aceptada: null` se decidió **por
+el contacto** («ahí sirve: la actividad existe y puede haber que repreguntar») y
+los tres textos que la justifican hablan solo de eso — pero se aplicaba también a
+la foto. Con la aceptada sin plazo, el original quedaba **sin fecha de
+vencimiento** bajo un prefijo que `limpiarImagenesHuerfanas` no recorre (solo
+`imagenes/` y `miniaturas/`): la foto de un tercero, guardada para siempre. La
+decisión del dueño del 2026-09-10 fue borrarla —la copia promovida alcanza, el
+original no se guarda como prueba— y lo delicado no era el qué sino **el cuándo y
+el orden**:
+
+- **Cuándo:** en el segundo momento de la conversión (D-600), no al abrir el
+  formulario. Borrar en el primero deja a la propuesta sin flyer cada vez que
+  alguien abandona el formulario, con la copia promovida yéndose sola a las 72
+  horas por huérfana — y sin nada que avise.
+- **Orden:** verificar que la copia exista (en el documento de la actividad **y**
+  en el bucket) y recién después borrar el original. Es el orden de B-838 al
+  revés y por la misma clase de razonamiento: acá un borrado que falla deja un
+  duplicado inofensivo, y una verificación que falla después de borrar pierde la
+  foto sin retorno.
+
+**Lo que queda abierto y está medido, no supuesto:** si el borrado del original
+falla, o si la actividad se guardó sin ninguna imagen propia, el original
+sobrevive **para siempre** —la retención no llega a la aceptada y ningún barrido
+recorre `propuestas/`—. Sale un `warn`/`error` con
+`alerta: "flyer-de-propuesta-sin-borrar"` y es **B-871**.
 
 **Y desde la bandeja (B-830, paso 7) el panel muestra texto escrito por un
 tercero sin login, que es una superficie que este proyecto no tenía.** Tres cosas

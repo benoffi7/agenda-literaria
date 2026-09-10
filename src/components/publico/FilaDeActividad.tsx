@@ -42,6 +42,8 @@
  * este repo no tienen tests de render (`docs/05-patrones.md`), así que lo que
  * quede acá adentro no se verifica en ninguna parte.
  */
+import type { ReactNode } from 'react';
+
 import { claseBloqueFecha, foco } from '@/components/sitio/estilos';
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import {
@@ -84,9 +86,25 @@ interface Props {
    * tres. Sin la prop, la fila es exactamente la de la home.
    */
   mes?: string;
+  /**
+   * Un control propio de la fila, **fuera del enlace** — B-848.
+   *
+   * Lo usa `/mis-favoritos` para el botón «Quitar». Va acá y no envolviendo la
+   * fila desde afuera porque el `<li>` lo es este componente, y un `<div>` suelto
+   * adentro de un `<ul>` no es HTML válido.
+   *
+   * **Fuera del `<a>` y no adentro**, que es la regla de la fila y no una
+   * preferencia: «en móvil un botón dentro de un link es un blanco ambiguo»
+   * (§4.2) —y además un `<button>` dentro de un `<a>` es markup inválido—. Por
+   * eso es un hermano del enlace dentro del mismo `<li>` y no un hijo suyo.
+   *
+   * Sin la prop, la fila sale **exactamente** igual que hoy: es lo que hace que
+   * el HTML que imprime el build no cambie por esto.
+   */
+  accion?: ReactNode;
 }
 
-export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes }: Props) {
+export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes, accion }: Props) {
   /*
    * En una página de mes todo lo que sale de las sesiones se calcula sobre el
    * recorte, así que habla de ese mes **sin que ninguna frase tenga que
@@ -127,10 +145,12 @@ export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes }: Props
      */
     <li className="regla-fina min-w-0">
       {/*
-        Toda la fila es un link y no hay botones adentro: en móvil un botón dentro
-        de un link es un blanco ambiguo (§4.2). El nombre accesible sale del
-        contenido completo —fecha, tipo, título, lugar y arancel—, no de un «leer
-        más» (§10).
+        Toda la fila es un link y **no hay ningún botón adentro de este `<a>`**:
+        en móvil un botón dentro de un link es un blanco ambiguo (§4.2). Cuando
+        hace falta un control —el «Quitar» de `/mis-favoritos`, B-848— va en
+        `accion`, que se pinta **después** de cerrar el enlace. El nombre
+        accesible sale del contenido completo —fecha, tipo, título, lugar y
+        arancel—, no de un «leer más» (§10).
 
         El hover pinta la superficie de la capa tonal, que es lo que el sistema
         pide («hover: surface-container-low»): **no** hay sombra ni
@@ -235,6 +255,13 @@ export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes }: Props
           </p>
         )}
       </a>
+
+      {/*
+        El control propio de la fila — B-848. Hermano del enlace, nunca hijo
+        (§4.2). Se sangra a la altura de la columna del título para que no
+        parezca colgado del bloque de fecha.
+      */}
+      {accion && <div className="px-2 pb-3 lg:px-4">{accion}</div>}
     </li>
   );
 }

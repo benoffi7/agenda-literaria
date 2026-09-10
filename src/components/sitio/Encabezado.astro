@@ -84,7 +84,22 @@ import {
  * sitemap; `/pasadas` resolvió el mismo caso reusando `'agenda'`, que marcaba
  * una pestaña equivocada.
  */
-export type Seccion = 'agenda' | 'cartelera' | 'suscribirse' | 'ayuda' | 'contacto' | 'anunciar' | 'apoyar';
+export type Seccion =
+  | 'agenda'
+  | 'cartelera'
+  | 'suscribirse'
+  | 'ayuda'
+  | 'contacto'
+  | 'anunciar'
+  | 'apoyar'
+  /**
+   * B-848 — `/mis-favoritos` declara su sección para tener encabezado y pie, y
+   * **no entra a `ENLACES`**: es exactamente el caso que describe el párrafo de
+   * arriba, el mismo de `/apoyar` antes de que el pie lo enlazara. Ponerla en la
+   * barra le daría a una página que casi siempre está vacía el mismo peso que la
+   * agenda y la cartelera.
+   */
+  | 'mis-favoritos';
 
 interface Props {
   activa?: Seccion;

@@ -57,7 +57,7 @@ export interface SesionPublica {
    * público en el sentido de que viaja en la proyección, y en ninguno más.
    *
    * Se anota igual en el barrido —por valor, con su celda— porque la proyección
-   * **es** una de las dieciocho salidas: si mañana alguien la vuelca a un archivo,
+   * **es** una de las diecinueve salidas: si mañana alguien la vuelca a un archivo,
    * el campo ya está decidido y no entra de contrabando.
    */
   comisionId: string | null;

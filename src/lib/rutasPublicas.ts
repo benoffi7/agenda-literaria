@@ -238,6 +238,27 @@ export const RUTA_PASADAS = rutaCanonica('/pasadas');
  */
 export const RUTA_ANUNCIAR = rutaCanonica('/anunciar');
 
+/**
+ * Lo que cada persona guardó: `/mis-favoritos/` — B-848.
+ *
+ * **Es la única ruta de este módulo que no se le ofrece al buscador**, y no por
+ * olvido: su contenido sale del `localStorage` de quien la abre, así que para
+ * Googlebot —que llega sin nada guardado— está siempre vacía, y una página vacía
+ * indexada es peor que ninguna. Va con `noIndex` y **fuera de `RUTAS_FIJAS`**;
+ * la excepción está anotada con su motivo en `tests/sitemap.test.ts`, que es el
+ * que no deja que una página estática quede fuera del sitemap sin que alguien lo
+ * decida.
+ *
+ * Lo que **no** lleva es un `Disallow` en el `robots.txt`, y es a propósito: un
+ * `Disallow` impide leer el `noindex` (ver el docblock de `textoDeRobots`), así
+ * que la señal que queremos que Google lea tiene que poder leerla.
+ *
+ * Tres consumidores el día uno, que es lo que hace nacer una constante acá: el
+ * pie del sitio, la nota del botón de favorito de la página de detalle, y el
+ * aviso de «búsqueda guardada» del listado.
+ */
+export const RUTA_MIS_FAVORITOS = rutaCanonica('/mis-favoritos');
+
 // ─────────────────────────────────────────────────────────────────
 // Las páginas generadas
 // ─────────────────────────────────────────────────────────────────

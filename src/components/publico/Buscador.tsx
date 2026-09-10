@@ -62,6 +62,7 @@
  * mientras el JavaScript no cargó — que es justo cuando nadie mira.
  */
 import {
+  claseBotonBloque,
   claseBotonPrimario,
   claseCampo,
   claseCasilla,
@@ -70,6 +71,7 @@ import {
 } from '@/components/sitio/estilos';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
+import { GuardarBusqueda } from '@/components/publico/GuardarBusqueda';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { PanelesDeAhora } from '@/components/publico/PanelesDeAhora';
 import { panelesDeAhora } from '@/lib/ahoraPublico';
@@ -140,9 +142,6 @@ type Carga = { estado: 'cargando' } | { estado: 'listo'; indice: Indice } | { es
 
 /** Un `select` del sistema: sin caja, apoyado sobre su regla, y **sin radio**. */
 const claseSelect = `${claseCampo} appearance-none pe-6 body-md disabled:opacity-60`;
-
-/** Un botón rectangular macizo, la otra forma de botón del sistema. */
-const claseBotonBloque = `label-caps inline-flex min-h-touch shrink-0 items-center justify-center gap-2 border border-borde px-4 transition-colors ${foco} disabled:opacity-60`;
 
 /**
  * La flecha del desplegable, dibujada con bordes.
@@ -803,6 +802,26 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
             </button>
           </div>
         )}
+
+        {/*
+          **Guardar esta búsqueda** — B-848. Va al pie del riel, después de los
+          ejes: es lo que se hace **cuando ya se terminó de filtrar**, así que
+          arriba estaría antes de que exista lo que guarda.
+
+          Solo se dibuja con filtros puestos, y esa decisión se toma acá porque
+          es acá donde se sabe: guardar «la agenda entera sin filtrar» es guardar
+          la home, que ya está en el encabezado. `hayFiltrosPublicos` incluye el
+          texto del buscador, que también es parte de lo que se quiere volver a
+          ver.
+
+          En el teléfono queda debajo del botón «Filtros (N)» y fuera de la hoja
+          modal, que es donde tiene que estar: la hoja se cierra al elegir, y un
+          control de guardado adentro se iría con ella.
+        */}
+        <GuardarBusqueda
+          hayAlgoQueGuardar={hayFiltrosPublicos(filtros)}
+          deshabilitado={deshabilitado}
+        />
       </aside>
 
       {/* ══ La columna de contenido ═══════════════════════════════════════ */}

@@ -852,6 +852,34 @@ export const desdeQuery = (
 };
 
 /**
+ * La ruta **canónica** de un listado filtrado: el `pathname` con la query que
+ * `aQuery` produciría — B-848.
+ *
+ * ── Para qué, y por qué no alcanza con leer la barra de direcciones ───────
+ * «Guardar esta búsqueda» guarda una URL, y la tentación es guardar la que se
+ * ve. Casi siempre da igual, porque la island reescribe la query con
+ * `replaceState` en cada cambio de filtro. **Casi:** ese efecto saltea el primer
+ * render a propósito, así que en la primera visita lo que hay en la barra es la
+ * query **tal como llegó**. Con `/?tag=poesia&utm_source=x&mail=juan@…`, el
+ * botón aparece (hay `tag`) y lo que se guardaría es todo eso, `utm` y mail
+ * incluidos: parámetros ajenos congelados en una lista que la persona no puede
+ * inspeccionar salvo mirando el `href`.
+ *
+ * El viaje de ida y vuelta por `desdeQuery` → `aQuery` lo resuelve solo, y sin
+ * una segunda derivación: **lo que no reconoce el parser no vuelve a salir**, y
+ * lo que sí sale es exactamente lo que la island escribiría. Lo señaló el
+ * `auditor-privacidad`.
+ *
+ * Vive acá y no en el componente porque acá viven las dos mitades del formato:
+ * partirlo sería la clase de B-88 otra vez, en el mismo par de funciones.
+ */
+export const rutaCanonicaDeFiltros = (pathname: string, query: string): string => {
+  const { filtros, orden } = desdeQuery(query);
+  const q = aQuery(filtros, orden);
+  return q ? `${pathname}?${q}` : pathname;
+};
+
+/**
  * Las entradas vigentes, ordenadas — lo que el build imprime en el HTML.
  *
  * Es una función y no dos líneas en el `.astro` para que el HTML del build y el
