@@ -936,6 +936,38 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-873 · Los dos tests que leen `dist/` no verifican nada en CI, y sus docblocks afirman lo contrario · P2
+
+**Salió de decidir dónde poner el barrido de B-868**, y es el hallazgo más grande
+de esa tanda. `sin-comentarios-en-el-html.test.ts` (B-261) y
+`terceros-antes-del-consentimiento.test.ts` (D-254) se saltean si no hay `dist/`,
+y los dos escriben en su docblock: «En CI el build siempre corre, así que ahí no
+se saltea nunca».
+
+**No corre.** En `deploy.yml` el paso `Tests` está **antes** del paso `Build`; en
+`push-main.yml` los tests son el job `verificar` y el build es el job `hosting`,
+otro runner sin `dist/`. Verificado el 2026-09-10 moviendo el `dist/`: la corrida
+sale **verde con los casos salteados** y no lo dice.
+
+Así que las dos promesas quedan colgadas de que alguien haya buildeado local antes
+de correr la suite — y **un `skipIf` que se salta en silencio es peor que no tener
+el test**, porque la fila de la red de contención dice que están cubiertas. Es la
+misma clase que viene apareciendo toda esta tanda: un chequeo verde sobre
+exactamente el caso que existe para atrapar, y acá con el agravante de que el
+propio docblock afirma la cobertura que no existe.
+
+Tres salidas, y hay que elegir:
+
+1. **buildear en el job de tests** — caro y duplica el build;
+2. **mover los dos chequeos a `verificar-bundle.sh`**, que es el paso post-build de
+   los dos workflows: es lo que hizo B-868 y por eso mismo apareció esto;
+3. **que la ausencia de `dist/` falle en CI** en vez de saltear (un `EXIGIR_DIST=1`,
+   la misma forma que el `EXIGIR_EMULADOR=1` que existe por esta misma clase de
+   bug).
+
+Y en cualquier caso, **corregir los dos docblocks**: hoy afirman una cobertura que
+no existe, que es lo que hizo que nadie lo notara.
+
 ### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? · P1
 
 **Bloquea el anuncio de `/proponer`, y es la única pregunta que queda entre el
@@ -1147,7 +1179,7 @@ los datos históricos; la otra es la que Hosting conoce. Lo barato y reversible 
 marcada, o al menos que la doc diga cuál es cuál — hoy no lo dice en ningún lado,
 y eso es lo que hizo que apareciera recién ahora.
 
-### B-868 · Nada sostiene que el bundle construido lleve App Check, y el modo de falla es «la aplicación entera deja de escribir» · P2
+### B-868 · Nada sostenía que el bundle construido llevara App Check, y el modo de falla es «la aplicación entera deja de escribir» — ✅ hecho (2026-09-10) · P2
 
 **Salió de verificar a mano el paso 5 de B-836a** el 2026-09-10, que es
 justamente la señal de que falta la guarda: hubo que bajarse el chunk de
@@ -1185,6 +1217,27 @@ Auth trae su propio `recaptcha/api.js` para el reCAPTCHA v2 de sus flujos, así 
 la presencia de esa cadena **no** es evidencia de que estemos usando el proveedor
 equivocado. El aserto tiene que ser sobre `enterprise.js` presente, no sobre
 `api.js` ausente — verificado a mano el 2026-09-10, donde conviven los dos.
+
+> ✅ **Hecho el mismo día, y la trampa era más ancha de lo que este ítem decía —
+> el aserto que pedía no sirve.**
+>
+> **Ya no es condicional.** El ítem decía «hoy no muerde porque el enforcement
+> está apagado; el día del paso 6 es la diferencia entre un deploy y una caída».
+> Ese día fue el **2026-09-10 a las 17:42 UTC**.
+>
+> **Lo que falla del (3):** Auth trae también `recaptcha/enterprise.js`, las dos
+> cadenas en el mismo objeto. Medido sobre **dos builds reales**, esa cadena está
+> presente con `ReCaptchaEnterpriseProvider` **y** con `ReCaptchaV3Provider`. O sea
+> que «`enterprise.js` presente» es un aserto que **solo puede pasar**. Lo que
+> discrimina es el endpoint de canje, que el bundler sí resuelve a uno solo:
+> `exchangeRecaptchaEnterpriseToken` presente y `exchangeRecaptchaV3Token`
+> ausente. Van los dos: con solo el primero, un bundle con los dos proveedores
+> conviviendo pasaría.
+>
+> **Va en el script y no en un test sobre `dist/`** —que era el precedente— por el
+> orden del pipeline, y eso destapó **B-873**: los dos tests que hoy leen `dist/`
+> no verifican nada en CI. Cinco asertos, siete mutaciones, cada una con el build
+> real que la rompería.
 
 ### B-866 · Convertir no renueva el plazo, así que el barrido se lleva la propuesta con el formulario abierto · P3
 

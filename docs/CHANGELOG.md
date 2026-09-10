@@ -2,6 +2,52 @@
 
 ## Sin publicar
 
+- **El gate del artefacto ahora mira las dos direcciones: que la credencial no
+  esté, y que App Check sí** — **B-868**. `scripts/verificar-bundle.sh` chequeaba
+  una sola cosa desde que existe: que no hubiera rastros del Admin SDK. Nada
+  verificaba lo simétrico. Si `PUBLIC_RECAPTCHA_SITE_KEY` desaparecía de
+  `.env.production`, o si alguien cambiaba el proveedor a `ReCaptchaV3Provider`
+  porque le sonaba razonable, la suite quedaba verde —`tests/appcheck.test.ts`
+  mira el **fuente**—, el gate quedaba verde y el deploy quedaba verde. Salió de
+  verificar el paso 5 de B-836a a mano ese mismo día, bajándose el chunk con
+  `curl` y buscando con `grep`, que es justamente la señal de que faltaba la
+  guarda.
+
+  **Y a las 17:42 UTC dejó de ser una hipótesis:** `firestore.googleapis.com`
+  quedó en `ENFORCED`. El modo de falla que el ítem describía en condicional es el
+  presente — sin token válido las reglas ni se evalúan.
+
+  **El aserto del proveedor NO es `recaptcha/enterprise.js`, que era el obvio y el
+  que yo había pedido.** Medido sobre dos builds reales: esa cadena está en el
+  bundle **con los dos proveedores**, igual que `recaptcha/api.js`, porque las trae
+  el SDK de Auth para sus propios flujos en un solo objeto
+  (`{recaptchaV2Script:…/api.js, recaptchaEnterpriseScript:…/enterprise.js}`). La
+  trampa anotada en el ítem era **la mitad**: no es solo que `api.js` presente no
+  pruebe que está mal, es que **`enterprise.js` presente tampoco prueba que está
+  bien** — un aserto ahí solo puede pasar, que es exactamente lo que el ítem pedía
+  evitar. Lo que discrimina es el endpoint de canje:
+  `exchangeRecaptchaEnterpriseToken` presente y `exchangeRecaptchaV3Token`
+  ausente, y van los **dos**, porque con solo el primero un bundle que llevara los
+  dos proveedores pasaría.
+
+  **Va en el script y no en un test que lea `dist/`**, que era el precedente. El
+  motivo es el orden del pipeline — y de paso deja al descubierto **B-873**: esos
+  dos tests están **muertos en CI**. En `deploy.yml` el paso `Tests` está antes
+  del paso `Build`, y en `push-main.yml` los tests viven en otro job, otro runner,
+  que nunca buildea. Verificado moviendo el `dist/`: la corrida sale verde
+  salteándolos y no lo dice.
+
+  **El aserto del objeto literal sigue la indirección**, y hizo falta: el bundler
+  **no** inlinea una constante de un solo uso, así que hoistear la clave a un
+  `const` de módulo —un refactor inocuo— dejaría `claveDeSitio:ms` y un chequeo
+  sobre la cadena se pondría rojo por nada. **Un chequeo que se pone rojo por nada
+  se afloja**, y ésa es la otra forma de que deje de servir. Tiene su control
+  negativo.
+
+  Siete mutaciones, cada una con **qué build la rompería en la vida real** — las
+  dos que el ítem pedía, más dos que salieron de escribirlo: el hoist (que **no**
+  tiene que romper) y los dos proveedores conviviendo (que **sí**).
+
 - **Un «usuario» en el sitio público, sin login: favoritos y búsquedas guardadas**
   — **B-848**, **D-630**, idea del dueño. Quien visita puede marcar cualquier
   actividad como favorita desde su ficha y guardar una búsqueda del listado con

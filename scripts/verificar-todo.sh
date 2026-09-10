@@ -155,8 +155,8 @@ fi
 # ── 5 · Que la credencial no se filtró ────────────────────────────
 # El gate del §5.4 / trampa 4, el mismo script que corre en los dos workflows.
 # Va después del build a propósito: sin `dist/` no verifica nada.
-paso 'Fuga de credenciales en dist/ (§5.4, trampa 4)'
-./scripts/verificar-bundle.sh dist || fallo 'el bundle tiene rastros del Admin SDK'
+paso 'El artefacto: credencial afuera (§5.4, trampa 4), App Check adentro (B-868)'
+./scripts/verificar-bundle.sh dist || fallo 'el artefacto no pasa el gate: ver el ::error:: de arriba'
 
 printf '\n\033[32m✓ los seis pasos pasaron.\033[0m\n'
 printf 'Los seis son mecánicos. Lo que necesita criterio —privacidad, trampas y\n'

@@ -135,11 +135,11 @@ sobrevive.
 
 Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
 
-## App Check — registrado y cableado; **sin exigir todavía** (B-836)
+## App Check — cableado y **exigido en Firestore** desde el 2026-09-10 (B-836)
 
 | | |
 |---|---|
-| Estado | 🟠 **app registrada (2026-09-09) y cliente cableado**, con el enforcement **apagado**. O sea: se *mide*, no se *rechaza* |
+| Estado | 🟢 **exigido en Firestore** (`firestore.googleapis.com` en `ENFORCED` el 2026-09-10 17:42 UTC), con el panel verificado inmediatamente después: entra, lee y guarda. `identitytoolkit` (Auth) **no se exige** —está en versión preliminar y si algo sale mal el que no puede entrar al panel es el dueño— y `firebasestorage` **tampoco todavía**: su métrica marcaba 1% verificado y hay que entender ese 99% antes de tocarlo (**B-872**) |
 | Proveedor | **reCAPTCHA Enterprise**, clave score-based. **No es reCAPTCHA v3 clásico**, y no son intercambiables: cada uno valida contra un servicio distinto, así que con `ReCaptchaV3Provider` el token se rechazaría. Los otros dos proveedores (App Attest, Play Integrity) son de apps nativas |
 | Clave de sitio | `PUBLIC_RECAPTCHA_SITE_KEY`, versionada en `.env.production`. **Pública por diseño**, como la API key web: el navegador la necesita para pedir el desafío. Con App Check **no hay clave privada de reCAPTCHA de este lado** — el *assessment* lo hace Firebase con las credenciales del proyecto—, así que no hay secreto que se pueda filtrar por acá |
 | Dónde se activa | `src/lib/appcheck.ts`, llamado desde `app()` de `src/lib/firebase-client.ts`. Ahí y no en cada consumidor: `app()` es el borde por el que pasan todos (auth, Firestore, Storage) antes de su primera petición, y es lo que garantiza el orden sin que cada módulo nuevo se acuerde |
@@ -147,6 +147,7 @@ Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
 | Qué va a proteger | Firestore y Cloud Storage. El bucket entra por DEC-11: el formulario acepta subir la imagen |
 | Qué **no** protege | el build con el Admin SDK ni las Functions: no pasan por App Check |
 | Costo | Enterprise tiene **su propia cuota facturable** arriba del free tier, aparte de Firebase. Entra en el budget alert del §2.3 — y el volumen esperado de un formulario público es chico, pero el de un script que lo abusa no |
+| Que el **artefacto publicado** lo lleve | `scripts/verificar-bundle.sh`, gate bloqueante de los dos workflows y paso 5 de `verificar-todo.sh` (**B-868**). Verifica sobre `dist/` que la clave de `.env.production` esté en un chunk, que viaje a `activarAppCheck` con `usarEmuladores` en falso, y que el proveedor sea el de Enterprise. Antes nada lo sostenía: `tests/appcheck.test.ts` mira el **fuente** y el gate solo buscaba el Admin SDK, así que un bundle sin clave —o con el proveedor cambiado— pasaba verde de punta a punta |
 | **Dominios permitidos** | ⬜ **sin verificar.** Es la configuración de la que depende que App Check sirva para algo, y no está en el repo — ver abajo |
 
 **Registrar la app requiere la consola**, como el proveedor de Auth: hay que
@@ -170,9 +171,12 @@ pasar por el cliente:
    **publicar**: mientras no se deployee, la consola no puede ver nada.
 3. **Verificar en la consola** que las peticiones verificadas llegan. Es el único
    paso que dice si el 2 quedó bien, y el que no se puede saltear.
-4. **Recién ahí, exigir.** Si se exige antes de que el cliente mande tokens, **el
-   panel deja de poder escribir**: sus peticiones tampoco traen token, y las
-   reglas ni se evalúan.
+4. ~~**Recién ahí, exigir.**~~ — **hecho para Firestore el 2026-09-10**, y solo
+   para Firestore (ver el Estado, arriba). Si se exige antes de que el cliente
+   mande tokens, **el panel deja de poder escribir**: sus peticiones tampoco
+   traen token, y las reglas ni se evalúan. Y a partir de acá el que tiene que
+   mandar tokens es **el bundle publicado**, no el fuente — que es lo que hizo
+   falta atar con un gate (B-868, fila «Que el artefacto publicado lo lleve»).
 
 **El paso 5 que estaba escrito acá —el token de debug para los emuladores— no
 existe, y es mejor así.** Los emuladores **no verifican** App Check, así que
@@ -240,9 +244,11 @@ público deja de aceptar propuestas y el panel deja de guardar. No hay
 degradación parcial ni cola local — el modo de falla es «no se puede escribir»,
 y el aviso llega por donde llegue el reclamo, porque no hay alerta.
 
-Hoy, con el enforcement apagado, un fallo de reCAPTCHA **no rompe nada**:
-`activarAppCheck` no propaga la excepción y la autorización la siguen dando las
-reglas (§5.3). Eso deja de ser cierto el día del paso 4.
+Eso **ya es el presente para Firestore**. Hasta el 2026-09-10 un fallo de
+reCAPTCHA no rompía nada —`activarAppCheck` no propaga la excepción y la
+autorización la seguían dando las reglas (§5.3)—; con el paso 4 hecho, una
+escritura sin token se rechaza. Para Storage sigue valiendo lo anterior, porque
+`firebasestorage` todavía no se exige.
 
 Es la razón por la que App Check **no reemplaza** a las otras cuatro capas de
 B-836 (validación en la regla, topes de tamaño y forma, honeypot, barrido
@@ -585,7 +591,7 @@ cloudscheduler                               para dispararRebuild (paso 5)
 calendar-json                                sync a Calendar
 secretmanager                                el PAT de GitHub — habilitada (2026-08-21)
 cloudbilling, billingbudgets                 budget alert
-firebaseappcheck                             App Check — registrada 2026-09-09, sin exigir
+firebaseappcheck                             App Check — registrada 2026-09-09; Firestore EXIGIDO 2026-09-10
 recaptchaenterprise                          el proveedor de App Check (B-836)
 ```
 

@@ -204,7 +204,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Verificar que la credencial no se filtró
+      - name: Verificar el artefacto (credencial afuera, App Check adentro)
         run: ./scripts/verificar-bundle.sh dist
 
       - name: Que la versión del build sea la del commit

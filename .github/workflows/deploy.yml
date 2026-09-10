@@ -86,7 +86,7 @@ jobs:
           # solo existe en la memoria de este runner.
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Verificar que la credencial no se filtró al bundle
+      - name: Verificar el artefacto (credencial afuera, App Check adentro)
         # Trampa 4 / §5.4: si `firebase-admin` se cuela en un componente
         # cliente, la key termina en el bundle público. Falla cerrado, porque
         # publicar la key es irreversible.
