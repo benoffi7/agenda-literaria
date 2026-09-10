@@ -687,6 +687,32 @@ porque eso es texto de una página pública y lo barre
 `tests/promesas-sobre-datos.test.ts`; (3) si la lista de Mailchimp se crea con
 doble opt-in (debería) y quién es el remitente.
 
+> ✅ **Las tres, contestadas por el dueño el 2026-09-10.** Queda desbloqueado.
+>
+> 1. **La forma recomendada: el `<form>` HTML que postea a `list-manage.com`.**
+>    Ningún script de tercero, así que **D-254 sigue verde** y las afirmaciones de
+>    `/ayuda` y `/contacto` no se tocan. El precio aceptado es que el «gracias» lo
+>    da Mailchimp y no nuestro sitio.
+> 2. **Lo manda el proyecto, al menos una vez por semana, con eventos curados de
+>    la agenda «para todos los gustos y modalidades».** Eso es a la vez la
+>    promesa de la página y la línea editorial.
+> 3. **El remitente es `agendaleh@gmail.com`** — que es **la casilla que el sitio
+>    ya usa**: `CONTACTO`, en `src/lib/enlaces.ts`. Se reusa esa constante y no se
+>    escribe a mano: esa cuenta ya cambió una vez (B-839).
+>
+> **Dos cosas que la respuesta deja para resolver al construirlo:**
+>
+> - **El doble opt-in no lo dijo explícitamente.** Se adopta como default porque
+>   es lo que la página va a prometer y porque es lo que hace que la casilla sea
+>   de quien la escribió. No es código: es una casilla de la configuración de la
+>   lista en Mailchimp, así que cambiarlo después no cuesta un cambio acá.
+> - **«Al menos una vez por semana» es un piso, y un piso es más fácil de
+>   incumplir que un promedio.** Va a quedar escrito en una página pública que
+>   `tests/promesas-sobre-datos.test.ts` barre, así que conviene elegir la
+>   redacción sabiendo eso: si una semana no sale, «al menos una vez por semana»
+>   pasa a ser falso y «semanal» sobrevive. La decisión es del dueño; lo que no
+>   vale es escribir el piso sin haberlo pensado.
+
 ### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados · P2 — **idea del dueño (2026-09-09)**
 
 **El pedido, textual:** «empezar a tener un usuario en el frente público (por
