@@ -820,6 +820,23 @@ Pero es **una decisión y no un renglón** —el original es también la prueba 
 mandaron— así que va acá y no en B-844. Su test:
 `it('la aceptada conserva el contacto pero no la foto original')`.
 
+> ✅ **Decidido por el dueño el 2026-09-10: se borra al convertir.** El original
+> no se guarda como prueba; la copia promovida alcanza.
+>
+> **Lo que la decisión no dice y hay que resolver al implementarla es *cuándo*
+> dentro de la conversión, y no es un detalle:** «convertir» hoy son dos momentos.
+> Al apretar el botón se promueve la copia y se abre el formulario, y **no se
+> escribe nada más hasta que la actividad se guarda** (D-600). Si el original se
+> borra en el primer momento y el admin abandona el formulario, la copia promovida
+> se la lleva `limpiarImagenesHuerfanas` a las 72 horas y **la propuesta queda sin
+> flyer sin haber sido aceptada nunca** — no se puede reintentar, y nadie se
+> entera. Así que el borrado va en el segundo momento, cuando la actividad
+> efectivamente se guardó y la copia dejó de ser huérfana.
+>
+> Y el orden importa igual que en B-838, en el sentido opuesto: acá lo barato es
+> **verificar la copia primero y borrar el original después**. Si el borrado del
+> original falla queda un duplicado, que es inofensivo; al revés se pierde la foto.
+
 ### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja · P2
 
 **Lo encontró el `auditor-privacidad` sobre B-844.** `borrarPropuesta` hace
