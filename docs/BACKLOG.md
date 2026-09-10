@@ -827,6 +827,43 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
+### B-870 · Hay dos apps web en el proyecto, con dos GA4 distintos, y Hosting apunta a la que el sitio no usa · P3
+
+**Salió de mirar la consola de App Check el 2026-09-10**, cuando el dueño fue a
+verificar el paso 5 de B-836a. La pestaña «Apps» lista **dos**, que difieren en
+una mayúscula:
+
+| App | `appId` | `measurementId` | |
+|---|---|---|---|
+| Agenda Literaria | `…2e7ce6a6…` | `G-GG31S5P1YY` | la que Firebase Hosting tiene asociada |
+| Agenda literaria | `…5b52810e…` | `G-9CFMHSSGRC` | **la que usa el sitio** (`.env.production`) |
+
+**App Check no está en riesgo:** las dos tienen registrada la **misma** clave de
+sitio, con `minValidScore: 0.5` y TTL de una hora, así que la verificación
+funciona por cualquiera de las dos. Verificado por API, no por la consola.
+
+Lo que sí trae:
+
+1. **Leer la consola es ambiguo.** Las métricas de App Check se reparten por app,
+   así que la fila de «Agenda Literaria» va a mostrar cero para siempre. Quien
+   vaya a decidir el paso 6 —exigir— mirando la fila equivocada concluye que la
+   verificación no funciona **cuando funciona**, que es el peor error posible
+   justo en ese paso.
+2. **Son dos propiedades de GA4.** El sitio manda todo a `G-9CFMHSSGRC`; la otra
+   existe y está vacía.
+3. **La autoconfiguración de Hosting serviría la app equivocada.**
+   `/__/firebase/init.js` devuelve la config de la app asociada al sitio, que es
+   `…2e7ce6a6…`. Hoy no la usamos —la config está escrita en `.env.production` y
+   eso es deliberado— pero es la clase de cosa que muerde el día que alguien la
+   use creyendo que es equivalente.
+
+**No se resuelve borrando la que sobra sin pensarlo:** borrar una app web es
+irreversible, y hay que decidir cuál queda. La que el sitio usa tiene el GA4 con
+los datos históricos; la otra es la que Hosting conoce. Lo barato y reversible es
+**asociar el sitio de Hosting a la app que el código usa** y dejar la otra
+marcada, o al menos que la doc diga cuál es cuál — hoy no lo dice en ningún lado,
+y eso es lo que hizo que apareciera recién ahora.
+
 ### B-868 · Nada sostiene que el bundle construido lleve App Check, y el modo de falla es «la aplicación entera deja de escribir» · P2
 
 **Salió de verificar a mano el paso 5 de B-836a** el 2026-09-10, que es
