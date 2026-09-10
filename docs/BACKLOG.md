@@ -753,6 +753,55 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-857 · Un plugin desactivado sigue escribiendo en la raíz del repo, y el `.gitignore` lo tapa · P4
+
+**Lo trajo el frente de B-849** como «la línea `.mdd/` nunca se sacó», y al ir a
+sacarla resultó ser otra cosa y más interesante.
+
+`861f0fd` («Higiene de la raíz… y el `.mdd/` ajeno») dice en su mensaje que **sacó
+la línea y borró el directorio**. Su diff **la mueve de sección**, y el directorio
+se había recreado tres minutos antes del commit — exactamente lo que ese mismo
+mensaje advertía que iba a pasar si la línea quedaba.
+
+**El 2026-09-09 se volvió a probar, con el mismo resultado y ahora con la causa a
+la vista:** se borró la línea y el directorio, y **a los tres minutos estaban los
+dos de vuelta**. Los escribe un hook del plugin `mdd@modo-ai-standards`, que está
+activo en la configuración global de la máquina aunque **este repo no use MDD**
+—el proceso es el del `CLAUDE.md` y el `docs/05-patrones.md`, y el propio dueño lo
+dijo explícitamente— y no tiene ni `.mdd/state.json` propio ni skills del plugin
+en sesión.
+
+**Por eso la línea se queda, y ahora con el motivo escrito al lado.** Mientras el
+hook exista, borrarla no limpia nada: solo cambia «un directorio ajeno ignorado»
+por «un directorio ajeno apareciendo en cada `git status`». Lo que se arregló acá
+es lo que sí se podía arreglar: que el `.gitignore` dejara de tener una línea sin
+explicación que ya engañó a dos lectores —el commit que creyó haberla sacado y el
+frente que la reportó como olvido—.
+
+**Lo que lo cierra de verdad es de la máquina y no del repo:** desactivar el plugin
+para este proyecto. Va como P4 porque el costo actual es cero y el riesgo también:
+un directorio vacío ignorado. Lo que no es cero es el costo de descubrirlo de
+nuevo, y eso es lo que este ítem compra.
+
+### B-856 · `ActividadFormulario.tsx` pasó el umbral de 550 LOC que el §1.3 tenía escrito · P3
+
+**Lo disparó la remedición de B-849**, y es la primera vez que un umbral escrito
+en `docs/10-salud-del-codigo.md` se cruza: **727 LOC** contra las 550, y del
+puesto 28º al **18º de 254**. Contado commit por commit, cruzó el umbral el
+**2026-09-07 con D-490** (las pestañas) y siguió con B-814.
+
+**El dato que dice qué clase de problema es:** el fan-out creció de 24 a **27**
+mientras el LOC crecía un 76 %. O sea que **no se volvió un módulo que sabe de
+todo**: sigue teniendo forma de compositor, y lo que engordó es el armado. Eso
+descarta el diagnóstico fácil («hay que partirlo en cinco») y hace que valga
+mirarlo antes de tocarlo.
+
+Lo que hay que decidir mirándolo: si las pestañas pueden ser componentes propios
+sin que el estado del formulario se disperse —que es lo que hoy lo mantiene en un
+solo archivo— o si el umbral está mal calibrado para un compositor y hay que
+subirlo con argumento. Las dos son respuestas válidas; la que no vale es dejarlo
+sin decidir, porque entonces el umbral deja de significar algo.
+
 ### B-855 · Dos tests sobre fuente tienen su propio saneador, y uno de ellos ya puede dejarlo · P3
 
 **La segunda mitad de B-853.** `tests/listado-del-sitio.test.ts` y
@@ -922,7 +971,32 @@ que la acoten o la condicionen, y **la premisa derivada** de `comercialDelSitio.
 el barrido tiene que dejar de exigirla—. Los dos sentidos del detector, como el
 otro.
 
-### B-849 · El §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice 250 · P3
+### B-849 · El §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice 250 — ✅ hecho (2026-09-09) · P3
+
+> ✅ **Hecho, con una corrección al propio ítem y dos problemas que la medición
+> cerró de paso.**
+>
+> El §1 y el §6 están remedidos con `node scripts/salud-del-codigo.mjs`,
+> `npm test`, `npx tsc --noEmit` y `npm audit --omit=dev`, **y cada cifra dice con
+> cuál** — que era la mitad faltante de la pasada anterior. Los números viejos
+> quedaron como historia fechada, no se borraron. Producción: **254 archivos /
+> 63.983 LOC** (eran 180 / 41.388); concentración **26,6 %**; ratio de tests
+> **1,69**.
+>
+> **La corrección: el ciclo no nació con B-841.** Nació con **B-62 el 2026-09-07**
+> —`campos/Seccion.tsx → AyudaDeSeccion → import(CentroAyuda) → campos/Seccion.tsx`—
+> y B-841 le renombró un nodo. Se **declara** en el §1.5 en vez de romperse: la
+> arista del medio es un `lazy(import())`, que no cierra un ciclo de
+> inicialización, y cortar la de vuelta metería un segundo amarre del panel en
+> `CentroAyuda` — la duplicación que la capa de B-841 existe para evitar. El test
+> sigue verde porque corre sobre el grafo estático, y se pone rojo el día que ese
+> `import()` deje de ser diferido.
+>
+> **Cerraron el Problema 3** (`functions/index.js`, 48 LOC) **y el Problema 4**
+> (Astro 7.3.1). **Se abrió B-856** (`ActividadFormulario.tsx` pasó las 550 LOC), y
+> quedaron reportados dos pendientes dentro del propio documento: nada verifica que
+> el ciclo diferido siga siendo el único, y el barrido de prosa envejecida del §1.6
+> se hizo sobre 41.388 de las 63.983 LOC que hay.
 
 **Lo trajo el frente de B-806** cerrando el conteo de tests de render, y lo dejó
 afuera a propósito: es otra pasada, no una línea suelta. El §1 declara **180

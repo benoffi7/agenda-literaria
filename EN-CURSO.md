@@ -4,17 +4,33 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
-## Nada en curso
+## Tanda del 2026-09-09: la tajada 1 de `/proponer`, y frentes en paralelo sobre el BACKLOG
 
-La tanda del 2026-09-03 al 2026-09-07 cerró: **once frentes, todos integrados a
-`main`**. Ningún agente corriendo, ninguna rama esperando, ningún worktree con
-trabajo sin commitear.
+**Este archivo dice que si tiene contenido y nadie trabaja está mintiendo. El
+2026-09-09 estuvo mintiendo del otro lado:** decía «nada en curso» con cuatro
+frentes escribiendo el árbol, y con tres cifras caducadas —la suite, `npm audit`
+en cero— que la remedición de **B-849** salió a buscar. La que sí seguía siendo
+cierta era Astro en 7.3.1. Lo encontró el propio frente de B-849 y por eso se
+reescribe acá: un archivo de coordinación que se olvida de la coordinación en
+curso es el peor de los dos errores, porque el que llega no tiene forma de saber
+qué se está tocando.
 
-`npm test` en **3.248** casos y 146 archivos, `tsc` limpio, los cinco pasos del
-gate mecánico en verde, `npm audit --omit=dev` en **cero**, y Astro en **7.3.1**.
+**Qué pasó, en una línea:** se ejecutó el §5 de `docs/prd/05-inventario-de-archivos.md`
+—la tajada 0 y la tajada 1 de `/proponer`, un commit por paso— y en paralelo se
+largaron frentes sobre ítems abiertos del BACKLOG, con **commits atómicos y
+propiedad exclusiva de archivos** como única regla de coordinación: los frentes no
+commitean y nunca tocan `docs/CHANGELOG.md` ni `docs/BACKLOG.md` — devuelven el
+texto y lo integra quien orquesta.
 
-Si este archivo tiene contenido y nadie está trabajando, está mintiendo — y ahora
-mismo dice la verdad.
+**La tajada 1 está completa salvo el anuncio.** Lo que falta es del dueño y está
+en **B-836a**: publicar App Check, verificar dominios, verificar que las peticiones
+lleguen firmadas y recién entonces *enforcing*. Hasta que eso pase, el `allow
+create` de `/propuestas` y el de `propuestas/` en Storage **siguen con
+`esAdmin() &&`** y se abren **los dos juntos**, no de a uno.
+
+Las cifras de esta tanda no se escriben acá: el §1 de
+[`docs/10-salud-del-codigo.md`](docs/10-salud-del-codigo.md) las tiene remedidas y
+con el comando que produjo cada una.
 
 **Lo que quedó abierto vive donde corresponde**, en
 [`docs/BACKLOG.md`](docs/BACKLOG.md), priorizado. Tres cosas de esta tanda que

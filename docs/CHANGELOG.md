@@ -2,6 +2,56 @@
 
 ## Sin publicar
 
+- **`10-salud-del-codigo.md` remedido entero, y el primer ciclo de imports del repo
+  declarado en vez de arreglado** — **B-849**. El §1 decía 180 archivos y 41.388
+  LOC de producción; el árbol tiene **254 y 63.983** (+55 % en seis días). Se
+  remidieron el §0, el §1 completo y el §6, y **cada cifra dice ahora con qué
+  comando se produjo** — que fue lo que faltó la pasada anterior: el documento
+  decía «medido» sin decir cómo, así que remedir obligaba a reconstruir el criterio
+  antes de poder comparar nada. La medición vieja no se borró: bajó a su fila con
+  su fecha, el criterio de B-806.
+
+  **La forma volvió a aguantar:** la concentración cayó de 30,9 % a **26,6 %**, el
+  ratio de tests subió por cuarta vez (1,62 → **1,69**) y los cuellos de botella
+  siguen siendo hojas — cinco de los diez módulos más importados tienen fan-out 0,
+  los mismos cinco de la vez pasada con más consumidores.
+
+  **Lo que cambió de signo es el ciclo, y se declara con su motivo (§1.5).**
+  `campos-del-panel.tsx → AyudaDeSeccion.tsx → CentroAyuda.tsx →
+  campos-del-panel.tsx`, y la arista del medio es un `lazy(import())`: no puede
+  cerrar un ciclo de inicialización, así que el test —que corre el DFS sobre el
+  grafo **estático**— está en verde con razón y no tapando nada. **No nació con
+  B-841 como decía el ítem: nació con B-62 el 2026-09-07** y B-841 renombró un
+  nodo. Y no se rompió a propósito: cortar la arista de vuelta obliga a
+  `CentroAyuda` a atarse `medirSeccion` por su cuenta, o sea un segundo lugar donde
+  se hace el amarre del panel — la duplicación que `campos-del-panel.tsx` existe
+  para evitar. Se cambiaría un ciclo inocuo por una copia de las que sí se pagan. El
+  día que ese `import()` se vuelva estático, el test se pone rojo solo y nombra la
+  cadena entera: **la guarda está puesta donde el error se comete.**
+
+  **Dos problemas cerraron con la medición.** El **3**: `functions/index.js` son
+  **48 LOC** (era 542) porque B-77 lo partió en piezas puras, de infraestructura y
+  de trigger. El **4**: Astro saltó de 5.18.2 a **7.3.1**, se fueron los avisos de
+  `sharp` y `esbuild` que no tenían parche, y las dos altas que quedan (`js-yaml`,
+  `svgo`, las dos vía Astro y de build sobre contenido propio) se cierran con
+  `npm audit fix`.
+
+  **Y uno se abrió: `ActividadFormulario.tsx` pasó el umbral que el §1.3 tenía
+  escrito** — 727 LOC contra 550, cruzadas el 2026-09-07 con D-490. El fan-out
+  creció mucho menos (24 → 27), o sea que sigue con forma de compositor: es
+  **B-856**, no esta pasada.
+
+  **De paso, el `.mdd/` del `.gitignore`, que resultó no ser lo que el frente
+  reportó** (**B-857**). El commit que dice haberlo sacado (`861f0fd`, «se saca la
+  línea y se borra el directorio») en realidad **movió la línea de sección**. Se
+  volvió a probar sacarla: **a los tres minutos la línea y el directorio estaban de
+  vuelta**, escritos por un hook del plugin `mdd@modo-ai-standards`, activo en la
+  máquina aunque este repo no use MDD. Así que la línea **se queda** —borrarla solo
+  cambia un directorio ajeno ignorado por uno apareciendo en cada `git status`— y
+  lo que se arregló es lo que se podía: que dejara de ser una línea sin explicación
+  que ya engañó a dos lectores, el commit que creyó haberla sacado y el frente que
+  la reportó como olvido.
+
 - **El saneador de los tests sobre fuente se comía el 83% de `Buscador.tsx`, y el
   disparador era `interface Props {`** — **B-853**. `sinComentarios` reducía
   `Buscador.tsx` de 41.363 a 6.904 caracteres, sin `export function Buscador` y con

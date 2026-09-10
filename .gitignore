@@ -48,4 +48,13 @@ functions/.env.*.local
 # Estado compartido entre los worktrees de los frentes en paralelo.
 # Un archivo por frente: seis agentes escribiendo el mismo archivo se pisan.
 .estado/
+
+# `.mdd/` es de un plugin ajeno y este repo NO usa MDD (el proceso es el del
+# CLAUDE.md). La línea igual se queda, y esa es la parte que hay que entender:
+# un hook del plugin recrea el directorio y vuelve a escribir esta línea cada
+# vez que se toca el árbol, así que borrarla es una pelea que se pierde en el
+# commit siguiente. Se probó el 2026-09-09 y volvió en tres minutos — igual que
+# había vuelto después de `861f0fd`, cuyo mensaje dice que la sacó y en realidad
+# la movió de sección. Mientras el hook exista, la línea es lo que evita que el
+# directorio ajeno aparezca en cada `git status`. Ver B-857.
 .mdd/
