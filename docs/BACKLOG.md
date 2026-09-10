@@ -753,6 +753,43 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-859 · La bandeja acepta un `incluye` que `/proponer` deliberadamente no ofrece · P3
+
+**Lo encontró el frente de B-842** verificando de dónde sale la taxonomía que usa
+la conversión, y es la asimetría al revés de la que ese ítem describe: acá no falla
+la regla, falla que **las dos puntas del mismo camino usan listas distintas**.
+
+`useOpciones` devuelve dos: `valores` es **todas** las opciones —existe para
+*resolver etiquetas*, porque una actividad vieja puede estar usando una opción
+pendiente de otra cuenta— y `elegibles` es lo que esta cuenta **puede elegir**, que
+sin `uid` son las aprobadas. `/proponer` ofrece `opcionesPublicas(...)`, o sea las
+aprobadas. Pero `PropuestasPanel` le pasa a la conversión `incluyeConocido.valores`.
+
+O sea que un `curl` puede nombrar un slug que **existe pero está pendiente de
+aprobación**, y la conversión lo trata como conocido. **No es una fuga de texto de
+un tercero** —la etiqueta que se publica la escribió un admin, no quien propuso—
+pero deja que un anónimo elija una opción que el formulario público deliberadamente
+no ofrece, que es exactamente lo que **D-30** decide. La distinción entre las dos
+listas ya existe para esto: es usar la otra.
+
+Y el motivo por el que no lo agarró nadie es el de siempre: **las dos listas
+funcionan**. El resultado se ve bien en la bandeja, se publica bien, y la única
+diferencia es cuál de las dos preguntas se contestó.
+
+**Dos hallazgos menores del mismo frente, que van acá porque son del mismo camino:**
+
+1. **La bandeja pinta los `incluye` sin distinguir conocido de inventado**
+   (`etiqueta` devuelve el slug crudo si no está en la taxonomía). Funciona, pero
+   mezcla en una línea de texto lo que se va a publicar y lo que no — que es
+   literalmente el punto de B-842 («doce chips que parecen taxonomía se leen como
+   taxonomía») aplicado a la única pantalla donde el admin decide. Un `†` o un
+   color costaría una línea.
+2. **Los duplicados sobreviven la conversión.** El formulario público no puede
+   producirlos (el toggle usa `includes`), pero un `curl` sí: doce veces
+   `merienda` llega al formulario y, si el admin no mira, a la ficha como el mismo
+   chip repetido. Es cosmético y **el admin lo ve como lo que es**, a diferencia
+   del slug inventado, que se disfraza. Un `[...new Set(incluye)]` con su caso.
+
 ### B-857 · Un plugin desactivado sigue escribiendo en la raíz del repo, y el `.gitignore` lo tapa · P4
 
 **Lo trajo el frente de B-849** como «la línea `.mdd/` nunca se sacó», y al ir a
@@ -1196,6 +1233,35 @@ techo de 1 MB ya lo acota.
 
 Y hay una defensa que llega antes y no es ésta: **App Check** (B-836a). El script
 que manda doce mapas de 80 KB es exactamente el que no pasa por la página.
+
+> ✅ **La parte accionable está hecha (2026-09-09), y el camino se verificó antes
+> de tocar nada.** El filtro que la corrección pedía **ya había entrado con
+> `propuestas.ts`** (B-830, paso 6): `incluyeDePropuesta` compara contra los slugs
+> de `/opciones/incluye-actividad` y manda el resto a `incluyeOtro` vía el aviso de
+> conversión, que es el mecanismo del § 4.2 del PRD. La taxonomía no se lee ahí —el
+> módulo es puro (§05)—: entra por parámetro y la pasa el `PropuestasPanel`, con
+> **default `[]`, no «dejar entrar»**, así que un llamador distraído no publica
+> nada.
+>
+> El camino que la corrección afirma es **exacto**, eslabón por eslabón:
+> `toPublic.ts` → `detallePublico.ts` (`etiquetaDe`) → `listadoPublico.ts`
+> (`?? desSlug(valor)`) → `actividad/[slug].astro`, donde se pinta como `<li>` bajo
+> «Qué se llevan». HTML indexado, confirmado.
+>
+> **Lo que faltaba era lo otro que este ítem pedía:** que estuviera escrito como
+> asimetría y no como garantía. `tests/propuestas.test.ts` todavía repetía la frase
+> retractada —«esa conversión pasa por `actividadFormSchema`… no un dato
+> publicado»— justo en el docblock que **justifica** el hueco de la regla. Se
+> corrigió y se le puso aserto, con la carga que la regla no puede rechazar (un
+> slug inventado y uno de 4000 caracteres), afirmando que ninguno queda en ningún
+> campo del formulario. Está en ese archivo y no en `propuestas-conversion.test.ts`
+> para que, si alguien borra el filtro, lo que se ponga rojo sea el párrafo que
+> dice que el hueco es aceptable.
+>
+> **Lo que sigue abierto es lo que este ítem manda no hacer todavía:** la Function
+> `onDocumentCreated` que valide fila por fila, y App Check (B-836a). No antes de
+> tener el problema. Y salió **B-859**, que sí es un defecto y no una asimetría
+> aceptada.
 
 ### B-843 · Cuatro cosas que la bandeja de propuestas necesita antes de existir · P1
 

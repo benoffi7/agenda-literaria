@@ -2,6 +2,44 @@
 
 ## Sin publicar
 
+- **El filtro de `incluye` de la conversión queda atado a la asimetría que
+  justifica** — **B-842**. El arreglo que el ítem pedía —`incluye.filter((s) =>
+  slugsConocidos.has(s))`, y lo no reconocido al «Otro» del § 4.2— **ya había
+  entrado con `propuestas.ts`** (B-830, paso 6), tal como el ítem lo mandaba. Lo
+  que faltaba era lo otro que el ítem pedía: que estuviera escrito **como asimetría
+  y no como garantía**.
+
+  **`tests/propuestas.test.ts` seguía afirmando lo falso.** El docblock del caso de
+  la asimetría de fechas decía que la conversión «pasa por `actividadFormSchema`» y
+  que el daño posible «no es un dato publicado» — la misma frase que el
+  `auditor-privacidad` retractó y que la corrección de B-842 ya había reescrito en
+  el backlog, pero no acá. **No es un comentario cualquiera: es el argumento de por
+  qué el hueco de la regla es aceptable**, así que dejarlo garantizaba que el
+  próximo lector concluyera que estaba cubierto por un schema que declara
+  `z.array(texto)`.
+
+  **El camino se verificó entero antes de tocar nada**, y es exactamente el que la
+  corrección afirma: `toPublic.ts` lo proyecta al `events.json` →
+  `detallePublico.ts` lo resuelve con `etiquetaDe` → `listadoPublico.ts` cae a
+  `desSlug(valor)` → `actividad/[slug].astro` lo pinta como `<li>` bajo «Qué se
+  llevan». Texto visible en HTML indexado.
+
+  **Y la justificación nueva quedó con aserto**, que es lo que impide que se pudra
+  de nuevo: un caso con la carga que la regla **no** puede rechazar —un slug
+  inventado con pinta de taxonomía y uno de 4000 caracteres, porque
+  `d.incluye.size() <= 12` acota cuántos y no el largo de cada uno— afirma que
+  ninguno queda en **ningún** campo del formulario, y que igual llegan al aviso en
+  vez de perderse. Vive en `propuestas.test.ts` y no en
+  `propuestas-conversion.test.ts` a propósito: **si alguien borra el filtro, lo que
+  se pone rojo es el párrafo que dice que el hueco es aceptable.** Los cuatro
+  asertos se mataron por mutación, y dos de ellas existen para mostrar que los
+  `not.toContain` no son redundantes con el primero: en las dos el `incluye` queda
+  correcto y el texto igual se publica por otro campo.
+
+  De ahí salió **B-859**: la bandeja decide qué `incluye` es conocido con la lista
+  **completa** de la taxonomía y no con la de las aprobadas, así que un anónimo
+  puede nombrar una opción pendiente que `/proponer` deliberadamente no ofrece.
+
 - **`10-salud-del-codigo.md` remedido entero, y el primer ciclo de imports del repo
   declarado en vez de arreglado** — **B-849**. El §1 decía 180 archivos y 41.388
   LOC de producción; el árbol tiene **254 y 63.983** (+55 % en seis días). Se

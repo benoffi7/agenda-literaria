@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import { RE_DIA, RE_HORA, diaReal, formAPropuesta, propuestaFormSchema, propuestaVacia } from '@/lib/propuesta-schema';
+import { propuestaAFormulario } from '@/lib/propuestas';
 import {
   ARANCELES_PROPUESTA,
   ESTADOS_PROPUESTA,
@@ -52,7 +53,8 @@ import {
   TOPE_URL_PROPUESTA,
   VIAS_CONTACTO_PROPUESTA,
 } from '@/types/propuesta';
-import type { PropuestaForm } from '@/types/propuesta';
+import type { Propuesta, PropuestaForm } from '@/types/propuesta';
+import { ts } from './fixtures/tiempo';
 
 const REGLAS = readFileSync(
   fileURLToPath(new URL('../firestore.rules', import.meta.url)),
@@ -203,10 +205,20 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
    *
    * **Qué lo hace aceptable, y conviene tenerlo escrito y no supuesto:** nada de
    * una propuesta llega a una salida pública sin que un admin la convierta en
-   * actividad, y esa conversión pasa por `actividadFormSchema`. El daño posible es
-   * «el admin ve una fila rara en la bandeja», no un dato publicado. Si aparece
-   * abuso, la defensa que falta es del lado de una Function y no de la regla —
-   * anotado en el backlog.
+   * actividad — y para `incluye`, que la conversión **filtre contra la
+   * taxonomía**, que es el caso de acá abajo.
+   *
+   * Lo que **no** lo hace aceptable es `actividadFormSchema`, que es lo que la
+   * primera versión de este párrafo decía: para `incluye` ese schema es
+   * `z.array(texto)` —texto libre, sin lista blanca—, así que un slug inventado
+   * seguía viaje hasta `toPublic`, `detallePublico` lo resolvía con `etiquetaDe`
+   * y `listadoPublico` caía a `desSlug(valor)`: se publicaba verbatim, apenas
+   * des-slugueado, en la página de detalle. Lo cobró el `auditor-privacidad`
+   * sobre B-830.
+   *
+   * El daño que queda es «el admin ve una fila rara en la bandeja» y una
+   * escritura facturada de hasta 1 MB. Si aparece abuso, la defensa que falta es
+   * del lado de una Function y no de la regla — anotado en el backlog (B-842).
    *
    * Este caso afirma la asimetría en vez de fingir que no está. La primera
    * versión afirmaba que la regla repetía las dos expresiones: era **falso** y se
@@ -234,6 +246,61 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
     for (const clave of ['dia', 'desde', 'hasta']) {
       expect(bloque, `la regla empezó a validar \`${clave}\``).not.toContain(`${clave}.matches`);
     }
+  });
+});
+
+describe('lo que la regla no puede mirar de `incluye`, lo filtra la conversión (B-842)', () => {
+  /**
+   * **La compensación de la asimetría de arriba, verificada donde se la afirma.**
+   *
+   * El párrafo de ahí dice que la forma de cada elemento de una lista vive solo
+   * en el schema y que igual es aceptable. Para `incluye` eso es cierto **solo
+   * mientras la conversión filtre**: es el único paso entre un `curl` anónimo y
+   * `toPublic`. Si alguien borra el filtro de `incluyeDePropuesta`, la
+   * justificación escrita arriba deja de ser cierta y este caso se pone rojo —
+   * que es el punto de tenerlo acá y no solo en `propuestas-conversion.test.ts`,
+   * donde los casos prueban la traducción de vocabulario y no esta atadura.
+   *
+   * La carga es la que la regla **no** puede rechazar: `d.incluye.size() <= 12`
+   * acota cuántos y no el largo ni la forma de cada uno.
+   */
+  const TAXONOMIA = (
+    JSON.parse(
+      readFileSync(fileURLToPath(new URL('../src/lib/opciones-base.json', import.meta.url)), 'utf8'),
+    ) as Record<
+      string,
+      { slug: string }[]
+    >
+  )['incluye-actividad']!.map((v) => v.slug);
+
+  const propuestaCon = (incluye: string[]): Propuesta => ({
+    ...formAPropuesta(form({ incluye })),
+    creadoEn: ts('2026-09-09T12:00:00Z'),
+  });
+
+  it('la conversión descarta los `incluye` que no están en la taxonomía', () => {
+    // Dos formas de lo que la regla deja pasar: el slug inventado que **parece**
+    // taxonomía —que es por qué «el admin lo va a ver» es más débil acá que en
+    // `titulo`, un chip no se lee como se lee un párrafo— y el que ningún ojo
+    // lee entero.
+    const inventado = 'clase-abierta-en-plataforma-x-punto-test';
+    const larguisimo = 'x'.repeat(4000);
+    const { form: f, avisos } = propuestaAFormulario(
+      propuestaCon(['merienda', inventado, larguisimo]),
+      TAXONOMIA,
+    );
+
+    expect(f.incluye).toEqual(['merienda']);
+    // Y no quedan colgados en ningún otro campo: lo que no está en el formulario
+    // no llega a `toPublic`, que es lo único que se publica.
+    const crudo = JSON.stringify(f);
+    expect(crudo, 'el slug inventado').not.toContain(inventado);
+    expect(crudo, 'el slug larguísimo').not.toContain(larguisimo);
+    // Descartar **en silencio** sería perder lo que la persona escribió: van al
+    // aviso, que es el «Otro» del § 4.2 del PRD. El admin decide si alguno
+    // merece entrar a la taxonomía —y entonces sí corre por `upsertOpcion` con
+    // su slugify (trampa 6)— o si no era nada.
+    expect(avisos.join(' '), 'el aviso de lo no reconocido').toContain(inventado);
   });
 });
 
