@@ -34,6 +34,9 @@ import { db } from '@/lib/firestore-client';
 // Los dos saneadores de `href` del proyecto, importados y **no copiados**: dos
 // versiones de «qué URL es segura» divergen y una queda vieja (la clase de B-88).
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
+// El conversor de `Timestamp` del proyecto, importado y **no reescrito**: es el
+// hogar de las conversiones de fecha y el que evita la trampa 1 (§13).
+import { instanteDeTimestamp } from '@/lib/sesiones';
 import type {
   EstadoPropuesta,
   FechaPropuesta,
@@ -61,6 +64,150 @@ export const ESTADOS_PENDIENTES = ['nueva', 'en-revision'] as const;
 
 export const esPendiente = (p: Pick<Propuesta, 'estado'>): boolean =>
   (ESTADOS_PENDIENTES as readonly string[]).includes(p.estado);
+
+/*
+ * ── Cuándo caduca una propuesta, del lado de la pantalla — B-844 ──────────
+ *
+ * **Esto es una segunda implementación del mismo plazo, y se declara como tal.**
+ * La primera —la que borra— es `decidirRetencion` en `functions/retencion.js`, y
+ * lo natural sería importarla: es exactamente lo que el § «Lógica pura separada
+ * de la infraestructura» de `05-patrones.md` pide, y lo que hacen `@calendario`,
+ * `@historial` y `@png-chunks-seguros`. Acá no se hizo, y el motivo es de
+ * alcance y no de diseño: un cuarto alias toca `astro.config.mjs`,
+ * `tsconfig.json`, `vitest.config.ts`, `scripts/que-deployar.sh` y las dos
+ * listas de alias que `bundle-panel.test.ts` y `panel-fuera-del-sitio.test.ts`
+ * enumeran — seis archivos compartidos, y esta tanda no los tiene.
+ *
+ * **Entonces la atadura es un test y no un import** (el patrón de B-364, el
+ * mismo que ata los topes de `types/propuesta.ts` con `firestore.rules`), con
+ * una diferencia que la hace más fuerte que comparar dos números:
+ * `tests/bandeja-de-propuestas.test.ts` pasa **una familia de fixtures por las
+ * dos implementaciones** y exige que coincidan caso por caso. Si los plazos, la
+ * tabla de estados o el reloj se separan, se pone rojo. Que el import sea mejor
+ * igual sigue siendo cierto, y está anotado.
+ *
+ * Y por qué la bandeja tiene que decirlo: el borrado ya no depende de que un
+ * admin apriete «rechazar», así que ahora hay documentos que se van solos y
+ * **nadie los ve irse**. Una propuesta que estaba por caducar y desaparece sin
+ * aviso se lee como un bug de la bandeja. Con los 30 días que contestó el dueño
+ * pesa más que con la hipótesis de 90: una propuesta puede caducar **antes de
+ * que nadie la haya abierto nunca** si la bandeja pasó un mes sin mirarse.
+ */
+
+/**
+ * Los mismos plazos de `RETENCION_POR_ESTADO`, en días. `null` = no vence.
+ *
+ * **Si el dueño cambia el número, se cambia en los dos lados** —acá y en
+ * `functions/retencion.js`— y el test de arriba es lo que hace que olvidarse de
+ * uno no compile en silencio.
+ */
+export const RETENCION_DIAS: Record<EstadoPropuesta, number | null> = {
+  rechazada: 30,
+  // 30 también, y es **otra decisión con el mismo número** — el docblock de
+  // `MARGEN_SIN_TOCAR_MS` explica por qué son dos y no una. No se escriben como
+  // `rechazada` reusado por lo mismo.
+  nueva: 30,
+  'en-revision': 30,
+  aceptada: null,
+};
+
+/**
+ * Desde cuántos días antes la ficha avisa.
+ *
+ * ── El criterio, escrito para que no haya que redescubrirlo ───────────────
+ * **La ventana es más o menos un cuarto del plazo, y nunca más de un tercio.**
+ * Con los 30 días que contestó el dueño eso da **una semana**, que además es la
+ * unidad en la que una persona actúa: ves la ficha, le escribís a quien propuso
+ * y le das unos días para contestar.
+ *
+ * El número anterior era 14 y **el argumento que lo eligió murió con la
+ * respuesta del dueño**: se había elegido contra un plazo de 90 días —«está
+ * apagado once semanas de cada trece»— y sobre 30 prendería casi la mitad de la
+ * vida de cada ficha. Eso es el cartel en cada ficha que **D-273** rechaza: «una
+ * lista de 65 sobre 68 no es trabajo pendiente sino el catálogo con otro
+ * nombre». Con siete está apagado el 77 % del plazo, y en una bandeja que se
+ * atiende no se prende nunca — mover una propuesta de estado reinicia su reloj,
+ * así que lo único que llega a los 23 días es lo que de verdad nadie tocó.
+ *
+ * La otra mitad del criterio, y es la que pone el **piso**: la ventana tiene que
+ * ser más larga que el hueco entre dos visitas a la bandeja, o el aviso se puede
+ * perder entero —la ficha pasa de callada a borrada sin que nadie lo haya
+ * visto—. Una semana es el hueco de alguien que la mira aunque sea los lunes. Si
+ * el plazo bajara a diez días, esta cuenta ya no cerraría y habría que decidir
+ * de nuevo: `tests/bandeja-de-propuestas.test.ts` tiene el aserto que lo fuerza
+ * (la ventana no puede pasar de un tercio del plazo más corto).
+ */
+export const AVISO_DE_CADUCIDAD_DIAS = 7;
+
+const MS_POR_DIA = 24 * 60 * 60 * 1000;
+
+/**
+ * Desde cuándo se cuenta el plazo: **la última señal de vida**.
+ *
+ * Espejo de `relojDeRetencion`. `revision.en` se escribe en **todo** movimiento
+ * de estado —«la estoy mirando» y también «Reabrir»—, así que una que un admin
+ * miró la semana pasada no es una que nadie abrió nunca, aunque las dos hayan
+ * llegado hace tres meses. La `rechazada` cuenta desde el rechazo y no cae a
+ * `creadoEn` (DEC-13).
+ */
+const relojDe = (p: Pick<Propuesta, 'estado' | 'creadoEn' | 'revision'>): number | null => {
+  const revisada = instanteDeTimestamp(p.revision?.en)?.getTime() ?? null;
+  if (p.estado === 'rechazada') return revisada;
+  const creada = instanteDeTimestamp(p.creadoEn)?.getTime() ?? null;
+  if (revisada !== null && (creada === null || revisada >= creada)) return revisada;
+  return creada;
+};
+
+/**
+ * Cuántos días le quedan antes de que el barrido se la lleve. `null` si no vence
+ * o si no se la puede fechar (que es lo que el barrido lee como
+ * `sin-fecha-legible` y **tampoco** borra).
+ *
+ * Se redondea para abajo, o sea que promete **menos** tiempo del que hay: el
+ * barrido corre una vez por día y el error caro es decir «te quedan 2» de algo
+ * que se va esta noche.
+ */
+export const caducaEn = (
+  p: Pick<Propuesta, 'estado' | 'creadoEn' | 'revision'>,
+  ahora: number = Date.now(),
+): number | null => {
+  // `Object.hasOwn` y no el lookup pelado, por lo mismo que del lado que borra
+  // (`auditor-privacidad`): `estado: 'constructor'` devolvería una función, y de
+  // ahí sale «Se borra en NaN días» en la ficha.
+  const plazo = Object.hasOwn(RETENCION_DIAS, p.estado) ? RETENCION_DIAS[p.estado] : undefined;
+  if (plazo === null || plazo === undefined) return null;
+  const reloj = relojDe(p);
+  if (reloj === null) return null;
+  return Math.floor((reloj + plazo * MS_POR_DIA - ahora) / MS_POR_DIA);
+};
+
+/**
+ * Lo que la ficha muestra, o `null` si todavía falta mucho. En el idioma de
+ * quien mira la bandeja: no dice «retención» ni nombra el plazo, dice cuándo.
+ */
+export const avisoDeCaducidad = (
+  p: Pick<Propuesta, 'estado' | 'creadoEn' | 'revision'>,
+  ahora: number = Date.now(),
+): string | null => {
+  const dias = caducaEn(p, ahora);
+  if (dias === null || dias > AVISO_DE_CADUCIDAD_DIAS) return null;
+  /*
+   * **Los tres bordes de abajo importan más desde que el plazo son 30 días**: la
+   * ventana es de una semana, así que ahora se visitan seguido —con noventa,
+   * `dias === 0` era una rareza—. Y lo que hace útil al aviso es **el número**,
+   * no la advertencia: una propuesta puede caducar antes de que nadie la haya
+   * abierto si la bandeja pasó un mes sin mirarse, y ahí «esto vence» y «esto
+   * vence el jueves» son la diferencia entre llegar y no llegar.
+   *
+   * `dias < 0` es vencida y todavía en la bandeja: el barrido corre una vez por
+   * día, así que hay una ventana normal de hasta 24 horas. No es un error y no
+   * se anuncia como tal.
+   */
+  if (dias < 0) return 'Se borra en la próxima limpieza';
+  if (dias === 0) return 'Se borra hoy';
+  if (dias === 1) return 'Se borra mañana';
+  return `Se borra en ${dias} días`;
+};
 
 /**
  * **El único cambio que el panel escribe**, armado aparte del `updateDoc` para

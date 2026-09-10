@@ -1034,12 +1034,74 @@ propuesta rechazada **no trae la foto de vuelta**. El documento sigue nombrando 
 descarga es una capability y sirve el objeto sin volver a evaluar las reglas
 (**B-846**).
 
-### `borrarPropuestasVencidas` — la retención de propuestas (B-838, DEC-13)
+### `borrarPropuestasVencidas` — la retención de propuestas (B-838, DEC-13, B-844)
 
 Una propuesta lleva **el mail o el WhatsApp de alguien que no está logueado**: el
 primer dato personal de un tercero que el proyecto guarda, y el que B-102 daba por
 inexistente. DEC-13 contestó cuánto se guarda una **rechazada**: 30 días, y se va
 con su imagen.
+
+**B-844 agregó el segundo plazo, que es el que cubre el caso peor.** Hasta
+entonces las otras tres —`nueva`, `en-revision`, `aceptada`— no vencían nunca, o
+sea que **la que nadie miró** conservaba el contacto para siempre y el único
+borrado que existía dependía de que un admin apretara «rechazar»: justo lo que la
+retención automática vino a no depender.
+
+| Estado | Plazo | Contado desde |
+|---|---|---|
+| `rechazada` | 30 días (DEC-13) | `revision.en` — el rechazo |
+| `nueva` | 30 días | la última señal de vida |
+| `en-revision` | 30 días | la última señal de vida |
+| `aceptada` | **no vence** | — |
+
+**Los 30 días de «sin tocar» los contestó el dueño el 2026-09-09** (la pregunta se
+le hizo con una hipótesis de 90 escrita en el código). Lo que **no** contestó es
+la `aceptada`: que no venza es un argumento propio, marcado como tal en el
+docblock de `RETENCION_POR_ESTADO` y abierto a que lo revise.
+
+> **Da el mismo número que la rechazada, y son dos constantes a propósito.** No
+> es `MARGEN_SIN_TOCAR_MS = MARGEN_DE_RETENCION_MS`: eso las ataría y mover una
+> movería la otra. Son **dos decisiones que hoy coinciden** —aquélla es el margen
+> de un arrepentimiento, ésta es cuánto tarda una bandeja en dejar de mirarse— y
+> nada obliga a que se muevan juntas. Mismo criterio que `MINIMO_DESCRIPCION`
+> frente a `LARGO_RESUMEN` en `estadoDelCatalogo.ts`.
+> `tests/retencion.test.ts` tiene el aserto que lo dice al revés —«hoy son
+> iguales y eso no es una atadura»— y un guard sobre el fuente para que nadie las
+> una por prolijidad.
+>
+> Los dos números viven en **`RETENCION_POR_ESTADO`** (`functions/retencion.js`),
+> que es una tabla para que cambiarlos sea una línea: de ahí salen el plazo, los
+> estados que la query trae (`ESTADOS_QUE_CADUCAN`) y lo que el script informa.
+> El gemelo de la bandeja es `RETENCION_DIAS` en `src/lib/bandejaDePropuestas.ts`
+> —hay que moverlo también— y `tests/bandeja-de-propuestas.test.ts` los cruza con
+> una familia de fixtures, así que separarlos se pone rojo.
+
+**Con 30 y 30, hoy hay un solo plazo y dos relojes**, y conviene decirlo porque
+mueve dónde está la decisión: lo que distingue a una `rechazada` de una `nueva`
+ya no es *cuánto* se guarda sino **desde cuándo se cuenta**.
+
+**«La última señal de vida» y no `creadoEn`, y esa es la decisión de B-844.**
+`revision.en` se escribe en **todo** movimiento de estado —«la estoy mirando» y
+también **Reabrir**—, así que una propuesta que un admin miró la semana pasada y
+dejó en `en-revision` no es lo mismo que una que nadie abrió nunca, aunque las dos
+hayan llegado hace tres meses. El reloj es el **máximo** de `revision.en` y
+`creadoEn`; sin ninguna de las dos legible, no se borra. El caso que lo decide no
+es teórico: una rechazada que se **reabre** el día 100 vuelve a `nueva` con
+`creadoEn` de hace más de 30 días, y con el reloj en `creadoEn` el barrido de esa
+misma noche se llevaría lo que un admin acababa de rescatar a mano. **Con 30 días
+esto dejó de ser un caso raro:** cualquier rechazada que llegue al final de su
+propio plazo y se reabra cae exactamente ahí.
+
+> ⚠️ **Y la consecuencia que 30 días vuelve real:** una propuesta puede caducar
+> **antes de que nadie la haya abierto nunca**, si la bandeja pasó un mes sin
+> mirarse. Con el reloj elegido eso es correcto —nadie la tocó, es literalmente
+> el caso que el plazo cubre— y la mitigación es la bandeja: durante la última
+> semana la ficha dice **cuántos días quedan**, no solo que va a caducar.
+
+**Y `creadoEn` está en el `select` a propósito.** Un campo que la query no pide
+vuelve `undefined`, así que se leería como «sin fecha legible» y **ninguna
+`nueva` caducaría jamás**, en silencio. Lo fija
+`tests/retencion.integracion.test.ts` («y `creadoEn` sí viaja»).
 
 Esta Function programada (`functions/retencion-trigger.js`) las borra cada 24
 horas. Corrió antes que el resto de la tajada por decisión del dueño (B-843 punto
@@ -1055,9 +1117,11 @@ argumento del margen de rescate de `limpiarVersionesHuerfanas`, con otro número
 **La decisión es pura y vive en `functions/retencion.js`** (`decidirRetencion`),
 con tres salvaguardas:
 
-- **El plazo se cuenta desde `revision.en`**, o sea desde el rechazo y no desde
-  que llegó: una propuesta que estuvo dos meses en la bandeja y recién ayer se
-  rechazó tiene sus treinta días completos.
+- **El plazo de la rechazada se cuenta desde `revision.en`**, o sea desde el
+  rechazo y no desde que llegó: una propuesta que estuvo dos meses en la bandeja y
+  recién ayer se rechazó tiene sus treinta días completos. Y **no cae a
+  `creadoEn`** si esa fecha no se puede leer: eso sería otro plazo, decidido por
+  accidente.
 - **Una fecha de revisión ilegible bloquea el borrado** (`sin-fecha-legible`):
   falla cerrado, porque una propuesta que se ve en la bandeja se puede volver a
   rechazar y una borrada no vuelve.
@@ -1077,9 +1141,11 @@ Function corre con el Admin SDK y **no pasa por `firestore.rules`**, así que el
 nombrara `imagenes/img_<uuid>.jpg` de una actividad publicada haría que borrar la
 propuesta se llevara el flyer del sitio, en vivo.
 
-**El barrido no lee el contacto.** La query usa `select('estado','revision','imagen')`
-y el mapeo arma cuatro claves a mano: el dato personal del tercero no entra a la
-memoria de la Function ni puede terminar en un log por accidente.
+**El barrido no lee el contacto.** La query usa
+`select('estado','creadoEn','revision.en','imagen.storagePath')` y el mapeo arma
+cinco claves a mano: el dato personal del tercero no entra a la memoria de la
+Function ni puede terminar en un log por accidente. Los dos campos anidados van
+por su path para que `revision.motivo` y `revision.porUid` tampoco viajen.
 
 **IAM: no hace falta nada nuevo.** Corre con `calendar-sync@`, que ya tiene
 `datastore.user` (D-06) y el `storage.objects.delete` que usa
@@ -1113,13 +1179,50 @@ una rechazada de 40 días **con imagen** y otra de 3, el script marca
 `[BORRAR] … rechazada-vencida` solo la primera, deja la otra en
 `dentro-del-plazo`, `--aplicar` borra el documento **y el objeto** (confirmado con
 `file().exists()`), la corrida siguiente ya no la ve, y `--aplicar` con Storage
-apuntando afuera del emulador aborta con código 1.
+apuntando afuera del emulador aborta con código 1. **Esa verificación es de antes
+de B-844 y cubre la rechazada.**
 
-**Lo que este barrido NO borra, dicho para que no se lea como olvido:** las
-propuestas `nueva`, `en-revision` y `aceptada`. DEC-13 habla de la rechazada, y
-esas tres conservan el contacto sin plazo — anotado como **B-844**. Hoy la forma
-de honrar un «borrame» sobre una de ellas es rechazarla desde la bandeja: entra a
-esta cola y se va en 30 días.
+**El segundo plazo se verificó igual, contra el emulador, el 2026-09-09.**
+Sembradas cinco propuestas —una `nueva` de 31 días, una `nueva` de 2, una
+`en-revision` mirada ayer con `creadoEn` de hace 200 días, una `en-revision`
+abandonada hace 120 y una `aceptada` de 400—, el informe trae **cuatro** (la
+`aceptada` ni se consulta, que es el `in` derivado de la tabla) y marca
+`[BORRAR]` solo dos: `sin-mirar-vencida` la de 31 días y `sin-avanzar-vencida` la
+abandonada. **La mirada ayer queda en `dentro-del-plazo` pese a tener 200 días de
+antigüedad**, que es la decisión del reloj funcionando. `--aplicar` borra esas
+dos, la corrida siguiente ya no las ve.
+
+**Lo que este barrido NO borra, dicho para que no se lea como olvido:** la
+propuesta `aceptada`. Es la decisión de B-844 y no lo que sobró: ahí el contacto
+sirve —la actividad existe, está publicada y puede haber que repreguntar por
+ella—, así que borrarlo no protege a nadie y deja al proyecto sin poder avisarle a
+esa persona sobre su propia actividad. Para honrar un «borrame» sobre una aceptada
+hay que rechazarla desde la bandeja (entra a la cola de 30 días) o correr el
+script a mano.
+
+**Y con el contacto se queda también la foto original, que es la mitad que la
+decisión no cubrió** (lo señaló el `auditor-privacidad`). Al convertir se
+promueve una **copia** a `imagenes/` y el objeto de `propuestas/` no se toca —«se
+lo lleva el ciclo de la propuesta», dice el comentario del panel—, así que con
+`aceptada: null` ese ciclo no llega nunca y la imagen queda sin plazo bajo un
+prefijo que `limpiarImagenesHuerfanas` no barre. Anotado como **B-863**: lo
+barato es borrar el original cuando la promoción sale bien, y es una decisión.
+
+**Y la bandeja lo dice.** Desde B-844 la ficha muestra «Se borra en N días» / «Se
+borra mañana» / «Se borra hoy» cuando falta menos que `AVISO_DE_CADUCIDAD_DIAS`
+(**7**). Sin el aviso, un documento que se va solo desaparece de la bandeja sin
+que nadie lo vea irse, y eso se lee como un bug de la pantalla.
+
+**El criterio de la ventana está escrito para no redescubrirlo: un cuarto del
+plazo, nunca más de un tercio, y nunca menos de una semana.** El techo es
+**D-273** —un aviso prendido media vida es el cartel en cada ficha, no trabajo
+pendiente—; el piso es que la ventana tiene que ser más larga que el hueco entre
+dos visitas a la bandeja, o el aviso se pierde entero. Con 30 días de plazo eso
+da siete: apagado el 77 % del tiempo, y en una bandeja que se atiende, siempre
+—mover una propuesta de estado reinicia su reloj—. **El número anterior era 14 y
+se había elegido contra el plazo de 90**; al bajar a 30 habría quedado prendido
+casi la mitad de la vida de cada ficha sin que nada fallara, así que
+`tests/bandeja-de-propuestas.test.ts` tiene ahora el aserto que lo fuerza.
 
 ### Las cuentas de Instagram de la base, para seguirlas
 

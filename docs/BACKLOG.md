@@ -72,7 +72,7 @@ Resueltas el 2026-08-26:
 | DEC-9 | Cómo se llama la librería que sale a la calle (B-192) — **implementado el 2026-08-26** | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
 | B-28 | ¿Claim `curador` para aprobar? | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
 | B-29 | ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? | **Sí.** Y es más barato de lo que parecía: `ValorOpcion` ya tiene `huellaCreador`, así que comparar esa huella con la de quien guarda alcanza, dentro de la misma transacción del §4.2 que ya incrementa `usos`. Dos bordes: si `huellaCreador` está ausente (documentos viejos) **no** se auto-aprueba, porque no se puede saber de quién era; y queda por decidir si la etiqueta aprobada así **se marca** en la pantalla de taxonomías o desaparece de pendientes sin rastro — conviene marcarla, es lo que permite deshacer el typo que las dos personas escribieron igual. |
-| B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. La decisión sigue en pie para **quien se inscribe** — pero «hoy el sistema no guarda ni un dato personal de un tercero», que era el argumento de al lado, **dejó de ser cierto el 2026-09-09**: `/propuestas` guarda el contacto de quien propone (B-830), con retención de 30 días para la rechazada (DEC-13, B-838) y los estados que todavía no caducan anotados en B-844. Ver el aviso arriba del ítem. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
+| B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. La decisión sigue en pie para **quien se inscribe** — pero «hoy el sistema no guarda ni un dato personal de un tercero», que era el argumento de al lado, **dejó de ser cierto el 2026-09-09**: `/propuestas` guarda el contacto de quien propone (B-830), con retención de 30 días para la rechazada (DEC-13, B-838) y 30 días para la que nadie tocó (**B-844**, resuelto el 2026-09-09). La `aceptada` no vence, y conserva el contacto y la foto original — **B-863**. Ver el aviso arriba del ítem. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
 | B-124 | ¿Cuándo corren los auditores? | **A pedido**, como hoy. La mitigación es que `/antes-de-pushear` los lanza a los tres con un comando, así que "a pedido" no es "a mano". Y conviene usarlo: en el cierre de la `1.2.0` los tres auditores encontraron **dieciséis** bugs en tres pasadas, dos de ellos P1 de privacidad. |
 
 Resueltas el 2026-08-21:
@@ -801,6 +801,60 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
+### B-863 · La propuesta aceptada conserva el contacto para siempre — y también la foto · P2
+
+**Lo encontró el `auditor-privacidad` sobre B-844.** `aceptada: null` se decidió
+**por el contacto** («ahí sirve: la actividad existe y puede haber que
+repreguntar») y los tres textos que la justifican hablan solo de eso. Pero al
+convertir se promueve una **copia** a `imagenes/` y el objeto de `propuestas/` no
+se toca —«se lo lleva el ciclo de la propuesta», dice el comentario del panel—,
+así que con `aceptada` sin plazo **ese ciclo no llega nunca**: la foto de un
+tercero queda sin fecha de vencimiento bajo un prefijo que
+`limpiarImagenesHuerfanas` **no barre** (solo recorre `imagenes/` y `miniaturas/`).
+
+O sea que una decisión que se tomó mirando un campo se aplicó a dos, y del
+segundo no se habló.
+
+Lo barato es borrar el original cuando la promoción sale bien: la copia ya existe.
+Pero es **una decisión y no un renglón** —el original es también la prueba de qué
+mandaron— así que va acá y no en B-844. Su test:
+`it('la aceptada conserva el contacto pero no la foto original')`.
+
+### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja · P2
+
+**Lo encontró el `auditor-privacidad` sobre B-844.** `borrarPropuesta` hace
+`delete()` con el id que se decidió al principio de la corrida, sin condición.
+Antes la carrera existía solo sobre las rechazadas; ahora cubre **toda la bandeja
+pendiente** y choca de frente con la promesa nueva («moverla de estado le renueva
+el plazo»): entre `propuestasVencibles()` y el `delete()`, un admin que aprieta
+«la estoy mirando» sobre una vencida ve el plazo renovado en Firestore y **pierde
+el documento igual**.
+
+Peor variante, y es propia de D-600: `convertir()` **no escribe nada** hasta que
+la actividad se guarda, así que convertir una propuesta vieja no renueva nada y el
+barrido se la puede llevar **con el formulario abierto** — el `revisarPropuesta`
+posterior falla con NOT_FOUND.
+
+Ventana real: segundos por día. El arreglo que el auditor propone es devolver
+`updateTime` en `propuestasVencibles` (es metadata, no agrega ningún campo del
+documento a memoria) y borrar con `delete({ lastUpdateTime })`.
+
+> ⚠️ **Y no es una línea, por una razón que el auditor no vio: choca con el orden
+> de B-838.** El objeto se borra **primero**, así que una precondición que falle
+> en el documento deja la foto borrada y el documento vivo — el huérfano que B-838
+> eligió como «el menos malo», pero acá cae justo sobre la propuesta que un admin
+> acaba de rescatar, que se queda con el flyer roto. La precondición tiene que
+> verificarse **antes** de tocar Storage (una relectura, o mover la guarda arriba),
+> y eso es rediseñar `borrarPropuesta`. Por eso se anota y no se hizo.
+
+### B-865 · El barrido de retención no lleva `limit()` · P3
+
+Nota operativa del `auditor-privacidad` sobre B-844. La query ahora arrastra
+**toda la bandeja pendiente** en cada corrida, no solo las rechazadas. Con la
+escritura anónima cerrada da igual —la colección está vacía—; el día que se abra
+`allow create` (**B-836a**) conviene revisarlo junto con
+`MAX_PROPUESTAS_POR_CORRIDA`, que hoy recorta el **borrado** y no la **lectura**.
+
 ### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` · P4
 
 **Lo midió el frente de B-845** al ensanchar el chequeo del otro lado.
@@ -851,7 +905,7 @@ en el repo, que es exactamente lo que B-854 vino a cerrar.
 **Ojo con el alcance:** esto sí ripplea al `events.json` y al barrido de salidas
 públicas, así que no es un cambio de una línea sino de una línea más su fixture.
 
-### B-859 · La bandeja acepta un `incluye` que `/proponer` deliberadamente no ofrece · P3
+### B-859 · La bandeja acepta un `incluye` que `/proponer` deliberadamente no ofrece — ✅ hecho (2026-09-09) · P3
 
 **Lo encontró el frente de B-842** verificando de dónde sale la taxonomía que usa
 la conversión, y es la asimetría al revés de la que ese ítem describe: acá no falla
@@ -873,6 +927,14 @@ listas ya existe para esto: es usar la otra.
 Y el motivo por el que no lo agarró nadie es el de siempre: **las dos listas
 funcionan**. El resultado se ve bien en la bandeja, se publica bien, y la única
 diferencia es cuál de las dos preguntas se contestó.
+
+> ✅ **El hallazgo principal está arreglado (2026-09-09).**
+> `PropuestasPanel.convertir` pasa a `incluyeConocido.elegibles`, que es la misma
+> lista que ofrece `/proponer`. Caso nuevo con mutación probada en
+> `tests/propuestas-panel.render.test.tsx`, y —de yapa— **el mock de
+> `useOpciones` de ese archivo pasó a derivar `elegibles` con el `opcionesVisibles`
+> real**: devolvía `[]`, o sea que no ejercitaba nada. Los dos menores de abajo
+> siguen abiertos.
 
 **Dos hallazgos menores del mismo frente, que van acá porque son del mismo camino:**
 
@@ -1328,7 +1390,36 @@ que ya hace `trazaDe` para los efectos duplicables (`RE_TOKEN` + `enFunctions`).
 O sea, reusar el recorrido que ya existe en el mismo archivo en vez de mirar solo
 el texto del trigger.
 
-### B-844 · Solo caduca la propuesta rechazada: una `nueva` abandonada guarda el contacto para siempre · P2
+### B-844 · Solo caduca la propuesta rechazada: una `nueva` abandonada guarda el contacto para siempre — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Hecho (2026-09-09).** `RETENCION_POR_ESTADO` (`functions/retencion.js`)
+> agrega el segundo plazo. **El dueño contestó 30 días**, no los 90 con que se le
+> hizo la pregunta: `nueva`/`en-revision` caducan a los 30 contados desde la
+> **última señal de vida** (el máximo entre `creadoEn` y `revision.en`).
+>
+> **Da el mismo número que la rechazada y son dos constantes a propósito**: dos
+> decisiones que hoy coinciden y pueden divergir —el margen de un arrepentimiento
+> contra cuánto tarda una bandeja en dejar de mirarse—, con un aserto que lo dice
+> al revés y un guard sobre el fuente para que nadie las una por prolijidad
+> (colapsarlas deja hoy **toda la suite en verde**). Criterio de
+> `MINIMO_DESCRIPCION` frente a `LARGO_RESUMEN`.
+>
+> El «contados desde `creadoEn`» de abajo se resolvió al revés a propósito:
+> `revision.en` se escribe en todo movimiento de estado, así que una reabierta el
+> día 40 se habría borrado esa misma noche. **Y con 30 días una propuesta puede
+> caducar antes de que nadie la haya abierto**: es correcto —es el caso que el
+> plazo cubre— y la mitigación es que la ficha diga cuántos días quedan durante la
+> última semana (`AVISO_DE_CADUCIDAD_DIAS = 7`, criterio en el docblock y en un
+> aserto, D-273).
+>
+> Cruzado contra la Function por catorce fixtures en
+> `tests/bandeja-de-propuestas.test.ts`, y no por import (motivo de alcance en el
+> docblock de `bandejaDePropuestas.ts`).
+>
+> **Queda abierta una pregunta chica, y es del código y no del dueño: ¿la
+> `aceptada` tiene que vencer?** Hoy no vence, con el argumento de que ahí el
+> contacto sirve (la actividad existe y puede haber que repreguntar). El dueño no
+> la contestó. Y lo que esa decisión **no** cubre es la foto original — **B-863**.
 
 **Sale de escribir la retención** (B-838, paso 11) y es la mitad que DEC-13 no
 contestó porque no se le preguntó: la decisión del dueño fue «¿cuántos días se

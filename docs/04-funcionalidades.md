@@ -826,9 +826,9 @@ las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
 
 Botón **«Propuestas»** en el encabezado del listado, con el número de las que
 esperan decisión al lado (B-830, paso 7 de la tajada 1). Es la contracara del
-formulario público `/proponer`, que todavía **no existe**: hoy la colección
-`/propuestas` solo la puede escribir un admin, porque la escritura anónima espera
-que App Check esté exigiendo (B-836a).
+formulario público `/proponer`, que **ya está escrito y todavía no se anuncia**
+(paso 9, ver más abajo): hoy la colección `/propuestas` solo la puede escribir un
+admin, porque la escritura anónima espera que App Check esté exigiendo (B-836a).
 
 Cada propuesta se muestra entera —lo que escribieron, las fechas, el lugar, el
 arancel, qué se llevan— y con **el contacto de quien la mandó arriba de todo**,
@@ -881,14 +881,23 @@ cumple. Anunciarla son tres líneas —la ruta al sitemap, el enlace, y borrar l
 `esAdmin() &&`— y es el último paso de B-836a. Ver «Proponer una actividad» más
 abajo. **La retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
 se borra sola, con su imagen — ver `08-operacion.md` § «La retención de
-propuestas».
+propuestas». **Y desde B-844 hay un segundo plazo**: la `nueva` o la
+`en-revision` que nadie toca se borra a los **30 días de su última señal de
+vida** —el mismo número que la rechazada, contado distinto: el máximo entre
+`creadoEn` y `revision.en`, así que moverla de estado le renueva el plazo—,
+también con su imagen. La `aceptada` **no vence**: ahí el
+contacto sirve, porque la actividad existe y puede haber que repreguntar. La
+ficha avisa «Se borra en N días» durante la última semana, y no antes —el
+precedente es **D-273**—. Ese aviso es la mitigación de lo que 30 días vuelve
+real: una propuesta puede caducar **antes de que nadie la haya abierto** si la
+bandeja pasó un mes sin mirarse.
 
 La bandeja sigue **sin ofrecer cargar una propuesta a mano** aunque la regla lo
-permita. El motivo era que guardar el WhatsApp de un tercero antes de que exista
-lo que lo borra es guardar un dato personal sin fecha de vencimiento (decisión del
-dueño, B-843 punto 1) — y **ese motivo no se fue del todo con B-838**: una
-propuesta cargada a mano nace `nueva`, que es justo uno de los estados que **no**
-caducan (**B-844**).
+permita, y **desde B-844 ya no es por privacidad**. El motivo era que guardar el
+WhatsApp de un tercero antes de que exista lo que lo borra es guardar un dato
+personal sin fecha de vencimiento (decisión del dueño, B-843 punto 1); una
+propuesta cargada a mano nace `nueva`, y `nueva` ahora caduca. Lo que falta es
+solo la pantalla: nadie la construyó.
 
 ### Proponer una actividad — `/proponer` (B-830, paso 9)
 

@@ -2,6 +2,117 @@
 
 ## Sin publicar
 
+- **La propuesta que nadie miró ya no guarda el contacto para siempre, y la bandeja
+  dice cuándo se va** — **B-844** (y **B-859** de paso). DEC-13 había contestado la
+  mitad de la pregunta: 30 días para la **rechazada**, desde el rechazo. Las otras
+  tres no vencían nunca, y el caso que importaba no era la aceptada sino **la que
+  nadie miró**: conservaba el mail o el WhatsApp de una persona para siempre, con
+  el único borrado dependiendo de que un admin apretara «rechazar» — justo lo que
+  la retención automática vino a no depender.
+
+  **El dueño contestó 30 días** (la pregunta se le hizo con una hipótesis de 90
+  escrita en el código, y la bajó). O sea que da **el mismo número** que la
+  rechazada, y ahí está la decisión de diseño de esta tanda: **son dos constantes y
+  no una.** No es `MARGEN_SIN_TOCAR_MS = MARGEN_DE_RETENCION_MS` —eso las ataría y
+  mover una movería la otra— porque son **dos decisiones que hoy coinciden**:
+  aquélla es el margen de un arrepentimiento («la rechacé sin querer»), ésta es
+  cuánto tarda una bandeja en dejar de mirarse. El día que se alargue el margen de
+  rescate porque alguien perdió una propuesta buena, eso no dice nada sobre cuánto
+  se guarda el WhatsApp de quien nunca recibió respuesta. Es el criterio de
+  `MINIMO_DESCRIPCION` frente a `LARGO_RESUMEN` en `estadoDelCatalogo.ts`, y tiene
+  el aserto que lo dice **al revés**: hoy son iguales **y eso no es una atadura**,
+  más un guard sobre el fuente para que nadie las una por prolijidad. Ese guard
+  hace falta porque colapsarlas deja hoy **toda la suite en verde** — el valor no
+  cambia.
+
+  **Con 30 y 30 hay un solo plazo y dos relojes, y eso mueve dónde está la
+  decisión:** lo que distingue a una `rechazada` de una `nueva` ya no es *cuánto*
+  se guarda sino **desde cuándo se cuenta**. El ítem pedía «sin tocar» y, en la
+  misma línea, «contados desde `creadoEn`»: las dos mitades no siempre coinciden.
+  `revision.en` se escribe en **todo** movimiento de estado —«la estoy mirando» y
+  también **Reabrir**—, así que una propuesta que un admin miró la semana pasada no
+  es una que nadie abrió nunca. El reloj es el **máximo** de las dos. El caso que
+  lo decide dejó de ser teórico con el número más corto: una rechazada que se
+  **reabre** el día 40 vuelve a `nueva` con `creadoEn` de hace más de 30 días, y
+  con el reloj en `creadoEn` el barrido de esa misma noche se lleva lo que un admin
+  acababa de rescatar a mano. La **rechazada** conserva el suyo (`revision.en`
+  estricto, sin caer a `creadoEn`): eso sería otro plazo, decidido por accidente.
+
+  **Los plazos viven en una tabla, `RETENCION_POR_ESTADO`, y de ahí sale también
+  `ESTADOS_QUE_CADUCAN`**, que es lo que la query pide: ponerle un número a
+  `aceptada` la hace caducar sin que haya que acordarse de tocar el `where`.
+  Escribir esa lista a mano era el modo de falla obvio —la tabla dice que caduca,
+  la query no la trae, no caduca nunca y nada falla—.
+
+  **`creadoEn` entró al `select`, y esa línea es la que hace que el cambio
+  funcione.** Un campo que la query no pide vuelve `undefined`, así que el reloj lo
+  leería como «sin fecha legible» y **ninguna `nueva` caducaría jamás**, en
+  silencio y con la suite en verde. Es el regalo envenenado del `select` acotado de
+  B-838, y por eso el caso que lo fija está contra el emulador y no contra fixtures
+  armados a mano.
+
+  **La consecuencia que 30 días vuelve real, dicha para que no sorprenda:** una
+  propuesta puede caducar **antes de que nadie la haya abierto nunca**, si la
+  bandeja pasó un mes sin mirarse. Con este reloj eso es correcto —nadie la tocó,
+  es literalmente el caso que el plazo cubre— y la mitigación es la bandeja. Tiene
+  su caso propio, que es lo que hay que poder mirar a la cara cuando alguien
+  pregunte «¿y si se nos escapa una buena?».
+
+  **Y la bandeja lo dice, sin convertirse en un tablero.** La ficha muestra «Se
+  borra en N días» / «Se borra mañana» / «Se borra hoy» durante la última semana.
+  **El criterio de la ventana se rehízo, porque el anterior se murió con el
+  número:** 14 días se habían elegido contra un plazo de 90 —«apagado once semanas
+  de cada trece»— y sobre 30 habría quedado prendido casi la mitad de la vida de
+  cada ficha, que es el cartel en cada ficha que **D-273** rechaza. El criterio
+  nuevo es **un cuarto del plazo, nunca más de un tercio, y nunca menos de una
+  semana**: el techo es D-273 y el piso es el que no estaba pensado — la ventana
+  tiene que ser **más larga que el hueco entre dos visitas a la bandeja**, o el
+  aviso se pierde entero y la ficha pasa de callada a borrada sin que nadie lo haya
+  visto. Con 30 eso da siete, apagado el 77 % del tiempo. Y el criterio está
+  **ejecutable** en un aserto, así que el próximo cambio de plazo lo agarra la
+  suite en vez de un humano.
+
+  **El plazo está escrito dos veces y atado por un test, no por un import.** Lo
+  natural era importar la decisión de `functions/retencion.js` con un cuarto alias,
+  como `@calendario`; no se hizo porque toca seis archivos compartidos
+  (`astro.config.mjs`, `tsconfig.json`, `vitest.config.ts`, `scripts/que-deployar.sh`
+  y las dos listas de alias que `bundle-panel.test.ts` y `panel-fuera-del-sitio.test.ts`
+  enumeran). La atadura es el patrón de B-364 con una vuelta más: en vez de comparar
+  dos números —que dejaría suelto el reloj y la tabla de estados—, **una familia de
+  catorce fixtures pasa por las dos implementaciones** y se exige que coincidan caso
+  por caso. **El import sigue siendo mejor y queda anotado.**
+
+  **Lo único que el dueño no contestó es «la `aceptada` no vence»**, y va marcado
+  como argumento del código y no como decisión suya: ahí el contacto sirve —la
+  actividad existe, está publicada y puede haber que repreguntar—, así que borrarlo
+  no protege a nadie y deja al proyecto sin poder avisarle a esa persona sobre su
+  propia actividad. Lo que esa decisión **no** cubre es la foto: es **B-863**, y es
+  el mejor hallazgo del auditor — una decisión que se tomó mirando un campo se
+  aplicó a dos, y del segundo no se habló.
+
+  **Diecisiete mutaciones probadas.** Las tres que no son de cálculo sino de
+  decisión: ponerle un número a `aceptada` deja tres asertos en rojo; colapsar las
+  dos constantes lo agarra **solo** el guard sobre el fuente; y dejar la ventana en
+  14 lo agarra **solo** el aserto del criterio. El `auditor-trampas` pidió el borde
+  exacto del plazo, que es el único aserto que ve un off-by-one de un lado solo. El
+  `auditor-privacidad` agregó dos: el lookup de la tabla **fallaba abierto** para
+  claves heredadas de `Object.prototype` (`estado: 'constructor'` no es `undefined`
+  ni `null`, se salteaba las dos guardas y **la propuesta se borraba**), y la fila
+  de `07-seguridad.md` describía un `select` que ya no era el que corría. El orden
+  de `borrarPropuesta` —objeto primero, documento después— **no se tocó**: es la
+  decisión de B-838 y su test sobre el fuente sigue en pie. Quedaron abiertos
+  **B-864** (el `delete()` sin precondición, que **no** es una línea: choca con ese
+  mismo orden) y **B-865**.
+
+  **B-859, de paso:** `PropuestasPanel.convertir` armaba los conocidos de «Qué se
+  llevan» con `incluyeConocido.valores` (todas las opciones) en vez de `.elegibles`
+  (las aprobadas, sin `uid`), que es la misma lista que ofrece `/proponer`. Un slug
+  pendiente de aprobación nombrado por fuera del formulario público entraba como
+  parte del vocabulario en vez de caer a «Otro» (D-30). Una línea, y las dos
+  versiones se ven bien — que es por qué nadie lo agarró. Y el mock de
+  `useOpciones` del render test devolvía `[]` en `elegibles`, o sea que el caso
+  nuevo no habría ejercitado nada: ahora deriva con el `opcionesVisibles` real.
+
 - **El paso «Correr los tests» estaba dos veces, y la guarda que existe para eso
   estaba verde sobre la copia** — **B-858**. `docs/README.md` tenía el mismo paso
   duplicado, uno detrás del otro, y la segunda copia es la que explica por qué el

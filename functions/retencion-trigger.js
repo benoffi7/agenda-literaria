@@ -1,6 +1,7 @@
 /**
- * B-838 / DEC-13 — el barrido que borra las propuestas rechazadas a los 30 días,
- * **documento e imagen**.
+ * B-838 / DEC-13 + B-844 — el barrido que borra las propuestas caducadas,
+ * **documento e imagen**: la rechazada a los 30 días del rechazo, y la que nadie
+ * tocó a los 30 días de su última señal de vida — el mismo número, otro reloj.
  *
  * La decisión de qué caducó es pura y vive en `retencion.js`, incluido el porqué
  * esto no es un trigger sobre el rechazo y el porqué no es la trampa 3 ni la 12.
@@ -58,7 +59,10 @@ export const borrarPropuestasVencidas = onSchedule(
       // `motivos` lleva ids y el motivo, nunca contenido: el contacto de quien
       // propuso ni siquiera se leyó (`propuestasVencibles` usa `select`).
       logger.debug('retención de propuestas: nada que borrar', {
-        rechazadas: propuestas.length,
+        // `candidatas` y no `rechazadas` desde B-844: la query trae los tres
+        // estados que caducan, y llamarlas «rechazadas» en el log haría leer
+        // mal la única salida que este barrido deja.
+        candidatas: propuestas.length,
         motivos,
       });
       return;
@@ -71,7 +75,7 @@ export const borrarPropuestasVencidas = onSchedule(
         await borrarPropuesta(db, bucket, caducada);
         borradas += 1;
         if (caducada.objeto) objetos += 1;
-        logger.info('propuesta rechazada borrada por retención', {
+        logger.info('propuesta borrada por retención', {
           propuesta: caducada.id,
           conImagen: Boolean(caducada.objeto),
           // `causa` y no `motivo`: en este dominio «motivo» es el del rechazo,
@@ -104,7 +108,7 @@ export const borrarPropuestasVencidas = onSchedule(
       logger.info('retención de propuestas terminada', {
         borradas,
         objetos,
-        rechazadas: propuestas.length,
+        candidatas: propuestas.length,
       });
     }
   },

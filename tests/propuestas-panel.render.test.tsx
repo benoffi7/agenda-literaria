@@ -26,22 +26,41 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PropuestaConId } from '@/types/propuesta';
+// El doble de `Timestamp` del repo, uno y solo uno (B-211).
+import { tsDe } from './fixtures/tiempo';
 
 vi.mock('@/lib/analytics', () => ({
   medirFuncion: vi.fn(),
   medirSeccion: vi.fn(),
 }));
 
-vi.mock('@/components/admin/useOpciones', () => ({
-  useOpciones: (campo: string) => ({
-    valores:
-      campo === 'incluye-actividad'
-        ? [{ slug: 'merienda', label: 'Merienda', orden: 1, fijo: true, usos: 0 }]
-        : [{ slug: 'a-la-gorra', label: 'A la gorra', orden: 1, fijo: true, usos: 0 }],
-    elegibles: [],
-    cargando: false,
-  }),
-}));
+/*
+ * **El mock deriva `elegibles` con `opcionesVisibles` de verdad** — B-859. Las
+ * dos listas que `useOpciones` devuelve contestan preguntas distintas
+ * (`valores` = todas, para resolver etiquetas; `elegibles` = lo que se puede
+ * elegir), y un mock que las inventara podría hacerlas coincidir justo donde el
+ * bug vive. Con el filtro real, `vino-de-honor` —pendiente de aprobación— está
+ * en `valores` y **no** en `elegibles`, que es exactamente la asimetría que hay
+ * que poder ejercitar.
+ */
+vi.mock('@/components/admin/useOpciones', async () => {
+  const { opcionesVisibles } = await import('@/lib/taxonomia');
+  const POR_CAMPO: Record<string, { slug: string; label: string; orden: number; fijo: boolean; usos: number; aprobada?: boolean }[]> = {
+    'incluye-actividad': [
+      { slug: 'merienda', label: 'Merienda', orden: 1, fijo: true, usos: 0 },
+      // Existe en la taxonomía y **espera validación**: el formulario público
+      // no la ofrece (`opcionesPublicas` = `opcionesVisibles` sin uid).
+      { slug: 'vino-de-honor', label: 'Vino de honor', orden: 2, fijo: false, usos: 1, aprobada: false },
+    ],
+    arancel: [{ slug: 'a-la-gorra', label: 'A la gorra', orden: 1, fijo: true, usos: 0 }],
+  };
+  return {
+    useOpciones: (campo: string) => {
+      const valores = POR_CAMPO[campo] ?? [];
+      return { valores, elegibles: opcionesVisibles(valores as never), cargando: false };
+    },
+  };
+});
 
 /*
  * El módulo dueño de `firebase/storage`, que el panel carga con `import()`. Se
@@ -200,6 +219,75 @@ describe('la bandeja muestra lo que hace falta para decidir', () => {
   });
 });
 
+/**
+ * **Que la bandeja diga cuándo se va** — B-844.
+ *
+ * El barrido borra sin que nadie apriete nada, así que ahora hay documentos que
+ * desaparecen de la bandeja y **nadie los ve irse**. El aviso es lo que evita
+ * que eso se lea como un bug de la pantalla — y la ventana de
+ * `AVISO_DE_CADUCIDAD_DIAS` es lo que evita que el aviso se convierta en un
+ * cartel en cada ficha, que es el precedente de D-273.
+ *
+ * La lógica pura está en `bandeja-de-propuestas.test.ts`, cruzada contra la
+ * decisión de la Function. Lo que se verifica acá es el cableado: que la
+ * pantalla **la llame** y que muestre lo que devuelve.
+ */
+describe('cuándo se borra sola, dicho en la ficha (B-844)', () => {
+  /**
+   * Hace N días **y medio**, y la media es a propósito: la pantalla lee el reloj
+   * en el render, o sea unos milisegundos después de armado el fixture, así que
+   * un fixture parado justo en el borde del día da 5 o 4 según cuánto tardó
+   * jsdom. Media jornada de margen lo saca del borde sin cambiar lo que el caso
+   * afirma. (`caducaEn` redondea para abajo: 5,5 días → «5 días».)
+   */
+  const hace = (dias: number) =>
+    tsDe(new Date(Date.now() - dias * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000));
+
+  it('una que nadie tocó y está por caducar lo dice, con el número', () => {
+    montar([propuesta({ creadoEn: hace(25) })]);
+    /*
+     * 30 − 25: cinco días. El texto se afirma **con el número adentro** porque
+     * es lo único accionable del aviso: con 30 días de plazo una propuesta
+     * puede caducar antes de que nadie la haya abierto, y ahí «esto vence» y
+     * «esto vence el jueves» son la diferencia entre llegar y no llegar.
+     */
+    expect(screen.getByText('Se borra en 5 días')).toBeTruthy();
+  });
+
+  /**
+   * **El control que hace que el aviso siga siendo un aviso** — D-273: «una
+   * lista de 65 sobre 68 no es trabajo pendiente sino el catálogo con otro
+   * nombre».
+   *
+   * MUTACIÓN PROBADA: sacando el corte por `AVISO_DE_CADUCIDAD_DIAS` en
+   * `avisoDeCaducidad`, este caso se pone rojo (aparece «Se borra en 29 días»
+   * en una propuesta de ayer) y el de arriba sigue verde.
+   */
+  it('y una de ayer no dice nada: el aviso no es un cartel en cada ficha', () => {
+    montar([propuesta({ creadoEn: hace(1) })]);
+    expect(screen.queryByText(/Se borra/)).toBeNull();
+  });
+
+  it('la aceptada nunca lo dice, por vieja que sea: no vence', async () => {
+    montar([
+      propuesta({
+        estado: 'aceptada',
+        creadoEn: hace(300),
+        revision: { porUid: 'uid_admin', en: hace(280) as never, actividadId: 'act_1', motivo: null },
+      }),
+    ]);
+    /*
+     * **El tilde primero, y no es un rodeo**: la bandeja oculta las cerradas por
+     * defecto, así que sin esto «no dice nada» pasaría porque **no hay ficha**,
+     * que es el falso verde de esta clase de aserto. El título es el control
+     * positivo de que la ficha sí está.
+     */
+    await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
+    expect(screen.getByText('Taller de crónica urbana')).toBeTruthy();
+    expect(screen.queryByText(/Se borra/)).toBeNull();
+  });
+});
+
 describe('convertir en actividad — el orden de D-600', () => {
   it('arma el formulario prellenado y NO escribe nada', async () => {
     const onConvertir = montar([propuesta()]);
@@ -222,6 +310,33 @@ describe('convertir en actividad — el orden de D-600', () => {
     const c = onConvertir.mock.calls[0]![0];
     expect(c.copia.incluye).toEqual(['merienda']);
     expect(c.avisos.join(' ')).toContain('pizza-gratis');
+  });
+
+  /**
+   * **Y se filtran contra lo `elegible`, no contra todo** — B-859.
+   *
+   * `vino-de-honor` **existe** en `/opciones/incluye-actividad` y está pendiente
+   * de aprobación, así que `/proponer` no lo ofrece: ese formulario arma sus
+   * casillas con `opcionesPublicas`, que es `opcionesVisibles` sin uid, o sea
+   * las aprobadas. Quien lo nombre igual lo hace salteándose el formulario, y
+   * la conversión no puede tratarlo como parte del vocabulario: cae a «Otro» y
+   * el admin decide (§ 4.2 del PRD, D-30).
+   *
+   * El caso es difícil de ver a ojo porque **las dos versiones funcionan**: con
+   * `valores` el slug entra y se ve bien, solo que es una opción que el circuito
+   * público deliberadamente no ofrece.
+   *
+   * MUTACIÓN PROBADA: volviendo a `incluyeConocido.valores` en `convertir`, este
+   * caso se pone rojo por partida doble (el slug entra a `copia.incluye` y
+   * desaparece del aviso) y los otros tres de este `describe` siguen verdes.
+   */
+  it('y contra lo elegible: un slug que existe pero espera validación cae a «Otro»', async () => {
+    const onConvertir = montar([propuesta({ incluye: ['merienda', 'vino-de-honor'] })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    const c = onConvertir.mock.calls[0]![0];
+    expect(c.copia.incluye).toEqual(['merienda']);
+    expect(c.avisos.join(' ')).toContain('vino-de-honor');
   });
 
   /**

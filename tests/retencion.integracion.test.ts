@@ -130,7 +130,15 @@ describe.skipIf(!vivo)('la retención de propuestas borra las dos mitades — B-
     expect((await adminDb().collection('propuestas').doc(VENCIDA).get()).get('contacto')).toBeTruthy();
 
     for (const p of nuestras) {
-      expect(Object.keys(p).sort(), p.id).toEqual(['estado', 'id', 'imagen', 'revision']);
+      // `creadoEn` entró con B-844: es el reloj de la que nadie tocó. Lo que
+      // sigue sin estar es el contacto, que es de lo que trata este caso.
+      expect(Object.keys(p).sort(), p.id).toEqual([
+        'creadoEn',
+        'estado',
+        'id',
+        'imagen',
+        'revision',
+      ]);
     }
   });
 
@@ -138,7 +146,7 @@ describe.skipIf(!vivo)('la retención de propuestas borra las dos mitades — B-
     // La otra mitad, afirmada sobre el fuente porque desde el resultado no se
     // distingue (ver el docblock de arriba).
     expect(fuente('functions/retencion.js')).toMatch(
-      /\.select\('estado', 'revision\.en', 'imagen\.storagePath'\)/,
+      /\.select\('estado', 'creadoEn', 'revision\.en', 'imagen\.storagePath'\)/,
     );
   });
 
@@ -160,6 +168,25 @@ describe.skipIf(!vivo)('la retención de propuestas borra las dos mitades — B-
     expect(Object.keys(crudo).sort()).toEqual(['actividadId', 'en', 'motivo', 'porUid']);
 
     expect(Object.keys(nuestra!.revision as object)).toEqual(['en']);
+  });
+
+  /**
+   * **Lo que la lógica lee tiene que estar en el `select`, o el bug es mudo** —
+   * B-844. `creadoEn` es el reloj de la propuesta que nadie tocó; si la query no
+   * lo pidiera volvería `undefined`, `relojDeRetencion` lo leería como «sin
+   * fecha legible» y **ninguna `nueva` caducaría jamás**, con toda la suite en
+   * verde. Es el regalo envenenado del `select` acotado, y se afirma contra el
+   * emulador porque es ahí donde la proyección de verdad ocurre.
+   *
+   * MUTACIÓN PROBADA: sacando `'creadoEn'` del `select`, este caso se pone rojo
+   * (`creadoEn` llega `undefined`) y ninguno de `retencion.test.ts` se entera,
+   * porque ahí los documentos se arman a mano.
+   */
+  it('y `creadoEn` sí viaja: sin él, la que nadie tocó no caducaría nunca', async () => {
+    const propuestas = await propuestasVencibles(adminDb());
+    const nuestra = propuestas.find((p) => p.id === VENCIDA);
+    expect(nuestra?.creadoEn, 'el reloj de B-844 no llegó desde Firestore').toBeTruthy();
+    expect(typeof (nuestra?.creadoEn as { toMillis?: unknown })?.toMillis).toBe('function');
   });
 
   it('la vencida se borra entera: documento **y** objeto', async () => {

@@ -4,6 +4,8 @@ import { useOpciones } from '@/components/admin/useOpciones';
 import { esFalloDeCarga } from '@/lib/carga-diferida';
 import { medirFuncion } from '@/lib/analytics';
 import {
+  RETENCION_DIAS,
+  avisoDeCaducidad,
   enlaceDeContacto,
   enlaceDeImagen,
   esPendiente,
@@ -269,9 +271,25 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    * (B-221). No hace falta nada nuevo.
    */
   const convertir = async (p: PropuestaConId) => {
+    /*
+     * **`elegibles` y no `valores`** — B-859. Las dos funcionan y se ven igual,
+     * y por eso nadie lo agarró: `valores` son **todas** las opciones y existen
+     * para *resolver etiquetas* (ver `etiqueta()` abajo, que sí usa `valores`
+     * porque una propuesta puede nombrar legítimamente una pendiente);
+     * `elegibles` es lo que se puede **elegir**, y acá el hook se llama **sin
+     * `uid`**, así que son exactamente las aprobadas.
+     *
+     * La simetría que importa es con `/proponer`, que ofrece
+     * `opcionesPublicas(...)` = `opcionesVisibles(valores)` sin uid, o sea las
+     * mismas. Con `valores`, un `curl` anónimo podía nombrar un slug que
+     * **existe pero está pendiente de aprobación** —que el formulario público
+     * deliberadamente no ofrece (D-30)— y la conversión lo prellenaba como si
+     * fuera parte del vocabulario. Con `elegibles` cae a «Otro», que es donde
+     * el admin decide, que es el mecanismo del § 4.2 del PRD.
+     */
     const { form, avisos } = propuestaAFormulario(
       p,
-      incluyeConocido.valores.map((v) => v.slug),
+      incluyeConocido.elegibles.map((v) => v.slug),
     );
     const imagenes = [...form.imagenes];
     const avisosDeLaImagen = [...avisos];
@@ -376,7 +394,12 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
         Nada de esto está en el sitio: una propuesta no se publica, se convierte en actividad y
         la actividad se publica como cualquier otra. El contacto de quien propuso es para
         repreguntar y no sale a ninguna parte. Rechazar borra la imagen <strong>en el acto</strong>
-        y el resto a los 30 días: hasta entonces se puede reabrir, pero la foto ya no vuelve.
+        y el resto a los {RETENCION_DIAS.rechazada} días: hasta entonces se puede reabrir, pero la
+        foto ya no vuelve. Y una que queda sin tocar se borra sola{' '}
+        {RETENCION_DIAS.nueva === RETENCION_DIAS.rechazada
+          ? 'en el mismo plazo'
+          : `a los ${RETENCION_DIAS.nueva} días`}
+        , contado desde la última vez que alguien la movió: la ficha avisa cuando falta poco.
       </p>
 
       {fallo && (
@@ -397,6 +420,19 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
         {visibles.map((p) => {
           const contacto = enlaceDeContacto(p.contacto);
           const afiche = enlaceDeImagen(p.imagen);
+          /*
+           * **Cuándo se va, y solo cuando falta poco** — B-844.
+           *
+           * El barrido borra sin que nadie apriete nada, así que sin este aviso
+           * hay documentos que desaparecen de la bandeja y nadie los ve irse.
+           * La ventana (`AVISO_DE_CADUCIDAD_DIAS`) es lo que lo mantiene siendo
+           * un aviso y no un cartel en cada ficha: **el precedente es D-273**,
+           * donde un aviso que señalaba 65 de 68 no era trabajo pendiente sino
+           * el catálogo con otro nombre. La ventana es un cuarto del plazo, así
+           * que en una bandeja que se atiende no se prende nunca: mover una
+           * propuesta de estado reinicia su reloj.
+           */
+          const caduca = avisoDeCaducidad(p);
           return (
             <li
               key={p.id}
@@ -413,9 +449,16 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                     {p.origen === 'panel' ? ' · cargada a mano' : ''}
                   </p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-xs ${ESTILO_ESTADO[p.estado]}`}>
-                  {TEXTO_ESTADO[p.estado]}
-                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${ESTILO_ESTADO[p.estado]}`}>
+                    {TEXTO_ESTADO[p.estado]}
+                  </span>
+                  {caduca && (
+                    <span className="rounded-full bg-acento/10 px-2 py-0.5 text-xs text-acento">
+                      {caduca}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/*

@@ -862,6 +862,37 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Y una propuesta que queda ahí sin que la toques se borra sola a los 30 días, con su ' +
+          'imagen — el mismo plazo que la rechazada, contado distinto: desde la última vez que ' +
+          'alguien la movió de estado. Marcarla «la estoy mirando» le renueva el plazo, y ' +
+          'reabrir una rechazada también; abrirla para leerla, no. La última semana la ficha ' +
+          'dice cuántos días quedan. Ojo con eso: si la bandeja pasa un mes sin mirarse, una ' +
+          'propuesta se puede borrar sin que nadie la haya abierto nunca. Las que aceptaste no ' +
+          'se borran: ahí el contacto sirve, porque la actividad existe y puede haber que ' +
+          'repreguntar.',
+        cuidado: true,
+        /*
+         * Mismo motivo que el punto de arriba: promete un **borrado**, así que va
+         * atado. Los tres casos son las tres mitades de la promesa — el plazo, el
+         * reloj («mirarla le renueva»), y que la aceptada quede afuera.
+         */
+        atadoA: [
+          {
+            archivo: 'tests/retencion.test.ts',
+            it: 'una `nueva` que nadie miró en 30 días se borra, contada desde que llegó',
+          },
+          {
+            archivo: 'tests/retencion.test.ts',
+            it: 'una que un admin miró ayer NO se borra, aunque haya llegado hace tres meses',
+          },
+          {
+            archivo: 'tests/retencion.test.ts',
+            it: 'la aceptada NO vence, ni con todas las fechas vencidas: ahí el contacto sirve',
+          },
+        ],
+      },
+      {
+        texto:
           'De «qué se llevan», entra lo que ya está en la lista de opciones. Lo que la persona ' +
           'escribió y no está aparece en el aviso de arriba del formulario, para que decidas vos ' +
           'si merece sumarse a la lista.',

@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'propuestas-avisan-antes-de-borrarse',
+    fecha: '2026-09-09',
+    version: '1.10.0',
+    titulo: 'Una propuesta que nadie mira avisa antes de borrarse sola',
+    detalle:
+      'Si una propuesta queda sin que nadie la toque, se borra sola a los 30 días, con su foto: ' +
+      'antes nos quedábamos con el mail o el WhatsApp de esa persona para siempre. Es el mismo ' +
+      'plazo que la rechazada, contado desde la última vez que alguien la movió: marcarla «la ' +
+      'estoy mirando» o reabrirla se lo renueva; abrirla para leerla, no. La última semana la ' +
+      'ficha dice cuántos días quedan. Las que aceptaste no se borran.',
+    donde: 'Listado → «Propuestas», en la ficha de cada una.',
+  },
+  {
     id: 'como-se-ve-en-google',
     fecha: '2026-09-09',
     version: '1.10.0',

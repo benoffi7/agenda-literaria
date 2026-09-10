@@ -1,5 +1,5 @@
 /**
- * B-838 / DEC-13 — una propuesta rechazada no se guarda para siempre.
+ * B-838 / DEC-13 + B-844 — una propuesta no se guarda para siempre.
  *
  * Este archivo prueba la decisión pura de `functions/retencion.js`: qué caducó y
  * qué objeto se va con ella. El pegamento (`retencion-trigger.js`) no se importa
@@ -7,22 +7,31 @@
  * verifican contra los emuladores en `tests/retencion.integracion.test.ts`, que
  * es donde se puede afirmar que el documento y el objeto se van juntos.
  *
- * Lo que este archivo fija, en una línea cada uno: el plazo, que solo caducan las
- * rechazadas, que una fecha ilegible **no** borra nada, y que el objeto que se
- * borra está acotado al prefijo propio — que es lo que impide que este barrido,
- * que corre con el Admin SDK y **no pasa por las reglas**, se lleve puesto el
- * flyer de una actividad publicada.
+ * Lo que este archivo fija, en una línea cada uno: los **dos** plazos —30 días
+ * desde el rechazo (DEC-13) y 30 días sin tocar (B-844), el mismo número y dos
+ * decisiones—, que la **`aceptada` no vence** —que es una decisión y no el cálculo—, cuál es el reloj de cada uno,
+ * que una fecha ilegible **no** borra nada, y que el objeto que se borra está
+ * acotado al prefijo propio — que es lo que impide que este barrido, que corre
+ * con el Admin SDK y **no pasa por las reglas**, se lleve puesto el flyer de una
+ * actividad publicada.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  ESTADOS_QUE_CADUCAN,
   MARGEN_DE_RETENCION_MS,
+  MARGEN_SIN_TOCAR_MS,
   MAX_PROPUESTAS_POR_CORRIDA,
   PREFIJO_PROPUESTAS,
+  RETENCION_POR_ESTADO,
   decidirRetencion,
   objetoDePropuesta,
+  relojDeRetencion,
 } from '../functions/retencion.js';
+import { ESTADOS_PROPUESTA } from '@/types/propuesta';
+// El doble de `Timestamp` del repo, uno y solo uno (B-211).
+import { tsDe } from './fixtures/tiempo';
 
 const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8');
@@ -31,14 +40,24 @@ const DIA = 24 * 60 * 60 * 1000;
 const AHORA = Date.parse('2026-10-10T12:00:00Z');
 const VENCIDA = AHORA - MARGEN_DE_RETENCION_MS - DIA;
 const RECIENTE = AHORA - DIA;
+/** Más vieja que el plazo de B-844, para el caso de «sin tocar». */
+const ABANDONADA = AHORA - MARGEN_SIN_TOCAR_MS - DIA;
 
-/** Una propuesta con la forma que el trigger lee (`select`: estado, revision, imagen). */
+/** El doble de `fixtures/tiempo`, en milisegundos: acá la aritmética es en ms. */
+const ts = (ms: number) => tsDe(new Date(ms));
+
+/**
+ * Una propuesta con la forma que el trigger lee (`select`: estado, creadoEn,
+ * revision.en, imagen.storagePath).
+ */
 const propuesta = (over: Record<string, unknown> = {}) => ({
   id: 'p1',
   estado: 'rechazada',
-  // Un `Timestamp` de Firestore se lee con `toMillis`, que es lo que `milisDe`
-  // resuelve. Se arma el mínimo, igual que en `limpieza-versiones.test.ts`.
-  revision: { porUid: 'uid_admin', en: { toMillis: () => VENCIDA }, actividadId: null, motivo: null },
+  // Vieja de entrada: para el plazo de la rechazada `creadoEn` no se mira, y
+  // así los casos que **sí** lo miran no pasan por casualidad.
+  creadoEn: ts(AHORA - 200 * DIA),
+  // Se arma el mínimo, igual que en `limpieza-versiones.test.ts`.
+  revision: { porUid: 'uid_admin', en: ts(VENCIDA), actividadId: null, motivo: null },
   imagen: null,
   ...over,
 });
@@ -63,7 +82,7 @@ describe('decidirRetencion — qué propuesta caducó (DEC-13)', () => {
 
   it('una rechazada de ayer no se toca: el plazo es para reabrirla y para repreguntar', () => {
     const { aBorrar, motivos } = decidirRetencion({
-      propuestas: [propuesta({ revision: { en: { toMillis: () => RECIENTE } } })],
+      propuestas: [propuesta({ revision: { en: ts(RECIENTE) } })],
       ahora: AHORA,
     });
     expect(aBorrar).toEqual([]);
@@ -80,8 +99,8 @@ describe('decidirRetencion — qué propuesta caducó (DEC-13)', () => {
     const { aBorrar } = decidirRetencion({
       propuestas: [
         propuesta({
-          creadoEn: { toMillis: () => AHORA - 60 * DIA },
-          revision: { en: { toMillis: () => RECIENTE } },
+          creadoEn: ts(AHORA - 60 * DIA),
+          revision: { en: ts(RECIENTE) },
         }),
       ],
       ahora: AHORA,
@@ -89,11 +108,67 @@ describe('decidirRetencion — qué propuesta caducó (DEC-13)', () => {
     expect(aBorrar).toEqual([]);
   });
 
-  it('los otros tres estados no caducan, ni con la fecha vencida', () => {
-    // DEC-13 habla de la rechazada y de ninguna otra. Que una `nueva` abandonada
-    // o una `aceptada` conserven el contacto sin plazo es una decisión con costo
-    // y está anotada como **B-844**, no es un descuido de esta función.
-    for (const estado of ['nueva', 'en-revision', 'aceptada']) {
+  /**
+   * **La decisión de B-844, y es la que no es un cálculo.**
+   *
+   * DEC-13 contestó el plazo de la rechazada. Que la `aceptada` **no** venza es
+   * la otra mitad, y es una decisión: ahí el contacto sirve —la actividad
+   * existe, está publicada, puede haber que repreguntar por ella— así que
+   * borrarlo no protege a nadie, deja al proyecto sin poder avisarle a esa
+   * persona sobre su propia actividad.
+   *
+   * El caso le da **todas** las fechas vencidas —llegó hace 200 días, se aceptó
+   * hace 90— para que lo único que la salve sea la decisión y no la aritmética.
+   *
+   * MUTACIÓN PROBADA: poniéndole cualquier número a `aceptada` en
+   * `RETENCION_POR_ESTADO` (`MARGEN_SIN_TOCAR_MS`, por ejemplo), este caso se
+   * pone rojo — y también el de `ESTADOS_QUE_CADUCAN`, porque la query pasaría
+   * a traerlas.
+   */
+  it('la aceptada NO vence, ni con todas las fechas vencidas: ahí el contacto sirve', () => {
+    const { aBorrar, motivos } = decidirRetencion({
+      propuestas: [
+        propuesta({
+          estado: 'aceptada',
+          creadoEn: ts(AHORA - 200 * DIA),
+          revision: { en: ts(ABANDONADA) },
+          imagen: { storagePath: 'propuestas/prop_abc.jpg' },
+        }),
+      ],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([]);
+    expect(motivos['p1']).toBe('aceptada-no-vence');
+    // Y la tabla lo dice con `null`, que es lo que hace que el motivo sea ése y
+    // no «cayó acá porque el filtro no la contemplaba».
+    expect(RETENCION_POR_ESTADO['aceptada']).toBeNull();
+  });
+
+  it('un estado que la tabla no nombra tampoco caduca: agregar uno no puede borrar de rebote', () => {
+    const { aBorrar, motivos } = decidirRetencion({
+      propuestas: [propuesta({ estado: 'archivada' })],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([]);
+    expect(motivos['p1']).toBe('estado-archivada');
+  });
+
+  /**
+   * **Y tampoco uno que se llame como una clave de `Object.prototype`** — lo
+   * trajo el `auditor-privacidad`, y es el caso que hacía que la propiedad de
+   * arriba valiera para `'archivada'` y para nada más.
+   *
+   * `plazos['constructor']` devuelve una **función**, que no es `undefined` ni
+   * `null`, así que se saltea las dos guardas; después `ahora - reloj.ms < plazo`
+   * da `NaN < función` → `false` → **la propuesta se borra**. Sigue el mismo
+   * criterio de fallar cerrado que `sin-fecha-legible`.
+   *
+   * MUTACIÓN PROBADA: volviendo a `plazos[p.estado]` sin `Object.hasOwn`, este
+   * caso se pone rojo y el de `'archivada'` sigue verde — que es por qué hacen
+   * falta los dos.
+   */
+  it('ni uno que se llame como una clave heredada: el lookup falla cerrado', () => {
+    for (const estado of ['constructor', 'toString', 'valueOf', '__proto__']) {
       const { aBorrar, motivos } = decidirRetencion({
         propuestas: [propuesta({ estado })],
         ahora: AHORA,
@@ -173,12 +248,12 @@ describe('decidirRetencion — qué propuesta caducó (DEC-13)', () => {
     expect(Object.values(motivos).filter((m) => m.endsWith('-pendiente-por-tope'))).toHaveLength(3);
   });
 
-  it('el margen es un parámetro: el test no espera 30 días', () => {
+  it('los plazos son un parámetro: el test no espera 30 días ni 90', () => {
     // `05-patrones.md` § «El reloj también es infraestructura».
     const { aBorrar } = decidirRetencion({
-      propuestas: [propuesta({ revision: { en: { toMillis: () => RECIENTE } } })],
+      propuestas: [propuesta({ revision: { en: ts(RECIENTE) } })],
       ahora: AHORA,
-      margenMs: 0,
+      plazos: { ...RETENCION_POR_ESTADO, rechazada: 0 },
     });
     expect(aBorrar).toEqual([{ id: 'p1', objeto: null }]);
   });
@@ -187,6 +262,232 @@ describe('decidirRetencion — qué propuesta caducó (DEC-13)', () => {
     // Fija la decisión del dueño: si alguien lo baja a horas, el «lo rechacé sin
     // querer» deja de existir en la práctica y nada más lo diría.
     expect(MARGEN_DE_RETENCION_MS).toBe(30 * DIA);
+  });
+});
+
+/**
+ * **El segundo plazo: la que nadie tocó** — B-844.
+ *
+ * DEC-13 no lo contestó porque no se le preguntó, y sin él una propuesta que
+ * llegó, no interesó y quedó ahí conservaba el mail o el WhatsApp de una persona
+ * **para siempre** — con el único borrado dependiendo de que un admin apretara
+ * «rechazar», que es justo de lo que la retención automática vino a no depender.
+ *
+ * > **El número lo contestó el dueño el 2026-09-09: 30 días** (la pregunta se le
+ * > hizo con una hipótesis de 90 escrita en el código). Los casos se escriben
+ * > igual contra `MARGEN_SIN_TOCAR_MS` y no contra el literal: si mañana se
+ * > mueve, se mueven todos y ninguno hay que reescribirlo.
+ */
+describe('decidirRetencion — la que nadie tocó (B-844)', () => {
+  const sinTocar = (over: Record<string, unknown> = {}) =>
+    propuesta({ estado: 'nueva', creadoEn: ts(ABANDONADA), revision: { en: null }, ...over });
+
+  it('una `nueva` que nadie miró en 30 días se borra, contada desde que llegó', () => {
+    const { aBorrar, motivos } = decidirRetencion({ propuestas: [sinTocar()], ahora: AHORA });
+    expect(aBorrar).toEqual([{ id: 'p1', objeto: null }]);
+    expect(motivos['p1']).toBe('sin-mirar-vencida');
+  });
+
+  it('y se lleva su imagen, igual que la rechazada', () => {
+    const { aBorrar } = decidirRetencion({
+      propuestas: [sinTocar({ imagen: { storagePath: 'propuestas/prop_abc.jpg' } })],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([{ id: 'p1', objeto: 'propuestas/prop_abc.jpg' }]);
+  });
+
+  it('una de un día menos no: el plazo es el plazo', () => {
+    const { aBorrar, motivos } = decidirRetencion({
+      propuestas: [sinTocar({ creadoEn: ts(AHORA - MARGEN_SIN_TOCAR_MS + DIA) })],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([]);
+    expect(motivos['p1']).toBe('dentro-del-plazo');
+  });
+
+  /**
+   * **«Sin tocar» no es «creada hace 30 días», y ésta es la diferencia.**
+   *
+   * `revision.en` se escribe en **todo** movimiento de estado, así que una que
+   * un admin miró hace una semana y dejó en `en-revision` no es la misma que una
+   * que nadie abrió nunca. El ítem pedía «contados desde `creadoEn`» y también
+   * decía «sin tocar»; donde las dos mitades no coinciden gana la segunda.
+   *
+   * MUTACIÓN PROBADA: haciendo que `relojDeRetencion` devuelva siempre
+   * `creadoEn` para los no-rechazados, este caso se pone rojo y el de arriba
+   * sigue verde — que es por qué hacen falta los dos.
+   */
+  it('una que un admin miró ayer NO se borra, aunque haya llegado hace tres meses', () => {
+    const { aBorrar, motivos } = decidirRetencion({
+      propuestas: [
+        sinTocar({ estado: 'en-revision', revision: { en: ts(RECIENTE) } }),
+      ],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([]);
+    expect(motivos['p1']).toBe('dentro-del-plazo');
+  });
+
+  /**
+   * El caso que hace que la decisión del reloj no sea una preferencia estética:
+   * **una rechazada que se reabre**. Vuelve a `nueva` con `creadoEn` de hace más
+   * de 90 días y `revision.en` de hoy. Con el reloj en `creadoEn`, el barrido de
+   * esa misma noche se lleva la propuesta que un admin acababa de rescatar a
+   * mano — el error exacto que la retención existía para no cometer.
+   */
+  it('y una reabierta hoy tampoco, aunque haya llegado hace medio año', () => {
+    const { aBorrar } = decidirRetencion({
+      propuestas: [
+        sinTocar({ creadoEn: ts(AHORA - 180 * DIA), revision: { en: ts(AHORA) } }),
+      ],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([]);
+  });
+
+  it('una abandonada después de mirarla también vence, y el motivo lo distingue', () => {
+    const { aBorrar, motivos } = decidirRetencion({
+      propuestas: [
+        sinTocar({ estado: 'en-revision', revision: { en: ts(ABANDONADA) } }),
+      ],
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([{ id: 'p1', objeto: null }]);
+    // No es `sin-mirar-vencida`: alguien la abrió y la dejó, y el log de la
+    // corrida es el único lugar donde después se puede reconstruir cuál fue.
+    expect(motivos['p1']).toBe('sin-avanzar-vencida');
+  });
+
+  it('sin ninguna fecha legible no se borra, igual que la rechazada', () => {
+    for (const rota of [undefined, null, 'no es una fecha', {}]) {
+      const { aBorrar, motivos } = decidirRetencion({
+        propuestas: [sinTocar({ creadoEn: rota, revision: { en: rota } })],
+        ahora: AHORA,
+      });
+      expect(aBorrar, String(rota)).toEqual([]);
+      expect(motivos['p1'], String(rota)).toBe('sin-fecha-legible');
+    }
+  });
+
+  it('el plazo son los 30 días que contestó el dueño, y está en una sola línea', () => {
+    // Si mañana se mueve, esto es lo único que se toca del lado de la Function
+    // (y su gemelo de la bandeja, atado por
+    // `tests/bandeja-de-propuestas.test.ts`).
+    expect(MARGEN_SIN_TOCAR_MS).toBe(30 * DIA);
+    expect(RETENCION_POR_ESTADO['nueva']).toBe(MARGEN_SIN_TOCAR_MS);
+    expect(RETENCION_POR_ESTADO['en-revision']).toBe(MARGEN_SIN_TOCAR_MS);
+  });
+});
+
+/**
+ * **Los dos plazos dan el mismo número, y eso NO es una atadura** — B-844.
+ *
+ * El dueño contestó 30 para «sin tocar», que es lo mismo que DEC-13 había
+ * contestado para la rechazada. Son **dos decisiones que hoy coinciden**: aquélla
+ * es el margen de un arrepentimiento («la rechacé sin querer»), ésta es cuánto
+ * tarda una bandeja en dejar de mirarse. Nada obliga a que se muevan juntas.
+ *
+ * Este `describe` existe para que nadie las una **por prolijidad**, que es el
+ * refactor que se ve bien y borra una decisión: escribir
+ * `MARGEN_SIN_TOCAR_MS = MARGEN_DE_RETENCION_MS` haría que alargar el margen de
+ * rescate alargara también cuánto se guarda el WhatsApp de quien nunca recibió
+ * respuesta, y nada lo diría. Es el criterio de `MINIMO_DESCRIPCION` en
+ * `estadoDelCatalogo.ts`, que no se importa de `LARGO_RESUMEN` aunque los dos
+ * hablen de la misma descripción.
+ */
+describe('los dos plazos coinciden hoy, y son dos decisiones', () => {
+  it('cada uno se afirma por su lado, no uno contra el otro', () => {
+    // A propósito **no** es `expect(MARGEN_SIN_TOCAR_MS).toBe(MARGEN_DE_RETENCION_MS)`:
+    // ese aserto convertiría la coincidencia en un requisito, que es justo lo
+    // contrario de lo que este archivo quiere fijar.
+    expect(MARGEN_DE_RETENCION_MS).toBe(30 * DIA);
+    expect(MARGEN_SIN_TOCAR_MS).toBe(30 * DIA);
+  });
+
+  it('y ninguno está escrito en términos del otro', () => {
+    /*
+     * MUTACIÓN PROBADA: con
+     * `export const MARGEN_SIN_TOCAR_MS = MARGEN_DE_RETENCION_MS;` —que hoy deja
+     * **toda** la suite en verde, porque el valor no cambia— este caso se pone
+     * rojo. Es el único que lo agarra, y por eso existe.
+     */
+    const declaracion = /export const MARGEN_SIN_TOCAR_MS = ([^;]+);/.exec(
+      fuente('functions/retencion.js'),
+    );
+    expect(declaracion, 'no se encontró la declaración de MARGEN_SIN_TOCAR_MS').not.toBeNull();
+    expect(declaracion![1]).not.toContain('MARGEN_DE_RETENCION_MS');
+  });
+});
+
+/**
+ * **La tabla y la query no pueden separarse** — B-844.
+ *
+ * El modo de falla es silencioso y caro: la tabla dice que un estado caduca, el
+ * `where` de `propuestasVencibles` no lo trae, y entonces **no caduca nunca** con
+ * toda la suite en verde. Por eso los estados de la query salen de la tabla y no
+ * están escritos otra vez.
+ */
+describe('los estados que la query trae salen de la tabla', () => {
+  it('la `aceptada` queda afuera porque su plazo es `null`, no porque haya una segunda lista', () => {
+    expect(ESTADOS_QUE_CADUCAN.sort()).toEqual(['en-revision', 'nueva', 'rechazada']);
+    for (const estado of ESTADOS_QUE_CADUCAN as (keyof typeof RETENCION_POR_ESTADO)[]) {
+      expect(RETENCION_POR_ESTADO[estado], estado).not.toBeNull();
+    }
+  });
+
+  it('y la query las nombra por la constante derivada, no por un literal', () => {
+    /*
+     * MUTACIÓN PROBADA: escribiendo `['nueva','en-revision','rechazada']` a mano
+     * en el `where`, este caso se pone rojo — que es lo que hace que «poner un
+     * número en `aceptada`» alcance para que empiece a caducar.
+     */
+    expect(fuente('functions/retencion.js')).toContain(
+      ".where('estado', 'in', ESTADOS_QUE_CADUCAN)",
+    );
+  });
+
+  it('la tabla cubre exactamente los estados que el tipo declara', () => {
+    /*
+     * La atadura de B-364 sobre un mapa: el día que aparezca un quinto estado en
+     * `ESTADOS_PROPUESTA`, esto se pone rojo y alguien tiene que decidir si
+     * caduca. Sin este caso, el estado nuevo caería en `estado-<x>` y no
+     * caducaría nunca, en silencio.
+     */
+    expect(Object.keys(RETENCION_POR_ESTADO).sort()).toEqual([...ESTADOS_PROPUESTA].sort());
+  });
+});
+
+/**
+ * `relojDeRetencion` aparte, porque es la decisión de B-844 en una función y
+ * cada rama tiene su motivo.
+ */
+describe('relojDeRetencion — desde cuándo se cuenta', () => {
+  it('la rechazada cuenta desde el rechazo y no cae a `creadoEn` (DEC-13)', () => {
+    expect(relojDeRetencion({ estado: 'rechazada', creadoEn: ts(1), revision: { en: ts(9) } }))
+      .toEqual({ ms: 9, campo: 'rechazo' });
+    // Sin fecha de rechazo legible **no hay reloj**: contar desde `creadoEn`
+    // sería otro plazo, decidido por accidente.
+    expect(relojDeRetencion({ estado: 'rechazada', creadoEn: ts(1), revision: { en: null } }))
+      .toBeNull();
+  });
+
+  it('las otras cuentan desde la última señal de vida', () => {
+    expect(relojDeRetencion({ estado: 'nueva', creadoEn: ts(1), revision: { en: null } }))
+      .toEqual({ ms: 1, campo: 'llegada' });
+    expect(relojDeRetencion({ estado: 'en-revision', creadoEn: ts(1), revision: { en: ts(9) } }))
+      .toEqual({ ms: 9, campo: 'ultimo-toque' });
+  });
+
+  it('y se queda con la más reciente, no con la primera que exista', () => {
+    // Un `revision.en` anterior a `creadoEn` es un documento imposible por la
+    // regla (`request.time` las dos veces), y aun así no puede acortar el plazo.
+    expect(relojDeRetencion({ estado: 'nueva', creadoEn: ts(9), revision: { en: ts(1) } }))
+      .toEqual({ ms: 9, campo: 'llegada' });
+  });
+
+  it('sin nada legible, no hay reloj', () => {
+    expect(relojDeRetencion({ estado: 'nueva' })).toBeNull();
+    expect(relojDeRetencion({ estado: 'nueva', creadoEn: 'ayer', revision: { en: {} } })).toBeNull();
   });
 });
 

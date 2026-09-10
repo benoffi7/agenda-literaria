@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * B-838 / DEC-13 — lista (y opcionalmente borra) las propuestas rechazadas que
- * ya cumplieron los 30 días, **con su imagen**.
+ * B-838 / DEC-13 + B-844 — lista (y opcionalmente borra) las propuestas que ya
+ * cumplieron su plazo, **con su imagen**: la rechazada a los 30 días del
+ * rechazo, y la que nadie tocó a los 30 días de su última señal de vida — el
+ * mismo número, otro reloj.
  *
  *   node scripts/borrar-propuestas-vencidas.mjs                  # solo informa
  *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
@@ -39,8 +41,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
 import {
-  MARGEN_DE_RETENCION_MS,
   MAX_PROPUESTAS_POR_CORRIDA,
+  RETENCION_POR_ESTADO,
   borrarPropuesta,
   decidirRetencion,
   propuestasVencibles,
@@ -117,11 +119,25 @@ const bucket = getStorage().bucket();
 const propuestas = await propuestasVencibles(db);
 const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora: Date.now() });
 
-const dias = (MARGEN_DE_RETENCION_MS / (24 * 60 * 60 * 1000)).toFixed(0);
 const borrar = new Map(aBorrar.map((p) => [p.id, p.objeto]));
 
-console.log(`${propuestas.length} propuesta(s) rechazada(s) en la bandeja`);
-console.log(`Retención:        ${dias} días desde el rechazo`);
+/*
+ * Los plazos se **imprimen desde la tabla** y no se escriben acá (B-844): este
+ * informe es lo que alguien mira antes de dejar borrar de verdad, así que un
+ * número copiado que quedó viejo es precisamente la mentira que no puede darse
+ * — diría «30 días» mientras el barrido usa otro.
+ */
+console.log(`${propuestas.length} propuesta(s) que pueden caducar`);
+console.log('Retención por estado:');
+for (const [estado, plazo] of Object.entries(RETENCION_POR_ESTADO)) {
+  const cuanto =
+    plazo === null
+      ? 'no vence'
+      : `${(plazo / (24 * 60 * 60 * 1000)).toFixed(0)} días desde ${
+          estado === 'rechazada' ? 'el rechazo' : 'la última vez que se tocó'
+        }`;
+  console.log(`  ${estado.padEnd(12)} ${cuanto}`);
+}
 console.log(`Tope por corrida: ${MAX_PROPUESTAS_POR_CORRIDA} propuestas\n`);
 
 for (const p of propuestas) {
