@@ -320,7 +320,26 @@ activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
 
    De verificar esto a mano salió **B-868**: nada en el repo sostiene que el
    artefacto construido lleve App Check.
-6. ⬜ **Recién ahí, exigir.** Al revés, **el panel deja de poder escribir**: sus
+6. 🔸 **Exigir — Firestore hecho el 2026-09-10, Storage pendiente y a propósito.**
+   `firestore.googleapis.com` quedó en `ENFORCED` a las 17:42 UTC, con el panel
+   verificado inmediatamente después: entra, lee y guarda. `identitytoolkit`
+   (Auth) **no se exige** —está en versión preliminar y si algo sale mal el que no
+   puede entrar al panel es el dueño— y `firebasestorage` **tampoco todavía**: su
+   métrica marcaba **1% verificado**, y hay que entender qué es ese 99% antes de
+   tocarlo. La sospecha es que son las lecturas públicas de imágenes por URL de
+   descarga —un GET anónimo del navegador, que no lleva token—, y si el
+   enforcement las bloqueara **se caen todas las fotos del sitio**. Eso se
+   averigua antes y no después: es **B-872**.
+
+   El paso 1 se cerró con la prueba directa y no con la métrica: el registro de
+   `firebase-app-check-database` en el navegador tenía un token para la app
+   `…5b52810e`, emitido 17:32 y vencido 18:32 — exactamente el `tokenTtl: 3600s`
+   configurado. Un token no existe si Firebase rechazó el desafío, así que eso es
+   la verificación entera. La métrica de la consola, en cambio, **nunca va a
+   llegar a 100%**: el build y las Functions leen con el Admin SDK, que no pasa
+   por App Check y que el enforcement tampoco bloquea.
+
+   Al revés del orden, **el panel deja de poder escribir**: sus
    peticiones tampoco traen token y las reglas ni se evalúan.
 
 **Dos cosas que cambiaron respecto de cómo estaba escrito este ítem:**
@@ -852,6 +871,48 @@ leer, no la que una persona escribe.**
 > letras, así que ninguna versión de la guarda lo ve. Se dejó sin número; que la
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
+
+### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? · P1
+
+**Bloquea el anuncio de `/proponer`, y es la única pregunta que queda entre el
+estado de hoy y abrir el formulario público.**
+
+Con Firestore ya en `ENFORCED` (B-836a paso 6, 2026-09-10), Storage sigue en
+`UNENFORCED` por un dato concreto: su métrica de App Check marcaba **1%
+verificado contra 99% sin verificar**, mientras Firestore marcaba 7%. Esa
+asimetría no es ruido de la ventana — es que Storage tiene un tipo de tráfico que
+Firestore no tiene.
+
+**La sospecha, que hay que confirmar antes de tocar nada:** ese 99% son las
+**lecturas públicas de imágenes**. Cada página de detalle y `/cartelera` sirven
+las fotos por la URL de descarga con token (`getDownloadURL`), que es un GET
+anónimo del navegador y **no lleva token de App Check** — ni puede llevarlo, no
+pasa por el SDK. Si el enforcement bloqueara ese camino, **se caen todas las
+imágenes del sitio público**.
+
+**Lo que hay que averiguar, en este orden:**
+
+1. **¿El enforcement de Storage alcanza a las URLs de descarga?** La documentación
+   de Firebase habla de las operaciones del SDK; la URL con token es una vía
+   pensada para compartir y podría quedar afuera. **No asumir ninguna de las
+   dos.** La forma barata de saberlo sin arriesgar el sitio es medirlo en un
+   proyecto de prueba, o encontrarlo afirmado por Google.
+2. **Qué compone realmente ese 99%**, mirando el reparto en el tiempo y no el
+   acumulado.
+3. Recién con las dos contestadas, exigir o no.
+
+**Y hay una consecuencia de diseño que aparece si el enforcement sí las bloquea:**
+las imágenes públicas tendrían que dejar de servirse por URL de descarga. Eso ya
+está anotado por otro motivo en **B-846** —la URL con token es una *capability* y
+sirve el objeto sin volver a evaluar las reglas—, así que las dos preguntas se
+contestan mejor juntas que por separado.
+
+**Mientras tanto `/proponer` no se puede anunciar**, y el motivo es preciso: el
+formulario sube el flyer a Storage, así que abrir el `create` de `/propuestas` en
+`firestore.rules` sin abrir el de `storage.rules` da un formulario que acepta el
+texto y rechaza la foto; y abrir los dos con Storage sin exigir deja un **endpoint
+de subida anónimo sin App Check**, que es exactamente lo que las cinco capas de
+B-836 existen para que no pase.
 
 ### B-869 · El saneador rechaza lo que no sabe sacar: `APP_A_TIRAR` es lista negra y C2PA viaja en APP11 — ✅ hecho (2026-09-10) · P1
 

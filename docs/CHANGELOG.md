@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **App Check exige en Firestore, y el paso 1 se cerró con la prueba directa y no
+  con la métrica** — **B-836a**, pasos 1 y 6. `firestore.googleapis.com` quedó en
+  `ENFORCED`, con el panel verificado inmediatamente después: entra, lee y guarda.
+
+  **La verificación del paso 1 no salió de la consola, y ahí está la lección.** El
+  porcentaje de «peticiones verificadas» es un agregado contaminado por dos
+  fuentes que **nunca** van a verificarse y que el enforcement **tampoco
+  bloquea** —el build y las Functions leen con el Admin SDK— más, durante días,
+  todo el tráfico anterior al deploy. Leerlo como una nota de aprobación lleva a
+  la conclusión equivocada en las dos direcciones. Lo que sí prueba es el registro
+  de `firebase-app-check-database` en el navegador: un token para la app
+  `…5b52810e`, emitido 17:32 y vencido 18:32, exactamente el `tokenTtl: 3600s`
+  configurado. **Un token no existe si Firebase rechazó el desafío.**
+
+  De paso quedó explicado por qué no se veía el intercambio en la pestaña Network:
+  el SDK cachea el token una hora y lo reusa. Buscar el POST después de la primera
+  vez es buscar algo que no va a pasar.
+
+  **Storage y Auth no se exigen, y las dos exclusiones tienen motivo.** Auth está
+  en versión preliminar y si algo sale mal el que no puede entrar al panel es el
+  dueño. Storage marcaba **1% verificado contra el 7% de Firestore**, y esa
+  asimetría no es ruido: es que Storage sirve las imágenes públicas por URL de
+  descarga —un GET anónimo que no lleva token ni puede llevarlo—. Si el
+  enforcement alcanzara ese camino, **se caen todas las fotos del sitio**.
+  Averiguarlo antes y no después es **B-872**, y bloquea el anuncio de
+  `/proponer`: el formulario sube el flyer a Storage, así que abrir el `create` de
+  Firestore sin el de Storage da un formulario que acepta el texto y rechaza la
+  foto, y abrir los dos con Storage sin exigir deja un endpoint de subida anónimo
+  sin App Check.
+
 - **El saneador de JPEG rechazaba fotos que no sabía limpiar, y ahora las limpia**
   — **B-869**, **D-620**. El dueño subió una foto normal y el panel se la rechazó
   diciéndole que su teléfono le guardaba «una segunda copia adentro». **Era
