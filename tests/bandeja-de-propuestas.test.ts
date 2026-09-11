@@ -85,8 +85,22 @@ describe('la única escritura del panel sobre una propuesta', () => {
      * Se comparan **las dos** apariciones (la del `create` y la del `update`):
      * son el mismo mapa y tienen que seguir siéndolo.
      */
+    /*
+     * **El barrido va acotado al bloque de `/propuestas`** — B-831. Antes leía el
+     * archivo entero, y eso era cierto mientras `revision` fuera un mapa de una
+     * sola colección. Ya no: una ficha de directorio también tiene `revision`,
+     * con **tres** claves y no cuatro —no lleva `actividadId`, porque una
+     * librería no se convierte en actividad— y era un mapa legítimamente distinto
+     * haciendo fallar esta comparación. El chequeo sigue exigiendo las dos
+     * apariciones de acá (el `create` y el `update`); lo que cambia es que mira
+     * su propia sección.
+     */
+    const reglas = fuente('firestore.rules');
+    const desde = reglas.indexOf('PROPUESTAS DE ORGANIZADORES');
+    const siguiente = reglas.indexOf('══', reglas.indexOf('\n', desde));
+    const bloquePropuestas = reglas.slice(desde, siguiente === -1 ? undefined : siguiente);
     const declaradas = [
-      ...fuente('firestore.rules').matchAll(/revision\.keys\(\)\.hasOnly\(\[([^\]]+)\]\)/g),
+      ...bloquePropuestas.matchAll(/revision\.keys\(\)\.hasOnly\(\[([^\]]+)\]\)/g),
     ].map((m) => m[1]!.split(',').map((k) => k.trim().replace(/'/g, '')).sort());
     expect(declaradas.length).toBeGreaterThanOrEqual(2);
     const { revision } = cambioDeRevision('u', 'aceptada', 'AHORA');

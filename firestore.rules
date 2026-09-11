@@ -1023,6 +1023,439 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    /*
+     * ══ LIBRERÍAS — B-831, PRD 2 ═════════════════════════════════════════
+     *
+     * `docs/prd/02-librerias.md` § 3. Es el **primero de los tres directorios**
+     * y el que valida el motor compartido (`src/lib/directorios.ts`, B-834): el
+     * ciclo de vida —tres estados, el grafo de transiciones, qué escribe la
+     * máquina— vive allá y los campos viven en `src/types/libreria.ts`. Acá vive
+     * lo único que no se puede saltear: **la autorización y la forma**.
+     *
+     * ── La colección no lleva `/guia/` ───────────────────────────────────
+     * El documento es `/librerias/{id}` y la página se sirve en
+     * `/guia/librerias/{slug}`: `/guia/` es navegación y SEO, no modelo
+     * (`prd/README.md`).
+     *
+     * ── Dos clases de contacto en el mismo documento ─────────────────────
+     * `instagram`, `whatsapp`, `web` y `mail` son **públicos y ése es el punto**
+     * —la ficha existe para que la gente le escriba a la librería—, y
+     * `contactoDeQuienCargo` es **interno**, como el `contacto` de una propuesta
+     * (§ 8 del PRD, §5.1 del `CLAUDE.md`). Que convivan es justo la condición
+     * donde una proyección por spread filtra un campo, y por eso la lectura de
+     * esta colección está cerrada: **una regla no proyecta** (D-128).
+     *
+     * La forma se valida acá y no solo en el schema de zod por lo mismo que
+     * `propuestaValida()`: del otro lado va a haber un anónimo, así que **el
+     * schema se saltea con un `curl` y esto no**. Los números son los de
+     * `src/types/libreria.ts` y los ata `tests/librerias.test.ts`, que lee este
+     * archivo.
+     *
+     * ── Lo que estas reglas NO pueden hacer, dicho y no supuesto ─────────
+     * **No iteran una lista** (B-842), así que de `imagenes` se acota la cantidad
+     * y el tipo, nunca la forma de cada fila: un `curl` puede mandar cuatro mapas
+     * arbitrarios. Lo que lo hace aceptable es lo mismo que allá — **nada de una
+     * librería llega a una salida pública sin que un admin la publique**, y la
+     * URL de cada imagen la tiene que sanear la proyección (`urlSegura` /
+     * `imagenesPublicables`), que es donde el proyecto ya decidió que se sanea.
+     *
+     * **Y no verifican que el barrio exista** en `/opciones/barrio`: eso pediría
+     * un `get()` desde la regla, facturado en cada evaluación (el mismo descarte
+     * que `reservaValida()` hace con `actividadId`). Lo que sí se acota es su
+     * **forma** de slug, y el criterio de aceptación 5 del PRD —«un anónimo no
+     * puede crear un barrio nuevo»— lo sostiene `/opciones/*`, cuyo `write` sigue
+     * en `esAdmin()`. El daño máximo de un slug inventado es una ficha cuyo
+     * barrio no resuelve etiqueta, visible en la bandeja antes de publicarse.
+     */
+    function geoDeLibreriaValida(g) {
+      /*
+       * Mismo rango que `sedeSchema` (`lib/schema.ts`): una latitud de 200 no
+       * existe, y un lat/lng invertido pone la librería del otro lado del mundo
+       * — en un `GeoCoordinates` de JSON-LD, o sea en Google.
+       *
+       * **Sin `hasAll` y sin `is number`, y las dos ausencias son deliberadas.**
+       * El primer borrador tenía las dos y **la mutación las delató**: sacarlas
+       * dejaba la suite entera en verde.
+       *
+       *  - `hasAll`: la clave ausente la agarra el `.get(clave, 999.0)`, cuyo
+       *    default está fuera de los dos rangos a propósito.
+       *  - `is number`: un valor de otro tipo —`'-34.6'`, `true`, `null`— no se
+       *    puede comparar con `>=`, así que lo rechaza igual el rango de abajo.
+       *    Es **exactamente** el caso del `is string` que se borró de
+       *    `usuarioValido()` y de `reservaValida()`, y por el mismo motivo.
+       *
+       * Una cláusula que no puede fallar en una regla de seguridad es peor que
+       * ninguna: se lee como load-bearing y el que venga la va a cuidar en vez
+       * de mirar la que sí frena. Los casos están en
+       * `tests/librerias.integracion.test.ts` («una geo rota»).
+       */
+      return g == null || (
+        g.keys().hasOnly(['lat', 'lng'])
+        && g.get('lat', 999.0) >= -90 && g.get('lat', 999.0) <= 90
+        && g.get('lng', 999.0) >= -180 && g.get('lng', 999.0) <= 180
+      );
+    }
+
+    function contactoDeLibreriaValido(c) {
+      /*
+       * El contacto de quien cargó la ficha: **interno, no sale nunca**.
+       *
+       * `null` es legítimo —una ficha cargada por un admin no tiene a quién
+       * repreguntarle—, y por eso el obligatorio del formulario público vive en
+       * `libreriaPublicaFormSchema` y no acá: una regla no sabe si del otro lado
+       * hay una persona completando un formulario.
+       *
+       * Sin `hasAll`, por el mismo motivo que el `contacto` de una propuesta:
+       * las dos claves son obligatorias y las exigen sus propias cotas
+       * (`via in [...]` falla con `''`, y `valor.size() >= 3` también).
+       */
+      return c == null || (
+        c.keys().hasOnly(['via', 'valor'])
+        && c.get('via', '') in ['mail', 'whatsapp', 'instagram']
+        && c.get('valor', '') is string
+        && c.get('valor', '').size() >= 3
+        && c.get('valor', '').size() <= 200
+      );
+    }
+
+    /**
+     * ¿El slug de esta ficha ya no se puede tocar? **Trampa 10 del §13.**
+     *
+     * Una dirección publicada está en Instagram, en un mail y en el índice de
+     * Google: cambiarla es un 404 sin aviso y el SEO perdido. Se congela **al
+     * publicar** y no al crear, porque corregirle el slug al nombre que llegó mal
+     * escrito es justo el trabajo de la bandeja.
+     *
+     * La pregunta de verdad es «¿estuvo publicada **alguna vez**?» (B-285): una
+     * ficha que se publicó y se despublicó volvió a `pendiente`, y mirar solo el
+     * estado actual le devolvería el slug editable — o sea la puerta de atrás del
+     * mismo candado. Por eso se mira primero la marca `publicadaAlgunaVez`, que
+     * **hoy no escribe nadie** (la va a escribir un trigger con el Admin SDK) y
+     * cuya ausencia se contesta con el estado, que es el comportamiento actual.
+     *
+     * Una diferencia con `slugBloqueado` (`lib/directorios.ts`) que conviene
+     * tener escrita: allá la marca **gana** sobre el estado (`?? `), acá se
+     * suman con un `||`. O sea que un documento imposible —`publicado` con la
+     * marca en `false`— acá **queda congelado** y allá no. Falla cerrada, que es
+     * la dirección que corresponde cuando lo que está en juego es una URL
+     * indexada.
+     */
+    function slugDeLibreriaCongelado(previo) {
+      return previo.get('publicadaAlgunaVez', false) == true
+        || previo.get('estado', '') == 'publicado';
+    }
+
+    /**
+     * La forma de una librería: lo que tiene que valer en **toda** escritura,
+     * create y update. Lo que solo vale al crearse está en `libreriaValida()`.
+     */
+    function formaDeLibreria() {
+      let d = request.resource.data;
+      let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'direccion', 'barrio',
+                          'ciudad', 'geo', 'instagram', 'whatsapp', 'web', 'mail',
+                          'contactoDeQuienCargo', 'estado', 'origen', 'searchText',
+                          'creadoEn', 'revision'];
+      /*
+       * `publicadaAlgunaVez` está en `hasOnly` y **no** en `hasAll`: es un campo
+       * opcional que escribe un trigger con el Admin SDK, así que hoy está
+       * ausente en todos los documentos. Sin él en `hasOnly`, el día que el
+       * trigger lo escriba **toda edición del panel se rompería** —
+       * `request.resource.data` es el documento resultante, no el diff, así que
+       * el campo viajaría en cada `update`. Que un cliente no lo pueda **mover**
+       * lo garantizan el `create` y el `update` de abajo, cada uno con su
+       * cláusula.
+       *
+       * Los siete campos que pueden ser `null` (descripcion, geo, instagram,
+       * whatsapp, web, mail, contactoDeQuienCargo) están igual en `hasAll`: se
+       * leen con `.get(clave, null)`, así que ausente y `null` serían
+       * indistinguibles y la presencia hay que declararla. Es la misma asimetría
+       * que `propuestaValida()` documenta para sus cinco mapas anidados.
+       */
+      return d.keys().hasOnly(obligatorios.concat(['publicadaAlgunaVez']))
+        && d.keys().hasAll(obligatorios)
+        && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 80
+        /*
+         * El slug **es** la URL pública, así que su alfabeto es el de `slugify`:
+         * el mismo `RE_SLUG` que el schema, atado por el test.
+         *
+         * **Sin `size() >= 1`, y la mutación es la que lo decidió**: el `+` del
+         * patrón ya exige al menos un carácter, así que el piso no podía fallar.
+         * Vale igual para `barrio` (mismo patrón) y para `web` (`^https?://.*`
+         * son ocho caracteres como mínimo), y **no** para `ciudad`, que no tiene
+         * `matches` — por eso ésa sí lo lleva. Es la misma poda que se les hizo a
+         * `usuarioValido()` y a `reservaValida()`.
+         */
+        && d.slug is string && d.slug.size() <= 120
+        && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && (d.get('descripcion', null) == null
+             || (d.descripcion is string && d.descripcion.size() <= 1000))
+        && d.imagenes is list && d.imagenes.size() <= 4
+        && d.direccion is string && d.direccion.size() >= 4 && d.direccion.size() <= 160
+        // El mismo slug de `/opciones/barrio` que usan las actividades (§ 2 del
+        // PRD): con otro alfabeto, el hub de barrio no cruza las dos cosas.
+        && d.barrio is string && d.barrio.size() <= 80
+        && d.barrio.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && d.ciudad is string && d.ciudad.size() >= 1 && d.ciudad.size() <= 80
+        && geoDeLibreriaValida(d.geo)
+        /*
+         * Los tres contactos públicos que terminan en un `href` de una página
+         * **indexada**, con su forma acotada acá y no solo en el schema:
+         *
+         *  - el handle de Instagram, con el alfabeto real de Instagram — una
+         *    barra adentro arma una URL a otra cuenta (es lo que ya cuida
+         *    `handleInstagram`);
+         *  - el WhatsApp **solo con dígitos**, porque de él sale un
+         *    `wa.me/<digitos>` y un formato libre publica un link roto;
+         *  - la web con esquema `http`/`https` obligatorio: sin esto, un
+         *    `javascript:…` guardado se apoya en que el saneador de la ficha
+         *    esté puesto, y la defensa la estaría poniendo el consumidor.
+         */
+        && (d.get('instagram', null) == null
+             || (d.instagram is string && d.instagram.matches('^[A-Za-z0-9._]{1,30}$')))
+        && (d.get('whatsapp', null) == null
+             || (d.whatsapp is string && d.whatsapp.matches('^[0-9]{8,15}$')))
+        && (d.get('web', null) == null
+             || (d.web is string && d.web.size() <= 500
+                  && d.web.matches('^https?://.*')))
+        && (d.get('mail', null) == null
+             || (d.mail is string && d.mail.size() >= 3 && d.mail.size() <= 200))
+        && contactoDeLibreriaValido(d.contactoDeQuienCargo)
+        /*
+         * Los tres estados son los de `ESTADOS_DIRECTORIO` (`lib/directorios.ts`),
+         * atados por el test: dos vocabularios del mismo ciclo de vida se separan
+         * sin que nada falle (clase de B-88).
+         *
+         * **Y `origen` NO lleva su `in [...]`, aunque lo pida la simetría**: la
+         * mutación lo delató como letra muerta. En el `create` el vocabulario lo
+         * fuerza la cláusula de coherencia de `libreriaValida()` —que exige uno de
+         * los dos valores exactos según quién escriba—, y en el `update` lo fuerza
+         * `d.origen == previo.origen`. Un `in` acá no podría fallar nunca.
+         */
+        && d.estado in ['pendiente', 'publicado', 'rechazado']
+        // Derivado por `formALibreria` con `normalize` (§6). Nadie lo tipea: el
+        // tope es lo que impide que un campo que nadie mira sirva de bolsa.
+        && d.searchText is string && d.searchText.size() <= 2000
+        && d.revision.keys().hasOnly(['porUid', 'en', 'motivo'])
+        && d.revision.keys().hasAll(['porUid', 'en', 'motivo'])
+        && (d.revision.get('motivo', null) == null
+             || (d.revision.get('motivo', '') is string
+                  && d.revision.get('motivo', '').size() <= 500));
+    }
+
+    function libreriaValida() {
+      let d = request.resource.data;
+      return formaDeLibreria()
+        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
+        // `curl` publica su propia librería y la bandeja no sirve para nada
+        // (§1 del `prd/README.md`).
+        && d.estado == 'pendiente'
+        /*
+         * Y `revision` entera en null: nadie nace revisado. Con `.get(clave,
+         * 'x')` —un centinela que **no es `null`**— la clave ausente tampoco
+         * pasa, así que acá no hace falta declarar la presencia aparte. Es el
+         * mismo idiom que `propuestaValida()`.
+         */
+        && d.revision.get('porUid', 'x') == null
+        && d.revision.get('en', 'x') == null
+        && d.revision.get('motivo', 'x') == null
+        // La marca de la trampa 10 no puede nacer puesta: una ficha que nace
+        // «ya estuvo publicada» nace con el slug congelado y con el candado del
+        // lado de afuera.
+        && d.get('publicadaAlgunaVez', false) == false
+        /*
+         * **`!esAdmin()` y no `request.auth == null`**, por lo mismo que
+         * `propuestaValida()`: crear una cuenta está al alcance de cualquiera con
+         * la API key pública, y el dueño —que es admin y tiene sesión en el mismo
+         * origen— tiene que poder usar su propio formulario público.
+         *
+         * Hoy el `allow create` de abajo exige `esAdmin()`, así que la rama de
+         * `'formulario-publico'` **no es alcanzable** y lo que esta cláusula
+         * sostiene es la otra mitad: un admin no puede hacer pasar su carga por
+         * una ficha que llegó de afuera. Eso es lo que hace que `origen`
+         * signifique algo el día que la puerta se abra, y tiene su caso.
+         */
+        && ((d.origen == 'formulario-publico' && !esAdmin())
+             || (d.origen == 'panel' && esAdmin()))
+        // Con `request.time` el cliente no puede antedatar la ficha.
+        && d.creadoEn == request.time;
+    }
+
+    /**
+     * Lo que un admin **sí** puede cambiarle a una librería ya creada.
+     *
+     * **Al revés que una propuesta**, acá el contenido se edita, y no es una
+     * inconsistencia: una propuesta es *lo que alguien pidió* y queda como prueba
+     * de eso; una ficha de directorio **es la entrada del catálogo**, y
+     * completarla y corregirla es exactamente el trabajo de la bandeja (§ 5 del
+     * PRD, y `contenidoEditable` de `lib/directorios.ts`).
+     *
+     * Lo que no se puede, y cada cosa es una cláusula:
+     */
+    function libreriaActualizable() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      return formaDeLibreria()
+        // **Reescribir la historia**: de cuándo es la ficha y por dónde entró no
+        // se editan. Sin esto, una ficha que llegó de afuera se puede repintar
+        // como cargada por el panel, y `origen` deja de significar nada.
+        && d.creadoEn == previo.creadoEn
+        && d.origen == previo.origen
+        // **Mover la marca de la trampa 10.** La escribe un trigger con el Admin
+        // SDK; un cliente que pudiera bajarla a `false` tendría de vuelta el
+        // slug de una ficha que ya está en Google.
+        && d.get('publicadaAlgunaVez', false) == previo.get('publicadaAlgunaVez', false)
+        // **Cambiar la dirección web de algo ya publicado** — trampa 10.
+        && (!slugDeLibreriaCongelado(previo) || d.slug == previo.slug)
+        /*
+         * **Publicar de un saque lo que ya se había descartado.** Es la única
+         * arista que le falta al grafo de `TRANSICIONES` (`lib/directorios.ts`),
+         * y es toda la razón por la que ese grafo existe: publicar directo desde
+         * `rechazado` mete al sitio una ficha **sin que nadie la haya vuelto a
+         * leer**, que es lo que la bandeja existe para impedir. Reabrir
+         * (`→ pendiente`) y publicar desde ahí son dos clicks y un estado en el
+         * medio donde la ficha se mira de nuevo.
+         *
+         * Va acá y no solo en el panel por el motivo de siempre: que la UI
+         * esconda un botón no impide nada a quien abra la consola de Firebase con
+         * su propia sesión.
+         */
+        && (previo.get('estado', '') != 'rechazado' || d.estado != 'publicado')
+        /*
+         * **Y si la revisión se toca, se firma con el uid propio y con la hora
+         * del servidor.** Igual que `revisionValida()` en `/propuestas` y que
+         * `reportadoPor.uid` en `/reportes`: nadie firma a nombre de otro, y
+         * nadie antedata.
+         *
+         * Condicionada a que `revision` esté en el diff, y eso es deliberado: una
+         * edición de contenido que no mueve el estado no tiene por qué reescribir
+         * la firma de quien la revisó, y exigirlo obligaría a refirmar en cada
+         * corrección de un typo.
+         */
+        && (!d.diff(previo).affectedKeys().hasAny(['revision'])
+             || (d.revision.get('porUid', '') == request.auth.uid
+                  && d.revision.get('en', null) == request.time));
+    }
+
+    match /librerias/{id} {
+      /*
+       * ── `get` y `list` se deciden por separado, y los dos dan `esAdmin()` ──
+       *
+       * Dar la misma respuesta no los vuelve la misma decisión, y escribirlos
+       * juntos esconde que los motivos son distintos.
+       *
+       * **`get`: porque una regla no proyecta** (D-128). Es todo-o-nada por
+       * documento: un `get` abierto a «las publicadas» entregaría el documento
+       * **entero** —`contactoDeQuienCargo`, el motivo del rechazo, el
+       * `storagePath` de cada imagen— y no la vista que `toPublic` decide. Es
+       * exactamente la puerta que D-128 cerró en `/actividades`, y acá el
+       * documento tiene adentro el dato personal de un tercero. Y no hace falta
+       * abrirlo: el sitio es estático y hace **cero** lecturas de Firestore
+       * (§2.5) — lee el `librerias.json` que produce el build con el Admin SDK.
+       *
+       * **`list`: porque `read` incluye `list`** (trampa 13, la misma que en
+       * Storage). Un `list` abierto no entrega un documento: entrega **el
+       * directorio entero de una sentada** —las pendientes, las descartadas, y
+       * todos los contactos internos cargados hasta hoy—, que es la cosecha más
+       * barata que existe. Un id impredecible no protege nada si te dan la lista.
+       *
+       * **Y la trampa 7, que es el motivo por el que ninguno de los dos se
+       * condiciona por contenido.** La forma «abrilo solo para las publicadas»
+       * sería `resource.data.estado == 'publicado'`, y eso hace dos cosas: sigue
+       * entregando el documento entero (lo de arriba) **y** obliga a que toda
+       * query traiga el `where` correspondiente o Firestore la rechace **entera**,
+       * no recortada. Con las dos cláusulas en `esAdmin()` no hay condición sobre
+       * `resource.data`, así que ninguna query del panel puede fallar por eso.
+       *
+       * ── Y el `publicador` (B-888): **nada, y es una decisión escrita** ─────
+       * Las cinco cláusulas de esta colección se quedan en `esAdmin()`, con el
+       * mismo argumento con el que `/propuestas` se lo cierra, que acá vale
+       * doble:
+       *
+       *  1. **No hay «lo suyo».** El rol contesta «¿de quién es este documento?»
+       *     y una librería no tiene `createdBy`: es la ficha de un tercero. Sin
+       *     esa pregunta, el rol no tiene nada que recortar.
+       *  2. **Decidir qué entra al catálogo es la autoridad que este rol no
+       *     tiene.** Sus propias actividades salen sin revisión; las fichas de
+       *     terceros no son suyas.
+       *  3. **Y el documento lleva el contacto de un tercero**, igual que una
+       *     propuesta.
+       *
+       * Si algún día el dueño quiere que un publicador cargue librerías, el
+       * camino no es abrir esto: es que la ficha tenga `createdBy` y que la rama
+       * acotada se escriba como la de `/actividades`. Mientras tanto está cerrado
+       * **acá** y no en la UI, que es lo único que vale.
+       */
+      allow get: if esAdmin();
+      allow list: if esAdmin();
+
+      /*
+       * ⚠️ **ACÁ VA LA SEGUNDA ESCRITURA ANÓNIMA DEL PROYECTO, Y TAMPOCO ESTÁ
+       * ABIERTA.**
+       *
+       * El `create` público de `/guia/librerias/sumar` es el punto del PRD y está
+       * cerrado a propósito. Lo que falta **no es código**, y no es lo mismo que
+       * bloqueaba a `/propuestas`: Firestore ya está en `ENFORCED` (B-836a paso
+       * 6). Lo que falta es **B-872** — Storage sigue en `UNENFORCED` porque su
+       * métrica de App Check marca 99% sin verificar y la sospecha, todavía sin
+       * confirmar, es que ese 99% son **las lecturas públicas de imágenes** por
+       * URL de descarga, que no llevan token de App Check ni pueden llevarlo. Si
+       * el enforcement las bloqueara, se caen todas las imágenes del sitio.
+       *
+       * Y el formulario de una librería **sube una foto** (§ 5 del PRD, DEC-11),
+       * así que abrir este `create` sin resolver eso deja una de dos cosas, las
+       * dos malas: un formulario que acepta el texto y rechaza la foto, o un
+       * **endpoint de subida anónimo sin App Check**, que es exactamente lo que
+       * las cinco capas de B-836 existen para que no pase.
+       *
+       * **Para abrirla**, y en este orden:
+       *   1. **B-872 contestado** —¿el enforcement de Storage alcanza a las URLs
+       *      de descarga?— y App Check **exigiendo también en Storage**,
+       *      verificado en la consola;
+       *   2. el prefijo `librerias/` en `storage.rules`, con su `create` acotado
+       *      a tipo, tamaño y cantidad, y su `get`/`list` decididos — **en el
+       *      mismo commit que el punto 3**: una subida que no puede terminar en un
+       *      documento es un objeto huérfano, y un documento que no puede traer su
+       *      imagen es DEC-11 a medias (es el orden que dejó escrito
+       *      `storage.rules` para `propuestas/`);
+       *   3. borrar el `esAdmin() &&` de la línea de abajo;
+       *   4. **el testigo que se pone rojo es
+       *      `tests/librerias.integracion.test.ts`**, el caso «un anónimo no
+       *      puede crear una librería, ni con el documento perfecto». Y hay que
+       *      agregar `'librerias'` a `COLECCIONES_ABIERTAS` de
+       *      `tests/escritura-anonima.integracion.test.ts`, que es lo que hace que
+       *      abrir una puerta sea un diff visible y no un efecto colateral.
+       *      **Ojo: ese archivo NO se pone rojo solo** — prueba las escrituras con
+       *      un documento sonda (`{ hola: 'mundo' }`), que `formaDeLibreria()`
+       *      rechaza por `hasOnly` con la puerta abierta o cerrada, así que es
+       *      testigo de la **lista** de colecciones y no de esta puerta;
+       *   5. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
+       *      barrido programado de la bandeja en su Function. Son las otras capas
+       *      de B-836 y ninguna reemplaza a ésta.
+       *
+       * Mientras tanto un admin sí puede cargar una librería a mano, que es un
+       * camino del PRD (§ 1, la tercera puerta) y no un andamio.
+       */
+      allow create: if esAdmin() && libreriaValida();
+
+      allow update: if esAdmin() && libreriaActualizable();
+
+      /*
+       * **Borrar sí, y es una decisión.** Al revés que `/propuestas`, donde el
+       * `delete` está en `false` porque la borra la Function de retención
+       * (DEC-13): acá esa Function **no existe todavía**, así que una ficha
+       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
+       * siempre y el borrado manual es lo único con lo que se puede honrar un
+       * «borrame». Que ese plazo falte está anotado en el backlog.
+       *
+       * El camino normal sigue siendo `rechazado` —la ficha queda como registro
+       * de que alguien la propuso—, y borrar es para el alta de spam y para el
+       * pedido de una persona. **No hay subcolección `/versiones` acá**, así que
+       * un borrado no se recupera: es lo mismo que el `delete` del admin en
+       * `/actividades`, que sí la tiene, con una red menos.
+       */
+      allow delete: if esAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

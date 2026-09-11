@@ -84,7 +84,24 @@ const bloqueDePropuestas = (): string => {
   // recortar desde el medio de un bloque `/* … */` deja a `sinComentarios` sin
   // la apertura y se come el código que sigue. Costó un rojo confuso.
   const i = anclaje === -1 ? -1 : REGLAS.lastIndexOf('/*', anclaje);
-  const j = REGLAS.indexOf('match /{document=**}');
+  /*
+   * **El final es la sección SIGUIENTE, no el catch-all** — B-831.
+   *
+   * Mientras `/propuestas` fue el último bloque del archivo, cortar en
+   * `match /{document=**}` daba lo mismo. Desde que `/librerias` se agregó
+   * debajo, ese corte se llevaba puesto el bloque de **otra** colección: la
+   * comparación exhaustiva de cotas de acá abajo pasó a ver veinte números que no
+   * son de esta regla, y el barrido de `matches` a ver patrones ajenos. Se puso
+   * en rojo, que es lo correcto — y el arreglo es anclar en el borde y no en el
+   * fondo, porque cada directorio que venga agrega otro bloque.
+   */
+  const finDelBanner = REGLAS.indexOf('\n', anclaje);
+  const siguienteSeccion = REGLAS.indexOf('══', finDelBanner);
+  const catchAll = REGLAS.indexOf('match /{document=**}');
+  const j =
+    siguienteSeccion !== -1 && siguienteSeccion < catchAll
+      ? REGLAS.lastIndexOf('/*', siguienteSeccion)
+      : catchAll;
   if (i === -1 || j === -1 || j <= i) {
     throw new Error('no se encontró el bloque de /propuestas en firestore.rules');
   }
