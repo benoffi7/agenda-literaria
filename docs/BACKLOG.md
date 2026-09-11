@@ -1040,6 +1040,34 @@ qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow
 > **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
 > push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
 
+### B-887 · Un error de sintaxis en un trigger pasa la suite, el typecheck y el gate — ✅ hecho (2026-09-11) · P1
+
+**Pasó el 2026-09-11 y lo causó el integrador**, aplicando a mano un diff que un
+frente había devuelto: un `import` quedó **adentro** de un bloque
+`import { … }` multilínea de `functions/frescura-trigger.js`. Verde en todo:
+**4.373 casos**, `tsc --noEmit` limpio, **los seis pasos del gate de pre-push**. El
+deploy murió con `SyntaxError: Unexpected reserved word` y el sitio se quedó sin
+las Functions nuevas.
+
+**La ceguera es estructural.** Nadie importa los triggers: los módulos puros sí los
+importan los tests —ahí un error de sintaxis se ve en el acto— pero el archivo del
+trigger es el pegamento, lo carga solo el runtime, y lo que el repo hace con él es
+**leerlo como texto**. `clases-de-bug.test.ts` recorre su cuerpo con expresiones
+regulares, y **un `readFileSync` no parsea nada**: un archivo roto se lee igual de
+bien que uno sano.
+
+Dicho de otro modo: **el corte puro/pegamento de B-77 —lo que hace testeable a este
+proyecto— dejó del lado no testeado a los archivos que ningún test toca**, y el
+primer lector real era el deploy.
+
+> ✅ **Cerrado.** `node --check` sobre cada `functions/*.js` en
+> `tests/guardas-de-los-scripts.test.ts`, con control positivo. Es el **mismo
+> parser** que va a cargarlos en el runtime y no un regex: la pregunta es
+> literalmente «¿esto lo puede cargar Node?». Va en un test y no en el gate porque
+> tiene que llegar **antes** de empujar — el costo de este bug no fue el error, fue
+> enterarse quince minutos tarde y con el sitio a medio publicar. Probado por
+> mutación reintroduciendo el bug exacto.
+
 ### B-886 · El chequeo de frescura no ve la edición de una actividad ya listada · P3
 
 Sale de B-882. El conjunto de slugs no cambia cuando se edita el título de una

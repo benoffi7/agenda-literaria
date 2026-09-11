@@ -53,8 +53,8 @@ import { defineSecret } from 'firebase-functions/params';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { OPCIONES_BASE } from './despliegue.js';
 import { crearIssue } from './github-issues.js';
-import {
 import { remarcarPorFrescura } from './marca-de-rebuild.js';
+import {
   compararFrescura,
   decidirAviso,
   decidirAvisoDeLectura,

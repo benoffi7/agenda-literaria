@@ -27,7 +27,9 @@
  * mano contra el emulador al escribir cada script (el ida y vuelta está en
  * `docs/08-operacion.md`); lo que este test impide es que desaparezca.
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
@@ -318,5 +320,57 @@ describe('el gate de pre-push cuenta bien sus pasos — D-560', () => {
     // lo afirma también; acá vale porque este archivo es el que mira los scripts,
     // y el que alguien va a leer si toca `verificar-todo.sh`.
     expect(gate()).not.toContain('hook-auditores');
+  });
+});
+
+/**
+ * **Todo el código que se deploya como Function parsea** — B-887.
+ *
+ * ── Por qué esto existe, y por qué no existía ─────────────────────────────
+ * El 2026-09-11 se pushó `functions/frescura-trigger.js` con un `import` metido
+ * **adentro** de un bloque `import { … }` multilínea. La suite completa pasó
+ * —4.373 casos—, `tsc --noEmit` salió limpio, y **los seis pasos del gate de
+ * pre-push dieron verde**. El deploy murió con `SyntaxError: Unexpected reserved
+ * word` y el sitio se quedó sin Functions nuevas.
+ *
+ * El motivo de la ceguera es estructural y no un descuido: **nadie importa los
+ * triggers.** Los módulos puros (`retencion.js`, `rebuild.js`, `frescura.js`) sí
+ * los importan los tests, así que un error de sintaxis ahí se ve en el acto;
+ * pero el archivo del trigger es el pegamento —lo carga solo el runtime de Cloud
+ * Functions— y lo que el repo hace con él es **leerlo como texto**
+ * (`clases-de-bug.test.ts` recorre su cuerpo con expresiones regulares). Un
+ * `readFileSync` no parsea nada: un archivo roto se lee igual de bien que uno
+ * sano.
+ *
+ * O sea que el corte puro/pegamento de B-77 —que es lo que hace testeable a este
+ * proyecto— dejó justo del lado no testeado a los archivos que ningún test toca,
+ * y el primer lector real es el deploy.
+ *
+ * ── Por qué acá y no en el gate ───────────────────────────────────────────
+ * Porque un test corre en los dos workflows, en el gate de pre-push y en la
+ * máquina de quien escribe, y el gate solo en los dos últimos. Y porque el
+ * arreglo tiene que llegar **antes** de empujar, no después de que el deploy
+ * falle: el costo de este bug no fue el error, fue enterarse quince minutos
+ * tarde y con el sitio a medio publicar.
+ */
+describe('todo el código que se deploya parsea — B-887', () => {
+  const archivos = readdirSync(new URL('../functions/', import.meta.url))
+    .filter((f) => f.endsWith('.js'))
+    .sort();
+
+  it('hay archivos que mirar, y están todos', () => {
+    // El control positivo: si el filtro deja de encontrarlos, el `for` de abajo
+    // pasa sin haber parseado nada — la cobertura falsa que este repo persigue.
+    expect(archivos.length, 'el barrido dejó de encontrar los archivos').toBeGreaterThan(10);
+    expect(archivos).toContain('frescura-trigger.js');
+    expect(archivos).toContain('index.js');
+  });
+
+  it.each(archivos)('%s parsea como módulo de JavaScript', (archivo) => {
+    const ruta = fileURLToPath(new URL(`../functions/${archivo}`, import.meta.url));
+    // `node --check` es el mismo parser que va a leer el archivo en el runtime,
+    // y por eso se usa éste y no un regex: la pregunta es literalmente «¿esto lo
+    // puede cargar Node?».
+    expect(() => execFileSync(process.execPath, ['--check', ruta], { stdio: 'pipe' })).not.toThrow();
   });
 });

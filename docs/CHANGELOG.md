@@ -2,6 +2,29 @@
 
 ## Sin publicar
 
+- **La suite entera y los seis pasos del gate dieron verde con un error de sintaxis
+  en `functions/`** — **B-887**. Se pushó un `import` metido **adentro** de un
+  bloque `import { … }` multilínea: 4.373 casos en verde, `tsc --noEmit` limpio,
+  gate de pre-push en verde, y el deploy murió con `SyntaxError: Unexpected
+  reserved word`.
+
+  **La ceguera es estructural y no un descuido: nadie importa los triggers.** Los
+  módulos puros sí los importan los tests, así que un error de sintaxis ahí se ve
+  en el acto. Pero el archivo del trigger es el **pegamento** —lo carga solo el
+  runtime de Cloud Functions— y lo que el repo hace con él es **leerlo como
+  texto**: `clases-de-bug.test.ts` recorre su cuerpo con expresiones regulares, y
+  **un `readFileSync` no parsea nada**. Un archivo roto se lee igual de bien que
+  uno sano.
+
+  O sea que el corte puro/pegamento de B-77 —que es lo que hace testeable a este
+  proyecto— dejó justo del lado no testeado a los archivos que ningún test toca, y
+  **el primer lector real era el deploy**.
+
+  La guarda corre `node --check` sobre cada `functions/*.js` —el mismo parser que
+  los va a cargar en el runtime, no un regex— con su control positivo, y va en un
+  test y no en el gate porque tiene que llegar **antes** de empujar. Probada por
+  mutación con el bug exacto que la hizo nacer.
+
 - **Ocho actividades publicadas, ninguna en el sitio, y el único que se enteró fue
   el dueño mirándolo: ahora hay algo que compara las dos puntas** — **B-882**, y
   con él cierra **B-884**. Ninguna alarma existente podía ver aquel incidente: los
