@@ -2,6 +2,64 @@
 
 ## Sin publicar
 
+- **Ocho actividades publicadas, ninguna en el sitio, y el único que se enteró fue
+  el dueño mirándolo: ahora hay algo que compara las dos puntas** — **B-882**, y
+  con él cierra **B-884**. Ninguna alarma existente podía ver aquel incidente: los
+  ocho `repository_dispatch` salieron bien, así que `alerta: 'rebuild-agotado'`
+  nunca se disparó y `sistema/rebuild` decía que estaba todo al día.
+
+  `verificarFrescuraDelSitio`, cada media hora, pide el `events.json` **por la
+  misma URL que pide el público** y compara sus slugs contra las publicadas de
+  Firestore. **Mide el efecto y no el mecanismo**, que es la decisión de fondo:
+  con una sola medición quedan cubiertos el workflow roto, la marca perdida, un
+  deploy sin índice, el CDN cacheado y las causas que todavía no conocemos. Es
+  complementario de B-883 y no su repuesto: **aquél vigila un eslabón y sabe por
+  qué falló; éste vigila la promesa entera y no sabe por qué.**
+
+  **El conjunto de slugs y no el conteo**, que es lo obvio y lo más frágil: dos
+  diferencias que se cancelan dan el mismo número, y una tanda con ocho
+  publicaciones y ocho bajas habría dado «fresco» con las dos mitades rotas. Y el
+  conjunto **nombra** lo que falta, que es lo que convierte una alarma en una
+  acción.
+
+  **La ventana es de 40 minutos y el entregable es el criterio, no el número:**
+  debounce (5) + el `timeout-minutes` del workflow (15) + otro build entero (15,
+  porque `cancel-in-progress: true`) + propagación (5). **Cada sumando es un número
+  que vive en otro archivo**, y un test lee `deploy.yml` y `rebuild-trigger.js` y se
+  pone rojo si alguno deja de coincidir — la tabla no puede envejecer en silencio.
+
+  **Avisa con un issue, no con un log.** «Lo loguea» era el bug con otra cara:
+  `alerta: 'rebuild-agotado'` depende de una alerta creada a mano en la consola que
+  el repo no puede verificar, y encima era **estructuralmente incapaz** de ver este
+  incidente.
+
+  **Y no grita cuando el roto es él.** Una lectura fallida no pisa el veredicto
+  anterior; recién con cuatro seguidas habla, y de otra cosa. El corte que decide
+  todo: **un 200 con un cuerpo que no es el índice es una lectura fallida y no «se
+  borraron las 200 actividades»** — sin eso, una página de error del CDN dispara la
+  alarma más ruidosa posible por un problema del propio chequeo.
+
+  **Tres cosas las encontraron los auditores y una el chequeo de clase de B-83.**
+  El issue publicaba el minuto exacto de la divergencia, y contra el `created_at`
+  público de un issue eso **reconstruye el `updatedAt` de un documento** (§5,
+  D-138): ahora sale en tramos gruesos. `vistas` era un mapa, y **el merge de
+  Firestore no borra claves**, así que el documento crecía hasta el tope de 1 MB —
+  y ahí la transacción falla y **la alarma se muere en silencio**, el modo de falla
+  exacto que este ítem existe para cerrar. Y el intento de remarcar el rebuild lo
+  **rechazó el chequeo de clase**: `marcarRebuild` está declarado como efecto
+  **incondicional** y acá el uso es un reintento condicionado.
+
+  **De ahí sale el cierre de B-884:** `remarcarPorFrescura` es el mismo efecto con
+  nombre propio, y cuelga de la misma decisión que abre el issue — o sea acotado
+  por la firma y por el reaviso de 24 h: a lo sumo un build extra por día y por
+  divergencia distinta. Con eso, **la tercera medida del 2026-09-11 queda cerrada:
+  el rebuild reintenta de verdad.**
+
+  Treinta y una mutaciones. Y sale **B-886**: el chequeo no ve la **edición** de
+  una actividad ya listada, porque el slug es inmutable y los conjuntos quedan
+  idénticos. Verlo pediría rederivar `toPublic` dentro de una Function, que es la
+  duplicación de derivaciones que el repo prohíbe.
+
 - **El rebuild falló quince corridas seguidas y nadie se enteró: el aviso de un
   workflow roto ahora es un issue** — **B-883**. El dueño cargó ocho actividades,
   las publicó, y se dio cuenta de que no aparecían **mirando el sitio**. Lo que se

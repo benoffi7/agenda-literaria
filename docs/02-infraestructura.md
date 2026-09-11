@@ -291,8 +291,14 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 
 ## Cloud Functions (v2)
 
-Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
-**Son ocho, y las ocho están ACTIVE.**
+Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3;
+`verificarFrescuraDelSitio`, 1). **Son trece: diez ACTIVE y tres escritas sin
+desplegar** (`borrarPropuestasVencidas`, `borrarImagenAlCerrar` y
+`verificarFrescuraDelSitio`, que el próximo push a `main` despliega solo).
+
+> Esta línea decía «son ocho, y las ocho están ACTIVE» y ya era falsa cuando el
+> relevamiento de abajo encontró diez. **Es la misma cicatriz que el aviso
+> siguiente describe**: el encabezado de una tabla envejece aparte de la tabla.
 
 > **Rerelevado contra GCP el 2026-09-07**, y la tabla estaba mal otra vez:
 > `gcloud functions list --project agenda-literaria --regions southamerica-east1`
@@ -333,6 +339,7 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `limpiarVersionesHuerfanas` | `onSchedule every 24 hours` | ACTIVE — **desplegada**, relevado el 2026-09-07 (la tabla decía «escrita, sin desplegar» y era de antes de D-132). Sin IAM nuevo: corre con `calendar-sync@` y solo necesita `datastore.user`, que ya tiene. Desde B-630 tiene **script en seco**: `scripts/limpiar-versiones-huerfanas.mjs`. Ver `08-operacion.md` § «El barrido de versiones huérfanas» |
 | `borrarPropuestasVencidas` | `onSchedule every 24 hours` | **escrita, sin desplegar todavía** (B-838, DEC-13, 2026-09-09) — el push a `main` la despliega sola (`push-main.yml` ve el cambio en `functions/`), así que esta celda pasa a ACTIVE con la próxima corrida; hasta entonces el panel promete un borrado que no corre, y eso está dicho en `07-seguridad.md`. Borra la propuesta rechazada hace más de 30 días **y su imagen**, y desde **B-844** (2026-09-09) también la `nueva`/`en-revision` sin tocar hace más de 30 días (el mismo número que la rechazada, contado desde su última señal de vida); la `aceptada` no vence. Sin IAM nuevo: `calendar-sync@` ya tiene `datastore.user` y el `storage.objects.delete` que usa `limpiarImagenesHuerfanas`. Desde **B-864** no borra a ciegas: borra con precondición sobre la versión que leyó (`delete({ lastUpdateTime })`) más una relectura de metadata antes de tocar Storage, así que una propuesta que un admin toca mientras la corrida está en curso sobrevive entera. Tiene **script en seco**: `scripts/borrar-propuestas-vencidas.mjs`, verificado a mano contra el emulador —incluida la carrera—. Ver `08-operacion.md` § «La retención de propuestas» |
 | `borrarImagenAlCerrar` | `onDocumentWritten propuestas/{id}` | **escrita, sin desplegar todavía** (B-830 paso 8, DEC-11, 2026-09-09; ampliada por **B-863**, 2026-09-10) — **cerrar** una propuesta borra la foto que mandó el tercero: al **rechazarla**, en el acto; al **aceptarla**, después de verificar que la copia promovida a `imagenes/` existe (en el documento de la actividad y en el bucket). Es un solo trigger y no dos porque dos `onDocumentWritten` sobre el mismo path serían dos handlers peleándose el mismo objeto (B-89). Lee `/actividades` con `fieldMask: ['imagenes']`, así que además de `storage.objects.delete` necesita el `datastore.user` que `calendar-sync@` ya tiene. La despliega CI en el push, como su vecina. **Se llamaba `borrarImagenAlRechazar`**: si llegó a desplegarse con ese nombre hay que borrar la vieja a mano — ver el aviso de `08-operacion.md` § «La imagen de una propuesta» |
+| `verificarFrescuraDelSitio` | `onSchedule every 30 minutes` | **escrita, sin desplegar todavía** (B-882, 2026-09-11) — el chequeo de frescura: pide `https://agendaleh.ar/events.json` y compara el **conjunto de slugs** que publica contra el de las actividades `publicado` de Firestore. Si hay una diferencia más vieja que la ventana de 40 minutos, abre un issue con la etiqueta `frescura` y loguea `alerta: 'sitio-atrasado'`. Escribe `sistema/frescura`. Sin IAM nuevo: corre con `calendar-sync@`, que ya tiene `datastore.user`, y usa el `GITHUB_TOKEN` que ya existe. Lo único que hace falta del lado del dueño es **crear las dos etiquetas** del repo y que la salida a internet esté (Blaze). Ver § «El chequeo de frescura» más abajo |
 | `traerAnaliticaDelSitio` | `onSchedule every day 07:00` | ACTIVE — **faltaba en esta tabla**, agregada el 2026-09-07. Lee GA4 y Search Console con `calendar-sync@` y escribe `sistema/analitica-sitio`, que es de donde lee la pestaña «El sitio público» del panel. Los cuatro pasos de consola quedaron hechos el 2026-09-07 y se verificó forzando una corrida: el log dice `analítica del sitio actualizada` (B-790, `16-analitica-del-sitio.md` §9.4) |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
@@ -395,6 +402,55 @@ los reportes del panel llegan como issues con la etiqueta `reporte-panel`. Las o
 `index.js` — en ESM el import corre antes y las opciones globales llegarían tarde
 (D-35).
 
+### El chequeo de frescura — B-882
+
+`verificarFrescuraDelSitio` (`functions/frescura-trigger.js`, lógica pura en
+`functions/frescura.js`) es la pieza que contesta, cada media hora, **la pregunta
+del producto**: ¿lo que está publicado aparece en el sitio?
+
+El 2026-09-11 el dueño cargó ocho actividades, las publicó y ninguna apareció: el
+rebuild venía fallando desde el día anterior —ocho corridas rojas seguidas, todas
+en el paso `Tests`, que corre **antes** del build— y el único que se enteró fue
+él, mirando el sitio. Ninguna alarma existente podía verlo: los ocho
+`repository_dispatch` salieron bien, así que `alerta: 'rebuild-agotado'` (B-21)
+nunca se disparó y `sistema/rebuild.pendiente` decía que estaba todo al día
+(B-884).
+
+**Mide el efecto y no el mecanismo**, que es lo que lo diferencia de las otras
+medidas: con una sola medición quedan cubiertos el workflow roto, la marca de
+rebuild perdida, un deploy que sube sin el índice, el CDN sirviendo una copia
+vieja y las causas que todavía no conocemos. Es complementario de **B-883** (que
+abre un issue cuando el workflow falla): aquél vigila un eslabón y sabe por qué
+falló; éste vigila la promesa entera y no sabe por qué.
+
+| | |
+|---|---|
+| **Qué compara** | el **conjunto de slugs** de las actividades `publicado` en Firestore contra el de `events.json`, en las dos direcciones. **No el conteo**: dos diferencias que se cancelan dan el mismo número |
+| **Contra qué URL** | `https://agendaleh.ar/events.json`, **la misma que pide el público y sin parámetro que esquive la cache**: si el CDN devuelve una copia vieja, eso *es* la divergencia |
+| **Ventana** | 40 minutos = 5 (debounce del §8) + 15 (`timeout-minutes` del workflow) + 15 (otro build, porque `cancel-in-progress: true`) + 5 (propagación de Hosting). Cada sumando está anclado a un número que vive en otro archivo, y `tests/frescura.test.ts` se pone rojo si alguno deja de coincidir |
+| **Cómo avisa** | issue en el repo con la etiqueta `frescura` + `logger.error` con `alerta: 'sitio-atrasado'`. Uno por divergencia distinta, con reaviso a las 24 h. **No cierra issues** |
+| **Qué sale al issue** | solo **slugs** (por lista blanca de forma) y **conteos**. La antigüedad va en **tramos gruesos** y no en minutos: el issue lleva su `created_at` público, así que el minuto exacto reconstruiría el `updatedAt` de un documento (§5, D-138). El detalle de un error de lectura tampoco sale: el aviso lleva un motivo de vocabulario cerrado y el texto crudo se queda en el log |
+| **Si no puede leer el índice** | no grita: `estado: 'sin-lectura'` y contador. Recién con **4 fallas seguidas** (2 h) abre un issue, y de otra cosa (`alerta: 'sitio-sin-indice'`) |
+| **Qué escribe** | `sistema/frescura` — un solo documento que dice, ahora mismo, si el sitio está al día y desde cuándo no |
+| **Costo** | una lectura de Firestore por actividad publicada, 48 veces por día (~4.800 con 100 actividades), dentro de la cuota gratuita |
+
+Lo que **no** ve, dicho de frente: la **edición** de una actividad que ya está
+listada. El slug es inmutable después de publicar (trampa 10), así que cambiar el
+título deja los dos conjuntos idénticos. Verlo pediría rederivar `toPublic` dentro
+de una Cloud Function, que es la duplicación de derivaciones que
+`05-patrones.md` prohíbe. Queda como **B-886**.
+
+`sistema/frescura` lo pueden leer los admins (`match /sistema/{doc}` con
+`read: if esAdmin()`), así que el panel podría mostrarlo sin reglas nuevas. Todavía
+no lo muestra.
+
+> **`vistas` se guarda como lista y no como mapa**, y eso no es estilo: el
+> documento se escribe con `set(..., { merge: true })`, y el merge de Firestore es
+> **profundo sobre los mapas** —una clave que deja de venir no se borra—. Como
+> mapa, el registro acumulaba para siempre el slug de todo lo que alguna vez
+> divergió, hasta el tope de 1 MB del documento; pasado eso la transacción empieza
+> a fallar y **la alarma se muere en silencio**, que es el modo de falla que este
+> chequeo existe para cerrar. Lo encontró el `auditor-privacidad`.
 
 ### Variables de entorno y secretos
 
@@ -405,12 +461,24 @@ En `functions/.env`, versionado (nada de esto es secreto):
 |---|---|
 | `GOOGLE_CALENDAR_ID` | el id del calendario público |
 | `GITHUB_REPO` | `benoffi7/agenda-literaria` |
+| `GA4_PROPERTY_ID` | el id **numérico** de la propiedad de GA4 (no el `G-…`) — B-374 |
+| `SEARCH_CONSOLE_SITE` | `sc-domain:agendaleh.ar` — B-373 |
+| `SITIO_PUBLICO` | `https://agendaleh.ar` — el origen que `verificarFrescuraDelSitio` consulta (B-882) |
+
+Las tres últimas filas **faltaban o son nuevas**: `GA4_PROPERTY_ID` y
+`SEARCH_CONSOLE_SITE` existen desde el 2026-09-07 y esta tabla no las tenía.
+
+`SITIO_PUBLICO` es el dominio otra vez, y eso es a propósito: `functions/` es
+otro paquete y **no puede importar `src/lib/rutasPublicas.ts`**, que es donde
+D-165 puso la única aparición del dominio del lado del sitio. Es la misma razón
+por la que `SEARCH_CONSOLE_SITE` ya lo tenía escrito. Si el dominio cambia,
+cambian los dos.
 
 ### Secretos (Secret Manager)
 
 | Secreto | Lo usa | Estado |
 |---|---|---|
-| `GITHUB_TOKEN` | `reporteAIssue` (issues de reportes) y `dispararRebuild` (§8) | **existe** desde el 2026-08-21 |
+| `GITHUB_TOKEN` | `reporteAIssue` (issues de reportes), `dispararRebuild` (§8) y `verificarFrescuraDelSitio` (los avisos de frescura, B-882) | **existe** desde el 2026-08-21 |
 
 El PAT nunca va a `functions/.env` ni al repo (§5.4). El valor se resuelve en
 runtime con `defineSecret(...).value()`, así que tampoco queda en el artefacto

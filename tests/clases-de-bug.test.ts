@@ -399,7 +399,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los once triggers del proyecto', () => {
+  it('encuentra los doce triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -502,6 +502,28 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        *    clase de B-85, y ahora el chequeo lo agarra en vez de dejarlo pasar.
        */
       'traerAnaliticaDelSitio',
+      /*
+       * B-882 — el chequeo de frescura: compara lo publicado en Firestore contra
+       * el `events.json` vivo y avisa si divergen. El cuarto `onSchedule`, y
+       * **entró solo** (la clase ya estaba en `CLASES_DE_TRIGGER`); lo único que
+       * hubo que confirmar a mano es el conteo, que es la parte que este `it`
+       * existe para pedir.
+       *
+       * Es el primer schedule que enciende los **cuatro** síntomas de B-85 —lee
+       * Firestore, habla con la red dos veces (el índice y el issue) y escribe— y
+       * pasa por el mismo motivo que `dispararRebuild`: la transacción. No es
+       * decorativa. El `previo` con el que se decide si abrir un issue se leyó
+       * antes del `fetch` del índice, así que la decisión se vuelve a tomar
+       * adentro de la transacción contra el documento de ahora; si no, dos
+       * corridas superpuestas abren dos issues del mismo atraso en un repo
+       * público.
+       *
+       * Y por eso **no** entra a `GUARDAS_DE_BARRIDO`: ese registro se deriva de
+       * los schedules que escriben lo que leyeron **sin** transacción, y éste la
+       * tiene. El día que alguien se la saque, el chequeo de B-85 se pone rojo
+       * primero.
+       */
+      'verificarFrescuraDelSitio',
     ]);
   });
 

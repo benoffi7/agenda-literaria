@@ -50,7 +50,15 @@
  *
  * El conjunto de slugs es **la comparación más grande que no duplica ninguna
  * derivación**: de un lado `slug` y `estado` salen crudos del documento, del
- * otro `slug` sale crudo del JSON. Queda anotado como **B-883**.
+ * otro `slug` sale crudo del JSON. Queda anotado como **B-886**.
+ *
+ * ── Y no reemplaza a B-883, ni al revés ───────────────────────────────────
+ * B-883 hace que un workflow roto abra un issue: vigila **un** eslabón, y lo
+ * vigila mejor de lo que este chequeo podría (sabe por qué falló y en qué paso).
+ * Éste vigila la promesa entera y no sabe por qué. Se necesitan los dos: sin
+ * B-883, cada atraso arranca una investigación desde cero; sin éste, un atraso
+ * que no pase por un workflow rojo —el dispatch que GitHub aceptó y no corrió,
+ * el deploy que subió sin el índice, el CDN cacheado— no lo ve nadie.
  */
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -120,6 +128,20 @@ export const FALLAS_PARA_ESCALAR = 4;
 /** Cuántos slugs entran al aviso antes de resumir. Un issue con 300 no se lee. */
 export const TOPE_DE_SLUGS_EN_EL_AVISO = 20;
 
+/**
+ * Cuántas divergencias guardan su reloj en `sistema/frescura`.
+ *
+ * El documento de Firestore tiene un tope duro de 1 MB, y pasado ese tope la
+ * transacción que escribe el veredicto empieza a fallar: **la alarma se muere en
+ * silencio**, que es el peor final posible para este chequeo. Con 200 entradas
+ * de `{slug, desdeMs}` el documento no llega ni a 20 kB.
+ *
+ * Lo que se pierde pasado el tope es solo el reloj de respaldo (el del borrado
+ * duro): esas divergencias se siguen viendo y se siguen avisando, se fechan con
+ * `updatedAt` como todas las demás.
+ */
+export const TOPE_DE_VISTAS = 200;
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Leer el índice
  * ────────────────────────────────────────────────────────────────────────── */
@@ -139,6 +161,32 @@ export const FORMA_DE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** Un slug que no tiene la forma esperada no se imprime: se cuenta. */
 export const slugImprimible = (slug) => (FORMA_DE_SLUG.test(String(slug)) ? String(slug) : null);
 
+/** La forma de un id de documento de Firestore. Ver el uso en `leerIndice`. */
+export const FORMA_DE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * Por qué no se pudo leer el índice, en **vocabulario cerrado**.
+ *
+ * ── Por qué cerrado y no el mensaje del error ─────────────────────────────
+ * Porque este valor es lo único que el aviso de «el sitio no contesta»
+ * interpola además de números, y ese aviso va a un repo **público**. Con el
+ * mensaje crudo, la garantía de que al issue no se cuela nada vuelve a ser de
+ * disciplina —«nadie va a agregar el cuerpo de la respuesta acá»— justo lo que
+ * `slugImprimible` cerró por forma para el otro aviso. Lo marcó el
+ * `auditor-privacidad`.
+ *
+ * El texto de verdad no se pierde: viaja como `detalle` al `logger` y a
+ * `sistema/frescura`, que son admin-only.
+ */
+export const MOTIVOS = {
+  red: 'red',
+  timeout: 'timeout',
+  http: 'http',
+  noJson: 'no-json',
+  sinLista: 'sin-lista',
+  sinSlug: 'sin-slug',
+};
+
 /**
  * Lee el cuerpo del `events.json` vivo y devuelve los slugs que publica.
  *
@@ -157,13 +205,17 @@ export const leerIndice = (texto) => {
   try {
     datos = JSON.parse(String(texto ?? ''));
   } catch {
-    return { ok: false, motivo: 'el cuerpo no es JSON' };
+    return { ok: false, motivo: MOTIVOS.noJson, detalle: 'el cuerpo no es JSON' };
   }
   if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
-    return { ok: false, motivo: 'el JSON no es un objeto' };
+    return { ok: false, motivo: MOTIVOS.noJson, detalle: 'el JSON no es un objeto' };
   }
   if (!Array.isArray(datos.actividades)) {
-    return { ok: false, motivo: 'el JSON no tiene la lista de actividades' };
+    return {
+      ok: false,
+      motivo: MOTIVOS.sinLista,
+      detalle: 'el JSON no tiene la lista de actividades',
+    };
   }
   const slugs = [];
   // `{ slug: id }` para poder ir a buscar el documento de un sobrante: es el
@@ -173,9 +225,19 @@ export const leerIndice = (texto) => {
   for (const a of datos.actividades) {
     const slug = typeof a?.slug === 'string' ? a.slug : '';
     // Una entrada sin slug no es una actividad del índice: el slug es la URL.
-    if (!slug) return { ok: false, motivo: 'hay una actividad sin slug en el índice' };
+    if (!slug) {
+      return { ok: false, motivo: MOTIVOS.sinSlug, detalle: 'hay una actividad sin slug' };
+    }
     slugs.push(slug);
-    if (typeof a?.id === 'string' && a.id) idPorSlug[slug] = a.id;
+    /*
+     * El `id` viene de un archivo traído por HTTP y del otro lado se interpola
+     * en **una ruta de documento** (`actividades/<id>`). Un valor con `/`
+     * direccionaría otra colección —`…/versiones/…`— o tiraría. Así que entra
+     * por lista blanca de forma, como el slug del aviso: lo que no tiene forma
+     * de id de Firestore simplemente no se usa, y ese sobrante se fecha con el
+     * reloj de la primera vez. Lo marcó el `auditor-privacidad`.
+     */
+    if (FORMA_DE_ID.test(String(a?.id ?? ''))) idPorSlug[slug] = a.id;
   }
   return {
     ok: true,
@@ -243,17 +305,42 @@ export const diferenciaDeSlugs = (publicados, enElIndice) => {
  *
  *  3. **Ahora**, para lo que se ve por primera vez y no se puede fechar. Arranca
  *     el reloj del punto 2.
+ *
+ * ── `vistas` es una LISTA y no un mapa, y eso es una decisión ─────────────
+ * Se guarda en `sistema/frescura`, que se escribe con `set(..., { merge: true })`,
+ * y **el merge de Firestore es profundo sobre los mapas**: una clave que deja de
+ * venir no se borra, se conserva. O sea que como mapa el registro hacía lo
+ * contrario de lo que promete —acumulaba para siempre el slug de todo lo que
+ * alguna vez divergió— hasta reventar el tope de 1 MB del documento, y ahí la
+ * transacción empieza a fallar: **la alarma se muere en silencio**, que es el
+ * modo de falla exacto que este ítem existe para cerrar. Lo encontró el
+ * `auditor-privacidad`.
+ *
+ * Una lista, en cambio, el merge la **reemplaza entera**, así que el registro
+ * queda con lo que diverge ahora y nada más. De paso el slug —que viene de un
+ * archivo traído por HTTP— deja de ser una clave de un mapa de Firestore y pasa
+ * a ser un valor, que es donde un carácter raro no decide nada.
+ *
+ * @param {string[]} slugs
+ * @param {Record<string, number>} [fechas]   `updatedAt` del documento, en milis
+ * @param {{slug: string, desdeMs: number}[]} [vistas]  cuándo se vio por primera vez cada uno
+ * @param {number} [ahora]
+ * @returns {{ slug: string, desdeMs: number, reloj: string }[]}
  */
-export const fechar = (slugs, fechas = {}, vistas = {}, ahora = Date.now()) =>
-  slugs.map((slug) => {
+export const fechar = (slugs, fechas = {}, vistas = [], ahora = Date.now()) => {
+  const porVista = new Map(
+    (Array.isArray(vistas) ? vistas : []).map((v) => [v?.slug, Number(v?.desdeMs)]),
+  );
+  return slugs.map((slug) => {
     const porDocumento = Number(fechas?.[slug]);
     if (Number.isFinite(porDocumento)) {
       return { slug, desdeMs: porDocumento, reloj: 'documento' };
     }
-    const porVista = Number(vistas?.[slug]);
-    if (Number.isFinite(porVista)) return { slug, desdeMs: porVista, reloj: 'primera-vez' };
+    const vista = porVista.get(slug);
+    if (Number.isFinite(vista)) return { slug, desdeMs: vista, reloj: 'primera-vez' };
     return { slug, desdeMs: ahora, reloj: 'primera-vez' };
   });
+};
 
 /**
  * El veredicto.
@@ -266,6 +353,11 @@ export const fechar = (slugs, fechas = {}, vistas = {}, ahora = Date.now()) =>
  * `publicadas` y `enElIndice` viajan **solo como dato del log**. La decisión no
  * los mira, y está dicho acá para que nadie los use más adelante creyendo que
  * son la medición: la medición es el conjunto (ver `diferenciaDeSlugs`).
+ *
+ * @param {{ faltan?: {slug: string, desdeMs: number, reloj?: string}[],
+ *           sobran?: {slug: string, desdeMs: number, reloj?: string}[],
+ *           publicadas?: number, enElIndice?: number,
+ *           generadoEn?: string | null, ahora?: number, toleranciaMs?: number }} args
  */
 export const compararFrescura = ({
   faltan = [],
@@ -285,8 +377,12 @@ export const compararFrescura = ({
 
   // El reloj de cada divergencia se persiste para la próxima corrida, y **solo
   // el de las que siguen divergiendo**: así el registro se limpia solo y no se
-  // convierte en un cementerio de slugs que ya se arreglaron.
-  const vistas = Object.fromEntries([...faltan, ...sobran].map((i) => [i.slug, i.desdeMs]));
+  // convierte en un cementerio de slugs que ya se arreglaron. Es una lista y no
+  // un mapa justamente para que eso sea cierto — ver `fechar`. El tope es la
+  // otra mitad: ni siquiera un día raro puede empujar el documento al límite.
+  const vistas = [...faltan, ...sobran]
+    .slice(0, TOPE_DE_VISTAS)
+    .map((i) => ({ slug: i.slug, desdeMs: i.desdeMs }));
 
   return {
     estado: vencidas.length ? 'atrasado' : enVuelo.length ? 'en-vuelo' : 'fresco',
@@ -326,6 +422,8 @@ export const firmaDe = (veredicto) =>
  * Devuelve siempre un motivo, también cuando no avisa: el log de una corrida
  * silenciosa tiene que poder explicar por qué se quedó callada, si no el único
  * modo de saber si el chequeo está vivo es que falle.
+ *
+ * @param {{ previo?: Record<string, any> | null, veredicto: Record<string, any>, ahora?: number }} args
  */
 export const decidirAviso = ({ previo = null, veredicto, ahora = Date.now() }) => {
   if (veredicto.estado !== 'atrasado') return { avisar: false, motivo: veredicto.estado };
@@ -359,13 +457,31 @@ export const decidirAviso = ({ previo = null, veredicto, ahora = Date.now() }) =
  *
  * Y no hay reintento dentro de la corrida: el reintento es el próximo tick, que
  * es gratis y está media hora más lejos de la causa transitoria.
+ *
+ * `motivo` es del vocabulario cerrado de `MOTIVOS` —es lo único que después
+ * puede llegar al aviso público— y `detalle` es el texto de verdad, que se
+ * guarda acá y en el log porque los dos son admin-only y sin él un 502 del CDN y
+ * un socket colgado se ven igual.
+ *
+ * @param {{ previo?: Record<string, any> | null, motivo?: string, detalle?: string,
+ *           ahora?: number }} args
  */
-export const registrarFalloDeLectura = ({ previo = null, motivo, ahora = Date.now() }) => {
+export const registrarFalloDeLectura = ({
+  previo = null,
+  motivo,
+  detalle = '',
+  ahora = Date.now(),
+}) => {
   const fallas = Number(previo?.lectura?.fallas);
   const seguidas = (Number.isFinite(fallas) && fallas > 0 ? fallas : 0) + 1;
   return {
     estado: 'sin-lectura',
-    lectura: { ok: false, motivo: String(motivo ?? 'sin motivo').slice(0, 300), fallas: seguidas },
+    lectura: {
+      ok: false,
+      motivo: Object.values(MOTIVOS).includes(motivo) ? motivo : 'desconocido',
+      detalle: String(detalle ?? '').slice(0, 300),
+      fallas: seguidas,
+    },
     escalar: seguidas >= FALLAS_PARA_ESCALAR,
     seguidas,
   };
@@ -379,6 +495,8 @@ export const registrarFalloDeLectura = ({ previo = null, motivo, ahora = Date.no
  * sitio esté caído. La firma no lleva el número exacto de fallas —si no, cada
  * corrida sería una firma nueva y el deduplicado no existiría—, así que el
  * reaviso lo gobierna `REAVISO_MS` igual que el del atraso.
+ *
+ * @param {{ previo?: Record<string, any> | null, seguidas: number, ahora?: number }} args
  */
 export const decidirAvisoDeLectura = ({ previo = null, seguidas, ahora = Date.now() }) => {
   if (seguidas < FALLAS_PARA_ESCALAR) return { avisar: false, motivo: 'sin-lectura, todavía' };
@@ -399,6 +517,31 @@ export const decidirAvisoDeLectura = ({ previo = null, seguidas, ahora = Date.no
 
 const minutos = (ms) => Math.round(ms / 60000);
 
+/**
+ * La antigüedad de una divergencia, **en tramos gruesos**, para el aviso público.
+ *
+ * ── Por qué no el minuto exacto ───────────────────────────────────────────
+ * Porque `peorEdadMs` es `ahora - updatedAt`, y un issue de GitHub lleva su
+ * `created_at` **público**: publicar «hace 137 minutos» es publicar el
+ * `updatedAt` de un documento con precisión de un minuto, en una salida que no se
+ * puede despublicar. El §5 dice que `updatedAt` no sale a ninguna salida, y D-138
+ * ya había recortado `createdAt` al día por lo mismo — con un solo admin, el
+ * instante exacto de cada carga **es su agenda de trabajo**. Lo marcó el
+ * `auditor-privacidad`.
+ *
+ * Los tramos empiezan en seis horas, así que lo más fino que se puede inferir del
+ * aviso es una banda de seis horas, y de ahí para arriba es el día. El número
+ * exacto sigue estando donde se puede: en `sistema/frescura` y en el
+ * `logger.error`, que son admin-only.
+ */
+export const edadGruesa = (ms) => {
+  const horas = Number(ms) / 3_600_000;
+  if (!Number.isFinite(horas) || horas < 6) return 'más que la ventana';
+  if (horas < 24) return 'más de seis horas';
+  if (horas < 24 * 7) return 'más de un día';
+  return 'más de una semana';
+};
+
 const lista = (divergencias) => {
   const impresos = divergencias
     .map((d) => slugImprimible(d.slug))
@@ -413,11 +556,17 @@ const lista = (divergencias) => {
 /**
  * El issue que se abre cuando el sitio quedó atrasado.
  *
- * **Sobre el repo público (§5.1).** Lo único que sale de acá son slugs, y los
- * slugs ya son públicos en los dos lados de la comparación: el que falta está
- * `publicado` en Firestore (o sea que su URL está por existir) y el que sobra ya
- * está servido en el `events.json`. No sale ni el título, ni el id, ni nada del
- * documento — y `slugImprimible` lo garantiza por forma, no por disciplina.
+ * **Sobre el repo público (§5.1).** Lo único que sale de acá son **slugs** y
+ * **conteos**, y los slugs ya son públicos en los dos lados de la comparación: el
+ * que falta está `publicado` en Firestore (o sea que su URL está por existir) y
+ * el que sobra ya está servido en el `events.json`. No sale ni el título, ni el
+ * id, ni nada del documento — y `slugImprimible` lo garantiza por forma, no por
+ * disciplina.
+ *
+ * La antigüedad sale **en tramos** y no en minutos: el minuto exacto reconstruye
+ * el `updatedAt` de un documento contra el `created_at` público del issue. Ver
+ * `edadGruesa`. La ventana sí va con su número, porque es una constante de este
+ * archivo y no un dato de nadie.
  */
 export const issueDeAtraso = (veredicto) => {
   const total = veredicto.faltan.length + veredicto.sobran.length;
@@ -429,9 +578,10 @@ export const issueDeAtraso = (veredicto) => {
     `> Abierto automáticamente por \`verificarFrescuraDelSitio\` (B-882).`,
     `> Compara lo publicado en Firestore contra el \`events.json\` que sirve el sitio.`,
     '',
-    `La diferencia más vieja tiene **${minutos(veredicto.peorEdadMs)} minutos** y la ventana ` +
-      `normal es de ${minutos(veredicto.toleranciaMs)} (debounce + build + propagación, ` +
-      '`functions/frescura.js`). O sea que esto ya no se explica por un build en curso.',
+    `La diferencia más vieja lleva **${edadGruesa(veredicto.peorEdadMs)}**, contra una ventana ` +
+      `normal de ${minutos(veredicto.toleranciaMs)} minutos (debounce + build + propagación, ` +
+      '`functions/frescura.js`). O sea que esto ya no se explica por un build en curso. ' +
+      'El número exacto está en `sistema/frescura` y en el log, que no son públicos.',
     '',
     veredicto.faltan.length
       ? `### Publicadas que el sitio no muestra (${veredicto.faltan.length})\n\n${lista(veredicto.faltan)}\n`
@@ -458,22 +608,39 @@ export const issueDeAtraso = (veredicto) => {
   return { title: title.slice(0, 200), body: cuerpo, labels: ['frescura', 'bug'] };
 };
 
-/** El issue de la otra mitad: el índice no se pudo leer varias veces seguidas. */
-export const issueDeSinLectura = ({ seguidas, motivo, url }) => ({
-  title: `[frescura] El sitio no contesta: ${seguidas} lecturas fallidas seguidas`,
-  body: [
-    '> Abierto automáticamente por `verificarFrescuraDelSitio` (B-882).',
-    '',
-    `El chequeo no pudo leer \`${url}\` en las últimas **${seguidas}** corridas.`,
-    '',
-    `Último motivo: \`${String(motivo ?? '').replace(/`/g, "'").slice(0, 300)}\``,
-    '',
-    'Una lectura fallida suelta es un problema del chequeo y no se avisa. Varias seguidas',
-    'ya no: significa que el índice que el listado del sitio necesita no está llegando, y',
-    'sin él la home no puede filtrar nada.',
-    '',
-    '---',
-    'Se cierra a mano: el chequeo no cierra issues.',
-  ].join('\n'),
-  labels: ['frescura', 'bug'],
-});
+/**
+ * El issue de la otra mitad: el índice no se pudo leer varias veces seguidas.
+ *
+ * **Acá tampoco entra texto libre.** El `motivo` se reduce al vocabulario cerrado
+ * de `MOTIVOS` —lo que no esté en la lista se imprime como `desconocido`— y la
+ * `url` es la del `.env`, que está impresa en cada página del sitio. Con eso, la
+ * promesa «al aviso solo pueden viajar conteos y valores de forma conocida» vale
+ * para los **dos** avisos y no solo para el de arriba, que es lo que el
+ * `auditor-privacidad` marcó: el `e.message` crudo del `fetch` era la única
+ * interpolación que dependía de que nadie le agregara mañana el cuerpo de la
+ * respuesta «para saber qué devolvió».
+ *
+ * El texto de verdad está en `sistema/frescura.lectura.detalle` y en el log.
+ */
+export const issueDeSinLectura = ({ seguidas, motivo, url }) => {
+  const conocido = Object.values(MOTIVOS).includes(motivo) ? motivo : 'desconocido';
+  return {
+    title: `[frescura] El sitio no contesta: ${seguidas} lecturas fallidas seguidas`.slice(0, 200),
+    body: [
+      '> Abierto automáticamente por `verificarFrescuraDelSitio` (B-882).',
+      '',
+      `El chequeo no pudo leer \`${url}\` en las últimas **${seguidas}** corridas.`,
+      '',
+      `Tipo de falla: \`${conocido}\`. El detalle está en \`sistema/frescura\` y en el log,`,
+      'que no son públicos.',
+      '',
+      'Una lectura fallida suelta es un problema del chequeo y no se avisa. Varias seguidas',
+      'ya no: significa que el índice que el listado del sitio necesita no está llegando, y',
+      'sin él la home no puede filtrar nada.',
+      '',
+      '---',
+      'Se cierra a mano: el chequeo no cierra issues.',
+    ].join('\n'),
+    labels: ['frescura', 'bug'],
+  };
+};

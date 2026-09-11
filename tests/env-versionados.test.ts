@@ -98,6 +98,10 @@ const EXCEPCIONES = new Set([
   'FIRESTORE_EMULATOR_HOST',
   'GA4_PROPERTY_ID',
   'SEARCH_CONSOLE_SITE',
+  // B-882 — el origen del sitio público, para que el chequeo de frescura pida el
+  // `events.json` por la misma URL que el público. Es el dominio: está impreso en
+  // cada página que el sitio sirve.
+  'SITIO_PUBLICO',
 ]);
 
 /**

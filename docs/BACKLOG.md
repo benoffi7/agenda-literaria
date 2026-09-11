@@ -1007,6 +1007,55 @@ Es más angosto que B-881 —solo espacios, no `''`— pero es la misma clase y 
 contesta igual en las cinco. El arreglo es
 `const nombre = persona?.nombre?.trim(); if (nombre) …`, con su caso.
 
+### B-882 · El sitio se queda viejo y nadie se entera hasta que alguien lo mira — ✅ hecho (2026-09-11) · P1
+
+El 2026-09-11 el dueño cargó ocho actividades, las publicó y **ninguna apareció**.
+El rebuild venía fallando desde el día anterior, y el único que se enteró fue él.
+**Ninguna alarma existente podía verlo:** los ocho dispatches salieron bien, así
+que `alerta: 'rebuild-agotado'` nunca se disparó y `sistema/rebuild` decía que
+estaba todo al día (B-884).
+
+**Por qué ésta y no vigilar el workflow: mide el efecto y no el mecanismo.** Las
+otras medidas vigilan eslabones; ésta vigila la promesa del producto — «lo que
+publicás aparece». Es complementaria de B-883, no su repuesto: aquél sabe **por
+qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow rojo.
+
+> ✅ **Cerrado.** `verificarFrescuraDelSitio`, `onSchedule every 30 minutes`, con
+> las cuatro decisiones resueltas:
+>
+> | | |
+> |---|---|
+> | **Qué compara** | el **conjunto de slugs**, las dos direcciones. No el conteo: dos diferencias que se cancelan dan el mismo número, y el conjunto además **nombra** lo que falta |
+> | **Cuánto tolera** | 40 min = debounce (5) + `timeout-minutes` (15) + otro build (15, por `cancel-in-progress`) + propagación (5). **Cada sumando anclado a otro archivo**, con test que se pone rojo si divergen |
+> | **Cómo avisa** | issue + `logger.error` con `alerta`. Uno por divergencia distinta, reaviso a las 24 h. **No cierra issues**: cerrar es del dueño, y un bot que cierra tapa cuánto duró |
+> | **Si no puede leer** | `sin-lectura` y contador; recién a las 4 seguidas habla, de otra cosa. **Un 200 que no es el índice no es «cero actividades»** |
+>
+> **Cuatro hallazgos sobre el propio arreglo.** El issue publicaba el minuto exacto
+> y eso reconstruye el `updatedAt` de un documento contra el `created_at` público
+> del issue (§5, D-138). `vistas` era un mapa y **el merge no borra claves**, así
+> que el documento crecía hasta el tope de 1 MB — y ahí la transacción falla y **la
+> alarma se muere en silencio**, que es el modo de falla exacto que este ítem
+> cierra. Más el `.select()` que faltaba y el vocabulario cerrado del motivo.
+>
+> **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
+> push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
+
+### B-886 · El chequeo de frescura no ve la edición de una actividad ya listada · P3
+
+Sale de B-882. El conjunto de slugs no cambia cuando se edita el título de una
+actividad que el sitio ya muestra —el slug es inmutable después de publicar,
+trampa 10—, así que un build que deja de correr después de una **edición** pasa
+inadvertido hasta la próxima alta o baja.
+
+**Lo que no se hace, y el motivo importa:** comparar el contenido de cada entrada
+es rederivar `toPublic`/`entradaDeIndice` dentro de una Cloud Function, y
+terminaría avisando de **sus propias diferencias** — la clase de B-88. El conjunto
+de slugs es la comparación más grande que no duplica ninguna derivación.
+
+Lo que sí puede servir ahora que B-884 cerró: comparar el `generadoEn` del índice
+contra `despacho.cubreHasta` de `sistema/rebuild`, que es una comparación de **dos
+marcas del pipeline** y no de dos derivaciones del documento.
+
 ### B-883 · El rebuild falló quince corridas seguidas y nadie recibió nada — ✅ hecho (2026-09-11) · P1
 
 **El dueño cargó ocho actividades, las publicó y se enteró mirando el sitio.** Entre
@@ -1050,7 +1099,20 @@ deduce «mis ocho actividades no están publicadas».
 > `«$NOMBRE_WORKFLOW»`, y `date -d` siendo GNU —o sea imposible de probar en la
 > máquina de quien lo escribe—.
 
-### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — 🟠 empezado (2026-09-11) · P1
+### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — ✅ hecho (2026-09-11) · P1
+
+> ✅ **Cerrado con B-882.** `remarcarPorFrescura` (`functions/marca-de-rebuild.js`)
+> vuelve a levantar el flag cuando el chequeo de frescura confirma una divergencia.
+> **Existe con nombre propio y no llama a `marcarRebuild` directo** por una razón
+> que encontró el chequeo de clase de B-83, no una preferencia: aquélla está
+> declarada como efecto **incondicional** —corresponde siempre que el documento
+> cambió, y no puede quedar debajo de un `return`— y acá el uso es un reintento
+> **condicionado**. Llamarla igual convertía un uso legítimo en una violación de la
+> invariante del otro.
+>
+> Cuelga de la misma decisión que abre el issue, o sea acotado por la firma de la
+> divergencia y por el reaviso de 24 h: **a lo sumo un build extra por día y por
+> divergencia distinta**, no uno cada media hora.
 
 **El flag se baja cuando GitHub acepta el `repository_dispatch`, no cuando el sitio
 tiene el cambio.** `registrarExito` computa `pendiente: milis(marcaActual) !==

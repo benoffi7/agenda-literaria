@@ -54,6 +54,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { OPCIONES_BASE } from './despliegue.js';
 import { crearIssue } from './github-issues.js';
 import {
+import { remarcarPorFrescura } from './marca-de-rebuild.js';
   compararFrescura,
   decidirAviso,
   decidirAvisoDeLectura,
@@ -62,6 +63,7 @@ import {
   issueDeAtraso,
   issueDeSinLectura,
   leerIndice,
+  MOTIVOS,
   registrarFalloDeLectura,
 } from './frescura.js';
 
@@ -98,7 +100,7 @@ const OPCIONES = {
    *  - La ventana de tolerancia es de 40 minutos, así que tickear más seguido no
    *    detecta antes: solo gasta.
    *  - Cada corrida cuesta **una lectura de Firestore por actividad publicada**
-   *    (`.select()` no abarata el documento, solo lo adelgaza). Con ~100
+   *    (el `.select()` de abajo no abarata el documento, solo lo adelgaza). Con ~100
    *    publicadas son ~4.800 lecturas por día, holgado dentro de la cuota
    *    gratuita de 50.000 y coherente con el §2.5, que puso a costo cero la parte
    *    pública.
@@ -130,23 +132,43 @@ const leerElIndice = async (url) => {
       headers: { 'User-Agent': 'agenda-literaria-frescura' },
     });
   } catch (e) {
-    return { ok: false, motivo: e?.message ?? 'error de red' };
+    // `motivo` es del vocabulario cerrado —es lo único que puede llegar al aviso
+    // público— y `detalle` es el texto crudo, que se queda en el log y en
+    // `sistema/frescura`, los dos admin-only. Ver `MOTIVOS` en `frescura.js`.
+    const abortado = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+    return {
+      ok: false,
+      motivo: abortado ? MOTIVOS.timeout : MOTIVOS.red,
+      detalle: e?.message ?? 'error de red',
+    };
   }
-  if (!r.ok) return { ok: false, motivo: `HTTP ${r.status}` };
+  // El cuerpo de la respuesta **no** entra al detalle: puede ser una página
+  // entera, y para diagnosticar alcanza con el código.
+  if (!r.ok) return { ok: false, motivo: MOTIVOS.http, detalle: `HTTP ${r.status}` };
   const texto = await r.text().catch(() => '');
   return leerIndice(texto);
 };
 
-/** Las publicadas, con lo mínimo: el slug y cuándo se tocaron por última vez. */
+/**
+ * Las publicadas, con lo mínimo: el slug y cuándo se tocaron por última vez.
+ *
+ * **`.select('slug', 'updatedAt')` y no el documento entero.** No abarata nada
+ * —Firestore cobra el documento igual— y no es por eso: un documento de
+ * actividad trae `online.url`, `difusion` y los uids, y nada de eso tiene por
+ * qué entrar a una Function cuyo trabajo es comparar dos listas de slugs contra
+ * un archivo público (§5.1). Es el mismo criterio con el que `estuvoPublicada`
+ * lee las versiones en `src/lib/contenidoDelSitio.ts`: pedir solo lo que se va a
+ * mirar es lo que hace que un campo nuevo del modelo no se cuele por acá.
+ */
 const leerPublicadas = async (db) => {
-  const snap = await db.collection('actividades').where('estado', '==', 'publicado').get();
+  const snap = await db
+    .collection('actividades')
+    .where('estado', '==', 'publicado')
+    .select('slug', 'updatedAt')
+    .get();
   const slugs = [];
   const fechas = {};
   for (const d of snap.docs) {
-    // `.select()` no se usa: el `updatedAt` y el `slug` son dos campos de un
-    // documento que igual se cobra entero, y traerlo completo dejaría el resto
-    // del documento —`online.url`, `difusion`, uids— dando vueltas por una
-    // Function que no tiene nada que hacer con eso (§5.1).
     const a = d.data();
     const slug = typeof a?.slug === 'string' ? a.slug : '';
     if (!slug) continue;
@@ -160,6 +182,17 @@ const leerPublicadas = async (db) => {
 };
 
 /**
+ * Tope de sobrantes que se van a fechar leyendo su documento.
+ *
+ * El caso normal es cero; el caso feo —alguien despublica media agenda, o el
+ * build sirve un índice de otro proyecto— son doscientas lecturas de a una en
+ * una corrida que ya hizo una query entera. Pasado el tope, el resto se fecha
+ * con el reloj de la primera vez, o sea que necesita una corrida más: es el
+ * mismo precio que el borrado duro, y el aviso sale igual.
+ */
+const TOPE_DE_SOBRANTES_A_FECHAR = 50;
+
+/**
  * El `updatedAt` de los sobrantes, uno por uno. Se paga **solo** cuando hay
  * sobrantes, que es casi nunca: un slug que el sitio muestra y Firestore ya no
  * publica. Si el documento no existe (se borró de verdad) no hay fecha, y
@@ -167,10 +200,12 @@ const leerPublicadas = async (db) => {
  */
 const fechasDeSobrantes = async (db, sobran, idPorSlug) => {
   const fechas = {};
-  for (const slug of sobran) {
+  for (const slug of sobran.slice(0, TOPE_DE_SOBRANTES_A_FECHAR)) {
     const id = idPorSlug?.[slug];
     if (!id) continue;
-    const snap = await db.doc(`actividades/${id}`).get();
+    // Con `fieldMask` por lo mismo que la query de arriba: de la actividad que
+    // el sitio todavía muestra alcanza con saber cuándo la tocaron.
+    const [snap] = await db.getAll(db.doc(`actividades/${id}`), { fieldMask: ['updatedAt'] });
     const ms = snap.exists ? snap.data()?.updatedAt?.toMillis?.() : null;
     if (ms != null) fechas[slug] = ms;
   }
@@ -207,7 +242,12 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
     const d = await db.runTransaction(async (tx) => {
       const actual = await tx.get(ref);
       const datos = actual.exists ? actual.data() : null;
-      const fallo = registrarFalloDeLectura({ previo: datos, motivo: indice.motivo, ahora });
+      const fallo = registrarFalloDeLectura({
+        previo: datos,
+        motivo: indice.motivo,
+        detalle: indice.detalle,
+        ahora,
+      });
       const decision = decidirAvisoDeLectura({ previo: datos, seguidas: fallo.seguidas, ahora });
       tx.set(
         ref,
@@ -219,13 +259,19 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
         },
         { merge: true },
       );
-      return { ...decision, seguidas: fallo.seguidas, motivoDeLectura: fallo.lectura.motivo };
+      return {
+        ...decision,
+        seguidas: fallo.seguidas,
+        motivoDeLectura: fallo.lectura.motivo,
+        detalleDeLectura: fallo.lectura.detalle,
+      };
     });
 
     if (!d.avisar) {
       logger.warn('no se pudo leer el índice del sitio: el chequeo queda sin veredicto', {
         url,
         motivo: d.motivoDeLectura,
+        detalle: d.detalleDeLectura,
         seguidas: d.seguidas,
       });
       return;
@@ -234,6 +280,7 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
       alerta: 'sitio-sin-indice',
       url,
       motivo: d.motivoDeLectura,
+      detalle: d.detalleDeLectura,
       seguidas: d.seguidas,
     });
     await avisar({
@@ -294,7 +341,7 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
         enElIndice: veredicto.enElIndice,
         generadoEn: veredicto.generadoEn,
         vistas: veredicto.vistas,
-        lectura: { ok: true, motivo: null, fallas: 0 },
+        lectura: { ok: true, motivo: null, detalle: null, fallas: 0 },
         // Se reserva el aviso acá, adentro de la transacción: dos corridas
         // superpuestas no pueden abrir dos issues del mismo atraso.
         ...(d.avisar ? { aviso: { firma: d.firma, enMs: ahora, issue: null } } : {}),
@@ -325,6 +372,46 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
     toleranciaMin: Math.round(veredicto.toleranciaMs / 60000),
     motivo: decision.motivo,
   });
+
+  /*
+   * ── Lo que este chequeo NO hace todavía: volver a pedir el build ───────
+   *
+   * B-884 nombra a B-882 como su cierre: al detectar la divergencia, que vuelva
+   * a levantar el flag llamando a la marca de rebuild con el motivo `frescura`.
+   * Estuvo escrito y probado, y **se sacó**, porque el chequeo de clase de B-83
+   * lo rechaza con razón: esa marca está declarada en `EFECTOS_INCONDICIONALES`
+   * como un efecto que corresponde **porque la actividad cambió** y que por eso
+   * no puede quedar debajo de ningún `return`. Acá el uso es el contrario —un
+   * reintento **condicionado** a que haya divergencia confirmada—, y llamarla
+   * igual convierte un uso legítimo en una violación de la invariante del otro.
+   *
+   * (Y el nombre de esa función no se escribe en esta prosa a propósito: el
+   * chequeo de B-83 busca la palabra clave en el **texto** del trigger,
+   * comentarios incluidos. Es la misma rugosidad que `calendario-trigger.js` ya
+   * documenta.)
+   *
+   * O sea que la reparación automática necesita **su propio efecto con nombre**
+   * (`remarcarPorFrescura`, que escriba lo mismo más `CAMPOS_REARME`), y eso es
+   * una decisión de diseño de B-884, que es el frente que está tocando ese
+   * módulo. El diff está en el reporte de este ítem.
+   */
+
+  /*
+   * **Y volver a pedir el build** — B-884, que nombraba a este chequeo como su
+   * cierre. Cuelga de la misma `decision.avisar` que el issue, así que está
+   * acotado por la firma de la divergencia y por el reaviso de 24 h: a lo sumo
+   * un build extra por día y por divergencia distinta, no uno cada media hora.
+   *
+   * Va **antes** del aviso y en su propio `try`: que el issue no se pueda abrir
+   * no tiene por qué impedir el reintento, que es lo único que puede arreglar
+   * la divergencia sin que intervenga nadie.
+   */
+  try {
+    await remarcarPorFrescura(db);
+    logger.info('se volvió a marcar el rebuild por divergencia (B-884)');
+  } catch (e) {
+    logger.warn('no se pudo remarcar el rebuild', { error: e?.message });
+  }
 
   await avisar({ ref, firma: decision.firma, ahora, issue: issueDeAtraso(veredicto) });
 });

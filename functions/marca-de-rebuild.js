@@ -33,3 +33,28 @@ export const marcarRebuild = (db, motivo) =>
     },
     { merge: true },
   );
+
+/**
+ * Volver a pedir el build porque **el sitio quedó atrasado**, no porque una
+ * actividad haya cambiado — B-884, y es lo que cierra ese ítem.
+ *
+ * **Escribe exactamente lo mismo que `marcarRebuild` y existe con nombre propio
+ * por una razón que no es estética.** Aquélla está declarada en
+ * `EFECTOS_INCONDICIONALES` (`tests/clases-de-bug.test.ts`): corresponde
+ * **siempre** que el documento cambió, así que el chequeo de la clase de B-83
+ * exige que no quede debajo de ningún `return`. Acá el uso es el contrario —un
+ * reintento **condicionado** a que el chequeo de frescura haya confirmado una
+ * divergencia—, y llamarla directo convertiría un uso legítimo en una violación
+ * de la invariante del otro. Lo intentó el frente de B-882 y el chequeo lo
+ * rechazó, con razón.
+ *
+ * El `motivo` viaja al `client_payload` del dispatch y queda en
+ * `despacho.motivo` (B-884), así que un build disparado por esta vía se
+ * distingue de uno disparado por una edición: es lo que permite leer después
+ * cuántas veces el sitio se reparó solo.
+ *
+ * **Está acotado por quien lo llama**, no por acá: cuelga de la misma decisión
+ * que abre el issue, o sea de la firma de la divergencia y del reaviso a las 24
+ * horas. A lo sumo un build extra por día y por divergencia distinta.
+ */
+export const remarcarPorFrescura = (db) => marcarRebuild(db, 'frescura');
