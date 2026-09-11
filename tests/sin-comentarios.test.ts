@@ -44,7 +44,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { sinComentarios } from '../scripts/sin-comentarios.mjs';
+import { sinComentarios, sinComentariosConFormato } from '../scripts/sin-comentarios.mjs';
 
 describe('qué saca: las cuatro sintaxis que aparecen en este repo', () => {
   it('el docblock y el `//` de TypeScript', () => {
@@ -81,6 +81,79 @@ describe('qué saca: las cuatro sintaxis que aparecen en este repo', () => {
     expect(sinComentarios('export const x = 1;\n\n\n    export const y = 2;')).toBe(
       sinComentarios('// viejo\nexport const x = 1;\nexport const y = 2;\n'),
     );
+  });
+});
+
+/**
+ * **Las dos salidas del módulo, y cuál es el default** — B-855.
+ *
+ * El módulo exporta dos cosas y eso es una decisión, no un detalle: la que elige
+ * el que escribe `sinComentarios(src)` sin pensarlo es la que va a estar en los
+ * tests que vengan. El default colapsa el espacio en blanco, y por eso
+ * reindentar no puede poner en rojo un aserto que no tiene nada que ver.
+ * `sinComentariosConFormato` es para el caso contrario y más frágil —cuando el
+ * aserto usa la **forma** a propósito— y se pide por nombre justamente para que
+ * sea una elección y no una herencia.
+ *
+ * Los dos casos de abajo son lo que impide que las salidas se separen: el
+ * primero fija que una es la otra más el colapso —así el control de clase del
+ * final, que corre sobre el default, vale para las dos— y el segundo fija la
+ * **única** diferencia, que es la que el consumidor de la variante necesita.
+ */
+describe('las dos salidas: `sinComentarios` es la variante más el colapso', () => {
+  // La forma real: `cerrarPanel` vive adentro del componente, así que su `};` de
+  // cierre está indentado dos espacios — que es el delimitador del que depende
+  // el recorte de `tests/listado-del-sitio.test.ts`.
+  const CON_FORMA = [
+    '  const cerrarPanel = () => {',
+    '    entradaPropia.current = false;',
+    '    window.history.back();',
+    '  };',
+  ].join('\n');
+
+  const RECORTE = /const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/;
+
+  it('el default no agrega ni saca nada: es la variante colapsada', () => {
+    /*
+     * Lo que hace que no haya dos saneadores. Si alguien arreglara un caso en
+     * uno solo, esto se pone rojo antes de que la divergencia llegue a un test
+     * sobre fuente — que es el modo de falla que B-855 vino a cerrar, con dos
+     * recortes locales que ya se habían separado del compartido.
+     *
+     * MUTACIÓN PROBADA: hacer que `sinComentarios` recorra por su cuenta (un
+     * `replace` de bloques más el colapso) deja este caso en rojo; sacarle el
+     * `.trim()` también.
+     */
+    for (const fuente of [
+      CON_FORMA,
+      '/** doc */\nexport const f = () => 1; // y nada más',
+      '<!-- nota -->\n<p>Hola</p>\n{/* otra */}',
+      "const u = 'a // b';\n\n  const v = 2;",
+    ]) {
+      expect(sinComentarios(fuente)).toBe(
+        sinComentariosConFormato(fuente).replace(/\s+/g, ' ').trim(),
+      );
+    }
+  });
+
+  it('y la variante conserva el salto y la indentación, que es para lo que existe', () => {
+    /*
+     * El consumidor es `tests/listado-del-sitio.test.ts`, que recorta el cuerpo
+     * de una función con `\n  };` — la indentación de cierre como delimitador
+     * de bloque. Acá está el mismo recorte en chico, para que la propiedad
+     * tenga dueño en el módulo y no solo en el test que la usa.
+     *
+     * MUTACIÓN PROBADA: hacer que la variante colapse también deja el `exec` en
+     * `null` y este caso en rojo — es literalmente el fallo que se midió antes
+     * de separar las dos salidas.
+     */
+    const limpio = sinComentariosConFormato(`// arriba\n${CON_FORMA}`);
+    const m = RECORTE.exec(limpio);
+    expect(m, 'la variante perdió la forma del bloque').not.toBeNull();
+    expect(m![0]).toContain('window.history.back()');
+    // Y la mitad negativa, que es la que explica por qué hay dos: sobre el
+    // default el mismo recorte no encuentra nada.
+    expect(RECORTE.exec(sinComentarios(CON_FORMA))).toBeNull();
   });
 });
 

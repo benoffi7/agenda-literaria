@@ -75,7 +75,15 @@ const TOKENS = new RegExp(
 );
 
 /**
- * El archivo **sin comentarios y sin espacios de más**.
+ * El archivo **sin comentarios, con su formato intacto**.
+ *
+ * Es el recorrido completo, y la única de las dos salidas que hace trabajo:
+ * `sinComentarios` es ésta más una línea. Se exporta porque hay un consumidor
+ * —`tests/listado-del-sitio.test.ts`— que pregunta por la **forma** del código y
+ * no solo por lo que nombra: recorta el cuerpo de una función con
+ * `/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/`, o sea usando la indentación
+ * de cierre como delimitador de bloque, y eso no sobrevive al colapso. Cuál de
+ * las dos es el default, y por qué, está en el docblock de `sinComentarios`.
  *
  * Cubre las cuatro sintaxis que aparecen en la lista de disparadores:
  * `{/* … *\/}` de JSX **como unidad** —sacando solo el interior quedan las llaves
@@ -124,7 +132,7 @@ const TOKENS = new RegExp(
  * identificador que el parser dice que es código. El día que alguien escriba esa expresión regular, el test
  * se pone rojo y viene a decidir acá — que es exactamente lo que B-853 no tuvo.
  */
-export const sinComentarios = (texto) => {
+export const sinComentariosConFormato = (texto) => {
   let salida = '';
   let ultimo = 0;
   let m;
@@ -154,5 +162,35 @@ export const sinComentarios = (texto) => {
     ultimo = fin;
   }
 
-  return (salida + texto.slice(ultimo)).replace(/\s+/g, ' ').trim();
+  return salida + texto.slice(ultimo);
 };
+
+/**
+ * El archivo **sin comentarios y sin espacios de más**, que es el default.
+ *
+ * ── Por qué el default colapsa, teniendo dos salidas — B-855 ───────────────
+ * Que el módulo tenga dos salidas es una decisión y no un detalle: la que elige
+ * el que escribe `sinComentarios(src)` sin pensarlo es la que va a estar en los
+ * tests que vengan.
+ *
+ * Colapsar **le saca el formato de encima al aserto**, y eso es lo que hace que
+ * un test sobre fuente afirme sobre el código y no sobre cómo quedó indentado:
+ * reflowear una llamada larga en tres líneas no puede poner en rojo un `toMatch`
+ * que no tiene nada que ver con eso. Es la propiedad que fija el caso «y el
+ * formato no cuenta» de `tests/sin-comentarios.test.ts`.
+ *
+ * `sinComentariosConFormato` es para el caso contrario y más frágil: cuando el
+ * aserto usa la **forma** —la indentación como delimitador de bloque— a
+ * propósito. Eso es legítimo, pero es una dependencia extra, así que se pide por
+ * nombre en vez de heredarse por descuido. Hoy son seis consumidores del default
+ * (los cinco de siempre más `tests/pagina-de-detalle.test.ts`, que se sumó con
+ * B-855) contra uno de la variante.
+ *
+ * El otro motivo es que dar vuelta el default no es gratis. `appcheck.test.ts`
+ * dice en un comentario propio que su aserto está escrito **porque** esto
+ * colapsa; invertirlo cambiaría en silencio lo que ven los cinco, y un aserto
+ * sobre fuente que sigue verde sobre un texto distinto puede estar afirmando
+ * menos — que es exactamente el modo de falla de B-853.
+ */
+export const sinComentarios = (texto) =>
+  sinComentariosConFormato(texto).replace(/\s+/g, ' ').trim();

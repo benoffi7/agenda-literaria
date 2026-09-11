@@ -3,6 +3,31 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+/**
+ * El fuente **sin comentarios** — B-855.
+ *
+ * Los docblocks de estos componentes explican justamente por qué el valor
+ * elegido ya no es `bg-acento/10 text-acento`, así que un barrido sobre el texto
+ * crudo fallaría contra su propia documentación — y la salida fácil sería dejar
+ * de explicarlo.
+ *
+ * Hasta B-855 el recorte era local. Se unificó porque el local **no tiene** el
+ * control de clase contra el parser de TypeScript que B-853 le puso al
+ * compartido: era un segundo lugar donde la misma familia de bugs —una apertura
+ * falsa que se come hasta el próximo cierre— podía nacer sin que nada se
+ * pusiera rojo.
+ *
+ * ── Por qué la variante y no el default ───────────────────────────────────
+ * `sinComentarios`, el default, colapsa el espacio en blanco. Este archivo tiene
+ * un aserto que usa la **indentación de cierre como delimitador de bloque**
+ * (`/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/`, más abajo), y eso no
+ * sobrevive al colapso: da `null` y el caso se cae con «no se encontro la funcion
+ * cerrarPanel». Medido: es el único de los 47 casos de este archivo que lo nota.
+ * Recortar por la forma es legítimo; lo que hace falta es pedirlo por nombre en
+ * vez de heredarlo.
+ */
+import { sinComentariosConFormato as sinComentarios } from '../scripts/sin-comentarios.mjs';
+
 import { AA_TEXTO, contraste, mezclar, oklchASrgb, type Srgb } from '@/lib/contraste';
 
 /**
@@ -137,18 +162,6 @@ const CLASES_CON_ANILLO: ReadonlySet<string> = (() => {
     [...valores].filter(([, v]) => /focus-visible:outline/.test(expandir(v))).map(([k]) => k),
   );
 })();
-
-/**
- * El fuente **sin comentarios**.
- *
- * Los docblocks de estos componentes explican justamente por qué el valor elegido
- * ya no es `bg-acento/10 text-acento`, así que un barrido sobre el texto crudo
- * fallaría contra su propia documentación — y la salida fácil sería dejar de
- * explicarlo. Es el mismo recorte que hacen `tests/pagina-de-detalle.test.ts` y
- * `tests/autoguardado.test.ts`.
- */
-const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const fuentes = (): { archivo: string; codigo: string }[] =>
   archivos().map((f) => ({ archivo: f, codigo: sinComentarios(readFileSync(raiz(f), 'utf8')) }));

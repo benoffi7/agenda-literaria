@@ -962,6 +962,38 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-876 · El control de clase del saneador no mira los `.astro`, y hay un literal de regex que lo rompe hoy · P2
+
+**Salió de B-855.** `tests/sin-comentarios.test.ts` compara contra el parser de
+TypeScript sobre los `.ts/.tsx/.mjs/.js` del repo — **no** sobre los `.astro`. Y
+los `.astro` son justamente lo que leen los dos tests que B-855 acaba de conectar
+al saneador compartido, más otros ocho que lo hacen con recortes locales.
+
+**No es hipotético: extender el control al frontmatter se probó y da rojo con el
+árbol de hoy.** `src/layouts/Base.astro` tiene una regex cuyo `\/\/` contiene el
+par `//` literal. El saneador lo lee como comentario de línea —exactamente el caso
+que su propio docblock declara no poder distinguir, «no lexea literales de
+expresión regular»— y se come el resto de la línea. Es **el único ofensor** entre
+los 28 `.astro` de `src/`, medido.
+
+Ningún aserto actual lo sufre —se verificó predicado por predicado en B-855— pero
+es la misma forma de agujero latente que B-853: espera a que alguien apunte un
+barrido a `Base.astro` preguntando por algo de esa línea.
+
+Dos salidas y hay que elegir: **(a)** escribir la regex sin el par literal, que
+cuesta una línea y deja el control de clase extensible; o **(b)** enseñarle al
+saneador a reconocer un literal de regex, que el módulo ya argumentó que no vale
+—necesita el token anterior, o sea medio parser de JS, y no serviría para
+`firestore.rules`—. Si sale (a), el control se extiende a los `.astro` en el mismo
+cambio; sin eso no hay red.
+
+> 📌 **Y un dato del barrido que cambia la escala del problema:** B-855 hablaba de
+> **dos** recortes locales. Son **veinticinco** archivos de test con su propio
+> saneador, todos con el modo de falla que B-855 vino a cerrar. Uno
+> (`analyticsSitio.test.ts`) documenta a propósito por qué usa el suyo. El criterio
+> de qué unificar hay que decidirlo archivo por archivo, pero el argumento de
+> B-855 aplica con fuerza 25 a 2.
+
 ### B-875 · Un fixture con fecha cableada rompió la publicación del sitio entero, y nadie se enteró · P1
 
 **Lo reportó el dueño el 2026-09-11** preguntando por qué una actividad publicada
@@ -1645,7 +1677,27 @@ solo archivo— o si el umbral está mal calibrado para un compositor y hay que
 subirlo con argumento. Las dos son respuestas válidas; la que no vale es dejarlo
 sin decidir, porque entonces el umbral deja de significar algo.
 
-### B-855 · Dos tests sobre fuente tienen su propio saneador, y uno de ellos ya puede dejarlo · P3
+### B-855 · Dos tests sobre fuente tienen su propio saneador, y uno de ellos ya puede dejarlo — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Hecho. Las dos afirmaciones eran ciertas; la primera estaba incompleta.**
+>
+> El compartido no saca «de más» solo los `<!-- -->`: la familia más grande son
+> los **`//` que no arrancan la línea**, que el recorte local no tocaba porque
+> anclaba en `^\s*`. Van en la misma dirección que el ítem decía —más comentario,
+> ningún identificador de código— pero la que más texto sacaba no estaba anotada.
+>
+> La segunda fue exacta al caso: con el default, `listado-del-sitio` da **1 de
+> 47** en rojo, y es el `cerrarPanel`.
+>
+> **Lo que el ítem dejaba abierto: el default sigue siendo el que colapsa.**
+> Colapsar le saca el formato de encima al aserto, y `sinComentariosConFormato` es
+> la elección frágil, así que se pide por nombre. El contrafáctico pesa igual:
+> `appcheck.test.ts` dice en un comentario propio que su aserto está escrito
+> **porque** esto colapsa.
+>
+> **Y la verificación que el ítem no pedía pero el cambio sí:** que los asertos
+> sigan **significando** lo mismo se midió predicado por predicado, no por «quedó
+> verde». Uno hubo que reescribir. Quedó abierto **B-876**.
 
 **La segunda mitad de B-853.** `tests/listado-del-sitio.test.ts` y
 `tests/pagina-de-detalle.test.ts` se escribieron con un recorte de comentarios

@@ -2,6 +2,43 @@
 
 ## Sin publicar
 
+- **Los dos tests que esquivaban el saneador compartido dejaron de hacerlo, y el
+  módulo pasó a tener dos salidas** — **B-855**, la segunda mitad de B-853.
+  `pagina-de-detalle` y `listado-del-sitio` recortaban los comentarios con dos
+  `replace` propios, y ese esquive era la señal de que el bug de B-853 se conocía
+  a medias: **ninguno de los dos recortes tiene el control de clase contra el
+  parser de TypeScript** que B-853 le puso al compartido, así que eran dos lugares
+  donde la misma familia podía nacer de nuevo sin que nada se pusiera rojo.
+
+  **La corrección al ítem:** el compartido no saca «de más» solo la prosa de los
+  `<!-- -->`. La familia más grande es otra — los **`//` que no arrancan la
+  línea**, que el recorte local no tocaba porque anclaba en `^\s*`: el
+  `// saca acentos` de `slugify.ts`, el `// terracota` de `identidad.ts`, los
+  `? // …` de `detallePublico.ts`. O sea que los `not.toContain` pasaron a mirar
+  **menos** texto ajeno, no más. **Que además siguieran afirmando lo mismo no se
+  dio por sentado:** los 19 predicados de `pagina-de-detalle` y el recorrido de 208
+  archivos se evaluaron con los dos saneadores y dan el mismo valor uno por uno.
+
+  **`listado-del-sitio` no podía usar el default, y el motivo no era el bug:** el
+  compartido colapsa el espacio en blanco, y ese archivo recorta el cuerpo de una
+  función usando **la indentación de cierre como delimitador de bloque**. Medido,
+  es **el único de sus 47 casos** que lo nota. Así que el módulo se partió en dos
+  salidas y **el default sigue siendo el que colapsa**: colapsar le saca el formato
+  de encima al aserto, que es lo que hace que un test sobre fuente afirme sobre el
+  código y no sobre cómo quedó indentado. La variante es la elección frágil y se
+  pide por nombre. Dar vuelta el default tampoco era gratis: `appcheck.test.ts`
+  dice en un comentario propio que su aserto está escrito **porque** esto colapsa.
+
+  Y un aserto hubo que reescribir: el `not.toMatch(/proxima[^\n]*slice/)` decía «en
+  la misma línea», y sin saltos de línea habría pasado a ser `.*` sobre el archivo
+  entero — un aserto que se pone rojo por algo que no tiene nada que ver.
+
+  **Quedó un agujero anotado, y no es hipotético: B-876.** El control de clase
+  recorre los `.ts/.tsx/.mjs/.js` y **no** los `.astro`, que son justo los que
+  estos dos tests leen. Extenderlo se probó y **da rojo hoy**, por un literal de
+  expresión regular en `Base.astro` cuyo `\/\/` el saneador lee como comentario —
+  el caso exacto que su docblock declara no poder distinguir.
+
 - **Una fecha cableada en un fixture rompió la publicación del sitio entero** —
   **B-875**. El dueño preguntó por qué una actividad publicada no aparecía, y la
   respuesta no era de esa actividad: **el sitio no se reconstruía desde el día

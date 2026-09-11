@@ -24,11 +24,6 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PREFIJO_ACTIVIDAD, rutaDeDetalle } from '@/lib/rutasPublicas';
 
-const DETALLE = 'src/pages/actividad/[slug].astro';
-const HOME = 'src/pages/index.astro';
-
-const fuente = (rel: string): string => readFileSync(rel, 'utf8');
-
 /**
  * El archivo **sin comentarios**, que es lo que hay que mirar para preguntar
  * «¿nombra este campo?».
@@ -36,10 +31,37 @@ const fuente = (rel: string): string => readFileSync(rel, 'utf8');
  * Los docblocks de estas plantillas explican justamente por qué NO se publica
  * `difusion` ni `online.url`, así que un barrido sobre el texto crudo falla
  * contra su propia documentación — y la salida fácil sería dejar de explicarlo.
- * Es el mismo recorte que hace `tests/autoguardado.test.ts`.
+ *
+ * ── Por qué es el saneador compartido y no un recorte de acá — B-855 ───────
+ * Hasta B-855 esto eran dos `replace` locales, y ese esquive era la mitad que
+ * B-853 no cerró: el recorte propio **no tiene** el control de clase contra el
+ * parser de TypeScript que sí tiene el compartido, así que era un segundo lugar
+ * donde la misma familia de bugs —una apertura falsa que se come hasta el
+ * próximo cierre— podía nacer sin que nada se pusiera rojo.
+ *
+ * El compartido saca **más** que el recorte viejo, y las dos cosas de más son
+ * comentarios que el recorte dejaba pasar: los `<!-- … -->` del markup y los
+ * `//` que no arrancan la línea (el local solo mataba los de línea entera). O
+ * sea que los `not.toContain` de abajo miran menos texto ajeno que antes, no
+ * más. Que además sigan **afirmando lo mismo** se verificó predicado por
+ * predicado —los 19 de este archivo, más el recorrido de 208 archivos de «nadie
+ * arma el path a mano»— dando el mismo valor con los dos saneadores; el único
+ * aserto que hubo que reescribir está marcado abajo.
+ *
+ * **Ojo con hasta dónde llega el control de clase:** recorre los
+ * `.ts/.tsx/.mjs/.js` y **no** los `.astro`, que son justamente los que este
+ * archivo lee. Extenderlo al frontmatter se probó y hoy da rojo por un caso
+ * real —`Base.astro` tiene `/^https?:\/\//i.test(…)`, o sea el literal de
+ * expresión regular que el saneador declara no poder distinguir de un `//`— así
+ * que quedó anotado aparte. No es una regresión de B-855: el recorte local que
+ * había acá no tenía **ningún** control.
  */
-const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
+
+const DETALLE = 'src/pages/actividad/[slug].astro';
+const HOME = 'src/pages/index.astro';
+
+const fuente = (rel: string): string => readFileSync(rel, 'utf8');
 
 /** El frontmatter del `.astro`: lo que va entre los dos `---`. */
 const frontmatter = (src: string): string => {
@@ -271,7 +293,14 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(codigo).toMatch(/rutaDeMes\(detalle\.mes\.clave\)/);
     // El atajo prohibido: la plantilla no puede armar una clave de mes por su
     // cuenta, ni de `proxima.iso` ni de ninguna otra fecha.
-    expect(codigo).not.toMatch(/proxima[^\n]*slice/);
+    // B-855: el `[^\n]*` de antes decía «en la misma línea», y el saneador
+    // compartido colapsa los saltos — o sea que habría pasado a ser `.*` sobre
+    // el archivo entero, y cualquier `.slice(` lejano lo pondría rojo sin tener
+    // nada que ver. El bound que importa es que el `slice` cuelgue de `proxima`,
+    // y eso se escribe sin depender del formato.
+    // MUTACIÓN PROBADA: escribir `rutaDeMes(detalle.proxima.iso.slice(0, 7))`
+    // en la plantilla pone este aserto en rojo.
+    expect(codigo).not.toMatch(/proxima[^\s]*\.slice\(/);
     expect(codigo).not.toContain('claveDeMes');
   });
 });
