@@ -962,6 +962,30 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-879 · La «red» de un barrido no es un `fetch`: es la corrida entera · P3
+
+**Salió de B-867**, y es el ítem que ese cierre deja anticipado. El chequeo de la
+clase de B-85 define `red` como «habla con un servicio de afuera» y la reconoce por
+`fetch(`, `cal.events.` y `google.\w+(`. Con esa definición **los tres barridos
+quedan afuera de la clase por no tener red** — y ése es un motivo más débil de lo
+que parece.
+
+Entre la query que decide qué borrar y el `delete`, esos barridos hacen
+round-trips: `bucket.file().delete()` por propuesta en retención, N borrados por
+corrida en imágenes. Son latencia real, y durante toda esa ventana el estado que
+se leyó al principio puede cambiar — que es **exactamente el daño que la clase de
+B-85 nombra**. B-864 existió por eso.
+
+**Si `red` se ensanchara a contar esos round-trips, `limpiarImagenesHuerfanas` y
+`borrarPropuestasVencidas` se ponen rojos en el chequeo principal**, y la respuesta
+correcta sería la guarda declarada de cada uno (`GUARDAS_DE_BARRIDO`, B-867). O sea
+que la infraestructura para contestarlo ya está; lo que falta es la decisión de si
+el chequeo tiene que exigir esa guarda en vez de aceptarla declarada.
+
+Es una decisión y no un renglón: ensancharlo pone en rojo dos funciones que hoy
+pasan, y la salida no es relajarlo sino decidir qué guarda le exigimos a un barrido
+que borra.
+
 ### B-877 · El grafo de imports pierde todo `import` multilínea, y el §1.5 verifica «cero ciclos» sobre un grafo incompleto · P2
 
 **Lo encontró B-856 al verificar el fan-out del formulario.** El regex `IMPORTS`
@@ -1429,7 +1453,23 @@ conversión abandonada dejando una `aceptada` que apunta a una actividad que no
 existe). Marcarla `en-revision` al abrir no tiene ese problema: `en-revision` es
 reversible, se ve en la bandeja y ya renueva el plazo por el reloj de B-844.
 
-### B-867 · El detector de la clase de B-85 no ve un barrido que borra, y hay un caso que congela esa ceguera como garantía · P3
+### B-867 · El detector de la clase de B-85 no ve un barrido que borra, y hay un caso que congela esa ceguera como garantía — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Hecho, con el alcance medido antes del ensanche y con las dos mitades.**
+>
+> **La medición, que era la condición del ítem:** `.delete(` suma cuatro triggers
+> y **ninguno queda en la clase** — a los tres barridos les falta la red, y al
+> cuarto la lectura. Lo que se puso rojo fue el caso que congelaba la ceguera
+> («pasan porque borran») y la copia mala en versión `delete`, que pasaba en
+> verde. Los dos se reescribieron diciendo lo cierto; el segundo ahora afirma lo
+> contrario.
+>
+> **Y por eso el regex solo no alcanzaba:** los tres pasan hoy por no hablar con la
+> red, que es un motivo más débil que el que tenían escrito. `GUARDAS_DE_BARRIDO`
+> declara por barrido su guarda —precondición en `borrarPropuestasVencidas`
+> (ventana **cubierta**), margen en los otros dos (ventana **aceptada**, con el
+> motivo escrito)—, con la declaración **y el uso** anclados en el fuente, y no
+> deja declarar un margen como si cubriera la corrida. Queda **B-879**.
 
 **Lo encontró el `auditor-privacidad` sobre B-864.** `sintomasDeB85`
 (`tests/clases-de-bug.test.ts`) define el efecto como `/\.(set|update)\(/`, así que
@@ -1574,7 +1614,18 @@ escritura anónima cerrada da igual —la colección está vacía—; el día qu
 `allow create` (**B-836a**) conviene revisarlo junto con
 `MAX_PROPUESTAS_POR_CORRIDA`, que hoy recorta el **borrado** y no la **lectura**.
 
-### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` · P4
+### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` — ✅ hecho (2026-09-11) · P4
+
+> ✅ **Hecho junto con B-867** (mismo archivo, misma función). `RE_RED` pasó a
+> `\bgoogle\.\w+\(` y quedó declarada **una sola vez**: estaba copiada literal en
+> `helpersConRed` y en `nombresConRed`, o sea la clase de B-88 esperando a que
+> alguien ensanchara una de las dos.
+>
+> **Medido:** el único trigger que cambia de respuesta es `traerAnaliticaDelSitio`,
+> por su helper `clientes`. Sigue afuera de la clase por lo que el ítem decía: **no
+> lee estado**. Las dos mitades están afirmadas por separado, así que el día que
+> aparezca ese cursor el chequeo lo agarra — la mutación que le agrega un `.get()`
+> pone en rojo el chequeo de B-85 mismo.
 
 **Lo midió el frente de B-845** al ensanchar el chequeo del otro lado.
 `helpersConRed` busca `fetch(`, `cal.events.` y `google.calendar(`, así que

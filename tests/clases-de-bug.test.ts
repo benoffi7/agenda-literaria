@@ -138,6 +138,34 @@ const primero = (cuerpo: string, re: RegExp): number => {
 };
 
 /**
+ * Qué cuenta como «hablar con la red» en este archivo: un `fetch`, el cliente de
+ * Calendar, y **cualquier cliente de `googleapis`** — B-862.
+ *
+ * ── Por qué `google\.\w+\(` y no `google\.calendar\(` ──────────────────────
+ * El detector reconocía las formas que ya había visto y no la que hay.
+ * `traerAnaliticaDelSitio` habla con GA4 y con Search Console por
+ * `google.analyticsdata(` y `google.searchconsole(`, así que daba `red: false`:
+ * el mismo tipo de ceguera que B-845 cerró del otro lado —allá el verbo estaba
+ * en el módulo de al lado, acá el verbo era otro—.
+ *
+ * **Medido antes de ensancharlo, que es lo que el ítem pedía y no al revés:** de
+ * los once triggers, el único que cambia de respuesta es
+ * `traerAnaliticaDelSitio`, y entra por su helper `clientes` —el único helper de
+ * todo `functions/**` que el regex nuevo suma—. **Ninguno pasa a estar en la
+ * clase de B-85**, y de ése el motivo es preciso: no lee estado, así que le
+ * falta el primer síntoma y no solo el segundo. Está afirmado abajo
+ * (`el detector de red ve los clientes de googleapis`), así que el día que
+ * alguien le agregue el `.get()` que el comentario de la lista de triggers
+ * anticipa, el chequeo lo ve en vez de dejarlo pasar.
+ *
+ * Se declara **una sola vez** y la usan los dos lados que la necesitan —los
+ * helpers locales de un archivo y los nombres que ese archivo importa—. Eran dos
+ * copias literales del mismo criterio, o sea la clase de B-88 esperando a que
+ * alguien ensanchara una sola de las dos.
+ */
+const RE_RED = /\bfetch\(|cal\.events\.|\bgoogle\.\w+\(/;
+
+/**
  * Helpers del módulo que llegan a la red. Se derivan del fuente para que un
  * helper nuevo con `fetch` adentro cuente sin que nadie lo agregue a una lista.
  */
@@ -146,7 +174,7 @@ const helpersConRed = (src: string): string[] =>
     .map((m) => ({ nombre: m[1]!, desde: m.index! }))
     .filter(({ desde }, i, todos) => {
       const hasta = todos[i + 1]?.desde ?? src.length;
-      return /\bfetch\(|cal\.events\.|google\.calendar\(/.test(src.slice(desde, hasta));
+      return RE_RED.test(src.slice(desde, hasta));
     })
     .map(({ nombre }) => nombre);
 
@@ -386,8 +414,14 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        * de documento y éste es un schedule — y su efecto tampoco es duplicable,
        * porque borrar dos veces el mismo documento deja el mismo estado
        * (`ignoreNotFound` en el objeto es justamente eso escrito). **B-85**
-       * (leer estado → red → escribir lo leído) pide una escritura de lo leído,
-       * y acá lo único que se escribe es un borrado.
+       * (leer estado → red → escribir lo leído) sí lo mira, y desde **B-867** lo
+       * mira de verdad: hasta entonces esta línea decía «lo único que se escribe
+       * es un borrado» como si eso lo sacara de la clase, que es precisamente lo
+       * que el detector no veía —B-864 tenía la forma de B-85 con el verbo
+       * cambiado—. Hoy borrar cuenta como escribir, este barrido entra con los
+       * dos síntomas prendidos, y lo que lo deja afuera es no hablar con la red;
+       * lo que lo protege de verdad en su ventana propia es la precondición de
+       * B-864, declarada abajo en `GUARDAS_DE_BARRIDO`.
        */
       /*
        * B-830 paso 8 / DEC-11 y **B-863** — cerrar una propuesta borra su
@@ -455,13 +489,17 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        *    documento*, y éste es un schedule; y su efecto tampoco es
        *    duplicable: escribe un documento fijo con `set`, así que dos
        *    corridas producen un documento y no dos.
-       *  - **B-85** (leer estado → red → escribir lo leído) pide que la lectura
-       *    venga **antes** de la red, y acá no hay ninguna lectura de Firestore:
-       *    el resumen se arma entero de las dos APIs y se escribe pisando.
-       *    Si algún día se quisiera conservar algo del documento anterior
-       *    —«desde cuándo hay datos», por ejemplo, para no depender del informe
-       *    del primer día— ese `.get()` lo pondría en la clase de B-85 y habría
-       *    que meter la escritura en una transacción.
+       *  - **B-85** (leer estado → red → escribir lo leído) pide los tres
+       *    síntomas juntos —el orden salió de la condición en B-845— y acá falta
+       *    el primero: no hay ninguna lectura de Firestore, el resumen se arma
+       *    entero de las dos APIs y se escribe pisando. La red **sí** se ve
+       *    desde **B-862**: hasta entonces el detector conocía `fetch(`,
+       *    `cal.events.` y `google.calendar(`, así que los clientes de GA4 y de
+       *    Search Console daban `red: false` y a este schedule le faltaban dos
+       *    síntomas y no uno. Si algún día se quisiera conservar algo del
+       *    documento anterior —«desde cuándo hay datos», por ejemplo, para no
+       *    depender del informe del primer día— ese `.get()` lo pondría en la
+       *    clase de B-85, y ahora el chequeo lo agarra en vez de dejarlo pasar.
        */
       'traerAnaliticaDelSitio',
     ]);
@@ -988,7 +1026,7 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
     const locales = helpersConRed(fuente(archivo));
     const importados = [...importesDe(archivo).keys()].filter((nombre) => {
       const decl = enFunctions(archivo, nombre);
-      return !!decl && /\bfetch\(|cal\.events\.|google\.calendar\(/.test(decl.cuerpo);
+      return !!decl && RE_RED.test(decl.cuerpo);
     });
     return [...new Set([...locales, ...importados])];
   };
@@ -1039,9 +1077,16 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
    * larga, y el único blindaje que este repo acepta para eso es la transacción.
    *
    * Más estricto no salió ruidoso, y no es una esperanza: los tres barridos
-   * pasan porque **borran** (`escritura: false`, afirmado abajo) y
+   * pasan por **no hablar con la red** (`red: false`, afirmado abajo) y
    * `dispararRebuild` pasa por su transacción, con los tres síntomas prendidos
    * (también afirmado abajo, que es el positivo que impide el verde vacío).
+   *
+   * **Ese primer motivo se corrigió en B-867 y conviene leerlo como cambió:**
+   * decía «pasan porque borran (`escritura: false`)», que era la ceguera del
+   * detector —el efecto definido como `set|update`— escrita como garantía. Hoy
+   * los tres dan `escritura: true` y lo que los deja afuera es la red que no
+   * tienen, que es un motivo más débil; la ventana propia de un barrido la cubre
+   * (o no) su guarda declarada, abajo.
    */
   const textoTrazado = (t: Trigger): string => trazaDe(t).cuerpos.join('\n');
 
@@ -1050,11 +1095,29 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
   const sintomasDeB85 = (texto: string, red: RegExp): Sintomas => ({
     lectura: /\.get\(\)/.test(texto),
     red: red.test(texto),
-    // `.set(` de más: un `Map` en memoria también lo tiene (`ids.set(op.id, x)`,
-    // el falso positivo que el detector de B-82 nombra). Hoy no toca a ninguno
-    // —los tres barridos dan `escritura: false`, y ese aserto es lo que avisa el
-    // día que un `Map` se cuele en la traza de uno de ellos.
-    escritura: /\.(set|update)\(/.test(texto),
+    /*
+     * **`.delete(` cuenta como escritura desde B-867**, y sin eso un barrido que
+     * borra lo que leyó era invisible: el efecto estaba definido como
+     * `set|update`, así que «leer al principio de la corrida y borrar segundos
+     * después sin comparar la versión» —la forma exacta de B-864— salía limpio.
+     * Y la ceguera venía **afirmada**: el caso de abajo decía que los tres
+     * barridos «pasan porque borran», o sea que congelaba como garantía justo lo
+     * que el detector no estaba mirando. Es la misma clase que B-845, del tercer
+     * lado: allá el efecto se escapaba por vivir en el módulo de al lado, acá
+     * por llamarse de otra manera.
+     *
+     * **Medido antes de ensancharlo:** suma cuatro triggers y ninguno pasa a
+     * estar en la clase —los tres barridos (`limpiarImagenesHuerfanas`,
+     * `limpiarVersionesHuerfanas`, `borrarPropuestasVencidas`) y
+     * `borrarImagenAlCerrar`, que no lee nada—, porque a los cuatro les falta la
+     * red. Por eso el ensanche solo no alcanza y abajo va la otra mitad: la
+     * guarda declarada barrido por barrido.
+     *
+     * El falso positivo posible es el de siempre con un verbo más: un `Map` en
+     * memoria tiene `.set(` y también `.delete(`. Los casos de abajo dicen, uno
+     * por uno, de dónde sale el borrado de cada barrido.
+     */
+    escritura: /\.(set|update|delete)\(/.test(texto),
     transaccion: /runTransaction\(/.test(texto),
   });
 
@@ -1087,28 +1150,208 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
   });
 
   /**
-   * Y el otro lado, que es lo que B-845 vino a poder afirmar: los tres barridos
-   * del corte puro/pegamento pasan **porque borran**, no porque el chequeo no
-   * los vea. Las dos mitades importan: `lectura: true` dice que el chequeo los
-   * mira de verdad, `escritura: false` dice por qué salen limpios.
+   * El detector de red, contra el archivo que lo destapó — B-862.
+   *
+   * Dos mitades que no se implican: que el regex nuevo **vea** los clientes de
+   * `googleapis` (el positivo; sin esto el ensanche podría no haber cambiado
+   * nada y nadie se enteraría), y que lo que mantiene a ese schedule fuera de la
+   * clase sea **la lectura que no tiene** y no la red que el detector no veía.
+   * La segunda es la que se pone roja el día que alguien le agregue un `.get()`
+   * —un cursor de la última ventana traída, que es el caso que el comentario de
+   * la lista de triggers anticipa—, y ese día el chequeo de arriba lo agarra.
+   */
+  it('el detector de red ve los clientes de googleapis, y la analítica queda afuera por la lectura', () => {
+    expect(nombresConRed('functions/analitica-trigger.js')).toContain('clientes');
+    const t = programadas.find((x) => x.nombre === 'traerAnaliticaDelSitio')!;
+    const { lectura, red, escritura } = sintomasDe(t);
+    expect({ red, escritura }).toEqual({ red: true, escritura: true });
+    expect(lectura, 'la analítica lee estado: ahora está en la clase de B-85').toBe(false);
+  });
+
+  /**
+   * Y el otro lado, que es lo que B-845 vino a poder afirmar y **B-867
+   * corrigió**: los tres barridos del corte puro/pegamento entran al chequeo, y
+   * lo que se afirma de ellos cambió de mitad.
+   *
+   * La versión anterior de este caso decía «pasan **porque borran**», y eso era
+   * la ceguera del detector escrita como garantía: pasaban porque el efecto
+   * estaba definido como `set|update`, no porque borrar fuera inocuo. B-864 es
+   * el contraejemplo exacto —`borrarPropuestasVencidas` tenía la forma de B-85
+   * en su versión `delete`— y este caso la daba por buena.
+   *
+   * Ahora los tres dan `escritura: true` —el borrado se ve— y pasan por la
+   * única mitad que les queda: **no hablan con la red**, así que no hay una
+   * llamada larga del otro lado de la cual el estado leído pueda envejecer. Es
+   * un motivo más débil que el anterior y hay que decirlo entero: la ventana de
+   * un barrido no es un `fetch`, es la corrida —hasta 50 documentos, cada uno
+   * con su borrado de Storage en el medio—. Por eso este caso solo no alcanza, y
+   * abajo cada barrido declara cuál es su guarda.
    *
    * Se enumeran a propósito, contra la doctrina de este archivo de afirmar la
-   * propiedad y no la lista: son los tres casos que el chequeo no veía, y lo que
-   * se congela es exactamente que ahora los ve. Un barrido nuevo no tiene que
-   * entrar acá — entra solo al chequeo de arriba, que es donde importa.
+   * propiedad y no la lista: son los tres casos que el chequeo no veía. Un
+   * barrido nuevo no tiene que entrar acá — entra solo al chequeo de arriba y a
+   * la declaración de guardas de abajo, que es donde importa.
    */
-  it('los tres barridos entran al chequeo, y pasan porque borran', () => {
-    const barridos = [
-      'limpiarImagenesHuerfanas',
-      'limpiarVersionesHuerfanas',
-      'borrarPropuestasVencidas',
-    ];
-    for (const nombre of barridos) {
+  const BARRIDOS = [
+    'limpiarImagenesHuerfanas',
+    'limpiarVersionesHuerfanas',
+    'borrarPropuestasVencidas',
+  ];
+
+  it('los tres barridos entran al chequeo con su borrado a la vista — B-867', () => {
+    for (const nombre of BARRIDOS) {
       const t = programadas.find((x) => x.nombre === nombre)!;
       const s = sintomasDe(t);
       expect(s.lectura, `${nombre}: el chequeo no ve su lectura`).toBe(true);
-      expect(s.escritura, `${nombre}: escribe, y eso ya no es un barrido`).toBe(false);
+      expect(s.escritura, `${nombre}: el chequeo no ve su borrado`).toBe(true);
+      expect(s.red, `${nombre}: habla con la red, así que su guarda ya no alcanza`).toBe(false);
     }
+  });
+
+  /**
+   * ── La otra mitad de B-867: qué protege a cada barrido ────────────────────
+   *
+   * Con el borrado a la vista, los tres barridos son funciones programadas que
+   * **escriben lo que leyeron** y **no** usan transacción. Lo único que hoy los
+   * saca de la clase de B-85 es no tener una llamada a la red en el medio, y eso
+   * no dice nada sobre la ventana que sí tienen: entre la query del principio de
+   * la corrida y el borrado pasan segundos, y en esos segundos un admin puede
+   * tocar lo que se va a borrar. Es B-864 palabra por palabra.
+   *
+   * Hoy **uno de los tres tiene guarda de versión y los otros dos no**, y hasta
+   * acá nada nombraba la diferencia — `MARGEN_DE_GRACIA_MS` parece una guarda de
+   * lo mismo y es de otra cosa. Este registro la nombra, con tres formas
+   * aceptadas:
+   *
+   *  - **`precondicion`** — el borrado lleva la versión que la lectura vio
+   *    (`delete({ lastUpdateTime })`): si alguien la tocó en el medio, falla en
+   *    vez de pisar. Es la única que cubre la ventana intra-corrida.
+   *  - **`generacion`** — lo leído lleva un número de versión del almacén que el
+   *    efecto compara. **No hay ninguna hoy**, y está en el vocabulario a
+   *    propósito: es la forma que le faltaría a la mitad de Storage de B-838, y
+   *    tenerla escrita hace que elegir entre las tres sea una decisión y no un
+   *    olvido.
+   *  - **`margen`** — no se toca nada más nuevo que N. **No cubre la ventana
+   *    intra-corrida**: protege contra «esto recién se creó», no contra «esto
+   *    cambió mientras yo corría». Por eso la declaración obliga a escribir el
+   *    motivo por el que se acepta esa ventana.
+   *
+   * El conjunto sobre el que se exige la declaración **se deriva del código** —
+   * toda función programada que escribe lo que leyó sin transacción—, así que un
+   * barrido nuevo se pone rojo hasta que alguien decida cuál es su guarda, y uno
+   * que deje de serlo (porque se metió en una transacción) también, para que no
+   * quede una fila contando una protección que ya nadie tiene.
+   */
+  type GuardaDeBarrido = {
+    guarda: 'precondicion' | 'generacion' | 'margen';
+    donde: string;
+    /**
+     * **Dos anclas y no una: la declaración y el uso.** Una constante de margen
+     * declarada y no aplicada es una guarda que no existe, y con una sola ancla
+     * el registro quedaría afirmando una protección que el código ya no hace.
+     */
+    marcas: RegExp[];
+    ventana: 'cubierta' | 'aceptada';
+    porque: string;
+  };
+
+  const GUARDAS_DE_BARRIDO: Record<string, GuardaDeBarrido> = {
+    borrarPropuestasVencidas: {
+      guarda: 'precondicion',
+      donde: 'functions/retencion.js',
+      marcas: [/\.delete\(\{\s*lastUpdateTime/, /ahora\.updateTime\.isEqual\(visto\)/],
+      ventana: 'cubierta',
+      porque:
+        'B-864 — `borrarPropuesta` relee con `getAll(ref, { fieldMask: [] })` y borra el ' +
+        'documento con `delete({ lastUpdateTime: visto })`, así que la propuesta que un admin ' +
+        'tocó entre la query y el borrado sobrevive y la corrida la cuenta como `rescatadas`. ' +
+        'La mitad de Storage no está cubierta —es el final `la-tocaron-tarde`— y eso es lo que ' +
+        'una guarda de `generacion` cerraría.',
+    },
+    limpiarImagenesHuerfanas: {
+      guarda: 'margen',
+      donde: 'functions/limpieza-imagenes.js',
+      marcas: [
+        /export const MARGEN_DE_GRACIA_MS/,
+        /ahora - objeto\.creado < MARGEN_DE_GRACIA_MS/,
+      ],
+      ventana: 'aceptada',
+      porque:
+        'MARGEN_DE_GRACIA_MS (72 h) cubre el objeto recién subido cuya actividad todavía no se ' +
+        'guardó, que es el caso que B-221 nombra. **No cubre la ventana intra-corrida**: un ' +
+        'objeto viejo que alguien empieza a referenciar mientras el barrido corre se borra ' +
+        'igual. Se acepta porque el daño es una fila de galería que hay que volver a subir, y ' +
+        'porque `file().delete()` no admite la precondición que Firestore sí tiene (lo dice ' +
+        '`borrarPropuesta` en `retencion.js` para la misma mitad).',
+    },
+    limpiarVersionesHuerfanas: {
+      guarda: 'margen',
+      donde: 'functions/limpieza-versiones.js',
+      marcas: [/export const MARGEN_DE_RESCATE_MS/, /margenMs = MARGEN_DE_RESCATE_MS/],
+      ventana: 'aceptada',
+      porque:
+        'MARGEN_DE_RESCATE_MS (30 días desde la versión más nueva) es el plazo del «la borré sin ' +
+        'querer» de B-89. **No cubre la ventana intra-corrida** —una actividad recreada con el ' +
+        'mismo id mientras el barrido corre pierde el historial que acababa de dejar de ser ' +
+        'huérfano— y se acepta porque para eso tienen que coincidir 30 días de orfandad con los ' +
+        'segundos de una corrida.',
+    },
+  };
+
+  /** Escribe lo que leyó y no lo hace dentro de una transacción. */
+  const escribeLoQueLeyoSinTransaccion = (t: Trigger): boolean => {
+    const s = sintomasDe(t);
+    return s.lectura && s.escritura && !s.transaccion;
+  };
+
+  it('B-867: todo barrido que borra lo que leyó declara cuál es su guarda', () => {
+    const derivados = programadas.filter(escribeLoQueLeyoSinTransaccion).map((t) => t.nombre);
+    // Las dos direcciones: uno nuevo entra sin que nadie lo agregue, y una fila
+    // que sobra —el barrido que se metió en una transacción, o que se borró— no
+    // se queda contando una protección que ya no existe.
+    expect(derivados.sort()).toEqual(Object.keys(GUARDAS_DE_BARRIDO).sort());
+    // Y los tres de B-845 siguen ahí: si el derivado se vaciara, el `toEqual` de
+    // arriba se podría satisfacer vaciando el registro.
+    for (const nombre of BARRIDOS) expect(derivados).toContain(nombre);
+  });
+
+  it('B-867: la guarda declarada está en el fuente, y un margen no puede decir que cubre la corrida', () => {
+    for (const [nombre, g] of Object.entries(GUARDAS_DE_BARRIDO)) {
+      const src = sinComentarios(fuente(g.donde));
+      // El fuente sin comentarios, como en todo este archivo: la prosa que
+      // explica una guarda no puede contar como la guarda.
+      for (const marca of g.marcas) {
+        expect(marca.test(src), `${nombre}: ${g.donde} ya no tiene ${marca}`).toBe(true);
+      }
+      // Un margen de gracia protege contra lo recién creado, no contra lo que
+      // cambió mientras el barrido corría. Declararlo como `cubierta` sería la
+      // confusión que B-867 vino a deshacer, así que el test no la deja escribir.
+      if (g.guarda === 'margen') {
+        expect(g.ventana, `${nombre}: un margen no cubre la ventana intra-corrida`).toBe(
+          'aceptada',
+        );
+      }
+      /*
+       * **La ventana que no se cubre se acepta con el motivo escrito**, y eso es
+       * la mitad del ítem que no es el regex: la declaración tiene que nombrar
+       * la ventana que está dejando abierta —si no, «tiene margen de gracia» se
+       * lee como si protegiera de esto, que es exactamente la confusión de
+       * partida— y decir por qué se la banca. El largo mínimo no es una métrica
+       * de prosa: es lo que impide que el campo se llene con «se acepta».
+       */
+      if (g.ventana === 'aceptada') {
+        expect(g.porque, `${nombre}: acepta la ventana sin nombrarla`).toMatch(/intra-corrida/);
+      }
+      expect(g.porque.length, `${nombre}: la guarda se declara sin motivo escrito`).toBeGreaterThan(
+        120,
+      );
+    }
+    // El positivo: si ninguna fuera `cubierta`, el vocabulario sería decorativo
+    // y este registro no distinguiría a B-864 de sus dos vecinos — que es
+    // exactamente el estado que B-867 describe como «nada nombra la diferencia».
+    expect(
+      Object.values(GUARDAS_DE_BARRIDO).filter((g) => g.ventana === 'cubierta').length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   /**
@@ -1165,20 +1408,30 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
       expect(pierdeFingido('await a();', { a: 'await b();', b: LA_COPIA_MALA })).toBe(true);
     });
 
-    it('borrar lo que se leyó no es la clase', () => {
-      // Los tres barridos, en miniatura: leen y borran. **Con `fetch` adentro a
-      // propósito**, aunque ninguno de los tres lo tenga hoy: sin él este caso
-      // salía limpio por no tener red y no por borrar, que es otra propiedad y
-      // ya tiene su test. Lo cobró la mutación «borrar cuenta como escribir»,
-      // que dejó este aserto en verde — un test que pasa por el motivo
-      // equivocado es un test que no frena lo que dice frenar.
+    it('borrar lo que se leyó también es la clase — B-867', () => {
+      // **El caso que hoy pasaba en verde**, y por el motivo equivocado: leer al
+      // principio, hablar con la red y borrar lo leído sin comparar la versión
+      // es la forma de B-85 con el verbo cambiado — es B-864 escrito en
+      // miniatura. Con el efecto definido como `set|update` esto daba `false` y
+      // el caso se llamaba «borrar lo que se leyó no es la clase»: una ceguera
+      // del detector afirmada como garantía.
+      const barridoQueBorra = `
+        const snap = await db.collection('propuestas').select('estado').get();
+        await fetch('https://api.example.com/aviso');
+        for (const d of snap.docs) await d.ref.delete({ ignoreNotFound: true });
+      `;
+      expect(pierdeFingido('await barrer(db);', { barrer: barridoQueBorra })).toBe(true);
+
+      // Y la salida sigue siendo la misma que para el `set`: comparar contra lo
+      // que hay. Sobre un borrado eso es la precondición de B-864 —el `delete`
+      // lleva la versión que la lectura vio—, que acá se escribe con la
+      // transacción porque es la forma que el detector reconoce.
       expect(
         pierdeFingido('await barrer(db);', {
-          barrer: `
-            const snap = await db.collection('propuestas').select('estado').get();
-            await fetch('https://api.example.com/aviso');
-            for (const d of snap.docs) await d.ref.delete({ ignoreNotFound: true });
-          `,
+          barrer: barridoQueBorra.replace(
+            'for (const d of snap.docs)',
+            'await db.runTransaction(tx); for (const d of snap.docs)',
+          ),
         }),
       ).toBe(false);
     });

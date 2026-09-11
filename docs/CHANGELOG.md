@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **El detector de la clase de B-85 dejó de ser ciego al barrido que borra y al
+  cliente de `googleapis`, y cada barrido declara qué lo protege** — **B-867** y
+  **B-862**. El síntoma de efecto era `/\.(set|update)\(/` y el de red conocía
+  `fetch(`, `cal.events.` y `google.calendar(`. Es la misma clase que B-845 cerró
+  del otro lado: allá el efecto se escapaba por vivir en el módulo de al lado, acá
+  por llamarse de otra manera.
+
+  **El alcance se midió antes de ensanchar y no después**, que es lo que los dos
+  ítems pedían. Con `.delete(` entran cuatro triggers; con `google\.\w+\(` entra
+  `traerAnaliticaDelSitio`, por su helper `clientes` —el único de todo
+  `functions/**` que el regex nuevo suma—. **Ninguno de los cinco queda en la
+  clase**: a los barridos les falta la red, a la analítica la lectura. Lo que se
+  puso rojo fueron **dos casos propios**, y los dos eran la ceguera escrita como
+  garantía: «los tres barridos pasan **porque borran**» y «borrar lo que se leyó
+  **no** es la clase» — la copia mala en versión `delete`, o sea B-864 en
+  miniatura, pasando en verde. Se reescribieron para que digan lo cierto; no se
+  relajó el chequeo.
+
+  **Y la garantía quedó más débil, que es el motivo de la segunda mitad.** Hoy los
+  tres barridos pasan por no hablar con la red, y **la ventana de un barrido no es
+  un `fetch`: es la corrida entera**. Por eso `GUARDAS_DE_BARRIDO` obliga a cada
+  uno a declarar **precondición**, **generación** o **margen**, con la declaración
+  **y el uso** anclados en el fuente y la ventana intra-corrida marcada `cubierta`
+  o `aceptada`. **Un margen no puede declararse `cubierta`** —es la confusión de
+  partida: `MARGEN_DE_GRACIA_MS` protege de «esto recién se creó», no de «esto
+  cambió mientras yo corría»— y aceptarla obliga a nombrarla y a escribir por qué.
+  El conjunto **se deriva del código** en las dos direcciones: un barrido nuevo se
+  pone rojo hasta que alguien decida su guarda, y una fila que sobra no se queda
+  contando una protección que ya nadie tiene. `generacion` queda en el vocabulario
+  **sin instancia a propósito**: es la forma que le falta a la mitad de Storage de
+  B-838.
+
+  **Dieciséis mutaciones, y dos son el argumento entero**: un `fetch` en el trigger
+  de retención y un `.get()` en el schedule de analítica ponen en rojo **el chequeo
+  de B-85 mismo** — o sea que el ensanche no es cosmético, es la diferencia entre
+  ver y no ver el día que uno de los dos cambie. Y una mutación salió **mal
+  construida** y en verde: reemplazar solo un fragmento del motivo no lo distinguía
+  de uno completo. De ahí salió el requisito de **nombrar la ventana** y que las
+  anclas pasaran de una a dos.
+
 - **El umbral que `ActividadFormulario.tsx` cruzó estaba midiendo la cosa
   equivocada, y se recalibró la unidad en vez de partir el archivo** — **B-856**.
   Primera vez que un umbral escrito en `docs/10-salud-del-codigo.md` se cruza, y la
