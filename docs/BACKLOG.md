@@ -962,6 +962,48 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-875 · Un fixture con fecha cableada rompió la publicación del sitio entero, y nadie se enteró · P1
+
+**Lo reportó el dueño el 2026-09-11** preguntando por qué una actividad publicada
+no aparecía en el sitio. La respuesta no era de esa actividad: **el sitio no se
+reconstruía desde el día anterior.** Las ocho últimas corridas del rebuild habían
+fallado, todas en el paso **Tests**, que corre **antes** del build — así que nada
+de lo que se publicara llegaba nunca.
+
+La causa es una línea de `tests/lista-actividades.render.test.tsx`:
+
+```ts
+{ id: 'ses_1', inicio: ts('2026-09-10T22:00:00Z'), fin: ts('2026-09-11T00:00:00Z'), … }
+```
+
+Una fecha **cableada en el futuro cercano**. La fila del panel dice «Próximo:»
+solo si el encuentro no pasó, así que el caso pasó en verde hasta el 2026-09-10 y
+**se puso rojo solo el 11**, sin que nadie tocara una línea. Arreglado haciendo la
+fecha relativa a `Date.now()`, que es lo que el caso de verdad necesita: «un
+encuentro que todavía no pasó».
+
+**Lo que hay que cerrar, que es la clase y no el caso:**
+
+1. **Una guarda contra la fecha cableada que se compara con el reloj real.** No
+   es «no usar fechas fijas»: los módulos puros reciben `ahora` por parámetro y
+   ahí una fecha fija es **correcta y deseable**. El caso peligroso es el
+   subconjunto que compara un fixture contra `Date.now()`. Hay **46 archivos** con
+   fechas del 2026-09-11 en adelante y la enorme mayoría son inofensivos, así que
+   una prohibición general sería ruido puro — hay que encontrar el predicado que
+   separa los dos.
+2. **Que el rebuild no muera en silencio.** Ocho corridas rojas seguidas y el
+   único que se enteró fue el dueño, mirando el sitio. Es la misma forma que B-21
+   —«está en el log» no es «alguien se entera»— pero acá el efecto es que **el
+   producto deja de publicar**. El aviso puede ser el que GitHub ya manda por
+   corrida fallida, si está prendido, o un chequeo propio.
+
+**Y de paso, un segundo bug en la misma línea:** ese archivo define **su propio
+doble de `Timestamp`** (`const ts = (iso) => ({ toDate, toMillis })`), que es
+exactamente la clase de B-211 y que el chequeo de `clases-de-bug.test.ts` **no
+está agarrando** — sí agarró otro archivo esta semana, así que el detector existe
+y tiene un hueco. Se dejó el doble local (achicarlo es de otro ítem) pero la
+pregunta de por qué no lo ve queda abierta.
+
 ### B-874 · «Interacciones con formularios» sigue prendido en GA4, y B-480 no lo apagó porque no había formularios · P2
 
 **Sale del `auditor-privacidad` sobre B-847.** El Enhanced Measurement de GA4

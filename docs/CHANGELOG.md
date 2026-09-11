@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **Una fecha cableada en un fixture rompió la publicación del sitio entero** —
+  **B-875**. El dueño preguntó por qué una actividad publicada no aparecía, y la
+  respuesta no era de esa actividad: **el sitio no se reconstruía desde el día
+  anterior.** Las ocho últimas corridas del rebuild habían fallado, todas en el
+  paso **Tests**, que corre **antes** del build.
+
+  La causa es `inicio: ts('2026-09-10T22:00:00Z')` en un fixture del panel. La
+  fila dice «Próximo:» solo si el encuentro no pasó, así que el caso pasó en verde
+  hasta el 10 y **se puso rojo solo el 11**, sin que nadie tocara una línea. La
+  fecha pasó a ser relativa a `Date.now()`, que es lo que el caso necesitaba
+  desde el principio: «un encuentro que todavía no pasó».
+
+  **Lo que queda abierto es la clase, y son dos cosas.** Una guarda contra el
+  fixture con fecha fija **comparado con el reloj real** —no contra las fechas
+  fijas en general: los módulos puros reciben `ahora` por parámetro y ahí son
+  correctas, así que el trabajo es encontrar el predicado que separa los dos
+  casos entre 46 archivos—. Y que **el rebuild no muera en silencio**: ocho
+  corridas rojas seguidas y el único que se enteró fue el dueño mirando el sitio.
+
 - **`/suscribirse` suma una segunda forma de no perderse nada —un correo semanal—
   y sale apagada hasta que exista la lista** — **B-847**, **D-640**, idea del
   dueño. Hasta hoy el sitio público **no le mandaba ni un dato de nadie a ningún

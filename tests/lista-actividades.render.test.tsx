@@ -53,7 +53,8 @@ import type { ActividadConId } from '@/types/actividad';
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
 
 /** `Timestamp` de mentira: la tarjeta solo llama a `toDate()`. */
-const ts = (iso: string) => ({ toDate: () => new Date(iso), toMillis: () => Date.parse(iso) });
+const tsDe = (d: Date) => ({ toDate: () => d, toMillis: () => d.getTime() });
+const ts = (iso: string) => tsDe(new Date(iso));
 
 const acto = (over: Partial<ActividadConId> & { id: string }): ActividadConId =>
   ({
@@ -105,7 +106,29 @@ const ACTIVIDADES: ActividadConId[] = [
     },
     inscripcion: { requiere: true, via: null, destino: '', cupo: 8, cierra: null, completo: true },
     sesiones: [
-      { id: 'ses_1', inicio: ts('2026-09-10T22:00:00Z'), fin: ts('2026-09-11T00:00:00Z'), tema: null, lectura: null, cancelada: false, calendarEventId: null },
+      /*
+       * **La fecha es relativa a hoy, y eso es el arreglo de B-875.**
+       *
+       * Estaba cableada —`2026-09-10T22:00:00Z`— y esa línea **rompió la
+       * publicación del sitio entero**: la fila dice «Próximo:» solo si el
+       * encuentro no pasó, así que el caso de abajo se puso rojo solo, de un día
+       * para el otro, sin que nadie tocara nada. Y como el rebuild corre la
+       * suite **antes** del build, todo lo que el dueño publicaba dejó de llegar
+       * al sitio.
+       *
+       * Una fecha cableada en el futuro cercano no es un fixture: es una bomba
+       * con fecha. Lo que el caso necesita es «un encuentro que todavía no
+       * pasó», y eso se escribe así.
+       */
+      {
+        id: 'ses_1',
+        inicio: tsDe(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+        fin: tsDe(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000)),
+        tema: null,
+        lectura: null,
+        cancelada: false,
+        calendarEventId: null,
+      },
     ],
   } as unknown as Partial<ActividadConId> & { id: string }),
   acto({ id: '3', titulo: 'Charla con la autora', tipo: 'taller', estado: 'borrador' }),
