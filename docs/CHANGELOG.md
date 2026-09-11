@@ -2,6 +2,56 @@
 
 ## Sin publicar
 
+- **Las dos hermanas que B-854 dejó afuera: el `events.json` contestaba «cuál es la
+  imagen» y «hay tallerista» con predicados propios** — **B-860** y **B-861**. Van
+  juntas porque son el mismo archivo y la misma clase, la de B-88 en su cara menos
+  visible: **la misma pregunta** contestada por funciones que nacieron para cosas
+  distintas y que coinciden hasta que aparece el borde.
+
+  **La imagen.** `imagenUrlDe` era `portadaDe(a.imagenes)?.url ?? null` — ni
+  `urlSegura` ni el filtro de `imagenesPublicables`, las dos que B-854 había hecho
+  converger en las otras respuestas. Con el `imagenUrl` legacy de D-125 el archivo
+  publicaba `imagenUrl: "javascript:alert(1)"`. Ahora filtra primero y elige
+  portada después, **en ese orden**, y publica el valor saneado.
+
+  **El atenuante va escrito porque es lo que lo mantuvo en P4: ese campo no tiene
+  lector**, verificado campo por campo sobre los ocho consumidores de
+  `EntradaDeIndice`. No era un XSS —ningún `href` ni ningún `src` recibía el
+  valor— sino un dato crudo en un artefacto público que el próximo consumidor iba
+  a leer creyendo que estaba filtrado.
+
+  **El tallerista, y acá el ítem se quedaba corto.** No es solo el `''` vs `null`
+  del índice: con el predicado viejo, la cáscara `{ nombre: '', bio: 'algo',
+  instagram: '@x' }` —media ficha cargada, un documento anterior a la regla de
+  `formADocumento`, uno restaurado del historial— **publicaba la bio y el Instagram
+  de alguien sin nombre**. Se corrige en `toPublic` y no en `entradaDeIndice`, por
+  el mismo motivo por el que B-854 lo corrigió en el view-model: es la frontera por
+  la que pasan las dos salidas, así que el índice hereda el `null` sin un segundo
+  predicado.
+
+  **El barrido se puso rojo y la respuesta fue contestar la celda, no agregar una
+  excepción.** `urlSegura` normaliza el host a minúscula, así que lo que cambió es
+  la **forma** del valor y no si viaja: el índice pasa a barrerse `insensible:
+  true`, la misma opción y el mismo motivo que el detalle usa desde B-227. Con el
+  costo escrito: para la dirección que importa —la fuga— es estrictamente más
+  estricta, y lo que se afloja es «dejó de publicar».
+
+  **Doce mutaciones, y una las obligó a existir.** El `auditor-privacidad` encontró
+  que el arreglo prometía convergencia índice↔detalle y la dejaba fijada por **dos
+  literales escritos a mano en dos archivos de test distintos** — o sea que
+  **reintroducía su propia clase un nivel más arriba**. Ahora hay un aserto que
+  compara las dos derivaciones **entre sí**, con los dos bordes que las distinguen,
+  porque con uno solo una implementación que eligiera portada antes de filtrar
+  pasaría igual.
+
+  **Y dejó una afirmación falsa escrita por este mismo cambio, corregida acá.**
+  Decía que éste era el último lugar del repo donde se contestaba mirando el
+  objeto, y no lo es: `handlesDe` (`textoRedes.ts`) lee el documento **crudo**, así
+  que la salida 5 —la más irreversible— sigue arrobando el handle de un tallerista
+  sin nombre. **Antes de B-861 las tres salidas coincidían; ahora divergen.** Es
+  **B-881**, y es una decisión del dueño: un handle cargado a mano con el nombre en
+  blanco puede ser un olvido o puede ser deliberado.
+
 - **Los dos barridos sobre el HTML construido pasaron al gate del artefacto: no
   corrían en CI ni una vez, y sus docblocks afirmaban lo contrario** — **B-873**.
   Medido parseando los workflows: en `deploy.yml` los tests son el paso 4 y el

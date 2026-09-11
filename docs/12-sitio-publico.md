@@ -396,15 +396,33 @@ Notas que importan:
   límite de palabra. Se calcula en el build; no es un campo nuevo del modelo.
   Sirve para la tarjeta y como `meta description` de la página de detalle.
 - **`organizador` y `tallerista` son strings** en el JSON (solo el nombre): el
-  Instagram y la bio son de la página de detalle.
+  Instagram y la bio son de la página de detalle. **Y `tallerista` es `null`
+  cuando no hay nombre, nunca `""`** (**B-861**): «hay tallerista» es que tenga
+  nombre, y eso se decide una sola vez en `toPublic` —de donde el índice lo
+  hereda— porque es el mismo predicado que ya usan `formADocumento`,
+  `diceQuienLaDa` y el view-model del detalle (B-854). La cáscara
+  `{ nombre: '', … }` la produce un documento anterior a esa regla o una edición
+  fuera del panel, y antes publicaba la bio de alguien sin nombre.
 - **`imagenUrl` en el índice es un derivado, no el campo del modelo** (B-223). El
   modelo no tiene un campo único de imagen desde **D-125**: tiene
   `imagenes: Imagen[]` con un flag `portada`. El índice lleva **una** URL porque
   el listado necesita una sola imagen, y la saca de la portada
-  —`imagenUrl: portadaDe(a.imagenes)?.url ?? null`, `src/lib/eventsJson.ts`—
-  conservando el nombre que este documento le había puesto. O sea que el nombre
-  del campo del JSON es correcto y el del modelo ya no existe: donde este
-  documento dice «imagen de la actividad», leer «la portada de su galería».
+  —`imagenUrlDe`, `src/lib/eventsJson.ts`— conservando el nombre que este
+  documento le había puesto. O sea que el nombre del campo del JSON es correcto y
+  el del modelo ya no existe: donde este documento dice «imagen de la actividad»,
+  leer «la portada de su galería».
+
+  **Y desde B-860 la portada se elige con las mismas dos funciones que usa la
+  página de detalle**, en el mismo orden: `imagenesPublicables` primero
+  —descarta las filas cuya URL no pasa `urlSegura`— y `portadaDe` después, así
+  que una portada rota con una foto sana al lado no deja al índice sin imagen. Lo
+  que se publica es el valor **saneado**, o sea el mismo string que el detalle
+  emite para esa imagen. La línea era `portadaDe(a.imagenes)?.url ?? null` —ni el
+  filtro ni el saneador—, y con el `imagenUrl` legacy de D-125 el archivo llegaba
+  a publicar `imagenUrl: "javascript:alert(1)"`. **No tenía lector cuando se
+  arregló** (el listado no pinta imágenes desde D-146 y el `og:image` sale de
+  `detalle.imagenes[0]`), y ése era justamente el riesgo: el próximo consumidor
+  lo iba a leer creyendo que estaba filtrado.
 - **`cierraEn` en vez de `abierta`.** Ver [§11.2](#112-cambios-a-topublicts): el
   booleano `abierta` que hoy calcula `toPublic` se congela en el momento del
   build y miente hasta el rebuild siguiente.
@@ -1313,11 +1331,11 @@ Google pide, para el resultado enriquecido de evento:
 | `location` como `VirtualLocation` con `url` | **sí** (online) | **no exactamente** — ver [5.4](#54-el-caso-online) |
 | `endDate` | recomendado | sí — `sesiones[].fin` |
 | `description` | recomendado | sí |
-| `image` | recomendado | a veces — la **primera publicable**: la portada si su URL pasa `urlSegura`, si no la siguiente que pase (`imagenesPublicables` + `portadaDe`, B-854) |
+| `image` | recomendado | a veces — la **primera publicable**: la portada si su URL pasa `urlSegura`, si no la siguiente que pase (`imagenesPublicables` + `portadaDe`, B-854). Desde **B-860** el `imagenUrl` del `events.json` contesta con las mismas dos funciones, así que ya no hay una tercera derivación en el repo |
 | `eventAttendanceMode` | recomendado | sí — `modalidad`, el derivado de B-224 |
 | `eventStatus` | recomendado | **parcialmente** — falta `estado` en la proyección |
 | `organizer` | recomendado | sí |
-| `performer` | recomendado | a veces — `tallerista`, **y solo si tiene nombre** (B-854) |
+| `performer` | recomendado | a veces — `tallerista`, **y solo si tiene nombre** (B-854). Desde **B-861** la condición vive en `toPublic`, así que el `events.json` hereda el mismo `null` en vez de emitir `""` |
 | `offers` (`price`, `priceCurrency`, `url`, `availability`, `validFrom`) | recomendado | **no el precio**: `arancel.tipo` es un slug, no un monto |
 | `url` | recomendado | sí — la canónica |
 
@@ -2053,9 +2071,10 @@ Otras reglas:
   - La **propia** vive en nuestro Storage, así que no se cae sola, y **trae sus
     medidas**: `ancho` y `alto` son exactamente lo que hace falta para reservar
     el hueco con `aspect-ratio` y que la página no salte al cargar. **Ojo con
-    dónde entra eso:** hoy `src/lib/eventsJson.ts` recorta el índice a
-    `imagenUrl: portadaDe(a.imagenes)?.url ?? null` —conserva el nombre del
-    diseño a propósito, ver su docblock— y **no lleva las medidas**. No está
+    dónde entra eso:** hoy `src/lib/eventsJson.ts` recorta el índice a una sola
+    URL —`imagenUrlDe`, que desde B-860 filtra con `imagenesPublicables` y sanea
+    con `urlSegura`, y conserva el nombre del diseño a propósito; ver su
+    docblock— y **no lleva las medidas**. No está
     roto; pero el día que una tarjeta las quiera, el campo tiene que entrar al
     índice, y eso es agrandar una salida pública: pasa por el fixture de
     centinelas como cualquier otro campo nuevo. Y **la recompresión sigue sin

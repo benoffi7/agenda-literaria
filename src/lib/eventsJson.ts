@@ -1,4 +1,5 @@
-import { portadaDe } from '@/lib/imagenes';
+import { urlSegura } from '@/lib/enlaceSeguro';
+import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { opcionesPublicas, type ActividadPublica, type OpcionPublica } from '@/lib/toPublic';
 import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
@@ -92,6 +93,15 @@ export interface EntradaDeIndice {
   arancel: { tipo: string; monto: number | null };
   /** **Strings, no objetos**: el Instagram y la bio son del detalle. */
   organizador: string;
+  /**
+   * El nombre, o `null` si no hay tallerista — y «no hay tallerista» es **que no
+   * tenga nombre**, no que falte el objeto (B-861).
+   *
+   * Esta línea lo colapsa con `a.tallerista?.nombre ?? null` y **no repite el
+   * predicado**: `toPublic` ya devuelve `null` para la cáscara `{ nombre: '', … }`,
+   * así que el índice lo hereda. Antes de B-861 esa cáscara llegaba hasta acá y
+   * salía como `''` — un tallerista que existe y se llama «».
+   */
   tallerista: string | null;
   tags: string[];
   destacado: boolean;
@@ -226,15 +236,56 @@ export const resumenDe = (descripcion: string): string => {
 };
 
 /**
- * La URL de la portada.
+ * La URL de la portada, **saneada y filtrada con las mismas dos funciones que la
+ * página de detalle** — B-860, que cierra la tanda de B-854.
  *
  * **Nota de fidelidad al diseño:** §3.1 escribe este campo como `imagenUrl`, que
  * era el nombre del campo del modelo cuando se diseñó. B-167 lo reemplazó por la
  * galería `imagenes: Imagen[]` con un flag `portada`. Se conserva el nombre del
  * diseño y se deriva de la portada: el listado necesita **una** imagen y elegir
  * cuál es una decisión del modelo (D-125), no del consumidor.
+ *
+ * ── Era la tercera respuesta a «cuál es la imagen», y la única cruda ───────
+ * Hasta B-860 esta línea era `portadaDe(a.imagenes)?.url ?? null`: **ni
+ * `urlSegura` ni el filtro de `imagenesPublicables`**. Las otras dos respuestas
+ * del repo sí los usan —`imagenesDeDetalle` (`lib/detallePublico.ts`), que es lo
+ * que alimenta la pared de `/cartelera` y el `image` del JSON-LD, y
+ * `faltaElFlyer` (`lib/imagenes.ts`), que es lo que el panel dice—, así que la
+ * misma pregunta tenía dos respuestas convergidas por B-854 y una tercera que
+ * había quedado afuera. Es la clase de B-88 en su cara más chata: no una segunda
+ * lista de reglas, la **misma** pregunta contestada por una función que nació
+ * para otra cosa.
+ *
+ * El caso que divergía es el mismo de B-854 y es alcanzable: un documento con el
+ * `imagenUrl` legacy (D-125) nunca pasó por `esUrl` ni por el esquema que B-817
+ * puso en `imagenes[].url`, así que puede traer `javascript:alert(1)`,
+ * `C:\fotos\flyer.jpg` o «Ver el flyer en instagram». El `events.json` lo
+ * publicaba crudo.
+ *
+ * **El atenuante, dicho entero porque es lo que lo mantuvo en P4:** hoy este
+ * campo **no tiene lector**. D-146 sacó las imágenes del listado y el `og:image`
+ * sale de `detalle.imagenes[0]`, que ya está saneado. O sea que no era un XSS
+ * —ningún `href` ni ningún `src` recibía este valor—, era un dato crudo en un
+ * artefacto público y estático que el próximo consumidor iba a leer creyendo que
+ * había pasado por el mismo filtro que las otras dos respuestas. **Verificado el
+ * 2026-09-11**, y si algún día aparece el lector, esta línea ya no lo espera.
+ *
+ * ── El orden: filtrar y después elegir portada ────────────────────────────
+ * Es el mismo que el docblock de `imagenesDeDetalle` deja explícito, y por el
+ * mismo motivo: con la portada rota y una foto sana, elegir primero dejaría el
+ * índice sin imagen habiendo una válida. `portadaDe` sobre la lista ya filtrada
+ * da exactamente eso.
+ *
+ * Y lo que se publica es el valor **saneado** (`urlSegura`), no el crudo: es lo
+ * que hace que el índice y el detalle digan la misma URL para la misma imagen.
+ * El `urlSegura` de acá no puede devolver `null` —`imagenesPublicables` dejó
+ * pasar exactamente las filas para las que no lo devuelve—, pero se deja tipado
+ * `string | null` porque el campo ya lo era.
  */
-const imagenUrlDe = (a: ActividadPublica): string | null => portadaDe(a.imagenes)?.url ?? null;
+const imagenUrlDe = (a: ActividadPublica): string | null => {
+  const portada = portadaDe(imagenesPublicables(a.imagenes));
+  return portada ? urlSegura(portada.url) : null;
+};
 
 /**
  * Las sesiones, **ordenadas por inicio**.

@@ -652,7 +652,50 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
     instagram: a.organizador.instagram,
     web: a.organizador.web,
   },
-  tallerista: a.tallerista
+  /*
+   * **La condición es el nombre y no el objeto** — B-861, la hermana de B-854 del
+   * lado de la proyección.
+   *
+   * B-854 corrigió esta misma pregunta en `detalleDeActividad`
+   * (`lib/detallePublico.ts`) y la dejó contestada en dos lugares: allá por el
+   * nombre, acá por el objeto. Es la clase de B-88 —la misma pregunta con dos
+   * respuestas— y éste era el último lugar **de las salidas que derivan de esta
+   * proyección** donde se contestaba mirando si el objeto existe.
+   *
+   * ⚠️ **No es el último del repo, y conviene no decirlo:** `handlesDe`
+   * (`lib/textoRedes.ts`) arroba `tallerista.instagram` leyendo el documento
+   * **crudo** (`ActividadParaRedes` es un `Pick<Actividad, …>`), así que este
+   * cambio no lo alcanza y el texto para redes —la salida 5, la más
+   * irreversible— sigue arrobando el handle de un tallerista sin nombre. Lo
+   * encontró el `auditor-privacidad` sobre este mismo cambio y está anotado como
+   * **B-881**: antes de B-861 las tres salidas coincidían (publicaban), y ahora
+   * divergen, que es la misma clase un escalón más arriba. No se arregló acá
+   * porque arrobar o no a alguien cuyo handle está cargado es una decisión del
+   * dueño, no una consecuencia de esta línea.
+   *
+   * La regla verdadera ya estaba escrita tres veces: `formADocumento`
+   * (`lib/actividades.ts`) escribe `tallerista: null` cuando no hay nombre («el
+   * tallerista solo tiene sentido si tiene nombre»), `diceQuienLaDa`
+   * (`lib/estadoDelCatalogo.ts`) cuenta con eso para el tablero, y el view-model
+   * del detalle la aplica desde B-854. Lo que atraviesa esas tres es un documento
+   * **anterior** a esa regla, restaurado del historial o editado fuera del panel:
+   * la cáscara `{ nombre: '', bio: '', instagram: '' }`.
+   *
+   * Qué publicaba esa cáscara antes de B-861:
+   *
+   * - en esta proyección, un objeto con tres cadenas vacías — y si la bio estaba
+   *   escrita y el nombre no (media ficha cargada), **la bio salía igual**;
+   * - en el índice del listado, `tallerista: a.tallerista?.nombre ?? null` daba
+   *   `''` y no `null`, o sea un tallerista que existe y se llama «».
+   *
+   * **Se corrige acá y no en `entradaDeIndice`**, por el mismo motivo por el que
+   * B-854 lo corrigió en el view-model y no en la línea del `performer`: ésta es
+   * la frontera por la que pasan las dos salidas, así que el índice hereda el
+   * `null` sin escribir un segundo predicado — que es justo lo que este ítem
+   * cierra. Mismo criterio que `libroPublico`, acá arriba, con el libro sin
+   * título.
+   */
+  tallerista: a.tallerista?.nombre?.trim()
     ? {
         nombre: a.tallerista.nombre,
         bio: a.tallerista.bio,

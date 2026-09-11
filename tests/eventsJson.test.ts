@@ -7,6 +7,8 @@ import {
   resumenDe,
 } from '@/lib/eventsJson';
 import { toPublic } from '@/lib/toPublic';
+import { detalleDeActividad } from '@/lib/detallePublico';
+import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { CENTINELA, actividadCentinela, opcionCentinela } from './fixtures/centinelas';
 import { ts } from './fixtures/tiempo';
 
@@ -106,6 +108,23 @@ describe('la entrada del índice recorta lo que el listado no usa (§3.1)', () =
     expect(entradaDeIndice(sin).tallerista).toBeNull();
   });
 
+  it('con la cáscara vacía también queda `null`, y no la cadena vacía — B-861', () => {
+    /*
+     * `entradaDeIndice` colapsa el tallerista a `a.tallerista?.nombre ?? null`, y
+     * con `{ nombre: '', … }` eso daba `''`: un tallerista que existe y se llama
+     * «». El arreglo **no** está en esta línea sino en `toPublic`, que es la
+     * frontera por la que pasan las dos salidas — por eso el control de abajo
+     * mira la proyección: si el arreglo se hubiera escrito acá, el índice diría
+     * `null` y la proyección seguiría publicando la cáscara.
+     */
+    const cascara = toPublic(
+      actividadCentinela({ tallerista: { nombre: '  ', bio: 'algo', instagram: '@x' } }),
+      'act_cascara',
+    );
+    expect(cascara.tallerista).toBeNull();
+    expect(entradaDeIndice(cascara).tallerista).toBeNull();
+  });
+
   it('el resumen es un RECORTE, no la descripción entera (§3.1)', () => {
     /*
      * `resumenDe` está probado en aislamiento más arriba, pero eso no dice que el
@@ -178,15 +197,139 @@ describe('lo que el índice sí resuelve, para que no lo resuelva cada consumido
   });
 
   it('la imagen es la portada de la galería, no la primera de la lista', () => {
-    // D-125 — `portada` es un flag explícito y no «la primera»: elegir cuál es
-    // una decisión del modelo, no del consumidor.
+    /*
+     * D-125 — `portada` es un flag explícito y no «la primera»: elegir cuál es
+     * una decisión del modelo, no del consumidor.
+     *
+     * **Y desde B-860 lo que sale es la URL saneada**, no la cruda: el valor
+     * esperado se escribe a mano (`https://centinela.imagenes.url/`) y no
+     * llamando a `urlSegura` acá, que sería comparar la función consigo misma.
+     * Es el mismo valor que publica la página de detalle para la misma imagen,
+     * que es el punto del ítem.
+     */
     const e = entradaDeIndice(publica());
-    expect(e.imagenUrl).toBe(CENTINELA['imagenes.url']);
+    expect(e.imagenUrl).toBe('https://centinela.imagenes.url/');
   });
 
   it('sin imágenes, imagenUrl es null', () => {
     const sin = toPublic(actividadCentinela({ imagenes: [] }), 'act_sin_img');
     expect(entradaDeIndice(sin).imagenUrl).toBeNull();
+  });
+
+  it('un `imagenUrl` legacy que `urlSegura` rechaza da `null`, no la cadena cruda — B-860', () => {
+    /*
+     * El campo viejo del §3.1 (D-125) nunca pasó por `esUrl` ni por el esquema de
+     * B-817, así que puede traer cualquier cosa. Antes de B-860 el índice lo
+     * publicaba tal cual: `imagenUrl: "javascript:alert(1)"` en un archivo
+     * público y estático.
+     */
+    const roto = toPublic(
+      actividadCentinela({ imagenes: undefined, imagenUrl: 'javascript:alert(1)' }),
+      'act_roto',
+    );
+    expect(entradaDeIndice(roto).imagenUrl).toBeNull();
+    // Control: la proyección no sanea la galería, así que el crudo sigue ahí — o
+    // esto estaría midiendo que el campo se perdió antes de llegar al índice.
+    expect(roto.imagenes[0]!.url).toBe('javascript:alert(1)');
+  });
+
+  it('una portada rota no deja al índice sin imagen habiendo otra válida — B-860', () => {
+    /*
+     * El orden es **filtrar y después elegir portada**, igual que en
+     * `imagenesDeDetalle`. Preguntarle primero a `portadaDe` y sanear después
+     * daría `null` con una portada rota y una foto sana al lado, que es la grieta
+     * que el docblock de aquélla ya nombra.
+     */
+    const mixta = toPublic(
+      actividadCentinela({
+        imagenes: [
+          {
+            id: 'img_rota',
+            url: 'javascript:alert(1)',
+            epigrafe: '',
+            textoAlternativo: '',
+            origen: 'externa',
+            portada: true,
+          },
+          {
+            id: 'img_sana',
+            url: 'https://ejemplo.ar/foto.jpg',
+            epigrafe: '',
+            textoAlternativo: '',
+            origen: 'externa',
+            portada: false,
+          },
+        ],
+      }),
+      'act_mixta',
+    );
+    expect(entradaDeIndice(mixta).imagenUrl).toBe('https://ejemplo.ar/foto.jpg');
+  });
+
+  it('publica EXACTAMENTE la misma URL de imagen que la página de detalle — B-860, clase B-88', () => {
+    /*
+     * **El aserto que convierte la convergencia en una propiedad, y no en dos
+     * literales que hoy coinciden.** Lo pidió el `auditor-privacidad` sobre este
+     * mismo cambio, y tiene razón: B-860 promete —en su docblock y en
+     * `docs/12-sitio-publico.md`— que el índice y el detalle dicen la misma URL
+     * para la misma imagen, y hasta acá eso estaba fijado por **dos constantes
+     * escritas a mano en dos archivos de test distintos**. Si mañana una de las
+     * dos derivaciones deja de sanear, o cambia el orden filtrar↔elegir-portada,
+     * nada se pone rojo — que es literalmente la clase de bug que el ítem vino a
+     * cerrar, reaparecida un nivel más arriba.
+     *
+     * Se compara **por valor entre las dos derivaciones**, no contra un literal:
+     * es la única forma de que el aserto siga siendo cierto cuando el valor
+     * cambie por un motivo legítimo.
+     *
+     * Los dos fixtures son los dos bordes que distinguen las implementaciones:
+     * la portada sana (miden el saneado) y la portada rota con una secundaria
+     * sana (miden el orden). Con uno solo, una implementación que eligiera
+     * portada antes de filtrar pasaría igual.
+     */
+    const detalleDe = (a: ReturnType<typeof toPublic>) =>
+      detalleDeActividad(a, mapaDeEtiquetas({}), new Date('2026-08-20T15:00:00Z'), {});
+
+    const sana = publica();
+    const rota = toPublic(
+      actividadCentinela({
+        imagenes: [
+          {
+            id: 'img_rota',
+            url: 'javascript:alert(1)',
+            epigrafe: '',
+            textoAlternativo: '',
+            origen: 'externa',
+            portada: true,
+          },
+          {
+            id: 'img_sana',
+            url: 'https://ejemplo.ar/foto.jpg',
+            epigrafe: '',
+            textoAlternativo: '',
+            origen: 'externa',
+            portada: false,
+          },
+        ],
+      }),
+      'act_rota',
+    );
+
+    for (const [nombre, p] of [
+      ['portada sana', sana],
+      ['portada rota + secundaria sana', rota],
+    ] as const) {
+      expect(
+        entradaDeIndice(p).imagenUrl,
+        `«${nombre}»: el índice y el detalle dejaron de contestar lo mismo a «cuál es la ` +
+          `imagen». Son las mismas dos funciones (\`imagenesPublicables\` + \`portadaDe\` + ` +
+          `\`urlSegura\`) y el mismo orden: si divergieron, una de las dos derivaciones cambió.`,
+      ).toBe(detalleDe(p).imagenes[0]?.url ?? null);
+    }
+
+    // Control positivo: el caso de la portada rota **tiene** imagen, o el `toBe`
+    // de arriba se estaría satisfaciendo con `null === null` en los dos lados.
+    expect(detalleDe(rota).imagenes[0]?.url).toBe('https://ejemplo.ar/foto.jpg');
   });
 
   it('lleva el ISO del cierre y no el booleano congelado del build — B-111', () => {

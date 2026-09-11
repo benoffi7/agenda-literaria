@@ -386,6 +386,49 @@ describe('barrido de la proyección de la actividad (§5.2, `toPublic`)', () => 
     ]);
   });
 
+  it('un tallerista sin nombre no publica NADA de él, ni la bio ni el Instagram (B-861)', () => {
+    /*
+     * **La hermana de B-854 del lado de la proyección**, y el caso que la vuelve
+     * medible: la cáscara `{ nombre: '', … }`.
+     *
+     * `formADocumento` escribe `tallerista: null` cuando no hay nombre, así que
+     * esta forma no la produce el panel: la produce un documento **anterior** a
+     * esa regla, uno restaurado del historial, o una edición desde la consola de
+     * Firestore. Hasta B-861 `toPublic` miraba si el objeto existe, así que media
+     * ficha cargada —la bio escrita, el nombre todavía no— **publicaba la bio**,
+     * que es texto sobre una persona, en la salida más barata de cosechar (D-129).
+     *
+     * El fixture le deja los dos centinelas puestos y le vacía el nombre: si la
+     * condición volviera a ser el objeto, los dos reaparecen y el barrido lo dice
+     * por la dirección de FUGA, que es la que importa. `tallerista.nombre` sale
+     * del grupo «quién» por la otra dirección: con la cáscara no hay nombre que
+     * publicar, así que exigirlo presente sería pedir que salga una cadena vacía.
+     */
+    const cascara = actividadCentinela({
+      tallerista: {
+        nombre: '',
+        bio: CENTINELA['tallerista.bio'],
+        instagram: CENTINELA['tallerista.instagram'],
+      },
+    });
+    barrer(
+      'proyección (tallerista sin nombre)',
+      JSON.stringify(toPublic(cascara, 'act_cascara')),
+      [
+        ...PERMITIDO_EN_LA_PROYECCION.filter((g) => g.nombre !== 'quién'),
+        {
+          nombre: 'quién, sin el tallerista',
+          centinelas: ['organizador.nombre', 'organizador.instagram', 'organizador.web'],
+          porque:
+            'B-861 — el organizador sale como siempre; del tallerista no sale nada porque ' +
+            'no tiene nombre, y «hay tallerista» es que tenga nombre (B-854). Las tres ' +
+            'rutas de `tallerista.*` quedan fuera de la lista a propósito: es la ausencia ' +
+            'que este caso mide.',
+        },
+      ],
+    );
+  });
+
   it('con `urlPublica: true` el link de la reunión entra a la lista, y solo así', () => {
     // Desvío consciente del §5.2 decidido por el dueño: el modelo tiene el flag y
     // el formulario su casilla. El default sigue siendo `false` — el caso base de
@@ -1211,6 +1254,30 @@ describe('barrido de las opciones públicas (§4.4, B-212)', () => {
  * Se agrega en el mismo cambio que la proyección, y no después, porque las dos
  * vueltas anteriores enseñaron que la salida que nace fuera del barrido se queda
  * afuera (B-212: `ValorOpcion` estuvo en la lista de AJENAS desde que existía).
+ *
+ * ── Desde B-860 va insensible a mayúsculas, por el mismo motivo que el detalle ─
+ * `imagenUrlDe` sanea la portada con `urlSegura`, y `urlSegura` pasa la URL por
+ * `new URL()`, que **normaliza el host a minúscula**: el centinela
+ * `CENTINELA.imagenes.url` sale del índice como `https://centinela.imagenes.url/`.
+ * Comparar sensible daría «dejó de publicar» sobre algo que **sí** se publicó, y
+ * la respuesta correcta a ese rojo no es sacar la portada de la lista de
+ * permitidos —sigue saliendo, y tiene que salir— sino contestar la celda: lo que
+ * cambió es la **forma** del valor, no si viaja.
+ *
+ * Es exactamente lo que ya hace el barrido de la página de detalle desde B-227 y
+ * por la misma línea de código, así que no es una excepción nueva sino la misma
+ * consecuencia alcanzando la tercera proyección.
+ *
+ * **Qué cuesta, dicho con precisión** (lo pidió el `auditor-privacidad`): para la
+ * dirección que importa —la **fuga**— insensible es estrictamente **más**
+ * estricto, porque una fuga escrita en otra caja también se atrapa; y no hay dos
+ * centinelas que difieran solo por mayúsculas, así que no aparecen falsos
+ * positivos ni solapamientos. Lo que sí se afloja es la otra dirección, «dejó de
+ * publicar», y se afloja para **todos** los centinelas del índice y no solo para
+ * la portada: un `toLowerCase()` agregado mañana a `resumenDe` o al título ya no
+ * la dispararía. Para `imagenUrl` eso está compensado por los dos asertos por
+ * valor de `tests/eventsJson.test.ts` —uno contra el literal saneado y otro
+ * contra lo que publica la página de detalle—; para el resto, no.
  */
 describe('barrido del índice del listado (§3.1, B-106)', () => {
   const PERMITIDO_EN_EL_INDICE: readonly Excepcion[] = [
@@ -1233,11 +1300,15 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
         'contiene normalizada, así que mandar las dos sería mandarla dos veces.',
     },
     {
-      nombre: 'la portada',
+      nombre: 'la portada, **saneada**',
       centinelas: ['imagenes.url'],
       porque:
         'la tarjeta necesita una imagen, y es la URL que el navegador va a pedir igual. ' +
-        'El epígrafe NO está en esta lista: es del detalle, debajo de la foto (D-125).',
+        'El epígrafe NO está en esta lista: es del detalle, debajo de la foto (D-125). ' +
+        'Desde B-860 lo que sale es el valor que devuelve `urlSegura` sobre la primera ' +
+        'imagen publicable, o sea el **mismo** que publica la página de detalle: por eso ' +
+        'el centinela aparece normalizado (`https://centinela.imagenes.url/`) y este ' +
+        'barrido corre insensible a mayúsculas — ver el docblock del describe.',
     },
     {
       nombre: 'quién, solo el nombre',
@@ -1295,7 +1366,9 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       version: '1.0.0+abc1234',
       generadoEn: '2026-08-27T00:00:00.000Z',
     });
-    barrer('events.json (índice del listado)', JSON.stringify(indice), PERMITIDO_EN_EL_INDICE);
+    barrer('events.json (índice del listado)', JSON.stringify(indice), PERMITIDO_EN_EL_INDICE, {
+      insensible: true,
+    });
   });
 
   it('la etiqueta y el id de la opción NO entran al índice: el detalle los lee de la proyección (B-181)', () => {
@@ -1468,7 +1541,52 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       'events.json (índice, link de reunión publicado a mano)',
       JSON.stringify(indice),
       PERMITIDO_EN_EL_INDICE,
+      { insensible: true },
     );
+  });
+
+  it('un `imagenUrl` legacy que `urlSegura` rechaza NO llega al índice (B-860)', () => {
+    /*
+     * **La tercera respuesta a «cuál es la imagen», y era la única cruda.**
+     *
+     * El `imagenUrl` del §3.1 (D-125) nunca pasó por `esUrl` ni por el esquema
+     * que B-817 le puso a `imagenes[].url`, así que un documento anterior a la
+     * galería puede traer cualquier cosa ahí: `javascript:…`, `data:…`,
+     * `C:\fotos\flyer.jpg` o «Ver el flyer en instagram». Hasta B-860 el índice
+     * lo publicaba tal cual, mientras la página de detalle y el panel ya lo
+     * descartaban — la misma pregunta con dos respuestas convergidas por B-854 y
+     * una tercera afuera (clase de B-88).
+     *
+     * Se mide con el centinela **adentro del esquema roto**, así que el `false`
+     * de abajo solo puede ser cierto si la URL entera se descartó. Y va con
+     * control positivo: el mismo centinela **sí** está en la proyección, que no
+     * sanea la galería, o este caso estaría celebrando un centinela que no viaja.
+     *
+     * El caso vive acá y no solo en `eventsJson.test.ts` porque lo que cambia es
+     * **qué sale a una salida pública**, que es lo que este archivo barre.
+     */
+    const roto = actividadCentinela({
+      imagenes: undefined,
+      imagenUrl: `javascript:alert('${CENTINELA.imagenUrl}')`,
+    });
+    const publica = toPublic(roto, 'act_roto');
+    const indice = construirIndice({
+      actividades: [publica],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+
+    expect(indice.actividades[0]!.imagenUrl).toBeNull();
+    expect(
+      JSON.stringify(indice).toLowerCase().includes(CENTINELA.imagenUrl.toLowerCase()),
+      'el `imagenUrl` legacy inválido entró al índice del listado. El índice tiene que ' +
+        'contestar «cuál es la imagen» con las mismas dos funciones que el detalle ' +
+        '(`imagenesPublicables` + `urlSegura`), no con una tercera copia (B-860).',
+    ).toBe(false);
+
+    // Control positivo: la proyección NO sanea la galería, así que ahí sí está.
+    expect(JSON.stringify(publica)).toContain(CENTINELA.imagenUrl);
   });
 
   it('CONTROL NEGATIVO: si el índice dejara de recortar, el barrido lo dice', () => {

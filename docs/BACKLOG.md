@@ -962,6 +962,35 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-881 · El texto para redes arroba al tallerista sin nombre, y B-861 lo dejó siendo el único que lo hace · P3
+
+**Lo encontró el `auditor-privacidad` sobre B-861**, y es la misma clase que ese
+par de ítems vino a cerrar, un escalón más arriba.
+
+`handlesDe` (`src/lib/textoRedes.ts`) arma los arrobas del pie del posteo con
+`actividad.tallerista?.instagram ?? ''`. `ActividadParaRedes` es un
+`Pick<Actividad, …>` —**el documento crudo, no `ActividadPublica`**—, así que B-861
+no lo alcanza: con la cáscara `{ nombre: '', instagram: '@ana' }` el texto para
+redes sigue poniendo `@ana` mientras el `events.json` y la página de detalle ya
+dicen que no hay tallerista.
+
+**Lo que lo vuelve un ítem y no un descuido: antes de B-861 las tres salidas
+coincidían** (las tres publicaban). Arreglar dos dejó a la tercera sola, y la
+tercera es **la salida 5, la más irreversible** — un posteo con un arroba no se
+despublica.
+
+**No se arregló en el mismo cambio a propósito.** Un handle cargado a mano con el
+nombre en blanco puede ser un olvido del formulario o puede ser deliberado
+(«etiquetá a esta cuenta»), y `difusion.arrobar` existe justamente para el segundo
+caso. La decisión es del dueño:
+
+- **si es olvido** → `handlesDe` condiciona por `?.nombre?.trim()`, una línea, más
+  un caso en `tests/textoRedes.test.ts` (los de hoy siempre tienen nombre, así que
+  el borde no está cubierto);
+- **si es deliberado** → no se toca el código y se acota la prosa de
+  `07-seguridad.md` y del docblock de `toPublic.ts` a «las salidas que derivan de
+  `toPublic`», que es lo que hoy dicen provisoriamente.
+
 ### B-880 · Quedan dos tests con la forma de B-873, y uno es peor: pasa en vez de saltearse · P2
 
 **Salieron del chequeo de clase que dejó B-873** (`tests/workflows.test.ts`,
@@ -1686,7 +1715,19 @@ El arreglo es una línea del regex (`google\.\w+\(` en vez de `google\.calendar\
 y por eso mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que
 medir qué entra que hoy no entra antes de aplicarlo, no después.
 
-### B-860 · El `imagenUrl` del `events.json` es la tercera respuesta a «cuál es la imagen», y la única cruda · P4
+### B-860 · El `imagenUrl` del `events.json` es la tercera respuesta a «cuál es la imagen», y la única cruda — ✅ hecho (2026-09-11) · P4
+
+> ✅ **Hecho.** `imagenUrlDe` usa `imagenesPublicables` + `urlSegura`: las mismas
+> dos funciones que `imagenesDeDetalle` y **el mismo orden** —filtrar primero,
+> elegir portada después—, que es el que evita que una portada rota deje al índice
+> sin imagen habiendo una sana.
+>
+> **El atenuante se verificó, no se asumió:** ninguno de los ocho consumidores de
+> `EntradaDeIndice` lee `imagenUrl`.
+>
+> **Y el ítem se quedó corto:** el arreglo prometía convergencia índice↔detalle y
+> la habría dejado fijada por **dos literales en dos archivos de test distintos**
+> —su propia clase un nivel más arriba—. Lo cobró el `auditor-privacidad`.
 
 **Lo encontró el frente de B-854** después de unificar las otras dos.
 `imagenUrlDe` (`src/lib/eventsJson.ts`) es `portadaDe(a.imagenes)?.url ?? null`:
@@ -1705,7 +1746,20 @@ El arreglo es la línea que el frente dejó escrita:
 `urlSegura(portadaDe(imagenesPublicables(a.imagenes))?.url ?? null)`. Va con su
 caso y con el barrido de la salida 1, que es lo que lo hace más que un `sed`.
 
-### B-861 · El `tallerista` del `events.json` sigue mirando el objeto y no el nombre · P4
+### B-861 · El `tallerista` del `events.json` sigue mirando el objeto y no el nombre — ✅ hecho (2026-09-11) · P4
+
+> ✅ **Hecho, y valía más de lo que el ítem decía.** No es solo el `''` vs `null`:
+> con el predicado viejo, la cáscara `{ nombre: '', bio: 'algo', instagram: '@x' }`
+> **publicaba la bio y el Instagram de alguien sin nombre** en la salida más barata
+> de cosechar.
+>
+> Se corrigió en `toPublic` y no en `entradaDeIndice`: es la frontera por la que
+> pasan las dos salidas, así que el índice hereda el `null` sin un segundo
+> predicado.
+>
+> **Lo que NO cierra: la salida 5.** `handlesDe` lee el documento crudo, así que el
+> texto para redes sigue arrobando al tallerista sin nombre. Antes de este ítem las
+> tres coincidían; ahora divergen. Es **B-881**.
 
 **La hermana de B-854 del lado de la proyección.** `toPublic.ts` decide
 `tallerista: a.tallerista ? {…} : null`, y `entradaDeIndice` lo colapsa a

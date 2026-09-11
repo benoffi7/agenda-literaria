@@ -184,6 +184,63 @@ describe('toPublic — el libro presentado (DEC-1, §5.1, trampa 5)', () => {
   });
 });
 
+describe('toPublic — el tallerista, y «hay tallerista» es que tenga nombre (B-861)', () => {
+  /**
+   * La hermana de B-854 del lado de la proyección. La regla ya estaba escrita en
+   * tres lugares —`formADocumento` (`lib/actividades.ts`), `diceQuienLaDa`
+   * (`lib/estadoDelCatalogo.ts`) y, desde B-854, el view-model del detalle— y
+   * acá se contestaba mirando si el objeto existe.
+   *
+   * Es el mismo criterio que `libroPublico`, arriba: sin título no se inventa el
+   * campo. Y es lo que hace que el índice del listado herede el `null` sin
+   * escribir un segundo predicado (`tests/eventsJson.test.ts`).
+   */
+  it('con nombre sale entero, con los tres campos decididos', () => {
+    const p = toPublic(
+      actividad({ tallerista: { nombre: 'Ana Ruiz', bio: 'Escribe crónica.', instagram: '@ana' } }),
+      'id1',
+    );
+    expect(p.tallerista).toEqual({
+      nombre: 'Ana Ruiz',
+      bio: 'Escribe crónica.',
+      instagram: '@ana',
+    });
+  });
+
+  it('la cáscara sin nombre da `null`, y con ella no sale la bio', () => {
+    /*
+     * El caso que atraviesa la regla de `formADocumento`: un documento anterior a
+     * ella, uno restaurado del historial, o una edición desde la consola. Con la
+     * bio escrita y el nombre en blanco —media ficha cargada— la proyección
+     * publicaba texto sobre una persona en la salida más barata de cosechar.
+     *
+     * Se afirma la ausencia de la **bio** y no solo el `null`: es el dato que se
+     * escapaba, y un `toBeNull()` solo no distingue «se arregló» de «el fixture
+     * no tenía bio».
+     */
+    const cascara = toPublic(
+      actividad({ tallerista: { nombre: '', bio: 'CENTINELA-BIO taller de los martes', instagram: '@ana' } }),
+      'id1',
+    );
+    expect(cascara.tallerista).toBeNull();
+    expect(JSON.stringify(cascara)).not.toContain('CENTINELA-BIO');
+  });
+
+  it('un nombre de solo espacios cuenta como sin nombre', () => {
+    // Mismo `trim()` que B-854 puso en el view-model del detalle: dos predicados
+    // que no coinciden en el borde son dos predicados distintos otra vez.
+    expect(
+      toPublic(actividad({ tallerista: { nombre: '   ', bio: '', instagram: '' } }), 'id1')
+        .tallerista,
+    ).toBeNull();
+  });
+
+  it('sin tallerista, `null` como siempre', () => {
+    expect(toPublic(actividad({ tallerista: null }), 'id1').tallerista).toBeNull();
+    expect(toPublic(actividad({ tallerista: undefined }), 'id1').tallerista).toBeNull();
+  });
+});
+
 describe('toPublic — inscripción', () => {
   it('marca la inscripción cerrada cuando ya pasó la fecha', () => {
     const p = toPublic(actividad(), 'id1', new Date('2026-09-02T00:00:00Z').getTime());
