@@ -340,6 +340,60 @@ y lo barre en sus dos formas, con permisos distintos —crudo al `events.json` y
 con controles positivos, porque un barrido que solo afirma ausencias vuelve solo al
 estado del que venía.
 
+**«Cuál es la imagen» y «hay tallerista» se contestan en un lugar, no en tres**
+(B-854, y desde el 2026-09-11 **B-860** + **B-861**, que cerraron las dos hermanas
+que aquél dejó afuera). No es una celda nueva —los dos datos ya eran públicos— sino
+la **misma** pregunta contestada por funciones que nacieron para cosas distintas,
+que es la clase de B-88 en su cara menos visible: no hay una segunda lista de
+reglas que se olvide de actualizarse, hay dos derivaciones que coinciden hasta que
+aparece el borde.
+
+| Pregunta | Quién la contesta hoy | Qué pasaba antes |
+|---|---|---|
+| ¿cuál es la imagen de esta actividad? | `imagenesPublicables` + `portadaDe` (+ `urlSegura` para el valor), en `lib/imagenes.ts` — y la usan las **tres**: el panel (`faltaElFlyer`), la página de detalle y `/cartelera` (`imagenesDeDetalle`), y desde B-860 el índice del `events.json` (`imagenUrlDe`, `lib/eventsJson.ts`) | el índice era `portadaDe(a.imagenes)?.url ?? null`: **ni el filtro ni el saneador**. Con el `imagenUrl` legacy de D-125 —que nunca pasó por `esUrl` ni por el esquema de B-817— el archivo publicaba `imagenUrl: "javascript:alert(1)"` |
+| ¿esta actividad tiene tallerista? | **que tenga nombre**. Para todo lo que deriva de la proyección se decide en `toPublic` (`lib/toPublic.ts`) y lo heredan el índice y el view-model del detalle; aguas arriba lo dicen `formADocumento` (`lib/actividades.ts`) y `diceQuienLaDa` (`lib/estadoDelCatalogo.ts`), con el mismo `?.nombre?.trim()`. **Falta la salida 5** — ver el aviso de abajo | `toPublic` miraba **el objeto**, así que la cáscara `{ nombre: '', bio: …, instagram: … }` —un documento anterior a esa regla, uno restaurado del historial, o media ficha cargada fuera del panel— publicaba la bio y el Instagram de alguien sin nombre, y el índice emitía `tallerista: ""` en vez de `null` |
+
+⚠️ **La convergencia del tallerista NO llega a la salida 5, y B-861 la empeoró
+antes de mejorarla** — lo encontró el `auditor-privacidad` sobre el mismo cambio, y
+queda abierto como **B-881**. `handlesDe` (`src/lib/textoRedes.ts`) arroba
+`tallerista.instagram` leyendo el **documento crudo** —`ActividadParaRedes` es un
+`Pick<Actividad, …>`, no una `ActividadPublica`—, así que la cáscara sin nombre
+sigue poniendo `@handle` en el pie del posteo mientras las salidas 1 y 6 ya dicen
+que no hay tallerista. **Antes de B-861 las tres coincidían** (las tres
+publicaban); ahora divergen. No se cerró en el mismo cambio porque arrobar a
+alguien cuyo handle está cargado a mano es una decisión del dueño y no una
+consecuencia mecánica del predicado.
+
+**El `imagenUrl` del índice no tenía lector cuando se arregló, y conviene que eso
+quede escrito** (verificado el 2026-09-11): D-146 sacó las imágenes del listado y
+el `og:image` sale de `detalle.imagenes[0]`, ya saneado. O sea que no era un XSS
+—ningún `href` ni ningún `src` recibía el valor— sino un dato crudo en un artefacto
+público y estático, que el próximo consumidor iba a leer creyendo que había pasado
+por el mismo filtro que las otras dos respuestas. Es lo que lo mantuvo en P4 y lo
+que hace que arreglarlo valga igual.
+
+Las dos ausencias y las dos formas están fijadas en
+`tests/barrido-de-salidas-publicas.test.ts` (salida 1, las dos direcciones), y ese
+barrido corre **insensible a mayúsculas** también para el índice desde B-860, por
+lo mismo que ya lo hacía para la página de detalle: `urlSegura` normaliza el host a
+minúscula, así que comparar sensible diría «dejó de publicar» sobre algo que sí se
+publicó.
+
+**Qué cuesta esa opción, dicho entero** (lo precisó el `auditor-privacidad`): para
+la dirección que importa —la **fuga**— es estrictamente **más** estricta, porque
+una fuga escrita en otra caja también se atrapa, y no hay dos centinelas que
+difieran solo por mayúsculas, así que no genera falsos positivos. Lo que se afloja
+es la otra dirección, «dejó de publicar», y se afloja para **los ~45 centinelas del
+índice** y no solo para la portada: un `toLowerCase()` agregado mañana a `resumenDe`
+o al título ya no dispararía el «faltantes». Para `imagenUrl` eso está compensado
+por el aserto exacto de `tests/eventsJson.test.ts` —que además compara el valor
+contra el que publica la página de detalle, o sea que la convergencia es una
+propiedad y no dos literales que hoy coinciden—; para el resto del índice, no.
+
+Y **la convergencia se afirma comparando las dos derivaciones**, no dos constantes
+escritas a mano en dos archivos de test: es la misma clase de B-88 un nivel más
+arriba, y el ítem la habría introducido sin red si el auditor no la pedía.
+
 **`comisiones[].etiqueta` sale, y `comisiones[].id` casi no** (B-181, **D-530**).
 Las «opciones para sumarse» son dos campos nuevos y cada uno tiene su celda,
 porque no salen igual:
