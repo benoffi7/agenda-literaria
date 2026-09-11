@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
   CAMPOS_REARME,
+  cubiertoPorElUltimoDespacho,
   decidirDisparo,
   esperaMs,
   ESPERA_BASE_MS,
@@ -9,6 +10,7 @@ import {
   registrarExito,
   registrarFallo,
 } from '../functions/rebuild.js';
+import { fuenteDeLaFunction } from './fixtures/functions';
 
 const T0 = new Date('2026-08-21T18:00:00Z').getTime();
 const MINUTO = 60_000;
@@ -223,6 +225,124 @@ describe('registrarExito — la marca del documento (B-85)', () => {
     expect(registrarExito(T0, { marcaLeida: new Date(T0), marcaActual: T0 }).pendiente).toBe(false);
     expect(registrarExito(T0, { marcaLeida: new Date(T0), marcaActual: T0 + 1 }).pendiente).toBe(
       true,
+    );
+  });
+});
+
+/**
+ * ── B-884 · «pendiente» significa lo que no queremos que signifique ────────
+ *
+ * `pendiente` se baja cuando GitHub **acepta** el `repository_dispatch`, no
+ * cuando el sitio tiene el cambio. Si el build muere después, nadie reintenta y
+ * el documento dice que está todo bien — verificado: los tres lugares que
+ * escriben el flag (`marcarRebuild`, `registrarFallo`, `registrarExito`) son
+ * ciegos al resultado del build, y `deploy.yml` no escribe en Firestore ni
+ * siquiera en los jobs de aviso que le agregó B-883.
+ *
+ * **Esto no lo arregla**, y el docblock de `rebuild.js` lo dice con todas las
+ * letras: confirmar que el build llegó pide comparar contra el `events.json`
+ * vivo, y eso es otro frente. Lo que se fija acá es la **mitad comparable**: el
+ * despacho deja escrito qué cubre y cuándo salió, que es lo que hoy no existía.
+ */
+describe('el registro de lo que se despachó — B-884', () => {
+  const marcaVieja = ts(T0 - MINUTO);
+  const marcaNueva = ts(T0 - 30_000);
+
+  /**
+   * **La decisión que fija este caso**, y es la que se pone roja si alguien
+   * ancla en la marca actual: el build que arranca lee Firestore *después* del
+   * dispatch, así que cubre **al menos** todo lo marcado hasta `marcaLeida`.
+   * Anclar en `marcaActual` afirmaría que cubre el cambio que llegó en el medio
+   * —el que B-85 deja justamente pendiente— y el que venga a confirmar se lo
+   * creería: sería B-85 otra vez, un nivel más arriba y con la mentira firmada.
+   */
+  it('el ancla es la marca leída antes del dispatch, no la que hay al escribir', () => {
+    const exito = registrarExito(T0, { marcaLeida: marcaVieja, marcaActual: marcaNueva });
+    expect(exito.despacho.cubreHasta).toBe(marcaVieja);
+    // Y el otro lado de la misma escritura: el flag queda arriba (B-85).
+    expect(exito.pendiente).toBe(true);
+  });
+
+  it('bajar el flag y decir qué se despachó van en la misma escritura', () => {
+    // Si `pendiente` baja, el documento tiene que quedar diciendo qué tendría
+    // que estar publicado. Es lo único que hace auditable un `false`.
+    const exito = registrarExito(T0, {
+      marcaLeida: marcaVieja,
+      marcaActual: marcaVieja,
+      motivo: 'actividad abc123',
+    });
+    expect(exito.pendiente).toBe(false);
+    expect(cubiertoPorElUltimoDespacho(exito)).toBe(T0 - MINUTO);
+  });
+
+  it('guarda el motivo que viajó, que es el leído y no el de arriba del documento', () => {
+    const exito = registrarExito(T0, {
+      marcaLeida: marcaVieja,
+      marcaActual: marcaNueva,
+      motivo: 'actividad A',
+    });
+    // Arriba del documento el motivo ya es "actividad B" —lo pisó la marca que
+    // llegó durante el dispatch—, pero lo que se despachó fue "actividad A".
+    expect(exito.despacho.motivo).toBe('actividad A');
+  });
+
+  it('sin marca y sin motivo el registro queda en null, nunca en undefined', () => {
+    // Firestore rechaza `undefined`: sin el `?? null` la escritura del éxito
+    // falla entera, o sea que el tick que **sí** despachó quedaría contado como
+    // uno que no. Es el caso de un `sistema/rebuild` anterior a B-884.
+    expect(registrarExito(T0).despacho).toStrictEqual({ cubreHasta: null, motivo: null });
+  });
+
+  it('un disparo que falló no mueve el ancla: no despachó nada', () => {
+    // El último despacho que sí salió sigue siendo el que describe qué tendría
+    // que estar publicado, y pisarlo con un fallo borraría esa referencia justo
+    // cuando hace falta.
+    expect(registrarFallo(pendiente(), 'HTTP 500', T0)).not.toHaveProperty('despacho');
+  });
+
+  it('una marca nueva rearma el contador y deja el registro en pie', () => {
+    // `CAMPOS_REARME` resetea los intentos porque un cambio nuevo merece los
+    // suyos; el ancla no, porque una marca nueva no invalida lo que el último
+    // despacho cubría. Borrarla le sacaría el piso al que venga a confirmar
+    // justo en el caso peor: un cambio encima de un build que quizá no llegó.
+    expect(CAMPOS_REARME).not.toHaveProperty('despacho');
+    const doc = {
+      ...registrarExito(T0, {
+        marcaLeida: marcaVieja,
+        marcaActual: marcaVieja,
+        motivo: 'actividad A',
+      }),
+      pendiente: true,
+      ...CAMPOS_REARME,
+    };
+    expect(cubiertoPorElUltimoDespacho(doc)).toBe(T0 - MINUTO);
+  });
+
+  it('el lector normaliza a milisegundos y distingue «no sé» de «al día»', () => {
+    expect(cubiertoPorElUltimoDespacho({ despacho: { cubreHasta: ts(T0) } })).toBe(T0);
+    expect(cubiertoPorElUltimoDespacho({ despacho: { cubreHasta: new Date(T0) } })).toBe(T0);
+    // Los dos casos sin ancla. `null` es «este documento no alcanza para
+    // juzgarlo», y el que confirme tiene que leerlo así y no como «está al
+    // día»: un documento anterior a B-884 con `pendiente: false` no dice nada
+    // sobre si el sitio está publicado.
+    expect(cubiertoPorElUltimoDespacho({ pendiente: false })).toBe(null);
+    expect(cubiertoPorElUltimoDespacho(null)).toBe(null);
+  });
+
+  /**
+   * Sobre el fuente, como el resto de lo que ata el schedule a su módulo puro
+   * (`tests/costuras.test.ts`, B-85): que lo que se **registra** sea lo que
+   * **viajó** no se puede afirmar desde el módulo puro, porque el que elige las
+   * dos cosas es el trigger. Las dos líneas nombran `estado.motivo` —el valor
+   * leído antes del `fetch`— y esa coincidencia es la propiedad.
+   */
+  it('lo que se registra es lo que viajó: las dos veces, el motivo leído', () => {
+    const src = fuenteDeLaFunction('dispararRebuild');
+    expect(src, 'el dispatch dejó de mandar el motivo leído').toContain(
+      'dispararDispatch(GITHUB_REPO, token, estado.motivo)',
+    );
+    expect(src, 'el registro dejó de guardar el motivo leído').toContain(
+      'motivo: estado.motivo ?? null,',
     );
   });
 });

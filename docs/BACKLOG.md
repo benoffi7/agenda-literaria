@@ -984,6 +984,47 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — 🟠 empezado (2026-09-11) · P1
+
+**El flag se baja cuando GitHub acepta el `repository_dispatch`, no cuando el sitio
+tiene el cambio.** `registrarExito` computa `pendiente: milis(marcaActual) !==
+milis(marcaLeida)`, o sea que solo queda arriba si llegó una marca **nueva** durante
+el dispatch (B-85). Si el build muere después, **nadie reintenta y el documento dice
+que está todo bien.**
+
+**Verificado, no supuesto.** Los únicos tres escritores son `marcarRebuild`,
+`registrarFallo` y `registrarExito`, y ninguno conoce el resultado del build.
+`deploy.yml` no escribe en Firestore —ni el job `deploy` ni los dos que le agregó
+B-883—. **No hay ningún camino por el que un build fallido vuelva a levantar el
+flag.**
+
+**Y el corte es más temprano de lo que parece.** `repository_dispatch` contesta 204
+sin devolver ningún run id, y contesta 204 igual si el workflow **no corre** (el
+archivo no parsea, trampa 11; Actions desactivado). «GitHub aceptó» no es siquiera
+«el build arrancó».
+
+**Lo que pasó el 2026-09-11, y por qué no se vio antes.** El rebuild falló ocho
+corridas seguidas y ninguna actividad publicada llegó al sitio. **Lo tapó el
+volumen:** ocho actividades son ocho marcas y ocho disparos. **Con una sola no había
+octava oportunidad.**
+
+**Es la otra mitad de B-883.** Aquél hace que un build roto llegue a una **persona**;
+esto es que el **estado** sigue diciendo que está bien. El issue no cubre dos casos:
+si el workflow **no arranca**, el aviso tampoco corre porque cuelga del job de
+deploy; y si el fallo fue transitorio y nadie pushea, no hay re-disparo — el sitio
+espera a la próxima edición.
+
+**Lo hecho (2026-09-11), la mitad que no depende de la confirmación:** el desfasaje
+quedó escrito en el código con su instrucción de lectura, y `registrarExito` escribe
+`despacho: { cubreHasta, motivo }` en la misma escritura que baja el flag —
+`cubreHasta` es la marca leída **antes** del `fetch`, o sea el piso que el sitio vivo
+tiene que contener. Más `cubiertoPorElUltimoDespacho(estado)`, que normaliza y
+devuelve `null` cuando no hay ancla: **`null` es «no sé», no «al día»**.
+
+**Lo que falta para cerrarlo: el chequeo de frescura** (B-882), que al detectar la
+divergencia vuelva a levantar el flag con `marcarRebuild(db, 'frescura')` — no con un
+`set` a mano, que dejaría un `agotado: true` sin rearmar.
+
 ### B-881 · El texto para redes arroba al tallerista sin nombre, y B-861 lo dejó siendo el único que lo hace · P3
 
 **Lo encontró el `auditor-privacidad` sobre B-861**, y es la misma clase que ese

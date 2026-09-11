@@ -2157,7 +2157,9 @@ Cómo leerlo:
 
 | Qué se ve | Qué significa |
 |---|---|
-| `pendiente: false` | no hay nada que rebuildear; el último disparo salió bien |
+| `pendiente: false` | el último **disparo** salió bien. **No** significa que el sitio esté publicado: el flag se baja cuando GitHub acepta el dispatch, no cuando el build termina (**B-884**). Si hay un issue `deploy-roto` abierto, el sitio está atrasado |
+| `despacho.cubreHasta` | qué tiene que contener, como mínimo, el sitio vivo: la marca del último cambio que el disparo cubría. Se compara contra el `generadoEn` del `events.json` publicado |
+| `despacho.motivo` | qué edición disparó ese build. El `motivo` de arriba del documento es el de la **última marca**, que puede ser otro |
 | `pendiente: true`, `intentos: 0` | recién marcado, el schedule todavía no tickeó (hasta 5 min) |
 | `pendiente: true`, `intentos: 1-4` | está reintentando con backoff — mirar `ultimoError` |
 | `agotado: true` | se rindió. `ultimoError` dice por qué. Se rearma solo con el próximo cambio, o a mano con el workflow |

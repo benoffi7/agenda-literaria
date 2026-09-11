@@ -13,6 +13,59 @@
 import { milisDe } from './calendario.js';
 
 /**
+ * ── Qué significa hoy `pendiente`, y qué debería significar — B-884 ────────
+ *
+ * El nombre promete **«hay un cambio sin publicar»**. Lo que el código
+ * implementa es **«hay un cambio sin despachar»**, y no es lo mismo: el flag se
+ * baja cuando GitHub **acepta** el `repository_dispatch`, que es un workflow
+ * entero antes de que el sitio tenga el cambio.
+ *
+ *   marcarRebuild → dispararRebuild → GitHub acepta → ¿arranca el workflow? →
+ *   ¿pasan los tests? → ¿buildea? → ¿deploya? → el sitio tiene el cambio
+ *                          ↑
+ *                          acá se baja `pendiente`
+ *
+ * `registrarExito` deja el flag arriba **solo** si llegó una marca nueva
+ * durante el dispatch (B-85). De ahí en adelante no mira nada: si el build
+ * muere —el workflow no arranca, los tests fallan, el deploy se cae— **nadie
+ * reintenta y el documento dice que está todo bien**.
+ *
+ * Los únicos tres lugares que escriben `pendiente` son `marcarRebuild`,
+ * `registrarFallo` y `registrarExito`, y ninguno de los tres conoce el
+ * resultado del build. **No hay ningún camino por el que un build fallido
+ * vuelva a levantar el flag**, y eso incluye a `deploy.yml`: los dos jobs que
+ * B-883 le agregó —abrir y cerrar el issue `deploy-roto`— corren con
+ * `permissions: contents: read, issues: write` y sin la service account, así
+ * que no tocan Firestore.
+ *
+ * **B-883 y esto son mitades distintas del mismo 2026-09-11.** Aquél hace que
+ * un build roto llegue a **una persona**; esto es que el **estado** sigue
+ * diciendo que está todo bien. Con el issue abierto, alguien se entera y
+ * pushea; si nadie pushea —porque el fallo fue transitorio y ya pasó— el sitio
+ * se queda viejo hasta la próxima edición de contenido, porque `pendiente`
+ * está en `false` y el schedule no tiene nada que disparar. Y hay un caso que
+ * el issue tampoco cubre: si el workflow **no arranca**, `avisar` tampoco
+ * corre, porque cuelga de `needs: [deploy]`.
+ *
+ * Y el corte es más temprano de lo que parece: `repository_dispatch` contesta
+ * 204 sin decir qué run arrancó, y contesta 204 igual si el workflow **no
+ * corre** —el archivo no parsea (trampa 11, B-188), Actions está desactivado—.
+ * «GitHub aceptó» no es siquiera «el build arrancó».
+ *
+ * **Lo tapa el volumen.** Cada edición marca un rebuild, así que ocho
+ * actividades cargadas seguidas dan ocho disparos y ocho oportunidades de que
+ * alguno de los builds sea el bueno. Con **una sola** actividad no hay octava
+ * oportunidad, y eso es lo que pasó el 2026-09-11.
+ *
+ * **Lo que falta para que el nombre sea cierto** es una confirmación desde el
+ * otro lado —comparar lo publicado en Firestore contra el `events.json` vivo—
+ * y eso no vive acá. Lo que sí vive acá es la mitad que la hace posible: el
+ * despacho deja escrito **qué** cubre (`despacho.cubreHasta`) y **cuándo**
+ * salió (`disparado`). Hasta que alguien compare, `pendiente: false` hay que
+ * leerlo como «despachado», nunca como «publicado».
+ */
+
+/**
  * Cuántos disparos fallidos consecutivos se toleran antes de rendirse.
  *
  * Con el backoff de abajo, 5 intentos cubren ~75 minutos (0 + 5 + 10 + 20 +
@@ -102,15 +155,54 @@ export const decidirDisparo = (estado, ahora, opciones = {}) => {
  *
  * Sin argumentos se comporta como antes (baja el flag), que es lo que
  * corresponde cuando no hay con qué comparar.
+ *
+ * **B-884 — el despacho deja registrado qué cubre.** `despacho.cubreHasta` es
+ * la marca `actualizado` que el tick leyó **antes** de hablar con GitHub, y
+ * `despacho.motivo` la etiqueta que viajó en el `client_payload`. El par
+ * `(despacho, disparado)` es el «qué» y el «cuándo» del último disparo, y es el
+ * comparable que hoy no existía: `disparado` solo decía cuándo, y `motivo` —el
+ * de arriba del documento— lo pisa la marca siguiente.
+ *
+ * **El ancla es la marca leída y no la actual, a propósito.** El build que
+ * arranca lee Firestore *después* del dispatch, así que cubre **al menos** todo
+ * lo marcado hasta `marcaLeida`; anclar en `marcaActual` afirmaría que cubre un
+ * cambio que puede no haber entrado — que es B-85 otra vez, un nivel más
+ * arriba, con el agravante de que esta vez la afirmación falsa se la cree el
+ * que venga a confirmar.
+ *
+ * Esto **no confirma nada**: es el comparable para que otro pueda confirmar
+ * (ver el bloque de arriba). Va en el mismo objeto que baja `pendiente`, así
+ * que el flag no se puede bajar sin dejar dicho qué tendría que estar
+ * publicado.
  */
-export const registrarExito = (ahora, { marcaLeida, marcaActual } = {}) => ({
+export const registrarExito = (ahora, { marcaLeida, marcaActual, motivo } = {}) => ({
   pendiente: milis(marcaActual) !== milis(marcaLeida),
   disparado: new Date(ahora),
   intentos: 0,
   ultimoError: null,
   ultimoIntento: new Date(ahora),
   agotado: false,
+  // `?? null` y no el valor a secas: Firestore rechaza `undefined`, y acá llega
+  // `undefined` cada vez que el documento no tiene `actualizado` todavía.
+  despacho: { cubreHasta: marcaLeida ?? null, motivo: motivo ?? null },
 });
+
+/**
+ * Qué tiene que contener, como mínimo, el sitio vivo — en milisegundos, o
+ * `null` si no hay ancla.
+ *
+ * Es la mitad de este módulo del chequeo de frescura (B-884): quien compare el
+ * `events.json` publicado contra Firestore necesita un piso contra el cual
+ * comparar, y hasta acá el documento no tenía ninguno. Normaliza porque el
+ * valor guardado es el `actualizado` tal como se leyó —un `Timestamp` de
+ * Firestore hoy, un `Date` o un número en un documento escrito a mano—.
+ *
+ * **`null` no significa «está al día»**: significa que este documento no
+ * alcanza para juzgarlo, y el que confirme tiene que tratarlo como «no sé», no
+ * como «sí». Pasa con un `sistema/rebuild` anterior a B-884 y con uno que
+ * nunca se marcó.
+ */
+export const cubiertoPorElUltimoDespacho = (estado) => milis(estado?.despacho?.cubreHasta);
 
 /**
  * Campos a escribir cuando falló. `pendiente` queda en `true`: el sitio sigue
@@ -119,6 +211,10 @@ export const registrarExito = (ahora, { marcaLeida, marcaActual } = {}) => ({
  * El error queda en el documento y no solo en los logs porque los logs de
  * Cloud Functions se retienen 30 días y nadie los mira: `sistema/rebuild` es
  * un solo doc que dice, ahora mismo, si el rebuild está roto y por qué.
+ *
+ * **No toca `despacho` (B-884).** Un disparo que falló no despachó nada, así
+ * que no mueve el ancla: el último despacho que sí salió sigue siendo el que
+ * describe qué tendría que estar publicado.
  */
 export const registrarFallo = (estado, error, ahora, opciones = {}) => {
   const { maxIntentos = MAX_INTENTOS } = opciones;
@@ -142,5 +238,11 @@ export const registrarFallo = (estado, error, ahora, opciones = {}) => {
  *
  * El presupuesto es por cambio, no global: aunque el problema persista, cada
  * cambio gasta a lo sumo `MAX_INTENTOS` llamadas, no infinitas.
+ *
+ * **Lo que rearma es el contador, no el registro (B-884).** `despacho` no está
+ * acá a propósito: una marca nueva no invalida lo que el último despacho
+ * cubría, y borrarlo le sacaría el piso al que venga a confirmar justo cuando
+ * más lo necesita — cuando hay un cambio encima de un build que quizá no
+ * llegó.
  */
 export const CAMPOS_REARME = { intentos: 0, ultimoError: null, agotado: false };

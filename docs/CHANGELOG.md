@@ -2,6 +2,49 @@
 
 ## Sin publicar
 
+- **`pendiente` promete «hay un cambio sin publicar» e implementa «hay un cambio sin
+  despachar»** — **B-884**. El flag de `sistema/rebuild` se baja cuando GitHub
+  **acepta** el `repository_dispatch`, que es un workflow entero antes de que el
+  sitio tenga el cambio. Si el build muere de ahí en adelante, **nadie reintenta y
+  el documento dice que está todo bien**.
+
+  **Verificado, no supuesto:** los únicos tres lugares que escriben el flag son
+  `marcarRebuild`, `registrarFallo` y `registrarExito`, y ninguno conoce el
+  resultado del build; `deploy.yml` corre sin la service account, así que **no hay
+  ningún camino por el que un build fallido vuelva a levantar el flag**. Y el corte
+  es más temprano de lo que parece: `repository_dispatch` contesta 204 sin decir
+  qué run arrancó, **y contesta 204 igual si el workflow no corre** (trampa 11).
+  «GitHub aceptó» no es siquiera «el build arrancó».
+
+  **Lo tapó el volumen el 2026-09-11:** ocho actividades cargadas seguidas son ocho
+  marcas, ocho disparos y ocho oportunidades de que algún build sea el bueno. **Con
+  una sola actividad no hay octava oportunidad.**
+
+  **Lo que este cambio hace, y lo que deliberadamente no hace.** No confirma nada —
+  confirmar pide comparar contra el `events.json` vivo, y eso es el chequeo de
+  frescura. Lo que se hizo es la mitad que lo vuelve posible: el desfasaje queda
+  **escrito en el código**, con la instrucción de lectura —`pendiente: false` se lee
+  «despachado», nunca «publicado»—, y el despacho deja registrado **qué cubre**.
+  Hasta acá el documento no tenía ningún comparable.
+
+  **La decisión que le da la forma es que el ancla sea la marca leída y no la
+  actual**, y está fijada en rojo. El build lee Firestore *después* del dispatch,
+  así que cubre **al menos** hasta ahí; anclar en la actual afirmaría que cubre el
+  cambio que llegó en el medio —el que B-85 deja pendiente— y esta vez **la
+  afirmación falsa se la creería el que venga a confirmar**.
+
+  **Se descartó bajar el flag con evidencia de que el build arrancó.**
+  `repository_dispatch` no devuelve run id: correlacionar pide listar runs y
+  adivinar por `event` + `created_at`, en una segunda llamada a la red dentro del
+  mismo tick, con un estado intermedio y un tick de seguimiento — o sea, el
+  mecanismo de confirmación otra vez, duplicado y peor. Y «arrancó» tampoco es
+  «publicó».
+
+  **Y la parte incómoda, dicha por el frente: esto no arregla la pérdida.** Con una
+  sola actividad y un build que muere, el sitio sigue quedándose viejo y
+  `pendiente` sigue diciendo `false`. **B-884 queda abierto** hasta que exista el
+  chequeo de frescura. Ocho mutaciones, una por aserto.
+
 - **La query del barrido de retención lleva `limit()`, y lo que la corta es el
   trabajo y no la cantidad leída** — **B-865**. Desde B-844 arrastraba toda la
   bandeja pendiente en cada corrida. Ahora lee de a 200 con cursor y deja de pedir

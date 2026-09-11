@@ -109,11 +109,18 @@ export const dispararRebuild = onSchedule(
     // Va en transacción para que la comparación no tenga su propia ventana: si
     // la marca llega mientras la transacción corre, Firestore la reintenta y la
     // ve.
+    //
+    // B-884 — y en la misma escritura queda el registro de **qué** se despachó:
+    // `estado.motivo` es literalmente lo que viajó en el `client_payload` unas
+    // líneas más arriba, leído antes del `fetch` igual que la marca. El de
+    // arriba del documento ya puede ser otro (una marca nueva lo pisa), así que
+    // el que se guarda tiene que ser el leído, no el actual.
     const exito = await db.runTransaction(async (tx) => {
       const actual = await tx.get(ref);
       const campos = registrarExito(ahora, {
         marcaLeida: estado.actualizado ?? null,
         marcaActual: (actual.exists ? actual.data().actualizado : null) ?? null,
+        motivo: estado.motivo ?? null,
       });
       tx.set(ref, campos, { merge: true });
       return campos;
