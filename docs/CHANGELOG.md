@@ -2,6 +2,49 @@
 
 ## Sin publicar
 
+- **Los dos barridos que quedaban leyendo `dist/` pasaron al gate, y uno no se
+  salteaba: se reportaba PASSED** — **B-880**, de B-873. Salieron del chequeo de
+  clase que B-873 dejó, que es exactamente para lo que está: **los enumeró en vez
+  de taparlos**.
+
+  **Medido moviendo el `dist/`, que es lo que lo vuelve un hecho.**
+  `no-encontrado.test.ts` sale `13 passed | 1 skipped` — era el **único `it.skipIf`
+  de la suite entera**. `ahoraPublico.test.ts` sale `51 passed`: su caso del CSS
+  construido no usaba `skipIf` sino un `return` temprano, así que sale **`✓ … 0ms`**,
+  verde, contado como aprobado, habiendo leído **cero bytes**. Es peor que un
+  salteado y por eso no era P3: un `↓` por lo menos aparece en el recuento; esto no
+  deja ninguna huella.
+
+  Los dos son ahora la **sección 4 de `verificar-bundle.sh`**, la simétrica de la 2:
+  **qué TIENE que estar**. Que la página que Firebase sirve como 404 esté **y sea
+  ésa**, y que las clases de la grilla del tríptico hayan llegado a la hoja
+  construida. **Lo que el gate le exige al artefacto sale del fuente**, no escrito
+  en el script — y si la extracción deja de matchear es **rojo**, que es la lección
+  de B-873 aplicada a la extracción misma.
+
+  **Un agujero que el ítem no tenía, encontrado por la mutación:** el chequeo del
+  CSS buscaba el selector **por subcadena**, así que `.grid` lo satisfacía
+  `.grid-cols-1` — una utilidad que Tailwind **no** emitió pasaba por ser prefijo de
+  otra que sí. Estuvo así desde B-600, o sea **verde sin poder fallar por esa
+  clase**.
+
+  **Verificado de punta a punta con build real:** renombrar `404.astro` deja el
+  build y el typecheck verdes y **solo se cae el gate**; y sacar `estilos.ts` del
+  scan de Tailwind deja las cuatro utilidades en la hoja —las escriben otros
+  archivos— y lo único que cae es el **marcador exclusivo**, que es la prueba de que
+  esa mitad del chequeo no era un lujo.
+
+  **Y con eso «la suite no tiene ni un skip silencioso» pasa a ser cierto**,
+  verificado: cero `it.skipIf`, y **el mismo resultado con `dist/` y sin él** —4541
+  casos, cero salteados—. Lo que queda son los 25 `describe.skipIf(!vivo)` del
+  emulador, que **no son silenciosos**: `EXIGIR_EMULADOR=1` los vuelve fallo duro y
+  el workflow levanta lo que el flag exige.
+
+  **Y una fila falsa que B-873 dejó**, corregida acá: `13-agentes.md` decía que el
+  barrido de terceros «lee el `dist/` de un build real». B-873 cerró la instancia en
+  el código y dejó **la red de contención afirmando el estado viejo** — la clase de
+  B-880 con otra cara, y **nada ata una fila de esa tabla al archivo que nombra**.
+
 - **El control de clase del saneador ahora mira los `.astro`, y el literal de regex
   que lo impedía se escribe de otra forma** — **B-876**, de B-855.
   `tests/sin-comentarios.test.ts` comparaba contra el parser de TypeScript sobre los

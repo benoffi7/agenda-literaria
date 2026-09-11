@@ -13,20 +13,30 @@
  * entrada y se mira la salida. Con un artefacto sintético **no hay nada que
  * saltear**: el fixture siempre existe porque lo escribe el propio caso.
  *
- * ── El fixture tiene que pasar las secciones 1 y 2 ────────────────────────
- * El gate es una secuencia: credenciales (§1), App Check (§2) y recién después
- * el HTML (§3). Para que un caso pueda afirmar «este artefacto sale en verde»,
- * el fixture tiene que llegar entero hasta el final — si no, un verde sería solo
- * «falló antes de mirar lo que me importa».
+ * ── El fixture tiene que pasar las cuatro secciones ───────────────────────
+ * El gate es una secuencia: credenciales (§1), App Check (§2), el HTML limpio
+ * (§3) y lo que tiene que estar (§4). Para que un caso pueda afirmar «este
+ * artefacto sale en verde», el fixture tiene que llegar entero hasta el final —
+ * si no, un verde sería solo «falló antes de mirar lo que me importa».
  *
- * Por eso el `.js` de abajo lleva lo que la sección 2 exige, y **la clave sale
- * de `.env.production`**, no escrita a mano: es el mismo archivo que el gate
- * lee, así que si la clave del proyecto cambia el fixture la sigue sola.
+ * Por eso el `.js` de abajo lleva lo que la sección 2 exige, y desde B-880 la
+ * base lleva además una `404.html` y una hoja con las clases de la grilla, que
+ * es lo que la sección 4 exige.
+ *
+ * **Y nada de eso está escrito a mano**: la clave sale de `.env.production` y
+ * el resto de los módulos que lo declaran (`noEncontrado`, `rutasPublicas`,
+ * `components/sitio/estilos`). Son las mismas fuentes que el gate lee, así que
+ * el día que una constante cambie el fixture la sigue solo — escrito dos veces,
+ * el fixture se quedaría viejo y el caso pasaría a probar el valor de antes.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+import { CLASES_DE_PARED, CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
+import { CLAVE_BUSQUEDA, TITULO_NO_ENCONTRADO } from '@/lib/noEncontrado';
+import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
 
 /** La raíz del repo, que es desde donde hay que invocar el gate. */
 export const RAIZ = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -59,12 +69,52 @@ export const paginaLimpia = (titulo: string): string =>
   `<link rel="icon" href="/marca.svg">` +
   `</head><body><h1>${titulo}</h1><script type="module" src="/_astro/app.js"></script></body></html>`;
 
+/**
+ * La página de error tal como el gate la espera — B-310, B-880.
+ *
+ * Las cinco señales que la sección 4.1 exige, y las cinco salen de la constante
+ * que las declara: el título, el `noindex`, el formulario por GET, el nombre del
+ * campo de búsqueda y el enlace al archivo.
+ */
+export const pagina404 = (): string =>
+  `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">` +
+  `<title>${TITULO_NO_ENCONTRADO}</title>` +
+  `<meta name="robots" content="noindex, nofollow">` +
+  `<link rel="stylesheet" href="/_astro/Base.css">` +
+  `</head><body><h1>${TITULO_NO_ENCONTRADO}</h1>` +
+  `<form action="${RUTA_AGENDA}" method="get">` +
+  `<label for="q-404">Buscar</label>` +
+  `<input id="q-404" type="search" name="${CLAVE_BUSQUEDA}">` +
+  `</form>` +
+  `<a href="${RUTA_PASADAS}">al archivo</a>` +
+  `<script type="module" src="/_astro/app.js"></script></body></html>`;
+
+/**
+ * Una hoja construida con los selectores que la sección 4.2 exige — B-600.
+ *
+ * Es lo que Tailwind emite cuando ve el archivo que declara las clases: una
+ * regla por utilidad del tríptico, más el marcador de la pared, que es el que
+ * prueba que `components/sitio/estilos.ts` entró al scan. El cuerpo de la regla
+ * da igual —el gate busca el selector—, así que va vacío.
+ */
+export const hojaConLaGrilla = (): string =>
+  [
+    "@font-face{font-family:'Public Sans';src:url('/fuentes/public-sans-v21-latin.woff2')}",
+    ...[
+      ...new Set([
+        ...Object.values(CLASES_DEL_TRIPTICO).flatMap((c) => c.split(' ')),
+        CLASES_DE_PARED[2],
+      ]),
+    ].map((clase) => `.${clase.replace(/:/g, '\\:')}{}`),
+  ].join('\n') + '\n';
+
 /** Los archivos que trae un artefacto sintético si el caso no dice otra cosa. */
 const BASE = (): Record<string, string> => ({
   'index.html': paginaLimpia('Agenda'),
   'ayuda/index.html': paginaLimpia('Ayuda'),
+  '404.html': pagina404(),
   '_astro/app.js': jsQuePasaAppCheck(),
-  '_astro/Base.css': "@font-face{font-family:'Public Sans';src:url('/fuentes/public-sans-v21-latin.woff2')}\n",
+  '_astro/Base.css': hojaConLaGrilla(),
 });
 
 export interface Corrida {

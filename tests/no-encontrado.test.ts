@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import { correrGate, pagina404 } from './fixtures/artefacto';
 
 import {
   ACCION_NO_ENCONTRADO,
@@ -244,15 +246,38 @@ describe('`/404` no ve más de lo que necesita — B-310', () => {
 });
 
 /**
- * ── El nombre del archivo, verificado sobre `dist/` ───────────────────────
- * Se saltea si no hay build, como los de emulador y el de comentarios en el
- * HTML: correr `npm run build` antes. En CI el build siempre corre.
+ * ── El nombre del archivo, verificado sobre el artefacto ──────────────────
+ * **Hasta el 2026-09-11 acá había un `it.skipIf(!hayBuild)` que leía
+ * `dist/404.html`**, con esta frase en el docblock: «en CI el build siempre
+ * corre». Era falsa, y es la misma clase que B-873 —de cuyo chequeo salió este
+ * ítem, B-880—: en `deploy.yml` los tests son el paso 4 y el build el paso 5, y
+ * en `push-main.yml` los tests son un job que no buildea nunca. En las dos
+ * corridas `dist/` no existe cuando vitest mira.
+ *
+ * Medido el 2026-09-11 moviendo el `dist/` local y corriendo este archivo:
+ * `Tests 13 passed | 1 skipped`, **estado 0**. Era el último skip de la suite
+ * entera, y la red de contención lo contaba como cobertura.
+ *
+ * El chequeo vive ahora en **`scripts/verificar-bundle.sh`**, sección 4.1: el
+ * paso que los dos workflows corren inmediatamente **después** del build, sobre
+ * el mismo `dist/` que el paso siguiente sube a Hosting. Lo que queda de este
+ * lado es manejar ese gate con `dist/` sintéticos, igual que
+ * `tests/sin-comentarios-en-el-html.test.ts`. **Ningún caso de este archivo
+ * depende de que exista un build**, así que ninguno se saltea nunca.
  */
-describe('Firebase sirve esta página como 404 — B-310', () => {
-  const dist = raiz('dist');
-  const hayBuild = existsSync(dist);
+describe('el gate exige que Firebase tenga qué servir como 404 — B-310, B-880', () => {
+  it('un artefacto con la página pasa, y el gate dice que la reconoció', () => {
+    /*
+     * Control positivo, y no es decorativo: los cinco casos de abajo afirman
+     * ausencias, y un barrido que solo afirma ausencias pasa igual el día que
+     * deje de mirar. El recuento sale en el log de Actions a propósito.
+     */
+    const { estado, salida } = correrGate();
+    expect(salida).toContain('404.html es la página de error');
+    expect(estado, salida).toBe(0);
+  });
 
-  it.skipIf(!hayBuild)('el build la emite como `dist/404.html`, en la raíz', () => {
+  it('sin `404.html` es rojo — la mutación de renombrar `404.astro`', () => {
     /*
      * Firebase Hosting usa `404.html` de la raíz del directorio publicado, así
      * que este nombre no es un detalle: es el cableado entero. Astro emite `404`
@@ -261,14 +286,61 @@ describe('Firebase sirve esta página como 404 — B-310', () => {
      *
      * MUTACIÓN PROBADA: renombrar `404.astro` a `no-encontrado.astro` deja el
      * build verde, el typecheck verde y todos los casos de arriba verdes —lo
-     * único que se cae es este.
+     * único que se cae es el gate, y con `npm run build` de verdad.
      */
-    expect(existsSync(raiz('dist/404.html'))).toBe(true);
-    // Y que sea **esta** página y no un 404 de otra cosa.
-    const html = fuente('dist/404.html');
-    expect(html).toContain(TITULO_NO_ENCONTRADO);
-    expect(html).toMatch(/name="robots" content="noindex/);
-    expect(html).toContain(`action="${RUTA_AGENDA}"`);
-    expect(html).toContain(`href="${RUTA_PASADAS}"`);
+    const { estado, salida } = correrGate({ '404.html': null });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('404.html no existe');
+    expect(salida, 'el error no nombra el ítem que lo trajo').toContain('B-310');
+  });
+
+  it('y con una `404.html` que no es ÉSTA, también', () => {
+    // El nombre solo no alcanza: un `404.html` de otra cosa —el de una
+    // plantilla, el de un error de build— se sirve igual y se ve como una
+    // página de error, que es justo lo que hace que nadie lo mire.
+    const { estado, salida } = correrGate({
+      '404.html': '<!DOCTYPE html><html lang="es"><head><title>Oops</title></head><body></body></html>',
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('no es la página de error del sitio');
+    expect(salida).toContain(TITULO_NO_ENCONTRADO);
+  });
+
+  it('sin el `noindex`, rojo: §5.1 la deja fuera del índice', () => {
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(/<meta name="robots"[^>]*>/, ''),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('noindex');
+  });
+
+  it('sin el parámetro que la home lee, rojo — la trampa 2 del encabezado', () => {
+    /*
+     * El formulario manda a `/?q=…` porque `q` es lo que la home lee (§6.2). El
+     * día que ese nombre cambie de un solo lado, el formulario mandaría a la
+     * agenda sin filtro y la página se vería igual de bien.
+     */
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(`name="${CLAVE_BUSQUEDA}"`, 'name="busqueda"'),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain(CLAVE_BUSQUEDA);
+  });
+
+  it('y sin el enlace al archivo, rojo — que es la razón de ser de la página', () => {
+    /*
+     * §4.5: el destino de un link viejo es `/pasadas`, no una pared blanca.
+     *
+     * El mensaje del gate nombra la ruta **sin** la barra final, porque la
+     * extrae del argumento de `rutaCanonica('/pasadas')` en el fuente y la barra
+     * la pone `rutaCanonica` (B-330). El aserto va sobre esa forma, que es la
+     * que el gate tiene: escribir la otra sería fijar acá una convención que
+     * este archivo no decide.
+     */
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(`href="${RUTA_PASADAS}"`, 'href="/"'),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain(RUTA_PASADAS.replace(/\/$/, ''));
   });
 });

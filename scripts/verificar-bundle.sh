@@ -4,7 +4,7 @@
 #
 #   ./scripts/verificar-bundle.sh [directorio]   (por defecto: dist)
 #
-# ── Las tres mitades ──────────────────────────────────────────────────────
+# ── Las cuatro secciones ──────────────────────────────────────────────────
 # 1. **Que no esté el Admin SDK** (§5.4 / trampa 4): si `firebase-admin` se cuela
 #    en un componente cliente, la service account key termina en el bundle
 #    público. Es la mitad original, y la única que había.
@@ -25,8 +25,15 @@
 #    vez. La sección 3 cuenta la medición; el resumen es que este script es el
 #    único lugar del pipeline donde `dist/` existe.
 #
-#    Son tres y no dos, pero la simetría es la misma: qué no puede estar (1 y 3)
-#    y qué tiene que estar (2).
+# 4. **Que lo que TIENE que estar en el artefacto esté** (B-880): la página que
+#    Firebase sirve como 404 y las clases de la grilla que Tailwind tiene que
+#    haber emitido a la hoja. Son otros dos chequeos que vivían como tests que
+#    leían `dist/` —o sea B-873 otra vez, y el de la grilla peor: no se salteaba,
+#    se reportaba **PASSED** habiendo mirado cero bytes—. La sección 4 cuenta la
+#    medición.
+#
+#    Son cuatro y no dos, pero la simetría es la misma: qué no puede estar (1 y 3)
+#    y qué tiene que estar (2 y 4).
 #
 # ── Por qué acá y no en un test que lea `dist/` ───────────────────────────
 # El repo tiene tests que leen el artefacto (`sin-comentarios-en-el-html`,
@@ -273,7 +280,7 @@ echo "$DIR/ con App Check: clave ${CLAVE:0:8}… en el bundle, sin emuladores, p
 # su script— en vez de mirar un `dist/` que puede no estar. Así no hay un solo
 # `skipIf` en el camino y los casos corren en `npm test` como cualquier otro.
 
-DIR_A_BARRER="$DIR" node --input-type=module - <<'BARRIDO' || exit 1
+DIR_A_BARRER="$DIR" RAIZ_DEL_REPO="$RAIZ" node --input-type=module - <<'BARRIDO' || exit 1
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -458,5 +465,210 @@ console.log(
     `${css.length === 1 ? 'hoja' : 'hojas'}, sin comentarios ` +
     'de plantilla emitidos (B-261) y sin hosts de tercero (D-254)',
 );
-BARRIDO
 
+// ══════════════════════════════════════════════════════════════════════════
+// 4 · Lo que TIENE que estar en el artefacto — B-880
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Las secciones 1 y 3 preguntan qué NO puede estar; ésta y la 2, qué SÍ. Son dos
+// chequeos que vivían como tests que leían `dist/`, o sea la misma clase que
+// B-873, y que llegaron acá por el mismo camino. Uno de los dos es peor:
+//
+//   tests/no-encontrado.test.ts · `it.skipIf(!hayBuild)` sobre `dist/404.html`
+//                               · era el ÚLTIMO skip de la suite entera
+//   tests/ahoraPublico.test.ts  · `if (hojas === '') return;` sobre `dist/_astro`
+//                               · sin `skipIf`: el caso se reportaba PASSED
+//
+// Medido el 2026-09-11 moviendo el `dist/` y corriendo los dos archivos: el
+// primero sale `1 skipped`, el segundo sale `✓ … 0ms` — verde, contado como
+// aprobado, habiendo leído cero bytes. El segundo es peor justamente por eso: un
+// salteado al menos aparece en el recuento.
+//
+// Lo que cada uno prometía, y que ahora se exige acá sobre el artefacto que se
+// sube:
+//
+//  · **La 404.** Firebase Hosting sirve `404.html` de la raíz del directorio
+//    publicado. Renombrar `404.astro` no rompe el build, ni el typecheck, ni
+//    ningún test de contenido: simplemente se vuelve al 404 de Firebase y la
+//    página queda publicada en una URL que nadie visita.
+//  · **Las clases de la grilla.** Tailwind genera las utilidades leyendo el
+//    fuente. Un mapa de literales que igual no ve —por vivir fuera de su
+//    `content`, o por una clase escrita mal— tiene exactamente el mismo aspecto
+//    en el fuente y el mismo bug en pantalla: el tríptico se queda en una
+//    columna y nada falla.
+//
+// **Lo que se le exige al artefacto sale del fuente y no está escrito acá.** Es
+// el patrón de la sección 2 con `.env.production`: lo que se verifica es el par
+// declaración/artefacto —«lo que el proyecto dice que va» contra «lo que el
+// build produjo»—, y una copia escrita en este script se queda vieja el día que
+// la constante cambie, dejando el gate verde sobre el valor de antes.
+
+const RAIZ = process.env.RAIZ_DEL_REPO;
+
+/**
+ * Un valor declarado en el fuente. Si no se puede leer o el patrón no matchea,
+ * es ROJO: es la lección de B-873 aplicada a la extracción misma — un chequeo
+ * que se quedó sin qué verificar no pasa, avisa.
+ */
+const declarado = (archivo, re, que) => {
+  let texto = '';
+  try {
+    texto = readFileSync(join(RAIZ, archivo), 'utf8');
+  } catch {
+    error(`no se pudo leer ${archivo}, de donde sale ${que} (B-880)`, [
+      'Este gate deriva del fuente lo que le exige al artefacto. Sin el fuente no',
+      'hay nada que exigir, y un chequeo que no puede correr no pasa: falla.',
+    ]);
+  }
+  const m = re.exec(texto);
+  if (!m) {
+    error(`${archivo} ya no declara ${que} en la forma que este gate lee (B-880)`, [
+      `Buscado: ${re}`,
+      'La constante se movió o cambió de forma. Actualizá el patrón: dejarlo sin',
+      'matchear sería el chequeo verde sobre cero bytes que trajo esto hasta acá.',
+    ]);
+  }
+  return m[1];
+};
+
+// ── 4.1 · La página que Firebase sirve como 404 — B-310 ───────────────────
+const NO_ENCONTRADO = 'src/lib/noEncontrado.ts';
+const TITULO_404 = declarado(
+  NO_ENCONTRADO,
+  /export const TITULO_NO_ENCONTRADO\s*=\s*'([^']+)'/,
+  'el título de la página de error',
+);
+const CLAVE_BUSQUEDA = declarado(
+  NO_ENCONTRADO,
+  /export const CLAVE_BUSQUEDA\s*=\s*'([^']+)'/,
+  'el parámetro de la búsqueda',
+);
+const RUTA_PASADAS = declarado(
+  'src/lib/rutasPublicas.ts',
+  /export const RUTA_PASADAS\s*=\s*rutaCanonica\('([^']+)'\)/,
+  'la ruta del archivo',
+);
+
+let html404 = '';
+try {
+  html404 = readFileSync(join(DIR, '404.html'), 'utf8');
+} catch {
+  error(`${DIR}/404.html no existe — Firebase no tiene qué servir en un 404 (B-310, B-880)`, [
+    'Firebase Hosting usa `404.html` de la raíz del directorio publicado, así que',
+    'ese nombre no es un detalle: es el cableado entero. Astro lo emite como archivo',
+    'suelto incluso con `build.format` en `directory` (su caso especial para 404 y',
+    '500). Si no está, la página cambió de nombre o dejó de emitirse — y renombrar',
+    '`404.astro` deja el build, el typecheck y todos los tests de contenido verdes.',
+  ]);
+}
+
+const falta404 = [];
+if (!html404.includes(TITULO_404)) {
+  falta404.push(`no dice «${TITULO_404}»: es un 404, pero no ÉSTE`);
+}
+if (!/<meta[^>]*name="robots"[^>]*content="[^"]*noindex/i.test(html404)) {
+  falta404.push('no lleva `noindex` — §5.1 la deja fuera del índice');
+}
+if (!/<form\b[^>]*method="get"/i.test(html404)) {
+  falta404.push('no tiene el formulario de búsqueda por GET — §4.5');
+}
+if (!new RegExp(`<input\\b[^>]*name="${CLAVE_BUSQUEDA}"`, 'i').test(html404)) {
+  falta404.push(
+    `el campo de búsqueda no manda \`${CLAVE_BUSQUEDA}\`, que es lo que la home lee (§6.2)`,
+  );
+}
+if (!new RegExp(`href="${RUTA_PASADAS}/?"`).test(html404)) {
+  falta404.push(`no enlaza \`${RUTA_PASADAS}\`, que es el destino de un link viejo (§4.5)`);
+}
+if (falta404.length > 0) {
+  error(`${DIR}/404.html existe pero no es la página de error del sitio (B-310, B-880)`, [
+    ...falta404,
+    'Las tres cosas que se rompen sin que nada se vea son el nombre del archivo, el',
+    'parámetro de la búsqueda y el enlace al archivo. Ver src/pages/404.astro.',
+  ]);
+}
+
+// ── 4.2 · Las clases de la grilla llegaron a la hoja — B-600 ──────────────
+const ESTILOS = 'src/components/sitio/estilos.ts';
+const mapa = (nombre, que) =>
+  declarado(ESTILOS, new RegExp(`export const ${nombre}[^=]*=\\s*\\{([^}]*)\\}`), que);
+
+const utilidades = [
+  ...new Set(
+    (mapa('CLASES_DEL_TRIPTICO', 'el mapa de la grilla del tríptico').match(/'[^']*'/g) ?? [])
+      .flatMap((s) => s.slice(1, -1).split(/\s+/))
+      .filter(Boolean),
+  ),
+];
+if (utilidades.length < 3) {
+  error('el mapa de la grilla del tríptico dejó de tener clases que verificar (B-880)', [
+    `Extraídas: ${utilidades.length}. Con el mapa vacío este chequeo pasa solo, que`,
+    'es la forma de mentir que lo trajo hasta acá.',
+  ]);
+}
+
+/*
+ * **El marcador, que es la mitad que hace que lo de arriba signifique algo.**
+ * Las utilidades del tríptico las escriben también otros archivos
+ * —`lg:grid-cols-2` está en `EstadisticasPanel.tsx` y `lg:grid-cols-3` en
+ * `FiltrosActividades.tsx`—, así que el bucle de abajo pasaría verde aunque
+ * `components/sitio/estilos.ts` quedara FUERA del scan de Tailwind, que es justo
+ * el modo de falla que esto cubre. Lo que prueba que el archivo se escanea es
+ * una clase que **solo él** escribe: la de dos columnas de la pared.
+ *
+ * Que esa clase siga siendo exclusiva de ese archivo lo verifica
+ * `tests/ahoraPublico.test.ts` con un grep al repo entero. Eso es sobre el
+ * fuente y no necesita artefacto, así que se queda allá: acá va solo la mitad
+ * que necesita el `dist/`.
+ */
+const MARCADOR = /^\s*2\s*:\s*'([^']+)'/m.exec(
+  mapa('CLASES_DE_PARED', 'el mapa de las columnas de la pared'),
+)?.[1];
+if (!MARCADOR) {
+  error('el mapa de las columnas de la pared ya no declara la clave 2 (B-880)', [
+    'De ahí sale el marcador que prueba que `components/sitio/estilos.ts` entra al',
+    'scan de Tailwind. Sin marcador, el chequeo de las utilidades no afirma nada.',
+  ]);
+}
+
+const hojas = css.map((f) => readFileSync(f, 'utf8')).join('\n');
+const selectorDe = (clase) => `.${clase.replace(/:/g, '\\:')}`;
+
+/*
+ * Se busca el **selector** (`.lg\:grid-cols-2`) y no la subcadena, y además
+ * **hasta el borde**. Las dos mitades hacen falta:
+ *
+ *  · sin el punto, `grid-cols-2` a secas lo satisface `CLASES_DE_GALERIA`, que
+ *    usa la misma utilidad sin el `lg:`;
+ *  · sin el borde, `.grid` lo satisface `.grid-cols-1`, que empieza igual — o
+ *    sea que una utilidad que Tailwind NO emitió pasaría por ser prefijo de
+ *    otra que sí. Lo destapó la mutación por clase de `tests/ahoraPublico.test.ts`.
+ */
+const enLaHoja = (clase) =>
+  new RegExp(`${selectorDe(clase).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(hojas);
+
+const sinEmitir = utilidades.filter((c) => !enLaHoja(c));
+if (sinEmitir.length > 0) {
+  error('una clase de la grilla del tríptico no llegó al CSS construido (B-600, B-880)', [
+    ...sinEmitir.map((c) => `${c} — falta el selector ${selectorDe(c)}`),
+    'Tailwind genera las utilidades leyendo el fuente: o la clase está escrita mal,',
+    'o el archivo que la declara quedó fuera de su `content`. En pantalla el tríptico',
+    'se queda en una columna, el build sale verde y no lo dice nadie.',
+  ]);
+}
+
+if (!enLaHoja(MARCADOR)) {
+  error(`ninguna clase exclusiva de ${ESTILOS} llegó al CSS construido (B-600, B-880)`, [
+    `Falta el selector ${selectorDe(MARCADOR)}.`,
+    'El archivo quedó fuera del scan de Tailwind. Las utilidades sueltas de arriba',
+    'pueden estar igual —las escriben otros archivos—, así que sin este marcador el',
+    'chequeo anterior pasaría verde con la grilla rota.',
+  ]);
+}
+
+console.log(
+  `${DIR}/ con lo que tiene que estar: 404.html es la página de error (B-310) y las ` +
+    `${utilidades.length} utilidades de la grilla están en la hoja, con el marcador ` +
+    `${MARCADOR} que prueba el scan de Tailwind (B-600)`,
+);
+BARRIDO

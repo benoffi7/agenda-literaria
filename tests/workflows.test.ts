@@ -303,15 +303,19 @@ describe('ningún test depende de un `dist/` — B-873', () => {
      * armado con un template literal se escaparía, y queda anotado como el límite
      * del chequeo.
      */
-    const CON_DEUDA: Record<string, string> = {
-      // Los dos que quedaron con la forma vieja. Están acá y no borrados para
-      // que se cuenten: son la misma clase que B-873 y quedaron fuera de su
-      // alcance, con su ítem propio en el BACKLOG.
-      'tests/ahoraPublico.test.ts':
-        'lee `dist/_astro` y se saltea sin build — misma clase que B-873, sin resolver',
-      'tests/no-encontrado.test.ts':
-        'lee `dist/404.html` con `it.skipIf(!hayBuild)` — ídem',
-    };
+    /*
+     * **Vacía desde B-880, y ésa es la noticia.** Tenía las dos que B-873 dejó
+     * fuera de su alcance —`ahoraPublico` y `no-encontrado`—, y las dos se
+     * pagaron: sus chequeos son hoy las secciones 4.1 y 4.2 de
+     * `scripts/verificar-bundle.sh`. Salir de acá **no fue opcional**: el
+     * segundo aserto de este caso pone en rojo una deuda que ya no existe, o sea
+     * que la lista no puede quedar contando protección que nadie tiene.
+     *
+     * Que siga existiendo vacía en vez de borrada es el punto, igual que la
+     * lista de hosts permitidos del gate: agregar una deuda es escribirla acá
+     * con el motivo, y eso se lee en una review. Un `dist/` leído de paso, no.
+     */
+    const CON_DEUDA: Record<string, string> = {};
     const RUTA_A_DIST = /(['"])dist(\/[^'"]*)?\1/;
 
     const culpables = readdirSync('tests')

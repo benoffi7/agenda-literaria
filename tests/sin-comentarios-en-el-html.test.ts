@@ -59,7 +59,9 @@ describe('el gate atrapa un comentario de plantilla emitido al HTML — B-261', 
      * idénticos. El recuento sale en el log de Actions a propósito.
      */
     const { estado, salida } = correrGate();
-    expect(salida).toContain('barrido: 2 páginas');
+    // Tres desde B-880: la base del fixture gana la `404.html` que la sección 4
+    // del gate exige, y el recuento la cuenta como la página que es.
+    expect(salida).toContain('barrido: 3 páginas');
     expect(estado, salida).toBe(0);
   });
 
@@ -119,7 +121,13 @@ describe('el gate atrapa un comentario de plantilla emitido al HTML — B-261', 
      * chequeo estuvo mintiendo. Que «no hay nada que mirar» sea un fallo es lo
      * que distingue «el artefacto está limpio» de «el artefacto no se miró».
      */
-    const { estado, salida } = correrGate({ 'index.html': null, 'ayuda/index.html': null });
+    const { estado, salida } = correrGate({
+      'index.html': null,
+      'ayuda/index.html': null,
+      // La tercera de la base, desde B-880. Sin sacarla también, «cero páginas»
+      // dejaría de ser cero y este caso probaría otra cosa.
+      '404.html': null,
+    });
     expect(estado).not.toBe(0);
     expect(salida).toContain('no tiene ninguna página HTML');
     expect(salida).toContain('B-873');

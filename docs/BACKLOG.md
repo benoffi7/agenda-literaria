@@ -1425,7 +1425,27 @@ caso. La decisión es del dueño:
   `07-seguridad.md` y del docblock de `toPublic.ts` a «las salidas que derivan de
   `toPublic`», que es lo que hoy dicen provisoriamente.
 
-### B-880 · Quedan dos tests con la forma de B-873, y uno es peor: pasa en vez de saltearse · P2
+### B-880 · Quedan dos tests con la forma de B-873, y uno es peor: pasa en vez de saltearse — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Hecho, con los dos diagnósticos medidos y uno confirmado peor de lo que el
+> ítem decía.** Moviendo el `dist/`: `no-encontrado` sale `1 skipped`;
+> `ahoraPublico` sale **`✓ … 0ms`** — verde, contado como aprobado, cero bytes.
+>
+> Los dos son la **sección 4 de `verificar-bundle.sh`** (la simétrica de la 2: qué
+> TIENE que estar), derivando **del fuente** lo que le exigen al artefacto, y los
+> tests manejan el script sobre artefactos sintéticos. Las dos filas de `CON_DEUDA`
+> salieron en el mismo cambio: la lista queda **vacía y no borrada**.
+>
+> **Un agujero que el ítem no tenía**, por la mutación: el selector se buscaba por
+> subcadena, así que `.grid` lo satisfacía `.grid-cols-1` — desde B-600.
+>
+> **Verificado con build real:** renombrar `404.astro` deja build y typecheck verdes
+> y solo cae el gate; sacar `estilos.ts` del scan deja las cuatro utilidades en la
+> hoja y solo cae el **marcador**.
+>
+> **Y la frase se volvió cierta:** cero `it.skipIf`, y el mismo resultado con `dist/`
+> y sin él. Lo que queda son los 25 del emulador, que fallan duro con
+> `EXIGIR_EMULADOR=1`.
 
 **Salieron del chequeo de clase que dejó B-873** (`tests/workflows.test.ts`,
 `CON_DEUDA`), que es exactamente para lo que está: los enumera en vez de taparlos.

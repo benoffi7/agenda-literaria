@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import { correrGate, hojaConLaGrilla } from './fixtures/artefacto';
 
 import {
   TOPE_DEL_PANEL,
@@ -1178,60 +1180,29 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
     ).toMatch(/Math\.min\(paneles\.length, 3\)/);
   });
 
-  it('y las tres salen de verdad en el CSS construido', () => {
+  it('el marcador que prueba el scan sigue siendo exclusivo de `estilos.ts`', () => {
     /*
-     * **El único chequeo que sabe la verdad.** Un mapa de literales que Tailwind
-     * igual no ve —por vivir en un archivo fuera de su `content`, o porque la
-     * clase se escribió mal— tiene exactamente el mismo aspecto en el fuente y el
-     * mismo bug en pantalla: la grilla se queda en una columna y nada falla.
+     * **La mitad de la propiedad que no necesita artefacto, y la que hace que la
+     * otra signifique algo.** Lo encontró el `auditor-privacidad`: las cuatro
+     * utilidades del mapa **también las escriben otros archivos**
+     * —`lg:grid-cols-2` está en `EstadisticasPanel.tsx` y `lg:grid-cols-3` en
+     * `FiltrosActividades.tsx`—, así que exigirlas en la hoja pasaría verde
+     * aunque `components/sitio/estilos.ts` quedara **fuera del scan de
+     * Tailwind**, que es justo el modo de falla que esto cubre: la grilla se
+     * quedaría en una columna y nada fallaría.
      *
-     * Se saltea sin `dist/`, como los otros que miran el build: correr
-     * `npm run build` antes. En CI el build siempre corre.
+     * Lo que prueba que el archivo se escanea es una clase que **solo él**
+     * escribe: la de dos columnas de `CLASES_DE_PARED` (no se escribe acá — ver
+     * el aviso de abajo). Que esa clase llegue a la hoja lo exige el gate
+     * (`scripts/verificar-bundle.sh`, §4.2), que es el único lugar del pipeline
+     * donde el `dist/` existe; **que siga siendo exclusiva se verifica acá**,
+     * porque es sobre el fuente y no necesita build.
      *
-     * MUTACIÓN PROBADA: escribir el mapa con una clase que Tailwind no emite
-     * —`lg:grid-cols-[2]` con un valor arbitrario que no resuelve— pone este caso
-     * en rojo nombrando la clase que no llegó.
-     */
-    const dir = raiz('dist/_astro');
-    const hojas = existsSync(dir)
-      ? readdirSync(dir)
-          .filter((f) => f.endsWith('.css'))
-          .map((f) => readFileSync(`${dir}/${f}`, 'utf8'))
-          .join('\n')
-      : '';
-
-    if (hojas === '') return; // sin build no hay nada que mirar
-
-    /*
-     * Las clases salen **del mapa**, no escritas otra vez acá: una lista propia
-     * se queda vieja el día que el mapa cambie, y este caso pasaría mirando
-     * clases que ya nadie usa. Y se busca el **selector** (`.lg\:grid-cols-2`),
-     * no la subcadena: `grid-cols-2` a secas lo satisface `CLASES_DE_GALERIA`,
-     * que usa la misma utilidad sin el `lg:` — o sea que el chequeo pasaría sin
-     * que la del tríptico existiera.
-     */
-    const selectorDe = (clase: string): string => `.${clase.replace(/:/g, '\\:')}`;
-
-    const utilidades = [...new Set(Object.values(CLASES_DEL_TRIPTICO).flatMap((c) => c.split(' ')))];
-    expect(utilidades.length, 'el mapa dejó de tener clases que verificar').toBeGreaterThan(2);
-
-    for (const clase of utilidades) {
-      expect(hojas, `\`${clase}\` no llegó al CSS construido`).toContain(selectorDe(clase));
-    }
-
-    /*
-     * **Y la mitad que hace que lo de arriba signifique algo.** Lo encontró el
-     * `auditor-privacidad`: las cuatro utilidades del mapa **también las escriben
-     * otros archivos** —`lg:grid-cols-2` está en `EstadisticasPanel.tsx` y
-     * `lg:grid-cols-3` en `FiltrosActividades.tsx`—, así que el bucle de arriba
-     * pasaría verde aunque `components/sitio/estilos.ts` quedara **fuera del scan
-     * de Tailwind**, que es justo el modo de falla que este caso dice cubrir: la
-     * grilla se quedaría en una columna y nada fallaría.
-     *
-     * Lo que prueba que el archivo se escanea es una clase que **solo él
-     * escribe**: la de dos columnas de `CLASES_DE_PARED` (no se escribe acá — ver
-     * el aviso de abajo). Si está en la hoja, el archivo entró; si no, el bucle de
-     * arriba no está afirmando nada.
+     * MUTACIÓN PROBADA: escribir el marcador **literal** en cualquier otro
+     * archivo del árbol pone este caso en rojo nombrando el archivo de más. Y no
+     * es hipotético: la primera versión de este comentario lo escribía con todas
+     * las letras para explicar la mutación, y se auto-rompió — que es la prueba
+     * de que el grep mira el repo entero y no `src/`.
      */
     const MARCADOR = CLASES_DE_PARED[2];
     /*
@@ -1287,13 +1258,83 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
     expect(
       enElRepo,
       `\`${MARCADOR}\` dejó de ser exclusivo de estilos.ts: mientras esté escrito ` +
-        'en otro archivo escaneado, este caso no prueba nada.',
+        'en otro archivo escaneado, el chequeo del gate no prueba nada.',
     ).toEqual(['src/components/sitio/estilos.ts']);
-    expect(
-      hojas,
-      'ninguna clase exclusiva de `components/sitio/estilos.ts` llegó al CSS: el ' +
-        'archivo quedó fuera del scan de Tailwind, así que el mapa de la grilla no ' +
-        'existe en la hoja aunque las utilidades sueltas sí (las escriben otros).',
-    ).toContain(selectorDe(MARCADOR));
+  });
+});
+
+/**
+ * ── Que las clases lleguen de verdad a la hoja, verificado sobre el artefacto ─
+ * **Hasta el 2026-09-11 acá había un caso que leía `dist/_astro` y hacía
+ * `if (hojas === '') return;`**, con esta frase en el docblock: «en CI el build
+ * siempre corre». Era falsa, y es la misma clase que B-873 —de cuyo chequeo
+ * salió este ítem, B-880—: en `deploy.yml` los tests son el paso 4 y el build el
+ * paso 5, y en `push-main.yml` los tests son un job que no buildea nunca.
+ *
+ * **Y era peor que un `skipIf`**, que es por lo que B-880 no fue P3: sin `dist/`
+ * el caso no se salteaba, **volvía temprano y se reportaba PASSED**. Medido el
+ * 2026-09-11 moviendo el `dist/` local: `✓ y las tres salen de verdad en el CSS
+ * construido 0ms`, verde, contado como aprobado, habiendo leído **cero bytes**.
+ * Un salteado por lo menos aparece en el recuento; éste no dejaba ni esa huella.
+ *
+ * El chequeo vive ahora en **`scripts/verificar-bundle.sh`**, sección 4.2: el
+ * paso que los dos workflows corren inmediatamente **después** del build, sobre
+ * el mismo `dist/` que el paso siguiente sube a Hosting. Lo que queda de este
+ * lado es manejar ese gate con `dist/` sintéticos, igual que
+ * `tests/sin-comentarios-en-el-html.test.ts`. **Ningún caso de este archivo
+ * depende de que exista un build**, así que ninguno se saltea ni miente.
+ */
+describe('el gate exige que la grilla del tríptico llegue a la hoja — B-600, B-880', () => {
+  /** Las utilidades del mapa, que es de donde el gate también las saca. */
+  const UTILIDADES = [
+    ...new Set(Object.values(CLASES_DEL_TRIPTICO).flatMap((c) => c.split(' '))),
+  ];
+  const selectorDe = (clase: string): string => `.${clase.replace(/:/g, '\\:')}`;
+
+  it('una hoja con las clases pasa, y el gate dice cuántas verificó', () => {
+    /*
+     * Control positivo. Sin él, los casos de abajo solo afirman ausencias y el
+     * día que el gate deje de mirar la hoja pasarían todos igual — que es
+     * exactamente la forma de mentir que trajo este ítem hasta acá.
+     */
+    const { estado, salida } = correrGate();
+    expect(UTILIDADES.length, 'el mapa dejó de tener clases que verificar').toBeGreaterThan(2);
+    expect(salida).toContain(`las ${UTILIDADES.length} utilidades de la grilla`);
+    expect(estado, salida).toBe(0);
+  });
+
+  it.each(UTILIDADES)('sin `%s` en la hoja construida, rojo', (clase) => {
+    /*
+     * MUTACIÓN, una por clase del mapa: escribir el mapa con una clase que
+     * Tailwind no emite —`lg:grid-cols-[2]` con un valor arbitrario que no
+     * resuelve— produce exactamente esta hoja, y el gate la nombra.
+     *
+     * Se busca el **selector** (`.lg\:grid-cols-2`) y no la subcadena:
+     * `grid-cols-2` a secas lo satisface `CLASES_DE_GALERIA`, que usa la misma
+     * utilidad sin el `lg:` — o sea que el chequeo pasaría sin que la del
+     * tríptico existiera.
+     */
+    const { estado, salida } = correrGate({
+      '_astro/Base.css': hojaConLaGrilla().replace(`${selectorDe(clase)}{}`, ''),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('no llegó al CSS construido');
+    expect(salida).toContain(selectorDe(clase));
+  });
+
+  it('y sin el marcador exclusivo también, aunque estén las cuatro utilidades', () => {
+    /*
+     * **El caso que distingue este chequeo de uno que no prueba nada.** Las
+     * cuatro utilidades del tríptico las escriben también otros archivos, así
+     * que una hoja que las tenga todas y **no** tenga el marcador es
+     * exactamente el artefacto que produce `components/sitio/estilos.ts` fuera
+     * del scan de Tailwind: la grilla rota, el build verde.
+     */
+    const { estado, salida } = correrGate({
+      '_astro/Base.css': hojaConLaGrilla().replace(`${selectorDe(CLASES_DE_PARED[2])}{}`, ''),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('ninguna clase exclusiva de src/components/sitio/estilos.ts');
+    expect(salida).toContain(selectorDe(CLASES_DE_PARED[2]));
   });
 });
