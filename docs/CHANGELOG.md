@@ -2,6 +2,33 @@
 
 ## Sin publicar
 
+- **El emulador de CI corría en otro proyecto que los tests, y eso apagaba solo los
+  controles positivos** — **B-894**. `push-main.yml` levantaba el emulador con
+  `--project agenda-literaria` cableado a mano mientras `vitest.config.ts` inyecta
+  el id **derivado del checkout** (B-219). Con dos proyectos distintos, el emulador
+  de Auth busca la cuenta en el suyo y el token sale **sin los claims de
+  `setCustomUserClaims`** y sin el `email` del registro.
+
+  **Lo que hace que sea P0 y no una molestia:** la falla es asimétrica. Todo lo que
+  la regla **niega** sigue verde —un token sin claims tiene que ser rechazado—, y se
+  cae **solo lo que otorga**. O sea que el desajuste apaga exactamente los controles
+  positivos, que son los que este repo agrega para que una regla no pase por
+  «funciona» solo negando.
+
+  No se había visto antes porque los archivos de integración viejos pasan los claims
+  **dos veces** —`setCustomUserClaims` y `createCustomToken(uid, claims)`— y los
+  segundos viajan dentro del token. `rol-publicador` y `usuarios` usan solo el
+  primero, que es lo que hace producción, y por eso fueron los primeros en cobrarlo:
+  23 en rojo en CI con los 4541 en verde en la máquina de al lado. Unificar los
+  viejos es **B-895**.
+
+  El `--project` ahora sale de `scripts/project-id-emulador.mjs`. **Y el gate de
+  pre-push tenía el mismo literal**, dos líneas debajo de donde ya calculaba el
+  valor bueno — se descubrió porque el gate frenó el push del arreglo del workflow:
+  corría la suite con el desajuste y la veía roja. Los dos caminos —más el del
+  build, donde el desajuste no rompía nada— quedan derivando del mismo lugar, y lo
+  ata `tests/guardas-de-los-scripts.test.ts` con la mutación probada en los dos.
+
 - **El panel del rol `publicador`, y las cuatro roturas que la tajada 1 había
   medido** — **B-888** (tajada 2), **D-660**. Una cuenta con el claim ya puede
   usarse con una persona: entra, ve y publica lo suyo, sube su imagen, y **no se le

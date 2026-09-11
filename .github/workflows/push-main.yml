@@ -143,8 +143,21 @@ jobs:
         env:
           EXIGIR_EMULADOR: '1'
         run: |
+          # **El `--project` tiene que ser el MISMO que usan los tests** (B-219,
+          # B-894). `vitest.config.ts` inyecta `PUBLIC_FIREBASE_PROJECT_ID` con el
+          # id derivado del checkout (`agenda-literaria-<huella>`), no con
+          # `agenda-literaria`. Con el emulador levantado en otro proyecto, los
+          # claims puestos con `setCustomUserClaims` —y el `email` /
+          # `email_verified` del registro— **no llegan al token**: el emulador de
+          # Auth los busca en el proyecto que arrancó y ahí la cuenta no existe.
+          # Todo lo que la regla NIEGA sigue dando verde; lo que OTORGA se cae. O
+          # sea que el desajuste rompe exactamente los controles positivos y deja
+          # pasar los negativos, que es la peor mitad para perder.
+          #
+          # Se derivaba bien en `scripts/verificar-todo.sh` desde B-219 y acá
+          # estaba cableado a mano. Lo ata `tests/guardas-de-los-scripts.test.ts`.
           npx firebase emulators:exec --only auth,firestore,storage \
-            --project agenda-literaria 'npm test'
+            --project "$(node scripts/project-id-emulador.mjs)" 'npm test'
 
   # ───────────────────────────────────────────────────────────────
   # Reglas primero: si el panel nuevo escribe campos que las reglas viejas

@@ -659,6 +659,53 @@ nacer este test sobrevivió meses en un archivo que nadie sospechaba.
 
 ---
 
+### B-894 · El emulador de CI corría en otro proyecto que los tests, y eso apagaba solo los controles positivos — ✅ hecho (2026-09-11) · P0
+
+> **Lo encontró el deploy de B-888: 23 tests en rojo en CI y los 4541 en verde en
+> la máquina de al lado.** El sitio no se publicó, que es lo que hizo que se
+> notara.
+
+`push-main.yml` levantaba el emulador con `--project agenda-literaria` cableado a
+mano, y `vitest.config.ts` inyecta `PUBLIC_FIREBASE_PROJECT_ID` con el id
+**derivado del checkout** (`agenda-literaria-<huella>`, B-219). O sea que el
+emulador y los tests hablaban de dos proyectos distintos.
+
+**Lo que rompe el desajuste:** el emulador de Auth busca la cuenta en *su*
+proyecto, no la encuentra, y el ID token sale **sin los claims de
+`setCustomUserClaims`** y sin el `email` / `email_verified` del registro. La
+consecuencia es asimétrica y por eso es grave:
+
+- todo lo que la regla **niega** sigue dando verde —un token sin claims tiene que
+  ser rechazado, y lo es—;
+- se cae **únicamente lo que otorga**.
+
+Dicho de otra forma: el desajuste apaga exactamente los **controles positivos**,
+que son los que este repo agrega justamente para que una regla no pase por
+«funciona» solo negando. Es la clase de bug del §13 con otra cara — un verde que
+cubre el caso que existe para atrapar.
+
+**Por qué recién ahora.** Los archivos de integración anteriores pasan los claims
+**dos veces**: `setCustomUserClaims(uid, claims)` *y*
+`createCustomToken(uid, claims)`. Los segundos viajan dentro del token y no
+dependen del registro, así que tapaban el desajuste. `rol-publicador` y
+`usuarios` (B-888) usan solo el primero —que es lo que hace producción— y por eso
+fueron los primeros en cobrarlo.
+
+**El arreglo:** `--project "$(node scripts/project-id-emulador.mjs)"`. **Y el gate
+de pre-push tenía el mismo literal**, dos líneas debajo de donde ya calculaba el
+valor bueno (`PROJECT_ID_EMU`) — lo cobró él mismo: frenó el push del arreglo del
+workflow porque corría la suite con el desajuste. El tercer uso, el del build, no
+rompía nada (el Admin SDK no pasa por las reglas y siembra en el mismo proyecto
+que lee) y se unificó igual: un literal suelto al lado de dos que sí eran el bug
+es cómo vuelve. Lo ata `tests/guardas-de-los-scripts.test.ts`, con la mutación
+probada en los dos caminos: devolver el literal deja la guarda en rojo y ningún
+otro test se mueve.
+
+**Lo que queda anotado y no se tocó:** los archivos viejos siguen pasando los
+claims por las dos vías. Ya no tapa nada —el proyecto coincide—, pero es una
+diferencia de estilo que vale unificar hacia `setCustomUserClaims` solo, que es
+lo fiel a producción. Es **B-895**, P3.
+
 ## P1 — bloquean el objetivo del proyecto
 
 El proyecto existe para que la gente encuentre los talleres en Google (§2.3). Hoy
@@ -13109,6 +13156,23 @@ del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
 Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
+
+### B-895 · Los tests de integración viejos pasan los claims por dos vías, y una no es la de producción · P3
+
+`tokenAdmin()` de `reportes`, `opciones`, `sistema`, `propuestas` y compañía hace
+`setCustomUserClaims(uid, claims)` **y** `createCustomToken(uid, claims)`. Los
+segundos viajan dentro del token y no pasan por el registro de la cuenta, que es
+justamente lo que **no** hace el panel real: ahí el claim lo pone el script de
+`admin:claim` y llega por el registro.
+
+Mientras el emulador corría en otro proyecto (B-894) esa doble vía **tapaba** el
+desajuste: los archivos que solo usan `setCustomUserClaims` —`rol-publicador` y
+`usuarios`— fueron los únicos que se cayeron. Con B-894 arreglado ya no tapa
+nada, así que esto no es urgente; es unificar hacia la vía fiel para que el
+próximo desajuste se vea en todos los archivos y no en dos.
+
+Es un cambio mecánico —sacar el segundo argumento de `createCustomToken`— y su
+verificación es que la suite siga verde.
 
 ### B-840 · La fila DEC-6 de este archivo tiene una cicatriz de merge · P3
 

@@ -379,3 +379,89 @@ describe('todo el código que se deploya parsea — B-887', () => {
     expect(() => execFileSync(process.execPath, ['--check', ruta], { stdio: 'pipe' })).not.toThrow();
   });
 });
+
+/**
+ * **El emulador de CI tiene que correr en el MISMO proyecto que los tests** —
+ * B-894.
+ *
+ * ── Lo que costó, medido ──────────────────────────────────────────────────
+ * `push-main.yml` levantaba el emulador con `--project agenda-literaria` y
+ * `vitest.config.ts` inyecta `PUBLIC_FIREBASE_PROJECT_ID` con el id derivado del
+ * checkout (`agenda-literaria-<huella>`, B-219). Con el desajuste, el emulador de
+ * Auth busca la cuenta en **su** proyecto y no la encuentra, así que el ID token
+ * sale **sin los claims de `setCustomUserClaims`** y sin el `email` /
+ * `email_verified` del registro.
+ *
+ * El modo de falla es el peor de los dos posibles: **todo lo que la regla NIEGA
+ * sigue dando verde** —un token sin claims tiene que ser rechazado, y lo es— y
+ * **se cae únicamente lo que OTORGA**. O sea que el desajuste no rompe la suite
+ * al azar: rompe exactamente los controles positivos, que son los que este repo
+ * agrega justamente para que una regla no pase por «funciona» solo negando.
+ *
+ * Se vio el 2026-09-11: 23 tests de B-888 en rojo en CI y los 4541 en verde en la
+ * máquina de al lado, porque ahí el emulador se levanta con el id derivado. Los
+ * archivos viejos no lo notaron porque pasan los claims **también** en
+ * `createCustomToken(uid, claims)`, que viajan dentro del token y no dependen del
+ * registro — una diferencia de estilo que venía tapando el desajuste.
+ *
+ * ── Por qué se verifica el texto del workflow ─────────────────────────────
+ * Porque no hay dónde más: el workflow no se puede ejecutar desde un test, y un
+ * `--project` cableado a mano vuelve a entrar sin que nada se ponga rojo. Se
+ * exige que **derive** el id y no que sea igual a un literal: el valor cambia con
+ * el path del checkout, así que compararlo contra una constante sería un test que
+ * solo pasa en una máquina.
+ */
+describe('el emulador de CI corre en el proyecto de los tests — B-894', () => {
+  const workflow = readFileSync(
+    fileURLToPath(new URL('../.github/workflows/push-main.yml', import.meta.url)),
+    'utf8',
+  );
+  const gate = readFileSync(
+    fileURLToPath(new URL('../scripts/verificar-todo.sh', import.meta.url)),
+    'utf8',
+  );
+
+  it('el paso de tests levanta el emulador', () => {
+    // El control positivo: si el paso se renombra o se va, los asertos de abajo
+    // pasarían sobre un archivo que ya no arranca ningún emulador.
+    expect(workflow, 'el workflow dejó de levantar el emulador').toContain('emulators:exec');
+  });
+
+  it('y el `--project` sale de `scripts/project-id-emulador.mjs`, no de un literal', () => {
+    /*
+     * **Solo la invocación del emulador**, no el workflow entero: los jobs de
+     * deploy usan `--project agenda-literaria` de verdad —ése es el proyecto
+     * real— y un barrido sobre todo el archivo los leería como el error que este
+     * test busca. La invocación son las dos líneas del `\` de continuación.
+     */
+    const invocacion = /emulators:exec[^\n]*\n[^\n]*/.exec(workflow)?.[0] ?? '';
+    expect(
+      invocacion,
+      'el --project del emulador no deriva del checkout: los claims no van a llegar al token',
+    ).toMatch(/--project "\$\(node scripts\/project-id-emulador\.mjs\)"/);
+    expect(invocacion, 'la invocación no se pudo aislar').toContain('npm test');
+    expect(
+      /--project\s+agenda-literaria['\s]/.test(invocacion),
+      'quedó el projectId cableado a mano',
+    ).toBe(false);
+  });
+  /*
+   * **Y el gate de pre-push tenía el mismo literal**, dos líneas debajo de donde
+   * ya calculaba el valor bueno. Se descubrió porque el gate frenó el push del
+   * arreglo del workflow: corría la suite con el desajuste y la veía roja.
+   *
+   * Los dos caminos se verifican juntos porque son el mismo bug con dos dueños, y
+   * arreglar uno solo deja al otro dando el diagnóstico equivocado.
+   */
+  it('y el gate de pre-push tampoco lo cablea', () => {
+    const invocacion = /emulators:exec[^\n]*\n[^\n]*/.exec(gate)?.[0] ?? '';
+    expect(invocacion, 'la invocación del gate no se pudo aislar').toContain('npm test');
+    expect(
+      /--project\s+agenda-literaria['\s]/.test(invocacion),
+      'el gate quedó con el projectId cableado a mano',
+    ).toBe(false);
+    expect(invocacion, 'el gate no usa el id que acaba de derivar').toContain(
+      '--project "$PROJECT_ID_EMU"',
+    );
+  });
+});

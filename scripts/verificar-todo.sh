@@ -95,8 +95,13 @@ if [ "$EMU_ARRIBA" = true ]; then
     EXIGIR_EMULADOR=1 npm test \
     || fallo 'la suite no pasa con los emuladores arriba'
 else
+  # **`$PROJECT_ID_EMU` y no `agenda-literaria`** (B-894): el emulador tiene que
+  # correr en el mismo proyecto que usan los tests, que es el que se acaba de
+  # exportar tres líneas arriba. Con otro, el emulador de Auth busca la cuenta en
+  # el suyo y el token sale sin los claims de `setCustomUserClaims` — y entonces
+  # todo lo que la regla NIEGA sigue verde y se cae solo lo que OTORGA.
   EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore,storage \
-    --project agenda-literaria 'npm test' \
+    --project "$PROJECT_ID_EMU" 'npm test' \
     || fallo 'la suite no pasa con los emuladores arriba'
 fi
 
@@ -148,7 +153,11 @@ if [ "$EMU_ARRIBA" = true ]; then
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
     ./scripts/build-contra-emulador.mjs || fallo 'el build no pasa o no leyó Firestore'
 else
-  npx firebase emulators:exec --only firestore --project agenda-literaria \
+  # Acá el desajuste de B-894 no rompía nada —el build lee con el Admin SDK, que
+  # no pasa por las reglas, y siembra en el proyecto de `PUBLIC_FIREBASE_PROJECT_ID`,
+  # el mismo que después lee— pero queda igual que los otros dos: un solo
+  # literal suelto al lado de dos que sí eran el bug es cómo vuelve.
+  npx firebase emulators:exec --only firestore --project "$PROJECT_ID_EMU" \
     './scripts/build-contra-emulador.mjs' || fallo 'el build no pasa o no leyó Firestore'
 fi
 
