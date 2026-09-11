@@ -55,7 +55,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
@@ -103,14 +103,32 @@ const COLECCIONES_FUTURAS = ['propuestas', 'librerias', 'suscripciones', 'lugare
 /**
  * Las colecciones donde un anónimo **sí** puede escribir. Hoy: ninguna.
  *
- * Cuando B-836 y la tajada 1 abran `/propuestas`, la excepción se escribe acá
- * con su motivo, y el caso correspondiente pasa a afirmar la regla nueva —qué
- * forma de documento acepta, con qué `estado` forzado por la regla, con qué
- * topes— en su propio archivo de integración. Esta constante existe para que
- * abrir la puerta sea un cambio **visible** en un test y no un efecto colateral
- * de tocar `firestore.rules`.
+ * **Pasó el 2026-09-11 con `/propuestas`** (B-896 paso 2), y la excepción está
+ * escrita abajo con su motivo. La regla nueva se afirma en su propio archivo
+ * —`propuestas.integracion.test.ts`, el control positivo «un anónimo crea una
+ * propuesta bien formada» más los tres negativos que siguen valiendo—. Esta
+ * constante existe para que abrir la puerta sea un cambio **visible** en un test
+ * y no un efecto colateral de tocar `firestore.rules`.
  */
-const COLECCIONES_ABIERTAS: readonly string[] = [];
+const COLECCIONES_ABIERTAS: readonly string[] = [
+  /*
+   * **`/propuestas` — el `create` anónimo, abierto el 2026-09-11 (B-896 paso 2).**
+   *
+   * Es el punto entero del PRD 1: un organizador propone su actividad sin tener
+   * cuenta. Lo que la sostiene son las cinco capas de B-836 —App Check exigiendo
+   * en Firestore desde el 2026-09-10, `propuestaValida()`, los topes de tamaño, el
+   * honeypot y el tiempo mínimo de `FormularioPublico`, y el barrido de
+   * `retencion.js`— y ninguna reemplaza a las otras.
+   *
+   * **Solo el `create`.** `read`, `update` y `delete` siguen en `esAdmin()`:
+   * mandar no es ver, que es lo que separa un buzón de una bandeja.
+   *
+   * Y la foto **no** entra por esta puerta: va por la callable
+   * `subirFlyerDePropuesta` (B-896 paso 1), y `storage.rules` para `propuestas/`
+   * quedó en `create: if false` para todo cliente.
+   */
+  'propuestas',
+];
 
 const UID_ADMIN = 'uid_anon_admin';
 const UID_PELADO = 'uid_anon_sin_claim';
@@ -199,12 +217,31 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
       await signOut(auth());
     });
 
+    /*
+     * **Una colección abierta no sale del barrido: se le barren los OTROS verbos.**
+     *
+     * Saltearla entera sería convertir `COLECCIONES_ABIERTAS` en una lista de
+     * exenciones. Abrir **una** puerta no abre las tres: `/propuestas` acepta que
+     * un anónimo mande y no que lea, ni que corrija lo mandado, ni que lo borre.
+     *
+     * **Y hay que ser exacto con lo que este barrido alcanza, porque la primera
+     * versión de este comentario afirmaba de más.** El barrido de los otros verbos
+     * vale **solo donde no hay validación de forma**: la sonda es
+     * `{ hola: 'mundo' }`, así que en una colección que la valida el rechazo llega
+     * por `hasOnly` con la puerta abierta o cerrada — la misma razón por la que
+     * este archivo no es testigo del `create`.
+     *
+     * Donde sí la hay, el testigo vive en el archivo de esa colección y usa un
+     * documento que la validación acepte: para `/propuestas`, «ni corrige lo que
+     * mandó, ni con una revisión bien formada» de
+     * `propuestas.integracion.test.ts`, que se pone rojo cuando la regla se abre
+     * del todo. Lo que este archivo sí garantiza en todos los casos es que la
+     * **lista** se edite a mano.
+     */
     it.each(coleccionesDeLasReglas())('no escribe en /%s', async (coleccion) => {
-      expect(
-        COLECCIONES_ABIERTAS,
-        `/${coleccion} figura como abierta: el caso tiene que afirmar la regla nueva`,
-      ).not.toContain(coleccion);
+      const abierta = COLECCIONES_ABIERTAS.includes(coleccion);
       for (const [verbo, operacion] of escrituras(coleccion, 'anon_intento')) {
+        if (abierta && verbo === 'create') continue;
         await rechazada(operacion(), `${verbo} anónimo en /${coleccion}`);
       }
     });
@@ -270,16 +307,26 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
    * (`prd/README.md` § 1): el `estado` lo tiene que forzar **la regla**, no el
    * cliente, porque si lo decide el cliente un `curl` publica.
    *
-   * Hoy no hay nada que probar de eso —no hay colección abierta— y por eso el
-   * caso afirma la precondición y nombra quién lo va a reemplazar. No es un
-   * `it.fails`: no hay una clase viva esperando arreglo, hay una puerta cerrada
-   * cuya apertura tiene que pasar por acá.
+   * Desde el 2026-09-11 hay una abierta (`/propuestas`, B-896 paso 2), así que el
+   * caso dejó de afirmar «no hay ninguna» y pasó a afirmar lo que de verdad
+   * importa: que **cada** colección abierta tenga su `estado` forzado en la regla
+   * y su propio archivo de integración que lo verifique. Una lista que crece sin
+   * que crezca eso es exactamente lo que este archivo existe para impedir.
    */
-  it('y el día que se abra una, el estado inicial lo fuerza la regla — no hay ninguna todavía', () => {
-    expect(
-      COLECCIONES_ABIERTAS,
-      'se abrió una colección a la escritura anónima: el `estado` inicial tiene que ' +
-        'estar forzado en `firestore.rules` y verificado en el test de esa colección',
-    ).toEqual([]);
+  it('cada colección abierta tiene el estado forzado en la regla y su propio testigo', () => {
+    const reglas = readFileSync(REGLAS, 'utf8');
+    for (const coleccion of COLECCIONES_ABIERTAS) {
+      const bloque = reglas.slice(reglas.indexOf(`match /${coleccion}/`));
+      expect(
+        bloque,
+        `/${coleccion} está abierta y su regla no fuerza el \`estado\` inicial: ` +
+          'si lo decide el cliente, un `curl` publica',
+      ).toMatch(/estado.{0,40}==/s);
+      expect(
+        existsSync(fileURLToPath(new URL(`./${coleccion}.integracion.test.ts`, import.meta.url))),
+        `/${coleccion} está abierta y no tiene su propio archivo de integración: ` +
+          'este archivo NO es testigo de ninguna puerta',
+      ).toBe(true);
+    }
   });
 });

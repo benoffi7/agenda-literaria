@@ -70,6 +70,7 @@ import {
   RUTA_GRATIS,
   RUTA_GUIA,
   RUTA_ONLINE,
+  RUTA_PROPONER,
   RUTA_PASADAS,
   RUTA_SUSCRIBIRSE,
   rutaDeDetalle,
@@ -180,16 +181,31 @@ export const RUTAS_FIJAS: readonly string[] = [
    * Y es estable: su contenido no depende de los datos, como `/suscribirse`,
    * `/ayuda`, `/contacto` y `/apoyar`, que están en esta misma lista.
    *
-   * La diferencia con `/proponer` —que **no** está acá, y por eso hay una
-   * excepción con su motivo en `tests/sitemap.test.ts`— es que aquélla es un
-   * formulario que hoy no puede recibir nada: ofrecerla sería prometer un camino
-   * que rebota. Acá no se promete ningún camino que no exista; se dice cuál
-   * todavía no está.
+   * El criterio es el mismo con el que `/proponer` estuvo **afuera** hasta el
+   * 2026-09-11: una página que no se promete es la que rebota. Aquélla rebotaba
+   * —el formulario no podía recibir nada— y ahora recibe, así que entró (B-896).
+   * Ésta nunca rebotó: no promete ningún camino que no exista, dice cuál todavía
+   * no está.
    *
    * Las rutas de los tres directorios entran abajo, y **derivadas**: ver el
    * comentario de `...directoriosDisponibles()`.
    */
   RUTA_GUIA,
+  /*
+   * `/proponer` entra al sitemap desde el 2026-09-11 — **B-896, paso 3**.
+   *
+   * **Quiere ser encontrada**: el §8 del PRD 1 dice que un organizador la busca en
+   * Google, y es la única página del sitio cuyo lector llega con algo para dar en
+   * vez de algo para buscar. Estuvo afuera toda la tajada 1 porque el formulario
+   * no podía recibir nada de nadie sin el claim `admin`, y ofrecer una página que
+   * rebota es prometer lo que no se cumple (lo que B-780 costó como P0).
+   *
+   * Lo que la destrabó **no** fue exigir App Check en Storage —sigue sin
+   * resolverse, es B-872— sino sacar la subida de la foto de `storage.rules` y
+   * meterla en una callable atestada. El `create` de `/propuestas` ya podía abrirse
+   * porque Firestore está `ENFORCED` desde el 2026-09-10.
+   */
+  RUTA_PROPONER,
   RUTA_SUSCRIBIRSE,
   RUTA_AYUDA,
   RUTA_CONTACTO,

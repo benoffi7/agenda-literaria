@@ -598,14 +598,25 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       );
     });
 
+    /**
+     * **Lo que cambió el 2026-09-11 y por qué el `create` ya no está acá** —
+     * B-896 paso 2.
+     *
+     * El `create` de `/propuestas` se abrió a **cualquiera**, con o sin sesión, y
+     * eso incluye a un publicador: proponer una actividad es el camino público
+     * del PRD 1, no un permiso del panel. Seguir exigiendo que este rol no pueda
+     * crear sería pedirle a la regla que distinga a un publicador de un anónimo
+     * en la única puerta que a propósito no distingue a nadie.
+     *
+     * **La bandeja sigue cerrada, que es lo que este caso siempre quiso decir.**
+     * El documento lleva el contacto de quien propuso —el primer dato personal de
+     * un tercero que guarda el proyecto— y leerlo, revisarlo o borrarlo sigue
+     * siendo de admin. Mandar no es ver.
+     */
     it('no entra a la bandeja de propuestas, que lleva el contacto de un tercero', async () => {
-      // Mutación: `esDelPanel()` en el `allow read`/`create`/`update` de
-      // `/propuestas`. La mitad correspondiente se pone roja.
+      // Mutación: `esDelPanel()` en el `allow read`/`update` de `/propuestas`. La
+      // mitad correspondiente se pone roja.
       await rechazada(getDoc(doc(db(), 'propuestas', 'p_b888')), 'leer una propuesta');
-      await rechazada(
-        setDoc(doc(db(), 'propuestas', 'p_b888_nueva'), propuestaDeAlta()),
-        'crear una propuesta (con el documento que la regla acepta)',
-      );
       // Igual que con `/reportes`: el update tiene la forma que `revisionValida()`
       // acepta, o sea que lo único que puede rechazarlo es el `esAdmin()`.
       await rechazada(
@@ -614,6 +625,24 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
           revision: { porUid: UID_PUB, en: serverTimestamp(), actividadId: null, motivo: null },
         }),
         'revisar una propuesta (con el cambio que la regla acepta)',
+      );
+      await rechazada(deleteDoc(doc(db(), 'propuestas', 'p_b888')), 'borrar una propuesta');
+    });
+
+    /**
+     * **El control positivo de la puerta abierta, del lado del rol acotado.**
+     *
+     * Sin este caso, el de arriba se lee como «el publicador no toca
+     * `/propuestas`» y sería falso: puede proponer, como cualquiera. Y es la clase
+     * de verde que B-894 mostró que se pierde primero — lo que se apaga cuando
+     * algo se rompe es lo que OTORGA.
+     */
+    it('pero sí puede proponer una actividad, como cualquiera (B-896)', async () => {
+      await setDoc(doc(db(), 'propuestas', 'p_b888_del_publicador'), propuestaDeAlta());
+      // Y tampoco la puede volver a leer: el `create` abierto no abre la bandeja.
+      await rechazada(
+        getDoc(doc(db(), 'propuestas', 'p_b888_del_publicador')),
+        'leer la propuesta que acaba de mandar',
       );
     });
 

@@ -703,10 +703,35 @@ que faltaba proteger era la foto.
 **Orden de trabajo:** (1) ✅ **hecho (2026-09-11)** — la callable
 `subirFlyerDePropuesta` con `enforceAppCheck: true` y el saneado del servidor, con
 `storage.rules` dejando `propuestas/` en `create: if false` **para todo cliente**;
-(2) abrir el `create` de `/propuestas` en `firestore.rules` —borrando los **dos**
-`esAdmin() &&` juntos—; (3) `/proponer` a `RUTAS_FIJAS` y sacar la excepción del
-sitemap; (4) el enlace desde la barra y desde `/contacto`. Los pasos 2 a 4 son el
-circuito del §2.1 del inventario y no perdonan un olvido.
+(2) ✅ **hecho** — el `create` de `/propuestas` abierto, y **solo** el `create`:
+leer, revisar y borrar siguen en `esAdmin()`; (3) ✅ **hecho** — `/proponer` en
+`RUTAS_FIJAS` y la excepción del sitemap borrada; (4) ✅ **hecho** — enlazado desde
+el pie y desde `/contacto`, con el formulario primero y el `mailto:` debajo
+(DEC-10).
+
+> **En el pie y no en la barra de arriba, y es una decisión.** La barra acaba de
+> pasar a ocho pestañas con «Guía» y tiene un techo escrito; y las tres primeras
+> son las formas de *buscar algo*, mientras que quien viene a proponer llega con
+> algo para dar — el lado del pie, donde ya viven «Anunciar» y «Apoyar».
+>
+> **Dos afirmaciones que las mutaciones corrigieron:**
+>
+> 1. Se escribió que el barrido de `escritura-anonima.integracion.test.ts`
+>    atraparía a alguien que abriera de más el `update`. **Siguió en verde.** Ese
+>    archivo prueba con un documento sonda que la validación de forma rechaza con
+>    la puerta abierta o cerrada, así que **no puede ser testigo de ninguna puerta
+>    en una colección que valida la forma**. El comentario dice ahora lo que
+>    alcanza, y el testigo se mudó al archivo de la colección.
+> 2. **Borrar el `esAdmin() &&` del `allow update` no abre nada**, porque
+>    `revisionValida()` ya fija la identidad por su cuenta
+>    (`porUid == request.auth.uid`) y un anónimo no tiene `request.auth`. Ahí el
+>    `esAdmin()` es un **segundo** candado, y quien sostiene la puerta es una
+>    cláusula que se lee como validación de forma. Con la regla abierta del todo el
+>    testigo sí dispara, y con él tres casos más.
+>
+> Y el caso del `publicador` cambió de forma: **puede proponer, como cualquiera**,
+> con la bandeja cerrada. Se agregó el control positivo que lo dice, porque sin él
+> el caso se leía como «no toca `/propuestas`» y eso pasó a ser falso.
 
 > **Lo que el paso 1 destapó, y no estaba en el enunciado: el saneado corría SOLO
 > en el cliente.** O sea que la garantía que el proyecto creía tener no la podía

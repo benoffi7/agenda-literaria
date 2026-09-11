@@ -25,7 +25,7 @@ import {
   urlDeInstagram,
   type MotivoDeContacto,
 } from '@/lib/enlaces';
-import { RUTA_AYUDA } from '@/lib/rutasPublicas';
+import { RUTA_AYUDA, RUTA_PROPONER } from '@/lib/rutasPublicas';
 
 export interface BloqueDeContacto {
   motivo: MotivoDeContacto;
@@ -154,4 +154,31 @@ export const QUE_PASA_DESPUES: string[] = [
 export const ANTES_DE_ESCRIBIR: { href: string; texto: string } = {
   href: RUTA_AYUDA,
   texto: 'Muchas preguntas ya están contestadas en la ayuda',
+};
+
+/**
+ * **El formulario va primero, y el mail se queda** — DEC-10, B-896 paso 4.
+ *
+ * El PRD recomendaba que `/proponer` reemplazara este `mailto:`. El dueño decidió
+ * al revés, y con razón: **un formulario de once campos es una puerta más angosta
+ * que una casilla de mail**, y la propuesta que no entra por uno tiene que poder
+ * entrar por la otra. Así que conviven, con el formulario nombrado primero —es el
+ * camino que llega ordenado y con la foto— y el mail abajo, sin condiciones.
+ *
+ * Va acá y no en `MOTIVOS_DE_CONTACTO` (`enlaces.ts`) por el mismo motivo que el
+ * asunto comercial no está allá: esa lista es **los motivos por los que alguien
+ * escribe un mail**, y `/contacto` deriva sus bloques recorriéndola. Meter acá un
+ * destino que no es un `mailto:` le agregaría una tarjeta a la página sin que
+ * nadie lo decida.
+ */
+export const PROPONER_EN_VEZ_DE_ESCRIBIR: {
+  motivo: MotivoDeContacto;
+  href: string;
+  texto: string;
+  pie: string;
+} = {
+  motivo: 'sugerencia',
+  href: RUTA_PROPONER,
+  texto: 'Cargar la actividad en el formulario',
+  pie: 'Llega ordenada y podés adjuntar el flyer. Si preferís escribirnos, el mail sigue acá abajo.',
 };

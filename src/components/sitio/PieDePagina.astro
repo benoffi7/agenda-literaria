@@ -62,6 +62,7 @@ import {
   RUTA_CONTACTO,
   RUTA_MIS_FAVORITOS,
   RUTA_PASADAS,
+  RUTA_PROPONER,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
 import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
@@ -134,6 +135,21 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
         </li>
         <li>
           <a class={`${claseFila} sm:justify-end`} href={RUTA_SUSCRIBIRSE}>Suscribirse al calendario</a>
+        </li>
+        <li>
+          {/*
+            **`/proponer` se anuncia acá y no en la barra de arriba** — B-896
+            paso 4. La barra acaba de pasar a ocho pestañas con «Guía» y tiene un
+            techo escrito; y sobre todo, estas tres primeras son las formas de
+            *buscar algo*, mientras que quien viene a proponer llega con algo para
+            dar. El pie es donde ya vivían los caminos de ese lado («Anunciar»,
+            «Apoyar»).
+
+            Va **arriba** de «Sugerir una actividad», que es el `mailto:` que
+            DEC-10 decidió conservar: el formulario llega ordenado y con la foto,
+            y el mail queda para quien prefiera escribir.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_PROPONER}>Proponer una actividad</a>
         </li>
         <li>
           <a class={`${claseFila} sm:justify-end`} href={RUTA_CONTACTO}>Sugerir una actividad</a>

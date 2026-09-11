@@ -595,36 +595,114 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
   });
 
   /**
-   * **El estado de la puerta, afirmado a propósito.**
+   * **El estado de la puerta, afirmado a propósito. Y desde el 2026-09-11 está
+   * ABIERTA** (B-896, paso 2).
    *
    * Este `describe` no verifica una regla: verifica **una decisión de
-   * secuencia**. El `create` anónimo es el punto entero del PRD y está cerrado
-   * hasta que App Check esté exigiendo (B-836a), porque abrirlo antes es
-   * publicar un endpoint de escritura a Firestore que nada frena —
-   * `propuestaValida()` acota la forma, no el volumen, y cada escritura se
-   * factura.
+   * secuencia**. El `create` anónimo es el punto entero del PRD y estuvo cerrado
+   * hasta que se cumplieron las dos condiciones: App Check exigiendo en Firestore
+   * (B-836a paso 6, 2026-09-10) y la subida del flyer fuera de `storage.rules`
+   * (B-896 paso 1).
    *
-   * El día que se abra, estos dos casos se ponen en rojo y hay que venir a
-   * darlos vuelta. Eso es lo que se busca: que abrir la puerta sea un diff
-   * visible en un test, igual que `COLECCIONES_ABIERTAS` de
-   * `escritura-anonima.integracion.test.ts`.
+   * **El control positivo va primero, y es el que importa.** Un `describe` de
+   * puerta abierta lleno de denegaciones esperadas da verde también con la puerta
+   * tapiada — es la clase de falso verde que este repo persigue, y la misma que
+   * B-894 destapó hoy: lo que se apaga primero cuando algo se rompe es lo que
+   * OTORGA, no lo que niega.
    */
-  describe('el `create` anónimo TODAVÍA está cerrado — B-836a', () => {
-    it('un anónimo no puede crear una propuesta, ni con el documento perfecto', async () => {
+  describe('el `create` anónimo está ABIERTO — B-896', () => {
+    it('un anónimo crea una propuesta bien formada, que es el punto del PRD', async () => {
+      await signOut(auth());
+      await setDoc(doc(db(), 'propuestas', 'p_anon_ok'), {
+        ...formAPropuesta(form(), 'formulario-publico'),
+        creadoEn: serverTimestamp(),
+      });
+      /*
+       * Y no la puede volver a leer: `read` sigue en `esAdmin()`. Mandar no es
+       * ver, que es lo que separa un buzón de una bandeja.
+       *
+       * Por `code` y no por texto, a propósito: en una **lectura** denegada el
+       * emulador devuelve la traza de evaluación (`false for 'get' @ L977`) y no
+       * la frase de permisos, así que `RECHAZADA` no matchea. Es lo que ya dice
+       * el docblock de `rechazada()` en `rol-publicador.integracion.test.ts`, y
+       * acá se pagó de nuevo.
+       */
+      const leer = await getDoc(doc(db(), 'propuestas', 'p_anon_ok')).then(
+        () => null,
+        (e: { code?: string }) => e.code,
+      );
+      expect(leer, 'un anónimo pudo leer la propuesta que acaba de mandar').toBe(
+        'permission-denied',
+      );
+    });
+
+    it('y alguien logueado sin el claim también: la puerta es la forma, no la sesión', async () => {
+      await signInWithCustomToken(auth(), await token(UID_PELADO, false));
+      await setDoc(doc(db(), 'propuestas', 'p_pelado_ok'), {
+        ...formAPropuesta(form(), 'formulario-publico'),
+        creadoEn: serverTimestamp(),
+      });
+    });
+
+    /*
+     * Los tres negativos que siguen valiendo con la puerta abierta, y que son los
+     * que hacen que abrirla no sea abrirla del todo. Cada uno es una escalada
+     * distinta: mandar basura, llegar ya revisado, y hacerse pasar por el panel.
+     */
+    it('pero no con un documento mal formado: `propuestaValida()` sigue mandando', async () => {
       await signOut(auth());
       await expect(
-        setDoc(doc(db(), 'propuestas', 'p_anon'), {
+        setDoc(doc(db(), 'propuestas', 'p_anon_basura'), { hola: 'mundo' }),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
+    it('ni llegando ya revisada, que sería saltearse la bandeja entera', async () => {
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'propuestas', 'p_anon_revisada'), {
           ...formAPropuesta(form(), 'formulario-publico'),
           creadoEn: serverTimestamp(),
+          estado: 'aceptada',
         }),
       ).rejects.toThrow(RECHAZADA);
     });
 
-    it('y alguien logueado sin el claim tampoco', async () => {
-      await signInWithCustomToken(auth(), await token(UID_PELADO, false));
+    /**
+     * **El testigo del `update`, con lo que las mutaciones dijeron de verdad.**
+     *
+     * Lo que está en juego es todo: con el `update` abierto, quien manda una
+     * propuesta puede después aprobársela.
+     *
+     * Se probaron dos mutaciones y dan respuestas distintas, que es lo
+     * interesante:
+     *
+     * - **Borrar el `esAdmin() &&` de `allow update` no abre nada**, y este caso
+     *   sigue en verde con razón: `revisionValida()` **ya fija la identidad** por
+     *   su cuenta (`d.revision.get('porUid','') == request.auth.uid`), y un
+     *   anónimo no tiene `request.auth`. O sea que ahí el `esAdmin()` es un
+     *   **segundo** candado, no el único — y quien sostiene la puerta es una
+     *   cláusula que se lee como validación de forma.
+     * - **Abrir la regla del todo (`allow update: if true`) sí lo pone rojo**, y
+     *   con él tres casos más del archivo.
+     *
+     * Este caso manda una revisión **bien formada** a propósito: es lo único que
+     * distingue «la regla frenó al anónimo» de «la regla frenó al documento».
+     */
+    it('ni corrige lo que mandó, ni con una revisión bien formada', async () => {
+      await signOut(auth());
       await expect(
-        setDoc(doc(db(), 'propuestas', 'p_anon2'), {
-          ...formAPropuesta(form(), 'formulario-publico'),
+        updateDoc(doc(db(), 'propuestas', 'p_anon_ok'), {
+          estado: 'aceptada',
+          revision: { porUid: 'uid_cualquiera', en: serverTimestamp(), actividadId: null, motivo: null },
+        }),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
+    it('ni firmando `origen: \'panel\'`, que es el camino del admin', async () => {
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'propuestas', 'p_anon_panel'), {
+          ...formAPropuesta(form(), 'panel'),
           creadoEn: serverTimestamp(),
         }),
       ).rejects.toThrow(RECHAZADA);
@@ -634,32 +712,29 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
      * **La regla tiene que nombrar el testigo que de verdad se pone rojo**, y la
      * primera versión nombraba el que no.
      *
-     * El paso 3 de la secuencia decía «`escritura-anonima.integracion.test.ts` se
-     * pone rojo — es su trabajo». **No se pone.** Ese archivo prueba las
-     * escrituras con un documento sonda (`{ hola: 'mundo' }`), que
-     * `propuestaValida()` rechaza por `hasOnly` **con la puerta abierta o
-     * cerrada**: es testigo de la **lista** de colecciones, no de esta puerta. El
-     * que sí se pone rojo es el caso de acá arriba, «ni con el documento
-     * perfecto». Lo encontró el `auditor-privacidad`, y es la misma clase que las
-     * cláusulas muertas: una afirmación que se lee como load-bearing y no puede
-     * fallar — con el agravante de que era la única barrera que sostenía la
-     * decisión de secuencia de B-836a.
+     * `escritura-anonima.integracion.test.ts` prueba las escrituras con un
+     * documento sonda (`{ hola: 'mundo' }`), que `propuestaValida()` rechaza
+     * **con la puerta abierta o cerrada**: es testigo de la **lista** de
+     * colecciones, no de esta puerta. El que sí se pone rojo es el control
+     * positivo de acá arriba. Lo encontró el `auditor-privacidad` cuando la
+     * puerta todavía estaba cerrada, y sigue valiendo al revés: si alguien
+     * volviera a cerrarla, `escritura-anonima` tampoco se pondría rojo.
      */
-    it('la regla nombra el testigo correcto, y dice qué falta para abrirla', () => {
-      // Un `esAdmin() &&` sin explicación se lee como una decisión de siempre y
-      // se borra sin mirar. El comentario es la mitad que dice el orden.
+    it('la regla nombra el testigo correcto y las cinco capas que la sostienen', () => {
       const reglas = readFileSync(REGLAS, 'utf8');
-      expect(reglas).toContain('allow create: if esAdmin() && propuestaValida();');
-      expect(reglas).toContain('App Check');
+      expect(reglas).toContain('allow create: if propuestaValida();');
+      expect(
+        reglas,
+        'la regla ya no dice qué sostiene la puerta abierta',
+      ).toContain('App Check');
       expect(reglas).toContain('COLECCIONES_ABIERTAS');
-      // Y el testigo que de verdad falla: este archivo.
-      expect(reglas, 'la secuencia no nombra el test que se pone rojo').toContain(
+      expect(reglas, 'la regla no nombra el test que se pone rojo').toContain(
         'tests/propuestas.integracion.test.ts',
       );
       expect(
         reglas,
-        'la secuencia volvió a decir que `escritura-anonima` se pone rojo solo',
-      ).toContain('**no** se pone rojo solo');
+        'la regla volvió a decir que `escritura-anonima` es el testigo de esta puerta',
+      ).toContain('NO es el testigo de esta');
     });
   });
 });

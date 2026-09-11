@@ -977,43 +977,51 @@ service cloud.firestore {
       allow read: if esAdmin();
 
       /*
-       * ⚠️ **ACÁ VA LA PRIMERA ESCRITURA ANÓNIMA DEL PROYECTO, Y TODAVÍA NO ESTÁ
-       * ABIERTA.**
+       * ✅ **LA PRIMERA ESCRITURA ANÓNIMA DEL PROYECTO, Y ESTÁ ABIERTA** desde el
+       * 2026-09-11 (B-896, paso 2).
        *
-       * Lo que falta no es código: es que **App Check esté exigiendo**
-       * (B-836a, pasos del dueño — publicar, verificar los dominios permitidos
-       * de la clave, verificar que lleguen peticiones y recién ahí exigir). Sin
-       * enforcement, borrar el `esAdmin() &&` de acá abajo publica un endpoint de
-       * escritura a Firestore que **nada** frena: `propuestaValida()` acota la
-       * forma, no el volumen, y cada escritura es una escritura facturada en un
-       * proyecto Blaze (§2 del `prd/README.md`).
+       * ── Qué la sostiene, que son las cinco capas de B-836 y ninguna sobra ──
        *
-       * **Para abrirla**, y en este orden:
-       *   1. App Check exigiendo, verificado en la consola;
-       *   2. borrar `esAdmin() &&` de la línea de abajo;
-       *   3. **el testigo que se pone rojo es
-       *      `tests/propuestas.integracion.test.ts`**, el caso «un anónimo no
-       *      puede crear una propuesta, ni con el documento perfecto». Y hay que
-       *      agregar `'propuestas'` a `COLECCIONES_ABIERTAS` de
-       *      `tests/escritura-anonima.integracion.test.ts`, que es lo que hace que
-       *      abrir una puerta sea un diff visible y no un efecto colateral.
+       *   1. **App Check exigiendo en Firestore** — `ENFORCED` desde el
+       *      2026-09-10 (B-836a paso 6). Es la capa que acota el **volumen**, que
+       *      es lo único que `propuestaValida()` no puede: la regla mira la forma
+       *      de una escritura, no cuántas llegan, y cada una es una escritura
+       *      facturada en un proyecto Blaze.
+       *   2. **`propuestaValida()`** — conjunto exacto de campos y topes de largo.
+       *   3. **Los topes de tamaño y forma** de cada campo, acá mismo.
+       *   4. **El honeypot y el tiempo mínimo de tipeo**, en `FormularioPublico`.
+       *   5. **El barrido programado** de `functions/retencion.js`, que además es
+       *      lo que honra DEC-13: la propuesta rechazada y la que nadie tocó se
+       *      borran a los 30 días, documento **e** imagen.
        *
-       *      **Ojo con eso último, que este comentario decía mal:** ese archivo
-       *      **no** se pone rojo solo. Prueba las escrituras con un documento
-       *      sonda (`{ hola: 'mundo' }`), que `propuestaValida()` rechaza por
-       *      `hasOnly` con la puerta abierta o cerrada — así que witness de la
-       *      **lista**, no de la puerta. Lo encontró el `auditor-privacidad`, y es
-       *      la misma clase que las cláusulas muertas de más arriba: una
-       *      afirmación que se lee como load-bearing y no puede fallar;
-       *   4. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
-       *      barrido programado de la bandeja en su Function. Son las otras tres
-       *      capas de B-836 y ninguna reemplaza a ésta.
+       * ── Y la foto NO entra por acá ────────────────────────────────────────
+       * El flyer va por `subirFlyerDePropuesta`, una callable con
+       * `enforceAppCheck: true` que sanea del lado del servidor y escribe con el
+       * Admin SDK (**B-896**). `storage.rules` para `propuestas/` quedó en
+       * `create: if false` **para todo cliente** — o sea que esta puerta se abrió
+       * y la de Storage se cerró más de lo que estaba. Era lo que trababa el
+       * anuncio de `/proponer`: exigir App Check en Storage es **por servicio y no
+       * por path**, y se llevaba puestas todas las lecturas públicas de imágenes
+       * del sitio (B-872).
        *
-       * Mientras tanto un admin sí puede crear una propuesta a mano
-       * (`origen: 'panel'`), que es un camino del PRD y no un andamio: sirve para
-       * cargar lo que llega por DM.
+       * ── El testigo, y cuál NO es ──────────────────────────────────────────
+       * El que se pone rojo si esta línea se toca es
+       * `tests/propuestas.integracion.test.ts` — el control positivo «un anónimo
+       * crea una propuesta bien formada» más los negativos que siguen valiendo
+       * (documento mal formado, `revision` puesta a mano, `origen: 'panel'`).
+       *
+       * **`escritura-anonima.integracion.test.ts` NO es el testigo de esta
+       * puerta**, aunque lo parezca: prueba con un documento sonda
+       * (`{ hola: 'mundo' }`) que `propuestaValida()` rechaza con la puerta
+       * abierta o cerrada. Es testigo de la **lista**, no de la puerta — por eso
+       * `'propuestas'` se agrega a mano a `COLECCIONES_ABIERTAS`, para que abrir
+       * una puerta sea un diff visible y no un efecto colateral.
+       *
+       * Un admin sigue pudiendo crear una propuesta a mano (`origen: 'panel'`),
+       * que es un camino del PRD y no un andamio: sirve para cargar lo que llega
+       * por DM.
        */
-      allow create: if esAdmin() && propuestaValida();
+      allow create: if propuestaValida();
 
       allow update: if esAdmin() && revisionValida();
 

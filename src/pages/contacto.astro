@@ -34,6 +34,7 @@ import Base from '@/layouts/Base.astro';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
+  PROPONER_EN_VEZ_DE_ESCRIBIR,
   POR_INSTAGRAM,
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
@@ -77,6 +78,27 @@ import {
               {bloque.etiqueta}
             </h2>
             <p class="body-lectura mt-2 text-super">{bloque.ayuda}</p>
+
+            {/*
+              DEC-10 / B-896 — el formulario va **primero** y el mail se queda.
+              Un formulario de once campos es una puerta más angosta que una
+              casilla de mail, y la propuesta que no entra por uno tiene que
+              poder entrar por la otra. Solo en el bloque que corresponde: la
+              comparación la decide `contactoDelSitio.ts`, no este archivo.
+            */}
+            {bloque.motivo === PROPONER_EN_VEZ_DE_ESCRIBIR.motivo && (
+              <>
+                <p class="mt-5">
+                  <a
+                    class={`${claseBotonPrimario} w-full sm:w-auto`}
+                    href={PROPONER_EN_VEZ_DE_ESCRIBIR.href}
+                  >
+                    {PROPONER_EN_VEZ_DE_ESCRIBIR.texto}
+                  </a>
+                </p>
+                <p class="body-sm mt-2 text-super">{PROPONER_EN_VEZ_DE_ESCRIBIR.pie}</p>
+              </>
+            )}
 
             <p class={`mt-5 ${claseRotulo}`}>Qué conviene contarnos</p>
             <ul class="body-md mt-2 list-disc space-y-1 ps-5 text-super marker:text-azul">

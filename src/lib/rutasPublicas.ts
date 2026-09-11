@@ -185,12 +185,16 @@ export const RUTA_CONTACTO = rutaCanonica('/contacto');
  * es lo que hace el panel y prometería que lo que se manda entra solo;
  * «sumar-actividad» dice lo mismo y más largo.
  *
- * ⚠️ **Todavía no se anuncia**: no está en `RUTAS_FIJAS` del sitemap ni enlazada
- * desde el chrome, porque la escritura anónima sigue cerrada hasta que App Check
- * exija (B-836a). Indexar hoy una página cuyo formulario **no puede recibir nada**
- * es prometer lo que no se cumple, que es lo que B-780 costó como P0. La ruta vive
- * acá igual —el sitio necesita un solo texto por página— y anunciarla es el último
- * paso de B-836a.
+ * ✅ **Anunciada desde el 2026-09-11** — B-896, pasos 3 y 4. Está en
+ * `RUTAS_FIJAS` del sitemap y enlazada desde el chrome y desde `/contacto`.
+ *
+ * Estuvo fuera de los dos durante toda la tajada 1, y por un motivo que conviene
+ * no perder: indexar una página cuyo formulario **no puede recibir nada** es
+ * prometer lo que no se cumple, que es lo que B-780 costó como P0. Lo que
+ * destrabó no fue exigir App Check en Storage —eso sigue sin resolverse, y es
+ * B-872— sino sacar la subida de la foto de `storage.rules` y meterla en una
+ * callable atestada (B-896 paso 1). O sea: la promesa se cumple, y por eso se
+ * anuncia.
  */
 export const RUTA_PROPONER = rutaCanonica('/proponer');
 

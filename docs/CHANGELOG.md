@@ -2,6 +2,47 @@
 
 ## Sin publicar
 
+- **`/proponer` está abierto, en el sitemap y enlazado: un organizador ya puede
+  proponer su actividad sin tener cuenta** — **B-896**, pasos 2, 3 y 4. Es lo que
+  el PRD 1 venía a hacer, y estuvo construido y escondido toda la tajada 1.
+
+  **El `create` anónimo de `/propuestas` es la primera escritura sin sesión del
+  proyecto.** Lo sostienen las cinco capas de B-836 y se verificó que las cinco
+  existieran antes de tocar la regla: App Check exigiendo en Firestore (desde el
+  2026-09-10), `propuestaValida()`, los topes de tamaño y forma, el honeypot y el
+  tiempo mínimo de `FormularioPublico`, y el barrido de `retencion.js` que además
+  honra DEC-13. **Solo el `create`**: leer, revisar y borrar siguen en `esAdmin()`
+  — mandar no es ver, que es lo que separa un buzón de una bandeja.
+
+  **`/proponer` se enlaza desde el pie y desde `/contacto`, no desde la barra de
+  arriba.** La barra acaba de pasar a ocho pestañas con «Guía» y tiene un techo
+  escrito; y las tres primeras son las formas de *buscar algo*, mientras que quien
+  viene a proponer llega con algo para dar. En `/contacto` el formulario va
+  **primero** y el `mailto:` se queda debajo, que es DEC-10: un formulario de once
+  campos es una puerta más angosta que una casilla de mail.
+
+  **Y las mutaciones corrigieron dos afirmaciones, las dos mías.**
+
+  La primera: este commit escribió que el barrido de
+  `escritura-anonima.integracion.test.ts` atraparía a alguien que abriera de más el
+  `update`. **Se probó y siguió en verde.** Ese archivo prueba con un documento
+  sonda que la validación de forma rechaza con la puerta abierta o cerrada, así que
+  no puede ser testigo de ninguna puerta en una colección que valida la forma. El
+  comentario ahora dice lo que de verdad alcanza, y el testigo se mudó al archivo
+  de la colección.
+
+  La segunda, más interesante: **borrar el `esAdmin() &&` del `allow update` de
+  `/propuestas` no abre nada**, porque `revisionValida()` **ya fija la identidad**
+  por su cuenta (`porUid == request.auth.uid`) y un anónimo no tiene `request.auth`.
+  O sea que ahí el `esAdmin()` es un **segundo** candado y quien sostiene la puerta
+  es una cláusula que se lee como validación de forma. Abriendo la regla del todo el
+  testigo sí dispara, con tres casos más del archivo.
+
+  El caso del `publicador` cambió de forma por lo mismo: **puede proponer, como
+  cualquiera**, y la bandeja le sigue cerrada. Se agregó el control positivo que lo
+  dice, porque sin él el caso se leía como «no toca `/propuestas`» y eso pasó a ser
+  falso.
+
 - **La subida anónima del flyer pasa por una callable con App Check exigido** —
   **B-896** (paso 1). `/proponer` ya no sube el flyer directo a Storage: lo manda a
   `subirFlyerDePropuesta`, una callable v2 con `enforceAppCheck: true` que **vuelve
