@@ -1233,33 +1233,119 @@ por evento lo que llega y confirmar que no hay un parámetro de más. Está en
 ### Reglas de Firestore
 
 ```js
-function esAdmin() {
-  return request.auth != null && request.auth.token.get('admin', false) == true;
+function esPublicador() {                                       // B-888
+  return request.auth != null && request.auth.token.get('publicador', false) == true;
 }
+function esAdmin() {
+  return request.auth != null
+    && request.auth.token.get('admin', false) == true
+    && !esPublicador();          // B-888 — el orden de las guardas, ver abajo
+}
+function esDelPanel() { return esAdmin() || esPublicador(); }
 
+match /usuarios/{uid} {          // B-888 — el mail de cada cuenta del panel
+  allow read:   if esAdmin() || (esPublicador() && uid == request.auth.uid);
+  allow create, update: if esDelPanel() && uid == request.auth.uid && usuarioValido();
+  allow delete: if false;        // el registro sobrevive al claim
+}
 match /actividades/{id} {
-  allow read:  if esAdmin();    // D-128 — antes: || resource.data.estado == 'publicado'
-  allow write: if esAdmin();
+  // D-128 — antes: || resource.data.estado == 'publicado'
+  allow read:   if esAdmin() || (esPublicador() && esSuya());
+  allow create: if esAdmin() || (esPublicador() && naceSuya() && firmaPropia());
+  allow update: if esAdmin() || (esPublicador() && esSuya() && dueñoIntacto() && firmaPropia());
+  allow delete: if esAdmin() || (esPublicador() && esSuya());
   match /versiones/{version} {
-    allow read:  if esAdmin();
-    allow write: if false;      // solo el Admin SDK
+    allow read:  if esAdmin();   // el historial NO es del publicador (B-888)
+    allow write: if false;       // solo el Admin SDK
   }
 }
 match /opciones/{campo} {
-  allow read:  if true;         // los chips de filtro del §4.4
-  allow write: if esAdmin();
+  allow read:  if true;          // los chips de filtro del §4.4
+  allow write: if esAdmin();     // compartido: el publicador NO escribe (B-888)
+}
+match /reportes/{id} {
+  allow read:   if esAdmin();    // lleva `reportadoPor.email` de otra cuenta
+  allow create: if esAdmin() && reporteValido();
+  allow update: if esAdmin() && (reintentoValido() || resueltoValido());
+  allow delete: if false;
 }
 match /sistema/{doc} {
   allow read:  if esAdmin();
-  allow write: if false;        // solo el Admin SDK
+  allow write: if false;         // solo el Admin SDK
 }
-match /propuestas/{id} {        // B-830
-  allow read:   if esAdmin();   // lleva el contacto de quien propuso
+match /propuestas/{id} {         // B-830
+  allow read:   if esAdmin();    // lleva el contacto de quien propuso
   allow create: if esAdmin() && propuestaValida();   // ← el `esAdmin()` sale con B-836a
   allow update: if esAdmin() && revisionValida();    // solo `estado` + `revision`
   allow delete: if false;       // la borra la Function de retención (DEC-13)
 }
 ```
+
+*(Los nombres `esSuya()`, `naceSuya()`, `dueñoIntacto()` y `firmaPropia()` son de
+este resumen y no del archivo: allá las cláusulas están escritas en línea, con su
+comentario al lado. Significan, en orden: el documento **previo** tiene mi uid en
+`createdBy`; el documento **nuevo** lo tiene; el `createdBy` no cambia entre los
+dos; y el `updatedBy` del documento nuevo es mío.)*
+
+### Los dos roles del panel, y el modelo de amenaza del acotado (B-888)
+
+`admin` ve y toca todo. `publicador` **gestiona solo las actividades que él
+creó** —incluido su `estado`, o sea que publica sin que nadie revise— y nada
+más. Cruza el umbral que B-28 dejó escrito: «la confianza, no la cantidad;
+vuelve cuando entre una tercera cuenta que no sea de confianza».
+
+**La autorización es esta tabla y no el panel.** Que la UI esconda un botón no
+impide nada a quien abra la consola de Firebase con su propia sesión — es el
+mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atraviesa.
+
+| Pregunta | Respuesta | Qué la sostiene |
+|---|---|---|
+| ¿Puede robarse una actividad ajena escribiéndole su `createdBy`? | **No** | El dueño se mira en `resource.data` (el documento **previo**), así que la regla ya falló antes de mirar lo que se quiere escribir |
+| ¿Puede regalar la suya? | **No** | `createdBy` no puede cambiar en un `update`. Sin esa cláusula podría empujar contenido al nombre de otra cuenta y perder de vista lo suyo |
+| ¿Puede firmar una edición a nombre de otro? | **No** | `updatedBy` tiene que ser el propio. Importa desde que la marca de autoría muestra **el mail de quien lo cambió** |
+| ¿Puede apropiarse de una actividad anterior a `createdBy`? | **No** | El default de `.get('createdBy', '')` es `''`: un documento sin dueño declarado no pasa a ser del primero que pregunte |
+| ¿Puede escalar a admin escribiendo en `/usuarios`? | **No** | El documento tiene **dos campos y nada más** (`hasOnly`), y ninguno es el rol. El rol es el claim, y el claim solo lo escribe el Admin SDK |
+| ¿Puede escribir el registro de otra cuenta? | **No** | El uid es el del **path** y tiene que ser el de la sesión |
+| ¿Puede presentarse con el mail de otro? | **No** | `email` tiene que ser idéntico a `request.auth.token.email`, más `email_verified` |
+| ¿Puede leer lo que no es suyo? | **No** | `read` mira `createdBy`. Y como `read` incluye `list`, una query sin `where('createdBy','==',uid)` se rechaza **entera** (trampa 7) — no devuelve un subconjunto |
+| ¿Y las subcolecciones `versiones/`? | **No, ni la suya** | La regla del padre no cascadea: `versiones` decide aparte y se queda en `esAdmin()`. El historial es una de las pantallas que su panel no tiene |
+| ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe** | Las reglas no pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega una opción» y «reescribe la taxonomía del sitio» son el mismo permiso |
+| ¿Y las bandejas (`/reportes`, `/propuestas`)? | **No** | Llevan el mail de otra cuenta y el contacto de un tercero. Y revisar propuestas es decidir qué entra al catálogo, que es la autoridad que este rol no tiene |
+| ¿Y `/sistema`? | **No** | Trae las consultas con las que Google nos muestra — texto que tipearon visitantes — y el flag de rebuild |
+| ¿Puede **publicar el link de la reunión**? | **Sí, igual que un admin** | Lo señaló el `auditor-privacidad`, y va acá porque es lo único que la tabla no contestaba: `online.urlPublica: true` es el **único desvío del §5.1** (D-15), y hace salir el link al `events.json` y al evento de Calendar. Una regla no puede hacer política de campo —no sabe si ese link «debería» ser público—, así que el rol lo alcanza y la decisión es del dueño: si alguna vez hay que negárselo, la cláusula es `request.resource.data.online.urlPublica == false` para la rama del publicador, y va en `firestore.rules` |
+
+**Lo que el rol alcanza, dicho al derecho:** un publicador **publica sin
+revisión**, que es lo que el dueño pidió. O sea que la confianza que el rol
+recorta es sobre **lo ajeno y lo compartido**, no sobre lo que él mismo carga: lo
+suyo sale al sitio, a Calendar y a las redes con los mismos permisos de campo que
+si lo hubiera cargado un admin. El rol contesta «¿de quién es este documento?», no
+«¿qué puede decir este documento».
+
+**El orden de las guardas es parte del modelo, no un detalle.** Cada regla se lee
+`esAdmin() || (esPublicador() && …)` y `||` cortocircuita: si `esAdmin()` diera
+true para una cuenta que además tiene el claim `publicador`, la rama acotada no se
+evaluaría nunca y el rol nuevo sería decorativo. Por eso `esAdmin()` exige además
+**no** ser publicador: un token con los dos claims cae del lado acotado, que es la
+dirección en la que conviene fallar. Ese estado no se puede crear con
+`scripts/set-admin-claim.mjs` —`setCustomUserClaims` reemplaza el objeto entero—,
+pero sí tocando la consola a mano, y las dos mitades hacen falta.
+
+**Todo esto se verifica por mutación**, que es lo único que hace que una regla de
+seguridad valga: `tests/rol-publicador.integracion.test.ts` y
+`tests/usuarios.integracion.test.ts` tienen, cada cláusula, el caso que se pone
+rojo al borrarla, anotado al lado. **Veinticinco mutaciones probadas, y tres se
+las cobró** — tres asertos que se leían como load-bearing y no podían fallar (un
+`create` con las dos firmas ajenas a la vez, dos escrituras a las bandejas con un
+documento sonda que sus validadores rechazaban igual) más tres cláusulas muertas
+en `usuarioValido()` que se borraron (`hasAll`, `is string` y el tope de largo: el
+`email` no es un valor que el cliente elija, tiene que ser idéntico a un claim del
+token).
+
+**`/usuarios` no abre una fila en la tabla de las salidas** (D-320): no proyecta
+a ninguna salida pública ni afirma nada en HTML indexado, que son los dos
+criterios. Guarda un dato personal —el mail de una cuenta del equipo— y por eso
+la lectura es del admin, pero el proyecto ya guardaba uno igual
+(`/reportes.reportadoPor.email`) sin numerar una salida por él.
 
 **`/propuestas` es donde va a ir la primera escritura anónima, y todavía no está
 abierta.** El `create` es `esAdmin() && propuestaValida()`: lo que falta no es
@@ -1437,11 +1523,20 @@ Tres detalles que costaron encontrar:
 correspondiente, si no Firestore rechaza la query **entera** en vez de devolver
 el subconjunto visible (trampa 7).
 
-Desde D-128 **ninguna** colección de este proyecto tiene una regla de lectura
-condicionada por `resource.data` —`/actividades` es `esAdmin()` puro y
-`/opciones/*` es `if true`—, así que hoy no hay query que se pueda romper así. La
-advertencia queda porque el día que B-01 necesite lectura en vivo desde el
-cliente, la forma que D-128 recomienda (una subcolección `privado/`) reintroduce
+**Desde B-888 esa advertencia dejó de ser inerte y pasó a ser el mecanismo.** Lo
+que decía este párrafo —«ninguna colección tiene una regla de lectura condicionada
+por `resource.data`»— dejó de ser cierto: la lectura de `/actividades` para un
+publicador es `resource.data.get('createdBy','') == request.auth.uid`, así que su
+listado del panel **tiene que** pedir `where('createdBy','==',uid)` o Firestore le
+rechaza la query entera. No es un defecto: es lo que hace que un olvido se vea
+como un error y no como un listado que calladamente muestra de más. La contracara
+es que `slugDisponible()` (`src/lib/actividades.ts`), que barre la colección sin
+`where`, **no funciona con ese rol** — está anotado en B-888.
+
+Para el admin nada cambió: su rama es `esAdmin()` puro, sin condición sobre
+contenido, y `/opciones/*` sigue en `if true`. La advertencia también sigue
+valiendo para el caso que la trajo: el día que B-01 necesite lectura en vivo desde
+el cliente, la forma que D-128 recomienda (una subcolección `privado/`) reintroduce
 exactamente este mecanismo. El contraste está fijado en el `describe('trampa 7 —
 el mecanismo, con una regla condicionada')` de
 `tests/actividades.integracion.test.ts`, que carga su propio ruleset para probarlo

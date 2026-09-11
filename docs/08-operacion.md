@@ -48,6 +48,8 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run seed` | siembra `/opciones/*` en el emulador |
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
+| `npm run admin:claim:prod -- --publicador <uid\|email>` | claim `publicador` (solo lo que él carga — B-888) |
+| `npm run admin:claim:prod -- --quitar <uid\|email>` | le saca el rol a una cuenta |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
@@ -174,7 +176,7 @@ hasta entonces era el único de los siete que deciden entre los dos entornos que
 lo hacía, justo el que reparte permisos—. `opciones:aprobar` sigue la misma
 convención y ya lo anunciaba.
 
-### Dar permiso de admin a una cuenta (producción)
+### Dar permiso a una cuenta (producción)
 
 **El orden importa y es al revés del intuitivo: primero se entra, después se da
 el permiso.** El claim se escribe sobre un usuario que tiene que existir, y con
@@ -197,6 +199,34 @@ Google el usuario **nace en el primer login**, no antes.
 3. **Que vuelva a entrar.** El claim viaja en el token, así que la sesión que ya
    estaba abierta **no lo tiene**: hay que cerrar sesión y volver a entrar (o
    esperar a que el token se renueve, hasta una hora).
+
+**Los dos roles, y cómo se cambia de uno a otro** (B-888):
+
+> ⚠️ **`--publicador` todavía no se le da a una cuenta real.** B-888 entregó la
+> **frontera** (las reglas, `/usuarios`, el script y sus tests); el panel es la
+> tajada 2 y no está. Hoy una cuenta con ese claim entra al panel y **su pantalla
+> principal queda rota**, no acotada: `listarActividades()` consulta sin
+> `where('createdBy','==',uid)` y la regla rechaza la query **entera** (trampa 7).
+> También fallan el chequeo de slug único y la escritura de taxonomías al guardar.
+> Sirve para probar contra el emulador; para una persona, esperá la tajada 2.
+
+```bash
+npm run admin:claim:prod -- <email>                  # admin: ve y toca todo
+npm run admin:claim:prod -- --publicador <email>     # publicador: solo lo que él carga
+npm run admin:claim:prod -- --quitar <email>         # le saca el rol
+```
+
+Los tres pasos de arriba son los mismos para cualquiera de los tres comandos, y
+el script anuncia **también el rol** antes de escribir, por el mismo motivo que
+anuncia el objetivo: `--publicador` es un flag de una palabra en medio de un
+comando largo, y equivocarse en silencio es darle el panel entero a quien tenía
+que ver solo lo suyo.
+
+**No hace falta «sacar» el rol anterior antes de dar el nuevo.**
+`setCustomUserClaims` reemplaza el objeto de claims **entero**, así que pasar a
+publicador saca el `admin` en la misma llamada. Y si de todas formas una cuenta
+quedara con los dos claims —tocando la consola a mano—, las reglas la tratan como
+publicador: ver `07-seguridad.md` § «El orden de las guardas».
 
 Y un cuidado que no es del script: **el login por popup solo funciona en un
 dominio autorizado**. Ver «Los dominios autorizados de Auth», más abajo.

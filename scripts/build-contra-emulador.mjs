@@ -215,6 +215,31 @@ const CENTINELA = {
    * alguien lo publicó sin resolver, que es exactamente lo que hay que agarrar.
    */
   incluyeSlug: 'gate-incluye-slug',
+  /*
+   * B-888 — el mail de una cuenta del panel, que vive en `/usuarios/{uid}` y
+   * **no sale a ninguna parte**. §5.1 y D-57: uid y mail de una cuenta del panel
+   * no salen «ni crudos ni hasheados».
+   *
+   * **Lo pidió el `auditor-privacidad`, y es el de la salida 5 con otra cara: el
+   * agujero no es de cobertura, es de índice.** Hoy el build no lee `/usuarios`
+   * —`contenidoDelSitio.ts` lee `actividades` y sus `versiones`, nada más—, así
+   * que este centinela **no puede ponerse rojo todavía**, y eso está dicho a
+   * propósito. Está acá porque la tajada 2 es, literalmente, el cambio que va a
+   * conectar `mailesPorUid()` a un view-model dentro de `src/lib/` — el mismo
+   * directorio donde viven `toPublic.ts`, `detallePublico.ts` y
+   * `hubsPublicos.ts`—, y el momento de escribir el testigo es **antes** de ese
+   * cambio, no después: un barrido que se agrega junto con la funcionalidad se
+   * escribe contra el código que quedó.
+   *
+   * Es la misma forma que `tests/escritura-anonima.integracion.test.ts`, que
+   * también fija un estado de partida y también declara su propio límite.
+   *
+   * Cómo comprobar que sirve, el día que haga falta: interpolarlo a mano en
+   * cualquier `.astro` del sitio deja el paso 9 rojo nombrando el archivo — el
+   * mismo mecanismo que ya cobra los otros veinte, que no tiene nada de
+   * particular acá.
+   */
+  mailDePanel: 'gate.usuarios.email@ejemplo.test',
 };
 
 /**
@@ -650,10 +675,19 @@ initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-lit
 const db = getFirestore();
 
 const limpiar = async () => {
-  const snap = await db.collection('actividades').get();
-  const aBorrar = snap.docs.filter((d) => d.id.startsWith(PREFIJO));
-  await Promise.all(aBorrar.map((d) => d.ref.delete()));
-  return aBorrar.length;
+  // Las dos colecciones que este gate siembra. `/usuarios` entró con B-888 y va
+  // acá y no en un segundo helper: el `finally` tiene que dejar el emulador como
+  // lo encontró, y una limpieza que se olvida de una colección es la clase de
+  // olvido que solo se nota semanas después, con datos de prueba en la base de
+  // quien está trabajando (`--export-on-exit`).
+  const borrar = async (coleccion) => {
+    const snap = await db.collection(coleccion).get();
+    const aBorrar = snap.docs.filter((d) => d.id.startsWith(PREFIJO));
+    await Promise.all(aBorrar.map((d) => d.ref.delete()));
+    return aBorrar.length;
+  };
+  const [actividades, usuarios] = await Promise.all([borrar('actividades'), borrar('usuarios')]);
+  return actividades + usuarios;
 };
 
 const fallo = (mensaje) => {
@@ -700,6 +734,14 @@ try {
   galeria.titulo = 'Gate mecanico — galeria de tres';
   galeria.imagenes = TRES_IMAGENES;
   await db.doc(`actividades/${ID_GALERIA}`).set(galeria);
+
+  // B-888 — la cuenta del panel con su mail. No la lee ninguna parte del build;
+  // se siembra para que el barrido del paso 9 tenga qué encontrar el día que
+  // alguien la conecte a una salida. Ver `CENTINELA.mailDePanel`.
+  await db.doc(`usuarios/${PREFIJO}cuenta`).set({
+    email: CENTINELA.mailDePanel,
+    actualizadoEn: new Date('2026-09-11T12:00:00Z'),
+  });
 
   console.log(
     `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +

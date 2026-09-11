@@ -37,6 +37,12 @@ const vivo = await emuladorStorageVivo();
 const UID = 'uid_test_storage';
 const BUCKET = 'agenda-literaria.firebasestorage.app';
 
+/**
+ * `esAdmin: boolean` y no un objeto de claims, **a propósito**: este archivo
+ * prueba `storage.rules`, donde el único rol que existe es `admin`. El
+ * `publicador` de B-888 tiene su propio helper abajo, separado, para que la
+ * diferencia se vea en el nombre y no haya que leer el argumento.
+ */
 const tokenPara = async (uid: string, esAdmin: boolean) => {
   const app = initAdmin({ projectId: PROJECT_ID }, `s-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
@@ -46,6 +52,20 @@ const tokenPara = async (uid: string, esAdmin: boolean) => {
     /* ya existía */
   }
   const token = await a.createCustomToken(uid, esAdmin ? { admin: true } : {});
+  await deleteAdminApp(app);
+  return token;
+};
+
+/** Un token con el claim `publicador` de B-888, y **sin** `admin`. */
+const tokenPublicador = async (uid: string) => {
+  const app = initAdmin({ projectId: PROJECT_ID }, `sp-${uid}-${Date.now()}`);
+  const a = getAdminAuth(app);
+  try {
+    await a.createUser({ uid });
+  } catch {
+    /* ya existía */
+  }
+  const token = await a.createCustomToken(uid, { publicador: true });
   await deleteAdminApp(app);
   return token;
 };
@@ -375,6 +395,42 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
       await signOut(auth());
       const ruta = rutaDeImagen(idNuevo(), 'image/jpeg');
       expect(await rechaza(subir(ruta, bytes(512), 'image/jpeg'))).toBe(true);
+    });
+
+    /**
+     * **El rol `publicador` (B-888) tampoco sube, y esto es la red de un
+     * comentario** — lo pidió el `auditor-trampas`.
+     *
+     * `storage.rules` tiene arriba un docblock que dice que el rol nuevo no
+     * existe en este archivo, que eso hace que un publicador **no pueda subir la
+     * imagen de su actividad**, y que **no se cierre agregando `|| esPublicador()`
+     * de forma mecánica**: el prefijo `imagenes/{archivo}` es plano y el nombre es
+     * un uuid opaco, así que el objeto no dice de quién es y «solo las suyas» no
+     * es expresable con esta forma de path.
+     *
+     * Un comentario no frena nada. Sin este caso, ese `|| esPublicador()` se
+     * escribe mañana, **la suite queda verde** —ningún test de Storage conocía el
+     * claim— y el prefijo se abre para todos sin que nada avise. Es la misma clase
+     * que el `{ruta=**}` de `miniaturas/`, anotado más arriba: el modo de falla es
+     * un arreglo que parece obvio y reabre la trampa 13.
+     *
+     * **Y el día que la tajada 2 lo abra de verdad, este caso se pone rojo**, que
+     * es lo que obliga a venir acá y decidirlo a mano en vez de descubrirlo
+     * después. Las dos salidas están escritas en el docblock de `storage.rules`.
+     *
+     * MUTACIÓN PROBADA: agregar `|| esPublicador()` al `allow create, update` de
+     * `imagenes/{archivo}` (con su `function esPublicador()`) deja este caso en
+     * rojo, y ningún otro del archivo se mueve.
+     */
+    it('el rol publicador de B-888 tampoco sube: no existe en storage.rules', async () => {
+      await signInWithCustomToken(auth(), await tokenPublicador('uid_test_storage_publicador'));
+      const ruta = rutaDeImagen(idNuevo(), 'image/jpeg');
+      // Un archivo **válido** —tipo, tamaño y nombre correctos—, para que lo único
+      // que pueda rechazarlo sea el claim. Con un archivo inválido este caso sería
+      // verde con la regla abierta o cerrada, o sea testigo de nada.
+      expect(await rechaza(subir(ruta, bytes(512), 'image/jpeg'))).toBe(true);
+      // Y tampoco enumera el prefijo (trampa 13): `list` sigue siendo de admin.
+      await expect(listAll(ref(almacen(), 'imagenes'))).rejects.toThrow();
     });
   });
 });

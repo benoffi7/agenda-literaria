@@ -250,6 +250,54 @@ qué hacer cuando llegue.
 Lo único que queda es el click y el canal de notificación, que es dato personal y
 configuración de consola (§5.4).
 
+### B-888 · El rol publicador: la frontera está, el panel no — 🟠 empezado (2026-09-11) · P1
+
+**Lo hecho (2026-09-11): la frontera de autorización.** Claim `publicador` + las
+cuatro reglas de `/actividades` por dueño + `/usuarios/{uid}` con el mail de cada
+cuenta + `--publicador`/`--quitar` en `set-admin-claim.mjs` + el índice compuesto +
+**29 mutaciones contra el emulador**. Decisión completa en **D-650**, modelo de
+amenaza en `docs/07-seguridad.md` § «Los dos roles del panel».
+
+**Lo que falta es el panel, y hoy el rol no se puede usar con una persona.** Una
+cuenta con el claim entra a `/admin` y ve «Sin permisos»; si se lo destrabara sin
+lo de abajo, su pantalla principal quedaría **rota**, no acotada. Las tres roturas
+conocidas, en orden de bloqueo:
+
+1. **El listado.** `listarActividades()` consulta sin `where`, y con la regla nueva
+   Firestore **rechaza la query entera** (trampa 7 — una regla no filtra). Tiene que
+   ser `where('createdBy','==',uid)` + `orderBy('updatedAt','desc')`, con el índice
+   que ya está en `firestore.indexes.json`.
+2. **El slug único.** `slugDisponible()` barre toda la colección sin `where`, así
+   que también se rechaza entera — y **no tiene arreglo dentro de la regla**: el
+   slug es un invariante de **todo** el catálogo y no se puede verificar mirando
+   solo lo propio. Las dos salidas son una colección índice `/slugs/{slug}` de
+   lectura abierta o una Function que resuelva el choque.
+3. **Las taxonomías al guardar.** `upsertOpcion()` y `registrarUsos()` corren en
+   cada guardado (D-02) y escriben en `/opciones/*`, que es de admin — y el `catch`
+   de `registrarUsos` es **silencioso a propósito**, pensado para una carrera rara,
+   no para que falle siempre.
+
+**Y una cuarta, de Storage.** `storage.rules` no conoce el rol, así que un
+publicador **no puede subir la imagen de su actividad**. Falla cerrada, y **no se
+arregla con un `|| esPublicador()`**: el prefijo `imagenes/{archivo}` es plano y el
+nombre es un uuid opaco (B-206), así que **el objeto no dice de quién es** y «solo
+las suyas» no es expresable. Hay un caso que se pone rojo el día que alguien lo
+abra.
+
+**Lo que el panel además tiene que hacer:** llamar a `registrarUsuario()` al entrar
+(hoy `src/lib/usuarios.ts` no tiene consumidor y la colección está vacía), esconder
+reportes/propuestas/taxonomías/historial/tablero, agregarle al admin el **filtro por
+quién creó** cada actividad, y cambiar «La cargó otra cuenta» por **el mail de quien
+lo cambió**, resuelto con `mailesPorUid()`.
+
+**Dos decisiones que tomó el frente y conviene que el dueño revise**, porque las dos
+se dan vuelta en una cláusula: el publicador **puede borrar lo suyo** —el argumento
+es que `borrador` ya lo saca del sitio, así que negarlo no protege nada y el §12
+guarda la versión del borrado— y **puede publicar el link de la reunión** con
+`urlPublica: true`, igual que un admin (D-15): una regla no puede hacer política de
+campo, y lo que el rol recorta es la confianza sobre lo ajeno y lo compartido, no
+sobre lo que él mismo carga.
+
 ### B-890 · Las tres guías —librerías, suscripciones y lugares— son lo siguiente, y son lo único que se ve · P0
 
 **Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que

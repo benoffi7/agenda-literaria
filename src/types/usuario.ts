@@ -26,13 +26,3 @@ export interface Usuario {
 }
 
 export type UsuarioConId = Usuario & { uid: string };
-
-/**
- * El tope de largo del mail, atado a `firestore.rules`.
- *
- * Vive acá y se compara contra el archivo de reglas en `tests/usuarios.test.ts`,
- * que es el patrón de B-364: las reglas son un runtime aparte que no puede
- * importar TypeScript, así que la única forma de que los dos números no se
- * separen es que un test lea el archivo.
- */
-export const TOPE_EMAIL_USUARIO = 200;

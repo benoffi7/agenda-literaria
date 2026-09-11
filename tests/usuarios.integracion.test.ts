@@ -23,14 +23,12 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
-import { TOPE_EMAIL_USUARIO } from '@/types/usuario';
 import { PROJECT_ID, cargarReglas, emuladorAuthVivo, emuladorVivo, limpiarFirestore } from './emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
@@ -40,6 +38,7 @@ const UID_ADMIN = 'uid_u888_admin';
 const UID_PUB = 'uid_u888_publicador';
 const UID_OTRO = 'uid_u888_otro';
 const UID_SIN_VERIFICAR = 'uid_u888_sin_verificar';
+const UID_SIN_MAIL = 'uid_u888_sin_mail';
 
 // `ejemplo.test` (TLD reservado) y no un proveedor gratuito: ver el comentario
 // de `tests/rol-publicador.integracion.test.ts` y `sin-datos-personales.test.ts`.
@@ -71,6 +70,22 @@ const entrarComo = async (
   await signInWithCustomToken(auth(), t);
 };
 
+/**
+ * Una cuenta **sin dirección de correo** y con `emailVerified: true`, que es el
+ * caso que el emulador acepta y que tira abajo el supuesto del que casi cuelga
+ * una cláusula borrada (ver el caso que lo usa).
+ */
+const entrarSinMail = async (uid: string, claims: Record<string, unknown>): Promise<void> => {
+  const app = initAdmin({ projectId: PROJECT_ID }, `u888-sm-${uid}-${Date.now()}`);
+  const a = getAdminAuth(app);
+  const existe = await a.getUser(uid).then(() => true).catch(() => false);
+  if (!existe) await a.createUser({ uid, emailVerified: true });
+  await a.setCustomUserClaims(uid, claims);
+  const t = await a.createCustomToken(uid);
+  await deleteAdminApp(app);
+  await signInWithCustomToken(auth(), t);
+};
+
 const rechazada = async (operacion: Promise<unknown>, que: string): Promise<void> => {
   let error: unknown;
   try {
@@ -95,6 +110,24 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
 
   afterAll(async () => {
     await signOut(auth());
+
+    /*
+     * **Y se limpia al SALIR, no solo al entrar** — y esto lo cobró el gate, no un
+     * test. Todos los archivos de integración de este repo limpian en el
+     * `beforeAll` y dejan sus documentos puestos al terminar; funcionaba porque los
+     * que siembran `/actividades` siembran **documentos completos**. Los de acá son
+     * mínimos a propósito (lo que se mide es quién puede tocarlos, no qué campos
+     * tienen), así que dejarlos puestos le da de comer al **paso 4 de
+     * `scripts/verificar-todo.sh`** —que buildea contra el MISMO emulador, después
+     * de los tests— una actividad sin `tipo`, y `toPublic` muere con
+     * `Cannot read properties of undefined`. Se reprodujo: el gate quedó en
+     * «el build no pasa» por culpa de este archivo.
+     *
+     * O sea: el emulador es estado compartido **entre pasos del gate**, no solo
+     * entre archivos de la suite (que es lo que dice B-219). Limpiar al salir es
+     * barato y saca el acoplamiento.
+     */
+    await limpiarFirestore();
   });
 
   describe('el control positivo', () => {
@@ -187,8 +220,18 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
     });
 
     it('no escribe un registro sin mail ni antedatado', async () => {
-      // Mutación: borrar `hasAll` → el primero se pone rojo. Borrar
-      // `d.actualizadoEn == request.time` → el segundo.
+      /*
+       * La clave ausente y el valor equivocado son **el mismo rechazo**, y eso es
+       * lo que hace que `hasAll` no haga falta en esta función: `.get('email','')`
+       * devuelve el default, y el default no puede ser igual al mail del token.
+       * Está explicado en el bloque de `usuarioValido()`, y lo descubrió la
+       * mutación: con `hasAll` borrado, este caso seguía rojo.
+       *
+       * Mutación: borrar `d.get('email','') == request.auth.token.get('email','')`
+       * → el primero se pone rojo (y también el caso del mail ajeno, que es la
+       * otra cara). Borrar `d.get('actualizadoEn', null) == request.time` → el
+       * segundo.
+       */
       await rechazada(
         setDoc(doc(db(), 'usuarios', UID_PUB), { actualizadoEn: serverTimestamp() }),
         'un registro sin mail',
@@ -272,25 +315,33 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
         'registrarse con un mail sin verificar',
       );
     });
-  });
 
-  describe('el tope de largo vive en dos runtimes', () => {
-    it('`firestore.rules` dice el mismo número que `TOPE_EMAIL_USUARIO`', () => {
+    it('una cuenta SIN dirección no se registra con el mail vacío', async () => {
       /*
-       * El patrón de B-364: las reglas son un runtime aparte que no puede importar
-       * TypeScript, así que la única forma de que los dos números no se separen es
-       * que un test lea el archivo. Sin esto, subir el tope en un lado deja al otro
-       * rechazando lo que el primero acepta, y el síntoma aparece con un mail largo.
+       * **El caso que tiró abajo un argumento, y por eso existe la cláusula que
+       * verifica.** El borrador de `usuarioValido()` iba a borrar
+       * `d.get('email','').size() > 0` junto con las otras tres cláusulas muertas,
+       * con este razonamiento: «queda cubierto por `email_verified`, que no puede
+       * ser true en una cuenta sin dirección». Lo marcó el `auditor-privacidad`
+       * como un supuesto sobre Identity Platform **declarado sin verificar**, se
+       * probó, y es falso: el emulador acepta `createUser({ emailVerified: true })`
+       * sin `email`, y el token sale con `email_verified: true` y **sin** claim
+       * `email`.
+       *
+       * Con eso, `.get('email','')` da `''` de los dos lados —el documento y el
+       * token—, `'' == ''` es true, y el registro entraría con el mail vacío. No
+       * es una fuga: es una fila en blanco en el directorio, y una promesa de la
+       * doc («el mail de cada cuenta») que dejaría de ser cierta.
+       *
+       * Mutación: borrar `d.get('email','').size() > 0` de `usuarioValido()`.
+       * Este caso se pone rojo, y **ningún otro se mueve** — que es lo que lo
+       * hace el único testigo de esa cláusula.
        */
-      const reglas = readFileSync(RUTA_REGLAS, 'utf8');
-      const bloque = reglas.slice(
-        reglas.indexOf('function usuarioValido()'),
-        reglas.indexOf('match /usuarios/{uid}'),
+      await entrarSinMail(UID_SIN_MAIL, { publicador: true });
+      await rechazada(
+        setDoc(doc(db(), 'usuarios', UID_SIN_MAIL), { email: '', actualizadoEn: serverTimestamp() }),
+        'registrarse con el mail vacío',
       );
-      expect(bloque.length, 'no se encontró el bloque de usuarioValido()').toBeGreaterThan(0);
-      const m = /d\.email\.size\(\) <= (\d+)/.exec(bloque);
-      expect(m, 'no se encontró el tope del mail en firestore.rules').not.toBeNull();
-      expect(Number(m![1])).toBe(TOPE_EMAIL_USUARIO);
     });
   });
 });

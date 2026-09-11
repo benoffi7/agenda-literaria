@@ -112,9 +112,27 @@ la trampa 13 se reabre.
 `client_id` que no existe hasta que el toggle de Firebase auto-crea el OAuth
 client. No es automatizable con las credenciales del proyecto.
 
-### Cuentas con claim `admin`
+### Cuentas con claim `admin` o `publicador`
 
-**Son cuatro** desde el 2026-09-08 — eran dos hasta esa fecha, y varios argumentos
+**Hay dos roles desde B-888**, y son **excluyentes**: `admin` ve y toca todo,
+`publicador` gestiona solo las actividades que él creó (y las publica sin
+revisión). La frontera completa está en `07-seguridad.md` § «Los dos roles del
+panel». Que no se puedan acumular no depende de acordarse: `setCustomUserClaims`
+**reemplaza el objeto de claims entero**, así que dar un rol saca el otro en la
+misma llamada — y las reglas además tratan un token con los dos como publicador.
+
+```sh
+npm run admin:claim:prod -- <email>                  # admin
+npm run admin:claim:prod -- --publicador <email>     # publicador
+npm run admin:claim:prod -- --quitar <email>         # sin rol
+```
+
+El claim entra al token **en el próximo login**: hay que salir y volver a entrar
+en `/admin`. Y con Google la cuenta **nace en el primer login**, así que para una
+cuenta nueva el orden es entrar una vez (va a ver «sin permisos», eso está bien) y
+recién después correr el comando.
+
+**Admins: son cuatro** desde el 2026-09-08 — eran dos hasta esa fecha, y varios argumentos
 del repo todavía razonan sobre dos: está anotado en **B-811**. Los mails y los uids
 no se listan acá: este repo es público (§5.1,
 D-57 — uid y mail de admin no salen ni crudos ni hasheados, y esta tabla los
@@ -134,6 +152,13 @@ linkea el proveedor a la cuenta existente y conserva el uid, así que el claim
 sobrevive.
 
 Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
+
+**El registro de mails va a vivir en `/usuarios/{uid}`, no acá** (B-888), y cada
+cuenta lo escribe sola al entrar con el mail de su propio token — es lo que le va
+a permitir al panel mostrar «la cargó fulano@…» en vez de un uid. **Hoy la
+colección está vacía en producción**: B-888 entregó la frontera (reglas + el
+módulo que la escribe) y el panel que la llama es la tajada 2. Este documento
+sigue sin listar mails ni uids: los publica el repo y esta sección es pública.
 
 ## App Check — cableado y **exigido en Firestore** desde el 2026-09-10 (B-836)
 

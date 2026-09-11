@@ -39,6 +39,7 @@ import {
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   setDoc,
   updateDoc,
   where,
@@ -139,6 +140,11 @@ const sembrar = async (id: string, datos: Record<string, unknown>): Promise<void
   await getAdminFirestore(appSiembra!).doc(`actividades/${id}`).set(datos);
 };
 
+/** Lo mismo, en cualquier ruta: `reportes/x`, `propuestas/x`. */
+const sembrarEn = async (ruta: string, datos: Record<string, unknown>): Promise<void> => {
+  await getAdminFirestore(appSiembra!).doc(ruta).set(datos);
+};
+
 const actividadDe = (uid: string, extra: Record<string, unknown> = {}) => ({
   titulo: 'Taller de crónica',
   slug: `taller-${uid}`,
@@ -146,6 +152,67 @@ const actividadDe = (uid: string, extra: Record<string, unknown> = {}) => ({
   createdBy: uid,
   updatedBy: uid,
   ...extra,
+});
+
+/**
+ * Un reporte con **las trece claves** que `reporteValido()` exige, en su estado
+ * inicial. No es andamiaje: es lo que hace que el `allow create` de `/reportes`
+ * tenga un testigo de verdad (ver el caso que lo usa).
+ */
+const reporteDeAlta = (uid: string) => ({
+  tipo: 'bug',
+  titulo: 'Algo no anda en el listado',
+  descripcion: 'Al filtrar por tipo se queda cargando y no vuelve nunca.',
+  pasos: null,
+  severidad: 'molesta',
+  actividad: null,
+  contexto: {
+    versionPanel: '0.0.0',
+    navegador: 'test',
+    ventana: '800x600',
+    zonaHoraria: 'America/Argentina/Buenos_Aires',
+    url: '/admin',
+    pantalla: 'listado',
+  },
+  reportadoPor: { uid, email: MAIL_PUB },
+  estado: 'pendiente',
+  intentos: 0,
+  github: null,
+  error: null,
+  creadoEn: serverTimestamp(),
+});
+
+/**
+ * Una propuesta con **las dieciséis claves** que `propuestaValida()` exige, con
+ * `origen: 'formulario-publico'` — la rama que un publicador satisface, porque
+ * `!esAdmin()` le da verde. O sea que lo único que puede rechazar esta escritura
+ * es el `esAdmin()` del `allow create`, que es exactamente lo que el caso mide.
+ *
+ * **Lo pidió el `auditor-privacidad`, y es la misma lección que la de
+ * `/reportes` dos fixtures más arriba**: con un `{ hola: 'mundo' }` de sonda,
+ * `propuestaValida()` rechaza por `hasOnly` con la puerta abierta o cerrada, y el
+ * aserto no podía fallar. Ese hueco no lo agarró la primera tanda de mutaciones
+ * porque la mutación de ESA cláusula —`allow create` de `/propuestas`— no estaba
+ * en la lista: el barrido fue exhaustivo sobre las mutaciones que alguien
+ * escribió, no sobre las cláusulas del archivo.
+ */
+const propuestaDeAlta = () => ({
+  titulo: 'Un ciclo nuevo de lectura',
+  descripcion: 'Ocho encuentros sobre narrativa breve argentina, los jueves.',
+  fechas: ['2026-10-01T19:00'],
+  modalidad: 'presencial',
+  lugar: { nombre: 'Casa de la cultura', direccion: 'Av. Siempreviva 742', barrio: 'Almagro' },
+  organizador: { nombre: 'Colectivo de lectura', instagram: null },
+  arancel: { tipo: 'a-la-gorra', notas: null },
+  inscripcion: { requiere: true, comoDice: 'Por mail' },
+  incluye: [],
+  incluyeOtro: null,
+  imagen: null,
+  contacto: { via: 'mail', valor: 'propone@ejemplo.test' },
+  estado: 'nueva',
+  creadoEn: serverTimestamp(),
+  origen: 'formulario-publico',
+  revision: { porUid: null, en: null, actividadId: null, motivo: null },
 });
 
 const MIA = 'act_b888_mia';
@@ -165,11 +232,45 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     // Un documento anterior a `createdBy` (existen: `autoriaDe` los trata como
     // autoría `desconocida`). No es de nadie, así que no es de ningún publicador.
     await sembrar(VIEJA, { titulo: 'De antes', slug: 'de-antes', estado: 'publicado' });
+    /*
+     * Documentos existentes en las dos bandejas: sin ellos, un `update` denegado
+     * no distingue «la regla frenó» de «el documento no está». `creadoEn` va con
+     * una fecha común porque el `serverTimestamp()` del SDK de cliente no lo
+     * serializa el Admin SDK, y acá el valor da igual.
+     */
+    await sembrarEn('reportes/r_b888', {
+      ...reporteDeAlta(UID_ADMIN),
+      estado: 'error',
+      creadoEn: new Date('2026-09-01T12:00:00Z'),
+    });
+    await sembrarEn('propuestas/p_b888', {
+      titulo: 'Un ciclo nuevo',
+      estado: 'nueva',
+      revision: { porUid: null, en: null, actividadId: null, motivo: null },
+    });
   });
 
   afterAll(async () => {
     await signOut(auth());
     if (appSiembra) await deleteAdminApp(appSiembra);
+
+    /*
+     * **Y se limpia al SALIR, no solo al entrar** — y esto lo cobró el gate, no un
+     * test. Todos los archivos de integración de este repo limpian en el
+     * `beforeAll` y dejan sus documentos puestos al terminar; funcionaba porque los
+     * que siembran `/actividades` siembran **documentos completos**. Los de acá son
+     * mínimos a propósito (lo que se mide es quién puede tocarlos, no qué campos
+     * tienen), así que dejarlos puestos le da de comer al **paso 4 de
+     * `scripts/verificar-todo.sh`** —que buildea contra el MISMO emulador, después
+     * de los tests— una actividad sin `tipo`, y `toPublic` muere con
+     * `Cannot read properties of undefined`. Se reprodujo: el gate quedó en
+     * «el build no pasa» por culpa de este archivo.
+     *
+     * O sea: el emulador es estado compartido **entre pasos del gate**, no solo
+     * entre archivos de la suite (que es lo que dice B-219). Limpiar al salir es
+     * barato y saca el acoplamiento.
+     */
+    await limpiarFirestore();
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -289,12 +390,36 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       );
     });
 
-    it('no crea una actividad a nombre de otro', async () => {
-      // Mutación: borrar `request.resource.data.get('createdBy','') ==
-      // request.auth.uid` del `allow create`. Este caso se pone rojo.
+    it('no crea una actividad a nombre de otro, ni firmada por otro', async () => {
+      /*
+       * **Las dos firmas se prueban por separado, y la mutación es lo que lo
+       * obligó.** El primer borrador mandaba un documento con `createdBy` Y
+       * `updatedBy` ajenos: cualquiera de las dos cláusulas lo frenaba, así que
+       * borrar una dejaba el caso verde igual. Un aserto que dos cláusulas pueden
+       * satisfacer no es testigo de ninguna.
+       *
+       * **Y el id tiene que ser distinto en cada mitad**, que es la segunda cosa
+       * que enseñó la mutación: si la primera escritura llega a pasar, el
+       * documento queda creado y la segunda ya no es un `create` sino un
+       * `update` — otra regla, y el aserto pasaría por el motivo equivocado.
+       *
+       * Mutación: borrar `request.resource.data.get('createdBy','') ==
+       * request.auth.uid` del `allow create` → se pone rojo el primero. Borrar
+       * `…get('updatedBy','') == request.auth.uid` → el segundo.
+       */
       await rechazada(
-        setDoc(doc(db(), 'actividades', 'act_b888_impostora'), actividadDe(UID_ADMIN)),
+        setDoc(
+          doc(db(), 'actividades', 'act_b888_impostora_a'),
+          actividadDe(UID_ADMIN, { updatedBy: UID_PUB }),
+        ),
         'crear una actividad con el createdBy de otro',
+      );
+      await rechazada(
+        setDoc(
+          doc(db(), 'actividades', 'act_b888_impostora_b'),
+          actividadDe(UID_PUB, { updatedBy: UID_ADMIN }),
+        ),
+        'crear una actividad firmada por otro',
       );
     });
 
@@ -427,19 +552,48 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     });
 
     it('no entra a la bandeja de reportes, que lleva el mail de otra cuenta', async () => {
-      // Mutación: `esDelPanel()` en cualquiera de las tres cláusulas de
-      // `/reportes`. La mitad correspondiente se pone roja.
-      await rechazada(getDoc(doc(db(), 'reportes', 'r1')), 'leer un reporte');
-      await rechazada(setDoc(doc(db(), 'reportes', 'r1'), { hola: 'mundo' }), 'crear un reporte');
-      await rechazada(updateDoc(doc(db(), 'reportes', 'r1'), { resuelto: true }), 'resolver un reporte');
+      /*
+       * **Los documentos son VÁLIDOS a propósito, y eso lo enseñó la mutación.**
+       * Con un `{ hola: 'mundo' }` de sonda, `reporteValido()`/`resueltoValido()`
+       * rechazan la escritura con el `esAdmin()` puesto o sacado, así que abrir
+       * `/reportes` al publicador **no ponía nada en rojo**: el aserto se leía como
+       * load-bearing y no podía fallar. Es la misma clase que el documento sonda de
+       * `escritura-anonima.integracion.test.ts`, dicha en su propio docblock.
+       *
+       * Mutación: `esDelPanel()` en cualquiera de las tres cláusulas de
+       * `/reportes`. La mitad correspondiente se pone roja.
+       */
+      await rechazada(getDoc(doc(db(), 'reportes', 'r_b888')), 'leer un reporte');
+      await rechazada(
+        setDoc(doc(db(), 'reportes', 'r_b888_nuevo'), reporteDeAlta(UID_PUB)),
+        'crear un reporte (con el documento que la regla acepta)',
+      );
+      await rechazada(
+        updateDoc(doc(db(), 'reportes', 'r_b888'), {
+          resuelto: true,
+          actualizadoEn: serverTimestamp(),
+        }),
+        'resolver un reporte (con el cambio que la regla acepta)',
+      );
     });
 
     it('no entra a la bandeja de propuestas, que lleva el contacto de un tercero', async () => {
       // Mutación: `esDelPanel()` en el `allow read`/`create`/`update` de
       // `/propuestas`. La mitad correspondiente se pone roja.
-      await rechazada(getDoc(doc(db(), 'propuestas', 'p1')), 'leer una propuesta');
-      await rechazada(setDoc(doc(db(), 'propuestas', 'p1'), { hola: 'mundo' }), 'crear una propuesta');
-      await rechazada(updateDoc(doc(db(), 'propuestas', 'p1'), { estado: 'aceptada' }), 'revisar una propuesta');
+      await rechazada(getDoc(doc(db(), 'propuestas', 'p_b888')), 'leer una propuesta');
+      await rechazada(
+        setDoc(doc(db(), 'propuestas', 'p_b888_nueva'), propuestaDeAlta()),
+        'crear una propuesta (con el documento que la regla acepta)',
+      );
+      // Igual que con `/reportes`: el update tiene la forma que `revisionValida()`
+      // acepta, o sea que lo único que puede rechazarlo es el `esAdmin()`.
+      await rechazada(
+        updateDoc(doc(db(), 'propuestas', 'p_b888'), {
+          estado: 'aceptada',
+          revision: { porUid: UID_PUB, en: serverTimestamp(), actividadId: null, motivo: null },
+        }),
+        'revisar una propuesta (con el cambio que la regla acepta)',
+      );
     });
 
     it('no lee /sistema, que trae las consultas de Google y el flag de rebuild', async () => {
@@ -478,7 +632,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
 
     it('tampoco escribe la taxonomía compartida ni lee la bandeja', async () => {
       await rechazada(setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }), 'taxonomía');
-      await rechazada(getDoc(doc(db(), 'reportes', 'r1')), 'bandeja de reportes');
+      await rechazada(getDoc(doc(db(), 'reportes', 'r_b888')), 'bandeja de reportes');
     });
 
     it('y sigue pudiendo lo suyo: el rol acotado se ejerce de verdad', async () => {
@@ -513,9 +667,13 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
         'crear sin claim',
       );
       await rechazada(
+        // **Con `serverTimestamp()`**, que es el documento que la regla acepta:
+        // con un `actualizadoEn` de mentira el rechazo venía de `usuarioValido()`
+        // y no del claim, así que sacar el `esDelPanel()` dejaba este aserto
+        // verde. Lo delató la mutación.
         setDoc(doc(db(), 'usuarios', UID_PELADO), {
           email: 'pelado.b888@ejemplo.test',
-          actualizadoEn: new Date(),
+          actualizadoEn: serverTimestamp(),
         }),
         'registrarse en /usuarios sin claim',
       );

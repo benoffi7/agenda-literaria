@@ -9671,6 +9671,16 @@ meses después; lo segundo se descubre la primera vez que se corre.
 
 ## D-610 · La marca de autoría se queda como está, y el mail no entra al documento
 
+> **Sigue en pie, y D-650 (B-888) es su confirmación y no su vuelta atrás.** Ahí
+> aparece el mail de quien cargó, pero **no en el documento de la actividad**:
+> vive en `/usuarios/{uid}`, una vez, fuera de `toPublic` y fuera del historial
+> del §12. Los dos costos que fundan esta entrada —un dato personal más del que
+> acordarse en cada salida, y el mail copiado dentro de cada versión, imborrable—
+> son costos del **campo en `/actividades`**, y son exactamente los que la
+> colección aparte evita. El aserto de `tests/autoria.test.ts` que se pone rojo el
+> día que alguien guarde el mail en el documento **sigue verde**, que es la forma
+> de comprobarlo sin creerle a este párrafo.
+
 Cierra **B-179**, que esperaba exactamente el escenario que llegó: desde el
 **2026-09-08** hay **cuatro** cuentas con claim `admin` (eran dos), así que
 «La cargó otra cuenta» ya dice «no fuiste vos» y nada más. La propuesta escrita
@@ -10181,3 +10191,56 @@ de nadie» **sigue siendo cierto**, porque el navegador postea directo a Mailchi
 y el sitio no ve la dirección en ningún momento. Lo que dejó de ser cierto es la
 frase de al lado: que el sitio público no le mande **ningún** dato de una persona
 a un tercero.
+
+---
+
+## D-650 · El segundo rol vive en las reglas, y el mail vive en `/usuarios`
+
+**Decisión (B-888):** se agrega un custom claim `publicador` —una cuenta que
+gestiona **solo las actividades que ella creó**, y las publica sin revisión— y
+una colección `/usuarios/{uid}` con `{ email, actualizadoEn }`, que cada cuenta
+escribe sola al entrar, con el mail de su propio ID token.
+
+**Lo entregado es la frontera, no el panel**: reglas, colección, script del claim
+y sus tests. `src/lib/usuarios.ts` existe y todavía **no tiene consumidor**, así
+que la colección está vacía y el panel no muestra ningún mail hasta la tajada 2.
+
+**Motivo:** cruza el umbral que **B-28** dejó escrito hace dos meses —«el umbral
+que importa es el de la **confianza, no la cantidad**: vuelve cuando entre una
+tercera cuenta que no sea de confianza»—. Hasta hoy todas las cuentas del panel
+eran de confianza y un rol acotado era maquinaria de permisos para un problema
+que no existía.
+
+### Por qué la tajada es la frontera y no el panel
+
+El pedido se puede leer como «que el panel le esconda las opciones», y esa
+lectura es la que no sirve: **que un botón no esté no impide nada** a quien abra
+la consola de Firebase con su propia sesión. Es el mismo modo de falla que
+**D-128** cerró —una puerta que ninguna proyección atraviesa—, y por eso las
+reglas, la colección, el script del claim y sus tests entran juntos, y el panel
+queda para una tajada aparte.
+
+### Las tres decisiones finas
+
+| Qué | Decisión | Por qué |
+|---|---|---|
+| Dónde vive el mail | Colección propia, **no** un campo de la actividad | **No contradice D-610, la usa**: los dos costos que fundaron aquella decisión —un dato personal más del que acordarse en cada salida (§5.1) y el mail copiado dentro de cada versión del §12, imborrable— son costos del **campo en `/actividades`**, no del dato. Acá vive una vez, fuera de `toPublic` y fuera del historial |
+| Quién lo escribe | La propia cuenta, con una **regla** que lo verifica. Sin Function | `request.auth.token.email` es un claim del ID token y no un dato que mande el cliente. Se verificó contra el emulador que **ni un developer claim llamado `email` en un custom token lo pisa**: el token emitido sigue trayendo el del registro. Forjarlo pide la service account, y quien la tiene no necesita la colección. Una Function no agregaría nada y sí quitaría: la autorización real son las reglas, y un `onCall` tendría que revalidar a mano lo mismo. **Y es lo que hace que el mail no envejezca**: se refresca en cada login en vez de quedar cableado, que es el defecto que D-610 le señalaba al mapa uid→nombre a mano |
+| Qué pasa con los dos claims a la vez | `esAdmin()` exige además **no** ser publicador | Cada regla se lee `esAdmin() \|\| (esPublicador() && …)` y `\|\|` cortocircuita: sin eso, una cuenta con los dos claims pasaría como admin y **el rol nuevo no se ejercería nunca**. El estado solo sale de un error del operador —`setCustomUserClaims` reemplaza el objeto entero, así que el script no puede crearlo— y la dirección en la que conviene fallar es la restrictiva |
+
+**Costo, y hay que saberlo:** la lectura de `/actividades` vuelve a estar
+condicionada por `resource.data`, que es el mecanismo de la **trampa 7**. Para un
+publicador, `read` incluye `list` y una query sin `where('createdBy','==',uid)` se
+rechaza **entera**. Eso obliga al listado del panel a pedir explícitamente lo
+propio (con el índice compuesto `createdBy ASC, updatedAt DESC`, ya agregado) y
+deja `slugDisponible()` sin funcionar con ese rol, porque el slug único es un
+invariante de todo el catálogo y no se puede verificar mirando solo lo propio. Es
+lo primero que la tajada 2 tiene que resolver.
+
+**Alternativa descartada:** que el script del claim escriba también `/usuarios`
+con el Admin SDK (`write: if false`, como `/sistema`). Da un solo escritor, pero
+vuelve el mail un mapa mantenido a mano que envejece sin que nada falle — que es
+exactamente lo que D-610 rechazó. El registro se refresca en cada login, o no
+sirve.
+
+---

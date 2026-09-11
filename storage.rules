@@ -26,6 +26,39 @@ service firebase.storage {
       return request.auth != null && request.auth.token.get('admin', false) == true;
     }
 
+    /*
+     * ⚠️ **El rol `publicador` de B-888 NO existe en este archivo, y hoy eso
+     * significa que un publicador no puede subir la imagen de su actividad.**
+     *
+     * Está dicho para que se lea como límite conocido y no como olvido — y sobre
+     * todo para que nadie lo cierre agregando `|| esPublicador()` de forma
+     * mecánica, que es lo que parece la respuesta y no lo es.
+     *
+     * El motivo es la forma del prefijo: `imagenes/{archivo}` es **plano y el
+     * nombre es un uuid opaco** (una decisión de B-206 #1, porque al subir
+     * todavía no hay actividad a la cual agrupar). O sea que **el objeto no dice
+     * de quién es**, y las reglas de Storage no pueden leer el documento de
+     * Firestore que lo va a referenciar. Con este prefijo, «solo las suyas» no es
+     * expresable: abrir `create` a un publicador es abrirlo para todo el prefijo,
+     * y abrir `delete` sería dejarlo borrar la foto de cualquiera que conozca el
+     * uuid.
+     *
+     * Falla **cerrada**, que es la dirección correcta para una frontera que no se
+     * puede verificar: el publicador no sube, no que suba de más. Las dos salidas
+     * son decisión del dueño y van con la tajada 2 del panel:
+     *
+     *  1. **Subir bajo su uid** (`imagenes/{uid}/{archivo}`) — la única que hace
+     *    verificable «lo suyo», y la que obliga a migrar los objetos que ya
+     *    están, más `rutaDeMiniatura`, `limpiar-imagenes-huerfanas.mjs` y el
+     *    `match` de las miniaturas. Ojo con el `{ruta=**}` que eso tienta: el
+     *    docblock de `miniaturas/` de más abajo ya tiene anotado que ése es el
+     *    día en que la trampa 13 se reabre sin que nada avise.
+     *  2. **Abrir `create` al rol y dejar `update`/`delete`/`list` en
+     *    `esAdmin()`** — barato, y acepta explícitamente que un publicador pueda
+     *    dejar objetos huérfanos (los barre el script de limpieza) y que el
+     *    prefijo no distinga autor en la subida.
+     */
+
     // Los dos tipos que el panel sabe limpiar de metadatos sin recomprimir
     // (`sinMetadatos` en `src/lib/imagenes-archivo.ts`). WebP y AVIF quedaron
     // afuera a propósito: su contenedor lleva EXIF/XMP y todavía no hay quien se

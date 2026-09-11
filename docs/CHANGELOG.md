@@ -2,6 +2,55 @@
 
 ## Sin publicar
 
+- **Un segundo rol, `publicador`, que solo gestiona lo que él mismo carga — y la
+  tajada que entró es la frontera, no el panel** — **B-888**, **D-650**. Cruza el
+  umbral que **B-28** dejó escrito hace dos meses: «el umbral que importa es el de
+  la confianza, no la cantidad».
+
+  **El corte es del propio repo.** El pedido se puede leer como «que el panel le
+  esconda las opciones», y esa lectura es la que no sirve: **que un botón no esté
+  no impide nada a quien abra la consola de Firebase con su propia sesión**. Es el
+  modo de falla que D-128 cerró, así que entraron juntas las reglas, `/usuarios`,
+  el script del claim y sus tests; el panel es la tajada 2.
+
+  **El mail no entró al documento de la actividad, y eso confirma D-610 en vez de
+  darla vuelta.** Los dos costos que fundaron aquella decisión —un dato personal
+  más del que acordarse en cada salida, y el mail copiado dentro de cada versión
+  del §12, imborrable— son costos del *campo en `/actividades`*, no del dato. En
+  `/usuarios` vive una vez, fuera de `toPublic` y fuera del historial. **Y se le
+  puede creer sin una Function**: la regla exige que el `email` sea idéntico a
+  `request.auth.token.email`, y se verificó contra el emulador que **ni un
+  developer claim llamado `email` en un custom token lo pisa**.
+
+  **El orden de las guardas resultó ser el caso de test, no el detalle.** Cada
+  regla se lee `esAdmin() || (esPublicador() && …)` y `||` cortocircuita: sin hacer
+  nada, una cuenta con los dos claims pasaría como admin y **el rol nuevo no se
+  ejercería nunca**. Ahora `esAdmin()` exige además no ser publicador, o sea que el
+  token ambiguo cae del lado **acotado**.
+
+  **Veintinueve mutaciones, y se cobraron seis asertos del propio frente.** Tres
+  escrituras a las bandejas iban con un documento sonda que sus validadores
+  rechazaban **con la puerta abierta o cerrada**; un `create` mandaba las dos
+  firmas ajenas a la vez, así que cualquiera de las dos cláusulas lo tapaba; y ese
+  caso reusaba el id, con lo cual la segunda mitad ya era un `update` y medía otra
+  regla. Salieron además tres cláusulas muertas de `usuarioValido()`.
+
+  **Y una cláusula casi se va por un supuesto falso.** Estaba escrito que
+  `email.size() > 0` lo cubría `email_verified`, «que no puede ser true en una
+  cuenta sin dirección». Lo marcó el `auditor-privacidad` como supuesto declarado
+  sin verificar, se probó, y **es falso**: el emulador acepta
+  `createUser({emailVerified: true})` **sin** `email`, el token sale verificado y
+  sin mail, y el registro entraba vacío. La cláusula volvió con su testigo.
+
+  **Lo que queda dicho y no cerrado**, cada uno con su comentario en el archivo que
+  lo sufre: para este rol `read` **incluye `list`**, así que una query sin
+  `where('createdBy','==',uid)` se rechaza entera (trampa 7); `slugDisponible()`
+  directamente no funciona, porque el slug único es un invariante de **todo** el
+  catálogo y no se puede verificar mirando solo lo propio; y `storage.rules` no
+  conoce el rol, así que un publicador **no puede subir su imagen** — y no se
+  arregla con un `|| esPublicador()` mecánico, porque el prefijo es plano y el
+  nombre opaco, o sea que **el objeto no dice de quién es**.
+
 - **El «Hasta» de `/proponer` se veía montado más alto que «Día» y «Desde»**, y la
   causa no era la alineación. La fila alinea con `sm:items-end` —que es lo que pone
   el botón «Quitar» a la altura de los campos— y el `Campo` de «Hasta» llevaba una

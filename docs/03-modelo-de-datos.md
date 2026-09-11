@@ -8,15 +8,27 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 
 | Ruta | Qué guarda | Quién escribe |
 |---|---|---|
-| `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`) y `syncCalendar` |
+| `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`, o `publicador` **solo sobre las suyas** — B-888) y `syncCalendar` |
 | `/actividades/{id}/versiones/{version}` | historial de versiones (§12) | `guardarVersion` y `guardarVersionAlBorrar` (Admin SDK) |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
 | `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |
+| `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | **va a ser** cada cuenta el suyo, al entrar, con el mail de su propio ID token. **Hoy está vacía**: las reglas y `src/lib/usuarios.ts` están, y quien lo llame es la tajada 2 del panel |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
 `tags`, `incluye-actividad`.
+
+**`/usuarios` existe para no meterle el mail al documento de la actividad**, que
+es lo que D-610 decidió que no se hace. Los dos costos que fundaron esa decisión
+son del **campo en `/actividades`**, no del dato: un dato personal más del que
+acordarse en cada salida pública (§5.1) y el mail copiado dentro de cada versión
+del §12, o sea imborrable. Acá vive una vez, fuera de `toPublic` y fuera del
+historial, y renombrar una cuenta se arregla en un lugar.
+
+**No guarda el rol**, a propósito: el rol es el custom claim del token y ése es su
+único dueño. Copiarlo sería una segunda fuente de verdad que se desincroniza en
+silencio el día que el dueño cambie un claim y la persona no vuelva a entrar.
 
 **El nombre de la taxonomía no siempre es el del campo del documento**, y ya era
 así antes de la sexta: `barrio` vive en `sede.barrio` y `plataforma` en

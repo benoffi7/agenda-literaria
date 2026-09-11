@@ -93,16 +93,47 @@ service cloud.firestore {
      * propio documento por id. El único que lista es el admin, y para él la regla
      * no mira contenido.
      */
+    /*
+     * ── Cuatro cláusulas, y ninguna de adorno ─────────────────────────────
+     * El primer borrador tenía siete: copiaba de `propuestaValida()` el `hasAll`,
+     * el `is string` y el tope de largo. **Tres de esas no podían fallar**, y la
+     * mutación las delató (`hasAll` daba verde con el aserto puesto). El motivo es
+     * que las dos funciones no se parecen en lo que importa: `propuestaValida()`
+     * acota **texto libre de un desconocido**, y acá el `email` no es un valor que
+     * el cliente elija —tiene que ser **idéntico a un claim del token**—, así que
+     * el tipo y el largo ya los decidió el alta de la cuenta.
+     *
+     *  - `hasAll` es letra muerta: una clave ausente la agarra la comparación de
+     *    abajo, porque `.get(clave, default)` devuelve el default y el default
+     *    **no puede ser igual** al mail del token. (En `revisionValida()` sí
+     *    frena, y ahí está dicho por qué: allá `null` es un valor legítimo.)
+     *  - `is string` tampoco: un valor de otro tipo no es igual al mail del
+     *    token, así que la comparación de abajo lo rechaza igual.
+     *  - Y el tope de largo tampoco: el único mail que pasa es el de la cuenta, y
+     *    ése lo acota Identity Platform, no nosotros.
+     *
+     * ── La cuarta cláusula **no** es de adorno, y creerlo duró un borrador ──
+     * `size() > 0` estuvo a punto de irse con las otras tres, con este
+     * argumento: «queda cubierto por `email_verified`, que no puede ser true en
+     * una cuenta sin dirección». Lo marcó el `auditor-privacidad` como un
+     * **supuesto sobre Identity Platform declarado sin verificar**, se probó
+     * contra el emulador, y es **falso**: una cuenta creada con `emailVerified:
+     * true` y **sin** `email` emite un token con `email_verified: true` y sin
+     * claim `email`. Ahí `.get('email','')` da `''` en los dos lados, `'' == ''`
+     * es true, y el registro entraría con el mail vacío.
+     *
+     * O sea que la cláusula que parecía la más obvia de borrar era la única de
+     * las cuatro que tapaba un caso que ninguna otra tapa. Tiene su testigo en
+     * `tests/usuarios.integracion.test.ts`.
+     */
     function usuarioValido() {
       let d = request.resource.data;
       return d.keys().hasOnly(['email', 'actualizadoEn'])
-        && d.keys().hasAll(['email', 'actualizadoEn'])
-        && d.email is string
-        && d.email.size() > 0 && d.email.size() <= 200
-        && d.email == request.auth.token.get('email', '')
+        && d.get('email', '').size() > 0
+        && d.get('email', '') == request.auth.token.get('email', '')
         && request.auth.token.get('email_verified', false) == true
         // Con `request.time` el cliente no puede antedatar el registro.
-        && d.actualizadoEn == request.time;
+        && d.get('actualizadoEn', null) == request.time;
     }
 
     match /usuarios/{uid} {
@@ -469,7 +500,7 @@ service cloud.firestore {
        * dueño, no acá: sería un `create` propio, con `reportadoPor.uid ==
        * request.auth.uid` —que la regla ya exige— y **sin** abrir el `read`.
        */
-      allow read: if esDelPanel();
+      allow read: if esAdmin();
       allow create: if esAdmin() && reporteValido();
       // El ciclo de vida (estado, intentos, github) lo mueve la Function con el
       // Admin SDK, que no pasa por estas reglas. Las únicas dos excepciones son
