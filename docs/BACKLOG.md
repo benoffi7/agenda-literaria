@@ -282,7 +282,12 @@ formularios también es una sección superior en la web»—. Con eso la navbar 
 de forma, así que conviene resolverla con las tres en la mano y no pelear antes por
 dónde entra el enlace de `/proponer`.
 
-**El orden sugerido: librerías primero**, entera y de punta a punta. Es la que
+> **Orden confirmado por el dueño (2026-09-11): primero se termina el publicador
+> (B-888 y su tajada del panel), y las guías son lo siguiente.** El publicador ya
+> está en vuelo y dejarlo a medias sería el mismo problema que este ítem señala,
+> con otra cara: trabajo hecho que no se ve porque le falta la última mitad.
+
+**El orden sugerido adentro de este ítem: librerías primero**, entera y de punta a punta. Es la que
 abre el patrón —modelo, reglas, formulario público, bandeja, rutas, sitemap— y las
 otras dos lo repiten. Terminar una y verla en el sitio vale más que avanzar las
 tres a la mitad.
