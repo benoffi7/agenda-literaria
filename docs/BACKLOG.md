@@ -1007,6 +1007,49 @@ Es más angosto que B-881 —solo espacios, no `''`— pero es la misma clase y 
 contesta igual en las cinco. El arreglo es
 `const nombre = persona?.nombre?.trim(); if (nombre) …`, con su caso.
 
+### B-883 · El rebuild falló quince corridas seguidas y nadie recibió nada — ✅ hecho (2026-09-11) · P1
+
+**El dueño cargó ocho actividades, las publicó y se enteró mirando el sitio.** Entre
+medio no llegó nada. Lo que se rompía era **B-875**; esto es la otra mitad.
+
+**La sospecha era falsa, y verificarla cambió el arreglo.** Se creía que un
+`repository_dispatch` lo dispara un token y GitHub no tiene a quién avisarle.
+Medido contra la API: el `actor` de las quince corridas es `benoffi7`, tipo
+**`User`** — un PAT actúa como su dueño. La causa real son tres cosas que no se
+arreglan configurando nada:
+
+1. GitHub avisa **solo a quien disparó la corrida**: no hay watchers ni lista, es de
+   a uno y el repo no elige cuál.
+2. Ese uno es el **dueño del PAT** que vive en Secret Manager. El aviso de que el
+   sitio no se publica está atado a una credencial de infraestructura: se la rota y
+   el destinatario cambia sin que nadie lo decida.
+3. Llega a la bandeja **web** de esa cuenta, no por mail — el mail de Actions es un
+   opt-in por cuenta que el repo no puede ver.
+
+**Y la cuarta, que es la que más duele: aun llegando, el texto no sirve.** El título
+es `AUTOMATIC - <workflow> workflow run failed for <branch> branch`. De ahí nadie
+deduce «mis ocho actividades no están publicadas».
+
+> ✅ **Cerrado con dos jobs en `deploy.yml`** (`avisar` / `cerrar-aviso`) que abren y
+> cierran **un** issue por racha con la etiqueta `deploy-roto`: se busca por
+> etiqueta —lo único que sobrevive a que alguien edite el título—, el abierto se
+> **edita** en vez de comentarse, y se **cierra con la corrida verde**, que es lo
+> que lo vuelve un indicador y no un registro. El cuerpo dice **desde cuándo** el
+> sitio está atrasado, no solo qué paso falló.
+>
+> **No publica el `motivo` del rebuild**: es texto de Firestore y el repo es
+> público. **No recibe la service account** (job aparte, §5.4). **Y no puede agregar
+> su propio rojo**, con tres cinturones exigidos por test.
+>
+> **El chequeo es por clase:** «un workflow disparado por una máquina avisa cuando
+> falla», así que un `schedule` futuro entra solo. `push-main.yml` queda afuera a
+> propósito: lo dispara un push y hay alguien esperando.
+>
+> **Verificado corriendo los scripts extraídos del YAML**, lo que encontró dos bugs
+> que un YAML válido escondía: bash comiéndose los bytes del `»` en
+> `«$NOMBRE_WORKFLOW»`, y `date -d` siendo GNU —o sea imposible de probar en la
+> máquina de quien lo escribe—.
+
 ### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — 🟠 empezado (2026-09-11) · P1
 
 **El flag se baja cuando GitHub acepta el `repository_dispatch`, no cuando el sitio

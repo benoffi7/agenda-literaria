@@ -333,3 +333,258 @@ describe('ningún test depende de un `dist/` — B-873', () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * **Que el fallo de un workflow llegue a una persona — B-883.**
+ *
+ * El 2026-09-11 «Build y deploy del sitio» falló **quince** corridas seguidas y
+ * nadie se enteró. El dueño cargó ocho actividades, las publicó, y se dio cuenta
+ * de que no aparecían **mirando el sitio**.
+ *
+ * **Por qué no llegó el aviso, verificado contra la API y no supuesto.** La
+ * sospecha era que un `repository_dispatch` lo dispara un token y GitHub no
+ * tiene a quién avisarle. Es falsa: el `actor` y el `triggering_actor` de las
+ * quince corridas es `benoffi7`, tipo `User` — un PAT actúa como su dueño. Lo
+ * que sí pasa son tres cosas que se suman:
+ *
+ *  1. GitHub avisa **solo a quien disparó la corrida** («you'll receive a
+ *     notification when any workflow runs that you've triggered have
+ *     completed»). No hay watchers ni lista de destinatarios: es de a uno, y el
+ *     repo no elige cuál.
+ *  2. Ese uno es quien posee el PAT que usa `dispararRebuild` (§8), así que el
+ *     aviso de que el sitio no se publica está atado a un secreto de
+ *     infraestructura: se rota el PAT y el aviso cambia de dueño sin que nadie
+ *     lo decida.
+ *  3. Llega como `ci_activity` a la bandeja **web**; el mail de Actions es un
+ *     opt-in por cuenta que el repo no puede ver ni configurar.
+ *
+ * Y aun llegando, el texto es «workflow run failed». De ahí nadie deduce que lo
+ * que cargó ayer no está publicado.
+ *
+ * **Por qué el chequeo es por clase y no sobre `deploy.yml`.** Lo que hace que
+ * un fallo se pierda no es este workflow: es **no tener a nadie mirando cuando
+ * falla**. `push-main.yml` lo dispara un push, o sea que hay alguien que acaba
+ * de pushear y está esperando; `deploy.yml` lo dispara una Cloud Function a las
+ * 2 de la mañana. Por eso la propiedad que se afirma es «un workflow disparado
+ * por una máquina tiene que avisar», y un `schedule` que se agregue mañana cae
+ * acá solo — que es exactamente donde volvería a aparecer este bug.
+ */
+describe('un workflow que nadie está mirando avisa cuando falla — B-883', () => {
+  type Paso = {
+    name?: string;
+    run?: string;
+    env?: Record<string, string>;
+    'continue-on-error'?: boolean;
+  };
+  type Job = {
+    if?: string;
+    permissions?: Record<string, string>;
+    'continue-on-error'?: boolean;
+    steps?: Paso[];
+  };
+
+  /**
+   * El fuente del script sin sus comentarios. Mismo motivo que el
+   * `sinComentarios` de B-873 más arriba: los comentarios de estos scripts
+   * explican **por qué** no se usa `::error::`, y castigar la explicación
+   * empujaría a borrarla.
+   */
+  const sinComentariosDeShell = (s: string) =>
+    s
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+
+  const jobsDe = (archivo: string): [string, Job][] =>
+    Object.entries((parsear(archivo).toJS() as { jobs?: Record<string, Job> }).jobs ?? {});
+
+  /** Los triggers que **no** tienen una persona esperando el resultado. */
+  const SIN_HUMANO = ['repository_dispatch', 'schedule'];
+  const loDisparaUnaMaquina = (archivo: string) => {
+    const wf = parsear(archivo).toJS() as { on?: Record<string, unknown> };
+    return Object.keys(wf.on ?? {}).some((t) => SIN_HUMANO.includes(t));
+  };
+
+  /**
+   * Un job de aviso se reconoce por el **permiso**, no por el nombre: `issues:
+   * write` es lo único que un job necesita para poder dejar el aviso, y es lo
+   * único que no se puede renombrar sin romperlo.
+   */
+  const avisos = (archivo: string) =>
+    jobsDe(archivo).filter(([, j]) => j.permissions?.issues === 'write');
+
+  /** Los scripts de los jobs de aviso cuyo `if:` cumple la condición. */
+  const guion = (archivo: string, cuando: RegExp) =>
+    avisos(archivo)
+      .filter(([, j]) => cuando.test(j.if ?? ''))
+      .flatMap(([, j]) => (j.steps ?? []).map((p) => p.run ?? ''))
+      .join('\n');
+
+  it('el detector encuentra los workflows y los jobs de verdad', () => {
+    /*
+     * Control positivo, por lo mismo que el de B-873: si mañana cambia el
+     * nombre del permiso o el trigger, el barrido de abajo se quedaría en cero
+     * y pasaría sin mirar nada. Estas dos listas son lo que lo impide.
+     */
+    expect(archivos.filter(loDisparaUnaMaquina), 'no se encontró ningún workflow sin humano detrás')
+      .toEqual(['deploy.yml']);
+    expect(
+      archivos.flatMap((a) => avisos(a).map(([n]) => `${a} · ${n}`)).sort(),
+      'no se encontró ningún job que pueda dejar el aviso',
+    ).toEqual(['deploy.yml · avisar', 'deploy.yml · cerrar-aviso']);
+  });
+
+  it.each(archivos)('%s: si lo dispara una máquina, avisa cuando falla', (archivo) => {
+    if (!loDisparaUnaMaquina(archivo)) return;
+    const alFallar = avisos(archivo).filter(([, j]) => /failure\(\)/.test(j.if ?? ''));
+    expect(
+      alFallar.map(([n]) => n),
+      'este workflow no tiene a nadie mirando: si falla, el fallo se pierde (B-883)',
+    ).not.toHaveLength(0);
+  });
+
+  it('el aviso no puede agregar su propio rojo a la corrida', () => {
+    /*
+     * El punto 3 de B-883. Un `if: failure()` que falla a su vez deja la corrida
+     * con **dos** rojos, y el segundo —el del aviso— es el que se lee último y
+     * tapa al primero. Peor todavía del lado del cierre: ahí el job corre cuando
+     * la corrida salió **bien**, así que un fallo suyo pintaría de rojo un deploy
+     * que sí publicó.
+     *
+     * Son tres cinturones y se exigen los tres, porque tapan cosas distintas: el
+     * `continue-on-error` del job cubre que el runner no arranque, el del paso
+     * cubre el `run` entero, y el `exit 0` final cubre el último comando de la
+     * cadena. El `::error::` queda prohibido por la misma razón que el rojo: es
+     * una anotación que compite con la del fallo real.
+     *
+     * MUTACIÓN PROBADA: sacarle `continue-on-error` al job `cerrar-aviso` deja
+     * este caso en rojo.
+     */
+    for (const archivo of archivos) {
+      for (const [nombre, job] of avisos(archivo)) {
+        const donde = `${archivo} · ${nombre}`;
+        expect(job['continue-on-error'], `${donde}: el job puede poner la corrida en rojo`).toBe(
+          true,
+        );
+        for (const paso of job.steps ?? []) {
+          if (typeof paso.run !== 'string') continue;
+          expect(paso['continue-on-error'], `${donde}: el paso puede poner el job en rojo`).toBe(
+            true,
+          );
+          expect(paso.run, `${donde}: el script no termina en \`exit 0\``).toMatch(/\bexit 0\s*$/);
+          expect(
+            sinComentariosDeShell(paso.run),
+            `${donde}: un \`::error::\` del aviso tapa al fallo real`,
+          ).not.toContain('::error::');
+        }
+      }
+    }
+  });
+
+  it('y no tiene la key del proyecto en la mano — §5.4', () => {
+    /*
+     * El motivo por el que el aviso es un job aparte y no un paso más del
+     * deploy: para escribir un issue no hace falta `FIREBASE_SERVICE_ACCOUNT`, y
+     * el job que sí la necesita no tiene por qué poder escribir issues. Separados,
+     * ninguno de los dos hereda el permiso del otro.
+     */
+    for (const archivo of archivos) {
+      for (const [nombre, job] of avisos(archivo)) {
+        const texto = (job.steps ?? [])
+          .flatMap((p) => [p.run ?? '', ...Object.values(p.env ?? {})])
+          .join('\n');
+        expect(texto, `${archivo} · ${nombre}: el job del aviso recibe la key`).not.toMatch(
+          /FIREBASE_SERVICE_ACCOUNT/,
+        );
+      }
+    }
+  });
+
+  it('reusa el issue abierto en vez de abrir uno por corrida roja', () => {
+    /*
+     * Ocho corridas rojas seguidas serían ocho issues idénticos, y eso es el
+     * mismo bug con otra cara: un aviso que se aprende a ignorar no avisa.
+     *
+     * Las tres piezas de la decisión, y las tres se afirman porque cada una se
+     * puede deshacer sola:
+     *
+     *  - **se busca antes de crear**, y se busca por **etiqueta**, que es lo
+     *    único que sobrevive a que alguien le edite el título al issue;
+     *  - cuando ya hay uno, se **edita el cuerpo** (`PATCH`) — un comentario por
+     *    corrida sería la misma avalancha con otro nombre, y encima notificaría
+     *    quince veces;
+     *  - el único comentario que este mecanismo escribe es el del cierre, y por
+     *    eso el camino del fallo no puede tocar `/comments`.
+     *
+     * MUTACIÓN PROBADA: reemplazar el `PATCH` del cuerpo por un POST a
+     * `/comments` deja este caso en rojo por los dos asertos de abajo.
+     */
+    const alFallar = guion('deploy.yml', /failure\(\)/);
+    expect(alFallar, 'no busca si ya hay un aviso abierto').toMatch(/issues\?state=open&labels=/);
+    expect(alFallar, 'no actualiza el que ya está abierto').toContain('--method PATCH');
+    expect(alFallar, 'comenta en cada corrida roja: quince corridas, quince avisos').not.toMatch(
+      /issues\/[^\s"']*\/comments/,
+    );
+  });
+
+  it('y se cierra solo cuando la corrida vuelve a publicar', () => {
+    /*
+     * Lo que convierte el issue en un **indicador** y no en un registro: si se
+     * cierra con la corrida verde, «hay un issue abierto» significa «ahora mismo
+     * el sitio está atrasado», que es la única pregunta que alguien necesita
+     * contestar de un vistazo. Un aviso que hay que cerrar a mano se queda
+     * abierto para siempre y deja de decir nada.
+     *
+     * MUTACIÓN PROBADA: cambiar el `if: success()` del job por `if: failure()`
+     * deja este caso en rojo.
+     */
+    const alPublicar = guion('deploy.yml', /^success\(\)$/);
+    expect(alPublicar, 'no hay ningún job que cierre el aviso cuando vuelve a publicar').not.toBe(
+      '',
+    );
+    expect(alPublicar, 'no cierra el issue').toContain('state=closed');
+  });
+
+  it('el issue dice que el sitio quedó atrasado, no solo que un paso falló', () => {
+    /*
+     * El punto 2 de B-883, y es el que hace que el aviso sirva. Alguien que lee
+     * «Tests: failure» no deduce «las ocho actividades que cargué no están
+     * publicadas»: son dos hechos distintos y el segundo es el que importa.
+     *
+     * Tres datos, y ninguno se puede sacar sin romper esto: **qué** se rompió
+     * (el paso, para no tener que abrir el log), **desde cuándo** el sitio está
+     * viejo (la última corrida verde) y **qué significa** para quien carga.
+     *
+     * MUTACIÓN PROBADA: borrar la fila «Última publicación buena» del cuerpo del
+     * issue deja este caso en rojo.
+     */
+    const alFallar = guion('deploy.yml', /failure\(\)/);
+    expect(alFallar, 'el issue no dice desde cuándo el sitio está atrasado').toContain(
+      'Última publicación buena',
+    );
+    expect(alFallar, 'el issue no dice qué significa para quien carga actividades').toContain(
+      'no está apareciendo en el sitio',
+    );
+    expect(alFallar, 'el issue no dice qué paso se rompió').toContain('Paso que se rompe');
+  });
+
+  it('y no publica el motivo del rebuild, que es texto de Firestore — §5', () => {
+    /*
+     * El `motivo` del `client_payload` sale de Firestore, así que es texto que no
+     * controlamos, y un issue de un repo **público** es más visible que el log:
+     * puede traer markdown, un link, o el título de un borrador que todavía no
+     * es público. Es la misma regla que `reportes.js` aplica a lo que manda a un
+     * issue, y acá ni siquiera hace falta: la pregunta que el aviso contesta no
+     * es «qué edición disparó esta corrida» sino «desde cuándo el sitio está
+     * atrasado», y eso sale de la última corrida verde, no de datos de nadie.
+     */
+    for (const [nombre, job] of avisos('deploy.yml')) {
+      const texto = (job.steps ?? [])
+        .flatMap((p) => [p.run ?? '', ...Object.values(p.env ?? {})])
+        .join('\n');
+      expect(texto, `deploy.yml · ${nombre}: el aviso toca el motivo del rebuild`).not.toMatch(
+        /client_payload|\bMOTIVO\b/,
+      );
+    }
+  });
+});

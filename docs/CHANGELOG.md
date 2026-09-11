@@ -2,6 +2,54 @@
 
 ## Sin publicar
 
+- **El rebuild falló quince corridas seguidas y nadie se enteró: el aviso de un
+  workflow roto ahora es un issue** — **B-883**. El dueño cargó ocho actividades,
+  las publicó, y se dio cuenta de que no aparecían **mirando el sitio**. Lo que se
+  rompía era una fecha cableada en un fixture (**B-875**); esto es la otra mitad,
+  la de enterarse.
+
+  **La causa no era la que parecía, y verificarla cambió el arreglo.** La sospecha
+  era que un `repository_dispatch` lo dispara un token y GitHub no tiene a quién
+  avisarle. **Falso, medido contra la API:** el `actor` de las quince corridas es
+  `benoffi7`, tipo `User` — un PAT actúa como su dueño. Lo que pasa son tres cosas
+  juntas, y ninguna se arregla configurando: GitHub avisa **solo a quien disparó la
+  corrida**, ese quien es el dueño de un PAT que vive en Secret Manager —se lo rota
+  y el aviso cambia de destinatario sin que nadie lo decida— y llega a la bandeja
+  **web** de esa única cuenta. **Y aun llegando dice «workflow run failed»**, que
+  no es lo mismo que «tus ocho actividades no están publicadas».
+
+  **Dos jobs, `avisar` y `cerrar-aviso`, que abren y cierran un issue etiquetado
+  `deploy-roto`.** Job aparte y no un paso del deploy por la razón del §5.4:
+  escribir un issue no necesita la service account, y el job que la tiene no
+  necesita escribir issues.
+
+  **Uno por racha y no uno por corrida**, que es lo que lo separa de tres líneas de
+  YAML: se busca por **etiqueta** —lo único que sobrevive a que alguien edite el
+  título—, el que ya está abierto se **edita** en vez de comentarse, y el único
+  comentario que escribe es el del cierre. Quince issues idénticos serían el mismo
+  bug con otra cara: **un aviso que se aprende a ignorar no avisa**.
+
+  **Y se cierra con la corrida verde**, que es lo que lo vuelve un indicador y no
+  un registro: «hay un issue abierto» significa «ahora mismo el sitio está
+  atrasado». El cuerpo dice **desde cuándo** —la última corrida verde— y qué
+  significa para quien carga, y **no** publica el `motivo` del rebuild: es texto de
+  Firestore y el repo es público.
+
+  **El aviso no puede agregar su propio rojo**, con tres cinturones exigidos por
+  test. En `cerrar-aviso` importa todavía más, porque ese job corre cuando la
+  corrida salió **bien**.
+
+  **El chequeo es por clase, no sobre `deploy.yml`:** «un workflow disparado por una
+  máquina avisa cuando falla». `push-main.yml` queda afuera a propósito —lo dispara
+  un push, hay alguien esperando— y un `schedule` que se agregue mañana entra solo,
+  que es donde este bug volvería a aparecer.
+
+  **Verificado corriendo los scripts extraídos del YAML y no solo parseándolo**, y
+  eso encontró dos bugs que un YAML válido escondía: bash se comía los bytes del
+  `»` dentro de `«$NOMBRE_WORKFLOW»`, y `date -d` es GNU —o sea que no se puede
+  probar en la máquina de quien lo escribe—. El ciclo entero —abrir, no duplicar,
+  cerrar— se probó contra un repo descartable.
+
 - **El texto para redes arrobaba al tallerista sin nombre, y era el último lugar del
   repo que contestaba esa pregunta mirando el objeto** — **B-881**. Es la clase de
   B-88 un escalón más arriba que B-861: no dos derivaciones del mismo archivo, sino

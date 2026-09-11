@@ -123,3 +123,231 @@ jobs:
           # `live` es el canal de producción. Sin esto sube a un canal de
           # preview con URL temporal.
           channelId: live
+
+  # ───────────────────────────────────────────────────────────────
+  # Que el fallo llegue a una persona — B-883.
+  #
+  # El 2026-09-11 este workflow falló quince corridas seguidas y nadie se
+  # enteró: el dueño cargó actividades, las publicó, y se dio cuenta de que no
+  # aparecían mirando el sitio.
+  #
+  # **Por qué no llegó solo, verificado contra la API y no supuesto.** El actor
+  # de esas quince corridas es `benoffi7`, tipo `User` — o sea que la sospecha
+  # de que «lo dispara un bot» es falsa: un PAT actúa como su dueño. Lo que sí
+  # pasa, y es peor, son tres cosas juntas:
+  #
+  #   1. GitHub manda el aviso de una corrida **solo a quien la disparó** («you'll
+  #      receive a notification when any workflow runs that you've triggered have
+  #      completed»). No hay watchers, no hay «avisar al equipo»: es de a un
+  #      destinatario y el repo no elige cuál.
+  #   2. Ese destinatario es quien posee el PAT que usa `dispararRebuild` (§8).
+  #      El aviso de que el sitio no se publica viaja atado a una credencial de
+  #      Secret Manager: el día que el PAT se rote a otra cuenta, el aviso cambia
+  #      de dueño y nadie lo decidió.
+  #   3. Llega como `ci_activity` a la bandeja **web** de GitHub. El mail de
+  #      Actions es un opt-in por cuenta que el repo no puede ver ni configurar.
+  #
+  # Y aun cuando llega, dice «workflow run failed». Nadie deduce de eso que las
+  # ocho actividades que cargó ayer no están publicadas.
+  #
+  # El issue arregla las tres: lo ve cualquiera que mire el repo, no depende de
+  # la configuración de ninguna cuenta, y **dice qué quedó sin publicar**. El
+  # camino ya está probado acá: los issues que abre `reporteAIssue` llegan.
+  # ───────────────────────────────────────────────────────────────
+  avisar:
+    name: Avisar que el sitio quedó atrasado
+    needs: [deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Un rojo de este job no puede tapar al rojo de verdad (punto 3 de B-883).
+    # Va en el job Y en el paso Y el script termina en `exit 0`: son tres
+    # cinturones a propósito, porque el modo de falla que se evita es
+    # justamente «el aviso rompió lo que venía a avisar».
+    continue-on-error: true
+    # Job aparte y no un paso del deploy, por lo mismo que el §5.4 pide para la
+    # key: acá hace falta escribir issues y **no** hace falta
+    # `FIREBASE_SERVICE_ACCOUNT`; allá al revés. Separados, ninguno de los dos
+    # tiene el permiso del otro.
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Abrir el aviso, o actualizar el que ya está abierto
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NOMBRE_WORKFLOW: ${{ github.workflow }}
+        # **El `motivo` del rebuild NO entra acá, y es a propósito.** Es texto
+        # que sale de Firestore (§5) y un issue es más visible que el log: puede
+        # traer markdown, un link, o el título de un borrador. Y no hace falta —
+        # la pregunta que hay que contestar no es «qué edición disparó ESTA
+        # corrida» sino «desde cuándo el sitio está atrasado», que se responde
+        # con la última corrida verde y no con datos de nadie.
+        run: |
+          set -uo pipefail
+
+          # Si algo de acá sale mal, el aviso se pierde pero la corrida sigue
+          # teniendo un solo rojo: el de verdad. Por eso `::warning::` y no
+          # `::error::`, y por eso `exit 0`.
+          rendirse() { echo "::warning::no se pudo dejar el aviso del deploy roto: $1"; exit 0; }
+
+          ETIQUETA='deploy-roto'
+          # Título estable: es lo que hace que el issue se reconozca de un
+          # vistazo en la lista, y el respaldo si algún día se pierde la
+          # etiqueta.
+          TITULO='El sitio no se está publicando'
+
+          # ── De qué workflow es esta corrida ────────────────────────────
+          # Se pregunta en vez de escribir `deploy.yml` a mano: el nombre del
+          # archivo es lo primero que cambia en un rename y no hay ningún error
+          # del otro lado, solo un historial vacío.
+          ID_WORKFLOW=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID" --jq '.workflow_id') \
+            || rendirse 'no se pudo leer la corrida'
+
+          # ── Desde cuándo el sitio está atrasado ────────────────────────
+          # Las canceladas no cuentan: `cancel-in-progress` corta la corrida a
+          # medias cada vez que llega un dispatch nuevo, y eso es lo normal.
+          HISTORIAL=$(gh api "repos/$GH_REPO/actions/workflows/$ID_WORKFLOW/runs?per_page=50" \
+            --jq '[.workflow_runs[]
+                   | select(.conclusion == "success" or .conclusion == "failure")
+                   | {c: .conclusion, t: .updated_at}]') \
+            || rendirse 'no se pudo leer el historial del workflow'
+
+          ROJAS=$(printf '%s' "$HISTORIAL" | jq '[.[].c] | (index("success") // length)')
+          DESDE=$(printf '%s' "$HISTORIAL" | jq -r '[.[] | select(.c == "success")][0].t // ""')
+          if [ -n "$DESDE" ]; then
+            # §14 — la zona del proyecto, no la del runner: la trampa 1 es
+            # justamente leer un instante en la zona equivocada. `mktime` lee el
+            # ISO como UTC (que es lo que manda la API) y `strflocaltime` lo baja
+            # a la zona de `TZ`.
+            #
+            # Con `jq` y no con `date -d`: es la misma herramienta que ya usan
+            # las tres consultas de arriba, y —a diferencia de `date -d`, que es
+            # GNU— se puede correr en la máquina de quien lo escribe para ver el
+            # texto que va a salir. Si por lo que sea falla, queda el ISO crudo:
+            # feo, pero nunca vacío y nunca un error.
+            CUANDO=$(printf '%s' "$DESDE" | TZ='America/Argentina/Buenos_Aires' jq -Rr \
+              'strptime("%Y-%m-%dT%H:%M:%SZ") | mktime | strflocaltime("%d/%m/%Y %H:%M")' \
+              2>/dev/null || printf '%s' "$DESDE")
+          else
+            CUANDO='no hay ninguna corrida verde en las últimas 50'
+          fi
+
+          # ── Qué paso se rompió ─────────────────────────────────────────
+          # Es la mitad que evita abrir el log: «Tests» y «Deploy a Firebase
+          # Hosting» son dos problemas distintos y se arreglan en lugares
+          # distintos.
+          PASO=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs" \
+            --jq '[.jobs[] | select(.conclusion == "failure")
+                   | .steps[]? | select(.conclusion == "failure") | .name][0] // "desconocido"') \
+            || PASO='desconocido'
+
+          CUERPO=$(cat <<TEXTO
+          > Lo abre y lo cierra el workflow «${NOMBRE_WORKFLOW}». **Mientras este issue esté
+          > abierto, el sitio público no está al día.**
+
+          **Lo que cargues o edites en el panel no está apareciendo en el sitio.** El panel
+          anda, el calendario anda: lo que falla es la publicación del sitio estático (§8),
+          así que las páginas siguen mostrando los datos de la última publicación buena.
+
+          | | |
+          |---|---|
+          | Última publicación buena | ${CUANDO} |
+          | Corridas rojas desde entonces | ${ROJAS} |
+          | Paso que se rompe | \`${PASO}\` |
+          | Última corrida | [#${RUN_ID}](${RUN_URL}) |
+
+          ### Qué hacer
+
+          1. Abrir la corrida y mirar el paso \`${PASO}\`.
+          2. Arreglarlo y pushear a \`main\`.
+          3. **No hay que recargar nada a mano.** El próximo rebuild lee Firestore entero y
+             publica todo lo que se cargó mientras tanto.
+
+          Este issue se actualiza con cada corrida roja —no se abre uno nuevo cada vez— y se
+          cierra solo cuando una corrida vuelva a publicar.
+
+          ---
+          Aviso automático, **B-883**. GitHub avisa de una corrida fallida solo a quien la
+          disparó, y a este workflow lo dispara un token desde una Cloud Function (§8): el
+          aviso quedaba en la bandeja web de una sola cuenta, y decía «workflow run failed»
+          sin decir que el sitio se había quedado viejo.
+          TEXTO
+          )
+
+          # ── Uno solo por racha ─────────────────────────────────────────
+          # Quince corridas rojas serían quince issues idénticos, y eso es ruido
+          # que se aprende a ignorar: el mismo bug con otra cara. Se busca por
+          # **etiqueta** y no por título, que es lo único que no se rompe si
+          # alguien le cambia el texto al issue.
+          ABIERTO=$(gh api "repos/$GH_REPO/issues?state=open&labels=$ETIQUETA&per_page=1" \
+            --jq '[.[] | select(.pull_request == null)][0].number // ""') \
+            || rendirse 'no se pudo buscar el aviso abierto'
+
+          if [ -n "$ABIERTO" ]; then
+            # Se **edita**, no se comenta: un comentario por corrida es la misma
+            # avalancha con otro nombre. El cuerpo queda siempre al día y el
+            # contador de rachas dice cuántas van.
+            gh api --method PATCH "repos/$GH_REPO/issues/$ABIERTO" -f body="$CUERPO" >/dev/null \
+              || rendirse "no se pudo actualizar el issue #$ABIERTO"
+            echo "::notice::el aviso ya estaba abierto (#$ABIERTO): actualizado, van $ROJAS rojas"
+          else
+            # Por la API y no `gh issue create --label`: la etiqueta puede no
+            # existir todavía y `gh` corta con «label not found», mientras que
+            # la API la crea. Es el mismo camino que usa `reporteAIssue`.
+            NUEVO=$(gh api "repos/$GH_REPO/issues" \
+              -f title="$TITULO" -f body="$CUERPO" -f "labels[]=$ETIQUETA" --jq '.number') \
+              || rendirse 'no se pudo crear el issue'
+            echo "::notice::aviso abierto: #$NUEVO"
+          fi
+          exit 0
+
+  # Y la otra mitad: un aviso que no se cierra solo es un log, no un indicador.
+  # Mientras se cierre con la corrida verde, «hay un issue abierto» significa
+  # «ahora mismo el sitio está atrasado», que es lo único que alguien necesita
+  # mirar.
+  cerrar-aviso:
+    name: Cerrar el aviso si volvió a publicar
+    needs: [deploy]
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Acá el `continue-on-error` es todavía más importante que en `avisar`: sin
+    # él, un fallo cerrando el issue pondría en rojo una corrida que **sí
+    # publicó**, y el rojo diría exactamente lo contrario de lo que pasó.
+    continue-on-error: true
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Cerrar el aviso abierto, si lo hay
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          rendirse() { echo "::warning::no se pudo cerrar el aviso del deploy roto: $1"; exit 0; }
+
+          ABIERTO=$(gh api "repos/$GH_REPO/issues?state=open&labels=deploy-roto&per_page=1" \
+            --jq '[.[] | select(.pull_request == null)][0].number // ""') \
+            || rendirse 'no se pudo buscar el aviso abierto'
+
+          # El caso normal y silencioso: no hay nada roto, no hay nada que
+          # cerrar.
+          [ -n "$ABIERTO" ] || exit 0
+
+          # El comentario va ANTES del cierre y es el único que este mecanismo
+          # escribe nunca: es el que le llega a quien estaba esperando.
+          gh api "repos/$GH_REPO/issues/$ABIERTO/comments" \
+            -f body="Volvió a publicar: [esta corrida]($RUN_URL). El sitio está al día." \
+            >/dev/null || rendirse "no se pudo comentar el issue #$ABIERTO"
+          gh api --method PATCH "repos/$GH_REPO/issues/$ABIERTO" -f state=closed >/dev/null \
+            || rendirse "no se pudo cerrar el issue #$ABIERTO"
+          echo "::notice::aviso #$ABIERTO cerrado: el sitio volvió a publicarse"
+          exit 0

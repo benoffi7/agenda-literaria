@@ -606,6 +606,38 @@ veces se los invoca** ahora que nada los llama.
   el desdoblado del ICS antes de buscar. **No entra a ningún gate**: pega contra
   producción, y un gate que falla cuando se cae el wifi es el que enseña a
   saltear los gates (B-180).
+- **Enterarse de que un deploy falló** — ✅ **resuelto el 2026-09-11, y no con un
+  agente ni con un test: con el workflow mismo** (**B-883**). Es la viñeta que
+  mejor muestra el criterio de este documento, porque los dos candidatos
+  naturales fallan por el mismo motivo. Un test no puede: el YAML era válido, la
+  suite estaba verde, y lo que se rompió pasó **después**, en el runner. Un
+  agente tampoco: nadie lo iba a invocar: el síntoma era que **nadie miraba**.
+
+  Lo que pasó: «Build y deploy del sitio» falló **quince corridas seguidas** y el
+  dueño se dio cuenta **mirando el sitio**, porque las actividades que había
+  cargado no aparecían. Verificado contra la API, la causa no es la que parecía:
+  el `actor` de esas corridas es una persona (`benoffi7` — un PAT actúa como su
+  dueño), así que no es que GitHub no tenga a quién avisarle. Es que avisa **solo
+  a quien disparó la corrida**, y ese «quien» es el dueño del PAT que vive en
+  Secret Manager; llega a la bandeja **web** de esa única cuenta; y dice «workflow
+  run failed», que no es lo mismo que «tus ocho actividades no están publicadas».
+
+  La forma que quedó son dos jobs de `deploy.yml` —`avisar` y `cerrar-aviso`— que
+  abren y cierran **un** issue con la etiqueta `deploy-roto`. Tres decisiones, y
+  cada una tiene su caso en `tests/workflows.test.ts`:
+
+  | Decisión | Por qué |
+  |---|---|
+  | **Uno por racha, no uno por corrida** — se busca por etiqueta y el que ya está abierto se **edita**, no se comenta | quince issues idénticos son el mismo bug con otra cara: un aviso que se aprende a ignorar no avisa |
+  | **Se cierra con la corrida verde** | es lo que lo vuelve un indicador y no un registro: «hay un issue abierto» significa «ahora mismo el sitio está atrasado» |
+  | **El issue dice desde cuándo el sitio está viejo**, no solo qué paso falló | de «Tests: failure» nadie deduce la consecuencia, que es la mitad que le importa a quien carga actividades |
+
+  Y el chequeo es **por clase**: lo que se afirma no es «`deploy.yml` avisa» sino
+  «un workflow disparado por una máquina (`repository_dispatch`, `schedule`)
+  avisa». `push-main.yml` queda afuera a propósito —lo dispara un push, o sea que
+  hay alguien esperando el resultado— y un `schedule` que se agregue mañana entra
+  solo, que es donde este bug volvería a aparecer.
+
 - **Crear credenciales** (PAT, key de service account, toggles de consola). Lo
   prohíbe el §5.4 y lo dice el backlog: es trabajo del dueño.
 - **Re-relevar el inventario de infra** (§ `02-infraestructura.md`): necesita
