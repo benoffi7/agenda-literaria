@@ -283,6 +283,27 @@ export const FUNCIONES = [
   'propuestas-abrir',
   'propuesta-convertida',
   'propuesta-rechazada',
+  /**
+   * B-901 — la Guía, primera entidad: `/guia/librerias`.
+   *
+   * **`librerias-abrir` es el mismo termómetro que `propuestas-abrir`**, aplicado
+   * al riesgo que el § 10 del PRD 2 nombra como el contra de esta sección: «un
+   * directorio de librerías vacío es peor que no tenerlo», y eso no lo arregla el
+   * código —se arregla cargando treinta librerías, que es trabajo del dueño—. El
+   * `valor` es cuántas estaban esperando decisión al abrir: si la pantalla no se
+   * abre nunca, la sección no se va a llenar sola y la fila de `/guia` va a
+   * decepcionar.
+   *
+   * `libreria-guardar` contesta la otra mitad: cuántas se cargan de verdad por la
+   * tercera puerta del § 1 —el formulario del panel— que hoy es la única abierta,
+   * porque el `create` público sigue cerrado por B-872. Si esto no se mueve, lo
+   * que falta no es el formulario público: es el contenido.
+   *
+   * Ninguno de los dos lleva `detalle`: el nombre, la dirección y el contacto son
+   * contenido, y el último es de un tercero (§9).
+   */
+  'librerias-abrir',
+  'libreria-guardar',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

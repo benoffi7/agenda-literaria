@@ -29,7 +29,19 @@
  * pierde treinta campos tipeados, pierde media hora de correcciones sobre lo que
  * escribió otra persona.
  */
-export const VISTAS_CON_FORMULARIO = ['nueva', 'editar', 'duplicar', 'convertir'] as const;
+/*
+ * `'libreria'` entra con B-901 y es la primera vista con formulario que no carga
+ * una actividad. Lo que se pierde al abandonarla es menos que en las otras cuatro
+ * —doce campos, no treinta— pero la mitad cara es la misma: la galería, que puede
+ * llevar cuatro fotos subidas a mano, y esas no se recuperan tecleando de nuevo.
+ */
+export const VISTAS_CON_FORMULARIO = [
+  'nueva',
+  'editar',
+  'duplicar',
+  'convertir',
+  'libreria',
+] as const;
 
 export type VistaConFormulario = (typeof VISTAS_CON_FORMULARIO)[number];
 
@@ -41,7 +53,7 @@ export const tieneFormulario = (tipoDeVista: string): boolean =>
  * pregunta se contesta en dos segundos y sin contexto.
  */
 export const AVISO_CAMBIOS_SIN_GUARDAR =
-  'La actividad tiene cambios sin guardar. Si salís ahora se pierden. ¿Salir igual?';
+  'El formulario tiene cambios sin guardar. Si salís ahora se pierden. ¿Salir igual?';
 
 /**
  * ¿Preguntar antes de dejar esta vista?

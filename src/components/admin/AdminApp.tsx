@@ -57,7 +57,9 @@ import type { ListaActividades as TipoLista } from '@/components/admin/ListaActi
 import type { EstadisticasPanel as TipoEstadisticas } from '@/components/admin/EstadisticasPanel';
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
 import type { PropuestasPanel as TipoPropuestas, Conversion } from '@/components/admin/PropuestasPanel';
+import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/LibreriasPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
+import type { LibreriaConId } from '@/types/libreria';
 import type { User } from 'firebase/auth';
 
 type Vista =
@@ -102,7 +104,20 @@ type Vista =
       tituloOrigen: string;
       avisos: readonly string[];
       alGuardar: (actividadId: string) => Promise<void>;
-    };
+    }
+  /*
+   * B-901 — la Guía, primera entidad. Son **dos** vistas y no una, y el motivo es
+   * el aviso de salida con cambios sin guardar: `debeConfirmarSalida` pregunta
+   * por `vista.tipo`, así que un formulario montado adentro de la bandeja se
+   * abandonaría sin decir nada (B-35). `librerias` es la bandeja; `libreria`, su
+   * formulario, con la ficha que se edita o nada si es un alta.
+   *
+   * Las dos montan el **mismo** componente (`LibreriasPanel`), que es lo que
+   * mantiene viva la suscripción a la colección al abrir y cerrar el formulario:
+   * volver a la bandeja no cuesta una lectura nueva.
+   */
+  | { tipo: 'librerias' }
+  | { tipo: 'libreria'; ficha?: LibreriaConId };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -203,6 +218,13 @@ const PropuestasPanel = diferido<Parameters<typeof TipoPropuestas>[0]>(() =>
   import('@/components/admin/PropuestasPanel').then((m) => ({ default: m.PropuestasPanel })),
 );
 
+// Diferida por lo mismo que las otras vistas: la pantalla lee y escribe
+// `/librerias`, así que arrastra Firestore (B-09, D-51). Y arrastra además el
+// editor de galería, que trae `firebase/storage`.
+const LibreriasPanel = diferido<Parameters<typeof TipoLibrerias>[0]>(() =>
+  import('@/components/admin/LibreriasPanel').then((m) => ({ default: m.LibreriasPanel })),
+);
+
 const PropuestasBadge = diferido<object>(() =>
   import('@/components/admin/PropuestasBadge').then((m) => ({ default: m.PropuestasBadge })),
 );
@@ -297,9 +319,9 @@ export function AdminApp() {
    * el calendario devolvía al listado y se perdía el mes que se estaba
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
-  const [volverA, setVolverA] = useState<'lista' | 'calendario' | 'estadisticas' | 'propuestas'>(
-    'lista',
-  );
+  const [volverA, setVolverA] = useState<
+    'lista' | 'calendario' | 'estadisticas' | 'propuestas' | 'librerias'
+  >('lista');
 
   /**
    * B-177 — las etiquetas nuevas que el último guardado no llegó a registrar.
@@ -571,6 +593,12 @@ export function AdminApp() {
                             ? 'Estado del catálogo'
                             : vista.tipo === 'propuestas'
                               ? 'Propuestas'
+                            : vista.tipo === 'librerias'
+                              ? 'Librerías'
+                            : vista.tipo === 'libreria'
+                              ? vista.ficha
+                                ? vista.ficha.nombre
+                                : 'Librería nueva'
                               : vista.tipo === 'convertir'
                                 ? `Propuesta de ${vista.tituloOrigen}`
                                 : vista.actividad.titulo}
@@ -637,6 +665,20 @@ export function AdminApp() {
             <PropuestasBadge />
           </button>
         )}
+        {/*
+          B-901 — la entrada a la Guía. Solo desde el listado, como «Opciones»,
+          «Estadísticas» y «Propuestas»: ahí no hay nada que perder, así que no va
+          envuelta en `salirDe` (B-35).
+        */}
+        {vista.tipo === 'lista' && puedeVer(rol, 'librerias') && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'librerias' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Librerías
+          </button>
+        )}
         {vista.tipo !== 'reportes' && puedeVer(rol, 'reportes') && (
           <button
             type="button"
@@ -664,9 +706,11 @@ export function AdminApp() {
                 ? 'calendario'
                 : vista.tipo === 'propuestas'
                 ? 'propuestas'
-                : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
-                  ? 'lista'
-                  : 'formulario'
+                : vista.tipo === 'librerias' || vista.tipo === 'libreria'
+                  ? 'librerias'
+                  : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
+                    ? 'lista'
+                    : 'formulario'
           }
         />
         <button
@@ -797,6 +841,29 @@ export function AdminApp() {
               alGuardar: c.alGuardar,
             });
           }}
+        />
+      )}
+
+      {/*
+        B-901 — las dos vistas montan el mismo componente a propósito: así la
+        suscripción a `/librerias` sigue viva mientras el formulario está abierto
+        y volver a la bandeja no cuesta una lectura nueva.
+      */}
+      {(vista.tipo === 'librerias' || vista.tipo === 'libreria') && (
+        <LibreriasPanel
+          usuario={{ uid: usuario.uid }}
+          editando={
+            vista.tipo === 'libreria' ? (vista.ficha ?? 'nueva') : null
+          }
+          onAbrirFormulario={(ficha) => {
+            // Vuelve a la bandeja y no al listado: se llegó acá desde ahí, y lo
+            // más probable es que haya más de una ficha que atender en la misma
+            // sentada (mismo criterio que la bandeja de propuestas).
+            setVolverA('librerias');
+            setVista({ tipo: 'libreria', ficha });
+          }}
+          onGuardado={() => setVista({ tipo: 'librerias' })}
+          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
         />
       )}
 

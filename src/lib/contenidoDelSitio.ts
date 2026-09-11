@@ -64,9 +64,22 @@ import {
 } from '@/lib/hubsPublicos';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
 import { pasadasDelSitio } from '@/lib/pasadasPublicas';
-import { rutaDeMes } from '@/lib/rutasPublicas';
+import { rutaDeBarrio, rutaDeMes } from '@/lib/rutasPublicas';
 import { lastmodDelSitemap, rutasDelSitemap } from '@/lib/sitemap';
 import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
+// B-831 — la proyección de una librería es **por entidad** y no genérica (§5.2):
+// una whitelist escrita a mano por colección. Ver `lib/libreriaPublica.ts`.
+import {
+  construirIndiceDeLibrerias,
+  fichaDeLibreria,
+  libreriaPublica,
+  type FichaDeLibreria,
+  type IndiceDeLibrerias,
+  type LibreriaPublica,
+} from '@/lib/libreriaPublica';
+import { ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA } from '@/lib/directorios';
+import { esSlugDeFicha } from '@/lib/rutasPublicas';
+import type { Libreria } from '@/types/libreria';
 import { INFO_VERSION } from '@/lib/version';
 // B-285 — la marca de «estuvo publicada alguna vez», y la pregunta escrita en un
 // solo lugar. `marcadaComoPublicada` es la versión ESTRICTA (`=== true`): acá
@@ -168,6 +181,14 @@ export interface ContenidoDelSitio {
    */
   canceladasEditadasEn: Record<string, string>;
   opciones: Partial<Record<CampoTaxonomia, ValorOpcion[]>>;
+  /**
+   * **Las librerías publicadas, ya proyectadas** — B-831.
+   *
+   * Viven al lado de las actividades y no mezcladas con ellas por lo mismo que
+   * `canceladas`: son dos queries distintas sobre dos colecciones distintas, y
+   * ninguna lista del sitio puede confundirlas porque no las recibe juntas.
+   */
+  librerias: LibreriaPublica[];
 }
 
 /**
@@ -336,6 +357,88 @@ const canceladas = async (): Promise<{
   };
 };
 
+/**
+ * Los campos que la query de librerías pide, que son **exactamente** los que
+ * `libreriaPublica()` publica (`lib/libreriaPublica.ts`).
+ *
+ * Vive acá y no en el módulo de la proyección porque es una decisión de la
+ * **lectura**, no de la whitelist; lo que no puede es separarse de ella, y eso lo
+ * ata `tests/librerias.test.ts` comparando las dos listas.
+ */
+const CAMPOS_DE_LA_PROYECCION = [
+  'slug',
+  'nombre',
+  'descripcion',
+  'direccion',
+  'barrio',
+  'ciudad',
+  'geo',
+  'imagenes',
+  'instagram',
+  'whatsapp',
+  'web',
+  'mail',
+  'searchText',
+] as const;
+
+/**
+ * **Las librerías publicadas** — B-831, y **B-903 cerrado acá**.
+ *
+ * ── El `where` no es un filtro de presentación ────────────────────────────
+ * Es la **primera de las nueve cosas que se rompen en silencio**
+ * (`prd/05-inventario-de-archivos.md` § 6): sin él se publica lo pendiente, con
+ * el `contactoDeQuienCargo` de quien la cargó adentro. Y filtrar **después** de
+ * leer no es lo mismo aunque el resultado se vea igual: significa que el
+ * documento entero —el dato personal de un tercero incluido— pasó por el proceso
+ * de build, quedó en memoria del runner de CI y pudo caer en cualquier log o
+ * volcado de error del camino. El `where` es lo que hace que **no se lea**.
+ *
+ * `ESTADO_PUBLICO` sale de `lib/directorios.ts` y no es el literal
+ * `'publicado'`: ese módulo dejó escrito que la mitad que faltaba era justo ésta
+ * —«le toca a la tajada que escriba la primera lectura traer la otra mitad: que
+ * la query se escriba con esta constante y un caso que lo afirme»— y
+ * `tests/librerias.test.ts` lo afirma leyendo este archivo.
+ *
+ * **Una query y un `==`**, no un `in`: es el mismo criterio con el que B-110 dejó
+ * la de las actividades intacta. Un `in` convierte el estado en una lista, y a
+ * una lista alguien le agrega un elemento.
+ *
+ * ── Y no se baja lo que no se va a publicar: `.select()` — D-159 ─────────
+ * Lo pidió el `auditor-privacidad` sobre este mismo frente, y es la mitad que le
+ * faltaba al párrafo de arriba para ser cierto: el `where` decide **qué
+ * documentos** se leen, y `.select()` decide **qué campos de cada uno**. Sin él,
+ * el `contactoDeQuienCargo`, el motivo del rechazo y el `storagePath` de cada
+ * imagen entran igual a la memoria del proceso de build —o sea al runner de CI—
+ * aunque la proyección los descarte tres líneas después.
+ *
+ * La lista es **exactamente la de `LibreriaPublica`**, y eso lo ata
+ * `tests/librerias.test.ts`: un campo nuevo en la whitelist obliga a tocar las
+ * dos mitades, que es lo que impide que la proyección publique un campo que la
+ * query dejó de traer (saldría vacío, en silencio).
+ *
+ * El precedente es D-159, que usa `.select()` sobre `/versiones` justamente para
+ * no traer ningún campo.
+ *
+ * ── La ficha sin slug usable se descarta y no tira el build ───────────────
+ * `esSlugDeFicha` (`lib/rutasPublicas.ts`) existe por esto: el slug de una ficha
+ * de directorio vive en una colección cuya alta va a poder pedir cualquiera, así
+ * que no hay garantía de que haya pasado por `slugDeFicha`. Tirar dejaría que un
+ * solo documento raro apague el sitio entero; interpolarlo publicaría una URL que
+ * `getStaticPaths` no genera. Se descarta, que es lo que ya hacen los guardados
+ * del navegador con un slug que no reconocen.
+ */
+const libreriasPublicadas = async (): Promise<LibreriaPublica[]> => {
+  const snap = await adminDb()
+    .collection('librerias')
+    .where('estado', '==', ESTADO_PUBLICO_DE_FICHA)
+    .select(...CAMPOS_DE_LA_PROYECCION)
+    .get();
+
+  return snap.docs
+    .map((d) => libreriaPublica(d.data() as Libreria))
+    .filter((l) => esSlugDeFicha(l.slug));
+};
+
 /** Los cinco documentos de `/opciones/*`, en una sola ida (§4.1). */
 const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, ValorOpcion[]>>> => {
   const refs = CAMPOS_TAXONOMIA.map((c) => adminDb().doc(`opciones/${c}`));
@@ -349,10 +452,11 @@ const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, Val
 
 const leer = async (): Promise<ContenidoDelSitio> => {
   if (hayCredenciales()) {
-    const [publicadasConPagina, canceladasConPagina, opciones] = await Promise.all([
+    const [publicadasConPagina, canceladasConPagina, opciones, librerias] = await Promise.all([
       publicadas(),
       canceladas(),
       opcionesDeTaxonomia(),
+      libreriasPublicadas(),
     ]);
     return {
       actividades: publicadasConPagina.actividades,
@@ -360,6 +464,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       canceladas: canceladasConPagina.actividades,
       canceladasEditadasEn: canceladasConPagina.editadasEn,
       opciones,
+      librerias,
     };
   }
 
@@ -390,6 +495,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     canceladas: [],
     canceladasEditadasEn: {},
     opciones: {},
+    librerias: [],
   };
 };
 
@@ -584,6 +690,109 @@ export const etiquetasDelDetalle = async (): Promise<MapaDeEtiquetas> => {
       ]),
     ),
   );
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Las librerías — B-831, tajada 2 paso 14
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * `/librerias.json` — el índice que el listado de `/guia/librerias` filtra en
+ * memoria (§2.5 y § 4 del PRD 2).
+ *
+ * **Cero lecturas nuevas de Firestore**: sale del mismo `contenidoDelSitio()`
+ * memoizado que el `events.json`, las páginas de detalle y el sitemap.
+ *
+ * Los barrios salen de las opciones **sin filtrar por aprobación** y se recortan
+ * después a los que alguna ficha usa, que es la misma asimetría de D-30 en su
+ * lado correcto: acá se **resuelve** el barrio que la librería ya tiene guardado
+ * —no se ofrece la taxonomía entera—, así que un barrio pendiente de aprobar
+ * tiene que poder mostrar su nombre. Lo que impide publicar vocabulario sin
+ * validar es el recorte por uso, no el filtro de aprobación: un chip solo existe
+ * si hay una librería publicada detrás.
+ */
+export const indiceDeLibrerias = async (): Promise<IndiceDeLibrerias> => {
+  const { librerias, opciones } = await contenidoDelSitio();
+  return construirIndiceDeLibrerias({
+    librerias,
+    barrios: opciones.barrio ?? [],
+    version: INFO_VERSION.version,
+    generadoEn: INFO_VERSION.generadoEn,
+  });
+};
+
+/**
+ * Todo lo que `/guia/librerias` necesita, y **nada más** — el view-model del
+ * listado (D-140).
+ *
+ * La plantilla no ve el índice ni el documento: recibe las fichas ya armadas más
+ * los chips de barrio. Es la misma frontera que `caminosDeMes` y `vistaDePasadas`
+ * le ponen a sus páginas, y la que el `auditor-privacidad` pidió después de
+ * encontrarla abierta en la primera versión de la página de mes.
+ */
+export interface VistaDeLibrerias {
+  fichas: FichaDeLibreria[];
+  /** Los chips del filtro, en el orden de la taxonomía. */
+  barrios: { slug: string; label: string }[];
+  version: string;
+}
+
+/**
+ * Las fichas del directorio, ya resueltas: la etiqueta del barrio y —solo si el
+ * hub existe— su destino.
+ *
+ * ── Por qué el hub se consulta y no se asume ──────────────────────────────
+ * `/barrio/{slug}` lo emite el build para los barrios que tienen alguna
+ * **actividad** (`hubsPublicos.ts`), y este directorio va a estrenar barrios que
+ * no tienen ninguna. Linkear a ciegas publicaría un 404 en cada una de esas
+ * fichas, que es la misma clase de error que `esSlugDeFicha` evita del otro lado:
+ * una URL emitida sin confirmar que exista.
+ */
+const fichasDeLibreria = async (): Promise<FichaDeLibreria[]> => {
+  const { librerias } = await contenidoDelSitio();
+  const indice = await indiceDelSitio();
+  // Sin filtrar por aprobación: se **resuelve** el slug guardado, no se ofrece un
+  // chip. Es literalmente el caso de D-30.
+  const etiquetas = await etiquetasDelDetalle();
+  const conHub = new Set(slugsConHub('barrio', indice.actividades, indice.opciones));
+
+  return librerias.map((l) =>
+    fichaDeLibreria(l, {
+      etiquetaDeBarrio: etiquetas.barrio?.[l.barrio],
+      rutaDelBarrio: conHub.has(l.barrio) ? rutaDeBarrio(l.barrio) : null,
+    }),
+  );
+};
+
+/** El listado: las fichas ordenadas por nombre y los chips de barrio. */
+export const vistaDeLibrerias = async (): Promise<VistaDeLibrerias> => {
+  const [fichas, indice] = await Promise.all([fichasDeLibreria(), indiceDeLibrerias()]);
+  const porSlug = new Map(fichas.map((f) => [f.slug, f]));
+  return {
+    // El orden lo decide el índice —el mismo que va a ver la island después de
+    // hidratar—: con dos ordenamientos, la lista saltaría al cargar el JSON.
+    fichas: indice.librerias.map((l) => porSlug.get(l.slug)!).filter(Boolean),
+    barrios: indice.barrios.map((b) => ({ slug: b.slug, label: b.label })),
+    version: indice.version,
+  };
+};
+
+/**
+ * Los caminos de `/guia/librerias/[slug]`, uno por librería publicada.
+ *
+ * Vive acá y no adentro del `.astro` por lo mismo que `caminosDeDetalle`: un
+ * `.astro` no se importa desde vitest, así que un `getStaticPaths` escrito en la
+ * plantilla es código sin forma de probarse.
+ *
+ * `props` lleva **solo el view-model**: la plantilla no recibe el documento, así
+ * que no puede publicar el `contactoDeQuienCargo` ni aunque quiera — no está en
+ * el objeto.
+ */
+export const caminosDeLibreria = async (): Promise<
+  { params: { slug: string }; props: { ficha: FichaDeLibreria } }[]
+> => {
+  const fichas = await fichasDeLibreria();
+  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
 };
 
 /**
@@ -892,11 +1101,16 @@ export const sitemapDelSitio = async (
   ahora?: unknown,
 ): Promise<{ rutas: string[]; lastmod: Record<string, string> }> => {
   const indice = await indiceDelSitio();
-  const { canceladas, canceladasEditadasEn, publicadasEditadasEn } = await contenidoDelSitio();
+  const { canceladas, canceladasEditadasEn, publicadasEditadasEn, librerias } =
+    await contenidoDelSitio();
   const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
 
   const rutas = rutasDelSitemap({
     entradas: indice.actividades,
+    // B-831 — las fichas del directorio. Salen de la misma lectura filtrada por
+    // `where('estado','==','publicado')`, así que una pendiente no puede llegar
+    // acá aunque alguien se olvide de filtrar en otro lado: no está en la lista.
+    librerias: librerias.map((l) => ({ slug: l.slug })),
     canceladas: canceladas.map((a) => ({
       slug: a.slug,
       editadaEn: canceladasEditadasEn[a.slug] ?? null,

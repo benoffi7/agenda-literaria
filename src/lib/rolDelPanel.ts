@@ -40,6 +40,15 @@ export const PANTALLAS_DEL_PANEL = [
   'reportes',
   'propuestas',
   'convertir',
+  /*
+   * B-901 — la Guía, primera entidad: `librerias` es la bandeja del directorio y
+   * `libreria` su formulario. Son **dos** y no una porque el aviso de salida con
+   * cambios sin guardar (`salida-del-panel.ts`) se decide por la vista del
+   * router: con el formulario adentro de la bandeja, abandonarlo no preguntaría
+   * nada, que es lo que B-35 cerró.
+   */
+  'librerias',
+  'libreria',
 ] as const;
 export type PantallaDelPanel = (typeof PANTALLAS_DEL_PANEL)[number];
 
@@ -103,6 +112,14 @@ export const PERMISOS: Record<RolDelPanel, PermisosDelPanel> = {
     leeElDirectorio: true,
   },
   publicador: {
+    /*
+     * B-901 — `librerias` y `libreria` **no** entran, y es la misma decisión que
+     * las reglas ya tomaron: las cinco cláusulas de `/librerias` se quedan en
+     * `esAdmin()` porque una ficha de directorio no tiene «dueño» que recortar,
+     * decidir qué entra al catálogo es la autoridad que este rol no tiene, y el
+     * documento lleva el contacto de un tercero. Acá la UI dice lo mismo en vez
+     * de ofrecer un botón que la regla va a rechazar.
+     */
     pantallas: ['lista', 'nueva', 'editar', 'duplicar', 'calendario'],
     veTodoElCatalogo: false,
     escribeTaxonomias: false,

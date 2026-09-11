@@ -74,6 +74,7 @@ import {
   RUTA_PASADAS,
   RUTA_SUSCRIBIRSE,
   rutaDeDetalle,
+  rutaDeLibreria,
   rutaDeMes,
   urlAbsoluta,
 } from '@/lib/rutasPublicas';
@@ -301,6 +302,23 @@ export interface EntradaDelSitio {
   entradas: readonly EntradaDeIndice[];
   canceladas: readonly CanceladaDelSitemap[];
   /**
+   * Las fichas de los directorios de la Guía — B-831.
+   *
+   * **Una lista de slugs y no de rutas**, para que quien la arme no pueda
+   * escribir el prefijo a mano: la ruta la produce `rutaDeLibreria`
+   * (`rutasPublicas.ts`), igual que el `href` del listado y que el `url` del
+   * JSON-LD. Tres textos distintos para la misma página es lo que B-330 cerró.
+   *
+   * Opcional y con default vacío, como `opciones`: un llamador que prueba otra
+   * regla no tiene que armarlas, y el lado inofensivo del error es «ninguna
+   * ficha en el sitemap», nunca «una ficha de más».
+   *
+   * **No tienen ventana de tiempo**, al revés que las actividades: una librería
+   * no «pasa». Sale del sitemap cuando deja de estar publicada, que es cuando el
+   * build deja de leerla — y ahí su página tampoco existe.
+   */
+  librerias?: readonly { slug: string }[];
+  /**
    * Las opciones de taxonomía del índice, **para los hubs** — B-108.
    *
    * Las necesita `hubsOfrecidos` por dos motivos: para saber qué slugs existen y
@@ -337,6 +355,7 @@ export const rutasDelSitemap = ({
   entradas,
   canceladas,
   opciones = {},
+  librerias = [],
   ahora,
 }: EntradaDelSitio): string[] => [
   ...new Set([
@@ -363,6 +382,18 @@ export const rutasDelSitemap = ({
     ...mesesEnlazables(entradas, ahora).map((m) => rutaDeMes(m.clave)),
     ...rutasDePublicadas(entradas, ahora),
     ...rutasDeCanceladas(canceladas, ahora),
+    /*
+     * **Las fichas de librería** — B-831. El listado ya entró arriba por
+     * `directoriosDisponibles()`; esto es la otra mitad, y es la que el §6 #7 del
+     * inventario señala: las páginas existen y Google no las ve.
+     *
+     * Sin filtro de fecha y sin `esSlugDeFicha` acá: las dos preguntas ya las
+     * contestó quien leyó la colección (`libreriasPublicadas`, con su `where` y su
+     * descarte del slug raro). Repetirlas sería la clase de B-88 — dos lugares
+     * decidiendo qué ficha existe, y el que se desalinee publica una URL que
+     * `getStaticPaths` no generó.
+     */
+    ...librerias.filter((l) => l.slug).map((l) => rutaDeLibreria(l.slug)),
   ]),
 ];
 

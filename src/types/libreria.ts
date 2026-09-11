@@ -201,7 +201,11 @@ export interface Libreria {
    * Cómo repreguntarle a **quien cargó la ficha**. Es el segundo dato personal
    * de un tercero que el proyecto guarda, después del `contacto` de una
    * propuesta, y tiene el mismo trato: interno como `difusion` (§5.1), su fila
-   * en `docs/07-seguridad.md` y su centinela en el barrido de salidas públicas.
+   * en `docs/07-seguridad.md` y su centinela en el barrido de **esta** colección
+   * —`tests/libreria-publica.test.ts`, con el fixture
+   * `tests/fixtures/centinelas-libreria.ts`—, que es otro archivo que el barrido
+   * de la actividad: aquél recorre `RUTAS_CENTINELA`, que son campos de
+   * `Actividad`.
    *
    * **Que conviva en el mismo documento que los cuatro contactos públicos es
    * exactamente la condición donde una proyección por spread filtra un campo**

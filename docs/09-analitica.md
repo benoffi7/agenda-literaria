@@ -293,6 +293,8 @@ evento por función.
 | `propuestas-abrir` | se abre la bandeja de propuestas | — | propuestas esperando decisión (B-830) |
 | `propuesta-convertida` | se guardó la actividad que salió de una propuesta | — | — |
 | `propuesta-rechazada` | se rechaza una propuesta desde la bandeja **y la escritura salió** | — | — |
+| `librerias-abrir` | se abre la pantalla de librerías de la Guía | — | librerías esperando decisión (B-901) |
+| `libreria-guardar` | se guardó una librería desde el panel, alta o edición | — | — |
 
 > ⚠️ **El piso del `valor` es negativo por una sola función, y la historia vale.**
 > El 2026-09-07 este documento estrenó una fila que decía que `encuentro-correr`

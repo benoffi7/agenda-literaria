@@ -549,6 +549,34 @@ una actividad en borrador de más se borra en dos clics; una propuesta marcada
 sin esa lista, el admin cree que el formulario trae todo lo que la persona
 escribió.
 
+## `/librerias/{id}` — el primer directorio de la Guía (B-831, B-901)
+
+La primera colección del proyecto que **no es una actividad y llega al sitio**.
+El ciclo de vida no es propio: es el de `src/lib/directorios.ts` (B-834, el motor
+que van a compartir los tres directorios), con **tres** estados —`pendiente`
+(inicial, lo fuerza la regla), `publicado`, `rechazado`— y una sola arista
+faltante en el grafo: de `rechazado` no se publica de un saque, hay que reabrir
+primero. Solo `publicado` sale al sitio.
+
+Los campos viven en `src/types/libreria.ts` y la forma la hace cumplir
+`firestore.rules` (los topes están atados por `tests/librerias.test.ts`, el patrón
+de B-364):
+
+| Campo | Qué es |
+|---|---|
+| `nombre`, `slug`, `descripcion` | el `slug` es **inmutable después de publicar** (trampa 10) y lo congela la regla, no la UI |
+| `imagenes[]` | el **mismo** tipo `Imagen` de una actividad (D-125), con su portada, su epígrafe y su `storagePath` |
+| `direccion`, `barrio`, `ciudad`, `geo` | `barrio` es un slug de `/opciones/barrio` — **el mismo que usan las actividades**, que es lo que va a permitir cruzarlas en el hub de barrio |
+| `instagram`, `whatsapp`, `web`, `mail` | los cuatro contactos **públicos**, y ése es el punto de la ficha: existe para que la gente le escriba a la librería |
+| `contactoDeQuienCargo` | ⚠️ **interno**. Es el **segundo dato personal de un tercero** que guarda el proyecto, después del `contacto` de una propuesta. No sale a ninguna salida pública, y lo sostienen la whitelist de `src/lib/libreriaPublica.ts` y el centinela de `tests/libreria-publica.test.ts` |
+| `estado`, `origen`, `revision`, `creadoEn` | el ciclo de vida. `origen` dice si la cargó el panel o un formulario público, `revision` lleva el uid de quien decidió y el motivo del descarte |
+| `publicadaAlgunaVez` | declarado y **sin trigger que lo escriba todavía** (B-905): hoy el candado del slug cae al estado actual |
+
+**Lo que esta colección no tiene y `/propuestas` sí: retención.** Una ficha
+`rechazado` conserva el contacto del tercero para siempre, y por eso el `delete`
+del admin está abierto — es lo único con lo que hoy se honra un «borrame». Está
+anotado como **B-904**.
+
 ## `incluye` — qué se llevan (B-830)
 
 `incluye: string[]`, slugs de `/opciones/incluye-actividad`. Pedido del dueño

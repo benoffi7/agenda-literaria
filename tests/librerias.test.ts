@@ -30,7 +30,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
-import { ESTADOS_DIRECTORIO, ESTADO_INICIAL, TRANSICIONES } from '@/lib/directorios';
+import {
+  ESTADOS_DIRECTORIO,
+  ESTADO_INICIAL,
+  ESTADO_PUBLICO,
+  TRANSICIONES,
+} from '@/lib/directorios';
 import {
   RE_INSTAGRAM,
   RE_SLUG,
@@ -66,10 +71,10 @@ import {
 } from '@/types/libreria';
 import type { LibreriaForm } from '@/types/libreria';
 
-const REGLAS = readFileSync(
-  fileURLToPath(new URL('../firestore.rules', import.meta.url)),
-  'utf8',
-);
+/** Un archivo del repo, desde la raíz. */
+const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url));
+
+const REGLAS = readFileSync(raiz('firestore.rules'), 'utf8');
 
 /**
  * El bloque de `/librerias` entero: sus helpers, `formaDeLibreria()`,
@@ -463,5 +468,128 @@ describe('el armado del documento — lo que se guarda es lo que se va a publica
     );
     expect(d.imagenes[0]).not.toHaveProperty('optimizada');
     expect(d.imagenes[0]!.storagePath).toBe('imagenes/img_1.jpg');
+  });
+});
+
+/**
+ * **B-903 — la lectura del build filtra en la query, no en memoria.**
+ *
+ * Era deuda declarada: `lib/directorios.ts` dejó escrito que lo único fijado
+ * hasta la tajada anterior era el predicado en memoria, «y por ahora es deuda
+ * declarada y no una garantía: todavía no existe ninguna lectura de directorio
+ * que atar». La primera existe, así que acá está la otra mitad.
+ *
+ * ── Por qué no es lo mismo filtrar después ────────────────────────────────
+ * El resultado se ve igual y la diferencia es toda: filtrar después de leer
+ * significa que el documento **entero** —con el `contactoDeQuienCargo` de quien
+ * pidió el alta, con el motivo del rechazo, con el `storagePath` de cada
+ * imagen— pasó por el proceso de build, quedó en memoria del runner de CI y pudo
+ * caer en cualquier log o volcado de error del camino. Es la **primera de las
+ * nueve cosas que se rompen en silencio** del inventario, y la trampa 7 del §13
+ * dada vuelta.
+ *
+ * Se lee el fuente porque es lo único que no se puede desincronizar: la lectura
+ * de verdad se prueba contra el emulador
+ * (`tests/sitio-publico.integracion.test.ts` para su hermana de actividades), y
+ * eso confirma **qué** devuelve, no **cómo** lo pidió.
+ */
+describe('la lectura del build no lee lo que no va a publicar — B-903', () => {
+  const CONTENIDO = readFileSync(raiz('src/lib/contenidoDelSitio.ts'), 'utf8');
+
+  it('control positivo: el archivo tiene la lectura de librerías', () => {
+    // Sin esto, los asertos de abajo pasarían por omisión el día que la función
+    // se renombre o se mueva de archivo.
+    expect(CONTENIDO).toContain('const libreriasPublicadas =');
+    expect(CONTENIDO).toContain(".collection('librerias')");
+  });
+
+  it('la query lleva el `where`, y el estado sale de `ESTADO_PUBLICO` del motor', () => {
+    /*
+     * El literal `'publicado'` escrito acá sería una segunda definición de «qué
+     * sale al sitio», y la que se desalinee publicaría lo pendiente (la clase de
+     * B-88). Sale de `lib/directorios.ts`, importado con alias para no chocar con
+     * el de las actividades.
+     *
+     * MUTACIÓN PROBADA: reemplazar el `.where(...)` por un
+     * `.filter((d) => d.data().estado === ESTADO_PUBLICO_DE_FICHA)` sobre el
+     * snapshot completo deja este caso en rojo.
+     */
+    const cuerpo = sinComentarios(CONTENIDO);
+    const desde = cuerpo.indexOf('const libreriasPublicadas =');
+    const lectura = cuerpo.slice(desde, cuerpo.indexOf('};', desde));
+    expect(lectura, 'la lectura de librerías no filtra en la query').toContain(
+      ".where('estado', '==', ESTADO_PUBLICO_DE_FICHA)",
+    );
+    expect(ESTADO_PUBLICO).toBe('publicado');
+    expect(
+      cuerpo,
+      'el estado se escribió como literal en vez de salir del motor compartido',
+    ).toContain("ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA");
+  });
+
+  it('y no baja los campos que no va a publicar — `.select()`, D-159', () => {
+    /*
+     * **La otra mitad del `where`**, y la pidió el `auditor-privacidad`: aquél
+     * decide qué **documentos** se leen, éste qué **campos** de cada uno. Sin él,
+     * el `contactoDeQuienCargo`, el motivo del rechazo y el `storagePath` de cada
+     * imagen entran igual a la memoria del runner de CI, que es exactamente el
+     * daño que el docblock de la función describe como motivo del `where`.
+     *
+     * La lista tiene que ser **la de `LibreriaPublica`**: un campo que la
+     * proyección publique y la query no traiga saldría vacío, en silencio.
+     *
+     * MUTACIÓN PROBADA: sacar `'barrio'` del `.select()` deja este caso en rojo
+     * nombrando el campo (y el efecto real sería una ficha publicada sin barrio).
+     */
+    const cuerpo = sinComentarios(CONTENIDO);
+    const bloque = /const CAMPOS_DE_LA_PROYECCION = \[([\s\S]*?)\] as const;/.exec(cuerpo);
+    expect(bloque, 'no se encontró `CAMPOS_DE_LA_PROYECCION`').not.toBeNull();
+    const pedidos = [...bloque![1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+
+    expect(cuerpo, 'la query no usa `.select()`').toContain(
+      '.select(...CAMPOS_DE_LA_PROYECCION)',
+    );
+
+    // La whitelist se lee del fuente de la proyección, no de un objeto: así el
+    // cruce es contra lo que está escrito y no contra lo que un fixture setea.
+    const proyeccion = readFileSync(raiz('src/lib/libreriaPublica.ts'), 'utf8');
+    const interfaz = /export interface LibreriaPublica \{\n([\s\S]*?)\n\}/.exec(proyeccion);
+    expect(interfaz, 'no se encontró `LibreriaPublica`').not.toBeNull();
+    const publicados = [...interfaz![1]!.matchAll(/^ {2}(\w+)\??:/gm)].map((m) => m[1]!);
+
+    expect(publicados.length, 'no se leyó ningún campo de la proyección').toBeGreaterThan(10);
+    expect(
+      [...pedidos].sort(),
+      'la query y la proyección dejaron de decir lo mismo: o se baja un campo de más ' +
+        '(que entra al runner de CI sin publicarse) o falta uno que la ficha va a mostrar vacío',
+    ).toEqual([...publicados].sort());
+  });
+
+  it('y la ficha con un slug que no es un slug se descarta en vez de tirar el build', () => {
+    /*
+     * El slug de una ficha de directorio vive en una colección cuya alta va a
+     * poder pedir cualquiera, así que no hay garantía de que haya pasado por
+     * `slugDeFicha`. Tirar dejaría que un documento raro apague el sitio entero.
+     *
+     * MUTACIÓN PROBADA: sacar el `.filter((l) => esSlugDeFicha(l.slug))` deja
+     * este caso en rojo.
+     */
+    expect(sinComentarios(CONTENIDO)).toContain('esSlugDeFicha(l.slug)');
+  });
+
+  it('el rebuild de la Function cubre esta colección — trampa 8', () => {
+    /*
+     * La sexta de las nueve: sin el trigger se publica una ficha desde el panel y
+     * el sitio estático **no la muestra nunca**, hasta que alguien edite cualquier
+     * actividad por otro motivo. Nada falla.
+     *
+     * MUTACIÓN PROBADA: sacar el `export { rebuildPorLibrerias }` de
+     * `functions/index.js` deja este caso en rojo.
+     */
+    const index = readFileSync(raiz('functions/index.js'), 'utf8');
+    expect(index).toContain("export { rebuildPorLibrerias } from './directorios-trigger.js';");
+    const trigger = readFileSync(raiz('functions/directorios-trigger.js'), 'utf8');
+    expect(trigger).toContain("document: 'librerias/{id}'");
+    expect(trigger).toContain('marcarRebuild(');
   });
 });

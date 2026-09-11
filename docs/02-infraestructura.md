@@ -317,9 +317,10 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 ## Cloud Functions (v2)
 
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3;
-`verificarFrescuraDelSitio`, 1). **Son trece: diez ACTIVE y tres escritas sin
-desplegar** (`borrarPropuestasVencidas`, `borrarImagenAlCerrar` y
-`verificarFrescuraDelSitio`, que el próximo push a `main` despliega solo).
+`verificarFrescuraDelSitio`, 1). **Son catorce: diez ACTIVE y cuatro escritas sin
+desplegar** (`borrarPropuestasVencidas`, `borrarImagenAlCerrar`,
+`verificarFrescuraDelSitio` y `rebuildPorLibrerias`, que el próximo push a `main`
+despliega solas).
 
 > Esta línea decía «son ocho, y las ocho están ACTIVE» y ya era falsa cuando el
 > relevamiento de abajo encontró diez. **Es la misma cicatriz que el aviso
@@ -355,6 +356,7 @@ desplegar** (`borrarPropuestasVencidas`, `borrarImagenAlCerrar` y
 |---|---|---|
 | `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; los cambios de B-80/B-82/B-83 están vivos |
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; el cambio de B-04 está vivo (`timeoutSeconds: 300`) |
+| `rebuildPorLibrerias` | `onDocumentWritten librerias/{id}` | **escrita, sin desplegar todavía** (B-901, 2026-09-11). La misma forma que `rebuildPorOpciones`, para el primer directorio de la Guía: marca `sistema/rebuild.pendiente` cuando cambia un campo que el sitio **publica** (`cambioAmeritaRebuild`, `functions/directorios.js`) y no cuando solo cambia el contacto interno o el motivo de una revisión. Sin IAM nuevo: usa `marcarRebuild`, la misma escritura que ya hacen `rebuildPorOpciones` y `dispararRebuild`. El push a `main` la despliega sola |
 | `guardarVersion` | `onDocumentUpdated actividades/{id}` | ACTIVE |
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | ACTIVE — desplegada a mano el 2026-08-25 |
 | `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |

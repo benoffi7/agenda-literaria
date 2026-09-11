@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **diecinueve** salidas, una por una:
+1. **¿Es público?** Resolvé las **veintiuna** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -41,6 +41,8 @@ no se pueden deshacer después.
    | 17 | la página de apoyo `/apoyar` | `src/lib/apoyoDelSitio.ts`, `src/lib/enlaces.ts` (el destino de cobro) |
    | 18 | la página comercial `/anunciar` | `src/lib/comercialDelSitio.ts`, `src/lib/enlaces.ts` (la casilla) |
    | 19 | `/mis-favoritos` — lo guardado en el navegador de quien visita | `src/lib/guardadosDelSitio.ts`, `src/lib/guardadoDelNavegador.ts` |
+   | 20 | el directorio de librerías: `/librerias.json` + `/guia/librerias` | `src/lib/libreriaPublica.ts` (`libreriaPublica`, `construirIndiceDeLibrerias`, `descripcionDelDirectorio`), `src/lib/contenidoDelSitio.ts` (`libreriasPublicadas` — el `where` y el `.select()`) |
+   | 21 | la ficha `/guia/librerias/{slug}` y su JSON-LD `BookStore` | `src/lib/libreriaPublica.ts` (`fichaDeLibreria`, `datosEstructuradosDeLibreria`, `migasDeLibreria`, `descripcionDeLibreria`), `src/lib/contenidoDelSitio.ts` (`caminosDeLibreria`) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

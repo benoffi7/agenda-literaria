@@ -172,6 +172,10 @@ de los datos.
 | `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
 | `/anunciar` | La sección comercial: qué se le ofrece a un café, una librería o un espacio cultural, y el mail para preguntar. **No estaba en este diseño** — B-770, **D-450** | Estático (`src/lib/comercialDelSitio.ts`) |
 | `/apoyar` | Quién hace la agenda, qué cuesta sostenerla, el enlace a Cafecito y tres formas de ayudar que no son plata. **No estaba en este diseño** — B-780 | Estático (`src/lib/apoyoDelSitio.ts`; el perfil sale de `src/lib/enlaces.ts`) |
+| `/guia` | El índice de los tres directorios. **No estaba en este diseño** — B-835, decisión del dueño del 2026-09-08. Las filas salen de `DIRECTORIOS` (`src/lib/directorios.ts`); la que no tiene página todavía dice «en camino» y no linkea | Build |
+| `/guia/librerias` | El directorio de librerías: todas las fichas publicadas en el HTML, más una island que filtra por barrio y por texto. **No estaba en este diseño** — B-901 | Build. La island baja `/librerias.json` |
+| `/guia/librerias/{slug}` | La ficha de una librería: dirección, barrio, los cuatro contactos, la galería completa y el `BookStore`. **Cero JavaScript**, como el detalle — B-901 | Build (`caminosDeLibreria`) |
+| `/librerias.json` | El índice del directorio, aparte del `events.json` para no cobrarle su peso a quien solo usa la agenda (B-901) | Build (ver [§3](#3-los-datos)) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
 | `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310) | Build. La tira sale de `exploracionDeLaHome`; las frases, de `src/lib/noEncontrado.ts` |
@@ -1601,6 +1605,8 @@ virtual ya da `hibrido`, o sea `Mixed`, que es lo correcto.
 |---|---|
 | `/actividad/{slug}` | `BreadcrumbList`: Agenda → {Tipo} → {título} |
 | Home y hubs | `CollectionPage` con `ItemList` de `ListItem { position, url, name }`, en el orden en que se ven. Ayuda a que Google entienda que la página es un listado y siga los links |
+| `/guia/librerias/{slug}` | `BookStore` (subtipo de `LocalBusiness`) con `address`, `geo`, `sameAs` e `image`, más su `BreadcrumbList`: Agenda → Guía → Librerías → {nombre}. **Sin `openingHours`**, porque no se piden horarios y uno inventado es peor que ninguno (B-901) |
+| `/guia/librerias` | `CollectionPage` + `ItemList`, la misma forma que la home. **No reusa `coleccionSchema`**: aquélla arma los `item` con `urlDeDetalle`, o sea la ruta de una actividad, y publicaría `/actividad/{slug}` para cada librería — URLs que dan 404. Es la misma razón por la que la proyección no se generaliza (B-901) |
 | ~~`/acerca`~~ | `Organization` con `name`, `url`, `logo`, `sameAs` (Instagram). **`/acerca` no existe** (B-234): el rol se repartió entre `/ayuda` y `/contacto`, y ninguna de las dos emite `Organization` todavía. Si se agrega, va en `/contacto`, que es la que dice con quién estás tratando |
 
 No se usa `WebSite` + `SearchAction`: Google retiró el sitelinks searchbox y hoy

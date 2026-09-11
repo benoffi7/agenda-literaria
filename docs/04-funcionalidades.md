@@ -946,6 +946,32 @@ personal sin fecha de vencimiento (decisión del dueño, B-843 punto 1); una
 propuesta cargada a mano nace `nueva`, y `nueva` ahora caduca. Lo que falta es
 solo la pantalla: nadie la construyó.
 
+### Librerías — el primer directorio de la Guía (B-901)
+
+Botón «Librerías» en el listado, **solo para el admin**: el publicador no la ve, y
+es la misma decisión que ya tomaron las reglas —las cinco cláusulas de
+`/librerias` se quedan en `esAdmin()` porque una ficha de directorio no tiene
+«dueño» que recortar, decidir qué entra al catálogo es autoridad que ese rol no
+tiene, y el documento lleva el contacto de un tercero (B-888)—.
+
+La pantalla es la **bandeja genérica** (`DirectorioPanel`, B-834) con los datos de
+esta entidad: escucha `/librerias` en vivo, arranca mostrando lo que espera
+decisión, y los botones salen del grafo de transiciones y no de un `if`. Por eso
+una ficha descartada no ofrece «Publicar»: hay que reabrirla, o sea volver a
+mirarla. «Bajar del sitio» sí es un paso solo.
+
+**Guardar no publica**, y el formulario lo dice: el estado lo mueve la bandeja.
+`LibreriaFormulario` pide nombre, dirección, barrio —**el mismo desplegable que
+usan las actividades**—, ciudad, coordenadas, la galería (el mismo editor, con su
+subida y su optimización) y los cuatro contactos públicos. El del WhatsApp lleva
+el cartel «este número se publica en el sitio», que es criterio de aceptación del
+PRD; el recuadro «Interno» de abajo dice lo contrario sobre el contacto de quien
+pidió el alta, que no sale nunca.
+
+**La dirección web queda fija desde la primera vez que se publica** (trampa 10).
+Mientras la ficha espera decisión se puede corregir —es el trabajo de la
+bandeja—; después el campo se apaga y explica por qué.
+
 ### Proponer una actividad — `/proponer` (B-830, paso 9)
 
 El único formulario del sitio público, y la única página que escribe en Firestore
@@ -1855,6 +1881,38 @@ Dos cosas que no se ven mirando la página:
 búsqueda que las actividades) y **su entrada es el pie, no el encabezado**: la
 barra de arriba es para quien vino por una actividad. Ofrecer espacio y *servir*
 un anuncio siguen siendo dos cosas distintas — la segunda es **B-377**.
+
+### `/guia/librerias` y `/guia/librerias/{slug}` — el directorio de librerías (B-901)
+
+La primera sección de la Guía que deja de decir «en camino». Y la primera parte
+del sitio que **no habla de actividades**, que es el contra que el PRD 2 nombra:
+un directorio vacío es peor que no tenerlo, y eso no lo arregla el código —se
+arregla cargando librerías—. Lo que sí hace el código es no fingir: con cero
+fichas la página dice qué va a haber y manda a `/contacto`.
+
+**El listado** imprime **todas** las fichas publicadas en el HTML del build, así
+que se ve completo con JavaScript apagado y Google la ve entera; una island
+(`BuscadorDeLibrerias`) hace **un solo fetch** de `/librerias.json` y recién
+entonces saca esa lista del DOM y renderiza la suya con el **mismo** componente de
+fila — el mismo contrato que el listado principal, y por eso no parpadea. Dos
+filtros y no seis: barrio y texto. Los chips de barrio salen del JSON y están
+recortados a los barrios que alguna librería usa, porque un chip que promete cero
+resultados es ruido.
+
+**El JSON es propio y no viaja en `events.json`**: aquél lo baja toda persona que
+abre la agenda, y sumarle un catálogo que la mayoría no va a mirar le cobra el
+peso a la mayoría. Es la misma lógica con la que el panel se corta del bundle
+público.
+
+**La ficha** es HTML sin JavaScript: la dirección con el barrio —linkeado al hub
+**solo si ese hub existe**—, todas las imágenes (el criterio de B-296, no solo la
+portada), los cuatro contactos como `href` ya saneados, y el JSON-LD `BookStore` +
+`BreadcrumbList`, que es el SEO de la sección entera. **Sin `openingHours`**:
+no se piden horarios, y un horario inventado es peor que ninguno.
+
+El listado no tiene imágenes, por lo mismo que el de la agenda: lo que se recorre
+en un directorio es el nombre y el barrio, y una tira de fotos lo convierte en una
+pared —que es `/cartelera`, la página de al lado—.
 
 ### `/mis-favoritos` — lo que cada persona guardó (B-848)
 

@@ -300,11 +300,14 @@ describe('la Guía y sus tres filas — B-835', () => {
   /*
    * ── Los dos chequeos, extraídos, y por qué ──────────────────────────────
    *
-   * **Hoy las tres filas están en camino, o sea que `directoriosDisponibles()`
-   * devuelve una lista vacía.** Un `for` sobre una lista vacía no ejecuta ni una
-   * aserción y el caso pasa en verde sin haber mirado nada: es exactamente «un
-   * control positivo que no puede fallar», que es peor que no tener el chequeo,
-   * porque da cobertura falsa justo en el período en que la tabla se va a tocar.
+   * **Cuando esto se escribió las tres filas estaban en camino, o sea que
+   * `directoriosDisponibles()` devolvía una lista vacía** —desde B-901 devuelve
+   * `['librerias']`, y las otras dos siguen afuera—. Un `for` sobre una lista
+   * vacía no ejecuta ni una aserción y el caso pasa en verde sin haber mirado
+   * nada: es exactamente «un control positivo que no puede fallar», que es peor
+   * que no tener el chequeo, porque da cobertura falsa justo en el período en que
+   * la tabla se va a tocar. Y ese período **vuelve** con cada tajada nueva, así
+   * que la salida de abajo no es un andamio de estreno.
    *
    * La salida es la de B-212: **el control negativo codificado**. Los dos
    * chequeos son funciones que devuelven los hallazgos, y cada caso las corre dos

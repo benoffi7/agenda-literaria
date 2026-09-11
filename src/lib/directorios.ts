@@ -71,16 +71,18 @@ export const ESTADO_INICIAL: EstadoDirectorio = 'pendiente';
  * le falta el `where('estado','==','publicado')`, se publica lo pendiente —con
  * el contacto interno de quien cargó adentro— y no falla nada.
  *
- * ⚠️ **Lo que está fijado hoy es el predicado en memoria, no la query**, y son
- * dos cosas distintas: filtrar después de leer significa que el documento entero
- * —el contacto interno incluido— ya pasó por el proceso de build. Es la trampa 7
- * dada vuelta, y por ahora es **deuda declarada y no una garantía**: todavía no
- * existe ninguna lectura de directorio que atar.
+ * ✅ **Y desde B-903 la query también sale de acá.** Hasta la tajada anterior lo
+ * único fijado era el predicado en memoria, que **no es lo mismo**: filtrar
+ * después de leer significa que el documento entero —el contacto interno
+ * incluido— ya pasó por el proceso de build, quedó en memoria del runner de CI y
+ * pudo caer en cualquier log del camino. Era deuda declarada porque todavía no
+ * existía ninguna lectura de directorio que atar.
  *
- * Le toca a la tajada que escriba la primera (`src/lib/librerias.ts`) traer la
- * otra mitad: que la query se escriba con esta constante y un caso que lo
- * afirme. **No heredar esto como «ya resuelto»** — lo anotó el
- * `auditor-privacidad`.
+ * La primera existe: `libreriasPublicadas` (`lib/contenidoDelSitio.ts`) escribe
+ * `.where('estado', '==', ESTADO_PUBLICO)` con **esta** constante, y
+ * `tests/librerias.test.ts` lo afirma leyendo ese archivo —con la mutación
+ * probada: cambiar el `where` por un `.filter` en memoria pone el caso en rojo—.
+ * La tajada 3 y la 4 heredan la constante, no la deuda.
  */
 export const ESTADO_PUBLICO: EstadoDirectorio = 'publicado';
 
@@ -314,7 +316,21 @@ export const DIRECTORIOS: readonly Directorio[] = [
     singular: 'librería',
     que: 'Dónde comprar libros: la dirección, el barrio y cómo seguirlas.',
     ruta: RUTA_LIBRERIAS,
-    disponible: false,
+    /*
+     * **La primera que deja de decir «en camino»** — B-901, tajada 2 paso 14.
+     *
+     * Este `true` hace dos cosas de golpe, y por eso es **una** línea y no dos
+     * escritas en dos archivos: la fila de `/guia` se convierte en enlace, y la
+     * URL entra sola al sitemap (`RUTAS_FIJAS` la deriva de
+     * `directoriosDisponibles()`). La séptima de las nueve cosas que se rompen en
+     * silencio —«las páginas nuevas no entran al sitemap»— acá no se vigila: no
+     * se puede cometer.
+     *
+     * Las dos direcciones las cruza `tests/directorios.test.ts` contra el disco:
+     * marcarlo sin la página ofrece un 404, y escribir la página sin marcarlo deja
+     * la sección publicada e invisible desde su propio índice.
+     */
+    disponible: true,
   },
   {
     id: 'suscripciones',

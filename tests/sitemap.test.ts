@@ -14,7 +14,14 @@ import {
   xmlDelSitemap,
 } from '@/lib/sitemap';
 import { MINIMO_DE_ACTIVIDADES } from '@/lib/mesPublico';
-import { SITIO, rutaCanonica, rutaDeDetalle, rutaDeMes, urlAbsoluta } from '@/lib/rutasPublicas';
+import {
+  SITIO,
+  rutaCanonica,
+  rutaDeDetalle,
+  rutaDeLibreria,
+  rutaDeMes,
+  urlAbsoluta,
+} from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
 
 /**
@@ -60,17 +67,75 @@ const haceDias = (dias: number): string =>
 const rutas = (o: {
   entradas?: ReturnType<typeof entradaDePrueba>[];
   canceladas?: { slug: string; editadaEn: string | null }[];
+  librerias?: { slug: string }[];
 }) =>
   rutasDelSitemap({
     entradas: o.entradas ?? [],
     canceladas: o.canceladas ?? [],
+    librerias: o.librerias ?? [],
     ahora: AHORA,
   });
+
+describe('las fichas de la Guía — B-901, §6 #7 del inventario', () => {
+  /*
+   * **El modo de falla número seis, y el que este bloque agrega:** las páginas
+   * existen, se navegan, y Google no las conoce. No rompe nada y no se ve — es el
+   * §6 #7 del inventario de los PRDs, y la parte del listado ya está cerrada
+   * (`RUTAS_FIJAS` deriva de `directoriosDisponibles()`); la parte de las fichas
+   * es ésta.
+   */
+  it('cada librería publicada tiene su URL, con la barra final de B-330', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el `...librerias.filter(...).map(rutaDeLibreria)` de
+     * `rutasDelSitemap` deja este caso en rojo.
+     */
+    const todas = rutas({ librerias: [{ slug: 'del-otro-lado' }, { slug: 'eterna-cadencia' }] });
+    expect(todas).toContain('/guia/librerias/del-otro-lado/');
+    expect(todas).toContain('/guia/librerias/eterna-cadencia/');
+  });
+
+  it('la URL la arma `rutaDeLibreria`, no una interpolación del sitemap', () => {
+    // Un `/guia/librerias/${slug}` escrito acá sería el tercer lugar donde se
+    // escribe ese prefijo —el listado y el JSON-LD son los otros dos— y B-330
+    // existe para que sea uno solo.
+    expect(rutas({ librerias: [{ slug: 'x' }] })).toContain(rutaDeLibreria('x'));
+  });
+
+  it('sin librerías no aparece ninguna ruta de la Guía más que el índice', () => {
+    // El default vacío: un llamador que prueba otra regla no tiene que armarlas, y
+    // el lado inofensivo del error es «ninguna ficha», nunca «una de más».
+    const todas = rutas({});
+    // `/guia/librerias/` es el **listado**, que entra por `RUTAS_FIJAS`; lo que no
+    // tiene que haber es ninguna ficha colgando de él.
+    expect(todas.filter((r) => r.startsWith('/guia/librerias/') && r !== '/guia/librerias/')).toEqual(
+      [],
+    );
+    expect(todas).toContain('/guia/librerias/');
+  });
+
+  it('una ficha sin slug no puede tener URL, así que no entra', () => {
+    expect(rutas({ librerias: [{ slug: '' }] }).filter((r) => r.includes('/guia/librerias/')))
+      .toEqual(['/guia/librerias/']);
+  });
+});
 
 describe('las páginas fijas', () => {
   it('están todas, y ninguna es un endpoint de datos', () => {
     expect(rutas({})).toEqual([...RUTAS_FIJAS]);
-    for (const endpoint of ['/events.json', '/version.json', '/sitemap.xml', '/robots.txt']) {
+    /*
+     * `/librerias.json` entra a esta lista con **B-901**, y no por completitud:
+     * es el segundo artefacto de datos del sitio, vive en la raíz como los otros
+     * cuatro y **no lleva `/guia/`** justamente porque no es una página navegable.
+     * Un endpoint de datos en el sitemap es una URL que se le ofrece al buscador
+     * para que indexe un JSON.
+     */
+    for (const endpoint of [
+      '/events.json',
+      '/librerias.json',
+      '/version.json',
+      '/sitemap.xml',
+      '/robots.txt',
+    ]) {
       expect(RUTAS_FIJAS).not.toContain(endpoint);
     }
   });

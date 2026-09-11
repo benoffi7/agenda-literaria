@@ -807,6 +807,55 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'librerias',
+    titulo: 'Las librerías de la Guía',
+    paraQue:
+      'Cargar y revisar el directorio de librerías, y entender cuándo una ficha entra al sitio y cuándo no.',
+    puntos: [
+      {
+        texto:
+          'La Guía es la parte del sitio que no habla de actividades: el circuito que las rodea. ' +
+          'Librerías es la primera sección, y se carga desde el botón «Librerías» del listado.',
+      },
+      {
+        texto:
+          'Guardar una librería no la publica. Queda esperando decisión, y recién cuando tocás ' +
+          '«Publicar» entra al sitio: aparece en la Guía, en el buscador de la sección y en el ' +
+          'mapa del sitio. Antes de eso no la ve nadie más que ustedes.',
+      },
+      {
+        texto:
+          'En el sitio tarda unos minutos en aparecer, como una actividad: la página se rehace ' +
+          'sola cada tanto. Publicar, corregir un dato o bajarla del sitio disparan ese rehacer.',
+      },
+      {
+        texto:
+          'La dirección web de una librería queda fija desde la primera vez que se publica. ' +
+          'Mientras espera decisión la podés corregir; después no, porque ese link ya está en ' +
+          'Google y cambiarlo lo rompe sin avisar. Si dos librerías se llaman parecido, a la ' +
+          'segunda conviene ponerle el barrio: «del-otro-lado-palermo» antes que «del-otro-lado-2».',
+      },
+      {
+        texto:
+          'El barrio sale del mismo desplegable que usan las actividades. No es un detalle: es lo ' +
+          'que va a permitir que la página de un barrio muestre las actividades y las librerías de ' +
+          'ahí, en vez de dos listas que no se conocen.',
+      },
+      {
+        texto:
+          'El WhatsApp, el Instagram, el mail y la web de la librería se publican: son para que la ' +
+          'gente le escriba, y ese es el punto de la ficha. El contacto del recuadro «Interno» es ' +
+          'otra cosa: es por dónde repreguntarle a quien pidió el alta, y no sale nunca al sitio.',
+      },
+      {
+        texto:
+          'Una librería que cerró se baja del sitio en un paso, con «Bajar del sitio». Lo que ' +
+          'descartaste no se puede publicar de un saque: hay que reabrirlo primero, para que ' +
+          'alguien lo vuelva a leer antes de que entre.',
+      },
+    ],
+  },
+  {
     id: 'propuestas',
     titulo: 'Las propuestas que llegan de afuera',
     paraQue:
@@ -1898,6 +1947,10 @@ export const CAPITULO_POR_CONTEXTO = {
   formulario: 'flujo',
   calendario: 'calendario',
   propuestas: 'propuestas',
+  // B-901 — la Guía. Es la única pantalla del panel cuyo contenido **no es una
+  // actividad**, así que abrir la ayuda en «Cómo llega una actividad a la gente»
+  // sería mandar a leer lo que no se está mirando (era B-795 con otra cara).
+  librerias: 'librerias',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;

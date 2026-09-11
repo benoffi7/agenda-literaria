@@ -37,6 +37,9 @@ setGlobalOptions(OPCIONES_BASE);
 
 export { syncCalendar } from './calendario-trigger.js';
 export { rebuildPorOpciones } from './opciones-trigger.js';
+// B-901 — el rebuild cuando cambia una librería. Es la trampa 8 con otra cara:
+// sin esto se publica una ficha y el sitio estático no la muestra nunca.
+export { rebuildPorLibrerias } from './directorios-trigger.js';
 export { dispararRebuild } from './rebuild-trigger.js';
 export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { limpiarVersionesHuerfanas } from './versiones-limpieza-trigger.js';

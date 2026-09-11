@@ -17,9 +17,13 @@
  * El encargo dejaba elegir entre anunciar la fila de librerías como «en camino»
  * o dejar la estructura lista para que la tajada de librerías sume la suya.
  * **Se hicieron las dos, y son la misma cosa**: las tres filas salen de
- * `DIRECTORIOS` (`lib/directorios.ts`), cada una con un `disponible`. Hoy las
- * tres dicen «en camino» y no linkean; la tajada que publique `/guia/librerias`
- * cambia un `false` por un `true` y la fila se convierte en enlace sola.
+ * `DIRECTORIOS` (`lib/directorios.ts`), cada una con un `disponible`. La tajada
+ * que publique una sección cambia un `false` por un `true` y su fila se
+ * convierte en enlace sola, sin tocar esta página.
+ *
+ * **Y ya pasó una vez**: desde B-901 la fila de librerías linkea a
+ * `/guia/librerias` y las otras dos siguen diciendo «en camino», que es
+ * exactamente el estado mixto para el que esta página se escribió.
  *
  * Lo que hace que ese flag no se quede viejo —que es el modo de falla evidente
  * de un booleano escrito a mano— es `tests/directorios.test.ts`, que lo cruza

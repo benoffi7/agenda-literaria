@@ -148,6 +148,9 @@ describe('el gating de `AdminApp` — la pantalla que no corresponde no tiene pu
     'estadisticas',
     'propuestas',
     'reportes',
+    // B-901 — la Guía. `libreria` (el formulario) no entra: se alcanza desde
+    // adentro de la bandeja, así que su gating es el de su origen.
+    'librerias',
   ];
 
   it('cada una de esas puertas está envuelta en `puedeVer`', () => {

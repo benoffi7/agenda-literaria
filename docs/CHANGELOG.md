@@ -2,6 +2,60 @@
 
 ## Sin publicar
 
+- **`/guia/librerias`: el directorio de librerías existe, y es la primera sección
+  de la Guía que deja de decir «en camino»** — **B-901**, tajada 2 paso 14.
+  Listado con las fichas impresas en el HTML del build y una island que filtra por
+  barrio y por texto contra `/librerias.json`; ficha por librería con la galería
+  completa (B-296), los cuatro contactos como `href` ya saneados y el JSON-LD
+  `BookStore` + `BreadcrumbList`; y del lado del panel la pantalla «Librerías»
+  —la bandeja genérica de B-834 con su formulario propio— cableada en `AdminApp`
+  con su rol, su ancho, su aviso de salida, su capítulo de ayuda, su novedad y sus
+  dos eventos de analítica.
+
+  **El JSON es propio y no viaja en `events.json`**, que es la decisión del §4 del
+  PRD: aquél lo baja toda persona que abre la agenda. Y el listado **no lleva
+  imágenes**, con el mismo argumento del listado de la agenda — eso revisa el
+  criterio de aceptación 10, que hablaba de medir el peso «con sus miniaturas»: no
+  hay miniaturas que medir, las fotos están en la ficha.
+
+  **Cierra B-903, y con las dos mitades.** La tajada anterior había dejado escrito
+  que lo único fijado era el predicado en memoria: `libreriasPublicadas` filtra
+  ahora **en la query**, con `ESTADO_PUBLICO` importado del motor compartido, y
+  **además** pide solo los campos que la proyección publica (`.select()`, D-159) —
+  lo pidió el `auditor-privacidad`: el `where` decide qué documentos se leen y el
+  `select` qué campos de cada uno, y sin el segundo el contacto interno de quien
+  cargó la ficha entra igual a la memoria del runner de CI. Las dos están atadas
+  contra el fuente y verificadas contra el emulador: el gate siembra **dos**
+  librerías —una publicada y una esperando decisión— porque con una sola un build
+  que leyera la colección entera daría exactamente el mismo `dist/`.
+
+  **Y el rebuild que faltaba** (`rebuildPorLibrerias`, trampa 8): sin él se publica
+  una ficha desde el panel y el sitio estático no la muestra nunca. La guarda mira
+  **los campos que el sitio publica** —una segunda escritura de la whitelist,
+  porque `functions/` no puede importar de `src/` (D-20), atada por test— así que
+  corregir el contacto interno no cuesta un build.
+
+  **Tres cosas salieron de las auditorías y no de escribir la feature.** La
+  primera: el trigger estaba escrito con la guarda al revés (`if (!cambió)
+  return`), lógicamente idéntico a la forma de sus dos hermanos y **rompe el
+  chequeo de la clase de B-83** — que descubre los triggers con `git ls-files`, así
+  que el rojo no aparecía hasta el `git add`. Lo encontraron los dos auditores. La
+  segunda: las dos `meta description` se armaban interpolando dentro del `.astro`,
+  o sea un productor de texto público que vitest no puede importar; hoy viven en el
+  módulo puro y pasan el mismo barrido de centinelas que la proyección. La tercera:
+  las dos salidas nuevas entraron a las **tres tablas atadas** en el mismo cambio
+  que las creó, que es la lección de la salida 5 — la cuenta pasó de diecinueve a
+  veintiuna, con las dos puertas nuevas y el `description` del agente, que es lo
+  que decide si se despierta.
+
+  El barrido de la colección tiene fixture propio (`centinelas-libreria.ts`): el
+  canónico recorre campos de `Actividad`, y acá lo que hay que vigilar es un
+  documento donde **el segundo dato personal de un tercero del proyecto convive con
+  cuatro contactos que sí son públicos** — la condición exacta donde un spread
+  filtra un campo. Con el control negativo codificado de B-212.
+
+  Veintitrés mutaciones probadas, todas rojas.
+
 - **`/proponer` está abierto, en el sitemap y enlazado: un organizador ya puede
   proponer su actividad sin tener cuenta** — **B-896**, pasos 2, 3 y 4. Es lo que
   el PRD 1 venía a hacer, y estuvo construido y escondido toda la tajada 1.

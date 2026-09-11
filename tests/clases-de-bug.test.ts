@@ -399,7 +399,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los doce triggers del proyecto', () => {
+  it('encuentra los trece triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -473,6 +473,30 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
       // puso rojo el día que se escribió el archivo. Es exactamente la promesa
       // de la cabecera cumpliéndose: «un trigger nuevo entra solo».
       'optimizarImagen',
+      /*
+       * B-901 — el rebuild cuando cambia una ficha de directorio (`/librerias`).
+       * Es la trampa 8 con otra cara: sin él se publica una librería desde el
+       * panel y el sitio estático **no la muestra nunca**. Entró solo —
+       * `onDocumentWritten` ya estaba en `CLASES_DE_TRIGGER`— y lo único que hubo
+       * que confirmar a mano es el conteo, que es la parte del chequeo que no se
+       * puede derivar.
+       *
+       * Los dos chequeos de abajo sí lo miran, y conviene saber cómo pasa cada
+       * uno:
+       *
+       *  - **B-82** (efecto duplicable sin guarda): el efecto es `marcarRebuild`,
+       *    que escribe un documento fijo con `merge` — dos entregas del mismo
+       *    evento dejan el mismo estado. Y la guarda que lo hace decidible es
+       *    `cambioAmeritaRebuild`, que compara **los campos que el sitio
+       *    publica** (la lista vive del lado de `functions/` por D-20 y la ata
+       *    `tests/directorios-rebuild.test.ts` contra la proyección).
+       *  - **B-83** (efecto incondicional debajo de una guarda): la llamada a
+       *    `marcarRebuild` **domina** el handler entero, escrita en la misma
+       *    forma positiva que `syncCalendar` y `rebuildPorOpciones`. La forma al
+       *    revés es lógicamente idéntica y deja este archivo en rojo — lo
+       *    encontraron los dos auditores sobre la primera versión del trigger.
+       */
+      'rebuildPorLibrerias',
       'rebuildPorOpciones',
       'reporteAIssue',
       'syncCalendar',

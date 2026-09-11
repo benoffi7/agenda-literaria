@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'guia-de-librerias',
+    fecha: '2026-09-11',
+    version: '1.10.0',
+    titulo: 'Hay una Guía, y la primera sección son las librerías',
+    detalle:
+      'La Guía es la parte del sitio que no habla de actividades: el circuito que las rodea. ' +
+      'Desde ahora podés cargar librerías con su dirección, su barrio, sus fotos y por dónde ' +
+      'contactarlas, y decidir cuáles entran al sitio. Guardar no publica: cada ficha espera ' +
+      'decisión hasta que toques «Publicar», igual que una propuesta. Y la dirección web de una ' +
+      'librería queda fija desde la primera vez que se publica.',
+    donde: 'El botón «Librerías» del listado. En el sitio, la pestaña «Guía».',
+  },
+  {
     // El id es nuevo y no reusa el de B-130 («quien-cargo-cada-actividad», más
     // abajo): la marca de «hasta acá leí» es por id, así que reusar uno haría
     // que quien ya leyó aquella novedad no vea ésta.

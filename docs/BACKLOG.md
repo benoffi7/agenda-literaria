@@ -835,15 +835,21 @@ B-838 decidió no aceptar.
 Cuando se resuelva conviene mirarlo junto con la imagen: si la ficha se borra y su
 objeto de Storage queda vivo, es el huérfano de B-221 con otra cara.
 
-### B-903 · La query del primer directorio tiene que filtrar por `ESTADO_PUBLICO`, y la tajada 2 NO lo dejó resuelto · P1
+### B-903 · La query del primer directorio tiene que filtrar por `ESTADO_PUBLICO` — ✅ hecho (2026-09-11) · P1
 
-**Deuda declarada por el frente de la tajada 2, para que no se herede como hecha.**
-Lo que quedó fijado es el **predicado en memoria** (`esVisibleEnElSitio`), no el
-`where('estado','==','publicado')` de la lectura del build. Filtrar después de leer
-significa que el documento entero —con el contacto interno de quien lo cargó— ya
-pasó por el build. Es la primera de las nueve cosas que se rompen en silencio del
-§6 del inventario. Está anotado en el docblock de `ESTADO_PUBLICO` para que la
-tajada de librerías lo vea al pasar.
+> `libreriasPublicadas` (`src/lib/contenidoDelSitio.ts`) filtra **en la query** con
+> `.where('estado','==', ESTADO_PUBLICO)`, y la constante sale de
+> `lib/directorios.ts` como el ítem pedía. **Y una mitad más que el ítem no pedía y
+> el `auditor-privacidad` sí**: `.select()` con exactamente las claves de
+> `LibreriaPublica` (D-159, el precedente de `/versiones`). El `where` decide qué
+> documentos se leen; sin el `select`, el `contactoDeQuienCargo`, el motivo del
+> rechazo y el `storagePath` de cada imagen entran igual a la memoria del build.
+>
+> Atado en tres capas: el test de fuente con mutación probada, el cruce de las dos
+> listas (un campo nuevo de la whitelist obliga a tocar las dos mitades), y el paso
+> 8i del gate contra el emulador **con una librería pendiente como control** — con
+> una sola sembrada, un build que leyera la colección entera daría exactamente el
+> mismo `dist/`.
 
 ### B-898 · `directoriosDisponibles` decide qué URL se le ofrece al buscador y no está en el índice de salidas · P1
 
@@ -854,9 +860,12 @@ nombra a los dos dueños de «qué página se ofrece y no vive en `sitemap.ts`»
 tres tablas atadas ni en el `description` del auditor.
 
 **La consecuencia es concreta:** editar `src/lib/directorios.ts` —el archivo donde
-un `disponible: true` publica una URL— **no despierta al auditor**. Nada se pone
-rojo hoy porque las tres tablas siguen diciendo 19 y coinciden entre sí. Es el
-agujero de B-95 (`textoRedes.ts`) un lugar más adentro.
+un `disponible: true` publica una URL— **no despierta al auditor**. Es el agujero
+de B-95 (`textoRedes.ts`) un lugar más adentro.
+
+**Y desde el 2026-09-11 dejó de ser teórico:** la tajada de librerías cambió ese
+`false` por un `true` y con eso publicó `/guia/librerias` y sus fichas de verdad.
+La primera vez que el booleano hizo trabajo fue sin que el auditor mirara.
 
 ### B-897 · `/guia` es una salida pública indexada y no está numerada · P1
 
@@ -866,8 +875,13 @@ promesa y no por la proyección**. El precedente para no numerarla sería
 `/proponer` — pero aquélla está fuera del sitemap **y** fuera del chrome, y tiene
 su propio párrafo en `07-seguridad.md`.
 
-O la fila 20 en las tres tablas atadas (`docs/07-seguridad.md`, la ficha del
-`auditor-privacidad`, `campo-nuevo/SKILL.md`) con su celda «no proyecta ningún
+**Actualizado el 2026-09-11:** la tajada de librerías metió sus **dos** salidas en
+las tres tablas en el mismo cambio que las creó, así que la cuenta pasó de
+diecinueve a **veintiuna** — pero `/guia` sigue sin numerar. O sea que lo que
+faltaba sigue faltando, con un número distinto.
+
+O la fila que le toque en las tres tablas atadas (`docs/07-seguridad.md`, la ficha
+del `auditor-privacidad`, `campo-nuevo/SKILL.md`) con su celda «no proyecta ningún
 documento», o el párrafo que diga por qué no. Lo que no puede quedar es sin
 decidir: cuando `/guia` tenga párrafos de verdad va a ser la página que presenta
 tres directorios cargados con datos de terceros.
@@ -6076,14 +6090,17 @@ Falla en la dirección cara: una URL indexada que cambia es un 404 sin aviso
 (trampa 10). El arreglo es el trigger, y el día que exista este ítem se cierra solo
 — la regla no hay que tocarla.
 
-### B-901 · `DirectorioPanel` existe, tiene tests, y no se llega desde ningún lado · P2
+### B-901 · `DirectorioPanel` existe, tiene tests, y no se llega desde ningún lado — ✅ hecho (2026-09-11) · P2
 
-Falta la vista en `AdminApp.tsx`, y con ella `rolDelPanel.ts` (`PANTALLAS_DEL_PANEL`
-se afirma contra el fuente), `anchoDelPanel.ts`, `salida-del-panel.ts`, el capítulo
-en `ayuda.ts`, la entrada en `novedades.ts` y el vocabulario de
-`analytics-eventos.ts`. Quedó afuera de la tajada 2 por propiedad exclusiva de
-archivos entre frentes en paralelo. **Va con la tajada que traiga el formulario de
-librerías**, que es la que le da el `onEditar` y el `onMover`.
+> Resuelto con la tajada de librerías. `LibreriasPanel` y `LibreriaFormulario`
+> montados en `AdminApp.tsx` como **dos** vistas y no una —`librerias` y
+> `libreria`—: el aviso de salida con cambios sin guardar se decide por
+> `vista.tipo`, así que un formulario adentro de la bandeja se abandonaría sin
+> decir nada (B-35). Con eso vinieron `rolDelPanel.ts` (las dos pantallas, cerradas
+> al publicador con el mismo argumento que las reglas), `anchoDelPanel.ts`,
+> `salida-del-panel.ts`, el capítulo `librerias` de `ayuda.ts`, la novedad
+> `guia-de-librerias` y el vocabulario `librerias-abrir`/`libreria-guardar` de
+> `analytics-eventos.ts` con su fila en `09-analitica.md`.
 
 ### B-900 · El circuito de `/guia` no está completo: falta el pie y el 404 · P2
 
@@ -13432,6 +13449,26 @@ del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
 Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
+
+### B-909 · Dos altas simultáneas de librería pueden quedarse con el mismo slug · P3
+
+`slugDeLibreriaDisponible` (`src/lib/librerias.ts`) es una guarda **de aviso**, no
+una garantía: consulta antes de escribir y no hay reserva atómica. `/actividades`
+la tiene (`/slugs`, D-660) porque el slug se acuña en un `writeBatch`; montar lo
+mismo acá es abrir `/slugs` a una colección más —o sea tocar la regla del índice—
+por un catálogo de cuarenta fichas que carga una persona por vez.
+
+El daño es acotado y visible: dos fichas con el mismo slug, las dos en `pendiente`
+—nada sale al sitio sin que un admin lo publique— y la segunda se corrige en la
+bandeja, que es justo el momento en que el slug todavía se puede tocar. **Lo que
+haría subir la prioridad es abrir el alta pública** (B-872/B-896).
+
+### B-910 · Seis `D-nnn` citados y nunca escritos en `06-decisiones.md` · P3
+
+`node scripts/decisiones-referenciadas.mjs` lista D-9 (`docs/13-agentes.md`),
+D-340/D-341 (`docs/16-analitica-del-sitio.md`) y D-380/D-381/D-430
+(`docs/12-sitio-publico.md`). Ninguno de esos archivos es parte de una tanda en
+vuelo: son entradas que nadie llegó a escribir. Del `auditor-documentacion`.
 
 ### B-906 · `imagenSchema` está escrito dos veces: `src/lib/schema.ts` no lo exporta · P3
 

@@ -154,6 +154,23 @@ const SLUG_CANCELADA_NUNCA = `${PREFIJO}cancelada-nunca`;
 const SLUG_GALERIA = `${PREFIJO}galeria`;
 
 /**
+ * **Las dos librerías del gate** — B-901.
+ *
+ * Una publicada y una esperando decisión, que es el par mínimo que prueba lo
+ * único que no se puede probar sin emulador: que la lectura del build **pidió
+ * solo las publicadas** (`where('estado','==','publicado')`, B-903). Con una sola
+ * ficha, un build que leyera la colección entera daría exactamente el mismo
+ * `dist/`.
+ *
+ * El slug lleva el prefijo del gate, así que es un slug válido (`esSlugDeFicha`) y
+ * a la vez imposible de confundir con una librería de verdad.
+ */
+const ID_LIBRERIA = `${PREFIJO}libreria`;
+const ID_LIBRERIA_PENDIENTE = `${PREFIJO}libreria-pendiente`;
+const SLUG_LIBRERIA = `${PREFIJO}libreria`;
+const SLUG_LIBRERIA_PENDIENTE = `${PREFIJO}libreria-pendiente`;
+
+/**
  * Los centinelas de los campos que el índice recorta (§3.1 del diseño de B-106).
  *
  * Igual que en `tests/fixtures/centinelas.ts`, **el valor dice la ruta**: si uno
@@ -180,6 +197,31 @@ const CENTINELA = {
   onlineUrl: 'gate.online.url',
   storagePath: 'gate.imagenes.storagePath',
   createdBy: 'gate.createdBy',
+  /*
+   * ── B-901 · las librerías de la Guía ────────────────────────────────────
+   *
+   * Los dos primeros **salen a propósito** (la descripción y la dirección de un
+   * local comercial), y por eso tienen su canasta abajo. Los dos últimos **no
+   * salen a ninguna parte**, y son la razón por la que esta colección se siembra
+   * acá además de tener su barrido de unitarios:
+   *
+   *  - `libreriaContacto` es el `contactoDeQuienCargo`, el **segundo dato
+   *    personal de un tercero** que guarda el proyecto. Su barrido de vitest
+   *    mira la función pura; éste mira lo que quedó escrito en el artefacto, que
+   *    es lo único que prueba que ninguna plantilla lo interpoló por su cuenta.
+   *  - `libreriaMotivo` es por qué un admin descartó una ficha: texto interno
+   *    sobre un tercero.
+   *
+   * Y `libreriaPendiente` es el control del `where('estado','==','publicado')`
+   * de la lectura del build (**B-903**): es la descripción de una ficha que
+   * **espera decisión**, así que no puede aparecer en un solo archivo del
+   * `dist/`. Sin canasta: prohibido en todos.
+   */
+  libreriaDescripcion: 'gate.libreria.descripcion',
+  libreriaDireccion: 'gate.libreria.direccion',
+  libreriaContacto: 'gate.libreria.contactoDeQuienCargo',
+  libreriaMotivo: 'gate.libreria.revision.motivo',
+  libreriaPendiente: 'gate.libreria.pendiente.descripcion',
   // B-296 — el epígrafe **sí** sale a la página de detalle (es el `figcaption` de
   // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
   // O sea que este centinela se afirma en las dos direcciones a la vez.
@@ -562,6 +604,21 @@ const CENTINELA_DEL_INDICE = [];
 const CENTINELA_DE_LA_CARTELERA = ['epigrafeImagen'];
 
 /**
+ * **La quinta canasta: el directorio de librerías** — B-901.
+ *
+ * `/librerias.json`, `/guia/librerias/` y cada `/guia/librerias/{slug}/` publican
+ * a propósito la descripción y la dirección de la librería: son los datos de un
+ * **local comercial** y son el punto de la ficha (§ 8 del PRD 2).
+ *
+ * **Lo que no está acá es la mitad que importa**, y por eso la lista es corta:
+ * `libreriaContacto`, `libreriaMotivo` y `libreriaPendiente` quedan prohibidos en
+ * los tres archivos igual que en todo el resto del `dist/`. Y `storagePath`
+ * tampoco está: la ficha publica la URL de cada imagen, nunca su handle interno
+ * en el bucket (trampa 13).
+ */
+const CENTINELA_DEL_DIRECTORIO = ['libreriaDescripcion', 'libreriaDireccion'];
+
+/**
  * **La cuarta canasta** — B-804.
  *
  * Las tres de arriba (`actividad/`, `events.json`, `cartelera/`) alcanzaban
@@ -686,8 +743,15 @@ const limpiar = async () => {
     await Promise.all(aBorrar.map((d) => d.ref.delete()));
     return aBorrar.length;
   };
-  const [actividades, usuarios] = await Promise.all([borrar('actividades'), borrar('usuarios')]);
-  return actividades + usuarios;
+  // B-901 — `librerias` entra a la limpieza en el **mismo** cambio que la siembra:
+  // una limpieza que se olvida de una colección deja datos de prueba en la base de
+  // quien está trabajando (`--export-on-exit`) y solo se nota semanas después.
+  const [actividades, usuarios, librerias] = await Promise.all([
+    borrar('actividades'),
+    borrar('usuarios'),
+    borrar('librerias'),
+  ]);
+  return actividades + usuarios + librerias;
 };
 
 const fallo = (mensaje) => {
@@ -735,6 +799,63 @@ try {
   galeria.imagenes = TRES_IMAGENES;
   await db.doc(`actividades/${ID_GALERIA}`).set(galeria);
 
+  /*
+   * B-901 — el directorio de librerías, con el par que hace al gate útil.
+   *
+   * La publicada lleva los dos centinelas que **sí** salen (descripción y
+   * dirección) y los dos que **no** (el contacto de quien la cargó y el motivo de
+   * la revisión), más el `storagePath` de su imagen. La pendiente lleva un
+   * centinela propio que no puede aparecer en un solo archivo del `dist/`: es el
+   * control del `where` de la lectura.
+   *
+   * El `origen` es `'formulario-publico'` en las dos a propósito: es la rama en la
+   * que el `contactoDeQuienCargo` existe de verdad, que es lo que se está
+   * barriendo.
+   */
+  const libreria = (slug, estado, descripcion) => ({
+    nombre: `Gate libreria ${estado}`,
+    slug,
+    descripcion,
+    imagenes: [
+      {
+        id: 'img_gate_libreria',
+        url: 'https://example.invalid/gate-libreria.jpg',
+        epigrafe: '',
+        origen: 'propia',
+        storagePath: CENTINELA.storagePath,
+        ancho: 1200,
+        alto: 800,
+        portada: true,
+      },
+    ],
+    direccion: CENTINELA.libreriaDireccion,
+    barrio: 'gate-barrio',
+    ciudad: 'Ciudad de Buenos Aires',
+    geo: { lat: -34.6, lng: -58.43 },
+    instagram: 'gatelibreria',
+    whatsapp: '5491100000001',
+    web: 'https://example.invalid/gate-libreria',
+    mail: 'gate@example.invalid',
+    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.libreriaContacto },
+    estado,
+    origen: 'formulario-publico',
+    searchText: descripcion,
+    creadoEn: new Date('2026-09-01T12:00:00Z'),
+    revision: {
+      porUid: CENTINELA.createdBy,
+      en: new Date('2026-09-02T12:00:00Z'),
+      motivo: CENTINELA.libreriaMotivo,
+    },
+    publicadaAlgunaVez: estado === 'publicado',
+  });
+
+  await db
+    .doc(`librerias/${ID_LIBRERIA}`)
+    .set(libreria(SLUG_LIBRERIA, 'publicado', CENTINELA.libreriaDescripcion));
+  await db
+    .doc(`librerias/${ID_LIBRERIA_PENDIENTE}`)
+    .set(libreria(SLUG_LIBRERIA_PENDIENTE, 'pendiente', CENTINELA.libreriaPendiente));
+
   // B-888 — la cuenta del panel con su mail. No la lee ninguna parte del build;
   // se siembra para que el barrido del paso 9 tenga qué encontrar el día que
   // alguien la conecte a una salida. Ver `CENTINELA.mailDePanel`.
@@ -745,7 +866,7 @@ try {
 
   console.log(
     `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
-      'una con tres imágenes)',
+      'una con tres imágenes; y 2 librerías: una publicada y una esperando decisión)',
   );
 
   const build = spawnSync('npm', ['run', 'build'], {
@@ -1376,6 +1497,123 @@ try {
     }
 
     /*
+     * 8i · **B-901 — el directorio de librerías, sobre los archivos construidos.**
+     *
+     * (Se llama **8i** y no 8h porque el rótulo estaba tomado: el «control de la
+     * mayoría» de la galería es el 8h, y `docs/13-agentes.md` cita «los pasos
+     * 8a-8h» contando aquél. Dos pasos con el mismo nombre no rompen el gate
+     * —son comentarios— pero mandan a leer el que no es.)
+     *
+     * Lo que este bloque puede ver y ningún unitario puede: que la **lectura**
+     * trajo solo lo publicado y que el **build** escribió la ficha. El barrido de
+     * vitest mira la proyección pura —qué se decide publicar— y no puede saber si
+     * `getStaticPaths` generó la página ni si la query pidió de más.
+     *
+     * La pendiente es el control: con una sola librería sembrada, un build que
+     * leyera la colección entera daría exactamente el mismo `dist/`.
+     */
+    {
+      const crudoLibrerias = await readFile(
+        new URL('../dist/librerias.json', import.meta.url),
+        'utf8',
+      ).catch(() => null);
+
+      if (crudoLibrerias === null) {
+        fallo(
+          'no se escribió dist/librerias.json.\n' +
+            '  Es el índice que baja el listado de /guia/librerias: sin él, la sección\n' +
+            '  carga el HTML del build y los filtros quedan apagados para siempre.',
+        );
+        salida = 1;
+      } else {
+        const indiceLibrerias = JSON.parse(crudoLibrerias);
+        const slugsLibrerias = (indiceLibrerias.librerias ?? []).map((l) => l.slug);
+
+        // 8i.1 · El build tiene que haber LEÍDO algo. Sin esto, los dos asertos de
+        // abajo pasan en verde sobre una lista vacía.
+        if (!slugsLibrerias.includes(SLUG_LIBRERIA)) {
+          fallo(
+            `dist/librerias.json salió con ${slugsLibrerias.length} librerías y ninguna es la\n` +
+              '  sembrada. El build no leyó /librerias, así que todo lo que sigue no prueba nada.',
+          );
+          salida = 1;
+        }
+
+        // 8i.2 · **B-903** — el control del `where`. La pendiente no puede estar.
+        if (slugsLibrerias.includes(SLUG_LIBRERIA_PENDIENTE)) {
+          fallo(
+            'dist/librerias.json trae la librería que ESPERA DECISIÓN.\n' +
+              "  Falta o está mal el where('estado','==','publicado') de libreriasPublicadas\n" +
+              '  (src/lib/contenidoDelSitio.ts). Y lo que se publica con ella es el\n' +
+              '  contactoDeQuienCargo de quien pidió el alta (B-903).',
+          );
+          salida = 1;
+        }
+
+        // 8i.3 · La ficha existe en disco, y la de la pendiente no.
+        const fichaPublicada = await readFile(
+          new URL(`../dist/guia/librerias/${SLUG_LIBRERIA}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaPublicada === null) {
+          fallo(
+            `no se generó la página /guia/librerias/${SLUG_LIBRERIA}/.\n` +
+              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
+          );
+          salida = 1;
+        } else if (!fichaPublicada.includes('"@type":"BookStore"')) {
+          fallo(
+            'la ficha de la librería no emite el JSON-LD `BookStore`.\n' +
+              '  Es el SEO de esta sección entera (§ 4 del PRD 2): sin el marcado, la ficha\n' +
+              '  es una página más y no entra al panel local de Google.',
+          );
+          salida = 1;
+        }
+
+        const fichaPendiente = await readFile(
+          new URL(`../dist/guia/librerias/${SLUG_LIBRERIA_PENDIENTE}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaPendiente !== null) {
+          fallo(
+            `se generó la página de la librería que ESPERA DECISIÓN\n` +
+              `  (/guia/librerias/${SLUG_LIBRERIA_PENDIENTE}/). Es HTML indexable con el\n` +
+              '  contenido de una ficha que nadie aprobó.',
+          );
+          salida = 1;
+        }
+
+        // 8i.4 · Y la URL de la ficha está en el sitemap — §6 #7 del inventario:
+        // la página existe y Google no la ve. No falla nada y no se ve.
+        const sitemapLibrerias = await readFile(
+          new URL('../dist/sitemap.xml', import.meta.url),
+          'utf8',
+        );
+        if (!sitemapLibrerias.includes(`/guia/librerias/${SLUG_LIBRERIA}/`)) {
+          fallo(
+            'la ficha de la librería no está en el sitemap.xml.\n' +
+              '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
+          );
+          salida = 1;
+        }
+        if (sitemapLibrerias.includes(`/guia/librerias/${SLUG_LIBRERIA_PENDIENTE}/`)) {
+          fallo(
+            'el sitemap.xml ofrece la ficha de la librería que espera decisión: es una URL\n' +
+              '  que contesta 404 y que además no tendría que existir.',
+          );
+          salida = 1;
+        }
+
+        if (salida === 0) {
+          console.log(
+            '  ✓ el directorio de librerías salió con la publicada y sin la que espera decisión ' +
+              '(B-903), con su ficha, su BookStore y su entrada de sitemap.',
+          );
+        }
+      }
+    }
+
+    /*
      * 9 · **B-121 — el barrido sobre TODO el `dist/`, y no sobre tres páginas
      * elegidas a mano.**
      *
@@ -1451,7 +1689,9 @@ try {
             ? CENTINELA_DEL_INDICE
             : relativa.startsWith('cartelera/')
               ? CENTINELA_DE_LA_CARTELERA
-              : [];
+              : relativa === 'librerias.json' || relativa.startsWith('guia/librerias/')
+                ? CENTINELA_DEL_DIRECTORIO
+                : [];
         const prohibidos = Object.entries(CENTINELA).filter(
           ([campo]) => !permitido.includes(campo),
         );

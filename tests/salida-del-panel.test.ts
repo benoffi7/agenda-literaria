@@ -58,11 +58,17 @@ describe('cuándo preguntar antes de salir (B-35)', () => {
 describe('todas las salidas del panel pasan por el aviso (B-35)', () => {
   const ADMIN_APP = fuente('components/admin/AdminApp.tsx');
 
-  it('los cuatro caminos que abandonan el formulario están envueltos en salirDe', () => {
-    // Uno por camino: "← Volver", "Reportar algo", "Salir" y el "Cancelar" del
-    // formulario. "Calendario" solo se ofrece desde el listado, donde no hay
-    // nada que perder.
-    expect([...ADMIN_APP.matchAll(/salirDe\(/g)]).toHaveLength(5); // 4 usos + la definición
+  it('los cinco caminos que abandonan un formulario están envueltos en salirDe', () => {
+    /*
+     * Uno por camino: "← Volver", "Reportar algo", "Salir", el "Cancelar" del
+     * formulario de actividad y —desde **B-901**— el del formulario de librería.
+     * "Calendario", "Opciones", "Estadísticas", "Propuestas" y "Librerías" solo se
+     * ofrecen desde el listado, donde no hay nada que perder.
+     *
+     * MUTACIÓN PROBADA: sacarle el `salirDe` al `onCancelar` de `LibreriasPanel`
+     * deja este caso en rojo (4 usos + la definición = 5).
+     */
+    expect([...ADMIN_APP.matchAll(/salirDe\(/g)]).toHaveLength(6); // 5 usos + la definición
   });
 
   it('la salida del formulario respeta a dónde volver', () => {

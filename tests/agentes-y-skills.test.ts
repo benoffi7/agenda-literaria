@@ -288,6 +288,13 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
     13: 'trece', 14: 'catorce', 15: 'quince', 16: 'dieciséis',
     17: 'diecisiete', 18: 'dieciocho', 19: 'diecinueve', 20: 'veinte',
+    // B-901 — la tabla pasó a 21 con el directorio de librerías (el JSON + el
+    // listado, y la ficha con su JSON-LD). El colchón que B-772 se había dejado
+    // llegaba hasta 20 y se consumió entero: se agregan dos más, con la misma
+    // lógica —que la próxima fila no vuelva a frenar el cambio por el
+    // diccionario— y con el mismo límite escrito, que sigue valiendo: más allá de
+    // esto, que frene está bien.
+    21: 'veintiuna', 22: 'veintidós',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {

@@ -692,6 +692,9 @@ que no dice eso.
 
 ```bash
 firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
+# B-901 — el rebuild del primer directorio de la Guía, misma forma que el de
+# `/opciones/*`. El push a `main` ya la cubre; esto es para desplegarla sola.
+firebase deploy --only functions:rebuildPorLibrerias
 ```
 
 **Las ocho Functions están desplegadas y ACTIVE, y todas al día.** Relevado contra

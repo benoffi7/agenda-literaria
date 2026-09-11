@@ -94,7 +94,21 @@ export type VistaATodoAncho = (typeof VISTAS_A_TODO_ANCHO)[number];
  * intacto, así que vuelve al ancho de lectura. Es la misma vista la que decide las
  * dos cosas, que es lo que evita la combinación absurda: apilado y a 1900px.
  */
-const VISTAS_DE_FORMULARIO: readonly string[] = ['nueva', 'editar', 'duplicar', 'convertir'];
+const VISTAS_DE_FORMULARIO: readonly string[] = [
+  'nueva',
+  'editar',
+  'duplicar',
+  'convertir',
+  /*
+   * B-901 — el formulario de una librería. Entra acá por lo mismo que los otros
+   * cuatro y no por simetría: sus campos **ya reparten en dos columnas**
+   * (`grid sm:grid-cols-2`), así que el ancho no se estira, se usa — que es lo
+   * que B-621 pide antes de ensanchar algo. Es además la lista que
+   * `salida-del-panel.ts` declara, y `tests/ancho-del-panel.test.ts` cruza las
+   * dos: una vista con formulario que no esté acá queda encajonada en PC.
+   */
+  'libreria',
+];
 
 /**
  * ¿Esta vista se pinta a todo ancho?
