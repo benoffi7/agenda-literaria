@@ -1074,7 +1074,26 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
-### B-885 · La salida 2 publica el tallerista con nombre de solo espacios, y es la quinta variante del predicado · P2
+### B-885 · La salida 2 publica el tallerista con nombre de solo espacios, y es la quinta variante del predicado — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Cerrado.** `construirDescripcion` pregunta `?.nombre?.trim()`, el mismo
+> predicado de las otras cuatro: la celda que faltaba de la convergencia.
+>
+> **El camino de entrada es exacto en lo mecánico, con un matiz:** las dos puertas
+> usan `safeParse` **para el veredicto y descartan `parsed.data`**, así que el trim
+> del schema no llega al disco por ningún camino. Pero `formADocumento` tiene el
+> predicado desde el primer commit, así que la restauración **propaga** la cáscara
+> y no la origina — el origen es un escritor de afuera del panel.
+>
+> **Había dos predicados más de la misma forma en el mismo bloque**, y entraron con
+> el mismo arreglo: `organizador` publicaba su Instagram y su web con el nombre en
+> blanco, y el libro publicaba `Libro:    — Bolaño`.
+>
+> **El valor emitido no se trimea**, y tiene su aserto: lo que converge es la
+> pregunta, no el texto. Trimear lo que se escribe le reescribiría el evento a
+> quien lo tiene agendado (B-162, D-95).
+>
+> **Sale B-891.**
 
 **Lo encontró el frente de B-881**, que fue a verificar si quedaba un cuarto lugar y
 encontró un quinto. `functions/calendario.js` condiciona por `persona?.nombre`
@@ -1129,6 +1148,37 @@ qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow
 >
 > **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
 > push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
+
+### B-891 · El `libro` de DEC-1 está hoy como estaba el tallerista antes de B-861 · P2
+
+**Lo encontró el frente de B-885** cerrando la convergencia del tallerista, y es la
+misma clase con otro campo. Cuatro derivaciones de «¿hay libro?», y **dos están
+mal**:
+
+| Dónde | Predicado | |
+|---|---|---|
+| `formADocumento` | `?.titulo?.trim()` | ✅ |
+| `libroDelPosteo` (`textoRedes.ts`) | `?.titulo?.trim()` | ✅ |
+| `libroPublico` (`toPublic.ts`) | `l?.titulo` sin trim | ❌ |
+| `detalleDeActividad` (`detallePublico.ts`) | **gatea por el objeto** | ❌ |
+
+**La consecuencia es medible y está en la salida con SEO:** con
+`{ titulo: '   ', autor: 'Bolaño' }` la página de detalle renderiza **«Se presenta
+    , de Bolaño»** —el rótulo colgado en HTML indexado— y el `events.json` lleva el
+objeto con el título vacío.
+
+El camino de entrada es el mismo que el de B-885 y B-861: un escritor de afuera del
+panel, o una restauración del historial. Y el arreglo es el mismo predicado que ya
+usan las otras dos — no una quinta variante.
+
+**Y la raíz de la clase, que vale más que este ítem:** `texto = z.string().trim()`
+produce un `parsed.data` limpio que **ningún escritor usa**. `guardar.ts` valida con
+`safeParse` y escribe `candidato`; `issuesDeRestauracion` valida y `restaurarCampo`
+escribe el payload crudo. Por eso «un campo con espacios» reaparece salida por
+salida en vez de resolverse una vez. Arreglarlo de raíz —escribir `parsed.data`— es
+barato de decir y caro de verificar: cambia el valor almacenado de **todo** campo de
+texto, o sea el payload del §7.2 para los documentos con espacios, o sea que le
+reescribe el evento a quien lo tiene agendado. **Es una decisión, no un arreglo.**
 
 ### B-889 · Las horas se cargan sin saber si son AM o PM, y el panel no ofrece elegir formato · P3
 

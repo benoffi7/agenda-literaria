@@ -443,9 +443,16 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    * El autor sale solo si está cargado, que es solo cuando **difiere del
    * invitado** (ver `Libro.autor`): repetirlo abajo, en «Invitado», sería decir
    * dos veces la misma cosa.
+   *
+   * **El título se pregunta trimeado** (B-885), el mismo predicado de
+   * `formADocumento` —«el libro solo tiene sentido si tiene título: es lo que lo
+   * identifica, igual que el nombre al tallerista»— y de `libroDelPosteo`
+   * (`src/lib/textoRedes.ts`). Sin eso, un título de solo espacios publicaba
+   * `Libro:    — Bolaño` en el calendario de los suscriptos: el rótulo vacío que
+   * el caso «sin libro cargado» ya evita, más el autor colgando de la nada.
    */
   const libro = actividad.libro;
-  if (libro?.titulo) {
+  if (libro?.titulo?.trim()) {
     bloques.push(`Libro: ${libro.titulo}${libro.autor ? ` — ${libro.autor}` : ''}`);
   }
 
@@ -620,13 +627,50 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   }
 
   // ── Quién ─────────────────────────────────────────────────────
+  /**
+   * **«Hay tallerista» es que tenga nombre con contenido, no que el objeto
+   * exista** — B-885, y es el mismo predicado que las otras cuatro salidas.
+   *
+   * `formADocumento` (`src/lib/actividades.ts`) escribe `tallerista: null` cuando
+   * no hay nombre («el tallerista solo tiene sentido si tiene nombre»), `toPublic`
+   * y `detalleDeActividad` proyectan `null` con `?.nombre?.trim()` (B-861, B-854) y
+   * `handlesDe` (`src/lib/textoRedes.ts`) dejó de arrobarlo con el mismo predicado
+   * (B-881). Ésta era la quinta y la única que seguía preguntando por el objeto:
+   * con la cáscara `{ nombre: '   ', bio: 'Cronista…', instagram: '@ana' }` el
+   * evento publicaba el handle **y la bio** mientras las otras cuatro ya decían
+   * que no hay tallerista.
+   *
+   * **Y es la salida que no se puede corregir después.** El evento ya está
+   * sincronizado al calendario público, o sea copiado al calendario de cada
+   * persona que se suscribió: sacarlo de acá no lo saca de un dispositivo. Es el
+   * mismo argumento con el que el arancel, unas líneas arriba, emite el monto solo
+   * si el tipo lo admite aunque el schema ya lo garantice.
+   *
+   * El camino de entrada es el de siempre para esta clase: un documento escrito
+   * por fuera del panel —un script con el Admin SDK, la consola de Firestore— o
+   * `restaurarCampo` (`src/lib/historial.ts`), que escribe con un `updateDoc`
+   * directo, valida con el schema pero **descarta lo que el schema normaliza**, y
+   * por eso reescribe la cáscara tal cual.
+   *
+   * **El valor emitido queda como está cargado** (`persona.nombre`, no el
+   * trimeado): lo que converge es la pregunta «¿existe?», igual que en las otras
+   * cuatro, que también proyectan el nombre crudo. Normalizar acá el texto
+   * cambiaría el payload de todo evento ya publicado cuyo nombre tenga un espacio
+   * de más —la guarda compara payloads recalculados (B-162)— y le reescribiría el
+   * evento a quien lo tiene agendado sin que nada hubiera cambiado (D-95).
+   *
+   * `organizador` y `libro` llevan el mismo predicado por la misma razón y con el
+   * mismo alcance: los tres son «el objeto solo cuenta si su campo identificador
+   * tiene contenido», y los tres gatean datos de más —el Instagram y la web del
+   * organizador, el autor de la obra— detrás de un nombre en blanco.
+   */
   const quien = [];
   const org = actividad.organizador;
-  if (org?.nombre) {
+  if (org?.nombre?.trim()) {
     quien.push(`Organiza: ${[org.nombre, org.instagram, org.web].filter(Boolean).join(' · ')}`);
   }
   const persona = actividad.tallerista;
-  if (persona?.nombre) {
+  if (persona?.nombre?.trim()) {
     const rol =
       actividad.tipo === 'presentacion' || actividad.tipo === 'charla' ? 'Invitado' : 'Tallerista';
     quien.push(`${rol}: ${[persona.nombre, persona.instagram].filter(Boolean).join(' · ')}`);

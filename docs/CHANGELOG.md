@@ -2,6 +2,41 @@
 
 ## Sin publicar
 
+- **La descripción del evento publicaba al tallerista con el nombre en blanco, y
+  era la quinta variante del mismo predicado** — **B-885**. `construirDescripcion`
+  preguntaba `persona?.nombre`, sin `trim()`, así que la cáscara emitía
+  `Tallerista:    · @ana` **y la bio** mientras las otras cuatro salidas ya decían
+  que no hay tallerista. Ahora las cinco preguntan `?.nombre?.trim()`.
+
+  **Por qué ésta es la peor de las cinco y no la más chica:** el evento ya está
+  sincronizado al calendario público, o sea **copiado al calendario de cada persona
+  que se suscribió**. Corregirlo acá no lo saca de un dispositivo.
+
+  **Y el archivo tenía otros dos predicados de la misma forma**, que entraron con el
+  mismo arreglo porque son la misma frase —«el objeto solo cuenta si su campo
+  identificador tiene contenido»— y porque los tres gatean **datos de más** detrás
+  de un nombre en blanco: `organizador` publicaba su Instagram y su web, y el libro
+  de DEC-1 publicaba `Libro:    — Bolaño`.
+
+  **El valor emitido queda como está cargado, y tiene su aserto.** Lo que converge
+  es la pregunta «¿existe?», no el texto: trimear también lo que se escribe
+  cambiaría el payload de todo evento publicado cuyo nombre tenga un espacio de más
+  —la guarda compara payloads recalculados (B-162)— y **le reescribiría el evento a
+  quien lo tiene agendado** sin que nada hubiera cambiado para él (D-95).
+
+  **Y una precisión sobre el camino de entrada, que el ítem tenía a medias.** Las
+  dos puertas usan `safeParse` **para el veredicto y descartan `parsed.data`**, así
+  que el `.trim()` del schema **no llega al disco por ningún camino**. Pero
+  `formADocumento` tiene el predicado desde el primer commit, así que la
+  restauración **propaga** la cáscara y no la origina: el origen es un escritor de
+  afuera del panel — un script con el Admin SDK, la consola, o un documento anterior
+  a la regla.
+
+  **Sale B-891: el `libro` está hoy como estaba el tallerista antes de B-861.**
+  `toPublic` pregunta `l?.titulo` sin trim y `detalleDeActividad` **ni siquiera mira
+  el título** —gatea por el objeto—, así que la página de detalle renderiza «Se
+  presenta    , de Bolaño» en HTML indexado. Dos de cuatro.
+
 - **Un segundo rol, `publicador`, que solo gestiona lo que él mismo carga — y la
   tajada que entró es la frontera, no el panel** — **B-888**, **D-650**. Cruza el
   umbral que **B-28** dejó escrito hace dos meses: «el umbral que importa es el de

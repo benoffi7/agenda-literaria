@@ -1101,6 +1101,116 @@ describe('construirDescripcion — lo que NUNCA va al evento (§5.1, §7.4)', ()
   });
 });
 
+/**
+ * B-885 — la quinta variante del predicado, y la que publica en un lugar del que
+ * no se puede sacar nada.
+ *
+ * La pregunta es una sola —«¿esta actividad tiene tallerista?»— y hasta acá se
+ * contestaba de dos maneras. Cuatro salidas miran el **nombre trimeado**:
+ * `formADocumento` escribe `tallerista: null` sin nombre, `toPublic` (B-861) y
+ * `detalleDeActividad` (B-854) proyectan `null`, y `handlesDe` dejó de arrobar
+ * el handle (B-881). La quinta, ésta, miraba si el **objeto existe**, así que la
+ * cáscara `{ nombre: '   ', bio, instagram }` publicaba la bio y el Instagram
+ * en la descripción del evento.
+ *
+ * **Y el evento ya está en el calendario de quien se suscribió.** El §7 sincroniza
+ * a un calendario público y de ahí se copia a los dispositivos: corregirlo después
+ * no lo saca de ninguno. Por eso el caso vive acá y no en el describe de arriba —
+ * es privacidad, no formato.
+ *
+ * `organizador` y `libro` llevan los mismos asertos porque son el mismo predicado
+ * en el mismo bloque de texto: un objeto cuyo campo identificador está en blanco
+ * gatea datos de más (el Instagram y la web del organizador, el autor de la obra).
+ *
+ * MUTACIÓN PROBADA: volver cada predicado a su forma vieja (`persona?.nombre`,
+ * `org?.nombre`, `libro?.titulo`) en `functions/calendario.js`. Cada it de este
+ * describe se pone rojo por su cuenta y ninguna otra suite se entera.
+ */
+describe('construirDescripcion — «existe» es tener el nombre con contenido, no el objeto (B-885)', () => {
+  /** `''` ya lo cubría el objeto vacío; los otros dos son lo que B-885 agrega. */
+  const EN_BLANCO = ['', '   ', '\n\t'];
+
+  const conTallerista = (nombre: string) =>
+    completa({
+      tallerista: {
+        nombre,
+        bio: 'CENTINELA-BIO Cronista y ensayista.',
+        instagram: '@CENTINELA-HANDLE',
+      },
+    });
+
+  it('un tallerista sin nombre no publica NADA de él: ni la bio, ni el Instagram, ni el rótulo', () => {
+    for (const nombre of EN_BLANCO) {
+      const texto = construirDescripcion(conTallerista(nombre), sesion(), LABELS);
+      const cual = JSON.stringify(nombre);
+      expect(texto, `bio publicada con nombre=${cual}`).not.toContain('CENTINELA-BIO');
+      expect(texto, `handle publicado con nombre=${cual}`).not.toContain('CENTINELA-HANDLE');
+      expect(texto, `rótulo vacío con nombre=${cual}`).not.toContain('Tallerista:');
+    }
+  });
+
+  it('tampoco en una presentación, donde el rótulo es «Invitado»', () => {
+    // El rol se elige **después** del predicado, así que la variante del rótulo
+    // no tiene puerta propia: si la puerta se abriera, se abriría para las dos.
+    for (const nombre of EN_BLANCO) {
+      const a = { ...conTallerista(nombre), tipo: 'presentacion' };
+      const texto = construirDescripcion(a, sesion(), LABELS);
+      expect(texto, JSON.stringify(nombre)).not.toContain('Invitado:');
+      expect(texto, JSON.stringify(nombre)).not.toContain('CENTINELA-BIO');
+    }
+  });
+
+  it('y tampoco al evento entero, que es lo que viaja a la API (§7.4)', () => {
+    // La descripción es un campo del payload: lo que se afirma acá es que no se
+    // escapa por el `summary` ni por el `location` tampoco.
+    const evento = JSON.stringify(construirEvento(conTallerista('   '), sesion(), LABELS));
+    expect(evento).not.toContain('CENTINELA-BIO');
+    expect(evento).not.toContain('CENTINELA-HANDLE');
+  });
+
+  /**
+   * El control positivo del predicado, y no es decoración: lo que converge es la
+   * **pregunta**, no el texto. Trimear también el valor emitido cambiaría el
+   * payload de todo evento publicado cuyo nombre tenga un espacio de más —la
+   * guarda compara payloads recalculados (B-162)— y le reescribiría el evento a
+   * quien lo tiene agendado sin que nada hubiera cambiado para él (D-95).
+   */
+  it('un nombre con espacios alrededor sigue saliendo, y sale tal como está cargado', () => {
+    const nombre = '  María Moreno  ';
+    const a = completa({ tallerista: { nombre, bio: 'Cronista y ensayista.', instagram: '@mmoreno' } });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain(`Tallerista: ${nombre} · @mmoreno`);
+    expect(texto).toContain('Cronista y ensayista.');
+  });
+
+  it('un organizador con el nombre en blanco no publica su Instagram ni su web', () => {
+    for (const nombre of EN_BLANCO) {
+      const a = completa({
+        organizador: {
+          nombre,
+          instagram: '@CENTINELA-ORGHANDLE',
+          web: 'https://CENTINELA-ORGWEB.example',
+        },
+      });
+      const texto = construirDescripcion(a, sesion(), LABELS);
+      const cual = JSON.stringify(nombre);
+      expect(texto, `handle del organizador con nombre=${cual}`).not.toContain('CENTINELA-ORGHANDLE');
+      expect(texto, `web del organizador con nombre=${cual}`).not.toContain('CENTINELA-ORGWEB');
+      expect(texto, `rótulo vacío con nombre=${cual}`).not.toContain('Organiza:');
+    }
+  });
+
+  it('un libro con el título en blanco no publica el rótulo ni el autor (DEC-1)', () => {
+    for (const titulo of EN_BLANCO) {
+      const a = completa({ libro: { titulo, autor: 'CENTINELA-AUTOR Bolaño' } });
+      const texto = construirDescripcion(a, sesion(), LABELS);
+      const cual = JSON.stringify(titulo);
+      expect(texto, `autor publicado con titulo=${cual}`).not.toContain('CENTINELA-AUTOR');
+      expect(texto, `rótulo vacío con titulo=${cual}`).not.toContain('Libro:');
+    }
+  });
+});
+
 describe('planificar — el payload propaga los campos nuevos', () => {
   const s = sesion({ calendarEventId: 'evt_1' });
 
