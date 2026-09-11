@@ -272,9 +272,33 @@ describe('la canónica del HTML la pone el layout, una sola vez', () => {
     expect(base).toMatch(/property="og:image" content=\{\w+\}/);
 
     // Y ese cálculo distingue una URL externa de una ruta del sitio, pasando la
-    // segunda por la misma función que arma la canónica.
-    expect(base).toMatch(/\^https\?:\\\/\\\//);
+    // segunda por la misma función que arma la canónica. Se afirma el ternario
+    // entero y no solo el predicado: lo que importa es que la rama «externa» se
+    // emita tal cual y la otra pase por `urlAbsoluta`.
+    expect(base).toMatch(/\.test\(paraOg\) \? paraOg : urlAbsoluta\(paraOg\);/);
     expect(base).toContain('urlAbsoluta(');
+
+    /*
+     * El predicado ancla en `^https?:` y las dos barras van como `\/{2}` — B-876.
+     *
+     * **La forma de escribirlas no es cosmética.** `\/\/` contiene el par `//`
+     * literal, y `scripts/sin-comentarios.mjs` —que no lexea literales de
+     * expresión regular, y dice en su docblock que no piensa hacerlo— lo lee como
+     * comentario de línea y se come el resto de la línea. Mientras estuvo así,
+     * `Base.astro` era el único de los 28 `.astro` de `src/` que no podía entrar
+     * al control de clase de `tests/sin-comentarios.test.ts`.
+     *
+     * Se afirma la forma de hoy y **no** la ausencia del par: el docblock de
+     * `Base.astro` escribe `\/\/` a propósito, para contar cuál era el problema,
+     * y un `not.toContain` sobre el texto crudo prohibiría explicarlo. Quien
+     * agarra la vuelta atrás de verdad es el control de clase, que mide el
+     * **efecto** sobre el saneado y no cómo está deletreado.
+     *
+     * MUTACIÓN PROBADA: volver el predicado a `\/\/` pone en rojo este caso **y**
+     * el control de clase de los `.astro`, que es el que agarra la familia entera
+     * y no solo este archivo.
+     */
+    expect(base).toContain('/^https?:\\/{2}/i.test(paraOg)');
 
     // Con respaldo, así que siempre hay una imagen que ofrecer (B-295).
     expect(base).toContain("'/compartir.png'");

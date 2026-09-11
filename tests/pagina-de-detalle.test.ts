@@ -48,13 +48,15 @@ import { PREFIJO_ACTIVIDAD, rutaDeDetalle } from '@/lib/rutasPublicas';
  * arma el path a mano»— dando el mismo valor con los dos saneadores; el único
  * aserto que hubo que reescribir está marcado abajo.
  *
- * **Ojo con hasta dónde llega el control de clase:** recorre los
- * `.ts/.tsx/.mjs/.js` y **no** los `.astro`, que son justamente los que este
- * archivo lee. Extenderlo al frontmatter se probó y hoy da rojo por un caso
- * real —`Base.astro` tiene `/^https?:\/\//i.test(…)`, o sea el literal de
- * expresión regular que el saneador declara no poder distinguir de un `//`— así
- * que quedó anotado aparte. No es una regresión de B-855: el recorte local que
- * había acá no tenía **ningún** control.
+ * **Hasta dónde llega el control de clase, que desde B-876 sí cubre los
+ * `.astro`:** el saneado se corre sobre el archivo entero y los identificadores
+ * que se le exigen salen del **frontmatter**, que es la parte que el parser de
+ * TypeScript entiende; las expresiones `{…}` de la plantilla quedan afuera y
+ * está escrito ahí. Lo que impedía extenderlo era un caso real —el `og:image` de
+ * `Base.astro` se decidía con `/^https?:\/\//i`, y ese `\/\/` contiene el par
+ * `//` que el saneador declara no poder distinguir de un comentario—; se cerró
+ * escribiendo el predicado sin el par. Así que este archivo hoy lee `.astro` con
+ * el saneador compartido **y** con red.
  */
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 

@@ -83,9 +83,24 @@ const canonical = urlAbsoluta(Astro.url.pathname);
  *
  * Con `??` y no con `||`: una cadena vacía es un dato mal cargado y tiene que
  * caer al respaldo igual que un `null`.
+ *
+ * ── Y las dos barras se escriben `\/{2}` y no `\/\/` — B-876 ────────────────
+ * La forma natural del predicado era `/^https?:\/\//i`, y ese `\/\/` **contiene
+ * el par `//` literal**. `scripts/sin-comentarios.mjs` —el saneador que usan los
+ * tests sobre fuente— no lexea literales de expresión regular (lo dice su propio
+ * docblock: distinguir `/…/` de una división necesita el token anterior, o sea
+ * medio parser de JS, que además no serviría para `firestore.rules`), así que
+ * leía ese `//` como comentario de línea y **se comía el resto de la línea**: el
+ * archivo volvía cortado en `const ogImagen = /^https?:\/\` y sin el ternario.
+ *
+ * `\/{2}` es el mismo lenguaje —una barra escapada, repetida dos veces— y no
+ * tiene el par. Cuesta una línea y es lo que deja que el control de clase de
+ * `tests/sin-comentarios.test.ts` se extienda al frontmatter de los `.astro`,
+ * que es la red que faltaba: si alguien vuelve a escribir `\/\/` acá, ese test
+ * se pone rojo. **No revertir a `\/\/` sin leer B-876.**
  */
 const paraOg = imagen ?? '/compartir.png';
-const ogImagen = /^https?:\/\//i.test(paraOg) ? paraOg : urlAbsoluta(paraOg);
+const ogImagen = /^https?:\/{2}/i.test(paraOg) ? paraOg : urlAbsoluta(paraOg);
 
 /*
  * El `<body>` lleva `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan

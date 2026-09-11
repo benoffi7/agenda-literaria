@@ -2,6 +2,40 @@
 
 ## Sin publicar
 
+- **El control de clase del saneador ahora mira los `.astro`, y el literal de regex
+  que lo impedía se escribe de otra forma** — **B-876**, de B-855.
+  `tests/sin-comentarios.test.ts` comparaba contra el parser de TypeScript sobre los
+  `.ts/.tsx/.mjs/.js` y **no** sobre los `.astro` — justo los que leen los dos tests
+  que B-855 conectó al saneador compartido. O sea que **los archivos con red eran
+  los que ningún test sobre fuente miraba tanto**.
+
+  **No era hipotético: extenderlo daba rojo, y por un caso de producción.** El
+  `og:image` de `Base.astro` se decidía con `/^https?:\/\//i`, y ese `\/\/`
+  **contiene el par `//` literal**. El saneador lo leía como comentario de línea y el
+  archivo volvía cortado sin el ternario — o sea sin **la decisión entera** entre URL
+  absoluta y relativa. Único ofensor entre los 28 `.astro`, medido.
+
+  **Se arregló del lado del que escribe la regex, y el argumento decisivo no es el
+  costo: es que la otra opción tampoco alcanza.** Un lexer de literales de regex
+  necesita el token anterior —medio parser de JavaScript— y **deja `firestore.rules`
+  exactamente igual de expuesto**, que es donde esta familia ya se llevó quince
+  cláusulas de una regla de seguridad. Cuando la opción cara tampoco resuelve el
+  problema, no hay trade-off que discutir.
+
+  **Qué mira el control sobre un `.astro` está escrito**, porque no es lo mismo que
+  sobre un `.ts`: el saneado corre sobre el **archivo entero** —y por eso una
+  apertura falsa que arranca en el frontmatter y se come la plantilla queda adentro—
+  pero los identificadores salen del **frontmatter**, que es lo que el parser
+  entiende. Se evaluó el parser de Astro, que sí ve las expresiones de la plantilla y
+  da el mismo único ofensor, y **se descartó**: es transitiva, 0.x y con binding
+  nativo por plataforma, y que la suite entera penda de eso es el riesgo de B-875.
+
+  **Y el frente corrigió el alcance de su propia frase, que es el hallazgo grande.**
+  «Único ofensor» es cierto **para el predicado del control**, que detecta por
+  **desaparición total** del identificador — así que **un nombre repetido en otra
+  línea tapa el destrozo**. Midiendo el texto truncado hay **~17 líneas más** que el
+  saneador corta hoy, y **dos son insumo vivo** de un barrido real. Es **B-892**.
+
 - **La descripción del evento publicaba al tallerista con el nombre en blanco, y
   era la quinta variante del mismo predicado** — **B-885**. `construirDescripcion`
   preguntaba `persona?.nombre`, sin `trim()`, así que la cáscara emitía

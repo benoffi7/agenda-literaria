@@ -1149,6 +1149,37 @@ qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow
 > **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
 > push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
 
+### B-892 · El control del saneador detecta por desaparición total del identificador, y eso tapa la mayoría de los casos · P2
+
+**Lo corrigió el frente de B-876 sobre su propia medición**, y es la parte que
+importa de ese ítem. El control compara los identificadores que el parser ve contra
+los que sobreviven al saneado, o sea que **solo detecta cuando un nombre desaparece
+del archivo entero**. Si el mismo nombre aparece en otra línea, el destrozo es
+invisible.
+
+**Midiendo el texto truncado en vez de los identificadores, hay ~17 líneas de código
+más** que el saneador corta hoy por un `\/\/`:
+
+- `src/lib/schema.ts:180` — `/https?:\/\//i.test(texto) || HOSTS_DE_REUNION.test(texto)`, **se pierde el `||` entero**;
+- `src/lib/coordenadas.ts:171` y `:213`, `src/lib/enlaceSeguro.ts:49`;
+- `scripts/handle-instagram.mjs:30`, `scripts/build-contra-emulador.mjs:997`;
+- once en `tests/`.
+
+**Y dos de ellas son insumo vivo:** `tests/guardas-de-los-scripts.test.ts` sanea
+**todo** `scripts/` con `readdirSync`, así que esas dos líneas llegan cortadas a un
+barrido que corre de verdad. Ninguna rompe un aserto hoy — es la misma forma de
+agujero latente de B-853, que también esperaba a que alguien apuntara el saneador al
+archivo equivocado.
+
+Un predicado más fuerte compararía **posiciones** o contaría tokens perdidos, no
+presencia de nombres.
+
+> 📌 **Y una segunda mitad del mismo frente, más chica:** la guarda de cantidad del
+> control es un **piso** (`> 100`, `> 20`), no una derivación verificada. Nada
+> impide agregarle un `.filter()` de exclusión a la lista y que la suite quede verde
+> mirando menos archivos — probado por mutación, pasa. Aplica igual al chequeo viejo
+> de los `.ts`.
+
 ### B-891 · El `libro` de DEC-1 está hoy como estaba el tallerista antes de B-861 · P2
 
 **Lo encontró el frente de B-885** cerrando la convergencia del tallerista, y es la
@@ -1482,7 +1513,26 @@ caso de control ya tiene forma en el test —el que verifica que «una línea co
 código y comentario al final cuenta como significativa»— y le falta el gemelo para
 JSX.
 
-### B-876 · El control de clase del saneador no mira los `.astro`, y hay un literal de regex que lo rompe hoy · P2
+### B-876 · El control de clase del saneador no mira los `.astro`, y hay un literal de regex que lo rompe hoy — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Hecho, con (a), y las dos mediciones del ítem eran exactas.**
+>
+> **`Base.astro` es el único ofensor: confirmado** sobre los 28 `.astro`. Lo que se
+> comía era el resto de la línea —`const ogImagen = /^https?:\/\` sin el ternario—,
+> o sea **la decisión entera** entre URL absoluta y relativa.
+>
+> **Se eligió (a), y el argumento decisivo no es el costo: es que (b) tampoco
+> alcanza.** Un lexer de literales de regex necesita el token anterior y deja
+> `firestore.rules` igual de expuesto, que es donde esta familia ya costó quince
+> cláusulas.
+>
+> **Lo que el ítem no pedía y el cambio sí:** un `expect` que prohíbe saltear en
+> silencio un `.astro` sin frontmatter, y un **control positivo permanente** que le
+> pasa al mecanismo el frontmatter viejo y exige que lo marque — un barrido que
+> compara dos listas queda verde igual porque no encuentra nada que porque no busca
+> nada, y desde afuera se ven iguales (B-873).
+>
+> **Y una corrección al alcance de «único ofensor»: sale B-892.**
 
 **Salió de B-855.** `tests/sin-comentarios.test.ts` compara contra el parser de
 TypeScript sobre los `.ts/.tsx/.mjs/.js` del repo — **no** sobre los `.astro`. Y

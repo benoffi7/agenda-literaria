@@ -36,7 +36,9 @@
  *
  * El último `describe` es el que sostiene esa elección sin depender de que a
  * alguien se le ocurra el caso: compara contra el **parser de TypeScript** sobre
- * todos los `.ts`/`.tsx`/`.mjs`/`.js` del repo.
+ * todos los `.ts`/`.tsx`/`.mjs`/`.js` del repo, y desde B-876 también sobre el
+ * frontmatter de los `.astro` — que son justamente los que leen los tests sobre
+ * páginas. Hasta dónde llega esa segunda mitad está escrito ahí.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -45,6 +47,13 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { sinComentarios, sinComentariosConFormato } from '../scripts/sin-comentarios.mjs';
+
+/**
+ * El frontmatter de un `.astro`: lo que va entre los dos `---`, que es la parte
+ * que el parser de TypeScript entiende. Mismo recorte que usa
+ * `tests/pagina-de-detalle.test.ts`.
+ */
+const FRONTMATTER = /^---\n([\s\S]*?)\n---/;
 
 describe('qué saca: las cuatro sintaxis que aparecen en este repo', () => {
   it('el docblock y el `//` de TypeScript', () => {
@@ -370,50 +379,180 @@ describe('un `//` o un `*/` adentro de un string es texto, no comentario', () =>
  * qué lo haría fallar — un literal de expresión regular con `//` o `/*` adentro,
  * que es lo único que un recorrido por texto no puede distinguir de un
  * comentario. Ese día esto se pone rojo y hay que venir a decidir acá.
+ *
+ * ── Dos familias, porque los `.astro` no son `.ts` — B-876 ─────────────────
+ * Hasta B-876 esto recorría **solo** los `.ts/.tsx/.mjs/.js`, y los `.astro`
+ * quedaban afuera — justo los que leen `tests/pagina-de-detalle.test.ts` y
+ * `tests/listado-del-sitio.test.ts` con el saneador compartido, más otros ocho
+ * con recortes locales. O sea que los archivos con red eran los que ningún test
+ * sobre fuente miraba tanto.
+ *
+ * Extenderlo daba rojo con el árbol de entonces, y por un caso real: el
+ * `og:image` de `src/layouts/Base.astro` se decidía con `/^https?:\/\//i`, cuyo
+ * `\/\/` **contiene el par `//`**. El saneador lo leía como comentario de línea
+ * y se comía el ternario entero. Era el **único** ofensor entre los 28 `.astro`
+ * de `src/`, medido, y se cerró escribiendo el predicado sin el par (`\/{2}`) en
+ * vez de enseñarle al saneador a lexear expresiones regulares — que es lo que el
+ * módulo ya argumentó que no vale la pena: necesita el token anterior, o sea
+ * medio parser de JavaScript, que además no serviría para `firestore.rules`.
  */
 describe('control de clase: el saneador no borra código, sobre todo el repo', () => {
-  it('ningún identificador que el parser de TypeScript ve como código desaparece', () => {
-    const archivos = execFileSync('git', ['ls-files', 'src', 'scripts', 'functions', 'tests'], {
+  /** Los archivos versionados de las cuatro carpetas que tienen código. */
+  const versionados = (extensiones: RegExp): string[] =>
+    execFileSync('git', ['ls-files', 'src', 'scripts', 'functions', 'tests'], {
       encoding: 'utf8',
     })
       .split('\n')
-      .filter((f) => /\.(ts|tsx|mjs|js)$/.test(f));
+      .filter((f) => extensiones.test(f));
+
+  /**
+   * Los identificadores que el parser de TypeScript ve como **código** en un
+   * texto. `.mjs` se le pasa con nombre de `.js` y el frontmatter de un `.astro`
+   * con nombre de `.ts`: en los dos casos es para que TypeScript no aplique las
+   * reglas de lexado de otra extensión sobre el mismo contenido.
+   */
+  const identificadores = (nombre: string, src: string): Set<string> => {
+    const sf = ts.createSourceFile(nombre, src, ts.ScriptTarget.Latest, true);
+    const ids = new Set<string>();
+    const recorrer = (n: ts.Node): void => {
+      if (ts.isIdentifier(n)) ids.add(n.text);
+      n.forEachChild(recorrer);
+    };
+    recorrer(sf);
+    return ids;
+  };
+
+  /**
+   * Qué archivos perdieron un identificador al pasar por el saneador.
+   *
+   * `codigo` dice qué parte del archivo entiende el parser; el saneado se corre
+   * siempre sobre el **archivo entero**, que es lo que hacen los consumidores —
+   * así una apertura falsa que arranca en una parte y se come la otra queda
+   * adentro del chequeo.
+   */
+  const ofensores = (
+    archivos: string[],
+    codigo: (archivo: string, src: string) => { nombre: string; texto: string },
+    leer: (archivo: string) => string = (f) => readFileSync(f, 'utf8'),
+  ): string[] =>
+    archivos
+      .map((archivo) => {
+        const src = leer(archivo);
+        const { nombre, texto } = codigo(archivo, src);
+        const limpio = sinComentarios(src);
+        const faltan = [...identificadores(nombre, texto)].filter((i) => !limpio.includes(i));
+        return { archivo, faltan };
+      })
+      .filter((o) => o.faltan.length > 0)
+      .map((o) => `${o.archivo}: ${o.faltan.slice(0, 5).join(', ')}`);
+
+  const EXPLICACION =
+    'el saneador borró código, no comentarios: cualquier test que lea estos ' +
+    'archivos está afirmando sobre menos de lo que hay (B-853)';
+
+  it('ningún identificador que el parser de TypeScript ve como código desaparece', () => {
+    const archivos = versionados(/\.(ts|tsx|mjs|js)$/);
 
     expect(archivos.length, 'no se listó ningún archivo: el `git ls-files` falló').toBeGreaterThan(
       100,
     );
 
-    const identificadores = (archivo: string, src: string): Set<string> => {
-      // `.mjs` con nombre de `.js`: es lo mismo para el parser y evita que
-      // TypeScript lo trate como un módulo con otras reglas de lexado.
-      const sf = ts.createSourceFile(
-        archivo.replace(/\.mjs$/, '.js'),
-        src,
-        ts.ScriptTarget.Latest,
-        true,
-      );
-      const ids = new Set<string>();
-      const recorrer = (n: ts.Node): void => {
-        if (ts.isIdentifier(n)) ids.add(n.text);
-        n.forEachChild(recorrer);
-      };
-      recorrer(sf);
-      return ids;
-    };
+    expect(
+      ofensores(archivos, (archivo, src) => ({
+        nombre: archivo.replace(/\.mjs$/, '.js'),
+        texto: src,
+      })),
+      EXPLICACION,
+    ).toEqual([]);
+  });
 
-    const ofensores = archivos
-      .map((f) => {
-        const src = readFileSync(f, 'utf8');
-        const limpio = sinComentarios(src);
-        const faltan = [...identificadores(f, src)].filter((i) => !limpio.includes(i));
-        return { archivo: f, faltan };
-      })
-      .filter((o) => o.faltan.length > 0);
+  /**
+   * **Lo mismo sobre los `.astro`, y hasta dónde llega — B-876.**
+   *
+   * Un `.astro` es **frontmatter + plantilla**, y el parser de TypeScript solo
+   * entiende la primera parte: la segunda es markup con expresiones adentro de
+   * `{…}` y necesitaría el parser de Astro. Así que este caso dice, exactamente:
+   *
+   * | | ¿entra? |
+   * |---|---|
+   * | el saneado | el **archivo entero**, igual que los consumidores |
+   * | los identificadores que se buscan | los del **frontmatter** |
+   * | las expresiones `{…}` de la plantilla | **no** |
+   *
+   * Que el saneado sea del archivo entero es lo que hace que la mitad cubierta
+   * valga de verdad: el caso de `Base.astro` era una apertura falsa **en el
+   * frontmatter**, y las aperturas falsas no respetan el `---`. Lo que queda
+   * afuera es un `//` o un `/*` escrito adentro de una expresión de la plantilla
+   * — poco denso (las de este repo son `{titulo}`, `{conChrome && …}`) pero no
+   * imposible. Está escrito acá y no prometido de más: un control que mira menos
+   * de lo que dice es la falta de B-873.
+   *
+   * Y no se puede volver vacío en silencio: si el frontmatter deja de
+   * encontrarse en algún archivo, ese archivo va a la lista de `sinFrontmatter`
+   * en vez de saltearse.
+   */
+  it('ni en el frontmatter de los `.astro`, que es lo que leen los tests sobre páginas — B-876', () => {
+    const archivos = versionados(/\.astro$/);
+
+    expect(archivos.length, 'no se listó ningún `.astro`: el `git ls-files` falló').toBeGreaterThan(
+      20,
+    );
+
+    const sinFrontmatter = archivos.filter((f) => !FRONTMATTER.test(readFileSync(f, 'utf8')));
+    expect(
+      sinFrontmatter,
+      'sin frontmatter no hay nada que parsear, y saltearlos en silencio dejaría ' +
+        'el control mirando menos archivos de los que dice (B-873)',
+    ).toEqual([]);
 
     expect(
-      ofensores.map((o) => `${o.archivo}: ${o.faltan.slice(0, 5).join(', ')}`),
-      'el saneador borró código, no comentarios: cualquier test que lea estos ' +
-        'archivos está afirmando sobre menos de lo que hay (B-853)',
+      ofensores(archivos, (archivo, src) => ({
+        nombre: `${archivo}.ts`,
+        texto: FRONTMATTER.exec(src)![1]!,
+      })),
+      EXPLICACION,
     ).toEqual([]);
+  });
+
+  /**
+   * **Control positivo: el chequeo de arriba tiene dientes.**
+   *
+   * Un barrido que compara dos listas puede quedar verde porque no encuentra
+   * nada **y** porque no busca nada, y desde afuera se ven igual — es la forma
+   * de B-873. Así que acá se le pasa al mismo mecanismo el frontmatter que
+   * `Base.astro` tenía antes de B-876 y se exige que lo marque.
+   *
+   * MUTACIÓN PROBADA: es literalmente la línea que se revirtió para medir. Con
+   * `\/\/` en `src/layouts/Base.astro`, el caso de los `.astro` de arriba da
+   * `['src/layouts/Base.astro: test']` — **un solo** identificador, porque en el
+   * archivo de verdad `urlAbsoluta` sobrevive gracias a la línea de la canónica,
+   * unas líneas más arriba. Acá, con el recorte solo, se pierden los dos: es el
+   * recordatorio de que este control detecta por **desaparición total** del
+   * identificador, así que un nombre repetido en otra línea tapa el destrozo.
+   */
+  it('control positivo: el `\\/\\/` de un literal de regex lo marca como ofensor — B-876', () => {
+    const COMO_ESTABA = [
+      '---',
+      "const paraOg = imagen ?? '/compartir.png';",
+      'const ogImagen = /^https?:\\/\\//i.test(paraOg) ? paraOg : urlAbsoluta(paraOg);',
+      '---',
+      '<meta property="og:image" content={ogImagen} />',
+    ].join('\n');
+
+    expect(
+      ofensores(
+        ['Base.astro'],
+        (archivo, src) => ({ nombre: `${archivo}.ts`, texto: FRONTMATTER.exec(src)![1]! }),
+        () => COMO_ESTABA,
+      ),
+      'el control no vio desaparecer el `.test(…)` que el saneador se come',
+    ).toEqual(['Base.astro: test, urlAbsoluta']);
+
+    // Y la mitad que explica por qué: el saneado corta la línea en el par `//`.
+    expect(sinComentarios(COMO_ESTABA)).not.toContain('urlAbsoluta(paraOg)');
+    // La forma de hoy, en cambio, sobrevive entera.
+    expect(sinComentarios(COMO_ESTABA.replace('\\/\\/', '\\/{2}'))).toContain(
+      'urlAbsoluta(paraOg)',
+    );
   });
 });

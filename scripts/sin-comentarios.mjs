@@ -127,10 +127,20 @@ const TOKENS = new RegExp(
  * más.
  *
  * Eso no se deja librado a la suerte: `tests/sin-comentarios.test.ts` corre un
- * barrido sobre **todos** los `.ts`/`.tsx`/`.mjs`/`.js` del repo comparando
- * contra el **parser** de TypeScript, y falla si el saneador borra un
- * identificador que el parser dice que es código. El día que alguien escriba esa expresión regular, el test
- * se pone rojo y viene a decidir acá — que es exactamente lo que B-853 no tuvo.
+ * barrido sobre **todos** los `.ts`/`.tsx`/`.mjs`/`.js` del repo —y desde B-876
+ * sobre el frontmatter de los `.astro`— comparando contra el **parser** de
+ * TypeScript, y falla si el saneador borra un identificador que el parser dice
+ * que es código. El día que alguien escriba esa expresión regular, el test se
+ * pone rojo y viene a decidir acá — que es exactamente lo que B-853 no tuvo.
+ *
+ * **Ya pasó una vez, y así se decidió** (B-876): el `og:image` de
+ * `src/layouts/Base.astro` se calculaba con `/^https?:\/\//i`, cuyo `\/\/`
+ * contiene el par `//` literal, y era el único ofensor entre los 28 `.astro` de
+ * `src/`. Se arregló **del lado del que escribe la regex** —`\/{2}`, el mismo
+ * lenguaje sin el par— y no del lado del saneador, por el argumento de arriba:
+ * lexear el literal necesita el token anterior, y encima no cubriría
+ * `firestore.rules`. Escribir las dos barras sin el par es una línea; el parser
+ * de JavaScript no lo es, y no alcanzaría.
  */
 export const sinComentariosConFormato = (texto) => {
   let salida = '';
