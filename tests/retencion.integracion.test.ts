@@ -23,13 +23,24 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { adminBucket, adminDb } from '@/lib/firebase-admin';
 import {
   borrarPropuesta,
   decidirRetencion,
+  flyeresDelBucket,
+  propuestasConFlyer,
   propuestasVencibles,
+  relevarFlyeresSinPlazo,
 } from '../functions/retencion.js';
-import { PROJECT_ID, emuladorStorageVivo, emuladorVivo } from './emulador';
+import {
+  PROJECT_ID,
+  emuladorStorageVivo,
+  emuladorVivo,
+  limpiarFirestore,
+  proyectoAparte,
+} from './emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorStorageVivo());
 
@@ -531,4 +542,217 @@ describe.skipIf(!vivo)('la retención de propuestas borra las dos mitades — B-
       'código 9 también significa «ya no existe»: llamarlo rescate manda a buscar una propuesta que no está',
     ).toBe('ya-no-esta');
   });
+});
+
+/**
+ * **La lectura paginada contra Firestore de verdad** — B-865.
+ *
+ * El doble de `retencion.test.ts` afirma cuántas páginas se pidieron y con qué
+ * cursor, que desde el resultado no se ve. Lo que ese doble **no** puede afirmar
+ * es que el cursor funcione: `startAfter(snapshot)` sin `orderBy` explícito
+ * depende de que el servidor ordene por `__name__` y de que el SDK derive el
+ * cursor del snapshot. Un doble que lo implementa a mano dice que sí sin haber
+ * preguntado, que es exactamente el falso verde que este archivo existe para no
+ * tener.
+ *
+ * ── Base aparte, y no es prolijidad ───────────────────────────────────────
+ * Este caso siembra 202 documentos, y la base de este working-tree la comparten
+ * los demás archivos de integración (B-219 separa por checkout, no por archivo).
+ * Doscientas propuestas ajenas adentro de `/propuestas` cambian qué entra en la
+ * primera página de **cualquier** otra corrida del barrido, o sea que el ruido
+ * no sería ruido: sería otro resultado. Va a `proyectoAparte`, como el ruleset
+ * de la trampa 7.
+ */
+describe.skipIf(!vivo)('propuestasVencibles pagina contra Firestore — B-865', () => {
+  const PROYECTO = proyectoAparte('b865');
+  const RELLENO = 201;
+  const AL_FINAL = 'zz_vencida';
+  let db: ReturnType<typeof getFirestore>;
+
+  beforeAll(async () => {
+    expect(
+      process.env.FIRESTORE_EMULATOR_HOST,
+      'este test escribe 202 documentos: sin FIRESTORE_EMULATOR_HOST tocaría producción',
+    ).toBeTruthy();
+
+    const app =
+      getApps().find((a) => a.name === PROYECTO) ??
+      initializeApp({ projectId: PROYECTO }, PROYECTO);
+    db = getFirestore(app);
+
+    const lote = db.batch();
+    for (let i = 0; i < RELLENO; i++) {
+      /*
+       * Todas **dentro de su plazo**: así no hay corte por trabajo y la
+       * recorrida tiene que llegar hasta el final para encontrar la única
+       * vencida. Es el caso que un `limit()` sin cursor rompería.
+       */
+      lote.set(db.collection('propuestas').doc(`p_${String(i).padStart(4, '0')}`), {
+        estado: 'nueva',
+        creadoEn: hace(1),
+        revision: { porUid: null, en: null, actividadId: null, motivo: null },
+        imagen: null,
+      });
+    }
+    lote.set(db.collection('propuestas').doc(AL_FINAL), {
+      estado: 'nueva',
+      creadoEn: hace(90),
+      revision: { porUid: null, en: null, actividadId: null, motivo: null },
+      imagen: null,
+    });
+    await lote.commit();
+  }, 60_000);
+
+  afterAll(async () => {
+    if (!process.env.FIRESTORE_EMULATOR_HOST) return;
+    await limpiarFirestore(PROYECTO);
+  });
+
+  it('la vencida que quedó después de la primera página se encuentra igual', async () => {
+    const ahora = Date.now();
+    const propuestas = await propuestasVencibles(db as never, { ahora });
+
+    // Control positivo: si la query no trajera nada —o trajera solo una página—
+    // el aserto de abajo podría pasar por otra razón.
+    expect(propuestas).toHaveLength(RELLENO + 1);
+
+    const { aBorrar } = decidirRetencion({ propuestas, ahora });
+    expect(aBorrar.map((p) => p.id)).toEqual([AL_FINAL]);
+  }, 30_000);
+});
+
+/**
+ * **El flyer que no borra nadie, contra los emuladores** — B-871.
+ *
+ * Lo que acá no se puede razonar sin el emulador es el cruce en sí: que el
+ * nombre con el que el bucket conoce al objeto sea el mismo `storagePath` que el
+ * documento guarda. Es la misma pregunta que este archivo ya hace del lado del
+ * borrado —«que el path que la Function arma sea el que el bucket conoce»— y la
+ * que hace que este relevamiento sirva para algo: si los dos no empatan, todo
+ * aparece como `sin-propuesta` y el informe inventa un problema.
+ *
+ * ── El bucket del emulador no está particionado (B-366) ───────────────────
+ * A diferencia de Firestore, es uno solo para todos los working-trees, así que
+ * bajo `propuestas/` hay objetos de otras corridas. Por eso los asertos miran
+ * **las claves propias** y nunca el conjunto entero: un `toEqual` sobre toda la
+ * lista sería rojo intermitente con un diagnóstico equivocado.
+ */
+describe.skipIf(!vivo)('relevarFlyeresSinPlazo encuentra el flyer sin plazo — B-871', () => {
+  const ACEPTADA = `p_aceptada-${PROJECT_ID}`;
+  const OBJETO_ACEPTADA = `propuestas/prop_aceptada_${PROJECT_ID}.jpg`;
+  const PENDIENTE = `p_pendiente-${PROJECT_ID}`;
+  const OBJETO_PENDIENTE = `propuestas/prop_pendiente_${PROJECT_ID}.jpg`;
+  const OBJETO_SOLO = `propuestas/prop_solo_${PROJECT_ID}.jpg`;
+
+  beforeAll(async () => {
+    expect(process.env.FIREBASE_STORAGE_EMULATOR_HOST).toBeTruthy();
+    expect(process.env.FIRESTORE_EMULATOR_HOST).toBeTruthy();
+
+    /*
+     * **La aceptada se escribe directamente en `aceptada`**, y eso es el caso
+     * que importa: sin transición, `borrarImagenAlCerrar` no se despierta nunca.
+     * Es el séptimo camino de B-871 —la propuesta que ya estaba aceptada antes
+     * del deploy— reproducido tal cual.
+     */
+    await adminDb()
+      .collection('propuestas')
+      .doc(ACEPTADA)
+      .set(
+        documento({
+          estado: 'aceptada',
+          revision: { porUid: 'uid_admin', en: hace(200), actividadId: 'act_1', motivo: null },
+          imagen: { storagePath: OBJETO_ACEPTADA },
+        }),
+      );
+    await adminDb()
+      .collection('propuestas')
+      .doc(PENDIENTE)
+      .set(
+        documento({
+          estado: 'nueva',
+          creadoEn: hace(1),
+          revision: { porUid: null, en: null, actividadId: null, motivo: null },
+          imagen: { storagePath: OBJETO_PENDIENTE },
+        }),
+      );
+    for (const objeto of [OBJETO_ACEPTADA, OBJETO_PENDIENTE, OBJETO_SOLO]) {
+      await adminBucket().file(objeto).save(Buffer.from([0xff, 0xd8, 0xff]), {
+        contentType: 'image/jpeg',
+      });
+    }
+  }, 30_000);
+
+  afterAll(async () => {
+    if (!process.env.FIREBASE_STORAGE_EMULATOR_HOST) return;
+    for (const objeto of [OBJETO_ACEPTADA, OBJETO_PENDIENTE, OBJETO_SOLO]) {
+      await adminBucket().file(objeto).delete({ ignoreNotFound: true });
+    }
+    for (const id of [ACEPTADA, PENDIENTE]) {
+      await adminDb().collection('propuestas').doc(id).delete();
+    }
+  });
+
+  it('el de la aceptada queda para revisar y el de la pendiente no', async () => {
+    /*
+     * El `ahora` corrido cuatro días es lo que saca al objeto huérfano del margen
+     * de «recién subido» sin tener que esperarlo: el emulador le pone la fecha de
+     * ahora y no hay forma de envejecerlo. Es el mismo recurso que el `plazos`
+     * por parámetro de la decisión pura (`05-patrones.md` § «El reloj también es
+     * infraestructura»).
+     */
+    const ahora = Date.now() + 4 * DIA;
+    const { aRevisar, motivos } = await relevarFlyeresSinPlazo(adminDb(), adminBucket(), { ahora });
+
+    expect(motivos[OBJETO_ACEPTADA], 'el flyer de la aceptada no aparece como tal').toBe(
+      'aceptada-sin-plazo',
+    );
+    expect(motivos[OBJETO_PENDIENTE], 'el de la pendiente tiene red: la retención lo borra').toBe(
+      'de-una-que-caduca',
+    );
+    expect(motivos[OBJETO_SOLO], 'el que ningún documento nombra').toBe('sin-propuesta');
+
+    const nuestros = aRevisar.filter((f) => f.objeto.includes(PROJECT_ID)).map((f) => f.objeto);
+    expect(nuestros.sort()).toEqual([OBJETO_ACEPTADA, OBJETO_SOLO].sort());
+    expect(aRevisar.find((f) => f.objeto === OBJETO_ACEPTADA)?.propuesta).toBe(ACEPTADA);
+  }, 30_000);
+
+  it('y el relevamiento tampoco lee el contacto de quien propuso', async () => {
+    /*
+     * El hermano del caso que `propuestasVencibles` ya tiene, y hace falta
+     * porque es **otro `select`**: dos máscaras que hoy piden lo mismo y que
+     * pueden separarse. Lo pidió el `auditor-trampas` al revisar el ensanche que
+     * este relevamiento necesitó (`creadoEn` y `revision.en`, para poder
+     * distinguir «el barrido pasa por acá» de «no lo puede fechar»): el riesgo
+     * del ensanche no es el timestamp, es que la próxima vez se pida `revision`
+     * entera y con ella viaje `motivo` —una nota interna sobre el trabajo de
+     * otra persona— y `porUid`.
+     *
+     * El fixture los tiene puestos a propósito: es contra eso que se afirma.
+     */
+    const leidas = await propuestasConFlyer(adminDb());
+    const nuestra = leidas.find((p) => p.id === ACEPTADA);
+
+    // Control positivo: sin esto, «no trae el contacto» pasaría por no haber
+    // traído nada.
+    expect(nuestra, 'la aceptada no vino en el relevamiento').toBeTruthy();
+    expect(Object.keys(nuestra!).sort()).toEqual(['creadoEn', 'estado', 'id', 'imagen', 'revision']);
+    expect(Object.keys(nuestra!.revision as object)).toEqual(['en']);
+  }, 30_000);
+
+  it('y el documento sigue nombrando el objeto con el nombre que el bucket usa', async () => {
+    /*
+     * El control positivo del cruce, y no es redundante con el caso de arriba:
+     * si `flyeresDelBucket` devolviera nombres con otra forma —con el bucket
+     * adelante, o URL-encodeados— **todo** saldría `sin-propuesta` y el caso de
+     * arriba pasaría igual en su tercer aserto, que es justamente el que dice
+     * «nadie lo nombra». Acá se afirma al revés: el objeto de la pendiente existe
+     * en el listado **y** empató con su documento.
+     */
+    const objetos = await flyeresDelBucket(adminBucket());
+    expect(objetos.map((o) => o.nombre)).toContain(OBJETO_PENDIENTE);
+    expect(
+      objetos.find((o) => o.nombre === OBJETO_PENDIENTE)?.creado,
+      'sin fecha legible todo caería en «recién subido» y nada se revisaría nunca',
+    ).toBeGreaterThan(0);
+  }, 30_000);
 });

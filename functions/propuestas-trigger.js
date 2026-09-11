@@ -98,7 +98,10 @@ export const borrarImagenAlCerrar = onDocumentWritten(
          * original **no lo borra nadie más nunca** —la retención no llega y
          * `limpiarImagenesHuerfanas` no recorre este prefijo—. Sale como `warn`
          * con `alerta` para que se pueda filtrar, igual que `rebuild-agotado`
-         * (B-21). Es el agujero de **B-871**, medido en vez de supuesto.
+         * (B-21). Es el agujero de **B-871**, medido en vez de supuesto — y
+         * desde ese ítem el objeto que queda vivo aparece además en el
+         * relevamiento de `scripts/borrar-propuestas-vencidas.mjs`, que entra
+         * por el bucket y no depende de que este log se haya visto.
          */
         logger.warn('la aceptada se queda con la foto original: no hay copia que la reemplace', {
           propuesta: id,

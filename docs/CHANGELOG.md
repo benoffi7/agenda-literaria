@@ -2,6 +2,62 @@
 
 ## Sin publicar
 
+- **La query del barrido de retención lleva `limit()`, y lo que la corta es el
+  trabajo y no la cantidad leída** — **B-865**. Desde B-844 arrastraba toda la
+  bandeja pendiente en cada corrida. Ahora lee de a 200 con cursor y deja de pedir
+  páginas apenas junta las 50 candidatas del día, así que
+  `MAX_PROPUESTAS_POR_CORRIDA` —que recortaba el borrado y no la lectura— acota las
+  dos.
+
+  **El `limit()` ingenuo habría sido peor que no tenerlo, y ése es todo el
+  contenido del cambio.** La query no lleva `orderBy` (pediría índice compuesto),
+  así que el orden es por id: un `limit(50)` pelado lee siempre las mismas
+  cincuenta primeras, y una vencida más adelante en la colección **no se borraría
+  nunca** — el plazo de retención dejando de cumplirse en silencio, con la suite en
+  verde. Su caso está escrito —500 propuestas y la única vencida en la última
+  posición— y es el que se pone rojo si alguien vuelve a leer una sola página.
+
+  El residual va dicho: sin nada vencido, la búsqueda recorre la colección igual,
+  porque ningún índice ordena por «cuándo vence» —el reloj sale del máximo entre
+  dos campos y del estado—. Cinco mutaciones, una **contra Firestore de verdad**:
+  el cursor por snapshot sin `orderBy` explícito es una propiedad del servidor, y
+  un doble a mano diría que sí sin haber preguntado.
+
+- **El flyer de una propuesta aceptada que no se borró ahora aparece en una lista,
+  incluido el que no emite ningún log** — **B-871**, la mitad que no necesita la
+  decisión del dueño. El borrado del original ocurre **una sola vez**, en la
+  transición a `aceptada`, y debajo no hay red. `decidirFlyeresSinPlazo` entra por
+  el **bucket** y no por las transiciones, así que encuentra los siete caminos por
+  igual — incluido el séptimo, el de la propuesta que ya estaba aceptada antes del
+  deploy y no despierta al trigger nunca.
+
+  **Y el chequeo que el runbook mandaba hacer no podía funcionar.** Decía que el
+  backfill se miraba corriendo el script y buscando «una línea `aceptada-no-vence`
+  con un `propuestas/…` al lado»: esa línea **no puede imprimirse nunca**, porque
+  la query trae `ESTADOS_QUE_CADUCAN` y la `aceptada` queda afuera por definición.
+  Verde sobre exactamente el caso que existía para encontrar — la misma forma que
+  B-873, con otra ropa.
+
+  **Lista, no borra, y eso es la decisión que falta.** Qué hacer con la aceptada
+  que conservó su original *a propósito* es una pregunta de producto sin contestar;
+  hasta que exista, un barrido automático o se lleva justo esa foto o nace con una
+  excepción que no alcanza a ninguna otra.
+
+  **El `auditor-trampas` encontró la clase de B-88 adentro del arreglo**, y es el
+  hallazgo más caro: «¿el barrido va a pasar por este documento?» se derivaba en
+  dos lugares y uno se quedaba corto. `decidirRetencion` pide **dos** cosas —un
+  plazo y un reloj legible—, así que una propuesta en un estado que caduca pero sin
+  fecha legible **no se borra nunca**, y mirando solo la tabla de plazos su flyer
+  salía marcado «tiene red» y desaparecía de las dos listas. Era el agujero de
+  B-871 reabierto un renglón más abajo del que lo tapa. El caso corre las dos
+  funciones sobre el **mismo** fixture patológico.
+
+  **Y una mutación sobrevivió y no se arregló el código: se corrigió lo que el test
+  afirmaba.** La guarda del índice de dueños es inalcanzable por construcción, así
+  que queda como defensa en profundidad con el resultado anotado en el fuente — y
+  el caso dejó de decir que la cubría. Un docblock que afirma una cobertura que no
+  existe es exactamente la falta de B-873.
+
 - **Las dos hermanas que B-854 dejó afuera: el `events.json` contestaba «cuál es la
   imagen» y «hay tallerista» con predicados propios** — **B-860** y **B-861**. Van
   juntas porque son el mismo archivo y la misma clase, la de B-88 en su cara menos

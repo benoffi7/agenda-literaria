@@ -20,14 +20,19 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   ESTADOS_QUE_CADUCAN,
+  ESTADOS_SIN_PLAZO,
+  MARGEN_DEL_FLYER_EN_VUELO_MS,
   MARGEN_DE_RETENCION_MS,
   MARGEN_SIN_TOCAR_MS,
   MAX_PROPUESTAS_POR_CORRIDA,
   PREFIJO_PROPUESTAS,
+  PROPUESTAS_POR_PAGINA,
   RETENCION_POR_ESTADO,
   borrarPropuesta,
+  decidirFlyeresSinPlazo,
   decidirRetencion,
   objetoDePropuesta,
+  propuestasVencibles,
   relojDeRetencion,
 } from '../functions/retencion.js';
 import { ESTADOS_PROPUESTA } from '@/types/propuesta';
@@ -689,5 +694,438 @@ describe('objetoDePropuesta — solo el prefijo propio', () => {
      * no dice nada del prefijo y un aserto contra él pasaría por ausencia.
      */
     expect(fuente('firestore.rules')).toContain(`matches('^${PREFIJO_PROPUESTAS}`);
+  });
+});
+
+/**
+ * **La lectura se corta por trabajo, no por cantidad leída** — B-865.
+ *
+ * El ítem pedía un `limit()` en la query del barrido, que no lo tenía y desde
+ * B-844 arrastra toda la bandeja pendiente. Lo que estos casos fijan es que el
+ * `limit()` que se puso **no es el ingenuo**: la query no tiene `orderBy` (pediría
+ * índice compuesto), así que un `limit(50)` pelado leería siempre las mismas
+ * primeras cincuenta por id y una vencida que quedara más adelante en la
+ * colección **no se borraría nunca**, en silencio y con la suite en verde — o
+ * sea, el plazo de retención dejaría de cumplirse sin que nada lo diga. Por eso
+ * la lectura es paginada con cursor y lo que la corta es haber juntado el tope de
+ * borrados de hoy.
+ *
+ * Se prueba con un doble y no contra el emulador porque lo que hay que poder
+ * afirmar es **cuántas páginas pidió y con qué cursor**, que desde el resultado
+ * no se ve. Que el cursor funcione de verdad contra Firestore —`startAfter` con
+ * un snapshot y sin `orderBy` explícito— es otra pregunta, y está en
+ * `retencion.integracion.test.ts`.
+ */
+describe('propuestasVencibles — la lectura paginada (B-865)', () => {
+  /**
+   * El mínimo de Firestore que este barrido usa: `collection().where().select()`,
+   * `.startAfter()`, `.limit()` y `.get()`. Anota cada página pedida con su
+   * cursor, que es lo que los casos miran.
+   */
+  const firestoreFalso = (docs: { id: string; datos: Record<string, unknown> }[]) => {
+    const paginas: { desde: string | null; limite: number | null }[] = [];
+
+    const construir = (desde: string | null, limite: number | null): Record<string, unknown> => ({
+      where: () => construir(desde, limite),
+      select: () => construir(desde, limite),
+      startAfter: (snap: { id: string }) => construir(snap.id, limite),
+      limit: (n: number) => construir(desde, n),
+      get: async () => {
+        paginas.push({ desde, limite });
+        const arranque = desde === null ? 0 : docs.findIndex((d) => d.id === desde) + 1;
+        const trozo = docs.slice(arranque, arranque + (limite ?? docs.length));
+        return {
+          size: trozo.length,
+          docs: trozo.map((d) => ({
+            id: d.id,
+            get: (campo: string) => d.datos[campo],
+            updateTime: `v-${d.id}`,
+          })),
+        };
+      },
+    });
+
+    return { db: { collection: () => construir(null, null) }, paginas };
+  };
+
+  /** `n` propuestas en orden de id, con el `creadoEn` que se le pase a cada una. */
+  const bandeja = (n: number, cuando: (i: number) => number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `p_${String(i).padStart(4, '0')}`,
+      datos: {
+        estado: 'nueva',
+        creadoEn: ts(cuando(i)),
+        revision: { en: null },
+        imagen: null,
+      },
+    }));
+
+  it('el tamaño de página deja lugar de sobra para el tope de borrados', () => {
+    /*
+     * La relación entre las dos constantes es lo que hace que la corrida normal
+     * sea **una sola página**: si la página fuera más chica que el tope, cada
+     * corrida con trabajo pediría varias. No es una atadura —son dos números
+     * independientes— pero sí una desigualdad que tiene que valer.
+     */
+    expect(PROPUESTAS_POR_PAGINA).toBeGreaterThan(MAX_PROPUESTAS_POR_CORRIDA);
+  });
+
+  it('con trabajo por delante lee una sola página y corta', async () => {
+    const { db, paginas } = firestoreFalso(bandeja(500, () => ABANDONADA));
+    const leidas = await propuestasVencibles(db, { ahora: AHORA });
+
+    // Una página: las primeras 200 ya llenan (y sobran) el tope de 50 borrados,
+    // así que seguir leyendo no cambiaría nada de lo que esta corrida va a hacer.
+    expect(paginas).toHaveLength(1);
+    expect(paginas[0]).toEqual({ desde: null, limite: PROPUESTAS_POR_PAGINA });
+    expect(leidas).toHaveLength(PROPUESTAS_POR_PAGINA);
+  });
+
+  it('y una vencida al final de la colección se encuentra igual', async () => {
+    /*
+     * **El caso que un `limit()` pelado rompería**, y es el motivo entero de que
+     * esto sea paginado. Con 500 propuestas de ayer y una sola vencida en la
+     * última posición por id, un `limit(50)` —o un `limit(200)`— sin cursor
+     * devuelve puras propuestas dentro de su plazo y el barrido no borra nada,
+     * todos los días, mientras el dato personal de un tercero sigue guardado.
+     *
+     * MUTACIÓN PROBADA: reemplazando el `for (;;)` de `propuestasVencibles` por
+     * un único `await base.limit(PROPUESTAS_POR_PAGINA).get()`, este caso se pone
+     * rojo y el de arriba sigue verde — que es la prueba de que miden mitades
+     * distintas.
+     */
+    const docs = bandeja(500, () => RECIENTE);
+    docs[docs.length - 1]!.datos.creadoEn = ts(ABANDONADA);
+
+    const { db, paginas } = firestoreFalso(docs);
+    const leidas = await propuestasVencibles(db, { ahora: AHORA });
+
+    expect(paginas).toHaveLength(3);
+    expect(leidas).toHaveLength(500);
+    const { aBorrar } = decidirRetencion({ propuestas: leidas, ahora: AHORA });
+    expect(aBorrar.map((p) => p.id)).toEqual([docs[docs.length - 1]!.id]);
+  });
+
+  it('el cursor de cada página es la última de la anterior', async () => {
+    const docs = bandeja(500, () => RECIENTE);
+    const { db, paginas } = firestoreFalso(docs);
+    await propuestasVencibles(db, { ahora: AHORA });
+
+    /*
+     * Sin esto, un cursor mal armado —el primero de la página en vez del último,
+     * o siempre `null`— daría un bucle infinito o repetiría documentos, y los
+     * casos de arriba pasarían igual mientras el conteo diera.
+     */
+    expect(paginas.map((p) => p.desde)).toEqual([
+      null,
+      docs[PROPUESTAS_POR_PAGINA - 1]!.id,
+      docs[PROPUESTAS_POR_PAGINA * 2 - 1]!.id,
+    ]);
+    expect(paginas.every((p) => p.limite === PROPUESTAS_POR_PAGINA)).toBe(true);
+  });
+
+  it('una página corta termina la recorrida sin pedir una vacía', async () => {
+    const { db, paginas } = firestoreFalso(bandeja(3, () => RECIENTE));
+    expect(await propuestasVencibles(db, { ahora: AHORA })).toHaveLength(3);
+    expect(paginas).toHaveLength(1);
+  });
+
+  it('y la corta el mismo reloj con el que el llamador decide después', async () => {
+    /*
+     * `ahora` entra por parámetro porque `propuestasVencibles` le pregunta a
+     * `decidirRetencion` cuándo parar: con el reloj de adentro (`Date.now()`) y
+     * el de afuera separados, la lectura podría cortar con un juicio y el borrado
+     * hacerse con otro. Acá se ve al revés: con un `ahora` anterior al
+     * vencimiento, nada vence y no hay corte por trabajo.
+     */
+    const { db, paginas } = firestoreFalso(bandeja(500, () => ABANDONADA));
+    const leidas = await propuestasVencibles(db, { ahora: ABANDONADA + 1 });
+    expect(paginas).toHaveLength(3);
+    expect(leidas).toHaveLength(500);
+  });
+});
+
+/**
+ * **El flyer que no va a borrar nadie** — B-871.
+ *
+ * El borrado del original de una propuesta **aceptada** ocurre una sola vez, en
+ * la transición (`borrarImagenAlCerrar`), y debajo no hay red: la `aceptada` no
+ * vence y `limpiarImagenesHuerfanas` solo recorre `imagenes/` y `miniaturas/`.
+ * Si ese borrado no ocurre —falló, o la decisión correcta fue **no** borrar
+ * porque no había copia verificada, o la propuesta ya estaba aceptada antes del
+ * deploy y la transición nunca existió— la foto de un tercero se queda para
+ * siempre y no pasa nadie después.
+ *
+ * Esto es el «pasa alguien», y **solo informa**: qué hacer con el original que se
+ * conservó a propósito es una decisión de producto que el dueño todavía no tomó.
+ * Los casos de abajo fijan la clasificación, que es lo que esa decisión va a
+ * necesitar cuando llegue.
+ *
+ * La propiedad que los ordena es una sola: **un objeto necesita a alguien solo si
+ * no hay un plazo que se lo lleve**. De ahí salen los dos motivos que van a la
+ * lista (`<estado>-sin-plazo` y `sin-propuesta`) y los tres que no.
+ */
+describe('decidirFlyeresSinPlazo — qué flyer no borra nadie (B-871)', () => {
+  const VIEJO = AHORA - MARGEN_DEL_FLYER_EN_VUELO_MS - DIA;
+  const objeto = (nombre: string, creado = VIEJO) => ({ nombre, creado });
+  /**
+   * **Con las dos fechas, y eso no es relleno del fixture.** Una propuesta en un
+   * estado que caduca pero que no se puede fechar **no la borra el barrido**
+   * (`sin-fecha-legible`), así que su flyer tampoco tiene quien lo borre. Y van
+   * las dos porque el reloj no es el mismo: la `rechazada` cuenta desde
+   * `revision.en` **sin caer** a `creadoEn` (DEC-13), así que un fixture con
+   * `creadoEn` solo la dejaría sin fechar — lo comprobó este mismo caso, que dio
+   * rojo en la variante `rechazada` antes de completarlo.
+   */
+  const conFlyer = (id: string, estado: string, nombre: string) => ({
+    id,
+    estado,
+    creadoEn: ts(AHORA - DIA),
+    revision: { en: ts(AHORA - DIA) },
+    imagen: { storagePath: nombre },
+  });
+
+  it('el flyer de una aceptada queda para revisar: no hay plazo que se lo lleve', () => {
+    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_a.jpg')],
+      propuestas: [conFlyer('p1', 'aceptada', 'propuestas/prop_a.jpg')],
+      ahora: AHORA,
+    });
+    expect(aRevisar).toEqual([
+      { objeto: 'propuestas/prop_a.jpg', propuesta: 'p1', motivo: 'aceptada-sin-plazo' },
+    ]);
+    expect(motivos['propuestas/prop_a.jpg']).toBe('aceptada-sin-plazo');
+  });
+
+  it('y el de una que sí caduca, no: el barrido de retención va a pasar por ahí', () => {
+    /*
+     * El control que hace que el caso de arriba no se lea como «todo flyer con
+     * documento hay que mirarlo». Los tres estados que caducan tienen red, y da
+     * igual cuán viejo sea el objeto: el plazo es del documento.
+     */
+    for (const estado of ESTADOS_QUE_CADUCAN) {
+      const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+        objetos: [objeto('propuestas/prop_b.jpg')],
+        propuestas: [conFlyer('p2', estado, 'propuestas/prop_b.jpg')],
+        ahora: AHORA,
+      });
+      expect(aRevisar, estado).toEqual([]);
+      expect(motivos['propuestas/prop_b.jpg'], estado).toBe('de-una-que-caduca');
+    }
+  });
+
+  it('un objeto que ningún documento nombra también queda para revisar', () => {
+    /*
+     * Son dos historias que terminan igual: un `/proponer` abandonado después de
+     * subir la foto (el formulario sube al elegir el archivo y escribe el
+     * documento al enviar), o la mitad que sobrevivió a un borrado cortado por la
+     * mitad. En los dos casos es una foto de una persona **sin nada que la
+     * referencie**, que es el punto 4 del inventario en su peor versión: no hay
+     * desde dónde volver a encontrarla.
+     */
+    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_c.jpg')],
+      propuestas: [],
+      ahora: AHORA,
+    });
+    expect(aRevisar).toEqual([
+      { objeto: 'propuestas/prop_c.jpg', propuesta: null, motivo: 'sin-propuesta' },
+    ]);
+    expect(motivos['propuestas/prop_c.jpg']).toBe('sin-propuesta');
+  });
+
+  it('salvo que sea reciente: alguien puede estar llenando el formulario', () => {
+    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_d.jpg', AHORA - DIA)],
+      propuestas: [],
+      ahora: AHORA,
+    });
+    expect(aRevisar).toEqual([]);
+    expect(motivos['propuestas/prop_d.jpg']).toBe('recien-subido');
+  });
+
+  it('y una fecha ilegible falla cerrado, como en los otros dos barridos', () => {
+    for (const creado of [undefined, NaN, null, 'ayer']) {
+      const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+        objetos: [{ nombre: 'propuestas/prop_e.jpg', creado } as never],
+        propuestas: [],
+        ahora: AHORA,
+      });
+      expect(aRevisar, String(creado)).toEqual([]);
+      expect(motivos['propuestas/prop_e.jpg'], String(creado)).toBe('recien-subido');
+    }
+  });
+
+  it('lo que no está bajo `propuestas/<un segmento>` no se opina', () => {
+    // Mismo criterio que `decidirLimpieza`: no se toca lo que no se entiende. Y
+    // acá además es la guarda que impide que un objeto de la galería entre a una
+    // lista que alguien va a leer como «borrables».
+    for (const nombre of [
+      'imagenes/img_a.jpg',
+      'propuestas/sub/prop_a.jpg',
+      'propuestas/',
+      'miniaturas/img_a.jpg',
+    ]) {
+      const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+        objetos: [objeto(nombre)],
+        propuestas: [],
+        ahora: AHORA,
+      });
+      expect(aRevisar, nombre).toEqual([]);
+      expect(motivos[nombre], nombre).toBe('fuera-del-alcance');
+    }
+  });
+
+  it('un documento que nombra un objeto de la galería no arrastra a nadie', () => {
+    /*
+     * **Lo que este caso fija es el corte del lado del objeto, y hay que decir
+     * cuál de las dos guardas lo sostiene.** La del índice —armarlo con
+     * `objetoDePropuesta` y no con el `storagePath` crudo— es **defensa en
+     * profundidad y hoy no es alcanzable**: una clave inválida en el índice no
+     * puede empatar con ningún objeto, porque todo objeto que llega a
+     * consultarse ya pasó la misma guarda. Se verificó por mutación: armando el
+     * índice con el path crudo, **ningún caso se pone rojo**. Va escrita igual
+     * —el argumento está en el fuente— pero este caso no la afirma, para no
+     * declarar una cobertura que no existe.
+     *
+     * Lo que sí afirma: el objeto de la galería queda `fuera-del-alcance` (no
+     * entra a una lista que alguien va a leer como «borrables») y el flyer de la
+     * propuesta queda sin dueño porque **su** documento nombra otra cosa.
+     */
+    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_f.jpg'), objeto('imagenes/img_x.jpg')],
+      propuestas: [conFlyer('p3', 'aceptada', 'imagenes/img_x.jpg')],
+      ahora: AHORA,
+    });
+    expect(motivos['imagenes/img_x.jpg']).toBe('fuera-del-alcance');
+    expect(aRevisar).toEqual([
+      { objeto: 'propuestas/prop_f.jpg', propuesta: null, motivo: 'sin-propuesta' },
+    ]);
+  });
+
+  it('un estado que caduca pero con fecha ilegible también queda para revisar', () => {
+    /*
+     * **Lo encontró el `auditor-trampas` sobre este mismo cambio**, y es la clase
+     * de B-88 en su peor forma: dos lugares que derivan por separado la misma
+     * pregunta —«¿el barrido va a pasar por este documento?»— y uno se queda
+     * corto. `decidirRetencion` pide **dos** cosas, un plazo numérico y un reloj
+     * legible; mirar solo la tabla de plazos daba por cubierta una propuesta que
+     * el barrido no toca nunca, y su flyer desaparecía de las dos listas: ni
+     * borrado ni reportado. Es el agujero de B-871 reabierto un renglón más
+     * abajo del que lo tapa.
+     *
+     * El caso es el mismo fixture patológico que `decidirRetencion` clasifica
+     * como `sin-fecha-legible`, y los dos asertos van juntos a propósito: el
+     * primero afirma que el barrido **no** se lo lleva, el segundo que entonces
+     * esta lista sí lo nombra.
+     */
+    const rota = {
+      id: 'p7',
+      estado: 'nueva',
+      creadoEn: null,
+      revision: { en: null },
+      imagen: { storagePath: 'propuestas/prop_m.jpg' },
+    };
+    expect(decidirRetencion({ propuestas: [rota], ahora: AHORA }).motivos['p7']).toBe(
+      'sin-fecha-legible',
+    );
+
+    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_m.jpg')],
+      propuestas: [rota],
+      ahora: AHORA,
+    });
+    expect(motivos['propuestas/prop_m.jpg']).toBe('sin-fecha-legible');
+    expect(aRevisar).toEqual([
+      { objeto: 'propuestas/prop_m.jpg', propuesta: 'p7', motivo: 'sin-fecha-legible' },
+    ]);
+  });
+
+  it('un estado que la tabla no nombra tampoco tiene quien lo borre', () => {
+    /*
+     * El hermano del caso `estado-<x>` de `decidirRetencion`, y la respuesta
+     * tiene que ser la contraria: allá un estado desconocido **no caduca** (falla
+     * cerrado, no borra), así que acá su flyer **sí** necesita a alguien. Si los
+     * dos fallaran para el mismo lado, un estado nuevo dejaría fotos de terceros
+     * sin plazo y sin aparecer en ninguna lista.
+     */
+    const { aRevisar } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_g.jpg')],
+      propuestas: [conFlyer('p4', 'archivada', 'propuestas/prop_g.jpg')],
+      ahora: AHORA,
+    });
+    expect(aRevisar).toEqual([
+      { objeto: 'propuestas/prop_g.jpg', propuesta: 'p4', motivo: 'archivada-sin-plazo' },
+    ]);
+  });
+
+  it('los estados sin plazo salen de la tabla y son el complemento exacto', () => {
+    /*
+     * Misma atadura que `ESTADOS_QUE_CADUCAN`: hoy es `['aceptada']` y el día que
+     * alguien le ponga un número, esta lista queda vacía sola. Una segunda lista
+     * escrita a mano sería la que quedaría vieja, y el síntoma sería silencioso:
+     * un estado que dejó de caducar y que este relevamiento no mira.
+     */
+    expect(ESTADOS_SIN_PLAZO).toEqual(['aceptada']);
+    expect([...ESTADOS_SIN_PLAZO, ...ESTADOS_QUE_CADUCAN].sort()).toEqual(
+      [...ESTADOS_PROPUESTA].sort(),
+    );
+  });
+
+  it('el margen no está escrito en términos del de la limpieza de imágenes', () => {
+    /*
+     * MUTACIÓN PROBADA: con
+     * `export const MARGEN_DEL_FLYER_EN_VUELO_MS = MARGEN_DE_GRACIA_MS;` —que deja
+     * toda la suite en verde, porque el valor no cambia— este caso se pone rojo.
+     * Son dos decisiones que hoy coinciden: allá el margen cubre «el admin subió
+     * la imagen y todavía no guardó la actividad»; acá, el tiempo que una persona
+     * tarda en terminar el formulario público, que sube el archivo al elegirlo y
+     * escribe el documento al enviar. Mismo criterio que `MARGEN_SIN_TOCAR_MS`.
+     */
+    const declaracion = /export const MARGEN_DEL_FLYER_EN_VUELO_MS = ([^;]+);/.exec(
+      fuente('functions/retencion.js'),
+    );
+    expect(declaracion, 'no se encontró la declaración del margen').not.toBeNull();
+    expect(declaracion![1]).not.toContain('MARGEN_DE_GRACIA_MS');
+  });
+
+  it('cada motivo que pide a un humano tiene su fila en el runbook', () => {
+    /*
+     * La misma atadura que el runbook de `flyer-de-propuesta-sin-borrar` ya tiene
+     * del lado de `propuestas.js`: un motivo que aparece en una lista que alguien
+     * va a leer a las tres de la mañana y no está en `08-operacion.md` es un
+     * hallazgo sin instrucción. Se derivan del código y no se enumeran a mano.
+     */
+    const { motivos } = decidirFlyeresSinPlazo({
+      // Uno por motivo: los dos que piden a un humano y los tres que no. Los
+      // tres tranquilos van igual, porque el informe los imprime y quien lo lea
+      // va a querer saber por qué ese objeto **no** está en la lista.
+      objetos: [
+        objeto('propuestas/prop_h.jpg'),
+        objeto('propuestas/prop_i.jpg'),
+        objeto('propuestas/prop_j.jpg'),
+        objeto('propuestas/prop_k.jpg', AHORA - DIA),
+        objeto('propuestas/sub/prop_l.jpg'),
+        objeto('propuestas/prop_m.jpg'),
+      ],
+      propuestas: [
+        conFlyer('p5', 'aceptada', 'propuestas/prop_h.jpg'),
+        conFlyer('p6', 'nueva', 'propuestas/prop_j.jpg'),
+        {
+          id: 'p7',
+          estado: 'nueva',
+          creadoEn: null,
+          revision: { en: null },
+          imagen: { storagePath: 'propuestas/prop_m.jpg' },
+        },
+      ],
+      ahora: AHORA,
+    });
+    const vocabulario = [...new Set(Object.values(motivos))];
+    expect(vocabulario, 'no se cubrieron los seis motivos').toHaveLength(6);
+    const runbook = fuente('docs/08-operacion.md');
+    for (const motivo of vocabulario) {
+      expect(runbook, `«${motivo}» no tiene fila en el runbook`).toContain(`| \`${motivo}\` |`);
+    }
   });
 });

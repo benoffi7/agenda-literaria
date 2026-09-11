@@ -1065,9 +1065,16 @@ justamente **B-871**.
 **Para el backfill de lo que ya está aceptado antes de este deploy** —el trigger
 actúa solo en la **transición**, así que una propuesta que ya estaba en
 `aceptada` no lo despierta nunca—: `node scripts/borrar-propuestas-vencidas.mjs`
-**sin `--aplicar`** lista cada propuesta con su motivo y su objeto, y una línea
-`aceptada-no-vence` con un `propuestas/…` al lado es un flyer huérfano vivo. Hoy
-la colección está vacía, así que probablemente no haya ninguno.
+**sin `--aplicar`**, y mirar la segunda lista del informe, la de
+§ «Flyers que no borra nadie» de más abajo.
+
+> ⚠️ **Esto decía otra cosa y era falso** (corregido con **B-871**). Decía que
+> el chequeo era mirar la primera lista del script y buscar «una línea
+> `aceptada-no-vence` con un `propuestas/…` al lado». Esa línea **no puede
+> aparecer nunca**: la query del barrido trae `ESTADOS_QUE_CADUCAN` y la
+> `aceptada` queda afuera por definición, así que el chequeo documentado daba
+> siempre «no hay ninguno» — verde sobre exactamente el caso que existía para
+> encontrar. La lista nueva entra por el **bucket** y por eso sí lo ve.
 
 > ⚠️ **Paso manual pendiente del renombre.** Hasta B-863 este trigger se llamaba
 > `borrarImagenAlRechazar`. Si CI llegó a desplegarlo con ese nombre, la Function
@@ -1076,6 +1083,51 @@ la colección está vacía, así que probablemente no haya ninguno.
 > Mientras tanto no rompe nada —las dos hacen el mismo borrado idempotente en el
 > rechazo, y solo la nueva actúa en la aceptación—, pero es una Function fantasma
 > cobrando invocaciones. Verificar con `firebase functions:list`.
+
+### Flyers que no borra nadie (B-871)
+
+`node scripts/borrar-propuestas-vencidas.mjs` **sin `--aplicar`** imprime, al
+final, una segunda lista que no sale de la retención: **los objetos que hoy
+existen bajo `propuestas/`**, cruzados contra los documentos que los nombran.
+
+Es el «pasa alguien» que a esta foto le faltaba. El borrado del original de una
+aceptada ocurre **una sola vez**, en la transición, y debajo no hay red: la
+`aceptada` no vence y `limpiarImagenesHuerfanas` no recorre este prefijo. La
+lista entra por el bucket y no por las transiciones, así que encuentra los siete
+caminos por igual — incluido el séptimo, el que no emite ningún log porque la
+propuesta ya estaba aceptada antes del deploy.
+
+| Motivo | Qué es | Qué hacer |
+|---|---|---|
+| `aceptada-sin-plazo` | el flyer de una propuesta aceptada sigue vivo: el borrado no ocurrió, o la decisión correcta fue no borrarlo (`sin-copia`) | mirar el `warn` de esa propuesta en la tabla de arriba, que dice cuál de los seis caminos fue, y seguir su fila. **El script no lo borra** |
+| `sin-propuesta` | ningún documento nombra ese objeto: un `/proponer` abandonado después de subir la foto, o la mitad que sobrevivió a un borrado cortado por la mitad | no hay a quién preguntarle ni desde dónde volver a encontrarlo. Borrarlo a mano es lo correcto una vez confirmado que no es reciente |
+| `de-una-que-caduca` | lo nombra una `nueva`, `en-revision` o `rechazada`, **y esa propuesta se puede fechar** | **nada**: el barrido de retención va a pasar por ese documento y se lleva las dos mitades |
+| `sin-fecha-legible` | lo nombra una propuesta de un estado que caduca, pero **sin ninguna fecha legible** con la que contar el plazo | el barrido **no la borra nunca** (falla cerrado, con el mismo motivo del otro lado), así que su flyer tampoco tiene quien lo borre. Hay que arreglarle la fecha al documento —`creadoEn`, o `revision.en` si está rechazada— y dejar que el barrido haga el resto |
+| `recien-subido` | el **objeto** tiene menos de 72 h, o su fecha de creación no se pudo leer (nada que ver con `sin-fecha-legible`, que habla de la fecha del **documento**) | **nada**: `/proponer` sube el archivo al elegirlo y escribe el documento al enviar, así que lo normal es que todavía no tenga dueño. Falla cerrado, como los otros dos barridos |
+| `fuera-del-alcance` | no está bajo `propuestas/<un segmento>` | **no tocar**. Es la misma guarda de `objeto-ajeno`: puede ser el flyer de una actividad publicada |
+
+**La lista informa y no borra, tampoco con `--aplicar`.** Lo que falta para
+automatizarlo es una decisión de producto: qué pasa con la aceptada que conservó
+su original **a propósito** (el caso `sin-copia`, donde no borrar es lo correcto
+porque perder la foto no se deshace). Mientras esa respuesta no exista, un
+barrido automático o borraría justo esa foto o tendría una excepción que no
+alcanzaría nunca a ninguna de las otras.
+
+Dos detalles de operación:
+
+- **La lista de arriba puede venir recortada y ésta no.** La de la retención
+  corta apenas junta las 50 del tope (B-865); ésta lee la colección entera. Así
+  que un `sin-fecha-legible` puede aparecer acá sin su línea gemela arriba en la
+  misma corrida — el dato es correcto igual, pero conviene saberlo antes de
+  buscar el par que no está.
+- **Corre con Firestore y Storage apuntando al mismo lado.** Si uno está en el
+  emulador y el otro en producción, el script **no releva** y lo dice: cruzar los
+  documentos de un lado con los objetos del otro daría todo como `sin-propuesta`,
+  o sea un informe que inventa un problema enorme.
+- **No está en el barrido diario, y es a propósito.** La lectura que necesita es
+  la colección `/propuestas` entera —hay que saber si *alguien* nombra cada
+  objeto—, que es justo lo que B-865 acaba de sacar del camino diario. Va a
+  pedido, y pasa a ser automático el día que la decisión de arriba exista.
 
 **Por qué se re-sube en vez de copiar del lado del servidor.** Copiar entre
 prefijos solo lo puede hacer el Admin SDK, o sea una Function, y esa Function
@@ -1193,7 +1245,16 @@ con tres salvaguardas:
   falla cerrado, porque una propuesta que se ve en la bandeja se puede volver a
   rechazar y una borrada no vuelve.
 - **Tope de 50 por corrida** (`MAX_PROPUESTAS_POR_CORRIDA`), misma clase de
-  salvaguarda que los otros dos barridos.
+  salvaguarda que los otros dos barridos. Desde **B-865** ese tope acota además
+  la **lectura**: la query va paginada de a 200 con cursor y deja de pedir
+  páginas apenas junta las 50 candidatas del día. Lo que se acota es la memoria y
+  —cuando hay trabajo— cuánto se lee; lo que **no** se acota es la búsqueda, y es
+  a propósito: la query no lleva `orderBy` (pediría índice compuesto), así que un
+  `limit()` a secas leería siempre las mismas primeras cincuenta por id y una
+  vencida más adelante en la colección no se borraría **nunca**, en silencio. El
+  residual está dicho: el día que no haya nada vencido, la búsqueda recorre la
+  colección entera igual, porque ningún índice ordena por «cuándo vence» —el
+  reloj sale del máximo entre dos campos y del estado—.
 
 **El objeto se borra primero y el documento después**, y el orden importa: si
 fallara el borrado del objeto con el documento ya borrado, la foto quedaría en el

@@ -41,6 +41,19 @@
  * No reimplementa ni relaja el tope: `decidirRetencion` recorta a
  * `MAX_PROPUESTAS_POR_CORRIDA` y marca el resto, así que este script informa
  * **lo mismo que haría la Function**, incluido lo que dejaría para mañana.
+ *
+ * ── Y desde B-871 releva además los flyers que no borra nadie ─────────────
+ * Al final del informe va una segunda lista que **no sale de la retención**: los
+ * objetos que hoy existen bajo `propuestas/` cruzados contra los documentos que
+ * los nombran. Ahí aparecen el flyer de una propuesta **aceptada** —que no vence,
+ * así que ningún barrido va a pasar por él— y el que ningún documento nombra.
+ * Esta parte **solo informa**, también con `--aplicar`: qué hacer con cada caso
+ * está en el runbook, y borrarlos automáticamente es una decisión de producto que
+ * el dueño todavía no tomó.
+ *
+ * Es el chequeo que `08-operacion.md` decía que este script ya hacía y **no
+ * hacía**: la query de la retención no trae las aceptadas, así que el motivo que
+ * el runbook mandaba buscar no podía imprimirse nunca.
  */
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -48,10 +61,12 @@ import { getStorage } from 'firebase-admin/storage';
 
 import {
   MAX_PROPUESTAS_POR_CORRIDA,
+  PREFIJO_PROPUESTAS,
   RETENCION_POR_ESTADO,
   borrarPropuesta,
   decidirRetencion,
   propuestasVencibles,
+  relevarFlyeresSinPlazo,
 } from '../functions/retencion.js';
 
 const aplicar = process.argv.includes('--aplicar');
@@ -122,8 +137,15 @@ console.log(aplicar ? 'Modo:     APLICAR (borra)\n' : 'Modo:     informar (no bo
 const db = getFirestore();
 const bucket = getStorage().bucket();
 
-const propuestas = await propuestasVencibles(db);
-const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora: Date.now() });
+/*
+ * **Un solo reloj para las dos llamadas** (B-865). Desde que la lectura se corta
+ * cuando las candidatas llenan el tope, `propuestasVencibles` le pregunta a la
+ * misma decisión pura cuándo dejar de leer: con dos `Date.now()` distintos podría
+ * cortar con un juicio y el informe imprimirse con otro.
+ */
+const ahora = Date.now();
+const propuestas = await propuestasVencibles(db, { ahora });
+const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora });
 
 const borrar = new Map(aBorrar.map((p) => [p.id, p.objeto]));
 
@@ -203,6 +225,71 @@ if (aplicar) {
   );
 } else if (aBorrar.length > 0) {
   console.log('\nCorré de nuevo con --aplicar para borrarlas de verdad.');
+}
+
+/*
+ * ── El relevamiento de B-871, que es lo que este informe no podía contestar ──
+ *
+ * `08-operacion.md` decía que el backfill de los flyers de propuestas ya
+ * aceptadas se chequeaba «corriendo este script sin --aplicar, y una línea
+ * `aceptada-no-vence` con un `propuestas/…` al lado es un flyer huérfano vivo».
+ * **Eso no podía pasar nunca**: la query de arriba trae `ESTADOS_QUE_CADUCAN` y
+ * la `aceptada` queda afuera por definición, así que el motivo `aceptada-no-vence`
+ * jamás se imprime y el chequeo documentado daba siempre «no hay ninguno».
+ *
+ * Lo que sigue entra por el otro lado —los objetos que existen en el bucket— y
+ * por eso encuentra los siete caminos, incluido el que no emite ningún log
+ * porque el trigger actúa solo en la transición. **Solo informa**: qué hacer con
+ * cada uno está en el runbook, y automatizar el borrado necesita una decisión del
+ * dueño que todavía no está.
+ */
+if (enEmulador !== storageEnEmulador) {
+  /*
+   * Sin `--aplicar` la guarda de coherencia de arriba no corre, y acá importa
+   * igual: cruzar los documentos de un lado con los objetos del otro daría
+   * **todo** como `sin-propuesta`, o sea un informe que inventa un problema
+   * enorme. Es la misma mentira que esa guarda evita, del lado que no borra.
+   */
+  console.log(
+    '\nFlyers sin plazo (B-871): no se releva.\n' +
+      `  Firestore apunta a ${enEmulador ? 'EMULADOR' : 'PRODUCCIÓN'} y Storage a ` +
+      `${storageEnEmulador ? 'EMULADOR' : 'PRODUCCIÓN'}: el cruce diría cualquier cosa.`,
+  );
+} else {
+  const { aRevisar, motivos: porObjeto, objetos } = await relevarFlyeresSinPlazo(db, bucket, {
+    ahora,
+  });
+  console.log(`\nFlyers bajo ${PREFIJO_PROPUESTAS} (B-871): ${objetos} objeto(s)`);
+  /*
+   * **Se listan uno por uno solo los que piden a alguien, y del resto va el
+   * conteo por motivo.** Es al revés que la lista de arriba, y a propósito: ahí
+   * cada línea es una decisión que alguien puede querer discutir antes de
+   * `--aplicar`; acá el 99% son objetos sanos de propuestas abiertas, y
+   * trescientas líneas de `de-una-que-caduca` esconden las dos que importan.
+   */
+  const porMotivo = {};
+  for (const motivo of Object.values(porObjeto)) porMotivo[motivo] = (porMotivo[motivo] ?? 0) + 1;
+  console.log(
+    '  ' +
+      Object.entries(porMotivo)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([motivo, n]) => `${motivo}: ${n}`)
+        .join('  ·  '),
+  );
+  for (const f of aRevisar) {
+    // El id de la propuesta cuando lo hay: sin él no se puede abrir la ficha
+    // para mirar el `warn` que dice cuál de los seis caminos fue.
+    console.log(`[REVISAR] ${f.objeto}  ·  ${f.motivo}${f.propuesta ? `  ·  ${f.propuesta}` : ''}`);
+  }
+  if (aRevisar.length === 0) {
+    console.log('Ninguno quedó sin quien lo borre.');
+  } else {
+    console.log(
+      `\n${aRevisar.length} flyer(s) que no va a borrar nadie. **Este script no los borra**: ` +
+        'el remedio es manual y está en docs/08-operacion.md § «Cuando suena ' +
+        '`flyer-de-propuesta-sin-borrar`».',
+    );
+  }
 }
 
 process.exit(0);

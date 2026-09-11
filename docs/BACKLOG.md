@@ -925,7 +925,29 @@ leer, no la que una persona escribe.**
 > guarda lea números escritos con palabras es otra pasada, y probablemente no valga
 > la pena.
 
-### B-871 · Si el borrado del flyer aceptado falla, no reintenta nadie · P2
+### B-871 · Si el borrado del flyer aceptado falla, no reintenta nadie — 🟠 empezado (2026-09-11) · P2
+
+> 🟠 **La detección está; el borrado espera la decisión.** La salida 3 se
+> implementó **a medias a propósito**: `decidirFlyeresSinPlazo` +
+> `relevarFlyeresSinPlazo` cruzan los objetos vivos bajo `propuestas/` contra los
+> documentos que los nombran, y el script sin `--aplicar` los imprime con su
+> motivo. Entra **por el bucket**, así que ve los siete caminos —incluido el
+> séptimo, que no emite ningún log—. **No borra nada**, que es exactamente la parte
+> que necesita la decisión de producto.
+>
+> **Y el chequeo que este ítem daba por existente no existía:** el runbook decía
+> que el backfill se miraba buscando una línea `aceptada-no-vence` en el informe, y
+> ese motivo **no puede imprimirse nunca**. Verde sobre el caso que existía para
+> encontrar.
+>
+> **Un séptimo motivo apareció haciéndolo, y lo cobró el `auditor-trampas`:** una
+> propuesta en un estado que caduca pero **sin fecha legible** no la borra el
+> barrido, así que su flyer tampoco tiene quien lo borre — y mirando solo la tabla
+> de plazos salía marcado «tiene red». Era el agujero de este ítem reabierto un
+> renglón más abajo.
+>
+> **Lo que falta para cerrarlo es la respuesta del dueño**, en dos preguntas
+> anotadas abajo.
 
 **Sale de B-863, y es el precio de que la `aceptada` no venza.** El borrado del
 original ocurre en el trigger `borrarImagenAlCerrar`, y **no hay red debajo**: la
@@ -1679,7 +1701,20 @@ documento a memoria) y borrar con `delete({ lastUpdateTime })`.
 > no escribe nada, así que no hay versión nueva contra la cual proteger. Y salió
 > **B-867**, del `auditor-privacidad`.
 
-### B-865 · El barrido de retención no lleva `limit()` · P3
+### B-865 · El barrido de retención no lleva `limit()` — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Hecho.** La query pagina de a 200 con cursor y corta cuando las candidatas
+> llenan `MAX_PROPUESTAS_POR_CORRIDA` — ese tope ahora acota la lectura además del
+> borrado. **Lo que el ítem no decía y resultó ser el contenido del cambio: un
+> `limit()` a secas habría dejado de cumplir el plazo en silencio.** Sin `orderBy`
+> el orden es por id, así que leería siempre las mismas cincuenta y una vencida más
+> adelante en la colección no se borraría nunca. El corte es por **trabajo** y no
+> por cantidad leída.
+>
+> **Queda un residual que merece mirarse el día de B-836a:** sin nada vencido, la
+> búsqueda recorre la colección igual. No hay índice que lo evite —el reloj es el
+> máximo entre dos campos y depende del estado— y la única salida sería
+> denormalizar un `venceEn`, que es un campo nuevo del modelo.
 
 Nota operativa del `auditor-privacidad` sobre B-844. La query ahora arrastra
 **toda la bandeja pendiente** en cada corrida, no solo las rechazadas. Con la

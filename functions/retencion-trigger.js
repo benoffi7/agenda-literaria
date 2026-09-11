@@ -52,8 +52,16 @@ export const borrarPropuestasVencidas = onSchedule(
     const db = getFirestore();
     const bucket = getStorage().bucket();
 
-    const propuestas = await propuestasVencibles(db);
-    const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora: Date.now() });
+    /*
+     * **Un solo reloj para las dos llamadas** (B-865). La lectura ya no trae la
+     * bandeja entera: pide páginas hasta que las candidatas llenan el tope de
+     * borrados, y para saber cuándo parar le pregunta a esta misma decisión
+     * pura. Con dos `Date.now()` distintos podría cortar de leer con un juicio y
+     * borrar con otro.
+     */
+    const ahora = Date.now();
+    const propuestas = await propuestasVencibles(db, { ahora });
+    const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora });
 
     if (aBorrar.length === 0) {
       // `motivos` lleva ids y el motivo, nunca contenido: el contacto de quien
@@ -61,7 +69,9 @@ export const borrarPropuestasVencidas = onSchedule(
       logger.debug('retención de propuestas: nada que borrar', {
         // `candidatas` y no `rechazadas` desde B-844: la query trae los tres
         // estados que caducan, y llamarlas «rechazadas» en el log haría leer
-        // mal la única salida que este barrido deja.
+        // mal la única salida que este barrido deja. **En esta rama son la
+        // colección entera** (B-865): sin nada que borrar, la lectura no tuvo
+        // dónde cortar. En la otra son las leídas hasta llenar el tope.
         candidatas: propuestas.length,
         motivos,
       });
@@ -149,6 +159,13 @@ export const borrarPropuestasVencidas = onSchedule(
       }
     }
 
+    /*
+     * **Es un piso y no un total** (B-865): son las vencidas que esta corrida
+     * **vio** y no va a borrar. Desde que la lectura corta apenas junta el tope,
+     * lo que queda después del cursor ni siquiera se leyó, así que puede haber
+     * más. Sirve igual para lo que este `warn` existe —«hoy no alcanzó»— y
+     * decirlo evita leerlo como «faltan exactamente tres».
+     */
     const pendientesPorTope = Object.values(motivos).filter((m) =>
       m.endsWith('-pendiente-por-tope'),
     ).length;
@@ -177,6 +194,9 @@ export const borrarPropuestasVencidas = onSchedule(
          */
         rescatadas,
         sinImagen,
+        // **Las leídas, no las que hay** (B-865): con trabajo por delante la
+        // lectura corta apenas llena el tope, así que esto es «hasta acá miré» y
+        // no el tamaño de la bandeja.
         candidatas: propuestas.length,
       });
     }

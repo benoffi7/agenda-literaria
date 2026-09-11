@@ -237,7 +237,11 @@ export const copiasEnLaGaleria = (imagenes) => {
  *    falló y el panel avisó, o el admin sacó la fila), el original **se
  *    conserva**. Eso es lo correcto para no perder la foto y es, a la vez, el
  *    agujero que B-863 no cierra: esa propuesta queda `aceptada` para siempre
- *    con la foto de un tercero adentro. Ver **B-871**.
+ *    con la foto de un tercero adentro. Ver **B-871** — y desde ese ítem hay al
+ *    menos **quien pase**: `relevarFlyeresSinPlazo` (`retencion.js`) los lista
+ *    entrando por el bucket, así que aparecen aunque este `warn` se haya
+ *    perdido y aunque la transición nunca haya ocurrido. Lista, no borra: eso
+ *    último sigue esperando una decisión del dueño.
  *
  * `db` y `bucket` van sin tipo a propósito, igual que en `borrarPropuesta`: es
  * lo que deja que el test los reemplace por dobles y mida el **orden** de las

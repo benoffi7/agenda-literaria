@@ -32,7 +32,18 @@
  * qué son dos guardas y por qué el orden de B-838 se queda como está— en
  * `borrarPropuesta`.
  *
- * **Todo lo de acá es puro** salvo `propuestasVencibles` y `borrarPropuesta`, que
+ * **Y hay un flyer que este barrido no alcanza** (B-871). El original de una
+ * propuesta **aceptada** lo borra el trigger de `propuestas-trigger.js` en la
+ * transición, y debajo no hay nada: la `aceptada` no vence y
+ * `limpiarImagenesHuerfanas` no recorre `propuestas/`. Si ese borrado no ocurre
+ * —o si la propuesta ya estaba aceptada antes del deploy, y entonces la
+ * transición no existió— la foto de un tercero se queda para siempre. El final
+ * de este archivo tiene el relevamiento que lo **encuentra**
+ * (`decidirFlyeresSinPlazo`); borrarlo necesita una decisión del dueño que
+ * todavía no está.
+ *
+ * **Todo lo de acá es puro** salvo `propuestasVencibles`, `borrarPropuesta` y los
+ * tres lectores del relevamiento de B-871, que
  * reciben el `db` y el `bucket` y no importan `firebase-admin` — mismo criterio
  * que `subcoleccionesHuerfanas` en `limpieza-versiones.js` y `referenciasEnUso`
  * en `limpieza-imagenes.js`, y por el mismo motivo práctico: así el test los
@@ -177,6 +188,46 @@ export const ESTADOS_QUE_CADUCAN = Object.entries(RETENCION_POR_ESTADO)
  * el log.
  */
 export const MAX_PROPUESTAS_POR_CORRIDA = 50;
+
+/**
+ * Cuántas propuestas trae **cada página** de la query — B-865.
+ *
+ * Hasta acá la query no llevaba `limit()` y traía la bandeja entera en cada
+ * corrida: con B-844 dejó de ser «solo las rechazadas» y pasó a arrastrar
+ * también todas las `nueva` y `en-revision`, que son las que **no** se van a
+ * borrar. El tope que ya existía recorta el **borrado** y no la **lectura**.
+ *
+ * ── Por qué un `limit()` a secas habría sido peor que no tenerlo ───────────
+ * La query no tiene `orderBy` (pediría índice compuesto), así que el orden es el
+ * implícito: por id. Un `limit(50)` pelado lee siempre **las mismas primeras 50
+ * por id**, y si esas 50 están dentro de su plazo la corrida no borra nada
+ * aunque más adelante en la colección haya una vencida hace meses. O sea: el
+ * plazo de retención —que es una promesa sobre el dato personal de un tercero—
+ * dejaría de cumplirse **en silencio**, y la suite quedaría verde. Es el mismo
+ * modo de falla que `ESTADOS_QUE_CADUCAN` evita del otro lado: la tabla dice que
+ * caduca y el barrido no lo trae.
+ *
+ * Por eso la lectura es **paginada con cursor y se corta por trabajo, no por
+ * cantidad leída**: se siguen pidiendo páginas hasta que las candidatas llenan
+ * `MAX_PROPUESTAS_POR_CORRIDA` (lo que se va a borrar hoy) o hasta que la
+ * colección se termina. Lo que se acota es la memoria y —el día que haya
+ * trabajo— la lectura; lo que **no** se acota es la búsqueda: una vencida al
+ * final de la colección se encuentra igual.
+ *
+ * El número no tiene que ser exacto: tiene que ser cómodamente mayor que el tope
+ * de borrados para que la corrida normal sea **una sola página**, y chico frente
+ * a una bandeja que se llenó de spam. Con 200 y el tope en 50, un día con
+ * trabajo lee una página y corta.
+ *
+ * **Lo que esto NO acota, dicho** (y es el residual de B-865): el día que **no
+ * haya nada vencido**, la búsqueda recorre la colección entera igual, porque no
+ * hay forma de preguntarle a Firestore «¿cuál venció?» sin un campo
+ * denormalizado (`venceEn`) que hoy no existe — el reloj de cada propuesta sale
+ * del máximo entre dos campos y de su estado, así que ningún `orderBy` lo
+ * ordena. Lo que cambió es la memoria (una página por vez) y el caso con
+ * trabajo, que es el que iba a doler.
+ */
+export const PROPUESTAS_POR_PAGINA = 200;
 
 /**
  * El prefijo de Storage donde vive la imagen de una propuesta (DEC-11).
@@ -454,28 +505,73 @@ export const decidirRetencion = ({
  * y le puso enfrente la promesa que la vuelve intolerable: «moverla de estado le
  * renueva el plazo».
  *
+ * ── Y se lee de a páginas, cortando por trabajo (B-865) ───────────────────
+ * La query lleva `limit()` desde B-865 y esta función pide páginas hasta que las
+ * candidatas llenan el tope de borrados o hasta que la colección se termina. El
+ * porqué de las dos mitades —y por qué un `limit()` a secas habría dejado de
+ * cumplir el plazo en silencio— está en `PROPUESTAS_POR_PAGINA`. Es también por
+ * lo que esta función recibe `ahora` y `plazos`: no decide nada, pero le
+ * **pregunta** a la decisión pura cuándo dejar de leer, y tiene que preguntarlo
+ * con el mismo reloj con el que el llamador va a decidir después.
+ *
+ * @param {{ ahora?: number, plazos?: Record<string, number | null> }} [opciones]
  * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown, updateTime: unknown }[]>}
  */
-export const propuestasVencibles = async (db) => {
+export const propuestasVencibles = async (
+  db,
+  { ahora = Date.now(), plazos = RETENCION_POR_ESTADO } = {},
+) => {
   // Un `in` vacío es un error de Firestore, no una query que no devuelve nada.
   // Solo pasa si alguien pone toda la tabla en `null`, que es «no borres nada».
   if (ESTADOS_QUE_CADUCAN.length === 0) return [];
 
-  const snap = await db
+  const base = db
     .collection('propuestas')
     .where('estado', 'in', ESTADOS_QUE_CADUCAN)
-    .select('estado', 'creadoEn', 'revision.en', 'imagen.storagePath')
-    .get();
-  return snap.docs.map((d) => ({
-    id: d.id,
-    estado: d.get('estado'),
-    creadoEn: d.get('creadoEn'),
-    revision: d.get('revision'),
-    imagen: d.get('imagen'),
-    // Metadata, no un campo: `d.get(...)` no lo alcanzaría ni haría falta que lo
-    // hiciera. Es la versión del documento que **esta** corrida vio.
-    updateTime: d.updateTime,
-  }));
+    .select('estado', 'creadoEn', 'revision.en', 'imagen.storagePath');
+
+  const leidas = [];
+  let desde = null;
+  for (;;) {
+    /*
+     * El cursor va con el **snapshot** de la última leída y no con su id: así el
+     * orden lo pone Firestore y no hay que repetirlo acá. Sin `orderBy`
+     * explícito el SDK deriva del snapshot el orden implícito por `__name__`,
+     * que es el mismo con el que la página vino. Verificado contra el emulador,
+     * y fijado por el caso de `retencion.integracion.test.ts` — un doble a mano
+     * diría que sí sin haber preguntado.
+     */
+    const snap = await (desde ? base.startAfter(desde) : base).limit(PROPUESTAS_POR_PAGINA).get();
+    for (const d of snap.docs) {
+      leidas.push({
+        id: d.id,
+        estado: d.get('estado'),
+        creadoEn: d.get('creadoEn'),
+        revision: d.get('revision'),
+        imagen: d.get('imagen'),
+        // Metadata, no un campo: `d.get(...)` no lo alcanzaría ni haría falta que
+        // lo hiciera. Es la versión del documento que **esta** corrida vio.
+        updateTime: d.updateTime,
+      });
+    }
+
+    // Página corta: la colección se terminó. No hace falta pedir una vacía.
+    if (snap.size < PROPUESTAS_POR_PAGINA) return leidas;
+
+    /*
+     * **El corte es por trabajo y no por cantidad leída** (B-865, ver
+     * `PROPUESTAS_POR_PAGINA`). Se llama a la decisión pura —que es barata y no
+     * toca la red— para preguntar si lo leído ya llena el tope de borrados de
+     * hoy; si lo llena, lo que falta leer no cambiaría nada, porque de todos
+     * modos quedaría marcado `-pendiente-por-tope`. El `ahora` entra por
+     * parámetro para que sea **el mismo** con el que el llamador va a decidir
+     * después: dos relojes distintos podrían cortar acá y no allá.
+     */
+    const { aBorrar } = decidirRetencion({ propuestas: leidas, ahora, plazos });
+    if (aBorrar.length >= MAX_PROPUESTAS_POR_CORRIDA) return leidas;
+
+    desde = snap.docs[snap.size - 1];
+  }
 };
 
 /**
@@ -624,4 +720,279 @@ export const borrarPropuesta = async (db, bucket, { id, objeto, visto }) => {
     return despues.exists ? 'la-tocaron-tarde' : 'ya-no-esta';
   }
   return 'borrada';
+};
+
+/**
+ * Los estados que **no** vencen, derivados de la tabla — B-871.
+ *
+ * Es el complemento exacto de `ESTADOS_QUE_CADUCAN` y se deriva por el mismo
+ * motivo: hoy es `['aceptada']` y el día que alguien le ponga un número, esta
+ * lista queda vacía sola y el relevamiento de abajo deja de tener qué mirar. Una
+ * segunda lista escrita a mano sería la que quedaría vieja.
+ */
+export const ESTADOS_SIN_PLAZO = Object.entries(RETENCION_POR_ESTADO)
+  .filter(([, plazo]) => plazo === null)
+  .map(([estado]) => estado);
+
+/**
+ * Cuánto se le perdona a un objeto de `propuestas/` que todavía no tenga
+ * documento — B-871.
+ *
+ * **No es el mismo caso que `MARGEN_DE_GRACIA_MS` de `limpieza-imagenes.js`
+ * aunque dé el mismo número**, y va aparte por el mismo criterio con el que
+ * `MARGEN_SIN_TOCAR_MS` no se escribe en términos de `MARGEN_DE_RETENCION_MS`:
+ * son dos decisiones que hoy coinciden. Allá el margen cubre «el admin subió la
+ * imagen y todavía no guardó la actividad»; acá cubre algo peor de mirar, que es
+ * cómo está escrito `/proponer`: el flyer se sube **al elegir el archivo** y el
+ * documento se escribe **al enviar** (`FormularioPublico`), así que entre las dos
+ * cosas hay todo el tiempo que la persona tarde en terminar el formulario. Un
+ * objeto sin documento en esa ventana es el estado normal y no un huérfano.
+ *
+ * Como este relevamiento **no borra nada**, el margen acá no protege un borrado:
+ * evita que el informe muestre como problema lo que dentro de diez minutos va a
+ * tener su documento. El día que alguien lo conecte a un borrado —la salida 3 de
+ * B-871— este margen pasa a ser la única red de ese caso, y entonces conviene
+ * volver a mirarlo.
+ */
+export const MARGEN_DEL_FLYER_EN_VUELO_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * **Qué flyer de `propuestas/` no va a borrar nadie** — B-871, la mitad que no
+ * necesita la decisión del dueño.
+ *
+ * ── Qué agujero tapa ──────────────────────────────────────────────────────
+ * El borrado del original de una propuesta **aceptada** ocurre una sola vez, en
+ * la transición a `aceptada` (`borrarImagenAlCerrar`), y debajo no hay nada: la
+ * `aceptada` no vence (`RETENCION_POR_ESTADO`) y `limpiarImagenesHuerfanas` solo
+ * recorre `imagenes/` y `miniaturas/`. Si ese borrado no ocurre —falló, o la
+ * decisión fue **no** borrar porque no había copia verificada— la foto de un
+ * tercero se queda ahí para siempre y **no pasa nadie después**. Y hay un
+ * séptimo camino que ni siquiera emite el `warn`: una propuesta que ya estaba en
+ * `aceptada` antes del deploy nunca dispara la transición.
+ *
+ * Esta función es el «pasa alguien». Mira el mundo al revés que el trigger —los
+ * **objetos que existen** en el bucket, no las transiciones— así que encuentra
+ * los siete caminos por igual, incluido el que no emitió nada.
+ *
+ * ── Lo que NO hace, y es a propósito ──────────────────────────────────────
+ * **No borra.** Qué hacer con el flyer de una aceptada que conservó su original
+ * *a propósito* —el caso `sin-copia`, donde no borrar es lo correcto porque
+ * perder la foto no se deshace— es una decisión de producto que el dueño no
+ * contestó, y es la misma que la salida 3 de B-871 necesita. Hasta que exista,
+ * esto **informa** y el remedio sigue siendo manual y escrito (`08-operacion.md`
+ * § «Cuando suena `flyer-de-propuesta-sin-borrar`»).
+ *
+ * ── Por qué se entra por el bucket y no por los documentos ────────────────
+ * Se podría listar las `aceptada` y preguntarle al bucket por cada una, y sería
+ * peor por dos motivos. Uno: el documento sigue nombrando su `storagePath`
+ * **después** de que el objeto se borró bien —el trigger no escribe el documento
+ * que lo disparó, y eso es deliberado (trampa 3)— así que casi todas las
+ * aceptadas serían falsos candidatos, y el costo crecería con el archivo
+ * histórico en vez de con el problema. Dos: entrando por el bucket aparece
+ * además el caso que por documentos es invisible, el objeto que **ningún**
+ * documento nombra.
+ *
+ * @param {{
+ *   objetos?: { nombre: string, creado?: number }[],
+ *   propuestas?: { id: string, estado?: string, creadoEn?: unknown, revision?: unknown, imagen?: unknown }[],
+ *   ahora?: number,
+ *   margen?: number,
+ *   plazos?: Record<string, number | null>,
+ * }} _
+ * @returns {{
+ *   aRevisar: { objeto: string, propuesta: string | null, motivo: string }[],
+ *   motivos: Record<string, string>,
+ * }}
+ */
+export const decidirFlyeresSinPlazo = ({
+  objetos = [],
+  propuestas = [],
+  ahora = Date.now(),
+  margen = MARGEN_DEL_FLYER_EN_VUELO_MS,
+  plazos = RETENCION_POR_ESTADO,
+} = {}) => {
+  /*
+   * El índice se arma con la **misma** guarda que usa el borrado
+   * (`objetoDePropuesta`) y no con el `storagePath` crudo: si un documento
+   * nombrara `imagenes/img_x.jpg`, decir que «referencia» ese objeto sería
+   * afirmar que el flyer de una actividad publicada está cubierto por un ciclo
+   * de vida que no lo cubre.
+   *
+   * **Hoy no es alcanzable, y va igual** —mismo caso que el `Object.hasOwn` de
+   * `decidirRetencion`—: una clave inválida no puede empatar con ningún objeto,
+   * porque todo objeto que llega a consultarse ya pasó esta misma guarda unas
+   * líneas más abajo. Verificado por mutación: con el path crudo, ningún caso de
+   * `retencion.test.ts` se pone rojo. Lo que sostiene la propiedad es el corte
+   * del lado del objeto; esto es que las dos mitades digan lo mismo, que es lo
+   * que evita que la de acá quede laxa el día que la otra se mueva (B-88).
+   */
+  const duenia = new Map();
+  for (const p of propuestas) {
+    const objeto = objetoDePropuesta(p?.imagen);
+    if (objeto) duenia.set(objeto, p);
+  }
+
+  const aRevisar = [];
+  const motivos = {};
+
+  for (const o of objetos) {
+    const nombre = o?.nombre ?? '';
+
+    if (objetoDePropuesta({ storagePath: nombre }) !== nombre) {
+      // Un objeto anidado, o el prefijo pelado. Mismo criterio que
+      // `decidirLimpieza`: no se opina de lo que no se entiende.
+      motivos[nombre] = 'fuera-del-alcance';
+      continue;
+    }
+
+    const propuesta = duenia.get(nombre);
+    if (propuesta) {
+      const plazo = Object.hasOwn(plazos, propuesta.estado) ? plazos[propuesta.estado] : undefined;
+      if (typeof plazo === 'number') {
+        /*
+         * **Tener plazo no alcanza: hace falta poder contarlo** — lo encontró el
+         * `auditor-trampas` sobre este mismo cambio, y es la clase de B-88 en su
+         * forma más cara: dos lugares que derivan por separado la misma
+         * pregunta —«¿el barrido va a pasar por este documento?»— y uno de los
+         * dos se queda corto.
+         *
+         * `decidirRetencion` pide **las dos** cosas: un plazo numérico y un
+         * reloj legible (`relojDeRetencion`). Una propuesta en un estado que
+         * caduca pero sin ninguna fecha legible cae en `sin-fecha-legible` y
+         * **no se borra nunca**, a propósito. Si acá se mirara solo la tabla de
+         * plazos, su flyer saldría marcado «tiene red» y quedaría fuera de la
+         * lista: ni la retención lo toca ni este relevamiento lo señala, que es
+         * exactamente el agujero que B-871 existe para tapar, abierto de nuevo
+         * un renglón más abajo.
+         *
+         * Se reusa el mismo motivo que el barrido —`sin-fecha-legible`— porque
+         * es el mismo hecho visto desde el otro lado, y porque el operador que
+         * lo lea en las dos listas tiene que poder atarlo.
+         */
+        if (relojDeRetencion(propuesta) === null) {
+          motivos[nombre] = 'sin-fecha-legible';
+          aRevisar.push({ objeto: nombre, propuesta: propuesta.id, motivo: 'sin-fecha-legible' });
+          continue;
+        }
+        /*
+         * Tiene red: el barrido de retención va a pasar por ese documento y se
+         * lleva las dos mitades. No hay nada que revisar acá aunque el objeto
+         * lleve meses — el plazo es del documento, no del objeto.
+         */
+        motivos[nombre] = 'de-una-que-caduca';
+        continue;
+      }
+      /*
+       * **El caso de B-871**, con el estado adentro del motivo porque
+       * `ESTADOS_SIN_PLAZO` es derivado: hoy solo la `aceptada`, y un estado
+       * nuevo sin plazo entra solo. `plazo === undefined` —un estado que la
+       * tabla no nombra— cae también acá, y es correcto: si nadie le puso plazo,
+       * nadie lo va a borrar.
+       */
+      motivos[nombre] = `${propuesta.estado}-sin-plazo`;
+      aRevisar.push({ objeto: nombre, propuesta: propuesta.id, motivo: motivos[nombre] });
+      continue;
+    }
+
+    if (!Number.isFinite(o?.creado) || ahora - o.creado < margen) {
+      /*
+       * Falla cerrado, igual que `decidirLimpieza`: sin fecha legible se trata
+       * como recién subido. Acá el caso normal no es raro —`/proponer` sube el
+       * archivo al elegirlo y escribe el documento al enviar— así que un objeto
+       * joven sin documento es una persona llenando el formulario.
+       */
+      motivos[nombre] = 'recien-subido';
+      continue;
+    }
+
+    /*
+     * **Ningún documento lo nombra**, y tampoco es reciente. Son dos historias y
+     * las dos terminan igual: un `/proponer` que se abandonó después de subir la
+     * foto, o la mitad que sobrevivió a un borrado que se cortó por la mitad (la
+     * foto de una persona **sin nada que la referencie**, el punto 4 del
+     * inventario). Nadie la va a encontrar, porque no hay desde dónde.
+     */
+    motivos[nombre] = 'sin-propuesta';
+    aRevisar.push({ objeto: nombre, propuesta: null, motivo: 'sin-propuesta' });
+  }
+
+  return { aRevisar, motivos };
+};
+
+/**
+ * Los objetos que hoy existen bajo `propuestas/`.
+ *
+ * `getFiles` con prefijo y no un listado del bucket entero: lo que este
+ * relevamiento mira es un prefijo chico —los flyers de las propuestas abiertas
+ * más lo que quedó colgado— y nunca la galería, que tiene su propio barrido.
+ *
+ * @returns {Promise<{ nombre: string, creado: number }[]>}
+ */
+export const flyeresDelBucket = async (bucket) => {
+  const [objetos] = await bucket.getFiles({ prefix: PREFIJO_PROPUESTAS });
+  return objetos.map((o) => ({
+    nombre: o.name,
+    // Mismo criterio que `objetosDelBucket` en el barrido de imágenes: si la
+    // fecha no se puede leer, `NaN` y la decisión lo trata como recién subido.
+    creado: Date.parse(o.metadata?.timeCreated ?? ''),
+  }));
+};
+
+/**
+ * Las propuestas que nombran un objeto, con **lo mínimo** para cruzarlas.
+ *
+ * Se leen **todos** los estados y no solo los que no vencen: lo que hay que
+ * poder distinguir es «este objeto lo va a borrar el barrido» de «este objeto no
+ * lo borra nadie», y para eso hace falta saber si *alguien* lo nombra. Sin los
+ * estados que caducan, todo flyer de una propuesta abierta aparecería como
+ * huérfano.
+ *
+ * El `select` es el de siempre y por el mismo motivo: el contacto de quien
+ * propuso **no entra a la memoria** — ni `revision.motivo`, que es una nota
+ * interna sobre el trabajo de otra persona, ni `revision.porUid`.
+ *
+ * **Las dos fechas están en el `select` y no son opcionales**: este relevamiento
+ * no mide plazos, pero sí tiene que poder distinguir «el barrido va a pasar por
+ * este documento» de «el barrido no lo va a tocar nunca porque no lo puede
+ * fechar» (`sin-fecha-legible`). Un campo que la query no pide vuelve
+ * `undefined`, así que sin ellas `relojDeRetencion` diría que **ninguna** se
+ * puede fechar y el informe marcaría toda la bandeja abierta para revisar. Es la
+ * misma clase de bug que el `select` acotado del barrido trae de regalo: lo que
+ * se agrega a la lógica hay que agregarlo también acá.
+ *
+ * **No lleva `limit()` y es una lectura de toda la colección**, así que corre a
+ * pedido (el script) y no en el barrido diario: ver `08-operacion.md`.
+ *
+ * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown }[]>}
+ */
+export const propuestasConFlyer = async (db) => {
+  const snap = await db
+    .collection('propuestas')
+    .select('estado', 'creadoEn', 'revision.en', 'imagen.storagePath')
+    .get();
+  return snap.docs
+    .map((d) => ({
+      id: d.id,
+      estado: d.get('estado'),
+      creadoEn: d.get('creadoEn'),
+      revision: d.get('revision'),
+      imagen: d.get('imagen'),
+    }))
+    .filter((p) => objetoDePropuesta(p.imagen) !== null);
+};
+
+/**
+ * El relevamiento completo: el bucket, los documentos, y la decisión pura en el
+ * medio. Es lo que el informe del script imprime — B-871.
+ *
+ * @returns {Promise<{
+ *   aRevisar: { objeto: string, propuesta: string | null, motivo: string }[],
+ *   motivos: Record<string, string>,
+ *   objetos: number,
+ * }>}
+ */
+export const relevarFlyeresSinPlazo = async (db, bucket, { ahora = Date.now() } = {}) => {
+  const objetos = await flyeresDelBucket(bucket);
+  const propuestas = await propuestasConFlyer(db);
+  return { ...decidirFlyeresSinPlazo({ objetos, propuestas, ahora }), objetos: objetos.length };
 };
