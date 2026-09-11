@@ -2,6 +2,42 @@
 
 ## Sin publicar
 
+- **El umbral que `ActividadFormulario.tsx` cruzó estaba midiendo la cosa
+  equivocada, y se recalibró la unidad en vez de partir el archivo** — **B-856**.
+  Primera vez que un umbral escrito en `docs/10-salud-del-codigo.md` se cruza, y la
+  respuesta es que **no había nada que partir**: de las 727 líneas, **324 son prosa
+  y 372 son código**, y de las 314 que el archivo sumó desde la medición anterior
+  **198 son comentario**. El commit que cruzó las 550 —D-490, las pestañas— lo
+  cruzó con dos tercios de prosa: 103 líneas de comentario y 57 de código.
+
+  **El ancla que lo vuelve un cálculo y no una opinión:** la hipertrofia de este
+  mismo archivo está en el repo y se puede medir. El de 2026-08-21 tenía 858 LOC
+  con **780 significativas** (91 % código); el de hoy tiene 727 con **407**. Se
+  parecen en `wc -l` y en nada más — 46 líneas de código por módulo importado
+  entonces, **13** hoy.
+
+  **La alarma pasa a ser 550 líneas significativas y no 550 `wc -l`.** El número no
+  se toca; se corrige **qué se cuenta**. El LOC queda en la tabla porque es la
+  única cifra comparable con las cinco mediciones anteriores, y el fan-out deja de
+  ser término de la alarma para ser la lectura: el umbral viejo era una
+  **conjunción** —«550 LOC *con* fan-out 30»— y se había dado por cruzado leyendo
+  solo la mitad izquierda.
+
+  **Se descartó partir las pestañas porque ya están partidas:** las nueve secciones
+  son nueve archivos desde B-79 y **ocho de las nueve pestañas tienen una sola
+  sección**, así que un panel por pestaña sería un envoltorio de la sección que ya
+  existe. Lo que queda en el compositor es el cableado, y el estado no puede bajar:
+  el buffer de etiquetas nuevas **lo escriben cuatro pestañas y lo leen otras dos**.
+
+  **Y dos agujeros del instrumento, que son el hallazgo más grande** — **B-877** y
+  **B-878**. El grafo de imports **pierde todo `import` multilínea**: 234 aristas
+  del proyecto, y es la diferencia exacta entre el fan-out que el §1.3 declaraba
+  (27) y el real (31). Lo serio no es el fan-out: `tests/salud-del-codigo.test.ts`
+  afirma «cero ciclos estáticos» como la única propiedad atada del documento, y la
+  estaba afirmando sobre un grafo al que **le faltaba el 16 % de las aristas**. Se
+  recalculó con el regex arreglado y **siguen siendo cero** — lo que no aguanta es
+  la idea de que se estaba verificando entero.
+
 - **Los dos tests que esquivaban el saneador compartido dejaron de hacerlo, y el
   módulo pasó a tener dos salidas** — **B-855**, la segunda mitad de B-853.
   `pagina-de-detalle` y `listado-del-sitio` recortaban los comentarios con dos

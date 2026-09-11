@@ -113,6 +113,14 @@ fijaba como línea de alarma. Es la primera vez que pasa, y no se ve en el §0
 porque el §0 mide la forma del conjunto, no la de un archivo. Mirarlo es **B-856**;
 remedirlo no alcanza.
 
+**Y B-856 lo miró: el que estaba mal era el umbral.** De las 727 líneas, **324
+son prosa** y solo **372 son código** —de las 314 que sumó desde la medición
+anterior, 198 son comentario—, así que el archivo que cruzó las 550 tiene menos
+de la mitad del código que tenía el mismo archivo hipertrofiado de agosto (780
+significativas contra 407). El umbral se recalibró: **la alarma pasa a ser 550
+líneas significativas y no 550 `wc -l`**, con el razonamiento y la serie medida
+en el §1.3. No se partió nada.
+
 > **La lectura del 2026-09-03 (B-311), que esta pasada confirma en vez de
 > corregir:**
 >
@@ -261,6 +269,11 @@ anotó allá.
 
 Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 
+> ⚠️ **El primer criterio de este bloque —«LOC es `wc -l`; las significativas del
+> §1.1 no se usan acá»— lo reemplazó B-856**, y es justamente lo que se cambió:
+> ver el bloque ⚖️ debajo de la tabla. El resto del bloque sigue vigente y queda
+> como estaba escrito, para que la decisión de B-856 se lea contra su original.
+
 > ✅ **Esta sección se remidió el 2026-09-02 (B-201) y es la única del documento
 > con números de hoy.** El resto sigue siendo del 2026-08-27, con el aviso del
 > encabezado. Se remidió sola porque era el único número que el backlog pedía
@@ -282,6 +295,152 @@ Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 | `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | 376 | 413 | **727** |
 | Su fan-out | 12 | 19 | 25 | 26 | 24 | **27** |
 | Su puesto en la lista | 1º | 15º | 14º | 28º | 28º | **18º** |
+
+> ⚖️ **B-856 — se miró el archivo, y el que estaba mal era el umbral. La unidad,
+> no el número.** Medido el **2026-09-11** sobre `8482a13`, con
+> `ActividadFormulario.tsx` **byte por byte igual** al de la columna de hoy
+> (`410a924`): remedirlo no era el trabajo, decidir sí. **Este bloque reemplaza
+> el umbral de los dos bloques de abajo**, que quedan como estaban escritos.
+>
+> **Primero: qué ocupa esas 727 líneas.** Con el criterio de «significativas» del
+> §1.1 —sin blancas y sin líneas de comentario— pero contando también el
+> `{/* … */}` de JSX, que el contador del script no reconoce (ver el aviso del
+> final de este bloque):
+>
+> | Región | Líneas | Prosa | Código |
+> |---|---:|---:|---:|
+> | Imports | 59 | 4 | 55 |
+> | `Props` — ocho props, cada uno con su docblock | 61 | 49 | 11 |
+> | Estado, hooks y setters | 125 | 70 | 44 |
+> | Derivados (`useMemo`) y efectos | 159 | 108 | 43 |
+> | `guardar()` | 79 | 28 | 47 |
+> | JSX — los dos avisos de origen | 88 | 24 | 61 |
+> | JSX — solapas, mapa de secciones y barra | 156 | 41 | 111 |
+> | **Total** | **727** | **324** | **372** |
+>
+> **324 de las 727 líneas son prosa: el 44,6 %.** No es una anomalía de este
+> archivo —`src/` entero está en **46,9 %** con el mismo contador— y no es deuda:
+> la prosa explicativa es una decisión del repo
+> ([`docs/05-patrones.md`](05-patrones.md)), y acá es donde viven las respuestas a
+> «por qué los nueve paneles se quedan montados», «por qué el `setTimeout` antes
+> del scroll» y «por qué el efecto recorre las secciones al revés». Borrarla
+> bajaría el número y subiría el costo de tocar el archivo.
+>
+> **Segundo: cómo creció.** De las **314** líneas que sumó desde la medición del
+> 2026-09-03, **198 —el 63 %— son comentario**:
+>
+> | Commit | Fecha | LOC | Prosa | Código | Fan-out |
+> |---|---|---:|---:|---:|---:|
+> | `df7c2d2` | 2026-09-03 | 413 | 126 | 253 | 26 |
+> | `5b236c2` | 2026-09-07 · las pestañas (D-490) | 568 | 229 | 310 | 29 |
+> | `0263ece` | 2026-09-08 · las dos formas (B-814) | 659 | 290 | 340 | 31 |
+> | `5f1f2a8` | 2026-09-09 | 727 | 324 | 372 | 31 |
+>
+> **El commit que cruzó el umbral lo cruzó con dos tercios de prosa.** D-490 sumó
+> 155 líneas —103 de comentario, 57 de código y 5 blancas menos— y dejó el archivo
+> en 568 `wc -l`; en código eran **310**, ni cerca de 550. Las otras dos cifras
+> crecieron mucho menos que el `wc -l`: **código +47 %** y **fan-out +19 %**,
+> contra **+76 %** de LOC. La hipótesis de B-849 —«no se volvió un módulo que sabe
+> de todo»— se confirma, y con más margen del que el ítem tenía: el fan-out real
+> es 31 y no 27 (el instrumento pierde cuatro imports, abajo), así que el contraste
+> se mide contra un numerador más grande y aun así el LOC crece cuatro veces más
+> rápido que los módulos que el archivo conoce.
+>
+> **Tercero: contra qué se compara.** La hipertrofia de este archivo está en el
+> repo y se puede medir, que es lo que vuelve esta decisión un cálculo y no una
+> opinión:
+>
+> | | `af90b4e` · la hipertrofia | `13b9baa` | `e8fc462` · 2026-08-27 | `df7c2d2` · 2026-09-03 | `5f1f2a8` · hoy |
+> |---|---:|---:|---:|---:|---:|
+> | LOC | 858 | 258 | 379 | 413 | **727** |
+> | Significativas | 780 | 202 | 270 | 270 | **407** |
+> | Prosa | 7 % | 16 % | 25 % | 31 % | **45 %** |
+> | Fan-out | 17 | 19 | 25 | 26 | **31** |
+> | Significativas por import | 46 | 11 | 11 | 10 | **13** |
+>
+> (La fila de fan-out está **recontada** con el mismo criterio en las cinco
+> columnas, por eso la primera dice 17 donde la tabla de arriba dice 12: aquélla
+> se contó a mano en su momento.)
+>
+> **El archivo hipertrofiado y el de hoy se parecen en `wc -l` y en nada más.**
+> 858 contra 727 son 131 líneas de diferencia; 780 significativas contra 407 es
+> otro archivo. Y la última fila lo dice de una sola vez: el de 2026-08-21 tenía
+> **46 líneas de código por cada módulo que importaba**, el de hoy tiene **13**,
+> que es donde estuvo parado desde el saneamiento. Eso es un compositor.
+>
+> **La decisión, entonces: se recalibra el umbral y lo que cambia es la unidad.**
+> El «550» se escribió el 2026-08-27 (`b3e5291`) sobre un archivo que era **25 %
+> prosa**; hoy es **45 %**, así que el mismo número mide una cosa distinta de la
+> que medía. El umbral nuevo:
+>
+> - 🚨 **La alarma es 550 líneas significativas**, no 550 `wc -l`. Hoy: **407**.
+>   El número no se toca a propósito: queda entre el compositor de hoy (**407**)
+>   y la hipertrofia medida (**780**), con un 35 % de aire por arriba y un 30 %
+>   por abajo. Es menos aire del que el 550 tenía el día que se escribió (45 %
+>   sobre 379 LOC), y eso es deliberado: entonces el ancla era el archivo de ese
+>   día, ahora es la hipertrofia, que es la que el umbral tiene que atrapar. Lo
+>   que se corrige es qué se cuenta, no cuánto se tolera.
+> - 📖 **El LOC sigue en la tabla y deja de ser la alarma.** Es la única cifra
+>   comparable con las cinco mediciones anteriores y no se pierde. Lo que no puede
+>   es disparar sola, porque en este repo casi la mitad de un archivo es
+>   explicación y la explicación no es deuda.
+> - 🔍 **El fan-out deja de ser término de la alarma y pasa a ser la lectura.** El
+>   umbral viejo era una conjunción —«550 LOC **con** fan-out 30»— y se dio por
+>   cruzado leyendo solo la mitad izquierda, con el fan-out en 27. Con el conteo
+>   corregido son **31**: la mitad derecha también «cruzó», y sigue sin querer
+>   decir nada sola, porque un compositor que compone más importa más. Lo que se
+>   lee es la **razón** de la última fila: significativas subiendo con el fan-out
+>   quieto es lógica entrando al compositor, y **ése** es el caso que hay que
+>   mirar aunque el absoluto no llegue a 550.
+>
+> **Se reproduce así**, porque `--json` da el LOC por archivo pero no las
+> significativas:
+>
+> ```
+> node --input-type=module -e "
+> import { contarLineas } from './scripts/salud-del-codigo.mjs';
+> import { readFileSync } from 'node:fs';
+> console.log(contarLineas(readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8')));
+> "
+> ```
+>
+> **Y lo que se descartó, que es la otra mitad de la decisión.** La salida
+> alternativa era partir las pestañas en componentes propios, y no se hace porque
+> **ya están partidas**: las nueve secciones son nueve archivos en
+> `src/components/admin/formulario/` desde B-79, la fila de solapas es
+> `src/components/admin/formulario/PestaniasFormulario.tsx`, y el registro que las
+> deriva es `src/lib/formulario/pestanias.ts`. Ocho de las nueve pestañas tienen
+> **una** sección, así que un `PanelQueEs` sería un envoltorio de `SeccionQueEs`:
+> nueve archivos nuevos, más líneas en total y ni una responsabilidad movida.
+>
+> Lo que queda en el compositor no es una pestaña, es **el cableado**, y ese no
+> puede bajar: `form` es un solo objeto y las cascadas cruzan secciones
+> —`cambiarTipo` decide qué muestran «Encuentros», «Quién» y «Material»—,
+> `faltantesPorPestania` necesita las nueve para pintar el número de cada solapa,
+> `irASeccion` escribe `aperturas` de cualquier sección desde la barra de abajo, y
+> el buffer de etiquetas nuevas lo **escriben** cuatro pestañas y lo **leen** otras
+> dos. Cualquier reparto por pestaña obliga a subir el estado de nuevo. La única
+> alternativa real sería una bolsa de props o un contexto, y eso cambia nueve
+> listas de props tipadas por una implícita y tira el `Record<IdSeccion, ReactNode>`
+> que hoy **no compila** si una sección del registro se queda sin cuerpo — la red
+> que el propio archivo documenta y la que evita mandar la barra a una pestaña
+> vacía.
+>
+> ⚠️ **Dos cosas que esta pasada encontró en el instrumento y no arregló**
+> (`scripts/` quedaba fuera del alcance de B-856; van al BACKLOG):
+>
+> 1. **`contarLineas` no reconoce `{/* … */}` como comentario.** Una línea de
+>    comentario JSX empieza con `{` y no con `/*`, así que cae en el `else` y
+>    cuenta como significativa. Para este archivo son **407** donde las de verdad
+>    son **372**, y el sesgo va en el lado seguro: la alarma queda conservadora.
+>    Afecta a todo `.tsx` y `.astro`, o sea también al §1.1 y al §1.6.
+> 2. **El regex `IMPORTS` del grafo exige que `import … from` entre en una sola
+>    línea** (`[^'"\n]*?`), así que pierde todo import multilínea: **234 aristas a
+>    módulos del proyecto en 180 archivos del corpus**, cuatro de ellas en este —de
+>    ahí el fan-out 27 contra 31—. Toca el fan-out del §1.3, el acoplamiento del
+>    §1.4 y los ciclos del §1.5. **Se recalculó el §1.5 con el grafo completo y
+>    siguen siendo cero ciclos estáticos**, así que la propiedad aguanta; lo que no
+>    aguanta es la idea de que se estaba verificando sobre el grafo entero.
 
 > 🔴 **La columna de hoy pasó el umbral que esta sección tenía escrito, y es la
 > primera vez en cinco mediciones.** El umbral era «550 LOC con fan-out 30 ya no

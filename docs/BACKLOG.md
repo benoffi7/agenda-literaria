@@ -962,6 +962,47 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-877 · El grafo de imports pierde todo `import` multilínea, y el §1.5 verifica «cero ciclos» sobre un grafo incompleto · P2
+
+**Lo encontró B-856 al verificar el fan-out del formulario.** El regex `IMPORTS`
+de `scripts/salud-del-codigo.mjs` tiene un `\n` dentro de la clase negada, así que
+obliga a que `import … from` entre en **una sola línea**. Todo import con las
+llaves abiertas en varias líneas es invisible para el grafo.
+
+Son **234 aristas a módulos del proyecto en 180 archivos** del corpus. En
+`ActividadFormulario.tsx` son 4 — exactamente la diferencia entre el fan-out que
+el §1.3 declaraba (**27**) y el real (**31**). Verificado: el regex ve 28 de 32
+`from`-clauses en ese archivo.
+
+**Lo que toca, y lo serio no es el fan-out:** `tests/salud-del-codigo.test.ts`
+afirma «cero ciclos estáticos» como **la única propiedad del documento que está
+atada a un test**, y la estaba afirmando sobre un grafo al que le faltaba el
+**16 %** de las aristas. Un ciclo cerrado por un import multilínea no se habría
+visto.
+
+**Se recalculó con el regex arreglado: siguen siendo cero** (1.424 aristas contra
+las ~1.190 que el script ve). La propiedad aguanta; lo que no aguanta es la idea
+de que se estaba verificando entera. El arreglo es sacar el `\n` de la clase
+negada, y el caso de control es un archivo del corpus con un import multilínea
+conocido.
+
+### B-878 · `contarLineas` no reconoce `{/* … */}`, así que el §1.1 sobrecuenta el código de todo `.tsx` · P3
+
+**Salió de B-856.** El clasificador pregunta `l.startsWith('/*')`, y una línea de
+comentario JSX empieza con `{`. Cae en el `else` y cuenta como **significativa**.
+
+En `ActividadFormulario.tsx` son **35 líneas**: el script dice 407 significativas
+donde las de verdad son 372. Afecta a los 81 archivos de `src/components/` y a los
+`.astro`, o sea al total del §1.1, a la prosa del §1.6 y —desde B-856— al umbral
+del §1.3, que ahora se mide en significativas.
+
+**El sesgo va del lado seguro para el umbral** (la alarma dispara antes), así que
+no es urgente; pero el §1.1 está declarando como código líneas que son prosa, que
+es justamente lo que ese número pretende separar. El arreglo es una línea, y el
+caso de control ya tiene forma en el test —el que verifica que «una línea con
+código y comentario al final cuenta como significativa»— y le falta el gemelo para
+JSX.
+
 ### B-876 · El control de clase del saneador no mira los `.astro`, y hay un literal de regex que lo rompe hoy · P2
 
 **Salió de B-855.** `tests/sin-comentarios.test.ts` compara contra el parser de
@@ -1658,7 +1699,29 @@ para este proyecto. Va como P4 porque el costo actual es cero y el riesgo tambi�
 un directorio vacío ignorado. Lo que no es cero es el costo de descubrirlo de
 nuevo, y eso es lo que este ítem compra.
 
-### B-856 · `ActividadFormulario.tsx` pasó el umbral de 550 LOC que el §1.3 tenía escrito · P3
+### B-856 · `ActividadFormulario.tsx` pasó el umbral de 550 LOC que el §1.3 tenía escrito — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Decidido: el umbral estaba mal calibrado, y lo que estaba mal es la
+> unidad.** No se partió nada.
+>
+> **La medición contestó la pregunta sola.** De las 727 líneas, **324 son prosa y
+> 372 son código**; de las 314 que sumó desde la medición anterior, **198 son
+> comentario**. Y la comparación que cierra el caso: la hipertrofia de este mismo
+> archivo (`af90b4e`) tenía 858 LOC con **780 significativas**; hoy son 727 con
+> **407**. 46 líneas de código por import entonces, **13** ahora.
+>
+> **El umbral nuevo: 550 líneas significativas, no 550 `wc -l`.** El número no se
+> toca. El fan-out pasa de término de la alarma a lectura — el umbral viejo era una
+> conjunción y se había dado por cruzado leyendo media.
+>
+> **Y la otra mitad: las pestañas ya son componentes propios.** Ocho de las nueve
+> tienen una sola sección, así que un panel por pestaña sería un envoltorio de la
+> sección que ya existe. El estado tampoco puede bajar.
+>
+> **Una corrección al propio ítem:** el fan-out no fue de 24 a 27 sino de **26 a
+> 31** — el instrumento pierde los imports multilínea (**B-877**). La conclusión
+> sobrevive con más margen: aun con el numerador corregido, el LOC crece cuatro
+> veces más rápido que los módulos que el archivo conoce.
 
 **Lo disparó la remedición de B-849**, y es la primera vez que un umbral escrito
 en `docs/10-salud-del-codigo.md` se cruza: **727 LOC** contra las 550, y del
