@@ -319,7 +319,6 @@ export function FormularioPublico({ incluyeOfrecido }: Props) {
                 label="Hasta"
                 htmlFor={`prop-hasta-${i}`}
                 error={errorDe(`fechas.${i}.hasta`)}
-                ayuda={i === 0 ? 'Si no sabés, dejalo vacío.' : undefined}
               >
                 <input
                   id={`prop-hasta-${i}`}
@@ -341,6 +340,26 @@ export function FormularioPublico({ incluyeOfrecido }: Props) {
             </li>
           ))}
         </ul>
+        {/*
+          **La ayuda del «Hasta» va acá abajo y no adentro del `Campo`.**
+
+          Estaba como `ayuda` del campo de la primera fila, y eso **desalineaba
+          la fila entera**: `Campo` pinta la ayuda como un `<p>` debajo del
+          input, la fila alinea con `sm:items-end` —que es lo que hace que el
+          botón «Quitar» quede a la altura de los campos— y alinear por abajo
+          con una caja más alta le empuja el input **para arriba** justo la
+          altura de esa línea. Se veía en `/proponer`: «Hasta» montado más alto
+          que «Día» y «Desde».
+
+          Pasarla a `items-start` alineaba los tres campos y mandaba el botón
+          arriba de todo, así que el arreglo no es la alineación: es que la
+          ayuda no esté adentro de la fila. Y de paso corrige algo que no tenía
+          sentido —se mostraba solo en la primera fila (`i === 0`)—: es una nota
+          sobre la columna, no sobre ese campo.
+        */}
+        <p className="body-sm mt-2 text-tinta/55">
+          Si no sabés a qué hora termina, dejá «Hasta» vacío.
+        </p>
         {form.fechas.length < MAX_FECHAS_PROPUESTA && (
           <button type="button" className={`${claseBotonSecundario} mt-2`} onClick={agregarFecha}>
             Agregar otra fecha

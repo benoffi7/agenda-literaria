@@ -1,16 +1,130 @@
 rules_version = '2';
 
-// §5.3 — el custom claim `admin` se setea una vez con el Admin SDK
-// (scripts/set-admin-claim.mjs). Sin ese claim no hay escritura posible.
+// §5.3 — los custom claims (`admin`, `publicador`) se setean una sola vez con el
+// Admin SDK (scripts/set-admin-claim.mjs). Sin uno de esos claims no hay
+// escritura posible.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // `token.get('admin', false)` y no `token.admin`: leer una clave ausente de
-    // un map en las reglas es un evaluation error, no `false`. Con el acceso
-    // directo, cualquier usuario sin el claim hace fallar la regla y el cliente
-    // recibe "evaluation error" en lugar de un permission-denied limpio.
+    /*
+     * ══ LOS DOS ROLES DEL PANEL — B-888 ══════════════════════════════════
+     *
+     * `admin` es el de siempre: ve y toca todo. `publicador` es el rol acotado —
+     * **gestiona solo las actividades que él mismo creó**, y las publica sin que
+     * nadie revise. Todo lo demás del panel (reportes, propuestas, taxonomías,
+     * tablero, historial) le está cerrado acá, en las reglas, y no en la UI:
+     * **que el panel esconda un botón no impide nada** a quien abra la consola de
+     * Firebase con su propia sesión (es el mismo razonamiento de D-128, que cerró
+     * una puerta que ninguna proyección atravesaba).
+     *
+     * Cruza el umbral que B-28 dejó escrito —«la confianza, no la cantidad:
+     * vuelve cuando entre una tercera cuenta que no sea de confianza»— y por eso
+     * el rol existe como claim y no como convención.
+     *
+     * ── El orden de las guardas, que es lo que hace que el rol se ejerza ──
+     * Cada regla de abajo se lee `esAdmin() || (esPublicador() && …)`, y `||`
+     * cortocircuita: **si `esAdmin()` diera true para una cuenta que además es
+     * publicadora, la rama acotada no se evaluaría nunca** y el rol nuevo sería
+     * decorativo. Por eso `esAdmin()` exige, además del claim, **no ser
+     * publicador**: un token con los dos claims —que solo puede salir de un error
+     * del operador, porque `setCustomUserClaims` reemplaza el objeto entero y
+     * nunca lo fusiona— cae del lado **acotado**, que es la dirección en la que
+     * conviene fallar. El caso está en `tests/rol-publicador.integracion.test.ts`.
+     *
+     * `token.get('publicador', false)` y no `token.publicador`, por el mismo
+     * motivo que ya decía `esAdmin()`: leer una clave ausente de un map es un
+     * evaluation error, no `false`, y el cliente recibe "evaluation error" en
+     * lugar de un permission-denied limpio.
+     */
+    function esPublicador() {
+      return request.auth != null && request.auth.token.get('publicador', false) == true;
+    }
+
     function esAdmin() {
-      return request.auth != null && request.auth.token.get('admin', false) == true;
+      return request.auth != null
+        && request.auth.token.get('admin', false) == true
+        && !esPublicador();
+    }
+
+    /** Cualquiera de los dos roles: lo que hoy significa «tiene acceso al panel». */
+    function esDelPanel() {
+      return esAdmin() || esPublicador();
+    }
+
+    /*
+     * ══ QUIÉN ES CADA UID — B-888 ════════════════════════════════════════
+     *
+     * `/actividades` guarda `createdBy`/`updatedBy`, que son **uids**: el panel no
+     * tiene con qué decir «la cargó fulano». D-610 ya decidió que el mail **no
+     * entra al documento de la actividad**, y esa decisión no se toca: los dos
+     * costos que la fundaron —un dato personal más del que acordarse en cada
+     * salida pública (§5.1), y el mail copiado dentro de cada versión del §12, o
+     * sea imborrable— son costos del **campo en `/actividades`**, no del dato.
+     *
+     * Acá el mail vive **una vez, en su propia colección**, fuera de la
+     * proyección pública y fuera del historial: se renombra una cuenta y se
+     * arregla en un lugar, no en doscientos documentos ni en sus versiones.
+     *
+     * ── Por qué se le puede creer al mail (y por qué no hace falta una Function)
+     * `d.email == request.auth.token.get('email', '')`. Ese `email` **no es un
+     * dato que mande el cliente**: es un claim del ID token que emite Identity
+     * Platform y que sale del registro de la cuenta. Se verificó contra el
+     * emulador que **ni siquiera un developer claim llamado `email` en un custom
+     * token lo pisa** — el token emitido sigue trayendo el mail de la cuenta. O
+     * sea que forjarlo exige la service account, y quien la tiene ya no necesita
+     * esta colección para nada.
+     *
+     * `email_verified` es la otra mitad, y es la que importa el día que alguien
+     * habilite el proveedor de mail+contraseña en la consola: con Google el login
+     * llega siempre verificado, pero un alta con contraseña deja elegir la
+     * dirección **sin probarla**, y sin esta cláusula esa cuenta podría
+     * presentarse con el mail de otra persona del equipo.
+     *
+     * Una Function no agrega nada acá y sí quita: la autorización real son las
+     * reglas (es lo que dice el bloque de `/reportes` más abajo), y un `onCall`
+     * tendría que revalidar a mano exactamente lo que estas cuatro líneas ya
+     * verifican contra el token.
+     *
+     * ── El uid del path es la guarda, y no `resource.data` ────────────────
+     * `uid == request.auth.uid` condiciona por la **ruta**, no por el contenido:
+     * no reintroduce el mecanismo de la trampa 7 (una condición sobre
+     * `resource.data` obliga a que toda query traiga el `where` correspondiente).
+     * La contracara es que un publicador no puede **listar** `/usuarios`: pide su
+     * propio documento por id. El único que lista es el admin, y para él la regla
+     * no mira contenido.
+     */
+    function usuarioValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['email', 'actualizadoEn'])
+        && d.keys().hasAll(['email', 'actualizadoEn'])
+        && d.email is string
+        && d.email.size() > 0 && d.email.size() <= 200
+        && d.email == request.auth.token.get('email', '')
+        && request.auth.token.get('email_verified', false) == true
+        // Con `request.time` el cliente no puede antedatar el registro.
+        && d.actualizadoEn == request.time;
+    }
+
+    match /usuarios/{uid} {
+      // El admin los lee todos (es lo que le pinta el filtro «quién lo creó» y la
+      // marca de autoría). Un publicador lee **el suyo**, y nadie más lee nada:
+      // es el directorio de las cuentas del equipo, no una salida pública.
+      allow read: if esAdmin() || (esPublicador() && uid == request.auth.uid);
+
+      // Cada cuenta se registra a sí misma, con su propio mail del token. No hay
+      // forma de escribir el documento de otro: el uid del path tiene que ser el
+      // del que escribe.
+      allow create, update: if esDelPanel() && uid == request.auth.uid && usuarioValido();
+
+      /*
+       * **El registro sobrevive al claim, y es a propósito.** Las actividades que
+       * cargó una cuenta siguen existiendo cuando se le saca el permiso, y su
+       * `createdBy` las sigue señalando: borrar el documento dejaría al panel
+       * mostrando un uid pelado en trabajo que sí pasó. Si alguna vez hay que
+       * borrar de verdad a una persona, es un `delete` con el Admin SDK — una
+       * decisión explícita, no un botón.
+       */
+      allow delete: if false;
     }
 
     match /actividades/{id} {
@@ -55,10 +169,105 @@ service cloud.firestore {
        * `rejects.toThrow()` pelado lo satisface un emulador caído, y un matcher
        * por mensaje falla contra la traza. Se probó en las dos direcciones.
        */
-      allow read: if esAdmin();
-      allow write: if esAdmin();
+      /*
+       * ── Y el publicador lee **las suyas**, con la trampa 7 a la vista ─────
+       * B-888. `allow read` **incluye el `list`**, y una condición sobre
+       * `resource.data` obliga a que toda query la traiga como `where`: sin
+       * `where('createdBy','==',uid)` Firestore **rechaza la query entera**, no
+       * filtra (trampa 7, y trampa 13 en Storage). O sea que el listado del panel
+       * para un publicador tiene que ser esa query y no el barrido de hoy — y
+       * `listarActividades()` ordena por `updatedAt`, así que hace falta el índice
+       * compuesto `createdBy ASC, updatedAt DESC` que se agregó a
+       * `firestore.indexes.json`. Es el trabajo de la tajada 2; acá queda dicho
+       * porque la regla es la que lo obliga.
+       *
+       * El otro efecto, y hay que saberlo: `slugDisponible()`
+       * (`src/lib/actividades.ts`) barre **toda** la colección sin `where`, así
+       * que para un publicador esa query se rechaza entera. El slug único es un
+       * invariante de todo el catálogo y no se puede verificar mirando solo lo
+       * propio — queda anotado en B-888 como lo primero que la tajada 2 tiene que
+       * resolver.
+       *
+       * `.get('createdBy', '')` y no `resource.data.createdBy`, y esto se probó
+       * contra el emulador en las dos formas: las dos sirven para el análisis de
+       * la query (la lista con el `where` correcto pasa igual), pero el acceso
+       * directo devuelve `Property createdBy is undefined on object` sobre un
+       * documento anterior al campo, y con el default el rechazo es limpio. Es el
+       * mismo idiom que `esAdmin()` y por el mismo motivo.
+       */
+      allow read: if esAdmin()
+        || (esPublicador() && resource.data.get('createdBy', '') == request.auth.uid);
 
-      // §12 — historial de versiones. Solo lo escribe la Function con Admin SDK.
+      /*
+       * ── Las tres escrituras, separadas porque el dueño se verifica distinto ──
+       *
+       * Un publicador **nace dueño** de lo que crea y no puede dejar de serlo ni
+       * volverse dueño de lo ajeno. Cada una de esas dos mitades es una cláusula,
+       * y las dos hacen falta:
+       *
+       *  - en el `create`, `request.resource.data.createdBy == uid`: nadie carga
+       *    una actividad a nombre de otro;
+       *  - en el `update`, el dueño se mira en el documento **previo**
+       *    (`resource.data`), así que una actividad ajena no se puede tomar
+       *    escribiéndole el `createdBy` propio: la regla ya falló antes de mirar
+       *    lo que se quiere escribir;
+       *  - y además `createdBy` **no puede cambiar** en el update, o sea que
+       *    tampoco se puede regalar la propia. Sin esa cláusula un publicador
+       *    podría empujar contenido al nombre de otra cuenta —incluido un admin—
+       *    y perder de vista lo que cargó.
+       *
+       * **`updatedBy` tiene que ser el propio**, que es la otra mitad de la marca
+       * de autoría: desde B-888 el panel muestra el mail de quien tocó el
+       * documento por última vez, así que dejarlo libre sería dejar firmar a
+       * nombre de otro. Los tres caminos de escritura del panel ya lo escriben
+       * siempre (`formADocumento`, `marcarCupoCompleto`, `restaurarCampo`), así
+       * que la cláusula no rompe nada y fija lo que hoy es costumbre.
+       *
+       * **Lo que a propósito NO se restringe: `estado`.** El pedido del dueño es
+       * que lo que carga un publicador salga publicado sin que nadie revise, y que
+       * pueda publicar, despublicar y volver a borrador lo suyo. Si alguna vez hay
+       * que moderar, la cláusula va acá y no en el panel.
+       *
+       * El admin queda como estaba —puede todo, incluido reasignar un
+       * `createdBy`—: no es una omisión, es el rol que ya existía.
+       */
+      allow create: if esAdmin()
+        || (esPublicador()
+             && request.resource.data.get('createdBy', '') == request.auth.uid
+             && request.resource.data.get('updatedBy', '') == request.auth.uid);
+
+      allow update: if esAdmin()
+        || (esPublicador()
+             && resource.data.get('createdBy', '') == request.auth.uid
+             && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+             && request.resource.data.get('updatedBy', '') == request.auth.uid);
+
+      /*
+       * Borrar lo propio sí, y es una decisión y no un descuido: `estado:
+       * 'borrador'` ya saca una actividad del sitio y de Calendar (§7.3), así que
+       * negar el borrado no protegería nada —solo dejaría al publicador
+       * acumulando— y el §12 guarda la versión del borrado (B-41), que es de donde
+       * se recupera. Lo ajeno, no: es la misma cláusula del update.
+       */
+      allow delete: if esAdmin()
+        || (esPublicador() && resource.data.get('createdBy', '') == request.auth.uid);
+
+      /*
+       * §12 — historial de versiones. Solo lo escribe la Function con Admin SDK.
+       *
+       * **Y sigue siendo solo del admin, también con el rol nuevo** (B-888). El
+       * panel del publicador es su listado más la vista de calendario; el
+       * historial es una de las pantallas que no ve, así que la regla dice lo
+       * mismo que la UI en vez de contradecirla.
+       *
+       * Y si algún día hay que abrirlo, el problema no es encontrar el dueño —el
+       * documento de la versión guarda el documento entero, así que lo tiene en
+       * `documento.createdBy`— sino que **`read` incluye `list`**: el historial se
+       * lista, y con una condición sobre `resource.data` esa query necesitaría
+       * `where('documento.createdBy','==',uid)` y su índice, o un `get()` al
+       * documento padre desde la regla (que se factura como lectura en cada
+       * evaluación). Nada de eso hace falta hoy.
+       */
       match /versiones/{version} {
         allow read: if esAdmin();
         allow write: if false;
@@ -82,6 +291,25 @@ service cloud.firestore {
       // hace falta separar "quien carga" de "quien valida", el camino es un
       // claim aparte (`curador`) y mover la aprobación a un solo campo o a un
       // documento propio, que sí es verificable.
+      //
+      /*
+       * **El publicador no escribe acá, y es por el párrafo de arriba** (B-888).
+       * `/opciones/{campo}` es un documento **compartido por todo el sitio**: los
+       * chips de filtro salen de él (§4.4) y renombrar una etiqueta cambia lo que
+       * ve el público. Y como las reglas no pueden inspeccionar qué elemento del
+       * array `valores` cambió, darle `write` no sería «puede agregar una opción
+       * con Otro»: sería **puede reescribir la taxonomía entera** —borrar valores,
+       * dar vuelta `fijo`, aprobar lo que quiera— sin una sola cláusula que lo
+       * verifique. Una regla que no puede verificar lo que promete es peor que no
+       * tenerla, que es lo que ya decía este bloque.
+       *
+       * Tiene una consecuencia concreta para la tajada 2, y está anotada en B-888:
+       * `upsertOpcion()` y `registrarUsos()` corren al guardar una actividad
+       * (D-02), así que **con este rol esas dos escrituras se rechazan**. El panel
+       * del publicador tiene que no ofrecer "Otro" y no contar usos — o, si el
+       * dueño quiere que cuenten, `usos` se mueve a una Function, que es el único
+       * lugar donde el incremento se puede verificar.
+       */
       allow write: if esAdmin();
     }
 
@@ -226,7 +454,21 @@ service cloud.firestore {
     // token) podría crear un reporte que nace "creado", o con los intentos
     // gastados, y nunca se publicaría.
     match /reportes/{id} {
-      // Los dos admins leen todos los reportes: es una bandeja compartida.
+      // Los admins leen todos los reportes: es una bandeja compartida.
+      //
+      /*
+       * **Cerrada al publicador, las tres** (B-888), y no por simetría sino por lo
+       * que hay adentro. Un reporte lleva `reportadoPor.email` —el mail de otra
+       * cuenta del panel— y texto libre que alguien tipeó mientras le fallaba algo;
+       * la bandeja es compartida entre los que la comparten. Y el `read` es
+       * todo-o-nada por documento: no hay forma de entregar «solo los suyos» sin
+       * una condición sobre `resource.data` que además arrastraría el `where` de la
+       * trampa 7 a la pantalla de reportes.
+       *
+       * Que un publicador pueda reportar un bug es razonable y se decide con el
+       * dueño, no acá: sería un `create` propio, con `reportadoPor.uid ==
+       * request.auth.uid` —que la regla ya exige— y **sin** abrir el `read`.
+       */
       allow read: if esAdmin();
       allow create: if esAdmin() && reporteValido();
       // El ciclo de vida (estado, intentos, github) lo mueve la Function con el
@@ -255,6 +497,13 @@ service cloud.firestore {
      * `if true` no rompía nada.
      */
     match /sistema/{doc} {
+      /*
+       * Sin cambios con el rol nuevo (B-888): `analitica-sitio` trae los rankings
+       * de páginas y **las consultas con las que Google nos muestra**, o sea texto
+       * que tipearon visitantes, y el flag de rebuild es infraestructura. Ninguna
+       * de las dos cosas es «lo que él creó». El `write: if false` ya alcanza a los
+       * dos roles porque no mira quién escribe.
+       */
       allow read: if esAdmin();
       allow write: if false;
     }
@@ -476,6 +725,20 @@ service cloud.firestore {
          * La propiedad que se quiere es la misma —una propuesta anónima no puede
          * decir que la cargó el panel, ni al revés— apoyada en la autoridad real
          * en vez de en un proxy.
+         *
+         * **Se revisó con el rol nuevo y se deja como está** (B-888). La
+         * tentación era cambiarlo por `!esDelPanel()`, ya que un publicador
+         * también es el panel. No: hoy el `allow create` de abajo exige `esAdmin()`
+         * —así que un publicador no puede crear **ninguna** propuesta, de ningún
+         * origen— y esa cláusula sería **letra muerta**, exactamente lo que este
+         * archivo persigue dos funciones más arriba. Y el día que B-836 abra el
+         * `create` anónimo, `!esDelPanel()` reintroduciría el bug que el
+         * `auditor-privacidad` arregló acá, con otra cuenta: un publicador con
+         * sesión no podría usar el formulario público, que es algo que va a hacer
+         * como cualquier persona. Lo que la cláusula tiene que impedir —que una
+         * propuesta de afuera se presente como cargada por el panel— lo sigue
+         * impidiendo la rama de al lado, que exige `esAdmin()` para `origen:
+         * 'panel'`.
          */
         && ((d.origen == 'formulario-publico' && !esAdmin())
              || (d.origen == 'panel' && esAdmin()))
@@ -518,6 +781,16 @@ service cloud.firestore {
       // La bandeja la miran los admin, como `/reportes`. Y **solo** ellos: el
       // documento lleva el contacto de quien propuso, que es el primer dato
       // personal de un tercero que el proyecto guarda (§7 del PRD).
+      //
+      /*
+       * **Ese "solo ellos" ahora también excluye al publicador** (B-888), y acá es
+       * donde más importa: es el único dato personal **de un tercero** que el
+       * proyecto guarda, y una propuesta no es de nadie del panel —no hay un
+       * `createdBy` propio que la vuelva «lo suyo»—. Revisar propuestas es
+       * decidir qué entra al catálogo, que es justamente la autoridad que este rol
+       * no tiene: sus propias actividades salen sin revisión, las de terceros no.
+       * Las tres cláusulas de esta colección se quedan en `esAdmin()`.
+       */
       allow read: if esAdmin();
 
       /*

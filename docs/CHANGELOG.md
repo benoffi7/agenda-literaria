@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **El «Hasta» de `/proponer` se veía montado más alto que «Día» y «Desde»**, y la
+  causa no era la alineación. La fila alinea con `sm:items-end` —que es lo que pone
+  el botón «Quitar» a la altura de los campos— y el `Campo` de «Hasta» llevaba una
+  línea de ayuda **debajo del input**, así que alinear por abajo con una caja más
+  alta le empujaba el input para arriba justo esa altura.
+
+  Pasarlo a `items-start` alineaba los tres campos y mandaba el botón arriba de
+  todo, así que el arreglo no es la alineación: **es que la ayuda no esté adentro
+  de la fila**. Ahora va debajo de la lista, y de paso corrige algo que no tenía
+  sentido — se mostraba solo en la primera fila, cuando es una nota sobre la
+  columna y no sobre ese campo.
+
 - **La suite entera y los seis pasos del gate dieron verde con un error de sintaxis
   en `functions/`** — **B-887**. Se pushó un `import` metido **adentro** de un
   bloque `import { … }` multilínea: 4.373 casos en verde, `tsc --noEmit` limpio,

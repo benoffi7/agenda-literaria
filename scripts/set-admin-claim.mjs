@@ -1,20 +1,54 @@
 #!/usr/bin/env node
 /**
- * §5.3 — setea el custom claim `admin` una sola vez con el Admin SDK.
- * Sin este claim las reglas de Firestore rechazan toda escritura.
+ * §5.3 — setea el custom claim del rol con el Admin SDK. Sin un claim, las
+ * reglas de Firestore rechazan toda escritura.
  *
- *   npm run admin:claim -- <uid|email>
+ *   npm run admin:claim -- <uid|email>                 → admin (ve y toca todo)
+ *   npm run admin:claim -- --publicador <uid|email>    → publicador (B-888)
+ *   npm run admin:claim -- --quitar <uid|email>        → sin claims
  *
  * Contra los emuladores exportá antes:
  *   export FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+ *
+ * ── Por qué los roles no se pueden acumular, y no depende de este script ──
+ * B-888. `setCustomUserClaims` **reemplaza el objeto entero**, nunca lo fusiona:
+ * darle `publicador` a una cuenta que era admin le saca el `admin` en la misma
+ * llamada, que es lo que hace que «bajar de rango» sea una operación y no dos.
+ * Por eso acá se escribe siempre el objeto completo del rol elegido y nunca un
+ * `{ ...previos, … }`.
+ *
+ * Las reglas no se confían de eso igual: `esAdmin()` exige además **no** ser
+ * publicador, así que un token con los dos claims —que solo saldría de tocar la
+ * consola a mano— cae del lado acotado. Las dos mitades hacen falta: ésta hace
+ * que el estado raro no se pueda crear desde acá, y aquélla decide qué pasa si
+ * igual existe.
+ *
+ * El nombre del archivo quedó de cuando había un solo rol. No se renombra: lo
+ * nombran `docs/08-operacion.md`, `package.json` y `tests/guardas-de-los-scripts.test.ts`.
  */
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-const objetivo = process.argv[2];
+const argumentos = process.argv.slice(2);
+
+/**
+ * El rol sale de un flag y **el default es `admin`**, que es lo que este comando
+ * hacía antes de que hubiera roles: no cambiar lo que ya está en los dedos del
+ * dueño es más importante que la simetría.
+ */
+const ROLES = {
+  '--publicador': { nombre: 'publicador', claims: { publicador: true } },
+  '--quitar': { nombre: 'sin rol', claims: {} },
+};
+const flag = argumentos.find((a) => a in ROLES);
+const rol = ROLES[flag] ?? { nombre: 'admin', claims: { admin: true } };
+
+const objetivo = argumentos.find((a) => a !== flag);
 if (!objetivo) {
-  console.error('Uso: npm run admin:claim -- <uid|email>');
-  console.error('     npm run admin:claim -- --todos   (solo emulador)');
+  console.error('Uso: npm run admin:claim -- <uid|email>                 (admin)');
+  console.error('     npm run admin:claim -- --publicador <uid|email>    (solo lo suyo)');
+  console.error('     npm run admin:claim -- --quitar <uid|email>        (le saca el rol)');
+  console.error('     npm run admin:claim -- --todos                     (solo emulador)');
   process.exit(1);
 }
 
@@ -48,6 +82,10 @@ console.log(
     ? `Objetivo: EMULADOR (${process.env.FIREBASE_AUTH_EMULATOR_HOST})`
     : `Objetivo: PRODUCCIÓN (${projectId})`,
 );
+// Y el rol, por el mismo motivo que el objetivo: `--publicador` es un flag de
+// una palabra en medio de un comando largo, y equivocarse en silencio acá es
+// darle el panel entero a quien tenía que ver solo lo suyo.
+console.log(`Rol: ${rol.nombre.toUpperCase()}`);
 
 const auth = getAuth();
 
@@ -99,16 +137,18 @@ if (objetivo === '--todos') {
     process.exit(0);
   }
   for (const u of users) {
-    await auth.setCustomUserClaims(u.uid, { admin: true });
-    console.log(`admin -> ${u.email ?? u.uid}`);
+    await auth.setCustomUserClaims(u.uid, rol.claims);
+    console.log(`${rol.nombre} -> ${u.email ?? u.uid}`);
   }
 } else {
   const usuario = await (objetivo.includes('@')
     ? auth.getUserByEmail(objetivo)
     : auth.getUser(objetivo)
   ).catch(explicarSiNoExiste);
-  await auth.setCustomUserClaims(usuario.uid, { admin: true });
-  console.log(`admin -> ${usuario.email ?? usuario.uid}${enEmulador ? ' (emulador)' : ''}`);
+  // El objeto completo, nunca fusionado con los claims previos: es lo que hace
+  // que cambiar de rol saque el anterior (ver el docblock de arriba).
+  await auth.setCustomUserClaims(usuario.uid, rol.claims);
+  console.log(`${rol.nombre} -> ${usuario.email ?? usuario.uid}${enEmulador ? ' (emulador)' : ''}`);
 }
 
 console.log('\nEl claim entra al token en el próximo login. Salí y volvé a entrar en /admin.');

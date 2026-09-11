@@ -1040,6 +1040,37 @@ qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow
 > **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
 > push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
 
+### B-889 · Las horas se cargan sin saber si son AM o PM, y el panel no ofrece elegir formato · P3
+
+**Pedido del dueño (2026-09-11):** un sistema de 12/24 horas al cargar las fechas,
+**solo en el admin**.
+
+Hoy los campos de hora son `<input type="time">`, y ese control **no decide el
+formato: lo decide el navegador**, a partir del idioma del sistema operativo. En
+`es-AR` sale en 24 horas y en `en-US` sale con AM/PM, sin que la página tenga nada
+que ver. Por eso el pedido no es «cambiar el formato» sino **ofrecer elegirlo**,
+que es una cosa distinta y más cara.
+
+**Lo que hay que decidir antes de escribir nada:**
+
+1. **Qué se guarda no cambia**, y conviene dejarlo escrito para que nadie lo
+   toque: en Firestore va un `Timestamp` y hacia Calendar va con `timeZone`
+   explícito (trampa 1). El formato es **presentación**, no dato. Si en algún
+   momento alguien guarda «7:30 PM» como texto, eso es la trampa 1 otra vez.
+2. **Dónde vive la preferencia.** No hay perfil de usuario en el panel, así que o
+   nace uno, o va en `localStorage` —el patrón que el panel ya usa para los
+   borradores (D-122) y el sitio para los favoritos (B-848)—. La segunda es la
+   barata y tiene la consecuencia de siempre: es por navegador, y hay que decirlo.
+3. **Y la parte que no es obvia: un `<input type="time">` no acepta que le impongan
+   el formato.** Ofrecer 12/24 significa dejar de usar el control nativo, o
+   envolverlo. Eso toca el teclado del celular, la accesibilidad y el `min-h-touch`
+   del §11 — o sea que el costo real no está en el formato sino en reemplazar un
+   control que hoy el navegador resuelve bien.
+
+**Solo en el admin**, dicho por el dueño. El formulario público (`/proponer`) se
+queda con el control nativo: ahí quien carga usa su propio teléfono una sola vez y
+el formato que le da su sistema es el que entiende.
+
 ### B-887 · Un error de sintaxis en un trigger pasa la suite, el typecheck y el gate — ✅ hecho (2026-09-11) · P1
 
 **Pasó el 2026-09-11 y lo causó el integrador**, aplicando a mano un diff que un
