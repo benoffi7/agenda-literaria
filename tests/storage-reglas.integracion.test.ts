@@ -12,6 +12,7 @@ import {
   uploadBytes,
 } from 'firebase/storage';
 import { app, auth } from '@/lib/firebase-client';
+import { adminBucket } from '@/lib/firebase-admin';
 import { MAXIMO_BYTES } from '@/lib/imagenes';
 import { rutaDeImagen, rutaDeImagenPropuesta } from '@/lib/imagenes-archivo';
 import { MARCA_OPTIMIZADA } from '../functions/imagenes.js';
@@ -221,10 +222,38 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
    * sin login. Las dos mitades se prueban acá porque las dos son de las reglas y
    * ninguna se puede razonar sin el emulador.
    */
-  describe('el prefijo de las propuestas (DEC-11)', () => {
+  describe('el prefijo de las propuestas (DEC-11, y el cierre de B-896)', () => {
     const idPropuesta = () => `prop_test-${Date.now().toString(36)}-${n++}`;
 
-    it('un admin sube el flyer y lo puede VER: es lo que le deja decidir', async () => {
+    /**
+     * **Sembrar un flyer como lo hace la callable: con el Admin SDK.**
+     *
+     * Hasta B-896 estos casos subían el objeto con el SDK del navegador y una
+     * sesión de admin, porque la regla lo permitía. Ya no: el `create` de
+     * `propuestas/` está en `false` para **todo** cliente, así que el único
+     * camino por el que un objeto entra a este prefijo es
+     * `subirFlyerDePropuesta`, que escribe con el Admin SDK y pasa por encima de
+     * estas reglas. Sembrar así no es un atajo del test: es exactamente lo que
+     * pasa en producción.
+     *
+     * El `firebaseStorageDownloadTokens` va explícito por el mismo motivo que en
+     * `metadatosDelFlyer`: el Admin SDK no lo acuña solo, y sin él
+     * `getDownloadURL()` —lo que la bandeja usa para mostrarle el flyer al
+     * admin— se queda sin URL.
+     */
+    const sembrarFlyer = async (ruta: string) => {
+      await adminBucket()
+        .file(ruta)
+        .save(Buffer.from(bytes(1024)), {
+          resumable: false,
+          metadata: {
+            contentType: 'image/jpeg',
+            metadata: { saneada: '1', firebaseStorageDownloadTokens: crypto.randomUUID() },
+          },
+        });
+    };
+
+    it('un admin ve el flyer que escribió la callable: es lo que le deja decidir', async () => {
       /*
        * El desvío del PRD, con la decisión del dueño del 2026-09-09: pedía «`get`
        * y `list` en `false`», y con `get` cerrado para todos el admin no puede
@@ -234,7 +263,7 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
        */
       await signInWithCustomToken(auth(), await tokenPara(UID, true));
       const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
-      await subir(ruta, bytes(1024), 'image/jpeg');
+      await sembrarFlyer(ruta);
 
       const url = await getDownloadURL(ref(almacen(), ruta));
       const r = await fetch(url);
@@ -253,25 +282,50 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
       await expect(listAll(ref(almacen(), 'propuestas'))).rejects.toThrow();
     });
 
-    it('rechaza lo mismo que `imagenes/`: el tamaño, el tipo y el nombre', async () => {
-      await signInWithCustomToken(auth(), await tokenPara(UID, true));
-      const conNombre = (archivo: string) => `propuestas/${archivo}`;
+    /**
+     * **EL TESTIGO DE B-896, y reemplaza al que decía «todavía no».**
+     *
+     * Hasta acá este bloque tenía dos casos: uno que verificaba que un admin
+     * pudiera subir respetando tipo/tamaño/nombre, y otro —«un anónimo TODAVÍA no
+     * puede subir: falta que App Check exija»— escrito para ponerse **rojo** el
+     * día que se borrara el `esAdmin() &&` y se abriera la subida anónima.
+     *
+     * **Ese día no va a llegar, y por eso el testigo cambia de signo.** Abrir
+     * este `create` obligaba a exigir App Check en Storage, y el enforcement es
+     * **por servicio y no por path**: exigirlo se lleva puestas las lecturas
+     * públicas de imágenes del sitio (B-872). La salida fue romper el
+     * acoplamiento — la subida va a una callable con `enforceAppCheck: true`, que
+     * sanea del lado del servidor y escribe con el Admin SDK— y con eso este
+     * prefijo se queda **cerrado para todo cliente**, que es más fuerte que
+     * abrirlo.
+     *
+     * Así que lo que se afirma ahora es la propiedad nueva, con los **tres**
+     * actores para que no quede colgada del que hoy importa: el anónimo de
+     * `/proponer`, el rol `publicador` de B-888 y el admin. Se pone rojo el día
+     * que alguien afloje el `if false`.
+     *
+     * MUTACIÓN PROBADA: `allow create: if esAdmin() && tipoAceptado()` (la línea
+     * de antes de B-896) → la tercera mitad se pone roja.
+     */
+    it('nadie sube desde un cliente: ni un anónimo, ni un publicador, ni un admin — B-896', async () => {
+      const conNombre = () => rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
 
+      await signOut(auth());
       expect(
-        await rechaza(subir(rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg'), bytes(MAXIMO_BYTES + 1), 'image/jpeg')),
-        'el tope de 3 MB',
+        await rechaza(subir(conNombre(), bytes(512), 'image/jpeg')),
+        'el anónimo de /proponer: ahora sube por la callable',
       ).toBe(true);
+
+      await signInWithCustomToken(auth(), await tokenPublicador('uid_test_pub_propuestas'));
       expect(
-        await rechaza(subir(conNombre(`${idPropuesta()}.webp`), bytes(512), 'image/webp')),
-        'un tipo que no sabemos limpiar',
+        await rechaza(subir(conNombre(), bytes(512), 'image/jpeg')),
+        'el rol publicador de B-888 no tiene nada que hacer en este prefijo',
       ).toBe(true);
+
+      await signInWithCustomToken(auth(), await tokenPara(UID, true));
       expect(
-        await rechaza(subir(conNombre('flyer.jpg'), bytes(512), 'image/jpeg')),
-        'un nombre sin la forma de id',
-      ).toBe(true);
-      expect(
-        await rechaza(subir(conNombre('sub/x.jpg'), bytes(512), 'image/jpeg')),
-        'un segundo segmento: `match /propuestas/{archivo}` es de uno solo',
+        await rechaza(subir(conNombre(), bytes(512), 'image/jpeg')),
+        'y el admin tampoco: el único que escribe acá es el Admin SDK de la callable',
       ).toBe(true);
     });
 
@@ -284,23 +338,8 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
        */
       await signInWithCustomToken(auth(), await tokenPara(UID, true));
       const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
-      await subir(ruta, bytes(512), 'image/jpeg');
+      await sembrarFlyer(ruta);
       await expect(deleteObject(ref(almacen(), ruta))).rejects.toThrow();
-    });
-
-    /**
-     * **El testigo de la puerta que todavía no está abierta.**
-     *
-     * `create` es `esAdmin() && …` a propósito: falta que App Check esté
-     * exigiendo (B-836a), exactamente igual que el `create` de `/propuestas` en
-     * `firestore.rules`. Este caso es el que se pone rojo el día que se borre ese
-     * `esAdmin() &&`, y está escrito para que abrir la puerta sea un diff visible
-     * en un test y no un efecto colateral.
-     */
-    it('un anónimo TODAVÍA no puede subir: falta que App Check exija (B-836a)', async () => {
-      await signOut(auth());
-      const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
-      expect(await rechaza(subir(ruta, bytes(512), 'image/jpeg'))).toBe(true);
     });
 
     /**
@@ -327,7 +366,7 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
     it('sin sesión no se llega al flyer por su ruta, ni sabiéndola', async () => {
       await signInWithCustomToken(auth(), await tokenPara(UID, true));
       const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
-      await subir(ruta, bytes(512), 'image/jpeg');
+      await sembrarFlyer(ruta);
       const url = await getDownloadURL(ref(almacen(), ruta));
 
       await signOut(auth());

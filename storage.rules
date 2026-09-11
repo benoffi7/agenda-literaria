@@ -256,42 +256,49 @@ service firebase.storage {
       allow get: if esAdmin();
       allow list: if false;
 
-      // ⚠️ **ACÁ VA LA PRIMERA SUBIDA ANÓNIMA DEL PROYECTO, Y TODAVÍA NO ESTÁ
-      // ABIERTA** — exactamente el mismo estado y el mismo motivo que el `create`
-      // de `/propuestas` en `firestore.rules`: falta que **App Check esté
-      // exigiendo** (B-836a). Abrir esto sin enforcement publica un endpoint de
-      // subida a Storage que nada frena, y cada objeto es almacenamiento y
-      // egreso facturados.
+      // ── EL `create` ESTÁ CERRADO, Y ES LA DECISIÓN — B-896 ──────────
       //
-      // **Para abrirla**, y en este orden:
-      //   1. App Check exigiendo, verificado en la consola;
-      //   2. borrar `esAdmin() &&` de acá y del `create` de `firestore.rules` —
-      //      **las dos juntas**: una subida que no puede terminar en un documento
-      //      es un objeto huérfano, y un documento que no puede traer su imagen
-      //      es DEC-11 a medias;
-      //   3. el testigo que se pone rojo es el caso «un anónimo no puede subir»
-      //      de `tests/storage-reglas.integracion.test.ts`.
+      // **Cerrado a propósito, no a la espera de nada.** Hasta B-896 esta línea
+      // decía `esAdmin() && …` y el comentario que estaba acá decía «todavía no
+      // está abierta»: el plan era borrar el `esAdmin() &&` el día que App Check
+      // estuviera exigiendo, y así dejar entrar al anónimo de `/proponer`. **Ese
+      // plan se descartó**, y conviene saber por qué antes de reabrirlo.
       //
-      // `create` sin `update`: **una subida no puede pisar la de otro**. El
-      // nombre es un uuid, así que un choque solo puede ser deliberado, y del
-      // otro lado va a haber un anónimo.
-      allow create: if esAdmin()
-        && tipoAceptado()
-        && tamanoAceptado()
-        // El mismo alfabeto que `imagenes/` con otro prefijo, y **más angosto que
-        // el `matches` de `firestore.rules`**, que acepta además `jpeg` y `webp`:
-        // los dos tipos que el panel sabe limpiar son JPG y PNG (`tipoAceptado`),
-        // así que un `.webp` es un path que nunca va a existir. La asimetría está
-        // declarada en `tests/propuestas-imagen.test.ts` para que se lea como
-        // decisión y no como olvido.
-        && archivo.matches('^prop_[A-Za-z0-9_-]+[.](jpg|png)$')
-        // Misma tercera defensa que en `imagenes/`: la marca de la Function no se
-        // puede subir desde un cliente, o el trigger de optimización se saltea.
-        // Acá el objeto **no** pasa por ese trigger (está fuera de su prefijo),
-        // pero la marca viajaría con él al promoverlo a `imagenes/` si alguna vez
-        // se copiara en vez de re-subirse.
-        && (request.resource.metadata == null
-            || !('optimizada' in request.resource.metadata));
+      // El plan se apoyaba en exigir App Check en Storage, y **el enforcement de
+      // App Check es por servicio, no por path**: no se puede exigir solo para
+      // `propuestas/`. Exigirlo en `firebasestorage` lo exige también para las
+      // lecturas públicas de imágenes —un GET anónimo del navegador contra la URL
+      // de descarga, que no lleva token ni puede llevarlo— y eso **se lleva
+      // puestas todas las fotos del sitio** (B-872). O sea: la única forma de
+      // atestar esta subida abría un agujero mucho más grande que el que tapaba.
+      //
+      // **La salida rompe el acoplamiento:** la subida ya no va directo a
+      // Storage. Va a una Cloud Function callable con `enforceAppCheck: true`
+      // (`functions/flyer-de-propuesta-trigger.js`), que valida la atestación,
+      // **vuelve a sanear la imagen del lado del servidor** —el saneado del
+      // cliente se puede saltear abriendo la consola del navegador, así que como
+      // garantía no valía nada— y escribe el objeto con el Admin SDK, que pasa
+      // por encima de estas reglas. El enforcement de `cloudfunctions` es
+      // independiente del de Storage y no toca ninguna lectura de imagen.
+      //
+      // Así que acá no hay una puerta entornada esperando una señal: **no hay
+      // ningún cliente que tenga que escribir en este prefijo**, ni anónimo ni
+      // admin. `if false` es más fuerte que cualquier condición que pudiéramos
+      // escribir, y es lo que hace que abrir `/proponer` no cueste abrir nada.
+      //
+      // Las cuatro cláusulas de forma que esta regla tenía —tipo, tamaño, nombre
+      // y la marca de la Function— **no se perdieron, se mudaron a donde ahora
+      // hay algo que chequear**: `functions/flyer-de-propuesta.js`
+      // (`TIPOS_ACEPTADOS`, `MAXIMO_BYTES`, `NOMBRE_DE_FLYER`,
+      // `metadatosDelFlyer`). Ahí son más fuertes, porque además miran lo que el
+      // archivo tiene **adentro**, que es lo único que una regla de Storage nunca
+      // pudo ver. Lo ata `tests/propuestas-imagen.test.ts`.
+      //
+      // **El testigo de que esto no se reabra por descuido** es el caso «nadie
+      // sube desde un cliente, ni un admin» de
+      // `tests/storage-reglas.integracion.test.ts`: se pone rojo el día que
+      // alguien afloje esta línea.
+      allow create: if false;
 
       // **Nadie borra desde un cliente, ni siquiera un admin.** Los borrados que
       // existen son de Functions con el Admin SDK, que pasa por encima de estas

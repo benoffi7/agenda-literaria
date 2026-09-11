@@ -2,6 +2,125 @@
 
 ## Sin publicar
 
+- **La subida anónima del flyer pasa por una callable con App Check exigido** —
+  **B-896** (paso 1). `/proponer` ya no sube el flyer directo a Storage: lo manda a
+  `subirFlyerDePropuesta`, una callable v2 con `enforceAppCheck: true` que **vuelve
+  a sanear la imagen del lado del servidor** y escribe el objeto con el Admin SDK.
+
+  Arregla dos cosas distintas que estaban atadas:
+
+  - **El saneado corría solo en el cliente**, así que un chequeo que no podía fallar
+    prometía una garantía que no podía dar: alcanzaba con abrir la consola del
+    navegador y llamar a `uploadBytes` para que la foto entrara al bucket con su
+    EXIF —y las coordenadas de la casa donde se hace el taller— adentro.
+  - **El endpoint anónimo no estaba atestado**, y atestarlo pedía exigir App Check
+    en Storage, que es **por servicio y no por path**: se llevaba puestas todas las
+    lecturas públicas de imágenes del sitio (B-872).
+
+  La callable rompe el acoplamiento: el enforcement de Functions es independiente y
+  no toca ninguna lectura de imagen. Y deja algo **más fuerte** que lo que se pedía
+  — `storage.rules` para `propuestas/` queda con el `create` en `false` para todo
+  cliente, ni anónimo ni admin; el único que escribe ahí es el Admin SDK.
+
+  El saneado no se reimplementó: reusa `optimizar()` (DEC-7d) y el barrido
+  `traeMetadatos` + `estructuraConocida`, o sea las mismas tablas blancas que el
+  panel comparte por alias (B-323/B-869). Y se verificó **la dirección que nadie
+  mira**: que lo que la callable produce lo acepte `quedanMetadatos` del panel, que
+  es quien lo promueve al aceptar la propuesta. Sin eso, la propuesta se aceptaría y
+  la promoción fallaría echándole la culpa a la foto de alguien que ya no está.
+
+  **Medido:** una imagen en el tope de 3 MB (DEC-7b) da un cuerpo JSON de
+  **4.194.352 bytes (4,00 MiB)** contra un límite de 10 MB — 2,5× de margen. El
+  rechazo por tamaño dice el tamaño real y el máximo, igual que el camino del panel.
+
+  El `matches('^prop_…')` que vivía en `storage.rules` se mudó a
+  `functions/flyer-de-propuesta.js`: la regla dejó de tener un cliente al que
+  chequearle la forma, y en la callable el chequeo es más fuerte porque además mira
+  lo que el archivo tiene **adentro**.
+
+  Tres mutaciones probadas — y la primera se cobró un test: borrar
+  `enforceAppCheck: true` **no ponía nada en rojo**, porque el `toContain` miraba el
+  fuente crudo y el docblock nombra la bandera para explicar por qué está. Ahora va
+  sobre `sinComentarios(…)`, que es literalmente para lo que existe.
+
+- **La base de datos de librerías: el tipo, el schema y las reglas** — **B-831**
+  (tajada 2, primera mitad del paso 14). `/librerias/{id}` existe como modelo
+  (`src/types/libreria.ts`), como validación de formulario
+  (`src/lib/libreria-schema.ts`) y, sobre todo, como **autorización**: el bloque de
+  `firestore.rules` es lo único que un `curl` no puede saltear el día que el
+  formulario público se abra.
+
+  **`get` y `list` se decidieron por separado aunque hoy den la misma respuesta.**
+  `get` está cerrado porque una regla **no proyecta** (D-128): abrirlo «para las
+  publicadas» entregaría el documento entero —con el `contactoDeQuienCargo` de quien
+  la cargó— y no la vista que la proyección decide. `list` está cerrado porque
+  **`read` incluye `list`** (trampa 13): no entrega una ficha, entrega el directorio
+  entero de una sentada, pendientes y descartadas incluidas. Y ninguna de las dos se
+  condiciona por contenido, que es lo que las mantiene fuera del mecanismo de la
+  trampa 7.
+
+  **El `create` público NO se abre acá, y el motivo es B-872/B-896.** La regla lleva
+  escrito qué hay que borrar y en qué orden, con el testigo que de verdad se pone
+  rojo nombrado — la lección que `/propuestas` ya pagó: `escritura-anonima` **no** se
+  pone rojo solo.
+
+  **El `publicador` (B-888) no tiene nada en esta colección, y es una decisión
+  escrita y no un olvido**: el rol contesta «¿de quién es este documento?», y una
+  librería no tiene dueño del panel.
+
+  **Cincuenta y una mutaciones, todas en rojo — y seis cláusulas muertas que se
+  cobró.** Las tres del piso «no vacío» (`slug`, `barrio`, `web`) no podían fallar
+  porque sus `matches` ya exigen caracteres; el `is number` de `geo` tampoco, porque
+  la comparación de rango deniega igual; y el `in [...]` de `origen` lo fuerzan la
+  coherencia del `create` y la inmutabilidad del `update`. Las otras dos eran al
+  revés —cláusulas vivas **sin caso que las ejercitara**: el `hasAll` de `revision` y
+  el enum de `estado` solo pueden fallar en el `update`— y ahí lo que faltaba era el
+  test, no la regla.
+
+  Y dos helpers de test ajenos cambiaron porque se pusieron en rojo solos: recortar
+  el bloque de una colección **hasta el catch-all** dejó de funcionar el día que
+  apareció una colección debajo. Ahora anclan en la sección siguiente, que es lo que
+  hace que `/suscripciones` y `/lugares` no vuelvan a romperlos.
+
+- **El motor de los tres directorios y la pestaña «Guía»** — **B-834** + **B-835**
+  (tajada 2, pasos 12 y 13). Lo que librerías, suscripciones y lugares comparten se
+  escribe una vez: `src/lib/directorios.ts` tiene los estados de una ficha, el grafo
+  de movimientos, qué campos escribe la máquina, cuándo se congela la dirección web
+  y la tabla de los tres directorios; `DirectorioPanel.tsx` es la bandeja, una sola
+  para los tres.
+
+  **La arista que falta en el grafo es la decisión.** No existe `rechazado →
+  publicado`: para que algo descartado vuelva al sitio hay que reabrirlo, o sea
+  volver a mirarlo. Los botones de la bandeja **son** ese grafo —se dibujan
+  recorriéndolo— así que la regla vive en un lugar solo. Y hay dos tests porque son
+  dos preguntas: el puro fija el grafo, y el de render fija que el grafo llegue al
+  DOM. Reemplazar el recorrido por tres `if` deja el test puro entero en verde.
+
+  **La barra pasa de 7 a 8 pestañas, no de 7 a 10.** Es lo que desinfló B-835 antes
+  de empezar: los tres directorios cuelgan de `/guia/`, así que entra **una**
+  entrada. Va tercera, con el criterio que ya había puesto a la cartelera segunda —
+  las tres primeras son las tres formas de *buscar algo*; «Suscribirse», «Ayuda» y
+  «Contacto» son de después de haber encontrado algo.
+
+  **`/guia` muestra las tres filas desde hoy, y dice cuáles están en camino.** Salen
+  de la misma tabla del motor, y el día que `/guia/librerias` exista se cambia un
+  `false` por un `true`: la fila se vuelve enlace **y la URL entra al sitemap sola**
+  —`RUTAS_FIJAS` las deriva—. Es la séptima de las nueve cosas que se rompen en
+  silencio del inventario, cerrada en vez de vigilada: el mismo booleano decide lo
+  que se ve (la fila linkea) y lo que no se ve (que Google la conozca).
+
+  Lo que sigue vigilado es la otra mitad, y con **control negativo codificado**: que
+  una fila marcada disponible tenga de verdad su página, y que una página que ya
+  existe esté marcada. Hoy las tres filas están en camino, así que los dos chequeos
+  recorrerían una lista vacía —«un control positivo que no puede fallar»— y por eso
+  cada uno corre además contra una fila armada para incumplirlo (forma de B-212).
+
+  Quedan anotados los siete ítems que la tajada deja abiertos, y **tres son de los
+  que importan**: la query del build todavía filtra en memoria y no con `where`
+  (**B-903**), `/guia` es una salida pública que no está numerada en las tres tablas
+  atadas (**B-897**), y `directoriosDisponibles` es un tercer dueño de «qué URL se le
+  ofrece al buscador» que **no despierta al `auditor-privacidad`** (**B-898**).
+
 - **El emulador de CI corría en otro proyecto que los tests, y eso apagaba solo los
   controles positivos** — **B-894**. `push-main.yml` levantaba el emulador con
   `--project agenda-literaria` cableado a mano mientras `vitest.config.ts` inyecta

@@ -14,7 +14,9 @@
  * el pegamento con Firestore.
  */
 import { getStorage, connectStorageEmulator, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions';
 import type { FirebaseStorage } from 'firebase/storage';
+import type { Functions } from 'firebase/functions';
 import { app, usarEmuladores } from '@/lib/firebase-client';
 import { CACHE_AL_SUBIR, nuevaImagenId } from '@/lib/imagenes';
 import {
@@ -178,25 +180,30 @@ export const promoverImagenDePropuesta = async (storagePath: string): Promise<Su
   return subirImagen(archivo, nuevaImagenId());
 };
 
-export const subirImagen = async (
-  archivo: File,
-  id: string,
-  /**
-   * Dónde va el objeto. Por default, la galería de una actividad
-   * (`imagenes/<id>.<ext>`).
-   *
-   * **Entra por parámetro desde B-830 paso 9**, cuando apareció el segundo
-   * destino: el flyer que manda alguien desde `/proponer` va a `propuestas/`, que
-   * no es público y que el trigger de optimización ignora. Lo que **no** cambia
-   * es el pipeline —validar el tipo y el tamaño, verificar que el archivo sea por
-   * dentro lo que dice, y sacarle los metadatos—, y esa es toda la razón de
-   * generalizar en vez de escribir una subida nueva y más simple del otro lado:
-   * la foto de un taller en una casa lleva las coordenadas de esa casa, y quien
-   * la manda no lo sabe. Dos subidas serían dos pipelines, y el segundo nacería
-   * sin la parte que importa.
-   */
-  comoRuta: (imagenId: string, tipo: TipoSubible) => string = rutaDeImagen,
-): Promise<Subida> => {
+/**
+ * **Todo lo que se puede hacer sin red**, y desde B-896 el paso que comparten los
+ * dos destinos.
+ *
+ * Valida tipo y tamaño, verifica que el archivo sea por dentro lo que dice ser,
+ * lee la orientación **antes** de tirar el APP1 (ese orden es la decisión de
+ * B-324: invertirlo daría `null` siempre y el aviso no saldría nunca, sin que
+ * nada se pusiera rojo), le saca los metadatos y mide lo que quedó.
+ *
+ * Se extrajo de `subirImagen` cuando apareció el segundo camino —el flyer de
+ * `/proponer`, que desde B-896 ya no sube con el SDK de Storage sino por una
+ * callable— y se extrajo en vez de duplicarse por lo de siempre: dos subidas
+ * serían dos saneadores, y el segundo nacería sin la parte que importa.
+ *
+ * ⚠️ **Esta capa se puede saltear, y esa es la razón de ser de B-896.** Alcanza
+ * con abrir la consola del navegador para llamar a la callable sin pasar por
+ * acá, así que como *garantía* no vale nada — la garantía la da el saneado del
+ * servidor (`functions/flyer-de-propuesta.js`), que corre sobre los bytes que de
+ * verdad llegaron. Sigue estando, y no es decorativa, por dos motivos que el
+ * servidor no puede dar: evita que el EXIF con las coordenadas de una casa
+ * **siquiera viaje** por la red, y el rechazo se ve al instante sin gastar la
+ * subida entera.
+ */
+const prepararImagen = async (archivo: File) => {
   const motivo = validarArchivo({ tipo: archivo.type, bytes: archivo.size });
   // El orden importa: el guard de tipo tiene que quedar **después** de haber
   // devuelto el mensaje de `validarArchivo`, que es el que dice cuál era el tipo.
@@ -257,12 +264,12 @@ export const subirImagen = async (
    * que sabemos —quedó un bloque que no supimos sacar— y pide reportarlo.
    *
    * **Y pide avisar, no mandar la foto**, que es una diferencia y no una
-   * cortesía: este mismo pipeline lo usa `/proponer` (`comoRuta =
-   * rutaDeImagenPropuesta`), así que quien lee este cartel puede ser alguien
-   * **sin cuenta** — pedirle que mande por mail el archivo que la oración
-   * anterior describió como portador de la ubicación sería mover un dato
-   * personal de un tercero a una casilla, fuera de la retención que B-838
-   * construyó para exactamente esta clase. Lo marcó el `auditor-privacidad`.
+   * cortesía: este mismo pipeline lo usa `/proponer`, así que quien lee este
+   * cartel puede ser alguien **sin cuenta** — pedirle que mande por mail el
+   * archivo que la oración anterior describió como portador de la ubicación sería
+   * mover un dato personal de un tercero a una casilla, fuera de la retención que
+   * B-838 construyó para exactamente esta clase. Lo marcó el
+   * `auditor-privacidad`.
    */
   if (quedanMetadatos(limpio)) {
     throw new ImagenRechazada(
@@ -274,7 +281,29 @@ export const subirImagen = async (
     );
   }
 
-  const medida = dimensiones(tipo, limpio);
+  return { tipo, limpio, medida: dimensiones(tipo, limpio), orientacion };
+};
+
+export const subirImagen = async (
+  archivo: File,
+  id: string,
+  /**
+   * Dónde va el objeto. Por default, la galería de una actividad
+   * (`imagenes/<id>.<ext>`).
+   *
+   * **Entró por parámetro en B-830 paso 9**, cuando apareció el segundo destino:
+   * el flyer de `/proponer`, que va a `propuestas/`. **Desde B-896 ese camino ya
+   * no pasa por acá** —sube por la callable, `subirFlyerPorCallable`, porque un
+   * saneado que solo corre en el cliente no puede fallar y por lo tanto no
+   * garantiza nada—, así que hoy el único que pasa un valor distinto es… nadie.
+   * Se conserva igual y no es un resto: `rutaDeImagenPropuesta` sigue siendo la
+   * forma del path del flyer, y el parámetro es lo que deja que la promoción de
+   * una propuesta a la galería se escriba como lo que es —la misma subida a otro
+   * destino— el día que haga falta al revés.
+   */
+  comoRuta: (imagenId: string, tipo: TipoSubible) => string = rutaDeImagen,
+): Promise<Subida> => {
+  const { tipo, limpio, medida, orientacion } = await prepararImagen(archivo);
   const ruta = comoRuta(id, tipo);
 
   try {
@@ -322,5 +351,124 @@ export const subirImagen = async (
     const code = (e as { code?: string } | null)?.code;
     const { mensaje, causa } = motivoDeSubidaFallida(code);
     throw new ImagenRechazada(mensaje, causa);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// B-896 — el flyer de `/proponer` sube por una callable, no por Storage
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * La región de las Functions. **Es el mismo valor que `REGION` en
+ * `functions/despliegue.js`** y no se puede importar de ahí: ese módulo es del
+ * deploy y el alias que lo traería arrastraría `functions/` al bundle (§5.4,
+ * trampa 4). Lo atan los dos lados por test — clase de B-88: con la región
+ * equivocada el SDK le pega a `us-central1` y el fallo es un 404 en runtime, no
+ * un error de compilación.
+ */
+const REGION_FUNCTIONS = 'southamerica-east1';
+
+/** Puerto del emulador de Functions (`firebase.json`). */
+const PUERTO_EMULADOR_FUNCTIONS = 5001;
+
+/** El nombre exportado en `functions/index.js`. Atado por test al fuente de allá. */
+const CALLABLE_FLYER = 'subirFlyerDePropuesta';
+
+let _funciones: Functions | null = null;
+const funciones = (): Functions => {
+  if (_funciones) return _funciones;
+  _funciones = getFunctions(app(), REGION_FUNCTIONS);
+  if (usarEmuladores) connectFunctionsEmulator(_funciones, '127.0.0.1', PUERTO_EMULADOR_FUNCTIONS);
+  return _funciones;
+};
+
+/**
+ * `Uint8Array` → base64, por trozos.
+ *
+ * El `String.fromCharCode(...datos)` de una línea **revienta la pila** con una
+ * imagen de 3 MB: son tres millones de argumentos en una sola llamada. 32 KB por
+ * trozo es holgado y no se nota.
+ */
+const enBase64 = (datos: Uint8Array): string => {
+  const TROZO = 0x8000;
+  let s = '';
+  for (let i = 0; i < datos.length; i += TROZO) {
+    s += String.fromCharCode(...datos.subarray(i, i + TROZO));
+  }
+  return btoa(s);
+};
+
+/**
+ * **Manda el flyer de una propuesta por la callable y devuelve dónde quedó** —
+ * B-896 paso 1.
+ *
+ * ── Por qué ya no sube con el SDK de Storage ──────────────────────────────
+ * Porque el saneado tiene que correr **del lado del servidor**, y la única
+ * manera de que corra es que los bytes pasen por código nuestro antes de llegar
+ * al bucket. Con `uploadBytes` los bytes van directo, y lo único que los mira son
+ * `storage.rules` —que ve el tamaño, el `contentType` que manda este mismo
+ * cliente y el nombre, o sea nada de lo que hay adentro del archivo—.
+ *
+ * Y no alcanzaba con exigir App Check en Storage para atestar el endpoint: el
+ * enforcement es **por servicio y no por path**, así que exigirlo se lleva puestas
+ * las lecturas públicas de imágenes del sitio (B-872). El de Functions es
+ * independiente.
+ *
+ * Resultado: `storage.rules` para `propuestas/` se queda con el `create` cerrado
+ * a **todo** cliente, que es más fuerte que abrirlo.
+ *
+ * ── El saneado del cliente sigue corriendo, y no es redundante ────────────
+ * `prepararImagen` se ejecuta igual **antes** de mandar: así el EXIF con las
+ * coordenadas de la casa donde se hace el taller no viaja, y el rechazo por tipo
+ * o por tamaño se ve al instante en vez de después de subir 4 MB. Lo que no hace
+ * es *garantizar* nada — eso lo hace el servidor, que vuelve a sanear.
+ *
+ * ── El tamaño del pedido ──────────────────────────────────────────────────
+ * Se manda en base64, que **crece un tercio**: el tope de 3 MB (DEC-7b) da un
+ * cuerpo de 4,00 MiB, contra un límite de 10 MB. El número está medido y atado en
+ * `tests/flyer-por-callable.test.ts`, y el rechazo por tamaño lo da
+ * `validarArchivo` de este lado —con el tamaño real y el máximo— antes de
+ * codificar nada.
+ */
+export const subirFlyerPorCallable = async (archivo: File): Promise<string> => {
+  const { tipo, limpio } = await prepararImagen(archivo);
+
+  try {
+    const llamar = httpsCallable<
+      { contentType: string; datos: string },
+      { storagePath: string }
+    >(funciones(), CALLABLE_FLYER);
+    const r = await llamar({ contentType: tipo, datos: enBase64(limpio) });
+    return r.data.storagePath;
+  } catch (e) {
+    const err = e as { code?: string; message?: string; details?: { causa?: MotivoImagen } } | null;
+    /*
+     * Los rechazos de la Function ya vienen escritos para una persona y traen su
+     * `causa` en el `details` (ver `FlyerRechazado` del otro lado): se muestran
+     * tal cual, que es lo mismo que hace el camino de Storage con los códigos que
+     * `motivoDeSubidaFallida` sabe traducir.
+     */
+    const causa = err?.details?.causa;
+    if (causa) throw new ImagenRechazada(err?.message ?? 'No se pudo subir la imagen.', causa);
+
+    if (err?.code === 'functions/unauthenticated' || err?.code === 'functions/permission-denied') {
+      /*
+       * App Check rechazó la atestación. No se le echa la culpa a la persona ni
+       * se le pide que "inicie sesión" —no hay sesión que iniciar en
+       * `/proponer`—: lo que pasa es que el navegador no pudo probar que la
+       * llamada sale de esta página.
+       */
+      throw new ImagenRechazada(
+        'No pudimos verificar que la subida venga de esta página. Recargá y probá de ' +
+          'nuevo; si usás una extensión que bloquea scripts de Google, desactivala para ' +
+          'este sitio.',
+        'permiso',
+      );
+    }
+    throw new ImagenRechazada(
+      'No se pudo subir la imagen. Fijate la conexión y volvé a intentar; si sigue ' +
+        'fallando, probá con una imagen más chica.',
+      'red',
+    );
   }
 };

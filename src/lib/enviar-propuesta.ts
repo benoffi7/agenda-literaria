@@ -59,30 +59,31 @@ export const enviarPropuesta = async (
 /**
  * Sube el flyer a `propuestas/` y devuelve su path — DEC-11.
  *
- * **Reusa `subirImagen`**, que es el pipeline del panel: valida tipo y tamaño,
- * verifica que el archivo sea por dentro lo que dice ser, y **le saca los
- * metadatos**. Eso último es lo que más importa acá y es la razón de no escribir
- * una subida nueva y más simple: la foto de un taller en una casa lleva las
- * coordenadas de esa casa, y quien la manda no lo sabe.
+ * ── B-896: ya no sube con el SDK de Storage, sube por una callable ────────
+ * Hasta acá esto llamaba a `subirImagen(archivo, id, rutaDeImagenPropuesta)`, o
+ * sea `uploadBytes` contra el bucket. El problema no era el camino sino **dónde
+ * corría el saneado**: solo en el cliente. Un cliente se puede saltear el
+ * saneado del cliente —consola del navegador y listo—, así que ese chequeo no
+ * podía fallar nunca y, como garantía, era peor que no tenerlo.
  *
- * El destino es el otro prefijo, con su propio id (`prop_<uuid>`), así que el
- * objeto **no es público** y el trigger de optimización lo ignora (trampa 12).
+ * Ahora los bytes pasan por una Cloud Function callable con
+ * `enforceAppCheck: true` (`functions/flyer-de-propuesta-trigger.js`), que
+ * **vuelve a sanear** sobre lo que de verdad llegó y escribe el objeto con el
+ * Admin SDK. Dos consecuencias, y las dos son ganancia:
+ *
+ *  - el endpoint anónimo queda **atestado**, sin tener que exigir App Check en
+ *    Storage —que es por servicio y no por path, y se llevaría puestas las
+ *    lecturas públicas de imágenes del sitio (B-872)—;
+ *  - `storage.rules` para `propuestas/` se queda con el `create` **cerrado a todo
+ *    cliente**, que es más fuerte que abrirlo.
+ *
+ * El id y el path los elige **el servidor**: de este lado ya no se arma ningún
+ * nombre, así que tampoco hay forma de que alguien intente pisar el objeto de
+ * otro. Lo que sigue igual es que de todo esto acá sirve **una** cosa —dónde
+ * quedó—, porque el documento de una propuesta guarda `{ storagePath }` y nada
+ * más, que es lo único que `imagenValida()` acepta.
  */
 export const subirImagenDePropuesta = async (archivo: File): Promise<string> => {
-  const { subirImagen } = await import('@/lib/subir-imagen');
-  const { nuevaImagenPropuestaId, rutaDeImagenPropuesta } = await import(
-    '@/lib/imagenes-archivo'
-  );
-  const { imagen } = await subirImagen(
-    archivo,
-    nuevaImagenPropuestaId(),
-    rutaDeImagenPropuesta,
-  );
-  /*
-   * De todo lo que `subirImagen` devuelve, acá sirve **una** cosa: dónde quedó.
-   * El resto (`url`, `epigrafe`, `portada`, la medida) es la forma de una fila de
-   * galería, y una propuesta no tiene galería — su documento guarda
-   * `{ storagePath }` y nada más, que es lo único que `imagenValida()` acepta.
-   */
-  return imagen.storagePath!;
+  const { subirFlyerPorCallable } = await import('@/lib/subir-imagen');
+  return subirFlyerPorCallable(archivo);
 };

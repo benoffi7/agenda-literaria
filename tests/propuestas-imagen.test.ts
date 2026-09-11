@@ -29,6 +29,12 @@ import {
   objetoDePropuesta,
 } from '../functions/retencion.js';
 import {
+  NOMBRE_DE_FLYER,
+  PREFIJO_PROPUESTAS as PREFIJO_DE_LA_CALLABLE,
+  nuevoIdDeFlyer,
+  rutaDeFlyer,
+} from '../functions/flyer-de-propuesta.js';
+import {
   PREFIJO_PROPUESTAS,
   nuevaImagenPropuestaId,
   rutaDeImagenPropuesta,
@@ -693,15 +699,16 @@ describe('el trigger de optimización y el prefijo de propuestas (trampa 12)', (
 });
 
 /**
- * **El prefijo está escrito en cuatro runtimes que no se pueden importar entre
- * sí**, y esta es la atadura — el patrón de B-364 aplicado a un path.
+ * **El prefijo está escrito en cinco runtimes que no se pueden importar entre
+ * sí** —el cliente, la retención, la callable de B-896 y las dos reglas—, y esta
+ * es la atadura: el patrón de B-364 aplicado a un path.
  *
  * Si uno cambia y los otros no, el modo de falla es silencioso en las cuatro
  * direcciones: la subida se rechaza, el borrado no encuentra nada, la retención
  * deja huérfanos, o —el peor— la guarda de prefijo deja de coincidir con lo que
  * la regla acepta y el borrado se sale de su corral.
  */
-describe('el prefijo `propuestas/`, en los cuatro lugares donde está escrito', () => {
+describe('el prefijo `propuestas/`, en los cinco lugares donde está escrito', () => {
   it('el cliente y la Function lo escriben igual', () => {
     expect(PREFIJO_PROPUESTAS).toBe('propuestas/');
     expect(PREFIJO_DE_LA_FUNCTION).toBe(PREFIJO_PROPUESTAS);
@@ -712,36 +719,62 @@ describe('el prefijo `propuestas/`, en los cuatro lugares donde está escrito', 
     expect(fuente('firestore.rules')).toContain(`matches('^${PREFIJO_PROPUESTAS}`);
   });
 
-  it('el path que arma el cliente pasa el `matches` de `storage.rules`', () => {
+  it('el que arma el nombre es la callable, y el prefijo es el mismo — B-896', () => {
     /*
-     * **La atadura que de verdad se puede romper.** El regex de la regla vive en
-     * otro runtime y el nombre lo arma `nuevaImagenPropuestaId()`: si mañana el
-     * id llevara un punto, una barra o mayúsculas que el alfabeto no acepta, la
-     * subida fallaría con un permission-denied y el diagnóstico sería «las reglas
-     * están mal», no «el nombre cambió». Se extrae el regex del archivo y se lo
-     * corre contra un nombre de verdad.
+     * **La atadura se mudó, y la mudanza es el cambio de B-896.** Hasta acá el
+     * nombre lo armaba el cliente (`nuevaImagenPropuestaId`) y se lo chequeaba el
+     * `matches` de `storage.rules`; ahora el `create` de ese prefijo está en
+     * `false` para todo cliente y el único que elige el nombre es la callable,
+     * que escribe con el Admin SDK. O sea que el regex bajó de la regla —donde ya
+     * no hay nada que chequear— al lugar donde sí lo hay.
+     *
+     * Se siguen atando los dos extremos: que el prefijo sea el mismo en los cinco
+     * runtimes, y que el nombre que la callable produce pase su propio alfabeto.
      */
-    const regla = /archivo\.matches\('\^(prop_[^']+)'\)/.exec(fuente('storage.rules'))?.[1];
-    expect(regla, 'no se encontró el `matches` del bloque de propuestas').toBeTruthy();
+    expect(PREFIJO_DE_LA_CALLABLE).toBe(PREFIJO_PROPUESTAS);
 
-    for (const tipo of ['image/jpeg', 'image/png'] as const) {
-      const ruta = rutaDeImagenPropuesta(nuevaImagenPropuestaId(), tipo);
-      const archivo = ruta.slice(PREFIJO_PROPUESTAS.length);
-      expect(new RegExp(`^${regla}`).test(archivo), ruta).toBe(true);
+    for (const formato of ['jpeg', 'png'] as const) {
+      const ruta = rutaDeFlyer(nuevoIdDeFlyer(), formato);
+      expect(ruta.startsWith(PREFIJO_PROPUESTAS), ruta).toBe(true);
+      expect(NOMBRE_DE_FLYER.test(ruta.slice(PREFIJO_PROPUESTAS.length)), ruta).toBe(true);
     }
   });
 
-  it('la regla de Storage es más angosta que la de Firestore, y eso está decidido', () => {
+  it('y el nombre que armaba el cliente sigue pasando ese mismo alfabeto', () => {
     /*
-     * `firestore.rules` acepta `jpeg` y `webp` además de `jpg`/`png`;
-     * `storage.rules` solo los dos que el panel sabe limpiar (`tipoAceptado`).
-     * O sea que un documento puede nombrar un path que **nunca va a existir** —
-     * inofensivo (la promoción no lo encuentra y la retención lo ignora), pero
-     * queda declarado acá para que se lea como asimetría y no como olvido.
+     * `rutaDeImagenPropuesta` ya no es el productor del path —lo es la callable—
+     * pero sigue siendo la forma que el resto del proyecto conoce: la usan la
+     * bandeja para leer, la retención para borrar y los fixtures. Que los dos
+     * productores hayan quedado compatibles no es obvio, así que se afirma: el
+     * día que uno se mueva, este caso lo dice.
      */
-    const enStorage = /archivo\.matches\('\^prop_\[A-Za-z0-9_-\]\+\[\.\]\(([^)]+)\)/.exec(
-      fuente('storage.rules'),
-    )?.[1];
+    for (const tipo of ['image/jpeg', 'image/png'] as const) {
+      const ruta = rutaDeImagenPropuesta(nuevaImagenPropuestaId(), tipo);
+      expect(NOMBRE_DE_FLYER.test(ruta.slice(PREFIJO_PROPUESTAS.length)), ruta).toBe(true);
+    }
+  });
+
+  it('CONTROL NEGATIVO: un nombre sin la forma de id no pasa', () => {
+    // Sin esto, los dos casos de arriba pasarían igual con un regex que aceptara
+    // cualquier cosa — la cobertura falsa que este repo persigue.
+    for (const malo of ['flyer.jpg', 'prop_abc.webp', 'sub/prop_abc.jpg', 'prop_.jpg']) {
+      expect(NOMBRE_DE_FLYER.test(malo), malo).toBe(false);
+    }
+  });
+
+  it('la forma que acepta la callable es más angosta que la de Firestore, y eso está decidido', () => {
+    /*
+     * `firestore.rules` acepta `jpeg` y `webp` además de `jpg`/`png`; la callable
+     * solo los dos que el pipeline sabe abrir y sanear. O sea que un documento
+     * puede nombrar un path que **nunca va a existir** — inofensivo (la promoción
+     * no lo encuentra y la retención lo ignora), pero queda declarado acá para que
+     * se lea como asimetría y no como olvido.
+     *
+     * **La mitad de Storage se lee ahora del fuente de la callable** y no de
+     * `storage.rules`: la regla dejó de tener un `matches` porque dejó de tener un
+     * cliente al que chequearle la forma (B-896).
+     */
+    const enStorage = /\[\.\]\(([^)]+)\)/.exec(NOMBRE_DE_FLYER.source)?.[1];
     const enFirestore = /matches\('\^propuestas\/\[A-Za-z0-9_-\]\+\[\.\]\(([^)]+)\)/.exec(
       fuente('firestore.rules'),
     )?.[1];

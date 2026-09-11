@@ -659,6 +659,76 @@ nacer este test sobrevivió meses en un archivo que nadie sospechaba.
 
 ---
 
+### B-896 · La subida anónima va a una callable con App Check exigido, y así `storage.rules` no se abre nunca · P0
+
+**Decidido por el dueño el 2026-09-11, sobre el hallazgo del frente de B-872.**
+
+El bloqueo de `/proponer` venía de un supuesto: que para que un anónimo suba el
+flyer hay que abrirle `storage.rules`, y que para que eso no sea un endpoint sin
+atestación hay que exigir App Check en Storage — que no se puede hacer sin
+arriesgar las imágenes del sitio (B-872) porque **el enforcement es por servicio y
+no por path**.
+
+**La salida rompe el acoplamiento:** la subida no va directo a Storage, va a una
+**Cloud Function callable con `enforceAppCheck: true`**. El enforcement de
+Functions es independiente del de Storage y no toca ninguna lectura de imagen. La
+callable valida la atestación y escribe el objeto con el Admin SDK.
+
+Lo que se gana, y es más de lo que se pedía:
+
+- el endpoint de subida anónimo **queda atestado de verdad**, que es lo que las
+  cinco capas de B-836 existen para garantizar;
+- **`storage.rules` para `propuestas/` se queda en `create: if false`** para el
+  cliente — más fuerte que abrirlo, no menos;
+- `firebasestorage` puede quedarse en `UNENFORCED` sin que eso bloquee producto, y
+  **B-872 deja de ser un bloqueo**: baja a lo que en realidad es, una decisión de
+  arquitectura de entrega de imágenes, que se junta con B-846.
+
+**Y una mitad ya está lista sin hacer nada: Firestore ya está `ENFORCED`**, así que
+el `create` anónimo de `/propuestas` ya estaría protegido por App Check. Lo único
+que faltaba proteger era la foto.
+
+**Lo que hay que resolver, y son las dos cosas que pueden salir mal:**
+
+1. **El saneado del JPEG.** Hoy corre en el cliente (`subir-imagen.ts`, con
+   `jpeg-appn-seguros` / `png-chunks-seguros`, B-323/B-869). Un cliente puede
+   saltearse el saneado del cliente, así que por la callable **tiene que volver a
+   correr del lado del servidor** — el módulo ya se comparte por alias, que es
+   justo para esto. Sanear solo en el cliente sería la misma clase de falso verde
+   que este repo persigue.
+2. **El límite de tamaño del request de un callable.** Las imágenes están topadas
+   en 3 MB (DEC-7) y un callable admite más, pero en base64 el payload crece ~33%.
+   Hay que medirlo y que el mensaje de rechazo diga el tamaño real y el máximo.
+
+**Orden de trabajo:** (1) ✅ **hecho (2026-09-11)** — la callable
+`subirFlyerDePropuesta` con `enforceAppCheck: true` y el saneado del servidor, con
+`storage.rules` dejando `propuestas/` en `create: if false` **para todo cliente**;
+(2) abrir el `create` de `/propuestas` en `firestore.rules` —borrando los **dos**
+`esAdmin() &&` juntos—; (3) `/proponer` a `RUTAS_FIJAS` y sacar la excepción del
+sitemap; (4) el enlace desde la barra y desde `/contacto`. Los pasos 2 a 4 son el
+circuito del §2.1 del inventario y no perdonan un olvido.
+
+> **Lo que el paso 1 destapó, y no estaba en el enunciado: el saneado corría SOLO
+> en el cliente.** O sea que la garantía que el proyecto creía tener no la podía
+> dar: alcanzaba con abrir la consola del navegador y llamar a `uploadBytes` para
+> que la foto entrara al bucket con su EXIF —y las coordenadas de la casa donde se
+> hace el taller— adentro. Es la clase de bug que este repo persigue, en el lugar
+> más caro. Ahora corre en el servidor reusando `optimizar()` y el barrido
+> `traeMetadatos`/`estructuraConocida`, o sea las tablas compartidas por alias, y
+> verificado en los **dos** sentidos: la salida no trae metadatos, y la acepta
+> `quedanMetadatos` del panel —que es quien la promueve al aceptar la propuesta—.
+>
+> **El límite del request está medido:** 3 MB de imagen → **4.194.352 bytes (4,00
+> MiB)** de cuerpo JSON, contra 10 MB, que es el más chico de los dos límites de
+> Google y se eligió a propósito para que la cuenta no dependa de acordarse de qué
+> generación es la Function. Margen 2,5×.
+>
+> **Y una consecuencia que no estaba prevista:** el `matches` del nombre del
+> objeto bajó de `storage.rules` a la callable. Con `create: if false` la regla ya
+> no tiene cliente al que chequearle la forma — y la callable además mira lo que el
+> archivo tiene **adentro**, que es lo único que una regla de Storage nunca pudo
+> ver.
+
 ### B-894 · El emulador de CI corría en otro proyecto que los tests, y eso apagaba solo los controles positivos — ✅ hecho (2026-09-11) · P0
 
 > **Lo encontró el deploy de B-888: 23 tests en rojo en CI y los 4541 en verde en
@@ -724,6 +794,58 @@ con la Function de B-220 (D-175) y el `srcset` de **B-320**: la página más pes
 del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5 KB
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
+
+### B-904 · `/librerias` no tiene retención: una ficha descartada se queda con el contacto de quien la cargó · P1
+
+Es **DEC-13 sin contestar** para la colección nueva. `contactoDeQuienCargo` es el
+**segundo** dato personal de un tercero que el proyecto guarda, y a diferencia de
+`/propuestas` —donde `borrarPropuestasVencidas` lo borra a los 30 días— acá no hay
+ninguna Function: una ficha `rechazado` lo conserva para siempre.
+
+Lo único que hay mientras tanto es `allow delete: if esAdmin()`, o sea el borrado
+manual, y está puesto **por eso**: sin él no habría forma de honrar un «borrame».
+Pero un borrado a mano depende de que alguien se acuerde, que es exactamente lo que
+B-838 decidió no aceptar.
+
+Cuando se resuelva conviene mirarlo junto con la imagen: si la ficha se borra y su
+objeto de Storage queda vivo, es el huérfano de B-221 con otra cara.
+
+### B-903 · La query del primer directorio tiene que filtrar por `ESTADO_PUBLICO`, y la tajada 2 NO lo dejó resuelto · P1
+
+**Deuda declarada por el frente de la tajada 2, para que no se herede como hecha.**
+Lo que quedó fijado es el **predicado en memoria** (`esVisibleEnElSitio`), no el
+`where('estado','==','publicado')` de la lectura del build. Filtrar después de leer
+significa que el documento entero —con el contacto interno de quien lo cargó— ya
+pasó por el build. Es la primera de las nueve cosas que se rompen en silencio del
+§6 del inventario. Está anotado en el docblock de `ESTADO_PUBLICO` para que la
+tajada de librerías lo vea al pasar.
+
+### B-898 · `directoriosDisponibles` decide qué URL se le ofrece al buscador y no está en el índice de salidas · P1
+
+**Del `auditor-privacidad`, sobre la tajada 2.** La fila 9 de `docs/07-seguridad.md`
+nombra a los dos dueños de «qué página se ofrece y no vive en `sitemap.ts`»
+(`mesPublico.ts — mesesEnlazables`, `listadoPublico.ts — estadoDe`). Desde la tajada
+2 hay un tercero, `directorios.ts — directoriosDisponibles`, y no está ni en las
+tres tablas atadas ni en el `description` del auditor.
+
+**La consecuencia es concreta:** editar `src/lib/directorios.ts` —el archivo donde
+un `disponible: true` publica una URL— **no despierta al auditor**. Nada se pone
+rojo hoy porque las tres tablas siguen diciendo 19 y coinciden entre sí. Es el
+agujero de B-95 (`textoRedes.ts`) un lugar más adentro.
+
+### B-897 · `/guia` es una salida pública indexada y no está numerada · P1
+
+**Del `auditor-privacidad`.** Es HTML indexado, enlazado desde la barra, con texto
+escrito a mano: la clase de las filas 13 a 18, que se decidió numerar **por la
+promesa y no por la proyección**. El precedente para no numerarla sería
+`/proponer` — pero aquélla está fuera del sitemap **y** fuera del chrome, y tiene
+su propio párrafo en `07-seguridad.md`.
+
+O la fila 20 en las tres tablas atadas (`docs/07-seguridad.md`, la ficha del
+`auditor-privacidad`, `campo-nuevo/SKILL.md`) con su celda «no proyecta ningún
+documento», o el párrafo que diga por qué no. Lo que no puede quedar es sin
+decidir: cuando `/guia` tenga párrafos de verdad va a ser la página que presenta
+tres directorios cargados con datos de terceros.
 
 ### B-893 · El publicador tiene que poder crear etiquetas, y eso es exactamente lo que B-28 dejó para cuando entrara una tercera cuenta · P1
 
@@ -1869,6 +1991,72 @@ las imágenes públicas tendrían que dejar de servirse por URL de descarga. Eso
 está anotado por otro motivo en **B-846** —la URL con token es una *capability* y
 sirve el objeto sin volver a evaluar las reglas—, así que las dos preguntas se
 contestan mejor juntas que por separado.
+
+> **2026-09-11 — investigado. La pregunta 1 no tiene respuesta pública; la 2 sí, y la contesta el repo.**
+>
+> **Pregunta 1 — sin fuente autoritativa, y no por falta de buscar.** Ni la doc de
+> App Check (enforcement, métricas, overview), ni la de descarga de archivos en
+> Web, ni ninguna nota de release, ni ningún issue de `firebase-js-sdk` /
+> `flutterfire` / `firebase-android-sdk` / `firebase-admin-node` contestado por
+> alguien de Firebase dice si el enforcement alcanza al GET de
+> `?alt=media&token=`. **La doc no menciona las URLs de descarga en ninguna página
+> de App Check**, ni para incluirlas ni para eximirlas. Lo único escrito es la
+> regla general: «all unverified requests to that product will be rejected».
+>
+> **La evidencia indirecta apunta a que SÍ las alcanza, y ninguna pieza es
+> concluyente:**
+>
+> 1. [`flutterfire#10084`](https://github.com/firebase/flutterfire/issues/10084) es
+>    nuestro caso exacto —Storage casi todo sin verificar, Firestore normal,
+>    imágenes servidas por download URL— y cierra con «I solved it by sending
+>    headers appCheckToken». O sea que el GET crudo **entra en la métrica** y que
+>    el endpoint **lee el header `X-Firebase-AppCheck`**. Un endpoint que lee el
+>    token está dentro de la superficie. *Es un usuario, no un ingeniero de
+>    Google: en el hilo nadie de Firebase concluye nada.*
+> 2. La download URL pega contra **`firebasestorage.googleapis.com`**, que es el
+>    servicio que se pone en `ENFORCED`. *Deducción.*
+> 3. La categoría `Unknown origin` de la doc de métricas —«missing a token, and
+>    don't look like they come from the Firebase SDK»— describe literalmente un
+>    `<img src>`, y la misma página dice que tras el enforcement solo se permiten
+>    las `Verified`. *Deducción.*
+> 4. **Ningún reporte público de nadie que lo haya medido.** Varios repos de
+>    terceros razonan lo mismo que nosotros y se quedan en el mismo callejón.
+>
+> **Pregunta 2 — contestada, y la sospecha era correcta.** No hace falta el reparto
+> en el tiempo: lo dice el código. Todo el volumen es `<img>`/`<a>` de HTML
+> estático más crawlers —portada del detalle, galería secundaria, `og:image`,
+> JSON-LD, cartelera, el `imagenUrl` publicado en `/events.json`, la
+> previsualización del editor— y **ninguno puede mandar el header**. Lo verificado
+> son solo `uploadBytes` + `getDownloadURL` desde el panel y `/proponer`, que salen
+> de `getStorage(app())`, la misma app que tiene App Check. Uno por subida contra
+> uno o varios **por pageview**: de ahí el 1%. El build y las Functions ni cuentan,
+> van por `storage.googleapis.com` con Admin SDK.
+>
+> **Y apareció una salida que este ítem no contemplaba: `/proponer` puede
+> destrabarse sin exigir Storage nunca.** El supuesto de que hay que exigir viene
+> de que el enforcement es **por servicio y no por path** —no se puede exigir solo
+> `propuestas/`—. Pero si la subida anónima no va directo a Storage sino a **una
+> callable con App Check exigido** (el enforcement de Functions es independiente y
+> no toca las lecturas de Storage), que valide la atestación y escriba con el Admin
+> SDK: el endpoint anónimo queda atestado, `storage.rules` para `propuestas/`
+> **sigue cerrado al cliente** —más fuerte que abrirlo— y `firebasestorage` puede
+> quedarse en `UNENFORCED`. Es **B-896**.
+>
+> **Y hay algo que ya es cierto hoy y conviene no perder de vista: Firestore ya
+> está `ENFORCED`.** O sea que el `create` anónimo de `/propuestas` **ya estaría
+> protegido por App Check**; lo único sin proteger es la subida del flyer. El
+> bloqueo de `/proponer` no es entero: es de la foto.
+>
+> **La medición, si se hace, va en un proyecto de prueba y no en producción.** El
+> emulador no verifica App Check. El enforcement tarda *hasta 15 min* en aplicar y
+> otro tanto en revertirse: probarlo en producción son ~30 minutos de sitio sin
+> imágenes —incluido `og:image`, o sea todo link compartido sin preview— más caché
+> pegada. En el proyecto de prueba: subir un JPEG, `allow read: if true` (para que
+> el experimento distinga «lo cortó una regla» de «lo cortó App Check»), medir con
+> `curl -sSI` la URL **con** token y **sin** token (las miniaturas van sin token a
+> propósito y son otro camino), poner `firebasestorage` en `ENFORCED`, esperar,
+> repetir los dos `curl`. `200` → se puede exigir. `403` → no, y hay que sacar las
+> imágenes públicas de `firebasestorage`, que es lo mismo que ya pide **B-846**.
 
 **Mientras tanto `/proponer` no se puede anunciar**, y el motivo es preciso: el
 formulario sube el flyer a Storage, así que abrir el `create` de `/propuestas` en
@@ -5827,6 +6015,65 @@ El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
 puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
+
+### B-908 · La doc sigue diciendo que la subida anónima del flyer «espera que App Check exija» · P2
+
+B-896 paso 1 cerró ese camino por otro lado —la subida va a una callable y
+`storage.rules` para `propuestas/` quedó en `create: if false`— pero la doc no se
+actualizó, y en cinco lugares:
+
+- `docs/07-seguridad.md` §§ ~1396 y ~1417 — el prefijo `propuestas/` y su `create`.
+- `docs/04-funcionalidades.md` líneas ~874, ~921 y ~926 — «la escritura anónima
+  espera que App Check esté exigiendo (B-836a)». Sigue siendo cierto para el
+  `create` de Firestore (paso 2 de B-896) y **ya no** para el de Storage.
+- `docs/02-infraestructura.md` § App Check — falta la fila de `cloudfunctions`, y
+  con el matiz que es el punto entero del ítem: **no hace falta ponerlo en
+  `ENFORCED` en la consola**, `enforceAppCheck: true` es por función y rechaza
+  solo. Es lo que hace que exigir acá no cueste nada en Storage.
+- `docs/08-operacion.md` — la callable corre con `calendar-sync@` y necesita
+  `storage.objects.create`, el mismo permiso que ya tiene `optimizarImagen`: no hay
+  IAM nuevo que otorgar, y conviene que esté dicho para que no se busque.
+
+Es la clase de B-773 —afirmaciones que dejaron de ser ciertas y que ningún test
+sostiene— y el `auditor-documentacion` la encuentra sola si se lo corre sobre este
+commit.
+
+### B-905 · El candado del slug de una librería se apoya en el estado actual, no en la historia · P2
+
+`publicadaAlgunaVez` está declarado en `src/types/libreria.ts` y la regla ya lo
+respeta —e impide que un cliente lo mueva—, pero **nadie lo escribe**: falta el
+trigger. Mientras tanto `slugDeLibreriaCongelado` contesta con el estado, así que
+publicar → despublicar → renombrar → volver a publicar **reabre la URL**. Es la
+puerta de atrás que `slugBloqueado` (`lib/directorios.ts`) ya tiene nombrada para
+las tres entidades, y la misma que B-285 resolvió para una actividad.
+
+Falla en la dirección cara: una URL indexada que cambia es un 404 sin aviso
+(trampa 10). El arreglo es el trigger, y el día que exista este ítem se cierra solo
+— la regla no hay que tocarla.
+
+### B-901 · `DirectorioPanel` existe, tiene tests, y no se llega desde ningún lado · P2
+
+Falta la vista en `AdminApp.tsx`, y con ella `rolDelPanel.ts` (`PANTALLAS_DEL_PANEL`
+se afirma contra el fuente), `anchoDelPanel.ts`, `salida-del-panel.ts`, el capítulo
+en `ayuda.ts`, la entrada en `novedades.ts` y el vocabulario de
+`analytics-eventos.ts`. Quedó afuera de la tajada 2 por propiedad exclusiva de
+archivos entre frentes en paralelo. **Va con la tajada que traiga el formulario de
+librerías**, que es la que le da el `onEditar` y el `onMover`.
+
+### B-900 · El circuito de `/guia` no está completo: falta el pie y el 404 · P2
+
+El §2.1 del inventario lista `PieDePagina.astro` («los mismos destinos») y
+`noEncontrado.ts` («el 404 sugiere secciones; hay tres más»). Los dos quedaron
+afuera de la tajada 2 por propiedad de archivos. Es circuito del §2.1, o sea de los
+que no perdonan el olvido.
+
+### B-899 · La doc de la tajada 2 (pasos 12 y 13) · P2
+
+Falta `04-funcionalidades.md` (la pestaña «Guía», la página `/guia`, la bandeja
+genérica del panel), `12-sitio-publico.md` (la sección nueva y su SEO), y **dos
+entradas en `06-decisiones.md`**: por qué `/guia` entra al sitemap con sus tres
+filas todavía en camino (y en qué se diferencia de `/proponer`), y por qué la
+bandeja **recibe** los datos en vez de leerlos.
 
 ### B-827 · El `label` de `Campo` no está asociado a su input, y la asociación es opt-in — ✅ hecho (2026-09-09) · P2
 
@@ -13160,6 +13407,39 @@ del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
 Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
+
+### B-906 · `imagenSchema` está escrito dos veces: `src/lib/schema.ts` no lo exporta · P3
+
+`libreria-schema.ts` tiene su propia derivación zod de `Imagen` porque la de
+`schema.ts` es privada del módulo. Son dos versiones de la misma forma, o sea la
+clase de B-88: un campo nuevo de `Imagen` entra en una y no en la otra, y lo único
+que hoy lo sostiene es que las dos tipan a `Imagen`. Se cierra exportando la de
+`schema.ts` y borrando la copia; no se hizo en el commit de B-831 porque ese archivo
+era de otro frente.
+
+Y con los tres directorios serían **cuatro** copias, así que conviene antes de
+B-832.
+
+### B-907 · La regla de `/librerias` no puede iterar `imagenes` — B-842 con otra cara · P3
+
+De `imagenes` se acota la cantidad (4) y el tipo, no la forma de cada fila: una
+regla de Firestore no itera una lista. Con el `create` cerrado a admin el daño es
+«el admin ve una ficha rara»; el día que B-872/B-896 lo abran, un `curl` puede
+mandar cuatro mapas arbitrarios, y **la URL de cada imagen termina en un `src` de
+una página indexada**.
+
+La defensa que corresponde es que la proyección pública las pase por `urlSegura` /
+`imagenesPublicables`, que es donde el proyecto ya decidió que se sanea — y hay que
+**verificarlo** cuando se escriba el `toPublic` de la entidad, no suponerlo. La otra
+mitad, si aparece abuso, es una Function (es B-842).
+
+### B-902 · La Guía merece su propia pregunta en la ayuda del sitio · P3
+
+Hoy entra como tercer párrafo de «¿Qué es esto?» y no como «¿Esto solo tiene
+actividades?». El motivo es de contabilidad, no de criterio: el conteo de preguntas
+está atado a `04-funcionalidades.md`, `06-decisiones.md` y a este archivo, y la 22ª
+obliga a corregir los tres números. Cuando la Guía tenga sus tres secciones cargadas
+la pregunta propia se justifica sola.
 
 ### B-895 · Los tests de integración viejos pasan los claims por dos vías, y una no es la de producción · P3
 

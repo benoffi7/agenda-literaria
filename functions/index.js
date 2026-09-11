@@ -45,5 +45,10 @@ export { optimizarImagen } from './imagenes-trigger.js';
 export { limpiarImagenesHuerfanas } from './imagenes-limpieza-trigger.js';
 export { borrarPropuestasVencidas } from './retencion-trigger.js';
 export { borrarImagenAlCerrar } from './propuestas-trigger.js';
+// B-896 — la única callable del proyecto, y la única Function con
+// `enforceAppCheck: true`: recibe el flyer de `/proponer`, lo sanea del lado del
+// servidor y lo escribe con el Admin SDK. Es lo que deja `storage.rules` con el
+// `create` de `propuestas/` cerrado a todo cliente.
+export { subirFlyerDePropuesta } from './flyer-de-propuesta-trigger.js';
 export { traerAnaliticaDelSitio } from './analitica-trigger.js';
 export { verificarFrescuraDelSitio } from './frescura-trigger.js';
