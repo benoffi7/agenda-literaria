@@ -984,6 +984,29 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-885 · La salida 2 publica el tallerista con nombre de solo espacios, y es la quinta variante del predicado · P2
+
+**Lo encontró el frente de B-881**, que fue a verificar si quedaba un cuarto lugar y
+encontró un quinto. `functions/calendario.js` condiciona por `persona?.nombre`
+**sin `trim()`**, así que con `{ nombre: '   ', bio: 'Cronista…', instagram: '@ana' }`
+la descripción del evento emite `Tallerista:    · @ana` **y la bio**, mientras las
+salidas 1, 5 y 6 ya dicen que no hay tallerista.
+
+**Y la salida 2 tiene una propiedad que la vuelve peor de lo que el número
+sugiere:** el evento ya está sincronizado al Google Calendar público, o sea **en el
+calendario de cada persona que se suscribió**. Corregirlo después no saca lo que ya
+se copió a un dispositivo.
+
+**El camino de entrada existe y no es teórico:** el schema acepta un nombre de solo
+espacios (`src/lib/schema.ts`), y `restaurarCampo` (`src/lib/historial.ts`) escribe
+con `updateDoc` **sin pasar por el formulario**, así que `formADocumento` no lo
+normaliza.
+
+Es más angosto que B-881 —solo espacios, no `''`— pero es la misma clase y **es la
+última celda de la convergencia**: con ésta, «¿esta actividad tiene tallerista?» se
+contesta igual en las cinco. El arreglo es
+`const nombre = persona?.nombre?.trim(); if (nombre) …`, con su caso.
+
 ### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — 🟠 empezado (2026-09-11) · P1
 
 **El flag se baja cuando GitHub acepta el `repository_dispatch`, no cuando el sitio
@@ -1025,7 +1048,20 @@ devuelve `null` cuando no hay ancla: **`null` es «no sé», no «al día»**.
 divergencia vuelva a levantar el flag con `marcarRebuild(db, 'frescura')` — no con un
 `set` a mano, que dejaría un `agotado: true` sin rearmar.
 
-### B-881 · El texto para redes arroba al tallerista sin nombre, y B-861 lo dejó siendo el único que lo hace · P3
+### B-881 · El texto para redes arroba al tallerista sin nombre, y B-861 lo dejó siendo el único que lo hace — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Cerrado.** El dueño contestó: **es un olvido del formulario**, así que va la
+> primera rama. `handlesDe` condiciona por `?.nombre?.trim()`, el mismo predicado
+> de las otras cuatro respuestas, y `difusion.arrobar` queda intacto —el camino
+> para arrobar a alguien a propósito sigue abierto y ahora tiene su test—.
+>
+> **El borde estaba sin cubrir, con un agravante:** el barrido de centinelas del
+> archivo corre por `formADocumento`, que nulea la cáscara, **así que no podía
+> verlo**. Los tres casos nuevos entran por `construirTextoRedes` con el documento
+> crudo, que es la frontera que el tipo declara.
+>
+> **Sale B-885:** `functions/calendario.js` condiciona sin `trim()`. Es la quinta y
+> última variante del predicado.
 
 **Lo encontró el `auditor-privacidad` sobre B-861**, y es la misma clase que ese
 par de ítems vino a cerrar, un escalón más arriba.

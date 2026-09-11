@@ -462,6 +462,78 @@ describe('el pie de handles (B-95: el campo que no se usaba para nada)', () => {
     expect(pie(act())).toBe('@CasaBrandon @editorialdelamona @mmoreno');
   });
 
+  /**
+   * B-881 — el handle de un tallerista **sin nombre** no se arroba.
+   *
+   * «¿Esta actividad tiene tallerista?» se contesta **por el nombre** en
+   * `formADocumento`, en `diceQuienLaDa`, en el view-model del detalle (B-854) y
+   * en la proyección pública (B-861). El pie del posteo era el último lugar del
+   * repo que la contestaba mirando el handle, y el único en una salida
+   * irreversible: el `events.json` y la página de detalle decían «no hay
+   * tallerista» mientras el texto para pegar en Instagram ponía el arroba.
+   *
+   * El caso que se fija es la cáscara `{ nombre: '', … }` con handle cargado —un
+   * documento anterior a la regla, uno restaurado del historial, o media ficha
+   * cargada fuera del panel—, que es **el borde que ningún fixture de este
+   * archivo producía**: los de acá siempre tienen nombre o son `null`, o sea las
+   * dos puntas y no el medio.
+   */
+  it('el handle de un tallerista sin nombre no sale (B-881)', () => {
+    const cascara = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
+      tallerista: { nombre: '', bio: 'Cronista y ensayista.', instagram: '@ana' },
+    });
+    const salida = texto(cascara);
+    expect(salida).not.toContain('@ana');
+    // El pie se ancla al valor exacto y no a una ausencia: si quedara vacío, este
+    // `toBe` rompe en lugar de pasar por no haber mirado nada.
+    expect(pie(cascara)).toBe('@casabrandon');
+    /*
+     * **Y tampoco sale la bio**, que es la mitad que el hermano B-861 nombra
+     * («un tallerista sin nombre no publica NADA de él»). Acá no la emite nadie
+     * —§5.1: la bio es un párrafo, al evento sí y a una caption no—, y el caso
+     * que ya lo fijaba usaba un tallerista **con** nombre: con la cáscara, la
+     * ausencia se mide sobre el documento que la produce.
+     */
+    expect(salida).not.toContain('Cronista');
+    // Y el posteo tampoco la nombra. Se mira **el encabezado** y no el texto
+    // entero: «Con » suelto es un substring que un título, unas notas de arancel
+    // o una etiqueta de taxonomía («Con beca parcial», §4.1) pueden traer.
+    expect(salida.split('\n\n')[0]).not.toContain('Con ');
+  });
+
+  it('un nombre de solo espacios es no tener nombre, igual que aguas arriba (B-881)', () => {
+    // `?.nombre?.trim()` es el mismo predicado de `formADocumento` y de
+    // `toPublic`, no uno nuevo: si acá se comparara sin recortar, un nombre de
+    // un espacio publicaría el handle que las otras dos salidas ya ocultan.
+    const espacios = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
+      tallerista: { nombre: '   ', bio: '', instagram: '@ana' },
+    });
+    expect(pie(espacios)).toBe('@casabrandon');
+  });
+
+  /**
+   * La otra mitad de B-881, y la que hace que el arreglo no cierre una puerta:
+   * arrobar a una cuenta **a propósito** sigue teniendo camino.
+   *
+   * Es lo que hacía dudar de la decisión —un handle sin nombre puede ser un
+   * olvido del formulario o un «etiquetá a esta cuenta»—, y `difusion.arrobar`
+   * existe exactamente para el segundo caso (§5.1: «es su lugar y su razón de
+   * existir»). Entra primero y **no** mira el nombre de nadie, así que lo
+   * deliberado sale igual y lo que se cierra es solo el olvido.
+   */
+  it('`difusion.arrobar` sigue arrobando esa misma cuenta si se la carga a propósito (B-881)', () => {
+    const deliberado = act({
+      difusion: { arrobar: ['@ana'], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: '', web: '' },
+      tallerista: { nombre: '', bio: '', instagram: '@ana' },
+    });
+    expect(pie(deliberado)).toBe('@ana');
+  });
+
   it('la misma cuenta escrita distinto sale una sola vez (B-133)', () => {
     // El caso real: el organizador ya estaba en «arrobar», con otras mayúsculas
     // y sin arroba. Tres formas de escribir la misma cuenta, un solo handle.

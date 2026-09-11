@@ -189,7 +189,8 @@ const conArroba = (handle: string): string =>
 
 /**
  * Los handles del pie: `difusion.arrobar`, después `organizador.instagram` y
- * `tallerista.instagram`, **deduplicados** y en ese orden.
+ * `tallerista.instagram` —este último **solo si el tallerista tiene nombre**
+ * (B-881, abajo)—, **deduplicados** y en ese orden.
  *
  * **La regla de duplicados no se reimplementa:** la aplica `agregarChips` de
  * `formulario/chips.ts`, que ya sabe que `@CasaBrandon`, `casabrandon` y
@@ -198,12 +199,41 @@ const conArroba = (handle: string): string =>
  * que el pie del posteo no puede tener una idea distinta de "ya está" que el
  * campo del formulario. El caso real es el organizador que además está en
  * «arrobar», escrito con otras mayúsculas.
+ *
+ * ── El del tallerista sale **solo si tiene nombre** (B-881) ─────────────────
+ *
+ * «¿Esta actividad tiene tallerista?» se contesta en un lugar y la respuesta es
+ * **que tenga nombre**: lo escribe `formADocumento` (`lib/actividades.ts`,
+ * «el tallerista solo tiene sentido si tiene nombre»), lo cuenta `diceQuienLaDa`
+ * (`lib/estadoDelCatalogo.ts`), lo aplica el view-model del detalle desde B-854 y
+ * la proyección pública desde B-861. Esta línea era **la última del repo** que la
+ * contestaba de otra manera —mirando si el handle está cargado—, y la única en
+ * una salida de la que no se puede volver: el `events.json` y la página de
+ * detalle ya decían que no hay tallerista mientras el pie del posteo seguía
+ * poniendo `@ana`.
+ *
+ * Lo que atraviesa la regla es la cáscara `{ nombre: '', bio: …, instagram: … }`
+ * —un documento anterior a esa regla, uno restaurado del historial, o media ficha
+ * cargada fuera del panel—, y el arreglo es el mismo predicado que las otras dos
+ * salidas, no uno nuevo (D-20: la misma pregunta, una sola respuesta).
+ *
+ * **No se pierde el camino para arrobar una cuenta a propósito**, que es lo que
+ * hacía dudar de esta decisión: `difusion.arrobar` existe justamente para eso,
+ * entra primero y **no** mira el nombre de nadie. El handle deliberado se carga
+ * ahí —es su lugar y su razón de existir, según la tabla del §5.1 de arriba— y
+ * sale igual aunque el tallerista sea una cáscara. Lo que se cierra es el olvido
+ * del formulario, no la intención. Decisión del dueño, 2026-09-11.
+ *
+ * El encabezado ya usaba este mismo `?.nombre?.trim()` para decidir el «Con tal»
+ * (`bloqueEncabezado`), así que el módulo se contestaba a sí mismo distinto en
+ * dos líneas: el posteo podía no nombrar a nadie y arrobarlo en el pie.
  */
 const handlesDe = (actividad: ActividadParaRedes): string[] => {
+  const tallerista = actividad.tallerista;
   const candidatos = [
     ...(actividad.difusion?.arrobar ?? []),
     actividad.organizador?.instagram ?? '',
-    actividad.tallerista?.instagram ?? '',
+    tallerista?.nombre?.trim() ? (tallerista.instagram ?? '') : '',
   ]
     .map((h) => h.trim())
     .filter(Boolean);

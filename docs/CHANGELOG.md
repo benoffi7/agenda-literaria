@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **El texto para redes arrobaba al tallerista sin nombre, y era el último lugar del
+  repo que contestaba esa pregunta mirando el objeto** — **B-881**. Es la clase de
+  B-88 un escalón más arriba que B-861: no dos derivaciones del mismo archivo, sino
+  **tres salidas que coincidían hasta que arreglar dos dejó a la tercera sola**.
+
+  `handlesDe` armaba el pie de arrobas con `tallerista?.instagram ?? ''`, y
+  `ActividadParaRedes` es un `Pick<Actividad, …>` —el documento **crudo**—, así que
+  B-861 no lo alcanzaba. **Y la tercera es la salida 5, la más irreversible del
+  proyecto**: un posteo pegado en Instagram ya está copiado.
+
+  **La decisión era del dueño y la contestó: es un olvido del formulario.** Va la
+  primera rama, con **el mismo predicado** de las otras cuatro respuestas — no una
+  quinta variante. **Lo que no se cierra es la intención**, y ése era el motivo de
+  la duda: `difusion.arrobar` entra primero y no mira el nombre de nadie, así que
+  el handle deliberado sale igual. Lo que se cierra es el olvido, no el acto
+  explícito, y hay un test que lo fija.
+
+  **El borde no lo cubría nada, y eso es la mitad del cambio.** Los cinco fixtures
+  de tallerista del archivo eran `null` o con nombre —las dos puntas y nunca el
+  medio— y **el barrido de centinelas no podía verlo**, porque corre por
+  `textoRedesDeForm` → `formADocumento`, que ya nulea la cáscara. O sea que el
+  mecanismo que tiene que atrapar el campo que se agregue mañana **es ciego a todo
+  lo que esa conversión normaliza**.
+
+  **Y deja una celda abierta que este cambio hizo visible: B-885.**
+  `functions/calendario.js` condiciona por `persona?.nombre` **sin `trim()`**, así
+  que la salida 2 —ya sincronizada al calendario de quien se suscribió— publica el
+  handle **y la bio** de un tallerista con nombre de solo espacios, mientras las
+  otras tres dicen que no hay tallerista. Es la quinta y última variante.
+
 - **`pendiente` promete «hay un cambio sin publicar» e implementa «hay un cambio sin
   despachar»** — **B-884**. El flag de `sistema/rebuild` se baja cuando GitHub
   **acepta** el `repository_dispatch`, que es un workflow entero antes de que el
