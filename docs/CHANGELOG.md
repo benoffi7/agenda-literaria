@@ -25,9 +25,12 @@
   El `--project` ahora sale de `scripts/project-id-emulador.mjs`. **Y el gate de
   pre-push tenía el mismo literal**, dos líneas debajo de donde ya calculaba el
   valor bueno — se descubrió porque el gate frenó el push del arreglo del workflow:
-  corría la suite con el desajuste y la veía roja. Los dos caminos —más el del
-  build, donde el desajuste no rompía nada— quedan derivando del mismo lugar, y lo
-  ata `tests/guardas-de-los-scripts.test.ts` con la mutación probada en los dos.
+  corría la suite con el desajuste y la veía roja. **Y un cuarto, el que más se usa:** `npm run emu` no
+  pasaba `--project` y tomaba el proyecto real de `.firebaserc`, así que el camino
+  normal de trabajo —`npm run emu` en una terminal, `npx vitest run` en otra—
+  reproducía el bug entero. Los cuatro caminos quedan derivando del mismo lugar, y
+  lo ata `tests/guardas-de-los-scripts.test.ts` con la mutación probada en cada
+  uno.
 
 - **El panel del rol `publicador`, y las cuatro roturas que la tajada 1 había
   medido** — **B-888** (tajada 2), **D-660**. Una cuenta con el claim ya puede

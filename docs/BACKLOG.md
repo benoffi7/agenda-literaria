@@ -697,7 +697,11 @@ valor bueno (`PROJECT_ID_EMU`) — lo cobró él mismo: frenó el push del arreg
 workflow porque corría la suite con el desajuste. El tercer uso, el del build, no
 rompía nada (el Admin SDK no pasa por las reglas y siembra en el mismo proyecto
 que lee) y se unificó igual: un literal suelto al lado de dos que sí eran el bug
-es cómo vuelve. Lo ata `tests/guardas-de-los-scripts.test.ts`, con la mutación
+es cómo vuelve. **Y había un cuarto, que es el que más se usa:** `npm run emu` no
+pasaba `--project`, así que tomaba el `default` de `.firebaserc` —el proyecto
+real— y el camino normal de trabajo (`npm run emu` en una terminal, `npx vitest
+run` en otra) reproducía el bug entero; encima el gate detecta ese emulador ya
+arriba y corre la suite contra él. Lo ata `tests/guardas-de-los-scripts.test.ts`, con la mutación
 probada en los dos caminos: devolver el literal deja la guarda en rojo y ningún
 otro test se mueve.
 

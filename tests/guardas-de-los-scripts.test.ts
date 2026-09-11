@@ -420,6 +420,7 @@ describe('el emulador de CI corre en el proyecto de los tests — B-894', () => 
     fileURLToPath(new URL('../scripts/verificar-todo.sh', import.meta.url)),
     'utf8',
   );
+  const paquete = readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8');
 
   it('el paso de tests levanta el emulador', () => {
     // El control positivo: si el paso se renombra o se va, los asertos de abajo
@@ -462,6 +463,25 @@ describe('el emulador de CI corre en el proyecto de los tests — B-894', () => 
     ).toBe(false);
     expect(invocacion, 'el gate no usa el id que acaba de derivar').toContain(
       '--project "$PROJECT_ID_EMU"',
+    );
+  });
+  /*
+   * **Y `npm run emu` es la cuarta instancia, y la que más se usa.** Sin
+   * `--project`, `firebase` toma el `default` de `.firebaserc` —el proyecto real,
+   * `agenda-literaria`— mientras los tests usan el derivado. O sea que el camino
+   * normal de trabajo —`npm run emu` en una terminal, `npx vitest run` en otra—
+   * reproduce el bug entero, y encima el gate de pre-push detecta ese emulador
+   * ya arriba (`EMU_ARRIBA`) y corre la suite contra él.
+   *
+   * Se verifica que el script **pase** un `--project` derivado: dejarlo sin la
+   * bandera es justamente la forma en que el bug entró, así que «no menciona
+   * agenda-literaria» no alcanza como aserto.
+   */
+  it('y `npm run emu` arranca en el proyecto de este checkout', () => {
+    const emu = JSON.parse(paquete).scripts?.emu ?? '';
+    expect(emu, 'el script `emu` desapareció').toContain('emulators:start');
+    expect(emu, '`npm run emu` levanta el emulador en el proyecto de `.firebaserc`').toContain(
+      '--project "$(node scripts/project-id-emulador.mjs)"',
     );
   });
 });
