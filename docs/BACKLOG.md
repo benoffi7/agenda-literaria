@@ -70,7 +70,7 @@ Resueltas el 2026-08-26:
 | DEC-7 | La galería de imágenes (B-167), cuatro decisiones — **implementado en dos tajadas, 2026-08-26 y 2026-08-28** (D-125 y D-131); lo único que falta de (d) es la Function, que es **B-220** | (a) **un solo campo opcional**, que es un epígrafe; el texto alternativo sale del título de la actividad — decisión de accesibilidad tomada a propósito, no un olvido. (b) **hasta 4 imágenes de 3 MB**, validado en el schema **y** en `storage.rules`, porque el cliente se puede saltear; el mensaje de rechazo tiene que decir el tamaño real y el máximo, que 3 MB es menos que una foto de celular sin recortar. (c) **conviven externas y propias** desde el día uno, así que entra Firebase Storage con todo lo que arrastra. (d) las **propias se optimizan** del lado de la Function (EXIF, recompresión, miniatura) y las **externas se sirven tal cual**, sin descargarlas al build. Ojo con la trampa que aparece acá y no está en el §13: una Function que escribe la miniatura en el mismo bucket **se dispara a sí misma** — es la trampa 3 con otra cara. |
 | DEC-8 | Las N opciones para sumarse a un mismo ciclo (B-181) | **Eje nuevo `opciones: [{ id, etiqueta, sesiones }]`** — el más fiel y el más caro, que es lo que el reporte describe literalmente. Toca el schema, el formulario, la proyección, el diff del §7.2 y la numeración de D-95; los ids van generados en el cliente (trampa 2). Va **después de B-167 y antes de descongelar el sitio**: hoy el daño es un calendario con eventos de más, y después es información equivocada indexada en Google. |
 | DEC-9 | Cómo se llama la librería que sale a la calle (B-192) — **implementado el 2026-08-26** | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
-| B-28 | ¿Claim `curador` para aprobar? | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
+| B-28 | ¿Claim `curador` para aprobar? — **volvió el 2026-09-11: ver B-893.** La condición que este ítem puso para reabrirse («cuando entre una tercera cuenta que no sea de confianza») se cumplió con el rol `publicador` de B-888. | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
 | B-29 | ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? | **Sí.** Y es más barato de lo que parecía: `ValorOpcion` ya tiene `huellaCreador`, así que comparar esa huella con la de quien guarda alcanza, dentro de la misma transacción del §4.2 que ya incrementa `usos`. Dos bordes: si `huellaCreador` está ausente (documentos viejos) **no** se auto-aprueba, porque no se puede saber de quién era; y queda por decidir si la etiqueta aprobada así **se marca** en la pantalla de taxonomías o desaparece de pendientes sin rastro — conviene marcarla, es lo que permite deshacer el typo que las dos personas escribieron igual. |
 | B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. La decisión sigue en pie para **quien se inscribe** — pero «hoy el sistema no guarda ni un dato personal de un tercero», que era el argumento de al lado, **dejó de ser cierto el 2026-09-09**: `/propuestas` guarda el contacto de quien propone (B-830), con retención de 30 días para la rechazada (DEC-13, B-838) y 30 días para la que nadie tocó (**B-844**, resuelto el 2026-09-09). La `aceptada` no vence, y conserva el contacto y la foto original — **B-863**. Ver el aviso arriba del ítem. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
 | B-124 | ¿Cuándo corren los auditores? | **A pedido**, como hoy. La mitigación es que `/antes-de-pushear` los lanza a los tres con un comando, así que "a pedido" no es "a mano". Y conviene usarlo: en el cierre de la `1.2.0` los tres auditores encontraron **dieciséis** bugs en tres pasadas, dos de ellos P1 de privacidad. |
@@ -673,6 +673,60 @@ con la Function de B-220 (D-175) y el `srcset` de **B-320**: la página más pes
 del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5 KB
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
+
+### B-893 · El publicador tiene que poder crear etiquetas, y eso es exactamente lo que B-28 dejó para cuando entrara una tercera cuenta · P1
+
+> **Pedido del dueño el 2026-09-11, en dos mitades:** «La cuenta acotada NO puede
+> cargar bugs y las etiquetas nuevas entran sin aprobar derechos.»
+>
+> **La primera mitad ya está construida así** y no hay nada que hacer: `/reportes`
+> tiene `allow read/create/update: if esAdmin()` en las reglas y el botón no se le
+> dibuja al publicador (`ReporteFormulario.tsx` lo dice explícito). El rol no puede
+> cargar bugs ni ver los de nadie.
+>
+> **La segunda contradice lo que se construyó**, y no por olvido. Hoy el publicador
+> **no puede crear etiquetas en absoluto**: el panel no le ofrece «Otro…»
+> (`campos-del-panel.tsx`) y el guardado saltea `upsertOpcion()` y `registrarUsos()`
+> (`formulario/guardar.ts`). Eso salió de la tajada 1: `/opciones/{campo}` es un
+> documento **compartido por todo el sitio** —los chips de filtro salen de ahí
+> (§4.4)— y **las reglas no pueden inspeccionar qué elemento del array `valores`
+> cambió**. A nivel de regla, «agrega una opción con Otro» y «reescribe la taxonomía
+> del sitio entero» son **el mismo permiso**: `allow write` sobre ese documento
+> también deja borrar valores, dar vuelta `fijo` y aprobar lo que quiera, sin una
+> sola cláusula que lo verifique.
+>
+> **O sea que `aprobada: false` no alcanza como salvaguarda.** Marcar la etiqueta
+> como no aprobada resuelve que no aparezca en el desplegable de los demás, que es
+> lo que pide el dueño; no resuelve que la misma escritura pueda pisar el resto del
+> array. Las dos cosas van juntas o la segunda anula a la primera.
+
+**Los dos caminos que sí son verificables**, en orden de costo:
+
+1. **Una Function que hace el upsert** (`onCall`), y el rol sigue sin `write` sobre
+   `/opciones/*`. La Function corre con el Admin SDK, así que puede leer el array
+   anterior, verificar que lo único que cambió es **un elemento agregado** con
+   `aprobada: false` y `usos: 1`, y escribir. Es el único lugar donde eso se puede
+   verificar — ya estaba escrito así en el comentario de `firestore.rules` desde la
+   tajada 1, y es el mismo camino que haría falta para que los `usos` del rol
+   cuenten. Cuesta: una Function nueva, el camino de error en el guardado (hoy
+   `registrarUsos` falla en silencio a propósito, y por acá no puede), y volver a
+   mostrarle «Otro…» al panel del rol.
+2. **Una colección aparte de etiquetas pendientes** (`/opciones-propuestas/{id}`,
+   un documento por etiqueta). Ahí sí la regla verifica todo —conjunto exacto de
+   campos, `creadoPor == request.auth.uid`, `aprobada` ausente— porque es un
+   documento propio y no un elemento de un array. Cuesta más de panel: la pantalla
+   de taxonomías gana una bandeja, y el admin aprueba moviendo el valor al array.
+
+**Esto es B-28 volviendo.** Se cerró con «no, queda como está… vuelve cuando entre
+una tercera cuenta que no sea de confianza». El publicador **es** esa cuenta: el
+`aprobada: boolean` del §4.3 —que se había dejado explícitamente para «si en el
+futuro carga gente además del dueño»— pasó de hipotético a pedido. Y **B-29**
+(auto-aprobar la etiqueta que una segunda cuenta reusa) queda del otro lado del
+mismo camino: cualquiera de los dos mecanismos de arriba es dónde vive.
+
+**No arrancar sin que el dueño elija entre 1 y 2.** Lo que cambia entre los dos no
+es el esfuerzo sino quién aprueba y dónde se ve: en (1) la etiqueta ya está en el
+array, marcada; en (2) está afuera hasta que alguien la mueva.
 
 ### B-841 · `campos/` es un `import` de distancia de medir sin consentimiento en una página pública — ✅ hecho (2026-09-09) · P1
 
