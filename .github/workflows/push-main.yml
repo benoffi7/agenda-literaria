@@ -135,6 +135,11 @@ jobs:
         #
         # B-167 — `storage` entra en la lista por el mismo motivo: desde que hay
         # `storage.rules`, este workflow también las deploya.
+        #
+        # **Este job no buildea, así que acá no hay `dist/`.** El build es el job
+        # `hosting`, en otro runner. Un test que mire el artefacto se saltea acá
+        # en silencio y nadie se entera: es B-873, y por eso esos chequeos viven
+        # en `scripts/verificar-bundle.sh`, que corre después del build.
         env:
           EXIGIR_EMULADOR: '1'
         run: |
@@ -204,7 +209,11 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Verificar el artefacto (credencial afuera, App Check adentro)
+      - name: Verificar el artefacto (credencial afuera, App Check adentro, HTML limpio)
+        # El mismo script que `deploy.yml`. Y el único lugar de este workflow
+        # donde existe un `dist/`: los tests son el job `verificar`, que corre en
+        # otro runner y no buildea nunca. Todo chequeo sobre el artefacto va acá
+        # — es lo que B-873 dejó escrito, después de dos que no corrían.
         run: ./scripts/verificar-bundle.sh dist
 
       - name: Que la versión del build sea la del commit

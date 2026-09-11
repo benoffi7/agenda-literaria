@@ -152,10 +152,17 @@ else
     './scripts/build-contra-emulador.mjs' || fallo 'el build no pasa o no leyó Firestore'
 fi
 
-# ── 5 · Que la credencial no se filtró ────────────────────────────
+# ── 5 · El artefacto construido ───────────────────────────────────
 # El gate del §5.4 / trampa 4, el mismo script que corre en los dos workflows.
 # Va después del build a propósito: sin `dist/` no verifica nada.
-paso 'El artefacto: credencial afuera (§5.4, trampa 4), App Check adentro (B-868)'
+#
+# Desde B-873 el script barre además el HTML construido —comentarios de
+# plantilla emitidos como texto (B-261) y hosts de tercero contactados antes del
+# consentimiento (D-254)—, que eran tests y por eso no corrían en CI. Y acá
+# tampoco corrían del todo: los tests son el paso 3, **antes** del build del paso
+# 4, así que lo que miraban era el `dist/` de una corrida anterior. Un artefacto
+# viejo que pasa no dice nada del que se está por pushear.
+paso 'El artefacto: credencial afuera (§5.4), App Check adentro (B-868), HTML limpio (B-873)'
 ./scripts/verificar-bundle.sh dist || fallo 'el artefacto no pasa el gate: ver el ::error:: de arriba'
 
 printf '\n\033[32m✓ los seis pasos pasaron.\033[0m\n'

@@ -2,6 +2,55 @@
 
 ## Sin publicar
 
+- **Los dos barridos sobre el HTML construido pasaron al gate del artefacto: no
+  corrían en CI ni una vez, y sus docblocks afirmaban lo contrario** — **B-873**.
+  Medido parseando los workflows: en `deploy.yml` los tests son el paso 4 y el
+  build el paso 5; en `push-main.yml` los tests son el job `verificar`, que no
+  buildea, y el build es el job `hosting`, otro runner. Reproducido moviendo el
+  `dist/`: **5 de 7 casos salteados y estado 0**. Las dos promesas —no publicamos
+  comentarios internos, no contactamos terceros antes del consentimiento—
+  dependían de que alguien hubiera buildeado a mano, y la red de contención las
+  contaba como cubiertas.
+
+  **Dos agravantes que el ítem no tenía.** Tampoco corrían del todo en
+  `verificar-todo.sh`: los tests son el paso 3 y el build el paso 4, así que lo que
+  miraban era el `dist/` de **una corrida anterior**. Y un build local sin
+  credenciales produce 14 páginas y **cero de detalle**, o sea que el barrido nunca
+  vio la superficie SSG que depende de datos — con el control positivo pasando
+  igual.
+
+  **Se eligió la salida 2 de las tres, y el costo del build no fue el argumento**:
+  `npm run build` tarda 2,5 s. Buildear en el job de tests verifica **un artefacto
+  que nadie publica** —en `deploy.yml` el `dist/` que se sube se construye después,
+  y en `push-main.yml` en otro job— y obliga a elegir entre darle la única key del
+  proyecto a un job más o barrer un artefacto degradado. Y `EXIGIR_DIST=1` **no es
+  una salida por sí sola**: sin `dist/` en el job de tests, deja el CI rojo para
+  siempre. Es lo que lo distingue de `EXIGIR_EMULADOR=1`, donde el workflow sí
+  levanta lo que el flag exige.
+
+  Los barridos son ahora secciones de `scripts/verificar-bundle.sh`, o sea que
+  verifican **el mismo `dist/` que el paso siguiente sube a Hosting**. Con una
+  guarda nueva que es la lección hecha aserto —**un `dist/` sin una sola página
+  HTML falla**: «no verificó nada» dejó de poder verse igual que «está limpio»— y
+  con el **recuento impreso**, que es la respuesta en el log a la pregunta que
+  estuvo meses sin contestarse.
+
+  **Los dos archivos de test no se borraron: pasaron a manejar el script** con
+  `dist/` sintéticos. Son 41 casos **sin un solo `skipIf`**, que corren en
+  cualquier runner, y que prueban las dos direcciones — que el `preconnect` y el
+  comentario de plantilla ponen el gate en rojo nombrando archivo y host, y que el
+  `<img>` externo (D-131) y lo relativo **no**.
+
+  **Y se cerró la clase, no la instancia.** `tests/workflows.test.ts` computa del
+  YAML que ningún job buildea antes de correr los tests —si eso cambia, alguien se
+  entera— y exige que **ningún archivo de `tests/` lea `dist/`**, con lista
+  `CON_DEUDA` verificada en las dos direcciones. De ahí salió **B-880**: quedan dos
+  con la misma forma, y uno es peor — no usa `skipIf` sino un `return` temprano,
+  así que **se reporta PASSED habiendo mirado cero bytes**.
+
+  Dieciséis mutaciones. Tres son de punta a punta con `npm run build` real y el
+  gate corrido como lo corre el workflow.
+
 - **El detector de la clase de B-85 dejó de ser ciego al barrido que borra y al
   cliente de `googleapis`, y cada barrido declara qué lo protege** — **B-867** y
   **B-862**. El síntoma de efecto era `/\.(set|update)\(/` y el de red conocía

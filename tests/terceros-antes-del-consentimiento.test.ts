@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+
+import { correrGate, paginaLimpia } from './fixtures/artefacto';
 
 /**
  * Ningún host de tercero se contacta antes de que la persona decida — D-254.
@@ -28,13 +29,13 @@ import { describe, expect, it } from 'vitest';
  * existe acá. Ponerlo por JavaScript, un instante antes de inyectar el script
  * del tag, tampoco ahorra nada: el pedido del script sale en el mismo tick.
  *
- * ── Qué verifica este archivo, y qué NO ────────────────────────────────────
+ * ── Qué verifica el barrido, y qué NO ──────────────────────────────────────
  * Lee el **HTML construido** (no el fuente: un chequeo sobre el fuente tendría
- * que reimplementar el parser de Astro, la misma razón por la que
- * `tests/sin-comentarios-en-el-html.test.ts` también lee `dist/`) y exige que
- * todo host de un `<link rel="preconnect"|"dns-prefetch"|"prefetch"|"preload"|"stylesheet">`,
+ * que reimplementar el parser de Astro, la misma razón por la que el barrido de
+ * B-261 también mira el artefacto) y exige que todo host de un
+ * `<link rel="preconnect"|"dns-prefetch"|"prefetch"|"preload"|"stylesheet">`,
  * `<script src="...">` o `<iframe src="...">` **absoluto** esté en la lista
- * blanca de abajo, con su motivo escrito al lado.
+ * blanca, con su motivo escrito al lado.
  *
  * **No mira `<img>`.** Una actividad puede traer una imagen externa (un flyer
  * en Instagram, por decisión de producto — D-131 y compañía): ese host varía
@@ -44,169 +45,103 @@ import { describe, expect, it } from 'vitest';
  * sale igual en todas las páginas porque viene de un layout o componente
  * compartido — que es exactamente la clase de bug que causó esto.
  *
- * ── Requiere `dist/` ────────────────────────────────────────────────────────
- * Se saltea si no hay build, como los de emulador: correr `npm run build`
- * antes. En CI el build siempre corre, así que ahí no se saltea nunca.
- *
  * ── La lista blanca está VACÍA, y eso es el estado final — B-481 ───────────
- * Cuando este archivo se escribió tenía dos entradas, las dos de tipografía
+ * Cuando esto se escribió tenía dos entradas, las dos de tipografía
  * (`fonts.googleapis.com` y `fonts.gstatic.com`, B-260): anteriores a la
  * analítica, decididas antes de que existiera un banner, y anotadas como
  * pendiente y no como aceptado. **B-481 las sacó**: las tres familias se
  * sirven desde `/fuentes/` de este mismo dominio, declaradas con `@font-face`
  * en `src/styles/global.css`.
  *
- * Así que hoy la respuesta correcta es **cero hosts**, y por eso la lista está
- * vacía en vez de borrada. Que siga existiendo como constante es el punto:
- * agregar un tercero es agregarle una entrada acá, con el motivo escrito, y
- * eso se lee en una review. Un `preconnect` puesto de paso, no.
+ * Así que hoy la respuesta correcta es **cero hosts**, y por eso la lista sigue
+ * existiendo vacía en vez de borrada: agregar un tercero es agregarle una
+ * entrada, con el motivo escrito, y eso se lee en una review. Un `preconnect`
+ * puesto de paso, no.
+ *
+ * ── El barrido ya no vive acá, y el motivo es B-873 ───────────────────────
+ * **Hasta el 2026-09-11 este archivo leía el `dist/` del repo y se salteaba si no
+ * estaba**, con esta frase escrita en el docblock: «en CI el build siempre corre,
+ * así que ahí no se saltea nunca». Era falsa, y medida contra los dos workflows:
+ * en `deploy.yml` el paso `Tests` es el 4 y `Build` el 5; en `push-main.yml` los
+ * tests son el job `verificar`, que no buildea nunca, y el build es el job
+ * `hosting`, otro runner. Reproducido moviendo el `dist/` local: la suite sale
+ * **verde con los casos salteados y estado 0**, sin decir una palabra.
+ *
+ * O sea que **la promesa de D-254 dependía de que alguien hubiera buildeado a
+ * mano antes de correr la suite**, y la red de contención la contaba como
+ * cubierta igual. El barrido está ahora en `scripts/verificar-bundle.sh`,
+ * sección 3, que es el paso post-build de los dos workflows y el paso 5 de
+ * `verificar-todo.sh`. Lo que queda acá es probar ese barrido con artefactos
+ * sintéticos: **ningún caso de este archivo depende de que exista un build**.
  */
-const PERMITIDOS: { host: string; motivo: string }[] = [];
-
 const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 
-const paginas = (): string[] => {
-  try {
-    return execFileSync('find', [raiz('dist'), '-name', '*.html'], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-};
+/** Una página con las etiquetas que el caso quiera, sobre un esqueleto válido. */
+const paginaCon = (etiquetas: string): string =>
+  `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Agenda</title>${etiquetas}` +
+  '</head><body><h1>Agenda</h1></body></html>';
 
-/** El host de una URL absoluta, o `null` si no lo es (relativa, `data:`, etc). */
-const hostDe = (url: string): string | null => {
-  if (!/^https?:\/\//i.test(url)) return null;
-  try {
-    return new URL(url).host;
-  } catch {
-    return null;
-  }
-};
-
-interface Hallazgo {
-  etiqueta: string;
-  host: string;
-}
-
-/**
- * Los hosts absolutos de las etiquetas que hacen una conexión propia en el
- * load: `<link>` de precarga/hoja de estilos, `<script src>` y `<iframe src>`.
- * Deliberadamente NO mira `<img>` — ver el docblock.
- */
-const hostsDeInfraestructura = (html: string): Hallazgo[] => {
-  const hallazgos: Hallazgo[] = [];
-
-  for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
-    const etiqueta = m[0];
-    const rel = /\brel=["']?([\w -]+)["']?/i.exec(etiqueta)?.[1]?.toLowerCase() ?? '';
-    const esDeConexion = /(^|\s)(preconnect|dns-prefetch|prefetch|preload|stylesheet)(\s|$)/.test(
-      rel,
-    );
-    if (!esDeConexion) continue;
-    const href = /\bhref=["']([^"']+)["']/i.exec(etiqueta)?.[1];
-    const host = href ? hostDe(href) : null;
-    if (host) hallazgos.push({ etiqueta, host });
-  }
-
-  for (const m of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)) {
-    const host = hostDe(m[1]!);
-    if (host) hallazgos.push({ etiqueta: m[0], host });
-  }
-
-  for (const m of html.matchAll(/<iframe\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)) {
-    const host = hostDe(m[1]!);
-    if (host) hallazgos.push({ etiqueta: m[0], host });
-  }
-
-  return hallazgos;
-};
-
-describe('ningún host de tercero se contacta antes del consentimiento — D-254', () => {
-  const html = paginas();
-
-  it.skipIf(html.length === 0)('el barrido encuentra páginas construidas', () => {
-    // Control positivo: sin build, los asertos de abajo pasarían sin mirar nada.
-    expect(html.length).toBeGreaterThan(2);
-    expect(html.some((f) => f.endsWith('/index.html'))).toBe(true);
-  });
-
-  it('el parseo reconoce las tres etiquetas — control positivo sin depender del `dist/`', () => {
+describe('el gate atrapa un tercero contactado antes del consentimiento — D-254', () => {
+  it('el `preconnect` a googletagmanager lo pone en rojo, nombrando el host', () => {
     /*
-     * **Este caso cambió con B-481, y el motivo importa.** Antes verificaba que
-     * el barrido encontrara alguno de los dos hosts de tipografía en el HTML
-     * real: mientras hubiera un tercero permitido, encontrarlo probaba que el
-     * regex seguía leyendo. Al autoalojar las fuentes **no queda ni un host de
-     * tercero en el `dist/`**, así que ese control se volvió imposible — y
-     * dejarlo habría forzado la conclusión equivocada: reponer un tercero para
-     * que el control positivo tenga qué encontrar.
-     *
-     * El control se mueve entonces a un HTML **sintético**, que es más fuerte
-     * que el anterior: no depende de que exista un build, ni de que el sitio
-     * contacte a nadie, y prueba las tres etiquetas y las cinco `rel` de una.
-     * Si el parseo se rompe, este caso falla aunque el `dist/` esté impecable.
+     * La forma exacta de D-254: la etiqueta que estuvo publicada en `Base.astro`,
+     * sin condición de consentimiento, saliendo también para quien rechaza.
      */
-    const fixture = `
-      <link rel="preconnect" href="https://ejemplo-uno.com" />
-      <link rel="dns-prefetch" href="https://ejemplo-dos.com">
-      <link rel='stylesheet' href='https://ejemplo-tres.com/x.css'>
-      <link rel="preload" as="font" href="https://ejemplo-cuatro.com/f.woff2" crossorigin>
-      <link rel="prefetch" href="https://ejemplo-cinco.com/a">
-      <script src="https://ejemplo-seis.com/t.js"></script>
-      <iframe src="https://ejemplo-siete.com/e"></iframe>
-      <link rel="icon" href="/marca.svg" />
-      <link rel="preload" as="font" href="/fuentes/public-sans-v21-latin.woff2" crossorigin>
-      <img src="https://ejemplo-ocho.com/flyer.jpg" />
-    `;
-    const hosts = hostsDeInfraestructura(fixture).map((h) => h.host);
-    expect(hosts.sort()).toEqual([
-      'ejemplo-cinco.com',
-      'ejemplo-cuatro.com',
-      'ejemplo-dos.com',
-      'ejemplo-seis.com',
-      'ejemplo-siete.com',
-      'ejemplo-tres.com',
-      'ejemplo-uno.com',
-    ]);
-    // Y lo que NO tiene que ver: el `<img>` externo (decisión de producto,
-    // D-131) y todo lo relativo del propio dominio.
-    expect(hosts).not.toContain('ejemplo-ocho.com');
+    const { estado, salida } = correrGate({
+      'index.html': paginaCon('<link rel="preconnect" href="https://www.googletagmanager.com">'),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('un host de tercero aparece en el HTML sin pasar por el consentimiento');
+    expect(salida, 'el error no nombra el host').toContain('www.googletagmanager.com');
+    expect(salida, 'el error no dice en qué página').toContain('index.html');
   });
 
-  it.skipIf(html.length === 0)(
-    'todo host de un <link> de conexión, <script> o <iframe> está en la lista blanca',
-    () => {
-      /*
-       * MUTACIÓN PROBADA: se repuso a mano el
-       * `<link rel="preconnect" href="https://www.googletagmanager.com">` en
-       * `src/layouts/Base.astro`, se corrió `npm run build` y este `it` pasó
-       * a rojo nombrando `www.googletagmanager.com` y el archivo exacto. Se
-       * sacó de nuevo y se confirmó que vuelve a pasar.
-       */
-      const permitidos = new Set(PERMITIDOS.map((p) => p.host));
-      const violaciones: string[] = [];
+  it.each([
+    ['preconnect', '<link rel="preconnect" href="https://ejemplo-uno.com">', 'ejemplo-uno.com'],
+    ['dns-prefetch', '<link rel="dns-prefetch" href="https://ejemplo-dos.com">', 'ejemplo-dos.com'],
+    ['stylesheet', `<link rel='stylesheet' href='https://ejemplo-tres.com/x.css'>`, 'ejemplo-tres.com'],
+    [
+      'preload',
+      '<link rel="preload" as="font" href="https://ejemplo-cuatro.com/f.woff2" crossorigin>',
+      'ejemplo-cuatro.com',
+    ],
+    ['prefetch', '<link rel="prefetch" href="https://ejemplo-cinco.com/a">', 'ejemplo-cinco.com'],
+    ['script src', '<script src="https://ejemplo-seis.com/t.js"></script>', 'ejemplo-seis.com'],
+    ['iframe src', '<iframe src="https://ejemplo-siete.com/e"></iframe>', 'ejemplo-siete.com'],
+  ])('también lo atrapa por %s', (_que, etiqueta, host) => {
+    /*
+     * **Control positivo de las tres etiquetas y las cinco `rel` de una.** Con la
+     * lista blanca vacía no queda un solo tercero en el artefacto real, así que
+     * un control «encontrá el host que sabemos que está» sería imposible sin
+     * reponer un tercero para que el control tenga qué encontrar. Sintético es
+     * más fuerte: si el parseo se rompe, esto falla aunque el `dist/` esté
+     * impecable.
+     */
+    const { estado, salida } = correrGate({ 'index.html': paginaCon(etiqueta) });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain(host);
+  });
 
-      for (const archivo of html) {
-        const contenido = readFileSync(archivo, 'utf8');
-        for (const h of hostsDeInfraestructura(contenido)) {
-          if (!permitidos.has(h.host)) {
-            const relativo = archivo.split('/dist/')[1] ?? archivo;
-            violaciones.push(`${relativo} — ${h.host} — ${h.etiqueta.slice(0, 120)}`);
-          }
-        }
-      }
+  it('un `<img>` externo NO lo pone en rojo — es una decisión de producto (D-131)', () => {
+    const { estado, salida } = correrGate({
+      'index.html': paginaLimpia('Agenda').replace(
+        '<h1>',
+        '<img src="https://scontent.cdninstagram.com/flyer.jpg" alt="flyer"><h1>',
+      ),
+    });
+    expect(estado, salida).toBe(0);
+  });
 
-      expect(
-        violaciones,
-        'un host de tercero aparece en el HTML sin pasar por el consentimiento. ' +
-          'Si es legítimo (tipografía, CDN propio), agregalo a PERMITIDOS con el motivo ' +
-          'escrito; si es analítica o un tercero de tracking, no se puede: tiene que ' +
-          'inyectarse por JavaScript, condicionado a `debeCargarGA`/consentimiento ' +
-          '(ver src/lib/medicionSitio.ts).',
-      ).toEqual([]);
-    },
-  );
+  it('ni lo relativo del propio dominio, que es todo lo que el sitio sirve hoy', () => {
+    const { estado, salida } = correrGate({
+      'index.html': paginaCon(
+        '<link rel="icon" href="/marca.svg">' +
+          '<link rel="preload" as="font" href="/fuentes/public-sans-v21-latin.woff2" crossorigin>' +
+          '<link rel="stylesheet" href="/_astro/Base.css">',
+      ),
+    });
+    expect(estado, salida).toBe(0);
+  });
 });
 
 /**
@@ -226,45 +161,36 @@ describe('ningún host de tercero se contacta antes del consentimiento — D-254
  *    arriba en verde —cero terceros, porque cero fuentes— y el sitio se vería
  *    con las faces de respaldo del sistema. Un chequeo que solo prohíbe pasa
  *    con el archivo vacío.
+ *
+ * El punto 1 se verifica contra el gate, por lo mismo que el bloque de arriba:
+ * la hoja que importa es la **construida**, y el único lugar del pipeline donde
+ * existe es el paso post-build (B-873). El punto 2 mira el fuente y nunca
+ * dependió de un build.
  */
 describe('las tipografías se sirven desde este dominio — B-481', () => {
-  const hojas = (): string[] => {
-    try {
-      return execFileSync('find', [raiz('dist/_astro'), '-name', '*.css'], { encoding: 'utf8' })
-        .split('\n')
-        .filter(Boolean);
-    } catch {
-      return [];
-    }
-  };
+  it.each([
+    ["src: url('https://fonts.gstatic.com/s/publicsans/v21/x.woff2')", 'fonts.gstatic.com'],
+    ["@import url('https://fonts.googleapis.com/css2?family=Fraunces');", 'fonts.googleapis.com'],
+    ['@import "https://fonts.googleapis.com/css2?family=Fraunces";', 'fonts.googleapis.com'],
+  ])('una hoja construida con %s es rojo', (linea, host) => {
+    const { estado, salida } = correrGate({
+      '_astro/Base.css': `@font-face{font-family:'Public Sans';${linea}}\n`,
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('una hoja de estilos construida sale a un host de tercero');
+    expect(salida).toContain(host);
+  });
 
-  const css = hojas();
-
-  it.skipIf(css.length === 0)('ninguna hoja construida referencia un host de tercero', () => {
+  it('y un artefacto sin ninguna hoja es ROJO, no verde — la guarda de B-873', () => {
     /*
-     * MUTACIÓN PROBADA: se repuso en `src/styles/global.css` un
-     * `src: url('https://fonts.gstatic.com/s/publicsans/v21/…woff2')` en la
-     * `@font-face` de Public Sans, se corrió `npm run build`, y este caso pasó
-     * a rojo nombrando `fonts.gstatic.com` y el archivo de la hoja. Se
-     * restauró la URL local y volvió a pasar.
+     * El mismo agujero que las páginas: un barrido sobre cero hojas pasa todos
+     * los `expect` que se le pongan. El build siempre emite al menos la hoja del
+     * layout, así que «no hay ninguna» es que el artefacto no es el artefacto.
      */
-    const violaciones: string[] = [];
-    for (const archivo of css) {
-      const contenido = readFileSync(archivo, 'utf8');
-      for (const m of contenido.matchAll(/url\(\s*['"]?(https?:\/\/[^'")\s]+)/gi)) {
-        violaciones.push(`${archivo.split('/dist/')[1] ?? archivo} — ${m[1]}`);
-      }
-      for (const m of contenido.matchAll(/@import\s+(?:url\()?\s*['"]?(https?:\/\/[^'")\s]+)/gi)) {
-        violaciones.push(`${archivo.split('/dist/')[1] ?? archivo} — @import ${m[1]}`);
-      }
-    }
-    expect(
-      violaciones,
-      'una hoja de estilos construida sale a un host de tercero. Las fuentes van ' +
-        'en `public/fuentes/` y se declaran con `@font-face` apuntando a `/fuentes/…` ' +
-        '(B-481); cualquier otro tercero es una conexión en el load y no puede ' +
-        'condicionarse al consentimiento (D-254).',
-    ).toEqual([]);
+    const { estado, salida } = correrGate({ '_astro/Base.css': null });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('no tiene ninguna hoja de estilos');
+    expect(salida).toContain('B-873');
   });
 
   it('`global.css` declara las tres familias contra `/fuentes/`, y no contra Google', () => {

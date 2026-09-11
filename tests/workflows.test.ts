@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parseDocument } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { fuenteDelModulo } from './fixtures/functions';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 
 /**
  * Los workflows de Actions, como archivos YAML — **trampa 11** del `CLAUDE.md`
@@ -212,5 +213,123 @@ describe('el gate de la trampa 4 no está copiado en YAML — §5.4', () => {
     if (!buildea) return;
     const verifica = pasos.some((p) => /verificar-bundle\.sh/.test(p.run));
     expect(verifica, 'buildea pero no verifica que la credencial no se filtró').toBe(true);
+  });
+});
+
+/**
+ * **Ningún test puede depender de un `dist/` construido — B-873.**
+ *
+ * `tests/sin-comentarios-en-el-html.test.ts` (B-261) y
+ * `tests/terceros-antes-del-consentimiento.test.ts` (D-254) leían el `dist/` del
+ * repo y se salteaban si no estaba, **y los dos afirmaban en su docblock que en
+ * CI el build siempre corre, así que ahí no se saltea nunca**. Era falso en los
+ * dos workflows, y estuvo escrito durante meses: el docblock que prometía la
+ * cobertura es justamente lo que hizo que nadie fuera a comprobarla.
+ *
+ * Los dos barridos se mudaron a `scripts/verificar-bundle.sh`, que es el paso
+ * post-build. Lo que queda es impedir que la forma vuelva, y por eso el chequeo
+ * está acá y no en aquellos archivos: **el hecho que lo habilita es del
+ * pipeline**, no de un test. Son dos casos y se leen juntos —el primero mide el
+ * hecho, el segundo prohíbe la consecuencia—; y el tercer eslabón, que el gate
+ * se corra de verdad, ya lo sostiene el caso «%s corre el script si buildea» de
+ * arriba.
+ */
+describe('ningún test depende de un `dist/` — B-873', () => {
+  const PASO_TEST = /\bnpm test\b|\bnpx vitest\b/;
+  const PASO_BUILD = /npm run build|astro build/;
+
+  it('en ningún job de ningún workflow el build corre antes que los tests', () => {
+    /*
+     * **El hecho, medido y no leído.** Es exactamente la afirmación que los dos
+     * docblocks tenían al revés, así que se computa del YAML en vez de escribirse
+     * en prosa: si mañana alguien reordena los pasos, esto cambia solo.
+     *
+     * Y si el cambio es deliberado —alguien decide buildear en el job de tests—
+     * este caso se pone en rojo a propósito: es el momento de releer B-873 y
+     * decidir si los barridos vuelven a ser tests o no. Lo que no puede pasar es
+     * que la premisa cambie sin que nadie lo note, que es lo que ya pasó.
+     */
+    const conBuildAntes: string[] = [];
+    for (const archivo of archivos) {
+      const wf = parsear(archivo).toJS() as {
+        jobs?: Record<string, { steps?: { name?: string; run?: string }[] }>;
+      };
+      for (const [job, def] of Object.entries(wf.jobs ?? {})) {
+        const pasos = (def.steps ?? []).map((s) => s.run ?? '');
+        const test = pasos.findIndex((r) => PASO_TEST.test(r));
+        const build = pasos.findIndex((r) => PASO_BUILD.test(r));
+        if (test >= 0 && build >= 0 && build < test) {
+          conBuildAntes.push(`${archivo} · ${job}`);
+        }
+      }
+    }
+    expect(
+      conBuildAntes,
+      'un job buildea antes de correr los tests: la premisa de B-873 cambió, releelo',
+    ).toEqual([]);
+
+    // Y el control positivo: que el detector encuentre los pasos de verdad. Sin
+    // esto, un cambio de nombre del script dejaría el barrido en cero y el caso
+    // pasaría sin mirar nada — la misma forma de mentir que trajo B-873 acá.
+    const jobs = archivos.flatMap((archivo) => {
+      const wf = parsear(archivo).toJS() as {
+        jobs?: Record<string, { steps?: { name?: string; run?: string }[] }>;
+      };
+      return Object.entries(wf.jobs ?? {}).map(([job, def]) => ({
+        nombre: `${archivo} · ${job}`,
+        pasos: (def.steps ?? []).map((s) => s.run ?? ''),
+      }));
+    });
+    expect(
+      jobs.filter((j) => j.pasos.some((r) => PASO_TEST.test(r))).map((j) => j.nombre).sort(),
+      'no se encontró ningún job que corra los tests',
+    ).toEqual(['deploy.yml · deploy', 'push-main.yml · verificar']);
+    expect(
+      jobs.filter((j) => j.pasos.some((r) => PASO_BUILD.test(r))).map((j) => j.nombre).sort(),
+      'no se encontró ningún job que buildee',
+    ).toEqual(['deploy.yml · deploy', 'push-main.yml · hosting']);
+  });
+
+  it('y por eso ningún archivo de `tests/` lee `dist/`', () => {
+    /*
+     * La consecuencia del caso de arriba, hecha aserto: si `dist/` no existe en
+     * ninguna corrida de la suite, un test que lo lea o miente o se saltea. El
+     * lugar de esos chequeos es `scripts/verificar-bundle.sh`, después del build.
+     *
+     * Se mira el fuente **sin comentarios** (`sinComentarios`): los docblocks de
+     * este repo hablan mucho de `dist/` y castigar la explicación empujaría a
+     * borrarla. Y solo se cuentan las rutas entrecomilladas (`'dist'`,
+     * `"dist/404.html"`), que es la forma en que este repo las escribe — un path
+     * armado con un template literal se escaparía, y queda anotado como el límite
+     * del chequeo.
+     */
+    const CON_DEUDA: Record<string, string> = {
+      // Los dos que quedaron con la forma vieja. Están acá y no borrados para
+      // que se cuenten: son la misma clase que B-873 y quedaron fuera de su
+      // alcance, con su ítem propio en el BACKLOG.
+      'tests/ahoraPublico.test.ts':
+        'lee `dist/_astro` y se saltea sin build — misma clase que B-873, sin resolver',
+      'tests/no-encontrado.test.ts':
+        'lee `dist/404.html` con `it.skipIf(!hayBuild)` — ídem',
+    };
+    const RUTA_A_DIST = /(['"])dist(\/[^'"]*)?\1/;
+
+    const culpables = readdirSync('tests')
+      .filter((f) => /\.tsx?$/.test(f))
+      .map((f) => `tests/${f}`)
+      .filter((rel) => RUTA_A_DIST.test(sinComentarios(readFileSync(rel, 'utf8'))));
+
+    expect(
+      culpables.filter((c) => !(c in CON_DEUDA)).sort(),
+      'un test lee `dist/`, que no existe cuando la suite corre: el chequeo va en ' +
+        'scripts/verificar-bundle.sh, que es el paso de después del build (B-873)',
+    ).toEqual([]);
+
+    // Y en la otra dirección: una deuda que ya se pagó tiene que salir de la
+    // lista. Si no, la lista crece sola y deja de decir nada.
+    expect(
+      Object.keys(CON_DEUDA).filter((c) => !culpables.includes(c)).sort(),
+      'esta deuda ya no existe: sacala de CON_DEUDA',
+    ).toEqual([]);
   });
 });

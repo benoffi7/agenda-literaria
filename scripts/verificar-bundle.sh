@@ -4,7 +4,7 @@
 #
 #   ./scripts/verificar-bundle.sh [directorio]   (por defecto: dist)
 #
-# ── Las dos mitades ───────────────────────────────────────────────────────
+# ── Las tres mitades ──────────────────────────────────────────────────────
 # 1. **Que no esté el Admin SDK** (§5.4 / trampa 4): si `firebase-admin` se cuela
 #    en un componente cliente, la service account key termina en el bundle
 #    público. Es la mitad original, y la única que había.
@@ -18,6 +18,15 @@
 #
 #    Desde el 2026-09-10 17:42 UTC eso no es hipotético: `firestore.googleapis.com`
 #    quedó en **ENFORCED**. La mitad 2 es la diferencia entre un deploy y una caída.
+# 3. **Que el HTML construido esté limpio** (B-873): ningún comentario de
+#    plantilla emitido como texto (B-261) y ningún host de tercero contactado
+#    antes del consentimiento (D-254, B-481). Son dos chequeos que ya existían
+#    —como tests que leían `dist/`— y que por eso mismo no corrían en CI ni una
+#    vez. La sección 3 cuenta la medición; el resumen es que este script es el
+#    único lugar del pipeline donde `dist/` existe.
+#
+#    Son tres y no dos, pero la simetría es la misma: qué no puede estar (1 y 3)
+#    y qué tiene que estar (2).
 #
 # ── Por qué acá y no en un test que lea `dist/` ───────────────────────────
 # El repo tiene tests que leen el artefacto (`sin-comentarios-en-el-html`,
@@ -28,6 +37,11 @@
 # que un test así se saltea en silencio exactamente donde tendría que morder.
 # Este script es el paso que los dos workflows corren inmediatamente DESPUÉS del
 # build, y el paso 5 de `verificar-todo.sh`, después del paso 4.
+#
+# **Y el párrafo de arriba era, además, un hallazgo sin levantar.** Se escribió
+# describiendo con precisión a esos dos tests y nadie fue a mirarlos: seguían
+# prometiendo en su docblock la cobertura que este párrafo les negaba. Es B-873,
+# y por eso los dos barridos son ahora la sección 3 de este archivo.
 #
 # Vive en un script y no dentro de un workflow porque lo usan dos workflows y
 # porque conviene poder correrlo local antes de pushear. Duplicarlo en YAML era
@@ -209,5 +223,240 @@ if grep -rqF --include='*.js' 'exchangeRecaptchaV3Token' "$DIR" 2>/dev/null; the
   exit 1
 fi
 
+
 echo "$DIR/ limpio: sin rastros del Admin SDK"
 echo "$DIR/ con App Check: clave ${CLAVE:0:8}… en el bundle, sin emuladores, proveedor Enterprise"
+
+# ══════════════════════════════════════════════════════════════════════════
+# 3 · El HTML construido: comentarios de plantilla (B-261) y terceros antes
+#     del consentimiento (D-254 / B-481) — B-873
+# ══════════════════════════════════════════════════════════════════════════
+#
+# **Estos dos barridos vivían en `tests/sin-comentarios-en-el-html.test.ts` y
+# `tests/terceros-antes-del-consentimiento.test.ts`, y ahí no corrían en CI ni
+# una vez.** Es B-873, y es exactamente lo que la sección «Por qué acá y no en
+# un test que lea `dist/`» de esta misma cabecera venía advirtiendo desde B-868:
+# los dos se salteaban con `it.skipIf(html.length === 0)` y los dos afirmaban en
+# su docblock «en CI el build siempre corre, así que ahí no se saltea nunca».
+#
+# Medido el 2026-09-11 parseando los dos workflows, que es lo que lo vuelve un
+# hecho y no una lectura:
+#
+#   deploy.yml    · job `deploy`    · `Tests` es el paso 4 y `Build` el paso 5
+#   push-main.yml · job `verificar` · corre `npm test` y no buildea nunca
+#                 · job `hosting`   · buildea, en OTRO runner
+#
+# En los dos, `dist/` no existe cuando vitest mira. Reproducido moviendo el
+# `dist/` local: la corrida sale **verde, con 5 de 7 casos salteados y estado
+# 0**. Un `skipIf` que se saltea en silencio es peor que no tener el chequeo,
+# porque la red de contención lo cuenta como cobertura.
+#
+# Acá sí muerde, y por el mismo motivo que la mitad 2: este es el paso que los
+# dos workflows corren inmediatamente DESPUÉS del build, sobre el **mismo**
+# `dist/` que el paso siguiente sube a Hosting. Se verifica el artefacto que se
+# publica, no uno parecido construido en otro job y con otros datos.
+#
+# **La guarda de "no verificó nada" va adentro**, y es la lección de B-873
+# convertida en aserto: un `dist/` sin una sola página HTML no es un barrido
+# limpio, es un barrido que no miró. Falla, igual que la guarda del `.js` de
+# arriba.
+#
+# El barrido lo hace `node` y no `grep`: hay que sacar `<script>`, `<style>` y
+# los comentarios HTML **antes** de buscar, y eso es un reemplazo no codicioso
+# multilínea que `sed` no sabe hacer. `node` está garantizado en los tres
+# lugares donde este script corre (los dos workflows hacen `setup-node` antes, y
+# `verificar-todo.sh` es de este mismo proyecto).
+#
+# Lo prueba `tests/sin-comentarios-en-el-html.test.ts` y
+# `tests/terceros-antes-del-consentimiento.test.ts`, que ahora manejan **este
+# script** sobre `dist/` sintéticos —igual que `tests/que-deployar.test.ts` con
+# su script— en vez de mirar un `dist/` que puede no estar. Así no hay un solo
+# `skipIf` en el camino y los casos corren en `npm test` como cualquier otro.
+
+DIR_A_BARRER="$DIR" node --input-type=module - <<'BARRIDO' || exit 1
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const DIR = process.env.DIR_A_BARRER;
+
+/**
+ * La lista blanca de hosts de tercero, y **está vacía a propósito** — D-254,
+ * B-481.
+ *
+ * Cuando esto se escribió tenía las dos de tipografía (`fonts.googleapis.com`,
+ * `fonts.gstatic.com`); B-481 las sacó al autoalojar las tres familias en
+ * `/fuentes/`. Que siga existiendo como lista en vez de borrada es el punto:
+ * agregar un tercero es agregarle una entrada acá **con el motivo escrito**, y
+ * eso se lee en una review. Un `preconnect` puesto de paso, no.
+ */
+const PERMITIDOS = new Map([
+  // ['fonts.gstatic.com', 'ejemplo: por qué este host es aceptable'],
+]);
+
+const bajo = (dir, ext, acumulado = []) => {
+  let entradas;
+  try {
+    entradas = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return acumulado;
+  }
+  for (const e of entradas) {
+    const ruta = join(dir, e.name);
+    if (e.isDirectory()) bajo(ruta, ext, acumulado);
+    else if (e.name.endsWith(ext)) acumulado.push(ruta);
+  }
+  return acumulado;
+};
+
+const relativo = (f) => f.slice(DIR.length + 1);
+
+const error = (titulo, lineas) => {
+  console.log(`::error::${titulo}`);
+  for (const l of lineas) console.log(`  ${l}`);
+  process.exit(1);
+};
+
+const html = bajo(DIR, '.html');
+const css = bajo(DIR, '.css');
+
+// ── 3.0 · Que haya algo que barrer — la guarda de B-873 ───────────────────
+// Sin esto el barrido pasa con `dist/` vacío y el gate reporta verde habiendo
+// mirado cero páginas, que es literalmente el bug que lo trajo hasta acá.
+if (html.length === 0) {
+  error(`${DIR}/ no tiene ninguna página HTML — el barrido no verificó nada (B-873)`, [
+    'El build no produjo páginas, o se apuntó el gate al directorio equivocado.',
+    'Un barrido sin nada que barrer no es un barrido limpio.',
+  ]);
+}
+if (css.length === 0) {
+  error(`${DIR}/ no tiene ninguna hoja de estilos — el barrido no verificó nada (B-873)`, [
+    'El build siempre emite al menos la hoja del layout. Si no está, o el build',
+    'quedó a medias o este directorio no es el artefacto.',
+  ]);
+}
+
+// ── 3.1 · Ningún comentario de plantilla emitido como texto — B-261 ───────
+// Un `{/* … */}` puesto entre `</head>` y `<body>` NO lo elimina Astro: se
+// emite crudo al documento. Pasó, y estuvo publicado dentro de la home. Astro
+// los borra donde parsea una expresión —adentro de un elemento— y los deja
+// pasar donde no, así que un chequeo sobre el fuente tendría que replicar su
+// parser. Se mira la salida, que es la única que sabe la verdad.
+//
+// Se saca lo que va adentro de `<script>` y `<style>`, donde `/* */` es
+// legítimo, y los comentarios HTML de verdad, que son otra cosa.
+const sinCodigo = (h) =>
+  h
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+
+const sucias = [];
+for (const f of html) {
+  const cuerpo = sinCodigo(readFileSync(f, 'utf8'));
+  for (const m of cuerpo.matchAll(/\/\*|\*\//g)) {
+    const ctx = cuerpo.slice(Math.max(0, m.index - 40), m.index + 60).replace(/\s+/g, ' ');
+    sucias.push(`${relativo(f)} — …${ctx}…`);
+  }
+}
+if (sucias.length > 0) {
+  error('un comentario de plantilla se emitió como texto al HTML (B-261)', [
+    ...sucias.slice(0, 6),
+    ...(sucias.length > 6 ? [`(y ${sucias.length - 6} más)`] : []),
+    'Astro solo elimina los comentarios donde parsea una expresión. Movelo al',
+    'frontmatter, que es código y nunca se emite.',
+  ]);
+}
+
+// ── 3.2 · Ningún host de tercero en el HTML — D-254 ───────────────────────
+// Los hosts absolutos de las etiquetas que hacen una conexión propia en el
+// load: `<link>` de precarga/hoja, `<script src>` e `<iframe src>`.
+//
+// Deliberadamente NO mira `<img>`: una actividad puede traer un flyer de
+// Instagram (D-131), ese host varía por documento, ya es una salida pública
+// decidida y auditada en `07-seguridad.md`, y no tiene nada que ver con el
+// consentimiento de analítica. Lo que se cuida acá es la **infraestructura
+// fija** que sale igual en todas las páginas porque viene de un layout.
+const hostDe = (url) => {
+  if (!/^https?:\/\//i.test(url)) return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+};
+
+const hostsDeInfraestructura = (h) => {
+  const hallazgos = [];
+  for (const m of h.matchAll(/<link\b[^>]*>/gi)) {
+    const etiqueta = m[0];
+    const rel = /\brel=["']?([\w -]+)["']?/i.exec(etiqueta)?.[1]?.toLowerCase() ?? '';
+    if (!/(^|\s)(preconnect|dns-prefetch|prefetch|preload|stylesheet)(\s|$)/.test(rel)) continue;
+    const href = /\bhref=["']([^"']+)["']/i.exec(etiqueta)?.[1];
+    const host = href ? hostDe(href) : null;
+    if (host) hallazgos.push({ etiqueta, host });
+  }
+  for (const m of h.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)) {
+    const host = hostDe(m[1]);
+    if (host) hallazgos.push({ etiqueta: m[0], host });
+  }
+  for (const m of h.matchAll(/<iframe\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)) {
+    const host = hostDe(m[1]);
+    if (host) hallazgos.push({ etiqueta: m[0], host });
+  }
+  return hallazgos;
+};
+
+const terceros = [];
+for (const f of html) {
+  for (const h of hostsDeInfraestructura(readFileSync(f, 'utf8'))) {
+    if (!PERMITIDOS.has(h.host)) {
+      terceros.push(`${relativo(f)} — ${h.host} — ${h.etiqueta.slice(0, 120)}`);
+    }
+  }
+}
+if (terceros.length > 0) {
+  error('un host de tercero aparece en el HTML sin pasar por el consentimiento (D-254)', [
+    ...terceros.slice(0, 6),
+    ...(terceros.length > 6 ? [`(y ${terceros.length - 6} más)`] : []),
+    'Un `preconnect` no es una pista pasiva: el navegador resuelve DNS, abre TCP y',
+    'completa el handshake TLS en el load, también para quien RECHAZA. En un sitio',
+    'estático el HTML es el mismo para todos, así que condicionarlo no se puede.',
+    'Si es legítimo (tipografía, CDN propio), agregalo a PERMITIDOS con el motivo',
+    'escrito, en este script; si es analítica, tiene que inyectarse por JavaScript',
+    'condicionado al consentimiento — ver src/lib/medicionSitio.ts.',
+  ]);
+}
+
+// ── 3.3 · Ni en las hojas construidas — B-481 ─────────────────────────────
+// Lo que el barrido del HTML no ve, y es por donde volverían de verdad: un
+// `@import url('https://fonts.googleapis.com/…')` o un `src: url('https://
+// fonts.gstatic.com/…')` dentro de una `@font-face` salen a la red igual que un
+// `<link>` y no aparecen en ninguna etiqueta del documento.
+const enHojas = [];
+for (const f of css) {
+  const contenido = readFileSync(f, 'utf8');
+  for (const m of contenido.matchAll(/url\(\s*['"]?(https?:\/\/[^'")\s]+)/gi)) {
+    enHojas.push(`${relativo(f)} — ${m[1]}`);
+  }
+  for (const m of contenido.matchAll(/@import\s+(?:url\()?\s*['"]?(https?:\/\/[^'")\s]+)/gi)) {
+    enHojas.push(`${relativo(f)} — @import ${m[1]}`);
+  }
+}
+if (enHojas.length > 0) {
+  error('una hoja de estilos construida sale a un host de tercero (B-481, D-254)', [
+    ...enHojas.slice(0, 6),
+    'Las fuentes van en `public/fuentes/` y se declaran con `@font-face` apuntando',
+    'a `/fuentes/…`. Cualquier otro tercero es una conexión en el load y no puede',
+    'condicionarse al consentimiento.',
+  ]);
+}
+
+// El recuento no es decorativo: es la respuesta, en el log de Actions, a la
+// pregunta que B-873 dejó sin contestar durante meses — ¿esto verificó algo?
+console.log(
+  `${DIR}/ barrido: ${html.length} páginas y ${css.length} ` +
+    `${css.length === 1 ? 'hoja' : 'hojas'}, sin comentarios ` +
+    'de plantilla emitidos (B-261) y sin hosts de tercero (D-254)',
+);
+BARRIDO
+

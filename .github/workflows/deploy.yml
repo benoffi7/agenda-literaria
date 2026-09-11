@@ -73,6 +73,13 @@ jobs:
         # Los tests de integración se saltean solos si no hay emuladores
         # (`describe.skipIf`), así que acá corre la lógica pura.
         #
+        # **Y este paso corre ANTES del build, así que acá no hay `dist/`.** No es
+        # un descuido —el build necesita la key y tarda, y no vale la pena
+        # hacerlo si la lógica no pasa— pero sí es un hecho del que algo dependía
+        # sin saberlo: dos chequeos sobre el artefacto vivían como tests y se
+        # salteaban en silencio justo acá (B-873). Todo lo que mire `dist/` va en
+        # el paso «Verificar el artefacto», más abajo.
+        #
         # Si algo falla, el job falla y no se deploya: es preferible dejar el
         # sitio con los datos de ayer que publicar una proyección rota (§5.1).
         run: npm test
@@ -86,10 +93,16 @@ jobs:
           # solo existe en la memoria de este runner.
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Verificar el artefacto (credencial afuera, App Check adentro)
+      - name: Verificar el artefacto (credencial afuera, App Check adentro, HTML limpio)
         # Trampa 4 / §5.4: si `firebase-admin` se cuela en un componente
         # cliente, la key termina en el bundle público. Falla cerrado, porque
         # publicar la key es irreversible.
+        #
+        # **Y desde B-873 el script también barre el HTML construido**: ningún
+        # comentario de plantilla emitido como texto (B-261) y ningún host de
+        # tercero contactado antes del consentimiento (D-254). Eso está acá y no
+        # en `npm test` porque acá —y solo acá— existe `dist/`, y es el mismo
+        # `dist/` que el paso siguiente sube a Hosting.
         #
         # **El script y no una copia del `grep` acá** (B-195). Estaba duplicado
         # en YAML y la copia ya había divergido: le faltaba la guarda final del

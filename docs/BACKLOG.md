@@ -962,6 +962,29 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-880 · Quedan dos tests con la forma de B-873, y uno es peor: pasa en vez de saltearse · P2
+
+**Salieron del chequeo de clase que dejó B-873** (`tests/workflows.test.ts`,
+`CON_DEUDA`), que es exactamente para lo que está: los enumera en vez de taparlos.
+
+- **`tests/no-encontrado.test.ts`** lee `dist/404.html` con `it.skipIf(!hayBuild)`.
+  Es B-873 otra vez, y es el **único skip que le queda a la suite entera**.
+- **`tests/ahoraPublico.test.ts` es peor, y por eso el ítem no es P3.** No usa
+  `skipIf`: lee `dist/_astro` y si no hay hojas hace `if (hojas === '') return;`.
+  O sea que **el caso se reporta PASSED** —no salteado, verde— habiendo mirado
+  cero bytes. Y su docblock repite la frase falsa de B-873: «en CI el build siempre
+  corre». Lo que promete es que las clases del tríptico llegaron al CSS
+  construido, y hoy esa promesa no la sostiene nadie.
+
+La salida es la de B-873 y ya está construida: el barrido va a
+`scripts/verificar-bundle.sh` —el único punto del pipeline donde `dist/` existe— y
+el test pasa a manejar el script sobre un artefacto sintético. Las dos filas de
+`CON_DEUDA` salen en el mismo cambio: el chequeo verifica las dos direcciones, así
+que dejarlas una vez resueltas lo pone en rojo.
+
+**Y con los dos resueltos, «la suite no tiene ni un skip silencioso» pasa a ser
+cierto** — que es lo que hace que ese número valga la pena mirarlo.
+
 ### B-879 · La «red» de un barrido no es un `fetch`: es la corrida entera · P3
 
 **Salió de B-867**, y es el ítem que ese cierre deja anticipado. El chequeo de la
@@ -1126,7 +1149,28 @@ junto al doble opt-in.
 **Y hay que mirar `/proponer` aparte**, que es lo que este ítem no resuelve: ahí
 el `form_submit` sale **hoy**, sin que la lista del correo exista.
 
-### B-873 · Los dos tests que leen `dist/` no verifican nada en CI, y sus docblocks afirman lo contrario · P2
+### B-873 · Los dos tests que leen `dist/` no verifican nada en CI, y sus docblocks afirman lo contrario — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Hecho, con el diagnóstico medido y dos agravantes que este ítem no tenía.**
+>
+> Tampoco corrían del todo en `verificar-todo.sh` —los tests son el paso 3 y el
+> build el paso 4, así que miraban el `dist/` de una corrida **anterior**— y un
+> build local sin credenciales emite 14 páginas y **cero de detalle**, o sea que el
+> barrido nunca vio la superficie SSG que depende de datos.
+>
+> **Se eligió la salida 2, y el costo del build no fue el argumento** (2,5 s).
+> Buildear en el job de tests verifica un artefacto que **nadie publica**, y obliga
+> a elegir entre darle la única key del proyecto a un job más o barrer un artefacto
+> degradado. Y la salida 3 no es una salida por sí sola: sin `dist/` en ese job,
+> `EXIGIR_DIST=1` deja el CI rojo para siempre — es lo que la distingue de
+> `EXIGIR_EMULADOR=1`, donde el workflow sí levanta lo que el flag exige.
+>
+> **Los tests no se borraron: pasan a manejar el script** sobre artefactos
+> sintéticos. 41 casos sin un solo `skipIf`. Y el gate gana una guarda que es la
+> lección hecha aserto: **un `dist/` sin una sola página falla**, más el recuento
+> impreso.
+>
+> **La clase quedó cerrada y no la instancia**, y ya cobró: **B-880**.
 
 **Salió de decidir dónde poner el barrido de B-868**, y es el hallazgo más grande
 de esa tanda. `sin-comentarios-en-el-html.test.ts` (B-261) y
