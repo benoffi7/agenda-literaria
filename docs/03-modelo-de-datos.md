@@ -14,7 +14,8 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
 | `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |
-| `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | **va a ser** cada cuenta el suyo, al entrar, con el mail de su propio ID token. **Hoy está vacía**: las reglas y `src/lib/usuarios.ts` están, y quien lo llame es la tajada 2 del panel |
+| `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | cada cuenta el suyo, **al entrar**, con el mail de su propio ID token (`AdminApp` lo llama desde el observador de auth) |
+| `/slugs/{slug}` | el índice de direcciones web: `{ actividadId, porUid, creadoEn }` (B-888, D-660) | el panel, **en el mismo `writeBatch` que la actividad**; y `scripts/sembrar-slugs.mjs` con el Admin SDK, que además deja el centinela `_indice` |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
 `tags`, `incluye-actividad`.
@@ -29,6 +30,36 @@ historial, y renombrar una cuenta se arregla en un lugar.
 **No guarda el rol**, a propósito: el rol es el custom claim del token y ése es su
 único dueño. Copiarlo sería una segunda fuente de verdad que se desincroniza en
 silencio el día que el dueño cambie un claim y la persona no vuelva a entrar.
+
+### `/slugs/{slug}` — el índice de direcciones web (B-888, D-660)
+
+Un documento por dirección web tomada, con el id **igual al slug**. Existe porque
+la regla de B-888 le rechaza al publicador la query que barría la colección
+(trampa 7), y el slug único es un invariante de **todo** el catálogo: no se
+verifica mirando solo lo propio. Acá la pregunta se contesta con un `get` por id.
+
+```
+/slugs/{slug}
+  actividadId: string     // quién lo usa
+  porUid: string          // quién lo reservó (la regla lo exige igual al del token)
+  creadoEn: Timestamp     // `request.time`, así no se antedata
+```
+
+**No es un espejo del slug: es la unicidad misma.** La reserva viaja en el mismo
+`writeBatch` que la actividad y `allow update: if false`, así que un slug ya
+reservado hace que el batch entero se rechace — dos guardados simultáneos con el
+mismo slug **ya no pasan los dos**, que es lo que sí pasaba con el barrido
+(check-then-write).
+
+Lo escriben **los cuatro lugares que escriben el slug**, y solo esos: crear,
+editar cuando cambió (posible únicamente antes de publicar, trampa 10), borrar y
+restaurar desde el historial. Los cuatro pasan por `src/lib/slugs.ts`.
+
+**`/slugs/_indice` es el centinela**, y no es un documento más: lo escribe solo el
+script de siembra, y mientras no está `slugLibre()` **se niega a contestar** en vez
+de decir «libre» sobre una dirección ya publicada. El `_` lo hace inalcanzable
+como slug —`slugify` solo produce `[a-z0-9-]`— y la regla lo exige con un
+`matches`, así que ningún cliente lo puede crear.
 
 **El nombre de la taxonomía no siempre es el del campo del documento**, y ya era
 así antes de la sexta: `barrio` vive en `sede.barrio` y `plataforma` en

@@ -1309,7 +1309,9 @@ mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atravie
 | ¿Puede presentarse con el mail de otro? | **No** | `email` tiene que ser idéntico a `request.auth.token.email`, más `email_verified` |
 | ¿Puede leer lo que no es suyo? | **No** | `read` mira `createdBy`. Y como `read` incluye `list`, una query sin `where('createdBy','==',uid)` se rechaza **entera** (trampa 7) — no devuelve un subconjunto |
 | ¿Y las subcolecciones `versiones/`? | **No, ni la suya** | La regla del padre no cascadea: `versiones` decide aparte y se queda en `esAdmin()`. El historial es una de las pantallas que su panel no tiene |
-| ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe** | Las reglas no pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega una opción» y «reescribe la taxonomía del sitio» son el mismo permiso |
+| ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe** | Las reglas no pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega una opción» y «reescribe la taxonomía del sitio» son el mismo permiso. Desde la tajada 2 el panel **no le ofrece «Otro…»** y el guardado saltea las dos escrituras: no es la frontera, es no ofrecer lo que va a fallar |
+| ¿Puede subir la imagen de su actividad? | **Sí, y solo crear** (B-888 tajada 2, D-660) | `create` abierto a los dos roles; para el acotado, además `resource == null`. El uuid del flyer de una actividad publicada **es conocible** —viaja adentro de la URL de descarga, que es pública—, así que sin esa guarda podría reemplazar el flyer de cualquiera. `delete` y `list` siguen en `esAdmin()` |
+| ¿Y el índice `/slugs`? | **Lee por id, reserva lo suyo, suelta lo suyo** | Es lo que le permite verificar que una dirección web no esté tomada sin barrer el catálogo (que la regla le rechaza entero). `list` está en `false`: enumerarlo sería la lista de direcciones de **todos** los borradores |
 | ¿Y las bandejas (`/reportes`, `/propuestas`)? | **No** | Llevan el mail de otra cuenta y el contacto de un tercero. Y revisar propuestas es decidir qué entra al catálogo, que es la autoridad que este rol no tiene |
 | ¿Y `/sistema`? | **No** | Trae las consultas con las que Google nos muestra — texto que tipearon visitantes — y el flag de rebuild |
 | ¿Puede **publicar el link de la reunión**? | **Sí, igual que un admin** | Lo señaló el `auditor-privacidad`, y va acá porque es lo único que la tabla no contestaba: `online.urlPublica: true` es el **único desvío del §5.1** (D-15), y hace salir el link al `events.json` y al evento de Calendar. Una regla no puede hacer política de campo —no sabe si ese link «debería» ser público—, así que el rol lo alcanza y la decisión es del dueño: si alguna vez hay que negárselo, la cláusula es `request.resource.data.online.urlPublica == false` para la rama del publicador, y va en `firestore.rules` |
@@ -1331,9 +1333,51 @@ dirección en la que conviene fallar. Ese estado no se puede crear con
 pero sí tocando la consola a mano, y las dos mitades hacen falta.
 
 **Todo esto se verifica por mutación**, que es lo único que hace que una regla de
-seguridad valga: `tests/rol-publicador.integracion.test.ts` y
-`tests/usuarios.integracion.test.ts` tienen, cada cláusula, el caso que se pone
-rojo al borrarla, anotado al lado. **Veinticinco mutaciones probadas, y tres se
+seguridad valga: `tests/rol-publicador.integracion.test.ts`,
+`tests/usuarios.integracion.test.ts` y `tests/storage-reglas.integracion.test.ts`
+tienen, cada cláusula, el caso que se pone rojo al borrarla, anotado al lado.
+
+**La tajada 2 (D-660) agregó treinta y una mutaciones más, todas en rojo**, sobre las
+cláusulas nuevas de `/slugs`, la de Storage y el gating del panel. **Y se cobró
+cinco cosas**: dos cláusulas muertas en `reservaValida()` —el `hasAll` de las tres
+claves y el `actividadId is string`, las dos por el mismo motivo que las tres de
+`usuarioValido()`— y **tres bugs reales**, que son el mismo con tres caras: los
+cuatro lugares que escriben el slug tienen que decidir contra el **documento** y
+no contra el snapshot de la pantalla.
+
+| Dónde | Qué hacía | Consecuencia |
+|---|---|---|
+| `actualizarActividad` | gateaba el batch con `slugEnDisco &&` | una actividad **sin** slug en disco se guardaba con su primera dirección web y **sin reserva** |
+| `restaurarCampo` | comparaba y borraba contra `actual.slug` (el montaje) | con el slug cambiado en el medio, borraba **la reserva de otra actividad** |
+| `borrarActividad` | soltaba el slug que le pasaba el listado | con la fila sin refrescar soltaba el **viejo**, y el actual quedaba reservado sobre un id borrado |
+
+Los tres son alcanzables con dos pestañas del mismo panel, **ninguno tiraba un
+error**, y los tres dejaban el índice diciendo lo contrario del catálogo — que es
+peor que no tener índice. Los encontró el `auditor-trampas` en tres pases
+sucesivos, y cada uno tiene ahora su caso con mutación probada. El de
+`restaurarCampo` además hizo crecer un chequeo de clase que ya existía y no lo
+veía: buscaba llamadas a guardas (`*Restaurables(…)`) y esto era una lectura cruda
+de un campo.
+
+**Y lo que `/slugs` acepta, dicho al derecho** (lo pidió el `auditor-privacidad`,
+porque el bloque argumentaba largo lo que cierra y nada de lo que deja pasar):
+
+| Qué queda abierto | Por qué se acepta |
+|---|---|
+| Un `get` entrega la reserva entera, **`porUid` incluido** | Una regla no proyecta (D-128). Condicionar el `get` por `porUid` rompería la unicidad: el publicador **tiene que** poder saber que un nombre ajeno está tomado. Lo que se entrega es un uid pelado, que él no puede resolver a un mail — el directorio le está cerrado. Tiene un caso **positivo** en el test, para que el día que alguien intente cerrarlo se vea qué se rompe |
+| Un publicador puede **reservar un nombre sin cargar la actividad** | Verificar que `actividadId` exista pediría un `get()` a `/actividades` desde la regla, facturado en cada evaluación. Falla **cerrada** —un nombre que nadie puede usar, nunca dos actividades con la misma URL— y lo barre `scripts/sembrar-slugs.mjs --reparar` |
+
+> ⚠️ **Y una enseñó algo sobre la plataforma, no sobre el código.** La guarda
+> contra pisar una imagen ajena **no** es separar `allow create` de
+> `allow update`, que es lo que uno escribe primero: contra el emulador, con
+> `create: if true` y `update: if false`, **la segunda subida sobre el mismo
+> objeto pasa**. El overwrite entra por `create`. La que sí frena —y que sí se
+> puede verificar en las dos direcciones— es `resource == null`. Es exactamente la
+> lección del `size() > 0` de `usuarioValido()` que sigue abajo: un supuesto sobre
+> la plataforma declarado sin verificar es una cláusula que se lee como
+> load-bearing y no frena nada.
+
+De la tajada 1: **veinticinco mutaciones probadas, y tres se
 las cobró** — tres asertos que se leían como load-bearing y no podían fallar (un
 `create` con las dos firmas ajenas a la vez, dos escrituras a las bandejas con un
 documento sonda que sus validadores rechazaban igual) más tres cláusulas muertas

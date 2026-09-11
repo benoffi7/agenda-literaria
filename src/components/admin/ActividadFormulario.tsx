@@ -56,10 +56,19 @@ import {
 import { guardarActividad } from '@/lib/formulario/guardar';
 import { faltaParaPublicar } from '@/lib/schema';
 import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
+import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { ActividadConId, ActividadForm, CampoMultivalor } from '@/types/actividad';
 
 interface Props {
   uid: string;
+  /**
+   * B-888 — el rol de quien guarda. Decide **una** cosa acá: si el guardado
+   * intenta escribir las etiquetas nuevas y el conteo de `usos` en `/opciones/*`
+   * (ver `formulario/guardar.ts`). Qué controles ofrecen «Otro…» lo decide
+   * `campos-del-panel.tsx` con el store de `rolActivo.ts`, que es el único lugar
+   * por el que pasan las cinco taxonomías.
+   */
+  rol: RolDelPanel;
   /**
    * **Con qué forma se dibuja el formulario** — B-814. `pc`: pestañas y todo el
    * ancho. `celular`: las nueve secciones a lo largo, sin pestañas, que es cómo
@@ -121,6 +130,7 @@ interface Props {
 
 export function ActividadFormulario({
   uid,
+  rol,
   vistaDelPanel,
   inicial,
   copia,
@@ -417,6 +427,7 @@ export function ActividadFormulario({
       const r = await guardarActividad({
         form,
         uid,
+        rol,
         estadoDestino,
         idActual: inicial?.id,
         // B-340 — el documento antes de esta edición, para que `usosAContar`

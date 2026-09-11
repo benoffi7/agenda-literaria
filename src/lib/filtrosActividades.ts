@@ -66,7 +66,7 @@ export const ETIQUETA_DESTACADO: Record<FiltroDestacado, string> = {
 };
 
 /**
- * Los ocho ejes que se pueden cruzar, más el texto.
+ * Los nueve ejes que se pueden cruzar, más el texto.
  *
  * `''` es "sin filtrar" en todos los que son un valor suelto. Los que guardan
  * slugs de taxonomía (`tipo`, `barrio`, `arancel`) guardan el slug: la etiqueta la
@@ -83,10 +83,21 @@ export const ETIQUETA_DESTACADO: Record<FiltroDestacado, string> = {
  * **multivaluado**, así que un desplegable no alcanza. Va con chips de
  * alternancia, que es el mismo control que el sitio (ver `chipsDeTags`).
  *
- * Del tercer descarte de D-74 —quién la cargó— **no se revisa nada**: es un uid,
- * y el §5.1 mantiene los identificadores afuera de todo lo que se muestre.
+ * ── Y el tercer descarte de D-74 —quién la cargó— también se revierte ────
+ * B-888, y el motivo por el que estaba afuera es literalmente el que dejó de ser
+ * cierto. Decía: «no se revisa nada: es un uid, y el §5.1 mantiene los
+ * identificadores afuera de todo lo que se muestre». Con `/usuarios` (D-650) el
+ * panel tiene el **mail** de cada cuenta, así que el desplegable muestra un mail
+ * y no un uid — y el uid se queda del lado de adentro, que es lo que el §5.1
+ * pedía. El dueño lo pidió en la tajada 2 del panel.
  *
- * Qué **no** está y por qué, en D-74: quién la cargó.
+ * **El uid sí vive adentro de `Filtros`**, y hay que saber por qué: la
+ * alternativa era pasarlo como parámetro a `filtrar`, y `chipsDeTags` **llama a
+ * `filtrar` por dentro** para contar cada chip — con un parámetro nuevo que ese
+ * llamador no pase, los números de los chips ignorarían este eje y dirían otra
+ * cosa que la lista. `Filtros` es estado en memoria del panel y no viaja a
+ * ninguna salida pública (`toPublic` no lo conoce), así que el uid acá no cruza
+ * ninguna frontera del §5.1.
  *
  * ── `arancel` estaba descartado, y se revierte (B-272, D-152) ─────────────
  * D-74 lo dejó afuera con este argumento: «es un atributo de publicación, no una
@@ -123,6 +134,14 @@ export interface Filtros {
    * sumar el siguiente.
    */
   tags: string[];
+  /**
+   * B-888 — el uid de quien **creó** la actividad, o `''` para no filtrar.
+   *
+   * Se filtra por `createdBy` y no por `updatedBy` porque la pregunta del dueño
+   * es «¿qué cargó esta cuenta?»: quién la tocó por última vez ya lo contesta la
+   * marca de cada tarjeta (`marcaDeAutoria`), y es un dato que cambia solo.
+   */
+  autor: string;
 }
 
 export const FILTROS_VACIOS: Filtros = {
@@ -135,6 +154,7 @@ export const FILTROS_VACIOS: Filtros = {
   cuando: 'cualquiera',
   destacado: '',
   tags: [],
+  autor: '',
 };
 
 /**
@@ -157,7 +177,10 @@ export const cantidadDeFiltros = (f: Filtros): number =>
    * las etiquetas se suman con «o»: la segunda etiqueta **ensancha** el resultado,
    * no lo recorta. Contarlas de a una diría que hay más recorte cuando hay menos.
    */
-  (f.tags.length > 0 ? 1 : 0);
+  (f.tags.length > 0 ? 1 : 0) +
+  // B-888 — cuenta como uno más: es un desplegable de valor suelto, como los
+  // otros seis.
+  (f.autor ? 1 : 0);
 
 /** ¿Hay algo filtrando, texto incluido? Decide el mensaje del listado vacío. */
 export const hayFiltros = (f: Filtros): boolean =>
@@ -262,6 +285,14 @@ export const filtrar = (
       const suyas = a.tags ?? [];
       if (!filtros.tags.some((t) => suyas.includes(t))) return false;
     }
+    /*
+     * B-888 — quién la creó. `?? ''` con el mismo criterio que `arancel` y
+     * `barrio`: una actividad anterior a `createdBy` tiene `''`, y `'' !== uid`
+     * la deja afuera de cualquier cuenta elegida — que es lo correcto, porque de
+     * ésas no se sabe quién las cargó (es lo mismo que `autoriaDe` contesta con
+     * `desconocida`).
+     */
+    if (filtros.autor && (a.createdBy ?? '') !== filtros.autor) return false;
     if (filtros.cuando === 'por-venir' && !tieneFuturo(a, ahora)) return false;
     if (filtros.cuando === 'sin-futuro' && tieneFuturo(a, ahora)) return false;
     return true;
@@ -336,6 +367,17 @@ export interface OpcionesPresentes {
   hayDestacadas: boolean;
   /** B-274 — los slugs de etiqueta que existen en los datos. */
   tags: string[];
+  /**
+   * B-888 — los uids que aparecen en `createdBy`, ordenados por el mail que les
+   * corresponda (quien pinta lo resuelve con `mailesPorUid`).
+   *
+   * **Con uno solo, el control no aparece**: lo decide quien pinta, con el mismo
+   * criterio que `hayDestacadas` y los barrios — si todas las actividades son de
+   * la misma cuenta, el filtro no distingue nada y es ruido. Eso además hace que
+   * el panel de un publicador no lo muestre nunca sin una rama por rol: su
+   * listado ya trae solo lo suyo.
+   */
+  autores: string[];
 }
 
 /** Los cuatro estados, en el idioma del panel. */
@@ -383,6 +425,7 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
   const modalidades = new Set<Modalidad>();
   const barrios = new Set<string>();
   const tags = new Set<string>();
+  const autores = new Set<string>();
   let hayDestacadas = false;
 
   for (const a of actividades) {
@@ -398,6 +441,9 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
       modalidades.add(m);
     }
     if (a.sede?.barrio) barrios.add(a.sede.barrio);
+    // B-888 — solo las que declaran autor: las anteriores a `createdBy` no
+    // aportan una opción, aportarían una fila vacía en el desplegable.
+    if (a.createdBy) autores.add(a.createdBy);
   }
 
   // El orden de los desplegables no puede salir del orden de llegada de los
@@ -432,6 +478,14 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
      * llegada de los datos, que `listarActividades()` no garantiza.
      */
     tags: [...tags].sort((a, b) => a.localeCompare(b, 'es')),
+    /*
+     * B-888 — por uid y no por mail, porque acá no hay directorio: este módulo
+     * es puro y el mapa uid→mail lo tiene el componente. El orden estable es lo
+     * único que importa: sin él, el desplegable se reordenaría según el orden de
+     * llegada de los datos, que es el mismo motivo por el que los otros seis
+     * ejes se ordenan acá y no en el JSX.
+     */
+    autores: [...autores].sort(),
   };
 };
 

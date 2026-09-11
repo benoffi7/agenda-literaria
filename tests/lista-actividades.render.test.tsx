@@ -141,6 +141,7 @@ const props = {
   onHistorial: vi.fn(),
   version: 0,
   uid: 'uid-propio',
+  rol: 'admin' as const,
 };
 
 afterEach(() => {
@@ -418,7 +419,18 @@ describe('la carga de la colección no se vuelve a copiar — B-215', () => {
       'src/components/admin/ListaActividades.tsx',
       'src/components/admin/CalendarioActividades.tsx',
     ]) {
-      expect(readFileSync(raiz(rel), 'utf8'), rel).toContain('useActividades(version)');
+      /*
+       * B-888 — el hook pasó a recibir `(version, rol, uid)`: `rol` y `uid`
+       * deciden la **forma de la query** (un publicador que pida la colección
+       * entera recibe un rechazo sobre la query completa — trampa 7), así que las
+       * dos vistas tienen que pasarle los tres. Se afirma `useActividades(` más
+       * los tres argumentos, y no el literal de la llamada, porque el formateo la
+       * parte en varias líneas.
+       */
+      const src = readFileSync(raiz(rel), 'utf8');
+      const desde = src.slice(src.indexOf('useActividades('));
+      const llamada = desde.slice(0, desde.indexOf(')') + 1).replace(/\s/g, '');
+      expect(llamada, rel).toBe('useActividades(version,rol,uid,)');
     }
   });
 

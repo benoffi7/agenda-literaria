@@ -11,7 +11,7 @@ Tres terminales:
 
 ```bash
 npm run emu      # emuladores: Auth 9099, Firestore 8080, Storage 9199, UI 4000
-npm run seed     # siembra /opciones/* con las opciones base
+npm run seed     # siembra /opciones/* y el centinela del índice de slugs
 npm run dev      # Astro en :4321 — el panel está en /admin
 ```
 
@@ -45,11 +45,13 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
-| `npm run seed` | siembra `/opciones/*` en el emulador |
+| `npm run seed` | siembra `/opciones/*` y el centinela `/slugs/_indice` en el emulador |
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
 | `npm run admin:claim:prod -- --publicador <uid\|email>` | claim `publicador` (solo lo que él carga — B-888) |
 | `npm run admin:claim:prod -- --quitar <uid\|email>` | le saca el rol a una cuenta |
+| `npm run slugs:sembrar -- --aplicar` | siembra el índice de direcciones web en el emulador (B-888, D-660) |
+| `npm run slugs:sembrar:prod` | informa qué sembraría en producción. `-- --aplicar --produccion` lo escribe; `--reparar` además borra las reservas huérfanas |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
@@ -360,6 +362,57 @@ aprobada, D-26): sirve para que el documento no se lea a medias.
 ```bash
 npm run opciones:aprobar:prod -- --backfill
 ```
+
+## Sembrar el índice de direcciones web (B-888, D-660)
+
+**Es un paso del despliegue, no una prolijidad, y va ANTES de habilitarle el
+panel a nadie con el rol `publicador`.**
+
+`/slugs/{slug}` es lo que le permite al panel verificar que una dirección web no
+esté tomada sin barrer el catálogo — que con la regla de B-888 se le rechaza
+entero a una cuenta acotada (trampa 7). Las actividades que **ya existen** no
+tienen reserva, así que hasta que esto corra sus direcciones se leerían como
+libres: eso es la trampa 10 (dos actividades peleando la misma URL).
+
+Por eso el script deja el centinela `/slugs/_indice` y el panel **se niega a
+guardar** mientras no está, con el mensaje «no se pudo verificar la dirección
+web». Si alguien reporta eso, la respuesta es este script.
+
+```bash
+# 1. Ver qué haría, sin escribir (contra producción)
+npm run slugs:sembrar:prod
+
+# 2. Sembrarlo
+npm run slugs:sembrar:prod -- --aplicar --produccion
+```
+
+Ensayarlo primero contra el emulador es gratis: `npm run slugs:sembrar --`
+(mismo script, otro objetivo). Como todo script que escribe, **sin `--aplicar`
+solo informa**, y `--aplicar` fuera del emulador exige `--produccion` explícito.
+
+**Es idempotente, y en una sola pasada.** Escribe la reserva que falta **y la que
+apunta a otra actividad**; con `--reparar` borra además las huérfanas —las de un
+nombre que ninguna actividad usa—:
+
+```bash
+npm run slugs:sembrar:prod -- --aplicar --produccion --reparar
+```
+
+Una reserva queda huérfana cuando la actividad que la usaba ya no existe. Pasa en
+un caso conocido y acotado: si un admin le cambió la dirección web a la actividad
+de un publicador, la reserva queda a nombre del admin y el publicador no la puede
+soltar al borrar. Es la dirección en la que el índice falla —un nombre que no se
+puede reusar, nunca dos actividades con la misma URL— y este flag la barre.
+
+> **Y ojo con separar «borrar» de «escribir».** La primera versión del script
+> mandaba la reserva **desfasada** (la que apunta a otra actividad) a la lista de
+> borrar y no a la de escribir: `--reparar` la borraba, nadie la reponía, y la
+> pasada dejaba a esa actividad **sin reserva** — el estado que el script existe
+> para arreglar. Lo encontró correrlo de verdad contra el emulador, no un test.
+
+Si el script avisa `⚠️ «x» lo usan dos actividades`, eso **ya estaba** en el
+catálogo y hay que resolverlo a mano antes de publicar las dos: el índice se queda
+con la primera.
 
 ## Entornos
 

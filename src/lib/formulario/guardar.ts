@@ -14,7 +14,9 @@
 import { actualizarActividad, crearActividad, slugDisponible } from '@/lib/actividades';
 import { usosAContar } from '@/lib/formulario/etiquetas';
 import { registrarUsos, upsertOpcion, upsertOpciones } from '@/lib/opciones';
+import { PERMISOS, type RolDelPanel } from '@/lib/rolDelPanel';
 import { actividadFormSchema } from '@/lib/schema';
+import { SlugTomado } from '@/lib/slugs';
 import { slugify } from '@/lib/slugify';
 import { CAMPOS_MULTIVALOR } from '@/types/actividad';
 import type { ActividadForm, CampoTaxonomia } from '@/types/actividad';
@@ -30,6 +32,24 @@ export interface EntradaGuardado {
   form: ActividadForm;
   /** uid de quien guarda: autor del documento y huella de la opción nueva (§4.3). */
   uid: string;
+  /**
+   * El rol de quien guarda — B-888 tajada 2.
+   *
+   * Decide **una sola cosa acá**: si las etiquetas nuevas y el conteo de `usos`
+   * se escriben o se saltean. `/opciones/{campo}` es de admin (las reglas no
+   * pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega
+   * una opción» y «reescribe la taxonomía del sitio» son el mismo permiso), y
+   * sin este portón un publicador guardaría bien y las dos escrituras se
+   * rechazarían **en silencio**: el `catch` de `registrarUsos` es mudo a
+   * propósito —está pensado para una carrera rara, no para fallar siempre— y el
+   * de las altas emitiría un aviso de «volvé a tipear la etiqueta» que no tiene
+   * arreglo posible del lado de quien lo lee.
+   *
+   * Va como rol y no como booleano para que la respuesta salga de `PERMISOS`, que
+   * es donde ya está decidido quién escribe taxonomías: un booleano acá sería una
+   * segunda fuente de la misma regla.
+   */
+  rol: RolDelPanel;
   /**
    * Estado al que se guarda, cuando el botón lo fuerza ("Guardar borrador").
    * Sin esto se guarda con el estado que tiene el formulario.
@@ -117,7 +137,7 @@ export const guardarActividad = async (
   entrada: EntradaGuardado,
   puertos: PuertosGuardado = puertosFirestore,
 ): Promise<ResultadoGuardado> => {
-  const { form, uid, estadoDestino, idActual, labelsNuevos, multivalorNuevos, anterior } =
+  const { form, uid, rol, estadoDestino, idActual, labelsNuevos, multivalorNuevos, anterior } =
     entrada;
   // Desestructurados a propósito: el chequeo de clase de B-71
   // (`tests/clases-de-bug.test.ts`) busca las dos escrituras **por nombre en
@@ -163,9 +183,27 @@ export const guardarActividad = async (
     // resuelve la etiqueta con el des-slug de D-11 ("Con Beca Parcial" en lugar
     // de "Con beca parcial") y volver a tipearla la registra. Se pasa de perder
     // datos a perder una capitalización.
-    const id = idActual
-      ? (await actualizarActividad(idActual, guardado, uid), idActual)
-      : await crearActividad(guardado, uid);
+    /*
+     * B-888 tajada 2 — el `slugDisponible` de arriba es la guarda **previa**, la
+     * que da el mensaje accionable con el campo marcado. La guarda **real** está
+     * acá adentro: la reserva de `/slugs/{slug}` viaja en el mismo `writeBatch`
+     * que la actividad, así que dos guardados simultáneos con el mismo slug ya no
+     * pasan los dos (D-660). Cuando el servidor rechaza ese batch, el resultado
+     * tiene que ser el mismo que el del chequeo previo —y no un error crudo—, o
+     * el formulario mostraría «Missing or insufficient permissions» para algo que
+     * se arregla cambiando una línea del campo «dirección web».
+     */
+    let id: string;
+    try {
+      id = idActual
+        ? (await actualizarActividad(idActual, guardado, uid), idActual)
+        : await crearActividad(guardado, uid);
+    } catch (error) {
+      if (error instanceof SlugTomado) {
+        return { estado: 'slug-tomado', errores: { slug: 'Ya hay otra actividad con este slug' } };
+      }
+      throw error;
+    }
 
     // §4.2 — las etiquetas nuevas se incorporan al desplegable acá, en
     // transacción y reusando por slug si ya existían. §4.3 — el uid queda como
@@ -211,6 +249,23 @@ export const guardarActividad = async (
      * con el mismo texto son un solo nombre en pantalla, porque nombrarlo dos
      * veces no agrega información — es el mismo criterio que `resumirFaltantes`.
      */
+    /*
+     * ── El portón del rol, y por qué está acá y no en un `if` del componente ──
+     * B-888 tajada 2. `/opciones/{campo}` es de admin, así que para un publicador
+     * las dos escrituras de abajo se rechazan **siempre**. Saltearlas no es
+     * esconder un botón: es no hacer una llamada que ya sabemos que va a fallar.
+     *
+     * Y la salida es `restantes` **vacío**, no el conjunto completo: el aviso de
+     * B-177 dice «volvé a tipear esta etiqueta», y para este rol ese consejo no
+     * tiene arreglo posible —no va a poder crearla nunca—, así que sería un
+     * cartel que enseña a ignorar los carteles. La UI, por el otro lado, no le
+     * ofrece «Otro», así que en el camino normal no hay etiquetas nuevas que
+     * registrar: esto es el piso, no el mecanismo.
+     */
+    if (!PERMISOS[rol].escribeTaxonomias) {
+      return { estado: 'ok', id, guardado, etiquetasSinRegistrar: [] };
+    }
+
     const clave = (campo: string, label: string) => `${campo}\0${label}`;
     const restantes = new Map<string, string>([
       ...labelsNuevos.map((l) => [clave(l.campo, l.label), l.label] as const),

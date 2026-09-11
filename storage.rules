@@ -18,46 +18,94 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    /*
+     * ══ EL ROL `publicador` DE B-888, Y POR QUÉ SOLO `create` ════════════
+     *
+     * La tajada 1 dejó este archivo sin el rol, así que un publicador **no podía
+     * subir la imagen de su actividad**, y dejó escritas las dos salidas. La
+     * tajada 2 eligió la segunda, y la elección es de las que conviene leer antes
+     * de "mejorarla".
+     *
+     * ── El problema, que sigue siendo cierto ──────────────────────────────
+     * El prefijo `imagenes/{archivo}` es **plano y el nombre es un uuid opaco**
+     * (B-206 #1, porque al subir todavía no hay actividad a la cual agrupar). O
+     * sea que **el objeto no dice de quién es**, y las reglas de Storage no
+     * pueden leer el documento de Firestore que lo va a referenciar: con este
+     * prefijo, «solo las suyas» **no es expresable**.
+     *
+     * ── Por qué NO se agrupó por uid (D-660) ──────────────────────────────
+     * `imagenes/{uid}/{archivo}` es lo único que haría verificable «lo suyo», y
+     * cuesta lo que ningún beneficio de acá paga:
+     *
+     *  - **la URL de descarga lleva el path adentro** (B-206 #1), así que mover
+     *    un objeto le cambia la URL — y esas URLs están escritas en documentos
+     *    publicados, en el `events.json`, en `og:image` y en el `srcset` del
+     *    sitio. Migrar objetos sería reescribir documentos;
+     *  - arrastra `rutaDeImagen`, `rutaDeMiniatura`/`urlDeMiniatura` (que derivan
+     *    `miniaturas/<id>.jpg` del nombre del original), el trigger de
+     *    optimización y `limpiarImagenesHuerfanas`, que solo recorre dos
+     *    prefijos;
+     *  - y obliga a que el `match` de este prefijo pase de un segmento a un
+     *    comodín de ruta completa, que es —con todas las letras, y está anotado
+     *    en el docblock de `miniaturas/` de más abajo y **verificado por
+     *    `tests/imagenes-function.test.ts`, que falla si ese patrón aparece en
+     *    este archivo**— el día en que la trampa 13 se reabre sin que nada avise.
+     *
+     * ── El publicador SOLO CREA, y la guarda es `resource == null` ───────
+     * Un publicador no puede **pisar** un objeto que ya existe, y esto importa
+     * más de lo que parece: el path viaja adentro de la URL de descarga (B-206
+     * #1) y `get` es público, así que el uuid del flyer de cualquier actividad
+     * publicada **es conocible**. Sin esta guarda, abrir la subida al rol sería
+     * dejarle reemplazar el flyer de cualquiera.
+     *
+     * **La guarda es `resource == null` explícito, y NO la separación
+     * `create`/`update`**, que es lo que uno escribiría primero. Se probó contra
+     * el emulador el 2026-09-11 y **no sirve**: con `allow create: if true` y
+     * `allow update: if false`, una segunda subida sobre el mismo objeto **pasa**.
+     * O sea que el emulador no clasifica el overwrite como `update`. La
+     * documentación dice que en producción sí, pero eso es un **supuesto sobre la
+     * plataforma que no podemos verificar**, y este proyecto ya se quemó con uno
+     * (el `size() > 0` de `usuarioValido()` en `firestore.rules`, que el
+     * `auditor-privacidad` marcó y resultó falso). Una guarda que no se puede
+     * probar no es una guarda: se lee como load-bearing y nadie sabe si frena.
+     *
+     * `resource == null` **sí** se comporta igual en el emulador —probado en las
+     * dos direcciones— y lo fija `tests/storage-reglas.integracion.test.ts`.
+     *
+     * `delete` se queda en `esAdmin()` y **no le cuesta nada**: el panel no borra
+     * de Storage desde ningún lado —no hay un solo `deleteObject` en `src/`—, los
+     * huérfanos los barre `limpiarImagenesHuerfanas` con el Admin SDK. O sea que
+     * lo que el rol «no puede» es algo que nadie puede.
+     *
+     * `list` se queda en `esAdmin()` por la trampa 13: enumerar el prefijo
+     * entrega también los flyers de las actividades en borrador de todo el mundo.
+     *
+     * **Lo que esto acepta, dicho al derecho:** el prefijo sigue sin decir de
+     * quién es cada objeto, así que un publicador puede dejar objetos huérfanos
+     * (los barre el script) y puede subir tantos como el formulario le deje. Lo
+     * que no puede es pisar, borrar ni enumerar.
+     */
+    function esPublicador() {
+      return request.auth != null && request.auth.token.get('publicador', false) == true;
+    }
+
     // Igual que en `firestore.rules`: `token.get('admin', false)` y no
     // `token.admin`, porque leer una clave ausente de un map es un evaluation
     // error y no `false` — el cliente recibiría "evaluation error" en lugar de
     // un permission-denied limpio.
     function esAdmin() {
-      return request.auth != null && request.auth.token.get('admin', false) == true;
+      return request.auth != null
+        && request.auth.token.get('admin', false) == true
+        // **El mismo `!esPublicador()` que `firestore.rules`, y por el mismo
+        // motivo** (B-888, D-650): cada regla de abajo se lee
+        // `esAdmin() || (esPublicador() && …)` y `||` cortocircuita, así que sin
+        // esto un token con los **dos** claims —que solo sale de un error del
+        // operador tocando la consola a mano— pasaría como admin y el rol nuevo
+        // no se ejercería nunca. Cae del lado acotado, que es la dirección en la
+        // que conviene fallar. Sin esta línea los dos archivos dirían cosas
+        // distintas sobre el mismo token, que es la clase de B-88.
+        && !esPublicador();
     }
-
-    /*
-     * ⚠️ **El rol `publicador` de B-888 NO existe en este archivo, y hoy eso
-     * significa que un publicador no puede subir la imagen de su actividad.**
-     *
-     * Está dicho para que se lea como límite conocido y no como olvido — y sobre
-     * todo para que nadie lo cierre agregando `|| esPublicador()` de forma
-     * mecánica, que es lo que parece la respuesta y no lo es.
-     *
-     * El motivo es la forma del prefijo: `imagenes/{archivo}` es **plano y el
-     * nombre es un uuid opaco** (una decisión de B-206 #1, porque al subir
-     * todavía no hay actividad a la cual agrupar). O sea que **el objeto no dice
-     * de quién es**, y las reglas de Storage no pueden leer el documento de
-     * Firestore que lo va a referenciar. Con este prefijo, «solo las suyas» no es
-     * expresable: abrir `create` a un publicador es abrirlo para todo el prefijo,
-     * y abrir `delete` sería dejarlo borrar la foto de cualquiera que conozca el
-     * uuid.
-     *
-     * Falla **cerrada**, que es la dirección correcta para una frontera que no se
-     * puede verificar: el publicador no sube, no que suba de más. Las dos salidas
-     * son decisión del dueño y van con la tajada 2 del panel:
-     *
-     *  1. **Subir bajo su uid** (`imagenes/{uid}/{archivo}`) — la única que hace
-     *    verificable «lo suyo», y la que obliga a migrar los objetos que ya
-     *    están, más `rutaDeMiniatura`, `limpiar-imagenes-huerfanas.mjs` y el
-     *    `match` de las miniaturas. Ojo con el `{ruta=**}` que eso tienta: el
-     *    docblock de `miniaturas/` de más abajo ya tiene anotado que ése es el
-     *    día en que la trampa 13 se reabre sin que nada avise.
-     *  2. **Abrir `create` al rol y dejar `update`/`delete`/`list` en
-     *    `esAdmin()`** — barato, y acepta explícitamente que un publicador pueda
-     *    dejar objetos huérfanos (los barre el script de limpieza) y que el
-     *    prefijo no distinga autor en la subida.
-     */
 
     // Los dos tipos que el panel sabe limpiar de metadatos sin recomprimir
     // (`sinMetadatos` en `src/lib/imagenes-archivo.ts`). WebP y AVIF quedaron
@@ -126,13 +174,28 @@ service firebase.storage {
       // `tests/imagenes-function.test.ts`, que lee `MARCA_OPTIMIZADA` del fuente
       // de la Function y la busca acá — dos lados que derivan el mismo nombre por
       // separado son la clase de B-88.
-      allow create, update: if esAdmin()
-        && tipoAceptado()
+      //
+      // **B-888, tajada 2: suben los dos roles, y el publicador solo crea.** Las
+      // cuatro cláusulas de forma son las mismas para los dos —un rol nuevo no
+      // relaja el tipo, el tamaño, el nombre ni la marca de la Function— y lo
+      // único que cambia es la última línea: el publicador necesita además que el
+      // objeto **no exista**.
+      //
+      // `resource == null` y **no** la separación `allow create` / `allow update`,
+      // que es lo que uno escribe primero y que acá no sirve: se probó contra el
+      // emulador y el overwrite entra por `create`. El razonamiento completo, con
+      // la prueba, está en el docblock del principio del archivo.
+      allow create, update: if tipoAceptado()
         && tamanoAceptado()
         && archivo.matches('^img_[A-Za-z0-9_-]+[.](jpg|png)$')
         && (request.resource.metadata == null
-            || !('optimizada' in request.resource.metadata));
+            || !('optimizada' in request.resource.metadata))
+        && (esAdmin() || (esPublicador() && resource == null));
 
+      // Nadie borra desde el panel —no hay un solo `deleteObject` en `src/`— y
+      // los huérfanos los barre `limpiarImagenesHuerfanas` con el Admin SDK. Se
+      // queda en `esAdmin()` porque abrirlo sería dejar borrar la foto de
+      // cualquiera que conozca el uuid, que con la URL pública es conocible.
       allow delete: if esAdmin();
     }
 

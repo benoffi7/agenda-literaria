@@ -45,6 +45,18 @@ interface Props {
   onChange: (slugs: string[], labelsNuevos: Record<string, string>) => void;
   /** B-827 — id del input, para que el `<label>` del `Campo` lo nombre. */
   id?: string;
+  /**
+   * ¿Se puede **crear** una etiqueta que no está en la lista? — B-888.
+   *
+   * `true` por default, que es lo que este control hizo siempre: el default
+   * preserva lo anterior, y quien necesita cerrarlo lo dice explícito.
+   *
+   * En `false` el control sigue sirviendo para elegir, y **no** para inventar.
+   * Es lo que corresponde a una cuenta cuyas escrituras a `/opciones/*` las
+   * reglas rechazan: ofrecer el alta sería ofrecer algo que siempre falla —y,
+   * peor, en silencio, porque el guardado de la actividad sí sale bien.
+   */
+  permitirOtro?: boolean;
 }
 
 /**
@@ -60,7 +72,16 @@ interface Props {
  * chips son widgets distintos. Lo que se comparte es la lógica del §4.2
  * (`@/lib/taxonomia`), que es la que no puede divergir (B-72).
  */
-export function TagsInput({ campo, valores, elegibles, onMedir, value, onChange, id }: Props) {
+export function TagsInput({
+  campo,
+  valores,
+  elegibles,
+  onMedir,
+  value,
+  onChange,
+  id,
+  permitirOtro = true,
+}: Props) {
   const [texto, setTexto] = useState('');
   const [nuevos, setNuevos] = useState<Record<string, string>>({});
 
@@ -109,6 +130,17 @@ export function TagsInput({ campo, valores, elegibles, onMedir, value, onChange,
     // el vocabulario lo declara. Mismos eventos que en el desplegable; no hay
     // `taxonomia-otro` porque acá no hay modo "Otro" que abrir: el input es
     // siempre el de tipear.
+    /*
+     * B-888 — con `permitirOtro` en `false` solo se puede elegir de la lista.
+     * La condición es contra `elegibles` y **no** contra `coincidencia`, que es
+     * la diferencia que importa: `resolverEtiqueta` resuelve contra `valores`
+     * (la lista completa, que incluye las pendientes de otra cuenta), así que
+     * con `coincidencia` se aceptaría una etiqueta que este input no ofrece.
+     */
+    if (!permitirOtro && !elegibles.some((v) => v.slug === slug)) {
+      setTexto('');
+      return;
+    }
     onMedir?.(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
     agregar(slug, labelNuevo);
   };
@@ -145,7 +177,13 @@ export function TagsInput({ campo, valores, elegibles, onMedir, value, onChange,
         id={id}
         className={claseInput}
         value={texto}
-        placeholder="Escribí un tag y Enter — ej. narrativa, poesía, principiantes"
+        placeholder={
+          permitirOtro
+            ? 'Escribí un tag y Enter — ej. narrativa, poesía, principiantes'
+            : // B-888 — con la lista cerrada, el placeholder de arriba mentiría:
+              // invita a inventar una etiqueta que este input no va a aceptar.
+              'Buscá un tag de la lista y elegilo'
+        }
         onChange={(e) => setTexto(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ',') {

@@ -1103,6 +1103,46 @@ describe('B-819 — y la guarda se re-evalúa contra lo releído', () => {
       'una guarda se evalúa contra el snapshot del montaje y no contra lo releído',
     ).toEqual([]);
   });
+
+  it('y tampoco se decide nada leyendo un CAMPO de `actual` — B-888, D-660', () => {
+    /*
+     * **La tercera vez que el mismo bug entra por una puerta que el control no
+     * miraba.** El caso de arriba busca llamadas a guardas (`*Restaurables(…)`) y
+     * eso dejó pasar un P0 de la tajada 2 de B-888: el bloque que mueve la reserva
+     * de `/slugs` **comparaba y borraba** contra `actual.slug` —el snapshot del
+     * montaje— en vez de `fresco.slug`. No es una llamada a una guarda, es una
+     * lectura cruda de un campo, así que el barrido por regex no la veía y este
+     * `describe` estaba verde con el bug adentro. Lo encontró el
+     * `auditor-trampas`.
+     *
+     * El daño era mayor que el de las guardas: con el slug cambiado en el medio
+     * —permitido, es un borrador— el `delete` borraba **la reserva de otra
+     * actividad**, y el índice pasaba a decir «libre» sobre un nombre en uso. Es
+     * el estado que D-660 existe para que no ocurra.
+     *
+     * **La regla que queda es más ancha que la de arriba, a propósito:** adentro
+     * de `restaurarCampo`, `actual` sirve para **una** cosa —su `id`, que no
+     * cambia— y para nada más. Cualquier otro campo que se le lea es un dato que
+     * pudo haber cambiado desde que se montó la pantalla.
+     *
+     * MUTACIÓN PROBADA: volver el bloque del batch a `actual.slug` deja este caso
+     * en rojo nombrando el campo.
+     */
+    const lecturas = [...cuerpoDeRestaurarCampo().matchAll(/\bactual\.(\w+)/g)];
+
+    // Control positivo: si el barrido dejara de encontrar `actual.id` —porque
+    // alguien renombró la variable— este caso pasaría sin mirar nada.
+    expect(
+      lecturas.length,
+      'no se encontró ninguna lectura de `actual`: el barrido dejó de ver el cuerpo',
+    ).toBeGreaterThan(0);
+
+    const queNoSeanElId = [...new Set(lecturas.map((m) => m[1]))].filter((c) => c !== 'id');
+    expect(
+      queNoSeanElId,
+      'se lee un campo del snapshot que pudo cambiar; usá `fresco`',
+    ).toEqual([]);
+  });
 });
 
 describe('B-819 — la guarda mide lo que SALE, no el flag (el P0 de la primera versión)', () => {

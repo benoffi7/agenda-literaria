@@ -10244,3 +10244,107 @@ exactamente lo que D-610 rechazó. El registro se refresca en cada login, o no
 sirve.
 
 ---
+
+## D-660 · La unicidad del slug vive en `/slugs`, y la subida acotada en `resource == null`
+
+**Decisión (B-888, tajada 2):** las dos roturas de la tajada 1 que no tenían
+arreglo obvio se resuelven así:
+
+- **el slug único** lo contesta una colección índice `/slugs/{slug}`, cuya reserva
+  viaja en el **mismo `writeBatch`** que la actividad;
+- **la subida de imágenes** se le abre al publicador con `resource == null` — la
+  guarda de «no pisar lo de otro»— sin cambiar la forma del prefijo.
+
+### Por qué el slug no se pudo resolver dentro de la regla
+
+`slugDisponible()` barría toda la colección. Con la regla de B-888 esa query se
+le rechaza **entera** a un publicador (trampa 7: una regla no filtra, corta) y no
+se arregla con un `where`, porque el slug único es un invariante de **todo** el
+catálogo. B-888 dejó escritas dos salidas: una colección índice o una Function.
+
+**Se eligió la colección, y la Function se descartó por tres cosas:**
+
+| | Por qué pesa |
+|---|---|
+| Ninguna acción del panel bloquea hoy sobre una Function | Las cinco que existen son asíncronas y best-effort (historial, sync, optimización, rebuild, issues): si una se cae, el panel sigue guardando. Un `onCall` en el camino sincrónico del guardado —la acción más usada— sería el primer lugar donde un cold start deja a alguien sin poder guardar |
+| El CI no la podría probar | `push-main.yml` levanta `--only auth,firestore,storage`. Un `onCall` en el guardado de **todos** los roles sería el único paso del guardado que nada ejercita. La colección, en cambio, la prueban los emuladores que ya corren, con `cargarReglas()` y con mutaciones |
+| Y la dirección en la que falla | Un `onCall` es check-then-write, igual que el barrido de hoy: dos guardados simultáneos con el mismo slug pasan **los dos**. Con la reserva adentro del batch, la unicidad la decide el servidor (`allow update: if false`) |
+
+O sea que esto no reemplaza el chequeo: **lo convierte en un invariante**. Es lo
+único de la tajada que deja el catálogo mejor que antes de que existiera el rol.
+
+**Lo que cuesta, dicho al derecho.** El índice es una segunda derivación del slug
+y esa clase de cosa se desincroniza (B-88). Lo sostienen dos cosas: se escribe en
+los **mismos cuatro lugares** que escriben el slug —crear, editar cuando cambió,
+borrar y restaurar del historial—, centralizados en `src/lib/slugs.ts`; y **todas
+sus formas de fallar fallan cerradas**: una reserva huérfana hace que un nombre no
+se pueda usar (visible, y lo libera `scripts/sembrar-slugs.mjs --reparar`), nunca
+que dos actividades compartan una URL, que es el daño de la trampa 10.
+
+> ⚠️ **Y los cuatro tienen que decidir contra el documento, no contra el snapshot
+> de la pantalla.** Los tres bugs que los auditores encontraron en esta tajada son
+> el mismo, con tres caras: `actualizarActividad` no reservaba cuando el documento
+> **no tenía** slug; `restaurarCampo` comparaba y borraba contra `actual.slug` —el
+> montaje— en vez de `fresco.slug`; y `borrarActividad` soltaba el slug que le
+> pasaba el listado, que con la fila sin refrescar es el **viejo**, dejando el
+> actual reservado sobre un id borrado. Los tres son alcanzables con dos pestañas,
+> ninguno tiraba un error, y los tres tienen ahora su caso con mutación probada.
+> El de `restaurarCampo` además hizo crecer un chequeo de clase que ya existía y
+> no lo veía: buscaba llamadas a guardas y esto era una lectura cruda de un campo
+> (`tests/historial-restaurar.test.ts`).
+
+**Los dos límites que el índice acepta**, escritos porque el bloque de la regla
+argumentaba largo lo que cierra y nada de lo que deja pasar: un `get` entrega la
+reserva entera —`porUid` incluido— porque una regla no proyecta y acotarlo
+rompería la unicidad; y un publicador puede reservar un nombre sin cargar ninguna
+actividad, porque verificar que el `actividadId` exista pediría un `get()` a
+`/actividades` facturado en cada evaluación. Los dos fallan cerrados y el segundo
+lo barre `--reparar`.
+
+**Y la siembra es un paso del despliegue, no una prolijidad.** Las actividades que
+ya existen no tienen reserva, así que sin correr el script sus slugs se leerían
+como libres. Por eso el script deja el centinela `/slugs/_indice` y el panel **se
+niega a guardar** si no está, en vez de creer que todo está libre. El `_` lo hace
+inalcanzable como slug: `slugify` solo produce `[a-z0-9-]`, que es lo que exige el
+`matches` de la regla.
+
+### Por qué Storage no se agrupó por uid
+
+`storage.rules` no conocía el rol, así que un publicador no podía subir la imagen
+de su actividad. La tajada 1 dejó escritas dos salidas, y **la de agrupar por uid
+(`imagenes/{uid}/{archivo}`) se descartó**: la URL de descarga lleva el path
+adentro (B-206 #1), así que mover un objeto le cambia la URL — y esas URLs están
+escritas en documentos publicados, en el `events.json`, en `og:image` y en el
+`srcset` del sitio, o sea que migrar objetos sería reescribir documentos. Arrastra
+además `rutaDeImagen`, `rutaDeMiniatura`/`urlDeMiniatura`, el trigger de
+optimización y `limpiarImagenesHuerfanas`; y obliga a un comodín de ruta completa
+en el `match`, que es —está anotado desde antes, en el docblock de `miniaturas/` y
+en su test— el día en que la trampa 13 se reabre sin que nada avise.
+
+**Lo que sí se hizo: `create` para los dos roles, y `resource == null` para el
+acotado.** El uuid del flyer de una actividad publicada **es conocible** (viaja
+adentro de la URL de descarga, que es pública), así que sin esa guarda abrir la
+subida sería dejar reemplazar el flyer de cualquiera.
+
+> ⚠️ **La guarda NO es separar `allow create` de `allow update`, y eso se probó.**
+> Es lo que uno escribe primero. Contra el emulador, con `create: if true` y
+> `update: if false`, **la segunda subida sobre el mismo objeto pasa**: el
+> overwrite entra por `create`. La documentación dice que en producción no, pero
+> eso es un supuesto sobre la plataforma que no podemos verificar — y este
+> proyecto ya se quemó con uno (el `size() > 0` de `usuarioValido()`, que el
+> `auditor-privacidad` marcó y resultó falso). `resource == null` **sí** se
+> comporta igual en el emulador, probado en las dos direcciones, y lo fija
+> `tests/storage-reglas.integracion.test.ts`.
+
+`delete` y `list` se quedan en `esAdmin()`, y el primero no cuesta nada: el panel
+no borra de Storage desde ningún lado —no hay un solo `deleteObject` en `src/`— y
+los huérfanos los barre `limpiarImagenesHuerfanas` con el Admin SDK.
+
+### Las dos decisiones chicas que quedan escritas
+
+| Qué | Decisión | Por qué |
+|---|---|---|
+| Cómo decide el panel qué esconder | Una tabla pura, `PERMISOS` en `src/lib/rolDelPanel.ts` | Es la forma de `anchoDelPanel.ts`: la pantalla que se agregue mañana **arranca cerrada** y quien la escriba la habilita en una línea, en vez de heredar un `rol === 'admin' &&` suelto que nadie sabe si está puesto en las diez puertas o en nueve. `tests/rol-del-panel.test.ts` deriva la lista del tipo `Vista` de `AdminApp`, así que una vista nueva sin decidir pone el chequeo en rojo |
+| Cómo sabe un desplegable si ofrecer «Otro…» | Un **store de módulo** (`rolActivo.ts`), no una prop | El camino por props son seis saltos para un booleano, y **se puede olvidar**: el campo de taxonomía que alguien agregue mañana nacería ofreciendo crear una etiqueta a quien no puede, con el alta fallando en silencio. Pasando por `campos-del-panel.tsx` —el único lugar por el que pasan las cinco taxonomías del panel— el campo nuevo hereda la regla sin que nadie se acuerde. **No es autorización**: el portón real está en `formulario/guardar.ts`, con el rol por parámetro, y el default del store es permisivo |
+
+---

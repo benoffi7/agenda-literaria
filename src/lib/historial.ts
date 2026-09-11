@@ -33,12 +33,18 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 // `firestore-client` y no `firebase-client`: el corte del bundle (B-09, D-51).
 import { db } from '@/lib/firestore-client';
 // B-150 — el emparejamiento de campos de máquina por id de sesión es UNO, y
 // vive en el borde form ⇄ documento. Acá se reusa; no se reimplementa.
 import { documentoAForm, fusionarSesiones, leerActividad, slugDisponible } from '@/lib/actividades';
+// B-888 tajada 2 / D-660 — restaurar el slug es el cuarto lugar que lo escribe,
+// así que es el cuarto que tiene que mover su reserva. Se importa el módulo del
+// índice y no se rehace la escritura: dos formas de reservar el mismo nombre es
+// la clase de B-88 con una puerta más.
+import { refDeSlug, reservaDeSlug } from '@/lib/slugs';
 import {
   modalidadResultante,
   onlinePrincipal,
@@ -963,6 +969,44 @@ export const restaurarCampo = async (
     throw new Error(
       'Esa dirección web ya la usa otra actividad. Cambiala desde el formulario antes de restaurarla.',
     );
+  }
+
+  /*
+   * ── Restaurar el slug mueve su reserva, en el mismo batch — D-660 ──────
+   * Es la misma decisión que `actualizarActividad`, y acá hace **más** falta: el
+   * chequeo de arriba es el que B-820 puso porque el schema no puede ver la
+   * unicidad, y sin mover la reserva el índice diría que el slug viejo sigue
+   * tomado y que el nuevo está libre — o sea, al revés que el catálogo. El batch
+   * hace que las tres escrituras sean una: no hay un estado intermedio en el que
+   * el documento diga una dirección y el índice otra.
+   */
+  /*
+   * **`fresco.slug` y NO `actual.slug`** — lo encontró el `auditor-trampas`, y la
+   * primera versión de este bloque lo tenía mal.
+   *
+   * `actual` es el documento que trajo el montaje de la pantalla de historial;
+   * `fresco` es el que el documento tiene **en este instante** (es la relectura de
+   * la línea 879, que el docblock de esta función argumenta tres veces). Con
+   * `actual.slug`, si entre que se abrió la pantalla y el click alguien le cambió
+   * el slug a esta actividad —está permitido: es un borrador, la trampa 10 solo
+   * congela el slug después de publicar— y ese nombre liberado lo tomó **otra**
+   * actividad, el `delete` de abajo borraría **la reserva de esa otra**. El índice
+   * pasaría a decir «libre» sobre un nombre en uso, que es el estado exacto que
+   * D-660 existe para que no pueda ocurrir.
+   *
+   * No hace falta mala intención: alcanzan dos pestañas del mismo panel. Es la
+   * misma carrera que `slugRestaurable`/`comisionesRestaurables` ya blindan, y a
+   * esta comparación se le escapó porque **no es una llamada a una guarda**: el
+   * chequeo de clase de `tests/historial-restaurar.test.ts` busca
+   * `*Restaurables(… actual …)` por regex y una comparación cruda no entra ahí.
+   */
+  if (typeof slugNuevo === 'string' && slugNuevo !== fresco.slug) {
+    const batch = writeBatch(db());
+    batch.set(refDeSlug(slugNuevo), reservaDeSlug(actual.id, uid));
+    if (fresco.slug) batch.delete(refDeSlug(fresco.slug));
+    batch.update(doc(db(), COL, actual.id), payload);
+    await batch.commit();
+    return;
   }
 
   await updateDoc(doc(db(), COL, actual.id), payload);

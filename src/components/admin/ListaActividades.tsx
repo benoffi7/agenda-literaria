@@ -9,6 +9,7 @@ import { FiltrosActividades } from '@/components/admin/FiltrosActividades';
 import { MenuAcciones } from '@/components/admin/MenuAcciones';
 import { useActividades } from '@/components/admin/useActividades';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
+import { useMailesDelPanel } from '@/components/admin/useMailes';
 import {
   borrarActividad,
   documentoAForm,
@@ -16,6 +17,7 @@ import {
   marcarCupoCompleto,
 } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
+import { puedeVer } from '@/lib/rolDelPanel';
 import {
   casillasAplicables,
   duplicarActividadForm,
@@ -35,6 +37,7 @@ import {
 // B-620 — qué dice cada tarjeta se decide afuera del JSX, en un módulo puro con
 // sus tests: acá quedan la maquetación y el cableado.
 import { datosDeTarjeta, type ContextoDeTarjeta } from '@/lib/tarjetaDelPanel';
+import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
@@ -49,6 +52,12 @@ interface Props {
   version: number;
   /** B-130 — para distinguir lo propio de lo que cargó la otra cuenta. */
   uid: string;
+  /**
+   * B-888 — decide la **forma de la query**, no qué se muestra: un publicador
+   * que pida la colección entera recibe un rechazo sobre la query completa
+   * (trampa 7). Ver `useActividades`.
+   */
+  rol: RolDelPanel;
 }
 
 /**
@@ -95,10 +104,24 @@ export function ListaActividades({
   onHistorial,
   version,
   uid,
+  rol,
 }: Props) {
   // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
   // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
-  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(version);
+  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(
+    version,
+    rol,
+    uid,
+  );
+
+  /*
+   * B-888 — el directorio de cuentas. Es lo que le pone nombre al filtro «quién
+   * la cargó» y a la marca de cada tarjeta. Para un publicador devuelve un mapa
+   * vacío sin pedir nada (la regla le cierra el `list`), y con el mapa vacío las
+   * dos cosas se comportan **exactamente** como antes de B-888: el filtro no se
+   * dibuja y la marca dice «otra cuenta».
+   */
+  const mailes = useMailesDelPanel(rol);
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS);
   const [orden, setOrden] = useState<Orden>(ORDEN_POR_DEFECTO);
 
@@ -153,9 +176,9 @@ export function ListaActividades({
    * arrays que hay que mantener alineados es la trampa 2 con otra cara.
    */
   const tarjetas = useMemo(() => {
-    const contexto: ContextoDeTarjeta = { labels, ahora, uid };
+    const contexto: ContextoDeTarjeta = { labels, ahora, uid, mailes };
     return filtradas.map((a) => ({ a, t: datosDeTarjeta(a, contexto) }));
-  }, [filtradas, labels, ahora, uid]);
+  }, [filtradas, labels, ahora, uid, mailes]);
 
   /**
    * B-11 — la copia se arma acá porque el listado ya tiene todos los slugs en
@@ -232,6 +255,10 @@ export function ListaActividades({
 
   const eliminar = async (a: ActividadConId) => {
     if (!confirm(`¿Borrar «${a.titulo}»? No se puede deshacer.`)) return;
+    // B-888 / D-660 — borrar suelta también la reserva de `/slugs`. El slug **no**
+    // se le pasa desde acá a propósito: la fila puede estar sin refrescar y
+    // soltar un slug viejo dejaría el actual reservado sobre un id borrado. Lo
+    // relee la función.
     await borrarActividad(a.id);
     setActividades((as) => as.filter((x) => x.id !== a.id));
   };
@@ -268,6 +295,7 @@ export function ListaActividades({
         // necesita el eje de etiquetas para contar cada faceta.
         actividades={actividades}
         ahora={ahora}
+        mailes={mailes}
       />
 
       {cargando && <p className="text-sm text-tinta/50">Cargando…</p>}
@@ -391,10 +419,21 @@ export function ListaActividades({
                   // el foco tiene que estar en el "⋯" cuando la capa se monta —
                   // es a ese botón al que vuelve al cerrarse (B-14).
                   { label: 'Duplicar', onSelect: () => duplicar(a), devuelveFoco: true },
-                  // B-40 — va acá y no en el formulario: recuperar un campo
-                  // pisado se busca desde el listado ("¿qué le pasó a esta?"),
-                  // y el formulario ya tiene 30+ campos peleando por espacio.
-                  { label: 'Historial', onSelect: () => onHistorial(a) },
+                  /*
+                    B-40 — va acá y no en el formulario: recuperar un campo
+                    pisado se busca desde el listado ("¿qué le pasó a esta?"),
+                    y el formulario ya tiene 30+ campos peleando por espacio.
+
+                    B-888 — y no se le ofrece a un publicador: la subcolección
+                    `versiones` **no hereda** la regla del padre y se quedó en
+                    `esAdmin()`, así que el botón sería un `permission-denied`
+                    garantizado. Se saca del array en vez de esconderse dentro
+                    de `MenuAcciones`: así el menú no queda con un hueco y el
+                    orden de las otras tres no cambia.
+                  */
+                  ...(puedeVer(rol, 'historial')
+                    ? [{ label: 'Historial', onSelect: () => onHistorial(a) }]
+                    : []),
                   { label: 'Borrar', onSelect: () => void eliminar(a), peligrosa: true },
                 ]}
               />

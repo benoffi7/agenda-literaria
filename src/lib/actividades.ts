@@ -1,6 +1,5 @@
 import {
   Timestamp,
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -10,8 +9,18 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firestore-client';
+import { PERMISOS, type RolDelPanel } from '@/lib/rolDelPanel';
+import {
+  SlugTomado,
+  liberarSlug,
+  refDeSlug,
+  reservaDeSlug,
+  slugLibre,
+} from '@/lib/slugs';
 import { libroVacio } from '@/lib/formulario/estadoInicial';
 import { buildSearchText } from '@/lib/normalize';
 import { deDatetimeLocal, aDatetimeLocal } from '@/lib/sesiones';
@@ -41,6 +50,23 @@ import type {
 } from '@/types/actividad';
 
 const COL = 'actividades';
+
+/**
+ * ¿El batch falló **porque el nombre estaba tomado**? — B-888 tajada 2, D-660.
+ *
+ * Es solo un diagnóstico: sirve para cambiar «Missing or insufficient
+ * permissions» por un mensaje con arreglo de una línea. Por eso **no puede
+ * tirar**: si la consulta misma falla —el índice sin sembrar, la red— lo que hay
+ * que propagar es el error original del guardado, no el de haber preguntado.
+ * Sin este `catch`, el diagnóstico tapaba la causa real con la suya.
+ */
+const tomadoPorOtra = async (slug: string, idActual?: string): Promise<boolean> => {
+  try {
+    return !(await slugLibre(slug, idActual));
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Trampa 1 — siempre `Timestamp` en Firestore, nunca strings de fecha.
@@ -375,14 +401,59 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
   destacado: a.destacado ?? false,
 });
 
-/** ¿El slug ya está tomado por otra actividad? */
-export const slugDisponible = async (slug: string, idActual?: string): Promise<boolean> => {
-  const snap = await getDocs(collection(db(), COL));
-  return !snap.docs.some((d) => d.id !== idActual && (d.data() as Actividad).slug === slug);
-};
+/**
+ * ¿El slug ya está tomado por otra actividad? — B-888 tajada 2, **D-660**.
+ *
+ * **Ya no barre la colección.** Lo hacía, y con la regla de B-888 ese barrido se
+ * le rechaza **entero** a un publicador: `read` incluye `list`, y una condición
+ * sobre `resource.data` obliga a que toda query traiga el `where`
+ * correspondiente (trampa 7). No se arregla con un `where`, porque el slug único
+ * es un invariante de **todo** el catálogo y no se verifica mirando solo lo
+ * propio. La respuesta la da el índice `/slugs/{slug}`: un `getDoc` por id.
+ *
+ * **Un solo camino para los dos roles**, a propósito: dos derivaciones de la
+ * misma pregunta —el barrido para el admin, el índice para el publicador— es
+ * exactamente la clase de B-88, y la que se quedaría vieja sería justo la que
+ * nadie usa todos los días.
+ *
+ * Sigue siendo la guarda **previa** del formulario, la que da el mensaje
+ * accionable. La guarda **real** contra el choque simultáneo está un escalón más
+ * abajo, en el `writeBatch` de `crearActividad`/`actualizarActividad`: la reserva
+ * viaja junto con la actividad y el servidor rechaza la segunda.
+ */
+export const slugDisponible = (slug: string, idActual?: string): Promise<boolean> =>
+  slugLibre(slug, idActual);
 
-export const listarActividades = async (): Promise<ActividadConId[]> => {
-  const q = query(collection(db(), COL), orderBy('updatedAt', 'desc'));
+/**
+ * El listado del panel.
+ *
+ * **El `where` no es un filtro de presentación: es lo que hace que la query
+ * exista** (B-888, trampa 7). Con la regla nueva, un publicador que pida la
+ * colección entera recibe un `permission-denied` sobre la query **completa** —
+ * Firestore no recorta, rechaza—, así que el listado se rompería en vez de
+ * acotarse. El índice compuesto `createdBy ASC, updatedAt DESC` está en
+ * `firestore.indexes.json` desde la tajada 1, justamente para esto.
+ *
+ * Va por `PERMISOS[rol].veTodoElCatalogo` y no por `rol === 'admin'`: es la misma
+ * pregunta que decide el calendario, y un `===` suelto repetido en dos pantallas
+ * es cómo se arregla una y no la otra (B-175).
+ */
+export const listarActividades = async (
+  rol: RolDelPanel,
+  uid: string,
+): Promise<ActividadConId[]> => {
+  /*
+   * El listado acotado **sin uid sería la colección de nadie**: una query
+   * `where('createdBy','==','')` que devuelve vacío y se lee como «todavía no
+   * cargaste nada». Se corta acá y ruidosamente, porque el síntoma silencioso es
+   * el peor de los dos.
+   */
+  if (!PERMISOS[rol].veTodoElCatalogo && !uid) {
+    throw new Error('El listado acotado necesita el uid de la sesión.');
+  }
+  const q = PERMISOS[rol].veTodoElCatalogo
+    ? query(collection(db(), COL), orderBy('updatedAt', 'desc'))
+    : query(collection(db(), COL), where('createdBy', '==', uid), orderBy('updatedAt', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Actividad) }));
 };
@@ -392,8 +463,47 @@ export const leerActividad = async (id: string): Promise<ActividadConId | null> 
   return snap.exists() ? { id: snap.id, ...(snap.data() as Actividad) } : null;
 };
 
+/**
+ * Alta — la actividad y su reserva de slug, **en el mismo batch** (D-660).
+ *
+ * Era un `addDoc`. Ahora el id se acuña en el cliente (`doc(collection(…))` sin
+ * path devuelve una ref con id, sin tocar la red) para poder escribir la reserva
+ * y la actividad en una sola operación atómica: entran las dos o ninguna.
+ *
+ * **Eso es lo que hace del índice un índice y no un registro de intenciones.**
+ * Con dos escrituras sueltas habría un orden que decidir y una forma de fallar
+ * en cada dirección —reserva huérfana si muere la segunda, colisión silenciosa
+ * si muere la primera— que es cómo un índice escrito «al lado» se desincroniza
+ * (clase de B-88, y la misma forma que D-600 tuvo que resolver a mano). Con el
+ * batch no hay estado intermedio que reparar.
+ *
+ * Y como `/slugs` tiene `allow update: if false`, un slug ya reservado hace que
+ * el batch entero se rechace: dos guardados simultáneos con el mismo slug ya no
+ * pasan los dos, que es lo que sí pasaba con el barrido.
+ */
 export const crearActividad = async (f: ActividadForm, uid: string): Promise<string> => {
-  const ref = await addDoc(collection(db(), COL), formADocumento(f, uid, true));
+  const ref = doc(collection(db(), COL));
+  const documento = formADocumento(f, uid, true);
+  const slug = documento.slug as string;
+
+  const batch = writeBatch(db());
+  batch.set(refDeSlug(slug), reservaDeSlug(ref.id, uid));
+  batch.set(ref, documento);
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    /*
+     * El batch falla entero, así que no hay nada que limpiar. Lo único que se
+     * hace acá es **nombrar** el motivo más probable: la reserva es la única
+     * escritura del batch que un permiso puede rechazar por un dato de otra
+     * persona, y sin esto el formulario mostraría «Missing or insufficient
+     * permissions» para un caso que tiene un arreglo de una línea (cambiar la
+     * dirección web).
+     */
+    if (await tomadoPorOtra(slug)) throw new SlugTomado(slug);
+    throw error;
+  }
   return ref.id;
 };
 
@@ -529,6 +639,52 @@ export const actualizarActividad = async (
    */
   const snap = await getDoc(ref);
   const sesionesEnDisco = snap.exists() ? ((snap.data() as Actividad).sesiones ?? []) : [];
+  const slugEnDisco = snap.exists() ? ((snap.data() as Actividad).slug ?? '') : '';
+
+  const payload = payloadDeActualizacion(f, uid, sesionesEnDisco);
+  const slugNuevo = payload.slug as string;
+
+  /*
+   * ── El slug cambió: reservar el nuevo y soltar el viejo, en el mismo batch ──
+   * D-660. Pasa solo antes de publicar (trampa 10 — `slugBloqueado` en el
+   * formulario), y cuando pasa las tres escrituras tienen que ser una: si la
+   * reserva nueva entrara sin el documento, el nombre quedaría tomado por una
+   * actividad que no lo usa; si el documento entrara sin la reserva, el nombre
+   * quedaría libre para que otro lo pise. Un batch no tiene ese medio camino.
+   *
+   * Se compara contra el slug **del documento**, no contra el del formulario:
+   * entre que se abrió el formulario y este punto pudo haber otra escritura, que
+   * es la misma relectura que hace `sesionesEnDisco` dos líneas más arriba.
+   */
+  if (slugNuevo !== slugEnDisco) {
+    const batch = writeBatch(db());
+    batch.set(refDeSlug(slugNuevo), reservaDeSlug(id, uid));
+    /*
+     * **El guard va acá adentro y no en el `if` de afuera** — lo encontró el
+     * `auditor-trampas`, y la primera versión lo tenía mal.
+     *
+     * Con `slugEnDisco &&` en la condición de arriba, una actividad **sin slug
+     * válido en disco** —el caso que `scripts/sembrar-slugs.mjs` lista como
+     * `sinSlug`— caía al `updateDoc` de abajo: se le escribía el slug nuevo al
+     * documento y **no se reservaba nada**. El índice quedaba diciendo «libre»
+     * sobre un slug en uso, que es el daño de la trampa 10 con el índice
+     * contradiciendo al catálogo — peor que no tener índice.
+     *
+     * Es alcanzable por el camino normal: alguien edita una actividad vieja y le
+     * pone su primera dirección web desde el formulario. `restaurarCampo`
+     * (`historial.ts`) ya lo tenía bien; éste era el que divergía, que es la clase
+     * de B-88 entre dos de los cuatro lugares que escriben el slug.
+     */
+    if (slugEnDisco) batch.delete(refDeSlug(slugEnDisco));
+    batch.update(ref, payload);
+    try {
+      await batch.commit();
+    } catch (error) {
+      if (await tomadoPorOtra(slugNuevo, id)) throw new SlugTomado(slugNuevo);
+      throw error;
+    }
+    return;
+  }
 
   // `updateDoc` y no `setDoc`: preserva `createdAt`/`createdBy`, y de todas
   // formas reemplaza el array `sesiones` completo, así que una sesión borrada
@@ -540,7 +696,7 @@ export const actualizarActividad = async (
   // desde antes de marcarlo, **apague el cartel** del sitio y de los N eventos del
   // ciclo sin que nadie lo pida. Es la clase de B-80 —un campo con dos dueños
   // adentro de un objeto de contenido— y la respuesta es la misma: un solo dueño.
-  await updateDoc(ref, payloadDeActualizacion(f, uid, sesionesEnDisco));
+  await updateDoc(ref, payload);
 };
 
 /**
@@ -567,6 +723,41 @@ export const marcarCupoCompleto = async (
   });
 };
 
+/**
+ * Borrar la actividad y soltar su nombre — D-660.
+ *
+ * **El slug se relee del documento, no se recibe.** La primera versión lo tomaba
+ * por parámetro —el de la fila del listado en memoria— y eso tenía un modo de
+ * falla que encontró el `auditor-trampas`, silencioso y sin error de por medio:
+ *
+ *  - la actividad tiene el slug `S1`; en **otra pestaña** se le cambia a `S2`
+ *    (`actualizarActividad` reserva `S2` y suelta `S1`, atómico y correcto);
+ *  - la pestaña vieja, con la fila sin refrescar, aprieta «Borrar»;
+ *  - se borra el documento y se suelta **`S1`**, que ya no existe: un no-op que
+ *    «sale bien». **`S2` queda reservado apuntando a un id borrado**, y nada avisa.
+ *
+ * Releerlo cuesta una lectura —el borrado es la acción más rara del panel— y es
+ * lo que hace que los **cuatro** escritores del slug decidan contra el documento
+ * y no contra un snapshot, que es la misma lección que ya habían pagado
+ * `actualizarActividad` (su `getDoc`) y `restaurarCampo` (su `leerActividad`).
+ *
+ * **Y si el documento ya no está, no se suelta nada**, a propósito: soltar el
+ * slug que traía el caller podría estar borrando la reserva de **otra** actividad
+ * que mientras tanto tomó ese nombre. Queda una reserva huérfana —falla cerrada,
+ * y la barre `scripts/sembrar-slugs.mjs --reparar`— en vez de un nombre robado.
+ *
+ * Las dos escrituras **no van en un batch**, al revés que el alta: soltar la
+ * reserva puede fallar por permisos en un caso real —si un admin le cambió el
+ * slug a la actividad de un publicador, la reserva quedó a nombre del admin— y
+ * con un batch ese caso haría que el publicador **no pueda borrar su propia
+ * actividad**. Separadas, el borrado ocurre y lo que queda es un nombre tomado de
+ * más.
+ */
 export const borrarActividad = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db(), COL, id));
+  const ref = doc(db(), COL, id);
+  const snap = await getDoc(ref);
+  const slugEnDisco = snap.exists() ? ((snap.data() as Actividad).slug ?? '') : '';
+
+  await deleteDoc(ref);
+  if (slugEnDisco) await liberarSlug(slugEnDisco);
 };

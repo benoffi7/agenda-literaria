@@ -30,12 +30,28 @@ import { ts } from './fixtures/tiempo';
 
 const updateDocEspia = vi.fn();
 
+/**
+ * B-888 / D-660 — el batch con el que `restaurarCampo` **mueve la reserva del
+ * slug**. Restaurar el slug es el cuarto lugar que lo escribe, así que es el
+ * cuarto que tiene que mover su reserva en `/slugs`, y en la misma operación
+ * atómica que el documento: si no, el índice diría que el slug viejo sigue tomado
+ * y que el nuevo está libre, o sea al revés que el catálogo.
+ *
+ * El doble registra qué hizo el batch para poder afirmarlo sin emuladores.
+ */
+const batchEspia = { set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn() };
+
 vi.mock('firebase/firestore', async () => {
   const real = await vi.importActual<typeof import('firebase/firestore')>('firebase/firestore');
   return {
     ...real,
-    doc: () => ({ id: 'act_1' }),
+    // El `id` del doble es el de la actividad para los casos de siempre; para las
+    // refs de `/slugs` lo que se mira es el argumento del `set`/`delete`, que el
+    // espía guarda igual.
+    doc: (...args: unknown[]) => ({ id: 'act_1', args }),
     updateDoc: (...args: unknown[]) => updateDocEspia(...args),
+    writeBatch: () => batchEspia,
+    serverTimestamp: () => 'TS',
   };
 });
 
@@ -121,6 +137,7 @@ beforeEach(() => {
    */
   vi.mocked(slugDisponible).mockReset();
   vi.mocked(slugDisponible).mockResolvedValue(true);
+  for (const espia of Object.values(batchEspia)) espia.mockReset();
 });
 
 describe('restaurarCampo — el payload se arma con lo releído', () => {
@@ -379,7 +396,58 @@ describe('restaurarCampo — la unicidad del slug, que el schema no puede ver (B
     );
 
     expect(vi.mocked(slugDisponible)).toHaveBeenCalledWith('club-de-lectura', 'act_1');
-    expect(updateDocEspia).toHaveBeenCalled();
+    /*
+     * B-888 / D-660 — y escribe por el batch, no por `updateDoc`: las tres
+     * escrituras (reservar el nuevo, soltar el viejo, actualizar el documento)
+     * tienen que ser una sola operación.
+     *
+     * MUTACIÓN PROBADA: sacarle a `restaurarCampo` la rama del batch —volver al
+     * `updateDoc` pelado— deja este caso en rojo en las cuatro líneas de abajo, y
+     * ningún otro del archivo se mueve.
+     */
+    expect(updateDocEspia, 'restauró el slug sin pasar por el batch').not.toHaveBeenCalled();
+    expect(batchEspia.set, 'no reservó el slug restaurado').toHaveBeenCalled();
+    expect(batchEspia.delete, 'no soltó la reserva del slug que se deja').toHaveBeenCalled();
+    expect(batchEspia.update).toHaveBeenCalled();
+    expect(batchEspia.commit).toHaveBeenCalled();
+  });
+
+  it('y suelta el slug del documento RELEÍDO, no el del snapshot de la pantalla', async () => {
+    /*
+     * **El P0 que encontró el `auditor-trampas`, con su red.**
+     *
+     * `actual` es el documento que trajo el montaje de la pantalla de historial;
+     * `fresco` es el que el documento tiene en este instante (la relectura que el
+     * docblock de `restaurarCampo` argumenta tres veces). La primera versión del
+     * bloque del batch comparaba y borraba contra **`actual`**.
+     *
+     * El daño: entre que se abre la pantalla y el click, alguien le cambia el slug
+     * a esta actividad —permitido, es un borrador; la trampa 10 solo lo congela
+     * después de publicar— y ese nombre liberado lo toma **otra** actividad.
+     * Restaurar borraba entonces la reserva de **esa otra**, y el índice pasaba a
+     * decir «libre» sobre un nombre en uso: el estado exacto que D-660 existe para
+     * que no pueda ocurrir. Alcanzan dos pestañas del mismo panel.
+     *
+     * Por qué al chequeo de clase de `historial-restaurar.test.ts` se le escapó:
+     * ese barrido busca llamadas a `*Restaurables(… actual …)` por regex, y esto
+     * **no es una llamada a una guarda**, es una comparación cruda.
+     *
+     * MUTACIÓN PROBADA: volver las dos referencias a `actual.slug` deja este caso
+     * en rojo, y el de arriba en verde — que es la diferencia entre los dos.
+     */
+    const enPantalla = borrador({ slug: 'el-viejo-del-snapshot' } as never);
+    // Lo que el documento tiene AHORA: alguien le cambió el slug en el medio.
+    vi.mocked(leerActividad).mockResolvedValue(borrador({ slug: 'el-de-ahora' } as never));
+
+    await restaurarCampo(enPantalla, 'slug', versionConSlug('club-de-lectura') as never, 'uid_1');
+
+    const borrados = batchEspia.delete.mock.calls.map(
+      ([ref]) => (ref as { args?: unknown[] }).args?.[2],
+    );
+    expect(borrados, 'soltó el slug del snapshot, que ya es de otra actividad').not.toContain(
+      'el-viejo-del-snapshot',
+    );
+    expect(borrados, 'no soltó el slug que el documento tiene de verdad').toContain('el-de-ahora');
   });
 
   it('restaurar otro campo no gasta la query', async () => {

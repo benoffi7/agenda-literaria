@@ -156,6 +156,27 @@ export const cargarReglas = async (
  */
 export const proyectoAparte = (sufijo: string): string => `${PROJECT_ID}-${sufijo}`;
 
+/**
+ * Deja el centinela `/slugs/_indice` — B-888 tajada 2, **D-660**.
+ *
+ * `slugLibre()` **se niega a contestar** mientras ese documento no está: es lo
+ * que hace que el índice de slugs no pueda fallar abierto (un índice sin sembrar
+ * diría «libre» sobre una dirección ya publicada, que es la trampa 10). En
+ * producción lo escribe `scripts/sembrar-slugs.mjs`; acá lo escribe el Admin SDK
+ * por el mismo motivo que allá: **ningún cliente lo puede crear**, porque
+ * `reservaValida()` exige el alfabeto de `slugify` y `_indice` tiene un `_`.
+ *
+ * Todo archivo de integración que guarde una actividad desde el panel tiene que
+ * llamarlo en su `beforeAll`, **después** de `limpiarFirestore()`.
+ */
+export const sembrarCentinelaDeSlugs = async (projectId = PROJECT_ID): Promise<void> => {
+  const { initializeApp, deleteApp } = await import('firebase-admin/app');
+  const { getFirestore } = await import('firebase-admin/firestore');
+  const app = initializeApp({ projectId }, `centinela-slugs-${Date.now()}-${Math.random()}`);
+  await getFirestore(app).doc('slugs/_indice').set({ sembradoEn: new Date(), actividades: 0 });
+  await deleteApp(app);
+};
+
 /** Borra una colección del emulador vía su API REST de limpieza. */
 export const limpiarFirestore = async (projectId = PROJECT_ID): Promise<void> => {
   await fetch(

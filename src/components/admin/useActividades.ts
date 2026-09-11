@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listarActividades } from '@/lib/actividades';
+import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { ActividadConId } from '@/types/actividad';
 
 /**
@@ -39,7 +40,17 @@ import type { ActividadConId } from '@/types/actividad';
  * callback y un flag para apagar el `fallo`, o sea un hook con dos formas para
  * ahorrar cuatro líneas.
  */
-export const useActividades = (version: number) => {
+/**
+ * **`rol` y `uid` entran acá y no en cada pantalla** — B-888, tajada 2.
+ *
+ * No son datos de presentación: con la regla nueva, un publicador que pida la
+ * colección entera recibe un `permission-denied` sobre la query **completa**
+ * (trampa 7 — una regla no filtra, corta), así que sin ellos el listado y el
+ * calendario no se acotan: **se rompen**. Que viajen por el hook es lo que hace
+ * que las dos pantallas no puedan quedar una arreglada y la otra no, que es
+ * exactamente el motivo por el que este hook existe (B-175).
+ */
+export const useActividades = (version: number, rol: RolDelPanel, uid: string) => {
   const [actividades, setActividades] = useState<ActividadConId[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -47,14 +58,14 @@ export const useActividades = (version: number) => {
   useEffect(() => {
     let vivo = true;
     setCargando(true);
-    listarActividades()
+    listarActividades(rol, uid)
       .then((as) => vivo && setActividades(as))
       .catch((e: unknown) => vivo && setFallo(e instanceof Error ? e.message : 'Error al listar'))
       .finally(() => vivo && setCargando(false));
     return () => {
       vivo = false;
     };
-  }, [version]);
+  }, [version, rol, uid]);
 
   return { actividades, setActividades, cargando, fallo, setFallo };
 };

@@ -4,13 +4,35 @@ Lo que el sistema hace hoy. Lo que falta está en [`BACKLOG.md`](BACKLOG.md).
 
 ## Panel de admin — `/admin`
 
-### Acceso
+### Acceso, y los dos roles (B-888)
 
-Login con Google. Sin el custom claim `admin` el panel muestra una pantalla de
-"sin permisos" con el uid y el comando para otorgarlo.
+Login con Google. Sin uno de los dos custom claims —`admin` o `publicador`— el
+panel muestra una pantalla de "sin permisos" con el uid y el comando para
+otorgarlo.
 
 Las reglas de Firestore rechazan la escritura del lado del servidor de todas
 formas: la pantalla solo evita mostrar un panel inútil.
+
+**`admin`** ve y toca toda la agenda. **`publicador`** gestiona **solo las
+actividades que él creó** —incluido su estado, o sea que publica sin que nadie
+revise— y nada más. La frontera son las reglas (`07-seguridad.md` § «Los dos roles
+del panel»); lo que el panel hace es no ofrecer lo que va a ser rechazado:
+
+| Qué | Con el rol acotado |
+|---|---|
+| Listado y vista calendario | Solo lo suyo. **No es un filtro**: la query pide `where('createdBy','==',uid)` porque sin eso la regla rechaza la query entera (trampa 7) y la pantalla quedaría rota, no acotada |
+| Opciones de los desplegables, estado del catálogo, propuestas, reportar algo, historial de una actividad | No aparecen |
+| «Otro…» en los desplegables de taxonomía | No aparece: crear una etiqueta cambia lo que ve todo el sitio, y `/opciones/*` es de admin. Elegir de la lista sí |
+| Subir la imagen de su actividad | Sí. Lo único que no puede es **pisar** un objeto que ya existe, ni borrar ni enumerar el prefijo |
+| La dirección web única | La verifica igual, contra el índice `/slugs` (D-660): un `get` por id en vez del barrido del catálogo |
+
+Quién ve qué está en una tabla pura, `PERMISOS` de
+[`src/lib/rolDelPanel.ts`](../src/lib/rolDelPanel.ts), y una pantalla nueva
+**arranca cerrada**: `tests/rol-del-panel.test.ts` deriva la lista de vistas del
+propio `AdminApp` y se pone en rojo si alguna no decidió quién la ve.
+
+**Cada cuenta se registra al entrar** (`/usuarios`, D-650), con el mail de su
+propio ID token. Es lo que le da nombre a las dos cosas de abajo.
 
 ### Listado
 
@@ -28,6 +50,22 @@ el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
 calendario y el tablero quedaron angostos a propósito— está en el docblock de
 [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts) y la decisión completa en
 **D-330** ([`06-decisiones.md`](06-decisiones.md)).
+**La marca de autoría dice el mail** (B-888). Hasta la tajada 2 decía «La cargó
+otra cuenta» y no cuál, porque el panel solo tenía uids; con `/usuarios` dice
+`La cargó fulano@…`, y además avisa `La cambió fulano@…` cuando algo que cargaste
+vos lo tocó otra persona por última vez — un dato que el historial guardaba desde
+siempre y que el listado no mostraba. Con el directorio todavía vacío vuelve al
+texto de antes, que es el default que preserva lo anterior. Lo propio y sin tocar
+por nadie **sigue sin marca**: si todo llevara marca, la marca dejaría de avisar.
+
+Y los filtros ganan **«Quién la cargó»** (B-888), el tercer descarte de D-74 que
+se da vuelta: estaba afuera porque el dato era un uid y el §5.1 los mantiene
+afuera de lo que se muestre, y ahora lo que se muestra es el mail (el uid se queda
+del lado de adentro, como `value` del `<option>`). Aparece solo cuando hay
+actividades de más de una cuenta **y** esas cuentas ya entraron al panel; con el
+rol acotado no aparece nunca, sin necesidad de una rama por rol, porque su listado
+ya trae una sola.
+
 Cada fila dice además cuándo es su próximo encuentro y lleva hasta tres marcas
 más: **«Cupo completo»** (B-97), **«Destacada»** (B-622) y **«Sin flyer»**
 (B-264), esta última solo en las **publicadas** que no tienen imagen — una

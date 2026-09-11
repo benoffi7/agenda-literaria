@@ -755,8 +755,54 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          '«Quién la cargó» aparece cuando hay actividades de más de una cuenta y esas cuentas ' +
+          'ya entraron alguna vez al panel: ahí el desplegable las lista por su mail. Filtra por ' +
+          'quién la creó; quién la tocó por última vez lo dice la marca al pie de cada tarjeta.',
+      },
+      {
+        texto:
           'Todo esto pasa con lo que el panel ya tiene cargado: filtrar y ordenar es instantáneo ' +
           'y no consulta nada.',
+      },
+    ],
+  },
+  {
+    id: 'cuentas-que-solo-cargan-lo-suyo',
+    titulo: 'Cuentas que solo ven lo que cargaron',
+    paraQue:
+      'Entender qué cambia si tu cuenta es de las que gestionan solo sus propias actividades.',
+    puntos: [
+      {
+        texto:
+          'Hay dos clases de cuenta. Una ve y toca toda la agenda. La otra gestiona solo las ' +
+          'actividades que cargó ella, y las publica sin que nadie las revise antes.',
+      },
+      {
+        texto:
+          'Si tu cuenta es de las segundas, el listado y la vista calendario te muestran lo tuyo ' +
+          'y nada más. No es un filtro que puedas apagar: es lo que tu cuenta puede ver.',
+      },
+      {
+        texto:
+          'De lo tuyo podés todo: cargarlo, editarlo, publicarlo, despublicarlo, volverlo a ' +
+          'borrador y borrarlo. Subir fotos también.',
+      },
+      {
+        texto:
+          'Lo que no vas a ver son las pantallas compartidas: las opciones de los desplegables, ' +
+          'el estado del catálogo, las propuestas que llegan de afuera, los bugs reportados y el ' +
+          'historial de versiones de una actividad.',
+      },
+      {
+        texto:
+          'Y en los desplegables no aparece «Otro…»: podés elegir cualquier opción de la lista, ' +
+          'pero crear una etiqueta nueva cambia lo que ve todo el sitio, así que eso lo hace una ' +
+          'cuenta de la primera clase. Si te falta una, pedila.',
+      },
+      {
+        texto:
+          'La primera vez que entrás, tu cuenta queda registrada con su mail. Es lo que permite ' +
+          'que en el listado se lea quién cargó o cambió cada actividad, en vez de un código.',
       },
     ],
   },

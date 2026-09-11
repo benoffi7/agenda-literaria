@@ -250,7 +250,33 @@ qué hacer cuando llegue.
 Lo único que queda es el click y el canal de notificación, que es dato personal y
 configuración de consola (§5.4).
 
-### B-888 · El rol publicador: la frontera está, el panel no — 🟠 empezado (2026-09-11) · P1
+### B-888 · El rol publicador: la frontera y el panel — ✅ cerrado (2026-09-11) · P1
+
+> ✅ **Las dos tajadas.** La 1 (frontera): claim `publicador`, las cuatro reglas de
+> `/actividades` por dueño, `/usuarios/{uid}`, el script y el índice — **D-650**.
+> La 2 (el panel): el listado y el calendario piden lo propio con el `where`; el
+> slug único lo contesta el índice `/slugs` (**D-660**); las taxonomías no se
+> intentan y no se ofrecen; y la subida se abrió con `resource == null`, **sin
+> tocar la forma del prefijo**. Más `registrarUsuario()` al entrar, el gating de
+> las cinco pantallas, el filtro «Quién la cargó» y la marca con el mail.
+>
+> **Lo que queda es del dueño, y en este orden:**
+> 1. desplegar reglas (Firestore **y** Storage) e índices;
+> 2. **sembrar el índice de slugs** —`npm run slugs:sembrar:prod -- --aplicar
+>    --produccion`— **antes** de darle el claim a nadie: hasta que corra, el panel
+>    **se niega a guardar**, a propósito;
+> 3. desplegar el sitio;
+> 4. `npm run admin:claim:prod -- --publicador <mail>`.
+>
+> **Y tres preguntas que el frente devolvió en vez de contestar:** si la cuenta
+> acotada tiene que poder **reportar un bug** (hoy no tiene por dónde avisar si algo
+> le falla); si los **`usos`** de las taxonomías tienen que contar cuando guarda un
+> publicador (hoy no, así que el orden por frecuencia ignora lo que carga esa
+> cuenta); y que un publicador **puede reservar un nombre sin cargar la actividad**
+> —falla cerrada y lo barre `--reparar`, pero es una forma de bloquear un nombre—.
+>
+> Siguen en pie las dos decisiones de la tajada 1 que conviene revisar: **puede
+> borrar lo suyo** y **puede publicar el link de la reunión**.
 
 **Lo hecho (2026-09-11): la frontera de autorización.** Claim `publicador` + las
 cuatro reglas de `/actividades` por dueño + `/usuarios/{uid}` con el mail de cada

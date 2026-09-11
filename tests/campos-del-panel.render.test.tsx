@@ -57,6 +57,8 @@ vi.mock('@/components/admin/useOpciones', () => ({
 }));
 
 import { Seccion, TaxonomiaSelect } from '@/components/admin/campos-del-panel';
+import { TagsInput } from '@/components/admin/campos-del-panel';
+import { fijarRolActivo } from '@/lib/rolActivo';
 import { Seccion as SeccionGenerica } from '@/components/campos/Seccion';
 import { TaxonomiaSelect as TaxonomiaGenerica } from '@/components/campos/TaxonomiaSelect';
 
@@ -174,5 +176,78 @@ describe('los controles de `campos/` no miden sin la prop — B-841', () => {
       </SeccionGenerica>,
     );
     expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+});
+
+/**
+ * **La rotura 3 del lado de la pantalla: «Otro…» no se le ofrece a quien no
+ * puede crear etiquetas** — B-888, tajada 2.
+ *
+ * `/opciones/{campo}` es de admin, así que para un publicador crear una etiqueta
+ * se rechaza siempre. El portón que de verdad saltea las escrituras está en
+ * `formulario/guardar.ts` (y tiene sus casos en `formulario-dominio.test.ts`);
+ * esto es la otra mitad: **no ofrecer el botón que va a fallar**.
+ *
+ * La decisión vive en esta capa —la única por la que pasan las cinco taxonomías
+ * del panel— y no en una prop cableada por seis componentes, para que el campo de
+ * taxonomía que alguien agregue mañana la herede sin acordarse. El razonamiento
+ * está en `lib/rolActivo.ts`.
+ */
+describe('«Otro…» según el rol — B-888', () => {
+  afterEach(() => {
+    // El store es de módulo: si queda sucio, el archivo siguiente hereda el rol.
+    fijarRolActivo(null);
+  });
+
+  it('un admin lo sigue teniendo', () => {
+    // Control positivo: sin esto, un `permitirOtro` cableado en `false` pasaría
+    // el caso de abajo sin que nadie se entere de que rompió el panel del admin.
+    fijarRolActivo('admin');
+    render(<TaxonomiaSelect campo="arancel" uid="u1" value="" onChange={vi.fn()} id="x" />);
+    expect(screen.getByText('Otro…')).not.toBeNull();
+  });
+
+  it('un publicador no, ni en el desplegable ni en el input de etiquetas', () => {
+    /*
+     * MUTACIÓN PROBADA: sacarle el `permitirOtro={puedeCrearEtiquetas()}` a
+     * `TaxonomiaSelect` en `campos-del-panel.tsx` deja la primera mitad en rojo;
+     * sacárselo a `TagsInput`, la segunda.
+     */
+    fijarRolActivo('publicador');
+    render(<TaxonomiaSelect campo="arancel" uid="u1" value="" onChange={vi.fn()} id="x" />);
+    expect(screen.queryByText('Otro…')).toBeNull();
+
+    cleanup();
+    render(<TagsInput campo="tags" uid="u1" value={[]} onChange={vi.fn()} id="y" />);
+    // El input sigue sirviendo para **elegir**; lo que no invita es a inventar.
+    expect((screen.getByRole('textbox') as HTMLInputElement).placeholder).not.toMatch(/Enter/);
+  });
+
+  it('y sin rol fijado se comporta como antes de B-888', () => {
+    /*
+     * El default del store es permisivo a propósito: no es la frontera —la
+     * frontera son las reglas— y así el formulario público y cualquier control
+     * montado suelto siguen comportándose igual.
+     */
+    render(<TaxonomiaSelect campo="arancel" uid="u1" value="" onChange={vi.fn()} id="z" />);
+    expect(screen.getByText('Otro…')).not.toBeNull();
+  });
+
+  it('un publicador no puede meter una etiqueta que no está en la lista', async () => {
+    /*
+     * La otra mitad del input multivalor: el control es siempre de texto, así que
+     * esconder un botón no alcanza — hay que rechazar el alta al confirmar. La
+     * condición es contra `elegibles` y no contra «hubo coincidencia», porque
+     * `resolverEtiqueta` resuelve contra la lista **completa** (que incluye
+     * pendientes ajenas que este input no ofrece).
+     *
+     * MUTACIÓN PROBADA: sacarle a `confirmar()` de `TagsInput` la guarda de
+     * `permitirOtro` deja este caso en rojo.
+     */
+    fijarRolActivo('publicador');
+    const onChange = vi.fn();
+    render(<TagsInput campo="tags" uid="u1" value={[]} onChange={onChange} id="w" />);
+    await userEvent.type(screen.getByRole('textbox'), 'inventada{Enter}');
+    expect(onChange, 'entró una etiqueta que no está en la lista').not.toHaveBeenCalled();
   });
 });

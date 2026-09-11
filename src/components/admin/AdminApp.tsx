@@ -40,9 +40,16 @@ import {
   loginConGoogle,
   logout,
   observarAuth,
-  tieneClaimAdmin,
+  rolDelPanel,
   usarEmuladores,
 } from '@/lib/firebase-client';
+// Puro: la tabla de qué ve cada rol. No toca Firestore, así que puede ser un
+// import estático del chunk del login (B-09, D-51).
+import { puedeVer, type RolDelPanel } from '@/lib/rolDelPanel';
+// Store de módulo, sin Firestore ni React context (mismo patrón que
+// `formulario-sucio.ts`): es lo que le permite a `campos-del-panel.tsx` decidir
+// si ofrece «Otro…» sin cablear un booleano por seis componentes.
+import { fijarRolActivo } from '@/lib/rolActivo';
 import type { ActividadFormulario as TipoFormulario } from '@/components/admin/ActividadFormulario';
 import type { CalendarioActividades as TipoCalendario } from '@/components/admin/CalendarioActividades';
 import type { HistorialActividad as TipoHistorial } from '@/components/admin/HistorialActividad';
@@ -245,7 +252,14 @@ const ANCHO_COMPLETO = 'max-w-[100rem]';
  */
 export function AdminApp() {
   const [usuario, setUsuario] = useState<User | null>(null);
-  const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
+  /**
+   * B-888 — el rol, no un booleano. `null` = la cuenta no tiene ninguno de los
+   * dos claims (la pantalla «Sin permisos»); `undefined` = todavía no se leyó.
+   *
+   * Era `esAdmin: boolean | null`, y con el rol nuevo un booleano no alcanza: un
+   * publicador daría `false` y vería «Sin permisos» teniendo permisos.
+   */
+  const [rol, setRol] = useState<RolDelPanel | null | undefined>(undefined);
   const [cargando, setCargando] = useState(true);
   const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
 
@@ -366,8 +380,35 @@ export function AdminApp() {
       alCambiarDeSesion(almacenDelNavegador(), uidAnterior.current, u?.uid ?? null);
       uidAnterior.current = u?.uid ?? null;
       setUsuario(u);
-      setEsAdmin(u ? await tieneClaimAdmin(u) : null);
+      const suRol = u ? await rolDelPanel(u) : null;
+      setRol(suRol);
+      // Antes del `setCargando(false)`: el store tiene que estar al día **antes**
+      // del primer render del panel, o el formulario se dibujaría una vez con el
+      // default permisivo.
+      fijarRolActivo(suRol);
       setCargando(false);
+
+      /*
+       * B-888 — **el consumidor que a `registrarUsuario()` le faltaba.** Hasta
+       * la tajada 1 la colección `/usuarios` existía y estaba vacía, así que el
+       * panel no podía mostrar ningún mail.
+       *
+       * Va acá, en el observador de auth, y no en un botón: es lo que hace que
+       * el mail **no envejezca** (D-650) — se refresca en cada login en vez de
+       * quedar cableado, que es el defecto que D-610 le señalaba al mapa
+       * uid→nombre a mano.
+       *
+       * `import()` y no un import estático: `usuarios.ts` toca Firestore y este
+       * módulo es el que baja la pantalla de login (B-09, D-51). Y `void` con su
+       * `catch`: que el directorio no se pueda actualizar **no puede impedirle a
+       * nadie entrar** — lo peor que pasa es que el panel lea un uid donde
+       * esperaba un mail.
+       */
+      if (u && suRol) {
+        void import('@/lib/usuarios')
+          .then((m) => m.registrarUsuario(u.uid, u.email))
+          .catch(() => {});
+      }
     });
   }, []);
 
@@ -458,18 +499,23 @@ export function AdminApp() {
     );
   }
 
-  // §5.3 — sin el custom claim `admin` no hay escritura posible: las reglas de
-  // Firestore lo rechazan igual, esto solo evita mostrar un panel inútil.
-  if (esAdmin === false) {
+  // §5.3 — sin uno de los dos custom claims no hay escritura posible: las reglas
+  // de Firestore lo rechazan igual, esto solo evita mostrar un panel inútil.
+  // `!rol` y no `rol === null`: con la sesión ya resuelta (`cargando` en false y
+  // `usuario` puesto) el `undefined` inicial no es alcanzable, y esta forma lo
+  // **estrecha** para todo lo que sigue, así que el resto del componente no
+  // necesita un `rol!` ni una rama más.
+  if (!rol) {
     return (
       <div className="mx-auto max-w-md px-segura py-24 text-center">
         <h1 className="font-serif text-xl font-semibold">Sin permisos</h1>
         <p className="mt-2 text-sm text-tinta/60">
-          {usuario.email} no tiene el claim <code>admin</code>. Correlo con{' '}
+          {usuario.email} no tiene el claim <code>admin</code> ni{' '}
+          <code>publicador</code>. Correlo con{' '}
           <code className="rounded bg-tinta/8 px-1">
             npm run admin:claim -- {usuario.uid}
           </code>{' '}
-          y volvé a entrar.
+          (agregale <code>--publicador</code> para el rol acotado) y volvé a entrar.
         </p>
         <button
           type="button"
@@ -557,7 +603,7 @@ export function AdminApp() {
             Calendario
           </button>
         )}
-        {vista.tipo === 'lista' && (
+        {vista.tipo === 'lista' && puedeVer(rol, 'taxonomias') && (
           <button
             type="button"
             onClick={() => setVista({ tipo: 'taxonomias' })}
@@ -567,7 +613,7 @@ export function AdminApp() {
             <PendientesBadge />
           </button>
         )}
-        {vista.tipo === 'lista' && (
+        {vista.tipo === 'lista' && puedeVer(rol, 'estadisticas') && (
           <button
             type="button"
             onClick={() => setVista({ tipo: 'estadisticas' })}
@@ -581,7 +627,7 @@ export function AdminApp() {
           el listado, como «Opciones» y «Estadísticas»: ahí no hay nada que
           perder, así que no va envuelta en `salirDe` (B-35).
         */}
-        {vista.tipo === 'lista' && (
+        {vista.tipo === 'lista' && puedeVer(rol, 'propuestas') && (
           <button
             type="button"
             onClick={() => setVista({ tipo: 'propuestas' })}
@@ -591,7 +637,7 @@ export function AdminApp() {
             <PropuestasBadge />
           </button>
         )}
-        {vista.tipo !== 'reportes' && (
+        {vista.tipo !== 'reportes' && puedeVer(rol, 'reportes') && (
           <button
             type="button"
             onClick={() => salirDe(() => setVista({ tipo: 'reportes' }))}
@@ -683,6 +729,7 @@ export function AdminApp() {
             setVista({ tipo: 'duplicar', copia, tituloOrigen });
           }}
           uid={usuario.uid}
+          rol={rol}
           onHistorial={(a) => {
             setVolverA('lista');
             setVista({ tipo: 'historial', actividad: a });
@@ -703,6 +750,8 @@ export function AdminApp() {
       {vista.tipo === 'calendario' && (
         <CalendarioActividades
           version={version}
+          rol={rol}
+          uid={usuario.uid}
           onEditar={(a) => {
             setVolverA('calendario');
             setEtiquetasSinRegistrar([]);
@@ -757,6 +806,7 @@ export function AdminApp() {
         vista.tipo === 'convertir') && (
         <ActividadFormulario
           uid={usuario.uid}
+          rol={rol}
           vistaDelPanel={vistaDelPanel}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
           copia={

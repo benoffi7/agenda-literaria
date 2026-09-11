@@ -46,6 +46,17 @@ import {
 } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
+// Las funciones **del panel**, no una query rearmada a mano: el bug que el
+// bloque 8 frena es que el panel arme la query mal (ver su docblock).
+import {
+  actualizarActividad,
+  borrarActividad,
+  crearActividad,
+  listarActividades,
+  slugDisponible,
+} from '@/lib/actividades';
+import { olvidarCentinela } from '@/lib/slugs';
+import { formDeCiclo } from './fixtures/formulario-de-ciclo';
 import { PROJECT_ID, cargarReglas, emuladorAuthVivo, emuladorVivo, limpiarFirestore } from './emulador';
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
@@ -151,6 +162,16 @@ const actividadDe = (uid: string, extra: Record<string, unknown> = {}) => ({
   estado: 'publicado',
   createdBy: uid,
   updatedBy: uid,
+  /*
+   * **`updatedAt` no es andamiaje: sin él la query del listado devuelve vacío** —
+   * lo enseñó este archivo al escribir el bloque 8. `listarActividades` ordena por
+   * `updatedAt`, y Firestore **excluye del resultado los documentos que no tienen
+   * el campo del `orderBy`**, así que un documento sembrado sin él no aparece
+   * aunque la regla lo autorice. En producción no pasa (`formADocumento` lo
+   * escribe siempre), pero un fixture sin él haría que el caso del listado diera
+   * vacío y se leyera como «la regla lo frenó».
+   */
+  updatedAt: new Date(),
   ...extra,
 });
 
@@ -683,6 +704,395 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       await signOut(auth());
       await rechazada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin sesión');
       await rechazada(getDoc(doc(db(), 'usuarios', UID_PUB)), 'leer el directorio sin sesión');
+    });
+  });
+  // ══════════════════════════════════════════════════════════════════════
+  //  7. EL ÍNDICE DE SLUGS — la rotura 2, y la que no tenía arreglo obvio
+  // ══════════════════════════════════════════════════════════════════════
+  describe('/slugs — el índice que hace verificable la unicidad (D-660)', () => {
+    /*
+     * **Por qué esta colección existe.** El bloque 3 de este archivo ya fija el
+     * mecanismo: una query sin `where` se le rechaza **entera** al publicador. Eso
+     * deja a `slugDisponible()` sin forma de contestar, porque el slug único es un
+     * invariante de TODO el catálogo y no se verifica mirando solo lo propio. El
+     * índice lo contesta con un `get` por id, y —lo que de verdad cambia— con
+     * `allow update: if false` convierte el chequeo en un invariante: la reserva
+     * viaja en el mismo `writeBatch` que la actividad.
+     */
+    const reserva = (uid: string, actividadId: string) => ({
+      actividadId,
+      porUid: uid,
+      creadoEn: serverTimestamp(),
+    });
+
+    beforeEach(async () => {
+      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+    });
+
+    it('reserva un nombre libre, y lo puede leer por id', async () => {
+      // El control positivo: sin esto, un `allow create: if false` pasaría todos
+      // los casos de negación de abajo.
+      await setDoc(doc(db(), 'slugs', 'taller-nuevo'), reserva(UID_PUB, 'act_x'));
+      const leido = await getDoc(doc(db(), 'slugs', 'taller-nuevo'));
+      expect(leido.data()?.actividadId).toBe('act_x');
+    });
+
+    it('y NO puede pisar una reserva que ya existe — es la unicidad, no un chequeo', async () => {
+      /*
+       * **Esto es lo que el barrido de antes no daba.** `slugDisponible()` era
+       * check-then-write: dos guardados simultáneos con el mismo slug pasaban los
+       * dos, y quedaban dos actividades peleando la misma URL (trampa 10). Acá el
+       * segundo `set` es un `update` sobre un documento que existe, y `update`
+       * está en `false`: lo rechaza el servidor, no el cliente.
+       *
+       * Mutación: cambiar `allow update: if false` por `esDelPanel()`. Este caso
+       * se pone rojo, y con él se cae la única propiedad que esta colección compra
+       * por encima de una Function.
+       */
+      await setDoc(doc(db(), 'slugs', 'taller-disputado'), reserva(UID_PUB, 'act_1'));
+      await rechazada(
+        setDoc(doc(db(), 'slugs', 'taller-disputado'), reserva(UID_PUB, 'act_2')),
+        'pisar una reserva ajena',
+      );
+      // Y el dueño no cambió: el rechazo no es cosmético.
+      expect((await getDoc(doc(db(), 'slugs', 'taller-disputado'))).data()?.actividadId).toBe(
+        'act_1',
+      );
+    });
+
+    it('no reserva a nombre de otra cuenta', async () => {
+      // Mutación: sacar `d.get('porUid','') == request.auth.uid` de
+      // `reservaValida()`. Este caso se pone rojo. Es lo que hace verificable el
+      // `delete` de más abajo: sin esa cláusula, `porUid` sería un dato que el
+      // cliente elige y soltar el nombre de otro sería escribirlo primero.
+      await rechazada(
+        setDoc(doc(db(), 'slugs', 'taller-firmado-por-otro'), reserva(UID_ADMIN, 'act_1')),
+        'reservar a nombre de otra cuenta',
+      );
+    });
+
+    it('no puede escribir el centinela, que es lo que hace que el índice no falle abierto', async () => {
+      /*
+       * `/slugs/_indice` lo escribe **solo el Admin SDK** (el script de siembra), y
+       * eso no es prolijidad: `slugLibre()` se niega a contestar mientras no está,
+       * así que poder crearlo desde el panel sería poder decirle al panel «el
+       * índice está completo» sobre un índice vacío — y ahí toda dirección
+       * publicada se leería como libre.
+       *
+       * Lo impide el `slug.matches('^[a-z0-9-]+$')` de `reservaValida()`, porque
+       * `slugify` nunca produce un `_`.
+       *
+       * Mutación: sacar ese `matches`. Este caso se pone rojo.
+       */
+      await rechazada(
+        setDoc(doc(db(), 'slugs', '_indice'), reserva(UID_PUB, 'act_1')),
+        'escribir el centinela del índice',
+      );
+    });
+
+    it('no enumera el índice: sería la lista de direcciones de todos los borradores', async () => {
+      // Mutación: `allow list: if esDelPanel()`. Este caso se pone rojo. Es la
+      // misma trampa 13 de `storage.rules`: un `read` abierto entrega el prefijo
+      // entero, y acá el prefijo son las URLs de lo que todavía no se publicó.
+      await rechazada(getDocs(collection(db(), 'slugs')), 'enumerar el índice de slugs');
+    });
+
+    it('suelta la suya y no la de otro', async () => {
+      /*
+       * Liberar el nombre pasa al borrar la actividad y al cambiarle el slug antes
+       * de publicarla. Se mira `porUid` y no el dueño de la actividad: eso pediría
+       * un `get()` a `/actividades` desde la regla, que se factura como lectura en
+       * cada evaluación (es lo que el bloque de `versiones` ya descartó).
+       *
+       * Mutación: sacar la condición de `porUid` del `allow delete`. La primera
+       * mitad de este caso se pone roja.
+       */
+      await sembrarEn('slugs/taller-del-admin', {
+        actividadId: 'act_admin',
+        porUid: UID_ADMIN,
+        creadoEn: new Date(),
+      });
+      await rechazada(deleteDoc(doc(db(), 'slugs', 'taller-del-admin')), 'soltar el nombre de otro');
+
+      await setDoc(doc(db(), 'slugs', 'taller-para-soltar'), reserva(UID_PUB, 'act_3'));
+      await deleteDoc(doc(db(), 'slugs', 'taller-para-soltar'));
+      expect((await getDoc(doc(db(), 'slugs', 'taller-para-soltar'))).exists()).toBe(false);
+    });
+
+    it('la reserva no acepta un campo de más, ni un `actividadId` que no sea un string corto', async () => {
+      /*
+       * **Las cuatro cláusulas de forma de `reservaValida()` que no tenían
+       * testigo** — lo marcó el `auditor-privacidad`. La que más importa es
+       * `hasOnly`: es lo único que impide que una cuenta acotada guarde texto
+       * arbitrario suyo adentro de un documento de `/slugs`, que es una colección
+       * que **todo el panel lee**.
+       *
+       * MUTACIÓN PROBADA: sacar `hasOnly` → rojo el primero; sacar `size() > 0` →
+       * rojo el tercero; sacar `size() <= 200` → rojo el cuarto.
+       *
+       * **El segundo caso —el `actividadId` numérico— no tiene una cláusula
+       * propia, y está dicho**: lo rechaza el `size() > 0`, porque un número no
+       * tiene `.size()` y el *evaluation error* deniega. Un `is string` adelante
+       * no cambiaría ningún veredicto, así que se borró: es el mismo caso que el
+       * `is string` que `usuarioValido()` ya había borrado, y lo delató la
+       * mutación al ir a probarlo. El caso queda porque el comportamiento sí hay
+       * que fijarlo — lo que no hay es una cláusula de adorno que lo finja.
+       */
+      const base = { porUid: UID_PUB, creadoEn: serverTimestamp() };
+      await rechazada(
+        setDoc(doc(db(), 'slugs', 'con-campo-de-mas'), {
+          ...base,
+          actividadId: 'act_1',
+          notas: 'texto que nadie valida',
+        }),
+        'una reserva con un campo de más',
+      );
+      await rechazada(
+        setDoc(doc(db(), 'slugs', 'con-id-numerico'), { ...base, actividadId: 42 }),
+        'un actividadId que no es string',
+      );
+      await rechazada(
+        setDoc(doc(db(), 'slugs', 'con-id-vacio'), { ...base, actividadId: '' }),
+        'un actividadId vacío',
+      );
+      await rechazada(
+        setDoc(doc(db(), 'slugs', 'con-id-larguisimo'), {
+          ...base,
+          actividadId: 'x'.repeat(201),
+        }),
+        'un actividadId de 201 caracteres',
+      );
+    });
+
+    it('lee la reserva de un admin, `porUid` incluido — y eso es lo aceptado', async () => {
+      /*
+       * **Un aserto positivo sobre algo que se acepta, no sobre algo que se
+       * frena**, y por eso está escrito así: una regla es todo-o-nada por
+       * documento y no proyecta (D-128), así que el `get` entrega los tres campos
+       * — incluido el uid de quien reservó, que puede ser un admin.
+       *
+       * No hay arreglo estrecho: condicionar el `get` por `porUid` rompería la
+       * unicidad, porque el publicador **tiene que** poder saber que un nombre
+       * ajeno está tomado. Lo que se entrega es un uid pelado, que él no puede
+       * resolver a un mail (el directorio le está cerrado, y eso sí tiene su caso
+       * en el bloque 4).
+       *
+       * Está acá para que el día que alguien intente cerrar el `get` vea qué se
+       * rompe, en vez de descubrirlo con el panel de un publicador sin poder
+       * guardar. Lo pidió el `auditor-privacidad`.
+       */
+      await sembrarEn('slugs/reservado-por-el-admin', {
+        actividadId: 'act_del_admin',
+        porUid: UID_ADMIN,
+        creadoEn: new Date(),
+      });
+      const leido = await getDoc(doc(db(), 'slugs', 'reservado-por-el-admin'));
+      expect(leido.data()?.actividadId).toBe('act_del_admin');
+      expect(leido.data()?.porUid, 'el get ya no entrega porUid: ver el docblock').toBe(UID_ADMIN);
+    });
+
+    it('puede reservar un nombre sin cargar la actividad, y eso falla cerrada', async () => {
+      /*
+       * `reservaValida()` no verifica que `actividadId` exista: hacerlo pediría un
+       * `get()` a `/actividades` desde la regla, facturado en cada evaluación. O
+       * sea que una cuenta acotada puede tomar un nombre que nadie va a usar.
+       *
+       * **Se acepta porque falla cerrada** —un nombre que nadie puede usar, nunca
+       * dos actividades con la misma URL— y porque lo barre
+       * `scripts/sembrar-slugs.mjs --reparar`, que saca toda reserva sin actividad
+       * viva. Es el mismo tipo de límite que `storage.rules` declara para su
+       * prefijo plano. Lo pidió el `auditor-privacidad`.
+       */
+      await setDoc(doc(db(), 'slugs', 'taller-que-no-existe'), reserva(UID_PUB, 'act_inventada'));
+      expect((await getDoc(doc(db(), 'slugs', 'taller-que-no-existe'))).exists()).toBe(true);
+    });
+
+    it('un anónimo no lee el índice: es la lista de lo que todavía no se publicó', async () => {
+      await signOut(auth());
+      await rechazada(getDoc(doc(db(), 'slugs', 'taller-nuevo')), 'leer el índice sin sesión');
+    });
+  });
+  // ══════════════════════════════════════════════════════════════════════
+  //  8. Y EL PANEL DE VERDAD: las funciones que la tajada 2 arregló
+  // ══════════════════════════════════════════════════════════════════════
+  describe('el panel del publicador, con las funciones reales (tajada 2)', () => {
+    /*
+     * Los bloques de arriba prueban **las reglas**. Éste prueba que el código del
+     * panel las satisface, que es lo que la tajada 2 vino a hacer: la tajada 1
+     * dejó una frontera correcta y un panel que se rompía contra ella.
+     *
+     * Se llaman las funciones de `src/lib/` de verdad —no un `getDocs` armado a
+     * mano— porque el bug que esto frena es justamente que **el panel** arme la
+     * query mal. Un test que rearme la query buena prueba la regla, no el arreglo.
+     */
+    beforeEach(async () => {
+      await sembrarEn('slugs/_indice', { sembradoEn: new Date(), actividades: 2 });
+      await sembrarEn(`slugs/taller-${UID_PUB}`, {
+        actividadId: MIA,
+        porUid: UID_PUB,
+        creadoEn: new Date(),
+      });
+      olvidarCentinela();
+      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+    });
+
+    it('`listarActividades` le trae lo suyo, y el barrido de antes se rechaza entero', async () => {
+      /*
+       * **La rotura 1, de las dos puntas.** El listado del panel llamaba a
+       * `listarActividades()` sin `where`, y con la regla de B-888 eso no devuelve
+       * un subconjunto: Firestore **rechaza la query completa** (trampa 7), así que
+       * la pantalla principal de un publicador quedaba rota y no acotada.
+       *
+       * MUTACIÓN PROBADA: sacarle la rama del `where` a `listarActividades`
+       * (`src/lib/actividades.ts`) —o sea, dejar el barrido de antes— deja la
+       * primera mitad de este caso en rojo con `permission-denied`. Es la rotura
+       * real, no una aproximación.
+       */
+      const mias = await listarActividades('publicador', UID_PUB);
+      expect(mias.map((a) => a.id)).toEqual([MIA]);
+
+      // La otra punta: con el rol equivocado, la misma función hace el barrido y
+      // el servidor la corta. Es el control negativo que hace que la primera
+      // mitad signifique algo.
+      await rechazada(listarActividades('admin', UID_PUB), 'el barrido sin where');
+    });
+
+    it('`slugDisponible` contesta sin barrer el catálogo — la rotura 2', async () => {
+      /*
+       * Barría toda la colección, así que se rechazaba entera igual que el
+       * listado. Ahora es un `get` por id contra `/slugs`.
+       *
+       * MUTACIÓN PROBADA: volver `slugDisponible` al `getDocs` de la colección
+       * deja este caso en rojo con `permission-denied`.
+       */
+      expect(await slugDisponible(`taller-${UID_PUB}`)).toBe(false);
+      // El propio documento no cuenta como conflicto consigo mismo.
+      expect(await slugDisponible(`taller-${UID_PUB}`, MIA)).toBe(true);
+      expect(await slugDisponible('taller-que-nadie-reservo')).toBe(true);
+    });
+
+    it('y sin el centinela se niega a contestar, en vez de decir «libre»', async () => {
+      /*
+       * **La única forma en que este índice puede fallar, y falla cerrada.** Un
+       * índice sin sembrar no tiene ninguna reserva, así que toda dirección —
+       * incluida una publicada— se leería como libre: eso es la trampa 10 servida
+       * en bandeja. El centinela lo convierte en un corte con mensaje.
+       *
+       * MUTACIÓN PROBADA: sacarle a `slugLibre` el `if (!sembrado) throw` deja
+       * este caso en rojo — y devuelve `true` sobre un slug que está tomado.
+       */
+      await getAdminFirestore(appSiembra!).doc('slugs/_indice').delete();
+      olvidarCentinela();
+      await expect(slugDisponible(`taller-${UID_PUB}`)).rejects.toThrow(/índice de direcciones/);
+    });
+
+    it('guarda una actividad entera, con su reserva, en una sola operación', async () => {
+      /*
+       * El camino completo: `crearActividad` escribe la actividad **y** su reserva
+       * en el mismo `writeBatch`. Es el que prueba que las cuatro cláusulas nuevas
+       * de `/actividades` y las cinco de `/slugs` se satisfacen todas juntas desde
+       * el panel, que es algo que ningún caso de regla suelto puede decir.
+       */
+      const form = { ...formDeCiclo(), slug: 'taller-recien-creado' };
+      const id = await crearActividad(form, UID_PUB);
+
+      const escrita = await getDoc(doc(db(), 'actividades', id));
+      expect(escrita.data()?.createdBy).toBe(UID_PUB);
+      const reservado = await getDoc(doc(db(), 'slugs', 'taller-recien-creado'));
+      expect(reservado.data()?.actividadId).toBe(id);
+      expect(reservado.data()?.porUid).toBe(UID_PUB);
+
+      // Y borrarla suelta el nombre: si no, quedaría tomado para siempre.
+      await borrarActividad(id);
+      expect((await getDoc(doc(db(), 'slugs', 'taller-recien-creado'))).exists()).toBe(false);
+    });
+
+    it('editar una actividad SIN slug en disco también reserva el nuevo', async () => {
+      /*
+       * **El bug que encontró el `auditor-trampas`, con su red.** La primera
+       * versión de `actualizarActividad` gateaba el batch entero con
+       * `slugEnDisco &&`, así que una actividad sin slug válido —el caso que
+       * `scripts/sembrar-slugs.mjs` lista como `sinSlug`— caía al `updateDoc`
+       * pelado: se le escribía el slug nuevo y **no se reservaba nada**. El índice
+       * quedaba diciendo «libre» sobre un slug en uso, o sea la trampa 10 con el
+       * índice contradiciendo al catálogo.
+       *
+       * Es alcanzable por el camino normal: alguien edita una actividad vieja y le
+       * pone su primera dirección web desde el formulario.
+       *
+       * MUTACIÓN PROBADA: volver la condición a `if (slugEnDisco && slugNuevo !==
+       * slugEnDisco)` deja este caso en rojo, y ningún otro se mueve.
+       */
+      await sembrarEn('actividades/act_sin_slug', {
+        titulo: 'De antes, sin dirección web',
+        estado: 'borrador',
+        createdBy: UID_PUB,
+        updatedBy: UID_PUB,
+        updatedAt: new Date(),
+        sesiones: [],
+      });
+
+      await actualizarActividad(
+        'act_sin_slug',
+        { ...formDeCiclo(), slug: 'su-primera-direccion' },
+        UID_PUB,
+      );
+
+      const reservado = await getDoc(doc(db(), 'slugs', 'su-primera-direccion'));
+      expect(reservado.exists(), 'se escribió el slug sin reservarlo').toBe(true);
+      expect(reservado.data()?.actividadId).toBe('act_sin_slug');
+    });
+
+    it('borrar con la fila sin refrescar suelta el slug de VERDAD, no el del snapshot', async () => {
+      /*
+       * **El tercer bug de la misma familia, y el que cierra la serie** — lo
+       * encontró el `auditor-trampas` en el pase sobre el invariante del slug.
+       *
+       * `borrarActividad` era el único de los cuatro escritores que **no releía**
+       * el documento: tomaba el slug de la fila del listado en memoria. Con la
+       * fila sin refrescar —otra pestaña le cambió la dirección web en el medio—
+       * soltaba el slug **viejo**, que ya no existe (un no-op que «sale bien»), y
+       * dejaba el **actual** reservado apuntando a un id recién borrado. Sin
+       * error, sin aviso, y sin que nada se pusiera rojo.
+       *
+       * MUTACIÓN PROBADA: volver `borrarActividad` a recibir el slug por
+       * parámetro y soltar ése deja este caso en rojo, y ningún otro se mueve.
+       */
+      const id = await crearActividad(
+        { ...formDeCiclo(), slug: 'direccion-vieja' },
+        UID_PUB,
+      );
+      // La otra pestaña le cambia la dirección web: reserva la nueva y suelta la
+      // vieja, atómico y correcto.
+      await actualizarActividad(id, { ...formDeCiclo(), slug: 'direccion-nueva' }, UID_PUB);
+      expect((await getDoc(doc(db(), 'slugs', 'direccion-vieja'))).exists()).toBe(false);
+
+      // Y esta pestaña, con la fila de antes, aprieta «Borrar».
+      await borrarActividad(id);
+
+      expect(
+        (await getDoc(doc(db(), 'slugs', 'direccion-nueva'))).exists(),
+        'quedó reservada la dirección de una actividad que ya no existe',
+      ).toBe(false);
+    });
+
+    it('y el guardado simultáneo del mismo slug no pasa dos veces', async () => {
+      /*
+       * **Lo que el barrido no podía dar.** `slugDisponible` era check-then-write:
+       * dos guardados a la vez con el mismo slug pasaban los dos y quedaban dos
+       * actividades peleando una URL (trampa 10). Con la reserva adentro del
+       * batch, el segundo lo rechaza el servidor.
+       *
+       * Se lanzan **en paralelo** a propósito: en serie, el segundo lo frenaría el
+       * chequeo previo y este caso pasaría sin probar la atomicidad.
+       */
+      const form = { ...formDeCiclo(), slug: 'taller-disputado-de-verdad' };
+      const resultados = await Promise.allSettled([
+        crearActividad(form, UID_PUB),
+        crearActividad(form, UID_PUB),
+      ]);
+      expect(resultados.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect(resultados.filter((r) => r.status === 'rejected')).toHaveLength(1);
     });
   });
 });

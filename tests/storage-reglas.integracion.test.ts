@@ -398,39 +398,99 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
     });
 
     /**
-     * **El rol `publicador` (B-888) tampoco sube, y esto es la red de un
-     * comentario** — lo pidió el `auditor-trampas`.
+     * **El rol `publicador` (B-888, tajada 2): sube, y no hace nada más.**
      *
-     * `storage.rules` tiene arriba un docblock que dice que el rol nuevo no
-     * existe en este archivo, que eso hace que un publicador **no pueda subir la
-     * imagen de su actividad**, y que **no se cierre agregando `|| esPublicador()`
-     * de forma mecánica**: el prefijo `imagenes/{archivo}` es plano y el nombre es
-     * un uuid opaco, así que el objeto no dice de quién es y «solo las suyas» no
-     * es expresable con esta forma de path.
+     * Hasta la tajada 1 este caso afirmaba lo contrario —que el rol **no** podía
+     * subir— y estaba puesto como red de un comentario: `storage.rules` decía que
+     * el rol no existía en el archivo y que no se cerrara con un `|| esPublicador()`
+     * mecánico. **Se puso rojo el día que la tajada 2 lo abrió, que es exactamente
+     * para lo que estaba**, y por eso la decisión se tomó acá y no se descubrió
+     * después.
      *
-     * Un comentario no frena nada. Sin este caso, ese `|| esPublicador()` se
-     * escribe mañana, **la suite queda verde** —ningún test de Storage conocía el
-     * claim— y el prefijo se abre para todos sin que nada avise. Es la misma clase
-     * que el `{ruta=**}` de `miniaturas/`, anotado más arriba: el modo de falla es
-     * un arreglo que parece obvio y reabre la trampa 13.
+     * Lo que se abrió es **crear y nada más**, y las cuatro mitades de abajo son
+     * las cuatro cláusulas que lo hacen acotado. El razonamiento —y por qué no se
+     * agrupó por uid— está en el docblock del principio de `storage.rules`.
      *
-     * **Y el día que la tajada 2 lo abra de verdad, este caso se pone rojo**, que
-     * es lo que obliga a venir acá y decidirlo a mano en vez de descubrirlo
-     * después. Las dos salidas están escritas en el docblock de `storage.rules`.
+     * ⚠️ **La segunda mitad es la que enseñó algo, y hay que leerla.** La guarda
+     * contra pisar el objeto de otro **no** es separar `allow create` de
+     * `allow update`: se probó contra este mismo emulador el 2026-09-11 y con
+     * `create: if true` + `update: if false` **la segunda subida pasa**. La guarda
+     * que sí frena, y que sí se puede verificar, es `resource == null`.
      *
-     * MUTACIÓN PROBADA: agregar `|| esPublicador()` al `allow create, update` de
-     * `imagenes/{archivo}` (con su `function esPublicador()`) deja este caso en
-     * rojo, y ningún otro del archivo se mueve.
+     * MUTACIÓN PROBADA, una por caso:
+     *  - sacar `esPublicador()` de la última línea del `allow create, update` →
+     *    rojo el primero;
+     *  - sacar el `resource == null` de esa misma línea → rojo el segundo (y ésa
+     *    es la mutación que importa: con la separación `create`/`update` en su
+     *    lugar, este caso queda **verde sin frenar nada**);
+     *  - abrir `allow delete` a `esDelPanel()` → rojo el tercero;
+     *  - abrir `allow list` a `esDelPanel()` → rojo el cuarto.
+     * Ninguna mueve los otros casos del archivo.
      */
-    it('el rol publicador de B-888 tampoco sube: no existe en storage.rules', async () => {
+    it('el rol publicador de B-888 sube su imagen, y solo eso', async () => {
       await signInWithCustomToken(auth(), await tokenPublicador('uid_test_storage_publicador'));
       const ruta = rutaDeImagen(idNuevo(), 'image/jpeg');
-      // Un archivo **válido** —tipo, tamaño y nombre correctos—, para que lo único
-      // que pueda rechazarlo sea el claim. Con un archivo inválido este caso sería
-      // verde con la regla abierta o cerrada, o sea testigo de nada.
-      expect(await rechaza(subir(ruta, bytes(512), 'image/jpeg'))).toBe(true);
-      // Y tampoco enumera el prefijo (trampa 13): `list` sigue siendo de admin.
+
+      // 1. Sube. Un archivo **válido** —tipo, tamaño y nombre correctos—, para que
+      // lo único que pueda rechazarlo sea el claim.
+      await subir(ruta, bytes(512), 'image/jpeg');
+
+      /*
+       * 2. Y **no pisa lo que ya está** — `resource == null`.
+       *
+       * Es la cláusula que impide que un publicador reemplace el flyer de otro
+       * conociendo su uuid, y el uuid es conocible: viaja adentro de la URL de
+       * descarga, que para una actividad publicada es pública (B-206 #1). Es lo
+       * único que el prefijo plano deja verificar sobre «de quién es» este objeto.
+       *
+       * Se prueba sobre el objeto que **él mismo** acaba de subir, que es el caso
+       * más favorable posible: si ni el propio se puede pisar, el ajeno tampoco.
+       */
+      expect(
+        await rechaza(subir(ruta, bytes(600), 'image/jpeg')),
+        'un publicador pudo pisar un objeto que ya existía',
+      ).toBe(true);
+
+      // 3. No borra: el panel no borra de Storage desde ningún lado, y abrirlo
+      // sería dejar borrar la foto de cualquiera que conozca el uuid.
+      expect(await rechaza(deleteObject(ref(almacen(), ruta)))).toBe(true);
+
+      // 4. Y tampoco enumera el prefijo (trampa 13): `list` sigue siendo de admin.
       await expect(listAll(ref(almacen(), 'imagenes'))).rejects.toThrow();
+    });
+
+    /**
+     * **Y las tres cláusulas de forma le siguen aplicando**, que es lo que hace
+     * que `create` abierto al rol no sea `create` abierto a cualquier cosa: el
+     * tipo, el tamaño y el nombre del objeto se verifican igual que para un admin.
+     *
+     * Sin este caso, un `create: if esDelPanel()` pelado —sin las tres— pasaría
+     * el caso de arriba sin que nada avise, y el prefijo aceptaría un archivo de
+     * 80 MB de un rol nuevo. Es la misma clase que el documento sonda de
+     * `escritura-anonima`: un aserto que se lee como load-bearing y no puede fallar.
+     */
+    it('y al publicador le aplican las mismas cláusulas de forma que al admin', async () => {
+      await signInWithCustomToken(auth(), await tokenPublicador('uid_test_storage_publicador'));
+      expect(
+        await rechaza(subir(rutaDeImagen(idNuevo(), 'image/jpeg'), bytes(MAXIMO_BYTES + 1), 'image/jpeg')),
+        'el tope de tamaño no le aplica al publicador',
+      ).toBe(true);
+      expect(
+        await rechaza(subir(`imagenes/${idNuevo()}.jpg`.replace('img_', 'otro_'), bytes(512), 'image/jpeg')),
+        'el patrón del nombre no le aplica al publicador',
+      ).toBe(true);
+      expect(
+        await rechaza(
+          uploadBytes(ref(almacen(), rutaDeImagen(idNuevo(), 'image/jpeg')), bytes(512), {
+            contentType: 'image/jpeg',
+            // B-220 / D-175 — la marca de la Function no se puede subir desde un
+            // cliente, y eso vale para los dos roles: sin esto el trigger de
+            // optimización se saltea y el JPEG queda público con su GPS adentro.
+            customMetadata: { optimizada: '1' },
+          }),
+        ),
+        'la marca de la Function no le aplica al publicador',
+      ).toBe(true);
     });
   });
 });

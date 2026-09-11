@@ -57,3 +57,45 @@ export const ETIQUETA_AUTORIA: Record<Autoria, string | null> = {
   ajena: 'La cargó otra cuenta',
   desconocida: null,
 };
+
+/**
+ * **La marca con nombre y apellido** — B-888, tajada 2.
+ *
+ * Hasta acá la marca decía «La cargó otra cuenta» y el docblock de arriba explica
+ * por qué el artículo era indefinido: no había con qué decir *cuál*, y cablear un
+ * mapa uid→nombre era exactamente lo que D-610 rechazó por envejecer sin que nada
+ * falle. Con `/usuarios` (D-650) hay con qué, y el mail **no envejece**: cada
+ * cuenta lo refresca sola al entrar.
+ *
+ * ── Las tres decisiones de esta función ───────────────────────────────────
+ *  - **Lo ajeno gana sobre lo último.** Se pregunta primero por quién la cargó y
+ *    después por quién la tocó, y no al revés, porque «la cargó otra cuenta» es
+ *    la pregunta que se reportó (B-130) y la que ordena el listado. El resultado
+ *    lateral es que con el directorio vacío esta función devuelve **exactamente**
+ *    lo que devolvía antes, así que el texto de B-130 no cambia hasta que alguien
+ *    entre al panel y se registre.
+ *  - **El fallback conserva el artículo indefinido.** Un uid que todavía no está
+ *    en el directorio —una cuenta que no volvió a entrar desde que existe la
+ *    colección— no se resuelve, y ahí se dice «otra cuenta» y no se inventa nada:
+ *    es la misma regla que `autoriaDe` aplica con `desconocida`, y la que
+ *    `tests/autoria.test.ts` fija para que la marca no envejezca con la cantidad
+ *    de cuentas.
+ *  - **Lo propio y sin tocar por nadie sigue sin marca.** Es lo de siempre: si
+ *    todo lleva marca, la marca deja de avisar.
+ */
+export const marcaDeAutoria = (
+  actividad: { createdBy?: string | null; updatedBy?: string | null },
+  uidActual: string | undefined,
+  mailes: ReadonlyMap<string, string>,
+): string | null => {
+  const quien = (uid: string): string => mailes.get(uid) ?? 'otra cuenta';
+
+  if (autoriaDe(actividad, uidActual) === 'ajena') {
+    return `La cargó ${quien(actividad.createdBy ?? '')}`;
+  }
+  const ultimo = actividad.updatedBy ?? '';
+  // Lo cargué yo y lo cambió otro: es el dato nuevo, y el que el §12 ya guardaba
+  // sin que el listado lo mostrara.
+  if (ultimo && uidActual && ultimo !== uidActual) return `La cambió ${quien(ultimo)}`;
+  return null;
+};

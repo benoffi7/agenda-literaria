@@ -66,6 +66,19 @@ interface Props {
    * No hace nada en taxonomías que arrancan sin opciones base (barrio, tags).
    */
   autoSeleccionarPrimera?: boolean;
+  /**
+   * ¿Se ofrece «Otro…»? — B-888.
+   *
+   * `true` por default, que es lo que este control hizo siempre: el default
+   * preserva lo anterior, y quien necesita cerrarlo lo dice explícito.
+   *
+   * En `false` el desplegable sigue sirviendo para elegir —incluido el `option`
+   * de rescate de un slug ya guardado que no está en `elegibles`— y no ofrece
+   * crear. Es lo que corresponde a una cuenta cuyas escrituras a `/opciones/*`
+   * las reglas rechazan: ofrecer el alta sería ofrecer algo que siempre falla, y
+   * encima en silencio, porque la actividad sí se guarda.
+   */
+  permitirOtro?: boolean;
 }
 
 const OTRO = '__otro__';
@@ -88,6 +101,7 @@ export function TaxonomiaSelect({
   id,
   placeholder,
   autoSeleccionarPrimera = false,
+  permitirOtro = true,
 }: Props) {
   const [modoOtro, setModoOtro] = useState(false);
   const [texto, setTexto] = useState('');
@@ -230,7 +244,11 @@ export function TaxonomiaSelect({
       className={claseInput}
       value={value || ''}
       onChange={(e) => {
-        if (e.target.value === OTRO) {
+        // El `permitirOtro` va **también acá** y no solo en el `option` de
+        // abajo: sin esta mitad, el valor centinela seguiría siendo alcanzable
+        // por teclado o por un `option` de una versión cacheada, y el control
+        // entraría en un modo que la cuenta no puede completar.
+        if (permitirOtro && e.target.value === OTRO) {
           onMedir?.('taxonomia-otro', campo);
           setModoOtro(true);
           return;
@@ -274,7 +292,7 @@ export function TaxonomiaSelect({
           {etiquetaConEstado(v)}
         </option>
       ))}
-      <option value={OTRO}>Otro…</option>
+      {permitirOtro && <option value={OTRO}>Otro…</option>}
     </select>
   );
 }

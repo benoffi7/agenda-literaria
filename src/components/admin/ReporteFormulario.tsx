@@ -57,13 +57,21 @@ export function ReporteFormulario({ usuario, onEnviado }: Props) {
   // manda igual sin referencia: no es motivo para bloquear el formulario.
   useEffect(() => {
     let vivo = true;
-    listarActividades()
+    /*
+     * B-888 — `'admin'` explícito, y no el rol de la sesión: esta pantalla
+     * **es** de admin por construcción (`/reportes` está cerrado al publicador en
+     * las reglas y el botón no se le dibuja), así que pedir el catálogo entero es
+     * exactamente lo que corresponde. Si algún día se abre el reporte a un
+     * publicador, esta línea es la que tiene que cambiar junto con `PERMISOS`, y
+     * está escrita para que se encuentre buscando el rol.
+     */
+    listarActividades('admin', usuario.uid)
       .then((as) => vivo && setActividades(as))
       .catch(() => {});
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [usuario.uid]);
 
   const set = <K extends keyof ReporteForm>(campo: K, valor: ReporteForm[K]) =>
     setForm((f) => ({ ...f, [campo]: valor }));

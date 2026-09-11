@@ -38,7 +38,8 @@ afterEach(cleanup);
 
 /** Monta el formulario y deja abierta la pestaña «Encuentros». */
 const enEncuentros = async () => {
-  render(<ActividadFormulario vistaDelPanel="pc" uid="uid-de-prueba" onGuardado={vi.fn()} onCancelar={vi.fn()} />);
+  render(<ActividadFormulario
+      rol="admin" vistaDelPanel="pc" uid="uid-de-prueba" onGuardado={vi.fn()} onCancelar={vi.fn()} />);
   await userEvent.click(screen.getByRole('tab', { name: /^Encuentros/ }));
   return screen.getByRole('tabpanel', { name: /Encuentros/, hidden: true });
 };
@@ -73,7 +74,8 @@ describe('el bloque de opciones aparece cuando corresponde (B-181)', () => {
      * form.comisiones.length > 0` de `SeccionEncuentros`, este caso queda en rojo
      * con el bloque a la vista en toda actividad.
      */
-    render(<ActividadFormulario vistaDelPanel="pc" uid="uid-de-prueba" onGuardado={vi.fn()} onCancelar={vi.fn()} />);
+    render(<ActividadFormulario
+      rol="admin" vistaDelPanel="pc" uid="uid-de-prueba" onGuardado={vi.fn()} onCancelar={vi.fn()} />);
     expect(screen.queryByText('Opciones para sumarse')).toBeNull();
   });
 

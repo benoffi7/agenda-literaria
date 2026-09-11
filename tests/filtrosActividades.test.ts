@@ -409,6 +409,9 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
       barrios: [],
       tags: [],
       hayDestacadas: false,
+      // B-888 — el eje «quién la cargó». Entra a esta lista por lo mismo que
+      // `tags`/`hayDestacadas`: sin actividades hay que ofrecerlo vacío.
+      autores: [],
     });
   });
 });
@@ -667,5 +670,71 @@ describe('los chips de etiquetas cuentan como los del sitio — B-274', () => {
     // Y sin las opciones cargadas todavía, el respaldo: el default es «no
     // llegaron», no «no hay».
     expect(chipsDeTags(datos, FILTROS_VACIOS, ahora)[0]?.label).toBe('Poesia');
+  });
+});
+
+/**
+ * **El eje «quién la cargó» — B-888**, el tercer descarte de D-74 que se da
+ * vuelta.
+ *
+ * D-74 lo dejó afuera con un argumento que dejó de ser cierto: «es un uid, y el
+ * §5.1 mantiene los identificadores afuera de todo lo que se muestre». Con
+ * `/usuarios` (D-650) el panel tiene el **mail**, así que lo que se muestra es un
+ * mail y el uid se queda del lado de adentro — que es lo que el §5.1 pedía.
+ */
+describe('filtrar por quién la cargó — B-888', () => {
+  const YO = 'uid_propio';
+  const OTRO = 'uid_otra';
+  const deQuien = (id: string, createdBy?: string) =>
+    ({ ...acto({ id }), createdBy }) as ActividadConId;
+
+  const catalogo = () => [deQuien('a', YO), deQuien('b', OTRO), deQuien('c')];
+
+  it('vacío no filtra nada', () => {
+    expect(filtrar(catalogo(), FILTROS_VACIOS, ahora).map((a) => a.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('con un uid deja solo las de esa cuenta', () => {
+    /*
+     * MUTACIÓN PROBADA: sacarle a `filtrar` la línea de `filtros.autor` deja este
+     * caso en rojo.
+     */
+    expect(
+      filtrar(catalogo(), { ...FILTROS_VACIOS, autor: OTRO }, ahora).map((a) => a.id),
+    ).toEqual(['b']);
+  });
+
+  it('las anteriores a `createdBy` no caen bajo ninguna cuenta', () => {
+    /*
+     * Con el `?? ''` del filtro, un documento sin autor declarado no pertenece a
+     * nadie — que es lo mismo que `autoriaDe` contesta con `desconocida`, y lo
+     * mismo que hacen los otros ejes con su default (arancel, barrio).
+     */
+    for (const uid of [YO, OTRO, '']) {
+      const ids = filtrar(catalogo(), { ...FILTROS_VACIOS, autor: uid }, ahora).map((a) => a.id);
+      if (uid) expect(ids, `«${uid}» se llevó la actividad sin autor`).not.toContain('c');
+    }
+  });
+
+  it('cuenta como un filtro puesto, para el número del botón', () => {
+    // Sin esto, el `(N)` del botón «Filtros» diría cero con el eje puesto y un
+    // listado filtrado parecería vacío sin explicación.
+    expect(cantidadDeFiltros({ ...FILTROS_VACIOS, autor: OTRO })).toBe(1);
+    expect(hayFiltros({ ...FILTROS_VACIOS, autor: OTRO })).toBe(true);
+  });
+
+  it('y «Limpiar filtros» lo apaga: está en FILTROS_VACIOS', () => {
+    expect(FILTROS_VACIOS.autor).toBe('');
+  });
+
+  it('`opcionesPresentes` ofrece las cuentas que aparecen, y solo esas', () => {
+    /*
+     * Las que no declaran autor no aportan una opción: aportarían una fila vacía
+     * en el desplegable. El orden es estable a propósito — sin él, el desplegable
+     * se reordenaría según el orden de llegada de los datos, que es el mismo
+     * motivo por el que los otros seis ejes se ordenan en ese módulo y no en el
+     * JSX.
+     */
+    expect(opcionesPresentes(catalogo()).autores).toEqual([OTRO, YO].sort());
   });
 });

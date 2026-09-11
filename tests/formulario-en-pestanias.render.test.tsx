@@ -52,7 +52,8 @@ afterEach(cleanup);
 
 const pintar = () => {
   render(
-    <ActividadFormulario vistaDelPanel="pc" uid="uid-de-prueba" onGuardado={vi.fn()} onCancelar={vi.fn()} />,
+    <ActividadFormulario
+      rol="admin" vistaDelPanel="pc" uid="uid-de-prueba" onGuardado={vi.fn()} onCancelar={vi.fn()} />,
   );
 };
 

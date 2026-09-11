@@ -50,7 +50,13 @@ const ahora = new Date('2026-09-07T12:00:00Z');
  * pasarle un filtro cualquiera para eso mezclaría el estado inicial con lo que se
  * quiere medir. Se abre con un click, que es además lo que hace una persona.
  */
-const pintar = async (actividades: ActividadConId[], filtros: Filtros = FILTROS_VACIOS) => {
+const pintar = async (
+  actividades: ActividadConId[],
+  filtros: Filtros = FILTROS_VACIOS,
+  // B-888 — el directorio de cuentas. Vacío por default, que es como arranca en
+  // producción (se llena a medida que cada cuenta entra al panel).
+  mailes: ReadonlyMap<string, string> = new Map(),
+) => {
   const onFiltros = vi.fn();
   render(
     <FiltrosActividades
@@ -58,6 +64,7 @@ const pintar = async (actividades: ActividadConId[], filtros: Filtros = FILTROS_
       onFiltros={onFiltros}
       orden={ORDEN_POR_DEFECTO}
       onOrden={vi.fn()}
+      mailes={mailes}
       opciones={opcionesPresentes(actividades)}
       labels={{}}
       total={actividades.length}
@@ -200,6 +207,7 @@ describe('el eje de etiquetas son botones de alternancia — B-274', () => {
         onFiltros={onFiltros}
         orden={ORDEN_POR_DEFECTO}
         onOrden={vi.fn()}
+        mailes={new Map()}
         opciones={opcionesPresentes([acto({ id: 'a', tags: ['poesia'] })])}
         labels={{ tags: { poesia: 'Poesía' } }}
         total={1}
@@ -216,5 +224,74 @@ describe('el eje de etiquetas son botones de alternancia — B-274', () => {
   it('sin ninguna etiqueta cargada, el eje no se pinta', async () => {
     await pintar([acto({ id: 'a' })]);
     expect(screen.queryByRole('group', { name: /^Etiquetas/ })).toBeNull();
+  });
+});
+
+/**
+ * **El eje «Quién la cargó» — B-888**, el tercer descarte de D-74 que se da
+ * vuelta. Lo que lo habilita es que el panel tenga el **mail** de cada cuenta
+ * (`/usuarios`, D-650): el motivo por el que estaba afuera era que el dato es un
+ * uid, y «el §5.1 mantiene los identificadores afuera de todo lo que se muestre».
+ */
+describe('el filtro por autor muestra mails, nunca uids — B-888', () => {
+  const MAILES = new Map([
+    ['uid_a', 'ana@ejemplo.test'],
+    ['uid_b', 'beto@ejemplo.test'],
+  ]);
+
+  it('con dos cuentas resueltas, ofrece sus mails', async () => {
+    await pintar(
+      [acto({ id: '1', createdBy: 'uid_a' }), acto({ id: '2', createdBy: 'uid_b' })],
+      FILTROS_VACIOS,
+      MAILES,
+    );
+    const select = screen.getByLabelText('Quién la cargó');
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Cualquiera',
+      'ana@ejemplo.test',
+      'beto@ejemplo.test',
+    ]);
+  });
+
+  it('y el valor que viaja es el uid, que no se lee', async () => {
+    // El uid se queda del lado de adentro: es el `value` del `<option>`, no su
+    // texto. Es exactamente la mitad de D-74 que sigue en pie.
+    const onFiltros = await pintar(
+      [acto({ id: '1', createdBy: 'uid_a' }), acto({ id: '2', createdBy: 'uid_b' })],
+      FILTROS_VACIOS,
+      MAILES,
+    );
+    await userEvent.selectOptions(screen.getByLabelText('Quién la cargó'), 'uid_b');
+    expect(onFiltros).toHaveBeenCalledWith(expect.objectContaining({ autor: 'uid_b' }));
+    expect(screen.getByLabelText('Quién la cargó').textContent).not.toContain('uid_');
+  });
+
+  it('sin directorio no se dibuja: sería una lista de uids', async () => {
+    /*
+     * La colección arranca vacía y se llena a medida que cada cuenta entra, así
+     * que durante un rato no hay mail que resolver. Mostrar el control igual
+     * sería reintroducir justo lo que D-74 rechazaba.
+     *
+     * MUTACIÓN PROBADA: quitar el filtro por mail de `autoresConMail` —ofrecer
+     * `opciones.autores` tal cual— deja este caso en rojo.
+     */
+    await pintar([acto({ id: '1', createdBy: 'uid_a' }), acto({ id: '2', createdBy: 'uid_b' })]);
+    expect(screen.queryByLabelText('Quién la cargó')).toBeNull();
+  });
+
+  it('con una sola cuenta tampoco: el filtro no distinguiría nada', async () => {
+    /*
+     * Mismo criterio que el barrio, el arancel y «Destacada». Y tiene un efecto
+     * de más: el listado de un publicador **ya** trae solo lo suyo, así que este
+     * control no le aparece nunca sin que haga falta una rama por rol.
+     *
+     * MUTACIÓN PROBADA: cambiar el `> 1` por `> 0` deja este caso en rojo.
+     */
+    await pintar(
+      [acto({ id: '1', createdBy: 'uid_a' }), acto({ id: '2', createdBy: 'uid_a' })],
+      FILTROS_VACIOS,
+      MAILES,
+    );
+    expect(screen.queryByLabelText('Quién la cargó')).toBeNull();
   });
 });

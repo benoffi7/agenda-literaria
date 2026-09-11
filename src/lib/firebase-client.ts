@@ -9,6 +9,8 @@
  */
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { activarAppCheck } from '@/lib/appcheck';
+// Puro: no arrastra Firestore, así que no toca el corte del bundle de B-09/D-51.
+import { rolDeClaims, type RolDelPanel } from '@/lib/rolDelPanel';
 import {
   getAuth,
   connectAuthEmulator,
@@ -73,13 +75,30 @@ export const logout = () => fbSignOut(auth());
 export const observarAuth = (cb: (u: User | null) => void) => onAuthStateChanged(auth(), cb);
 
 /**
- * §5.3 — la escritura la habilita el custom claim `admin`, seteado una vez con
- * el Admin SDK. Acá solo lo leemos para decidir qué mostrar; la autorización
- * real la hacen las reglas de Firestore.
+ * §5.3 — la escritura la habilita un custom claim (`admin` o, desde B-888,
+ * `publicador`), seteado una vez con el Admin SDK. Acá solo lo leemos para
+ * decidir qué mostrar; **la autorización real la hacen las reglas de Firestore**
+ * y las de Storage.
+ *
+ * Devuelve `null` cuando la cuenta no tiene ninguno de los dos, que es lo que
+ * pinta la pantalla «Sin permisos».
+ *
+ * La regla de desempate —con los dos claims gana el acotado— vive en
+ * `rolDeClaims` (`lib/rolDelPanel.ts`), que es puro y tiene su test contra el
+ * texto de `firestore.rules`: acá solo se lee el token.
  */
-export const tieneClaimAdmin = async (u: User): Promise<boolean> => {
+export const rolDelPanel = async (u: User): Promise<RolDelPanel | null> => {
   const token = await u.getIdTokenResult(true);
-  return token.claims.admin === true;
+  return rolDeClaims(token.claims as Record<string, unknown>);
 };
+
+/**
+ * @deprecated B-888 — usar `rolDelPanel`. Se conserva porque contesta la
+ * pregunta vieja («¿es admin?») sin ambigüedad y hay tests que la nombran; lo
+ * que **no** hay que hacer es usarla para decidir qué se muestra, porque un
+ * publicador daría `false` y vería «Sin permisos» teniendo permisos.
+ */
+export const tieneClaimAdmin = async (u: User): Promise<boolean> =>
+  (await rolDelPanel(u)) === 'admin';
 
 export { usarEmuladores };

@@ -2,6 +2,60 @@
 
 ## Sin publicar
 
+- **El panel del rol `publicador`, y las cuatro roturas que la tajada 1 había
+  medido** — **B-888** (tajada 2), **D-660**. Una cuenta con el claim ya puede
+  usarse con una persona: entra, ve y publica lo suyo, sube su imagen, y **no se le
+  ofrece nada que las reglas vayan a rechazar**.
+
+  **La del slug era la que no tenía arreglo obvio, y la respuesta fue una colección,
+  no una Function.** `slugDisponible()` barría el catálogo y la regla se lo rechaza
+  entero; el slug único es un invariante de **todo** el catálogo. Ahora lo contesta
+  `/slugs/{slug}` con un `get` por id — y **la reserva viaja en el mismo
+  `writeBatch` que la actividad**, con `allow update: if false`, así que dejó de ser
+  un chequeo y pasó a ser un **invariante**: dos guardados simultáneos con el mismo
+  slug ya no pasan los dos. Es lo único de la tajada que deja el catálogo **mejor
+  que antes del rol**. La Function se descartó por tres cosas y la tercera decide:
+  ninguna acción del panel bloquea hoy sobre una Function, el CI no levanta su
+  emulador, y un `onCall` seguiría siendo **check-then-write**.
+
+  **Y la subida de imágenes no se arregló moviendo la ruta.** Agrupar por uid obliga
+  a migrar objetos cuyas URLs están escritas en documentos publicados y en
+  `og:image`, y fuerza el comodín que reabre la trampa 13.
+
+  > **La guarda «natural» no servía, y eso lo dijo el emulador.** Separar `allow
+  > create` de `allow update` es lo que uno escribe primero: con `create: if true` y
+  > `update: if false`, **la segunda subida sobre el mismo objeto pasa**. Era un
+  > supuesto sobre la plataforma declarado sin verificar — la misma clase que el
+  > `size() > 0` de la tajada 1. Se usa `resource == null`.
+
+  **Treinta y una mutaciones, y se cobraron tres bugs reales que son el mismo con
+  tres caras:** los cuatro lugares que escriben el slug tienen que decidir **contra
+  el documento y no contra el snapshot de la pantalla**. `actualizarActividad` no
+  reservaba cuando el documento no tenía slug; `restaurarCampo` comparaba contra el
+  snapshot y podía **borrar la reserva de otra actividad**; y `borrarActividad`
+  soltaba el slug que le pasaba el listado, que con la fila sin refrescar es el
+  viejo. **Los tres se alcanzan con dos pestañas, ninguno tiraba un error**, y los
+  tres dejaban el índice diciendo lo contrario del catálogo — peor que no tener
+  índice.
+
+  **Y un cuarto lo encontró correr el script, no leerlo:** `sembrar-slugs.mjs`
+  mandaba la reserva desfasada **a borrar y no a escribir**, así que `--reparar` la
+  borraba, nadie la reponía, y la pasada dejaba a esa actividad **sin reserva** — el
+  estado que el script existe para arreglar, producido por el script. Separar la
+  decisión a un módulo puro enseñó otra: **importar un script de este repo lo
+  corre** — el `import()` de prueba se conectó a producción y leyó las 255
+  actividades.
+
+  **Del lado que se ve:** el listado y el calendario del rol acotado traen lo suyo
+  —no es un filtro: sin el `where` la query se rechaza entera—, no se le ofrecen
+  reportes, propuestas, taxonomías, tablero ni historial, y los desplegables dejan
+  de ofrecer «Otro…». Para el admin hay dos cosas nuevas, las dos gracias a que
+  `/usuarios` ya se llena al entrar: el filtro **«Quién la cargó»** —el tercer
+  descarte de D-74, que se da vuelta porque el motivo era que el dato es un uid y
+  ahora se muestra el mail— y la marca de autoría, que dice `La cargó fulano@…` y
+  además `La cambió fulano@…`, **un dato que el §12 guardaba desde siempre y el
+  listado no mostraba**.
+
 - **Los dos barridos que quedaban leyendo `dist/` pasaron al gate, y uno no se
   salteaba: se reportaba PASSED** — **B-880**, de B-873. Salieron del chequeo de
   clase que B-873 dejó, que es exactamente para lo que está: **los enumeró en vez

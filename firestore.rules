@@ -213,11 +213,11 @@ service cloud.firestore {
        * porque la regla es la que lo obliga.
        *
        * El otro efecto, y hay que saberlo: `slugDisponible()`
-       * (`src/lib/actividades.ts`) barre **toda** la colección sin `where`, así
-       * que para un publicador esa query se rechaza entera. El slug único es un
+       * (`src/lib/actividades.ts`) barría **toda** la colección sin `where`, así
+       * que para un publicador esa query se rechazaba entera. El slug único es un
        * invariante de todo el catálogo y no se puede verificar mirando solo lo
-       * propio — queda anotado en B-888 como lo primero que la tajada 2 tiene que
-       * resolver.
+       * propio. **Lo resolvió la tajada 2 con `/slugs/{slug}`** — el bloque está
+       * más abajo en este archivo, con el descarte de la Function anotado.
        *
        * `.get('createdBy', '')` y no `resource.data.createdBy`, y esto se probó
        * contra el emulador en las dos formas: las dos sirven para el análisis de
@@ -305,6 +305,151 @@ service cloud.firestore {
       }
     }
 
+    /*
+     * ══ EL ÍNDICE DE SLUGS — B-888, tajada 2 ═════════════════════════════
+     *
+     * **Qué problema resuelve.** `slugDisponible()` barría toda la colección sin
+     * `where`, y con la regla de `/actividades` de arriba esa query se le rechaza
+     * **entera** a un publicador (trampa 7). Y no tiene arreglo dentro de la
+     * regla: el slug único es un invariante de **todo** el catálogo, y una regla
+     * es todo-o-nada por documento — no puede contestar «¿existe otra actividad
+     * con este slug?» mirando solo lo propio.
+     *
+     * ── Por qué esta colección y no una Function (D-660) ──────────────────
+     * La alternativa escrita en B-888 era un `onCall` que hiciera la query con el
+     * Admin SDK. Se descartó por tres cosas, y la tercera es la que decide:
+     *
+     *  1. **Ninguna acción del panel bloquea hoy sobre una Function.** Las cinco
+     *     que existen son asíncronas y best-effort (el historial, el sync, la
+     *     optimización, el rebuild, los issues): si una se cae, el panel sigue
+     *     guardando. Meter una en el camino sincrónico del guardado —la acción
+     *     más usada— sería el primer lugar donde un cold start deja a alguien sin
+     *     poder guardar.
+     *  2. **El CI no la podría probar.** `push-main.yml` levanta
+     *     `--only auth,firestore,storage`, así que un `onCall` en el camino de
+     *     guardado de **todos** los roles sería el único paso del guardado que
+     *     nada ejercita. Esto, en cambio, es Firestore: lo prueban los emuladores
+     *     que ya corren, con `cargarReglas()` y con mutaciones.
+     *  3. **Y la dirección en la que falla.** Un `onCall` es check-then-write,
+     *     igual que el barrido de hoy: dos guardados simultáneos con el mismo
+     *     slug pasan los dos. Acá la unicidad la decide el **servidor**: un
+     *     `create` sobre un documento que existe es un `update`, y `update` está
+     *     en `false`. O sea que esto no reemplaza el chequeo: lo convierte en un
+     *     invariante. Es lo único de toda la tajada que deja el catálogo mejor
+     *     que antes de que existiera el rol.
+     *
+     * ── Lo que hay que saber para no romperlo ─────────────────────────────
+     * **El índice es una segunda derivación del slug, y esa clase de cosa se
+     * desincroniza** (B-88). Lo que la sostiene es que se escribe en los mismos
+     * cuatro lugares que escriben el slug —crear, editar cuando cambió, borrar y
+     * restaurar del historial—, centralizados en `src/lib/slugs.ts`, y que
+     * **todas sus formas de fallar fallan cerradas**: una reserva que queda
+     * huérfana hace que un nombre no se pueda usar (visible, y lo libera
+     * `scripts/sembrar-slugs.mjs --reparar`), nunca que dos actividades compartan
+     * una URL — que es el daño de la trampa 10.
+     *
+     * **Y la siembra es obligatoria**: las actividades que ya existen no tienen
+     * reserva, así que sin correr el script sus slugs se leerían como libres. Por
+     * eso el script deja `/slugs/_indice`, y el panel **se niega a guardar** si
+     * ese documento no está, en vez de creer que todo está libre. El `_` lo hace
+     * inalcanzable como slug: `slugify` solo produce `[a-z0-9-]`, que es lo mismo
+     * que exige el `matches` del `create` de abajo.
+     *
+     * `list` en `false` y no en `esDelPanel()`: enumerar el índice es enumerar
+     * las direcciones web de **todos** los borradores, que es justo lo que
+     * `/actividades` le cierra a un publicador. Se llega por id o no se llega.
+     *
+     * ── Los dos límites que esto ACEPTA, dichos al derecho ────────────────
+     * Los marcó el `auditor-privacidad`, y van escritos porque el resto de este
+     * bloque argumenta largo lo que cierra y no decía nada de lo que deja pasar.
+     *
+     *  1. **Un `get` entrega la reserva entera, `porUid` incluido.** Una regla es
+     *     todo-o-nada por documento y no proyecta (es D-128 otra vez), así que un
+     *     publicador que pregunte por un slug —y los publicados están en la URL
+     *     del sitio— se entera de **qué uid** lo reservó, incluido el de un admin.
+     *     No hay arreglo estrecho: condicionar el `get` por `porUid` rompería la
+     *     unicidad, porque el publicador **tiene que** poder saber que un nombre
+     *     ajeno está tomado. Lo que se entrega es un uid pelado, que él no puede
+     *     resolver a un mail (el directorio le está cerrado). Se acepta, y tiene
+     *     su caso positivo en `tests/rol-publicador.integracion.test.ts` para que
+     *     el día que alguien intente cerrarlo se vea qué se rompe.
+     *  2. **Un publicador puede reservar un nombre sin cargar la actividad.**
+     *     `reservaValida()` no verifica que `actividadId` exista: hacerlo pediría
+     *     un `get()` a `/actividades` desde la regla, facturado en cada
+     *     evaluación. O sea que puede tomar `taller-de-poesia-2027` y nadie más lo
+     *     puede usar. Falla **cerrada** —un nombre que nadie puede usar, nunca dos
+     *     actividades con la misma URL— y lo barre
+     *     `scripts/sembrar-slugs.mjs --reparar`, que saca toda reserva sin
+     *     actividad viva. Es el mismo tipo de límite aceptado que `storage.rules`
+     *     declara para su prefijo plano.
+     */
+    /*
+     * **Tres cláusulas y ninguna de adorno, igual que `usuarioValido()`.** El
+     * primer borrador tenía cinco, y **dos no podían fallar**. La primera la marcó
+     * el `auditor-privacidad`; la segunda la delató la mutación al ir a probarlas:
+     *
+     *  - **`hasAll` de las tres claves** (copiado de `propuestaValida()`): si falta
+     *    `actividadId`, el `.get()` da `''` y lo agarra el `size() > 0`; si falta
+     *    `porUid`, `'' == request.auth.uid` es false (con `esDelPanel()` el uid
+     *    nunca es vacío); si falta `creadoEn`, `null == request.time` es false.
+     *  - **`actividadId is string`**: un valor de otro tipo no tiene `.size()`, así
+     *    que lo rechaza igual el `size() > 0` de abajo —por un *evaluation error*,
+     *    que deniega—. Es **exactamente** el mismo caso que el `is string` que se
+     *    borró de `usuarioValido()` tres funciones más arriba, y por el mismo
+     *    motivo.
+     *
+     * Una cláusula que no puede fallar en una regla de seguridad es peor que
+     * ninguna: se lee como load-bearing y el que venga la va a cuidar en vez de
+     * mirar la que sí frena. Las tres que quedan se pueden mutar, y cada una tiene
+     * su caso en `tests/rol-publicador.integracion.test.ts`.
+     */
+    function reservaValida(slug) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['actividadId', 'porUid', 'creadoEn'])
+        // El alfabeto de `slugify`. Deja afuera al centinela `_indice`, que solo
+        // escribe el Admin SDK, y a cualquier id inventado a mano.
+        && slug.matches('^[a-z0-9-]+$')
+        && d.get('actividadId', '').size() > 0
+        && d.get('actividadId', '').size() <= 200
+        // Igual que `reportadoPor.uid` y `revision.porUid`: nadie reserva a
+        // nombre de otro. Es lo que hace verificable el `delete` de abajo.
+        && d.get('porUid', '') == request.auth.uid
+        // Con `request.time` el cliente no puede antedatar la reserva.
+        && d.get('creadoEn', null) == request.time;
+    }
+
+    match /slugs/{slug} {
+      allow get: if esDelPanel();
+      allow list: if false;
+
+      allow create: if esDelPanel() && reservaValida(slug);
+
+      /*
+       * **`update` en `false`, y es la cláusula entera de la unicidad.** No es
+       * simetría ni prolijidad: es lo que hace que un `setDoc` sobre un slug ya
+       * reservado sea un `update` y lo rechace el servidor. Aflojarlo a
+       * `esDelPanel()` deja que el segundo guardado pise la reserva del primero y
+       * la colección pasa a ser un registro de intenciones en vez de un índice.
+       */
+      allow update: if false;
+
+      /*
+       * Liberar el nombre: al borrar la actividad, y al cambiarle el slug antes
+       * de publicarla (trampa 10 — después de publicar no se cambia).
+       *
+       * El publicador libera **las suyas**, por `porUid`, que es el mismo dato que
+       * el `create` obliga a que sea el propio. No se mira el dueño de la
+       * actividad —eso pediría un `get()` a `/actividades` desde la regla, que se
+       * factura como lectura en cada evaluación, y es lo mismo que el bloque de
+       * `versiones` ya descartó—. La consecuencia está dicha en `slugs.ts`: si un
+       * admin le renombró el slug a la actividad de un publicador, la reserva
+       * queda a nombre del admin y el publicador no la puede liberar al borrar.
+       * Falla cerrada (un nombre que no se puede reusar) y la barre el script.
+       */
+      allow delete: if esAdmin()
+        || (esPublicador() && resource.data.get('porUid', '') == request.auth.uid);
+    }
+
     match /opciones/{campo} {
       allow read: if true;
 
@@ -334,12 +479,19 @@ service cloud.firestore {
        * verifique. Una regla que no puede verificar lo que promete es peor que no
        * tenerla, que es lo que ya decía este bloque.
        *
-       * Tiene una consecuencia concreta para la tajada 2, y está anotada en B-888:
-       * `upsertOpcion()` y `registrarUsos()` corren al guardar una actividad
-       * (D-02), así que **con este rol esas dos escrituras se rechazan**. El panel
-       * del publicador tiene que no ofrecer "Otro" y no contar usos — o, si el
-       * dueño quiere que cuenten, `usos` se mueve a una Function, que es el único
-       * lugar donde el incremento se puede verificar.
+       * Tenía una consecuencia concreta para la tajada 2: `upsertOpcion()` y
+       * `registrarUsos()` corren al guardar una actividad (D-02), así que **con
+       * este rol esas dos escrituras se rechazan** — y el `catch` de
+       * `registrarUsos` es mudo a propósito, o sea que fallarían en silencio en
+       * cada guardado.
+       *
+       * **Resuelto en la tajada 2, en los dos lados**: el panel no le ofrece
+       * «Otro…» (`campos-del-panel.tsx`, con el store de `lib/rolActivo.ts`) y el
+       * guardado saltea las dos escrituras (`formulario/guardar.ts`, con el rol
+       * por parámetro). Si algún día el dueño quiere que los `usos` de este rol
+       * **sí** cuenten, el camino sigue siendo mover el incremento a una Function:
+       * es el único lugar donde se puede verificar que lo único que cambió del
+       * array fue un contador.
        */
       allow write: if esAdmin();
     }

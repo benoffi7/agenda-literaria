@@ -49,7 +49,7 @@ import {
   legible,
   proximoEncuentro,
 } from '@/lib/filtrosActividades';
-import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
+import { marcaDeAutoria } from '@/lib/formulario/autoria';
 import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
 import { modalidadResultante } from '@/lib/modalidades';
 // Type-only: `vistaPreviaEvento` importa `formADocumento`, que arrastra
@@ -68,6 +68,18 @@ export interface ContextoDeTarjeta {
   ahora: Date;
   /** B-130 — para distinguir lo propio de lo que cargó la otra cuenta. */
   uid: string;
+  /**
+   * B-888 — uid → mail, de `/usuarios` (`mailesPorUid`). Con el mapa vacío la
+   * marca dice exactamente lo que decía antes («La cargó otra cuenta»), así que
+   * el default de esta entrada es un `Map` vacío y no un caso aparte: es el
+   * mismo criterio del §«Un campo nuevo se lee con el default que preserva lo
+   * anterior».
+   *
+   * **Entra como dato y no se lee acá**: este módulo es puro y no puede tocar
+   * Firestore — y además lo mira `tests/tarjeta-del-panel.test.ts`, que exige
+   * que ninguna salida pública lo alcance.
+   */
+  mailes?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -109,7 +121,8 @@ export interface TarjetaDelPanel {
    */
   marcas: string[];
   /**
-   * B-130 — «La cargó otra cuenta», o `null`. Va aparte de `marcas` y no
+   * B-130 / B-888 — «La cargó fulano@…», «La cambió fulano@…», o `null`. Va
+   * aparte de `marcas` y no
    * mezclada con ellas porque no es del mismo orden: las dos marcas describen
    * algo **que hay que atender**, y ésta describe de quién es. En la fila se
    * pintaban con pesos distintos y la tarjeta conserva esa diferencia.
@@ -138,7 +151,7 @@ const cuantosEncuentros = (cantidad: number): string =>
 
 export const datosDeTarjeta = (
   a: ActividadConId,
-  { labels, ahora, uid }: ContextoDeTarjeta,
+  { labels, ahora, uid, mailes = new Map() }: ContextoDeTarjeta,
 ): TarjetaDelPanel => {
   const proximo = proximoEncuentro(a, ahora);
   /*
@@ -191,6 +204,6 @@ export const datosDeTarjeta = (
        */
       ...(a.destacado === true ? ['Destacada'] : []),
     ],
-    autoria: ETIQUETA_AUTORIA[autoriaDe(a, uid)],
+    autoria: marcaDeAutoria(a, uid, mailes),
   };
 };

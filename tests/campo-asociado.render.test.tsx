@@ -48,6 +48,7 @@ beforeEach(() => {
 const pintar = () =>
   render(
     <ActividadFormulario
+      rol="admin"
       vistaDelPanel="celular"
       uid="uid-de-prueba"
       onGuardado={vi.fn()}

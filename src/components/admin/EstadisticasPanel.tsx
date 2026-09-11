@@ -1064,7 +1064,12 @@ export function EstadisticasPanel({ onEditar }: Props) {
 
   useEffect(() => {
     let vivo = true;
-    listarActividades()
+    // B-888 — `'admin'` explícito por lo mismo que en `ReporteFormulario`: el
+    // tablero es de admin por construcción (lee además `/sistema`, que el
+    // publicador no puede leer) y necesita el catálogo entero para que los
+    // números signifiquen algo. `uid` no lo usa la query del admin, y esta
+    // pantalla no lo recibe: pasarlo sería cablear un dato que nadie lee.
+    listarActividades('admin', '')
       .then((lista) => {
         if (!vivo) return;
         setActividades(lista);

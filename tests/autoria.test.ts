@@ -6,7 +6,7 @@
  * la sesión, sin tocar el modelo ni arriesgar una filtración del §5.1.
  */
 import { describe, expect, it } from 'vitest';
-import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
+import { ETIQUETA_AUTORIA, autoriaDe, marcaDeAutoria } from '@/lib/formulario/autoria';
 
 const YO = 'uid_propio';
 
@@ -109,5 +109,81 @@ describe('qué se muestra', () => {
     expect(texto, 'un número acá vuelve a quedar viejo con el próximo alta').not.toMatch(
       /\b(una|dos|tres|cuatro|cinco)\b/i,
     );
+  });
+});
+
+/**
+ * **B-888 — la marca pasa a decir el mail**, que es el pedido del dueño en la
+ * tajada 2 del panel.
+ *
+ * Lo que la hace posible es `/usuarios` (D-650): el mail vive una vez, fuera de
+ * `toPublic` y fuera del historial, y **no envejece** porque cada cuenta lo
+ * refresca al entrar. Sin ese directorio la marca decía «otra cuenta» y no cuál,
+ * que es lo que los casos de arriba fijan.
+ */
+describe('la marca con el mail — B-888', () => {
+  const OTRO = 'uid_ajeno';
+  const MAILES = new Map([[OTRO, 'otra@ejemplo.test']]);
+  const SIN_DIRECTORIO = new Map<string, string>();
+
+  it('lo propio y sin tocar por nadie sigue sin marca', () => {
+    // Si todo llevara marca, la marca dejaría de avisar — es lo mismo que decía
+    // `ETIQUETA_AUTORIA.propia = null`.
+    expect(marcaDeAutoria({ createdBy: YO, updatedBy: YO }, YO, MAILES)).toBeNull();
+  });
+
+  it('lo ajeno nombra a quien lo cargó', () => {
+    expect(marcaDeAutoria({ createdBy: OTRO, updatedBy: OTRO }, YO, MAILES)).toBe(
+      'La cargó otra@ejemplo.test',
+    );
+  });
+
+  it('lo propio que tocó otro nombra a quien lo cambió', () => {
+    /*
+     * El dato que el §12 guardaba desde siempre (`updatedBy` en cada escritura) y
+     * que el listado no miraba. Es la mitad del pedido que no existía antes.
+     *
+     * MUTACIÓN PROBADA: sacarle a `marcaDeAutoria` la rama de `updatedBy` deja
+     * este caso en rojo y los otros cuatro en verde.
+     */
+    expect(marcaDeAutoria({ createdBy: YO, updatedBy: OTRO }, YO, MAILES)).toBe(
+      'La cambió otra@ejemplo.test',
+    );
+  });
+
+  it('con el directorio vacío dice exactamente lo que decía antes de B-888', () => {
+    /*
+     * **El default que preserva lo anterior.** `/usuarios` arranca vacía y se
+     * llena a medida que cada cuenta entra, así que durante un rato no hay ningún
+     * mail que resolver. Ahí la marca vuelve al artículo indefinido de B-130 —el
+     * que no envejece con la cantidad de cuentas— en vez de mostrar un uid.
+     */
+    expect(marcaDeAutoria({ createdBy: OTRO, updatedBy: OTRO }, YO, SIN_DIRECTORIO)).toBe(
+      ETIQUETA_AUTORIA.ajena,
+    );
+  });
+
+  it('y un uid suelto nunca llega a la pantalla', () => {
+    /*
+     * El §5.1 mantiene los identificadores afuera de todo lo que se muestre, y
+     * ésa era la razón por la que D-74 había descartado el filtro por autor. Lo
+     * que cambió es que ahora hay un mail; lo que **no** cambió es que el uid no
+     * se muestra, ni siquiera como respaldo.
+     */
+    for (const mailes of [MAILES, SIN_DIRECTORIO]) {
+      for (const a of [
+        { createdBy: OTRO, updatedBy: OTRO },
+        { createdBy: YO, updatedBy: OTRO },
+        { createdBy: 'uid_que_nadie_conoce', updatedBy: 'uid_que_nadie_conoce' },
+      ]) {
+        expect(marcaDeAutoria(a, YO, mailes) ?? '').not.toContain('uid_');
+      }
+    }
+  });
+
+  it('una actividad anterior a `createdBy` no se marca como ajena', () => {
+    // Afirmar de más sobre datos viejos es peor que no decir nada: es la misma
+    // regla que `autoriaDe` aplica con `desconocida`.
+    expect(marcaDeAutoria({ updatedBy: YO }, YO, MAILES)).toBeNull();
   });
 });

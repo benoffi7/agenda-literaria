@@ -80,6 +80,11 @@ describe('las guardas de los scripts que escriben — B-630', () => {
       'scripts/limpiar-imagenes-huerfanas.mjs',
       'scripts/limpiar-versiones-huerfanas.mjs',
       'scripts/optimizar-imagenes.mjs',
+      // B-888 / D-660 — el sembrado del índice de slugs. Entró por esta puerta
+      // igual que el de retención: apareció acá en rojo el día que se escribió.
+      // Escribe siempre y además **borra** con `--reparar`, así que la guarda de
+      // los dos flags le corresponde entera.
+      'scripts/sembrar-slugs.mjs',
     ]);
   });
 

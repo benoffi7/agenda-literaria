@@ -203,3 +203,15 @@ El test verifica que **exista** una red, no que sea completa. Dos casos anotados
   campo sin mirar ese flag: un borrador anterior a publicar trae el slug todavía
   cascadeando del título, así que recuperarlo cambiaba la URL de algo indexado.
   Sale del documento cuando está bloqueado (`conLoQueEsDelDocumento`).
+- **Y la otra mitad de la trampa 10 —dos actividades con el mismo slug— dejó de
+  ser un chequeo y pasó a ser un invariante (B-888, D-660).** `slugDisponible()`
+  era check-then-write: dos guardados simultáneos con el mismo slug pasaban los
+  dos, y quedaban dos páginas peleando la misma URL. Desde la tajada 2 la reserva
+  de `/slugs/{slug}` viaja en el **mismo `writeBatch`** que la actividad y
+  `allow update: if false`, así que el segundo lo rechaza el servidor.
+  **Lo que hay que cuidar es el registro**: los cuatro lugares que escriben el
+  slug —crear, editar cuando cambió, borrar y restaurar del historial— tienen que
+  mover su reserva, y los cuatro pasan por `src/lib/slugs.ts`. Un quinto camino
+  que escriba el slug sin pasar por ahí reabre la trampa **con el índice diciendo
+  lo contrario del catálogo**, que es peor que no tener índice. Las mutaciones
+  están en `tests/rol-publicador.integracion.test.ts` (bloques 7 y 8).

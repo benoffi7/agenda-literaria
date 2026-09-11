@@ -34,4 +34,18 @@ for (const [campo, valores] of Object.entries(base)) {
   console.log(`opciones/${campo} — ${valores.length} valores`);
 }
 
+/*
+ * B-888 / D-660 — el centinela del índice de slugs.
+ *
+ * Sin esto el panel **no deja guardar nada en el emulador**: `slugLibre()` se
+ * niega a contestar mientras el centinela no está, que es justo lo que hace que
+ * el índice no pueda fallar abierto. Una base recién sembrada no tiene ninguna
+ * actividad, así que el índice vacío **es** el índice completo: acá alcanza con
+ * marcarlo. Para una base con actividades ya cargadas —un `--import` de una
+ * sesión anterior— hay que correr `npm run slugs:sembrar -- --aplicar`, que es el
+ * mismo script que se corre contra producción.
+ */
+await db.doc('slugs/_indice').set({ sembradoEn: new Date(), actividades: 0 });
+console.log('slugs/_indice — centinela del índice de direcciones web');
+
 console.log(`\nListo, sembrado en ${host}.`);

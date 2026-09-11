@@ -39,12 +39,25 @@ import {
   type EstadoPublicacion,
   type GrupoPublicacion,
 } from '@/lib/calendarioPanel';
+import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { ActividadConId } from '@/types/actividad';
 
 interface Props {
   onEditar: (a: ActividadConId) => void;
   /** Cambia cuando se guarda algo, para refrescar la vista. */
   version: number;
+  /**
+   * B-888 — los dos entran por lo mismo que en `ListaActividades`: deciden la
+   * **forma de la query**, no qué se pinta después.
+   *
+   * Y de ahí sale, gratis, el pedido del dueño —«la vista de calendario, donde
+   * ve solo los suyos»—: `listarActividades` ya trae solo lo propio para un
+   * publicador, así que acá no hace falta ningún filtro. Escribir uno sería una
+   * segunda derivación de «qué es suyo», que es la clase de B-88; y además sería
+   * cosmético, porque lo que de verdad lo acota es la regla.
+   */
+  rol: RolDelPanel;
+  uid: string;
 }
 
 /**
@@ -249,10 +262,14 @@ function FilaEncuentro({
  * ese ancho se ve siempre la agenda: los días con algo —encuentros o cierres—,
  * uno abajo del otro, con blancos táctiles de 44px.
  */
-export function CalendarioActividades({ onEditar, version }: Props) {
+export function CalendarioActividades({ onEditar, version, rol, uid }: Props) {
   // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
   // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
-  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(version);
+  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(
+    version,
+    rol,
+    uid,
+  );
   const [mesElegido, setMesElegido] = useState<string | null>(null);
   const [modo, setModo] = useState<'mes' | 'agenda'>('mes');
   const [grupo, setGrupo] = useState<GrupoPublicacion | null>(null);

@@ -44,6 +44,17 @@ interface Props {
    */
   actividades: ActividadConId[];
   ahora: Date;
+  /**
+   * B-888 — uid → mail, de `/usuarios`. Es lo que hace posible el eje «Quién la
+   * cargó»: D-74 lo había descartado porque «es un uid, y el §5.1 mantiene los
+   * identificadores afuera de todo lo que se muestre», y con el directorio de
+   * D-650 lo que se muestra es el **mail**.
+   *
+   * Con el mapa vacío —el directorio arranca vacío y se llena a medida que cada
+   * cuenta entra— el eje no se dibuja: un desplegable de uids sería justo lo que
+   * D-74 rechazaba. Ver el `if` de más abajo.
+   */
+  mailes: ReadonlyMap<string, string>;
 }
 
 /**
@@ -78,6 +89,7 @@ export function FiltrosActividades({
   mostradas,
   actividades,
   ahora,
+  mailes,
 }: Props) {
   const puestos = cantidadDeFiltros(filtros);
   const [abierto, setAbierto] = useState(puestos > 0);
@@ -85,6 +97,28 @@ export function FiltrosActividades({
 
   const cambiar = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) =>
     onFiltros({ ...filtros, [campo]: valor });
+
+  /**
+   * B-888 — las cuentas que aparecen en los datos **y** tienen mail en el
+   * directorio, ordenadas por mail.
+   *
+   * Se filtran las que no se resuelven en vez de mostrar el uid: un `<option>`
+   * con `uid_b888_admin` adentro no le dice nada a nadie y reintroduciría lo que
+   * D-74 descartaba. La contracara está dicha en la ayuda del control: una cuenta
+   * que todavía no entró al panel no aparece en el desplegable, y sus actividades
+   * quedan bajo «Cualquiera» — que es lo mismo que pasa con la marca de la
+   * tarjeta, que dice «otra cuenta» hasta que esa persona entre.
+   */
+  const autoresConMail = useMemo(
+    () =>
+      opciones.autores
+        .flatMap((uid) => {
+          const mail = mailes.get(uid);
+          return mail ? [[uid, mail] as const] : [];
+        })
+        .sort((a, b) => a[1].localeCompare(b[1], 'es')),
+    [opciones.autores, mailes],
+  );
 
   /*
    * B-274 · los chips de etiquetas. El memo es por lo mismo que el del listado:
@@ -270,6 +304,43 @@ export function FiltrosActividades({
                 ))}
               </select>
             </Campo>
+
+            {/*
+              B-888 — «Quién la cargó», el tercer descarte de D-74 que se da
+              vuelta. El motivo por el que estaba afuera era que el dato es un
+              uid; el desplegable de acá muestra el **mail** que `/usuarios`
+              resuelve, y el uid se queda del lado de adentro (es el valor del
+              `<option>`, no lo que se lee).
+
+              **Dos condiciones para dibujarlo, y las dos hacen falta.** Con una
+              sola cuenta en los datos el filtro no distingue nada (mismo
+              criterio que el barrio y «Destacada»); y sin ningún mail resuelto
+              el control sería una lista de uids, que es exactamente lo que D-74
+              rechazaba. Eso además hace que el panel de un publicador no lo
+              muestre **sin una rama por rol**: su listado ya trae solo lo suyo,
+              así que `autores` tiene un elemento.
+            */}
+            {autoresConMail.length > 1 && (
+              <Campo
+                label="Quién la cargó"
+                htmlFor={`${id}-autor`}
+                ayuda="Es quién la creó. Quién la tocó por última vez lo dice la marca de cada tarjeta."
+              >
+                <select
+                  id={`${id}-autor`}
+                  className={claseInput}
+                  value={filtros.autor}
+                  onChange={(e) => cambiar('autor', e.target.value)}
+                >
+                  <option value="">Cualquiera</option>
+                  {autoresConMail.map(([uid, mail]) => (
+                    <option key={uid} value={uid}>
+                      {mail}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
 
             {/*
               B-274 — `destacado`, que D-74 había descartado porque «el sitio

@@ -61,6 +61,22 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    // El id es nuevo y no reusa el de B-130 («quien-cargo-cada-actividad», más
+    // abajo): la marca de «hasta acá leí» es por id, así que reusar uno haría
+    // que quien ya leyó aquella novedad no vea ésta.
+    id: 'mail-de-quien-cargo-cada-actividad',
+    fecha: '2026-09-11',
+    version: '1.10.0',
+    titulo: 'El listado dice qué cuenta cargó o cambió cada actividad, con su mail',
+    detalle:
+      'Antes la marca decía «La cargó otra cuenta» y no cuál, porque el panel no tenía los ' +
+      'mails. Ahora los tiene: cada cuenta queda registrada la primera vez que entra, así que ' +
+      'la marca dice el mail —y también avisa cuando algo que cargaste vos lo cambió otra ' +
+      'persona, que antes no se veía en ninguna parte. Y hay un filtro nuevo para ver solo lo ' +
+      'que cargó una cuenta.',
+    donde: 'El listado: la marca al pie de cada tarjeta, y «Filtros» → «Quién la cargó».',
+  },
+  {
     id: 'fotos-de-google-photos-ya-suben',
     fecha: '2026-09-10',
     version: '1.10.0',

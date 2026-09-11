@@ -42,6 +42,11 @@ import { Seccion as SeccionBase, type AlmacenDeSecciones } from '@/components/ca
 import { TagsInput as TagsInputBase } from '@/components/campos/TagsInput';
 import { TaxonomiaSelect as TaxonomiaSelectBase } from '@/components/campos/TaxonomiaSelect';
 import { medirFuncion, medirSeccion } from '@/lib/analytics';
+// B-888 — el rol de la sesión, como store de módulo. Acá es donde el panel ata
+// sus taxonomías, así que es el único lugar donde hay que decidir si se ofrece
+// «Otro…»: el campo de taxonomía que se agregue mañana lo hereda sin que nadie
+// se acuerde. El razonamiento completo está en `lib/rolActivo.ts`.
+import { puedeCrearEtiquetas } from '@/lib/rolActivo';
 import type { ComponentProps } from 'react';
 
 export type { AlmacenDeSecciones };
@@ -94,6 +99,13 @@ export function TaxonomiaSelect({
       valores={valores}
       elegibles={elegibles}
       onMedir={medirFuncion}
+      /*
+       * B-888 — un publicador no escribe `/opciones/*`, así que no se le ofrece
+       * crear una etiqueta. Va después del spread a propósito: un `permitirOtro`
+       * que llegue por props no puede aflojar esto sin que se vea en el diff de
+       * este archivo.
+       */
+      permitirOtro={puedeCrearEtiquetas()}
     />
   );
 }
@@ -114,6 +126,7 @@ export function TagsInput({
       valores={valores}
       elegibles={elegibles}
       onMedir={medirFuncion}
+      permitirOtro={puedeCrearEtiquetas()}
     />
   );
 }

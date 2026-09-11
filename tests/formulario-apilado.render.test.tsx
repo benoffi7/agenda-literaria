@@ -56,6 +56,7 @@ beforeEach(() => {
 const pintar = () =>
   render(
     <ActividadFormulario
+      rol="admin"
       vistaDelPanel="celular"
       uid="uid-de-prueba"
       onGuardado={vi.fn()}
@@ -164,6 +165,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
   const pintarCon = (vista: 'pc' | 'celular') =>
     render(
       <ActividadFormulario
+      rol="admin"
         vistaDelPanel={vista}
         uid="uid-de-prueba"
         onGuardado={vi.fn()}
@@ -191,6 +193,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
 
     rerender(
       <ActividadFormulario
+      rol="admin"
         vistaDelPanel="celular"
         uid="uid-de-prueba"
         onGuardado={vi.fn()}
@@ -213,6 +216,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
 
     rerender(
       <ActividadFormulario
+      rol="admin"
         vistaDelPanel="pc"
         uid="uid-de-prueba"
         onGuardado={vi.fn()}

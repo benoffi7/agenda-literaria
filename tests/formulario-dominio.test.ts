@@ -424,6 +424,10 @@ const puertosFalsos = (over: Partial<PuertosGuardado> = {}) => {
 const entrada = (over: Partial<Parameters<typeof guardarActividad>[0]> = {}) => ({
   form: formularioLleno(),
   uid: 'uid-1',
+  // B-888 — el default es `admin`: es el rol que este archivo venía probando sin
+  // nombrarlo, así que todos los casos de abajo siguen midiendo lo mismo. El
+  // `publicador` tiene su propio bloque al final.
+  rol: 'admin' as const,
   labelsNuevos: [{ campo: 'arancel' as const, label: 'Con beca parcial' }],
   multivalorNuevos: {},
   ...over,
@@ -1059,5 +1063,63 @@ describe('montoDesdeTexto — el punto agrupa miles, no separa decimales (B-114)
   it('y el resultado se lee como se escribió', () => {
     // El par completo: lo que se tipea vuelve a leerse igual.
     expect(montoLegible(montoDesdeTexto('15.000')!)).toBe('$15.000');
+  });
+});
+
+/**
+ * **La rotura 3 de B-888: las taxonomías al guardar** — tajada 2.
+ *
+ * `upsertOpcion()`, `upsertOpciones()` y `registrarUsos()` corren en **cada**
+ * guardado (D-02) y escriben en `/opciones/{campo}`, que es de admin: las reglas
+ * no pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega
+ * una opción» y «reescribe la taxonomía del sitio» son el mismo permiso.
+ *
+ * Con el rol acotado esas escrituras se rechazan **siempre**, y el modo de falla
+ * era silencioso en las dos direcciones: el `catch` de `registrarUsos` es mudo a
+ * propósito —está pensado para una carrera rara, no para fallar en cada
+ * guardado— y el de las altas habría emitido un aviso de «volvé a tipear la
+ * etiqueta» que para esta cuenta no tiene arreglo posible.
+ */
+describe('guardarActividad — el rol acotado no toca `/opciones` (B-888)', () => {
+  it('un publicador no crea etiquetas ni cuenta usos', async () => {
+    /*
+     * MUTACIÓN PROBADA: sacarle a `guardar.ts` el `if (!PERMISOS[rol]
+     * .escribeTaxonomias) return …` deja este caso en rojo nombrando las cuatro
+     * llamadas, y el de abajo en verde — que es la diferencia entre los dos.
+     */
+    const { puertos, llamadas } = puertosFalsos();
+    const r = ok(await guardarActividad(entrada({ rol: 'publicador' }), puertos));
+
+    // La actividad SÍ se guarda: lo que el rol recorta es lo compartido.
+    expect(r.id).toBe('act1');
+    expect(llamadas).toContain('crearActividad');
+
+    for (const llamada of llamadas) {
+      expect(llamada, 'un publicador escribió en /opciones').not.toMatch(
+        /^(upsertOpcion|upsertOpciones|registrarUsos)/,
+      );
+    }
+  });
+
+  it('y no arrastra el aviso de «volvé a tipear la etiqueta», que no tendría arreglo', async () => {
+    /*
+     * B-177 — el aviso existe para decir **cuál** etiqueta volver a tipear. Para
+     * esta cuenta ese consejo no se puede seguir nunca (no va a poder crearla), y
+     * un cartel que enseña a ignorar los carteles es peor que ninguno. La UI
+     * además no le ofrece «Otro», así que en el camino normal no hay etiquetas
+     * nuevas: esto es el piso, no el mecanismo.
+     */
+    const { puertos } = puertosFalsos();
+    const r = ok(await guardarActividad(entrada({ rol: 'publicador' }), puertos));
+    expect(r.etiquetasSinRegistrar).toEqual([]);
+  });
+
+  it('un admin sigue creándolas y contándolas, como siempre', async () => {
+    // Control positivo: sin esto, un portón que apagara las taxonomías para los
+    // dos roles pasaría los dos casos de arriba.
+    const { puertos, llamadas } = puertosFalsos();
+    ok(await guardarActividad(entrada({ rol: 'admin' }), puertos));
+    expect(llamadas.some((l) => l.startsWith('upsertOpcion'))).toBe(true);
+    expect(llamadas.some((l) => l.startsWith('registrarUsos'))).toBe(true);
   });
 });

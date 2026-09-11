@@ -37,6 +37,7 @@ import {
   emuladorAuthVivo,
   emuladorVivo,
   limpiarFirestore,
+  sembrarCentinelaDeSlugs,
   proyectoAparte,
 } from './emulador';
 
@@ -161,6 +162,9 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     // sin esta línea el SDK de cliente correría contra lo que el emulador tenga
     // cargado por default (o sea, el `firestore.rules` de otra rama).
     await cargarReglas(REGLAS);
+    // B-888 / D-660 — sin el centinela, `slugDisponible` se niega a contestar y
+    // ningún guardado sale. Ver `sembrarCentinelaDeSlugs`.
+    await sembrarCentinelaDeSlugs();
     await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
   }, 30_000);
 
@@ -394,7 +398,15 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
 
     const guardado = await leerActividad(idOriginal);
     const copia = duplicarActividadForm(documentoAForm(guardado!), { tomados: [form.slug] });
-    const idCopia = await crearActividad(copia, 'otro_uid');
+    /*
+     * B-888 / D-660 — con el uid de **la sesión** y no uno inventado. La reserva
+     * de `/slugs` que viaja en el mismo batch lleva `porUid`, y la regla exige que
+     * sea el del token: es lo que hace verificable quién puede soltar el nombre
+     * después. El panel siempre guarda con el uid de la sesión, así que el uid
+     * ajeno de antes no describía ningún camino real — lo que este caso mide es
+     * que la copia sea un documento nuevo, y eso no depende del autor.
+     */
+    const idCopia = await crearActividad(copia, UID);
 
     expect(idCopia).not.toBe(idOriginal);
     const laCopia = await leerActividad(idCopia);
@@ -409,7 +421,7 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     // Fechas como Timestamp, no como string (trampa 1).
     expect(typeof laCopia!.sesiones[0]!.inicio.toDate).toBe('function');
     // `createdAt`/`createdBy` son de la copia.
-    expect(laCopia!.createdBy).toBe('otro_uid');
+    expect(laCopia!.createdBy).toBe(UID);
 
     // Y el original, intacto: sus eventos de Calendar siguen siendo suyos.
     expect(elOriginal!.estado).toBe('publicado');
