@@ -250,6 +250,43 @@ qué hacer cuando llegue.
 Lo único que queda es el click y el canal de notificación, que es dato personal y
 configuración de consola (§5.4).
 
+### B-890 · Las tres guías —librerías, suscripciones y lugares— son lo siguiente, y son lo único que se ve · P0
+
+**Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que
+importa:** «tanto tiempo trabajando estas semanas entre que te pasé la tarea y al
+final no había nada hecho».
+
+**Y es cierto en lo que se ve.** Las tajadas 2, 3 y 4 del PRD están **escritas y no
+construidas**, y lo que sí se construyó no cambió la superficie:
+
+| Qué | Estado | Se ve |
+|---|---|---|
+| `/proponer` (tajada 1) | construido y desplegado | **no** — sin enlace ni sitemap, esperando App Check en Storage (B-872) |
+| El correo semanal (B-847) | construido | **no** — apagado hasta que exista la lista en Mailchimp |
+| «Mis favoritos» (B-848) | construido y desplegado | **sí** |
+| Librerías, suscripciones, lugares | **solo PRD** | no |
+
+O sea: **de todo lo de estas semanas, una sola cosa cambió el sitio.** El resto fue
+infraestructura, redes de contención y arreglos —incluido descubrir que la
+publicación estaba rota (B-875)— y nada de eso se nota desde afuera.
+
+**Lo siguiente son las tres guías, y no hace falta diseñar nada:** cada una tiene su
+PRD (`docs/prd/02-librerias.md`, `03-suscripciones-literarias.md`,
+`04-lugares-para-eventos.md`) y el inventario archivo por archivo está en
+`05-inventario-de-archivos.md`. Cada una son dos rutas —`/guia/<x>` y
+`/guia/<x>/sumar`— más su bandeja en el panel.
+
+**Y el PRD dice algo que conviene hacer primero:** las tres son **secciones nuevas
+de la barra de navegación** —pedido textual del dueño: «cada uno de estos
+formularios también es una sección superior en la web»—. Con eso la navbar cambia
+de forma, así que conviene resolverla con las tres en la mano y no pelear antes por
+dónde entra el enlace de `/proponer`.
+
+**El orden sugerido: librerías primero**, entera y de punta a punta. Es la que
+abre el patrón —modelo, reglas, formulario público, bandeja, rutas, sitemap— y las
+otras dos lo repiten. Terminar una y verla en el sitio vale más que avanzar las
+tres a la mitad.
+
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** · P1
 
 **Los dos primeros pasos están hechos el 2026-09-09**, y el que faltaba lo hizo
