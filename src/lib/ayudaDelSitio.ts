@@ -36,6 +36,7 @@ import {
   RUTA_ANUNCIAR,
   RUTA_APOYAR,
   RUTA_CONTACTO,
+  RUTA_GUIA,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
 
@@ -169,7 +170,36 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
             'lectura, encuentros, presentaciones de libros y charlas con autores, en un solo lugar.',
           'Existe porque hoy todo eso se anuncia en historias que duran un día y en grupos a los ' +
             'que hay que estar adentro. Acá queda escrito, con fecha, lugar y cómo entrar.',
+          /*
+           * **La Guía se cuenta acá y no en una pregunta propia** — B-835, tajada
+           * 2 paso 13. El sitio deja de ser solo la agenda el día que la barra
+           * muestra «Guía», y quien la vea se va a preguntar qué es eso: la ayuda
+           * es donde se busca, y el precedente es B-785, donde `/apoyar` existió
+           * un tiempo sin que la ayuda la nombrara.
+           *
+           * Va como tercer párrafo de «¿Qué es esto?» —que es la primera
+           * respuesta de la página— y no como una pregunta más, por una razón
+           * mecánica que conviene dejar escrita: **el conteo de preguntas está
+           * atado a `docs/04-funcionalidades.md`, `docs/06-decisiones.md` y
+           * `docs/BACKLOG.md`** (el caso «ningún documento afirma una cantidad de
+           * preguntas que no es la que hay»), así que sumar la vigesimosegunda es
+           * un cambio de tres documentos más este archivo. Con la sección recién
+           * nacida y sus tres directorios todavía en camino, el párrafo dice lo
+           * mismo y en el lugar donde igual se lee primero. Cuando la Guía tenga
+           * las tres, la pregunta propia se justifica sola y va con sus números.
+           *
+           * **Está redactada para ser cierta hoy y seguir siéndolo después**: no
+           * enumera qué secciones ya se pueden mirar —sería un cuarto lugar donde
+           * llevar la cuenta, y el que se queda viejo es siempre el texto
+           * (B-662)—, dice que la Guía misma lo dice, que es el único lugar donde
+           * eso se deriva de `DIRECTORIOS` en vez de escribirse.
+           */
+          'Y hay una sección más, la Guía, con el resto del circuito: librerías, suscripciones ' +
+            'literarias y lugares que prestan o alquilan su espacio para una actividad. Se va ' +
+            'armando de a una parte por vez, así que esa página es la que dice cuáles ya se ' +
+            'pueden mirar y cuáles están en camino.',
         ],
+        enlaces: [{ href: RUTA_GUIA, texto: 'La Guía' }],
       },
       {
         /*

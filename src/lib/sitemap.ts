@@ -56,6 +56,7 @@
  * estar en Google.
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
+import { directoriosDisponibles } from '@/lib/directorios';
 import { estadoDe } from '@/lib/listadoPublico';
 import { hubsOfrecidos } from '@/lib/hubsPublicos';
 import { mesesEnlazables } from '@/lib/mesPublico';
@@ -67,6 +68,7 @@ import {
   RUTA_CARTELERA,
   RUTA_CONTACTO,
   RUTA_GRATIS,
+  RUTA_GUIA,
   RUTA_ONLINE,
   RUTA_PASADAS,
   RUTA_SUSCRIBIRSE,
@@ -163,6 +165,31 @@ export const RUTAS_FIJAS: readonly string[] = [
    */
   RUTA_ONLINE,
   RUTA_GRATIS,
+  /*
+   * **`/guia` entra desde el día uno, aunque sus tres directorios no existan
+   * todavía** — B-835, tajada 2 paso 13. Es la decisión que más se puede
+   * discutir de este archivo, así que queda escrita:
+   *
+   * Lo que la página muestra hoy son tres filas que dicen qué va a haber en cada
+   * una y cuál está en camino. **Eso no es una página vacía**, que es lo que el
+   * criterio de los hubs (B-108) y de `/mis-favoritos` (B-848) deja afuera: una
+   * página vacía es la que no tiene nada que decir y compite con las que sí. Esta
+   * contesta una pregunta —«¿esta agenda tiene algo más que actividades?»— y la
+   * contesta igual de bien el día que las tres filas linkeen.
+   *
+   * Y es estable: su contenido no depende de los datos, como `/suscribirse`,
+   * `/ayuda`, `/contacto` y `/apoyar`, que están en esta misma lista.
+   *
+   * La diferencia con `/proponer` —que **no** está acá, y por eso hay una
+   * excepción con su motivo en `tests/sitemap.test.ts`— es que aquélla es un
+   * formulario que hoy no puede recibir nada: ofrecerla sería prometer un camino
+   * que rebota. Acá no se promete ningún camino que no exista; se dice cuál
+   * todavía no está.
+   *
+   * Las rutas de los tres directorios entran abajo, y **derivadas**: ver el
+   * comentario de `...directoriosDisponibles()`.
+   */
+  RUTA_GUIA,
   RUTA_SUSCRIBIRSE,
   RUTA_AYUDA,
   RUTA_CONTACTO,
@@ -186,6 +213,30 @@ export const RUTAS_FIJAS: readonly string[] = [
    * `/suscribirse`, `/ayuda` y `/contacto`, que están arriba.
    */
   RUTA_APOYAR,
+  /*
+   * **Los directorios de la Guía que ya existen, derivados y no escritos** —
+   * B-834/B-835, tajada 2.
+   *
+   * Es la única excepción al «es una lista y no un barrido» de arriba, y la
+   * excepción está acotada a propósito: no barre `src/pages/`, lee **tres filas
+   * declaradas a mano** en `lib/directorios.ts`, donde cada una dice si su
+   * sección existe. O sea que la decisión sigue siendo una por una; lo que se
+   * evita es tomarla **dos veces**.
+   *
+   * Y ahí está el motivo. El mismo booleano decide dos cosas que tienen que
+   * moverse juntas: que la fila de `/guia` deje de decir «en camino» y linkee, y
+   * que la URL entre al sitemap. Escritas por separado, la tajada que publique
+   * `/guia/librerias` va a hacer la primera —se ve— y puede olvidarse de la
+   * segunda, que no se ve: la sección existe, se navega, y Google no la conoce.
+   * Es la séptima de las nueve cosas que se rompen en silencio del inventario,
+   * con la ventaja de que acá se puede cerrar en vez de vigilar.
+   *
+   * Lo que sigue vigilado —y con control negativo codificado, porque hoy la
+   * lista real está vacía— es la otra mitad: que una fila marcada disponible
+   * tenga de verdad su página en disco (`tests/directorios.test.ts`). Sin eso,
+   * derivar convertiría un olvido en una entrada de sitemap que contesta 404.
+   */
+  ...directoriosDisponibles().map((d) => d.ruta),
 ];
 
 /** ¿Esta fecha está dentro de la ventana de `dias` contada desde `ahora`? */

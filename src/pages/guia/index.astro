@@ -1,0 +1,113 @@
+---
+/**
+ * `/guia` — el índice de los tres directorios (B-835, tajada 2 paso 13).
+ *
+ * ── Por qué existe esta página ────────────────────────────────────────────
+ * Porque el dueño decidió el 2026-09-08 que los tres directorios viven bajo
+ * `/guia/` (`docs/prd/README.md` § «Las decisiones del dueño»), y esa decisión
+ * trae dos consecuencias en la misma línea: la barra gana **una** pestaña en vez
+ * de tres —lo que desinfló B-835 antes de empezar— y **una pestaña tiene que
+ * llevar a algún lado**. Esta es ese lado.
+ *
+ * Va **antes** de `/guia/librerias` y no después (paso 13 antes del 14):
+ * `/guia/librerias` sin `/guia` es una URL cuyo padre no existe, y el padre es
+ * lo único que le da a Google —y a quien navega— el mapa de qué más hay.
+ *
+ * ── La decisión que había que tomar acá, y cuál se tomó ───────────────────
+ * El encargo dejaba elegir entre anunciar la fila de librerías como «en camino»
+ * o dejar la estructura lista para que la tajada de librerías sume la suya.
+ * **Se hicieron las dos, y son la misma cosa**: las tres filas salen de
+ * `DIRECTORIOS` (`lib/directorios.ts`), cada una con un `disponible`. Hoy las
+ * tres dicen «en camino» y no linkean; la tajada que publique `/guia/librerias`
+ * cambia un `false` por un `true` y la fila se convierte en enlace sola.
+ *
+ * Lo que hace que ese flag no se quede viejo —que es el modo de falla evidente
+ * de un booleano escrito a mano— es `tests/directorios.test.ts`, que lo cruza
+ * contra las páginas que hay en disco **en las dos direcciones**: marcarlo sin
+ * la página le ofrece un 404 a quien entre, y escribir la página sin marcarlo
+ * deja la sección publicada e invisible desde su propio índice.
+ *
+ * La alternativa era esconder las filas que todavía no existen. Se descartó: una
+ * página que muestra una sola fila no se lee como un índice, se lee como una
+ * sección a medio hacer, y **lo que esta página tiene para decir hoy es
+ * justamente qué va a haber**. Decirlo en futuro es honesto; no decirlo y que
+ * aparezcan dos secciones nuevas sin aviso, no.
+ *
+ * ── El texto vive acá y no en un módulo ───────────────────────────────────
+ * Al revés que `/contacto`, `/ayuda` o `/proponer`, que sacan su prosa de un
+ * `*DelSitio.ts` para poder testearla. Acá la prosa de la página son tres frases
+ * y el resto es la tabla de `DIRECTORIOS`, que sí es data y sí se testea. El día
+ * que esta página tenga párrafos de verdad —y va a tenerlos cuando las tres
+ * secciones existan— el lugar es un `guiaDelSitio.ts`, que es además lo que la
+ * mete en el barrido de `tests/promesas-sobre-datos.test.ts` por su glob.
+ * Mientras tanto ese barrido la alcanza igual: recorre todas las páginas.
+ */
+import Base from '@/layouts/Base.astro';
+import { NOMBRE } from '@/lib/identidad';
+import { DIRECTORIOS } from '@/lib/directorios';
+import { RUTA_CONTACTO } from '@/lib/rutasPublicas';
+import {
+  claseBloque,
+  claseEnlace,
+  claseRotulo,
+  claseTituloSeccion,
+} from '@/components/sitio/estilos';
+
+const TITULO = 'Guía';
+const DESCRIPCION =
+  'Librerías, suscripciones literarias y lugares para hacer eventos: el circuito alrededor ' +
+  'de las actividades de la agenda.';
+---
+
+<Base seccion="guia" titulo={`${TITULO} — ${NOMBRE}`} descripcion={DESCRIPCION}>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <h1 class="display-md text-balance text-acento">{TITULO}</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      La agenda dice qué pasa y cuándo. Acá está el resto del circuito: dónde se compran los
+      libros, qué te llega por correo si te suscribís, y qué lugares prestan o alquilan su
+      espacio para hacer una actividad.
+    </p>
+
+    <ul class="mt-12 flex flex-col gap-4 sm:mt-16">
+      {
+        DIRECTORIOS.map((directorio) => (
+          <li class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}>
+            {/*
+              El título es el enlace cuando la sección existe, y texto plano
+              cuando no. **No es un enlace deshabilitado**: un `<a>` sin `href` no
+              se enfoca, no se anuncia como enlace y no se puede clickear, o sea
+              que es texto con otro nombre y con una promesa visual de más.
+            */}
+            <h2 class={claseTituloSeccion}>
+              {directorio.disponible ? (
+                <a class={claseEnlace} href={directorio.ruta}>
+                  {directorio.titulo}
+                </a>
+              ) : (
+                directorio.titulo
+              )}
+            </h2>
+
+            <p class="body-lectura mt-2 text-super">{directorio.que}</p>
+
+            {!directorio.disponible && (
+              /*
+                El rótulo va **abajo y en versalitas**, no como una insignia al
+                lado del título: es información sobre el estado de la sección, no
+                una categoría de la sección. Y dice «en camino» y no «próximamente»
+                porque lo segundo es lo que escribe un sitio que no va a hacerlo.
+              */
+              <p class={`${claseRotulo} mt-4`}>En camino</p>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="body-md mt-12 max-w-[65ch] text-super sm:mt-16">
+      ¿Tenés una librería, una suscripción o un espacio y querés que esté acá?{' '}
+      <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a> y lo cargamos.
+    </p>
+  </main>
+</Base>

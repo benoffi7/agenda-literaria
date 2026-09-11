@@ -169,7 +169,7 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
     expect(readFileSync(raiz('src/layouts/Base.astro'), 'utf8')).toContain('id="contenido"');
   });
 
-  it('las siete secciones y `aria-current` siguen ahí', () => {
+  it('las ocho secciones y `aria-current` siguen ahí', () => {
     const src = encabezado();
     /*
      * Los destinos son **constantes** desde B-330 y no literales: `/cartelera`
@@ -191,11 +191,22 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
      *
      * El orden importa igual que antes: la agenda y la cartelera siguen primeras,
      * y lo que llegó último quedó último.
+     *
+     * **«Guía» entró tercera el 2026-09-11** — B-835, tajada 2 paso 13, y con eso
+     * son ocho. No va al final por el mismo criterio que puso a la cartelera
+     * segunda: las tres primeras son las tres formas de **buscar algo** (la lista
+     * de actividades, la pared de afiches, el directorio), y «Suscribirse»,
+     * «Ayuda» y «Contacto» son de después de haber encontrado algo. Detrás de
+     * «Contacto» se leería como un servicio del sitio y no como contenido.
+     *
+     * MUTACIÓN PROBADA: mover la entrada de «Guía» al final de `ENLACES` deja la
+     * barra funcionando igual y pone este caso en rojo.
      */
     const hrefs = [...src.matchAll(/href:\s*([A-Z_]+),/g)].map((m) => m[1]);
     expect(hrefs).toEqual([
       'RUTA_AGENDA',
       'RUTA_CARTELERA',
+      'RUTA_GUIA',
       'RUTA_SUSCRIBIRSE',
       'RUTA_AYUDA',
       'RUTA_CONTACTO',

@@ -8,6 +8,7 @@ import {
   RUTA_ANUNCIAR,
   RUTA_APOYAR,
   RUTA_CONTACTO,
+  RUTA_GUIA,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
 /**
@@ -87,6 +88,15 @@ import {
 export type Seccion =
   | 'agenda'
   | 'cartelera'
+  /**
+   * **La octava pestaña, y la única que entró sin discusión de ancho** — B-835,
+   * tajada 2 paso 13. Los tres directorios (librerías, suscripciones, lugares)
+   * iban a ser tres entradas y la barra habría pasado de 7 a 10, que en un
+   * teléfono ya no entra. La decisión del dueño de colgarlos todos de `/guia/`
+   * (2026-09-08) la dejó en **una**, y por eso `guia` sí está en `ENLACES`: es
+   * una sección del sitio, no una página suelta como `/apoyar` o `/anunciar`.
+   */
+  | 'guia'
   | 'suscribirse'
   | 'ayuda'
   | 'contacto'
@@ -122,6 +132,22 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
   // agenda tiene que poder pasar a la otra sin buscar. «Suscribirse», «Ayuda» y
   // «Contacto» son de después de haber encontrado algo.
   { seccion: 'cartelera', href: RUTA_CARTELERA, texto: 'Cartelera' },
+  /*
+   * **«Guía» va tercera, y el criterio es el mismo que puso a la cartelera
+   * segunda** — B-835. Las tres primeras son las tres formas de *buscar algo* en
+   * este sitio: la lista de actividades, la pared de afiches y el directorio de
+   * librerías, suscripciones y lugares. Las que siguen —«Suscribirse», «Ayuda»,
+   * «Contacto»— son de después de haber encontrado algo, y las dos últimas son de
+   * cómo el proyecto se sostiene.
+   *
+   * Dicho al revés: si la Guía fuera después de «Contacto», quedaría leída como
+   * un servicio del sitio y no como contenido, que es lo que es.
+   *
+   * Con ésta son **ocho**, y la cuenta está escrita una sola vez: en el
+   * comentario de «Anunciar»/«Apoyar», que es donde estaba el aviso de que la
+   * fila tiene un techo.
+   */
+  { seccion: 'guia', href: RUTA_GUIA, texto: 'Guía' },
   { seccion: 'suscribirse', href: RUTA_SUSCRIBIRSE, texto: 'Suscribirse' },
   { seccion: 'ayuda', href: RUTA_AYUDA, texto: 'Ayuda' },
   { seccion: 'contacto', href: RUTA_CONTACTO, texto: 'Contacto' },
@@ -136,8 +162,9 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
    * esconderlas en el pie es donde no se ven. Están **al final de la fila** y en
    * ese orden a propósito: la agenda y la cartelera siguen primeras.
    *
-   * Quedan siete pestañas. Si en algún momento no entran, lo que hay que revisar
-   * es esta fila entera y no sacar la última que llegó.
+   * Quedan **ocho** pestañas desde que entró «Guía» (B-835; eran siete hasta el
+   * 2026-09-11). Si en algún momento no entran, lo que hay que revisar es esta
+   * fila entera y no sacar la última que llegó.
    */
   { seccion: 'anunciar', href: RUTA_ANUNCIAR, texto: 'Anunciar' },
   { seccion: 'apoyar', href: RUTA_APOYAR, texto: 'Apoyar' },

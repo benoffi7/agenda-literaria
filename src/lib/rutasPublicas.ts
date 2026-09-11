@@ -194,6 +194,108 @@ export const RUTA_CONTACTO = rutaCanonica('/contacto');
  */
 export const RUTA_PROPONER = rutaCanonica('/proponer');
 
+// ─────────────────────────────────────────────────────────────────
+// La Guía y sus tres directorios — B-835 + B-834, tajada 2
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * **El `/guia` se escribe una sola vez, y es esta línea** — decisión del dueño
+ * del 2026-09-08 (`docs/prd/README.md` § «Las decisiones del dueño»).
+ *
+ * La pregunta era si los directorios viven en `/librerias` o en
+ * `/guia/librerias`, y la respuesta cambió dos cosas de golpe: la barra gana
+ * **una** pestaña en vez de tres —lo que desinfló B-835 antes de empezar— y
+ * aparece una página madre, porque una pestaña tiene que llevar a algún lado.
+ *
+ * Que el prefijo sea una constante y no esté tipeado en cada ruta es la regla de
+ * siempre de este módulo, y acá pesa más que nunca: son **cuatro páginas fijas y
+ * tres familias de fichas** colgando del mismo segmento. Con el segmento escrito
+ * ocho veces, moverlo sería ocho ediciones y la que se olvide publica una URL
+ * que no existe. Con esto, es una.
+ *
+ * ⚠️ **Las colecciones de Firestore NO llevan `/guia/`.** El documento vive en
+ * `/librerias/{id}` y la página se sirve en `/guia/librerias/{slug}`. `/guia/` es
+ * una decisión de navegación y de SEO, no de modelo, y los PRDs usan las dos
+ * formas — vale decirlo acá porque este archivo es donde se parecen.
+ */
+const PREFIJO_GUIA = '/guia';
+
+/**
+ * `/guia/` — el índice de los tres directorios.
+ *
+ * Es la única de las cuatro que existe hoy. Las otras tres llegan con su tajada
+ * (B-831, B-832, B-833) y **sus constantes ya están abajo**: son las que la fila
+ * de `/guia` usa como destino en cuanto `DIRECTORIOS` marque la sección como
+ * disponible (`lib/directorios.ts`), y tenerlas acá desde el día uno es lo que
+ * impide que la tajada que llegue primero escriba su `href` a mano (B-293).
+ */
+export const RUTA_GUIA = rutaCanonica(PREFIJO_GUIA);
+
+/** Los prefijos de cada directorio: el listado es el prefijo, y las fichas cuelgan de él. */
+export const PREFIJO_LIBRERIAS = `${PREFIJO_GUIA}/librerias`;
+export const PREFIJO_SUSCRIPCIONES = `${PREFIJO_GUIA}/suscripciones`;
+export const PREFIJO_LUGARES = `${PREFIJO_GUIA}/lugares`;
+
+/** `/guia/librerias/` — el directorio de librerías (B-831). */
+export const RUTA_LIBRERIAS = rutaCanonica(PREFIJO_LIBRERIAS);
+/** `/guia/suscripciones/` — el directorio de suscripciones literarias (B-832). */
+export const RUTA_SUSCRIPCIONES = rutaCanonica(PREFIJO_SUSCRIPCIONES);
+/** `/guia/lugares/` — el directorio de lugares para hacer eventos (B-833). */
+export const RUTA_LUGARES = rutaCanonica(PREFIJO_LUGARES);
+
+/**
+ * **¿Este texto puede ser el segmento de la URL de una ficha?**
+ *
+ * El alfabeto que produce `slugify` (`[a-z0-9-]`, sin guiones al borde ni
+ * dobles), igual que `esSlugGuardable` de `guardadosDelSitio.ts` y por el mismo
+ * motivo: lo que no pasa **se descarta**, nunca se emite.
+ *
+ * ── Por qué las fichas de directorio lo necesitan y la actividad no ───────
+ * Lo señaló el `auditor-privacidad`, y la diferencia es de dónde viene el dato:
+ * el slug de una actividad lo escribe siempre un admin, y el de una ficha de
+ * directorio vive en una colección **cuya alta la pide cualquiera desde un
+ * formulario público**. Acá el slug es además un campo de persona y no de
+ * máquina (`CAMPOS_DE_MAQUINA_FICHA`, `lib/directorios.ts`), o sea que el único
+ * productor correcto es `slugDeFicha` y nada obliga a que haya pasado por ahí.
+ *
+ * **Es un predicado y no un saneo adentro del constructor**, y las dos
+ * alternativas se pensaron:
+ *
+ * - **Aplicar `slugify` en el constructor** reescribe el valor en silencio, o
+ *   sea que la ficha queda servida en una URL distinta de la que su documento
+ *   dice. Eso es la trampa 10 con un disfraz: el listado linkea a un lado y el
+ *   `getStaticPaths` genera el otro.
+ * - **Tirar**, como hace `rutaCanonica` con una URL absoluta, es lo correcto
+ *   cuando el error es de quien llama; acá el valor puede venir de un documento
+ *   que cargó un anónimo, así que un solo documento mal formado se llevaría
+ *   puesto el build **entero**.
+ *
+ * Queda entonces la tercera: quien genera las páginas filtra con esto y deja
+ * afuera la ficha rara, que es el comportamiento de `esSlugGuardable` y el que
+ * no publica nada raro ni apaga el sitio.
+ */
+export const esSlugDeFicha = (valor: unknown): valor is string =>
+  typeof valor === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(valor) && valor.length <= 120;
+
+/**
+ * Las fichas de cada directorio: `/guia/librerias/del-otro-lado/`.
+ *
+ * Van con su listado y no en el bloque de «páginas generadas» de más abajo a
+ * propósito: lo que las hace una familia es el prefijo, y separarlas sería volver
+ * a escribir `/guia/librerias` en otro lugar del archivo. El segmento es el
+ * **slug** de la ficha y no su id ni su nombre, por lo mismo que en los hubs: el
+ * nombre se corrige y una URL no (trampa 10).
+ *
+ * **Interpolan sin sanear, a propósito**: la verificación es `esSlugDeFicha`, de
+ * arriba, y le toca a quien produce las páginas —ahí se puede descartar la ficha
+ * sin tirar el build—. Ver el docblock de ese predicado.
+ */
+export const rutaDeLibreria = (slug: string): string =>
+  rutaCanonica(`${PREFIJO_LIBRERIAS}/${slug}`);
+export const rutaDeSuscripcion = (slug: string): string =>
+  rutaCanonica(`${PREFIJO_SUSCRIPCIONES}/${slug}`);
+export const rutaDeLugar = (slug: string): string => rutaCanonica(`${PREFIJO_LUGARES}/${slug}`);
+
 /**
  * `/apoyar/` — la página de aportes, B-780.
  *
