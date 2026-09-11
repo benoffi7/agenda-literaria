@@ -43,9 +43,13 @@ const UID_SIN_VERIFICAR = 'uid_u888_sin_verificar';
 
 // `ejemplo.test` (TLD reservado) y no un proveedor gratuito: ver el comentario
 // de `tests/rol-publicador.integracion.test.ts` y `sin-datos-personales.test.ts`.
-const MAIL_ADMIN = 'admin@ejemplo.test';
-const MAIL_PUB = 'publicador@ejemplo.test';
-const MAIL_OTRO = 'otro@ejemplo.test';
+// Con sufijo propio de este archivo: el emulador de Auth NO se limpia entre
+// archivos (`limpiarFirestore()` borra documentos, no cuentas) y una dirección
+// ya tomada por otro uid hace fallar el alta con `EMAIL_EXISTS`. Es el emulador
+// como estado compartido, la misma clase que B-219 con otra cara.
+const MAIL_ADMIN = 'admin.u888@ejemplo.test';
+const MAIL_PUB = 'publicador.u888@ejemplo.test';
+const MAIL_OTRO = 'otro.u888@ejemplo.test';
 
 const entrarComo = async (
   uid: string,
@@ -55,11 +59,12 @@ const entrarComo = async (
 ): Promise<void> => {
   const app = initAdmin({ projectId: PROJECT_ID }, `u888-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid, email, emailVerified: emailVerificado });
-  } catch {
-    await a.updateUser(uid, { email, emailVerified: emailVerificado });
-  }
+  // Alta o actualización según exista, y no `create` con `catch`: el alta falla
+  // también por `EMAIL_EXISTS`, y ahí el `update` sobre un uid inexistente tira
+  // un `user-not-found` que no dice nada del motivo real.
+  const existe = await a.getUser(uid).then(() => true).catch(() => false);
+  if (existe) await a.updateUser(uid, { email, emailVerified: emailVerificado });
+  else await a.createUser({ uid, email, emailVerified: emailVerificado });
   await a.setCustomUserClaims(uid, claims);
   const t = await a.createCustomToken(uid);
   await deleteAdminApp(app);
@@ -113,7 +118,15 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
       await setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_PUB));
       await setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_PUB));
-      expect((await getDocs(collection(db(), 'usuarios'))).docs.filter((d) => d.id === UID_PUB)).toHaveLength(1);
+      // El conteo lo hace el admin: **el publicador no puede listar** (la regla
+      // condiciona por ruta y eso no es satisfacible en un `list`), y ese rechazo
+      // es justamente lo que afirma el caso «tampoco lista el directorio entero».
+      await entrarComo(UID_ADMIN, { admin: true }, MAIL_ADMIN);
+      const suyos = (await getDocs(collection(db(), 'usuarios'))).docs.filter(
+        (d) => d.id === UID_PUB,
+      );
+      expect(suyos).toHaveLength(1);
+      expect(suyos[0]!.data().email).toBe(MAIL_PUB);
     });
   });
 
@@ -251,11 +264,11 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       await entrarComo(
         UID_SIN_VERIFICAR,
         { publicador: true },
-        'sin-verificar@ejemplo.test',
+        'sin-verificar.u888@ejemplo.test',
         false,
       );
       await rechazada(
-        setDoc(doc(db(), 'usuarios', UID_SIN_VERIFICAR), registro('sin-verificar@ejemplo.test')),
+        setDoc(doc(db(), 'usuarios', UID_SIN_VERIFICAR), registro('sin-verificar.u888@ejemplo.test')),
         'registrarse con un mail sin verificar',
       );
     });

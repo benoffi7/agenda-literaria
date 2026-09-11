@@ -469,7 +469,7 @@ service cloud.firestore {
        * dueño, no acá: sería un `create` propio, con `reportadoPor.uid ==
        * request.auth.uid` —que la regla ya exige— y **sin** abrir el `read`.
        */
-      allow read: if esAdmin();
+      allow read: if esDelPanel();
       allow create: if esAdmin() && reporteValido();
       // El ciclo de vida (estado, intentos, github) lo mueve la Function con el
       // Admin SDK, que no pasa por estas reglas. Las únicas dos excepciones son

@@ -65,9 +65,9 @@ const UID_PELADO = 'uid_b888_sin_claim';
  * buscando casillas en los dieciséis proveedores personales, y un
  * `@gmail.com` de mentira acá lo pondría rojo sin que nadie entienda por qué.
  */
-const MAIL_ADMIN = 'admin@ejemplo.test';
-const MAIL_PUB = 'publicador@ejemplo.test';
-const MAIL_PUB_2 = 'otro.publicador@ejemplo.test';
+const MAIL_ADMIN = 'admin.b888@ejemplo.test';
+const MAIL_PUB = 'publicador.b888@ejemplo.test';
+const MAIL_PUB_2 = 'otro.publicador.b888@ejemplo.test';
 
 /** Una sola app del Admin SDK para sembrar, creada en el `beforeAll`. */
 let appSiembra: ReturnType<typeof initAdmin> | null = null;
@@ -90,11 +90,12 @@ const tokenDe = async (
 ): Promise<string> => {
   const app = initAdmin({ projectId: PROJECT_ID }, `b888-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid, ...(email ? { email, emailVerified: emailVerificado } : {}) });
-  } catch {
-    if (email) await a.updateUser(uid, { email, emailVerified: emailVerificado });
-  }
+  // Alta o actualización según exista: el emulador de Auth no se limpia entre
+  // archivos, así que la cuenta puede venir de una corrida anterior.
+  const existe = await a.getUser(uid).then(() => true).catch(() => false);
+  const datos = email ? { email, emailVerified: emailVerificado } : {};
+  if (existe) await a.updateUser(uid, datos);
+  else await a.createUser({ uid, ...datos });
   await a.setCustomUserClaims(uid, claims);
   const t = await a.createCustomToken(uid);
   await deleteAdminApp(app);
@@ -505,7 +506,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * impide que `/usuarios` se vuelva un endpoint de escritura abierto al
        * mundo, que es lo que sería si cualquiera con sesión pudiera registrarse.
        */
-      await entrarComo(UID_PELADO, {}, 'pelado@ejemplo.test');
+      await entrarComo(UID_PELADO, {}, 'pelado.b888@ejemplo.test');
       await rechazada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin claim');
       await rechazada(
         setDoc(doc(db(), 'actividades', 'act_b888_pelada'), actividadDe(UID_PELADO)),
@@ -513,7 +514,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       );
       await rechazada(
         setDoc(doc(db(), 'usuarios', UID_PELADO), {
-          email: 'pelado@ejemplo.test',
+          email: 'pelado.b888@ejemplo.test',
           actualizadoEn: new Date(),
         }),
         'registrarse en /usuarios sin claim',

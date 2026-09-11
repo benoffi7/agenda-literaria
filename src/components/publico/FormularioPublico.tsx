@@ -357,7 +357,7 @@ export function FormularioPublico({ incluyeOfrecido }: Props) {
           sentido —se mostraba solo en la primera fila (`i === 0`)—: es una nota
           sobre la columna, no sobre ese campo.
         */}
-        <p className="body-sm mt-2 text-tinta/55">
+        <p className="body-sm mt-2 text-super">
           Si no sabés a qué hora termina, dejá «Hasta» vacío.
         </p>
         {form.fechas.length < MAX_FECHAS_PROPUESTA && (
