@@ -6069,6 +6069,41 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-917 · `/lugares` tampoco tiene retención, y acá el documento guarda una dirección · P2
+
+Mismo caso que B-904 y B-912: una ficha `rechazado` conserva el
+`contactoDeQuienCargo` de quien la cargó para siempre, y el `delete` del admin está
+abierto porque es lo único con lo que hoy se honra un «borrame».
+
+**Acá hay una razón más, y por eso no va como una línea dentro de B-904:** el
+documento descartado también conserva la `direccion` y la `geo` — el dato que el §6
+del PRD 4 decidió no publicar, de un lugar que **nadie aprobó**.
+
+La Function de retención de estas tres colecciones sigue sin existir; el molde es
+`functions/retencion.js` (DEC-13), y con tres directorios lo que corresponde es una
+lista de colecciones y no una Function por cada una.
+
+### B-915 · El `create` público de `/guia/lugares/sumar` no existe, y el criterio 11 queda a medias · P2
+
+La tajada 4 construyó el directorio entero menos su formulario público: el `create`
+de `/lugares` sigue tras `esAdmin()` por **B-872**, y `firestore.rules` deja los
+cinco pasos escritos con su testigo.
+
+Lo que eso arrastra, y conviene que esté acá y no solo en el PRD:
+
+- **El criterio 11 queda a medias.** `/guia/lugares` linkea a `/anunciar` y aclara
+  que sumar el lugar no cuesta nada (va por `/contacto`), pero el recíproco desde
+  `/anunciar` no se escribió: el destino natural es `/guia/lugares/sumar`, y
+  linkear mientras tanto al listado le diría a quien quiere sumar su lugar «mirá
+  los lugares de otros», que no es la acción. Va en el mismo cambio que `sumar`.
+- **El `searchText` es el campo que hay que mirar al abrir la puerta.** La
+  proyección lo **deriva** (no lo copia), así que la dirección no sale por ahí —
+  pero el campo del documento sigue siendo escribible por el cliente.
+- **`TIPOS_SIN_DIRECCION_PUBLICA` no puede cubrir un tipo tipeado con «Otro»**: ahí
+  el default del panel vuelve a ser publicar. La regla cubre el camino público mire
+  lo que mire el tipo; lo que queda descubierto es el panel, donde hay alguien
+  mirando y el formulario avisa.
+
 ### B-914 · El formulario de librerías descarta la etiqueta nueva de «Otro» del barrio · P2
 
 **Confirmado por el `auditor-trampas` sobre B-832.** `LibreriaFormulario.tsx` hace
@@ -6096,16 +6131,25 @@ O sea que hoy la única forma de bajar el aviso es **cambiarle el número**, que
 mentir, o dejarlo puesto para siempre, que es enseñar a ignorar el aviso. Es un
 botón y una llamada.
 
-### B-911 · El par flag + dato es una clase de bug con tres instancias y sin red · P2
+### B-911 · El par flag + dato es una clase de bug con tres instancias y sin red — ✅ hecho (2026-09-11) · P2
 
-`urlPublica`, `material.items[].publico` y —desde B-832— `envio.manda`. Las tres
-tienen cobertura **por instancia**; la **clase** no existe en
-`tests/clases-de-bug.test.ts`.
-
-Dos docblocks de B-832 llegaron a afirmar que sí —están corregidos—, y eso es
-exactamente el daño: el cuarto par se va a escribir confiando en una red que no está
-puesta. La forma sería la de B-83: derivar del fuente los pares «flag booleano +
-dato que el flag esconde» y exigir que la proyección mire el flag antes del dato.
+> Cerrado por **B-833** con la cuarta instancia (`direccionPublica`). El registro es
+> `src/lib/paresFlagDato.ts` —con mitad **derivada** del fuente (todo booleano del
+> modelo que se llame «público», sobre un glob de `src/types/*.ts`) y mitad **a mano
+> declarada** (`envio.manda` no se llama así), la forma de `EFECTOS_INCONDICIONALES`—
+> y el chequeo vive en `tests/clases-de-bug.test.ts`. De ese registro sale además
+> **qué campos vigila** `flagsDePublicacionRestaurables` (B-819), que antes era una
+> lista de dos nombres.
+>
+> **Una mutación mostró que la primera versión del chequeo no servía:** buscaba el
+> **nombre** del flag, así que `const manda = true` la dejaba verde. Ahora busca la
+> **lectura** (`.manda`).
+>
+> **Y lo que queda escrito porque hoy no se puede hacer:** los pares de
+> `/suscripciones` y `/lugares` no llegan a la guarda del historial porque esas
+> colecciones **no tienen subcolección `/versiones`**. El chequeo lo cruza contra
+> `firestore.rules`, así que el día que un directorio gane historial pide la guarda
+> en el mismo cambio.
 
 ### B-908 · La doc sigue diciendo que la subida anónima del flyer «espera que App Check exija» · P2
 
@@ -13500,7 +13544,32 @@ salida** anotada el 2026-09-02: `customMetadata.orientacion` al subir y el mapeo
 del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
 Esto de acá es un aviso, y está anotado como aviso.
 
+### B-918 · `suscripcion-literaria-schema.ts` cita B-909 donde corresponde B-906 · P4
+
+El docblock de `imagenDeSuscripcionSchema` dice que la duplicación del schema de
+`Imagen` «ya estaba anotada como deuda cuando eran dos (B-909)», y B-909 es otra
+cosa: el slug sin reserva atómica. El ítem correcto es **B-906**.
+
+Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que la
+cita mal se copie una quinta vez — la de lugares ya cita B-906.
+
 ## P3 — cuando sobre tiempo
+
+### B-916 · El chequeo de exportación de un trigger pasa con el `export` comentado · P3
+
+`tests/directorios-rebuild.test.ts` y `tests/lugares.test.ts` verifican el trigger
+de rebuild con `expect(index).toContain("export { rebuildPorX } …")`. **Una mutación
+lo delató:** comentar la línea (`// export { … }`) deja los dos casos **en verde**,
+porque el comentario contiene la cadena. Borrar la línea entera sí los pone rojos.
+
+Es preexistente —viene de B-901 y lo heredaron B-832 y B-833— y el daño es acotado
+(comentar un `export` es un acto raro), pero es exactamente la clase de falso verde
+que este repo persigue: el chequeo dice «está exportado» y lo que verifica es «la
+cadena está en el archivo».
+
+El arreglo es leer el módulo (`await import('…/index.js')`) y exigir que la clave
+exista, o barrer el fuente sin comentarios (`sinComentarios`, que ya se usa para
+`firestore.rules`).
 
 ### B-909 · Dos altas simultáneas de librería pueden quedarse con el mismo slug · P3
 

@@ -356,7 +356,19 @@ export const DIRECTORIOS: readonly Directorio[] = [
     singular: 'lugar',
     que: 'Salones, cafés y espacios que prestan o alquilan para una actividad.',
     ruta: RUTA_LUGARES,
-    disponible: false,
+    /*
+     * **La tercera y última que deja de decir «en camino»** — B-833, tajada 4.
+     *
+     * El mismo `true` de una línea que estrenó librerías y repitió suscripciones,
+     * y la misma promesa cumplida: la fila de `/guia` se convierte en enlace y la
+     * URL entra sola al sitemap (`RUTAS_FIJAS` la deriva de
+     * `directoriosDisponibles()`), así que la séptima de las nueve cosas que se
+     * rompen en silencio tampoco se puede cometer acá. Con esta línea la Guía
+     * deja de tener filas que no llevan a ningún lado, que es lo que B-835 se
+     * propuso y lo que el paso 12 quería probar: sumar el tercer directorio fue
+     * un archivo de pantalla, su formulario y **esta** línea.
+     */
+    disponible: true,
   },
 ];
 

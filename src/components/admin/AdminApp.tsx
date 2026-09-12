@@ -59,9 +59,11 @@ import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesP
 import type { PropuestasPanel as TipoPropuestas, Conversion } from '@/components/admin/PropuestasPanel';
 import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/LibreriasPanel';
 import type { SuscripcionesPanel as TipoSuscripciones } from '@/components/admin/SuscripcionesPanel';
+import type { LugaresPanel as TipoLugares } from '@/components/admin/LugaresPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { LibreriaConId } from '@/types/libreria';
 import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
+import type { LugarConId } from '@/types/lugar';
 import type { User } from 'firebase/auth';
 
 type Vista =
@@ -126,7 +128,14 @@ type Vista =
    * sigue viva mientras el formulario está abierto.
    */
   | { tipo: 'suscripciones' }
-  | { tipo: 'suscripcion'; ficha?: SuscripcionLiterariaConId };
+  | { tipo: 'suscripcion'; ficha?: SuscripcionLiterariaConId }
+  /*
+   * B-833 — la Guía, tercera entidad. Dos vistas por el mismo motivo que las de
+   * los otros dos directorios, y montando el mismo componente: así la suscripción
+   * a la colección sigue viva mientras el formulario está abierto.
+   */
+  | { tipo: 'lugares' }
+  | { tipo: 'lugar'; ficha?: LugarConId };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -243,6 +252,13 @@ const SuscripcionesPanel = diferido<Parameters<typeof TipoSuscripciones>[0]>(() 
   })),
 );
 
+// Diferida por lo mismo que las otras vistas: lee y escribe `/lugares`, así que
+// arrastra Firestore (B-09, D-51), y con el editor de galería arrastra además
+// `firebase/storage`.
+const LugaresPanel = diferido<Parameters<typeof TipoLugares>[0]>(() =>
+  import('@/components/admin/LugaresPanel').then((m) => ({ default: m.LugaresPanel })),
+);
+
 const PropuestasBadge = diferido<object>(() =>
   import('@/components/admin/PropuestasBadge').then((m) => ({ default: m.PropuestasBadge })),
 );
@@ -338,7 +354,13 @@ export function AdminApp() {
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
   const [volverA, setVolverA] = useState<
-    'lista' | 'calendario' | 'estadisticas' | 'propuestas' | 'librerias' | 'suscripciones'
+    | 'lista'
+    | 'calendario'
+    | 'estadisticas'
+    | 'propuestas'
+    | 'librerias'
+    | 'suscripciones'
+    | 'lugares'
   >('lista');
 
   /**
@@ -623,6 +645,12 @@ export function AdminApp() {
                               ? vista.ficha
                                 ? vista.ficha.nombre
                                 : 'Suscripción nueva'
+                            : vista.tipo === 'lugares'
+                              ? 'Lugares'
+                            : vista.tipo === 'lugar'
+                              ? vista.ficha
+                                ? vista.ficha.nombre
+                                : 'Lugar nuevo'
                               : vista.tipo === 'convertir'
                                 ? `Propuesta de ${vista.tituloOrigen}`
                                 : vista.actividad.titulo}
@@ -713,6 +741,16 @@ export function AdminApp() {
             Suscripciones
           </button>
         )}
+        {/* B-833 — la tercera y última sección de la Guía. */}
+        {vista.tipo === 'lista' && puedeVer(rol, 'lugares') && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'lugares' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Lugares
+          </button>
+        )}
         {vista.tipo !== 'reportes' && puedeVer(rol, 'reportes') && (
           <button
             type="button"
@@ -744,6 +782,8 @@ export function AdminApp() {
                   ? 'librerias'
                 : vista.tipo === 'suscripciones' || vista.tipo === 'suscripcion'
                   ? 'suscripciones'
+                : vista.tipo === 'lugares' || vista.tipo === 'lugar'
+                  ? 'lugares'
                   : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
                     ? 'lista'
                     : 'formulario'
@@ -899,6 +939,20 @@ export function AdminApp() {
             setVista({ tipo: 'libreria', ficha });
           }}
           onGuardado={() => setVista({ tipo: 'librerias' })}
+          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
+        />
+      )}
+
+      {/* B-833 — ídem para los lugares para eventos. */}
+      {(vista.tipo === 'lugares' || vista.tipo === 'lugar') && (
+        <LugaresPanel
+          usuario={{ uid: usuario.uid }}
+          editando={vista.tipo === 'lugar' ? (vista.ficha ?? 'nueva') : null}
+          onAbrirFormulario={(ficha) => {
+            setVolverA('lugares');
+            setVista({ tipo: 'lugar', ficha });
+          }}
+          onGuardado={() => setVista({ tipo: 'lugares' })}
           onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
         />
       )}

@@ -104,6 +104,47 @@ export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
     'whatsapp',
     'mail',
   ],
+  /*
+   * B-833 — § 3 del PRD 4. Tres cosas de esta lista no se ven venir:
+   *
+   * 1. **`direccionPublica` está**, y es de lo que más importa que esté: es el
+   *    flag del § 6, así que apagarlo **saca la dirección de la ficha publicada**.
+   *    Sin él acá, alguien apaga la casilla en el panel, el sitio no se rehace y
+   *    la dirección de una casa sigue publicada — que es el peor efecto posible de
+   *    la trampa 8 en todo el proyecto.
+   * 2. **`direccion` y `geo` están** aunque no siempre se publiquen: cuando el
+   *    flag está prendido son contenido de la ficha, y comparar solo el flag
+   *    dejaría un cambio de dirección sin rebuild.
+   * 3. **`costo` NO está**, y no es un olvido: es un campo de la **proyección**,
+   *    derivado de `condicion` (`claseDeCosto`), y no existe en el documento.
+   *    Compararlo sería comparar `undefined` con `undefined` en los dos lados.
+   *    Lo mismo pasa con `donde`, que en el documento son los cinco campos de
+   *    arriba. `tests/directorios-rebuild.test.ts` lo declara en su tabla.
+   */
+  lugares: [
+    'estado',
+    'slug',
+    'nombre',
+    'descripcion',
+    'imagenes',
+    'tipo',
+    'direccion',
+    'barrio',
+    'ciudad',
+    'geo',
+    'direccionPublica',
+    'capacidad',
+    'capacidadNotas',
+    'incluye',
+    'incluyeOtro',
+    'condicion',
+    'precio',
+    'condicionNotas',
+    'instagram',
+    'whatsapp',
+    'mail',
+    'web',
+  ],
 };
 
 /**

@@ -117,3 +117,37 @@ export const rebuildPorSuscripciones = onDocumentWritten(
     }
   },
 );
+
+export const rebuildPorLugares = onDocumentWritten(
+  {
+    ...OPCIONES_BASE,
+    document: 'lugares/{id}',
+  },
+  async (event) => {
+    const antes = event.data?.before?.data() ?? null;
+    const despues = event.data?.after?.data() ?? null;
+    const { id } = event.params;
+
+    /*
+     * La misma guarda, en la misma forma positiva y por el mismo motivo que las
+     * dos de arriba (ver el detalle de la clase de B-83 en la primera).
+     *
+     * Lo propio de esta colección, y es lo más caro que depende de este trigger
+     * en todo el proyecto: acá el sitio publica **una dirección que puede ser la
+     * de la casa de una persona**, y lo que decide si sale es un booleano del
+     * documento (`direccionPublica`, § 6 del PRD 4). Ese campo está en la lista
+     * de `cambioAmeritaRebuild`, así que apagarlo dispara el build; sin este
+     * trigger —o sin ese campo en la lista— alguien apaga la casilla en el panel,
+     * el sitio no se rehace y **la dirección sigue publicada**. La trampa 8 con el
+     * dato más sensible del proyecto adentro.
+     *
+     * El motivo lleva **solo el id**: el nombre, la dirección y el precio son
+     * contenido, y el contacto de quien cargó la ficha es de un tercero.
+     */
+    if (cambioAmeritaRebuild(antes, despues, 'lugares')) {
+      await marcarRebuild(getFirestore(), `lugar ${id}`);
+    } else {
+      logger.debug('cambio de lugar sin efecto en el sitio: no se rebuildea', { id });
+    }
+  },
+);

@@ -698,7 +698,27 @@ firebase deploy --only functions:rebuildPorLibrerias
 # B-832 — y el del segundo directorio. Uno por colección: Firestore no matchea un
 # comodín en el segmento de colección.
 firebase deploy --only functions:rebuildPorSuscripciones
+# B-833 — y el del tercero. Acá el rebuild es además lo que hace efectivo apagar
+# `direccionPublica`: sin él, la dirección de una casa sigue publicada después de
+# bajar la casilla (§ 6 del PRD 4).
+firebase deploy --only functions:rebuildPorLugares
 ```
+
+### Los tres vocabularios nuevos de los lugares (B-833)
+
+Lo mismo que abajo, con `tipo-lugar`, `incluye-lugar` y `condicion-de-uso`. El
+mismo comando (`node scripts/preparar-produccion.mjs <email>`) y el mismo modo de
+falla si no se corre: la ficha se publica y muestra el slug crudo.
+
+**Y acá hay una consecuencia que en los otros dos no había, y conviene tenerla
+escrita:** `tipo-lugar` es el vocabulario del que sale el default de
+`direccionPublica` (§ 6 del PRD 4). Sin el documento sembrado, el desplegable
+nace vacío y quien cargue un lugar va a tener que tipear el tipo con «Otro» — con
+lo cual `casa` puede quedar como `Casa` o como `casa-particular`, que **no** están
+en `TIPOS_SIN_DIRECCION_PUBLICA` y por lo tanto se llevan el default permisivo. No
+es una falla del código —la lista no puede prometer cubrir un tipo que alguien
+invente, y está dicho en su docblock— pero sí es un motivo más para correr este
+paso antes de cargar el primer lugar.
 
 ### Los seis vocabularios nuevos de las suscripciones (B-832)
 

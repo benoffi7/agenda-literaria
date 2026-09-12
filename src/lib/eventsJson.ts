@@ -230,6 +230,16 @@ export const TAXONOMIAS_FUERA_DEL_INDICE: readonly CampoTaxonomia[] = [
   'incluye-suscripcion',
   'extras-suscripcion',
   'alcance-envio',
+  /*
+   * **Los tres de los lugares para eventos** — B-833, y el mismo argumento una
+   * colección más: no son ejes de filtro **de la agenda** y no describen una
+   * actividad. Sus chips los arma `/lugares.json`, que baja solo quien abre
+   * `/guia/lugares` — que es todo el motivo por el que ese índice es un archivo
+   * propio y no una clave más de `events.json`.
+   */
+  'tipo-lugar',
+  'incluye-lugar',
+  'condicion-de-uso',
 ];
 
 export const LARGO_RESUMEN = 160;

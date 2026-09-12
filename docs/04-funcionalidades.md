@@ -1001,6 +1001,41 @@ tiene que empezar con `https://` —la regla lo exige, no solo el formulario— 
 ficha lo publica diciendo a dónde va: «Suscribite en la página de …». Un botón que
 dijera «Suscribite» a secas se lee como que el proyecto respalda ese cobro.
 
+### Lugares para eventos — el tercer directorio de la Guía (B-833)
+
+Botón «Lugares» en el listado, al lado de «Suscripciones» y **solo para el
+admin**, por los mismos tres motivos más uno propio: decidir si la dirección de
+una casa se publica es exactamente la clase de autoridad que el rol publicador no
+tiene. La pantalla es otra vez la bandeja genérica con los datos de esta entidad
+—el tercer archivo de pantalla seguido, que es lo que el paso 12 quería probar—.
+
+⚠️ **Lo propio de esta pantalla es la casilla de la dirección.** Elegir «Casa»
+como tipo de lugar **apaga la casilla en el acto** y el cartel de al lado cambia:
+«es un domicilio particular: la dirección no se publica; para publicarla hace
+falta que quien vive ahí lo pida». Se puede volver a prender —un admin puede tener
+ese permiso, y es la única forma legítima— y ahí aparece un segundo cartel que lo
+dice con todas las letras: **avisa y no frena**, porque una decisión que alguien
+tiene derecho a tomar se señala, no se bloquea. El formulario público no va a
+poder prenderla **con ningún tipo de lugar**, y eso lo fuerza la regla.
+
+Lo mismo vale para las coordenadas, que siguen la misma casilla: unas coordenadas
+son la dirección escrita de otra forma. Y la dirección **no entra al buscador del
+sitio**, ni cuando sí se publica: si estuviera en el índice de búsqueda, seguiría
+estando ahí después de apagar la casilla.
+
+En la bandeja, cada ficha dice en qué barrio está, para cuántos es, el precio como
+se va a publicar y —lo que hay que mirar dos veces— **si publica la dirección o
+no**. Se dice en los dos sentidos a propósito: «sin dirección publicada» no es un
+error, es lo que corresponde para una casa.
+
+El resto del formulario es lo que el dueño pidió: qué es el lugar, dónde queda,
+para cuántas personas —con un campo de aclaraciones al lado, porque «¿cuántos
+entran?» tiene respuestas distintas si están sentados o de pie—, qué incluye, cómo
+se usa y los cuatro destinos públicos. **La condición es obligatoria y el precio
+no**, que es el hallazgo del § 5 del PRD: mucha gente no cobra, o pide que se
+consuma algo, y eso no es un número. El precio, si está, se publica con su fecha de
+carga al lado y con el aviso de los 60 días, igual que el de una suscripción.
+
 ### Proponer una actividad — `/proponer` (B-830, paso 9)
 
 El único formulario del sitio público, y la única página que escribe en Firestore
@@ -1967,6 +2002,44 @@ mismo que la ficha de una librería solo linkea el hub de barrio que existe.
 
 El marcado estructurado es `Product` + `Offer` + `BreadcrumbList`, y el `Offer`
 **no lleva el precio**: ver [D-670](06-decisiones.md).
+
+### `/guia/lugares` y `/guia/lugares/{slug}` — el directorio de lugares (B-833)
+
+La tercera y última sección de la Guía. Con ella, ninguna fila de `/guia` dice ya
+«en camino». El listado imprime todas las fichas publicadas en el HTML del build y
+una island hace **un solo fetch** de `/lugares.json` para filtrar en memoria, con
+el mismo componente de fila y sin parpadeo.
+
+**Cinco filtros y en este orden**, que es el del § 7 del PRD por utilidad real:
+
+1. **capacidad, en rangos** —hasta 10 · 10 a 25 · 25 a 50 · más de 50— y no un
+   input numérico: «somos 20» es la primera pregunta, y los rangos toleran que la
+   capacidad esté aproximada. Un lugar de 25 entra en los dos rangos vecinos a
+   propósito, y uno **sin capacidad cargada no entra en ninguno**: meterlo en
+   todos afirmaría que entran 50 personas sin que nadie lo haya dicho;
+2. **¿hay que pagar algo?**, en tres clases —sin costo, consumiendo, pagando— y
+   **no un «hasta $X»**. Es el § 5 del PRD, y de paso es la mitigación del § 9: un
+   slider de precio empuja esta sección hacia la inmobiliaria de salones que el
+   proyecto no quiere ser;
+3. **barrio**, el mismo vocabulario de siempre;
+4. **qué incluye**, el que más ayuda con proyector y accesibilidad;
+5. **tipo de lugar**, último: suena importante y filtra poco.
+
+**La ficha** es HTML sin JavaScript: dónde queda, para cuántas personas, qué
+incluye, la condición con sus notas, el precio con su fecha de carga pegada, los
+cuatro contactos y la galería completa. El barrio enlaza su hub **solo si ese hub
+existe**, por lo mismo que en los otros dos directorios.
+
+⚠️ **Y la dirección sale solo si `direccionPublica`** (§ 6 del PRD 4). Para una
+casa la ficha muestra el barrio y una frase que lo dice sin que se lea como un
+dato faltante: «la dirección no se publica: escribile y te la pasa». Lo mismo con
+el mapa —unas coordenadas son la dirección con otro formato— y con el JSON-LD,
+que no lleva `address` ni `geo` (criterio 5: es el camino que se filtra sin que
+nadie lo vea, porque nadie lee el JSON-LD al revisar una ficha).
+
+El marcado estructurado es `Place` + `BreadcrumbList`, con la capacidad y lo que
+incluye. **No es un `LocalBusiness` ni un `EventVenue`**, y **no lleva
+`priceRange`**: ver [D-680](06-decisiones.md).
 
 ### `/mis-favoritos` — lo que cada persona guardó (B-848)
 

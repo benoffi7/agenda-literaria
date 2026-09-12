@@ -58,7 +58,7 @@ describe('cuándo preguntar antes de salir (B-35)', () => {
 describe('todas las salidas del panel pasan por el aviso (B-35)', () => {
   const ADMIN_APP = fuente('components/admin/AdminApp.tsx');
 
-  it('los seis caminos que abandonan un formulario están envueltos en salirDe', () => {
+  it('los siete caminos que abandonan un formulario están envueltos en salirDe', () => {
     /*
      * Uno por camino: "← Volver", "Reportar algo", "Salir", el "Cancelar" del
      * formulario de actividad, el del formulario de librería (**B-901**) y el del
@@ -66,10 +66,11 @@ describe('todas las salidas del panel pasan por el aviso (B-35)', () => {
      * "Estadísticas", "Propuestas", "Librerías" y "Suscripciones" solo se ofrecen
      * desde el listado, donde no hay nada que perder.
      *
-     * MUTACIÓN PROBADA: sacarle el `salirDe` al `onCancelar` de
-     * `SuscripcionesPanel` deja este caso en rojo (5 usos + la definición = 6).
+     * MUTACIÓN PROBADA: sacarle el `salirDe` al `onCancelar` de `LugaresPanel`
+     * —o al de `SuscripcionesPanel`— deja este caso en rojo (6 usos + la
+     * definición = 7).
      */
-    expect([...ADMIN_APP.matchAll(/salirDe\(/g)]).toHaveLength(7); // 6 usos + la definición
+    expect([...ADMIN_APP.matchAll(/salirDe\(/g)]).toHaveLength(8); // 7 usos + la definición
   });
 
   it('la salida del formulario respeta a dónde volver', () => {

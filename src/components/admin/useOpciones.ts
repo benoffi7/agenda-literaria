@@ -236,6 +236,11 @@ export function useTodasLasOpciones(): {
   const incluyeSuscripcion = useOpciones('incluye-suscripcion');
   const extrasSuscripcion = useOpciones('extras-suscripcion');
   const alcanceEnvio = useOpciones('alcance-envio');
+  // B-833 — los tres de los lugares para eventos, por el mismo motivo que los
+  // seis de arriba: esta pantalla los **administra**.
+  const tipoLugar = useOpciones('tipo-lugar');
+  const incluyeLugar = useOpciones('incluye-lugar');
+  const condicionDeUso = useOpciones('condicion-de-uso');
 
   return useMemo(
     () => ({
@@ -252,6 +257,9 @@ export function useTodasLasOpciones(): {
         'incluye-suscripcion': incluyeSuscripcion.valores,
         'extras-suscripcion': extrasSuscripcion.valores,
         'alcance-envio': alcanceEnvio.valores,
+        'tipo-lugar': tipoLugar.valores,
+        'incluye-lugar': incluyeLugar.valores,
+        'condicion-de-uso': condicionDeUso.valores,
       },
       cargando:
         arancel.cargando ||
@@ -265,7 +273,10 @@ export function useTodasLasOpciones(): {
         perfilEditorial.cargando ||
         incluyeSuscripcion.cargando ||
         extrasSuscripcion.cargando ||
-        alcanceEnvio.cargando,
+        alcanceEnvio.cargando ||
+        tipoLugar.cargando ||
+        incluyeLugar.cargando ||
+        condicionDeUso.cargando,
     }),
     [
       arancel,
@@ -280,6 +291,9 @@ export function useTodasLasOpciones(): {
       incluyeSuscripcion,
       extrasSuscripcion,
       alcanceEnvio,
+      tipoLugar,
+      incluyeLugar,
+      condicionDeUso,
     ],
   );
 }

@@ -927,6 +927,72 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'lugares',
+    titulo: 'Los lugares para hacer eventos',
+    paraQue:
+      'Cargar y revisar el directorio de lugares —cafés, librerías, centros culturales y casas ' +
+      'que prestan o alquilan su espacio— y entender qué pasa con la dirección, que es el dato ' +
+      'más delicado que carga el panel.',
+    puntos: [
+      {
+        texto:
+          'Es la tercera sección de la Guía y funciona igual que las otras dos: se carga desde ' +
+          'el botón «Lugares» del listado, guardar no publica, y la ficha espera decisión hasta ' +
+          'que toques «Publicar».',
+      },
+      {
+        texto:
+          'Si el lugar es una casa, la dirección no se publica: en el sitio sale solo el barrio, ' +
+          'y quien quiera ir la pide escribiendo. La casilla «Publicar la dirección» se apaga ' +
+          'sola cuando elegís «Casa». Podés volver a prenderla —el panel te avisa, no te frena— ' +
+          'y hacelo solo si quien vive ahí lo pidió: la dirección de una casa es el dato con el ' +
+          'que se llega a la puerta de alguien, y la puede haber cargado un tercero.',
+      },
+      {
+        texto:
+          'Lo mismo vale para las coordenadas: si la dirección no se publica, el mapa tampoco. ' +
+          'Unas coordenadas son la dirección escrita de otra forma.',
+      },
+      {
+        texto:
+          'La dirección tampoco entra al buscador del sitio, ni cuando sí se publica. Es para ' +
+          'que apagar la casilla alcance de verdad: si la dirección estuviera en el índice de ' +
+          'búsqueda, seguiría estando ahí después de apagarla.',
+      },
+      {
+        texto:
+          'Cómo se usa el lugar es obligatorio y el precio no. Es a propósito: mucha gente no ' +
+          'cobra, o pide que se consuma algo, y eso no es un número. En el sitio se filtra por ' +
+          'tres opciones —sin costo, consumiendo, pagando— y no por precio.',
+      },
+      {
+        texto:
+          'Si cargás un precio, se publica siempre con la fecha en que lo cargaste al lado, ' +
+          'igual que en las suscripciones. Esa fecha se mueve sola cuando cambiás el número o la ' +
+          'unidad, y no se mueve cuando corregís cualquier otra cosa de la ficha.',
+      },
+      {
+        texto:
+          'La capacidad se filtra por rangos —hasta 10, 10 a 25, 25 a 50, más de 50— y no por ' +
+          'un número exacto: nadie sabe cuántas personas entran, y la respuesta cambia si están ' +
+          'sentadas o de pie. Para eso está el campo de notas al lado.',
+      },
+      {
+        texto:
+          'El WhatsApp, el Instagram, el mail y la web del lugar se publican: son para que la ' +
+          'gente escriba. El contacto del recuadro «Interno» es otra cosa: es por dónde ' +
+          'repreguntarle a quien pidió el alta, y no sale nunca al sitio. Ahí también es donde ' +
+          'se pide el permiso para publicar la dirección de una casa.',
+      },
+      {
+        texto:
+          'La dirección web queda fija desde la primera vez que se publica, igual que en las ' +
+          'otras dos secciones: después ese enlace ya está en Google y cambiarlo lo rompe sin ' +
+          'avisar.',
+      },
+    ],
+  },
+  {
     id: 'propuestas',
     titulo: 'Las propuestas que llegan de afuera',
     paraQue:
@@ -2026,6 +2092,8 @@ export const CAPITULO_POR_CONTEXTO = {
   // abrir la ayuda en «Cómo llega una actividad a la gente» sería mandar a leer
   // lo que no se está mirando (era B-795 con otra cara).
   suscripciones: 'suscripciones',
+  // B-833 — la tercera pantalla de la Guía. Mismo motivo que las otras dos.
+  lugares: 'lugares',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;

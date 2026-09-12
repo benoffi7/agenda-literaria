@@ -396,5 +396,259 @@
       "usos": 0,
       "aprobada": true
     }
+  ],
+  "tipo-lugar": [
+    {
+      "slug": "cafe",
+      "label": "Café",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "libreria",
+      "label": "Librería",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "centro-cultural",
+      "label": "Centro cultural",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "bar",
+      "label": "Bar",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "biblioteca",
+      "label": "Biblioteca",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "casa",
+      "label": "Casa",
+      "orden": 6,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "coworking",
+      "label": "Coworking",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "aula",
+      "label": "Aula",
+      "orden": 8,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "club",
+      "label": "Club",
+      "orden": 9,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "galeria",
+      "label": "Galería",
+      "orden": 10,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "al-aire-libre",
+      "label": "Al aire libre",
+      "orden": 11,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "incluye-lugar": [
+    {
+      "slug": "consumicion-incluida",
+      "label": "Consumición incluida",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "atencion-a-los-invitados",
+      "label": "Atención a los invitados",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "mesa-larga",
+      "label": "Mesa larga",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "salon-con-sillas",
+      "label": "Salón con sillas",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "proyector",
+      "label": "Proyector",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "sonido-y-microfono",
+      "label": "Sonido y micrófono",
+      "orden": 6,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "wifi",
+      "label": "Wifi",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "pizarron",
+      "label": "Pizarrón",
+      "orden": 8,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "cocina",
+      "label": "Cocina",
+      "orden": 9,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "patio",
+      "label": "Patio",
+      "orden": 10,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "accesible-en-silla-de-ruedas",
+      "label": "Accesible en silla de ruedas",
+      "orden": 11,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "bano-accesible",
+      "label": "Baño accesible",
+      "orden": 12,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "se-puede-vender-libros",
+      "label": "Se pueden vender libros",
+      "orden": 13,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "condicion-de-uso": [
+    {
+      "slug": "gratis",
+      "label": "Gratis",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "con-consumicion",
+      "label": "Con consumición",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "alquiler-por-hora",
+      "label": "Alquiler por hora",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "alquiler-por-evento",
+      "label": "Alquiler por evento",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "a-convenir",
+      "label": "A convenir",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "porcentaje-de-la-recaudacion",
+      "label": "Porcentaje de la recaudación",
+      "orden": 6,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "canje-por-difusion",
+      "label": "Canje por difusión",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
   ]
 }

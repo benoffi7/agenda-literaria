@@ -136,6 +136,8 @@ describe('las páginas fijas', () => {
       // era el único que podía entrar al sitemap sin que nada lo dijera, y eso es
       // ofrecerle al buscador una URL para que indexe un JSON.
       '/suscripciones.json',
+      // B-833 — el cuarto y último. Mismo motivo.
+      '/lugares.json',
       '/version.json',
       '/sitemap.xml',
       '/robots.txt',

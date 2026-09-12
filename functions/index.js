@@ -44,6 +44,11 @@ export { rebuildPorLibrerias } from './directorios-trigger.js';
 // matchea un comodín en el segmento de colección, así que cada directorio nuevo
 // se ve acá o no existe.
 export { rebuildPorSuscripciones } from './directorios-trigger.js';
+// B-833 — y el de los lugares para eventos, el tercero y último directorio de la
+// Guía. Acá el rebuild además es lo que hace efectivo apagar `direccionPublica`:
+// sin él, la dirección de una casa seguiría publicada después de bajar la
+// casilla (§ 6 del PRD 4).
+export { rebuildPorLugares } from './directorios-trigger.js';
 export { dispararRebuild } from './rebuild-trigger.js';
 export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { limpiarVersionesHuerfanas } from './versiones-limpieza-trigger.js';

@@ -627,6 +627,98 @@ elegible, la frase entera se fabrica desde el cliente.
 `rechazado` conserva el contacto del tercero, el `delete` del admin está abierto
 por eso, y está anotado junto con B-904.
 
+## `/lugares/{id}` — el tercero y último directorio de la Guía (B-833)
+
+Dónde hacer una actividad: el café que presta el salón del fondo, la librería con
+una mesa larga, el centro cultural con sillas y proyector — y **la casa de
+alguien**, que es lo que hace a esta colección distinta de las otras tres.
+
+Mismo ciclo de vida que `/librerias` y `/suscripciones` —el de
+`src/lib/directorios.ts`— y mismos campos de máquina. Los campos viven en
+`src/types/lugar.ts` y la forma la hace cumplir `firestore.rules`, con los topes
+atados por `tests/lugares.test.ts`.
+
+| Campo | Qué es |
+|---|---|
+| `nombre`, `slug`, `descripcion` | el `slug` es **inmutable después de publicar** (trampa 10). La descripción es **opcional**, como en una librería: un café con su capacidad ya dice lo que hay que saber |
+| `imagenes[]` | el **mismo** tipo `Imagen` (D-125) |
+| `tipo` | slug de `/opciones/tipo-lugar` — el «(por ahí poner a completar)» del pedido del dueño. **No es decorativo: decide el default de `direccionPublica`** (ver abajo) |
+| `direccion`, `barrio`, `ciudad`, `geo` | ⚠️ la `direccion` y la `geo` **pueden no publicarse**. El `barrio` es el **mismo** vocabulario que el de las actividades y el de las librerías, que es lo que deja que el hub de barrio cruce las tres cosas — y sale **siempre**, también para una casa |
+| `direccionPublica` | ⚠️ **el flag del § 6 del PRD 4.** Ver abajo |
+| `capacidad`, `capacidadNotas` | «hasta N personas» y «sentados 20, de pie 35». Las notas existen porque **la capacidad es un dato que quien carga no sabe** (§ 9), y por eso el filtro del sitio es por rangos |
+| `incluye[]` + `incluyeOtro` | slugs de `/opciones/incluye-lugar`: mesa larga, proyector, accesibilidad, se pueden vender libros |
+| `condicion`, `condicionNotas`, `precio` | ⚠️ **la condición es obligatoria y el precio no**, y es el hallazgo del PRD. Ver abajo |
+| `instagram`, `whatsapp`, `mail`, `web` | los cuatro destinos **públicos**. La `web` admite `http://`, al revés que el link de cobro de una suscripción: es una página institucional, no un destino de pago |
+| `contactoDeQuienCargo` | ⚠️ **interno**, como en las otras dos. Y acá tiene un uso propio: es por dónde se pide el permiso del § 6 |
+| `estado`, `origen`, `revision`, `creadoEn`, `searchText`, `publicadaAlgunaVez` | el ciclo de vida, igual que en las otras dos |
+
+### `direccionPublica` — el par flag + dato, y el dato es la casa de alguien
+
+**Este es el único directorio que puede publicar la dirección de la casa de una
+persona** (§ 6 del PRD 4), con dos agravantes propios: **lo carga cualquiera sin
+login** —nada garantiza que quien cargó la casa sea quien vive ahí— y **`geo` la
+pone en un mapa**, o sea que el «más o menos por Villa Crespo» deja de ser más o
+menos.
+
+La respuesta son cuatro capas, y ninguna sola alcanza:
+
+1. **El default lo decide el tipo, no quien carga.** `TIPOS_SIN_DIRECCION_PUBLICA`
+   (`src/types/lugar.ts`) hoy tiene `casa`, y el formulario apaga la casilla sola
+   al elegirlo — «un default que hay que apagar a mano es el que se olvida».
+2. **El formulario público no puede prenderlo**, y eso lo fuerza
+   `firestore.rules` y no el cliente (criterio 3). La cláusula mira **solo el
+   origen** y no el tipo: `/opciones/tipo-lugar` es un vocabulario abierto, así
+   que una lista de tipos en la regla sería una lista negra que `ph` o
+   `mi-living` esquivan. Un admin sí puede prenderlo: puede haber pedido permiso
+   a quien vive ahí, que es la única forma legítima — y el formulario **avisa sin
+   frenar**.
+3. **La proyección lo mira, en una sola función.** `dondeQueSale`
+   (`src/lib/lugarPublico.ts`) decide por la dirección **y** por la `geo` juntas,
+   porque unas coordenadas son la dirección con otro formato. Falla **cerrada**:
+   `!== true`, así que el flag ausente quiere decir «no publicar».
+4. **La proyección DERIVA el `searchText` en vez de copiarlo.** Ese campo se
+   publica —viaja en `/lugares.json`— y en el documento lo escribe el cliente, así
+   que copiarlo sería la puerta por la que la dirección se publicaría esquivando
+   el flag, y quedaría publicada después de apagarlo porque el índice se deriva al
+   escribir. `searchTextDeLugar` lo arma con los valores ya proyectados y
+   `formALugar` la importa: una sola derivación (`librerias.ts` sí mete la
+   dirección, y ahí es correcto: no hay flag que esquivar).
+
+Es la **cuarta instancia** de la clase «flag booleano + dato que el flag
+esconde», después de `online.urlPublica` (D-15), `material.items[].publico`
+(§5.1) y `envio.manda` (B-832). Con ella la clase dejó de estar cubierta solo por
+instancia: `src/lib/paresFlagDato.ts` es el registro y
+`tests/clases-de-bug.test.ts` el chequeo (**B-911**).
+
+### La condición no es un precio — § 5 del PRD 4
+
+«No sé si todos cobran, o le dicen que tienen que consumir», preguntó el dueño, y
+la respuesta del PRD es que **el precio no es un número: es una forma de
+arreglo**. Un café que presta el salón si cada persona consume no está cobrando
+cero ni cobrando un precio.
+
+Así que lo obligatorio es `condicion` —slug de `/opciones/condicion-de-uso`— y el
+`precio` es opcional. Es la misma estructura que el `arancel` de una actividad
+(§4.1 del `CLAUDE.md`), donde `'a-la-gorra'` es opción de primera clase:
+`con-consumicion` es el `a-la-gorra` de los lugares.
+
+El `precio` es un `DatoConFecha<{ monto, porUnidad }>` (B-837), con las mismas
+tres reglas y la misma cláusula de `firestore.rules` que el de una suscripción
+(DEC-12): la proyección es **la frase armada**, no hay número que filtrar, y
+`cargadoEn` es `request.time` o el que ya estaba. `porUnidad` es un vocabulario
+**cerrado en el código** (`UNIDADES_DE_PRECIO_LUGAR`) y no una taxonomía: son
+cuatro valores, no son eje de filtro, y de ellos sale la mitad de una frase
+publicada.
+
+Y **el filtro del sitio no es «hasta $X»**: son tres clases —sin costo,
+consumiendo, pagando— que `claseDeCosto` deriva de la condición. Eso funciona
+igual de bien con un precio de hace tres meses, que es la propiedad que hay que
+buscar en todo dato que envejece.
+
+**Y esta colección tampoco tiene retención**, como las otras dos: una ficha
+`rechazado` conserva el contacto del tercero **y la dirección**, el `delete` del
+admin está abierto por eso, y está anotado junto con B-904.
+
 ## `incluye` — qué se llevan (B-830)
 
 `incluye: string[]`, slugs de `/opciones/incluye-actividad`. Pedido del dueño

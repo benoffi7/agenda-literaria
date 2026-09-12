@@ -1918,6 +1918,495 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    /*
+     * ══ LUGARES PARA EVENTOS — B-833, PRD 4 ══════════════════════════════
+     *
+     * `docs/prd/04-lugares-para-eventos.md` § 3. Es el **tercero de los tres
+     * directorios** y **el único del proyecto que puede publicar la dirección de
+     * la casa de una persona** (§ 6). Eso hace que acá haya una cláusula que
+     * ninguna otra colección tiene, y es la que hay que leer antes de tocar nada:
+     * ver `direccionPublica` en `lugarDeGuiaValido()`.
+     *
+     * El ciclo de vida —tres estados, el grafo, qué escribe la máquina— vive en
+     * `src/lib/directorios.ts` (B-834) y los campos en `src/types/lugar.ts`. Acá
+     * vive lo único que no se puede saltear: **la autorización y la forma**.
+     *
+     * ── Por qué las funciones se llaman `lugarDeGuia*` y no `lugar*` ─────
+     * Porque `lugarValido(lugar)` **ya existe** en este archivo y es otra cosa:
+     * valida el sub-mapa `lugar` de una **propuesta** (B-830), que es un
+     * `{nombre, direccion, barrio}` tipeado a mano por quien propone una
+     * actividad. El compilador de reglas no tiene espacios de nombres, así que
+     * dos funciones con el mismo nombre no compilan — y lo importante es que si
+     * compilaran sería peor: dos validaciones distintas de dos cosas que se
+     * llaman igual. El sufijo dice de cuál de las dos se está hablando.
+     *
+     * ── La colección no lleva `/guia/` ───────────────────────────────────
+     * El documento es `/lugares/{id}` y la página se sirve en
+     * `/guia/lugares/{slug}`.
+     *
+     * ── Las dos clases de contacto ───────────────────────────────────────
+     * `instagram`, `whatsapp`, `mail` y `web` son **públicos y ése es el punto**
+     * —la ficha existe para que alguien pida el salón—, y
+     * `contactoDeQuienCargo` es **interno**, como el `contacto` de una propuesta.
+     *
+     * ── Lo propio de esta colección, que las otras dos no tienen ─────────
+     * 1. **`direccionPublica`**, § 6. La regla hace cumplir la mitad que un
+     *    cliente no puede saltear: **desde el formulario público, un domicilio
+     *    particular no puede nacer con la dirección publicada**, y el
+     *    `direccionPublica` de esa rama se fuerza en `false` sin importar lo que
+     *    mande el cliente (criterio 3 del PRD). Del panel un admin sí puede
+     *    prenderlo — puede haber pedido permiso —, que es la única forma en que
+     *    la casa de alguien publica su dirección: a pedido de alguien logueado.
+     * 2. **Un precio con su fecha de carga pegada** (B-837), exactamente igual
+     *    que en `/suscripciones`: la regla exige que `cargadoEn` sea la hora del
+     *    servidor o la que ya estaba, nunca una elegida. Sin esa cláusula, la
+     *    frase «$25.000 por hora · cargado el 24 de septiembre» se fabrica desde
+     *    el cliente y el mecanismo entero deja de afirmar nada.
+     *
+     * ── Lo que estas reglas NO pueden hacer, dicho y no supuesto ─────────
+     * **No iteran una lista** (B-842), así que de `imagenes` e `incluye` se acota
+     * la cantidad y el tipo, nunca la forma de cada elemento. Lo que lo hace
+     * aceptable es lo mismo que en las otras dos: **nada de un lugar llega a una
+     * salida pública sin que un admin lo publique**, más que la proyección
+     * **descarta** todo elemento que no sea un slug (`slugify(v) === v`).
+     *
+     * **Y no verifican que los slugs existan** en `/opciones/*`: eso pediría
+     * cuatro `get()` por evaluación, facturados. Lo que se acota es su **forma**,
+     * y el criterio 9 del PRD —«un anónimo no puede agregar valores»— lo sostiene
+     * `/opciones/*`, cuyo `write` sigue en `esAdmin()`.
+     */
+    function geoDeLugarValida(g) {
+      /*
+       * Mismo rango y la misma poda que `geoDeLibreriaValida`: sin `hasAll` y sin
+       * `is number`, porque el `.get(clave, 999.0)` con un default fuera de rango
+       * agarra la clave ausente y un valor de otro tipo no se puede comparar con
+       * `>=`. Una cláusula que no puede fallar en una regla de seguridad es peor
+       * que ninguna.
+       *
+       * ⚠️ **Acá el dato pesa más que en una librería**: unas coordenadas son la
+       * dirección con otro formato, y para una casa eso es la puerta de alguien
+       * en un mapa. Lo que decide si sale es `direccionPublica` y lo hace cumplir
+       * la proyección; esta función solo acota la forma.
+       */
+      return g == null || (
+        g.keys().hasOnly(['lat', 'lng'])
+        && g.get('lat', 999.0) >= -90 && g.get('lat', 999.0) <= 90
+        && g.get('lng', 999.0) >= -180 && g.get('lng', 999.0) <= 180
+      );
+    }
+
+    function precioDeLugarValido(p) {
+      /*
+       * **El precio con su fecha** — B-837. La forma es la de `DatoConFecha<T>`:
+       * `{ valor, cargadoEn }`, y no los tres campos sueltos, porque es el
+       * mecanismo compartido que el § 5 del PRD manda usar.
+       *
+       * `monto` es **entero**. `porUnidad` es un vocabulario **cerrado en el
+       * código** (`UNIDADES_DE_PRECIO_LUGAR`, `src/types/lugar.ts`) y no un slug
+       * de `/opciones/*`, así que acá va con su `in [...]` y no con un `matches`:
+       * es la única cota de este archivo que enumera valores de un vocabulario
+       * que no es una taxonomía, y por eso el test la compara contra la
+       * constante.
+       *
+       * Que `cargadoEn` sea **la hora del servidor** lo exigen el `create` y el
+       * `update` de abajo, cada uno con su cláusula: acá solo se acota el tipo.
+       */
+      return p == null || (
+        p.keys().hasOnly(['valor', 'cargadoEn'])
+        && p.keys().hasAll(['valor', 'cargadoEn'])
+        && p.cargadoEn is timestamp
+        && p.valor.keys().hasOnly(['monto', 'porUnidad'])
+        && p.valor.keys().hasAll(['monto', 'porUnidad'])
+        && p.valor.monto is int
+        && p.valor.monto >= 1 && p.valor.monto <= 100000000
+        && p.valor.porUnidad in ['hora', 'jornada', 'evento', 'persona']
+      );
+    }
+
+    function contactoDeLugarValido(c) {
+      /*
+       * El contacto de quien cargó la ficha: **interno, no sale nunca**.
+       * `null` es legítimo —una ficha cargada por un admin no tiene a quién
+       * repreguntarle—, y el obligatorio del formulario público vive en
+       * `lugarPublicoFormSchema`: una regla no sabe si del otro lado hay una
+       * persona completando un formulario.
+       *
+       * Y acá ese contacto tiene un uso que en los otros dos directorios no
+       * tiene: **es por dónde se pide el permiso del § 6** —que una sede figure
+       * en una actividad no autoriza a publicarla como lugar que se alquila
+       * (§ 10)—.
+       */
+      return c == null || (
+        c.keys().hasOnly(['via', 'valor'])
+        && c.get('via', '') in ['mail', 'whatsapp', 'instagram']
+        && c.get('valor', '') is string
+        && c.get('valor', '').size() >= 3
+        && c.get('valor', '').size() <= 200
+      );
+    }
+
+    /**
+     * ¿El slug de esta ficha ya no se puede tocar? **Trampa 10 del §13.**
+     *
+     * Idéntica a `slugDeLibreriaCongelado` y a `slugDeSuscripcionCongelado`, con
+     * el mismo razonamiento: se congela **al publicar**, la pregunta de verdad es
+     * «¿estuvo publicado alguna vez?» (B-285), y la marca ausente se contesta con
+     * el estado. La asimetría con `slugBloqueado` (`lib/directorios.ts`) también
+     * es la misma: allá la marca gana sobre el estado, acá se suman con un `||`,
+     * así que un documento imposible queda **congelado**. Falla cerrada.
+     */
+    function slugDeLugarCongelado(previo) {
+      return previo.get('publicadaAlgunaVez', false) == true
+        || previo.get('estado', '') == 'publicado';
+    }
+
+    /**
+     * La forma de un lugar: lo que tiene que valer en **toda** escritura, create
+     * y update. Lo que solo vale al crearse está en `lugarDeGuiaValido()`.
+     */
+    function formaDeLugar() {
+      let d = request.resource.data;
+      let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'tipo', 'direccion',
+                          'barrio', 'ciudad', 'geo', 'direccionPublica', 'capacidad',
+                          'capacidadNotas', 'incluye', 'incluyeOtro', 'condicion', 'precio',
+                          'condicionNotas', 'instagram', 'whatsapp', 'mail', 'web',
+                          'contactoDeQuienCargo', 'estado', 'origen', 'searchText',
+                          'creadoEn', 'revision'];
+      /*
+       * `publicadaAlgunaVez` va en `hasOnly` y **no** en `hasAll`, por lo mismo
+       * que en las otras dos colecciones: es un campo opcional que escribe un
+       * trigger con el Admin SDK, así que hoy está ausente en todos los
+       * documentos, y sin él en `hasOnly` el día que el trigger lo escriba **toda
+       * edición del panel se rompería**.
+       *
+       * Los campos que pueden ser `null` están igual en `hasAll`: se leen con
+       * `.get(clave, null)`, así que ausente y `null` serían indistinguibles y la
+       * presencia hay que declararla.
+       */
+      return d.keys().hasOnly(obligatorios.concat(['publicadaAlgunaVez']))
+        && d.keys().hasAll(obligatorios)
+        && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 80
+        /*
+         * El slug **es** la URL pública, así que su alfabeto es el de `slugify`.
+         * Sin `size() >= 1`: el `+` del patrón ya exige al menos un carácter, y
+         * una cláusula que no puede fallar es peor que ninguna.
+         */
+        && d.slug is string && d.slug.size() <= 120
+        && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && (d.get('descripcion', null) == null
+             || (d.descripcion is string && d.descripcion.size() <= 1500))
+        && d.imagenes is list && d.imagenes.size() <= 4
+        // El tipo de lugar decide el **default del panel** de `direccionPublica`
+        // (§ 6). Acá solo se acota su forma de slug: la cláusula que defiende la
+        // dirección del camino público **no lo mira**, justamente porque
+        // `/opciones/tipo-lugar` es un vocabulario abierto. Ver `lugarDeGuiaValido()`.
+        && d.tipo is string && d.tipo.size() <= 80
+        && d.tipo.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        /*
+         * ⚠️ **La dirección es opcional, al revés que en `/librerias`** — § 6.
+         * Un lugar puede ser la casa de alguien, y ahí la dirección no se va a
+         * publicar: exigirla sería pedir el dato más sensible del proyecto para
+         * guardarlo y no usarlo.
+         */
+        && (d.get('direccion', null) == null
+             || (d.direccion is string && d.direccion.size() >= 4
+                  && d.direccion.size() <= 160))
+        // El mismo slug de `/opciones/barrio` que usan las actividades y las
+        // librerías (§ 3 del PRD): con otro alfabeto, el hub de barrio no cruza
+        // las tres cosas. **Sale siempre**, también para una casa: es el «más o
+        // menos por Villa Crespo» que el § 6 sí deja publicar.
+        && d.barrio is string && d.barrio.size() <= 80
+        && d.barrio.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && d.ciudad is string && d.ciudad.size() >= 1 && d.ciudad.size() <= 80
+        && geoDeLugarValida(d.geo)
+        // ⚠️ El flag del § 6. Su **valor** lo deciden `lugarDeGuiaValido()` (al crear,
+        // con la cláusula del domicilio particular) y el panel; acá solo se acota
+        // el tipo, que es lo que impide que llegue como `'si'` o como `1` y que
+        // un truthy lo prenda por la ventana.
+        && d.direccionPublica is bool
+        // «No lo sé» es una respuesta legítima (§ 9), así que `null` pasa. El
+        // `.get(clave, 0)` con un default fuera de rango es lo que hace que la
+        // clave ausente rebote sin declararla aparte, el mismo idiom que `geo`.
+        && (d.get('capacidad', null) == null
+             || (d.get('capacidad', 0) >= 1 && d.get('capacidad', 0) <= 5000))
+        && (d.get('capacidadNotas', null) == null
+             || (d.capacidadNotas is string && d.capacidadNotas.size() <= 200))
+        /*
+         * La lista de lo que incluye. **La regla no la itera** (B-842): acota la
+         * cantidad y el tipo, y la forma de cada elemento la impone la proyección
+         * descartando lo que no sea un slug.
+         */
+        && d.incluye is list && d.incluye.size() <= 16
+        && (d.get('incluyeOtro', null) == null
+             || (d.incluyeOtro is string && d.incluyeOtro.size() <= 200))
+        // **La condición es obligatoria y el precio no** — § 5 del PRD: «no sé si
+        // todos cobran, o le dicen que tienen que consumir». Lo que siempre se
+        // puede decir es qué tipo de arreglo es.
+        && d.condicion is string && d.condicion.size() <= 80
+        && d.condicion.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && precioDeLugarValido(d.get('precio', null))
+        && (d.get('condicionNotas', null) == null
+             || (d.condicionNotas is string && d.condicionNotas.size() <= 300))
+        /*
+         * Los cuatro contactos públicos que terminan en un `href` de una página
+         * **indexada**, con su forma acotada acá y no solo en el schema. La `web`
+         * acepta `http://`, al revés que el link de cobro de una suscripción: es
+         * una página institucional, no un destino de pago.
+         */
+        && (d.get('instagram', null) == null
+             || (d.instagram is string && d.instagram.matches('^[A-Za-z0-9._]{1,30}$')))
+        && (d.get('whatsapp', null) == null
+             || (d.whatsapp is string && d.whatsapp.matches('^[0-9]{8,15}$')))
+        && (d.get('mail', null) == null
+             || (d.mail is string && d.mail.size() >= 3 && d.mail.size() <= 200))
+        && (d.get('web', null) == null
+             || (d.web is string && d.web.size() <= 500 && d.web.matches('^https?://.*')))
+        && contactoDeLugarValido(d.contactoDeQuienCargo)
+        /*
+         * Los tres estados son los de `ESTADOS_DIRECTORIO` (`lib/directorios.ts`),
+         * atados por el test. Y `origen` **no** lleva su `in [...]`, por lo mismo
+         * que en las otras dos: sería letra muerta — el vocabulario lo fuerza la
+         * cláusula de coherencia del `create` y la inmutabilidad del `update`.
+         */
+        && d.estado in ['pendiente', 'publicado', 'rechazado']
+        /*
+         * Derivado por `formALugar` con `normalize` (§6). Nadie lo tipea: el tope
+         * es lo que impide que un campo que nadie mira sirva de bolsa.
+         *
+         * ⚠️ Y hay algo que esta regla **no puede** verificar y conviene que esté
+         * dicho: que el `searchText` no lleve la dirección adentro. El índice se
+         * publica, así que meterla ahí la publicaría esquivando
+         * `direccionPublica`. Lo sostiene `formALugar` y lo fija
+         * `tests/lugares.test.ts`; desde acá no hay forma de mirar adentro de una
+         * cadena derivada.
+         */
+        && d.searchText is string && d.searchText.size() <= 2000
+        && d.revision.keys().hasOnly(['porUid', 'en', 'motivo'])
+        && d.revision.keys().hasAll(['porUid', 'en', 'motivo'])
+        && (d.revision.get('motivo', null) == null
+             || (d.revision.get('motivo', '') is string
+                  && d.revision.get('motivo', '').size() <= 500));
+    }
+
+    function lugarDeGuiaValido() {
+      let d = request.resource.data;
+      return formaDeLugar()
+        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
+        // `curl` publica su propio lugar y la bandeja no sirve para nada
+        // (§1 del `prd/README.md`).
+        && d.estado == 'pendiente'
+        // Y `revision` entera en null: nadie nace revisado. Con un centinela que
+        // **no es `null`**, la clave ausente tampoco pasa.
+        && d.revision.get('porUid', 'x') == null
+        && d.revision.get('en', 'x') == null
+        && d.revision.get('motivo', 'x') == null
+        // La marca de la trampa 10 no puede nacer puesta.
+        && d.get('publicadaAlgunaVez', false) == false
+        /*
+        /*
+         * ⚠️⚠️ **§ 6 DEL PRD 4, CRITERIO 3 — LA CLÁUSULA QUE NO TIENE NINGUNA
+         * OTRA COLECCIÓN.**
+         *
+         * «Ese default no lo puede cambiar **el formulario público**.» Del camino
+         * público, la dirección **nunca nace publicada**: la prende un admin
+         * después, al revisar la ficha, que es el momento en que alguien mira.
+         *
+         * Los dos agravantes del § 6 son por qué esto vive acá y no solo en el
+         * schema: **lo carga cualquiera, sin login** —nada garantiza que quien
+         * cargó la casa sea quien vive ahí— y **`geo` la pone en un mapa**. Con
+         * la validación solo del lado del cliente, un `curl` publica la dirección
+         * de la casa de un tercero.
+         *
+         * ── Por qué NO mira el tipo, que era la primera versión ──────────────
+         * Lo encontró el `auditor-privacidad`: la primera redacción decía
+         * `d.tipo != 'casa' || …`, o sea **una lista negra de un elemento sobre un
+         * vocabulario abierto**. `tipo` sale de `/opciones/tipo-lugar`, que acepta
+         * «Otro», y la regla solo puede acotar su **forma**: `ph`, `mi-living`,
+         * `casa-de-familia` o `domicilio-particular` la pasaban con el flag
+         * prendido y publicaban la dirección de una casa. El tipo sigue decidiendo
+         * el **default del panel** (`TIPOS_SIN_DIRECCION_PUBLICA`,
+         * `src/types/lugar.ts`), que es donde hay alguien mirando; acá la regla es
+         * de una línea y no puede envejecer con el vocabulario.
+         *
+         * **Un admin sí puede prenderlo**, y es deliberado: puede haber pedido
+         * permiso a quien vive ahí, que es la única forma legítima en que la casa
+         * de alguien publica su dirección. Por eso la cláusula mira el `origen`.
+         */
+        && (d.origen != 'formulario-publico' || d.direccionPublica == false)
+        /*
+         * **B-837 — el precio nace con la hora del servidor.** Sin esta cláusula,
+         * quien crea la ficha elige qué fecha se publica al lado del número, y la
+         * frase «cargado el …» deja de significar nada. Es lo mismo que `creadoEn`
+         * con `request.time`, aplicado al segundo dato del proyecto que envejece a
+         * la vista.
+         */
+        && (d.get('precio', null) == null || d.precio.cargadoEn == request.time)
+        /*
+         * **`!esAdmin()` y no `request.auth == null`**, por lo mismo que en las
+         * otras dos: crear una cuenta está al alcance de cualquiera con la API key
+         * pública, y el dueño —que es admin— tiene que poder usar su propio
+         * formulario público. Hoy el `allow create` exige `esAdmin()`, así que la
+         * rama de `'formulario-publico'` no es alcanzable y lo que esta cláusula
+         * sostiene es la otra mitad: un admin no puede hacer pasar su carga por
+         * una ficha que llegó de afuera.
+         */
+        && ((d.origen == 'formulario-publico' && !esAdmin())
+             || (d.origen == 'panel' && esAdmin()))
+        // Con `request.time` el cliente no puede antedatar la ficha.
+        && d.creadoEn == request.time;
+    }
+
+    /**
+     * Lo que un admin **sí** puede cambiarle a un lugar ya creado.
+     *
+     * Las mismas cinco cláusulas que `suscripcionActualizable()` —la historia, la
+     * marca de la trampa 10, el slug congelado, la arista que le falta al grafo y
+     * la firma de la revisión— más la del precio.
+     *
+     * ⚠️ **`direccionPublica` sí se puede mover acá, y es la decisión.** Un admin
+     * la prende cuando quien vive ahí lo pidió, y la apaga cuando alguien pide
+     * que se baje — que es el caso urgente y el que tiene que ser de un click.
+     * Lo que la cláusula del `create` impide es que la prenda **el formulario
+     * público**, que es de donde viene el riesgo del § 6.
+     */
+    function lugarDeGuiaActualizable() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      return formaDeLugar()
+        // **Reescribir la historia**: de cuándo es la ficha y por dónde entró no
+        // se editan.
+        && d.creadoEn == previo.creadoEn
+        && d.origen == previo.origen
+        // **Mover la marca de la trampa 10.** La escribe un trigger con el Admin
+        // SDK; un cliente que pudiera bajarla a `false` tendría de vuelta el slug
+        // de una ficha que ya está en Google.
+        && d.get('publicadaAlgunaVez', false) == previo.get('publicadaAlgunaVez', false)
+        // **Cambiar la dirección web de algo ya publicado** — trampa 10.
+        && (!slugDeLugarCongelado(previo) || d.slug == previo.slug)
+        /*
+         * **Publicar de un saque lo que ya se había descartado.** Es la única
+         * arista que le falta al grafo de `TRANSICIONES` (`lib/directorios.ts`).
+         */
+        && (previo.get('estado', '') != 'rechazado' || d.estado != 'publicado')
+        /*
+         * **B-837 — la fecha del precio no se puede mentir**, con las mismas dos
+         * mitades que en `/suscripciones`: si el valor cambió, `cargadoEn` es
+         * `request.time`; si no cambió, puede quedarse donde estaba **o** volver a
+         * ser `request.time` («lo revisé hoy y sigue siendo éste»). Lo que no se
+         * puede es escribir una fecha **elegida**.
+         */
+        && (d.get('precio', null) == null
+             || d.precio.cargadoEn == request.time
+             || (previo.get('precio', null) != null
+                  && d.precio.valor == previo.precio.valor
+                  && d.precio.cargadoEn == previo.precio.cargadoEn))
+        /*
+         * **Y si la revisión se toca, se firma con el uid propio y con la hora del
+         * servidor.** Condicionada a que `revision` esté en el diff: una edición
+         * de contenido que no mueve el estado no tiene por qué reescribir la firma
+         * de quien la revisó.
+         */
+        && (!d.diff(previo).affectedKeys().hasAny(['revision'])
+             || (d.revision.get('porUid', '') == request.auth.uid
+                  && d.revision.get('en', null) == request.time));
+    }
+
+    match /lugares/{id} {
+      /*
+       * ── `get` y `list` se deciden por separado, y los dos dan `esAdmin()` ──
+       *
+       * Los mismos tres motivos que en las otras dos colecciones, y acá el primero
+       * es el más caro de todo el proyecto:
+       *
+       * **`get`: porque una regla no proyecta** (D-128). Es todo-o-nada por
+       * documento, así que un `get` abierto a «los publicados» entregaría el
+       * documento **entero** — y en esta colección eso incluye **la dirección y la
+       * `geo` de una casa cuyo `direccionPublica` está en `false`**. O sea que la
+       * decisión entera del § 6 se saltearía con una lectura, sin tocar una línea
+       * de la proyección. Es la trampa 7 del §13 con el dato más sensible del
+       * proyecto adentro.
+       *
+       * **`list`: porque `read` incluye `list`** (trampa 13). Un `list` abierto
+       * entrega el directorio entero de una sentada —los pendientes, los
+       * descartados, todos los contactos internos y todas las direcciones—, que es
+       * la cosecha más barata que existe.
+       *
+       * **Y la trampa 7**: ninguno se condiciona por contenido. Un
+       * `resource.data.estado == 'publicado'` seguiría entregando el documento
+       * entero **y** obligaría a que toda query del panel trajera ese `where`.
+       *
+       * ── El `publicador` (B-888): nada, y es la misma decisión escrita ─────
+       * Las cinco cláusulas se quedan en `esAdmin()` con los tres argumentos de
+       * `/librerias`, y acá hay un cuarto: decidir si la dirección de una casa se
+       * publica es exactamente la clase de autoridad que ese rol no tiene.
+       */
+      allow get: if esAdmin();
+      allow list: if esAdmin();
+
+      /*
+       * ⚠️ **ACÁ VA LA CUARTA ESCRITURA ANÓNIMA DEL PROYECTO, Y TAMPOCO ESTÁ
+       * ABIERTA.**
+       *
+       * El `create` público de `/guia/lugares/sumar` es el punto del PRD y está
+       * cerrado a propósito, con **exactamente el mismo bloqueo** que
+       * `/librerias` y `/suscripciones`: falta **B-872** — Storage sigue en
+       * `UNENFORCED` porque su métrica de App Check marca 99% sin verificar y la
+       * sospecha, todavía sin confirmar, es que ese 99% son las lecturas públicas
+       * de imágenes por URL de descarga, que no llevan token de App Check ni
+       * pueden llevarlo. Firestore ya está en `ENFORCED` (B-836a paso 6).
+       *
+       * Y el formulario de un lugar **sube una foto**, así que abrir este `create`
+       * sin resolver eso deja una de dos cosas, las dos malas: un formulario que
+       * acepta el texto y rechaza la foto, o un endpoint de subida anónimo sin App
+       * Check.
+       *
+       * **Para abrirla**, y en este orden:
+       *   1. **B-872 contestado** —¿el enforcement de Storage alcanza a las URLs
+       *      de descarga?— y App Check **exigiendo también en Storage**,
+       *      verificado en la consola;
+       *   2. el prefijo `lugares/` en `storage.rules`, con su `create` acotado a
+       *      tipo, tamaño y cantidad, y su `get`/`list` decididos — **en el mismo
+       *      commit que el punto 3**: una subida que no puede terminar en un
+       *      documento es un objeto huérfano;
+       *   3. borrar el `esAdmin() &&` de la línea de abajo;
+       *   4. **el testigo que se pone rojo es
+       *      `tests/lugares.integracion.test.ts`**, el caso «un anónimo no puede
+       *      crear un lugar, ni con el documento perfecto». Y hay que agregar
+       *      `'lugares'` a `COLECCIONES_ABIERTAS` de
+       *      `tests/escritura-anonima.integracion.test.ts`. **Ojo: ese archivo NO
+       *      se pone rojo solo** — prueba las escrituras con un documento sonda
+       *      (`{ hola: 'mundo' }`), que `formaDeLugar()` rechaza por `hasOnly` con
+       *      la puerta abierta o cerrada, así que es testigo de la **lista** de
+       *      colecciones y no de esta puerta;
+       *   5. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
+       *      barrido programado de la bandeja en su Function.
+       *
+       * **Y una sexta cosa que ninguna de las otras dos tenía**: la cláusula del
+       * domicilio particular (`lugarDeGuiaValido()`) es la que hace que abrir esta
+       * puerta no publique la dirección de la casa de un tercero. Ya está puesta y
+       * no hay nada que tocar al abrir — está escrito acá para que no se intente
+       * «resolverlo» en el cliente.
+       *
+       * Mientras tanto un admin sí puede cargar un lugar a mano, que es un camino
+       * del PRD (§ 1, la tercera puerta) y **la forma recomendada de arrancar**
+       * (§ 10: los que ya están en la base como sede, con permiso pedido).
+       */
+      allow create: if esAdmin() && lugarDeGuiaValido();
+
+      allow update: if esAdmin() && lugarDeGuiaActualizable();
+
+      /*
+       * **Borrar sí**, con el mismo argumento que en las otras dos: la Function de
+       * retención de esta colección **no existe todavía**, así que una ficha
+       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
+       * siempre y el borrado manual es lo único con lo que se puede honrar un
+       * «borrame». Acá hay una razón más: una ficha descartada puede conservar la
+       * dirección de una casa. El camino normal sigue siendo `rechazado`. **No hay
+       * subcolección `/versiones` acá**, así que un borrado no se recupera.
+       */
+      allow delete: if esAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

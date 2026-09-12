@@ -781,6 +781,29 @@ export const CAMPOS_TAXONOMIA = [
   'incluye-suscripcion',
   'extras-suscripcion',
   'alcance-envio',
+  /*
+   * ── Los tres de los lugares para eventos — B-833, § 4 del PRD 4 ─────────
+   *
+   * Mismo argumento que los seis de arriba: `/opciones/{campo}` es el mecanismo
+   * del §4 y es uno solo. Son tres y no más porque el § 2.4 del inventario avisa
+   * que «once vocabularios nuevos de golpe es mucho»: lo que necesita slug es un
+   * **eje de filtro**, y los tres lo son (§ 7 del PRD). Lo que no lo es se
+   * escribió en el código —`UNIDADES_DE_PRECIO_LUGAR`, cerrado, en
+   * `types/lugar.ts`— o quedó como texto libre (`capacidadNotas`,
+   * `condicionNotas`).
+   *
+   * `barrio` **no está acá otra vez**, y es el punto: un lugar usa el mismo
+   * vocabulario que una actividad y que una librería (§ 3 del PRD), que es lo
+   * que hace que el hub de barrio pueda cruzar las tres cosas.
+   *
+   * Lo que **no** ganan por estar acá, atado en los dos lugares igual que los de
+   * suscripciones: no viajan en el `events.json`
+   * (`TAXONOMIAS_FUERA_DEL_INDICE`) y no van al evento de Calendar
+   * (`TAXONOMIAS_FUERA_DEL_EVENTO`) — un lugar no tiene encuentros.
+   */
+  'tipo-lugar',
+  'incluye-lugar',
+  'condicion-de-uso',
 ] as const;
 export type CampoTaxonomia = (typeof CAMPOS_TAXONOMIA)[number];
 
@@ -807,5 +830,9 @@ export const CAMPOS_MULTIVALOR = [
   'incluye-suscripcion',
   'extras-suscripcion',
   'alcance-envio',
+  // B-833 — la única lista de un lugar (§ 3 del PRD 4). `tipo-lugar` y
+  // `condicion-de-uso` no están: guardan **un** slug, así que su buffer es el de
+  // valor único (`CampoLabelUnico`).
+  'incluye-lugar',
 ] as const;
 export type CampoMultivalor = (typeof CAMPOS_MULTIVALOR)[number];

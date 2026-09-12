@@ -177,6 +177,35 @@ const ID_SUSCRIPCION_PENDIENTE = `${PREFIJO}suscripcion-pendiente`;
 const SLUG_SUSCRIPCION = `${PREFIJO}suscripcion`;
 const SLUG_SUSCRIPCION_PENDIENTE = `${PREFIJO}suscripcion-pendiente`;
 
+/**
+ * **Los tres lugares del gate** — B-833. Son **tres y no dos**, y el tercero es
+ * el que hace útil a este paso: además del par publicado/pendiente que las otras
+ * dos colecciones tienen, va **una casa publicada con la dirección apagada**.
+ *
+ * Ese documento es el único del gate que existe para probar una **ausencia
+ * condicional**: su dirección está en Firestore, la ficha se genera, la página se
+ * indexa — y la dirección no puede aparecer en ningún archivo del `dist/`. Es el
+ * § 6 del PRD 4 verificado contra el artefacto y no contra la intención, que es
+ * lo que ningún unitario puede hacer: el barrido mira la función pura, y una
+ * plantilla que interpole `ficha.donde.direccion` en un `title=` pasa aquél y
+ * muere acá.
+ */
+const ID_LUGAR = `${PREFIJO}lugar`;
+const ID_LUGAR_PENDIENTE = `${PREFIJO}lugar-pendiente`;
+const ID_LUGAR_CASA = `${PREFIJO}lugar-casa`;
+const SLUG_LUGAR = `${PREFIJO}lugar`;
+const SLUG_LUGAR_PENDIENTE = `${PREFIJO}lugar-pendiente`;
+const SLUG_LUGAR_CASA = `${PREFIJO}lugar-casa`;
+/**
+ * La latitud de la casa del gate — **un número que no aparece en ningún otro
+ * lado**, ni del gate ni del sitio.
+ *
+ * Es lo que hace verificable la mitad numérica del § 6: el barrido del paso 9
+ * busca strings centinela y una coordenada no lo es, así que la `geo` de la casa
+ * necesita su propia ancla por valor. Ver el paso 8k.7.
+ */
+const LAT_DE_LA_CASA = -33.000123;
+
 const ID_LIBRERIA = `${PREFIJO}libreria`;
 const ID_LIBRERIA_PENDIENTE = `${PREFIJO}libreria-pendiente`;
 const SLUG_LIBRERIA = `${PREFIJO}libreria`;
@@ -257,6 +286,33 @@ const CENTINELA = {
   suscripcionContacto: 'gate.suscripcion.contactoDeQuienCargo',
   suscripcionMotivo: 'gate.suscripcion.revision.motivo',
   suscripcionPendiente: 'gate.suscripcion.pendiente.descripcion',
+  /*
+   * ── B-833 · los lugares para eventos ────────────────────────────────────
+   *
+   * Los dos primeros **salen a propósito** y tienen su canasta abajo: la
+   * descripción, y la dirección **de un local comercial** cuyo flag está
+   * prendido.
+   *
+   * Los otros cuatro **no salen a ninguna parte**, y el tercero es el que hace
+   * que este paso valga:
+   *
+   *  - `lugarContacto` es el `contactoDeQuienCargo`;
+   *  - `lugarMotivo` es por qué un admin descartó una ficha;
+   *  - `lugarPendiente` es la descripción de uno que **espera decisión**, o sea
+   *    el control del `where('estado','==','publicado')` de la lectura;
+   *  - ⚠️ **`lugarDireccionDeCasa` es la dirección de un lugar PUBLICADO cuyo
+   *    `direccionPublica` está en `false`** (§ 6 del PRD 4). Su ficha se genera,
+   *    su página se indexa, su JSON viaja — y esta cadena no puede aparecer en
+   *    **ningún** archivo del `dist/`. No hace falta ninguna cláusula especial
+   *    para vigilarlo: al no estar en la canasta de abajo, el barrido del paso 9
+   *    lo prohíbe en todos lados, que es exactamente lo que corresponde.
+   */
+  lugarDescripcion: 'gate.lugar.descripcion',
+  lugarDireccion: 'gate.lugar.direccion',
+  lugarContacto: 'gate.lugar.contactoDeQuienCargo',
+  lugarMotivo: 'gate.lugar.revision.motivo',
+  lugarPendiente: 'gate.lugar.pendiente.descripcion',
+  lugarDireccionDeCasa: 'gate.lugar.casa.direccion',
   // B-296 — el epígrafe **sí** sale a la página de detalle (es el `figcaption` de
   // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
   // O sea que este centinela se afirma en las dos direcciones a la vez.
@@ -667,6 +723,22 @@ const CENTINELA_DEL_DIRECTORIO = ['libreriaDescripcion', 'libreriaDireccion'];
 const CENTINELA_DE_SUSCRIPCIONES = ['suscripcionDescripcion', 'suscripcionTematica'];
 
 /**
+ * **La séptima canasta: el directorio de lugares para eventos** — B-833.
+ *
+ * `/lugares.json`, `/guia/lugares/` y cada `/guia/lugares/{slug}/` publican a
+ * propósito la descripción y **la dirección de un local comercial**: son los
+ * datos de un lugar con puerta y son el punto de la ficha (§ 6 del PRD 4).
+ *
+ * **Lo que no está acá es la mitad que importa**, y esta canasta es la única del
+ * gate donde eso incluye una **ausencia condicional**: `lugarDireccionDeCasa` es
+ * la dirección de un lugar **publicado** cuyo flag está apagado, y queda
+ * prohibida en los tres archivos igual que en todo el resto del `dist/`.
+ * `lugarContacto`, `lugarMotivo` y `lugarPendiente`, lo mismo. Y `storagePath`
+ * tampoco está.
+ */
+const CENTINELA_DE_LUGARES = ['lugarDescripcion', 'lugarDireccion'];
+
+/**
  * **La cuarta canasta** — B-804.
  *
  * Las tres de arriba (`actividad/`, `events.json`, `cartelera/`) alcanzaban
@@ -796,13 +868,16 @@ const limpiar = async () => {
   // quien está trabajando (`--export-on-exit`) y solo se nota semanas después.
   // B-832 — `suscripciones` entra a la limpieza en el **mismo** cambio que la
   // siembra, por lo mismo que `librerias`.
-  const [actividades, usuarios, librerias, suscripciones] = await Promise.all([
+  // B-833 — `lugares` entra a la limpieza en el **mismo** cambio que la siembra,
+  // por lo mismo que las otras dos.
+  const [actividades, usuarios, librerias, suscripciones, lugares] = await Promise.all([
     borrar('actividades'),
     borrar('usuarios'),
     borrar('librerias'),
     borrar('suscripciones'),
+    borrar('lugares'),
   ]);
-  return actividades + usuarios + librerias + suscripciones;
+  return actividades + usuarios + librerias + suscripciones + lugares;
 };
 
 const fallo = (mensaje) => {
@@ -984,6 +1059,107 @@ try {
     .doc(`suscripciones/${ID_SUSCRIPCION_PENDIENTE}`)
     .set(suscripcion(SLUG_SUSCRIPCION_PENDIENTE, 'pendiente', CENTINELA.suscripcionPendiente));
 
+  /*
+   * B-833 — el directorio de lugares, con **tres** documentos y no dos.
+   *
+   * El par publicado/pendiente es el de siempre. El tercero —una casa publicada
+   * con `direccionPublica: false`— es lo propio de esta colección: existe para
+   * que el paso 8k pueda afirmar una **ausencia condicional** sobre el `dist/`,
+   * que es lo único que ningún unitario puede ver.
+   */
+  const lugar = (slug, estado, descripcion, sobre = {}) => ({
+    nombre: `Gate lugar ${estado}`,
+    slug,
+    descripcion,
+    imagenes: [
+      {
+        id: 'img_gate_lugar',
+        url: 'https://example.invalid/gate-lugar.jpg',
+        epigrafe: '',
+        origen: 'propia',
+        storagePath: CENTINELA.storagePath,
+        ancho: 1200,
+        alto: 800,
+        portada: true,
+      },
+    ],
+    tipo: 'cafe',
+    direccion: CENTINELA.lugarDireccion,
+    // El barrio del gate: el mismo vocabulario que las actividades. Sale
+    // **siempre**, también para la casa (§ 6: es el «más o menos por Villa
+    // Crespo» que sí se publica).
+    barrio: 'gate-barrio',
+    ciudad: 'Ciudad de Buenos Aires',
+    geo: { lat: -34.5875, lng: -58.4306 },
+    direccionPublica: true,
+    capacidad: 30,
+    capacidadNotas: 'Sentados 20, de pie 35',
+    incluye: ['mesa-larga'],
+    incluyeOtro: null,
+    condicion: 'con-consumicion',
+    precio: {
+      valor: { monto: 24681357, porUnidad: 'hora' },
+      cargadoEn: new Date('2026-09-01T12:00:00Z'),
+    },
+    condicionNotas: 'Minimo de consumicion',
+    instagram: 'gatelugar',
+    whatsapp: '5491100000003',
+    mail: 'gate-lugar@example.invalid',
+    web: 'https://example.invalid/gate-lugar',
+    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.lugarContacto },
+    estado,
+    origen: 'formulario-publico',
+    // ⚠️ El `searchText` del gate **no lleva la dirección**, igual que el que
+    // produce `formALugar`: sembrarlo con la dirección adentro haría que el
+    // barrido del paso 9 fallara por el fixture y no por el sitio.
+    searchText: descripcion,
+    creadoEn: new Date('2026-09-01T12:00:00Z'),
+    revision: {
+      porUid: CENTINELA.createdBy,
+      en: new Date('2026-09-02T12:00:00Z'),
+      motivo: CENTINELA.lugarMotivo,
+    },
+    publicadaAlgunaVez: estado === 'publicado',
+    ...sobre,
+  });
+
+  await db.doc(`lugares/${ID_LUGAR}`).set(lugar(SLUG_LUGAR, 'publicado', CENTINELA.lugarDescripcion));
+  await db
+    .doc(`lugares/${ID_LUGAR_PENDIENTE}`)
+    .set(lugar(SLUG_LUGAR_PENDIENTE, 'pendiente', CENTINELA.lugarPendiente));
+  /*
+   * ⚠️ **La casa** — § 6 del PRD 4, y el documento que hace útil al paso 8k.
+   *
+   * Está **publicada**: su ficha se genera, su página se indexa y su entrada
+   * viaja en `/lugares.json`. Lo único apagado es el flag, así que su dirección
+   * —`lugarDireccionDeCasa`, que no está en ninguna canasta— no puede aparecer en
+   * ningún archivo del `dist/`.
+   *
+   * ⚠️ **Su `geo` lleva coordenadas propias e inconfundibles**, y no las del
+   * local: lo pidió el `auditor-privacidad`. La primera versión las compartía «a
+   * propósito», con un comentario que afirmaba que el paso 8k encontraría una
+   * fuga por su valor — y era falso por partida doble: el barrido del paso 9 mira
+   * **strings centinela** y no números, y el 8k solo miraba el JSON-LD de la
+   * ficha. Con las coordenadas compartidas, además, una fuga de la `geo` de la
+   * casa al índice no se podría distinguir de la del local, que sí viaja. Con
+   * éstas, el paso 8k.7 la busca en `dist/lugares.json` y la encuentra.
+   */
+  await db.doc(`lugares/${ID_LUGAR_CASA}`).set(
+    lugar(SLUG_LUGAR_CASA, 'publicado', 'Gate lugar casa', {
+      // El nombre va aparte del molde: los dos están publicados, y con el nombre
+      // derivado del estado las dos fichas compartirían el `<title>` — que es
+      // justo lo que el paso de títulos duplicados frena (y lo frenó).
+      nombre: 'Gate lugar casa',
+      tipo: 'casa',
+      direccion: CENTINELA.lugarDireccionDeCasa,
+      // Coordenadas **propias**: ver el comentario de arriba. La latitud es la que
+      // el paso 8k.7 busca en `dist/lugares.json`, y no aparece en ningún otro
+      // documento del gate.
+      geo: { lat: LAT_DE_LA_CASA, lng: -59.000123 },
+      direccionPublica: false,
+    }),
+  );
+
   // B-888 — la cuenta del panel con su mail. No la lee ninguna parte del build;
   // se siembra para que el barrido del paso 9 tenga qué encontrar el día que
   // alguien la conecte a una salida. Ver `CENTINELA.mailDePanel`.
@@ -995,7 +1171,8 @@ try {
   console.log(
     `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
       'una con tres imágenes; 2 librerías y 2 suscripciones, cada par con una ' +
-      'publicada y una esperando decisión)',
+      'publicada y una esperando decisión; y 3 lugares: uno publicado, uno ' +
+      'esperando decisión y una casa publicada SIN dirección publicada)',
   );
 
   const build = spawnSync('npm', ['run', 'build'], {
@@ -1983,6 +2160,242 @@ try {
     }
 
     /*
+     * 8k · **B-833 — el directorio de lugares, sobre los archivos construidos.**
+     *
+     * Lo mismo que el 8i y el 8j una colección más abajo, y **una cosa que
+     * ninguna otra tiene: una ausencia condicional**. La casa del gate está
+     * publicada —su ficha se genera, su página se indexa— y su dirección no puede
+     * estar en ningún archivo. Eso lo verifica el barrido del paso 9 sin cláusula
+     * especial (el centinela no está en ninguna canasta); acá se verifica la otra
+     * mitad, que es la que un barrido de ausencias no puede dar: **que la ficha de
+     * la casa exista de verdad**. Sin ella, el paso 9 pasaría en verde por no
+     * haber mirado nada.
+     */
+    {
+      const crudoLugares = await readFile(
+        new URL('../dist/lugares.json', import.meta.url),
+        'utf8',
+      ).catch(() => null);
+
+      if (crudoLugares === null) {
+        fallo(
+          'no se escribió dist/lugares.json.\n' +
+            '  Es el índice que baja el listado de /guia/lugares: sin él, la sección\n' +
+            '  carga el HTML del build y los filtros quedan apagados para siempre.',
+        );
+        salida = 1;
+      } else {
+        const indiceLug = JSON.parse(crudoLugares);
+        const slugsLug = (indiceLug.lugares ?? []).map((l) => l.slug);
+
+        // 8k.1 · El build tiene que haber LEÍDO algo, y **las dos publicadas**.
+        for (const slug of [SLUG_LUGAR, SLUG_LUGAR_CASA]) {
+          if (!slugsLug.includes(slug)) {
+            fallo(
+              `dist/lugares.json salió con ${slugsLug.length} lugares y no está «${slug}».\n` +
+                '  El build no leyó /lugares (o dejó una publicada afuera), así que nada de lo\n' +
+                '  que sigue prueba nada — incluida la ausencia de la dirección de la casa.',
+            );
+            salida = 1;
+          }
+        }
+
+        // 8k.2 · El control del `where`: el pendiente no puede estar.
+        if (slugsLug.includes(SLUG_LUGAR_PENDIENTE)) {
+          fallo(
+            'dist/lugares.json trae el lugar que ESPERA DECISIÓN.\n' +
+              "  Falta o está mal el where('estado','==','publicado') de lugaresPublicados\n" +
+              '  (src/lib/contenidoDelSitio.ts). Y con él se publica el contactoDeQuienCargo\n' +
+              '  de quien pidió el alta, y la dirección de un lugar que nadie aprobó.',
+          );
+          salida = 1;
+        }
+
+        // 8k.3 · Las dos fichas existen en disco, y la del pendiente no.
+        const fichaLug = await readFile(
+          new URL(`../dist/guia/lugares/${SLUG_LUGAR}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaLug === null) {
+          fallo(
+            `no se generó la página /guia/lugares/${SLUG_LUGAR}/.\n` +
+              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
+          );
+          salida = 1;
+        } else {
+          if (!fichaLug.includes('"@type":"Place"')) {
+            fallo(
+              'la ficha del lugar no emite el JSON-LD `Place`.\n' +
+                '  Es el SEO de esta sección entera (§ 7 del PRD 4).',
+            );
+            salida = 1;
+          }
+          /*
+           * 8k.4 · **§ 7 — la condición no es un rango de precios.** El PRD lo
+           * dice con todas las letras, y el precio además queda afuera del marcado
+           * por lo mismo que el `Offer` de una suscripción: un número que envejece
+           * publicado como dato estructurado es información equivocada en el lugar
+           * de más visibilidad.
+           */
+          const ld = fichaLug.slice(fichaLug.indexOf('"@type":"Place"'));
+          const finLd = ld.indexOf('</script>');
+          if (/"priceRange"|"price"|"offers"/.test(ld.slice(0, finLd))) {
+            fallo(
+              'el JSON-LD del lugar publica un precio o un rango de precios.\n' +
+                '  El § 7 del PRD 4 lo deja afuera a propósito: la condición no es un rango\n' +
+                '  de precios, y un número que envejece publicado como dato estructurado es\n' +
+                '  información equivocada donde más se ve.',
+            );
+            salida = 1;
+          }
+          // Y el control positivo del marcado: la capacidad sí está.
+          if (!ld.slice(0, finLd).includes('"maximumAttendeeCapacity"')) {
+            fallo(
+              'el JSON-LD del lugar no publica la capacidad.\n' +
+                '  Es el dato que hace que el marcado diga algo más que el nombre (§ 7).',
+            );
+            salida = 1;
+          }
+        }
+
+        /*
+         * 8k.5 · ⚠️ **La casa: su ficha EXISTE y su dirección NO está.**
+         *
+         * Las dos mitades van juntas y ninguna sirve sola. Que la dirección no
+         * aparezca lo verifica el paso 9 en todo el `dist/`; lo que no puede ver es
+         * si eso pasó porque la proyección la frenó o porque la página nunca se
+         * generó. Esta mitad es la que distingue las dos cosas.
+         */
+        const fichaCasa = await readFile(
+          new URL(`../dist/guia/lugares/${SLUG_LUGAR_CASA}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaCasa === null) {
+          fallo(
+            `no se generó la página /guia/lugares/${SLUG_LUGAR_CASA}/ (la casa publicada).\n` +
+              '  Sin ella, el barrido del paso 9 no prueba nada sobre la dirección de una casa:\n' +
+              '  no hay página donde pudiera haberse filtrado (§ 6 del PRD 4).',
+          );
+          salida = 1;
+        } else {
+          if (fichaCasa.includes(CENTINELA.lugarDireccionDeCasa)) {
+            fallo(
+              'LA FICHA DE LA CASA PUBLICA SU DIRECCIÓN.\n' +
+                '  Es el § 6 del PRD 4: `direccionPublica` está en `false` y la dirección salió\n' +
+                '  igual. Lo que se publicó es el dato con el que se llega a la puerta de\n' +
+                '  alguien, cargado por alguien que puede no vivir ahí.',
+            );
+            salida = 1;
+          }
+          // Y su JSON-LD no puede llevar `address` ni `geo` — criterio 5 del PRD,
+          // el camino que se filtra sin que nadie lo vea.
+          const ldCasa = fichaCasa.slice(fichaCasa.indexOf('"@type":"Place"'));
+          const finLdCasa = ldCasa.indexOf('</script>');
+          if (/"address"|"geo"/.test(ldCasa.slice(0, finLdCasa))) {
+            fallo(
+              'el JSON-LD de la casa publica `address` o `geo`.\n' +
+                '  Criterio 5 del PRD 4: «`direccion` ausente de la ficha implica ausente del\n' +
+                '  JSON-LD». Es el camino que se filtra sin que nadie lo note, porque nadie lee\n' +
+                '  el JSON-LD al revisar una ficha. Y unas coordenadas son la dirección con otro\n' +
+                '  formato.',
+            );
+            salida = 1;
+          }
+          // Control positivo: el barrio **sí** está. Es el «más o menos por Villa
+          // Crespo» que el § 6 deja publicar, y sin él este bloque estaría
+          // afirmando ausencias sobre una página vacía.
+          if (!fichaCasa.includes('gate-barrio') && !fichaCasa.includes('Gate lugar casa')) {
+            fallo(
+              'la ficha de la casa salió sin barrio y sin nombre: está vacía, así que las\n' +
+                '  ausencias de arriba no prueban nada.',
+            );
+            salida = 1;
+          }
+        }
+
+        const fichaLugPendiente = await readFile(
+          new URL(`../dist/guia/lugares/${SLUG_LUGAR_PENDIENTE}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaLugPendiente !== null) {
+          fallo(
+            `se generó la página del lugar que ESPERA DECISIÓN\n` +
+              `  (/guia/lugares/${SLUG_LUGAR_PENDIENTE}/). Es HTML indexable con el contenido\n` +
+              '  de una ficha que nadie aprobó.',
+          );
+          salida = 1;
+        }
+
+        /*
+         * 8k.7 · ⚠️ **La `geo` de la casa tampoco está, y se busca por valor.**
+         *
+         * Lo pidió el `auditor-privacidad`: el barrido del paso 9 mira strings
+         * centinela, y una coordenada es un número. Sin este chequeo, una fuga de
+         * la `geo` de una casa al índice —el archivo que baja todo el mundo—
+         * pasaría el gate entero, y es la mitad del § 6 que más silenciosa se
+         * publica: unas coordenadas son la dirección con otro formato.
+         *
+         * Se barre **todo** el `dist/` y no solo el índice, por lo mismo que el
+         * barrido del monto: una plantilla puede escribirla en cualquier parte.
+         */
+        const DIST_LUG = new URL('../dist/', import.meta.url);
+        const conLaGeo = [];
+        for (const relativa of await readdir(DIST_LUG, { recursive: true })) {
+          if (!/\.(html|json|txt|xml)$/.test(relativa)) continue;
+          const contenido = await readFile(new URL(relativa, DIST_LUG), 'utf8').catch(() => '');
+          if (contenido.includes(String(LAT_DE_LA_CASA))) conLaGeo.push(`    ${relativa}`);
+        }
+        if (conLaGeo.length > 0) {
+          fallo(
+            'LAS COORDENADAS DE LA CASA SE PUBLICARON.\n' +
+              '  Es el § 6 del PRD 4: `direccionPublica` está en `false` y la `geo` salió igual.\n' +
+              '  Unas coordenadas son la dirección con otro formato, y con un mapa al lado el\n' +
+              '  «más o menos por Villa Crespo» deja de ser más o menos.\n' +
+              `  Archivos:\n${[...new Set(conLaGeo)].join('\n')}`,
+          );
+          salida = 1;
+        }
+        // Control positivo: la `geo` del local publicado **sí** aparece. Sin esto,
+        // el barrido de arriba pasaría en verde el día que la proyección dejara de
+        // publicar toda `geo` — que es el otro error, y también en silencio.
+        if (!crudoLugares.includes('-34.5875')) {
+          fallo(
+            'la `geo` del lugar publicado no aparece en dist/lugares.json.\n' +
+              '  O dejó de publicarse, o el barrido de arriba no estaba mirando nada.',
+          );
+          salida = 1;
+        }
+
+        // 8k.6 · Las URLs en el sitemap, y el pendiente afuera.
+        const sitemapLug = await readFile(new URL('../dist/sitemap.xml', import.meta.url), 'utf8');
+        for (const slug of [SLUG_LUGAR, SLUG_LUGAR_CASA]) {
+          if (!sitemapLug.includes(`/guia/lugares/${slug}/`)) {
+            fallo(
+              `la ficha /guia/lugares/${slug}/ no está en el sitemap.xml.\n` +
+                '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
+            );
+            salida = 1;
+          }
+        }
+        if (sitemapLug.includes(`/guia/lugares/${SLUG_LUGAR_PENDIENTE}/`)) {
+          fallo(
+            'el sitemap.xml ofrece la ficha del lugar que espera decisión: es una URL\n' +
+              '  que contesta 404 y que además no tendría que existir.',
+          );
+          salida = 1;
+        }
+
+        if (salida === 0) {
+          console.log(
+            '  ✓ el directorio de lugares salió con los dos publicados y sin el que espera ' +
+              'decisión, con sus fichas, su Place sin precio, sus entradas de sitemap — y la ' +
+              'casa publicada sin su dirección y sin sus coordenadas en ningún archivo (§ 6).',
+          );
+        }
+      }
+    }
+
+    /*
      * 9 · **B-121 — el barrido sobre TODO el `dist/`, y no sobre tres páginas
      * elegidas a mano.**
      *
@@ -2063,6 +2476,8 @@ try {
                 : relativa === 'suscripciones.json' ||
                     relativa.startsWith('guia/suscripciones/')
                   ? CENTINELA_DE_SUSCRIPCIONES
+                : relativa === 'lugares.json' || relativa.startsWith('guia/lugares/')
+                  ? CENTINELA_DE_LUGARES
                   : [];
         const prohibidos = Object.entries(CENTINELA).filter(
           ([campo]) => !permitido.includes(campo),

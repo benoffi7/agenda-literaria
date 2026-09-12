@@ -27,9 +27,11 @@ import {
 } from '../functions/directorios.js';
 import { libreriaPublica } from '@/lib/libreriaPublica';
 import { suscripcionPublica } from '@/lib/suscripcionPublica';
+import { lugarPublico } from '@/lib/lugarPublico';
 import { DIRECTORIOS } from '@/lib/directorios';
 import { libreriaCentinela } from './fixtures/centinelas-libreria';
 import { suscripcionCentinela } from './fixtures/centinelas-suscripcion';
+import { lugarCentinela } from './fixtures/centinelas-lugar';
 
 /**
  * Las dos colecciones, con su proyección y el campo derivado que **no** dispara
@@ -40,9 +42,24 @@ import { suscripcionCentinela } from './fixtures/centinelas-suscripcion';
  * no de una lista escrita acá — que es lo que hace que un campo público nuevo
  * entre solo al chequeo.
  *
- * `searchText` es la única clave de cada proyección que no está en su lista de
- * campos publicados, y con motivo: es **derivado** de otros que sí están, así que
- * no puede cambiar solo.
+ * `searchText` es la única clave de las dos primeras proyecciones que no está en
+ * su lista de campos publicados, y con motivo: es **derivado** de otros que sí
+ * están, así que no puede cambiar solo.
+ *
+ * ── Y `lugares` trajo una asimetría que las otras dos no tienen — B-833 ────
+ * Dos claves de `LugarPublico` **no son campos del documento**:
+ *
+ * - `donde`, que en el documento son cinco (`direccion`, `barrio`, `ciudad`,
+ *   `geo` y `direccionPublica`) — están juntas en la proyección justamente
+ *   porque el flag decide sobre dos de ellas (§ 6 del PRD 4);
+ * - `costo`, que es **derivado** de `condicion` (`claseDeCosto`).
+ *
+ * Por eso la tabla gana `desdeElDocumento`, que dice de qué campos del documento
+ * sale cada clave así. **Declararlo es el punto**: con la lista copiada de las
+ * claves de la proyección, el trigger compararía los campos `donde` y `costo`
+ * —que no existen, o sea `undefined` contra `undefined`— y **no compararía la
+ * dirección ni el flag**. Apagar `direccionPublica` no dispararía ningún build y
+ * la dirección de una casa seguiría publicada.
  */
 const DIRECTORIOS_CON_PROYECCION = [
   {
@@ -50,19 +67,31 @@ const DIRECTORIOS_CON_PROYECCION = [
     proyeccion: () => libreriaPublica(libreriaCentinela()),
     documento: () => libreriaCentinela() as unknown as Record<string, unknown>,
     derivados: ['searchText'],
+    desdeElDocumento: {} as Record<string, readonly string[]>,
   },
   {
     coleccion: 'suscripciones',
     proyeccion: () => suscripcionPublica(suscripcionCentinela()),
     documento: () => suscripcionCentinela() as unknown as Record<string, unknown>,
     derivados: ['searchText'],
+    desdeElDocumento: {} as Record<string, readonly string[]>,
+  },
+  {
+    coleccion: 'lugares',
+    proyeccion: () => lugarPublico(lugarCentinela()),
+    documento: () => lugarCentinela() as unknown as Record<string, unknown>,
+    // `costo` se deriva de `condicion`, que sí está en la lista.
+    derivados: ['searchText', 'costo'],
+    desdeElDocumento: {
+      donde: ['direccion', 'barrio', 'ciudad', 'geo', 'direccionPublica'],
+    } as Record<string, readonly string[]>,
   },
 ] as const;
 
 describe('qué campos mira el trigger (D-20: la lista vive de los dos lados)', () => {
   it.each(DIRECTORIOS_CON_PROYECCION)(
     'los de $coleccion son los que su proyección publica, más el `estado`',
-    ({ coleccion, proyeccion, derivados }) => {
+    ({ coleccion, proyeccion, derivados, desdeElDocumento }) => {
       /*
        * La proyección decide qué ve el sitio; `estado` decide **si** lo ve.
        *
@@ -73,7 +102,12 @@ describe('qué campos mira el trigger (D-20: la lista vive de los dos lados)', (
        */
       const dePublica = Object.keys(proyeccion());
       const esperados = new Set([
-        ...dePublica.filter((c) => !(derivados as readonly string[]).includes(c)),
+        ...dePublica
+          .filter((c) => !(derivados as readonly string[]).includes(c))
+          // Una clave de la proyección que agrupa campos del documento se
+          // expande a los campos que agrupa; el resto se llama igual en los dos
+          // lados. Ver el docblock de la tabla.
+          .flatMap((c) => desdeElDocumento[c] ?? [c]),
         'estado',
       ]);
       expect([...CAMPOS_PUBLICOS_POR_DIRECTORIO[coleccion]].sort()).toEqual(
@@ -108,6 +142,47 @@ describe('qué campos mira el trigger (D-20: la lista vive de los dos lados)', (
     // Y el precio está: es un campo publicado (como frase, con su fecha) y
     // corregirlo tiene que rehacer la ficha (DEC-12).
     expect(CAMPOS_PUBLICOS_POR_DIRECTORIO.suscripciones).toContain('precio');
+    /*
+     * B-833 — y en lugares el que más importa que esté es **el flag**: apagar
+     * `direccionPublica` saca la dirección de la ficha publicada, así que sin él
+     * acá alguien baja la casilla en el panel, el sitio no se rehace y la
+     * dirección de una casa sigue publicada. Es la trampa 8 con el dato más
+     * sensible del proyecto adentro.
+     *
+     * MUTACIÓN PROBADA: sacar `'direccionPublica'` de la lista deja este caso en
+     * rojo **y** el de arriba, que lo deriva de la proyección.
+     */
+    expect(CAMPOS_PUBLICOS_POR_DIRECTORIO.lugares).toContain('direccionPublica');
+    expect(CAMPOS_PUBLICOS_POR_DIRECTORIO.lugares).toContain('direccion');
+    expect(CAMPOS_PUBLICOS_POR_DIRECTORIO.lugares).toContain('geo');
+    // Y los dos campos que son de la **proyección** y no del documento no están:
+    // compararlos sería comparar `undefined` con `undefined`.
+    expect(CAMPOS_PUBLICOS_POR_DIRECTORIO.lugares).not.toContain('donde');
+    expect(CAMPOS_PUBLICOS_POR_DIRECTORIO.lugares).not.toContain('costo');
+  });
+
+  it('apagar el flag de la dirección dispara un build — § 6 del PRD 4', () => {
+    /*
+     * El caso que hace efectiva la decisión del § 6 del lado del sitio estático.
+     * Sin él, «apagué la casilla» es una promesa que el panel hace y que el sitio
+     * no cumple **hasta que alguien edite cualquier otra cosa**.
+     *
+     * MUTACIÓN PROBADA: sacar `'direccionPublica'` de
+     * `CAMPOS_PUBLICOS_POR_DIRECTORIO.lugares` deja este caso en rojo.
+     */
+    const lug = (over = {}) => ({ ...lugarCentinela(), ...over });
+    expect(cambioAmeritaRebuild(lug(), lug({ direccionPublica: false }), 'lugares')).toBe(true);
+    expect(cambioAmeritaRebuild(lug(), lug({ direccion: 'Otra 123' }), 'lugares')).toBe(true);
+    expect(cambioAmeritaRebuild(lug(), lug({ geo: null }), 'lugares')).toBe(true);
+    // Y el control de la otra dirección: el contacto interno no cambia nada de
+    // lo publicado, así que corregirlo no puede costar un build.
+    expect(
+      cambioAmeritaRebuild(
+        lug(),
+        lug({ contactoDeQuienCargo: { via: 'mail', valor: 'otro@example.com' } }),
+        'lugares',
+      ),
+    ).toBe(false);
   });
 
   it('los campos internos NO están: corregirlos no cambia una letra del sitio', () => {
@@ -193,7 +268,7 @@ describe('cuándo corresponde rebuildear', () => {
      * MUTACIÓN PROBADA: devolver `false` cuando la colección no está declarada
      * deja este caso en rojo.
      */
-    expect(cambioAmeritaRebuild(doc(), doc(), 'lugares')).toBe(true);
+    expect(cambioAmeritaRebuild(doc(), doc(), 'inventada')).toBe(true);
   });
 
   it('corregir la dirección o el barrio de una publicada, también', () => {

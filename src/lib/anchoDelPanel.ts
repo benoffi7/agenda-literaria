@@ -115,6 +115,13 @@ const VISTAS_DE_FORMULARIO: readonly string[] = [
    * reparten en dos columnas, así que el ancho no se estira, se usa (B-621).
    */
   'suscripcion',
+  /*
+   * B-833 — el formulario de un lugar. Entra por lo mismo que los otros dos: sus
+   * campos ya reparten en dos columnas (la dirección con su casilla, la
+   * capacidad con sus notas, el precio con su unidad), así que el ancho no se
+   * estira, se usa (B-621).
+   */
+  'lugar',
 ];
 
 /**

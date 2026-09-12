@@ -89,10 +89,25 @@ import {
   type IndiceDeSuscripciones,
   type SuscripcionPublica,
 } from '@/lib/suscripcionPublica';
+// B-833 — la tercera y última, misma regla: la proyección de un lugar es **por
+// entidad**, una whitelist escrita a mano. Y acá hay algo que las otras dos no
+// tienen: la dirección sale o no sale según un flag del documento
+// (`dondeQueSale`, § 6 del PRD 4). Ver `lib/lugarPublico.ts`.
+import {
+  EJES_DE_LUGAR,
+  construirIndiceDeLugares,
+  fichaDeLugar,
+  lugarPublico,
+  type EjeDeLugar,
+  type FichaDeLugar,
+  type IndiceDeLugares,
+  type LugarPublico,
+} from '@/lib/lugarPublico';
 import { ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA } from '@/lib/directorios';
 import { esSlugDeFicha } from '@/lib/rutasPublicas';
 import type { Libreria } from '@/types/libreria';
 import type { SuscripcionLiteraria } from '@/types/suscripcion-literaria';
+import type { Lugar } from '@/types/lugar';
 import { INFO_VERSION } from '@/lib/version';
 // B-285 — la marca de «estuvo publicada alguna vez», y la pregunta escrita en un
 // solo lugar. `marcadaComoPublicada` es la versión ESTRICTA (`=== true`): acá
@@ -211,6 +226,16 @@ export interface ContenidoDelSitio {
    * alguien se olvide de filtrar — no la recibe.
    */
   suscripciones: SuscripcionPublica[];
+  /**
+   * **Los lugares para eventos publicados, ya proyectados** — B-833.
+   *
+   * Cuarta colección y mismo trato que las tres anteriores: su propia query, su
+   * propio campo, su propia proyección. Y acá la separación hace algo más:
+   * `LugarPublico` es el **único** tipo del que una dirección puede haber sido
+   * quitada por un flag, así que tenerlo aparte impide que una lista de otra cosa
+   * lo reciba y lo trate como un documento crudo.
+   */
+  lugares: LugarPublico[];
 }
 
 /**
@@ -529,6 +554,82 @@ const suscripcionesPublicadas = async (): Promise<SuscripcionPublica[]> => {
     .filter((s) => esSlugDeFicha(s.slug));
 };
 
+/**
+ * Los campos que la query de lugares pide.
+ *
+ * ⚠️ **Y acá la lista NO es «las claves de la proyección», que es lo que sí pasa
+ * en las otras dos colecciones.** `LugarPublico` tiene dos claves que **no son
+ * campos del documento**:
+ *
+ * - `donde`, que en el documento son cinco (`direccion`, `barrio`, `ciudad`,
+ *   `geo` y `direccionPublica`) — están juntas en la proyección justamente
+ *   porque el flag decide sobre las dos primeras (§ 6 del PRD 4);
+ * - `costo`, que es **derivado** de `condicion` (`claseDeCosto`);
+ * - `searchText`, que **también se deriva** —de siete campos que sí están— y por
+ *   eso el documento **no se lee**: el del documento lo escribe el cliente, y
+ *   copiarlo sería la puerta por la que la dirección se publicaría esquivando el
+ *   flag (§ 6, el hallazgo del `auditor-privacidad`). Ver `searchTextDeLugar`.
+ *
+ * Con un `.select()` copiado de las claves de la proyección, el build pediría los
+ * campos `donde` y `costo` —que no existen— y **no pediría la dirección ni el
+ * flag**: la ficha saldría sin dirección para todos. La correspondencia está
+ * declarada en `tests/lugares.test.ts` y comparada campo por campo, que es la
+ * única forma de que esta asimetría no se convierta en un olvido.
+ *
+ * Lo que no cambia es el motivo del `.select()` (D-159): lo que no se pide no
+ * entra a la memoria del runner de CI, y en esta colección eso incluye el
+ * `contactoDeQuienCargo` y el motivo del rechazo.
+ */
+const CAMPOS_DE_LA_PROYECCION_LUGAR = [
+  'slug',
+  'nombre',
+  'descripcion',
+  'imagenes',
+  'tipo',
+  'direccion',
+  'barrio',
+  'ciudad',
+  'geo',
+  'direccionPublica',
+  'capacidad',
+  'capacidadNotas',
+  'incluye',
+  'incluyeOtro',
+  'condicion',
+  'precio',
+  'condicionNotas',
+  'instagram',
+  'whatsapp',
+  'mail',
+  'web',
+] as const;
+
+/**
+ * **Los lugares para eventos publicados** — B-833.
+ *
+ * La misma función que `libreriasPublicadas` y `suscripcionesPublicadas` con
+ * otra colección, y con el mismo docblock detrás: el `where` es la **primera de
+ * las nueve cosas que se rompen en silencio** y el `.select()` es su otra mitad
+ * (D-159).
+ *
+ * `ESTADO_PUBLICO` sale de `lib/directorios.ts` y no del literal `'publicado'`;
+ * `tests/lugares.test.ts` lo afirma leyendo este archivo. Y el descarte del slug
+ * raro (`esSlugDeFicha`) también: la colección va a poder recibir altas de
+ * cualquiera, así que no hay garantía de que el slug haya pasado por
+ * `slugDeFicha`, y un solo documento raro no puede apagar el build entero.
+ */
+const lugaresPublicados = async (): Promise<LugarPublico[]> => {
+  const snap = await adminDb()
+    .collection('lugares')
+    .where('estado', '==', ESTADO_PUBLICO_DE_FICHA)
+    .select(...CAMPOS_DE_LA_PROYECCION_LUGAR)
+    .get();
+
+  return snap.docs
+    .map((d) => lugarPublico(d.data() as Lugar))
+    .filter((l) => esSlugDeFicha(l.slug));
+};
+
 /** Los cinco documentos de `/opciones/*`, en una sola ida (§4.1). */
 const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, ValorOpcion[]>>> => {
   const refs = CAMPOS_TAXONOMIA.map((c) => adminDb().doc(`opciones/${c}`));
@@ -542,14 +643,21 @@ const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, Val
 
 const leer = async (): Promise<ContenidoDelSitio> => {
   if (hayCredenciales()) {
-    const [publicadasConPagina, canceladasConPagina, opciones, librerias, suscripciones] =
-      await Promise.all([
-        publicadas(),
-        canceladas(),
-        opcionesDeTaxonomia(),
-        libreriasPublicadas(),
-        suscripcionesPublicadas(),
-      ]);
+    const [
+      publicadasConPagina,
+      canceladasConPagina,
+      opciones,
+      librerias,
+      suscripciones,
+      lugares,
+    ] = await Promise.all([
+      publicadas(),
+      canceladas(),
+      opcionesDeTaxonomia(),
+      libreriasPublicadas(),
+      suscripcionesPublicadas(),
+      lugaresPublicados(),
+    ]);
     return {
       actividades: publicadasConPagina.actividades,
       publicadasEditadasEn: publicadasConPagina.editadasEn,
@@ -558,6 +666,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       opciones,
       librerias,
       suscripciones,
+      lugares,
     };
   }
 
@@ -590,6 +699,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     opciones: {},
     librerias: [],
     suscripciones: [],
+    lugares: [],
   };
 };
 
@@ -996,6 +1106,111 @@ export const caminosDeSuscripcion = async (): Promise<
   return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
 };
 
+// ─────────────────────────────────────────────────────────────────
+// Los lugares para eventos — B-833, tajada 4
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * `/lugares.json` — el índice que el listado de `/guia/lugares` filtra en
+ * memoria (§2.5 y § 7 del PRD 4).
+ *
+ * **Cero lecturas nuevas de Firestore**: sale del mismo `contenidoDelSitio()`
+ * memoizado que el `events.json`, las páginas de detalle, el sitemap y los otros
+ * dos índices de directorio. Van ocho artefactos con una sola lectura.
+ *
+ * Los vocabularios salen de las opciones **sin filtrar por aprobación** y se
+ * recortan después a los valores que alguna ficha usa: es la asimetría de D-30
+ * en su lado correcto —acá se **resuelve** el valor que el lugar ya tiene
+ * guardado, no se ofrece la taxonomía entera—.
+ */
+export const indiceDeLugares = async (): Promise<IndiceDeLugares> => {
+  const { lugares, opciones } = await contenidoDelSitio();
+  return construirIndiceDeLugares({
+    lugares,
+    vocabularios: Object.fromEntries(
+      EJES_DE_LUGAR.map((eje) => [eje, opciones[eje] ?? []]),
+    ) as Partial<Record<EjeDeLugar, ValorOpcion[]>>,
+    version: INFO_VERSION.version,
+    generadoEn: INFO_VERSION.generadoEn,
+  });
+};
+
+/**
+ * Todo lo que `/guia/lugares` necesita, y **nada más** — el view-model del
+ * listado (D-140).
+ *
+ * La plantilla no ve el índice ni el documento: recibe las fichas ya armadas más
+ * los chips de cada eje.
+ */
+export interface VistaDeLugares {
+  fichas: FichaDeLugar[];
+  /** Los chips de los tres ejes con vocabulario, en el orden de la taxonomía. */
+  filtros: Record<EjeDeLugar, { slug: string; label: string }[]>;
+  version: string;
+}
+
+/**
+ * Las fichas del directorio, ya resueltas: las etiquetas de los cuatro
+ * vocabularios y —solo si ese hub existe— el link al barrio.
+ *
+ * Es el mismo criterio que en la ficha de una librería: `/barrio/{slug}` lo
+ * emite el build para los barrios que tienen alguna actividad, así que linkear a
+ * ciegas publicaría un 404 en cada lugar de un barrio sin actividades.
+ *
+ * Las etiquetas salen de `etiquetasDelDetalle()` —sin filtrar por aprobación—
+ * por lo mismo que allá: se **resuelve** el slug guardado, no se ofrece un chip
+ * (D-30).
+ */
+const fichasDeLugar = async (): Promise<FichaDeLugar[]> => {
+  const { lugares } = await contenidoDelSitio();
+  const indice = await indiceDelSitio();
+  const etiquetas = await etiquetasDelDetalle();
+  const conHub = new Set(slugsConHub('barrio', indice.actividades, indice.opciones));
+
+  return lugares.map((l) =>
+    fichaDeLugar(l, {
+      etiqueta: (campo, slug) => etiquetas[campo]?.[slug],
+      rutaDelBarrio: conHub.has(l.donde.barrio) ? rutaDeBarrio(l.donde.barrio) : null,
+    }),
+  );
+};
+
+/** El listado: las fichas ordenadas por nombre y los chips de los tres ejes. */
+export const vistaDeLugares = async (): Promise<VistaDeLugares> => {
+  const [fichas, indice] = await Promise.all([fichasDeLugar(), indiceDeLugares()]);
+  const porSlug = new Map(fichas.map((f) => [f.slug, f]));
+  return {
+    // El orden lo decide el índice —el mismo que va a ver la island después de
+    // hidratar—: con dos ordenamientos, la lista saltaría al cargar el JSON.
+    fichas: indice.lugares.map((l) => porSlug.get(l.slug)!).filter(Boolean),
+    filtros: Object.fromEntries(
+      EJES_DE_LUGAR.map((eje) => [
+        eje,
+        indice.filtros[eje].map((v) => ({ slug: v.slug, label: v.label })),
+      ]),
+    ) as Record<EjeDeLugar, { slug: string; label: string }[]>,
+    version: indice.version,
+  };
+};
+
+/**
+ * Los caminos de `/guia/lugares/[slug]`, uno por lugar publicado.
+ *
+ * Vive acá y no adentro del `.astro` por lo mismo que `caminosDeDetalle`: un
+ * `.astro` no se importa desde vitest, así que un `getStaticPaths` escrito en la
+ * plantilla es código sin forma de probarse.
+ *
+ * `props` lleva **solo el view-model**: la plantilla no recibe el documento, así
+ * que no puede publicar el `contactoDeQuienCargo` **ni la dirección de una casa
+ * cuyo flag está apagado** — no están en el objeto.
+ */
+export const caminosDeLugar = async (): Promise<
+  { params: { slug: string }; props: { ficha: FichaDeLugar } }[]
+> => {
+  const fichas = await fichasDeLugar();
+  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
+};
+
 /**
  * Los caminos de `/actividad/[slug]`, uno por actividad publicada.
  *
@@ -1302,8 +1517,14 @@ export const sitemapDelSitio = async (
   ahora?: unknown,
 ): Promise<{ rutas: string[]; lastmod: Record<string, string> }> => {
   const indice = await indiceDelSitio();
-  const { canceladas, canceladasEditadasEn, publicadasEditadasEn, librerias, suscripciones } =
-    await contenidoDelSitio();
+  const {
+    canceladas,
+    canceladasEditadasEn,
+    publicadasEditadasEn,
+    librerias,
+    suscripciones,
+    lugares,
+  } = await contenidoDelSitio();
   const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
 
   const rutas = rutasDelSitemap({
@@ -1316,6 +1537,10 @@ export const sitemapDelSitio = async (
     // misma garantía: salen de la lectura filtrada, así que una pendiente no
     // puede llegar acá aunque alguien se olvide de filtrar en otro lado.
     suscripciones: suscripciones.map((s) => ({ slug: s.slug })),
+    // B-833 — las fichas del tercer directorio, por el mismo camino y con la
+    // misma garantía: salen de la lectura filtrada, así que un lugar pendiente no
+    // puede llegar acá aunque alguien se olvide de filtrar en otro lado.
+    lugares: lugares.map((l) => ({ slug: l.slug })),
     canceladas: canceladas.map((a) => ({
       slug: a.slug,
       editadaEn: canceladasEditadasEn[a.slug] ?? null,

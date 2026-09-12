@@ -35,7 +35,12 @@ export type CampoLabelUnico =
   // etiquetas nuevas.
   | 'periodicidad'
   | 'tipo-oferente'
-  | 'perfil-editorial';
+  | 'perfil-editorial'
+  // B-833 — los dos campos de **un solo slug** de un lugar para eventos. Mismo
+  // motivo que los tres de arriba: lo que esta lista cubre es **la taxonomía**,
+  // no el formulario de actividad.
+  | 'tipo-lugar'
+  | 'condicion-de-uso';
 
 /**
  * El buffer de las taxonomías **multivalor**: `campo → slug → label`.

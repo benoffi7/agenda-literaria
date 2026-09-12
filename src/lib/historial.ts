@@ -52,6 +52,9 @@ import {
 } from '@/lib/modalidades';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { linkDeReunionQueSale, urlDeMaterialQueSale } from '@/lib/toPublic';
+// B-911 — el registro de la clase «flag + dato». De él sale QUÉ campos vigila
+// `flagsDePublicacionRestaurables`, en vez de una lista de dos nombres acá.
+import { CAMPOS_CON_PAR_DE } from '@/lib/paresFlagDato';
 import { fechaHoraCorta } from '@/lib/sesiones';
 // §7.3 — «una sesión tiene evento si la actividad está publicada y la sesión no
 // está cancelada». Importada y no reescrita: su propio docblock dice que se
@@ -255,7 +258,23 @@ export const flagsDePublicacionRestaurables = (
   version: Version,
   actual: Actividad,
 ): boolean => {
-  if (campo !== 'modalidades' && campo !== 'material') return true;
+  /*
+   * **Qué campos vigila sale del registro de la clase**, no de dos nombres
+   * escritos acá — B-911, cerrado con la cuarta instancia (B-833).
+   *
+   * Dos listas de «cuáles son los pares flag + dato» se separan sin que nada
+   * falle, que es la clase de B-88 y la que `lib/paresFlagDato.ts` existe para
+   * cerrar. Con el registro, un par nuevo de una actividad entra a esta guarda
+   * solo.
+   *
+   * ⚠️ **Y lo que el registro deja escrito y esta guarda no puede hacer:** los
+   * pares de `/suscripciones` y `/lugares` no llegan acá porque esas colecciones
+   * **no tienen subcolección `/versiones`** (`conHistorial: false`, y
+   * `firestore.rules` lo dice en cada bloque). No es que la guarda esté floja:
+   * es que la puerta no existe. El día que un directorio gane historial, el
+   * chequeo de la clase pide la guarda en el mismo cambio.
+   */
+  if (!CAMPOS_CON_PAR_DE('actividad').includes(campo)) return true;
   if (!tienePagina(actual.estado)) return true;
 
   /**

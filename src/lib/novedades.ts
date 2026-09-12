@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'guia-de-lugares',
+    fecha: '2026-09-11',
+    version: '1.11.0',
+    titulo: 'La Guía está completa: ya se pueden cargar lugares para hacer eventos',
+    detalle:
+      'Cafés, librerías, centros culturales y casas que prestan o alquilan su espacio: para ' +
+      'cuántas personas, qué incluye y en qué condiciones. Hay una cosa que conviene mirar antes ' +
+      'de publicar: si el lugar es una casa, la dirección NO se publica —solo el barrio— y la ' +
+      'casilla se apaga sola. Para publicarla hace falta que quien vive ahí lo pida.',
+    donde: 'El botón «Lugares» del listado. En el sitio, la pestaña «Guía».',
+  },
+  {
     id: 'guia-de-suscripciones',
     fecha: '2026-09-11',
     version: '1.10.0',

@@ -299,6 +299,11 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // (el JSON + el listado, y la ficha con su `Product`). El colchón de B-901
     // se consumió otra vez, así que se agrega uno más con la misma lógica.
     23: 'veintitrés', 24: 'veinticuatro',
+    // B-833 — la tabla pasó a 25 con el directorio de lugares para eventos (el
+    // JSON + el listado, y la ficha con su `Place`). El colchón de B-832 se
+    // consumió otra vez, así que se agrega uno más con la misma lógica. Con la
+    // Guía completa, la próxima fila ya no va a ser un directorio.
+    25: 'veinticinco', 26: 'veintiséis',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {

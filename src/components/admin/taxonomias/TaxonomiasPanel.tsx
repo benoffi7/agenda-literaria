@@ -46,6 +46,10 @@ const TITULO: Record<CampoTaxonomia, string> = {
   'incluye-suscripcion': 'Suscripciones · qué incluye',
   'extras-suscripcion': 'Suscripciones · extras',
   'alcance-envio': 'Suscripciones · a dónde llega',
+  // B-833 — los tres de los lugares para eventos.
+  'tipo-lugar': 'Lugares · qué es el lugar',
+  'incluye-lugar': 'Lugares · qué incluye',
+  'condicion-de-uso': 'Lugares · cómo se usa',
 };
 
 const DONDE: Record<CampoTaxonomia, string> = {
@@ -64,6 +68,13 @@ const DONDE: Record<CampoTaxonomia, string> = {
   'incluye-suscripcion': 'Qué te llega con la suscripción. Sale en la ficha; no es filtro.',
   'extras-suscripcion': 'Qué te llega además. Sale en la ficha; no es filtro.',
   'alcance-envio': 'A dónde llega la suscripción. Es uno de los filtros de la Guía.',
+  'tipo-lugar':
+    'Se elige al cargar un lugar. Es uno de los filtros de la Guía, y además decide si la ' +
+    'dirección se publica: «Casa» arranca sin publicarla.',
+  'incluye-lugar': 'Qué tiene el lugar (mesa, proyector, patio). Es uno de los filtros de la Guía.',
+  'condicion-de-uso':
+    'Cómo se usa el lugar: gratis, con consumición, alquiler. En el sitio se agrupa en tres ' +
+    'opciones —sin costo, consumiendo, pagando— y no hay filtro por precio.',
 };
 
 /**

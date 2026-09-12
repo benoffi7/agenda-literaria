@@ -53,6 +53,16 @@ export const TAXONOMIAS_FUERA_DEL_EVENTO = [
   'incluye-suscripcion',
   'extras-suscripcion',
   'alcance-envio',
+  /*
+   * **Los tres de los lugares para eventos** (B-833), con el mismo motivo que
+   * los seis de arriba: son de **otra colección**, un lugar no tiene encuentros
+   * y no hay evento de Calendar donde pudieran aparecer. Pedir sus etiquetas
+   * sería una lectura más de Firestore en cada invocación del sync para un dato
+   * que `construirDescripcion` no mira.
+   */
+  'tipo-lugar',
+  'incluye-lugar',
+  'condicion-de-uso',
 ];
 
 /**

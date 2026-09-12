@@ -321,6 +321,22 @@ export const FUNCIONES = [
    */
   'suscripciones-abrir',
   'suscripcion-guardar',
+  /**
+   * B-833 — la Guía, tercera entidad: `/guia/lugares`.
+   *
+   * El mismo par que los otros dos y por el mismo motivo: el riesgo que este tipo
+   * de pantalla acepta es que **nadie la mire**. `lugares-abrir` lleva cuántos
+   * esperaban decisión al abrir; `lugar-guardar` cuenta los que se cargan de
+   * verdad por la tercera puerta, que hoy es la única abierta.
+   *
+   * Ninguno lleva `detalle`, y acá esa ausencia es más fuerte que en los otros
+   * dos: el nombre, **la dirección**, el precio y el contacto son contenido, y la
+   * dirección puede ser la de la casa de una persona (§ 6 del PRD 4). Mandarla a
+   * GA4 sería publicarla en un tercero justo después de haber decidido no
+   * publicarla en el sitio.
+   */
+  'lugares-abrir',
+  'lugar-guardar',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

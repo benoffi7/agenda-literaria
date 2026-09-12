@@ -10408,3 +10408,107 @@ lado**, y el paso 8j de `scripts/build-contra-emulador.mjs` lo verifica sobre el
 | `compromisoMinimo` | **texto libre**, no un séptimo vocabulario | El § 3 del PRD lo dibuja como slug (`'sin-compromiso'`, `'3-meses'`), y el § 2.4 del inventario avisa en la dirección contraria: «once vocabularios nuevos de golpe es mucho; vale preguntarse cuáles se pueden empezar como texto libre». El criterio que decide es el del § 4.2 del propio PRD: **lo que necesita slug es un eje de filtro**, y éste no lo es —los cuatro filtros del § 5 son otros—. Lo único que hace es leerse en la ficha, y para eso «Sin compromiso» tal como se escribió es mejor que un desplegable que hay que mantener. Entra a `searchText`, como `tematica` |
 
 ---
+
+## D-680 · La dirección de un lugar sale por un flag, y la ficha es un `Place`
+
+**B-833, tajada 4.** § 6 y § 7 del [PRD 4](prd/04-lugares-para-eventos.md).
+
+`/guia/lugares` es **el único directorio del proyecto que puede publicar la
+dirección de la casa de una persona**, y esta entrada es lo que se decidió al
+respecto: cómo se decide si sale, y cómo se declara el lugar para una máquina.
+
+### La dirección sale por un flag, y el flag lo decide el tipo
+
+«Casa», «PH con patio» y «mi living» son lugares reales de este circuito —los
+talleres de escritura pasan en casas— y la diferencia con un café es total: la
+dirección de un local comercial es pública por definición; la de una casa es el
+dato con el que se llega a la puerta de alguien. Con dos agravantes propios: **lo
+carga cualquiera sin login** —nada garantiza que quien cargó la casa sea quien
+vive ahí— y **`geo` la pone en un mapa**.
+
+La forma es la de `online.url` con `urlPublica` (D-15) y **no** la de `envio` con
+`manda` (B-832), y la diferencia es para qué sirve el dato: **la dirección se
+guarda igual aunque no se publique**, porque el admin la necesita para poder
+contestar «¿dónde queda?»; una temática de algo que ya no manda libros no le sirve
+a nadie y por eso aquélla se vacía.
+
+Cuatro capas, y ninguna sola alcanza:
+
+| Capa | Qué hace | Dónde |
+|---|---|---|
+| **El default lo decide el tipo** | `casa` arranca con la casilla apagada, y el formulario la apaga sola al elegirlo. «Un default que hay que apagar a mano es el que se olvida» (§ 6) | `TIPOS_SIN_DIRECCION_PUBLICA` (`src/types/lugar.ts`), `LugarFormulario.tsx` |
+| **El formulario público no puede prenderlo** | criterio 3 del PRD, y la cláusula mira **solo el origen**: del camino público la dirección nunca nace publicada, sea cual sea el tipo. Un admin sí puede — puede haber pedido permiso, y es la única forma legítima. **La primera versión miraba el tipo** (`d.tipo != 'casa' || …`) y el `auditor-privacidad` mostró que era una **lista negra de un elemento sobre un vocabulario abierto**: `/opciones/tipo-lugar` acepta «Otro», así que `ph`, `mi-living` o `casa-de-familia` la pasaban con el flag prendido | `firestore.rules` (`lugarDeGuiaValido()`) |
+| **La proyección lo mira, en UNA función** | `dondeQueSale` decide por la dirección **y** por la `geo` juntas: `geo` sin `direccion` sigue poniendo la casa en un mapa. Falla **cerrada** (`!== true`), así que el flag ausente quiere decir «no publicar» | `src/lib/lugarPublico.ts` |
+| **La proyección DERIVA el `searchText`** | ese campo **se publica** —viaja en `/lugares.json`— y en el documento lo escribe el cliente. Que no lleve la dirección lo sostenía `formALugar`, que **no es la defensa**: se saltea con un `curl`, y el índice se deriva al escribir, así que apagar la casilla después no lo saca. Lo encontró el `auditor-privacidad`, y la respuesta es de forma: la proyección lo **vuelve a armar** con los valores que publica, así que la dirección queda afuera por construcción. Una sola derivación, dos llamadores (`formALugar` la importa) | `searchTextDeLugar` (`src/lib/lugarPublico.ts`) |
+
+**La proyección mira el flag y no el tipo**, y es deliberado: si mirara el tipo,
+apagar el flag no alcanzaría para bajar una dirección a pedido —que es el caso
+urgente y el que tiene que ser de un click— y cualquier tipo nuevo tipeado con
+«Otro» se llevaría el default permisivo, porque el vocabulario es abierto.
+
+**Y el schema no bloquea al admin**, que fue el segundo hallazgo del
+`auditor-privacidad`: la primera versión emitía un error de validación cuando un
+domicilio particular llegaba con la casilla prendida, y eso **cerraba el único
+camino legítimo** —el permiso de quien vive ahí— mientras cuatro docblocks, la
+ayuda del panel y un caso de integración decían lo contrario. Fallaba cerrada, o
+sea que no filtraba nada; lo caro era el próximo cambio, cuando el arreglo obvio
+fuera aflojar la capa que no correspondía. El aviso quedó donde hay alguien
+mirando —un cartel en el formulario, al lado de la casilla— y no frena.
+
+Es la **cuarta instancia** de la clase «flag booleano + dato que el flag esconde»,
+y la que hizo que la clase dejara de estar cubierta solo por instancia: el
+registro es `src/lib/paresFlagDato.ts` y el chequeo vive en
+`tests/clases-de-bug.test.ts` (**B-911**). De ese registro sale además **qué
+campos vigila** `flagsDePublicacionRestaurables` (B-819), en vez de una lista de
+dos nombres escrita a mano.
+
+> **Lo que el registro deja escrito y hoy no se puede hacer.** B-819 tiene dos
+> mitades: la proyección y **la restauración desde el historial**. La segunda no
+> aplica a `/lugares` porque esa colección **no tiene subcolección `/versiones`**
+> —ninguno de los tres directorios la tiene, y `firestore.rules` lo dice en cada
+> bloque—: no hay versión vieja que restaurar, así que no hay flag que se pueda
+> volver a prender por ahí. No es que la guarda esté floja: la puerta no existe.
+> Está declarado (`conHistorial: false`) y el chequeo de la clase lo cruza contra
+> las reglas, así que el día que un directorio gane historial pide la guarda en el
+> mismo cambio.
+
+### El JSON-LD es un `Place`, y no las otras dos opciones
+
+Es la misma pregunta que [D-670](#d-670--la-ficha-de-una-suscripción-es-un-product-con-una-offer-sin-precio)
+contestó para una suscripción, con la respuesta del otro lado.
+
+**Por qué no `LocalBusiness`/`BookStore`:** ese tipo **exige `address`** —es un
+negocio con puerta, y Google lo usa para el panel local y el mapa—. Acá la mitad
+del directorio sí tiene puerta, pero **la otra mitad es una casa cuya dirección
+decidimos no publicar**, y un `LocalBusiness` sin `address` es un local que no
+existe. Además declararía como comercio a un lugar que presta el salón sin cobrar,
+que es la mitad de este directorio.
+
+**Por qué no `EventVenue`:** es subtipo de `Place`, suena más preciso y por eso
+mismo **afirma de más**: dice que el lugar *es* un salón de eventos. Un café que
+presta la mesa del fondo los martes no lo es, y el § 9 del PRD nombra ese
+deslizamiento como el contra de la sección entera —«puede convertirse en una
+inmobiliaria de salones, que no es lo que el proyecto es»—. El marcado es donde esa
+afirmación queda escrita para una máquina, así que se elige el tipo que dice lo que
+sabemos: es un **lugar**. `EventVenue` además no tiene propiedades propias ni
+resultado enriquecido que ganar.
+
+Lo que sí lleva: `maximumAttendeeCapacity`, `amenityFeature` como
+`LocationFeatureSpecification`, y **`address` y `geo` solo si la dirección salió**
+—criterio 5 del PRD: «`direccion` ausente de la ficha implica ausente del
+JSON-LD»—. La ausencia es **total**, ni siquiera un `address` con la localidad
+sola: con la clave presente, el próximo campo entra por ahí.
+
+**Y sin `priceRange`**, que el § 7 pide con todas las letras: «la condición no es
+un rango de precios» —`con-consumicion` no tiene rango—. Tampoco el precio en
+ninguna otra forma, por lo mismo que el `Offer` de D-670.
+
+### Las tres decisiones chicas que quedan al lado
+
+| Qué | Decisión | Por qué |
+|---|---|---|
+| `precio.porUnidad` | **vocabulario cerrado en el código**, no una cuarta taxonomía | El § 2.4 del inventario avisa que «once vocabularios nuevos de golpe es mucho», y el criterio que decide es el mismo de D-670 al revés: esto **no** puede ser texto libre —de él sale la mitad de una frase publicada, y un texto libre ahí produce «x hora», «la hora», «hs», que es la trampa 6— y **tampoco** necesita ser taxonomía: no es eje de filtro y son cuatro valores que no crecen. Con vocabulario cerrado, `TEXTO_POR_UNIDAD` los cubre a todos y no existe el caso «una unidad que no sabemos nombrar» que sí existe en el precio de una suscripción |
+| El filtro de costo | **tres clases derivadas**, no un rango de precios | § 5 del PRD: «el filtro que la gente quiere no es "hasta $X": es "¿tengo que pagar algo?"». `claseDeCosto` las deriva de la condición **en la proyección**, así que la island no tiene un mapa que se pueda quedar viejo. Y funciona igual de bien con un precio de hace tres meses, que es la propiedad que hay que buscar en todo dato que envejece |
+| El filtro de capacidad | **rangos que se solapan**, y el lugar sin capacidad no entra en ninguno | «Los rangos toleran que la capacidad esté aproximada, un input no» (§ 7). Un lugar de 25 entra en «10 a 25» y en «25 a 50» porque una capacidad aproximada no tiene un borde exacto; y uno sin capacidad cargada no entra en ninguno, porque meterlo en todos afirmaría que entran 50 personas sin que nadie lo haya dicho (§ 9: «es un dato que quien carga no sabe») |
+
+---

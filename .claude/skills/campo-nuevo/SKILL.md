@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **veintitrés** salidas, una por una:
+1. **¿Es público?** Resolvé las **veinticinco** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -45,6 +45,8 @@ no se pueden deshacer después.
    | 21 | la ficha `/guia/librerias/{slug}` y su JSON-LD `BookStore` | `src/lib/libreriaPublica.ts` (`fichaDeLibreria`, `datosEstructuradosDeLibreria`, `migasDeLibreria`, `descripcionDeLibreria`), `src/lib/contenidoDelSitio.ts` (`caminosDeLibreria`) |
    | 22 | el directorio de suscripciones literarias: `/suscripciones.json` + `/guia/suscripciones` | `src/lib/suscripcionPublica.ts` (`suscripcionPublica`, `fraseDePrecio`, `construirIndiceDeSuscripciones`, `descripcionDelDirectorioDeSuscripciones`), `src/lib/contenidoDelSitio.ts` (`suscripcionesPublicadas` — el `where` y el `.select()`) |
    | 23 | la ficha `/guia/suscripciones/{slug}` y su JSON-LD `Product` **sin precio** | `src/lib/suscripcionPublica.ts` (`fichaDeSuscripcion`, `datosEstructuradosDeSuscripcion`, `migasDeSuscripcion`, `descripcionDeSuscripcion`), `src/lib/contenidoDelSitio.ts` (`caminosDeSuscripcion`) |
+   | 24 | el directorio de lugares para eventos: `/lugares.json` + `/guia/lugares` | `src/lib/lugarPublico.ts` (`lugarPublico`, **`dondeQueSale`** —el par flag + dato del § 6: `direccion` y `geo` salen solo si `direccionPublica`—, `fraseDePrecioDeLugar`, `claseDeCosto`, `construirIndiceDeLugares`, `descripcionDelDirectorioDeLugares`), `src/lib/contenidoDelSitio.ts` (`lugaresPublicados` — el `where` y el `.select()`) |
+   | 25 | la ficha `/guia/lugares/{slug}` y su JSON-LD `Place`, con `address` **solo si la dirección salió** y sin `priceRange` | `src/lib/lugarPublico.ts` (`fichaDeLugar`, `datosEstructuradosDeLugar`, `migasDeLugar`, `descripcionDeLugar`), `src/lib/contenidoDelSitio.ts` (`caminosDeLugar`) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

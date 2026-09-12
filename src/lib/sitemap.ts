@@ -75,6 +75,7 @@ import {
   RUTA_SUSCRIBIRSE,
   rutaDeDetalle,
   rutaDeLibreria,
+  rutaDeLugar,
   rutaDeMes,
   rutaDeSuscripcion,
   urlAbsoluta,
@@ -332,6 +333,17 @@ export interface EntradaDelSitio {
    */
   suscripciones?: readonly { slug: string }[];
   /**
+   * Las fichas del tercer directorio — B-833. Mismo trato y mismo motivo que
+   * `librerias` y `suscripciones`: una lista de slugs, opcional, y la ruta la
+   * produce `rutaDeLugar`.
+   *
+   * Con esto la familia queda cerrada y el argumento de arriba se ve completo:
+   * son **tres campos y no uno genérico** (`fichas: { directorio, slug }[]`)
+   * porque con uno genérico quien arma la lista elige el prefijo, que es justo lo
+   * que B-330 sacó de las manos de los llamadores.
+   */
+  lugares?: readonly { slug: string }[];
+  /**
    * Las opciones de taxonomía del índice, **para los hubs** — B-108.
    *
    * Las necesita `hubsOfrecidos` por dos motivos: para saber qué slugs existen y
@@ -370,6 +382,7 @@ export const rutasDelSitemap = ({
   opciones = {},
   librerias = [],
   suscripciones = [],
+  lugares = [],
   ahora,
 }: EntradaDelSitio): string[] => [
   ...new Set([
@@ -412,6 +425,10 @@ export const rutasDelSitemap = ({
     // más abajo. El listado `/guia/suscripciones/` entra arriba por
     // `directoriosDisponibles()` en cuanto la fila deja de decir «en camino».
     ...suscripciones.filter((s) => s.slug).map((s) => rutaDeSuscripcion(s.slug)),
+    // **Las fichas de lugar** — B-833, exactamente lo mismo una colección más
+    // abajo. El listado `/guia/lugares/` entra arriba por
+    // `directoriosDisponibles()` en cuanto la fila deja de decir «en camino».
+    ...lugares.filter((l) => l.slug).map((l) => rutaDeLugar(l.slug)),
   ]),
 ];
 

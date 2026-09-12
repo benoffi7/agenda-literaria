@@ -1,0 +1,296 @@
+---
+/**
+ * `/guia/lugares/{slug}` — la ficha de un lugar para eventos. B-833, § 7 del
+ * PRD 4.
+ *
+ * ── Cero JavaScript, como las otras dos fichas ────────────────────────────
+ * No hay islands: es HTML y CSS del build. Quien cae acá llega de Google o de un
+ * link, y tiene tres preguntas —para cuántos entra, qué tiene y cuánto cuesta—.
+ *
+ * ── Esta plantilla no ve el documento (D-140), y acá eso es LA defensa ────
+ * `getStaticPaths` es `caminosDeLugar` (`lib/contenidoDelSitio.ts`), que entrega
+ * **solo** una `FichaDeLugar`: el view-model que `lugarPublico.ts` armó
+ * enumerando campo por campo. Acá no hay un `Lugar`, así que no se puede
+ * interpolar el `contactoDeQuienCargo`, ni el motivo del rechazo, ni el
+ * `storagePath` de una imagen, ni el precio como número — **y no se puede
+ * publicar la dirección de una casa**: si `direccionPublica` estaba apagado,
+ * `ficha.donde.direccion` llegó en `''` y `ficha.donde.geo` en `null`. La
+ * decisión del § 6 la tomó `dondeQueSale` y esta plantilla no la puede deshacer,
+ * porque el dato no está en el objeto.
+ *
+ * Y los destinos llegan **ya como `href`** y ya saneados (`urlSegura`,
+ * `handleInstagram`): esta plantilla no concatena ningún texto ajeno adentro de
+ * un atributo.
+ *
+ * ── El precio, y las reglas de B-837 en una línea de JSX ──────────────────
+ * `ficha.precio` es **la frase entera** —«$25.000 por hora · cargado el 24 de
+ * septiembre de 2026»— o `''`. Acá no hay forma de pintar el monto sin la fecha:
+ * no llegan separados. Y no entra al marcado estructurado; eso lo decide
+ * `datosEstructuradosDeLugar`, que tiene el motivo escrito al lado.
+ *
+ * ── El marcado estructurado ───────────────────────────────────────────────
+ * `Place` con `maximumAttendeeCapacity` y `amenityFeature`, más las migas. El
+ * porqué de cada decisión —por qué `Place` y no `LocalBusiness` ni `EventVenue`,
+ * y por qué la `address` sale solo con el flag prendido— está en
+ * `datosEstructuradosDeLugar`. Es **el criterio 5 del PRD** y el camino que más
+ * fácil se filtra: nadie lee el JSON-LD al revisar una ficha.
+ *
+ * ── Los `rel` de los links externos ───────────────────────────────────────
+ * `rel="noopener"` y `target="_blank"`, **sin `noreferrer`**: acá no hay ningún
+ * destino de cobro, así que aplicar `noreferrer` parejo revertiría B-786 sin
+ * decirlo (la decisión está discriminada y vive en la ficha de una suscripción).
+ */
+import Base from '@/layouts/Base.astro';
+import { caminosDeLugar } from '@/lib/contenidoDelSitio';
+import {
+  datosEstructuradosDeLugar,
+  descripcionDeLugar,
+  migasDeLugar,
+  type FichaDeLugar,
+} from '@/lib/lugarPublico';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_GUIA, RUTA_LUGARES } from '@/lib/rutasPublicas';
+import { claseAfiche, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+/*
+ * Envuelta y no aliaseada: Astro llama a `getStaticPaths` con un argumento propio
+ * (`{ paginate, rss }`) y con el alias ese objeto caería en el primer parámetro.
+ * Es la lección de B-237.
+ */
+export const getStaticPaths = () => caminosDeLugar();
+
+interface Props {
+  ficha: FichaDeLugar;
+}
+
+const { ficha } = Astro.props as Props;
+
+const jsonLd = datosEstructuradosDeLugar(ficha);
+const migas = migasDeLugar(ficha);
+
+const portada = ficha.imagenes[0] ?? null;
+const resto = ficha.imagenes.slice(1);
+
+/*
+ * La frase sale del módulo puro y **no se arma acá** — la lección de
+ * `descripcionDelMes` (salida 8) y de las otras dos fichas: una `meta
+ * description` interpolada dentro de un `.astro` es un productor de texto público
+ * que vitest no puede importar, o sea que no se puede barrer.
+ */
+const descripcion = descripcionDeLugar(ficha);
+
+/**
+ * Los cuatro contactos, en el orden en que sirven. Se arma acá y no en el
+ * view-model porque es **presentación**; el módulo puro decide cuáles se publican
+ * y a dónde llevan.
+ */
+const contactos = [
+  { texto: 'WhatsApp', href: ficha.enlaces.whatsapp },
+  { texto: 'Instagram', href: ficha.enlaces.instagram },
+  { texto: 'Mail', href: ficha.enlaces.mail },
+  { texto: 'Web', href: ficha.enlaces.web },
+].filter((c): c is { texto: string; href: string } => c.href !== null);
+
+/** Lo que incluye, con el texto libre pegado al final. */
+const incluye = [
+  ...ficha.incluye.filter(Boolean),
+  ...(ficha.incluyeOtro ? [ficha.incluyeOtro] : []),
+];
+
+/** Para cuántos, con las aclaraciones al lado si están. */
+const capacidad = [
+  ficha.capacidad ? `Hasta ${ficha.capacidad} personas` : '',
+  ficha.capacidadNotas,
+]
+  .filter(Boolean)
+  .join(' · ');
+---
+
+<Base
+  seccion="guia"
+  titulo={`${ficha.nombre} — Lugares para eventos — ${NOMBRE}`}
+  descripcion={descripcion}
+  imagen={portada?.url ?? null}
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
+      {' · '}
+      <a class={claseEnlace} href={RUTA_LUGARES}>Lugares</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">{ficha.nombre}</h1>
+
+    <p class={`${claseRotulo} mt-4`}>
+      {ficha.tipo}
+      {ficha.tipo && ficha.donde.barrio ? ' · ' : ''}
+      {
+        ficha.donde.rutaDelBarrio ? (
+          <a class={claseEnlace} href={ficha.donde.rutaDelBarrio}>
+            {ficha.donde.barrio}
+          </a>
+        ) : (
+          ficha.donde.barrio
+        )
+      }
+    </p>
+
+    {
+      portada && (
+        <img
+          src={portada.url}
+          alt={`Foto de ${ficha.nombre}`}
+          width={portada.ancho ?? undefined}
+          height={portada.alto ?? undefined}
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          referrerpolicy="no-referrer"
+          class={`mt-8 ${claseAfiche}`}
+        />
+      )
+    }
+
+    {portada?.epigrafe && <p class="body-sm mt-2 text-suave">{portada.epigrafe}</p>}
+
+    {ficha.descripcion && (
+      <p class="body-lectura mt-8 max-w-[65ch] text-super">{ficha.descripcion}</p>
+    )}
+
+    <section class="regla-gruesa-arriba mt-10 pt-6">
+      <h2 class="headline-sm text-tinta">Dónde queda</h2>
+      {/*
+        ⚠️ **§ 6 del PRD, y esto es todo lo que la plantilla hace con ello.**
+        `ficha.donde.direccion` viene vacía cuando el flag está apagado —lo decidió
+        `dondeQueSale`, no este archivo—, así que acá no hay ninguna condición de
+        privacidad que mantener: hay una dirección o no la hay. La frase de abajo
+        existe para que la ausencia **no se lea como un dato faltante**: quien
+        presta su casa no está escondiendo nada, es la regla del proyecto.
+      */}
+      {ficha.donde.direccion ? (
+        <p class="body-md mt-3 text-super">
+          {ficha.donde.direccion}
+          {ficha.donde.ciudad ? `, ${ficha.donde.ciudad}` : ''}
+        </p>
+      ) : (
+        <p class="body-md mt-3 text-super">
+          {ficha.donde.barrio || ficha.donde.ciudad}. La dirección no se publica: escribile y te
+          la pasa.
+        </p>
+      )}
+    </section>
+
+    {
+      capacidad && (
+        <section class="mt-8">
+          <h2 class="headline-sm text-tinta">Para cuántas personas</h2>
+          <p class="body-md mt-3 text-super">{capacidad}</p>
+        </section>
+      )
+    }
+
+    {
+      incluye.length > 0 && (
+        <section class="mt-8">
+          <h2 class="headline-sm text-tinta">Qué incluye</h2>
+          <ul class="body-md mt-3 flex flex-col gap-1 text-super">
+            {incluye.map((i) => (
+              <li>{i}</li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {/*
+      **La condición se muestra siempre** — criterio 7 del PRD. El precio, si
+      está, **siempre con su fecha**: llegan pegados en un solo string (B-837,
+      D-570), así que no hay forma de pintar uno sin el otro.
+    */}
+    {
+      ficha.condicion && (
+        <section class="mt-8">
+          <h2 class="headline-sm text-tinta">Cómo se usa</h2>
+          <p class="body-md mt-3 text-super">
+            {ficha.condicion}
+            {ficha.condicionNotas ? ` · ${ficha.condicionNotas}` : ''}
+          </p>
+          {ficha.precio && <p class="body-sm mt-2 text-suave">{ficha.precio}</p>}
+        </section>
+      )
+    }
+
+    {
+      contactos.length > 0 && (
+        <section class="mt-10">
+          <h2 class="headline-sm text-tinta">Cómo pedirlo</h2>
+          <ul class="mt-3 flex flex-col gap-2">
+            {contactos.map((c) => (
+              <li>
+                {/*
+                  `rel="noopener"` y `target="_blank"`: son destinos de afuera, y
+                  el `mailto:` no abre pestaña pero tampoco molesta. El `href` ya
+                  vino saneado del view-model. **Sin `noreferrer`**: acá no hay
+                  ningún destino de cobro, y aplicarlo parejo a todo link externo
+                  revertiría la decisión de B-786 sin decirlo.
+                */}
+                <a class={claseEnlace} href={c.href} rel="noopener" target="_blank">
+                  {c.texto}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      resto.length > 0 && (
+        <section class="mt-10">
+          <h2 class="headline-sm text-tinta">Fotos</h2>
+          <div class="mt-4 flex flex-col gap-6">
+            {resto.map((i) => (
+              <figure>
+                <img
+                  src={i.url}
+                  alt={`Foto de ${ficha.nombre}`}
+                  width={i.ancho ?? undefined}
+                  height={i.alto ?? undefined}
+                  loading="lazy"
+                  decoding="async"
+                  referrerpolicy="no-referrer"
+                  class={claseAfiche}
+                />
+                {i.epigrafe && (
+                  <figcaption class="body-sm mt-2 text-suave">{i.epigrafe}</figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    <p class="body-sm mt-12 text-super">
+      <a class={claseEnlace} href={RUTA_LUGARES}>← Todos los lugares</a>
+    </p>
+
+    {/*
+      `Place` (sin `priceRange`) y las migas. El `replace` de `<` es la misma
+      guarda que el resto: `JSON.stringify` escapa comillas y barras invertidas,
+      **no** un `</script>` adentro de un string.
+    */}
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')}
+    />
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(migas).replace(/</g, '\\u003c')}
+    />
+  </main>
+</Base>

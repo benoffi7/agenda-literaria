@@ -2,6 +2,60 @@
 
 ## Sin publicar
 
+- **`/guia/lugares`: la Guía queda completa, y la dirección de una casa no se
+  publica** — **B-833**, tajada 4. Listado con las fichas en el HTML del build y una
+  island con los cinco filtros del §7 del PRD —capacidad en rangos, costo en tres
+  clases, barrio, qué incluye y tipo—, ficha con `Place` + `BreadcrumbList`, y del
+  lado del panel la pantalla «Lugares» con todo su cableado. **Ninguna fila de
+  `/guia` dice ya «en camino».**
+
+  **Lo propio de esta tajada es el §6: es el único directorio que puede publicar la
+  dirección de la casa de una persona**, cargada por alguien que puede no vivir ahí,
+  y con `geo` que la pone en un mapa. Cuatro capas, y ninguna sola alcanza:
+
+  - el **default del panel** lo decide el tipo de lugar, y el formulario apaga la
+    casilla solo;
+  - **`firestore.rules`** no deja que el camino público la prenda — y la cláusula
+    mira el **origen** y no el tipo, porque `/opciones/tipo-lugar` es un vocabulario
+    abierto y una lista sería una lista negra que `ph` o `mi-living` esquivan;
+  - la **proyección** lo decide en **una** función para la dirección y la `geo`
+    juntas (unas coordenadas son la dirección con otro formato), y falla **cerrada**;
+  - y el **`searchText` se deriva en la proyección en vez de copiarse del
+    documento** — ese campo se publica y lo escribe el cliente, así que copiarlo era
+    la puerta por la que la dirección salía **esquivando el flag**, y quedaba
+    publicada después de apagarlo.
+
+  **Y con la cuarta instancia llegó la red: B-911 cerrado.** `online.urlPublica`,
+  `material.items[].publico` y `envio.manda` tenían cobertura **por instancia**, y
+  dos docblocks llegaron a afirmar que había clase. Ahora el registro es
+  `src/lib/paresFlagDato.ts` —mitad derivada del fuente, mitad a mano declarada,
+  como `EFECTOS_INCONDICIONALES`— y de ahí sale también qué campos vigila
+  `flagsDePublicacionRestaurables` (B-819). Una mutación mostró que la primera
+  versión del chequeo buscaba el **nombre** del flag y no su **lectura**:
+  `const manda = true` la dejaba verde.
+
+  **`Place` y no `LocalBusiness` ni `EventVenue` — D-680.** El primero exige
+  `address` y la mitad del directorio es una casa que no la publica; el segundo
+  afirma que el lugar *es* un salón de eventos, que es el contra del §9 escrito para
+  una máquina. `address` y `geo` salen **solo si la dirección salió**, y **sin
+  `priceRange`**: la condición no es un rango de precios.
+
+  **La condición es obligatoria y el precio no** (§5, el hallazgo del pedido: «no sé
+  si todos cobran, o le dicen que tienen que consumir»). El precio va con su fecha
+  pegada (B-837) y el filtro del sitio son **tres clases** —sin costo, consumiendo,
+  pagando— que funcionan igual con un número de hace tres meses.
+
+  **Seis cosas salieron del `auditor-privacidad`**, y dos importan: el `searchText`
+  copiado, y que el schema **bloqueaba** al admin que publica la dirección de una
+  casa con permiso —fallaba cerrada, pero contra lo que decían cuatro docblocks, la
+  ayuda del panel y un caso de integración—. Hoy el aviso vive donde hay alguien
+  mirando y no frena.
+
+  Las dos salidas nuevas entraron a las **tres tablas atadas** en el mismo cambio
+  que las creó: de veintitrés a **veinticinco**.
+
+  45 mutaciones probadas, todas rojas. `auditor-trampas`: limpio.
+
 - **`/guia/suscripciones`: el directorio de suscripciones literarias, y la segunda
   sección de la Guía que deja de decir «en camino»** — **B-832**, tajada 3. Calcada
   de `/guia/librerias`: listado con las fichas en el HTML del build y una island con

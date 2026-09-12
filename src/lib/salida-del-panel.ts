@@ -48,6 +48,14 @@ export const VISTAS_CON_FORMULARIO = [
    * mano, y ésas no se recuperan tecleando de nuevo—.
    */
   'suscripcion',
+  /*
+   * `'lugar'` entra con B-833. Lo que se pierde al abandonarlo es lo mismo que en
+   * los otros dos —la galería, que puede llevar cuatro fotos subidas a mano, y
+   * ésas no se recuperan tecleando de nuevo— más algo propio: la decisión sobre
+   * `direccionPublica`, que es la que hay que volver a tomar a conciencia y no
+   * la que conviene que se pierda a mitad de camino.
+   */
+  'lugar',
 ] as const;
 
 export type VistaConFormulario = (typeof VISTAS_CON_FORMULARIO)[number];
