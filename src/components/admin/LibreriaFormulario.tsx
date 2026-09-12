@@ -11,6 +11,7 @@ import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { medirFuncion } from '@/lib/analytics';
+import { upsertOpcion } from '@/lib/opciones';
 import { slugBloqueado } from '@/lib/directorios';
 import { libreriaFormSchema, libreriaVacia, slugDeLibreria } from '@/lib/libreria-schema';
 import {
@@ -80,6 +81,22 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
   );
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [fallo, setFallo] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  /**
+   * La etiqueta que se tipeó en «Otro…», para darla de alta **al guardar** — B-914.
+   *
+   * Este formulario **descartaba el segundo argumento** del `onChange`
+   * (`(v) => set('barrio', v)`), que es justamente el label a persistir (D-02). El
+   * síntoma era silencioso y de los caros: el chip aparecía, la ficha guardaba el
+   * slug, y la opción **nunca se daba de alta** en `/opciones/barrio` — así que
+   * ningún desplegable la volvía a ofrecer y el sitio la mostraba des-slugueada
+   * («villa-crespo» en vez de «Villa Crespo»). Es la trampa 6 por el lado que no se
+   * ve: no cuatro variantes de la misma etiqueta, sino ninguna.
+   *
+   * Lo encontró el `auditor-trampas` comparando contra `SuscripcionFormulario`,
+   * que sí las persiste.
+   */
+  const [labelNuevoDeBarrio, setLabelNuevoDeBarrio] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
   useFormularioSucio(form);
@@ -122,6 +139,25 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
       else await crearLibreria(parsed.data as LibreriaForm);
       medirFuncion('libreria-guardar');
       setFallo(null);
+      /*
+       * La etiqueta nueva, **después** de guardar y en su propio `try` — el orden
+       * de `guardarActividad` y por el mismo motivo: primero se escribe la ficha,
+       * que es lo que no se puede perder, y después se siembra la opción.
+       *
+       * Y lo que falla se avisa **por su nombre**, no con un «algo salió mal»: el
+       * arreglo es volver a tipear esa etiqueta (B-177).
+       */
+      if (labelNuevoDeBarrio?.trim()) {
+        try {
+          await upsertOpcion('barrio', labelNuevoDeBarrio, uid);
+        } catch {
+          setAviso(
+            `Se guardó, pero el barrio «${labelNuevoDeBarrio}» no quedó en la lista. ` +
+              'Volvé a tipearlo la próxima vez que edites la ficha.',
+          );
+          return;
+        }
+      }
       onGuardado();
     } catch (e: unknown) {
       setFallo(e instanceof Error ? e.message : 'No se pudo guardar la librería');
@@ -138,6 +174,11 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
           className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento"
         >
           {fallo}
+        </p>
+      )}
+      {aviso && (
+        <p role="status" className="rounded-md border border-borde bg-black/[0.03] px-3 py-2 text-sm">
+          {aviso}
         </p>
       )}
 
@@ -211,7 +252,11 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
             uid={uid}
             id="lib-barrio"
             value={form.barrio}
-            onChange={(v) => set('barrio', v)}
+            onChange={(v, label) => {
+              set('barrio', v);
+              // El segundo argumento es el label a persistir, y tirarlo era B-914.
+              if (label) setLabelNuevoDeBarrio(label);
+            }}
             placeholder="Elegí el barrio"
           />
         </Campo>

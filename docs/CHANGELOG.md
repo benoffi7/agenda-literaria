@@ -2,6 +2,32 @@
 
 ## Sin publicar
 
+- **El formulario de librerías tiraba la etiqueta nueva del barrio** — **B-914**,
+  encontrado por el `auditor-trampas` comparando `LibreriaFormulario` contra
+  `SuscripcionFormulario`. `onChange={(v) => set('barrio', v)}` **descartaba el
+  segundo argumento**, que es el label a persistir (D-02): el chip aparecía, la
+  ficha guardaba el slug, y la opción **nunca se daba de alta** en
+  `/opciones/barrio`.
+
+  **Es la trampa 6 del §13 por el lado que no está escrito ahí.** Aquélla dice que
+  sin slugify quedan cuatro variantes de «a la gorra»; ésta es la contraria: **queda
+  ninguna**, y el sitio muestra «villa-crespo» en vez de «Villa Crespo». No se nota
+  al cargar —el formulario se comporta exactamente igual— sino semanas después,
+  cuando alguien busca el barrio en el desplegable y no está.
+
+  **Se arregló la instancia y se puso la clase.** El alta va después de guardar, en
+  su propio `try` y avisando por el **nombre** de la etiqueta (B-177). Y
+  `clases-de-bug.test.ts` barre **todos** los `<TaxonomiaSelect>` del repo exigiendo
+  que ninguno reciba un `onChange` de un solo parámetro — mirando dentro de cada
+  elemento y no el archivo entero, porque un `<input>` con un `onChange` de un
+  parámetro está perfecto.
+
+  El chequeo existe porque **el compilador no ayuda**: una arrow de un parámetro
+  tipa perfecto contra una firma de dos, así que TypeScript no dice nada. La primera
+  versión del chequeo daba rojo sobre código correcto —exigía la persistencia en
+  cada archivo, y en el formulario de actividad vive en el padre (B-70)—; se acotó
+  al borde, que es donde estaba el bug.
+
 - **`/guia/lugares`: la Guía queda completa, y la dirección de una casa no se
   publica** — **B-833**, tajada 4. Listado con las fichas en el HTML del build y una
   island con los cinco filtros del §7 del PRD —capacidad en rangos, costo en tres

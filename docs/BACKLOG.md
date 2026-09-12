@@ -6104,20 +6104,32 @@ Lo que eso arrastra, y conviene que esté acá y no solo en el PRD:
   lo que mire el tipo; lo que queda descubierto es el panel, donde hay alguien
   mirando y el formulario avisa.
 
-### B-914 · El formulario de librerías descarta la etiqueta nueva de «Otro» del barrio · P2
+### B-914 · El formulario de librerías descarta la etiqueta nueva de «Otro» del barrio — ✅ hecho (2026-09-11) · P2
 
-**Confirmado por el `auditor-trampas` sobre B-832.** `LibreriaFormulario.tsx` hace
-`onChange={(v) => set('barrio', v)}` y **tira el segundo argumento**, que es el
-label a persistir (D-02).
-
-El síntoma es el que `tests/taxonomia.test.ts` describe para una taxonomía sin
-buffer, y es silencioso: el chip aparece, la ficha guarda el slug, y la opción
-**nunca se da de alta** en `/opciones/barrio` — así que ningún desplegable la vuelve
-a ofrecer y el sitio la muestra des-slugueada.
-
-`SuscripcionFormulario` sí las persiste (`registrarEtiquetas`), con el aviso por
-nombre de B-177 cuando el alta falla; es de ahí que hay que copiar. **Nace de B-901,
-no de B-832.**
+> `LibreriaFormulario.tsx` hacía `onChange={(v) => set('barrio', v)}` y **tiraba el
+> segundo argumento**, que es el label a persistir (D-02). El chip aparecía, la
+> ficha guardaba el slug, y la opción **nunca se daba de alta** en
+> `/opciones/barrio`: ningún desplegable la volvía a ofrecer y el sitio la mostraba
+> des-slugueada. Lo encontró el `auditor-trampas` comparando contra
+> `SuscripcionFormulario`, que sí las persiste.
+>
+> **Es la trampa 6 del §13 por el lado que no está escrito ahí.** Aquélla dice que
+> sin slugify quedan cuatro variantes de «a la gorra»; ésta es la contraria: **queda
+> ninguna**. Y no se nota al cargar —el formulario se comporta igual— sino semanas
+> después, cuando alguien busca el barrio y no está.
+>
+> **Se arregló la instancia y se puso la clase.** El alta va después de guardar, en
+> su propio `try` y avisando **por el nombre de la etiqueta** (B-177): el orden de
+> `guardarActividad`, primero la ficha que no se puede perder. Y
+> `tests/clases-de-bug.test.ts` barre **todos** los `<TaxonomiaSelect>` del repo y
+> exige que ninguno reciba un `onChange` de un solo parámetro — mirando **dentro de
+> cada elemento** y no el archivo, porque un `<input>` con un `onChange` de un
+> parámetro está perfecto.
+>
+> El chequeo existe porque el compilador no ayuda: **una arrow de un parámetro tipa
+> perfecto contra una firma de dos**, así que TypeScript no dice nada. Mutación
+> probada: reintroducir el `onChange` viejo deja ese caso en rojo y ningún otro se
+> mueve.
 
 ### B-913 · El panel avisa a los 60 días que revises el precio, y no ofrece decir «sigue siendo éste» · P2
 
