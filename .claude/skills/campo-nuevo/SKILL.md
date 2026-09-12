@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **veintiuna** salidas, una por una:
+1. **¿Es público?** Resolvé las **veintitrés** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -30,7 +30,7 @@ no se pueden deshacer después.
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` (incluido `migasDeDetalle`, el `BreadcrumbList`, B-107), y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts`, `src/lib/imagenes.ts` (`urlDeMiniatura`, B-220) |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
-   | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts` |
+   | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts`, y los tres que deciden **qué página se ofrece** sin vivir ahí: `src/lib/mesPublico.ts` (`mesesEnlazables`), `src/lib/listadoPublico.ts` (`estadoDe`) y `src/lib/directorios.ts` (`directoriosDisponibles`, B-898) |
    | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
    | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108), incluido `coleccionSchema` (B-107) |
    | 12 | GA4 (sitio público) | `src/lib/analyticsSitio.ts` (B-372/B-375) |
@@ -43,6 +43,8 @@ no se pueden deshacer después.
    | 19 | `/mis-favoritos` — lo guardado en el navegador de quien visita | `src/lib/guardadosDelSitio.ts`, `src/lib/guardadoDelNavegador.ts` |
    | 20 | el directorio de librerías: `/librerias.json` + `/guia/librerias` | `src/lib/libreriaPublica.ts` (`libreriaPublica`, `construirIndiceDeLibrerias`, `descripcionDelDirectorio`), `src/lib/contenidoDelSitio.ts` (`libreriasPublicadas` — el `where` y el `.select()`) |
    | 21 | la ficha `/guia/librerias/{slug}` y su JSON-LD `BookStore` | `src/lib/libreriaPublica.ts` (`fichaDeLibreria`, `datosEstructuradosDeLibreria`, `migasDeLibreria`, `descripcionDeLibreria`), `src/lib/contenidoDelSitio.ts` (`caminosDeLibreria`) |
+   | 22 | el directorio de suscripciones literarias: `/suscripciones.json` + `/guia/suscripciones` | `src/lib/suscripcionPublica.ts` (`suscripcionPublica`, `fraseDePrecio`, `construirIndiceDeSuscripciones`, `descripcionDelDirectorioDeSuscripciones`), `src/lib/contenidoDelSitio.ts` (`suscripcionesPublicadas` — el `where` y el `.select()`) |
+   | 23 | la ficha `/guia/suscripciones/{slug}` y su JSON-LD `Product` **sin precio** | `src/lib/suscripcionPublica.ts` (`fichaDeSuscripcion`, `datosEstructuradosDeSuscripcion`, `migasDeSuscripcion`, `descripcionDeSuscripcion`), `src/lib/contenidoDelSitio.ts` (`caminosDeSuscripcion`) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

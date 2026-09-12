@@ -2,6 +2,58 @@
 
 ## Sin publicar
 
+- **`/guia/suscripciones`: el directorio de suscripciones literarias, y la segunda
+  sección de la Guía que deja de decir «en camino»** — **B-832**, tajada 3. Calcada
+  de `/guia/librerias`: listado con las fichas en el HTML del build y una island con
+  los cuatro filtros del §5 del PRD, ficha con `Product` + `Offer` +
+  `BreadcrumbList`, y del lado del panel la pantalla «Suscripciones» —la misma
+  bandeja genérica de B-834— con su rol, su ancho, su aviso de salida, su capítulo
+  de ayuda, su novedad y sus dos eventos de analítica. **Que sumar el segundo
+  directorio haya sido un archivo de pantalla y su formulario es lo que el paso 12
+  quería probar.**
+
+  **Lo propio de esta tajada es el precio, y es DEC-12 entera.** Se guarda como
+  `DatoConFecha` (B-837) y no como tres campos sueltos, así que la proyección
+  pública es **la frase armada** —«$18.000 por mes · cargado el 24 de septiembre de
+  2026»— y no un número. De esa forma se caen las tres reglas del §6 sin depender
+  de nadie: no hay pantalla que pueda mostrar el monto sin su fecha, no hay nada que
+  filtrar ni ordenar, y no entra al `Offer` del JSON-LD.
+
+  La mitad que no se puede saltear vive en `firestore.rules` y es **la única
+  cláusula del archivo que defiende una afirmación del sitio y no un dato privado**:
+  `cargadoEn` es `request.time` o el que ya estaba, nunca uno elegido — con una
+  fecha elegible, la frase entera se fabrica desde el cliente. Y corregir un typo de
+  la descripción **no** mueve la fecha: si lo hiciera, la ficha publicaría que el
+  precio es más fresco de lo que es.
+
+  **`Product` y no `BookStore` — D-670.** Ese tipo es un `LocalBusiness` y exige
+  `address`; una suscripción no tiene lugar, así que copiar el marcado de la ficha
+  de al lado inventaría un local que no existe —y competiría con la ficha de la
+  librería real que a veces la ofrece—. `Service` se evaluó y describe **la mitad**
+  del catálogo. El `Offer` va **sin `price`**, que es la excepción deliberada del
+  §5: Google lo muestra en el resultado de búsqueda, y un número de tres meses se
+  publicaría equivocado en el lugar de más visibilidad y con la credibilidad de un
+  dato estructurado. El costo está asumido y escrito.
+
+  **Y el rebuild** (`rebuildPorSuscripciones`, trampa 8). La lista de campos
+  publicados pasó de ser una sola a un **mapa por colección**: con una compartida,
+  un campo que existe en una y no en la otra se compara contra `undefined` en los
+  dos lados, o sea que **nunca cambia**, y editarlo no dispara ningún build. Los dos
+  cuerpos del trigger siguen siendo casi iguales **a propósito**: el chequeo de la
+  clase de B-83 es textual sobre el cuerpo de cada trigger, así que mudarlo a un
+  helper compartido los dejaría fuera de la red sin ponerse rojo.
+
+  **Cinco cosas salieron del `auditor-privacidad` y no de escribir la feature**, y
+  la primera es la que importa: el `rel="noopener noreferrer"` del link de cobro
+  vivía **solo en un comentario**, así que nada frenaba ni que se lo sacaran ni que
+  lo aplicaran parejo a todo link externo —que revierte B-786 sin decirlo—. Hoy lo
+  verifica el paso 8j sobre el HTML construido, en las dos direcciones.
+
+  Las dos salidas nuevas entraron a las **tres tablas atadas** en el mismo cambio
+  que las creó: la cuenta pasó de veintiuna a **veintitrés**. **Cierra B-898.**
+
+  38 mutaciones probadas, todas rojas. `auditor-trampas`: limpio.
+
 - **`/guia/librerias`: el directorio de librerías existe, y es la primera sección
   de la Guía que deja de decir «en camino»** — **B-901**, tajada 2 paso 14.
   Listado con las fichas impresas en el HTML del build y una island que filtra por

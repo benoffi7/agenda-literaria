@@ -108,6 +108,13 @@ const VISTAS_DE_FORMULARIO: readonly string[] = [
    * dos: una vista con formulario que no esté acá queda encajonada en PC.
    */
   'libreria',
+  /*
+   * B-832 — el formulario de una suscripción. Entra por lo mismo que el de una
+   * librería y con más razón: es el más largo de los tres directorios —seis
+   * desplegables, tres listas de chips, la galería y el precio— y sus campos ya
+   * reparten en dos columnas, así que el ancho no se estira, se usa (B-621).
+   */
+  'suscripcion',
 ];
 
 /**

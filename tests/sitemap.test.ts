@@ -132,6 +132,10 @@ describe('las páginas fijas', () => {
     for (const endpoint of [
       '/events.json',
       '/librerias.json',
+      // B-832 — el tercer artefacto de datos. Lo pidió el `auditor-privacidad`:
+      // era el único que podía entrar al sitemap sin que nada lo dijera, y eso es
+      // ofrecerle al buscador una URL para que indexe un JSON.
+      '/suscripciones.json',
       '/version.json',
       '/sitemap.xml',
       '/robots.txt',

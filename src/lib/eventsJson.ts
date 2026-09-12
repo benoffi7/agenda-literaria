@@ -209,7 +209,28 @@ export const encuentrosDelIndice = (
  * obligue a decidir en vez de entrar sola: `tests/barrido-de-salidas-publicas.test.ts`
  * la ata contra `CAMPOS_TAXONOMIA`.
  */
-export const TAXONOMIAS_FUERA_DEL_INDICE: readonly CampoTaxonomia[] = ['incluye-actividad'];
+export const TAXONOMIAS_FUERA_DEL_INDICE: readonly CampoTaxonomia[] = [
+  'incluye-actividad',
+  /*
+   * **Los seis de las suscripciones literarias** — B-832. Es el mismo argumento
+   * un paso más lejos: aquélla no viaja porque no es eje de filtro **de la
+   * agenda**; éstas tampoco lo son, y además no describen una actividad. Sus
+   * chips los arma `/suscripciones.json`, que baja solo quien abre
+   * `/guia/suscripciones` — que es todo el motivo por el que ese índice es un
+   * archivo propio y no una clave más de `events.json` (§ 5 del PRD 3).
+   *
+   * Meterlas acá no es prolijidad: el `events.json` lo baja **toda** persona que
+   * abre la agenda, y seis vocabularios sin consumidor son peso para todos más
+   * la superficie de D-129 —texto tipeado en «Otro», que nace aprobado y sale en
+   * el rebuild siguiente— multiplicada por seis.
+   */
+  'periodicidad',
+  'tipo-oferente',
+  'perfil-editorial',
+  'incluye-suscripcion',
+  'extras-suscripcion',
+  'alcance-envio',
+];
 
 export const LARGO_RESUMEN = 160;
 

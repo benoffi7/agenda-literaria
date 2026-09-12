@@ -1,0 +1,128 @@
+---
+/**
+ * `/guia/suscripciones` — el directorio de suscripciones literarias. B-832,
+ * tajada 3, § 5 del PRD 3 (`docs/prd/03-suscripciones-literarias.md`).
+ *
+ * ── El mismo contrato que la home: el HTML es la verdad ───────────────────
+ * El build imprime **todas** las fichas publicadas, así que la página sirve
+ * completa con JavaScript apagado y Googlebot la ve entera. La island
+ * (`BuscadorDeSuscripciones`) hace un solo fetch de `/suscripciones.json` (§2.5)
+ * y recién cuando lo tiene saca esa lista del DOM por su `id` y renderiza la
+ * suya, con el **mismo** componente de fila. Si el fetch falla, la lista del
+ * build se queda.
+ *
+ * ── La plantilla no ve el documento (D-140) ───────────────────────────────
+ * Recibe `vistaDeSuscripciones()`, que es el view-model: fichas ya proyectadas y
+ * chips de los tres ejes con vocabulario. Acá no hay una `SuscripcionLiteraria`
+ * ni nada de Firestore, así que **no se puede interpolar el
+ * `contactoDeQuienCargo`** ni el precio crudo: no están en el objeto.
+ *
+ * ── El nombre, que es la mitad del § 2 del PRD ───────────────────────────
+ * El sitio ya tiene una sección llamada «Suscribirse», y **no es ésta**: aquélla
+ * explica cómo suscribirse al calendario público. Las dos etiquetas nunca
+ * aparecen juntas porque ésta vive bajo «Guía», que es lo que resolvió el choque;
+ * y el `canonical` de cada una apunta a lo suyo (lo pone `Base.astro`).
+ *
+ * ── El vacío, sin mentir ──────────────────────────────────────────────────
+ * El § 10 del PRD lo dice como contra: «es el directorio con menos oferta y más
+ * trabajo». Eso no lo arregla el código —se arregla cargando suscripciones—, pero
+ * sí se puede no fingir: con cero fichas la página dice qué va a haber y manda a
+ * `/contacto`.
+ */
+import Base from '@/layouts/Base.astro';
+import { BuscadorDeSuscripciones } from '@/components/publico/BuscadorDeSuscripciones';
+import { FichaDeSuscripcionFila } from '@/components/publico/FichaDeSuscripcionFila';
+import { vistaDeSuscripciones } from '@/lib/contenidoDelSitio';
+import {
+  coleccionDeSuscripciones,
+  descripcionDelDirectorioDeSuscripciones,
+} from '@/lib/suscripcionPublica';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_CONTACTO, RUTA_GUIA } from '@/lib/rutasPublicas';
+import { claseEnlace } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const { fichas, version } = await vistaDeSuscripciones();
+const cuantas = fichas.length;
+
+/** El `id` que la island usa para sacar la lista del build. */
+const ID_LISTADO = 'listado-de-suscripciones';
+
+/*
+ * El `CollectionPage` se arma con la **proyección** y no con las fichas, por lo
+ * mismo que en librerías: necesita el slug y el nombre, que es lo único que un
+ * `ItemList` publica. Se deriva de la vista para no volver a leer.
+ */
+const jsonLd = coleccionDeSuscripciones(
+  fichas.map((f) => ({ slug: f.slug, nombre: f.nombre })),
+);
+
+// La frase sale del módulo puro, igual que la de la ficha: las dos son de la
+// misma salida y se barren juntas (`tests/suscripcion-publica.test.ts`).
+const descripcion = descripcionDelDirectorioDeSuscripciones(cuantas);
+---
+
+<Base seccion="guia" titulo={`Suscripciones literarias — ${NOMBRE}`} descripcion={descripcion}>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">Suscripciones literarias</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Cajas y clubes por abono: las que mandan libros, las que dan acceso a encuentros y las
+      que hacen las dos cosas. Cada ficha dice qué incluye, cada cuánto llega y a dónde.
+    </p>
+
+    {
+      cuantas === 0 ? (
+        <div class="regla-gruesa-arriba mt-10 px-4 py-12 text-center">
+          <p class="body-md mx-auto max-w-[48ch] text-super">
+            Todavía no hay ninguna cargada. ¿Tenés una suscripción literaria o conocés una que
+            tendría que estar acá? <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a>.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/*
+            La island. Va **antes** de la lista del build y fuera de su `id`: la
+            saca del DOM cuando tiene el índice, y si estuviera adentro se
+            borraría a sí misma.
+          */}
+          <BuscadorDeSuscripciones
+            client:load
+            version={version}
+            idListadoEstatico={ID_LISTADO}
+          />
+
+          {/*
+            La lista del build: todas las fichas, sin filtrar. Es lo que ve quien
+            entra sin JavaScript y lo que indexa Google.
+          */}
+          <ul id={ID_LISTADO} class="mt-8 flex flex-col gap-4">
+            {fichas.map((ficha) => (
+              <FichaDeSuscripcionFila ficha={ficha} />
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    {
+      /*
+        `CollectionPage` + `ItemList` (§5.5 del diseño). El `replace` de `<` es la
+        misma guarda que el resto de las páginas: `JSON.stringify` escapa comillas
+        y barras, no un `</script>` adentro de un string.
+      */
+      jsonLd && (
+        <script
+          type="application/ld+json"
+          is:inline
+          set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')}
+        />
+      )
+    }
+  </main>
+</Base>

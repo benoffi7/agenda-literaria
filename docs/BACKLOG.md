@@ -50,7 +50,7 @@ trabajo.
 
 | # | Tema | Contexto |
 |---|---|---|
-| **DEC-12** | **El dato que envejece: ¿van las promos bancarias de una librería y el precio de una suscripción?** | Recomendación: **las promos no** (un dato viejo acá no es viejo, es equivocado, y lo paga la librería); **el precio sí**, con **la fecha de carga visible**, fuera de todo filtro y fuera del `Offer` del JSON-LD. El mecanismo compartido es **B-837**. Razonado en [`prd/02-librerias.md`](prd/02-librerias.md) § 6 y [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 |
+| **DEC-12** | ✅ **Resuelta el 2026-09-11** (B-837, D-570, D-670): las promos **no**; el precio **sí**, con la fecha de carga visible, fuera de todo filtro y orden, y fuera del `Offer` del JSON-LD. El texto original: | Recomendación: **las promos no** (un dato viejo acá no es viejo, es equivocado, y lo paga la librería); **el precio sí**, con **la fecha de carga visible**, fuera de todo filtro y fuera del `Offer` del JSON-LD. El mecanismo compartido es **B-837**. Razonado en [`prd/02-librerias.md`](prd/02-librerias.md) § 6 y [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 |
 | DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
 | DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. (El texto original decía que faltaba el handle (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
 
@@ -820,6 +820,18 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
+### B-912 · `/suscripciones` tampoco tiene retención — DEC-13 sin contestar, la segunda vez · P1
+
+Es **B-904 con otra colección**, y conviene resolverlas juntas. Una ficha
+`rechazado` conserva el `contactoDeQuienCargo` de quien la cargó para siempre; lo
+único que hay es `allow delete: if esAdmin()`, el borrado manual, y está puesto por
+eso.
+
+Con dos directorios sin retención y un tercero en camino, lo que corresponde no es
+una Function por colección sino **extender `functions/retencion.js` con la lista de
+colecciones** — que ya existe como mapa del lado del rebuild
+(`CAMPOS_PUBLICOS_POR_DIRECTORIO`).
+
 ### B-904 · `/librerias` no tiene retención: una ficha descartada se queda con el contacto de quien la cargó · P1
 
 Es **DEC-13 sin contestar** para la colección nueva. `contactoDeQuienCargo` es el
@@ -833,7 +845,10 @@ Pero un borrado a mano depende de que alguien se acuerde, que es exactamente lo 
 B-838 decidió no aceptar.
 
 Cuando se resuelva conviene mirarlo junto con la imagen: si la ficha se borra y su
-objeto de Storage queda vivo, es el huérfano de B-221 con otra cara.
+objeto de Storage queda vivo, es el huérfano de B-221 con otra cara. **Y junto con
+B-912**, que es este mismo problema en `/suscripciones`: con tres directorios, lo
+que corresponde es extender `functions/retencion.js` con la lista de colecciones,
+no escribir una Function por cada una.
 
 ### B-903 · La query del primer directorio tiene que filtrar por `ESTADO_PUBLICO` — ✅ hecho (2026-09-11) · P1
 
@@ -851,21 +866,20 @@ objeto de Storage queda vivo, es el huérfano de B-221 con otra cara.
 > una sola sembrada, un build que leyera la colección entera daría exactamente el
 > mismo `dist/`.
 
-### B-898 · `directoriosDisponibles` decide qué URL se le ofrece al buscador y no está en el índice de salidas · P1
+### B-898 · `directoriosDisponibles` decide qué URL se le ofrece al buscador y no está en el índice de salidas — ✅ hecho (2026-09-11) · P1
 
-**Del `auditor-privacidad`, sobre la tajada 2.** La fila 9 de `docs/07-seguridad.md`
-nombra a los dos dueños de «qué página se ofrece y no vive en `sitemap.ts`»
-(`mesPublico.ts — mesesEnlazables`, `listadoPublico.ts — estadoDe`). Desde la tajada
-2 hay un tercero, `directorios.ts — directoriosDisponibles`, y no está ni en las
-tres tablas atadas ni en el `description` del auditor.
-
-**La consecuencia es concreta:** editar `src/lib/directorios.ts` —el archivo donde
-un `disponible: true` publica una URL— **no despierta al auditor**. Es el agujero
-de B-95 (`textoRedes.ts`) un lugar más adentro.
-
-**Y desde el 2026-09-11 dejó de ser teórico:** la tajada de librerías cambió ese
-`false` por un `true` y con eso publicó `/guia/librerias` y sus fichas de verdad.
-La primera vez que el booleano hizo trabajo fue sin que el auditor mirara.
+> Cerrado con B-832. `src/lib/directorios.ts — directoriosDisponibles` entró como
+> **tercer** dueño de «qué página se ofrece y no vive en `sitemap.ts`» en las tres
+> tablas atadas: la fila 9 de `docs/07-seguridad.md`, la misma fila de
+> `.claude/agents/auditor-privacidad.md` y la del checklist de
+> `.claude/skills/campo-nuevo/SKILL.md`. El `description` del agente ya nombraba el
+> archivo desde B-901, así que el disparo por nombre estaba; lo que faltaba era la
+> fila.
+>
+> Y dejó de ser hipotético en el mismo cambio: con **dos** directorios publicados,
+> marcar una sección como disponible sin escribir su página le ofrece a Google un
+> 404, y escribir la página sin marcarla la deja invisible desde su propio índice —
+> lo cruza `tests/directorios.test.ts` en las dos direcciones.
 
 ### B-897 · `/guia` es una salida pública indexada y no está numerada · P1
 
@@ -6054,6 +6068,44 @@ El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
 puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
+
+### B-914 · El formulario de librerías descarta la etiqueta nueva de «Otro» del barrio · P2
+
+**Confirmado por el `auditor-trampas` sobre B-832.** `LibreriaFormulario.tsx` hace
+`onChange={(v) => set('barrio', v)}` y **tira el segundo argumento**, que es el
+label a persistir (D-02).
+
+El síntoma es el que `tests/taxonomia.test.ts` describe para una taxonomía sin
+buffer, y es silencioso: el chip aparece, la ficha guarda el slug, y la opción
+**nunca se da de alta** en `/opciones/barrio` — así que ningún desplegable la vuelve
+a ofrecer y el sitio la muestra des-slugueada.
+
+`SuscripcionFormulario` sí las persiste (`registrarEtiquetas`), con el aviso por
+nombre de B-177 cuando el alta falla; es de ahí que hay que copiar. **Nace de B-901,
+no de B-832.**
+
+### B-913 · El panel avisa a los 60 días que revises el precio, y no ofrece decir «sigue siendo éste» · P2
+
+`pideRevision` (B-837) pinta el aviso en la bandeja a los `DIAS_PARA_REVISAR` días.
+`firestore.rules` **ya deja** refechar un precio que no cambió con el reloj del
+servidor —es «lo revisé hoy y sigue siendo éste», y la puerta está abierta a
+propósito y probada— pero la pantalla no ofrece el gesto: `guardarSuscripcion` solo
+refecha cuando el monto o el período cambian.
+
+O sea que hoy la única forma de bajar el aviso es **cambiarle el número**, que es
+mentir, o dejarlo puesto para siempre, que es enseñar a ignorar el aviso. Es un
+botón y una llamada.
+
+### B-911 · El par flag + dato es una clase de bug con tres instancias y sin red · P2
+
+`urlPublica`, `material.items[].publico` y —desde B-832— `envio.manda`. Las tres
+tienen cobertura **por instancia**; la **clase** no existe en
+`tests/clases-de-bug.test.ts`.
+
+Dos docblocks de B-832 llegaron a afirmar que sí —están corregidos—, y eso es
+exactamente el daño: el cuarto par se va a escribir confiando en una red que no está
+puesta. La forma sería la de B-83: derivar del fuente los pares «flag booleano +
+dato que el flag esconde» y exigir que la proyección mire el flag antes del dato.
 
 ### B-908 · La doc sigue diciendo que la subida anónima del flyer «espera que App Check exija» · P2
 
@@ -13479,8 +13531,9 @@ que hoy lo sostiene es que las dos tipan a `Imagen`. Se cierra exportando la de
 `schema.ts` y borrando la copia; no se hizo en el commit de B-831 porque ese archivo
 era de otro frente.
 
-Y con los tres directorios serían **cuatro** copias, así que conviene antes de
-B-832.
+**Actualizado el 2026-09-11:** B-832 no lo hizo, así que ya son **tres** copias
+(`schema.ts`, `libreria-schema.ts`, `suscripcion-literaria-schema.ts`). Con la
+tajada 4 serían cuatro. Vale subirlo a P2.
 
 ### B-907 · La regla de `/librerias` no puede iterar `imagenes` — B-842 con otra cara · P3
 

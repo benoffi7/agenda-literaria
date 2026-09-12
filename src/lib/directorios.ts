@@ -338,7 +338,17 @@ export const DIRECTORIOS: readonly Directorio[] = [
     singular: 'suscripción',
     que: 'Cajas y envíos de libros por mes, con qué incluye cada uno.',
     ruta: RUTA_SUSCRIPCIONES,
-    disponible: false,
+    /*
+     * **La segunda que deja de decir «en camino»** — B-832, tajada 3.
+     *
+     * El mismo `true` de una línea que estrenó librerías, y la misma promesa
+     * cumplida: la fila de `/guia` se convierte en enlace y la URL entra sola al
+     * sitemap (`RUTAS_FIJAS` la deriva de `directoriosDisponibles()`), así que la
+     * séptima de las nueve cosas que se rompen en silencio acá tampoco se puede
+     * cometer. Que la tajada 3 no haya tenido que volver a escribir `/guia` es lo
+     * que el paso 12 quería probar.
+     */
+    disponible: true,
   },
   {
     id: 'lugares',

@@ -40,6 +40,10 @@ export { rebuildPorOpciones } from './opciones-trigger.js';
 // B-901 — el rebuild cuando cambia una librería. Es la trampa 8 con otra cara:
 // sin esto se publica una ficha y el sitio estático no la muestra nunca.
 export { rebuildPorLibrerias } from './directorios-trigger.js';
+// B-832 — y el de las suscripciones literarias. Uno por colección: Firestore no
+// matchea un comodín en el segmento de colección, así que cada directorio nuevo
+// se ve acá o no existe.
+export { rebuildPorSuscripciones } from './directorios-trigger.js';
 export { dispararRebuild } from './rebuild-trigger.js';
 export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { limpiarVersionesHuerfanas } from './versiones-limpieza-trigger.js';

@@ -1,8 +1,8 @@
 /**
- * **El rebuild cuando cambia una ficha de directorio** — B-901, trampa 8.
+ * **El rebuild cuando cambia una ficha de directorio** — B-901 / B-832, trampa 8.
  *
  * Es literalmente el mismo caso que `opciones-trigger.js` («el rebuild debe
- * dispararse también cuando cambia `/opciones/*`», §4.4) con otra colección: el
+ * dispararse también cuando cambia `/opciones/*`», §4.4) con otras colecciones: el
  * sitio es estático, así que una librería publicada no existe hasta que el build
  * vuelva a correr. Sin esto, se publica una ficha desde el panel y el sitio no la
  * muestra **nunca** —hasta que alguien edite cualquier actividad por otro
@@ -13,9 +13,22 @@
  *
  * ── Una Function por colección, y no un `{coleccion}` genérico ───────────
  * Firestore no matchea un comodín en el segmento de colección: el patrón
- * `{coleccion}/{id}` no existe. Así que las tajadas 3 y 4 declaran la suya
- * leyendo `COLECCIONES_DE_DIRECTORIO`, que es lo que hace que agregar un
- * directorio sin su rebuild se vea en el diff de `index.js`.
+ * `{coleccion}/{id}` no existe. Así que la tajada 4 declara la suya leyendo
+ * `COLECCIONES_DE_DIRECTORIO`, que es lo que hace que agregar un directorio sin su
+ * rebuild se vea en el diff de `index.js`.
+ *
+ * ── Y los dos cuerpos son casi iguales **a propósito** ───────────────────
+ * La tentación al escribir el segundo fue extraer un `rebuildDeDirectorio(event,
+ * coleccion)` compartido y dejar los dos handlers en una línea. **No se hizo, y
+ * el motivo es una red:** el chequeo de la clase de B-83
+ * (`tests/clases-de-bug.test.ts`) es **textual sobre el cuerpo de cada trigger** —
+ * busca la llamada a `marcarRebuild` ahí adentro y verifica que ninguna salida
+ * temprana la preceda—. Con el cuerpo mudado a un helper, los dos triggers dejan
+ * de contener esa llamada y el chequeo **deja de mirarlos sin ponerse rojo**: la
+ * suite quedaría verde afirmando algo que ya no verifica, que es exactamente la
+ * clase de falso verde que este repo persigue. Quince líneas repetidas a cambio de
+ * que la red siga puesta es un buen precio; lo que sí está compartido es la
+ * decisión, que es lo que importa que no se duplique (`cambioAmeritaRebuild`).
  */
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions/v2';
@@ -52,7 +65,7 @@ export const rebuildPorLibrerias = onDocumentWritten(
      * auditores encontraron sobre la primera versión de este archivo. Así que va
      * como sus dos hermanos: `syncCalendar` con `huboCambioDeContenido` y
      * `rebuildPorOpciones`. Que las tres se lean igual es lo que hace que la
-     * tajada 3 copie la forma correcta.
+     * tajada 4 copie la forma correcta.
      *
      * La guarda no puede faltar: el trigger que escriba `publicadaAlgunaVez`
      * —que todavía no existe, B-905— hace un write-back sobre este mismo
@@ -64,10 +77,43 @@ export const rebuildPorLibrerias = onDocumentWritten(
      * el contacto de quien cargó la ficha es de un tercero (§9 y la fila de
      * `07-seguridad.md`). Misma forma que `actividad <id>`.
      */
-    if (cambioAmeritaRebuild(antes, despues)) {
+    if (cambioAmeritaRebuild(antes, despues, 'librerias')) {
       await marcarRebuild(getFirestore(), `libreria ${id}`);
     } else {
       logger.debug('cambio de librería sin efecto en el sitio: no se rebuildea', { id });
+    }
+  },
+);
+
+export const rebuildPorSuscripciones = onDocumentWritten(
+  {
+    ...OPCIONES_BASE,
+    document: 'suscripciones/{id}',
+  },
+  async (event) => {
+    const antes = event.data?.before?.data() ?? null;
+    const despues = event.data?.after?.data() ?? null;
+    const { id } = event.params;
+
+    /*
+     * La misma guarda, en la misma forma positiva y por el mismo motivo que la
+     * de arriba (ver ahí el detalle de la clase de B-83).
+     *
+     * Lo propio de esta colección: acá el sitio publica además un **precio que
+     * envejece** (DEC-12), así que un cambio que no dispare el build no deja el
+     * sitio «viejo» sino **mintiendo** — el número anterior sigue publicado con su
+     * fecha anterior al lado, que es la afirmación que el mecanismo de B-837
+     * existe para no hacer. La lista de campos que se comparan la elige
+     * `cambioAmeritaRebuild` con el nombre de la colección, y `precio` está
+     * adentro.
+     *
+     * El motivo lleva **solo el id**: el nombre, el precio y el link de cobro son
+     * contenido, y el contacto de quien cargó la ficha es de un tercero.
+     */
+    if (cambioAmeritaRebuild(antes, despues, 'suscripciones')) {
+      await marcarRebuild(getFirestore(), `suscripcion ${id}`);
+    } else {
+      logger.debug('cambio de suscripción sin efecto en el sitio: no se rebuildea', { id });
     }
   },
 );

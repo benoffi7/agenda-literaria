@@ -295,6 +295,10 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // diccionario— y con el mismo límite escrito, que sigue valiendo: más allá de
     // esto, que frene está bien.
     21: 'veintiuna', 22: 'veintidós',
+    // B-832 — la tabla pasó a 23 con el directorio de suscripciones literarias
+    // (el JSON + el listado, y la ficha con su `Product`). El colchón de B-901
+    // se consumió otra vez, así que se agrega uno más con la misma lógica.
+    23: 'veintitrés', 24: 'veinticuatro',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {

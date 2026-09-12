@@ -749,6 +749,38 @@ export const CAMPOS_TAXONOMIA = [
   'plataforma',
   'tags',
   'incluye-actividad',
+  /*
+   * ── Los seis de las suscripciones literarias — B-832, § 8 del PRD 3 ──────
+   *
+   * **Son de otra colección, y viven acá igual.** `/opciones/{campo}` es el
+   * mecanismo del §4 y es uno solo: el desplegable con «Otro», la transacción de
+   * deduplicación, el orden por `usos`, la pantalla que las administra y el
+   * contador de pendientes salen todos de esta lista. Una taxonomía que no esté
+   * acá no tiene nada de eso — tendría que reimplementarlo, que es la clase de
+   * B-72. El precedente es `barrio`, que desde B-901 lo comparten las actividades
+   * y las librerías.
+   *
+   * Lo que **no** ganan por estar acá, y está atado en los dos lugares:
+   *
+   * - **no viajan en el `events.json`** (`TAXONOMIAS_FUERA_DEL_INDICE`,
+   *   `lib/eventsJson.ts`): sus chips los arma `/suscripciones.json`, y publicar
+   *   un vocabulario sin consumidor en el archivo que baja toda persona que abre
+   *   la agenda es lo que D-580 cerró para `incluye-actividad`;
+   * - **no van al evento de Calendar** (`TAXONOMIAS_FUERA_DEL_EVENTO`,
+   *   `functions/etiquetas.js`): una suscripción no tiene encuentros, así que
+   *   pedir sus etiquetas sería una lectura más de Firestore por invocación para
+   *   un dato que `construirDescripcion` nunca mira.
+   *
+   * **`compromisoMinimo` no está**, y es el desvío chico del § 3 del PRD que
+   * `types/suscripcion-literaria.ts` deja escrito: lo que necesita slug es un eje
+   * de filtro, y ése no lo es.
+   */
+  'periodicidad',
+  'tipo-oferente',
+  'perfil-editorial',
+  'incluye-suscripcion',
+  'extras-suscripcion',
+  'alcance-envio',
 ] as const;
 export type CampoTaxonomia = (typeof CAMPOS_TAXONOMIA)[number];
 
@@ -766,5 +798,14 @@ export type CampoTaxonomia = (typeof CAMPOS_TAXONOMIA)[number];
  * `lib/formulario/etiquetas.ts`), y las dos listas juntas tienen que dar
  * `CAMPOS_TAXONOMIA`: lo fija `tests/taxonomia.test.ts`.
  */
-export const CAMPOS_MULTIVALOR = ['tags', 'incluye-actividad'] as const;
+export const CAMPOS_MULTIVALOR = [
+  'tags',
+  'incluye-actividad',
+  // B-832 — las tres listas de una suscripción (§ 3 del PRD 3). `periodicidad`,
+  // `tipo-oferente` y `perfil-editorial` no están: guardan **un** slug, así que
+  // su buffer es el de valor único (`CampoLabelUnico`).
+  'incluye-suscripcion',
+  'extras-suscripcion',
+  'alcance-envio',
+] as const;
 export type CampoMultivalor = (typeof CAMPOS_MULTIVALOR)[number];

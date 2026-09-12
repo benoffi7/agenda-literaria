@@ -176,5 +176,225 @@
       "usos": 0,
       "aprobada": true
     }
+  ],
+  "periodicidad": [
+    {
+      "slug": "mensual",
+      "label": "Mensual",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "bimestral",
+      "label": "Bimestral",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "trimestral",
+      "label": "Trimestral",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "anual",
+      "label": "Anual",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "unica",
+      "label": "Pago único",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "tipo-oferente": [
+    {
+      "slug": "libreria",
+      "label": "Librería",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "editorial",
+      "label": "Editorial",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "club",
+      "label": "Club de lectura",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "persona",
+      "label": "Una persona",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "perfil-editorial": [
+    {
+      "slug": "independientes",
+      "label": "Editoriales independientes",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "mixto",
+      "label": "De todo un poco",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "grandes",
+      "label": "Editoriales grandes",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "no-dice",
+      "label": "No lo dice",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "incluye-suscripcion": [
+    {
+      "slug": "libros",
+      "label": "Libros",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "encuentros",
+      "label": "Encuentros",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "material-de-lectura",
+      "label": "Material de lectura",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "newsletter",
+      "label": "Newsletter",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "extras-suscripcion": [
+    {
+      "slug": "regalos",
+      "label": "Regalos",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "descuentos-en-local",
+      "label": "Descuentos en el local",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "club-online",
+      "label": "Club online",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "encuentros-con-autores",
+      "label": "Encuentros con autores",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "alcance-envio": [
+    {
+      "slug": "caba",
+      "label": "CABA",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "amba",
+      "label": "AMBA",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "todo-el-pais",
+      "label": "Todo el país",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "retiro-en-local",
+      "label": "Retiro en el local",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "digital",
+      "label": "Digital",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
   ]
 }

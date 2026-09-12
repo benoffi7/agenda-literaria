@@ -399,7 +399,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los trece triggers del proyecto', () => {
+  it('encuentra los catorce triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -498,6 +498,20 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        */
       'rebuildPorLibrerias',
       'rebuildPorOpciones',
+      /*
+       * B-832 — el rebuild de las suscripciones literarias, el hermano del de
+       * librerías. **Entró solo** y pasa los dos chequeos por el mismo camino:
+       * su efecto es `marcarRebuild` (idempotente: escribe un documento fijo con
+       * `merge`) y su llamada **domina** el handler, escrita en la misma forma
+       * positiva.
+       *
+       * Y es la razón por la que los dos cuerpos siguen siendo casi iguales en
+       * vez de compartir un helper: el chequeo de B-83 es **textual sobre el
+       * cuerpo de cada trigger**, así que un cuerpo mudado a una función deja de
+       * contener la llamada y este archivo **dejaría de mirarlos sin ponerse
+       * rojo**. Está escrito en `functions/directorios-trigger.js`.
+       */
+      'rebuildPorSuscripciones',
       'reporteAIssue',
       'syncCalendar',
       /*

@@ -148,9 +148,11 @@ describe('el gating de `AdminApp` — la pantalla que no corresponde no tiene pu
     'estadisticas',
     'propuestas',
     'reportes',
-    // B-901 — la Guía. `libreria` (el formulario) no entra: se alcanza desde
-    // adentro de la bandeja, así que su gating es el de su origen.
+    // B-901 / B-832 — la Guía. `libreria` y `suscripcion` (los formularios) no
+    // entran: se alcanzan desde adentro de su bandeja, así que su gating es el de
+    // su origen.
     'librerias',
+    'suscripciones',
   ];
 
   it('cada una de esas puertas está envuelta en `puedeVer`', () => {

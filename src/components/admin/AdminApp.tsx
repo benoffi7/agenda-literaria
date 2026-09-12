@@ -58,8 +58,10 @@ import type { EstadisticasPanel as TipoEstadisticas } from '@/components/admin/E
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
 import type { PropuestasPanel as TipoPropuestas, Conversion } from '@/components/admin/PropuestasPanel';
 import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/LibreriasPanel';
+import type { SuscripcionesPanel as TipoSuscripciones } from '@/components/admin/SuscripcionesPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { LibreriaConId } from '@/types/libreria';
+import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
 import type { User } from 'firebase/auth';
 
 type Vista =
@@ -117,7 +119,14 @@ type Vista =
    * volver a la bandeja no cuesta una lectura nueva.
    */
   | { tipo: 'librerias' }
-  | { tipo: 'libreria'; ficha?: LibreriaConId };
+  | { tipo: 'libreria'; ficha?: LibreriaConId }
+  /*
+   * B-832 — la Guía, segunda entidad. Dos vistas por el mismo motivo que las de
+   * librerías, y montando el mismo componente: así la suscripción a la colección
+   * sigue viva mientras el formulario está abierto.
+   */
+  | { tipo: 'suscripciones' }
+  | { tipo: 'suscripcion'; ficha?: SuscripcionLiterariaConId };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -225,6 +234,15 @@ const LibreriasPanel = diferido<Parameters<typeof TipoLibrerias>[0]>(() =>
   import('@/components/admin/LibreriasPanel').then((m) => ({ default: m.LibreriasPanel })),
 );
 
+// Diferida por lo mismo que las otras vistas: lee y escribe `/suscripciones`,
+// así que arrastra Firestore (B-09, D-51), y con el editor de galería arrastra
+// además `firebase/storage`.
+const SuscripcionesPanel = diferido<Parameters<typeof TipoSuscripciones>[0]>(() =>
+  import('@/components/admin/SuscripcionesPanel').then((m) => ({
+    default: m.SuscripcionesPanel,
+  })),
+);
+
 const PropuestasBadge = diferido<object>(() =>
   import('@/components/admin/PropuestasBadge').then((m) => ({ default: m.PropuestasBadge })),
 );
@@ -320,7 +338,7 @@ export function AdminApp() {
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
   const [volverA, setVolverA] = useState<
-    'lista' | 'calendario' | 'estadisticas' | 'propuestas' | 'librerias'
+    'lista' | 'calendario' | 'estadisticas' | 'propuestas' | 'librerias' | 'suscripciones'
   >('lista');
 
   /**
@@ -599,6 +617,12 @@ export function AdminApp() {
                               ? vista.ficha
                                 ? vista.ficha.nombre
                                 : 'Librería nueva'
+                            : vista.tipo === 'suscripciones'
+                              ? 'Suscripciones'
+                            : vista.tipo === 'suscripcion'
+                              ? vista.ficha
+                                ? vista.ficha.nombre
+                                : 'Suscripción nueva'
                               : vista.tipo === 'convertir'
                                 ? `Propuesta de ${vista.tituloOrigen}`
                                 : vista.actividad.titulo}
@@ -679,6 +703,16 @@ export function AdminApp() {
             Librerías
           </button>
         )}
+        {/* B-832 — la segunda sección de la Guía. Mismo trato que la de arriba. */}
+        {vista.tipo === 'lista' && puedeVer(rol, 'suscripciones') && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'suscripciones' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Suscripciones
+          </button>
+        )}
         {vista.tipo !== 'reportes' && puedeVer(rol, 'reportes') && (
           <button
             type="button"
@@ -708,6 +742,8 @@ export function AdminApp() {
                 ? 'propuestas'
                 : vista.tipo === 'librerias' || vista.tipo === 'libreria'
                   ? 'librerias'
+                : vista.tipo === 'suscripciones' || vista.tipo === 'suscripcion'
+                  ? 'suscripciones'
                   : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
                     ? 'lista'
                     : 'formulario'
@@ -863,6 +899,20 @@ export function AdminApp() {
             setVista({ tipo: 'libreria', ficha });
           }}
           onGuardado={() => setVista({ tipo: 'librerias' })}
+          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
+        />
+      )}
+
+      {/* B-832 — ídem para las suscripciones literarias. */}
+      {(vista.tipo === 'suscripciones' || vista.tipo === 'suscripcion') && (
+        <SuscripcionesPanel
+          usuario={{ uid: usuario.uid }}
+          editando={vista.tipo === 'suscripcion' ? (vista.ficha ?? 'nueva') : null}
+          onAbrirFormulario={(ficha) => {
+            setVolverA('suscripciones');
+            setVista({ tipo: 'suscripcion', ficha });
+          }}
+          onGuardado={() => setVista({ tipo: 'suscripciones' })}
           onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
         />
       )}

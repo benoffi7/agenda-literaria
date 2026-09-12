@@ -10348,3 +10348,63 @@ los huérfanos los barre `limpiarImagenesHuerfanas` con el Admin SDK.
 | Cómo sabe un desplegable si ofrecer «Otro…» | Un **store de módulo** (`rolActivo.ts`), no una prop | El camino por props son seis saltos para un booleano, y **se puede olvidar**: el campo de taxonomía que alguien agregue mañana nacería ofreciendo crear una etiqueta a quien no puede, con el alta fallando en silencio. Pasando por `campos-del-panel.tsx` —el único lugar por el que pasan las cinco taxonomías del panel— el campo nuevo hereda la regla sin que nadie se acuerde. **No es autorización**: el portón real está en `formulario/guardar.ts`, con el rol por parámetro, y el default del store es permisivo |
 
 ---
+
+## D-670 · La ficha de una suscripción es un `Product` con una `Offer` **sin precio**
+
+**Sale de B-832**, la tajada 3. El § 5 del PRD 3 ya había elegido `Product`, y esta
+entrada existe porque la tajada tuvo que contestar la pregunta que ese PRD no
+hace: **por qué no el tipo que usa la ficha de al lado**, que es la que se acababa
+de construir y de la que esta sección está calcada.
+
+### Por qué no `BookStore` ni ningún `LocalBusiness`
+
+Porque **no hay lugar**. `BookStore` es un subtipo de `LocalBusiness` y
+`LocalBusiness` exige `address`: es un negocio con puerta, y de ahí salen el panel
+local y el mapa. Una suscripción literaria no tiene dirección, así que copiar el
+marcado de la ficha de una librería deja una de dos cosas:
+
+- **inventar una dirección** —la de quien la ofrece, por ejemplo—, que es afirmar
+  que hay un local donde se puede ir a buscar la caja;
+- o **emitir un `BookStore` sin `address`**, que es declarar un lugar que no
+  existe y ensuciar el dato que Google geocodifica.
+
+Y hay un daño extra que es propio de este directorio: cuando la suscripción la
+ofrece **una librería que ya tiene su ficha en la Guía**, un segundo `BookStore`
+con el mismo nombre compite con el real.
+
+### Por qué no `Service`
+
+Se evaluó, y describe bien **la mitad** del catálogo: el club que da acceso a
+encuentros y no manda nada. No describe la otra —una caja que envía tres libros
+por trimestre es un producto que llega a tu casa—, y elegir por ficha
+(`envio.manda ? Product : Service`) daría **dos marcados para la misma sección**:
+dos formas que mantener, y el error de la rama que se use menos no se ve nunca.
+`Product` cubre las dos y es el tipo que lleva `offers` de forma natural, que es
+lo que esta ficha realmente publica: una oferta a la que se accede por un link.
+
+### Y el precio queda afuera del `Offer`, que es la parte deliberada
+
+Es el criterio de aceptación 5 del PRD y la continuación de **DEC-12**: Google
+**muestra** el precio del `Offer` en el resultado de búsqueda, o sea que un número
+de tres meses se publicaría equivocado en el lugar de más visibilidad del sitio y
+con la credibilidad de un dato estructurado. En la página va, con su fecha al
+lado, donde la persona lo lee en contexto.
+
+**El costo está asumido y escrito:** la ficha no es elegible para el resultado
+enriquecido de precio. El beneficio es no afirmar un número que nadie mantiene, que
+es exactamente la clase de decisión de B-780 —`/apoyar` publicaba un usuario de
+cobro que nadie había registrado— y la del texto de `/anunciar` (B-773).
+
+Lo sostienen dos chequeos, y el primero está escrito para que se lea cuando falle:
+`tests/suscripcion-publica.test.ts` prohíbe `price`, `priceCurrency`,
+`priceSpecification`, `lowPrice` y `highPrice` en el marcado **con el motivo al
+lado**, y el paso 8j de `scripts/build-contra-emulador.mjs` lo verifica sobre el
+`dist/` construido.
+
+### La decisión chica que queda al lado
+
+| Qué | Decisión | Por qué |
+|---|---|---|
+| `compromisoMinimo` | **texto libre**, no un séptimo vocabulario | El § 3 del PRD lo dibuja como slug (`'sin-compromiso'`, `'3-meses'`), y el § 2.4 del inventario avisa en la dirección contraria: «once vocabularios nuevos de golpe es mucho; vale preguntarse cuáles se pueden empezar como texto libre». El criterio que decide es el del § 4.2 del propio PRD: **lo que necesita slug es un eje de filtro**, y éste no lo es —los cuatro filtros del § 5 son otros—. Lo único que hace es leerse en la ficha, y para eso «Sin compromiso» tal como se escribió es mejor que un desplegable que hay que mantener. Entra a `searchText`, como `tematica` |
+
+---

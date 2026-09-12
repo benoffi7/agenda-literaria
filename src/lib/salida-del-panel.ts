@@ -41,6 +41,13 @@ export const VISTAS_CON_FORMULARIO = [
   'duplicar',
   'convertir',
   'libreria',
+  /*
+   * `'suscripcion'` entra con B-832. Lo que se pierde al abandonarla es **más**
+   * que en una librería: el formulario tiene el doble de campos, y la mitad cara
+   * sigue siendo la misma —la galería, que puede llevar cuatro fotos subidas a
+   * mano, y ésas no se recuperan tecleando de nuevo—.
+   */
+  'suscripcion',
 ] as const;
 
 export type VistaConFormulario = (typeof VISTAS_CON_FORMULARIO)[number];

@@ -695,14 +695,40 @@ firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
 # B-901 — el rebuild del primer directorio de la Guía, misma forma que el de
 # `/opciones/*`. El push a `main` ya la cubre; esto es para desplegarla sola.
 firebase deploy --only functions:rebuildPorLibrerias
+# B-832 — y el del segundo directorio. Uno por colección: Firestore no matchea un
+# comodín en el segmento de colección.
+firebase deploy --only functions:rebuildPorSuscripciones
 ```
 
-**Las ocho Functions están desplegadas y ACTIVE, y todas al día.** Relevado contra
-GCP el 2026-09-03 (`gcloud functions list --project agenda-literaria
---format='value(name,updateTime)'`): siete con `updateTime` de ese día a las 16:14
-y `limpiarImagenesHuerfanas` a las 16:37. Un `firebase deploy --only functions` sin
-filtro las incluye a las ocho y hoy no rompe nada: ninguna depende de un secreto que
-falte.
+### Los seis vocabularios nuevos de las suscripciones (B-832)
+
+**Un paso que no es un deploy y que hay que correr igual.** `periodicidad`,
+`tipo-oferente`, `perfil-editorial`, `incluye-suscripcion`, `extras-suscripcion` y
+`alcance-envio` son documentos de `/opciones/*`, y salen de
+`src/lib/opciones-base.json` — que `preparar-produccion.mjs` recorre **entero** y
+siembra de forma **idempotente**: no pisa lo que ya existe (§ «Idempotencia en los
+scripts»).
+
+```bash
+node scripts/preparar-produccion.mjs <email>
+```
+
+**Si no se corre, no se rompe nada y eso es lo incómodo:** la ficha se publica
+igual y muestra el **slug** crudo en vez de la etiqueta —«mensual» en lugar de
+«Mensual», «no-dice» en lugar de «No lo dice»—, porque resolver una etiqueta cae
+al slug cuando el documento de opciones no está (D-30). Se ve, pero se ve en el
+sitio y no en ningún log.
+
+**El estado y la cuenta viven en [`02-infraestructura.md`](02-infraestructura.md#cloud-functions-v2),
+no acá** — ahí se relevan contra GCP, una por una. Esta línea decía «las ocho
+Functions están desplegadas y ACTIVE» y **ya era falsa**: el relevamiento del
+2026-09-03 que la respalda listaba ocho, y desde entonces se escribieron cinco más
+(las cuatro de B-838/B-878/B-901 y `rebuildPorSuscripciones`, B-832). Es la misma
+cicatriz que aquel documento ya tiene anotada, un archivo más abajo: **un número
+repetido en dos lugares envejece en el que nadie mira**. Lo que sigue valiendo acá
+es la operación y no el conteo: un `firebase deploy --only functions` sin filtro
+las despliega **todas** y hoy no rompe nada, porque ninguna depende de un secreto
+que falte.
 
 > **Acá decía «lo que sí queda pendiente es redesplegar esas dos», y era falso.**
 > El texto era del 2026-08-25: afirmaba que `syncCalendar` y `rebuildPorOpciones`

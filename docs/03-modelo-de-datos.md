@@ -577,6 +577,56 @@ de B-364):
 del admin está abierto — es lo único con lo que hoy se honra un «borrame». Está
 anotado como **B-904**.
 
+## `/suscripciones/{id}` — el segundo directorio de la Guía (B-832)
+
+Las cajas y clubes por abono. Mismo ciclo de vida que `/librerias` —el de
+`src/lib/directorios.ts`— y mismos campos de máquina; lo propio son los campos, y
+son **el modelo más complicado de los cuatro PRDs**. El motivo está en el § 3.1
+del PRD 3 y vale tenerlo escrito acá: los otros tres directorios describen **una
+cosa que existe en un lugar**, y una suscripción describe **una promesa a
+futuro**.
+
+Los campos viven en `src/types/suscripcion-literaria.ts` —el sufijo `-literaria`
+no es cosmético: `src/lib/suscripcion.ts` ya existe y es la página `/suscribirse`,
+la del calendario público— y la forma la hace cumplir `firestore.rules`, con los
+topes atados por `tests/suscripciones.test.ts`:
+
+| Campo | Qué es |
+|---|---|
+| `nombre`, `slug`, `descripcion` | el `slug` es **inmutable después de publicar** (trampa 10). La descripción es **obligatoria** acá y opcional en una librería: una promesa a futuro sin descripción no dice nada |
+| `imagenes[]` | el **mismo** tipo `Imagen` (D-125) |
+| `ofrecidaPor` | `{ nombre, tipo, instagram, libreriaSlug }`. El `libreriaSlug` enlaza con el PRD 2, y la ficha **solo lo linkea si esa librería está publicada** — el mismo criterio con el que una ficha de librería solo linkea el hub de barrio que existe |
+| `periodicidad`, `compromisoMinimo` | la primera es slug de `/opciones/periodicidad` con default `mensual` (§ 4.1 del PRD); el segundo es **texto libre**, y es un desvío chico del PRD escrito en el tipo: lo que necesita slug es un eje de filtro, y éste no lo es |
+| `incluye[]` + `incluyeOtro`, `extras[]` + `extrasOtro` | **dos vocabularios abiertos en el mismo documento**, y son distintos a propósito: «un libro por mes» es lo que incluye, «10% en el local» es un extra. Mezclarlos daría un desplegable de treinta opciones inservible |
+| `envio` | `{ manda, cuantos, tematica, editoriales, sorpresa }`. **Condicional de verdad** (§11): los cuatro últimos solo valen si `manda`, y tanto el armado como la proyección los vacían si no — el par flag + dato |
+| `precio` | ⚠️ `DatoConFecha<{ monto, porPeriodo }>` — **el único dato del proyecto que envejece a la vista**. Ver abajo |
+| `alcance[]` | slugs de `/opciones/alcance-envio`: a dónde llega |
+| `linkDeSuscripcion`, `instagram`, `whatsapp`, `mail` | los cuatro destinos **públicos**. El primero es un link a la página de cobro de un tercero (§ 7 del PRD) y admite `https:` **y solo `https:`** |
+| `contactoDeQuienCargo` | ⚠️ **interno**, como en `/librerias`. La whitelist de `src/lib/suscripcionPublica.ts` y el centinela de `tests/suscripcion-publica.test.ts` |
+| `estado`, `origen`, `revision`, `creadoEn`, `publicadaAlgunaVez` | el ciclo de vida, igual que en `/librerias` |
+
+### El precio, y por qué es un `DatoConFecha` y no tres campos — DEC-12
+
+El § 3 del PRD lo dibuja como `{ monto, porPeriodo, cargadoEn }`, y lo que se
+guarda es `DatoConFecha<{ monto, porPeriodo }>`. No es un capricho de forma: es lo
+que el § 6 del mismo PRD pide —«un solo mecanismo compartido, eso es B-837»— y lo
+que hace que las tres reglas se cumplan **por construcción** y no por disciplina:
+
+1. la proyección pública de un `DatoConFecha` es **la frase armada** («$18.000 por
+   mes · cargado el 24 de septiembre de 2026»), un solo string, así que **no hay
+   pantalla que pueda mostrar el monto sin su fecha** (D-570);
+2. de ahí se cae que no hay número que filtrar, ordenar ni meter en un `Offer`;
+3. y `pideRevision` avisa a los 60 días en el panel.
+
+La otra mitad la hace cumplir `firestore.rules`, y es la **única cláusula del
+archivo que defiende una afirmación del sitio y no un dato privado**: `cargadoEn`
+tiene que ser `request.time` o el que ya estaba, nunca uno elegido. Con una fecha
+elegible, la frase entera se fabrica desde el cliente.
+
+**Y esta colección tampoco tiene retención**, como `/librerias`: una ficha
+`rechazado` conserva el contacto del tercero, el `delete` del admin está abierto
+por eso, y está anotado junto con B-904.
+
 ## `incluye` — qué se llevan (B-830)
 
 `incluye: string[]`, slugs de `/opciones/incluye-actividad`. Pedido del dueño

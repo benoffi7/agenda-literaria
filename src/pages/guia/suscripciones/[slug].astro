@@ -1,0 +1,327 @@
+---
+/**
+ * `/guia/suscripciones/{slug}` — la ficha de una suscripción literaria. B-832,
+ * § 5 del PRD 3.
+ *
+ * ── Cero JavaScript, como la ficha de una librería ────────────────────────
+ * No hay islands: es HTML y CSS del build. Quien cae acá llega de Google o de un
+ * link, y tiene tres preguntas —qué me llega, cuánto sale y cómo me suscribo—.
+ *
+ * ── Esta plantilla no ve el documento (D-140) ─────────────────────────────
+ * `getStaticPaths` es `caminosDeSuscripcion` (`lib/contenidoDelSitio.ts`), que
+ * entrega **solo** una `FichaDeSuscripcion`: el view-model que
+ * `suscripcionPublica.ts` armó enumerando campo por campo. Acá no hay una
+ * `SuscripcionLiteraria`, así que **no se puede interpolar el
+ * `contactoDeQuienCargo`, ni el motivo del rechazo, ni el `storagePath` de una
+ * imagen, ni el precio como número**: no están en el objeto.
+ *
+ * Y los destinos llegan **ya como `href`** y ya saneados (`urlSegura`,
+ * `handleInstagram`): esta plantilla no concatena ningún texto ajeno adentro de
+ * un atributo.
+ *
+ * ── El precio, y las tres reglas de DEC-12 en una línea de JSX ────────────
+ * `ficha.precio` es **la frase entera** —«$18.000 por mes · cargado el 24 de
+ * septiembre de 2026»— o `''`. Acá no hay forma de pintar el monto sin la fecha:
+ * no llegan separados. Y no entra al marcado estructurado; eso lo decide
+ * `datosEstructuradosDeSuscripcion`, que tiene el motivo escrito al lado.
+ *
+ * ── El link de cobro de un tercero — § 7 del PRD ──────────────────────────
+ * La acción **nombra a quién le estás comprando** (criterio 9): el texto lo arma
+ * el view-model, no esta plantilla. Y va con `rel="noopener noreferrer"` y
+ * `target="_blank"`: el `noreferrer` es **de este link y de ninguno más** —B-786
+ * decidió a propósito que el de Cafecito no lo lleve, porque ahí borraría la
+ * única señal de que el aporte vino del sitio—. Los tres contactos de abajo
+ * llevan `noopener` como en la ficha de una librería.
+ *
+ * ── El marcado estructurado ───────────────────────────────────────────────
+ * `Product` con una `Offer` **sin precio**, más las migas. El porqué de cada
+ * decisión —por qué no es `BookStore`, por qué no es `Service`, y por qué el
+ * precio queda afuera— está en `datosEstructuradosDeSuscripcion`.
+ */
+import Base from '@/layouts/Base.astro';
+import { caminosDeSuscripcion } from '@/lib/contenidoDelSitio';
+import {
+  datosEstructuradosDeSuscripcion,
+  descripcionDeSuscripcion,
+  migasDeSuscripcion,
+  type FichaDeSuscripcion,
+} from '@/lib/suscripcionPublica';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_GUIA, RUTA_SUSCRIPCIONES } from '@/lib/rutasPublicas';
+import {
+  claseAfiche,
+  claseBotonPrimario,
+  claseEnlace,
+  claseRotulo,
+} from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+/*
+ * Envuelta y no aliaseada: Astro llama a `getStaticPaths` con un argumento propio
+ * (`{ paginate, rss }`) y con el alias ese objeto caería en el primer parámetro.
+ * Es la lección de B-237.
+ */
+export const getStaticPaths = () => caminosDeSuscripcion();
+
+interface Props {
+  ficha: FichaDeSuscripcion;
+}
+
+const { ficha } = Astro.props as Props;
+
+const jsonLd = datosEstructuradosDeSuscripcion(ficha);
+const migas = migasDeSuscripcion(ficha);
+
+const portada = ficha.imagenes[0] ?? null;
+const resto = ficha.imagenes.slice(1);
+
+/*
+ * La frase sale del módulo puro y **no se arma acá** — la lección de
+ * `descripcionDelMes` (salida 8) y de `descripcionDeLibreria`: una `meta
+ * description` interpolada dentro de un `.astro` es un productor de texto público
+ * que vitest no puede importar, o sea que no se puede barrer.
+ */
+const descripcion = descripcionDeSuscripcion(ficha);
+
+/**
+ * Los tres contactos, en el orden en que sirven. Se arma acá y no en el
+ * view-model porque es **presentación**; el módulo puro decide cuáles se publican
+ * y a dónde llevan.
+ *
+ * **El link de suscripción no está en esta lista**: es la acción de la ficha, no
+ * un canal de contacto, y lleva su propio `rel`.
+ */
+const contactos = [
+  { texto: 'WhatsApp', href: ficha.enlaces.whatsapp },
+  { texto: 'Instagram', href: ficha.enlaces.instagram },
+  { texto: 'Mail', href: ficha.enlaces.mail },
+].filter((c): c is { texto: string; href: string } => c.href !== null);
+
+/** Las dos listas de la ficha, con su texto libre pegado al final. */
+const incluye = [...ficha.incluye.filter(Boolean), ...(ficha.incluyeOtro ? [ficha.incluyeOtro] : [])];
+const extras = [...ficha.extras.filter(Boolean), ...(ficha.extrasOtro ? [ficha.extrasOtro] : [])];
+const alcance = ficha.alcance.filter(Boolean);
+
+/** Qué manda, en una frase, con los tres datos que puede haber. */
+const detalleDelEnvio = ficha.envio.manda
+  ? [
+      ficha.envio.cuantos
+        ? `${ficha.envio.cuantos} ${ficha.envio.cuantos === 1 ? 'libro' : 'libros'} por entrega`
+        : null,
+      ficha.envio.tematica ? `de ${ficha.envio.tematica}` : null,
+      ficha.envio.editoriales ? `· ${ficha.envio.editoriales}` : null,
+      ficha.envio.sorpresa === null ? null : ficha.envio.sorpresa ? '· es sorpresa' : '· se sabe de antemano',
+    ]
+      .filter(Boolean)
+      .join(' ')
+  : '';
+---
+
+<Base
+  seccion="guia"
+  titulo={`${ficha.nombre} — Suscripciones literarias — ${NOMBRE}`}
+  descripcion={descripcion}
+  imagen={portada?.url ?? null}
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
+      {' · '}
+      <a class={claseEnlace} href={RUTA_SUSCRIPCIONES}>Suscripciones</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">{ficha.nombre}</h1>
+
+    <p class={`${claseRotulo} mt-4`}>
+      {
+        ficha.ofrecidaPor.ruta ? (
+          <a class={claseEnlace} href={ficha.ofrecidaPor.ruta}>
+            {ficha.ofrecidaPor.nombre}
+          </a>
+        ) : (
+          ficha.ofrecidaPor.nombre
+        )
+      }
+      {ficha.ofrecidaPor.tipo ? ` · ${ficha.ofrecidaPor.tipo}` : ''}
+      {ficha.periodicidad ? ` · ${ficha.periodicidad}` : ''}
+    </p>
+
+    {
+      portada && (
+        <img
+          src={portada.url}
+          alt={`Foto de ${ficha.nombre}`}
+          width={portada.ancho ?? undefined}
+          height={portada.alto ?? undefined}
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          referrerpolicy="no-referrer"
+          class={`mt-8 ${claseAfiche}`}
+        />
+      )
+    }
+
+    {portada?.epigrafe && <p class="body-sm mt-2 text-suave">{portada.epigrafe}</p>}
+
+    {ficha.descripcion && (
+      <p class="body-lectura mt-8 max-w-[65ch] text-super">{ficha.descripcion}</p>
+    )}
+
+    {/*
+      **El precio con su fecha, o nada.** No hay forma de pintar uno sin el otro:
+      llegan pegados en un solo string (DEC-12, D-570).
+    */}
+    {
+      ficha.precio && (
+        <p class="body-md mt-6 text-tinta">
+          {ficha.precio}
+          {ficha.compromisoMinimo ? ` · ${ficha.compromisoMinimo}` : ''}
+        </p>
+      )
+    }
+    {!ficha.precio && ficha.compromisoMinimo && (
+      <p class="body-md mt-6 text-tinta">{ficha.compromisoMinimo}</p>
+    )}
+
+    {
+      incluye.length > 0 && (
+        <section class="regla-gruesa-arriba mt-10 pt-6">
+          <h2 class="headline-sm text-tinta">Qué incluye</h2>
+          <ul class="body-md mt-3 flex flex-col gap-1 text-super">
+            {incluye.map((i) => (
+              <li>{i}</li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      ficha.envio.manda && (
+        <section class="mt-8">
+          <h2 class="headline-sm text-tinta">Qué manda</h2>
+          <p class="body-md mt-3 text-super">{detalleDelEnvio || 'Manda libros.'}</p>
+        </section>
+      )
+    }
+
+    {
+      extras.length > 0 && (
+        <section class="mt-8">
+          <h2 class="headline-sm text-tinta">Extras</h2>
+          <ul class="body-md mt-3 flex flex-col gap-1 text-super">
+            {extras.map((e) => (
+              <li>{e}</li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      alcance.length > 0 && (
+        <section class="mt-8">
+          <h2 class="headline-sm text-tinta">A dónde llega</h2>
+          <p class="body-md mt-3 text-super">{alcance.join(' · ')}</p>
+        </section>
+      )
+    }
+
+    {
+      /*
+        **La acción, y dice a dónde va** — § 7 y criterio 9. El texto lo arma el
+        view-model («Suscribite en la página de …»), no esta plantilla: un botón
+        que dijera «Suscribite» a secas se leería como que el proyecto respalda
+        ese cobro.
+
+        `noreferrer` **solo acá**: de una suscripción no ganamos ninguna señal que
+        valga la pena conservar, al revés que en el link de Cafecito (B-786).
+      */
+      ficha.accion && (
+        <p class="mt-10">
+          <a
+            class={claseBotonPrimario}
+            href={ficha.accion.href}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {ficha.accion.texto}
+          </a>
+        </p>
+      )
+    }
+
+    {
+      contactos.length > 0 && (
+        <section class="mt-10">
+          <h2 class="headline-sm text-tinta">Cómo contactarla</h2>
+          <ul class="mt-3 flex flex-col gap-2">
+            {contactos.map((c) => (
+              <li>
+                {/*
+                  `rel="noopener"` y `target="_blank"`: son destinos de afuera, y
+                  el `mailto:` no abre pestaña pero tampoco molesta. El `href` ya
+                  vino saneado del view-model. **Sin `noreferrer`**: estos tres no
+                  son el link de cobro, y aplicar `noreferrer` parejo a todo link
+                  externo revertiría la decisión de B-786 sin decirlo.
+                */}
+                <a class={claseEnlace} href={c.href} rel="noopener" target="_blank">
+                  {c.texto}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      resto.length > 0 && (
+        <section class="mt-10">
+          <h2 class="headline-sm text-tinta">Fotos</h2>
+          <div class="mt-4 flex flex-col gap-6">
+            {resto.map((i) => (
+              <figure>
+                <img
+                  src={i.url}
+                  alt={`Foto de ${ficha.nombre}`}
+                  width={i.ancho ?? undefined}
+                  height={i.alto ?? undefined}
+                  loading="lazy"
+                  decoding="async"
+                  referrerpolicy="no-referrer"
+                  class={claseAfiche}
+                />
+                {i.epigrafe && (
+                  <figcaption class="body-sm mt-2 text-suave">{i.epigrafe}</figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    <p class="body-sm mt-12 text-super">
+      <a class={claseEnlace} href={RUTA_SUSCRIPCIONES}>← Todas las suscripciones</a>
+    </p>
+
+    {/*
+      `Product` + `Offer` (sin precio) y las migas. El `replace` de `<` es la misma
+      guarda que el resto: `JSON.stringify` escapa comillas y barras invertidas,
+      **no** un `</script>` adentro de un string.
+    */}
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')}
+    />
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(migas).replace(/</g, '\\u003c')}
+    />
+  </main>
+</Base>

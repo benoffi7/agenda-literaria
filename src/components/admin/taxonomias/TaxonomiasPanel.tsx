@@ -37,6 +37,15 @@ const TITULO: Record<CampoTaxonomia, string> = {
   plataforma: 'Plataformas',
   tags: 'Etiquetas',
   'incluye-actividad': 'Qué se llevan',
+  // B-832 — los seis de las suscripciones literarias. El título dice **de qué
+  // pantalla son**, porque esta lista ya no es solo de actividades y quien la
+  // administra tiene que poder ubicar cada vocabulario sin abrirlo.
+  periodicidad: 'Suscripciones · cada cuánto',
+  'tipo-oferente': 'Suscripciones · quién la ofrece',
+  'perfil-editorial': 'Suscripciones · qué editoriales',
+  'incluye-suscripcion': 'Suscripciones · qué incluye',
+  'extras-suscripcion': 'Suscripciones · extras',
+  'alcance-envio': 'Suscripciones · a dónde llega',
 };
 
 const DONDE: Record<CampoTaxonomia, string> = {
@@ -47,6 +56,14 @@ const DONDE: Record<CampoTaxonomia, string> = {
   tags: 'Se escriben en «Opcional». Son los filtros del sitio público.',
   'incluye-actividad':
     'Se elige en «Qué es». Sale en la página de la actividad; no es filtro ni va al calendario.',
+  periodicidad:
+    'Se elige al cargar una suscripción, y arranca en «Mensual». Es uno de los filtros de la Guía.',
+  'tipo-oferente': 'Se elige al cargar una suscripción: quién la ofrece. No es filtro.',
+  'perfil-editorial':
+    'Se elige al cargar una suscripción que manda libros. Es uno de los filtros de la Guía.',
+  'incluye-suscripcion': 'Qué te llega con la suscripción. Sale en la ficha; no es filtro.',
+  'extras-suscripcion': 'Qué te llega además. Sale en la ficha; no es filtro.',
+  'alcance-envio': 'A dónde llega la suscripción. Es uno de los filtros de la Guía.',
 };
 
 /**

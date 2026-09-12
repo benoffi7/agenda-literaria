@@ -76,6 +76,7 @@ import {
   rutaDeDetalle,
   rutaDeLibreria,
   rutaDeMes,
+  rutaDeSuscripcion,
   urlAbsoluta,
 } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
@@ -319,6 +320,18 @@ export interface EntradaDelSitio {
    */
   librerias?: readonly { slug: string }[];
   /**
+   * Las fichas del segundo directorio — B-832. Mismo trato y mismo motivo que
+   * `librerias`: una lista de slugs, opcional, y la ruta la produce
+   * `rutaDeSuscripcion`.
+   *
+   * **Son dos campos y no uno genérico** (`fichas: { directorio, slug }[]`), y es
+   * deliberado: con uno genérico, quien arme la lista elige el prefijo, que es
+   * justo lo que B-330 sacó de las manos de los llamadores. Acá el tipo obliga a
+   * usar el constructor correcto, y el cuarto directorio agrega su campo igual
+   * que éste — tres líneas visibles en el diff.
+   */
+  suscripciones?: readonly { slug: string }[];
+  /**
    * Las opciones de taxonomía del índice, **para los hubs** — B-108.
    *
    * Las necesita `hubsOfrecidos` por dos motivos: para saber qué slugs existen y
@@ -356,6 +369,7 @@ export const rutasDelSitemap = ({
   canceladas,
   opciones = {},
   librerias = [],
+  suscripciones = [],
   ahora,
 }: EntradaDelSitio): string[] => [
   ...new Set([
@@ -394,6 +408,10 @@ export const rutasDelSitemap = ({
      * `getStaticPaths` no generó.
      */
     ...librerias.filter((l) => l.slug).map((l) => rutaDeLibreria(l.slug)),
+    // **Las fichas de suscripción** — B-832, exactamente lo mismo una colección
+    // más abajo. El listado `/guia/suscripciones/` entra arriba por
+    // `directoriosDisponibles()` en cuanto la fila deja de decir «en camino».
+    ...suscripciones.filter((s) => s.slug).map((s) => rutaDeSuscripcion(s.slug)),
   ]),
 ];
 

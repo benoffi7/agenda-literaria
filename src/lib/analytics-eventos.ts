@@ -304,6 +304,23 @@ export const FUNCIONES = [
    */
   'librerias-abrir',
   'libreria-guardar',
+  /**
+   * B-832 — la Guía, segunda entidad: `/guia/suscripciones`.
+   *
+   * El mismo par que el de librerías y por el mismo motivo: el riesgo que este
+   * tipo de pantalla acepta es que **nadie la mire**, y el § 10 del PRD 3 lo
+   * nombra como el contra de esta sección —«es el directorio con menos oferta y
+   * más trabajo»—. `suscripciones-abrir` lleva cuántas esperaban decisión al
+   * abrir; `suscripcion-guardar` cuenta las que se cargan de verdad por la
+   * tercera puerta, que hoy es la única abierta.
+   *
+   * Ninguno lleva `detalle`: el nombre, **el precio** y el contacto son
+   * contenido, y el último es de un tercero (§9). El precio además no sale a
+   * ninguna salida como número (DEC-12), así que mandarlo a GA4 sería abrirle
+   * una puerta lateral.
+   */
+  'suscripciones-abrir',
+  'suscripcion-guardar',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

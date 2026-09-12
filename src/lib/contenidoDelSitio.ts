@@ -77,9 +77,22 @@ import {
   type IndiceDeLibrerias,
   type LibreriaPublica,
 } from '@/lib/libreriaPublica';
+// B-832 — misma regla que arriba: la proyección de una suscripción es **por
+// entidad**, una whitelist escrita a mano. Ver `lib/suscripcionPublica.ts`.
+import {
+  EJES_DE_SUSCRIPCION,
+  construirIndiceDeSuscripciones,
+  fichaDeSuscripcion,
+  suscripcionPublica,
+  type EjeDeSuscripcion,
+  type FichaDeSuscripcion,
+  type IndiceDeSuscripciones,
+  type SuscripcionPublica,
+} from '@/lib/suscripcionPublica';
 import { ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA } from '@/lib/directorios';
 import { esSlugDeFicha } from '@/lib/rutasPublicas';
 import type { Libreria } from '@/types/libreria';
+import type { SuscripcionLiteraria } from '@/types/suscripcion-literaria';
 import { INFO_VERSION } from '@/lib/version';
 // B-285 — la marca de «estuvo publicada alguna vez», y la pregunta escrita en un
 // solo lugar. `marcadaComoPublicada` es la versión ESTRICTA (`=== true`): acá
@@ -189,6 +202,15 @@ export interface ContenidoDelSitio {
    * ninguna lista del sitio puede confundirlas porque no las recibe juntas.
    */
   librerias: LibreriaPublica[];
+  /**
+   * **Las suscripciones literarias publicadas, ya proyectadas** — B-832.
+   *
+   * Tercera colección y mismo trato que las dos anteriores: su propia query, su
+   * propio campo, su propia proyección. Que estén al lado y no mezcladas es lo
+   * que hace que el listado de librerías no pueda mostrar una suscripción aunque
+   * alguien se olvide de filtrar — no la recibe.
+   */
+  suscripciones: SuscripcionPublica[];
 }
 
 /**
@@ -439,6 +461,74 @@ const libreriasPublicadas = async (): Promise<LibreriaPublica[]> => {
     .filter((l) => esSlugDeFicha(l.slug));
 };
 
+/**
+ * Los campos que la query de suscripciones pide, que son **exactamente** los que
+ * `suscripcionPublica()` publica (`lib/suscripcionPublica.ts`).
+ *
+ * Mismo criterio que `CAMPOS_DE_LA_PROYECCION`: es una decisión de la **lectura**
+ * y no de la whitelist, y lo que no puede es separarse de ella —
+ * `tests/suscripciones.test.ts` compara las dos listas—.
+ *
+ * **`precio` está acá con el nombre del documento**, y ahí hay una asimetría que
+ * conviene tener escrita: en la proyección `precio` es la **frase** y en el
+ * documento es el mapa `{ valor, cargadoEn }`. La lista es la misma porque
+ * `.select()` pide **campos del documento** y el nombre coincide; si algún día la
+ * frase se llamara distinto de su campo de origen, esta lista deja de poder
+ * derivarse del tipo y hay que decirlo acá.
+ */
+const CAMPOS_DE_LA_PROYECCION_SUSCRIPCION = [
+  'slug',
+  'nombre',
+  'descripcion',
+  'imagenes',
+  'ofrecidaPor',
+  'periodicidad',
+  'compromisoMinimo',
+  'incluye',
+  'incluyeOtro',
+  'envio',
+  'extras',
+  'extrasOtro',
+  'precio',
+  'alcance',
+  'linkDeSuscripcion',
+  'instagram',
+  'whatsapp',
+  'mail',
+  'searchText',
+] as const;
+
+/**
+ * **Las suscripciones literarias publicadas** — B-832.
+ *
+ * Es la misma función que `libreriasPublicadas` con otra colección, y tiene el
+ * mismo docblock por detrás: el `where` es la **primera de las nueve cosas que se
+ * rompen en silencio** (`prd/05-inventario-de-archivos.md` § 6) y el `.select()`
+ * es su otra mitad (D-159) — aquél decide qué documentos se leen, éste qué campos
+ * de cada uno. Sin el segundo, el `contactoDeQuienCargo` de quien pidió el alta y
+ * el motivo del rechazo entran igual a la memoria del runner de CI aunque la
+ * proyección los descarte tres líneas después.
+ *
+ * `ESTADO_PUBLICO` sale de `lib/directorios.ts` y no del literal `'publicado'`:
+ * es la misma constante que usa la lectura de librerías, y
+ * `tests/suscripciones.test.ts` lo afirma leyendo este archivo.
+ *
+ * El descarte del slug raro (`esSlugDeFicha`) también: la colección va a poder
+ * recibir altas de cualquiera, así que no hay garantía de que el slug haya pasado
+ * por `slugDeFicha`, y un solo documento raro no puede apagar el build entero.
+ */
+const suscripcionesPublicadas = async (): Promise<SuscripcionPublica[]> => {
+  const snap = await adminDb()
+    .collection('suscripciones')
+    .where('estado', '==', ESTADO_PUBLICO_DE_FICHA)
+    .select(...CAMPOS_DE_LA_PROYECCION_SUSCRIPCION)
+    .get();
+
+  return snap.docs
+    .map((d) => suscripcionPublica(d.data() as SuscripcionLiteraria))
+    .filter((s) => esSlugDeFicha(s.slug));
+};
+
 /** Los cinco documentos de `/opciones/*`, en una sola ida (§4.1). */
 const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, ValorOpcion[]>>> => {
   const refs = CAMPOS_TAXONOMIA.map((c) => adminDb().doc(`opciones/${c}`));
@@ -452,12 +542,14 @@ const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, Val
 
 const leer = async (): Promise<ContenidoDelSitio> => {
   if (hayCredenciales()) {
-    const [publicadasConPagina, canceladasConPagina, opciones, librerias] = await Promise.all([
-      publicadas(),
-      canceladas(),
-      opcionesDeTaxonomia(),
-      libreriasPublicadas(),
-    ]);
+    const [publicadasConPagina, canceladasConPagina, opciones, librerias, suscripciones] =
+      await Promise.all([
+        publicadas(),
+        canceladas(),
+        opcionesDeTaxonomia(),
+        libreriasPublicadas(),
+        suscripcionesPublicadas(),
+      ]);
     return {
       actividades: publicadasConPagina.actividades,
       publicadasEditadasEn: publicadasConPagina.editadasEn,
@@ -465,6 +557,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       canceladasEditadasEn: canceladasConPagina.editadasEn,
       opciones,
       librerias,
+      suscripciones,
     };
   }
 
@@ -496,6 +589,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     canceladasEditadasEn: {},
     opciones: {},
     librerias: [],
+    suscripciones: [],
   };
 };
 
@@ -792,6 +886,113 @@ export const caminosDeLibreria = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeLibreria } }[]
 > => {
   const fichas = await fichasDeLibreria();
+  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Las suscripciones literarias — B-832, tajada 3
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * `/suscripciones.json` — el índice que el listado de `/guia/suscripciones`
+ * filtra en memoria (§2.5 y § 5 del PRD 3).
+ *
+ * **Cero lecturas nuevas de Firestore**: sale del mismo `contenidoDelSitio()`
+ * memoizado que el `events.json`, las páginas de detalle, el sitemap y el índice
+ * de librerías. Van seis artefactos con una sola lectura.
+ *
+ * Los vocabularios salen de las opciones **sin filtrar por aprobación** y se
+ * recortan después a los valores que alguna ficha usa, que es la misma asimetría
+ * de D-30 en su lado correcto: acá se **resuelve** el valor que la suscripción ya
+ * tiene guardado, no se ofrece la taxonomía entera. Lo que impide publicar
+ * vocabulario sin validar es el recorte por uso, no el filtro de aprobación.
+ */
+export const indiceDeSuscripciones = async (): Promise<IndiceDeSuscripciones> => {
+  const { suscripciones, opciones } = await contenidoDelSitio();
+  return construirIndiceDeSuscripciones({
+    suscripciones,
+    vocabularios: Object.fromEntries(
+      EJES_DE_SUSCRIPCION.map((eje) => [eje, opciones[eje] ?? []]),
+    ) as Partial<Record<EjeDeSuscripcion, ValorOpcion[]>>,
+    version: INFO_VERSION.version,
+    generadoEn: INFO_VERSION.generadoEn,
+  });
+};
+
+/**
+ * Todo lo que `/guia/suscripciones` necesita, y **nada más** — el view-model del
+ * listado (D-140).
+ *
+ * La plantilla no ve el índice ni el documento: recibe las fichas ya armadas más
+ * los chips de cada eje.
+ */
+export interface VistaDeSuscripciones {
+  fichas: FichaDeSuscripcion[];
+  /** Los chips de los tres ejes con vocabulario, en el orden de la taxonomía. */
+  filtros: Record<EjeDeSuscripcion, { slug: string; label: string }[]>;
+  version: string;
+}
+
+/**
+ * Las fichas del directorio, ya resueltas: las etiquetas de los seis
+ * vocabularios y —solo si esa librería está publicada— el link a su ficha.
+ *
+ * ── Por qué la librería se consulta y no se asume ────────────────────────
+ * Es el mismo caso que el hub de barrio en la ficha de una librería: `ofrecidaPor.libreriaSlug`
+ * apunta a `/guia/librerias/{slug}`, que existe **solo si esa librería está
+ * publicada**. Linkear a ciegas publicaría un 404 en cada suscripción cuya
+ * librería todavía espera decisión, o que se dio de baja del sitio. Y la lista de
+ * publicadas la tiene el build, no la ficha.
+ *
+ * Las etiquetas salen de `etiquetasDelDetalle()` —sin filtrar por aprobación—
+ * por lo mismo que allá: se **resuelve** el slug guardado, no se ofrece un chip
+ * (D-30).
+ */
+const fichasDeSuscripcion = async (): Promise<FichaDeSuscripcion[]> => {
+  const { suscripciones, librerias } = await contenidoDelSitio();
+  const etiquetas = await etiquetasDelDetalle();
+  const libreriasPublicadas = new Set(librerias.map((l) => l.slug));
+
+  return suscripciones.map((s) =>
+    fichaDeSuscripcion(s, {
+      etiqueta: (campo, slug) => etiquetas[campo]?.[slug],
+      libreriasPublicadas,
+    }),
+  );
+};
+
+/** El listado: las fichas ordenadas por nombre y los chips de los tres ejes. */
+export const vistaDeSuscripciones = async (): Promise<VistaDeSuscripciones> => {
+  const [fichas, indice] = await Promise.all([fichasDeSuscripcion(), indiceDeSuscripciones()]);
+  const porSlug = new Map(fichas.map((f) => [f.slug, f]));
+  return {
+    // El orden lo decide el índice —el mismo que va a ver la island después de
+    // hidratar—: con dos ordenamientos, la lista saltaría al cargar el JSON.
+    fichas: indice.suscripciones.map((s) => porSlug.get(s.slug)!).filter(Boolean),
+    filtros: Object.fromEntries(
+      EJES_DE_SUSCRIPCION.map((eje) => [
+        eje,
+        indice.filtros[eje].map((v) => ({ slug: v.slug, label: v.label })),
+      ]),
+    ) as Record<EjeDeSuscripcion, { slug: string; label: string }[]>,
+    version: indice.version,
+  };
+};
+
+/**
+ * Los caminos de `/guia/suscripciones/[slug]`, uno por suscripción publicada.
+ *
+ * Vive acá y no adentro del `.astro` por lo mismo que `caminosDeDetalle` y
+ * `caminosDeLibreria`: un `.astro` no se importa desde vitest, así que un
+ * `getStaticPaths` escrito en la plantilla es código sin forma de probarse.
+ *
+ * `props` lleva **solo el view-model**: la plantilla no recibe el documento, así
+ * que no puede publicar el `contactoDeQuienCargo` ni aunque quiera.
+ */
+export const caminosDeSuscripcion = async (): Promise<
+  { params: { slug: string }; props: { ficha: FichaDeSuscripcion } }[]
+> => {
+  const fichas = await fichasDeSuscripcion();
   return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
 };
 
@@ -1101,7 +1302,7 @@ export const sitemapDelSitio = async (
   ahora?: unknown,
 ): Promise<{ rutas: string[]; lastmod: Record<string, string> }> => {
   const indice = await indiceDelSitio();
-  const { canceladas, canceladasEditadasEn, publicadasEditadasEn, librerias } =
+  const { canceladas, canceladasEditadasEn, publicadasEditadasEn, librerias, suscripciones } =
     await contenidoDelSitio();
   const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
 
@@ -1111,6 +1312,10 @@ export const sitemapDelSitio = async (
     // `where('estado','==','publicado')`, así que una pendiente no puede llegar
     // acá aunque alguien se olvide de filtrar en otro lado: no está en la lista.
     librerias: librerias.map((l) => ({ slug: l.slug })),
+    // B-832 — las fichas del segundo directorio, por el mismo camino y con la
+    // misma garantía: salen de la lectura filtrada, así que una pendiente no
+    // puede llegar acá aunque alguien se olvide de filtrar en otro lado.
+    suscripciones: suscripciones.map((s) => ({ slug: s.slug })),
     canceladas: canceladas.map((a) => ({
       slug: a.slug,
       editadaEn: canceladasEditadasEn[a.slug] ?? null,

@@ -972,6 +972,35 @@ pidió el alta, que no sale nunca.
 Mientras la ficha espera decisión se puede corregir —es el trabajo de la
 bandeja—; después el campo se apaga y explica por qué.
 
+### Suscripciones literarias — el segundo directorio de la Guía (B-832)
+
+Botón «Suscripciones» en el listado, al lado de «Librerías» y **solo para el
+admin**, por los mismos tres motivos. La pantalla es otra vez la bandeja genérica
+con los datos de esta entidad, y eso es lo que el paso 12 quería probar: sumar un
+directorio es un archivo de pantalla y su formulario.
+
+**Lo propio de esta pantalla es el precio.** El formulario pide el monto y a qué
+período corresponde, y **no tiene campo de fecha**: la fecha la pone quien guarda,
+con el reloj del servidor, y se mueve **solo si el número o el período cambiaron**
+—corregir una coma de la descripción no la toca—. En la bandeja, cada ficha
+muestra el precio como se va a publicar («$18.000 por mes · cargado el 24 de
+septiembre») y, a los **60 días**, un aviso de que conviene revisarlo. Es la
+tercera regla de DEC-12, con el patrón del badge de pendientes: un número al lado
+de la ficha, no un mail.
+
+El resto del formulario es el modelo más largo de los tres directorios: quién la
+ofrece —con la dirección web de su librería, si es una de la Guía—, cada cuánto
+llega, qué incluye, los extras, a dónde llega, la galería y los cuatro destinos
+públicos. **«Manda libros» es un condicional de verdad** (§11): si no está
+marcado, los cuatro campos del envío no se muestran **ni se guardan**, y si
+quedaron cargados el formulario avisa en vez de dejar la ficha diciendo dos cosas
+a la vez.
+
+El link para suscribirse lleva a **la página de cobro de otra persona**, así que
+tiene que empezar con `https://` —la regla lo exige, no solo el formulario— y la
+ficha lo publica diciendo a dónde va: «Suscribite en la página de …». Un botón que
+dijera «Suscribite» a secas se lee como que el proyecto respalda ese cobro.
+
 ### Proponer una actividad — `/proponer` (B-830, paso 9)
 
 El único formulario del sitio público, y la única página que escribe en Firestore
@@ -1913,6 +1942,31 @@ no se piden horarios, y un horario inventado es peor que ninguno.
 El listado no tiene imágenes, por lo mismo que el de la agenda: lo que se recorre
 en un directorio es el nombre y el barrio, y una tira de fotos lo convierte en una
 pared —que es `/cartelera`, la página de al lado—.
+
+### `/guia/suscripciones` y `/guia/suscripciones/{slug}` — el directorio de suscripciones (B-832)
+
+La segunda sección de la Guía, calcada de la de librerías: el listado imprime
+todas las fichas publicadas en el HTML del build y una island hace **un solo
+fetch** de `/suscripciones.json` para filtrar en memoria, con el mismo componente
+de fila y sin parpadeo.
+
+**Cuatro filtros y en este orden**, que es el del § 5 del PRD: «¿manda libros?»
+—que parte el catálogo en dos mundos y es el único que no sale de una taxonomía,
+porque es un booleano—, editoriales, alcance y periodicidad. **Sin filtro de
+precio y sin orden por precio**, y eso no se sostiene con disciplina: la ficha
+pública trae el precio como **una frase** y no como número, así que no hay nada
+que comparar (DEC-12, D-570). Comparar dos precios afirma que son comparables, y
+no lo son si uno tiene una semana y otro cuatro meses.
+
+**La ficha** es HTML sin JavaScript: qué incluye, qué manda —cuántos libros, de
+qué tema, de qué editoriales, si es sorpresa—, los extras, a dónde llega, el
+precio con su fecha de carga pegada, la acción que nombra a quién le estás
+comprando, los tres contactos y la galería completa. Si la ofrece una librería que
+ya está en la Guía, la enlaza — **solo si esa librería está publicada**, por lo
+mismo que la ficha de una librería solo linkea el hub de barrio que existe.
+
+El marcado estructurado es `Product` + `Offer` + `BreadcrumbList`, y el `Offer`
+**no lleva el precio**: ver [D-670](06-decisiones.md).
 
 ### `/mis-favoritos` — lo que cada persona guardó (B-848)
 

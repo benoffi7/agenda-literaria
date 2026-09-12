@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'guia-de-suscripciones',
+    fecha: '2026-09-11',
+    version: '1.10.0',
+    titulo: 'La Guía tiene su segunda sección: suscripciones literarias',
+    detalle:
+      'Las cajas y clubes por abono: qué incluye cada uno, cada cuánto llega y a dónde envía. ' +
+      'Se cargan como las librerías —guardar no publica— y tienen algo propio: el precio se ' +
+      'publica con la fecha en que lo cargaste al lado, porque uno de hace tres meses ya no es ' +
+      'cierto. Si cambiás el número, la fecha se actualiza sola.',
+    donde: 'El botón «Suscripciones» del listado. En el sitio, la pestaña «Guía».',
+  },
+  {
     id: 'guia-de-librerias',
     fecha: '2026-09-11',
     version: '1.10.0',

@@ -226,6 +226,16 @@ export function useTodasLasOpciones(): {
   const plataforma = useOpciones('plataforma');
   const tags = useOpciones('tags');
   const incluye = useOpciones('incluye-actividad');
+  // B-832 — los seis de las suscripciones literarias. Van acá porque esta
+  // pantalla las **administra**, y administrarlas incluye las que no son de una
+  // actividad. Con `registroDeOpciones` no duplican listeners, pero sí los abren:
+  // ver el docblock de `usePendientesDeAprobacion` sobre cuánto crece la cuenta.
+  const periodicidad = useOpciones('periodicidad');
+  const tipoOferente = useOpciones('tipo-oferente');
+  const perfilEditorial = useOpciones('perfil-editorial');
+  const incluyeSuscripcion = useOpciones('incluye-suscripcion');
+  const extrasSuscripcion = useOpciones('extras-suscripcion');
+  const alcanceEnvio = useOpciones('alcance-envio');
 
   return useMemo(
     () => ({
@@ -236,6 +246,12 @@ export function useTodasLasOpciones(): {
         plataforma: plataforma.valores,
         tags: tags.valores,
         'incluye-actividad': incluye.valores,
+        periodicidad: periodicidad.valores,
+        'tipo-oferente': tipoOferente.valores,
+        'perfil-editorial': perfilEditorial.valores,
+        'incluye-suscripcion': incluyeSuscripcion.valores,
+        'extras-suscripcion': extrasSuscripcion.valores,
+        'alcance-envio': alcanceEnvio.valores,
       },
       cargando:
         arancel.cargando ||
@@ -243,9 +259,28 @@ export function useTodasLasOpciones(): {
         barrio.cargando ||
         plataforma.cargando ||
         tags.cargando ||
-        incluye.cargando,
+        incluye.cargando ||
+        periodicidad.cargando ||
+        tipoOferente.cargando ||
+        perfilEditorial.cargando ||
+        incluyeSuscripcion.cargando ||
+        extrasSuscripcion.cargando ||
+        alcanceEnvio.cargando,
     }),
-    [arancel, tipo, barrio, plataforma, tags, incluye],
+    [
+      arancel,
+      tipo,
+      barrio,
+      plataforma,
+      tags,
+      incluye,
+      periodicidad,
+      tipoOferente,
+      perfilEditorial,
+      incluyeSuscripcion,
+      extrasSuscripcion,
+      alcanceEnvio,
+    ],
   );
 }
 

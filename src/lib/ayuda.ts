@@ -856,6 +856,77 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'suscripciones',
+    titulo: 'Las suscripciones literarias de la Guía',
+    paraQue:
+      'Cargar y revisar el directorio de suscripciones —las cajas y clubes por abono— y entender ' +
+      'qué pasa con el precio, que es lo único del sitio que envejece solo.',
+    puntos: [
+      {
+        texto:
+          'Es la segunda sección de la Guía, al lado de las librerías, y funciona igual: se carga ' +
+          'desde el botón «Suscripciones» del listado, guardar no publica, y la ficha espera ' +
+          'decisión hasta que toques «Publicar».',
+      },
+      {
+        texto:
+          'El precio es opcional, y si lo cargás se publica siempre con la fecha en que lo ' +
+          'cargaste al lado: «$18.000 por mes · cargado el 24 de septiembre». No hay forma de ' +
+          'mostrar uno sin la otra, y es a propósito: un precio de hace tres meses en este país ' +
+          'ya no es cierto, y la fecha es lo que deja que quien lee decida si le cree.',
+      },
+      {
+        texto:
+          'Esa fecha se mueve sola cuando cambiás el número o el período, y no se mueve ' +
+          'cuando corregís cualquier otra cosa de la ficha. Si se moviera al corregir una coma, ' +
+          'el sitio estaría diciendo que el precio es más fresco de lo que es.',
+      },
+      {
+        texto:
+          'Por lo mismo, en el sitio no se puede filtrar ni ordenar por precio, y el precio ' +
+          'tampoco viaja al dato que lee Google para mostrar la ficha en los resultados. ' +
+          'Comparar dos precios es afirmar que son comparables, y no lo son si uno tiene una ' +
+          'semana y el otro cuatro meses.',
+      },
+      {
+        texto:
+          'A los sesenta días de cargado, el panel te avisa al lado de la ficha que conviene ' +
+          'revisarlo. No es un error: es que el número ya tiene edad suficiente como para ' +
+          'mirarlo antes de dejarlo publicado.',
+      },
+      {
+        texto:
+          '«Manda libros» parte el catálogo en dos: si lo marcás aparecen los datos del envío ' +
+          '—cuántos, de qué tema, de qué editoriales y si es sorpresa—, y si no lo marcás esos ' +
+          'datos no se guardan ni se muestran. No dejes cargado lo que ya no manda: la ficha ' +
+          'diría que envía novela negra algo que no envía nada.',
+      },
+      {
+        texto:
+          'El link para suscribirse lleva a la página de cobro de otra persona, así que la ficha ' +
+          'lo dice con esas palabras: «Suscribite en la página de …». No decimos «Suscribite» a ' +
+          'secas, porque eso se lee como que el proyecto respalda ese cobro, y no lo hace.',
+      },
+      {
+        texto:
+          'Si la ofrece una librería que ya está en la Guía, poné su dirección web en el campo ' +
+          'de la librería: la ficha las enlaza, pero solo si esa librería está publicada. Si ' +
+          'está esperando decisión, el enlace no aparece en vez de llevar a una página que no existe.',
+      },
+      {
+        texto:
+          'El WhatsApp, el Instagram y el mail de la suscripción se publican: son para que la ' +
+          'gente escriba. El contacto del recuadro «Interno» es otra cosa: es por dónde ' +
+          'repreguntarle a quien pidió el alta, y no sale nunca al sitio.',
+      },
+      {
+        texto:
+          'La dirección web queda fija desde la primera vez que se publica, igual que en las ' +
+          'librerías: después ese enlace ya está en Google y cambiarlo lo rompe sin avisar.',
+      },
+    ],
+  },
+  {
     id: 'propuestas',
     titulo: 'Las propuestas que llegan de afuera',
     paraQue:
@@ -1951,6 +2022,10 @@ export const CAPITULO_POR_CONTEXTO = {
   // actividad**, así que abrir la ayuda en «Cómo llega una actividad a la gente»
   // sería mandar a leer lo que no se está mirando (era B-795 con otra cara).
   librerias: 'librerias',
+  // B-832 — la segunda pantalla de la Guía. Mismo motivo que la de librerías:
+  // abrir la ayuda en «Cómo llega una actividad a la gente» sería mandar a leer
+  // lo que no se está mirando (era B-795 con otra cara).
+  suscripciones: 'suscripciones',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;

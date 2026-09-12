@@ -22,7 +22,20 @@ import { CAMPOS_MULTIVALOR, type CampoMultivalor } from '@/types/actividad';
  * Las dos listas juntas tienen que dar `CAMPOS_TAXONOMIA`: lo fija
  * `tests/taxonomia.test.ts`, para que una taxonomía nueva no quede sin buffer.
  */
-export type CampoLabelUnico = 'arancel' | 'tipo' | 'barrio' | 'plataforma';
+export type CampoLabelUnico =
+  | 'arancel'
+  | 'tipo'
+  | 'barrio'
+  | 'plataforma'
+  // B-832 — los tres campos de **un solo slug** de una suscripción literaria. No
+  // los usa el formulario de actividad (viven en `SuscripcionFormulario`), y
+  // están acá igual porque lo que esta lista cubre es **la taxonomía**, no el
+  // formulario: `tests/taxonomia.test.ts` exige que entre las dos familias estén
+  // todas las de `CAMPOS_TAXONOMIA`, para que ninguna se quede sin buffer de
+  // etiquetas nuevas.
+  | 'periodicidad'
+  | 'tipo-oferente'
+  | 'perfil-editorial';
 
 /**
  * El buffer de las taxonomías **multivalor**: `campo → slug → label`.

@@ -37,7 +37,23 @@ export const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tag
  * archivo, con su motivo. Es la mitad que hace que la lista de arriba se pueda
  * atar sin exigir que sea idéntica.
  */
-export const TAXONOMIAS_FUERA_DEL_EVENTO = ['incluye-actividad'];
+export const TAXONOMIAS_FUERA_DEL_EVENTO = [
+  'incluye-actividad',
+  /*
+   * **Los seis de las suscripciones literarias** (B-832), y acá el motivo es más
+   * fuerte que en el caso de `incluye-actividad`: aquélla es un campo de una
+   * actividad que el evento decidió no mostrar; éstas son de **otra colección**.
+   * Una suscripción no tiene encuentros, así que no hay evento de Calendar donde
+   * pudieran aparecer — pedir sus etiquetas sería una lectura más de Firestore en
+   * cada invocación del sync para un dato que `construirDescripcion` no mira.
+   */
+  'periodicidad',
+  'tipo-oferente',
+  'perfil-editorial',
+  'incluye-suscripcion',
+  'extras-suscripcion',
+  'alcance-envio',
+];
 
 /**
  * Caché por instancia: son 5 documentos que cambian muy de vez en cuando y la

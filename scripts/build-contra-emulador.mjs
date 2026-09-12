@@ -165,6 +165,18 @@ const SLUG_GALERIA = `${PREFIJO}galeria`;
  * El slug lleva el prefijo del gate, así que es un slug válido (`esSlugDeFicha`) y
  * a la vez imposible de confundir con una librería de verdad.
  */
+/**
+ * **Las dos suscripciones del gate** — B-832. Mismo par y mismo motivo que el de
+ * librerías, más una cosa que ninguna otra colección tiene: la publicada lleva un
+ * **precio**, así que el `dist/` es donde se puede verificar que salió con su
+ * fecha pegada y no como número suelto (DEC-12). Eso ningún unitario lo ve: el
+ * barrido mira la función pura, y acá se mira lo que quedó escrito en el archivo.
+ */
+const ID_SUSCRIPCION = `${PREFIJO}suscripcion`;
+const ID_SUSCRIPCION_PENDIENTE = `${PREFIJO}suscripcion-pendiente`;
+const SLUG_SUSCRIPCION = `${PREFIJO}suscripcion`;
+const SLUG_SUSCRIPCION_PENDIENTE = `${PREFIJO}suscripcion-pendiente`;
+
 const ID_LIBRERIA = `${PREFIJO}libreria`;
 const ID_LIBRERIA_PENDIENTE = `${PREFIJO}libreria-pendiente`;
 const SLUG_LIBRERIA = `${PREFIJO}libreria`;
@@ -222,6 +234,29 @@ const CENTINELA = {
   libreriaContacto: 'gate.libreria.contactoDeQuienCargo',
   libreriaMotivo: 'gate.libreria.revision.motivo',
   libreriaPendiente: 'gate.libreria.pendiente.descripcion',
+  /*
+   * ── B-832 · las suscripciones literarias ────────────────────────────────
+   *
+   * Los dos primeros **salen a propósito** (la descripción y la temática de lo
+   * que manda) y tienen su canasta abajo. Los otros tres **no salen a ninguna
+   * parte**:
+   *
+   *  - `suscripcionContacto` es el `contactoDeQuienCargo`;
+   *  - `suscripcionMotivo` es por qué un admin descartó una ficha;
+   *  - `suscripcionPendiente` es la descripción de una que **espera decisión**, o
+   *    sea el control del `where('estado','==','publicado')` de la lectura.
+   *
+   * Y `suscripcionPrecioSolo` es el centinela propio de esta colección: **el
+   * monto formateado sin su fecha**. No se siembra como texto —es lo que produce
+   * `fraseDePrecio` con el número del gate— y el paso 8j lo usa para afirmar que
+   * en el `dist/` el precio aparece **siempre** pegado a «cargado el». Es DEC-12
+   * verificada contra el archivo y no contra la intención.
+   */
+  suscripcionDescripcion: 'gate.suscripcion.descripcion',
+  suscripcionTematica: 'gate.suscripcion.tematica',
+  suscripcionContacto: 'gate.suscripcion.contactoDeQuienCargo',
+  suscripcionMotivo: 'gate.suscripcion.revision.motivo',
+  suscripcionPendiente: 'gate.suscripcion.pendiente.descripcion',
   // B-296 — el epígrafe **sí** sale a la página de detalle (es el `figcaption` de
   // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
   // O sea que este centinela se afirma en las dos direcciones a la vez.
@@ -619,6 +654,19 @@ const CENTINELA_DE_LA_CARTELERA = ['epigrafeImagen'];
 const CENTINELA_DEL_DIRECTORIO = ['libreriaDescripcion', 'libreriaDireccion'];
 
 /**
+ * **La sexta canasta: el directorio de suscripciones literarias** — B-832.
+ *
+ * `/suscripciones.json`, `/guia/suscripciones/` y cada
+ * `/guia/suscripciones/{slug}/` publican a propósito la descripción y la temática
+ * de lo que manda: es el punto de la ficha (§ 5 del PRD 3).
+ *
+ * **Lo que no está acá es la mitad que importa**: `suscripcionContacto`,
+ * `suscripcionMotivo` y `suscripcionPendiente` quedan prohibidos en los tres
+ * archivos igual que en todo el resto del `dist/`. Y `storagePath` tampoco está.
+ */
+const CENTINELA_DE_SUSCRIPCIONES = ['suscripcionDescripcion', 'suscripcionTematica'];
+
+/**
  * **La cuarta canasta** — B-804.
  *
  * Las tres de arriba (`actividad/`, `events.json`, `cartelera/`) alcanzaban
@@ -746,12 +794,15 @@ const limpiar = async () => {
   // B-901 — `librerias` entra a la limpieza en el **mismo** cambio que la siembra:
   // una limpieza que se olvida de una colección deja datos de prueba en la base de
   // quien está trabajando (`--export-on-exit`) y solo se nota semanas después.
-  const [actividades, usuarios, librerias] = await Promise.all([
+  // B-832 — `suscripciones` entra a la limpieza en el **mismo** cambio que la
+  // siembra, por lo mismo que `librerias`.
+  const [actividades, usuarios, librerias, suscripciones] = await Promise.all([
     borrar('actividades'),
     borrar('usuarios'),
     borrar('librerias'),
+    borrar('suscripciones'),
   ]);
-  return actividades + usuarios + librerias;
+  return actividades + usuarios + librerias + suscripciones;
 };
 
 const fallo = (mensaje) => {
@@ -856,6 +907,83 @@ try {
     .doc(`librerias/${ID_LIBRERIA_PENDIENTE}`)
     .set(libreria(SLUG_LIBRERIA_PENDIENTE, 'pendiente', CENTINELA.libreriaPendiente));
 
+  /*
+   * B-832 — el directorio de suscripciones, con el mismo par que hace útil al
+   * gate y con **un precio**: el monto del gate (`18246813`) formateado es
+   * `$18.246.813`, que no aparece por casualidad en ningún otro archivo, así que
+   * el paso 8j lo puede buscar y exigir que **nunca** esté sin su «cargado el»
+   * al lado (DEC-12).
+   *
+   * El `origen` es `'formulario-publico'` en las dos a propósito: es la rama en
+   * la que el `contactoDeQuienCargo` existe de verdad.
+   */
+  const suscripcion = (slug, estado, descripcion) => ({
+    nombre: `Gate suscripcion ${estado}`,
+    slug,
+    descripcion,
+    imagenes: [
+      {
+        id: 'img_gate_suscripcion',
+        url: 'https://example.invalid/gate-suscripcion.jpg',
+        epigrafe: '',
+        origen: 'propia',
+        storagePath: CENTINELA.storagePath,
+        ancho: 1200,
+        alto: 800,
+        portada: true,
+      },
+    ],
+    ofrecidaPor: {
+      nombre: 'Gate oferente',
+      tipo: 'libreria',
+      instagram: 'gatesuscripcion',
+      // A propósito apunta a la librería **publicada** del gate: así el paso 8j
+      // puede exigir que la ficha la enlace, que es la mitad que confirma que el
+      // build resolvió la lista de librerías y no linkeó a ciegas.
+      libreriaSlug: SLUG_LIBRERIA,
+    },
+    periodicidad: 'mensual',
+    compromisoMinimo: 'Sin compromiso',
+    incluye: ['libros'],
+    incluyeOtro: null,
+    envio: {
+      manda: true,
+      cuantos: 2,
+      tematica: CENTINELA.suscripcionTematica,
+      editoriales: 'independientes',
+      sorpresa: true,
+    },
+    extras: [],
+    extrasOtro: null,
+    precio: {
+      valor: { monto: 18246813, porPeriodo: 'mensual' },
+      cargadoEn: new Date('2026-09-01T12:00:00Z'),
+    },
+    alcance: ['caba'],
+    linkDeSuscripcion: 'https://example.invalid/gate-cobro',
+    instagram: 'gatesuscripcion',
+    whatsapp: '5491100000002',
+    mail: 'gate-sus@example.invalid',
+    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.suscripcionContacto },
+    estado,
+    origen: 'formulario-publico',
+    searchText: descripcion,
+    creadoEn: new Date('2026-09-01T12:00:00Z'),
+    revision: {
+      porUid: CENTINELA.createdBy,
+      en: new Date('2026-09-02T12:00:00Z'),
+      motivo: CENTINELA.suscripcionMotivo,
+    },
+    publicadaAlgunaVez: estado === 'publicado',
+  });
+
+  await db
+    .doc(`suscripciones/${ID_SUSCRIPCION}`)
+    .set(suscripcion(SLUG_SUSCRIPCION, 'publicado', CENTINELA.suscripcionDescripcion));
+  await db
+    .doc(`suscripciones/${ID_SUSCRIPCION_PENDIENTE}`)
+    .set(suscripcion(SLUG_SUSCRIPCION_PENDIENTE, 'pendiente', CENTINELA.suscripcionPendiente));
+
   // B-888 — la cuenta del panel con su mail. No la lee ninguna parte del build;
   // se siembra para que el barrido del paso 9 tenga qué encontrar el día que
   // alguien la conecte a una salida. Ver `CENTINELA.mailDePanel`.
@@ -866,7 +994,8 @@ try {
 
   console.log(
     `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
-      'una con tres imágenes; y 2 librerías: una publicada y una esperando decisión)',
+      'una con tres imágenes; 2 librerías y 2 suscripciones, cada par con una ' +
+      'publicada y una esperando decisión)',
   );
 
   const build = spawnSync('npm', ['run', 'build'], {
@@ -1614,6 +1743,246 @@ try {
     }
 
     /*
+     * 8j · **B-832 — el directorio de suscripciones, sobre los archivos
+     * construidos.**
+     *
+     * Lo mismo que el 8i una colección más abajo, y **una cosa que ninguna otra
+     * tiene: el precio**. DEC-12 dice que el monto no se muestra nunca sin su
+     * fecha de carga, y esa garantía la da la forma —`fraseDePrecio` devuelve un
+     * solo string— pero eso lo verifica un unitario sobre la función pura. Acá se
+     * verifica sobre **lo que quedó escrito en el `dist/`**: que el monto
+     * formateado del gate no aparezca en ningún archivo sin «cargado el» pegado.
+     * Es la diferencia entre «la función lo hace bien» y «la página lo dice bien».
+     */
+    {
+      const crudoSuscripciones = await readFile(
+        new URL('../dist/suscripciones.json', import.meta.url),
+        'utf8',
+      ).catch(() => null);
+
+      if (crudoSuscripciones === null) {
+        fallo(
+          'no se escribió dist/suscripciones.json.\n' +
+            '  Es el índice que baja el listado de /guia/suscripciones: sin él, la sección\n' +
+            '  carga el HTML del build y los filtros quedan apagados para siempre.',
+        );
+        salida = 1;
+      } else {
+        const indiceSus = JSON.parse(crudoSuscripciones);
+        const slugsSus = (indiceSus.suscripciones ?? []).map((s) => s.slug);
+
+        // 8j.1 · El build tiene que haber LEÍDO algo.
+        if (!slugsSus.includes(SLUG_SUSCRIPCION)) {
+          fallo(
+            `dist/suscripciones.json salió con ${slugsSus.length} suscripciones y ninguna es la\n` +
+              '  sembrada. El build no leyó /suscripciones, así que nada de lo que sigue prueba nada.',
+          );
+          salida = 1;
+        }
+
+        // 8j.2 · El control del `where`: la pendiente no puede estar.
+        if (slugsSus.includes(SLUG_SUSCRIPCION_PENDIENTE)) {
+          fallo(
+            'dist/suscripciones.json trae la suscripción que ESPERA DECISIÓN.\n' +
+              "  Falta o está mal el where('estado','==','publicado') de suscripcionesPublicadas\n" +
+              '  (src/lib/contenidoDelSitio.ts). Y con ella se publica el contactoDeQuienCargo\n' +
+              '  de quien pidió el alta, y el precio crudo.',
+          );
+          salida = 1;
+        }
+
+        // 8j.3 · La ficha existe en disco, y la de la pendiente no.
+        const fichaSus = await readFile(
+          new URL(`../dist/guia/suscripciones/${SLUG_SUSCRIPCION}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaSus === null) {
+          fallo(
+            `no se generó la página /guia/suscripciones/${SLUG_SUSCRIPCION}/.\n` +
+              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
+          );
+          salida = 1;
+        } else {
+          if (!fichaSus.includes('"@type":"Product"')) {
+            fallo(
+              'la ficha de la suscripción no emite el JSON-LD `Product`.\n' +
+                '  Es el SEO de esta sección entera (§ 5 del PRD 3).',
+            );
+            salida = 1;
+          }
+          /*
+           * 8j.4 · **DEC-12 — el precio en el marcado.** El § 5 del PRD lo deja
+           * afuera a propósito: Google **muestra** el precio del `Offer` en el
+           * resultado, y uno de tres meses se publica equivocado en el lugar de
+           * más visibilidad y con la credibilidad de un dato estructurado.
+           */
+          const ld = fichaSus.slice(fichaSus.indexOf('"@type":"Product"'));
+          const finLd = ld.indexOf('</script>');
+          if (/"price"|"priceCurrency"|"priceSpecification"/.test(ld.slice(0, finLd))) {
+            fallo(
+              'el JSON-LD de la suscripción publica el precio.\n' +
+                '  El § 5 del PRD 3 lo deja afuera a propósito (DEC-12): Google lo muestra en\n' +
+                '  el resultado de búsqueda, y un precio de tres meses se publica equivocado\n' +
+                '  en el lugar de más visibilidad. En la página va, con su fecha al lado.',
+            );
+            salida = 1;
+          }
+          /*
+           * 8j.4b · **El `rel` del link de cobro, y las dos mitades de B-786.**
+           *
+           * Lo pidió el `auditor-privacidad`: el criterio 8 del PRD 3 y el § 7.2
+           * —que es una decisión **discriminada**— vivían solo en un comentario
+           * del `.astro`, así que nada se ponía rojo si alguien sacaba el
+           * `noreferrer` del link de cobro **ni** si lo aplicaba parejo a todo
+           * link externo, que **revierte B-786 sin decirlo**.
+           *
+           * Va sobre el HTML construido y no sobre el fuente por lo mismo que el
+           * resto de este paso: el atributo lo escribe Astro, y el orden de los
+           * atributos es suyo — por eso se recorta la etiqueta `<a>` y se
+           * pregunta por su contenido, en vez de casar una cadena entera.
+           */
+          const etiquetaCon = (html, aguja) => {
+            const i = html.indexOf(aguja);
+            if (i === -1) return null;
+            const abre = html.lastIndexOf('<a', i);
+            const cierra = html.indexOf('>', i);
+            return abre === -1 || cierra === -1 ? null : html.slice(abre, cierra + 1);
+          };
+          const accion = etiquetaCon(fichaSus, 'https://example.invalid/gate-cobro');
+          if (!accion || !accion.includes('noopener') || !accion.includes('noreferrer')) {
+            fallo(
+              'el link de cobro de la suscripción no sale con `rel="noopener noreferrer"`.\n' +
+                '  Sin `noopener`, la página de destino puede tocar la nuestra; sin `noreferrer`\n' +
+                '  le mandamos nuestro dominio de referencia a la página de cobro de un tercero\n' +
+                '  (§ 7.2 del PRD 3, criterio 8).',
+            );
+            salida = 1;
+          }
+          const mail = etiquetaCon(fichaSus, 'mailto:gate-sus@example.invalid');
+          if (mail && mail.includes('noreferrer')) {
+            fallo(
+              'un contacto de la ficha salió con `noreferrer`, y eso revierte B-786 sin decirlo.\n' +
+                '  El `noreferrer` es **del link de cobro y de ninguno más**: aplicarlo parejo a\n' +
+                '  todo link externo borraría la señal de que un aporte vino del sitio, que es\n' +
+                '  justo lo que B-786 decidió conservar.',
+            );
+            salida = 1;
+          }
+
+          // Y la ficha enlaza la librería que la ofrece, que es lo que confirma
+          // que el build resolvió la lista y no linkeó a ciegas.
+          if (!fichaSus.includes(`/guia/librerias/${SLUG_LIBRERIA}/`)) {
+            fallo(
+              'la ficha de la suscripción no enlaza la librería publicada que la ofrece.\n' +
+                '  O el build no resolvió la lista de librerías, o la está linkeando a ciegas.',
+            );
+            salida = 1;
+          }
+        }
+
+        const fichaSusPendiente = await readFile(
+          new URL(
+            `../dist/guia/suscripciones/${SLUG_SUSCRIPCION_PENDIENTE}/index.html`,
+            import.meta.url,
+          ),
+          'utf8',
+        ).catch(() => null);
+        if (fichaSusPendiente !== null) {
+          fallo(
+            `se generó la página de la suscripción que ESPERA DECISIÓN\n` +
+              `  (/guia/suscripciones/${SLUG_SUSCRIPCION_PENDIENTE}/). Es HTML indexable con el\n` +
+              '  contenido de una ficha que nadie aprobó.',
+          );
+          salida = 1;
+        }
+
+        // 8j.5 · La URL en el sitemap, y la pendiente afuera.
+        const sitemapSus = await readFile(new URL('../dist/sitemap.xml', import.meta.url), 'utf8');
+        if (!sitemapSus.includes(`/guia/suscripciones/${SLUG_SUSCRIPCION}/`)) {
+          fallo(
+            'la ficha de la suscripción no está en el sitemap.xml.\n' +
+              '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
+          );
+          salida = 1;
+        }
+        if (sitemapSus.includes(`/guia/suscripciones/${SLUG_SUSCRIPCION_PENDIENTE}/`)) {
+          fallo(
+            'el sitemap.xml ofrece la ficha de la suscripción que espera decisión: es una URL\n' +
+              '  que contesta 404 y que además no tendría que existir.',
+          );
+          salida = 1;
+        }
+
+        /*
+         * 8j.6 · **DEC-12 sobre el `dist/` entero: el monto no aparece nunca solo.**
+         *
+         * Es el ítem de este paso que no tiene equivalente en ningún unitario. La
+         * garantía la da la forma —`fraseDePrecio` devuelve **un** string con las
+         * dos cosas— y los unitarios la verifican sobre la función pura; acá se
+         * verifica sobre **lo que quedó escrito**: cada aparición del monto del
+         * gate en cualquier archivo publicado tiene que traer «cargado el» pegado.
+         *
+         * Es el modo de falla que D-570 anticipa y que una función pura no puede
+         * impedir: que alguien, en una plantilla o en una island, arme la frase por
+         * su cuenta y pinte el número solo «porque en la tarjeta angosta no entra
+         * la fecha».
+         */
+        const MONTO_DEL_GATE = (18246813).toLocaleString('es-AR');
+        const DIST = new URL('../dist/', import.meta.url);
+        const huerfanos = [];
+        for (const relativa of await readdir(DIST, { recursive: true })) {
+          if (!/\.(html|json|txt|xml)$/.test(relativa)) continue;
+          const contenido = await readFile(new URL(relativa, DIST), 'utf8').catch(() => '');
+          let desde = contenido.indexOf(MONTO_DEL_GATE);
+          while (desde !== -1) {
+            // La ventana es generosa a propósito: entre el número y la fecha puede
+            // haber el período, el separador y el escape de una entidad HTML.
+            const ventana = contenido.slice(desde, desde + 160);
+            if (!ventana.includes('cargado el')) huerfanos.push(`    ${relativa}`);
+            desde = contenido.indexOf(MONTO_DEL_GATE, desde + 1);
+          }
+        }
+        if (huerfanos.length > 0) {
+          fallo(
+            'el precio de una suscripción salió publicado SIN su fecha de carga al lado.\n' +
+              '  Es DEC-12: un precio de hace tres meses en este país ya no es cierto, y la\n' +
+              '  fecha es lo único que deja que quien lee decida si le cree. La proyección\n' +
+              '  devuelve UNA frase con las dos cosas; si acá aparece el número solo, alguien\n' +
+              '  la rearmó en una plantilla o en una island.\n' +
+              `  Archivos:\n${[...new Set(huerfanos)].join('\n')}`,
+          );
+          salida = 1;
+        }
+        // Y el control positivo: el monto **tiene** que aparecer en alguna parte.
+        // Sin esto, el barrido de arriba pasa en verde si el precio dejó de
+        // publicarse — que es el otro error, y también en silencio.
+        const conPrecio = (await readdir(DIST, { recursive: true })).filter((r) =>
+          /\.(html|json)$/.test(r),
+        );
+        let apariciones = 0;
+        for (const relativa of conPrecio) {
+          const contenido = await readFile(new URL(relativa, DIST), 'utf8').catch(() => '');
+          if (contenido.includes(MONTO_DEL_GATE)) apariciones += 1;
+        }
+        if (apariciones === 0) {
+          fallo(
+            'el precio de la suscripción sembrada no aparece en ningún archivo del dist/.\n' +
+              '  O dejó de publicarse, o el barrido de arriba no estaba mirando nada.',
+          );
+          salida = 1;
+        }
+
+        if (salida === 0) {
+          console.log(
+            '  ✓ el directorio de suscripciones salió con la publicada y sin la que espera ' +
+              `decisión, con su ficha, su Product sin precio, su entrada de sitemap y el ` +
+              `monto siempre con su fecha (${apariciones} archivos).`,
+          );
+        }
+      }
+    }
+
+    /*
      * 9 · **B-121 — el barrido sobre TODO el `dist/`, y no sobre tres páginas
      * elegidas a mano.**
      *
@@ -1691,7 +2060,10 @@ try {
               ? CENTINELA_DE_LA_CARTELERA
               : relativa === 'librerias.json' || relativa.startsWith('guia/librerias/')
                 ? CENTINELA_DEL_DIRECTORIO
-                : [];
+                : relativa === 'suscripciones.json' ||
+                    relativa.startsWith('guia/suscripciones/')
+                  ? CENTINELA_DE_SUSCRIPCIONES
+                  : [];
         const prohibidos = Object.entries(CENTINELA).filter(
           ([campo]) => !permitido.includes(campo),
         );

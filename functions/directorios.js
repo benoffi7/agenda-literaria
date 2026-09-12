@@ -25,9 +25,10 @@
  * del §7.1: comparar solo los campos que cambian lo que el sitio muestra.
  *
  * ── Los campos son los de la proyección, y eso se afirma ─────────────────
- * `CAMPOS_PUBLICOS` tiene que ser exactamente lo que `libreriaPublica()` publica
- * (`src/lib/libreriaPublica.ts`), más `estado`, que es lo que decide si la ficha
- * existe para el sitio. `functions/` **no puede importar de `src/`** (D-20), así
+ * Cada lista de `CAMPOS_PUBLICOS_POR_DIRECTORIO` tiene que ser exactamente lo que
+ * publica la proyección de esa colección (`src/lib/libreriaPublica.ts`,
+ * `src/lib/suscripcionPublica.ts`), más `estado`, que es lo que decide si la
+ * ficha existe para el sitio. `functions/` **no puede importar de `src/`** (D-20), así
  * que la lista se escribe de este lado y la ata un test —el mismo trato que
  * `cargarLabels` y los topes de `/reportes`—.
  *
@@ -37,42 +38,84 @@
  */
 
 /**
- * Los campos de una ficha que el sitio publica, más el que decide si la publica.
+ * Los campos de una ficha que el sitio publica, **por colección**, más el que
+ * decide si la publica.
  *
- * `estado` es el primero y el que más importa: publicar y despublicar son
- * exactamente los dos momentos en que el sitio tiene que cambiar.
+ * `estado` es el primero de cada lista y el que más importa: publicar y
+ * despublicar son exactamente los dos momentos en que el sitio tiene que
+ * cambiar.
  *
- * **No están** `origen`, `revision`, `creadoEn`, `searchText`,
- * `publicadaAlgunaVez` ni `contactoDeQuienCargo`. Los tres primeros son ciclo de
- * vida; `searchText` es **derivado** de los que sí están, así que no puede
- * cambiar solo; `publicadaAlgunaVez` la escribe un trigger y es justo el
+ * **No están, en ninguna de las dos**, `origen`, `revision`, `creadoEn`,
+ * `searchText`, `publicadaAlgunaVez` ni `contactoDeQuienCargo`. Los tres primeros
+ * son ciclo de vida; `searchText` es **derivado** de los que sí están, así que no
+ * puede cambiar solo; `publicadaAlgunaVez` la escribe un trigger y es justo el
  * write-back que esta guarda existe para no contar; y el contacto interno **no
  * sale al sitio**, así que corregirlo no cambia una sola letra de lo publicado.
+ *
+ * ── Era una lista sola y ahora es un mapa — B-832 ───────────────────────────
+ * Con una sola colección daba igual; con dos, una lista compartida sería la peor
+ * de las dos opciones posibles: el campo que existe en una y no en la otra
+ * (`barrio`, `periodicidad`) se compara contra `undefined` en los dos lados de la
+ * segunda, o sea que **nunca cambia**, y editarlo no dispararía ningún build. Eso
+ * es exactamente la trampa 8 volviendo por la puerta de al lado y sin que nada
+ * falle. El mapa es lo que obliga a que cada colección declare lo suyo.
  */
-export const CAMPOS_PUBLICOS = [
-  'estado',
-  'slug',
-  'nombre',
-  'descripcion',
-  'direccion',
-  'barrio',
-  'ciudad',
-  'geo',
-  'imagenes',
-  'instagram',
-  'whatsapp',
-  'web',
-  'mail',
-];
+export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
+  librerias: [
+    'estado',
+    'slug',
+    'nombre',
+    'descripcion',
+    'direccion',
+    'barrio',
+    'ciudad',
+    'geo',
+    'imagenes',
+    'instagram',
+    'whatsapp',
+    'web',
+    'mail',
+  ],
+  /*
+   * B-832 — § 3 del PRD 3. `precio` está: es un campo publicado (como frase, con
+   * su fecha) y corregirlo tiene que rehacer la ficha. `compromisoMinimo` y
+   * `ofrecidaPor` también, que son texto de la ficha; `envio`, `incluye`,
+   * `extras` y `alcance` son lo que la ficha muestra y lo que decide en qué chip
+   * cae, o sea que cambiarlos cambia hasta el listado.
+   */
+  suscripciones: [
+    'estado',
+    'slug',
+    'nombre',
+    'descripcion',
+    'imagenes',
+    'ofrecidaPor',
+    'periodicidad',
+    'compromisoMinimo',
+    'incluye',
+    'incluyeOtro',
+    'envio',
+    'extras',
+    'extrasOtro',
+    'precio',
+    'alcance',
+    'linkDeSuscripcion',
+    'instagram',
+    'whatsapp',
+    'mail',
+  ],
+};
 
 /**
  * Las colecciones de la Guía que el sitio publica.
  *
- * Hoy una; las tajadas 3 y 4 suman las suyas. Está como lista y no como literal
- * para que el trigger se declare una vez por colección leyendo de acá, que es lo
- * que evita que la segunda nazca sin rebuild.
+ * **Se deriva del mapa de arriba**, no se escribe al lado: una colección con
+ * campos declarados y sin trigger —o al revés— es justo el olvido que la lista
+ * existía para evitar, y mantenerlas a mano lo permitía. La tajada 4 suma su
+ * entrada arriba y aparece acá sola; lo que sigue sin poder derivarse es el
+ * `export` del trigger en `index.js`, y eso lo ata un test.
  */
-export const COLECCIONES_DE_DIRECTORIO = ['librerias'];
+export const COLECCIONES_DE_DIRECTORIO = Object.keys(CAMPOS_PUBLICOS_POR_DIRECTORIO);
 
 /**
  * ¿Este cambio cambia lo que el sitio muestra?
@@ -85,7 +128,15 @@ export const COLECCIONES_DE_DIRECTORIO = ['librerias'];
  * pretende ser un `deepEqual` — un falso positivo por reordenar las claves de
  * `geo` cuesta un build, que es el lado barato.
  */
-export const cambioAmeritaRebuild = (antes, despues) => {
+export const cambioAmeritaRebuild = (antes, despues, coleccion) => {
   if (!antes || !despues) return true;
-  return CAMPOS_PUBLICOS.some((c) => JSON.stringify(antes[c]) !== JSON.stringify(despues[c]));
+  const campos = CAMPOS_PUBLICOS_POR_DIRECTORIO[coleccion];
+  /*
+   * Una colección que nadie declaró **rebuildea**, y es la dirección barata del
+   * error: con la lista vacía la comparación no encontraría ninguna diferencia y
+   * el sitio se quedaría viejo para siempre, en silencio. Es el mismo default que
+   * el docblock de arriba: un build de más cuesta dos minutos de Actions.
+   */
+  if (!campos) return true;
+  return campos.some((c) => JSON.stringify(antes[c]) !== JSON.stringify(despues[c]));
 };

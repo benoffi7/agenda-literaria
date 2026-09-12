@@ -1464,6 +1464,460 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    /*
+     * ══ SUSCRIPCIONES LITERARIAS — B-832, PRD 3 ══════════════════════════
+     *
+     * `docs/prd/03-suscripciones-literarias.md` § 3. Es el **segundo de los tres
+     * directorios** y el que más campos internos y públicos mezcla en el mismo
+     * documento (§ 8 del PRD), así que es donde más importa que la lectura esté
+     * cerrada: **una regla no proyecta** (D-128).
+     *
+     * El ciclo de vida —tres estados, el grafo, qué escribe la máquina— vive en
+     * `src/lib/directorios.ts` (B-834) y los campos en
+     * `src/types/suscripcion-literaria.ts`. Acá vive lo único que no se puede
+     * saltear: **la autorización y la forma**.
+     *
+     * ── La colección no lleva `/guia/` ───────────────────────────────────
+     * El documento es `/suscripciones/{id}` y la página se sirve en
+     * `/guia/suscripciones/{slug}`.
+     *
+     * ── Las dos clases de contacto, y acá son cinco campos ───────────────
+     * `instagram`, `whatsapp`, `mail` y `linkDeSuscripcion` son **públicos y ése
+     * es el punto** —la ficha existe para que la gente se suscriba—, y
+     * `contactoDeQuienCargo` es **interno**, como el `contacto` de una propuesta.
+     *
+     * ── Lo propio de esta colección, que las otras dos no tienen ─────────
+     * 1. **Un link a la página de cobro de un tercero** (§ 7). Su esquema se
+     *    acota acá y **solo `https:`**, al revés que la `web` de una librería
+     *    que acepta `http`: mandar a alguien a pagar por un canal sin cifrar es
+     *    otra cosa que mandarlo a leer. Es el criterio de aceptación 7, y B-817
+     *    dejó anotado por qué la validación no puede vivir solo al cargar.
+     * 2. **Un precio con su fecha de carga pegada** (DEC-12, B-837). La regla no
+     *    solo acota su forma: exige que la fecha **no se pueda mentir** —se
+     *    estampa con `request.time` al cargarlo y al cambiarlo, y no se mueve si
+     *    el número no se movió—. Sin esa cláusula, el panel podría publicar «$X ·
+     *    cargado hoy» sobre un número de hace cuatro meses, que es exactamente la
+     *    afirmación que DEC-12 existe para no hacer.
+     *
+     * ── Lo que estas reglas NO pueden hacer, dicho y no supuesto ─────────
+     * **No iteran una lista** (B-842), así que de `imagenes`, `incluye`, `extras`
+     * y `alcance` se acota la cantidad y el tipo, nunca la forma de cada
+     * elemento: un `curl` puede mandar doce strings arbitrarios en `incluye`. Lo
+     * que lo hace aceptable es lo mismo que allá —**nada de una suscripción llega
+     * a una salida pública sin que un admin la publique**— más que la proyección
+     * **descarta** todo elemento que no sea un slug (`slugify(v) === v`), que es
+     * donde el proyecto ya decidió que se sanea.
+     *
+     * **Y no verifican que los slugs existan** en `/opciones/*`: eso pediría seis
+     * `get()` por evaluación, facturados. Lo que se acota es su **forma**, y el
+     * criterio 12 del PRD —«un anónimo no puede agregar ninguno»— lo sostiene
+     * `/opciones/*`, cuyo `write` sigue en `esAdmin()`.
+     */
+    function oferenteValido(o) {
+      /*
+       * Quién la ofrece. `libreriaSlug` apunta a `/guia/librerias/{slug}` — un
+       * segmento de una URL del propio sitio— así que se acota con el mismo
+       * alfabeto de slug; que esa librería **exista y esté publicada** no se
+       * puede saber desde una regla, y lo confirma el build antes de linkear.
+       */
+      return o.keys().hasOnly(['nombre', 'tipo', 'instagram', 'libreriaSlug'])
+        && o.keys().hasAll(['nombre', 'tipo', 'instagram', 'libreriaSlug'])
+        && o.nombre is string && o.nombre.size() >= 2 && o.nombre.size() <= 80
+        && o.tipo is string && o.tipo.size() <= 80
+        && o.tipo.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && (o.get('instagram', null) == null
+             || (o.instagram is string && o.instagram.matches('^[A-Za-z0-9._]{1,30}$')))
+        && (o.get('libreriaSlug', null) == null
+             || (o.libreriaSlug is string && o.libreriaSlug.size() <= 120
+                  && o.libreriaSlug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')));
+    }
+
+    function envioValido(e) {
+      /*
+       * Los cuatro campos de adentro **pueden ser `null` con `manda` en `true`**
+       * —«no lo dice» es una respuesta legítima (§ 4.2: `no-dice` existe a
+       * propósito)—, así que la regla no cruza el flag con el dato. Ese cruce lo
+       * hace el schema del formulario, que es donde hay alguien mirando la
+       * pantalla, y la proyección lo **impone** al publicar: con `manda` en
+       * `false` los cuatro salen vacíos pase lo que pase en el documento.
+       *
+       * Que la regla no lo exija es una decisión y no un olvido: obligarla a
+       * cruzarlos convertiría un documento viejo —uno que dejó de mandar libros y
+       * conservó su temática— en un documento **inguardable**, o sea que no se
+       * podría ni corregir desde el panel.
+       */
+      return e.keys().hasOnly(['manda', 'cuantos', 'tematica', 'editoriales', 'sorpresa'])
+        && e.keys().hasAll(['manda', 'cuantos', 'tematica', 'editoriales', 'sorpresa'])
+        && e.manda is bool
+        // El `.get(clave, 0)` con un default fuera de rango es lo que hace que la
+        // clave ausente rebote sin declararla aparte, el mismo idiom que `geo` en
+        // `/librerias`. Un valor de otro tipo tampoco se puede comparar con `>=`.
+        && (e.get('cuantos', null) == null
+             || (e.get('cuantos', 0) >= 1 && e.get('cuantos', 0) <= 20))
+        && (e.get('tematica', null) == null
+             || (e.tematica is string && e.tematica.size() <= 160))
+        && (e.get('editoriales', null) == null
+             || (e.editoriales is string && e.editoriales.size() <= 80
+                  && e.editoriales.matches('^[a-z0-9]+(-[a-z0-9]+)*$')))
+        && (e.get('sorpresa', null) == null || e.sorpresa is bool);
+    }
+
+    function precioValido(p) {
+      /*
+       * **El precio con su fecha** — DEC-12 / B-837. La forma es la de
+       * `DatoConFecha<T>`: `{ valor, cargadoEn }`, y no los tres campos sueltos,
+       * porque es el mecanismo compartido que el § 6 del PRD manda usar.
+       *
+       * `monto` es **entero**: los centavos no existen en este circuito y un
+       * decimal en la ficha se lee como un error de software. `porPeriodo` es un
+       * slug de `/opciones/periodicidad` y **no se asume igual a
+       * `periodicidad`**: una caja trimestral puede publicar su precio por mes.
+       *
+       * Que `cargadoEn` sea **la hora del servidor** lo exigen el `create` y el
+       * `update` de abajo, cada uno con su cláusula: acá solo se acota el tipo.
+       */
+      return p == null || (
+        p.keys().hasOnly(['valor', 'cargadoEn'])
+        && p.keys().hasAll(['valor', 'cargadoEn'])
+        && p.cargadoEn is timestamp
+        && p.valor.keys().hasOnly(['monto', 'porPeriodo'])
+        && p.valor.keys().hasAll(['monto', 'porPeriodo'])
+        && p.valor.monto is int
+        && p.valor.monto >= 1 && p.valor.monto <= 100000000
+        && p.valor.porPeriodo is string && p.valor.porPeriodo.size() <= 80
+        && p.valor.porPeriodo.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+      );
+    }
+
+    function contactoDeSuscripcionValido(c) {
+      /*
+       * El contacto de quien cargó la ficha: **interno, no sale nunca**.
+       * `null` es legítimo —una ficha cargada por un admin no tiene a quién
+       * repreguntarle—, y el obligatorio del formulario público vive en
+       * `suscripcionPublicaFormSchema`: una regla no sabe si del otro lado hay
+       * una persona completando un formulario.
+       */
+      return c == null || (
+        c.keys().hasOnly(['via', 'valor'])
+        && c.get('via', '') in ['mail', 'whatsapp', 'instagram']
+        && c.get('valor', '') is string
+        && c.get('valor', '').size() >= 3
+        && c.get('valor', '').size() <= 200
+      );
+    }
+
+    /**
+     * ¿El slug de esta ficha ya no se puede tocar? **Trampa 10 del §13.**
+     *
+     * Idéntica a `slugDeLibreriaCongelado` y con el mismo razonamiento: se
+     * congela **al publicar**, la pregunta de verdad es «¿estuvo publicada alguna
+     * vez?» (B-285), y la marca ausente se contesta con el estado. La asimetría
+     * con `slugBloqueado` (`lib/directorios.ts`) también es la misma: allá la
+     * marca gana sobre el estado, acá se suman con un `||`, así que un documento
+     * imposible queda **congelado**. Falla cerrada, que es la dirección que
+     * corresponde cuando lo que está en juego es una URL indexada.
+     */
+    function slugDeSuscripcionCongelado(previo) {
+      return previo.get('publicadaAlgunaVez', false) == true
+        || previo.get('estado', '') == 'publicado';
+    }
+
+    /**
+     * La forma de una suscripción: lo que tiene que valer en **toda** escritura,
+     * create y update. Lo que solo vale al crearse está en `suscripcionValida()`.
+     */
+    function formaDeSuscripcion() {
+      let d = request.resource.data;
+      let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'ofrecidaPor',
+                          'periodicidad', 'compromisoMinimo', 'incluye', 'incluyeOtro',
+                          'envio', 'extras', 'extrasOtro', 'precio', 'alcance',
+                          'linkDeSuscripcion', 'instagram', 'whatsapp', 'mail',
+                          'contactoDeQuienCargo', 'estado', 'origen', 'searchText',
+                          'creadoEn', 'revision'];
+      /*
+       * `publicadaAlgunaVez` va en `hasOnly` y **no** en `hasAll`, por lo mismo
+       * que en `/librerias`: es un campo opcional que escribe un trigger con el
+       * Admin SDK, así que hoy está ausente en todos los documentos, y sin él en
+       * `hasOnly` el día que el trigger lo escriba **toda edición del panel se
+       * rompería** (`request.resource.data` es el documento resultante, no el
+       * diff). Que un cliente no lo pueda **mover** lo garantizan el `create` y el
+       * `update`, cada uno con su cláusula.
+       *
+       * Los ocho campos que pueden ser `null` están igual en `hasAll`: se leen con
+       * `.get(clave, null)`, así que ausente y `null` serían indistinguibles y la
+       * presencia hay que declararla.
+       */
+      return d.keys().hasOnly(obligatorios.concat(['publicadaAlgunaVez']))
+        && d.keys().hasAll(obligatorios)
+        && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 80
+        /*
+         * El slug **es** la URL pública, así que su alfabeto es el de `slugify`.
+         * Sin `size() >= 1`: el `+` del patrón ya exige al menos un carácter, y
+         * una cláusula que no puede fallar es peor que ninguna (la misma poda que
+         * se le hizo a `/librerias`).
+         */
+        && d.slug is string && d.slug.size() <= 120
+        && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        // **Obligatoria**, al revés que en una librería: una suscripción es una
+        // promesa a futuro y sin descripción la ficha no dice nada (§ 3.1).
+        && d.descripcion is string
+        && d.descripcion.size() >= 15 && d.descripcion.size() <= 2000
+        && d.imagenes is list && d.imagenes.size() <= 4
+        && oferenteValido(d.ofrecidaPor)
+        && d.periodicidad is string && d.periodicidad.size() <= 80
+        && d.periodicidad.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && (d.get('compromisoMinimo', null) == null
+             || (d.compromisoMinimo is string && d.compromisoMinimo.size() <= 80))
+        /*
+         * Las tres listas de slugs. **La regla no las itera** (B-842): acota la
+         * cantidad y el tipo, y la forma de cada elemento la impone la proyección
+         * descartando lo que no sea un slug. Los topes son los del modelo.
+         */
+        && d.incluye is list && d.incluye.size() <= 12
+        && (d.get('incluyeOtro', null) == null
+             || (d.incluyeOtro is string && d.incluyeOtro.size() <= 200))
+        && envioValido(d.envio)
+        && d.extras is list && d.extras.size() <= 12
+        && (d.get('extrasOtro', null) == null
+             || (d.extrasOtro is string && d.extrasOtro.size() <= 200))
+        && precioValido(d.get('precio', null))
+        && d.alcance is list && d.alcance.size() <= 8
+        /*
+         * ⚠️ **El link de cobro de un tercero, y `https:` sin excepción** — § 7 y
+         * criterio 7. Un `javascript:` en un `href` de una página indexada es un
+         * XSS, y un `http://` es mandar a pagar por un canal sin cifrar. Sin esta
+         * cláusula la defensa la pondría el consumidor, que es justo lo que B-817
+         * dejó anotado como agujero.
+         */
+        && (d.get('linkDeSuscripcion', null) == null
+             || (d.linkDeSuscripcion is string && d.linkDeSuscripcion.size() <= 500
+                  && d.linkDeSuscripcion.matches('^https://.*')))
+        && (d.get('instagram', null) == null
+             || (d.instagram is string && d.instagram.matches('^[A-Za-z0-9._]{1,30}$')))
+        && (d.get('whatsapp', null) == null
+             || (d.whatsapp is string && d.whatsapp.matches('^[0-9]{8,15}$')))
+        && (d.get('mail', null) == null
+             || (d.mail is string && d.mail.size() >= 3 && d.mail.size() <= 200))
+        && contactoDeSuscripcionValido(d.contactoDeQuienCargo)
+        /*
+         * Los tres estados son los de `ESTADOS_DIRECTORIO` (`lib/directorios.ts`),
+         * atados por el test. Y `origen` **no** lleva su `in [...]`, por lo mismo
+         * que en `/librerias`: sería letra muerta — el vocabulario lo fuerza la
+         * cláusula de coherencia del `create` y la inmutabilidad del `update`.
+         */
+        && d.estado in ['pendiente', 'publicado', 'rechazado']
+        // Derivado por `formASuscripcion` con `normalize` (§6). Nadie lo tipea: el
+        // tope es lo que impide que un campo que nadie mira sirva de bolsa.
+        && d.searchText is string && d.searchText.size() <= 2000
+        && d.revision.keys().hasOnly(['porUid', 'en', 'motivo'])
+        && d.revision.keys().hasAll(['porUid', 'en', 'motivo'])
+        && (d.revision.get('motivo', null) == null
+             || (d.revision.get('motivo', '') is string
+                  && d.revision.get('motivo', '').size() <= 500));
+    }
+
+    function suscripcionValida() {
+      let d = request.resource.data;
+      return formaDeSuscripcion()
+        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
+        // `curl` publica su propia suscripción —con su link de cobro— y la
+        // bandeja no sirve para nada (§1 del `prd/README.md`).
+        && d.estado == 'pendiente'
+        // Y `revision` entera en null: nadie nace revisado. Con un centinela que
+        // **no es `null`**, la clave ausente tampoco pasa.
+        && d.revision.get('porUid', 'x') == null
+        && d.revision.get('en', 'x') == null
+        && d.revision.get('motivo', 'x') == null
+        // La marca de la trampa 10 no puede nacer puesta: una ficha que nace «ya
+        // estuvo publicada» nace con el slug congelado y con el candado afuera.
+        && d.get('publicadaAlgunaVez', false) == false
+        /*
+         * **DEC-12 — el precio nace con la hora del servidor.** Sin esta
+         * cláusula, quien crea la ficha elige qué fecha se publica al lado del
+         * número, y la frase «cargado el …» deja de significar nada. Es lo mismo
+         * que `creadoEn` con `request.time`, aplicado al único dato del proyecto
+         * que envejece a la vista.
+         */
+        && (d.get('precio', null) == null || d.precio.cargadoEn == request.time)
+        /*
+         * **`!esAdmin()` y no `request.auth == null`**, por lo mismo que en
+         * `/librerias` y `/propuestas`: crear una cuenta está al alcance de
+         * cualquiera con la API key pública, y el dueño —que es admin— tiene que
+         * poder usar su propio formulario público. Hoy el `allow create` exige
+         * `esAdmin()`, así que la rama de `'formulario-publico'` no es alcanzable
+         * y lo que esta cláusula sostiene es la otra mitad: un admin no puede
+         * hacer pasar su carga por una ficha que llegó de afuera.
+         */
+        && ((d.origen == 'formulario-publico' && !esAdmin())
+             || (d.origen == 'panel' && esAdmin()))
+        // Con `request.time` el cliente no puede antedatar la ficha.
+        && d.creadoEn == request.time;
+    }
+
+    /**
+     * Lo que un admin **sí** puede cambiarle a una suscripción ya creada.
+     *
+     * Mismas cuatro cláusulas que `libreriaActualizable()` —la historia, la marca
+     * de la trampa 10, el slug congelado, la arista que le falta al grafo y la
+     * firma de la revisión— más **una que es propia de esta colección**: la fecha
+     * del precio.
+     */
+    function suscripcionActualizable() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      return formaDeSuscripcion()
+        // **Reescribir la historia**: de cuándo es la ficha y por dónde entró no
+        // se editan.
+        && d.creadoEn == previo.creadoEn
+        && d.origen == previo.origen
+        // **Mover la marca de la trampa 10.** La escribe un trigger con el Admin
+        // SDK; un cliente que pudiera bajarla a `false` tendría de vuelta el slug
+        // de una ficha que ya está en Google.
+        && d.get('publicadaAlgunaVez', false) == previo.get('publicadaAlgunaVez', false)
+        // **Cambiar la dirección web de algo ya publicado** — trampa 10.
+        && (!slugDeSuscripcionCongelado(previo) || d.slug == previo.slug)
+        /*
+         * **Publicar de un saque lo que ya se había descartado.** Es la única
+         * arista que le falta al grafo de `TRANSICIONES` (`lib/directorios.ts`):
+         * publicar directo desde `rechazado` mete al sitio una ficha **sin que
+         * nadie la haya vuelto a leer**, que es lo que la bandeja existe para
+         * impedir. Va acá y no solo en el panel porque que la UI esconda un botón
+         * no impide nada a quien abra la consola de Firebase con su sesión.
+         */
+        && (previo.get('estado', '') != 'rechazado' || d.estado != 'publicado')
+        /*
+         * ⚠️ **DEC-12 — la fecha del precio no se puede mentir, y tiene dos
+         * mitades que son la misma decisión.**
+         *
+         * - Si el **valor** cambió (otro monto, u otro período), `cargadoEn` tiene
+         *   que ser `request.time`: el número nuevo se fecha hoy, con el reloj del
+         *   servidor, no con el del navegador.
+         * - Si el valor **no** cambió, la fecha puede quedarse **exactamente donde
+         *   estaba** —corregir un typo de la descripción no mueve el precio, que
+         *   es lo que hace el panel— **o** volver a ser `request.time`, que es
+         *   «lo revisé hoy y sigue siendo éste». Lo segundo es deliberado y es la
+         *   respuesta al aviso de los 60 días (`pideRevision`): sin esa puerta, un
+         *   precio que sigue vigente solo podría dejar de pedir revisión
+         *   cambiándole el número, o sea mintiendo. Y sigue sin poder mentir la
+         *   fecha: es la hora del servidor o nada.
+         *
+         * Lo que NO se puede, que es lo que esta cláusula defiende: escribir una
+         * fecha **elegida**. Sin ella la frase «$18.000 por mes · cargado el 24 de
+         * septiembre» se fabrica desde el cliente, y entonces el mecanismo entero
+         * de B-837 no afirma nada. Es la única cláusula de todo el archivo que
+         * defiende una **afirmación** del sitio y no un dato privado.
+         */
+        && (d.get('precio', null) == null
+             || d.precio.cargadoEn == request.time
+             || (previo.get('precio', null) != null
+                  && d.precio.valor == previo.precio.valor
+                  && d.precio.cargadoEn == previo.precio.cargadoEn))
+        /*
+         * **Y si la revisión se toca, se firma con el uid propio y con la hora del
+         * servidor.** Condicionada a que `revision` esté en el diff: una edición
+         * de contenido que no mueve el estado no tiene por qué reescribir la firma
+         * de quien la revisó.
+         */
+        && (!d.diff(previo).affectedKeys().hasAny(['revision'])
+             || (d.revision.get('porUid', '') == request.auth.uid
+                  && d.revision.get('en', null) == request.time));
+    }
+
+    match /suscripciones/{id} {
+      /*
+       * ── `get` y `list` se deciden por separado, y los dos dan `esAdmin()` ──
+       *
+       * Los mismos tres motivos que en `/librerias`, y acá el primero pesa más:
+       *
+       * **`get`: porque una regla no proyecta** (D-128). Es todo-o-nada por
+       * documento, así que un `get` abierto a «las publicadas» entregaría el
+       * documento **entero** —el `contactoDeQuienCargo`, el motivo del rechazo, el
+       * `storagePath` de cada imagen **y el `precio` crudo con su fecha**— en vez
+       * de la vista que la proyección decide. Ese último es propio de esta
+       * colección: la ficha publica una frase y nunca un número, y un `get`
+       * abierto devolvería el número (§ 6 del PRD).
+       *
+       * **`list`: porque `read` incluye `list`** (trampa 13). Un `list` abierto
+       * entrega el directorio entero de una sentada —las pendientes, las
+       * descartadas y todos los contactos internos—, que es la cosecha más barata
+       * que existe.
+       *
+       * **Y la trampa 7**: ninguno se condiciona por contenido. Un
+       * `resource.data.estado == 'publicado'` seguiría entregando el documento
+       * entero **y** obligaría a que toda query del panel trajera ese `where` o
+       * Firestore la rechazaría entera.
+       *
+       * ── El `publicador` (B-888): nada, y es la misma decisión escrita ─────
+       * Las cinco cláusulas se quedan en `esAdmin()` con los tres argumentos de
+       * `/librerias`: no hay «lo suyo» que recortar (una suscripción no tiene
+       * `createdBy`), decidir qué entra al catálogo es una autoridad que ese rol
+       * no tiene, y el documento lleva el contacto de un tercero.
+       */
+      allow get: if esAdmin();
+      allow list: if esAdmin();
+
+      /*
+       * ⚠️ **ACÁ VA LA TERCERA ESCRITURA ANÓNIMA DEL PROYECTO, Y TAMPOCO ESTÁ
+       * ABIERTA.**
+       *
+       * El `create` público de `/guia/suscripciones/sumar` es el punto del PRD y
+       * está cerrado a propósito, con **exactamente el mismo bloqueo** que
+       * `/librerias`: falta **B-872** — Storage sigue en `UNENFORCED` porque su
+       * métrica de App Check marca 99% sin verificar y la sospecha, todavía sin
+       * confirmar, es que ese 99% son las lecturas públicas de imágenes por URL de
+       * descarga, que no llevan token de App Check ni pueden llevarlo. Firestore
+       * ya está en `ENFORCED` (B-836a paso 6).
+       *
+       * Y el formulario de una suscripción **sube una foto**, así que abrir este
+       * `create` sin resolver eso deja una de dos cosas, las dos malas: un
+       * formulario que acepta el texto y rechaza la foto, o un endpoint de subida
+       * anónimo sin App Check.
+       *
+       * **Para abrirla**, y en este orden:
+       *   1. **B-872 contestado** —¿el enforcement de Storage alcanza a las URLs
+       *      de descarga?— y App Check **exigiendo también en Storage**,
+       *      verificado en la consola;
+       *   2. el prefijo `suscripciones/` en `storage.rules`, con su `create`
+       *      acotado a tipo, tamaño y cantidad, y su `get`/`list` decididos — **en
+       *      el mismo commit que el punto 3**: una subida que no puede terminar en
+       *      un documento es un objeto huérfano;
+       *   3. borrar el `esAdmin() &&` de la línea de abajo;
+       *   4. **el testigo que se pone rojo es
+       *      `tests/suscripciones.integracion.test.ts`**, el caso «un anónimo no
+       *      puede crear una suscripción, ni con el documento perfecto». Y hay que
+       *      agregar `'suscripciones'` a `COLECCIONES_ABIERTAS` de
+       *      `tests/escritura-anonima.integracion.test.ts`. **Ojo: ese archivo NO
+       *      se pone rojo solo** — prueba las escrituras con un documento sonda
+       *      (`{ hola: 'mundo' }`), que `formaDeSuscripcion()` rechaza por
+       *      `hasOnly` con la puerta abierta o cerrada, así que es testigo de la
+       *      **lista** de colecciones y no de esta puerta;
+       *   5. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
+       *      barrido programado de la bandeja en su Function.
+       *
+       * **Y una quinta cosa que `/librerias` no tenía**: el formulario público
+       * carga un **precio**, así que su `cargadoEn` lo estampa la regla con
+       * `request.time` (ver `suscripcionValida()`). Eso ya está puesto y no hay
+       * nada que tocar al abrir la puerta — está escrito acá para que no se
+       * intente «resolverlo» en el cliente.
+       *
+       * Mientras tanto un admin sí puede cargar una suscripción a mano, que es un
+       * camino del PRD (§ 1, la tercera puerta) y no un andamio.
+       */
+      allow create: if esAdmin() && suscripcionValida();
+
+      allow update: if esAdmin() && suscripcionActualizable();
+
+      /*
+       * **Borrar sí**, con el mismo argumento que en `/librerias`: la Function de
+       * retención de esta colección **no existe todavía**, así que una ficha
+       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
+       * siempre y el borrado manual es lo único con lo que se puede honrar un
+       * «borrame». El camino normal sigue siendo `rechazado`. **No hay
+       * subcolección `/versiones` acá**, así que un borrado no se recupera.
+       */
+      allow delete: if esAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
