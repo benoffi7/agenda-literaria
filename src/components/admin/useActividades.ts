@@ -41,16 +41,27 @@ import type { ActividadConId } from '@/types/actividad';
  * ahorrar cuatro líneas.
  */
 /**
- * **`rol` y `uid` entran acá y no en cada pantalla** — B-888, tajada 2.
+ * **`rol`, `uid` y `ciudad` entran acá y no en cada pantalla** — B-888 tajada 2,
+ * B-919.
  *
- * No son datos de presentación: con la regla nueva, un publicador que pida la
+ * No son datos de presentación: con la regla del rol, un publicador que pida la
  * colección entera recibe un `permission-denied` sobre la query **completa**
  * (trampa 7 — una regla no filtra, corta), así que sin ellos el listado y el
  * calendario no se acotan: **se rompen**. Que viajen por el hook es lo que hace
  * que las dos pantallas no puedan quedar una arreglada y la otra no, que es
  * exactamente el motivo por el que este hook existe (B-175).
+ *
+ * `ciudad` es la tercera desde B-919 y entra por la misma puerta y por el mismo
+ * motivo: sin ella el listado y el calendario le muestran a la publicadora
+ * **solo lo suyo**, que es el comportamiento anterior al alcance por ciudad — o
+ * sea el bug silencioso, no el ruidoso.
  */
-export const useActividades = (version: number, rol: RolDelPanel, uid: string) => {
+export const useActividades = (
+  version: number,
+  rol: RolDelPanel,
+  uid: string,
+  ciudad = '',
+) => {
   const [actividades, setActividades] = useState<ActividadConId[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -58,14 +69,14 @@ export const useActividades = (version: number, rol: RolDelPanel, uid: string) =
   useEffect(() => {
     let vivo = true;
     setCargando(true);
-    listarActividades(rol, uid)
+    listarActividades(rol, uid, ciudad)
       .then((as) => vivo && setActividades(as))
       .catch((e: unknown) => vivo && setFallo(e instanceof Error ? e.message : 'Error al listar'))
       .finally(() => vivo && setCargando(false));
     return () => {
       vivo = false;
     };
-  }, [version, rol, uid]);
+  }, [version, rol, uid, ciudad]);
 
   return { actividades, setActividades, cargando, fallo, setFallo };
 };

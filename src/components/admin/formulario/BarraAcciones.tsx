@@ -54,6 +54,16 @@ interface Props {
   recomendaciones: Recomendacion[];
   /** El formulario edita una actividad que ya existe. */
   esEdicion: boolean;
+  /**
+   * **B-919 — la ficha se mira y no se guarda.** Es una actividad de la ciudad
+   * del publicador que cargó otra cuenta: la regla le da `read` y nada más.
+   *
+   * Con esto la barra no dibuja «Guardar borrador» ni «Guardar cambios», y dice
+   * por qué. No es prolijidad: un botón que existe y **siempre** falla es peor
+   * que no tenerlo (es el argumento entero de `rolDelPanel.ts`), y acá el fallo
+   * llegaría después de veinte minutos de edición.
+   */
+  soloLectura?: boolean;
   onCancelar: () => void;
   onGuardarBorrador: () => void;
   /** Abrir la sección y scrollear hasta su primer campo pendiente. */
@@ -102,6 +112,7 @@ export function BarraAcciones({
   pendientesParaPublicar,
   recomendaciones,
   esEdicion,
+  soloLectura = false,
   onCancelar,
   onGuardarBorrador,
   onIrASeccion,
@@ -160,26 +171,41 @@ export function BarraAcciones({
           onClick={onCancelar}
           className={`${claseBotonSecundario} sm:order-1`}
         >
-          Cancelar
+          {soloLectura ? 'Volver' : 'Cancelar'}
         </button>
 
-        <div className="flex gap-2 sm:order-3">
-          <button
-            type="button"
-            disabled={guardando}
-            onClick={onGuardarBorrador}
-            className={`${claseBotonSecundario} flex-1 sm:flex-none`}
-          >
-            Guardar borrador
-          </button>
-          <button
-            type="submit"
-            disabled={guardando}
-            className={`${claseBotonPrimario} flex-1 sm:flex-none`}
-          >
-            {guardando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear actividad'}
-          </button>
-        </div>
+        {/*
+          B-919 — sin los dos botones de guardar, y sin nada en su lugar. La
+          explicación va arriba del formulario (`ActividadFormulario`), que es
+          donde se lee al abrir; acá abajo un cartel sería un aviso que aparece
+          cuando ya se intentó editar.
+
+          **No se esconden con `hidden`, no se renderizan.** Lo cobró
+          `tests/formulario-solo-lectura.render.test.tsx` el día que se escribió:
+          un `className="hidden"` deja los dos botones **en el DOM**, o sea
+          alcanzables con Tab y anunciados por un lector de pantalla, y visibles
+          del todo si la hoja de estilos no llegó. «Que el botón no esté» tiene que
+          significar que no está.
+        */}
+        {!soloLectura && (
+          <div className="flex gap-2 sm:order-3">
+            <button
+              type="button"
+              disabled={guardando}
+              onClick={onGuardarBorrador}
+              className={`${claseBotonSecundario} flex-1 sm:flex-none`}
+            >
+              Guardar borrador
+            </button>
+            <button
+              type="submit"
+              disabled={guardando}
+              className={`${claseBotonPrimario} flex-1 sm:flex-none`}
+            >
+              {guardando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear actividad'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

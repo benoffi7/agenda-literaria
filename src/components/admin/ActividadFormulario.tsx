@@ -126,6 +126,26 @@ interface Props {
    */
   onGuardado: (id: string, etiquetasSinRegistrar?: readonly string[]) => void;
   onCancelar: () => void;
+  /**
+   * **B-919 — la ficha se mira y no se guarda.**
+   *
+   * Es una actividad de la ciudad del publicador que cargó otra cuenta: las
+   * reglas le dan `read` y nada más («era modo lectura los otros que no son de
+   * ella», el dueño). Lo decide `esSoloLectura()` en `AdminApp`, no este
+   * componente, porque es la misma pregunta que decide qué botones tiene la fila
+   * del listado y no puede contestarse distinto en los dos lados.
+   *
+   * Lo que hace acá, y son tres cosas porque con dos no alcanza:
+   *  1. un `<fieldset disabled>` alrededor de todo el cuerpo — es el navegador el
+   *     que apaga los ~ochenta controles, no una lista de `disabled` que hay que
+   *     acordarse de extender con cada campo nuevo (es el criterio del
+   *     §"Verificar la clase, no la instancia"): el campo que se agregue mañana
+   *     nace apagado;
+   *  2. la barra de abajo sin los dos botones de guardar;
+   *  3. el `onSubmit` cortado, porque un `<form>` se manda también con Enter en
+   *     un campo de texto y eso no lo frena ningún `hidden`.
+   */
+  soloLectura?: boolean;
 }
 
 export function ActividadFormulario({
@@ -139,6 +159,7 @@ export function ActividadFormulario({
   avisos,
   onGuardado,
   onCancelar,
+  soloLectura = false,
 }: Props) {
   /**
    * B-814 — la única pregunta que este componente le hace a la vista elegida.
@@ -498,15 +519,37 @@ export function ActividadFormulario({
       className="flex flex-col gap-4 pb-56 sm:pb-28"
       onSubmit={(e) => {
         e.preventDefault();
+        // B-919 — un `<form>` se manda también con Enter adentro de un campo de
+        // texto, así que esconder los botones no alcanza para que no se intente.
+        if (soloLectura) return;
         void guardar();
       }}
     >
       {/*
+        B-919 — por qué esta ficha no se puede guardar. Va **arriba de todo** y
+        antes de los avisos de copia: es la primera pregunta al abrirla, y leerla
+        después de haber corregido tres campos no sirve de nada.
+      */}
+      {soloLectura && (
+        <div className="border border-borde bg-crema px-3 py-2.5 text-xs">
+          <p className="font-medium">Solo lectura</p>
+          <p className="mt-1 text-tinta/70">
+            La cargó otra cuenta. La ves porque es de tu ciudad: podés mirar cómo está armada,
+            pero los cambios los tiene que hacer quien la cargó. Lo interno de esa cuenta —a quién
+            va a etiquetar y sus notas— no se muestra.
+          </p>
+        </div>
+      )}
+
+      {/*
         B-191 — lo que quedó sin guardar de una sesión anterior. Va primero: es
         una decisión sobre con qué contenido se sigue trabajando, y tomarla
         después de haber tocado diez campos no sirve de nada.
+
+        **No se ofrece en solo lectura** (B-919): recuperar un borrador es
+        proponer escribir, y acá no hay dónde escribir.
       */}
-      {autoguardado.recuperado && (
+      {!soloLectura && autoguardado.recuperado && (
         <AvisoBorradorLocal
           cuando={cuandoSeGuardo(autoguardado.recuperado)}
           linksSinPublicar={
@@ -616,6 +659,22 @@ export function ActividadFormulario({
       />
       )}
 
+      {/*
+        **El `fieldset` empieza acá y no arriba de todo** — B-919, y lo cobró el
+        `auditor-privacidad`. Un `<fieldset disabled>` apaga **todos** sus
+        descendientes, y las solapas son `<button>`: con la tira adentro, la ficha
+        ajena quedaba clavada en la primera pestaña y el cartel de arriba —«podés
+        mirarla entera»— era falso en pantalla ancha y cierto en el teléfono. O
+        sea que **qué se veía de un tercero dependía del ancho de la ventana**,
+        que no es una decisión: es un efecto.
+
+        Navegar entre pestañas no escribe nada, así que la tira va afuera. Lo que
+        el fieldset tiene que apagar son los campos, y empieza justo antes.
+      */}
+      <fieldset
+        disabled={soloLectura}
+        className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
+      >
       {(() => {
         const contenido: Record<IdSeccion, ReactNode> = {
           'que-es': (
@@ -682,7 +741,30 @@ export function ActividadFormulario({
               pedidoDeApertura={aperturas['opcional']}
             />
           ),
-          difusion: <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />,
+          /*
+           * **Difusión no se muestra en solo lectura** — B-919, y lo cobró el
+           * `auditor-privacidad`.
+           *
+           * Es la única sección del formulario que es **trabajo interno de quien
+           * cargó** y de nadie más: `difusion.arrobar` son los handles que va a
+           * etiquetar al publicar en redes y `difusion.notas` es texto libre que
+           * el §5.1 declara «nunca público». Mostrárselo a otra cuenta no aporta
+           * nada a «qué pasa en mi ciudad» y es exactamente la clase de dato que
+           * el modelo separó para que no saliera.
+           *
+           * **No es la frontera** —la regla le da el documento entero, así que
+           * quien quiera leerlo lo lee desde la consola— pero el panel no tiene
+           * por qué ser el que se lo ponga adelante. Qué incluye ese `read` y por
+           * qué es aceptable está escrito en `docs/07-seguridad.md` § «Los dos
+           * roles del panel».
+           *
+           * Va en el mapa y no en la pestaña: el registro de `PESTANIAS` exige
+           * que toda sección tenga contenido, así que el `null` es lo que la deja
+           * vacía sin romper la tira de solapas ni la barra que lleva a ella.
+           */
+          difusion: soloLectura ? null : (
+            <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />
+          ),
           'texto-redes': <SeccionTextoRedes form={form} labelsPendientes={labelsPendientes} />,
           'vista-previa': <SeccionVistaPrevia form={form} labelsPendientes={labelsPendientes} />,
         };
@@ -722,6 +804,13 @@ export function ActividadFormulario({
         ));
       })()}
 
+      </fieldset>
+
+      {/*
+        La barra queda **afuera** del `fieldset`: en solo lectura «Volver» tiene
+        que seguir apretándose, y un botón adentro de un fieldset deshabilitado no
+        se aprieta. Es la única parte del formulario que sigue viva.
+      */}
       <BarraAcciones
         guardando={guardando}
         fallo={fallo}
@@ -729,6 +818,7 @@ export function ActividadFormulario({
         pendientesParaPublicar={pendientesParaPublicar}
         recomendaciones={recomendaciones}
         esEdicion={Boolean(inicial)}
+        soloLectura={soloLectura}
         onCancelar={onCancelar}
         onGuardarBorrador={() => void guardar('borrador')}
         onIrASeccion={irASeccion}

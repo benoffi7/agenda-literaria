@@ -420,17 +420,18 @@ describe('la carga de la colección no se vuelve a copiar — B-215', () => {
       'src/components/admin/CalendarioActividades.tsx',
     ]) {
       /*
-       * B-888 — el hook pasó a recibir `(version, rol, uid)`: `rol` y `uid`
-       * deciden la **forma de la query** (un publicador que pida la colección
-       * entera recibe un rechazo sobre la query completa — trampa 7), así que las
-       * dos vistas tienen que pasarle los tres. Se afirma `useActividades(` más
-       * los tres argumentos, y no el literal de la llamada, porque el formateo la
-       * parte en varias líneas.
+       * B-888 / B-919 — el hook pasó a recibir `(version, rol, uid, ciudad)`: los
+       * tres últimos deciden la **forma de la query** (un publicador que pida la
+       * colección entera recibe un rechazo sobre la query completa — trampa 7, y
+       * sin `ciudad` no se arma la segunda consulta del alcance por ciudad), así
+       * que las dos vistas tienen que pasarle los cuatro. Se afirma
+       * `useActividades(` más los argumentos, y no el literal de la llamada,
+       * porque el formateo la parte en varias líneas.
        */
       const src = readFileSync(raiz(rel), 'utf8');
       const desde = src.slice(src.indexOf('useActividades('));
       const llamada = desde.slice(0, desde.indexOf(')') + 1).replace(/\s/g, '');
-      expect(llamada, rel).toBe('useActividades(version,rol,uid,)');
+      expect(llamada, rel).toBe('useActividades(version,rol,uid,ciudad,)');
     }
   });
 

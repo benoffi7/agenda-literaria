@@ -10,7 +10,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { activarAppCheck } from '@/lib/appcheck';
 // Puro: no arrastra Firestore, así que no toca el corte del bundle de B-09/D-51.
-import { rolDeClaims, type RolDelPanel } from '@/lib/rolDelPanel';
+import { ciudadDeClaims, rolDeClaims, type SesionDelPanel } from '@/lib/rolDelPanel';
 import {
   getAuth,
   connectAuthEmulator,
@@ -80,16 +80,23 @@ export const observarAuth = (cb: (u: User | null) => void) => onAuthStateChanged
  * decidir qué mostrar; **la autorización real la hacen las reglas de Firestore**
  * y las de Storage.
  *
- * Devuelve `null` cuando la cuenta no tiene ninguno de los dos, que es lo que
- * pinta la pantalla «Sin permisos».
+ * Devuelve `rol: null` cuando la cuenta no tiene ninguno de los dos, que es lo
+ * que pinta la pantalla «Sin permisos».
+ *
+ * **Devuelve el par y no solo el rol** (B-919): desde el alcance por ciudad, el
+ * claim `ciudad` es la otra mitad de «qué ve esta sesión», y se lee del **mismo**
+ * token. Dos lecturas del token —una para el rol y otra para la ciudad— serían
+ * dos `getIdTokenResult(true)` y, peor, dos momentos en los que el claim pudo
+ * cambiar: el rol de una sesión y su alcance tienen que salir de la misma foto.
  *
  * La regla de desempate —con los dos claims gana el acotado— vive en
  * `rolDeClaims` (`lib/rolDelPanel.ts`), que es puro y tiene su test contra el
  * texto de `firestore.rules`: acá solo se lee el token.
  */
-export const rolDelPanel = async (u: User): Promise<RolDelPanel | null> => {
+export const rolDelPanel = async (u: User): Promise<SesionDelPanel> => {
   const token = await u.getIdTokenResult(true);
-  return rolDeClaims(token.claims as Record<string, unknown>);
+  const claims = token.claims as Record<string, unknown>;
+  return { rol: rolDeClaims(claims), ciudad: ciudadDeClaims(claims) };
 };
 
 /**
@@ -99,6 +106,6 @@ export const rolDelPanel = async (u: User): Promise<RolDelPanel | null> => {
  * publicador daría `false` y vería «Sin permisos» teniendo permisos.
  */
 export const tieneClaimAdmin = async (u: User): Promise<boolean> =>
-  (await rolDelPanel(u)) === 'admin';
+  (await rolDelPanel(u)).rol === 'admin';
 
 export { usarEmuladores };

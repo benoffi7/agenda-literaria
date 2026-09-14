@@ -38,6 +38,10 @@ import {
 // sus tests: acá quedan la maquetación y el cableado.
 import { datosDeTarjeta, type ContextoDeTarjeta } from '@/lib/tarjetaDelPanel';
 import type { RolDelPanel } from '@/lib/rolDelPanel';
+// B-919 — la misma pregunta que decide si el formulario se puede guardar. Una
+// sola función para los dos lados: con un `rol === 'admin' ||` suelto en cada
+// uno, la fila y el formulario se arreglan por separado (B-175).
+import { esSoloLectura } from '@/lib/formulario/autoria';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
@@ -58,6 +62,12 @@ interface Props {
    * (trampa 7). Ver `useActividades`.
    */
   rol: RolDelPanel;
+  /**
+   * B-919 — el alcance por ciudad del claim (`''` si no tiene). Como `rol`,
+   * decide la **forma de la query** y no qué se muestra: sin él el listado de la
+   * publicadora vuelve a ser solo lo suyo. Ver `useActividades`.
+   */
+  ciudad?: string;
 }
 
 /**
@@ -105,6 +115,7 @@ export function ListaActividades({
   version,
   uid,
   rol,
+  ciudad = '',
 }: Props) {
   // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
   // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
@@ -112,6 +123,7 @@ export function ListaActividades({
     version,
     rol,
     uid,
+    ciudad,
   );
 
   /*
@@ -177,8 +189,20 @@ export function ListaActividades({
    */
   const tarjetas = useMemo(() => {
     const contexto: ContextoDeTarjeta = { labels, ahora, uid, mailes };
-    return filtradas.map((a) => ({ a, t: datosDeTarjeta(a, contexto) }));
-  }, [filtradas, labels, ahora, uid, mailes]);
+    /*
+     * B-919 — `soloLectura` viaja al lado del view-model y no adentro: la tarjeta
+     * describe **la actividad**, y esto describe la relación entre esta actividad
+     * y **quien está mirando**, que es otra pregunta (la misma distinción que
+     * `autoria` ya tiene respecto de `marcas`). Se calcula una vez por fila y no
+     * tres veces en el JSX —el chip, el botón y el menú—, que es cómo dos de los
+     * tres terminan preguntando algo distinto.
+     */
+    return filtradas.map((a) => ({
+      a,
+      t: datosDeTarjeta(a, contexto),
+      soloLectura: esSoloLectura(rol, a, uid),
+    }));
+  }, [filtradas, labels, ahora, uid, mailes, rol]);
 
   /**
    * B-11 — la copia se arma acá porque el listado ya tiene todos los slugs en
@@ -329,7 +353,7 @@ export function ListaActividades({
         pinte.
       */}
       <ul className={CLASE_GRILLA}>
-        {tarjetas.map(({ a, t }) => (
+        {tarjetas.map(({ a, t, soloLectura }) => (
           <li
             key={a.id}
             className="flex min-w-0 flex-col gap-2 rounded-md border border-borde bg-white px-3 py-2.5"
@@ -350,6 +374,13 @@ export function ListaActividades({
                   {marca}
                 </span>
               ))}
+              {/*
+                B-919 — arriba y no abajo con la autoría: «solo lectura» no dice
+                de quién es, dice **qué se puede hacer con esto**, y es lo que
+                tiene que verse en el barrido antes de apretar nada. Va con el
+                mismo peso que «Cupo completo» porque es del mismo orden.
+              */}
+              {soloLectura && <span className={CLASE_MARCA}>Solo lectura</span>}
             </div>
 
             {/*
@@ -394,6 +425,14 @@ export function ListaActividades({
             {/*
               Duplicar y borrar van en un menú y no en la tarjeta: tres botones en
               360px dan blancos de ~100px y se erra el toque. Ver MenuAcciones.
+
+              **B-919 — y la fila que no es suya no tiene ninguno de los dos.**
+              El alcance por ciudad es de lectura: la regla le da `read` y rechaza
+              el `update` y el `delete`, así que las cuatro acciones del menú
+              —marcar cupo, duplicar, historial, borrar— o escriben o ya estaban
+              cerradas. Se saca el menú entero en vez de vaciarlo: un «⋯» que se
+              abre sin nada adentro se aprieta dos veces antes de entenderlo. Y
+              «Editar» pasa a «Ver», que es lo que realmente hace.
             */}
             <div className="flex gap-2 border-t border-borde pt-2">
               <button
@@ -401,8 +440,9 @@ export function ListaActividades({
                 onClick={() => onEditar(a)}
                 className={`${claseBotonSecundario} flex-1`}
               >
-                Editar
+                {soloLectura ? 'Ver' : 'Editar'}
               </button>
+              {!soloLectura && (
               <MenuAcciones
                 etiqueta={`Más acciones de ${a.titulo}`}
                 acciones={[
@@ -437,6 +477,7 @@ export function ListaActividades({
                   { label: 'Borrar', onSelect: () => void eliminar(a), peligrosa: true },
                 ]}
               />
+              )}
             </div>
           </li>
         ))}

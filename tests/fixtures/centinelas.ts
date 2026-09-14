@@ -52,6 +52,9 @@ import type {
 // fixture. Esta era la más completa de las cuatro formas que convivían, y es la
 // que quedó como base.
 import { ts } from './tiempo';
+// B-919 — la misma derivación que el documento: si el fixture la copiara, el día
+// que cambie quedaría afirmando la anterior.
+import { ciudadesDe } from '@/lib/ciudades.mjs';
 
 /**
  * Cada ruta de contenido del documento, más las etiquetas de `/opciones/*` que
@@ -404,6 +407,22 @@ export const VOCABULARIO_CERRADO: readonly string[] = [
   'al-inscribirse',
   // imagenes[].origen
   'propia',
+  /*
+   * B-919 — `ciudades[0]`. **No es un enum del modelo, y entra igual**, que es
+   * la excepción que esta lista no tenía: es `slugify` aplicado al centinela de
+   * `modalidades[].sede.ciudad`, o sea un valor **derivado** de otro que el
+   * barrido ya persigue.
+   *
+   * Un centinela propio no serviría: sería un texto que ninguna salida puede
+   * contener nunca —la ciudad que sale en `sede` es la del centinela original,
+   * no su slug— y el chequeo quedaría verde para siempre. Lo que hay que medir
+   * de la ciudad se mide en la celda de `sede.ciudad`.
+   *
+   * Y está escrito derivado (`ciudadesDe([modalidadCentinela()])`), así que el
+   * día que `slugify` o la derivación cambien, el fixture cambia y esta entrada
+   * queda rota — que es exactamente cuando alguien tiene que volver a leerla.
+   */
+  'centinela-sede-ciudad',
 ];
 
 /** Cuántos encuentros trae el ciclo del fixture (§2.2). */
@@ -543,12 +562,23 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
   sesiones: sesionesCentinela(),
   comisiones: [comisionCentinela()],
   modalidades: [modalidadCentinela()],
-  // Los tres derivados que escribe `formADocumento` (B-224): con una sola fila
-  // son exactamente lo que la fila dice. Se arman con las mismas fábricas para
-  // que el fixture no pueda mentir sobre la derivación.
+  // Los cuatro derivados que escribe `formADocumento` (B-224, B-919): con una
+  // sola fila son exactamente lo que la fila dice. Se arman con las mismas
+  // fábricas —y `ciudades` con la misma función— para que el fixture no pueda
+  // mentir sobre la derivación.
   modalidad: 'hibrido',
   sede: sedeCentinela(),
   online: onlineCentinela(),
+  /*
+   * B-919 — los slugs de las ciudades de las modalidades. **No lleva centinela
+   * propio y no puede llevarlo**: es `slugify` aplicado al centinela de
+   * `sede.ciudad`, o sea un valor derivado de otro que el barrido ya persigue. Se
+   * deriva acá con `ciudadesDe`, la misma función que usa el documento, así que
+   * el día que la derivación cambie el fixture cambia con ella. Su declaración
+   * está en `VOCABULARIO_CERRADO` —es texto, así que no le corresponde
+   * `VALORES_NO_TEXTO`— y ahí está escrito por qué.
+   */
+  ciudades: ciudadesDe([modalidadCentinela()]),
   inscripcion: {
     requiere: true,
     via: 'mail',

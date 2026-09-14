@@ -34,6 +34,8 @@
  * ya contesta.
  */
 
+import type { RolDelPanel } from '@/lib/rolDelPanel';
+
 export type Autoria = 'propia' | 'ajena' | 'desconocida';
 
 /**
@@ -99,3 +101,32 @@ export const marcaDeAutoria = (
   if (ultimo && uidActual && ultimo !== uidActual) return `La cambió ${quien(ultimo)}`;
   return null;
 };
+
+/**
+ * **¿Esta actividad se puede editar, o solo mirar?** — B-919.
+ *
+ * El rol `publicador` ganó alcance por **ciudad**, y el pedido del dueño lo acotó
+ * a lectura: «era modo lectura los otros que no son de ella». Así que su bandeja
+ * mezcla dos cosas que no se pueden ver iguales:
+ *
+ *  - **lo suyo** (`createdBy == uid`): control total, como siempre;
+ *  - **lo de su ciudad que cargó otra cuenta**: `allow read` y nada más — la
+ *    regla rechaza el `update` y el `delete`.
+ *
+ * Va acá, puro y en un solo lugar, por el mismo motivo que `PERMISOS`: la
+ * pantalla que se agregue mañana pregunta en una línea en vez de heredar un
+ * `rol === 'admin' ||` suelto que nadie sabe si está en las cuatro puertas o en
+ * tres. Y por el mismo motivo **no autoriza nada**: la autorización es
+ * `firestore.rules`. Lo que decide es que el panel no ofrezca lo que la regla va
+ * a rechazar.
+ *
+ * **`desconocida` cuenta como solo lectura**, y es la dirección correcta: un
+ * documento anterior a `createdBy` no es de nadie, y la regla no lo deja tocar a
+ * ningún publicador. Sin este default el panel le ofrecería «Editar» sobre una
+ * actividad vieja de su ciudad y el guardado moriría con un `permission-denied`.
+ */
+export const esSoloLectura = (
+  rol: RolDelPanel,
+  actividad: { createdBy?: string | null },
+  uidActual: string | undefined,
+): boolean => rol !== 'admin' && autoriaDe(actividad, uidActual) !== 'propia';

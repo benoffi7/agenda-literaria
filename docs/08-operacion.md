@@ -49,6 +49,9 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
 | `npm run admin:claim:prod -- --publicador <uid\|email>` | claim `publicador` (solo lo que él carga — B-888) |
+| `npm run admin:claim:prod -- --publicador --ciudad "<ciudad>" <uid\|email>` | ídem, y además **ve en solo lectura** lo de esa ciudad (B-919) |
+| `npm run ciudades:sembrar` | informa qué `ciudades` escribiría en el emulador (B-919, D-690) |
+| `npm run ciudades:sembrar:prod` | informa qué escribiría en producción. `-- --aplicar --produccion` lo escribe |
 | `npm run admin:claim:prod -- --quitar <uid\|email>` | le saca el rol a una cuenta |
 | `npm run slugs:sembrar -- --aplicar` | siembra el índice de direcciones web en el emulador (B-888, D-660) |
 | `npm run slugs:sembrar:prod` | informa qué sembraría en producción. `-- --aplicar --produccion` lo escribe; `--reparar` además borra las reservas huérfanas |
@@ -204,19 +207,24 @@ Google el usuario **nace en el primer login**, no antes.
 
 **Los dos roles, y cómo se cambia de uno a otro** (B-888):
 
-> ⚠️ **`--publicador` todavía no se le da a una cuenta real.** B-888 entregó la
-> **frontera** (las reglas, `/usuarios`, el script y sus tests); el panel es la
-> tajada 2 y no está. Hoy una cuenta con ese claim entra al panel y **su pantalla
-> principal queda rota**, no acotada: `listarActividades()` consulta sin
-> `where('createdBy','==',uid)` y la regla rechaza la query **entera** (trampa 7).
-> También fallan el chequeo de slug único y la escritura de taxonomías al guardar.
-> Sirve para probar contra el emulador; para una persona, esperá la tajada 2.
-
 ```bash
 npm run admin:claim:prod -- <email>                  # admin: ve y toca todo
 npm run admin:claim:prod -- --publicador <email>     # publicador: solo lo que él carga
+npm run admin:claim:prod -- --publicador --ciudad "Mar del Plata" <email>
+                                                     # ídem + ve (solo lee) lo de esa ciudad
 npm run admin:claim:prod -- --quitar <email>         # le saca el rol
 ```
+
+**`--ciudad` es el alcance por ciudad de B-919.** El script la slugifica con el
+`slugify` del proyecto —el mismo con el que el panel escribe `ciudades` en cada
+actividad—, así que se escribe como se escribe: `"Mar del Plata"`, `"mar del
+plata"` y `"MAR DEL PLATA"` producen el mismo claim. Solo tiene sentido con
+`--publicador` (un admin ve todo el catálogo) y el script rechaza el comando si
+se pasa con otro rol, en vez de ignorarla.
+
+> ⚠️ **Antes de dar un claim con `--ciudad`, correr el backfill de `ciudades`**
+> (más abajo). Sin él, la cuenta ve **solo lo suyo**: los documentos que ya están
+> en producción no tienen el campo y la regla los deja afuera.
 
 Los tres pasos de arriba son los mismos para cualquiera de los tres comandos, y
 el script anuncia **también el rol** antes de escribir, por el mismo motivo que
@@ -397,6 +405,47 @@ nombre que ninguna actividad usa—:
 ```bash
 npm run slugs:sembrar:prod -- --aplicar --produccion --reparar
 ```
+
+## Sembrar `ciudades` en las actividades (B-919, D-690)
+
+**Es un paso del despliegue, no una prolijidad, y va ANTES de darle a nadie un
+claim con `--ciudad`.**
+
+`ciudades` es el derivado —los slugs de las ciudades de `modalidades[].sede`— con
+el que la regla contesta el alcance por ciudad del rol `publicador`. Lo escribe
+`formADocumento` en cada guardado, o sea que **lo nuevo nace con el campo puesto**;
+las actividades que **ya existen** no lo tienen, y el default de la regla
+(`.get('ciudades', [])`) las deja afuera.
+
+**O sea: hasta que esto corra, la publicadora no ve nada de su ciudad.** Solo lo
+suyo — el comportamiento anterior a B-919. Falla cerrada, que es la dirección
+correcta, pero si alguien reporta «no me aparece nada de Mar del Plata», la
+respuesta es este script.
+
+```bash
+# 1. Ver qué haría, sin escribir (contra producción)
+npm run ciudades:sembrar:prod
+
+# 2. Escribirlo
+npm run ciudades:sembrar:prod -- --aplicar --produccion
+```
+
+Ensayarlo primero contra el emulador es gratis: `npm run ciudades:sembrar --`
+(mismo script, otro objetivo). Como todo script que escribe, **sin `--aplicar`
+solo informa**, y `--aplicar` fuera del emulador exige `--produccion` explícito.
+
+**Es idempotente**: recalcula y escribe **solo las que difieren**, así que la
+segunda corrida no escribe nada. No borra: no hay caso de «ciudad huérfana»,
+porque el campo entero se deriva del documento en el que vive.
+
+**Lo que la corrida dispara, dicho antes:** una versión del §12 por actividad
+tocada (`ciudades` es un derivado del contenido, como `searchText`, así que entra
+a la foto), **ningún** cambio en Calendar (no entra al payload del evento) y un
+rebuild del sitio, que el debounce del §8 colapsa en uno solo.
+
+El informe marca aparte cuántas quedan con `[]` — las virtuales y las que tienen
+la ciudad sin cargar. **No es un error**: esas no son de ninguna ciudad y no las ve
+ningún publicador por ciudad. Es el caso que alguien va a venir a preguntar.
 
 Una reserva queda huérfana cuando la actividad que la usaba ya no existe. Pasa en
 un caso conocido y acotado: si un admin le cambió la dirección web a la actividad

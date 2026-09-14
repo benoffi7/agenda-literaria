@@ -10512,3 +10512,161 @@ ninguna otra forma, por lo mismo que el `Offer` de D-670.
 | El filtro de capacidad | **rangos que se solapan**, y el lugar sin capacidad no entra en ninguno | «Los rangos toleran que la capacidad esté aproximada, un input no» (§ 7). Un lugar de 25 entra en «10 a 25» y en «25 a 50» porque una capacidad aproximada no tiene un borde exacto; y uno sin capacidad cargada no entra en ninguno, porque meterlo en todos afirmaría que entran 50 personas sin que nadie lo haya dicho (§ 9: «es un dato que quien carga no sabe») |
 
 ---
+
+## D-690 · El alcance por ciudad del publicador es **un campo derivado y de solo lectura**
+
+**B-919.** **Contexto.** Pedido del dueño, 2026-09-14: «ella solo va a cargar eventos en Mar
+del Plata pero puede ser que no sea la única. La idea es que en su bandeja de
+eventos aparezcan los que ella creó (puede full editar) pero también aparezcan en
+modo edición los de esa ciudad que están en la base». Y la corrección del día
+siguiente, que es la que fija la forma: **«era modo lectura los otros que no son
+de ella»**.
+
+O sea que el rol `publicador` de B-888 —que veía y tocaba **solo lo que él creó**—
+gana un segundo alcance de **lectura**, por ciudad.
+
+### 1. La ciudad no está donde parece, y por eso hace falta un campo nuevo
+
+La ciudad vive en `modalidades[].sede.ciudad`, que es una **lista** (D-130), y es
+un `<input>` de texto libre, no una taxonomía. Las dos cosas juntas la vuelven
+inservible para una regla:
+
+| Problema | Por qué no tiene arreglo adentro de la regla |
+|---|---|
+| Está adentro de un array de maps | Una regla de Firestore **no puede inspeccionarlo**. Es lo mismo que frenó abrir `/opciones` al publicador en B-888, y tampoco se puede hacer un `where` sobre ese path |
+| Es texto libre | «Mar del Plata», «mar del plata» y « MAR DEL PLATA » son tres strings distintos, y un `==` contra lo tipeado es **un permiso que falla en silencio** el día que alguien escribe la ciudad con otra mayúscula (la trampa 6, en un lugar donde nadie la había puesto) |
+| Es una lista | Una actividad puede ser presencial en dos ciudades, y las dos publicadoras tienen que verla |
+
+**La decisión: un cuarto derivado en la raíz, `ciudades: string[]`** — los slugs
+de todas las ciudades de las modalidades, sin repetir y sin las vacías. Lo escribe
+`formADocumento` en cada guardado, igual que `searchText`, `modalidad` y `sede`:
+**no es una segunda fuente de verdad, es la misma proyectada.** La regla queda
+`request.auth.token.ciudad in resource.data.ciudades`, y el `in` sobre una lista sí
+se puede.
+
+**Todas las ciudades y no la de `sede`**, que es el derivado «la primera fila que
+tenga una»: quedarse con una dejaría la segunda ciudad fuera del alcance de su
+publicadora **sin que nada falle**. Es el mismo motivo por el que el `searchText`
+indexa todas las sedes.
+
+**Una actividad solo virtual queda con `[]`** y no la ve ningún publicador por
+ciudad. Es correcto y no un agujero: el alcance dice «lo que pasa en tu ciudad», y
+una reunión por Meet no pasa en ninguna.
+
+### 2. Una sola normalización, y por eso `slugify` se mudó a `.mjs`
+
+El claim lo escribe un script de node (`set-admin-claim.mjs --ciudad`) y el
+documento lo escribe el panel (TypeScript). **Si los dos slugificaran distinto, el
+permiso no matchearía** — y el síntoma no sería «no tenés permiso», sería «no hay
+actividades de tu ciudad»: el peor de los dos, porque parece un problema de datos.
+Es exactamente la clase de B-88: la misma pregunta contestada por dos derivaciones
+que se separan sin que nada falle.
+
+La implementación pasó a `src/lib/slugify.mjs` y `src/lib/slugify.ts` la
+reexporta, así que los ~veinte `import { slugify } from '@/lib/slugify'` del panel
+y del sitio no cambiaron. Es el mismo reparto que `@calendario`: una
+implementación, dos runtimes. Y hay un **chequeo de clase** que lo sostiene
+(`tests/ciudades.test.ts`): ningún script de `scripts/` puede contener
+`normalize('NFD')`, que es la firma inconfundible de esta normalización — el
+script que se la copie entra en rojo el día que se escribe.
+
+### 3. Lectura y **solo** lectura: qué se ahorra esa decisión
+
+El disyunto de la ciudad entra en `allow read` y en **ninguna** de las tres
+escrituras. `update` y `delete` no cambiaron ni una letra respecto de B-888.
+
+| Con el alcance editable (la versión descartada) | Con el alcance de solo lectura |
+|---|---|
+| Hay que decidir si puede **borrar** trabajo de otro — irreversible | No hay nada que decidir |
+| Hay que impedir que se **apropie** de una ficha ajena (`createdBy` inmutable en el update ajeno) | No hay escritura ajena posible |
+| Hay que decidir qué pasa si edita `modalidades` y se saca a sí misma del alcance | Idem |
+| Dos cláusulas más en dos reglas más, cada una con su mutación | Cero cláusulas nuevas en las escrituras |
+
+Si alguna vez hace falta que edite lo ajeno de su ciudad, el disyunto se copia al
+`allow update` y **recién ahí** hay que contestar las tres preguntas de la
+izquierda. La ruta está anotada en `firestore.rules`.
+
+### 4. La trampa 7 obliga a **dos** consultas, y el `or()` se descartó habiéndolo medido
+
+`read` incluye `list`, y la condición pasó a ser una **disyunción**: no hay una
+sola query que la satisfaga entera. Se midió contra el emulador antes de elegir:
+
+| query | veredicto |
+|---|---|
+| la colección entera, sin `where` | `permission-denied` |
+| `where('createdBy','==',uid)` (+ `orderBy`) | pasa |
+| `where('ciudades','array-contains',ciudad)` (+ `orderBy`) | pasa |
+| `or(` las dos `)` (+ `orderBy`) | **también pasa** |
+| `array-contains` de una ciudad que **no** es la del claim | `permission-denied` |
+
+O sea que el `or()` de Firestore alcanzaba, y **igual van dos consultas sueltas**
+unidas en memoria. El motivo es a qué se le confía el listado entero: cada query
+suelta satisface **un** disyunto por sí misma, que es lo más simple que el análisis
+del servidor tiene que probar; el `or()` depende de que Firestore siga probando una
+query disyuntiva contra una regla disyuntiva, y si eso se endurece alguna vez lo
+que se rompe no es una fila, **es la pantalla**. Además la segunda query no existe
+cuando el claim no trae ciudad, así que con `or()` habría dos formas de query igual.
+La medición quedó anotada en `listarActividades()` para que nadie tenga que
+rehacerla.
+
+La unión es **por id y no una concatenación**: una actividad propia y en su ciudad
+cae en las dos consultas —el caso normal de quien carga en su ciudad— y con un
+`concat` el listado la mostraría dos veces y los contadores contarían de más. El
+índice `ciudades ARRAY_CONTAINS, updatedAt DESC` está en `firestore.indexes.json`
+por el `orderBy` de la segunda.
+
+### 5. La cláusula que parecía tapada por otra
+
+`request.auth.token.get('ciudad', '') != ''` estuvo a punto de irse con el
+argumento «`ciudadesDe()` filtra los vacíos, así que ningún documento tiene `''` en
+la lista». Es cierto **de lo que escribe el panel**, y falso de lo que se puede
+escribir a mano en la consola de Firebase. Con una lista `ciudades: ['']`, un claim
+`--publicador` sin `--ciudad` da `''` en los dos lados y la actividad se le abre.
+
+Es la misma lección que `size() > 0` en `usuarioValido()` (D-650): la cláusula que
+parecía la más obvia de borrar era la única que tapaba su caso. Tiene su testigo y
+su mutación.
+
+### 6. El panel tiene que **verse** distinto, no solo comportarse distinto
+
+Una fila que se puede abrir pero no guardar no puede verse igual que una propia, y
+un formulario no puede ofrecer «Guardar» sobre algo que la regla va a rechazar:
+**un botón que existe y siempre falla es peor que no tenerlo** (es el argumento
+entero de `rolDelPanel.ts`), y acá el fallo llegaría después de veinte minutos de
+edición.
+
+- La fila lleva el chip **«Solo lectura»**, el botón dice **«Ver»** en vez de
+  «Editar» y **no tiene menú de acciones**: las cuatro acciones del menú o
+  escriben (marcar cupo, borrar, duplicar) o ya estaban cerradas (historial). Se
+  saca el menú entero en vez de vaciarlo: un «⋯» que se abre sin nada adentro se
+  aprieta dos veces antes de entenderlo.
+- El formulario se abre con un **`<fieldset disabled>`** alrededor de todo el
+  cuerpo y sin los botones de guardar. El fieldset y no una lista de `disabled`
+  campo por campo: es el navegador el que apaga los ~ochenta controles, así que
+  **el campo que se agregue mañana nace apagado** — el §«Verificar la clase, no la
+  instancia» aplicado a la UI.
+- Y el `onSubmit` corta igual, porque un `<form>` se manda también con Enter en un
+  campo de texto y eso no lo frena ningún botón escondido.
+
+La pregunta la contesta **una sola función pura**, `esSoloLectura()`, que usan la
+fila y el formulario: con un `rol === 'admin' ||` suelto en cada uno se arregla uno
+y no el otro (B-175).
+
+### 7. Y un paso de producción, que es la parte que hay que decir fuerte
+
+Los documentos que ya están en producción no tienen `ciudades`, y el default de la
+regla —`.get('ciudades', [])`— los deja afuera de todo alcance. Es la dirección
+correcta para fallar, y es **el default que preserva lo anterior** puesto en una
+regla en vez de en una lectura.
+
+Pero significa que **hasta que corra el backfill, la publicadora no ve nada de su
+ciudad**:
+
+```bash
+npm run ciudades:sembrar:prod                              # informa, no escribe
+npm run ciudades:sembrar:prod -- --aplicar --produccion    # escribe
+```
+
+Es el mismo lugar que ocupó `sembrar-slugs.mjs` en B-888, y con el mismo riesgo de
+olvido: el código funciona, los tests están verdes, y la persona para la que se
+hizo el ítem no ve nada.

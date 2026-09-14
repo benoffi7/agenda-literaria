@@ -50,6 +50,8 @@ import {
   onlinePrincipal,
   sedePrincipal,
 } from '@/lib/modalidades';
+// B-919 — la misma derivación que `formADocumento`, importada y no copiada.
+import { ciudadesDe } from '@/lib/ciudades.mjs';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { linkDeReunionQueSale, urlDeMaterialQueSale } from '@/lib/toPublic';
 // B-911 — el registro de la clase «flag + dato». De él sale QUÉ campos vigila
@@ -347,9 +349,21 @@ export const flagsDePublicacionRestaurables = (
  * marca rebuild.
  *
  * Lo que sí se restaura es `modalidades`, y `payloadDeRestauracion` recalcula los
- * cuatro derivados en la misma escritura.
+ * cinco derivados en la misma escritura.
+ *
+ * **`ciudades` entró con B-919 y es el que más duele si se olvida**: no es una
+ * incoherencia que se vea en pantalla, es **un permiso**. Restaurarlo solo dejaría
+ * al documento diciendo que es de una ciudad que ninguna de sus modalidades tiene,
+ * y eso es una actividad que aparece —o desaparece— del panel de una publicadora
+ * sin que nada en la pantalla lo explique.
  */
-const CAMPOS_DERIVADOS: readonly string[] = ['modalidad', 'sede', 'online', 'searchText'];
+const CAMPOS_DERIVADOS: readonly string[] = [
+  'modalidad',
+  'sede',
+  'online',
+  'searchText',
+  'ciudades',
+];
 
 /**
  * ¿El campo **existía** cuando se guardó esta versión?
@@ -454,8 +468,8 @@ export const payloadDeRestauracion = (
   const payload: Record<string, unknown> = { [campo]: valor };
 
   /**
-   * B-224 — restaurar las formas de cursar arrastra sus tres derivados en la
-   * **misma** escritura. Sin esto el documento queda con una sede que ninguna
+   * B-224 / B-919 — restaurar las formas de cursar arrastra sus **cuatro**
+   * derivados en la **misma** escritura. Sin esto el documento queda con una sede que ninguna
    * fila tiene y una modalidad que no es la unión de nada, y eso sale al
    * `events.json` y al evento hasta el próximo guardado.
    */
@@ -464,6 +478,11 @@ export const payloadDeRestauracion = (
     payload.modalidad = modalidadResultante(filas);
     payload.sede = sedePrincipal(filas);
     payload.online = onlinePrincipal(filas);
+    // B-919 — el cuarto derivado de la lista, y el único que decide un permiso:
+    // sin esto la restauración deja `ciudades` hablando de modalidades que ya no
+    // están, y la actividad entra o sale del panel de una publicadora sin que
+    // nada lo explique.
+    payload.ciudades = ciudadesDe(filas);
   }
 
   /**

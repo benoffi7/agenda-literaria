@@ -92,8 +92,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const montar = async (rol: 'admin' | 'publicador') => {
-  render(<ListaActividades {...props} rol={rol} />);
+const montar = async (rol: 'admin' | 'publicador', ciudad = '') => {
+  render(<ListaActividades {...props} rol={rol} ciudad={ciudad} />);
   return await screen.findByRole('list');
 };
 
@@ -119,14 +119,35 @@ describe('el listado pide lo suyo, y eso no es presentación — B-888', () => {
      * `rol-publicador.integracion.test.ts`, que ve el `permission-denied`.
      */
     await montar('publicador');
-    expect(vi.mocked(listarActividades)).toHaveBeenCalledWith('publicador', UID_PROPIO);
+    expect(vi.mocked(listarActividades)).toHaveBeenCalledWith('publicador', UID_PROPIO, '');
   });
 
   it('y un admin sigue pidiendo el catálogo entero', async () => {
     // Control positivo: sin esto, un `listarActividades` que siempre acotara
     // también pasaría el caso de arriba.
     await montar('admin');
-    expect(vi.mocked(listarActividades)).toHaveBeenCalledWith('admin', UID_PROPIO);
+    expect(vi.mocked(listarActividades)).toHaveBeenCalledWith('admin', UID_PROPIO, '');
+  });
+
+  it('con ciudad en el claim, la ciudad viaja a la query — B-919', async () => {
+    /*
+     * **La ciudad no es presentación, es la segunda consulta.** El alcance por
+     * ciudad lo resuelve `listarActividades` con `where('ciudades',
+     * 'array-contains', ciudad)`, y esa consulta no existe si el valor no llega:
+     * el listado le mostraría a la publicadora **solo lo suyo**, o sea el
+     * comportamiento anterior a B-919, sin que nada falle.
+     *
+     * MUTACIÓN PROBADA: sacar `ciudad={ciudad}` del `<ListaActividades>` de
+     * `AdminApp`, o el cuarto argumento del `useActividades` de
+     * `ListaActividades`, deja este caso en rojo. Los dos casos de arriba siguen
+     * verdes, que es lo que lo hace un caso aparte.
+     */
+    await montar('publicador', 'mar-del-plata');
+    expect(vi.mocked(listarActividades)).toHaveBeenCalledWith(
+      'publicador',
+      UID_PROPIO,
+      'mar-del-plata',
+    );
   });
 
   it('el publicador no pide el directorio de cuentas, que la regla le cierra', async () => {
@@ -176,6 +197,70 @@ describe('el menú de una tarjeta no ofrece la pantalla que no le corresponde �
     await montar('admin');
     const menu = await menuDe('Taller de crónica');
     expect(within(menu).getByText('Historial')).not.toBeNull();
+  });
+});
+
+describe('la fila de la ciudad que cargó otra cuenta se mira y no se toca — B-919', () => {
+  /**
+   * Una actividad **de su ciudad** que cargó otra cuenta: la regla le da `read` y
+   * rechaza el `update` y el `delete` («era modo lectura los otros que no son de
+   * ella», el dueño). Llega al listado por la segunda consulta.
+   */
+  const ajenaDeSuCiudad = () =>
+    acto({ id: 'ajena', titulo: 'Club ajeno', createdBy: UID_OTRA, updatedBy: UID_OTRA });
+
+  it('dice «Ver» y no «Editar», y no tiene menú de acciones', async () => {
+    /*
+     * **Las cuatro acciones del menú o escriben o ya estaban cerradas**: marcar
+     * cupo y borrar son escrituras que la regla rechaza, historial es de admin y
+     * duplicar abre el camino de creación sobre contenido que no es suyo. Un
+     * botón que existe y siempre falla es peor que no tenerlo — es el argumento
+     * entero de `rolDelPanel.ts`.
+     *
+     * MUTACIÓN PROBADA: cambiar `esSoloLectura` por `rol !== 'admin' &&
+     * autoriaDe(…) === 'ajena'` **no** alcanza para poner esto en rojo (acá la
+     * autoría ES ajena); lo que sí lo pone en rojo es sacarle el `!soloLectura &&`
+     * al `<MenuAcciones>` de `ListaActividades.tsx`, o volver el texto del botón a
+     * `'Editar'` fijo. El caso de abajo cubre la otra mitad.
+     */
+    vi.mocked(listarActividades).mockResolvedValue([ajenaDeSuCiudad()]);
+    await montar('publicador', 'mar-del-plata');
+
+    expect(screen.getByRole('button', { name: 'Ver' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Editar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Más acciones de Club ajeno' })).toBeNull();
+    // Y lo dice, además de no ofrecerlo: la fila tiene que **verse** distinta.
+    expect(screen.getByText('Solo lectura')).not.toBeNull();
+  });
+
+  it('y la suya sigue teniendo «Editar» y el menú entero', async () => {
+    /*
+     * **El control positivo, y sin él lo de arriba pasa con la pantalla tapiada.**
+     * Un `soloLectura` que devolviera siempre `true` deja el caso anterior en
+     * verde: es exactamente lo que B-894 destapó —lo que se apaga primero es lo
+     * que OTORGA— y por eso las dos mitades van juntas.
+     */
+    vi.mocked(listarActividades).mockResolvedValue([acto()]);
+    await montar('publicador', 'mar-del-plata');
+
+    expect(screen.getByRole('button', { name: 'Editar' })).not.toBeNull();
+    expect(screen.queryByText('Solo lectura')).toBeNull();
+    const menu = await menuDe('Taller de crónica');
+    expect(within(menu).getByText('Borrar')).not.toBeNull();
+  });
+
+  it('para un admin nada es de solo lectura, aunque la haya cargado otro', async () => {
+    /*
+     * La otra mitad del control positivo, del lado del rol: `esSoloLectura` mira
+     * el rol **primero**. Sin este caso, un `esSoloLectura` que se olvidara del
+     * `rol !== 'admin'` dejaría al admin sin poder borrar lo que cargó la otra
+     * cuenta y los dos casos de arriba seguirían verdes.
+     */
+    vi.mocked(listarActividades).mockResolvedValue([ajenaDeSuCiudad()]);
+    await montar('admin');
+
+    expect(screen.getByRole('button', { name: 'Editar' })).not.toBeNull();
+    expect(screen.queryByText('Solo lectura')).toBeNull();
   });
 });
 

@@ -969,16 +969,51 @@ Cuatro cosas que no se adivinan del tipo:
   adentro de `modalidades`, la enumeración pasó a ser la única red — y es más
   fuerte, porque la clave de más no llega ni siquiera a Firestore.
 
-**Los tres derivados.** `modalidad`, `sede` y `online` siguen en el documento, y
-no son una segunda fuente de verdad: los escribe `formADocumento` en cada
-guardado, igual que `searchText`. Existen porque hay salidas que solo pueden decir
-**una** cosa.
+**Los cuatro derivados.** `modalidad`, `sede`, `online` y —desde B-919—
+`ciudades` siguen en el documento, y no son una segunda fuente de verdad: los
+escribe `formADocumento` en cada guardado, igual que `searchText`. Existen porque
+hay salidas —y una regla— que solo pueden decir **una** cosa.
 
 | Derivado | Cómo se calcula | Quién lo lee |
 |---|---|---|
 | `modalidad` | la **unión** de las filas: dos que difieren dan `hibrido` | el `events.json`, la analítica, el texto para redes |
 | `sede` | la de la **primera fila que tenga una** | el `location` del evento (el que dibuja el mapa), el `searchText` del §6, el filtro por barrio |
 | `online` | idem, con el bloque online | el texto para redes |
+| `ciudades: string[]` | los **slugs de todas** las ciudades de las filas, sin repetir y sin las vacías (`ciudadesDe`, `src/lib/ciudades.mjs`) | **una regla de Firestore**: el alcance por ciudad del rol `publicador` (B-919, D-690) |
+
+**`ciudades` es el único de los cuatro que no existe para una pantalla**, y eso
+explica su forma. La regla pregunta `token.ciudad in resource.data.ciudades`, y no
+puede preguntar por `modalidades[].sede.ciudad` por dos motivos, cualquiera de los
+dos suficiente: **una regla no puede inspeccionar adentro de un array de maps**
+—es lo mismo que frenó abrir `/opciones` al publicador en B-888— y la ciudad es un
+`<input>` de texto libre, no una taxonomía, así que «Mar del Plata», «mar del
+plata» y « MAR DEL PLATA » son tres strings distintos.
+
+Tres consecuencias que conviene tener juntas:
+
+- **Todas las ciudades y no la de `sede`.** `sede` es «la primera fila que tenga
+  una»; derivar de ahí dejaría la segunda ciudad fuera del alcance de su
+  publicadora sin que nada falle. Es el mismo motivo por el que el `searchText`
+  indexa todas las sedes.
+- **El slug lo produce el `slugify` del proyecto, el mismo que el claim.** Si el
+  script que escribe el claim y el panel que escribe el documento normalizaran
+  distinto, el permiso no matchearía y nadie entendería por qué (clase de B-88).
+  Por eso la implementación se mudó a `src/lib/slugify.mjs` —node no corre
+  TypeScript— y `src/lib/slugify.ts` la reexporta.
+- **Una actividad solo virtual queda con `[]`** y no la ve ningún publicador por
+  ciudad. Es correcto: no pasa en ninguna ciudad.
+
+**Opcional a propósito, y con un paso de producción atrás.** Los documentos
+anteriores a B-919 no lo tienen, y el default de lectura —`?? []` en el código,
+`.get('ciudades', [])` en la regla— los deja exactamente como estaban, o sea fuera
+del alcance de todo publicador. **Hasta que corra el backfill
+(`npm run ciudades:sembrar:prod -- --aplicar --produccion`) la publicadora no ve
+nada de su ciudad**, solo lo suyo. Es la dirección correcta para fallar, y es lo
+mismo que ya pasó con el índice de slugs en B-888.
+
+**No sale a ninguna salida pública**, y no hizo falta hacer nada para eso:
+`toPublic` enumera campo por campo (§5.2). Tampoco revelaría nada —la ciudad ya se
+publica adentro de `sede`— pero la whitelist decide, no esta frase.
 
 La unión y no «la primera» porque lo segundo depende del orden del array —la
 trampa 2 en otra forma: reordenar las filas cambiaría lo que se publica—. `sede` y
@@ -996,10 +1031,15 @@ misma fuente que usa la restauración del historial, así que el mismo documento
 puede tener un índice distinto según por dónde se escribió.
 
 **El historial no ofrece los derivados para restaurar sueltos.** `modalidad`,
-`sede`, `online` y `searchText` salieron de la lista de campos restaurables:
-restaurar uno por separado deja el documento contradiciéndose —una sede que
-ninguna fila tiene— hasta el próximo guardado, y en el medio eso sale al
-`events.json`. Restaurar `modalidades` recalcula los tres en la misma escritura.
+`sede`, `online`, `searchText` y `ciudades` salieron de la lista de campos
+restaurables: restaurar uno por separado deja el documento contradiciéndose —una
+sede que ninguna fila tiene— hasta el próximo guardado, y en el medio eso sale al
+`events.json`. Restaurar `modalidades` recalcula los cuatro en la misma escritura.
+
+**Y `ciudades` es el que más duele olvidar ahí**, porque no produce una
+incoherencia visible: produce **un permiso**. Un documento restaurado diciendo que
+es de una ciudad que ninguna de sus modalidades tiene entra —o desaparece— del
+panel de una publicadora sin que nada en la pantalla lo explique.
 
 **No hay migración ni lectura de compatibilidad**: no había nada en producción
 cuando el campo entró (decisión del dueño, 2026-08-27), así que un documento sin

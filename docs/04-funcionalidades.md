@@ -15,12 +15,14 @@ formas: la pantalla solo evita mostrar un panel inútil.
 
 **`admin`** ve y toca toda la agenda. **`publicador`** gestiona **solo las
 actividades que él creó** —incluido su estado, o sea que publica sin que nadie
-revise— y nada más. La frontera son las reglas (`07-seguridad.md` § «Los dos roles
-del panel»); lo que el panel hace es no ofrecer lo que va a ser rechazado:
+revise— y, desde B-919, **ve en solo lectura las de su ciudad**. La frontera son
+las reglas (`07-seguridad.md` § «Los dos roles del panel»); lo que el panel hace es
+no ofrecer lo que va a ser rechazado:
 
 | Qué | Con el rol acotado |
 |---|---|
-| Listado y vista calendario | Solo lo suyo. **No es un filtro**: la query pide `where('createdBy','==',uid)` porque sin eso la regla rechaza la query entera (trampa 7) y la pantalla quedaría rota, no acotada |
+| Listado y vista calendario | Lo suyo **más lo de su ciudad**. **No es un filtro**: son **dos** consultas —`where('createdBy','==',uid)` y `where('ciudades','array-contains',ciudad)`— unidas en memoria, porque la regla es una disyunción y una query que no la satisface entera se rechaza completa (trampa 7); la pantalla quedaría rota, no acotada |
+| Una actividad de su ciudad que cargó otra cuenta | **Se mira y no se toca.** La fila dice «Solo lectura», el botón dice «Ver» en vez de «Editar» y no tiene menú de acciones; el formulario se abre con todos los campos apagados y sin los botones de guardar. Es lo que la regla permite: `read` sí, `update` y `delete` no |
 | Opciones de los desplegables, estado del catálogo, propuestas, reportar algo, historial de una actividad | No aparecen |
 | «Otro…» en los desplegables de taxonomía | No aparece: crear una etiqueta cambia lo que ve todo el sitio, y `/opciones/*` es de admin. Elegir de la lista sí |
 | Subir la imagen de su actividad | Sí. Lo único que no puede es **pisar** un objeto que ya existe, ni borrar ni enumerar el prefijo |

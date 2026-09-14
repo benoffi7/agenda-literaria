@@ -454,6 +454,31 @@ export interface Actividad {
   sede: Sede | null;
   /** El bloque online **principal**, con el mismo criterio que `sede`. */
   online: Online | null;
+  /**
+   * **Las ciudades de la actividad, en slug** — B-919, D-690.
+   *
+   * Derivado de `modalidades[].sede.ciudad` con `ciudadesDe()`
+   * (`src/lib/ciudades.mjs`), igual que `modalidad` y `sede`: lo escribe
+   * `formADocumento` en cada guardado y no es una segunda fuente de verdad.
+   *
+   * Existe **para una regla de Firestore**, que es lo que lo distingue de los
+   * otros derivados: el alcance por ciudad del rol `publicador` se escribe
+   * `request.auth.token.ciudad in resource.data.ciudades`, y una regla no puede
+   * mirar adentro de `modalidades[]` ni normalizar lo que alguien tipeó. El
+   * razonamiento largo está en el docblock de `ciudades.mjs`.
+   *
+   * **Opcional a propósito** (D-26): los documentos que ya están en producción no
+   * lo tienen, y el default de lectura —`?? []`— los deja exactamente como
+   * estaban, o sea fuera del alcance de todo publicador. Para que aparezcan hay
+   * que correr el backfill (`npm run ciudades:sembrar:prod`), que es un paso de
+   * producción y no una prolijidad.
+   *
+   * **No sale a ninguna salida pública**, y no hace falta hacer nada para eso:
+   * `toPublic` enumera campo por campo (§5.2). Si alguna vez saliera tampoco
+   * revelaría nada —la ciudad ya se publica dentro de `sede`— pero la whitelist
+   * decide, no este comentario.
+   */
+  ciudades?: string[];
 
   inscripcion: Inscripcion;
   /**

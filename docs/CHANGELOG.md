@@ -2,6 +2,72 @@
 
 ## Sin publicar
 
+- **El publicador ve —y solo ve— las actividades de su ciudad** — **B-919**, D-690.
+  Pedido del dueño: «ella solo va a cargar eventos en Mar del Plata pero puede ser
+  que no sea la única. La idea es que en su bandeja aparezcan los que ella creó pero
+  también los de esa ciudad que están en la base». Y la corrección que fija la
+  forma: **«era modo lectura los otros que no son de ella»**.
+
+  **La ciudad no estaba donde parecía.** Vive en `modalidades[].sede.ciudad` —una
+  lista (D-130)— y es un `<input>` de texto libre. Las dos cosas juntas la vuelven
+  inservible para una regla: no se puede inspeccionar adentro de un array de maps
+  (lo mismo que frenó abrir `/opciones` en B-888), y un `==` contra lo tipeado es
+  **un permiso que falla en silencio** el día que alguien escribe la ciudad con otra
+  mayúscula. De ahí `ciudades: string[]`, el cuarto derivado: los slugs de todas las
+  ciudades de las filas, que `formADocumento` escribe en cada guardado. **Todas** y
+  no la de `sede` —«la primera que tenga»— porque quedarse con una dejaría la
+  segunda ciudad fuera del alcance de su publicadora sin que nada falle.
+
+  **Y el slug tiene que ser el mismo de los dos lados.** El claim lo escribe un
+  script de node y el documento lo escribe el panel: si normalizaran distinto, el
+  síntoma no sería «no tenés permiso» sino **«no hay actividades de tu ciudad»** —
+  el peor de los dos, porque parece un problema de datos. Por eso `slugify` se mudó
+  a `.mjs` (node no corre TypeScript) y el `.ts` quedó de fachada, con un chequeo de
+  clase que barre `src/`, `functions/` y `scripts/`.
+
+  **El alcance es de lectura, y eso se ahorra tres preguntas**: `update` y `delete`
+  no cambiaron ni una letra, así que no hay nada que decidir sobre borrar trabajo
+  ajeno, apropiarse de una ficha, ni qué pasa si se edita fuera del alcance.
+
+  **La trampa 7 tiene una cara nueva y es peor que la vieja.** La condición pasó a
+  ser una **disyunción**, y ninguna query la satisface entera: el listado hace
+  **dos** consultas unidas por id. Se midió contra el emulador —el `or()` de
+  Firestore también pasa, y se descartó igual: cada query suelta prueba su propio
+  disyunto, y si ese análisis se endurece lo que se rompe no es una fila, es la
+  pantalla—.
+
+  **En el panel la fila ajena se ve distinta**: chip «Solo lectura», botón «Ver» en
+  vez de «Editar», sin menú de acciones, y lo mismo en el calendario. El formulario
+  se abre con un `<fieldset disabled>` —el navegador apaga los ochenta controles,
+  así que el campo que se agregue mañana nace apagado— y sin los botones de guardar.
+  **Dos cosas las encontró el test al escribirse**: esconder los botones con
+  `hidden` los dejaba en el DOM (alcanzables con Tab), y la tira de solapas había
+  quedado **adentro** del fieldset, o sea que la ficha ajena se recorría entera en el
+  teléfono y quedaba clavada en la primera pestaña en pantalla ancha. Y la sección
+  «Difusión» —lo interno de la otra cuenta— no se muestra.
+
+  **Cinco mutaciones nuevas sobre las reglas, todas en rojo**, incluida la que saca
+  el disyunto entero: sin ese control positivo las cuatro negaciones pasan con el rol
+  de B-888 intacto (la lección de B-894).
+
+  **Es un paso de despliegue, no solo código.** Los documentos de producción no
+  tienen `ciudades` y la regla los deja afuera: hasta que corra
+  `npm run ciudades:sembrar:prod -- --aplicar --produccion`, la publicadora ve solo
+  lo suyo. Falla cerrada, pero si reporta «no me aparece nada de Mar del Plata», la
+  respuesta es ese comando.
+
+  Lo encontraron los auditores y está arreglado: el calendario no distinguía lo ajeno
+  (clase B-175); el formulario mostraba las notas internas de un tercero; `ciudades`
+  entró al fixture con un valor que ningún barrido seguía; y `slugify.mjs` tenía los
+  combinantes Unicode **literales** en vez de `\u0300-\u036f` — funcionaba, y un
+  merge lo apagaba en silencio.
+
+  **Queda una decisión del dueño abierta: B-920.** Una regla es todo-o-nada por
+  documento, así que el `read` de la ciudad entrega el **documento crudo** de un
+  tercero —link de reunión no publicable, `difusion`, destino de inscripción,
+  borradores— y no la vista pública. Se aceptó con motivo escrito y con el testigo
+  que **enumera** lo que lee, para que recortarlo sea dar vuelta un aserto.
+
 - **El formulario de librerías tiraba la etiqueta nueva del barrio** — **B-914**,
   encontrado por el `auditor-trampas` comparando `LibreriaFormulario` contra
   `SuscripcionFormulario`. `onChange={(v) => set('barrio', v)}` **descartaba el

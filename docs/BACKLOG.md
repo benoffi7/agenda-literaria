@@ -6069,6 +6069,54 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2
+
+**Lo marcó el `auditor-privacidad` sobre B-919 y la decisión es del dueño.** Una
+regla de Firestore es **todo-o-nada por documento**: el alcance por ciudad no
+autoriza «la vista pública de las actividades de mi ciudad», autoriza **el
+documento crudo**. O sea que de una actividad ajena de su ciudad, esa cuenta lee
+también `online.url` con `urlPublica: false`, `difusion`, `inscripcion.destino`,
+la URL del material privado, los uids y `imagenes[].storagePath`. Y **sin cláusula
+de `estado`**, así que alcanza a los **borradores** ajenos, de los que no salió
+nunca nada a ninguna parte.
+
+**Se aceptó, con tres motivos**: el claim lo entrega el dueño de a una cuenta por
+vez con un script; el alcance es estrictamente menor que el del `admin`, que ya lee
+todo; y recortar por campo **no es expresable en una regla** (la alternativa es una
+Function que proyecte en el camino de lectura del panel, que es lo que D-660
+descartó). El panel además no se lo pone adelante: la ficha en solo lectura no
+muestra «Difusión».
+
+**Vuelve cuando entre la segunda publicadora**, que el propio pedido anticipa
+(«puede ser que no sea la única»): ahí deja de ser una cuenta mirando y pasa a ser
+N cuentas cruzadas.
+
+La ruta de recorte ya está escrita y medida a medias: sumarle
+`resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, más el
+`where('estado','==','publicado')` correspondiente en la segunda query de
+`listarActividades` — y **medirlo contra el emulador, no suponerlo** (trampa 7). El
+testigo que hay que dar vuelta ya existe y **enumera lo que lee**: `it('lee un
+BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro')`
+en `tests/rol-publicador.integracion.test.ts`.
+
+### B-921 · Un publicador puede cargar una actividad fuera de su ciudad, y editar una la saca del alcance · P2
+
+Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
+
+1. **`create` no mira la ciudad.** Una publicadora de Mar del Plata puede cargar una
+   actividad de Rosario: nace suya, así que la controla entera. No contradice ninguna
+   regla, pero tampoco es lo que el pedido dice literalmente. Si hay que cerrarlo, la
+   cláusula va en el `allow create` y **hay que decidir qué pasa con las que ya
+   cargó**.
+2. **Editar la sede puede sacar la actividad del alcance de otra cuenta**, sin aviso.
+   `ciudades` es derivado, así que cambiarle la ciudad a una actividad hace que deje
+   de verla quien la veía por su ciudad. Es coherente con que el campo sea una
+   proyección y no una segunda fuente de verdad, pero el panel no lo dice en ningún
+   lado.
+
+Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
+puertas, no las abre.
+
 ### B-917 · `/lugares` tampoco tiene retención, y acá el documento guarda una dirección · P2
 
 Mismo caso que B-904 y B-912: una ficha `rechazado` conserva el

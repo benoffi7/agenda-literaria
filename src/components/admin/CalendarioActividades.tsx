@@ -40,6 +40,9 @@ import {
   type GrupoPublicacion,
 } from '@/lib/calendarioPanel';
 import type { RolDelPanel } from '@/lib/rolDelPanel';
+// B-919 — la misma pregunta que decide los botones de la fila del listado y si el
+// formulario se puede guardar. Una sola función para las tres puertas (B-175).
+import { esSoloLectura } from '@/lib/formulario/autoria';
 import type { ActividadConId } from '@/types/actividad';
 
 interface Props {
@@ -50,14 +53,21 @@ interface Props {
    * B-888 — los dos entran por lo mismo que en `ListaActividades`: deciden la
    * **forma de la query**, no qué se pinta después.
    *
-   * Y de ahí sale, gratis, el pedido del dueño —«la vista de calendario, donde
-   * ve solo los suyos»—: `listarActividades` ya trae solo lo propio para un
-   * publicador, así que acá no hace falta ningún filtro. Escribir uno sería una
-   * segunda derivación de «qué es suyo», que es la clase de B-88; y además sería
-   * cosmético, porque lo que de verdad lo acota es la regla.
+   * Y de ahí sale, gratis, **qué actividades entran**: `listarActividades` ya
+   * devuelve exactamente las que este rol puede ver, así que acá no hace falta
+   * ningún filtro. Escribir uno sería una segunda derivación de «qué ve esta
+   * cuenta», que es la clase de B-88; y además sería cosmético, porque lo que de
+   * verdad lo acota es la regla.
+   *
+   * **Lo que ya NO sale gratis, desde B-919**: la lista dejó de ser «solo lo
+   * suyo». Con alcance por ciudad entran también actividades **ajenas** de esa
+   * ciudad, que se miran y no se tocan, y eso sí hay que decirlo en la fila — ver
+   * `soloLectura` más abajo.
    */
   rol: RolDelPanel;
   uid: string;
+  /** B-919 — el alcance por ciudad del publicador (`''` si no tiene). */
+  ciudad?: string;
 }
 
 /**
@@ -157,6 +167,28 @@ function ChipCierre({ estado }: { estado: EstadoCierre }) {
 }
 
 /**
+ * **«Solo lectura», en la fila del calendario** — B-919.
+ *
+ * Lo cobró el `auditor-trampas`: `ListaActividades` contestaba «¿esto es mío?» de
+ * un vistazo y esta pantalla no contestaba nada, así que la publicadora entraba a
+ * una ficha ajena y se enteraba recién al verla deshabilitada. Es la clase de
+ * B-175 —la misma pregunta decidida en dos pantallas, y se arregla una y no la
+ * otra—, y por eso la pregunta la contesta la misma función pura (`esSoloLectura`)
+ * en las tres puertas: la fila del listado, la fila del calendario y el
+ * formulario.
+ *
+ * Es un texto y no un icono: la fila ya tiene un chip de estado al lado, y dos
+ * símbolos juntos se leen como una sola cosa.
+ */
+function MarcaSoloLectura() {
+  return (
+    <span className="shrink-0 whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70">
+      Solo lectura
+    </span>
+  );
+}
+
+/**
  * Una fila de cierre de inscripción en la agenda (B-126).
  *
  * Al tocarla se abre la actividad, igual que con un encuentro: la unidad de
@@ -166,10 +198,12 @@ function ChipCierre({ estado }: { estado: EstadoCierre }) {
 function FilaCierre({
   cierre,
   estado,
+  soloLectura,
   onAbrir,
 }: {
   cierre: Cierre;
   estado: EstadoCierre;
+  soloLectura: boolean;
   onAbrir: () => void;
 }) {
   return (
@@ -185,6 +219,7 @@ function FilaCierre({
           Inscripción{cierre.cupo ? ` · cupo ${cierre.cupo}` : ''}
         </span>
       </span>
+      {soloLectura && <MarcaSoloLectura />}
       <ChipCierre estado={estado} />
     </button>
   );
@@ -194,10 +229,12 @@ function FilaCierre({
 function FilaEncuentro({
   encuentro,
   pasado,
+  soloLectura,
   onAbrir,
 }: {
   encuentro: Encuentro;
   pasado: boolean;
+  soloLectura: boolean;
   onAbrir: () => void;
 }) {
   return (
@@ -228,6 +265,7 @@ function FilaEncuentro({
             .join(' · ')}
         </span>
       </span>
+      {soloLectura && <MarcaSoloLectura />}
       <ChipEstado estado={encuentro.estado} />
     </button>
   );
@@ -262,13 +300,14 @@ function FilaEncuentro({
  * ese ancho se ve siempre la agenda: los días con algo —encuentros o cierres—,
  * uno abajo del otro, con blancos táctiles de 44px.
  */
-export function CalendarioActividades({ onEditar, version, rol, uid }: Props) {
+export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = '' }: Props) {
   // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
   // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
   const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(
     version,
     rol,
     uid,
+    ciudad,
   );
   const [mesElegido, setMesElegido] = useState<string | null>(null);
   const [modo, setModo] = useState<'mes' | 'agenda'>('mes');
@@ -281,6 +320,18 @@ export function CalendarioActividades({ onEditar, version, rol, uid }: Props) {
   const porIdActividad = useMemo(
     () => new Map(actividades.map((a) => [a.id, a])),
     [actividades],
+  );
+
+  /**
+   * B-919 — los ids de las actividades que esta cuenta puede ver y **no** tocar.
+   *
+   * Se calcula una vez por carga y no fila por fila: un ciclo de ocho encuentros
+   * son ocho filas de la misma actividad, y preguntar ocho veces lo mismo en cada
+   * render es exactamente lo que el memo de las tarjetas del listado ya evita.
+   */
+  const soloLectura = useMemo(
+    () => new Set(actividades.filter((a) => esSoloLectura(rol, a, uid)).map((a) => a.id)),
+    [actividades, rol, uid],
   );
 
   // Todo lo que sigue es función pura sobre lo que ya está en memoria: cero
@@ -347,6 +398,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid }: Props) {
               key={e.sesionId}
               encuentro={e}
               pasado={yaPaso(e, ahora)}
+              soloLectura={soloLectura.has(e.actividadId)}
               onAbrir={() => abrir(e)}
             />
           ))}
@@ -357,6 +409,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid }: Props) {
               key={`cierre-${c.actividadId}`}
               cierre={c}
               estado={estadoCierre(c, ahora)}
+              soloLectura={soloLectura.has(c.actividadId)}
               onAbrir={() => abrirId(c.actividadId)}
             />
           ))}

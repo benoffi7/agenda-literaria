@@ -46,6 +46,8 @@ import {
 // Puro: la tabla de qué ve cada rol. No toca Firestore, así que puede ser un
 // import estático del chunk del login (B-09, D-51).
 import { puedeVer, type RolDelPanel } from '@/lib/rolDelPanel';
+// B-919 — puro: la misma pregunta que decide los botones de la fila del listado.
+import { esSoloLectura } from '@/lib/formulario/autoria';
 // Store de módulo, sin Firestore ni React context (mismo patrón que
 // `formulario-sucio.ts`): es lo que le permite a `campos-del-panel.tsx` decidir
 // si ofrece «Otro…» sin cablear un booleano por seis componentes.
@@ -316,6 +318,15 @@ export function AdminApp() {
    * publicador daría `false` y vería «Sin permisos» teniendo permisos.
    */
   const [rol, setRol] = useState<RolDelPanel | null | undefined>(undefined);
+  /**
+   * B-919 — el alcance por ciudad del publicador, del mismo token que el rol.
+   *
+   * `''` es «sin alcance por ciudad», que es lo que tiene un admin (ve todo) y
+   * una cuenta publicadora a la que nadie le puso `--ciudad`. Va en su propio
+   * estado y no adentro de `rol` para no cambiar el tipo que ya leen `puedeVer` y
+   * las quince ramas del router.
+   */
+  const [ciudad, setCiudad] = useState('');
   const [cargando, setCargando] = useState(true);
   const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
 
@@ -442,8 +453,10 @@ export function AdminApp() {
       alCambiarDeSesion(almacenDelNavegador(), uidAnterior.current, u?.uid ?? null);
       uidAnterior.current = u?.uid ?? null;
       setUsuario(u);
-      const suRol = u ? await rolDelPanel(u) : null;
+      const sesion = u ? await rolDelPanel(u) : { rol: null, ciudad: '' };
+      const suRol = sesion.rol;
       setRol(suRol);
+      setCiudad(sesion.ciudad);
       // Antes del `setCargando(false)`: el store tiene que estar al día **antes**
       // del primer render del panel, o el formulario se dibujaría una vez con el
       // default permisivo.
@@ -850,6 +863,7 @@ export function AdminApp() {
           }}
           uid={usuario.uid}
           rol={rol}
+          ciudad={ciudad}
           onHistorial={(a) => {
             setVolverA('lista');
             setVista({ tipo: 'historial', actividad: a });
@@ -872,6 +886,7 @@ export function AdminApp() {
           version={version}
           rol={rol}
           uid={usuario.uid}
+          ciudad={ciudad}
           onEditar={(a) => {
             setVolverA('calendario');
             setEtiquetasSinRegistrar([]);
@@ -978,6 +993,16 @@ export function AdminApp() {
         <ActividadFormulario
           uid={usuario.uid}
           rol={rol}
+          /*
+           * B-919 — **solo al editar.** Crear y duplicar nacen con `createdBy`
+           * propio, así que son escrituras que la regla acepta; lo que puede ser
+           * de otro es lo que se abre desde el listado. La misma función que
+           * decide si la fila muestra «Ver» o «Editar», para que las dos
+           * pantallas no puedan contestar distinto (B-175).
+           */
+          soloLectura={
+            vista.tipo === 'editar' && esSoloLectura(rol, vista.actividad, usuario.uid)
+          }
           vistaDelPanel={vistaDelPanel}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
           copia={

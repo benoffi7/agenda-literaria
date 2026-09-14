@@ -590,6 +590,54 @@ describe('barrido del evento de Calendar (§5.1, §7.4)', () => {
   });
 });
 
+describe('`ciudades` no sale por ninguna puerta — B-919', () => {
+  /**
+   * **El campo que existe para una regla, no para una pantalla.**
+   *
+   * `ciudades` es el derivado con el que `firestore.rules` contesta el alcance
+   * por ciudad del rol `publicador` (D-690). No tiene que salir a ninguna salida
+   * pública, y hoy no sale porque `toPublic` es una whitelist — pero **eso no lo
+   * afirmaba nada**: su valor es `slugify` del centinela de `sede.ciudad`, o sea
+   * un texto derivado que `barrer()` no persigue (busca los `CENTINELA[ruta]`
+   * literales, y `centinela-sede-ciudad` no es ninguno).
+   *
+   * Lo cobró el `auditor-privacidad`, y tiene razón en la parte que importa: para
+   * un campo que **no** tiene que salir, un valor que nunca aparece **es** la
+   * aserción, igual que con `difusion.notas`. Así que se ancla por valor acá, en
+   * las cuatro salidas por las que podría colarse.
+   *
+   * MUTACIÓN PROBADA: agregar `ciudades` a la lista de `pick` de `toPublic` deja
+   * los dos primeros `expect` en rojo nombrando el slug.
+   */
+  // Se lee **del fixture** y no se recalcula: es el valor que el documento lleva,
+  // que es lo que tiene que no salir.
+  const SLUG = actividadCentinela().ciudades![0]!;
+
+  it('el slug de la ciudad no aparece en la proyección, el índice, el detalle ni el evento', () => {
+    // Control positivo del propio caso: si el fixture dejara de traer la ciudad,
+    // los cuatro `not.toContain` pasarían buscando la cadena vacía.
+    expect(SLUG).toBe('centinela-sede-ciudad');
+
+    const publica = toPublic(actividadCentinela(), 'act_centinela');
+    expect(JSON.stringify(publica)).not.toContain(SLUG);
+
+    const indice = construirIndice({
+      actividades: [publica],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    expect(JSON.stringify(indice)).not.toContain(SLUG);
+
+    const actividad = actividadCentinela();
+    expect(
+      JSON.stringify(construirEvento(actividad, actividad.sesiones[0], LABELS_CENTINELA)),
+    ).not.toContain(SLUG);
+
+    expect(JSON.stringify(buildSearchText(actividad))).not.toContain(SLUG);
+  });
+});
+
 describe('barrido del searchText (§6 — salida pública por la puerta de atrás)', () => {
   it('sobreviven exactamente los centinelas permitidos', () => {
     // Se normaliza a minúsculas y sin acentos, así que el barrido compara

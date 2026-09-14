@@ -5,6 +5,9 @@
  *
  *   npm run admin:claim -- <uid|email>                 → admin (ve y toca todo)
  *   npm run admin:claim -- --publicador <uid|email>    → publicador (B-888)
+ *   npm run admin:claim -- --publicador --ciudad "Mar del Plata" <uid|email>
+ *                                                      → publicador con alcance
+ *                                                        por ciudad (B-919)
  *   npm run admin:claim -- --quitar <uid|email>        → sin claims
  *
  * Contra los emuladores exportá antes:
@@ -28,6 +31,20 @@
  */
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+/*
+ * **B-919 — el `slugify` del proyecto, importado y no copiado.**
+ *
+ * La regla compara `request.auth.token.ciudad` contra `resource.data.ciudades`,
+ * que `formADocumento` escribe con **este mismo** `slugify`. Si el script y el
+ * documento normalizaran distinto —una `ñ`, un acento, un guión— el permiso no
+ * matchearía y **nadie entendería por qué**: el panel no diría «no tenés
+ * permiso», diría «no hay actividades de tu ciudad». Es la clase de B-88 (la
+ * misma pregunta contestada por dos funciones) con el peor síntoma posible.
+ *
+ * Por eso la implementación vive en `src/lib/slugify.mjs` y no en un `.ts`: node
+ * no corre TypeScript, y una copia acá es exactamente lo que no puede existir.
+ */
+import { slugify } from '../src/lib/slugify.mjs';
 
 const argumentos = process.argv.slice(2);
 
@@ -43,10 +60,54 @@ const ROLES = {
 const flag = argumentos.find((a) => a in ROLES);
 const rol = ROLES[flag] ?? { nombre: 'admin', claims: { admin: true } };
 
-const objetivo = argumentos.find((a) => a !== flag);
+/**
+ * **El alcance por ciudad** — B-919, D-690. `--ciudad "Mar del Plata"`.
+ *
+ * Se slugifica con el `slugify` del proyecto (ver el import) porque es lo que la
+ * regla va a comparar contra `ciudades`, que el documento escribe con esa misma
+ * función.
+ *
+ * ── Tres decisiones ───────────────────────────────────────────────────────
+ *  - **Solo para `--publicador`.** Un admin ve todo el catálogo, así que una
+ *    ciudad en su claim no significaría nada y quedaría como un dato que alguien
+ *    lee mañana y cree que restringe algo. Se rechaza en vez de ignorarse: el
+ *    comando que la pasó quería otra cosa.
+ *  - **Una ciudad que no deja slug se rechaza.** `--ciudad "¿?"` da `''`, y un
+ *    claim con ciudad vacía es exactamente el estado que la regla tiene que
+ *    tapar con su tercera cláusula. Que el script no pueda producirlo es la otra
+ *    mitad del mismo reparto que ya tienen los roles: acá no se crea el estado
+ *    raro, y allá se decide qué pasa si igual existe.
+ *  - **Sin `--ciudad`, el publicador queda sin alcance**, o sea exactamente como
+ *    antes de B-919: ve lo suyo y nada más. Es el default que preserva lo
+ *    anterior (§«Un campo nuevo se lee con el default que preserva lo anterior»).
+ */
+const iCiudad = argumentos.indexOf('--ciudad');
+const ciudadCruda = iCiudad >= 0 ? argumentos[iCiudad + 1] : undefined;
+if (iCiudad >= 0) {
+  if (flag !== '--publicador') {
+    console.error('--ciudad solo tiene sentido con --publicador: un admin ve todo el catálogo.');
+    process.exit(1);
+  }
+  if (!ciudadCruda || ciudadCruda.startsWith('--')) {
+    console.error('--ciudad necesita un nombre: --ciudad "Mar del Plata".');
+    process.exit(1);
+  }
+  const slug = slugify(ciudadCruda);
+  if (!slug) {
+    console.error(`«${ciudadCruda}» no deja ningún nombre usable de ciudad. Abortando.`);
+    process.exit(1);
+  }
+  rol.claims.ciudad = slug;
+  rol.nombre = `publicador de ${slug}`;
+}
+
+const consumidos = new Set([flag, '--ciudad', ciudadCruda].filter(Boolean));
+const objetivo = argumentos.find((a) => !consumidos.has(a));
 if (!objetivo) {
   console.error('Uso: npm run admin:claim -- <uid|email>                 (admin)');
   console.error('     npm run admin:claim -- --publicador <uid|email>    (solo lo suyo)');
+  console.error('     npm run admin:claim -- --publicador --ciudad "Mar del Plata" <uid|email>');
+  console.error('                                                       (lo suyo + su ciudad, en lectura)');
   console.error('     npm run admin:claim -- --quitar <uid|email>        (le saca el rol)');
   console.error('     npm run admin:claim -- --todos                     (solo emulador)');
   process.exit(1);

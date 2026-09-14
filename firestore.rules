@@ -226,8 +226,67 @@ service cloud.firestore {
        * documento anterior al campo, y con el default el rechazo es limpio. Es el
        * mismo idiom que `esAdmin()` y por el mismo motivo.
        */
+      /*
+       * ── Y desde B-919, también **las de su ciudad** ──────────────────────
+       *
+       * Pedido del dueño: «ella solo va a cargar eventos en Mar del Plata pero
+       * puede ser que no sea la única. La idea es que en su bandeja de eventos
+       * aparezcan los que ella creó (puede full editar) pero también aparezcan
+       * los de esa ciudad que están en la base». Y la corrección que define la
+       * forma de esta regla: **«era modo lectura los otros que no son de ella»**.
+       *
+       * Por eso la ciudad entra en `allow read` y en **ninguna** de las tres
+       * escrituras. Lo ajeno de su ciudad se ve y no se toca: `update` y `delete`
+       * siguen pidiendo `createdBy == uid`, palabra por palabra igual que antes
+       * de este ítem. Es la versión más chica del permiso que satisface el pedido,
+       * y la que no obliga a contestar «¿puede borrar trabajo de otro?».
+       *
+       * ── Las tres cláusulas del disyunto, y por qué cada una ───────────────
+       *
+       * 1. `resource.data.get('ciudades', [])` — **`ciudades` y no
+       *    `modalidades[].sede.ciudad`**, que es donde la ciudad vive de verdad
+       *    (D-130). Dos motivos, y cualquiera de los dos alcanza:
+       *      · una regla **no puede inspeccionar adentro de un array de maps** —
+       *        es lo mismo que frenó abrir `/opciones` en B-888— así que
+       *        `modalidades` no es consultable desde acá ni con un `where`;
+       *      · y la ciudad es un `<input>` de texto libre, no una taxonomía
+       *        (`ModalidadesEditor.tsx`), así que «Mar del Plata», «mar del
+       *        plata» y « MAR DEL PLATA » son tres strings distintos y un `==`
+       *        contra lo tipeado es **un permiso que falla en silencio** el día
+       *        que alguien escribe la ciudad con otra mayúscula.
+       *    `ciudades` es el derivado normalizado que `formADocumento` escribe en
+       *    cada guardado, con el MISMO `slugify` que usa el claim (D-690).
+       *
+       * 2. `in` sobre una lista **sí** se puede en una regla, y por eso el campo
+       *    es un array de slugs y no un escalar: una actividad presencial en dos
+       *    ciudades tiene que aparecerle a las dos publicadoras.
+       *
+       * 3. `request.auth.token.get('ciudad', '') != ''` **no es de adorno, y se
+       *    probó**: `--publicador` sin `--ciudad` produce un claim sin ciudad, y
+       *    ahí `.get('ciudad','')` da `''`. `ciudadesDe()` filtra los vacíos, así
+       *    que hoy ninguna actividad guardada desde el panel tiene `''` en la
+       *    lista — pero **una escrita a mano sí puede**, y sin esta cláusula esa
+       *    actividad se la abriría a toda cuenta publicadora sin ciudad. Es la
+       *    misma lección que `size() > 0` en `usuarioValido()`: la cláusula que
+       *    parecía tapada por otra era la única que tapaba su caso. Su testigo
+       *    está en `tests/rol-publicador.integracion.test.ts`.
+       *
+       * ── El `list`, que es donde esto se paga (trampa 7) ──────────────────
+       * `read` incluye `list`, y ahora la condición es una **disyunción**: no hay
+       * una sola query que la satisfaga entera. Firestore no filtra, **rechaza la
+       * query completa**, así que el listado del panel necesita **dos** consultas
+       * —`where('createdBy','==',uid)` y `where('ciudades','array-contains',
+       * ciudad)`— unidas en memoria. Se midió contra el emulador que cada una pasa
+       * por su disyunto y que un `or()` de las dos **también** pasa; se eligieron
+       * las dos sueltas igual, y el motivo está en `listarActividades()`.
+       * El índice `ciudades ARRAY_CONTAINS, updatedAt DESC` está en
+       * `firestore.indexes.json` por el `orderBy` de esa segunda query.
+       */
       allow read: if esAdmin()
-        || (esPublicador() && resource.data.get('createdBy', '') == request.auth.uid);
+        || (esPublicador()
+             && (resource.data.get('createdBy', '') == request.auth.uid
+                  || (request.auth.token.get('ciudad', '') != ''
+                       && request.auth.token.get('ciudad', '') in resource.data.get('ciudades', []))));
 
       /*
        * ── Las tres escrituras, separadas porque el dueño se verifica distinto ──
@@ -267,6 +326,15 @@ service cloud.firestore {
              && request.resource.data.get('createdBy', '') == request.auth.uid
              && request.resource.data.get('updatedBy', '') == request.auth.uid);
 
+      /*
+       * **B-919 no tocó ni una letra de estas dos reglas, y eso es la decisión.**
+       * El alcance por ciudad es de lectura: «era modo lectura los otros que no
+       * son de ella» (el dueño). Así que lo de su ciudad que cargó otra cuenta se
+       * ve y no se escribe, y no hay ninguna pregunta que contestar sobre borrar
+       * trabajo ajeno ni sobre apropiarse de una ficha. Si alguna vez hace falta
+       * que edite lo ajeno de su ciudad, el disyunto de `read` se copia acá — y
+       * recién ahí hay que decidir qué pasa con `delete` y con `createdBy`.
+       */
       allow update: if esAdmin()
         || (esPublicador()
              && resource.data.get('createdBy', '') == request.auth.uid

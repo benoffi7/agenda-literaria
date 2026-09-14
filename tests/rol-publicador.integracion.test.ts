@@ -1124,4 +1124,290 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       expect(resultados.filter((r) => r.status === 'rejected')).toHaveLength(1);
     });
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  9. EL ALCANCE POR CIUDAD — B-919
+  // ══════════════════════════════════════════════════════════════════════
+  /**
+   * **El pedido del dueño, y su corrección.** «Ella solo va a cargar eventos en
+   * Mar del Plata pero puede ser que no sea la única. La idea es que en su
+   * bandeja de eventos aparezcan los que ella creó (puede full editar) pero
+   * también aparezcan los de esa ciudad que están en la base» — y después:
+   * **«era modo lectura los otros que no son de ella»**.
+   *
+   * O sea que lo que se mide acá son dos cosas que tienen que pasar juntas:
+   * **que vea** lo de su ciudad, y **que no lo escriba**.
+   */
+  describe('lo de su ciudad se ve, y solo se ve', () => {
+    const CIUDAD = 'mar-del-plata';
+    const OTRA_CIUDAD = 'rosario';
+    const MIA_MDQ = 'act_b919_mia_mdq';
+    const AJENA_MDQ = 'act_b919_ajena_mdq';
+    const AJENA_ROSARIO = 'act_b919_ajena_rosario';
+    const AJENA_SIN_CIUDADES = 'act_b919_ajena_sin_campo';
+    const AJENA_CIUDAD_VACIA = 'act_b919_ajena_ciudad_vacia';
+    const BORRADOR_AJENO = 'act_b919_borrador_ajeno';
+
+    const claimConCiudad = { publicador: true, ciudad: CIUDAD };
+
+    beforeEach(async () => {
+      await sembrar(MIA_MDQ, actividadDe(UID_PUB, { slug: 'mia-mdq', ciudades: [CIUDAD] }));
+      await sembrar(AJENA_MDQ, actividadDe(UID_ADMIN, { slug: 'ajena-mdq', ciudades: [CIUDAD] }));
+      await sembrar(
+        AJENA_ROSARIO,
+        actividadDe(UID_ADMIN, { slug: 'ajena-rosario', ciudades: [OTRA_CIUDAD] }),
+      );
+      /*
+       * **Sin el campo**: son los documentos que ya están en producción. El
+       * default de la regla (`.get('ciudades', [])`) los deja afuera, y el
+       * backfill (`scripts/sembrar-ciudades.mjs`) es lo que los trae adentro.
+       */
+      await sembrar(AJENA_SIN_CIUDADES, actividadDe(UID_ADMIN, { slug: 'ajena-sin-campo' }));
+      /*
+       * **Con una ciudad vacía en la lista.** `ciudadesDe()` filtra los vacíos,
+       * así que el panel no puede producirlo — pero la consola de Firebase sí. Es
+       * el caso de la tercera cláusula de la regla.
+       */
+      await sembrar(
+        AJENA_CIUDAD_VACIA,
+        actividadDe(UID_ADMIN, { slug: 'ajena-vacia', ciudades: [''] }),
+      );
+    });
+
+    // ── Los controles positivos, primero ────────────────────────────────
+    it('lee una actividad de su ciudad que cargó otra cuenta', async () => {
+      /*
+       * **El control positivo del ítem entero.** Sin esto, todas las negaciones
+       * de abajo las satisface un `allow read: if esAdmin()` pelado —o sea el
+       * estado anterior a B-919— y el alcance por ciudad podría no existir sin
+       * que un solo caso se ponga rojo. Es lo que B-894 destapó: lo que se apaga
+       * primero es lo que OTORGA.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      const leida = await getDoc(doc(db(), 'actividades', AJENA_MDQ));
+      expect(leida.exists(), 'no pudo leer una actividad de su propia ciudad').toBe(true);
+    });
+
+    it('y las lista con el `array-contains` que la regla obliga (trampa 7)', async () => {
+      /*
+       * La segunda consulta del listado. La regla pasó a ser una **disyunción**,
+       * y ninguna query la satisface entera: cada una satisface **su** disyunto.
+       * Acá se mide la del alcance por ciudad; la de lo propio ya está en el
+       * bloque 1.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      const deLaCiudad = await getDocs(
+        query(collection(db(), 'actividades'), where('ciudades', 'array-contains', CIUDAD)),
+      );
+      expect(deLaCiudad.docs.map((d) => d.id).sort()).toEqual([AJENA_MDQ, MIA_MDQ].sort());
+    });
+
+    it('y sigue pudiendo todo lo suyo: el alcance suma, no reemplaza', async () => {
+      // Control positivo del otro lado: una regla nueva que tapara la rama del
+      // dueño dejaría verdes todas las negaciones de abajo.
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await updateDoc(doc(db(), 'actividades', MIA_MDQ), {
+        titulo: 'Editado por su dueña',
+        updatedBy: UID_PUB,
+      });
+      await deleteDoc(doc(db(), 'actividades', MIA_MDQ));
+    });
+
+    it('lee un BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro', async () => {
+      /*
+       * **Este caso no celebra nada: deja escrito qué incluye ese `read`**, para
+       * que el día que el dueño decida recortarlo haya un aserto que dar vuelta en
+       * vez de una ausencia que nadie encuentra. Lo pidió el `auditor-privacidad`.
+       *
+       * Una regla es **todo-o-nada por documento**: no proyecta (D-128). Así que
+       * el disyunto de la ciudad no autoriza «la vista de `toPublic` de las
+       * actividades de mi ciudad», autoriza **el documento crudo** — y sin
+       * cláusula de `estado`, o sea que alcanza también a los borradores ajenos,
+       * de los que nunca salió nada a ninguna parte.
+       *
+       * Se acepta, y el razonamiento está en `docs/07-seguridad.md` § «Los dos
+       * roles del panel»: recortar por campo no es expresable en una regla, y la
+       * única alternativa —una Function que proyecte en el camino de lectura del
+       * panel— es la que D-660 descartó.
+       *
+       * **Para recortarlo**, la cláusula es sumarle
+       * `resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad
+       * (más el `where` correspondiente en la segunda query, y medirlo: trampa 7).
+       * Con eso puesto, este caso se pone rojo — que es exactamente para lo que
+       * está.
+       */
+      await sembrar(
+        BORRADOR_AJENO,
+        actividadDe(UID_ADMIN, {
+          slug: 'borrador-ajeno-mdq',
+          estado: 'borrador',
+          ciudades: [CIUDAD],
+          online: { plataforma: 'meet', url: 'https://meet.example/privado', urlPublica: false },
+          difusion: { arrobar: ['@alguien'], notas: 'Pedirle el flyer a la librería' },
+        }),
+      );
+
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      const leido = await getDoc(doc(db(), 'actividades', BORRADOR_AJENO));
+      expect(leido.exists()).toBe(true);
+      const datos = leido.data()!;
+      expect(datos.estado).toBe('borrador');
+      // Lo que el `read` entrega, enumerado a propósito.
+      expect(datos.online.url).toBe('https://meet.example/privado');
+      expect(datos.difusion.notas).toBe('Pedirle el flyer a la librería');
+    });
+
+    // ── Y ahora lo que NO puede ─────────────────────────────────────────
+    it('NO edita la de su ciudad que cargó otra cuenta', async () => {
+      /*
+       * **El caso que define la forma de la regla.** El documento que se manda es
+       * el que la regla aceptaría **si fuera suya**: conserva el `createdBy`
+       * previo y firma con su propio `updatedBy`, o sea que las dos cláusulas de
+       * forma del `allow update` están satisfechas. Lo único que puede rechazarlo
+       * es la cláusula de autoría — que es exactamente lo que este caso mide.
+       *
+       * MUTACIÓN PROBADA: copiar el disyunto de la ciudad
+       * (`token.ciudad in resource.data.ciudades`) al `allow update` deja este
+       * caso en rojo. El de lectura de arriba sigue verde, que es lo que lo hace
+       * un caso aparte y no el mismo dos veces.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await rechazada(
+        updateDoc(doc(db(), 'actividades', AJENA_MDQ), {
+          titulo: 'Le corrijo el título al de al lado',
+          createdBy: UID_ADMIN,
+          updatedBy: UID_PUB,
+        }),
+        'editar una actividad ajena de su propia ciudad',
+      );
+    });
+
+    it('NO la borra', async () => {
+      /*
+       * MUTACIÓN PROBADA: copiar el disyunto de la ciudad al `allow delete` deja
+       * este caso en rojo. Va aparte del `update` porque son dos cláusulas
+       * distintas del archivo: aflojar una no afloja la otra.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await rechazada(
+        deleteDoc(doc(db(), 'actividades', AJENA_MDQ)),
+        'borrar una actividad ajena de su propia ciudad',
+      );
+    });
+
+    it('no lee una de OTRA ciudad, ni la puede pedir', async () => {
+      /*
+       * MUTACIÓN PROBADA: cambiar el `in` por un `true` —o comparar contra
+       * cualquier lista en vez de `resource.data.ciudades`— deja este caso en
+       * rojo. Se miden las dos puertas porque son dos permisos distintos: el
+       * `get` del documento y el `list` de la query.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await rechazada(
+        getDoc(doc(db(), 'actividades', AJENA_ROSARIO)),
+        'leer una actividad ajena de otra ciudad',
+      );
+      await rechazada(
+        getDocs(
+          query(collection(db(), 'actividades'), where('ciudades', 'array-contains', OTRA_CIUDAD)),
+        ),
+        'listar las actividades de otra ciudad',
+      );
+    });
+
+    it('no lee una ajena que todavía no tiene el campo `ciudades`', async () => {
+      /*
+       * **El default que preserva lo anterior** (§«Un campo nuevo se lee con el
+       * default que preserva lo anterior»), puesto en una regla: los documentos
+       * anteriores a B-919 no tienen `ciudades`, y `.get('ciudades', [])` los deja
+       * afuera de todo alcance. Es la dirección correcta —no se abre de más— y es
+       * exactamente por qué el backfill es un paso del despliegue: **hasta que
+       * corra, la publicadora no ve nada de su ciudad.**
+       *
+       * MUTACIÓN PROBADA: cambiar el default por algo que matchee —`.get('ciudades',
+       * [request.auth.token.ciudad])`— deja este caso en rojo, y le abriría el
+       * catálogo entero anterior a B-919 a cualquier publicador.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await rechazada(
+        getDoc(doc(db(), 'actividades', AJENA_SIN_CIUDADES)),
+        'leer una actividad ajena sin el campo ciudades',
+      );
+    });
+
+    it('un publicador SIN ciudad no se cuela por una lista con la ciudad vacía', async () => {
+      /*
+       * **La cláusula que parecía tapada por otra.** `--publicador` sin `--ciudad`
+       * deja un claim sin ciudad, y ahí `.get('ciudad','')` da `''`. `ciudadesDe()`
+       * filtra los vacíos, así que hoy ningún documento guardado desde el panel
+       * tiene `''` en la lista — pero uno escrito a mano en la consola sí puede, y
+       * sin la tercera cláusula esa actividad se le abriría a toda cuenta
+       * publicadora sin ciudad. Es la misma lección que `size() > 0` en
+       * `usuarioValido()`.
+       *
+       * MUTACIÓN PROBADA: borrar `request.auth.token.get('ciudad', '') != ''` del
+       * `allow read` deja este caso en rojo. Ningún otro caso del archivo lo
+       * cubre.
+       */
+      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await rechazada(
+        getDoc(doc(db(), 'actividades', AJENA_CIUDAD_VACIA)),
+        'leer una actividad con la ciudad vacía, sin ciudad en el claim',
+      );
+    });
+
+    it('un publicador sin ciudad tampoco ve las de ninguna ciudad', async () => {
+      // El caso normal del claim sin `--ciudad`: es exactamente el rol de B-888,
+      // ve lo suyo y nada más.
+      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await rechazada(
+        getDoc(doc(db(), 'actividades', AJENA_MDQ)),
+        'leer una actividad de una ciudad sin tener ciudad en el claim',
+      );
+      expect((await getDoc(doc(db(), 'actividades', MIA_MDQ))).exists()).toBe(true);
+    });
+
+    it('`listarActividades` une lo suyo y lo de su ciudad, sin repetir', async () => {
+      /*
+       * **La función del panel, no una query rearmada a mano**: lo que puede
+       * fallar es que el panel arme mal la unión, y eso solo se ve llamándola.
+       *
+       * `MIA_MDQ` cae en las **dos** consultas —es suya y es de su ciudad, que es
+       * el caso normal de quien carga en su ciudad—, así que si la unión fuera un
+       * `concat` esta cuenta daría 3 y el listado la mostraría dos veces.
+       *
+       * MUTACIÓN PROBADA: cambiar el `Map` por `flatMap` deja este caso en rojo
+       * con 3 en vez de 2; sacar la segunda consulta lo deja en rojo con 1.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      const ids = (await listarActividades('publicador', UID_PUB, CIUDAD)).map((a) => a.id);
+
+      // Lo de su ciudad que cargó otro: es lo que la segunda consulta agrega.
+      expect(ids).toContain(AJENA_MDQ);
+      // Lo suyo sigue estando (el `beforeEach` del archivo siembra más de las de
+      // este bloque, así que se afirma por pertenencia y no por igualdad).
+      expect(ids).toContain(MIA_MDQ);
+      // Y lo de otra ciudad no se coló: la regla habría rechazado la query entera.
+      expect(ids).not.toContain(AJENA_ROSARIO);
+      // **Una sola vez cada una.** `MIA_MDQ` cae en las dos consultas.
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('y sin ciudad no arma la segunda consulta, en vez de pedir una que la regla rechaza', async () => {
+      /*
+       * Un `array-contains` de `''` es una query que la regla no autoriza —el
+       * claim vacío no puede matchear nada— y **una query rechazada rompe el
+       * listado entero**, no devuelve menos (trampa 7). Así que la segunda
+       * consulta no existe sin ciudad.
+       *
+       * MUTACIÓN PROBADA: sacarle el `...(ciudad ? [...] : [])` a
+       * `listarActividades` hace que esto tire `permission-denied` en lugar de
+       * devolver lo suyo.
+       */
+      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      const lista = await listarActividades('publicador', UID_PUB, '');
+      expect(lista.map((a) => a.id)).toContain(MIA_MDQ);
+      expect(lista.map((a) => a.id)).not.toContain(AJENA_MDQ);
+    });
+  });
 });

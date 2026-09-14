@@ -109,6 +109,34 @@ día que B-01 necesite lectura en vivo y alguien vuelva a condicionar por
 `resource.data` —la subcolección `privado/` de D-128 o cualquier otra forma—, el
 mecanismo ya está fijado. **Cierra B-172.**
 
+### La cara nueva de la trampa 7: una regla **disyuntiva** (B-919)
+
+Hasta acá la trampa se contaba con una condición sola: `allow read` mira
+`resource.data.X`, así que la query tiene que traer `where('X','==',…)` o se
+rechaza entera. **B-919 le agregó una cara que no estaba escrita**: cuando la
+condición es `A || B` —el publicador ve lo suyo **o** lo de su ciudad— **no existe
+ninguna query que la satisfaga entera**. La pantalla no se arregla con un `where`
+más: hacen falta **dos consultas**, una por disyunto, unidas en memoria.
+
+Lo que hace esto más traicionero que la versión de una sola condición es que **el
+síntoma se parece a un filtro mal escrito**. Una query que la regla rechaza tira
+`permission-denied` sobre el listado completo, y el reflejo es mirar los datos.
+
+Se midió contra el emulador antes de elegir, y la medición está anotada en
+`listarActividades()` y en D-690. Dos resultados que conviene tener a mano:
+
+- `or(A, B)` de Firestore **también pasa** el análisis, con y sin `orderBy`. Se
+  descartó igual: cada query suelta satisface **un** disyunto por sí misma, que es
+  lo más simple que el servidor tiene que probar, y si ese análisis se endurece
+  alguna vez lo que se rompe no es una fila, es la pantalla.
+- Un `array-contains` de un valor que **no** es el del claim se rechaza entero. O
+  sea que el `where` no es solo la forma de la query: su **valor** también lo mira
+  la regla.
+
+La red son los dos casos de `rol-publicador.integracion.test.ts` que ejercitan el
+contraste —cada disyunto pasa, la colección entera se rechaza— más el que afirma
+que `listarActividades` une sin repetir.
+
 ### La trampa 11, que se descubrió en producción
 
 Es la única de la lista que **no** se identificó leyendo el código sino mirando

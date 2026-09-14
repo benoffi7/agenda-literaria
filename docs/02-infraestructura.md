@@ -124,8 +124,23 @@ misma llamada — y las reglas además tratan un token con los dos como publicad
 ```sh
 npm run admin:claim:prod -- <email>                  # admin
 npm run admin:claim:prod -- --publicador <email>     # publicador
+npm run admin:claim:prod -- --publicador --ciudad "Mar del Plata" <email>
+                                                     # publicador + ve (solo lee) lo de esa ciudad
 npm run admin:claim:prod -- --quitar <email>         # sin rol
 ```
+
+**`--ciudad` es el alcance por ciudad de B-919 (D-690)**, y es un tercer claim
+—`{ publicador: true, ciudad: 'mar-del-plata' }`— y no un rol nuevo. Es
+**opcional** y solo tiene sentido con `--publicador`: agrega un alcance de
+**lectura** sobre lo que otras cuentas cargaron en esa ciudad, sin tocar nada de
+lo que puede escribir. El script la slugifica con el `slugify` del proyecto —el
+mismo con el que el panel escribe `ciudades` en cada actividad—, así que se
+escribe como se escriba.
+
+> ⚠️ **Antes de dar un claim con `--ciudad`, correr el backfill**
+> (`npm run ciudades:sembrar:prod -- --aplicar --produccion`, en
+> `08-operacion.md`). Los documentos anteriores a B-919 no tienen `ciudades` y la
+> regla los deja afuera: sin el backfill, la cuenta ve solo lo suyo.
 
 El claim entra al token **en el próximo login**: hay que salir y volver a entrar
 en `/admin`. Y con Google la cuenta **nace en el primer login**, así que para una

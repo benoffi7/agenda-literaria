@@ -1322,8 +1322,9 @@ dos; y el `updatedBy` del documento nuevo es mío.)*
 ### Los dos roles del panel, y el modelo de amenaza del acotado (B-888)
 
 `admin` ve y toca todo. `publicador` **gestiona solo las actividades que él
-creó** —incluido su `estado`, o sea que publica sin que nadie revise— y nada
-más. Cruza el umbral que B-28 dejó escrito: «la confianza, no la cantidad;
+creó** —incluido su `estado`, o sea que publica sin que nadie revise— y, desde
+B-919, además **ve en solo lectura las de su ciudad**. Cruza el umbral que B-28
+dejó escrito: «la confianza, no la cantidad;
 vuelve cuando entre una tercera cuenta que no sea de confianza».
 
 **La autorización es esta tabla y no el panel.** Que la UI esconda un botón no
@@ -1339,7 +1340,12 @@ mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atravie
 | ¿Puede escalar a admin escribiendo en `/usuarios`? | **No** | El documento tiene **dos campos y nada más** (`hasOnly`), y ninguno es el rol. El rol es el claim, y el claim solo lo escribe el Admin SDK |
 | ¿Puede escribir el registro de otra cuenta? | **No** | El uid es el del **path** y tiene que ser el de la sesión |
 | ¿Puede presentarse con el mail de otro? | **No** | `email` tiene que ser idéntico a `request.auth.token.email`, más `email_verified` |
-| ¿Puede leer lo que no es suyo? | **No** | `read` mira `createdBy`. Y como `read` incluye `list`, una query sin `where('createdBy','==',uid)` se rechaza **entera** (trampa 7) — no devuelve un subconjunto |
+| ¿Puede leer lo que no es suyo? | **Lo de su ciudad, y solo leerlo** (B-919) | `read` mira `createdBy` **o** `token.ciudad in resource.data.ciudades`. `update` y `delete` **no cambiaron**: siguen pidiendo `createdBy == uid`. Y como `read` incluye `list` y la condición es ahora una **disyunción**, ninguna query la satisface entera: el listado hace **dos** —`where('createdBy','==',uid)` y `where('ciudades','array-contains',ciudad)`— y las une en memoria (trampa 7: Firestore no filtra, rechaza) |
+| ¿Puede colarse en otra ciudad? | **No** | El `array-contains` de una ciudad que no es la del claim se rechaza **entero**, y el `get` de un documento de otra ciudad también. Medido contra el emulador |
+| **¿Qué incluye ese `read`?** | **El documento entero, no la vista de `toPublic`** | Una regla es **todo-o-nada por documento**: no proyecta (es el argumento de D-128, acá aplicado a un principal nuevo). O sea que de una actividad ajena de su ciudad lee también `online.url` con `urlPublica:false`, `difusion.arrobar` y `difusion.notas`, `inscripcion.destino`, la URL del material con `publico:false`, los uids y `imagenes[].storagePath`. Ver el párrafo de abajo: es una decisión, no un descuido |
+| ¿Alcanza a los **borradores** ajenos de su ciudad? | **Sí** | No hay cláusula de `estado` en el disyunto. De una publicada, casi todo eso ya salió por el `events.json` y la página de detalle; de un borrador ajeno **no salió nada nunca**, y ése es el subconjunto que hay que tener presente |
+| ¿Y si no tiene ciudad en el claim? | **Ve lo suyo y nada más** | Es el rol de B-888 tal cual. Y hay una cláusula propia —`token.ciudad != ''`— para que una lista `ciudades: ['']` escrita a mano en la consola no le abra nada: `ciudadesDe()` filtra los vacíos, pero la regla no se confía de eso |
+| ¿Y los documentos anteriores a `ciudades`? | **No los ve** | `.get('ciudades', [])` — el default que preserva lo anterior, puesto en una regla. Es por eso que el backfill (`npm run ciudades:sembrar:prod`) es un **paso del despliegue**: hasta que corra, no ve nada de su ciudad |
 | ¿Y las subcolecciones `versiones/`? | **No, ni la suya** | La regla del padre no cascadea: `versiones` decide aparte y se queda en `esAdmin()`. El historial es una de las pantallas que su panel no tiene |
 | ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe** | Las reglas no pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega una opción» y «reescribe la taxonomía del sitio» son el mismo permiso. Desde la tajada 2 el panel **no le ofrece «Otro…»** y el guardado saltea las dos escrituras: no es la frontera, es no ofrecer lo que va a fallar |
 | ¿Puede subir la imagen de su actividad? | **Sí, y solo crear** (B-888 tajada 2, D-660) | `create` abierto a los dos roles; para el acotado, además `resource == null`. El uuid del flyer de una actividad publicada **es conocible** —viaja adentro de la URL de descarga, que es pública—, así que sin esa guarda podría reemplazar el flyer de cualquiera. `delete` y `list` siguen en `esAdmin()` |
@@ -1347,6 +1353,55 @@ mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atravie
 | ¿Y las bandejas (`/reportes`, `/propuestas`)? | **No** | Llevan el mail de otra cuenta y el contacto de un tercero. Y revisar propuestas es decidir qué entra al catálogo, que es la autoridad que este rol no tiene |
 | ¿Y `/sistema`? | **No** | Trae las consultas con las que Google nos muestra — texto que tipearon visitantes — y el flag de rebuild |
 | ¿Puede **publicar el link de la reunión**? | **Sí, igual que un admin** | Lo señaló el `auditor-privacidad`, y va acá porque es lo único que la tabla no contestaba: `online.urlPublica: true` es el **único desvío del §5.1** (D-15), y hace salir el link al `events.json` y al evento de Calendar. Una regla no puede hacer política de campo —no sabe si ese link «debería» ser público—, así que el rol lo alcanza y la decisión es del dueño: si alguna vez hay que negárselo, la cláusula es `request.resource.data.online.urlPublica == false` para la rama del publicador, y va en `firestore.rules` |
+
+**El alcance por ciudad es de LECTURA, y esa es la decisión de B-919.** El pedido
+del dueño empezó en «que aparezcan en modo edición los de esa ciudad» y se corrigió
+al día siguiente: **«era modo lectura los otros que no son de ella»**. Por eso el
+disyunto de la ciudad entra en `allow read` y en ninguna de las tres escrituras —
+con lo cual no hay ninguna pregunta que contestar sobre borrar trabajo de otro ni
+sobre apropiarse de una ficha ajena, que eran las dos que la versión editable
+abría. Si alguna vez hace falta que edite lo ajeno de su ciudad, el disyunto se
+copia al `allow update` y **recién ahí** hay que decidir qué pasa con `delete` y
+con `createdBy`.
+
+**Ese `read` entrega el documento entero, y conviene decirlo al derecho.** Lo
+marcó el `auditor-privacidad` y la respuesta es que **se acepta**, por tres
+motivos: el claim lo entrega el dueño de a una cuenta por vez con un script; el
+alcance es estrictamente menor que el del `admin`, que ya lee todo; y **recortar
+por campo no es expresable en una regla** —la única alternativa sería una Function
+que proyecte en el camino de lectura del panel, que es justo lo que D-660
+descartó—. Lo que no puede quedar implícito es qué incluye, porque la frase del
+dueño («era modo lectura los otros que no son de ella») decide sobre **escribir**,
+y de ahí no se sigue que haya dicho que sí a que se lea el link de reunión y las
+notas internas de los borradores de otra persona.
+
+Dos cosas que salen de ahí y que conviene tener juntas:
+
+- **El panel no se lo pone adelante igual.** La ficha ajena en solo lectura
+  **no muestra la sección «Difusión»** —los handles a etiquetar y las notas
+  internas—, que es la única puramente interna. No es la frontera (quien quiera
+  leerla la lee desde la consola con su propia sesión), es no ofrecerlo.
+- **Si el dueño prefiere recortar**, la cláusula es sumarle
+  `resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, con el
+  `where('estado','==','publicado')` correspondiente en la segunda query de
+  `listarActividades` — y hay que **medirlo contra el emulador**, no suponerlo
+  (trampa 7). El testigo que habría que dar vuelta ya está escrito y nombra lo que
+  lee: `it('lee un BORRADOR ajeno de su ciudad, con su link de reunión y sus notas
+  internas adentro')`.
+
+**Y la ciudad no está donde parece.** Vive en `modalidades[].sede.ciudad` —una
+**lista**, porque una actividad puede ser presencial en una librería y virtual por
+Meet (D-130)— y es un `<input>` de texto libre, no una taxonomía. Las dos cosas
+juntas la hacen inconsultable desde una regla: no se puede mirar adentro de un
+array de maps (es lo mismo que frenó abrir `/opciones` en B-888) y un `==` contra
+lo tipeado es **un permiso que falla en silencio** el día que alguien escribe la
+ciudad con otra mayúscula. De ahí el derivado `ciudades: string[]` —los slugs de
+todas las ciudades de sus modalidades— que `formADocumento` escribe en cada
+guardado con **el mismo `slugify`** que usa el claim. Que sea el mismo no es
+prolijidad: si el script y el documento normalizaran distinto, el permiso no
+matchearía y el síntoma sería «no hay actividades de tu ciudad», no «no tenés
+permiso» (clase de B-88). Por eso la implementación vive en `src/lib/slugify.mjs`
+—node no corre TypeScript— y `src/lib/slugify.ts` la reexporta.
 
 **Lo que el rol alcanza, dicho al derecho:** un publicador **publica sin
 revisión**, que es lo que el dueño pidió. O sea que la confianza que el rol
@@ -1363,6 +1418,14 @@ evaluaría nunca y el rol nuevo sería decorativo. Por eso `esAdmin()` exige ade
 dirección en la que conviene fallar. Ese estado no se puede crear con
 `scripts/set-admin-claim.mjs` —`setCustomUserClaims` reemplaza el objeto entero—,
 pero sí tocando la consola a mano, y las dos mitades hacen falta.
+
+**B-919 agregó cinco mutaciones más, todas en rojo y cada una con un caso
+propio:** copiar el disyunto de la ciudad al `allow update`; copiarlo al `allow
+delete`; borrar la cláusula `token.ciudad != ''`; cambiar el default de
+`.get('ciudades', [])` por uno que matchee el claim; y sacar el disyunto entero
+—que es el control positivo, el que muestra que sin él las cuatro negaciones
+pasarían con el rol de B-888 intacto (la lección de B-894: lo que se apaga primero
+es lo que OTORGA).
 
 **Todo esto se verifica por mutación**, que es lo único que hace que una regla de
 seguridad valga: `tests/rol-publicador.integracion.test.ts`,

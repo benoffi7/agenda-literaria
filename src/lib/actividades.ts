@@ -23,7 +23,7 @@ import {
 } from '@/lib/slugs';
 import { libroVacio } from '@/lib/formulario/estadoInicial';
 import { buildSearchText } from '@/lib/normalize';
-import { deDatetimeLocal, aDatetimeLocal } from '@/lib/sesiones';
+import { deDatetimeLocal, aDatetimeLocal, instanteDeTimestamp } from '@/lib/sesiones';
 import { imagenesDe } from '@/lib/imagenes';
 import { idItemMaterialMigrado } from '@/lib/material';
 import {
@@ -35,6 +35,10 @@ import {
   sedePrincipal,
 } from '@/lib/modalidades';
 import { slugify } from '@/lib/slugify';
+// B-919 — la derivación de `ciudades` vive en un `.mjs` porque el backfill
+// (`scripts/sembrar-ciudades.mjs`) corre en node y tiene que derivar EXACTAMENTE
+// lo mismo. Dos derivaciones de la misma ciudad es un permiso que no matchea.
+import { ciudadesDe } from '@/lib/ciudades.mjs';
 // B-150 — la MISMA lista que usa el trigger del historial para decidir qué
 // escribe la máquina (§12, D-41). Se importa por `@historial` y no se copia: dos
 // ideas de "qué campo es de la máquina" se separan sin que nada falle, que es
@@ -137,6 +141,18 @@ export const formADocumento = (
   const sede = sedePrincipal(modalidades);
   const online = onlinePrincipal(modalidades);
   const modalidad = modalidadResultante(modalidades);
+  /**
+   * B-919 — el cuarto derivado, y el único que existe **para una regla**: el
+   * alcance por ciudad del rol `publicador` se escribe
+   * `token.ciudad in resource.data.ciudades`, y una regla no puede mirar adentro
+   * de `modalidades[]` ni normalizar lo que alguien tipeó en un campo libre.
+   *
+   * **Todas** las ciudades y no la de `sede` —el derivado «la primera fila que
+   * tenga sede»—: con dos filas en dos ciudades, quedarse con una dejaría la otra
+   * fuera del alcance de su publicadora sin que nada falle. Es el mismo motivo por
+   * el que `searchText` indexa todas las sedes y no la principal.
+   */
+  const ciudades = ciudadesDe(modalidades);
 
   // El tallerista solo tiene sentido si tiene nombre.
   const tallerista = f.tallerista?.nombre?.trim() ? f.tallerista : null;
@@ -241,6 +257,7 @@ export const formADocumento = (
     modalidad,
     sede,
     online,
+    ciudades,
 
     inscripcion: {
       requiere: f.inscripcion.requiere,
@@ -428,7 +445,7 @@ export const slugDisponible = (slug: string, idActual?: string): Promise<boolean
  * El listado del panel.
  *
  * **El `where` no es un filtro de presentación: es lo que hace que la query
- * exista** (B-888, trampa 7). Con la regla nueva, un publicador que pida la
+ * exista** (B-888, trampa 7). Con la regla de B-888, un publicador que pida la
  * colección entera recibe un `permission-denied` sobre la query **completa** —
  * Firestore no recorta, rechaza—, así que el listado se rompería en vez de
  * acotarse. El índice compuesto `createdBy ASC, updatedAt DESC` está en
@@ -437,10 +454,44 @@ export const slugDisponible = (slug: string, idActual?: string): Promise<boolean
  * Va por `PERMISOS[rol].veTodoElCatalogo` y no por `rol === 'admin'`: es la misma
  * pregunta que decide el calendario, y un `===` suelto repetido en dos pantallas
  * es cómo se arregla una y no la otra (B-175).
+ *
+ * ── B-919: **dos consultas, no una** ──────────────────────────────────────
+ * Con el alcance por ciudad la regla pasó a ser una **disyunción** («lo mío O lo
+ * de mi ciudad»), y una sola query no puede satisfacerla entera. Van dos y se
+ * unen acá, por id.
+ *
+ * **Se midió contra el emulador antes de elegir** (la trampa 7 no se supone, se
+ * mide), y el resultado fue:
+ *
+ * | query                                                   | veredicto |
+ * |---|---|
+ * | la colección entera, sin `where`                        | `permission-denied` |
+ * | `where('createdBy','==',uid)` (+ `orderBy`)             | pasa |
+ * | `where('ciudades','array-contains',ciudad)` (+ `orderBy`)| pasa |
+ * | `or(` las dos `)` (+ `orderBy`)                         | **también pasa** |
+ * | `array-contains` de una ciudad que **no** es la del claim | `permission-denied` |
+ *
+ * O sea que el `or()` de Firestore habría alcanzado, y **igual van dos sueltas**.
+ * El motivo es de a qué se le está confiando el listado entero: cada query suelta
+ * satisface **un** disyunto de la regla por sí misma, que es lo más simple que el
+ * análisis del servidor tiene que probar; el `or()` depende de que Firestore siga
+ * probando una query disyuntiva contra una regla disyuntiva, y si eso se endurece
+ * alguna vez lo que se rompe no es una fila, **es la pantalla**. Además la segunda
+ * query no existe cuando no hay ciudad en el claim, así que con `or()` habría dos
+ * formas de query igual. La medición queda anotada acá para que el día que alguien
+ * quiera una sola consulta no tenga que volver a hacerla.
+ *
+ * El orden final se rehace en memoria: son dos listas ya ordenadas por
+ * `updatedAt desc` que hay que intercalar, y `ordenar()` del listado vuelve a
+ * ordenarlas según lo que el usuario eligió.
+ *
+ * @param ciudad el slug del claim (`''` si la cuenta no tiene ciudad). Para un
+ *   admin se ignora: ve todo el catálogo.
  */
 export const listarActividades = async (
   rol: RolDelPanel,
   uid: string,
+  ciudad = '',
 ): Promise<ActividadConId[]> => {
   /*
    * El listado acotado **sin uid sería la colección de nadie**: una query
@@ -451,11 +502,55 @@ export const listarActividades = async (
   if (!PERMISOS[rol].veTodoElCatalogo && !uid) {
     throw new Error('El listado acotado necesita el uid de la sesión.');
   }
-  const q = PERMISOS[rol].veTodoElCatalogo
-    ? query(collection(db(), COL), orderBy('updatedAt', 'desc'))
-    : query(collection(db(), COL), where('createdBy', '==', uid), orderBy('updatedAt', 'desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Actividad) }));
+  if (PERMISOS[rol].veTodoElCatalogo) {
+    const snap = await getDocs(query(collection(db(), COL), orderBy('updatedAt', 'desc')));
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Actividad) }));
+  }
+
+  const consultas = [
+    query(collection(db(), COL), where('createdBy', '==', uid), orderBy('updatedAt', 'desc')),
+    /*
+     * **Sin ciudad no se pregunta.** Un `array-contains` de `''` sería una query
+     * que la regla rechaza —el claim vacío no puede matchear nada— y una query
+     * rechazada rompe el listado entero, no devuelve menos. Es la misma dirección
+     * de falla que el corte del uid de arriba.
+     */
+    ...(ciudad
+      ? [
+          query(
+            collection(db(), COL),
+            where('ciudades', 'array-contains', ciudad),
+            orderBy('updatedAt', 'desc'),
+          ),
+        ]
+      : []),
+  ];
+
+  const snaps = await Promise.all(consultas.map((q) => getDocs(q)));
+  /*
+   * Union por id y no concatenación: una actividad **propia y en su ciudad** cae
+   * en las dos consultas, que es el caso normal de quien carga en su ciudad. Con
+   * un `concat` el listado la mostraría dos veces, y el segundo síntoma sería
+   * peor: los contadores del panel y de las estadísticas contarían de más.
+   */
+  const porId = new Map<string, ActividadConId>();
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      if (!porId.has(d.id)) porId.set(d.id, { id: d.id, ...(d.data() as Actividad) });
+    }
+  }
+  /*
+   * Y se reordena, porque la unión de dos listas ordenadas no está ordenada: sin
+   * esto quedarían las propias primero y las de la ciudad después, y el contrato
+   * de esta función —lo que devuelve el camino del admin— es «por `updatedAt`
+   * descendente». Que el listado vuelva a ordenar según lo que el usuario eligió
+   * no alcanza: el calendario y las estadísticas también la llaman.
+   */
+  return [...porId.values()].sort(
+    (a, b) =>
+      (instanteDeTimestamp(b.updatedAt)?.getTime() ?? 0) -
+      (instanteDeTimestamp(a.updatedAt)?.getTime() ?? 0),
+  );
 };
 
 export const leerActividad = async (id: string): Promise<ActividadConId | null> => {

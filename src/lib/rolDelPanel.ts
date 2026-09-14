@@ -169,3 +169,40 @@ export const rolDeClaims = (claims: Record<string, unknown> | null | undefined):
   if (claims?.admin === true) return 'admin';
   return null;
 };
+
+/**
+ * **La ciudad del claim** — B-919, D-690. `''` cuando no hay ninguna.
+ *
+ * Es el alcance de lectura del publicador: además de lo suyo, ve las actividades
+ * cuya `ciudades` contiene este slug (`firestore.rules`, `/actividades`).
+ *
+ * ── Tres decisiones, y las tres importan ──────────────────────────────────
+ *  - **Verbatim, sin volver a slugificar.** El slug lo produce
+ *    `scripts/set-admin-claim.mjs` con el `slugify` del proyecto, y la regla
+ *    compara el claim **tal cual**. Normalizarlo acá otra vez haría que el panel
+ *    consulte por un valor y la regla evalúe otro: la query de la ciudad pasaría
+ *    a pedir algo que el disyunto no autoriza y **se rechazaría entera**
+ *    (trampa 7). Lo que el panel pregunta tiene que ser, byte por byte, lo que la
+ *    regla va a mirar.
+ *  - **Solo para el publicador.** Un admin ve todo el catálogo, así que su ciudad
+ *    —si alguien se la puso— no significa nada y devolverla sería ofrecerle a
+ *    `listarActividades` un filtro que no corresponde.
+ *  - **`''` y no `null`**, para que quien la reciba no tenga que decidir un
+ *    default: `''` es «sin alcance por ciudad», y `listarActividades` no arma la
+ *    segunda consulta.
+ */
+/**
+ * Lo que una sesión del panel sabe de sí misma — B-919. `rol: null` es «no tiene
+ * ninguno de los dos claims» (la pantalla «Sin permisos»).
+ */
+export interface SesionDelPanel {
+  rol: RolDelPanel | null;
+  /** El slug del claim `ciudad`, o `''`. Solo significa algo para un publicador. */
+  ciudad: string;
+}
+
+export const ciudadDeClaims = (claims: Record<string, unknown> | null | undefined): string => {
+  if (rolDeClaims(claims) !== 'publicador') return '';
+  const ciudad = claims?.ciudad;
+  return typeof ciudad === 'string' ? ciudad : '';
+};

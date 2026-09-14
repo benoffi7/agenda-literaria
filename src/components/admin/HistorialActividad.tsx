@@ -57,6 +57,10 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   modalidad: 'Modalidad',
   sede: 'Sede',
   online: 'Datos de la reunión',
+  // B-919 — el cuarto derivado de `modalidades`. No se restaura por separado
+  // (está en `CAMPOS_DERIVADOS`), pero tiene nombre igual que los otros tres:
+  // un campo sin nombre se muestra con la clave cruda si alguna vez se lista.
+  ciudades: 'Ciudades',
   inscripcion: 'Inscripción',
   arancel: 'Arancel',
   material: 'Material',

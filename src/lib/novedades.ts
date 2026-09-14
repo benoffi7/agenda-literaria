@@ -61,6 +61,23 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'publicador-ve-su-ciudad',
+    fecha: '2026-09-14',
+    /*
+     * La misma que la entrada de abajo, y no la siguiente: `package.json` sigue
+     * en 1.10.0, así que 1.11.0 **todavía no salió** y las dos cosas entran en el
+     * mismo release. El campo es «en qué release entra», no «cuántas novedades
+     * hubo».
+     */
+    version: '1.11.0',
+    titulo: 'Una cuenta acotada ahora ve también lo que pasa en su ciudad',
+    detalle:
+      'Además de las actividades que cargó, en su listado aparecen las de su ciudad aunque las ' +
+      'haya cargado otra persona. Esas se pueden mirar enteras pero no cambiar: la fila dice ' +
+      '«Solo lectura» y el botón dice «Ver». Lo suyo sigue igual que antes, con todo habilitado.',
+    donde: 'El listado y la vista de calendario.',
+  },
+  {
     id: 'guia-de-lugares',
     fecha: '2026-09-11',
     version: '1.11.0',
