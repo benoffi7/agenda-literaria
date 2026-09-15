@@ -847,3 +847,42 @@ describe('la lectura del build no lee lo que no va a publicar', () => {
     expect(trigger).toContain('marcarRebuild(getFirestore(), `lugar ${id}`)');
   });
 });
+
+/**
+ * **La puerta anónima de `/lugares`, del lado que no necesita emuladores** —
+ * D-700, 2026-09-15.
+ *
+ * El control positivo de la puerta y sus negaciones viven en
+ * `tests/lugares.integracion.test.ts`, que es donde se pueden afirmar de verdad.
+ * Esto es la mitad que **siempre corre**: que la regla diga lo que la ayuda del
+ * panel y las tres páginas `/sumar` prometen. Sin esto, la promesa «la ficha que
+ * llega de afuera nace sin fotos» solo la sostiene un archivo que se saltea sin
+ * emuladores, y `tests/ayuda.test.ts` no deja atar un aviso a uno de ésos
+ * justamente por eso.
+ */
+describe('el `create` público de /lugares — D-700', () => {
+  it('está abierto: el `create` ya no exige `esAdmin()`', () => {
+    expect(REGLAS).toContain('allow create: if lugarDeGuiaValido();');
+    expect(REGLAS, 'la puerta volvió a cerrarse y la doc sigue diciendo que está abierta')
+      .not.toContain('allow create: if esAdmin() && lugarDeGuiaValido();');
+  });
+
+  it('y la ficha que llega de afuera nace sin fotos', () => {
+    /*
+     * MUTACIÓN PROBADA: borrar la cláusula deja este caso en rojo — y del lado
+     * del emulador, el caso «ni traer fotos» de
+     * `tests/lugares.integracion.test.ts`.
+     *
+     * Con la rama del `origen`, que es lo que impide leerla como «nadie puede
+     * cargar fotos»: el editor de galería del panel sigue funcionando igual.
+     */
+    expect(REGLAS).toContain("&& (d.origen == 'panel' || d.imagenes.size() == 0)");
+  });
+
+  it('pero leer, editar y borrar siguen siendo de un admin: mandar no es ver', () => {
+    // Lo que separa un buzón de una bandeja, y lo que hace que abrir el `create`
+    // no abra el directorio entero con los contactos internos adentro.
+    expect(REGLAS).toContain('allow get: if esAdmin();');
+    expect(REGLAS).toContain('allow list: if esAdmin();');
+  });
+});

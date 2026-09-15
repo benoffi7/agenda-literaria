@@ -565,7 +565,7 @@ de B-364):
 | Campo | Qué es |
 |---|---|
 | `nombre`, `slug`, `descripcion` | el `slug` es **inmutable después de publicar** (trampa 10) y lo congela la regla, no la UI |
-| `imagenes[]` | el **mismo** tipo `Imagen` de una actividad (D-125), con su portada, su epígrafe y su `storagePath` |
+| `imagenes[]` | el **mismo** tipo `Imagen` de una actividad (D-125), con su portada, su epígrafe y su `storagePath` ⚠️ **Y una ficha que llega del formulario público nace con el array vacío** (**D-700**): lo fuerza `firestore.rules` con `d.origen == 'panel' || d.imagenes.size() == 0`, no el componente. Las fotos las pone el admin al publicarla, que es donde vive el editor de galería. |
 | `direccion`, `barrio`, `ciudad`, `geo` | `barrio` es un slug de `/opciones/barrio` — **el mismo que usan las actividades**, que es lo que va a permitir cruzarlas en el hub de barrio |
 | `instagram`, `whatsapp`, `web`, `mail` | los cuatro contactos **públicos**, y ése es el punto de la ficha: existe para que la gente le escriba a la librería |
 | `contactoDeQuienCargo` | ⚠️ **interno**. Es el **segundo dato personal de un tercero** que guarda el proyecto, después del `contacto` de una propuesta. No sale a ninguna salida pública, y lo sostienen la whitelist de `src/lib/libreriaPublica.ts` y el centinela de `tests/libreria-publica.test.ts` **Y tiene plazo desde B-904/B-912/B-917**: una ficha `rechazado` se borra a los 30 días del rechazo y una `pendiente` a los 30 días sin que nadie la toque, con `borrarFichasVencidas` (`functions/retencion-trigger.js`). La `publicado` no vence, y eso es una decisión: su contacto es lo que deja avisarle a la ficha que existe o darla de baja cuando cierra. |
@@ -594,7 +594,7 @@ topes atados por `tests/suscripciones.test.ts`:
 | Campo | Qué es |
 |---|---|
 | `nombre`, `slug`, `descripcion` | el `slug` es **inmutable después de publicar** (trampa 10). La descripción es **obligatoria** acá y opcional en una librería: una promesa a futuro sin descripción no dice nada |
-| `imagenes[]` | el **mismo** tipo `Imagen` (D-125) |
+| `imagenes[]` | el **mismo** tipo `Imagen` (D-125) ⚠️ **Y una ficha que llega del formulario público nace con el array vacío** (**D-700**): lo fuerza `firestore.rules` con `d.origen == 'panel' || d.imagenes.size() == 0`, no el componente. Las fotos las pone el admin al publicarla, que es donde vive el editor de galería. |
 | `ofrecidaPor` | `{ nombre, tipo, instagram, libreriaSlug }`. El `libreriaSlug` enlaza con el PRD 2, y la ficha **solo lo linkea si esa librería está publicada** — el mismo criterio con el que una ficha de librería solo linkea el hub de barrio que existe |
 | `periodicidad`, `compromisoMinimo` | la primera es slug de `/opciones/periodicidad` con default `mensual` (§ 4.1 del PRD); el segundo es **texto libre**, y es un desvío chico del PRD escrito en el tipo: lo que necesita slug es un eje de filtro, y éste no lo es |
 | `incluye[]` + `incluyeOtro`, `extras[]` + `extrasOtro` | **dos vocabularios abiertos en el mismo documento**, y son distintos a propósito: «un libro por mes» es lo que incluye, «10% en el local» es un extra. Mezclarlos daría un desplegable de treinta opciones inservible |
@@ -641,7 +641,7 @@ atados por `tests/lugares.test.ts`.
 | Campo | Qué es |
 |---|---|
 | `nombre`, `slug`, `descripcion` | el `slug` es **inmutable después de publicar** (trampa 10). La descripción es **opcional**, como en una librería: un café con su capacidad ya dice lo que hay que saber |
-| `imagenes[]` | el **mismo** tipo `Imagen` (D-125) |
+| `imagenes[]` | el **mismo** tipo `Imagen` (D-125) ⚠️ **Y una ficha que llega del formulario público nace con el array vacío** (**D-700**): lo fuerza `firestore.rules` con `d.origen == 'panel' || d.imagenes.size() == 0`, no el componente. Las fotos las pone el admin al publicarla, que es donde vive el editor de galería. |
 | `tipo` | slug de `/opciones/tipo-lugar` — el «(por ahí poner a completar)» del pedido del dueño. **No es decorativo: decide el default de `direccionPublica`** (ver abajo) |
 | `direccion`, `barrio`, `ciudad`, `geo` | ⚠️ la `direccion` y la `geo` **pueden no publicarse**. El `barrio` es el **mismo** vocabulario que el de las actividades y el de las librerías, que es lo que deja que el hub de barrio cruce las tres cosas — y sale **siempre**, también para una casa |
 | `direccionPublica` | ⚠️ **el flag del § 6 del PRD 4.** Ver abajo |

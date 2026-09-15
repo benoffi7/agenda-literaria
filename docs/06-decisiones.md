@@ -10670,3 +10670,76 @@ npm run ciudades:sembrar:prod -- --aplicar --produccion    # escribe
 Es el mismo lugar que ocupó `sembrar-slugs.mjs` en B-888, y con el mismo riesgo de
 olvido: el código funciona, los tests están verdes, y la persona para la que se
 hizo el ítem no ve nada.
+
+---
+
+## D-700 · La ficha que llega de un formulario público de la Guía nace **sin fotos**
+
+**B-831 / B-832 / B-915.** **Contexto.** Decisión del dueño, 2026-09-15, al abrir
+`/guia/librerias/sumar`, `/guia/suscripciones/sumar` y `/guia/lugares/sumar`.
+Desvía el § 5 de [`prd/02-librerias.md`](prd/02-librerias.md) —que especificaba
+«foto: URL o archivo (**DEC-11**)» para el formulario público, igual que
+`/proponer`— y a **DEC-11** misma, que es la decisión que le puso ese patrón a la
+primera escritura anónima del proyecto.
+
+### 1. Por qué no es DEC-11 otra vez
+
+Porque el caso no es el mismo. En una propuesta, el flyer **es** el contenido: lo
+que llega es una actividad que nadie del proyecto vio, y la imagen es lo que la
+hace publicable. En un directorio, la foto es de la ficha y la pone quien la
+revisa — el admin ya tiene el `GaleriaEditor` abierto delante para todo lo demás.
+
+Y lo que cuesta abrirla es desparejo. Con imágenes, el `create` anónimo arrastra
+cuatro cosas más:
+
+1. un **`imagenValida()` por entidad** en las reglas: hoy `formaDe{X}` acota
+   `imagenes is list` y el tope, y **no la forma de cada elemento** (es **B-907**),
+   así que un anónimo escribiría objetos arbitrarios adentro del array;
+2. un prefijo propio en **`storage.rules`**, con su `create` acotado a tipo,
+   tamaño y cantidad, y su `get`/`list` decididos (trampa 13);
+3. **generalizar la callable de B-896** a tres destinos más, con el saneado del
+   servidor corriendo para cada uno;
+4. la **limpieza del objeto que se sube y nunca llega a un documento**, que es un
+   huérfano bajo un prefijo que `limpiarImagenesHuerfanas` no barre.
+
+Cada una es superficie nueva contra la que hay que escribir mutaciones.
+
+### 2. Lo que se gana, y es más que ahorrar trabajo
+
+**El camino público no toca Storage en absoluto.** Con eso, **B-872** —el
+enforcement de App Check en Storage, y la duda sin contestar sobre las URLs de
+descarga— deja de estar en el camino, igual que ya había dejado de estarlo para
+`/proponer` con B-896; pero acá ni siquiera hace falta la callable.
+
+Los tres comentarios de `firestore.rules` que culpaban a B-872 decían lo que se
+creía en su momento, y lo que resultó no es que B-872 se resolviera: es que el
+bloqueo era **el pedido**, no la infraestructura.
+
+### 3. La cláusula
+
+```
+&& (d.origen == 'panel' || d.imagenes.size() == 0)
+```
+
+En las tres colecciones, en la función de validación del `create`. **`size() == 0`
+y no `== []`**: la comparación de listas existe, pero el tamaño es lo que la
+mutación puede tocar sin que el resto del `hasOnly` se queje, así que es la
+cláusula que se puede verificar sola.
+
+Va con su **control negativo** en las tres: un admin sí puede cargar la ficha con
+fotos desde el panel. Sin ese caso, `d.imagenes.size() == 0` a secas pasaría los
+casos de la puerta anónima y se llevaría puesto el único camino legítimo.
+
+### 4. Consecuencia práctica, y dónde está dicha
+
+Una ficha cargada desde afuera aparece en la bandeja **con el texto completo y
+sin ninguna foto**. Agregarlas es tarea del admin al revisarla, y eso está dicho
+en `src/lib/ayuda.ts` (el capítulo de cada directorio) y en las tres páginas
+`/sumar` —«las fotos las ponemos nosotros al publicarla, así que este formulario
+no las pide»—, que es lo que evita que alguien busque el campo y crea que se
+rompió.
+
+**Testigos:** `tests/librerias.integracion.test.ts`,
+`tests/suscripciones.integracion.test.ts` y `tests/lugares.integracion.test.ts`,
+el caso «ni traer fotos» en las tres, con la mutación probada: borrar la cláusula
+pone un caso en rojo por colección y ningún otro se mueve.

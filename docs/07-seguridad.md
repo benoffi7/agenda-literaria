@@ -1486,13 +1486,21 @@ criterios. Guarda un dato personal —el mail de una cuenta del equipo— y por 
 la lectura es del admin, pero el proyecto ya guardaba uno igual
 (`/reportes.reportadoPor.email`) sin numerar una salida por él.
 
-**`/propuestas` es donde va a ir la primera escritura anónima, y todavía no está
-abierta.** El `create` es `esAdmin() && propuestaValida()`: lo que falta no es
-código sino que **App Check esté exigiendo** (B-836a — publicar, verificar los
-dominios permitidos de la clave, verificar que lleguen peticiones y recién ahí
-exigir). Sin enforcement, borrar ese `esAdmin() &&` publica un endpoint de
+**`/propuestas` fue la primera escritura anónima del proyecto, y está abierta
+desde el 2026-09-11** (B-896 paso 2). Hoy son **cuatro**: `/propuestas`,
+`/librerias`, `/suscripciones` y `/lugares` — las tres últimas desde el
+2026-09-15, con los formularios de `/guia/<x>/sumar` (B-831/B-832/B-915). El
+párrafo de abajo describe el estado de **antes** y se conserva porque es el
+razonamiento con el que se decidió el orden; lo que hoy sostiene las cuatro
+puertas está más abajo, en «Las cuatro escrituras anónimas».
+
+> El texto original: «`/propuestas` es donde va a ir la primera escritura anónima,
+> y todavía no está abierta. El `create` es `esAdmin() && propuestaValida()`: lo
+> que falta no es código sino que **App Check esté exigiendo** (B-836a — publicar,
+> verificar los dominios permitidos de la clave, verificar que lleguen peticiones
+> y recién ahí exigir). Sin enforcement, borrar ese `esAdmin() &&` publica un endpoint de
 escritura a Firestore que nada frena: `propuestaValida()` acota la **forma**, no
-el volumen, y cada escritura se factura en un proyecto Blaze. El orden para
+el volumen, y cada escritura se factura en un proyecto Blaze.» El orden para
 abrirla está escrito en la propia regla, y el paso 3 es que
 `escritura-anonima.integracion.test.ts` se ponga rojo — o sea que abrir la puerta
 sea un diff visible en un test.
@@ -1603,14 +1611,25 @@ es el `href` de la imagen—:
   2026-10-07 1122223333» es un solo match): lo encontró el `auditor-privacidad`,
   y tiene su caso con mutación probada.
 
-**`/proponer` está escrita y no anunciada, y esa distinción es de seguridad y no
-de producto** (B-830 paso 9). La página existe en `src/pages/`, así que **se
-publica con el sitio**: cualquiera que sepa la URL la abre. Lo que no existe es la
-puerta —`allow create: if esAdmin() && …`, en Firestore y en Storage—, así que el
-formulario rebota para quien no tenga el claim. No está en el sitemap ni enlazada
-desde el chrome porque indexar una página cuyo formulario no puede recibir nada es
-prometer lo que no se cumple (la lección de B-780), y la excepción está escrita con
-su fecha de vencimiento en `tests/sitemap.test.ts`.
+**Las cuatro páginas que escriben están anunciadas, y llegar a eso fue una
+decisión de seguridad y no de producto.** `/proponer` desde el 2026-09-11 (B-896)
+y las tres `/guia/<x>/sumar` desde el 2026-09-15: las cuatro en el sitemap y
+enlazadas desde el sitio.
+
+Durante toda la tajada 1 fue al revés, y el argumento vale escribirlo porque es el
+que hay que volver a hacer la próxima vez: una página existe en `src/pages/`, así
+que **se publica con el sitio** aunque nadie la enlace —cualquiera que sepa la URL
+la abre—. Lo que decide si se **anuncia** es si su formulario puede recibir algo.
+Con la puerta cerrada rebotaba para quien no tuviera el claim, e indexar una
+página cuyo formulario rebota es prometer lo que no se cumple, que es lo que B-780
+costó como P0.
+
+Hoy las cuatro puertas están abiertas y cada una tiene su control positivo contra
+el emulador, así que anunciarlas no promete nada que no se cumpla. La excepción
+que `tests/sitemap.test.ts` guardaba para `/proponer` se borró con su motivo, y
+las tres rutas de la Guía entran **derivadas de la misma fila** que su listado
+(`lib/directorios.ts`): el mismo flag mete a las dos, así que no se puede publicar
+una sección y dejar su formulario invisible para el buscador.
 
 **Y el tercero entra en el submit, no al abrir la página.** El módulo que habla con
 Firebase se carga con `import()` adentro del handler, así que App Check —o sea
@@ -1621,18 +1640,60 @@ así que **el momento en que el módulo se carga es el momento en que el tercero
 entra**. Lo hace cumplir `tests/panel-fuera-del-sitio.test.ts`, que desde este
 cambio distingue el alcance **estático** del **diferido**: estático está prohibido
 para toda página pública —incluidas las que escriben—, y diferido solo para las que
-escriben, que hoy es una.
+escriben, que hoy son **cuatro**: `/proponer` (por `lib/enviar-propuesta.ts`) y las
+tres `/guia/<x>/sumar` (por `lib/enviar-ficha.ts`). La lista va a mano en ese
+archivo justamente para que sumar una cueste ese renglón: es el único lugar del
+repo donde se ve, de un vistazo, cuántas páginas públicas pueden cargar
+reCAPTCHA Enterprise.
 
-**Hoy no existe ninguna escritura anónima, y eso está fijado, no supuesto.**
-`tests/escritura-anonima.integracion.test.ts` (B-836) afirma la propiedad del
-proyecto entero contra el emulador: ni un anónimo ni alguien logueado **sin** el
-claim puede crear, actualizar ni borrar nada, en ninguna de las colecciones que
-nombran las reglas, en ninguna de las cuatro que los PRDs de
-[`prd/`](prd/README.md) van a crear, ni en una ruta inventada — esa última es la
-que prueba la red del `match /{document=**}`. La lista de colecciones sale del
-propio `firestore.rules`, así que un `match` nuevo entra al barrido solo; la de
-excepciones (`COLECCIONES_ABIERTAS`) está **vacía**, y abrir una es un cambio
-visible en un test.
+## Las cuatro escrituras anónimas
+
+**Hoy hay exactamente cuatro colecciones donde alguien sin cuenta puede escribir,
+y son solo `create`:** `/propuestas` (B-896, 2026-09-11), `/librerias`,
+`/suscripciones` y `/lugares` (B-831/B-832/B-915, 2026-09-15). En las cuatro,
+`read`, `update` y `delete` siguen en `esAdmin()` — **mandar no es ver**, que es
+lo que separa un buzón de una bandeja, y es lo que hace que abrir la escritura no
+sea abrir la publicación.
+
+**Y eso está fijado, no supuesto.** `tests/escritura-anonima.integracion.test.ts`
+(B-836) afirma la propiedad contra el emulador: ni un anónimo ni alguien logueado
+**sin** el claim puede crear, actualizar ni borrar nada, en ninguna de las
+colecciones que nombran las reglas ni en una ruta inventada —esa última es la que
+prueba la red del `match /{document=**}`—. La lista de colecciones sale del propio
+`firestore.rules`, así que un `match` nuevo entra al barrido solo; las que están
+abiertas van **a mano** en `COLECCIONES_ABIERTAS`, con su motivo al lado, y ese
+renglón es lo que hace que abrir una puerta sea un diff visible en un test y no un
+efecto colateral de tocar las reglas.
+
+⚠️ **Ese archivo es testigo de la LISTA, no de la forma de cada colección.** Prueba
+con un documento sonda (`{ hola: 'mundo' }`), que el `hasOnly` de cualquier
+validador rechaza con la puerta abierta o cerrada. El control positivo de cada
+puerta —«un anónimo crea la ficha que el formulario manda»— vive en el archivo de
+su colección, junto con las negaciones que siguen valiendo: no nace publicada, ni
+revisada, ni con `origen: 'panel'`, ni con fotos (D-700), y en `/lugares` tampoco
+con `direccionPublica: true` (§ 6 del PRD 4).
+
+**Las capas que las sostienen son las cinco de B-836**, y ninguna reemplaza a
+otra: App Check exigiendo en Firestore (la única que frena a un script que no pasa
+por la página), la validación de la regla (la que un `curl` no se saltea), los
+topes de forma atados a los tipos por test, el honeypot y el tiempo mínimo de
+tipeo del componente (`altaPublica.tsx`, escrito una sola vez para los cuatro
+formularios), y la bandeja — a un humano insistente no lo frena nadie: lo frena
+que alguien mire y descarte.
+
+**La foto entra por caminos distintos y ninguno es `storage.rules`.** En
+`/propuestas`, por la callable `subirFlyerDePropuesta` con `enforceAppCheck: true`,
+que sanea del lado del servidor (B-896); en las tres guías, **no entra**: la ficha
+que llega de afuera nace con la galería vacía y la regla lo exige (**D-700**). Por
+eso `storage.rules` se queda con el `create` de `propuestas/` cerrado a todo
+cliente y sin ningún prefijo nuevo, que es más fuerte que abrirlos.
+
+**Y el dato personal del tercero tiene plazo en las cuatro**: `/propuestas` con
+`borrarPropuestasVencidas` (DEC-13, B-838, B-844) y las tres guías con
+`borrarFichasVencidas` (B-904/B-912/B-917) — 30 días desde el rechazo, 30 días sin
+que nadie la toque, y la publicada no vence. El número que las páginas `/sumar`
+prometen sale de la misma constante que el barrido cumple, atado por
+`tests/retencion-de-guias.test.ts`.
 
 Se escribió **antes** de abrir la puerta a propósito: los cuatro formularios
 públicos son la primera escritura anónima del proyecto, y un test que afirma «esto

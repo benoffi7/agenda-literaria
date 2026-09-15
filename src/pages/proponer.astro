@@ -24,16 +24,20 @@
  * build ya las lee para el `events.json`, y el sitio se rebuildea cuando cambian
  * (§4.4), así que la lista viaja al día y gratis.
  *
- * ── ⚠️ Esta página existe y TODAVÍA NO SE ANUNCIA ─────────────────────────
- * No está en `RUTAS_FIJAS` del sitemap ni enlazada desde el encabezado o el pie,
- * a propósito: la escritura anónima sigue cerrada hasta que App Check exija
- * (B-836a), así que hoy el formulario **no puede recibir nada** de nadie que no
- * tenga el claim `admin`. Indexar una página cuyo formulario rebota es prometer
- * lo que no se cumple — que es lo que B-780 costó como P0.
+ * ── Se anuncia desde el 2026-09-11 — B-896 ────────────────────────────────
+ * Está en `RUTAS_FIJAS` del sitemap (`src/lib/sitemap.ts`) y enlazada desde el
+ * pie (`PieDePagina.astro`) y desde `/contacto` (DEC-10). El `create` anónimo de
+ * `/propuestas` está abierto —`allow create: if propuestaValida()`— sostenido por
+ * las cinco capas de B-836: App Check exigiendo en Firestore, la validación de la
+ * regla, los topes de forma, el honeypot y el tiempo mínimo de este formulario, y
+ * la bandeja.
  *
- * Anunciarla es el último paso de B-836a y son tres líneas: la ruta al sitemap,
- * el enlace en el chrome, y borrar los dos `esAdmin() &&` (el de `/propuestas` en
- * `firestore.rules` y el de `propuestas/` en `storage.rules`, **juntos**).
+ * **Lo que la destrabó no fue exigir App Check en Storage** (eso sigue sin
+ * resolverse, es B-872) sino sacar la subida del flyer de `storage.rules` y
+ * meterla en una callable atestada. Este docblock afirmó lo contrario —«todavía
+ * no se anuncia»— durante cuatro días después de que dejó de ser cierto; lo cobró
+ * el `auditor-documentacion` el 2026-09-15.
+ *
  */
 import Base from '@/layouts/Base.astro';
 import { FormularioPublico } from '@/components/publico/FormularioPublico';

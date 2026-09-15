@@ -2137,10 +2137,30 @@ Tres salidas, y hay que elegir:
 Y en cualquier caso, **corregir los dos docblocks**: hoy afirman una cobertura que
 no existe, que es lo que hizo que nadie lo notara.
 
-### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? · P1
+### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? · P3
 
-**Bloquea el anuncio de `/proponer`, y es la única pregunta que queda entre el
-estado de hoy y abrir el formulario público.**
+> **2026-09-15 — deja de ser un bloqueo, y baja de P1 a P3.** Este ítem decía
+> «bloquea el anuncio de `/proponer`» y después, por extensión, se lo citó como lo
+> que cerraba el `create` anónimo de las tres guías —así estaba escrito en los tres
+> bloques de `firestore.rules` y en media docena de lugares de `docs/`—.
+>
+> **Las dos cosas se resolvieron sin contestar la pregunta**, y por el mismo lado:
+> sacando los bytes del camino. `/proponer` con **B-896** (la subida va por una
+> callable atestada, no por `storage.rules`) y las tres guías con **D-700** (la
+> ficha que llega de afuera nace sin fotos, así que no hay nada que subir). En
+> ninguno de los dos casos hizo falta exigir App Check en Storage.
+>
+> **Lo que sigue vivo es la pregunta de arquitectura en sí**, y nadie la contestó
+> con fuente autoritativa: si conviene igual exigirlo algún día, y qué pasaría con
+> las imágenes públicas que hoy se sirven por URL de descarga. Sin nada urgente
+> colgando de la respuesta, y con **B-846** —la URL de descarga es una capability—
+> del mismo lado del problema: conviene mirarlos juntos.
+>
+> El texto original queda abajo, incluida la parte que fechó el bloqueo, porque es
+> la investigación del 2026-09-11 y sigue siendo el mejor insumo para contestarla.
+
+**Bloqueaba el anuncio de `/proponer`, y era la única pregunta que quedaba entre el
+estado de aquel momento y abrir el formulario público.**
 
 Con Firestore ya en `ENFORCED` (B-836a paso 6, 2026-09-10), Storage sigue en
 `UNENFORCED` por un dato concreto: su métrica de App Check marcaba **1%
@@ -3522,9 +3542,9 @@ rompen en silencio están en
 | **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
 | **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | ✅ **hecho (2026-09-09)** — `src/lib/datoConFecha.ts` + `tests/dato-con-fecha.test.ts`. Las tres reglas son propiedades del módulo: la proyección pública es **un solo string** («$18.000 por mes · cargado el 24 de septiembre de 2026»), así que no hay número que filtrar ni que meter en un `Offer`, y **el valor sin fecha usable no sale** — desaparece en vez de publicarse solo. La fecha es absoluta y con año porque el sitio es estático: un «hace tres meses» horneado en el HTML envejece solo (**D-570**). Todavía sin consumidor: lo estrenan las librerías y las suscripciones |
 | **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — **la tajada 1 completa salvo el anuncio** (pasos 4 a 11): **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). **Dos decisiones del dueño del 2026-09-09 cambian el resto** (B-843): aceptar es **una sola escritura**, con la actividad creada primero (**D-600**), y **la retención (B-838) va antes** de que el panel tenga cualquier forma de cargar una propuesta a mano. **Los pasos 6 y 7 ya están**: la conversión pura (`propuestas.ts`, con sus `ses_<uuid>` y sin slug) y la **bandeja** —convertir, marcar en revisión, rechazar con motivo, reabrir— con D-600 cableado y **sin carga a mano**, que es esa decisión respetada. De paso cerró **B-843 punto 4**. Y el **paso 11 (la retención, B-838) también está**, adelantado por B-843 punto 1: `borrarPropuestasVencidas` borra la rechazada y su imagen a los 30 días, con script en seco y las dos mitades verificadas contra los emuladores; la despliega CI en el push. Con el **paso 10 (B-839)** la tajada queda **completa salvo el anuncio**. Y el **paso 9 (`/proponer`)**: la página, el `FormularioPublico` con honeypot y tiempo mínimo, la subida enganchada, y el guard de imports partido en **estático** (prohibido para toda página pública) y **diferido** (solo para las que escriben) — que es lo que hace que App Check entre en el submit y no al abrir. **Escrita y no anunciada**: sin sitemap y sin enlace hasta que App Check exija (último paso de B-836a). Y el **paso 8 (la imagen de DEC-11)**: el prefijo `propuestas/` en `storage.rules` (`get` solo para un admin —desvío del PRD decidido por el dueño—, `list` para nadie, `delete` para nadie), el flyer visible en la bandeja, la promoción a `imagenes/` al convertir (por el panel, no por una Function: la clase de B-80) y el borrado en el acto al rechazar (`borrarImagenAlRechazar`). De paso salió **B-846**. Quedan `/proponer` (paso 9) y `/contacto` con Instagram (paso 10) |
-| **B-831** | **Directorio de librerías** — `/guia/librerias`, `/guia/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | 🟡 listo para codear |
-| **B-832** | **Directorio de suscripciones literarias** — `/guia/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. El choque de nombre que tenía —la barra ya dice «Suscribirse», el calendario— **se lo llevó `/guia/`**: las dos etiquetas nunca aparecen juntas | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | 🟡 listo para codear |
-| **B-833** | **Directorio de lugares para eventos** — `/guia/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | 🟡 listo para codear |
+| **B-831** | **Directorio de librerías** — `/guia/librerias`, `/guia/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | ✅ **hecho (2026-09-15)** — listado, ficha, panel y **formulario público**. Lo último fue `/guia/librerias/sumar`, y con él la decisión que desvía el § 5 del PRD: la ficha que llega de afuera **nace sin fotos** (**D-700**) |
+| **B-832** | **Directorio de suscripciones literarias** — `/guia/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. El choque de nombre que tenía —la barra ya dice «Suscribirse», el calendario— **se lo llevó `/guia/`**: las dos etiquetas nunca aparecen juntas | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | ✅ **hecho (2026-09-15)** — listado, ficha, panel y **formulario público**. El precio se pide y su fecha no: la estampa la regla con `request.time`, así que quien carga no elige qué fecha se publica al lado del número (DEC-12) |
+| **B-833** | **Directorio de lugares para eventos** — `/guia/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | ✅ **hecho (2026-09-15)** — listado, ficha, panel y **formulario público** (B-915). De los tres es el que abre sobre el problema serio del § 6: la ficha que llega de afuera **nunca** publica su dirección, mire lo que mire el `tipo` |
 | **B-835** | **La pestaña «Guía» y la página `/guia` que la recibe.** Era «la barra pasa de 7 a 10 pestañas y ya no entra en un teléfono»; con la decisión de `/guia/*` del 2026-09-08 **pasa de 7 a 8** y el ítem se desinfló a dos cosas concretas: la entrada en `ENLACES` y `src/pages/guia/index.astro`. Va **con** la primera sección y no después — `/guia/librerias` sin `/guia` es una URL cuyo padre no existe | [`prd/README.md`](prd/README.md) § «Las decisiones del dueño» y § 6 | 🟢 chico, y ya sin decisión pendiente |
 | **B-838** | **Retención: 30 días** (DEC-13) — reabre **B-102** («¿el sistema guarda algo de quien se inscribe?» → *no*), que dejó de ser cierto el día que existe una bandeja con el mail de quien propone. Function `onSchedule`, y borra **documento e imagen** (DEC-11) | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 7 | ✅ **hecho (2026-09-09)** — `borrarPropuestasVencidas`, con su decisión pura (`functions/retencion.js`), su script en seco (`scripts/borrar-propuestas-vencidas.mjs`) y las dos mitades del borrado verificadas contra los emuladores. **Adelantado al paso 11 → antes del 8**, por la decisión de B-843 punto 1. **El deploy lo hace CI**: el push a `main` ve el cambio en `functions/` y la despliega sola, sin IAM nuevo — el job `functions` va después de `hosting`, así que hay una ventana de minutos en la que el panel promete un borrado que todavía no corre (dicho en `07-seguridad.md`). A mano, si hiciera falta: `firebase deploy --only functions:borrarPropuestasVencidas` |
 | **B-839** ✅ **hecho (2026-09-09)** | **`/contacto` suma Instagram como canal** — pedido del dueño el 2026-09-08. Hoy `BLOQUES_DE_CONTACTO` son dos `mailto:` y el handle (`agenda.leh`) está en el chrome, no como forma de escribir. En este circuito el canal real es el DM. Chico y sin dependencias; el cuidado es que **un DM no tiene `asunto`** y `BLOQUES_DE_CONTACTO` hoy es homogéneo | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 2 | ✅ **hecho (2026-09-09)** — y el cuidado se resolvió no metiéndolo donde no entra: Instagram **no es un motivo**, es un canal, así que va en su propia sección y `MOTIVOS_DE_CONTACTO` queda homogéneo (mismo argumento que el asunto comercial de B-770). La sección dice además por qué el mail sigue siendo la primera opción — un DM se pierde entre las solicitudes de mensaje—, que es lo que evita que el canal cómodo se coma al que deja rastro. **Lo que NO entró y va con el anuncio de `/proponer`:** que el texto de `/contacto` mande ahí (DEC-10). Un enlace desde una página indexada **es** anunciarla, así que eso es el último paso de B-836a y no de acá |
@@ -6196,6 +6216,43 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-925 · El barrido de promesas no llega a los componentes del sitio público · P3
+
+**Salió de arreglar el hallazgo del `auditor-privacidad` del 2026-09-15.** El
+barrido de `tests/promesas-sobre-datos.test.ts` pasó a recorrer `src/pages`
+**recursivamente** —ése era el agujero: las tres páginas `/guia/<x>/sumar`
+quedaban afuera—, y de paso se probó extenderlo a
+`src/components/publico/*.tsx`, que es donde los tres formularios repiten los
+mismos carteles que su página («la dirección exacta no se publica»).
+
+**No entró, y por un motivo concreto:** salieron dos falsos positivos y ninguno es
+una promesa.
+
+- «Todavía **no guardaste** nada» (`MisGuardados.tsx`, el estado vacío de la
+  lista) cae en el detector de medición.
+- «Si **no cobran** o preferís no ponerlo» (`SumarLugar.tsx`, sobre lo que cobra
+  el lugar) cae en el de plata.
+
+Los detectores están afinados para **copy de página**. En un `.tsx` la prosa que
+`prosaDe()` extrae trae el JSX adentro (`className=…`), así que la frase que el
+detector ve no es la frase que alguien lee, y las dos que salieron hablan de otra
+cosa que la que el patrón busca.
+
+**Lo que hay que reformar es el detector, no el glob.** Dos caminos:
+
+1. **Que `prosaDe()` sepa leer JSX**: quedarse con el texto entre `>` y `<` y con
+   los literales de string, descartando atributos. Es lo que haría que la frase
+   que se barre sea la que se lee, y probablemente arregle los dos falsos
+   positivos de una.
+2. **Acotar los detectores al sujeto**: «no guardaste» (segunda persona, sobre la
+   acción de quien lee) no es «no guardamos» (primera persona, sobre lo que hace
+   el sitio). Es una distinción real y el patrón hoy no la hace.
+
+**Lo que queda sin red mientras tanto**, dicho para que no sorprenda: una promesa
+que exista **solo** en un componente y no en su página. Hoy no hay ninguna —las
+tres páginas `/sumar` dicen lo mismo que sus componentes, y son las que se
+barren—, pero nada lo impide.
+
 ### B-923 · El panel dice «si no querés publicarlo, dejalo vacío» y el guardado falla · P2
 
 **Encontrado escribiendo los formularios públicos de la Guía (2026-09-15), sobre
@@ -6341,7 +6398,30 @@ La Function de retención de estas tres colecciones sigue sin existir; el molde 
 `functions/retencion.js` (DEC-13), y con tres directorios lo que corresponde es una
 lista de colecciones y no una Function por cada una.
 
-### B-915 · El `create` público de `/guia/lugares/sumar` no existe, y el criterio 11 queda a medias · P2
+### B-915 · El `create` público de `/guia/lugares/sumar` no existe, y el criterio 11 queda a medias — ✅ hecho (2026-09-15) · P2
+
+> ✅ **Los tres puntos que este ítem dejaba abiertos están resueltos, y los tres en
+> el mismo cambio que abrió la puerta:**
+>
+> - **El `create` ya no está tras `esAdmin()`.** Y lo que lo destrabó no fue
+>   B-872, que es lo que este ítem daba por causa: fue **D-700** —la ficha que
+>   llega de afuera nace sin fotos—, así que el camino público no toca Storage y
+>   B-872 no lo alcanza.
+> - **El recíproco desde `/anunciar` está escrito** (`TAMBIEN_EN_LA_GUIA` en
+>   `lib/comercialDelSitio.ts`), arriba y no al final: quien tiene un café y llegó
+>   buscando cómo aparecer tiene que enterarse **antes** de leer una página
+>   comercial de que hay un camino gratis, y de que no son excluyentes. Va aparte
+>   de `ANTES_DE_ESCRIBIRNOS` aunque los dos digan «esto es gratis», porque son dos
+>   públicos distintos.
+> - **`TIPOS_SIN_DIRECCION_PUBLICA` deja de importar para el camino público**, que
+>   era el tercer punto: la regla fuerza `direccionPublica == false` a partir del
+>   `origen` y **no del tipo**, así que un «Otro» tipeado tampoco publica la
+>   dirección desde afuera. El tipo sigue decidiendo el default **del panel**, que
+>   es donde hay alguien mirando.
+> - Y el `searchText`, que el ítem nombraba como «el campo que hay que mirar al
+>   abrir la puerta»: tenía razón, y era peor de lo que decía. Ver el arreglo del
+>   2026-09-15 — la proyección lo copiaba en librerías y suscripciones, así que el
+>   problema no era solo la dirección de un lugar.
 
 La tajada 4 construyó el directorio entero menos su formulario público: el `create`
 de `/lugares` sigue tras `esAdmin()` por **B-872**, y `firestore.rules` deja los

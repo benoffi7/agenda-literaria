@@ -974,6 +974,32 @@ pidió el alta, que no sale nunca.
 Mientras la ficha espera decisión se puede corregir —es el trabajo de la
 bandeja—; después el campo se apaga y explica por qué.
 
+#### Y desde el 2026-09-15 también entra por afuera — `/guia/librerias/sumar`
+
+Es «el mismo formulario con dos configuraciones» del § 5 del PRD, y ésta es la de
+afuera: los campos de la ficha más el contacto interno, **sin** `geo`, **sin** el
+`slug` —lo deriva el admin del nombre— y **sin** la gestión. Entra a la misma
+bandeja, en `pendiente`, con `origen: 'formulario-publico'`, que es lo que la
+bandeja muestra para saber cuánto hay que revisar.
+
+**Llega sin fotos, y eso es una decisión** (**D-700**): la ficha que viene de
+afuera nace con la galería vacía y lo **fuerza la regla**, no el componente. Las
+agrega el admin al publicarla, donde está el editor de galería. Es lo que hace
+que abrir el `create` anónimo no arrastre `storage.rules`, la callable de B-896 ni
+el objeto huérfano.
+
+Las defensas son las mismas que `/proponer` —App Check exigiendo en Firestore, la
+validación de la regla, los topes, el honeypot y el tiempo mínimo de tipeo, y la
+bandeja— menos una que acá no hace falta: **no toca Storage**. El barrio se ofrece
+con lo que ya existe en `/opciones/barrio` más un «Otro…» que **no da de alta la
+etiqueta** —un anónimo no escribe en un documento compartido por todo el sitio
+(B-893)—: lo que se tipea viaja slugueado adentro de la ficha y el admin decide.
+
+Y el contacto de quien la carga es **obligatorio** de este lado y opcional del
+otro: quien carga desde afuera no vuelve a entrar, así que sin contacto la única
+salida sería descartar la ficha. Se borra a los 30 días si al final no entra
+(B-904).
+
 ### Suscripciones literarias — el segundo directorio de la Guía (B-832)
 
 Botón «Suscripciones» en el listado, al lado de «Librerías» y **solo para el
@@ -1002,6 +1028,18 @@ El link para suscribirse lleva a **la página de cobro de otra persona**, así q
 tiene que empezar con `https://` —la regla lo exige, no solo el formulario— y la
 ficha lo publica diciendo a dónde va: «Suscribite en la página de …». Un botón que
 dijera «Suscribite» a secas se lee como que el proyecto respalda ese cobro.
+
+#### Y desde el 2026-09-15 también entra por afuera — `/guia/suscripciones/sumar`
+
+Lo mismo que en librerías (arriba), con lo propio de esta entidad: los seis
+vocabularios y el **precio**, que se pide y cuya fecha no. Quien la carga ve, en
+pantalla y no en un comentario, que el monto se publica **con la fecha al lado**;
+la fecha la estampa la regla con `request.time`, así que no se puede elegir.
+
+Queda afuera el enlace a la ficha de una librería de la Guía
+(`ofrecidaPor.libreriaSlug`): exige saber la dirección web de **otra** ficha de
+este sitio, y mal completado produce un enlace a una página que no existe. Lo
+pone el admin al revisar.
 
 ### Lugares para eventos — el tercer directorio de la Guía (B-833)
 
@@ -1037,6 +1075,29 @@ se usa y los cuatro destinos públicos. **La condición es obligatoria y el prec
 no**, que es el hallazgo del § 5 del PRD: mucha gente no cobra, o pide que se
 consuma algo, y eso no es un número. El precio, si está, se publica con su fecha de
 carga al lado y con el aviso de los 60 días, igual que el de una suscripción.
+
+#### Y desde el 2026-09-15 también entra por afuera — `/guia/lugares/sumar` (B-915)
+
+Cierra el criterio 11 del PRD, y es el formulario público con **la diferencia más
+grande** respecto de su versión de panel: acá `direccionPublica` **no es una
+casilla**. Arranca apagada, no se muestra, y la pantalla dice con esas palabras
+que la dirección exacta no se publica — antes de que el campo aparezca.
+
+Son tres capas y ninguna reemplaza a otra: el componente arranca con el flag
+apagado (que además es lo que hace que la dirección sea **opcional** de este lado
+—con el default del panel el schema la exigiría, o sea que la página pediría como
+obligatorio el dato más sensible del proyecto para después no publicarlo—),
+`formALugar` lo fuerza cuando el origen es el formulario público, y
+`firestore.rules` lo impide de verdad. La regla **no mira el `tipo`**: es un
+vocabulario abierto que acepta «Otro», así que `mi-living` o `casa-de-familia`
+pasarían cualquier lista negra.
+
+Prender el flag es una acción de admin, y es la única forma legítima: alguien
+pidió permiso a quien vive ahí. Por eso el contacto interno importa más acá que en
+los otros dos — es por dónde se pide ese permiso.
+
+El recíproco está escrito: `/anunciar` linkea a esta página, que es la mitad que
+B-915 dejaba a medias.
 
 ### Proponer una actividad — `/proponer` (B-830, paso 9)
 

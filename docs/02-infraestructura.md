@@ -332,10 +332,23 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 ## Cloud Functions (v2)
 
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3;
-`verificarFrescuraDelSitio`, 1). **Son dieciséis: diez ACTIVE y seis escritas sin
-desplegar** (`borrarPropuestasVencidas`, `borrarImagenAlCerrar`,
-`verificarFrescuraDelSitio`, `rebuildPorLibrerias`, `rebuildPorSuscripciones` y
-`rebuildPorLugares`, que el próximo push a `main` despliega solas).
+`verificarFrescuraDelSitio`, 1). **Son diecisiete**, y el reparto entre ACTIVE y «sin
+desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
+
+> ⚠️ **Esta línea necesita un re-relevamiento, y lo dice en vez de reafirmar
+> fechas viejas** (2026-09-15, lo cobró el `auditor-documentacion`). Decía «diez
+> ACTIVE y seis escritas sin desplegar», con `rebuildPorLibrerias`,
+> `rebuildPorSuscripciones` y `rebuildPorLugares` fechadas «sin desplegar
+> todavía (2026-09-11)» **pese a varios pushes a `main` que tocaron
+> `functions/` desde entonces** — o sea que casi con seguridad están ACTIVE y
+> nadie miró. Es exactamente la cicatriz que los dos avisos siguientes
+> describen, por tercera vez.
+>
+> No se corrige a mano: se corre
+> `gcloud functions list --project agenda-literaria --regions southamerica-east1`
+> y se actualiza la tabla con la fecha del relevamiento. Mientras tanto, la
+> columna de estado de las filas sin fecha reciente se lee como «lo que se
+> escribió el día que se agregó», no como el estado de hoy.
 
 > Esta línea decía «son ocho, y las ocho están ACTIVE» y ya era falsa cuando el
 > relevamiento de abajo encontró diez. **Es la misma cicatriz que el aviso
@@ -382,6 +395,7 @@ desplegar** (`borrarPropuestasVencidas`, `borrarImagenAlCerrar`,
 | `limpiarImagenesHuerfanas` | `onSchedule every 24 hours` | ACTIVE — desplegada el 2026-09-03 16:37 (041ab45), B-221 cerrado. El IAM que pedía era el mismo de `optimizarImagen` y no hacía falta nada nuevo: `roles/storage.objectUser` ya incluye `storage.objects.delete`. Ver `08-operacion.md` § «El barrido de huérfanas» |
 | `limpiarVersionesHuerfanas` | `onSchedule every 24 hours` | ACTIVE — **desplegada**, relevado el 2026-09-07 (la tabla decía «escrita, sin desplegar» y era de antes de D-132). Sin IAM nuevo: corre con `calendar-sync@` y solo necesita `datastore.user`, que ya tiene. Desde B-630 tiene **script en seco**: `scripts/limpiar-versiones-huerfanas.mjs`. Ver `08-operacion.md` § «El barrido de versiones huérfanas» |
 | `borrarPropuestasVencidas` | `onSchedule every 24 hours` | **escrita, sin desplegar todavía** (B-838, DEC-13, 2026-09-09) — el push a `main` la despliega sola (`push-main.yml` ve el cambio en `functions/`), así que esta celda pasa a ACTIVE con la próxima corrida; hasta entonces el panel promete un borrado que no corre, y eso está dicho en `07-seguridad.md`. Borra la propuesta rechazada hace más de 30 días **y su imagen**, y desde **B-844** (2026-09-09) también la `nueva`/`en-revision` sin tocar hace más de 30 días (el mismo número que la rechazada, contado desde su última señal de vida); la `aceptada` no vence. Sin IAM nuevo: `calendar-sync@` ya tiene `datastore.user` y el `storage.objects.delete` que usa `limpiarImagenesHuerfanas`. Desde **B-864** no borra a ciegas: borra con precondición sobre la versión que leyó (`delete({ lastUpdateTime })`) más una relectura de metadata antes de tocar Storage, así que una propuesta que un admin toca mientras la corrida está en curso sobrevive entera. Tiene **script en seco**: `scripts/borrar-propuestas-vencidas.mjs`, verificado a mano contra el emulador —incluida la carrera—. Ver `08-operacion.md` § «La retención de propuestas» |
+| `borrarFichasVencidas` | `onSchedule every 24 hours` | **sin relevar contra GCP** (B-904/B-912/B-917, 2026-09-15) — el push a `main` la despliega sola. Borra las fichas vencidas de las **tres** guías, recorriendo `COLECCIONES_DE_DIRECTORIO` (`functions/directorios.js`), así que la cuarta guía entra sola: la `rechazado` a los 30 días del rechazo, la `pendiente` a los 30 días sin que nadie la toque, y la `publicado` no vence. **Sin IAM nuevo y sin Storage**: necesita `datastore.user` —que `calendar-sync@` ya tiene— y nada más, porque las fotos de una ficha viven en `imagenes/` y las levanta `limpiarImagenesHuerfanas` (desde **B-922**, que es el cambio que lo hizo cierto). Borra con precondición sobre la versión que leyó, como su vecina, y acá la ventana queda cubierta **entera**: sin objeto que borrar no existe el final `la-tocaron-tarde`. ⚠️ Cada corrida que borre algo dispara el trigger de rebuild de su colección, aunque la ficha nunca haya estado publicada — ver `08-operacion.md` § «`borrarFichasVencidas`». Ver también `07-seguridad.md` § «Las cuatro escrituras anónimas» |
 | `borrarImagenAlCerrar` | `onDocumentWritten propuestas/{id}` | **escrita, sin desplegar todavía** (B-830 paso 8, DEC-11, 2026-09-09; ampliada por **B-863**, 2026-09-10) — **cerrar** una propuesta borra la foto que mandó el tercero: al **rechazarla**, en el acto; al **aceptarla**, después de verificar que la copia promovida a `imagenes/` existe (en el documento de la actividad y en el bucket). Es un solo trigger y no dos porque dos `onDocumentWritten` sobre el mismo path serían dos handlers peleándose el mismo objeto (B-89). Lee `/actividades` con `fieldMask: ['imagenes']`, así que además de `storage.objects.delete` necesita el `datastore.user` que `calendar-sync@` ya tiene. La despliega CI en el push, como su vecina. **Se llamaba `borrarImagenAlRechazar`**: si llegó a desplegarse con ese nombre hay que borrar la vieja a mano — ver el aviso de `08-operacion.md` § «La imagen de una propuesta» |
 | `verificarFrescuraDelSitio` | `onSchedule every 30 minutes` | **escrita, sin desplegar todavía** (B-882, 2026-09-11) — el chequeo de frescura: pide `https://agendaleh.ar/events.json` y compara el **conjunto de slugs** que publica contra el de las actividades `publicado` de Firestore. Si hay una diferencia más vieja que la ventana de 40 minutos, abre un issue con la etiqueta `frescura` y loguea `alerta: 'sitio-atrasado'`. Escribe `sistema/frescura`. Sin IAM nuevo: corre con `calendar-sync@`, que ya tiene `datastore.user`, y usa el `GITHUB_TOKEN` que ya existe. Lo único que hace falta del lado del dueño es **crear las dos etiquetas** del repo y que la salida a internet esté (Blaze). Ver § «El chequeo de frescura» más abajo |
 | `traerAnaliticaDelSitio` | `onSchedule every day 07:00` | ACTIVE — **faltaba en esta tabla**, agregada el 2026-09-07. Lee GA4 y Search Console con `calendar-sync@` y escribe `sistema/analitica-sitio`, que es de donde lee la pestaña «El sitio público» del panel. Los cuatro pasos de consola quedaron hechos el 2026-09-07 y se verificó forzando una corrida: el log dice `analítica del sitio actualizada` (B-790, `16-analitica-del-sitio.md` §9.4) |

@@ -2,6 +2,63 @@
 
 ## Sin publicar
 
+- **Los tres formularios públicos de la Guía están abiertos** — **B-831**,
+  **B-832**, **B-915**, **D-700**. `/guia/librerias/sumar`,
+  `/guia/suscripciones/sumar` y `/guia/lugares/sumar`: cualquiera suma una ficha
+  sin tener cuenta, y nada se publica sin que un admin lo mire. El `create` de
+  `firestore.rules` dejó de exigir `esAdmin()` en las tres colecciones.
+
+  **Lo que destrababa la puerta no era lo que se creía.** Los tres comentarios de
+  las reglas culpaban a **B-872** —Storage sin exigir App Check, con riesgo de
+  tirar las imágenes públicas del sitio si se exigiera— porque el formulario subía
+  una foto. La salida fue más barata: **la ficha que llega de afuera nace sin
+  fotos** (D-700, decisión del dueño). Sin bytes, este camino no toca Storage ni la
+  callable de B-896, y B-872 no lo alcanza. Las fotos las pone el admin al
+  publicarla, donde está el editor de galería.
+
+  Esa cláusula es lo que hace que la puerta sea chica: con imágenes había que sumar
+  un `imagenValida()` por entidad (B-907), el prefijo en `storage.rules`, la
+  callable generalizada a tres destinos y la limpieza del objeto huérfano.
+
+  Las dos capas anti-abuso del navegador —el honeypot y el tiempo mínimo de
+  tipeo— se escribieron **una vez** (`altaPublica.tsx`): estaban adentro de
+  `FormularioPublico` porque `/proponer` era el único formulario del sitio, y con
+  cuatro, cuatro copias serían cuatro oportunidades de que una quede mostrando el
+  error en vez de la pantalla de gracias, que es enseñarle al bot qué corregir.
+
+  En lugares, la dirección: el formulario arranca con `direccionPublica` apagado y
+  no ofrece la casilla. Con el default del panel el schema exigiría la dirección,
+  o sea que la página pediría como obligatorio el dato más sensible del proyecto
+  para después no publicarlo.
+
+  Las rutas `/sumar` se derivan de la misma fila de `lib/directorios.ts` que el
+  listado, así que el mismo flag mete a las dos en el sitemap. Enlazadas desde cada
+  listado y desde `/anunciar`, que es el recíproco que B-915 dejaba a medias.
+
+- **El `searchText` que se publica se deriva, no se copia del documento** — P1 que
+  el cambio de arriba introdujo y que encontró el `auditor-privacidad`. `searchText`
+  viaja en `/librerias.json` y `/suscripciones.json`, y en el documento lo escribe
+  el cliente: con la puerta abierta, dos mil caracteres elegidos por cualquiera
+  salían verbatim — y por el **único campo publicado que la bandeja no muestra**.
+  En suscripciones, encima, un `curl` metía el monto ahí y quedaba filtrable, que
+  es la segunda regla de DEC-12 dada vuelta.
+
+  `lugares` ya lo hacía bien y su docblock predecía este día con todas las letras.
+  Ahora las tres usan el mismo molde, con una sola derivación compartida entre el
+  documento y la proyección (clase de B-88). Las dos excepciones del barrido de
+  centinelas se fueron con el bug.
+
+  Del mismo auditor: el **barrido de promesas no llegaba a `src/pages/guia/*/`**
+  (era un glob de dos niveles), así que las tres páginas con más promesas sobre
+  datos de terceros del sitio quedaban sin red — las frases eran ciertas, la red
+  no estaba; y **«se borra a los 30 días» no estaba atado a la constante** que lo
+  cumple, así que mover el margen dejaba la suite verde y las páginas mintiendo.
+
+  Y del `auditor-trampas`: el borrado de una ficha dispara igual el trigger de
+  rebuild de su colección —al revés que `/propuestas`, que no tiene ninguno—, así
+  que cada corrida que borre algo marca el sitio para rehacer aunque la ficha nunca
+  haya estado publicada. Se acepta, y ahora está dicho donde se busca.
+
 - **Una ficha descartada de la Guía ya no se queda con el contacto de quien la
   cargó** — **B-904**, **B-912**, **B-917**. Es DEC-13 sin contestar, tres veces:
   `contactoDeQuienCargo` es el mismo dato que el `contacto` de una propuesta y las

@@ -853,6 +853,51 @@ export const CAPITULOS: CapituloAyuda[] = [
           'descartaste no se puede publicar de un saque: hay que reabrirlo primero, para que ' +
           'alguien lo vuelva a leer antes de que entre.',
       },
+      {
+        texto:
+          'Una librería también puede llegar sola, desde el formulario público de «Sumar una ' +
+          'librería» que está en la Guía. Entra a la bandeja igual que si la hubieras cargado ' +
+          'vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde afuera no ' +
+          'tiene el editor de galería, así que si la vas a publicar conviene agregarle una antes.',
+        cuidado: true,
+        /*
+         * **Los vínculos van a `tests/librerias.test.ts` y no al de integración
+         * ni al de render.** El de integración prueba la puerta de verdad contra
+         * el emulador pero **se saltea sin emuladores**, y el de render es un
+         * `.tsx` que no entra a la corrida que `ayuda.test.ts` mira: ninguno de
+         * los dos puede sostener un aviso, y eso lo hace cumplir ese archivo a
+         * propósito. Los dos casos de abajo son la mitad que **siempre corre**:
+         * que la regla diga lo que este aviso promete.
+         */
+        atadoA: [
+          {
+            archivo: 'tests/librerias.test.ts',
+            it: 'está abierto: el `create` ya no exige `esAdmin()`',
+          },
+          {
+            archivo: 'tests/librerias.test.ts',
+            it: 'y la ficha que llega de afuera nace sin fotos',
+          },
+        ],
+      },
+      {
+        texto:
+          'Y si nadie la mira, se borra sola: a los 30 días de descartada, o a los 30 días sin ' +
+          'que la toques si quedó esperando decisión. Es el mismo plazo que una propuesta y por ' +
+          'el mismo motivo — no quedarnos para siempre con el contacto de alguien de afuera. Una ' +
+          'vez publicada no vence.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una rechazada hace 31 días se va, y cuenta desde el rechazo',
+          },
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una pendiente que nadie tocó en 31 días se va — el caso del formulario público',
+          },
+        ],
+      },
     ],
   },
   {
@@ -924,6 +969,43 @@ export const CAPITULOS: CapituloAyuda[] = [
           'La dirección web queda fija desde la primera vez que se publica, igual que en las ' +
           'librerías: después ese enlace ya está en Google y cambiarlo lo rompe sin avisar.',
       },
+      {
+        texto:
+          'Una suscripción también puede llegar  sola, desde el formulario público de «Sumar ' +
+          'una suscripción» que está en la Guía. Entra a la bandeja igual que si la hubieras ' +
+          'cargado vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde ' +
+          'afuera no tiene el editor de galería, así que si la vas a publicar conviene ' +
+          'agregarle una antes.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/suscripciones.test.ts',
+            it: 'está abierto: el `create` ya no exige `esAdmin()`',
+          },
+          {
+            archivo: 'tests/suscripciones.test.ts',
+            it: 'y la ficha que llega de afuera nace sin fotos',
+          },
+        ],
+      },
+      {
+        texto:
+          'Y si nadie la mira, se borra sola: a los 30 días de descartada, o a los 30 días sin ' +
+          'que la toques si quedó esperando decisión. Es el mismo plazo que una propuesta y por ' +
+          'el mismo motivo — no quedarnos para siempre con el contacto de alguien de afuera. Una ' +
+          'vez publicada no vence.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una rechazada hace 31 días se va, y cuenta desde el rechazo',
+          },
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una pendiente que nadie tocó en 31 días se va — el caso del formulario público',
+          },
+        ],
+      },
     ],
   },
   {
@@ -989,6 +1071,43 @@ export const CAPITULOS: CapituloAyuda[] = [
           'La dirección web queda fija desde la primera vez que se publica, igual que en las ' +
           'otras dos secciones: después ese enlace ya está en Google y cambiarlo lo rompe sin ' +
           'avisar.',
+      },
+      {
+        texto:
+          'Un lugar también puede llegar solo sola, desde el formulario público de «Sumar ' +
+          'un lugar» que está en la Guía. Entra a la bandeja igual que si la hubieras ' +
+          'cargado vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde ' +
+          'afuera no tiene el editor de galería, así que si la vas a publicar conviene ' +
+          'agregarle una antes. También llega sin la dirección exacta publicada: ese dato se guarda para que vos sepas de qué lugar se trata, y la ficha muestra el barrio. Prender la dirección es una decisión tuya, y conviene pedirle permiso primero a quien vive o trabaja ahí.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/lugares.test.ts',
+            it: 'está abierto: el `create` ya no exige `esAdmin()`',
+          },
+          {
+            archivo: 'tests/lugares.test.ts',
+            it: 'y la ficha que llega de afuera nace sin fotos',
+          },
+        ],
+      },
+      {
+        texto:
+          'Y si nadie la mira, se borra sola: a los 30 días de descartada, o a los 30 días sin ' +
+          'que la toques si quedó esperando decisión. Es el mismo plazo que una propuesta y por ' +
+          'el mismo motivo — no quedarnos para siempre con el contacto de alguien de afuera. Una ' +
+          'vez publicada no vence.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una rechazada hace 31 días se va, y cuenta desde el rechazo',
+          },
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una pendiente que nadie tocó en 31 días se va — el caso del formulario público',
+          },
+        ],
       },
     ],
   },

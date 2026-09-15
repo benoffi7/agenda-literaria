@@ -162,6 +162,17 @@ es peor que ninguno.
 
 ## 5 · Los dos formularios
 
+> ⚠️ **La fila «foto» de la tabla de abajo dejó de ser cierta — ver D-700 en
+> [`../06-decisiones.md`](../06-decisiones.md).** Desde el 2026-09-15 la ficha que
+> llega del formulario público **nace sin fotos**, y eso lo **fuerza la regla**
+> (`d.origen == 'panel' || d.imagenes.size() == 0`), no el componente. Las agrega
+> el admin al publicarla, que es donde vive el editor de galería. Lo mismo vale
+> para el § 8 («la imagen que sube un anónimo es el caso de DEC-11»): por este
+> camino no hay imagen que suba nadie. El resto de la tabla se construyó tal cual
+> está escrito. El bloque de abajo queda como estaba, para que la entrada de D-700
+> se lea contra su original.
+
+
 **Son el mismo formulario con dos configuraciones**, y ese es el punto del motor
 compartido (B-834): un formulario público que es un subconjunto del de admin, sin
 los campos de gestión.
