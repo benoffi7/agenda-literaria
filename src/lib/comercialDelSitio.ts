@@ -37,7 +37,7 @@
  * decir. Acá hay cosas concretas que decir, y son verificables.
  */
 import { ASUNTO_COMERCIAL, urlDeContactoComercial } from '@/lib/enlaces';
-import { RUTA_CONTACTO } from '@/lib/rutasPublicas';
+import { RUTA_CONTACTO, RUTA_SUMAR_LUGAR } from '@/lib/rutasPublicas';
 
 /**
  * Un bloque de la página: un título corto y uno o dos párrafos.
@@ -204,4 +204,26 @@ export const DESPUES_DEL_MAIL: string[] = [
 export const ANTES_DE_ESCRIBIRNOS: { href: string; texto: string } = {
   href: RUTA_CONTACTO,
   texto: 'Si lo que organizás son actividades literarias, publicarlas en la agenda no cuesta nada',
+};
+
+/**
+ * **El recíproco de `/guia/lugares`, que es el criterio 11 del PRD 4** —
+ * B-915, 2026-09-15.
+ *
+ * `/guia/lugares` linkea a esta página desde su tajada («si lo que buscás es
+ * espacio publicitario, eso es anunciar»); el camino de vuelta **no se escribió**
+ * porque su destino natural era `/guia/lugares/sumar`, que no existía. Linkear
+ * mientras tanto al listado le habría dicho a quien quiere sumar su lugar «mirá
+ * los lugares de otros», que no es la acción.
+ *
+ * Va aparte de `ANTES_DE_ESCRIBIRNOS` y no como una segunda oración suya, aunque
+ * los dos digan «esto es gratis», porque son **dos públicos distintos**: aquél
+ * es para quien organiza actividades y llegó a la página equivocada; éste es
+ * para quien tiene un espacio —el público que el § 2 del PRD dice que esta página
+ * y `/guia/lugares` comparten— y que puede querer las dos cosas: estar en la
+ * guía gratis **y** anunciar. Fundirlos haría que una excluyera a la otra.
+ */
+export const TAMBIEN_EN_LA_GUIA: { href: string; texto: string } = {
+  href: RUTA_SUMAR_LUGAR,
+  texto: 'Y si tenés un espacio donde se puedan hacer actividades, sumalo a la guía de lugares',
 };

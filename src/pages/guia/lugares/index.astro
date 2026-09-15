@@ -44,7 +44,7 @@ import { FichaDeLugarFila } from '@/components/publico/FichaDeLugarFila';
 import { vistaDeLugares } from '@/lib/contenidoDelSitio';
 import { coleccionDeLugares, descripcionDelDirectorioDeLugares } from '@/lib/lugarPublico';
 import { NOMBRE } from '@/lib/identidad';
-import { RUTA_ANUNCIAR, RUTA_CONTACTO, RUTA_GUIA } from '@/lib/rutasPublicas';
+import { RUTA_ANUNCIAR, RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_LUGAR } from '@/lib/rutasPublicas';
 import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
@@ -96,15 +96,16 @@ const descripcion = descripcionDelDirectorioDeLugares(cuantos);
       publicidad, que es exactamente la confusión que `ANTES_DE_ESCRIBIRNOS`
       (`lib/comercialDelSitio.ts`) existe para evitar del otro lado.
 
-      El destino natural del primer link es `/guia/lugares/sumar`, que **no
-      existe todavía**: el `create` público está cerrado por B-872. Mientras
-      tanto va `/contacto`, que es el camino que sí funciona.
+      El destino natural del primer link es `/guia/lugares/sumar`, y **desde el
+      2026-09-15 existe** (B-915): el `create` público se abrió y la página está
+      en el sitemap. Hasta entonces iba `/contacto`, que era el camino que sí
+      funcionaba.
     */}
     <p class="body-md mt-4 max-w-[65ch] text-super">
       ¿Tenés un espacio y querés que pasen cosas ahí?{' '}
-      <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a> y lo sumamos: estar en esta lista
-      no cuesta nada. Si lo que buscás es espacio publicitario en la agenda, eso es{' '}
-      <a class={claseEnlace} href={RUTA_ANUNCIAR}>anunciar</a>.
+      <a class={claseEnlace} href={RUTA_SUMAR_LUGAR}>Sumalo a la guía</a>: estar en esta lista no
+      cuesta nada y no hace falta tener cuenta. Si lo que buscás es espacio publicitario en la
+      agenda, eso es <a class={claseEnlace} href={RUTA_ANUNCIAR}>anunciar</a>.
     </p>
 
     {
@@ -113,7 +114,8 @@ const descripcion = descripcionDelDirectorioDeLugares(cuantos);
           <p class="body-md mx-auto max-w-[48ch] text-super">
             Todavía no hay ninguno cargado. ¿Prestás o alquilás un espacio para una actividad
             literaria, o conocés uno que tendría que estar acá?{' '}
-            <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a>.
+            <a class={claseEnlace} href={RUTA_SUMAR_LUGAR}>Sumalo</a>, o{' '}
+            <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
           </p>
         </div>
       ) : (

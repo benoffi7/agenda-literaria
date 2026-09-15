@@ -32,7 +32,7 @@ import { FichaDeLibreriaFila } from '@/components/publico/FichaDeLibreriaFila';
 import { vistaDeLibrerias } from '@/lib/contenidoDelSitio';
 import { coleccionDeLibrerias, descripcionDelDirectorio } from '@/lib/libreriaPublica';
 import { NOMBRE } from '@/lib/identidad';
-import { RUTA_CONTACTO, RUTA_GUIA } from '@/lib/rutasPublicas';
+import { RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_LIBRERIA } from '@/lib/rutasPublicas';
 import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
@@ -63,12 +63,29 @@ const descripcion = descripcionDelDirectorio(cuantas);
       la Guía, el circuito que rodea a las actividades de la agenda.
     </p>
 
+    {/*
+      **La llamada al formulario, y por qué está arriba y no al final.**
+
+      Quien llega con una librería que no figura llega con algo para dar, no algo
+      para buscar: hacerlo scrollear cuarenta fichas ajenas antes de ofrecerle el
+      camino es pedirle que se convenza solo. Es el mismo criterio con el que
+      `/guia/lugares` pone su párrafo antes del listado.
+
+      El destino es `RUTA_SUMAR_LIBRERIA` y no un `href` a mano — B-330.
+    */}
+    <p class="body-md mt-4 max-w-[65ch] text-super">
+      ¿Tenés una librería, o conocés una que tendría que estar acá?{' '}
+      <a class={claseEnlace} href={RUTA_SUMAR_LIBRERIA}>Sumala a la guía</a>: no hace falta tener
+      cuenta y no cuesta nada.
+    </p>
+
     {
       cuantas === 0 ? (
         <div class="regla-gruesa-arriba mt-10 px-4 py-12 text-center">
           <p class="body-md mx-auto max-w-[48ch] text-super">
             Todavía no hay ninguna cargada. ¿Tenés una librería o conocés una que tendría que
-            estar acá? <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a>.
+            estar acá? <a class={claseEnlace} href={RUTA_SUMAR_LIBRERIA}>Sumala</a>, o{' '}
+            <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
           </p>
         </div>
       ) : (

@@ -297,6 +297,17 @@ describe('la Guía y sus tres filas — B-835', () => {
   const tienePagina = (d: Directorio): boolean =>
     archivosPosibles(d.ruta).some((f) => existsSync(raiz(f)));
 
+  /**
+   * ¿Tiene también su **formulario público** en disco? — 2026-09-15.
+   *
+   * Va como cruce propio y no metido dentro de `tienePagina` porque son dos
+   * páginas y el error posible es asimétrico: olvidarse del listado se ve —es la
+   * sección—, olvidarse de `/guia/<x>/sumar` no se ve desde ninguna pantalla,
+   * y es justamente la página que el § 8 del PRD 1 dice que se busca en Google.
+   */
+  const tieneFormulario = (d: Directorio): boolean =>
+    archivosPosibles(d.rutaSumar).some((f) => existsSync(raiz(f)));
+
   /*
    * ── Los dos chequeos, extraídos, y por qué ──────────────────────────────
    *
@@ -322,6 +333,12 @@ describe('la Guía y sus tres filas — B-835', () => {
   const disponiblesFueraDelSitemap = (ds: readonly Directorio[]): string[] =>
     ds.filter((d) => d.disponible && !RUTAS_FIJAS.includes(d.ruta)).map((d) => d.id);
 
+  const disponiblesSinFormulario = (ds: readonly Directorio[]): string[] =>
+    ds.filter((d) => d.disponible && !tieneFormulario(d)).map((d) => d.id);
+
+  const formulariosFueraDelSitemap = (ds: readonly Directorio[]): string[] =>
+    ds.filter((d) => d.disponible && !RUTAS_FIJAS.includes(d.rutaSumar)).map((d) => d.id);
+
   const conPaginaSinMarcar = (ds: readonly Directorio[]): string[] =>
     ds.filter((d) => !d.disponible && tienePagina(d)).map((d) => d.id);
 
@@ -332,6 +349,7 @@ describe('la Guía y sus tres filas — B-835', () => {
     singular: 'ficha',
     que: 'No existe: está acá para que el chequeo se pueda ver fallar.',
     ruta: rutaCanonica('/guia/inventada'),
+    rutaSumar: rutaCanonica('/guia/inventada/sumar'),
     disponible: true,
     ...over,
   });
@@ -381,10 +399,29 @@ describe('la Guía y sus tres filas — B-835', () => {
       'estas filas están disponibles y no entran al sitemap: existen y Google no las ve',
     ).toEqual([]);
 
-    // Control negativo codificado: los dos chequeos tienen que poder fallar,
+    /*
+     * **Y lo mismo para el formulario público** — 2026-09-15. Es la mitad que se
+     * olvida de las dos: el listado se ve, `/guia/<x>/sumar` no se ve desde
+     * ninguna pantalla. Una sección publicada cuyo formulario no está en disco
+     * deja un enlace a un 404 en su propio listado; una cuyo formulario no está
+     * en el sitemap deja invisible la única página del sitio a la que se llega
+     * con algo para dar en vez de algo para buscar.
+     */
+    expect(
+      disponiblesSinFormulario(DIRECTORIOS),
+      'estas filas dicen estar disponibles y no tienen su `/sumar`: el listado linkea a un 404',
+    ).toEqual([]);
+    expect(
+      formulariosFueraDelSitemap(DIRECTORIOS),
+      'estos formularios están publicados y no entran al sitemap: existen y Google no los ve',
+    ).toEqual([]);
+
+    // Control negativo codificado: los cuatro chequeos tienen que poder fallar,
     // también —y sobre todo— mientras la lista real esté vacía.
     expect(disponiblesSinPagina([inventada({})])).toEqual(['librerias']);
     expect(disponiblesFueraDelSitemap([inventada({})])).toEqual(['librerias']);
+    expect(disponiblesSinFormulario([inventada({})])).toEqual(['librerias']);
+    expect(formulariosFueraDelSitemap([inventada({})])).toEqual(['librerias']);
   });
 
   it('y una sección que ya existe está marcada disponible', () => {

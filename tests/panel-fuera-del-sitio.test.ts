@@ -205,12 +205,26 @@ const FIREBASE_DEL_CLIENTE = [
 
 /**
  * Las páginas que **escriben**, y por lo tanto pueden alcanzar Firebase de forma
- * diferida. Es una lista y no una regla porque la segunda entrada tiene que ser
- * una decisión: hoy es la única página del sitio con un formulario.
+ * diferida. Es una lista y no una regla porque cada entrada tiene que ser una
+ * decisión: cada una es una página pública que puede cargar reCAPTCHA
+ * Enterprise, con cuota facturable por visitante.
  *
- * Los otros tres formularios públicos de `prd/` van a entrar acá, uno por uno.
+ * **Son cuatro desde el 2026-09-15**, y las tres nuevas son los formularios de
+ * `prd/` que faltaban: `/guia/<x>/sumar`. Entraron juntas porque son la misma
+ * puerta con tres vocabularios —el `create` anónimo de las tres colecciones de
+ * la Guía— y porque las tres difieren el **mismo** módulo, `lib/enviar-ficha.ts`.
+ *
+ * La lista se queda a mano y no se deriva de «¿tiene una island que escribe?»
+ * justamente porque agregar una tiene que costar este renglón: es el único lugar
+ * del repo donde se ve, de un vistazo, cuántas páginas públicas pueden cargar
+ * ese tercero.
  */
-const PAGINAS_QUE_ESCRIBEN = ['src/pages/proponer.astro'];
+const PAGINAS_QUE_ESCRIBEN = [
+  'src/pages/proponer.astro',
+  'src/pages/guia/librerias/sumar.astro',
+  'src/pages/guia/suscripciones/sumar.astro',
+  'src/pages/guia/lugares/sumar.astro',
+];
 
 /**
  * `/admin` es el panel: **tiene** que alcanzarla. Es la única excepción, y no es
@@ -272,15 +286,15 @@ describe('la plomería del panel no llega al sitio público — B-841', () => {
     ).toEqual([]);
   });
 
-  it('y de forma diferida, solo las que escriben — que hoy es una', () => {
+  it('y de forma diferida, solo las que escriben — que hoy son cuatro', () => {
     const alcanzan = paginas()
       .filter((p) => p !== ES_EL_PANEL)
       .filter((p) => caminoHasta(p, FIREBASE_DEL_CLIENTE) !== null);
     expect(
-      alcanzan,
+      alcanzan.sort(),
       'una página que no escribe alcanza Firebase: no hay motivo para que cargue el ' +
         'SDK ni App Check, ni siquiera diferido',
-    ).toEqual(PAGINAS_QUE_ESCRIBEN);
+    ).toEqual([...PAGINAS_QUE_ESCRIBEN].sort());
   });
 
   it('CONTROL POSITIVO: `/proponer` sí lo alcanza diferido, y por el módulo que escribe', () => {
@@ -307,6 +321,25 @@ describe('la plomería del panel no llega al sitio público — B-841', () => {
       importsDiferidos(fuente('src/components/publico/FormularioPublico.tsx')),
       'el formulario no difiere el módulo que escribe la propuesta',
     ).toContain('@/lib/enviar-propuesta');
+  });
+
+  it('CONTROL POSITIVO: los tres de la Guía también, y por `lib/enviar-ficha`', () => {
+    // La misma mitad para las tres páginas nuevas. Sin esto, «solo las que
+    // escriben» se cumpliría también con una lista **vacía** el día que alguien
+    // rompa los `import()` de los formularios, y las tres dejarían de poder
+    // mandar nada con la suite en verde.
+    for (const pagina of PAGINAS_QUE_ESCRIBEN.slice(1)) {
+      expect(
+        caminoHasta(pagina, FIREBASE_DEL_CLIENTE),
+        `${pagina} no llega a Firebase por ningún camino`,
+      ).not.toBeNull();
+    }
+    for (const componente of ['SumarLibreria', 'SumarSuscripcion', 'SumarLugar']) {
+      expect(
+        importsDiferidos(fuente(`src/components/publico/${componente}.tsx`)),
+        `${componente} no difiere el módulo que escribe la ficha`,
+      ).toContain('@/lib/enviar-ficha');
+    }
   });
 });
 

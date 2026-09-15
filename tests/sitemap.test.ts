@@ -101,21 +101,28 @@ describe('las fichas de la Guía — B-901, §6 #7 del inventario', () => {
     expect(rutas({ librerias: [{ slug: 'x' }] })).toContain(rutaDeLibreria('x'));
   });
 
-  it('sin librerías no aparece ninguna ruta de la Guía más que el índice', () => {
+  /**
+   * Las dos rutas de la sección que **no** son fichas: el listado y su
+   * formulario público. Las dos entran por `RUTAS_FIJAS`, derivadas de la misma
+   * fila de `lib/directorios.ts` (ver el comentario de `...directoriosDisponibles()`).
+   */
+  const FIJAS_DE_LIBRERIAS = ['/guia/librerias/', '/guia/librerias/sumar/'];
+
+  it('sin librerías no aparece ninguna ruta de la Guía más que las fijas', () => {
     // El default vacío: un llamador que prueba otra regla no tiene que armarlas, y
     // el lado inofensivo del error es «ninguna ficha», nunca «una de más».
     const todas = rutas({});
-    // `/guia/librerias/` es el **listado**, que entra por `RUTAS_FIJAS`; lo que no
-    // tiene que haber es ninguna ficha colgando de él.
-    expect(todas.filter((r) => r.startsWith('/guia/librerias/') && r !== '/guia/librerias/')).toEqual(
-      [],
-    );
-    expect(todas).toContain('/guia/librerias/');
+    // Lo que no tiene que haber es ninguna **ficha** colgando de la sección.
+    expect(
+      todas.filter((r) => r.startsWith('/guia/librerias/') && !FIJAS_DE_LIBRERIAS.includes(r)),
+    ).toEqual([]);
+    for (const fija of FIJAS_DE_LIBRERIAS) expect(todas).toContain(fija);
   });
 
   it('una ficha sin slug no puede tener URL, así que no entra', () => {
-    expect(rutas({ librerias: [{ slug: '' }] }).filter((r) => r.includes('/guia/librerias/')))
-      .toEqual(['/guia/librerias/']);
+    expect(
+      rutas({ librerias: [{ slug: '' }] }).filter((r) => r.includes('/guia/librerias/')).sort(),
+    ).toEqual(FIJAS_DE_LIBRERIAS);
   });
 });
 

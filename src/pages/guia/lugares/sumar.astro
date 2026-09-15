@@ -1,0 +1,105 @@
+---
+/**
+ * `/guia/lugares/sumar` — el formulario público del directorio de lugares para
+ * eventos. Criterio 11 del PRD 4 (`docs/prd/04-lugares-para-eventos.md`),
+ * **B-915**.
+ *
+ * El porqué de la island, de leer las opciones en el build y de que esta página
+ * sí se anuncie está en `guia/librerias/sumar.astro`, que fue la primera de las
+ * tres: son la misma decisión y no se repite acá.
+ *
+ * ── ⚠️ Lo propio de esta página: la dirección de una casa ─────────────────
+ * Es la única del sitio donde alguien puede tipear el domicilio de una persona,
+ * así que el texto de arriba **dice que no se publica** antes de que el campo
+ * aparezca. Las tres capas que lo sostienen —este formulario arranca con el flag
+ * apagado, `formALugar` lo fuerza, y `firestore.rules` lo impide de verdad—
+ * están explicadas en `SumarLugar.tsx`.
+ *
+ * ── Y el recíproco de `/anunciar`, que B-915 dejó anotado ─────────────────
+ * `/guia/lugares` ya linkeaba a `/anunciar`; el camino de vuelta no existía
+ * porque su destino natural era esta página. Ahora existe: `/anunciar` manda
+ * acá, y linkear mientras tanto al listado le habría dicho a quien quiere sumar
+ * su lugar «mirá los lugares de otros», que no es la acción.
+ */
+import Base from '@/layouts/Base.astro';
+import { SumarLugar } from '@/components/publico/SumarLugar';
+import { contenidoDelSitio } from '@/lib/contenidoDelSitio';
+import { opcionesPublicas } from '@/lib/toPublic';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_ANUNCIAR, RUTA_CONTACTO, RUTA_LUGARES } from '@/lib/rutasPublicas';
+import { claseBloque, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+import type { CampoTaxonomia } from '@/types/actividad';
+
+export const prerender = true;
+
+const { opciones } = await contenidoDelSitio();
+
+/** Solo las aprobadas y visibles (§4.3). Ver `guia/librerias/sumar.astro`. */
+const ofrecidas = (campo: CampoTaxonomia) =>
+  opcionesPublicas(opciones[campo] ?? []).map((o) => ({ slug: o.slug, label: o.label }));
+---
+
+<Base
+  seccion="guia"
+  titulo={`Sumar un lugar — ${NOMBRE}`}
+  descripcion="¿Tenés un salón, un café o un espacio donde se puedan hacer actividades? Contanos cómo es y cómo se usa."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_LUGARES}>Lugares para hacer eventos</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">Sumar un lugar</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Si tenés un salón, un café, una librería con fondo o cualquier espacio donde se puedan hacer
+      actividades, contanos cómo es y cómo se usa. No hace falta tener cuenta, y estar acá no
+      cuesta nada.
+    </p>
+
+    <section aria-labelledby="que-pasa" class={`mt-10 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 id="que-pasa" class="headline-sm text-tinta">Qué pasa con lo que mandás</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Nada se publica solo. La ficha queda esperando y la miramos antes de que entre a la guía:
+        puede que le corrijamos algo, y puede que al final no la sumemos.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        <strong>La dirección exacta no se publica.</strong> La ficha muestra el barrio, y quien
+        quiera ir la pide. Si el lugar es una casa, eso es justamente lo que queremos que pase; y
+        si querés que la dirección sí aparezca, escribinos y lo charlamos.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Las fotos las ponemos nosotros al publicarlo, así que este formulario no las pide.
+      </p>
+
+      <p class={`mt-5 ${claseRotulo}`}>Tu contacto</p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Pedimos una forma de escribirte porque no volvés a entrar acá: si falta un dato, es lo
+        único que nos deja preguntártelo. <strong>No se publica</strong> en ninguna parte.
+      </p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Si al final la ficha no entra, tu contacto se borra a los 30 días.
+      </p>
+    </section>
+
+    <SumarLugar
+      client:load
+      tiposDeLugar={ofrecidas('tipo-lugar')}
+      barriosOfrecidos={ofrecidas('barrio')}
+      incluyeOfrecido={ofrecidas('incluye-lugar')}
+      condicionesDeUso={ofrecidas('condicion-de-uso')}
+    />
+
+    <section aria-labelledby="si-no-es-esto" class="mt-14 regla-gruesa-arriba pt-4">
+      <h2 id="si-no-es-esto" class="headline-sm text-acento">Si no es esto lo que buscabas</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Si lo que querés es que tu espacio aparezca destacado o auspiciar la agenda,
+        <a class={claseEnlace} href={RUTA_ANUNCIAR}>mirá la sección comercial</a>.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Y si es otra cosa, o algo de acá está mal,
+        <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
+      </p>
+    </section>
+  </main>
+</Base>

@@ -256,6 +256,25 @@ export const RUTAS_FIJAS: readonly string[] = [
    * derivar convertiría un olvido en una entrada de sitemap que contesta 404.
    */
   ...directoriosDisponibles().map((d) => d.ruta),
+  /*
+   * **Y su formulario público, por la misma puerta** — 2026-09-15.
+   *
+   * `/guia/<x>/sumar` **quiere ser encontrada**, con el mismo argumento con el
+   * que entró `/proponer` (§ 8 del PRD 1): quien tiene una librería que no
+   * figura la busca en Google, no la encuentra navegando un directorio de otras.
+   *
+   * Y entra **derivada de la misma fila** que el listado, no como una constante
+   * más en esta lista, porque el error posible es asimétrico: olvidarse del
+   * listado se ve —es la sección—, olvidarse del formulario no se ve desde
+   * ninguna pantalla. Con las dos colgando de `disponible`, no se puede publicar
+   * una sección y dejar su formulario invisible para el buscador.
+   *
+   * Las tres rebotarían si el `create` anónimo estuviera cerrado, que es el
+   * motivo por el que `/proponer` estuvo afuera toda la tajada 1. No lo está:
+   * se abrió el 2026-09-15 y cada colección tiene su control positivo contra el
+   * emulador.
+   */
+  ...directoriosDisponibles().map((d) => d.rutaSumar),
 ];
 
 /** ¿Esta fecha está dentro de la ventana de `dias` contada desde `ahora`? */

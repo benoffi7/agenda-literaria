@@ -32,6 +32,9 @@ import { slugify } from '@/lib/slugify';
 import {
   RUTA_LIBRERIAS,
   RUTA_LUGARES,
+  RUTA_SUMAR_LIBRERIA,
+  RUTA_SUMAR_LUGAR,
+  RUTA_SUMAR_SUSCRIPCION,
   RUTA_SUSCRIPCIONES,
 } from '@/lib/rutasPublicas';
 
@@ -283,6 +286,17 @@ export interface Directorio {
   /** El destino, siempre desde `rutasPublicas.ts` (B-330: nunca un `href` a mano). */
   ruta: string;
   /**
+   * `/guia/<x>/sumar` — el formulario público de esta sección.
+   *
+   * Va en la misma fila que `ruta` y no en una lista aparte por lo mismo que
+   * `disponible`: el listado y su formulario se publican juntos, y **el mismo
+   * flag decide que los dos entren al sitemap**. Escritos en dos lugares, la
+   * tajada que publique la sección iba a acordarse del listado —se ve— y podía
+   * olvidarse del formulario, que no se ve desde ninguna pantalla y es
+   * justamente la página que el § 8 del PRD 1 dice que se busca en Google.
+   */
+  rutaSumar: string;
+  /**
    * ¿La sección ya existe?
    *
    * **Mientras sea `false` la fila no linkea**, dice «en camino» y `/guia` no
@@ -316,6 +330,7 @@ export const DIRECTORIOS: readonly Directorio[] = [
     singular: 'librería',
     que: 'Dónde comprar libros: la dirección, el barrio y cómo seguirlas.',
     ruta: RUTA_LIBRERIAS,
+    rutaSumar: RUTA_SUMAR_LIBRERIA,
     /*
      * **La primera que deja de decir «en camino»** — B-901, tajada 2 paso 14.
      *
@@ -338,6 +353,7 @@ export const DIRECTORIOS: readonly Directorio[] = [
     singular: 'suscripción',
     que: 'Cajas y envíos de libros por mes, con qué incluye cada uno.',
     ruta: RUTA_SUSCRIPCIONES,
+    rutaSumar: RUTA_SUMAR_SUSCRIPCION,
     /*
      * **La segunda que deja de decir «en camino»** — B-832, tajada 3.
      *
@@ -356,6 +372,7 @@ export const DIRECTORIOS: readonly Directorio[] = [
     singular: 'lugar',
     que: 'Salones, cafés y espacios que prestan o alquilan para una actividad.',
     ruta: RUTA_LUGARES,
+    rutaSumar: RUTA_SUMAR_LUGAR,
     /*
      * **La tercera y última que deja de decir «en camino»** — B-833, tajada 4.
      *

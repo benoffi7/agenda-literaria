@@ -6196,6 +6196,50 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-923 · El panel dice «si no querés publicarlo, dejalo vacío» y el guardado falla · P2
+
+**Encontrado escribiendo los formularios públicos de la Guía (2026-09-15), sobre
+el formulario del panel.**
+
+`suscripcionVacia()` arranca con `precio: { monto: '', porPeriodo: 'mensual' }` y
+`lugarVacio()` con `precio: { monto: '', porUnidad: 'hora' }`. El schema pide el
+monto **y** la unidad, o **ninguno de los dos** —lo cual es correcto y está
+testeado (`tests/suscripciones.test.ts`, `tests/lugares.test.ts`)—. Con el
+período puesto por default y el monto vacío, la combinación cae del lado
+prohibido.
+
+O sea que **una suscripción o un lugar sin precio no se pueden guardar** a menos
+que quien carga se acuerde de vaciar *también* el desplegable. Y la ayuda del
+campo dice lo contrario con todas las letras:
+
+> «En pesos, sin puntos ni centavos. **Si no querés publicarlo, dejalo vacío.**»
+
+El error sale marcado sobre `precio.monto` («Cargá el precio y a qué período
+corresponde, o ninguno de los dos»), o sea sobre el campo que la persona
+**dejó vacío a propósito** y no sobre el que tiene el valor de más. Es la clase de
+rechazo que se lee como un bug del sistema.
+
+**Dónde duele más:** en lugares. El § 5 del PRD 4 nace de la pregunta del dueño
+—«no sé si todos cobran, o le dicen que tienen que consumir»— así que *no tener
+precio* es el caso normal de esa ficha, no el borde.
+
+**Lo que ya está resuelto y no hay que rehacer:** los tres formularios públicos
+(`/guia/<x>/sumar`) arrancan el precio **vacío de los dos lados**, con el motivo
+escrito en `SumarSuscripcion.tsx` y `SumarLugar.tsx`. Este ítem es solo el lado
+del panel.
+
+**Las dos salidas, en orden de costo:**
+
+1. **Que `suscripcionVacia()` y `lugarVacio()` arranquen sin unidad** (`''`). Es
+   una línea por archivo y deja el formulario coherente con su propia ayuda. Lo
+   que cuesta: el desplegable arranca en «elegí», que es un click más para quien
+   sí va a cargar un precio.
+2. **Que el formulario limpie la unidad cuando el monto se vacía.** Más amable de
+   usar y más fácil de romper: es estado derivado en un `onChange`, o sea la
+   clase de acople que se pierde la próxima vez que alguien toque el campo.
+
+La 1 es la que yo elegiría, y es la que ya usan los formularios públicos.
+
 ### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2
 
 **Lo marcó el `auditor-privacidad` sobre B-919 y la decisión es del dueño.** Una

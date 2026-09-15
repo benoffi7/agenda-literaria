@@ -1,0 +1,107 @@
+---
+/**
+ * `/guia/suscripciones/sumar` — el formulario público del directorio de
+ * suscripciones literarias. § 5 del PRD 3 (`docs/prd/03-suscripciones-literarias.md`),
+ * B-832.
+ *
+ * El porqué de la island, de leer las opciones en el build y de que esta página
+ * sí se anuncie está en `guia/librerias/sumar.astro`, que fue la primera de las
+ * tres: son la misma decisión y no se repite acá.
+ *
+ * ── Lo propio de esta sección: seis vocabularios y un precio ──────────────
+ * Es el modelo más complicado de los tres (§ 3.1 del PRD), así que esta página
+ * baja **seis** listas de `/opciones/*` en vez de una. Las seis salen de la
+ * misma lectura memoizada que el `events.json` (§3 del diseño), así que no
+ * cuesta ninguna ida más a Firestore.
+ *
+ * Y el precio trae la mitad de DEC-12 que va en pantalla: se publica **con la
+ * fecha de carga al lado**, y esa fecha la pone el servidor. El texto que lo
+ * dice está en el componente, arriba del campo.
+ */
+import Base from '@/layouts/Base.astro';
+import { SumarSuscripcion } from '@/components/publico/SumarSuscripcion';
+import { contenidoDelSitio } from '@/lib/contenidoDelSitio';
+import { opcionesPublicas } from '@/lib/toPublic';
+import type { CampoTaxonomia } from '@/types/actividad';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_CONTACTO, RUTA_PROPONER, RUTA_SUSCRIPCIONES } from '@/lib/rutasPublicas';
+import { claseBloque, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const { opciones } = await contenidoDelSitio();
+
+/*
+ * Solo las **aprobadas y visibles** (§4.3): una etiqueta que otra cuenta creó y
+ * nadie validó todavía no se le ofrece a alguien de afuera. Si el documento no
+ * existe, la lista viene vacía y el control muestra el campo libre — no inventa
+ * opciones base.
+ */
+const ofrecidas = (campo: CampoTaxonomia) =>
+  opcionesPublicas(opciones[campo] ?? []).map((o) => ({ slug: o.slug, label: o.label }));
+---
+
+<Base
+  seccion="guia"
+  titulo={`Sumar una suscripción — ${NOMBRE}`}
+  descripcion="¿Tenés una suscripción de libros o conocés una que tendría que estar en la guía? Contanos qué manda y cada cuánto."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_SUSCRIPCIONES}>Suscripciones literarias</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">Sumar una suscripción</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Si ofrecés una suscripción de libros, o conocés una que tendría que estar en la guía,
+      contanos qué manda y cada cuánto. No hace falta tener cuenta.
+    </p>
+
+    <section aria-labelledby="que-pasa" class={`mt-10 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 id="que-pasa" class="headline-sm text-tinta">Qué pasa con lo que mandás</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Nada se publica solo. La ficha queda esperando y la miramos antes de que entre a la guía:
+        puede que le corrijamos algo, y puede que al final no la sumemos.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        El precio se publica <strong>con la fecha en que lo cargaste al lado</strong>, para que
+        quien lo lea sepa de cuándo es. No entra en ningún filtro ni en ningún orden.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Las fotos las ponemos nosotros al publicarla, así que este formulario no las pide.
+      </p>
+
+      <p class={`mt-5 ${claseRotulo}`}>Tu contacto</p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Pedimos una forma de escribirte porque no volvés a entrar acá: si falta un dato, es lo
+        único que nos deja preguntártelo. <strong>No se publica</strong> en ninguna parte.
+      </p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Si al final la ficha no entra, tu contacto se borra a los 30 días.
+      </p>
+    </section>
+
+    <SumarSuscripcion
+      client:load
+      tiposDeOferente={ofrecidas('tipo-oferente')}
+      periodicidades={ofrecidas('periodicidad')}
+      incluyeOfrecido={ofrecidas('incluye-suscripcion')}
+      extrasOfrecidos={ofrecidas('extras-suscripcion')}
+      alcancesOfrecidos={ofrecidas('alcance-envio')}
+      perfilesEditoriales={ofrecidas('perfil-editorial')}
+    />
+
+    <section aria-labelledby="si-no-es-esto" class="mt-14 regla-gruesa-arriba pt-4">
+      <h2 id="si-no-es-esto" class="headline-sm text-acento">Si no es esto lo que buscabas</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Si lo que querés es contarnos de un taller, un club de lectura o una presentación,
+        <a class={claseEnlace} href={RUTA_PROPONER}>proponé la actividad</a>.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Y si es otra cosa, o algo de acá está mal,
+        <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
+      </p>
+    </section>
+  </main>
+</Base>

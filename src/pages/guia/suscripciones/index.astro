@@ -38,7 +38,7 @@ import {
   descripcionDelDirectorioDeSuscripciones,
 } from '@/lib/suscripcionPublica';
 import { NOMBRE } from '@/lib/identidad';
-import { RUTA_CONTACTO, RUTA_GUIA } from '@/lib/rutasPublicas';
+import { RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_SUSCRIPCION } from '@/lib/rutasPublicas';
 import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
@@ -76,12 +76,21 @@ const descripcion = descripcionDelDirectorioDeSuscripciones(cuantas);
       que hacen las dos cosas. Cada ficha dice qué incluye, cada cuánto llega y a dónde.
     </p>
 
+    {/* La llamada al formulario, con el mismo criterio que en `/guia/librerias`. */}
+    <p class="body-md mt-4 max-w-[65ch] text-super">
+      ¿Ofrecés una suscripción, o conocés una que tendría que estar acá?{' '}
+      <a class={claseEnlace} href={RUTA_SUMAR_SUSCRIPCION}>Sumala a la guía</a>: no hace falta
+      tener cuenta y no cuesta nada.
+    </p>
+
     {
       cuantas === 0 ? (
         <div class="regla-gruesa-arriba mt-10 px-4 py-12 text-center">
           <p class="body-md mx-auto max-w-[48ch] text-super">
             Todavía no hay ninguna cargada. ¿Tenés una suscripción literaria o conocés una que
-            tendría que estar acá? <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a>.
+            tendría que estar acá?{' '}
+            <a class={claseEnlace} href={RUTA_SUMAR_SUSCRIPCION}>Sumala</a>, o{' '}
+            <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
           </p>
         </div>
       ) : (

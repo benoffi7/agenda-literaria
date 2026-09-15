@@ -55,6 +55,7 @@ import {
   ENTRADA_COMERCIAL,
   POR_QUE_ACA,
   QUE_CONTARNOS,
+  TAMBIEN_EN_LA_GUIA,
   TITULO_COMERCIAL,
 } from '@/lib/comercialDelSitio';
 import {
@@ -84,6 +85,18 @@ import {
     */}
     <p class="body-lectura mt-4 max-w-[65ch] text-super">
       <a class={claseEnlace} href={ANTES_DE_ESCRIBIRNOS.href}>{ANTES_DE_ESCRIBIRNOS.texto}</a>.
+    </p>
+
+    {/*
+      El recíproco de `/guia/lugares` — criterio 11 del PRD 4, B-915. Va acá
+      arriba y no al final por lo mismo que la línea anterior: quien tiene un
+      café y llegó buscando cómo aparecer tiene que enterarse **antes** de leer
+      una página comercial de que hay un camino gratis, y de que no son
+      excluyentes.
+    */}
+    <p class="body-lectura mt-2 max-w-[65ch] text-super">
+      <a class={claseEnlace} href={TAMBIEN_EN_LA_GUIA.href}>{TAMBIEN_EN_LA_GUIA.texto}</a>: eso
+      tampoco cuesta nada.
     </p>
 
     <section aria-labelledby="por-que-aca" class="mt-14">

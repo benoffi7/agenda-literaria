@@ -248,6 +248,26 @@ export const RUTA_SUSCRIPCIONES = rutaCanonica(PREFIJO_SUSCRIPCIONES);
 export const RUTA_LUGARES = rutaCanonica(PREFIJO_LUGARES);
 
 /**
+ * **Los tres formularios públicos de la Guía** — `/guia/<x>/sumar`.
+ *
+ * `sumar` y no `proponer`, aunque sean el mismo mecanismo (`prd/README.md` § 1:
+ * proponer → bandeja → publicar). El verbo lo elige quien llega, y quien llega
+ * a un directorio no está proponiendo una actividad que va a pasar: está
+ * diciendo que **algo que ya existe** no figura. «Sumar la tuya» es lo que la
+ * página ofrece, así que es lo que la URL dice. `/proponer` se queda con su
+ * verbo por lo mismo, y que sean dos palabras distintas es lo que deja que las
+ * dos cosas convivan en el pie sin que ninguna explique a la otra.
+ *
+ * Cuelgan del prefijo de cada directorio y no de uno propio (`/guia/sumar`) por
+ * la misma razón por la que `/guia/librerias/{slug}` cuelga de ahí: el
+ * formulario de una librería es parte de la sección de librerías, y una URL que
+ * no dice de qué es obligaría a un paso previo de «¿qué querés sumar?».
+ */
+export const RUTA_SUMAR_LIBRERIA = rutaCanonica(`${PREFIJO_LIBRERIAS}/sumar`);
+export const RUTA_SUMAR_SUSCRIPCION = rutaCanonica(`${PREFIJO_SUSCRIPCIONES}/sumar`);
+export const RUTA_SUMAR_LUGAR = rutaCanonica(`${PREFIJO_LUGARES}/sumar`);
+
+/**
  * **¿Este texto puede ser el segmento de la URL de una ficha?**
  *
  * El alfabeto que produce `slugify` (`[a-z0-9-]`, sin guiones al borde ni

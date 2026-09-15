@@ -1,0 +1,111 @@
+---
+/**
+ * `/guia/librerias/sumar` — el formulario público del directorio de librerías.
+ * § 5 del PRD 2 (`docs/prd/02-librerias.md`), B-831.
+ *
+ * ── Por qué el formulario es una island y no un `<form>` HTML ─────────────
+ * Igual que `/proponer`: tiene estado —un desplegable de barrio que revela un
+ * campo libre, validación en el submit (D-01)— y, sobre todo, **el sitio es
+ * estático** (§2.4), así que un `<form>` que postea necesitaría algo que reciba
+ * el POST y no lo hay. La escritura va con el SDK cliente contra
+ * `firestore.rules`.
+ *
+ * **`client:load` y no `client:visible`**: el formulario es lo que se vino a
+ * hacer acá, así que no puede aparecer tres segundos después de que la página
+ * pintó — mismo criterio que el buscador del listado.
+ *
+ * ── Los barrios se leen en el BUILD ───────────────────────────────────────
+ * Y no en el navegador, aunque `/opciones/*` sea de lectura pública. Pedirlos en
+ * runtime obligaría a inicializar Firestore —y con él App Check— al **abrir** la
+ * página: el desafío de reCAPTCHA Enterprise cargaría para cualquiera que mire,
+ * no para quien decide mandar algo (el motivo entero está en
+ * `lib/enviar-ficha.ts`). El build ya los lee para el `events.json` y el sitio se
+ * rebuildea cuando cambian (§4.4), así que la lista viaja al día y gratis.
+ *
+ * ── Y esta página SÍ se anuncia ──────────────────────────────────────────
+ * Está en `RUTAS_FIJAS` —derivada de la fila de `lib/directorios.ts`, junto con
+ * el listado— y enlazada desde `/guia/librerias`. A diferencia de lo que le pasó
+ * a `/proponer` durante toda la tajada 1, el `create` anónimo está abierto desde
+ * el 2026-09-15 con su control positivo contra el emulador, así que el
+ * formulario puede recibir de verdad. Indexar una página cuyo formulario rebota
+ * es prometer lo que no se cumple, y eso es lo que B-780 costó como P0.
+ *
+ * La canónica, el Open Graph y el chrome los pone `Base.astro` — ninguna página
+ * se arma los suyos (`tests/canonico.test.ts`).
+ */
+import Base from '@/layouts/Base.astro';
+import { SumarLibreria } from '@/components/publico/SumarLibreria';
+import { contenidoDelSitio } from '@/lib/contenidoDelSitio';
+import { opcionesPublicas } from '@/lib/toPublic';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_CONTACTO, RUTA_LIBRERIAS, RUTA_PROPONER } from '@/lib/rutasPublicas';
+import { claseBloque, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const { opciones } = await contenidoDelSitio();
+/*
+ * Solo las **aprobadas y visibles**, que es lo que `opcionesPublicas` deja
+ * pasar: una etiqueta que otra cuenta creó y nadie validó todavía no se le
+ * ofrece a alguien de afuera (§4.3). Si el documento no existe, la lista viene
+ * vacía y el control muestra directamente el campo libre — no inventa barrios.
+ */
+const barriosOfrecidos = opcionesPublicas(opciones.barrio ?? []).map((o) => ({
+  slug: o.slug,
+  label: o.label,
+}));
+---
+
+<Base
+  seccion="guia"
+  titulo={`Sumar una librería — ${NOMBRE}`}
+  descripcion="¿Tenés una librería o conocés una que tendría que estar en la guía? Contanos dónde queda y cómo la encuentran."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_LIBRERIAS}>Librerías</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">Sumar una librería</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Si tenés una librería, o conocés una que tendría que estar en la guía, contanos dónde queda
+      y cómo la encuentran. No hace falta tener cuenta.
+    </p>
+
+    <section aria-labelledby="que-pasa" class={`mt-10 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 id="que-pasa" class="headline-sm text-tinta">Qué pasa con lo que mandás</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Nada se publica solo. La ficha queda esperando y la miramos antes de que entre a la guía:
+        puede que le corrijamos algo, y puede que al final no la sumemos.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Las fotos las ponemos nosotros al publicarla, así que este formulario no las pide.
+      </p>
+
+      <p class={`mt-5 ${claseRotulo}`}>Tu contacto</p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Pedimos una forma de escribirte porque no volvés a entrar acá: si falta un dato, es lo
+        único que nos deja preguntártelo. <strong>No se publica</strong> en ninguna parte.
+      </p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Si al final la ficha no entra, tu contacto se borra a los 30 días. Si entra, lo guardamos
+        para poder avisarte de algo sobre la librería.
+      </p>
+    </section>
+
+    <SumarLibreria client:load barriosOfrecidos={barriosOfrecidos} />
+
+    <section aria-labelledby="si-no-es-esto" class="mt-14 regla-gruesa-arriba pt-4">
+      <h2 id="si-no-es-esto" class="headline-sm text-acento">Si no es esto lo que buscabas</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Si lo que querés es contarnos de un taller, un club de lectura o una presentación,
+        <a class={claseEnlace} href={RUTA_PROPONER}>proponé la actividad</a>.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Y si es otra cosa, o algo de acá está mal,
+        <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
+      </p>
+    </section>
+  </main>
+</Base>
