@@ -646,15 +646,22 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
 
-    it('un publicador tampoco: ni lee, ni lista, ni escribe', async () => {
+    it('un publicador no lee, no lista, no edita y no borra', async () => {
       /*
-       * B-888 — las cinco cláusulas se quedan en `esAdmin()`, con un argumento más
-       * que en los otros dos directorios: decidir si la dirección de una casa se
-       * publica es exactamente la clase de autoridad que este rol no tiene.
+       * B-888 — las cláusulas de lectura y de edición se quedan en `esAdmin()`,
+       * con un argumento más que en los otros dos directorios: decidir si la
+       * dirección de una casa se publica es exactamente la clase de autoridad que
+       * este rol no tiene.
+       *
+       * **El `create` es la excepción desde el 2026-09-15**: está abierto para
+       * todo el mundo, así que un publicador propone como cualquiera — y su ficha
+       * nace con `direccionPublica: false` como la de cualquiera, que es lo que
+       * mantiene el argumento de arriba intacto.
        */
       await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
       await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_privado')), 'get publicador');
       await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list publicador');
+      // Lo que no puede es hacer pasar su carga por una del panel: no es admin.
       await expect(setDoc(doc(db(), 'lugares', 'l_pub_intento'), documento())).rejects.toThrow(
         RECHAZADA,
       );
@@ -663,33 +670,136 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
     });
   });
 
-  describe('el `create` anónimo TODAVÍA está cerrado — B-872', () => {
-    /*
-     * Lo que falta **no es código**: es que App Check exija también en Storage
-     * (B-872). Los cinco pasos para abrirlo están en `firestore.rules`, y este
-     * `describe` es **el testigo que se pone rojo** cuando se borre el `esAdmin()
-     * &&` — por eso está escrito con el documento perfecto: cuando la puerta se
-     * abra, este caso falla y manda a leer los pasos.
-     */
-    it('un anónimo no puede crear un lugar, ni con el documento perfecto', async () => {
+  /**
+   * **El `create` anónimo, abierto el 2026-09-15.** `/guia/lugares/sumar`, y con
+   * él el criterio 11 del PRD 4 y el ítem **B-915**.
+   *
+   * Este `describe` decía lo contrario y sus dos casos se pusieron en rojo con el
+   * cambio. **Y el bloqueo que nombraban no era el real:** culpaban a B-872
+   * —App Check sin exigir en Storage— porque el formulario subía una foto. La
+   * salida fue sacar los bytes del camino: la ficha que llega de afuera nace sin
+   * fotos.
+   *
+   * De los tres, éste es el que abre sobre el problema serio: **la dirección de
+   * una casa** (§ 6 del PRD). Por eso los casos de abajo no son los mismos que en
+   * las otras dos colecciones más un rename.
+   */
+  describe('el `create` anónimo está abierto — /guia/lugares/sumar', () => {
+    const publico = (f = form(), over: Record<string, unknown> = {}) => ({
+      ...formALugar(f, ahora(), 'formulario-publico'),
+      creadoEn: serverTimestamp(),
+      ...over,
+    });
+
+    it('un anónimo crea la ficha que el formulario manda', async () => {
       await signOut(auth());
-      const anonimo = {
-        ...formALugar(form(), ahora(), 'formulario-publico'),
-        creadoEn: serverTimestamp(),
-      };
-      await expect(setDoc(doc(db(), 'lugares', 'l_anon'), anonimo)).rejects.toThrow(RECHAZADA);
+      await expect(setDoc(doc(db(), 'lugares', 'l_anon'), publico())).resolves.toBeUndefined();
       await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
 
-    it('y alguien logueado sin el claim tampoco', async () => {
-      // Crear una cuenta está al alcance de cualquiera con la API key pública, así
-      // que «logueado» no es «autorizado».
+    it('y alguien logueado sin el claim también', async () => {
       await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
-      const suyo = {
-        ...formALugar(form(), ahora(), 'formulario-publico'),
-        creadoEn: serverTimestamp(),
-      };
-      await expect(setDoc(doc(db(), 'lugares', 'l_pelado'), suyo)).rejects.toThrow(RECHAZADA);
+      await expect(setDoc(doc(db(), 'lugares', 'l_pelado'), publico())).resolves.toBeUndefined();
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('⚠️ y su dirección NO se publica, aunque el formulario mande el flag prendido', async () => {
+      /*
+       * **El caso que más importa de este archivo.** `form()` tiene
+       * `direccionPublica: true` y `formALugar` lo fuerza en `false` por el camino
+       * público — pero eso es del lado del cliente y se saltea con un `curl`. Lo
+       * que sostiene la promesa del § 6 es la regla:
+       * `d.origen != 'formulario-publico' || d.direccionPublica == false`.
+       *
+       * Dos mitades, y las dos hacen falta: que lo que el formulario manda entre
+       * con el flag apagado, y que **un documento armado a mano con el flag
+       * prendido se rechace**.
+       *
+       * Y la regla **no mira el `tipo`**: es un vocabulario abierto que acepta
+       * «Otro», así que `mi-living` o `casa-de-familia` pasarían cualquier lista
+       * negra. Por eso el caso de abajo usa un tipo que el panel consideraría
+       * inocente.
+       */
+      await signOut(auth());
+      await setDoc(doc(db(), 'lugares', 'l_anon_dir'), publico());
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      const guardado = await getDoc(doc(db(), 'lugares', 'l_anon_dir'));
+      expect(guardado.data()!.direccionPublica).toBe(false);
+
+      // Y a mano, con el flag prendido: rechazado por la regla.
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'lugares', 'l_anon_dir2'), publico(form(), { direccionPublica: true })),
+      ).rejects.toThrow(RECHAZADA);
+      // Ni con un `tipo` que ninguna lista negra sospecharía.
+      await expect(
+        setDoc(
+          doc(db(), 'lugares', 'l_anon_dir3'),
+          publico(form({ tipo: 'mi-living' }), { direccionPublica: true }),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('un admin SÍ puede prenderlo — pidió permiso a quien vive ahí', async () => {
+      // El control negativo de la cláusula de arriba: sin esto,
+      // `direccionPublica == false` a secas pasaría los casos anteriores y se
+      // llevaría puesto el único camino legítimo.
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await expect(
+        setDoc(doc(db(), 'lugares', 'l_admin_dir'), documento({}, form({ direccionPublica: true }))),
+      ).resolves.toBeUndefined();
+    });
+
+    it('pero NO puede nacer publicada, ni revisada, ni diciendo que vino del panel', async () => {
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'lugares', 'l_anon_pub'), publico(form(), { estado: 'publicado' })),
+      ).rejects.toThrow(RECHAZADA);
+      await expect(
+        setDoc(
+          doc(db(), 'lugares', 'l_anon_rev'),
+          publico(form(), { revision: { porUid: 'uid_admin', en: serverTimestamp(), motivo: null } }),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+      await expect(setDoc(doc(db(), 'lugares', 'l_anon_panel'), documento())).rejects.toThrow(
+        RECHAZADA,
+      );
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('ni traer fotos — la ficha que llega de afuera nace con la galería vacía', async () => {
+      // Mutación: borrar `&& (d.origen == 'panel' || d.imagenes.size() == 0)` de
+      // `lugarDeGuiaValido()`. Este caso se pone rojo y ningún otro se mueve.
+      await signOut(auth());
+      await expect(
+        setDoc(
+          doc(db(), 'lugares', 'l_anon_foto'),
+          publico(
+            form({
+              imagenes: [
+                {
+                  id: 'img_1',
+                  url: 'https://ejemplo.test/salon.jpg',
+                  epigrafe: '',
+                  origen: 'externa',
+                  portada: true,
+                },
+              ],
+            }),
+          ),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('y leer o listar sigue siendo de un admin: la cosecha de direcciones no se abre', async () => {
+      // Trampa 13 con otra cara: un `list` abierto entregaría todas las
+      // direcciones y todos los contactos internos de una sentada.
+      await signOut(auth());
+      await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_anon')), 'get anónimo');
+      await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list anónimo');
+      await expect(deleteDoc(doc(db(), 'lugares', 'l_anon'))).rejects.toThrow(RECHAZADA);
       await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
   });

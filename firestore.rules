@@ -1344,14 +1344,36 @@ service cloud.firestore {
          * la API key pública, y el dueño —que es admin y tiene sesión en el mismo
          * origen— tiene que poder usar su propio formulario público.
          *
-         * Hoy el `allow create` de abajo exige `esAdmin()`, así que la rama de
-         * `'formulario-publico'` **no es alcanzable** y lo que esta cláusula
-         * sostiene es la otra mitad: un admin no puede hacer pasar su carga por
-         * una ficha que llegó de afuera. Eso es lo que hace que `origen`
-         * signifique algo el día que la puerta se abra, y tiene su caso.
+         * **Desde el 2026-09-15 las dos ramas son alcanzables**, que es todo el
+         * cambio: `/guia/librerias/sumar` existe y el `allow create` de abajo ya
+         * no exige `esAdmin()`. La cláusula sigue sosteniendo las dos mitades —un
+         * anónimo no puede decir que su ficha vino del panel, y un admin no puede
+         * hacer pasar su carga por una que llegó de afuera— y ahora las dos
+         * tienen su caso.
          */
         && ((d.origen == 'formulario-publico' && !esAdmin())
              || (d.origen == 'panel' && esAdmin()))
+        /*
+         * **Una ficha que llega de afuera nace SIN fotos** — decisión del dueño,
+         * 2026-09-15, al abrir los tres formularios públicos.
+         *
+         * No es una limitación de producto disfrazada de seguridad: es lo que
+         * hace que esta puerta sea chica y verificable. Con imágenes, abrir el
+         * `create` anónimo arrastra cuatro cosas más —un `imagenValida()` por
+         * entidad (hoy `formaDe{X}` solo acota `is list` y el **tope**, no la
+         * forma de cada elemento, que es B-907), un prefijo propio en
+         * `storage.rules`, generalizar la callable de B-896 a tres destinos, y la
+         * limpieza del objeto que se sube y nunca llega a un documento—. Cada una
+         * es una superficie nueva contra la que hay que escribir mutaciones.
+         *
+         * Las fotos las pone el admin desde el panel, que es donde vive el editor
+         * de galería y donde hay alguien mirando. Queda anotado como B-924.
+         *
+         * **`size() == 0` y no `== []`**: la comparación de listas existe, pero el
+         * tamaño es lo que la mutación puede tocar sin que el resto del `hasOnly`
+         * se queje, así que es la cláusula que se puede verificar sola.
+         */
+        && (d.origen == 'panel' || d.imagenes.size() == 0)
         // Con `request.time` el cliente no puede antedatar la ficha.
         && d.creadoEn == request.time;
     }
@@ -1465,53 +1487,49 @@ service cloud.firestore {
       allow list: if esAdmin();
 
       /*
-       * ⚠️ **ACÁ VA LA SEGUNDA ESCRITURA ANÓNIMA DEL PROYECTO, Y TAMPOCO ESTÁ
-       * ABIERTA.**
+       * ✅ **LA SEGUNDA ESCRITURA ANÓNIMA DEL PROYECTO, Y ESTÁ ABIERTA** (2026-09-15).
        *
-       * El `create` público de `/guia/librerias/sumar` es el punto del PRD y está
-       * cerrado a propósito. Lo que falta **no es código**, y no es lo mismo que
-       * bloqueaba a `/propuestas`: Firestore ya está en `ENFORCED` (B-836a paso
-       * 6). Lo que falta es **B-872** — Storage sigue en `UNENFORCED` porque su
-       * métrica de App Check marca 99% sin verificar y la sospecha, todavía sin
-       * confirmar, es que ese 99% son **las lecturas públicas de imágenes** por
-       * URL de descarga, que no llevan token de App Check ni pueden llevarlo. Si
-       * el enforcement las bloqueara, se caen todas las imágenes del sitio.
+       * El `create` público de `/guia/librerias/sumar` es el punto del PRD y
+       * ahora funciona. Lo que lo bloqueaba está resuelto y **no era lo que este
+       * comentario decía**: culpaba a **B-872** —Storage sigue en `UNENFORCED` y
+       * exigir App Check ahí se llevaría puestas las lecturas públicas de
+       * imágenes— porque el formulario subía una foto.
        *
-       * Y el formulario de una librería **sube una foto** (§ 5 del PRD, DEC-11),
-       * así que abrir este `create` sin resolver eso deja una de dos cosas, las
-       * dos malas: un formulario que acepta el texto y rechaza la foto, o un
-       * **endpoint de subida anónimo sin App Check**, que es exactamente lo que
-       * las cinco capas de B-836 existen para que no pase.
+       * **Ese acoplamiento ya lo había roto B-896** para `/proponer`: la subida
+       * no tiene por qué pasar por `storage.rules`. Y acá se rompió de la forma
+       * más barata todavía: **la ficha que llega de afuera nace sin fotos**
+       * (decisión del dueño, ver la cláusula de `imagenes` en `libreriaValida()`).
+       * Sin bytes, no hay nada de Storage en este camino y B-872 no lo toca ni de
+       * lejos.
        *
-       * **Para abrirla**, y en este orden:
-       *   1. **B-872 contestado** —¿el enforcement de Storage alcanza a las URLs
-       *      de descarga?— y App Check **exigiendo también en Storage**,
-       *      verificado en la consola;
-       *   2. el prefijo `librerias/` en `storage.rules`, con su `create` acotado
-       *      a tipo, tamaño y cantidad, y su `get`/`list` decididos — **en el
-       *      mismo commit que el punto 3**: una subida que no puede terminar en un
-       *      documento es un objeto huérfano, y un documento que no puede traer su
-       *      imagen es DEC-11 a medias (es el orden que dejó escrito
-       *      `storage.rules` para `propuestas/`);
-       *   3. borrar el `esAdmin() &&` de la línea de abajo;
-       *   4. **el testigo que se pone rojo es
-       *      `tests/librerias.integracion.test.ts`**, el caso «un anónimo no
-       *      puede crear una librería, ni con el documento perfecto». Y hay que
-       *      agregar `'librerias'` a `COLECCIONES_ABIERTAS` de
-       *      `tests/escritura-anonima.integracion.test.ts`, que es lo que hace que
-       *      abrir una puerta sea un diff visible y no un efecto colateral.
-       *      **Ojo: ese archivo NO se pone rojo solo** — prueba las escrituras con
-       *      un documento sonda (`{ hola: 'mundo' }`), que `formaDeLibreria()`
-       *      rechaza por `hasOnly` con la puerta abierta o cerrada, así que es
-       *      testigo de la **lista** de colecciones y no de esta puerta;
-       *   5. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
-       *      barrido programado de la bandeja en su Function. Son las otras capas
-       *      de B-836 y ninguna reemplaza a ésta.
+       * Lo que sostiene la puerta, en orden de lo que frena más:
        *
-       * Mientras tanto un admin sí puede cargar una librería a mano, que es un
-       * camino del PRD (§ 1, la tercera puerta) y no un andamio.
+       *   1. **App Check exigiendo en Firestore** (B-836a paso 6, ya estaba): es
+       *      lo único que frena al script que no pasa por la página.
+       *   2. **`libreriaValida()`**, que fuerza el `estado` inicial, la `revision`
+       *      en null, `creadoEn == request.time`, la coherencia de `origen` y la
+       *      galería vacía. Es lo que un `curl` no se puede saltear.
+       *   3. Los topes de forma de `formaDeLibreria()`, atados a
+       *      `types/libreria.ts` por `tests/librerias.test.ts`.
+       *   4. **El honeypot y el tiempo mínimo de tipeo**, que están en el
+       *      componente y frenan lo automático y torpe.
+       *   5. **La bandeja**: a un humano insistente no lo frena nadie: lo frena
+       *      que alguien mire y descarte.
+       *
+       * Y lo que **no** cambió, que es lo que hace que abrir esto no sea abrir la
+       * publicación anónima: el `estado` inicial lo fuerza esta regla, el `update`
+       * y el `delete` siguen en `esAdmin()`, y nada sale al sitio sin que un admin
+       * lo publique.
+       *
+       * **Los testigos**: `tests/librerias.integracion.test.ts` tiene el control
+       * positivo («un anónimo crea la ficha que el formulario manda») y las
+       * negaciones que siguen valiendo —no puede nacer publicada, ni revisada, ni
+       * con `origen: 'panel'`, ni con fotos—. Y `'librerias'` está en
+       * `COLECCIONES_ABIERTAS` de `tests/escritura-anonima.integracion.test.ts`,
+       * que es lo que hace que abrir una puerta sea un diff visible y no un efecto
+       * colateral.
        */
-      allow create: if esAdmin() && libreriaValida();
+      allow create: if libreriaValida();
 
       allow update: if esAdmin() && libreriaActualizable();
 
@@ -1811,13 +1829,21 @@ service cloud.firestore {
          * **`!esAdmin()` y no `request.auth == null`**, por lo mismo que en
          * `/librerias` y `/propuestas`: crear una cuenta está al alcance de
          * cualquiera con la API key pública, y el dueño —que es admin— tiene que
-         * poder usar su propio formulario público. Hoy el `allow create` exige
-         * `esAdmin()`, así que la rama de `'formulario-publico'` no es alcanzable
-         * y lo que esta cláusula sostiene es la otra mitad: un admin no puede
-         * hacer pasar su carga por una ficha que llegó de afuera.
+         * poder usar su propio formulario público. **Desde el 2026-09-15 las dos
+         * ramas son alcanzables** —`/guia/suscripciones/sumar` existe— y cada una
+         * tiene su caso: un anónimo no puede decir que su ficha vino del panel, y
+         * un admin no puede hacer pasar su carga por una que llegó de afuera.
          */
         && ((d.origen == 'formulario-publico' && !esAdmin())
              || (d.origen == 'panel' && esAdmin()))
+        /*
+         * **Una ficha que llega de afuera nace SIN fotos** — decisión del dueño,
+         * 2026-09-15. El argumento entero está en `libreriaValida()`: sin bytes,
+         * abrir esta puerta no arrastra `storage.rules`, ni la callable de B-896,
+         * ni el objeto huérfano, ni un `imagenValida()` por entidad que hoy no
+         * existe (B-907). Las fotos las pone el admin desde el panel.
+         */
+        && (d.origen == 'panel' || d.imagenes.size() == 0)
         // Con `request.time` el cliente no puede antedatar la ficha.
         && d.creadoEn == request.time;
     }
@@ -1925,53 +1951,32 @@ service cloud.firestore {
       allow list: if esAdmin();
 
       /*
-       * ⚠️ **ACÁ VA LA TERCERA ESCRITURA ANÓNIMA DEL PROYECTO, Y TAMPOCO ESTÁ
-       * ABIERTA.**
+       * ✅ **LA TERCERA ESCRITURA ANÓNIMA DEL PROYECTO, Y ESTÁ ABIERTA** (2026-09-15).
        *
-       * El `create` público de `/guia/suscripciones/sumar` es el punto del PRD y
-       * está cerrado a propósito, con **exactamente el mismo bloqueo** que
-       * `/librerias`: falta **B-872** — Storage sigue en `UNENFORCED` porque su
-       * métrica de App Check marca 99% sin verificar y la sospecha, todavía sin
-       * confirmar, es que ese 99% son las lecturas públicas de imágenes por URL de
-       * descarga, que no llevan token de App Check ni pueden llevarlo. Firestore
-       * ya está en `ENFORCED` (B-836a paso 6).
+       * Este comentario decía que el bloqueo era **B-872** —Storage en
+       * `UNENFORCED`— porque el formulario subía una foto. Se resolvió como en
+       * `/librerias`, y de la forma más barata: **la ficha que llega de afuera
+       * nace sin fotos** (ver la cláusula de `imagenes` en `suscripcionValida()`).
+       * Sin bytes, este camino no toca Storage y B-872 no lo alcanza.
        *
-       * Y el formulario de una suscripción **sube una foto**, así que abrir este
-       * `create` sin resolver eso deja una de dos cosas, las dos malas: un
-       * formulario que acepta el texto y rechaza la foto, o un endpoint de subida
-       * anónimo sin App Check.
+       * Lo que sostiene la puerta es lo mismo que en `/librerias` —App Check
+       * exigiendo en Firestore, `suscripcionValida()`, los topes de forma, el
+       * honeypot y la bandeja— **más una cosa propia de esta colección**: el
+       * formulario público carga un **precio**, y su `cargadoEn` lo estampa la
+       * regla con `request.time`. O sea que quien carga la ficha **no elige** qué
+       * fecha se publica al lado del número, que es la mitad de DEC-12 que el
+       * cliente no puede sostener.
        *
-       * **Para abrirla**, y en este orden:
-       *   1. **B-872 contestado** —¿el enforcement de Storage alcanza a las URLs
-       *      de descarga?— y App Check **exigiendo también en Storage**,
-       *      verificado en la consola;
-       *   2. el prefijo `suscripciones/` en `storage.rules`, con su `create`
-       *      acotado a tipo, tamaño y cantidad, y su `get`/`list` decididos — **en
-       *      el mismo commit que el punto 3**: una subida que no puede terminar en
-       *      un documento es un objeto huérfano;
-       *   3. borrar el `esAdmin() &&` de la línea de abajo;
-       *   4. **el testigo que se pone rojo es
-       *      `tests/suscripciones.integracion.test.ts`**, el caso «un anónimo no
-       *      puede crear una suscripción, ni con el documento perfecto». Y hay que
-       *      agregar `'suscripciones'` a `COLECCIONES_ABIERTAS` de
-       *      `tests/escritura-anonima.integracion.test.ts`. **Ojo: ese archivo NO
-       *      se pone rojo solo** — prueba las escrituras con un documento sonda
-       *      (`{ hola: 'mundo' }`), que `formaDeSuscripcion()` rechaza por
-       *      `hasOnly` con la puerta abierta o cerrada, así que es testigo de la
-       *      **lista** de colecciones y no de esta puerta;
-       *   5. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
-       *      barrido programado de la bandeja en su Function.
+       * **Y el link de cobro es el riesgo propio de este PRD (§ 7).** Sigue
+       * acotado a `^https?://` por `formaDeSuscripcion()`, y sigue sin salir al
+       * sitio hasta que un admin publique la ficha — que es lo que hace que abrir
+       * el `create` no sea abrir la publicación.
        *
-       * **Y una quinta cosa que `/librerias` no tenía**: el formulario público
-       * carga un **precio**, así que su `cargadoEn` lo estampa la regla con
-       * `request.time` (ver `suscripcionValida()`). Eso ya está puesto y no hay
-       * nada que tocar al abrir la puerta — está escrito acá para que no se
-       * intente «resolverlo» en el cliente.
-       *
-       * Mientras tanto un admin sí puede cargar una suscripción a mano, que es un
-       * camino del PRD (§ 1, la tercera puerta) y no un andamio.
+       * **Los testigos**: `tests/suscripciones.integracion.test.ts` (el control
+       * positivo y las negaciones) y `'suscripciones'` en `COLECCIONES_ABIERTAS`
+       * de `tests/escritura-anonima.integracion.test.ts`.
        */
-      allow create: if esAdmin() && suscripcionValida();
+      allow create: if suscripcionValida();
 
       allow update: if esAdmin() && suscripcionActualizable();
 
@@ -2313,13 +2318,23 @@ service cloud.firestore {
          * **`!esAdmin()` y no `request.auth == null`**, por lo mismo que en las
          * otras dos: crear una cuenta está al alcance de cualquiera con la API key
          * pública, y el dueño —que es admin— tiene que poder usar su propio
-         * formulario público. Hoy el `allow create` exige `esAdmin()`, así que la
-         * rama de `'formulario-publico'` no es alcanzable y lo que esta cláusula
-         * sostiene es la otra mitad: un admin no puede hacer pasar su carga por
-         * una ficha que llegó de afuera.
+         * formulario público. **Desde el 2026-09-15 las dos ramas son
+         * alcanzables** —`/guia/lugares/sumar` existe— y cada una tiene su caso.
+         * Acá eso importa más que en las otras dos: es la misma cláusula de
+         * `origen` que la de arriba usa para forzar `direccionPublica == false`,
+         * o sea que es lo que impide que la dirección de una casa se publique por
+         * el camino público.
          */
         && ((d.origen == 'formulario-publico' && !esAdmin())
              || (d.origen == 'panel' && esAdmin()))
+        /*
+         * **Una ficha que llega de afuera nace SIN fotos** — decisión del dueño,
+         * 2026-09-15. El argumento entero está en `libreriaValida()`: sin bytes,
+         * abrir esta puerta no arrastra `storage.rules`, ni la callable de B-896,
+         * ni el objeto huérfano, ni un `imagenValida()` por entidad que hoy no
+         * existe (B-907). Las fotos las pone el admin desde el panel.
+         */
+        && (d.origen == 'panel' || d.imagenes.size() == 0)
         // Con `request.time` el cliente no puede antedatar la ficha.
         && d.creadoEn == request.time;
     }
@@ -2412,54 +2427,32 @@ service cloud.firestore {
       allow list: if esAdmin();
 
       /*
-       * ⚠️ **ACÁ VA LA CUARTA ESCRITURA ANÓNIMA DEL PROYECTO, Y TAMPOCO ESTÁ
-       * ABIERTA.**
+       * ✅ **LA CUARTA ESCRITURA ANÓNIMA DEL PROYECTO, Y ESTÁ ABIERTA** (2026-09-15).
        *
-       * El `create` público de `/guia/lugares/sumar` es el punto del PRD y está
-       * cerrado a propósito, con **exactamente el mismo bloqueo** que
-       * `/librerias` y `/suscripciones`: falta **B-872** — Storage sigue en
-       * `UNENFORCED` porque su métrica de App Check marca 99% sin verificar y la
-       * sospecha, todavía sin confirmar, es que ese 99% son las lecturas públicas
-       * de imágenes por URL de descarga, que no llevan token de App Check ni
-       * pueden llevarlo. Firestore ya está en `ENFORCED` (B-836a paso 6).
+       * Cierra el criterio 11 del PRD 4 y el ítem **B-915**. Como en las otras
+       * dos, lo que este comentario culpaba —B-872— dejó de aplicar porque **la
+       * ficha que llega de afuera nace sin fotos** (ver la cláusula de `imagenes`
+       * en `lugarDeGuiaValido()`), así que este camino no toca Storage.
        *
-       * Y el formulario de un lugar **sube una foto**, así que abrir este `create`
-       * sin resolver eso deja una de dos cosas, las dos malas: un formulario que
-       * acepta el texto y rechaza la foto, o un endpoint de subida anónimo sin App
-       * Check.
+       * ⚠️ **Y acá la puerta abre sobre el problema serio del § 6: la dirección
+       * de una casa.** Lo que lo cubre está arriba, en `lugarDeGuiaValido()`, y no
+       * es nuevo: `d.origen != 'formulario-publico' || d.direccionPublica == false`.
+       * Una ficha cargada desde afuera **nunca** publica su dirección, mire lo que
+       * mire el `tipo` —que es un vocabulario abierto y por eso la regla no lo
+       * consulta—. Prenderla es una acción de admin, que es la única forma
+       * legítima: alguien pidió permiso a quien vive ahí.
        *
-       * **Para abrirla**, y en este orden:
-       *   1. **B-872 contestado** —¿el enforcement de Storage alcanza a las URLs
-       *      de descarga?— y App Check **exigiendo también en Storage**,
-       *      verificado en la consola;
-       *   2. el prefijo `lugares/` en `storage.rules`, con su `create` acotado a
-       *      tipo, tamaño y cantidad, y su `get`/`list` decididos — **en el mismo
-       *      commit que el punto 3**: una subida que no puede terminar en un
-       *      documento es un objeto huérfano;
-       *   3. borrar el `esAdmin() &&` de la línea de abajo;
-       *   4. **el testigo que se pone rojo es
-       *      `tests/lugares.integracion.test.ts`**, el caso «un anónimo no puede
-       *      crear un lugar, ni con el documento perfecto». Y hay que agregar
-       *      `'lugares'` a `COLECCIONES_ABIERTAS` de
-       *      `tests/escritura-anonima.integracion.test.ts`. **Ojo: ese archivo NO
-       *      se pone rojo solo** — prueba las escrituras con un documento sonda
-       *      (`{ hola: 'mundo' }`), que `formaDeLugar()` rechaza por `hasOnly` con
-       *      la puerta abierta o cerrada, así que es testigo de la **lista** de
-       *      colecciones y no de esta puerta;
-       *   5. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
-       *      barrido programado de la bandeja en su Function.
+       * El `searchText` es el otro campo a mirar y también está cubierto:
+       * `formALugar` **no mete la dirección** en él (a diferencia de una
+       * librería, donde es pública por definición), así que no hay puerta
+       * lateral. Lo fija `tests/lugares.test.ts` con la mutación probada.
        *
-       * **Y una sexta cosa que ninguna de las otras dos tenía**: la cláusula del
-       * domicilio particular (`lugarDeGuiaValido()`) es la que hace que abrir esta
-       * puerta no publique la dirección de la casa de un tercero. Ya está puesta y
-       * no hay nada que tocar al abrir — está escrito acá para que no se intente
-       * «resolverlo» en el cliente.
-       *
-       * Mientras tanto un admin sí puede cargar un lugar a mano, que es un camino
-       * del PRD (§ 1, la tercera puerta) y **la forma recomendada de arrancar**
-       * (§ 10: los que ya están en la base como sede, con permiso pedido).
+       * **Los testigos**: `tests/lugares.integracion.test.ts` —el control positivo,
+       * y la negación que importa: un anónimo **no** puede crear una ficha con
+       * `direccionPublica: true`— y `'lugares'` en `COLECCIONES_ABIERTAS` de
+       * `tests/escritura-anonima.integracion.test.ts`.
        */
-      allow create: if esAdmin() && lugarDeGuiaValido();
+      allow create: if lugarDeGuiaValido();
 
       allow update: if esAdmin() && lugarDeGuiaActualizable();
 

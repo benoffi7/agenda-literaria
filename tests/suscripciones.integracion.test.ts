@@ -569,16 +569,21 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
       await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
 
-    it('un publicador tampoco: ni lee, ni lista, ni escribe', async () => {
+    it('un publicador no lee, no lista, no edita y no borra', async () => {
       /*
-       * B-888 — las cinco cláusulas se quedan en `esAdmin()`: una ficha de
-       * directorio no tiene «dueño» que recortar, decidir qué entra al catálogo es
-       * una autoridad que este rol no tiene, y el documento lleva el contacto de un
-       * tercero.
+       * B-888 — las cláusulas de lectura y de edición se quedan en `esAdmin()`:
+       * una ficha de directorio no tiene «dueño» que recortar, decidir qué entra
+       * al catálogo es una autoridad que este rol no tiene, y el documento lleva
+       * el contacto de un tercero.
+       *
+       * **El `create` es la excepción desde el 2026-09-15**, y por el motivo
+       * contrario: está abierto para todo el mundo, así que un publicador puede
+       * proponer como cualquiera. Tiene su caso abajo.
        */
       await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
       await rechazadaPorPermisos(getDoc(doc(db(), 'suscripciones', 's_privada')), 'get publicador');
       await rechazadaPorPermisos(getDocs(collection(db(), 'suscripciones')), 'list publicador');
+      // Lo que no puede es hacer pasar su carga por una del panel: no es admin.
       await expect(
         setDoc(doc(db(), 'suscripciones', 's_pub_intento'), documento()),
       ).rejects.toThrow(RECHAZADA);
@@ -587,27 +592,125 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
     });
   });
 
-  describe('el `create` anónimo TODAVÍA está cerrado — B-872', () => {
-    /*
-     * Lo que falta **no es código**: es que App Check exija también en Storage
-     * (B-872). Los cuatro pasos para abrirlo están en `firestore.rules`, y este
-     * `describe` es **el testigo que se pone rojo** cuando se borre el `esAdmin()
-     * &&` — por eso está escrito con el documento perfecto: cuando la puerta se
-     * abra, este caso falla y manda a leer los pasos.
-     */
-    it('un anónimo no puede crear una suscripción, ni con el documento perfecto', async () => {
+  /**
+   * **El `create` anónimo, abierto el 2026-09-15.** `/guia/suscripciones/sumar`.
+   *
+   * Este `describe` decía lo contrario y sus dos casos se pusieron en rojo con el
+   * cambio, que es para lo que estaban escritos. **Y el bloqueo que nombraban no
+   * era el real:** culpaban a B-872 —App Check sin exigir en Storage— porque el
+   * formulario subía una foto. La salida fue sacar los bytes del camino: la ficha
+   * que llega de afuera nace sin fotos.
+   */
+  describe('el `create` anónimo está abierto — /guia/suscripciones/sumar', () => {
+    const publica = (f = form(), over: Record<string, unknown> = {}) => ({
+      ...formASuscripcion(f, ahora(), 'formulario-publico'),
+      creadoEn: serverTimestamp(),
+      ...over,
+    });
+
+    it('un anónimo crea la ficha que el formulario manda', async () => {
+      // El control positivo: sin él, las negaciones de abajo pasarían porque
+      // nada se puede crear, y no por la cláusula que se quiere probar.
       await signOut(auth());
-      const anonimo = { ...formASuscripcion(form(), ahora(), 'formulario-publico'), creadoEn: serverTimestamp() };
-      await expect(setDoc(doc(db(), 'suscripciones', 's_anon'), anonimo)).rejects.toThrow(RECHAZADA);
+      await expect(
+        setDoc(doc(db(), 'suscripciones', 's_anon'), publica()),
+      ).resolves.toBeUndefined();
       await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
 
-    it('y alguien logueado sin el claim tampoco', async () => {
-      // Crear una cuenta está al alcance de cualquiera con la API key pública, así
-      // que «logueado» no es «autorizado».
+    it('y alguien logueado sin el claim también', async () => {
+      // Crear una cuenta está al alcance de cualquiera con la API key pública,
+      // así que «no está logueado» nunca fue la defensa: la defensa es el claim,
+      // y lo que éste separa es quién **publica**, no quién manda.
       await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
-      const suyo = { ...formASuscripcion(form(), ahora(), 'formulario-publico'), creadoEn: serverTimestamp() };
-      await expect(setDoc(doc(db(), 'suscripciones', 's_pelado'), suyo)).rejects.toThrow(RECHAZADA);
+      await expect(
+        setDoc(doc(db(), 'suscripciones', 's_pelado'), publica()),
+      ).resolves.toBeUndefined();
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('pero NO puede nacer publicada, ni revisada, ni diciendo que vino del panel', async () => {
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'suscripciones', 's_anon_pub'), publica(form(), { estado: 'publicado' })),
+      ).rejects.toThrow(RECHAZADA);
+      await expect(
+        setDoc(
+          doc(db(), 'suscripciones', 's_anon_rev'),
+          publica(form(), { revision: { porUid: 'uid_admin', en: serverTimestamp(), motivo: null } }),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+      await expect(
+        setDoc(doc(db(), 'suscripciones', 's_anon_panel'), documento()),
+      ).rejects.toThrow(RECHAZADA);
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('ni traer fotos — la ficha que llega de afuera nace con la galería vacía', async () => {
+      // Mutación: borrar `&& (d.origen == 'panel' || d.imagenes.size() == 0)` de
+      // `suscripcionValida()`. Este caso se pone rojo y ningún otro se mueve.
+      await signOut(auth());
+      await expect(
+        setDoc(
+          doc(db(), 'suscripciones', 's_anon_foto'),
+          publica(
+            form({
+              imagenes: [
+                {
+                  id: 'img_1',
+                  url: 'https://ejemplo.test/caja.jpg',
+                  epigrafe: '',
+                  origen: 'externa',
+                  portada: true,
+                },
+              ],
+            }),
+          ),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('y el precio que manda se fecha con el reloj del SERVIDOR — DEC-12', async () => {
+      /*
+       * La cláusula propia de esta colección, y la que más importa que siga
+       * valiendo con la puerta abierta: quien carga la ficha **no elige** qué
+       * fecha se publica al lado del número. Sin esto, «cargado el …» deja de
+       * significar algo, que es toda la garantía de DEC-12.
+       */
+      await signOut(auth());
+      // El documento se arma con el mismo `formASuscripcion` que el formulario,
+      // así que el `precio` tiene la forma buena entera; lo único que se deforma
+      // es la **fecha**, que es la cláusula bajo prueba. Construirlo a mano
+      // arriesgaría un rechazo por forma, o sea un caso que pasa por el motivo
+      // equivocado.
+      const conPrecio = formASuscripcion(
+        form({ precio: { monto: '18000', porPeriodo: 'mensual' } }),
+        ahora(),
+        'formulario-publico',
+      );
+      await expect(
+        setDoc(doc(db(), 'suscripciones', 's_anon_precio_ok'), {
+          ...conPrecio,
+          creadoEn: serverTimestamp(),
+        }),
+        'el control positivo: con `request.time` la ficha con precio entra',
+      ).resolves.toBeUndefined();
+      await expect(
+        setDoc(doc(db(), 'suscripciones', 's_anon_precio'), {
+          ...conPrecio,
+          precio: { ...conPrecio.precio!, cargadoEn: new Date('2020-01-01') },
+          creadoEn: serverTimestamp(),
+        }),
+      ).rejects.toThrow(RECHAZADA);
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    });
+
+    it('y leer, editar o borrar sigue siendo de un admin: mandar no es ver', async () => {
+      await signOut(auth());
+      await rechazadaPorPermisos(getDoc(doc(db(), 'suscripciones', 's_anon')), 'get anónimo');
+      await rechazadaPorPermisos(getDocs(collection(db(), 'suscripciones')), 'list anónimo');
+      await expect(deleteDoc(doc(db(), 'suscripciones', 's_anon'))).rejects.toThrow(RECHAZADA);
       await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
   });

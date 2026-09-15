@@ -128,6 +128,30 @@ const COLECCIONES_ABIERTAS: readonly string[] = [
    * quedó en `create: if false` para todo cliente.
    */
   'propuestas',
+  /*
+   * **`/librerias`, `/suscripciones` y `/lugares` — el `create` anónimo, abierto
+   * el 2026-09-15.** Son los tres formularios de `/guia/<x>/sumar`, y entran
+   * juntas porque son la misma puerta con tres vocabularios: el ciclo de vida es
+   * el de `lib/directorios.ts` y las tres reglas tienen las mismas cinco
+   * cláusulas (`estado` forzado, `revision` en null, `creadoEn == request.time`,
+   * la coherencia de `origen` y la galería vacía).
+   *
+   * **Lo que lo destrabó no fue B-872.** Los tres comentarios de `firestore.rules`
+   * culpaban al enforcement de App Check en Storage porque el formulario subía
+   * una foto. La salida fue sacar los bytes del camino: **la ficha que llega de
+   * afuera nace sin fotos**, decisión del dueño. Las pone el admin desde el panel.
+   *
+   * **Solo el `create`**, igual que en `/propuestas`: `read`, `update` y `delete`
+   * siguen en `esAdmin()`. Nada sale al sitio sin que un admin lo publique, y eso
+   * es lo que hace que abrir la escritura no sea abrir la publicación.
+   *
+   * Cada una tiene su control positivo y sus negaciones en el archivo de su
+   * colección, que es donde la forma se puede afirmar: este archivo es testigo de
+   * la **lista**, no de la forma (ver arriba).
+   */
+  'librerias',
+  'suscripciones',
+  'lugares',
 ];
 
 const UID_ADMIN = 'uid_anon_admin';

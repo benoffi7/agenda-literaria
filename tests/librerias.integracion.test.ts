@@ -685,17 +685,45 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      * decidir qué entra al catálogo es justamente la autoridad que este rol no
      * tiene.
      */
-    it('un publicador tampoco: ni lee, ni lista, ni escribe', async () => {
+    it('un publicador no lee, no lista, no edita y no borra', async () => {
       await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
       await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_ok')), 'get publicador');
       await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list publicador');
       await expect(
-        setDoc(doc(db(), 'librerias', 'l_pub'), documento({ origen: 'formulario-publico' })),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
         updateDoc(doc(db(), 'librerias', 'l_ok'), { direccion: 'Otra 123' }),
       ).rejects.toThrow(RECHAZADA);
       await expect(deleteDoc(doc(db(), 'librerias', 'l_ok'))).rejects.toThrow(RECHAZADA);
+    });
+
+    /**
+     * **Pero SÍ puede proponer, como cualquiera** — y el caso cambió de forma el
+     * 2026-09-15, con el `create` público abierto.
+     *
+     * Antes este renglón estaba adentro del caso de arriba y afirmaba que el rol
+     * «no escribe» nada. Eso dejó de ser cierto y **es correcto que lo haya
+     * dejado de ser**: el `create` público está abierto para todo el mundo, y un
+     * publicador es una persona más. Lo que el rol no tiene sigue intacto —no ve
+     * la bandeja, no edita, no borra, no publica—, que es donde está la autoridad
+     * que no se le dio.
+     *
+     * Va como caso propio y no como una línea suelta por lo que pasó en
+     * `/propuestas` (B-896): sin un control positivo que lo diga, «el publicador
+     * no toca `/librerias`» se lee como una propiedad de la regla, y pasó a ser
+     * falso.
+     */
+    it('pero sí puede proponer una, como cualquiera — y no puede decir que vino del panel', async () => {
+      await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_pub_ok'), {
+          ...formALibreria(form(), 'formulario-publico'),
+          creadoEn: serverTimestamp(),
+        }),
+      ).resolves.toBeUndefined();
+      // Y la otra mitad de la cláusula de `origen`: no es admin, así que la rama
+      // del panel no es suya.
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_pub_panel'), documento({ origen: 'panel' })),
+      ).rejects.toThrow(RECHAZADA);
     });
 
     it('y su sesión está viva, que es lo que hace que lo de arriba signifique algo', async () => {
@@ -708,65 +736,167 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
   });
 
   /**
-   * **El estado de la puerta, afirmado a propósito.**
+   * **El `create` anónimo, abierto el 2026-09-15.**
    *
-   * Este `describe` no verifica una regla: verifica **una decisión de
-   * secuencia**. El `create` anónimo es el punto del PRD y está cerrado hasta que
-   * **B-872** esté contestado y App Check exija también en Storage — porque el
-   * formulario de una librería sube una foto, y abrir Firestore sin Storage da un
-   * formulario que acepta el texto y rechaza la imagen, mientras que abrir los
-   * dos sin enforcement publica un endpoint de subida anónimo.
+   * Este `describe` decía lo contrario —«TODAVÍA está cerrado — B-872»— y sus
+   * casos se pusieron en rojo con el cambio, que es exactamente para lo que
+   * estaban escritos: abrir la puerta tenía que ser un diff visible en un test.
    *
-   * El día que se abra, estos dos casos se ponen en rojo y hay que venir a darlos
-   * vuelta. Eso es lo que se busca: que abrir la puerta sea un diff visible en un
-   * test.
+   * **Y el bloqueo que nombraban no era el real.** Culpaban a B-872 —App Check
+   * sin exigir en Storage— porque el formulario subía una foto. La salida fue
+   * sacar los bytes del camino: la ficha que llega de afuera **nace sin fotos**
+   * (decisión del dueño), así que este camino no toca Storage en absoluto.
    */
-  describe('el `create` anónimo TODAVÍA está cerrado — B-872', () => {
-    it('un anónimo no puede crear una librería, ni con el documento perfecto', async () => {
+  describe('el `create` anónimo está abierto — /guia/librerias/sumar', () => {
+    it('un anónimo crea la ficha que el formulario manda', async () => {
+      // El control positivo, y es el que hace que las negaciones de abajo
+      // signifiquen algo: si esto fallara, «no puede nacer publicada» pasaría
+      // porque no puede nacer, y no por la cláusula que se quiere probar.
       await signOut(auth());
       await expect(
         setDoc(doc(db(), 'librerias', 'l_anon'), {
           ...formALibreria(form(), 'formulario-publico'),
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      ).resolves.toBeUndefined();
     });
 
-    it('y alguien logueado sin el claim tampoco', async () => {
+    it('y alguien logueado sin el claim también — mandar no requiere cuenta ni la excluye', async () => {
+      // `!esAdmin()` y no `request.auth == null`: crear una cuenta está al
+      // alcance de cualquiera con la API key pública, así que «no está logueado»
+      // nunca fue la defensa.
       await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
       await expect(
         setDoc(doc(db(), 'librerias', 'l_anon2'), {
           ...formALibreria(form(), 'formulario-publico'),
           creadoEn: serverTimestamp(),
         }),
+      ).resolves.toBeUndefined();
+    });
+
+    it('pero NO puede nacer publicada — abrir la escritura no es abrir la publicación', async () => {
+      // Sin esta cláusula un `curl` publica su propia librería y la bandeja no
+      // sirve para nada (§1 del `prd/README.md`).
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_anon_pub'), {
+          ...formALibreria(form(), 'formulario-publico'),
+          estado: 'publicado',
+          creadoEn: serverTimestamp(),
+        }),
       ).rejects.toThrow(RECHAZADA);
     });
 
-    /**
-     * **La regla tiene que nombrar el testigo que de verdad se pone rojo.** Es la
-     * lección que `/propuestas` pagó: su secuencia decía que
-     * `escritura-anonima.integracion.test.ts` se ponía rojo solo, y **no se
-     * pone** — ese archivo prueba con un documento sonda que `hasOnly` rechaza
-     * con la puerta abierta o cerrada, así que es testigo de la **lista** de
-     * colecciones, no de esta puerta.
-     */
-    it('la regla nombra el testigo correcto, el bloqueo y el orden para abrirla', () => {
+    it('ni revisada, ni marcada como ya publicada alguna vez', async () => {
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_anon_rev'), {
+          ...formALibreria(form(), 'formulario-publico'),
+          revision: { porUid: 'uid_admin', en: serverTimestamp(), motivo: null },
+          creadoEn: serverTimestamp(),
+        }),
+      ).rejects.toThrow(RECHAZADA);
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_anon_marca'), {
+          ...formALibreria(form(), 'formulario-publico'),
+          // La marca de la trampa 10: nacer con el slug congelado es nacer con
+          // el candado del lado de afuera.
+          publicadaAlgunaVez: true,
+          creadoEn: serverTimestamp(),
+        }),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
+    it('ni decir que vino del panel', async () => {
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_anon_panel'), documento({ origen: 'panel' })),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
+    it('ni traer fotos — la ficha que llega de afuera nace con la galería vacía', async () => {
+      /*
+       * La cláusula que hace que esta puerta sea chica. Sin ella, abrir el
+       * `create` anónimo arrastra un `imagenValida()` por entidad (hoy
+       * `formaDeLibreria` solo acota `is list` y el tope, no la forma de cada
+       * elemento — es B-907), el prefijo en `storage.rules`, la callable de
+       * B-896 generalizada y la limpieza del objeto huérfano.
+       *
+       * Mutación: borrar `&& (d.origen == 'panel' || d.imagenes.size() == 0)` de
+       * `libreriaValida()`. Este caso se pone rojo y ningún otro se mueve.
+       */
+      await signOut(auth());
+      await expect(
+        setDoc(doc(db(), 'librerias', 'l_anon_foto'), {
+          ...formALibreria(
+            form({
+              imagenes: [
+                {
+                  id: 'img_1',
+                  url: 'https://ejemplo.test/frente.jpg',
+                  epigrafe: '',
+                  origen: 'externa',
+                  portada: true,
+                },
+              ],
+            }),
+            'formulario-publico',
+          ),
+          creadoEn: serverTimestamp(),
+        }),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
+    it('un admin SÍ puede cargarla con fotos desde el panel — el control negativo de la cláusula', async () => {
+      /*
+       * Es lo que impide que la cláusula de arriba se lea como «nadie puede
+       * cargar fotos»: el editor de galería del panel sigue funcionando igual.
+       * Sin este caso, `d.imagenes.size() == 0` a secas —sin la rama del
+       * origen— pasaría los cinco casos anteriores.
+       */
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await expect(
+        setDoc(
+          doc(db(), 'librerias', 'l_admin_foto'),
+          documento(
+            {},
+            form({
+              imagenes: [
+                {
+                  id: 'img_2',
+                  url: 'https://ejemplo.test/frente.jpg',
+                  epigrafe: '',
+                  origen: 'externa',
+                  portada: true,
+                },
+              ],
+            }),
+          ),
+        ),
+      ).resolves.toBeUndefined();
+    });
+
+    it('y leer, editar o borrar sigue siendo de un admin: mandar no es ver', async () => {
+      // Lo que separa un buzón de una bandeja, y es lo que hace que abrir el
+      // `create` no abra el directorio entero con los contactos adentro.
+      await signOut(auth());
+      await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_anon')), 'get anónimo');
+      await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list anónimo');
+      await expect(
+        updateDoc(doc(db(), 'librerias', 'l_anon'), { direccion: 'Otra 123' }),
+      ).rejects.toThrow(RECHAZADA);
+      await expect(deleteDoc(doc(db(), 'librerias', 'l_anon'))).rejects.toThrow(RECHAZADA);
+    });
+
+    it('la regla dice que la puerta está abierta y nombra sus testigos', () => {
       const reglas = readFileSync(REGLAS, 'utf8');
-      expect(reglas).toContain('allow create: if esAdmin() && libreriaValida();');
-      // Qué falta, y no es lo mismo que bloqueaba a `/propuestas`.
-      expect(reglas, 'la regla no nombra el bloqueo real').toContain('B-872');
-      expect(reglas).toContain('App Check');
-      // Storage va en el mismo commit: el formulario sube una foto.
-      expect(reglas, 'la secuencia no nombra el prefijo de Storage').toContain('storage.rules');
-      expect(reglas).toContain('COLECCIONES_ABIERTAS');
-      // Y el testigo que de verdad falla: este archivo.
-      expect(reglas, 'la secuencia no nombra el test que se pone rojo').toContain(
-        'tests/librerias.integracion.test.ts',
+      expect(reglas).toContain('allow create: if libreriaValida();');
+      // Y que ya no cuente el cuento viejo: el bloqueo era otro.
+      expect(reglas, 'la regla sigue diciendo que la puerta está cerrada').not.toContain(
+        'allow create: if esAdmin() && libreriaValida();',
       );
-      expect(
-        reglas,
-        'la secuencia volvió a decir que `escritura-anonima` se pone rojo solo',
-      ).toContain('NO se pone rojo solo');
+      expect(reglas).toContain('tests/librerias.integracion.test.ts');
+      expect(reglas).toContain('COLECCIONES_ABIERTAS');
     });
   });
 });
