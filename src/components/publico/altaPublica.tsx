@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ZodType } from 'zod';
-import { claseBloque } from '@/components/sitio/estilos';
+import { claseBloque, foco } from '@/components/sitio/estilos';
 
 /**
  * **Las dos capas anti-abuso que viven en el navegador, escritas una sola vez.**
@@ -189,12 +189,22 @@ export function CampoTrampa({
   return (
     <div className="absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden" aria-hidden="true">
       <label htmlFor={id}>No completes esto</label>
+      {/*
+        El anillo de foco va igual, aunque el campo esté fuera de pantalla y fuera
+        del flujo de tabulación: `tabIndex={-1}` no impide el foco
+        **programático**, y quien lo llena sin querer es justamente un gestor de
+        contraseñas que lo enfocó por su cuenta. Es además lo que mantiene entero
+        el chequeo de clase de `tests/listado-del-sitio.test.ts` — un control sin
+        anillo declarado acá haría que el chequeo tuviera que aprender una
+        excepción, y la excepción siguiente entraría sola.
+      */}
       <input
         id={id}
         name="web"
         type="text"
         tabIndex={-1}
         autoComplete="off"
+        className={foco}
         value={trampa.valor}
         onChange={(e) => trampa.onChange(e.target.value)}
       />

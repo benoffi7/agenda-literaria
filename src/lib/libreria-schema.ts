@@ -28,7 +28,7 @@ import { z } from 'zod';
 import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
-import { normalize } from '@/lib/normalize';
+import { searchTextDeLibreria } from '@/lib/libreriaPublica';
 import {
   CIUDAD_POR_DEFECTO,
   MIN_CONTACTO_LIBRERIA,
@@ -361,7 +361,21 @@ export const formALibreria = (
      * hace el `searchText` de una actividad con `sede.barrio`: dos criterios
      * distintos para el mismo índice serían dos derivaciones de la misma idea.
      */
-    searchText: normalize([nombre, descripcion ?? '', direccion, barrio, ciudad].join(' ')).trim(),
+    /*
+     * ⚠️ **La derivación vive en la proyección, no acá** — ver el docblock de
+     * `searchTextDeLibreria`. Esto escribe el documento; lo que **se publica** lo
+     * deriva la proyección de los valores ya proyectados, así que el campo del
+     * documento no puede salir tal cual aunque un anónimo lo mande armado. Que
+     * las dos mitades llamen a la **misma** función es lo que hace que el
+     * buscador del panel y el del sitio digan lo mismo (clase de B-88).
+     */
+    searchText: searchTextDeLibreria({
+      nombre,
+      descripcion: descripcion ?? '',
+      direccion,
+      barrio,
+      ciudad,
+    }),
     revision: { porUid: null, en: null, motivo: null },
   };
 };

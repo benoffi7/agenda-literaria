@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { claseInput } from '@/components/campos/Campo';
+import { foco } from '@/components/sitio/estilos';
 import { slugify } from '@/lib/slugify';
 
 /**
@@ -87,7 +88,7 @@ export function CampoDeTaxonomia({ id, opciones, value, onChange, placeholder }:
         {opciones.length > 0 && (
           <button
             type="button"
-            className="self-start text-sm text-acento underline decoration-2 underline-offset-4"
+            className={`self-start text-sm text-acento underline decoration-2 underline-offset-4 ${foco}`}
             onClick={() => {
               setLibre(false);
               setTipeado('');

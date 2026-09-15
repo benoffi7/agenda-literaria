@@ -82,24 +82,57 @@ const prosaDe = (src: string): string =>
     .replace(/`\s*\+\s*`/g, '')
     .replace(/\s+/g, ' ');
 
+/**
+ * Toda página de `src/pages`, **a cualquier profundidad**.
+ *
+ * ── Por qué es recursivo desde el 2026-09-15 ──────────────────────────────
+ * Era un `flatMap` de **dos niveles**: para cada directorio de `src/pages` leía
+ * sus `.astro` y paraba ahí. Con `/guia/librerias/sumar.astro` y sus dos
+ * hermanas, `src/pages/guia/` devuelve **directorios** y los descartaba: las
+ * tres páginas con más promesas sobre datos personales de todo el sitio —«tu
+ * contacto no se publica», «se borra a los 30 días», «la dirección exacta no se
+ * publica»— quedaban fuera del barrido que existe exactamente para esa clase.
+ *
+ * Lo encontró el `auditor-privacidad`. Las promesas eran ciertas; lo que no
+ * había era red, que es lo que este archivo aporta — y lo aporta porque
+ * `/apoyar` **nació** con una frase falsa (B-780).
+ */
+const paginasDeSrc = (dir = 'src/pages'): string[] =>
+  readdirSync(raiz(dir), { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory()
+      ? paginasDeSrc(`${dir}/${d.name}`)
+      : d.name.endsWith('.astro')
+        ? [`${dir}/${d.name}`]
+        : [],
+  );
+
 /** Los archivos barridos, por glob y no a mano. */
 const archivosBarridos = (): string[] => {
   const libs = readdirSync(raiz('src/lib'))
     .filter((f) => /DelSitio\.ts$/.test(f))
     .map((f) => `src/lib/${f}`);
-  const paginas = readdirSync(raiz('src/pages'), { withFileTypes: true }).flatMap((d) =>
-    d.isDirectory()
-      ? readdirSync(raiz(`src/pages/${d.name}`))
-          .filter((f) => f.endsWith('.astro'))
-          .map((f) => `src/pages/${d.name}/${f}`)
-      : d.name.endsWith('.astro')
-        ? [`src/pages/${d.name}`]
-        : [],
-  );
   const componentes = readdirSync(raiz('src/components/sitio'))
     .filter((f) => f.endsWith('.astro'))
     .map((f) => `src/components/sitio/${f}`);
-  return [...libs, ...paginas, ...componentes];
+  /*
+   * ── Lo que NO entra: `src/components/publico/*.tsx` ──────────────────────
+   * El `auditor-privacidad` lo propuso, y se probó: los tres formularios
+   * repiten en el componente los mismos carteles que la página («la dirección
+   * exacta no se publica»), así que agregarlo parecía cerrar la otra mitad.
+   *
+   * **Salieron dos falsos positivos y ninguno es una promesa.** «Todavía no
+   * guardaste nada» (`MisGuardados.tsx`, la lista vacía) cae en el detector de
+   * medición; «si no cobran o preferís no ponerlo» (`SumarLugar.tsx`, sobre lo
+   * que cobra el lugar) cae en el de plata. Los detectores están afinados para
+   * **copy de página**, y en un `.tsx` la prosa extraída trae el JSX adentro
+   * (`className=…`), así que la frase que ven no es la frase que se lee.
+   *
+   * Se deja afuera y se anota (**B-925**): lo que hay que reformar para que
+   * entre son los detectores, no este glob. La promesa que importa está en la
+   * página —que desde hoy sí se barre— y el componente la repite; lo que queda
+   * sin red es una frase que exista **solo** en el componente.
+   */
+  return [...libs, ...paginasDeSrc(), ...componentes];
 };
 
 /**
@@ -381,6 +414,27 @@ describe('el barrido mira archivos de verdad — control positivo', () => {
     // estaban exentas del barrido de su propio módulo.
     expect(archivos).toContain('src/pages/apoyar.astro');
     expect(archivos).toContain('src/pages/ayuda.astro');
+  });
+
+  it('y llega a CUALQUIER profundidad de `src/pages`, no a dos niveles', () => {
+    /*
+     * **El hallazgo del `auditor-privacidad` del 2026-09-15.** El glob era un
+     * `flatMap` de dos niveles, así que `src/pages/guia/` devolvía directorios y
+     * los descartaba: las tres páginas con más promesas sobre el dato personal de
+     * un tercero de todo el sitio —«tu contacto no se publica», «se borra a los
+     * 30 días», «la dirección exacta no se publica»— quedaban afuera del barrido
+     * que existe exactamente para esa clase. Las frases eran ciertas; lo que no
+     * había era red.
+     *
+     * MUTACIÓN PROBADA: volver al `flatMap` de dos niveles deja este caso en rojo
+     * nombrando las tres.
+     */
+    const archivos = archivosBarridos();
+    for (const seccion of ['librerias', 'suscripciones', 'lugares']) {
+      expect(archivos, `el glob no llega a /guia/${seccion}/sumar`).toContain(
+        `src/pages/guia/${seccion}/sumar.astro`,
+      );
+    }
   });
 
   it('la ayuda del panel NO entra, y es una decisión y no un olvido', () => {

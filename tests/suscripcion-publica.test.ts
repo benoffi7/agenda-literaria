@@ -104,14 +104,18 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
       'la ficha muestra **todas** las imágenes (criterio de B-296) y el epígrafe es el texto que ' +
       'alguien escribió para que se lea debajo. La URL sale **saneada**, no cruda.',
   },
-  {
-    nombre: 'el índice de búsqueda',
-    centinelas: ['searchText'],
-    porque:
-      '§6 y §2.5 — el listado filtra en memoria y necesita contra qué comparar. No publica nada ' +
-      'nuevo, y **no lleva el precio**: el buscador es un filtro, y filtrar por precio afirma que ' +
-      'los precios son comparables (DEC-12).',
-  },
+  /*
+   * **`searchText` ya NO es una excepción** — 2026-09-15, hallazgo del
+   * `auditor-privacidad`. El argumento entero está en
+   * `tests/libreria-publica.test.ts`, y acá tenía una mitad más: el `porque`
+   * afirmaba «no lleva el precio» mientras la proyección copiaba el campo del
+   * documento, así que un `curl` metía el monto ahí y quedaba **filtrable** —la
+   * segunda regla de DEC-12 dada vuelta—.
+   *
+   * Ahora la proyección lo deriva con `searchTextDeSuscripcion` de los valores ya
+   * proyectados, entre los cuales el precio no está. Los casos propios están al
+   * final de este archivo.
+   */
 ];
 
 /**
@@ -126,7 +130,13 @@ const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION.m
   g.nombre === 'quién la ofrece'
     ? { ...g, centinelas: g.centinelas.filter((c) => c !== 'ofrecidaPor.libreriaSlug') }
     : g,
-).filter((g) => g.nombre !== 'el índice de búsqueda');
+);
+/*
+ * **El `.filter()` del índice de búsqueda se fue el 2026-09-15**, con la
+ * excepción: `searchText` dejó de ser una, así que filtraba un grupo que ya no
+ * existe. La propiedad que la ficha sigue teniendo —no publica el índice— la
+ * afirman sus propios casos.
+ */
 
 /**
  * Lo que sale al **marcado estructurado** (`Product` + migas + `CollectionPage`).
@@ -827,5 +837,53 @@ describe('las dos frases del `<head>`, que son texto público — salida 23', ()
     );
     expect(descripcionDelDirectorioDeSuscripciones(1)).toContain('1 suscripción literaria ');
     expect(descripcionDelDirectorioDeSuscripciones(0)).not.toContain('0');
+  });
+});
+
+/**
+ * **El índice de búsqueda: derivado, no copiado** — 2026-09-15, el hallazgo del
+ * `auditor-privacidad`.
+ *
+ * El argumento entero está en `tests/libreria-publica.test.ts`. Acá hay una
+ * mitad más y es la que importa: mientras la proyección copiaba `s.searchText`
+ * del documento, un `curl` podía meter el **monto** ahí y quedaba **filtrable**
+ * desde el buscador del listado — la segunda regla de DEC-12 dada vuelta («el
+ * precio queda fuera de todo filtro y de todo orden»). El `porque` de la
+ * excepción afirmaba «no lleva el precio» y no lo podía sostener.
+ */
+describe('el índice de búsqueda de una suscripción — §6 y DEC-12', () => {
+  it('el `searchText` del documento NO se publica', () => {
+    /*
+     * MUTACIÓN PROBADA: volver a `searchText: s.searchText ?? ''` en
+     * `suscripcionPublica` deja este caso en rojo.
+     */
+    const doc = suscripcionCentinela();
+    const publico = suscripcionPublica(doc);
+    expect(doc.searchText, 'el fixture dejó de traer el centinela: el caso no prueba nada').toBe(
+      CENTINELA_SUSCRIPCION.searchText,
+    );
+    expect(publico.searchText).not.toContain(CENTINELA_SUSCRIPCION.searchText);
+    expect(JSON.stringify(publico)).not.toContain(doc.searchText);
+  });
+
+  it('y el derivado trae lo que tiene que traer, sin el precio — el control positivo', () => {
+    const publico = suscripcionPublica(suscripcionCentinela());
+    expect(publico.searchText.length).toBeGreaterThan(20);
+    // Normalizado (§6): sin mayúsculas ni acentos.
+    expect(publico.searchText).toBe(publico.searchText.toLowerCase());
+    expect(publico.searchText).toContain('centinela.nombre');
+    // Y el monto **no**: filtrar por precio afirma que los precios son
+    // comparables, que es lo que DEC-12 decidió que no.
+    expect(publico.searchText).not.toMatch(/[0-9]{4,}/);
+  });
+
+  it('la derivación es UNA sola: el documento y lo publicado se arman igual', () => {
+    const contenido = readFileSync(raiz('src/lib/suscripcion-literaria-schema.ts'), 'utf8');
+    expect(contenido, '`formASuscripcion` dejó de usar la derivación compartida').toContain(
+      'searchTextDeSuscripcion({',
+    );
+    expect(contenido).toContain(
+      "import { searchTextDeSuscripcion } from '@/lib/suscripcionPublica';",
+    );
   });
 });

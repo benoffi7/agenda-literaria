@@ -328,3 +328,43 @@ describe('el barrido corre sobre las tres guías y se deriva de una sola lista',
     expect(cuerpo).not.toContain('bucket');
   });
 });
+
+/**
+ * **Lo que las tres páginas prometen tiene que ser el número que el barrido
+ * cumple** — el hallazgo del `auditor-privacidad` al abrir el `create` anónimo.
+ *
+ * `/guia/<x>/sumar` dice, en HTML indexado y a alguien que no tiene cuenta: «si
+ * al final la ficha no entra, tu contacto se borra a los 30 días». Quien lo
+ * cumple es `RETENCION_DE_FICHA_POR_ESTADO`, y hasta acá nada cruzaba las dos
+ * mitades: mover el margen a 90 dejaba la suite verde y las tres páginas
+ * mintiendo.
+ *
+ * Es el mismo patrón que `promesas-sobre-datos.test.ts` aplica del otro lado —el
+ * número que se promete sale del mismo lugar que el que se cumple— con la
+ * diferencia de que acá la premisa es una constante y no una función.
+ */
+describe('las tres páginas prometen el plazo que la tabla cumple', () => {
+  const DIAS = MARGEN_DE_RETENCION_FICHA_MS / DIA;
+
+  it.each(['librerias', 'suscripciones', 'lugares'])(
+    '/guia/%s/sumar dice los mismos días que la retención',
+    (seccion) => {
+      /*
+       * MUTACIÓN PROBADA: cambiar `MARGEN_DE_RETENCION_FICHA_MS` a 90 días deja
+       * los tres casos en rojo, que es exactamente lo que tiene que pasar: el
+       * plazo se puede mover, pero no sin tocar lo que las páginas dicen.
+       */
+      const pagina = fuente(`src/pages/guia/${seccion}/sumar.astro`);
+      expect(pagina, 'la página dejó de prometer un plazo').toMatch(/se borra a los \d+ días/);
+      expect(pagina).toContain(`se borra a los ${DIAS} días`);
+    },
+  );
+
+  it('y el número de la promesa es el de la RECHAZADA, que es el caso que la página describe', () => {
+    // La frase dice «si al final la ficha **no entra**», o sea el rechazo. Hoy
+    // los dos plazos coinciden, y este aserto es lo que impide que alguien lea la
+    // promesa contra el otro — son dos decisiones distintas que hoy dan el mismo
+    // número (ver `MARGEN_SIN_TOCAR_FICHA_MS`).
+    expect(RETENCION_DE_FICHA_POR_ESTADO.rechazado).toBe(MARGEN_DE_RETENCION_FICHA_MS);
+  });
+});

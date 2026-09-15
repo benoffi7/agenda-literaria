@@ -1380,6 +1380,20 @@ Consecuencia práctica: acá **no existe el final `la-tocaron-tarde`**. La ficha
 un admin reabre en el último segundo se salva **entera**, porque no hay una segunda
 mitad sin precondición. `delete({ lastUpdateTime })` cubre la ventana completa.
 
+**⚠️ Cada corrida que borre algo deja el sitio marcado para rehacer, y no es un
+bug.** Lo encontró el `auditor-trampas` al cerrar el cambio. A diferencia de
+`/propuestas` —colección que ningún trigger escucha—, las tres de la Guía tienen
+su `onDocumentWritten` de rebuild, y ése se dispara también en un `delete`;
+`cambioAmeritaRebuild` devuelve `true` ante cualquier alta o baja sin mirar el
+estado. O sea que borrar una ficha `rechazado` que **nunca estuvo publicada**
+dispara un build completo sin que haya nada público que cambiar.
+
+No es un loop —`marcarRebuild` escribe en `sistema/rebuild`, no en la ficha
+borrada, así que no hay con qué encadenarse— y se acepta con el argumento que ya
+está escrito en `functions/directorios.js`: un falso positivo cuesta un build, que
+es el lado barato. Queda acá porque es lo que contesta «¿por qué se rehízo el
+sitio de madrugada sin que nadie publicara nada?».
+
 **El deploy lo hace CI**: el push a `main` ve el cambio en `functions/` y la
 despliega sola. **No hay IAM nuevo**: necesita `datastore.user` y nada más — sin
 Storage, ni siquiera usa el permiso de borrado de objetos. A mano, si hiciera

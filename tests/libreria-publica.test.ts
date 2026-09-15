@@ -79,14 +79,22 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
       'la ficha muestra **todas** las imágenes (criterio de B-296) y el epígrafe es el texto que ' +
       'alguien escribió para que se lea debajo. La URL sale **saneada**, no cruda.',
   },
-  {
-    nombre: 'el índice de búsqueda',
-    centinelas: ['searchText'],
-    porque:
-      '§6 y §2.5 — el listado filtra en memoria y necesita contra qué comparar. No publica nada ' +
-      'nuevo: se deriva de nombre, descripción, dirección, barrio y ciudad, los cinco de esta ' +
-      'misma lista.',
-  },
+  /*
+   * **`searchText` ya NO es una excepción** — 2026-09-15, hallazgo del
+   * `auditor-privacidad` al abrir el `create` anónimo.
+   *
+   * Estuvo acá mientras la proyección **copiaba** `l.searchText` del documento,
+   * con el `porque` diciendo «se deriva de los cinco campos de esta misma
+   * lista». Eso describía a `formALibreria`, no a la proyección: el campo del
+   * documento lo escribe el cliente, y desde que ese cliente puede ser un
+   * anónimo, dos mil caracteres elegidos por cualquiera salían al JSON —por el
+   * único campo publicado que la bandeja **no muestra**—.
+   *
+   * Ahora la proyección lo **deriva** con `searchTextDeLibreria` de los valores
+   * ya proyectados, así que el centinela del documento no sobrevive y la
+   * excepción sobra. Lo que sí hay son los tres casos del final de este archivo,
+   * que es el mismo reparto que `tests/lugar-publico.test.ts` ya tenía.
+   */
 ];
 
 /**
@@ -97,9 +105,14 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
  * Publicarlo ahí sería repetir el nombre, la descripción y la dirección
  * normalizados, sin ningún consumidor.
  */
-const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION.filter(
-  (g) => g.nombre !== 'el índice de búsqueda',
-);
+/*
+ * **Desde el 2026-09-15 es la proyección entera, y el filtro se fue con la
+ * excepción.** `searchText` dejó de ser una excepción del barrido —la proyección
+ * lo deriva en vez de copiarlo—, así que este `filter` no sacaba nada y quedaba
+ * nombrando un grupo que ya no existe. La propiedad que la ficha sigue teniendo
+ * —no publica el índice de búsqueda— la afirman sus propios casos.
+ */
+const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION;
 
 /**
  * Lo que sale al **marcado estructurado** (`BookStore` + migas + `CollectionPage`).
@@ -583,5 +596,71 @@ describe('las dos frases del `<head>`, que son texto público — salida 21', ()
     barrerLibreria('meta description del listado', descripcionDelDirectorio(40), []);
     expect(descripcionDelDirectorio(1)).toContain('1 librería ');
     expect(descripcionDelDirectorio(0)).not.toContain('0');
+  });
+});
+
+/**
+ * **El índice de búsqueda: derivado, no copiado** — 2026-09-15, el hallazgo del
+ * `auditor-privacidad` al abrir el `create` anónimo de `/librerias`.
+ *
+ * `searchText` **se publica** (viaja en `/librerias.json` para que el listado
+ * filtre en memoria, §2.5) y en el documento es un campo que **escribe el
+ * cliente**. Mientras el único escritor fue el panel eso daba igual; con la
+ * puerta abierta, la regla solo puede decir `is string && size() <= 2000` —una
+ * regla no mira adentro de una cadena— así que dos mil caracteres elegidos por
+ * cualquiera entraban al documento y salían verbatim al JSON.
+ *
+ * **Y por el peor campo posible:** es el único publicado que la bandeja no
+ * muestra (`libreriaAFormulario` no lo mapea, porque no es un campo del
+ * formulario). O sea que un admin revisaba nombre, dirección y descripción,
+ * apretaba publicar, y salía algo que nadie leyó — el agujero exacto de «nada
+ * sale sin que un admin lo mire».
+ *
+ * El fixture trae `centinela.searchtext` metido a mano en ese campo, que es lo
+ * que hace que estos casos prueben algo.
+ */
+describe('el índice de búsqueda de una librería — §6', () => {
+  it('el `searchText` del documento NO se publica', () => {
+    /*
+     * MUTACIÓN PROBADA: volver a `searchText: l.searchText ?? ''` en
+     * `libreriaPublica` deja este caso en rojo.
+     */
+    const doc = libreriaCentinela();
+    const publico = libreriaPublica(doc);
+    expect(doc.searchText, 'el fixture dejó de traer el centinela: el caso no prueba nada').toBe(
+      CENTINELA_LIBRERIA.searchText,
+    );
+    expect(publico.searchText).not.toContain(CENTINELA_LIBRERIA.searchText);
+    expect(JSON.stringify(publico)).not.toContain(doc.searchText);
+  });
+
+  it('y el derivado trae lo que tiene que traer — el control positivo', () => {
+    /*
+     * Sin esto, el caso de arriba pasaría en verde con un `searchText` vacío, que
+     * es el otro error: el listado dejaría de encontrar por texto y nadie se
+     * enteraría hasta que alguien buscara.
+     */
+    const publico = libreriaPublica(libreriaCentinela());
+    expect(publico.searchText.length).toBeGreaterThan(20);
+    // Normalizado (§6): sin mayúsculas ni acentos.
+    expect(publico.searchText).toBe(publico.searchText.toLowerCase());
+    expect(publico.searchText).toContain('centinela.nombre');
+    expect(publico.searchText).toContain('centinela.direccion');
+    expect(publico.searchText).toContain('centinela-barrio');
+  });
+
+  it('la derivación es UNA sola: el documento y lo publicado se arman igual', () => {
+    /*
+     * La clase de B-88. Con dos derivaciones, el buscador del panel y el del
+     * sitio dirían cosas distintas y nadie lo vería hasta que alguien buscara
+     * algo que está en una y no en la otra.
+     */
+    const contenido = readFileSync(raiz('src/lib/libreria-schema.ts'), 'utf8');
+    expect(contenido, '`formALibreria` dejó de usar la derivación compartida').toContain(
+      'searchTextDeLibreria({',
+    );
+    expect(contenido).toContain(
+      "import { searchTextDeLibreria } from '@/lib/libreriaPublica';",
+    );
   });
 });

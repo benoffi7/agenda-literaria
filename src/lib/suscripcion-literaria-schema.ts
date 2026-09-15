@@ -28,7 +28,7 @@ import type { DatoConFecha } from '@/lib/datoConFecha';
 import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
-import { normalize } from '@/lib/normalize';
+import { searchTextDeSuscripcion } from '@/lib/suscripcionPublica';
 import {
   MAX_ALCANCE_SUSCRIPCION,
   MAX_EXTRAS_SUSCRIPCION,
@@ -559,9 +559,20 @@ export const formASuscripcion = (
      * taxonomía: «el texto libre entra a `searchText`, y ahí el buscador en
      * memoria lo encuentra igual».
      */
-    searchText: normalize(
-      [nombre, descripcion, f.ofrecidaPor.nombre, tematica ?? '', f.compromisoMinimo].join(' '),
-    ).trim(),
+    /*
+     * ⚠️ **La derivación vive en la proyección, no acá** — ver el docblock de
+     * `searchTextDeSuscripcion`. Esto escribe el documento; lo que **se publica**
+     * lo deriva la proyección de los valores ya proyectados, así que el campo del
+     * documento no puede salir tal cual aunque un anónimo lo mande con el monto
+     * adentro.
+     */
+    searchText: searchTextDeSuscripcion({
+      nombre,
+      descripcion,
+      ofrecidaPor: f.ofrecidaPor.nombre,
+      tematica: tematica ?? '',
+      compromisoMinimo: f.compromisoMinimo,
+    }),
     revision: { porUid: null, en: null, motivo: null },
   };
 };

@@ -228,6 +228,28 @@ export const borrarPropuestasVencidas = onSchedule(
  *
  * El tope es **por colección** y por eso el bucle no lleva un acumulado global:
  * cada directorio tiene su propia bandeja y su propio ritmo.
+ *
+ * ── ⚠️ Y acá SÍ hay un trigger del otro lado, al revés que en `/propuestas` ─
+ * Lo encontró el `auditor-trampas`. El docblock de `retencion.js` dice, para el
+ * barrido de propuestas, que no es la trampa 3 ni la 12 porque `/propuestas` es
+ * «una colección que **ningún trigger escucha**». **Eso no vale acá**:
+ * `/librerias`, `/suscripciones` y `/lugares` tienen cada una su
+ * `onDocumentWritten` de rebuild (`directorios-trigger.js`), y
+ * `onDocumentWritten` se dispara también en un `delete`.
+ *
+ * **No es un loop** —la trampa 3 pide que el trigger escriba donde lo
+ * dispararon, y `marcarRebuild` escribe en `sistema/rebuild`, no en la ficha
+ * borrada— así que no hay con qué encadenarse. Lo que sí hay es un **build de
+ * más**: `cambioAmeritaRebuild` devuelve `true` ante cualquier alta o baja sin
+ * mirar el estado, así que borrar una ficha `rechazado` que **nunca estuvo
+ * publicada** marca el sitio para rehacer aunque no haya nada público que
+ * cambiar.
+ *
+ * Se acepta, y con el argumento que ese módulo ya tiene escrito: «un falso
+ * positivo cuesta un build, que es el lado barato». Queda dicho acá porque sin
+ * esta línea, quien investigue «¿por qué se rebuildeó el sitio a las 3 de la
+ * mañana sin que nadie publicara nada?» no tiene dónde encontrarlo — y porque
+ * la respuesta más obvia («ningún trigger escucha esas colecciones») es falsa.
  */
 export const borrarFichasVencidas = onSchedule(
   {

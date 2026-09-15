@@ -49,6 +49,7 @@
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
+import { normalize } from '@/lib/normalize';
 import {
   RUTA_AGENDA,
   RUTA_GUIA,
@@ -163,6 +164,47 @@ const imagenesDeLibreria = (l: Libreria): ImagenDeLibreriaPublica[] => {
 };
 
 /**
+ * **El índice de búsqueda de una librería, derivado de los campos que sí se
+ * publican** — §6, y el hallazgo del `auditor-privacidad` al abrir el `create`
+ * anónimo (2026-09-15).
+ *
+ * ── Por qué no se copia el del documento ──────────────────────────────────
+ * Porque `searchText` **se publica** —viaja en `/librerias.json` para que el
+ * listado filtre en memoria (§2.5)— y en el documento es un campo que **escribe
+ * el cliente**. Hasta el 2026-09-15 eso era inocuo: el único escritor era
+ * `formALibreria` corriendo en el panel. Con el `create` anónimo abierto, los
+ * dos mil caracteres que la regla acota —`is string && size() <= 2000`, que es
+ * todo lo que una regla puede decir de una cadena derivada— los elige cualquiera
+ * con un `curl`, y salen **verbatim** al JSON el día que un admin publique la
+ * ficha.
+ *
+ * **Y es el único campo publicado que la bandeja no muestra:**
+ * `libreriaAFormulario` no lo mapea, porque no es un campo del formulario. O
+ * sea que el admin revisa nombre, dirección y descripción, aprieta publicar, y
+ * sale un campo que nadie leyó — justo el agujero de «nada sale sin que un admin
+ * lo mire», que es la frase sobre la que se apoya el diseño entero de estas tres
+ * colecciones.
+ *
+ * Con la derivación acá, el campo del documento deja de ser publicable: lo que
+ * sale se arma con los valores **ya proyectados**. `formALibreria` importa esta
+ * misma función para escribir el documento, así que sigue habiendo **una sola**
+ * derivación (la clase de B-88) y el buscador del panel y el del sitio dicen lo
+ * mismo.
+ *
+ * La decisión ya estaba tomada para `/lugares` —`searchTextDeLugar` la tiene
+ * escrita desde su tajada, prediciendo este día con todas las letras— y las
+ * otras dos quedaron con la versión vieja. Esto las empareja.
+ */
+export const searchTextDeLibreria = (c: {
+  nombre: string;
+  descripcion: string;
+  direccion: string;
+  barrio: string;
+  ciudad: string;
+}): string =>
+  normalize([c.nombre, c.descripcion, c.direccion, c.barrio, c.ciudad].join(' ')).trim();
+
+/**
  * Documento → ficha pública. **Campo por campo, sin un solo spread.**
  *
  * No recibe el id del documento y eso es deliberado: la ficha se direcciona por
@@ -183,7 +225,18 @@ export const libreriaPublica = (l: Libreria): LibreriaPublica => ({
   whatsapp: whatsappPublicable(l.whatsapp),
   web: urlSegura(l.web),
   mail: mailPublicable(l.mail),
-  searchText: l.searchText ?? '',
+  /*
+   * ⚠️ **Derivado y NO copiado del documento** — ver `searchTextDeLibreria`.
+   * `l.searchText` es un campo que escribe el cliente, y desde el 2026-09-15 ese
+   * cliente puede ser un anónimo.
+   */
+  searchText: searchTextDeLibreria({
+    nombre: l.nombre,
+    descripcion: l.descripcion ?? '',
+    direccion: l.direccion,
+    barrio: l.barrio,
+    ciudad: l.ciudad,
+  }),
 });
 
 /**

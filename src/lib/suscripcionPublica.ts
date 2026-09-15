@@ -49,6 +49,7 @@ import { fraseConFecha, type DatoConFecha } from '@/lib/datoConFecha';
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
+import { normalize } from '@/lib/normalize';
 import {
   RUTA_AGENDA,
   RUTA_GUIA,
@@ -309,6 +310,39 @@ const envioPublico = (s: SuscripcionLiteraria): EnvioPublico => {
 };
 
 /**
+ * **El índice de búsqueda de una suscripción, derivado de los campos que sí se
+ * publican** — §6, y el hallazgo del `auditor-privacidad` al abrir el `create`
+ * anónimo (2026-09-15).
+ *
+ * El argumento entero está en `searchTextDeLibreria` (`lib/libreriaPublica.ts`)
+ * y es el mismo: `searchText` **se publica**, en el documento lo escribe el
+ * cliente, y desde que el `create` es anónimo ese cliente es cualquiera. La
+ * bandeja tampoco lo muestra, así que un admin puede publicar una ficha sin
+ * haber leído nunca ese campo.
+ *
+ * ⚠️ **Y acá hay una razón más, que allá no está: el precio.** La excepción de
+ * este campo en el barrido de centinelas decía «no publica nada nuevo, y **no
+ * lleva el precio**» — cierto mientras lo derivara `formASuscripcion`, falso
+ * desde que lo puede mandar un `curl`. Un monto metido en el `searchText` queda
+ * **filtrable** desde el buscador del listado, que es la segunda regla de DEC-12
+ * dada vuelta: «el precio queda fuera de todo filtro y de todo orden».
+ *
+ * Con la derivación acá, lo que sale se arma con los valores ya proyectados y el
+ * precio no está entre ellos, por construcción. `formASuscripcion` importa esta
+ * misma función, así que sigue habiendo una sola derivación (clase de B-88).
+ */
+export const searchTextDeSuscripcion = (c: {
+  nombre: string;
+  descripcion: string;
+  ofrecidaPor: string;
+  tematica: string;
+  compromisoMinimo: string;
+}): string =>
+  normalize(
+    [c.nombre, c.descripcion, c.ofrecidaPor, c.tematica, c.compromisoMinimo].join(' '),
+  ).trim();
+
+/**
  * Documento → ficha pública. **Campo por campo, sin un solo spread.**
  *
  * No recibe el id del documento y eso es deliberado: la ficha se direcciona por
@@ -344,7 +378,20 @@ export const suscripcionPublica = (s: SuscripcionLiteraria): SuscripcionPublica 
   instagram: handleInstagram(s.instagram),
   whatsapp: whatsappPublicable(s.whatsapp),
   mail: mailPublicable(s.mail),
-  searchText: s.searchText ?? '',
+  /*
+   * ⚠️ **Derivado y NO copiado del documento** — ver `searchTextDeSuscripcion`.
+   * `s.searchText` es un campo que escribe el cliente, y desde el 2026-09-15 ese
+   * cliente puede ser un anónimo. Acá pesa el doble: un `searchText` copiado
+   * dejaría que alguien meta el **monto** ahí y quede filtrable, que es
+   * exactamente lo que DEC-12 prohíbe.
+   */
+  searchText: searchTextDeSuscripcion({
+    nombre: s.nombre,
+    descripcion: s.descripcion,
+    ofrecidaPor: s.ofrecidaPor?.nombre ?? '',
+    tematica: s.envio?.tematica ?? '',
+    compromisoMinimo: s.compromisoMinimo ?? '',
+  }),
 });
 
 // ─────────────────────────────────────────────────────────────────

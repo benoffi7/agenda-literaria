@@ -259,6 +259,34 @@ describe('cuándo corresponde rebuildear', () => {
     expect(cambioAmeritaRebuild(doc(), null, 'librerias')).toBe(true);
   });
 
+  it('⚠️ y la baja de una que NUNCA estuvo publicada también — el build de más, escrito', () => {
+    /*
+     * **No es un descuido: es el default barato, y conviene tenerlo fijado
+     * porque ahora cuesta algo.** Lo señaló el `auditor-trampas` al cerrar
+     * B-904/B-912/B-917.
+     *
+     * `borrarFichasVencidas` corre cada 24 horas y borra fichas `rechazado` y
+     * `pendiente`. Cada uno de esos `delete` dispara el `onDocumentWritten` de
+     * rebuild de su colección —a diferencia de `/propuestas`, que no tiene
+     * ninguno— y esta función devuelve `true` ante cualquier baja sin mirar el
+     * estado. O sea: el sitio se marca para rehacer aunque la ficha borrada nunca
+     * haya salido a ninguna parte.
+     *
+     * **No es un loop** (trampa 3): `marcarRebuild` escribe en `sistema/rebuild`
+     * y no en la ficha borrada, así que no hay con qué encadenarse.
+     *
+     * Se acepta con el argumento que este mismo archivo ya usa para la colección
+     * no declarada: un build de más cuesta dos minutos de Actions, y la
+     * alternativa —mirar el `estado` del `antes` para decidir— es una condición
+     * más en el camino donde equivocarse deja el sitio viejo en silencio.
+     *
+     * Este caso existe para que, si algún día alguien decide que el build de más
+     * molesta, el cambio sea **deliberado** y no un efecto de tocar otra cosa.
+     */
+    expect(cambioAmeritaRebuild(doc({ estado: 'rechazado' }), null, 'librerias')).toBe(true);
+    expect(cambioAmeritaRebuild(doc({ estado: 'pendiente' }), null, 'librerias')).toBe(true);
+  });
+
   it('una colección que nadie declaró rebuildea: es la dirección barata del error', () => {
     /*
      * Con la lista vacía la comparación no encontraría ninguna diferencia y el
