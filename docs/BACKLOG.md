@@ -480,7 +480,8 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 
 ## P0 — rompe algo o pierde datos
 
-**Todos arreglados.** Cuatro, en dos tandas y de dos clases distintas:
+**Todos arreglados.** Los cuatro primeros, en dos tandas y de dos clases
+distintas:
 
 - **B-80 y B-82** (2026-08-24) salieron de revisar las costuras del merge del
   2026-08-21: cada feature estaba testeada por dentro, el par no. Los tests que
@@ -804,6 +805,54 @@ otro test se mueve.
 claims por las dos vías. Ya no tapa nada —el proyecto coincide—, pero es una
 diferencia de estilo que vale unificar hacia `setCustomUserClaims` solo, que es
 lo fiel a producción. Es **B-895**, P3.
+
+### B-922 · El barrido de huérfanas borraba las fotos de las tres guías a las 72 horas — ✅ hecho (2026-09-15) · P0
+
+**Encontrado abriendo los formularios públicos de la Guía, sin que nadie lo
+reportara.** `limpiarImagenesHuerfanas` (B-221, `onSchedule` cada 24 h) borra
+todo objeto de `imagenes/` que tenga más de 72 horas y que **nadie referencie**,
+y hasta acá «nadie» significaba: ninguna actividad viva y ninguna versión de su
+historial (B-560).
+
+`LibreriaFormulario`, `SuscripcionFormulario` y `LugarFormulario` usan el
+**mismo** `GaleriaEditor` que una actividad (D-125), así que la foto del frente
+de una librería se sube a `imagenes/img_<uuid>.jpg` — el mismo prefijo, y desde
+el bucket indistinguible de la de un taller. O sea que **toda** foto de una ficha
+de directorio nacía huérfana y la corrida siguiente se la llevaba, dejando la
+ficha publicada con la imagen rota y su miniatura borrada por derivación.
+
+**Es la clase de bug que el barrido de B-560 ya había tenido una vez**, con el
+historial en lugar de los directorios, y por el mismo motivo: `referenciasEnUso`
+es una whitelist de dueños, y el dueño que no se agrega no existe. La diferencia
+es que allá el síntoma tardaba en verse (restaurar una versión vieja) y acá se ve
+en la ficha publicada.
+
+**Cómo fallaba, y por qué la suite estaba verde:** no hay error, no hay log y no
+hay excepción. El objeto se borra *porque nadie dijo que lo usaba*, que es
+exactamente lo que el barrido tiene que hacer. Los 21 casos que ya existían
+seguían pasando con el agujero adentro — verificado por mutación.
+
+**El arreglo** suma las tres colecciones al `Promise.all` de `referenciasEnUso`,
+con `.select('imagenes')` como las actividades (sin él, el
+`contactoDeQuienCargo` de quien cargó la ficha entra a la memoria de la Function
+para leerle un array de paths). **La lista sale de `COLECCIONES_DE_DIRECTORIO`**
+(`functions/directorios.js`), que ya es quien declara qué directorios existen:
+un cuarto entra a este barrido solo, y el test lo exige derivando de esa misma
+constante. Escribir las tres a mano era repetir el modo de falla con un
+directorio más.
+
+Cuatro casos nuevos en `tests/limpieza-imagenes.test.ts`, los cuatro rojos sin el
+arreglo. De paso el `db` falso del archivo pasó a responder **por nombre de
+colección**: devolvía la misma lista para cualquier `collection(x)`, y con cuatro
+colecciones leídas eso habría hecho pasar un barrido que no lee `/librerias` en
+absoluto. El script en seco (`scripts/limpiar-imagenes-huerfanas.mjs`) reusa
+`referenciasEnUso`, así que queda arreglado por el mismo cambio.
+
+**Lo desplegado hasta ahora ya se perdió lo que se haya perdido.** El barrido
+corre en producción desde B-221 y las tres guías se cargaron el 2026-09-11, así
+que cualquier foto subida a una ficha antes de este commit y con más de 72 horas
+puede no estar. No hay forma de recuperarla desde el repo: hay que volver a
+subirla desde el panel.
 
 ## P1 — bloquean el objetivo del proyecto
 

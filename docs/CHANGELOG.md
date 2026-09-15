@@ -2,6 +2,29 @@
 
 ## Sin publicar
 
+- **Las fotos de las tres guías se borraban solas a las 72 horas** — **B-922**, P0.
+  `limpiarImagenesHuerfanas` cuenta como referencia a `/actividades` y a su
+  historial, y nada más. Los tres formularios del panel usan el **mismo**
+  `GaleriaEditor` que una actividad (D-125), así que la foto de una librería vive
+  en `imagenes/img_<uuid>.jpg` y desde el bucket es indistinguible de la de un
+  taller: **toda** foto de una ficha de directorio nacía huérfana y la corrida
+  siguiente se la llevaba, dejando la ficha publicada con la imagen rota.
+
+  Sin error, sin log y con la suite en verde — el objeto se borra *porque nadie
+  dijo que lo usaba*, que es lo que el barrido tiene que hacer. Es la clase de
+  B-560 con los directorios en lugar del historial.
+
+  La lista sale de `COLECCIONES_DE_DIRECTORIO`, que ya declara qué guías existen,
+  así que la cuarta entra sola; el test lo exige derivando de esa misma
+  constante. Cuatro casos nuevos, los cuatro rojos sin el arreglo, y el `db` falso
+  del archivo pasó a responder **por nombre de colección** — devolvía la misma
+  lista para cualquier `collection(x)`, lo que habría hecho pasar un barrido que
+  no lee `/librerias` en absoluto.
+
+  **Lo ya subido a producción no se recupera:** las tres guías se cargaron el
+  2026-09-11 y el barrido corre desde B-221, así que una foto de más de 72 horas
+  puede no estar. Hay que volver a subirla desde el panel.
+
 - **El publicador ve —y solo ve— las actividades de su ciudad** — **B-919**, D-690.
   Pedido del dueño: «ella solo va a cargar eventos en Mar del Plata pero puede ser
   que no sea la única. La idea es que en su bandeja aparezcan los que ella creó pero

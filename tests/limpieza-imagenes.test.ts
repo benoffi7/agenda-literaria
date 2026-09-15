@@ -23,6 +23,7 @@ import {
   referenciasEnUso,
 } from '../functions/limpieza-imagenes.js';
 import { rutaDeMiniatura } from '../functions/imagenes.js';
+import { COLECCIONES_DE_DIRECTORIO } from '../functions/directorios.js';
 
 const HORA = 60 * 60 * 1000;
 const AHORA = Date.parse('2026-09-10T12:00:00Z');
@@ -198,28 +199,45 @@ describe('decidirLimpieza — qué objeto está huérfano', () => {
  * Las dos listas son **independientes** a propósito, igual que en Firestore: una
  * versión puede existir sin que exista su actividad (subcolección huérfana de un
  * borrado, B-41/B-89), y eso es un caso que hay que poder escribir acá.
+ *
+ * **Y las colecciones se responden por nombre** — B-922. Hasta acá este doble
+ * devolvía la misma lista para cualquier `collection(x)`, que con una sola
+ * colección leída daba igual. Con cuatro deja de darlo: una librería que
+ * devuelva las imágenes de una actividad haría pasar un barrido que no lee
+ * `/librerias` en absoluto, o sea el bug exacto que B-922 arregla. `otras` es el
+ * mapa de las demás colecciones; la que no esté declarada viene vacía.
  */
 const dbFalso = (
   documentos: Record<string, unknown>[],
   versiones: Record<string, unknown>[] = [],
+  otras: Record<string, Record<string, unknown>[]> = {},
 ) => {
   const llamadas: {
     coleccion?: string;
     campo?: string;
     grupo?: string;
     campoDeVersion?: string;
-  } = {};
+    /** Todas las colecciones pedidas, en orden. `coleccion` es la primera. */
+    colecciones: string[];
+    /** Qué campo se proyectó en cada una. */
+    campos: Record<string, string>;
+  } = { colecciones: [], campos: {} };
   const snap = (docs: Record<string, unknown>[]) => ({
     docs: docs.map((data) => ({ data: () => data })),
   });
   return {
     db: {
       collection: (coleccion: string) => {
-        llamadas.coleccion = coleccion;
+        llamadas.colecciones.push(coleccion);
+        llamadas.coleccion ??= coleccion;
         return {
           select: (campo: string) => {
-            llamadas.campo = campo;
-            return { get: async () => snap(documentos) };
+            llamadas.campos[coleccion] = campo;
+            llamadas.campo ??= campo;
+            return {
+              get: async () =>
+                snap(coleccion === 'actividades' ? documentos : (otras[coleccion] ?? [])),
+            };
           },
         };
       },
@@ -292,6 +310,97 @@ describe('referenciasEnUso — qué storagePath están en uso hoy', () => {
     const { db } = dbFalso([{ imagenes: [{ url: 'https://ejemplo.com/flyer.jpg' }] }]);
     const referenciados = await referenciasEnUso(db as never);
     expect(referenciados.size).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-922 — las tres colecciones de la Guía referencian imágenes, y el
+// barrido no las contaba
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * El P0 que este bloque fija, dicho una vez: los tres formularios del panel usan
+ * el **mismo** `GaleriaEditor` que una actividad, así que la foto de una
+ * librería vive en `imagenes/img_<uuid>.jpg` — indistinguible desde el bucket—.
+ * Contando como referencia solo `/actividades` y su historial, **toda** foto de
+ * una ficha de directorio era huérfana desde que se subía, y la corrida
+ * siguiente a las 72 horas la borraba dejando la ficha publicada con la imagen
+ * rota. Sin error y sin nada en rojo.
+ */
+describe('B-922 · referenciasEnUso también cuenta las fichas de la Guía', () => {
+  it('lee las tres colecciones de directorio, proyectadas a solo imagenes', async () => {
+    // Mutación: borrar el `...COLECCIONES_DE_DIRECTORIO.map(...)` del
+    // `Promise.all`. `llamadas.colecciones` se queda en `['actividades']` y
+    // esto se pone rojo.
+    //
+    // Y la lista se **deriva** del módulo que declara qué directorios existen,
+    // no se escribe acá: el día que entre un cuarto, este caso lo exige solo.
+    const { db, llamadas } = dbFalso([]);
+    await referenciasEnUso(db as never);
+    for (const coleccion of COLECCIONES_DE_DIRECTORIO) {
+      expect(llamadas.colecciones).toContain(coleccion);
+      // El mismo cuidado que con las actividades: sin el `select`, el
+      // `contactoDeQuienCargo` de quien cargó la ficha —dato personal de un
+      // tercero— entra a la memoria de la Function para leerle un array de
+      // paths (§5.1, clase de D-159).
+      expect(llamadas.campos[coleccion]).toBe('imagenes');
+    }
+  });
+
+  it('la foto de una librería publicada NO queda huérfana', async () => {
+    // El caso literal del P0. Sin el arreglo, `referenciados` viene vacío y
+    // `decidirLimpieza` manda a borrar el original y su miniatura.
+    const { db } = dbFalso([], [], {
+      librerias: [{ imagenes: [{ storagePath: 'imagenes/img_libreria.jpg' }] }],
+    });
+    const referenciados = await referenciasEnUso(db as never);
+
+    const { aBorrar } = decidirLimpieza({
+      objetos: [
+        { nombre: 'imagenes/img_libreria.jpg', creado: VIEJO },
+        // `rutaDeMiniatura` devuelve `null` para lo que no es un original; acá
+        // lo es, y el `??` lo dice sin apagar el tipo.
+        { nombre: rutaDeMiniatura('imagenes/img_libreria.jpg') ?? '', creado: VIEJO },
+      ],
+      referenciados,
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual([]);
+  });
+
+  it('una ficha de cada directorio sostiene su imagen, y las tres se juntan', async () => {
+    // Que las tres entren al **mismo** Set es lo que hace que `decidirLimpieza`
+    // no se entere de que los directorios existen, igual que con el historial.
+    const { db } = dbFalso([{ imagenes: [{ storagePath: 'imagenes/img_actividad.jpg' }] }], [], {
+      librerias: [{ imagenes: [{ storagePath: 'imagenes/img_lib.jpg' }] }],
+      suscripciones: [{ imagenes: [{ storagePath: 'imagenes/img_sus.jpg' }] }],
+      lugares: [
+        { imagenes: [{ storagePath: 'imagenes/img_lug.jpg' }] },
+        { imagenes: [] },
+        {}, // una ficha sin el campo en absoluto, como las anteriores a la galería
+      ],
+    });
+    const referenciados = await referenciasEnUso(db as never);
+    expect([...referenciados].sort()).toEqual([
+      'imagenes/img_actividad.jpg',
+      'imagenes/img_lib.jpg',
+      'imagenes/img_lug.jpg',
+      'imagenes/img_sus.jpg',
+    ]);
+  });
+
+  it('lee las fichas de TODOS los estados, no solo las publicadas', async () => {
+    // Mismo argumento que el borrador de una actividad: una ficha `pendiente`
+    // en la bandeja es dueña de su imagen, y el día que se publique la
+    // necesita. Un `where('estado','==','publicado')` acá borraría la foto de
+    // todo lo que espera decisión.
+    const { db } = dbFalso([], [], {
+      librerias: [{ estado: 'pendiente', imagenes: [{ storagePath: 'imagenes/img_pend.jpg' }] }],
+      lugares: [{ estado: 'rechazado', imagenes: [{ storagePath: 'imagenes/img_rech.jpg' }] }],
+    });
+    const referenciados = await referenciasEnUso(db as never);
+    expect(referenciados.has('imagenes/img_pend.jpg')).toBe(true);
+    expect(referenciados.has('imagenes/img_rech.jpg')).toBe(true);
   });
 });
 

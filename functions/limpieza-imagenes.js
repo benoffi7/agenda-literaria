@@ -35,6 +35,7 @@
  *
  * Está probado en `tests/limpieza-imagenes.test.ts`.
  */
+import { COLECCIONES_DE_DIRECTORIO } from './directorios.js';
 import { PREFIJO_MINIATURAS, PREFIJO_ORIGINALES, rutaDeMiniatura } from './imagenes.js';
 
 /**
@@ -165,7 +166,8 @@ const sumarStoragePaths = (destino, imagenes) => {
 
 /**
  * Los `storagePath` que **alguna** actividad referencia hoy, de cualquier
- * estado — y también los que referencia su **historial**.
+ * estado — y también los que referencia su **historial** y los de las tres
+ * colecciones de la Guía.
  *
  * Recibe el `db` (no importa `firebase-admin`), así que vive acá, en el módulo
  * puro, y el test lo importa de acá y no del trigger — que arrastra
@@ -185,6 +187,27 @@ const sumarStoragePaths = (destino, imagenes) => {
  * la imagen de vuelta. Por eso entra al mismo Set y no a una lista aparte —
  * `decidirLimpieza` no se entera de que el historial existe, y las miniaturas
  * siguen sobreviviendo por derivación de su original, sin tocar nada.
+ *
+ * ── B-922: las tres colecciones de la Guía cuentan igual ──────────────────
+ * Y esto no era una mejora: era un **P0 en producción**. `LibreriaFormulario`,
+ * `SuscripcionFormulario` y `LugarFormulario` usan el **mismo** `GaleriaEditor`
+ * que una actividad (D-125), así que la foto del frente de una librería se sube
+ * a `imagenes/img_<uuid>.jpg` — el mismo prefijo, indistinguible desde el
+ * bucket—. Este barrido contaba como referencia solo a `/actividades` y a su
+ * historial, así que **toda** foto de una ficha de directorio era huérfana desde
+ * el momento en que se subía y se la llevaba la corrida siguiente a las 72
+ * horas, dejando la ficha publicada con la imagen rota. Sin error, sin log y sin
+ * ningún test en rojo: el objeto se borra porque nadie dijo que lo usaba.
+ *
+ * **La lista sale de `COLECCIONES_DE_DIRECTORIO`** (`directorios.js`) y no se
+ * escribe acá: ese módulo ya es el que declara qué colecciones de la Guía
+ * existen —de ahí salen los triggers de rebuild—, y una cuarta que se sume tiene
+ * que entrar a este barrido **sola**. Escribir las tres a mano era repetir el
+ * modo de falla que esto vino a cerrar, con un directorio más.
+ *
+ * Es también por qué el costo de leerlas no se discute como se discute el de las
+ * versiones: son tres queries de una colección chica, y **leer de menos acá
+ * borra archivos**.
  *
  * ── De paso, arregla el rescate del borrado (B-41) ────────────────────────
  * Al borrar una actividad, `guardarVersionAlBorrar` deja la única copia de la
@@ -226,9 +249,10 @@ const sumarStoragePaths = (destino, imagenes) => {
 export const referenciasEnUso = async (db) => {
   const referenciados = new Set();
 
-  const [vivas, versiones] = await Promise.all([
+  const [vivas, versiones, ...directorios] = await Promise.all([
     db.collection('actividades').select('imagenes').get(),
     db.collectionGroup(SUBCOLECCION_VERSIONES).select(CAMPO_IMAGENES_DE_VERSION).get(),
+    ...COLECCIONES_DE_DIRECTORIO.map((c) => db.collection(c).select('imagenes').get()),
   ]);
 
   for (const doc of vivas.docs) sumarStoragePaths(referenciados, doc.data().imagenes);
@@ -236,6 +260,9 @@ export const referenciasEnUso = async (db) => {
   // `{ documento: { imagenes: [...] } }`, no `{ 'documento.imagenes': [...] }`.
   for (const doc of versiones.docs) {
     sumarStoragePaths(referenciados, doc.data()?.documento?.imagenes);
+  }
+  for (const snap of directorios) {
+    for (const doc of snap.docs) sumarStoragePaths(referenciados, doc.data().imagenes);
   }
 
   return referenciados;
