@@ -401,7 +401,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los quince triggers del proyecto', () => {
+  it('encuentra los dieciséis triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -449,6 +449,22 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        *    prueba de qué se pidió, y un write-back volvería a dispararlo
        *    (trampa 3).
        */
+      /*
+       * B-904 / B-912 / B-917 — la retención de las tres guías. El quinto
+       * `onSchedule`, y **entró solo** por la misma puerta que los anteriores:
+       * la clase ya estaba en `CLASES_DE_TRIGGER`, así que lo único que hubo que
+       * confirmar a mano es el conteo.
+       *
+       * Cae exactamente donde su vecino `borrarPropuestasVencidas`: **B-82** no
+       * lo mira (es un schedule, y borrar dos veces el mismo documento deja el
+       * mismo estado), **B-85** sí lo mira con los dos síntomas prendidos y lo
+       * deja afuera porque no habla con la red. Su guarda propia —la precondición
+       * de B-864— está declarada abajo en `GUARDAS_DE_BARRIDO`, y acá hay una
+       * diferencia que conviene tener escrita: este barrido **no borra nada de
+       * Storage**, así que no tiene la mitad sin precondición que allá obligó a
+       * elegir cuál perder.
+       */
+      'borrarFichasVencidas',
       'borrarImagenAlCerrar',
       'borrarPropuestasVencidas',
       'dispararRebuild',
@@ -1342,6 +1358,23 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
         'tocó entre la query y el borrado sobrevive y la corrida la cuenta como `rescatadas`. ' +
         'La mitad de Storage no está cubierta —es el final `la-tocaron-tarde`— y eso es lo que ' +
         'una guarda de `generacion` cerraría.',
+    },
+    borrarFichasVencidas: {
+      guarda: 'precondicion',
+      donde: 'functions/retencion.js',
+      marcas: [
+        /borrarFicha = async \(db, coleccion, \{ id, visto \}\)/,
+        /await ref\.delete\(\{ lastUpdateTime: visto \}\)/,
+      ],
+      ventana: 'cubierta',
+      porque:
+        'B-904/B-912/B-917 — `borrarFicha` relee con `getAll(ref, { fieldMask: [] })` y borra ' +
+        'con `delete({ lastUpdateTime: visto })`, así que la ficha que un admin reabre entre la ' +
+        'query y el borrado sobrevive y la corrida la cuenta como `rescatadas`. **Y acá la ' +
+        'ventana está cubierta entera**, a diferencia de su vecino: este barrido no borra nada ' +
+        'de Storage —las fotos de una ficha viven en `imagenes/` y las levanta ' +
+        '`limpiarImagenesHuerfanas` desde B-922—, así que no existe la mitad sin precondición ' +
+        'que allá obligó a elegir cuál perder.',
     },
     limpiarImagenesHuerfanas: {
       guarda: 'margen',

@@ -20,10 +20,15 @@ import { logger } from 'firebase-functions/v2';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
+import { COLECCIONES_DE_DIRECTORIO } from './directorios.js';
 import {
+  MAX_FICHAS_POR_CORRIDA,
   MAX_PROPUESTAS_POR_CORRIDA,
+  borrarFicha,
   borrarPropuesta,
   decidirRetencion,
+  decidirRetencionDeFichas,
+  fichasVencibles,
   propuestasVencibles,
 } from './retencion.js';
 
@@ -199,6 +204,152 @@ export const borrarPropuestasVencidas = onSchedule(
         // no el tamaño de la bandeja.
         candidatas: propuestas.length,
       });
+    }
+  },
+);
+
+/**
+ * **B-904 / B-912 / B-917 — el barrido de las tres guías.**
+ *
+ * Una sola Function para las tres colecciones, que es lo que B-904 pedía, y la
+ * lista sale de `COLECCIONES_DE_DIRECTORIO`: la cuarta guía entra sola. La
+ * decisión de qué caducó es pura y vive en `retencion.js`, incluido el porqué
+ * este barrido **no toca Storage** —las fotos de una ficha viven en `imagenes/`
+ * y las levanta `limpiarImagenesHuerfanas` desde B-922—.
+ *
+ * ── Por qué es una Function aparte y no un `for` adentro de la de arriba ──
+ * Porque son dos vocabularios de estado, dos tablas de plazos y dos formas de
+ * borrar (allá el objeto de Storage va primero y sin precondición; acá no hay
+ * objeto). Meterlas en la misma corrida las ataría a compartir tope, log y
+ * destino del fallo: una colección que falla no puede dejar sin barrer a las
+ * otras tres, y menos a las propuestas, que son el dato personal más antiguo del
+ * proyecto. Lo que **sí** se comparte es la decisión pura, que es donde están
+ * las propiedades que costaron cuatro ítems cada una.
+ *
+ * El tope es **por colección** y por eso el bucle no lleva un acumulado global:
+ * cada directorio tiene su propia bandeja y su propio ritmo.
+ */
+export const borrarFichasVencidas = onSchedule(
+  {
+    region: REGION,
+    schedule: 'every 24 hours',
+    timeZone: 'America/Argentina/Buenos_Aires',
+    /*
+     * La misma identidad del resto del deploy. Necesita `datastore.user` y nada
+     * más: a diferencia de `borrarPropuestasVencidas`, este barrido no borra
+     * objetos, así que ni siquiera usa el permiso de Storage. **No hay IAM nuevo
+     * que otorgar.**
+     */
+    serviceAccount: CUENTA_DE_SERVICIO,
+    memory: '256MiB',
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const db = getFirestore();
+    // Un solo reloj para las cuatro llamadas de cada colección, por lo mismo que
+    // arriba: la lectura corta consultando la misma decisión que después borra.
+    const ahora = Date.now();
+
+    for (const coleccion of COLECCIONES_DE_DIRECTORIO) {
+      try {
+        const fichas = await fichasVencibles(db, coleccion, { ahora });
+        const { aBorrar, motivos } = decidirRetencionDeFichas({ fichas, ahora });
+
+        if (aBorrar.length === 0) {
+          // `motivos` lleva ids y el motivo, nunca contenido: el contacto de
+          // quien cargó la ficha ni siquiera se leyó (`fichasVencibles` usa
+          // `select`).
+          logger.debug('retención de la guía: nada que borrar', {
+            coleccion,
+            candidatas: fichas.length,
+            motivos,
+          });
+          continue;
+        }
+
+        let borradas = 0;
+        let rescatadas = 0;
+        for (const caducada of aBorrar) {
+          try {
+            const final = await borrarFicha(db, coleccion, caducada);
+
+            if (final === 'la-tocaron') {
+              /*
+               * La ficha se salvó y el log lo dice sin drama: un admin la tocó
+               * entre la query y el borrado, así que el plazo se le renovó y no
+               * se tocó nada. Es el resultado correcto, no un fallo — y acá, a
+               * diferencia de una propuesta, se salvó **entera**: no hay ninguna
+               * foto que se haya ido por delante.
+               */
+              rescatadas += 1;
+              logger.info('ficha no borrada: la tocaron durante la corrida', {
+                coleccion,
+                ficha: caducada.id,
+                causa: motivos[caducada.id],
+              });
+              continue;
+            }
+
+            borradas += 1;
+            logger.info('ficha borrada por retención', {
+              coleccion,
+              ficha: caducada.id,
+              // `causa` y no `motivo`: en este dominio «motivo» es el del
+              // rechazo, que es una nota interna sobre el trabajo de otra
+              // persona y no tiene por qué acercarse a un log.
+              causa: motivos[caducada.id],
+              // `ya-no-esta` es un documento que otra corrida ya se llevó; se
+              // cuenta como borrada porque el estado final es el que se quería.
+              final,
+            });
+          } catch (e) {
+            // Una que falla no puede cortar el barrido de las demás.
+            logger.error('no se pudo borrar una ficha vencida', {
+              coleccion,
+              ficha: caducada.id,
+              error: e?.message,
+            });
+          }
+        }
+
+        /*
+         * Es un piso y no un total, como en las propuestas: son las vencidas que
+         * esta corrida **vio** y no va a borrar. Lo que queda después del cursor
+         * ni siquiera se leyó.
+         */
+        const pendientesPorTope = Object.values(motivos).filter((m) =>
+          m.endsWith('-pendiente-por-tope'),
+        ).length;
+        if (pendientesPorTope > 0) {
+          logger.warn('la retención de la guía se cortó por el tope de la corrida', {
+            coleccion,
+            borradas,
+            rescatadas,
+            pendientesPorTope,
+            tope: MAX_FICHAS_POR_CORRIDA,
+          });
+        } else {
+          logger.info('retención de la guía terminada', {
+            coleccion,
+            borradas,
+            rescatadas,
+            // Las leídas, no las que hay: con trabajo por delante la lectura
+            // corta apenas llena el tope.
+            candidatas: fichas.length,
+          });
+        }
+      } catch (e) {
+        /*
+         * **Y el `try` abarca la colección entera, no solo el borrado.** Si la
+         * query de `/librerias` falla, `/suscripciones` y `/lugares` se tienen
+         * que barrer igual: son tres bandejas independientes y un plazo que se
+         * deja de cumplir es un dato personal que se queda de más.
+         */
+        logger.error('falló la retención de una colección de la guía', {
+          coleccion,
+          error: e?.message,
+        });
+      }
     }
   },
 );

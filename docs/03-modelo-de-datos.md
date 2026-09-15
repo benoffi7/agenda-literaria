@@ -568,7 +568,7 @@ de B-364):
 | `imagenes[]` | el **mismo** tipo `Imagen` de una actividad (D-125), con su portada, su epígrafe y su `storagePath` |
 | `direccion`, `barrio`, `ciudad`, `geo` | `barrio` es un slug de `/opciones/barrio` — **el mismo que usan las actividades**, que es lo que va a permitir cruzarlas en el hub de barrio |
 | `instagram`, `whatsapp`, `web`, `mail` | los cuatro contactos **públicos**, y ése es el punto de la ficha: existe para que la gente le escriba a la librería |
-| `contactoDeQuienCargo` | ⚠️ **interno**. Es el **segundo dato personal de un tercero** que guarda el proyecto, después del `contacto` de una propuesta. No sale a ninguna salida pública, y lo sostienen la whitelist de `src/lib/libreriaPublica.ts` y el centinela de `tests/libreria-publica.test.ts` |
+| `contactoDeQuienCargo` | ⚠️ **interno**. Es el **segundo dato personal de un tercero** que guarda el proyecto, después del `contacto` de una propuesta. No sale a ninguna salida pública, y lo sostienen la whitelist de `src/lib/libreriaPublica.ts` y el centinela de `tests/libreria-publica.test.ts` **Y tiene plazo desde B-904/B-912/B-917**: una ficha `rechazado` se borra a los 30 días del rechazo y una `pendiente` a los 30 días sin que nadie la toque, con `borrarFichasVencidas` (`functions/retencion-trigger.js`). La `publicado` no vence, y eso es una decisión: su contacto es lo que deja avisarle a la ficha que existe o darla de baja cuando cierra. |
 | `estado`, `origen`, `revision`, `creadoEn` | el ciclo de vida. `origen` dice si la cargó el panel o un formulario público, `revision` lleva el uid de quien decidió y el motivo del descarte |
 | `publicadaAlgunaVez` | declarado y **sin trigger que lo escriba todavía** (B-905): hoy el candado del slug cae al estado actual |
 
@@ -602,7 +602,7 @@ topes atados por `tests/suscripciones.test.ts`:
 | `precio` | ⚠️ `DatoConFecha<{ monto, porPeriodo }>` — **el único dato del proyecto que envejece a la vista**. Ver abajo |
 | `alcance[]` | slugs de `/opciones/alcance-envio`: a dónde llega |
 | `linkDeSuscripcion`, `instagram`, `whatsapp`, `mail` | los cuatro destinos **públicos**. El primero es un link a la página de cobro de un tercero (§ 7 del PRD) y admite `https:` **y solo `https:`** |
-| `contactoDeQuienCargo` | ⚠️ **interno**, como en `/librerias`. La whitelist de `src/lib/suscripcionPublica.ts` y el centinela de `tests/suscripcion-publica.test.ts` |
+| `contactoDeQuienCargo` | ⚠️ **interno**, como en `/librerias`. La whitelist de `src/lib/suscripcionPublica.ts` y el centinela de `tests/suscripcion-publica.test.ts` **Y tiene plazo desde B-904/B-912/B-917**: una ficha `rechazado` se borra a los 30 días del rechazo y una `pendiente` a los 30 días sin que nadie la toque, con `borrarFichasVencidas` (`functions/retencion-trigger.js`). La `publicado` no vence, y eso es una decisión: su contacto es lo que deja avisarle a la ficha que existe o darla de baja cuando cierra. |
 | `estado`, `origen`, `revision`, `creadoEn`, `publicadaAlgunaVez` | el ciclo de vida, igual que en `/librerias` |
 
 ### El precio, y por qué es un `DatoConFecha` y no tres campos — DEC-12
@@ -649,7 +649,7 @@ atados por `tests/lugares.test.ts`.
 | `incluye[]` + `incluyeOtro` | slugs de `/opciones/incluye-lugar`: mesa larga, proyector, accesibilidad, se pueden vender libros |
 | `condicion`, `condicionNotas`, `precio` | ⚠️ **la condición es obligatoria y el precio no**, y es el hallazgo del PRD. Ver abajo |
 | `instagram`, `whatsapp`, `mail`, `web` | los cuatro destinos **públicos**. La `web` admite `http://`, al revés que el link de cobro de una suscripción: es una página institucional, no un destino de pago |
-| `contactoDeQuienCargo` | ⚠️ **interno**, como en las otras dos. Y acá tiene un uso propio: es por dónde se pide el permiso del § 6 |
+| `contactoDeQuienCargo` | ⚠️ **interno**, como en las otras dos. Y acá tiene un uso propio: es por dónde se pide el permiso del § 6 **Y tiene plazo desde B-904/B-912/B-917**: una ficha `rechazado` se borra a los 30 días del rechazo y una `pendiente` a los 30 días sin que nadie la toque, con `borrarFichasVencidas` (`functions/retencion-trigger.js`). La `publicado` no vence, y eso es una decisión: su contacto es lo que deja avisarle a la ficha que existe o darla de baja cuando cierra. |
 | `estado`, `origen`, `revision`, `creadoEn`, `searchText`, `publicadaAlgunaVez` | el ciclo de vida, igual que en las otras dos |
 
 ### `direccionPublica` — el par flag + dato, y el dato es la casa de alguien

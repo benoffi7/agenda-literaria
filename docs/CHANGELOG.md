@@ -2,6 +2,41 @@
 
 ## Sin publicar
 
+- **Una ficha descartada de la Guía ya no se queda con el contacto de quien la
+  cargó** — **B-904**, **B-912**, **B-917**. Es DEC-13 sin contestar, tres veces:
+  `contactoDeQuienCargo` es el mismo dato que el `contacto` de una propuesta y las
+  tres colecciones no tenían ninguna Function. Lo único que había era el borrado a
+  mano, que depende de que alguien se acuerde — justo lo que B-838 decidió no
+  aceptar. Y con los formularios públicos de `/guia/<x>/sumar` el campo pasa de
+  opcional a **obligatorio**, así que cada alta anónima trae el dato de un tercero:
+  la excepción del borrado va antes que el dato.
+
+  **Una sola Function para las tres** (`borrarFichasVencidas`), recorriendo
+  `COLECCIONES_DE_DIRECTORIO`: la cuarta guía entra sola. `rechazado` a los 30 días
+  del rechazo, `pendiente` a los 30 días sin que nadie la toque, `publicado` no
+  vence.
+
+  **El plazo que hacía falta de verdad no era el que los ítems nombraban.** El de
+  `rechazado` es DEC-13; el que cambia algo es el de `pendiente` —B-844 aplicado
+  acá—, porque sin él la única forma de que una ficha caducara sería que un admin
+  apretara «Descartar». Con el formulario abierto, ésa es además la ficha típica:
+  la que llegó de afuera y nadie miró.
+
+  **La decisión pura se reusa, no se copia:** `decidirRetencionDeFichas` es
+  `decidirRetencion` con otra tabla, otro estado terminal y otro tope. El reloj de
+  «la última señal de vida», el fallar cerrado ante una fecha ilegible y el recorte
+  por tope costaron un ítem de backlog cada uno.
+
+  **Y no toca Storage**, que es el cambio de forma respecto de las propuestas: las
+  fotos de una ficha viven en `imagenes/` y las levanta `limpiarImagenesHuerfanas`
+  —desde B-922—. Consecuencia: no existe el final `la-tocaron-tarde`, así que la
+  ficha que un admin reabre en el último segundo se salva entera.
+
+  Mutaciones probadas: el estado terminal equivocado (`'rechazada'` por
+  `'rechazado'`) pone dos casos en rojo, y sacar el `select()` otros dos — uno de
+  ellos el que afirma que el contacto del tercero no entra a la memoria de la
+  Function.
+
 - **Las fotos de las tres guías se borraban solas a las 72 horas** — **B-922**, P0.
   `limpiarImagenesHuerfanas` cuenta como referencia a `/actividades` y a su
   historial, y nada más. Los tres formularios del panel usan el **mismo**

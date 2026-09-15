@@ -56,6 +56,11 @@ export { reporteAIssue } from './reportes-trigger.js';
 export { optimizarImagen } from './imagenes-trigger.js';
 export { limpiarImagenesHuerfanas } from './imagenes-limpieza-trigger.js';
 export { borrarPropuestasVencidas } from './retencion-trigger.js';
+// B-904 / B-912 / B-917 — la misma promesa de DEC-13 para las tres guías: una
+// ficha descartada, o que nadie miró, no se queda con el contacto de quien la
+// cargó para siempre. Una Function para las tres, con la lista derivada de
+// `COLECCIONES_DE_DIRECTORIO`.
+export { borrarFichasVencidas } from './retencion-trigger.js';
 export { borrarImagenAlCerrar } from './propuestas-trigger.js';
 // B-896 — la única callable del proyecto, y la única Function con
 // `enforceAppCheck: true`: recibe el flyer de `/proponer`, lo sanea del lado del

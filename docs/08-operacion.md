@@ -1334,6 +1334,57 @@ vuelta**. El documento sigue nombrando su
 descarga es una capability y sirve el objeto sin volver a evaluar las reglas
 (**B-846**).
 
+### `borrarFichasVencidas` — la retención de las tres guías (B-904, B-912, B-917)
+
+Es DEC-13 sin contestar, tres veces. `contactoDeQuienCargo` es **el mismo dato**
+que el `contacto` de una propuesta —el mail, el WhatsApp o el Instagram de alguien
+que no está logueado— y hasta acá una ficha `rechazado` de `/librerias`,
+`/suscripciones` o `/lugares` lo conservaba sin plazo: esas colecciones no tenían
+ninguna Function. Lo único que había era `allow delete: if esAdmin()`, o sea el
+borrado a mano, que depende de que alguien se acuerde — justo lo que B-838 decidió
+no aceptar.
+
+Y con los formularios públicos de `/guia/<x>/sumar` el campo pasa de opcional a
+**obligatorio**: quien carga desde afuera no vuelve a entrar, así que sin contacto
+no hay forma de repreguntar. Cada alta anónima trae el dato de un tercero, y la
+excepción del borrado va **antes** que el dato.
+
+| Estado | Qué pasa | Desde cuándo se cuenta |
+|---|---|---|
+| `rechazado` | a los **30 días** se va el documento | `revision.en`, o sea el rechazo |
+| `pendiente` | a los **30 días** sin que nadie la toque, se va | el máximo entre `creadoEn` y `revision.en` |
+| `publicado` | **no vence** | — |
+
+**`publicado: null` es una decisión y no lo que sobró.** Una ficha publicada está
+en el sitio: su contacto es lo que deja avisarle a la librería que su ficha existe,
+corregirle un horario o darla de baja cuando cierra. Es el mismo argumento con el
+que la propuesta `aceptada` no vence, y tiene su caso propio en los tests para que
+nadie le ponga un número por simetría.
+
+**Una Function para las tres, y la lista se deriva.** El bucle recorre
+`COLECCIONES_DE_DIRECTORIO` (`functions/directorios.js`), que ya es quien declara
+qué guías existen: **la cuarta entra sola**. El tope de borrados es **por
+colección** —cada directorio tiene su propia bandeja— y una colección que falla no
+deja sin barrer a las otras: el `try` abarca la lectura, no solo el borrado.
+
+**Y no toca Storage, que es la diferencia con su vecina de abajo.** Una propuesta
+guarda su flyer bajo `propuestas/`, un prefijo que `limpiarImagenesHuerfanas` no
+barre, así que allá las dos mitades tienen que irse juntas. Una ficha de directorio
+usa el **mismo** `GaleriaEditor` que una actividad, así que sus fotos viven en
+`imagenes/` y las levanta ese barrido — **desde B-922, que es el cambio que lo hizo
+cierto**: hasta entonces no las contaba como referencia y se las llevaba igual, a
+las 72 horas y con la ficha publicada. Borrado el documento, la foto queda sin
+dueño y se va sola con el margen de gracia.
+
+Consecuencia práctica: acá **no existe el final `la-tocaron-tarde`**. La ficha que
+un admin reabre en el último segundo se salva **entera**, porque no hay una segunda
+mitad sin precondición. `delete({ lastUpdateTime })` cubre la ventana completa.
+
+**El deploy lo hace CI**: el push a `main` ve el cambio en `functions/` y la
+despliega sola. **No hay IAM nuevo**: necesita `datastore.user` y nada más — sin
+Storage, ni siquiera usa el permiso de borrado de objetos. A mano, si hiciera
+falta: `firebase deploy --only functions:borrarFichasVencidas`.
+
 ### `borrarPropuestasVencidas` — la retención de propuestas (B-838, DEC-13, B-844)
 
 Una propuesta lleva **el mail o el WhatsApp de alguien que no está logueado**: el

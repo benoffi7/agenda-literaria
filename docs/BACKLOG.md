@@ -869,7 +869,46 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
-### B-912 · `/suscripciones` tampoco tiene retención — DEC-13 sin contestar, la segunda vez · P1
+### B-912 · `/suscripciones` tampoco tiene retención — ✅ hecho (2026-09-15) · P1
+
+> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
+> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
+> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
+> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
+> una».
+>
+> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
+> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
+> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
+> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
+> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
+> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
+> parámetros con el default de hoy — `estadoRechazado` y `tope`.
+>
+> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
+> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
+> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
+> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
+> la retención automática viene a sacar. Con el formulario público abierto, ésa es
+> además la ficha típica: la que llegó de afuera y nadie miró.
+>
+> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
+> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
+> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
+>
+> **No borra nada de Storage, y ése es el cambio de forma respecto de las
+> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
+> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
+> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
+> que un admin reabre en el último segundo se salva **entera**.
+>
+> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
+> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
+> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
+> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
+> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
+> afirma que el contacto del tercero **no entra a la memoria de la Function**.
+
 
 Es **B-904 con otra colección**, y conviene resolverlas juntas. Una ficha
 `rechazado` conserva el `contactoDeQuienCargo` de quien la cargó para siempre; lo
@@ -881,7 +920,46 @@ una Function por colección sino **extender `functions/retencion.js` con la list
 colecciones** — que ya existe como mapa del lado del rebuild
 (`CAMPOS_PUBLICOS_POR_DIRECTORIO`).
 
-### B-904 · `/librerias` no tiene retención: una ficha descartada se queda con el contacto de quien la cargó · P1
+### B-904 · `/librerias` no tiene retención: una ficha descartada se queda con el contacto de quien la cargó — ✅ hecho (2026-09-15) · P1
+
+> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
+> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
+> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
+> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
+> una».
+>
+> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
+> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
+> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
+> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
+> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
+> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
+> parámetros con el default de hoy — `estadoRechazado` y `tope`.
+>
+> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
+> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
+> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
+> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
+> la retención automática viene a sacar. Con el formulario público abierto, ésa es
+> además la ficha típica: la que llegó de afuera y nadie miró.
+>
+> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
+> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
+> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
+>
+> **No borra nada de Storage, y ése es el cambio de forma respecto de las
+> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
+> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
+> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
+> que un admin reabre en el último segundo se salva **entera**.
+>
+> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
+> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
+> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
+> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
+> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
+> afirma que el contacto del tercero **no entra a la memoria de la Function**.
+
 
 Es **DEC-13 sin contestar** para la colección nueva. `contactoDeQuienCargo` es el
 **segundo** dato personal de un tercero que el proyecto guarda, y a diferencia de
@@ -6166,7 +6244,46 @@ Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
 Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
 puertas, no las abre.
 
-### B-917 · `/lugares` tampoco tiene retención, y acá el documento guarda una dirección · P2
+### B-917 · `/lugares` tampoco tiene retención, y acá el documento guarda una dirección — ✅ hecho (2026-09-15) · P2
+
+> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
+> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
+> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
+> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
+> una».
+>
+> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
+> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
+> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
+> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
+> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
+> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
+> parámetros con el default de hoy — `estadoRechazado` y `tope`.
+>
+> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
+> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
+> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
+> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
+> la retención automática viene a sacar. Con el formulario público abierto, ésa es
+> además la ficha típica: la que llegó de afuera y nadie miró.
+>
+> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
+> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
+> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
+>
+> **No borra nada de Storage, y ése es el cambio de forma respecto de las
+> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
+> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
+> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
+> que un admin reabre en el último segundo se salva **entera**.
+>
+> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
+> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
+> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
+> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
+> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
+> afirma que el contacto del tercero **no entra a la memoria de la Function**.
+
 
 Mismo caso que B-904 y B-912: una ficha `rechazado` conserva el
 `contactoDeQuienCargo` de quien la cargó para siempre, y el `delete` del admin está
