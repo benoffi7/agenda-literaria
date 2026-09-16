@@ -21,12 +21,12 @@ fragmentos de código son ilustrativos.
 > | §3 los datos · §3.2 credenciales | ✅ — las tres salidas del build salen de **un solo lector**, `src/lib/contenidoDelSitio.ts`. Desde B-110 son **dos queries** —una por estado— y no la lectura única que dibuja el §3; ver el desvío 7 |
 > | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
-> | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
+> | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/ciudad/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02, y **la quinta clase con B-951** (2026-09-16). Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cinco clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
 > | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**, y **desde B-292 tiene su buscador** — D-381), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
 > | *(fuera del diseño original)* `/anunciar` | ✅ — la sección comercial, **B-770** (2026-09-04). Tampoco estaba en este documento: nació de un pedido del dueño —ofrecerle publicidad a cafés, librerías y espacios culturales— y su acción es **un mail**, sin planes ni precios. Ver **D-450** |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
-> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
+> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cinco hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
 > | §8 mobile | ✅ — una columna, chips con scroll, 44px y `pb-segura`; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) y desde **B-238** (2026-09-03) es una hoja modal de verdad; el **CTA fijo** del detalle se resolvió sin capa modal en **D-145** |
@@ -151,8 +151,8 @@ que exista.
 > toda página estática esté en esa lista **o** exceptuada con su motivo, así que la
 > próxima no se puede olvidar (B-109).
 
-**Catorce patrones de ruta de página, todos estáticos: nueve construidos, los
-cuatro hubs de B-108 y el `/404` de B-310.** Ninguno se genera si quedaría vacío
+**Quince patrones de ruta de página, todos estáticos: nueve construidos, los
+cinco hubs de B-108 —más `/ciudad/*`, de B-951— y el `/404` de B-310.** Ninguno se genera si quedaría vacío
 — salvo el `/404` y `/anunciar`, que no pueden quedar vacíos porque no dependen
 de los datos.
 
@@ -1628,7 +1628,7 @@ no hace nada.
 > ✅ **Construidas las dos filas de arriba el 2026-09-02 (B-107).** Una sola
 > función por caso, compartida entre las cinco páginas que la necesitan —
 > `migasDeDetalle` (`detallePublico.ts`) y `coleccionSchema` (`hubsPublicos.ts`),
-> que arma la home y los cuatro hubs con la misma llamada— por el mismo motivo
+> que arma la home y los cinco hubs con la misma llamada— por el mismo motivo
 > por el que este documento entero insiste en eso: escrita cinco veces sería la
 > clase de bug de B-88 el día que una de las cinco quede afuera de un cambio.
 >
@@ -2316,7 +2316,7 @@ son datos que ya se muestran en público por otros caminos.
 | 3 | ~~**`actualizadoEn`** (ISO de `updatedAt`)~~ — **hecho el 2026-09-03, la mitad del `lastmod`** (B-112). `lastmodDelSitemap` la arma desde `publicadasEditadasEn`, que sigue viajando **al lado** de la proyección y no adentro de `toPublic` — el mismo patrón que `canceladasEditadasEn` (D-166). La otra mitad, "actualizado el …" en el detalle, quedó afuera a propósito: es una decisión de contenido visible y no de plomería, y no la resolvía este ítem | `lastmod` del sitemap, con la fecha recortada al día (D-138) | hecha |
 | 4 | ~~**`publicadaAlgunaVez`** (o la heurística de `calendarEventId`)~~ — **resuelto por ahora sin campo nuevo** (B-110, D-159): se prueba por el historial. El campo explícito queda en **B-285** | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
 | 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114**. **Mirado el 2026-09-03 y dejado sin hacer, con el motivo escrito abajo** | baja |
-| 6 | **`sede.provincia`** | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
+| 6 | ~~**`sede.provincia`**~~ — **el campo existe desde B-950** (D-710): es taxonomía, se exige al publicar y se completa para casi todo el catálogo. Lo que sigue sin emitirse es el `addressRegion` del `PostalAddress`, y eso quedó como estaba porque Google lo tolera vacío | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
 | 7 | **`resumen` / copete escrito a mano** | Hoy se corta la descripción a 160 caracteres para la `meta description`. Una frase escrita a propósito rinde bastante más en el clic desde el buscador | baja |
 | 8 | **`organizador.slug`** | Solo si se hacen páginas por organizador (decisión 8) | — |
 
@@ -2369,7 +2369,7 @@ Y por qué. Todo esto está pensado y descartado a propósito, no olvidado.
 |---|---|
 | **Páginas por organizador y por tallerista** | Es lo más valioso que falta —"todo lo de Casa Brandon" es una consulta real— pero necesita que el organizador sea una entidad con slug, no un texto por actividad. Con texto libre serían páginas duplicadas por cada variante de tipeo. Necesita decisión de modelo primero |
 | **Páginas por tema (`tags`)** | Depende de **B-05** (etiquetas sin normalizar) y **B-06** (sin UI de administración). Un typo cargado una vez se convertiría en una URL indexada que después hay que sostener |
-| **Páginas por ciudad** | El hub más valioso después de barrio, pero `sede.ciudad` todavía no es taxonomía: hoy sería "CABA", "Caba", "Capital Federal" y "Buenos Aires" como cuatro ciudades |
+| ~~**Páginas por ciudad**~~ — **hecho el 2026-09-16** (B-951) | Estaba afuera con este motivo: «el hub más valioso después de barrio, pero `sede.ciudad` todavía no es taxonomía: hoy sería "CABA", "Caba", "Capital Federal" y "Buenos Aires" como cuatro ciudades». **B-950 lo destrabó convirtiéndola en taxonomía** (D-710), así que la defensa es la misma del hub de barrio —solo las opciones aprobadas con actividad publicada— y no hizo falta inventar ninguna otra |
 | **RSS / ICS por hub** | "Suscribirme a los talleres de Boedo" es lindo y es barato de generar, pero el Google Calendar público ya cubre la necesidad de suscripción, y sumar dos formatos más de la misma agenda multiplica lo que puede quedar desincronizado |
 | **Mapa con todas las sedes** | `sede.geo` ya está en el modelo y tentaría, pero un mapa es una librería de ~50 KB, tiles de terceros y una API que puede ser paga. El caso real —"cómo llego a esta actividad"— lo resuelve el link a Google Maps que ya existe |
 | **Guardar favoritos / recordatorios** | Necesita estado del usuario. El proyecto no tiene usuarios públicos y no quiere tenerlos; el recordatorio lo da el Google Calendar |

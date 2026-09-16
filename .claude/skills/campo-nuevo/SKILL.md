@@ -32,7 +32,7 @@ no se pueden deshacer después.
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
    | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts`, y los tres que deciden **qué página se ofrece** sin vivir ahí: `src/lib/mesPublico.ts` (`mesesEnlazables`), `src/lib/listadoPublico.ts` (`estadoDe`) y `src/lib/directorios.ts` (`directoriosDisponibles`, B-898) |
    | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
-   | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108), incluido `coleccionSchema` (B-107) |
+   | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, **`/ciudad/{slug}`**, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108, y la clase de ciudad desde B-951), incluido `coleccionSchema` (B-107), y `src/lib/contenidoDelSitio.ts` (`caminosDeTipo`, `caminosDeBarrio`, `caminosDeCiudad`) |
    | 12 | GA4 (sitio público) | `src/lib/analyticsSitio.ts` (B-372/B-375) |
    | 13 | la página `/suscribirse` | `src/lib/enlaces.ts` (el `.ics`, el mail y la lista del correo), `src/lib/boletinDelSitio.ts`, `src/pages/suscribirse.astro` |
    | 14 | la ayuda `/ayuda` | `src/lib/ayudaDelSitio.ts` |

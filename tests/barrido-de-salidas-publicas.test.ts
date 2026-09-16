@@ -65,7 +65,7 @@ import {
 } from '@/lib/mesPublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import type { ClaseDeHub, GrupoDeExploracion, Hub } from '@/lib/hubsPublicos';
-import { coleccionSchema, hubDelSitio } from '@/lib/hubsPublicos';
+import { CLASES_DE_HUB, coleccionSchema, hubDelSitio } from '@/lib/hubsPublicos';
 import { frasesDeNoEncontrado } from '@/lib/noEncontrado';
 import { cuentaDePasadas, frasesDePasadas, pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { RUTA_AGENDA } from '@/lib/rutasPublicas';
@@ -1397,12 +1397,17 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
         'mostrarlos en una página.',
     },
     {
-      nombre: 'dónde, para el filtro de barrio',
-      centinelas: ['sede.nombre', 'sede.barrio', 'sede.ciudad'],
+      nombre: 'dónde, para los filtros de lugar',
+      centinelas: ['sede.nombre', 'sede.provincia', 'sede.barrio', 'sede.ciudad'],
       porque:
         'el barrio es el filtro de más valor (§2.1 del diseño) y el nombre de la sede es ' +
         'lo que la tarjeta muestra. La dirección, las indicaciones y las coordenadas NO ' +
-        'están: no se filtra por ellas y viven en el detalle.',
+        'están: no se filtra por ellas y viven en el detalle. **`sede.provincia` entró con ' +
+        'B-950 y no es cosmética**: es el primer nivel de la cascada, y sin ella ' +
+        '`provinciaDeSede` caía al respaldo «¿la ciudad es CABA?» — el único chip posible ' +
+        'era `caba`, y como el eje `ciudad` se abre solo con una provincia no-CABA ' +
+        'elegida, el filtro de ciudad del sitio era inalcanzable. Lo encontró el ' +
+        '`auditor-privacidad`.',
     },
     {
       nombre: 'taxonomías, como slug',
@@ -1790,6 +1795,38 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
       TONOS,
     );
 
+  /**
+   * **El mismo detalle, pero con los hubs emitidos** — B-951, y lo cobró el
+   * `auditor-privacidad`.
+   *
+   * `detalleDe` llama a `detalleDeActividad` **sin** el argumento `rutaDeZona`,
+   * así que corre con el default `SIN_HUBS` y todos los `href` son `null`. En el
+   * build real `caminosDeDetalle` sí lo pasa, y el view-model lleva
+   * `donde[].href = '/barrio/{slug}/'` y `'/ciudad/{slug}/'` — o sea el **slug
+   * crudo**, adentro de una URL.
+   *
+   * O sea que el barrido no estaba mirando la superficie que B-951 agregó, y el
+   * `porque` que declaraba la ausencia de `sede.ciudad` («si el slug crudo
+   * reaparece acá es que la resolución se salteó») era falso: en producción
+   * reaparece, legítimamente, como el `href` de su propio hub.
+   */
+  const detalleConHubsDe = () =>
+    detalleDeActividad(
+      toPublic(actividadCentinela(), 'act_centinela'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+      false,
+      {},
+      false,
+      (campo, slug) =>
+        campo === 'barrio'
+          ? `/barrio/${slug}/`
+          : campo === 'ciudad'
+            ? `/ciudad/${slug}/`
+            : null,
+    );
+
   /** El mismo fixture con otro reloj, para activar las ramas que dependen del tiempo. */
   const detalleDeCon = (ahora: Date) =>
     detalleDeActividad(
@@ -1908,8 +1945,10 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'de Google Maps, escapada — el mismo `construirLinkMapa` que usa el evento (D-20). ' +
         '**`sede.ciudad` salió de esta lista con B-950/B-951**: dejó de ser texto libre, así ' +
         'que la ficha la resuelve a su etiqueta como venía haciendo con el barrio, y lo que ' +
-        'sale está en la lista de abajo. Si el slug crudo reaparece acá es que la resolución ' +
-        'se salteó — que es lo que este cambio de lista fija.',
+        'sale está en la lista de abajo. Ojo que esta corrida usa el default `SIN_HUBS`, o ' +
+        'sea sin ningún `href`: con los hubs emitidos el slug **sí** sale, adentro de la URL ' +
+        'de su propio hub, y eso lo barre el `it` de abajo con `detalleConHubsDe`. Lo cobró ' +
+        'el `auditor-privacidad`, porque el motivo que esta celda decía antes era falso.',
     },
     {
       nombre: 'las etiquetas de /opciones, no los slugs',
@@ -2085,6 +2124,58 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     barrer('página de detalle', JSON.stringify(detalleDe()), PERMITIDO_EN_EL_DETALLE, {
       insensible: true,
     });
+  });
+
+  /**
+   * **La superficie que B-951 agregó, barrida con los hubs puestos** — ver
+   * `detalleConHubsDe`. Sin este caso, el barrido de arriba corre con
+   * `SIN_HUBS` y nunca ve los `href`, que son la única parte del view-model
+   * donde el slug crudo sale al HTML.
+   *
+   * Que el slug salga **no es una fuga**: un slug de barrio o de ciudad ya está
+   * en el sitemap, es su propia URL. Lo que este caso fija es que salga **solo
+   * ahí** —adentro del `href`— y que la etiqueta siga siendo lo que se lee.
+   */
+  it('con los hubs emitidos, el slug sale solo adentro del `href` (B-951)', () => {
+    const detalle = detalleConHubsDe();
+    barrer(
+      'página de detalle (con los hubs emitidos)',
+      JSON.stringify(detalle),
+      [
+        ...PERMITIDO_EN_EL_DETALLE,
+        {
+          nombre: 'el slug del hub, adentro de su propia URL',
+          centinelas: ['sede.barrio', 'sede.ciudad'],
+          porque:
+            'B-951 — el renglón «Dónde» enlaza el barrio y la ciudad a su hub, y la ruta ' +
+            'de un hub **es** su slug (trampa 10: el segmento es el slug, nunca el label, ' +
+            'porque el label se renombra y una URL no). Lo que se **lee** sigue siendo la ' +
+            'etiqueta: las dos mitades conviven en la misma pieza, `{ texto, href }`.',
+        },
+      ],
+      { insensible: true },
+    );
+
+    /*
+     * Control positivo de las dos mitades. Sin esto, un `rutaDeZona` que
+     * devolviera siempre `null` dejaría la excepción de arriba sobrando y el
+     * caso verde — que es exactamente lo que pasaba antes de este `it`.
+     *
+     * El fixture no es de CABA y tiene barrio cargado, así que `piezasDeLugar`
+     * emite las tres: barrio, ciudad y provincia. Las dos primeras llevan hub;
+     * la provincia no, y eso también se afirma acá (`CLASES_DE_TAXONOMIA`).
+     */
+    const porTexto = new Map(detalle.donde.map((p) => [p.texto, p.href]));
+    expect(porTexto.get(CENTINELA['labels.barrio'])).toBe(
+      `/barrio/${CENTINELA['sede.barrio']}/`,
+    );
+    expect(porTexto.get(CENTINELA['labels.ciudad'])).toBe(
+      `/ciudad/${CENTINELA['sede.ciudad']}/`,
+    );
+    // La provincia se dice y no se enlaza: no hay hub de provincia.
+    expect(porTexto.get(CENTINELA['labels.provincia'])).toBe(null);
+    // Y en ninguna pieza el texto es el slug: lo que se lee es la etiqueta.
+    expect(porTexto.has(CENTINELA['sede.ciudad'])).toBe(false);
   });
 
   it('los CUATRO avisos barren igual: ninguno compone con un centinela prohibido', () => {
@@ -2962,7 +3053,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
    * queda—, con el costo explícito de que en ese hub el barrido no puede detectar
    * una fuga de `arancel.tipo`; los otros tres sí, y ahí el centinela sigue puesto.
    */
-  const LOS_CUATRO: readonly {
+  const LOS_HUBS: readonly {
     clase: ClaseDeHub;
     slug: string;
     extra?: Parameters<typeof actividadCentinela>[0];
@@ -2971,6 +3062,16 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
   }[] = [
     { clase: 'tipo', slug: 'presentacion', etiquetas: ['labels.tipo'] },
     { clase: 'barrio', slug: CENTINELA['sede.barrio'], etiquetas: ['labels.barrio'] },
+    /*
+     * **B-951 — la quinta clase, y entró sin barrer hasta que lo cobró el
+     * `auditor-privacidad`.** El hub de ciudad estrena cinco frases en HTML
+     * indexado —`titulo`, `descripcion` (que interpola hasta tres títulos de
+     * actividades), `bajada`, `avisoVacio` y `rotuloDelFiltro`— y esta lista
+     * seguía recorriendo cuatro, sin que ningún rojo lo dijera. Es la regla del §5
+     * textual: si la salida se arma interpolando texto, tiene que existir un
+     * barrido de centinelas.
+     */
+    { clase: 'ciudad', slug: CENTINELA['sede.ciudad'], etiquetas: ['labels.ciudad'] },
     {
       clase: 'gratis',
       slug: '',
@@ -2979,6 +3080,16 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
     },
     { clase: 'online', slug: '', etiquetas: [] },
   ];
+
+  /*
+   * **El ancla que faltaba**: sin esto, la clase de hub número seis vuelve a
+   * entrar sin barrido y sin que nada se ponga en rojo — que es exactamente lo
+   * que pasó con la quinta. Se compara contra `CLASES_DE_HUB`, que es quien
+   * declara cuántas hay.
+   */
+  it('el barrido cubre las cinco clases de hub, y ninguna más (§5, salida 11)', () => {
+    expect([...LOS_HUBS].map((h) => h.clase).sort()).toEqual([...CLASES_DE_HUB].sort());
+  });
 
   /** Las frases que se leen en la pantalla: acá va la etiqueta, no el slug. */
   const frasesDelHub = (h: Hub): string =>
@@ -3035,7 +3146,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
   it('el fixture hace existir los cuatro hubs y ninguno queda vacío', () => {
     // Control positivo: sin esto, un hub que dejó de generarse pasaría la mitad
     // «no sobra nada» del barrido y el error hablaría de otra cosa.
-    for (const { clase, slug, extra } of LOS_CUATRO) {
+    for (const { clase, slug, extra } of LOS_HUBS) {
       const h = hubDelSitio(clase, slug, entradas(extra), ETIQUETAS, AHORA);
       expect(h.vacio, `el hub ${clase} quedó vacío y no barre nada`).toBe(false);
       expect(h.entradas, `el hub ${clase}`).toHaveLength(3);
@@ -3044,7 +3155,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
   });
 
   it('en las frases de los cuatro hubs sobreviven solo el título y su etiqueta', () => {
-    for (const { clase, slug, extra, etiquetas } of LOS_CUATRO) {
+    for (const { clase, slug, extra, etiquetas } of LOS_HUBS) {
       const h = hubDelSitio(clase, slug, entradas(extra), ETIQUETAS, AHORA);
       barrer(`hub ${clase}`, frasesDelHub(h), permitidos(etiquetas, true), {
         insensible: true,
@@ -3060,7 +3171,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
      * dos —etiqueta en la ruta, slug en el título— el barrido de arriba seguiría
      * verde y este se pondría rojo.
      */
-    const conSlugCentinela = LOS_CUATRO.filter(({ slug }) => slug === CENTINELA['sede.barrio']);
+    const conSlugCentinela = LOS_HUBS.filter(({ slug }) => slug === CENTINELA['sede.barrio']);
     expect(conSlugCentinela, 'ningún hub direcciona con un centinela').toHaveLength(1);
 
     for (const { clase, slug, extra } of conSlugCentinela) {
@@ -3077,7 +3188,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
      * exactamente cómo la salida 7 tuvo el link de la reunión cubierto solo de
      * refilón hasta que se le agregó su segunda rama.
      */
-    for (const { clase, slug, etiquetas } of LOS_CUATRO) {
+    for (const { clase, slug, etiquetas } of LOS_HUBS) {
       const vacio = hubDelSitio(clase, slug, [], ETIQUETAS, AHORA);
       expect(vacio.vacio, `el hub ${clase} sin entradas debería estar vacío`).toBe(true);
       barrer(`hub ${clase} (vacío)`, frasesDelHub(vacio), permitidos(etiquetas, false), {
@@ -3093,7 +3204,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
      * **sacar**. Si algún día alguien le pasa el documento en vez de la entrada del
      * índice, las claves dejan de coincidir y esto lo dice.
      */
-    for (const { clase, slug, extra } of LOS_CUATRO) {
+    for (const { clase, slug, extra } of LOS_HUBS) {
       const propias = entradas(extra);
       const enElHub = hubDelSitio(clase, slug, propias, ETIQUETAS, AHORA).entradas[0];
       expect(enElHub, `el hub ${clase} no dejó ninguna entrada`).toBeDefined();
@@ -3155,20 +3266,24 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
    */
   const ETIQUETA_EN_EL_TITULO_DEL_HUB: Partial<Record<ClaseDeHub, readonly RutaCentinela[]>> = {
     barrio: ['labels.barrio'],
+    // B-951 — la quinta clase, con el mismo molde que el barrio: su `titulo` es
+    // `Actividades literarias en ${etiqueta}`, así que la etiqueta entra igual.
+    ciudad: ['labels.ciudad'],
   };
 
-  /** El slug con el que direcciona cada clase (trampa 10) — solo `barrio` usa uno centinela. */
+  /** El slug con el que direcciona cada clase (trampa 10) — `barrio` y `ciudad` usan uno centinela. */
   const SLUG_DEL_HUB: Partial<Record<ClaseDeHub, readonly RutaCentinela[]>> = {
     barrio: ['sede.barrio'],
+    ciudad: ['sede.ciudad'],
   };
 
-  it('coleccionSchema de los cuatro hubs publica lo mismo que sus frases — nada más', () => {
+  it('coleccionSchema de los cinco hubs publica lo mismo que sus frases — nada más', () => {
     /*
      * MUTACIÓN PROBADA: agregar `e.tipo` o `e.searchText` a un `ListItem` de
      * `coleccionSchema` deja este caso en rojo nombrando el centinela que se
      * coló — la función solo debería tocar `slug` y `titulo` de cada entrada.
      */
-    for (const { clase, slug, extra } of LOS_CUATRO) {
+    for (const { clase, slug, extra } of LOS_HUBS) {
       const h = hubDelSitio(clase, slug, entradas(extra), ETIQUETAS, AHORA);
       const schema = coleccionSchema(h.titulo, h.ruta, h.entradas);
       barrer(
@@ -3304,16 +3419,23 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º p
     },
     {
       nombre: 'el lugar y el arancel, los dos vía `tarjetaPublica`',
-      centinelas: ['sede.nombre', 'labels.barrio', 'labels.ciudad', 'labels.arancel'],
+      centinelas: [
+        'sede.nombre',
+        'labels.barrio',
+        'labels.ciudad',
+        'labels.provincia',
+        'labels.arancel',
+      ],
       porque:
         'la línea de lugar la arma `lugarDeTarjeta` —la misma del listado, de la página ' +
         'de mes, de /pasadas y de los hubs— y el arancel `arancelDeTarjeta`. ' +
         '**`sede.ciudad` se cambió por `labels.ciudad` en B-950**: la ciudad dejó de ser ' +
         'texto libre, así que este renglón la resuelve a su etiqueta igual que venía ' +
-        'haciendo con el barrio. `labels.provincia` no está, y su ausencia no es una ' +
-        'prohibición: el fixture no es de CABA, pero `zonaDeSede` agrega la provincia ' +
-        'solo cuando la sede la tiene resuelta contra `/opciones/provincia`, que este ' +
-        'mapa de etiquetas no trae. La ' +
+        'haciendo con el barrio. **`labels.provincia` tardó en aparecer acá y eso era el ' +
+        'síntoma de un bug**: el primer `porque` decía que `zonaDeSede` no la emitía ' +
+        'porque el mapa de etiquetas no la traía — las dos mitades eran falsas, y el ' +
+        'motivo real era que `SedeDeIndice` no llevaba `provincia`. Lo encontró el ' +
+        '`auditor-privacidad`; ahora la lleva y la pieza sale. La ' +
         '**dirección**, las indicaciones y las coordenadas NO están en esta lista: el ' +
         'índice no las lleva y el panel no las necesita. `labels.plataforma` tampoco ' +
         'está, y su ausencia NO es una prohibición: el fixture es `hibrido`, así que ' +

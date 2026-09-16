@@ -41,6 +41,7 @@ import {
   SITIO,
   rutaCanonica,
   rutaDeBarrio,
+  rutaDeCiudad,
   rutaDeDetalle,
   rutaDeMes,
   rutaDeTipo,
@@ -408,6 +409,10 @@ describe('los `href` internos van en la forma que contesta 200 — B-293', () =>
     expect(rutaDeMes('2026-09')).toBe('/agenda/2026-09/');
     expect(rutaDeTipo('club-lectura')).toBe('/tipo/club-lectura/');
     expect(rutaDeBarrio('villa-crespo')).toBe('/barrio/villa-crespo/');
+    // B-951 — la quinta clase. Hasta acá la única aserción sobre esta ruta era
+    // `expect(hub.ruta).toBe(rutaDeCiudad(...))`, o sea la función comparada
+    // contra sí misma; lo señaló el `auditor-privacidad`.
+    expect(rutaDeCiudad('mar-del-plata')).toBe('/ciudad/mar-del-plata/');
   });
 
   it('ningún archivo de `src/` escribe un `href` interno a mano', () => {

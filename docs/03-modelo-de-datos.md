@@ -17,8 +17,14 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | cada cuenta el suyo, **al entrar**, con el mail de su propio ID token (`AdminApp` lo llama desde el observador de auth) |
 | `/slugs/{slug}` | el índice de direcciones web: `{ actividadId, porUid, creadoEn }` (B-888, D-660) | el panel, **en el mismo `writeBatch` que la actividad**; y `scripts/sembrar-slugs.mjs` con el Admin SDK, que además deja el centinela `_indice` |
 
-`{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
-`tags`, `incluye-actividad`.
+`{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `provincia`,
+`ciudad`, `plataforma`, `tags`, `incluye-actividad` — más los seis de las
+suscripciones y los tres de los lugares. La lista autoritativa es
+`CAMPOS_TAXONOMIA` (`src/types/actividad.ts`).
+
+**`provincia` y `ciudad` entraron con B-950** (D-710), y con ellas la geografía
+de una sede quedó entera y toda de taxonomía. Antes `barrio` era taxonomía y
+`ciudad` un `<input>` de texto libre, y `provincia` no existía en ningún lado.
 
 **`/usuarios` existe para no meterle el mail al documento de la actividad**, que
 es lo que D-610 decidió que no se hace. Los dos costos que fundaron esa decisión
@@ -968,6 +974,34 @@ Cuatro cosas que no se adivinan del tipo:
   `autoguardado.ts`, y esa poda **deja pasar los arrays** a propósito. Al mudarlos
   adentro de `modalidades`, la enumeración pasó a ser la única red — y es más
   fuerte, porque la clave de más no llega ni siquiera a Firestore.
+
+### La geografía de una sede — B-950, D-710
+
+`Sede` lleva **tres** campos de lugar, y desde B-950 los tres son slugs de
+taxonomía:
+
+| Campo | Vocabulario | Cuándo se pide |
+|---|---|---|
+| `provincia` | `/opciones/provincia`, sembrado con las 24 jurisdicciones `fijo: true` | siempre, y **se exige al publicar** |
+| `barrio` | `/opciones/barrio`, arranca vacío | solo cuando la provincia es CABA |
+| `ciudad` | `/opciones/ciudad`, sembrado solo con CABA | solo cuando la provincia **no** es CABA |
+
+La cascada es **«provincia → barrio *o* ciudad»** y no de tres niveles: CABA es
+ciudad y provincia a la vez, y lo que la subdivide es el barrio. La bifurcación
+la decide `subdivisionDe()` (`src/lib/geografia.mjs`) y la usan los tres lugares
+donde aparece — el formulario del panel, el riel del sitio y los filtros del
+panel—, para que ninguno pueda ofrecer algo que otro no entiende.
+
+**En CABA la ciudad se guarda igual, con `'caba'`**, aunque el formulario no la
+pregunte: la completa `conProvincia()`. Si quedara vacía, `ciudades[]` dejaría
+fuera a todo CABA del alcance de cualquier publicador, y el eje del listado, el
+banner de B-961 y el hub de ciudad dejarían de verla. Que no se **muestre** es
+otra cosa, y vive en `piezasDeLugar()`.
+
+**Los documentos anteriores** no tienen `provincia` y guardan la ciudad como se
+tipeó. Se leen con `geografiaNormalizada()`, que es idempotente (D-26): deriva la
+provincia cuando la ciudad es CABA y slugifica la ciudad. Por eso
+`npm run geografia:sembrar` es **opcional** y no un paso del despliegue.
 
 **Los cuatro derivados.** `modalidad`, `sede`, `online` y —desde B-919—
 `ciudades` siguen en el documento, y no son una segunda fuente de verdad: los

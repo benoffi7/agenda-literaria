@@ -157,6 +157,61 @@ describe('`ciudades` se deriva de las modalidades, normalizada (B-919)', () => {
     expect(payload.ciudades).toEqual(['necochea']);
   });
 
+  /**
+   * **B-950, y lo cobraron los dos auditores (trampas y privacidad).** Una
+   * versión guardada antes de B-950 trae la ciudad como se tipeó y sin provincia.
+   * Restaurarla devolvía al documento en vivo un estado **internamente
+   * contradictorio**: `sede.ciudad` en texto libre y, en la misma escritura,
+   * `ciudades` ya slugificado — o sea el campo que gobierna el permiso del
+   * publicador diciendo una cosa y la sede diciendo otra.
+   *
+   * No se veía en el sitio porque `toPublic` y los filtros del panel vuelven a
+   * normalizar al leer (D-26). Se veía al reeditar: el desplegable de Ciudad
+   * quedaba deshabilitado con un valor que no matchea ninguna opción.
+   *
+   * **La versión se arma a mano y NO con `formConFilas`**, que es todo el punto:
+   * el caso de arriba usa un documento ya normalizado, así que nunca ejercitaba
+   * una versión sin migrar — por eso la suite estaba verde con el bug adentro.
+   *
+   * MUTACIÓN PROBADA: sacar el `map` con `geografiaNormalizada` de
+   * `payloadDeRestauracion` deja los tres `expect` en rojo.
+   */
+  it('restaurar una versión anterior a B-950 deja la geografía normalizada', () => {
+    const actual = documentoDe(formConFilas([fila()])) as never;
+    const version = {
+      documento: {
+        modalidades: [
+          {
+            id: 'mod_viejo',
+            modalidad: 'presencial',
+            inicio: null,
+            fin: null,
+            // La forma de antes de B-950: sin `provincia`, con la ciudad tipeada.
+            sede: {
+              nombre: 'Librería del puerto',
+              direccion: 'Av. Luro 3000',
+              barrio: '',
+              ciudad: 'Mar del Plata',
+              indicaciones: '',
+              geo: null,
+            },
+            online: null,
+          },
+        ],
+      },
+    } as never;
+
+    const payload = payloadDeRestauracion('modalidades', version, actual, 'uid_pub');
+    const filas = payload.modalidades as { sede: Record<string, string> }[];
+    expect(filas[0]!.sede.ciudad).toBe('mar-del-plata');
+    // La provincia no se adivina para una ciudad que no es CABA (D-710 § 5), así
+    // que queda vacía — pero **declarada**, no ausente.
+    expect(filas[0]!.sede.provincia).toBe('');
+    // Y el derivado que decide el permiso concuerda con la sede, que es lo que
+    // antes no pasaba.
+    expect(payload.ciudades).toEqual(['mar-del-plata']);
+  });
+
   it('y `ciudades` no se ofrece para restaurar por separado', () => {
     // Está en `CAMPOS_DERIVADOS`: restaurarlo solo dejaría el documento diciendo
     // dos cosas hasta el próximo guardado.

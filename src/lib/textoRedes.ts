@@ -42,6 +42,8 @@
  * | `imagenes` | **no** | D-125: un texto no lleva imágenes. El epígrafe es de la foto y el `storagePath` no sale nunca |
  * | `material` | **no** | la URL depende de `publico` por ítem y el material se entrega al inscribirse; en una caption es ruido con riesgo |
  * | `sede.indicaciones` | **no** | "timbre 3B" es para quien ya va: al evento sí, al posteo no |
+ * | `sede.provincia` | **sí**, como **etiqueta** | B-950. Es lo que hace legible una sede de afuera de CABA —«Av. Luro 3000, Mar del Plata» no dice si es la de acá— y es una etiqueta geográfica: no dice nada de nadie. Adentro de CABA se colapsa sola, porque es la misma etiqueta que la ciudad |
+ * | `sede.ciudad` | **sí**, como **etiqueta** y nunca el slug | B-950. Ya salía; lo que cambió es que dejó de ser texto libre, así que sin resolver este posteo diría «caba» o «mar-del-plata» — y un posteo copiado no se despublica |
  * | `createdBy` / `updatedBy` | **no** | uids |
  * | `slug` | **sí**, dentro del link y **solo con la actividad publicada** | B-312: es la URL pública, la misma que ya sale al `events.json`, al sitemap y a la canónica. Nunca suelto: lo que se imprime es el link |
  *
@@ -262,7 +264,24 @@ const bloqueDonde = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): st
 
   const sede = actividad.sede;
   if (sede) {
-    const partes = [sede.direccion, etiqueta(labels, 'barrio', sede.barrio), sede.ciudad]
+    /*
+     * **B-950 — la ciudad y la provincia se resuelven a su etiqueta.** El barrio
+     * ya se resolvía; la ciudad se imprimía cruda porque era texto libre, y desde
+     * que es un slug esta línea publicaba «Luis María Drago 236, Villa Crespo,
+     * caba» en el posteo que alguien copia a Instagram.
+     *
+     * Lo encontró el `auditor-privacidad`, y es la salida donde más duele: **una
+     * vez pegado no hay despublicación**. La provincia entra después de la ciudad
+     * por lo mismo que en la dirección del evento — es lo que hace legible una
+     * sede de afuera de CABA— y adentro de CABA la deduplicación de acá abajo la
+     * colapsa sola, porque es la misma etiqueta.
+     */
+    const partes = [
+      sede.direccion,
+      etiqueta(labels, 'barrio', sede.barrio),
+      etiqueta(labels, 'ciudad', sede.ciudad),
+      etiqueta(labels, 'provincia', sede.provincia),
+    ]
       .map((p) => (p ?? '').trim())
       .filter(Boolean);
     // Barrio y ciudad se cargan repetidos seguido ("Palermo" en los dos campos),

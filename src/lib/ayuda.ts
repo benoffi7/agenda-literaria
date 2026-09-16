@@ -1673,6 +1673,25 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'La provincia se elige primero, y de ella depende lo que aparece abajo: con CABA se ' +
+          'despliegan los barrios, y con cualquier otra provincia, las ciudades. Es obligatoria ' +
+          'para publicar, y no por prolijidad: es el primer filtro de lugar del sitio, así que una ' +
+          'actividad sin provincia no aparece cuando alguien busca por dónde queda.',
+      },
+      {
+        texto:
+          'La ciudad se elige de una lista y ya no se escribe suelta. Si la tuya no está, la ' +
+          'agregás con «Otro…» una vez y queda disponible para siempre: así «Mar del Plata» y «mar ' +
+          'del plata» no terminan siendo dos lugares distintos que se filtran por separado.',
+      },
+      {
+        texto:
+          'Si cambiás la provincia, el barrio se borra. Es a propósito: los barrios son de CABA, y ' +
+          'uno de CABA en una sede de otra provincia haría que la actividad apareciera filtrada en ' +
+          'un lugar donde no pasa. La ciudad, en cambio, se conserva si ya la habías cargado.',
+      },
+      {
+        texto:
           'El «desde» y el «hasta» de cada forma de cursar son opcionales y hoy no se publican en ' +
           'ningún lado: quedan guardados acá para vos. Todavía está por decidirse qué dicen frente ' +
           'a las fechas de los encuentros, y hasta entonces no salen ni al sitio ni al calendario.',

@@ -724,10 +724,10 @@ consola y desglosarlas en el panel— están en el [§9.4](#94--los-pasos-de-con
 paso 7 y en el ítem del backlog.
 
 **Qué faltaba, con precisión.** El evento ya llevaba `eje` y `slug`, pero el eje
-salía de `ejeQueSobra` (`listadoPublico.ts`), que mira **los seis rieles de
-chips** y nada más. El listado tiene **diez** filtros: esos seis, el texto del
+salía de `ejeQueSobra` (`listadoPublico.ts`), que mira **los siete rieles de
+chips** y nada más. El listado tiene **once** filtros: esos siete, el texto del
 buscador, el «Cuándo», «solo con inscripción abierta» y «ciclos / encuentros
-únicos». Un cero causado por cualquiera de los cuatro últimos llegaba **sin
+únicos». (Eran diez y seis hasta B-950, que sumó el eje `provincia`.) Un cero causado por cualquiera de los cuatro últimos llegaba **sin
 ningún parámetro** — o sea, indistinguible de «ningún filtro solo explica el
 cero», que es una situación completamente distinta y se arregla de otra manera.
 
@@ -1344,7 +1344,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
-| **B-798** | `filtro_sin_resultados` decía **cuántas** veces, no **cuál** filtro dejó la lista vacía ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) | 🟡 **la emisión está** (2026-09-09): `eje` cubre los diez filtros del listado y no seis, así que un cero por el buscador ya no se confunde con «ningún filtro solo lo explica». **`busqueda` es un eje, nunca el texto tipeado** — el payload lo arma `crudosDeFiltroSinResultados`, que solo saca `slug` del mapa de taxonomía. Faltan los otros dos tercios: el **paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)** (registrar las dimensiones en la consola — es lo que corre el reloj, GA4 no es retroactivo) y `customEvent:eje`/`customEvent:slug` en `DIMENSIONES_PERMITIDAS` de `functions/analitica.js`, que es una decisión de privacidad y no un cambio mecánico |
+| **B-798** | `filtro_sin_resultados` decía **cuántas** veces, no **cuál** filtro dejó la lista vacía ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) | 🟡 **la emisión está** (2026-09-09): `eje` cubre los **once** filtros del listado y no siete (eran diez y seis hasta que B-950 sumó el eje `provincia`, que **parte la serie histórica** de esta dimensión — el corte está escrito en D-710 con su fecha), así que un cero por el buscador ya no se confunde con «ningún filtro solo lo explica». **`busqueda` es un eje, nunca el texto tipeado** — el payload lo arma `crudosDeFiltroSinResultados`, que solo saca `slug` del mapa de taxonomía. Faltan los otros dos tercios: el **paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)** (registrar las dimensiones en la consola — es lo que corre el reloj, GA4 no es retroactivo) y `customEvent:eje`/`customEvent:slug` en `DIMENSIONES_PERMITIDAS` de `functions/analitica.js`, que es una decisión de privacidad y no un cambio mecánico |
 | **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | ✅ **enganchado el 2026-09-07**. El handler va en `Buscador.tsx` y no adentro del componente, y el motivo es que **el mismo componente lo pintan el build y la island**: el del build no se hidrata, así que un `medirSitio` adentro entraría en los dos usos y mediría en uno solo. Con la prop, el único que la pasa es el que puede medir, y el HTML del build sigue sin una línea de JavaScript por esta sección. Consecuencia escrita: **se mide el clic de la island**, no el del HTML previo a hidratar. **Lo que sigue sin decidir es el clic del pie** «+N más» de B-791: si cuenta como clic del panel o como evento propio (D-470) |
 
 ---

@@ -52,6 +52,7 @@ import {
 } from '@/lib/modalidades';
 // B-919 — la misma derivación que `formADocumento`, importada y no copiada.
 import { ciudadesDe } from '@/lib/ciudades.mjs';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { linkDeReunionQueSale, urlDeMaterialQueSale } from '@/lib/toPublic';
 // B-911 — el registro de la clase «flag + dato». De él sale QUÉ campos vigila
@@ -474,7 +475,28 @@ export const payloadDeRestauracion = (
    * `events.json` y al evento hasta el próximo guardado.
    */
   if (campo === 'modalidades') {
-    const filas = (valor ?? []) as ModalidadFila[];
+    /*
+     * **B-950 — la geografía se normaliza al restaurar, y esto lo cobró el
+     * `auditor-trampas`.** Una versión guardada antes de B-950 trae la ciudad
+     * como se tipeó y sin provincia. Sin esta línea, restaurarla devolvía al
+     * documento en vivo un estado **internamente contradictorio**: `sede.ciudad`
+     * en texto libre y, en la misma escritura, `ciudades: ['mar-del-plata']` ya
+     * slugificado — o sea el campo que gobierna el permiso del publicador
+     * diciendo una cosa y la sede diciendo otra.
+     *
+     * No era visible en el sitio porque `toPublic` y los filtros del panel
+     * vuelven a normalizar al leer (D-26), pero sí en el formulario: al reeditar
+     * esa actividad el desplegable de Ciudad quedaba deshabilitado con un valor
+     * que no matchea ninguna opción, hasta que alguien volviera a elegir la
+     * provincia a mano.
+     *
+     * Es la misma `geografiaNormalizada` que `formADocumento` aplica antes de
+     * escribir, y por el mismo motivo: **acá también se escribe el documento**.
+     */
+    const filas = ((valor ?? []) as ModalidadFila[]).map((m) =>
+      m.sede ? { ...m, sede: { ...m.sede, ...geografiaNormalizada(m.sede) } } : m,
+    );
+    payload[campo] = filas;
     payload.modalidad = modalidadResultante(filas);
     payload.sede = sedePrincipal(filas);
     payload.online = onlinePrincipal(filas);

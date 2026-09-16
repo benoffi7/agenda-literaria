@@ -52,6 +52,24 @@ export interface SesionDeIndice {
 /** La sede en el índice: sin dirección, sin indicaciones y sin coordenadas. */
 export interface SedeDeIndice {
   nombre: string;
+  /**
+   * **B-950 — el eje `provincia` del riel sale de acá, y sin este campo la mitad
+   * no-CABA de la cascada está muerta.**
+   *
+   * `valoresDe(e, 'provincia')` (`lib/listadoPublico.ts`) resuelve con
+   * `provinciaDeSede`, que sin el campo cae al respaldo «¿la ciudad es CABA?». O
+   * sea que el único chip de provincia que podía existir era `caba`, una
+   * actividad de Mar del Plata aportaba `[]`, y como `ejesVisibles` abre el eje
+   * `ciudad` solo cuando hay una provincia no-CABA elegida, **el filtro de ciudad
+   * del sitio era inalcanzable salvo escribiendo `?ciudad=…` a mano**.
+   *
+   * Lo encontró el `auditor-privacidad` sobre B-950, y es el modo de falla de la
+   * clase B-88 en su forma más cara: el índice es lo que seis salidas usan —la
+   * tarjeta, el tríptico, la página de mes, `/pasadas`, los hubs y el riel— y
+   * `piezasDeLugar` se probaba contra la forma de `ActividadPublica`, que **sí**
+   * la lleva. Las dos formas del mismo dato, y el test miraba la que andaba.
+   */
+  provincia: string;
   barrio: string;
   ciudad: string;
 }
@@ -344,7 +362,13 @@ export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
   // Los valores, no las filas: el filtro no necesita la sede de cada una.
   modalidades: modalidadesQueOfrece(a.modalidades),
   sede: a.sede
-    ? { nombre: a.sede.nombre, barrio: a.sede.barrio, ciudad: a.sede.ciudad }
+    ? {
+        nombre: a.sede.nombre,
+        // Ya viene normalizada de `sedePublica`: acá solo se copia.
+        provincia: a.sede.provincia,
+        barrio: a.sede.barrio,
+        ciudad: a.sede.ciudad,
+      }
     : null,
   arancel: { tipo: a.arancel.tipo, monto: a.arancel.monto ?? null },
   organizador: a.organizador.nombre,

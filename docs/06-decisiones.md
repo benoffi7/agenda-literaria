@@ -10743,3 +10743,193 @@ rompió.
 `tests/suscripciones.integracion.test.ts` y `tests/lugares.integracion.test.ts`,
 el caso «ni traer fotos» en las tres, con la mutación probada: borrar la cláusula
 pone un caso en rojo por colección y ningún otro se mueve.
+
+---
+
+## D-710 · La geografía es **provincia → barrio *o* ciudad**, y las tres son taxonomía
+
+**B-950, B-951, B-952, B-953.** Pedido del dueño (2026-09-15): *«lo de provincia,
+barrio y ciudad hay que rehacerlo casi en todos lados. En la web no puede ser una
+lista enorme sino selectores: provincia primero (CABA y Buenos Aires) y de ahí
+despliega barrios o ciudades»*.
+
+### 1. El problema, que era una asimetría
+
+`barrio` era **taxonomía autogestionada** (§4: slug, `aprobada`, `usos`) y
+`ciudad` era un **`<input>` de texto libre**. `provincia` no existía en ningún
+lado: ni en `Sede`, ni en el schema, ni en el formulario, ni en las tres guías.
+
+Esa asimetría ya había mordido una vez: `src/lib/ciudades.mjs` (B-919, D-690)
+existe justamente porque «Mar del Plata», «mar del plata» y « Mar del Plata » son
+tres strings distintos, y hubo que derivar `ciudades: string[]` en la raíz del
+documento para que una regla de Firestore pudiera preguntar por la ciudad.
+
+Y volvía a morder en cuanto había que ofrecer una cascada: **no se puede
+desplegar «las ciudades de esta provincia» sobre un campo donde cada persona
+escribe lo que quiere**.
+
+### 2. Las tres decisiones
+
+**`ciudad` pasa a ser taxonomía** (`/opciones/ciudad`). Es lo que hace expresable
+la cascada, y lo que le da al hub de ciudad (B-951) la misma puerta de «aprobada»
+con la que el hub de barrio se defiende de publicar un typo como URL indexada.
+
+**`provincia` también es taxonomía** (`/opciones/provincia`), sembrada con las 24
+jurisdicciones como `fijo: true` desde `PROVINCIAS` (`src/lib/geografia.mjs`).
+
+Acá hay algo que parece contradictorio y no lo es: **es un conjunto que no
+crece**, y va por el mecanismo del §4 igual. Lo que gana no es la autogestión —
+son el desplegable con «Otro», la deduplicación por slug, el orden por `usos`, la
+pantalla que las administra y el contador de pendientes. Reimplementar esas cinco
+cosas para un vocabulario que no está en `CAMPOS_TAXONOMIA` es exactamente la
+clase de B-72. `fijo: true` es lo que impide que alguien borre una provincia desde
+la pantalla de taxonomías y deje las sedes que la usaban mostrando el slug crudo.
+
+**La cascada es de dos niveles, no de tres.** CABA es ciudad **y** provincia a la
+vez, y lo que la subdivide es el barrio. Así que no es «provincia → ciudad →
+barrio» sino **«provincia → barrio *o* ciudad»**, con CABA de un lado y todo lo
+demás del otro. El modelo de tres niveles —CABA como una provincia con una sola
+ciudad que a su vez tiene barrios— agrega un paso vacío al 100 % de los casos de
+CABA, que hoy son casi todos.
+
+### 3. CABA se **guarda** con ciudad y solo se **esconde** al mostrarla
+
+Una sede en CABA queda con `provincia: 'caba'` **y** `ciudad: 'caba'`, aunque el
+formulario no la pregunte: la completa la cascada (`conProvincia`).
+
+No es redundancia. Si la ciudad quedara vacía:
+
+- **`ciudades[]` dejaría afuera a todo CABA.** Es el derivado con el que
+  `firestore.rules` contesta el alcance por ciudad del rol `publicador` (D-690),
+  así que ninguna actividad de CABA entraría en el alcance de ningún publicador —
+  y CABA es casi todo el catálogo.
+- **Tres salidas dejarían de verla**: el eje `ciudad` del listado, el banner de
+  B-961 y el hub de B-951 leen `sede.ciudad`, y ninguna se pondría en rojo.
+
+Que en CABA no se diga «Boedo, Ciudad Autónoma de Buenos Aires» es una regla de
+**presentación**, y por eso vive en `piezasDeLugar()` (`src/lib/geografia.mjs`):
+una función que comparten las **cinco** salidas que arman ese renglón —la tarjeta
+del listado, el tríptico de la home, la ficha de detalle, la tarjeta del panel y
+el JSON-LD—. B-953 lo pide con todas las letras: «conviene que esté ahí y no en la
+plantilla». Escrita en cada plantilla, sería una regla aplicada en cuatro lugares
+y en el quinto no.
+
+**El borde que obligó a un `if` más:** «si es CABA, solo barrio» da por hecho que
+el barrio está cargado. Sin él, cortar ahí devolvería una lista vacía y la tarjeta
+diría «Casa Brandon» sin decir en qué ciudad queda. Con el barrio vacío se cae a
+la ciudad, que es lo que había antes.
+
+### 4. Qué se exige al publicar, y qué no
+
+**La provincia sí**, junto al nombre y la dirección: es el primer nivel de la
+cascada, así que sin ella la actividad no aparece bajo ningún filtro de lugar del
+sitio. Una presencial que no se puede encontrar por dónde queda está tan
+incompleta como una sin dirección.
+
+**La subdivisión no.** `/opciones/barrio` y `/opciones/ciudad` arrancan vacías y
+las llena quien carga: exigirlas convertiría cada localidad nueva en un paso
+obligatorio antes de poder publicar.
+
+### 5. Lo que ya estaba cargado no se reescribe por las bravas
+
+`geografiaNormalizada` es el **default de lectura** (D-26) y es **idempotente**:
+`slugify` sobre un slug no hace nada, y sobre lo viejo lo corrige. Se aplica en
+**cuatro** lugares: `toPublic.ts` (la proyección pública), `filtrosActividades.ts`
+(los filtros del panel), `formADocumento` (antes de escribir, por el borrador
+recuperado del navegador) y `payloadDeRestauracion` (que **también** escribe el
+documento). Así, un documento sin migrar se ve y se filtra bien igual.
+
+> ⚠️ **La primera versión de esta decisión decía «los tres caminos: la proyección
+> pública, el historial y el evento de Calendar», y las dos mitades estaban mal.**
+> El historial **no** normalizaba —restaurar una versión vieja dejaba el documento
+> internamente contradictorio, con `sede.ciudad` en texto libre y `ciudades[]` ya
+> slugificado—, y el evento de Calendar sigue sin hacerlo. Lo cobraron el
+> `auditor-trampas` y el `auditor-privacidad` en la misma corrida. El historial se
+> arregló; el evento quedó anotado como **B-968**.
+
+**El evento de Calendar es la excepción, y es una decisión.** `functions/` se
+despliega con su propio `package.json` y no puede importar hacia arriba (D-20),
+así que usa el valor crudo. Hoy es inofensivo —`etiqueta()` cae a `desSlug`, que
+sobre «Mar del Plata» no cambia nada, y la provincia no aparece, igual que antes
+de B-950— y se vuelve visible solo si una sede vieja tiene la ciudad con
+mayúsculas irregulares.
+
+Eso es lo que hace que `scripts/sembrar-geografia.mjs` sea **opcional**, a
+diferencia de `sembrar-ciudades.mjs`, que era un paso del despliegue.
+
+**Y no se adivina la provincia de una ciudad que no sea CABA.** Se deduce solo
+cuando la ciudad es CABA —que cubre casi todo el catálogo, porque `sedeVacia()`
+traía `'CABA'` cableado como default—. Para «Mar del Plata» la provincia la sabe
+una persona: una tabla ciudad→provincia sería inventar el dato, y el primer error
+se publicaría en el `addressLocality` del JSON-LD. Esas sedes quedan sin
+provincia, el script las lista una por una, y se completan al reeditar.
+
+### 6. Lo que costó, dicho explícito
+
+**`eje` es una dimensión medida y `provincia` parte la serie histórica** de
+`filtro_sin_resultados` (`EJES_DE_TAXONOMIA`, `src/lib/analyticsSitio.ts`). Las
+filas anteriores al despliegue y las posteriores no son comparables para «qué
+filtro explica los ceros».
+
+Es el costo aceptado y no un descuido: el eje nuevo es el que más poder tiene para
+dejar la lista vacía, y no medirlo dejaría el caso más probable llegando sin
+`eje` — que es exactamente lo que B-798 arregló para los otros cuatro.
+
+**`ciudades[]` perdió su ancla por valor** en el barrido de salidas públicas. Se
+anclaba por valor porque su contenido no se publicaba; ahora el slug de la ciudad
+**sí** se publica —es el mismo string—, así que no existe ningún valor que
+`ciudades` pueda llevar y que no esté afuera. Queda el ancla por clave, más débil.
+Está anotado como **B-965**.
+
+### 7. `provincia` no tiene hub, y es una decisión
+
+`CLASES_DE_TAXONOMIA` son tres: `tipo`, `barrio` y `ciudad`. La provincia se dice
+en el renglón de lugar pero **no se enlaza**: sus 24 valores están sembrados, así
+que un hub por provincia emitiría hasta 24 páginas casi todas vacías —justo lo que
+`slugsConActividades` evita al exigir «con alguna publicada»— y la consulta que
+ganaría («actividades literarias en Buenos Aires») la pelea mal contra la de la
+ciudad, que es más específica y es la que la gente escribe.
+
+Si alguna provincia junta volumen, se agrega ahí.
+
+### 8. Lo que falta, y lo que la auditoría cambió
+
+Las **guías** (librerías y lugares) siguen con `barrio` de taxonomía y `ciudad` de
+texto libre, y sin provincia. B-950 las nombra —«el mismo par vive en cuatro
+entidades»— y quedan pendientes en **B-967**: su `CIUDAD_POR_DEFECTO` es «Ciudad
+de Buenos Aires», que slugifica a `ciudad-de-buenos-aires` y no a `caba`, así que
+unificarlas tiene su propia migración.
+
+**Los tres auditores corrieron sobre este cambio y encontraron cinco cosas que se
+arreglaron antes de cerrarlo.** Vale escribirlas porque tres de las cinco son
+huecos de la red de contención, no del código:
+
+1. **`SedeDeIndice` no llevaba `provincia`**, así que `provinciaDeSede` caía a su
+   respaldo, el único chip posible era `caba`, y **el eje `ciudad` del sitio era
+   inalcanzable** — o sea que la mitad no-CABA de la cascada, que es el pedido,
+   no funcionaba. Nada lo veía porque los casos de `piezasDeLugar` le pasaban la
+   forma de `ActividadPublica`, que sí la lleva: dos formas del mismo dato, y el
+   test miraba la que andaba (la clase de B-88).
+2. **`textoRedes.ts` imprimía el slug crudo de la ciudad**, o sea «Villa Crespo,
+   caba» en el posteo que se copia a Instagram — la salida más irreversible de
+   las 25. La suite estaba verde porque su fixture seguía usando la forma vieja.
+3. **`payloadDeRestauracion` no normalizaba**, así que restaurar una versión
+   anterior dejaba el documento internamente contradictorio: `sede.ciudad` en
+   texto libre y `ciudades[]` ya slugificado, o sea el campo que gobierna el
+   permiso diciendo una cosa y la sede diciendo otra.
+4. **La quinta clase de hub entró sin barrido de centinelas.** Ahora la lista se
+   compara contra `CLASES_DE_HUB`, así que la sexta no puede volver a entrar sin
+   que algo se ponga en rojo.
+5. **`conProvincia` borraba el barrio en toda transición hacia una provincia que
+   no fuera CABA**, incluida «de Buenos Aires a Córdoba» — donde el campo ni
+   siquiera está en pantalla. Ahora se limpia solo al salir de CABA.
+
+Dos hallazgos quedaron anotados y no arreglados: **B-968** (el evento de Calendar
+no normaliza, y `functions/` no puede importar hacia arriba) y **B-969** (el build
+contra el emulador siembra una sola actividad y es de CABA, así que el barrido
+sobre el `dist/` no ejercita nada de esto).
+
+**Testigos:** `tests/geografia.test.ts` (40 casos, con la mutación de la regla de
+CABA probada), más los casos de `tarjetaPublica`, `tarjeta-del-panel`,
+`filtrosActividades`, `hubsPublicos`, `detallePublico` y
+`barrido-de-salidas-publicas`.

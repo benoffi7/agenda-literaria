@@ -1320,7 +1320,7 @@ y con él llegaron `site` en la config, el `canonical` absoluto y el Open Graph 
 todas las páginas, las URLs del JSON-LD, `sitemap.xml`, `robots.txt` y el archivo
 `/pasadas`. **Desde B-107 (2026-09-02)** el detalle lleva además un
 `BreadcrumbList` (Agenda → Tipo → título, o Agenda → título si el tipo no tiene
-hub — B-108) y la home y los cuatro hubs llevan un `CollectionPage` con
+hub — B-108) y la home y los cinco hubs llevan un `CollectionPage` con
 `ItemList`, ambos con una sola función compartida (`migasDeDetalle` y
 `coleccionSchema`) entre las cinco páginas que los usan. **Desde B-112
 (2026-09-03)** el sitemap lleva además el `lastmod` de cada actividad, recortado
@@ -1463,7 +1463,7 @@ una pantalla vacía.
 |---|---|
 | **Buscar** | contra `searchText`, con el `normalize` del §6: acentos y mayúsculas dan igual. Dos palabras se exigen **las dos** |
 | **Cuándo** | Próximas (default) · Este mes · Próximos 3 meses · cada mes con actividad |
-| **Filtros** (colapsados, con el número de puestos al lado) | tipo, **arancel**, cómo se cursa, barrio, ciudad y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos» |
+| **Filtros** (colapsados, con el número de puestos al lado) | tipo, **arancel**, cómo se cursa, **provincia** y —según cuál se elija— **barrio** (CABA) o **ciudad** (el resto), y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos». **La geografía es una cascada de dos niveles desde B-950** (D-710) y no una lista plana: sin provincia elegida no se ofrece ninguna de las dos, porque con los treinta y pico de barrios cargados un riel de chips deja de servir. La excepción: un eje con valores puestos se muestra igual aunque la cascada no lo abra, para que un enlace compartido (`?barrio=boedo`) no deje un filtro aplicado sin control para sacarlo |
 | **Ordenar por** | Próximas primero (default) · Recién agregadas · Título (**D-137**) |
 
 Los chips **no tienen nada cableado**: salen de `opciones.*` del propio
@@ -1643,14 +1643,23 @@ ni siquiera con la casilla tildada (**D-139**). Desde **B-240** / **D-158** la
 casilla lo dice: se llama «Publicar el link en el evento del calendario», porque
 ese —y el `events.json`— es el único lugar a donde sale.
 
-### Los hubs — `/tipo/{slug}`, `/barrio/{slug}`, `/online`, `/gratis` (B-108)
+### Los hubs — `/tipo/{slug}`, `/barrio/{slug}`, `/ciudad/{slug}`, `/online`, `/gratis` (B-108, B-951)
 
-Cuatro clases de página, un solo componente (`CuerpoDeHub.astro` +
+Cinco clases de página, un solo componente (`CuerpoDeHub.astro` +
 `src/lib/hubsPublicos.ts`), **cero JavaScript** y **cero lecturas nuevas** de
 Firestore: salen del mismo índice memoizado que ya arman la home y
 `events.json`. Capturan las búsquedas que un filtro no puede ganar porque no
-tiene URL, `<title>` ni `h1` — «taller de escritura villa crespo», «club de
-lectura online», «actividades literarias gratis» — (§2.1 del diseño).
+tiene URL, `<title>` ni `h1` — «taller de escritura villa crespo», «taller de
+escritura en Mar del Plata», «club de lectura online», «actividades literarias
+gratis» — (§2.1 del diseño).
+
+**La clase de ciudad es de B-951 y solo pudo existir después de B-950.** Un hub
+de taxonomía se emite únicamente para las opciones **aprobadas** con actividad
+publicada, y mientras `ciudad` fue un `<input>` de texto libre no tenía
+aprobación: habría sido una URL indexada por cada string tipeado. **No hay hub de
+provincia**, y es una decisión: sus 24 valores están sembrados, así que emitiría
+hasta 24 páginas casi todas vacías, y la consulta que ganaría la pelea mal contra
+la de la ciudad. La provincia se dice en el renglón de lugar y no se enlaza.
 
 **Un hub es el filtro de la home hecho página.** `/tipo/taller` aplica el mismo
 `filtrarPublico` que el chip «Taller», con el mismo `cuando` por defecto
@@ -1661,7 +1670,7 @@ filtrado que pueda divergir de la de la home (la clase de bug de B-88).
 
 | | |
 |---|---|
-| `/tipo/{slug}`, `/barrio/{slug}` | Uno por cada slug de `/opciones/{tipo,barrio}` que tenga **al menos una actividad publicada** (vigente o pasada). Como una actividad publicada no sale nunca del índice (queda en `/pasadas`), el conjunto de hubs emitidos **solo puede crecer**: un hub que existió una vez no se vuelve un 404 |
+| `/tipo/{slug}`, `/barrio/{slug}`, `/ciudad/{slug}` | Uno por cada slug de `/opciones/{tipo,barrio,ciudad}` que tenga **al menos una actividad publicada** (vigente o pasada). Como una actividad publicada no sale nunca del índice (queda en `/pasadas`), el conjunto de hubs emitidos **solo puede crecer**: un hub que existió una vez no se vuelve un 404 |
 | `/online`, `/gratis` | Siempre existen, incluso sin nada vigente — son secciones fijas del sitio y no un valor de taxonomía que puede quedar sin uso |
 | slug de la URL | siempre el **slug** de la taxonomía, nunca el label (§4.1, trampa 10): el label se puede renombrar y una URL no |
 | sin nada vigente | la página **no se borra**: se genera con un aviso («Ahora no hay talleres con fecha próxima») y sale con `noindex`, fuera del sitemap — un 404 sobre una URL indexada es peor que una página honesta y vacía |

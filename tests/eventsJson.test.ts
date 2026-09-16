@@ -70,8 +70,18 @@ describe('la entrada del índice recorta lo que el listado no usa (§3.1)', () =
     for (const clave of ['descripcion', 'material', 'destino', 'direccion', 'geo', 'indicaciones']) {
       expect(json, `el índice no lleva \`${clave}\``).not.toContain(`"${clave}"`);
     }
-    // Y los tres que viven adentro de un sub-objeto.
-    expect(Object.keys(e.sede!).sort()).toEqual(['barrio', 'ciudad', 'nombre']);
+    /*
+     * Y los que viven adentro de un sub-objeto. **Son cuatro desde B-950**: el
+     * índice lleva `provincia` porque el eje del riel sale de acá — sin ella
+     * `provinciaDeSede` caía al respaldo «¿la ciudad es CABA?», el único chip
+     * posible era `caba`, y como la cascada abre el eje `ciudad` solo con una
+     * provincia no-CABA elegida, el filtro de ciudad del sitio era inalcanzable.
+     *
+     * La afirmación que este caso hace sigue siendo la misma: la dirección, las
+     * coordenadas y las indicaciones **no** están, que es lo que separa al índice
+     * del detalle.
+     */
+    expect(Object.keys(e.sede!).sort()).toEqual(['barrio', 'ciudad', 'nombre', 'provincia']);
     expect(json).not.toContain('"tema"');
     expect(json).not.toContain('"lectura"');
     expect(json).not.toContain('"bio"');

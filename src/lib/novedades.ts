@@ -61,6 +61,21 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'geografia-en-cascada',
+    fecha: '2026-09-16',
+    // Misma que las de abajo: `package.json` sigue en 1.10.0, así que 1.11.0
+    // todavía no salió y las tres entran en el mismo release.
+    version: '1.11.0',
+    titulo: 'Ahora se carga la provincia, y el barrio o la ciudad se eligen de una lista',
+    detalle:
+      'En «Dónde» aparece primero la provincia. Si elegís CABA, abajo se despliegan los ' +
+      'barrios; si elegís cualquier otra, las ciudades. La ciudad dejó de escribirse a mano, ' +
+      'así que «Mar del Plata» y «mar del plata» ya no son dos lugares distintos. En el ' +
+      'listado hay filtros nuevos por provincia y ciudad, y la tarjeta de cada actividad dice ' +
+      'dónde queda: en CABA el barrio, y afuera la ciudad y la provincia.',
+    donde: 'La sección «Dónde» del formulario, y los filtros del listado.',
+  },
+  {
     id: 'publicador-ve-su-ciudad',
     fecha: '2026-09-14',
     /*

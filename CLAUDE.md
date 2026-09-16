@@ -127,6 +127,18 @@ consentimiento, sin tokens que expiran.
 
 ### 3.1 `/actividades/{id}`
 
+> ⚠️ **`sede` ganó un campo y `ciudad` cambió de naturaleza — ver D-710 en
+> [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
+> `{ nombre, direccion, provincia, barrio, ciudad, indicaciones, geo }`, y las
+> **tres** de la geografía son slugs de taxonomía: `ciudad` **dejó de ser texto
+> libre** y `provincia` es nueva, sembrada con las 24 jurisdicciones. La cascada
+> es de **dos** niveles —«provincia → barrio *o* ciudad», porque CABA es ciudad y
+> provincia a la vez y lo que la subdivide es el barrio— y vive entera en
+> `src/lib/geografia.mjs`, que es también donde está la regla de qué se muestra
+> («si es CABA, solo barrio»). En CABA la ciudad **se guarda igual** aunque el
+> formulario no la pregunte: sin ella, `ciudades[]` dejaría a todo CABA fuera del
+> alcance de cualquier publicador. El bloque de abajo queda como estaba escrito.
+
 > ⚠️ **El `imagenUrl` de este bloque ya no es el campo del modelo — ver D-125 en
 > [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
 > `imagenes: Imagen[]`, una **lista** con un flag `portada`, un epígrafe opcional
@@ -166,7 +178,7 @@ sesiones: [{
 
 // ── MODALIDAD ────────────────────────────────────
 modalidad: 'presencial' | 'virtual' | 'hibrido'
-sede: { nombre, direccion, barrio, ciudad, indicaciones, geo } | null
+sede: { nombre, direccion, barrio, ciudad, indicaciones, geo } | null   // ← D-710: ganó `provincia`, y `ciudad` ya no es texto libre
 online: { plataforma, url, urlPublica: boolean } | null
 
 // ── INSCRIPCIÓN ──────────────────────────────────

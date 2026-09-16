@@ -50,7 +50,12 @@ const opcion = (slug: string, label: string): ValorOpcion => ({
 const LABELS = labelsDeOpciones({
   arancel: [opcion('a-la-gorra', 'A la gorra')],
   tipo: [opcion('club-lectura', 'Club de lectura'), opcion('taller', 'Taller')],
-  barrio: [opcion('villa-crespo', 'Villa Crespo')],
+  barrio: [opcion('villa-crespo', 'Villa Crespo'), opcion('palermo', 'Palermo')],
+  // B-950 — la ciudad dejó de ser texto libre. Sin estas dos entradas el fixture
+  // mediría el respaldo (`desSlug`) y no la resolución, que es exactamente cómo
+  // este archivo quedó verde publicando «caba» en Instagram.
+  ciudad: [opcion('caba', 'CABA'), opcion('mar-del-plata', 'Mar del Plata'), opcion('palermo', 'Palermo')],
+  provincia: [opcion('caba', 'CABA'), opcion('buenos-aires', 'Buenos Aires')],
   plataforma: [opcion('zoom', 'Zoom')],
   tags: [opcion('narrativa', 'Narrativa')],
 });
@@ -121,8 +126,9 @@ const act = (over: Partial<ActividadParaRedes> = {}): ActividadParaRedes =>
     sede: {
       nombre: 'Casa Brandon',
       direccion: 'Luis María Drago 236',
+      provincia: 'caba',
       barrio: 'villa-crespo',
-      ciudad: 'CABA',
+      ciudad: 'caba',
       indicaciones: 'Timbre 3B, tocar fuerte',
       geo: null,
     },
@@ -394,9 +400,46 @@ describe('dónde, arancel e inscripción', () => {
 
   it('el barrio y la ciudad cargados iguales no se repiten', () => {
     const repetido = act({
-      sede: { ...act().sede!, barrio: 'palermo', ciudad: 'Palermo' },
+      sede: { ...act().sede!, barrio: 'palermo', ciudad: 'palermo' },
     });
-    expect(texto(repetido)).toContain('Luis María Drago 236, Palermo\n');
+    // «Palermo» una sola vez, y la provincia detrás: con B-950 la línea también
+    // dice la provincia, así que lo que este caso afirma es la deduplicación —
+    // que es lo que siempre afirmó— y no el final de la línea.
+    expect(texto(repetido)).toContain('Luis María Drago 236, Palermo, CABA\n');
+    expect(texto(repetido).match(/Palermo/g)).toHaveLength(1);
+  });
+
+  /**
+   * **B-950, y lo encontró el `auditor-privacidad`.** La ciudad se imprimía cruda
+   * porque era texto libre; desde que es un slug, esta línea publicaba
+   * «Villa Crespo, caba» en el posteo que alguien copia a Instagram — y un
+   * posteo copiado **no se despublica**.
+   *
+   * Este archivo estaba verde con el bug adentro porque el fixture seguía usando
+   * `ciudad: 'CABA'`, la forma vieja, que el panel ya no escribe. Por eso el
+   * fixture se migró junto con el arreglo: sin eso el caso mediría el respaldo.
+   *
+   * MUTACIÓN PROBADA: volver la línea a `sede.ciudad` crudo deja este caso rojo.
+   */
+  it('la ciudad y la provincia salen resueltas a su etiqueta, nunca el slug', () => {
+    const afuera = act({
+      sede: {
+        ...act().sede!,
+        provincia: 'buenos-aires',
+        barrio: '',
+        ciudad: 'mar-del-plata',
+      },
+    });
+    const t = texto(afuera);
+    expect(t).toContain('Luis María Drago 236, Mar del Plata, Buenos Aires');
+    expect(t).not.toContain('mar-del-plata');
+    expect(t).not.toContain('buenos-aires');
+  });
+
+  it('y en CABA la provincia no se dice dos veces', () => {
+    // Es la misma etiqueta que la ciudad, y la deduplicación que ya existía para
+    // «Palermo» cargado en los dos campos la colapsa sola.
+    expect(texto(act())).toContain('Luis María Drago 236, Villa Crespo, CABA\n');
   });
 
   it('el arancel sale con su etiqueta y sus notas tal cual', () => {

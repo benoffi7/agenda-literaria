@@ -19,6 +19,7 @@ import {
   aQuery,
   cantidadDeFiltrosPublicos,
   chipsDe,
+  ejesVisibles,
   cuandoDeDias,
   desdeQuery,
   rutaCanonicaDeFiltros,
@@ -669,6 +670,48 @@ describe('el eje de arancel: dónde está y en qué orden — B-271, D-151', () 
     expect(esSinCosto('a-la-gorra')).toBe(true);
     expect(esSinCosto('arancelado')).toBe(false);
     expect(esSinCosto('')).toBe(false);
+  });
+
+  /**
+   * **El agujero que el `auditor-privacidad` encontró sobre B-950, y era el que
+   * rompía la mitad del pedido.**
+   *
+   * `SedeDeIndice` no llevaba `provincia`, así que `provinciaDeSede` caía a su
+   * respaldo —«¿la ciudad es CABA?»— y el **único** chip de provincia que podía
+   * existir era `caba`. Una actividad de Mar del Plata aportaba `[]`. Y como
+   * `ejesVisibles` abre el eje `ciudad` solo cuando hay una provincia no-CABA
+   * elegida, **el filtro de ciudad del sitio era inalcanzable** salvo escribiendo
+   * `?ciudad=…` a mano.
+   *
+   * Nada lo veía porque los casos de `ejesVisibles` arman los filtros a mano, y
+   * los de `piezasDeLugar` le pasan un objeto con `provincia` — que es la forma
+   * de `ActividadPublica` y **no** la de `EntradaDeIndice`, que es la que usan el
+   * riel, la tarjeta, el tríptico, la página de mes, `/pasadas` y los hubs. Dos
+   * formas del mismo dato, y el test miraba la que andaba: la clase de B-88.
+   *
+   * MUTACIÓN PROBADA: sacar `provincia` del literal de `entradaDeIndice`
+   * (`lib/eventsJson.ts`) deja los dos primeros `expect` en rojo.
+   */
+  it('el eje `provincia` filtra una entrada del índice de afuera de CABA', () => {
+    const afuera = entradaDePrueba({
+      slug: 'mardel',
+      provincia: 'buenos-aires',
+      ciudad: 'mar-del-plata',
+      barrio: '',
+    });
+    const chips = chipsDe('provincia', [afuera], filtrosVacios(), ETIQUETAS, AHORA);
+    expect(chips.map((c) => c.valor)).toEqual(['buenos-aires']);
+
+    // Y la mitad que de esto depende: con esa provincia puesta, el eje `ciudad`
+    // se abre. Sin el campo en el índice no había forma de llegar acá.
+    const conProvincia = {
+      ...filtrosVacios(),
+      valores: { ...filtrosVacios().valores, provincia: ['buenos-aires'] },
+    };
+    expect(ejesVisibles(conProvincia)).toContain('ciudad');
+    expect(
+      chipsDe('ciudad', [afuera], conProvincia, ETIQUETAS, AHORA).map((c) => c.valor),
+    ).toEqual(['mar-del-plata']);
   });
 
   it('el arancel es el segundo eje, y el grupo de «dónde» queda entero', () => {

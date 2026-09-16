@@ -241,7 +241,20 @@ export const conProvincia = (sede, provincia) => {
   return {
     ...sede,
     provincia: slug,
-    barrio: '',
+    /*
+     * **El barrio se limpia solo al SALIR de CABA**, y esto lo cobró el
+     * `auditor-trampas`: la versión anterior lo borraba en toda transición hacia
+     * una provincia que no fuera CABA, incluida «de Buenos Aires a Córdoba», donde
+     * el campo Barrio ni siquiera está en pantalla. O sea que corregir la
+     * provincia de una sede de Mar del Plata borraba, sin que nadie lo viera, un
+     * barrio que alguien había cargado.
+     *
+     * Lo que sí hay que limpiar es el barrio **de CABA** que queda colgado al
+     * mudarse afuera: «Boedo, Mar del Plata» seguiría filtrándose por Boedo. Y es
+     * coherente con `piezasDeLugar`, que respeta y muestra un barrio cargado
+     * fuera de CABA — esconder un dato que alguien escribió es peor que mostrarlo.
+     */
+    barrio: esCaba(sede.provincia) ? '' : (sede.barrio ?? ''),
     ciudad: esCaba(sede.ciudad) ? '' : slugify(sede.ciudad ?? ''),
   };
 };
@@ -251,11 +264,25 @@ export const conProvincia = (sede, provincia) => {
  * `campo-nuevo` avisa que siempre se olvida.
  *
  * Los documentos anteriores a B-950 no tienen `provincia` y guardan la ciudad
- * como se tipeó («Mar del Plata»), no como slug. Todo lo que lea una sede tiene
- * que ver la forma nueva, y hay **tres** caminos que no pasan por el formulario:
- * la proyección pública (`toPublic.ts`), el historial (`historial.ts`, que
- * escribe `sede` con el objeto tal como venía de una versión guardada) y el
- * evento de Calendar.
+ * como se tipeó («Mar del Plata»), no como slug. Se aplica en **cuatro** lugares,
+ * y conviene saber cuáles son exactamente porque la primera versión de este
+ * docblock nombraba uno que no la tenía y lo cobraron dos auditores:
+ *
+ *  - `toPublic.ts` — la proyección pública, o sea el `events.json`, el detalle,
+ *    la cartelera y todo lo que deriva de ellos;
+ *  - `filtrosActividades.ts` — los filtros del panel, que leen el documento crudo;
+ *  - `actividades.ts` (`formADocumento`) — antes de escribir, porque un borrador
+ *    recuperado del navegador pudo guardarse antes de esta versión;
+ *  - `historial.ts` (`payloadDeRestauracion`) — **también escribe el documento**,
+ *    y sin esto restaurar una versión vieja lo dejaba internamente contradictorio.
+ *
+ * **Dónde NO se aplica, y es una decisión:** `functions/calendario.js`.
+ * `functions/` se despliega con su propio `package.json` y no puede importar
+ * hacia arriba (D-20), así que el evento usa el valor crudo del documento. Hoy es
+ * inofensivo —`etiqueta()` cae a `desSlug`, que sobre «Mar del Plata» no cambia
+ * nada, y la provincia simplemente no aparece, igual que antes de B-950— y se
+ * vuelve visible solo si una sede vieja tiene la ciudad con mayúsculas
+ * irregulares. Está anotado como **B-968**.
  *
  * `slugify` es idempotente sobre un slug, así que esto se puede aplicar sin
  * preguntar si el documento ya está migrado — que es justo lo que permite que el

@@ -233,6 +233,26 @@ describe('conProvincia — la cascada del formulario', () => {
     ).toEqual({ provincia: 'cordoba', barrio: '', ciudad: 'mar-del-plata' });
   });
 
+  /**
+   * **Lo cobró el `auditor-trampas`.** La versión anterior limpiaba el barrio en
+   * toda transición hacia una provincia que no fuera CABA, incluida «de Buenos
+   * Aires a Córdoba» — donde el campo Barrio ni siquiera está en pantalla. O sea
+   * que corregir la provincia de una sede de Mar del Plata borraba, sin que nadie
+   * lo viera, un barrio que alguien había cargado. Y contradecía a
+   * `piezasDeLugar`, que respeta y muestra un barrio cargado fuera de CABA.
+   *
+   * MUTACIÓN PROBADA: volver a `barrio: ''` incondicional deja este caso rojo y
+   * el de arriba verde.
+   */
+  it('cambiar entre dos provincias que no son CABA no borra un barrio legado', () => {
+    expect(
+      conProvincia(
+        sede({ provincia: 'buenos-aires', barrio: 'centro', ciudad: 'la-plata' }),
+        'cordoba',
+      ),
+    ).toEqual({ provincia: 'cordoba', barrio: 'centro', ciudad: 'la-plata' });
+  });
+
   it('vaciar la provincia no rompe nada', () => {
     expect(conProvincia(sede({ provincia: 'cordoba', ciudad: 'villa-maria' }), '')).toEqual({
       provincia: '',

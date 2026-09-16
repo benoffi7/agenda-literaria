@@ -178,10 +178,11 @@ const EJES_DE_TAXONOMIA = [
  * Los otros cuatro filtros del listado, los que **no** son un riel de chips —
  * **B-798**.
  *
- * El listado tiene diez filtros, no seis: además de los seis ejes de taxonomía
- * están el texto del buscador, el «Cuándo», «solo con inscripción abierta» y
+ * El listado tiene **once** filtros, no siete: además de los siete ejes de
+ * taxonomía (seis hasta B-950, que sumó `provincia`) están el texto del
+ * buscador, el «Cuándo», «solo con inscripción abierta» y
  * «ciclos / encuentros únicos». `ejeQueSobra` de `listadoPublico.ts` mira
- * **solo los seis** —le alcanza, porque lo que la pantalla ofrece es «probá sin
+ * **solo los siete** —le alcanza, porque lo que la pantalla ofrece es «probá sin
  * el filtro de…» y esos cuatro no son un chip que se saque—, así que hasta
  * B-798 un cero causado por cualquiera de ellos llegaba a GA4 **sin ningún
  * `eje`**, indistinguible de «ningún filtro solo explica el cero». Las dos

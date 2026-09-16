@@ -2,6 +2,100 @@
 
 ## Sin publicar
 
+- **La geografía rehecha: provincia, ciudad como taxonomía, y selectores en
+  cascada** — **B-950**, **B-951**, **B-952**, **B-953**, **D-710**. Pedido del
+  dueño: «lo de provincia, barrio y ciudad hay que rehacerlo casi en todos lados.
+  En la web no puede ser una lista enorme sino selectores: provincia primero y de
+  ahí despliega barrios o ciudades».
+
+  **`provincia` no existía** —ni en el modelo, ni en el schema, ni en el
+  formulario— y **`ciudad` era un `<input>` de texto libre** al lado de un
+  `barrio` que sí era taxonomía. Esa asimetría ya había costado `ciudades.mjs` una
+  vez, y volvía a morder acá: no se puede desplegar «las ciudades de esta
+  provincia» sobre un campo donde cada persona escribe lo que quiere. Las dos son
+  taxonomía ahora, y la provincia viene sembrada con las 24 jurisdicciones.
+
+  **La cascada es de dos niveles y no de tres**: «provincia → barrio *o* ciudad».
+  CABA es ciudad y provincia a la vez y lo que la subdivide es el barrio, así que
+  el modelo de tres niveles agregaría un paso vacío al 100 % de los casos de CABA
+  — que hoy son casi todos. Está en los tres lugares con la misma función
+  (`subdivisionDe`): el formulario del panel, el riel del sitio y los filtros del
+  panel. Escrita tres veces, el panel podría dejar guardar algo que el sitio
+  después no sabe filtrar.
+
+  **CABA se guarda con ciudad y solo se esconde al mostrarla.** Si la ciudad
+  quedara vacía, ninguna actividad de CABA entraría en el alcance por ciudad de
+  ningún publicador (`ciudades[]`, B-919), y el eje del listado, el banner de
+  B-961 y el hub nuevo dejarían de verla — ninguno con nada en rojo. Que no se
+  diga «Boedo, CABA» es presentación, y vive en **una** función que comparten las
+  cinco salidas que arman ese renglón.
+
+  **En el sitio**, el riel ya no ofrece la lista plana: sin provincia elegida no
+  se ofrece ni barrio ni ciudad. Con una excepción que rescata un enlace
+  compartido por WhatsApp: un eje con valores puestos se muestra igual aunque la
+  cascada no lo abra — sin eso, `?barrio=boedo` sin provincia dejaría un filtro
+  aplicado sin ningún control en pantalla para sacarlo.
+
+  **En el panel** (B-952, B-953) aparece el filtro por provincia y ciudad, y la
+  tarjeta dejó de decir solo el barrio: con fichas de afuera, dos actividades en
+  barrios homónimos de ciudades distintas se leían igual. De paso se arregló un
+  bug que venía de arriba: los filtros de geografía miraban **una sola sede** —la
+  derivada—, así que una actividad presencial en dos ciudades se filtraba por una
+  sola. Ahora cruzan contra todas las filas.
+
+  **`/ciudad/{slug}` existe** (B-951), y es la página que faltaba: «taller de
+  escritura en Mar del Plata» tiene exactamente la forma de la consulta con la que
+  el hub de barrio se justificó a sí mismo. **Solo se pudo hacer porque `ciudad`
+  pasó a ser taxonomía**: un hub se emite únicamente para las opciones
+  *aprobadas*, y mientras fue texto libre emitir uno por ciudad habría sido emitir
+  una URL indexada por cada string tipeado. El «Dónde» de la ficha dice ahora la
+  ciudad y enlaza el barrio o la ciudad a su hub —nunca a ciegas: si ese hub no se
+  emitió, la pieza sale sin enlace—.
+
+  **`provincia` no tiene hub, y es una decisión**: sus 24 valores están sembrados,
+  así que emitiría hasta 24 páginas casi todas vacías, y la consulta que ganaría
+  la pelea mal contra la de la ciudad. Se dice en el renglón, no se enlaza.
+
+  **Dos cosas que costó y están escritas**: `eje` es una dimensión medida, así que
+  sumar `provincia` **parte la serie histórica** de `filtro_sin_resultados` — es el
+  costo aceptado, porque el eje nuevo es el que más poder tiene para dejar la
+  lista vacía y no medirlo dejaría el caso más probable llegando sin `eje`. Y
+  `ciudades[]` **perdió su ancla por valor** en el barrido de salidas (B-965): se
+  anclaba así porque su contenido no se publicaba, y ahora el slug de la ciudad sí
+  se publica.
+
+  **Nada de lo cargado se reescribe por las bravas.** El default de lectura es
+  idempotente y se aplica en los cuatro lugares que leen o escriben el documento
+  sin pasar por el formulario, así que un documento sin migrar se ve y se filtra
+  bien. (El evento de Calendar es la excepción, anotada como **B-968**:
+  `functions/` no puede importar hacia arriba.) `npm run geografia:sembrar`
+  es opcional, y **no adivina** la provincia de una ciudad que no sea CABA: la
+  lista una por una para completarlas a mano. Ojo que esa corrida **sí reescribe
+  los eventos de Calendar**, una llamada por sesión.
+
+  **Los tres auditores encontraron cinco cosas y las cinco se arreglaron antes de
+  cerrar**, tres de ellas huecos de la red y no del código. La que más importaba:
+  `SedeDeIndice` **no llevaba `provincia`**, así que el único chip posible era
+  `caba` y **el eje `ciudad` del sitio era inalcanzable** — la mitad no-CABA de la
+  cascada, que es el pedido, no funcionaba. No lo veía nadie porque los casos le
+  pasaban la forma de `ActividadPublica`, que sí la lleva: dos formas del mismo
+  dato, y el test miraba la que andaba. Después: el **texto para redes** imprimía
+  «Villa Crespo, caba» en el posteo que se copia a Instagram —la salida más
+  irreversible, y su fixture seguía usando la forma vieja, por eso estaba verde—;
+  **restaurar del historial** dejaba el documento contradictorio; la **quinta
+  clase de hub entró sin barrido** (ahora la lista se compara contra
+  `CLASES_DE_HUB`); y `conProvincia` **borraba el barrio** también al pasar de una
+  provincia a otra que no fuera CABA.
+
+  Quedaron anotados **B-968** (el evento de Calendar no normaliza: `functions/` no
+  puede importar hacia arriba) y **B-969** (el build contra el emulador siembra
+  una sola actividad y es de CABA, así que el barrido sobre el `dist/` no ejercita
+  nada de esto).
+
+  Falta el cuarto frente que B-950 nombra: las guías (librerías y lugares) siguen
+  con la ciudad como texto libre — **B-967**, con su propia migración porque su
+  default es «Ciudad de Buenos Aires» y no «CABA».
+
 - **Un banner en el filtro de una ciudad** — **B-961**. Con el filtro **Ciudad →
   Mar del Plata** puesto, arriba del listado aparece un banner que lleva al
   emprendimiento de **quien publica esa ciudad** en la agenda, en pestaña nueva.

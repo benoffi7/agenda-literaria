@@ -12,9 +12,12 @@
  * tipeó** («Mar del Plata»), no como slug.
  *
  * Eso **no rompe nada hoy**, y ésa es la diferencia con `sembrar-ciudades.mjs`:
- * `geografiaNormalizada` es idempotente y se aplica en los tres caminos de
- * lectura —la proyección pública, el panel y el evento de Calendar—, así que un
- * documento sin migrar se ve y se filtra bien igual. Lo que este script hace es
+ * `geografiaNormalizada` es idempotente y se aplica en los cuatro lugares que
+ * leen o escriben el documento sin pasar por el formulario —`toPublic.ts`,
+ * `filtrosActividades.ts`, `formADocumento` y `payloadDeRestauracion`—, así que
+ * un documento sin migrar se ve y se filtra bien igual. El evento de Calendar es
+ * la excepción y está anotada (B-968): `functions/` no puede importar hacia
+ * arriba, así que usa el valor crudo. Lo que este script hace es
  * dejar el **documento** en la forma nueva, y con eso:
  *
  *  - el historial del §12 deja de guardar versiones con dos formas mezcladas;

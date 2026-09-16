@@ -53,6 +53,8 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run admin:claim:prod -- --publicador --ciudad "<ciudad>" <uid\|email>` | ídem, y además **ve en solo lectura** lo de esa ciudad (B-919) |
 | `npm run ciudades:sembrar` | informa qué `ciudades` escribiría en el emulador (B-919, D-690) |
 | `npm run ciudades:sembrar:prod` | informa qué escribiría en producción. `-- --aplicar --produccion` lo escribe |
+| `npm run geografia:sembrar` | informa qué `provincia`/`barrio`/`ciudad` normalizaría en el emulador (B-950, D-710) |
+| `npm run geografia:sembrar:prod` | informa qué escribiría en producción. `-- --aplicar --produccion` lo escribe. **Ojo: esta corrida reescribe los eventos de Calendar** |
 | `npm run admin:claim:prod -- --quitar <uid\|email>` | le saca el rol a una cuenta |
 | `npm run slugs:sembrar -- --aplicar` | siembra el índice de direcciones web en el emulador (B-888, D-660) |
 | `npm run slugs:sembrar:prod` | informa qué sembraría en producción. `-- --aplicar --produccion` lo escribe; `--reparar` además borra las reservas huérfanas |
@@ -493,6 +495,46 @@ rebuild del sitio, que el debounce del §8 colapsa en uno solo.
 El informe marca aparte cuántas quedan con `[]` — las virtuales y las que tienen
 la ciudad sin cargar. **No es un error**: esas no son de ninguna ciudad y no las ve
 ningún publicador por ciudad. Es el caso que alguien va a venir a preguntar.
+
+## Sembrar la geografía de las sedes (B-950, D-710)
+
+**A diferencia del de arriba, este NO es un paso del despliegue.**
+`geografiaNormalizada` es el default de lectura y es idempotente, y se aplica en
+los cuatro lugares que leen o escriben el documento sin pasar por el formulario
+(`toPublic.ts`, `filtrosActividades.ts`, `formADocumento` y
+`payloadDeRestauracion`). O sea que un documento sin migrar **se ve y se filtra
+bien sin correr nada**.
+
+Lo que este script hace es dejar el **documento** en la forma nueva: la provincia
+puesta y la ciudad como slug. Con eso, el historial deja de guardar versiones con
+dos formas mezcladas, `searchText` y `ciudades[]` se reescriben derivados de la
+forma nueva, y quien mire el documento en la consola de Firebase ve lo mismo que
+el sitio.
+
+```bash
+npm run geografia:sembrar                                   # informa, en el emulador
+npm run geografia:sembrar:prod                              # informa qué escribiría en producción
+npm run geografia:sembrar:prod -- --aplicar --produccion    # lo escribe
+```
+
+**No adivina la provincia de una ciudad que no sea CABA.** La deduce solo cuando
+la ciudad es CABA —que cubre casi todo el catálogo, porque el default del
+formulario era `'CABA'` cableado—. Para «Mar del Plata» la provincia la sabe una
+persona: una tabla ciudad→provincia sería inventar el dato, y el primer error se
+publicaría en el `addressLocality` del JSON-LD. **El script las lista una por
+una** al terminar, y se completan reeditando la actividad desde el panel. Hasta
+entonces esas sedes no aparecen bajo ningún filtro de lugar del sitio.
+
+> ⚠️ **Esta corrida reescribe los eventos de Calendar, y la de `ciudades` no.**
+> `sesiones` no cambia, pero `modalidades` y `sede` son campos que la guarda del
+> §7.1 mira, y la dirección del evento lleva la ciudad. Es lo correcto —antes
+> decía la ciudad tipeada, ahora la etiqueta— pero es **una llamada a la API de
+> Calendar por sesión**. Correrlo una vez, fuera de hora.
+
+Lo demás es igual que el de `ciudades`: sin `--aplicar` solo informa, `--aplicar`
+fuera del emulador exige `--produccion`, es idempotente (la segunda corrida no
+escribe nada), y deja una versión del §12 por actividad tocada más un rebuild que
+el debounce colapsa en uno solo.
 
 Una reserva queda huérfana cuando la actividad que la usaba ya no existe. Pasa en
 un caso conocido y acotado: si un admin le cambió la dirección web a la actividad
