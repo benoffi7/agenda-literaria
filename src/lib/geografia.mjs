@@ -227,10 +227,15 @@ export const piezasDeLugar = (/** @type {SedeGeografica | null | undefined} */ s
  *    verdad cargada se conserva, porque corregir la provincia de una sede de Mar
  *    del Plata no es motivo para hacerle volver a tipear la ciudad.
  */
-export const conProvincia = (
-  /** @type {SedeGeografica} */ sede,
-  /** @type {string | null | undefined} */ provincia,
-) => {
+/**
+ * @template {SedeGeografica} T
+ * @param {T} sede
+ * @param {string | null | undefined} provincia
+ * @returns {T} la misma sede, con los otros campos conservados: quien la llama
+ *   tiene un `Sede` entero (nombre, dirección, `geo`…) y esto solo toca los tres
+ *   de la geografía.
+ */
+export const conProvincia = (sede, provincia) => {
   const slug = provincia ? slugify(provincia) : '';
   if (esCaba(slug)) return { ...sede, provincia: slug, ciudad: SLUG_CABA };
   return {

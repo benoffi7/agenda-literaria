@@ -849,6 +849,23 @@ export const actividadFormSchema = z
         if (!m.sede?.direccion) {
           falta(['modalidades', i, 'sede', 'direccion'], 'Falta la dirección');
         }
+        /*
+         * B-950 — la provincia es **completitud** y se exige al publicar, igual
+         * que el nombre y la dirección. No es una prolijidad: es el primer nivel
+         * de la cascada, así que sin ella la actividad no aparece bajo ningún
+         * filtro de lugar del sitio. Una presencial que no se puede encontrar por
+         * dónde queda está tan incompleta como una sin dirección.
+         *
+         * **La subdivisión NO se exige, y es a propósito.** El barrio de una
+         * sede de CABA y la ciudad de una de afuera son lo deseable, pero
+         * `/opciones/barrio` y `/opciones/ciudad` arrancan vacías y las llena
+         * quien carga: exigirlas convertiría cada localidad nueva en un paso
+         * obligatorio antes de poder publicar. Con la provincia alcanza para que
+         * la actividad exista en la cascada.
+         */
+        if (!m.sede?.provincia) {
+          falta(['modalidades', i, 'sede', 'provincia'], 'Elegí la provincia');
+        }
       }
       if (filaPideOnline(m.modalidad) && !m.online?.plataforma) {
         falta(['modalidades', i, 'online', 'plataforma'], 'Elegí la plataforma');

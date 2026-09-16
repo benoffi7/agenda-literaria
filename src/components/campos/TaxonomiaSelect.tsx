@@ -79,6 +79,19 @@ interface Props {
    * encima en silencio, porque la actividad sí se guarda.
    */
   permitirOtro?: boolean;
+  /**
+   * ¿El desplegable está apagado? — B-950.
+   *
+   * Existe por la cascada: el selector de ciudad no se puede usar hasta que haya
+   * una provincia elegida, porque «las ciudades de esta provincia» todavía no
+   * son ninguna. **Se muestra apagado en vez de no estar**: un campo que aparece
+   * al tocar el desplegable de arriba se lee como que la pantalla saltó, y
+   * además deja de anunciar que ahí va a haber algo.
+   *
+   * `false` por default, que preserva lo anterior en los cinco usos que ya
+   * había.
+   */
+  deshabilitado?: boolean;
 }
 
 const OTRO = '__otro__';
@@ -96,6 +109,7 @@ export function TaxonomiaSelect({
   valores,
   elegibles,
   onMedir,
+  deshabilitado = false,
   value,
   onChange,
   id,
@@ -242,6 +256,7 @@ export function TaxonomiaSelect({
     <select
       id={id}
       className={claseInput}
+      disabled={deshabilitado}
       value={value || ''}
       onChange={(e) => {
         // El `permitirOtro` va **también acá** y no solo en el `option` de

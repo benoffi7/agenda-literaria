@@ -41,7 +41,7 @@ import {
   mesDesplazado,
   nombreDeMes,
 } from '@/lib/fechasPublicas';
-import { provinciaDeSede } from '@/lib/geografia.mjs';
+import { provinciaDeSede, subdivisionDe } from '@/lib/geografia.mjs';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
@@ -734,6 +734,44 @@ export const chipsDe = (
       }
       return b.cantidad - a.cantidad || a.label.localeCompare(b.label, 'es');
     });
+};
+
+/**
+ * **Qué ejes se pintan, y en qué orden** — B-950, la cascada.
+ *
+ * Los cuatro de siempre (`tipo`, `arancel`, `modalidad`, `tag`) están siempre. Lo
+ * que cambia es el grupo de lugar: `provincia` también está siempre —es el primer
+ * nivel— y de las otras dos se muestra **una**, la que esa provincia subdivide.
+ *
+ * ── Por qué la lista plana dejó de servir ──────────────────────────────────
+ * Con dos barrios un riel de chips funciona. Con los treinta y pico que ya hay
+ * cargados, no: es el mismo problema que D-143 topeó a mano en el teléfono, donde
+ * los ejes viven detrás de un disclosure de 65svh con scroll propio. Y con las
+ * actividades de afuera de CABA entrando, la lista de ciudades crece por el otro
+ * lado. El dueño lo pidió como cascada: «en la web no puede ser una lista enorme
+ * sino selectores: provincia primero, y de ahí despliega barrios o ciudades».
+ *
+ * ── Las tres reglas, y la tercera es la que no es obvia ───────────────────
+ * 1. **Sin provincia elegida no se ofrece ninguna de las dos.** Es el punto de la
+ *    cascada: la lista larga no se muestra hasta que hay con qué acortarla.
+ * 2. **Con provincias elegidas se ofrece la unión de lo que subdividen.** Elegir
+ *    CABA abre `barrio`; elegir Buenos Aires abre `ciudad`; elegir las dos abre
+ *    las dos, porque los ejes son multivalor y OR entre sí (§6.1) y esconder una
+ *    dejaría un filtro puesto sin control que lo saque.
+ * 3. **Un eje con valores puestos se muestra igual, aunque la cascada no lo
+ *    abra.** Es lo que hace que un enlace compartido por WhatsApp
+ *    —`?barrio=boedo`, sin `provincia`— siga siendo usable: sin esta regla el
+ *    filtro estaría aplicado, el listado mostraría tres resultados de treinta, y
+ *    no habría ningún control en pantalla para entender por qué ni para sacarlo.
+ *    Es la misma clase de bug que D-143: un filtro que existe y no se ve.
+ */
+export const ejesVisibles = (filtros: FiltrosPublicos): Eje[] => {
+  const subdivisiones = new Set(filtros.valores.provincia.map((p: string) => subdivisionDe(p)));
+  return EJES.filter((eje) => {
+    if (eje !== 'barrio' && eje !== 'ciudad') return true;
+    if (filtros.valores[eje].length > 0) return true;
+    return subdivisiones.has(eje);
+  });
 };
 
 /** Prende o apaga un valor de un eje. Devuelve filtros nuevos, no muta. */

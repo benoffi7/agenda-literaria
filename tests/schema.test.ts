@@ -33,8 +33,9 @@ const valido = () => ({
       sede: {
         nombre: 'Casa Brandon',
         direccion: 'Drago 236',
+        provincia: 'caba',
         barrio: 'villa-crespo',
-        ciudad: 'CABA',
+        ciudad: 'caba',
         indicaciones: '',
         geo: null,
       },
@@ -96,7 +97,15 @@ describe('schema — el borrador se guarda a medias (B-183)', () => {
         modalidad: 'presencial' as const,
         inicio: '',
         fin: '',
-        sede: { nombre: '', direccion: '', barrio: '', ciudad: '', indicaciones: '', geo: null },
+        sede: {
+          nombre: '',
+          direccion: '',
+          provincia: '',
+          barrio: '',
+          ciudad: '',
+          indicaciones: '',
+          geo: null,
+        },
         online: null,
       },
     ],
@@ -250,6 +259,33 @@ describe('schema — condicionales de §11, ahora por fila (al publicar)', () =>
     ];
     expect(errores(v)).toContain('modalidades.0.sede.nombre');
     expect(errores(v)).toContain('modalidades.0.sede.direccion');
+  });
+
+  /**
+   * B-950 — la provincia es completitud, como el nombre y la dirección: es el
+   * primer nivel de la cascada, así que sin ella la actividad no aparece bajo
+   * ningún filtro de lugar del sitio.
+   */
+  it('exige la provincia en presencial', () => {
+    const v = publicado();
+    v.modalidades = [
+      { ...v.modalidades[0]!, sede: { ...v.modalidades[0]!.sede!, provincia: '' } },
+    ];
+    expect(errores(v)).toContain('modalidades.0.sede.provincia');
+  });
+
+  /**
+   * Y la subdivisión **no** se exige: `/opciones/barrio` y `/opciones/ciudad`
+   * arrancan vacías y las llena quien carga, así que exigirlas convertiría cada
+   * localidad nueva en un paso obligatorio antes de poder publicar.
+   */
+  it('pero no exige ni el barrio ni la ciudad', () => {
+    const v = publicado();
+    v.modalidades = [
+      { ...v.modalidades[0]!, sede: { ...v.modalidades[0]!.sede!, barrio: '', ciudad: '' } },
+    ];
+    expect(errores(v)).not.toContain('modalidades.0.sede.barrio');
+    expect(errores(v)).not.toContain('modalidades.0.sede.ciudad');
   });
 
   it('exige plataforma en virtual', () => {

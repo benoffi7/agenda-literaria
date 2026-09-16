@@ -20,6 +20,7 @@ import {
   subdivisionDe,
   zonaDeSede,
 } from '@/lib/geografia.mjs';
+import { ejesVisibles, filtrosVacios } from '@/lib/listadoPublico';
 import { slugify } from '@/lib/slugify';
 
 const sede = (over: Record<string, string> = {}) => ({
@@ -258,5 +259,56 @@ describe('geografiaNormalizada — idempotente, que es lo que hace opcional al b
 
   it('una sede sin geografía queda con los tres vacíos, no con undefined', () => {
     expect(geografiaNormalizada({})).toEqual({ provincia: '', barrio: '', ciudad: '' });
+  });
+});
+
+describe('ejesVisibles — la cascada del riel del sitio (B-950)', () => {
+  const con = (provincia: string[] = [], otros: Record<string, string[]> = {}) => ({
+    ...filtrosVacios(),
+    valores: { ...filtrosVacios().valores, provincia, ...otros },
+  });
+
+  it('sin provincia elegida no se ofrece ni barrio ni ciudad', () => {
+    // Es el punto de la cascada: la lista larga no se muestra hasta que hay con
+    // qué acortarla. Los otros cuatro ejes siguen enteros.
+    const ejes = ejesVisibles(con());
+    expect(ejes).not.toContain('barrio');
+    expect(ejes).not.toContain('ciudad');
+    expect(ejes).toEqual(['tipo', 'arancel', 'modalidad', 'provincia', 'tag']);
+  });
+
+  it('con CABA se abre el barrio, y solo el barrio', () => {
+    const ejes = ejesVisibles(con(['caba']));
+    expect(ejes).toContain('barrio');
+    expect(ejes).not.toContain('ciudad');
+  });
+
+  it('con otra provincia se abre la ciudad, y solo la ciudad', () => {
+    const ejes = ejesVisibles(con(['buenos-aires']));
+    expect(ejes).toContain('ciudad');
+    expect(ejes).not.toContain('barrio');
+  });
+
+  it('con las dos se abren las dos: los ejes son multivalor y OR entre sí', () => {
+    // Esconder una dejaría un filtro puesto sin ningún control que lo saque.
+    const ejes = ejesVisibles(con(['caba', 'buenos-aires']));
+    expect(ejes).toContain('barrio');
+    expect(ejes).toContain('ciudad');
+  });
+
+  /**
+   * La regla que rescata un enlace compartido: `?barrio=boedo` sin `provincia`.
+   * Sin esto el filtro estaría aplicado, el listado mostraría tres resultados de
+   * treinta, y no habría ningún control en pantalla para entender por qué ni
+   * para sacarlo — la misma clase de bug que D-143.
+   */
+  it('un eje con valores puestos se muestra aunque la cascada no lo abra', () => {
+    expect(ejesVisibles(con([], { barrio: ['boedo'] }))).toContain('barrio');
+    expect(ejesVisibles(con([], { ciudad: ['mar-del-plata'] }))).toContain('ciudad');
+  });
+
+  it('y el orden de la pantalla se conserva: provincia antes que su subdivisión', () => {
+    const ejes = ejesVisibles(con(['caba']));
+    expect(ejes.indexOf('provincia')).toBeLessThan(ejes.indexOf('barrio'));
   });
 });

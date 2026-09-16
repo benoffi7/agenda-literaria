@@ -93,6 +93,7 @@ import {
   diasDelCuando,
   etiquetaDeDias,
   EJES,
+  ejesVisibles,
   ETIQUETA_EJE,
   ETIQUETA_ORDEN_PUBLICO,
   ORDENES_PUBLICOS,
@@ -745,7 +746,14 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
               </div>
             </div>
 
-            {EJES.map((eje) => (
+            {/*
+              B-950 — `ejesVisibles` y no `EJES`: el grupo de lugar es una
+              cascada, así que de `barrio` y `ciudad` se pinta la que la provincia
+              elegida subdivide. Las reglas —incluida la que rescata un enlace
+              compartido con un filtro puesto y sin provincia— están en el
+              docblock de esa función.
+            */}
+            {ejesVisibles(filtros).map((eje) => (
               <EjeDeFiltro
                 key={eje}
                 leyenda={ETIQUETA_EJE[eje]}

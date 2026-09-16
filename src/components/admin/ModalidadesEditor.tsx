@@ -24,6 +24,7 @@ import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { ETIQUETA_MODALIDAD } from '@/components/admin/formulario/etiquetasUI';
 import { medirFuncion } from '@/lib/analytics';
 import { conModalidadDeFila, modalidadVacia } from '@/lib/formulario/estadoInicial';
+import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
 import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';
 import {
   duplicarModalidad,
@@ -175,31 +176,92 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                     placeholder="Luis María Drago 236"
                   />
                 </Campo>
+                {/*
+                  ── B-950 · la cascada: provincia primero, y de ahí una sola ──
+                  Lo pidió el dueño así, y el motivo es el mismo del lado del
+                  sitio: con treinta y pico de barrios cargados, una lista plana
+                  deja de servir. Acá además evita el error que la lista plana
+                  permitía — elegir «Boedo» en una sede de Mar del Plata.
+
+                  `subdivisionDe()` decide cuál de los dos campos se muestra, y
+                  es la MISMA función que usa el riel del sitio: si la regla se
+                  escribiera dos veces, el panel podría dejar guardar algo que el
+                  sitio después no sabe filtrar.
+                */}
                 <Campo
-                  label="Barrio"
-                  htmlFor={campoId('sede-barrio')}
-                  error={errorDe(ruta('sede.barrio'))}
+                  label="Provincia"
+                  htmlFor={campoId('sede-provincia')}
+                  requerido
+                  error={errorDe(ruta('sede.provincia'))}
                 >
                   <TaxonomiaSelect
-                    id={campoId('sede-barrio')}
-                    campo="barrio"
+                    id={campoId('sede-provincia')}
+                    campo="provincia"
                     uid={uid}
-                    value={fila.sede.barrio}
+                    value={fila.sede.provincia}
                     onChange={(slug, labelNuevo) => {
-                      editar({ sede: { ...fila.sede!, barrio: slug } });
-                      anotarLabel('barrio', labelNuevo);
+                      /*
+                       * `conProvincia` y no un `editar({ provincia })` pelado: el
+                       * cambio arrastra los otros dos campos (CABA completa la
+                       * ciudad sola; salir de CABA limpia el barrio, que ahí no
+                       * se pide). Es una regla del modelo, así que vive en
+                       * `lib/geografia.mjs` y se testea sin render, igual que
+                       * todo lo de `formulario/cascadas.ts`.
+                       */
+                      editar({ sede: conProvincia(fila.sede!, slug) });
+                      anotarLabel('provincia', labelNuevo);
                     }}
-                    placeholder="Elegí o agregá el barrio…"
+                    placeholder="Elegí la provincia…"
                   />
                 </Campo>
-                <Campo label="Ciudad" htmlFor={campoId('sede-ciudad')}>
-                  <input
-                    id={campoId('sede-ciudad')}
-                    className={claseInput}
-                    value={fila.sede.ciudad}
-                    onChange={(e) => editar({ sede: { ...fila.sede!, ciudad: e.target.value } })}
-                  />
-                </Campo>
+                {subdivisionDe(fila.sede.provincia) === 'barrio' ? (
+                  <Campo
+                    label="Barrio"
+                    htmlFor={campoId('sede-barrio')}
+                    error={errorDe(ruta('sede.barrio'))}
+                  >
+                    <TaxonomiaSelect
+                      id={campoId('sede-barrio')}
+                      campo="barrio"
+                      uid={uid}
+                      value={fila.sede.barrio}
+                      onChange={(slug, labelNuevo) => {
+                        editar({ sede: { ...fila.sede!, barrio: slug } });
+                        anotarLabel('barrio', labelNuevo);
+                      }}
+                      placeholder="Elegí o agregá el barrio…"
+                    />
+                  </Campo>
+                ) : (
+                  <Campo
+                    label="Ciudad"
+                    htmlFor={campoId('sede-ciudad')}
+                    error={errorDe(ruta('sede.ciudad'))}
+                    /*
+                     * Sin provincia elegida el campo se ve, deshabilitado, en vez
+                     * de no estar: un hueco que aparece al tocar el desplegable de
+                     * arriba se lee como que la pantalla saltó. `subdivisionDe`
+                     * devuelve `null` ahí, que es «todavía no hay segundo nivel»,
+                     * distinto de «el segundo nivel es la ciudad».
+                     */
+                    ayuda={
+                      fila.sede.provincia ? undefined : 'Elegí primero la provincia.'
+                    }
+                  >
+                    <TaxonomiaSelect
+                      id={campoId('sede-ciudad')}
+                      campo="ciudad"
+                      uid={uid}
+                      value={fila.sede.ciudad}
+                      deshabilitado={!fila.sede.provincia}
+                      onChange={(slug, labelNuevo) => {
+                        editar({ sede: { ...fila.sede!, ciudad: slug } });
+                        anotarLabel('ciudad', labelNuevo);
+                      }}
+                      placeholder="Elegí o agregá la ciudad…"
+                    />
+                  </Campo>
+                )}
                 <Campo
                   label="Cómo llegar"
                   htmlFor={campoId('sede-indicaciones')}
