@@ -87,6 +87,8 @@ describe('las guardas de los scripts que escriben — B-630', () => {
        * guarda de los dos flags le corresponde entera.
        */
       'scripts/sembrar-ciudades.mjs',
+      // B-950 — el backfill de la geografía de las sedes.
+      'scripts/sembrar-geografia.mjs',
       // B-888 / D-660 — el sembrado del índice de slugs. Entró por esta puerta
       // igual que el de retención: apareció acá en rojo el día que se escribió.
       // Escribe siempre y además **borra** con `--reparar`, así que la guarda de
