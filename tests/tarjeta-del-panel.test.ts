@@ -189,6 +189,46 @@ describe('dónde y cómo se cursa (B-224)', () => {
     // el componente nunca pinta un `·` colgado.
     expect(de({ sede: null }).donde).toHaveLength(1);
   });
+
+  /**
+   * **B-953** — «mostrar la ciudad también y luego la provincia. Si es CABA,
+   * solo barrio», el dueño. Con todo el catálogo en CABA el barrio solo
+   * alcanzaba; con fichas de afuera, dos actividades en barrios homónimos de
+   * ciudades distintas se leían igual.
+   *
+   * Los dos casos van juntos porque son la misma regla mirada de los dos lados,
+   * y porque el de CABA sin el de afuera se leería como un recorte y no como una
+   * decisión. La regla vive en `piezasDeLugar`, no en esta función.
+   */
+  it('afuera de CABA dice la ciudad y después la provincia', () => {
+    const contexto = {
+      ...CONTEXTO,
+      labels: {
+        ...CONTEXTO.labels,
+        ciudad: { 'mar-del-plata': 'Mar del Plata' },
+        provincia: { 'buenos-aires': 'Buenos Aires' },
+      },
+    };
+    const sede = {
+      nombre: 'Librería del puerto',
+      direccion: 'Av. Luro 3000',
+      provincia: 'buenos-aires',
+      barrio: '',
+      ciudad: 'mar-del-plata',
+      indicaciones: '',
+      geo: null,
+    };
+    expect(de({ sede }, contexto).donde).toEqual([
+      ETIQUETA_MODALIDAD.presencial,
+      'Mar del Plata, Buenos Aires',
+    ]);
+  });
+
+  it('y en CABA sigue diciendo solo el barrio, sin repetir la ciudad', () => {
+    // El control que hace que el caso de arriba signifique algo: si la regla de
+    // CABA se cayera, acá aparecería «Villa Crespo, CABA».
+    expect(de({ sede: sedeEn('villa-crespo') }).donde[1]).toBe('Villa Crespo');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -362,13 +402,24 @@ describe('la tarjeta consume todo lo que el módulo decide (B-620)', () => {
  */
 describe('ningún campo interno del documento llega al view-model (§5.1, trampa 5)', () => {
   /**
-   * Los tres centinelas que **sí** sobreviven, y por qué: son las **etiquetas**
-   * de las tres taxonomías que la tarjeta muestra —tipo, barrio y arancel—, o
-   * sea `/opciones/*`, que es de lectura pública (§5.3) y ya viaja en el
-   * `events.json` (§4.4). Los tres slugs crudos **no** sobreviven, que es lo que
-   * exige el §4.1.
+   * Los centinelas que **sí** sobreviven, y por qué: son las **etiquetas** de las
+   * taxonomías que la tarjeta muestra, o sea `/opciones/*`, que es de lectura
+   * pública (§5.3) y ya viaja en el `events.json` (§4.4). Los slugs crudos **no**
+   * sobreviven, que es lo que exige el §4.1.
+   *
+   * **Eran tres y con B-953 son cinco**: el renglón de lugar dejó de decir solo
+   * el barrio. La actividad del fixture no es de CABA —su provincia es un
+   * centinela— así que `piezasDeLugar` emite la ciudad y la provincia, que es
+   * exactamente el caso que el ítem reportó: dos actividades en barrios homónimos
+   * de ciudades distintas se leían igual.
    */
-  const PERMITIDOS: readonly string[] = ['labels.tipo', 'labels.barrio', 'labels.arancel'];
+  const PERMITIDOS: readonly string[] = [
+    'labels.tipo',
+    'labels.barrio',
+    'labels.provincia',
+    'labels.ciudad',
+    'labels.arancel',
+  ];
 
   const salida = (): string =>
     JSON.stringify(
@@ -381,7 +432,7 @@ describe('ningún campo interno del documento llega al view-model (§5.1, trampa
       }),
     );
 
-  it('sobreviven exactamente las tres etiquetas de taxonomía, y nada más', () => {
+  it('sobreviven exactamente las etiquetas de taxonomía, y nada más', () => {
     const json = salida();
     const sobrevivientes = RUTAS_CENTINELA.filter((r) => json.includes(CENTINELA[r]!));
     expect([...sobrevivientes].sort()).toEqual([...PERMITIDOS].sort());

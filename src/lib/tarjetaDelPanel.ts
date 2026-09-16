@@ -43,6 +43,7 @@
  * importa— las fija `tests/tarjeta-del-panel.test.ts`.
  */
 import { esSinCosto } from '@/lib/arancel';
+import { zonaDeSede } from '@/lib/geografia.mjs';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
 import {
   ETIQUETA_MODALIDAD,
@@ -131,8 +132,15 @@ export interface TarjetaDelPanel {
 }
 
 /** La etiqueta de un valor de taxonomía, con la legibilización como respaldo (§4.1). */
-const etiqueta = (labels: LabelsTaxonomia, campo: 'tipo' | 'barrio' | 'arancel', valor: string) =>
-  labels[campo]?.[valor] ?? legible(valor);
+const etiqueta = (
+  labels: LabelsTaxonomia,
+  // B-950 — `provincia` y `ciudad` se suman a la lista: el renglón de lugar las
+  // dice desde B-953, y las dos son slugs que hay que resolver. El tipo va
+  // enumerado y no como `CampoTaxonomia` entero a propósito: son las taxonomías
+  // que esta tarjeta muestra, y agregar una tiene que ser una decisión visible.
+  campo: 'tipo' | 'barrio' | 'provincia' | 'ciudad' | 'arancel',
+  valor: string,
+) => labels[campo]?.[valor] ?? legible(valor);
 
 /**
  * Las piezas de una línea, sin las vacías.
@@ -171,10 +179,24 @@ export const datosDeTarjeta = (
     ]),
     donde: piezas([
       ETIQUETA_MODALIDAD[modalidad],
-      // La sede es la principal —«la primera fila que tenga»— y el documento ya
-      // la trae derivada (B-224). Puede no haber ninguna: una actividad solo
-      // virtual no tiene barrio.
-      a.sede?.barrio ? etiqueta(labels, 'barrio', a.sede.barrio) : '',
+      /*
+       * B-953 — antes esto era solo el barrio, y con todo el catálogo en CABA
+       * alcanzaba. Con fichas de afuera, **dos actividades en barrios homónimos
+       * de ciudades distintas se leían igual**, que es el ítem tal como lo
+       * reportó el dueño: «mostrar la ciudad también y luego la provincia. Si es
+       * CABA, solo barrio».
+       *
+       * Esa última cláusula es un `if`, y **no está acá**: vive en
+       * `piezasDeLugar` (`lib/geografia.mjs`), que es la misma función que usan
+       * la tarjeta del sitio, el tríptico de la home, la ficha de detalle y el
+       * JSON-LD. Escrito en la plantilla, sería la quinta copia de una regla que
+       * después se aplica en cuatro lugares y en el quinto no.
+       *
+       * La sede sigue siendo la principal —«la primera fila que tenga»,
+       * B-224/D-130— y puede no haber ninguna: una actividad solo virtual no
+       * tiene dónde, y `zonaDeSede` devuelve `''`, que `piezas` descarta.
+       */
+      zonaDeSede(a.sede, (campo, slug) => etiqueta(labels, campo, slug)),
     ]),
     arancel: slugArancel ? etiqueta(labels, 'arancel', slugArancel) : '',
     sinCosto: esSinCosto(slugArancel),

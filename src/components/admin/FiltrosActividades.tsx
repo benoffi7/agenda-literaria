@@ -20,6 +20,7 @@ import {
   type Orden,
 } from '@/lib/filtrosActividades';
 import { indiceDeTecla } from '@/lib/foco';
+import { subdivisionDe } from '@/lib/geografia.mjs';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadConId, Estado, Modalidad } from '@/types/actividad';
 
@@ -148,8 +149,22 @@ export function FiltrosActividades({
   };
 
   /** La etiqueta de un valor de taxonomía, con la legibilización como respaldo. */
-  const etiqueta = (campo: 'tipo' | 'barrio' | 'arancel', valor: string) =>
-    labels[campo]?.[valor] ?? legible(valor);
+  const etiqueta = (
+    campo: 'tipo' | 'barrio' | 'provincia' | 'ciudad' | 'arancel',
+    valor: string,
+  ) => labels[campo]?.[valor] ?? legible(valor);
+
+  /*
+   * B-952 — la cascada del panel, la misma regla que la del sitio y la del
+   * formulario: `subdivisionDe` decide si abajo va el barrio o la ciudad. Con la
+   * provincia sin elegir no se ofrece ninguna de las dos, que es el punto — el
+   * desplegable de barrio ya tiene los treinta y pico cargados.
+   *
+   * La diferencia con el sitio es que acá hay **una** provincia elegida y no una
+   * lista: los filtros del panel son valores sueltos (`''` es sin filtrar), así
+   * que no hace falta unir subdivisiones.
+   */
+  const subdivision = subdivisionDe(filtros.provincia);
 
   return (
     <div className="flex flex-col gap-2">
@@ -266,9 +281,43 @@ export function FiltrosActividades({
               </select>
             </Campo>
 
-            {/* El barrio solo aparece si alguna actividad tiene sede cargada: un
-                desplegable con una única opción "Cualquiera" es ruido. */}
-            {opciones.barrios.length > 0 && (
+            {/*
+              B-952 — la provincia, primer nivel de la cascada. Solo aparece si
+              alguna actividad tiene sede cargada: un desplegable con una única
+              opción «Cualquiera» es ruido, que es el mismo criterio que el
+              arancel y que el barrio ya tenían.
+
+              Cambiarla **limpia los dos de abajo**: si no, filtrar por Boedo,
+              pasar a Buenos Aires y no ver nada se leería como «no hay
+              actividades en Buenos Aires» cuando lo que pasa es que quedó un
+              barrio de CABA puesto en un control que ya no está en pantalla.
+            */}
+            {opciones.provincias.length > 0 && (
+              <Campo label="Provincia" htmlFor={`${id}-provincia`}>
+                <select
+                  id={`${id}-provincia`}
+                  className={claseInput}
+                  value={filtros.provincia}
+                  onChange={(e) =>
+                    onFiltros({
+                      ...filtros,
+                      provincia: e.target.value,
+                      barrio: '',
+                      ciudad: '',
+                    })
+                  }
+                >
+                  <option value="">Cualquiera</option>
+                  {opciones.provincias.map((v) => (
+                    <option key={v} value={v}>
+                      {etiqueta('provincia', v)}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
+
+            {subdivision === 'barrio' && opciones.barrios.length > 0 && (
               <Campo label="Barrio" htmlFor={`${id}-barrio`}>
                 <select
                   id={`${id}-barrio`}
@@ -280,6 +329,24 @@ export function FiltrosActividades({
                   {opciones.barrios.map((v) => (
                     <option key={v} value={v}>
                       {etiqueta('barrio', v)}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
+
+            {subdivision === 'ciudad' && opciones.ciudades.length > 0 && (
+              <Campo label="Ciudad" htmlFor={`${id}-ciudad`}>
+                <select
+                  id={`${id}-ciudad`}
+                  className={claseInput}
+                  value={filtros.ciudad}
+                  onChange={(e) => cambiar('ciudad', e.target.value)}
+                >
+                  <option value="">Cualquiera</option>
+                  {opciones.ciudades.map((v) => (
+                    <option key={v} value={v}>
+                      {etiqueta('ciudad', v)}
                     </option>
                   ))}
                 </select>

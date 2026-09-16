@@ -160,6 +160,80 @@ describe('filtrar sobre lo que ya está en memoria', () => {
     expect(ids(filtrar(datos, con({ barrio: 'villa-crespo' }), ahora))).toEqual(['taller']);
   });
 
+  /**
+   * **B-952** — «agregar filtro por ciudad. Si tocás CABA, en un segundo
+   * selector, los barrios. Si tocás alguna provincia, las ciudades que tengamos
+   * eventos» (el dueño). El primer nivel de la cascada del panel.
+   */
+  it('filtra por provincia y por ciudad', () => {
+    const datosGeo = [
+      acto({
+        id: 'caba',
+        modalidades: [{ id: 'mod_1', modalidad: 'presencial', sede: sedeEn('boedo') }],
+      }),
+      acto({
+        id: 'mardel',
+        modalidades: [
+          {
+            id: 'mod_1',
+            modalidad: 'presencial',
+            sede: { ...sedeEn(''), provincia: 'buenos-aires', ciudad: 'mar-del-plata' },
+          },
+        ],
+      }),
+    ] as unknown as ActividadConId[];
+    expect(ids(filtrar(datosGeo, con({ provincia: 'buenos-aires' }), ahora))).toEqual(['mardel']);
+    expect(ids(filtrar(datosGeo, con({ ciudad: 'mar-del-plata' }), ahora))).toEqual(['mardel']);
+    // `sedeEn` no trae provincia, pero la ciudad vacía tampoco es CABA: el
+    // default de lectura no la inventa (D-26), así que no entra en ninguna.
+    expect(ids(filtrar(datosGeo, con({ provincia: 'caba' }), ahora))).toEqual([]);
+  });
+
+  /**
+   * **El bug que viene de arriba, y que B-952 pide no repetir.** El filtro de
+   * barrio miraba `a.sede`, la sede derivada —«la primera fila que tenga»
+   * (D-130)—, así que una actividad presencial en dos ciudades se filtraba por
+   * una sola y desaparecía del filtro de la otra.
+   *
+   * MUTACIÓN PROBADA: volver el predicado a `a.sede?.barrio` deja los dos
+   * primeros `expect` en rojo.
+   */
+  it('cruza contra TODAS las sedes, no contra la derivada', () => {
+    const dosSedes = [
+      acto({
+        id: 'gira',
+        modalidades: [
+          { id: 'mod_1', modalidad: 'presencial', sede: sedeEn('boedo') },
+          {
+            id: 'mod_2',
+            modalidad: 'presencial',
+            sede: { ...sedeEn(''), provincia: 'buenos-aires', ciudad: 'la-plata' },
+          },
+        ],
+      }),
+    ] as unknown as ActividadConId[];
+    // Por la segunda sede, que la derivada no ve.
+    expect(ids(filtrar(dosSedes, con({ ciudad: 'la-plata' }), ahora))).toEqual(['gira']);
+    expect(ids(filtrar(dosSedes, con({ provincia: 'buenos-aires' }), ahora))).toEqual(['gira']);
+    // Y por la primera, que es la que ya andaba: el arreglo suma, no reemplaza.
+    expect(ids(filtrar(dosSedes, con({ barrio: 'boedo' }), ahora))).toEqual(['gira']);
+    // El desplegable ofrece las dos, que es la otra mitad: un filtro que
+    // encuentra algo que no ofrece es tan confuso como el revés.
+    expect(opcionesPresentes(dosSedes).ciudades).toEqual(['la-plata']);
+    expect(opcionesPresentes(dosSedes).barrios).toEqual(['boedo']);
+  });
+
+  /**
+   * El default de lectura de un documento sin la lista de modalidades (anterior
+   * a B-224). Sin él, filtrar por barrio dejaría de encontrar lo que encontraba
+   * — la regresión que D-26 existe para evitar.
+   */
+  it('y sigue mirando la sede derivada cuando no hay lista de modalidades', () => {
+    const viejo = [acto({ id: 'viejo', sede: sedeEn('almagro') })] as unknown as ActividadConId[];
+    expect(ids(filtrar(viejo, con({ barrio: 'almagro' }), ahora))).toEqual(['viejo']);
+    expect(opcionesPresentes(viejo).barrios).toEqual(['almagro']);
+  });
+
   it('filtra por arancel, que D-74 había descartado y D-152 repone', () => {
     /*
      * B-272 — «¿qué tengo publicado que sea gratis?» es de repaso, no de
@@ -407,6 +481,9 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
       aranceles: [],
       modalidades: [],
       barrios: [],
+      // B-952 — los dos de la geografía, por el mismo motivo que `tags`.
+      provincias: [],
+      ciudades: [],
       tags: [],
       hayDestacadas: false,
       // B-888 — el eje «quién la cargó». Entra a esta lista por lo mismo que

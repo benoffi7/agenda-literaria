@@ -20,6 +20,7 @@ import type { Chip } from '@/lib/chip';
 // El mismo respaldo que reexporta este módulo como `legible`, importado acá
 // porque un `export ... from` no crea un binding local que se pueda llamar.
 import { desSlug } from '@calendario';
+import { PROVINCIAS, geografiaNormalizada } from '@/lib/geografia.mjs';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { normalize } from '@/lib/normalize';
 import { instanteDeTimestamp as instante, proximaVentana } from '@/lib/sesiones';
@@ -119,7 +120,16 @@ export interface Filtros {
   tipo: string;
   arancel: string;
   modalidad: Modalidad | '';
+  /**
+   * B-952 — el primer nivel de la cascada del panel, igual que en el sitio:
+   * «agregar filtro por ciudad (CABA, Provincia de Buenos Aires). Si tocás CABA,
+   * en un segundo selector, los barrios. Si tocás alguna provincia, las ciudades
+   * que tengamos eventos» (el dueño).
+   */
+  provincia: string;
   barrio: string;
+  /** B-952 — el otro segundo nivel: se ofrece cuando la provincia no es CABA. */
+  ciudad: string;
   cuando: Cuando;
   /**
    * B-274 — `''` es sin filtrar. **Los tres estados y no una casilla**: «solo no
@@ -150,7 +160,9 @@ export const FILTROS_VACIOS: Filtros = {
   tipo: '',
   arancel: '',
   modalidad: '',
+  provincia: '',
   barrio: '',
+  ciudad: '',
   cuando: 'cualquiera',
   destacado: '',
   tags: [],
@@ -168,7 +180,9 @@ export const cantidadDeFiltros = (f: Filtros): number =>
   (f.tipo ? 1 : 0) +
   (f.arancel ? 1 : 0) +
   (f.modalidad ? 1 : 0) +
+  (f.provincia ? 1 : 0) +
   (f.barrio ? 1 : 0) +
+  (f.ciudad ? 1 : 0) +
   (f.cuando !== 'cualquiera' ? 1 : 0) +
   (f.destacado ? 1 : 0) +
   /*
@@ -271,7 +285,32 @@ export const filtrar = (
     ) {
       return false;
     }
-    if (filtros.barrio && (a.sede?.barrio ?? '') !== filtros.barrio) return false;
+    /*
+     * ── B-952 · la geografía se cruza contra TODAS las filas ───────────────
+     *
+     * El filtro de barrio miraba `a.sede?.barrio`, o sea la sede derivada —«la
+     * primera fila que tenga» (D-130)—, así que **una actividad presencial en dos
+     * ciudades se filtraba por una sola**. El ítem lo nombra como «un bug que
+     * viene de arriba» y pide explícitamente no repetirlo con la ciudad.
+     *
+     * Así que los tres cruzan contra la lista entera. El barrio también: dejarlo
+     * mirando la derivada sería sostener a mano una asimetría que nadie podría
+     * explicar en seis meses.
+     *
+     * **Por qué se deriva y no se lee `a.ciudades`.** El ítem sugiere cruzar
+     * contra ese campo, que existe desde B-919 y ya está normalizado. Es la
+     * respuesta correcta para una **regla de Firestore**, que no puede mirar
+     * adentro de un array de maps ni normalizar nada. El panel sí puede, y
+     * derivar acá tiene dos ventajas que el campo no da: funciona sobre los
+     * documentos que todavía no pasaron por el backfill —o sea, hoy— y no puede
+     * quedar desactualizado respecto de lo que la tarjeta muestra.
+     */
+    const geografia = geografiaDeTodasLasSedes(a);
+    if (filtros.provincia && !geografia.some((g) => g.provincia === filtros.provincia)) {
+      return false;
+    }
+    if (filtros.barrio && !geografia.some((g) => g.barrio === filtros.barrio)) return false;
+    if (filtros.ciudad && !geografia.some((g) => g.ciudad === filtros.ciudad)) return false;
     /*
      * B-274 — `!!` y no `=== true`: `destacado` es opcional en el tipo y los
      * documentos anteriores al campo no lo tienen, así que «no destacadas» tiene
@@ -360,6 +399,13 @@ export interface OpcionesPresentes {
   /** Slugs de barrio. La etiqueta la resuelve quien pinta (§4.1). */
   barrios: string[];
   /**
+   * B-952 — las provincias y las ciudades que **tienen actividades cargadas**,
+   * que es literalmente lo que pidió el dueño («las ciudades que tengamos
+   * eventos») y lo que este módulo ya hacía con el barrio y el arancel.
+   */
+  provincias: string[];
+  ciudades: string[];
+  /**
    * B-274 — ¿hay alguna destacada? Decide si el desplegable aparece, con el mismo
    * criterio que el barrio y el arancel: sin ninguna destacada, los tres valores
    * del filtro contestan lo mismo y el control es ruido.
@@ -412,18 +458,47 @@ export const ETIQUETA_MODALIDAD: Record<Modalidad, string> = {
 export { desSlug as legible } from '@calendario';
 
 /**
+ * La geografía de **todas** las sedes de una actividad, normalizada — B-952.
+ *
+ * Una sola función para el predicado y para el desplegable, que es lo que evita
+ * el desacuerdo más confuso que puede tener un filtro: que ofrezca una ciudad
+ * que después no encuentra, o que encuentre una que no ofrece.
+ *
+ * **El `?? [a.sede]` es el default de lectura** de un documento sin la lista de
+ * modalidades (anterior a B-224): sin él, filtrar por barrio dejaría de encontrar
+ * lo que encontraba, que es la clase de regresión que D-26 existe para evitar. Es
+ * el mismo patrón que `a.modalidades ?? [{ modalidad: a.modalidad }]` que este
+ * archivo ya usa dos veces para la modalidad.
+ */
+const geografiaDeTodasLasSedes = (a: ActividadConId) => {
+  const filas = a.modalidades ?? [];
+  const sedes = filas.length > 0 ? filas.map((m) => m.sede) : [a.sede ?? null];
+  return sedes.filter((sede) => sede !== null).map((sede) => geografiaNormalizada(sede));
+};
+
+/**
  * Los valores que **existen en los datos**, no la taxonomía completa.
  *
  * Ofrecer un barrio que ninguna actividad usa es ofrecer un filtro que siempre
  * devuelve cero, y la lista de barrios crece sola con el campo "Otro" (§4.2):
  * en tres meses el desplegable tendría treinta entradas y dos servirían.
  */
+/**
+ * El orden en que se ofrecen las provincias, derivado de `PROVINCIAS` y no
+ * escrito otra vez: el desplegable del panel y el del formulario tienen que
+ * ofrecer lo mismo en el mismo orden, y dos listas son dos maneras de que una se
+ * quede atrás.
+ */
+const ORDEN_DE_PROVINCIA: readonly string[] = PROVINCIAS.map((p) => p.slug);
+
 export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresentes => {
   const estados = new Set<Estado>();
   const tipos = new Set<string>();
   const aranceles = new Set<string>();
   const modalidades = new Set<Modalidad>();
   const barrios = new Set<string>();
+  const provincias = new Set<string>();
+  const ciudades = new Set<string>();
   const tags = new Set<string>();
   const autores = new Set<string>();
   let hayDestacadas = false;
@@ -440,7 +515,17 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
     for (const m of modalidadesQueOfrece(a.modalidades ?? [{ modalidad: a.modalidad }])) {
       modalidades.add(m);
     }
-    if (a.sede?.barrio) barrios.add(a.sede.barrio);
+    /*
+     * B-952 — de **todas** las filas y no de la sede derivada, con el mismo
+     * criterio que las modalidades tres líneas más arriba: si no, el desplegable
+     * no ofrecería la ciudad de la segunda sede aunque el filtro de arriba sí la
+     * encontrara — que es el desacuerdo más confuso que puede tener un filtro.
+     */
+    for (const g of geografiaDeTodasLasSedes(a)) {
+      if (g.barrio) barrios.add(g.barrio);
+      if (g.provincia) provincias.add(g.provincia);
+      if (g.ciudad) ciudades.add(g.ciudad);
+    }
     // B-888 — solo las que declaran autor: las anteriores a `createdBy` no
     // aportan una opción, aportarían una fila vacía en el desplegable.
     if (a.createdBy) autores.add(a.createdBy);
@@ -470,6 +555,17 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
     ),
     modalidades: [...modalidades].sort(porDeclaracion(MODALIDADES)),
     barrios: [...barrios].sort((a, b) => a.localeCompare(b, 'es')),
+    /*
+     * Las provincias van en el orden de `PROVINCIAS` —CABA y Buenos Aires
+     * primero, que es donde está el catálogo, y el resto alfabético— y no
+     * alfabético a secas: es el mismo orden que el desplegable del formulario y
+     * el que el dueño pidió. Las ciudades sí alfabético, como los barrios: es
+     * taxonomía abierta y ninguna tiene más derecho que otra.
+     */
+    provincias: [...provincias].sort(
+      (a, b) => ORDEN_DE_PROVINCIA.indexOf(a) - ORDEN_DE_PROVINCIA.indexOf(b),
+    ),
+    ciudades: [...ciudades].sort((a, b) => a.localeCompare(b, 'es')),
     hayDestacadas,
     /*
      * Alfabético acá, y **por frecuencia en los chips**: esta lista es el universo
