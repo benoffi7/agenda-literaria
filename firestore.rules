@@ -249,11 +249,13 @@ service cloud.firestore {
        *      · una regla **no puede inspeccionar adentro de un array de maps** —
        *        es lo mismo que frenó abrir `/opciones` en B-888— así que
        *        `modalidades` no es consultable desde acá ni con un `where`;
-       *      · y la ciudad es un `<input>` de texto libre, no una taxonomía
-       *        (`ModalidadesEditor.tsx`), así que «Mar del Plata», «mar del
-       *        plata» y « MAR DEL PLATA » son tres strings distintos y un `==`
-       *        contra lo tipeado es **un permiso que falla en silencio** el día
-       *        que alguien escribe la ciudad con otra mayúscula.
+       *      · y hasta B-950 la ciudad era un `<input>` de **texto libre**, así
+       *        que «Mar del Plata», «mar del plata» y « MAR DEL PLATA » eran tres
+       *        strings distintos y un `==` contra lo tipeado era **un permiso que
+       *        falla en silencio**. Desde D-710 es taxonomía y esa mitad dejó de
+       *        valer para lo nuevo — pero **sigue valiendo para lo viejo**: el
+       *        backfill (`npm run geografia:sembrar`) es opcional a propósito, así
+       *        que hay documentos con la forma anterior y la regla los ve crudos.
        *    `ciudades` es el derivado normalizado que `formADocumento` escribe en
        *    cada guardado, con el MISMO `slugify` que usa el claim (D-690).
        *
@@ -1227,7 +1229,15 @@ service cloud.firestore {
      */
     function formaDeLibreria() {
       let d = request.resource.data;
-      let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'direccion', 'barrio',
+      let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'direccion',
+                          // B-967 — los tres de la geografía, los tres slugs de
+                          // taxonomía. `provincia` es nueva y entra a `hasAll`: la
+                          // escribe el formulario en cada guardado, así que no hay
+                          // documento nuevo sin ella. Las fichas anteriores se
+                          // migran al reeditarse — hasta entonces la regla las
+                          // rechazaría en un `update`, que es el mismo trato que
+                          // recibió `searchText` cuando entró.
+                          'provincia', 'barrio',
                           'ciudad', 'geo', 'instagram', 'whatsapp', 'web', 'mail',
                           'contactoDeQuienCargo', 'estado', 'origen', 'searchText',
                           'creadoEn', 'revision'];
@@ -1270,8 +1280,24 @@ service cloud.firestore {
         // El mismo slug de `/opciones/barrio` que usan las actividades (§ 2 del
         // PRD): con otro alfabeto, el hub de barrio no cruza las dos cosas.
         && d.barrio is string && d.barrio.size() <= 80
-        && d.barrio.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
-        && d.ciudad is string && d.ciudad.size() >= 1 && d.ciudad.size() <= 80
+        && (d.barrio == '' || d.barrio.matches('^[a-z0-9]+(-[a-z0-9]+)*$'))
+        /*
+         * B-967 — `ciudad` pasó a ser **slug de taxonomía** y gana el mismo
+         * `matches` que el barrio, con el mismo motivo: con otro alfabeto, el hub
+         * de ciudad no cruza las dos cosas. Por eso también **pierde el
+         * `size() >= 1`**: el `+` del patrón ya exige un carácter, que es la poda
+         * que el comentario de arriba explica.
+         *
+         * `barrio` y `ciudad` admiten `''` porque la cascada pide **una** de las
+         * dos según la provincia: en CABA el barrio y afuera la ciudad. Exigir
+         * las dos haría inguardable media taxonomía.
+         */
+        && d.ciudad is string && d.ciudad.size() <= 80
+        && (d.ciudad == '' || d.ciudad.matches('^[a-z0-9]+(-[a-z0-9]+)*$'))
+        // La provincia es el primer nivel y **sí** se exige no vacía: sin ella la
+        // ficha no aparece bajo ningún filtro de lugar.
+        && d.provincia is string && d.provincia.size() <= 80
+        && d.provincia.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
         && geoDeLibreriaValida(d.geo)
         /*
          * Los tres contactos públicos que terminan en un `href` de una página

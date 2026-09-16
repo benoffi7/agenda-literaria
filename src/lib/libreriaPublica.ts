@@ -47,6 +47,8 @@
  * rompen en silencio— vive en `contenidoDelSitio.ts`.
  */
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
+import { desSlug } from '@calendario';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
@@ -99,8 +101,14 @@ export interface LibreriaPublica {
   /** `''` cuando no hay: un `<input>` vacío y un `null` significan lo mismo acá. */
   descripcion: string;
   direccion: string;
+  /**
+   * El **mismo slug** de `/opciones/provincia` que usan las actividades — B-967.
+   * Primer nivel de la cascada; sin él la ficha no aparece bajo ningún filtro.
+   */
+  provincia: string;
   /** El **mismo slug** de `/opciones/barrio` que usan las actividades (§ 2 del PRD). */
   barrio: string;
+  /** El **mismo slug** de `/opciones/ciudad` — B-967. Era texto libre. */
   ciudad: string;
   /**
    * Público sin discusión (§ 8 del PRD): es la ubicación de un **local
@@ -201,8 +209,32 @@ export const searchTextDeLibreria = (c: {
   direccion: string;
   barrio: string;
   ciudad: string;
+  /** B-967 — la provincia también se busca: «librerías en Córdoba». */
+  provincia?: string;
 }): string =>
-  normalize([c.nombre, c.descripcion, c.direccion, c.barrio, c.ciudad].join(' ')).trim();
+  normalize(
+    [
+      c.nombre,
+      c.descripcion,
+      c.direccion,
+      /*
+       * **Los slugs entran de las dos formas, y eso arregla un bug vivo** — B-967.
+       *
+       * `barrio` siempre fue un slug, así que el índice decía `villa-crespo` y
+       * quien escribía «villa crespo» **no encontraba nada**: el guion no coincide
+       * con el espacio y la búsqueda es un `includes` sobre el texto normalizado.
+       * Con `ciudad` pasando a slug serían dos campos con el mismo problema.
+       *
+       * Se indexan las dos formas —el slug y su des-slug— en vez de resolver la
+       * etiqueta, porque acá **no hay opciones a mano**: esta función la llaman la
+       * proyección y `formALibreria`, y ninguna de las dos las tiene. Indexar de
+       * más no produce falsos negativos; resolver mal, sí.
+       */
+      ...[c.barrio, c.ciudad, c.provincia ?? ''].flatMap((slug) =>
+        slug ? [slug, desSlug(slug)] : [],
+      ),
+    ].join(' '),
+  ).trim();
 
 /**
  * Documento → ficha pública. **Campo por campo, sin un solo spread.**
@@ -217,8 +249,13 @@ export const libreriaPublica = (l: Libreria): LibreriaPublica => ({
   nombre: l.nombre,
   descripcion: l.descripcion ?? '',
   direccion: l.direccion,
-  barrio: l.barrio,
-  ciudad: l.ciudad,
+  /*
+   * B-967 — **se deriva, no se copia**, igual que en `toPublic` (D-710): una
+   * ficha anterior guarda la ciudad como se tipeó y sin provincia, y copiarla
+   * verbatim publicaría un valor que no matchea ningún chip. `ALIAS_DE_CABA`
+   * colapsa «Ciudad de Buenos Aires» a `caba` en vez de crear una segunda.
+   */
+  ...geografiaNormalizada(l),
   geo: l.geo ? { lat: l.geo.lat, lng: l.geo.lng } : null,
   imagenes: imagenesDeLibreria(l),
   instagram: handleInstagram(l.instagram),
@@ -234,8 +271,7 @@ export const libreriaPublica = (l: Libreria): LibreriaPublica => ({
     nombre: l.nombre,
     descripcion: l.descripcion ?? '',
     direccion: l.direccion,
-    barrio: l.barrio,
-    ciudad: l.ciudad,
+    ...geografiaNormalizada(l),
   }),
 });
 
@@ -367,6 +403,10 @@ export interface FichaDeLibreria {
    */
   rutaDelBarrio: string | null;
   ciudad: string;
+  /** B-967 — la etiqueta de la ciudad, y a dónde lleva si su hub existe. */
+  rutaDeLaCiudad: string | null;
+  /** B-967 — la etiqueta de la provincia. **No se enlaza**: no hay hub de provincia. */
+  provincia: string;
   geo: { lat: number; lng: number } | null;
   imagenes: ImagenDeLibreriaPublica[];
   /** Los cuatro contactos, ya como destino. `null` es «no hay por dónde». */
@@ -392,7 +432,16 @@ export const fichaDeLibreria = (
   {
     etiquetaDeBarrio,
     rutaDelBarrio = null,
-  }: { etiquetaDeBarrio?: string; rutaDelBarrio?: string | null } = {},
+    etiquetaDeCiudad,
+    rutaDeLaCiudad = null,
+    etiquetaDeProvincia,
+  }: {
+    etiquetaDeBarrio?: string;
+    rutaDelBarrio?: string | null;
+    etiquetaDeCiudad?: string;
+    rutaDeLaCiudad?: string | null;
+    etiquetaDeProvincia?: string;
+  } = {},
 ): FichaDeLibreria => ({
   slug: l.slug,
   nombre: l.nombre,
@@ -400,7 +449,10 @@ export const fichaDeLibreria = (
   direccion: l.direccion,
   barrio: etiquetaDeBarrio ?? l.barrio,
   rutaDelBarrio,
-  ciudad: l.ciudad,
+  // B-967 — las dos resueltas, con el mismo patrón que el barrio ya tenía.
+  ciudad: etiquetaDeCiudad ?? l.ciudad,
+  rutaDeLaCiudad,
+  provincia: etiquetaDeProvincia ?? l.provincia,
   geo: l.geo,
   imagenes: l.imagenes,
   enlaces: {
@@ -441,6 +493,9 @@ export const datosEstructuradosDeLibreria = (f: FichaDeLibreria): Record<string,
       '@type': 'PostalAddress',
       streetAddress: f.direccion,
       addressLocality: f.ciudad,
+      // B-967 — la provincia, que es lo que distingue dos ciudades homónimas.
+      // Se omite vacía: Google tolera que no esté, no que esté en blanco.
+      ...(f.provincia ? { addressRegion: f.provincia } : {}),
       addressCountry: 'AR',
     },
     ...(f.geo

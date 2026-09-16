@@ -139,12 +139,48 @@ export const CIUDADES_FIJAS = [
 ];
 
 /**
+ * **Cómo se escribió CABA antes de que fuera un slug** — B-967.
+ *
+ * Los cuatro entran a `esCaba`, y no es una comodidad: son los valores que están
+ * **guardados de verdad** en documentos que nadie migró.
+ *
+ * | Valor | De dónde sale |
+ * |---|---|
+ * | `caba` | el slug de hoy, y el `'CABA'` que `sedeVacia()` tenía cableado antes de B-950 |
+ * | `ciudad-de-buenos-aires` | `CIUDAD_POR_DEFECTO` de las guías (`types/libreria.ts`), que es «Ciudad de Buenos Aires» |
+ * | `ciudad-autonoma-de-buenos-aires` | la etiqueta de `/opciones/provincia`, si alguien la tipeó como ciudad |
+ * | `capital-federal` | cómo lo escribe la mitad de la gente |
+ *
+ * **Sin esto, la conversión de las guías crea una segunda CABA.** El default de
+ * las guías slugifica a `ciudad-de-buenos-aires`, que no es `caba`, así que un
+ * backfill que slugificara a secas dejaría dos entradas para el mismo lugar en la
+ * taxonomía — que es exactamente el bug que la conversión vino a arreglar
+ * («"CABA", "Caba", "Capital Federal" y "Buenos Aires" como cuatro ciudades», que
+ * es como `12-sitio-publico.md` justificaba no hacer el hub de ciudad).
+ *
+ * **«Buenos Aires» a secas NO está**, y es la única omisión que hay que
+ * defender: es el nombre de la **provincia**, así que tomarlo por CABA convertiría
+ * una sede de La Plata en una de CABA. Ante la duda, no se adivina — el mismo
+ * criterio que `provinciaDeSede` con una ciudad que no reconoce.
+ */
+export const ALIAS_DE_CABA = [
+  SLUG_CABA,
+  'ciudad-de-buenos-aires',
+  'ciudad-autonoma-de-buenos-aires',
+  'capital-federal',
+];
+
+/**
  * ¿Es CABA? Slugifica antes de comparar para que valga también sobre lo que
  * todavía no pasó por el backfill: los documentos anteriores a B-950 tienen la
  * ciudad como texto libre, y `'CABA'` —el default que `sedeVacia()` tenía
  * cableado— slugifica exactamente a `'caba'`.
+ *
+ * Y desde B-967 acepta las otras tres formas en que CABA quedó escrita — ver
+ * `ALIAS_DE_CABA`.
  */
-export const esCaba = (/** @type {string | null | undefined} */ valor) => Boolean(valor) && slugify(valor) === SLUG_CABA;
+export const esCaba = (/** @type {string | null | undefined} */ valor) =>
+  Boolean(valor) && ALIAS_DE_CABA.includes(slugify(valor));
 
 /**
  * Qué subdivide a esta provincia: el barrio en CABA, la ciudad en todas las
@@ -305,7 +341,13 @@ export const conProvincia = (sede, provincia) => {
 export const geografiaNormalizada = (sede) => ({
   provincia: provinciaDeSede(sede),
   barrio: sede?.barrio ?? '',
-  ciudad: sede?.ciudad ? slugify(sede.ciudad) : '',
+  /*
+   * **Los alias de CABA colapsan al slug canónico** — B-967. Sin esto, una ficha
+   * de guía guardada con «Ciudad de Buenos Aires» quedaría como
+   * `ciudad-de-buenos-aires` y sería una **segunda CABA** en la taxonomía: dos
+   * chips, dos hubs y dos filtros para el mismo lugar.
+   */
+  ciudad: sede?.ciudad ? (esCaba(sede.ciudad) ? SLUG_CABA : slugify(sede.ciudad)) : '',
 });
 
 /**

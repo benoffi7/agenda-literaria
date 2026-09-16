@@ -224,6 +224,19 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       ).rejects.toThrow(RECHAZADA);
     };
 
+    /**
+     * El control positivo del helper de arriba — B-967. Sin él, un caso que
+     * afirma «esto **sí** se acepta» tendría que escribirse a mano cada vez, y
+     * lo que se prueba de una regla que acota es tanto lo que rechaza como lo que
+     * deja pasar.
+     */
+    const acepta = async (que: string, over: Record<string, unknown>) => {
+      await expect(
+        setDoc(doc(db(), 'librerias', `l_si_${que}`), documento(over)),
+        que,
+      ).resolves.toBeUndefined();
+    };
+
     it('un campo de más no entra', async () => {
       // `hasOnly` — es lo que impide que alguien invente un campo y lo guarde.
       await rechaza('extra', { notaInterna: 'no publicar' });
@@ -270,13 +283,34 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     it('un barrio que no es un slug de `/opciones/barrio`', async () => {
       // §4.2 — con otro alfabeto, el hub de barrio no cruza la librería con las
       // actividades de ahí, que es el § 2 entero del PRD.
-      await rechaza('barrio_vacio', { barrio: '' });
       await rechaza('barrio_mayus', { barrio: 'Villa Crespo' });
       await rechaza('barrio_acento', { barrio: 'núñez' });
     });
 
-    it('una ciudad vacía o larguísima', async () => {
-      await rechaza('ciudad_vacia', { ciudad: '' });
+    /**
+     * **B-967 — el barrio y la ciudad admiten `''`, la provincia no.**
+     *
+     * La cascada pide **una** de las dos según la provincia: en CABA el barrio y
+     * afuera la ciudad. Exigir las dos haría inguardable media taxonomía — una
+     * librería de Mar del Plata no tiene barrio, y una de Boedo no necesita que
+     * le vuelvan a preguntar la ciudad.
+     *
+     * La provincia sí se exige, y es el mismo criterio que en una sede: es el
+     * primer nivel, así que sin ella la ficha no aparece bajo ningún filtro de
+     * lugar.
+     */
+    it('el barrio y la ciudad pueden ir vacíos —la cascada pide una de las dos—', async () => {
+      await acepta('barrio_vacio', { barrio: '' });
+      await acepta('ciudad_vacia', { ciudad: '' });
+    });
+
+    it('pero la provincia no, y tampoco si no es un slug', async () => {
+      await rechaza('provincia_vacia', { provincia: '' });
+      await rechaza('provincia_mayus', { provincia: 'Buenos Aires' });
+    });
+
+    it('una ciudad que no es un slug, o larguísima', async () => {
+      await rechaza('ciudad_mayus', { ciudad: 'Mar del Plata' });
       await rechaza('ciudad_larga', { ciudad: 'x'.repeat(81) });
     });
 

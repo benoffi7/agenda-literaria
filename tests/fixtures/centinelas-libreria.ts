@@ -46,6 +46,12 @@ const RUTAS = [
 
   // Dónde queda. Público: es un local comercial (§ 8 del PRD).
   'direccion',
+  // B-967 — los tres de la geografía son slugs de taxonomía, como en una sede.
+  // Sus centinelas son **su propio slug** por lo mismo que en
+  // `tests/fixtures/centinelas.ts` (`RUTAS_SLUG`): la proyección los normaliza,
+  // así que un centinela con puntos y mayúsculas no sobreviviría y el barrido
+  // quedaría verde sin afirmar nada.
+  'provincia',
   'barrio',
   'ciudad',
 
@@ -89,7 +95,9 @@ export const CENTINELA_LIBRERIA = {
   direccion: 'CENTINELA.direccion',
   // Slug de `/opciones/barrio`, el mismo que usan las actividades.
   barrio: 'centinela-barrio',
-  ciudad: 'CENTINELA.ciudad',
+  // B-967 — slug-shaped, ver el comentario de arriba.
+  ciudad: 'centinela-ciudad',
+  provincia: 'centinela-provincia',
   'imagenes.id': 'img_centinela_id',
   'imagenes.url': 'https://centinela.imagen.example/CENTINELA.imagenes.url.jpg',
   'imagenes.epigrafe': 'CENTINELA.imagenes.epigrafe',
@@ -154,6 +162,7 @@ export const libreriaCentinela = (): Libreria => ({
     },
   ],
   direccion: CENTINELA_LIBRERIA.direccion,
+  provincia: CENTINELA_LIBRERIA.provincia,
   barrio: CENTINELA_LIBRERIA.barrio,
   ciudad: CENTINELA_LIBRERIA.ciudad,
   geo: { lat: -34.6, lng: -58.43 },

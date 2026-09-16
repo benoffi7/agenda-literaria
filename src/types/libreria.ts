@@ -28,6 +28,7 @@
  *
  * Nombres en español, como el resto del modelo (§14).
  */
+import { SLUG_CABA } from '@/lib/geografia.mjs';
 import type { Imagen, TimestampLike } from '@/types/actividad';
 import type { EstadoDirectorio } from '@/lib/directorios';
 
@@ -50,14 +51,23 @@ export const ORIGENES_LIBRERIA = ['formulario-publico', 'panel'] as const;
 export type OrigenLibreria = (typeof ORIGENES_LIBRERIA)[number];
 
 /**
- * La ciudad por defecto del formulario.
+ * La ciudad por defecto del formulario, **como slug** — B-967.
  *
  * Es un **default de escritura**, no de lectura: el campo se guarda siempre. El
  * proyecto es de actividades literarias en Argentina y hoy el circuito es
  * porteño; que sea una constante y no un literal repetido es lo que hace que el
  * día que haya fichas de otra ciudad se cambie en un lugar.
+ *
+ * **Era `'Ciudad de Buenos Aires'`, texto libre**, y ése era el nudo de la
+ * migración que B-967 tenía que resolver: slugifica a `ciudad-de-buenos-aires`,
+ * que **no** es `caba`, así que un backfill a secas habría dejado dos entradas
+ * para el mismo lugar en la taxonomía. Lo resuelve `ALIAS_DE_CABA`
+ * (`functions/geografia.js`), que las colapsa al leer.
  */
-export const CIUDAD_POR_DEFECTO = 'Ciudad de Buenos Aires';
+export const CIUDAD_POR_DEFECTO = SLUG_CABA;
+
+/** B-967 — la provincia por defecto, del mismo lado que la ciudad. */
+export const PROVINCIA_POR_DEFECTO = SLUG_CABA;
 
 /*
  * ── Los topes ─────────────────────────────────────────────────────────────
@@ -92,6 +102,8 @@ export const TOPE_DIRECCION_LIBRERIA = 160;
 export const TOPE_SLUG_LIBRERIA = 120;
 /** Slugs de taxonomía: `/opciones/barrio`. */
 export const TOPE_BARRIO_LIBRERIA = 80;
+/** B-967 — el mismo tope que el barrio: los dos son slugs de taxonomía. */
+export const TOPE_PROVINCIA_LIBRERIA = 80;
 export const TOPE_CIUDAD_LIBRERIA = 80;
 /**
  * El handle de Instagram, **sin la arroba**. Treinta es el largo real de un
@@ -175,8 +187,22 @@ export interface Libreria {
   /** Reusa `Imagen` de `types/actividad.ts` — D-125. Exactamente una `portada`. */
   imagenes: Imagen[];
   direccion: string;
-  /** Slug de `/opciones/barrio` — **el mismo que usan las actividades** (§ 2 del PRD). */
+  /**
+   * Slug de `/opciones/provincia` — B-967. **El mismo vocabulario que una
+   * actividad**, igual que el barrio: la cascada es una sola.
+   */
+  provincia: string;
+  /**
+   * Slug de `/opciones/barrio` — **el mismo que usan las actividades** (§ 2 del
+   * PRD). **Se pide solo en CABA** desde B-967, igual que en una sede.
+   */
   barrio: string;
+  /**
+   * Slug de `/opciones/ciudad` — B-967. **Era texto libre** hasta entonces, así
+   * que las fichas anteriores traen lo que se tipeó («Ciudad de Buenos Aires») y
+   * no el slug: se lee con `geografiaNormalizada`, que colapsa los alias de CABA
+   * al slug canónico (ver `ALIAS_DE_CABA`, `functions/geografia.js`).
+   */
   ciudad: string;
   /** Opcional, lo pone el admin (`CoordenadasSede.tsx` ya existe). */
   geo: { lat: number; lng: number } | null;
@@ -272,6 +298,8 @@ export interface LibreriaForm {
   descripcion: string;
   imagenes: Imagen[];
   direccion: string;
+  /** B-967 — los tres de la geografía, slugs de taxonomía como en una sede. */
+  provincia: string;
   barrio: string;
   ciudad: string;
   /** Los dos `''` ⇒ `geo: null`. Se tipean como texto porque salen de un input. */

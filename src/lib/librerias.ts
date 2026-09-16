@@ -45,6 +45,7 @@ import { db } from '@/lib/firestore-client';
 import { formALibreria } from '@/lib/libreria-schema';
 import { CIUDAD_POR_DEFECTO } from '@/types/libreria';
 import type { EstadoDirectorio } from '@/lib/directorios';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import type { Libreria, LibreriaConId, LibreriaForm } from '@/types/libreria';
 
 const COL = 'librerias';
@@ -127,8 +128,14 @@ export const libreriaAFormulario = (l: Libreria): LibreriaForm => ({
   descripcion: l.descripcion ?? '',
   imagenes: l.imagenes ?? [],
   direccion: l.direccion,
-  barrio: l.barrio,
-  ciudad: l.ciudad || CIUDAD_POR_DEFECTO,
+  /*
+   * B-967 — el **default de lectura** de la geografía (D-26), el mismo que usa
+   * una actividad: una ficha anterior guarda la ciudad como se tipeó («Ciudad de
+   * Buenos Aires») y sin provincia, y sin esto el desplegable de la cascada
+   * abriría con un valor que no matchea ninguna opción.
+   */
+  ...geografiaNormalizada(l),
+  ciudad: geografiaNormalizada(l).ciudad || CIUDAD_POR_DEFECTO,
   geo: l.geo ? { lat: String(l.geo.lat), lng: String(l.geo.lng) } : { lat: '', lng: '' },
   instagram: l.instagram ?? '',
   whatsapp: l.whatsapp ?? '',

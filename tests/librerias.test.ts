@@ -57,6 +57,7 @@ import {
   MIN_NO_VACIO_LIBRERIA,
   ORIGENES_LIBRERIA,
   TOPE_BARRIO_LIBRERIA,
+  TOPE_PROVINCIA_LIBRERIA,
   TOPE_CIUDAD_LIBRERIA,
   TOPE_CONTACTO_LIBRERIA,
   TOPE_DESCRIPCION_LIBRERIA,
@@ -172,8 +173,14 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
       ['d.direccion', '>=', MIN_DIRECCION_LIBRERIA],
       ['d.direccion', '<=', TOPE_DIRECCION_LIBRERIA],
       ['d.barrio', '<=', TOPE_BARRIO_LIBRERIA],
-      ['d.ciudad', '>=', MIN_NO_VACIO_LIBRERIA],
+      /*
+       * B-967 — `d.ciudad` **perdió su `>= 1`**: pasó a ser slug de taxonomía y
+       * ganó el `matches`, cuyo `+` ya exige un carácter, que es la misma poda
+       * que el resto de la regla ya tenía. Y admite `''` porque la cascada pide
+       * **una** de las dos según la provincia.
+       */
       ['d.ciudad', '<=', TOPE_CIUDAD_LIBRERIA],
+      ['d.provincia', '<=', TOPE_PROVINCIA_LIBRERIA],
       ['d.web', '<=', TOPE_WEB_LIBRERIA],
       ['d.mail', '>=', MIN_MAIL_LIBRERIA],
       ['d.mail', '<=', TOPE_MAIL_LIBRERIA],
@@ -195,8 +202,12 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
     expect(bloque, 'el alfabeto del slug').toContain(`'${RE_SLUG}'`);
     expect(bloque, 'el handle de Instagram').toContain(`'${RE_INSTAGRAM}'`);
     expect(bloque, 'los dígitos del WhatsApp').toContain(`'${RE_WHATSAPP}'`);
-    // Y el barrio, que es el mismo alfabeto de slug: dos apariciones, no una.
-    expect(bloque.split(`'${RE_SLUG}'`)).toHaveLength(3);
+    /*
+     * Y los tres de la geografía, que son el mismo alfabeto de slug — B-967.
+     * **Cuatro apariciones** contando la del `slug` de la URL: con `toContain`
+     * sola, borrar el `matches` de la ciudad no habría movido nada.
+     */
+    expect(bloque.split(`'${RE_SLUG}'`)).toHaveLength(5);
   });
 
   it('la web tiene que traer esquema http(s), y eso está en la regla y no solo en el saneador', () => {
@@ -301,8 +312,20 @@ describe('el schema — lo que se le avisa a quien completa antes de mandar', ()
 
   it('el barrio es un slug de `/opciones/barrio`, el mismo que usan las actividades', () => {
     expect(rutas(valida({ barrio: 'Villa Crespo' }))).toContain('barrio');
-    expect(rutas(valida({ barrio: '' }))).toContain('barrio');
     expect(valida({ barrio: 'villa-crespo' }).success).toBe(true);
+  });
+
+  /**
+   * **B-967 — el barrio dejó de ser obligatorio y la provincia pasó a serlo.**
+   *
+   * La cascada pide **una** de las dos según la provincia: en CABA el barrio y
+   * afuera la ciudad. Con el `min(1)` que el barrio tenía, una librería de Mar
+   * del Plata era inguardable.
+   */
+  it('el barrio puede ir vacío, la provincia no', () => {
+    expect(valida({ barrio: '' }).success).toBe(true);
+    expect(rutas(valida({ provincia: '' }))).toContain('provincia');
+    expect(valida({ provincia: 'buenos-aires' }).success).toBe(true);
   });
 
   it('los tres contactos que terminan en un `href` se validan con los saneadores del proyecto', () => {

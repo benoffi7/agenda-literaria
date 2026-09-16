@@ -67,6 +67,8 @@ export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
     'nombre',
     'descripcion',
     'direccion',
+    // B-967 — los tres de la geografía.
+    'provincia',
     'barrio',
     'ciudad',
     'geo',

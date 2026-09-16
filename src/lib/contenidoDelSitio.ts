@@ -417,6 +417,8 @@ const CAMPOS_DE_LA_PROYECCION = [
   'nombre',
   'descripcion',
   'direccion',
+  // B-967 — los tres de la geografía.
+  'provincia',
   'barrio',
   'ciudad',
   'geo',

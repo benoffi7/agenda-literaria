@@ -27,10 +27,12 @@
 import { z } from 'zod';
 import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { searchTextDeLibreria } from '@/lib/libreriaPublica';
 import {
   CIUDAD_POR_DEFECTO,
+  PROVINCIA_POR_DEFECTO,
   MIN_CONTACTO_LIBRERIA,
   MIN_DIRECCION_LIBRERIA,
   MIN_NOMBRE_LIBRERIA,
@@ -136,7 +138,15 @@ const base = z.object({
   direccion: texto
     .min(MIN_DIRECCION_LIBRERIA, '¿Dónde queda?')
     .max(TOPE_DIRECCION_LIBRERIA, 'La dirección quedó muy larga'),
-  barrio: texto.min(1, 'Elegí el barrio').max(TOPE_BARRIO_LIBRERIA, 'Quedó muy largo'),
+  /*
+   * B-967 — la cascada, igual que en una sede: la **provincia** se exige (es el
+   * primer nivel, y sin ella la ficha no aparece bajo ningún filtro de lugar) y
+   * la subdivisión no. El barrio dejó de exigirse por eso mismo: fuera de CABA
+   * no se pide, así que un `min(1)` haría inguardable una librería de Mar del
+   * Plata.
+   */
+  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_BARRIO_LIBRERIA, 'Quedó muy largo'),
+  barrio: texto.max(TOPE_BARRIO_LIBRERIA, 'Quedó muy largo').default(''),
   ciudad: texto.max(TOPE_CIUDAD_LIBRERIA, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
   // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».
   geo: z.object({ lat: opcional, lng: opcional }).default({ lat: '', lng: '' }),
@@ -275,6 +285,7 @@ export const libreriaVacia = (): LibreriaForm => ({
   descripcion: '',
   imagenes: [],
   direccion: '',
+  provincia: PROVINCIA_POR_DEFECTO,
   barrio: '',
   ciudad: CIUDAD_POR_DEFECTO,
   geo: { lat: '', lng: '' },
@@ -317,13 +328,24 @@ export const formALibreria = (
   const nombre = f.nombre.trim();
   const descripcion = oNull(f.descripcion);
   const direccion = f.direccion.trim();
-  const barrio = f.barrio.trim();
-  const ciudad = f.ciudad.trim() || CIUDAD_POR_DEFECTO;
+  /*
+   * B-967 — la geografía se normaliza antes de escribir, con la **misma**
+   * función que una actividad: colapsa los alias de CABA al slug canónico, así
+   * que una ficha guardada cuando `CIUDAD_POR_DEFECTO` era «Ciudad de Buenos
+   * Aires» no crea una segunda CABA en la taxonomía.
+   */
+  const { provincia, barrio, ciudad: ciudadNormalizada } = geografiaNormalizada({
+    provincia: f.provincia.trim(),
+    barrio: f.barrio.trim(),
+    ciudad: f.ciudad.trim(),
+  });
+  const ciudad = ciudadNormalizada || CIUDAD_POR_DEFECTO;
 
   return {
     nombre,
     slug: slugDeLibreria(f),
     descripcion,
+    provincia,
     // Las claves se **enumeran** en vez de spreadear la fila, por lo mismo que
     // `formADocumento` con las imágenes de una actividad (B-206 #2): así un
     // campo que escriba el servidor no puede viajar de vuelta por el formulario.

@@ -58,7 +58,10 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   },
   {
     nombre: 'dónde queda',
-    centinelas: ['direccion', 'barrio', 'ciudad'],
+    // B-967 — los tres de la geografía. La provincia sale por lo mismo que la
+    // ciudad: es una etiqueta geográfica de un local comercial, no dice nada de
+    // nadie, y es lo que distingue dos ciudades homónimas.
+    centinelas: ['direccion', 'provincia', 'barrio', 'ciudad'],
     porque:
       'es un **local comercial**, no la casa de nadie (§ 8 del PRD). La dirección es el dato por ' +
       'el que alguien entra a la ficha, y el barrio es el mismo slug que usan las actividades — ' +
@@ -130,10 +133,12 @@ const PERMITIDO_EN_EL_MARCADO: readonly Excepcion[] = [
   },
   {
     nombre: 'la dirección postal',
-    centinelas: ['direccion', 'ciudad'],
+    centinelas: ['direccion', 'ciudad', 'provincia'],
     porque:
-      '`PostalAddress` de un local comercial. El **barrio no entra**: no es un componente de ' +
-      '`PostalAddress` y meterlo en `streetAddress` ensuciaría el dato que Google geocodifica.',
+      '`PostalAddress` de un local comercial: `streetAddress`, `addressLocality` y —desde ' +
+      'B-967— `addressRegion`, que es lo que distingue dos ciudades homónimas. El **barrio no ' +
+      'entra**: no es un componente de `PostalAddress` y meterlo en `streetAddress` ensuciaría ' +
+      'el dato que Google geocodifica.',
   },
   {
     nombre: 'los perfiles',
@@ -581,7 +586,10 @@ describe('las dos frases del `<head>`, que son texto público — salida 21', ()
           centinelas: ['nombre', 'descripcion', 'direccion', 'barrio', 'ciudad'],
           porque:
             'la frase dice qué es la librería y dónde queda, que es lo que alguien lee en el ' +
-            'resultado de Google antes de decidir si entra. Los cinco ya se publican en la página.',
+            'resultado de Google antes de decidir si entra. Los cinco ya se publican en la ' +
+            'página. **La provincia no entra y es una decisión**: la frase ya tiene la ciudad, ' +
+            'y ~160 caracteres útiles son pocos para gastarlos en un dato que solo desambigua ' +
+            'un homónimo. Está en el JSON-LD, que es donde Google la usa.',
         },
       ],
     );
