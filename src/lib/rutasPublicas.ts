@@ -424,12 +424,17 @@ export const rutaDeMes = (clave: string): string => rutaCanonica(`${PREFIJO_MES}
  */
 export const PREFIJO_TIPO = '/tipo';
 export const PREFIJO_BARRIO = '/barrio';
+/** B-951 — el quinto hub. `ciudad` es taxonomía desde B-950; antes no podía serlo. */
+export const PREFIJO_CIUDAD = '/ciudad';
 
 /** `/tipo/club-lectura/` — el hub de un tipo de actividad. */
 export const rutaDeTipo = (slug: string): string => rutaCanonica(`${PREFIJO_TIPO}/${slug}`);
 
 /** `/barrio/villa-crespo/` — el hub de un barrio. */
 export const rutaDeBarrio = (slug: string): string => rutaCanonica(`${PREFIJO_BARRIO}/${slug}`);
+
+/** `/ciudad/mar-del-plata/` — el hub de una ciudad (B-951). */
+export const rutaDeCiudad = (slug: string): string => rutaCanonica(`${PREFIJO_CIUDAD}/${slug}`);
 
 /**
  * Los dos hubs temáticos: `/online/` y `/gratis/` — B-108.

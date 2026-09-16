@@ -1,0 +1,57 @@
+---
+/**
+ * `/ciudad/{slug}` — el hub de una ciudad. **B-951**, la quinta clase.
+ *
+ * ── La consulta que hasta ahora no teníamos cómo ganar ────────────────────
+ * Es el argumento del hub de barrio aplicado a la ciudad: «`taller de escritura
+ * villa crespo` es una consulta con intención altísima y competencia baja; un
+ * filtro no puede ganarla porque no tiene título, ni `h1`, ni URL» (§2.1). Con
+ * las actividades de afuera de CABA entrando, **«taller de escritura en Mar del
+ * Plata»** es exactamente la misma consulta con otro sujeto, y hasta acá no
+ * existía ninguna página que pudiera pelearla.
+ *
+ * ── Por qué esto no se podía hacer antes de B-950 ─────────────────────────
+ * Estas páginas se generan recorriendo las opciones **aprobadas** con alguna
+ * actividad publicada, y esa palabra es la defensa: «ofrecer un hub es publicar
+ * vocabulario, y un lugar recién tipeado puede ser un typo; un typo con página
+ * propia es una URL indexada para siempre».
+ *
+ * Mientras `ciudad` fue un `<input>` de texto libre **no tenía `aprobada`**, así
+ * que emitir un hub por ciudad habría sido emitir una URL por cada string que
+ * alguien tipeara —«Mar del Plata», «mar del plata» y « Mar del Plata » habrían
+ * sido tres páginas—. El ítem dejaba las dos salidas abiertas: esperar a que
+ * B-950 la convirtiera en taxonomía, o defenderla con otra puerta (un mínimo de
+ * actividades más `noIndex` por debajo). **Se tomó la primera**, así que este hub
+ * no trae ninguna defensa nueva: hereda la misma que el de barrio.
+ *
+ * ── El resto está en dos lugares, y ninguno es este archivo ───────────────
+ * `lib/hubsPublicos.ts` decide qué se emite, qué entra y qué dice;
+ * `components/sitio/CuerpoDeHub.astro` es el markup, compartido con las otras
+ * cuatro clases de hub. Acá quedan el `<Base>`, el `<title>` y el `noIndex`.
+ */
+import Base from '@/layouts/Base.astro';
+import CuerpoDeHub from '@/components/sitio/CuerpoDeHub.astro';
+import { caminosDeCiudad, type VistaDeHub } from '@/lib/contenidoDelSitio';
+import { esIndexable } from '@/lib/hubsPublicos';
+import { NOMBRE } from '@/lib/identidad';
+
+export const prerender = true;
+
+// Envuelta y no aliasada (B-237): ver `src/pages/tipo/[tipo].astro`.
+export const getStaticPaths = () => caminosDeCiudad();
+
+interface Props {
+  vista: VistaDeHub;
+}
+
+const { vista } = Astro.props;
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${vista.hub.titulo} · ${NOMBRE}`}
+  descripcion={vista.hub.descripcion}
+  noIndex={!esIndexable(vista.hub)}
+>
+  <CuerpoDeHub vista={vista} />
+</Base>

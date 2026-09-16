@@ -1747,6 +1747,10 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
       { slug: TIPO_LIBRE, label: CENTINELA['labels.tipo'] },
     ],
     barrio: [{ slug: CENTINELA['sede.barrio'], label: CENTINELA['labels.barrio'] }],
+    // B-950 — las dos de la geografía. Sin estas líneas `etiquetaDe` cae a
+    // `desSlug` y el barrido mediría el respaldo en vez de la resolución.
+    ciudad: [{ slug: CENTINELA['sede.ciudad'], label: CENTINELA['labels.ciudad'] }],
+    provincia: [{ slug: CENTINELA['sede.provincia'], label: CENTINELA['labels.provincia'] }],
     plataforma: [
       { slug: CENTINELA['online.plataforma'], label: CENTINELA['labels.plataforma'] },
     ],
@@ -1896,19 +1900,27 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'modalidades.id',
         'sede.nombre',
         'sede.direccion',
-        'sede.ciudad',
         'sede.indicaciones',
       ],
       porque:
         'sin la dirección y el «timbre del fondo» nadie llega: es el punto de una actividad ' +
         'presencial y es lo que el índice no lleva. La dirección sale además dentro del link ' +
-        'de Google Maps, escapada — el mismo `construirLinkMapa` que usa el evento (D-20).',
+        'de Google Maps, escapada — el mismo `construirLinkMapa` que usa el evento (D-20). ' +
+        '**`sede.ciudad` salió de esta lista con B-950/B-951**: dejó de ser texto libre, así ' +
+        'que la ficha la resuelve a su etiqueta como venía haciendo con el barrio, y lo que ' +
+        'sale está en la lista de abajo. Si el slug crudo reaparece acá es que la resolución ' +
+        'se salteó — que es lo que este cambio de lista fija.',
     },
     {
       nombre: 'las etiquetas de /opciones, no los slugs',
       centinelas: [
         'labels.tipo',
         'labels.barrio',
+        // B-950/B-951 — la geografía del renglón «Dónde», resuelta. El fixture no
+        // es de CABA, así que `piezasDeLugar` emite la ciudad y la provincia; en
+        // una sede de CABA saldría el barrio solo, que es la regla de B-953.
+        'labels.ciudad',
+        'labels.provincia',
         'labels.plataforma',
         'labels.arancel',
         'labels.tags',
@@ -1949,7 +1961,11 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'tallerista.nombre',
         'sede.nombre',
         'sede.direccion',
-        'sede.ciudad',
+        // B-950 — el `addressLocality` es la **etiqueta** de la ciudad desde que
+        // `ciudad` es taxonomía: mandarle `mar-del-plata` a Google en un dato
+        // estructurado es peor que en la página, porque una máquina lo cosecha
+        // literal.
+        'labels.ciudad',
         'sesiones.tema',
         'imagenes.url',
         'labels.plataforma',
@@ -2307,6 +2323,10 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
   const ETIQUETAS = mapaDeEtiquetas({
     tipo: [{ slug: 'presentacion', label: CENTINELA['labels.tipo'] }],
     barrio: [{ slug: CENTINELA['sede.barrio'], label: CENTINELA['labels.barrio'] }],
+    // B-950 — las dos de la geografía. Sin estas líneas `etiquetaDe` cae a
+    // `desSlug` y el barrido mediría el respaldo en vez de la resolución.
+    ciudad: [{ slug: CENTINELA['sede.ciudad'], label: CENTINELA['labels.ciudad'] }],
+    provincia: [{ slug: CENTINELA['sede.provincia'], label: CENTINELA['labels.provincia'] }],
     plataforma: [
       { slug: CENTINELA['online.plataforma'], label: CENTINELA['labels.plataforma'] },
     ],
@@ -2351,7 +2371,17 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
     },
     {
       nombre: 'dónde y de qué tipo',
-      centinelas: ['sede.nombre', 'labels.barrio', 'labels.tipo'],
+      centinelas: [
+        'sede.nombre',
+        'labels.barrio',
+        // B-951 — el pie del afiche sale del **mismo** `donde` que la ficha, así
+        // que hereda la ciudad y la provincia. Aplanado a texto: un enlace
+        // adentro de un pie que ya está dentro del `<a>` a la actividad sería un
+        // ancla anidada.
+        'labels.ciudad',
+        'labels.provincia',
+        'labels.tipo',
+      ],
       porque:
         'la ficha mínima que convierte un afiche en algo accionable: qué es, cuándo y dónde. ' +
         'La **dirección exacta NO está** —eso es del detalle, donde alguien ya decidió ir— y ' +
@@ -2911,6 +2941,10 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
   const ETIQUETAS = mapaDeEtiquetas({
     tipo: [{ slug: 'presentacion', label: CENTINELA['labels.tipo'] }],
     barrio: [{ slug: CENTINELA['sede.barrio'], label: CENTINELA['labels.barrio'] }],
+    // B-950 — las dos de la geografía. Sin estas líneas `etiquetaDe` cae a
+    // `desSlug` y el barrido mediría el respaldo en vez de la resolución.
+    ciudad: [{ slug: CENTINELA['sede.ciudad'], label: CENTINELA['labels.ciudad'] }],
+    provincia: [{ slug: CENTINELA['sede.provincia'], label: CENTINELA['labels.provincia'] }],
   });
 
   /** Tres centinelas con distinto id, como en la salida 8. */

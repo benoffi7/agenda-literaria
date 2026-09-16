@@ -169,7 +169,7 @@ describe('filtrar sobre lo que ya está en memoria', () => {
     const datosGeo = [
       acto({
         id: 'caba',
-        modalidades: [{ id: 'mod_1', modalidad: 'presencial', sede: sedeEn('boedo') }],
+        modalidades: [{ id: 'mod_1', modalidad: 'presencial', inicio: null, fin: null, online: null, sede: sedeEn('boedo') }],
       }),
       acto({
         id: 'mardel',
@@ -177,6 +177,9 @@ describe('filtrar sobre lo que ya está en memoria', () => {
           {
             id: 'mod_1',
             modalidad: 'presencial',
+            inicio: null,
+            fin: null,
+            online: null,
             sede: { ...sedeEn(''), provincia: 'buenos-aires', ciudad: 'mar-del-plata' },
           },
         ],
@@ -203,10 +206,13 @@ describe('filtrar sobre lo que ya está en memoria', () => {
       acto({
         id: 'gira',
         modalidades: [
-          { id: 'mod_1', modalidad: 'presencial', sede: sedeEn('boedo') },
+          { id: 'mod_1', modalidad: 'presencial', inicio: null, fin: null, online: null, sede: sedeEn('boedo') },
           {
             id: 'mod_2',
             modalidad: 'presencial',
+            inicio: null,
+            fin: null,
+            online: null,
             sede: { ...sedeEn(''), provincia: 'buenos-aires', ciudad: 'la-plata' },
           },
         ],

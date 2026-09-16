@@ -38,6 +38,7 @@
 // `resumenDe` vive en `eventsJson.ts` porque nació con el índice: se importa para
 // que la tarjeta del listado y la `meta description` del detalle recorten igual.
 import { NOMBRE, colorDeTipo } from '@/lib/identidad';
+import { piezasDeLugar, provinciaDeSede } from '@/lib/geografia.mjs';
 import { admiteMonto, montoLegible } from '@/lib/arancel';
 import { resumenDe } from '@/lib/eventsJson';
 import {
@@ -145,12 +146,54 @@ export interface EncuentroDeDetalle {
   esProximo: boolean;
 }
 
+/**
+ * Una pieza del renglón «Dónde» — B-951.
+ *
+ * Viaja como lista de piezas y no como una cadena ya unida con `·` por dos
+ * motivos, y el segundo es el del ítem: el separador es maquetación (es el mismo
+ * criterio que `TarjetaDelPanel.donde`), y **cada pieza puede llevar su enlace**.
+ * Con una cadena, la plantilla tendría que volver a partirla para saber qué
+ * tramo linkear, que es la derivación de ida y vuelta que este módulo evita.
+ */
+export interface PiezaDeDonde {
+  texto: string;
+  /**
+   * El hub de ese lugar, o `null`.
+   *
+   * `null` en el nombre de la sede y en lo online —no hay página de «Casa
+   * Brandon»— y también cuando el hub **no se emitió**: `/barrio/{slug}` y
+   * `/ciudad/{slug}` existen solo para los slugs aprobados con alguna actividad
+   * publicada, así que linkear a ciegas publicaría un 404 en la página que más
+   * tráfico recibe. Es el mismo criterio que `rutaDelBarrio` en la ficha de un
+   * lugar de la Guía.
+   */
+  href: string | null;
+}
+
 export interface SedeDeDetalle {
   nombre: string;
   direccion: string;
+  /** La etiqueta del barrio, resuelta. */
   barrio: string;
+  /**
+   * La etiqueta de la ciudad, **resuelta** — B-950. Era texto libre y se imprimía
+   * tal cual; desde que es taxonomía hay que resolverla o la ficha diría
+   * «mar-del-plata».
+   */
   ciudad: string;
+  /** La etiqueta de la provincia, resuelta. Vacía en un documento sin el campo. */
+  provincia: string;
   indicaciones: string;
+  /**
+   * **El renglón de lugar en piezas, con sus enlaces** — B-951.
+   *
+   * Sale de `zonaDeSede`/`piezasDeLugar` (`lib/geografia.mjs`), o sea que trae la
+   * regla de CABA ya aplicada: adentro de CABA es el barrio, afuera la ciudad y
+   * la provincia. Se arma acá —donde todavía están los **slugs**— y no en
+   * `dondeCorto`, que solo ve etiquetas ya resueltas y no podría construir una
+   * URL.
+   */
+  zona: PiezaDeDonde[];
   /** El link a Google Maps, armado con `construirLinkMapa` (el del evento). */
   mapa: string | null;
 }
@@ -336,8 +379,13 @@ export interface DetallePublico {
   mostrarEncuentros: boolean;
 
   modalidades: ModalidadDeDetalle[];
-  /** El texto corto de dónde: «Casa Brandon · Boedo» o «Online por Meet». */
-  donde: string;
+  /**
+   * Dónde, en piezas: «Casa Brandon · Boedo» o «Online por Meet» — B-951.
+   *
+   * Cada pieza puede llevar su enlace al hub del lugar. La plantilla las une con
+   * `·` y pinta un `<a>` donde haya `href`.
+   */
+  donde: PiezaDeDonde[];
 
   /**
    * B-114 — `monto` es el número crudo y `precio` la frase ya armada. Los dos,
@@ -623,9 +671,25 @@ export const accionDeInscripcion = (
  * formulario y la conversación que abre este comentario, no un `?.url` agregado
  * sin ruido.
  */
+/**
+ * Cómo se resuelve el enlace de una pieza del renglón «Dónde» — B-951.
+ *
+ * Es un parámetro y no un `import` por lo mismo que `mesesConPagina` y
+ * `tipoTieneHub`: **qué hubs se emitieron** lo sabe `hubsPublicos.ts` mirando el
+ * índice entero, y esta función ve una actividad por vez. El default devuelve
+ * `null`, que es el lado del error que no publica un 404.
+ */
+export type RutaDeZona = (
+  campo: 'barrio' | 'ciudad' | 'provincia',
+  slug: string,
+) => string | null;
+
+const SIN_HUBS: RutaDeZona = () => null;
+
 const modalidadDeDetalle = (
   m: ActividadPublica['modalidades'][number],
   etiquetas: MapaDeEtiquetas,
+  rutaDeZona: RutaDeZona = SIN_HUBS,
 ): ModalidadDeDetalle => ({
   id: m.id,
   modalidad: m.modalidad,
@@ -635,8 +699,16 @@ const modalidadDeDetalle = (
         nombre: m.sede.nombre,
         direccion: m.sede.direccion,
         barrio: etiquetaDe(etiquetas, 'barrio', m.sede.barrio),
-        ciudad: m.sede.ciudad,
+        // B-950 — resuelta. Antes se imprimía cruda porque era texto libre.
+        ciudad: m.sede.ciudad ? etiquetaDe(etiquetas, 'ciudad', m.sede.ciudad) : '',
+        provincia: provinciaDeSede(m.sede)
+          ? etiquetaDe(etiquetas, 'provincia', provinciaDeSede(m.sede))
+          : '',
         indicaciones: m.sede.indicaciones,
+        zona: piezasDeLugar(m.sede).map(({ campo, slug }) => ({
+          texto: etiquetaDe(etiquetas, campo, slug),
+          href: rutaDeZona(campo, slug),
+        })),
         /*
          * El **mismo** armador de link que usa el evento de Calendar, importado
          * y no copiado (D-20): si divergieran, el mapa del sitio y el del
@@ -663,23 +735,48 @@ const itemDeDetalle = (i: ItemMaterialPublico): MaterialDeDetalle => ({
 });
 
 /** El texto corto de dónde, para la ficha y el `<title>`. */
-const dondeCorto = (modalidades: ModalidadDeDetalle[]): string => {
-  const lugares = modalidades
-    .map((m) =>
-      m.sede
-        ? [m.sede.nombre, m.sede.barrio].filter(Boolean).join(' · ')
-        : m.plataforma
-          ? // B-190 — «Online por A confirmar» se lee como si «A confirmar»
-            // fuera el nombre de una plataforma. Con el slug a la vista en vez
-            // del label, el mismo texto sirve para publicar lo que se sabe de
-            // verdad: que la plataforma todavía no está decidida.
-            m.plataformaAConfirmar
-            ? 'Online, plataforma a confirmar'
-            : `Online por ${m.plataforma}`
-          : m.etiqueta,
-    )
-    .filter(Boolean);
-  return [...new Set(lugares)].join(' · ') || 'Lugar a confirmar';
+/**
+ * El renglón «Dónde» de la ficha, en piezas — **B-951**.
+ *
+ * ── Qué cambió, y por qué el ítem lo puso en P1 ──────────────────────────
+ * Decía `[nombre, barrio]`: **la ciudad quedaba afuera**, y era texto plano —ni
+ * el barrio, que tiene hub propio desde B-108, era un enlace—. Las dos mitades
+ * las pidió el dueño juntas: «mostrar la ciudad y que sea linkeable para ver más
+ * de esa ciudad».
+ *
+ * Ahora sale de `sede.zona`, que trae la regla de CABA aplicada (adentro, el
+ * barrio; afuera, la ciudad y la provincia) y el enlace de cada pieza ya
+ * resuelto — `null` cuando ese hub no se emitió, que es lo que evita publicar un
+ * 404 desde la página que más tráfico recibe.
+ *
+ * El nombre de la sede nunca lleva enlace: no hay página de «Casa Brandon».
+ *
+ * La deduplicación es **por texto de pieza** y no por la línea entera, que es lo
+ * correcto ahora que son piezas: dos sedes en la misma ciudad dicen la ciudad una
+ * vez, y antes habrían dicho «Casa Brandon · Boedo · Otra casa · Boedo».
+ */
+const dondeCorto = (modalidades: ModalidadDeDetalle[]): PiezaDeDonde[] => {
+  const piezas: PiezaDeDonde[] = [];
+  for (const m of modalidades) {
+    if (m.sede) {
+      if (m.sede.nombre) piezas.push({ texto: m.sede.nombre, href: null });
+      piezas.push(...m.sede.zona);
+      continue;
+    }
+    const texto = m.plataforma
+      ? // B-190 — «Online por A confirmar» se lee como si «A confirmar» fuera el
+        // nombre de una plataforma. Con el slug a la vista en vez del label, el
+        // mismo texto sirve para publicar lo que se sabe de verdad: que la
+        // plataforma todavía no está decidida.
+        m.plataformaAConfirmar
+        ? 'Online, plataforma a confirmar'
+        : `Online por ${m.plataforma}`
+      : m.etiqueta;
+    if (texto) piezas.push({ texto, href: null });
+  }
+  const vistos = new Set<string>();
+  const unicas = piezas.filter((p) => !vistos.has(p.texto) && vistos.add(p.texto));
+  return unicas.length > 0 ? unicas : [{ texto: 'Lugar a confirmar', href: null }];
 };
 
 /** La hora de fin del encuentro, para «19:00 a 21:00». */
@@ -1003,6 +1100,14 @@ export const detalleDeActividad = (
    * publica un link que puede no existir.
    */
   tipoTieneHub = false,
+  /**
+   * **Cómo se enlaza cada lugar del renglón «Dónde»** — B-951. Ver `RutaDeZona`.
+   *
+   * Mismo patrón que `mesesConPagina` y `tipoTieneHub`, y mismo default seguro:
+   * sin él no se enlaza nada, o sea que quien omita el argumento pierde un enlace
+   * interno en vez de publicar un 404.
+   */
+  rutaDeZona: RutaDeZona = SIN_HUBS,
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -1100,11 +1205,19 @@ export const detalleDeActividad = (
     esProximo: e.id === siguiente?.id,
   }));
 
-  const modalidades = a.modalidades.map((m) => modalidadDeDetalle(m, etiquetas));
+  const modalidades = a.modalidades.map((m) => modalidadDeDetalle(m, etiquetas, rutaDeZona));
   const cierra = instanteDeIso(a.inscripcion.cierraEn);
 
   const tipoEtiqueta = etiquetaDe(etiquetas, 'tipo', a.tipo);
   const donde = dondeCorto(modalidades);
+  /*
+   * El mismo renglón, aplanado, para el `<title>` y la `meta description` —
+   * B-951. Los dos son **texto plano** por definición (una `<meta>` no lleva
+   * markup), así que ahí no hay nada que enlazar; lo que sí tiene que pasar es
+   * que digan exactamente lo mismo que la ficha, y por eso se derivan de la misma
+   * lista en vez de volver a armarse.
+   */
+  const dondeTexto = donde.map((p) => p.texto).join(' · ');
 
   const canal = {
     requiere: a.inscripcion.requiere,
@@ -1357,12 +1470,12 @@ export const detalleDeActividad = (
       // ~60 caracteres y lo que importa es el nombre, no la marca. El barrio
       // entra porque es la palabra que hace match con «taller de escritura villa
       // crespo».
-      titulo: `${a.titulo} · ${tipoEtiqueta} en ${donde} — ${NOMBRE}`,
+      titulo: `${a.titulo} · ${tipoEtiqueta} en ${dondeTexto} — ${NOMBRE}`,
       // Con la descripción vacía cae al formato armado, que es más útil que una
       // frase trunca (§7.7).
       descripcion:
         resumenDe(a.descripcion) ||
-        [tipoEtiqueta, siguiente?.fecha, donde, etiquetaDe(etiquetas, 'arancel', a.arancel.tipo)]
+        [tipoEtiqueta, siguiente?.fecha, dondeTexto, etiquetaDe(etiquetas, 'arancel', a.arancel.tipo)]
           .filter(Boolean)
           .join(' · '),
     },

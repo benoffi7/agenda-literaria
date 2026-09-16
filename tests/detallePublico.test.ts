@@ -15,6 +15,7 @@ import {
   handleInstagram,
   migasDeDetalle,
   urlSegura,
+  type RutaDeZona,
 } from '@/lib/detallePublico';
 import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
@@ -31,6 +32,16 @@ const ETIQUETAS = mapaDeEtiquetas({
     { slug: 'presentacion', label: 'Presentación' },
   ],
   barrio: [{ slug: 'villa-crespo', label: 'Villa Crespo' }],
+  // B-950 — la ciudad dejó de ser texto libre: sin estas dos entradas el fixture
+  // mediría el respaldo (`desSlug`) y no la resolución.
+  ciudad: [
+    { slug: 'caba', label: 'CABA' },
+    { slug: 'mar-del-plata', label: 'Mar del Plata' },
+  ],
+  provincia: [
+    { slug: 'caba', label: 'CABA' },
+    { slug: 'buenos-aires', label: 'Buenos Aires' },
+  ],
   arancel: [
     { slug: 'gratis', label: 'Gratis' },
     { slug: 'a-la-gorra', label: 'A la gorra' },
@@ -2387,5 +2398,81 @@ describe('la etiqueta de una opción se sanea en un solo lugar (B-181, clase de 
         `\`etiquetaSaneada\`: ${reimplementaciones.join(' · ')}. Dos derivaciones en dos ` +
         `salidas es la clase de B-88, y acá se separan en silencio.`,
     ).toEqual([]);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// El renglón «Dónde» — B-951
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('el renglón «Dónde», con la ciudad y sus enlaces (B-951)', () => {
+  /**
+   * Lo que pasaba hasta acá, y son dos cosas: `dondeCorto` armaba `[nombre,
+   * barrio]` —**la ciudad quedaba afuera**— y era texto plano, ni siquiera el
+   * barrio, que tiene hub propio desde B-108. El dueño pidió las dos juntas:
+   * «mostrar la ciudad y que sea linkeable para ver más de esa ciudad».
+   */
+  const conHubs: RutaDeZona = (campo, slug) =>
+    campo === 'barrio' ? `/barrio/${slug}/` : campo === 'ciudad' ? `/ciudad/${slug}/` : null;
+
+  const donde = (o: OpcionesDeEntrada, ruta: RutaDeZona = conHubs) =>
+    detalleDeActividad(
+      toPublic(actividadDePrueba(o), 'act_1'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+      false,
+      {},
+      false,
+      ruta,
+    ).donde;
+
+  it('en CABA dice el barrio, y lo enlaza a su hub', () => {
+    expect(donde({ barrio: 'villa-crespo', ciudad: 'caba', provincia: 'caba' })).toEqual([
+      { texto: 'Casa Brandon', href: null },
+      { texto: 'Villa Crespo', href: '/barrio/villa-crespo/' },
+    ]);
+  });
+
+  it('afuera de CABA dice la ciudad y la provincia, y enlaza la ciudad', () => {
+    // La provincia **no** lleva enlace: no hay hub de provincia, y es una
+    // decisión escrita en `CLASES_DE_TAXONOMIA`.
+    expect(
+      donde({ barrio: '', ciudad: 'mar-del-plata', provincia: 'buenos-aires' }),
+    ).toEqual([
+      { texto: 'Casa Brandon', href: null },
+      { texto: 'Mar del Plata', href: '/ciudad/mar-del-plata/' },
+      { texto: 'Buenos Aires', href: null },
+    ]);
+  });
+
+  /**
+   * El default del parámetro, que es el lado del error que no publica un 404:
+   * `/barrio/{slug}` y `/ciudad/{slug}` se emiten solo para los slugs aprobados
+   * con alguna actividad publicada, así que linkear a ciegas pondría un 404 en la
+   * página que más tráfico recibe.
+   */
+  it('sin hub emitido, la pieza sale sin enlace y no rota', () => {
+    const piezas = donde({ barrio: 'villa-crespo', ciudad: 'caba', provincia: 'caba' }, () => null);
+    expect(piezas.map((p) => p.texto)).toEqual(['Casa Brandon', 'Villa Crespo']);
+    expect(piezas.every((p) => p.href === null)).toBe(true);
+  });
+
+  it('el nombre de la sede nunca lleva enlace: no hay página de «Casa Brandon»', () => {
+    const piezas = donde({ barrio: 'villa-crespo', ciudad: 'caba', provincia: 'caba' });
+    expect(piezas[0]).toEqual({ texto: 'Casa Brandon', href: null });
+  });
+
+  it('una virtual pura sigue diciendo la plataforma, sin enlace', () => {
+    expect(donde({ modalidades: ['virtual'] })).toEqual([
+      { texto: 'Online por Google Meet', href: null },
+    ]);
+  });
+
+  it('sin nada que decir, «Lugar a confirmar» y no una lista vacía', () => {
+    // La plantilla recorre la lista sin preguntar, así que devolver `[]` dejaría
+    // la fila «Dónde» en blanco en vez de decir que todavía no se sabe.
+    const piezas = donde({ modalidades: ['virtual'] }, conHubs);
+    expect(piezas.length).toBeGreaterThan(0);
   });
 });

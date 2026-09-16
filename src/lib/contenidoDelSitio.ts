@@ -64,7 +64,7 @@ import {
 } from '@/lib/hubsPublicos';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
 import { pasadasDelSitio } from '@/lib/pasadasPublicas';
-import { rutaDeBarrio, rutaDeMes } from '@/lib/rutasPublicas';
+import { rutaDeBarrio, rutaDeCiudad, rutaDeMes } from '@/lib/rutasPublicas';
 import { lastmodDelSitemap, rutasDelSitemap } from '@/lib/sitemap';
 import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 // B-831 — la proyección de una librería es **por entidad** y no genérica (§5.2):
@@ -1292,6 +1292,30 @@ const detallesDelSitio = async (
   const tiposConHub = new Set(slugsConHub('tipo', indice.actividades, indice.opciones));
 
   /*
+   * **Qué barrios y qué ciudades tienen hub, para el renglón «Dónde»** — B-951.
+   *
+   * Mismo motivo y mismo patrón que `tiposConHub`: `/barrio/{slug}` y
+   * `/ciudad/{slug}` se emiten solo para los slugs **aprobados con alguna
+   * actividad publicada**, y esta función recorre actividad por actividad — no
+   * puede preguntárselo a cada una. Sin esto, la ficha de una actividad en un
+   * barrio recién tipeado linkearía a una página que el build no generó, y sería
+   * un 404 en la página que más tráfico recibe.
+   *
+   * Es el mismo criterio con el que la ficha de un lugar de la Guía decide su
+   * `rutaDelBarrio` (`fichasDeLugar`, más arriba).
+   */
+  const zonasConHub: Record<string, Set<string>> = {
+    barrio: new Set(slugsConHub('barrio', indice.actividades, indice.opciones)),
+    ciudad: new Set(slugsConHub('ciudad', indice.actividades, indice.opciones)),
+  };
+  const rutaDeZona = (campo: 'barrio' | 'ciudad' | 'provincia', slug: string): string | null => {
+    // `provincia` no tiene hub, y es una decisión escrita en `CLASES_DE_TAXONOMIA`.
+    if (campo === 'provincia') return null;
+    if (!zonasConHub[campo]?.has(slug)) return null;
+    return campo === 'barrio' ? rutaDeBarrio(slug) : rutaDeCiudad(slug);
+  };
+
+  /*
    * La bandera viaja **pegada a cada actividad y desde su origen**, no se deduce
    * después con un `includes`: de qué query salió cada una es lo único que este
    * módulo sabe y el view-model no puede recalcular. Ver `DetallePublico.cancelada`.
@@ -1315,6 +1339,7 @@ const detallesDelSitio = async (
           cancelada,
           mesesConPagina,
           tiposConHub.has(a.tipo),
+          rutaDeZona,
         ),
       )
   );
@@ -1726,6 +1751,24 @@ export const caminosDeBarrio = async (
   return ctx.todos
     .filter((h) => h.clase === 'barrio')
     .map((hub) => ({ params: { barrio: hub.slug }, props: { vista: vistaDelHub(hub, ctx) } }));
+};
+
+/**
+ * Los caminos de `/ciudad/[ciudad]`, uno por ciudad con actividad publicada —
+ * B-951.
+ *
+ * Calcada de `caminosDeBarrio`, que es lo que el ítem predijo que iba a ser
+ * barato: `hubsPublicos.ts` decide qué se emite y `CuerpoDeHub.astro` es el
+ * markup compartido, así que la quinta clase es una entrada en el primero, una
+ * página, y el sitemap que ya se deriva solo.
+ */
+export const caminosDeCiudad = async (
+  ahora?: unknown,
+): Promise<{ params: { ciudad: string }; props: { vista: VistaDeHub } }[]> => {
+  const ctx = await hubsConContexto(ahora);
+  return ctx.todos
+    .filter((h) => h.clase === 'ciudad')
+    .map((hub) => ({ params: { ciudad: hub.slug }, props: { vista: vistaDelHub(hub, ctx) } }));
 };
 
 /**

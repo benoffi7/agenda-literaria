@@ -32,6 +32,7 @@ import {
   urlDeDetalle,
 } from '@/lib/rutasPublicas';
 import { RUTAS_FIJAS, rutasDelSitemap } from '@/lib/sitemap';
+import { rutaDeCiudad } from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
 
 /**
@@ -79,12 +80,15 @@ const ETIQUETAS = mapaDeEtiquetas({
     { slug: 'gratis', label: 'Gratis' },
     { slug: 'a-la-gorra', label: 'A la gorra' },
   ],
+  // B-951 — la quinta clase de hub.
+  ciudad: [{ slug: 'mar-del-plata', label: 'Mar del Plata' }],
 });
 
 /** Las opciones como viajan en el índice: ya filtradas por aprobación. */
 const OPCIONES = {
   tipo: [{ slug: 'taller' }, { slug: 'club-lectura' }, { slug: 'charla' }],
   barrio: [{ slug: 'boedo' }, { slug: 'villa-crespo' }],
+  ciudad: [{ slug: 'mar-del-plata' }],
 };
 
 const PROXIMA = '2026-09-24T22:00:00Z';
@@ -212,11 +216,78 @@ describe('qué hubs emite el build', () => {
     ).toBeDefined();
   });
 
-  it('`slugsConHub` cubre las dos taxonomías y ninguna más', () => {
-    // Control de forma: si mañana alguien agrega `/tema/*` sin pasar por el §2.3,
-    // esto lo manda a decidirlo. Los temas están afuera a propósito.
-    expect([...CLASES_DE_TAXONOMIA]).toEqual(['tipo', 'barrio']);
-    expect([...CLASES_DE_HUB]).toEqual(['tipo', 'barrio', 'online', 'gratis']);
+  /**
+   * **B-951** — el hub de ciudad, la quinta clase. «Taller de escritura en Mar
+   * del Plata» es la consulta que hasta acá no teníamos cómo ganar: es la misma
+   * forma que «taller de escritura villa crespo», que es con la que el hub de
+   * barrio se justificó a sí mismo.
+   */
+  it('una ciudad con actividad publicada tiene hub, con su ruta y su título', () => {
+    const enMardel = entradaDePrueba({
+      id: 'm',
+      slug: 'm',
+      ciudad: 'mar-del-plata',
+      provincia: 'buenos-aires',
+      fechas: [PROXIMA],
+    });
+    const hub = buscar(hubs([enMardel]), 'ciudad', 'mar-del-plata');
+    expect(hub).toBeDefined();
+    expect(hub!.ruta).toBe(rutaDeCiudad('mar-del-plata'));
+    expect(hub!.titulo).toBe('Actividades literarias en Mar del Plata');
+    // La etiqueta se resuelve contra `/opciones/ciudad` y no contra `/opciones/tipo`:
+    // con el ternario que había antes de B-951, esto diría «Mar del plata».
+    expect(hub!.etiqueta).toBe('Mar del Plata');
+  });
+
+  /**
+   * **La defensa que B-950 le regaló**, y el motivo por el que este hub no se
+   * podía hacer antes: un hub se emite solo para las opciones **aprobadas**, o
+   * sea las que viajan en el índice. Mientras `ciudad` fue texto libre no tenía
+   * `aprobada`, así que cada string tipeado habría sido una URL indexada.
+   *
+   * Es el mismo caso que el de `almagro-typo` para el barrio, unas líneas arriba,
+   * y está escrito aparte a propósito: que la defensa valga para el barrio no
+   * dice nada de si vale para la ciudad.
+   */
+  it('una ciudad que no está en las opciones NO tiene hub, aunque tenga actividad', () => {
+    const conCiudadNueva = entradaDePrueba({
+      id: 'n',
+      slug: 'n',
+      ciudad: 'mardel-typo',
+      provincia: 'buenos-aires',
+      fechas: [PROXIMA],
+    });
+    expect(buscar(hubs([conCiudadNueva]), 'ciudad', 'mardel-typo')).toBeUndefined();
+    // Control positivo: con la opción aprobada sí aparece.
+    expect(
+      buscar(
+        hubsDelSitio(
+          [conCiudadNueva],
+          { ...OPCIONES, ciudad: [...OPCIONES.ciudad, { slug: 'mardel-typo' }] },
+          ETIQUETAS,
+          AHORA,
+        ),
+        'ciudad',
+        'mardel-typo',
+      ),
+    ).toBeDefined();
+  });
+
+  it('`slugsConHub` cubre las tres taxonomías y ninguna más', () => {
+    /*
+     * Control de forma: si mañana alguien agrega `/tema/*` sin pasar por el §2.3,
+     * esto lo manda a decidirlo. Los temas están afuera a propósito.
+     *
+     * **`ciudad` entró con B-951**, y solo pudo entrar porque B-950 la convirtió
+     * en taxonomía: sin `aprobada` no hay puerta, y un hub por cada string
+     * tipeado es una URL indexada por cada typo.
+     *
+     * **`provincia` NO entró**, y también es una decisión: sus 24 valores están
+     * sembrados, así que emitiría hasta 24 páginas casi todas vacías, y la
+     * consulta que ganaría la pelea mal contra la de la ciudad.
+     */
+    expect([...CLASES_DE_TAXONOMIA]).toEqual(['tipo', 'barrio', 'ciudad']);
+    expect([...CLASES_DE_HUB]).toEqual(['tipo', 'barrio', 'ciudad', 'online', 'gratis']);
   });
 });
 

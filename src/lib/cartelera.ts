@@ -174,7 +174,13 @@ export const carteleraDeDetalles = (
           ancho: portada.ancho,
           alto: portada.alto,
           cuando: d.proxima.fecha,
-          donde: d.donde,
+          /*
+           * B-951 — `donde` pasó a ser una lista de piezas con enlace, y el
+           * afiche lo quiere como texto: la cartelera es una pared de imágenes
+           * con un pie corto, y un enlace adentro de un pie que ya está dentro de
+           * un `<a>` a la actividad sería un ancla anidada.
+           */
+          donde: d.donde.map((p) => p.texto).join(' · '),
           iso: d.proxima.iso,
         } satisfies Afiche,
       ];

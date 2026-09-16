@@ -114,6 +114,7 @@ import {
   RUTA_GRATIS,
   RUTA_ONLINE,
   rutaDeBarrio,
+  rutaDeCiudad,
   rutaDeTipo,
   urlAbsoluta,
   urlDeDetalle,
@@ -124,21 +125,45 @@ import {
 // ─────────────────────────────────────────────────────────────────
 
 /**
- * Las cuatro clases de hub. **No es el eje del filtro**: `online` y `gratis`
- * aplican dos valores de un eje cada uno, y `tipo`/`barrio` uno solo.
+ * Las cinco clases de hub. **No es el eje del filtro**: `online` y `gratis`
+ * aplican dos valores de un eje cada uno, y `tipo`/`barrio`/`ciudad` uno solo.
+ *
+ * ── `ciudad` es de B-951, y es la que el hub de barrio venía pidiendo ─────
+ * El argumento con el que el hub de barrio se justificó a sí mismo —«`taller de
+ * escritura villa crespo` es una consulta con intención altísima y competencia
+ * baja; un filtro no puede ganarla porque no tiene título, ni `h1`, ni URL»—
+ * aplicado a la consulta que hasta ahora no teníamos cómo ganar: **«taller de
+ * escritura en Mar del Plata»**. Con las actividades de afuera de CABA entrando,
+ * es la página que faltaba.
+ *
+ * **No se podía hacer antes de B-950, y por una razón concreta.** Un hub de
+ * taxonomía se genera recorriendo las opciones **aprobadas** con alguna actividad
+ * publicada, y esa palabra es una defensa escrita: «ofrecer un hub es publicar
+ * vocabulario, y un barrio recién tipeado puede ser un typo; un typo con página
+ * propia es una URL indexada para siempre». Mientras `ciudad` fue un `<input>` de
+ * texto libre no tenía `aprobada`, así que emitir un hub por ciudad habría sido
+ * emitir una URL por cada string que alguien tipeara. Al volverla taxonomía,
+ * B-950 le dio esa misma puerta — y el hub sale sin defensa nueva.
  */
-export const CLASES_DE_HUB = ['tipo', 'barrio', 'online', 'gratis'] as const;
+export const CLASES_DE_HUB = ['tipo', 'barrio', 'ciudad', 'online', 'gratis'] as const;
 export type ClaseDeHub = (typeof CLASES_DE_HUB)[number];
 
 /**
- * Las dos clases que se generan recorriendo una taxonomía — §2.1.
+ * Las tres clases que se generan recorriendo una taxonomía — §2.1.
  *
- * `tipo` y `barrio` son taxonomías autogestionadas (§4), así que **una opción
- * nueva trae su hub sola, sin tocar código**. Es la mitad del valor de este ítem:
- * el día que alguien cargue una actividad en un barrio nuevo, ese barrio tiene su
- * página y su entrada de sitemap en el build siguiente.
+ * `tipo`, `barrio` y `ciudad` son taxonomías autogestionadas (§4), así que **una
+ * opción nueva trae su hub sola, sin tocar código**. Es la mitad del valor de
+ * este ítem: el día que alguien cargue una actividad en un barrio o una ciudad
+ * nueva, ese lugar tiene su página y su entrada de sitemap en el build siguiente.
+ *
+ * `provincia` **no está**, y es una decisión: sus 24 valores están sembrados, así
+ * que un hub por provincia emitiría hasta 24 páginas, la mayoría con una o
+ * ninguna actividad — justo lo que `slugsConActividades` evita al exigir «con
+ * alguna publicada». Y la consulta que ganaría («actividades literarias en
+ * Buenos Aires») la pelea mal contra la de la ciudad, que es más específica y es
+ * la que la gente escribe. Si alguna provincia junta volumen, se agrega acá.
  */
-export const CLASES_DE_TAXONOMIA = ['tipo', 'barrio'] as const;
+export const CLASES_DE_TAXONOMIA = ['tipo', 'barrio', 'ciudad'] as const;
 export type ClaseDeTaxonomia = (typeof CLASES_DE_TAXONOMIA)[number];
 
 /**
@@ -160,6 +185,7 @@ export type ClaseDeTaxonomia = (typeof CLASES_DE_TAXONOMIA)[number];
 const EJE_DE_LA_CLASE: Record<ClaseDeHub, Eje> = {
   tipo: 'tipo',
   barrio: 'barrio',
+  ciudad: 'ciudad',
   online: 'modalidad',
   gratis: 'arancel',
 };
@@ -385,6 +411,7 @@ const queryDelHub = (clase: ClaseDeHub, slug: string): string => {
 export const rutaDelHub = (clase: ClaseDeHub, slug: string): string => {
   if (clase === 'online') return RUTA_ONLINE;
   if (clase === 'gratis') return RUTA_GRATIS;
+  if (clase === 'ciudad') return rutaDeCiudad(slug);
   return clase === 'tipo' ? rutaDeTipo(slug) : rutaDeBarrio(slug);
 };
 
@@ -453,6 +480,27 @@ const frasesDelHub = (
     };
   }
 
+  if (clase === 'ciudad') {
+    return {
+      titulo: `Actividades literarias en ${etiqueta}`,
+      /*
+       * B-951 — la misma forma que la del barrio, y a propósito: la consulta que
+       * esta página pelea es «taller de escritura en Mar del Plata», que tiene
+       * exactamente la estructura de «taller de escritura villa crespo». Lo que
+       * cambia es el sujeto, no el molde.
+       */
+      descripcion: conCuenta(
+        `Talleres, clubes de lectura y encuentros en ${etiqueta}. ${cuantas(n)} con fecha próxima${cola}`,
+        `Talleres, clubes de lectura y encuentros en ${etiqueta}. Ahora no hay ninguna con fecha próxima.`,
+      ),
+      bajada:
+        `Lo que se hace en ${etiqueta}: talleres de escritura, clubes de lectura, ` +
+        'encuentros y presentaciones, con la dirección y cómo llegar en cada una.',
+      avisoVacio: `Ahora no hay actividades con fecha próxima en ${etiqueta}.`,
+      rotuloDelFiltro: `Ciudad · ${etiqueta}`,
+    };
+  }
+
   if (clase === 'online') {
     return {
       titulo: 'Talleres y clubes de lectura online',
@@ -517,7 +565,14 @@ export const hubDelSitio = (
    * `etiquetaDe` cae a `desSlug`, así que un slug sin opción igual produce un
    * título legible en vez de la página en blanco.
    */
-  const etiqueta = etiquetaDe(etiquetas, clase === 'barrio' ? 'barrio' : 'tipo', slug);
+  const etiqueta = etiquetaDe(
+    etiquetas,
+    // B-951 — las tres clases de taxonomía resuelven contra su propio
+    // vocabulario. Con el ternario anterior, una ciudad habría buscado su
+    // etiqueta en `/opciones/tipo` y caído siempre al `desSlug`.
+    clase === 'barrio' || clase === 'ciudad' || clase === 'tipo' ? clase : 'tipo',
+    slug,
+  );
 
   return {
     clase,
@@ -669,6 +724,12 @@ export const exploracionDelSitio = (
   const grupos: GrupoDeExploracion[] = [
     { rotulo: 'Por tipo', enlaces: deClase('tipo') },
     { rotulo: 'Por barrio', enlaces: deClase('barrio') },
+    // B-951 — el grupo nuevo va **después** del de barrio y no mezclado con él:
+    // son dos vocabularios distintos («Boedo» y «Mar del Plata» en la misma fila
+    // se leen como la misma cosa) y hoy el de barrio tiene todo el volumen. Un
+    // grupo sin enlaces no se pinta, así que hasta que haya una ciudad cargada
+    // afuera de CABA esta fila no existe.
+    { rotulo: 'Por ciudad', enlaces: deClase('ciudad') },
     { rotulo: 'Además', enlaces: [...deClase('online'), ...deClase('gratis')] },
     {
       rotulo: 'Mes por mes',

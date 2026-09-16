@@ -1026,7 +1026,25 @@ const gruposDeEncuentros =
 
           <div class={claseFilaFicha}>
             <dt class={claseRotulo}>Dónde</dt>
-            <dd class="body-md min-w-0 text-end text-tinta">{detalle.donde}</dd>
+            {/*
+              B-951 — `donde` es una lista de piezas y cada una puede llevar su
+              hub. El `·` lo pone la plantilla porque es maquetación, y quién
+              lleva enlace lo decidió `detallePublico.ts`: acá no hay ninguna
+              condición sobre qué barrio o qué ciudad tienen página, que es lo que
+              haría falta si `donde` siguiera siendo una cadena.
+            */}
+            <dd class="body-md min-w-0 text-end text-tinta">
+              {detalle.donde.map((pieza, i) => (
+                <>
+                  {i > 0 && <span aria-hidden="true"> · </span>}
+                  {pieza.href ? (
+                    <a href={pieza.href} class={claseEnlace}>{pieza.texto}</a>
+                  ) : (
+                    pieza.texto
+                  )}
+                </>
+              ))}
+            </dd>
           </div>
 
           <div class={claseFilaFicha}>
