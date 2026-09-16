@@ -2,6 +2,96 @@
 
 ## Sin publicar
 
+- **Un banner en el filtro de una ciudad** — **B-961**. Con el filtro **Ciudad →
+  Mar del Plata** puesto, arriba del listado aparece un banner que lleva al
+  emprendimiento de **quien publica esa ciudad** en la agenda, en pestaña nueva.
+
+  **Es por ciudad, no por Mar del Plata.** Los banners son datos —una fila por
+  ciudad en `src/lib/bannerDeCiudad.ts`— y no una condición en el marcado: la
+  segunda ciudad es una fila más, y apagarlos todos es vaciar la lista. **El
+  match va en slug** (`slugDeCiudad`, el mismo de `ciudades[]` y del claim del
+  publicador): el eje `ciudad` filtra por `sede.ciudad`, que es un `<input>` de
+  texto libre, así que contra el texto crudo el banner desaparecería el día que
+  alguien cargue una sede con otra mayúscula, y sin que nada falle.
+
+  **No es publicidad, y por eso no lo dice.** La primera versión lo rotulaba
+  «Publicidad» y le ponía `rel="sponsored"`; lo corrigió el dueño el mismo día:
+  no es espacio vendido, es el proyecto de quien publica la ciudad, así que
+  declararlo como aviso pago —a quien mira, o a Google, que es lo que significa
+  `sponsored`— afirmaba algo que no es cierto. Queda `rel="noopener"`, y lo que
+  lo identifica es la forma más el texto alternativo, que es también lo que
+  anuncia la región a un lector de pantalla. Son **dos archivos**
+  en un `<picture>` —2400 × 600 para escritorio, 1200 × 900 para el teléfono—
+  porque la misma pieza en los dos lugares o se ve ilegible achicada a 360px o
+  desperdicia media pantalla estirada a 1080px. Los dos `width`/`height` van en
+  el marcado para que el listado no salte cuando la imagen termina de cargar.
+
+  Solo existe con la island, que es lo correcto: sin JavaScript no hay filtro
+  puesto. El efecto lateral es bueno — la imagen no se baja nunca para quien no
+  filtra por esa ciudad.
+
+  **Las dos auditorías dejaron cuatro cosas adentro del mismo cambio.** El
+  barrido que prohíbe `<img>` en `src/components/publico/` (D-146, «el listado es
+  puramente tipográfico») **no estaba viendo el componente nuevo**: enumeraba con
+  `git ls-files` a secas, o sea solo lo rastreado, así que daba verde justo en la
+  corrida que tenía que hablar — la lección de B-826, que ahí faltaba. Se le sumó
+  `--others --exclude-standard`, se declaró la excepción del banner con su motivo
+  (su contenido *es* una imagen, y no es una fila del listado), y la clase quedó
+  anotada como **B-964**: el mismo `git ls-files` sin banderas está en ~30 tests
+  de barrido. Los dos archivos nuevos entraron al **índice de salidas** como
+  octavo productor de la mitad HTML de la home —no porque publiquen datos, sino
+  para que agregar una fila dispare la auditoría—; el chequeo de los banners
+  declarados pasó a **probarse a sí mismo** (con la lista vacía, un `it.each` no
+  registra ningún caso y el bloque entero pasaba sin ejercitar nada); y quedó
+  escrita la decisión del `rel` sin `noreferrer`, que `/apoyar` había dejado
+  pedida justo para «el enlace que sale de una página cuya URL sí dice algo»: la
+  home lleva los filtros en la query, pero sin `Referrer-Policy` declarado rige
+  el default del navegador y al destino le llega el origen pelado.
+
+  `BANNERS_DE_CIUDAD` **está vacío hasta que lleguen las imágenes** (B-962),
+  mismo patrón que `LISTA_DE_CORREO` en `lib/enlaces.ts`:
+  `tests/banner-de-ciudad.test.ts` exige que cada `src` declarado exista en
+  `public/`, porque nada del build mira esa carpeta y un typo saldría a
+  producción en verde. Lo que no entró es **medir el clic** (B-963): un cuarto
+  evento propio toca el vocabulario de `analyticsSitio.ts`, `EVENTOS_PROPIOS` de
+  `functions/analitica.js` y la doc de analítica, y es un cambio con su propia
+  decisión de privacidad.
+
+- **Un tablero local para el backlog** — `npm run tablero`. Una web en
+  `127.0.0.1:4173`, sin build y sin dependencias, que muestra `docs/BACKLOG.md`
+  como tablero (columnas por prioridad, por sección o por estado; buscador sobre
+  título y cuerpo; la ficha de cada ítem con su markdown renderizado) y las ideas
+  de `11-ideas-de-producto.md` en su propia pestaña.
+
+  **No hay base de datos y es la decisión que lo define:** el markdown sigue
+  siendo la fuente de verdad. Lee los archivos en cada pedido y escribe cuatro
+  cosas, siempre quirúrgicas — prioridad, estado, una nota fechada debajo del
+  encabezado y un ítem nuevo con el próximo `B-` libre. **Nunca toca el cuerpo de
+  un ítem.** Todo se ve en `git diff`.
+
+  Cada escritura lleva precondición (el encabezado que el tablero tenía en
+  pantalla tiene que seguir en el disco, si no devuelve `409`) y es atómica. No es
+  una defensa teórica: **el mismo día se perdió una numeración por esa carrera** —
+  dos frentes eligieron `B-930` con minutos de diferencia, y de ahí sale el hueco
+  `B-941`–`B-949` que la cabecera del backlog ahora explica.
+
+  `scripts/tablero/parseo.mjs` es puro y lo cubre `tests/tablero.test.ts` con las
+  formas de encabezado que el archivo real tiene hoy — una de ellas encontró un
+  bug al escribirlo (sacarle el `— ✅ hecho (fecha)` a un encabezado con la
+  prioridad al final devolvía el texto pegado, `… retención· P1`).
+
+- **Once ítems nuevos del dueño y uno que subió de prioridad** — **B-950** a
+  **B-960**, más **B-889**. La tanda del 2026-09-15: la geografía (provincia no
+  existe como campo, y barrio/ciudad tienen que ser selectores en cascada en la
+  web y en el panel — B-950, B-951, B-952, B-953), el panel (ver la actividad
+  publicada desde el «⋯», preservar los filtros al entrar y salir, la casilla de
+  cupo completo adentro del formulario, el encuentro nuevo sin fecha precargada —
+  B-954 a B-957), la cartelera de cuatro columnas (B-958), las efemérides como
+  colección propia que no llega al calendario (B-959) y las bibliotecas como
+  cuarto directorio de la Guía (B-960). El selector de 12/24 horas se volvió a
+  pedir a los cuatro días, así que **B-889 pasó de P3 a P2** en vez de abrirse de
+  nuevo.
+
 - **Los tres formularios públicos de la Guía están abiertos** — **B-831**,
   **B-832**, **B-915**, **D-700**. `/guia/librerias/sumar`,
   `/guia/suscripciones/sumar` y `/guia/lugares/sumar`: cualquiera suma una ficha

@@ -40,6 +40,15 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > tríptico** porque ya estaba escrito en el código y en los commits, que es lo que
 > no se puede renumerar. Si alguna nota de otro frente cita «B-601 · analítica»
 > o «B-603 · npm audit fix», está hablando de B-605 y B-607.
+>
+> **Y un quinto hueco, el más grande hasta ahora: `B-941` a `B-949`.** La tanda de
+> pedidos del dueño del 2026-09-15 —geografía, panel, efemérides y bibliotecas—
+> se numeró primero en **B-930 a B-940** y chocó de frente: mientras se escribía,
+> otro frente de la misma tarde ocupó **B-930** (el token de App Check que se lee
+> como «no hay internet»). El lote entero se corrió veinte números, a **B-950 a
+> B-960**, en vez de meterlo entre los ocupados; los del medio quedaron de
+> margen para lo que salga de esos mismos frentes. Es la misma reserva de siempre
+> y el mismo motivo: dos frentes numerando a ciegas al mismo tiempo.
 
 ---
 
@@ -90,6 +99,26 @@ Resueltas el 2026-08-21:
 
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
+
+### B-962 · Las dos imágenes del banner de Mar del Plata · P2 — abierto el 2026-09-15
+
+El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
+manda quien publica la ciudad**:
+
+| Pieza | Medida | Dónde va |
+|---|---|---|
+| Apaisada (de 640px para arriba) | **2400 × 600** (4:1) | `public/banners/biblioguia-ancha.webp` |
+| Compacta (teléfono) | **1200 × 900** (4:3) | `public/banners/biblioguia-compacta.webp` |
+
+WebP, JPG o PNG; hasta ~150 KB cada una. Hace falta además **una frase que
+describa qué se ve en la imagen** (el `textoAlternativo`: lo lee quien no ve la
+imagen, y describe el contenido, no el rol — nada de «banner de X»).
+
+Con los archivos en `public/banners/`, se agrega la fila a `BANNERS_DE_CIUDAD`
+(`src/lib/bannerDeCiudad.ts` la tiene escrita en su docblock) y listo:
+`tests/banner-de-ciudad.test.ts` verifica que los archivos existan y que la
+relación de aspecto sea la que se pidió. **La fila y las imágenes van en el mismo
+cambio**: declarada sin los archivos, es una imagen rota en producción.
 
 ### B-20 · Activar el rebuild automático (cierra B-02) — ✅ hecho y verificado de punta a punta (2026-08-25)
 
@@ -869,6 +898,274 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
+### B-930 · Con App Check exigiendo, un token que no llega se lee como «no hay internet» — y nadie se entera de cuál de las dos es · P1 — reportado por el dueño (2026-09-15)
+
+**Pasó de verdad, en el panel productivo:** «Failed to get document because the
+client is offline». Con este ítem queda escrito el mecanismo, porque el mensaje
+no lo dice y lleva a mirar el lugar equivocado.
+
+Desde el 2026-09-10 App Check está **`ENFORCED` en Cloud Firestore** (B-836a paso
+6; lo afirman los comentarios de `firestore.rules` que sostienen las dos
+escrituras anónimas). O sea que **ninguna lectura ni escritura del panel llega a
+las reglas sin un token de reCAPTCHA Enterprise**. Si el token no se consigue —una
+extensión que bloquea `www.google.com/recaptcha/…`, la red de quien carga,
+reCAPTCHA que no responde (§ «Qué pasa si se cae» de
+[`02-infraestructura.md`](02-infraestructura.md))— el SDK de Firestore **no dice
+que lo rechazaron**: acumula fallos de canal, se declara offline, y el primer
+`getDoc` tira ese texto en inglés. `activarAppCheck` tampoco propaga nada: es
+deliberado —un fallo de App Check no puede dejar el login en blanco— pero deja el
+diagnóstico sin ninguna huella del lado de la persona.
+
+**Verificado el 2026-09-15, y conviene dejar el método escrito porque es de una
+línea:** una lectura anónima de `opciones/tipo` contra producción devuelve `403
+PERMISSION_DENIED`, y la regla desplegada de esa colección es literalmente `allow
+read: if true`. Una regla que dice `true` no puede denegar; lo que deniega está
+**arriba** de las reglas. Eso prueba el enforcement desde afuera, sin consola.
+
+```sh
+curl -s "https://firestore.googleapis.com/v1/projects/agenda-literaria/databases/(default)/documents/opciones/tipo?key=$PUBLIC_FIREBASE_API_KEY"
+```
+
+Lo que **no** era: el bundle publicado está bien —`appId`, `projectId`, la clave
+de sitio y `isTokenAutoRefreshEnabled: true` son los de `.env.production`—, las
+reglas se desplegaron ese mismo día, y los cuatro dominios de la clave están
+puestos desde el 2026-09-10 (§ «Los dominios permitidos»).
+
+Tres cosas para hacer, en orden. **La 1 y la 2 son una sola tajada y son lo que
+cierra el ítem** — decidido el 2026-09-15, después de que el diagnóstico costara
+un ida y vuelta entero por chat con alguien que no puede abrir devtools:
+
+1. **Pedir el token al entrar, y avisar si no vuelve.** `getToken()` del SDK de
+   App Check apenas el panel arranca —no en el primer guardado, que es tarde— y,
+   si falla o tarda, un cartel arriba que diga **«no pudimos verificar tu
+   navegador»** con las tres cosas del triaje de abajo: recargar, probar en
+   incógnito, probar con datos móviles. Es lo que convierte «el panel no anda» en
+   algo que la persona resuelve sola, sin que nadie le pida la consola. El estado
+   ya existe del lado del módulo: `activarAppCheck` guarda el motivo
+   (`MotivoSinAppCheck`) — lo que falta es que alguien lo mire y lo pinte.
+2. **Que el cartel de fallo lo distinga.** `clasificarFalloGuardado` manda
+   `unavailable` a `motivo: 'red'`, que hoy significa las dos cosas a la vez. Con
+   el estado de App Check del punto 1 a mano, «no hay internet» y «no conseguiste
+   token» pasan a ser dos textos distintos, que es la diferencia entre esperar y
+   apagar una extensión. Es la otra mitad de **B-929**, y conviene hacerlas juntas
+   porque las dos tocan el mismo cartel.
+3. **La alerta que la doc admite que no existe**: «el aviso llega por donde llegue
+   el reclamo, porque no hay alerta». Con dos personas cargando, el reclamo puede
+   tardar un día — y si la que no puede escribir no es la dueña, puede no llegar
+   nunca. Esta va aparte: es del lado de operación, no del panel.
+
+**Lo que este ítem NO es:** un bug del código ni del deploy. El 2026-09-15 se
+verificó que el bundle publicado, las reglas desplegadas y los cuatro dominios de
+la clave están todos bien. Lo que falta es que el panel **cuente** lo que le pasa.
+
+**Triaje cuando le pasa a otra persona y no a vos** (que es como apareció: el
+dueño no lo reprodujo en su máquina). En orden, de lo que más descarta por
+minuto:
+
+1. **Que recargue.** Si vuelve a andar, fue transitorio: red o un token que no
+   llegó una vez. No hay nada que arreglar del lado del repo.
+2. **Ventana de incógnito, sin extensiones.** Si ahí anda, es una extensión de
+   ese navegador bloqueando reCAPTCHA. Es el caso más común y el que el mensaje
+   del SDK esconde peor.
+3. **Otro navegador, o el celular con datos móviles.** Si con datos anda y con su
+   wifi no, es la red —oficina, VPN, portal cautivo—.
+4. **Si falla en las tres**, mirar la consola: la petición a
+   `firebaseappcheck.googleapis.com/…/exchangeRecaptchaEnterpriseToken`. 403 es
+   token rechazado; bloqueada o fallida es extensión o red.
+
+**Y un caso que no es «algo está roto» y conviene tener presente:** la clave es
+`integrationType: SCORE`, así que una sesión con score bajo —VPN, red compartida,
+navegador muy blindado— **puede quedarse sin token siendo una persona de verdad**.
+Le pasa a ella y no a vos, en la misma versión del panel, y no hay nada que
+desplegar: es el precio de la capa que frena a los scripts. Otra razón para el
+punto 1 de arriba — si el panel dijera «no pudimos verificar tu navegador», esto
+se diagnostica solo.
+
+**Y la salida de emergencia, que hay que saber antes de necesitarla:** poner Cloud
+Firestore en `Unenforced` en la consola destraba el panel en el acto — pero abre
+también las escrituras anónimas de `/proponer` y de las tres guías, que es la capa
+que las sostiene. Es una decisión con costo, no un botón de reinicio.
+
+### B-926 · Convertir una propuesta decide sola qué pasa con la foto, y deja el slug vacío · P1 — **pedido del dueño (2026-09-15), primera prioridad**
+
+Son dos cosas del mismo momento —la pantalla de conversión de la bandeja— y por
+eso van juntas.
+
+**(a) La foto se reutiliza sola, o se pierde sin que nadie haya elegido.** Hoy
+`convertir()` (`src/components/admin/PropuestasPanel.tsx`) promueve la imagen
+subida a `imagenes/`, la agrega a la galería y la marca portada si es la primera.
+No hay dónde decir «esta no», «quiero otra», ni **bajarla al disco antes de que se
+vaya**. Y se va: `borrarImagenAlCerrar` borra el original de `propuestas/` cuando
+la propuesta pasa a `aceptada` (B-863). O sea que **el único momento en que esa
+foto existe y alguien la está mirando es esta pantalla**, y ahí no hay ni un botón.
+
+Las cuatro opciones que hay que ofrecer: **descargar**, **reutilizar** (lo de hoy,
+que queda como default), **descartar** y **subir otra**. Tres son baratas — la
+descarga es un `<a download>` sobre la URL que el panel ya trae
+(`urlDeImagenDePropuesta`), descartar es no promover, y subir otra ya la resuelve
+el `GaleriaEditor` que el formulario tiene abajo.
+
+**Lo que hay que mirar con cuidado es el cruce con B-863**, porque descartar abre
+el agujero que ese ítem cerró: el trigger borra el original solo si verifica que
+la actividad nombra una imagen propia **y** que el objeto está en el bucket. Si se
+descarta y no se promueve nada, esa verificación no se cumple, y como la
+`aceptada` no vence (B-844), la foto de un tercero queda sin fecha de vencimiento
+bajo un prefijo que `limpiarImagenesHuerfanas` no barre. **Descartar tiene que
+borrar el original, y el texto tiene que decirlo** — es la misma frase que ya
+está escrita para el rechazo.
+
+**(b) El slug llega en blanco y el guardado no pasa.** `propuestaAFormulario`
+(`src/lib/propuestas.ts`) lo deja vacío a propósito y lo dice: «prellenarlo acá
+sería fijar una URL que nadie revisó». Pero el slug **solo se deriva cuando
+alguien escribe el título** (`cambiarTitulo`, `src/lib/formulario/cascadas.ts`), y
+en una conversión el título llega puesto: nadie lo escribe. Resultado: el
+formulario abre con el slug en blanco y el guardado falla contra «El slug es
+obligatorio» (`src/lib/schema.ts`), con la única salida de tocarle una letra al
+título para que la cascada dispare. Un formulario que se abre ya inválido, y sin
+decir por qué.
+
+La revisión que el comentario quería proteger no se pierde prellenándolo: el slug
+queda **editable hasta publicar**, que es cuando se congela (trampa 10), y el
+formulario ya avisa que hay que revisarlo antes. Es `slug: slugify(p.titulo)` en
+la conversión, y borrar el párrafo del docblock que dice lo contrario.
+
+### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual · P1 — pedido del dueño (2026-09-15)
+
+**Salió de que hay una segunda persona cargando**, y con ella la forma real de
+hacerlo: copiar la URL del perfil y pegarla es más fácil que acordarse del handle.
+El criterio del dueño, que vale más allá de este campo: *«no podemos obligarlos a
+hacerlo como queremos, sino ajustarnos nosotros»*. Las dos formas tienen que
+entrar — la URL **y** el usuario pelado, como hoy.
+
+Hoy eso cae distinto según el formulario, y en el peor de los dos se publica:
+
+- **Actividades y propuestas: se guarda crudo.** `schema.ts` tiene `instagram:
+  opcional` sin normalizar (ídem `propuesta-schema.ts`), y la página de detalle
+  publica ese texto como el **nombre visible** (`detallePublico.ts`: `instagram:
+  a.organizador.instagram`). Así que en la ficha pública se lee
+  `https://www.instagram.com/casabrandon/` donde tendría que leerse
+  `@casabrandon`. Y si la URL trae el `?igsh=…` que Instagram pega al compartir,
+  `handleInstagram` no la reconoce, `instagramUrl` da `null` y **el link no se
+  arma**: queda una URL escrita que no lleva a ninguna parte.
+- **Las tres guías** (librerías, lugares, suscripciones) **sí** normalizan al
+  guardar — `handleInstagram` en sus `…-schema.ts` —, así que el dato queda
+  limpio. Pero el mensaje de rechazo dice «Poné el usuario de Instagram, sin el
+  @», que le pide a quien carga **lo contrario de lo que el validador acepta**, y
+  no menciona que pegar la URL está bien.
+
+Tres arreglos, en orden de lo que más duele:
+
+1. **Normalizar al guardar en los dos que faltan** (actividad y propuesta) con la
+   función que ya existe, `handleInstagram` (`src/lib/enlaceSeguro.ts`) — el mismo
+   patrón que las guías. Lo que queda guardado es el handle, y el campo del
+   formulario se puede normalizar al salir del foco para que se vea qué quedó.
+2. **Que `handleInstagram` tolere lo que Instagram pega de verdad**: hoy saca el
+   `@`, el `https://www.instagram.com/` y la barra final, pero **no el query
+   string**, que es justo lo que trae el botón de compartir. Es el caso más común
+   de todos y hoy es el que falla.
+3. **El mensaje y el placeholder**, que son lo que evita el problema antes de que
+   nazca: decir que se puede pegar la URL o escribir el usuario, en vez de pedir
+   una sola de las dos.
+
+Ojo con lo que **no** hay que hacer: reescribir los documentos ya guardados por
+las bravas. Lo que ya está cargado con URL se arregla al reeditarlo, o con un
+barrido aparte que se anote si hace falta.
+
+### B-950 · Provincia, ciudad y barrio hay que rehacerlos casi en todos lados, y en la web tienen que ser selectores en cascada · P1 — pedido del dueño (2026-09-15)
+
+**Es el paraguas de la tanda**: B-951, B-952 y B-953 son las tres salidas de esto
+y ninguna se puede hacer bien antes. Dicho por el dueño: *«lo de provincia, barrio
+y ciudad hay que rehacerlo casi en todos lados. En la web no puede ser una lista
+enorme sino selectores: provincia primero (CABA y Buenos Aires) y de ahí despliega
+barrios o ciudades»*.
+
+**Lo primero, y lo que explica todo lo demás: `provincia` no existe.** No está en
+`Sede` (`src/types/actividad.ts`), ni en el schema, ni en el formulario, ni en las
+tres guías. El único lugar del repo donde la palabra aparece como campo es
+[`12-sitio-publico.md`](12-sitio-publico.md) § 2247, anotada como el
+`addressRegion` del `PostalAddress` del JSON-LD que *se puede omitir* — o sea que
+entró a la doc como un opcional que nunca se cargó. Agregarla es un
+**`campo-nuevo` de punta a punta** (el skill): tipo, zod, conversión form ⇄
+documento, formulario, proyección pública, evento de Calendar, analítica, ayuda,
+doc y tests.
+
+**Y «casi en todos lados» es literal**, porque el mismo par vive en cuatro
+entidades: `sede` de una actividad, y `barrio`/`ciudad` de librerías
+(`src/types/libreria.ts`), lugares (`src/types/lugar.ts`) y —por herencia del
+formulario— lo que venga después. Las cuatro comparten la taxonomía
+`/opciones/barrio` a propósito (§ 2 del PRD de librerías), así que lo que se
+decida acá las alcanza a todas.
+
+**La asimetría que hace difícil la cascada, y hay que mirarla antes de escribir
+nada:** `barrio` es **taxonomía autogestionada** (§ 4, `/opciones/barrio`, con
+`slug`, `aprobada` y `usos`), y `ciudad` es un **`<input>` de texto libre**. Eso ya
+mordió una vez: `src/lib/ciudades.mjs` (B-919, D-690) existe justamente porque
+«Mar del Plata», «mar del plata» y « Mar del Plata » son tres strings distintos, y
+tuvo que derivar `ciudades: string[]` en la raíz del documento para que una regla
+de Firestore pudiera preguntar por la ciudad. Una cascada «provincia → ciudad» no
+se puede armar sobre texto libre sin repetir ese trabajo, así que la decisión de
+fondo es **si `ciudad` pasa a ser taxonomía como `barrio`** — con lo que eso
+arrastra: normalización (§ 4.2), aprobación, y `usos` para ordenar.
+
+**CABA es el caso raro y es el que el dueño puso primero:** es ciudad **y**
+provincia a la vez, y su subdivisión útil es el barrio, no la ciudad. O sea que la
+cascada no es «provincia → ciudad → barrio» sino **«provincia → barrio *o*
+ciudad»**, con CABA de un lado y todo lo demás del otro. Escribirlo así desde el
+principio evita el modelo de tres niveles que después hay que deshacer.
+
+**Dónde pega en el sitio, que es la mitad del pedido.** Los ejes del buscador son
+seis y planos: `EJES = ['tipo','arancel','modalidad','barrio','ciudad','tag']`
+(`src/lib/listadoPublico.ts`), cada uno una lista de chips. Con dos barrios
+funciona; con los treinta y pico que ya hay cargados, no — es el mismo problema
+que D-143 topeó a mano en el teléfono. Un selector en cascada cambia la forma del
+riel de filtros, así que toca `Buscador.tsx`, `EjeDeFiltro.tsx`, `chipsDe`,
+`ejeQueSobra` y los eventos de analítica que llevan `eje` adentro (`eje` es una
+dimensión medida: cambiar el conjunto parte la serie histórica — ver el docblock
+de `ejeQueExplicaElCero`).
+
+**Lo que no hay que hacer:** reescribir los documentos ya guardados por las
+bravas. La provincia de lo que ya está cargado se completa con un backfill
+propio —el patrón de `scripts/sembrar-ciudades.mjs`, que ya existe para esto
+mismo— o al reeditar. Y **`sede` sigue siendo el derivado** que es hoy (D-130): la
+lista real es `modalidades[]`, así que todo lo que se agregue va adentro de la
+fila, no en la raíz.
+
+### B-951 · El «Dónde» del detalle no dice la ciudad, y no lleva a ninguna parte · P1 — pedido del dueño (2026-09-15)
+
+*«En "Dónde" del perfil público mostrar la ciudad y que sea linkeable para ver más
+de esa ciudad.»*
+
+**Lo que pasa hoy son dos cosas.** La fila «Dónde» de la ficha
+(`src/pages/actividad/[slug].astro`) imprime `detalle.donde`, y `donde` lo arma
+`dondeCorto` (`src/lib/detallePublico.ts`) con **`[m.sede.nombre,
+m.sede.barrio]`**: la ciudad queda afuera. Y es texto plano — ni el barrio, que sí
+tiene hub propio desde B-108, es un enlace. (Más abajo, en «Cómo se cursa», la
+ciudad **sí** aparece, junto a la dirección y el barrio, también sin enlace.)
+
+**La segunda mitad —«ver más de esa ciudad»— no tiene adónde ir: `/ciudad/{slug}`
+no existe.** Los hubs son cuatro clases: `/tipo/*`, `/barrio/*`, `/online` y
+`/gratis`. Y esto es lo que sube el ítem a P1 y no lo deja en una mejora de la
+ficha: es exactamente el argumento con el que el hub de barrio se justificó a sí
+mismo —«`taller de escritura villa crespo` es una consulta con intención altísima
+y competencia baja; un filtro no puede ganarla porque no tiene título, ni `h1`, ni
+URL»— aplicado a la consulta que hoy no tenemos cómo ganar: **«taller de escritura
+en Mar del Plata»**. Con las actividades de afuera de CABA entrando, el hub de
+ciudad es la página que falta.
+
+**Lo barato y lo caro.** Barato: `hubsPublicos.ts` decide qué se emite y
+`CuerpoDeHub.astro` es el markup compartido por las cuatro clases, así que la
+quinta es una entrada en el primero, una página `src/pages/ciudad/[ciudad].astro`
+calcada de `barrio/[barrio].astro`, y el sitemap que ya se deriva solo.
+
+**Caro, y es el mismo nudo de B-950:** el hub de barrio se genera recorriendo las
+opciones **aprobadas** que tienen alguna actividad publicada, y esa palabra es una
+defensa escrita — «ofrecer un hub es publicar vocabulario, y un barrio recién
+tipeado puede ser un typo; un typo con página propia es una URL indexada para
+siempre». `ciudad` **no tiene aprobación porque no es taxonomía**. Así que el hub
+de ciudad o espera a que B-950 la convierta, o se defiende con otra puerta (un
+mínimo de actividades publicadas, y `noIndex` por debajo de ese mínimo, que es lo
+que `esIndexable` ya sabe hacer). **No se emite un hub por cada string tipeado.**
+
 ### B-912 · `/suscripciones` tampoco tiene retención — ✅ hecho (2026-09-15) · P1
 
 > ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
@@ -1644,7 +1941,13 @@ barato de decir y caro de verificar: cambia el valor almacenado de **todo** camp
 texto, o sea el payload del §7.2 para los documentos con espacios, o sea que le
 reescribe el evento a quien lo tiene agendado. **Es una decisión, no un arreglo.**
 
-### B-889 · Las horas se cargan sin saber si son AM o PM, y el panel no ofrece elegir formato · P3
+### B-889 · Las horas se cargan sin saber si son AM o PM, y el panel no ofrece elegir formato · P2 — **pedido dos veces por el dueño (2026-09-11 y 2026-09-15)**
+
+> **Sube de P3 a P2 el 2026-09-15.** Volvió a pedirse, con esas palabras
+> («selector de am/pm»), en la tanda de B-950 a B-960. Un pedido que vuelve a los
+> cuatro días no es «cuando sobre tiempo»: es la segunda persona que carga
+> chocándose con lo mismo. No se abre ítem nuevo — esto ya está escrito acá
+> entero, con las tres decisiones que hay que tomar antes de escribir código.
 
 **Pedido del dueño (2026-09-11):** un sistema de 12/24 horas al cargar las fechas,
 **solo en el admin**.
@@ -6215,6 +6518,354 @@ El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
 puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
+
+### B-961 · Un banner en el filtro de una ciudad — ✅ hecho (2026-09-15), faltan las imágenes (B-962) · P2 — pedido del dueño (2026-09-15)
+
+Cuando alguien pone el filtro **Ciudad → Mar del Plata** en la home, arriba del
+listado aparece un banner que lleva al emprendimiento de quien publica esa ciudad
+(`https://biblioguia.com.ar/`, pestaña nueva). El mecanismo está entero y
+documentado en [`12-sitio-publico.md` § 6.5](12-sitio-publico.md#65-el-banner-de-una-ciudad--b-961):
+
+- `src/lib/bannerDeCiudad.ts` — los banners como **datos, una fila por ciudad**,
+  y el match **en slug** (`slugDeCiudad`): «Mar del Plata» y «mar del plata» son
+  dos valores distintos del eje y los dos tienen que encontrar el mismo banner.
+- `src/components/publico/BannerDeCiudad.tsx` — `<picture>` con las dos piezas y
+  `width`/`height` en las dos para que el listado no salte al cargar. **Sin
+  rótulo «Publicidad» y sin `rel="sponsored"`**: no es espacio vendido (decisión
+  del dueño, 2026-09-15), así que declararlo como aviso pago —a quien mira o a
+  Google— sería afirmar algo que no es cierto.
+- `tests/banner-de-ciudad.test.ts` exige que cada `src` declarado **exista en
+  `public/`**: nada del build mira esa carpeta, así que un typo saldría en verde.
+
+**La lista está vacía a propósito hasta que lleguen las dos imágenes** — mismo
+patrón que `LISTA_DE_CORREO` en `lib/enlaces.ts`. Eso es B-962.
+
+### B-963 · No se mide el clic del banner · P2 — abierto con B-961
+
+El banner de B-961 no emite ningún evento, así que no hay forma de saber si sirve
+—que es lo primero que va a preguntar quien lo puso, y la misma pregunta que
+`clic_triptico` contesta para el tríptico (B-601).
+
+No entró en B-961 porque un cuarto evento propio toca tres lugares más: el
+vocabulario de `EVENTOS_SITIO` (`src/lib/analyticsSitio.ts`), `EVENTOS_PROPIOS`
+de `functions/analitica.js` —`tests/analitica-del-sitio.test.ts` exige que las dos
+listas sean idénticas— y `docs/16-analitica-del-sitio.md`. El parámetro sería la
+**ciudad en slug**, vocabulario cerrado con las ciudades que tienen banner, y
+nunca el destino ni el nombre del emprendimiento.
+
+### B-964 · Los barridos de clase enumeran con `git ls-files` a secas: no ven el archivo nuevo hasta después del `git add` · P2 — del `auditor-privacidad` sobre B-961
+
+`tests/listado-del-sitio.test.ts` prohíbe `<img>` en `src/components/publico/*.tsx`
+(D-146) y **no vio** el componente nuevo de B-961: enumeraba con
+`execFileSync('git', ['ls-files', …])`, que lista solo lo **rastreado**. El archivo
+recién creado —el caso normal mientras se trabaja— quedaba afuera, así que el
+barrido daba verde justo en la corrida que tenía que hablar, y empezaba a hablar
+recién después del `git add`. Es la lección de **B-826**, ya aplicada en
+`tests/agentes-y-skills.test.ts` y no en el resto.
+
+**Arreglado en ese archivo** (se le sumó `--cached --others --exclude-standard`, y
+la mutación está probada: sacando la exclusión declarada, el caso se pone rojo).
+Lo que queda es la clase: el mismo `git ls-files` sin banderas está en **~30**
+tests de barrido (`clases-de-bug.test.ts`, `sin-datos-personales.test.ts`,
+`estilos-del-sitio.test.ts`, `sitemap.test.ts`, `sistema-visual.test.ts`…). O sea
+que hoy **ningún barrido de clase mira un archivo nuevo antes de commitearlo**, y
+todos comparten el modo de falla: el chequeo que más falta hace es justo el de la
+corrida en la que el archivo todavía no está en el índice de git.
+
+El arreglo natural es un helper compartido —`archivosDelRepo(prefijo)`— en vez de
+treinta copias del `execFileSync`, que es además lo que impediría que la copia
+treinta y uno nazca sin las banderas.
+
+### B-929 · El panel muestra el mensaje crudo de Firebase, en inglés, cuando se cae la conexión · P2 — reportado por el dueño (2026-09-15)
+
+**El síntoma:** «Failed to get document because the client is offline» en el
+cartel rojo del panel. Es texto del SDK de Firestore, tal cual, en inglés y
+hablando de «document» — no dice qué pasó con lo que se estaba cargando, que es
+lo único que importa en ese momento.
+
+Sale de que el panel muestra `e.message` sin traducir en una docena de lugares:
+`ActividadFormulario.tsx` («No se pudo guardar» solo si el error no es un
+`Error`), `HistorialActividad.tsx`, `EstadisticasPanel.tsx`, `LibreriasPanel.tsx`,
+`LugaresPanel.tsx`, `PropuestasPanel.tsx`, `LibreriaFormulario.tsx`,
+`LugarFormulario.tsx`.
+
+**Y lo que lo vuelve un ítem y no una queja de estilo: el panel ya sabe lo que le
+pasó, y no lo usa para hablar.** `clasificarFalloGuardado`
+(`src/lib/analytics-eventos.ts`) mapea `unavailable` y `deadline-exceeded` a
+`motivo: 'red'` — o sea que la **métrica** queda bien etiquetada mientras la
+persona lee una frase en inglés. La clasificación existe; lo que falta es que
+también decida el texto.
+
+Lo que el cartel tendría que decir en ese caso es lo que nadie puede deducir del
+mensaje del SDK: **no se guardó nada, no se perdió nada de lo escrito, reintentá**
+— el borrador del navegador sigue ahí (`useAutoguardado`). Y para `permisos` y
+`sin-sesion`, que ya están clasificados, lo mismo.
+
+**Dónde pega más fuerte, y por qué aparece justo al guardar:** `slugLibre()`
+(`src/lib/slugs.ts`) hace **dos `getDoc`** antes de escribir —el centinela
+`/slugs/_indice` y la reserva del slug—, así que un corte de conexión al apretar
+«Guardar» sale por ahí, con el «get **document**» en singular del mensaje. Es el
+primer lugar donde el guardado toca la red.
+
+Del mismo lote que B-926, B-927 y B-928: apareció porque hay una segunda persona
+cargando, y un cartel que no dice qué hacer le cuesta a ella, no a nosotros.
+
+### B-927 · «Sede» es una palabra nuestra, y quien carga no la usa · P2 — pedido del dueño (2026-09-15)
+
+El campo donde va el nombre del lugar se llama **«Sede»** en el editor de
+modalidades (`ModalidadesEditor.tsx`, `label="Sede"`) y en el historial
+(`HistorialActividad.tsx`). Pasa a **«Nombre del lugar»**, que es como lo nombra
+quien lo completa: una casa, un bar o una librería no tienen «sede».
+
+**Es la etiqueta, no el campo.** `sede` sigue llamándose `sede` en el modelo, en
+la proyección pública, en el evento de Calendar y en los documentos ya escritos —
+renombrarlo ahí es otra cosa y no es esto. Lo que hay que barrer, además de las
+dos etiquetas, son los textos de ayuda que dicen «la sede» (`src/lib/ayuda.ts`
+tiene varios), para que el panel no explique un campo con una palabra que el
+formulario ya no muestra.
+
+Del mismo lote que **B-926** y **B-928**, y por el mismo motivo: con una segunda
+persona cargando aparecieron las formas en que las cosas se hacen de verdad, y el
+criterio del dueño es ajustarnos nosotros y no pedirle que se ajuste ella.
+
+### B-952 · El panel no filtra por ciudad, y el filtro de barrio es una lista plana · P2 — pedido del dueño (2026-09-15)
+
+*«En el admin, agregar filtro por ciudad (CABA, Provincia de Buenos Aires). Si
+tocás CABA, en un segundo selector, los barrios. Si tocás alguna provincia, las
+ciudades que tengamos eventos.»* Es B-950 del lado del panel.
+
+Los ejes de `FiltrosActividades.tsx` hoy son Estado, Tipo, Arancel, Modalidad,
+**Barrio**, Destacado, etiquetas y «Cuándo» (`src/lib/filtrosActividades.ts`).
+Ciudad no está, y el de barrio es un `<select>` con todos los barrios cargados: en
+el panel la lista todavía entra, pero es la misma que en el sitio ya no (B-950).
+
+**Lo que hay que mirar al hacerlo, porque es un bug que viene de arriba:** el
+predicado filtra con **`a.sede?.barrio`**, o sea el derivado «la primera fila que
+tenga sede» (D-130). Una actividad presencial en dos ciudades hoy se filtra por
+una sola. Y para ciudad **no hay que repetir ese error**: la raíz del documento ya
+tiene **`ciudades: string[]`** con los slugs de todas las modalidades (B-919,
+D-690, `src/lib/ciudades.mjs`) — es exactamente la lista contra la que hay que
+cruzar, ya normalizada y ya escrita en cada guardado.
+
+El segundo selector sale gratis del mismo dato: las ciudades ofrecidas son las que
+**tienen actividades cargadas**, que es lo que el dueño pidió y lo que
+`OpcionesPresentes` ya hace para barrio y arancel («solo aparece si alguna
+actividad lo tiene cargado»).
+
+### B-953 · La tarjeta del panel dice el barrio y no dice ni la ciudad ni la provincia · P2 — pedido del dueño (2026-09-15)
+
+*«En el admin, mostrar la ciudad también y luego la provincia. Si es CABA, solo
+barrio.»*
+
+El renglón de lugar de cada tarjeta lo arma `tarjetaDelPanel.ts` (`donde:
+piezas([...])`) y termina en **`a.sede?.barrio`** y nada más. Con todo en CABA
+alcanzaba; con fichas de afuera, dos actividades en barrios homónimos de ciudades
+distintas se leen igual.
+
+Es el cambio más chico de los cuatro de geografía —una función que arma un array
+de strings— pero **depende de B-950**: la provincia no existe como campo, así que
+hasta que exista lo único que se puede sumar es la ciudad. La regla de CABA
+(«entonces solo barrio») es un `if` en esa misma función, y conviene que esté ahí
+y no en la plantilla: es la misma decisión que van a necesitar la ficha pública
+(B-951) y el JSON-LD.
+
+### B-954 · Desde el panel no hay forma de ir a ver la actividad publicada · P2 — pedido del dueño (2026-09-15)
+
+*«En los 3 puntitos de la tarjeta de cada actividad, agregar una opción para verlo
+en la web pública, y en la vista previa también agregar un enlace cuando esté
+publicado.»*
+
+El menú «⋯» tiene cuatro acciones —marcar cupo, duplicar, historial, borrar
+(`ListaActividades.tsx`)— y las cuatro **escriben**. Esta sería la primera que no,
+y es la que cierra el lazo: hoy, para ver cómo quedó lo que se publicó, hay que
+saberse la URL o buscarla en el sitio.
+
+**La URL ya está resuelta en un solo lugar**: `rutaDeDetalle(slug)`
+(`src/lib/rutasPublicas.ts`) y `urlAbsoluta` para la absoluta. No hay que armarla a
+mano en el panel — es el archivo que existe justamente para que el path se escriba
+una sola vez.
+
+**Las dos condiciones, y la segunda es la que muerde.** La primera es obvia:
+solo si `estado === 'publicado'` (si no, la página no se generó y es un 404). La
+segunda es el SSG: **una actividad recién publicada no existe hasta el rebuild**
+(§ 8, ~2-7 minutos de latencia), así que el enlace puede dar 404 un rato largo
+justo cuando más ganas hay de apretarlo. Conviene que el texto lo diga («Ver en el
+sitio — aparece unos minutos después de publicar») en vez de que se descubra
+apretando. Va con `target="_blank"` y `rel="noopener"`.
+
+En la vista previa es el mismo enlace en otro lado: `SeccionVistaPrevia.tsx`, que
+hoy muestra el texto para Instagram y el evento de Calendar — el tercer destino de
+la misma actividad es el que falta.
+
+### B-955 · Entrar a una actividad y volver borra todos los filtros · P2 — pedido del dueño (2026-09-15)
+
+*«En el admin, preservar filtros al ir y venir de una actividad.»*
+
+**La causa es de una línea:** `const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS)`
+vive dentro de `ListaActividades.tsx`, y `AdminApp` **desmonta ese componente**
+cuando la vista pasa a `editar` (o a `nueva`, `duplicar`, `historial`). Al volver,
+el componente se monta de cero y el estado nace vacío. Se lleva puestos los ocho
+ejes, el texto de búsqueda y el orden.
+
+Duele en el uso real que ya tenemos: filtrar «pendientes de septiembre», abrir
+una, guardar, y volver a la lista completa para reencontrar la siguiente.
+
+Dos arreglos posibles y conviene el primero: **subir el estado a `AdminApp`**, al
+lado de `vista` y de `volverA`, que es donde ya vive lo que tiene que sobrevivir a
+un cambio de pantalla; o persistirlo en `localStorage` como los borradores
+(D-122). El segundo agrega la pregunta de cuánto dura —un filtro pegado de ayer es
+peor que ninguno— así que si se elige, que muera con la pestaña
+(`sessionStorage`).
+
+### B-956 · «Cupo completo» solo se prende desde el «⋯», y quien está editando no lo encuentra · P2 — pedido del dueño (2026-09-15)
+
+*«Marcar completo en arancel.»* Confirmado el 2026-09-15: **una casilla en la
+sección Arancel/Inscripción del formulario**.
+
+**Esto revierte, a propósito, media decisión de B-97.** Hoy
+`SeccionArancelInscripcion.tsx` muestra un **aviso y no un control**, y el
+comentario dice por qué: *«si acá hubiera una casilla, habría dos lugares donde
+prenderlo y ninguno sería el bueno»*. El pedido del dueño es que haya dos, y el
+motivo es el de toda esta tanda: con una segunda persona cargando, el «⋯» del
+listado no se encuentra, y quien está adentro del formulario no tiene por qué
+salir a buscarlo.
+
+**El «⋯» se queda.** Es el caso para el que nació —«se llenó, lo marco desde el
+teléfono»— y sacarlo sería cambiar un problema por el otro. Las dos escriben el
+mismo campo, `inscripcion.completo`.
+
+Dos cosas del código que ya empujan para este lado:
+
+- **`camposFaltantes.ts` ya declara que el campo vive ahí**: `'inscripcion.completo'`
+  está mapeado a la sección `arancel-inscripcion`. La barra de errores ya sabe
+  adónde mandar a alguien por este campo; lo único que falta cuando llega es el
+  control.
+- **Y hay un borde que hay que revisar, no heredar**: `autoguardado.ts` conserva
+  `completo` del documento actual y **descarta el del borrador recuperado** a
+  propósito, porque hasta hoy el formulario no podía tocarlo (*«`true` publica
+  "Cupo completo" con el cupo libre, en el sitio y en el calendario»*). Con la
+  casilla adentro del formulario, ese campo pasa a ser editable como los demás y
+  esa línea deja de ser obviamente correcta. Hay que decidirlo de nuevo, no
+  dejarlo como está sin mirar.
+
+### B-957 · Cada encuentro nuevo viene con la fecha y la hora de ahora, y hay que borrarlas · P2 — pedido del dueño (2026-09-15)
+
+*«Inicio y fin no estén precargados.»*
+
+`sesionVacia` (`src/lib/sesiones.ts`) hace `const desde = inicio ?? new Date()` y
+pone el fin dos horas después. O sea que agregar una fila del editor de sesiones
+escribe **la fecha y la hora en que se apretó el botón**, que nunca es la del
+encuentro. Lo que parece una ayuda es una corrección obligatoria, y es peor que un
+campo vacío por una razón concreta: **un valor puesto se puede guardar sin darse
+cuenta**, y un vacío no pasa el schema («Falta la fecha de inicio»).
+
+**Lo que hay que dejar como está, porque ahí la precarga sí sirve:**
+`duplicarSesion` (una semana después, que es el caso) y `generarSesiones` (el
+botón de «generar N encuentros semanales» del § 11). Esos existen para ahorrar
+tipeo sobre una fecha que alguien ya eligió; `sesionVacia` inventa una que nadie
+eligió.
+
+Tres bordes al hacerlo, los tres ya contemplados en el código: `conInicioNuevo`
+cae en la rama que solo setea el inicio cuando no hay fin legible del que sacar la
+duración (o sea, la primera fila se comporta bien sola); `datosDeSesion` ya
+devuelve `dia: null` para un inicio ilegible; y los errores de
+`sesiones.N.inicio` / `sesiones.N.fin` solo aparecen al intentar guardar, así que
+la fila vacía no va a gritar mientras se la completa.
+
+### B-959 · Efemérides: cargarlas en el panel, mostrarlas en el sitio, y que no lleguen al calendario · P2 — pedido del dueño (2026-09-15)
+
+*«En el panel y web, efemérides poder cargar. No van al calendario público.»*
+Definido por el dueño el 2026-09-15: **es el dato del día, sin lugar ni horario** —
+«hoy nació Cortázar», «se publicó *Rayuela*». No es una actividad a la que se vaya.
+
+**Por qué no entra como un `tipo` más de actividad**, que era la salida barata:
+
+1. **Una actividad publicada va al calendario.** La guarda de eso no es un flag:
+   son `estado` y `sesiones` (§ 7.3). Meter efemérides como tipo obliga a un `if`
+   por tipo adentro de `syncCalendar` — una excepción en la parte más frágil del
+   sistema, que es lo que el § 7 pide no hacer.
+2. **No tiene nada del formulario**: ni sede, ni modalidades, ni inscripción, ni
+   arancel, ni material, ni sesiones. El § 11 tendría que esconder casi los 30
+   campos para mostrar dos.
+3. **Y sobre todo, no es una fecha: es un día y un mes.** Una efeméride se repite
+   todos los años. Guardarla como `Timestamp` es pedir la trampa 1; lo que se
+   guarda es `dia` y `mes` (números) y, aparte, el año del hecho. Esto **no**
+   contradice el § 2.2 («no usar RRULE»): esa decisión es sobre encuentros de un
+   ciclo, y acá justamente no hay evento que recurrir.
+
+O sea: **colección propia `/efemerides/{id}`**, con su pantalla en el panel, su
+proyección whitelist (`toPublic` por entidad, nunca genérico — la cita está en el
+docblock de `src/lib/directorios.ts`) y su JSON estático, como los tres
+directorios.
+
+**La parte que hay que resolver bien, y es la única interesante:** el contenido
+cambia **todos los días sin que nadie edite nada**, y el sitio es estático. Un
+build diario para mostrar la efeméride del día es un rebuild por día para siempre.
+La salida es la del § 2.5: **el JSON las lleva todas y el cliente elige la del
+día** — cero builds extra, cero lecturas de Firestore, y la página de la
+efeméride sigue siendo SSG e indexable.
+
+**Lo que falta decidir (del dueño):** dónde se ven. Tres candidatas, y no son
+excluyentes: un renglón en la home, la página de mes (`/agenda/{aaaa-mm}`), y una
+sección propia `/efemerides` con página por efeméride. La tercera es la que
+aporta al objetivo del proyecto —es contenido indexable de long tail que hoy no
+tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
+y el panel, pero no el sitio.
+
+### B-960 · Bibliotecas: el cuarto directorio de la Guía · P2 — pedido del dueño (2026-09-15)
+
+*«Lo mismo de librerías pero con bibliotecas: formulario público, bandeja y
+sección en guía.»*
+
+**La mitad barata está escrita y era el punto de B-834**: `DIRECTORIOS`
+(`src/lib/directorios.ts`) dice, textual, que *«sumar el cuarto directorio es una
+entrada acá y nada más»* — con esa entrada y `disponible: true` aparecen solas la
+fila de `/guia`, el título del panel, el destino y la URL en el sitemap, y
+`tests/directorios.test.ts` cruza las dos direcciones contra el disco.
+
+**La mitad cara es la capa por entidad, y se conoce el número: por librerías son
+trece archivos** — `types/`, `-schema.ts`, la capa de datos, la proyección
+pública, el panel, el formulario del panel, el formulario público, el buscador, la
+ficha de fila, el endpoint `.json`, y las tres páginas de `/guia/<entidad>/`. Más
+`firestore.rules`, el índice, y —lo que B-904, B-912 y B-922 dejaron aprendido— la
+**retención** en `functions/retencion.js` desde el día uno, no después. La
+proyección **no se generaliza**: es una whitelist por entidad y ahí está toda la
+seguridad de esto.
+
+**Y una decisión de producto antes de escribir una línea, que es lo único que no
+es copiar-y-pegar: una biblioteca ya puede estar cargada como *lugar*.** El
+`/opciones/tipo` de lugares tiene `biblioteca` (`opciones-base.json`), o sea que
+la biblioteca que presta su sala para un encuentro ya tiene ficha. Hay que decidir
+si son **dos fichas de la misma institución** (una como lugar para hacer eventos,
+otra como biblioteca donde sacar libros) o una sola con dos caras. Y con eso, qué
+campos la distinguen de una librería: no vende, presta — horario de sala, si hay
+que asociarse y cuánto sale, si el catálogo está online, y de qué tipo es (popular,
+municipal, nacional, especializada).
+
+### B-958 · La cartelera nunca pasa de tres columnas · P3 — pedido del dueño (2026-09-15)
+
+*«Cuatro flyers por fila (en cartelera).»*
+
+`columnasDeCartelera` (`src/lib/afiche.ts`) devuelve `1 | 2 | 3`: una hasta dos
+afiches, dos hasta cinco, tres de ahí en adelante. El tope está atado a la
+cantidad a propósito —pocos afiches en muchas columnas se ven *mal armados*—, así
+que subirlo a cuatro es **agregar un escalón, no cambiar el techo**: con cuatro
+afiches en cuatro columnas la pared queda en un renglón flaco. Hace falta elegir a
+partir de cuántos entra la cuarta (ocho es el número que mantiene la proporción de
+los otros dos saltos) y devolver `1 | 2 | 3 | 4`.
+
+Dos cosas que no se pueden saltear: `CLASES_DE_PARED`
+(`src/components/sitio/estilos.ts`) tiene que ganar la entrada 4 con las clases
+**escritas enteras** —Tailwind no ve una clase armada por concatenación—, y la
+cartelera es *masonry* por columnas, así que con cuatro el orden de lectura sigue
+siendo de arriba hacia abajo y recién después al costado; con más columnas eso se
+nota más.
+
+**Y lo que hay que medir antes de darlo por hecho:** más columnas es más afiches
+arriba del pliegue, o sea más imágenes que el navegador baja de entrada. Es
+exactamente lo que B-300 y B-266 midieron (el recorrido de la cartelera pasó de
+3518,5 KB a 1032,4 KB). Con las imágenes ya optimizadas (B-220) el margen existe,
+pero el número se mira, no se supone.
 
 ### B-925 · El barrido de promesas no llega a los componentes del sitio público · P3
 

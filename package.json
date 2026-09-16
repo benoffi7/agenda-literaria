@@ -6,6 +6,7 @@
   "description": "Agenda de actividades literarias en Argentina",
   "scripts": {
     "dev": "astro dev",
+    "tablero": "node scripts/tablero/servidor.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

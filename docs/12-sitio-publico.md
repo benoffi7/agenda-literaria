@@ -1795,6 +1795,78 @@ Las fechas del JSON son ISO en UTC; un teléfono con el reloj en Madrid tiene qu
 ver la hora de Buenos Aires, porque la actividad pasa en Buenos Aires. Es la
 trampa 1 aplicada al frontend.
 
+### 6.5 El banner de una ciudad — B-961
+
+Cuando el filtro **Ciudad** tiene marcada una ciudad que tiene banner, arriba del
+listado aparece una imagen que lleva al sitio del emprendimiento de **quien
+publica esa ciudad** en la agenda (hay un rol `publicador` con su ciudad en el
+claim, B-919). Cuatro decisiones adentro:
+
+1. **Es por ciudad, no por Mar del Plata.** Los banners son datos —una fila por
+   ciudad en `src/lib/bannerDeCiudad.ts`— y no una condición en el marcado. El
+   mecanismo es «la ciudad que se está filtrando»: la segunda ciudad es una fila
+   más, y apagarlos todos es vaciar la lista.
+2. **La ciudad se compara en slug.** El eje `ciudad` filtra por `sede.ciudad`,
+   que es texto libre: «Mar del Plata» y «mar del plata» son dos valores
+   distintos del filtro y los dos tienen que encontrar el mismo banner. Se
+   normaliza con `slugDeCiudad`, la misma función con la que se escribe
+   `ciudades[]` en el documento (B-919). Comparar contra el texto crudo sería un
+   banner que desaparece el día que alguien carga una sede con otra mayúscula, y
+   sin que nada falle.
+3. **No es publicidad, y por eso no lo dice** — decisión del dueño
+   (2026-09-15), después de que la primera versión lo rotulara «Publicidad» y le
+   pusiera `rel="sponsored"`. No es espacio vendido: es el proyecto de quien
+   publica esa ciudad, así que declararlo como aviso pago —a quien mira, o a
+   Google, que es lo que significa `sponsored`— sería afirmar algo que no es
+   cierto. Queda `rel="noopener"` y abre en pestaña nueva: quien filtró no pierde
+   el filtro que armó. Sin rótulo, lo que lo identifica es la forma —caja con
+   borde, ancho completo, separada del listado— y el texto alternativo de la
+   imagen, que es también lo que anuncia la región a un lector de pantalla. **Si
+   algún día se vende un espacio, el rótulo y el `sponsored` vuelven, y eso es
+   otra decisión: no alcanza con agregar una fila.**
+4. **Dos archivos, no uno** (`<picture>`, corte en 40rem): una franja apaisada de
+   **2400 × 600** para escritorio —la columna de contenido mide 1080px— y una
+   compacta de **1200 × 900** para el teléfono. La misma pieza en los dos lugares
+   o se ve ilegible achicada a 360px o desperdicia media pantalla estirada.
+
+**Solo existe con JavaScript**, y no es una omisión: sin la island no hay filtro
+puesto: la lista del build no tiene ninguna ciudad elegida. El efecto lateral es
+bueno — la imagen no se baja nunca para quien no filtra por esa ciudad.
+
+Los dos archivos viven en `public/banners/` y **la fila se declara en el mismo
+cambio que las imágenes**: `tests/banner-de-ciudad.test.ts` exige que cada `src`
+declarado exista en disco, porque nada del build mira `public/` y un `src` con un
+typo sale a producción en verde. Ese chequeo **se prueba a sí mismo** contra
+banners de mentira, porque con la lista vacía un `it.each` no registra ningún
+caso y el bloque pasaría sin ejercitar una sola aserción — hallazgo del
+`auditor-trampas` sobre este mismo cambio.
+
+**Es la única imagen de `src/components/publico/` junto con el visor de la
+galería, y está declarada:** `tests/listado-del-sitio.test.ts` prohíbe `<img>` en
+esa carpeta (D-146, «el listado es puramente tipográfico») y el banner figura en
+su lista de exclusiones con el motivo escrito. No contradice D-146: esa decisión
+es sobre **las filas** —sin portada, sin miniatura, para sacar la textura de
+plataforma— y el banner no es una fila ni sale de ninguna actividad. Una fila con
+imagen sigue prohibida. (Ese barrido enumeraba con `git ls-files` a secas, así que
+no veía un componente todavía sin `git add` — o sea que pasaba en verde justo en
+la corrida que tenía que hablar. Se le sumó `--others --exclude-standard`, la
+lección de B-826; el resto de los barridos de clase sigue con el problema y es
+B-964.)
+
+**Y está en el índice de salidas** (`docs/07-seguridad.md` salida 1, la ficha del
+`auditor-privacidad` y el skill `campo-nuevo`), como octavo productor de la mitad
+HTML de la home. No porque publique datos —no recibe ni un campo de ningún
+documento— sino porque agregar una fila es **una URL de un tercero y una frase
+nuevas en una página indexada**, y ese diff tiene que disparar la auditoría.
+
+**El `href` no pasa por `urlSegura`** porque lo escribe quien tiene commit y no un
+formulario; lo que sostiene esa premisa es el chequeo de `https:` del test. El día
+que un banner se cargue desde el panel, tiene que pasar por el saneador.
+
+**Todavía no se mide el clic** (B-963): sumar un cuarto evento propio toca el
+vocabulario de `analyticsSitio.ts`, `EVENTOS_PROPIOS` de `functions/analitica.js`
+y este documento, y es un cambio con su propia decisión de privacidad.
+
 ---
 
 ## 7. Los casos incómodos

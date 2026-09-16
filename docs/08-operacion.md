@@ -44,6 +44,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm test` | la suite completa. **El tamaño lo dice ella al terminar** (`Test Files` / `Tests`) y no se copia acá: el conteo escrito a mano quedó viejo cuatro veces en dos semanas — ver la nota de abajo |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm run tablero` | el tablero del backlog en `http://127.0.0.1:4173` — mira y mueve `docs/BACKLOG.md` sin abrir diecisiete mil líneas. Ver abajo |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
 | `npm run seed` | siembra `/opciones/*` y el centinela `/slugs/_indice` en el emulador |
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
@@ -77,6 +78,52 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 > lo hace cumplir (B-662): falla si `README.md` o este documento vuelven a
 > escribirlo. El `CHANGELOG`, el `BACKLOG` y `10-salud-del-codigo.md` quedan
 > afuera a propósito — ahí un conteo fechado es el dato, no un descuido.
+
+### El tablero del backlog
+
+```bash
+npm run tablero            # http://127.0.0.1:4173
+npm run tablero -- 5050    # en otro puerto
+```
+
+Una web local —sin build, sin dependencias, sin base de datos— para mirar el
+backlog como tablero: columnas por prioridad, por sección o por estado, buscador
+sobre el título y el cuerpo, la ficha de cada ítem con su markdown renderizado, y
+una pestaña con las ideas de [`11-ideas-de-producto.md`](11-ideas-de-producto.md).
+
+**El markdown sigue siendo la fuente de verdad.** El tablero no guarda nada
+propio: lee los dos archivos en cada pedido y, cuando se cambia algo, reescribe
+**la línea del encabezado** o inserta una cita. Las cuatro cosas que puede
+escribir son la prioridad, el estado (`✅ hecho` / `🟠 empezado` / abierto), una
+nota fechada debajo del encabezado, y un ítem nuevo al principio de su sección con
+el próximo `B-` libre. **Nunca toca el cuerpo de un ítem**, que es lo que el skill
+`al-backlog` pide: «no borres el texto, el rastro importa más que la prolijidad de
+la lista». Todo lo que hace se ve en `git diff`.
+
+**Tres guardas, y las tres por algo que ya pasó:**
+
+- **Escucha solo en `127.0.0.1`.** El backlog es público, pero este proceso
+  *escribe* en el repo.
+- **Cada escritura lleva precondición.** Manda el encabezado que el tablero tenía
+  en pantalla y el servidor lo busca en el disco; si no está, devuelve `409` y no
+  escribe. El 2026-09-15 dos frentes numeraron `B-930` con minutos de diferencia
+  (de ahí el hueco `B-941`–`B-949` anotado en la cabecera del backlog): esa es la
+  carrera que esto corta. Por lo mismo, el id de un ítem nuevo se recalcula contra
+  el disco justo antes de escribir, no cuando se abrió el formulario.
+- **Escritura atómica** (temporal al lado + `rename`): un Ctrl-C en el medio deja
+  el archivo entero.
+
+Cada ítem tiene URL propia: `http://127.0.0.1:4173/#B-950` abre esa ficha
+directo, que es lo que se le pega a alguien en un mensaje.
+
+La pantalla mira la fecha de los dos archivos cada cuatro segundos y se recarga
+sola cuando cambian, así que se puede tener abierto mientras una sesión de Claude
+escribe en el mismo backlog — que es exactamente lo que pasó al construirlo.
+
+`scripts/tablero/parseo.mjs` es la parte pura (parseo y las cuatro reescrituras) y
+la cubre `tests/tablero.test.ts` con las formas de encabezado que el archivo real
+tiene hoy; `scripts/tablero/servidor.mjs` es HTTP y disco, y se probó a mano de
+punta a punta.
 
 ### Verificar contra el sistema real (B-116)
 

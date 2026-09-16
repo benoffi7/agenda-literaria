@@ -1,0 +1,412 @@
+/**
+ * **El tablero del backlog, la parte pura** — lee `docs/BACKLOG.md` y
+ * `docs/11-ideas-de-producto.md` y devuelve ítems; y reescribe encabezados sin
+ * tocar nada más.
+ *
+ * ── Por qué el markdown sigue siendo la fuente de verdad ──────────────────
+ * La tentación evidente era una base de datos del backlog, con el markdown
+ * generado desde ahí. No: `docs/BACKLOG.md` está versionado, se lee en un diff,
+ * se cita desde el código (`B-xxx` aparece en docblocks y en commits) y lo
+ * escriben tanto una persona como un agente. Una segunda fuente de verdad sería
+ * la clase de bug que este repo persigue en todas las demás partes (§ «lo
+ * relevante se deriva, no se mantiene a mano»).
+ *
+ * Así que el tablero **no tiene estado propio**: parsea el archivo en cada
+ * pedido y, cuando el usuario cambia algo, reescribe **la línea del encabezado**
+ * o inserta una nota. Nada más. Si el tablero desaparece, el backlog sigue
+ * intacto; si alguien edita el markdown a mano mientras el tablero está abierto,
+ * el tablero se entera (el servidor mira la fecha del archivo).
+ *
+ * ── Y por qué la escritura es quirúrgica ──────────────────────────────────
+ * Porque el cuerpo de un ítem es prosa que costó escribir, y el skill
+ * `al-backlog` es explícito: «no borres el texto, el rastro importa más que la
+ * prolijidad de la lista». Un round-trip markdown → objeto → markdown perdería
+ * comillas latinas, saltos de línea y tablas. Acá se reemplaza una línea, o se
+ * inserta un bloque entre dos líneas que ya existían.
+ *
+ * ── El choque de numeración no es hipotético ──────────────────────────────
+ * Pasó el 2026-09-15, mientras se escribía este archivo: dos frentes numeraron a
+ * la vez y los dos eligieron `B-930` (de ahí el hueco `B-941`–`B-949` anotado en
+ * la cabecera del backlog). Por eso `proximoId` existe acá y el servidor lo
+ * vuelve a verificar contra el disco justo antes de escribir.
+ */
+
+/**
+ * Un ítem del backlog. `encabezado` es la línea cruda tal como está en el disco:
+ * es el dato con el que toda escritura verifica que el archivo no cambió abajo.
+ *
+ * @typedef {object} ItemDeBacklog
+ * @property {'backlog'} tipo
+ * @property {string} id
+ * @property {string} titulo
+ * @property {string} encabezado
+ * @property {number} linea 1-indexada: es la que se le pasa al editor.
+ * @property {string | null} seccion
+ * @property {string | null} prioridad
+ * @property {boolean} prioridadPropia ¿la trae el encabezado, o la hereda?
+ * @property {'abierto' | 'hecho' | 'empezado'} estado
+ * @property {string | null} fecha
+ * @property {string} cuerpo
+ */
+
+/**
+ * Una idea de producto. No tiene prioridad ni estado: tiene desarrollo.
+ *
+ * @typedef {object} IdeaDeProducto
+ * @property {'idea'} tipo
+ * @property {string} id
+ * @property {number} numero
+ * @property {string} titulo
+ * @property {string} encabezado
+ * @property {number} linea
+ * @property {string} cuerpo
+ */
+
+/**
+ * El resultado de una escritura: el texto nuevo, o el motivo por el que no se
+ * escribió nada. Nunca las dos cosas.
+ *
+ * @typedef {{texto: string, id?: string} | {error: string}} Resultado
+ */
+
+/** Un encabezado de ítem: `### B-950 · Título… · P1 — pedido del dueño (fecha)`. */
+const ENCABEZADO = /^### +((?:B|DEC)-\d+[a-z]?)\b(.*)$/u;
+
+/** La prioridad escrita en el encabezado, que gana sobre la de la sección. */
+const PRIORIDAD = /·\s*(P[0-4])\b/u;
+
+/**
+ * El marcador de estado, anclado **en el emoji y no en la raya**.
+ *
+ * Los títulos de este archivo usan rayas largas para todo («…y nadie se entera
+ * de cuál de las dos es»), así que cortar por `—` se llevaría medio título. Lo
+ * que no aparece en un título es `✅` o `🟠`. Se come hasta el próximo `·`
+ * —que es donde suele empezar la prioridad— o hasta el final, y el lookahead
+ * deja el espacio de antes afuera: sin eso, sacarle el marcador a `… retención
+ * — ✅ hecho (fecha) · P1` devolvía `… retención· P1`, pegado.
+ */
+const MARCADOR = /\s*—\s*(✅|🟠)[^·]*?(?=\s*·|\s*$)/u;
+
+/** `(2026-09-15)`, la última del encabezado: es la fecha del estado. */
+const FECHA = /\((\d{4}-\d{2}-\d{2})\)/gu;
+
+/** Los títulos de sección de primer nivel: `## P1 — bloquean el objetivo…`. */
+const SECCION = /^## +(.+?)\s*$/u;
+
+/** Una idea de `11-ideas-de-producto.md`: `## 3 · "Completo": lo único que…`. */
+const IDEA = /^## +(\d+) +· +(.+?)\s*$/u;
+
+/** La prioridad que le corresponde a un ítem por la sección en la que vive. */
+const prioridadDeSeccion = (seccion) => {
+  const m = /^(P[0-4])\b/u.exec(seccion ?? '');
+  return m ? m[1] : null;
+};
+
+/**
+ * El estado de un ítem, leído del encabezado.
+ *
+ * Tres y no dos: `hecho` es lo que ya no se toca (incluye «✅ decidido: no se
+ * hace», que también es una puerta cerrada), `empezado` es el 🟠 que el archivo
+ * ya usaba a mano, y `abierto` es todo lo demás.
+ */
+const estadoDe = (encabezado) => {
+  const m = MARCADOR.exec(encabezado);
+  if (!m) return 'abierto';
+  return m[1] === '✅' ? 'hecho' : 'empezado';
+};
+
+const ultimaFecha = (linea) => {
+  const todas = [...linea.matchAll(FECHA)];
+  return todas.length > 0 ? todas[todas.length - 1][1] : null;
+};
+
+/**
+ * El título limpio: sin el id, sin el marcador de estado y sin la prioridad.
+ *
+ * Se limpia para la tarjeta del tablero, donde esos tres datos ya están como
+ * chips. El encabezado crudo se conserva aparte (`encabezado`) porque es lo que
+ * el servidor compara contra el disco antes de escribir.
+ */
+const tituloDe = (resto) =>
+  resto
+    .replace(MARCADOR, '')
+    .replace(PRIORIDAD, '')
+    .replace(/^\s*·\s*/u, '')
+    .replace(/\s+—\s*$/u, '')
+    // Sacar la prioridad del medio deja dos espacios pegados. Se colapsan acá y
+    // no en la pantalla: el título limpio es un dato, no una decisión de estilo.
+    .replace(/\s{2,}/gu, ' ')
+    .trim();
+
+/**
+ * Los ítems de `docs/BACKLOG.md`.
+ *
+ * Devuelve también la sección de cada uno porque no coincide siempre con la
+ * prioridad: «Pendiente de acción manual del dueño» y «Decisiones pendientes»
+ * están arriba de todo a propósito, y un ítem marcado `· P3` puede vivir dentro
+ * de la sección P2 (el archivo lo hace, y es deliberado).
+ *
+ * @param {string} texto
+ * @returns {{items: ItemDeBacklog[], secciones: string[]}}
+ */
+export const parsearBacklog = (texto) => {
+  const lineas = texto.split('\n');
+  /** @type {ItemDeBacklog[]} */
+  const items = [];
+  /** @type {string[]} */
+  const secciones = [];
+  /** @type {string | null} */
+  let seccion = null;
+  /** @type {ItemDeBacklog | null} */
+  let actual = null;
+
+  const cerrar = (hasta) => {
+    if (!actual) return;
+    actual.cuerpo = lineas.slice(actual.linea, hasta).join('\n').trim();
+    items.push(actual);
+    actual = null;
+  };
+
+  lineas.forEach((linea, i) => {
+    const sec = SECCION.exec(linea);
+    if (sec) {
+      cerrar(i);
+      seccion = sec[1];
+      if (!secciones.includes(seccion)) secciones.push(seccion);
+      return;
+    }
+    const enc = ENCABEZADO.exec(linea);
+    if (!enc) return;
+    cerrar(i);
+    const [, id, resto] = enc;
+    const prioridad = PRIORIDAD.exec(linea);
+    actual = {
+      tipo: 'backlog',
+      id,
+      titulo: tituloDe(resto),
+      encabezado: linea,
+      /** 1-indexada: es la que se le pasa al editor para abrir el archivo ahí. */
+      linea: i + 1,
+      seccion,
+      prioridad: prioridad ? prioridad[1] : prioridadDeSeccion(seccion),
+      prioridadPropia: Boolean(prioridad),
+      estado: estadoDe(linea),
+      fecha: ultimaFecha(linea),
+      cuerpo: '',
+    };
+  });
+  cerrar(lineas.length);
+
+  return { items, secciones };
+};
+
+/**
+ * Las ideas de `docs/11-ideas-de-producto.md`.
+ *
+ * Son de otra naturaleza y por eso no se mezclan con el backlog: una idea no
+ * tiene prioridad ni estado, tiene desarrollo. Lo único que el tablero necesita
+ * saber de una es **si ya se convirtió en ítem**, y eso lo contesta buscando su
+ * número de idea citado en el backlog — no un campo nuevo en ninguna parte.
+ *
+ * @param {string} texto
+ * @returns {IdeaDeProducto[]}
+ */
+export const parsearIdeas = (texto) => {
+  const lineas = texto.split('\n');
+  /** @type {IdeaDeProducto[]} */
+  const ideas = [];
+  /** @type {IdeaDeProducto | null} */
+  let actual = null;
+
+  const cerrar = (hasta) => {
+    if (!actual) return;
+    actual.cuerpo = lineas.slice(actual.linea, hasta).join('\n').trim();
+    ideas.push(actual);
+    actual = null;
+  };
+
+  lineas.forEach((linea, i) => {
+    const m = IDEA.exec(linea);
+    if (!m) return;
+    cerrar(i);
+    actual = {
+      tipo: 'idea',
+      id: `IDEA-${m[1]}`,
+      numero: Number(m[1]),
+      titulo: m[2].trim(),
+      encabezado: linea,
+      linea: i + 1,
+      cuerpo: '',
+    };
+  });
+  cerrar(lineas.length);
+
+  return ideas;
+};
+
+/**
+ * El próximo `B-` libre.
+ *
+ * Mira **todo** el archivo y no solo los encabezados: un número citado en la
+ * prosa de otro ítem («ver B-960») ya está comprometido aunque todavía no tenga
+ * sección propia. Es el lado prudente, y es barato.
+ *
+ * @param {string} texto
+ * @returns {number}
+ */
+export const proximoNumero = (texto) => {
+  const usados = [...texto.matchAll(/\bB-(\d+)[a-z]?\b/gu)].map((m) => Number(m[1]));
+  return usados.length === 0 ? 1 : Math.max(...usados) + 1;
+};
+
+/** Todos los ids `B-xxx` que el archivo ya nombra, para avisar de un choque. */
+export const idsUsados = (texto) =>
+  new Set([...texto.matchAll(/\bB-\d+[a-z]?\b/gu)].map((m) => m[0]));
+
+/**
+ * Reemplaza la línea de encabezado de un ítem.
+ *
+ * Todas las escrituras pasan por acá, y todas piden el `encabezadoEsperado` que
+ * el tablero tenía en pantalla: si el archivo cambió abajo —otra sesión, un
+ * agente, el editor— la escritura **no ocurre**. Es la misma precondición que
+ * los barridos de este repo usan contra Firestore (B-864), por el mismo motivo:
+ * pisar el trabajo de otro es peor que fallar.
+ *
+ * @returns {Resultado}
+ */
+const reemplazarEncabezado = (texto, encabezadoEsperado, nuevo) => {
+  const lineas = texto.split('\n');
+  const i = lineas.indexOf(encabezadoEsperado);
+  if (i === -1) {
+    return {
+      error:
+        'El encabezado cambió en el disco desde que se cargó el tablero. ' +
+        'Recargá para no pisar lo que escribió otro.',
+    };
+  }
+  if (lineas.indexOf(encabezadoEsperado, i + 1) !== -1) {
+    return { error: 'Hay dos encabezados idénticos en el archivo. Se resuelve a mano.' };
+  }
+  lineas[i] = nuevo;
+  return { texto: lineas.join('\n') };
+};
+
+/**
+ * Cambia la prioridad de un ítem.
+ *
+ * Si ya tenía una escrita, la pisa en su lugar; si no la tenía —la heredaba de
+ * la sección— la agrega al final del encabezado. **No mueve el ítem de
+ * sección**: el archivo ya convive con ítems `· P3` adentro de la sección P2, y
+ * mover un bloque de prosa de decenas de líneas es exactamente la operación que
+ * este tablero decidió no hacer.
+ *
+ * @returns {Resultado}
+ */
+export const conPrioridad = (texto, encabezado, prioridad) => {
+  if (!/^P[0-4]$/u.test(prioridad)) return { error: `Prioridad inválida: ${prioridad}` };
+  const nuevo = PRIORIDAD.test(encabezado)
+    ? encabezado.replace(PRIORIDAD, `· ${prioridad}`)
+    : `${encabezado.trimEnd()} · ${prioridad}`;
+  return reemplazarEncabezado(texto, encabezado, nuevo);
+};
+
+const EMOJI = { hecho: '✅', empezado: '🟠' };
+const PALABRA = { hecho: 'hecho', empezado: 'empezado' };
+
+/**
+ * Marca un ítem como hecho, empezado, o lo devuelve a abierto.
+ *
+ * El marcador nuevo va **al final de la línea**, aunque el que se sacó estuviera
+ * en el medio. Es la forma que el archivo usa más seguido (`… · P1 — ✅ hecho
+ * (fecha)` y `… — ✅ hecho (fecha) · P1` conviven), y elegir una sola hace que
+ * el resultado sea predecible en un diff.
+ *
+ * `hecho` **no borra ni mueve el cuerpo** del ítem a la tabla de Cerrados: eso
+ * es una decisión de quien escribe, y el propio skill dice que un ítem que se
+ * cierra «dejalo donde está y no borres el texto».
+ *
+ * @returns {Resultado}
+ */
+export const conEstado = (texto, encabezado, estado, hoy) => {
+  if (!['abierto', 'hecho', 'empezado'].includes(estado)) {
+    return { error: `Estado inválido: ${estado}` };
+  }
+  const limpio = encabezado.replace(MARCADOR, '').trimEnd();
+  const nuevo =
+    estado === 'abierto' ? limpio : `${limpio} — ${EMOJI[estado]} ${PALABRA[estado]} (${hoy})`;
+  return reemplazarEncabezado(texto, encabezado, nuevo);
+};
+
+/**
+ * Agrega una nota fechada justo debajo del encabezado, como cita.
+ *
+ * Es la forma que el archivo ya usa para lo que se supo después («> ✅ Hecho el
+ * 2026-09-15…», «> Sube de P3 a P2…»): arriba del cuerpo, donde se lee antes de
+ * leer el ítem, y sin tocar una coma de lo que estaba escrito.
+ *
+ * @returns {Resultado}
+ */
+export const conNota = (texto, encabezado, nota, hoy) => {
+  const limpia = nota.trim();
+  if (!limpia) return { error: 'La nota está vacía.' };
+  const lineas = texto.split('\n');
+  const i = lineas.indexOf(encabezado);
+  if (i === -1) {
+    return {
+      error:
+        'El encabezado cambió en el disco desde que se cargó el tablero. ' +
+        'Recargá para no pisar lo que escribió otro.',
+    };
+  }
+  const cita = limpia.split('\n').map((l) => (l.trim() ? `> ${l.trim()}` : '>'));
+  const bloque = [`> **Nota del ${hoy}:** ${cita[0].replace(/^> ?/u, '')}`, ...cita.slice(1)];
+  // Una línea en blanco antes de la cita; la que va después ya está en el
+  // archivo (entre el encabezado y el cuerpo), así que no se agrega otra.
+  lineas.splice(i + 1, 0, '', ...bloque);
+  return { texto: lineas.join('\n') };
+};
+
+/**
+ * Crea un ítem nuevo al principio de su sección.
+ *
+ * Al principio y no al final por lo mismo que la tanda del 2026-09-15 se escribió
+ * ahí: lo último que entró es lo que todavía se está mirando, y el archivo tiene
+ * diecisiete mil líneas. El cuerpo es lo que escribió quien lo carga; si no
+ * escribió nada, queda el recordatorio de qué hace accionable un reporte, que es
+ * lo que pide el skill `al-backlog`.
+ *
+ * @returns {Resultado}
+ */
+export const conItemNuevo = (texto, { id, titulo, prioridad, seccion, cuerpo, hoy }) => {
+  if (!titulo.trim()) return { error: 'El título es obligatorio.' };
+  if (idsUsados(texto).has(id)) {
+    return { error: `${id} ya está usado en el archivo. Recargá: otro frente lo tomó.` };
+  }
+  const lineas = texto.split('\n');
+  const inicio = lineas.findIndex((l) => SECCION.exec(l)?.[1] === seccion);
+  if (inicio === -1) return { error: `No existe la sección «${seccion}».` };
+
+  // Antes del primer ítem de la sección; si la sección no tiene ninguno, antes
+  // de la sección siguiente; y si es la última, al final del archivo.
+  let destino = lineas.length;
+  for (let i = inicio + 1; i < lineas.length; i += 1) {
+    if (ENCABEZADO.test(lineas[i]) || SECCION.test(lineas[i])) {
+      destino = i;
+      break;
+    }
+  }
+
+  const texto0 =
+    cuerpo.trim() ||
+    '_Falta el cuerpo: qué pasa, por qué vale la pena arreglarlo y dónde está el ' +
+      'código. Sin eso el ítem no se puede priorizar dentro de seis meses._';
+
+  const bloque = [
+    `### ${id} · ${titulo.trim()} · ${prioridad} — cargado desde el tablero (${hoy})`,
+    '',
+    texto0,
+    '',
+  ];
+  lineas.splice(destino, 0, ...bloque);
+  return { texto: lineas.join('\n'), id };
+};

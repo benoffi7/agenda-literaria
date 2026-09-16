@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tablero · Agenda LEH</title>
+    <style>
+      /*
+        Sin framework y sin build: este archivo lo sirve `servidor.mjs` tal cual.
+        El panel y el sitio tienen Tailwind y un sistema visual propio; esto es una
+        herramienta local y no comparte nada con ellos a propósito — si compartiera
+        estilos, cambiar el sistema visual del sitio rompería el tablero.
+      */
+      :root {
+        --fondo: #faf9f7;
+        --papel: #ffffff;
+        --tinta: #14110f;
+        --super: #6b6763;
+        --borde: #e2ddd6;
+        --acento: #b2432b;
+        --p0: #c0392b;
+        --p1: #b2432b;
+        --p2: #6b6763;
+        --p3: #9a958f;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fondo: #14110f;
+          --papel: #1c1917;
+          --tinta: #f5f2ee;
+          --super: #a8a29b;
+          --borde: #302a26;
+          --acento: #e06a4c;
+          --p0: #f0776a;
+          --p1: #e06a4c;
+          --p2: #a8a29b;
+          --p3: #7a736d;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--fondo);
+        color: var(--tinta);
+        font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 { font: 600 17px/1.2 ui-serif, Georgia, serif; margin: 0; }
+      a { color: var(--acento); }
+      button, select, input, textarea {
+        font: inherit;
+        color: inherit;
+        background: var(--papel);
+        border: 1px solid var(--borde);
+        border-radius: 7px;
+        padding: 6px 10px;
+      }
+      button { cursor: pointer; }
+      button:hover { border-color: var(--acento); }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--papel);
+        border-bottom: 1px solid var(--borde);
+        padding: 10px 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .crece { flex: 1 1 200px; }
+      .apagado { color: var(--super); font-size: 12px; }
+
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        border: 1px solid var(--borde);
+        background: var(--papel);
+        border-radius: 999px;
+        padding: 3px 11px;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .chip[aria-pressed='true'] { background: var(--tinta); color: var(--fondo); border-color: var(--tinta); }
+
+      main { padding: 16px; }
+      .columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: start; }
+      .columna { background: var(--papel); border: 1px solid var(--borde); border-radius: 10px; padding: 10px; }
+      .columna > h2 {
+        font: 600 13px/1 ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin: 2px 0 10px;
+        display: flex;
+        justify-content: space-between;
+        color: var(--super);
+      }
+      .tarjeta {
+        width: 100%;
+        text-align: start;
+        display: block;
+        border: 1px solid var(--borde);
+        border-radius: 8px;
+        padding: 9px 10px;
+        margin-bottom: 8px;
+        background: transparent;
+      }
+      .tarjeta:hover { border-color: var(--acento); }
+      .tarjeta .id { font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .tarjeta .tit { margin: 5px 0 0; font-weight: 600; }
+      .tarjeta .meta { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--super); }
+      .punto { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: 1px; margin-inline-end: 5px; }
+      .hecho .tit { text-decoration: line-through; opacity: 0.6; }
+
+      dialog {
+        width: min(760px, 94vw);
+        max-height: 88vh;
+        border: 1px solid var(--borde);
+        border-radius: 12px;
+        background: var(--papel);
+        color: var(--tinta);
+        padding: 0;
+      }
+      dialog::backdrop { background: #0008; }
+      .ficha { padding: 18px 20px; overflow: auto; max-height: 72vh; }
+      .acciones { border-top: 1px solid var(--borde); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--fondo); }
+      .md { line-height: 1.62; }
+      .md h3, .md h4 { font: 600 15px/1.3 ui-serif, Georgia, serif; margin: 18px 0 6px; }
+      .md p { margin: 0 0 10px; }
+      .md ul, .md ol { margin: 0 0 10px; padding-inline-start: 22px; }
+      .md li { margin-bottom: 4px; }
+      .md blockquote { margin: 0 0 10px; padding: 8px 12px; border-inline-start: 3px solid var(--borde); background: var(--fondo); border-radius: 0 6px 6px 0; }
+      .tit code, h2 code { font: inherit; font-family: ui-monospace, Menlo, monospace; font-size: 0.93em; background: transparent; padding: 0; }
+      .md code { font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--fondo); padding: 1px 5px; border-radius: 4px; }
+      .md pre { overflow-x: auto; background: var(--fondo); padding: 10px; border-radius: 6px; font: 12px/1.45 ui-monospace, Menlo, monospace; }
+      .md hr { border: 0; border-top: 1px solid var(--borde); margin: 14px 0; }
+
+      #aviso {
+        position: fixed;
+        inset-block-end: 16px;
+        inset-inline-start: 50%;
+        transform: translateX(-50%);
+        background: var(--tinta);
+        color: var(--fondo);
+        padding: 9px 16px;
+        border-radius: 999px;
+        font-size: 13px;
+        box-shadow: 0 6px 24px #0003;
+      }
+      [hidden] { display: none !important; }
+      .campo { display: block; margin-bottom: 10px; }
+      .campo > span { display: block; font-size: 12px; color: var(--super); margin-bottom: 3px; }
+      .campo > input, .campo > select, .campo > textarea { width: 100%; }
+      textarea { min-height: 120px; resize: vertical; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Tablero</h1>
+      <div class="chips" id="vistas">
+        <button class="chip" data-vista="backlog" aria-pressed="true">Backlog</button>
+        <button class="chip" data-vista="ideas" aria-pressed="false">Ideas</button>
+      </div>
+      <input class="crece" id="buscar" type="search" placeholder="Buscar en título y cuerpo…" />
+      <div class="chips" id="filtro-estado">
+        <button class="chip" data-estado="abierto" aria-pressed="true">Abiertos</button>
+        <button class="chip" data-estado="empezado" aria-pressed="true">Empezados</button>
+        <button class="chip" data-estado="hecho" aria-pressed="false">Hechos</button>
+      </div>
+      <select id="agrupar" aria-label="Agrupar por">
+        <option value="prioridad">Por prioridad</option>
+        <option value="seccion">Por sección</option>
+        <option value="estado">Por estado</option>
+      </select>
+      <button id="nuevo">Nuevo ítem</button>
+      <span class="apagado" id="resumen"></span>
+    </header>
+
+    <main>
+      <div class="columnas" id="tablero"></div>
+    </main>
+
+    <dialog id="ficha">
+      <div class="ficha">
+        <p class="apagado" id="f-ruta"></p>
+        <h2 id="f-titulo" style="font: 600 19px/1.25 ui-serif, Georgia, serif; margin: 4px 0 12px"></h2>
+        <div class="md" id="f-cuerpo"></div>
+      </div>
+      <div class="acciones">
+        <label class="apagado">Prioridad
+          <select id="f-prioridad">
+            <option>P0</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option>
+          </select>
+        </label>
+        <label class="apagado">Estado
+          <select id="f-estado">
+            <option value="abierto">abierto</option>
+            <option value="empezado">empezado</option>
+            <option value="hecho">hecho</option>
+          </select>
+        </label>
+        <button id="f-nota">Agregar nota…</button>
+        <a id="f-editor" href="#">Abrir en el editor</a>
+        <span class="crece"></span>
+        <button id="f-cerrar">Cerrar</button>
+      </div>
+    </dialog>
+
+    <dialog id="alta">
+      <form method="dialog" class="ficha" id="alta-form">
+        <h2 style="font: 600 19px/1.25 ui-serif, Georgia, serif; margin: 0 0 4px">Ítem nuevo</h2>
+        <p class="apagado" id="alta-id"></p>
+        <label class="campo"><span>Título — una línea, en el idioma de quien lo reportó</span>
+          <input id="alta-titulo" required /></label>
+        <label class="campo"><span>Prioridad</span>
+          <select id="alta-prioridad">
+            <option value="P0">P0 — rompe algo o pierde datos</option>
+            <option value="P1">P1 — bloquea el objetivo del proyecto</option>
+            <option value="P2" selected>P2 — mejora real</option>
+            <option value="P3">P3 — cuando sobre tiempo</option>
+          </select></label>
+        <label class="campo"><span>Sección del archivo</span>
+          <select id="alta-seccion"></select></label>
+        <label class="campo"><span>Cuerpo — qué pasa, por qué vale la pena, dónde está el código</span>
+          <textarea id="alta-cuerpo"></textarea></label>
+        <div class="acciones" style="background: transparent; border: 0; padding: 0">
+          <button value="cancelar">Cancelar</button>
+          <button id="alta-ok" value="ok">Crear</button>
+        </div>
+      </form>
+    </dialog>
+
+    <p id="aviso" hidden></p>
+
+    <script type="module">
+      /*
+        La pantalla no tiene estado propio más allá de los filtros: cada acción
+        devuelve el estado entero recién leído del disco y se vuelve a pintar. Con
+        ~950 ítems eso es instantáneo y evita la clase de bug que este repo persigue
+        —dos copias del mismo dato que se separan—.
+      */
+      const $ = (sel) => document.querySelector(sel);
+      let datos = null;
+      let vista = 'backlog';
+      let seleccionado = null;
+      const estados = new Set(['abierto', 'empezado']);
+
+      const avisar = (texto, ms = 2600) => {
+        const a = $('#aviso');
+        a.textContent = texto;
+        a.hidden = false;
+        clearTimeout(avisar._t);
+        avisar._t = setTimeout(() => { a.hidden = true; }, ms);
+      };
+
+      const escapar = (s) =>
+        s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      /*
+        Markdown mínimo, y a propósito. Alcanza para lo que el backlog usa —negrita,
+        código, enlaces, listas, citas, títulos— y no se trae una librería para una
+        herramienta local. Lo que no reconoce (las tablas) cae a monoespaciado, que
+        se lee igual.
+      */
+      /*
+        El mismo pase de negrita, código y enlaces que usa el cuerpo. Vive afuera
+        de `renderMd` porque **el título de la tarjeta también lo necesita**: los
+        encabezados del backlog llevan negritas y nombres de archivo entre
+        backticks, y sin esto se leen los asteriscos crudos.
+      */
+      const enLinea = (s) =>
+        escapar(s)
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          // Las cursivas van **después** de las negritas: al revés, `**x**` se
+          // comería el primer asterisco de cada par.
+          .replace(/(^|[\s(«—])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+      const renderMd = (texto) => {
+        const salida = [];
+        let lista = null;
+        let cita = [];
+        let tabla = [];
+        /*
+          El backlog está envuelto a 80 columnas, así que un párrafo son varias
+          líneas seguidas. Sin esta acumulación, cada renglón del fuente salía como
+          un `<p>` propio y la ficha se leía como una lista de frases sueltas.
+        */
+        let parrafo = [];
+
+        const cerrarLista = () => { if (lista) { salida.push(`</${lista}>`); lista = null; } };
+        const cerrarCita = () => {
+          if (cita.length === 0) return;
+          salida.push(`<blockquote>${cita.map((l) => `<p>${enLinea(l)}</p>`).join('')}</blockquote>`);
+          cita = [];
+        };
+        const cerrarTabla = () => {
+          if (tabla.length === 0) return;
+          salida.push(`<pre>${escapar(tabla.join('\n'))}</pre>`);
+          tabla = [];
+        };
+        const cerrarParrafo = () => {
+          if (parrafo.length === 0) return;
+          salida.push(`<p>${enLinea(parrafo.join(' '))}</p>`);
+          parrafo = [];
+        };
+        const cerrarTodo = () => { cerrarParrafo(); cerrarLista(); cerrarCita(); cerrarTabla(); };
+
+        for (const cruda of texto.split('\n')) {
+          const linea = cruda.trimEnd();
+          if (/^\|/.test(linea)) { cerrarParrafo(); cerrarLista(); cerrarCita(); tabla.push(linea); continue; }
+          cerrarTabla();
+          if (/^>\s?/.test(linea)) { cerrarParrafo(); cerrarLista(); cita.push(linea.replace(/^>\s?/, '')); continue; }
+          cerrarCita();
+          if (!linea.trim()) { cerrarParrafo(); cerrarLista(); continue; }
+          if (/^-{3,}$/.test(linea)) { cerrarParrafo(); cerrarLista(); salida.push('<hr />'); continue; }
+          const tit = /^(#{3,6})\s+(.*)$/.exec(linea);
+          if (tit) { cerrarParrafo(); cerrarLista(); salida.push(`<h4>${enLinea(tit[2])}</h4>`); continue; }
+          const punto = /^\s*[-*]\s+(.*)$/.exec(linea);
+          if (punto) {
+            cerrarParrafo();
+            if (lista !== 'ul') { cerrarLista(); salida.push('<ul>'); lista = 'ul'; }
+            salida.push(`<li>${enLinea(punto[1])}</li>`);
+            continue;
+          }
+          const num = /^\s*\d+\.\s+(.*)$/.exec(linea);
+          if (num) {
+            cerrarParrafo();
+            if (lista !== 'ol') { cerrarLista(); salida.push('<ol>'); lista = 'ol'; }
+            salida.push(`<li>${enLinea(num[1])}</li>`);
+            continue;
+          }
+          if (lista) {
+            // Renglón de continuación de un ítem: se pega al `<li>` anterior en vez
+            // de abrir uno nuevo, que es lo que partía las listas largas en pedazos.
+            salida[salida.length - 1] = salida[salida.length - 1].replace(
+              /<\/li>$/,
+              ` ${enLinea(linea.trim())}</li>`,
+            );
+            continue;
+          }
+          parrafo.push(linea.trim());
+        }
+        cerrarTodo();
+        return salida.join('');
+      };
+
+      const colorDe = (p) => `var(--${(p ?? 'p3').toLowerCase()})`;
+
+      const visibles = () => {
+        const q = $('#buscar').value.trim().toLowerCase();
+        const fuente = vista === 'ideas' ? datos.ideas : datos.items;
+        return fuente.filter((it) => {
+          if (vista === 'backlog' && !estados.has(it.estado)) return false;
+          if (!q) return true;
+          return `${it.id} ${it.titulo} ${it.cuerpo}`.toLowerCase().includes(q);
+        });
+      };
+
+      const clavesDe = (it) => {
+        if (vista === 'ideas') return 'Ideas de producto';
+        const modo = $('#agrupar').value;
+        if (modo === 'seccion') return it.seccion ?? 'sin sección';
+        if (modo === 'estado') return it.estado;
+        return it.prioridad ?? 'sin prioridad';
+      };
+
+      const pintar = () => {
+        const lista = visibles();
+        const grupos = new Map();
+        for (const it of lista) {
+          const k = clavesDe(it);
+          if (!grupos.has(k)) grupos.set(k, []);
+          grupos.get(k).push(it);
+        }
+        const orden = [...grupos.keys()].sort();
+        const cont = $('#tablero');
+        cont.innerHTML = '';
+        for (const clave of orden) {
+          const col = document.createElement('section');
+          col.className = 'columna';
+          const items = grupos.get(clave);
+          col.innerHTML = `<h2><span>${escapar(String(clave))}</span><span>${items.length}</span></h2>`;
+          for (const it of items) {
+            const b = document.createElement('button');
+            b.className = `tarjeta ${it.estado === 'hecho' ? 'hecho' : ''}`;
+            b.innerHTML =
+              `<span class="id">${it.estado === 'abierto' || vista === 'ideas'
+                ? `<i class="punto" style="background:${colorDe(it.prioridad)}"></i>` : ''}${escapar(it.id)}</span>` +
+              `<p class="tit">${enLinea(it.titulo)}</p>` +
+              `<p class="meta">${[it.prioridad, it.estado !== 'abierto' ? it.estado : '', it.fecha ?? '',
+                vista === 'ideas' && it.citadaEn?.length ? `citada en ${it.citadaEn.slice(0, 3).join(', ')}` : '']
+                .filter(Boolean).map((t) => `<span>${escapar(String(t))}</span>`).join('')}</p>`;
+            b.addEventListener('click', () => abrirFicha(it));
+            col.append(b);
+          }
+          cont.append(col);
+        }
+        const abiertos = datos.items.filter((i) => i.estado === 'abierto').length;
+        $('#resumen').textContent =
+          `${lista.length} en pantalla · ${abiertos} abiertos de ${datos.items.length} · próximo id ${datos.proximoId}`;
+      };
+
+      const abrirFicha = (it) => {
+        seleccionado = it;
+        // La URL nombra el ítem abierto: `…/#B-950` abre esa ficha. Sirve para
+        // pegarle el link a alguien, y para volver a donde uno estaba al recargar.
+        if (location.hash !== `#${it.id}`) history.replaceState(null, '', `#${it.id}`);
+        const archivo = it.tipo === 'idea' ? datos.archivos.ideas : datos.archivos.backlog;
+        $('#f-ruta').textContent = `${archivo}:${it.linea}`;
+        $('#f-titulo').innerHTML = `${escapar(it.id)} · ${enLinea(it.titulo)}`;
+        $('#f-cuerpo').innerHTML = renderMd(it.cuerpo || '_Sin cuerpo._');
+        $('#f-editor').href = `vscode://file/${datos.raiz}/${archivo}:${it.linea}`;
+        const esBacklog = it.tipo === 'backlog';
+        $('#f-prioridad').disabled = !esBacklog;
+        $('#f-estado').disabled = !esBacklog;
+        $('#f-nota').disabled = !esBacklog;
+        if (esBacklog) {
+          $('#f-prioridad').value = it.prioridad ?? 'P2';
+          $('#f-estado').value = it.estado;
+        }
+        $('#ficha').showModal();
+      };
+
+      const pedir = async (ruta, cuerpo) => {
+        const r = await fetch(ruta, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(cuerpo),
+        });
+        const j = await r.json();
+        if (!r.ok) { avisar(j.error ?? 'No se pudo escribir', 6000); return null; }
+        datos = j;
+        pintar();
+        return j;
+      };
+
+      /* El ítem se vuelve a buscar por id porque su encabezado cambió recién. */
+      const refrescarFicha = () => {
+        if (!seleccionado) return;
+        const nuevo = datos.items.find((i) => i.id === seleccionado.id);
+        if (nuevo) abrirFicha(nuevo);
+      };
+
+      $('#f-prioridad').addEventListener('change', async (e) => {
+        const ok = await pedir('/api/prioridad', {
+          encabezado: seleccionado.encabezado,
+          prioridad: e.target.value,
+        });
+        if (ok) { avisar(`${seleccionado.id} → ${e.target.value}`); refrescarFicha(); }
+      });
+
+      $('#f-estado').addEventListener('change', async (e) => {
+        const ok = await pedir('/api/estado', {
+          encabezado: seleccionado.encabezado,
+          estado: e.target.value,
+        });
+        if (ok) { avisar(`${seleccionado.id} → ${e.target.value}`); refrescarFicha(); }
+      });
+
+      $('#f-nota').addEventListener('click', async () => {
+        const nota = prompt('La nota se inserta como cita debajo del encabezado, fechada:');
+        if (!nota) return;
+        const ok = await pedir('/api/nota', { encabezado: seleccionado.encabezado, nota });
+        if (ok) { avisar('Nota agregada'); refrescarFicha(); }
+      });
+
+      $('#f-cerrar').addEventListener('click', () => $('#ficha').close());
+      $('#ficha').addEventListener('close', () => {
+        seleccionado = null;
+        history.replaceState(null, '', location.pathname);
+      });
+
+      $('#nuevo').addEventListener('click', () => {
+        $('#alta-id').textContent = `Va a quedar como ${datos.proximoId} (se vuelve a verificar al guardar).`;
+        const sel = $('#alta-seccion');
+        sel.innerHTML = datos.secciones
+          .map((s) => `<option${s.startsWith('P2') ? ' selected' : ''}>${escapar(s)}</option>`)
+          .join('');
+        $('#alta').showModal();
+      });
+
+      $('#alta-form').addEventListener('submit', async (e) => {
+        if (e.submitter?.value !== 'ok') return;
+        const ok = await pedir('/api/nuevo', {
+          titulo: $('#alta-titulo').value,
+          prioridad: $('#alta-prioridad').value,
+          seccion: $('#alta-seccion').value,
+          cuerpo: $('#alta-cuerpo').value,
+        });
+        if (ok) {
+          avisar('Ítem creado en docs/BACKLOG.md');
+          $('#alta-titulo').value = '';
+          $('#alta-cuerpo').value = '';
+        }
+      });
+
+      for (const b of document.querySelectorAll('#vistas .chip')) {
+        b.addEventListener('click', () => {
+          vista = b.dataset.vista;
+          for (const otro of document.querySelectorAll('#vistas .chip')) {
+            otro.setAttribute('aria-pressed', String(otro === b));
+          }
+          $('#filtro-estado').hidden = vista === 'ideas';
+          $('#agrupar').hidden = vista === 'ideas';
+          pintar();
+        });
+      }
+
+      for (const b of document.querySelectorAll('#filtro-estado .chip')) {
+        b.addEventListener('click', () => {
+          const e = b.dataset.estado;
+          if (estados.has(e)) estados.delete(e); else estados.add(e);
+          b.setAttribute('aria-pressed', String(estados.has(e)));
+          pintar();
+        });
+      }
+
+      $('#buscar').addEventListener('input', pintar);
+      $('#agrupar').addEventListener('change', pintar);
+
+      const cargar = async () => {
+        datos = await (await fetch('/api/estado')).json();
+        pintar();
+      };
+
+      /* `…/#B-950` abre esa ficha directo, sin buscarla en el tablero. */
+      const abrirDelHash = () => {
+        const id = decodeURIComponent(location.hash.slice(1));
+        if (!id) return;
+        const it = datos.items.find((i) => i.id === id) ?? datos.ideas.find((i) => i.id === id);
+        if (it) abrirFicha(it);
+        else avisar(`No hay ningún ${id} en el archivo`, 4000);
+      };
+      addEventListener('hashchange', abrirDelHash);
+
+      /*
+        El latido. El backlog lo escriben también las sesiones de Claude —pasó
+        mientras se escribía este archivo—, así que el tablero se entera solo en vez
+        de mostrar una foto vieja. Si hay una ficha abierta se avisa y no se recarga
+        debajo del cursor.
+      */
+      setInterval(async () => {
+        try {
+          const { marca } = await (await fetch('/api/marca')).json();
+          if (!datos || marca === datos.marca) return;
+          if ($('#ficha').open) { avisar('El archivo cambió en el disco. Cerrá la ficha para recargar.', 4000); return; }
+          await cargar();
+          avisar('El archivo cambió: tablero al día');
+        } catch {
+          /* El servidor se cerró. No vale romper la pantalla por eso. */
+        }
+      }, 4000);
+
+      await cargar();
+      abrirDelHash();
+    </script>
+  </body>
+</html>

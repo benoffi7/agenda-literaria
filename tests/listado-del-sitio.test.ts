@@ -104,9 +104,23 @@ const SUPER = token('super');
  */
 const TINTAS_DE_REGLA = ['borde', 'regla'];
 
-/** Los componentes del listado público. */
+/**
+ * Los componentes del listado público.
+ *
+ * **`--others --exclude-standard` es la lección de B-826**, que acá faltaba y la
+ * encontró el `auditor-privacidad` sobre B-961: `git ls-files` a secas enumera
+ * solo lo **rastreado**, así que un componente nuevo —el caso normal, el archivo
+ * todavía sin `git add`— no lo veía ninguna de las cuatro partes de este archivo.
+ * El barrido pasaba en verde justo en la corrida que tenía que decir algo, y
+ * empezaba a hablar recién después del `add`. Con las dos banderas, un `.tsx`
+ * nuevo entra a las reglas apenas existe en el disco.
+ */
 const archivos = (): string[] =>
-  execFileSync('git', ['ls-files', 'src/components/publico'], { encoding: 'utf8' })
+  execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', 'src/components/publico'],
+    { encoding: 'utf8' },
+  )
     .split('\n')
     .filter((f) => f.endsWith('.tsx'));
 
@@ -132,6 +146,21 @@ const archivos = (): string[] =>
 const FUERA_DEL_LISTADO: Record<string, string> = {
   'src/components/publico/VisorDeGaleria.tsx':
     'la capa de la galería del detalle — B-720 (D-430). Su contenido es una imagen.',
+  /*
+   * B-961 — el banner de la ciudad filtrada. Se excluye de la **misma** regla
+   * que el visor y por el mismo motivo: su contenido *es* una imagen, así que la
+   * regla le exigiría no hacer lo único que hace.
+   *
+   * Y no la contradice: D-146 decide que **las filas** del listado son
+   * tipográficas —sin portada, sin miniatura— para sacar la textura de
+   * plataforma. El banner no es una fila y no sale de ninguna actividad: es el
+   * proyecto de quien publica esa ciudad, y aparece solo con el filtro de ciudad
+   * puesto. La decisión que lo permite está escrita en
+   * `docs/12-sitio-publico.md` § 6.5; si algún día una fila del listado quiere
+   * una imagen, eso sigue prohibido y este renglón no la habilita.
+   */
+  'src/components/publico/BannerDeCiudad.tsx':
+    'el banner de la ciudad filtrada — B-961. Su contenido es una imagen, y no es una fila del listado.',
 };
 
 /**

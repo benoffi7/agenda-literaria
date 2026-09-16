@@ -70,6 +70,7 @@ import {
   foco,
 } from '@/components/sitio/estilos';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { BannerDeCiudad } from '@/components/publico/BannerDeCiudad';
 import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { GuardarBusqueda } from '@/components/publico/GuardarBusqueda';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
@@ -81,6 +82,7 @@ import {
   type EjeMedible,
   type EjeSinSlug,
 } from '@/lib/analyticsSitio';
+import { bannerParaCiudades } from '@/lib/bannerDeCiudad';
 import { useCapaModal } from '@/lib/capaModal';
 import { nombreDeMes } from '@/lib/fechasPublicas';
 import { medirSitio } from '@/lib/medicionSitio';
@@ -428,6 +430,13 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
   // tríptico (B-791). `null` en el caso normal, que es todos los demás.
   const diasElegidos = useMemo(() => diasDelCuando(filtros.cuando), [filtros.cuando]);
   const puestos = cantidadDeFiltrosPublicos(filtros);
+  /*
+   * El banner de la ciudad filtrada. Depende **solo** de los chips del eje
+   * `ciudad`: no de la búsqueda de texto —escribir «mar del plata» en el
+   * buscador no es haber elegido la ciudad— ni de que haya resultados; un cero
+   * filtrado por Mar del Plata sigue siendo alguien mirando Mar del Plata.
+   */
+  const banner = useMemo(() => bannerParaCiudades(filtros.valores.ciudad), [filtros.valores.ciudad]);
   const sobra = useMemo(
     () => (visibles.length === 0 ? ejeQueSobra(entradas, filtros, ahora) : null),
     [visibles.length, entradas, filtros, ahora],
@@ -873,6 +882,23 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
             recargar la página.
           </p>
         )}
+
+        {/*
+          ── El banner de la ciudad filtrada ─────────────────────────────
+          Arriba del listado y dentro de la columna de contenido, que es donde
+          le corresponde: **es una consecuencia del filtro**, no una banda de la
+          página. El tríptico de «¿Qué hay ahora?» va afuera de la grilla por lo
+          contrario — no lo toca ningún filtro.
+
+          Va debajo de la fila del contador para que lo primero que se lea
+          después de filtrar siga siendo cuántas actividades quedaron.
+
+          Solo existe con la island: sin JavaScript no hay filtro que ponerle, y
+          la lista del build no tiene ninguna ciudad elegida. Eso también es lo
+          que hace que la imagen no se baje nunca para quien no filtra por esa
+          ciudad.
+        */}
+        {indice && banner && <BannerDeCiudad banner={banner} />}
 
         {/* ── El listado, una vez que la island tomó el control ─────────── */}
         {indice && (
