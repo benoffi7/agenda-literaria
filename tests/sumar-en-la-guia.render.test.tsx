@@ -205,6 +205,8 @@ const montarLugar = () =>
     <SumarLugar
       tiposDeLugar={TIPOS_LUGAR}
       barriosOfrecidos={BARRIOS}
+      provinciasOfrecidas={PROVINCIAS_OFRECIDAS}
+      ciudadesOfrecidas={CIUDADES_OFRECIDAS}
       incluyeOfrecido={[]}
       condicionesDeUso={CONDICIONES}
     />,

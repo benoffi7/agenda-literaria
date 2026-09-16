@@ -1,4 +1,5 @@
 import { Campo, claseInput } from '@/components/campos/Campo';
+import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
 import { claseBotonPrimario, claseRotulo } from '@/components/sitio/estilos';
 import { CampoTrampa, Gracias, useAltaPublica } from '@/components/publico/altaPublica';
 import { CampoDeEtiquetas, CampoDeTaxonomia } from '@/components/publico/camposDeTaxonomia';
@@ -59,6 +60,9 @@ interface Props {
   /** Las opciones que ya existen, leídas en el build. Ver `SumarLibreria.tsx`. */
   tiposDeLugar: readonly OpcionOfrecida[];
   barriosOfrecidos: readonly OpcionOfrecida[];
+  /** B-967 — las otras dos de la cascada, con el mismo reparto que los barrios. */
+  provinciasOfrecidas: readonly OpcionOfrecida[];
+  ciudadesOfrecidas: readonly OpcionOfrecida[];
   incluyeOfrecido: readonly OpcionOfrecida[];
   condicionesDeUso: readonly OpcionOfrecida[];
 }
@@ -85,6 +89,8 @@ const TEXTO_UNIDAD: Record<(typeof UNIDADES_DE_PRECIO_LUGAR)[number], string> = 
 export function SumarLugar({
   tiposDeLugar,
   barriosOfrecidos,
+  provinciasOfrecidas,
+  ciudadesOfrecidas,
   incluyeOfrecido,
   condicionesDeUso,
 }: Props) {
@@ -176,34 +182,69 @@ export function SumarLugar({
           />
         </Campo>
 
+        {/* B-967 — la misma cascada del panel y del riel. */}
         <Campo
-          label="Barrio"
-          htmlFor="lug-pub-barrio"
+          label="Provincia"
+          htmlFor="lug-pub-provincia"
           requerido
-          error={errorDe('barrio')}
-          ayuda={
-            barriosOfrecidos.length > 0
-              ? 'Si no está en la lista, elegí «Otro…» y escribilo.'
-              : undefined
-          }
+          error={errorDe('provincia')}
         >
           <CampoDeTaxonomia
-            id="lug-pub-barrio"
-            opciones={barriosOfrecidos}
-            value={form.barrio}
-            onChange={(v) => set('barrio', v)}
-            placeholder="Elegí el barrio"
+            id="lug-pub-provincia"
+            opciones={provinciasOfrecidas}
+            value={form.provincia}
+            onChange={(v) => {
+              const geo = conProvincia(
+                { provincia: form.provincia, barrio: form.barrio, ciudad: form.ciudad },
+                v,
+              );
+              set('provincia', geo.provincia);
+              set('barrio', geo.barrio);
+              set('ciudad', geo.ciudad);
+            }}
+            placeholder="Elegí la provincia"
           />
         </Campo>
 
-        <Campo label="Ciudad" htmlFor="lug-pub-ciudad" error={errorDe('ciudad')}>
-          <input
-            id="lug-pub-ciudad"
-            className={claseInput}
-            value={form.ciudad}
-            onChange={(e) => set('ciudad', e.target.value)}
-          />
-        </Campo>
+        {subdivisionDe(form.provincia) === 'barrio' ? (
+          <Campo
+            label="Barrio"
+            htmlFor="lug-pub-barrio"
+            error={errorDe('barrio')}
+            ayuda={
+              barriosOfrecidos.length > 0
+                ? 'Si no está en la lista, elegí «Otro…» y escribilo.'
+                : undefined
+            }
+          >
+            <CampoDeTaxonomia
+              id="lug-pub-barrio"
+              opciones={barriosOfrecidos}
+              value={form.barrio}
+              onChange={(v) => set('barrio', v)}
+              placeholder="Elegí el barrio"
+            />
+          </Campo>
+        ) : (
+          <Campo
+            label="Ciudad"
+            htmlFor="lug-pub-ciudad"
+            error={errorDe('ciudad')}
+            ayuda={
+              form.provincia
+                ? 'Si no está en la lista, elegí «Otro…» y escribila.'
+                : 'Elegí primero la provincia.'
+            }
+          >
+            <CampoDeTaxonomia
+              id="lug-pub-ciudad"
+              opciones={ciudadesOfrecidas}
+              value={form.ciudad}
+              onChange={(v) => set('ciudad', v)}
+              placeholder="Elegí la ciudad"
+            />
+          </Campo>
+        )}
       </div>
 
       {/*

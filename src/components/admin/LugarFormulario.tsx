@@ -23,6 +23,7 @@ import {
   lugarAFormulario,
   slugDeLugarDisponible,
 } from '@/lib/lugares';
+import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
 import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import {
   MAX_CAPACIDAD_LUGAR,
@@ -409,35 +410,76 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
           </Campo>
 
           {/*
-            El barrio es **el mismo vocabulario** que el de las actividades y el
+            **La misma cascada que una sede y que una librería** — B-967, D-710.
+            Provincia primero, y de ahí barrio (CABA) o ciudad (el resto), con la
+            misma `subdivisionDe`.
+
+            Los tres son **el mismo vocabulario** que el de las actividades y el
             de las librerías (§ 3 del PRD): con otro alfabeto el hub de barrio no
-            cruzaría las tres cosas. Y sale al sitio **siempre**, también para una
-            casa: es el «más o menos por Villa Crespo» que el § 6 sí deja
+            cruzaría las tres cosas. Y salen al sitio **siempre**, también para una
+            casa: son el «más o menos por Villa Crespo» que el § 6 sí deja
             publicar.
           */}
-          <Campo label="Barrio" htmlFor="lug-barrio" requerido error={errorDe('barrio')}>
+          <Campo
+            label="Provincia"
+            htmlFor="lug-provincia"
+            requerido
+            error={errorDe('provincia')}
+          >
             <TaxonomiaSelect
-              campo="barrio"
+              campo="provincia"
               uid={uid}
-              id="lug-barrio"
-              value={form.barrio}
+              id="lug-provincia"
+              value={form.provincia}
               onChange={(v, label) => {
-                set('barrio', v);
-                recordarLabel('barrio', label);
+                const geo = conProvincia(
+                  { provincia: form.provincia, barrio: form.barrio, ciudad: form.ciudad },
+                  v,
+                );
+                set('provincia', geo.provincia);
+                set('barrio', geo.barrio);
+                set('ciudad', geo.ciudad);
+                recordarLabel('provincia', label);
               }}
-              placeholder="Elegí el barrio"
+              placeholder="Elegí la provincia"
             />
           </Campo>
 
-          <Campo label="Ciudad" htmlFor="lug-ciudad" requerido error={errorDe('ciudad')}>
-            <input
-              id="lug-ciudad"
-              className={claseInput}
-              maxLength={TOPE_CIUDAD_LUGAR}
-              value={form.ciudad}
-              onChange={(e) => set('ciudad', e.target.value)}
-            />
-          </Campo>
+          {subdivisionDe(form.provincia) === 'barrio' ? (
+            <Campo label="Barrio" htmlFor="lug-barrio" error={errorDe('barrio')}>
+              <TaxonomiaSelect
+                campo="barrio"
+                uid={uid}
+                id="lug-barrio"
+                value={form.barrio}
+                onChange={(v, label) => {
+                  set('barrio', v);
+                  recordarLabel('barrio', label);
+                }}
+                placeholder="Elegí el barrio"
+              />
+            </Campo>
+          ) : (
+            <Campo
+              label="Ciudad"
+              htmlFor="lug-ciudad"
+              error={errorDe('ciudad')}
+              ayuda={form.provincia ? undefined : 'Elegí primero la provincia.'}
+            >
+              <TaxonomiaSelect
+                campo="ciudad"
+                uid={uid}
+                id="lug-ciudad"
+                value={form.ciudad}
+                deshabilitado={!form.provincia}
+                onChange={(v, label) => {
+                  set('ciudad', v);
+                  recordarLabel('ciudad', label);
+                }}
+                placeholder="Elegí o agregá la ciudad"
+              />
+            </Campo>
+          )}
 
           {/*
             ⚠️ Las coordenadas siguen la misma casilla que la dirección: unas
