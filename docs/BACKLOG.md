@@ -100,7 +100,20 @@ Resueltas el 2026-08-21:
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
 
-### B-974 · Diez taxonomías de las guías nunca se sembraron en producción · P1 (2026-09-16)
+### B-974 · Diez taxonomías de las guías nunca se sembraron en producción — ✅ hecho (2026-09-16) · P1
+
+> **Sembradas el 2026-09-16** con `npm run opciones:sembrar:prod`, y verificadas
+> con `npm run taxonomias:verificar`: las 17 declaradas existen. Las siete que ya
+> estaban no se tocaron (el script es idempotente). El rebuild se dispara solo por
+> la escritura en `/opciones/*` (trampa 8).
+>
+> **Lo que estuvo roto, y cuánto:** desde que se creó cada guía. Los desplegables
+> de `/guia/librerias/sumar`, `/guia/lugares/sumar` y `/guia/suscripciones/sumar`
+> —el formulario de gente de afuera— salían vacíos para esos ejes, y los chips de
+> filtro de las tres guías también. El panel se veía bien todo ese tiempo, que es
+> lo que lo mantuvo invisible.
+>
+> El texto original queda abajo.
 
 **Un solo comando, y necesita tu aprobación** porque escribe en producción:
 

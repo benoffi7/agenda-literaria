@@ -17,8 +17,8 @@
   `extras-suscripcion`, `alcance-envio`, `incluye-actividad`) nunca se sembraron.
   El panel se veía bien porque cae de vuelta a `opciones-base.json`; el build no
   tiene ese fallback, así que los que estaban vacíos eran los desplegables
-  públicos de `/guia/*/sumar` y los chips de las guías. Queda **B-974** para
-  sembrarlos, que es un comando.
+  públicos de `/guia/*/sumar` y los chips de las guías — desde que se creó cada
+  guía. **Sembradas el 2026-09-16** (**B-974**): las 17 declaradas existen.
 
 - **Que una provincia sea una provincia** — **B-972**. Hasta acá solo se validaba
   la forma, así que `'cordoba-capital'` se guardaba y después no casaba con ningún
