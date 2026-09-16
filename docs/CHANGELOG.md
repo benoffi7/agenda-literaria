@@ -126,9 +126,31 @@
   índice**, que no lo fijaba nada: agregar una ahora pone un caso en rojo, que es
   donde alguien tiene que decidir si esa clave viaja.
 
-  Falta el cuarto frente que B-950 nombra: las guías (librerías y lugares) siguen
-  con la ciudad como texto libre — **B-967**, con su propia migración porque su
-  default es «Ciudad de Buenos Aires» y no «CABA».
+  **El cuarto frente también entró — B-967.** Las guías (librerías y lugares)
+  tienen la misma cascada: tipo, schema, reglas, los **dos** formularios de cada
+  una, la proyección, el `searchText`, la ficha y el JSON-LD. Así que provincia,
+  barrio y ciudad son hoy el mismo vocabulario y la misma regla en las **cuatro**
+  entidades, que es lo que B-950 pedía al decir «casi en todos lados».
+
+  Tres cosas que ese tramo trajo y que el ítem no preveía. **`ALIAS_DE_CABA`**,
+  que era el nudo de la migración: el default de las guías era «Ciudad de Buenos
+  Aires», que slugifica a `ciudad-de-buenos-aires` y no a `caba`, así que un
+  backfill a secas habría dejado **dos CABA** en la taxonomía. **`firestore.rules`**,
+  cuyo `hasOnly` enumera los campos y por lo tanto rechazaba el guardado sin
+  `provincia` — y donde el barrio y la ciudad pasaron a admitir `''`, porque la
+  cascada pide una de las dos. Y **un bug vivo en la búsqueda de las guías**: el
+  índice llevaba el slug (`villa-crespo`), así que quien escribía «villa crespo»
+  no encontraba nada. Ahora se indexan las dos formas.
+
+  **Y «Sede» pasó a decir «Lugar»** — **B-927**, pedido del dueño: es una palabra
+  nuestra y quien carga no la usa. Es solo la etiqueta, en el editor de
+  modalidades y en el historial, más los siete textos de la ayuda que hablaban de
+  «la sede». El campo sigue llamándose `sede` en el modelo y en todas las salidas.
+
+  Lo que queda es **B-970**: el riel de cada guía sigue filtrando solo por barrio,
+  así que una ficha de afuera de CABA no se encuentra por lugar en su propio
+  directorio. Es aditivo —aparece en la lista y en la búsqueda por texto— y es la
+  misma forma de B-966 una capa más abajo.
 
 - **Un banner en el filtro de una ciudad** — **B-961**. Con el filtro **Ciudad →
   Mar del Plata** puesto, arriba del listado aparece un banner que lleva al

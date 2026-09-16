@@ -10906,11 +10906,32 @@ Si alguna provincia junta volumen, se agrega ahí.
 
 ### 8. Lo que falta, y lo que la auditoría cambió
 
-Las **guías** (librerías y lugares) siguen con `barrio` de taxonomía y `ciudad` de
-texto libre, y sin provincia. B-950 las nombra —«el mismo par vive en cuatro
-entidades»— y quedan pendientes en **B-967**: su `CIUDAD_POR_DEFECTO` es «Ciudad
-de Buenos Aires», que slugifica a `ciudad-de-buenos-aires` y no a `caba`, así que
-unificarlas tiene su propia migración.
+Las **guías** (librerías y lugares) se convirtieron con **B-967**, así que la
+cascada es hoy la misma en las **cuatro** entidades que B-950 nombraba. Tres
+cosas que ese tramo agregó y que no estaban previstas:
+
+- **`ALIAS_DE_CABA`**, que era el nudo de la migración. El default de las guías
+  era «Ciudad de Buenos Aires», que slugifica a `ciudad-de-buenos-aires` y **no**
+  a `caba`: un backfill a secas habría dejado **dos** entradas para el mismo
+  lugar en la taxonomía, que es exactamente el bug que la conversión vino a
+  arreglar. Los cuatro alias —`caba`, `ciudad-de-buenos-aires`,
+  `ciudad-autonoma-de-buenos-aires` y `capital-federal`— colapsan al slug
+  canónico al leer. **«Buenos Aires» a secas no está**, y es la única omisión que
+  hay que defender: es el nombre de la provincia, así que tomarlo por CABA
+  convertiría una sede de La Plata en una de CABA.
+- **`firestore.rules`**, que el ítem no nombraba. El `hasOnly`/`hasAll` de las dos
+  guías enumera los campos del documento, así que sin `provincia` la regla
+  **rechazaba** el guardado. Y el trato de los tres campos cambió: `barrio` y
+  `ciudad` admiten `''` —la cascada pide **una** de las dos según la provincia— y
+  la provincia se exige. Una ficha anterior se migra sola al reeditarla, porque el
+  formulario la completa desde el default de lectura.
+- **Un bug vivo en la búsqueda de las guías.** `searchTextDeLibreria` indexaba el
+  **slug** del barrio (`villa-crespo`), y la búsqueda es un `includes` sobre el
+  texto normalizado: quien escribía «villa crespo» **no encontraba nada**, porque
+  el guion no coincide con el espacio. Con `ciudad` pasando a slug serían dos
+  campos con el mismo problema. Ahora se indexan **las dos formas**, el slug y su
+  des-slug: no hay opciones a mano en ese punto —lo llaman la proyección y
+  `formALibreria`— y indexar de más no produce falsos negativos.
 
 **Los tres auditores corrieron sobre este cambio y encontraron cinco cosas que se
 arreglaron antes de cerrarlo.** Vale escribirlas porque tres de las cinco son

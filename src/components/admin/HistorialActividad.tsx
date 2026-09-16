@@ -55,7 +55,7 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   // el mismo cambio.
   modalidades: 'Modalidades',
   modalidad: 'Modalidad',
-  sede: 'Sede',
+  sede: 'Lugar',
   online: 'Datos de la reunión',
   // B-919 — el cuarto derivado de `modalidades`. No se restaura por separado
   // (está en `CAMPOS_DERIVADOS`), pero tiene nombre igual que los otros tres:

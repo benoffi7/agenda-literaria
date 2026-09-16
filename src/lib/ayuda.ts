@@ -326,7 +326,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           '«Guardar borrador» te pide solo el título: podés guardar una actividad a medias y ' +
-          'seguirla otro día. El tipo, la descripción, quién organiza, el arancel, la sede y los ' +
+          'seguirla otro día. El tipo, la descripción, quién organiza, el arancel, el lugar y los ' +
           'encuentros se piden recién al publicar, porque son los datos que salen al calendario.',
       },
       {
@@ -423,7 +423,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'El buscador ignora acentos y mayúsculas: escribiendo «cronica» encuentra «Crónica». Busca ' +
-          'en el título, la descripción, la sede, el barrio y los nombres; no en las fechas.',
+          'en el título, la descripción, el lugar, el barrio y los nombres; no en las fechas.',
       },
       {
         texto:
@@ -493,7 +493,7 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'Restaurar revisa antes que la actividad no quede incompleta. Si el dato viejo la ' +
           'dejaría sin algo que hace falta para publicar —restaurar «Estado: publicado» cuando ' +
-          'falta la sede, o un título de dos letras—, no lo escribe y te dice qué le falta. Lo ' +
+          'falta el lugar, o un título de dos letras—, no lo escribe y te dice qué le falta. Lo ' +
           'que ya estaba incompleto de antes no te frena: solo frena lo que la restauración ' +
           'rompería. Lo que no revisa es que la dirección web no esté usada por otra actividad.',
       },
@@ -1556,7 +1556,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'La portada se describe con su propio campo, «Qué se ve en la portada». Contá qué se ' +
-          've, no repitas el título: «Flyer con la fecha y la sede», «Retrato de la autora». Si ' +
+          've, no repitas el título: «Flyer con la fecha y el lugar», «Retrato de la autora». Si ' +
           'lo dejás vacío se publica igual, y el sitio dice «Imagen de» y el título, que no ' +
           'describe nada.',
       },
@@ -1591,7 +1591,7 @@ export const CAPITULOS: CapituloAyuda[] = [
     puntos: [
       {
         texto:
-          'Cargado así, en el sitio aparece una sola tarjeta y, si cambia la sede, se corrige una ' +
+          'Cargado así, en el sitio aparece una sola tarjeta y, si cambia el lugar, se corrige una ' +
           'vez y se actualizan los ocho eventos del calendario.',
       },
       {
@@ -1687,7 +1687,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Si cambiás la provincia, el barrio se borra. Es a propósito: los barrios son de CABA, y ' +
-          'uno de CABA en una sede de otra provincia haría que la actividad apareciera filtrada en ' +
+          'uno de CABA en un lugar de otra provincia haría que la actividad apareciera filtrada en ' +
           'un lugar donde no pasa. La ciudad, en cambio, se conserva si ya la habías cargado.',
       },
       {
@@ -1704,7 +1704,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'La dirección viaja completa al calendario —sede, calle, barrio, ciudad— para que Google ' +
+          'La dirección viaja completa al calendario —lugar, calle, barrio, ciudad— para que Google ' +
           'pueda dibujar el mapa. Con la calle sola el mapa puede caer en otra ciudad, así que vale ' +
           'la pena completar el barrio.',
       },
@@ -1748,7 +1748,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'El evento del calendario nombra todas las formas de cursar, una por una y con su lugar. ' +
-          'La dirección que dibuja el mapa es la de la primera fila que tenga sede, porque el mapa ' +
+          'La dirección que dibuja el mapa es la de la primera fila que tenga lugar, porque el mapa ' +
           'admite una sola: si querés que sea otra, movela arriba.',
       },
     ],

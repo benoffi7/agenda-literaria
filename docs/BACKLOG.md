@@ -6800,7 +6800,53 @@ evento normalizaban, y ninguno de los dos lo hacía. El historial se arregló en
 momento (era un bug de verdad: dejaba el documento internamente contradictorio);
 esto es la mitad que queda, con el motivo escrito.
 
-### B-967 · Las guías siguen con la ciudad como texto libre, y sin provincia · P2 — abierto con B-950
+### B-970 · Las guías no filtran por ciudad ni por provincia · P2 — abierto con B-967
+
+`/guia/librerias` filtra **solo por barrio** y `/guia/lugares` por barrio, tipo y
+qué incluye (`EJES_DE_LUGAR`). Con B-967 las dos entidades tienen provincia y
+ciudad, y fuera de CABA **no tienen barrio** —la cascada pide una de las dos— así
+que una librería de Mar del Plata **no se puede encontrar por lugar** en su
+propio directorio: aparece en la lista y en la búsqueda por texto, pero ningún
+chip la alcanza.
+
+Es la misma forma de B-966 una capa más abajo, y el arreglo también: la cascada
+en el riel de cada guía, con la misma `subdivisionDe` que ya usan el sitio, el
+panel y los cuatro formularios.
+
+**Por qué no entró en B-967**: la pregunta que el dueño contestó era sobre **la
+ficha** («¿necesita la provincia, o alcanza con la ciudad?» → «provincia y ciudad
+o barrio»), y eso es lo que se hizo. El riel de cada guía es otra superficie —el
+índice, la island y sus tests, ×2— y es aditiva: hoy no hay nada roto, hay un
+filtro que falta. Mientras el catálogo de las guías sea porteño no se nota; la
+primera ficha de afuera lo vuelve visible.
+
+Lo que hay que mirar al hacerlo: `construirIndiceDeLibrerias` arma los chips
+recorriendo los barrios **usados**, así que el mismo recorte vale para las otras
+dos; y el índice de cada guía es un archivo propio que solo baja quien abre esa
+sección, así que el argumento de peso de `TAXONOMIAS_FUERA_DEL_INDICE` no aplica.
+
+### B-967 · Las guías siguen con la ciudad como texto libre, y sin provincia — ✅ hecho (2026-09-16) · P2 — abierto con B-950
+
+> ✅ **Hecho el 2026-09-16.** Las dos entidades convertidas de punta a punta —tipo,
+> schema, `firestore.rules`, conversión form ⇄ documento, los **dos** formularios
+> de cada una (panel y público), la proyección, el `searchText`, la ficha y el
+> JSON-LD— así que la cascada es hoy la misma en las cuatro entidades.
+>
+> **La pregunta abierta la contestó el dueño**: «provincia y ciudad o barrio», o
+> sea la misma cascada de dos niveles que una sede. La ficha muestra la provincia
+> y el JSON-LD la emite como `addressRegion`.
+>
+> **Tres cosas que el ítem no preveía**, las tres escritas en D-710 § 8:
+> `ALIAS_DE_CABA` (el nudo de la migración: cuatro formas escritas de CABA que
+> colapsan al slug canónico, y «Buenos Aires» a secas deliberadamente afuera);
+> **`firestore.rules`**, cuyo `hasOnly` rechazaba el guardado sin `provincia`; y un
+> **bug vivo en la búsqueda** de las guías —el índice llevaba `villa-crespo` y
+> quien escribía «villa crespo» no encontraba nada— que se arregló indexando el
+> slug y su des-slug.
+>
+> Lo que **no** entró, y está anotado como **B-970**: el riel de cada guía sigue
+> filtrando solo por barrio, así que una ficha de afuera de CABA no se encuentra
+> por lugar en su propio directorio. Es aditivo, no roto.
 
 **Es el cuarto frente que B-950 nombra y el único que quedó sin hacer.** El ítem
 lo dice: «el mismo par vive en cuatro entidades: `sede` de una actividad, y
@@ -6875,7 +6921,17 @@ primer lugar donde el guardado toca la red.
 Del mismo lote que B-926, B-927 y B-928: apareció porque hay una segunda persona
 cargando, y un cartel que no dice qué hacer le cuesta a ella, no a nosotros.
 
-### B-927 · «Sede» es una palabra nuestra, y quien carga no la usa · P2 — pedido del dueño (2026-09-15)
+### B-927 · «Sede» es una palabra nuestra, y quien carga no la usa — ✅ hecho (2026-09-16) · P2 — pedido del dueño (2026-09-15)
+
+> ✅ **Hecho el 2026-09-16**, y es **solo el label**, que es como el dueño lo pidió
+> («es un cambio de label nomás»). El campo del editor de modalidades y la
+> etiqueta del historial dicen **«Lugar»**, y se barrieron los siete textos de
+> `src/lib/ayuda.ts` que hablaban de «la sede».
+>
+> `sede` sigue llamándose `sede` en el modelo, en la proyección pública, en el
+> evento de Calendar y en los documentos ya escritos — renombrarlo ahí es otra
+> cosa y no es esto, que es lo que el ítem ya decía. Los comentarios del código
+> que nombran el campo quedan como están, por lo mismo.
 
 El campo donde va el nombre del lugar se llama **«Sede»** en el editor de
 modalidades (`ModalidadesEditor.tsx`, `label="Sede"`) y en el historial

@@ -149,7 +149,7 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
             {filaPideSede(fila.modalidad) && fila.sede && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Campo
-                  label="Sede"
+                  label="Lugar"
                   htmlFor={campoId('sede-nombre')}
                   requerido
                   error={errorDe(ruta('sede.nombre'))}
