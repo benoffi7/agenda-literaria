@@ -6800,6 +6800,43 @@ evento normalizaban, y ninguno de los dos lo hacía. El historial se arregló en
 momento (era un bug de verdad: dejaba el documento internamente contradictorio);
 esto es la mitad que queda, con el motivo escrito.
 
+### B-973 · Una taxonomía nueva llega al código y no a producción, y nada lo dice · P1 — pasó con B-950 (2026-09-16)
+
+**El deploy de B-950 dejó producción inguardable durante unos minutos y todo
+estaba en verde.** `/opciones/provincia` y `/opciones/ciudad` no existían en la
+base: el desplegable de provincia salía vacío y el schema la exige, así que no se
+podía guardar ni una actividad ni una ficha de guía. Se arregló a mano sembrando
+los dos documentos (el procedimiento quedó en
+[`08-operacion.md`](08-operacion.md)).
+
+**Por qué nada lo vio, que es lo único que importa acá:** el emulador **sí** se
+siembra —`seed-emulador.mjs` lee el mismo `opciones-base.json`— y todo el gate
+corre contra el emulador. Los seis pasos, el build real, la suite entera: todos
+miraban un entorno donde la taxonomía existía. **La asimetría entre los dos
+entornos es el punto ciego**, y es de la misma familia que B-969 (el gate sembraba
+una sola geografía) pero peor, porque acá el entorno que falta es producción.
+
+Y el único script que siembra `/opciones/*` no ayuda: `preparar-produccion.mjs`
+solo crea lo que no existe —idempotente a propósito, para no pisar lo que alguien
+creó con «Otro»— y **pide un mail** porque su otra mitad da el claim `admin`, así
+que nadie lo corre de rutina después del primer setup.
+
+**Lo que hay que construir**, en orden de lo que más cubre por lo que cuesta:
+
+1. **Un paso del workflow que compare `CAMPOS_TAXONOMIA` contra lo que hay en
+   producción** y falle el deploy si falta alguno. Es la red que no existe hoy, y
+   es barata: una lectura de `/opciones/*` con el Admin SDK, que el job de reglas
+   ya tiene credenciales para hacer.
+2. **O un `--solo-opciones` en `preparar-produccion.mjs`**, para que el
+   procedimiento no sea un `node -e` pegado en la doc.
+
+Lo primero es lo que hace que el olvido no dependa de que alguien se acuerde, que
+es el criterio de `docs/05-patrones.md`. Lo segundo es comodidad.
+
+**No alcanza con «acordarse»**: el mismo olvido va a pasar con la taxonomía número
+dieciocho, y el síntoma —un desplegable vacío en un campo obligatorio— solo se ve
+entrando al panel, no en ningún chequeo.
+
 ### B-972 · Nada verifica que una provincia sea una provincia · P2 — de la auditoría de B-967 (2026-09-16)
 
 Los tres campos de la geografía se validan **por forma** y no por pertenencia: el

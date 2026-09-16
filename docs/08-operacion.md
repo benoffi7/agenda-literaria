@@ -496,6 +496,52 @@ El informe marca aparte cuántas quedan con `[]` — las virtuales y las que tie
 la ciudad sin cargar. **No es un error**: esas no son de ninguna ciudad y no las ve
 ningún publicador por ciudad. Es el caso que alguien va a venir a preguntar.
 
+## Sembrar una taxonomía NUEVA en producción (B-973)
+
+**Agregar un campo a `CAMPOS_TAXONOMIA` y a `opciones-base.json` no lo siembra en
+producción, y ningún paso del despliegue lo hace.** `preparar-produccion.mjs` es
+el único que siembra `/opciones/*`, y:
+
+- solo crea los documentos que **no existen** (es idempotente a propósito: no pisa
+  las opciones que alguien creó con «Otro»);
+- **pide un mail** como argumento, porque su otra mitad da el claim `admin`, así
+  que nadie lo corre de rutina.
+
+Resultado: el vocabulario nuevo llega al código y **no** a la base. Lo que se ve
+es un desplegable vacío — y si el campo es obligatorio, **no se puede guardar
+nada**.
+
+```bash
+# Solo los documentos que faltan, sin tocar claims:
+node -e "
+const fs=require('fs');
+const {initializeApp, applicationDefault}=require('firebase-admin/app');
+const {getFirestore}=require('firebase-admin/firestore');
+initializeApp({credential: applicationDefault(), projectId:'agenda-literaria'});
+const db=getFirestore();
+const base=JSON.parse(fs.readFileSync('src/lib/opciones-base.json','utf8'));
+(async()=>{
+  for (const campo of ['provincia','ciudad']) {   // ← los que agregaste
+    const ref=db.doc('opciones/'+campo);
+    if ((await ref.get()).exists) { console.log(campo,'— ya existía'); continue; }
+    await ref.set({ valores: base[campo] });
+    console.log(campo,'— sembrado con',base[campo].length,'valores');
+  }
+})();"
+```
+
+**El rebuild se dispara solo**: escribir en `/opciones/*` prende el flag del §8
+(`rebuildPorOpciones`), así que los chips del sitio aparecen en la corrida
+siguiente sin hacer nada más. Esa mitad sí está cubierta (trampa 8).
+
+> **Pasó de verdad con B-950**, y por eso está escrito. El deploy salió verde —los
+> seis pasos del gate, el build real contra el emulador, la suite entera— y producción
+> quedó con `/opciones/provincia` **vacío** y la provincia **obligatoria** en el
+> schema: el desplegable sin opciones y el formulario inguardable. Nada lo dijo,
+> porque el emulador **sí** se siembra (`seed-emulador.mjs` lee el mismo JSON) y
+> el gate corre contra el emulador. La asimetría entre los dos entornos es
+> exactamente el punto ciego. Queda como **B-973**.
+
 ## Sembrar la geografía de las sedes (B-950, D-710)
 
 **A diferencia del de arriba, este NO es un paso del despliegue.**
