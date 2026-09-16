@@ -87,6 +87,99 @@ describe('la entrada del índice recorta lo que el listado no usa (§3.1)', () =
     expect(json).not.toContain('"bio"');
   });
 
+  /**
+   * **El juego de claves de una entrada, fijado** — lo abrió B-966 al agregar
+   * `zonas`, y el motivo es el que la auditoría de B-950 dejó claro: **una clave
+   * nueva en el `events.json` es una decisión**, porque ese archivo lo baja toda
+   * persona que abre la agenda y lo que entra ahí es público para siempre.
+   *
+   * Hasta acá nada lo fijaba. El caso de arriba afirma la **ausencia** de los
+   * nueve campos del detalle, que es la mitad que importa para la privacidad;
+   * esto afirma la otra, que es la del peso y la del «¿alguien decidió esto?».
+   *
+   * Agregar una clave pone este caso en rojo. La respuesta no es actualizar la
+   * lista sin mirar: es decidir si la clave tiene que viajar, y recién ahí
+   * escribirla acá con su motivo.
+   */
+  it('una entrada del índice lleva exactamente estas claves, y ninguna más', () => {
+    expect(Object.keys(entradaDeIndice(publica())).sort()).toEqual([
+      'arancel',
+      'creadoEn',
+      'destacado',
+      'esCiclo',
+      'id',
+      'imagenUrl',
+      'inscripcion',
+      'modalidad',
+      'modalidades',
+      'online',
+      'organizador',
+      'resumen',
+      'searchText',
+      'sede',
+      'sesiones',
+      'slug',
+      'tags',
+      'tallerista',
+      'tipo',
+      'titulo',
+      // B-966 — el lugar de **todas** las filas, para los tres ejes de la
+      // cascada. Ver su docblock: una clave y no tres, porque este archivo lo
+      // baja todo el mundo.
+      'zonas',
+    ]);
+  });
+
+  /**
+   * **B-966 — `zonas` sale de TODAS las filas, no de la sede derivada.**
+   *
+   * Es el precedente de `modalidades[]` aplicado al lugar: el escalar escondía la
+   * actividad de los filtros que la describen, y acá el escalar es `sede`, «la
+   * primera fila que tenga una» (D-130).
+   *
+   * MUTACIÓN PROBADA: derivar `zonas` de `a.sede` en vez de `a.modalidades` deja
+   * los dos primeros `expect` en rojo.
+   */
+  it('`zonas` junta el lugar de todas las filas, sin repetir', () => {
+    const dos = actividadCentinela();
+    const primera = dos.modalidades[0]!;
+    dos.modalidades = [
+      { ...primera, sede: { ...primera.sede!, provincia: 'caba', barrio: 'boedo', ciudad: 'caba' } },
+      {
+        ...primera,
+        id: 'mod_segunda',
+        sede: {
+          ...primera.sede!,
+          provincia: 'buenos-aires',
+          barrio: '',
+          ciudad: 'la-plata',
+        },
+      },
+    ];
+    const zonas = entradaDeIndice(toPublic(dos, 'act_centinela')).zonas;
+    expect(zonas.ciudad).toEqual(['caba', 'la-plata']);
+    expect(zonas.provincia).toEqual(['caba', 'buenos-aires']);
+    // Los vacíos no entran: un `''` en la lista matchearía contra un filtro vacío.
+    expect(zonas.barrio).toEqual(['boedo']);
+  });
+
+  /**
+   * El default de lectura de un documento sin la lista de modalidades (D-26).
+   * `toPublic` hace `a.modalidades ?? []`, así que sin el respaldo la actividad
+   * dejaría de aparecer bajo **cualquier** filtro de lugar — la regresión al
+   * revés de la que este cambio vino a arreglar.
+   */
+  it('y cae a la sede derivada cuando no hay ninguna fila', () => {
+    const vieja = actividadCentinela();
+    vieja.modalidades = [];
+    vieja.sede = { ...vieja.sede!, provincia: 'caba', barrio: 'boedo', ciudad: 'caba' };
+    expect(entradaDeIndice(toPublic(vieja, 'act_centinela')).zonas).toEqual({
+      provincia: ['caba'],
+      barrio: ['boedo'],
+      ciudad: ['caba'],
+    });
+  });
+
   it('el mail de inscripción no viaja en el índice, aunque sea público en el detalle', () => {
     /*
      * La razón número uno del recorte, y no es privacidad: `inscripcion.destino`

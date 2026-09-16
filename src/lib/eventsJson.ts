@@ -74,6 +74,16 @@ export interface SedeDeIndice {
   ciudad: string;
 }
 
+/**
+ * Los slugs de lugar de **todas** las filas de una actividad, sin repetir y en el
+ * orden en que aparecen — B-966. Ver `EntradaDeIndice.zonas`.
+ */
+export interface ZonasDeIndice {
+  provincia: string[];
+  barrio: string[];
+  ciudad: string[];
+}
+
 export interface EntradaDeIndice {
   id: string;
   slug: string;
@@ -101,6 +111,29 @@ export interface EntradaDeIndice {
    */
   modalidades: string[];
   sede: SedeDeIndice | null;
+  /**
+   * **Toda la geografía de la actividad, para los filtros** — B-966.
+   *
+   * `sede` es la **derivada**, «la primera fila que tenga una» (D-130), y eso
+   * alcanza para lo que la tarjeta **muestra** —un renglón dice un lugar— pero no
+   * para lo que el riel **filtra**: una actividad presencial en dos ciudades se
+   * filtraba por una sola y desaparecía del filtro de la otra.
+   *
+   * No lo introdujo B-950: `barrio` tenía exactamente este agujero desde B-224.
+   * Lo que cambió es que pasaron a ser tres ejes con el mismo problema, y que
+   * «la misma cursada en dos sedes» es justo el caso que las modalidades
+   * múltiples vinieron a habilitar.
+   *
+   * **Es el precedente de `modalidades[]`, dos campos más arriba**: el escalar
+   * escondía la actividad de los dos filtros que la describen mejor, así que el
+   * índice lleva además la lista. Acá es lo mismo con el lugar.
+   *
+   * **Una clave y no tres**, a propósito: el `events.json` lo baja **toda**
+   * persona que abre la agenda, y tres claves de primer nivel por actividad
+   * pesan más que una con tres listas adentro. Los valores se repiten muchísimo
+   * entre actividades, así que comprime casi a nada.
+   */
+  zonas: ZonasDeIndice;
   /** Solo el slug del arancel: las notas («2 cuotas») son del detalle. */
   /*
    * B-114 — el índice lleva **el monto además del tipo** porque la tarjeta del
@@ -350,6 +383,40 @@ const sesionesDeIndice = (a: ActividadPublica): SesionDeIndice[] =>
     .map((s) => ({ inicio: s.inicio, fin: s.fin, cancelada: s.cancelada }))
     .sort((x, y) => x.inicio.localeCompare(y.inicio));
 
+/**
+ * Los slugs de lugar de **todas** las sedes de la actividad — B-966.
+ *
+ * Se deriva de `modalidades[]` y no de la `sede` derivada, que es todo el punto.
+ * Las filas sin sede (virtuales) no aportan nada, y los vacíos no entran: un `''`
+ * en la lista haría que `pasaEje` matcheara contra un filtro vacío.
+ *
+ * Los valores ya vienen normalizados de `sedePublica`, así que acá no se vuelve a
+ * slugificar — si se hiciera, sería una segunda derivación de lo mismo, que es la
+ * clase de B-88 que este cambio justamente vino a cerrar en el índice.
+ */
+const zonasDe = (a: ActividadPublica): ZonasDeIndice => {
+  const filas = a.modalidades.map((m) => m.sede).filter((sede) => sede !== null);
+  /*
+   * **El default de lectura de un documento sin la lista de modalidades** (D-26).
+   * `toPublic` hace `a.modalidades ?? []`, así que un documento anterior a B-224
+   * llega acá con la lista vacía y su `sede` derivada puesta: sin este `?? `, la
+   * actividad dejaría de aparecer bajo **cualquier** filtro de lugar, que es
+   * justo la regresión que este cambio vino a evitar en la otra dirección.
+   *
+   * Es el mismo patrón, con el mismo motivo, que `geografiaDeTodasLasSedes` en
+   * `filtrosActividades.ts` (el lado del panel).
+   */
+  const sedes = filas.length > 0 ? filas : a.sede ? [a.sede] : [];
+  const unicos = (saca: (s: NonNullable<ActividadPublica['modalidades'][number]['sede']>) => string) => [
+    ...new Set(sedes.map(saca).filter(Boolean)),
+  ];
+  return {
+    provincia: unicos((s) => s.provincia),
+    barrio: unicos((s) => s.barrio),
+    ciudad: unicos((s) => s.ciudad),
+  };
+};
+
 /** Una `ActividadPublica` recortada a lo que el listado necesita. */
 export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
   id: a.id,
@@ -370,6 +437,7 @@ export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
         ciudad: a.sede.ciudad,
       }
     : null,
+  zonas: zonasDe(a),
   arancel: { tipo: a.arancel.tipo, monto: a.arancel.monto ?? null },
   organizador: a.organizador.nombre,
   tallerista: a.tallerista?.nombre ?? null,

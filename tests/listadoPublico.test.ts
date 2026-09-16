@@ -714,6 +714,50 @@ describe('el eje de arancel: dónde está y en qué orden — B-271, D-151', () 
     ).toEqual(['mar-del-plata']);
   });
 
+  /**
+   * **B-966** — los tres ejes de lugar cruzan contra **todas** las sedes.
+   *
+   * `e.sede` es la derivada, «la primera fila que tenga una» (D-130): con ella,
+   * una actividad presencial en dos ciudades se filtraba por una sola y
+   * desaparecía del filtro de la otra. No lo introdujo B-950 —`barrio` lo tenía
+   * desde B-224— pero pasaron a ser tres ejes con el mismo agujero.
+   *
+   * La entrada se arma sobre `zonas` y no sobre dos sedes de verdad porque lo que
+   * este caso mide es `valoresDe`, que es puro y solo mira la entrada; que
+   * `zonas` se derive bien de las filas lo mide `tests/eventsJson.test.ts`.
+   *
+   * MUTACIÓN PROBADA: volver los tres `case` a `e.sede?.…` deja los tres
+   * primeros `expect` en rojo.
+   */
+  it('los ejes de lugar encuentran la actividad por su SEGUNDA sede', () => {
+    const gira = {
+      ...entradaDePrueba({ slug: 'gira' }),
+      zonas: {
+        provincia: ['caba', 'buenos-aires'],
+        barrio: ['boedo'],
+        ciudad: ['caba', 'la-plata'],
+      },
+    };
+    // Por la segunda, que la derivada no ve.
+    expect(valoresDe(gira, 'ciudad')).toContain('la-plata');
+    expect(valoresDe(gira, 'provincia')).toContain('buenos-aires');
+    // Y por la primera, que es la que ya andaba: el arreglo suma, no reemplaza.
+    expect(valoresDe(gira, 'barrio')).toEqual(['boedo']);
+
+    // Y lo mismo por el camino que usa la pantalla: el filtro de verdad.
+    const conCiudad = {
+      ...filtrosVacios(),
+      valores: { ...filtrosVacios().valores, ciudad: ['la-plata'] },
+    };
+    expect(filtrarPublico([gira], conCiudad, AHORA).map((e) => e.slug)).toEqual(['gira']);
+    // Control negativo: un valor que ninguna sede tiene sigue sin matchear.
+    const conOtra = {
+      ...filtrosVacios(),
+      valores: { ...filtrosVacios().valores, ciudad: ['cordoba'] },
+    };
+    expect(filtrarPublico([gira], conOtra, AHORA)).toEqual([]);
+  });
+
   it('el arancel es el segundo eje, y el grupo de «dónde» queda entero', () => {
     /*
      * `Buscador` recorre `EJES` para pintar el riel, así que este array **es** el

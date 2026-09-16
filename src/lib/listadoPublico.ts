@@ -41,7 +41,7 @@ import {
   mesDesplazado,
   nombreDeMes,
 } from '@/lib/fechasPublicas';
-import { provinciaDeSede, subdivisionDe } from '@/lib/geografia.mjs';
+import { subdivisionDe } from '@/lib/geografia.mjs';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
@@ -373,19 +373,19 @@ export const valoresDe = (e: EntradaDeIndice, eje: Eje): string[] => {
     case 'arancel':
       return e.arancel.tipo ? [e.arancel.tipo] : [];
     /*
-     * Los tres de la geografía salen de la sede **derivada** (`e.sede`), que es
-     * «la primera fila que tenga sede» (D-130). Una actividad presencial en dos
-     * ciudades se filtra hoy por una sola — es una limitación que `barrio` ya
-     * tenía antes de B-950 y que hereda la ciudad, no una que este cambio
-     * introduzca. Está anotada en B-966: el arreglo es que el índice lleve la
-     * geografía de todas las filas, como ya lleva `modalidades[]`.
+     * **Los tres de la geografía salen de TODAS las filas** (`e.zonas`), no de la
+     * sede derivada — B-966.
+     *
+     * `e.sede` es «la primera fila que tenga sede» (D-130), y alcanza para lo que
+     * la tarjeta **muestra**; para lo que el riel **filtra** no: una actividad
+     * presencial en dos ciudades se filtraba por una sola y desaparecía del
+     * filtro de la otra. Es el mismo criterio con el que `modalidad` mira
+     * `e.modalidades` y no el escalar, tres `case` más arriba.
      */
     case 'provincia':
-      return provinciaDeSede(e.sede) ? [provinciaDeSede(e.sede)] : [];
     case 'barrio':
-      return e.sede?.barrio ? [e.sede.barrio] : [];
     case 'ciudad':
-      return e.sede?.ciudad ? [e.sede.ciudad] : [];
+      return e.zonas[eje];
     case 'tag':
       return e.tags;
   }

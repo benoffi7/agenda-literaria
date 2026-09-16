@@ -87,10 +87,26 @@
   `CLASES_DE_HUB`); y `conProvincia` **borraba el barrio** también al pasar de una
   provincia a otra que no fuera CABA.
 
-  Quedaron anotados **B-968** (el evento de Calendar no normaliza: `functions/` no
-  puede importar hacia arriba) y **B-969** (el build contra el emulador siembra
-  una sola actividad y es de CABA, así que el barrido sobre el `dist/` no ejercita
-  nada de esto).
+  Quedó anotado **B-968** (el evento de Calendar no normaliza: `functions/` no
+  puede importar hacia arriba). Los otros dos se cerraron en el mismo empujón:
+
+  **B-969 — el build real ahora ejercita la mitad no-CABA.** El gate sembraba una
+  sola geografía, así que el paso 9 —el único chequeo que mira el HTML realmente
+  emitido— no probaba nada de la cascada de afuera de CABA ni ninguna página
+  `/ciudad/*`. Ahora siembra una segunda actividad publicada de otra provincia y
+  verifica que el índice lleve la provincia, que la ficha diga la ciudad y la
+  provincia con su etiqueta, y que el hub se escriba y se enlace. **La mutación
+  está probada contra el build**: sacarle `provincia` a `entradaDeIndice` lo deja
+  en rojo — o sea que el bug que se escapó a los unitarios ya tiene red donde
+  importa.
+
+  **B-966 — los filtros de lugar del sitio miraban una sola sede.** El índice
+  lleva ahora `zonas`, la geografía de **todas** las filas, con el mismo
+  precedente que `modalidades[]`: una actividad presencial en dos ciudades
+  aparece bajo las dos. Una sola clave y no tres, porque este archivo lo baja
+  toda persona que abre la agenda. Y quedó fijado el **juego de claves del
+  índice**, que no lo fijaba nada: agregar una ahora pone un caso en rojo, que es
+  donde alguien tiene que decidir si esa clave viaja.
 
   Falta el cuarto frente que B-950 nombra: las guías (librerías y lugares) siguen
   con la ciudad como texto libre — **B-967**, con su propia migración porque su

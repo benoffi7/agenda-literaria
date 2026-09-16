@@ -998,6 +998,13 @@ fuera a todo CABA del alcance de cualquier publicador, y el eje del listado, el
 banner de B-961 y el hub de ciudad dejarían de verla. Que no se **muestre** es
 otra cosa, y vive en `piezasDeLugar()`.
 
+**El índice lleva la geografía de todas las filas, no la de la sede derivada**
+(B-966). `EntradaDeIndice.zonas` es `{ provincia, barrio, ciudad }`, cada una la
+lista de slugs de **todas** las modalidades sin repetir. `sede` sigue siendo la
+derivada y es lo que la tarjeta **muestra** —un renglón dice un lugar—; `zonas` es
+lo que el riel **filtra**, porque con la derivada una actividad presencial en dos
+ciudades se filtraba por una sola. Es el mismo precedente que `modalidades[]`.
+
 **Los documentos anteriores** no tienen `provincia` y guardan la ciudad como se
 tipeó. Se leen con `geografiaNormalizada()`, que es idempotente (D-26): deriva la
 provincia cuando la ciudad es CABA y slugifica la ciudad. Por eso

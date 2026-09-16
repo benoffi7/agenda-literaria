@@ -121,6 +121,41 @@ if (!/^(127\.0\.0\.1|localhost|\[::1\])/.test(host)) {
  */
 const PREFIJO = 'zz-gate-verificar-todo-';
 const ID_PUBLICADA = `${PREFIJO}publicada`;
+/*
+ * **La publicada de afuera de CABA** — B-969, abierto por el `auditor-privacidad`
+ * sobre B-950.
+ *
+ * Hasta acá el gate sembraba una sola geografía —`ciudad: 'CABA'`, sin
+ * `provincia`—, así que el paso 9 (el único chequeo que mira el HTML realmente
+ * emitido) **nunca ejercitaba** la mitad no-CABA de la cascada ni ninguna página
+ * `/ciudad/*`. Y esa mitad es la mitad del pedido de B-950.
+ *
+ * No es hipotético: el bug que se escapó a los unitarios fue exactamente de esa
+ * forma —`SedeDeIndice` sin `provincia`, o sea el eje muerto para todo lo que no
+ * fuera CABA— y ningún test lo vio porque todos le pasaban la otra forma del
+ * mismo dato. Un build real con una sede de afuera lo habría mostrado.
+ */
+const ID_AFUERA = `${PREFIJO}afuera`;
+const SLUG_AFUERA = `${PREFIJO}afuera`;
+/**
+ * El slug de ciudad del gate, y **por qué no es `mar-del-plata`**.
+ *
+ * Tiene que ser un valor que no pueda existir en el emulador de quien corre
+ * esto: el gate siembra este slug en `/opciones/ciudad` para que el hub se emita,
+ * y si coincidiera con una ciudad real, la restauración de abajo —que devuelve
+ * `valores` a como estaba— sería indistinguible de borrarle un dato suyo.
+ */
+const CIUDAD_DEL_GATE = `${PREFIJO}ciudad`;
+const ETIQUETA_CIUDAD_DEL_GATE = 'Ciudad del gate';
+/**
+ * La provincia **no se siembra** en `/opciones/provincia`, y es a propósito: sin
+ * el documento, `etiquetaDe` cae a `desSlug`, que sobre `buenos-aires` devuelve
+ * «Buenos Aires» — o sea la etiqueta correcta sin tocar una taxonomía que el
+ * emulador de quien trabaja sí tiene poblada de verdad. Es el mismo criterio con
+ * el que el gate no siembra `/opciones/incluye-actividad`.
+ */
+const PROVINCIA_DEL_GATE = 'buenos-aires';
+const ETIQUETA_PROVINCIA_DEL_GATE = 'Buenos Aires';
 const ID_BORRADOR = `${PREFIJO}borrador`;
 /*
  * B-110 — las dos canceladas. La primera **estuvo publicada** (conserva el
@@ -756,14 +791,22 @@ const CENTINELA_DE_LUGARES = ['lugarDescripcion', 'lugarDireccion'];
  * es el párrafo de **D-500** —«las páginas que pintan la tarjeta del listado: la
  * de mes, los hubs y `/pasadas`»— hecho mecánico.
  *
- * **De esta lista, la semilla de este gate produce dos:** `index.html` y
- * `online/`. Las otras están por adelantado y no por las dudas — la tarjeta es
- * la misma productora en todas—, y no aparecen por motivos que son del fixture
- * y no del sitio: las páginas de mes piden tres actividades
- * (`MINIMO_DE_ACTIVIDADES`) y acá se siembran dos publicadas, los hubs de
- * taxonomía piden que el slug esté en `/opciones/*` y el gate no lo siembra, y
+ * **De esta lista, la semilla de este gate produce tres:** `index.html`,
+ * `online/` y —desde B-969— `ciudad/`. Las otras están por adelantado y no por
+ * las dudas — la tarjeta es la misma productora en todas—, y no aparecen por
+ * motivos que son del fixture y no del sitio: las páginas de mes piden tres
+ * actividades (`MINIMO_DE_ACTIVIDADES`), los hubs de `tipo` y `barrio` piden que
+ * el slug esté en `/opciones/*` y el gate **solo siembra el de ciudad**, y
  * `/pasadas` pide una actividad que ya pasó. Un build de verdad las tiene todas,
  * y ahí es donde una omisión saldría en rojo por el motivo equivocado.
+ *
+ * **Por qué `ciudad` sí y las otras dos no** (B-969): sembrar `/opciones/*` es
+ * tocar un documento de id fijo en el emulador de quien trabaja, así que hay que
+ * guardarlo y devolverlo (`sembrarCiudadDelGate`/`restaurarCiudadDelGate`). Se
+ * paga ese costo una vez, por la clase que no tenía **ninguna** cobertura sobre
+ * el artefacto real: la geografía de afuera de CABA. Para `tipo` y `barrio` no
+ * hace falta — la clase de hub ya está barrida por la de ciudad, que comparte
+ * productora.
  */
 const PAGINAS_CON_TARJETA = [
   'index.html', // la home
@@ -771,6 +814,7 @@ const PAGINAS_CON_TARJETA = [
   'pasadas/', // D-500
   'tipo/', // los hubs de taxonomía
   'barrio/',
+  'ciudad/', // B-951 — la quinta clase
   'online/',
   'gratis/',
 ];
@@ -851,7 +895,65 @@ const TRES_IMAGENES = [
 initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria' });
 const db = getFirestore();
 
+/**
+ * **`/opciones/ciudad`: lo que estaba antes, para devolverlo después** — B-969.
+ *
+ * Es el único documento de id **fijo** que este gate toca, así que no lo alcanza
+ * el borrado por prefijo de `limpiar()`: hay que guardar lo que había y
+ * escribirlo de vuelta. La alternativa era no sembrarlo, y entonces no se emite
+ * ninguna página `/ciudad/*` —un hub solo existe para las opciones **aprobadas**
+ * con actividad publicada— que es justo lo que este gate vino a cubrir.
+ *
+ * `null` significa «el documento no existía», que es distinto de «existía
+ * vacío»: en ese caso la restauración lo borra en vez de dejarlo con `valores: []`.
+ */
+let opcionesCiudadPrevias;
+
+const sembrarCiudadDelGate = async () => {
+  const ref = db.doc('opciones/ciudad');
+  const snap = await ref.get();
+  /*
+   * Se guarda el **documento entero** y no solo `valores`, aunque hoy sea lo
+   * único que tiene: `ref.set()` reemplaza, así que restaurar solo esa clave
+   * borraría en silencio cualquier campo que la taxonomía gane mañana. Es más
+   * barato que acordarse.
+   */
+  opcionesCiudadPrevias = snap.exists ? (snap.data() ?? {}) : null;
+  await ref.set({
+    ...(opcionesCiudadPrevias ?? {}),
+    valores: [
+      ...(opcionesCiudadPrevias?.valores ?? []),
+      {
+        slug: CIUDAD_DEL_GATE,
+        label: ETIQUETA_CIUDAD_DEL_GATE,
+        orden: 99,
+        fijo: false,
+        usos: 1,
+        // **Aprobada a propósito**: es la condición que decide si el hub se
+        // emite (§4.3). Con `false` esta siembra no probaría nada y el paso 9
+        // quedaría verde buscando una página que nunca se genera.
+        aprobada: true,
+      },
+    ],
+  });
+};
+
+const restaurarCiudadDelGate = async () => {
+  // `undefined` es «nunca se sembró» (el gate falló antes): no hay nada que
+  // devolver, y escribir igual pisaría el documento de quien está trabajando.
+  if (opcionesCiudadPrevias === undefined) return;
+  const ref = db.doc('opciones/ciudad');
+  if (opcionesCiudadPrevias === null) await ref.delete();
+  else await ref.set(opcionesCiudadPrevias);
+  opcionesCiudadPrevias = undefined;
+};
+
 const limpiar = async () => {
+  // B-969 — va **primero** y fuera del `Promise.all` de abajo: es un documento de
+  // id fijo y no entra al borrado por prefijo. Una limpieza que se olvida de él
+  // le deja al emulador de quien trabaja una ciudad que no existe, en la
+  // taxonomía que alimenta los desplegables de todo el panel.
+  await restaurarCiudadDelGate();
   // Las dos colecciones que este gate siembra. `/usuarios` entró con B-888 y va
   // acá y no en un segundo helper: el `finally` tiene que dejar el emulador como
   // lo encontró, y una limpieza que se olvida de una colección es la clase de
@@ -918,6 +1020,29 @@ try {
   await db
     .doc(`actividades/${ID_CANCELADA_NUNCA}`)
     .set(actividadDePrueba(SLUG_CANCELADA_NUNCA, 'cancelado'));
+
+  /*
+   * B-969 — **la publicada de afuera de CABA**, y con ella la única página
+   * `/ciudad/*` del artefacto.
+   *
+   * Se le limpia el barrio a propósito: fuera de CABA no se pide, y dejarlo
+   * sembrado haría que `piezasDeLugar` emitiera tres piezas en vez de dos y que
+   * los asertos de abajo pasaran por el motivo equivocado.
+   */
+  await sembrarCiudadDelGate();
+  const afuera = actividadDePrueba(SLUG_AFUERA, 'publicado');
+  afuera.titulo = 'Gate mecanico — afuera de CABA';
+  const geografiaDeAfuera = {
+    provincia: PROVINCIA_DEL_GATE,
+    barrio: '',
+    ciudad: CIUDAD_DEL_GATE,
+  };
+  afuera.modalidades = afuera.modalidades.map((m) =>
+    m.sede ? { ...m, sede: { ...m.sede, ...geografiaDeAfuera } } : m,
+  );
+  afuera.sede = { ...afuera.sede, ...geografiaDeAfuera };
+  afuera.ciudades = [CIUDAD_DEL_GATE];
+  await db.doc(`actividades/${ID_AFUERA}`).set(afuera);
 
   // B-296 — la publicada con tres imágenes de proporciones distintas.
   const galeria = actividadDePrueba(SLUG_GALERIA, 'publicado');
@@ -1207,6 +1332,40 @@ try {
       salida = 1;
     }
 
+    /*
+     * 1b · **B-969 — la mitad no-CABA, sobre el artefacto de verdad.**
+     *
+     * Tres afirmaciones, y la primera es la que el bug de B-950 habría puesto en
+     * rojo: `EntradaDeIndice.sede` tiene que llevar la **provincia**. Sin ella el
+     * único chip posible es `caba`, y como la cascada abre el eje `ciudad` solo
+     * con una provincia no-CABA elegida, el filtro de ciudad del sitio queda
+     * inalcanzable — con la suite entera en verde, porque los unitarios le pasan
+     * la otra forma del mismo dato.
+     */
+    const entradaDeAfuera = (indice.actividades ?? []).find((a) => a.slug === SLUG_AFUERA);
+    if (!entradaDeAfuera) {
+      fallo(
+        `el events.json no trae la actividad de afuera de CABA (${SLUG_AFUERA}).\n` +
+          '  Es la que cubre la mitad no-CABA de la cascada de B-950.',
+      );
+      salida = 1;
+    } else if (entradaDeAfuera.sede?.provincia !== PROVINCIA_DEL_GATE) {
+      fallo(
+        'la entrada del índice salió SIN provincia: ' +
+          `\`sede.provincia\` es ${JSON.stringify(entradaDeAfuera.sede?.provincia)}.\n` +
+          '  Sin ese campo, `provinciaDeSede` cae al respaldo «¿la ciudad es CABA?»: el\n' +
+          '  único chip posible pasa a ser `caba` y el eje `ciudad` del sitio queda\n' +
+          '  inalcanzable. Es el bug que B-969 vino a cubrir (B-950, D-710).',
+      );
+      salida = 1;
+    } else if (entradaDeAfuera.sede?.ciudad !== CIUDAD_DEL_GATE) {
+      fallo(
+        'la entrada del índice salió sin la ciudad esperada: ' +
+          `${JSON.stringify(entradaDeAfuera.sede?.ciudad)}.`,
+      );
+      salida = 1;
+    }
+
     // 2b · B-110 — una cancelada tiene página y **no** entra al índice (§7.3):
     // no es algo a lo que se pueda ir, existe solo para quien tiene el link.
     const canceladasEnElIndice = [SLUG_CANCELADA, SLUG_CANCELADA_NUNCA].filter((s) =>
@@ -1385,6 +1544,70 @@ try {
         return null;
       }
     };
+
+    /*
+     * **B-969 — la quinta clase de hub y el renglón de afuera, en el HTML de
+     * verdad.**
+     *
+     * Las dos cosas que ningún unitario puede mirar: que Astro **escriba** la
+     * página (`caminosDeCiudad` devuelve rutas, Astro las convierte en archivos)
+     * y que la plantilla la pinte. Es el mismo argumento con el que el gate mira
+     * la página de una cancelada.
+     */
+    const htmlHubDeCiudad = await leerDist(`ciudad/${CIUDAD_DEL_GATE}/index.html`);
+    if (htmlHubDeCiudad === null) {
+      fallo(
+        `no se generó dist/ciudad/${CIUDAD_DEL_GATE}/index.html.\n` +
+          '  Es la quinta clase de hub (B-951). Se emite para las opciones **aprobadas**\n' +
+          '  de /opciones/ciudad que tengan alguna actividad publicada: si falta, o el\n' +
+          '  hub dejó de emitirse, o la siembra de la opción no quedó aprobada.',
+      );
+      salida = 1;
+    } else if (!htmlHubDeCiudad.includes(ETIQUETA_CIUDAD_DEL_GATE)) {
+      fallo(
+        `el hub /ciudad/${CIUDAD_DEL_GATE}/ no dice su etiqueta «${ETIQUETA_CIUDAD_DEL_GATE}».\n` +
+          '  El título de un hub lleva la etiqueta resuelta, nunca el slug (§4.1, trampa 10).',
+      );
+      salida = 1;
+    }
+
+    /*
+     * Y el renglón «Dónde» de la ficha de afuera: la ciudad con su **etiqueta**
+     * y la provincia detrás. Es la rama de `piezasDeLugar` que en CABA no corre,
+     * y la que publicaba el slug crudo antes de B-950.
+     */
+    const htmlAfuera = await htmlDe(SLUG_AFUERA);
+    if (htmlAfuera === null) {
+      fallo(`no se generó dist/actividad/${SLUG_AFUERA}/index.html.`);
+      salida = 1;
+    } else {
+      if (!htmlAfuera.includes(ETIQUETA_CIUDAD_DEL_GATE)) {
+        fallo(
+          `la ficha de ${SLUG_AFUERA} no dice la ciudad «${ETIQUETA_CIUDAD_DEL_GATE}».\n` +
+            '  El renglón «Dónde» de una sede de afuera de CABA dice la ciudad y la\n' +
+            '  provincia (B-951, D-710).',
+        );
+        salida = 1;
+      }
+      if (!htmlAfuera.includes(ETIQUETA_PROVINCIA_DEL_GATE)) {
+        fallo(
+          `la ficha de ${SLUG_AFUERA} no dice la provincia «${ETIQUETA_PROVINCIA_DEL_GATE}».`,
+        );
+        salida = 1;
+      }
+      /*
+       * Y el enlace al hub, que es la otra mitad de B-951: la pieza lleva la
+       * etiqueta como texto **y** el slug adentro del `href`. Solo se pinta si el
+       * hub se emitió, así que este aserto ata las dos páginas.
+       */
+      if (!htmlAfuera.includes(`/ciudad/${CIUDAD_DEL_GATE}/`)) {
+        fallo(
+          `la ficha de ${SLUG_AFUERA} no enlaza su hub /ciudad/${CIUDAD_DEL_GATE}/.\n` +
+            '  El «Dónde» enlaza la ciudad a su hub cuando ese hub existe (B-951).',
+        );
+        salida = 1;
+      }
+    }
 
     const robots = await leerDist('robots.txt');
     const sitemap = await leerDist('sitemap.xml');
@@ -2650,6 +2873,9 @@ try {
           'barra final, sin el borrador ni /admin, con lastmod en la publicada y sin él en ' +
           'la home (B-112); el robots.txt bloquea el panel; y el robots, el sitemap y la ' +
           'canónica coinciden en un solo origen (B-109).\n' +
+          '  ✓ la de afuera de CABA salió con su provincia en el índice, su ficha diciendo ' +
+          'la ciudad y la provincia con etiqueta, y su hub /ciudad/* emitido y enlazado ' +
+          '(B-950, B-951, B-969).\n' +
           '  ✓ la actividad con tres imágenes pinta las tres, con la portada marcada arriba, ' +
           'un solo `eager`, un solo texto alternativo y tres cajas de proporción distinta; y ' +
           'la de una sola imagen sigue pintando una, sin sección de galería (B-296).\n' +

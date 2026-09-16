@@ -6645,7 +6645,25 @@ derivarse de lo publicado —o si se le agrega un elemento que no sea una ciudad
 `modalidades[]`— el ancla por valor vuelve sola. Mientras tanto está escrito en el
 `describe` del barrido, que es donde alguien lo va a leer.
 
-### B-966 · Los tres filtros de geografía del sitio miran una sola sede · P2 — abierto con B-950
+### B-966 · Los tres filtros de geografía del sitio miran una sola sede — ✅ hecho (2026-09-16) · P2 — abierto con B-950
+
+> ✅ **Hecho el 2026-09-16**, y con el arreglo que el propio ítem proponía: el
+> índice lleva ahora `zonas`, la geografía de **todas** las filas, igual que ya
+> llevaba `modalidades[]` por el mismo motivo. `valoresDe` cruza contra eso y no
+> contra la sede derivada, así que una actividad presencial en dos ciudades
+> aparece bajo las dos.
+>
+> **Una sola clave y no tres**, que es lo que el ítem pedía mirar: el
+> `events.json` lo baja toda persona que abre la agenda. Los valores se repiten
+> muchísimo entre actividades, así que comprime casi a nada.
+>
+> Lleva su **default de lectura** (D-26): un documento sin la lista de modalidades
+> cae a la sede derivada. Sin él, la actividad dejaría de aparecer bajo cualquier
+> filtro de lugar — la regresión al revés.
+>
+> Y de paso quedó fijado **el juego de claves del índice**, que no lo fijaba nada:
+> agregar una clave al archivo que baja todo el mundo ahora pone un caso en rojo,
+> que es donde alguien tiene que decidir si esa clave viaja.
 
 `valoresDe` (`src/lib/listadoPublico.ts`) resuelve `provincia`, `barrio` y
 `ciudad` contra **`e.sede`**, que es la sede derivada: «la primera fila que tenga
@@ -6673,7 +6691,24 @@ a pedir que la clave nueva se declare, que es lo correcto.
 Es hermano de la mitad del panel, que **sí** quedó resuelta en B-952: ahí el
 documento ya tiene `ciudades[]` en la raíz y el filtro cruza contra esa lista.
 
-### B-969 · El build contra el emulador siembra una sola actividad, y es de CABA · P3 — de la auditoría de B-950 (2026-09-16)
+### B-969 · El build contra el emulador siembra una sola actividad, y es de CABA — ✅ hecho (2026-09-16) · P3 — de la auditoría de B-950 (2026-09-16)
+
+> ✅ **Hecho el 2026-09-16.** El gate siembra una segunda actividad publicada, de
+> afuera de CABA, y con ella el paso 9 pasó a verificar tres cosas que ningún
+> unitario puede: que la entrada del índice **lleva la provincia**, que la ficha
+> dice la ciudad y la provincia **con su etiqueta**, y que la página
+> `/ciudad/{slug}` **se escribe y se enlaza** desde el «Dónde».
+>
+> **La mutación está probada contra el build real**: sacarle `provincia` al
+> literal de `entradaDeIndice` deja el gate en rojo con el motivo escrito. O sea
+> que el bug que se escapó a los unitarios ahora tiene red donde importa.
+>
+> Costó sembrar `/opciones/ciudad`, que es el primer documento de **id fijo** que
+> este gate toca: no lo alcanza el borrado por prefijo, así que se guarda el
+> documento entero y se devuelve tal cual en la limpieza. Las dos ramas están
+> verificadas a mano contra el emulador — el documento que no existía queda
+> borrado, y el que existía vuelve idéntico, con los campos que no son `valores`
+> incluidos.
 
 `scripts/build-contra-emulador.mjs` siembra una actividad con `ciudad: 'CABA'` y
 sin `provincia`, así que el paso 9 —el barrido sobre el `dist/` de verdad, que es
