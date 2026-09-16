@@ -30,10 +30,12 @@ import type { FichaDeLibreria } from '@/lib/libreriaPublica';
 export function FichaDeLibreriaFila({ ficha }: { ficha: FichaDeLibreria }) {
   return (
     <li className={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}>
-      <p className={claseRotulo}>
-        {ficha.barrio}
-        {ficha.ciudad ? ` · ${ficha.ciudad}` : ''}
-      </p>
+      {/*
+        B-967 — el mismo renglón que la ficha, con la regla de CABA. Acá **sin
+        enlaces**: la fila entera ya lleva al detalle, y un `<a>` adentro de otro
+        sería un ancla anidada — el mismo criterio que la cartelera.
+      */}
+      <p className={claseRotulo}>{ficha.zona.map((p) => p.texto).join(' · ')}</p>
 
       <h2 className="headline-sm mt-1 text-tinta">
         <a className={claseEnlace} href={ficha.ruta}>

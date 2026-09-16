@@ -218,6 +218,11 @@ de sección más los módulos de dominio puros de `lib/formulario/` (`estadoInic
 `.tsx` es el armado. El conteo de líneas vive en
 [`10-salud-del-codigo.md`](10-salud-del-codigo.md) §1.3 y quedó viejo: es **B-201**.
 
+**Desde B-927 el campo del nombre del lugar dice «Lugar» y no «Sede».** Es solo la
+etiqueta —en el formulario y en el historial—: «sede» es una palabra nuestra y una
+casa, un bar o una librería no tienen sede. El campo sigue llamándose `sede` en el
+modelo y en todas las salidas.
+
 Secciones: Qué es · Encuentros · Dónde · Quién · Arancel e inscripción ·
 Material · Opcional · Difusión · Texto para publicar · Vista previa del evento.
 Desde B-184 cada una tiene un ancla propia para que el mensaje de campos faltantes
@@ -963,9 +968,17 @@ una ficha descartada no ofrece «Publicar»: hay que reabrirla, o sea volver a
 mirarla. «Bajar del sitio» sí es un paso solo.
 
 **Guardar no publica**, y el formulario lo dice: el estado lo mueve la bandeja.
-`LibreriaFormulario` pide nombre, dirección, barrio —**el mismo desplegable que
-usan las actividades**—, ciudad, coordenadas, la galería (el mismo editor, con su
-subida y su optimización) y los cuatro contactos públicos. El del WhatsApp lleva
+`LibreriaFormulario` pide nombre, dirección, **la geografía en cascada**,
+coordenadas, la galería (el mismo editor, con su subida y su optimización) y los
+cuatro contactos públicos.
+
+**La cascada es la misma que la de una actividad desde B-967** (D-710): primero la
+provincia y después el barrio —el mismo desplegable que usan las actividades— o la
+ciudad, según cuál sea. Vale para los **cuatro** formularios de las guías: los dos
+del panel y los dos públicos de `/guia/*/sumar`. Los tres campos son slugs de
+taxonomía y el mismo vocabulario que las actividades, que es lo que permite que un
+hub cruce las tres cosas. La provincia se exige; la subdivisión no, porque se pide
+**una** de las dos. El del WhatsApp lleva
 el cartel «este número se publica en el sitio», que es criterio de aceptación del
 PRD; el recuadro «Interno» de abajo dice lo contrario sobre el contacto de quien
 pidió el alta, que no sale nunca.

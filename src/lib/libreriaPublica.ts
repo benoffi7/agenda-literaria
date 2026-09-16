@@ -47,7 +47,7 @@
  * rompen en silencio— vive en `contenidoDelSitio.ts`.
  */
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
-import { geografiaNormalizada } from '@/lib/geografia.mjs';
+import { geografiaNormalizada, piezasDeLugar } from '@/lib/geografia.mjs';
 import { desSlug } from '@calendario';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
@@ -128,7 +128,7 @@ export interface LibreriaPublica {
    *
    * Sale por lo mismo que el de una actividad: el listado filtra **en memoria**
    * (§2.5) y necesita contra qué comparar. No publica nada nuevo — se deriva de
-   * nombre, descripción, dirección, barrio y ciudad, los cinco de esta misma
+   * nombre, descripción, dirección y los tres de la geografía, los seis de esta misma
    * lista— y eso es lo que lo hace inocuo, no el hecho de estar normalizado.
    */
   searchText: string;
@@ -209,8 +209,15 @@ export const searchTextDeLibreria = (c: {
   direccion: string;
   barrio: string;
   ciudad: string;
-  /** B-967 — la provincia también se busca: «librerías en Córdoba». */
-  provincia?: string;
+  /**
+   * B-967 — la provincia también se busca («librerías en Córdoba»), y va
+   * **requerida y no opcional**: con el `?`, los dos llamadores del schema se
+   * quedaron sin pasarla y el índice del documento decía algo distinto del
+   * publicado — la clase de B-88 que este mismo docblock dice evitar. Sin el `?`,
+   * TypeScript los habría puesto en rojo el mismo día. Lo cobró el
+   * `auditor-privacidad`.
+   */
+  provincia: string;
 }): string =>
   normalize(
     [
@@ -230,7 +237,7 @@ export const searchTextDeLibreria = (c: {
        * proyección y `formALibreria`, y ninguna de las dos las tiene. Indexar de
        * más no produce falsos negativos; resolver mal, sí.
        */
-      ...[c.barrio, c.ciudad, c.provincia ?? ''].flatMap((slug) =>
+      ...[c.barrio, c.ciudad, c.provincia].flatMap((slug) =>
         slug ? [slug, desSlug(slug)] : [],
       ),
     ].join(' '),
@@ -407,6 +414,18 @@ export interface FichaDeLibreria {
   rutaDeLaCiudad: string | null;
   /** B-967 — la etiqueta de la provincia. **No se enlaza**: no hay hub de provincia. */
   provincia: string;
+  /**
+   * **El renglón de lugar, en piezas y con la regla de CABA aplicada** — B-967.
+   *
+   * Es la misma forma que `DetallePublico.donde` (B-951) y sale de la misma
+   * `piezasDeLugar`: adentro de CABA se dice el barrio y nada más —«Villa Crespo
+   * · CABA» era decir la ciudad dos veces— y afuera la ciudad y la provincia.
+   *
+   * Los campos sueltos de arriba **siguen** porque tienen otros consumidores: la
+   * `meta description` y el `PostalAddress` del JSON-LD, que no quieren un
+   * renglón sino cada dato por su nombre.
+   */
+  zona: PiezaDeZona[];
   geo: { lat: number; lng: number } | null;
   imagenes: ImagenDeLibreriaPublica[];
   /** Los cuatro contactos, ya como destino. `null` es «no hay por dónde». */
@@ -427,6 +446,12 @@ export interface FichaDeLibreria {
  * barrio; **no se agrega ningún campo del documento** que la proyección no haya
  * dejado pasar, que es lo que mantiene la whitelist en un solo lugar.
  */
+/** Una pieza del renglón de lugar. `href` es `null` cuando ese hub no existe. */
+export interface PiezaDeZona {
+  texto: string;
+  href: string | null;
+}
+
 export const fichaDeLibreria = (
   l: LibreriaPublica,
   {
@@ -453,6 +478,15 @@ export const fichaDeLibreria = (
   ciudad: etiquetaDeCiudad ?? l.ciudad,
   rutaDeLaCiudad,
   provincia: etiquetaDeProvincia ?? l.provincia,
+  zona: piezasDeLugar(l).map(({ campo, slug }) => ({
+    texto:
+      campo === 'barrio'
+        ? (etiquetaDeBarrio ?? slug)
+        : campo === 'ciudad'
+          ? (etiquetaDeCiudad ?? slug)
+          : (etiquetaDeProvincia ?? slug),
+    href: campo === 'barrio' ? rutaDelBarrio : campo === 'ciudad' ? rutaDeLaCiudad : null,
+  })),
   geo: l.geo,
   imagenes: l.imagenes,
   enlaces: {

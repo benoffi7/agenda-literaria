@@ -61,6 +61,21 @@ import { lugarCentinela } from './fixtures/centinelas-lugar';
  * dirección ni el flag**. Apagar `direccionPublica` no dispararía ningún build y
  * la dirección de una casa seguiría publicada.
  */
+/**
+ * Las claves de `DondePublico`, leídas del tipo — B-967. Ver la nota de
+ * `desdeElDocumento` de lugares: una tabla escrita a mano es una que se queda
+ * corta el día que el tipo crece, y este chequeo queda verde mientras tanto.
+ */
+const clavesDeDondePublico = (): string[] => {
+  const fuente = readFileSync(
+    new URL('../src/lib/lugarPublico.ts', import.meta.url),
+    'utf8',
+  );
+  const bloque = /export interface DondePublico \{\n([\s\S]*?)\n\}/.exec(fuente);
+  if (!bloque) throw new Error('no se encontró `DondePublico` en lugarPublico.ts');
+  return [...bloque[1]!.matchAll(/^ {2}(\w+)\??:/gm)].map((m) => m[1]!);
+};
+
 const DIRECTORIOS_CON_PROYECCION = [
   {
     coleccion: 'librerias',
@@ -82,8 +97,16 @@ const DIRECTORIOS_CON_PROYECCION = [
     documento: () => lugarCentinela() as unknown as Record<string, unknown>,
     // `costo` se deriva de `condicion`, que sí está en la lista.
     derivados: ['searchText', 'costo'],
+    /*
+     * B-967 — las claves de `DondePublico` **se leen del tipo**, no se escriben.
+     * La tabla anterior enumeraba cinco y `provincia` entró como la sexta sin que
+     * nadie la moviera, así que corregir la provincia de un lugar publicado no
+     * disparaba build (trampa 8) y este caso quedaba verde. Lo cobró el
+     * `auditor-privacidad`. `direccionPublica` va aparte: es el flag del par del
+     * § 6, no una clave de la proyección, así que no se puede derivar.
+     */
     desdeElDocumento: {
-      donde: ['direccion', 'barrio', 'ciudad', 'geo', 'direccionPublica'],
+      donde: [...clavesDeDondePublico(), 'direccionPublica'],
     } as Record<string, readonly string[]>,
   },
 ] as const;

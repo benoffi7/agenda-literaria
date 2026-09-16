@@ -131,6 +131,10 @@ export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
     'imagenes',
     'tipo',
     'direccion',
+    // B-967 — los tres de la geografía. Sin `provincia`, corregir la provincia de
+    // un lugar publicado **no dispara build** y el sitio se queda con la anterior
+    // (trampa 8). Lo cobró el `auditor-privacidad`.
+    'provincia',
     'barrio',
     'ciudad',
     'geo',

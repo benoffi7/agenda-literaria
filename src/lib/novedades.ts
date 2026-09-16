@@ -61,6 +61,29 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'sede-ahora-es-lugar',
+    fecha: '2026-09-16',
+    version: '1.11.0',
+    titulo: 'El campo que decía «Sede» ahora dice «Lugar»',
+    detalle:
+      'Es el mismo campo de siempre —dónde se hace la actividad—, con otro nombre: «sede» es una ' +
+      'palabra nuestra y no la que usa quien organiza. Una casa, un bar o una librería no tienen ' +
+      'sede. Cambia en el formulario y en el historial de cambios.',
+    donde: 'La sección «Dónde» del formulario de una actividad, y su historial.',
+  },
+  {
+    id: 'geografia-en-cascada-en-la-guia',
+    fecha: '2026-09-16',
+    version: '1.11.0',
+    titulo: 'Las librerías y los lugares también piden la provincia',
+    detalle:
+      'En el formulario de una librería y el de un lugar —el del panel y el que usa cualquiera ' +
+      'desde «Sumar»— ahora se elige primero la provincia, igual que en una actividad. Si es ' +
+      'CABA se elige el barrio; si es otra, la ciudad de una lista. La ciudad dejó de escribirse ' +
+      'a mano, así que «Mar del Plata» y «mar del plata» ya no son dos lugares distintos.',
+    donde: 'El formulario de una librería y el de un lugar.',
+  },
+  {
     id: 'geografia-en-cascada',
     fecha: '2026-09-16',
     // Misma que las de abajo: `package.json` sigue en 1.10.0, así que 1.11.0

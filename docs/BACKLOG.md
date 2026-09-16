@@ -6800,6 +6800,36 @@ evento normalizaban, y ninguno de los dos lo hacía. El historial se arregló en
 momento (era un bug de verdad: dejaba el documento internamente contradictorio);
 esto es la mitad que queda, con el motivo escrito.
 
+### B-972 · Nada verifica que una provincia sea una provincia · P2 — de la auditoría de B-967 (2026-09-16)
+
+Los tres campos de la geografía se validan **por forma** y no por pertenencia: el
+schema acota el largo, `firestore.rules` exige el alfabeto de slug, y
+`esSlugDeVocabulario` —la defensa de `lugarPublico.ts`— es una tautología para la
+provincia y la ciudad, porque `geografiaNormalizada` ya las slugificó.
+
+O sea que un texto libre escrito en «Otro…» no se descarta: se **slugifica**. «Av
+Cabildo 1234, timbre 3» sale publicado como `av-cabildo-1234-timbre-3`, en un
+campo que sale **siempre**, también para una casa particular — fuera de
+`dondeQueSale`, que es el par flag+dato del § 6.
+
+**No es una clase nueva y por eso es P2**: `barrio` tiene exactamente esa
+propiedad desde que existe, y `ciudad` la heredó con B-967. Lo que cambió es que
+ahora son tres instancias en vez de una.
+
+**Pero la provincia es la única de las tres donde el arreglo es barato**, y es lo
+que la vuelve un ítem y no una nota: es un conjunto **cerrado de 24**, y la lista
+blanca ya está escrita y exportada (`PROVINCIAS`, `functions/geografia.js`). Un
+`PROVINCIAS.some((p) => p.slug === v)` en la proyección —y, si se quiere, un
+`in` contra el documento de opciones en la regla— cierra el caso sin inventar
+nada. Para el barrio y la ciudad no se puede: son vocabularios abiertos por
+diseño, y ahí la defensa es la aprobación (§4.3), no una lista.
+
+Lo señaló el `auditor-privacidad` al contestar si una provincia es más
+identificatoria que un barrio para una casa. La respuesta fue que **no** —la
+provincia es estrictamente más gruesa que el barrio o la ciudad, así que no
+agrega un bit sobre lo que el § 6 ya autoriza— y que el riesgo no es el campo
+sino el canal.
+
 ### B-970 · Las guías no filtran por ciudad ni por provincia · P2 — abierto con B-967
 
 `/guia/librerias` filtra **solo por barrio** y `/guia/lugares` por barrio, tipo y
@@ -6833,8 +6863,16 @@ sección, así que el argumento de peso de `TAXONOMIAS_FUERA_DEL_INDICE` no apli
 > JSON-LD— así que la cascada es hoy la misma en las cuatro entidades.
 >
 > **La pregunta abierta la contestó el dueño**: «provincia y ciudad o barrio», o
-> sea la misma cascada de dos niveles que una sede. La ficha muestra la provincia
-> y el JSON-LD la emite como `addressRegion`.
+> sea la misma cascada de dos niveles que una sede. Las dos fichas muestran el
+> renglón con `zona` —la misma forma que el «Dónde» de una actividad, con la regla
+> de CABA aplicada y el enlace al hub resuelto— y el JSON-LD emite la provincia
+> como `addressRegion`.
+>
+> **Una ficha anterior se migra sola al reeditarla** cuando su ciudad es alguna de
+> las cuatro formas de CABA, que es el caso de todo lo cargado hasta hoy. Una de
+> otra ciudad, si la hubiera, abre el formulario con la provincia sin elegir y hay
+> que completarla: es un campo nuevo que no se puede inferir, y pedirlo es lo
+> correcto.
 >
 > **Tres cosas que el ítem no preveía**, las tres escritas en D-710 § 8:
 > `ALIAS_DE_CABA` (el nudo de la migración: cuatro formas escritas de CABA que

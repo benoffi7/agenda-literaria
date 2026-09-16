@@ -48,7 +48,7 @@
  */
 import { fraseConFecha, type DatoConFecha } from '@/lib/datoConFecha';
 import { desSlug } from '@calendario';
-import { geografiaNormalizada } from '@/lib/geografia.mjs';
+import { geografiaNormalizada, piezasDeLugar } from '@/lib/geografia.mjs';
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
@@ -193,11 +193,22 @@ export interface LugarPublico {
 /**
  * La geografía normalizada, **y solo lo que tiene forma de slug** — B-967.
  *
- * `geografiaNormalizada` slugifica, pero lo que llega puede ser cualquier cosa
- * que un anónimo haya mandado: `esSlugDeVocabulario` es la defensa que este
- * módulo ya aplicaba al barrio, y se aplica igual a los tres. Va **después** de
- * normalizar, no antes: al revés rechazaría una ciudad legítima escrita con
- * mayúsculas en una ficha vieja.
+ * ⚠️ **De los tres, el filtro solo poda el barrio, y conviene saberlo.** Lo cobró
+ * el `auditor-privacidad`: `esSlugDeVocabulario(v)` es `slugify(v) === v`, y
+ * `geografiaNormalizada` ya slugifica la provincia y la ciudad, así que para
+ * esas dos el filtro es una tautología. El barrio **no** se slugifica ahí, y por
+ * eso sigue siendo el único al que esto le saca algo.
+ *
+ * Es decir: un texto libre en la provincia no se descarta, se **slugifica** —
+ * «Av Cabildo 1234» sale como `av-cabildo-1234`. La defensa que queda es la
+ * forma que exige `firestore.rules`, que también es solo forma: **nadie verifica
+ * pertenencia a `/opciones/provincia`**. No es una clase nueva —el barrio tiene
+ * esa propiedad desde siempre— y está anotada en **B-972**, donde sí tiene
+ * arreglo barato: la provincia es el único de los tres con una lista blanca
+ * cerrada y escrita (`PROVINCIAS`).
+ *
+ * El orden —filtrar **después** de normalizar— es a propósito igual: al revés
+ * rechazaría una ciudad legítima escrita con mayúsculas en una ficha vieja.
  */
 const soloSlugs = (g: { provincia: string; barrio: string; ciudad: string }) => ({
   provincia: esSlugDeVocabulario(g.provincia) ? g.provincia : '',
@@ -210,8 +221,11 @@ export const searchTextDeLugar = (c: {
   descripcion: string;
   barrio: string;
   ciudad: string;
-  /** B-967 — la provincia también se busca. */
-  provincia?: string;
+  /**
+   * B-967 — la provincia también se busca, y va **requerida**: ver la nota del
+   * mismo campo en `searchTextDeLibreria`.
+   */
+  provincia: string;
   capacidadNotas: string;
   condicionNotas: string;
   incluyeOtro: string;
@@ -226,7 +240,7 @@ export const searchTextDeLugar = (c: {
        * «villa crespo» no encontraba nada, porque el guion no coincide con el
        * espacio y la búsqueda es un `includes`.
        */
-      ...[c.barrio, c.ciudad, c.provincia ?? ''].flatMap((slug) =>
+      ...[c.barrio, c.ciudad, c.provincia].flatMap((slug) =>
         slug ? [slug, desSlug(slug)] : [],
       ),
       c.capacidadNotas,
@@ -625,6 +639,12 @@ export interface FichaDeLugar {
     ciudad: string;
     /** B-967 — la etiqueta de la provincia. **No se enlaza**: no hay hub de provincia. */
     provincia: string;
+    /**
+     * **El renglón de lugar, en piezas y con la regla de CABA** — B-967, la misma
+     * forma que `FichaDeLibreria.zona` y que `DetallePublico.donde`. Los campos
+     * sueltos siguen porque el `PostalAddress` los quiere por su nombre.
+     */
+    zona: PiezaDeZonaDeLugar[];
     geo: GeoDeLugar | null;
   };
   capacidad: number | null;
@@ -666,6 +686,12 @@ const etiquetaDe = (e: EtiquetasDeLugar, campo: string, slug: string): string =>
  * **no se agrega ningún campo del documento** que la proyección no haya dejado
  * pasar, que es lo que mantiene la whitelist en un solo lugar.
  */
+/** Una pieza del renglón de lugar. `href` es `null` cuando ese hub no existe. */
+export interface PiezaDeZonaDeLugar {
+  texto: string;
+  href: string | null;
+}
+
 export const fichaDeLugar = (l: LugarPublico, e: EtiquetasDeLugar = {}): FichaDeLugar => ({
   slug: l.slug,
   nombre: l.nombre,
@@ -681,6 +707,10 @@ export const fichaDeLugar = (l: LugarPublico, e: EtiquetasDeLugar = {}): FichaDe
     // B-967 — las dos resueltas, con el mismo patrón que el barrio ya tenía.
     ciudad: etiquetaDe(e, 'ciudad', l.donde.ciudad),
     provincia: etiquetaDe(e, 'provincia', l.donde.provincia),
+    zona: piezasDeLugar(l.donde).map(({ campo, slug }) => ({
+      texto: etiquetaDe(e, campo, slug),
+      href: campo === 'barrio' ? (e.rutaDelBarrio ?? null) : null,
+    })),
     geo: l.donde.geo,
   },
   capacidad: l.capacidad,

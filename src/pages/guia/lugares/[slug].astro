@@ -123,18 +123,24 @@ const capacidad = [
 
     <h1 class="display-md mt-2 text-balance text-acento">{ficha.nombre}</h1>
 
+    {/*
+      B-967 — el renglón sale de `ficha.donde.zona`, con la regla de CABA aplicada
+      y el enlace de cada pieza resuelto. Antes era el barrio a secas, así que un
+      lugar de afuera de CABA —que no tiene barrio— no decía dónde quedaba.
+    */}
     <p class={`${claseRotulo} mt-4`}>
       {ficha.tipo}
-      {ficha.tipo && ficha.donde.barrio ? ' · ' : ''}
-      {
-        ficha.donde.rutaDelBarrio ? (
-          <a class={claseEnlace} href={ficha.donde.rutaDelBarrio}>
-            {ficha.donde.barrio}
-          </a>
-        ) : (
-          ficha.donde.barrio
-        )
-      }
+      {ficha.tipo && ficha.donde.zona.length > 0 ? ' · ' : ''}
+      {ficha.donde.zona.map((pieza, i) => (
+        <>
+          {i > 0 && ' · '}
+          {pieza.href ? (
+            <a class={claseEnlace} href={pieza.href}>{pieza.texto}</a>
+          ) : (
+            pieza.texto
+          )}
+        </>
+      ))}
     </p>
 
     {
@@ -176,8 +182,8 @@ const capacidad = [
         </p>
       ) : (
         <p class="body-md mt-3 text-super">
-          {ficha.donde.barrio || ficha.donde.ciudad}. La dirección no se publica: escribile y te
-          la pasa.
+          {ficha.donde.zona.map((p) => p.texto).join(', ') || 'Sin ubicación cargada'}. La
+          dirección no se publica: escribile y te la pasa.
         </p>
       )}
     </section>

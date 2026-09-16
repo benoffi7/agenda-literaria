@@ -58,6 +58,16 @@ Hay dos cosas construidas que lo confirman:
 > **La colección no lleva `/guia/`**: el documento es `/lugares/{id}`, la página es
 > `/guia/lugares/{slug}`. Igual que en los otros dos directorios.
 
+> ⚠️ **`ciudad` y la ausencia de `provincia` en el bloque de abajo dejaron de ser
+> ciertas — ver D-710 § 8 en [`../06-decisiones.md`](../06-decisiones.md).**
+> Desde **B-967**, `ciudad` es un **slug de `/opciones/ciudad`** (no texto libre, y
+> no el default «Ciudad de Buenos Aires») y el tipo gana `provincia: string`, slug
+> de `/opciones/provincia`. La cascada es la misma que la de una sede: la
+> provincia primero, y de ahí el **barrio** en CABA o la **ciudad** en el resto —
+> así que el barrio dejó de ser obligatorio y la provincia pasó a serlo. El bloque
+> de abajo queda como estaba escrito, para que la entrada de D-710 se lea contra
+> su original.
+
 ```ts
 // src/types/lugar.ts  (nuevo)
 

@@ -104,17 +104,24 @@ const contactos = [
 
     <h1 class="display-md mt-2 text-balance text-acento">{ficha.nombre}</h1>
 
+    {/*
+      B-967 — el renglón sale de `ficha.zona`, que trae la regla de CABA aplicada
+      (adentro, el barrio; afuera, la ciudad y la provincia) y el enlace de cada
+      pieza ya resuelto. Antes era `barrio · ciudad` a mano, que en CABA decía la
+      ciudad dos veces y nunca decía la provincia. Es la misma forma que el
+      «Dónde» de una actividad.
+    */}
     <p class={`${claseRotulo} mt-4`}>
-      {
-        ficha.rutaDelBarrio ? (
-          <a class={claseEnlace} href={ficha.rutaDelBarrio}>
-            {ficha.barrio}
-          </a>
-        ) : (
-          ficha.barrio
-        )
-      }
-      {ficha.ciudad ? ` · ${ficha.ciudad}` : ''}
+      {ficha.zona.map((pieza, i) => (
+        <>
+          {i > 0 && ' · '}
+          {pieza.href ? (
+            <a class={claseEnlace} href={pieza.href}>{pieza.texto}</a>
+          ) : (
+            pieza.texto
+          )}
+        </>
+      ))}
     </p>
 
     <p class="body-md mt-1 text-super">{ficha.direccion}</p>

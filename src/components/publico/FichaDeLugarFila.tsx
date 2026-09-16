@@ -34,7 +34,10 @@ import type { FichaDeLugar } from '@/lib/lugarPublico';
  * pública.
  */
 export function FichaDeLugarFila({ ficha }: { ficha: FichaDeLugar }) {
-  const que = [ficha.tipo, ficha.donde.barrio].filter(Boolean).join(' · ');
+  // B-967 — la zona con la regla de CABA, sin enlaces: la fila entera ya lleva al
+  // detalle. Antes era solo el barrio, así que un lugar de afuera de CABA no
+  // decía dónde quedaba.
+  const que = [ficha.tipo, ...ficha.donde.zona.map((p) => p.texto)].filter(Boolean).join(' · ');
   const paraCuantos = ficha.capacidad
     ? `Hasta ${ficha.capacidad} personas`
     : ficha.capacidadNotas

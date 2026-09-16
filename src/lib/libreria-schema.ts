@@ -38,6 +38,7 @@ import {
   MIN_NOMBRE_LIBRERIA,
   MIN_WHATSAPP_LIBRERIA,
   TOPE_BARRIO_LIBRERIA,
+  TOPE_PROVINCIA_LIBRERIA,
   TOPE_CIUDAD_LIBRERIA,
   TOPE_CONTACTO_LIBRERIA,
   TOPE_DESCRIPCION_LIBRERIA,
@@ -145,7 +146,7 @@ const base = z.object({
    * no se pide, así que un `min(1)` haría inguardable una librería de Mar del
    * Plata.
    */
-  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_BARRIO_LIBRERIA, 'Quedó muy largo'),
+  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_PROVINCIA_LIBRERIA, 'Quedó muy largo'),
   barrio: texto.max(TOPE_BARRIO_LIBRERIA, 'Quedó muy largo').default(''),
   ciudad: texto.max(TOPE_CIUDAD_LIBRERIA, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
   // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».
@@ -395,6 +396,7 @@ export const formALibreria = (
       nombre,
       descripcion: descripcion ?? '',
       direccion,
+      provincia,
       barrio,
       ciudad,
     }),

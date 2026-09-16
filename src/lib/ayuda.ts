@@ -837,9 +837,11 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'El barrio sale del mismo desplegable que usan las actividades. No es un detalle: es lo ' +
-          'que va a permitir que la página de un barrio muestre las actividades y las librerías de ' +
-          'ahí, en vez de dos listas que no se conocen.',
+          'Primero se elige la provincia. Si es CABA se elige el barrio, del mismo desplegable ' +
+          'que usan las actividades — no es un detalle: es lo que permite que la página de un ' +
+          'barrio muestre las actividades y las librerías de ahí, en vez de dos listas que no se ' +
+          'conocen. Si es otra provincia se elige la ciudad de una lista en vez de escribirla, ' +
+          'así «Mar del Plata» y «mar del plata» no quedan como dos lugares distintos.',
       },
       {
         texto:
@@ -1024,7 +1026,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Si el lugar es una casa, la dirección no se publica: en el sitio sale solo el barrio, ' +
+          'Si el lugar es una casa, la dirección no se publica: en el sitio sale solo el barrio ' +
+          '—o la ciudad, fuera de CABA—, ' +
           'y quien quiera ir la pide escribiendo. La casilla «Publicar la dirección» se apaga ' +
           'sola cuando elegís «Casa». Podés volver a prenderla —el panel te avisa, no te frena— ' +
           'y hacelo solo si quien vive ahí lo pidió: la dirección de una casa es el dato con el ' +

@@ -589,6 +589,11 @@ const CAMPOS_DE_LA_PROYECCION_LUGAR = [
   'imagenes',
   'tipo',
   'direccion',
+  // B-967 — los tres de la geografía. **Sin `provincia` acá**, `lugarPublico`
+  // recibe el documento sin el campo, `provinciaDeSede` cae a su default y todo
+  // lugar de afuera de CABA publica la provincia vacía: el dato que B-967 vino a
+  // agregar, perdido en silencio. Lo cobró el `auditor-privacidad`.
+  'provincia',
   'barrio',
   'ciudad',
   'geo',
@@ -961,11 +966,28 @@ const fichasDeLibreria = async (): Promise<FichaDeLibreria[]> => {
   // chip. Es literalmente el caso de D-30.
   const etiquetas = await etiquetasDelDetalle();
   const conHub = new Set(slugsConHub('barrio', indice.actividades, indice.opciones));
+  /*
+   * B-967 — **y los hubs de ciudad**, que existen desde B-951. Mismo criterio que
+   * el barrio: `/ciudad/{slug}` se emite solo para las opciones aprobadas con
+   * actividad publicada, así que linkear a ciegas sería un 404.
+   */
+  const ciudadesConHub = new Set(slugsConHub('ciudad', indice.actividades, indice.opciones));
 
   return librerias.map((l) =>
     fichaDeLibreria(l, {
+      /*
+       * **Las tres etiquetas se resuelven** — y esto lo cobró el
+       * `auditor-privacidad`: sin las dos nuevas, la ficha publicaba `caba` crudo
+       * en cuatro salidas indexadas (la página, el listado, la `meta description`
+       * y el `addressLocality`/`addressRegion` del JSON-LD, que es el campo que
+       * Google geocodifica). Antes no se notaba porque `ciudad` era texto libre y
+       * se imprimía tal cual; con B-967 pasó a ser un slug.
+       */
       etiquetaDeBarrio: etiquetas.barrio?.[l.barrio],
       rutaDelBarrio: conHub.has(l.barrio) ? rutaDeBarrio(l.barrio) : null,
+      etiquetaDeCiudad: etiquetas.ciudad?.[l.ciudad],
+      rutaDeLaCiudad: ciudadesConHub.has(l.ciudad) ? rutaDeCiudad(l.ciudad) : null,
+      etiquetaDeProvincia: etiquetas.provincia?.[l.provincia],
     }),
   );
 };

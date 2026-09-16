@@ -51,6 +51,7 @@ import {
   MIN_WHATSAPP_LUGAR,
   TOPE_CAPACIDAD_NOTAS_LUGAR,
   TOPE_CIUDAD_LUGAR,
+  TOPE_PROVINCIA_LUGAR,
   TOPE_CONDICION_NOTAS_LUGAR,
   TOPE_CONTACTO_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
@@ -178,7 +179,7 @@ const base = z.object({
    * se exige (sin ella la ficha no aparece bajo ningún filtro de lugar) y la
    * subdivisión no, porque se pide **una** de las dos según la provincia.
    */
-  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_SLUG_TAXONOMIA_LUGAR, 'Quedó muy largo'),
+  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_PROVINCIA_LUGAR, 'Quedó muy largo'),
   barrio: texto.max(TOPE_SLUG_TAXONOMIA_LUGAR, 'Quedó muy largo').default(''),
   ciudad: texto.max(TOPE_CIUDAD_LUGAR, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
   // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».
@@ -616,6 +617,7 @@ export const formALugar = (
     searchText: searchTextDeLugar({
       nombre,
       descripcion: descripcion ?? '',
+      provincia,
       barrio,
       ciudad,
       capacidadNotas: f.capacidadNotas,

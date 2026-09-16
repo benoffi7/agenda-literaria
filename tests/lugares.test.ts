@@ -816,9 +816,27 @@ describe('la lectura del build no lee lo que no va a publicar', () => {
     expect(interfaz, 'no se encontró `LugarPublico`').not.toBeNull();
     const publicados = [...interfaz![1]!.matchAll(/^ {2}(\w+)\??:/gm)].map((m) => m[1]!);
 
-    /** Las tres claves de la proyección que no son campos del documento. */
+    /*
+     * Las claves de la proyección que no son campos del documento. **`donde` se
+     * deriva de `DondePublico` y no se escribe a mano** — B-967: la tabla anterior
+     * enumeraba cinco claves, `provincia` entró como la sexta y **nadie la movió**,
+     * así que este caso quedó verde mientras el `.select()` estaba igual de
+     * incompleto y todo lugar de afuera de CABA publicaba la provincia vacía. Lo
+     * cobró el `auditor-privacidad`. Derivada, la tabla no se puede quedar corta.
+     */
+    const donde = /export interface DondePublico \{\n([\s\S]*?)\n\}/.exec(proyeccion);
+    expect(donde, 'no se encontró `DondePublico`').not.toBeNull();
+    const clavesDeDonde = [...donde![1]!.matchAll(/^ {2}(\w+)\??:/gm)].map((m) => m[1]!);
+    expect(clavesDeDonde.length, 'no se leyó ninguna clave de `DondePublico`').toBeGreaterThan(4);
+
     const DESDE_EL_DOCUMENTO: Record<string, readonly string[]> = {
-      donde: ['direccion', 'barrio', 'ciudad', 'geo', 'direccionPublica'],
+      /*
+       * Las claves de `DondePublico` **más `direccionPublica`**, que es el flag
+       * del par del § 6: no es una clave de la proyección —no se publica— pero el
+       * `.select()` tiene que traerlo, porque es lo que decide si la dirección
+       * sale. Va escrito aparte justamente porque no se puede derivar.
+       */
+      donde: [...clavesDeDonde, 'direccionPublica'],
       costo: [], // derivado de `condicion`, que ya está en la lista
       /*
        * ⚠️ **Derivado también, y por eso el documento NO se lee.** El
