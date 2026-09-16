@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Un fallo transitorio del deploy de Functions, anotado** — el mensaje
+  `Unexpected token '<', "<!DOCTYPE "...` parece un bug de parseo propio y es la
+  API de Google devolviendo HTML donde `firebase-tools` espera JSON. Falla una
+  función del lote y tumba el job entero. Se arregla reintentando. Entró a la
+  tabla de problemas conocidos de `docs/08-operacion.md` para que nadie lo
+  investigue como si fuera código.
+
 - **Un chequeo que mira producción, y no el emulador** — **B-973**, **D-711**.
   Agregar un campo a `CAMPOS_TAXONOMIA` no lo siembra en la base, y nada lo decía:
   pasó con `provincia`, que además es obligatoria, y dejó el panel inguardable con

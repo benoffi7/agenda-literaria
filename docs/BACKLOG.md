@@ -2058,11 +2058,36 @@ que es una cosa distinta y más cara.
    nace uno, o va en `localStorage` —el patrón que el panel ya usa para los
    borradores (D-122) y el sitio para los favoritos (B-848)—. La segunda es la
    barata y tiene la consecuencia de siempre: es por navegador, y hay que decirlo.
+
+   > ✅ **Decidido por el dueño el 2026-09-16: `localStorage`** (**D-720**). No
+   > nace un perfil de usuario para esto. La consecuencia hay que **decirla en la
+   > pantalla**, no dejarla implícita: la preferencia es de **este navegador**, así
+   > que quien carga desde la compu y desde el teléfono la elige dos veces, y un
+   > modo incógnito la pierde. Es el mismo trato que ya tienen los borradores del
+   > panel (D-122) y los favoritos del sitio (B-848), y es lo que lo hace
+   > consistente y no una excepción.
+
 3. **Y la parte que no es obvia: un `<input type="time">` no acepta que le impongan
    el formato.** Ofrecer 12/24 significa dejar de usar el control nativo, o
    envolverlo. Eso toca el teclado del celular, la accesibilidad y el `min-h-touch`
    del §11 — o sea que el costo real no está en el formato sino en reemplazar un
    control que hoy el navegador resuelve bien.
+
+   > 🔸 **Esta sigue abierta, y es la que decide el precio del ítem.** Con la 2
+   > contestada, lo único que falta es elegir entre las dos formas, y no son
+   > parecidas:
+   >
+   > | Forma | Qué cuesta | Qué resuelve |
+   > |---|---|---|
+   > | **(a) Eco al lado del control nativo** — se deja el `<input type="time">` y se escribe la hora confirmada en el formato elegido («19:30 → 7:30 PM») | un componente de lectura, sin tocar el control | **la duda reportada**: «no sé si lo que cargué es AM o PM» |
+   > | **(b) Control propio** (hora + minutos + AM/PM) | reemplaza el nativo: teclado del celular, accesibilidad, `min-h-touch` del §11, y una pieza más que mantener | además, **escribir** en 12h |
+   >
+   > **Recomendación: (a).** El pedido dice «selector de am/pm», que suena a (b),
+   > pero el síntoma escrito en el título de este ítem es *«se cargan sin saber si
+   > son AM o PM»* — o sea un problema de **lectura**, y (a) lo resuelve entero sin
+   > tocar lo que el navegador ya hace bien. Si después de usarlo un tiempo sigue
+   > molestando escribir en 24h, (b) queda disponible y (a) no se tira: el eco
+   > sirve igual.
 
 **Solo en el admin**, dicho por el dueño. El formulario público (`/proponer`) se
 queda con el control nativo: ahí quien carga usa su propio teléfono una sola vez y
@@ -3892,12 +3917,37 @@ descubrirlo con la pantalla hecha.
 > difícil de arreglar que un `await` en el orden correcto. El razonamiento —y por
 > qué la asimetría de los fallos es lo que decide— está en D-600.
 
-**3 · La revisión se puede pisar sin rastro.** Un admin puede sobrescribir
+**3 · La revisión se puede pisar sin rastro.** — ✅ **decidido (2026-09-16)**
+Un admin puede sobrescribir
 `revision` —firmándola a su nombre, que es lo que la regla exige— y el `motivo`
 anterior desaparece: `/propuestas` no tiene subcolección `versiones` y el trigger
 de historial solo mira `/actividades`. La propuesta queda como prueba de qué se
 pidió; **quién la revisó y por qué, no**. Con cuatro cuentas admin eso importa
 menos que con cuarenta, así que puede quedar así — pero escrito.
+
+> ✅ **Decidido por el dueño: queda sin rastro** (**D-721**). Es la opción que
+> este punto recomendaba, y lo que la hace defendible es **para qué existe
+> `/propuestas`**: es una cola de entrada, no un registro. Lo que hay que poder
+> reconstruir es *qué pidió el de afuera* —y eso no se pisa nunca, porque
+> `revisionValida()` acota el `update` a `estado` + `revision` y el cuerpo de la
+> propuesta es inmutable desde que entra—. El acto administrativo de revisarla es
+> interno, entre cuatro cuentas de confianza, y **la actividad que sale de ahí sí
+> tiene historial completo** (§12): el dato que sobrevive está versionado, el que
+> se pisa es el que se descarta.
+>
+> **Lo que la decisión compra:** no entra una subcolección `versiones` en
+> `/propuestas` —que arrastraría su propio trigger, sus reglas, su retención (los
+> datos personales de B-838/B-844 se copiarían a un lugar que **no** caduca) y su
+> línea en las tres tablas de privacidad—. Poner un dato personal en un segundo
+> lugar para auditar quién lo revisó es un mal negocio de privacidad.
+>
+> **La condición de reapertura, que es la misma que la de B-28:** el día que
+> revise una cuenta que no sea de confianza. Con el rol `publicador` ya existiendo
+> (B-888), eso dejó de ser hipotético — pero **hoy el publicador no ve la
+> bandeja**, así que la condición todavía no se cumple. Si la bandeja se le abre,
+> este punto se reabre **en el mismo cambio**, y lo barato entonces no es la
+> subcolección: es un campo `revisionesPrevias` acotado y con la misma retención
+> que la propuesta.
 
 **4 · El saneador de la salida 3 no reconoce dos de las tres vías de contacto.** — ✅ hecho (2026-09-09)
 `redactar()` (`functions/reportes.js`) tapa `LINK_REUNION` y `MAIL`, y
