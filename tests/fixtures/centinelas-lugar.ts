@@ -68,6 +68,10 @@ const RUTAS = [
   // PRD 4, y es la única ruta de los cuatro fixtures cuya lista de permitidos
   // cambia según otro campo del mismo documento.
   'direccion',
+  // B-967 — los tres de la geografía son slugs de taxonomía. Sus centinelas son
+  // **su propio slug** por lo mismo que en los otros dos fixtures: la proyección
+  // los normaliza, así que un centinela con puntos no sobreviviría.
+  'provincia',
   'barrio',
   'ciudad',
 
@@ -121,7 +125,8 @@ export const CENTINELA_LUGAR = {
   direccion: 'CENTINELA.direccionDelLugar 1234',
   // Slug de `/opciones/barrio`, el mismo vocabulario que las actividades.
   barrio: 'centinela-barrio',
-  ciudad: 'CENTINELA.ciudadDelLugar',
+  ciudad: 'centinela-ciudad-del-lugar',
+  provincia: 'centinela-provincia-del-lugar',
   capacidadNotas: 'CENTINELA.capacidadNotas',
   // La lista multivalor guarda slugs, así que su centinela también.
   incluye: 'centinela-incluye',
@@ -237,6 +242,7 @@ export const lugarCentinela = (): Lugar => ({
   ],
   tipo: CENTINELA_LUGAR.tipo,
   direccion: CENTINELA_LUGAR.direccion,
+  provincia: CENTINELA_LUGAR.provincia,
   barrio: CENTINELA_LUGAR.barrio,
   ciudad: CENTINELA_LUGAR.ciudad,
   geo: { lat: -34.6037, lng: -58.3816 },

@@ -47,6 +47,8 @@
  * `where('estado','==','publicado')`— vive en `contenidoDelSitio.ts`.
  */
 import { fraseConFecha, type DatoConFecha } from '@/lib/datoConFecha';
+import { desSlug } from '@calendario';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
@@ -92,8 +94,11 @@ export interface ImagenDeLugarPublica {
 export interface DondePublico {
   /** `''` cuando el flag está apagado. Nunca `null`: una sola forma de vacío. */
   direccion: string;
+  /** Slug de `/opciones/provincia` — B-967. Primer nivel de la cascada. */
+  provincia: string;
   /** Slug de `/opciones/barrio` — el mismo de las actividades. Sale siempre. */
   barrio: string;
+  /** Slug de `/opciones/ciudad` — B-967. Era texto libre. */
   ciudad: string;
   /** `null` cuando el flag está apagado. Es lo que pone la casa en un mapa. */
   geo: GeoDeLugar | null;
@@ -185,18 +190,49 @@ export interface LugarPublico {
  * del listado **es** un filtro, y filtrar por precio afirma que los precios son
  * comparables.
  */
+/**
+ * La geografía normalizada, **y solo lo que tiene forma de slug** — B-967.
+ *
+ * `geografiaNormalizada` slugifica, pero lo que llega puede ser cualquier cosa
+ * que un anónimo haya mandado: `esSlugDeVocabulario` es la defensa que este
+ * módulo ya aplicaba al barrio, y se aplica igual a los tres. Va **después** de
+ * normalizar, no antes: al revés rechazaría una ciudad legítima escrita con
+ * mayúsculas en una ficha vieja.
+ */
+const soloSlugs = (g: { provincia: string; barrio: string; ciudad: string }) => ({
+  provincia: esSlugDeVocabulario(g.provincia) ? g.provincia : '',
+  barrio: esSlugDeVocabulario(g.barrio) ? g.barrio : '',
+  ciudad: esSlugDeVocabulario(g.ciudad) ? g.ciudad : '',
+});
+
 export const searchTextDeLugar = (c: {
   nombre: string;
   descripcion: string;
   barrio: string;
   ciudad: string;
+  /** B-967 — la provincia también se busca. */
+  provincia?: string;
   capacidadNotas: string;
   condicionNotas: string;
   incluyeOtro: string;
 }): string =>
   normalize(
-    [c.nombre, c.descripcion, c.barrio, c.ciudad, c.capacidadNotas, c.condicionNotas, c.incluyeOtro]
-      .join(' '),
+    [
+      c.nombre,
+      c.descripcion,
+      /*
+       * **Los slugs entran de las dos formas** — B-967, el mismo arreglo que en
+       * `searchTextDeLibreria`: el índice decía `villa-crespo` y quien escribía
+       * «villa crespo» no encontraba nada, porque el guion no coincide con el
+       * espacio y la búsqueda es un `includes`.
+       */
+      ...[c.barrio, c.ciudad, c.provincia ?? ''].flatMap((slug) =>
+        slug ? [slug, desSlug(slug)] : [],
+      ),
+      c.capacidadNotas,
+      c.condicionNotas,
+      c.incluyeOtro,
+    ].join(' '),
   ).trim();
 
 /**
@@ -395,8 +431,16 @@ export const lugarPublico = (l: Lugar): LugarPublico => {
     // ⚠️ § 6 — la dirección y la `geo` salen por acá y por ningún otro lado.
     donde: {
       direccion: donde.direccion,
-      barrio: esSlugDeVocabulario(l.barrio) ? l.barrio : '',
-      ciudad: (l.ciudad ?? '').trim(),
+      /*
+       * B-967 — **se deriva, no se copia** (D-710): una ficha anterior guarda la
+       * ciudad como se tipeó y sin provincia, y `ALIAS_DE_CABA` colapsa «Ciudad de
+       * Buenos Aires» a `caba` en vez de crear una segunda.
+       *
+       * El `esSlugDeVocabulario` se conserva **después** de normalizar, que es el
+       * orden correcto: lo que llega puede ser texto de un anónimo, y la defensa
+       * es que solo pase lo que tiene forma de slug.
+       */
+      ...soloSlugs(geografiaNormalizada(l)),
       geo: donde.geo,
     },
     capacidad: capacidad !== null && capacidad > 0 && capacidad <= MAX_CAPACIDAD_LUGAR ? capacidad : null,
@@ -420,8 +464,7 @@ export const lugarPublico = (l: Lugar): LugarPublico => {
     searchText: searchTextDeLugar({
       nombre: l.nombre ?? '',
       descripcion: l.descripcion ?? '',
-      barrio: esSlugDeVocabulario(l.barrio) ? l.barrio : '',
-      ciudad: (l.ciudad ?? '').trim(),
+      ...soloSlugs(geografiaNormalizada(l)),
       capacidadNotas: l.capacidadNotas ?? '',
       condicionNotas: l.condicionNotas ?? '',
       incluyeOtro: l.incluyeOtro ?? '',
@@ -580,6 +623,8 @@ export interface FichaDeLugar {
      */
     rutaDelBarrio: string | null;
     ciudad: string;
+    /** B-967 — la etiqueta de la provincia. **No se enlaza**: no hay hub de provincia. */
+    provincia: string;
     geo: GeoDeLugar | null;
   };
   capacidad: number | null;
@@ -633,7 +678,9 @@ export const fichaDeLugar = (l: LugarPublico, e: EtiquetasDeLugar = {}): FichaDe
     direccion: l.donde.direccion,
     barrio: etiquetaDe(e, 'barrio', l.donde.barrio),
     rutaDelBarrio: e.rutaDelBarrio ?? null,
-    ciudad: l.donde.ciudad,
+    // B-967 — las dos resueltas, con el mismo patrón que el barrio ya tenía.
+    ciudad: etiquetaDe(e, 'ciudad', l.donde.ciudad),
+    provincia: etiquetaDe(e, 'provincia', l.donde.provincia),
     geo: l.donde.geo,
   },
   capacidad: l.capacidad,
@@ -761,6 +808,8 @@ export const datosEstructuradosDeLugar = (f: FichaDeLugar): Record<string, unkno
             '@type': 'PostalAddress',
             streetAddress: f.donde.direccion,
             ...(f.donde.ciudad ? { addressLocality: f.donde.ciudad } : {}),
+            // B-967 — la provincia, que es lo que distingue dos ciudades homónimas.
+            ...(f.donde.provincia ? { addressRegion: f.donde.provincia } : {}),
             addressCountry: 'AR',
           },
         }

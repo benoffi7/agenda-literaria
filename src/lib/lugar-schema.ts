@@ -29,6 +29,7 @@
  * apagado pase lo que pase en el documento.
  */
 import { z } from 'zod';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import type { DatoConFecha } from '@/lib/datoConFecha';
 import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
@@ -37,7 +38,7 @@ import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 // es la misma para el documento y para lo que se publica, así que no puede haber
 // dos (la clase de B-88). Ver su docblock en `lib/lugarPublico.ts`.
 import { searchTextDeLugar } from '@/lib/lugarPublico';
-import { CIUDAD_POR_DEFECTO } from '@/types/libreria';
+import { CIUDAD_POR_DEFECTO, PROVINCIA_POR_DEFECTO } from '@/types/libreria';
 import {
   MAX_CAPACIDAD_LUGAR,
   MAX_INCLUYE_LUGAR,
@@ -172,7 +173,13 @@ const base = z.object({
    * tiene que estar**. El par se cierra en las dos direcciones.
    */
   direccion: texto.max(TOPE_DIRECCION_LUGAR, 'La dirección quedó muy larga').default(''),
-  barrio: texto.min(1, 'Elegí el barrio').max(TOPE_SLUG_TAXONOMIA_LUGAR, 'Quedó muy largo'),
+  /*
+   * B-967 — la cascada, igual que en una sede y en una librería: la **provincia**
+   * se exige (sin ella la ficha no aparece bajo ningún filtro de lugar) y la
+   * subdivisión no, porque se pide **una** de las dos según la provincia.
+   */
+  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_SLUG_TAXONOMIA_LUGAR, 'Quedó muy largo'),
+  barrio: texto.max(TOPE_SLUG_TAXONOMIA_LUGAR, 'Quedó muy largo').default(''),
   ciudad: texto.max(TOPE_CIUDAD_LUGAR, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
   // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».
   geo: z.object({ lat: opcional, lng: opcional }).default({ lat: '', lng: '' }),
@@ -416,6 +423,7 @@ export const lugarVacio = (): LugarForm => ({
   tipo: '',
   direccion: '',
   barrio: '',
+  provincia: PROVINCIA_POR_DEFECTO,
   ciudad: CIUDAD_POR_DEFECTO,
   geo: { lat: '', lng: '' },
   /*
@@ -529,8 +537,17 @@ export const formALugar = (
   const nombre = f.nombre.trim();
   const descripcion = oNull(f.descripcion);
   const tipo = f.tipo.trim();
-  const barrio = f.barrio.trim();
-  const ciudad = f.ciudad.trim() || CIUDAD_POR_DEFECTO;
+  /*
+   * B-967 — la geografía se normaliza antes de escribir, con la misma función que
+   * una actividad y una librería: colapsa los alias de CABA al slug canónico.
+   */
+  const { provincia, barrio, ciudad: ciudadNormalizada } =
+    geografiaNormalizada({
+      provincia: f.provincia.trim(),
+      barrio: f.barrio.trim(),
+      ciudad: f.ciudad.trim(),
+    });
+  const ciudad = ciudadNormalizada || CIUDAD_POR_DEFECTO;
   const capacidad = f.capacidad.trim() ? Number(f.capacidad) : null;
 
   return {
@@ -553,6 +570,7 @@ export const formALugar = (
     })),
     tipo,
     direccion: oNull(f.direccion),
+    provincia,
     barrio,
     ciudad,
     geo: hayGeo ? { lat, lng } : null,

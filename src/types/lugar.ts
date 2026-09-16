@@ -135,9 +135,13 @@ export const TOPE_SLUG_LUGAR = 120;
  */
 export const MIN_DIRECCION_LUGAR = 4;
 export const TOPE_DIRECCION_LUGAR = 160;
-/** La ciudad, texto libre como en una librería. */
-export const MIN_CIUDAD_LUGAR = 1;
+/**
+ * La ciudad. **Slug de `/opciones/ciudad` desde B-967**, igual que en una
+ * librería y que en una sede: la cascada es una sola para las cuatro entidades.
+ */
 export const TOPE_CIUDAD_LUGAR = 80;
+/** B-967 — el mismo tope, por lo mismo: los dos son slugs de taxonomía. */
+export const TOPE_PROVINCIA_LUGAR = 80;
 /**
  * Los slugs de taxonomía que guarda el documento: `tipo-lugar`,
  * `condicion-de-uso`, `barrio` y cada elemento de `incluye`.
@@ -283,8 +287,17 @@ export interface Lugar {
    * tiene, la proyección decide.
    */
   direccion: string | null;
-  /** Slug de `/opciones/barrio` — **el mismo de siempre**, el de las actividades. */
+  /**
+   * Slug de `/opciones/provincia` — B-967. Primer nivel de la cascada, **el mismo
+   * vocabulario que una actividad y que una librería**.
+   */
+  provincia: string;
+  /**
+   * Slug de `/opciones/barrio` — **el mismo de siempre**, el de las actividades.
+   * Se pide solo en CABA desde B-967.
+   */
   barrio: string;
+  /** Slug de `/opciones/ciudad` — B-967. Era texto libre. */
   ciudad: string;
   /**
    * ⚠️ **Mismo cuidado que la dirección, y peor**: `geo` la pone en un mapa, o
@@ -407,6 +420,8 @@ export interface LugarForm {
   imagenes: Imagen[];
   tipo: string;
   direccion: string;
+  /** B-967 — los tres de la geografía, slugs de taxonomía como en una sede. */
+  provincia: string;
   barrio: string;
   ciudad: string;
   /** Los dos `''` ⇒ `geo: null`. Se tipean como texto porque salen de un input. */

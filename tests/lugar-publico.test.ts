@@ -83,9 +83,9 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   },
   {
     nombre: 'qué es y dónde, sin la calle',
-    centinelas: ['tipo', 'barrio', 'ciudad'],
+    centinelas: ['tipo', 'provincia', 'barrio', 'ciudad'],
     porque:
-      'el barrio y la ciudad salen **siempre**, también para una casa: son el «más o menos por ' +
+      'los tres de la geografía salen **siempre**, también para una casa: son el «más o menos por ' +
       'Villa Crespo» que el § 6 del PRD sí deja publicar, y sin ellos la ficha de una casa no ' +
       'diría nada y el filtro de barrio la dejaría fuera de su propio chip. El tipo es el eje de ' +
       'filtro 5 y lo que decide el default del flag.',
@@ -170,7 +170,7 @@ const PERMITIDO_EN_EL_MARCADO: readonly Excepcion[] = [
   },
   {
     nombre: '⚠️ la dirección, y SOLO con el flag prendido',
-    centinelas: ['direccion', 'ciudad'],
+    centinelas: ['direccion', 'ciudad', 'provincia'],
     porque:
       '`address.streetAddress` y `addressLocality`. **Es el criterio 5 del PRD y el camino que ' +
       'más fácil se filtra**: nadie lee el JSON-LD al revisar una ficha. Sin dirección publicada ' +

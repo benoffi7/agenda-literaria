@@ -2166,7 +2166,8 @@ service cloud.firestore {
     function formaDeLugar() {
       let d = request.resource.data;
       let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'tipo', 'direccion',
-                          'barrio', 'ciudad', 'geo', 'direccionPublica', 'capacidad',
+                          // B-967 — los tres de la geografía, como en una librería.
+                          'provincia', 'barrio', 'ciudad', 'geo', 'direccionPublica', 'capacidad',
                           'capacidadNotas', 'incluye', 'incluyeOtro', 'condicion', 'precio',
                           'condicionNotas', 'instagram', 'whatsapp', 'mail', 'web',
                           'contactoDeQuienCargo', 'estado', 'origen', 'searchText',
@@ -2214,9 +2215,18 @@ service cloud.firestore {
         // librerías (§ 3 del PRD): con otro alfabeto, el hub de barrio no cruza
         // las tres cosas. **Sale siempre**, también para una casa: es el «más o
         // menos por Villa Crespo» que el § 6 sí deja publicar.
+        /*
+         * B-967 — los tres de la geografía, con el mismo trato que en una
+         * librería: `barrio` y `ciudad` admiten `''` porque la cascada pide **una**
+         * de las dos según la provincia, y la provincia se exige. Ver la nota
+         * larga en `formaDeLibreria()`.
+         */
         && d.barrio is string && d.barrio.size() <= 80
-        && d.barrio.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
-        && d.ciudad is string && d.ciudad.size() >= 1 && d.ciudad.size() <= 80
+        && (d.barrio == '' || d.barrio.matches('^[a-z0-9]+(-[a-z0-9]+)*$'))
+        && d.ciudad is string && d.ciudad.size() <= 80
+        && (d.ciudad == '' || d.ciudad.matches('^[a-z0-9]+(-[a-z0-9]+)*$'))
+        && d.provincia is string && d.provincia.size() <= 80
+        && d.provincia.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
         && geoDeLugarValida(d.geo)
         // ⚠️ El flag del § 6. Su **valor** lo deciden `lugarDeGuiaValido()` (al crear,
         // con la cláusula del domicilio particular) y el panel; acá solo se acota

@@ -35,6 +35,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { db } from '@/lib/firestore-client';
 import { formALugar, precioCambio, precioDelForm } from '@/lib/lugar-schema';
 import { CIUDAD_POR_DEFECTO } from '@/types/libreria';
@@ -129,8 +130,14 @@ export const lugarAFormulario = (l: Lugar): LugarForm => ({
   imagenes: l.imagenes ?? [],
   tipo: l.tipo ?? '',
   direccion: l.direccion ?? '',
-  barrio: l.barrio ?? '',
-  ciudad: l.ciudad || CIUDAD_POR_DEFECTO,
+  /*
+   * B-967 — el **default de lectura** de la geografía (D-26), el mismo que usan
+   * una actividad y una librería: una ficha anterior guarda la ciudad como se
+   * tipeó y sin provincia, y sin esto el desplegable de la cascada abriría con un
+   * valor que no matchea ninguna opción.
+   */
+  ...geografiaNormalizada(l),
+  ciudad: geografiaNormalizada(l).ciudad || CIUDAD_POR_DEFECTO,
   geo: {
     lat: l.geo ? String(l.geo.lat) : '',
     lng: l.geo ? String(l.geo.lng) : '',

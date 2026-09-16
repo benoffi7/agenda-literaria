@@ -55,7 +55,6 @@ import {
   MAX_INCLUYE_LUGAR,
   MAX_PRECIO_LUGAR,
   MIN_CAPACIDAD_LUGAR,
-  MIN_CIUDAD_LUGAR,
   MIN_CONTACTO_LUGAR,
   MIN_DIRECCION_LUGAR,
   MIN_MAIL_LUGAR,
@@ -65,6 +64,7 @@ import {
   TIPOS_SIN_DIRECCION_PUBLICA,
   TOPE_CAPACIDAD_NOTAS_LUGAR,
   TOPE_CIUDAD_LUGAR,
+  TOPE_PROVINCIA_LUGAR,
   TOPE_CONDICION_NOTAS_LUGAR,
   TOPE_CONTACTO_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
@@ -190,8 +190,13 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
       ['d.direccion', '>=', MIN_DIRECCION_LUGAR],
       ['d.direccion', '<=', TOPE_DIRECCION_LUGAR],
       ['d.barrio', '<=', TOPE_SLUG_TAXONOMIA_LUGAR],
-      ['d.ciudad', '>=', MIN_CIUDAD_LUGAR],
+      /*
+       * B-967 — `d.ciudad` perdió su `>= 1`: pasó a ser slug y ganó el `matches`,
+       * cuyo `+` ya exige un carácter. Y admite `''` porque la cascada pide **una**
+       * de las dos según la provincia.
+       */
       ['d.ciudad', '<=', TOPE_CIUDAD_LUGAR],
+      ['d.provincia', '<=', TOPE_PROVINCIA_LUGAR],
       ['d.capacidadNotas', '<=', TOPE_CAPACIDAD_NOTAS_LUGAR],
       ['d.incluye', '<=', MAX_INCLUYE_LUGAR],
       ['d.incluyeOtro', '<=', TOPE_OTRO_LUGAR],
@@ -232,9 +237,9 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
     expect(bloque, 'el handle de Instagram').toContain(`'${RE_INSTAGRAM_LUGAR}'`);
     expect(bloque, 'los dígitos del WhatsApp').toContain(`'${RE_WHATSAPP_LUGAR}'`);
     expect(bloque, 'la web').toContain(`'${RE_WEB_LUGAR}'`);
-    // El alfabeto de slug lo usan **cuatro** campos: la ficha, el tipo de lugar,
-    // el barrio y la condición.
-    expect(bloque.split(`'${RE_SLUG_LUGAR}'`).length - 1).toBe(4);
+    // El alfabeto de slug lo usan **seis** campos: la ficha, el tipo de lugar, la
+    // condición y —desde B-967— los tres de la geografía.
+    expect(bloque.split(`'${RE_SLUG_LUGAR}'`).length - 1).toBe(6);
   });
 
   it('la web acepta `http://`, al revés que el link de cobro de una suscripción', () => {
@@ -512,7 +517,18 @@ describe('el schema — lo que se le avisa a quien completa antes de mandar', ()
     expect(rutas(valida({ nombre: '' }))).toContain('nombre');
     expect(rutas(valida({ tipo: '' }))).toContain('tipo');
     expect(rutas(valida({ condicion: '' }))).toContain('condicion');
-    expect(rutas(valida({ barrio: '' }))).toContain('barrio');
+  });
+
+  /**
+   * **B-967 — el barrio dejó de ser obligatorio y la provincia pasó a serlo**, con
+   * el mismo motivo que en una librería: la cascada pide **una** de las dos según
+   * la provincia, así que un `min(1)` en el barrio hacía inguardable un lugar de
+   * Mar del Plata.
+   */
+  it('el barrio puede ir vacío, la provincia no', () => {
+    expect(valida({ barrio: '' }).success).toBe(true);
+    expect(rutas(valida({ provincia: '' }))).toContain('provincia');
+    expect(valida({ provincia: 'buenos-aires' }).success).toBe(true);
   });
 
   it('**la condición es obligatoria y el precio no** — § 5 del PRD', () => {
