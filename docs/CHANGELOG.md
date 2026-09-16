@@ -87,8 +87,26 @@
   `CLASES_DE_HUB`); y `conProvincia` **borraba el barrio** también al pasar de una
   provincia a otra que no fuera CABA.
 
-  Quedó anotado **B-968** (el evento de Calendar no normaliza: `functions/` no
-  puede importar hacia arriba). Los otros dos se cerraron en el mismo empujón:
+  **Los cuatro ítems que la auditoría abrió se cerraron.**
+
+  **B-968 — el evento de Calendar también normaliza.** Era la excepción:
+  `functions/` se despliega con su propio `package.json` y no puede importar
+  `src/`. Se cerró **mudando el módulo**, que es la salida que el repo ya usó tres
+  veces: `functions/slugify.js` y `functions/geografia.js` son la implementación,
+  y `src/lib/slugify.mjs` y `src/lib/geografia.mjs` las reexportan — **ningún
+  import de `src/` ni de `scripts/` cambió de ruta**. Una implementación, cuatro
+  runtimes. Con eso el calendario público dice la etiqueta también para un
+  documento viejo, incluido el caso que el ítem nombraba: la ciudad tipeada en
+  mayúsculas irregulares.
+
+  **B-965 — `ciudades[]` recuperó su ancla por valor**, y con un arreglo mejor que
+  el que el ítem anticipaba (no hacía falta esperar a que el campo dejara de
+  derivarse de lo publicado). El array lleva dos elementos: el derivado, que
+  prueba la derivación, y un **centinela propio** que ninguna salida puede
+  contener nunca. Quedó más fuerte que antes: ahora la fuga la caza el barrido
+  entero por nombre, no un caso dedicado.
+
+  Los otros dos:
 
   **B-969 — el build real ahora ejercita la mitad no-CABA.** El gate sembraba una
   sola geografía, así que el paso 9 —el único chequeo que mira el HTML realmente

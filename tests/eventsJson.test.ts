@@ -88,45 +88,90 @@ describe('la entrada del índice recorta lo que el listado no usa (§3.1)', () =
   });
 
   /**
-   * **El juego de claves de una entrada, fijado** — lo abrió B-966 al agregar
-   * `zonas`, y el motivo es el que la auditoría de B-950 dejó claro: **una clave
-   * nueva en el `events.json` es una decisión**, porque ese archivo lo baja toda
-   * persona que abre la agenda y lo que entra ahí es público para siempre.
+   * **El juego de claves de una entrada, fijado por RUTA y no por primer nivel.**
    *
-   * Hasta acá nada lo fijaba. El caso de arriba afirma la **ausencia** de los
-   * nueve campos del detalle, que es la mitad que importa para la privacidad;
-   * esto afirma la otra, que es la del peso y la del «¿alguien decidió esto?».
+   * Lo abrió B-966 al agregar `zonas`, y el motivo es el que la auditoría de
+   * B-950 dejó claro: **una clave nueva en el `events.json` es una decisión**,
+   * porque ese archivo lo baja toda persona que abre la agenda y lo que entra ahí
+   * es público para siempre.
    *
-   * Agregar una clave pone este caso en rojo. La respuesta no es actualizar la
-   * lista sin mirar: es decidir si la clave tiene que viajar, y recién ahí
-   * escribirla acá con su motivo.
+   * ── Por qué recursivo, y no `Object.keys` ────────────────────────────────
+   * La primera versión miraba solo el primer nivel, y el `auditor-privacidad`
+   * mostró que eso deja afuera justo donde este archivo crece: `sede.provincia`
+   * entró con B-950 **así**, y `arancel.monto` con B-114. Peor todavía, era
+   * demostrable con la clave que motivó el caso — agregarle `nombre: string[]` a
+   * `ZonasDeIndice` («los nombres de todas las sedes, para la tarjeta») no ponía
+   * **nada** en rojo: ni este caso, porque es segundo nivel, ni el barrido de
+   * centinelas, porque `sede.nombre` está permitido. O sea, servir en lote el
+   * nombre de todas las sedes pasaba sin un solo rojo.
+   *
+   * Los arrays se recorren por su **primer** elemento y se escriben con `[]`: lo
+   * que se fija es la forma, y una lista homogénea la declara su primer ítem. Una
+   * lista vacía no aporta ruta, que es correcto —no hay forma que declarar— y es
+   * el motivo de que `imagenes` no aparezca acá con el fixture de centinelas.
+   *
+   * Agregar una clave, a cualquier profundidad, pone este caso en rojo. La
+   * respuesta no es actualizar la lista sin mirar: es decidir si esa clave tiene
+   * que viajar, y recién ahí escribirla con su motivo.
    */
-  it('una entrada del índice lleva exactamente estas claves, y ninguna más', () => {
-    expect(Object.keys(entradaDeIndice(publica())).sort()).toEqual([
-      'arancel',
+  const rutasDe = (valor: unknown, prefijo = ''): string[] => {
+    if (Array.isArray(valor)) {
+      return valor.length === 0 ? [] : rutasDe(valor[0], `${prefijo}[]`);
+    }
+    if (valor === null || typeof valor !== 'object') return prefijo ? [prefijo] : [];
+    return Object.entries(valor).flatMap(([k, v]) =>
+      rutasDe(v, prefijo ? `${prefijo}.${k}` : k),
+    );
+  };
+
+  it('una entrada del índice lleva exactamente estas rutas, y ninguna más', () => {
+    const rutas = rutasDe(entradaDeIndice(publica())).sort();
+    /*
+     * Control positivo: si `rutasDe` dejara de bajar a los sub-objetos, esto
+     * quedaría en el orden de veinte rutas y no de cuarenta, y el caso pasaría a
+     * medir lo mismo que la versión que el auditor rompió.
+     */
+    expect(rutas.filter((r) => r.includes('.')).length).toBeGreaterThan(10);
+    expect(rutas).toEqual([
+      'arancel.monto',
+      'arancel.tipo',
       'creadoEn',
       'destacado',
       'esCiclo',
       'id',
       'imagenUrl',
-      'inscripcion',
+      // `inscripcion` viaja recortada: el índice lleva si hace falta, si está
+      // abierta y cuántos cupos, y **no** el `destino` ni la `via` — eso es del
+      // detalle. Escribirlo acá es lo que hace que agregarlos sea una decisión.
+      'inscripcion.cierraEn',
+      'inscripcion.completo',
+      'inscripcion.cupo',
+      'inscripcion.requiere',
       'modalidad',
-      'modalidades',
-      'online',
+      'modalidades[]',
+      'online.plataforma',
       'organizador',
       'resumen',
       'searchText',
-      'sede',
-      'sesiones',
+      'sede.barrio',
+      'sede.ciudad',
+      'sede.nombre',
+      'sede.provincia',
+      // Sin el `id` de la sesión: el listado no lo necesita.
+      'sesiones[].cancelada',
+      'sesiones[].fin',
+      'sesiones[].inicio',
       'slug',
-      'tags',
+      'tags[]',
       'tallerista',
       'tipo',
       'titulo',
       // B-966 — el lugar de **todas** las filas, para los tres ejes de la
-      // cascada. Ver su docblock: una clave y no tres, porque este archivo lo
-      // baja todo el mundo.
-      'zonas',
+      // cascada. Tres listas de slugs y nada más: son estas tres líneas las que
+      // impiden que mañana lleve además el nombre de cada sede.
+      'zonas.barrio[]',
+      'zonas.ciudad[]',
+      'zonas.provincia[]',
     ]);
   });
 

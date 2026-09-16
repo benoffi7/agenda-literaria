@@ -6620,7 +6620,28 @@ El arreglo natural es un helper compartido —`archivosDelRepo(prefijo)`— en v
 treinta copias del `execFileSync`, que es además lo que impediría que la copia
 treinta y uno nazca sin las banderas.
 
-### B-965 · `ciudades` perdió su ancla por valor, y hoy solo se ancla por clave · P3 — abierto con B-950
+### B-965 · `ciudades` perdió su ancla por valor, y hoy solo se ancla por clave — ✅ hecho (2026-09-16) · P3 — abierto con B-950
+
+> ✅ **Hecho el 2026-09-16**, y con un arreglo que el ítem no había visto: no hacía
+> falta esperar a que `ciudades` dejara de derivarse de lo publicado.
+>
+> El array lleva ahora **dos** elementos. El primero sigue siendo el derivado con
+> `ciudadesDe` —prueba la derivación, y se publica legítimamente adentro de
+> `sede`—; el segundo es un **centinela propio**, un string que ninguna salida
+> puede contener nunca. Así el ancla por valor volvió sobre el único elemento que
+> puede tenerla.
+>
+> **Y el caso es real, no un artificio del fixture**: nada garantiza que
+> `ciudades` coincida con las sedes en un instante dado —un documento editado a
+> mano en la consola, o sembrado por una versión anterior del backfill, puede
+> tenerlo desactualizado— y lo que este campo tiene que cumplir **siempre**, diga
+> lo que diga, es no publicarse.
+>
+> Quedó más fuerte que antes: ahora la fuga la caza **el barrido entero** por
+> nombre, y no solo un `it` dedicado. Las dos anclas conviven y ninguna sobra — la
+> de valor cubre una fuga que publique el contenido sin la clave (interpolado en
+> un texto), la de clave cubre la que publique la clave con contenido que ya era
+> público.
 
 `ciudades[]` es el derivado con el que `firestore.rules` contesta el alcance por
 ciudad del rol `publicador` (B-919, D-690) y **no tiene que salir a ninguna
@@ -6727,7 +6748,26 @@ vez de cuatro.
 
 Lo señaló el `auditor-privacidad` sobre B-950.
 
-### B-968 · El evento de Calendar no normaliza la geografía de una sede vieja · P3 — de la auditoría de B-950 (2026-09-16)
+### B-968 · El evento de Calendar no normaliza la geografía de una sede vieja — ✅ hecho (2026-09-16) · P3 — de la auditoría de B-950 (2026-09-16)
+
+> ✅ **Hecho el 2026-09-16**, y con la salida que el propio ítem nombraba: la de
+> `@calendario`/`@historial`. `slugify` y `geografia` **se mudaron a
+> `functions/`**, que es donde tiene que vivir un módulo que cuatro runtimes
+> necesitan y que uno de ellos no puede importar hacia arriba (D-20).
+> `src/lib/slugify.mjs` y `src/lib/geografia.mjs` quedan como fachadas que
+> reexportan, así que **ningún import de `src/` ni de `scripts/` cambió de ruta**.
+>
+> Con eso, `piezasDeDireccion` aplica `geografiaNormalizada` y el evento dice la
+> etiqueta también para un documento anterior a B-950 — incluido el caso que el
+> ítem nombraba, la ciudad tipeada en mayúsculas irregulares.
+>
+> Dos barridos se movieron con el cambio, y los dos por el motivo correcto: el que
+> prohíbe un `slugify` propio (la implementación permitida ahora es
+> `functions/slugify.js`; la fachada no cuenta porque **reexporta** en vez de
+> reimplementar, que es justo la diferencia que ese barrido mide), y el que exige
+> que los archivos aliaseados de `functions/` no importen nada — su premisa pasó
+> de «cero imports» a «nada de afuera de `functions/`», **siguiendo la cadena**,
+> que es lo que de verdad protege: que no entre `firebase-admin` al bundle.
 
 `geografiaNormalizada` (`src/lib/geografia.mjs`) se aplica en los cuatro lugares
 que leen o escriben el documento sin pasar por el formulario —`toPublic.ts`,

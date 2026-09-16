@@ -290,12 +290,19 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
      * pasaba. La lista se deriva del árbol, no se mantiene a mano.
      *
      * Los dos permitidos son distintos a propósito y no una excepción de más:
-     * `slugify.mjs` produce un **identificador** (`[a-z0-9-]`, es lo que compara
-     * la regla) y `normalize.ts` produce el **índice de búsqueda** del §6, que
-     * conserva los espacios porque se busca por palabras. Son dos preguntas
+     * `functions/slugify.js` produce un **identificador** (`[a-z0-9-]`, es lo que
+     * compara la regla) y `normalize.ts` produce el **índice de búsqueda** del §6,
+     * que conserva los espacios porque se busca por palabras. Son dos preguntas
      * distintas, no dos respuestas a la misma.
+     *
+     * **El primero se mudó a `functions/` con B-968**, cuando apareció el cuarto
+     * runtime que tiene que normalizar igual: la Function de Calendar, que se
+     * despliega con su propio `package.json` y no puede importar `src/` (D-20).
+     * `src/lib/slugify.mjs` sigue existiendo como fachada y no cuenta acá porque
+     * **reexporta** en vez de reimplementar, que es justo la diferencia que este
+     * barrido mide.
      */
-    const PERMITIDOS = ['src/lib/slugify.mjs', 'src/lib/normalize.ts'];
+    const PERMITIDOS = ['functions/slugify.js', 'src/lib/normalize.ts'];
 
     const archivos = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -312,7 +319,8 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
     expect(
       culpables,
       `estos archivos se escribieron su propia normalización: ${culpables.join(', ')}. ` +
-        'Importala de `src/lib/slugify.mjs` (identificadores) o de `src/lib/normalize.ts` ' +
+        'Importala de `src/lib/slugify.mjs` (identificadores — la fachada de `functions/slugify.js`) '+
+        'o de `src/lib/normalize.ts` ' +
         '(búsqueda): dos normalizaciones distintas de la misma ciudad son un permiso que no ' +
         'matchea y nadie entiende por qué (B-919).',
     ).toEqual([]);

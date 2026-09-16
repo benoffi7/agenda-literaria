@@ -10876,10 +10876,22 @@ dejar la lista vacía, y no medirlo dejaría el caso más probable llegando sin
 `eje` — que es exactamente lo que B-798 arregló para los otros cuatro.
 
 **`ciudades[]` perdió su ancla por valor** en el barrido de salidas públicas. Se
-anclaba por valor porque su contenido no se publicaba; ahora el slug de la ciudad
-**sí** se publica —es el mismo string—, así que no existe ningún valor que
-`ciudades` pueda llevar y que no esté afuera. Queda el ancla por clave, más débil.
-Está anotado como **B-965**.
+anclaba por valor porque su contenido no se publicaba; con la ciudad como
+taxonomía, el slug **sí** se publica —es el mismo string— y es exactamente el
+contenido de ese array.
+
+**Se recuperó con B-965**, y con un arreglo mejor que el que este documento
+anticipaba: el array lleva **dos** elementos, el derivado —que prueba la
+derivación y se publica dentro de `sede`— y un **centinela propio**, un string que
+ninguna salida puede contener nunca. El caso es real y no un artificio del
+fixture: nada garantiza que `ciudades` coincida con las sedes en un instante dado
+—un documento editado a mano en la consola, o sembrado por una versión anterior
+del backfill, puede tenerlo desactualizado— y lo que ese campo tiene que cumplir
+siempre, diga lo que diga, es no publicarse.
+
+Las dos anclas conviven y ninguna sobra: la de valor cubre una fuga que publique
+el **contenido** sin la clave (interpolado en un texto), la de clave cubre la que
+publique la **clave** con contenido que ya era público.
 
 ### 7. `provincia` no tiene hub, y es una decisión
 

@@ -612,6 +612,20 @@ lo que el filtro del sitio necesita: las sedes de cada fila quedan en el detalle
 la ventana no sale. Su celda está fijada en el barrido, con el caso que lo dice
 por su nombre.
 
+**Con una excepción desde B-966, y conviene que esté acá y no solo en el código:**
+los **tres slugs de lugar** de cada fila —provincia, barrio, ciudad— sí entran, en
+la clave `zonas`. El nombre de la sede, la dirección, las indicaciones y las
+coordenadas de las filas que no son la principal siguen sin entrar. Lo que se
+sirve en lote es geografía de taxonomía, que es lo que el riel filtra y lo que la
+salida 6 ya publica entera; sin eso, una actividad presencial en dos ciudades se
+filtraba por una sola.
+
+**El barrido no lo habría atrapado**, y por eso está escrito: `zonas` lleva los
+mismos valores que `sede`, que ya están permitidos, así que los centinelas
+coinciden. La red no puede decidir esto por nosotros — lo que la red sí cuida es
+que la **forma** de `zonas` sean tres listas de slugs y nada más
+(`tests/eventsJson.test.ts`).
+
 `inscripcion.destino` **sí** sale: es el canal de inscripción. El §5.1 advierte
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
 trabajo o un `wa.me` con mensaje precargado. El formulario lo dice en la ayuda

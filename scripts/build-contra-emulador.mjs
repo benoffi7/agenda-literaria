@@ -802,7 +802,8 @@ const CENTINELA_DE_LUGARES = ['lugarDescripcion', 'lugarDireccion'];
  *
  * **Por qué `ciudad` sí y las otras dos no** (B-969): sembrar `/opciones/*` es
  * tocar un documento de id fijo en el emulador de quien trabaja, así que hay que
- * guardarlo y devolverlo (`sembrarCiudadDelGate`/`restaurarCiudadDelGate`). Se
+ * sacarlo después por prefijo (`sembrarCiudadDelGate`/`limpiarCiudadDelGate`), que
+ * es lo que hace que una corrida interrumpida la repare la siguiente. Se
  * paga ese costo una vez, por la clase que no tenía **ninguna** cobertura sobre
  * el artefacto real: la geografía de afuera de CABA. Para `tipo` y `barrio` no
  * hace falta — la clase de hub ya está barrida por la de ciudad, que comparte
@@ -896,33 +897,45 @@ initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-lit
 const db = getFirestore();
 
 /**
- * **`/opciones/ciudad`: lo que estaba antes, para devolverlo después** — B-969.
+ * **`/opciones/ciudad`: la ciudad del gate, sacada por prefijo** — B-969.
  *
  * Es el único documento de id **fijo** que este gate toca, así que no lo alcanza
- * el borrado por prefijo de `limpiar()`: hay que guardar lo que había y
- * escribirlo de vuelta. La alternativa era no sembrarlo, y entonces no se emite
- * ninguna página `/ciudad/*` —un hub solo existe para las opciones **aprobadas**
- * con actividad publicada— que es justo lo que este gate vino a cubrir.
+ * el borrado por prefijo de `limpiar()`. La alternativa era no sembrarlo, y
+ * entonces no se emite ninguna página `/ciudad/*` —un hub solo existe para las
+ * opciones **aprobadas** con actividad publicada— que es justo lo que este gate
+ * vino a cubrir.
  *
- * `null` significa «el documento no existía», que es distinto de «existía
- * vacío»: en ese caso la restauración lo borra en vez de dejarlo con `valores: []`.
+ * ── Por qué se saca por prefijo y no restaurando una copia ────────────────
+ * La primera versión guardaba el documento en una variable del módulo y lo
+ * escribía de vuelta en el `finally`. **Lo cobró el `auditor-trampas`, y con
+ * razón**: eso cubre el éxito y la excepción de JS, pero **no** una interrupción
+ * del proceso —un `Ctrl+C`, un `SIGTERM` de CI, cerrar la terminal—, donde node
+ * no corre ningún `finally` pendiente. Y la corrida siguiente tampoco lo
+ * reparaba: la variable arranca en `undefined` en cada proceso nuevo, así que la
+ * limpieza inicial la leía como «no sembré nada» y no tocaba el documento. El
+ * slug del gate quedaba en la taxonomía que alimenta **todos los desplegables de
+ * ciudad del panel**, hasta que alguien lo notara a mano.
+ *
+ * Sacarlo por prefijo no depende de que este proceso haya sobrevivido: es el
+ * mismo criterio que el borrado de las colecciones, y **se autorepara** porque
+ * `limpiar()` corre también al **empezar**. Una corrida interrumpida la arregla
+ * la siguiente.
+ *
+ * Los campos que no son `valores` se conservan: `set()` reemplaza, y la taxonomía
+ * puede ganar un campo mañana.
+ *
+ * Si al sacar lo del gate no queda ningún valor, el documento **se borra**: es el
+ * caso del emulador que no lo tenía, que es el normal acá. (Un `/opciones/ciudad`
+ * real siempre tiene al menos `caba`, que `opciones-base.json` siembra.)
  */
-let opcionesCiudadPrevias;
-
 const sembrarCiudadDelGate = async () => {
   const ref = db.doc('opciones/ciudad');
   const snap = await ref.get();
-  /*
-   * Se guarda el **documento entero** y no solo `valores`, aunque hoy sea lo
-   * único que tiene: `ref.set()` reemplaza, así que restaurar solo esa clave
-   * borraría en silencio cualquier campo que la taxonomía gane mañana. Es más
-   * barato que acordarse.
-   */
-  opcionesCiudadPrevias = snap.exists ? (snap.data() ?? {}) : null;
+  const previos = snap.exists ? (snap.data()?.valores ?? []) : [];
   await ref.set({
-    ...(opcionesCiudadPrevias ?? {}),
+    ...(snap.exists ? (snap.data() ?? {}) : {}),
     valores: [
-      ...(opcionesCiudadPrevias?.valores ?? []),
+      ...previos,
       {
         slug: CIUDAD_DEL_GATE,
         label: ETIQUETA_CIUDAD_DEL_GATE,
@@ -938,22 +951,43 @@ const sembrarCiudadDelGate = async () => {
   });
 };
 
-const restaurarCiudadDelGate = async () => {
-  // `undefined` es «nunca se sembró» (el gate falló antes): no hay nada que
-  // devolver, y escribir igual pisaría el documento de quien está trabajando.
-  if (opcionesCiudadPrevias === undefined) return;
+/** Devuelve cuántos valores del gate sacó. Ver el docblock de arriba. */
+const limpiarCiudadDelGate = async () => {
   const ref = db.doc('opciones/ciudad');
-  if (opcionesCiudadPrevias === null) await ref.delete();
-  else await ref.set(opcionesCiudadPrevias);
-  opcionesCiudadPrevias = undefined;
+  const snap = await ref.get();
+  if (!snap.exists) return 0;
+  const datos = snap.data() ?? {};
+  const previos = datos.valores ?? [];
+  const quedan = previos.filter((v) => !String(v?.slug ?? '').startsWith(PREFIJO));
+  const sacados = previos.length - quedan.length;
+  if (sacados === 0) return 0;
+  if (quedan.length === 0) await ref.delete();
+  else await ref.set({ ...datos, valores: quedan });
+  return sacados;
 };
 
 const limpiar = async () => {
-  // B-969 — va **primero** y fuera del `Promise.all` de abajo: es un documento de
-  // id fijo y no entra al borrado por prefijo. Una limpieza que se olvida de él
-  // le deja al emulador de quien trabaja una ciudad que no existe, en la
-  // taxonomía que alimenta los desplegables de todo el panel.
-  await restaurarCiudadDelGate();
+  /*
+   * B-969 — va **primero** y fuera del `Promise.all` de abajo: es un documento de
+   * id fijo y no entra al borrado por prefijo de las colecciones. Una limpieza
+   * que se olvida de él le deja al emulador de quien trabaja una ciudad que no
+   * existe, en la taxonomía que alimenta los desplegables de todo el panel.
+   *
+   * **Con su propio `try`, y eso lo cobró el `auditor-privacidad`:** sin él, un
+   * fallo acá cortaba el `await` y **las actividades de prueba no se borraban**,
+   * que es un daño mayor que el que esta línea vino a evitar. Avisa y sigue.
+   */
+  let ciudadDelGate = 0;
+  try {
+    ciudadDelGate = await limpiarCiudadDelGate();
+  } catch (e) {
+    console.error(
+      '  ⚠ no se pudo limpiar la ciudad del gate de `/opciones/ciudad`: ' +
+        `${e instanceof Error ? e.message : String(e)}\n` +
+        `     Revisá que no haya quedado un valor con el prefijo ${PREFIJO}: ` +
+        'la corrida siguiente lo saca sola, pero mientras tanto emite un hub /ciudad/*.',
+    );
+  }
   // Las dos colecciones que este gate siembra. `/usuarios` entró con B-888 y va
   // acá y no en un segundo helper: el `finally` tiene que dejar el emulador como
   // lo encontró, y una limpieza que se olvida de una colección es la clase de
@@ -979,7 +1013,7 @@ const limpiar = async () => {
     borrar('suscripciones'),
     borrar('lugares'),
   ]);
-  return actividades + usuarios + librerias + suscripciones + lugares;
+  return actividades + usuarios + librerias + suscripciones + lugares + ciudadDelGate;
 };
 
 const fallo = (mensaje) => {
@@ -1554,6 +1588,21 @@ try {
      * y que la plantilla la pinte. Es el mismo argumento con el que el gate mira
      * la página de una cancelada.
      */
+    /**
+     * El `<h1>` de una página, y **por qué el aserto se recorta** — lo cobró el
+     * `auditor-privacidad` sobre B-969.
+     *
+     * Buscar la etiqueta en el HTML entero pasaba por el motivo equivocado: la
+     * página del hub pinta además la **tarjeta** de la actividad, y
+     * `lugarDeTarjeta` resuelve la ciudad a su etiqueta desde B-950. O sea que si
+     * mañana el `<h1>` emitiera el slug crudo —justo la trampa 10 que el mensaje
+     * nombra— el aserto seguía verde por la tarjeta.
+     */
+    const encabezadoDe = (html) => {
+      const fin = html.indexOf('</h1>');
+      return fin === -1 ? '' : html.slice(0, fin);
+    };
+
     const htmlHubDeCiudad = await leerDist(`ciudad/${CIUDAD_DEL_GATE}/index.html`);
     if (htmlHubDeCiudad === null) {
       fallo(
@@ -1563,9 +1612,10 @@ try {
           '  hub dejó de emitirse, o la siembra de la opción no quedó aprobada.',
       );
       salida = 1;
-    } else if (!htmlHubDeCiudad.includes(ETIQUETA_CIUDAD_DEL_GATE)) {
+    } else if (!encabezadoDe(htmlHubDeCiudad).includes(ETIQUETA_CIUDAD_DEL_GATE)) {
       fallo(
-        `el hub /ciudad/${CIUDAD_DEL_GATE}/ no dice su etiqueta «${ETIQUETA_CIUDAD_DEL_GATE}».\n` +
+        `el hub /ciudad/${CIUDAD_DEL_GATE}/ no dice su etiqueta «${ETIQUETA_CIUDAD_DEL_GATE}» ` +
+          'en el `<h1>`.\n' +
           '  El título de un hub lleva la etiqueta resuelta, nunca el slug (§4.1, trampa 10).',
       );
       salida = 1;
@@ -1581,29 +1631,49 @@ try {
       fallo(`no se generó dist/actividad/${SLUG_AFUERA}/index.html.`);
       salida = 1;
     } else {
-      if (!htmlAfuera.includes(ETIQUETA_CIUDAD_DEL_GATE)) {
+      /*
+       * **La etiqueta pegada a su `href`, y no suelta en el archivo** — lo cobró
+       * el `auditor-privacidad` sobre B-969.
+       *
+       * Buscar «Ciudad del gate» en todo el HTML pasaba por el motivo
+       * equivocado: el JSON-LD de la misma página emite `addressLocality` con la
+       * etiqueta ya resuelta, así que si `piezasDeLugar` dejara de pintar el
+       * renglón entero, el aserto seguía verde por el dato estructurado.
+       *
+       * Pedirlas juntas ata las **tres** afirmaciones a la pieza que las produce:
+       * que el renglón existe, que enlaza al hub con el slug (trampa 10) y que lo
+       * que se lee es la etiqueta.
+       */
+      const rutaDelHub = `/ciudad/${CIUDAD_DEL_GATE}/`;
+      /*
+       * El `<a …>` completo, con sus clases en el medio: se busca el `href` y se
+       * exige que la etiqueta aparezca antes del cierre de esa etiqueta, no en
+       * cualquier parte del archivo.
+       */
+      const desdeElHref = htmlAfuera.slice(htmlAfuera.indexOf(rutaDelHub));
+      const anclaDeLaCiudad = desdeElHref.slice(0, desdeElHref.indexOf('</a>') + 4);
+      if (!htmlAfuera.includes(rutaDelHub) || !anclaDeLaCiudad.includes(ETIQUETA_CIUDAD_DEL_GATE)) {
         fallo(
-          `la ficha de ${SLUG_AFUERA} no dice la ciudad «${ETIQUETA_CIUDAD_DEL_GATE}».\n` +
-            '  El renglón «Dónde» de una sede de afuera de CABA dice la ciudad y la\n' +
-            '  provincia (B-951, D-710).',
-        );
-        salida = 1;
-      }
-      if (!htmlAfuera.includes(ETIQUETA_PROVINCIA_DEL_GATE)) {
-        fallo(
-          `la ficha de ${SLUG_AFUERA} no dice la provincia «${ETIQUETA_PROVINCIA_DEL_GATE}».`,
+          `la ficha de ${SLUG_AFUERA} no tiene la ciudad enlazada a su hub.\n` +
+            `  Se buscó la etiqueta «${ETIQUETA_CIUDAD_DEL_GATE}» adentro del <a> que apunta\n` +
+            `  a ${rutaDelHub}: el «Dónde» de una sede de afuera de CABA dice la ciudad con su\n` +
+            '  etiqueta y la enlaza al hub con su slug (B-951, D-710).\n' +
+            '  Si el hub existe pero esto falla, mirá si `rutaDeZona` sigue resolviendo.',
         );
         salida = 1;
       }
       /*
-       * Y el enlace al hub, que es la otra mitad de B-951: la pieza lleva la
-       * etiqueta como texto **y** el slug adentro del `href`. Solo se pinta si el
-       * hub se emitió, así que este aserto ata las dos páginas.
+       * La provincia, que **no** lleva enlace: no hay hub de provincia
+       * (`CLASES_DE_TAXONOMIA`). Se busca en el mismo renglón —los 300 caracteres
+       * que siguen a la pieza de la ciudad— y no en todo el archivo, porque
+       * «Buenos Aires» es un literal genérico que mañana puede aparecer por otro
+       * lado.
        */
-      if (!htmlAfuera.includes(`/ciudad/${CIUDAD_DEL_GATE}/`)) {
+      const desdeLaCiudad = desdeElHref.slice(0, 500);
+      if (!desdeLaCiudad.includes(ETIQUETA_PROVINCIA_DEL_GATE)) {
         fallo(
-          `la ficha de ${SLUG_AFUERA} no enlaza su hub /ciudad/${CIUDAD_DEL_GATE}/.\n` +
-            '  El «Dónde» enlaza la ciudad a su hub cuando ese hub existe (B-951).',
+          `la ficha de ${SLUG_AFUERA} no dice la provincia «${ETIQUETA_PROVINCIA_DEL_GATE}» ` +
+            'al lado de la ciudad.',
         );
         salida = 1;
       }
@@ -2897,7 +2967,8 @@ try {
     if (borradas > 0) console.log(`  (limpieza: ${borradas} documento(s) de prueba borrados)`);
   } catch (e) {
     console.error(
-      `  ⚠ no se pudieron borrar los documentos de prueba (prefijo ${PREFIJO}): ` +
+      `  ⚠ no se pudieron borrar los documentos de prueba (prefijo ${PREFIJO}), ni de las ` +
+        'colecciones ni de `/opciones/ciudad`: ' +
         `${e instanceof Error ? e.message : String(e)}`,
     );
   }

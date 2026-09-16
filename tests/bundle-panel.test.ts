@@ -245,8 +245,26 @@ describe('el recorrido del grafo ve lo que hay — B-117', () => {
      *
      * MUTACIÓN PROBADA: agregar un `import { readFileSync } from 'node:fs'` en
      * `functions/calendario.js` deja este caso en rojo nombrando el archivo.
+     *
+     * ── La premisa dejó de ser «no importan nada» con B-968 ──────────────
+     * `functions/calendario.js` importa ahora `./geografia.js`, que importa
+     * `./slugify.js`. **Es a propósito**: esa normalización tiene que ser una
+     * sola para los cuatro runtimes, y la Function no puede importar `src/`
+     * (D-20), así que el archivo compartido vive en `functions/`.
+     *
+     * Lo que este caso cuida no era «cero imports» sino **que no entre nada de
+     * afuera** —un `firebase-admin` en el bundle del panel y del sitio—, así que
+     * la premisa se afina en vez de aflojarse: un import **relativo a otro
+     * archivo de `functions/`** se permite y **se sigue**, recursivamente, con el
+     * mismo aserto. Un paquete externo, un `node:` o un salto a `src/` siguen
+     * poniendo esto en rojo.
      */
-    for (const archivo of Object.values(ALIAS_A_ARCHIVO)) {
+    const revisados = new Set<string>();
+    const porRevisar = [...Object.values(ALIAS_A_ARCHIVO)];
+    while (porRevisar.length > 0) {
+      const archivo = porRevisar.pop()!;
+      if (revisados.has(archivo)) continue;
+      revisados.add(archivo);
       /*
        * Las **dos** comillas, y el import de efecto aparte — lo cobró el
        * `auditor-privacidad` sobre este mismo caso: con solo `'`, un
@@ -261,15 +279,33 @@ describe('el recorrido del grafo ve lo que hay — B-117', () => {
         ),
         ...[...src.matchAll(/^\s*import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!),
       ];
+      /*
+       * Lo permitido: `./algo.js` **dentro de `functions/`**. Un `../` queda
+       * afuera a propósito —sería un salto a `src/`, que es lo que D-20 prohíbe
+       * en esta dirección— y un paquete externo también.
+       */
+      const propios = imports.filter((i) => /^\.\/[\w.-]+\.js$/.test(i));
+      const ajenos = imports.filter((i) => !propios.includes(i));
       expect(
-        imports,
-        `${archivo} importa algo, y este archivo lo comparten el panel, el sitio y una ` +
-          `Function: cualquier dependencia suya entra a los tres bundles`,
+        ajenos,
+        `${archivo} importa algo de afuera de \`functions/\`, y este archivo lo comparten el ` +
+          `panel, el sitio y una Function: cualquier dependencia suya entra a los tres bundles`,
       ).toEqual([]);
+      // Los propios se siguen: la premisa vale para la cadena entera, no solo
+      // para la raíz.
+      for (const propio of propios) porRevisar.push(`functions/${propio.slice(2)}`);
       // Y tampoco por `require` ni por import dinámico, que el regex de arriba no ve.
       expect(src, `${archivo} usa require()`).not.toMatch(/\brequire\s*\(/);
       expect(src, `${archivo} usa import() dinámico`).not.toMatch(/\bimport\s*\(/);
     }
+
+    /*
+     * Control positivo: si el recorrido dejara de seguir los propios —o si
+     * `calendario.js` dejara de importar la normalización compartida— esto lo
+     * dice, en vez de quedar verde recorriendo solo las cuatro raíces.
+     */
+    expect([...revisados]).toContain('functions/geografia.js');
+    expect([...revisados]).toContain('functions/slugify.js');
   });
 });
 

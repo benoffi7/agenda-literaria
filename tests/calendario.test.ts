@@ -721,10 +721,29 @@ describe('construirEvento — §7.4', () => {
   });
 });
 
+/**
+ * La sede tal como la guarda el panel **desde B-950**: los tres de la geografía
+ * son slugs de taxonomía. Antes `ciudad` era texto libre y este fixture decía
+ * `'CABA'`, que es lo que el panel ya no escribe.
+ */
 const sedeCompleta = {
   nombre: 'Casa Brandon',
   direccion: 'Luis María Drago 236',
-  barrio: 'Villa Crespo',
+  provincia: 'caba',
+  barrio: 'villa-crespo',
+  ciudad: 'caba',
+  indicaciones: 'Timbre 2',
+  geo: null,
+};
+
+/**
+ * Y la misma sede **como la guardaba un documento anterior a B-950**: sin
+ * provincia y con la ciudad como se tipeó. Es lo que B-968 vino a cubrir.
+ */
+const sedeAntesDeB950 = {
+  nombre: 'Casa Brandon',
+  direccion: 'Luis María Drago 236',
+  barrio: 'villa-crespo',
   ciudad: 'CABA',
   indicaciones: 'Timbre 2',
   geo: null,
@@ -732,6 +751,9 @@ const sedeCompleta = {
 
 describe('construirUbicacion', () => {
   it('junta sede, calle, barrio, ciudad y país', () => {
+    // CABA no se dice dos veces: la ciudad y la provincia son la misma etiqueta,
+    // y el filtro de repetidos —el que ya existía para «Palermo» cargado en los
+    // dos campos— la colapsa sola.
     expect(construirUbicacion(actividad({ sede: sedeCompleta }), LABELS)).toBe(
       'Casa Brandon, Luis María Drago 236, Villa Crespo, CABA, Argentina',
     );
@@ -739,8 +761,33 @@ describe('construirUbicacion', () => {
 
   it('no repite un valor cargado en dos campos', () => {
     const sede = { ...sedeCompleta, barrio: 'Palermo', ciudad: 'Palermo' };
-    expect(construirUbicacion(actividad({ sede }))).toBe(
-      'Casa Brandon, Luis María Drago 236, Palermo, Argentina',
+    // «Palermo» una sola vez. La provincia detrás **no** es una repetición: es
+    // otro dato, y desde B-950 la dirección también la dice.
+    expect(construirUbicacion(actividad({ sede }), LABELS)).toBe(
+      'Casa Brandon, Luis María Drago 236, Palermo, CABA, Argentina',
+    );
+  });
+
+  /**
+   * **B-968 — una sede anterior a B-950 se normaliza acá también.**
+   *
+   * Guarda la ciudad como se tipeó y sin provincia. Sin `geografiaNormalizada`,
+   * `labels['ciudad']['CABA']` no matchea, `etiqueta` cae a `desSlug` y el
+   * calendario público muestra lo que haya —incluida una ciudad en mayúsculas
+   * irregulares— mientras el sitio muestra la etiqueta.
+   *
+   * MUTACIÓN PROBADA: sacar `geografiaNormalizada` de `piezasDeDireccion` deja
+   * los dos `expect` en rojo.
+   */
+  it('normaliza la geografía de un documento anterior a B-950', () => {
+    expect(construirUbicacion(actividad({ sede: sedeAntesDeB950 }), LABELS)).toBe(
+      'Casa Brandon, Luis María Drago 236, Villa Crespo, CABA, Argentina',
+    );
+    // Y con la ciudad tipeada en mayúsculas irregulares, que es el caso que
+    // B-968 nombra: el evento dice la etiqueta, no lo que alguien escribió.
+    const gritada = { ...sedeAntesDeB950, barrio: '', ciudad: 'MAR DEL PLATA' };
+    expect(construirUbicacion(actividad({ sede: gritada }), LABELS)).toBe(
+      'Casa Brandon, Luis María Drago 236, Mar del Plata, Argentina',
     );
   });
 
@@ -777,6 +824,9 @@ const LABELS = {
   arancel: { 'a-la-gorra': 'A la gorra', gratis: 'Gratis' },
   tipo: { 'club-lectura': 'Club de lectura', taller: 'Taller' },
   barrio: { 'villa-crespo': 'Villa Crespo' },
+  // B-950 — la ciudad dejó de ser texto libre, así que el evento la resuelve.
+  ciudad: { caba: 'CABA', 'mar-del-plata': 'Mar del Plata' },
+  provincia: { caba: 'CABA', 'buenos-aires': 'Buenos Aires' },
   plataforma: { zoom: 'Zoom' },
   tags: { narrativa: 'Narrativa' },
 };

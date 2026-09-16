@@ -640,10 +640,59 @@ describe('`ciudades` no sale por ninguna puerta — B-919', () => {
    */
   const claves = (json: string): string[] => Object.keys(JSON.parse(json) as object);
 
-  it('la clave `ciudades` no está en la proyección, el índice, el detalle ni el evento', () => {
+  /**
+   * **El elemento que no se deriva de nada** — B-965.
+   *
+   * `ciudades[0]` es el slug de la ciudad de la sede, y desde B-950 **se
+   * publica**: es lo que `sede.ciudad` lleva. Así que ése no puede anclar nada.
+   * `ciudades[1]` es un centinela propio, o sea un texto que ninguna salida
+   * pública puede contener nunca — y eso, para un campo que no tiene que salir,
+   * **es** la aserción, igual que con `difusion.notas`.
+   *
+   * Se lee del fixture y no se escribe acá: si el fixture dejara de traerlo, el
+   * control positivo de abajo lo dice en vez de pasar buscando `undefined`.
+   */
+  const EXTRA = actividadCentinela().ciudades![1]!;
+
+  it('el contenido de `ciudades` no aparece en la proyección, el índice, el detalle ni el evento', () => {
+    // Control positivo del propio caso: sin esto, los cuatro `not.toContain`
+    // pasarían buscando una cadena vacía.
+    expect(EXTRA).toBe(CENTINELA['ciudades.extra']);
+
     const publica = toPublic(actividadCentinela(), 'act_centinela');
-    // Control positivo: la proyección tiene claves, así que `not.toContain` no
-    // está pasando sobre una lista vacía.
+    expect(JSON.stringify(publica)).not.toContain(EXTRA);
+
+    const indice = construirIndice({
+      actividades: [publica],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    expect(JSON.stringify(indice)).not.toContain(EXTRA);
+
+    const actividad = actividadCentinela();
+    expect(
+      JSON.stringify(construirEvento(actividad, actividad.sesiones[0], LABELS_CENTINELA)),
+    ).not.toContain(EXTRA);
+
+    expect(buildSearchText(actividad)).not.toContain(EXTRA);
+  });
+
+  /**
+   * Y el ancla por **clave**, que es la que atrapa la mutación más plausible:
+   * alguien agrega `ciudades` al `pick` de `toPublic` «para que el sitio pueda
+   * filtrar por ciudad». Ahí el valor derivado saldría igual —ya sale adentro de
+   * `sede`— así que el caso de arriba no lo vería solo.
+   *
+   * Las dos mitades son necesarias y ninguna sobra: la de valor cubre una fuga
+   * que publique el **contenido** sin la clave (interpolado en un texto), la de
+   * clave cubre la que publique la clave con contenido que ya era público.
+   *
+   * MUTACIÓN PROBADA: agregar `ciudades` al `pick` de `toPublic` deja este caso
+   * en rojo y el de arriba verde.
+   */
+  it('y la clave `ciudades` tampoco está en ninguna de las cuatro', () => {
+    const publica = toPublic(actividadCentinela(), 'act_centinela');
     expect(Object.keys(publica).length).toBeGreaterThan(5);
     expect(Object.keys(publica)).not.toContain('ciudades');
 
@@ -661,10 +710,6 @@ describe('`ciudades` no sale por ninguna puerta — B-919', () => {
     expect(
       claves(JSON.stringify(construirEvento(actividad, actividad.sesiones[0], LABELS_CENTINELA))),
     ).not.toContain('ciudades');
-
-    // El `searchText` es una cadena, así que acá el ancla por valor sigue
-    // sirviendo: lo que se afirma es que la lista entera no se concatenó adentro.
-    expect(buildSearchText(actividad)).not.toContain(JSON.stringify(actividad.ciudades));
   });
 });
 
@@ -1439,6 +1484,17 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
      * nombrándolas: sin ese caso, el día que alguien mande la fila entera al índice
      * el barrido no diría nada, porque la sede ya está permitida por la sede
      * derivada.
+     *
+     * ── `zonas` tampoco está acá, y es lo mismo un paso más lejos (B-966) ──
+     * El índice lleva los **tres slugs de lugar de todas las filas**, y esta lista
+     * no lo nombra porque **no puede**: son exactamente los mismos valores que la
+     * sede derivada ya tiene permitidos, así que el barrido no suma ni resta un
+     * centinela. O sea que esta clave entró a la salida 1 **sin que la red pudiera
+     * pedirlo** — lo cobró el `auditor-privacidad`, y la respuesta correcta no es
+     * un centinela nuevo sino escribirlo acá, que es donde alguien va a leer la
+     * frontera, y fijar su **forma** aparte (`tests/eventsJson.test.ts`: tres
+     * listas de slugs y nada más, que es lo que impide que mañana lleve además el
+     * nombre de cada sede).
      */
   ];
 

@@ -3,6 +3,10 @@
  * red: así el diff —que es la parte frágil del sistema— se puede testear sin
  * emuladores ni tocar un calendario real.
  */
+// B-968 — la MISMA normalización de la geografía que usan la proyección pública,
+// los filtros del panel y el historial. Vive en `functions/` justamente para que
+// este archivo la pueda importar: `functions/` no puede importar `src/` (D-20).
+import { geografiaNormalizada } from './geografia.js';
 
 export const TIMEZONE = 'America/Argentina/Buenos_Aires';
 
@@ -184,15 +188,30 @@ const ETIQUETA_MODALIDAD = {
  * `ubicacionDeSede` ya era una: si divergieran, el evento diría una dirección en
  * el mapa y otra en el texto.
  */
-const piezasDeDireccion = (sede, labels) =>
-  [
+const piezasDeDireccion = (sede, labels) => {
+  /*
+   * **B-968 — la geografía se normaliza también acá.** Un documento anterior a
+   * B-950 guarda la ciudad como se tipeó («Mar del Plata») y sin provincia, así
+   * que sin esto el `labels['ciudad']['Mar del Plata']` no matchea, `etiqueta`
+   * cae a `desSlug` y el calendario público muestra lo que haya —incluida una
+   * ciudad en mayúsculas irregulares— mientras el sitio muestra la etiqueta.
+   *
+   * Es la **misma** función que usan la proyección pública, los filtros del
+   * panel, `formADocumento` y el historial, importada y no copiada. Se pudo
+   * recién cuando `geografia.js` se mudó a `functions/`: antes vivía en `src/` y
+   * este módulo no puede importar hacia arriba (D-20), que era justamente el
+   * motivo por el que B-968 quedó abierto.
+   */
+  const geo = geografiaNormalizada(sede);
+  return [
     sede.direccion,
-    etiqueta(labels, 'barrio', sede.barrio),
-    etiqueta(labels, 'ciudad', sede.ciudad),
-    etiqueta(labels, 'provincia', sede.provincia),
+    etiqueta(labels, 'barrio', geo.barrio),
+    etiqueta(labels, 'ciudad', geo.ciudad),
+    etiqueta(labels, 'provincia', geo.provincia),
   ]
     .map((p) => (p ?? '').trim())
     .filter(Boolean);
+};
 
 const ubicacionDeSede = (sede, labels, modalidad) => {
   if (!sede) {

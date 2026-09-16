@@ -145,6 +145,29 @@ const RUTAS = [
   'sede.provincia',
   'sede.barrio',
   'sede.ciudad',
+  /*
+   * **B-965 — el elemento de `ciudades` que no se deriva de nada.**
+   *
+   * `ciudades` es el derivado con el que la regla contesta el alcance por ciudad
+   * del rol `publicador` (B-919, D-690) y **no tiene que salir a ninguna salida
+   * pública**. Se anclaba por valor, que para un campo que no sale es la aserción
+   * más fuerte que hay — y B-950 se lo llevó puesto: desde que `ciudad` es
+   * taxonomía, el slug de la ciudad **sí** se publica, y es exactamente el
+   * contenido de este array. Buscarlo daba rojo siempre.
+   *
+   * La salida es que el array lleve **dos** elementos: el derivado de la sede,
+   * que prueba la derivación y se publica legítimamente adentro de `sede`, y
+   * **éste**, que es un centinela propio y no sale de ningún lado. Así el ancla
+   * por valor vuelve, sobre el único elemento que puede tenerla.
+   *
+   * **Y el caso es real, no un artificio del fixture**: nada garantiza que
+   * `ciudades` coincida con las sedes de un documento en un instante dado — lo
+   * escribe `formADocumento` en cada guardado, pero un documento editado a mano
+   * en la consola, o sembrado por una versión anterior del backfill, puede
+   * tenerlo desactualizado. Lo que este campo tiene que cumplir **siempre**, diga
+   * lo que diga, es no publicarse.
+   */
+  'ciudades.extra',
   'sede.indicaciones',
   'online.plataforma',
   'online.url',
@@ -609,15 +632,19 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
   sede: sedeCentinela(),
   online: onlineCentinela(),
   /*
-   * B-919 — los slugs de las ciudades de las modalidades. **No lleva centinela
-   * propio y no puede llevarlo**: es `slugify` aplicado al centinela de
-   * `sede.ciudad`, o sea un valor derivado de otro que el barrido ya persigue. Se
-   * deriva acá con `ciudadesDe`, la misma función que usa el documento, así que
-   * el día que la derivación cambie el fixture cambia con ella. Su declaración
-   * está en `VOCABULARIO_CERRADO` —es texto, así que no le corresponde
-   * `VALORES_NO_TEXTO`— y ahí está escrito por qué.
+   * B-919 — los slugs de las ciudades de las modalidades, **más un elemento que
+   * no se deriva de ninguna** (B-965).
+   *
+   * El primero se calcula con `ciudadesDe`, la misma función que usa el
+   * documento, así que el día que la derivación cambie el fixture cambia con
+   * ella. Ése **no puede** ser un centinela: desde B-950 es el mismo slug que
+   * `sede.ciudad` publica.
+   *
+   * El segundo sí lo es, y es lo que devuelve el ancla por valor que B-950 había
+   * roto: un string que ninguna salida pública puede contener nunca. El
+   * razonamiento largo está en la entrada de `'ciudades.extra'` en `RUTAS`.
    */
-  ciudades: ciudadesDe([modalidadCentinela()]),
+  ciudades: [...ciudadesDe([modalidadCentinela()]), CENTINELA['ciudades.extra']],
   inscripcion: {
     requiere: true,
     via: 'mail',

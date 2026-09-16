@@ -105,9 +105,12 @@ export interface EntradaDeIndice {
    * escalar solo el sitio la escondería de los dos filtros que la describen mejor.
    * Es el mismo criterio que el filtro del panel.
    *
-   * Las **sedes** de cada fila y las fechas de la ventana **no** entran: la
-   * primera es del detalle (el índice ya lleva una sola sede, la derivada) y las
-   * segundas no salen a ninguna salida todavía.
+   * Las **sedes** de cada fila y las fechas de la ventana **no** entran —la
+   * primera es del detalle y las segundas no salen a ninguna salida todavía—
+   * **menos los tres slugs de lugar, que viajan en `zonas` desde B-966**. El
+   * nombre de la sede, la dirección, las indicaciones y las coordenadas de las
+   * filas que no son la principal siguen sin entrar; lo que se sirve en lote es
+   * la geografía, que es taxonomía y es lo que el riel filtra.
    */
   modalidades: string[];
   sede: SedeDeIndice | null;
