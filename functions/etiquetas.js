@@ -30,7 +30,27 @@
  * y el que falte tiene que estar en la lista de ausencias justificadas, para que
  * la próxima taxonomía obligue a decidir en vez de entrar (o quedar afuera) sola.
  */
-export const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'];
+export const CAMPOS_TAXONOMIA = [
+  'arancel',
+  'tipo',
+  'barrio',
+  /*
+   * B-950 — las dos de la geografía. **Entran**, y es lo contrario de lo que
+   * pasó con las nueve de las guías: éstas describen una actividad y la
+   * descripción del evento ya las dice. `ciudad` las venía diciendo como texto
+   * libre («Mar del Plata»); desde B-950 es un slug, así que sin pedir su
+   * documento el evento público diría `mar-del-plata` — que es exactamente el
+   * modo de falla que `etiqueta()` existe para evitar.
+   *
+   * `provincia` es nueva en la dirección, y es la que hace geocodificable una
+   * sede de afuera de CABA: «Av. Luro 3000, Mar del Plata, Argentina» le pide a
+   * Google que adivine la provincia, y hay una Mar del Plata en cada país.
+   */
+  'provincia',
+  'ciudad',
+  'plataforma',
+  'tags',
+];
 
 /**
  * Las taxonomías que **a propósito** no entran a `CAMPOS_TAXONOMIA` de este
@@ -66,13 +86,13 @@ export const TAXONOMIAS_FUERA_DEL_EVENTO = [
 ];
 
 /**
- * Caché por instancia: son 5 documentos que cambian muy de vez en cuando y la
- * Function corre una vez por escritura de actividad.
+ * Caché por instancia: son siete documentos que cambian muy de vez en cuando y
+ * la Function corre una vez por escritura de actividad.
  */
 let _labels = null;
 
 /**
- * `{ campo: { slug: label } }` para las cinco taxonomías.
+ * `{ campo: { slug: label } }` para las siete taxonomías.
  *
  * §4.3 — acá entran TODAS las opciones, también las pendientes de aprobación. A
  * propósito: `aprobada` decide qué se puede *elegir* en el desplegable de las

@@ -7,6 +7,7 @@
  * una actividad nueva, qué campos son `null` y cuáles objetos vacíos— y como no
  * necesitan red, van en un módulo puro (B-70, `docs/05-patrones.md`).
  */
+import { SLUG_CABA } from '@/lib/geografia.mjs';
 import { filaPideOnline, filaPideSede, nuevaModalidadId } from '@/lib/modalidades';
 import { OPCIONES_BASE, opcionesVisibles, ordenarValores } from '@/lib/opciones';
 import { sesionVacia } from '@/lib/sesiones';
@@ -21,12 +22,23 @@ import type {
   Sede,
 } from '@/types/actividad';
 
-/** La sede que se crea al pasar a presencial o híbrido. `CABA` por defecto. */
+/**
+ * La sede que nace al agregar una fila presencial.
+ *
+ * **Arranca en CABA**, y desde B-950 eso son dos campos y no uno: la provincia y
+ * la ciudad, que es lo que `conProvincia()` dejaría al elegirla a mano. El
+ * default es el de siempre —ahí está casi todo el catálogo— y sigue siendo un
+ * default y no una imposición: cambiar la provincia limpia lo que corresponda.
+ *
+ * Antes de B-950 esto decía `ciudad: 'CABA'`, en mayúsculas y como texto libre.
+ * Ahora es el **slug** de `/opciones/ciudad`, que es lo que la taxonomía guarda.
+ */
 export const sedeVacia = (): Sede => ({
   nombre: '',
   direccion: '',
+  provincia: SLUG_CABA,
   barrio: '',
-  ciudad: 'CABA',
+  ciudad: SLUG_CABA,
   indicaciones: '',
   geo: null,
 });

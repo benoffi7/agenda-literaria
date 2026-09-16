@@ -30,6 +30,7 @@
  *
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
+import { zonaDeSede } from '@/lib/geografia.mjs';
 import { diaYMes, hora, partesDeFecha, partesDeMes } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { admiteMonto, esSinCosto, montoLegible } from '@/lib/arancel';
@@ -212,12 +213,20 @@ export const lugarDeTarjeta = (entrada: EntradaDeIndice, etiquetas: MapaDeEtique
         : 'Online';
 
   if (presencial && entrada.sede) {
-    const zona = [
-      entrada.sede.barrio ? etiquetaDe(etiquetas, 'barrio', entrada.sede.barrio) : '',
-      entrada.sede.ciudad,
-    ]
-      .filter(Boolean)
-      .join(', ');
+    /*
+     * B-950 — la zona sale de `zonaDeSede`, que es la misma función que usan la
+     * ficha de detalle, el tríptico de la home y la tarjeta del panel. Dos cosas
+     * cambian respecto de la versión anterior:
+     *
+     *  - **la ciudad se resuelve a su etiqueta.** Era un `<input>` de texto libre
+     *    y se imprimía tal cual; ahora es un slug, así que sin resolver diría
+     *    «mar-del-plata» en cuatro salidas indexadas — el mismo modo de falla que
+     *    B-190 dejó escrito tres renglones más arriba.
+     *  - **en CABA se dice el barrio y nada más.** «Villa Crespo, CABA» era
+     *    decirlo dos veces; afuera de CABA, en cambio, ahora se agrega la
+     *    provincia, que es lo que distingue dos barrios homónimos.
+     */
+    const zona = zonaDeSede(entrada.sede, (campo, slug) => etiquetaDe(etiquetas, campo, slug));
     const base = [entrada.sede.nombre, zona].filter(Boolean).join(' · ');
     return virtual ? `${base} · y online` : base;
   }

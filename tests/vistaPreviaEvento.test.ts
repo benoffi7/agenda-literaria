@@ -27,6 +27,10 @@ const LABELS = labelsDeOpciones({
   arancel: [opcion('a-la-gorra', 'A la gorra')],
   tipo: [opcion('club-lectura', 'Club de lectura')],
   barrio: [opcion('villa-crespo', 'Villa Crespo')],
+  // B-950 — la ciudad es un slug desde acá, así que el evento la resuelve igual
+  // que el barrio. Sin estas dos entradas la vista previa mediría el fallback.
+  ciudad: [opcion('caba', 'CABA')],
+  provincia: [opcion('caba', 'CABA')],
   plataforma: [opcion('zoom', 'Zoom')],
   tags: [opcion('narrativa', 'Narrativa')],
 });
@@ -79,6 +83,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm =>
         sede: {
           nombre: 'Casa Brandon',
           direccion: 'Luis María Drago 236',
+          provincia: 'caba',
           barrio: 'villa-crespo',
           ciudad: 'CABA',
           indicaciones: 'Timbre 2, tocar fuerte',

@@ -39,6 +39,7 @@ import { slugify } from '@/lib/slugify';
 // (`scripts/sembrar-ciudades.mjs`) corre en node y tiene que derivar EXACTAMENTE
 // lo mismo. Dos derivaciones de la misma ciudad es un permiso que no matchea.
 import { ciudadesDe } from '@/lib/ciudades.mjs';
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 // B-150 — la MISMA lista que usa el trigger del historial para decidir qué
 // escribe la máquina (§12, D-41). Se importa por `@historial` y no se copia: dos
 // ideas de "qué campo es de la máquina" se separan sin que nada falle, que es
@@ -117,8 +118,17 @@ export const formADocumento = (
         ? {
             nombre: limpiar(m.sede.nombre),
             direccion: limpiar(m.sede.direccion),
-            barrio: m.sede.barrio,
-            ciudad: limpiar(m.sede.ciudad),
+            /*
+             * B-950 — los tres van **sin `limpiar`**, igual que `barrio` ya iba:
+             * son slugs de taxonomía, no texto que alguien tipeó. `limpiar`
+             * recorta espacios de un campo libre; sobre un slug no tiene nada que
+             * hacer, y dejarlo sugeriría que la ciudad sigue siendo libre.
+             *
+             * Se normalizan igual antes de escribir, porque un borrador
+             * recuperado del navegador pudo guardarse antes de esta versión y
+             * traer la ciudad como texto (`geografiaNormalizada` es idempotente).
+             */
+            ...geografiaNormalizada(m.sede),
             indicaciones: limpiar(m.sede.indicaciones),
             geo: m.sede.geo ? { lat: m.sede.geo.lat, lng: m.sede.geo.lng } : null,
           }

@@ -154,6 +154,7 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'modalidades.N.sede': { etiqueta: 'Sede', seccion: 'donde' },
   'modalidades.N.sede.nombre': { etiqueta: 'Sede', seccion: 'donde' },
   'modalidades.N.sede.direccion': { etiqueta: 'Dirección', seccion: 'donde' },
+  'modalidades.N.sede.provincia': { etiqueta: 'Provincia', seccion: 'donde' },
   'modalidades.N.sede.barrio': { etiqueta: 'Barrio', seccion: 'donde' },
   'modalidades.N.sede.ciudad': { etiqueta: 'Ciudad', seccion: 'donde' },
   'modalidades.N.sede.indicaciones': { etiqueta: 'Cómo llegar', seccion: 'donde' },

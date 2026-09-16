@@ -30,6 +30,8 @@ export interface OpcionesDeEntrada {
   /** Los índices de `fechas` que están cancelados. */
   canceladas?: number[];
   modalidades?: ModalidadFila['modalidad'][];
+  /** B-950 — slug de `/opciones/provincia`. */
+  provincia?: string;
   barrio?: string;
   ciudad?: string;
   arancel?: string;
@@ -71,8 +73,9 @@ export const actividadDePrueba = (o: OpcionesDeEntrada = {}): Actividad => {
         : {
             nombre: 'Casa Brandon',
             direccion: 'Luis María Drago 236',
+            provincia: o.provincia ?? 'caba',
             barrio: o.barrio ?? 'villa-crespo',
-            ciudad: o.ciudad ?? 'CABA',
+            ciudad: o.ciudad ?? 'caba',
             indicaciones: 'Timbre del fondo',
             geo: null,
           },

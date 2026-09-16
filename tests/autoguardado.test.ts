@@ -995,6 +995,7 @@ describe('la versión del formato y la forma del formulario no derivan por separ
       'sede.geo.lng',
       'sede.indicaciones',
       'sede.nombre',
+      'sede.provincia',
     ]);
   });
 });

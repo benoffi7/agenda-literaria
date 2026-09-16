@@ -163,6 +163,37 @@ const ETIQUETA_MODALIDAD = {
  * sola función para las dos, y no dos: si divergieran, el evento diría una
  * dirección en el mapa y otra en el texto.
  */
+/**
+ * Las piezas de la dirección de una sede, de la calle hacia afuera y **ya
+ * resueltas a su etiqueta**: calle, barrio, ciudad, provincia.
+ *
+ * Los tres de la geografía son slugs de taxonomía —`ciudad` y `provincia` desde
+ * B-950, `barrio` desde siempre— y mandarle `villa-crespo` o `mar-del-plata` a
+ * Google geolocaliza peor que «Villa Crespo» o «Mar del Plata». Peor todavía en
+ * la descripción, que es texto que lee una persona en un calendario público.
+ *
+ * **La provincia entra y CABA no se duplica sola**: en CABA la ciudad y la
+ * provincia son la misma etiqueta, y quien llama ya filtra los repetidos sin
+ * distinguir mayúsculas (el mismo filtro que existía para «Palermo» cargado en
+ * barrio y en ciudad). O sea que la regla de CABA de `lib/geografia.mjs` no hay
+ * que repetirla acá — que es bueno, porque `functions/` se despliega con su
+ * propio `package.json` y no puede importar hacia arriba (D-20).
+ *
+ * Y es **una** función para los dos consumidores —el `location` del evento, que
+ * dibuja el mapa, y el bloque «Dónde» de la descripción— por lo mismo que
+ * `ubicacionDeSede` ya era una: si divergieran, el evento diría una dirección en
+ * el mapa y otra en el texto.
+ */
+const piezasDeDireccion = (sede, labels) =>
+  [
+    sede.direccion,
+    etiqueta(labels, 'barrio', sede.barrio),
+    etiqueta(labels, 'ciudad', sede.ciudad),
+    etiqueta(labels, 'provincia', sede.provincia),
+  ]
+    .map((p) => (p ?? '').trim())
+    .filter(Boolean);
+
 const ubicacionDeSede = (sede, labels, modalidad) => {
   if (!sede) {
     // Virtual sin sede: la plataforma en el campo location hace que se lea en
@@ -170,9 +201,7 @@ const ubicacionDeSede = (sede, labels, modalidad) => {
     return modalidad === 'virtual' ? 'Encuentro virtual' : undefined;
   }
 
-  // El barrio se resuelve a su etiqueta: mandarle "villa-crespo" a Google
-  // geolocaliza peor que "Villa Crespo".
-  const partes = [sede.nombre, sede.direccion, etiqueta(labels, 'barrio', sede.barrio), sede.ciudad, 'Argentina']
+  const partes = [sede.nombre, ...piezasDeDireccion(sede, labels), 'Argentina']
     .map((p) => (p ?? '').trim())
     .filter(Boolean);
 
@@ -517,9 +546,12 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
     if (fila.sede) {
       const s = fila.sede;
       if (s.nombre) donde.push(s.nombre);
-      const calle = [s.direccion, etiqueta(labels, 'barrio', s.barrio), s.ciudad]
-        .map((p) => (p ?? '').trim())
-        .filter(Boolean)
+      // Los repetidos se filtran igual que en `ubicacionDeSede`: en CABA la
+      // ciudad y la provincia son la misma etiqueta, y «Palermo» cargado en
+      // barrio y en ciudad ya pasaba antes de B-950.
+      const piezas = piezasDeDireccion(s, labels);
+      const calle = piezas
+        .filter((p, i) => piezas.findIndex((q) => q.toLowerCase() === p.toLowerCase()) === i)
         .join(', ');
       if (calle) donde.push(calle);
       if (s.indicaciones) donde.push(`Cómo llegar: ${s.indicaciones}`);

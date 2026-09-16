@@ -194,11 +194,21 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   },
   {
     nombre: 'dónde',
-    centinelas: ['sede.nombre', 'sede.direccion', 'sede.ciudad', 'sede.indicaciones'],
+    centinelas: [
+      'sede.nombre',
+      'sede.direccion',
+      'sede.provincia',
+      'sede.ciudad',
+      'sede.indicaciones',
+    ],
     porque:
       'sin la dirección y el cómo llegar nadie llega: es el punto de una actividad ' +
       'presencial. Salen dos veces —adentro de su fila de `modalidades` y en la sede ' +
-      'derivada— porque son el mismo dato: el barrido cuenta presencia, no ocurrencias.',
+      'derivada— porque son el mismo dato: el barrido cuenta presencia, no ocurrencias. ' +
+      '**`sede.provincia` entró con B-950** y sale por lo mismo que la ciudad: es el ' +
+      'primer nivel de la cascada de filtros del sitio, así que sin él el riel no puede ' +
+      'ofrecer «provincia → barrio o ciudad». Como la ciudad, es una etiqueta ' +
+      'geográfica: no dice nada de nadie.'
   },
   {
     nombre: 'formas de cursar',
@@ -297,16 +307,25 @@ const PERMITIDO_EN_EVENTO_DE_CALENDAR: readonly Excepcion[] = [
   },
   {
     nombre: 'dónde',
-    centinelas: ['sede.nombre', 'sede.direccion', 'sede.ciudad', 'sede.indicaciones'],
+    centinelas: ['sede.nombre', 'sede.direccion', 'sede.indicaciones'],
     porque:
       'el bloque «Dónde» y el campo `location` del evento, que es lo que dibuja el mapa. ' +
-      'Salen además dentro del link de Google Maps, escapados con encodeURIComponent.',
+      'Salen además dentro del link de Google Maps, escapados con encodeURIComponent. ' +
+      '**`sede.ciudad` salió de esta lista con B-950**: dejó de ser texto libre, así que ' +
+      'ahora el evento la resuelve a su etiqueta como venía haciendo con el barrio, y lo ' +
+      'que sale está en la lista de abajo. Si el slug crudo vuelve a aparecer acá es que ' +
+      'la resolución se salteó, que es exactamente lo que este cambio de lista fija.',
   },
   {
     nombre: 'etiquetas de /opciones',
     centinelas: [
       'labels.tipo',
       'labels.barrio',
+      // B-950 — las dos de la geografía. `provincia` es nueva en la dirección
+      // (es la que hace geocodificable una sede de afuera de CABA) y `ciudad`
+      // pasó de texto libre a slug, así que se resuelve igual que el barrio.
+      'labels.provincia',
+      'labels.ciudad',
       'labels.plataforma',
       'labels.arancel',
       'labels.tags',
@@ -314,7 +333,7 @@ const PERMITIDO_EN_EVENTO_DE_CALENDAR: readonly Excepcion[] = [
     porque:
       '§4.1 — la actividad guarda el slug y el evento muestra la **etiqueta**: ' +
       '"a-la-gorra" crudo en un calendario público se ve roto. `/opciones/*` es de ' +
-      'lectura pública (§5.3), así que la etiqueta no agrega nada privado. Los cuatro ' +
+      'lectura pública (§5.3), así que la etiqueta no agrega nada privado. Los siete ' +
       'slugs correspondientes NO están permitidos acá: si aparecen es que la resolución ' +
       'se salteó.',
   },
@@ -596,30 +615,37 @@ describe('`ciudades` no sale por ninguna puerta — B-919', () => {
    *
    * `ciudades` es el derivado con el que `firestore.rules` contesta el alcance
    * por ciudad del rol `publicador` (D-690). No tiene que salir a ninguna salida
-   * pública, y hoy no sale porque `toPublic` es una whitelist — pero **eso no lo
-   * afirmaba nada**: su valor es `slugify` del centinela de `sede.ciudad`, o sea
-   * un texto derivado que `barrer()` no persigue (busca los `CENTINELA[ruta]`
-   * literales, y `centinela-sede-ciudad` no es ninguno).
+   * pública, y no sale porque `toPublic` es una whitelist.
    *
-   * Lo cobró el `auditor-privacidad`, y tiene razón en la parte que importa: para
-   * un campo que **no** tiene que salir, un valor que nunca aparece **es** la
-   * aserción, igual que con `difusion.notas`. Así que se ancla por valor acá, en
-   * las cuatro salidas por las que podría colarse.
+   * ── Esto se anclaba por valor y con B-950 dejó de poder ───────────────────
+   * La versión anterior buscaba el **valor** (`centinela-sede-ciudad`) en las
+   * cuatro salidas, con el argumento —correcto— de que para un campo que no
+   * tiene que salir, un valor que nunca aparece *es* la aserción. Ese argumento
+   * dependía de que el valor no se publicara por ningún otro camino: era
+   * `slugify` de la ciudad, y la ciudad se publicaba **como se tipeó**.
+   *
+   * B-950 convirtió `ciudad` en taxonomía, así que la proyección publica el
+   * slug — y el slug de la ciudad es, literalmente, el contenido de
+   * `ciudades[]`. O sea que **ya no existe ningún valor que `ciudades` pueda
+   * llevar y que no esté publicado**: se deriva entero de datos que sí salen.
+   * Buscarlo ahora daría rojo siempre, y peor todavía, esconderlo con una
+   * excepción dejaría el caso verde sin afirmar nada.
+   *
+   * Lo que queda es el ancla por **clave**, que es más débil pero es honesta y
+   * sigue atrapando la mutación que importa. Queda anotado como B-965: si algún
+   * día `ciudades` deja de derivarse de lo publicado, el ancla por valor vuelve.
    *
    * MUTACIÓN PROBADA: agregar `ciudades` a la lista de `pick` de `toPublic` deja
-   * los dos primeros `expect` en rojo nombrando el slug.
+   * el primer `expect` en rojo nombrando la clave.
    */
-  // Se lee **del fixture** y no se recalcula: es el valor que el documento lleva,
-  // que es lo que tiene que no salir.
-  const SLUG = actividadCentinela().ciudades![0]!;
+  const claves = (json: string): string[] => Object.keys(JSON.parse(json) as object);
 
-  it('el slug de la ciudad no aparece en la proyección, el índice, el detalle ni el evento', () => {
-    // Control positivo del propio caso: si el fixture dejara de traer la ciudad,
-    // los cuatro `not.toContain` pasarían buscando la cadena vacía.
-    expect(SLUG).toBe('centinela-sede-ciudad');
-
+  it('la clave `ciudades` no está en la proyección, el índice, el detalle ni el evento', () => {
     const publica = toPublic(actividadCentinela(), 'act_centinela');
-    expect(JSON.stringify(publica)).not.toContain(SLUG);
+    // Control positivo: la proyección tiene claves, así que `not.toContain` no
+    // está pasando sobre una lista vacía.
+    expect(Object.keys(publica).length).toBeGreaterThan(5);
+    expect(Object.keys(publica)).not.toContain('ciudades');
 
     const indice = construirIndice({
       actividades: [publica],
@@ -627,14 +653,18 @@ describe('`ciudades` no sale por ninguna puerta — B-919', () => {
       version: '1.0.0+abc1234',
       generadoEn: '2026-08-27T00:00:00.000Z',
     });
-    expect(JSON.stringify(indice)).not.toContain(SLUG);
+    for (const entrada of indice.actividades) {
+      expect(Object.keys(entrada)).not.toContain('ciudades');
+    }
 
     const actividad = actividadCentinela();
     expect(
-      JSON.stringify(construirEvento(actividad, actividad.sesiones[0], LABELS_CENTINELA)),
-    ).not.toContain(SLUG);
+      claves(JSON.stringify(construirEvento(actividad, actividad.sesiones[0], LABELS_CENTINELA))),
+    ).not.toContain('ciudades');
 
-    expect(JSON.stringify(buildSearchText(actividad))).not.toContain(SLUG);
+    // El `searchText` es una cadena, así que acá el ancla por valor sigue
+    // sirviendo: lo que se afirma es que la lista entera no se concatenó adentro.
+    expect(buildSearchText(actividad)).not.toContain(JSON.stringify(actividad.ciudades));
   });
 });
 
@@ -3240,10 +3270,16 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º p
     },
     {
       nombre: 'el lugar y el arancel, los dos vía `tarjetaPublica`',
-      centinelas: ['sede.nombre', 'labels.barrio', 'sede.ciudad', 'labels.arancel'],
+      centinelas: ['sede.nombre', 'labels.barrio', 'labels.ciudad', 'labels.arancel'],
       porque:
         'la línea de lugar la arma `lugarDeTarjeta` —la misma del listado, de la página ' +
-        'de mes, de /pasadas y de los hubs— y el arancel `arancelDeTarjeta`. La ' +
+        'de mes, de /pasadas y de los hubs— y el arancel `arancelDeTarjeta`. ' +
+        '**`sede.ciudad` se cambió por `labels.ciudad` en B-950**: la ciudad dejó de ser ' +
+        'texto libre, así que este renglón la resuelve a su etiqueta igual que venía ' +
+        'haciendo con el barrio. `labels.provincia` no está, y su ausencia no es una ' +
+        'prohibición: el fixture no es de CABA, pero `zonaDeSede` agrega la provincia ' +
+        'solo cuando la sede la tiene resuelta contra `/opciones/provincia`, que este ' +
+        'mapa de etiquetas no trae. La ' +
         '**dirección**, las indicaciones y las coordenadas NO están en esta lista: el ' +
         'índice no las lleva y el panel no las necesita. `labels.plataforma` tampoco ' +
         'está, y su ausencia NO es una prohibición: el fixture es `hibrido`, así que ' +

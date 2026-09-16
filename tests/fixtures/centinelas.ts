@@ -55,6 +55,9 @@ import { ts } from './tiempo';
 // B-919 — la misma derivación que el documento: si el fixture la copiara, el día
 // que cambie quedaría afirmando la anterior.
 import { ciudadesDe } from '@/lib/ciudades.mjs';
+// B-950 — la misma normalización que la proyección, para que el centinela de la
+// geografía sea su propio slug. Ver `RUTAS_SLUG`.
+import { slugify } from '@/lib/slugify';
 
 /**
  * Cada ruta de contenido del documento, más las etiquetas de `/opciones/*` que
@@ -133,6 +136,13 @@ const RUTAS = [
   'modalidades.2.online.url',
   'sede.nombre',
   'sede.direccion',
+  // B-950 — la geografía. `provincia` es nueva; `barrio` y `ciudad` ya estaban,
+  // pero desde B-950 las tres son **slugs de taxonomía** y la proyección pública
+  // las deriva en vez de copiarlas (`geografiaNormalizada`), así que lo que sale
+  // al JSON es `slugify(centinela)` y no el centinela crudo. Ver la entrada de
+  // `centinela-sede-ciudad` en `VOCABULARIO_CERRADO`, que ya tenía ese problema
+  // por `ciudades[]` y ahora lo comparte con estos tres.
+  'sede.provincia',
   'sede.barrio',
   'sede.ciudad',
   'sede.indicaciones',
@@ -186,6 +196,11 @@ const RUTAS = [
   // como segundo argumento y el evento muestra la etiqueta, no el slug crudo.
   'labels.tipo',
   'labels.barrio',
+  // B-950 — las dos de la geografía. Igual que `labels.barrio`: el documento
+  // guarda el slug y el evento tiene que mostrar la etiqueta, así el barrido
+  // afirma las dos mitades (la etiqueta sale, el slug no).
+  'labels.provincia',
+  'labels.ciudad',
   'labels.plataforma',
   'labels.arancel',
   'labels.tags',
@@ -372,9 +387,34 @@ export const VALORES_NO_TEXTO: Record<string, string> = {
     'buscando milisegundos que aparecen en cualquier salida con fechas.',
 };
 
+/**
+ * Las rutas cuyo centinela es **el slug de la forma general** y no la forma
+ * general — B-950.
+ *
+ * `geografiaNormalizada` slugifica la provincia y la ciudad **en la proyección
+ * pública**, porque un documento anterior a B-950 guarda la ciudad como se
+ * tipeó y copiarla verbatim publicaría un valor que no matchea con ningún chip.
+ * Consecuencia para este fixture: con el centinela uniforme
+ * (`CENTINELA.sede.ciudad`), lo que sale al JSON es `centinela-sede-ciudad` —o
+ * sea que el barrido buscaría un texto que **ninguna salida puede contener
+ * nunca**, y las seis excepciones que hoy afirman «la ciudad sale» quedarían
+ * verdes para siempre sin afirmar nada. Es el modo de falla que este archivo
+ * nombra dos veces.
+ *
+ * La salida es que el centinela ya sea un slug: `slugify` es idempotente, así
+ * que sobrevive a la proyección igual que cualquier otro string. **Las dos
+ * reglas de forma del encabezado se siguen cumpliendo**: `centinela-sede-ciudad`
+ * dice de qué campo salió, y es URL-safe.
+ *
+ * `sede.barrio` **no está acá** y no es un olvido: ya era un slug antes de
+ * B-950 y la proyección lo copia tal cual, así que su centinela uniforme
+ * atraviesa entero. Meterlo sería cambiarle el valor sin ningún motivo.
+ */
+const RUTAS_SLUG: readonly RutaCentinela[] = ['sede.provincia', 'sede.ciudad'];
+
 /** `titulo` → `CENTINELA.titulo`. El valor dice de qué campo salió. */
 export const CENTINELA = Object.fromEntries(
-  RUTAS.map((r) => [r, `CENTINELA.${r}`]),
+  RUTAS.map((r) => [r, RUTAS_SLUG.includes(r) ? slugify(`CENTINELA.${r}`) : `CENTINELA.${r}`]),
 ) as Record<RutaCentinela, string>;
 
 /** Todas las rutas, para recorrerlas en el barrido. */
@@ -408,21 +448,19 @@ export const VOCABULARIO_CERRADO: readonly string[] = [
   // imagenes[].origen
   'propia',
   /*
-   * B-919 — `ciudades[0]`. **No es un enum del modelo, y entra igual**, que es
-   * la excepción que esta lista no tenía: es `slugify` aplicado al centinela de
-   * `modalidades[].sede.ciudad`, o sea un valor **derivado** de otro que el
-   * barrido ya persigue.
+   * B-919 — `ciudades[0]` **estaba acá y salió con B-950**.
    *
-   * Un centinela propio no serviría: sería un texto que ninguna salida puede
-   * contener nunca —la ciudad que sale en `sede` es la del centinela original,
-   * no su slug— y el chequeo quedaría verde para siempre. Lo que hay que medir
-   * de la ciudad se mide en la celda de `sede.ciudad`.
+   * Entraba porque era `slugify` del centinela de `modalidades[].sede.ciudad`, o
+   * sea un valor derivado que el barrido no perseguía. Desde B-950 el centinela
+   * de esa ruta **ya es su slug** (ver `RUTAS_SLUG`), así que `ciudades[0]` es
+   * exactamente `CENTINELA['sede.ciudad']`: dejarlo acá declararía como
+   * «vocabulario cerrado» un valor que es un centinela, que es precisamente lo
+   * que esta lista existe para que no pase.
    *
-   * Y está escrito derivado (`ciudadesDe([modalidadCentinela()])`), así que el
-   * día que `slugify` o la derivación cambien, el fixture cambia y esta entrada
-   * queda rota — que es exactamente cuando alguien tiene que volver a leerla.
+   * Lo que se perdió con el cambio, y está escrito en el `describe` de B-919:
+   * `ciudades` ya no se puede anclar por valor, porque su valor ahora **sí** se
+   * publica —es el mismo slug que `sede.ciudad`—. Se ancla por clave.
    */
-  'centinela-sede-ciudad',
 ];
 
 /** Cuántos encuentros trae el ciclo del fixture (§2.2). */
@@ -526,6 +564,7 @@ const modalidadCentinela = (): ModalidadFila => ({
 const sedeCentinela = (): Sede => ({
   nombre: CENTINELA['sede.nombre'],
   direccion: CENTINELA['sede.direccion'],
+  provincia: CENTINELA['sede.provincia'],
   barrio: CENTINELA['sede.barrio'],
   ciudad: CENTINELA['sede.ciudad'],
   indicaciones: CENTINELA['sede.indicaciones'],
@@ -698,6 +737,7 @@ export const conDosSedes = (): Partial<Actividad> => {
     sede: {
       nombre: CENTINELA['modalidades.2.sede.nombre'],
       direccion: CENTINELA['modalidades.2.sede.direccion'],
+      provincia: CENTINELA['sede.provincia'],
       barrio: CENTINELA['sede.barrio'],
       ciudad: CENTINELA['sede.ciudad'],
       indicaciones: CENTINELA['sede.indicaciones'],
@@ -734,6 +774,8 @@ export const conLinkPublico = (): Partial<Actividad> => {
 export const LABELS_CENTINELA: Record<string, Record<string, string>> = {
   tipo: { presentacion: CENTINELA['labels.tipo'] },
   barrio: { [CENTINELA['sede.barrio']]: CENTINELA['labels.barrio'] },
+  provincia: { [CENTINELA['sede.provincia']]: CENTINELA['labels.provincia'] },
+  ciudad: { [CENTINELA['sede.ciudad']]: CENTINELA['labels.ciudad'] },
   plataforma: { [CENTINELA['online.plataforma']]: CENTINELA['labels.plataforma'] },
   arancel: { [CENTINELA['arancel.tipo']]: CENTINELA['labels.arancel'] },
   tags: { [CENTINELA.tags]: CENTINELA['labels.tags'] },

@@ -6576,6 +6576,59 @@ El arreglo natural es un helper compartido —`archivosDelRepo(prefijo)`— en v
 treinta copias del `execFileSync`, que es además lo que impediría que la copia
 treinta y uno nazca sin las banderas.
 
+### B-965 · `ciudades` perdió su ancla por valor, y hoy solo se ancla por clave · P3 — abierto con B-950
+
+`ciudades[]` es el derivado con el que `firestore.rules` contesta el alcance por
+ciudad del rol `publicador` (B-919, D-690) y **no tiene que salir a ninguna
+salida pública**. Hasta B-950 eso se afirmaba **por valor**: el barrido buscaba
+`centinela-sede-ciudad` en las cuatro salidas, con el argumento —correcto y
+escrito— de que para un campo que no tiene que salir, un valor que nunca aparece
+*es* la aserción.
+
+Ese argumento dependía de que el valor no se publicara por ningún otro camino.
+**B-950 convirtió `ciudad` en taxonomía**, así que la proyección publica el slug
+de la ciudad — y el slug de la ciudad es, literalmente, el contenido de
+`ciudades[]`. Ya no existe ningún valor que `ciudades` pueda llevar y que no esté
+publicado: se deriva entero de datos que sí salen.
+
+Lo que quedó es el ancla **por clave** (`Object.keys(...)` en las cuatro
+salidas), que sigue atrapando la mutación que importa —agregar `ciudades` al
+`pick` de `toPublic`— pero es más débil: no vería una fuga que publicara el
+contenido de la lista sin la clave, por ejemplo interpolado en un texto.
+
+**No hay arreglo obvio y por eso es P3.** Si algún día `ciudades` deja de
+derivarse de lo publicado —o si se le agrega un elemento que no sea una ciudad de
+`modalidades[]`— el ancla por valor vuelve sola. Mientras tanto está escrito en el
+`describe` del barrido, que es donde alguien lo va a leer.
+
+### B-966 · Los tres filtros de geografía del sitio miran una sola sede · P2 — abierto con B-950
+
+`valoresDe` (`src/lib/listadoPublico.ts`) resuelve `provincia`, `barrio` y
+`ciudad` contra **`e.sede`**, que es la sede derivada: «la primera fila que tenga
+sede» (D-130). Una actividad presencial en dos ciudades se filtra por una sola, y
+desaparece del filtro de la otra.
+
+**No lo introdujo B-950**: `barrio` tenía exactamente este problema desde B-224, y
+la geografía nueva lo hereda. Lo que sí hace B-950 es volverlo más visible, porque
+ahora hay tres ejes con el mismo agujero en vez de uno, y porque el caso «la misma
+cursada en dos sedes» es justo el que las modalidades múltiples vinieron a
+habilitar.
+
+**El arreglo tiene precedente adentro del mismo archivo**: el índice ya lleva
+`modalidades: string[]` —«todas, sin repetir, para el filtro»— precisamente porque
+el escalar escondía la actividad de los dos filtros que la describen mejor
+(B-224). La geografía necesita lo mismo: que `entradaDeIndice` derive las
+provincias, los barrios y las ciudades de **todas** las filas, no solo de la
+derivada. Son tres claves más en el índice y un `case` más simple.
+
+Ojo con dos cosas al hacerlo: agregar claves al índice lo engorda para toda
+persona que abre la agenda (el argumento de `TAXONOMIAS_FUERA_DEL_INDICE`), así
+que conviene una sola clave `zonas` y no tres; y el barrido de salidas públicas va
+a pedir que la clave nueva se declare, que es lo correcto.
+
+Es hermano de la mitad del panel, que **sí** quedó resuelta en B-952: ahí el
+documento ya tiene `ciudades[]` en la raíz y el filtro cruza contra esa lista.
+
 ### B-929 · El panel muestra el mensaje crudo de Firebase, en inglés, cuando se cae la conexión · P2 — reportado por el dueño (2026-09-15)
 
 **El síntoma:** «Failed to get document because the client is offline» en el

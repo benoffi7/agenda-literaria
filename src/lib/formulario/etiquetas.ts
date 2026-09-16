@@ -26,6 +26,12 @@ export type CampoLabelUnico =
   | 'arancel'
   | 'tipo'
   | 'barrio'
+  // B-950 — las dos de la geografía, las dos de un solo slug. `provincia` no va
+  // a crear etiquetas nuevas nunca (sus 24 valores están sembrados `fijo: true`)
+  // y está acá igual: lo que esta lista cubre es la taxonomía, y dejarla afuera
+  // la dejaría sin buffer el día que alguien agregue una jurisdicción.
+  | 'provincia'
+  | 'ciudad'
   | 'plataforma'
   // B-832 — los tres campos de **un solo slug** de una suscripción literaria. No
   // los usa el formulario de actividad (viven en `SuscripcionFormulario`), y

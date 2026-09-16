@@ -33,6 +33,10 @@ const AHORA = new Date('2026-09-10T15:00:00Z');
 const ETIQUETAS = mapaDeEtiquetas({
   tipo: [{ slug: 'taller', label: 'Taller' }],
   barrio: [{ slug: 'villa-crespo', label: 'Villa Crespo' }],
+  // B-950 — la ciudad dejó de ser texto libre, así que hay que resolverla. Sin
+  // esta entrada el fixture mediría el fallback (`desSlug`) y no la resolución.
+  ciudad: [{ slug: 'caba', label: 'CABA' }],
+  provincia: [{ slug: 'caba', label: 'CABA' }],
   arancel: [
     { slug: 'gratis', label: 'Gratis' },
     { slug: 'a-la-gorra', label: 'A la gorra' },
@@ -143,9 +147,38 @@ describe('las formas de cursar', () => {
 });
 
 describe('la línea de lugar', () => {
-  it('presencial: sede, barrio con su etiqueta, y ciudad', () => {
+  /**
+   * B-950 — **en CABA la línea dice el barrio y nada más.** Antes decía «Villa
+   * Crespo, CABA», que es la ciudad repetida: quien lee «Villa Crespo» en una
+   * agenda de actividades literarias de la Argentina ya sabe dónde queda. La
+   * regla vive en `piezasDeLugar` (`lib/geografia.mjs`) y la comparten las cinco
+   * salidas que arman este renglón, que es lo que B-953 pide explícitamente.
+   *
+   * El caso de afuera de CABA —donde sí se dicen la ciudad y la provincia— está
+   * abajo, y es el que da sentido a que ésta sea una regla y no un recorte.
+   */
+  it('presencial en CABA: sede y barrio, sin repetir la ciudad', () => {
     const e = entradaDePrueba({ modalidades: ['presencial'] });
-    expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Casa Brandon · Villa Crespo, CABA');
+    expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Casa Brandon · Villa Crespo');
+  });
+
+  it('presencial afuera de CABA: sede, ciudad y provincia', () => {
+    const e = {
+      ...entradaDePrueba({ modalidades: ['presencial'] }),
+      sede: {
+        nombre: 'Librería del puerto',
+        provincia: 'buenos-aires',
+        barrio: '',
+        ciudad: 'mar-del-plata',
+      },
+    };
+    const etiquetas = mapaDeEtiquetas({
+      ciudad: [{ slug: 'mar-del-plata', label: 'Mar del Plata' }],
+      provincia: [{ slug: 'buenos-aires', label: 'Buenos Aires' }],
+    });
+    expect(lugarDeTarjeta(e, etiquetas)).toBe(
+      'Librería del puerto · Mar del Plata, Buenos Aires',
+    );
   });
 
   it('virtual: la plataforma con su etiqueta y nunca el link', () => {
@@ -160,7 +193,7 @@ describe('la línea de lugar', () => {
 
   it('las dos cosas: la sede, y que además hay online', () => {
     const e = entradaDePrueba({ modalidades: ['presencial', 'virtual'] });
-    expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Casa Brandon · Villa Crespo, CABA · y online');
+    expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Casa Brandon · Villa Crespo · y online');
   });
 
   it('una presencial sin sede dice «Lugar a confirmar» (§7.7)', () => {
@@ -168,10 +201,16 @@ describe('la línea de lugar', () => {
     expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Lugar a confirmar');
   });
 
-  it('sin barrio no queda una coma colgada', () => {
+  /**
+   * El borde de la regla de CABA, y por qué la regla tiene un `if` más: «si es
+   * CABA, solo barrio» da por hecho que el barrio está cargado. Sin él, cortar
+   * ahí devolvería una lista vacía y la tarjeta diría «Casa Brandon» sin decir en
+   * qué ciudad queda. Se cae a la ciudad, que es lo que había antes de B-950.
+   */
+  it('en CABA sin barrio se cae a la ciudad, y no queda una coma colgada', () => {
     const e = {
       ...entradaDePrueba({ modalidades: ['presencial'] }),
-      sede: { nombre: 'Casa Brandon', barrio: '', ciudad: 'CABA' },
+      sede: { nombre: 'Casa Brandon', provincia: 'caba', barrio: '', ciudad: 'caba' },
     };
     expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Casa Brandon · CABA');
   });

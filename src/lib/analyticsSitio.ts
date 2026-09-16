@@ -151,7 +151,28 @@ export const FUERA_DE_VOCABULARIO_SITIO = 'otro';
  * **Son los únicos ejes que pueden llevar `slug`**, y esa es la mitad de
  * privacidad de B-798 — ver `crudosDeFiltroSinResultados` más abajo.
  */
-const EJES_DE_TAXONOMIA = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'] as const;
+/*
+ * ⚠️ **B-950 sumó `provincia` y eso parte la serie histórica de `eje`.** `eje` es
+ * una dimensión medida: el conjunto de valores que GA4 vio hasta hoy son seis, y
+ * desde el despliegue son siete. Las filas anteriores y las posteriores no son
+ * comparables para «qué filtro explica los ceros», y conviene saberlo antes de
+ * mirar el informe y no después.
+ *
+ * Es el costo aceptado del cambio, no un descuido: el eje nuevo **tiene** que
+ * poder explicar un cero —es el primer nivel de la cascada, o sea el filtro con
+ * más poder para dejar la lista vacía— y no medirlo dejaría el caso más probable
+ * llegando sin `eje`, que es exactamente lo que B-798 arregló para los otros
+ * cuatro. El corte queda anotado en el CHANGELOG con su fecha.
+ */
+const EJES_DE_TAXONOMIA = [
+  'tipo',
+  'arancel',
+  'modalidad',
+  'provincia',
+  'barrio',
+  'ciudad',
+  'tag',
+] as const;
 
 /**
  * Los otros cuatro filtros del listado, los que **no** son un riel de chips —

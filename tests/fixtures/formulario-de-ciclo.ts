@@ -73,6 +73,7 @@ export const formDeCiclo = (over: Partial<ActividadForm> = {}): ActividadForm =>
       sede: {
         nombre: 'Casa Brandon',
         direccion: 'Drago 236',
+        provincia: 'caba',
         barrio: 'villa-crespo',
         ciudad: 'CABA',
         indicaciones: 'Timbre 2',

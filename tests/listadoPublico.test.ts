@@ -678,11 +678,19 @@ describe('el eje de arancel: dónde está y en qué orden — B-271, D-151', () 
      * el precio arriba (que es lo que se pidió) y las tres de lugar contiguas
      * (que es lo que su lugar anterior rompía).
      *
-     * MUTACIÓN PROBADA: volver `arancel` al tercer puesto hace fallar los dos.
+     * B-950 sumó `provincia` al grupo de lugar, y **adelante de las otras dos**:
+     * es el primer nivel de la cascada, así que el orden de la pantalla tiene que
+     * ser provincia → su subdivisión. El grupo pasó de tres a cuatro y sigue
+     * entero, que es lo que este caso afirma.
+     *
+     * MUTACIÓN PROBADA: volver `arancel` al tercer puesto hace fallar los dos, y
+     * poner `provincia` detrás de `ciudad` hace fallar el segundo.
      */
     expect(EJES.indexOf('arancel')).toBe(1);
-    const lugar = ['modalidad', 'barrio', 'ciudad'].map((e) => EJES.indexOf(e as Eje));
-    expect(lugar).toEqual([2, 3, 4]);
+    const lugar = ['modalidad', 'provincia', 'barrio', 'ciudad'].map((e) =>
+      EJES.indexOf(e as Eje),
+    );
+    expect(lugar).toEqual([2, 3, 4, 5]);
   });
 
   it('y el orden de la pantalla no cambia lo que la URL entiende', () => {

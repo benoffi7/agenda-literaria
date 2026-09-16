@@ -48,8 +48,9 @@ const sesion = (inicio: string, over: Partial<Sesion> = {}): Sesion =>
 const sedeEn = (barrio: string) => ({
   nombre: 'Casa Brandon',
   direccion: 'Luis María Drago 236',
+  provincia: 'caba',
   barrio,
-  ciudad: 'CABA',
+  ciudad: 'caba',
   indicaciones: '',
   geo: null,
 });

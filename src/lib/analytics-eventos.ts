@@ -547,6 +547,7 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'modalidades.N.sede.geo.lng',
   'modalidades.N.sede.indicaciones',
   'modalidades.N.sede.nombre',
+  'modalidades.N.sede.provincia',
   'comisiones',
   'comisiones.N',
   'comisiones.N.etiqueta',

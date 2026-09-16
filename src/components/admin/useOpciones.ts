@@ -186,6 +186,11 @@ export function useLabelsTaxonomia(pendientes: LabelsTaxonomia = {}): LabelsTaxo
   const arancel = useOpciones('arancel');
   const tipo = useOpciones('tipo');
   const barrio = useOpciones('barrio');
+  // B-950 — las dos de la geografía. Entran acá y no solo en la pantalla que las
+  // administra porque la tarjeta del panel (B-953) y la ficha pública (B-951)
+  // muestran el **label**, y sin esto mostrarían el slug crudo.
+  const provincia = useOpciones('provincia');
+  const ciudad = useOpciones('ciudad');
   const plataforma = useOpciones('plataforma');
   const tags = useOpciones('tags');
 
@@ -196,12 +201,23 @@ export function useLabelsTaxonomia(pendientes: LabelsTaxonomia = {}): LabelsTaxo
           arancel: arancel.valores,
           tipo: tipo.valores,
           barrio: barrio.valores,
+          provincia: provincia.valores,
+          ciudad: ciudad.valores,
           plataforma: plataforma.valores,
           tags: tags.valores,
         },
         pendientes,
       ),
-    [arancel.valores, tipo.valores, barrio.valores, plataforma.valores, tags.valores, pendientes],
+    [
+      arancel.valores,
+      tipo.valores,
+      barrio.valores,
+      provincia.valores,
+      ciudad.valores,
+      plataforma.valores,
+      tags.valores,
+      pendientes,
+    ],
   );
 }
 
@@ -226,6 +242,9 @@ export function useTodasLasOpciones(): {
   const plataforma = useOpciones('plataforma');
   const tags = useOpciones('tags');
   const incluye = useOpciones('incluye-actividad');
+  // B-950 — las dos de la geografía.
+  const provincia = useOpciones('provincia');
+  const ciudad = useOpciones('ciudad');
   // B-832 — los seis de las suscripciones literarias. Van acá porque esta
   // pantalla las **administra**, y administrarlas incluye las que no son de una
   // actividad. Con `registroDeOpciones` no duplican listeners, pero sí los abren:
@@ -248,6 +267,8 @@ export function useTodasLasOpciones(): {
         arancel: arancel.valores,
         tipo: tipo.valores,
         barrio: barrio.valores,
+        provincia: provincia.valores,
+        ciudad: ciudad.valores,
         plataforma: plataforma.valores,
         tags: tags.valores,
         'incluye-actividad': incluye.valores,

@@ -41,6 +41,7 @@ import {
   mesDesplazado,
   nombreDeMes,
 } from '@/lib/fechasPublicas';
+import { provinciaDeSede } from '@/lib/geografia.mjs';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
@@ -179,7 +180,29 @@ export const ORDEN_PUBLICO_POR_DEFECTO: OrdenPublico = 'proxima';
  * scroll. El §6.1 del diseño lo ponía quinto «en orden de importancia»; el desvío
  * está escrito en D-151.
  */
-export const EJES = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'] as const;
+export const EJES = [
+  'tipo',
+  'arancel',
+  'modalidad',
+  /*
+   * ── B-950 · el grupo de «dónde» pasó a ser una cascada ──────────────────
+   * `provincia` entra **antes** que las otras dos y no es un cuarto chip suelto:
+   * es el primer nivel, y de lo que se elija ahí depende si abajo se ofrece
+   * `barrio` (CABA) o `ciudad` (cualquier otra). Lo pidió el dueño así —«en la
+   * web no puede ser una lista enorme sino selectores: provincia primero, y de
+   * ahí despliega barrios o ciudades»— y el motivo es el mismo que D-143 topeó a
+   * mano en el teléfono: con dos barrios una lista plana funciona, con los treinta
+   * y pico que ya hay cargados no.
+   *
+   * El orden acá sigue siendo el de la pantalla (ver arriba), así que el grupo
+   * queda entero y en el orden en que se recorre: provincia, después su
+   * subdivisión. Cuál de las dos se muestra lo decide `ejesVisibles`.
+   */
+  'provincia',
+  'barrio',
+  'ciudad',
+  'tag',
+] as const;
 export type Eje = (typeof EJES)[number];
 
 
@@ -188,6 +211,7 @@ export const ETIQUETA_EJE: Record<Eje, string> = {
   tipo: 'Tipo de actividad',
   arancel: 'Arancel',
   modalidad: 'Cómo se cursa',
+  provincia: 'Provincia',
   barrio: 'Barrio',
   ciudad: 'Ciudad',
   tag: 'Temas',
@@ -306,7 +330,7 @@ export interface FiltrosPublicos {
 export const FILTROS_PUBLICOS_VACIOS: FiltrosPublicos = {
   q: '',
   cuando: CUANDO_PROXIMAS,
-  valores: { tipo: [], arancel: [], modalidad: [], barrio: [], ciudad: [], tag: [] },
+  valores: { tipo: [], arancel: [], modalidad: [], provincia: [], barrio: [], ciudad: [], tag: [] },
   soloAbierta: false,
   cursada: '',
 };
@@ -314,7 +338,7 @@ export const FILTROS_PUBLICOS_VACIOS: FiltrosPublicos = {
 /** Copia con los ejes clonados: el objeto de arriba es una constante compartida. */
 export const filtrosVacios = (): FiltrosPublicos => ({
   ...FILTROS_PUBLICOS_VACIOS,
-  valores: { tipo: [], arancel: [], modalidad: [], barrio: [], ciudad: [], tag: [] },
+  valores: { tipo: [], arancel: [], modalidad: [], provincia: [], barrio: [], ciudad: [], tag: [] },
 });
 
 /**
@@ -348,6 +372,16 @@ export const valoresDe = (e: EntradaDeIndice, eje: Eje): string[] => {
       return e.modalidades.length > 0 ? e.modalidades : [e.modalidad];
     case 'arancel':
       return e.arancel.tipo ? [e.arancel.tipo] : [];
+    /*
+     * Los tres de la geografía salen de la sede **derivada** (`e.sede`), que es
+     * «la primera fila que tenga sede» (D-130). Una actividad presencial en dos
+     * ciudades se filtra hoy por una sola — es una limitación que `barrio` ya
+     * tenía antes de B-950 y que hereda la ciudad, no una que este cambio
+     * introduzca. Está anotada en B-966: el arreglo es que el índice lleve la
+     * geografía de todas las filas, como ya lleva `modalidades[]`.
+     */
+    case 'provincia':
+      return provinciaDeSede(e.sede) ? [provinciaDeSede(e.sede)] : [];
     case 'barrio':
       return e.sede?.barrio ? [e.sede.barrio] : [];
     case 'ciudad':

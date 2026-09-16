@@ -306,8 +306,9 @@ describe('avanceDelFormulario — dónde quedó una carga abandonada', () => {
           sede: {
             nombre: 'Casa Brandon',
             direccion: '',
+            provincia: 'caba',
             barrio: '',
-            ciudad: 'CABA',
+            ciudad: 'caba',
             indicaciones: '',
             geo: null,
           },
@@ -332,8 +333,9 @@ describe('avanceDelFormulario — dónde quedó una carga abandonada', () => {
           sede: {
             nombre: 'Casa Brandon',
             direccion: 'Drago 236',
+            provincia: 'caba',
             barrio: '',
-            ciudad: 'CABA',
+            ciudad: 'caba',
             indicaciones: '',
             geo: null,
           },

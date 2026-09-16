@@ -322,6 +322,13 @@ const sesionSchema = z
 const sedeSchema = z.object({
   nombre: texto,
   direccion: texto,
+  /*
+   * B-950 — los tres de la geografía son `opcional` y no `texto`, igual que
+   * antes. Que la provincia esté elegida es **completitud**, no forma: un
+   * borrador a medio cargar tiene que poder guardarse, y lo que se exige al
+   * publicar va abajo, en el `superRefine`, junto al nombre y la dirección.
+   */
+  provincia: opcional,
   barrio: opcional,
   ciudad: opcional,
   indicaciones: opcional,

@@ -124,6 +124,7 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
       sede: {
         nombre: CENTINELAS.sede,
         direccion: CENTINELAS.direccion,
+        provincia: 'caba',
         barrio: 'villa-crespo',
         ciudad: 'CABA',
         indicaciones: CENTINELAS.indicaciones,

@@ -44,8 +44,9 @@ const AHORA = new Date('2026-08-27T12:00:00Z');
 const sede = (over: Partial<Sede> = {}): Sede => ({
   nombre: 'Casa Brandon',
   direccion: 'Drago 236',
+  provincia: 'caba',
   barrio: 'villa-crespo',
-  ciudad: 'CABA',
+  ciudad: 'caba',
   indicaciones: '',
   geo: null,
   ...over,

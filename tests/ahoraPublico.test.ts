@@ -887,7 +887,9 @@ describe('cómo se resuelve un encuentro del eje contra su actividad', () => {
     expect(fila!.hora).toBe(hora(new Date(fila!.iso)));
 
     // Y los valores, para que el caso no pase con las cuatro funciones rotas.
-    expect(fila!.lugar).toBe('Casa Brandon · Villa Crespo, CABA');
+    // B-950 — en CABA el renglón dice el barrio y nada más; la regla vive en
+    // `piezasDeLugar` y la comparten las cinco salidas que arman este renglón.
+    expect(fila!.lugar).toBe('Casa Brandon · Villa Crespo');
     expect(fila!.arancel).toEqual({ texto: 'A la gorra', sinCosto: true });
     expect(fila!.tipoEtiqueta).toBe('Taller');
   });

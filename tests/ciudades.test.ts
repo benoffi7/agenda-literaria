@@ -29,8 +29,9 @@ import type { ActividadForm, Sede } from '@/types/actividad';
 const sede = (over: Partial<Sede> = {}): Sede => ({
   nombre: 'Librería del puerto',
   direccion: 'Av. Luro 3000',
+  provincia: 'buenos-aires',
   barrio: '',
-  ciudad: 'Mar del Plata',
+  ciudad: 'mar-del-plata',
   indicaciones: '',
   geo: null,
   ...over,

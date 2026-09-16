@@ -1,3 +1,4 @@
+import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { esTonoElegible } from '@/lib/identidad';
 import { admiteMonto } from '@/lib/arancel';
 import { imagenesDe } from '@/lib/imagenes';
@@ -515,17 +516,28 @@ export const urlDeMaterialQueSale = (i: ItemMaterial, tiene: boolean): string | 
  * Es una sola función para la sede de la fila y para la derivada: dos copias son
  * dos maneras de que una se quede sin enumerar.
  */
-const sedePublica = (s: Sede | null | undefined): Sede | null =>
-  s
-    ? {
-        nombre: s.nombre,
-        direccion: s.direccion,
-        barrio: s.barrio,
-        ciudad: s.ciudad,
-        indicaciones: s.indicaciones,
-        geo: s.geo ? { lat: s.geo.lat, lng: s.geo.lng } : null,
-      }
-    : null;
+const sedePublica = (s: Sede | null | undefined): Sede | null => {
+  if (!s) return null;
+  /*
+   * B-950 — los tres de la geografía **se derivan, no se copian**, y es el mismo
+   * molde que el `searchText` de las guías: acá pasa una sede que puede no haber
+   * pasado nunca por el formulario nuevo. Un documento anterior trae la ciudad
+   * como se tipeó («Mar del Plata») y sin provincia, y copiarla verbatim
+   * publicaría un valor que no matchea con ningún chip de `/opciones/ciudad` —o
+   * sea, una actividad que existe en el JSON y que **ningún filtro encuentra**,
+   * sin que nada se ponga en rojo.
+   */
+  const geo = geografiaNormalizada(s);
+  return {
+    nombre: s.nombre,
+    direccion: s.direccion,
+    provincia: geo.provincia,
+    barrio: geo.barrio,
+    ciudad: geo.ciudad,
+    indicaciones: s.indicaciones,
+    geo: s.geo ? { lat: s.geo.lat, lng: s.geo.lng } : null,
+  };
+};
 
 /** Ver `ModalidadPublica`: whitelist, sin spread, y sin las fechas. */
 const modalidadPublica = (m: ModalidadFila): ModalidadPublica => ({

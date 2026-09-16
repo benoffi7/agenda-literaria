@@ -684,7 +684,15 @@ describe('el reparto por barrio (B-702)', () => {
     const vieja = acto({
       id: 'vieja',
       modalidades: [],
-      sede: { nombre: '', direccion: '', barrio: 'once', ciudad: '', indicaciones: '', geo: null },
+      sede: {
+        nombre: '',
+        direccion: '',
+        provincia: 'caba',
+        barrio: 'once',
+        ciudad: 'caba',
+        indicaciones: '',
+        geo: null,
+      },
     } as Partial<ActividadConId> & { id: string });
     expect(estadoDelCatalogo([vieja], AHORA).porBarrio).toEqual([{ valor: 'once', cantidad: 1 }]);
   });

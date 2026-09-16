@@ -294,7 +294,28 @@ export interface Imagen {
 export interface Sede {
   nombre: string;
   direccion: string;
+  /**
+   * Slug de `/opciones/provincia` — B-950. Vacío en los documentos anteriores;
+   * se lee con `provinciaDeSede()` (`lib/geografia.mjs`), que resuelve CABA a
+   * partir de la ciudad y devuelve `''` cuando no se puede afirmar (D-26).
+   */
+  provincia: string;
+  /**
+   * Slug de `/opciones/barrio`. **Se pide solo en CABA** desde B-950: fuera de
+   * CABA lo que subdivide es la ciudad. Un documento anterior que lo tenga
+   * cargado igual se respeta y se muestra (`piezasDeLugar`).
+   */
   barrio: string;
+  /**
+   * Slug de `/opciones/ciudad` — B-950. **Era texto libre** hasta entonces, así
+   * que los documentos anteriores traen lo que se tipeó («Mar del Plata») y no
+   * el slug: se normaliza al leer con `slugify`, que es idempotente sobre un
+   * slug y correcto sobre lo viejo.
+   *
+   * En CABA queda con `'caba'` puesto aunque el formulario no lo pregunte —lo
+   * completa la cascada—, porque `ciudades[]` y las tres salidas que leen este
+   * campo dependen de que esté. El motivo largo está en `lib/geografia.mjs`.
+   */
   ciudad: string;
   indicaciones: string;
   geo: { lat: number; lng: number } | null;
@@ -771,6 +792,35 @@ export const CAMPOS_TAXONOMIA = [
   'arancel',
   'tipo',
   'barrio',
+  /*
+   * ── Las dos de la geografía — B-950 ─────────────────────────────────────
+   *
+   * `provincia` es nueva y `ciudad` **dejó de ser texto libre**. Las dos entran
+   * acá por lo mismo que `barrio`: `/opciones/{campo}` es el mecanismo del §4 y
+   * es uno solo —el desplegable con «Otro», la transacción de deduplicación, el
+   * orden por `usos`, la pantalla que las administra y el contador de
+   * pendientes—, y una taxonomía que no esté acá tendría que reimplementar las
+   * cinco cosas (la clase de B-72).
+   *
+   * `provincia` es un conjunto que **no crece** —las 24 jurisdicciones, sembradas
+   * `fijo: true` desde `PROVINCIAS` (`lib/geografia.mjs`)— y va por el mecanismo
+   * igual: lo que gana no es la autogestión, es todo lo demás. `fijo: true` es lo
+   * que impide que alguien la borre desde la pantalla de taxonomías y deje las
+   * sedes que la usaban mostrando el slug crudo (§4.3).
+   *
+   * `ciudad`, en cambio, sí crece, y **por eso la conversión era el nudo de
+   * B-950**: sobre un `<input>` de texto libre no se puede desplegar «las
+   * ciudades de esta provincia», y «Mar del Plata» / «mar del plata» / « Mar del
+   * Plata » ya habían costado `ciudades.mjs` una vez. Con `aprobada` gana además
+   * la puerta con la que el hub de barrio se defiende de publicar un typo como
+   * URL indexada — que es lo que el hub de ciudad de B-951 necesitaba.
+   *
+   * Las dos **sí** viajan en el `events.json` (o sea, no están en
+   * `TAXONOMIAS_FUERA_DEL_INDICE`): son ejes de filtro de la agenda, y el riel de
+   * la home arma sus chips recorriéndolas (§4.4).
+   */
+  'provincia',
+  'ciudad',
   'plataforma',
   'tags',
   'incluye-actividad',

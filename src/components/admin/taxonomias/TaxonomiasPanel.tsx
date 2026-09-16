@@ -34,6 +34,12 @@ const TITULO: Record<CampoTaxonomia, string> = {
   arancel: 'Arancel',
   tipo: 'Tipo de actividad',
   barrio: 'Barrios',
+  // B-950 — las dos de la geografía. `provincia` se siembra con las 24
+  // jurisdicciones y las 24 son `fijo: true`, así que esta pantalla la muestra
+  // pero no deja borrar ninguna: lo que se administra de ella es el orden y, si
+  // alguna vez hiciera falta, la etiqueta.
+  provincia: 'Provincias',
+  ciudad: 'Ciudades',
   plataforma: 'Plataformas',
   tags: 'Etiquetas',
   'incluye-actividad': 'Qué se llevan',
@@ -55,7 +61,10 @@ const TITULO: Record<CampoTaxonomia, string> = {
 const DONDE: Record<CampoTaxonomia, string> = {
   arancel: 'Se elige en «Arancel e inscripción».',
   tipo: 'Es lo primero que se elige al cargar una actividad, y su color es el que el sitio le pone a la categoría.',
-  barrio: 'Se elige en «Dónde», y viaja al evento del calendario.',
+  barrio:
+    'Se elige en «Dónde» cuando la provincia es CABA, y viaja al evento del calendario.',
+  provincia: 'Se elige en «Dónde», y es lo primero de la cascada: de ella depende si después se pide el barrio o la ciudad.',
+  ciudad: 'Se elige en «Dónde» cuando la provincia no es CABA. Es uno de los filtros del sitio.',
   plataforma: 'Se elige en «Dónde» cuando la actividad es virtual.',
   tags: 'Se escriben en «Opcional». Son los filtros del sitio público.',
   'incluye-actividad':

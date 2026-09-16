@@ -84,6 +84,210 @@
     }
   ],
   "barrio": [],
+  "provincia": [
+    {
+      "slug": "caba",
+      "label": "Ciudad Autónoma de Buenos Aires",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "buenos-aires",
+      "label": "Buenos Aires",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "catamarca",
+      "label": "Catamarca",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "chaco",
+      "label": "Chaco",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "chubut",
+      "label": "Chubut",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "cordoba",
+      "label": "Córdoba",
+      "orden": 6,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "corrientes",
+      "label": "Corrientes",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "entre-rios",
+      "label": "Entre Ríos",
+      "orden": 8,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "formosa",
+      "label": "Formosa",
+      "orden": 9,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "jujuy",
+      "label": "Jujuy",
+      "orden": 10,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "la-pampa",
+      "label": "La Pampa",
+      "orden": 11,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "la-rioja",
+      "label": "La Rioja",
+      "orden": 12,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "mendoza",
+      "label": "Mendoza",
+      "orden": 13,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "misiones",
+      "label": "Misiones",
+      "orden": 14,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "neuquen",
+      "label": "Neuquén",
+      "orden": 15,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "rio-negro",
+      "label": "Río Negro",
+      "orden": 16,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "salta",
+      "label": "Salta",
+      "orden": 17,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "san-juan",
+      "label": "San Juan",
+      "orden": 18,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "san-luis",
+      "label": "San Luis",
+      "orden": 19,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "santa-cruz",
+      "label": "Santa Cruz",
+      "orden": 20,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "santa-fe",
+      "label": "Santa Fe",
+      "orden": 21,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "santiago-del-estero",
+      "label": "Santiago del Estero",
+      "orden": 22,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "tierra-del-fuego",
+      "label": "Tierra del Fuego",
+      "orden": 23,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "tucuman",
+      "label": "Tucumán",
+      "orden": 24,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
+  "ciudad": [
+    {
+      "slug": "caba",
+      "label": "Ciudad Autónoma de Buenos Aires",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ],
   "plataforma": [
     {
       "slug": "zoom",

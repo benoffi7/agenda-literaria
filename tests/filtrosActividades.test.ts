@@ -49,7 +49,7 @@ const sesion = (inicio: string, over: Partial<Sesion> = {}): Sesion =>
 
 /** Solo el barrio, que es lo único de la sede que mira el filtro. */
 const sedeEn = (barrio: string) =>
-  ({ nombre: '', direccion: '', barrio, ciudad: '', indicaciones: '', geo: null });
+  ({ nombre: '', direccion: '', provincia: '', barrio, ciudad: '', indicaciones: '', geo: null });
 
 const acto = (over: Partial<ActividadConId> & { id: string }): ActividadConId =>
   ({
