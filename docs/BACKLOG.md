@@ -15388,6 +15388,48 @@ cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
 
+### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
+
+**Lo trajo el dueño desde Search Console.** Queda anotado sobre todo para que
+nadie vuelva a investigarlo como si fuera código: **se investigó y no hay nada
+roto de este lado.**
+
+Qué se verificó, URL por URL, contra producción:
+
+| Chequeo | Resultado |
+|---|---|
+| Código HTTP | **200** las diez visibles |
+| ¿En el `sitemap.xml`? | **sí**, las diez |
+| `<meta name="robots">` | **ninguna** — no hay `noindex` |
+| Canónica | **propia y absoluta**, apunta a sí misma |
+| ¿Enlazadas desde la home? | **sí** — 227 enlaces a actividades en el HTML del build; `/suscribirse` aparece tres veces. Ninguna es huérfana |
+
+Y la hipótesis que quedaba —«son más flacas que el resto»— **se midió y es
+falsa**:
+
+- sin indexar: 330, 335, 346, 417 palabras;
+- indexadas: 283, 320, 329, 343, 383 palabras.
+
+Son el mismo rango. No hay nada que distinga a las 16.
+
+**Qué significa entonces «Rastreada: actualmente sin indexar».** Es Google
+diciendo que la buscó y **decidió no indexarla**: no es un error de rastreo, es
+una decisión suya de prioridad. Son 16 de **361** URLs del sitemap, o sea ~96 %
+indexado, que para un sitio de este año es sano. Y el «Resultado de la
+validación: error» que muestra el panel no agrega información: solo dice que una
+validación pedida el 7/9 terminó sin que Google cambiara de opinión.
+
+**Por qué no hay tarea de código.** Las palancas reales son las que no se tocan
+desde el repo: antigüedad y autoridad del dominio, y profundidad del contenido de
+cada actividad —que la escribe quien carga, no el build—. Inventar un cambio
+técnico acá sería mover algo que funciona para perseguir un síntoma que no
+depende de eso. Si alguna vez conviene empujar, lo que sí está en nuestras manos
+es **enriquecer la ficha**: hoy son ~330 palabras y buena parte es plantilla.
+
+**Cuándo sí volver a mirar:** si la cifra crece fuerte contra el total, si
+aparecen URLs con 404 o `noindex` en esa lista, o si empiezan a caer páginas que
+**ya estaban** indexadas. Eso último sí sería un bug.
+
 ### B-916 · El chequeo de exportación de un trigger pasa con el `export` comentado · P3
 
 `tests/directorios-rebuild.test.ts` y `tests/lugares.test.ts` verifican el trigger
