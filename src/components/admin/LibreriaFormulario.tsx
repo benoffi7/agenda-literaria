@@ -277,6 +277,16 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         <Campo label="Provincia" htmlFor="lib-provincia" requerido error={errorDe('provincia')}>
           <TaxonomiaSelect
             campo="provincia"
+            /*
+             * B-972 — **sin «Otro», porque las provincias son 24 y no se
+             * agregan.** Es el único vocabulario cerrado de los tres: el barrio
+             * y la ciudad se llenan escribiendo, y la provincia no tiene nada
+             * que llenar. Dejar el botón ofrecía inventarse una —de ahí salió
+             * `'cordoba-capital'`— y el `.refine(esProvincia)` del schema la
+             * rechaza al guardar, o sea un camino que la UI ofrece y la
+             * validación corta. Mejor no ofrecerlo.
+             */
+            permitirOtro={false}
             uid={uid}
             id="lib-provincia"
             value={form.provincia}

@@ -5,6 +5,7 @@ import { MAXIMO_IMAGENES, portadaDe } from '@/lib/imagenes';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esCopiaSinRevisar } from '@/lib/duplicar';
 import { deDatetimeLocal } from '@/lib/sesiones';
+import { esProvincia } from '@/lib/geografia.mjs';
 import {
   ENTREGAS_MATERIAL,
   ESTADOS,
@@ -328,7 +329,16 @@ const sedeSchema = z.object({
    * borrador a medio cargar tiene que poder guardarse, y lo que se exige al
    * publicar va abajo, en el `superRefine`, junto al nombre y la dirección.
    */
-  provincia: opcional,
+  /*
+   * B-972 — sigue siendo `opcional` (un borrador a medio cargar se guarda), pero
+   * **si hay algo, tiene que ser una provincia**. El `|| !v` deja pasar el vacío:
+   * lo que se valida acá es la forma del dato, no que esté completo — eso es del
+   * `superRefine` de abajo, y confundirlos volvería inguardable el borrador.
+   *
+   * El barrio y la ciudad no tienen equivalente: son vocabulario abierto y no
+   * hay padrón contra el cual medirlos. La provincia sí, y son 24.
+   */
+  provincia: opcional.refine((v) => !v || esProvincia(v), 'Esa no es una provincia argentina'),
   barrio: opcional,
   ciudad: opcional,
   indicaciones: opcional,

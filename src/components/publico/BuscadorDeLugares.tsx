@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { FichaDeLugarFila } from '@/components/publico/FichaDeLugarFila';
 import { claseBotonBloque, claseCampo, claseEtiquetaDeCampo } from '@/components/sitio/estilos';
+import { conFiltroDeGeografia, muestraEjeDeGeografia } from '@/lib/geografia.mjs';
 import { normalize } from '@/lib/normalize';
 import {
   CLASES_DE_COSTO,
@@ -74,7 +75,9 @@ type Carga =
 
 /** Cómo se llama cada eje en pantalla. El JSON trae los valores, no el rótulo. */
 const TITULO_DEL_EJE: Record<EjeDeLugar, string> = {
+  provincia: 'Provincia',
   barrio: 'Barrio',
+  ciudad: 'Ciudad',
   'incluye-lugar': 'Qué incluye',
   'tipo-lugar': 'Qué es',
 };
@@ -84,7 +87,9 @@ const COINCIDE: Record<
   EjeDeLugar,
   (l: IndiceDeLugares['lugares'][number], slug: string) => boolean
 > = {
+  provincia: (l, slug) => l.donde.provincia === slug,
   barrio: (l, slug) => l.donde.barrio === slug,
+  ciudad: (l, slug) => l.donde.ciudad === slug,
   'incluye-lugar': (l, slug) => l.incluye.includes(slug),
   'tipo-lugar': (l, slug) => l.tipo === slug,
 };
@@ -157,8 +162,27 @@ export function BuscadorDeLugares({ version, idListadoEstatico }: Props) {
 
   const deshabilitado = carga.estado !== 'listo';
 
+  /*
+   * B-970 — la cascada la aplica `conFiltroDeGeografia`, no esta función: al
+   * cambiar de provincia hay que soltar el barrio o la ciudad de antes, y en un
+   * riel de chips eso no se ve —el síntoma es cero resultados sin motivo
+   * visible—. La regla vive en `geografia.mjs` y la comparte la guía de librerías.
+   */
   const alternar = (eje: EjeDeLugar, slug: string) =>
-    setElegidos((prev) => ({ ...prev, [eje]: prev[eje] === slug ? undefined : slug }));
+    setElegidos((prev) => conFiltroDeGeografia(prev, eje, slug));
+
+  /**
+   * «Todos» también pasa por la cascada, y esto **no es simetría por prolijidad**:
+   * apagar la provincia con un `{ ...prev, provincia: undefined }` directo dejaba
+   * la ciudad elegida filtrando sin ninguna provincia, con el chip marcado y cero
+   * resultados. Lo encontró el `auditor-trampas`: era el único punto que escribía
+   * `elegidos` sin pasar por `conFiltroDeGeografia`.
+   */
+  const quitar = (
+    prev: Partial<Record<EjeDeLugar, string>>,
+    eje: EjeDeLugar,
+  ): Partial<Record<EjeDeLugar, string>> =>
+    prev[eje] === undefined ? prev : conFiltroDeGeografia(prev, eje, prev[eje]);
 
   return (
     <div className="mt-8">
@@ -242,14 +266,29 @@ export function BuscadorDeLugares({ version, idListadoEstatico }: Props) {
               </div>
             </div>
 
-            {EJES_DE_LUGAR.filter((eje) => indice.filtros[eje].length > 0).map((eje) => (
+            {/*
+              B-970 — dos recortes, y el orden importa. Primero el de siempre:
+              un eje sin ningún valor detrás es un chip que promete cero
+              resultados. Y después el de la cascada: `barrio` y `ciudad` solo
+              se ofrecen si la provincia elegida los subdivide. La regla es la
+              misma que la del riel del listado y vive en `geografia.mjs`.
+            */}
+            {EJES_DE_LUGAR.filter(
+              (eje) =>
+                indice.filtros[eje].length > 0 &&
+                muestraEjeDeGeografia(
+                  eje,
+                  elegidos.provincia ? [elegidos.provincia] : [],
+                  Boolean(elegidos[eje]),
+                ),
+            ).map((eje) => (
               <div key={eje}>
                 <p className={claseEtiquetaDeCampo}>{TITULO_DEL_EJE[eje]}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     aria-pressed={!elegidos[eje]}
-                    onClick={() => setElegidos((prev) => ({ ...prev, [eje]: undefined }))}
+                    onClick={() => setElegidos((prev) => quitar(prev, eje))}
                     className={`${claseBotonBloque} ${!elegidos[eje] ? 'bg-tinta text-papel' : ''}`}
                   >
                     Todos

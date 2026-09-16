@@ -41,7 +41,7 @@ import {
   mesDesplazado,
   nombreDeMes,
 } from '@/lib/fechasPublicas';
-import { subdivisionDe } from '@/lib/geografia.mjs';
+import { muestraEjeDeGeografia } from '@/lib/geografia.mjs';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
@@ -765,14 +765,17 @@ export const chipsDe = (
  *    no habría ningún control en pantalla para entender por qué ni para sacarlo.
  *    Es la misma clase de bug que D-143: un filtro que existe y no se ve.
  */
-export const ejesVisibles = (filtros: FiltrosPublicos): Eje[] => {
-  const subdivisiones = new Set(filtros.valores.provincia.map((p: string) => subdivisionDe(p)));
-  return EJES.filter((eje) => {
-    if (eje !== 'barrio' && eje !== 'ciudad') return true;
-    if (filtros.valores[eje].length > 0) return true;
-    return subdivisiones.has(eje);
-  });
-};
+export const ejesVisibles = (filtros: FiltrosPublicos): Eje[] =>
+  /*
+   * B-970 — la regla es de `geografia.mjs` y no de acá: la comparten este riel,
+   * el de la guía de librerías y el de la de lugares. Estaba escrita una sola
+   * vez porque había un solo riel con cascada; al aparecer el segundo y el
+   * tercero, copiarla era el camino recto a que funcionara en dos pantallas y en
+   * la tercera no.
+   */
+  EJES.filter((eje) =>
+    muestraEjeDeGeografia(eje, filtros.valores.provincia, filtros.valores[eje].length > 0),
+  );
 
 /** Prende o apaga un valor de un eje. Devuelve filtros nuevos, no muta. */
 export const alternarValor = (

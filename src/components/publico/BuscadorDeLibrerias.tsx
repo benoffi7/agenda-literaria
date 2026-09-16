@@ -1,13 +1,20 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { FichaDeLibreriaFila } from '@/components/publico/FichaDeLibreriaFila';
 import { claseBotonBloque, claseCampo, claseEtiquetaDeCampo } from '@/components/sitio/estilos';
-import { fichaDeLibreria, type IndiceDeLibrerias } from '@/lib/libreriaPublica';
+import { conFiltroDeGeografia, muestraEjeDeGeografia } from '@/lib/geografia.mjs';
+import {
+  EJES_DE_LIBRERIA,
+  fichaDeLibreria,
+  type EjeDeLibreria,
+  type IndiceDeLibrerias,
+  type LibreriaPublica,
+} from '@/lib/libreriaPublica';
 import { normalize } from '@/lib/normalize';
 import type { FichaDeLibreria } from '@/lib/libreriaPublica';
 
 /**
- * La island de `/guia/librerias`: búsqueda por texto y filtro por barrio — B-831,
- * § 4 del PRD 2.
+ * La island de `/guia/librerias`: búsqueda por texto y la cascada de lugar
+ * —provincia, y de ahí barrio o ciudad— B-831, § 4 del PRD 2, B-970.
  *
  * ── El HTML es la verdad; `librerias.json` es el índice ───────────────────
  * El mismo contrato que el listado de la agenda (§6.3): el build imprime **todas**
@@ -22,15 +29,18 @@ import type { FichaDeLibreria } from '@/lib/libreriaPublica';
  * pantalla vacía.
  *
  * ── Dos ejes y no seis ───────────────────────────────────────────────────
- * Barrio y texto, que es lo que el PRD fija para la v1: «con 40 librerías un
- * filtro de más es ruido». Por eso tampoco hay riel, ni hoja modal, ni
+ * Lugar y texto. El PRD fijaba **solo barrio** para la v1 —«con 40 librerías un
+ * filtro de más es ruido»—, y B-970 lo corrigió sin contradecirlo: no son filtros
+ * de más, es que el único que había dejaba inencontrable por dónde queda a toda
+ * ficha fuera de CABA. Siguen siendo dos chips en pantalla a la vez, porque la
+ * cascada oculta la subdivisión que no aplica. Por eso tampoco hay riel, ni hoja modal, ni
  * serialización a la query string — las tres piezas que el buscador de la agenda
  * tiene porque ahí hay seis ejes y cientos de filas. Copiarlas acá sería traer la
  * complejidad sin el problema.
  *
  * ── Las etiquetas de los chips viajan en el JSON ─────────────────────────
  * §4.4: «la web arma los chips de filtro recorriendo `opciones.*` — nada
- * hardcodeado». Acá es `indice.barrios`, que el build ya recortó a los barrios
+ * hardcodeado». Acá es `indice.filtros`, que el build ya recortó a los valores
  * con alguna librería publicada: un chip que promete cero resultados es ruido.
  *
  * No importa nada de `components/admin/` (`tests/bundle-panel.test.ts`).
@@ -46,6 +56,20 @@ interface Props {
   idListadoEstatico: string;
 }
 
+/** Cómo se llama cada eje en pantalla. El JSON trae los valores, no el rótulo. */
+const TITULO_DEL_EJE: Record<EjeDeLibreria, string> = {
+  provincia: 'Provincia',
+  barrio: 'Barrio',
+  ciudad: 'Ciudad',
+};
+
+/** De qué campo de la ficha sale cada eje, para filtrar. */
+const COINCIDE: Record<EjeDeLibreria, (l: LibreriaPublica, slug: string) => boolean> = {
+  provincia: (l, slug) => l.provincia === slug,
+  barrio: (l, slug) => l.barrio === slug,
+  ciudad: (l, slug) => l.ciudad === slug,
+};
+
 type Carga =
   | { estado: 'cargando' }
   | { estado: 'listo'; indice: IndiceDeLibrerias }
@@ -54,7 +78,11 @@ type Carga =
 export function BuscadorDeLibrerias({ version, idListadoEstatico }: Props) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
   const [texto, setTexto] = useState('');
-  const [barrio, setBarrio] = useState<string | null>(null);
+  /**
+   * Un valor elegido por eje — B-970. Antes era un `barrio` suelto, que es lo que
+   * dejaba sin filtro a toda ficha fuera de CABA.
+   */
+  const [elegidos, setElegidos] = useState<Partial<Record<EjeDeLibreria, string>>>({});
   const idBusqueda = useId();
 
   useEffect(() => {
@@ -92,13 +120,39 @@ export function BuscadorDeLibrerias({ version, idListadoEstatico }: Props) {
    */
   const fichas: FichaDeLibreria[] = useMemo(() => {
     if (!indice) return [];
-    const etiquetas = new Map(indice.barrios.map((b) => [b.slug, b.label]));
+    const etiquetas = new Map(indice.filtros.barrio.map((b) => [b.slug, b.label]));
     const aguja = normalize(texto).trim();
     return indice.librerias
-      .filter((l) => (barrio ? l.barrio === barrio : true))
+      /*
+       * AND entre ejes, igual que en el riel del listado: «en Buenos Aires, en
+       * Mar del Plata» es la combinación que la gente espera. Se recorre
+       * `EJES_DE_LIBRERIA` y no se enumeran los tres, por lo mismo que el
+       * constructor del índice: el eje que se agregue mañana entra solo.
+       */
+      .filter((l) =>
+        EJES_DE_LIBRERIA.every((eje) => {
+          const slug = elegidos[eje];
+          return slug ? COINCIDE[eje](l, slug) : true;
+        }),
+      )
       .filter((l) => (aguja ? l.searchText.includes(aguja) : true))
       .map((l) => fichaDeLibreria(l, { etiquetaDeBarrio: etiquetas.get(l.barrio) }));
-  }, [indice, texto, barrio]);
+  }, [indice, texto, elegidos]);
+
+  /*
+   * B-970 — la cascada la aplica `conFiltroDeGeografia`: al cambiar de provincia
+   * hay que soltar el barrio o la ciudad de antes. Es la misma regla, el mismo
+   * módulo y el mismo llamado que en la guía de lugares.
+   */
+  const alternar = (eje: EjeDeLibreria, slug: string) =>
+    setElegidos((prev) => conFiltroDeGeografia(prev, eje, slug));
+
+  /** «Todos» es apagar el eje, y apagar la provincia arrastra su subdivisión. */
+  const quitar = (
+    prev: Partial<Record<EjeDeLibreria, string>>,
+    eje: EjeDeLibreria,
+  ): Partial<Record<EjeDeLibreria, string>> =>
+    prev[eje] === undefined ? prev : conFiltroDeGeografia(prev, eje, prev[eje]);
 
   const deshabilitado = carga.estado !== 'listo';
 
@@ -120,34 +174,53 @@ export function BuscadorDeLibrerias({ version, idListadoEstatico }: Props) {
           />
         </div>
 
-        {indice && indice.barrios.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {/*
-              «Todos» es un botón más y no la ausencia de botones: sin él, quitar
-              un barrio elegido obliga a volver a tocar el mismo chip, que es un
-              gesto que nadie descubre.
-            */}
-            <button
-              type="button"
-              aria-pressed={barrio === null}
-              onClick={() => setBarrio(null)}
-              className={`${claseBotonBloque} ${barrio === null ? 'bg-tinta text-papel' : ''}`}
-            >
-              Todos
-            </button>
-            {indice.barrios.map((b) => (
-              <button
-                key={b.slug}
-                type="button"
-                aria-pressed={barrio === b.slug}
-                onClick={() => setBarrio(barrio === b.slug ? null : b.slug)}
-                className={`${claseBotonBloque} ${barrio === b.slug ? 'bg-tinta text-papel' : ''}`}
-              >
-                {b.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {indice &&
+          /*
+            Dos recortes, y el orden importa. Primero el de siempre: un eje sin
+            ningún valor detrás es un chip que promete cero resultados. Y después
+            el de la cascada: `barrio` y `ciudad` solo se ofrecen si la provincia
+            elegida los subdivide. La regla es la misma que la del riel del
+            listado y vive en `geografia.mjs` — acá no se reescribe.
+          */
+          EJES_DE_LIBRERIA.filter(
+            (eje) =>
+              indice.filtros[eje].length > 0 &&
+              muestraEjeDeGeografia(
+                eje,
+                elegidos.provincia ? [elegidos.provincia] : [],
+                Boolean(elegidos[eje]),
+              ),
+          ).map((eje) => (
+            <div key={eje}>
+              <p className={claseEtiquetaDeCampo}>{TITULO_DEL_EJE[eje]}</p>
+              <div className="flex flex-wrap gap-2">
+                {/*
+                  «Todos» es un botón más y no la ausencia de botones: sin él,
+                  quitar un valor elegido obliga a volver a tocar el mismo chip,
+                  que es un gesto que nadie descubre.
+                */}
+                <button
+                  type="button"
+                  aria-pressed={!elegidos[eje]}
+                  onClick={() => setElegidos((prev) => quitar(prev, eje))}
+                  className={`${claseBotonBloque} ${!elegidos[eje] ? 'bg-tinta text-papel' : ''}`}
+                >
+                  Todos
+                </button>
+                {indice.filtros[eje].map((v) => (
+                  <button
+                    key={v.slug}
+                    type="button"
+                    aria-pressed={elegidos[eje] === v.slug}
+                    onClick={() => alternar(eje, v.slug)}
+                    className={`${claseBotonBloque} ${elegidos[eje] === v.slug ? 'bg-tinta text-papel' : ''}`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
       </div>
 
       {carga.estado === 'error' && (

@@ -527,16 +527,34 @@ export const entraEnElRango = (capacidad: number | null, id: string): boolean =>
 };
 
 /**
- * Los tres ejes de filtro **con vocabulario** del § 7, en el orden en que el PRD
- * los pone: barrio, qué incluye, tipo de lugar.
+ * Los ejes de filtro **con vocabulario** del § 7, en el orden de la pantalla:
+ * primero dónde queda, después qué incluye y de qué tipo es.
+ *
+ * ── B-970 · el riel también es una cascada ────────────────────────────────
+ * Hasta acá el único eje de lugar era `barrio`, y eso dejaba **inencontrable por
+ * dónde queda a toda ficha fuera de CABA**: se podía cargar un lugar en Rosario
+ * —la cascada del formulario ya lo permitía desde B-967— y después no había
+ * ningún filtro que lo trajera. El catálogo aceptaba fichas que el buscador no
+ * sabía buscar.
+ *
+ * Entran los dos niveles, en el mismo orden que el riel del listado de
+ * actividades: `provincia` primero, y de lo que se elija ahí depende si abajo se
+ * ofrece `barrio` (CABA) o `ciudad` (las otras 23). La regla es una sola y vive
+ * en `muestraEjeDeGeografia` (`geografia.mjs`) — acá no se reescribe.
  *
  * Los otros dos filtros del § 7 no están acá porque no salen de una taxonomía:
  * la **capacidad** son los rangos de arriba y el **costo** son las tres clases
  * del § 5. Los dos los arma la island sin consultar ningún vocabulario.
  *
- * Que sean **estos tres** lo fija `tests/lugar-publico.test.ts`.
+ * Que sean **estos cinco y en este orden** lo fija `tests/lugar-publico.test.ts`.
  */
-export const EJES_DE_LUGAR = ['barrio', 'incluye-lugar', 'tipo-lugar'] as const;
+export const EJES_DE_LUGAR = [
+  'provincia',
+  'barrio',
+  'ciudad',
+  'incluye-lugar',
+  'tipo-lugar',
+] as const;
 export type EjeDeLugar = (typeof EJES_DE_LUGAR)[number];
 
 /**
@@ -560,7 +578,14 @@ export interface IndiceDeLugares {
 
 /** De qué campo de la ficha sale cada eje. Un solo lugar, y de él salen el recorte y los chips. */
 const VALORES_DEL_EJE: Record<EjeDeLugar, (l: LugarPublico) => string[]> = {
+  /*
+   * Los tres de la geografía salen de `donde`, que ya viene **derivado** por
+   * `geografiaNormalizada` (D-710): una ficha vieja sin provincia la tiene
+   * igual acá, y por eso entra al recorte en vez de quedar fuera de todo chip.
+   */
+  provincia: (l) => (l.donde.provincia ? [l.donde.provincia] : []),
   barrio: (l) => (l.donde.barrio ? [l.donde.barrio] : []),
+  ciudad: (l) => (l.donde.ciudad ? [l.donde.ciudad] : []),
   'incluye-lugar': (l) => l.incluye,
   'tipo-lugar': (l) => (l.tipo ? [l.tipo] : []),
 };

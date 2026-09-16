@@ -496,51 +496,75 @@ El informe marca aparte cuántas quedan con `[]` — las virtuales y las que tie
 la ciudad sin cargar. **No es un error**: esas no son de ninguna ciudad y no las ve
 ningún publicador por ciudad. Es el caso que alguien va a venir a preguntar.
 
-## Sembrar una taxonomía NUEVA en producción (B-973)
+## Sembrar una taxonomía NUEVA en producción (B-973 — ✅ con red)
 
 **Agregar un campo a `CAMPOS_TAXONOMIA` y a `opciones-base.json` no lo siembra en
-producción, y ningún paso del despliegue lo hace.** `preparar-produccion.mjs` es
-el único que siembra `/opciones/*`, y:
+producción.** El vocabulario nuevo llega al código y no a la base: un desplegable
+vacío, y si el campo es obligatorio, **un formulario que no se puede guardar**.
 
-- solo crea los documentos que **no existen** (es idempotente a propósito: no pisa
-  las opciones que alguien creó con «Otro»);
-- **pide un mail** como argumento, porque su otra mitad da el claim `admin`, así
-  que nadie lo corre de rutina.
+Desde B-973 hay dos piezas, y conviene entender qué hace cada una.
 
-Resultado: el vocabulario nuevo llega al código y **no** a la base. Lo que se ve
-es un desplegable vacío — y si el campo es obligatorio, **no se puede guardar
-nada**.
+### 1 · El chequeo, que avisa
 
 ```bash
-# Solo los documentos que faltan, sin tocar claims:
-node -e "
-const fs=require('fs');
-const {initializeApp, applicationDefault}=require('firebase-admin/app');
-const {getFirestore}=require('firebase-admin/firestore');
-initializeApp({credential: applicationDefault(), projectId:'agenda-literaria'});
-const db=getFirestore();
-const base=JSON.parse(fs.readFileSync('src/lib/opciones-base.json','utf8'));
-(async()=>{
-  for (const campo of ['provincia','ciudad']) {   // ← los que agregaste
-    const ref=db.doc('opciones/'+campo);
-    if ((await ref.get()).exists) { console.log(campo,'— ya existía'); continue; }
-    await ref.set({ valores: base[campo] });
-    console.log(campo,'— sembrado con',base[campo].length,'valores');
-  }
-})();"
+npm run taxonomias:verificar     # lee producción; falla si falta alguna
 ```
+
+Compara `CAMPOS_TAXONOMIA` —leído del **fuente**, que es la lista autoritativa—
+contra los documentos `/opciones/*` que hay en la base, y **falla listando los que
+faltan**. Es de solo lectura: no siembra.
+
+Corre solo en cada deploy, como **primer paso del job `hosting`** de
+`push-main.yml`, antes del build. Va antes y no después porque el build **no
+falla** ante un vocabulario faltante: `contenidoDelSitio.ts` hace
+`snap.data()?.valores ?? []` y publica los chips vacíos sin decir nada.
+
+> **Es el único chequeo del pipeline que mira producción**, y por eso es el único
+> que puede ver esto. Los seis pasos de `verificar-todo.sh`, el build real y la
+> suite entera corren contra el **emulador**, que `seed-emulador.mjs` siembra
+> desde el mismo `opciones-base.json`: ahí la taxonomía nueva siempre existe. La
+> asimetría entre los dos entornos es el punto ciego, y solo se ve mirando
+> producción. Por lo mismo el script **aborta si detecta `FIRESTORE_EMULATOR_HOST`**:
+> ahí daría verde siempre, y un chequeo que no puede fallar es peor que ninguno.
+
+### 2 · La siembra, que arregla
+
+```bash
+npm run opciones:sembrar:prod    # = preparar-produccion.mjs --solo-opciones
+```
+
+Crea **solo los documentos que no existen**. Es idempotente a propósito: no pisa
+las opciones que alguien creó con «Otro». El flag `--solo-opciones` existe porque
+sembrar y dar el claim `admin` empezaron juntos —se preparaba el proyecto una
+sola vez— y dejaron de estarlo: hoy la siembra se repite cada vez que el código
+declara una taxonomía nueva, y exigir un mail para eso obligaba a re-setear un
+claim que ya estaba puesto.
 
 **El rebuild se dispara solo**: escribir en `/opciones/*` prende el flag del §8
 (`rebuildPorOpciones`), así que los chips del sitio aparecen en la corrida
-siguiente sin hacer nada más. Esa mitad sí está cubierta (trampa 8).
+siguiente sin hacer nada más. Esa mitad ya estaba cubierta (trampa 8).
+
+### Por qué el chequeo no siembra solo
+
+Sería un job desatendido escribiendo en producción, que es otra decisión; y **lo
+que falta no siempre es sembrar** — un campo puede estar mal escrito, y sembrarlo
+crearía el documento equivocado en vez de mostrar el error. El chequeo dice qué
+falta y con qué comando se arregla; la escritura la decide una persona.
 
 > **Pasó de verdad con B-950**, y por eso está escrito. El deploy salió verde —los
 > seis pasos del gate, el build real contra el emulador, la suite entera— y producción
-> quedó con `/opciones/provincia` **vacío** y la provincia **obligatoria** en el
-> schema: el desplegable sin opciones y el formulario inguardable. Nada lo dijo,
-> porque el emulador **sí** se siembra (`seed-emulador.mjs` lee el mismo JSON) y
-> el gate corre contra el emulador. La asimetría entre los dos entornos es
-> exactamente el punto ciego. Queda como **B-973**.
+> quedó con `/opciones/provincia` **inexistente** y la provincia **obligatoria** en
+> el schema: el desplegable sin opciones y el formulario inguardable.
+>
+> Y al escribir el chequeo apareció que **no eran dos sino doce**: los diez
+> vocabularios de las guías (`tipo-lugar`, `incluye-lugar`, `condicion-de-uso`,
+> `periodicidad`, `tipo-oferente`, `perfil-editorial`, `incluye-suscripcion`,
+> `extras-suscripcion`, `alcance-envio`, `incluye-actividad`) tampoco existían en
+> producción, desde que se crearon. Nadie lo había notado porque el **panel** cae
+> de vuelta a `opciones-base.json` cuando el documento falta (`leerOpciones`), así
+> que ahí se veían bien; el **build** no tiene ese fallback, así que los que
+> estaban vacíos eran los chips del sitio y los desplegables de `/guia/*/sumar`.
+> Los dos caminos leen el mismo vocabulario y solo uno tenía red.
 
 ## Sembrar la geografía de las sedes (B-950, D-710)
 

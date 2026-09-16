@@ -217,6 +217,26 @@ jobs:
         with: { node-version: '22', cache: npm }
       - run: npm ci
 
+      - name: Que toda taxonomía declarada exista en la base
+        # B-973 — el único chequeo del pipeline que mira PRODUCCIÓN y no el
+        # emulador, y por eso es el único que puede ver esto. `seed-emulador.mjs`
+        # siembra `/opciones/*` desde el mismo `opciones-base.json`, así que los
+        # seis pasos del gate, el build contra el emulador y la suite entera
+        # corren contra un entorno donde la taxonomía nueva SIEMPRE existe.
+        #
+        # Va antes del Build y no después porque el build no falla: lee
+        # `snap.data()?.valores ?? []` (contenidoDelSitio.ts) y publica el
+        # vocabulario vacío. Salen los chips de filtro sin opciones y los
+        # desplegables de `/guia/*/sumar` en blanco, todo en verde.
+        #
+        # Es de solo lectura: no siembra. Sembrar es `npm run opciones:sembrar:prod`,
+        # y se corre a mano — escribir en producción desde un job desatendido es
+        # otra decisión, y lo que falta no siempre es sembrar (puede ser un slug
+        # mal escrito).
+        run: node scripts/taxonomias-en-produccion.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
       - name: Build
         run: npm run build
         env:

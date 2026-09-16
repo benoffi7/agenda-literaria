@@ -615,6 +615,25 @@ veces se los invoca** ahora que nada los llama.
   el desdoblado del ICS antes de buscar. **No entra a ningún gate**: pega contra
   producción, y un gate que falla cuando se cae el wifi es el que enseña a
   saltear los gates (B-180).
+- **Que una taxonomía declarada exista en producción** (leer `/opciones/*` con la
+  credencial del build). Misma forma que la viñeta de arriba —lo delicado no va en
+  manos de un agente, va en un script—: `scripts/taxonomias-en-produccion.mjs`
+  (**B-973**, **D-711**). Un agente no podía hacerlo por la credencial; **un test
+  tampoco, y por un motivo más interesante**: `seed-emulador.mjs` siembra las 17
+  taxonomías desde `opciones-base.json`, así que toda la suite y el gate entero
+  corren contra una base donde la respuesta es siempre que sí. No es que falte el
+  test: es que en ese entorno la pregunta no puede dar «no».
+
+  **A diferencia de `verificar-produccion.mjs`, éste sí entra al gate** —primer
+  paso del job `hosting`, antes del build—, y la razón es exactamente la que a
+  aquél lo deja afuera: no depende de que algo externo esté arriba. Lee Firestore
+  con **la misma credencial que el build**, así que si el chequeo no se puede
+  conectar, el build tampoco iba a poder. No hay corrida que falle por el wifi.
+
+  **Solo lee.** Sembrar es `npm run opciones:sembrar:prod` y lo corre una persona:
+  lo que falta no siempre es sembrar —puede ser un slug mal escrito— y un job
+  desatendido escribiendo en producción es otra decisión. Tests:
+  `tests/taxonomias-en-produccion.test.ts`.
 - **Enterarse de que un deploy falló** — ✅ **resuelto el 2026-09-11, y no con un
   agente ni con un test: con el workflow mismo** (**B-883**). Es la viñeta que
   mejor muestra el criterio de este documento, porque los dos candidatos

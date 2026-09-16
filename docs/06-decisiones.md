@@ -10966,3 +10966,58 @@ sobre el `dist/` no ejercita nada de esto).
 CABA probada), más los casos de `tarjetaPublica`, `tarjeta-del-panel`,
 `filtrosActividades`, `hubsPublicos`, `detallePublico` y
 `barrido-de-salidas-publicas`.
+
+## D-711 · El gate corre contra el emulador, así que la red de producción tiene que estar afuera del gate
+
+**B-973.** `./scripts/verificar-todo.sh` son seis pasos mecánicos, e incluye un
+build real. La suite son 5300 casos. Nada de eso podía ver que
+`/opciones/provincia` no existiera en producción, y la razón no es que falten
+chequeos: es que **todos miran el mismo entorno, y ese entorno está sembrado**.
+
+`seed-emulador.mjs` lee `src/lib/opciones-base.json` y crea los 17 documentos de
+`/opciones/*`. El gate, el build contra el emulador y la suite entera corren
+contra esa base. Ahí la pregunta «¿existe la taxonomía nueva?» tiene respuesta
+afirmativa **por construcción**, y un chequeo cuya respuesta no puede ser «no» no
+es un chequeo: ocupa el lugar de la red sin ser una.
+
+**La decisión:** la verificación vive en el workflow de deploy y **lee producción
+con la credencial del build**, no en el gate. Tres consecuencias, todas
+deliberadas:
+
+1. **Se autentica igual que el build** (`FIREBASE_SERVICE_ACCOUNT` crudo, si no
+   las ADC), en el mismo orden de preferencia que `src/lib/firebase-admin.ts`.
+   Afirma algo sobre *la base que el build va a leer*; autenticando distinto
+   podría estar mirando otro proyecto y dar verde sobre una base que no se
+   publica.
+2. **Aborta si ve `FIRESTORE_EMULATOR_HOST`.** Correrlo contra el emulador sería
+   volver al punto ciego, esta vez con la apariencia de tener red.
+3. **Va antes del build, no después.** El build **no falla** ante un vocabulario
+   faltante: `contenidoDelSitio.ts` hace `snap.data()?.valores ?? []` y publica
+   los chips vacíos. Verificar después sería verificar un sitio ya roto.
+
+**Lo que NO hace: sembrar.** Sería un job desatendido escribiendo en producción, y
+además **lo que falta no siempre es sembrar** — un campo mal escrito crearía el
+documento equivocado en vez de mostrar el error. El chequeo nombra lo que falta y
+el comando que lo arregla (`npm run opciones:sembrar:prod`); la escritura la
+decide una persona.
+
+**La asimetría del fallback, que es la causa raíz.** Los dos caminos que leen
+`/opciones/*` no se comportan igual ante un documento ausente:
+
+| Camino | Qué hace si falta | Qué se ve |
+|---|---|---|
+| `leerOpciones` (panel, cliente) | cae a `OPCIONES_BASE` | nada: se ve bien |
+| `opcionesDeTaxonomia` (build, Admin SDK) | `?? []` | chips y desplegables públicos vacíos |
+
+Por eso las diez taxonomías de las guías llevaban meses sin existir en producción
+y nadie lo había notado: quien carga usa el panel, que tiene fallback. Lo que
+estaba roto era la parte que usa la gente de afuera. **Emparejar los dos caminos
+—darle fallback al build— sería tapar el síntoma**: el sitio publicaría un
+vocabulario que la base no tiene, y la próxima diferencia entre el código y
+producción volvería a ser invisible. La decisión es al revés: que la ausencia
+duela, y que duela en el deploy y no en el formulario de un desconocido.
+
+**Testigos:** `tests/taxonomias-en-produccion.test.ts` — ata `opciones-base.json`
+a `CAMPOS_TAXONOMIA` en las dos direcciones, verifica el regex con que el script
+lee el fuente, y que el workflow lo corra **sin `--informar`** y **antes** del
+build.

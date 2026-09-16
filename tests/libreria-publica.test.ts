@@ -383,7 +383,7 @@ describe('el índice de `/librerias.json`', () => {
         publica({ nombre: 'Zeta', slug: 'zeta' }),
         publica({ nombre: 'Alfa', slug: 'alfa' }),
       ],
-      barrios: [],
+      vocabularios: {},
       version: '1.0.0',
       generadoEn: '2026-09-11T00:00:00.000Z',
     });
@@ -401,14 +401,96 @@ describe('el índice de `/librerias.json`', () => {
      */
     const indice = construirIndiceDeLibrerias({
       librerias: [publica({ barrio: 'palermo' })],
-      barrios: [
-        { slug: 'palermo', label: 'Palermo', orden: 1, fijo: true, usos: 3 },
-        { slug: 'almagro', label: 'Almagro', orden: 2, fijo: true, usos: 9 },
-      ],
+      vocabularios: {
+        barrio: [
+          { slug: 'palermo', label: 'Palermo', orden: 1, fijo: true, usos: 3 },
+          { slug: 'almagro', label: 'Almagro', orden: 2, fijo: true, usos: 9 },
+        ],
+      },
       version: '1.0.0',
       generadoEn: '2026-09-11T00:00:00.000Z',
     });
-    expect(indice.barrios.map((b) => b.slug)).toEqual(['palermo']);
+    expect(indice.filtros.barrio.map((b) => b.slug)).toEqual(['palermo']);
+  });
+
+  /**
+   * **B-970 — el caso que motivó el cambio.**
+   *
+   * Hasta acá el índice tenía un solo eje, `barrio`, así que una librería de Mar
+   * del Plata no aparecía bajo **ningún** filtro de dónde queda: la cascada del
+   * formulario la dejaba cargar desde B-967 y el buscador después no sabía
+   * traerla. El catálogo aceptaba fichas que no se podían encontrar.
+   *
+   * MUTACIÓN PROBADA: volver `EJES_DE_LIBRERIA` a `['barrio']` deja este caso en
+   * rojo, porque `filtros.provincia` y `filtros.ciudad` dejan de existir.
+   */
+  it('una librería fuera de CABA tiene chips de provincia y de ciudad', () => {
+    const indice = construirIndiceDeLibrerias({
+      librerias: [
+        publica({ slug: 'mdp', provincia: 'buenos-aires', ciudad: 'mar-del-plata', barrio: '' }),
+      ],
+      vocabularios: {
+        provincia: [
+          { slug: 'buenos-aires', label: 'Buenos Aires', orden: 2, fijo: true, usos: 1 },
+          { slug: 'caba', label: 'CABA', orden: 1, fijo: true, usos: 9 },
+        ],
+        ciudad: [
+          { slug: 'mar-del-plata', label: 'Mar del Plata', orden: 1, fijo: false, usos: 1 },
+          { slug: 'rosario', label: 'Rosario', orden: 2, fijo: false, usos: 4 },
+        ],
+      },
+      version: '1.0.0',
+      generadoEn: '2026-09-11T00:00:00.000Z',
+    });
+
+    expect(indice.filtros.provincia.map((v) => v.slug)).toEqual(['buenos-aires']);
+    expect(indice.filtros.ciudad.map((v) => v.slug)).toEqual(['mar-del-plata']);
+    /*
+     * Y el recorte sigue valiendo en el eje nuevo: `caba` y `rosario` están en la
+     * taxonomía y no tienen ninguna ficha detrás, así que no salen como chip.
+     */
+    expect(indice.filtros.provincia).toHaveLength(1);
+    expect(indice.filtros.barrio).toEqual([]);
+  });
+
+  /**
+   * **Los chips salen angostados por `opcionesPublicas`, y nada más lo dice.**
+   *
+   * El constructor recibe `ValorOpcion[]` **crudos**, que llevan `usos`,
+   * `aprobada`, `aprobadaPorReuso` y —lo que importa— `huellaCreador`, que el
+   * §5.1 no publica. Lo único que los recorta a `{slug, label}` es esa llamada.
+   *
+   * El barrido del índice de acá al lado corre con `vocabularios: {}`, así que
+   * `filtros` sale con los arrays vacíos y **no toca ni un valor de opción**: el
+   * barrido de centinelas no puede ver esta regla. Lo encontró el
+   * `auditor-privacidad`, y B-970 ensanchó justo esa superficie —de 1 eje a 3 en
+   * `/librerias.json` y de 3 a 5 en `/lugares.json`—.
+   *
+   * MUTACIÓN PROBADA: sacar el `opcionesPublicas(...)` del constructor deja este
+   * caso en rojo con la huella adentro del JSON.
+   */
+  it('la huella de quien creó la opción no viaja en los chips', () => {
+    const indice = construirIndiceDeLibrerias({
+      librerias: [publica({ provincia: 'buenos-aires', ciudad: 'mar-del-plata', barrio: '' })],
+      vocabularios: {
+        provincia: [
+          {
+            slug: 'buenos-aires',
+            label: 'Buenos Aires',
+            orden: 1,
+            fijo: true,
+            usos: 7,
+            aprobada: false,
+            huellaCreador: 'huella-que-no-sale',
+          },
+        ],
+      },
+      version: '1.0.0',
+      generadoEn: '2026-09-11T00:00:00.000Z',
+    });
+
+    expect(JSON.stringify(indice)).not.toContain('huella-que-no-sale');
+    expect(Object.keys(indice.filtros.provincia[0]!).sort()).toEqual(['label', 'slug']);
   });
 
   it('y el índice entero pasa el mismo barrido que la proyección', () => {
@@ -416,7 +498,7 @@ describe('el índice de `/librerias.json`', () => {
     // índice la envuelve, el archivo tiene que estarlo también.
     const indice = construirIndiceDeLibrerias({
       librerias: [libreriaPublica(libreriaCentinela())],
-      barrios: [],
+      vocabularios: {},
       version: '1.0.0',
       generadoEn: '2026-09-11T00:00:00.000Z',
     });

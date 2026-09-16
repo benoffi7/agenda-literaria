@@ -70,9 +70,11 @@ import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 // B-831 — la proyección de una librería es **por entidad** y no genérica (§5.2):
 // una whitelist escrita a mano por colección. Ver `lib/libreriaPublica.ts`.
 import {
+  EJES_DE_LIBRERIA,
   construirIndiceDeLibrerias,
   fichaDeLibreria,
   libreriaPublica,
+  type EjeDeLibreria,
   type FichaDeLibreria,
   type IndiceDeLibrerias,
   type LibreriaPublica,
@@ -926,7 +928,13 @@ export const indiceDeLibrerias = async (): Promise<IndiceDeLibrerias> => {
   const { librerias, opciones } = await contenidoDelSitio();
   return construirIndiceDeLibrerias({
     librerias,
-    barrios: opciones.barrio ?? [],
+    /*
+     * B-970 — los tres vocabularios de la cascada, armados recorriendo
+     * `EJES_DE_LIBRERIA` y no enumerados a mano: es lo que hace que un eje nuevo
+     * en el módulo llegue solo hasta acá, en vez de quedarse sin vocabulario y
+     * con el chip vacío.
+     */
+    vocabularios: Object.fromEntries(EJES_DE_LIBRERIA.map((eje) => [eje, opciones[eje] ?? []])),
     version: INFO_VERSION.version,
     generadoEn: INFO_VERSION.generadoEn,
   });
@@ -943,8 +951,8 @@ export const indiceDeLibrerias = async (): Promise<IndiceDeLibrerias> => {
  */
 export interface VistaDeLibrerias {
   fichas: FichaDeLibreria[];
-  /** Los chips del filtro, en el orden de la taxonomía. */
-  barrios: { slug: string; label: string }[];
+  /** Los chips de cada eje, en el orden de la taxonomía — B-970. */
+  filtros: Record<EjeDeLibreria, { slug: string; label: string }[]>;
   version: string;
 }
 
@@ -1000,7 +1008,12 @@ export const vistaDeLibrerias = async (): Promise<VistaDeLibrerias> => {
     // El orden lo decide el índice —el mismo que va a ver la island después de
     // hidratar—: con dos ordenamientos, la lista saltaría al cargar el JSON.
     fichas: indice.librerias.map((l) => porSlug.get(l.slug)!).filter(Boolean),
-    barrios: indice.barrios.map((b) => ({ slug: b.slug, label: b.label })),
+    filtros: Object.fromEntries(
+      EJES_DE_LIBRERIA.map((eje) => [
+        eje,
+        indice.filtros[eje].map((v) => ({ slug: v.slug, label: v.label })),
+      ]),
+    ) as VistaDeLibrerias['filtros'],
     version: indice.version,
   };
 };

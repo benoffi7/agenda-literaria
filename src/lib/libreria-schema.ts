@@ -27,7 +27,7 @@
 import { z } from 'zod';
 import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
-import { geografiaNormalizada } from '@/lib/geografia.mjs';
+import { esProvincia, geografiaNormalizada } from '@/lib/geografia.mjs';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { searchTextDeLibreria } from '@/lib/libreriaPublica';
 import {
@@ -146,7 +146,18 @@ const base = z.object({
    * no se pide, así que un `min(1)` haría inguardable una librería de Mar del
    * Plata.
    */
-  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_PROVINCIA_LIBRERIA, 'Quedó muy largo'),
+  /*
+   * B-972 — y que **sea** una provincia, no solo que tenga forma de texto. La
+   * lista es cerrada (24) y esta es la única de las tres piezas de la geografía
+   * que se puede verificar: el barrio y la ciudad son vocabulario abierto. Sin
+   * esto, `'cordoba-capital'` se guardaba —tiene forma de slug— y después no
+   * casaba con ningún filtro ni con ningún hub, que es un dato perdido en
+   * silencio y no un error.
+   */
+  provincia: texto
+    .min(1, 'Elegí la provincia')
+    .max(TOPE_PROVINCIA_LIBRERIA, 'Quedó muy largo')
+    .refine(esProvincia, 'Esa no es una provincia argentina'),
   barrio: texto.max(TOPE_BARRIO_LIBRERIA, 'Quedó muy largo').default(''),
   ciudad: texto.max(TOPE_CIUDAD_LIBRERIA, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
   // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».

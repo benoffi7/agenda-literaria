@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **Un chequeo que mira producción, y no el emulador** — **B-973**, **D-711**.
+  Agregar un campo a `CAMPOS_TAXONOMIA` no lo siembra en la base, y nada lo decía:
+  pasó con `provincia`, que además es obligatoria, y dejó el panel inguardable con
+  el deploy entero en verde. `scripts/taxonomias-en-produccion.mjs` compara la
+  lista declarada contra los `/opciones/*` reales y corre como **primer paso del
+  job `hosting`**, antes del build — el build no falla ante un vocabulario
+  faltante, lo publica vacío. La siembra es `npm run opciones:sembrar:prod`, el
+  flag nuevo de `preparar-produccion.mjs`.
+
+  **Apenas se lo corrió encontró diez más**: los vocabularios de las tres guías
+  (`tipo-lugar`, `incluye-lugar`, `condicion-de-uso`, `periodicidad`,
+  `tipo-oferente`, `perfil-editorial`, `incluye-suscripcion`,
+  `extras-suscripcion`, `alcance-envio`, `incluye-actividad`) nunca se sembraron.
+  El panel se veía bien porque cae de vuelta a `opciones-base.json`; el build no
+  tiene ese fallback, así que los que estaban vacíos eran los desplegables
+  públicos de `/guia/*/sumar` y los chips de las guías. Queda **B-974** para
+  sembrarlos, que es un comando.
+
+- **Que una provincia sea una provincia** — **B-972**. Hasta acá solo se validaba
+  la forma, así que `'cordoba-capital'` se guardaba y después no casaba con ningún
+  filtro ni con ningún hub. `esProvincia` es la validación, en los tres schemas y
+  en `firestore.rules`; es la única de las tres piezas de la geografía que se
+  puede verificar, porque la lista es cerrada y son 24.
+
+- **Las dos guías filtran por dónde queda, con la misma cascada que el listado** —
+  **B-970**. Una librería de Mar del Plata se podía cargar desde B-967 y después
+  no aparecía bajo **ningún** filtro de lugar: el único eje era `barrio`. Ahora
+  las dos guías tienen `provincia` y, según lo que se elija, `barrio` o `ciudad`.
+  De paso, dos reglas que estaban escritas una sola vez se mudaron a
+  `geografia.mjs` para que las compartan los tres rieles — y una de las dos no
+  existía: al cambiar de provincia, **soltar la subdivisión de antes**.
+
+  Los tres auditores corrieron sobre el cambio y encontraron cinco cosas, todas
+  arregladas: la subdivisión no se soltaba entre dos provincias que no son CABA
+  (el caso más común), el botón «Todos» de lugares salteaba la cascada, el
+  `JSON.parse` de la credencial podía echar su arranque a un log público, el
+  barrido de los dos índices corría con el vocabulario vacío, y el panel seguía
+  ofreciendo «Otro» para provincia — que es el camino por el que el bug de B-972
+  entraba.
+
 - **La geografía rehecha: provincia, ciudad como taxonomía, y selectores en
   cascada** — **B-950**, **B-951**, **B-952**, **B-953**, **D-710**. Pedido del
   dueño: «lo de provincia, barrio y ciudad hay que rehacerlo casi en todos lados.
@@ -147,10 +187,9 @@
   modalidades y en el historial, más los siete textos de la ayuda que hablaban de
   «la sede». El campo sigue llamándose `sede` en el modelo y en todas las salidas.
 
-  Lo que queda es **B-970**: el riel de cada guía sigue filtrando solo por barrio,
-  así que una ficha de afuera de CABA no se encuentra por lugar en su propio
-  directorio. Es aditivo —aparece en la lista y en la búsqueda por texto— y es la
-  misma forma de B-966 una capa más abajo.
+  Lo que quedaba era **B-970** —el riel de cada guía filtrando solo por barrio, así
+  que una ficha de afuera de CABA no se encontraba por lugar en su propio
+  directorio—, y se cerró en este mismo lote: ver la entrada de más arriba.
 
 - **Un banner en el filtro de una ciudad** — **B-961**. Con el filtro **Ciudad →
   Mar del Plata** puesto, arriba del listado aparece un banner que lleva al

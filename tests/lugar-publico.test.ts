@@ -796,11 +796,69 @@ describe('el índice de `/lugares.json`', () => {
     expect(i.filtros.barrio.map((v) => v.slug)).toEqual(['chacarita']);
   });
 
-  it('los tres ejes con vocabulario están, y son los del § 7 del PRD', () => {
-    // Un cuarto eje que entre sin chips deja el filtro mudo; uno que se vaya deja
-    // la island pidiendo una clave que no existe. **La capacidad y el costo no
-    // están** a propósito: no salen de una taxonomía.
-    expect([...EJES_DE_LUGAR]).toEqual(['barrio', 'incluye-lugar', 'tipo-lugar']);
+  /**
+   * **Los chips salen angostados por `opcionesPublicas`, y nada más lo dice.**
+   *
+   * El constructor recibe `ValorOpcion[]` **crudos**, que llevan `usos`,
+   * `aprobada`, `aprobadaPorReuso` y —lo que importa— `huellaCreador`, que el
+   * §5.1 no publica. Lo único que los recorta a `{slug, label}` es esa llamada.
+   *
+   * El barrido del índice de acá al lado corre con `vocabularios: {}`, así que
+   * `filtros` sale con los arrays vacíos y **no toca ni un valor de opción**: el
+   * barrido de centinelas no puede ver esta regla. Lo encontró el
+   * `auditor-privacidad`, y B-970 ensanchó justo esa superficie —de 1 eje a 3 en
+   * `/librerias.json` y de 3 a 5 en `/lugares.json`—.
+   *
+   * MUTACIÓN PROBADA: sacar el `opcionesPublicas(...)` del constructor deja este
+   * caso en rojo con la huella adentro del JSON.
+   */
+  it('la huella de quien creó la opción no viaja en los chips', () => {
+    const i = indice([publico({ provincia: 'buenos-aires', ciudad: 'rosario', barrio: '' })], {
+      ciudad: [
+        {
+          slug: 'rosario',
+          label: 'Rosario',
+          orden: 1,
+          /*
+           * `aprobada: true` a propósito: `opcionesPublicas` **también** descarta
+           * las que no lo están, así que con `false` el chip no llega ni a
+           * existir y este caso pasaría sin haber probado el angostado. Son dos
+           * capas y acá se prueba la segunda.
+           */
+          fijo: false,
+          usos: 2,
+          aprobada: true,
+          huellaCreador: 'huella-que-no-sale',
+        },
+      ],
+    });
+
+    expect(JSON.stringify(i)).not.toContain('huella-que-no-sale');
+    expect(Object.keys(i.filtros.ciudad[0]!).sort()).toEqual(['label', 'slug']);
+  });
+
+  it('los ejes con vocabulario están, en el orden de la pantalla', () => {
+    /*
+     * Un eje que entre sin chips deja el filtro mudo; uno que se vaya deja la
+     * island pidiendo una clave que no existe. **La capacidad y el costo no
+     * están** a propósito: no salen de una taxonomía.
+     *
+     * B-970 — `provincia` y `ciudad` se sumaron a los tres del § 7 del PRD. El
+     * PRD decía «barrio» porque la guía nació con las fichas en CABA; desde
+     * B-967 se puede cargar un lugar en Rosario, y sin estos dos ejes esa ficha
+     * no aparece bajo ningún filtro de dónde queda.
+     *
+     * **El orden se afirma y no se ordena**: es el orden en que la island pinta
+     * el riel, y `provincia` tiene que ir antes que su subdivisión — si no, se
+     * ofrece el segundo nivel arriba del primero.
+     */
+    expect([...EJES_DE_LUGAR]).toEqual([
+      'provincia',
+      'barrio',
+      'ciudad',
+      'incluye-lugar',
+      'tipo-lugar',
+    ]);
     expect(Object.keys(indice([]).filtros).sort()).toEqual([...EJES_DE_LUGAR].sort());
   });
 

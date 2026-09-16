@@ -100,6 +100,39 @@ Resueltas el 2026-08-21:
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
 
+### B-974 · Diez taxonomías de las guías nunca se sembraron en producción · P1 (2026-09-16)
+
+**Un solo comando, y necesita tu aprobación** porque escribe en producción:
+
+```bash
+npm run opciones:sembrar:prod
+```
+
+Lo encontró el chequeo nuevo de B-973 apenas se lo corrió contra producción:
+`incluye-actividad`, `periodicidad`, `tipo-oferente`, `perfil-editorial`,
+`incluye-suscripcion`, `extras-suscripcion`, `alcance-envio`, `tipo-lugar`,
+`incluye-lugar` y `condicion-de-uso` **no existen** como documentos de
+`/opciones/*`. Nunca existieron: se crearon con las guías y la siembra nunca se
+volvió a correr.
+
+**Qué está roto hoy, exactamente.** El panel se ve bien, y eso es lo que tapó el
+problema: `leerOpciones` cae de vuelta a `opciones-base.json` cuando el documento
+falta. El **build** no tiene ese fallback —`contenidoDelSitio.ts` hace
+`snap.data()?.valores ?? []`—, así que lo que sale vacío es lo público:
+
+- los desplegables de `/guia/librerias/sumar`, `/guia/lugares/sumar` y
+  `/guia/suscripciones/sumar`, que es gente de afuera que no puede completar el
+  formulario;
+- los chips de filtro de las tres guías para esos ejes.
+
+El comando es idempotente (no pisa nada existente) y dispara el rebuild solo
+(trampa 8), así que los chips aparecen en la corrida siguiente. Después,
+`npm run taxonomias:verificar` tiene que dar las 17 en verde.
+
+**Hasta que se corra, el job `hosting` falla y no se deploya nada** — que es
+exactamente lo que el chequeo tiene que hacer, pero conviene saberlo antes de
+pushear.
+
 ### B-962 · Las dos imágenes del banner de Mar del Plata · P2 — abierto el 2026-09-15
 
 El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
@@ -6800,7 +6833,33 @@ evento normalizaban, y ninguno de los dos lo hacía. El historial se arregló en
 momento (era un bug de verdad: dejaba el documento internamente contradictorio);
 esto es la mitad que queda, con el motivo escrito.
 
-### B-973 · Una taxonomía nueva llega al código y no a producción, y nada lo dice · P1 — pasó con B-950 (2026-09-16)
+### B-973 · Una taxonomía nueva llega al código y no a producción, y nada lo dice — ✅ hecho (2026-09-16) · P1
+
+> **Cerrado con `scripts/taxonomias-en-produccion.mjs` + `--solo-opciones`.** El
+> chequeo compara `CAMPOS_TAXONOMIA` contra los `/opciones/*` de producción y
+> corre como **primer paso del job `hosting`**, antes del build — va antes porque
+> el build no falla ante un vocabulario faltante, lo publica vacío. Es el único
+> chequeo del pipeline que mira producción, y aborta si ve
+> `FIRESTORE_EMULATOR_HOST`: contra el emulador daría verde siempre.
+>
+> La siembra es `npm run opciones:sembrar:prod`, el flag nuevo de
+> `preparar-produccion.mjs` que siembra sin tocar Auth. El chequeo **no** siembra:
+> lo que falta no siempre es sembrar (puede ser un slug mal escrito), y escribir
+> en producción desde un job desatendido es otra decisión.
+>
+> **Y encontró que no eran dos sino doce.** Los diez vocabularios de las guías
+> (`tipo-lugar`, `incluye-lugar`, `condicion-de-uso`, `periodicidad`,
+> `tipo-oferente`, `perfil-editorial`, `incluye-suscripcion`,
+> `extras-suscripcion`, `alcance-envio`, `incluye-actividad`) tampoco existían en
+> producción desde que se crearon. Nadie lo notó porque el **panel** cae de vuelta
+> a `opciones-base.json` cuando falta el documento (`leerOpciones`); el **build**
+> no tiene ese fallback, así que los vacíos eran los chips del sitio y los
+> desplegables de `/guia/*/sumar`. → queda **B-974** para sembrarlos.
+>
+> Red: `tests/taxonomias-en-produccion.test.ts` ata `opciones-base.json` a
+> `CAMPOS_TAXONOMIA` en las dos direcciones, verifica el regex con que el script
+> lee el fuente, y que el workflow lo corra **sin `--informar`** y **antes** del
+> build. Doc: `docs/08-operacion.md` § «Sembrar una taxonomía NUEVA en producción».
 
 **El deploy de B-950 dejó producción inguardable durante unos minutos y todo
 estaba en verde.** `/opciones/provincia` y `/opciones/ciudad` no existían en la
@@ -6837,7 +6896,37 @@ es el criterio de `docs/05-patrones.md`. Lo segundo es comodidad.
 dieciocho, y el síntoma —un desplegable vacío en un campo obligatorio— solo se ve
 entrando al panel, no en ningún chequeo.
 
-### B-972 · Nada verifica que una provincia sea una provincia · P2 — de la auditoría de B-967 (2026-09-16)
+### B-972 · Nada verifica que una provincia sea una provincia — ✅ hecho (2026-09-16) · P2
+
+> **Cerrado con `esProvincia` (`functions/geografia.js`), en los tres schemas y en
+> las reglas.** Hasta acá solo se validaba la **forma** —no vacía, no muy larga,
+> con pinta de slug—, así que `'cordoba-capital'` se guardaba y después no casaba
+> con ningún filtro ni con ningún hub: un dato perdido en silencio.
+>
+> Es la única de las tres piezas de la geografía que se puede verificar: el barrio
+> y la ciudad son vocabulario abierto y no hay padrón contra el cual medirlos. Las
+> provincias son 24, más los cuatro alias de CABA —que se aceptan para que una
+> ficha vieja con `capital-federal` siga siendo editable—.
+>
+> En `schema.ts` la provincia de sede sigue siendo **opcional** y el `refine` deja
+> pasar el vacío: son dos preguntas distintas («¿es una provincia?» y «¿está
+> completo?») y confundirlas volvería inguardable el borrador a medio cargar.
+>
+> Las reglas llevan la lista **duplicada**, porque son un runtime aparte que no
+> puede importar `geografia.js` (D-20). La red está en `tests/geografia.test.ts`:
+> compara la lista de `esProvinciaValida` contra `PROVINCIAS + ALIAS_DE_CABA` y
+> verifica que los dos documentos con provincia la **usen** — una función de
+> reglas que nadie llama no da ningún error y no valida nada.
+>
+> **Y el panel dejó de ofrecer «Otro» para provincia.** Lo corrigió el
+> `auditor-documentacion` sobre una premisa mía equivocada: yo había descartado la
+> entrada de novedades diciendo que «el desplegable ya lo hacía imposible», y no
+> era cierto — los tres `<TaxonomiaSelect campo="provincia">` no pasaban
+> `permitirOtro`, que por defecto es `true`. O sea que el camino que produjo
+> `'cordoba-capital'` **salía del panel**, no de afuera. Con `permitirOtro={false}`
+> en los tres, la UI deja de ofrecer lo que el schema rechaza: es el único
+> vocabulario cerrado de los tres —las 24 están `fijo: true` y no se agregan—, así
+> que ahí no había nada que llenar.
 
 Los tres campos de la geografía se validan **por forma** y no por pertenencia: el
 schema acota el largo, `firestore.rules` exige el alfabeto de slug, y
@@ -6867,7 +6956,49 @@ provincia es estrictamente más gruesa que el barrio o la ciudad, así que no
 agrega un bit sobre lo que el § 6 ya autoriza— y que el riesgo no es el campo
 sino el canal.
 
-### B-970 · Las guías no filtran por ciudad ni por provincia · P2 — abierto con B-967
+### B-970 · Las guías no filtran por ciudad ni por provincia — ✅ hecho (2026-09-16) · P2
+
+> **Cerrado: las dos guías tienen la misma cascada que el riel del listado.**
+> `EJES_DE_LUGAR` pasó de tres a cinco (`provincia`, `barrio`, `ciudad`,
+> `incluye-lugar`, `tipo-lugar`) y la guía de librerías estrenó
+> `EJES_DE_LIBRERIA` con la misma forma `filtros: Record<eje, …>` que lugares —la
+> clave suelta `barrios` del índice se fue—, así que las dos se filtran igual y la
+> próxima guía no tiene que elegir entre dos formas.
+>
+> **Dos reglas que estaban escritas una sola vez pasaron a `geografia.mjs`**, que
+> es lo que evita que la cascada funcione en dos pantallas y en la tercera no:
+>
+> - `muestraEjeDeGeografia` — qué eje se ofrece. Estaba adentro de `ejesVisibles`;
+>   ahora `ejesVisibles` la llama.
+> - `conFiltroDeGeografia` — al cambiar de provincia, **soltar la subdivisión de
+>   antes**. Esto no existía en ningún lado: elegir CABA + Boedo y después Buenos
+>   Aires dejaba un filtro de barrio porteño colgado bajo una provincia sin
+>   barrios. Es `conProvincia` del lado del filtro, y el motivo de que duela más
+>   acá es que **no se ve**: en el formulario el campo queda con un valor
+>   imposible; en un riel de chips el síntoma es cero resultados sin motivo
+>   visible.
+>
+> **Dos cosas más las encontró el `auditor-trampas`, y las dos eran del cambio
+> mismo:**
+>
+> - `conFiltroDeGeografia` conservaba la ciudad al pasar **entre dos provincias
+>   que no son CABA** —`subdivisionDe` devuelve `'ciudad'` para las 23—, que es el
+>   caso más común de todos: ir de Buenos Aires a Santa Fe dejaba Mar del Plata
+>   filtrando. Los dos casos que sí estaban cubiertos por test eran justamente los
+>   que cruzan CABA, que son los menos. Ahora se limpian las dos siempre: tocar
+>   ese eje **siempre** cambia la provincia, así que no hay nada que conservar.
+> - El botón «Todos» de `BuscadorDeLugares` era el único punto que escribía
+>   `elegidos` **sin** pasar por el helper, así que apagar la provincia dejaba la
+>   ciudad filtrando sin provincia, con el chip marcado. La guía de librerías ya
+>   tenía el helper `quitar`; la asimetría entre los dos componentes gemelos era
+>   la señal.
+>
+> Y el `auditor-privacidad` encontró que el barrido del índice de las dos guías
+> corría con `vocabularios: {}`, o sea **sin tocar ni un valor de opción** — justo
+> el lado que este cambio ensanchó de 1 a 3 ejes y de 3 a 5. Sacar el
+> `opcionesPublicas` de cualquiera de los dos constructores no ponía nada en rojo
+> y habría publicado la `huellaCreador` en dos JSON indexables. Hay un caso nuevo
+> en cada uno.
 
 `/guia/librerias` filtra **solo por barrio** y `/guia/lugares` por barrio, tipo y
 qué incluye (`EJES_DE_LUGAR`). Con B-967 las dos entidades tienen provincia y

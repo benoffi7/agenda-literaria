@@ -29,7 +29,7 @@
  * apagado pase lo que pase en el documento.
  */
 import { z } from 'zod';
-import { geografiaNormalizada } from '@/lib/geografia.mjs';
+import { esProvincia, geografiaNormalizada } from '@/lib/geografia.mjs';
 import type { DatoConFecha } from '@/lib/datoConFecha';
 import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
@@ -179,7 +179,18 @@ const base = z.object({
    * se exige (sin ella la ficha no aparece bajo ningún filtro de lugar) y la
    * subdivisión no, porque se pide **una** de las dos según la provincia.
    */
-  provincia: texto.min(1, 'Elegí la provincia').max(TOPE_PROVINCIA_LUGAR, 'Quedó muy largo'),
+  /*
+   * B-972 — y que **sea** una provincia, no solo que tenga forma de texto. La
+   * lista es cerrada (24) y esta es la única de las tres piezas de la geografía
+   * que se puede verificar: el barrio y la ciudad son vocabulario abierto. Sin
+   * esto, `'cordoba-capital'` se guardaba —tiene forma de slug— y después no
+   * casaba con ningún filtro ni con ningún hub, que es un dato perdido en
+   * silencio y no un error.
+   */
+  provincia: texto
+    .min(1, 'Elegí la provincia')
+    .max(TOPE_PROVINCIA_LUGAR, 'Quedó muy largo')
+    .refine(esProvincia, 'Esa no es una provincia argentina'),
   barrio: texto.max(TOPE_SLUG_TAXONOMIA_LUGAR, 'Quedó muy largo').default(''),
   ciudad: texto.max(TOPE_CIUDAD_LUGAR, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
   // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».

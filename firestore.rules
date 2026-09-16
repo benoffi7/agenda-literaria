@@ -1145,6 +1145,33 @@ service cloud.firestore {
      * en `esAdmin()`. El daño máximo de un slug inventado es una ficha cuyo
      * barrio no resuelve etiqueta, visible en la bandeja antes de publicarse.
      */
+    /*
+     * **Las 24 provincias, más los alias de CABA** — B-972.
+     *
+     * Es la única de las tres piezas de la geografía con un conjunto cerrado, y
+     * por eso la única que las reglas pueden verificar de verdad: el barrio y la
+     * ciudad son vocabulario abierto, y comprobarlos pediría un `get()` a
+     * `/opciones/*` facturado en cada evaluación (mismo descarte que arriba).
+     * Acá no hace falta ninguna lectura: la lista no cambia.
+     *
+     * **Está duplicada a propósito y tiene red.** Las reglas son un runtime
+     * aparte que no puede importar `functions/geografia.js` (D-20), así que la
+     * lista se copia; `tests/geografia.test.ts` la compara contra `PROVINCIAS` y
+     * `ALIAS_DE_CABA` y falla si divergen. Sin esa red, agregar una provincia al
+     * módulo dejaría una regla que la rechaza y una ficha inguardable.
+     */
+    function esProvinciaValida(p) {
+      return p in [
+      'caba', 'buenos-aires', 'catamarca', 'chaco',
+      'chubut', 'cordoba', 'corrientes', 'entre-rios',
+      'formosa', 'jujuy', 'la-pampa', 'la-rioja',
+      'mendoza', 'misiones', 'neuquen', 'rio-negro',
+      'salta', 'san-juan', 'san-luis', 'santa-cruz',
+      'santa-fe', 'santiago-del-estero', 'tierra-del-fuego', 'tucuman',
+      'ciudad-de-buenos-aires', 'ciudad-autonoma-de-buenos-aires', 'capital-federal'
+      ];
+    }
+
     function geoDeLibreriaValida(g) {
       /*
        * Mismo rango que `sedeSchema` (`lib/schema.ts`): una latitud de 200 no
@@ -1298,6 +1325,8 @@ service cloud.firestore {
         // ficha no aparece bajo ningún filtro de lugar.
         && d.provincia is string && d.provincia.size() <= 80
         && d.provincia.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        // B-972 — y que **sea** una provincia, no solo que tenga forma de slug.
+        && esProvinciaValida(d.provincia)
         && geoDeLibreriaValida(d.geo)
         /*
          * Los tres contactos públicos que terminan en un `href` de una página
@@ -2227,6 +2256,8 @@ service cloud.firestore {
         && (d.ciudad == '' || d.ciudad.matches('^[a-z0-9]+(-[a-z0-9]+)*$'))
         && d.provincia is string && d.provincia.size() <= 80
         && d.provincia.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        // B-972 — y que **sea** una provincia, no solo que tenga forma de slug.
+        && esProvinciaValida(d.provincia)
         && geoDeLugarValida(d.geo)
         // ⚠️ El flag del § 6. Su **valor** lo deciden `lugarDeGuiaValido()` (al crear,
         // con la cláusula del domicilio particular) y el panel; acá solo se acota

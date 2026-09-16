@@ -334,24 +334,52 @@ export const descripcionDelDirectorio = (cuantas: number): string =>
  * mirar le cobra el peso a la mayoría. Es la misma lógica con la que el panel se
  * corta del bundle público (§9).
  *
- * `barrios` viaja adentro por lo mismo que las opciones viajan en el
- * `events.json` (§4.4): los chips de filtro se arman recorriéndolo, así que una
- * etiqueta renombrada aparece sola y nada queda hardcodeado en el island.
+ * `filtros` viaja adentro por lo mismo que las opciones viajan en el
+ * `events.json` (§4.4): los chips se arman recorriéndolo, así que una etiqueta
+ * renombrada aparece sola y nada queda hardcodeado en el island.
  */
 export interface IndiceDeLibrerias {
   generadoEn: string;
   version: string;
-  /** Solo los barrios **con alguna librería publicada**: un chip vacío es ruido. */
-  barrios: OpcionPublica[];
+  /** Solo los valores **con alguna librería publicada detrás**: un chip vacío es ruido. */
+  filtros: Record<EjeDeLibreria, OpcionPublica[]>;
   librerias: LibreriaPublica[];
 }
 
 /**
+ * Los ejes de filtro de la guía, en el orden de la pantalla — B-970.
+ *
+ * Hasta acá el único era `barrio`, con la lista suelta en una clave `barrios`.
+ * Eso dejaba **inencontrable por dónde queda a toda librería fuera de CABA**: la
+ * cascada del formulario ya permitía cargar una en Rosario desde B-967, y
+ * después no había ningún filtro que la trajera. El catálogo aceptaba fichas que
+ * el buscador no sabía buscar.
+ *
+ * Son los dos niveles, en el mismo orden que el riel del listado de actividades:
+ * `provincia` primero, y de lo que se elija ahí depende si abajo se ofrece
+ * `barrio` (CABA) o `ciudad` (las otras 23). La regla es una sola y vive en
+ * `muestraEjeDeGeografia` (`geografia.mjs`) — acá no se reescribe.
+ *
+ * La forma (`filtros: Record<eje, …>`) es la misma que la de la guía de lugares,
+ * y ese es el punto: las dos guías se filtran igual, así que la próxima que
+ * aparezca no tiene que elegir entre dos formas.
+ */
+export const EJES_DE_LIBRERIA = ['provincia', 'barrio', 'ciudad'] as const;
+export type EjeDeLibreria = (typeof EJES_DE_LIBRERIA)[number];
+
+/** De qué campo de la ficha sale cada eje. Un solo lugar: de él salen el recorte y los chips. */
+const VALORES_DEL_EJE: Record<EjeDeLibreria, (l: LibreriaPublica) => string[]> = {
+  provincia: (l) => (l.provincia ? [l.provincia] : []),
+  barrio: (l) => (l.barrio ? [l.barrio] : []),
+  ciudad: (l) => (l.ciudad ? [l.ciudad] : []),
+};
+
+/**
  * Arma el índice.
  *
- * Los barrios se recortan a los que alguna ficha usa —y no la taxonomía entera—
- * porque `/opciones/barrio` la comparten las actividades: sin el recorte, el
- * filtro del directorio ofrecería cuarenta barrios de los que treinta y cinco no
+ * Los vocabularios se recortan a los valores que alguna ficha usa —y no la
+ * taxonomía entera— porque `/opciones/*` la comparten las actividades: sin el
+ * recorte, el filtro ofrecería cuarenta barrios de los que treinta y cinco no
  * tienen ninguna librería, y cada uno de esos chips es una promesa de cero
  * resultados. Es el mismo criterio con el que un hub sin nada vigente no entra al
  * sitemap (B-108).
@@ -361,20 +389,29 @@ export interface IndiceDeLibrerias {
  */
 export const construirIndiceDeLibrerias = ({
   librerias,
-  barrios,
+  vocabularios,
   version,
   generadoEn,
 }: {
   librerias: readonly LibreriaPublica[];
-  barrios: readonly ValorOpcion[];
+  vocabularios: Partial<Record<EjeDeLibreria, readonly ValorOpcion[]>>;
   version: string;
   generadoEn: string;
 }): IndiceDeLibrerias => {
-  const usados = new Set(librerias.map((l) => l.barrio));
+  const filtros = Object.fromEntries(
+    EJES_DE_LIBRERIA.map((eje) => {
+      const usados = new Set(librerias.flatMap((l) => VALORES_DEL_EJE[eje](l)));
+      return [
+        eje,
+        opcionesPublicas([...(vocabularios[eje] ?? [])]).filter((v) => usados.has(v.slug)),
+      ];
+    }),
+  ) as Record<EjeDeLibreria, OpcionPublica[]>;
+
   return {
     generadoEn,
     version,
-    barrios: opcionesPublicas([...barrios]).filter((b) => usados.has(b.slug)),
+    filtros,
     librerias: [...librerias].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
   };
 };

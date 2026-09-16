@@ -2044,9 +2044,19 @@ que se ve completo con JavaScript apagado y Google la ve entera; una island
 (`BuscadorDeLibrerias`) hace **un solo fetch** de `/librerias.json` y recién
 entonces saca esa lista del DOM y renderiza la suya con el **mismo** componente de
 fila — el mismo contrato que el listado principal, y por eso no parpadea. Dos
-filtros y no seis: barrio y texto. Los chips de barrio salen del JSON y están
-recortados a los barrios que alguna librería usa, porque un chip que promete cero
+filtros y no seis: **dónde queda** y texto. Los chips salen del JSON y están
+recortados a los valores que alguna librería usa, porque un chip que promete cero
 resultados es ruido.
+
+**«Dónde queda» es la misma cascada que el riel del listado, desde B-970**: primero
+`provincia`, y de lo que se elija ahí depende si abajo se ofrece `barrio` (CABA) o
+`ciudad` (las otras 23). Antes el único eje era **barrio**, y eso dejaba
+inencontrable por lugar a toda ficha fuera de CABA: la cascada del formulario
+permitía cargar una librería en Mar del Plata desde B-967 y el buscador después no
+sabía traerla. Sigue habiendo dos chips en pantalla a la vez, porque la cascada
+oculta la subdivisión que no aplica; y al cambiar de provincia **se suelta la
+subdivisión de antes**, que si no deja un filtro de barrio porteño colgado bajo una
+provincia sin barrios, con cero resultados y sin motivo visible.
 
 **El JSON es propio y no viaja en `events.json`**: aquél lo baja toda persona que
 abre la agenda, y sumarle un catálogo que la mayoría no va a mirar le cobra el
@@ -2095,7 +2105,8 @@ La tercera y última sección de la Guía. Con ella, ninguna fila de `/guia` dic
 una island hace **un solo fetch** de `/lugares.json` para filtrar en memoria, con
 el mismo componente de fila y sin parpadeo.
 
-**Cinco filtros y en este orden**, que es el del § 7 del PRD por utilidad real:
+**Los filtros, en este orden**, que es el del § 7 del PRD por utilidad real
+—más la geografía que B-970 le agregó adelante—:
 
 1. **capacidad, en rangos** —hasta 10 · 10 a 25 · 25 a 50 · más de 50— y no un
    input numérico: «somos 20» es la primera pregunta, y los rangos toleran que la
@@ -2106,7 +2117,13 @@ el mismo componente de fila y sin parpadeo.
    **no un «hasta $X»**. Es el § 5 del PRD, y de paso es la mitigación del § 9: un
    slider de precio empuja esta sección hacia la inmobiliaria de salones que el
    proyecto no quiere ser;
-3. **barrio**, el mismo vocabulario de siempre;
+3. **dónde queda**, que desde **B-970** es la misma cascada de dos niveles que el
+   riel del listado: `provincia` primero y, según cuál se elija, `barrio` (CABA) o
+   `ciudad` (las otras 23). Hasta ahí el único eje era el barrio, y con eso un
+   lugar de Rosario —que la cascada del formulario deja cargar desde B-967— no
+   aparecía bajo **ningún** filtro de dónde queda. Al cambiar de provincia se
+   suelta la subdivisión de antes: si no, queda un filtro invisible con cero
+   resultados;
 4. **qué incluye**, el que más ayuda con proyector y accesibilidad;
 5. **tipo de lugar**, último: suena importante y filtra poco.
 

@@ -4,7 +4,8 @@
  * `admin` (§5.3) a las cuentas que cargan actividades.
  *
  *   node scripts/preparar-produccion.mjs <email> [email...]
- *   node scripts/preparar-produccion.mjs --listar    # quién tiene el claim hoy
+ *   node scripts/preparar-produccion.mjs --listar          # quién tiene el claim hoy
+ *   node scripts/preparar-produccion.mjs --solo-opciones   # sembrar y nada más
  *
  * `--listar` existe porque `docs/02-infraestructura.md` tenía la tabla de
  * mails y uids escrita a mano, y este repo es público (§5.1, D-57). La lista se
@@ -12,6 +13,13 @@
  *
  * Usa las Application Default Credentials de gcloud, así que no hace falta
  * bajar ninguna service account key al disco.
+ *
+ * `--solo-opciones` siembra `/opciones/*` **sin tocar Auth**. Existe porque
+ * sembrar y dar el claim `admin` empezaron juntos —se preparaba el proyecto una
+ * sola vez— y después dejaron de estarlo: hoy la siembra se repite cada vez que
+ * el código declara una taxonomía nueva (B-973), y exigir un email para eso
+ * obliga a re-setear un claim que ya estaba puesto solo para poder sembrar.
+ *
  *
  * A diferencia de seed-emulador.mjs, este escribe en producción: aborta si
  * detecta FIRESTORE_EMULATOR_HOST, para no confundir un entorno con el otro.
@@ -47,17 +55,31 @@ if (argumentos.length === 0) {
  * cerrado**, antes de tocar nada.
  */
 const quiereListar = argumentos.includes('--listar');
-const desconocidos = argumentos.filter((a) => a.startsWith('-') && a !== '--listar');
+const soloOpciones = argumentos.includes('--solo-opciones');
+const CONOCIDOS = ['--listar', '--solo-opciones'];
+const desconocidos = argumentos.filter((a) => a.startsWith('-') && !CONOCIDOS.includes(a));
 if (desconocidos.length > 0) {
   console.error(`Argumento no reconocido: ${desconocidos.join(', ')}`);
-  console.error('Uso: node scripts/preparar-produccion.mjs <email> [email...] | --listar');
+  console.error(
+    'Uso: node scripts/preparar-produccion.mjs <email> [email...] | --listar | --solo-opciones',
+  );
   process.exit(1);
 }
 if (quiereListar && argumentos.length > 1) {
   console.error('`--listar` es solo consulta: no se combina con emails para dar el claim.');
   process.exit(1);
 }
-const emails = argumentos;
+/*
+ * Misma regla de fallar cerrado que `--listar`: `--solo-opciones` dice **no
+ * toques Auth**, así que combinarlo con emails es una contradicción, no una
+ * preferencia. Sin esto, `... mail@x --solo-opciones` tendría que elegir una de
+ * las dos intenciones en silencio.
+ */
+if (soloOpciones && argumentos.length > 1) {
+  console.error('`--solo-opciones` no se combina con emails: es la siembra sola.');
+  process.exit(1);
+}
+const emails = soloOpciones ? [] : argumentos;
 
 const projectId = 'agenda-literaria';
 initializeApp({ credential: applicationDefault(), projectId });
@@ -99,6 +121,16 @@ for (const [campo, valores] of Object.entries(base)) {
     await ref.set({ valores });
     console.log(`opciones/${campo} — sembrado con ${valores.length} valores`);
   }
+}
+
+/*
+ * Con `--solo-opciones` la siembra ya está hecha y **no se instancia Auth**:
+ * pedir el servicio para no usarlo es lo que convertiría un permiso faltante de
+ * Auth en un error de un script que no lo necesita.
+ */
+if (soloOpciones) {
+  console.log('\nListo: `/opciones/*` sembrado. Auth no se tocó (--solo-opciones).');
+  process.exit(0);
 }
 
 // ── Admins ───────────────────────────────────────────────────────

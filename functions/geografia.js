@@ -183,6 +183,31 @@ export const esCaba = (/** @type {string | null | undefined} */ valor) =>
   Boolean(valor) && ALIAS_DE_CABA.includes(slugify(valor));
 
 /**
+ * ¿Este slug es una de las 24 provincias? — B-972.
+ *
+ * Es la única de las tres piezas de la geografía que se puede verificar de
+ * verdad, y por eso vale la pena: **la lista es cerrada y no cambia**. Un barrio
+ * o una ciudad son vocabulario abierto —se agregan con «Otro» y no hay padrón
+ * contra el cual medirlos—, pero las provincias argentinas son 24 y están acá
+ * enumeradas. Hasta B-972 lo único que se exigía era la **forma** (no vacío, no
+ * demasiado largo), así que `provincia: 'chubut '` pasaba, y `'cordoba-capital'`
+ * también: un valor con forma de slug que no denota ninguna provincia se
+ * guardaba igual y después no casaba con ningún filtro ni con ningún hub.
+ *
+ * Slugifica antes de comparar, por el mismo motivo que `esCaba`: tiene que valer
+ * sobre lo que todavía no pasó por el backfill.
+ *
+ * Acepta además los alias de CABA (`ALIAS_DE_CABA`), que son provincia aunque no
+ * estén en la tabla con ese slug exacto: CABA es ciudad y provincia a la vez, y
+ * quedó escrita de cuatro formas distintas antes de B-967.
+ */
+export const esProvincia = (/** @type {string | null | undefined} */ valor) => {
+  if (!valor) return false;
+  const slug = slugify(valor);
+  return PROVINCIAS.some((p) => p.slug === slug) || ALIAS_DE_CABA.includes(slug);
+};
+
+/**
  * Qué subdivide a esta provincia: el barrio en CABA, la ciudad en todas las
  * demás. Es la bifurcación de la cascada, y devuelve el nombre del campo para
  * que quien la use no tenga que volver a escribir el `if`.
@@ -193,6 +218,77 @@ export const esCaba = (/** @type {string | null | undefined} */ valor) =>
 export const subdivisionDe = (/** @type {string | null | undefined} */ provincia) => {
   if (!provincia) return null;
   return esCaba(provincia) ? 'barrio' : 'ciudad';
+};
+
+/**
+ * ¿Se muestra este eje de filtro? — B-950, generalizado en B-970.
+ *
+ * Es **la regla de la cascada del lado del filtro**, y la comparten los tres
+ * rieles: el listado de actividades, la guía de librerías y la de lugares. Vive
+ * acá y no en cada uno porque ya estuvo escrita una sola vez y copiarla es
+ * exactamente como se llega a que la cascada funcione en dos pantallas y en la
+ * tercera no.
+ *
+ * Tres casos, en este orden:
+ *
+ *  1. **No es una subdivisión** (`tipo`, `arancel`, `provincia`…) → siempre se
+ *     muestra. El primer nivel nunca se esconde: es de donde cuelga el resto.
+ *  2. **Ya tiene valores elegidos** → se muestra aunque la cascada no lo abra.
+ *     Ésta es la regla que rescata un enlace compartido (`?barrio=boedo` sin
+ *     provincia): sin ella el filtro quedaría aplicado y **sin ningún control en
+ *     pantalla** para entenderlo ni para sacarlo, que es la clase de bug de D-143.
+ *  3. Si no, se muestra **solo si alguna provincia elegida lo subdivide**: el
+ *     barrio en CABA, la ciudad en las otras 23.
+ *
+ * Sin ninguna provincia elegida no se muestra ninguna de las dos, que es el
+ * punto: ofrecer los treinta y pico de barrios cargados junto a las ciudades de
+ * todo el pais es la lista plana que la cascada vino a reemplazar.
+ */
+export const muestraEjeDeGeografia = (
+  /** @type {string} */ eje,
+  /** @type {readonly string[]} */ provinciasElegidas,
+  /** @type {boolean} */ yaTieneValores,
+) => {
+  if (eje !== 'barrio' && eje !== 'ciudad') return true;
+  if (yaTieneValores) return true;
+  return provinciasElegidas.some((p) => subdivisionDe(p) === eje);
+};
+
+/**
+ * Elegir un valor en el riel de filtros, **con la cascada aplicada** — B-970.
+ *
+ * Es `conProvincia` del lado del filtro, y existe por la misma razón: al cambiar
+ * el primer nivel, lo elegido en el segundo deja de tener sentido. En el
+ * formulario eso se ve enseguida —el campo queda con un valor imposible—; en un
+ * riel de chips no se ve nada, y el síntoma es **cero resultados sin motivo
+ * visible**: elegir CABA + Boedo y después cambiar a Buenos Aires dejaba un
+ * filtro de barrio porteño colgado bajo una provincia que no tiene barrios.
+ *
+ * Toca solo `barrio` y `ciudad`, y solo cuando lo que se movió fue `provincia`:
+ * los demás ejes del riel —qué incluye, qué tipo, qué perfil— no cuelgan de la
+ * geografía y no tienen por qué limpiarse.
+ *
+ * Volver a tocar el chip elegido lo apaga (`undefined`), que es el gesto de
+ * «todos»; apagar la provincia limpia las dos subdivisiones, porque sin primer
+ * nivel no hay segundo.
+ */
+export const conFiltroDeGeografia = (elegidos, /** @type {string} */ eje, /** @type {string} */ slug) => {
+  const siguiente = { ...elegidos, [eje]: elegidos[eje] === slug ? undefined : slug };
+  if (eje !== 'provincia') return siguiente;
+  /*
+   * **Se limpian las dos, siempre**, y no «la que la provincia nueva no
+   * subdivide». La primera versión preguntaba `subdivisionDe(provinciaNueva)` y
+   * conservaba la subdivisión de ese tipo, y eso dejaba pasar el caso más común
+   * de todos: **entre dos provincias que no son CABA la subdivisión es `ciudad`
+   * en las dos**, así que ir de Buenos Aires a Santa Fe conservaba Mar del Plata
+   * — una ciudad bonaerense filtrando bajo Santa Fe, cero resultados, y el chip
+   * marcado como si fuera lo pedido. Lo encontró el `auditor-trampas`.
+   *
+   * Tocar este eje **siempre** cambia la provincia: o queda `slug`, o queda
+   * `undefined` porque se volvió a tocar el chip encendido. No hay caso en que
+   * la de antes siga valiendo, así que no hay nada que conservar.
+   */
+  return { ...siguiente, barrio: undefined, ciudad: undefined };
 };
 
 /**
