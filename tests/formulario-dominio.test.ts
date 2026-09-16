@@ -532,7 +532,13 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       // test de abajo usa un fixture coherente para ejercitar la resta.
       'registrarUsos:arancel:a-la-gorra',
       'registrarUsos:tipo:taller',
+      // B-975 — los tres de la geografía, en el orden de `elegidosDe`: la
+      // provincia antes que su subdivisión. `ciudad` sale **slugificada**
+      // (`caba`, no `CABA`): el fixture la trae como se tipeaba antes de B-950,
+      // y `registrarUsos` compara por slug exacto, así que sin eso no contaría.
+      'registrarUsos:provincia:caba',
       'registrarUsos:barrio:villa-crespo',
+      'registrarUsos:ciudad:caba',
       'registrarUsos:plataforma:zoom',
       // B-830 — la segunda taxonomía multivalor. El fixture la trae cargada, así
       // que su uso se cuenta como el de cualquier otra; lo que importa acá es que
@@ -583,7 +589,21 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
     const datos = (over: Partial<Parameters<typeof usosAContar>[0]> = {}) => ({
       tipo: 'taller',
       arancel: { tipo: 'a-la-gorra' },
-      modalidades: [{ sede: { barrio: 'villa-crespo' }, online: { plataforma: 'zoom' } }],
+      /*
+       * B-975 — **la sede espeja la de `formularioLleno`**, incluidas `provincia`
+       * y `ciudad`, por el mismo motivo que `incluye` de abajo: el caso
+       * «integrado» afirma que un guardado sin cambios no cuenta nada, y con esto
+       * desalineado contaría la geografía siempre y mediría lo contrario de lo
+       * que dice. La `ciudad` va en crudo (`'CABA'`) a propósito, que es como la
+       * trae aquél y como está en los documentos anteriores a B-950: es lo que
+       * ejercita el `slugify` de `slugsDeSede`.
+       */
+      modalidades: [
+        {
+          sede: { provincia: 'caba', barrio: 'villa-crespo', ciudad: 'CABA' },
+          online: { plataforma: 'zoom' },
+        },
+      ],
       tags: ['narrativa'],
       // B-830 — los mismos que trae `formularioLleno`, para que el caso
       // «integrado» de más abajo pueda afirmar que un guardado sin cambios no
@@ -597,7 +617,11 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       expect(usosAContar(datos(), [], {})).toEqual({
         arancel: ['a-la-gorra'],
         tipo: ['taller'],
+        // B-975 — los tres de la geografía, y la ciudad **slugificada**: el
+        // fixture la trae `'CABA'`, como los documentos anteriores a B-950.
+        provincia: ['caba'],
         barrio: ['villa-crespo'],
+        ciudad: ['caba'],
         plataforma: ['zoom'],
         tags: ['narrativa'],
         'incluye-actividad': ['merienda', 'material-de-lectura'],
@@ -609,16 +633,100 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       expect(usosAContar(datos(), [], {}, datos())).toEqual({});
     });
 
+    /**
+     * **B-975 — los tres de la geografía, no solo el barrio.**
+     *
+     * `provincia` y `ciudad` son taxonomía desde B-950 y `elegidosDe` nunca las
+     * miró: quedó contando el barrio, que era el único campo de lugar cuando se
+     * escribió. El síntoma es silencioso y se nota tarde — `usos` ordena el
+     * desplegable por frecuencia real (§4.3), así que Mar del Plata, con
+     * dieciséis actividades detrás, quedaba en `usos: 1`: última en la lista e
+     * **indistinguible de un typo colgado**, que es justo lo que ese contador
+     * existe para poder señalar.
+     *
+     * MUTACIÓN PROBADA: sacar cualquiera de las dos líneas de `elegidosDe` deja
+     * este caso en rojo con la clave faltante.
+     */
+    it('cuenta la provincia y la ciudad, no solo el barrio', () => {
+      const conGeografia = datos({
+        modalidades: [
+          {
+            sede: { provincia: 'buenos-aires', barrio: '', ciudad: 'mar-del-plata' },
+            online: { plataforma: 'zoom' },
+          },
+        ],
+      });
+      const contado = usosAContar(conGeografia, [], {});
+      expect(contado.provincia).toEqual(['buenos-aires']);
+      expect(contado.ciudad).toEqual(['mar-del-plata']);
+      /* El barrio vacío se descarta, como siempre: una sede sin barrio no aporta. */
+      expect(contado.barrio).toBeUndefined();
+    });
+
+    /**
+     * Y **una fila virtual no aporta geografía**: sin sede no hay provincia ni
+     * ciudad que contar. Es el `?? ''` de `elegidosDe` más el filtro de vacíos, y
+     * sin este caso un `undefined` colado ahí se registraría como slug vacío.
+     */
+    it('una modalidad sin sede no cuenta geografía', () => {
+      const soloVirtual = datos({
+        modalidades: [{ sede: null, online: { plataforma: 'meet' } }],
+      });
+      const contado = usosAContar(soloVirtual, [], {});
+      expect(contado.provincia).toBeUndefined();
+      expect(contado.ciudad).toBeUndefined();
+      expect(contado.plataforma).toEqual(['meet']);
+    });
+
     it('cuenta solo el campo que cambió, no los que siguen igual', () => {
       const anterior = datos({ tipo: 'club-lectura' });
       expect(usosAContar(datos(), [], {}, anterior)).toEqual({ tipo: ['taller'] });
     });
 
     it('un barrio nuevo en una modalidad se cuenta aunque el resto no cambie', () => {
+      /*
+       * El `anterior` espeja la geografía de `datos()` y **solo** cambia el
+       * barrio: es lo que hace que el `toEqual` mida lo que el nombre dice. Con
+       * la provincia y la ciudad ausentes acá, el resultado traería las tres y el
+       * caso ya no distinguiría «cambió el barrio» de «cambió la sede entera».
+       */
       const anterior = datos({
-        modalidades: [{ sede: { barrio: 'palermo' }, online: { plataforma: 'zoom' } }],
+        modalidades: [
+          {
+            sede: { provincia: 'caba', barrio: 'palermo', ciudad: 'CABA' },
+            online: { plataforma: 'zoom' },
+          },
+        ],
       });
       expect(usosAContar(datos(), [], {}, anterior)).toEqual({ barrio: ['villa-crespo'] });
+    });
+
+    /**
+     * Y el espejo del anterior, que es el caso de B-975: **mudar la actividad de
+     * ciudad cuenta la ciudad nueva**. Sin esto, el caso de arriba pasaría igual
+     * con `elegidosDe` ignorando la geografía entera, porque `barrio` ya estaba.
+     */
+    it('mudar la actividad de ciudad cuenta la provincia y la ciudad nuevas', () => {
+      const anterior = datos({
+        modalidades: [
+          {
+            sede: { provincia: 'caba', barrio: 'villa-crespo', ciudad: 'CABA' },
+            online: { plataforma: 'zoom' },
+          },
+        ],
+      });
+      const mudada = datos({
+        modalidades: [
+          {
+            sede: { provincia: 'buenos-aires', barrio: '', ciudad: 'Mar del Plata' },
+            online: { plataforma: 'zoom' },
+          },
+        ],
+      });
+      expect(usosAContar(mudada, [], {}, anterior)).toEqual({
+        provincia: ['buenos-aires'],
+        ciudad: ['mar-del-plata'],
+      });
     });
 
     it('una etiqueta nueva se cuenta aunque las demás ya estuvieran', () => {

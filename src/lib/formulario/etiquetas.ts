@@ -123,13 +123,39 @@ interface DatosDeUsos {
   // último en el desplegable para siempre. Los vacíos los descarta el filtro de
   // abajo, y `registrarUsos` ya ignora los slugs vacíos.
   modalidades: readonly {
-    sede: { barrio: string } | null;
+    // B-975 — los **tres** de la geografía, no solo el barrio. Ver `elegidosDe`.
+    sede: { provincia?: string; barrio: string; ciudad?: string } | null;
     online: { plataforma: string } | null;
   }[];
   tags: readonly string[];
   /** B-830 — opcional en el tipo por lo mismo que el `?? []` de abajo. */
   incluye?: readonly string[];
 }
+
+/**
+ * Un campo de geografía de todas las sedes, **slugificado**, sin repetir.
+ *
+ * El `slugify` no es defensa genérica: `ciudad` fue texto libre hasta B-950 y
+ * los documentos anteriores la guardan **como se tipeó** —`'CABA'`, `'Santa fé'`,
+ * `'Tres arroyos'`—. Dos consecuencias, y las dos son silenciosas:
+ *
+ *  - `registrarUsos` compara por slug exacto y **no slugifica**, así que un
+ *    `'CABA'` crudo no cuenta nada y no da error;
+ *  - `anterior` (B-340) sale del documento tal como estaba, que puede ser el
+ *    crudo, mientras `guardado` ya pasó por `geografiaNormalizada`. Sin
+ *    slugificar los dos lados, resguardar sin tocar nada parecería un cambio de
+ *    ciudad y le sumaría un uso en cada guardado — exactamente lo que B-340 vino
+ *    a arreglar.
+ *
+ * Los vacíos los descarta el filtro de `usosAContar` y `registrarUsos` ya los
+ * ignora, así que una fila virtual —sin sede— no aporta nada.
+ */
+const slugsDeSede = (
+  datos: DatosDeUsos,
+  campo: 'provincia' | 'barrio' | 'ciudad',
+): string[] => [
+  ...new Set((datos.modalidades ?? []).map((m) => slugify(m.sede?.[campo] ?? ''))),
+];
 
 /** Los slugs elegidos, campo por campo, sin repetir dentro de un mismo campo. */
 const elegidosDe = (datos: DatosDeUsos) => ({
@@ -142,7 +168,23 @@ const elegidosDe = (datos: DatosDeUsos) => ({
   // `TypeError` que el `catch` silencioso de `guardar.ts` traga, y `usos` deja
   // de contarse para las cinco taxonomías sin ningún síntoma (lo señaló el
   // `auditor-privacidad`).
-  barrio: [...new Set((datos.modalidades ?? []).map((m) => m.sede?.barrio ?? ''))],
+  /*
+   * **Los tres de la geografía, no solo el barrio** — B-975.
+   *
+   * `provincia` y `ciudad` son taxonomía desde B-950 y esta función nunca las
+   * miró: quedó contando el barrio, que era el único campo de lugar cuando se
+   * escribió. La consecuencia es silenciosa y de las que se notan tarde — `usos`
+   * ordena el desplegable por frecuencia real (§4.3), así que una ciudad con
+   * treinta actividades detrás quedaba con `usos: 1` y ordenando última, y peor:
+   * indistinguible de un typo colgado, que es justo lo que ese contador existe
+   * para poder señalar.
+   *
+   * Los vacíos los descarta el filtro de abajo y `registrarUsos` ya los ignora,
+   * así que una fila virtual —sin sede— no aporta nada.
+   */
+  provincia: slugsDeSede(datos, 'provincia'),
+  barrio: slugsDeSede(datos, 'barrio'),
+  ciudad: slugsDeSede(datos, 'ciudad'),
   plataforma: [...new Set((datos.modalidades ?? []).map((m) => m.online?.plataforma ?? ''))],
   tags: [...(datos.tags ?? [])],
   'incluye-actividad': [...(datos.incluye ?? [])],

@@ -94,6 +94,18 @@ describe('las guardas de los scripts que escriben — B-630', () => {
       // Escribe siempre y además **borra** con `--reparar`, así que la guarda de
       // los dos flags le corresponde entera.
       'scripts/sembrar-slugs.mjs',
+      /*
+       * B-975 — el vocabulario de lugar que las actividades ya usan. Entró por
+       * esta puerta como todos los anteriores: apareció acá en rojo el día que se
+       * escribió, y ahí se miró si traía la guarda.
+       *
+       * Es el que **menos** escribe de la lista —tres documentos de `/opciones/*`,
+       * ninguna actividad, así que ni versiones del §12 ni llamadas a Calendar— y
+       * la guarda le corresponde igual: lo que escribe es un vocabulario que el
+       * sitio publica en el `events.json` (§4.4), y equivocarse de base lo mete
+       * en producción.
+       */
+      'scripts/vocabulario-desde-actividades.mjs',
     ]);
   });
 

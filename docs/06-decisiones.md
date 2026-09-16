@@ -11021,3 +11021,212 @@ duela, y que duela en el deploy y no en el formulario de un desconocido.
 a `CAMPOS_TAXONOMIA` en las dos direcciones, verifica el regex con que el script
 lee el fuente, y que el workflow lo corra **sin `--informar`** y **antes** del
 build.
+
+---
+
+## D-720 · El formato de hora es presentación, y la preferencia vive en `localStorage`
+
+**B-889.** El pedido —«un selector de am/pm, solo en el admin», hecho dos veces—
+obliga a contestar algo que el pedido no dice: **dónde se guarda esa preferencia**.
+El panel no tiene perfil de usuario, así que o nacía uno, o iba al navegador.
+
+**La decisión: `localStorage`.** No nace un perfil de usuario para esto.
+
+Lo que la sostiene no es que sea la barata, aunque lo sea. Es que **un perfil de
+usuario es una entidad con su propia gravedad**: una colección más, sus reglas,
+su lectura en el arranque del panel, y la primera pregunta de «¿qué más
+guardamos acá?» —que con dos roles ya existiendo (D-650, D-690) se contesta sola y
+mal—. Poner ahí una preferencia de cómo se dibuja un reloj es construir el mueble
+para guardar un clip.
+
+Y hay un precedente exacto en las dos mitades del proyecto: los borradores del
+panel (D-122) y los favoritos del sitio (D-630) ya viven en `localStorage`. Con
+esta decisión son tres, y las tres comparten la misma definición implícita:
+**`localStorage` guarda cómo esta persona usa el sitio desde este navegador;
+Firestore guarda lo que el proyecto sabe.** Un formato de hora es lo primero y no
+lo segundo.
+
+**La consecuencia va dicha en la pantalla, no implícita.** Es por navegador: quien
+carga desde la compu y desde el teléfono la elige dos veces, y un incógnito la
+pierde. Eso es aceptable para una preferencia de presentación y sería inaceptable
+para un dato; decirlo es lo que mantiene la diferencia visible.
+
+**Lo que esta decisión NO toca, y conviene que quede fijado:** en Firestore va un
+`Timestamp` y hacia Calendar va con `timeZone` explícito. El formato es
+presentación. El día que alguien guarde `"7:30 PM"` como texto, eso es la trampa 1
+otra vez, y ninguna preferencia de usuario lo justifica.
+
+**Y la segunda mitad, decidida el mismo día: el control se reemplaza.** La
+pregunta era si alcanzaba con un eco al lado del `datetime-local` nativo
+(«19:30 → 7:30 PM») o hacía falta un control propio con AM/PM. **El dueño eligió el
+control propio**, con el costo escrito a la vista y contra la recomendación.
+
+Queda dicho porque el motivo corrige la lectura del ítem. B-889 razonaba que el
+síntoma era de **lectura** —«no sé si lo que cargué es AM o PM»— y que por eso un
+cartel alcanzaba. Pero el pedido, hecho dos veces, era *«un selector de am/pm»*, y
+un cartel no es un selector: **quien carga quiere tipear en 12 horas**, no
+confirmar que tipeó bien en 24. Con una segunda persona cargando, eso cae bajo el
+criterio que el dueño ya había fijado en B-928: *«no podemos obligarlos a hacerlo
+como queremos, sino ajustarnos nosotros»*. El eco no se descarta: **entra adentro
+del control propio**, porque un control que dibujamos nosotros necesita confirmar
+por escrito lo que quedó cargado más que uno que garantiza el navegador.
+
+**Lo que el control propio tiene que resolver**, y es lo que lo hacía caro:
+
+1. **Abajo de cierto ancho se sigue usando el nativo.** Hoy `datetime-local` abre
+   el selector del teléfono; cuatro cajitas para tipear son peores en una pantalla
+   chica. La preferencia de 12/24 es de escritorio — el mismo criterio por el que
+   `/proponer` se queda con el control nativo.
+2. **Accesibilidad:** `datetime-local` es **un** campo con una etiqueta; esto son
+   cuatro controles que tienen que leerse como uno solo.
+3. **`min-h-touch` del §11** en las cuatro piezas.
+4. **Que nadie guarde texto.** Las cuatro piezas se componen en un `Timestamp`
+   antes de salir del formulario; un control propio es justamente lo que hace fácil
+   caer en la trampa 1.
+
+Aplica a los tres `datetime-local` del panel —`SesionesEditor`,
+`ModalidadesEditor` y el `cierra` de `SeccionArancelInscripcion`— y **no** a los
+dos `type="time"` de `FormularioPublico`.
+
+---
+
+## D-721 · La revisión de una propuesta se puede pisar, y no se versiona
+
+**B-843 punto 3.** Un admin puede sobrescribir el `revision` de una propuesta
+—firmándola a su nombre, que es lo que la regla exige— y el `motivo` anterior
+desaparece sin rastro: `/propuestas` no tiene subcolección `versiones` y el
+trigger de historial (§12) solo mira `/actividades`.
+
+**La decisión: queda así.**
+
+**Qué se pierde y qué no, que es lo que la hace defendible.** `/propuestas` es una
+**cola de entrada**, no un registro. Lo que hay que poder reconstruir es *qué pidió
+el de afuera*, y eso no se pisa nunca: `revisionValida()` acota el `update` a
+`estado` + `revision`, así que el cuerpo de la propuesta es inmutable desde que
+entra. Lo que se pisa es el acto administrativo interno, entre cuatro cuentas de
+confianza. Y **el dato que sobrevive sí queda versionado**: la actividad que sale
+de la conversión tiene el historial completo del §12. O sea que lo versionado es lo
+que se publica, y lo efímero es lo que se descarta.
+
+**La razón de privacidad, que pesa más que la de costo.** Una subcolección
+`versiones` en `/propuestas` no es solo un trigger más: es **copiar datos
+personales de un tercero a un lugar que no caduca**. La retención de 30 días
+(B-838, B-844) está montada sobre el documento; sus versiones quedarían afuera, y
+habría que construirle una segunda retención a una copia que existe solo para
+auditar quién la revisó. Es un mal negocio: se duplica el dato sensible para
+registrar el acto sobre el dato sensible.
+
+**Condición de reapertura, y es la misma que la de B-28: el día que revise una
+cuenta que no sea de confianza.** Con el rol `publicador` (B-888) eso dejó de ser
+hipotético, pero **hoy el publicador no ve la bandeja**, así que no se cumple. Si
+la bandeja se le abre, este punto se reabre **en el mismo cambio** — y lo barato
+entonces no es la subcolección: es un campo `revisionesPrevias` acotado, con la
+misma retención que la propuesta que lo contiene.
+
+---
+
+## D-722 · App Check no se exige en Storage, y sacar los bytes públicos es la precondición
+
+**B-872**, con **B-846** y **B-222** del mismo lado. Delegada por el dueño
+(«pensalo vos, yo no entiendo de eso»), así que queda el razonamiento y no solo el
+veredicto.
+
+**La decisión: `firebasestorage` se queda en `UNENFORCED`, y la pregunta abierta
+—si el enforcement alcanza al GET de `?alt=media&token=`— tampoco se mide.**
+
+**El beneficio de exigir hoy es cero, y es demostrable.** App Check sirve para una
+sola cosa: frenar al cliente que no pasa por la página. Contra Storage no queda
+ninguno:
+
+| Camino que escribe en Storage | Quién es | Ya atestado por |
+|---|---|---|
+| `imagenes/` desde el panel | admin/publicador con sesión | reglas + Firestore `ENFORCED` |
+| `propuestas/` desde `/proponer` | anónimo | la callable de **B-896**, `enforceAppCheck: true` |
+| Las tres guías | anónimo | nada que subir: la ficha nace sin fotos (**D-700**) |
+| build y Functions | Admin SDK | fuera de App Check por diseño |
+
+`propuestas/` está en `create: if false` **para todo cliente**. Exigir protegería
+un camino que ya no existe.
+
+**El riesgo, en cambio, es el sitio entero.** Las tres deducciones del 2026-09-11
+apuntan al mismo lado —el GET entra en la métrica, pega contra
+`firebasestorage.googleapis.com`, y `Unknown origin` describe literalmente un
+`<img src>`—. Si aciertan, exigir se lleva puestas todas las imágenes públicas,
+`og:image` incluido: cada link compartido sin preview, con caché pegada. Es una
+apuesta asimétrica en la dirección equivocada.
+
+**Por qué tampoco se mide, que es la parte discutible.** La medición está bien
+diseñada (proyecto de prueba, dos `curl`, `allow read: if true` para distinguir
+quién cortó). Pero contesta una pregunta cuya respuesta **no cambia ninguna
+acción**: con `200` exigir sigue sin proteger nada, y con `403` tampoco se exige.
+Un experimento que no mueve ninguna decisión es trabajo con forma de rigor.
+
+**Y la parte que esta decisión aporta de nuevo: no son dos preguntas en paralelo,
+son dos escalones.** «Mirar B-872 y B-846 juntos» estaba escrito y nunca
+desarrollado. El orden es: **primero sacar los bytes públicos de
+`firebasestorage`** —B-846 (no acuñar tokens: `getBlob` para lo privado) y B-222
+(servir lo público por dominio propio o rewrite de Hosting)—. Con eso hecho, el 99%
+sin verificar desaparece solo, la métrica pasa a decir algo, y exigir se vuelve
+barato y sin riesgo. Recién ahí la medición vale la pena.
+
+Se reabre también si aparece un **segundo** camino de subida a Storage desde un
+cliente no atestado. Hoy no hay ninguno, y la tabla de arriba es la prueba.
+
+---
+
+## D-723 · Las cuatro decisiones del §11.1 del sitio, resueltas con el mismo criterio
+
+**`docs/12-sitio-publico.md` §11.1, decisiones 5 a 8.** Estaban abiertas desde
+agosto y el dueño las delegó juntas, con el criterio explícito: *«tomá lo
+recomendado, un equilibrio entre código y usabilidad»*. Se contestan en un solo
+lugar porque **la instrucción era una sola**, y porque el criterio se aplica mejor
+al conjunto que a cada una por separado: de las cuatro, solo una genera trabajo.
+
+| # | Decisión | Resolución |
+|---|---|---|
+| 5 | Campo «acepta incorporaciones tardías» | **No** |
+| 6 | ¿La descripción admite formato? | **Autolinkear las URLs, y nada más** → **B-980** |
+| 7 | ¿Cuánto vive una actividad pasada en el índice? | **Para siempre, sin `noindex`** — ratifica lo construido |
+| 8 | Páginas por organizador | **No ahora, y decidido cómo será: taxonomía del §4** |
+
+**5 — el campo no entra.** Agregarlo es el recorrido completo de `campo-nuevo`
+—tipo, schema, conversión form ⇄ documento, formulario, `toPublic`, ayuda,
+tests— para desambiguar algo que **no se lee ambiguo en la pantalla**: el aviso
+«Ya empezó — se puede entrar» ya sale bien, deducido de `inscripcion.cierra`
+posterior a la primera sesión, que es la forma en que el dueño efectivamente lo
+expresa. Un campo cuya única ventaja es ser más explícito **para el modelo** y no
+para quien lee no paga su costo. Vuelve con un caso real donde la deducción
+mienta, traído con el documento y no imaginado.
+
+**6 — autolinkear, que es literalmente la opción del medio.** Un link pegado deja
+de ser texto muerto, que es una molestia real y frecuente. Markdown acotado tocaría
+el formulario, la vista previa, el JSON-LD y el evento de Calendar, y traería su
+propio saneado — mucho para «se puede poner negrita». Lo que el ítem **B-980**
+tiene que respetar: escapar primero y linkear después (si no, es XSS en una salida
+que hoy carga gente de afuera), `rel="nofollow noopener"` (si no, el sitio reparte
+autoridad de SEO a cualquiera que pegue un link), y solo `http(s)://` explícito
+(adivinar dominios rompe el texto de alguien).
+
+**7 — se ratifica lo que ya está, y cuesta cero.** El `noindex` al año resolvería
+«el sitio crece en páginas muertas», que es un problema que este sitio **no
+tiene**: la página de un taller que pasó ya sale del listado, de los hubs y del
+sitemap a los 90 días, y sigue siendo la mejor respuesta para quien lo busca por
+nombre (trampa 10). Desindexarla sería romper links de Instagram, de mails y de
+grupos de WhatsApp para ganar una métrica que nadie está mirando.
+
+**8 — no se construye, pero se cierra el camino, y eso es lo que aporta.** Es una
+entidad nueva y va detrás de las que ya están pedidas (B-959, B-960). Lo valioso
+de decidirla igual: el §12 la tenía frenada por «necesita decisión de modelo
+primero», y esa decisión ya no tiene por qué esperar. **El día que se haga,
+`organizador` se vuelve taxonomía del §4 —como `ciudad` en D-710— y no una
+colección nueva.** El miedo escrito era «con texto libre serían páginas duplicadas
+por cada variante de tipeo», y el patrón de taxonomía es exactamente la máquina que
+ya resuelve eso: `slugify`, autocompletado contra lo existente, `usos` para ordenar
+y detectar basura. Construirle una colección propia sería inventar por segunda vez
+algo que el proyecto ya tiene funcionando en once campos.
+
+**El hilo de las cuatro.** Tres dicen que no y una dice que sí a la mitad más
+barata. No es conservadurismo: es que el criterio pedido —equilibrio entre código y
+usabilidad— **descarta por sí solo todo lo que agranda el modelo para ganar
+precisión que nadie ve en la pantalla**, y deja pasar lo que se nota al usar el
+sitio. La única que se nota al usarlo es la 6.

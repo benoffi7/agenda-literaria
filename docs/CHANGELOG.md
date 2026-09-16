@@ -2,6 +2,70 @@
 
 ## Sin publicar
 
+- **El desplegable de ciudad estaba casi vacío en un catálogo lleno de ciudades**
+  — **B-975**. `/opciones/ciudad` tenía **un** valor mientras las actividades
+  cargadas nombraban treinta: había que volver a tipear Mar del Plata aunque
+  hubiera dieciséis actividades ahí. Pasó porque la ciudad no era taxonomía antes
+  de B-950 — era un `<input>` de texto libre, así que lo tipeado quedó en el
+  documento y nunca pasó por `/opciones/*`.
+
+  Dos piezas. **Para lo ya cargado**,
+  `scripts/vocabulario-desde-actividades.mjs` deriva el vocabulario del catálogo
+  y agrega lo que falte con su `usos` real (solo agrega, idempotente). **Para lo
+  que venga**, `elegidosDe` ahora cuenta `provincia` y `ciudad` y no solo el
+  barrio: se había quedado contando el único campo de lugar que existía cuando se
+  escribió, así que Mar del Plata quedaba en `usos: 1` —última en el desplegable e
+  indistinguible de un typo colgado, que es justo lo que ese contador existe para
+  poder señalar—. Y **slugificando**, porque `anterior` (B-340) puede venir de un
+  documento sin migrar con la ciudad en crudo.
+
+  De paso, `etiquetaPresentable` se mudó a `src/lib/etiqueta-presentable.mjs` con
+  el mismo patrón de fachada que `slugify` y `geografia`: los scripts corren en
+  Node plano y no pueden importar TypeScript.
+
+  Queda **B-976**, que el dueño vio primero: `/opciones/barrio` tiene siete
+  valores que son provincias o ciudades, herencia de cuando el barrio era el único
+  campo de lugar del formulario.
+
+- **Cinco decisiones abiertas, contestadas** — **D-720**, **D-721**, **D-722**,
+  **D-723**. Ninguna cambia código todavía; todas destraban trabajo que estaba
+  esperando una respuesta.
+
+  **El formato de hora del panel vive en `localStorage`** (B-889, D-720): no nace
+  un perfil de usuario para una preferencia de presentación, que es el tercer caso
+  del mismo patrón después de los borradores (D-122) y los favoritos (D-630). **Y
+  el control se reemplaza:** el dueño eligió un control propio con AM/PM por sobre
+  un eco al lado del nativo, con el costo a la vista y contra la recomendación —
+  porque el pedido era tipear en 12 horas, no confirmar que se tipeó bien en 24.
+  Queda escrito lo que eso obliga: seguir usando el nativo en pantallas chicas,
+  cuatro controles que se leen como uno, `min-h-touch`, y que nada de eso termine
+  guardando texto en vez de un `Timestamp`.
+
+  **La revisión de una propuesta se puede pisar y no se versiona** (B-843, D-721).
+  El argumento que decide no es el costo: una subcolección `versiones` copiaría
+  datos personales de un tercero a un lugar que **no** caduca, al lado de una
+  retención de 30 días montada sobre el documento.
+
+  **App Check no se exige en Storage, y la pregunta abierta tampoco se mide**
+  (B-872, D-722). Después de B-896 y D-700 no queda ningún camino de subida sin
+  atestar, así que exigir protegería un camino que ya no existe, y arriesgaría
+  todas las imágenes públicas. Lo que aporta la decisión es un orden que estaba
+  implícito: **B-846 y B-222 son la precondición**, no un frente paralelo.
+
+  **Y las cuatro del §11.1 del sitio público** (D-723), con el criterio que dio el
+  dueño —«un equilibrio entre código y usabilidad»—: no hay campo de
+  incorporaciones tardías, la descripción **autolinkea las URLs y nada más**
+  (→ **B-980**), la actividad pasada se queda indexada para siempre, y las páginas
+  por organizador no se construyen ahora pero ya tienen forma decidida
+  —**taxonomía del §4, no colección**—, que era lo que el §12 tenía frenado por
+  «necesita decisión de modelo primero». Tres dicen que no y una dice que sí a la
+  mitad barata: el criterio descarta solo lo que agranda el modelo para ganar
+  precisión que no se ve en la pantalla.
+
+  **Orden fijado, además:** efemérides (B-959) y bibliotecas (B-960) van **después
+  de los P1**. Son las dos entidades nuevas más caras pendientes, y los P1 que
+  tienen adelante son cosas que hoy publican mal o confunden a quien carga.
+
 - **Un fallo transitorio del deploy de Functions, anotado** — el mensaje
   `Unexpected token '<', "<!DOCTYPE "...` parece un bug de parseo propio y es la
   API de Google devolviendo HTML donde `firebase-tools` espera JSON. Falla una

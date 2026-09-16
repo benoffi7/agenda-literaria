@@ -124,27 +124,15 @@ export const opcionesVisibles = (valores: ValorOpcion[], uid?: string): ValorOpc
 };
 
 /**
- * B-05 — la etiqueta que se guarda, presentable.
- *
- * `slugify` normaliza la **identidad** de la opción; esto normaliza lo que se
- * **ve**. Sin esto, un tag tipeado "narrativa" se publica así en el calendario
- * y en los chips de filtro del sitio (§4.4), al lado de "Poesía" que alguien
- * escribió con mayúscula: la taxonomía se ve descuidada aunque no esté
- * duplicada. Ya pasó: `/opciones/tags` tiene `narrativa="narrativa"`.
- *
- * Solo la primera letra, y nada más. Bajar el resto rompería "Villa Crespo",
- * "Google Meet" o unas siglas; subir cada palabra rompería "Club de lectura".
- * Los espacios internos se colapsan porque "A  la   gorra" y "A la gorra"
- * comparten slug y tienen que compartir etiqueta.
- *
- * No toca las que ya están guardadas: eso se arregla renombrando desde la
- * pantalla de taxonomías (B-06).
+ * §4.2 · B-05 — **la implementación vive en `etiqueta-presentable.mjs`** desde
+ * B-975, por lo mismo que `slugify` y `geografia`: los scripts de `scripts/`
+ * la necesitan y corren en Node plano. Se re-exporta acá para que ningún import
+ * haya tenido que cambiar de ruta. El porqué de la regla está en el docblock de
+ * allá.
  */
-export const etiquetaPresentable = (label: string): string => {
-  const limpio = label.trim().replace(/\s+/g, ' ');
-  if (!limpio) return '';
-  return limpio[0]!.toLocaleUpperCase('es') + limpio.slice(1);
-};
+import { etiquetaPresentable } from '@/lib/etiqueta-presentable.mjs';
+
+export { etiquetaPresentable };
 
 export interface OpcionesDeSugerencias {
   /** Cuántas ofrecer. Default: `TOPE_SUGERENCIAS`. */

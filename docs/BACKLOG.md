@@ -50,12 +50,42 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > margen para lo que salga de esos mismos frentes. Es la misma reserva de siempre
 > y el mismo motivo: dos frentes numerando a ciegas al mismo tiempo.
 
+> **Y un sexto hueco, el primero que se detectó en caliente: `B-975` a `B-979`.**
+> El ítem que salió de la decisión 6 del §11.1 (autolinkear las URLs de la
+> descripción) se escribió como **B-975** el 2026-09-16 y, a los minutos, se vio
+> que **otro frente de esa misma tarde ya tenía B-975 escrito en el código** —el
+> comentario de `elegidosDe` en `src/lib/formulario/etiquetas.ts`, que cuenta los
+> `usos` de las tres taxonomías de la geografía—. Se movió **el de la doc**, no el
+> del código, por el precedente de B-600: lo que ya está escrito en un archivo
+> fuente y en un commit es lo que no se puede renumerar. El ítem de autolinkear es
+> **B-980**, y del 975 al 979 quedan de margen para lo que salga de ese frente.
+>
+> **Es el mismo motivo que los cinco huecos de arriba —dos frentes numerando a
+> ciegas— con una diferencia:** los otros se descubrieron al integrar, y éste se
+> descubrió por el `git status` del working tree, antes de que ninguno de los dos
+> commiteara. Es el argumento más concreto que hay a favor de mirar el árbol
+> completo y no solo los archivos propios antes de reservar un número.
+
 ---
 
 ## Decisiones pendientes del usuario
 
 Nada de esto se puede avanzar sin respuesta. Están primero porque bloquean
 trabajo.
+
+> **2026-09-16 — la tanda de decisiones abiertas se vació, y queda una sola.**
+> Se contestaron cinco de un saque: **B-889** (dónde vive la preferencia de
+> formato de hora → `localStorage`, **D-720**), **B-843 punto 3** (la revisión de
+> una propuesta queda sin rastro, **D-721**), **B-872** (delegada: no se exige App
+> Check en Storage, **D-722**), **B-959/B-960** (van después de los P1) y las
+> **cuatro** decisiones 5 a 8 del §11.1 de
+> [`12-sitio-publico.md`](12-sitio-publico.md) (**D-723**, con **B-980** como el
+> único trabajo que nace de ellas).
+>
+> **Y el punto 3 de B-889 se contestó el mismo día: control propio** (la opción
+> cara, contra la recomendación y con el costo a la vista). Con eso **no queda
+> ninguna decisión del dueño pendiente en este archivo** — por primera vez desde
+> que existe la sección.
 
 | # | Tema | Contexto |
 |---|---|---|
@@ -99,6 +129,53 @@ Resueltas el 2026-08-21:
 
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
+
+### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro · P1 (2026-09-16)
+
+**Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre
+Belgrano y Colegiales. Y no está solo — de los 30 valores de `/opciones/barrio`,
+**siete no son barrios de CABA**:
+
+| Valor | Qué es en realidad | Actividades |
+|---|---|---|
+| `provincia-de-buenos-aires` | una provincia | **54** |
+| `cordoba` | provincia (o su capital) | 8 |
+| `beccar`, `ramos-mejia` | ciudades bonaerenses | 1 c/u |
+| `rosario` | ciudad de Santa Fe | 1 |
+| `neuquen`, `santa-fe` | provincia (o su capital) | 1 c/u |
+
+**Por qué pasó, y por qué no es descuido de nadie:** hasta B-950 el barrio era
+**el único campo de lugar** que el formulario ofrecía. Quien cargaba una
+actividad en Tandil no tenía dónde ponerlo, así que lo puso donde había lugar. El
+vocabulario es el registro fiel de un formulario que faltaba.
+
+**Cuánto abarca:** 129 filas de sede tienen el barrio contaminado, y se parten en
+dos:
+
+- **123 son mecánicas.** `barrio=provincia-de-buenos-aires` + `ciudad=Tandil`
+  significa `provincia=buenos-aires, barrio='', ciudad=tandil`, sin ambigüedad. Lo
+  mismo con `cordoba`, `neuquen` y `santa-fe`. Hay dos invertidas
+  (`barrio=rosario | ciudad=santa-fe`) que son las mismas dos al revés, y una
+  `"Villa Crespo, CABA"` que es un barrio con la ciudad pegada.
+- **6 necesitan criterio del dueño**, porque el documento se contradice:
+  - `barrio=nunez | ciudad=neuquen` (2) — Núñez es de CABA, Neuquén no.
+  - `barrio=palermo | ciudad=avellaneda` (2) — Palermo es de CABA, Avellaneda es
+    bonaerense.
+  - `barrio=provincia-de-buenos-aires | ciudad=caba` (2).
+
+**Por qué no se hizo en el momento.** Sacar los siete del desplegable **no
+alcanza**: 54 actividades seguirían con `barrio: 'provincia-de-buenos-aires'` en
+el documento, y ahí el slug deja de resolver etiqueta y se publica crudo. El
+arreglo de verdad es migrar los documentos, y eso reescribe ~100 actividades: una
+versión del §12 por actividad y **una llamada a Calendar por sesión** (`sede` está
+en los campos que la guarda del §7.1 mira). El propio `sembrar-geografia.mjs`
+dice «correrlo una vez, fuera de hora». Es una decisión del dueño, no una
+prolijidad que se cuela en otro cambio.
+
+**Lo que sí quedó hecho** (B-975): `/opciones/ciudad` pasó de 1 a 30 valores con
+las ciudades reales del catálogo, así que **al reeditar una de esas actividades la
+ciudad correcta ya está en el desplegable** y el arreglo manual es elegir la
+provincia. Sin eso, migrar a mano era volver a tipear treinta ciudades.
 
 ### B-974 · Diez taxonomías de las guías nunca se sembraron en producción — ✅ hecho (2026-09-16) · P1
 
@@ -2073,21 +2150,50 @@ que es una cosa distinta y más cara.
    del §11 — o sea que el costo real no está en el formato sino en reemplazar un
    control que hoy el navegador resuelve bien.
 
-   > 🔸 **Esta sigue abierta, y es la que decide el precio del ítem.** Con la 2
-   > contestada, lo único que falta es elegir entre las dos formas, y no son
-   > parecidas:
+   > ✅ **Decidido por el dueño el 2026-09-16: control propio** (**D-720**), o sea
+   > la opción cara de las dos que se le presentaron:
    >
    > | Forma | Qué cuesta | Qué resuelve |
    > |---|---|---|
-   > | **(a) Eco al lado del control nativo** — se deja el `<input type="time">` y se escribe la hora confirmada en el formato elegido («19:30 → 7:30 PM») | un componente de lectura, sin tocar el control | **la duda reportada**: «no sé si lo que cargué es AM o PM» |
-   > | **(b) Control propio** (hora + minutos + AM/PM) | reemplaza el nativo: teclado del celular, accesibilidad, `min-h-touch` del §11, y una pieza más que mantener | además, **escribir** en 12h |
+   > | (a) Eco al lado del control nativo — «19:30 → 7:30 PM» | un componente de lectura, sin tocar el control | la duda reportada: «no sé si lo que cargué es AM o PM» |
+   > | **(b) Control propio** (fecha + hora + minutos + AM/PM) ← **elegida** | reemplaza el nativo | además, **escribir** en 12h |
    >
-   > **Recomendación: (a).** El pedido dice «selector de am/pm», que suena a (b),
-   > pero el síntoma escrito en el título de este ítem es *«se cargan sin saber si
-   > son AM o PM»* — o sea un problema de **lectura**, y (a) lo resuelve entero sin
-   > tocar lo que el navegador ya hace bien. Si después de usarlo un tiempo sigue
-   > molestando escribir en 24h, (b) queda disponible y (a) no se tira: el eco
-   > sirve igual.
+   > **Se recomendó (a) y el dueño eligió (b), habiendo visto el costo escrito.**
+   > Queda dicho porque el motivo importa para lo que viene: el pedido original fue
+   > *«un selector de am/pm»*, dos veces, y (a) no es un selector — es un cartel. La
+   > lectura de este ítem («el síntoma es de lectura») subestimaba el pedido:
+   > **quien carga quiere tipear en 12 horas**, no confirmar que tipeó bien en 24.
+   > Con una segunda persona cargando, eso es exactamente el criterio que el dueño
+   > ya había fijado en B-928: *«no podemos obligarlos a hacerlo como queremos,
+   > sino ajustarnos nosotros»*.
+   >
+   > **El eco de (a) no se tira: entra adentro de (b).** Un control propio tiene
+   > que confirmar por escrito lo que quedó cargado, justamente porque ya no hay un
+   > control nativo que el navegador garantice. Sale casi gratis y es la red de que
+   > el control propio no esté mintiendo.
+   >
+   > **Las cuatro cosas que el control propio tiene que resolver, y son la razón
+   > por la que era la cara:**
+   >
+   > 1. **El celular.** Hoy `datetime-local` abre el selector nativo del teléfono.
+   >    Tres cajitas para tipear son peores en una pantalla chica que lo que hay
+   >    hoy, así que **abajo de cierto ancho hay que seguir usando el nativo** — el
+   >    formato ahí lo pone el sistema y está bien que así sea, que es lo mismo que
+   >    ya se decidió para `/proponer`. La preferencia de 12/24 es de escritorio.
+   > 2. **Accesibilidad.** Un `datetime-local` es **un** campo con una etiqueta; esto
+   >    son cuatro controles que tienen que leerse como uno solo (grupo con nombre
+   >    accesible, orden de tabulación, y que el lector de pantalla no anuncie
+   >    «cuadro combinado» cuatro veces).
+   > 3. **`min-h-touch` del §11** en cada una de las cuatro piezas.
+   > 4. **Que nadie guarde texto.** Las cuatro piezas se componen en un
+   >    `Timestamp` antes de salir del formulario. El día que se guarde `"7:30 PM"`
+   >    como string, es la trampa 1 otra vez — y ahora hay un control propio que lo
+   >    hace fácil.
+   >
+   > **Dónde aplica:** `SesionesEditor`, `ModalidadesEditor` y el `cierra` de
+   > `SeccionArancelInscripcion` — los tres `datetime-local` del panel. **No** en
+   > `FormularioPublico` (los dos `type="time"` de `/proponer`), que se queda con el
+   > nativo por lo ya decidido.
 
 **Solo en el admin**, dicho por el dueño. El formulario público (`/proponer`) se
 queda con el control nativo: ahí quien carga usa su propio teléfono una sola vez y
@@ -2555,7 +2661,57 @@ Tres salidas, y hay que elegir:
 Y en cualquier caso, **corregir los dos docblocks**: hoy afirman una cobertura que
 no existe, que es lo que hizo que nadie lo notara.
 
-### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? · P3
+### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? — ❌ decidido: no se exige (2026-09-16) · P3
+
+> ❌ **Decidido el 2026-09-16: `firebasestorage` se queda en `UNENFORCED`, y la
+> pregunta 1 no se mide** (**D-722**). El dueño delegó esta explícitamente («no
+> entiendo de eso, solo soy producto»), así que queda el razonamiento entero y no
+> solo el veredicto.
+>
+> **Lo que decide es que el beneficio de exigir hoy es cero, y es demostrable.**
+> Exigir App Check en un servicio sirve para una sola cosa: frenar al cliente que
+> no pasa por la página. Contra Storage, hoy, **no queda ningún cliente así**:
+>
+> | Camino que escribe en Storage | Quién es | Ya atestado por |
+> |---|---|---|
+> | `imagenes/` desde el panel | admin/publicador con sesión | reglas + Firestore `ENFORCED` |
+> | `propuestas/` desde `/proponer` | anónimo | **la callable de B-896**, con `enforceAppCheck: true` |
+> | Las tres guías | anónimo | nada que subir: la ficha nace **sin fotos** (D-700) |
+> | build y Functions | Admin SDK | fuera de App Check por diseño |
+>
+> El `create` de `propuestas/` está en `if false` **para todo cliente**. O sea que
+> exigir protegería un camino que ya no existe.
+>
+> **Y el riesgo no es cero, es el sitio entero.** Las tres deducciones del
+> 2026-09-11 apuntan todas al mismo lado —el GET de `?alt=media&token=` entra en
+> la métrica, pega contra `firebasestorage.googleapis.com`, y `Unknown origin`
+> describe literalmente un `<img src>`—. Si aciertan, exigir **se lleva puestas
+> todas las imágenes públicas**, `og:image` incluido: cada link compartido queda
+> sin preview, y con caché pegada encima. Es una apuesta asimétrica en la
+> dirección equivocada: se arriesga todo para ganar nada.
+>
+> **Por qué tampoco se mide, que es la parte que podría discutirse.** La medición
+> es honesta y está bien diseñada (proyecto de prueba, dos `curl`, `allow read: if
+> true` para distinguir quién cortó). Pero contesta una pregunta cuya respuesta
+> **no cambia ninguna acción**: si da `200`, exigir sigue sin proteger nada; si da
+> `403`, tampoco se exige. Un experimento que no mueve ninguna decisión es trabajo
+> con forma de rigor. **Se mide el día que la respuesta importe**, y ese día tiene
+> nombre: es el de abajo.
+>
+> **La condición de reapertura, y es un orden, no una fecha: primero B-846.**
+> Exigir Storage solo empieza a tener sentido cuando las lecturas públicas **dejen
+> de salir por `firebasestorage`** — o sea cuando se cierre B-846 (no acuñar
+> tokens: `getBlob` para lo privado) y B-222 (servir las imágenes públicas por
+> dominio propio o rewrite de Hosting). Con los bytes públicos fuera del servicio,
+> el 99% sin verificar desaparece **solo**, la métrica pasa a decir algo, y exigir
+> se vuelve barato y sin riesgo. Eso es lo que «mirarlos juntos» quería decir y
+> nunca estaba escrito: **no son dos preguntas en paralelo, son dos escalones**.
+>
+> También se reabre si aparece un **segundo** camino de subida a Storage desde un
+> cliente no atestado. Hoy no hay ninguno y la fila de arriba es la prueba.
+>
+> El texto de abajo —la investigación del 2026-09-11— queda entero: es el insumo
+> que sostiene todo esto.
 
 > **2026-09-15 — deja de ser un bloqueo, y baja de P1 a P3.** Este ítem decía
 > «bloquea el anuncio de `/proponer`» y después, por extensión, se lo citó como lo
@@ -3673,6 +3829,14 @@ aparece un segundo lugar que muestre objetos privados.
 Está afirmado en las **dos** direcciones en el test, así que el día que se cierre,
 el caso se pone rojo y hay que venir a decidirlo en vez de descubrirlo con una
 imagen rota.
+
+> **2026-09-16 — este ítem dejó de ser solo una fuga chica: es el primer escalón
+> de otra cosa** (**D-722**, al cerrar **B-872**). Mientras las imágenes públicas
+> se sirvan por URL de descarga, `firebasestorage` no se puede poner en
+> `ENFORCED` sin apagar el sitio, así que **B-846 + B-222 son la precondición de
+> exigir App Check en Storage**, no un arreglo paralelo. Eso no lo sube de P3 —no
+> hay nada urgente colgando— pero sí cambia con qué se agenda: el día que se toque
+> uno, se tocan los tres juntos, y recién ahí la medición de B-872 vale la pena.
 
 ### B-845 · El chequeo de B-85 es ciego a todo trigger que delega en su módulo puro — ✅ hecho (2026-09-09) · P3
 
@@ -6680,6 +6844,46 @@ documentado en [`12-sitio-publico.md` § 6.5](12-sitio-publico.md#65-el-banner-d
 **La lista está vacía a propósito hasta que lleguen las dos imágenes** — mismo
 patrón que `LISTA_DE_CORREO` en `lib/enlaces.ts`. Eso es B-962.
 
+### B-980 · La descripción autolinkea las URLs, y nada más · P2 — de la decisión 6 del §11.1 (2026-09-16)
+
+**Sale de D-723.** Hoy `descripcion` es texto plano en todas sus salidas: quien
+pega `https://instagram.com/casabrandon` en la descripción de su taller publica
+un texto muerto que hay que seleccionar y copiar a mano. La decisión fue la opción
+del medio de las tres que ofrecía el §11.1: **autolinkear las URLs** — sin
+negritas, sin listas, sin markdown.
+
+**Dónde vale y dónde no**, que es la parte que hay que respetar:
+
+| Salida | Autolinkea | Por qué |
+|---|---|---|
+| Página de detalle (`/actividad/[slug]`) | **sí** | es la única donde alguien puede hacer clic |
+| `events.json` | — | **no lleva `descripcion`** (§11.3), así que no hay nada que decidir |
+| Evento de Calendar | **no** | Google ya linkea solo en su propio cliente, y el texto que se manda es el crudo. Tocar `build()` es tocar el §7, que pide no tocarlo sin motivo |
+| JSON-LD (`description`) | **no** | ahí va texto, no HTML: una etiqueta `<a>` adentro de un campo de Schema.org es basura para el parser |
+| `meta description` | **no** | mismo motivo, y ya se recorta a 160 |
+
+**Las tres cosas que pueden salir mal, y ninguna es el regex:**
+
+1. **Escapar primero, linkear después.** Si se linkea sobre el texto crudo y
+   después se escapa, se escapan las etiquetas recién creadas; si se escapa
+   después de insertar HTML, se abre XSS en una salida pública con texto que hoy
+   **carga gente de afuera** (`/proponer`, y las tres guías). El orden es
+   innegociable y es lo que tiene que afirmar el test, con un centinela que
+   contenga `<script>` **y** una URL en la misma línea.
+2. **`rel="nofollow noopener"` y `target="_blank"`.** Es contenido de terceros
+   apuntando afuera: sin `nofollow` el sitio reparte autoridad de SEO a cualquiera
+   que pegue un link, que es exactamente el incentivo que no se quiere crear.
+3. **Qué se considera URL.** Solo `http://` y `https://` explícitos. Nada de
+   detectar `casabrandon.com.ar` a ojo: un dominio adivinado dentro de una frase
+   es la clase de falso positivo que rompe el texto de alguien («el taller es de
+   10 a 12.com no existe»), y el que quiere un link lo pega entero.
+
+**Y una de privacidad que no es obvia:** esto convierte texto en una salida
+pública clickeable, así que entra por la puerta del `auditor-privacidad` — el
+mismo criterio de las filas 13 a 18. `descripcion` ya es pública, así que no
+cambia qué se publica; cambia **la forma**, y es la primera vez que el sitio
+emite HTML derivado de texto que escribió un desconocido.
+
 ### B-963 · No se mide el clic del banner · P2 — abierto con B-961
 
 El banner de B-961 no emite ningún evento, así que no hay forma de saber si sirve
@@ -7391,6 +7595,12 @@ la fila vacía no va a gritar mientras se la completa.
 
 ### B-959 · Efemérides: cargarlas en el panel, mostrarlas en el sitio, y que no lleguen al calendario · P2 — pedido del dueño (2026-09-15)
 
+> 📌 **Orden fijado por el dueño el 2026-09-16: va después de los P1.** Vale igual
+> para **B-960**. Los dos son entidades nuevas —el trabajo más caro que hay
+> pendiente— y los P1 que tienen adelante son cosas que hoy **publican mal o
+> confunden a quien carga** (B-926, B-928, B-930). Poner una entidad nueva arriba
+> de eso sería agrandar la superficie antes de arreglar la que ya está en uso.
+
 *«En el panel y web, efemérides poder cargar. No van al calendario público.»*
 Definido por el dueño el 2026-09-15: **es el dato del día, sin lugar ni horario** —
 «hoy nació Cortázar», «se publicó *Rayuela*». No es una actividad a la que se vaya.
@@ -7430,6 +7640,11 @@ tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el mo
 y el panel, pero no el sitio.
 
 ### B-960 · Bibliotecas: el cuarto directorio de la Guía · P2 — pedido del dueño (2026-09-15)
+
+> 📌 **Después de los P1** (2026-09-16), igual que **B-959** — el motivo está
+> escrito allá. Con una diferencia a favor de éste cuando llegue el momento: el
+> patrón ya existe cuatro veces, así que de los dos es el **previsible**. Los
+> trece archivos son conocidos uno por uno; no hay nada que diseñar.
 
 *«Lo mismo de librerías pero con bibliotecas: formulario público, bandeja y
 sección en guía.»*

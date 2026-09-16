@@ -1923,8 +1923,10 @@ se puede entrar.
   **y** la inscripción está abierta. Eso último es lo más cerca que estamos del
   dato real: hoy no hay un campo que diga "acepta incorporaciones tardías", y
   `inscripcion.cierra` posterior a la primera sesión es exactamente la forma en
-  que el dueño lo expresa hoy. Un campo explícito sería mejor —
-  [§11.1](#111-decisiones-del-dueño).
+  que el dueño lo expresa hoy. **Y así queda: la decisión 5 de
+  [§11.1](#111-decisiones-del-dueño) se resolvió el 2026-09-16 por la negativa**
+  (D-723) — la deducción es fiel a cómo se carga, y el aviso que sale de ella se
+  lee bien. El campo explícito vuelve con un caso real donde la deducción mienta.
 - El `EventSeries` mantiene `startDate` en la fecha original de arranque y los
   `subEvent` pasados con su fecha. No se reescribe la historia para que parezca
   que empieza ahora.
@@ -2291,6 +2293,13 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
 
 ## 11. Lo que falta decidir
 
+> **2026-09-16 — la tabla 11.1 quedó sin ninguna decisión abierta.** Las cuatro
+> que faltaban (5 a 8) se resolvieron el mismo día, con una sola instrucción del
+> dueño: *«tomá lo recomendado, un equilibrio entre código y usabilidad»*. Está
+> razonado en **D-723**, y el título de esta sección queda porque **11.2 sigue
+> teniendo trabajo pendiente** — pero ya no es «falta que alguien decida», es
+> «falta construirlo».
+
 ### 11.1 Decisiones del dueño
 
 | # | Decisión | Por qué bloquea |
@@ -2299,10 +2308,10 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
 | 2 | ~~**Canal de contacto público.**~~ **Resuelta**: es lo que publica `/contacto` (**B-232**, **B-233**), con la lista de qué conviene contar — que es lo que el `mailto:` crudo del pie se salteaba. El bullet del §4.5 pedía «un canal» y hoy existe | ✅ |
 | 3 | ~~**Nombre del sitio y una línea de qué es.**~~ **Resuelta: «Agenda LEH»** (**B-245**, D-141). Vive en `src/lib/identidad.ts` (`NOMBRE`, `BAJADA`) y es la única vez que se escribe: un test falla si alguna página lo pega literal. Antes el sitio se presentaba con su categoría —«Agenda literaria»—, que es lo contrario de tener nombre | ✅ |
 | 4 | ~~**¿Se mide el sitio público?**~~ **Resuelta: sí, con un banner de consentimiento** (B-372/B-376, D-201, D-250, D-251). GA4 con `gtag.js` directo, condicionado a que la persona acepte — si rechaza, no se carga el tag y no se manda nada. El clic en el CTA de inscripción es uno de los dos eventos propios (B-375). Arquitectura completa en [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) | ✅ |
-| 5 | **¿Un campo "acepta incorporaciones tardías"?** | Hoy "se puede entrar a un ciclo empezado" se deduce de `inscripcion.cierra` ([7.2](#72-un-ciclo-en-curso)). Un booleano lo diría sin ambigüedad |
-| 6 | **¿La descripción admite formato?** | Hoy es texto plano: un link pegado no es clickeable y no hay negritas ni listas. Opciones: dejarlo así, autolinkear las URLs (barato, y hay que escapar bien), o markdown acotado (cambia el formulario, la vista previa y el evento de Calendar) |
-| 7 | **¿Cuánto vive una actividad pasada en el índice?** | La propuesta es para siempre, con 90 días en el sitemap ([7.1](#71-una-actividad-que-ya-pasó)). La alternativa es `noindex` al año, para que el sitio no crezca en páginas muertas |
-| 8 | **Páginas por organizador.** | Es la sección con más potencial que quedó afuera, y necesita un slug de organizador — o sea, decidir si el organizador pasa a ser una entidad del modelo y no un texto por actividad |
+| 5 | ~~**¿Un campo "acepta incorporaciones tardías"?**~~ **Resuelta el 2026-09-16: no** (D-723). Se sigue deduciendo de `inscripcion.cierra`, que es como el dueño ya lo expresa. El booleano sería el recorrido completo de `campo-nuevo` —tipo, schema, form ⇄ documento, formulario, `toPublic`, ayuda, tests— para desambiguar algo que hoy **no se lee ambiguo en la pantalla**: el aviso «Ya empezó — se puede entrar» ya sale bien. Vuelve el día que alguien cargue una actividad donde la deducción dé el resultado equivocado — y ese caso hay que traerlo con el documento, no imaginado | ✅ |
+| 6 | ~~**¿La descripción admite formato?**~~ **Resuelta el 2026-09-16: autolinkear las URLs, y nada más** (D-723) — la opción del medio, que es la que pedía el criterio. Un link pegado deja de ser texto muerto; negritas y listas no entran. Markdown acotado tocaría el formulario, la vista previa, el JSON-LD y el evento de Calendar, y traería su propio saneado. → **B-980** | ✅ |
+| 7 | ~~**¿Cuánto vive una actividad pasada en el índice?**~~ **Resuelta el 2026-09-16: para siempre, sin `noindex`** (D-723) — o sea, se ratifica lo que ya está construido desde B-109. Cero código. El `noindex` al año resolvería «páginas muertas», que es un problema que este sitio **no tiene**: la página de un taller que pasó sigue siendo la mejor respuesta a quien lo busca por nombre, y ya sale del listado, de los hubs y del sitemap sola | ✅ |
+| 8 | ~~**Páginas por organizador.**~~ **Resuelta el 2026-09-16: no ahora, y decidido cómo será cuando sea** (D-723). No se construye: es una entidad nueva y va detrás de las que ya están pedidas (B-959, B-960). Lo que **sí** queda cerrado es el camino, que es lo que evita que se haga mal a las apuradas: el día que se haga, `organizador` se vuelve **taxonomía del §4** —como `ciudad` en D-710— y no una colección nueva. El §12 decía que con texto libre serían páginas duplicadas por cada variante de tipeo; el patrón de taxonomía es exactamente la máquina que ya resuelve eso, con `slugify`, autocompletado y `usos` | ✅ |
 
 ### 11.2 Cambios a `toPublic.ts`
 
@@ -2367,7 +2376,7 @@ Y por qué. Todo esto está pensado y descartado a propósito, no olvidado.
 
 | Afuera | Motivo |
 |---|---|
-| **Páginas por organizador y por tallerista** | Es lo más valioso que falta —"todo lo de Casa Brandon" es una consulta real— pero necesita que el organizador sea una entidad con slug, no un texto por actividad. Con texto libre serían páginas duplicadas por cada variante de tipeo. Necesita decisión de modelo primero |
+| **Páginas por organizador y por tallerista** | Es lo más valioso que falta —"todo lo de Casa Brandon" es una consulta real— pero necesita que el organizador sea una entidad con slug, no un texto por actividad. Con texto libre serían páginas duplicadas por cada variante de tipeo. **La decisión de modelo ya está tomada (2026-09-16, decisión 8 de §11.1, D-723): será taxonomía del §4, no colección.** Lo que queda es construirlo, y va detrás de B-959 y B-960 |
 | **Páginas por tema (`tags`)** | Depende de **B-05** (etiquetas sin normalizar) y **B-06** (sin UI de administración). Un typo cargado una vez se convertiría en una URL indexada que después hay que sostener |
 | ~~**Páginas por ciudad**~~ — **hecho el 2026-09-16** (B-951) | Estaba afuera con este motivo: «el hub más valioso después de barrio, pero `sede.ciudad` todavía no es taxonomía: hoy sería "CABA", "Caba", "Capital Federal" y "Buenos Aires" como cuatro ciudades». **B-950 lo destrabó convirtiéndola en taxonomía** (D-710), así que la defensa es la misma del hub de barrio —solo las opciones aprobadas con actividad publicada— y no hizo falta inventar ninguna otra |
 | **RSS / ICS por hub** | "Suscribirme a los talleres de Boedo" es lindo y es barato de generar, pero el Google Calendar público ya cubre la necesidad de suscripción, y sumar dos formatos más de la misma agenda multiplica lo que puede quedar desincronizado |
