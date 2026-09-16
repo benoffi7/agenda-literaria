@@ -50,10 +50,13 @@ const { opciones } = await contenidoDelSitio();
  * ofrece a alguien de afuera (§4.3). Si el documento no existe, la lista viene
  * vacía y el control muestra directamente el campo libre — no inventa barrios.
  */
-const barriosOfrecidos = opcionesPublicas(opciones.barrio ?? []).map((o) => ({
-  slug: o.slug,
-  label: o.label,
-}));
+const ofrecidas = (campo: 'barrio' | 'provincia' | 'ciudad') =>
+  opcionesPublicas(opciones[campo] ?? []).map((o) => ({ slug: o.slug, label: o.label }));
+
+const barriosOfrecidos = ofrecidas('barrio');
+// B-967 — las otras dos de la cascada, con el mismo filtro por aprobación.
+const provinciasOfrecidas = ofrecidas('provincia');
+const ciudadesOfrecidas = ofrecidas('ciudad');
 ---
 
 <Base
@@ -94,7 +97,12 @@ const barriosOfrecidos = opcionesPublicas(opciones.barrio ?? []).map((o) => ({
       </p>
     </section>
 
-    <SumarLibreria client:load barriosOfrecidos={barriosOfrecidos} />
+    <SumarLibreria
+      client:load
+      barriosOfrecidos={barriosOfrecidos}
+      provinciasOfrecidas={provinciasOfrecidas}
+      ciudadesOfrecidas={ciudadesOfrecidas}
+    />
 
     <section aria-labelledby="si-no-es-esto" class="mt-14 regla-gruesa-arriba pt-4">
       <h2 id="si-no-es-esto" class="headline-sm text-acento">Si no es esto lo que buscabas</h2>

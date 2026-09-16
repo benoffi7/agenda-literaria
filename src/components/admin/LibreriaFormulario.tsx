@@ -11,6 +11,7 @@ import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { medirFuncion } from '@/lib/analytics';
+import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
 import { upsertOpcion } from '@/lib/opciones';
 import { slugBloqueado } from '@/lib/directorios';
 import { libreriaFormSchema, libreriaVacia, slugDeLibreria } from '@/lib/libreria-schema';
@@ -97,6 +98,24 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
    * que sí las persiste.
    */
   const [labelNuevoDeBarrio, setLabelNuevoDeBarrio] = useState<string | null>(null);
+  /**
+   * Lo mismo para la ciudad — B-967. **Entra en el mismo cambio que el control**,
+   * que es la lección de B-914: un `TaxonomiaSelect` cuyo label no se persiste
+   * guarda el slug y no da de alta la opción, así que ningún desplegable la vuelve
+   * a ofrecer y el sitio la muestra des-slugueada.
+   *
+   * La provincia **no lleva buffer y no le falta**: sus 24 valores están sembrados
+   * `fijo: true`, así que «Otro…» no puede crear ninguna.
+   */
+  const [labelNuevoDeCiudad, setLabelNuevoDeCiudad] = useState<string | null>(null);
+  /**
+   * Y la provincia — B-967. **Sus 24 valores están sembrados `fijo: true`, así que
+   * «Otro…» no debería crear ninguna**… pero el control lo ofrece igual mientras
+   * la cuenta pueda escribir `/opciones/*` (`permitirOtro`), así que tirar el
+   * label sería la misma trampa que B-914 esperando a que alguien lo use. Cuesta
+   * tres líneas y no hay que razonar sobre si puede pasar.
+   */
+  const [labelNuevoDeProvincia, setLabelNuevoDeProvincia] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
   useFormularioSucio(form);
@@ -147,12 +166,17 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
        * Y lo que falla se avisa **por su nombre**, no con un «algo salió mal»: el
        * arreglo es volver a tipear esa etiqueta (B-177).
        */
-      if (labelNuevoDeBarrio?.trim()) {
+      for (const [campo, comoSeLlama, label] of [
+        ['barrio', 'barrio', labelNuevoDeBarrio],
+        ['ciudad', 'ciudad', labelNuevoDeCiudad],
+        ['provincia', 'provincia', labelNuevoDeProvincia],
+      ] as const) {
+        if (!label?.trim()) continue;
         try {
-          await upsertOpcion('barrio', labelNuevoDeBarrio, uid);
+          await upsertOpcion(campo, label, uid);
         } catch {
           setAviso(
-            `Se guardó, pero el barrio «${labelNuevoDeBarrio}» no quedó en la lista. ` +
+            `Se guardó, pero el ${comoSeLlama} «${label}» no quedó en la lista. ` +
               'Volvé a tipearlo la próxima vez que edites la ficha.',
           );
           return;
@@ -241,35 +265,74 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         </Campo>
 
         {/*
-          **El mismo `/opciones/barrio` que usan las actividades** (§ 2 del PRD):
-          una librería en Palermo y un taller en Palermo comparten slug, que es lo
-          que deja mostrar las dos cosas en el hub de barrio. Por eso va el control
-          de taxonomía y no un input libre.
+          **La misma cascada que una sede** — B-967, D-710. Provincia primero, y de
+          ahí barrio (CABA) o ciudad (el resto), con la misma `subdivisionDe` que
+          usan el editor de modalidades y el riel del sitio.
+
+          Los tres vocabularios son **los mismos que usan las actividades** (§ 2 del
+          PRD): una librería en Palermo y un taller en Palermo comparten slug, que
+          es lo que deja mostrar las dos cosas en el hub de barrio. Por eso van
+          controles de taxonomía y no inputs libres.
         */}
-        <Campo label="Barrio" htmlFor="lib-barrio" requerido error={errorDe('barrio')}>
+        <Campo label="Provincia" htmlFor="lib-provincia" requerido error={errorDe('provincia')}>
           <TaxonomiaSelect
-            campo="barrio"
+            campo="provincia"
             uid={uid}
-            id="lib-barrio"
-            value={form.barrio}
+            id="lib-provincia"
+            value={form.provincia}
             onChange={(v, label) => {
-              set('barrio', v);
-              // El segundo argumento es el label a persistir, y tirarlo era B-914.
-              if (label) setLabelNuevoDeBarrio(label);
+              // `conProvincia` arrastra los otros dos: CABA completa la ciudad
+              // sola, salir de CABA limpia el barrio. Es regla del modelo y por
+              // eso vive en `lib/geografia.mjs`, no acá.
+              const geo = conProvincia(
+                { provincia: form.provincia, barrio: form.barrio, ciudad: form.ciudad },
+                v,
+              );
+              set('provincia', geo.provincia);
+              set('barrio', geo.barrio);
+              set('ciudad', geo.ciudad);
+              if (label) setLabelNuevoDeProvincia(label);
             }}
-            placeholder="Elegí el barrio"
+            placeholder="Elegí la provincia"
           />
         </Campo>
 
-        <Campo label="Ciudad" htmlFor="lib-ciudad" error={errorDe('ciudad')}>
-          <input
-            id="lib-ciudad"
-            className={claseInput}
-            maxLength={80}
-            value={form.ciudad}
-            onChange={(e) => set('ciudad', e.target.value)}
-          />
-        </Campo>
+        {subdivisionDe(form.provincia) === 'barrio' ? (
+          <Campo label="Barrio" htmlFor="lib-barrio" error={errorDe('barrio')}>
+            <TaxonomiaSelect
+              campo="barrio"
+              uid={uid}
+              id="lib-barrio"
+              value={form.barrio}
+              onChange={(v, label) => {
+                set('barrio', v);
+                // El segundo argumento es el label a persistir, y tirarlo era B-914.
+                if (label) setLabelNuevoDeBarrio(label);
+              }}
+              placeholder="Elegí el barrio"
+            />
+          </Campo>
+        ) : (
+          <Campo
+            label="Ciudad"
+            htmlFor="lib-ciudad"
+            error={errorDe('ciudad')}
+            ayuda={form.provincia ? undefined : 'Elegí primero la provincia.'}
+          >
+            <TaxonomiaSelect
+              campo="ciudad"
+              uid={uid}
+              id="lib-ciudad"
+              value={form.ciudad}
+              deshabilitado={!form.provincia}
+              onChange={(v, label) => {
+                set('ciudad', v);
+                if (label) setLabelNuevoDeCiudad(label);
+              }}
+              placeholder="Elegí o agregá la ciudad"
+            />
+          </Campo>
+        )}
 
         <Campo
           label="Coordenadas"

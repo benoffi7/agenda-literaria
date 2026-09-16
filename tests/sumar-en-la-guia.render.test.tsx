@@ -38,6 +38,16 @@ import { SumarSuscripcion } from '@/components/publico/SumarSuscripcion';
 import { enviarLibreria, enviarLugar, enviarSuscripcion } from '@/lib/enviar-ficha';
 
 const BARRIOS = [{ slug: 'palermo', label: 'Palermo' }];
+// B-967 — la cascada de las guías. El formulario arranca en CABA, así que lo que
+// se ve por defecto es el desplegable de barrio.
+const PROVINCIAS_OFRECIDAS = [
+  { slug: 'caba', label: 'CABA' },
+  { slug: 'buenos-aires', label: 'Buenos Aires' },
+];
+const CIUDADES_OFRECIDAS = [
+  { slug: 'caba', label: 'CABA' },
+  { slug: 'mar-del-plata', label: 'Mar del Plata' },
+];
 const TIPOS_LUGAR = [{ slug: 'cafe', label: 'Café' }];
 const CONDICIONES = [{ slug: 'con-consumicion', label: 'Con consumición' }];
 const TIPOS_OFERENTE = [{ slug: 'libreria', label: 'Librería' }];
@@ -71,7 +81,14 @@ const pasaronLosSegundos = () => {
 // Librerías
 // ─────────────────────────────────────────────────────────────────────
 
-const montarLibreria = () => render(<SumarLibreria barriosOfrecidos={BARRIOS} />);
+const montarLibreria = () =>
+  render(
+    <SumarLibreria
+      barriosOfrecidos={BARRIOS}
+      provinciasOfrecidas={PROVINCIAS_OFRECIDAS}
+      ciudadesOfrecidas={CIUDADES_OFRECIDAS}
+    />,
+  );
 
 const llenarLibreria = async () => {
   await userEvent.type(screen.getByLabelText(/cómo se llama/i), 'Librería Del Otro Lado');

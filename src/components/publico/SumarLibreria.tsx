@@ -1,4 +1,5 @@
 import { Campo, claseInput } from '@/components/campos/Campo';
+import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
 import { claseBotonPrimario, claseRotulo } from '@/components/sitio/estilos';
 import { CampoTrampa, Gracias, useAltaPublica } from '@/components/publico/altaPublica';
 import { CampoDeTaxonomia } from '@/components/publico/camposDeTaxonomia';
@@ -56,6 +57,13 @@ interface Props {
    * sitio se rebuildea cuando cambian (§4.4), así que la lista viaja al día.
    */
   barriosOfrecidos: readonly OpcionOfrecida[];
+  /**
+   * Las provincias y las ciudades, con el mismo reparto — B-967. Las provincias
+   * vienen sembradas (`PROVINCIAS`), las ciudades crecen con el uso igual que los
+   * barrios.
+   */
+  provinciasOfrecidas: readonly OpcionOfrecida[];
+  ciudadesOfrecidas: readonly OpcionOfrecida[];
 }
 
 const TEXTO_VIA: Record<ViaContactoLibreria, string> = {
@@ -70,7 +78,11 @@ const PLACEHOLDER_VIA: Record<ViaContactoLibreria, string> = {
   instagram: '@tucuenta',
 };
 
-export function SumarLibreria({ barriosOfrecidos }: Props) {
+export function SumarLibreria({
+  barriosOfrecidos,
+  provinciasOfrecidas,
+  ciudadesOfrecidas,
+}: Props) {
   const alta = useAltaPublica<LibreriaForm>({
     inicial: libreriaVacia,
     schema: libreriaPublicaFormSchema,
@@ -144,34 +156,76 @@ export function SumarLibreria({ barriosOfrecidos }: Props) {
           />
         </Campo>
 
+        {/*
+          B-967 — la misma cascada del panel y del riel, con la misma
+          `subdivisionDe`. Acá «Otro…» **no da de alta** la etiqueta —un anónimo no
+          escribe en `/opciones/*`, que es un documento compartido por todo el
+          sitio— pero existe igual, por lo mismo que en el barrio: la lista puede
+          no tener la ciudad de quien carga, y un desplegable cerrado dejaría el
+          formulario inguardable.
+        */}
         <Campo
-          label="Barrio"
-          htmlFor="lib-pub-barrio"
+          label="Provincia"
+          htmlFor="lib-pub-provincia"
           requerido
-          error={errorDe('barrio')}
-          ayuda={
-            barriosOfrecidos.length > 0
-              ? 'Si no está en la lista, elegí «Otro…» y escribilo.'
-              : undefined
-          }
+          error={errorDe('provincia')}
         >
           <CampoDeTaxonomia
-            id="lib-pub-barrio"
-            opciones={barriosOfrecidos}
-            value={form.barrio}
-            onChange={(v) => set('barrio', v)}
-            placeholder="Elegí el barrio"
+            id="lib-pub-provincia"
+            opciones={provinciasOfrecidas}
+            value={form.provincia}
+            onChange={(v) => {
+              const geo = conProvincia(
+                { provincia: form.provincia, barrio: form.barrio, ciudad: form.ciudad },
+                v,
+              );
+              set('provincia', geo.provincia);
+              set('barrio', geo.barrio);
+              set('ciudad', geo.ciudad);
+            }}
+            placeholder="Elegí la provincia"
           />
         </Campo>
 
-        <Campo label="Ciudad" htmlFor="lib-pub-ciudad" error={errorDe('ciudad')}>
-          <input
-            id="lib-pub-ciudad"
-            className={claseInput}
-            value={form.ciudad}
-            onChange={(e) => set('ciudad', e.target.value)}
-          />
-        </Campo>
+        {subdivisionDe(form.provincia) === 'barrio' ? (
+          <Campo
+            label="Barrio"
+            htmlFor="lib-pub-barrio"
+            error={errorDe('barrio')}
+            ayuda={
+              barriosOfrecidos.length > 0
+                ? 'Si no está en la lista, elegí «Otro…» y escribilo.'
+                : undefined
+            }
+          >
+            <CampoDeTaxonomia
+              id="lib-pub-barrio"
+              opciones={barriosOfrecidos}
+              value={form.barrio}
+              onChange={(v) => set('barrio', v)}
+              placeholder="Elegí el barrio"
+            />
+          </Campo>
+        ) : (
+          <Campo
+            label="Ciudad"
+            htmlFor="lib-pub-ciudad"
+            error={errorDe('ciudad')}
+            ayuda={
+              form.provincia
+                ? 'Si no está en la lista, elegí «Otro…» y escribila.'
+                : 'Elegí primero la provincia.'
+            }
+          >
+            <CampoDeTaxonomia
+              id="lib-pub-ciudad"
+              opciones={ciudadesOfrecidas}
+              value={form.ciudad}
+              onChange={(v) => set('ciudad', v)}
+              placeholder="Elegí la ciudad"
+            />
+          </Campo>
+        )}
       </div>
 
       <fieldset className="min-w-0">
