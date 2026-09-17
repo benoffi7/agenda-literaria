@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **veinticinco** salidas, una por una:
+1. **¿Es público?** Resolvé las **veintiocho** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|

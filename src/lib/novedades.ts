@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'guia-de-bibliotecas',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'La Guía suma su cuarta sección: bibliotecas',
+    detalle:
+      'Populares, barriales, especializadas: qué tipo son, si tienen catálogo en línea y si ' +
+      'hay que asociarse y cuánto sale. Tienen DOS horarios y no es un descuido: el del ' +
+      'mostrador y el de la sala de lectura casi nunca son el mismo. Y una biblioteca que ' +
+      'además presta su sala va DOS veces, una acá y otra en «Lugares»: son dos preguntas ' +
+      'de dos personas distintas.',
+    donde: 'El botón «Bibliotecas» del listado. En el sitio, la pestaña «Guía».',
+  },
+  {
     id: 'horario-de-atencion-en-la-guia',
     fecha: '2026-09-17',
     version: '1.11.0',
