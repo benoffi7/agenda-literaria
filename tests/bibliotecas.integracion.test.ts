@@ -29,10 +29,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import type { Firestore as FirestoreAdmin } from 'firebase-admin/firestore';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import {
   Timestamp,
   collection,
@@ -55,29 +54,21 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+/*
+ * **El helper compartido de credenciales — B-1060**, y no una copia propia.
+ * Entró a `main` mientras se escribía este archivo, y `tests/credenciales-del-emulador.test.ts`
+ * barre `tests/` para que la copia quince no vuelva a nacer. Además trae gratis
+ * la guarda de **B-1112**: `entrarComo` compara el `aud` del ID token contra
+ * `PROJECT_ID` en el primer login del proceso y falla nombrando los dos
+ * proyectos, en vez de dejar un `PERMISSION_DENIED` que se diagnostica de cero.
+ */
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 const UID = 'uid_bibliotecas_admin';
 const UID_PELADO = 'uid_bibliotecas_sin_claim';
-
-const token = async (uid: string, claims: Record<string, boolean>) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `b-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  // Solo el registro (`setCustomUserClaims`), que es lo que hace producción.
-  // Pasarlos también en el custom token tapaba el desajuste de B-894 y es la
-  // vía infiel (B-895).
-  await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return t;
-};
 
 /** El Admin SDK, para sembrar lo que ningún cliente puede escribir. */
 const conAdminSdk = async (fn: (db: FirestoreAdmin) => Promise<void>) => {
@@ -156,7 +147,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     // B-174 / B-219 — las reglas de este checkout, sobre la base de este
     // working-tree, que arranca sin ninguna.
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   describe('el camino que funciona: un admin carga una biblioteca', () => {
@@ -341,7 +332,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       await signOut(auth());
       const ref = nuevaRef();
       await setDoc(ref, documento({}, form(), 'formulario-publico'));
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       const leida = await getDoc(ref);
       expect(leida.data()!.origen).toBe('formulario-publico');
       expect(leida.data()!.estado).toBe('pendiente');
@@ -353,7 +344,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         setDoc(nuevaRef(), documento({ estado: 'publicado' }, form(), 'formulario-publico')),
         'un anónimo publicando',
       );
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('un anónimo no puede decir que su ficha vino del panel', async () => {
@@ -362,7 +353,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         setDoc(nuevaRef(), documento({}, form(), 'panel')),
         'un anónimo con origen panel',
       );
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('una ficha que llega de afuera nace SIN fotos', async () => {
@@ -382,7 +373,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         setDoc(nuevaRef(), documento({}, conFoto, 'formulario-publico')),
         'un anónimo con una foto',
       );
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       // Y el control positivo: desde el panel **sí** entra, que es donde vive el
       // editor de galería y donde hay alguien mirando.
       const ref = nuevaRef();
@@ -611,7 +602,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         getDocs(collection(db(), 'bibliotecas')),
         'un anónimo listando el directorio',
       );
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('una cuenta sin el claim tampoco', async () => {
@@ -619,14 +610,14 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       // diciendo «cualquiera logueado» y los casos de arriba no lo verían.
       const ref = nuevaRef();
       await setDoc(ref, documento({ estado: 'publicado' }));
-      await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
+      await entrarComo(UID_PELADO);
       await rechazadaPorPermisos(getDoc(ref), 'una cuenta pelada leyendo');
       await rechazadaPorPermisos(
         updateDoc(ref, { descripcion: 'otra' }),
         'una cuenta pelada editando',
       );
       await rechazadaPorPermisos(deleteDoc(ref), 'una cuenta pelada borrando');
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
   });
 

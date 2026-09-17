@@ -157,19 +157,106 @@ function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
   if (!url) return <span className="text-tinta/55">Trayendo la imagen…</span>;
 
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="inline-block">
-      <img
-        src={url}
-        /*
-         * El texto alternativo no puede salir del título: es texto de un tercero
-         * y describiría la actividad, no la foto. Lo que le sirve a quien escucha
-         * la pantalla es qué es esto y de quién vino.
-         */
-        alt="El flyer que mandaron con esta propuesta"
-        loading="lazy"
-        className="max-h-40 rounded-md border border-borde"
-      />
-    </a>
+    <div className="flex flex-col items-start gap-2">
+      <a href={url} target="_blank" rel="noreferrer" className="inline-block">
+        <img
+          src={url}
+          /*
+           * El texto alternativo no puede salir del título: es texto de un
+           * tercero y describiría la actividad, no la foto. Lo que le sirve a
+           * quien escucha la pantalla es qué es esto y de quién vino.
+           */
+          alt="El flyer que mandaron con esta propuesta"
+          loading="lazy"
+          className="max-h-40 rounded-md border border-borde"
+        />
+      </a>
+      <BajarElFlyer url={url} />
+    </div>
+  );
+}
+
+/**
+ * **Bajar el flyer al disco** — B-926 (a), la primera de las cuatro opciones.
+ *
+ * ── Por qué existe, y es el punto del ítem ────────────────────────────────
+ * **El único momento en que esta foto existe y alguien la está mirando es esta
+ * pantalla.** Al aceptar la propuesta, `borrarImagenAlCerrar` borra el original
+ * de `propuestas/` (B-863); al rechazarla, también. Sin un botón acá, la única
+ * forma de conservarla es acordarse de abrirla en otra pestaña y guardarla a
+ * mano antes de decidir — o sea, acordarse de algo que la pantalla no pide.
+ *
+ * ── Por qué NO alcanza un `<a download>` sobre la URL ─────────────────────
+ * Es lo que el ítem del backlog proponía («la descarga es un `<a download>`
+ * sobre la URL que el panel ya trae») y **no funciona**: el atributo `download`
+ * se **ignora** cuando el destino es de otro origen, y la URL de Storage lo es
+ * (`firebasestorage.googleapis.com`). El resultado sería el mismo link que ya
+ * está arriba —abre la imagen en una pestaña— con un botón que promete otra
+ * cosa. Es la clase de promesa que no se cumple y nadie reporta, porque «se
+ * abrió algo» se parece bastante a que funcionó.
+ *
+ * Lo que sí funciona es traer los bytes y armar un `blob:` del **propio**
+ * origen, que es donde `download` sí manda. La URL de descarga de Storage
+ * responde CORS para el `GET` con su token, así que el `fetch` alcanza.
+ *
+ * `URL.revokeObjectURL` en el mismo tick: el blob queda retenido en memoria
+ * hasta que se revoque, y una bandeja con veinte propuestas abiertas se las
+ * acumularía todas.
+ */
+function BajarElFlyer({ url }: { url: string }) {
+  const [bajando, setBajando] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  const bajar = async () => {
+    setBajando(true);
+    setFallo(null);
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      /*
+       * El nombre **no sale del título de la propuesta**: es texto de un tercero
+       * y terminaría en el nombre de un archivo del disco de quien revisa. Sale
+       * del tipo del blob, que es lo único que describe al archivo y no a nadie.
+       */
+      const ext = (blob.type.split('/')[1] ?? 'jpg').replace(/[^a-z0-9]/gi, '');
+      a.download = `flyer-de-propuesta.${ext || 'jpg'}`;
+      a.click();
+      URL.revokeObjectURL(href);
+    } catch (e: unknown) {
+      /*
+       * El fallo se dice y no se traga: quien iba a bajar la foto antes de
+       * descartarla necesita saber que **no la bajó**, porque el paso siguiente
+       * la borra. Un botón que falla en silencio acá pierde la foto de verdad.
+       */
+      setFallo(
+        `No se pudo bajar (${e instanceof Error ? e.message : 'error desconocido'}). ` +
+          'Abrila en otra pestaña y guardala a mano antes de seguir.',
+      );
+    } finally {
+      setBajando(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void bajar()}
+        disabled={bajando}
+        className={`${claseBotonSecundario} disabled:opacity-50`}
+      >
+        {bajando ? 'Bajando…' : 'Bajar la imagen'}
+      </button>
+      {fallo && (
+        <p role="alert" className="text-xs text-acento">
+          {fallo}
+        </p>
+      )}
+    </>
   );
 }
 

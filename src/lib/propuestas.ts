@@ -38,6 +38,7 @@
 import { conModalidadDeFila, modalidadVacia, sedeVacia } from '@/lib/formulario/estadoInicial';
 import { formVacio } from '@/lib/formulario/estadoInicial';
 import { nuevaSesionId } from '@/lib/sesiones';
+import { slugify } from '@/lib/slugify';
 import type { ActividadForm, Modalidad, SesionForm } from '@/types/actividad';
 import type { FechaPropuesta, ModalidadPropuesta, Propuesta } from '@/types/propuesta';
 
@@ -213,10 +214,32 @@ export const avisosDeConversion = (
  *    ponerlo — ni debería.
  *  - **`estado`**: la actividad nace **borrador** (D-17). Aceptar prellena, no
  *    publica.
- *  - **`slug`**: se arma solo desde el título en el formulario, y queda fijo al
- *    publicar (trampa 10). Prellenarlo acá sería fijar una URL que nadie revisó.
  *  - **`titulo` sí viaja tal cual**, que es lo que hace que el slug derivado sea
  *    el que la persona quiso.
+ *
+ * ── Y el `slug` SÍ viaja, desde B-926 ─────────────────────────────────────
+ * Este bullet decía lo contrario: «se arma solo desde el título en el
+ * formulario, y queda fijo al publicar (trampa 10); prellenarlo acá sería fijar
+ * una URL que nadie revisó». **El argumento era correcto y la conclusión no**, y
+ * el resultado era un formulario que se abría ya inválido.
+ *
+ * El slug **no** «se arma solo desde el título»: lo deriva `cambiarTitulo`
+ * (`lib/formulario/cascadas.ts`) cuando alguien **escribe** el título. En una
+ * conversión el título llega puesto y nadie lo escribe, así que la cascada no
+ * dispara nunca: el formulario abría con el slug en blanco y el guardado
+ * rebotaba contra «El slug es obligatorio» (`lib/schema.ts`), con la única
+ * salida de tocarle una letra al título para despertar la cascada. Un formulario
+ * que se abre inválido y no dice por qué.
+ *
+ * **Y la revisión que aquel párrafo quería proteger no se pierde:** el slug
+ * queda **editable hasta publicar** —ahí se congela, trampa 10— y el formulario
+ * ya avisa que hay que revisarlo. Prellenarlo no fija ninguna URL; lo que fija
+ * la URL es publicar.
+ *
+ * Se usa el **mismo `slugify`** que `cambiarTitulo`, no una derivación propia:
+ * dos formas de armar el slug del mismo título se separan sin que nada falle
+ * (la clase de B-88), y acá el precio sería que la conversión y la edición
+ * produzcan URLs distintas para el mismo texto.
  */
 export const propuestaAFormulario = (
   p: Propuesta,
@@ -246,6 +269,9 @@ export const propuestaAFormulario = (
     form: {
       ...formVacio(),
       titulo: p.titulo,
+      // B-926 — ver el docblock: sin esto el formulario abre inválido, porque la
+      // cascada del slug solo dispara cuando alguien **escribe** el título.
+      slug: slugify(p.titulo),
       descripcion: p.descripcion,
       esCiclo: p.fechas.length > 1,
       sesiones: p.fechas.map(sesionDeFecha),

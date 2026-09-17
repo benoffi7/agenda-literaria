@@ -11613,8 +11613,9 @@ presentaron.
 > `scripts/decisiones-referenciadas.mjs` busca el caso inverso (citadas y nunca
 > escritas). Mismo riesgo, misma clase de día de trabajo, media red. Es
 > **B-1128**, y el mismo día lo demostró **tres veces**: esta colisión más los
-> dos ítems de librerías que nacieron como B-1113 y B-1114 sobre números ya
-> ocupados. Las tres las agarró alguien al integrar, ninguna un chequeo.
+> dos ítems de librerías que nacieron sobre números ya ocupados y entraron
+> renumerados como **B-1126** y **B-1127**. Las tres las agarró alguien al
+> integrar, ninguna un chequeo.
 >
 > Dos cosas que el ítem necesita y no son obvias:
 >
