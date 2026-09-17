@@ -267,7 +267,7 @@ describe('lo que cada afiche lleva, y lo que no', () => {
     // tiene que seguirlas sola.
     const fuente = readFileSync(raiz('src/lib/cartelera.ts'), 'utf8');
     expect(fuente).toContain("from '@/lib/rutasPublicas'");
-    expect(fuente.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/['`]\/actividad\//);
+    expect(fuente.replace(/\/\*[\s\S]*?\*\/{1}/g, '')).not.toMatch(/['`]\/actividad\/{1}/);
   });
 
   it('la medida viaja cuando se conoce, y no se inventa cuando no', () => {

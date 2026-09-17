@@ -146,7 +146,7 @@ describe('el aviso de etiqueta sin registrar llega a la pantalla (B-177)', () =>
     for (const jerga of ['/opciones', 'slug', 'Firestore', 'taxonomía', 'upsert', '§']) {
       expect(
         // Solo el texto visible: los comentarios del fuente sí nombran todo eso.
-        AVISO.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''),
+        AVISO.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/\/\/.*$/gm, ''),
         `el aviso usa jerga: «${jerga}»`,
       ).not.toContain(jerga);
     }

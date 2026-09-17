@@ -85,7 +85,7 @@ describe('B-973 · una taxonomía declarada llega a producción', () => {
     const bloque = /export const CAMPOS_TAXONOMIA = \[([\s\S]*?)\] as const;/.exec(fuente);
     expect(bloque, 'el script no encontraría la declaración').not.toBeNull();
 
-    const sinComentarios = bloque![1]!.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const sinComentarios = bloque![1]!.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/\/\/.*$/gm, '');
     const extraidos = [...sinComentarios.matchAll(/'([a-z][a-z0-9-]*)'/g)].map((m) => m[1]);
 
     expect(extraidos).toEqual([...CAMPOS_TAXONOMIA]);

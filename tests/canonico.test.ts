@@ -63,7 +63,7 @@ const fuente = (rel: string): string => readFileSync(rel, 'utf8');
  * explicarlo — el mismo recorte que hace `tests/pagina-de-detalle.test.ts`.
  */
 const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  src.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Los archivos versionados de `src/`, que es donde no puede haber un dominio. */
 const archivosDeSrc = (): string[] =>
