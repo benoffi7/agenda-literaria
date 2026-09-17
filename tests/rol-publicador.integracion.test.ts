@@ -27,11 +27,11 @@
  * **quién** puede tocarlos, no qué campos tienen.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import {
   collection,
   deleteDoc,
@@ -83,45 +83,6 @@ const MAIL_PUB_2 = 'otro.publicador.b888@ejemplo.test';
 
 /** Una sola app del Admin SDK para sembrar, creada en el `beforeAll`. */
 let appSiembra: ReturnType<typeof initAdmin> | null = null;
-
-/**
- * Un usuario del emulador con su mail y sus claims, y el custom token para
- * entrar con él.
- *
- * El mail va en el **registro de la cuenta** y no en los developer claims, y
- * eso es lo que hace que el token se parezca al de producción: se verificó
- * contra el emulador que un claim llamado `email` en el custom token **no pisa**
- * el del registro. O sea que `request.auth.token.email` es siempre el de la
- * cuenta — que es la propiedad sobre la que descansa `/usuarios`.
- */
-const tokenDe = async (
-  uid: string,
-  claims: Record<string, unknown>,
-  email?: string,
-  emailVerificado = true,
-): Promise<string> => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `b888-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  // Alta o actualización según exista: el emulador de Auth no se limpia entre
-  // archivos, así que la cuenta puede venir de una corrida anterior.
-  const existe = await a.getUser(uid).then(() => true).catch(() => false);
-  const datos = email ? { email, emailVerified: emailVerificado } : {};
-  if (existe) await a.updateUser(uid, datos);
-  else await a.createUser({ uid, ...datos });
-  await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return t;
-};
-
-const entrarComo = async (
-  uid: string,
-  claims: Record<string, unknown>,
-  email?: string,
-  emailVerificado = true,
-): Promise<void> => {
-  await signInWithCustomToken(auth(), await tokenDe(uid, claims, email, emailVerificado));
-};
 
 /**
  * `code === 'permission-denied'` y no el mensaje — el mismo helper que
@@ -299,7 +260,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
   // ══════════════════════════════════════════════════════════════════════
   describe('el control positivo: el rol tiene que SERVIR, no solo negar', () => {
     it('el admin sigue leyendo y escribiendo todo, como antes del rol nuevo', async () => {
-      await entrarComo(UID_ADMIN, { admin: true }, MAIL_ADMIN);
+      await entrarComo(UID_ADMIN, { admin: true }, { email: MAIL_ADMIN });
       expect((await getDoc(doc(db(), 'actividades', MIA))).exists()).toBe(true);
       expect((await getDoc(doc(db(), 'actividades', AJENA))).exists()).toBe(true);
       // El listado entero, sin `where`: es lo que hace hoy `listarActividades()`.
@@ -309,7 +270,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     });
 
     it('el publicador lee y edita LO SUYO, y puede publicar y despublicar', async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       expect((await getDoc(doc(db(), 'actividades', MIA))).exists()).toBe(true);
 
       // El pedido del dueño: **puede gestionar el estado de lo suyo**, sin que
@@ -331,7 +292,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        *
        * Es la query que la tajada 2 tiene que usar en el listado del panel.
        */
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       const propias = await getDocs(
         query(collection(db(), 'actividades'), where('createdBy', '==', UID_PUB)),
       );
@@ -340,7 +301,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     });
 
     it('el publicador registra su mail en /usuarios y lo vuelve a leer', async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       const { registrarUsuario } = await import('@/lib/usuarios');
       expect(await registrarUsuario(UID_PUB, MAIL_PUB)).toBe(true);
       const leido = await getDoc(doc(db(), 'usuarios', UID_PUB));
@@ -348,10 +309,10 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     });
 
     it('el admin lee el directorio entero, que es lo que le pinta el filtro', async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       const { registrarUsuario } = await import('@/lib/usuarios');
       await registrarUsuario(UID_PUB, MAIL_PUB);
-      await entrarComo(UID_ADMIN, { admin: true }, MAIL_ADMIN);
+      await entrarComo(UID_ADMIN, { admin: true }, { email: MAIL_ADMIN });
       await registrarUsuario(UID_ADMIN, MAIL_ADMIN);
 
       const { listarUsuarios, mailesPorUid } = await import('@/lib/usuarios');
@@ -366,7 +327,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
   // ══════════════════════════════════════════════════════════════════════
   describe('un publicador no se apropia de lo ajeno ni se saca lo propio de encima', () => {
     beforeEach(async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
     });
 
     it('no edita una actividad ajena', async () => {
@@ -490,7 +451,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
   // ══════════════════════════════════════════════════════════════════════
   describe('un publicador no lee lo que no es suyo', () => {
     beforeEach(async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
     });
 
     it('no lee una actividad ajena, documento por documento', async () => {
@@ -549,7 +510,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
   // ══════════════════════════════════════════════════════════════════════
   describe('un publicador no toca lo compartido ni lo de terceros', () => {
     beforeEach(async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
     });
 
     it('lee /opciones como cualquiera, pero no la escribe', async () => {
@@ -668,7 +629,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
      * ruidoso y se arregla en un comando; ganarlo en silencio, no.
      */
     beforeEach(async () => {
-      await entrarComo(UID_AMBOS, { admin: true, publicador: true }, MAIL_PUB_2);
+      await entrarComo(UID_AMBOS, { admin: true, publicador: true }, { email: MAIL_PUB_2 });
     });
 
     it('no lee una actividad ajena, aunque tenga el claim admin', async () => {
@@ -710,7 +671,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * impide que `/usuarios` se vuelva un endpoint de escritura abierto al
        * mundo, que es lo que sería si cualquiera con sesión pudiera registrarse.
        */
-      await entrarComo(UID_PELADO, {}, 'pelado.b888@ejemplo.test');
+      await entrarComo(UID_PELADO, {}, { email: 'pelado.b888@ejemplo.test' });
       await rechazada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin claim');
       await rechazada(
         setDoc(doc(db(), 'actividades', 'act_b888_pelada'), actividadDe(UID_PELADO)),
@@ -755,7 +716,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     });
 
     beforeEach(async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
     });
 
     it('reserva un nombre libre, y lo puede leer por id', async () => {
@@ -962,7 +923,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
         creadoEn: new Date(),
       });
       olvidarCentinela();
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
     });
 
     it('`listarActividades` le trae lo suyo, y el barrido de antes se rechaza entero', async () => {
@@ -1183,7 +1144,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * que un solo caso se ponga rojo. Es lo que B-894 destapó: lo que se apaga
        * primero es lo que OTORGA.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       const leida = await getDoc(doc(db(), 'actividades', AJENA_MDQ));
       expect(leida.exists(), 'no pudo leer una actividad de su propia ciudad').toBe(true);
     });
@@ -1195,7 +1156,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * Acá se mide la del alcance por ciudad; la de lo propio ya está en el
        * bloque 1.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       const deLaCiudad = await getDocs(
         query(collection(db(), 'actividades'), where('ciudades', 'array-contains', CIUDAD)),
       );
@@ -1205,7 +1166,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('y sigue pudiendo todo lo suyo: el alcance suma, no reemplaza', async () => {
       // Control positivo del otro lado: una regla nueva que tapara la rama del
       // dueño dejaría verdes todas las negaciones de abajo.
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       await updateDoc(doc(db(), 'actividades', MIA_MDQ), {
         titulo: 'Editado por su dueña',
         updatedBy: UID_PUB,
@@ -1247,7 +1208,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
         }),
       );
 
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       const leido = await getDoc(doc(db(), 'actividades', BORRADOR_AJENO));
       expect(leido.exists()).toBe(true);
       const datos = leido.data()!;
@@ -1271,7 +1232,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * caso en rojo. El de lectura de arriba sigue verde, que es lo que lo hace
        * un caso aparte y no el mismo dos veces.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       await rechazada(
         updateDoc(doc(db(), 'actividades', AJENA_MDQ), {
           titulo: 'Le corrijo el título al de al lado',
@@ -1288,7 +1249,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * este caso en rojo. Va aparte del `update` porque son dos cláusulas
        * distintas del archivo: aflojar una no afloja la otra.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       await rechazada(
         deleteDoc(doc(db(), 'actividades', AJENA_MDQ)),
         'borrar una actividad ajena de su propia ciudad',
@@ -1302,7 +1263,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * rojo. Se miden las dos puertas porque son dos permisos distintos: el
        * `get` del documento y el `list` de la query.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       await rechazada(
         getDoc(doc(db(), 'actividades', AJENA_ROSARIO)),
         'leer una actividad ajena de otra ciudad',
@@ -1328,7 +1289,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * [request.auth.token.ciudad])`— deja este caso en rojo, y le abriría el
        * catálogo entero anterior a B-919 a cualquier publicador.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       await rechazada(
         getDoc(doc(db(), 'actividades', AJENA_SIN_CIUDADES)),
         'leer una actividad ajena sin el campo ciudades',
@@ -1349,7 +1310,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * `allow read` deja este caso en rojo. Ningún otro caso del archivo lo
        * cubre.
        */
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       await rechazada(
         getDoc(doc(db(), 'actividades', AJENA_CIUDAD_VACIA)),
         'leer una actividad con la ciudad vacía, sin ciudad en el claim',
@@ -1359,7 +1320,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('un publicador sin ciudad tampoco ve las de ninguna ciudad', async () => {
       // El caso normal del claim sin `--ciudad`: es exactamente el rol de B-888,
       // ve lo suyo y nada más.
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       await rechazada(
         getDoc(doc(db(), 'actividades', AJENA_MDQ)),
         'leer una actividad de una ciudad sin tener ciudad en el claim',
@@ -1379,7 +1340,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * MUTACIÓN PROBADA: cambiar el `Map` por `flatMap` deja este caso en rojo
        * con 3 en vez de 2; sacar la segunda consulta lo deja en rojo con 1.
        */
-      await entrarComo(UID_PUB, claimConCiudad, MAIL_PUB);
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
       const ids = (await listarActividades('publicador', UID_PUB, CIUDAD)).map((a) => a.id);
 
       // Lo de su ciudad que cargó otro: es lo que la segunda consulta agrega.
@@ -1404,7 +1365,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * `listarActividades` hace que esto tire `permission-denied` en lugar de
        * devolver lo suyo.
        */
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       const lista = await listarActividades('publicador', UID_PUB, '');
       expect(lista.map((a) => a.id)).toContain(MIA_MDQ);
       expect(lista.map((a) => a.id)).not.toContain(AJENA_MDQ);

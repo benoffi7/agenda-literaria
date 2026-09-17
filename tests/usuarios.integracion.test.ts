@@ -22,14 +22,13 @@
  * service account, y quien la tiene no necesita esta colección para nada.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo, type Claims } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
-import { PROJECT_ID, cargarReglas, emuladorAuthVivo, emuladorVivo, limpiarFirestore } from './emulador';
+import { cargarReglas, emuladorAuthVivo, emuladorVivo, limpiarFirestore } from './emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const RUTA_REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -50,41 +49,13 @@ const MAIL_ADMIN = 'admin.u888@ejemplo.test';
 const MAIL_PUB = 'publicador.u888@ejemplo.test';
 const MAIL_OTRO = 'otro.u888@ejemplo.test';
 
-const entrarComo = async (
-  uid: string,
-  claims: Record<string, unknown>,
-  email: string,
-  emailVerificado = true,
-): Promise<void> => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `u888-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  // Alta o actualización según exista, y no `create` con `catch`: el alta falla
-  // también por `EMAIL_EXISTS`, y ahí el `update` sobre un uid inexistente tira
-  // un `user-not-found` que no dice nada del motivo real.
-  const existe = await a.getUser(uid).then(() => true).catch(() => false);
-  if (existe) await a.updateUser(uid, { email, emailVerified: emailVerificado });
-  else await a.createUser({ uid, email, emailVerified: emailVerificado });
-  await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  await signInWithCustomToken(auth(), t);
-};
-
 /**
  * Una cuenta **sin dirección de correo** y con `emailVerified: true`, que es el
  * caso que el emulador acepta y que tira abajo el supuesto del que casi cuelga
  * una cláusula borrada (ver el caso que lo usa).
  */
-const entrarSinMail = async (uid: string, claims: Record<string, unknown>): Promise<void> => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `u888-sm-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  const existe = await a.getUser(uid).then(() => true).catch(() => false);
-  if (!existe) await a.createUser({ uid, emailVerified: true });
-  await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  await signInWithCustomToken(auth(), t);
-};
+const entrarSinMail = (uid: string, claims: Claims): Promise<void> =>
+  entrarComo(uid, claims, { emailVerificado: true });
 
 const rechazada = async (operacion: Promise<unknown>, que: string): Promise<void> => {
   let error: unknown;
@@ -134,11 +105,11 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
     it('cada cuenta se registra con su mail, y el admin las lee todas', async () => {
       // Sin esto, todas las negaciones de abajo las pasa también un `if false`
       // (y un emulador caído, y una base sin reglas).
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       await setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_PUB));
       expect((await getDoc(doc(db(), 'usuarios', UID_PUB))).data()?.email).toBe(MAIL_PUB);
 
-      await entrarComo(UID_ADMIN, { admin: true }, MAIL_ADMIN);
+      await entrarComo(UID_ADMIN, { admin: true }, { email: MAIL_ADMIN });
       await setDoc(doc(db(), 'usuarios', UID_ADMIN), registro(MAIL_ADMIN));
       const todos = await getDocs(collection(db(), 'usuarios'));
       expect(todos.docs.map((d) => d.id).sort()).toEqual([UID_ADMIN, UID_PUB].sort());
@@ -148,13 +119,13 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       // Es lo que hace que el mail **no envejezca**: se reescribe en cada login
       // desde el token, en vez de quedar cableado a mano (el defecto que D-610 le
       // señalaba al mapa uid→nombre).
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       await setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_PUB));
       await setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_PUB));
       // El conteo lo hace el admin: **el publicador no puede listar** (la regla
       // condiciona por ruta y eso no es satisfacible en un `list`), y ese rechazo
       // es justamente lo que afirma el caso «tampoco lista el directorio entero».
-      await entrarComo(UID_ADMIN, { admin: true }, MAIL_ADMIN);
+      await entrarComo(UID_ADMIN, { admin: true }, { email: MAIL_ADMIN });
       const suyos = (await getDocs(collection(db(), 'usuarios'))).docs.filter(
         (d) => d.id === UID_PUB,
       );
@@ -165,7 +136,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
 
   describe('escalar escribiendo en /usuarios', () => {
     beforeAll(async () => {
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
     });
 
     it('no escribe el documento de otro uid', async () => {
@@ -265,10 +236,10 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       // completo es el admin, que es quien muestra la autoría.
       //
       // Mutación: cambiar el `allow read` por `esDelPanel()`. Este caso se pone rojo.
-      await entrarComo(UID_ADMIN, { admin: true }, MAIL_ADMIN);
+      await entrarComo(UID_ADMIN, { admin: true }, { email: MAIL_ADMIN });
       await setDoc(doc(db(), 'usuarios', UID_ADMIN), registro(MAIL_ADMIN));
 
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       await rechazada(getDoc(doc(db(), 'usuarios', UID_ADMIN)), 'leer el registro del admin');
     });
 
@@ -279,7 +250,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        * completa. O sea que `listarUsuarios()` es del admin y de nadie más, y el
        * rechazo es limpio y no una lista recortada.
        */
-      await entrarComo(UID_PUB, { publicador: true }, MAIL_PUB);
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
       await rechazada(getDocs(collection(db(), 'usuarios')), 'listar el directorio');
     });
 
@@ -307,8 +278,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       await entrarComo(
         UID_SIN_VERIFICAR,
         { publicador: true },
-        'sin-verificar.u888@ejemplo.test',
-        false,
+        { email: 'sin-verificar.u888@ejemplo.test', emailVerificado: false },
       );
       await rechazada(
         setDoc(doc(db(), 'usuarios', UID_SIN_VERIFICAR), registro('sin-verificar.u888@ejemplo.test')),

@@ -49,9 +49,14 @@ export interface OpcionesDeCuenta {
    */
   email?: string;
   /**
-   * `emailVerified` del registro. Se puede pedir **sin** `email`: una cuenta sin
-   * dirección y con `emailVerified: true` es un caso que el emulador acepta y
-   * que tira abajo el supuesto del que colgaba una cláusula de `/usuarios`.
+   * `emailVerified` del registro. **Con `email`, el default es `true`**, porque
+   * así entra todo el mundo en producción: el login del panel es con Google y
+   * ese mail viene verificado. La cuenta sin verificar es la excepción, y por
+   * eso se pide a mano (`{ email, emailVerificado: false }`).
+   *
+   * Se puede pedir **sin** `email`: una cuenta sin dirección y con
+   * `emailVerified: true` es un caso que el emulador acepta y que tira abajo el
+   * supuesto del que colgaba una cláusula de `/usuarios`.
    */
   emailVerificado?: boolean;
   /**
@@ -108,8 +113,12 @@ export const tokenDe = async (
   const a = getAdminAuth(app);
   try {
     const datos: { email?: string; emailVerified?: boolean } = {};
-    if (email !== undefined) datos.email = email;
-    if (emailVerificado !== undefined) datos.emailVerified = emailVerificado;
+    if (email !== undefined) {
+      datos.email = email;
+      datos.emailVerified = emailVerificado ?? true;
+    } else if (emailVerificado !== undefined) {
+      datos.emailVerified = emailVerificado;
+    }
 
     const existe = await a.getUser(uid).then(() => true).catch(() => false);
     if (!existe) await a.createUser({ uid, ...datos });
