@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { columnasDeCartelera, estiloDeAfiche, proporcionDeAfiche } from '@/lib/afiche';
 import { claseAfiche, claseAfichePortada } from '@/components/sitio/estilos';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * La forma de una imagen del sitio — B-263, D-147.
@@ -135,8 +135,7 @@ describe('columnasDeCartelera — la pared con pocos afiches también tiene que 
  * escriba el mes que viene entra sola.
  */
 const paginasDelSitio = (): string[] =>
-  execFileSync('git', ['ls-files', 'src/pages', 'src/components/sitio'], { encoding: 'utf8' })
-    .split('\n')
+  archivosDelRepo('src/pages', 'src/components/sitio')
     .filter((f) => f.endsWith('.astro'))
     // El panel no es el sitio: tiene su propio criterio y su propio
     // centralizador (`campos/Campo.tsx`), y su miniatura de vista previa sí
