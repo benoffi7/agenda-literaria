@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **El pase de auditores de la Guía encontró seis registros a mano que la cuarta
+  colección no extendió, y tres de ellos afirmaban por escrito lo contrario.**
+  B-960 construyó `/bibliotecas` de punta a punta y salió con la proyección
+  impecable —whitelist de dieciocho campos sin un solo spread, el contacto de
+  quien carga sin salida por ningún camino, el `searchText` derivado y no
+  copiado— pero con las piezas de alrededor a medias. Ninguna filtraba nada: lo
+  que fallaba era la **red**.
+
+  **Lo que no existía y decía existir.** `firestore.rules` afirmaba que
+  `'bibliotecas'` estaba en `COLECCIONES_ABIERTAS` —la lista que hace que abrir
+  una puerta anónima sea un diff visible— y no estaba. El docblock de
+  `contenidoDelSitio.ts` decía que un test afirmaba su
+  `where('estado','==','publicado')`, y ese test no existía. Y **cuatro** bloques
+  `allow delete` decían que la Function de retención «no existe todavía», cuando
+  existe y borra a los 30 días — que es justo la promesa que `/sumar` le hace a
+  quien carga una ficha. Esas tres envejecen peor que un test faltante: uno se
+  nota cuando alguien lo busca, y una afirmación de que existe hace que nadie lo
+  busque nunca.
+
+  **Lo que faltaba sin decirlo.** El paso **8l** del gate contra el emulador: sin
+  él, el barrido recorría `dist/bibliotecas.json` y `dist/guia/bibliotecas/**`
+  sin un solo centinela que pudiera encontrar, o sea verde por vacuidad. La
+  cuarta fila de `DIRECTORIOS_CON_PROYECCION`, que ata qué campo dispara el
+  rebuild contra qué se publica (trampa 8). Y las fichas en el sitemap, que
+  existían y nadie le ofrecía al buscador.
+
+  De paso cayeron dos predicciones que la cuarta sección volvió falsas: «con esto
+  la familia queda cerrada» en el sitemap, y «el cuarto y último» sobre
+  `/lugares.json`. Las dos se escribieron cuando tres parecían todas.
+
 - **Bibliotecas: el cuarto directorio de la Guía** — **B-960**, pedido del dueño.
   Colección `/bibliotecas`, pantalla en el panel, formulario público en
   `/guia/bibliotecas/sumar`, listado y ficha con `Library`, `/bibliotecas.json`,
