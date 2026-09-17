@@ -426,6 +426,53 @@ Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 > que el propio archivo documenta y la que evita mandar la barra a una pestaña
 > vacía.
 >
+> ✅ **Las dos cosas de abajo ya están arregladas — B-877 y B-878, 2026-09-17
+> sobre `ea325da`.** El bloque original queda como estaba escrito (para que se
+> lea contra el hallazgo), y acá va la verificación de cada arreglo, con caso de
+> control probado por mutación en `tests/salud-del-codigo.test.ts` para los dos.
+>
+> - **B-878 — `contarLineas` ya reconoce `{/* … */}`.** El fix es tratar una
+>   línea que empieza con `{/*` igual que una que empieza con `/*` (abre bloque
+>   si no cierra en la misma línea). `ActividadFormulario.tsx` **hoy** (creció
+>   desde el `727` de esta sección: son **828** `wc -l` sobre `ea325da`) mide
+>   **397 significativas** con el contador corregido contra **455** que daba el
+>   contador viejo sobre el mismo archivo de hoy — **58 líneas de sobrecuento**,
+>   consistente con el sesgo que este bloque ya había medido. El **372** de este
+>   bloque no es comparable contra el 397 de hoy: son dos versiones distintas del
+>   archivo, no la misma medición repetida — ver la nota de alcance más abajo.
+>   Reproducido con:
+>   ```
+>   node --input-type=module -e "
+>   import { contarLineas } from './scripts/salud-del-codigo.mjs';
+>   import { readFileSync } from 'node:fs';
+>   console.log(contarLineas(readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8')));
+>   "
+>   ```
+> - **B-877 — el regex `IMPORTS` ya no exige una sola línea.** El fix es sacar el
+>   `\n` de la clase negada del primer alternativo. **Verificado sobre el árbol
+>   de hoy y no copiado del hallazgo:** con el regex corregido, el grafo completo
+>   tiene **1.987 aristas** contra **1.695** que daba el regex viejo sobre el
+>   mismo árbol — **292 aristas recuperadas en 211 de los 572 archivos del
+>   corpus** (`tests/` incluido; solo en los 341 de producción: **154 aristas en
+>   102 archivos**). Los **234 en 180 archivos** de este bloque son la misma
+>   medida sobre el árbol de entonces (180 archivos de producción); el número
+>   crece porque el corpus casi se duplicó, no porque el arreglo cambió. **Los
+>   ciclos siguen en cero en el grafo estático y uno en el completo** — el mismo
+>   diferido que describe el §1.5, sin ninguno nuevo:
+>   ```
+>   node --input-type=module -e "
+>   import { grafo, grafoEstatico, ciclos } from './scripts/salud-del-codigo.mjs';
+>   console.log(ciclos(grafo()).length, ciclos(grafoEstatico()).length);
+>   "
+>   ```
+>
+> **Lo que esto no es: una remedición de §0, §1.1, §1.2, §1.4 o §1.6.** El árbol
+> pasó de **254 a 341 archivos de producción** (63.983 → **94.925 LOC**) entre el
+> `410a924` de la última pasada y `ea325da` de hoy, por seis días de trabajo de
+> otros frentes — ajeno a estos dos ítems y fuera del alcance de un P2/P3. Esas
+> tablas quedan con la fecha que tienen; remedirlas es trabajo de una pasada
+> completa como B-849, y se reporta como pendiente.
+>
 > ⚠️ **Dos cosas que esta pasada encontró en el instrumento y no arregló**
 > (`scripts/` quedaba fuera del alcance de B-856; van al BACKLOG):
 >
