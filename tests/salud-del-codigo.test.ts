@@ -192,6 +192,34 @@ describe('salud del código — la metodología escrita es la que se aplica (B-3
     const c = contarLineas('const a = 1; // por qué\n\n// solo prosa\n');
     expect(c).toEqual({ loc: 3, blancas: 1, comentario: 1, significativas: 1 });
   });
+
+  /*
+   * El gemelo del caso de arriba, para JSX — B-878.
+   *
+   * `l.startsWith('/*')` no reconoce `{/* … *\/}`: una línea de comentario JSX
+   * empieza con `{`, no con `/`, así que caía en el `else` y contaba como
+   * significativa. Mismo texto que el caso de arriba, cambiando el comentario
+   * de línea por uno JSX de una sola línea, para que sea el gemelo exacto.
+   *
+   * MUTACIÓN PROBADA: revertir el `|| l.startsWith('{/*')` de `contarLineas`
+   * pone este caso en rojo — `significativas` pasa de 1 a 2.
+   */
+  it('una línea de comentario JSX ({/* … */}) cuenta como comentario, no como significativa', () => {
+    const c = contarLineas('<p>hola</p>\n\n{/* solo prosa */}\n');
+    expect(c).toEqual({ loc: 3, blancas: 1, comentario: 1, significativas: 1 });
+  });
+
+  /*
+   * El patrón real del corpus no cierra en la misma línea — ver
+   * `src/components/admin/ActividadFormulario.tsx`, donde el comentario JSX
+   * abre con `{/*` solo en su línea y cierra varias líneas después con `*\/}`.
+   * Sin el `|| l.startsWith('{/*')`, ninguna de las tres líneas de prosa caía
+   * en `enBloque` y las tres contaban como significativas.
+   */
+  it('un bloque de comentario JSX multilínea cuenta entero como comentario', () => {
+    const c = contarLineas('<div>\n  {/*\n    prosa\n    más prosa\n  */}\n  <p>hola</p>\n</div>\n');
+    expect(c).toEqual({ loc: 7, blancas: 0, comentario: 4, significativas: 3 });
+  });
 });
 
 /**
