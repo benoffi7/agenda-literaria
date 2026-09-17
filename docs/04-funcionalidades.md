@@ -23,7 +23,7 @@ no ofrecer lo que va a ser rechazado:
 |---|---|
 | Listado y vista calendario | Lo suyo **más lo de su ciudad**. **No es un filtro**: son **dos** consultas —`where('createdBy','==',uid)` y `where('ciudades','array-contains',ciudad)`— unidas en memoria, porque la regla es una disyunción y una query que no la satisface entera se rechaza completa (trampa 7); la pantalla quedaría rota, no acotada |
 | Una actividad de su ciudad que cargó otra cuenta | **Se mira y no se toca.** La fila dice «Solo lectura», el botón dice «Ver» en vez de «Editar» y no tiene menú de acciones; el formulario se abre con todos los campos apagados y sin los botones de guardar. Es lo que la regla permite: `read` sí, `update` y `delete` no |
-| Opciones de los desplegables, estado del catálogo, propuestas, reportar algo, historial de una actividad | No aparecen |
+| Opciones de los desplegables, estado del catálogo, propuestas, reportar algo, historial de una actividad, y los tres directorios de la Guía (librerías, suscripciones, lugares) | No aparecen. Las cinco pantallas que sí ve están escritas una por una en `PERMISOS`: listado, calendario, y el formulario en sus tres formas |
 | «Otro…» en los desplegables de taxonomía | No aparece: crear una etiqueta cambia lo que ve todo el sitio, y `/opciones/*` es de admin. Elegir de la lista sí |
 | Subir la imagen de su actividad | Sí. Lo único que no puede es **pisar** un objeto que ya existe, ni borrar ni enumerar el prefijo |
 | La dirección web única | La verifica igual, contra el índice `/slugs` (D-660): un `get` por id en vez del barrido del catálogo |
@@ -46,12 +46,23 @@ en el teléfono; de `md` en adelante se abren columnas, y son **2 / 3 / 4** en
 `md`-`lg` / `xl` / `2xl`. Antes era una columna angosta en cualquier pantalla, así
 que en un monitor de 1920px el panel mostraba seis actividades y había que
 scrollear veinte veces para ver cuarenta — que es justo lo que un listado existe
-para evitar. El ancho del panel también pasó a decidirse **por vista**: solo el
-listado usa la pantalla completa, el formulario y las demás pantallas se quedan en
-el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
-calendario y el tablero quedaron angostos a propósito— está en el docblock de
+para evitar. El ancho del panel también pasó a decidirse **por vista**: el listado
+usa la pantalla completa y las pantallas de lectura —historial, reportes,
+opciones, propuestas— se quedan en el ancho de siempre. El motivo de cada
+exclusión está en el docblock de
 [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts) y la decisión completa en
 **D-330** ([`06-decisiones.md`](06-decisiones.md)).
+
+**La lista de las que usan todo el ancho creció desde entonces, y hoy son tres.**
+El tablero «Estado del catálogo» entró con B-621 —un tablero de gráficos es el
+caso puro de lo que se recorre de un barrido— y la grilla del mes el 2026-09-07,
+por pedido del dueño mirando el panel publicado: en 896px daba celdas de 120px.
+Las dos habían quedado afuera con un motivo escrito («ensanchar cada una es un
+cambio visual propio»), y la advertencia sigue valiendo para el calendario:
+**entrar a esa lista es una línea, repartir la grilla por dentro es el trabajo
+real**, y eso todavía no está hecho. El formulario tampoco es ya una exclusión
+fija: desde B-814 su ancho depende de la forma elegida (ver «Dos formas del
+formulario, y las elige quien carga»).
 **La marca de autoría dice el mail** (B-888). Hasta la tajada 2 decía «La cargó
 otra cuenta» y no cuál, porque el panel solo tenía uids; con `/usuarios` dice
 `La cargó fulano@…`, y además avisa `La cambió fulano@…` cuando algo que cargaste
@@ -684,10 +695,12 @@ El formulario es usable en teléfono:
   ni autocorregir en slug, handles y URLs.
 
 Y en la otra punta, **el escritorio también es un caso** (B-620): el listado abre
-columnas y usa el ancho de la pantalla, mientras el formulario se queda en el
-ancho de lectura. Las dos mitades son la misma idea —el ancho lo decide lo que se
-está haciendo— y la tabla de qué pantalla usa cuál está en
-[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
+columnas y usa el ancho de la pantalla, y con él el tablero y la grilla del mes
+(B-621), mientras las pantallas de lectura se quedan en el ancho de lectura. Las
+dos mitades son la misma idea —el ancho lo decide lo que se está haciendo— y la
+tabla de qué pantalla usa cuál está en
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts). El formulario es el
+caso aparte: desde B-814 su ancho sale de la forma elegida, no de esta tabla.
 
 ### La versión está siempre a la vista
 
