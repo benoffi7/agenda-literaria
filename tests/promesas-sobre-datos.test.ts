@@ -219,8 +219,19 @@ const deTexto = (archivo: string, texto: string): Fuente => ({ archivo, prosa: p
 const NEGACIONES: readonly { nombre: string; patron: RegExp }[] = [
   {
     nombre: 'no se guarda / no guardamos / no se mide',
+    /*
+     * **Acotada al sujeto — B-925.** «No guardaste nada» es la acción de
+     * quien lee (segunda persona, pretérito: guard-**aste**) y no una
+     * promesa del sitio; «no guardamos» y «no se guarda» sí lo son. Las dos
+     * comparten el mismo prefijo —«guarda»— así que un `\w*` abierto después
+     * del verbo capturaba las dos por igual. El `(?!ste\b)` es la exclusión
+     * mínima: bloquea el pretérito de segunda persona de los verbos en
+     * `-ar` de esta lista (guard**aste**, almacen**aste**, registr**aste**,
+     * rastre**aste**) sin tocar la primera persona del plural ni la forma
+     * impersonal, que siguen entrando por el mismo `\w*`.
+     */
     patron:
-      /no (se |te )?(guarda|guardamos|almacena|almacenamos|registra|registramos|mide|medimos|rastrea|rastreamos|sigue|seguimos)\w*/gi,
+      /no (se |te )?(guarda|guardamos|almacena|almacenamos|registra|registramos|mide|medimos|rastrea|rastreamos|sigue|seguimos)(?!ste\b)\w*/gi,
   },
   {
     nombre: 'sin analítica / sin seguimiento / sin cookies',
@@ -390,7 +401,18 @@ const PROMESAS_SOBRE_PLATA: readonly FormulaDePlata[] = [
   },
   {
     nombre: 'nunca vamos a cobrar / no se cobra',
-    patron: /(nunca|jam[áa]s|no) (te |se |le )?(vamos a |va a |van a )?(cobrar|cobra|cobramos|cobran)\w*/gi,
+    /*
+     * **Acotada al sujeto — B-925.** «Si no cobran» sobre lo que cobra un
+     * lugar (tercero, plural: `SumarLugar.tsx`) no es «nunca vamos a
+     * cobrar» sobre el sitio. Gramaticalmente «cobran» es siempre tercera
+     * persona del plural —nunca «nosotros»—, así que no hace falta una
+     * ventana de contexto para distinguirlas: alcanza con no matchearla. Se
+     * saca `cobran` de la lista y `van a` del auxiliar —el mismo motivo,
+     * tercera del plural— y queda `cobra` bare (impersonal: «esta agenda no
+     * cobra», la frase real de `/ayuda`), `cobramos` (primera del plural) y
+     * `cobrar` (infinitivo, para «no vamos/va a cobrar»).
+     */
+    patron: /(nunca|jam[áa]s|no) (te |se |le )?(vamos a |va a )?(cobrar|cobra(?!n\b)|cobramos)\w*/gi,
     acotable: true,
   },
   {
@@ -634,6 +656,24 @@ describe('ninguna página promete sobre datos algo que el sitio contradice — B
      */
     expect(barrerPromesas(['tests/fixtures/promesa-condicionada.ts'])).toEqual([]);
   });
+
+  it('DETECTOR: «no guardaste» es la acción de quien lee, no una promesa — B-925', () => {
+    /*
+     * La clase, no la instancia: no es solo `MisGuardados.tsx`, es *cualquier*
+     * pretérito de segunda persona de estos verbos. Las tres primeras son la
+     * acción de quien lee y no tienen que disparar nunca; la cuarta es la
+     * misma frase con el sujeto que sí importa, y tiene que seguir disparando
+     * — si dejara de hacerlo, la exclusión se pasó de rosca.
+     */
+    expect(
+      barrerFuentes([
+        deTexto('la lista vacía de guardados', 'Todavía no guardaste nada.'),
+        deTexto('otro verbo de la lista, misma persona', 'No almacenaste ningún dato acá.'),
+        deTexto('tercer verbo', 'No registraste tu actividad en esta sesión.'),
+        deTexto('control: la misma clase de frase, sujeto correcto', 'No guardamos nada de lo que mirás.'),
+      ]).map((h) => `${h.archivo} · ${h.formula}`),
+    ).toEqual(['control: la misma clase de frase, sujeto correcto · no se guarda / no guardamos / no se mide']);
+  });
 });
 
 describe('una negación cuyo objeto es «nada» no se salva con una condición — B-848', () => {
@@ -836,5 +876,23 @@ describe('ninguna página promete sobre plata algo que el sitio desmiente — B-
         ),
       ]),
     ).toEqual([]);
+  });
+
+  it('DETECTOR: «si no cobran» es sobre un lugar, no sobre el sitio — B-925', () => {
+    /*
+     * La clase: «cobran» es siempre tercera persona del plural —nunca
+     * «nosotros»—, así que hablar de si un lugar, un club o un tallerista
+     * cobra no puede ser la promesa de esta familia. La segunda frase es la
+     * misma clase con «van a cobrar» (el mismo auxiliar en plural); la
+     * tercera es el control: la promesa real sobre el sitio, que tiene que
+     * seguir disparando.
+     */
+    expect(
+      barrerPlata([
+        deTexto('sobre un lugar, la frase real de SumarLugar.tsx', 'Si no cobran, dejalo vacío.'),
+        deTexto('sobre un club de lectura', 'Algunos clubes no cobran por sumarse.'),
+        deTexto('control: la misma clase, sujeto correcto', 'Nosotros nunca cobramos nada.'),
+      ]).map((h) => `${h.archivo} · ${h.formula}`),
+    ).toEqual(['control: la misma clase, sujeto correcto · nunca vamos a cobrar / no se cobra']);
   });
 });
