@@ -44,7 +44,9 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm test` | la suite completa. **El tamaño lo dice ella al terminar** (`Test Files` / `Tests`) y no se copia acá: el conteo escrito a mano quedó viejo cuatro veces en dos semanas — ver la nota de abajo |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run tablero` | el tablero del backlog en `http://127.0.0.1:4173` — mira y mueve `docs/BACKLOG.md` sin abrir diecisiete mil líneas. Ver abajo |
+| `npm run tablero` | el tablero del backlog en `http://127.0.0.1:4173` — mira y mueve los dos archivos del backlog sin abrirlos. Ver abajo |
+| `npm run backlog:archivar` | se lleva de `docs/BACKLOG.md` a `docs/BACKLOG-cerrados.md` todo lo que quedó `✅ hecho` o `❌ descartado`, y devuelve al vivo lo archivado que se haya reabierto. Ver abajo |
+| `npm run backlog:archivar:seco` | lo mismo, diciendo qué movería sin tocar nada |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
 | `npm run seed` | siembra `/opciones/*` y el centinela `/slugs/_indice` en el emulador |
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
@@ -93,6 +95,11 @@ backlog como tablero: columnas por prioridad, por sección o por estado, buscado
 sobre el título y el cuerpo, la ficha de cada ítem con su markdown renderizado, y
 una pestaña con las ideas de [`11-ideas-de-producto.md`](11-ideas-de-producto.md).
 
+**Lee los dos archivos del backlog** —`BACKLOG.md` y `BACKLOG-cerrados.md`— y
+escribe en el que tenga el ítem, así que marcar hecho uno abierto toca el vivo y
+una nota sobre uno archivado toca el otro. El alta solo ofrece las secciones del
+vivo: un ítem nuevo nace abierto.
+
 **El markdown sigue siendo la fuente de verdad.** El tablero no guarda nada
 propio: lee los dos archivos en cada pedido y, cuando se cambia algo, reescribe
 **la línea del encabezado** o inserta una cita. Las cuatro cosas que puede
@@ -137,6 +144,44 @@ escribe en el mismo backlog — que es exactamente lo que pasó al construirlo.
 la cubre `tests/tablero.test.ts` con las formas de encabezado que el archivo real
 tiene hoy; `scripts/tablero/servidor.mjs` es HTTP y disco, y se probó a mano de
 punta a punta.
+
+### Archivar los cerrados del backlog
+
+```bash
+npm run backlog:archivar:seco   # qué se movería
+npm run backlog:archivar        # moverlo
+```
+
+`docs/BACKLOG.md` es **lo que falta hacer**; el rastro de lo cerrado vive en
+[`BACKLOG-cerrados.md`](BACKLOG-cerrados.md). Los separa este script, y por eso
+es un script y no una edición a mano: el mes que viene hay otros cincuenta
+cerrados, y una partición hecha a mano es una foto que envejece desde el minuto
+siguiente. **Nada se borra** —el rastro importa más que la prolijidad de la
+lista— y nada se reescribe: el movimiento es por rebanada de líneas, del
+encabezado del ítem a la línea anterior al próximo, sin round-trip markdown →
+objeto → markdown.
+
+El 2026-09-17, cuando se partió por primera vez, eran **372 ítems cerrados de
+433** y el 87% de las líneas: `BACKLOG.md` pasó de 19.334 a 2.597.
+
+**Mueve en las dos direcciones.** Un ítem archivado que se reabre —desde el
+tablero o a mano— vuelve al vivo, a su sección. Sin eso quedaría abierto adentro
+del archivo de cerrados, que es la peor de las dos mentiras, y ninguna corrida
+futura lo sacaría de ahí.
+
+**Antes de escribir, verifica que no se haya perdido texto**: cada bloque movido
+tiene que aparecer entero en una de las dos salidas, y si falta uno no escribe
+nada. `tests/archivar-backlog.test.ts` prueba esa verificación con su control
+negativo —un movimiento que se come una línea **tiene que** dar rojo—, más la
+conservación contra el archivo real: mismos ítems, mismo cuerpo, mismo
+encabezado, misma sección.
+
+**Lo que el corte podía romper y no rompe:** el próximo `B-` libre. La mitad de
+los ids usados vive en el archivo de cerrados, así que el tablero calcula
+`proximoNumero` sobre **los dos** textos; mirar solo el vivo propondría un número
+ya tomado, que es el choque de `B-930` del 2026-09-15. Lo que sigue sin cubrir es
+un id **reservado por una tanda y nunca escrito** — no deja rastro en ningún
+archivo (B-1051).
 
 ### Verificar contra el sistema real (B-116)
 

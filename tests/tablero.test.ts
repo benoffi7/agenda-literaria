@@ -349,7 +349,18 @@ describe('contra el archivo real', () => {
      * lo que se afirma es la forma.
      */
     const { readFile } = await import('node:fs/promises');
-    const texto = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
+    /*
+     * **Los dos archivos**, desde que `scripts/archivar-backlog.mjs` saca lo
+     * cerrado a `BACKLOG-cerrados.md`. Leer solo el vivo dejaría este control
+     * verde afirmando cada vez menos: el rastro —que es donde están casi todas
+     * las formas raras de encabezado— se habría ido del alcance del test sin que
+     * nada se pusiera rojo. El `catch` cubre el repo que todavía no lo corrió.
+     */
+    const vivo = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
+    const cerrados = await readFile(`${process.cwd()}/docs/BACKLOG-cerrados.md`, 'utf8').catch(
+      () => '',
+    );
+    const texto = `${vivo}\n${cerrados}`;
     const { items, secciones } = parsearBacklog(texto);
     expect(items.length).toBeGreaterThan(100);
     expect(secciones).toContain('P1 — bloquean el objetivo del proyecto');
@@ -372,5 +383,17 @@ describe('contra el archivo real', () => {
     // carácter: es la precondición de toda escritura.
     const lineas = texto.split('\n');
     expect(items.every((i) => lineas[i.linea - 1] === i.encabezado)).toBe(true);
+
+    /*
+     * Y la otra mitad, la que ata los dos archivos: **el vivo es lo que falta
+     * hacer**. Un ítem cerrado ahí adentro significa que alguien lo marcó y no
+     * volvió a correr el archivador — no rompe nada, pero es la lenta vuelta al
+     * archivo de diecisiete mil líneas que este corte deshizo.
+     */
+    if (cerrados.trim()) {
+      const abiertos = parsearBacklog(vivo).items;
+      expect(abiertos.filter((i) => i.estado === 'hecho' || i.estado === 'descartado')).toEqual([]);
+      expect(parsearBacklog(cerrados).items.length).toBeGreaterThan(abiertos.length);
+    }
   });
 });

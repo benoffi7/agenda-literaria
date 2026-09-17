@@ -343,6 +343,9 @@ export const parsearIdeas = (texto) => {
  * prosa de otro ítem («ver B-960») ya está comprometido aunque todavía no tenga
  * sección propia. Es el lado prudente, y es barato.
  *
+ * Desde que lo cerrado se archiva aparte, el servidor le pasa **los dos
+ * archivos concatenados**: el vivo solo tiene los ids de lo pendiente.
+ *
  * @param {string} texto
  * @returns {number}
  */
@@ -467,12 +470,29 @@ export const conNota = (texto, encabezado, nota, hoy) => {
  * escribió nada, queda el recordatorio de qué hace accionable un reporte, que es
  * lo que pide el skill `al-backlog`.
  *
+ * @param {string} texto
+ * @param {{
+ *   id: string,
+ *   titulo: string,
+ *   prioridad: string,
+ *   seccion: string,
+ *   cuerpo: string,
+ *   hoy: string,
+ *   idsTomados?: Set<string>,
+ * }} datos `idsTomados` es opcional: sin él se miran los ids de `texto`, que es
+ *   lo correcto cuando el backlog es un archivo solo.
  * @returns {Resultado}
  */
-export const conItemNuevo = (texto, { id, titulo, prioridad, seccion, cuerpo, hoy }) => {
+export const conItemNuevo = (texto, { id, titulo, prioridad, seccion, cuerpo, hoy, idsTomados }) => {
   if (!titulo.trim()) return { error: 'El título es obligatorio.' };
-  if (idsUsados(texto).has(id)) {
-    return { error: `${id} ya está usado en el archivo. Recargá: otro frente lo tomó.` };
+  /*
+   * Los ids tomados pueden venir de afuera, y el servidor se los pasa: desde que
+   * lo cerrado vive en `BACKLOG-cerrados.md`, **la mitad de los ids usados no
+   * está en este texto**. Mirar solo el archivo vivo devolvería «libre» un
+   * número que un ítem cerrado ya tiene.
+   */
+  if ((idsTomados ?? idsUsados(texto)).has(id)) {
+    return { error: `${id} ya está usado en el backlog. Recargá: otro frente lo tomó.` };
   }
   const lineas = texto.split('\n');
   const inicio = lineas.findIndex((l) => SECCION.exec(l)?.[1] === seccion);

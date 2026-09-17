@@ -44,6 +44,17 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '..', '..');
 const BACKLOG = join(RAIZ, 'docs', 'BACKLOG.md');
+/**
+ * El rastro de lo cerrado, que `scripts/archivar-backlog.mjs` saca del anterior.
+ *
+ * **Se lee siempre, aunque el tablero no lo muestre por omisión**, y por dos
+ * motivos distintos. Uno es visible: los chips «Hechos» y «Descartados» siguen
+ * mostrando todo. El otro es el que importa — `proximoNumero` busca el `B-` más
+ * alto que el texto nombre, y **la mitad de los ids usados vive acá**: calcularlo
+ * solo sobre el archivo vivo propondría un número ya tomado, que es exactamente
+ * el choque de `B-930` del 2026-09-15 que la cabecera del backlog documenta.
+ */
+const CERRADOS = join(RAIZ, 'docs', 'BACKLOG-cerrados.md');
 const IDEAS = join(RAIZ, 'docs', '11-ideas-de-producto.md');
 
 const PUERTO = Number(process.argv[2] ?? process.env.PUERTO ?? 4173);
@@ -60,6 +71,14 @@ const hoy = () =>
 const leer = (ruta) => readFile(ruta, 'utf8');
 
 /**
+ * Como `leer`, pero un archivo que puede no existir todavía vale como vacío.
+ *
+ * Es el caso del de cerrados en un repo que nunca corrió el archivador: el
+ * tablero tiene que arrancar igual, no explotar con un `ENOENT`.
+ */
+const leerSiEsta = (ruta) => readFile(ruta, 'utf8').catch(() => '');
+
+/**
  * Escribe el archivo entero sin dejarlo a medias.
  *
  * El temporal va en el mismo directorio a propósito: `rename` solo es atómico
@@ -72,8 +91,12 @@ const escribirAtomico = async (ruta, texto) => {
 };
 
 const marcaDeTiempo = async () => {
-  const [b, i] = await Promise.all([stat(BACKLOG), stat(IDEAS)]);
-  return `${b.mtimeMs}:${i.mtimeMs}`;
+  const [b, c, i] = await Promise.all([
+    stat(BACKLOG),
+    stat(CERRADOS).catch(() => ({ mtimeMs: 0 })),
+    stat(IDEAS),
+  ]);
+  return `${b.mtimeMs}:${c.mtimeMs}:${i.mtimeMs}`;
 };
 
 /**
@@ -85,16 +108,42 @@ const marcaDeTiempo = async () => {
  * sitio público y por el mismo motivo.
  */
 const estado = async () => {
-  const [textoBacklog, textoIdeas] = await Promise.all([leer(BACKLOG), leer(IDEAS)]);
-  const { items, secciones } = parsearBacklog(textoBacklog);
+  const [textoBacklog, textoCerrados, textoIdeas] = await Promise.all([
+    leer(BACKLOG),
+    leerSiEsta(CERRADOS),
+    leer(IDEAS),
+  ]);
+  const vivo = parsearBacklog(textoBacklog);
+  const cerrados = parsearBacklog(textoCerrados);
   const ideas = parsearIdeas(textoIdeas);
-  const usados = idsUsados(textoBacklog);
+  // Los dos textos juntos para todo lo que razona sobre **ids**: el archivo vivo
+  // solo tiene los de lo pendiente.
+  const usados = idsUsados(losDos(textoBacklog, textoCerrados));
+
+  // Cada ítem se lleva de qué archivo salió: es lo que la ficha usa para el link
+  // al editor, y lo que el servidor usa para saber **dónde escribir**.
+  const conArchivo = (its, archivo) => its.map((it) => ({ ...it, archivo }));
+  const items = [
+    ...conArchivo(vivo.items, 'docs/BACKLOG.md'),
+    ...conArchivo(cerrados.items, 'docs/BACKLOG-cerrados.md'),
+  ];
+  // Las secciones del vivo primero: son las que ofrece el alta, y un ítem nuevo
+  // nunca nace en el archivo de cerrados.
+  const secciones = [
+    ...vivo.secciones,
+    ...cerrados.secciones.filter((s) => !vivo.secciones.includes(s)),
+  ];
 
   return {
     marca: await marcaDeTiempo(),
     hoy: hoy(),
     raiz: RAIZ,
-    archivos: { backlog: 'docs/BACKLOG.md', ideas: 'docs/11-ideas-de-producto.md' },
+    archivos: {
+      backlog: 'docs/BACKLOG.md',
+      cerrados: 'docs/BACKLOG-cerrados.md',
+      ideas: 'docs/11-ideas-de-producto.md',
+    },
+    seccionesDelAlta: vivo.secciones,
     secciones,
     items,
     // Una idea ya trabajada es la que alguien citó desde el backlog. No hace
@@ -105,10 +154,19 @@ const estado = async () => {
         .filter((it) => it.cuerpo.includes(`idea ${idea.numero}`) || it.cuerpo.includes(idea.titulo))
         .map((it) => it.id),
     })),
-    proximoId: `B-${proximoNumero(textoBacklog)}`,
+    proximoId: `B-${proximoNumero(losDos(textoBacklog, textoCerrados))}`,
     cantidadDeIds: usados.size,
   };
 };
+
+/**
+ * Los dos archivos del backlog como un solo texto, para lo que razona sobre ids.
+ *
+ * No se parsea: `proximoNumero` e `idsUsados` barren el texto crudo, incluida la
+ * prosa —un `B-960` citado adentro de otro ítem ya está comprometido aunque no
+ * tenga sección propia—, así que concatenar es exactamente lo que hace falta.
+ */
+const losDos = (vivo, cerrados) => `${vivo}\n${cerrados}`;
 
 const json = (res, codigo, cuerpo) => {
   const texto = JSON.stringify(cuerpo);
@@ -145,11 +203,22 @@ const cuerpoDe = (req) =>
  * error es una precondición que no se cumplió —el archivo cambió abajo, el id ya
  * está tomado— y sale como `409`, que es lo que la pantalla traduce a «recargá».
  */
-const aplicar = async (res, transformar) => {
-  const texto = await leer(BACKLOG);
-  const salida = transformar(texto);
+const aplicar = async (res, transformar, encabezado) => {
+  /*
+   * En cuál de los dos archivos escribir lo decide **dónde está el encabezado**,
+   * no quién pidió el cambio: una nota sobre un ítem ya archivado va al archivo
+   * de cerrados, y marcar hecho uno abierto va al vivo. Si no está en ninguno se
+   * aplica sobre el vivo, para que la transformación devuelva su propio `409` —el
+   * mensaje de precondición ya explica qué hacer, y escribir otro acá sería tener
+   * dos textos para el mismo caso.
+   */
+  const [textoVivo, textoCerrados] = await Promise.all([leer(BACKLOG), leerSiEsta(CERRADOS)]);
+  const enCerrados =
+    Boolean(encabezado) && !textoVivo.includes(encabezado) && textoCerrados.includes(encabezado);
+
+  const salida = transformar(enCerrados ? textoCerrados : textoVivo, losDos(textoVivo, textoCerrados));
   if (salida.error) return json(res, 409, { error: salida.error });
-  await escribirAtomico(BACKLOG, salida.texto);
+  await escribirAtomico(enCerrados ? CERRADOS : BACKLOG, salida.texto);
   return json(res, 200, { ok: true, ...(await estado()) });
 };
 
@@ -162,13 +231,17 @@ const RUTAS = {
 
   'POST /api/nota': (datos) => (texto) => conNota(texto, datos.encabezado, datos.nota, hoy()),
 
-  'POST /api/nuevo': (datos) => (texto) =>
+  'POST /api/nuevo': (datos) => (texto, ambos) =>
     conItemNuevo(texto, {
       // El id se vuelve a calcular **acá**, contra el disco, y no se usa el que
       // la pantalla mostró hace diez minutos: entre medio pudo entrar otro
       // frente. Es la mitad de la defensa; la otra es el choque que `conItemNuevo`
       // rechaza si alguien mandó uno a mano.
-      id: datos.id ?? `B-${proximoNumero(texto)}`,
+      //
+      // Y se calcula sobre **los dos** archivos: un ítem nuevo nace en el vivo,
+      // pero el número que le toca depende también de los que ya se archivaron.
+      id: datos.id ?? `B-${proximoNumero(ambos)}`,
+      idsTomados: idsUsados(ambos),
       titulo: datos.titulo ?? '',
       prioridad: /^P[0-4]$/u.test(datos.prioridad ?? '') ? datos.prioridad : 'P2',
       seccion: datos.seccion ?? 'P2 — mejoras reales',
@@ -195,7 +268,10 @@ const servidor = createServer(async (req, res) => {
     if (ruta === 'GET /api/marca') return json(res, 200, { marca: await marcaDeTiempo() });
 
     const manejador = RUTAS[ruta];
-    if (manejador) return await aplicar(res, manejador(await cuerpoDe(req)));
+    if (manejador) {
+      const datos = await cuerpoDe(req);
+      return await aplicar(res, manejador(datos), datos.encabezado);
+    }
 
     return json(res, 404, { error: `No existe ${ruta}` });
   } catch (e) {
