@@ -2528,10 +2528,31 @@ describe('clase de B-209 · la consulta sale antes de cualquier escritura', () =
 describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => {
   const FIXTURE = 'tests/fixtures/tiempo.ts';
 
+  /**
+   * El hueco que dejaba pasar a `lista-actividades.render.test.tsx` — B-875.
+   *
+   * `f.endsWith('.ts')` es falso para cualquier `.tsx`, así que los
+   * veinticuatro `*.render.test.tsx` (B-08) quedaban afuera del barrido
+   * entero: no es que la forma no los reconociera, es que nunca se les leía
+   * el fuente. `/\.tsx?$/` es lo que hace falta para que ambas extensiones
+   * cuenten.
+   */
   const testsVersionados = (): string[] =>
     execFileSync('git', ['ls-files', '-z', 'tests'], { encoding: 'utf8' })
       .split('\0')
-      .filter((f) => f.endsWith('.ts') && f !== FIXTURE);
+      .filter((f) => /\.tsx?$/.test(f) && f !== FIXTURE);
+
+  /**
+   * `lista-actividades.render.test.tsx` define su propio doble —exactamente
+   * lo que este `describe` existe para atajar— y se dejó **a propósito**
+   * (B-1050): achicarlo es otro ítem, y este archivo no lo toca. Sin esta
+   * excepción documentada, cerrar el hueco de arriba pondría en rojo un
+   * archivo que nadie vino a arreglar todavía, y el próximo frente que tope
+   * con eso no tiene cómo distinguir «regresión nueva» de «deuda conocida».
+   * Es una lista de uno, con motivo escrito — no una lista que crece: un
+   * segundo archivo acá sería una alarma, no una entrada más.
+   */
+  const EXCEPCIONES_CONOCIDAS = ['tests/lista-actividades.render.test.tsx'];
 
   /**
    * La **forma** de un doble de Timestamp, no su nombre: lo que lo delata es
@@ -2553,15 +2574,23 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
     expect(FORMA_DE_DOBLE.test(codigo(FIXTURE))).toBe(true);
   });
 
-  it('ningún test define su propio doble de Timestamp', () => {
+  it('el barrido alcanza los .render.test.tsx — B-875, el hueco que dejaba pasar el .tsx', () => {
+    // Control del arreglo puntual: `f.endsWith('.ts')` roto volvería a dejar
+    // esta lista vacía aunque el archivo exista y tenga la forma del doble.
+    const versionados = testsVersionados();
+    expect(versionados.some((f) => f.endsWith('.render.test.tsx'))).toBe(true);
+    expect(versionados).toContain(EXCEPCIONES_CONOCIDAS[0]);
+  });
+
+  it('ningún test define su propio doble de Timestamp, salvo la excepción documentada', () => {
     const conCopia: string[] = [];
     for (const archivo of testsVersionados()) {
       if (FORMA_DE_DOBLE.test(codigo(archivo))) conCopia.push(archivo);
     }
     expect(
-      conCopia,
-      'importá { ts } de tests/fixtures/tiempo en vez de escribirlo de nuevo',
-    ).toEqual([]);
+      conCopia.sort(),
+      'importá { ts } de tests/fixtures/tiempo en vez de escribirlo de nuevo, o sumá el archivo a EXCEPCIONES_CONOCIDAS con el motivo si es deuda ya anotada',
+    ).toEqual([...EXCEPCIONES_CONOCIDAS].sort());
   });
 
   it('el doble no miente en los campos que nadie lee todavía', () => {
