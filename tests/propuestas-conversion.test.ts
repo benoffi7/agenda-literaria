@@ -34,6 +34,7 @@ import {
   sesionDeFecha,
 } from '@/lib/propuestas';
 import { formAPropuesta, propuestaVacia } from '@/lib/propuesta-schema';
+import { slugify } from '@/lib/slugify';
 import type { Propuesta, PropuestaForm } from '@/types/propuesta';
 import { ts } from './fixtures/tiempo';
 
@@ -237,13 +238,40 @@ describe('lo que NO viaja, y cada ausencia es una decisión', () => {
     expect(propuestaAFormulario(propuesta()).form.estado).toBe('borrador');
   });
 
-  it('el slug no se prellena: se arma del título y queda fijo al publicar (trampa 10)', () => {
-    // Prellenarlo sería fijar una URL que nadie revisó.
+  /**
+   * **Este caso afirmaba lo contrario hasta B-926, y lo que afirmaba era el
+   * bug.** Decía «el slug no se prellena», con el motivo «prellenarlo sería fijar
+   * una URL que nadie revisó». El motivo era correcto y la conclusión no.
+   *
+   * El slug **no** «se arma del título» solo: lo deriva `cambiarTitulo`
+   * (`lib/formulario/cascadas.ts`) cuando alguien **escribe** el título. En una
+   * conversión el título llega puesto y nadie lo escribe, así que la cascada no
+   * disparaba nunca: el formulario abría con el slug vacío y el guardado rebotaba
+   * contra «El slug es obligatorio», con la única salida de tocarle una letra al
+   * título. Un formulario que se abre inválido y no dice por qué — y este test lo
+   * sostenía en verde.
+   *
+   * La revisión que aquel motivo protegía no se pierde: el slug queda editable
+   * **hasta publicar**, que es cuando se congela (trampa 10). Prellenarlo no fija
+   * ninguna URL; lo que la fija es publicar.
+   */
+  it('el slug se prellena del título, y queda editable hasta publicar (B-926)', () => {
     const { form: f } = propuestaAFormulario(propuesta());
-    expect(f.slug).toBe('');
-    // Y el título sí viaja tal cual, que es lo que hace que el slug derivado sea
-    // el que la persona quiso.
+    expect(f.slug).toBe('taller-de-cronica-urbana');
+    // Y el título viaja tal cual, que es lo que hace que el slug derivado sea el
+    // que la persona quiso.
     expect(f.titulo).toBe('Taller de crónica urbana');
+  });
+
+  it('y sale del MISMO `slugify` que la cascada del formulario', () => {
+    /*
+     * Dos formas de armar el slug del mismo título se separan sin que nada falle
+     * (la clase de B-88), y acá el precio sería que la conversión y la edición
+     * produzcan URLs distintas para el mismo texto.
+     */
+    const titulo = 'Café, Crónica & Ñandú — 2ª edición';
+    const { form: f } = propuestaAFormulario({ ...propuesta(), titulo });
+    expect(f.slug).toBe(slugify(titulo));
   });
 
   it('el canal de inscripción no se adivina: viaja el `requiere` y nada más', () => {

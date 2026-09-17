@@ -1361,8 +1361,9 @@ export const CAPITULOS: CapituloAyuda[] = [
           'va, así que si después reabrís esa propuesta la foto ya no está —igual que con una ' +
           'rechazada—. Se borra recién al guardar, no al apretar «Convertir»: si abandonás el ' +
           'formulario a mitad de camino, la propuesta se queda con su foto y podés volver a ' +
-          'intentarlo. Y si la actividad terminó sin ninguna imagen propia, el original tampoco ' +
-          'se borra: preferimos quedarnos con una foto de más que perderla.',
+          'intentarlo. Y si la actividad terminó sin ninguna imagen propia **sin que vos lo ' +
+          'decidieras**, el original tampoco se borra: preferimos quedarnos con una foto de más ' +
+          'que perderla.',
         cuidado: true,
         /*
          * Los tres casos son las tres mitades de lo que promete el punto: que
@@ -1385,6 +1386,61 @@ export const CAPITULOS: CapituloAyuda[] = [
           {
             archivo: 'tests/propuestas-imagen.test.ts',
             it: 'sin copia en la actividad no borra nada, que es el lado barato de equivocarse',
+          },
+        ],
+      },
+      {
+        /*
+         * **B-926.** El punto de arriba explica qué pasa con la foto; éste
+         * explica la decisión que ahora se puede tomar sobre ella, que antes no
+         * existía: la conversión promovía la foto sola y no había dónde decir
+         * que no.
+         */
+        texto:
+          'Cuando convertís una propuesta que trajo foto, el panel te pregunta primero si la ' +
+          'actividad se queda con ella. Si decís que no, **el original se borra y no se puede ' +
+          'recuperar**: por eso, si la querés guardar, bajala antes con el botón que está al ' +
+          'lado de la miniatura. Y si lo que querés es otra foto, decí que no y subila desde el ' +
+          'formulario, que se abre a continuación.',
+        cuidado: true,
+        /*
+         * **Los dos casos que sostienen el aviso son puros, y hay un tercero en
+         * `tests/propuestas-panel.render.test.tsx` que no se puede citar acá.**
+         *
+         * `tests/ayuda.test.ts` exige que el archivo termine en `.test.ts`, y el
+         * de render es un `.render.test.tsx` — entra en la corrida de `npm test`
+         * (está en el `include` del config) pero no en lo que este chequeo
+         * acepta. Así que lo que se cita es el mecanismo, que es lo que el aviso
+         * promete de verdad: descartar borra el original sin verificar ninguna
+         * copia. Que el botón diga «se borra y no se puede recuperar» lo sostiene
+         * `y el aviso dice que se borra, antes de que alguien lo elija`, en el
+         * archivo de render.
+         */
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-imagen.test.ts',
+            it: 'una aceptada con la foto descartada borra el original, sin actividad ni copia',
+          },
+          {
+            archivo: 'tests/propuestas-imagen.test.ts',
+            it: 'un `fotoDescartada` que no es exactamente `true` NO autoriza el borrado',
+          },
+        ],
+      },
+      {
+        /*
+         * **B-926 (b).** Vale decirlo porque el comportamiento anterior era un
+         * error que se manifestaba como un formulario que no guardaba, y quien
+         * lo sufrió va a buscar acá si se arregló.
+         */
+        texto:
+          'Y el link de la ficha viene armado del título, así que el formulario abre listo para ' +
+          'guardar. Antes llegaba vacío y había que tocarle una letra al título para que ' +
+          'apareciera. Revisalo igual antes de publicar: después de publicar queda fijo.',
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-conversion.test.ts',
+            it: 'el slug se prellena del título, y queda editable hasta publicar (B-926)',
           },
         ],
       },

@@ -218,6 +218,28 @@ export interface Propuesta {
     actividadId: string | null;
     /** Por qué se rechazó. Interno. */
     motivo: string | null;
+    /**
+     * **La foto que mandaron se descartó al convertir** — B-926.
+     *
+     * Opcional y con `false` como default de lectura: solo viaja cuando se
+     * convierte una propuesta **con foto** y quien revisa elige no usarla. Un
+     * rechazo no lo lleva —ahí la foto se borra igual— y tampoco lo llevan las
+     * revisiones anteriores al campo.
+     *
+     * **Lo lee el trigger, y es lo único que lo autoriza a borrar el original
+     * sin verificar una copia.** Sin el flag, una conversión que no promueve la
+     * imagen cae en `sin-copia`: el trigger conserva el original —que es lo
+     * correcto cuando nadie decidió nada— y la foto de un tercero se queda para
+     * siempre, porque la `aceptada` no vence (B-844). Ver
+     * `decidirBorradoDeImagen`.
+     *
+     * Que sea parte de `revision` y no un campo de primer nivel no es
+     * cosmético: es **una decisión de quien revisó**, tomada en el mismo acto
+     * que el cambio de estado, y `revisionValida()` ya exige que ese acto vaya
+     * firmado con el uid propio y la hora del servidor. Afuera de `revision`
+     * sería un flag sin firma.
+     */
+    fotoDescartada?: boolean;
   };
 }
 

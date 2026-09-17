@@ -113,7 +113,23 @@ const cuando = (p: PropuestaConId): string => {
  * sesión (que no debería pasar acá) y **objeto que ya no está**, que es
  * exactamente lo que le pasa a una propuesta rechazada.
  */
-function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
+function FlyerDeLaPropuesta({
+  storagePath,
+  onEstado,
+}: {
+  storagePath: string;
+  /**
+   * **Si la foto se pudo mostrar o no** — B-926, hallazgo del pase de auditoría.
+   *
+   * Lo necesita el paso de decisión, y el motivo es el argumento entero del
+   * ítem: saltear la verificación de B-863 se justifica porque «la pregunta ya
+   * la contestó una persona **mirando** la foto». Si la foto no se pudo mostrar,
+   * esa frase deja de ser cierta y lo que queda es una persona que clickeó — que
+   * no es lo mismo, y es la diferencia sobre la que descansa un borrado
+   * irreversible.
+   */
+  onEstado: (sePudoVer: boolean) => void;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [fallo, setFallo] = useState<'chunk' | 'objeto' | null>(null);
 
@@ -123,7 +139,10 @@ function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
       try {
         const { urlDeImagenDePropuesta } = await import('@/lib/subir-imagen');
         const u = await urlDeImagenDePropuesta(storagePath);
-        if (vivo) setUrl(u);
+        if (vivo) {
+          setUrl(u);
+          onEstado(true);
+        }
       } catch (e) {
         /*
          * Las dos causas se distinguen porque se arreglan distinto: si el chunk
@@ -132,12 +151,20 @@ function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
          * `GaleriaEditor` y la que `tests/carga-diferida.test.ts` vigila para
          * todo `await import()` del panel.
          */
-        if (vivo) setFallo(esFalloDeCarga(e) ? 'chunk' : 'objeto');
+        if (vivo) {
+          setFallo(esFalloDeCarga(e) ? 'chunk' : 'objeto');
+          onEstado(false);
+        }
       }
     })();
     return () => {
       vivo = false;
     };
+    // `onEstado` queda fuera de las dependencias a propósito: viene de un
+    // `useState` del padre y es estable, y meterla haría reejecutar el fetch en
+    // cada render del padre — una lectura de Storage por cada tecla del motivo
+    // de rechazo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storagePath]);
 
   if (fallo === 'chunk') {
@@ -157,19 +184,106 @@ function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
   if (!url) return <span className="text-tinta/55">Trayendo la imagen…</span>;
 
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="inline-block">
-      <img
-        src={url}
-        /*
-         * El texto alternativo no puede salir del título: es texto de un tercero
-         * y describiría la actividad, no la foto. Lo que le sirve a quien escucha
-         * la pantalla es qué es esto y de quién vino.
-         */
-        alt="El flyer que mandaron con esta propuesta"
-        loading="lazy"
-        className="max-h-40 rounded-md border border-borde"
-      />
-    </a>
+    <div className="flex flex-col items-start gap-2">
+      <a href={url} target="_blank" rel="noreferrer" className="inline-block">
+        <img
+          src={url}
+          /*
+           * El texto alternativo no puede salir del título: es texto de un
+           * tercero y describiría la actividad, no la foto. Lo que le sirve a
+           * quien escucha la pantalla es qué es esto y de quién vino.
+           */
+          alt="El flyer que mandaron con esta propuesta"
+          loading="lazy"
+          className="max-h-40 rounded-md border border-borde"
+        />
+      </a>
+      <BajarElFlyer url={url} />
+    </div>
+  );
+}
+
+/**
+ * **Bajar el flyer al disco** — B-926 (a), la primera de las cuatro opciones.
+ *
+ * ── Por qué existe, y es el punto del ítem ────────────────────────────────
+ * **El único momento en que esta foto existe y alguien la está mirando es esta
+ * pantalla.** Al aceptar la propuesta, `borrarImagenAlCerrar` borra el original
+ * de `propuestas/` (B-863); al rechazarla, también. Sin un botón acá, la única
+ * forma de conservarla es acordarse de abrirla en otra pestaña y guardarla a
+ * mano antes de decidir — o sea, acordarse de algo que la pantalla no pide.
+ *
+ * ── Por qué NO alcanza un `<a download>` sobre la URL ─────────────────────
+ * Es lo que el ítem del backlog proponía («la descarga es un `<a download>`
+ * sobre la URL que el panel ya trae») y **no funciona**: el atributo `download`
+ * se **ignora** cuando el destino es de otro origen, y la URL de Storage lo es
+ * (`firebasestorage.googleapis.com`). El resultado sería el mismo link que ya
+ * está arriba —abre la imagen en una pestaña— con un botón que promete otra
+ * cosa. Es la clase de promesa que no se cumple y nadie reporta, porque «se
+ * abrió algo» se parece bastante a que funcionó.
+ *
+ * Lo que sí funciona es traer los bytes y armar un `blob:` del **propio**
+ * origen, que es donde `download` sí manda. La URL de descarga de Storage
+ * responde CORS para el `GET` con su token, así que el `fetch` alcanza.
+ *
+ * `URL.revokeObjectURL` en el mismo tick: el blob queda retenido en memoria
+ * hasta que se revoque, y una bandeja con veinte propuestas abiertas se las
+ * acumularía todas.
+ */
+function BajarElFlyer({ url }: { url: string }) {
+  const [bajando, setBajando] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  const bajar = async () => {
+    setBajando(true);
+    setFallo(null);
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      /*
+       * El nombre **no sale del título de la propuesta**: es texto de un tercero
+       * y terminaría en el nombre de un archivo del disco de quien revisa. Sale
+       * del tipo del blob, que es lo único que describe al archivo y no a nadie.
+       */
+      const ext = (blob.type.split('/')[1] ?? 'jpg').replace(/[^a-z0-9]/gi, '');
+      a.download = `flyer-de-propuesta.${ext || 'jpg'}`;
+      a.click();
+      URL.revokeObjectURL(href);
+    } catch (e: unknown) {
+      /*
+       * El fallo se dice y no se traga: quien iba a bajar la foto antes de
+       * descartarla necesita saber que **no la bajó**, porque el paso siguiente
+       * la borra. Un botón que falla en silencio acá pierde la foto de verdad.
+       */
+      setFallo(
+        `No se pudo bajar (${e instanceof Error ? e.message : 'error desconocido'}). ` +
+          'Abrila en otra pestaña y guardala a mano antes de seguir.',
+      );
+    } finally {
+      setBajando(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void bajar()}
+        disabled={bajando}
+        className={`${claseBotonSecundario} disabled:opacity-50`}
+      >
+        {bajando ? 'Bajando…' : 'Bajar la imagen'}
+      </button>
+      {fallo && (
+        <p role="alert" className="text-xs text-acento">
+          {fallo}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -191,6 +305,28 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   /** Id de la propuesta cuya imagen se está trayendo a la galería (paso 8). */
   const [promoviendo, setPromoviendo] = useState<string | null>(null);
   /** Id de la que se está rechazando: mientras tanto se pide el motivo. */
+  /**
+   * **La propuesta cuyo flyer está esperando decisión** — B-926.
+   *
+   * Solo se abre para las que **traen una foto subida**: sin foto no hay nada
+   * que decidir y «Convertir en actividad» sigue yendo derecho, que es lo que
+   * hace que el paso no se convierta en un click de más para el caso común.
+   */
+  const [decidiendoFoto, setDecidiendoFoto] = useState<string | null>(null);
+  /**
+   * **Qué propuestas mostraron su foto de verdad** — B-926, del pase de
+   * auditoría.
+   *
+   * El argumento para saltear la verificación de B-863 es que «una persona
+   * **miró** la foto». Cuando la miniatura no se pudo traer —el chunk no llegó,
+   * o el objeto ya no está— esa persona no miró nada, y el aviso que le dice
+   * «bajala antes con el botón de arriba» manda a un botón que **tampoco está**:
+   * cuelga del mismo componente, después del `return` del fallo.
+   *
+   * Sin esto, el paso autorizaba un borrado irreversible de una foto que no se
+   * pudo ver, con una instrucción que no se podía seguir.
+   */
+  const [fotoVisible, setFotoVisible] = useState<Record<string, boolean>>({});
   const [rechazando, setRechazando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
   /** Apagado por defecto: la bandeja arranca mostrando lo que espera decisión. */
@@ -274,7 +410,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    * formulario y no guardar, y lo barre `limpiarImagenesHuerfanas` a las 72 horas
    * (B-221). No hace falta nada nuevo, y la propuesta conserva su foto.
    */
-  const convertir = async (p: PropuestaConId) => {
+  const convertir = async (p: PropuestaConId, usarLaFoto = true) => {
     /*
      * **`elegibles` y no `valores`** — B-859. Las dos funcionan y se ven igual,
      * y por eso nadie lo agarró: `valores` son **todas** las opciones y existen
@@ -298,7 +434,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
     const imagenes = [...form.imagenes];
     const avisosDeLaImagen = [...avisos];
 
-    if (p.imagen && 'storagePath' in p.imagen) {
+    if (usarLaFoto && p.imagen && 'storagePath' in p.imagen) {
       setPromoviendo(p.id);
       try {
         // `import()` y no estático: `subir-imagen` es el único dueño de
@@ -358,7 +494,22 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
          * evento: ver `rechazar`.
          */
         medirFuncion('propuesta-convertida');
-        await revisarPropuesta(p.id, usuario.uid, 'aceptada', { actividadId });
+        /*
+         * **`fotoDescartada` viaja acá y no antes** — B-926. Es una decisión de
+         * quien revisó, tomada en el mismo acto que el cambio de estado, y es lo
+         * único que autoriza al trigger a borrar el original sin verificar una
+         * copia. Sin el flag, una conversión sin promover la imagen deja la foto
+         * de un tercero viva para siempre: la `aceptada` no vence (B-844).
+         *
+         * Solo se manda cuando **había una foto y se decidió no usarla**: una
+         * propuesta sin foto no tiene nada que descartar, y mandar el flag ahí
+         * sería escribir una decisión que nadie tomó.
+         */
+        const habiaFoto = Boolean(p.imagen && 'storagePath' in p.imagen);
+        await revisarPropuesta(p.id, usuario.uid, 'aceptada', {
+          actividadId,
+          ...(habiaFoto && !usarLaFoto ? { fotoDescartada: true } : {}),
+        });
       },
     });
   };
@@ -529,7 +680,14 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
               */}
               {p.imagen && 'storagePath' in p.imagen && p.estado !== 'rechazada' && (
                 <div className="mt-2">
-                  <FlyerDeLaPropuesta storagePath={p.imagen.storagePath} />
+                  <FlyerDeLaPropuesta
+                    storagePath={p.imagen.storagePath}
+                    onEstado={(sePudoVer) =>
+                      setFotoVisible((prev) =>
+                        prev[p.id] === sePudoVer ? prev : { ...prev, [p.id]: sePudoVer },
+                      )
+                    }
+                  />
                 </div>
               )}
 
@@ -566,7 +724,105 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                 <p className="mt-2 text-xs text-tinta/55">Motivo del rechazo: {p.revision.motivo}</p>
               )}
 
-              {rechazando === p.id ? (
+              {decidiendoFoto === p.id ? (
+                /*
+                 * **El paso que B-926 vino a agregar.**
+                 *
+                 * El ítem lo dice mejor que cualquier resumen: «el único momento
+                 * en que esa foto existe y alguien la está mirando es esta
+                 * pantalla, y ahí no hay ni un botón». Al aceptar, el original se
+                 * borra (B-863); al rechazar, también.
+                 *
+                 * Las cuatro opciones del ítem son estas dos más las dos que ya
+                 * viven en otro lado: **bajar** está arriba, al lado de la
+                 * miniatura (se puede usar antes de elegir, que es el orden en el
+                 * que sirve), y **subir otra** la resuelve el `GaleriaEditor` del
+                 * formulario, que se abre a continuación.
+                 */
+                <div className="mt-3 flex flex-col gap-2">
+                  <p className="text-xs text-tinta/70">
+                    ¿La actividad se queda con la foto que mandaron?
+                  </p>
+                  {/*
+                    **El aviso va arriba de los botones y dice qué se pierde.**
+                    Es la misma frase que ya está escrita para el rechazo, y acá
+                    hace más falta: descartar **borra el original** y no se puede
+                    deshacer. Si alguien la quiere guardar, el botón de bajarla
+                    está arriba — por eso este texto lo nombra en vez de suponer
+                    que se vio.
+                  */}
+                  {fotoVisible[p.id] ? (
+                    <p className="text-xs text-tinta/55">
+                      Si no la usás se borra y no se puede recuperar. Si la querés guardar, bajala
+                      antes con el botón de arriba.
+                    </p>
+                  ) : (
+                    /*
+                     * **La foto no se pudo mostrar, así que el aviso cambia** —
+                     * y no es un matiz de redacción: el de arriba manda a un
+                     * botón que en este estado no existe, y sobre todo da por
+                     * sentado que alguien vio lo que va a borrar. Acá se dice lo
+                     * contrario con todas las letras, porque es la única forma
+                     * de que quien decide sepa qué está decidiendo.
+                     */
+                    <p role="alert" className="text-xs text-acento">
+                      No pudimos mostrarte la foto, así que tampoco podés bajarla ni descartarla
+                      desde acá: descartar la borra para siempre y nadie la vio. Podés usarla
+                      igual, o recargar la página para volver a intentarlo.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDecidiendoFoto(null);
+                        void convertir(p);
+                      }}
+                      disabled={promoviendo === p.id}
+                      className={`${claseBotonPrimario} disabled:opacity-50`}
+                    >
+                      {promoviendo === p.id ? 'Trayendo la imagen…' : 'Sí, usarla'}
+                    </button>
+                    {/*
+                      ⚠️ **«No usarla» solo existe si la foto se pudo mostrar** —
+                      B-926, del pase de auditoría, y no es una precaución de UI:
+                      **es el argumento del ítem sosteniéndose o cayéndose.**
+
+                      Saltear la verificación de B-863 se apoya en que «la
+                      pregunta ya la contestó una persona **mirando** la foto».
+                      Con la miniatura sin cargar, lo que hay es una persona que
+                      clickeó, y eso no alcanza para autorizar un borrado
+                      irreversible. Por eso el botón no se deshabilita: **no se
+                      dibuja**. Un botón gris invita a buscar cómo habilitarlo;
+                      su ausencia, más el aviso de al lado, manda a recargar, que
+                      es lo que hay que hacer.
+
+                      «Sí, usarla» sí se ofrece: no destruye nada, y si la
+                      promoción falla el flag no viaja y el original se conserva.
+                    */}
+                    {fotoVisible[p.id] === true && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDecidiendoFoto(null);
+                          void convertir(p, false);
+                        }}
+                        disabled={promoviendo === p.id}
+                        className={`${claseBotonSecundario} disabled:opacity-50`}
+                      >
+                        No usarla
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDecidiendoFoto(null)}
+                      className={claseBotonSecundario}
+                    >
+                      Mejor no
+                    </button>
+                  </div>
+                </div>
+              ) : rechazando === p.id ? (
                 <div className="mt-3 flex flex-col gap-2">
                   <label className="text-xs text-tinta/70" htmlFor={`motivo-${p.id}`}>
                     Por qué se rechaza (opcional, no lo ve quien la mandó)
@@ -605,7 +861,18 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                   {p.estado !== 'aceptada' && (
                     <button
                       type="button"
-                      onClick={() => void convertir(p)}
+                      onClick={() => {
+                        /*
+                         * **Con foto se pregunta; sin foto se convierte derecho.**
+                         * El paso existe para decidir sobre la imagen, así que
+                         * ponerlo delante de una propuesta que no trajo ninguna
+                         * sería un click de más en el caso más común — y de los
+                         * que se aprenden a apretar sin leer, que es justo lo que
+                         * no puede pasar con un aviso que dice «se borra».
+                         */
+                        if (p.imagen && 'storagePath' in p.imagen) setDecidiendoFoto(p.id);
+                        else void convertir(p);
+                      }}
                       disabled={promoviendo === p.id}
                       className={`${claseBotonPrimario} disabled:opacity-50`}
                     >

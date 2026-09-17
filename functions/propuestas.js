@@ -152,6 +152,37 @@ export const decidirBorradoDeImagen = ({ before = null, after = null } = {}) => 
   }
 
   /*
+   * ── La foto descartada a propósito — B-926 ──────────────────────────────
+   *
+   * **Se borra sin verificar ninguna copia, y esa es toda la diferencia con el
+   * caso de abajo.** La verificación de B-863 existe para no perder una foto que
+   * alguien podría querer: pregunta «¿la actividad se quedó con una copia?» y,
+   * si no, conserva el original. Acá esa pregunta **ya la contestó una persona
+   * mirando la foto**: marcó que no la quiere. No hay copia que verificar porque
+   * la decisión fue no hacer ninguna.
+   *
+   * Sin esta rama, descartar caería en `borrarOriginalAlAceptar` → `sin-copia` →
+   * un `warn` y el original vivo **para siempre**: la `aceptada` no vence
+   * (B-844), la retención no la alcanza y `limpiarImagenesHuerfanas` no recorre
+   * este prefijo. O sea que ofrecer «descartar» sin esto agranda el agujero de
+   * B-871 en vez de resolver nada, que es justo lo que el ítem avisaba.
+   *
+   * **Va antes de la guarda de `actividadId`** y no después: descartar no
+   * necesita una actividad donde mirar. Ponerlo abajo dejaría el caso
+   * «descartada y sin actividad» cayendo en `aceptada-sin-actividad`, que
+   * conserva el original — el bug que esta rama viene a cerrar, un renglón más
+   * abajo.
+   *
+   * El flag lo escribe el panel dentro de `revision` y lo acota
+   * `revisionValida()`. Se lee con `=== true` y no con un truthy: un `'no'` o un
+   * `1` que llegaran de un camino raro **no** tienen que autorizar un borrado
+   * irreversible.
+   */
+  if (after.revision?.fotoDescartada === true) {
+    return { accion: 'borrar', objeto, motivo: 'descartada', actividadId: null, dejaLaFoto: false };
+  }
+
+  /*
    * **Aceptada sin actividad no borra nada** (B-863). `revisionValida()` acepta
    * `actividadId: null` incluso en `aceptada` —la regla pide que el campo esté,
    * no que tenga valor—, así que este caso es alcanzable: una propuesta marcada

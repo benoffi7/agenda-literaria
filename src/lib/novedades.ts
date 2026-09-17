@@ -61,6 +61,29 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'decidir-la-foto-al-convertir',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'Decidir qué pasa con la foto al convertir una propuesta',
+    detalle:
+      'Antes la foto que mandaron se usaba sola y no había dónde decir que no. ' +
+      'Ahora el panel pregunta primero, y podés bajarla al disco desde la misma ' +
+      'pantalla — es el único momento en que esa foto existe: al aceptar o al ' +
+      'rechazar se borra. Si elegís no usarla, se borra y no se recupera.',
+    donde: 'En Propuestas, al tocar «Convertir en actividad» de una que trajo foto.',
+  },
+  {
+    id: 'link-de-la-ficha-prellenado-al-convertir',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'El link de la ficha ya viene armado al convertir una propuesta',
+    detalle:
+      'Antes el formulario abría con ese campo vacío y el guardado no pasaba: ' +
+      'había que tocarle una letra al título para que apareciera. Ahora sale del ' +
+      'título y se puede editar hasta publicar.',
+    donde: 'En Propuestas, al convertir.',
+  },
+  {
     id: 'guia-de-bibliotecas',
     fecha: '2026-09-17',
     version: '1.11.0',

@@ -32,7 +32,6 @@ import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebas
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import type { Firestore as FirestoreAdmin } from 'firebase-admin/firestore';
 import { signOut } from 'firebase/auth';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
 import {
   Timestamp,
   collection,
@@ -55,6 +54,15 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+/*
+ * **El helper compartido de credenciales — B-1060**, y no una copia propia.
+ * Entró a `main` mientras se escribía este archivo, y `tests/credenciales-del-emulador.test.ts`
+ * barre `tests/` para que la copia quince no vuelva a nacer. Además trae gratis
+ * la guarda de **B-1112**: `entrarComo` compara el `aud` del ID token contra
+ * `PROJECT_ID` en el primer login del proceso y falla nombrando los dos
+ * proyectos, en vez de dejar un `PERMISSION_DENIED` que se diagnostica de cero.
+ */
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -602,7 +610,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       // diciendo «cualquiera logueado» y los casos de arriba no lo verían.
       const ref = nuevaRef();
       await setDoc(ref, documento({ estado: 'publicado' }));
-      await entrarComo(UID_PELADO, {});
+      await entrarComo(UID_PELADO);
       await rechazadaPorPermisos(getDoc(ref), 'una cuenta pelada leyendo');
       await rechazadaPorPermisos(
         updateDoc(ref, { descripcion: 'otra' }),

@@ -103,10 +103,76 @@ describe('la única escritura del panel sobre una propuesta', () => {
       ...bloquePropuestas.matchAll(/revision\.keys\(\)\.hasOnly\(\[([^\]]+)\]\)/g),
     ].map((m) => m[1]!.split(',').map((k) => k.trim().replace(/'/g, '')).sort());
     expect(declaradas.length).toBeGreaterThanOrEqual(2);
+
+    /*
+     * **Desde B-926 el `hasOnly` del `update` tiene una clave más que el del
+     * `create`**, y la comparación pasó de «las dos listas son iguales al mapa»
+     * a «cada una es exactamente la que le corresponde». Sin el matiz, esto
+     * frenaría un cambio correcto; sin la comparación, `fotoDescartada` podría
+     * desaparecer de la regla sin que nada se pusiera rojo.
+     *
+     * - El **create**: los cuatro de siempre. Una propuesta nace sin revisar, y
+     *   no hay ninguna foto que descartar antes de mirarla.
+     * - El **update**: esos cuatro más `fotoDescartada`, que está en el `hasOnly`
+     *   y **no** en el `hasAll` — es opcional y solo viaja cuando se descartó una
+     *   foto de verdad.
+     */
     const { revision } = cambioDeRevision('u', 'aceptada', 'AHORA');
-    for (const claves of declaradas) {
-      expect(claves).toEqual(Object.keys(revision).sort());
-    }
+    const siempre = Object.keys(revision).sort();
+    const conDescarte = Object.keys(
+      cambioDeRevision('u', 'aceptada', 'AHORA', { fotoDescartada: true }).revision,
+    ).sort();
+
+    // Control positivo de la propia derivación: si el constructor dejara de
+    // agregar la clave, los dos arreglos serían iguales y el `for` de abajo no
+    // distinguiría nada.
+    expect(conDescarte).not.toEqual(siempre);
+    expect(conDescarte).toContain('fotoDescartada');
+
+    /*
+     * ⚠️ **Se enruta por QUÉ REGLA es cada `hasOnly`, no por lo que contiene** —
+     * lo encontró el pase de auditoría de B-926, y la primera versión de este
+     * aserto tenía el bug que describe.
+     *
+     * Decía `claves.includes('fotoDescartada') ? conDescarte : siempre`, o sea
+     * que **la lista elegía contra qué compararse**. Si mañana alguien agrega
+     * `fotoDescartada` al `hasOnly` del `create` «para que queden iguales», esa
+     * lista se auto-clasificaría como la del `update` y el test pasaría en
+     * verde — habilitando que una propuesta **nazca** con la foto marcada como
+     * descartada, que es justo lo que el `create` no puede permitir.
+     *
+     * Ahora el orden lo da el archivo: `propuestaValida()` está antes que
+     * `revisionValida()` en el bloque, así que la primera aparición es la del
+     * `create` y la segunda la del `update`. Si ese orden cambiara, el control
+     * positivo de abajo lo dice.
+     */
+    expect(declaradas.length, 'se esperaban exactamente los dos `hasOnly` del bloque').toBe(2);
+    const [delCreate, delUpdate] = declaradas as [string[], string[]];
+
+    expect(
+      delCreate,
+      'el `hasOnly` del `create` tiene que ser el mapa de cuatro: una propuesta no puede NACER ' +
+        'con la foto marcada como descartada',
+    ).toEqual(siempre);
+    expect(
+      delUpdate,
+      'el `hasOnly` del `update` tiene que aceptar `fotoDescartada`, o el panel no puede marcarlo',
+    ).toEqual(conDescarte);
+
+    /*
+     * **Y que el orden sea el que este caso asume.** Sin esto, invertir las dos
+     * funciones en el archivo haría que los dos asertos de arriba compararan
+     * contra la lista equivocada — y el de `delCreate` es el que impide que una
+     * propuesta nazca con el flag puesto.
+     */
+    const iCreate = bloquePropuestas.indexOf('function propuestaValida()');
+    const iUpdate = bloquePropuestas.indexOf('function revisionValida()');
+    expect(iCreate, 'no se encontró `propuestaValida()`').toBeGreaterThan(-1);
+    expect(
+      iUpdate,
+      '`revisionValida()` dejó de venir después de `propuestaValida()`: el orden que este caso ' +
+        'usa para saber cuál `hasOnly` es de cada una ya no vale',
+    ).toBeGreaterThan(iCreate);
   });
 
   it('los estados pendientes son estados de verdad, y las cerradas no lo son', () => {

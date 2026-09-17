@@ -1588,10 +1588,31 @@ el orden**:
   duplicado inofensivo, y una verificación que falla después de borrar pierde la
   foto sin retorno.
 
+**Y desde B-926 hay un tercer cierre que se saltea ese orden a propósito.** La
+conversión ahora pregunta si la actividad se queda con la foto, y si quien revisa
+elige que no, el original se borra **sin verificar ninguna copia** — porque no hay
+ninguna: la decisión fue no hacerla.
+
+No debilita lo de arriba, y conviene ver por qué son dos cosas distintas. La
+verificación existe para **no perder una foto que alguien podría querer**:
+pregunta «¿quedó una copia?» y, ante la duda, conserva. En el descarte esa
+pregunta ya la contestó una persona **mirando la foto** —y el panel se asegura de
+que la haya podido mirar: si la miniatura no se pudo traer, el aviso lo dice y no
+manda a bajarla—. Sin esta rama, descartar caería en `sin-copia` y el original
+quedaría vivo para siempre, o sea que ofrecer «descartar» sin ella **agrandaba**
+el agujero de B-871 en vez de cerrar nada.
+
+El camino tiene su propia rama en el trigger —no reusa el `else` del rechazo,
+aunque el borrado sea idéntico— porque lo que cambia es qué pasa **si falla**: el
+rechazo tiene red (la retención de 30 días) y el descarte no. Por eso su `catch`
+lleva el mismo `alerta` que la aceptación. Y desde el mismo pase, **el `else`
+final del trigger dejó de borrar**: era un catch-all cuyo default era el borrado
+crudo, y ahora el default es conservar y avisar.
+
 **Lo que queda abierto y está medido, no supuesto:** si el borrado del original
-falla, o si la actividad se guardó sin ninguna imagen propia, el original
-sobrevive **para siempre** —la retención no llega a la aceptada y ningún barrido
-recorre `propuestas/`—. Sale un `warn`/`error` con
+falla, o si la actividad se guardó sin ninguna imagen propia **sin que nadie lo
+decidiera**, el original sobrevive **para siempre** —la retención no llega a la
+aceptada y ningún barrido recorre `propuestas/`—. Sale un `warn`/`error` con
 `alerta: "flyer-de-propuesta-sin-borrar"` y es **B-871**.
 
 **Y desde la bandeja (B-830, paso 7) el panel muestra texto escrito por un
