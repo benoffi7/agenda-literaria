@@ -9656,8 +9656,20 @@ próxima persona la reinvente distinta, y acá lo que se reinventaría es el dis
 automático, que es justo lo que esta entrada sacó. Con ella escrita, la cita
 resuelve y esta revisión tiene a qué apuntar.
 
-Las huérfanas que quedan —D-9, D-340, D-341, D-380, D-381 y D-430— siguen abiertas
-y son su propio pendiente.
+~~Las huérfanas que quedan —D-9, D-340, D-341, D-380, D-381 y D-430— siguen
+abiertas y son su propio pendiente.~~ **Cerradas el 2026-09-17 (B-910), y la sexta
+no era una.** D-340, D-341, D-380, D-381 y D-430 están escritas y **no hizo falta
+reconstruir ninguna**: las cinco estaban redactadas enteras en un `.estado/*.md`,
+bajo un cartel que decía «para `06-decisiones.md`», y lo que no ocurrió fue el paso
+de pegarlas. `D-9` era un falso positivo del barrido —es `D-09`, escrita sin el
+cero a la izquierda, y las dos menciones que la producían no eran citas sino un
+ejemplo de ordenamiento—; `scripts/decisiones-referenciadas.mjs` compara por número
+desde ese día, y las citadas con otra grafía se informan aparte.
+
+Y lo que esa tanda dejó como pregunta es más grande que las seis entradas, porque
+no es «escribir la decisión» sino **dónde se pega**: el número se acuña en un
+commit, el texto se escribe en un pizarrón que no está versionado, y lo único que
+los une es que alguien se acuerde. Queda anotado en B-1090.
 
 ---
 
