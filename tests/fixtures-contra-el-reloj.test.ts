@@ -49,19 +49,20 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) => readFileSync(fileURLToPath(new URL(relativo, raiz)), 'utf8');
 /** El fuente sin comentarios: la prosa de este repo nombra lo que busca, y engancharía. */
 const codigo = (relativo: string): string => sinComentarios(fuente(relativo));
 
+// Por `archivosDelRepo` y no por `git ls-files` a secas (B-964): un test recién
+// escrito, sin `git add` todavía, es exactamente el que más falta hace mirar —
+// y es cómo nació este archivo, que la guarda de B-964 agarró al integrarlo.
 const testFiles = (): string[] =>
-  execFileSync('git', ['ls-files', '-z', 'tests'], { encoding: 'utf8' })
-    .split('\0')
-    .filter((f) => /\.test\.tsx?$/.test(f));
+  archivosDelRepo('tests').filter((f) => /\.test\.tsx?$/.test(f));
 
 /** Fechas ISO cableadas en el código (ya sin comentarios), con o sin hora. */
 const FECHA_RE = /\b20\d\d-\d\d-\d\d(?:T\d\d:\d\d(?::\d\d)?Z?)?\b/g;
