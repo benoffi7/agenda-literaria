@@ -8083,6 +8083,75 @@ archivador lo mueva. Probadas las dos con la mutación: con la copia de vuelta y
 prefijo `INC-` nuevo, la de comportamiento dice exactamente cuál sería el ítem que
 no se archivaría nunca.
 
+### B-960 · Bibliotecas: el cuarto directorio de la Guía · ✅ hecho (2026-09-17) · P2 — pedido del dueño
+
+> **La Guía pasa de tres secciones a cuatro.** Colección `/bibliotecas`, pantalla
+> en el panel, formulario público en `/guia/bibliotecas/sumar`, listado y ficha
+> con `Library`, `/bibliotecas.json`, reglas, trigger de rebuild y retención.
+> **5004 unitarios + 37 de integración en verde.**
+>
+> **La decisión de producto la contestó el dueño y quedó como D-740:** una
+> biblioteca que además presta su sala tiene **dos fichas**, una en «Lugares» y
+> otra acá. Son dos preguntas de dos personas distintas —quien organiza busca
+> sala, quien lee busca catálogo— y una ficha que contesta las dos obliga a las
+> dos a leer la mitad que no les sirve. El costo aceptado: la misma institución se
+> carga dos veces.
+>
+> Cuatro campos propios: **tipo** (taxonomía nueva `tipo-biblioteca`), **dos
+> horarios** —mostrador y sala de lectura, que en una biblioteca no son lo mismo—,
+> **catálogo online**, y **si hay que asociarse y cuánto**. El costo va con
+> `DatoConFecha` y como **texto y no como entero**: el carnet casi nunca es un
+> número solo, y como la regla 2 de `datoConFecha.ts` prohíbe filtrar u ordenar
+> por él, el entero no compraba nada.
+>
+> **La retención entró sola, y ésa es la medición que vale:**
+> `borrarFichasVencidas` deriva su lista de `COLECCIONES_DE_DIRECTORIO`, así que
+> la cuarta colección entró al barrido **sin escribir una línea** y sus 25 casos
+> pasaron sin tocarlos. Es la diferencia medida entre una lista derivada y una
+> escrita a mano. Del otro lado, **seis registros declarados pidieron su línea y
+> cada uno frenó en rojo** hasta que se la dieron.
+>
+> **Un dato del cierre que conviene no perder:** el archivo de integración estuvo
+> commiteado como «escrito, sin correr» y se lo dio por pendiente. No lo era: la
+> corrida llegó después, **37/37**. Y el único rojo que tuvo no era B-1112 sino un
+> `Timestamp` del SDK cliente sembrado con el Admin SDK —dos clases de dos
+> paquetes—; **la guarda de B-1112 no se quejó**, que es exactamente lo que se le
+> pedía.
+
+
+> 📌 **Después de los P1** (2026-09-16), igual que **B-959** — el motivo está
+> escrito allá. Con una diferencia a favor de éste cuando llegue el momento: el
+> patrón ya existe cuatro veces, así que de los dos es el **previsible**. Los
+> trece archivos son conocidos uno por uno; no hay nada que diseñar.
+
+*«Lo mismo de librerías pero con bibliotecas: formulario público, bandeja y
+sección en guía.»*
+
+**La mitad barata está escrita y era el punto de B-834**: `DIRECTORIOS`
+(`src/lib/directorios.ts`) dice, textual, que *«sumar el cuarto directorio es una
+entrada acá y nada más»* — con esa entrada y `disponible: true` aparecen solas la
+fila de `/guia`, el título del panel, el destino y la URL en el sitemap, y
+`tests/directorios.test.ts` cruza las dos direcciones contra el disco.
+
+**La mitad cara es la capa por entidad, y se conoce el número: por librerías son
+trece archivos** — `types/`, `-schema.ts`, la capa de datos, la proyección
+pública, el panel, el formulario del panel, el formulario público, el buscador, la
+ficha de fila, el endpoint `.json`, y las tres páginas de `/guia/<entidad>/`. Más
+`firestore.rules`, el índice, y —lo que B-904, B-912 y B-922 dejaron aprendido— la
+**retención** en `functions/retencion.js` desde el día uno, no después. La
+proyección **no se generaliza**: es una whitelist por entidad y ahí está toda la
+seguridad de esto.
+
+**Y una decisión de producto antes de escribir una línea, que es lo único que no
+es copiar-y-pegar: una biblioteca ya puede estar cargada como *lugar*.** El
+`/opciones/tipo` de lugares tiene `biblioteca` (`opciones-base.json`), o sea que
+la biblioteca que presta su sala para un encuentro ya tiene ficha. Hay que decidir
+si son **dos fichas de la misma institución** (una como lugar para hacer eventos,
+otra como biblioteca donde sacar libros) o una sola con dos caras. Y con eso, qué
+campos la distinguen de una librería: no vende, presta — horario de sala, si hay
+que asociarse y cuánto sale, si el catálogo está online, y de qué tipo es (popular,
+municipal, nacional, especializada).
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)

@@ -65,6 +65,14 @@ export const PANTALLAS_DEL_PANEL = [
    */
   'lugares',
   'lugar',
+  /*
+   * B-960 — la Guía, cuarta entidad. Son **dos** por el mismo motivo que las
+   * otras tres: el aviso de salida con cambios sin guardar se decide por la
+   * vista del router, y con el formulario adentro de la bandeja abandonarlo no
+   * preguntaría nada (B-35).
+   */
+  'bibliotecas',
+  'biblioteca',
 ] as const;
 export type PantallaDelPanel = (typeof PANTALLAS_DEL_PANEL)[number];
 
@@ -129,8 +137,9 @@ export const PERMISOS: Record<RolDelPanel, PermisosDelPanel> = {
   },
   publicador: {
     /*
-     * B-901 / B-832 / B-833 — las seis pantallas de la Guía (`librerias`,
-     * `libreria`, `suscripciones`, `suscripcion`, `lugares`, `lugar`)
+     * B-901 / B-832 / B-833 / B-960 — las ocho pantallas de la Guía
+     * (`librerias`, `libreria`, `suscripciones`, `suscripcion`, `lugares`,
+     * `lugar`, `bibliotecas`, `biblioteca`)
      * **no** entran, y es la misma decisión que las reglas ya tomaron: las cinco cláusulas de `/librerias` se quedan en
      * `esAdmin()` porque una ficha de directorio no tiene «dueño» que recortar,
      * decidir qué entra al catálogo es la autoridad que este rol no tiene, y el

@@ -298,6 +298,19 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // consumió otra vez, así que se agrega uno más con la misma lógica. Con la
     // Guía completa, la próxima fila ya no va a ser un directorio.
     25: 'veinticinco', 26: 'veintiséis',
+    /*
+     * B-960 — la tabla pasó a **28** con el directorio de bibliotecas: el JSON +
+     * el listado, la ficha con su `Library`, y —por primera vez en un
+     * directorio— **el formulario público numerado aparte**, porque es HTML
+     * indexado que puede alcanzar Firebase y eso es una promesa distinta de la
+     * de proyectar un documento.
+     *
+     * El colchón de B-833 se consumió otra vez. Y la nota de aquella tanda
+     * («con la Guía completa, la próxima fila ya no va a ser un directorio»)
+     * **resultó falsa**: la Guía tenía cuatro secciones y no tres. Se agrega uno
+     * más con la misma lógica y sin volver a predecir cuál será la próxima.
+     */
+    27: 'veintisiete', 28: 'veintiocho', 29: 'veintinueve',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {

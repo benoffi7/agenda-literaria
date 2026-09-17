@@ -294,6 +294,12 @@ export const TAXONOMIAS_FUERA_DEL_INDICE: readonly CampoTaxonomia[] = [
   'tipo-lugar',
   'incluye-lugar',
   'condicion-de-uso',
+  /*
+   * **La de las bibliotecas** — B-960, y el mismo argumento una colección más:
+   * no es eje de filtro **de la agenda** y no describe una actividad. Sus chips
+   * los arma `/bibliotecas.json`, que baja solo quien abre `/guia/bibliotecas`.
+   */
+  'tipo-biblioteca',
 ];
 
 export const LARGO_RESUMEN = 160;

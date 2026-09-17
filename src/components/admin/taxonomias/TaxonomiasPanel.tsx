@@ -56,6 +56,9 @@ const TITULO: Record<CampoTaxonomia, string> = {
   'tipo-lugar': 'Lugares · qué es el lugar',
   'incluye-lugar': 'Lugares · qué incluye',
   'condicion-de-uso': 'Lugares · cómo se usa',
+  // B-960 — la única de las bibliotecas: de los cuatro campos propios, el tipo
+  // es el único que es eje de filtro.
+  'tipo-biblioteca': 'Bibliotecas · qué biblioteca es',
 };
 
 const DONDE: Record<CampoTaxonomia, string> = {
@@ -84,6 +87,10 @@ const DONDE: Record<CampoTaxonomia, string> = {
   'condicion-de-uso':
     'Cómo se usa el lugar: gratis, con consumición, alquiler. En el sitio se agrupa en tres ' +
     'opciones —sin costo, consumiendo, pagando— y no hay filtro por precio.',
+  'tipo-biblioteca':
+    'Qué biblioteca es: popular, municipal, provincial, nacional, universitaria, ' +
+    'especializada, comunitaria o escolar. Es uno de los filtros de la Guía, y se ' +
+    'elige al cargar la ficha.',
 };
 
 /**

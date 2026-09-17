@@ -1625,41 +1625,6 @@ aporta al objetivo del proyecto —es contenido indexable de long tail que hoy n
 tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
 y el panel, pero no el sitio.
 
-### B-960 · Bibliotecas: el cuarto directorio de la Guía · P2 — pedido del dueño (2026-09-15)
-
-> 📌 **Después de los P1** (2026-09-16), igual que **B-959** — el motivo está
-> escrito allá. Con una diferencia a favor de éste cuando llegue el momento: el
-> patrón ya existe cuatro veces, así que de los dos es el **previsible**. Los
-> trece archivos son conocidos uno por uno; no hay nada que diseñar.
-
-*«Lo mismo de librerías pero con bibliotecas: formulario público, bandeja y
-sección en guía.»*
-
-**La mitad barata está escrita y era el punto de B-834**: `DIRECTORIOS`
-(`src/lib/directorios.ts`) dice, textual, que *«sumar el cuarto directorio es una
-entrada acá y nada más»* — con esa entrada y `disponible: true` aparecen solas la
-fila de `/guia`, el título del panel, el destino y la URL en el sitemap, y
-`tests/directorios.test.ts` cruza las dos direcciones contra el disco.
-
-**La mitad cara es la capa por entidad, y se conoce el número: por librerías son
-trece archivos** — `types/`, `-schema.ts`, la capa de datos, la proyección
-pública, el panel, el formulario del panel, el formulario público, el buscador, la
-ficha de fila, el endpoint `.json`, y las tres páginas de `/guia/<entidad>/`. Más
-`firestore.rules`, el índice, y —lo que B-904, B-912 y B-922 dejaron aprendido— la
-**retención** en `functions/retencion.js` desde el día uno, no después. La
-proyección **no se generaliza**: es una whitelist por entidad y ahí está toda la
-seguridad de esto.
-
-**Y una decisión de producto antes de escribir una línea, que es lo único que no
-es copiar-y-pegar: una biblioteca ya puede estar cargada como *lugar*.** El
-`/opciones/tipo` de lugares tiene `biblioteca` (`opciones-base.json`), o sea que
-la biblioteca que presta su sala para un encuentro ya tiene ficha. Hay que decidir
-si son **dos fichas de la misma institución** (una como lugar para hacer eventos,
-otra como biblioteca donde sacar libros) o una sola con dos caras. Y con eso, qué
-campos la distinguen de una librería: no vende, presta — horario de sala, si hay
-que asociarse y cuánto sale, si el catálogo está online, y de qué tipo es (popular,
-municipal, nacional, especializada).
-
 ### B-923 · El panel dice «si no querés publicarlo, dejalo vacío» y el guardado falla · P2
 
 **Encontrado escribiendo los formularios públicos de la Guía (2026-09-15), sobre
@@ -2409,6 +2374,58 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1128 · Las `B-` tienen red contra duplicados y las `D-` no, siendo el mismo riesgo · P3 — lo demostró la colisión de D-730 (2026-09-17)
+
+**No hay que argumentarlo: acaba de pasar.** Dos frentes escribieron el mismo día
+dos decisiones distintas con el número **D-730** —el aislamiento del emulador y
+las dos fichas de una biblioteca—, los dos tomando «la siguiente libre» con D-723
+como última y sin poder ver la del otro. Se resolvió al integrar, con el
+precedente de B-600: se queda la que ya estaba escrita en archivos fuente y
+pusheada, y la otra pasó a **D-740**.
+
+**Lo que falta es la red, y el desbalance está medido:**
+
+- `tests/bloques-de-codigo-en-la-doc.test.ts` **sí** detecta `### B-` duplicados,
+  y se extendió hace poco para mirar los dos archivos del backlog.
+- `tests/decisiones-referenciadas.test.ts` valida el **formato** de una `D-`
+  (`/^D-\d+$/`), no su unicidad.
+- `scripts/decisiones-referenciadas.mjs` detecta las **huérfanas**, que es el caso
+  inverso: citada y nunca escrita.
+
+O sea que para el mismo riesgo hay guarda de un lado y no del otro. El arreglo se
+parece al que ya existe: un `it` que barra `^## D-` y exija números únicos.
+
+**Es hermano de B-1113** —la red de D-88 con la firma equivocada—: los dos son
+«hay guarda para una mitad y no para la otra». Y es la misma clase que el
+`/al-backlog` que buscaba ids duplicados en un solo archivo (**B-1120**), del lado
+de las decisiones.
+
+**Al pasar, algo para el mismo barrido:** hoy `D-88` figura como referencia sin
+entrada —se la cita desde los dos backlogs y nunca se escribió—, además de D-400 y
+D-401, que ya tiene **B-1082**.
+
+### B-1126 · `TOPE_INSTAGRAM_LIBRERIA` no tiene ningún lector · P4 — de espejar librerías en bibliotecas (2026-09-17)
+
+`src/types/libreria.ts` lo declara en 30 y **nadie lo importa**: el número está
+tipeado a mano adentro de `RE_INSTAGRAM` (`libreria-schema.ts`). Es una constante
+que se puede cambiar sin que cambie nada — la misma clase de letra muerta que este
+repo persigue en las cláusulas de las reglas, con la diferencia de que acá **no hay
+mutación que la delate**.
+
+En `biblioteca-schema.ts` el patrón se arma desde la constante
+(`` `^[A-Za-z0-9._]{1,${TOPE_INSTAGRAM_BIBLIOTECA}}$` ``), que es la forma que no
+se puede separar. Arreglo: una línea, y borrar la constante si al final no se usa.
+
+### B-1127 · `MIN_NO_VACIO_LIBRERIA` solo lo lee su propio test · P4 — de espejar librerías en bibliotecas (2026-09-17)
+
+Se declaró para el `size() >= 1` de `ciudad`, y **B-967 le dio a `ciudad` un
+`matches` cuyo `+` ya exige un carácter** — o sea que la cota se podó de la regla y
+la constante quedó. Hoy la importa `tests/librerias.test.ts` y nadie más.
+
+En bibliotecas no hizo falta declararla, y **esa asimetría entre dos colecciones
+que por lo demás son gemelas es lo que vale mirar**: o falta la cota en una, o
+sobra la constante en la otra.
 
 ### B-1083 · `D-200` nombra dos decisiones distintas · P3 — de documentar el tablero (2026-09-17)
 

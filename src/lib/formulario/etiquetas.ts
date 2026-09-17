@@ -46,7 +46,13 @@ export type CampoLabelUnico =
   // motivo que los tres de arriba: lo que esta lista cubre es **la taxonomía**,
   // no el formulario de actividad.
   | 'tipo-lugar'
-  | 'condicion-de-uso';
+  | 'condicion-de-uso'
+  // B-960 — la única taxonomía de una biblioteca, también de un solo slug. Mismo
+  // motivo que las de arriba: lo que esta lista cubre es **la taxonomía**, no el
+  // formulario de actividad, y sin ella el «Otro» de `BibliotecaFormulario`
+  // funcionaría en pantalla y la opción no se daría de alta nunca en
+  // `/opciones/*`.
+  | 'tipo-biblioteca';
 
 /**
  * El buffer de las taxonomías **multivalor**: `campo → slug → label`.

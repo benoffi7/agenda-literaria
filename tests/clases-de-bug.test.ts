@@ -401,7 +401,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los dieciséis triggers del proyecto', () => {
+  it('encuentra los diecisiete triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -491,6 +491,19 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
       // puso rojo el día que se escribió el archivo. Es exactamente la promesa
       // de la cabecera cumpliéndose: «un trigger nuevo entra solo».
       'optimizarImagen',
+      /*
+       * B-960 — el rebuild de las bibliotecas, el cuarto de la familia. **Entró
+       * solo** y pasa los dos chequeos por el mismo camino que sus tres
+       * hermanos: su efecto es `marcarRebuild` (idempotente: escribe un
+       * documento fijo con `merge`) y su llamada **domina** el handler, escrita
+       * en la misma forma positiva.
+       *
+       * Y es la cuarta vez que los cuerpos quedan casi iguales a propósito: el
+       * chequeo de B-83 es **textual sobre el cuerpo de cada trigger**, así que
+       * un cuerpo mudado a un helper deja de contener la llamada y este archivo
+       * **dejaría de mirarlos sin ponerse rojo**.
+       */
+      'rebuildPorBibliotecas',
       /*
        * B-901 — el rebuild cuando cambia una ficha de directorio (`/librerias`).
        * Es la trampa 8 con otra cara: sin él se publica una librería desde el

@@ -49,6 +49,11 @@ export { rebuildPorSuscripciones } from './directorios-trigger.js';
 // sin él, la dirección de una casa seguiría publicada después de bajar la
 // casilla (§ 6 del PRD 4).
 export { rebuildPorLugares } from './directorios-trigger.js';
+// B-960 — y el de las bibliotecas, el cuarto directorio de la Guía. Va acá y no
+// se deriva por el mismo motivo que los tres de arriba: `onDocumentWritten` no
+// matchea un comodín en el segmento de colección, así que cada directorio nuevo
+// necesita su propio trigger exportado.
+export { rebuildPorBibliotecas } from './directorios-trigger.js';
 export { dispararRebuild } from './rebuild-trigger.js';
 export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { limpiarVersionesHuerfanas } from './versiones-limpieza-trigger.js';

@@ -108,6 +108,17 @@ import {
 import { ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA } from '@/lib/directorios';
 import { esSlugDeFicha } from '@/lib/rutasPublicas';
 import type { Libreria } from '@/types/libreria';
+import {
+  construirIndiceDeBibliotecas,
+  fichaDeBiblioteca,
+  bibliotecaPublica,
+  type EjeDeBiblioteca,
+  type FichaDeBiblioteca,
+  type IndiceDeBibliotecas,
+  type BibliotecaPublica,
+} from '@/lib/bibliotecaPublica';
+import { EJES_DE_BIBLIOTECA } from '@/lib/bibliotecaPublica';
+import type { Biblioteca } from '@/types/biblioteca';
 import type { SuscripcionLiteraria } from '@/types/suscripcion-literaria';
 import type { Lugar } from '@/types/lugar';
 import { INFO_VERSION } from '@/lib/version';
@@ -219,6 +230,7 @@ export interface ContenidoDelSitio {
    * ninguna lista del sitio puede confundirlas porque no las recibe juntas.
    */
   librerias: LibreriaPublica[];
+  bibliotecas: BibliotecaPublica[];
   /**
    * **Las suscripciones literarias publicadas, ya proyectadas** — B-832.
    *
@@ -644,6 +656,79 @@ const lugaresPublicados = async (): Promise<LugarPublico[]> => {
 };
 
 /** Los cinco documentos de `/opciones/*`, en una sola ida (§4.1). */
+/**
+ * Los campos que la query de bibliotecas pide, que son **exactamente** los que
+ * `bibliotecaPublica()` publica (`lib/bibliotecaPublica.ts`).
+ *
+ * Mismo criterio que `CAMPOS_DE_LA_PROYECCION`: es una decisión de la **lectura**
+ * y no de la whitelist, y lo que no puede es separarse de ella —
+ * `tests/bibliotecas.test.ts` compara las dos listas—.
+ *
+ * ⚠️ **Dos asimetrías con las claves de la proyección, y las dos son a
+ * propósito**, igual que las de lugares:
+ *
+ * - **`asociarse` está con el nombre del documento.** En la proyección
+ *   `asociarse.costo` es la **frase** («$3.000 por año · cargado el …») y en el
+ *   documento es el mapa `{ valor, cargadoEn }`. La lista sirve igual porque
+ *   `.select()` pide **campos del documento** y el nombre del campo de primer
+ *   nivel coincide.
+ * - **`searchText` NO se pide**, y ésa es la que importa: el del documento lo
+ *   escribe el cliente —y este cliente puede ser un anónimo—, así que la
+ *   proyección lo **deriva** de los valores ya proyectados en vez de copiarlo
+ *   (ver `searchTextDeBiblioteca`). Pedirlo sería traer a la memoria del runner
+ *   de CI un campo que no se usa.
+ *
+ * Lo que no cambia es el motivo del `.select()` (D-159): lo que no se pide no
+ * entra a la memoria del proceso de build, y en esta colección eso incluye el
+ * `contactoDeQuienCargo` y el motivo del rechazo.
+ */
+const CAMPOS_DE_LA_PROYECCION_BIBLIOTECA = [
+  'slug',
+  'nombre',
+  'descripcion',
+  'tipo',
+  'direccion',
+  'horarios',
+  'horarioDeSala',
+  'asociarse',
+  'catalogo',
+  'provincia',
+  'barrio',
+  'ciudad',
+  'geo',
+  'imagenes',
+  'instagram',
+  'whatsapp',
+  'web',
+  'mail',
+] as const;
+
+/**
+ * **Las bibliotecas publicadas** — B-960.
+ *
+ * La misma función que `libreriasPublicadas` con otra colección, y con el mismo
+ * docblock detrás: el `where` es la **primera de las nueve cosas que se rompen
+ * en silencio** —sin él se publica lo pendiente, con el `contactoDeQuienCargo`
+ * de quien la cargó adentro— y el `.select()` es su otra mitad (D-159).
+ *
+ * `ESTADO_PUBLICO` sale de `lib/directorios.ts` y no del literal `'publicado'`;
+ * `tests/bibliotecas.test.ts` lo afirma leyendo este archivo. Y el descarte del
+ * slug raro (`esSlugDeFicha`) también: la colección recibe altas anónimas, así
+ * que no hay garantía de que el slug haya pasado por `slugDeFicha`, y un solo
+ * documento raro no puede apagar el build entero.
+ */
+const bibliotecasPublicadas = async (): Promise<BibliotecaPublica[]> => {
+  const snap = await adminDb()
+    .collection('bibliotecas')
+    .where('estado', '==', ESTADO_PUBLICO_DE_FICHA)
+    .select(...CAMPOS_DE_LA_PROYECCION_BIBLIOTECA)
+    .get();
+
+  return snap.docs
+    .map((d) => bibliotecaPublica(d.data() as Biblioteca))
+    .filter((b) => esSlugDeFicha(b.slug));
+};
+
 const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, ValorOpcion[]>>> => {
   const refs = CAMPOS_TAXONOMIA.map((c) => adminDb().doc(`opciones/${c}`));
   const snaps = await adminDb().getAll(...refs);
@@ -663,6 +748,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       librerias,
       suscripciones,
       lugares,
+      bibliotecas,
     ] = await Promise.all([
       publicadas(),
       canceladas(),
@@ -670,6 +756,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       libreriasPublicadas(),
       suscripcionesPublicadas(),
       lugaresPublicados(),
+      bibliotecasPublicadas(),
     ]);
     return {
       actividades: publicadasConPagina.actividades,
@@ -680,6 +767,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       librerias,
       suscripciones,
       lugares,
+      bibliotecas,
     };
   }
 
@@ -713,6 +801,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     librerias: [],
     suscripciones: [],
     lugares: [],
+    bibliotecas: [],
   };
 };
 
@@ -1037,6 +1126,137 @@ export const caminosDeLibreria = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeLibreria } }[]
 > => {
   const fichas = await fichasDeLibreria();
+  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Las bibliotecas — B-960, el cuarto directorio
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * `/bibliotecas.json` — el índice que el listado de `/guia/bibliotecas` filtra
+ * en memoria (§2.5).
+ *
+ * **Cero lecturas nuevas de Firestore**: sale del mismo `contenidoDelSitio()`
+ * memoizado que el `events.json`, las páginas de detalle, el sitemap y los otros
+ * tres índices. Van siete artefactos con una sola lectura.
+ *
+ * Los vocabularios salen de las opciones **sin filtrar por aprobación** y se
+ * recortan después a los valores que alguna ficha usa, que es la misma asimetría
+ * de D-30 en su lado correcto: acá se **resuelve** el valor que la biblioteca ya
+ * tiene guardado, no se ofrece la taxonomía entera. Lo que impide publicar
+ * vocabulario sin validar es el recorte por uso, no el filtro de aprobación: un
+ * chip solo existe si hay una biblioteca publicada detrás.
+ */
+export const indiceDeBibliotecas = async (): Promise<IndiceDeBibliotecas> => {
+  const { bibliotecas, opciones } = await contenidoDelSitio();
+  return construirIndiceDeBibliotecas({
+    bibliotecas,
+    /*
+     * Los cuatro vocabularios armados recorriendo `EJES_DE_BIBLIOTECA` y no
+     * enumerados a mano: es lo que hace que un eje nuevo en el módulo llegue
+     * solo hasta acá, en vez de quedarse sin vocabulario y con el chip vacío.
+     *
+     * Y funciona porque **el eje se llama igual que su taxonomía**
+     * (`tipo-biblioteca`, no `tipo`): sin eso haría falta una tabla de
+     * traducción, que es justo lo que este `Object.fromEntries` evita.
+     */
+    vocabularios: Object.fromEntries(
+      EJES_DE_BIBLIOTECA.map((eje) => [eje, opciones[eje] ?? []]),
+    ) as Partial<Record<EjeDeBiblioteca, ValorOpcion[]>>,
+    version: INFO_VERSION.version,
+    generadoEn: INFO_VERSION.generadoEn,
+  });
+};
+
+/**
+ * Todo lo que `/guia/bibliotecas` necesita, y **nada más** — el view-model del
+ * listado (D-140).
+ *
+ * La plantilla no ve el índice ni el documento: recibe las fichas ya armadas más
+ * los chips. Es la misma frontera que `vistaDeLibrerias` le pone a la suya, y la
+ * que el `auditor-privacidad` pidió después de encontrarla abierta en la primera
+ * versión de la página de mes.
+ */
+export interface VistaDeBibliotecas {
+  fichas: FichaDeBiblioteca[];
+  /** Los chips de cada eje, en el orden de la taxonomía. */
+  filtros: Record<EjeDeBiblioteca, { slug: string; label: string }[]>;
+  version: string;
+}
+
+/**
+ * Las fichas del directorio, ya resueltas: las etiquetas de la geografía y del
+ * tipo, y —solo si el hub existe— su destino.
+ *
+ * ── Por qué el hub se consulta y no se asume ──────────────────────────────
+ * `/barrio/{slug}` y `/ciudad/{slug}` los emite el build para los valores que
+ * tienen alguna **actividad** publicada (`hubsPublicos.ts`), y este directorio
+ * puede estrenar barrios y ciudades que no tienen ninguna. Linkear a ciegas
+ * publicaría un 404 en cada una de esas fichas, que es la misma clase de error
+ * que `esSlugDeFicha` evita del otro lado: una URL emitida sin confirmar que
+ * exista.
+ *
+ * **Las cuatro etiquetas se resuelven**, y eso incluye la del tipo: sin ella la
+ * ficha publicaría `tipo-biblioteca` crudo —`universitaria` en vez de
+ * «Universitaria»— en la página y en el listado, que son salidas indexadas. Es
+ * literalmente lo que el `auditor-privacidad` cobró en librerías cuando `ciudad`
+ * pasó de texto libre a slug.
+ */
+const fichasDeBiblioteca = async (): Promise<FichaDeBiblioteca[]> => {
+  const { bibliotecas } = await contenidoDelSitio();
+  const indice = await indiceDelSitio();
+  // Sin filtrar por aprobación: se **resuelve** el slug guardado, no se ofrece
+  // un chip. Es literalmente el caso de D-30.
+  const etiquetas = await etiquetasDelDetalle();
+  const conHub = new Set(slugsConHub('barrio', indice.actividades, indice.opciones));
+  const ciudadesConHub = new Set(slugsConHub('ciudad', indice.actividades, indice.opciones));
+
+  return bibliotecas.map((b) =>
+    fichaDeBiblioteca(b, {
+      etiquetaDeBarrio: etiquetas.barrio?.[b.barrio],
+      rutaDelBarrio: conHub.has(b.barrio) ? rutaDeBarrio(b.barrio) : null,
+      etiquetaDeCiudad: etiquetas.ciudad?.[b.ciudad],
+      rutaDeLaCiudad: ciudadesConHub.has(b.ciudad) ? rutaDeCiudad(b.ciudad) : null,
+      etiquetaDeProvincia: etiquetas.provincia?.[b.provincia],
+      etiquetaDeTipo: etiquetas['tipo-biblioteca']?.[b.tipo],
+    }),
+  );
+};
+
+/** El listado: las fichas ordenadas por nombre y los chips. */
+export const vistaDeBibliotecas = async (): Promise<VistaDeBibliotecas> => {
+  const [fichas, indice] = await Promise.all([fichasDeBiblioteca(), indiceDeBibliotecas()]);
+  const porSlug = new Map(fichas.map((f) => [f.slug, f]));
+  return {
+    // El orden lo decide el índice —el mismo que va a ver la island después de
+    // hidratar—: con dos ordenamientos, la lista saltaría al cargar el JSON.
+    fichas: indice.bibliotecas.map((b) => porSlug.get(b.slug)!).filter(Boolean),
+    filtros: Object.fromEntries(
+      EJES_DE_BIBLIOTECA.map((eje) => [
+        eje,
+        indice.filtros[eje].map((v) => ({ slug: v.slug, label: v.label })),
+      ]),
+    ) as VistaDeBibliotecas['filtros'],
+    version: indice.version,
+  };
+};
+
+/**
+ * Los caminos de `/guia/bibliotecas/[slug]`, uno por biblioteca publicada.
+ *
+ * Vive acá y no adentro del `.astro` por lo mismo que `caminosDeDetalle`: un
+ * `.astro` no se importa desde vitest, así que un `getStaticPaths` escrito en la
+ * plantilla es código sin forma de probarse.
+ *
+ * `props` lleva **solo el view-model**: la plantilla no recibe el documento, así
+ * que no puede publicar el `contactoDeQuienCargo` ni aunque quiera — no está en
+ * el objeto.
+ */
+export const caminosDeBiblioteca = async (): Promise<
+  { params: { slug: string }; props: { ficha: FichaDeBiblioteca } }[]
+> => {
+  const fichas = await fichasDeBiblioteca();
   return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
 };
 

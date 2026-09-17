@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **Bibliotecas: el cuarto directorio de la Guía** — **B-960**, pedido del dueño.
+  Colección `/bibliotecas`, pantalla en el panel, formulario público en
+  `/guia/bibliotecas/sumar`, listado y ficha con `Library`, `/bibliotecas.json`,
+  reglas, trigger de rebuild y retención. La Guía pasa de tres secciones a
+  cuatro. **5004 unitarios + 37 de integración en verde.**
+
+  **La decisión de producto (D-740):** una biblioteca que además presta su sala
+  tiene **dos fichas**, una en «Lugares» y otra acá. Son dos preguntas de dos
+  personas distintas —quien organiza busca sala, quien lee busca catálogo— y una
+  ficha que contesta las dos obliga a las dos a leer la mitad que no les sirve.
+  El costo aceptado: la misma institución se carga dos veces.
+
+  Cuatro campos propios: **tipo** (taxonomía nueva `tipo-biblioteca`), **dos
+  horarios** —mostrador y sala de lectura, que en una biblioteca no son lo
+  mismo—, **catálogo online** y **si hay que asociarse y cuánto**. El costo va
+  con `DatoConFecha` y como **texto, no como entero**: el carnet casi nunca es un
+  número solo, y como la regla 2 de `datoConFecha.ts` prohíbe filtrar u ordenar
+  por él, el entero no compraba nada.
+
+  **La retención entró sola**: `borrarFichasVencidas` deriva su lista de
+  `COLECCIONES_DE_DIRECTORIO`, así que la cuarta colección entró al barrido sin
+  escribir una línea y sus 25 casos pasaron sin tocarlos. Es la diferencia
+  medida entre una lista derivada y una escrita a mano. Del otro lado, **seis
+  registros declarados pidieron su línea y cada uno frenó en rojo**, más las
+  **cuatro tablas atadas** al índice de salidas públicas, que pasó de 25 a 28.
+
+- **Dos decisiones distintas nacieron con el mismo número el mismo día, y el
+  merge las agarró.** `D-730` lo tomaron en paralelo el frente del emulador y el
+  de bibliotecas, los dos con D-723 como última escrita y ninguno pudiendo ver la
+  del otro. Se resolvió con el precedente de B-600 —manda lo que ya está escrito
+  en archivos fuente y pusheado— así que el aislamiento del emulador se queda con
+  **D-730** y las dos fichas de una biblioteca pasan a **D-740**.
+
+  **Lo que el choque dejó a la vista es que no hay red: las `B-` tienen guarda
+  contra duplicados y las `D-` no**, siendo el mismo riesgo. El test de
+  decisiones valida el **formato** de una `D-`, no su unicidad, y el barrido
+  detecta las **huérfanas**, que es el caso inverso. Queda como **B-1128**, el
+  mismo día en que `/al-backlog` se arregló por numerar mal con seis frentes en
+  paralelo (**B-1120**): es esa misma clase, del lado de las decisiones.
+
 - **La tanda de «ítems no visibles»: siete frentes sobre trabajo que el backlog
   abierto no mostraba.** El pedido fue buscar lo que no se ve, y resultó haber
   cinco lugares donde este repo esconde trabajo: frases del tipo «queda para

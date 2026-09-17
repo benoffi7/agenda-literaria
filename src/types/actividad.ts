@@ -879,6 +879,33 @@ export const CAMPOS_TAXONOMIA = [
   'tipo-lugar',
   'incluye-lugar',
   'condicion-de-uso',
+  /*
+   * ── La de las bibliotecas — B-960 ───────────────────────────────────────
+   *
+   * Mismo argumento que los tres de arriba, y **es una sola**: lo que necesita
+   * slug es un eje de filtro, y de los cuatro campos propios de una biblioteca
+   * el único que lo es es el tipo (popular, municipal, provincial, nacional,
+   * universitaria, especializada, comunitaria, escolar). Los otros tres no:
+   * `horarioDeSala` y el costo de asociarse son texto —y el costo además no
+   * puede entrar a ningún filtro, que es la regla 2 de `datoConFecha.ts`— y
+   * `catalogo` es una URL.
+   *
+   * Se llama `tipo-biblioteca` y **no `tipo`**, igual que `tipo-lugar`: `tipo` ya
+   * es la taxonomía de una actividad (taller, club de lectura…) y compartirla
+   * mezclaría dos vocabularios que no tienen nada que ver, rompiendo el orden por
+   * `usos` que es lo que hace útil al desplegable.
+   *
+   * `barrio`, `provincia` y `ciudad` **no vuelven a aparecer acá**, y ése es el
+   * punto: una biblioteca usa el mismo vocabulario que una actividad, una
+   * librería y un lugar, que es lo que deja al hub de barrio cruzar las cuatro
+   * cosas.
+   *
+   * Lo que **no** gana por estar acá, atado en los dos lugares igual que las
+   * otras: no viaja en el `events.json` (`TAXONOMIAS_FUERA_DEL_INDICE`) y no va
+   * al evento de Calendar (`TAXONOMIAS_FUERA_DEL_EVENTO`) — una biblioteca no
+   * tiene encuentros.
+   */
+  'tipo-biblioteca',
 ] as const;
 export type CampoTaxonomia = (typeof CAMPOS_TAXONOMIA)[number];
 

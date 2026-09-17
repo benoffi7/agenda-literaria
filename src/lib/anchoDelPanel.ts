@@ -122,6 +122,13 @@ const VISTAS_DE_FORMULARIO: readonly string[] = [
    * estira, se usa (B-621).
    */
   'lugar',
+  /*
+   * B-960 — el formulario de una biblioteca. Entra por lo mismo que los otros
+   * tres: sus campos ya reparten en dos columnas (el tipo con la dirección, los
+   * dos horarios uno al lado del otro, el catálogo con la cascada de lugar), así
+   * que el ancho no se estira, se usa (B-621).
+   */
+  'biblioteca',
 ];
 
 /**

@@ -412,9 +412,16 @@ describe('B-972 · las reglas conocen las mismas provincias que el módulo', () 
    * nadie llama no da ningún error y no valida nada. Son dos usos —la librería y
    * el lugar—, que son los dos documentos con provincia propia.
    */
-  it('y la usan los dos documentos con provincia', () => {
+  it('y la usan los tres documentos con provincia', () => {
+    /*
+     * Eran dos —`/librerias` y `/lugares`— y desde **B-960** son tres:
+     * `/bibliotecas` tiene la misma cascada de dos niveles y la misma
+     * verificación, que es lo único de la geografía que se puede comprobar
+     * (el barrio y la ciudad son vocabulario abierto). `/suscripciones` no
+     * cuenta: no tiene provincia, porque no tiene dónde.
+     */
     const usos = reglas.match(/&& esProvinciaValida\(d\.provincia\)/g) ?? [];
-    expect(usos).toHaveLength(2);
+    expect(usos).toHaveLength(3);
   });
 });
 

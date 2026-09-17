@@ -1174,6 +1174,61 @@ no se revisa.
 
 Qué sale al issue y qué no está en [`07-seguridad.md`](07-seguridad.md).
 
+## `/bibliotecas/{id}` — el cuarto directorio (B-960)
+
+Dónde sacar libros. Es la cuarta colección de la Guía y la que más se parece a
+`/librerias`: mismo ciclo de vida (`lib/directorios.ts`), misma geografía, misma
+galería, mismo `contactoDeQuienCargo` interno.
+
+**Una biblioteca que además presta su sala tiene dos fichas** —una acá y otra en
+`/lugares`—, y eso es una decisión del dueño, no un descuido: **D-740**.
+
+### Los cuatro campos que no tiene ninguna otra ficha
+
+| Campo | Qué es |
+|---|---|
+| `tipo` | Slug de `/opciones/tipo-biblioteca` (popular, municipal, provincial, nacional, universitaria, especializada, comunitaria, escolar). Opcional; es el eje de filtro propio de la sección |
+| `horarioDeSala` | Texto libre, aparte de `horarios`. En una biblioteca **no son lo mismo**: el mostrador puede abrir de 9 a 20 y la sala de lectura de 14 a 19, o no existir. `''` significa «no tiene sala» tanto como «no lo dijo», y la página no lo muestra en ninguno de los dos casos |
+| `catalogo` | La URL del catálogo consultable, saneada con `urlSegura` igual que `web` y **aparte** de ella: son dos destinos distintos, y muchas bibliotecas tienen el catálogo en un sistema compartido sin tener web propia |
+| `asociarse` | `{ haceFalta: boolean, costo: DatoConFecha<string> \| null }` — ver abajo |
+
+### `asociarse` — el objeto, y por qué no son dos campos
+
+`costo` **solo tiene sentido si `haceFalta` es `true`**, y esa relación escrita
+en dos campos de primer nivel se pierde: el formulario dejaría cargar un costo
+sobre una biblioteca que no pide asociarse, y la ficha publicaría «no hace falta
+asociarse · $3.000 por año». Es la misma razón por la que `inscripcion` de una
+actividad es un objeto y no seis campos.
+
+**No es un par flag+dato** (`lib/paresFlagDato.ts`), y conviene decirlo porque el
+nombre se parece: `haceFalta` no **esconde** el costo, decide si existe. Un par
+de aquel registro es un booleano que oculta un dato que existe igual —el link de
+la reunión, la dirección de una casa— y su modo de falla es publicar lo que
+alguien pidió no publicar. Acá no hay nada escondido.
+
+**El costo va con `DatoConFecha` (B-837 / DEC-12)** porque es un dato que nadie
+va a mantener al día y que, cuando está y ya no es cierto, es peor que ausente:
+alguien va con $2.000 y el carnet sale $8.000.
+
+**Y va como texto, no como entero** —al revés que el precio de una suscripción—
+porque el carnet casi nunca es un número solo: «$3.000 por año, gratis para
+jubilados», «$500 el carnet y después nada». Como la regla 2 de `datoConFecha.ts`
+prohíbe filtrar u ordenar por él, el entero no compraba nada.
+
+### Tres defensas del mismo invariante
+
+Que no se publique un costo colgado de un «no hace falta» está escrito en los
+tres lados, y cada uno cubre lo que el anterior no:
+
+1. **El schema** (`biblioteca-schema.ts`), para quien mira la pantalla. El error
+   se marca sobre `costo` —el campo que tiene el valor de más— y no sobre el flag
+   que la persona dejó como quería: la lección de B-923.
+2. **`asociarseValido()` en `firestore.rules`**, para el `curl`.
+3. **La proyección** (`costoDeAsociarse`), para el documento que no pasó por
+   ninguno de los dos —uno anterior, o escrito por un script—.
+
+---
+
 ## Historial de versiones (§12)
 
 Cada edición que pisa contenido cargado por una persona deja el documento

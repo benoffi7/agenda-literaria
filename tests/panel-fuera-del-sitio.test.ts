@@ -209,10 +209,10 @@ const FIREBASE_DEL_CLIENTE = [
  * decisión: cada una es una página pública que puede cargar reCAPTCHA
  * Enterprise, con cuota facturable por visitante.
  *
- * **Son cuatro desde el 2026-09-15**, y las tres nuevas son los formularios de
- * `prd/` que faltaban: `/guia/<x>/sumar`. Entraron juntas porque son la misma
- * puerta con tres vocabularios —el `create` anónimo de las tres colecciones de
- * la Guía— y porque las tres difieren el **mismo** módulo, `lib/enviar-ficha.ts`.
+ * **Son cinco desde B-960**, y las cuatro de la Guía son la misma puerta con
+ * cuatro vocabularios —el `create` anónimo de sus colecciones—: las cuatro
+ * difieren el **mismo** módulo, `lib/enviar-ficha.ts`. Las tres primeras
+ * entraron juntas el 2026-09-15; la de bibliotecas, con su directorio.
  *
  * La lista se queda a mano y no se deriva de «¿tiene una island que escribe?»
  * justamente porque agregar una tiene que costar este renglón: es el único lugar
@@ -224,6 +224,7 @@ const PAGINAS_QUE_ESCRIBEN = [
   'src/pages/guia/librerias/sumar.astro',
   'src/pages/guia/suscripciones/sumar.astro',
   'src/pages/guia/lugares/sumar.astro',
+  'src/pages/guia/bibliotecas/sumar.astro',
 ];
 
 /**
@@ -286,7 +287,7 @@ describe('la plomería del panel no llega al sitio público — B-841', () => {
     ).toEqual([]);
   });
 
-  it('y de forma diferida, solo las que escriben — que hoy son cuatro', () => {
+  it('y de forma diferida, solo las que escriben — que hoy son cinco', () => {
     const alcanzan = paginas()
       .filter((p) => p !== ES_EL_PANEL)
       .filter((p) => caminoHasta(p, FIREBASE_DEL_CLIENTE) !== null);

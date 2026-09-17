@@ -337,6 +337,23 @@ export const FUNCIONES = [
    */
   'lugares-abrir',
   'lugar-guardar',
+  /*
+   * B-960 — la Guía, cuarta entidad: `/guia/bibliotecas`.
+   *
+   * El mismo par que los otros tres y por el mismo motivo: el riesgo que este
+   * tipo de pantalla acepta es que **nadie la mire**. `bibliotecas-abrir` lleva
+   * cuántas esperaban decisión al abrir; `biblioteca-guardar` cuenta las que se
+   * cargan de verdad.
+   *
+   * Ninguno lleva `detalle`, y acá hay un motivo propio además del de siempre:
+   * **el costo de asociarse no se mide**. Es un `DatoConFecha` cuya regla 2
+   * (`datoConFecha.ts`, D-570) dice que no entra a ningún filtro ni a ningún
+   * orden justamente porque no es comparable entre fichas; mandarlo a GA4 —donde
+   * lo único que se puede hacer con un número es agregarlo y compararlo— sería
+   * deshacer esa decisión en la salida que más la amplifica.
+   */
+  'bibliotecas-abrir',
+  'biblioteca-guardar',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

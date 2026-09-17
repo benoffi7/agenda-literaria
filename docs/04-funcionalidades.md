@@ -1411,6 +1411,49 @@ corregir.
 abrir la página. El build ya las lee para el `events.json` y el sitio se rebuildea
 cuando cambian (§4.4).
 
+### Bibliotecas — el cuarto directorio de la Guía (B-960)
+
+Dónde sacar libros. Pantalla propia en el panel («Bibliotecas» desde el
+listado), bandeja genérica de `DirectorioPanel`, formulario propio y formulario
+público en `/guia/bibliotecas/sumar`.
+
+**Una biblioteca que además presta su sala tiene dos fichas** —una acá y otra en
+«Lugares»—, y es una decisión del dueño (**D-740**): son dos preguntas de dos
+personas distintas, y una ficha que contesta las dos obliga a las dos a leer la
+mitad que no les sirve. El capítulo de ayuda del panel lo explica, porque la
+primera vez que alguien vea la misma institución en las dos secciones va a querer
+borrar una.
+
+Lo que la distingue de una librería son cuatro campos: el **tipo**
+(`/opciones/tipo-biblioteca`), los **dos horarios** —mostrador y sala de lectura,
+que en una biblioteca no son lo mismo—, el **catálogo online** y **si hay que
+asociarse y cuánto sale**.
+
+#### El costo de asociarse
+
+Va con `DatoConFecha` (B-837 / DEC-12), así que **se publica siempre con la fecha
+en que se cargó al lado** y esa fecha la pone el servidor: quien carga no elige
+qué fecha aparece junto al monto. Se mueve sola cuando el número cambia y no se
+mueve cuando se corrige cualquier otra cosa de la ficha — si se moviera, el sitio
+diría que el monto es más fresco de lo que es.
+
+**Es texto y no un número**, al revés que el precio de una suscripción: el carnet
+casi nunca es un número solo («$3.000 por año, gratis para jubilados»). Y como un
+dato con fecha no entra a ningún filtro ni a ningún orden (regla 2 de
+`datoConFecha.ts`), el entero no compraba nada.
+
+Si se marca que **no** hace falta asociarse, el costo se borra solo: una ficha que
+dijera «no hace falta asociarse» con un precio al lado se estaría contradiciendo,
+y el guardado la rechaza en los tres niveles (schema, regla y proyección).
+
+#### La retención entró sola
+
+`borrarFichasVencidas` deriva su lista de `COLECCIONES_DE_DIRECTORIO`, así que la
+cuarta colección entró al barrido sin escribir una línea —B-904 lo había dejado
+así a propósito— y sus 25 casos pasaron sin tocarlos. Lo que sí hubo que escribir
+a mano es el trigger de rebuild: `onDocumentWritten` no matchea un comodín en el
+segmento de colección.
+
 ## Dos formas del formulario, y las elige quien carga
 
 El interruptor **«PC / Celular»** de la cabecera del panel (B-814, D-550) decide

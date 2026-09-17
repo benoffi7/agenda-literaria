@@ -151,3 +151,35 @@ export const rebuildPorLugares = onDocumentWritten(
     }
   },
 );
+
+export const rebuildPorBibliotecas = onDocumentWritten(
+  {
+    ...OPCIONES_BASE,
+    document: 'bibliotecas/{id}',
+  },
+  async (event) => {
+    const antes = event.data?.before?.data() ?? null;
+    const despues = event.data?.after?.data() ?? null;
+    const { id } = event.params;
+
+    /*
+     * La misma guarda, en la misma forma positiva y por el mismo motivo que las
+     * tres de arriba (ver el detalle de la clase de B-83 en la primera).
+     *
+     * Lo propio de esta colección es **el costo de asociarse**: se publica con su
+     * fecha de carga al lado (DEC-12), así que cambiar el número tiene que
+     * rehacer la ficha o el sitio queda mostrando el monto viejo con una fecha
+     * que ya no le corresponde — que es peor que no mostrarlo, porque parece
+     * fresco. `asociarse` está entero en `cambioAmeritaRebuild`, así que tanto el
+     * flag como el costo lo disparan.
+     *
+     * El motivo lleva **solo el id**: el nombre y la dirección son contenido, y
+     * el contacto de quien cargó la ficha es de un tercero.
+     */
+    if (cambioAmeritaRebuild(antes, despues, 'bibliotecas')) {
+      await marcarRebuild(getFirestore(), `biblioteca ${id}`);
+    } else {
+      logger.debug('cambio de biblioteca sin efecto en el sitio: no se rebuildea', { id });
+    }
+  },
+);

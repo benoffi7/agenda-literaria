@@ -1,0 +1,129 @@
+---
+/**
+ * `/guia/bibliotecas/sumar` — el formulario público del directorio de
+ * bibliotecas. **B-960**.
+ *
+ * ── Por qué el formulario es una island y no un `<form>` HTML ─────────────
+ * Igual que los otros tres: tiene estado —una cascada de lugar, un checkbox que
+ * revela el costo, validación en el submit (D-01)— y, sobre todo, **el sitio es
+ * estático** (§2.4), así que un `<form>` que postea necesitaría algo que reciba
+ * el POST y no lo hay. La escritura va con el SDK cliente contra
+ * `firestore.rules`.
+ *
+ * **`client:load` y no `client:visible`**: el formulario es lo que se vino a
+ * hacer acá, así que no puede aparecer tres segundos después de que la página
+ * pintó.
+ *
+ * ── Los vocabularios se leen en el BUILD ──────────────────────────────────
+ * Y no en el navegador, aunque `/opciones/*` sea de lectura pública. Pedirlos en
+ * runtime obligaría a inicializar Firestore —y con él App Check— al **abrir** la
+ * página: el desafío de reCAPTCHA Enterprise cargaría para cualquiera que mire,
+ * no para quien decide mandar algo (el motivo entero está en
+ * `lib/enviar-ficha.ts`). El build ya los lee y el sitio se rebuildea cuando
+ * cambian (§4.4), así que la lista viaja al día y gratis.
+ *
+ * ── Y esta página SÍ se anuncia ──────────────────────────────────────────
+ * Está en `RUTAS_FIJAS` —derivada de la fila de `lib/directorios.ts`, junto con
+ * el listado— y enlazada desde `/guia/bibliotecas`. El `create` anónimo está
+ * abierto, así que el formulario puede recibir de verdad. Indexar una página
+ * cuyo formulario rebota es prometer lo que no se cumple, y eso es lo que B-780
+ * costó como P0.
+ *
+ * La canónica, el Open Graph y el chrome los pone `Base.astro` — ninguna página
+ * se arma los suyos (`tests/canonico.test.ts`).
+ */
+import Base from '@/layouts/Base.astro';
+import { SumarBiblioteca } from '@/components/publico/SumarBiblioteca';
+import { contenidoDelSitio } from '@/lib/contenidoDelSitio';
+import { opcionesPublicas } from '@/lib/toPublic';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_BIBLIOTECAS, RUTA_CONTACTO, RUTA_PROPONER } from '@/lib/rutasPublicas';
+import { claseBloque, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const { opciones } = await contenidoDelSitio();
+/*
+ * Solo las **aprobadas y visibles**, que es lo que `opcionesPublicas` deja
+ * pasar: una etiqueta que otra cuenta creó y nadie validó todavía no se le
+ * ofrece a alguien de afuera (§4.3). Si el documento no existe, la lista viene
+ * vacía y el control muestra directamente el campo libre — no inventa nada.
+ */
+const ofrecidas = (campo: 'barrio' | 'provincia' | 'ciudad' | 'tipo-biblioteca') =>
+  opcionesPublicas(opciones[campo] ?? []).map((o) => ({ slug: o.slug, label: o.label }));
+
+const barriosOfrecidos = ofrecidas('barrio');
+const provinciasOfrecidas = ofrecidas('provincia');
+const ciudadesOfrecidas = ofrecidas('ciudad');
+// El vocabulario propio de esta entidad. Viene sembrado `fijo: true` con las
+// ocho clases de biblioteca, así que la lista nunca llega vacía.
+const tiposOfrecidos = ofrecidas('tipo-biblioteca');
+---
+
+<Base
+  seccion="guia"
+  titulo={`Sumar una biblioteca — ${NOMBRE}`}
+  descripcion="¿Trabajás en una biblioteca o conocés una que tendría que estar en la guía? Contanos dónde queda, cuándo abre y cómo se sacan los libros."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_BIBLIOTECAS}>Bibliotecas</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">Sumar una biblioteca</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Si trabajás en una biblioteca, o conocés una que tendría que estar en la guía, contanos
+      dónde queda, cuándo abre y cómo se sacan los libros. No hace falta tener cuenta.
+    </p>
+
+    <section aria-labelledby="que-pasa" class={`mt-10 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 id="que-pasa" class="headline-sm text-tinta">Qué pasa con lo que mandás</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Nada se publica solo. La ficha queda esperando y la miramos antes de que entre a la guía:
+        puede que le corrijamos algo, y puede que al final no la sumemos.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Las fotos las ponemos nosotros al publicarla, así que este formulario no las pide.
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Si cargás cuánto sale asociarse, ese dato se publica <strong>con la fecha en que lo
+        mandaste al lado</strong>. Es a propósito: un precio viejo sin fecha no es un dato viejo,
+        es un dato equivocado, y lo paga la biblioteca con alguien que llega con la plata justa.
+      </p>
+
+      <p class={`mt-5 ${claseRotulo}`}>Tu contacto</p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Pedimos una forma de escribirte porque no volvés a entrar acá: si falta un dato, es lo
+        único que nos deja preguntártelo. <strong>No se publica</strong> en ninguna parte.
+      </p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Si al final la ficha no entra, tu contacto se borra a los 30 días. Si entra, lo guardamos
+        para poder avisarte de algo sobre la biblioteca.
+      </p>
+    </section>
+
+    <SumarBiblioteca
+      client:load
+      barriosOfrecidos={barriosOfrecidos}
+      provinciasOfrecidas={provinciasOfrecidas}
+      ciudadesOfrecidas={ciudadesOfrecidas}
+      tiposOfrecidos={tiposOfrecidos}
+    />
+
+    <section aria-labelledby="si-no-es-esto" class="mt-14 regla-gruesa-arriba pt-4">
+      <h2 id="si-no-es-esto" class="headline-sm text-acento">Si no es esto lo que buscabas</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Si la biblioteca además <strong>presta su sala</strong> para hacer encuentros, eso va en
+        otra ficha: <a class={claseEnlace} href={RUTA_PROPONER}>proponé la actividad</a> si es un
+        evento puntual, o sumala como lugar desde la Guía si presta el espacio seguido. Son dos
+        fichas distintas a propósito — una contesta «dónde saco un libro» y la otra «dónde hago
+        un encuentro».
+      </p>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        Y si es otra cosa, o algo de acá está mal,
+        <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
+      </p>
+    </section>
+  </main>
+</Base>

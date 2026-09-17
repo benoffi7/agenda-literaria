@@ -47,6 +47,9 @@ no se pueden deshacer después.
    | 23 | la ficha `/guia/suscripciones/{slug}` y su JSON-LD `Product` **sin precio** | `src/lib/suscripcionPublica.ts` (`fichaDeSuscripcion`, `datosEstructuradosDeSuscripcion`, `migasDeSuscripcion`, `descripcionDeSuscripcion`), `src/lib/contenidoDelSitio.ts` (`caminosDeSuscripcion`) |
    | 24 | el directorio de lugares para eventos: `/lugares.json` + `/guia/lugares` | `src/lib/lugarPublico.ts` (`lugarPublico`, **`dondeQueSale`** —el par flag + dato del § 6: `direccion` y `geo` salen solo si `direccionPublica`—, `fraseDePrecioDeLugar`, `claseDeCosto`, `construirIndiceDeLugares`, `descripcionDelDirectorioDeLugares`), `src/lib/contenidoDelSitio.ts` (`lugaresPublicados` — el `where` y el `.select()`) |
    | 25 | la ficha `/guia/lugares/{slug}` y su JSON-LD `Place`, con `address` **solo si la dirección salió** y sin `priceRange` | `src/lib/lugarPublico.ts` (`fichaDeLugar`, `datosEstructuradosDeLugar`, `migasDeLugar`, `descripcionDeLugar`), `src/lib/contenidoDelSitio.ts` (`caminosDeLugar`) |
+   | 26 | el directorio de bibliotecas `/bibliotecas.json` + `/guia/bibliotecas` | `src/lib/bibliotecaPublica.ts`, `src/lib/contenidoDelSitio.ts` |
+   | 27 | la ficha `/guia/bibliotecas/{slug}` y su JSON-LD `Library`, sin `openingHours` y sin `Offer` | `src/lib/bibliotecaPublica.ts` |
+   | 28 | el formulario público `/guia/bibliotecas/sumar` — no proyecta, pero es HTML indexado que escribe | `src/components/publico/SumarBiblioteca.tsx`, `src/lib/enviar-ficha.ts` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

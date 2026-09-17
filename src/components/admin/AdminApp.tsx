@@ -62,10 +62,12 @@ import type { PropuestasPanel as TipoPropuestas, Conversion } from '@/components
 import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/LibreriasPanel';
 import type { SuscripcionesPanel as TipoSuscripciones } from '@/components/admin/SuscripcionesPanel';
 import type { LugaresPanel as TipoLugares } from '@/components/admin/LugaresPanel';
+import type { BibliotecasPanel as TipoBibliotecas } from '@/components/admin/BibliotecasPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { LibreriaConId } from '@/types/libreria';
 import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
 import type { LugarConId } from '@/types/lugar';
+import type { BibliotecaConId } from '@/types/biblioteca';
 import type { User } from 'firebase/auth';
 
 type Vista =
@@ -137,7 +139,14 @@ type Vista =
    * a la colección sigue viva mientras el formulario está abierto.
    */
   | { tipo: 'lugares' }
-  | { tipo: 'lugar'; ficha?: LugarConId };
+  | { tipo: 'lugar'; ficha?: LugarConId }
+  /*
+   * B-960 — la Guía, cuarta entidad. Dos vistas por el mismo motivo que las
+   * otras tres, y montando el mismo componente: así la suscripción a la
+   * colección sigue viva mientras el formulario está abierto.
+   */
+  | { tipo: 'bibliotecas' }
+  | { tipo: 'biblioteca'; ficha?: BibliotecaConId };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -261,6 +270,13 @@ const LugaresPanel = diferido<Parameters<typeof TipoLugares>[0]>(() =>
   import('@/components/admin/LugaresPanel').then((m) => ({ default: m.LugaresPanel })),
 );
 
+// Diferida por lo mismo que las otras vistas: lee y escribe `/bibliotecas`, así
+// que arrastra Firestore (B-09, D-51), y con el editor de galería arrastra
+// además `firebase/storage`.
+const BibliotecasPanel = diferido<Parameters<typeof TipoBibliotecas>[0]>(() =>
+  import('@/components/admin/BibliotecasPanel').then((m) => ({ default: m.BibliotecasPanel })),
+);
+
 const PropuestasBadge = diferido<object>(() =>
   import('@/components/admin/PropuestasBadge').then((m) => ({ default: m.PropuestasBadge })),
 );
@@ -372,6 +388,7 @@ export function AdminApp() {
     | 'librerias'
     | 'suscripciones'
     | 'lugares'
+    | 'bibliotecas'
   >('lista');
 
   /**
@@ -664,6 +681,12 @@ export function AdminApp() {
                               ? vista.ficha
                                 ? vista.ficha.nombre
                                 : 'Lugar nuevo'
+                            : vista.tipo === 'bibliotecas'
+                              ? 'Bibliotecas'
+                            : vista.tipo === 'biblioteca'
+                              ? vista.ficha
+                                ? vista.ficha.nombre
+                                : 'Biblioteca nueva'
                               : vista.tipo === 'convertir'
                                 ? `Propuesta de ${vista.tituloOrigen}`
                                 : vista.actividad.titulo}
@@ -754,7 +777,17 @@ export function AdminApp() {
             Suscripciones
           </button>
         )}
-        {/* B-833 — la tercera y última sección de la Guía. */}
+        {/* B-960 — la cuarta sección de la Guía. Mismo trato que las otras. */}
+        {vista.tipo === 'lista' && puedeVer(rol, 'bibliotecas') && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'bibliotecas' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Bibliotecas
+          </button>
+        )}
+        {/* B-833 — la tercera sección de la Guía. */}
         {vista.tipo === 'lista' && puedeVer(rol, 'lugares') && (
           <button
             type="button"
@@ -797,6 +830,8 @@ export function AdminApp() {
                   ? 'suscripciones'
                 : vista.tipo === 'lugares' || vista.tipo === 'lugar'
                   ? 'lugares'
+                : vista.tipo === 'bibliotecas' || vista.tipo === 'biblioteca'
+                  ? 'bibliotecas'
                   : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
                     ? 'lista'
                     : 'formulario'
@@ -968,6 +1003,20 @@ export function AdminApp() {
             setVista({ tipo: 'lugar', ficha });
           }}
           onGuardado={() => setVista({ tipo: 'lugares' })}
+          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
+        />
+      )}
+
+      {/* B-960 — ídem para las bibliotecas, el cuarto directorio. */}
+      {(vista.tipo === 'bibliotecas' || vista.tipo === 'biblioteca') && (
+        <BibliotecasPanel
+          usuario={{ uid: usuario.uid }}
+          editando={vista.tipo === 'biblioteca' ? (vista.ficha ?? 'nueva') : null}
+          onAbrirFormulario={(ficha) => {
+            setVolverA('bibliotecas');
+            setVista({ tipo: 'biblioteca', ficha });
+          }}
+          onGuardado={() => setVista({ tipo: 'bibliotecas' })}
           onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
         />
       )}

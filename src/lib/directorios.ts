@@ -30,8 +30,10 @@
  */
 import { slugify } from '@/lib/slugify';
 import {
+  RUTA_BIBLIOTECAS,
   RUTA_LIBRERIAS,
   RUTA_LUGARES,
+  RUTA_SUMAR_BIBLIOTECA,
   RUTA_SUMAR_LIBRERIA,
   RUTA_SUMAR_LUGAR,
   RUTA_SUMAR_SUSCRIPCION,
@@ -273,7 +275,7 @@ export const slugBloqueado = (ficha: {
 // ─────────────────────────────────────────────────────────────────
 
 /** El identificador de un directorio. Es también el segmento de su URL bajo `/guia/`. */
-export type IdDirectorio = 'librerias' | 'suscripciones' | 'lugares';
+export type IdDirectorio = 'librerias' | 'suscripciones' | 'lugares' | 'bibliotecas';
 
 export interface Directorio {
   id: IdDirectorio;
@@ -384,6 +386,34 @@ export const DIRECTORIOS: readonly Directorio[] = [
      * deja de tener filas que no llevan a ningún lado, que es lo que B-835 se
      * propuso y lo que el paso 12 quería probar: sumar el tercer directorio fue
      * un archivo de pantalla, su formulario y **esta** línea.
+     */
+    disponible: true,
+  },
+  {
+    id: 'bibliotecas',
+    titulo: 'Bibliotecas',
+    singular: 'biblioteca',
+    que: 'Dónde sacar libros: el horario de sala, si hay que asociarse y el catálogo.',
+    ruta: RUTA_BIBLIOTECAS,
+    rutaSumar: RUTA_SUMAR_BIBLIOTECA,
+    /*
+     * **La cuarta, y la que probó que el motor era un motor** — B-960.
+     *
+     * B-834 dejó escrito que «sumar el cuarto directorio es una entrada acá y
+     * nada más», y eso es cierto de **esta mitad**: con esta fila aparecen solas
+     * la de `/guia`, el título del panel, el destino y la URL en el sitemap. La
+     * otra mitad —la capa por entidad, trece archivos— no la ahorra nadie, y
+     * tampoco tiene que ahorrarla: la proyección es una whitelist **por
+     * entidad** y ahí está toda la seguridad de esto.
+     *
+     * **Se dio vuelta en el tramo que escribió `src/pages/guia/bibliotecas/`**,
+     * y no antes: mientras las páginas no estaban, `false` era lo verdadero —la
+     * fila decía «en camino»— y ponerlo en `true` habría dejado la Guía
+     * linkeando a un 404 y una URL inexistente en el sitemap.
+     * `tests/directorios.test.ts` lo cruza contra el disco en las dos
+     * direcciones, así que ninguna de las dos mitades puede adelantarse a la
+     * otra: marcarlo sin la página ofrece un 404, y escribir la página sin
+     * marcarlo la deja publicada e invisible desde su propio índice.
      */
     disponible: true,
   },
