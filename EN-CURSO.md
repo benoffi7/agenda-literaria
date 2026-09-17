@@ -4,6 +4,37 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
+## Tanda del 2026-09-17: seis frentes de infra y tests, en paralelo con el panel
+
+**Esto es lo que se está tocando AHORA, y por eso está primero.** Son siete
+frentes en total: uno interactivo sobre el árbol principal y seis en worktrees.
+
+| Frente | Rama | Ítems | Archivos propios |
+|---|---|---|---|
+| *(sesión del dueño)* | `main` | los tres formularios de directorios | `src/components/admin/{Libreria,Lugar,Suscripcion}Formulario.tsx` |
+| `barridos` | `frente/barridos` | B-964 | helper `archivosDelRepo` + los ~30 tests que enumeran con `git ls-files` |
+| `salud` | `frente/salud` | B-877, B-878 | `scripts/salud-del-codigo.mjs`, `tests/salud-del-codigo.test.ts`, `docs/10-salud-del-codigo.md` |
+| `saneador` | `frente/saneador` | B-892 | `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` + las ~17 líneas con `\/\/` |
+| `falsos-verdes` | `frente/falsos-verdes` | B-916, B-895 | `tests/directorios-rebuild.test.ts`, `tests/lugares.test.ts`, los `tokenAdmin()` de integración |
+| `promesas` | `frente/promesas` | B-925 | `tests/promesas-sobre-datos.test.ts`, `prosaDe()` |
+| `fixtures` | `frente/fixtures` | B-875 | `tests/clases-de-bug.test.ts`, `tests/lista-actividades.render.test.tsx`, `.github/workflows/` |
+
+Los worktrees viven en `.claude/worktrees/<frente>` (ignorados) con un symlink a
+`node_modules` del árbol principal. **Los emuladores son una sola tanda,
+compartida**: cada worktree le habla con su propio `projectId` derivado de la
+ruta (B-219), así que los tests de integración corren de verdad sin pisarse.
+
+**Reglas de la tanda**, en `.estado/BRIEF-COMUN.md`: propiedad exclusiva de
+archivos, commits atómicos con una línea en `.estado/<frente>.md` después de cada
+uno, y **nadie toca `docs/CHANGELOG.md`, `docs/BACKLOG.md` ni este archivo** —
+los frentes devuelven el texto y lo integra quien orquesta. Rangos de ids
+reservados: barridos **B-1000**, salud **B-1010**, saneador **B-1020**,
+falsos-verdes **B-1030**, promesas **B-1040**, fixtures **B-1050**.
+
+**Si esto se corta a mitad de camino:** lo commiteado por frente se ve con
+`git log main..frente/<nombre> --oneline`, y lo que cada uno se anotó, en
+`.estado/<frente>.md`. Mirar eso **antes** que `git status` de cada worktree.
+
 ## Tanda del 2026-09-09: la tajada 1 de `/proponer`, y frentes en paralelo sobre el BACKLOG
 
 **Este archivo dice que si tiene contenido y nadie trabaja está mintiendo. El
