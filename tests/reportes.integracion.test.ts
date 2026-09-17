@@ -6,10 +6,9 @@
  * (B-174), así que da igual desde qué directorio se lo arrancó.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { Timestamp, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
@@ -17,7 +16,6 @@ import { formAReporte } from '@/lib/reporte-schema';
 import { crearReporte } from '@/lib/reportes';
 import type { ContextoReporte, ReporteForm } from '@/types/reporte';
 import {
-  PROJECT_ID,
   cargarReglas,
   emuladorAuthVivo,
   emuladorVivo,
@@ -36,20 +34,6 @@ const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 const UID = 'uid_reportes_admin';
-
-const tokenAdmin = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `r-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const token = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return token;
-};
 
 const contexto = (): ContextoReporte => ({
   versionPanel: '0.1.0 (test)',
@@ -86,7 +70,7 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
     // sin esta línea el SDK de cliente correría contra lo que el emulador tenga
     // cargado por default (o sea, el `firestore.rules` de otra rama).
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   it('un admin crea un reporte y lo puede leer', async () => {
@@ -212,7 +196,7 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
 
   it('sin el claim admin no se puede crear ni leer un reporte', async () => {
     const id = await crearReporte(form(), contexto(), { uid: UID, email: 'admin@test.com' });
-    await signInWithCustomToken(auth(), await tokenAdmin('uid_pelado_reportes', false));
+    await entrarComo('uid_pelado_reportes');
     await expect(
       setDoc(doc(db(), 'reportes', 'trucho8'), documento('uid_pelado_reportes')),
     ).rejects.toThrow(/permission|insufficient/i);

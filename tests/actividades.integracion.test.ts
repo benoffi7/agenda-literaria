@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { formDeCiclo } from './fixtures/formulario-de-ciclo';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import {
   collection,
   connectFirestoreEmulator,
@@ -32,7 +31,6 @@ import { sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
 import {
   HOST_FIRESTORE,
-  PROJECT_ID,
   cargarReglas,
   emuladorAuthVivo,
   emuladorVivo,
@@ -87,20 +85,6 @@ const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
   expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
     'permission-denied',
   );
-};
-
-const tokenAdmin = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `t-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const token = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return token;
 };
 
 /**
@@ -165,7 +149,7 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     // B-888 / D-660 — sin el centinela, `slugDisponible` se niega a contestar y
     // ningún guardado sale. Ver `sembrarCentinelaDeSlugs`.
     await sembrarCentinelaDeSlugs();
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   it('guarda las fechas como Timestamp, no como string (trampa 1)', async () => {
@@ -486,7 +470,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
   beforeAll(async () => {
     await limpiarFirestore();
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
     /*
      * La publicada lleva adentro los campos del §5.1 a propósito: son
      * exactamente los que un anónimo recibía cuando la regla decía
@@ -510,7 +494,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
   }, 30_000);
 
   it('sin el claim admin no se puede escribir', async () => {
-    await signInWithCustomToken(auth(), await tokenAdmin('uid_pelado', false));
+    await entrarComo('uid_pelado');
     await expect(
       setDoc(doc(db(), 'actividades', 'intento'), { titulo: 'No', estado: 'borrador' }),
     ).rejects.toThrow(/permission|insufficient/i);
@@ -526,7 +510,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
    * el SDK *sí* aparece.
    */
   it('el admin SÍ lee la publicada, con sus campos privados adentro', async () => {
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
     const snap = await getDoc(doc(db(), 'actividades', 'publicada'));
     expect(snap.exists()).toBe(true);
     expect(snap.data()?.online?.url).toBe('https://zoom.us/j/secreto');
@@ -540,7 +524,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
    * `auditor-privacidad` sobre este cambio.
    */
   it('el admin SÍ hace la query con el where y le vuelve la publicada', async () => {
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
     const snap = await getDocs(
       query(collection(db(), 'actividades'), where('estado', '==', 'publicado')),
     );

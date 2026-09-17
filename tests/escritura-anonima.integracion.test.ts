@@ -54,16 +54,14 @@
  * y un admin escribe. Si esas dos no pasan, el resto no está midiendo nada.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import {
-  PROJECT_ID,
   cargarReglas,
   emuladorAuthVivo,
   emuladorVivo,
@@ -157,20 +155,6 @@ const COLECCIONES_ABIERTAS: readonly string[] = [
 const UID_ADMIN = 'uid_anon_admin';
 const UID_PELADO = 'uid_anon_sin_claim';
 
-const token = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `ea-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return t;
-};
-
 /**
  * `code === 'permission-denied'` y no el mensaje.
  *
@@ -229,7 +213,7 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
     });
 
     it('un admin SÍ escribe, o sea que la conexión y las reglas están vivas', async () => {
-      await signInWithCustomToken(auth(), await token(UID_ADMIN, true));
+      await entrarComo(UID_ADMIN, { admin: true });
       await setDoc(doc(db(), 'opciones', 'campo-de-prueba'), { valores: [] });
       const snap = await getDoc(doc(db(), 'opciones', 'campo-de-prueba'));
       expect(snap.exists()).toBe(true);
@@ -302,7 +286,7 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
     beforeAll(async () => {
       // La API key web es pública por diseño, así que crear una cuenta está al
       // alcance de cualquiera: «tener sesión» no es una autorización.
-      await signInWithCustomToken(auth(), await token(UID_PELADO, false));
+      await entrarComo(UID_PELADO);
     });
 
     it.each(coleccionesDeLasReglas())('no escribe en /%s', async (coleccion) => {
