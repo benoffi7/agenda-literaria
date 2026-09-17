@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * Red contra un error que ya pasó: `docs/02-infraestructura.md` tenía una tabla
@@ -98,9 +98,7 @@ const PERMITIDOS = new Set<string>([
 ]);
 
 const archivosVersionados = (): string[] =>
-  execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
-    .split('\0')
-    .filter(Boolean)
+  archivosDelRepo()
     .filter((f) => !/\.(png|jpe?g|gif|webp|ico|woff2?|pdf)$/i.test(f))
     .filter((f) => f !== 'package-lock.json' && f !== 'functions/package-lock.json');
 

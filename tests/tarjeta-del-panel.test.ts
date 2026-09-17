@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -13,6 +12,7 @@ import {
   actividadCentinela,
 } from './fixtures/centinelas';
 import { ts } from './fixtures/tiempo';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * Qué dice una tarjeta del listado del panel — B-620.
@@ -483,11 +483,7 @@ describe('ningún campo interno del documento llega al view-model (§5.1, trampa
      * Quién puede importarlo se deriva de la ruta y no se mantiene a mano: el
      * panel, y nada más.
      */
-    const rastreados = execFileSync('git', ['ls-files', 'src', 'functions', 'scripts'], {
-      encoding: 'utf8',
-    })
-      .split('\n')
-      .filter(Boolean);
+    const rastreados = archivosDelRepo('src', 'functions', 'scripts');
 
     const importadores = rastreados.filter((f) =>
       /tarjetaDelPanel/.test(readFileSync(raiz(f), 'utf8')),

@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { CONTACTO, LISTA_DE_CORREO, campoTrampaDelBoletin, urlDeAltaAlBoletin } from '@/lib/enlaces';
@@ -17,6 +16,7 @@ import {
 import { PREGUNTAS_DE_AYUDA } from '@/lib/ayudaDelSitio';
 import { QUE_CUESTA, QUIEN_LA_HACE } from '@/lib/apoyoDelSitio';
 import { auditoresQueCorresponden, leerFichas } from '../scripts/auditores-que-corresponden.mjs';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * El correo de la agenda — B-847.
@@ -63,9 +63,7 @@ const MODULO = 'src/lib/boletinDelSitio.ts';
 /** La página y todos sus componentes, que es la superficie que publica. */
 const ARCHIVOS_DE_LA_PAGINA = (): string[] => [
   PAGINA,
-  ...execFileSync('git', ['ls-files', 'src/components/sitio'], { encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => /\/Suscribirse[^/]*\.astro$/.test(f)),
+  ...archivosDelRepo('src/components/sitio').filter((f) => /\/Suscribirse[^/]*\.astro$/.test(f)),
 ];
 
 /** Una lista de mentira, con la forma exacta que Mailchimp publica. */
