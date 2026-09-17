@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -20,6 +19,7 @@ import { estadoDe, filtrarPublico, filtrosVacios } from '@/lib/listadoPublico';
 import { bloqueDeFecha, cicloDelMes, cicloDeTarjeta } from '@/lib/tarjetaPublica';
 import { rutaCanonica, rutaDeMes } from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * Las páginas de mes — `/agenda/{aaaa-mm}`, B-113, §2.2 del diseño.
@@ -512,9 +512,7 @@ describe('el texto de la página', () => {
      * sitio tiene, así que sostuvo el `/` de antes y sostiene el `/pasadas` de
      * ahora — y falla el día que alguien lo apunte a algo que no existe.
      */
-    const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
+    const paginas = archivosDelRepo('src/pages');
     const rutas = new Set(
       paginas
         .filter((f) => f.endsWith('.astro') && !f.includes('['))
@@ -552,9 +550,7 @@ describe('la página `/agenda/[mes]`', () => {
 
   it('el barrido encuentra la página', () => {
     // Control positivo: sin esto, un archivo renombrado dejaría todo en verde.
-    expect(
-      execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' }),
-    ).toContain(PAGINA_DE_MES);
+    expect(archivosDelRepo('src/pages')).toContain(PAGINA_DE_MES);
     expect(src().length).toBeGreaterThan(200);
   });
 
