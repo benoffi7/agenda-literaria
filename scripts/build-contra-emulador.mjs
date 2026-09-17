@@ -2900,21 +2900,62 @@ try {
             );
             salida = 1;
           }
-          /*
-           * 8l.5 · **El costo sale como frase con su fecha, nunca como número
-           * suelto** — B-837, D-570. El gate lo siembra como `'$3.000 por año'`
-           * con su `cargadoEn`, así que si el monto aparece en la página sin un
-           * «cargado el» cerca, la proyección lo publicó crudo.
-           */
-          if (fichaBib.includes('$3.000') && !/cargado el/i.test(fichaBib)) {
-            fallo(
-              'la ficha de la biblioteca muestra el costo de asociarse SIN su fecha de carga.\n' +
-                '  D-570 y B-837: el monto no se muestra nunca solo — la frase lleva pegado\n' +
-                '  el «cargado el», que es lo que evita publicar un carnet viejo como si\n' +
-                '  fuera el de hoy.',
-            );
-            salida = 1;
+        }
+
+        /*
+         * 8l.5 · **El costo sale como frase con su fecha, nunca como número
+         * suelto** — B-837, D-570, y el mismo modo de falla que el 8j persigue
+         * con el precio de una suscripción: que alguien rearme la frase en una
+         * plantilla o en una island y pinte el número solo «porque en la tarjeta
+         * angosta no entra la fecha».
+         *
+         * Va con **ventana alrededor de cada aparición** y sobre **todo** el
+         * `dist/`, y no con un `includes` sobre la ficha: preguntar si la página
+         * tiene «cargado el» en alguna parte da verde aunque el monto esté suelto
+         * en otro lado de esa misma página, y no mira el listado ni el JSON. La
+         * primera versión de este paso hacía justamente eso — un chequeo laxo con
+         * forma de red, que es lo que este gate existe para no tener.
+         */
+        const COSTO_DEL_GATE = '$3.000';
+        const DIST_BIB = new URL('../dist/', import.meta.url);
+        const costosHuerfanos = [];
+        let vistoElCosto = false;
+        for (const relativa of await readdir(DIST_BIB, { recursive: true })) {
+          if (!/\.(html|json|txt|xml)$/.test(relativa)) continue;
+          const contenido = await readFile(new URL(relativa, DIST_BIB), 'utf8').catch(() => '');
+          let desde = contenido.indexOf(COSTO_DEL_GATE);
+          while (desde !== -1) {
+            vistoElCosto = true;
+            // Misma ventana generosa que el 8j: entre el número y la fecha puede
+            // haber el período, el separador y el escape de una entidad HTML.
+            const ventana = contenido.slice(desde, desde + 160);
+            if (!ventana.includes('cargado el')) costosHuerfanos.push(`    ${relativa}`);
+            desde = contenido.indexOf(COSTO_DEL_GATE, desde + 1);
           }
+        }
+        if (costosHuerfanos.length > 0) {
+          fallo(
+            'el costo de asociarse a una biblioteca salió publicado SIN su fecha de carga.\n' +
+              '  D-570 y B-837: un carnet de hace tres meses en este país ya no cuesta lo\n' +
+              '  mismo, y la fecha es lo único que deja que quien lee decida si le cree. La\n' +
+              '  proyección devuelve UNA frase con las dos cosas; si acá aparece el número\n' +
+              '  solo, alguien la rearmó en una plantilla o en una island.\n' +
+              `  Archivos:\n${[...new Set(costosHuerfanos)].join('\n')}`,
+          );
+          salida = 1;
+        }
+        /*
+         * Y el control positivo, por lo mismo que lo tiene el 8j: sin esto el
+         * barrido de arriba pasa en verde el día que el costo deje de publicarse,
+         * que es la otra mitad del error.
+         */
+        if (!vistoElCosto) {
+          fallo(
+            'el costo de asociarse del gate no aparece en ningún archivo del dist/.\n' +
+              '  O la ficha dejó de publicarlo, o cambió de forma: en los dos casos el\n' +
+              '  chequeo de la fecha de arriba quedó sin nada que mirar.',
+          );
+          salida = 1;
         }
 
         const fichaBibPendiente = await readFile(
