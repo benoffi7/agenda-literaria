@@ -1,0 +1,520 @@
+/**
+ * Validación y armado de una biblioteca — **B-960**. Lógica pura: sin Firestore
+ * ni navegador, así se testea sin emuladores (`05-patrones.md`).
+ *
+ * Se valida **en el submit** con zod y los condicionales van en `superRefine`,
+ * que es el criterio de `src/lib/schema.ts` (D-01, § «Validación en el submit,
+ * no por campo»). No hay librería de formularios.
+ *
+ * ── Lo que este archivo NO es ─────────────────────────────────────────────
+ * **No es la defensa.** El formulario público de `/guia/bibliotecas/sumar` lo
+ * completa alguien sin login, así que todo lo de acá se saltea con un `curl`: la
+ * defensa es `firestore.rules` (`bibliotecaValida()`), y este schema existe para
+ * que la persona vea el error antes de mandar. Los dos dicen los mismos números
+ * —importados de `types/biblioteca.ts`, y el lado de la regla atado por
+ * `tests/bibliotecas.test.ts`— porque un documento que pase por acá y no por la
+ * regla **no se guarda igual**, con el formulario diciendo que sí. Es la clase
+ * de B-88 en el peor lugar posible, y la lección de DEC-7b.
+ *
+ * ── Los dos schemas, que son el mismo formulario con dos configuraciones ──
+ * `bibliotecaFormSchema` es el del panel; `bibliotecaPublicaFormSchema` le
+ * agrega **una** regla: quien carga desde afuera tiene que dejar por dónde
+ * repreguntarle. Es una regla y no un tipo aparte a propósito: dos formularios
+ * son dos derivaciones de la misma forma, y se separan sin que nada falle.
+ */
+import { z } from 'zod';
+import { searchTextDeBiblioteca } from '@/lib/bibliotecaPublica';
+import type { DatoConFecha } from '@/lib/datoConFecha';
+import { ESTADO_INICIAL, type EstadoDirectorio, slugDeFicha } from '@/lib/directorios';
+import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
+import { esProvincia, geografiaNormalizada } from '@/lib/geografia.mjs';
+import { MAXIMO_IMAGENES } from '@/lib/imagenes';
+import {
+  CIUDAD_POR_DEFECTO,
+  MIN_CONTACTO_BIBLIOTECA,
+  MIN_DIRECCION_BIBLIOTECA,
+  MIN_NOMBRE_BIBLIOTECA,
+  MIN_WHATSAPP_BIBLIOTECA,
+  PROVINCIA_POR_DEFECTO,
+  TOPE_BARRIO_BIBLIOTECA,
+  TOPE_CATALOGO_BIBLIOTECA,
+  TOPE_CIUDAD_BIBLIOTECA,
+  TOPE_CONTACTO_BIBLIOTECA,
+  TOPE_COSTO_DE_ASOCIARSE_BIBLIOTECA,
+  TOPE_DESCRIPCION_BIBLIOTECA,
+  TOPE_DIRECCION_BIBLIOTECA,
+  TOPE_HORARIO_DE_SALA_BIBLIOTECA,
+  TOPE_HORARIOS_BIBLIOTECA,
+  TOPE_MAIL_BIBLIOTECA,
+  TOPE_NOMBRE_BIBLIOTECA,
+  TOPE_PROVINCIA_BIBLIOTECA,
+  TOPE_SLUG_BIBLIOTECA,
+  TOPE_TIPO_BIBLIOTECA,
+  TOPE_WEB_BIBLIOTECA,
+  TOPE_WHATSAPP_BIBLIOTECA,
+  VIAS_CONTACTO_BIBLIOTECA,
+} from '@/types/biblioteca';
+import type { Biblioteca, BibliotecaForm } from '@/types/biblioteca';
+import type { TimestampLike } from '@/types/actividad';
+
+const texto = z.string().trim();
+const opcional = texto.default('');
+
+/**
+ * El alfabeto de un slug, **el mismo que produce `slugify`** y el mismo que
+ * exige el `matches` de `firestore.rules`.
+ *
+ * Se exporta porque `tests/bibliotecas.test.ts` compara esta fuente con la de la
+ * regla: dos definiciones de «qué es un slug» se separan sin que nada falle
+ * (clase de B-88), y acá el precio de que se separen es una dirección web que el
+ * panel acepta y Firestore rechaza — o peor, al revés.
+ */
+export const RE_SLUG = '^[a-z0-9]+(-[a-z0-9]+)*$';
+/** Los barrios y el tipo son slugs de taxonomía (§4.2), del mismo `slugify`. */
+export const RE_BARRIO = RE_SLUG;
+export const RE_TIPO = RE_SLUG;
+/** El WhatsApp se guarda **solo con dígitos**: de él sale un `wa.me/<digitos>`. */
+export const RE_WHATSAPP = `^[0-9]{${MIN_WHATSAPP_BIBLIOTECA},${TOPE_WHATSAPP_BIBLIOTECA}}$`;
+/** El alfabeto real de un handle de Instagram, el de `handleInstagram`. */
+export const RE_INSTAGRAM = '^[A-Za-z0-9._]{1,30}$';
+
+/** `+54 9 11 2222-3333` → `5491122223333`. Lo que se publica es esto. */
+export const soloDigitos = (valor: string): string => valor.replace(/\D/g, '');
+
+/** ¿Esto parece un mail? Mismo criterio que zod, en una función para reusarlo. */
+export const pareceMail = (valor: string): boolean =>
+  z.string().email().safeParse(valor.trim()).success;
+
+/**
+ * La dirección web de la ficha: **la tipeada tal cual si la hay**, si no la
+ * derivada del nombre con `slugDeFicha`.
+ *
+ * **Lo tipeado NO se slugifica**, por el mismo motivo escrito en
+ * `slugDeLibreria`: reescribir en silencio lo que alguien escribió a mano para
+ * un valor que **queda congelado al publicar** (trampa 10) es peor que avisar, y
+ * pasarlo por `slugify` dejaría la rama de formato del `superRefine` sin poder
+ * fallar nunca —la clase de cláusula muerta que este repo persigue—.
+ *
+ * **Puede dar `''`**: un nombre de puros signos no produce ninguna dirección, y
+ * devolver algo inventado publicaría una URL que nadie escribió. Lo agarra el
+ * `superRefine`.
+ */
+export const slugDeBiblioteca = (f: { nombre: string; slug: string }): string =>
+  f.slug.trim() ? f.slug.trim() : slugDeFicha(f.nombre);
+
+/**
+ * Una fila de la galería (D-125).
+ *
+ * ⚠️ **Es la tercera derivación de la misma forma** —`imagenSchema` de
+ * `src/lib/schema.ts` no está exportado, y `libreria-schema.ts` ya tenía la
+ * segunda—. Mientras sean varias, un campo nuevo de `Imagen` entra en una y no
+ * en las otras sin que nada se ponga rojo: es **B-906**, que está abierto
+ * justamente por esto. Lo que hoy lo sostiene es el compilador (todas producen
+ * un `Imagen`).
+ */
+const imagenDeBibliotecaSchema = z.object({
+  id: z.string().regex(/^img_/, 'El id de la imagen tiene que empezar con img_'),
+  url: texto.min(1, 'Falta la dirección de la imagen'),
+  epigrafe: opcional,
+  textoAlternativo: opcional,
+  origen: z.enum(['externa', 'propia']),
+  storagePath: z.string().optional(),
+  ancho: z.number().optional(),
+  alto: z.number().optional(),
+  portada: z.boolean().default(false),
+});
+
+const base = z.object({
+  nombre: texto
+    .min(MIN_NOMBRE_BIBLIOTECA, '¿Cómo se llama la biblioteca?')
+    .max(TOPE_NOMBRE_BIBLIOTECA, 'El nombre tiene que ser más corto'),
+  // El slug va acá sin formato: el formulario público **no lo muestra** y llega
+  // vacío, así que un `.regex()` en el campo haría inguardable el camino
+  // normal. La forma se valida en el `superRefine`, sobre el slug ya derivado.
+  slug: texto.max(TOPE_SLUG_BIBLIOTECA, 'La dirección web quedó muy larga').default(''),
+  descripcion: texto.max(TOPE_DESCRIPCION_BIBLIOTECA, 'Quedó muy largo, resumilo').default(''),
+  imagenes: z.array(imagenDeBibliotecaSchema).default([]),
+  /*
+   * **Opcional**, con el mismo criterio que el horario de B-982: una ficha sin
+   * el tipo cargado sigue diciendo dónde queda y qué presta, y exigirlo dejaría
+   * inguardable la que llega de afuera con lo que la persona sabía. La forma se
+   * valida en el `superRefine`, que es donde vive el resto de los slugs.
+   */
+  tipo: texto.max(TOPE_TIPO_BIBLIOTECA, 'Quedó muy largo').default(''),
+  direccion: texto
+    .min(MIN_DIRECCION_BIBLIOTECA, '¿Dónde queda?')
+    .max(TOPE_DIRECCION_BIBLIOTECA, 'La dirección quedó muy larga'),
+  horarios: texto.max(TOPE_HORARIOS_BIBLIOTECA, 'Quedó muy largo, resumilo').default(''),
+  horarioDeSala: texto
+    .max(TOPE_HORARIO_DE_SALA_BIBLIOTECA, 'Quedó muy largo, resumilo')
+    .default(''),
+  /*
+   * `haceFalta` con `false` por default: es la respuesta más común —la mayoría
+   * de las municipales no pide carnet— y es además la única que no arrastra un
+   * segundo campo. Arrancar en `true` obligaría a quien carga a apagar algo que
+   * nadie prendió.
+   */
+  asociarse: z
+    .object({
+      haceFalta: z.boolean().default(false),
+      costo: texto.max(TOPE_COSTO_DE_ASOCIARSE_BIBLIOTECA, 'Quedó muy largo').default(''),
+    })
+    .default({ haceFalta: false, costo: '' }),
+  catalogo: texto.max(TOPE_CATALOGO_BIBLIOTECA, 'La dirección quedó muy larga').default(''),
+  /*
+   * La cascada de la geografía, igual que en una sede y en una librería: la
+   * **provincia** se exige (es el primer nivel, y sin ella la ficha no aparece
+   * bajo ningún filtro de lugar) y la subdivisión no, porque fuera de CABA no se
+   * pide el barrio y un `min(1)` haría inguardable una biblioteca de Rosario.
+   *
+   * Y que **sea** una provincia, no solo que tenga forma de texto (B-972): la
+   * lista es cerrada (24) y es la única de las tres piezas verificable. Sin esto,
+   * `'cordoba-capital'` se guarda —tiene forma de slug— y después no casa con
+   * ningún filtro ni con ningún hub, que es un dato perdido en silencio.
+   */
+  provincia: texto
+    .min(1, 'Elegí la provincia')
+    .max(TOPE_PROVINCIA_BIBLIOTECA, 'Quedó muy largo')
+    .refine(esProvincia, 'Esa no es una provincia argentina'),
+  barrio: texto.max(TOPE_BARRIO_BIBLIOTECA, 'Quedó muy largo').default(''),
+  ciudad: texto.max(TOPE_CIUDAD_BIBLIOTECA, 'Quedó muy largo').default(CIUDAD_POR_DEFECTO),
+  // Los dos como texto: salen de un `<input>`, y un `''` es «no lo cargué».
+  geo: z.object({ lat: opcional, lng: opcional }).default({ lat: '', lng: '' }),
+  instagram: opcional,
+  whatsapp: opcional,
+  web: texto.max(TOPE_WEB_BIBLIOTECA, 'La dirección quedó muy larga').default(''),
+  mail: texto.max(TOPE_MAIL_BIBLIOTECA, 'Quedó muy largo').default(''),
+  contactoDeQuienCargo: z.object({
+    via: z.enum(VIAS_CONTACTO_BIBLIOTECA),
+    valor: texto.max(TOPE_CONTACTO_BIBLIOTECA, 'Quedó muy largo').default(''),
+  }),
+});
+
+/**
+ * El formulario de **admin**: todos los campos, y el contacto de quien cargó es
+ * opcional porque del lado del panel lo carga el propio admin.
+ */
+export const bibliotecaFormSchema = base.superRefine((v, ctx) => {
+  const falta = (path: (string | number)[], message: string): void => {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+  };
+
+  /*
+   * Trampa 10 — el slug **es** la URL pública. Que la ficha tenga una dirección
+   * web legible es un requisito del documento, no del formulario: sin esto, una
+   * biblioteca llamada «※» se guarda con `slug: ''` y su página no existe.
+   */
+  const slug = slugDeBiblioteca(v);
+  if (!slug) {
+    falta(['slug'], 'Escribí la dirección web: el nombre no produce ninguna');
+  } else if (!new RegExp(RE_SLUG).test(slug)) {
+    // No hay tercera rama por largo: el nombre está capado en 80 y el tope del
+    // slug es 120, así que el derivado no puede pasarse. La que frena el largo
+    // es el `.max()` del campo, sobre el slug **tipeado**, que es el único que
+    // puede llegar largo. Una cláusula que no puede fallar es peor que ninguna.
+    falta(['slug'], 'La dirección web va en minúsculas, números y guiones');
+  }
+
+  // El barrio y el tipo son slugs de taxonomía. Uno con mayúsculas o espacios no
+  // resuelve su etiqueta, y entonces el chip del filtro no lo encuentra.
+  if (v.barrio && !new RegExp(RE_BARRIO).test(v.barrio)) {
+    falta(['barrio'], 'Elegí el barrio de la lista');
+  }
+  if (v.tipo && !new RegExp(RE_TIPO).test(v.tipo)) {
+    falta(['tipo'], 'Elegí el tipo de la lista');
+  }
+
+  /*
+   * ── El costo de asociarse — B-837 y DEC-12 ──────────────────────────────
+   *
+   * Una sola regla, y es la que impide publicar una contradicción: **un costo
+   * cargado sobre un «no hace falta asociarse»**. La ficha diría las dos cosas
+   * al lado y quien la lee no sabría cuál creer.
+   *
+   * La vuelta **no** es un error: se puede decir que hace falta asociarse sin
+   * saber cuánto sale, y ésa es justamente la ficha que llega de afuera. El
+   * costo ausente es «no lo sabemos», que es una respuesta.
+   *
+   * El error se marca sobre `costo` —el campo que tiene el valor de más— y no
+   * sobre `haceFalta`, que es lo que B-923 dejó aprendido: marcar el campo que
+   * la persona dejó como quería se lee como un bug del sistema.
+   */
+  if (!v.asociarse.haceFalta && v.asociarse.costo.trim()) {
+    falta(
+      ['asociarse', 'costo'],
+      'Si no hace falta asociarse, no va el costo: sacalo o marcá que hace falta',
+    );
+  }
+
+  /*
+   * Los contactos que terminan en un `href`. Se validan acá y no solo al
+   * pintarlos, por lo mismo que `sedeSchema` valida el rango de `geo`: un dato
+   * roto que se guarda es un link roto en una página indexada, y el saneador de
+   * la ficha lo único que puede hacer entonces es **no** mostrarlo.
+   *
+   * Las funciones son las que el proyecto ya usa (`handleInstagram`,
+   * `urlSegura`, el `email` de zod), no regex propios.
+   */
+  if (v.instagram && !handleInstagram(v.instagram)) {
+    falta(['instagram'], 'Poné el usuario de Instagram o pegá el link de su perfil');
+  }
+  if (v.whatsapp) {
+    const digitos = soloDigitos(v.whatsapp);
+    if (digitos.length < MIN_WHATSAPP_BIBLIOTECA || digitos.length > TOPE_WHATSAPP_BIBLIOTECA) {
+      falta(['whatsapp'], 'Poné el número con código de país, por ejemplo 5491122223333');
+    }
+  }
+  if (v.web && !urlSegura(v.web)) {
+    falta(['web'], 'Esa dirección no es válida');
+  }
+  // El catálogo pasa por el mismo `urlSegura` que la web, y no por un regex
+  // propio: es la misma pregunta, y dos respuestas se separan (clase de B-88).
+  if (v.catalogo && !urlSegura(v.catalogo)) {
+    falta(['catalogo'], 'Esa dirección no es válida');
+  }
+  if (v.mail && !pareceMail(v.mail)) {
+    falta(['mail'], 'Ese mail no parece válido');
+  }
+
+  /*
+   * `geo` — los dos o ninguno, y dentro del rango. Mismo criterio que
+   * `sedeSchema`: una latitud de 200 no existe, y un lat/lng invertido manda la
+   * ficha al otro lado del mundo. No es completitud, es un dato roto.
+   */
+  const { lat, lng } = v.geo;
+  if (Boolean(lat) !== Boolean(lng)) {
+    falta(['geo', lat ? 'lng' : 'lat'], 'Cargá la latitud y la longitud, o ninguna');
+  } else if (lat && lng) {
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (!Number.isFinite(nLat) || nLat < -90 || nLat > 90) {
+      falta(['geo', 'lat'], 'Latitud fuera de rango');
+    }
+    if (!Number.isFinite(nLng) || nLng < -180 || nLng > 180) {
+      falta(['geo', 'lng'], 'Longitud fuera de rango');
+    }
+  }
+
+  /*
+   * La galería, con las mismas dos reglas que una actividad: el techo de
+   * `MAXIMO_IMAGENES` y **exactamente una portada**, que es la que va a Open
+   * Graph y a la tarjeta. Cero imágenes es válido; dos portadas no, porque
+   * entonces «cuál es la imagen» la contesta el orden del array.
+   */
+  if (v.imagenes.length > MAXIMO_IMAGENES) {
+    falta(['imagenes'], `Hasta ${MAXIMO_IMAGENES} imágenes por biblioteca`);
+  }
+  const portadas = v.imagenes.filter((i) => i.portada).length;
+  if (v.imagenes.length > 0 && portadas !== 1) {
+    falta(['imagenes'], 'Elegí una sola imagen como portada');
+  }
+  if (
+    v.contactoDeQuienCargo.valor &&
+    v.contactoDeQuienCargo.valor.length < MIN_CONTACTO_BIBLIOTECA
+  ) {
+    falta(['contactoDeQuienCargo', 'valor'], 'Quedó muy corto');
+  }
+});
+
+/**
+ * El formulario **público** de `/guia/bibliotecas/sumar`: el mismo, con una
+ * regla más.
+ *
+ * Quien carga desde afuera **no vuelve a entrar** (`prd/README.md` § 7), así que
+ * si la ficha llega incompleta o dudosa no hay forma de repreguntar y la única
+ * salida es descartarla. Por eso el contacto interno es obligatorio de este lado
+ * y opcional del otro — es exactamente la diferencia entre las dos
+ * configuraciones, y es una regla, no un tipo aparte.
+ */
+export const bibliotecaPublicaFormSchema = bibliotecaFormSchema.superRefine((v, ctx) => {
+  if (!v.contactoDeQuienCargo.valor.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['contactoDeQuienCargo', 'valor'],
+      message: '¿Cómo te escribimos si hay que preguntarte algo?',
+    });
+  }
+});
+
+export type BibliotecaFormValues = z.input<typeof bibliotecaFormSchema>;
+
+export const bibliotecaVacia = (): BibliotecaForm => ({
+  nombre: '',
+  slug: '',
+  descripcion: '',
+  imagenes: [],
+  tipo: '',
+  direccion: '',
+  horarios: '',
+  horarioDeSala: '',
+  asociarse: { haceFalta: false, costo: '' },
+  catalogo: '',
+  provincia: PROVINCIA_POR_DEFECTO,
+  barrio: '',
+  ciudad: CIUDAD_POR_DEFECTO,
+  geo: { lat: '', lng: '' },
+  instagram: '',
+  whatsapp: '',
+  web: '',
+  mail: '',
+  contactoDeQuienCargo: { via: 'mail', valor: '' },
+});
+
+/**
+ * El costo de asociarse del formulario, ya con su fecha — **la mitad de DEC-12
+ * que el formulario no puede escribir**.
+ *
+ * `cargadoEn` lo decide quien guarda y no quien tipea, por lo mismo que
+ * `creadoEn`: un campo de fecha que se puede escribir es un campo de fecha que
+ * se puede mentir, y esta fecha es justamente la que le dice a quien lee si le
+ * puede creer al número.
+ *
+ * **Sin costo no hay fecha**: devolver `{ valor: '' }` publicaría una fecha que
+ * no fecha nada. Y **sin `haceFalta` tampoco**, que es la diferencia con el
+ * precio de una suscripción: acá el dato cuelga de un booleano, y un costo bajo
+ * un «no hace falta» es la contradicción que el `superRefine` ya rechaza — esto
+ * es la segunda mitad, para el documento que no pasó por el formulario.
+ */
+export const costoDeAsociarseDelForm = (
+  f: BibliotecaForm,
+  cargadoEn: TimestampLike,
+): DatoConFecha<string> | null => {
+  const costo = f.asociarse.costo.trim();
+  if (!f.asociarse.haceFalta || !costo) return null;
+  return { valor: costo, cargadoEn };
+};
+
+/**
+ * ¿El costo que se está guardando **es otro** que el que ya estaba?
+ *
+ * Es lo que decide si `cargadoEn` se refecha, y es la razón por la que existe:
+ * corregir un typo de la descripción **no puede** mover la fecha del costo
+ * —sería publicar que el número es más fresco de lo que es, que es exactamente
+ * la mentira que DEC-12 evita— y cambiar el número **sí** tiene que moverla.
+ *
+ * Compara el valor y no el objeto entero, que es lo mismo que hace la guarda
+ * anti-loop del §7.1: se deriva lo relevante y se compara eso.
+ */
+export const costoDeAsociarseCambio = (
+  previo: DatoConFecha<string> | null | undefined,
+  nuevo: DatoConFecha<string> | null,
+): boolean => (previo?.valor ?? null) !== (nuevo?.valor ?? null);
+
+/**
+ * Form → documento, **sin los campos que pone la regla**: `creadoEn` es
+ * `request.time`, y el `estado` y la `revision` los fuerza la propia regla.
+ *
+ * `''` → `null` en todo lo opcional, por el mismo criterio que `formALibreria`:
+ * la ausencia se representa **una sola vez**, y así la regla puede exigir
+ * `== null` en lugar de aceptar dos formas de vacío.
+ *
+ * Los contactos públicos y el catálogo se guardan **normalizados** —el handle
+ * sin arroba, el teléfono sin signos, la URL con esquema—: lo que se guarda es
+ * lo que la ficha va a publicar, no lo que se tipeó. Si se guardara crudo, cada
+ * consumidor tendría que volver a normalizarlo y serían cuatro derivaciones de
+ * la misma idea (la clase de B-88).
+ */
+export const formABiblioteca = (
+  f: BibliotecaForm,
+  cargadoEn: TimestampLike,
+  origen: Biblioteca['origen'] = 'formulario-publico',
+  /**
+   * **Con qué estado nace** — el mismo parámetro y el mismo motivo que en
+   * `formALibreria` (B-983): `pendiente` es el default y lo único que la regla
+   * acepta del formulario público; desde el panel se puede pedir `publicado`, y
+   * ahí no hay tercero que revisar porque quien carga es el revisor.
+   *
+   * **Este parámetro no es lo que lo autoriza.** Lo autoriza `firestore.rules`,
+   * que exige `origen == 'panel' && esAdmin()`; acá es solo lo que el formulario
+   * pide. Un valor en un módulo de TypeScript no le impide nada a nadie.
+   */
+  estado: EstadoDirectorio = ESTADO_INICIAL,
+): Omit<Biblioteca, 'creadoEn'> => {
+  const oNull = (s: string): string | null => (s.trim() ? s.trim() : null);
+  const digitos = soloDigitos(f.whatsapp);
+  const lat = Number(f.geo.lat);
+  const lng = Number(f.geo.lng);
+  const hayGeo =
+    f.geo.lat.trim() !== '' &&
+    f.geo.lng.trim() !== '' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng);
+  const nombre = f.nombre.trim();
+  const descripcion = oNull(f.descripcion);
+  const direccion = f.direccion.trim();
+  const tipo = f.tipo.trim();
+  /*
+   * La geografía se normaliza antes de escribir, con la **misma** función que
+   * una actividad: colapsa los alias de CABA al slug canónico, así que una ficha
+   * no crea una segunda CABA en la taxonomía.
+   */
+  const { provincia, barrio, ciudad: ciudadNormalizada } = geografiaNormalizada({
+    provincia: f.provincia.trim(),
+    barrio: f.barrio.trim(),
+    ciudad: f.ciudad.trim(),
+  });
+  const ciudad = ciudadNormalizada || CIUDAD_POR_DEFECTO;
+
+  return {
+    nombre,
+    slug: slugDeBiblioteca(f),
+    descripcion,
+    tipo,
+    // Las claves se **enumeran** en vez de spreadear la fila, por lo mismo que
+    // `formADocumento` con las imágenes de una actividad (B-206 #2): así un
+    // campo que escriba el servidor no puede viajar de vuelta por el formulario.
+    imagenes: f.imagenes.map((i) => ({
+      id: i.id,
+      url: i.url.trim(),
+      // `epigrafe` con su default de lectura, y `textoAlternativo` solo si está:
+      // un `undefined` explícito no es lo mismo que una clave ausente — el SDK
+      // de Firestore rechaza el documento entero al verlo.
+      epigrafe: i.epigrafe ?? '',
+      ...(i.textoAlternativo === undefined ? {} : { textoAlternativo: i.textoAlternativo }),
+      origen: i.origen,
+      ...(i.storagePath === undefined ? {} : { storagePath: i.storagePath }),
+      ...(i.ancho === undefined ? {} : { ancho: i.ancho }),
+      ...(i.alto === undefined ? {} : { alto: i.alto }),
+      portada: i.portada,
+    })),
+    direccion,
+    horarios: oNull(f.horarios),
+    horarioDeSala: oNull(f.horarioDeSala),
+    asociarse: {
+      haceFalta: f.asociarse.haceFalta,
+      costo: costoDeAsociarseDelForm(f, cargadoEn),
+    },
+    catalogo: urlSegura(f.catalogo),
+    provincia,
+    barrio,
+    ciudad,
+    geo: hayGeo ? { lat, lng } : null,
+    instagram: handleInstagram(f.instagram),
+    whatsapp: digitos ? digitos : null,
+    web: urlSegura(f.web),
+    mail: oNull(f.mail),
+    contactoDeQuienCargo: f.contactoDeQuienCargo.valor.trim()
+      ? { via: f.contactoDeQuienCargo.via, valor: f.contactoDeQuienCargo.valor.trim() }
+      : null,
+    estado,
+    origen,
+    /*
+     * ⚠️ **La derivación vive en la proyección, no acá** — ver el docblock de
+     * `searchTextDeBiblioteca`. Esto escribe el documento; lo que **se publica**
+     * lo deriva la proyección de los valores ya proyectados, así que el campo
+     * del documento no puede salir tal cual aunque un anónimo lo mande armado.
+     * Que las dos mitades llamen a la **misma** función es lo que hace que el
+     * buscador del panel y el del sitio digan lo mismo (clase de B-88).
+     */
+    searchText: searchTextDeBiblioteca({
+      nombre,
+      descripcion: descripcion ?? '',
+      direccion,
+      tipo,
+      provincia,
+      barrio,
+      ciudad,
+    }),
+    revision: { porUid: null, en: null, motivo: null },
+  };
+};
