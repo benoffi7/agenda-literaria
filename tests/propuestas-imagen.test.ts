@@ -629,6 +629,30 @@ describe('el trigger cablea las tres ramas, y el borrado crudo nunca vive en la 
   });
 
   /**
+   * **El `else` final no borra** — del pase de auditoría de B-926.
+   *
+   * Era un catch-all cuyo default era el borrado crudo: con tres motivos eso
+   * funcionaba, pero el vocabulario de `motivo` es un literal escrito en dos
+   * archivos y no una constante compartida, así que un motivo nuevo —o un typo
+   * al renombrar uno— caía en el borrado irreversible **por default**.
+   *
+   * MUTACIÓN PROBADA: volviendo el `} else if (motivo === 'rechazada') {` a un
+   * `} else {`, este caso se pone rojo.
+   */
+  it('el default del trigger es NO borrar, y avisar', () => {
+    const src = fuente('functions/propuestas-trigger.js');
+    expect(src, 'la rama del rechazo dejó de ser explícita').toContain(
+      "} else if (motivo === 'rechazada') {",
+    );
+    // El `else` final existe, y lo que tiene adentro es un log y ningún borrado.
+    const ultimo = src.lastIndexOf('} else {');
+    expect(ultimo, 'no quedó un `else` final que atrape lo desconocido').toBeGreaterThan(0);
+    const cola = src.slice(ultimo);
+    expect(cola).toContain('motivo de borrado desconocido');
+    expect(cola, 'el default volvió a borrar').not.toContain('.delete(');
+  });
+
+  /**
    * **El descarte es una rama propia y no el `else` del rechazo**, aunque el
    * borrado sea idéntico — B-926.
    *
@@ -704,7 +728,7 @@ describe('el trigger cablea las tres ramas, y el borrado crudo nunca vive en la 
     }
   });
 
-  it('los cuatro caminos que dejan la foto viva se pueden filtrar por `alerta`', () => {
+  it('los cinco caminos que dejan la foto viva se pueden filtrar por `alerta`', () => {
     const src = fuente('functions/propuestas-trigger.js');
     /*
      * **Cuatro desde B-926.** Eran tres —los dos del `try`/`catch` de la rama de
@@ -713,10 +737,15 @@ describe('el trigger cablea las tres ramas, y el borrado crudo nunca vive en la 
      * `aceptada` con su original vivo, que es exactamente el estado del mundo de
      * los otros tres.
      *
+     * **Y el quinto salió del pase de auditoría de B-926**: el `else` final del
+     * trigger era un catch-all cuyo default era el **borrado crudo**. Invertido
+     * —el default es no tocar nada y avisar— hace falta que ese aviso también se
+     * pueda filtrar, porque deja un objeto vivo igual que los otros cuatro.
+     *
      * Este aserto ya hizo su trabajo una vez: cuando decía `2` habría congelado
      * el tercero saliendo por `debug`. Por eso se sube en vez de aflojarse.
      */
-    expect([...src.matchAll(/alerta: 'flyer-de-propuesta-sin-borrar'/g)]).toHaveLength(4);
+    expect([...src.matchAll(/alerta: 'flyer-de-propuesta-sin-borrar'/g)]).toHaveLength(5);
   });
 });
 

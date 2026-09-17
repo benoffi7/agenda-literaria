@@ -302,9 +302,11 @@ service firebase.storage {
 
       // **Nadie borra desde un cliente, ni siquiera un admin.** Los borrados que
       // existen son de Functions con el Admin SDK, que pasa por encima de estas
-      // reglas: los dos cierres de `borrarImagenAlCerrar` —el rechazo, en el
-      // acto, y **la aceptación** (B-863), cuando la copia promovida ya
-      // reemplaza al original— y el de la retención (`borrarPropuestasVencidas`,
+      // reglas: los **tres** cierres de `borrarImagenAlCerrar` —el rechazo, en el
+      // acto; **la aceptación** (B-863), cuando la copia promovida ya reemplaza
+      // al original; y **el descarte** (B-926), cuando quien revisó eligió no
+      // usar la foto al convertir, que es el único que borra **sin** que exista
+      // ninguna copia— y el de la retención (`borrarPropuestasVencidas`,
       // a los 30 días, que a la aceptada no la alcanza porque no vence). Que el
       // panel no pueda borrar es lo que hace que el borrado sea **una
       // consecuencia del estado** y no un botón que alguien puede olvidarse de

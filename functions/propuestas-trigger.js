@@ -177,7 +177,7 @@ export const borrarImagenAlCerrar = onDocumentWritten(
           alerta: 'flyer-de-propuesta-sin-borrar',
         });
       }
-    } else {
+    } else if (motivo === 'rechazada') {
       try {
         /*
          * `ignoreNotFound` por el mismo motivo que en la retención: la entrega
@@ -202,6 +202,27 @@ export const borrarImagenAlCerrar = onDocumentWritten(
           error: e?.message,
         });
       }
+    } else {
+      /*
+       * **El `else` final NO borra, y eso cambió con el pase de B-926.**
+       *
+       * Hasta acá era un catch-all cuyo default era el **borrado crudo**: con
+       * tres motivos posibles eso funcionaba, pero el vocabulario de `motivo` es
+       * un literal escrito en dos archivos y no una constante compartida, así
+       * que un quinto motivo —o un typo al renombrar uno— caía en el borrado
+       * irreversible **por default**.
+       *
+       * Invertido, el default es no hacer nada y avisar. Es la misma dirección
+       * que el resto del archivo elige siempre: cuando no se sabe, se conserva la
+       * foto. Lleva `alerta` porque el estado del mundo es el de los otros tres —
+       * un objeto vivo que nadie más va a borrar.
+       */
+      logger.error('motivo de borrado desconocido: no se toca la imagen', {
+        propuesta: id,
+        objeto,
+        motivo,
+        alerta: 'flyer-de-propuesta-sin-borrar',
+      });
     }
   },
 );

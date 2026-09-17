@@ -113,7 +113,23 @@ const cuando = (p: PropuestaConId): string => {
  * sesión (que no debería pasar acá) y **objeto que ya no está**, que es
  * exactamente lo que le pasa a una propuesta rechazada.
  */
-function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
+function FlyerDeLaPropuesta({
+  storagePath,
+  onEstado,
+}: {
+  storagePath: string;
+  /**
+   * **Si la foto se pudo mostrar o no** — B-926, hallazgo del pase de auditoría.
+   *
+   * Lo necesita el paso de decisión, y el motivo es el argumento entero del
+   * ítem: saltear la verificación de B-863 se justifica porque «la pregunta ya
+   * la contestó una persona **mirando** la foto». Si la foto no se pudo mostrar,
+   * esa frase deja de ser cierta y lo que queda es una persona que clickeó — que
+   * no es lo mismo, y es la diferencia sobre la que descansa un borrado
+   * irreversible.
+   */
+  onEstado: (sePudoVer: boolean) => void;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [fallo, setFallo] = useState<'chunk' | 'objeto' | null>(null);
 
@@ -123,7 +139,10 @@ function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
       try {
         const { urlDeImagenDePropuesta } = await import('@/lib/subir-imagen');
         const u = await urlDeImagenDePropuesta(storagePath);
-        if (vivo) setUrl(u);
+        if (vivo) {
+          setUrl(u);
+          onEstado(true);
+        }
       } catch (e) {
         /*
          * Las dos causas se distinguen porque se arreglan distinto: si el chunk
@@ -132,12 +151,20 @@ function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
          * `GaleriaEditor` y la que `tests/carga-diferida.test.ts` vigila para
          * todo `await import()` del panel.
          */
-        if (vivo) setFallo(esFalloDeCarga(e) ? 'chunk' : 'objeto');
+        if (vivo) {
+          setFallo(esFalloDeCarga(e) ? 'chunk' : 'objeto');
+          onEstado(false);
+        }
       }
     })();
     return () => {
       vivo = false;
     };
+    // `onEstado` queda fuera de las dependencias a propósito: viene de un
+    // `useState` del padre y es estable, y meterla haría reejecutar el fetch en
+    // cada render del padre — una lectura de Storage por cada tecla del motivo
+    // de rechazo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storagePath]);
 
   if (fallo === 'chunk') {
@@ -286,6 +313,20 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    * hace que el paso no se convierta en un click de más para el caso común.
    */
   const [decidiendoFoto, setDecidiendoFoto] = useState<string | null>(null);
+  /**
+   * **Qué propuestas mostraron su foto de verdad** — B-926, del pase de
+   * auditoría.
+   *
+   * El argumento para saltear la verificación de B-863 es que «una persona
+   * **miró** la foto». Cuando la miniatura no se pudo traer —el chunk no llegó,
+   * o el objeto ya no está— esa persona no miró nada, y el aviso que le dice
+   * «bajala antes con el botón de arriba» manda a un botón que **tampoco está**:
+   * cuelga del mismo componente, después del `return` del fallo.
+   *
+   * Sin esto, el paso autorizaba un borrado irreversible de una foto que no se
+   * pudo ver, con una instrucción que no se podía seguir.
+   */
+  const [fotoVisible, setFotoVisible] = useState<Record<string, boolean>>({});
   const [rechazando, setRechazando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
   /** Apagado por defecto: la bandeja arranca mostrando lo que espera decisión. */
@@ -639,7 +680,14 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
               */}
               {p.imagen && 'storagePath' in p.imagen && p.estado !== 'rechazada' && (
                 <div className="mt-2">
-                  <FlyerDeLaPropuesta storagePath={p.imagen.storagePath} />
+                  <FlyerDeLaPropuesta
+                    storagePath={p.imagen.storagePath}
+                    onEstado={(sePudoVer) =>
+                      setFotoVisible((prev) =>
+                        prev[p.id] === sePudoVer ? prev : { ...prev, [p.id]: sePudoVer },
+                      )
+                    }
+                  />
                 </div>
               )}
 
@@ -703,10 +751,26 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                     está arriba — por eso este texto lo nombra en vez de suponer
                     que se vio.
                   */}
-                  <p className="text-xs text-tinta/55">
-                    Si no la usás se borra y no se puede recuperar. Si la querés guardar, bajala
-                    antes con el botón de arriba.
-                  </p>
+                  {fotoVisible[p.id] ? (
+                    <p className="text-xs text-tinta/55">
+                      Si no la usás se borra y no se puede recuperar. Si la querés guardar, bajala
+                      antes con el botón de arriba.
+                    </p>
+                  ) : (
+                    /*
+                     * **La foto no se pudo mostrar, así que el aviso cambia** —
+                     * y no es un matiz de redacción: el de arriba manda a un
+                     * botón que en este estado no existe, y sobre todo da por
+                     * sentado que alguien vio lo que va a borrar. Acá se dice lo
+                     * contrario con todas las letras, porque es la única forma
+                     * de que quien decide sepa qué está decidiendo.
+                     */
+                    <p role="alert" className="text-xs text-acento">
+                      No pudimos mostrarte la foto, así que tampoco podés bajarla ni descartarla
+                      desde acá: descartar la borra para siempre y nadie la vio. Podés usarla
+                      igual, o recargar la página para volver a intentarlo.
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -719,17 +783,36 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                     >
                       {promoviendo === p.id ? 'Trayendo la imagen…' : 'Sí, usarla'}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDecidiendoFoto(null);
-                        void convertir(p, false);
-                      }}
-                      disabled={promoviendo === p.id}
-                      className={`${claseBotonSecundario} disabled:opacity-50`}
-                    >
-                      No usarla
-                    </button>
+                    {/*
+                      ⚠️ **«No usarla» solo existe si la foto se pudo mostrar** —
+                      B-926, del pase de auditoría, y no es una precaución de UI:
+                      **es el argumento del ítem sosteniéndose o cayéndose.**
+
+                      Saltear la verificación de B-863 se apoya en que «la
+                      pregunta ya la contestó una persona **mirando** la foto».
+                      Con la miniatura sin cargar, lo que hay es una persona que
+                      clickeó, y eso no alcanza para autorizar un borrado
+                      irreversible. Por eso el botón no se deshabilita: **no se
+                      dibuja**. Un botón gris invita a buscar cómo habilitarlo;
+                      su ausencia, más el aviso de al lado, manda a recargar, que
+                      es lo que hay que hacer.
+
+                      «Sí, usarla» sí se ofrece: no destruye nada, y si la
+                      promoción falla el flag no viaja y el original se conserva.
+                    */}
+                    {fotoVisible[p.id] === true && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDecidiendoFoto(null);
+                          void convertir(p, false);
+                        }}
+                        disabled={promoviendo === p.id}
+                        className={`${claseBotonSecundario} disabled:opacity-50`}
+                      >
+                        No usarla
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setDecidiendoFoto(null)}

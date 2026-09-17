@@ -129,22 +129,50 @@ describe('la única escritura del panel sobre una propuesta', () => {
     expect(conDescarte).not.toEqual(siempre);
     expect(conDescarte).toContain('fotoDescartada');
 
-    for (const claves of declaradas) {
-      expect(
-        claves,
-        'cada `hasOnly` tiene que ser el mapa del `create` (cuatro) o el del `update` (cinco)',
-      ).toEqual(claves.includes('fotoDescartada') ? conDescarte : siempre);
-    }
+    /*
+     * ⚠️ **Se enruta por QUÉ REGLA es cada `hasOnly`, no por lo que contiene** —
+     * lo encontró el pase de auditoría de B-926, y la primera versión de este
+     * aserto tenía el bug que describe.
+     *
+     * Decía `claves.includes('fotoDescartada') ? conDescarte : siempre`, o sea
+     * que **la lista elegía contra qué compararse**. Si mañana alguien agrega
+     * `fotoDescartada` al `hasOnly` del `create` «para que queden iguales», esa
+     * lista se auto-clasificaría como la del `update` y el test pasaría en
+     * verde — habilitando que una propuesta **nazca** con la foto marcada como
+     * descartada, que es justo lo que el `create` no puede permitir.
+     *
+     * Ahora el orden lo da el archivo: `propuestaValida()` está antes que
+     * `revisionValida()` en el bloque, así que la primera aparición es la del
+     * `create` y la segunda la del `update`. Si ese orden cambiara, el control
+     * positivo de abajo lo dice.
+     */
+    expect(declaradas.length, 'se esperaban exactamente los dos `hasOnly` del bloque').toBe(2);
+    const [delCreate, delUpdate] = declaradas as [string[], string[]];
+
+    expect(
+      delCreate,
+      'el `hasOnly` del `create` tiene que ser el mapa de cuatro: una propuesta no puede NACER ' +
+        'con la foto marcada como descartada',
+    ).toEqual(siempre);
+    expect(
+      delUpdate,
+      'el `hasOnly` del `update` tiene que aceptar `fotoDescartada`, o el panel no puede marcarlo',
+    ).toEqual(conDescarte);
 
     /*
-     * Y que **exista** la variante de cinco: con las dos listas en cuatro, el
-     * `for` de arriba pasaría y `fotoDescartada` no estaría en ninguna regla —
-     * o sea que el panel no podría escribirlo y el trigger no borraría nunca.
+     * **Y que el orden sea el que este caso asume.** Sin esto, invertir las dos
+     * funciones en el archivo haría que los dos asertos de arriba compararan
+     * contra la lista equivocada — y el de `delCreate` es el que impide que una
+     * propuesta nazca con el flag puesto.
      */
+    const iCreate = bloquePropuestas.indexOf('function propuestaValida()');
+    const iUpdate = bloquePropuestas.indexOf('function revisionValida()');
+    expect(iCreate, 'no se encontró `propuestaValida()`').toBeGreaterThan(-1);
     expect(
-      declaradas.some((c) => c.includes('fotoDescartada')),
-      'ninguna regla acepta `fotoDescartada`: el panel no podría marcarlo',
-    ).toBe(true);
+      iUpdate,
+      '`revisionValida()` dejó de venir después de `propuestaValida()`: el orden que este caso ' +
+        'usa para saber cuál `hasOnly` es de cada una ya no vale',
+    ).toBeGreaterThan(iCreate);
   });
 
   it('los estados pendientes son estados de verdad, y las cerradas no lo son', () => {
