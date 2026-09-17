@@ -227,3 +227,37 @@ describe('ningún ítem del backlog tiene dos encabezados — B-294', () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * **El CHANGELOG tiene una sola sección viva.**
+ *
+ * Hermano del de arriba, y salió del mismo día: un script falló buscando la
+ * marca `## Sin publicar` y encontró **dos**. La segunda estaba en la línea
+ * 13601, enterrada debajo de 1.9.0 — un encabezado de la era anterior al
+ * versionado que se quedó con el nombre de la sección viva mientras las
+ * versiones nuevas se apilaban arriba.
+ *
+ * **El daño no es cosmético.** «Sin publicar» es la sección donde se escribe lo
+ * que todavía no salió, y este archivo se edita **por el principio**. Con dos,
+ * cualquier cosa que busque la marca por texto —un script, un agente, una
+ * persona con un `grep`— puede escribir en la enterrada, y ahí nadie la lee
+ * nunca: queda debajo de todo el historial, presentada como pendiente en un
+ * archivo donde todo lo que está abajo ya salió.
+ *
+ * MUTACIÓN PROBADA: un segundo `## Sin publicar` en cualquier parte del archivo
+ * deja este caso en rojo nombrando las líneas.
+ */
+describe('el CHANGELOG tiene exactamente una sección «Sin publicar»', () => {
+  it('la marca de lo que todavía no salió aparece una sola vez', () => {
+    const lineas = readFileSync(raiz('docs/CHANGELOG.md'), 'utf8').split('\n');
+    const donde = lineas
+      .map((l, i) => (l.trim() === '## Sin publicar' ? i + 1 : 0))
+      .filter((n) => n > 0);
+    expect(
+      donde,
+      'hay más de una sección «Sin publicar»: lo que se escriba en la que no es ' +
+        'la primera queda enterrado abajo del historial y no lo lee nadie',
+    ).toHaveLength(1);
+    expect(donde[0], 'la sección viva no está al principio del archivo').toBeLessThan(10);
+  });
+});

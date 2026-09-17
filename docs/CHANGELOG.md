@@ -13598,7 +13598,15 @@ Tres hallazgos del diseño que valen aparte:
 - **`astro.config.mjs` no tiene `site`**, así que no hay URL absoluta para
   canonical, Open Graph ni sitemap (B-109) — y eso depende de decidir el dominio.
 
-## Sin publicar
+## Sin versión — 2026-08-21 · ideas de producto
+
+> **Esto decía «Sin publicar» y quedó varado.** Es de la era anterior al
+> versionado —sus vecinas de arriba y de abajo se llaman «Sin versión» y «Sin
+> etiquetar»— y su contenido se publicó hace un mes. El encabezado se quedó con
+> el nombre de la sección viva mientras las versiones nuevas se apilaban arriba,
+> así que el archivo tenía **dos** «Sin publicar» y la segunda estaba enterrada
+> debajo de 1.9.0. Lo encontró un script al fallar buscando la marca y encontrar
+> dos. Se renombra y **no se borra nada**, que es la regla del rastro.
 
 ### Ideas de producto, con su argumento en contra
 
