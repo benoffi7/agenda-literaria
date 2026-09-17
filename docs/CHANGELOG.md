@@ -23,6 +23,22 @@
   las funcionalidades; **B-1110** y **B-1120**, dos formatos derivados por
   separado; y **B-1100**, el barrido que hace visible el resto.
 
+  **Y la causa que faltaba abajo de dos de esos cierres.** B-1021 y B-1030 se
+  cerraron el mismo día llamando «artefacto de worktree» a lo que es el nombre
+  del síntoma: el emulador de **Auth** es de un solo proyecto, el de su
+  `--project` de arranque, así que el Admin SDK escribe el claim en un namespace
+  y el cliente entra en otro (**B-1112**). Eso puso nombre a algo más grande, y
+  quedó escrito como **D-730**: el aislamiento por `projectId` de B-219 —que
+  sigue siendo la elección correcta— aísla donde la API REST del emulador está
+  parametrizada por proyecto, y eso es una propiedad de tres operaciones de
+  Firestore, **no del emulador**. Los tres bordes conocidos —Storage con reglas
+  globales (**B-366**), Auth de un solo proyecto (**B-1112**) y el `projectId`
+  derivado dos veces (**B-1111**)— dejan de ser mala suerte y pasan a ser el
+  alcance real de la decisión. El de Auth ahora se dice en vez de deducirse: el
+  primer login del proceso compara el `aud` del ID token y falla nombrando los
+  dos proyectos, en vez de dejar que aparezca como un `PERMISSION_DENIED` sobre
+  un documento válido.
+
   **Tres redes nuevas**, las tres con la mutación probada en rojo:
   `tests/comandos-de-los-skills.test.ts` (los comandos y las 257 rutas que las
   definiciones de `.claude/` citan), `tests/items-referenciados.test.ts` (los
