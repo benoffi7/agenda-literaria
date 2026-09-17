@@ -92,6 +92,12 @@ export const AREAS_PRODUCCION = ['src/', 'functions/', 'scripts/'];
  * de este repo (comentarios de bloque abiertos y cerrados en su propia línea,
  * o `//` de línea). Las comillas que contengan `/*` dentro de una string son el
  * caso que no distingue, y se acepta: no hay ninguna en el corpus.
+ *
+ * Un comentario JSX (`{/* … *\/}`) es el mismo bloque con `{` y `}` pegados a
+ * las marcas — B-878. Antes solo se reconocía `l.startsWith('/*')`, y una línea
+ * que empieza con `{` caía en el `else` y contaba como significativa. Se trata
+ * igual que `/*`: abre bloque si no cierra en la misma línea, y el cierre real
+ * (`*\/}` o `*\/`) lo sigue viendo el chequeo genérico de `enBloque`.
  */
 export const contarLineas = (texto) => {
   const lineas = texto.split('\n');
@@ -118,7 +124,7 @@ export const contarLineas = (texto) => {
       comentario += 1;
       continue;
     }
-    if (l.startsWith('/*')) {
+    if (l.startsWith('/*') || l.startsWith('{/*')) {
       comentario += 1;
       if (!l.includes('*/')) enBloque = true;
       continue;
@@ -173,8 +179,13 @@ export const resolver = (especificador, desde, enElCorpus, alias) => {
   return pruebas.find((p) => enElCorpus.has(p)) ?? null;
 };
 
+// La clase negada del primer alternativo NO lleva `\n`: si lo llevara, un
+// `import { ... } from` con las llaves abiertas en varias líneas queda
+// invisible para el grafo — B-877. Sin `\n` en la clase, el `[^'"]*?` no
+// greedy sigue frenando en la primera comilla o en `from`, así que cruzar
+// líneas no hace que el regex se coma de más.
 const IMPORTS =
-  /(?:^|\n)\s*(?:import|export)[^'"\n]*?from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
+  /(?:^|\n)\s*(?:import|export)[^'"]*?from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
 
 /** El grafo dirigido `archivo → archivos del proyecto que importa`. */
 export const grafo = (raiz = RAIZ, archivos = corpus(raiz)) => {
