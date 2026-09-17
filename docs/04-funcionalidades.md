@@ -2326,14 +2326,18 @@ peso a la mayoría. Es la misma lógica con la que el panel se corta del bundle
 público.
 
 **La ficha** es HTML sin JavaScript: la dirección con el barrio —linkeado al hub
-**solo si ese hub existe**—, todas las imágenes (el criterio de B-296, no solo la
-portada), los cuatro contactos como `href` ya saneados, y el JSON-LD `BookStore` +
-`BreadcrumbList`, que es el SEO de la sección entera. **Sin `openingHours`, y el
-motivo cambió con B-982**: el horario **sí se pide** desde entonces, pero como
-texto libre. `schema.org/openingHours` quiere formato fijo (`Mo-Fr 10:00-20:00`)
-y un texto libre no valida — emitirlo mal formado haría que Google muestre un
-horario equivocado al costado del resultado, que es peor que no mostrar ninguno.
-Entra el día que el campo se estructure.
+**solo si ese hub existe**—, el **horario de atención** pegado abajo cuando se
+cargó (B-982: contesta la misma pregunta que la dirección, «¿voy o no voy
+ahora?»), todas las imágenes (el criterio de B-296, no solo la portada), los
+cuatro contactos como `href` ya saneados, y el JSON-LD `BookStore` +
+`BreadcrumbList`, que es el SEO de la sección entera.
+
+**El horario se muestra y no entra al JSON-LD**, y el motivo cambió con B-982:
+antes era que no se pedían horarios; ahora se piden, como **texto libre**. Lo que
+`schema.org/openingHours` quiere es un formato fijo (`Mo-Fr 10:00-20:00`), y un
+texto libre no valida: emitirlo mal formado haría que Google muestre un horario
+equivocado al costado del resultado, que es peor que no mostrar ninguno. Entra el
+día que el campo se estructure.
 
 El listado no tiene imágenes, por lo mismo que el de la agenda: lo que se recorre
 en un directorio es el nombre y el barrio, y una tira de fotos lo convierte en una
