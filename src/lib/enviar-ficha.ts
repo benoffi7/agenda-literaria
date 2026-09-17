@@ -42,6 +42,8 @@ import { formALugar } from '@/lib/lugar-schema';
 import type { LibreriaForm } from '@/types/libreria';
 import type { SuscripcionLiterariaForm } from '@/types/suscripcion-literaria';
 import type { LugarForm } from '@/types/lugar';
+import { formABiblioteca } from '@/lib/biblioteca-schema';
+import type { BibliotecaForm } from '@/types/biblioteca';
 
 /**
  * El sentinel, tipado como el `Timestamp` que va a quedar.
@@ -100,6 +102,26 @@ export const enviarSuscripcion = async (f: SuscripcionLiterariaForm): Promise<st
 export const enviarLugar = async (f: LugarForm): Promise<string> => {
   const ref = await addDoc(collection(db(), 'lugares'), {
     ...formALugar(f, ahoraDelServidor(), 'formulario-publico'),
+    creadoEn: serverTimestamp(),
+  });
+  return ref.id;
+};
+
+/**
+ * Manda una biblioteca — B-960.
+ *
+ * Recibe el reloj del servidor **dos veces**, como la suscripción y por el mismo
+ * motivo: `creadoEn` y el `cargadoEn` del costo de asociarse. Los dos los
+ * verifica la regla contra `request.time`, así que quien carga no puede elegir
+ * qué fecha se publica al lado del monto — que es todo el punto de que esa fecha
+ * exista (DEC-12).
+ *
+ * `formABiblioteca` deja el costo en `null` si no hace falta asociarse, así que
+ * el `cargadoEn` no viaja solo; y si viajara, `asociarseValido()` lo rechaza.
+ */
+export const enviarBiblioteca = async (f: BibliotecaForm): Promise<string> => {
+  const ref = await addDoc(collection(db(), 'bibliotecas'), {
+    ...formABiblioteca(f, ahoraDelServidor(), 'formulario-publico'),
     creadoEn: serverTimestamp(),
   });
   return ref.id;

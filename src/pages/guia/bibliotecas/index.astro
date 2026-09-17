@@ -1,0 +1,137 @@
+---
+/**
+ * `/guia/bibliotecas` — el directorio de bibliotecas. **B-960**, el cuarto de la
+ * Guía.
+ *
+ * ── El mismo contrato que la home: el HTML es la verdad ───────────────────
+ * El build imprime **todas** las fichas publicadas, así que la página sirve
+ * completa con JavaScript apagado y Googlebot la ve entera. La island
+ * (`BuscadorDeBibliotecas`) hace un solo fetch de `/bibliotecas.json` (§2.5) y
+ * recién cuando lo tiene saca esa lista del DOM por su `id` y renderiza la suya
+ * con el **mismo** componente de fila. Si el fetch falla, la lista del build se
+ * queda.
+ *
+ * ── La plantilla no ve el documento (D-140) ───────────────────────────────
+ * Recibe `vistaDeBibliotecas()`, que es el view-model: fichas ya proyectadas y
+ * chips. Acá no hay una `Biblioteca` ni nada de Firestore, así que **no se puede
+ * interpolar el `contactoDeQuienCargo`**: no está en el objeto. La frontera de
+ * privacidad es un tipo, no la disciplina de quien escribe la plantilla (§5 del
+ * `CLAUDE.md`).
+ *
+ * ── El vacío, sin mentir ──────────────────────────────────────────────────
+ * Con cero fichas la página dice qué va a haber y manda a `/contacto`, igual que
+ * las otras tres secciones de la Guía y que `/cartelera` sin ningún flyer. Un
+ * directorio vacío es peor que no tenerlo, y eso no lo arregla el código —se
+ * arregla cargando bibliotecas— pero sí se puede no fingir.
+ *
+ * La canónica, el Open Graph y el chrome los pone `Base.astro` — ninguna página
+ * se arma los suyos (`tests/canonico.test.ts`).
+ */
+import Base from '@/layouts/Base.astro';
+import { BuscadorDeBibliotecas } from '@/components/publico/BuscadorDeBibliotecas';
+import { FichaDeBibliotecaFila } from '@/components/publico/FichaDeBibliotecaFila';
+import { vistaDeBibliotecas } from '@/lib/contenidoDelSitio';
+import { coleccionDeBibliotecas, descripcionDelDirectorio } from '@/lib/bibliotecaPublica';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_BIBLIOTECA } from '@/lib/rutasPublicas';
+import { claseEnlace } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const { fichas, version } = await vistaDeBibliotecas();
+const cuantas = fichas.length;
+
+/** El `id` que la island usa para sacar la lista del build. */
+const ID_LISTADO = 'listado-de-bibliotecas';
+
+const jsonLd = coleccionDeBibliotecas(fichas);
+
+// La frase sale del módulo puro, igual que la de la ficha: las dos son de la
+// misma salida y se barren juntas (`tests/biblioteca-publica.test.ts`).
+const descripcion = descripcionDelDirectorio(cuantas);
+---
+
+<Base seccion="guia" titulo={`Bibliotecas — ${NOMBRE}`} descripcion={descripcion}>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="label-caps text-azul">
+      <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
+    </p>
+
+    <h1 class="display-md mt-2 text-balance text-acento">Bibliotecas</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Dónde sacar libros: el horario de sala, si hay que asociarse y el catálogo. Es la otra
+      mitad del circuito que rodea a las actividades — al lado de las librerías, donde se
+      compran.
+    </p>
+
+    {/*
+      **La llamada al formulario, arriba y no al final**, por el mismo criterio
+      que las otras tres secciones: quien llega con una biblioteca que no figura
+      llega con algo para dar, no algo para buscar, y hacerlo scrollear cuarenta
+      fichas ajenas antes de ofrecerle el camino es pedirle que se convenza solo.
+
+      El destino es `RUTA_SUMAR_BIBLIOTECA` y no un `href` a mano — B-330.
+    */}
+    <p class="body-md mt-4 max-w-[65ch] text-super">
+      ¿Trabajás en una biblioteca, o conocés una que tendría que estar acá?{' '}
+      <a class={claseEnlace} href={RUTA_SUMAR_BIBLIOTECA}>Sumala a la guía</a>: no hace falta
+      tener cuenta y no cuesta nada.
+    </p>
+
+    {
+      cuantas === 0 ? (
+        <div class="regla-gruesa-arriba mt-10 px-4 py-12 text-center">
+          <p class="body-md mx-auto max-w-[48ch] text-super">
+            Todavía no hay ninguna cargada. ¿Trabajás en una biblioteca o conocés una que
+            tendría que estar acá?{' '}
+            <a class={claseEnlace} href={RUTA_SUMAR_BIBLIOTECA}>Sumala</a>, o{' '}
+            <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/*
+            La island. Va **antes** de la lista del build y fuera de su `id`: la
+            saca del DOM cuando tiene el índice, y si estuviera adentro se
+            borraría a sí misma. Es el mismo reparto que en la home.
+          */}
+          <BuscadorDeBibliotecas
+            client:load
+            version={version}
+            idListadoEstatico={ID_LISTADO}
+          />
+
+          {/*
+            La lista del build: todas las fichas, sin filtrar. Es lo que ve quien
+            entra sin JavaScript y lo que indexa Google.
+          */}
+          <ul id={ID_LISTADO} class="mt-8 flex flex-col gap-4">
+            {fichas.map((ficha) => (
+              <FichaDeBibliotecaFila ficha={ficha} />
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    {
+      /*
+        `CollectionPage` + `ItemList` (§5.5 del diseño): le dice a Google que esto
+        es un listado y en qué orden seguir los links. `null` con la lista vacía —
+        un `ItemList` sin elementos no ayuda a entender nada.
+
+        El `replace` de `<` es la misma guarda que la página de detalle:
+        `JSON.stringify` escapa comillas y barras, no un `</script>` adentro de un
+        string.
+      */
+      jsonLd && (
+        <script
+          type="application/ld+json"
+          is:inline
+          set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')}
+        />
+      )
+    }
+  </main>
+</Base>

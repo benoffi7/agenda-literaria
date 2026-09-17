@@ -406,14 +406,16 @@ export const DIRECTORIOS: readonly Directorio[] = [
      * tampoco tiene que ahorrarla: la proyección es una whitelist **por
      * entidad** y ahí está toda la seguridad de esto.
      *
-     * ⚠️ **Arranca en `false` a propósito, y se da vuelta en el tramo que
-     * escribe `src/pages/guia/bibliotecas/`.** Ponerlo en `true` antes sería
-     * mentir con la fila de `/guia` linkeando a un 404 y una URL inexistente en
-     * el sitemap; `tests/directorios.test.ts` lo cruza contra el disco en las
-     * dos direcciones, así que ninguna de las dos mitades puede adelantarse a la
-     * otra. Mientras es `false` la fila dice «en camino», que es verdad.
+     * **Se dio vuelta en el tramo que escribió `src/pages/guia/bibliotecas/`**,
+     * y no antes: mientras las páginas no estaban, `false` era lo verdadero —la
+     * fila decía «en camino»— y ponerlo en `true` habría dejado la Guía
+     * linkeando a un 404 y una URL inexistente en el sitemap.
+     * `tests/directorios.test.ts` lo cruza contra el disco en las dos
+     * direcciones, así que ninguna de las dos mitades puede adelantarse a la
+     * otra: marcarlo sin la página ofrece un 404, y escribir la página sin
+     * marcarlo la deja publicada e invisible desde su propio índice.
      */
-    disponible: false,
+    disponible: true,
   },
 ];
 
