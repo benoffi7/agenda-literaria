@@ -54,6 +54,7 @@
  * y un admin escribe. Si esas dos no pasan, el resto no está midiendo nada.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
@@ -337,10 +338,46 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
    * y su propio archivo de integración que lo verifique. Una lista que crece sin
    * que crezca eso es exactamente lo que este archivo existe para impedir.
    */
+  /**
+   * **El cuerpo del validador que el `allow create` nombra, sin comentarios.**
+   *
+   * Hasta el 2026-09-17 esto recortaba `reglas.slice(indexOf(match /<x>/))` —o
+   * sea **hasta el final del archivo**— y preguntaba si ahí aparecía
+   * `estado ==`. Pasaba siempre, y por tres motivos distintos, ninguno de los
+   * cuales es «la regla fuerza el estado»: por texto de **otra** colección más
+   * abajo, por un **comentario** del propio bloque que cita
+   * `resource.data.estado == 'publicado'` para razonar sobre él, y por el
+   * `allow update`, que mira el estado por otra razón.
+   *
+   * **Lo destapó `/bibliotecas`**, que es la última del archivo —así que no
+   * tenía nada debajo que la tapara— y cuyo validador está **arriba** de su
+   * bloque. El rojo era del chequeo y no de la regla: `bibliotecaValida()`
+   * fuerza el estado desde que se escribió.
+   *
+   * MUTACIÓN PROBADA, y en las **cinco**: reemplazar `estado ==` dentro del
+   * validador de cualquiera de ellas deja este caso en rojo. Con la versión
+   * anterior, cuatro de las cinco seguían en verde — o sea que la red existía y
+   * no agarraba nada. Es la misma clase que persigue este archivo, del lado del
+   * chequeo: **un control laxo con forma de red es peor que no tenerlo**, porque
+   * el que lo lee concluye que la puerta está cubierta.
+   */
+  const validadorDelCreate = (reglas: string, coleccion: string): string => {
+    const desde = reglas.indexOf(`match /${coleccion}/`);
+    const siguiente = reglas.indexOf('\n    match /', desde + 1);
+    const bloque = reglas.slice(desde, siguiente === -1 ? undefined : siguiente);
+    const validador = /allow create: if (\w+)\(\)/.exec(bloque)?.[1];
+    // Sin validador nombrado, la condición está inline: el bloque ES el cuerpo.
+    if (!validador) return sinComentarios(bloque);
+    const ini = reglas.indexOf(`function ${validador}()`);
+    if (ini === -1) return sinComentarios(bloque);
+    const fin = reglas.indexOf('\n    function ', ini + 1);
+    return sinComentarios(reglas.slice(ini, fin === -1 ? undefined : fin));
+  };
+
   it('cada colección abierta tiene el estado forzado en la regla y su propio testigo', () => {
     const reglas = readFileSync(REGLAS, 'utf8');
     for (const coleccion of COLECCIONES_ABIERTAS) {
-      const bloque = reglas.slice(reglas.indexOf(`match /${coleccion}/`));
+      const bloque = validadorDelCreate(reglas, coleccion);
       expect(
         bloque,
         `/${coleccion} está abierta y su regla no fuerza el \`estado\` inicial: ` +
