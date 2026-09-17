@@ -31,6 +31,13 @@
  *    (`/emulator/v1/projects/{p}/databases/(default)/documents`), la carga de
  *    reglas (`:securityRules`) y los documentos (`/v1/projects/{p}/…`).
  *
+ * **El alcance de eso es exactamente esas tres operaciones, y no el emulador
+ * entero — D-730.** Donde el endpoint REST no lleva proyecto, este `projectId`
+ * no aísla y tampoco avisa: las reglas de Storage son globales (B-366) y el
+ * emulador de Auth es de un solo proyecto, el de su `--project` de arranque
+ * (B-1112). No invalida la elección; es su precio, y está escrito porque no
+ * estarlo costó cerrar B-1021 y B-1030 con la causa equivocada.
+ *
  * **Verificado contra el emulador el 2026-09-02**, porque B-219 anotaba como
  * objeción que «choca con `singleProjectMode: true` de `firebase.json`»: no
  * choca. Con el emulador levantado por el checkout principal (o sea con

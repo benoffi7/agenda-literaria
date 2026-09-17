@@ -244,6 +244,13 @@ export const emuladorStorageVivo = async (): Promise<boolean> => {
  * el mismo `storage.rules` cargan lo mismo— y muerde el día que dos worktrees
  * corran a la vez con `storage.rules` distinto. No hay arreglo dentro del
  * emulador: sería un puerto de Storage por checkout.
+ *
+ * **Y no es un caso suelto: es uno de los tres bordes de D-730.** Los otros dos
+ * son el emulador de Auth, que es de un solo proyecto (B-1112), y el `PROJECT_ID`
+ * de este mismo archivo, que se deriva por su cuenta con el literal como fallback
+ * (B-1111). Los tres fallan igual —no dan un error, dan un resultado—, así que
+ * ante un rojo que no reproduce en el árbol principal, la pregunta es si el
+ * endpoint que usa ese test lleva `projectId`.
  */
 export const cargarReglasStorage = async (ruta: string): Promise<void> => {
   const { readFile } = await import('node:fs/promises');
