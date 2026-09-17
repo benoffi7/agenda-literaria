@@ -158,33 +158,53 @@ const paginasDeSrc = (dir = 'src/pages'): string[] =>
         : [],
   );
 
-/** Los archivos barridos, por glob y no a mano. */
+/**
+ * Los archivos barridos, por glob y no a mano.
+ *
+ * ── `src/components/publico/*.tsx` entró — B-925 ──────────────────────────
+ * El `auditor-privacidad` lo había propuesto: los tres formularios repiten en
+ * el componente los mismos carteles que su página («la dirección exacta no se
+ * publica»), y hasta ahora esa repetición no tenía red — una promesa que
+ * existiera **solo** en el componente (y no en la página que sí se barre)
+ * podía colarse sin que nada la mirara.
+ *
+ * No entró en el primer intento por dos falsos positivos, y ninguno era una
+ * promesa: «Todavía no guardaste nada» (`MisGuardados.tsx`, la lista vacía) y
+ * «si no cobran o preferís no ponerlo» (`SumarLugar.tsx`, sobre lo que cobra
+ * el lugar). Lo que arreglaba el hallazgo no era el glob: eran los detectores,
+ * afinados para prosa de página y ciegos al sujeto de la frase. Se resolvió
+ * en dos pasos, cada uno su propio commit:
+ *
+ * 1. `prosaDe()` sabe leer JSX (`esJsx`): un `.tsx` se reduce al texto entre
+ *    `>` y `<` y a los literales de string, sin `className=…` ni el resto del
+ *    envoltorio — la frase que queda es la que se lee.
+ * 2. Los dos detectores que disparaban se acotaron al **sujeto**: «no
+ *    guardaste» es segunda persona (la acción de quien lee) y no «no
+ *    guardamos»; «cobran» es tercera del plural (un tercero) y no «nosotros».
+ *
+ * Con los dos cambios, el glob extendido no encuentra los dos falsos
+ * positivos — la suite completa de este archivo lo verifica cada vez que
+ * corre — y no se aflojó ningún detector con una excepción por archivo.
+ *
+ * **Verificado por mutación (regla del repo, B-873):** se metió a propósito
+ * «No guardamos tu dirección exacta.» en `SumarLugar.tsx` — una promesa
+ * falsa, porque el formulario sí manda `direccion` a Firestore aunque no se
+ * publique — y `npx vitest run tests/promesas-sobre-datos.test.ts` se puso en
+ * rojo, señalando el archivo, la fórmula (`no se guarda / no guardamos / no
+ * se mide`) y la frase exacta. Se sacó después de confirmarlo. Sin este
+ * commit el hallazgo no existía: el barrido no llegaba al archivo.
+ */
 const archivosBarridos = (): string[] => {
   const libs = readdirSync(raiz('src/lib'))
     .filter((f) => /DelSitio\.ts$/.test(f))
     .map((f) => `src/lib/${f}`);
-  const componentes = readdirSync(raiz('src/components/sitio'))
+  const componentesSitio = readdirSync(raiz('src/components/sitio'))
     .filter((f) => f.endsWith('.astro'))
     .map((f) => `src/components/sitio/${f}`);
-  /*
-   * ── Lo que NO entra: `src/components/publico/*.tsx` ──────────────────────
-   * El `auditor-privacidad` lo propuso, y se probó: los tres formularios
-   * repiten en el componente los mismos carteles que la página («la dirección
-   * exacta no se publica»), así que agregarlo parecía cerrar la otra mitad.
-   *
-   * **Salieron dos falsos positivos y ninguno es una promesa.** «Todavía no
-   * guardaste nada» (`MisGuardados.tsx`, la lista vacía) cae en el detector de
-   * medición; «si no cobran o preferís no ponerlo» (`SumarLugar.tsx`, sobre lo
-   * que cobra el lugar) cae en el de plata. Los detectores están afinados para
-   * **copy de página**, y en un `.tsx` la prosa extraída trae el JSX adentro
-   * (`className=…`), así que la frase que ven no es la frase que se lee.
-   *
-   * Se deja afuera y se anota (**B-925**): lo que hay que reformar para que
-   * entre son los detectores, no este glob. La promesa que importa está en la
-   * página —que desde hoy sí se barre— y el componente la repite; lo que queda
-   * sin red es una frase que exista **solo** en el componente.
-   */
-  return [...libs, ...paginasDeSrc(), ...componentes];
+  const componentesPublico = readdirSync(raiz('src/components/publico'))
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => `src/components/publico/${f}`);
+  return [...libs, ...paginasDeSrc(), ...componentesSitio, ...componentesPublico];
 };
 
 /**
@@ -491,6 +511,17 @@ describe('el barrido mira archivos de verdad — control positivo', () => {
     // estaban exentas del barrido de su propio módulo.
     expect(archivos).toContain('src/pages/apoyar.astro');
     expect(archivos).toContain('src/pages/ayuda.astro');
+  });
+
+  it('y desde B-925 llega a `src/components/publico/*.tsx`, donde vivían los dos falsos positivos', () => {
+    /*
+     * Los dos componentes concretos que motivaron el ítem: si el glob dejara
+     * de traerlos, este caso lo dice antes de que alguien note que el barrido
+     * de más abajo quedó mirando menos de lo que cree.
+     */
+    const archivos = archivosBarridos();
+    expect(archivos).toContain('src/components/publico/MisGuardados.tsx');
+    expect(archivos).toContain('src/components/publico/SumarLugar.tsx');
   });
 
   it('y llega a CUALQUIER profundidad de `src/pages`, no a dos niveles', () => {
