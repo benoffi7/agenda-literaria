@@ -1190,7 +1190,6 @@ archivos.** Es que reservar deje rastro. Dos caminos, ninguno gratis:
 Mientras tanto: **antes de tomar el número que ofrece el tablero, mirar los
 rangos reservados en `EN-CURSO.md`.** Es una lectura, no un chequeo.
 
-
 ### B-1030 · `storage.rules` no ve el claim de admin cuando llega por el registro, y `firestore.rules` sí · P2 — de cerrar B-895 (2026-09-17)
 
 **Salió de unificar los claims de los tests de integración hacia la vía de
@@ -1234,31 +1233,6 @@ la asimetría en vez de mostrarla.
 
 **Repro:** con el emulador arriba, sacarle a `tokenPara`/`tokenPublicador` el
 objeto de claims del `createCustomToken`, dejando el `setCustomUserClaims`.
-
-### B-982 · Ninguna ficha de la Guía tiene horario de atención · P2 — reportado por el dueño (2026-09-17)
-
-**«No tiene horario de atención».** Es cierto y no es un olvido de un formulario:
-**ninguno de los tres modelos lo tiene** — `libreria.ts`, `lugar.ts` y
-`suscripcion-literaria.ts` no mencionan la palabra.
-
-Para una **librería** es el dato que más se busca después de la dirección: un
-directorio que dice dónde queda y no cuándo abre manda a la gente a la puerta
-cerrada. Para un **lugar para eventos** aplica distinto —lo que importa es la
-disponibilidad, no el horario de mostrador— y para una **suscripción** no aplica.
-
-**Lo que hay que decidir antes de escribir nada, y por eso no se hizo de una:**
-
-1. **La forma.** Texto libre («Lun a vie de 10 a 20, sábados hasta las 14») es
-   una línea de código y cero estructura: no se puede filtrar por «abierto
-   ahora», no se puede emitir `openingHours` en el JSON-LD —que es lo que Google
-   muestra al costado— y cada quien lo escribe distinto. Estructurado (día ×
-   rango) es un editor entero, con feriados, corte del mediodía y temporada.
-2. **En cuáles.** Librerías seguro. Lugares, a discutir. Suscripciones, no.
-3. **Si entra al JSON-LD.** Es la mitad del valor del campo y es lo que empuja
-   hacia lo estructurado.
-
-Un campo de texto libre puesto hoy es difícil de migrar después: queda cargado en
-todas las fichas y hay que releerlo a mano para estructurarlo.
 
 ### B-980 · La descripción autolinkea las URLs, y nada más · P2 — de la decisión 6 del §11.1 (2026-09-16)
 

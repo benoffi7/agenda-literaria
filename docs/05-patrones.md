@@ -101,6 +101,56 @@ Dos aclaraciones para que la regla no se vuelva absurda:
 El inventario completo, con qué automatiza cada uno y qué se decidió **no**
 automatizar, está en [`13-agentes.md`](13-agentes.md).
 
+## Regla de proceso: el árbol principal es compartido y no tiene aislamiento
+
+**Escrita el 2026-09-17, después de que costara una hora de trabajo frenado.** Ese
+día hubo hasta ocho sesiones sobre este repo —una en el árbol principal y seis
+frentes en worktrees— y las tres cosas que salieron mal son la misma:
+**nada separa tu trabajo del de al lado en `/`.**
+
+### 1 · Stageá por nombre. Nunca `git add -A`, `git add .` ni `commit -a`
+
+El commit `601442b`, cuyo mensaje dice `feat(B-983): publicar una ficha de la
+Guía…`, tiene **21 archivos y 712 inserciones**. Se llevó `scripts/tablero/`
+entero y `tests/tablero.test.ts` —113 líneas de un archivo nuevo— que eran de
+**B-984**, un ítem que no tiene nada que ver. No se perdió nada y la suite estaba
+verde; lo que se perdió es que el historial diga la verdad. Arriba de ese commit
+ya había merges, así que no se arregla sin reescribir historia: quedó una nota en
+`f8d2459`.
+
+El procedimiento es `git status --short`, mirar la lista, y `git add` archivo por
+archivo.
+
+### 2 · Leé [`EN-CURSO.md`](../EN-CURSO.md) antes de tocar el árbol principal
+
+Y es la mitad que hace falta para que la primera sirva. Ese día `EN-CURSO.md`
+estaba **commiteado**, decía quién era dueño de qué archivo y qué rangos de ids
+estaban reservados, y no se leyó. Stagear por nombre sin saber cuáles son tuyos te
+deja igual: la lista de `git status` no dice de quién es cada línea.
+
+Si vas a trabajar sobre `/`, ese archivo se lee primero y se actualiza al empezar.
+
+### 3 · El gate de `pre-push` verifica el **working tree**, no el commit
+
+`./scripts/verificar-todo.sh` corre sobre lo que hay en el disco. Con dos sesiones
+en el mismo árbol, **el trabajo a medio hacer de una frena el push de la otra
+aunque sus commits no se toquen**: ese día dos commits de puro `.md` estuvieron
+una hora sin poder salir por errores de typecheck de código ajeno, dos veces
+seguidas y de dos sesiones distintas.
+
+No es un bug del gate —verificar el árbol es lo que atrapa el archivo sin
+`git add`, que es la mitad de B-964— sino la consecuencia de compartir el árbol.
+**La salida barata: si ya hay alguien escribiendo en `/`, el segundo trabaja en un
+worktree** (`.claude/worktrees/<frente>`, con su rama y su `projectId` de emulador
+derivado de la ruta, B-219).
+
+### Por qué esto vive acá y no en `.estado/BRIEF-COMUN.md`
+
+Porque **`.estado/` está en el `.gitignore`**. Todo lo que se escribió ahí ese día
+—incluido el brief con estas mismas reglas— vive en una sola máquina y no está
+versionado. Perder justamente la memoria de por qué no se usa `git add -A` sería
+el mejor ejemplo de lo que ella advierte.
+
 ## Idioma
 
 Código, campos, comentarios y commits en **español** (§14). Es coherente con el

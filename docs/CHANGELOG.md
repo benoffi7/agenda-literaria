@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **Horario de atención en las fichas de la Guía** — **B-982**, reportado por el
+  dueño («no tiene horario de atención»). Texto libre, en librerías y lugares; en
+  suscripciones no, porque no hay puerta que abra. Para una librería es el dato
+  que más se busca después de la dirección.
+
+  **Dos consecuencias dichas, no descubiertas después.** No se emite
+  `openingHours` en el JSON-LD: `schema.org` lo quiere en formato fijo y un texto
+  libre no valida, así que publicarlo haría que Google muestre un horario
+  equivocado. Y en lugares **no depende de `direccionPublica`** — cuándo se puede
+  usar no identifica una casa, así que una con la dirección reservada igual puede
+  decirlo.
+
 - **El backlog se partió en dos: lo que falta y el rastro** — pedido del dueño.
   `docs/BACKLOG.md` tenía **19.334 líneas y 433 ítems, 372 de ellos cerrados**: el
   87% de las líneas era rastro, y las 61 cosas que faltan hacer estaban enterradas
