@@ -57,6 +57,90 @@ describe('salud del código — ciclos de import (B-311)', () => {
     ).toEqual([]);
   });
 
+  /*
+   * **Los ciclos diferidos declarados son exactamente los que hay — B-1070.**
+   *
+   * Es el chequeo que el propio §1.5 pedía y que B-849 dejó sin escribir: «nada
+   * verifica que este ciclo diferido siga siendo el único, ni que siga
+   * existiendo. Si mañana nace otro `lazy(import())` circular, lo va a decir el
+   * script y no un rojo; y si alguien rompe éste, esta sección queda vieja sin
+   * que nada avise.»
+   *
+   * **Por qué es legítimo y las cifras del documento no** (B-180): un ciclo
+   * —diferido o no— no aparece por trabajo ajeno. Lo introduce el `import()`
+   * que alguien acaba de escribir, y el rojo nombra la cadena entera. Una cifra
+   * de tamaño, en cambio, se mueve con cada commit de cualquiera.
+   *
+   * **Por qué se compara canonizado.** El DFS arranca por donde le toca, así
+   * que el mismo ciclo puede salir rotado. Se rota al nodo menor antes de
+   * comparar: lo que se afirma es el ciclo, no por dónde se entró.
+   *
+   * MUTACIÓN PROBADA: sacar una de las tres rutas del bloque del §1.5, o
+   * convertir el `lazy(() => import('@/components/admin/ayuda/CentroAyuda'))`
+   * de `AyudaDeSeccion.tsx` en un import estático, pone este caso en rojo
+   * nombrando la diferencia.
+   */
+  describe('los ciclos diferidos declarados en el §1.5 son los que hay (B-1070)', () => {
+    /** El ciclo, rotado a su nodo menor, para que dos rotaciones sean iguales. */
+    const canonico = (cadena: string[]): string => {
+      // El DFS devuelve el primer nodo repetido al final; se saca para rotar.
+      const nodos = cadena.slice(0, -1);
+      const menor = [...nodos].sort()[0]!;
+      const i = nodos.indexOf(menor);
+      const rotado = [...nodos.slice(i), ...nodos.slice(0, i)];
+      return [...rotado, rotado[0]!].join(' → ');
+    };
+
+    /**
+     * Los ciclos que el §1.5 declara, leídos de su bloque indentado.
+     *
+     * El formato es el que esa sección ya tenía: una ruta por línea con cuatro
+     * espacios de sangría, las siguientes con `→ ` adelante, y una línea en
+     * blanco entre un ciclo y el próximo.
+     */
+    const declarados = (): string[] => {
+      const desde = doc.indexOf('### 1.5 Ciclos');
+      const hasta = doc.indexOf('### 1.6', desde);
+      const bloque = doc.slice(desde, hasta).split('\n');
+      const cadenas: string[][] = [];
+      let actual: string[] = [];
+      for (const linea of bloque) {
+        const m = /^ {4,}(?:→ )?((?:src|functions|scripts|tests)\/\S+)\s*$/.exec(linea);
+        if (m) {
+          actual.push(m[1]!);
+          continue;
+        }
+        if (actual.length) {
+          cadenas.push(actual);
+          actual = [];
+        }
+      }
+      if (actual.length) cadenas.push(actual);
+      return cadenas.map(canonico).sort();
+    };
+
+    it('el §1.5 declara al menos un ciclo y se pudo leer (control positivo)', () => {
+      expect(
+        declarados().length,
+        'no se pudo leer ningún ciclo del bloque indentado del §1.5 de ' +
+          'docs/10-salud-del-codigo.md: o se declararon cero ciclos, o cambió ' +
+          'el formato del bloque y hay que reescribir el lector de este caso.',
+      ).toBeGreaterThan(0);
+    });
+
+    it('los ciclos del grafo completo son exactamente los declarados', () => {
+      const encontrados = (ciclos(grafo()) as string[][]).map(canonico).sort();
+      expect(
+        encontrados,
+        'los ciclos del grafo completo no son los que el §1.5 de ' +
+          'docs/10-salud-del-codigo.md declara. Si nació uno, hay que ' +
+          'declararlo ahí con su motivo y con qué lo volvería un problema; si ' +
+          'desapareció, hay que sacarlo — una sección que declara un ciclo que ' +
+          'ya no existe es la que envejece sin que nada avise.',
+      ).toEqual(declarados());
+    });
+  });
+
   it('el grafo mira archivos de verdad (control positivo)', () => {
     // Sin esto, un `corpus()` vacío daría cero ciclos sin haber mirado nada.
     const g = grafo();
@@ -393,5 +477,86 @@ describe('el conteo de tests no se escribe a mano en la doc de uso — B-662', (
     // suite y no se reporta. Es el caso real de `08-operacion.md`.
     const sinSuite = 'no se remedía: llegó a declarar 111 archivos de producción.';
     expect(conteosEscritos('doc.md', sinSuite)).toEqual([]);
+  });
+});
+
+/**
+ * El conteo de la suite se escribe **una vez** en este documento — B-1071.
+ *
+ * ── Qué pasó ───────────────────────────────────────────────────────────────
+ * El 2026-09-09 el documento quedó afirmando dos cosas distintas del mismo día:
+ * «`npm test` corre **4.044 casos en 179 archivos**» en el §1.1 (al cerrar
+ * B-849) y «al 2026-09-09 son **3.968 casos en 178 archivos**» en el §2 (al
+ * cerrar B-806). Las dos eran ciertas cuando se escribieron —seis commits las
+ * separan— y las dos quedaron viejas; pero como ninguna decía **sobre qué
+ * árbol** se había contado, leerlas no permitía decidir cuál era la buena. Y
+ * ningún test podía verlo: son dos afirmaciones de prosa, no un valor derivado.
+ *
+ * ── Por qué este chequeo y no el obvio ─────────────────────────────────────
+ * El obvio —comparar el número contra la suite— es B-180 con otra cara: se
+ * pondría rojo cada vez que cualquiera agrega un test. Y la respuesta de B-662
+ * —que el número no esté— no aplica acá: en este documento el número **es** el
+ * contenido, es una medición fechada, y por eso `10-salud-del-codigo.md` está
+ * excluido a propósito del alcance de aquel chequeo.
+ *
+ * Lo que sí se puede exigir, y es lo que faltaba, es que haya **una sola copia
+ * viva**. El número puede quedar viejo —va a quedar viejo—, pero viejo en un
+ * solo lugar es un dato con fecha; viejo en dos lugares que no coinciden es un
+ * documento que se contradice a sí mismo. Su rojo nunca es ajeno: lo produce
+ * quien escribe la segunda copia, en el commit en que la escribe.
+ *
+ * ── Qué cuenta como copia viva ─────────────────────────────────────────────
+ * Las líneas de cita (`>`) quedan afuera: son el registro de las mediciones
+ * anteriores, que este documento conserva a propósito —«la medición vieja no se
+ * borra: baja a su fila con su fecha»—. Prohibirlas ahí borraría la serie, que
+ * es la mitad del valor del archivo.
+ *
+ * MUTACIÓN PROBADA: volver a escribir «4.044 casos en 179 archivos» en el §1.1,
+ * fuera de una cita, pone este caso en rojo nombrando las dos líneas.
+ */
+describe('el conteo de la suite se escribe una sola vez — B-1071', () => {
+  /*
+   * El `\s+` entre las piezas no es cosmético: este documento envuelve a 80
+   * columnas, y la copia que abrió la contradicción estaba partida en dos
+   * líneas («son 3.968 casos en 178 / archivos»). Un regex que mirara línea por
+   * línea no la veía — o sea, daría verde sobre exactamente el caso que existe
+   * para atrapar, que es cómo B-858 encontró roto al chequeo de B-662.
+   */
+  const CONTEO_DE_LA_SUITE = /\b[\d.]+\s+casos\s+en\s+\d+\s+archivos\b/gi;
+  const sinEnfasisAcá = (texto: string) => texto.replace(/\*+|_{2}/g, '');
+
+  /** Las líneas vivas que llevan el conteo: `archivo:línea → texto`. */
+  const copiasVivas = (): string[] => {
+    // Las citas son la serie histórica y se conservan a propósito: se vacían
+    // en vez de sacarse, para que los números de línea sigan siendo los del
+    // archivo y el mensaje del rojo se pueda abrir directo.
+    const vivas = doc
+      .split('\n')
+      .map((l) => (l.trimStart().startsWith('>') ? '' : sinEnfasisAcá(l)))
+      .join('\n');
+    return [...vivas.matchAll(CONTEO_DE_LA_SUITE)].map((m) => {
+      const linea = vivas.slice(0, m.index).split('\n').length;
+      return `docs/10-salud-del-codigo.md:${linea} → ${m[0].replace(/\s+/g, ' ')}`;
+    });
+  };
+
+  it('hay exactamente una copia viva del conteo', () => {
+    expect(
+      copiasVivas(),
+      'el conteo de casos de la suite está escrito más de una vez fuera de una ' +
+        'cita en docs/10-salud-del-codigo.md. Dos copias vivas se desincronizan ' +
+        '—pasó el 2026-09-09, 4.044 contra 3.968— y desde afuera no hay forma ' +
+        'de saber cuál vale. Va en el §6.1, y el resto apunta ahí.',
+    ).toHaveLength(1);
+  });
+
+  it('el regex reconoce las formas que este documento usó de verdad', () => {
+    expect(sinEnfasisAcá('**4.044 casos en 179 archivos**').match(CONTEO_DE_LA_SUITE)).not.toBeNull();
+    expect(sinEnfasisAcá('son **3.968 casos en 178 archivos**').match(CONTEO_DE_LA_SUITE)).not.toBeNull();
+    // La forma partida por el envoltorio a 80 columnas, que es la que hubo.
+    expect('son 3.968 casos en 178\narchivos y el argumento'.match(CONTEO_DE_LA_SUITE)).not.toBeNull();
+    // Control negativo: los casos de render se cuentan aparte y no llevan
+    // «en N archivos» pegado.
+    expect('son 155 casos de render'.match(CONTEO_DE_LA_SUITE)).toBeNull();
   });
 });
