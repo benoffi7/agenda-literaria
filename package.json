@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "astro dev",
     "tablero": "node scripts/tablero/servidor.mjs",
+    "backlog:archivar": "node scripts/archivar-backlog.mjs",
+    "backlog:archivar:seco": "node scripts/archivar-backlog.mjs --dry-run",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

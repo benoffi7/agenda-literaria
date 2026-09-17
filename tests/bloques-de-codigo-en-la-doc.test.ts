@@ -32,7 +32,7 @@
  *    primera mitad los veía balanceados. Un `### ` o un `| **B-` adentro de un
  *    bloque de código es documentación disfrazada de código, casi sin excepción.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
@@ -186,30 +186,44 @@ describe('ningún ítem del backlog tiene dos encabezados — B-294', () => {
      * historial no se pierde.
      *
      * MUTACIÓN PROBADA: duplicar cualquier `### B-<n>` deja este caso en rojo
-     * nombrando el número y las líneas.
+     * nombrando el número, el archivo y las líneas.
+     *
+     * **Se miran los dos archivos del backlog**, no solo el vivo. Desde que
+     * `scripts/archivar-backlog.mjs` saca lo cerrado a `BACKLOG-cerrados.md`, un
+     * id repetido **entre** los dos es peor que repetido adentro de uno: el
+     * tablero mostraría dos tarjetas con el mismo número y escribir en una
+     * pisaría a la otra. Este control positivo lo destapó solo el 2026-09-17 —
+     * esperaba 200 encabezados y encontró 61, que son los que quedaron abiertos.
      */
-    const lineas = readFileSync(raiz('docs/BACKLOG.md'), 'utf8').split('\n');
-    const porNumero = new Map<string, number[]>();
-    lineas.forEach((l, i) => {
-      const m = /^### (B-\d+)/.exec(l);
-      if (!m) return;
-      const previo = porNumero.get(m[1]!) ?? [];
-      porNumero.set(m[1]!, [...previo, i + 1]);
-    });
+    const archivos = ['docs/BACKLOG.md', 'docs/BACKLOG-cerrados.md'].filter((f) =>
+      existsSync(raiz(f)),
+    );
+    const porNumero = new Map<string, string[]>();
+    for (const archivo of archivos) {
+      readFileSync(raiz(archivo), 'utf8')
+        .split('\n')
+        .forEach((l, i) => {
+          const m = /^### (B-\d+)/.exec(l);
+          if (!m) return;
+          const previo = porNumero.get(m[1]!) ?? [];
+          porNumero.set(m[1]!, [...previo, `${archivo}:${i + 1}`]);
+        });
+    }
 
     // Control positivo: si el regex dejara de encontrar encabezados, esto pasaría
-    // vacío sobre un archivo de once mil líneas.
+    // vacío sobre dos archivos de diecinueve mil líneas.
     expect(porNumero.size, 'no se encontraron encabezados de ítem').toBeGreaterThan(200);
 
     const repetidos = [...porNumero.entries()]
       .filter(([, lns]) => lns.length > 1)
-      .map(([n, lns]) => `${n} en las líneas ${lns.join(', ')}`);
+      .map(([n, lns]) => `${n} en ${lns.join(', ')}`);
 
     expect(
       repetidos,
       'estos ítems tienen dos encabezados: el índice del documento queda con dos ' +
-        'entradas para el mismo número. Un cierre y su planteo original van bajo ' +
-        'UN `###`, con `####` adentro',
+        'entradas para el mismo número, y si están en archivos distintos el ' +
+        'tablero muestra dos tarjetas y escribir en una pisa a la otra. Un cierre ' +
+        'y su planteo original van bajo UN `###`, con `####` adentro',
     ).toEqual([]);
   });
 });

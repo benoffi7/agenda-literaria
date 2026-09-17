@@ -43,6 +43,22 @@ const BUCKET = 'agenda-literaria.firebasestorage.app';
  * prueba `storage.rules`, donde el único rol que existe es `admin`. El
  * `publicador` de B-888 tiene su propio helper abajo, separado, para que la
  * diferencia se vea en el nombre y no haya que leer el argumento.
+ *
+ * ── Por qué el claim viaja por el registro y no dentro del token ──────────
+ * `setCustomUserClaims` es la vía de **producción**: es lo que hace
+ * `npm run admin:claim` y es como le llega el claim al panel. B-895 unificó
+ * hacia ella los diez archivos de integración y **este quedó afuera**, porque
+ * migrarlo ponía **6 de 19** en rojo. De ese rojo salió **B-1030**, que
+ * afirmaba que `storage.rules` no ve el claim cuando llega por el registro
+ * mientras `firestore.rules` sí.
+ *
+ * **La medición era del worktree, no de Storage.** Rehecha la misma mutación
+ * en el árbol principal, con el mismo emulador, pasan **19/19** (2026-09-17,
+ * dos corridas). Con eso B-1030 se cierra sin cambiar una línea de
+ * `storage.rules`, y el archivo deja de ser el único con la vía infiel. Es la
+ * misma clase que **B-1021** y la segunda vuelta de **B-894**: un emulador
+ * medido desde un directorio que no es el que lo levantó no mide lo que
+ * parece.
  */
 const tokenPara = async (uid: string, esAdmin: boolean) => {
   const app = initAdmin({ projectId: PROJECT_ID }, `s-${uid}-${Date.now()}`);
@@ -52,7 +68,8 @@ const tokenPara = async (uid: string, esAdmin: boolean) => {
   } catch {
     /* ya existía */
   }
-  const token = await a.createCustomToken(uid, esAdmin ? { admin: true } : {});
+  if (esAdmin) await a.setCustomUserClaims(uid, { admin: true });
+  const token = await a.createCustomToken(uid);
   await deleteAdminApp(app);
   return token;
 };
@@ -66,7 +83,8 @@ const tokenPublicador = async (uid: string) => {
   } catch {
     /* ya existía */
   }
-  const token = await a.createCustomToken(uid, { publicador: true });
+  await a.setCustomUserClaims(uid, { publicador: true });
+  const token = await a.createCustomToken(uid);
   await deleteAdminApp(app);
   return token;
 };

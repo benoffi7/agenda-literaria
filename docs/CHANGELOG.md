@@ -2,6 +2,93 @@
 
 ## Sin publicar
 
+- **`storage.rules` sí ve el claim que llega por el registro: B-1030 se cierra
+  sin tocar una regla.** El ítem afirmaba una asimetría —`firestore.rules` ve
+  `request.auth.token.admin` cuando el claim llega por `setCustomUserClaims` y
+  `storage.rules` no— y dejaba abierto si era P0: un admin real podría quedarse
+  sin permisos de Storage después de un login. **No.** La medición que lo abrió
+  se había hecho **desde un worktree**; rehecha en el árbol principal, con el
+  mismo emulador, pasan **19/19** en dos corridas.
+
+  Con eso `tests/storage-reglas.integracion.test.ts` deja de ser el único
+  archivo de integración con la vía infiel —el claim embebido en el custom
+  token— y los once pasan el claim como lo hace producción, que era la deuda que
+  B-895 no había podido saldar. Confirma además, desde el otro lado, la
+  hipótesis que **B-1021** dejó escrita: medir el emulador desde un directorio
+  que no es el que lo levantó no mide lo que parece. Segunda vuelta de B-894.
+
+- **Las dos vulnerabilidades altas de producción, a cero.** `npm audit fix`
+  sobre `js-yaml` (4.3.2) y `svgo` (4.1.0), las dos traídas por Astro y las dos
+  con parche sin breaking. Estaba escrito en `docs/10-salud-del-codigo.md` § 6.2
+  como «queda para cuando la tanda cierre» —toca `package-lock.json`, que es de
+  todos los frentes— y la tanda del 2026-09-17 cerró. `npm audit --omit=dev`:
+  **0 vulnerabilidades**.
+
+- **Horario de atención en las fichas de la Guía** — **B-982**, reportado por el
+  dueño («no tiene horario de atención»). Texto libre, en librerías y lugares; en
+  suscripciones no, porque no hay puerta que abra. Para una librería es el dato
+  que más se busca después de la dirección.
+
+  **Dos consecuencias dichas, no descubiertas después.** No se emite
+  `openingHours` en el JSON-LD: `schema.org` lo quiere en formato fijo y un texto
+  libre no valida, así que publicarlo haría que Google muestre un horario
+  equivocado. Y en lugares **no depende de `direccionPublica`** — cuándo se puede
+  usar no identifica una casa, así que una con la dirección reservada igual puede
+  decirlo.
+
+- **El backlog se partió en dos: lo que falta y el rastro** — pedido del dueño.
+  `docs/BACKLOG.md` tenía **19.334 líneas y 433 ítems, 372 de ellos cerrados**: el
+  87% de las líneas era rastro, y las 61 cosas que faltan hacer estaban enterradas
+  adentro. Lo hecho y lo descartado se fueron a
+  [`docs/BACKLOG-cerrados.md`](BACKLOG-cerrados.md), con su prosa entera. El vivo
+  quedó en **2.597 líneas**.
+
+  **Nada se borró y nada se reescribió.** La cabecera del backlog y el skill
+  `al-backlog` son explícitos —«no borres el texto, el rastro importa más que la
+  prolijidad de la lista»—, así que el movimiento es por **rebanada de líneas**,
+  sin round-trip markdown → objeto → markdown, que se habría comido comillas
+  latinas, tablas y saltos.
+
+  **Y es un script, `npm run backlog:archivar`, no una edición a mano**, porque el
+  mes que viene hay otros cincuenta cerrados: una partición hecha a mano es una
+  foto que envejece desde el minuto siguiente. Mueve en las **dos** direcciones —
+  un archivado que se reabre vuelve al vivo, a su sección; sin eso quedaría
+  abierto adentro del archivo de cerrados, que es la peor de las dos mentiras.
+
+  **Lo que el corte podía romper, y es la mitad del trabajo:**
+
+  - **El próximo `B-` libre.** La mitad de los ids usados quedó del otro lado, así
+    que el tablero calcula `proximoNumero` e `idsUsados` sobre **los dos** textos;
+    mirar solo el vivo propondría un número ya tomado, que es el choque de `B-930`
+    del 2026-09-15 que la cabecera documenta. El servidor lee los dos archivos y
+    escribe en el que tenga el ítem.
+  - **Las 96 citas cruzadas.** Un ítem abierto que nombra un `B-` ya cerrado
+    seguía siendo correcto —el id es la dirección y sigue siendo única entre los
+    dos archivos—, así que en vez de reescribir 96 cuerpos lo dice la cabecera en
+    una línea.
+  - **Un control positivo ajeno se puso rojo, y eso estuvo bien.** El chequeo de
+    encabezados duplicados de B-294 esperaba más de 200 `### B-<n>` en el vivo y
+    encontró 61. Ahora mira los dos archivos, que además es la invariante que
+    importa: un id repetido **entre** los dos es peor que repetido adentro de uno,
+    porque el tablero mostraría dos tarjetas y escribir en una pisaría a la otra.
+
+  La red: `tests/archivar-backlog.test.ts` afirma la **conservación** contra el
+  archivo real —mismos ítems, mismo cuerpo, mismo encabezado, misma sección— más
+  la idempotencia y el camino de vuelta; y el control negativo, sin el cual lo
+  anterior no valdría nada: un movimiento que se come una línea **tiene que** dar
+  rojo. El caso de idempotencia encontró un bug de verdad mientras se escribía —la
+  tabla de «Cerrados» se movía con un blanco de más y la segunda corrida no daba
+  idéntico—, que es para lo que estaba.
+
+- **Sale B-1051: un id reservado por una tanda y nunca escrito se ofrece como
+  libre.** `proximoNumero` deriva el próximo número de lo que encuentra escrito, y
+  un rango reservado no se escribe en ninguna parte. Pasó dos veces el 2026-09-17
+  (`B-1000` y `B-1020`, de los frentes `barridos` y `saneador`). **Es el choque de
+  B-930 por la otra dirección** —allá dos frentes numeraron a ciegas; acá uno
+  reservó bien y los números quedaron libres igual—, y no lo causa la partición:
+  pasaba igual con un archivo solo. Lo encontró `agenda-literaria-dd` revisando su
+  propia tanda.
+
 - **Publicar una ficha de la Guía desde el formulario** — **B-983**, reportado por
   el dueño («no se sube automáticamente, lo tengo que validar después de
   cargar»). Dos botones al crear: «Guardar y publicar» y «Guardar sin publicar».

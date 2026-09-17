@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'horario-de-atencion-en-la-guia',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'Cargar el horario de una librería o un lugar',
+    detalle:
+      'Se escribe como quieras: «Lun a vie de 10 a 20, sábados de 10 a 14». Sale ' +
+      'en la ficha, debajo de la dirección. En un lugar para eventos el campo ' +
+      'pregunta cuándo se puede usar, que no es lo mismo que un horario de ' +
+      'mostrador.',
+    donde: 'En el formulario de una librería o un lugar, abajo de la dirección.',
+  },
+  {
     id: 'guardar-y-publicar-en-la-guia',
     fecha: '2026-09-17',
     version: '1.11.0',

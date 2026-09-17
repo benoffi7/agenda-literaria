@@ -25,7 +25,8 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 16 | [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) | Arquitectura de la analítica del **sitio público**, que hoy no mide nada: qué preguntas contestaría un tablero, de dónde saldría cada dato, las fricciones traducidas a algo medible, y las **dos decisiones del dueño** que lo bloquean. Lo único construido de acá es el tablero del catálogo. |
 | — | [`prd/`](prd/README.md) | **Lo que se está construyendo, especificado.** Cuatro PRDs del 2026-09-08 —el formulario público de propuestas (`/proponer`, construido) y **los tres directorios construidos** —librerías, suscripciones literarias y lugares para eventos, cada uno con su listado y su ficha, y **el alta pública abierta en los tres** desde el 2026-09-15 (B-831/B-832/B-915, **D-700**)— más el inventario archivo por archivo. Con la tajada 4 la Guía quedó completa: ninguna fila de `/guia` dice ya «en camino». Se lee antes de empezar a codear, no en vez del BACKLOG. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
-| — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
+| — | [`BACKLOG.md`](BACKLOG.md) | **Qué falta**, priorizado, con el motivo de cada cosa. Solo lo pendiente: 61 ítems. |
+| — | [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md) | **El rastro de lo ya cerrado** —372 ítems hechos y descartados, con su prosa entera— que `npm run backlog:archivar` saca del anterior. No se lee de corrido: se busca un `B-` acá cuando el vivo lo cita y no lo tiene. |
 
 ## Estado en una línea
 

@@ -419,7 +419,11 @@
         // La URL nombra el ítem abierto: `…/#B-950` abre esa ficha. Sirve para
         // pegarle el link a alguien, y para volver a donde uno estaba al recargar.
         if (location.hash !== `#${it.id}`) history.replaceState(null, '', `#${it.id}`);
-        const archivo = it.tipo === 'idea' ? datos.archivos.ideas : datos.archivos.backlog;
+        // Un ítem del backlog dice de qué archivo salió (`BACKLOG.md` o el de
+        // cerrados): el link al editor tiene que abrir el suyo, no el vivo
+        // siempre. El `??` cubre un servidor viejo que todavía no lo mande.
+        const archivo =
+          it.tipo === 'idea' ? datos.archivos.ideas : it.archivo ?? datos.archivos.backlog;
         $('#f-ruta').textContent = `${archivo}:${it.linea}`;
         $('#f-titulo').innerHTML = `${escapar(it.id)} · ${enLinea(it.titulo)}`;
         $('#f-cuerpo').innerHTML = renderMd(it.cuerpo || '_Sin cuerpo._');
@@ -487,7 +491,9 @@
       $('#nuevo').addEventListener('click', () => {
         $('#alta-id').textContent = `Va a quedar como ${datos.proximoId} (se vuelve a verificar al guardar).`;
         const sel = $('#alta-seccion');
-        sel.innerHTML = datos.secciones
+        // Solo las secciones del archivo vivo: un ítem nuevo nace abierto y no
+        // tiene nada que hacer en el de cerrados.
+        sel.innerHTML = (datos.seccionesDelAlta ?? datos.secciones)
           .map((s) => `<option${s.startsWith('P2') ? ' selected' : ''}>${escapar(s)}</option>`)
           .join('');
         $('#alta').showModal();
