@@ -8177,6 +8177,103 @@ encontró el `auditor-trampas`, y la regla que deja es la general: **una caché
 nueva se agrega al `olvidar` de todos los consumidores que ya tenían esa
 disciplina, en el mismo cambio.**
 
+## D-380 · El buscador del `/404` es un formulario a la home, no la island
+
+**2026-09-03 · B-310.** *Pegada acá el 2026-09-17 (**B-910**). El número se citaba
+cuatro veces desde `12-sitio-publico.md` y no tenía entrada. **No hizo falta
+reconstruirla:** el frente que la decidió dejó el texto completo en
+`.estado/sitio.md`, bajo un encabezado «Para `06-decisiones.md`», y ese archivo
+sigue existiendo en el árbol principal sin versionar. Va tal como se escribió.*
+
+**Contexto.** El §4.5 del diseño del sitio pide para la página de error
+«buscador, los hubs, y "quizá la actividad que buscás ya pasó: mirá el
+archivo"». Los hubs y el archivo son enlaces; el buscador no.
+
+**Decisión: un `<form method="get">` con `action="/"` y `name="q"`.** El §6.2 ya
+define que la búsqueda del sitio **vive en la query string de la home**
+(`/?q=…`) — es lo que `aQuery` escribe y `desdeQuery` lee. Un formulario GET
+manda exactamente ahí, así que es *la misma* búsqueda y no una segunda
+implementación, y la página sale del build sin un byte de JavaScript.
+
+**La alternativa descartada era montar `Buscador`**, y no se descartó por peso
+sino por lo que arrastra: trae su propio listado completo, el riel de filtros, la
+hoja modal del teléfono, el selector de orden y el fetch del `events.json`. La
+página de error se habría convertido en una segunda portada.
+
+**El nombre del parámetro no se escribe a mano**: sale de `CLAVE_BUSQUEDA`
+(`lib/noEncontrado.ts`) y `tests/no-encontrado.test.ts` lo mete por `aQuery` y lo
+saca por `desdeQuery`. Escrito como literal, el día que ese parámetro se renombre
+el formulario mandaría a la agenda sin filtro y nadie se enteraría (la clase de
+B-88).
+
+**Lo que se paga, dicho:** con JavaScript apagado el formulario llega a la home y
+**no aplica el texto** —el filtrado es del cliente (§2.5)—, así que se ve la
+agenda completa. Es una degradación honesta: se llega a algo, y no a un enlace
+roto.
+
+**Y una precisión sobre la canónica.** El §5.1 pone «—» en la columna `canonical`
+de la fila del 404, y la página **sí la emite**: `Base.astro` la arma para todas
+las páginas de una sola vez (B-109) para que ninguna se publique sin ella, y
+abrirle una excepción a una página sería devolverle a cada plantilla la
+posibilidad de olvidarse. Acá es inerte: Firebase la sirve con estado 404 y con
+`noindex, nofollow`.
+
+**Y el nombre del archivo es el cableado entero.** Firebase Hosting sirve
+`dist/404.html` de la raíz; Astro emite `404.astro` como archivo suelto incluso
+con `build.format` en `directory` (su caso especial para 404 y 500), así que no
+hace falta ninguna `rewrite` en `firebase.json`. Renombrar el archivo apaga la
+página sin romper el build ni ningún test de contenido, por eso
+`tests/no-encontrado.test.ts` lo verifica sobre `dist/`.
+
+## D-381 · El archivo tiene su propio buscador, y lo que se comparte es el match
+
+**2026-09-03 · B-292.** *Pegada acá el 2026-09-17 (**B-910**), desde el mismo
+`.estado/sitio.md`. El commit que la acuñó ya decía dónde estaba: «Ver D-381, cuyo
+texto queda en `.estado/sitio.md`» (`4ff3379`). Texto original.*
+
+**Contexto.** D-167 dejó `/pasadas` sin buscador con el motivo escrito: la
+búsqueda del sitio es la island de la home, que filtra `vigentesDelIndice` —el
+índice de lo **vigente**, que por definición no incluye una pasada—, así que
+traerla era enseñarle un modo nuevo y cambiarle el contrato con el
+`events.json` (**B-292**).
+
+**Decisión: una island propia y chica, que reusa el match y el markup.**
+`BuscadorDePasadas` tiene **una** dimensión, que es la que el §4.5 pide («sin
+filtros salvo la búsqueda»), y no repite nada de lo que podría contestar
+distinto:
+
+| Qué | De dónde sale | Por qué compartido |
+|---|---|---|
+| qué coincide | `coincideBusqueda` (`lib/listadoPublico.ts`), vía `buscarEnPasadas` | dos definiciones de «coincide» son la home y el archivo contestando distinto a la misma consulta, en lo único que la gente usa tipeando (la clase de B-88) |
+| el markup de la fila | `ListaDeActividades` | es el mismo componente que imprime el build, o sea la regla del §6.3 aplicada a esta página |
+| qué es una pasada y en qué orden | `pasadasDelSitio` | la misma función que usó el build, así la lista no se reacomoda sola al hidratar |
+| el texto | `frasesDePasadas` | es lo que mete las frases nuevas en el barrido de centinelas de la salida 10 |
+
+`coincideBusqueda` **se extrajo de `filtrarPublico` en este mismo cambio** y
+`filtrarPublico` pasó a llamarla: no es una función nueva al lado, es la misma
+movida a donde la puedan usar los dos.
+
+**Alternativa descartada 1: enseñarle el modo a la island de la home.** Es lo que
+D-167 anticipaba y lo que este cambio evita. La island de la home tiene el riel,
+la hoja modal, el orden, los chips y la serialización a la query; darle un modo
+«archivo» habría hecho que cada uno de esos controles necesite decidir qué
+significa en ese modo.
+
+**Alternativa descartada 2: filtrar el DOM con un script chico.** Sale más barato
+en bytes y necesita publicar el `searchText` de cada fila en el HTML de
+`/pasadas` (o comparar contra el texto visible de la fila, que es *otra*
+búsqueda: la de la home mira la descripción y el organizador, que en la fila no
+están). Las dos mitades de esa alternativa empeoran justo lo que esta página
+cuida.
+
+**Lo que se paga, medido:** la página deja de ser de cero JavaScript. El chunk
+propio son **2,9 KB**; el resto —el runtime de React (187 KB) y
+`ListaDeActividades`— es compartido con la home, que es de donde se llega acá. Y
+lo que **no** se paga: el HTML del build sigue completo y la island saca la lista
+de abajo recién cuando tiene el índice; **si el fetch falla no saca nada**, así
+que lo que se pierde es el buscador y no el archivo — que es la propiedad por la
+que esta página existe (§2.1).
+
 ## D-410 · Un `subEvent` repite los datos de su actividad, y eso no es inventar
 
 **Contexto.** Search Console reportó `description`, `organizer` y `offers`
@@ -8245,6 +8342,75 @@ sitio emite antes de tocar nada. Concretamente:
 **La regla corta:** un aviso de Google no es un argumento para inventar un dato.
 Cuando el campo se puede llenar con algo verdadero, se llena; cuando no, se
 escribe por qué y se deja ausente.
+
+## D-430 · B-720 — la galería del detalle se abre en una capa, y se acepta la primera island de esa página
+
+**2026-09-04 · B-720.** *Pegada acá el 2026-09-17 (**B-910**). El número se citaba
+desde `12-sitio-publico.md`, desde cuatro archivos de `src/` y desde cinco de
+`tests/`, y no tenía entrada. **No hizo falta reconstruirla:** el frente que la
+decidió dejó el texto completo en `.estado/galeria.md`, bajo «Para las decisiones
+(`docs/06-decisiones.md`)», y ese archivo sigue existiendo en el árbol principal
+sin versionar. Va tal como se escribió.*
+
+**Decisión:** la página de detalle gana una capa a pantalla completa para las
+imágenes, recorrible con las flechas, montada como **una** island de React
+(`client:idle`). Es la primera de esa página, que hasta acá mandaba cero.
+
+**El pedido.** El dueño, el 2026-09-03, mirando el sitio publicado: que la
+galería sea clickeable para recorrer las fotos y verlas en pantalla completa. El
+caso concreto es la portada, no la tira: un flyer es texto tipografiado adentro de
+un JPEG (D-147), y al tamaño que entra en la columna no se lee. O sea que la
+página mostraba imágenes que **no se podían mirar**.
+
+**Qué se da vuelta, y era una decisión escrita.** D-168 (B-296) cerró la tira de
+secundarias diciendo «sin lightbox: no agrega ninguna parada de tabulación», y el
+§4.3 del diseño decía «cero islands, cero hidratación». Las dos mitades de aquel
+argumento se separan acá: la de la accesibilidad **sigue siendo cierta y se
+atiende** (un enlace alrededor de un `alt=""` se anuncia sin nombre, así que cada
+abridor lleva su `rotuloDeAmpliar`), y la del costo se paga con el número medido.
+
+**El número, contra `dist/` el 2026-09-04:** 59.815 bytes gzip de JS (58.536 el
+runtime de React + 1.279 el componente; 189.332 sin comprimir) más 3.808 de HTML.
+Los dos vecinos de la misma página: el HTML de un detalle con tres imágenes pesa
+24.847 (6.752 gzip) y el `gtag.js` que D-251 aceptó acá pesa 155.578 gzip. La
+island es el 38 % del tag ya aprobado, y ~9 veces el HTML.
+
+**Lo que se rechazó, con su motivo.** Escribir la capa en JavaScript a mano
+costaba ~2 KB en vez de 58, y se descartó: duplicaría el cableado de
+`lib/capaModal.ts` —foco atrapado, `Escape`, scroll de atrás, foco devuelto— que
+ya tienen las otras tres capas del repo, y esa duplicación es exactamente la clase
+de bug que ese archivo existe para cerrar (dos copias, una con el arreglo y la
+otra sin él). También se rechazó una librería: cero dependencias nuevas es regla
+del repo.
+
+**Las cuatro decisiones que hacen barata la capa**, y ninguna es una optimización
+posterior:
+
+1. **El abridor es un `<a href>` y no un `<button>`.** Sin JavaScript —y antes de
+   que la island hidrate— el click abre el archivo en el visor del navegador. Un
+   `<button>` impreso por el build sería un control que miente. Un click con
+   Cmd/Ctrl/Shift o del botón del medio no se intercepta.
+2. **La capa muestra el `href`**, o sea el original y nunca la miniatura de 480px
+   del `srcset` (D-210), por construcción y no por acordarse.
+3. **Una sola imagen en el aire:** ni precarga ni tira de miniaturas. Las
+   originales de una actividad suman hasta 3,15 MB (D-168) porque la recompresión
+   no existe (B-220, DEC-7d).
+4. **Las imágenes no viajan como props.** La island las lee del HTML que imprimió
+   el build (§6.3, «el HTML es la verdad»): su única prop es el título, que es el
+   nombre accesible del diálogo. Así ninguna URL se serializa dos veces y no hay
+   dos fuentes de la misma galería.
+
+**Y una consecuencia de forma:** sobre `tinta` el acento del sistema da **2,57:1**
+(medido con `lib/contraste.ts` sobre los tokens de `global.css`), así que dentro de
+la capa la señal de «esto es interactivo» no puede ser el color: los controles van
+calados en papel (16,27:1) y subrayados.
+
+**Y lo que quedó dicho después** (agregado al pegarla, y por eso separado). La
+island **no se monta** cuando la actividad no tiene imágenes, así que las 16 de 46
+publicadas que no tienen ninguna siguen mandando cero bytes; el `client:idle` hace
+que tampoco participe de la primera pantalla. Y la mitad del «cero» que **no** se
+desvió sigue en pie: esta página sigue sin bajar el `events.json`. Está en el §4.3
+y el §9 de [`12-sitio-publico.md`](12-sitio-publico.md).
 
 ## D-440 · El texto alternativo es un campo **de la imagen**, y se pide una sola vez: en la portada
 
