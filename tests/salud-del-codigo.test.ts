@@ -64,6 +64,43 @@ describe('salud del código — ciclos de import (B-311)', () => {
     const conImports = [...g.values()].filter((d) => (d as string[]).length > 0);
     expect(conImports.length).toBeGreaterThan(50);
   });
+
+  /*
+   * **El regex `IMPORTS` no pierde el import multilínea — B-877.**
+   *
+   * La clase negada del primer alternativo llevaba un `\n`, así que un
+   * `import { ... } from` con las llaves abiertas en varias líneas quedaba
+   * afuera del grafo entero: 234 aristas en 180 archivos del corpus, cero
+   * ciclos verificados sobre un grafo al que le faltaba el 16 %.
+   *
+   * El caso de control es un archivo real del corpus, no una string sintética:
+   * `functions/analitica-trigger.js` importa `RETRASO`, `ventanas` y compañía
+   * de `./analitica.js` con el import abierto en varias líneas — es el import
+   * real del archivo, así que un cambio de estilo ajeno no lo hace desaparecer
+   * solo (la lista de nombres es incidental; lo que se verifica es la arista).
+   *
+   * MUTACIÓN PROBADA: volver a agregar `\n` a la clase negada
+   * (`[^'"\n]*?` en vez de `[^'"]*?`) pone este caso en rojo — la arista
+   * desaparece del grafo aunque el import siga ahí.
+   */
+  it('un import multilínea real del corpus entra al grafo (B-877, caso de control)', () => {
+    const origen = 'functions/analitica-trigger.js';
+    const destino = 'functions/analitica.js';
+    const src = readFileSync(fileURLToPath(new URL(origen, raiz)), 'utf8');
+    expect(
+      src,
+      `el caso de control asume que ${origen} importa de ${destino} con las ` +
+        'llaves abiertas en varias líneas; si esto cambió, hay que reelegir el ' +
+        'archivo de control',
+    ).toMatch(/import\s*\{\n[^}]*\}\s*from\s*'\.\/analitica\.js'/);
+
+    const g = grafo();
+    expect(
+      g.get(origen),
+      `${origen} → ${destino} es un import multilínea real: si no aparece acá, ` +
+        'el regex IMPORTS volvió a angostarse',
+    ).toContain(destino);
+  });
 });
 
 describe('salud del código — el documento no apunta al vacío (B-311)', () => {

@@ -173,8 +173,13 @@ export const resolver = (especificador, desde, enElCorpus, alias) => {
   return pruebas.find((p) => enElCorpus.has(p)) ?? null;
 };
 
+// La clase negada del primer alternativo NO lleva `\n`: si lo llevara, un
+// `import { ... } from` con las llaves abiertas en varias líneas queda
+// invisible para el grafo — B-877. Sin `\n` en la clase, el `[^'"]*?` no
+// greedy sigue frenando en la primera comilla o en `from`, así que cruzar
+// líneas no hace que el regex se coma de más.
 const IMPORTS =
-  /(?:^|\n)\s*(?:import|export)[^'"\n]*?from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
+  /(?:^|\n)\s*(?:import|export)[^'"]*?from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
 
 /** El grafo dirigido `archivo → archivos del proyecto que importa`. */
 export const grafo = (raiz = RAIZ, archivos = corpus(raiz)) => {
