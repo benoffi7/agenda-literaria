@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { AA_TEXTO, contraste, oklchASrgb, type Srgb } from '@/lib/contraste';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * El sistema visual se sostiene en todo el sitio, no solo donde se escribió — B-260.
@@ -67,12 +67,7 @@ const aHex = (c: Srgb): string =>
  * entra: es una herramienta interna que usa dos personas, no la cara del sitio.
  */
 const archivosDelSitio = (): string[] =>
-  execFileSync(
-    'git',
-    ['ls-files', 'src/pages', 'src/components/sitio', 'src/components/publico', 'src/layouts'],
-    { encoding: 'utf8' },
-  )
-    .split('\n')
+  archivosDelRepo('src/pages', 'src/components/sitio', 'src/components/publico', 'src/layouts')
     .filter((f) => /\.(astro|tsx|ts)$/.test(f))
     .filter((f) => f !== 'src/pages/admin.astro');
 
