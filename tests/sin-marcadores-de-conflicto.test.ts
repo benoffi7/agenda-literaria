@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * Red contra un error que ya pasó: se commitearon marcadores de conflicto de
@@ -18,9 +18,7 @@ const MARCADORES = [
 ];
 
 const archivosVersionados = (): string[] =>
-  execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
-    .split('\0')
-    .filter(Boolean)
+  archivosDelRepo()
     // Los binarios y el lockfile no se revisan: el lockfile es generado y un
     // binario no tiene conflictos de texto.
     .filter((f) => !/\.(png|jpe?g|gif|webp|ico|woff2?|pdf)$/i.test(f))

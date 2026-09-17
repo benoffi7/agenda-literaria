@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * B-09 — guardas del corte del bundle del panel.
@@ -415,9 +415,7 @@ describe('quién es dueño de Storage — B-167', () => {
   const DUENO = 'src/lib/subir-imagen.ts';
 
   /** Todos los fuentes del panel y de la librería compartida. */
-  const FUENTES = execFileSync('git', ['ls-files', '-z', 'src'], { encoding: 'utf8' })
-    .split('\0')
-    .filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
+  const FUENTES = archivosDelRepo('src').filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
 
   it('CONTROL POSITIVO: el dueño existe y sí importa el SDK', () => {
     expect(existsSync(ruta(DUENO))).toBe(true);

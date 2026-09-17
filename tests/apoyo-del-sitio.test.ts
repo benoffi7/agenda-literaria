@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { CAFECITO, urlDeCafecito } from '@/lib/enlaces';
@@ -19,6 +18,7 @@ import {
   SIN_PLATA,
   TEXTO_DE_APOYO,
 } from '@/lib/apoyoDelSitio';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * `/apoyar` — la página de aportes, B-780.
@@ -394,9 +394,7 @@ describe('las direcciones salen de los módulos, no del texto ni del marcado', (
      * MUTACIÓN PROBADA: agregar un `<img>` con `cdn.cafecito.app` a la página
      * pone este caso en rojo nombrando el archivo.
      */
-    const archivos = execFileSync('git', ['ls-files', 'src', 'public'], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
+    const archivos = archivosDelRepo('src', 'public');
     expect(archivos.length, 'el barrido no encontró archivos').toBeGreaterThan(10);
 
     /*

@@ -1,7 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * Los `.env` versionados no pueden llevar un secreto — B-213.
@@ -31,18 +30,22 @@ import { describe, expect, it } from 'vitest';
  * Por eso la lista sale de `git ls-files` y no está escrita acá: un quinto
  * archivo entra al gate solo, que es exactamente lo que le pasó al cuarto.
  *
+ * **B-964:** «se descubren, no se listan» sonaba completo y no lo era —
+ * `git ls-files` a secas es solo lo **rastreado**, así que un `.env.production`
+ * recién creado y todavía sin `git add` (el momento en que alguien más
+ * probablemente lo está llenando a mano) no entraba al gate. Es la misma
+ * clase que B-826/B-961 en el resto de los barridos, acá con más filo porque el
+ * archivo que se cuela es justo el del secreto. Ahora sale de `archivosDelRepo`
+ * (rastreado + sin rastrear y no ignorado).
+ *
  * ── Nunca se imprime un valor ──────────────────────────────────────────────
  * Un test que falla mostrando el secreto lo copia al log de CI, que también es
  * público. Los mensajes nombran el archivo, la clave y **qué patrón** matcheó.
  */
-const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 
-/** Los `.env` que están en el índice de git. Cualquiera, en cualquier carpeta. */
+/** Los `.env` del repo, rastreados y sin rastrear. Cualquiera, en cualquier carpeta. */
 const versionados = (): string[] =>
-  execFileSync('git', ['ls-files'], { cwd: RAIZ, encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => /(?:^|\/)\.env(?:\.|$)/.test(f))
-    .sort();
+  archivosDelRepo().filter((f) => /(?:^|\/)\.env(?:\.|$)/.test(f));
 
 interface Clave {
   archivo: string;

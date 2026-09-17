@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { entradaDePrueba } from './fixtures/indice';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 import {
   busquedasDeTexto,
   CLAVE_BUSQUEDAS,
@@ -517,9 +517,7 @@ const sinComentarios = (src: string): string =>
 const IMPORTA_GUARDADOS = /@\/lib\/guardado(sDelSitio|DelNavegador)/;
 
 const productoresDeLaSalida19 = (): string[] => {
-  const versionados = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => /\.(ts|tsx|astro)$/.test(f));
+  const versionados = archivosDelRepo('src').filter((f) => /\.(ts|tsx|astro)$/.test(f));
   return versionados.filter((f) =>
     IMPORTA_GUARDADOS.test(sinComentarios(readFileSync(raiz(f), 'utf8'))),
   );

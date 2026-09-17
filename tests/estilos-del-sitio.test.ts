@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { BAJADA, NOMBRE } from '@/lib/identidad';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * El sitio se ve de una sola manera porque lo dice **un** archivo — B-257.
@@ -48,8 +48,7 @@ const FUERA_DE_ALCANCE: Record<string, string> = {
 };
 
 const archivos = (): string[] =>
-  execFileSync('git', ['ls-files', 'src/pages', 'src/components/sitio'], { encoding: 'utf8' })
-    .split('\n')
+  archivosDelRepo('src/pages', 'src/components/sitio')
     .filter((f) => f.endsWith('.astro'))
     .filter((f) => !(f in FUERA_DE_ALCANCE));
 
@@ -79,7 +78,7 @@ describe('el anillo de foco se escribe una sola vez — B-257', () => {
     // Control positivo: sin esto, un `git ls-files` vacío haría pasar todo.
     expect(archivos().length).toBeGreaterThan(4);
     expect(archivos()).toContain('src/pages/actividad/[slug].astro');
-    const todas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' }).split('\n');
+    const todas = archivosDelRepo('src/pages');
     for (const f of Object.keys(FUERA_DE_ALCANCE)) expect(todas).toContain(f);
   });
 

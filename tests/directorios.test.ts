@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -24,6 +23,7 @@ import {
 import { RUTAS_FIJAS } from '@/lib/sitemap';
 import { RUTA_GUIA, esSlugDeFicha, rutaCanonica } from '@/lib/rutasPublicas';
 import { PREGUNTAS_DE_AYUDA } from '@/lib/ayudaDelSitio';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * **El motor de los tres directorios y la página que los recibe** — B-834 y
@@ -197,9 +197,7 @@ describe('qué escribe una persona y qué escribe la máquina', () => {
      * tiene que encontrar el archivo que sí la menciona. Sin eso, un `grep` que no
      * matchea nada dejaría este caso en verde para siempre.
      */
-    const fuentes = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
+    const fuentes = archivosDelRepo('src');
     const mencionan = fuentes.filter((f) => readFileSync(raiz(f), 'utf8').includes('contenidoEditable'));
 
     expect(mencionan, 'el barrido no encontró ni el archivo que la define').toContain(

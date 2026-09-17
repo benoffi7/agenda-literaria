@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -28,6 +27,7 @@ import {
   cicloDeOcho,
   sesionesDeCiclo,
 } from './fixtures/ciclo';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * La página «Suscribirse» — B-230.
@@ -72,9 +72,7 @@ const URLS_DE_ENLACES = (): Set<string> =>
 /** Los archivos que esta página aporta al sitio, para los barridos de markup. */
 const ARCHIVOS_DE_LA_PAGINA = (): string[] => [
   PAGINA,
-  ...execFileSync('git', ['ls-files', 'src/components/sitio'], { encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => /\/Suscribirse[^/]*\.astro$/.test(f)),
+  ...archivosDelRepo('src/components/sitio').filter((f) => /\/Suscribirse[^/]*\.astro$/.test(f)),
 ];
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -483,9 +481,7 @@ const RESUMEN = 'src/components/sitio/SuscribirseResumen.astro';
 const HOME = 'src/pages/index.astro';
 
 const paginasDelSitio = (): string[] =>
-  execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => f.endsWith('.astro'));
+  archivosDelRepo('src/pages').filter((f) => f.endsWith('.astro'));
 
 /** Cuántas veces una página **renderiza** el bloque (el import no cuenta). */
 const vecesQueLoUsa = (rel: string): number =>

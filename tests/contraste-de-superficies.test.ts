@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { AA_TEXTO, contraste, mezclar, oklchASrgb, type Srgb } from '@/lib/contraste';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * El contraste del sitio **sobre cualquier superficie**, no solo sobre el papel
@@ -52,9 +52,9 @@ const token = (nombre: string): Srgb => {
 
 /** El markup del sitio público. El panel tiene su propio criterio y no entra. */
 const archivosDelSitio = (): string[] =>
-  execFileSync('git', ['ls-files', 'src/pages', 'src/components/sitio'], { encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => f.endsWith('.astro') && f !== 'src/pages/admin.astro');
+  archivosDelRepo('src/pages', 'src/components/sitio').filter(
+    (f) => f.endsWith('.astro') && f !== 'src/pages/admin.astro',
+  );
 
 const fuentes = (): { donde: string; src: string }[] =>
   archivosDelSitio().map((f) => ({ donde: f, src: readFileSync(raiz(f), 'utf8') }));

@@ -18,9 +18,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { construirDescripcion, planificar } from '../functions/calendario.js';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 import {
   CICLOS_QUE_NUMERAN,
   DURACION_MINUTOS,
@@ -210,10 +210,7 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
 // El detector: la instancia que todavía no existe
 // ─────────────────────────────────────────────────────────────────────
 
-const archivosDeTest = (): string[] =>
-  execFileSync('git', ['ls-files', '-z', 'tests'], { encoding: 'utf8' })
-    .split('\0')
-    .filter((f) => f.endsWith('.ts'));
+const archivosDeTest = (): string[] => archivosDelRepo('tests').filter((f) => f.endsWith('.ts'));
 
 /**
  * Pares `inicio:` / `fin:` adyacentes de un fixture, con la expresión de cada

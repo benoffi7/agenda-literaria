@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { BAJADA, NOMBRE, NOMBRE_COMPLETO } from '@/lib/identidad';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * La identidad del sitio: **el nombre** — B-245, recortado en B-260.
@@ -66,10 +66,7 @@ describe('el nombre del sitio', () => {
  * `/admin` **sí** entra: es la pestaña que el dueño tiene abierta todo el día.
  */
 describe('el nombre está en el título de cada página', () => {
-  const paginas = (): string[] =>
-    execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
-      .split('\n')
-      .filter((f) => f.endsWith('.astro'));
+  const paginas = (): string[] => archivosDelRepo('src/pages').filter((f) => f.endsWith('.astro'));
 
   it('el barrido encuentra páginas', () => {
     expect(paginas().length).toBeGreaterThan(3);

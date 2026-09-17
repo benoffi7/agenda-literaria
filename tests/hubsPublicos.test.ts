@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import opcionesBase from '@/lib/opciones-base.json';
@@ -34,6 +33,7 @@ import {
 import { RUTAS_FIJAS, rutasDelSitemap } from '@/lib/sitemap';
 import { rutaDeCiudad } from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * **Los hubs** — B-108, §2.1 y §4.4 del diseño.
@@ -893,9 +893,9 @@ describe('las cuatro páginas de hub', () => {
      * temáticos son estáticos y tienen que estar en `RUTAS_FIJAS`; los dos
      * dinámicos entran por `hubsOfrecidos`, como las actividades y los meses.
      */
-    const estaticas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
-      .split('\n')
-      .filter((f) => f.endsWith('.astro') && !f.includes('['));
+    const estaticas = archivosDelRepo('src/pages').filter(
+      (f) => f.endsWith('.astro') && !f.includes('['),
+    );
     expect(estaticas).toContain('src/pages/online.astro');
     expect(estaticas).toContain('src/pages/gratis.astro');
     expect(RUTAS_FIJAS).toContain(RUTA_ONLINE);

@@ -32,17 +32,17 @@
  *    primera mitad los veía balanceados. Un `### ` o un `| **B-` adentro de un
  *    bloque de código es documentación disfrazada de código, casi sin excepción.
  */
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
 
-/** Los `.md` versionados. Del índice de git, no de un glob escrito a mano. */
-const documentos = (): string[] =>
-  execFileSync('git', ['ls-files', '-z', '*.md'], { encoding: 'utf8' })
-    .split('\0')
-    .filter(Boolean);
+/**
+ * Los `.md` del repo, versionados y sin rastrear — B-964. Del índice de git
+ * (y de lo que todavía no llegó a él), no de un glob escrito a mano.
+ */
+const documentos = (): string[] => archivosDelRepo('*.md');
 
 interface Bloque {
   abre: number;
