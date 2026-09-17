@@ -146,9 +146,16 @@
   claim **nunca** pasaba por el registro. Sacarlo del token pone 6 de sus 19
   tests en rojo. O sea que `firestore.rules` ve `request.auth.token.admin` cuando
   el claim llega por el registro y `storage.rules`, contra el mismo emulador y el
-  mismo flujo, no. Lo más probable es que sea del emulador de Storage; hasta que
-  alguien lo reproduzca contra producción no se sabe, y `npm run admin:claim`
-  usa exactamente esa vía.
+  mismo flujo, no.
+
+  **Y unas horas después apareció el otro lado, que cambia la lectura:**
+  `rol-publicador.integracion.test.ts` —el único archivo que **siempre** pasó los
+  claims por el registro— falla cuatro casos desde cualquier worktree y pasa en el
+  árbol principal y en CI. O sea que las dos mitades pueden ser un artefacto de
+  correr contra un emulador levantado en otro directorio, con otro `projectId`, y
+  no un problema de reglas. Queda en **B-1030** y **B-1021**, con el primer paso
+  escrito: rehacer la mutación en el árbol principal antes que cualquier otra
+  cosa.
 
 - **El barrido de promesas llega a los componentes del sitio público** —
   **B-925**. `tests/promesas-sobre-datos.test.ts` verifica que el sitio no
