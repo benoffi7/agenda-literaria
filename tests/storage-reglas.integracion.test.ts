@@ -15,7 +15,7 @@ import { adminBucket } from '@/lib/firebase-admin';
 import { MAXIMO_BYTES } from '@/lib/imagenes';
 import { rutaDeImagen, rutaDeImagenPropuesta } from '@/lib/imagenes-archivo';
 import { MARCA_OPTIMIZADA } from '../functions/imagenes.js';
-import { cargarReglasStorage, emuladorStorageVivo } from './emulador';
+import { HOST_STORAGE, cargarReglasStorage, emuladorStorageVivo } from './emulador';
 
 /**
  * `storage.rules` — la mitad de DEC-7b que el schema no puede dar.
@@ -67,7 +67,12 @@ let _almacen: ReturnType<typeof getStorage> | null = null;
 const almacen = () => {
   if (_almacen) return _almacen;
   _almacen = getStorage(app(), `gs://${BUCKET}`);
-  connectStorageEmulator(_almacen, '127.0.0.1', 9199);
+  // El host sale de `HOST_STORAGE` y no de un `'127.0.0.1', 9199` escrito acá:
+  // era la única copia del puerto dentro de `tests/`, y apuntaba al emulador
+  // por su cuenta. Con `FIREBASE_STORAGE_EMULATOR_HOST` apuntando a otro lado
+  // —el caso de B-344— este archivo se habría quedado hablándole al de siempre.
+  const [host, puerto] = HOST_STORAGE.split(':');
+  connectStorageEmulator(_almacen, host, Number(puerto));
   return _almacen;
 };
 
