@@ -440,6 +440,41 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
       .filter((f) => extensiones.test(f));
 
   /**
+   * La misma lista que `versionados`, pero derivada con una herramienta
+   * distinta — `grep -E` en vez del `.filter` de JavaScript — y sin pasar por
+   * la función de arriba.
+   *
+   * Es lo que le falta a la guarda de `archivos.length` de los dos casos de
+   * abajo: `toBeGreaterThan(100)`/`toBeGreaterThan(20)` es un **piso**, no una
+   * derivación — protege contra que `git ls-files` falle y devuelva vacío, no
+   * contra que `versionados` mire **menos** archivos de los que dice. Nada
+   * impide agregarle a `versionados` un `.filter()` de exclusión (a mano o por
+   * error) y la suite queda verde igual: sacar un puñado de archivos de
+   * cientos no cruza el piso. Es la misma forma de B-873 que el control
+   * positivo de arriba ya cerró para la comparación por presencia — acá es la
+   * **lista de archivos** la que necesitaba su propio control.
+   *
+   * Comparar contra esto, hecho con un comando aparte, cierra el hueco: si
+   * `versionados` se angosta, esta cuenta no se entera (no pasa por la misma
+   * función) y la comparación de abajo muestra la diferencia exacta, no un
+   * número que sigue arriba del piso.
+   *
+   * MUTACIÓN PROBADA: agregarle a `versionados` un
+   * `.filter((f) => !f.includes('coordenadas'))` deja `archivos.length` en
+   * 529 —sigue arriba de 100, así que el piso viejo no lo veía— y pone en rojo
+   * la comparación de abajo, con `src/lib/coordenadas.ts` y
+   * `tests/coordenadas.test.ts` del lado de lo que le falta a `archivos`.
+   */
+  const porGrep = (extensionesExtendidas: string): string[] =>
+    execFileSync(
+      'sh',
+      ['-c', `git ls-files src scripts functions tests | grep -E '${extensionesExtendidas}'`],
+      { encoding: 'utf8' },
+    )
+      .split('\n')
+      .filter(Boolean);
+
+  /**
    * Los identificadores de `texto` que el parser de TypeScript ve como
    * **código** y que **esa ocurrencia concreta** perdió: no si el nombre
    * sigue apareciendo en algún lado del archivo (eso es lo que tapaba la
@@ -458,7 +493,7 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     nombre: string,
     texto: string,
     offset: number,
-    tramos: readonly (readonly [number, number])[],
+    tramos: readonly (readonly number[])[],
   ): string[] => {
     const sf = ts.createSourceFile(nombre, texto, ts.ScriptTarget.Latest, true);
     const perdidos = new Set<string>();
@@ -512,6 +547,11 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     expect(archivos.length, 'no se listó ningún archivo: el `git ls-files` falló').toBeGreaterThan(
       100,
     );
+    expect(
+      [...archivos].sort(),
+      'versionados() difiere de la misma lista armada con `grep`: se angostó el ' +
+        'filtro y el piso de arriba no lo iba a notar (B-892)',
+    ).toEqual(porGrep('\\.(ts|tsx|mjs|js)$').sort());
 
     expect(
       ofensores(archivos, (archivo, src) => ({
@@ -553,6 +593,11 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     expect(archivos.length, 'no se listó ningún `.astro`: el `git ls-files` falló').toBeGreaterThan(
       20,
     );
+    expect(
+      [...archivos].sort(),
+      'versionados() difiere de la misma lista armada con `grep`: se angostó el ' +
+        'filtro y el piso de arriba no lo iba a notar (B-892)',
+    ).toEqual(porGrep('\\.astro$').sort());
 
     const sinFrontmatter = archivos.filter((f) => !FRONTMATTER.test(readFileSync(f, 'utf8')));
     expect(
