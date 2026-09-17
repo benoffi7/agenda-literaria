@@ -1190,7 +1190,35 @@ archivos.** Es que reservar deje rastro. Dos caminos, ninguno gratis:
 Mientras tanto: **antes de tomar el número que ofrece el tablero, mirar los
 rangos reservados en `EN-CURSO.md`.** Es una lectura, no un chequeo.
 
-### B-1030 · `storage.rules` no ve el claim de admin cuando llega por el registro, y `firestore.rules` sí · P2 — de cerrar B-895 (2026-09-17)
+### B-1030 · `storage.rules` no ve el claim de admin cuando llega por el registro, y `firestore.rules` sí · ✅ hecho (2026-09-17) — **no era de Storage** · P2 — de cerrar B-895
+
+> **Se hizo el primer paso que el propio ítem pedía —rehacer la mutación en el
+> árbol principal— y pasan 19/19.** Dos corridas, mismo emulador compartido,
+> `tokenPara`/`tokenPublicador` migrados a la vía de producción
+> (`setCustomUserClaims` + `createCustomToken` sin claims). O sea que
+> `storage.rules` **sí** ve `request.auth.token.admin` cuando el claim llega por
+> el registro, y la asimetría contra `firestore.rules` **no existe**.
+>
+> **Lo que sí existía es el borde de B-1021**, y esto lo confirma desde el otro
+> lado: los 6 rojos se midieron **desde un worktree**, contra un emulador
+> levantado en otro directorio y con otro `projectId`. La hipótesis que B-1021
+> dejó escrita —que los claims que llegan por el registro no alcanzan al token
+> cuando el `projectId` no es el del arranque— queda respaldada en su dirección
+> útil: en el directorio que levantó el emulador, la vía del registro funciona.
+> Es la segunda vuelta de **B-894**.
+>
+> **Con esto el archivo dejó de ser el único con la vía infiel**, que era la
+> deuda de B-895: los once archivos de integración pasan el claim como lo hace
+> producción. El motivo quedó escrito en el docblock de `tokenPara`, que es
+> donde lo va a leer el próximo que se pregunte por qué.
+>
+> **Y la pregunta de P0 se contesta sola: no hay nada que reproducir contra
+> producción.** El ítem dejaba abierto si un admin real podía quedarse sin
+> permisos de Storage después de un login. No: el síntoma no existe fuera del
+> worktree.
+
+**El reporte original queda abajo.**
+
 
 **Salió de unificar los claims de los tests de integración hacia la vía de
 producción** (B-895): `setCustomUserClaims` y nada embebido en el custom token.

@@ -2,6 +2,28 @@
 
 ## Sin publicar
 
+- **`storage.rules` sí ve el claim que llega por el registro: B-1030 se cierra
+  sin tocar una regla.** El ítem afirmaba una asimetría —`firestore.rules` ve
+  `request.auth.token.admin` cuando el claim llega por `setCustomUserClaims` y
+  `storage.rules` no— y dejaba abierto si era P0: un admin real podría quedarse
+  sin permisos de Storage después de un login. **No.** La medición que lo abrió
+  se había hecho **desde un worktree**; rehecha en el árbol principal, con el
+  mismo emulador, pasan **19/19** en dos corridas.
+
+  Con eso `tests/storage-reglas.integracion.test.ts` deja de ser el único
+  archivo de integración con la vía infiel —el claim embebido en el custom
+  token— y los once pasan el claim como lo hace producción, que era la deuda que
+  B-895 no había podido saldar. Confirma además, desde el otro lado, la
+  hipótesis que **B-1021** dejó escrita: medir el emulador desde un directorio
+  que no es el que lo levantó no mide lo que parece. Segunda vuelta de B-894.
+
+- **Las dos vulnerabilidades altas de producción, a cero.** `npm audit fix`
+  sobre `js-yaml` (4.3.2) y `svgo` (4.1.0), las dos traídas por Astro y las dos
+  con parche sin breaking. Estaba escrito en `docs/10-salud-del-codigo.md` § 6.2
+  como «queda para cuando la tanda cierre» —toca `package-lock.json`, que es de
+  todos los frentes— y la tanda del 2026-09-17 cerró. `npm audit --omit=dev`:
+  **0 vulnerabilidades**.
+
 - **Horario de atención en las fichas de la Guía** — **B-982**, reportado por el
   dueño («no tiene horario de atención»). Texto libre, en librerías y lugares; en
   suscripciones no, porque no hay puerta que abra. Para una librería es el dato

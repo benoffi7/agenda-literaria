@@ -1302,6 +1302,19 @@ con un comando, que es la diferencia con la foto anterior.
 toca `package-lock.json`, que es de todos los frentes, y en medio de una tanda un
 lock reescrito es un conflicto garantizado. Queda para cuando la tanda cierre.
 
+> **Hecho el 2026-09-17, cuando la tanda cerró.** `js-yaml` quedó en **4.3.2** y
+> `svgo` en **4.1.0**, y `npm audit --omit=dev` da **0 vulnerabilidades**. Se
+> corrió antes de abrir los worktrees de la tanda siguiente, a propósito, por el
+> mismo motivo que lo frenó acá: el lock es de todos y `node_modules` es un
+> symlink al del árbol principal.
+>
+> **Y la frase de arriba es el ítem, no el rastro.** «Queda para cuando la tanda
+> cierre» escrito en un documento no lo ve nadie: el 2026-09-03 la misma frase
+> dejó pendiente el `npm audit fix` de `uuid` —anotado en `.estado/salud.md`, un
+> directorio que está en el `.gitignore`— y **nunca se hizo**; se cerró de
+> casualidad, catorce días después, cuando el salto a `astro@7.3.1` se llevó
+> puesta esa rama de dependencias. Un pendiente que no es un `B-` no existe.
+
 Contando también `devDependencies` son **23** (21 moderadas, 2 altas). Esa cuenta
 es la que hay que ignorar para decidir: una vulnerabilidad en una herramienta de
 build no está expuesta a nadie.
