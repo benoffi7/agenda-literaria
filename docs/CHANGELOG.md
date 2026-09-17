@@ -27,9 +27,11 @@
 
   Tres cosas más que salieron del mismo hilo:
 
-  - **`❌ descartado` dejó de contarse como «hecho».** Eran seis ítems que la
-    pantalla tachaba afirmando que se habían hecho. Es un estado propio, con su
-    chip, y `⚠️ sin bug que arreglar` entra ahí: es la misma puerta cerrada.
+  - **`❌ descartado` es un estado propio, y no «hecho».** Son ocho —siete `❌`
+    y el `⚠️ sin bug que arreglar` de B-977, que es la misma puerta cerrada—, y
+    estaban entre los 46 que la pantalla listaba como pendientes. Ahora que se
+    reconocen, meterlos en «hecho» afirmaría un trabajo que nunca se hizo, así que
+    tienen chip propio.
   - **`🟡 a medias` es trabajo empezado**, que es lo que le importa a quien mira
     el tablero: hay algo hecho y queda algo por hacer.
   - **La fecha de la tarjeta es la del cierre, no la última de la línea.**

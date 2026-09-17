@@ -174,8 +174,8 @@ const sinMarcador = (encabezado) => {
  * que arreglar», que es lo mismo con otro nombre—; `empezado` junta el `🟠` y
  * el `🟡` de «a medias», que para quien mira el tablero son la misma cosa: hay
  * trabajo empezado y queda trabajo. Separar `descartado` de `hecho` no es
- * cosmética: el tablero tachaba seis ítems descartados diciendo que se habían
- * hecho.
+ * cosmética: son ocho ítems, y meterlos en «hecho» afirmaría un trabajo que
+ * nunca se hizo.
  */
 const ESTADO_DE_EMOJI = {
   '✅': 'hecho',
