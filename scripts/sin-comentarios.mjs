@@ -75,15 +75,64 @@ const TOKENS = new RegExp(
 );
 
 /**
+ * Los tramos que el recorrido descarta: cada uno es `[inicio, fin)` en las
+ * coordenadas del `texto` original. Es la primitiva de la que se derivan las
+ * dos salidas del módulo — `sinComentariosConFormato` es esto más pegar lo que
+ * *no* está en ningún tramo—, y también lo que usa el control de clase de
+ * `tests/sin-comentarios.test.ts` para comparar **posiciones** en vez de
+ * presencia de nombres (B-892): un identificador se perdió si su rango se
+ * superpone con alguno de estos tramos, sin importar si el mismo nombre
+ * sobrevive en otra parte del archivo.
+ *
+ * Un solo recorrido de izquierda a derecha decide, en cada posición, cuál
+ * alternativa de `TOKENS` gana — ver el docblock de `TOKENS` para el porqué.
+ * Que exista una sola función que recorra el texto (y no una copia del bucle
+ * por cada salida) es la misma regla que el módulo ya se aplica a sí mismo: dos
+ * saneadores que puedan divergir es el modo de falla que B-855 vino a cerrar.
+ */
+export const tramosBorrados = (texto) => {
+  const tramos = [];
+  let m;
+  TOKENS.lastIndex = 0;
+
+  while ((m = TOKENS.exec(texto)) !== null) {
+    const token = m[0];
+    // Los strings se conservan tal cual: es lo que hace que un `//` o un `*/`
+    // escrito adentro de uno no se lea como comentario.
+    if (token[0] === '"' || token[0] === "'" || token[0] === '`') continue;
+
+    let inicio = m.index;
+    let fin = TOKENS.lastIndex;
+
+    // `{/* … */}` de JSX **como unidad**. Se exige el `{` y el `}` **pegados**,
+    // sin espacio en el medio: así se escriben los comentarios de JSX en este
+    // repo, y así un `{ /* nada */ }` —un objeto vacío con una nota adentro— no
+    // pierde las llaves. El `*/` que se mira es el del propio comentario, no
+    // «el próximo del archivo»: el token ya vino delimitado.
+    if (token.startsWith('/*') && texto[inicio - 1] === '{' && texto[fin] === '}') {
+      inicio -= 1;
+      fin += 1;
+      TOKENS.lastIndex = fin;
+    }
+
+    tramos.push([inicio, fin]);
+  }
+
+  return tramos;
+};
+
+/**
  * El archivo **sin comentarios, con su formato intacto**.
  *
- * Es el recorrido completo, y la única de las dos salidas que hace trabajo:
- * `sinComentarios` es ésta más una línea. Se exporta porque hay un consumidor
- * —`tests/listado-del-sitio.test.ts`— que pregunta por la **forma** del código y
- * no solo por lo que nombra: recorta el cuerpo de una función con
- * `/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/`, o sea usando la indentación
- * de cierre como delimitador de bloque, y eso no sobrevive al colapso. Cuál de
- * las dos es el default, y por qué, está en el docblock de `sinComentarios`.
+ * Es `tramosBorrados` más pegar lo que queda entre tramo y tramo: la única de
+ * las dos salidas del módulo que hace trabajo nuevo es la primitiva de arriba,
+ * ésta y `sinComentarios` son las dos formas de leer su resultado. Se exporta
+ * porque hay un consumidor —`tests/listado-del-sitio.test.ts`— que pregunta por
+ * la **forma** del código y no solo por lo que nombra: recorta el cuerpo de una
+ * función con `/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/`, o sea usando la
+ * indentación de cierre como delimitador de bloque, y eso no sobrevive al
+ * colapso. Cuál de las dos es el default, y por qué, está en el docblock de
+ * `sinComentarios`.
  *
  * Cubre las cuatro sintaxis que aparecen en la lista de disparadores:
  * `{/* … *\/}` de JSX **como unidad** —sacando solo el interior quedan las llaves
@@ -145,29 +194,8 @@ const TOKENS = new RegExp(
 export const sinComentariosConFormato = (texto) => {
   let salida = '';
   let ultimo = 0;
-  let m;
-  TOKENS.lastIndex = 0;
 
-  while ((m = TOKENS.exec(texto)) !== null) {
-    const token = m[0];
-    // Los strings se conservan tal cual: es lo que hace que un `//` o un `*/`
-    // escrito adentro de uno no se lea como comentario.
-    if (token[0] === '"' || token[0] === "'" || token[0] === '`') continue;
-
-    let inicio = m.index;
-    let fin = TOKENS.lastIndex;
-
-    // `{/* … */}` de JSX **como unidad**. Se exige el `{` y el `}` **pegados**,
-    // sin espacio en el medio: así se escriben los comentarios de JSX en este
-    // repo, y así un `{ /* nada */ }` —un objeto vacío con una nota adentro— no
-    // pierde las llaves. El `*/` que se mira es el del propio comentario, no
-    // «el próximo del archivo»: el token ya vino delimitado.
-    if (token.startsWith('/*') && texto[inicio - 1] === '{' && texto[fin] === '}') {
-      inicio -= 1;
-      fin += 1;
-      TOKENS.lastIndex = fin;
-    }
-
+  for (const [inicio, fin] of tramosBorrados(texto)) {
     salida += texto.slice(ultimo, inicio);
     ultimo = fin;
   }
