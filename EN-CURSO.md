@@ -4,36 +4,50 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
-## Tanda del 2026-09-17: seis frentes de infra y tests, en paralelo con el panel
+## Tanda del 2026-09-17: seis frentes de infra y tests — cerrada e integrada
 
-**Esto es lo que se está tocando AHORA, y por eso está primero.** Son siete
-frentes en total: uno interactivo sobre el árbol principal y seis en worktrees.
+**Terminada el mismo día. Se deja escrita porque de acá salen tres cosas para la
+próxima**, no porque quede trabajo. Lo que está abierto vive en
+[`docs/BACKLOG.md`](docs/BACKLOG.md): **B-1030** (la asimetría de `storage.rules`
+con el claim, que es lo único con filo), **B-1010** y **B-1050**.
 
-| Frente | Rama | Ítems | Archivos propios |
-|---|---|---|---|
-| *(sesión del dueño)* | `main` | los tres formularios de directorios | `src/components/admin/{Libreria,Lugar,Suscripcion}Formulario.tsx` |
-| `barridos` | `frente/barridos` | B-964 | helper `archivosDelRepo` + los ~30 tests que enumeran con `git ls-files` |
-| `salud` | `frente/salud` | B-877, B-878 | `scripts/salud-del-codigo.mjs`, `tests/salud-del-codigo.test.ts`, `docs/10-salud-del-codigo.md` |
-| `saneador` | `frente/saneador` | B-892 | `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` + las ~17 líneas con `\/\/` |
-| `falsos-verdes` | `frente/falsos-verdes` | B-916, B-895 | `tests/directorios-rebuild.test.ts`, `tests/lugares.test.ts`, los `tokenAdmin()` de integración |
-| `promesas` | `frente/promesas` | B-925 | `tests/promesas-sobre-datos.test.ts`, `prosaDe()` |
-| `fixtures` | `frente/fixtures` | B-875 | `tests/clases-de-bug.test.ts`, `tests/lista-actividades.render.test.tsx`, `.github/workflows/` |
+Seis frentes en worktrees (`.claude/worktrees/<frente>`, ramas `frente/*`) sobre
+ocho ítems de la red de contención: B-964, B-892, B-877, B-878, B-875, B-916,
+B-895 y B-925. En paralelo, la sesión del dueño trabajó los formularios de la
+Guía en el árbol principal. Todo integrado por merge y pusheado; la suite en el
+principal quedó en **5381/5381**.
 
-Los worktrees viven en `.claude/worktrees/<frente>` (ignorados) con un symlink a
-`node_modules` del árbol principal. **Los emuladores son una sola tanda,
-compartida**: cada worktree le habla con su propio `projectId` derivado de la
-ruta (B-219), así que los tests de integración corren de verdad sin pisarse.
+**Lo que funcionó, y ya venía escrito de la tanda del 2026-09-09:** propiedad
+exclusiva de archivos por frente, rangos de ids reservados, commits atómicos con
+una línea en `.estado/<frente>.md`, y **nadie toca `docs/CHANGELOG.md` ni
+`docs/BACKLOG.md`** — los frentes devuelven el texto y lo integra quien orquesta.
+Cero conflictos de merge en seis ramas.
 
-**Reglas de la tanda**, en `.estado/BRIEF-COMUN.md`: propiedad exclusiva de
-archivos, commits atómicos con una línea en `.estado/<frente>.md` después de cada
-uno, y **nadie toca `docs/CHANGELOG.md`, `docs/BACKLOG.md` ni este archivo** —
-los frentes devuelven el texto y lo integra quien orquesta. Rangos de ids
-reservados: barridos **B-1000**, salud **B-1010**, saneador **B-1020**,
-falsos-verdes **B-1030**, promesas **B-1040**, fixtures **B-1050**.
+Y tres cosas nuevas, las tres aprendidas acá:
 
-**Si esto se corta a mitad de camino:** lo commiteado por frente se ve con
-`git log main..frente/<nombre> --oneline`, y lo que cada uno se anotó, en
-`.estado/<frente>.md`. Mirar eso **antes** que `git status` de cada worktree.
+- **Una sola tanda de emuladores para todos los worktrees alcanza** —cada uno le
+  habla con su `projectId` derivado de la ruta (B-219)—, pero **corriendo
+  integración a la vez aparecen rojos fantasma**. Tres frentes reportaron los
+  mismos 4 tests rojos en `rol-publicador.integracion.test.ts` y uno estaba por
+  abrirle un ítem; en el árbol principal, con todo integrado, pasan. Un rojo de
+  integración visto desde un worktree no es un hallazgo hasta revalidarlo solo.
+- **Dos frentes en paralelo pueden crear el bug que el otro está cerrando.**
+  Mientras uno migraba los ~30 barridos que enumeran con `git ls-files` a secas
+  (B-964), otro escribió una guarda nueva con `git ls-files` a secas. **La guarda
+  de B-964 lo agarró en el merge**, que es donde tenía que agarrarlo. Un frente
+  que cierra una clase tiene que dejar la guarda, no solo migrar las instancias:
+  es lo único que alcanza a lo que se escribe en paralelo.
+- **Un archivo intocable para un frente deja un sobrante, y el que integra lo
+  cierra.** B-892 arregló trece de catorce líneas; la catorceava estaba en un
+  archivo del frente de B-925. Llegó a tener número reservado (B-1020) y se
+  aplicó al integrar los dos, antes de escribirse. Lo mismo con B-1000. Conviene
+  mirar los «archivos ajenos que no toqué» de cada informe antes de escribir el
+  backlog: la mitad se cierra sola al juntar las ramas.
+
+**Y una del árbol compartido, que no es de esta tanda pero se pagó en ella:** un
+`git add -A` en el principal se llevó 21 archivos bajo un mensaje que nombraba
+uno solo (`601442b`). `EN-CURSO.md` decía quién era dueño de qué y no se leyó.
+Este archivo solo sirve si se lee **al arrancar**, no al terminar.
 
 ## Tanda del 2026-09-09: la tajada 1 de `/proponer`, y frentes en paralelo sobre el BACKLOG
 

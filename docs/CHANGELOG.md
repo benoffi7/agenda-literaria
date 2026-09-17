@@ -43,6 +43,130 @@
   backlog real que falla si un encabezado con emoji de estado se lee como abierto,
   o si sacarle el marcador deja el título vacío.
 
+- **Una tanda de seis frentes sobre la red de contención misma** — **B-964**,
+  **B-892**, **B-877**, **B-878**, **B-875**, **B-916**, **B-895** y **B-925**,
+  del 2026-09-17. Ninguno cambia lo que el sitio hace: los ocho son chequeos que
+  decían cuidar algo y miraban menos de lo que afirmaban. Van juntos porque el
+  modo de falla es el mismo —**un barrido queda verde igual porque no encuentra
+  nada que porque no busca nada** (B-873)— y porque tres de ellos se agarraron
+  entre sí al integrarse.
+
+- **Los barridos de clase ya ven un archivo antes del `git add`** — **B-964**,
+  del `auditor-privacidad` sobre B-961. ~30 tests enumeraban el árbol con
+  `git ls-files` a secas, que lista **solo lo rastreado**: un archivo recién
+  creado —el caso normal mientras se trabaja— quedaba afuera del barrido justo en
+  la corrida en la que más falta hacía. Es la lección de B-826, repetida treinta
+  veces por copiar el `execFileSync` en vez de compartirlo.
+
+  El arreglo es un helper único, `archivosDelRepo(prefijo)` en
+  `tests/fixtures/archivos-del-repo.ts` (`--cached` + `--others
+  --exclude-standard`), con su test probado por mutación y una guarda que impide
+  que nazca la copia treinta y uno. 28 barridos migrados.
+
+  **La guarda se probó sola dos veces, y la segunda es la que vale.** Primero
+  encontró un archivo que la migración se había salteado. Después, al integrar,
+  agarró a **otro frente de esta misma tanda**: `tests/fixtures-contra-el-reloj.test.ts`
+  —la guarda nueva de B-875, escrita en paralelo— había nacido con `git ls-files`
+  a secas. La copia treinta y uno existió y duró lo que tardó el merge.
+
+  Y encontró un hallazgo que el ítem no preveía: el **gate de secretos de B-213**
+  (`tests/env-versionados.test.ts`) tenía el mismo agujero. Un `.env` recién
+  creado y todavía sin `git add` —o sea el momento exacto en que alguien lo está
+  llenando a mano con una clave— no entraba al gate.
+
+- **El control del saneador compara posiciones, no presencia de nombres** —
+  **B-892**, salió de la medición de B-876. El chequeo que protege a los ~25
+  tests que leen fuente preguntaba si un identificador seguía apareciendo en
+  **todo** el archivo sanado, así que solo veía el caso en que un nombre
+  desaparecía del todo. Si el mismo nombre tenía otra ocurrencia en cualquier
+  otra línea —una constante que también se declara, un parámetro que también se
+  usa— la pérdida de **esa** ocurrencia quedaba tapada.
+
+  Ahora se compara la posición de cada identificador contra los tramos que el
+  saneador descarta (`tramosBorrados`, extraída como primitiva del propio
+  saneador). El predicado nuevo puso en rojo **14 archivos** del árbol de ese
+  día; el viejo solo veía **2 de esos 14**. Los otros doce perdían código por el
+  mismo `//` de un literal de regex que B-876 ya había arreglado en `Base.astro`
+  —`src/lib/schema.ts` perdía el `||` entero de `llevaLinkDeReunion`— y dos de
+  ellos llegaban cortados a un barrido que corre de verdad.
+
+  La guarda de cantidad también dejó de ser un piso: `> 100` y `> 20` aceptaban
+  que alguien angostara la lista con un `.filter()` y siguiera arriba del piso.
+  Ahora se compara contra la misma lista armada con `grep` en un subproceso
+  aparte.
+
+- **El grafo de imports no veía los `import` multilínea, y el contador de líneas
+  contaba prosa como código** — **B-877** y **B-878**, los dos en
+  `scripts/salud-del-codigo.mjs`, los dos salidos de B-856. El regex exigía que
+  `import … from` entrara en una sola línea, así que al grafo le faltaba el 16 %
+  de las aristas —**292**, recontadas hoy—; y `contarLineas` preguntaba
+  `startsWith('/*')`, que es falso para un comentario JSX `{/* … */}`.
+
+  Lo serio del primero no es el fan-out: `tests/salud-del-codigo.test.ts` afirma
+  «cero ciclos estáticos» —la única propiedad del documento atada a un test— y lo
+  afirmaba sobre un grafo incompleto. Un ciclo cerrado por un import multilínea
+  no se habría visto. Recontados con el regex arreglado: **siguen en cero**. La
+  propiedad aguanta; lo que no aguantaba era la idea de que se estaba verificando
+  entera.
+
+- **Un fixture con fecha cableada frenó ocho rebuilds seguidos, y el detector que
+  debía ver su doble de `Timestamp` era ciego a los `.tsx`** — **B-875**,
+  reportado por el dueño («una actividad publicada no aparece»). La respuesta no
+  era de esa actividad: **el sitio no se reconstruía desde el día anterior**,
+  porque una fecha fija del futuro cercano se puso roja sola al llegar el día, en
+  el paso Tests, que corre antes del build. La causa puntual ya estaba arreglada;
+  esto cierra la clase.
+
+  La guarda nueva (`tests/fixtures-contra-el-reloj.test.ts`) **no prohíbe fechas
+  fijas** —la lógica pura que recibe `ahora` por parámetro las usa bien, y una
+  prohibición general habría sido ruido sobre 46 archivos—. Pide las tres cosas
+  juntas: fecha que todavía no pasó, un sujeto que lee el reloj real sin poder
+  recibirlo (`useState(() => new Date())`, la forma de `ListaActividades.tsx`) y
+  ningún `vi.setSystemTime` que lo neutralice.
+
+  El aviso de rebuild roto **ya estaba resuelto** por B-883 y B-882, mergeados el
+  mismo día que se reportó esto. Se verificó antes de escribir nada, y no se
+  escribió nada.
+
+  Y el detector de dobles de `Timestamp` (la clase de B-211) filtraba con
+  `f.endsWith('.ts')`, que es **falso para `.tsx`**: los 24 `*.render.test.tsx`
+  no se leían nunca. Por eso no vio el doble del archivo que rompió.
+
+- **Dos falsos verdes del arnés de tests** — **B-916** y **B-895**. El primero es
+  de manual: `expect(index).toContain("export { rebuildPorX }")` pasa con el
+  `export` **comentado**, porque el comentario contiene la cadena. Estaba en
+  **siete** archivos, no en los dos que el ítem nombraba; ahora se barre el
+  fuente con `sinComentarios` antes de buscar. El segundo: los tests de
+  integración pasaban los claims de admin **por dos vías** —`setCustomUserClaims`
+  y embebidos en el custom token— y la segunda no es la que usa producción, donde
+  el claim llega por el registro. Unificados hacia la vía fiel en diez archivos.
+
+  **Y eso destapó una asimetría que queda abierta (B-1030):** el único archivo
+  que no se pudo unificar es `tests/storage-reglas.integracion.test.ts`, donde el
+  claim **nunca** pasaba por el registro. Sacarlo del token pone 6 de sus 19
+  tests en rojo. O sea que `firestore.rules` ve `request.auth.token.admin` cuando
+  el claim llega por el registro y `storage.rules`, contra el mismo emulador y el
+  mismo flujo, no. Lo más probable es que sea del emulador de Storage; hasta que
+  alguien lo reproduzca contra producción no se sabe, y `npm run admin:claim`
+  usa exactamente esa vía.
+
+- **El barrido de promesas llega a los componentes del sitio público** —
+  **B-925**. `tests/promesas-sobre-datos.test.ts` verifica que el sitio no
+  prometa sobre datos lo que no cumple, y no cubría `src/components/publico/*.tsx`,
+  que es donde los tres formularios repiten los carteles de su página. No entraba
+  por dos falsos positivos, y la causa de los dos era la misma: en un `.tsx` la
+  prosa que el barrido extraía **traía el JSX adentro**, así que la frase que el
+  detector veía no era la frase que alguien lee.
+
+  Hicieron falta los dos caminos. `prosaDe()` aprendió a leer JSX —el texto entre
+  `>` y `<` y los literales— y **no borra los valores de atributo**, porque hay
+  prosa real ahí (`ayuda="Lo usamos solo para escribirte si falta un dato. No
+  sale al sitio."`) que se habría perdido en silencio. Y los detectores se
+  acotaron **al sujeto** en vez de ganar una excepción por archivo: «no
+  guardaste» (segunda persona, sobre quien lee) no es «no guardamos», y «si no
+  cobran» (un lugar) no es «nunca vamos a cobrar». Verificado por mutación: una
+  promesa falsa metida a propósito en `SumarLugar.tsx` puso el barrido en rojo.
+
 - **«Dirección web» era el slug, no la web** — **B-981**, reportado por el dueño
   («lugar para página web 2 veces»). No estaba duplicado: eran dos campos
   distintos con nombres que competían, y en librerías y lugares hay además un

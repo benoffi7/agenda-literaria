@@ -2160,7 +2160,29 @@ qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow
 > **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
 > push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
 
-### B-892 · El control del saneador detecta por desaparición total del identificador, y eso tapa la mayoría de los casos · P2
+### B-892 · El control del saneador detecta por desaparición total del identificador, y eso tapa la mayoría de los casos — ✅ hecho (2026-09-17) · P2
+
+> ✅ **Hecho, las dos mitades, y la medición del ítem se quedaba corta.** El
+> predicado pasó a comparar **posiciones** —`tramosBorrados`, extraída como
+> primitiva del propio saneador— en vez de presencia de nombres. Probado por
+> mutación en los dos sentidos: sobre el árbol de ese día el predicado nuevo dio
+> rojo en **14 archivos** y el viejo veía **2 de esos 14**. Los otros doce
+> quedaban tapados por el propio nombre sobreviviendo en otra línea, que es
+> exactamente lo que este ítem describe.
+>
+> Las ~17 líneas se arreglaron con la salida (a) que B-876 ya había decidido
+> (`\/{2}` en vez de `\/\/`): `src/lib/schema.ts`, `src/lib/coordenadas.ts`
+> (dos), `scripts/build-contra-emulador.mjs` y los once recortes locales de
+> `tests/`. **Once, no diez:** el frente que cerró esto no podía tocar
+> `tests/promesas-sobre-datos.test.ts` —era del frente de B-925, en la misma
+> tanda— y lo dejó anotado; se aplicó al integrar los dos, y es lo que deja el
+> control de clase en verde. Ese sobrante llegó a tener número propio (B-1020) y
+> no hizo falta escribirlo.
+>
+> **Y la segunda mitad, la de la guarda de cantidad:** `> 100` y `> 20` eran un
+> piso, no una derivación. Ahora la lista se compara contra la misma armada con
+> `grep -E` en un subproceso aparte. Mutación probada: el `.filter()` de ejemplo
+> dejaba 529 archivos, arriba del piso, y pone en rojo la comparación nueva.
 
 **Lo corrigió el frente de B-876 sobre su propia medición**, y es la parte que
 importa de ese ítem. El control compara los identificadores que el parser ve contra
@@ -2563,7 +2585,19 @@ Es una decisión y no un renglón: ensancharlo pone en rojo dos funciones que ho
 pasan, y la salida no es relajarlo sino decidir qué guarda le exigimos a un barrido
 que borra.
 
-### B-877 · El grafo de imports pierde todo `import` multilínea, y el §1.5 verifica «cero ciclos» sobre un grafo incompleto · P2
+### B-877 · El grafo de imports pierde todo `import` multilínea, y el §1.5 verifica «cero ciclos» sobre un grafo incompleto — ✅ hecho (2026-09-17) · P2
+
+> ✅ **Hecho.** Se sacó el `\n` de la clase negada. **Recontado sobre el árbol de
+> hoy, no sobre las cifras de esta descripción:** 1.987 aristas contra 1.695 con
+> el regex viejo, o sea **292 recuperadas en 211 de 572 archivos**. Los ciclos
+> **siguen en cero estáticos / uno diferido**, sin ninguno nuevo: la propiedad
+> que el test afirma aguanta, y lo que no aguantaba era la idea de que se estaba
+> verificando entera. Caso de control real del corpus, probado por mutación.
+>
+> Lo que **no** se hizo, a propósito: remedir §0/§1.1/§1.2/§1.4/§1.6. El árbol
+> creció de 254 a 341 archivos de producción desde la última pasada, por trabajo
+> ajeno a este ítem, y mezclarlo haría ilegible el efecto del arreglo. Sale
+> **B-1010**.
 
 **Lo encontró B-856 al verificar el fan-out del formulario.** El regex `IMPORTS`
 de `scripts/salud-del-codigo.mjs` tiene un `\n` dentro de la clase negada, así que
@@ -2587,7 +2621,13 @@ de que se estaba verificando entera. El arreglo es sacar el `\n` de la clase
 negada, y el caso de control es un archivo del corpus con un import multilínea
 conocido.
 
-### B-878 · `contarLineas` no reconoce `{/* … */}`, así que el §1.1 sobrecuenta el código de todo `.tsx` · P3
+### B-878 · `contarLineas` no reconoce `{/* … */}`, así que el §1.1 sobrecuenta el código de todo `.tsx` — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho**, y con el gemelo que el ítem pedía. `contarLineas` trata
+> `{/* … */}` igual que `/* … */`. Medido sobre el árbol de hoy:
+> `ActividadFormulario.tsx` da **397** significativas contra **455** con el
+> contador viejo. Dos casos nuevos, los dos probados por mutación: el gemelo
+> exacto del existente para JSX de una línea, y un bloque multilínea.
 
 **Salió de B-856.** El clasificador pregunta `l.startsWith('/*')`, y una línea de
 comentario JSX empieza con `{`. Cae en el `else` y cuenta como **significativa**.
@@ -2655,7 +2695,28 @@ cambio; sin eso no hay red.
 > de qué unificar hay que decidirlo archivo por archivo, pero el argumento de
 > B-855 aplica con fuerza 25 a 2.
 
-### B-875 · Un fixture con fecha cableada rompió la publicación del sitio entero, y nadie se enteró · P1
+### B-875 · Un fixture con fecha cableada rompió la publicación del sitio entero, y nadie se enteró — ✅ hecho (2026-09-17) · P1
+
+> ✅ **Cerrado, los tres puntos, y uno de los tres ya estaba hecho.**
+>
+> 1. **La guarda** (`tests/fixtures-contra-el-reloj.test.ts`) pide las tres cosas
+>    juntas: fecha que todavía no pasó, un sujeto que lee el reloj real sin poder
+>    recibirlo (`useState(() => new Date())` — la forma de `ListaActividades.tsx`,
+>    y también la de `CalendarioActividades.tsx`, encontrada al armar el
+>    predicado) y ningún `vi.setSystemTime` que lo neutralice. **No prohíbe
+>    fechas fijas**, que es lo que este ítem pedía no hacer: la lógica pura que
+>    recibe `ahora` por parámetro queda afuera. Hoy la lista da vacía, con dos
+>    controles positivos para que ese vacío signifique algo. Mutación probada:
+>    reponer la fecha original la pone en rojo.
+> 2. **Que el rebuild no muera en silencio: ya estaba resuelto** por B-883 (los
+>    jobs `avisar`/`cerrar-aviso` de `deploy.yml`, que abren y cierran un issue
+>    con etiqueta `deploy-roto`) y B-882, mergeados el mismo 2026-09-11. Se
+>    verificó antes de escribir nada y no había nada para enganchar.
+> 3. **El hueco del detector de B-211**: `clases-de-bug.test.ts` filtraba con
+>    `f.endsWith('.ts')`, **falso para `.tsx`**, así que los 24
+>    `*.render.test.tsx` no se leían nunca. Por eso no vio el doble del archivo
+>    que rompió. Arreglado con `/\.tsx?$/` y una excepción documentada para ese
+>    doble, que se deja para **B-1050**.
 
 **Lo reportó el dueño el 2026-09-11** preguntando por qué una actividad publicada
 no aparecía en el sitio. La respuesta no era de esa actividad: **el sitio no se
@@ -6937,6 +6998,36 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-1030 · `storage.rules` no ve el claim de admin cuando llega por el registro, y `firestore.rules` sí · P2 — de cerrar B-895 (2026-09-17)
+
+**Salió de unificar los claims de los tests de integración hacia la vía de
+producción** (B-895): `setCustomUserClaims` y nada embebido en el custom token.
+En diez archivos el cambio no movió un test. En el undécimo,
+`tests/storage-reglas.integracion.test.ts` —el único que **nunca** pasaba el
+claim por el registro— se pusieron **6 de 19 en rojo**: una subida con sesión de
+admin que las reglas rechazan igual, y dos asertos que se invierten (`acepta
+justo el tope`, y la trampa 12 de B-220).
+
+O sea: contra el mismo emulador y el mismo `signInWithCustomToken`,
+`firestore.rules` ve `request.auth.token.admin` cuando el claim llega por el
+registro y **`storage.rules` no** — solo lo ve si viaja dentro del token.
+
+**Por qué no es solo estilo de test, y por qué queda en P2 y no en P3:**
+`npm run admin:claim` hace exactamente lo que el emulador de Storage no está
+viendo —`setCustomUserClaims` y nada más—, que es también cómo llega el claim en
+el panel real. Si esto reprodujera fuera del emulador, un admin podría estar sin
+permisos de Storage después de un login, o con más latencia que en Firestore. **Lo
+más probable es que sea una limitación del emulador de Storage**, y hasta que
+alguien lo reproduzca contra producción no se sabe. Eso es lo que falta para
+decidir si es P2 o P0.
+
+Hasta entonces ese archivo se queda con la vía infiel, **a propósito**: es lo
+único que hoy sostiene esos seis casos, y taparlo unificándolo habría escondido
+la asimetría en vez de mostrarla.
+
+**Repro:** con el emulador arriba, sacarle a `tokenPara`/`tokenPublicador` el
+objeto de claims del `createCustomToken`, dejando el `setCustomUserClaims`.
+
 ### B-981 · «Dirección web» era el slug, y abajo había otro campo web — ✅ hecho (2026-09-17) · P2 — reportado por el dueño
 
 **Lo reportó cargando una librería desde el panel: «lugar para página web 2
@@ -7112,7 +7203,26 @@ listas sean idénticas— y `docs/16-analitica-del-sitio.md`. El parámetro ser�
 **ciudad en slug**, vocabulario cerrado con las ciudades que tienen banner, y
 nunca el destino ni el nombre del emprendimiento.
 
-### B-964 · Los barridos de clase enumeran con `git ls-files` a secas: no ven el archivo nuevo hasta después del `git add` · P2 — del `auditor-privacidad` sobre B-961
+### B-964 · Los barridos de clase enumeran con `git ls-files` a secas: no ven el archivo nuevo hasta después del `git add` — ✅ hecho (2026-09-17) · P2 — del `auditor-privacidad` sobre B-961
+
+> ✅ **Hecho.** Helper único `archivosDelRepo(prefijo)` en
+> `tests/fixtures/archivos-del-repo.ts`, con test propio probado por mutación y
+> una guarda que impide que nazca la copia treinta y uno. **28 barridos
+> migrados**; los 3 que quedaban de otros frentes de la tanda se migraron al
+> integrarlos, así que no queda ninguno (el **B-1000** que ese frente propuso no
+> hizo falta escribirlo).
+>
+> **La guarda se probó sola dos veces.** Primero encontró
+> `tests/sistema-visual.test.ts`, salteado por la propia migración. Después, al
+> integrar, agarró a **otro frente de esta misma tanda**:
+> `tests/fixtures-contra-el-reloj.test.ts` —la guarda nueva de B-875— había
+> nacido con `git ls-files` a secas mientras el otro frente migraba los treinta.
+> La copia treinta y uno existió de verdad y duró lo que tardó el merge.
+>
+> **Hallazgo que el ítem no preveía:** el gate de secretos de B-213
+> (`tests/env-versionados.test.ts`) tenía el mismo agujero. Un `.env` recién
+> creado y sin `git add` —el momento exacto en que alguien lo está llenando a
+> mano con una clave— no entraba al gate. Arreglado en el mismo cambio.
 
 `tests/listado-del-sitio.test.ts` prohíbe `<img>` en `src/components/publico/*.tsx`
 (D-146) y **no vio** el componente nuevo de B-961: enumeraba con
@@ -8008,7 +8118,23 @@ exactamente lo que B-300 y B-266 midieron (el recorrido de la cartelera pasó de
 3518,5 KB a 1032,4 KB). Con las imágenes ya optimizadas (B-220) el margen existe,
 pero el número se mira, no se supone.
 
-### B-925 · El barrido de promesas no llega a los componentes del sitio público · P3
+### B-925 · El barrido de promesas no llega a los componentes del sitio público — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho, con los dos caminos que este ítem proponía, y los dos hicieron
+> falta.** `prosaDe()` lee JSX —el texto entre `>` y `<` más los literales— y
+> **no borra los valores de atributo**: hay prosa real ahí (`ayuda="Lo usamos
+> solo para escribirte si falta un dato. No sale al sitio."`) que un borrado por
+> atributo se habría comido en silencio, que es el modo de falla que este repo
+> persigue. Y los detectores se acotaron **al sujeto** en vez de ganar una
+> excepción por archivo: `(?!ste\b)` saca el pretérito de segunda persona de «no
+> guarda…», y se sacó `cobran`/`van a` porque la tercera del plural nunca es
+> «nosotros».
+>
+> El glob se extendió a `src/components/publico/*.tsx` con control positivo, y la
+> mutación se hizo de verdad: una promesa falsa metida en `SumarLugar.tsx` puso
+> el barrido en rojo señalando archivo, fórmula y frase. Los 23 `.tsx` de esa
+> carpeta quedaron sin hallazgos, así que el riesgo que este ítem anotaba —una
+> promesa que exista solo en un componente y no en su página— pasó a tener red.
 
 **Salió de arreglar el hallazgo del `auditor-privacidad` del 2026-09-15.** El
 barrido de `tests/promesas-sobre-datos.test.ts` pasó a recorrer `src/pages`
@@ -15697,6 +15823,34 @@ cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
 
+### B-1010 · Las tablas de `10-salud-del-codigo.md` miden 254 archivos y el árbol tiene 341 · P3 — de cerrar B-877 (2026-09-17)
+
+La última pasada completa es del 2026-09-09 (B-849): **254 archivos de
+producción, 63.983 LOC**. Hoy son **341 y 94.925** — un 48 % más en ocho días, de
+trabajo de varios frentes. Los §0, §1.1, §1.2, §1.4 y §1.6 siguen con las cifras
+viejas.
+
+**No se remidió al cerrar B-877/B-878 a propósito**, y conviene que quede el
+motivo: esos dos arreglos cambian cómo se mide, así que remedirlo todo en el
+mismo cambio mezclaría el efecto del instrumento con ocho días de crecimiento
+ajeno y dejaría ilegible cuál de los dos movió cada número. Los §1.3 y §1.5, que
+son los que esos ítems tocan, **sí** están remedidos.
+
+`node scripts/salud-del-codigo.mjs` imprime las tablas listas para pegar. Es una
+pasada del tamaño de B-849, no un renglón.
+
+### B-1050 · El doble de `Timestamp` de `lista-actividades.render.test.tsx` no usa el fixture compartido · P3 — de cerrar B-875 (2026-09-17)
+
+Ese archivo define su propio `ts` en vez de importar el de
+`tests/fixtures/tiempo.ts`, que es la clase de B-211. Se dejó **a propósito** al
+cerrar B-875 —ese ítem era el detector, no el fixture— y hoy vive como excepción
+documentada (`EXCEPCIONES_CONOCIDAS`) en `clases-de-bug.test.ts`, que es
+justamente el detector que hasta B-875 no lo veía por filtrar `.ts` y no `.tsx`.
+
+Reemplazarlo por el fixture compartido y borrar la excepción. Mientras la
+excepción exista, el detector tiene un agujero **declarado**, que es mejor que el
+que tenía, pero sigue siendo un agujero.
+
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
 
 **Lo trajo el dueño desde Search Console.** Queda anotado sobre todo para que
@@ -15739,7 +15893,17 @@ es **enriquecer la ficha**: hoy son ~330 palabras y buena parte es plantilla.
 aparecen URLs con 404 o `noindex` en esa lista, o si empiezan a caer páginas que
 **ya estaban** indexadas. Eso último sí sería un bug.
 
-### B-916 · El chequeo de exportación de un trigger pasa con el `export` comentado · P3
+### B-916 · El chequeo de exportación de un trigger pasa con el `export` comentado — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho, y eran siete archivos, no dos.** Además de
+> `directorios-rebuild.test.ts` y `lugares.test.ts`: `librerias.test.ts`,
+> `suscripciones.test.ts`, `retencion-de-guias.test.ts`,
+> `flyer-por-callable.test.ts` e `historial.test.ts`. Se barre el fuente con
+> `sinComentarios` antes de buscar la cadena, y **no** con `await import(...)`:
+> `functions/index.js` llama `initializeApp()` en el top-level, así que
+> importarlo desde un test unitario arranca el Admin SDK de verdad. Mutación
+> probada en las dos direcciones sobre seis exports: comentar el `export` y
+> borrarlo ponen en rojo.
 
 `tests/directorios-rebuild.test.ts` y `tests/lugares.test.ts` verifican el trigger
 de rebuild con `expect(index).toContain("export { rebuildPorX } …")`. **Una mutación
@@ -15809,7 +15973,18 @@ está atado a `04-funcionalidades.md`, `06-decisiones.md` y a este archivo, y la
 obliga a corregir los tres números. Cuando la Guía tenga sus tres secciones cargadas
 la pregunta propia se justifica sola.
 
-### B-895 · Los tests de integración viejos pasan los claims por dos vías, y una no es la de producción · P3
+### B-895 · Los tests de integración viejos pasan los claims por dos vías, y una no es la de producción — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho en diez archivos**, sacando el segundo argumento de
+> `createCustomToken`. Los 301 tests de esos archivos siguen verdes contra el
+> emulador.
+>
+> **Y el undécimo es el hallazgo, que queda abierto en B-1030.**
+> `tests/storage-reglas.integracion.test.ts` nunca pasaba el claim por el
+> registro, solo embebido en el token; sacarlo pone **6 de sus 19** tests en
+> rojo. Se revirtió y quedó como el único archivo con la vía infiel, que es
+> justo lo que este ítem quería terminar — pero terminarlo acá habría tapado la
+> asimetría en vez de mostrarla.
 
 `tokenAdmin()` de `reportes`, `opciones`, `sistema`, `propuestas` y compañía hace
 `setCustomUserClaims(uid, claims)` **y** `createCustomToken(uid, claims)`. Los
@@ -19069,6 +19244,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **B-1021** · Tres frentes reportaron 4 tests rojos en `rol-publicador.integracion.test.ts` y uno estaba por abrir un ítem — ⚠️ sin bug que arreglar | **contención del emulador compartido**, no código. La tanda del 2026-09-17 corrió seis worktrees contra una sola tanda de emuladores —cada uno con su `projectId`, que aísla los datos pero no el ruleset que se está cargando— y varios corrieron integración a la vez. Verificado descartándolo por el lado que importa: con los seis frentes ya integrados, la suite completa en el árbol principal da **5381/5381**, ese archivo incluido. **La lección es de método, no de código:** un rojo de integración visto desde un worktree mientras hay otros corriendo no es un hallazgo hasta revalidarlo solo en el principal | `tests/rol-publicador.integracion.test.ts` (2026-09-17) |
 | **B-984** · El tablero listaba **46 ítems cerrados entre lo que falta hacer**, ocho de ellos descartados que ni siquiera eran trabajo pendiente | el archivo marca el estado con cinco emojis (`✅ ❌ ⚠️ 🟡 🟠`) y el parser reconocía dos, **solo detrás de una raya larga**: todo `· ✅ hecho (fecha)` se leía como abierto, y todo lo que no fuera `✅` o `🟠` también. De 105 «abiertos» quedaron 59. Cerrado **sin tocar una línea del backlog** —el vocabulario se lee del archivo, no se le impone; reescribir 46 encabezados a mano habría aguantado hasta el próximo escrito en el estilo de siempre— y con red de clase: un barrido sobre este archivo que falla si un encabezado con emoji de estado se lee como abierto, o si sacarle el marcador deja el título vacío. De paso, la fecha de la tarjeta pasó a ser la del **cierre** y no la última de la línea | `scripts/tablero/parseo.mjs`, `scripts/tablero/tablero.html`, `tests/tablero.test.ts` (2026-09-17) |
 | **El mismo saneador se comía el 83% de `Buscador.tsx`, y ningún consumidor lo estaba sufriendo** | la segunda cara de la fila de B-830, encontrada **midiendo** desde otro frente. El disparador no era un regex ni un string con `/*`: era el `\s*` del patrón de JSX, que deja que `interface Props {` más el docblock de su primera propiedad sean una apertura de comentario; como el cierre exige el `*/` pegado a un `}`, la búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**. Lo notable no es el caso sino que **el agujero estaba latente**: los cinco consumidores actuales daban salida idéntica antes y después, y el bug esperaba a que alguien apuntara el saneador compartido a cualquiera de los **23** archivos que destrozaba (`VisorDeGaleria.tsx` al 91%, `PropuestasPanel.tsx` al 84%, `ActividadFormulario.tsx` al 78%, y `sin-comentarios.mjs` a sí mismo al 96%). Cerrado reemplazando las cuatro pasadas de `replace` por **un solo recorrido de izquierda a derecha**, que cierra la familia entera en vez del caso, y con red de clase: un barrido que compara contra el **parser de TypeScript** sobre los 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de código | B-853, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |
 | **B-841 dejó la medición del panel colgando de una prop opcional que nadie verificaba** | lo encontró el `auditor-trampas` sobre el propio commit de B-841, y es la clase que ese refactor crea: sacar la medición a una prop **opcional** hace que dejar de pasarla se vea idéntico. Si un refactor deja el `medir={medirSeccion}` afuera, el build queda verde, `tsc` queda verde —son opcionales— y lo que se pierde es GA4 sin `funcion_usada` para **todas** las aperturas de sección y toda interacción de taxonomía del panel; se nota semanas después, mirando un hueco en el tablero. **Y de paso degradó un aserto existente**: «TagsInput mide la taxonomía» hace `toContain('taxonomia-nueva')` sobre el fuente, y esos literales siguen ahí como argumentos de `onMedir?.(…)` — o sea que seguía pasando y ya no probaba que se midiera, solo que el string existía. Cerrado con `tests/campos-del-panel.render.test.tsx`, que monta la capa y afirma **la llamada** (y el «?» de la guía, con su control negativo), más la otra dirección —que el control **genérico** no mida sin la prop, que es lo que hace que un formulario público pueda usarlo—; y el caso degradado se renombró a lo que de verdad prueba: que los dos widgets nombran el mismo vocabulario (B-72). Las tres ataduras verificadas por mutación | B-841, `tests/campos-del-panel.render.test.tsx`, `tests/taxonomia.test.ts` (2026-09-09) |
