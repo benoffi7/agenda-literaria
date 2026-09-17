@@ -105,8 +105,9 @@ automatizar, está en [`13-agentes.md`](13-agentes.md).
 
 **Escrita el 2026-09-17, después de que costara una hora de trabajo frenado.** Ese
 día hubo hasta ocho sesiones sobre este repo —una en el árbol principal y seis
-frentes en worktrees— y las tres cosas que salieron mal son la misma:
-**nada separa tu trabajo del de al lado en `/`.**
+frentes en worktrees— y las **cuatro** cosas que salieron mal son la misma:
+**nada separa tu trabajo del de al lado en `/`.** La cuarta se agregó más tarde ese
+mismo día, y es la que menos se ve.
 
 ### 1 · Stageá por nombre. Nunca `git add -A`, `git add .` ni `commit -a`
 
@@ -143,6 +144,31 @@ No es un bug del gate —verificar el árbol es lo que atrapa el archivo sin
 **La salida barata: si ya hay alguien escribiendo en `/`, el segundo trabaja en un
 worktree** (`.claude/worktrees/<frente>`, con su rama y su `projectId` de emulador
 derivado de la ruta, B-219).
+
+### 4 · Crear una rama en `/` se la impone a todas las sesiones de ese directorio
+
+`git checkout -b` **no es una acción local**: mueve el `HEAD` del working tree, y el
+working tree es uno solo. Ese mismo día una sesión creó `frente/emulador-decision`
+en `/` para escribir una decisión, y a partir de ahí **el árbol principal entero
+quedó parado en esa rama**: los commits que la otra sesión siguió haciendo —sobre un
+ítem distinto— cayeron en la rama ajena, sin que ninguna de las dos lo viera.
+
+Es la misma falta de aislamiento de las tres de arriba, con **la cara más difícil de
+notar: es la única que no deja rastro en `git status`**. Las otras tres se ven —un
+stage de más, un archivo ajeno, un typecheck rojo de código que no es tuyo—; ésta no
+se ve desde ningún lado, porque las dos vistas se leen igual: cada sesión ve una
+rama y ninguna tiene forma de saber que no la eligió. Se supo porque una se lo dijo
+a la otra, no porque algo lo mostrara.
+
+**No hizo daño, y la suerte tuvo dos mitades:** que el contenido de las dos fuera
+complementario, y que la rama entrara en **fast-forward**. Con un solo commit
+divergente de cualquiera de las dos, la integración habría sido un merge con
+conflictos entre dos trabajos que nunca se declararon ajenos — y ahí el «no hizo
+daño» se termina.
+
+**La salida es la que ya está en la regla 3:** si hace falta una rama, va en un
+worktree. Y si por lo que sea hay que crearla en `/`, se avisa antes y se vuelve a
+`main` al integrar, que es lo único que devuelve el directorio a las demás.
 
 ### Por qué esto vive acá y no en `.estado/BRIEF-COMUN.md`
 
