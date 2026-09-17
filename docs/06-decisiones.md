@@ -11514,3 +11514,79 @@ barata. No es conservadurismo: es que el criterio pedido —equilibrio entre có
 usabilidad— **descarta por sí solo todo lo que agranda el modelo para ganar
 precisión que nadie ve en la pantalla**, y deja pasar lo que se nota al usar el
 sitio. La única que se nota al usarlo es la 6.
+
+## D-730 · El aislamiento del emulador por `projectId` cubre Firestore, y **no** cubre todo
+
+**B-219, B-366, B-1021, B-1030, B-1111, B-1112.** Esta entrada no revisa la
+decisión de B-219: la confirma y le pone el precio que faltaba escrito. Se escribe
+el 2026-09-17, el día en que el tercero de sus tres bordes costó cerrar dos ítems
+con la causa equivocada.
+
+### 1. Lo que se decidió en B-219, y sigue siendo correcto
+
+El emulador es **estado compartido de la máquina, no del checkout**: escucha en
+`127.0.0.1:8080` y ahí le pega cualquier worktree. Dos checkouts corriendo `npm
+test` a la vez le hablan a la misma base, y los tests de integración empiezan por
+`limpiarFirestore()`, que borra la base entera.
+
+Las dos candidatas eran **un puerto de emulador por worktree** o **un `projectId`
+por worktree sobre el mismo emulador**. Se eligió la segunda, y por buenas razones:
+el puerto por worktree obliga a hacer configurable el host del emulador en **código
+de producción** (`firestore-client.ts` y `firebase-client.ts` lo tienen escrito) y a
+coordinar cuatro puertos por checkout. Es cambiar el panel para arreglar los tests.
+
+El `projectId` sale de un sha256 de la ruta absoluta del working-tree
+(`scripts/project-id-emulador.mjs`): estable entre corridas del mismo checkout —el
+emulador persiste con `--export-on-exit`— y distinto entre checkouts sin que nadie
+configure nada.
+
+**Nada de eso cambia.** Lo que sigue es el costo de haberlo elegido.
+
+### 2. El costo: el aislamiento no es una propiedad del emulador, es una propiedad de tres endpoints
+
+`projectId` aísla donde la **API REST del emulador está parametrizada por
+proyecto**. Eso es cierto de tres operaciones de Firestore —el borrado, la carga de
+reglas y los documentos— y **no es una propiedad general del emulador**. Donde el
+endpoint no lleva proyecto, no hay aislamiento, y el `projectId` no ayuda ni avisa.
+
+Hoy se conocen tres bordes. Los tres estaban documentados por separado o por
+ninguno, y ninguno decía que eran el mismo:
+
+| Borde | Qué pasa | Ítem |
+|---|---|---|
+| **Storage: las reglas son globales** | `/internal/setRules` no lleva proyecto: la última carga gana para todos. Dos worktrees con `storage.rules` distinto se pisan | **B-366** |
+| **Auth: es de un solo proyecto** | El emulador de Auth conoce el `--project` de su arranque y nada más. El Admin SDK escribe el claim en el `projectId` del worktree y el cliente entra al del emulador | **B-1112** |
+| **El `projectId` se deriva dos veces** | `tests/emulador.ts` lo deriva por su cuenta con el literal `'agenda-literaria'` como fallback, en vez de importar el derivado. Fuera de vitest se cae al proyecto compartido | **B-1111** |
+
+### 3. Por qué esto merece una decisión y no tres ítems sueltos
+
+Porque **los tres fallan de la misma forma, y es la peor**: no dan un error, dan un
+resultado. Un rojo que no reproduce en el árbol principal, o —peor— un verde que
+prueba otra cosa.
+
+El caso de Auth es el ejemplo terminado. El síntoma es **asimétrico**: un uid
+preexistente en el emulador pasa y uno nuevo no, con el mismo código. Eso costó
+**dos ítems cerrados con la causa equivocada el mismo día**: B-1021 («cuatro tests
+fallan desde cualquier worktree y pasan en el principal») y B-1030 («`storage.rules`
+no ve el claim que llega por el registro»). Los dos se cerraron atribuyéndolo a
+«artefacto de worktree», que es el nombre del síntoma y no de la causa. La causa
+—Auth de un solo proyecto— la encontró quien tropezó con ella, no quien leyó el
+diseño, porque **el diseño no la mencionaba**.
+
+### 4. La regla que queda
+
+**Antes de confiar en que dos checkouts no se pisan, preguntar si el endpoint que
+usa ese test lleva `projectId`.** Si no lo lleva, el aislamiento de B-219 no aplica
+ahí, por más que el `projectId` esté bien derivado.
+
+Y al agregar un emulador nuevo o un endpoint nuevo del emulador, la pregunta es
+parte de agregarlo: si no está parametrizado por proyecto, es un cuarto borde y va
+a esta tabla. El costo de no escribirlo ya se midió tres veces.
+
+### 5. Lo que no se hace
+
+**No se vuelve a puerto-por-worktree.** Los tres bordes juntos siguen siendo más
+baratos que hacer configurable el host del emulador en código de producción, que es
+lo que esa alternativa pide. La salida para el día que uno de estos bordes muerda
+en serio es acotada y por borde —un puerto de Storage por checkout para B-366, por
+ejemplo—, no un cambio de enfoque.
