@@ -20,6 +20,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import {
   CAMPOS_PUBLICOS_POR_DIRECTORIO,
   COLECCIONES_DE_DIRECTORIO,
@@ -250,10 +251,13 @@ describe('qué campos mira el trigger (D-20: la lista vive de los dos lados)', (
      * quedarse sin trigger — y el sitio no mostraría nunca lo que se publique ahí.
      *
      * MUTACIÓN PROBADA: sacar el `export { rebuildPorSuscripciones }` de
-     * `functions/index.js` deja este caso en rojo nombrando la colección.
+     * `functions/index.js` deja este caso en rojo nombrando la colección — y
+     * **comentarlo** también (B-916): `sinComentarios` barre el fuente antes de
+     * buscar la cadena, así que un `// export { … }` ya no queda verde por
+     * casualidad porque el comentario contiene el texto buscado.
      */
-    const index = readFileSync('functions/index.js', 'utf8');
-    const trigger = readFileSync('functions/directorios-trigger.js', 'utf8');
+    const index = sinComentarios(readFileSync('functions/index.js', 'utf8'));
+    const trigger = sinComentarios(readFileSync('functions/directorios-trigger.js', 'utf8'));
     for (const coleccion of COLECCIONES_DE_DIRECTORIO) {
       const nombre = `rebuildPor${coleccion[0]!.toUpperCase()}${coleccion.slice(1)}`;
       expect(index, `falta exportar ${nombre}`).toContain(`export { ${nombre} }`);

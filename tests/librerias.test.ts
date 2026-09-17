@@ -607,11 +607,12 @@ describe('la lectura del build no lee lo que no va a publicar — B-903', () => 
      * actividad por otro motivo. Nada falla.
      *
      * MUTACIÓN PROBADA: sacar el `export { rebuildPorLibrerias }` de
-     * `functions/index.js` deja este caso en rojo.
+     * `functions/index.js` deja este caso en rojo — y **comentarlo** también
+     * (B-916): `sinComentarios` barre el fuente antes de buscar la cadena.
      */
-    const index = readFileSync(raiz('functions/index.js'), 'utf8');
+    const index = sinComentarios(readFileSync(raiz('functions/index.js'), 'utf8'));
     expect(index).toContain("export { rebuildPorLibrerias } from './directorios-trigger.js';");
-    const trigger = readFileSync(raiz('functions/directorios-trigger.js'), 'utf8');
+    const trigger = sinComentarios(readFileSync(raiz('functions/directorios-trigger.js'), 'utf8'));
     expect(trigger).toContain("document: 'librerias/{id}'");
     expect(trigger).toContain('marcarRebuild(');
   });

@@ -22,6 +22,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import {
   ESTADOS_DE_FICHA_QUE_CADUCAN,
   ESTADO_RECHAZADO_DE_FICHA,
@@ -303,7 +304,11 @@ describe('el barrido corre sobre las tres guías y se deriva de una sola lista',
   });
 
   it('está exportada desde `index.js`: una Function que no se exporta no se despliega', () => {
-    expect(fuente('functions/index.js')).toContain('export { borrarFichasVencidas }');
+    // B-916: sin `sinComentarios`, comentar el `export` deja este caso en
+    // verde porque el comentario contiene la misma cadena.
+    expect(sinComentarios(fuente('functions/index.js'))).toContain(
+      'export { borrarFichasVencidas }',
+    );
   });
 
   it('una colección que falla no deja sin barrer a las otras', () => {
