@@ -239,52 +239,99 @@ sumó 28.577 LOC (+38 %) y el código testeable sumó 21.925 (+50 %).
 
 ### 1.2 Concentración
 
-Medido el **2026-09-09** sobre `410a924` con `node scripts/salud-del-codigo.mjs`.
+Medido el **2026-09-17** sobre `f80f935` con `node scripts/salud-del-codigo.mjs`.
 
-Los quince archivos más grandes son el **26,6 %** del código (antes: 30,9 %,
-40,6 % y 41,7 %). El más grande es el **2,9 %** (antes: 3,3 % y 5,6 %).
+Los quince archivos más grandes son el **22,3 %** del código (antes: 26,6 %,
+30,9 %, 40,6 % y 41,7 %). El más grande es el **3,1 %** (antes: 2,9 %, 3,3 % y
+5,6 %) — y es la primera vez que esa segunda cifra **sube**.
 
 | LOC | Archivo | Qué es |
 |---:|---|---|
-| 1.827 | `src/lib/detallePublico.ts` | el view-model de la página de detalle (D-140) |
-| 1.784 | `src/lib/ayuda.ts` | **texto** de la guía del panel |
-| 1.611 | `scripts/build-contra-emulador.mjs` | el gate de build (B-217) |
-| 1.284 | `src/pages/actividad/[slug].astro` | la plantilla del detalle |
-| 1.222 | `src/lib/novedades.ts` | **texto** del historial de cambios |
-| 1.160 | `src/components/admin/EstadisticasPanel.tsx` | el tablero del catálogo |
-| 1.117 | `src/lib/contenidoDelSitio.ts` | qué documentos lee el build |
-| 969 | `src/lib/historial.ts` | el historial de versiones, puro |
-| 968 | `src/lib/schema.ts` | la validación del formulario (zod) |
-| 959 | `src/lib/analytics-eventos.ts` | vocabulario de eventos + sanitizado |
-| 910 | `src/components/publico/Buscador.tsx` | la island de filtros |
-| 863 | `src/lib/listadoPublico.ts` | el listado, puro |
-| 797 | `src/components/admin/AdminApp.tsx` | router del panel |
-| 787 | `functions/calendario.js` | el evento y el diff, puro |
-| 770 | `src/types/actividad.ts` | el modelo, en tipos |
+| 2.977 | `scripts/build-contra-emulador.mjs` | el gate de build (B-217) |
+| 2.240 | `src/lib/ayuda.ts` | **texto** de la guía del panel |
+| 1.972 | `src/lib/detallePublico.ts` | el view-model de la página de detalle (D-140) |
+| 1.845 | `src/lib/contenidoDelSitio.ts` | qué documentos lee el build |
+| 1.428 | `src/lib/novedades.ts` | **texto** del historial de cambios |
+| 1.392 | `src/pages/actividad/[slug].astro` | la plantilla del detalle |
+| 1.260 | `functions/retencion.js` | el borrado por retención de propuestas (DEC-13) |
+| 1.220 | `src/components/admin/EstadisticasPanel.tsx` | el tablero del catálogo |
+| 1.073 | `src/lib/historial.ts` | el historial de versiones, puro |
+| 1.043 | `src/components/admin/AdminApp.tsx` | router del panel |
+| 1.014 | `src/lib/analytics-eventos.ts` | vocabulario de eventos + sanitizado |
+| 1.002 | `src/lib/schema.ts` | la validación del formulario (zod) |
+| 966 | `src/lib/listadoPublico.ts` | el listado, puro |
+| 963 | `src/components/publico/Buscador.tsx` | la island de filtros |
+| 961 | `src/lib/lugarPublico.ts` | la proyección pública de un lugar (B-833) |
 
-**Doce de los quince ya estaban en la lista anterior, y a los tres que salieron
-no los sacó ningún saneamiento:** `calendarioPanel.ts` (742) y `hubsPublicos.ts`
-(723) están igual que hace seis días y `CalendarioActividades.tsx` perdió doce
-líneas (740 → 728). Quedaron abajo del corte porque **el decimoquinto puesto
-subió de 549 a 770 LOC**. La cima cambió de manos —`detallePublico.ts` pasó a
-`ayuda.ts` por 43 líneas— y **los dos siguen siendo los dos archivos que este
-documento dice que no hay que partir**: uno es texto de usuario, el otro es la
-frontera de privacidad que D-140 puso a propósito entre Firestore y la plantilla.
+**Trece de los quince ya estaban, y la lectura de siempre —la concentración cae
+porque nacen medianos, no porque se parta nada— sigue siendo la correcta para
+catorce de ellos.** El decimoquinto puesto volvió a subir, de 770 a 961 LOC, y
+eso es lo que sacó de la lista a `functions/calendario.js` (882, hoy 18º) y a
+`src/types/actividad.ts` (913, 16º): los dos **crecieron** y quedaron afuera
+igual. Los dos que entraron son `functions/retencion.js` —la retención de
+propuestas de DEC-13, que nació con datos personales de terceros y por eso
+lleva su propio reloj— y `src/lib/lugarPublico.ts`, la tercera proyección
+pública del directorio.
 
-**Los tres que entraron dicen algo cada uno.** `historial.ts` y `schema.ts` son
-lógica pura del modelo, que es donde este repo prefiere que esté el volumen.
-`src/types/actividad.ts` es el caso raro: entra a la lista de los más grandes
-siendo además el módulo **más importado** del repo (56 consumidores, §1.4) y con
-fan-out **0**. Un archivo grande con fan-in altísimo sería el peor olor posible si
-tuviera comportamiento; son tipos, así que no lo es.
+**Lo que sí hay que mirar es la cima, porque cambió de naturaleza.**
+`scripts/build-contra-emulador.mjs` pasó de 1.611 a **2.977 LOC** —casi el
+doble— y con eso se despegó: es el 3,1 % del código él solo, contra el 2,2 %
+del segundo. Es la primera vez que el archivo más grande del repo **no es
+código del producto** sino el gate que lo verifica. No entra en la fila de «qué
+no hay que tocar» de `ayuda.ts` —eso es copy— ni en la de `detallePublico.ts`
+—eso es una frontera de privacidad deliberada—: es un script de verificación
+que creció 1.366 líneas en ocho días, y conviene decidir en la próxima pasada
+si eso es un barrido que se ganó el tamaño o un archivo que hay que partir.
+Queda anotado como **B-1072**, sin diagnóstico: medirlo no alcanza, igual que
+no alcanzaba con el formulario del §1.3.
 
-**El que ya no hay que mirar es `functions/index.js`.** Esta sección lo señalaba
-como «el punto de concentración del Problema 3» con 542 LOC: hoy son **48**
-(`wc -l functions/index.js`), porque B-77 lo partió en piezas puras, de
-infraestructura y de trigger. El Problema 3 quedó cerrado por esta medición y se
-anotó allá.
+> **La medición anterior — 2026-09-09, `410a924`.** Los quince eran el **26,6 %**
+> del código y el mayor el **2,9 %**:
+>
+> | LOC | Archivo |
+> |---:|---|
+> | 1.827 | `src/lib/detallePublico.ts` |
+> | 1.784 | `src/lib/ayuda.ts` |
+> | 1.611 | `scripts/build-contra-emulador.mjs` |
+> | 1.284 | `src/pages/actividad/[slug].astro` |
+> | 1.222 | `src/lib/novedades.ts` |
+> | 1.160 | `src/components/admin/EstadisticasPanel.tsx` |
+> | 1.117 | `src/lib/contenidoDelSitio.ts` |
+> | 969 | `src/lib/historial.ts` |
+> | 968 | `src/lib/schema.ts` |
+> | 959 | `src/lib/analytics-eventos.ts` |
+> | 910 | `src/components/publico/Buscador.tsx` |
+> | 863 | `src/lib/listadoPublico.ts` |
+> | 797 | `src/components/admin/AdminApp.tsx` |
+> | 787 | `functions/calendario.js` |
+> | 770 | `src/types/actividad.ts` |
+>
+> Su lectura: **doce de los quince ya estaban en la lista anterior, y a los tres
+> que salieron no los sacó ningún saneamiento** — `calendarioPanel.ts` (742) y
+> `hubsPublicos.ts` (723) estaban igual que seis días antes y
+> `CalendarioActividades.tsx` había perdido doce líneas (740 → 728). Quedaron
+> abajo del corte porque **el decimoquinto puesto subió de 549 a 770 LOC**. La
+> cima cambió de manos —`detallePublico.ts` pasó a `ayuda.ts` por 43 líneas— y
+> **los dos seguían siendo los dos archivos que este documento dice que no hay
+> que partir**: uno es texto de usuario, el otro es la frontera de privacidad que
+> D-140 puso a propósito entre Firestore y la plantilla.
+>
+> De los tres que entraban, `historial.ts` y `schema.ts` son lógica pura del
+> modelo, que es donde este repo prefiere que esté el volumen.
+> `src/types/actividad.ts` era el caso raro: entraba a la lista de los más
+> grandes siendo además el módulo **más importado** del repo (56 consumidores,
+> §1.4) y con fan-out **0**. Un archivo grande con fan-in altísimo sería el peor
+> olor posible si tuviera comportamiento; son tipos, así que no lo es. (Al
+> 2026-09-17 es el más importado por lejos —80— y salió de esta lista sin
+> encoger.)
+>
+> **Y el que ya no hay que mirar es `functions/index.js`.** Esta sección lo
+> señalaba como «el punto de concentración del Problema 3» con 542 LOC: hoy son
+> **48** (`wc -l functions/index.js`), porque B-77 lo partió en piezas puras, de
+> infraestructura y de trigger. El Problema 3 quedó cerrado por aquella medición
+> y se anotó allá.
 
-> **La medición anterior — 2026-09-03, `4f51092`.** Los quince eran el **30,9 %**
+> **Y la de antes — 2026-09-03, `4f51092`.** Los quince eran el **30,9 %**
 > del código y el mayor el **3,3 %**:
 >
 > | LOC | Archivo |
@@ -334,11 +381,31 @@ Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 >   sobre el mismo corpus del §1.1 (`git ls-files` filtrado a `.ts`, `.tsx`,
 >   `.js`, `.mjs` y `.astro`, sin `tests/`) — hoy **156** archivos.
 
-| | Antes del saneamiento | `13b9baa` | 2026-08-27 | 2026-09-02 | 2026-09-03 | Hoy (2026-09-09) |
-|---|---:|---:|---:|---:|---:|---:|
-| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | 376 | 413 | **727** |
-| Su fan-out | 12 | 19 | 25 | 26 | 24 | **27** |
-| Su puesto en la lista | 1º | 15º | 14º | 28º | 28º | **18º** |
+| | Antes del saneamiento | `13b9baa` | 2026-08-27 | 2026-09-02 | 2026-09-03 | 2026-09-09 | Hoy (2026-09-17, `f80f935`) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | 376 | 413 | 727 | **828** |
+| — de eso, significativas | 780 | — | — | — | — | 372 | **397** |
+| Su fan-out | 12 | 19 | 25 | 26 | 24 | 27 | **32** |
+| Su puesto en la lista | 1º | 15º | 14º | 28º | 28º | 18º | **20º** |
+
+**La columna del 2026-09-17 es la primera prueba del umbral que B-856
+recalibró, y lo pasa.** El archivo sumó 101 `wc -l` y solo 25 significativas: de
+las cien líneas nuevas, tres cuartas partes son prosa. Con el umbral viejo
+—550 `wc -l`— estaría 278 líneas pasado y habría que abrir un ítem; con el
+umbral que la propia sección dejó escrito —550 **significativas**— está 153 por
+debajo y sigue sin haber nada que partir. Es exactamente la distinción que B-856
+argumentó, midiéndose sobre un árbol que en ocho días creció un 50 %.
+
+**Lo que sí se movió es el fan-out: 27 → 32.** Es el número de esta tabla que
+viene subiendo sin pausa desde el saneamiento (12 → 19 → 25 → 26 → 24 → 27 →
+32), y el único que no tiene umbral escrito. La fila de LOC tiene su alarma
+calibrada; ésta no, y es la que mide de cuántas piezas depende el formulario.
+Queda anotado como **B-1073**.
+
+La fila «significativas» tiene huecos a propósito: las mediciones del 2026-08-27
+al 2026-09-03 se hicieron con el criterio viejo —`wc -l` y nada más— y estimarlas
+hacia atrás sería exactamente lo que el encabezado de este documento prohíbe. La
+columna «antes del saneamiento» sí la tiene porque B-856 la contó.
 
 > ⚖️ **B-856 — se miró el archivo, y el que estaba mal era el umbral. La unidad,
 > no el número.** Medido el **2026-09-11** sobre `8482a13`, con
