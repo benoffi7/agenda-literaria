@@ -433,7 +433,7 @@ export function FormularioPublico({ incluyeOfrecido }: Props) {
             className={claseInput}
             value={form.organizador.instagram}
             onChange={(e) => set('organizador', { ...form.organizador, instagram: e.target.value })}
-            placeholder="@casabrandon"
+            placeholder="@casabrandon o el link del perfil"
           />
         </Campo>
       </div>

@@ -20,6 +20,8 @@ import {
 import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
 import { toPublic } from '@/lib/toPublic';
+import { formADocumento } from '@/lib/actividades';
+import { formularioLleno } from './fixtures/formulario';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
 import { ts } from './fixtures/tiempo';
@@ -158,6 +160,52 @@ describe('handleInstagram', () => {
     expect(handleInstagram('casa/brandon')).toBeNull();
     expect(handleInstagram('a'.repeat(31))).toBeNull();
     expect(handleInstagram('')).toBeNull();
+  });
+
+  /**
+   * **B-928 — lo que Instagram pega de verdad, que era el caso que fallaba.**
+   *
+   * El botón «Compartir» de Instagram pega
+   * `https://www.instagram.com/casabrandon/?igsh=MWx…`. Sin tolerar el query
+   * string el handle salía `null`, el link no se armaba, y en la ficha quedaba
+   * una URL escrita que no lleva a ninguna parte — peor que no haber puesto nada.
+   *
+   * Lo pidió el dueño con el criterio que vale más allá del campo: «no podemos
+   * obligarlos a hacerlo como queremos, sino ajustarnos nosotros».
+   *
+   * MUTACIÓN PROBADA: sacar el `.replace(/[?#].*$/, '')` deja estos casos en rojo.
+   */
+  it.each([
+    ['https://www.instagram.com/casabrandon/?igsh=MWxyZg%3D%3D', 'casabrandon'],
+    ['https://instagram.com/casa.brandon_1/?hl=es', 'casa.brandon_1'],
+    ['https://www.instagram.com/casabrandon#seccion', 'casabrandon'],
+  ])('el link que pega «Compartir»: %s → %s', (crudo, esperado) => {
+    expect(handleInstagram(crudo)).toBe(esperado);
+  });
+
+  /**
+   * **Y el `https://` es opcional** — B-928. El docblock lo prometía desde
+   * siempre y el patrón exigía el esquema, así que `instagram.com/casabrandon`
+   * —copiar de la barra del navegador, que es lo que hace cualquiera— no andaba.
+   */
+  it.each([
+    ['instagram.com/casabrandon', 'casabrandon'],
+    ['www.instagram.com/casabrandon/', 'casabrandon'],
+  ])('sin el esquema: %s → %s', (crudo, esperado) => {
+    expect(handleInstagram(crudo)).toBe(esperado);
+  });
+
+  /**
+   * El alfabeto sigue siendo la guarda, y estos dos lo prueban en las dos
+   * direcciones. Un **post** no es un perfil: `instagram.com/p/ABC/` queda en
+   * `p/ABC`, que tiene una barra. Y un dominio parecido no entra por el `^`: sin
+   * el ancla, `miinstagram.com/otra` daría el handle de otra cuenta.
+   */
+  it('un post no es un perfil, y un dominio parecido no entra', () => {
+    expect(handleInstagram('instagram.com/p/ABC/')).toBeNull();
+    expect(handleInstagram('https://www.instagram.com/p/ABC/')).toBeNull();
+    expect(handleInstagram('miinstagram.com/otra')).toBeNull();
+    expect(handleInstagram('instagram.com.ar/casabrandon')).toBeNull();
   });
 });
 
@@ -2474,5 +2522,57 @@ describe('el renglón «Dónde», con la ciudad y sus enlaces (B-951)', () => {
     // la fila «Dónde» en blanco en vez de decir que todavía no se sabe.
     const piezas = donde({ modalidades: ['virtual'] }, conHubs);
     expect(piezas.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * **B-928 — el handle se guarda normalizado, no como se tipeó.**
+ *
+ * Las tres guías normalizaban al guardar desde que nacieron; la actividad y la
+ * propuesta no, y era **el peor de los dos casos** porque `detallePublico`
+ * publica ese texto como el **nombre visible**: en la ficha pública se leía
+ * `https://www.instagram.com/casabrandon/` donde tenía que decir `@casabrandon`.
+ *
+ * MUTACIÓN PROBADA: volver a `organizador: f.organizador` en `formADocumento`
+ * deja estos casos en rojo con la URL cruda adentro del documento.
+ */
+describe('B-928 · el Instagram se normaliza al guardar', () => {
+  const conInstagram = (crudo: string) => {
+    const base = formularioLleno();
+    return formADocumento(
+      {
+        ...base,
+        organizador: { ...base.organizador, instagram: crudo },
+        tallerista: { nombre: 'Ana', bio: '', instagram: crudo },
+      },
+      'uid-admin',
+      false,
+    ) as unknown as { organizador: { instagram: string }; tallerista: { instagram: string } | null };
+  };
+
+  it.each([
+    ['https://www.instagram.com/casabrandon/', 'casabrandon'],
+    ['https://www.instagram.com/casabrandon/?igsh=MWxyZg%3D%3D', 'casabrandon'],
+    ['@casabrandon', 'casabrandon'],
+    ['instagram.com/casabrandon', 'casabrandon'],
+  ])('el organizador: %s se guarda como %s', (crudo, esperado) => {
+    expect(conInstagram(crudo).organizador.instagram).toBe(esperado);
+  });
+
+  /** El tallerista tiene el mismo campo y se olvidaba igual de fácil. */
+  it('y el tallerista también', () => {
+    expect(conInstagram('https://www.instagram.com/casabrandon/').tallerista?.instagram).toBe(
+      'casabrandon',
+    );
+  });
+
+  /**
+   * **Lo que no se reconoce se guarda tal cual, no se borra.** El `superRefine`
+   * del schema ya lo rechaza al publicar; perder lo que alguien escribió para
+   * castigar un formato es peor que guardarlo mientras es borrador — y encima
+   * deja a quien edita sin el dato que tiene que corregir.
+   */
+  it('lo que no se reconoce se conserva, no se pierde', () => {
+    expect(conInstagram('casa brandon!!').organizador.instagram).toBe('casa brandon!!');
   });
 });

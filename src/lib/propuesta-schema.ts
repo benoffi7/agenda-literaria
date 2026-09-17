@@ -17,6 +17,7 @@
  * es validar solo en el cliente».
  */
 import { z } from 'zod';
+import { handleInstagram } from '@/lib/enlaceSeguro';
 import {
   ARANCELES_PROPUESTA,
   MAX_FECHAS_PROPUESTA,
@@ -242,7 +243,16 @@ export const formAPropuesta = (
       : null,
     organizador: {
       nombre: f.organizador.nombre.trim(),
-      instagram: oNull(f.organizador.instagram),
+      /*
+       * B-928 — el handle, no lo tipeado. Una propuesta llega de **afuera**, que
+       * es donde más probable es que peguen la URL con el `?igsh=…` del botón
+       * «Compartir»: acá no hay nadie a quien explicarle el formato.
+       *
+       * Si no se reconoce se guarda lo que se escribió, por lo mismo que en
+       * `formADocumento`: esto entra a la bandeja para que un admin lo mire, y
+       * borrar el dato le saca justamente lo que tiene que mirar.
+       */
+      instagram: oNull(handleInstagram(f.organizador.instagram) ?? f.organizador.instagram),
     },
     arancel: { tipo: f.arancel.tipo, notas: oNull(f.arancel.notas) },
     inscripcion: {

@@ -34,6 +34,7 @@ import {
   onlinePrincipal,
   sedePrincipal,
 } from '@/lib/modalidades';
+import { handleInstagram } from '@/lib/enlaceSeguro';
 import { slugify } from '@/lib/slugify';
 // B-919 — la derivación de `ciudades` vive en un `.mjs` porque el backfill
 // (`scripts/sembrar-ciudades.mjs`) corre en node y tiene que derivar EXACTAMENTE
@@ -165,7 +166,31 @@ export const formADocumento = (
   const ciudades = ciudadesDe(modalidades);
 
   // El tallerista solo tiene sentido si tiene nombre.
-  const tallerista = f.tallerista?.nombre?.trim() ? f.tallerista : null;
+  /**
+   * **El Instagram se normaliza al guardar** — B-928.
+   *
+   * Lo que llega puede ser `@casabrandon`, `casabrandon` o la URL completa con el
+   * `?igsh=…` que pega el botón «Compartir». Lo que se guarda es siempre el
+   * handle, que es lo mismo que hacen las tres guías desde que nacieron: acá
+   * faltaba, y se notaba **en la ficha pública**, porque `detallePublico` publica
+   * este texto como el **nombre visible** — se leía
+   * `https://www.instagram.com/casabrandon/` donde tenía que decir `@casabrandon`.
+   *
+   * Salió de que hay una segunda persona cargando, con la forma real de hacerlo.
+   * El criterio del dueño vale más allá del campo: «no podemos obligarlos a
+   * hacerlo como queremos, sino ajustarnos nosotros».
+   *
+   * **Si no se reconoce, se guarda lo tipeado.** No se borra: el `superRefine`
+   * del schema ya lo rechaza al publicar, y perder lo que alguien escribió para
+   * castigar un formato es peor que guardarlo tal cual mientras es borrador.
+   */
+  const conHandle = (crudo: string): string => handleInstagram(crudo) ?? crudo.trim();
+
+  const organizador = { ...f.organizador, instagram: conHandle(f.organizador.instagram) };
+  const talleristaCrudo = f.tallerista?.nombre?.trim() ? f.tallerista : null;
+  const tallerista = talleristaCrudo
+    ? { ...talleristaCrudo, instagram: conHandle(talleristaCrudo.instagram) }
+    : null;
 
   /**
    * DEC-1 — el libro solo tiene sentido si tiene título: es lo que lo identifica,
@@ -233,7 +258,7 @@ export const formADocumento = (
       ...(i.ancho === undefined ? {} : { ancho: i.ancho }),
       ...(i.alto === undefined ? {} : { alto: i.alto }),
     })),
-    organizador: f.organizador,
+    organizador,
     tallerista,
     libro,
 
@@ -322,7 +347,7 @@ export const formADocumento = (
       // tendría un `searchText` distinto según por dónde se escribió.
       modalidades,
       sede,
-      organizador: f.organizador,
+      organizador,
       tallerista,
       // DEC-1 — el libro entra a la búsqueda: encontrar la presentación
       // buscando el título de la obra es la mitad de por qué el campo existe.

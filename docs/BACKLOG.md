@@ -1233,7 +1233,40 @@ queda **editable hasta publicar**, que es cuando se congela (trampa 10), y el
 formulario ya avisa que hay que revisarlo antes. Es `slug: slugify(p.titulo)` en
 la conversión, y borrar el párrafo del docblock que dice lo contrario.
 
-### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual · P1 — pedido del dueño (2026-09-15)
+### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual — ✅ hecho (2026-09-17) · P1
+
+> **Los tres arreglos, y uno más que apareció haciéndolos.**
+>
+> 1. **`handleInstagram` tolera lo que Instagram pega de verdad**: se descarta el
+>    query string y el fragmento. El botón «Compartir» pega
+>    `…/casabrandon/?igsh=MWx…`, o sea que el caso **más común de todos** era el
+>    que fallaba: el handle salía `null`, el link no se armaba, y quedaba una URL
+>    escrita que no lleva a ninguna parte.
+> 2. **Y el `https://` pasó a ser opcional.** El docblock prometía desde siempre
+>    que `instagram.com/casabrandon` andaba, y no andaba: el patrón exigía el
+>    esquema. Copiar de la barra del navegador es lo que hace cualquiera.
+> 3. **Normalizan al guardar la actividad y la propuesta**, que eran los dos que
+>    faltaban. Lo que no se reconoce **se conserva**, no se borra: el
+>    `superRefine` ya lo rechaza al publicar, y perder lo que alguien escribió le
+>    saca a quien edita justo el dato que tiene que corregir.
+> 4. **El mensaje y los once placeholders.** Decían «sin la arroba» y «Poné el
+>    usuario de Instagram, sin el @» — o sea, le pedían a quien carga lo contrario
+>    de lo que el validador acepta. Ahora dicen «@casabrandon o el link del
+>    perfil».
+>
+> **Lo que apareció haciéndolo: había dos normalizadores.**
+> `scripts/handle-instagram.mjs` era una **copia**, atada a la del sitio por un
+> test que corría las dos contra la misma batería. La red funcionó —se puso en
+> rojo apenas se tocó una sola de las dos— y **ahí se vio su límite**: un test de
+> equivalencia avisa *después*, y el arreglo hay que escribirlo dos veces igual.
+> La implementación pasó a `src/lib/handle-instagram.mjs`, el cuarto módulo con el
+> patrón de fachada (`slugify`, `geografia`, `etiqueta-presentable`), y el archivo
+> del script quedó reexportando. El test ahora verifica **que siga sin haber
+> copia**, que es la afirmación que tiene contenido: comparar la función consigo
+> misma no prueba nada.
+>
+> **No se reescribió nada ya guardado**, como el ítem pedía: lo que está cargado
+> con URL se arregla al reeditarlo.
 
 **Salió de que hay una segunda persona cargando**, y con ella la forma real de
 hacerlo: copiar la URL del perfil y pegarla es más fácil que acordarse del handle.

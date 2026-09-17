@@ -368,7 +368,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
           <input
             id="lib-instagram"
             className={claseInput}
-            placeholder="sin la arroba"
+            placeholder="@casabrandon o el link del perfil"
             value={form.instagram}
             onChange={(e) => set('instagram', e.target.value)}
           />

@@ -1,34 +1,16 @@
 /**
- * **La copia del normalizador de handles de Instagram, para los scripts.**
+ * **Reexportación** — B-928.
  *
- * La normalización de verdad es `handleInstagram` (`src/lib/detallePublico.ts`):
- * resuelve `@casabrandon`, `casabrandon` y `instagram.com/casabrandon`, y valida
- * contra el alfabeto real de Instagram — lo que no lo cumple no se convierte en
- * link, porque **un handle con una barra adentro armaría una URL a otra cuenta**.
+ * Acá vivía una **copia** del normalizador de handles, atada a la del sitio por
+ * un test que corría las dos contra la misma batería y exigía que contestaran
+ * igual. Desde B-928 la implementación única es `src/lib/handle-instagram.mjs`
+ * —un `.mjs` que un script de Node plano sí puede importar—, así que la copia se
+ * fue y esto quedó como fachada para no cambiarle la ruta a nadie.
  *
- * ── Por qué hay una copia ─────────────────────────────────────────────────
- * Un `.mjs` que corre con `node` a secas **no resuelve los alias `@/`** de
- * TypeScript, y arrastrar un loader para un script de una página no vale. Es la
- * misma restricción que **D-20** resolvió para las Functions, y se resuelve
- * igual: hay una copia y un test la ata.
- *
- * ── Por qué vive acá y no adentro del script ──────────────────────────────
- * Porque importar el script lo **ejecuta**: se conecta a Firestore y termina con
- * `process.exit(0)`, así que un test que lo importara moriría ahí. Es el mismo
- * corte que `huella-de-auditoria.mjs` (B-794): la mitad pura aparte, para que
- * tenga test.
- *
- * `tests/instagrams-de-la-base.test.ts` corre esta función y la del sitio contra
- * la misma batería de entradas y exige que contesten **igual**. Cualquier cambio
- * va en los dos lados.
+ * **El motivo es exactamente lo que pasó**: aquel test avisa *después* de que
+ * alguien arregló una sola de las dos, y eso ocurrió — B-928 agregó al módulo la
+ * tolerancia al `?igsh=…` que pega el botón «Compartir» de Instagram, y el script
+ * se quedó atrás. La red funcionó; el trabajo duplicado, no. Una copia con red
+ * sigue siendo una copia.
  */
-
-/** `@casabrandon` / `casabrandon` / `instagram.com/casabrandon` → el handle solo. */
-export const handleInstagram = (crudo) => {
-  const limpio = (crudo ?? '')
-    .trim()
-    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
-    .replace(/^@/, '')
-    .replace(/\/+$/, '');
-  return /^[A-Za-z0-9._]{1,30}$/.test(limpio) ? limpio : null;
-};
+export { handleInstagram } from '../src/lib/handle-instagram.mjs';

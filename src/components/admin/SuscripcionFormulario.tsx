@@ -337,7 +337,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
             <input
               id="sus-oferente-ig"
               className={claseInput}
-              placeholder="sin la arroba"
+              placeholder="@casabrandon o el link del perfil"
               value={form.ofrecidaPor.instagram}
               onChange={(e) => setOfrecidaPor('instagram', e.target.value)}
             />
@@ -627,7 +627,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
           <input
             id="sus-instagram"
             className={claseInput}
-            placeholder="sin la arroba"
+            placeholder="@casabrandon o el link del perfil"
             value={form.instagram}
             onChange={(e) => set('instagram', e.target.value)}
           />

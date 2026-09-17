@@ -212,7 +212,7 @@ export function SumarSuscripcion({
             <input
               id="sus-pub-oferente-ig"
               className={claseInput}
-              placeholder="sin la arroba"
+              placeholder="@casabrandon o el link del perfil"
               value={form.ofrecidaPor.instagram}
               onChange={(e) => setOfrecidaPor('instagram', e.target.value)}
             />
@@ -446,7 +446,7 @@ export function SumarSuscripcion({
             <input
               id="sus-pub-instagram"
               className={claseInput}
-              placeholder="sin la arroba"
+              placeholder="@casabrandon o el link del perfil"
               value={form.instagram}
               onChange={(e) => set('instagram', e.target.value)}
             />

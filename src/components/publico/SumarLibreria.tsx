@@ -238,7 +238,7 @@ export function SumarLibreria({
             <input
               id="lib-pub-instagram"
               className={claseInput}
-              placeholder="sin la arroba"
+              placeholder="@casabrandon o el link del perfil"
               value={form.instagram}
               onChange={(e) => set('instagram', e.target.value)}
             />

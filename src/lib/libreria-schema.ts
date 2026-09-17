@@ -215,7 +215,7 @@ export const libreriaFormSchema = base.superRefine((v, ctx) => {
    * `urlSegura`, el `email` de zod), no regex propios.
    */
   if (v.instagram && !handleInstagram(v.instagram)) {
-    falta(['instagram'], 'Poné el usuario de Instagram, sin el @');
+    falta(['instagram'], 'Poné el usuario de Instagram o pegá el link de su perfil');
   }
   if (v.whatsapp) {
     const digitos = soloDigitos(v.whatsapp);

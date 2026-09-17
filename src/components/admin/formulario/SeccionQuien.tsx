@@ -35,7 +35,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             spellCheck={false}
             value={form.organizador.instagram}
             onChange={(e) => set('organizador', { ...form.organizador, instagram: e.target.value })}
-            placeholder="@casabrandon"
+            placeholder="@casabrandon o el link del perfil"
           />
         </Campo>
         <Campo label="Web del organizador" htmlFor="org-web" className="sm:col-span-full">

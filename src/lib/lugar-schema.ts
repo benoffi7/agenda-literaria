@@ -368,7 +368,7 @@ export const lugarFormSchema = base.superRefine((v, ctx) => {
    * es **no** mostrarlo.
    */
   if (v.instagram && !handleInstagram(v.instagram)) {
-    falta(['instagram'], 'Poné el usuario de Instagram, sin el @');
+    falta(['instagram'], 'Poné el usuario de Instagram o pegá el link de su perfil');
   }
   if (v.whatsapp) {
     const digitos = soloDigitos(v.whatsapp);

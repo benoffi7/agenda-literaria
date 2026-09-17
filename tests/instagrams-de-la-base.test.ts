@@ -79,21 +79,44 @@ const ENTRADAS = [
   'unclubdelectura@example.com',
 ];
 
-describe('el normalizador del script contesta igual que el del sitio — D-20', () => {
-  it('para todas las formas en que llega un handle', () => {
+/**
+ * **Ya no hay dos normalizadores** — B-928.
+ *
+ * Hasta acá `scripts/handle-instagram.mjs` era una **copia**, y estos casos
+ * corrían las dos contra la misma batería exigiendo que contestaran igual. La red
+ * funcionó: se puso en rojo apenas B-928 agregó al módulo la tolerancia al
+ * `?igsh=…` que pega el botón «Compartir» y el script se quedó atrás.
+ *
+ * **Y eso mismo mostró su límite**: un test de equivalencia avisa *después* de
+ * que alguien arregló una sola de las dos, y el arreglo hay que escribirlo dos
+ * veces igual. La implementación pasó a `src/lib/handle-instagram.mjs` —un `.mjs`
+ * que un script de Node plano sí puede importar, como `slugify` y `geografia`— y
+ * el archivo del script quedó como fachada.
+ *
+ * Lo que se verifica ahora es **que siga sin haber copia**, que es la afirmación
+ * que hoy tiene contenido. Comparar la función consigo misma no prueba nada.
+ */
+describe('el normalizador es uno solo — B-928', () => {
+  it('el archivo del script solo reexporta: no tiene implementación propia', () => {
+    const fachada = readFileSync('scripts/handle-instagram.mjs', 'utf8');
+    expect(fachada).toContain("export { handleInstagram } from '../src/lib/handle-instagram.mjs'");
     /*
-     * MUTACIÓN PROBADA: sacarle el `.replace(/^@/, '')` a la copia del script deja
-     * este caso en rojo nombrando la entrada; aflojarle el alfabeto para que
-     * acepte una barra también.
+     * MUTACIÓN PROBADA: volver a pegar el cuerpo en el script deja este caso en
+     * rojo. Las tres señales son las partes de la regla que una copia repetiría.
      */
+    for (const señal of ['.replace(', '.trim()', 'A-Za-z0-9._']) {
+      expect(fachada, `el script volvió a tener implementación propia: ${señal}`).not.toContain(
+        señal,
+      );
+    }
+  });
+
+  it('y lo que importa el script es exactamente lo que usa el sitio', () => {
     const distintas = ENTRADAS.filter(
       (entrada) => delScript(entrada) !== delSitio(entrada),
     ).map((entrada) => `«${entrada}» → script: ${delScript(entrada)} / sitio: ${delSitio(entrada)}`);
 
-    expect(
-      distintas,
-      'la copia del script y la del sitio armarían URLs distintas para el mismo dato',
-    ).toEqual([]);
+    expect(distintas, 'la fachada dejó de apuntar al módulo del sitio').toEqual([]);
   });
 
   it('y las dos rechazan lo que armaría una URL a otra cuenta', () => {

@@ -37,17 +37,9 @@ export const urlSegura = (crudo: string | null | undefined): string | null => {
 };
 
 /**
- * `@casabrandon` / `casabrandon` / `instagram.com/casabrandon` → el handle solo.
- *
- * Se valida contra el alfabeto real de Instagram: lo que no lo cumple no se
- * convierte en link, se muestra como texto. Un handle con una barra adentro
- * armaría una URL a otra cuenta.
+ * §4.2 · B-928 — **la implementación vive en `handle-instagram.mjs`**, por lo
+ * mismo que `slugify` y `geografia`: los scripts corren en Node plano. Se
+ * re-exporta acá para que ningún import haya tenido que cambiar de ruta, y el
+ * porqué de cada regla está en el docblock de allá.
  */
-export const handleInstagram = (crudo: string | null | undefined): string | null => {
-  const limpio = (crudo ?? '')
-    .trim()
-    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
-    .replace(/^@/, '')
-    .replace(/\/+$/, '');
-  return /^[A-Za-z0-9._]{1,30}$/.test(limpio) ? limpio : null;
-};
+export { handleInstagram } from '@/lib/handle-instagram.mjs';

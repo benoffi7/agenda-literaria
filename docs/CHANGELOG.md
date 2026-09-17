@@ -2,6 +2,23 @@
 
 ## Sin publicar
 
+- **Pegar el link de Instagram ahora funciona** — **B-928**, pedido del dueño. El
+  botón «Compartir» de Instagram pega `…/casabrandon/?igsh=MWx…` y ese era
+  justamente el caso que fallaba: el handle salía `null`, el link no se armaba y
+  en la ficha quedaba una URL que no lleva a ninguna parte. Ahora se descarta el
+  query string, el `https://` es opcional, y la actividad y la propuesta
+  normalizan al guardar como ya hacían las tres guías — en la ficha pública se
+  leía la URL entera donde tenía que decir `@casabrandon`.
+
+  Los mensajes decían «sin la arroba», o sea lo contrario de lo que el validador
+  acepta; ahora dicen «@casabrandon o el link del perfil».
+
+  Y apareció que había **dos** normalizadores: `scripts/handle-instagram.mjs` era
+  una copia con un test de equivalencia. La red funcionó —se puso en rojo apenas
+  se tocó una sola— y ahí se vio su límite: avisa después, y el arreglo va dos
+  veces igual. La implementación pasó a `src/lib/handle-instagram.mjs`, cuarto
+  módulo con el patrón de fachada, y el test verifica que siga sin haber copia.
+
 - **Los barrios que en realidad eran provincias** — **B-976**. Hasta B-950 el
   barrio era el único campo de lugar del formulario, así que quien cargaba en
   Tandil puso la provincia donde había lugar: «Provincia de Buenos Aires» entre
