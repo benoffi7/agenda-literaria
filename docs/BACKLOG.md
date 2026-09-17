@@ -405,6 +405,35 @@ expect(res.claims.aud, 'el cliente entra a otro proyecto').toBe(PROJECT_ID);
 expect(res.claims.admin).toBe(true);
 ```
 
+### Medido el 2026-09-17, contra un emulador efímero — dos puertas cerradas
+
+**1 · El endpoint de config del emulador de Auth NO sirve como detector.**
+`tests/emulador.ts` ya consulta
+`/emulator/v1/projects/${PROJECT_ID}/config` para saber si el emulador está
+vivo, y descarta el status con un `< 500`. Parecía que ajustarlo a `=== 200`
+alcanzaba. No alcanza: levantando con `--project …-aaaaaaa1` y pidiendo la
+config de `…-zzzzzzz9`, las dos devuelven **200 y el mismo body**.
+
+**2 · Y `"singleProjectMode": false` tampoco lo arregla, aunque el propio
+emulador lo recomiende.** Al pedirle un proyecto ajeno, el emulador avisa por
+stderr: «Multiple projectIds are not recommended in single project mode …
+To opt-out add/set the `singleProjectMode` false property». `firebase.json`
+lo tiene en `true` explícitamente, así que era la salida más barata imaginable.
+Corrida la repro completa con el flag en los dos estados:
+
+| `singleProjectMode` | `aud` del ID token | `claims.admin` |
+|---|---|---|
+| `true` (hoy) | `…-aaaaaaa1` (el del emulador) | `undefined` |
+| `false` | `…-aaaaaaa1` (igual) | `undefined` |
+
+**El flag controla el aviso, no el particionado.** El emulador de Auth sirve un
+solo proyecto y no hay configuración que lo cambie. Queda escrito para que nadie
+vuelva a probar esa puerta: parece la respuesta y no lo es.
+
+**Lo que sí queda especificado por la medición:** la señal del desajuste es
+`aud !== PROJECT_ID` después del primer `signInWithCustomToken`. No hay que
+inventar el criterio — la repro de arriba ya lo mide.
+
 **Tres salidas, y la primera es la que conviene hacer primero** porque ataca el
 daño real —las horas de diagnóstico— y no cuesta casi nada: (a) que
 `tests/emulador.ts` **detecte el desajuste y falle con un mensaje que lo nombre**,
