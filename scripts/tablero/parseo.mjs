@@ -69,11 +69,33 @@
  * @typedef {{texto: string, id?: string} | {error: string}} Resultado
  */
 
+/*
+ * ── El formato del archivo se escribe UNA vez, acá ────────────────────────
+ * Lo de abajo —la forma de un id, la de un encabezado, la de una sección— es el
+ * formato de `docs/BACKLOG.md`, y **se exporta** porque hay más de un programa
+ * que lo lee: este parser y `scripts/archivar-backlog.mjs`. Hasta el 2026-09-17
+ * el archivador tenía su propia copia de `ENCABEZADO` y de `SECCION`, idénticas
+ * por casualidad. Es la clase de D-88 —un formato cuyo consumidor deriva por
+ * separado— y su modo de fallar es el peor que hay: el día que acá se agregue un
+ * prefijo de id nuevo, el archivador deja de reconocer esos ítems y **no los
+ * archiva nunca más, sin que nada se ponga rojo**. Ahora hay una sola copia y
+ * `tests/archivar-backlog.test.ts` frena la próxima.
+ */
+
+/** Los dígitos de un id, que son lo que se compara para saber cuál es el próximo. */
+const DIGITOS = String.raw`\d+`;
+
+/**
+ * El sufijo de letra: `B-836a` es «la mitad manual del dueño de B-836», y va con
+ * letra justamente para que no se lea como un ítem independiente.
+ */
+const SUFIJO = String.raw`[a-z]?`;
+
 /** El id de un ítem, que el archivo escribe `B-950`, `B-836a` o `DEC-6`. */
-const ID = String.raw`(?:B|DEC)-\d+[a-z]?`;
+export const ID = String.raw`(?:B|DEC)-${DIGITOS}${SUFIJO}`;
 
 /** Un encabezado de ítem: `### B-950 · Título… · P1 — pedido del dueño (fecha)`. */
-const ENCABEZADO = new RegExp(String.raw`^### +(${ID})\b(.*)$`, 'u');
+export const ENCABEZADO = new RegExp(String.raw`^### +(${ID})\b(.*)$`, 'u');
 
 /** La prioridad escrita en el encabezado, que gana sobre la de la sección. */
 const PRIORIDAD = /·\s*(P[0-4])\b/u;
@@ -124,7 +146,21 @@ const MARCADOR_ADELANTE = new RegExp(
 const FECHA = /\((\d{4}-\d{2}-\d{2})\)/gu;
 
 /** Los títulos de sección de primer nivel: `## P1 — bloquean el objetivo…`. */
-const SECCION = /^## +(.+?)\s*$/u;
+export const SECCION = /^## +(.+?)\s*$/u;
+
+/**
+ * Un `B-` suelto en cualquier parte del texto, con su número aparte.
+ *
+ * No es lo mismo que `ENCABEZADO`: esto barre la **prosa**, porque un `B-960`
+ * citado adentro de otro ítem ya está comprometido aunque no tenga sección
+ * propia. Se construye en función: un regex global lleva `lastIndex`, y
+ * compartir la instancia entre dos barridos se saltea coincidencias.
+ */
+const B_SUELTO = () => new RegExp(String.raw`\bB-(${DIGITOS})${SUFIJO}\b`, 'gu');
+
+/** Los números de los `B-` que un texto nombra, uno por uno. */
+const numerosEnTexto = (texto) =>
+  new Set([...texto.matchAll(B_SUELTO())].map((m) => Number(m[1])));
 
 /** Una idea de `11-ideas-de-producto.md`: `## 3 · "Completo": lo único que…`. */
 const IDEA = /^## +(\d+) +· +(.+?)\s*$/u;
@@ -350,13 +386,18 @@ export const parsearIdeas = (texto) => {
  * @returns {number}
  */
 export const proximoNumero = (texto) => {
-  const usados = [...texto.matchAll(/\bB-(\d+)[a-z]?\b/gu)].map((m) => Number(m[1]));
+  const usados = [...numerosEnTexto(texto)];
   return usados.length === 0 ? 1 : Math.max(...usados) + 1;
 };
 
-/** Todos los ids `B-xxx` que el archivo ya nombra, para avisar de un choque. */
-export const idsUsados = (texto) =>
-  new Set([...texto.matchAll(/\bB-\d+[a-z]?\b/gu)].map((m) => m[0]));
+/**
+ * Todos los ids `B-xxx` que el archivo ya nombra, para avisar de un choque.
+ *
+ * El `B-` suelto se deriva de `ID`, igual que el encabezado: son el mismo
+ * formato escrito una sola vez. Antes eran dos literales sueltos acá abajo, que
+ * es la misma clase de D-88 que el archivador tenía con `ENCABEZADO`.
+ */
+export const idsUsados = (texto) => new Set([...texto.matchAll(B_SUELTO())].map((m) => m[0]));
 
 /**
  * Reemplaza la línea de encabezado de un ítem.

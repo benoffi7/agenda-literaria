@@ -16,7 +16,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { archivar, despiezar, verificar } from '../scripts/archivar-backlog.mjs';
-import { idsUsados, parsearBacklog, proximoNumero } from '../scripts/tablero/parseo.mjs';
+import { ENCABEZADO, ID, SECCION, idsUsados, parsearBacklog, proximoNumero } from '../scripts/tablero/parseo.mjs';
 
 /** Un backlog de juguete con las piezas que el real tiene: cabecera, prosa de
  *  sección, los cuatro estados, y la tabla de «Cerrados» del final. */
@@ -226,5 +226,102 @@ describe('contra el archivo real', () => {
     for (const linea of VIVO.split('\n').filter((l) => l.trim())) {
       expect(reconstruido, `se perdió: ${linea}`).toContain(linea);
     }
+  });
+});
+
+/**
+ * **Una sola definición del formato** — el hallazgo D-88 del 2026-09-17.
+ *
+ * El archivador tenía su propia copia de `ENCABEZADO` y de `SECCION`, idéntica
+ * por casualidad a la de `parseo.mjs`. Nada rompía, y ese es exactamente el
+ * problema: el día que el parser reconozca un prefijo de id nuevo, el archivador
+ * deja de ver esos ítems y **no los archiva nunca más**, con la suite en verde y
+ * sin que el rastro de nadie se pierda de forma visible. Es la misma clase que el
+ * `auditor-privacidad` persigue —un formato cuyo consumidor deriva por separado—
+ * y acá hay dos redes distintas:
+ *
+ * 1. **La de arriba, de texto:** ningún archivo del tablero ni el archivador
+ *    puede volver a escribir el regex. Es la que frena la próxima copia **antes**
+ *    de que diverja.
+ * 2. **La de abajo, de comportamiento:** los prefijos salen de `ID`, así que
+ *    agregarle uno a `parseo.mjs` genera el caso solo. Es la que frena la
+ *    divergencia si alguien igual escribe la copia.
+ */
+describe('el formato del backlog se define una sola vez', () => {
+  const MIOS = [
+    'scripts/archivar-backlog.mjs',
+    'scripts/tablero/parseo.mjs',
+    'scripts/tablero/servidor.mjs',
+    'scripts/tablero/tablero.html',
+  ];
+
+  it('solo `parseo.mjs` escribe el regex de encabezado y el de sección', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const conCopia: string[] = [];
+    for (const ruta of MIOS) {
+      const fuente = await readFile(`${process.cwd()}/${ruta}`, 'utf8');
+      // `^### ` y `^## ` adentro de un literal son la firma de una copia: nadie
+      // los escribe salvo para reconocer el formato del archivo.
+      if (/\^#{2,3} /u.test(fuente) && ruta !== 'scripts/tablero/parseo.mjs') conCopia.push(ruta);
+    }
+    expect(conCopia, 'importalo de parseo.mjs en vez de volver a escribirlo').toEqual([]);
+  });
+
+  it('el archivador importa el formato, no lo redefine', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const fuente = await readFile(`${process.cwd()}/scripts/archivar-backlog.mjs`, 'utf8');
+    expect(fuente).toMatch(/import \{[^}]*ENCABEZADO[^}]*SECCION[^}]*\} from '\.\/tablero\/parseo\.mjs'/u);
+    // Y los usa: importarlos y no usarlos sería la copia con otra cara.
+    expect(fuente).toContain('ENCABEZADO.test(');
+    expect(fuente).toContain('SECCION.exec(');
+  });
+
+  it('reconoce **todos** los prefijos de id que el parser reconoce, sin tener que enterarse', () => {
+    /*
+     * Los prefijos se sacan de `ID` —`(?:B|DEC)-…`— y el caso se arma con ellos.
+     * Si mañana `parseo.mjs` acepta un tercero, este test genera su ítem solo y
+     * exige que el archivador lo mueva. Con la copia vieja, ese ítem se quedaba
+     * en el vivo para siempre.
+     */
+    const prefijos = /\(\?:([^)]+)\)/u.exec(ID)![1].split('|');
+    expect(prefijos.length).toBeGreaterThan(1);
+
+    const texto = [
+      '# Backlog',
+      '',
+      '## P2 — mejoras reales',
+      '',
+      ...prefijos.flatMap((p, i) => [
+        `### ${p}-${700 + i} · Un ítem con prefijo ${p} — ✅ hecho (2026-09-17)`,
+        '',
+        `El cuerpo del de ${p}.`,
+        '',
+      ]),
+    ].join('\n');
+
+    const esperados = prefijos.map((p, i) => `${p}-${700 + i}`);
+    expect(parsearBacklog(texto).items.map((i) => i.id)).toEqual(esperados);
+
+    const s = archivar(texto, '');
+    expect(s.movidos.map((m) => m.id)).toEqual(esperados);
+    expect(parsearBacklog(s.archivo).items.map((i) => i.id)).toEqual(esperados);
+    expect(parsearBacklog(s.vivo).items).toEqual([]);
+    // Y ni una coma del cuerpo se quedó atrás.
+    for (const p of prefijos) expect(s.archivo).toContain(`El cuerpo del de ${p}.`);
+  });
+
+  it('los dos regex compartidos son los que el archivador usa para partir', () => {
+    // El control que ata las dos mitades: `despiezar` tiene que poner en un
+    // bloque exactamente las líneas que `ENCABEZADO` reconoce, y abrir una
+    // sección exactamente en las que `SECCION` reconoce.
+    const { secciones } = despiezar(VIVO);
+    const lineas = VIVO.split('\n');
+    expect(secciones.map((s: { titulo: string }) => s.titulo)).toEqual(
+      lineas.filter((l) => SECCION.test(l)).map((l) => SECCION.exec(l)![1]),
+    );
+    const enBloques = secciones.flatMap((s: { items: { desde: number }[] }) =>
+      s.items.map((i) => lineas[i.desde]),
+    );
+    expect(enBloques).toEqual(lineas.filter((l) => ENCABEZADO.test(l)));
   });
 });

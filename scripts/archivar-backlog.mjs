@@ -46,7 +46,16 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parsearBacklog } from './tablero/parseo.mjs';
+/*
+ * El formato del archivo —qué es un encabezado de ítem y qué es una sección— se
+ * **importa**, no se vuelve a escribir. Hasta el 2026-09-17 este archivo tenía su
+ * propia copia de los dos regex, idéntica por casualidad a la de `parseo.mjs`. Es
+ * la clase de D-88 (un formato cuyo consumidor deriva por separado) y el modo de
+ * fallar era silencioso: el día que el parser reconozca un prefijo de id nuevo,
+ * el archivador deja de ver esos ítems y **no los archiva nunca más**, con la
+ * suite en verde. Una sola copia, y el test lo sostiene.
+ */
+import { ENCABEZADO, SECCION, parsearBacklog } from './tablero/parseo.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '..');
@@ -68,9 +77,6 @@ const CERRADOS = new Set(['hecho', 'descartado']);
  * definición, lo ya cerrado.
  */
 const SECCION_TABLA = 'Cerrados';
-
-const SECCION = /^## +(.+?)\s*$/u;
-const ENCABEZADO = /^### +(?:B|DEC)-\d+[a-z]?\b/u;
 
 /**
  * La cabecera que lleva el archivo de cerrados, con el enlace de vuelta.
