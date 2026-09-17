@@ -16,8 +16,8 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
@@ -34,17 +34,11 @@ const fuente = (relativo: string) =>
  * error visible**, la trampa 11— y la suite dio verde tres veces antes del commit.
  * Lo agarró el gate de pre-push, o sea después de commitear.
  *
- * `--others --exclude-standard` es «lo no rastreado que no está en el
- * `.gitignore`»: se suma a lo versionado, se ordena y se deduplica, así que el
- * resultado no depende de en qué mitad apareció cada archivo.
+ * B-964 mudó la mecánica (`--others --exclude-standard` + lo versionado,
+ * deduplicado y ordenado) a `archivosDelRepo`, compartida ahora con el resto
+ * de los barridos de este repo.
  */
-const definiciones = (): string[] => {
-  const listar = (args: string[]): string[] =>
-    execFileSync('git', ['ls-files', '-z', ...args, '.claude'], { encoding: 'utf8' })
-      .split('\0')
-      .filter(Boolean);
-  return [...new Set([...listar([]), ...listar(['--others', '--exclude-standard'])])].sort();
-};
+const definiciones = (): string[] => archivosDelRepo('.claude');
 
 
 const AGENTES = definiciones().filter((f) => /^\.claude\/agents\/[^/]+\.md$/.test(f));
@@ -420,9 +414,9 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      */
     const md = [
       ...definiciones().filter((f) => /\.md$/.test(f)),
-      ...execFileSync('git', ['ls-files', '-z', 'docs'], { encoding: 'utf8' })
-        .split('\0')
-        .filter((f) => /\.md$/.test(f) && !/^docs\/(BACKLOG|CHANGELOG)\.md$/.test(f)),
+      ...archivosDelRepo('docs').filter(
+        (f) => /\.md$/.test(f) && !/^docs\/(BACKLOG|CHANGELOG)\.md$/.test(f),
+      ),
     ];
 
     /*

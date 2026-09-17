@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -23,6 +22,7 @@ import {
   urlAbsoluta,
 } from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * `sitemap.xml` y `robots.txt` — B-109, §5.6 del diseño.
@@ -240,8 +240,7 @@ describe('las páginas fijas', () => {
         'siempre vacía: `noindex` y fuera del sitemap, sin `Disallow` (B-848)',
     };
 
-    const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
-      .split('\n')
+    const paginas = archivosDelRepo('src/pages')
       .filter((f) => f.endsWith('.astro'))
       // Las dinámicas (`[slug]`, `[mes]`) entran por su propia regla, no por la
       // lista fija.
