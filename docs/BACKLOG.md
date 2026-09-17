@@ -1173,6 +1173,69 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1081 · El ritmo del catálogo está calculado, testeado, y nadie lo dibuja · P2 — de documentar el tablero (2026-09-17)
+
+`src/lib/ritmoDelCatalogo.ts` (B-704, B-705, B-706) calcula el mapa de calor de
+ocho semanas, el reparto por día de la semana y el de franja horaria. Son **260
+líneas con su test, y el único import del repo es ese test**: ninguna pantalla lo
+usa. El commit que lo trajo lo dice —«solo el módulo puro y sus tests, falta la
+pantalla»— pero eso quedó en el mensaje de commit y en ningún otro lado.
+
+**Por qué importa aunque no rompa nada.** Código vivo que nadie ejecuta envejece
+sin que se note: el día que se dibuje, el módulo va a tener meses de deriva
+contra `calendarioPanel.ts`, del que depende. Y la ausencia **ya empezó a
+contradecir a la doc** — ver B-1084.
+
+Dos salidas, y la decisión es del dueño: dibujarlo (es la pregunta que un listado
+no contesta nunca: qué semanas están vacías, qué día está saturado), o borrarlo y
+dejar el rastro. Lo que no conviene es el estado de hoy.
+
+### B-1082 · `D-400` y `D-401` se citan doce veces desde el código y nunca se escribieron · P2 — de documentar el tablero (2026-09-17)
+
+`EstadisticasPanel.tsx`, `Reparto.tsx`, `tortaDelPanel.ts`, `estadoDelCatalogo.ts`,
+`anchoDelPanel.ts` y dos tests citan **D-400** (el tablero a todo ancho y el
+reparto de columnas) y **D-401** (la regla que hace honesta a una torta: el todo
+es la suma de sus tajadas, y la nota de unidad es obligatoria). `06-decisiones.md`
+no tiene ninguna de las dos: va de D-199 a D-410 sin pasar por ahí.
+
+**Y el chequeo que existe para esto no puede verlas.** `scripts/decisiones-referenciadas.mjs`
+barre **`docs/`**, y estas dos se citan **solo desde `src/` y `tests/`**. O sea que
+la clase que ese barrido persigue tiene una puerta abierta justo donde el repo más
+cita decisiones: los docblocks. Es la mitad medible de **B-1090**.
+
+Dos mitades: escribir las dos entradas (el razonamiento está entero en los
+docblocks, es transcribir) y decidir si el barrido pasa a mirar `src/` y `tests/`.
+
+### B-1085 · El § 8.1 de `16-analitica-del-sitio.md` quedó atrás del tablero que describe · P2 — de documentar el tablero (2026-09-17)
+
+Tres cosas que ya no son ciertas en el documento de diseño de la pantalla: los
+avisos son **seis** y dice cinco (B-813 sumó «publicadas con una web del
+organizador que no enlaza»); al reparto le falta **barrio** (B-702), que es uno de
+los cuatro de la grilla; y el punto 2 no menciona las tres proporciones de Google
+(B-813) ni las tres de inscripción (B-703), que son la mitad de ese bloque hoy.
+
+No es un doc de funcionalidades —eso ya lo cubrió B-1080— pero **es el documento
+al que el propio código manda a leer**, así que conviene que el inventario cierre.
+
+### B-1090 · El número de una decisión se acuña en un commit y su texto queda en un pizarrón sin versionar · P2 — de cerrar B-910 (2026-09-17)
+
+**Sale de la sorpresa de B-910**, y es más grande que las seis entradas que ese
+ítem pedía: a cinco de las seis **no hubo que reconstruirlas**. Estaban redactadas
+enteras en `.estado/sitio.md` y `.estado/galeria.md`, y el commit que las acuñó lo
+decía con todas las letras. Lo que faltó no fue redactar: fue **pegar**.
+
+O sea que el mecanismo es éste: un frente decide algo, le pone `D-nnn` en un
+comentario del código o en un commit, escribe el texto en su archivo de estado
+—que está en el `.gitignore`— y el paso que lo mueve a `06-decisiones.md` depende
+de que alguien se acuerde al integrar. **Seis veces no se acordó nadie.**
+
+`scripts/decisiones-referenciadas.mjs` detecta el resultado, no la causa: avisa
+cuando la huérfana ya nació. Y **tiene un punto ciego que B-1082 midió**: barre
+solo `docs/`, así que D-400 y D-401 —citadas doce veces desde `src/` y `tests/`—
+no aparecen. Las dos mitades de este ítem: que el barrido mire también el código,
+y que el cierre de una tanda no dependa de la memoria de quien integra. Es la
+misma forma que **B-1125** y que **B-1051**.
+
 ### B-1121 · El chequeo que B-205 prometió —comparar lo publicado contra `main`— sigue sin existir · P2
 
 **Sobrante declarado adentro de un ítem ✅.** B-205 (recuperación de un deploy que
@@ -2190,6 +2253,77 @@ cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
 
+### B-1083 · `D-200` nombra dos decisiones distintas · P3 — de documentar el tablero (2026-09-17)
+
+La entrada escrita en `06-decisiones.md` es «Los nombres de los meses se
+comparten» (B-215). Pero `EstadisticasPanel.tsx`, `estadoDelCatalogo.ts`,
+`analytics-eventos.ts`, `09-analitica.md` y dos secciones de
+`16-analitica-del-sitio.md` citan **D-200** como «por qué el tablero arranca por
+el catálogo». D-271 y D-273 también lo citan con ese segundo sentido.
+
+**No lo agarra el barrido de decisiones huérfanas —el número existe, solo que dice
+otra cosa— y el enlace resuelve**, así que quien lo siga lee una decisión sobre
+meses y se queda pensando que entendió. Se arregla eligiendo número nuevo para la
+del tablero (el criterio ya está redactado en el § 8 de `16-analitica-del-sitio.md`)
+o renumerando la de los meses. Cualquiera de las dos toca varias citas: por eso es
+P3.
+
+### B-1084 · El docblock de `anchoDelPanel.ts` describe un tablero que no existe · P3 — de documentar el tablero (2026-09-17)
+
+Para justificar que `estadisticas` use todo el ancho, dice: «el tablero pasó a
+tener repartos con torta, **dos vistas de tiempo y un mapa de calor de ocho
+semanas**». Los repartos con torta sí; las dos vistas de tiempo y el mapa de calor
+**no se dibujan en ninguna parte** (B-1081). El argumento del ancho sigue siendo
+bueno por los repartos y los avisos en dos columnas; lo que hay que sacar es la
+mitad que afirma pantalla que no hay. Se cierra solo si B-1081 se dibuja.
+
+### B-1086 · `D-272` y el § 8.1bis describen la franja fija que B-798 sacó · P3 — de documentar el tablero (2026-09-17)
+
+Las dos describen «una franja fija con tres cosas» arriba de la pestaña del
+sitio. El dueño **sacó los cuatro párrafos el 2026-09-07** mirando la pantalla
+publicada (B-798), y el componente lo dejó escrito en un comentario largo con el
+argumento que perdió.
+
+**La decisión de D-272 no cambió** —ni un número inventado— y lo que caducó es la
+descripción de la forma. El § 8.1bis ya tiene un aviso de «esta sección describe
+el estado del 2026-09-03», así que ahí es una línea más; D-272 necesita una nota
+de superada-en-parte, con el precedente de cómo quedaron escritas D-270 y D-273.
+
+### B-1072 · `build-contra-emulador.mjs` creció 1.366 líneas en ocho días · P3 — de remedir B-1010 (2026-09-17)
+
+Pasó a ser **el archivo más grande del repo** (2.977 LOC), y es la primera vez
+que la cima no es código del producto sino un script de verificación. No es una
+frontera de privacidad deliberada como `detallePublico.ts`, así que el argumento
+de «no partir» que protege a los dos primeros de la lista no le aplica.
+
+**Queda sin diagnóstico a propósito: medirlo no alcanza.** Hay que decidir si es
+un barrido que se ganó el tamaño —cada paso que agrega es un gate real— o un
+archivo que hay que partir. Mismo criterio que el § 1.3 con el formulario.
+
+### B-1073 · El fan-in del formulario viene subiendo desde el saneamiento y es el único sin umbral escrito · P3 — de remedir B-1010 (2026-09-17)
+
+12 → 19 → 25 → 26 → 24 → 27 → **32**, sin pausa. La fila de LOC tiene su alarma
+calibrada (B-856 la recalibró mirando el archivo, y lo que estaba mal era el
+umbral); ésta no tiene ninguna, y es la que mide **de cuántas piezas depende el
+formulario** — o sea la que dice cuándo tocarlo empieza a ser caro.
+
+### B-1111 · `tests/emulador.ts` deriva el `projectId` por su cuenta, con el literal como fallback · P3 — del relevamiento del emulador (2026-09-17)
+
+`export const PROJECT_ID = process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria';`
+
+El fallback es el **literal compartido**, no el valor que calcula
+`scripts/project-id-emulador.mjs`, que es el único lugar donde vive esa decisión
+(B-219). Por vitest está cubierto —`vitest.config.ts` exporta la variable— así que
+**hoy no es un bug**. Pero cualquier corrida fuera de vitest —un script suelto, un
+`node` a mano— cae al projectId compartido y **escribe en la base de todos**, que
+es exactamente lo que B-219 existe para evitar.
+
+Es la clase **D-88** otra vez, la misma que B-1110 en el archivador: dos lados
+derivando el mismo valor por su cuenta, con uno de los dos desactualizado. Y va
+junto con el residual conocido de **B-366**: `cargarReglasStorage` usa el endpoint
+global `/internal/setRules`, así que `storage.rules` **no** está aislado por
+proyecto y la última carga gana para todos los worktrees.
+
 ### B-1122 · El nodo `Organization` del sitio, con el `sameAs` a Cafecito, nunca se escribió · P3
 
 **Sobrante declarado adentro de B-107** (Meta/OpenGraph/JSON-LD, ✅ 2026-09-02):
@@ -2221,22 +2355,6 @@ número reservado. Y el patrón que nombra es de los más usados del proyecto: s
 la decisión del lugar imposible de probar es lo que hizo `que-deployar.sh`,
 `emuladores-arriba.sh` y media docena más.
 
-### B-1010 · Las tablas de `10-salud-del-codigo.md` miden 254 archivos y el árbol tiene 341 · P3 — de cerrar B-877 (2026-09-17)
-
-La última pasada completa es del 2026-09-09 (B-849): **254 archivos de
-producción, 63.983 LOC**. Hoy son **341 y 94.925** — un 48 % más en ocho días, de
-trabajo de varios frentes. Los §0, §1.1, §1.2, §1.4 y §1.6 siguen con las cifras
-viejas.
-
-**No se remidió al cerrar B-877/B-878 a propósito**, y conviene que quede el
-motivo: esos dos arreglos cambian cómo se mide, así que remedirlo todo en el
-mismo cambio mezclaría el efecto del instrumento con ocho días de crecimiento
-ajeno y dejaría ilegible cuál de los dos movió cada número. Los §1.3 y §1.5, que
-son los que esos ítems tocan, **sí** están remedidos.
-
-`node scripts/salud-del-codigo.mjs` imprime las tablas listas para pegar. Es una
-pasada del tamaño de B-849, no un renglón.
-
 ### B-1050 · El doble de `Timestamp` de `lista-actividades.render.test.tsx` no usa el fixture compartido · P3 — de cerrar B-875 (2026-09-17)
 
 Ese archivo define su propio `ts` en vez de importar el de
@@ -2261,13 +2379,6 @@ El daño es acotado y visible: dos fichas con el mismo slug, las dos en `pendien
 —nada sale al sitio sin que un admin lo publique— y la segunda se corrige en la
 bandeja, que es justo el momento en que el slug todavía se puede tocar. **Lo que
 haría subir la prioridad es abrir el alta pública** (B-872/B-896).
-
-### B-910 · Seis `D-nnn` citados y nunca escritos en `06-decisiones.md` · P3
-
-`node scripts/decisiones-referenciadas.mjs` lista D-9 (`docs/13-agentes.md`),
-D-340/D-341 (`docs/16-analitica-del-sitio.md`) y D-380/D-381/D-430
-(`docs/12-sitio-publico.md`). Ninguno de esos archivos es parte de una tanda en
-vuelo: son entradas que nadie llegó a escribir. Del `auditor-documentacion`.
 
 ### B-906 · `imagenSchema` está escrito dos veces: `src/lib/schema.ts` no lo exporta · P3
 

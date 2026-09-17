@@ -7989,6 +7989,2687 @@ probaron en rojo. Es la familia de B-139 con el daño un paso más adelante: all
 la definición no cargaba, acá carga bien y lo que está roto es lo que dice
 adentro.
 
+### B-1080 · «Estado del catálogo» no está en `04-funcionalidades.md` · ✅ hecho (2026-09-17) · P2 — del `auditor-documentacion`
+
+El tablero del panel existe desde el 2026-09-02 (`d3f4f90`, D-200) y se extendió
+con B-700 a B-706, B-813, B-731, B-798 y B-785 — **todos cerrados sin la entrada
+correspondiente**. Aparecía de paso en `06-decisiones.md` y en
+`16-analitica-del-sitio.md`, que es el documento de diseño, y no en el archivo
+que dice qué hace el panel. Quince días de pantalla completa contra una regla de
+proceso que es explícita.
+
+**Hecho:** sección nueva de 247 líneas, escrita **leyendo la pantalla** — la
+entrada y quién la ve, las dos pestañas y su teclado, el encabezado de cuatro
+números, los seis avisos con lo que cuesta cada uno, las coberturas y las
+proporciones (y por qué son dos cosas distintas), los cuatro repartos con su
+toggle recordado por navegador, lo que decide la torta dibujada a mano, y la
+pestaña del sitio con sus cuatro estados vacíos. Más la fila de la clase de B-875
+en `13-agentes.md`.
+
+**De documentarlo salieron B-1081 a B-1086**, que es el argumento entero a favor
+de documentar: nada de eso se veía desde el código ni desde el backlog.
+
+### B-1060 · Quince archivos de integración copiaban las credenciales del emulador · ✅ hecho (2026-09-17) · P2 — el pendiente vivía solo en `.estado/`
+
+**Nunca fue un ítem, y por eso está acá.** El frente de B-895 lo dejó anotado como
+`❓` en `.estado/falsos-verdes.md` —«`tokenAdmin()/tokenPara()` está copiado con
+variaciones en ~13 archivos de integración»— y ese directorio está en el
+`.gitignore` (**B-1125**). Hoy eran **quince**.
+
+**Las diferencias entre las copias eran el problema, no el tipeo.** Casi todas
+accidentales —el nombre del helper, el prefijo de la app, `esAdmin: boolean`
+contra un objeto de claims, devolver el token contra loguearse adentro— y una
+sola deliberada, que quedó como opción con nombre: `email`/`emailVerificado`, que
+va en el **registro de la cuenta** y nunca en los claims (B-888). El costo real es
+que una copia podía diferir en algo que importa sin que nadie lo viera: B-895
+unificó diez archivos hacia la vía de producción y el undécimo se quedó con la
+otra, tapando el desajuste de B-894.
+
+**La segunda vía —claims embebidos en el custom token— no existe en el helper, y
+la ausencia es la decisión.** Sostenía a B-1030, que se cayó el mismo día. Si un
+test solo pasa con los claims adentro del token, lo que encontró es otra cara de
+**B-1021**, y lo que corresponde es anotarlo, no volver a agregar la vía.
+
+La red es `tests/credenciales-del-emulador.test.ts`, que barre `tests/` para que
+la copia dieciséis no nazca. De paso, `storage-reglas` dejó de cablear el puerto y
+lee `HOST_STORAGE` — la mitad de **B-344**, otro sobrante declarado adentro de un
+ítem ✅.
+
+### B-1100 · Un `B-` citado y sin entrada se lee como una dirección válida y no lleva a ninguna parte · ✅ hecho (2026-09-17) · P2 — de la tanda de ítems no visibles
+
+**Gemelo de B-910 sobre la otra mitad del vocabulario del repo, y mucho más
+grande: de los `B-nnn` citados, 52 no tienen entrada en ninguno de los dos
+archivos del backlog, y 43 están citados desde el código.** Un `B-` huérfano no
+rompe ningún enlace —viaja en prosa, en un comentario de `firestore.rules`, en el
+nombre de un `describe()`— así que nadie lo ve. La cabecera del backlog apoya la
+partición en dos archivos justamente en que «el id es la dirección»; esto
+verifica esa promesa.
+
+Los casos que duelen: **`B-919`** está citado en 45 archivos, incluidos
+`firestore.rules` y `functions/geografia.js`, tiene su decisión (D-690) y su
+commit (`ef33665`), y **no existe como ítem** — mientras B-920 y B-921, abiertos
+hoy, arrancan diciendo «dos bordes que B-919 dejó abiertos». **`B-700` a `B-706`**
+son la pestaña «Estado del catálogo» entera. Y **`B-302`** está citado en tres
+archivos de código mientras la cabecera del backlog lo cuenta dentro de un hueco
+donde «no se borró nada».
+
+`scripts/items-referenciados.mjs` reconoce las cuatro formas reales de estar
+escrito —encabezado propio, encabezado de rango con los números del medio, fila
+de tabla con el id en negrita, y hueco explicado en la cabecera— más los
+reservados y nunca escritos de **B-1051**. La red que congela la deuda de hoy y
+pone en rojo la huérfana **nueva** es `tests/items-referenciados.test.ts`.
+
+**Lo que este ítem NO hace, a propósito: escribir las 52 entradas.** La mayoría
+son cicatrices sin consecuencia y una entrada inventada es peor que un hueco —la
+lección de `D-9` en B-910. Lo que faltaba era poder verlas.
+
+### B-1110 · El archivador del backlog tenía su propia copia del formato, y el día que divergieran nadie se enteraba · ✅ hecho (2026-09-17) · P2 — del `auditor-trampas`
+
+`scripts/archivar-backlog.mjs` redefinía `ENCABEZADO` y `SECCION`, idénticos por
+casualidad a los de `scripts/tablero/parseo.mjs`, que no los exportaba. **Clase
+D-88**: un formato cuyo consumidor deriva por separado. Hoy coincidían y nada
+rompía; el día que el parser reconociera un prefijo de id nuevo, el archivador
+dejaba de ver esos ítems y **no los archivaba nunca más, con la suite en verde**.
+
+`parseo.mjs` exporta ahora `ID`, `ENCABEZADO` y `SECCION`, y arma la forma del id
+desde una sola pieza — `proximoNumero` e `idsUsados` tenían además su propio
+literal cada uno, la misma clase adentro del mismo archivo.
+
+**Dos redes, porque una sola no alcanza:** una de texto, que prohíbe que el
+tablero o el archivador vuelvan a escribir `^###`/`^##`, y frena la copia antes de
+que diverja; y una **de comportamiento**, en la que los prefijos del caso salen de
+`ID`, así que agregarle uno nuevo a `parseo.mjs` genera el ítem solo y exige que el
+archivador lo mueva. Probadas las dos con la mutación: con la copia de vuelta y un
+prefijo `INC-` nuevo, la de comportamiento dice exactamente cuál sería el ítem que
+no se archivaría nunca.
+
+## P3 — cuando sobre tiempo
+
+### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
+
+**Lo trajo el dueño desde Search Console.** Queda anotado sobre todo para que
+nadie vuelva a investigarlo como si fuera código: **se investigó y no hay nada
+roto de este lado.**
+
+Qué se verificó, URL por URL, contra producción:
+
+| Chequeo | Resultado |
+|---|---|
+| Código HTTP | **200** las diez visibles |
+| ¿En el `sitemap.xml`? | **sí**, las diez |
+| `<meta name="robots">` | **ninguna** — no hay `noindex` |
+| Canónica | **propia y absoluta**, apunta a sí misma |
+| ¿Enlazadas desde la home? | **sí** — 227 enlaces a actividades en el HTML del build; `/suscribirse` aparece tres veces. Ninguna es huérfana |
+
+Y la hipótesis que quedaba —«son más flacas que el resto»— **se midió y es
+falsa**:
+
+- sin indexar: 330, 335, 346, 417 palabras;
+- indexadas: 283, 320, 329, 343, 383 palabras.
+
+Son el mismo rango. No hay nada que distinga a las 16.
+
+**Qué significa entonces «Rastreada: actualmente sin indexar».** Es Google
+diciendo que la buscó y **decidió no indexarla**: no es un error de rastreo, es
+una decisión suya de prioridad. Son 16 de **361** URLs del sitemap, o sea ~96 %
+indexado, que para un sitio de este año es sano. Y el «Resultado de la
+validación: error» que muestra el panel no agrega información: solo dice que una
+validación pedida el 7/9 terminó sin que Google cambiara de opinión.
+
+**Por qué no hay tarea de código.** Las palancas reales son las que no se tocan
+desde el repo: antigüedad y autoridad del dominio, y profundidad del contenido de
+cada actividad —que la escribe quien carga, no el build—. Inventar un cambio
+técnico acá sería mover algo que funciona para perseguir un síntoma que no
+depende de eso. Si alguna vez conviene empujar, lo que sí está en nuestras manos
+es **enriquecer la ficha**: hoy son ~330 palabras y buena parte es plantilla.
+
+**Cuándo sí volver a mirar:** si la cifra crece fuerte contra el total, si
+aparecen URLs con 404 o `noindex` en esa lista, o si empiezan a caer páginas que
+**ya estaban** indexadas. Eso último sí sería un bug.
+
+### B-916 · El chequeo de exportación de un trigger pasa con el `export` comentado — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho, y eran siete archivos, no dos.** Además de
+> `directorios-rebuild.test.ts` y `lugares.test.ts`: `librerias.test.ts`,
+> `suscripciones.test.ts`, `retencion-de-guias.test.ts`,
+> `flyer-por-callable.test.ts` e `historial.test.ts`. Se barre el fuente con
+> `sinComentarios` antes de buscar la cadena, y **no** con `await import(...)`:
+> `functions/index.js` llama `initializeApp()` en el top-level, así que
+> importarlo desde un test unitario arranca el Admin SDK de verdad. Mutación
+> probada en las dos direcciones sobre seis exports: comentar el `export` y
+> borrarlo ponen en rojo.
+
+`tests/directorios-rebuild.test.ts` y `tests/lugares.test.ts` verifican el trigger
+de rebuild con `expect(index).toContain("export { rebuildPorX } …")`. **Una mutación
+lo delató:** comentar la línea (`// export { … }`) deja los dos casos **en verde**,
+porque el comentario contiene la cadena. Borrar la línea entera sí los pone rojos.
+
+Es preexistente —viene de B-901 y lo heredaron B-832 y B-833— y el daño es acotado
+(comentar un `export` es un acto raro), pero es exactamente la clase de falso verde
+que este repo persigue: el chequeo dice «está exportado» y lo que verifica es «la
+cadena está en el archivo».
+
+El arreglo es leer el módulo (`await import('…/index.js')`) y exigir que la clave
+exista, o barrer el fuente sin comentarios (`sinComentarios`, que ya se usa para
+`firestore.rules`).
+
+### B-895 · Los tests de integración viejos pasan los claims por dos vías, y una no es la de producción — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho en diez archivos**, sacando el segundo argumento de
+> `createCustomToken`. Los 301 tests de esos archivos siguen verdes contra el
+> emulador.
+>
+> **Y el undécimo es el hallazgo, que queda abierto en B-1030.**
+> `tests/storage-reglas.integracion.test.ts` nunca pasaba el claim por el
+> registro, solo embebido en el token; sacarlo pone **6 de sus 19** tests en
+> rojo. Se revirtió y quedó como el único archivo con la vía infiel, que es
+> justo lo que este ítem quería terminar — pero terminarlo acá habría tapado la
+> asimetría en vez de mostrarla.
+
+`tokenAdmin()` de `reportes`, `opciones`, `sistema`, `propuestas` y compañía hace
+`setCustomUserClaims(uid, claims)` **y** `createCustomToken(uid, claims)`. Los
+segundos viajan dentro del token y no pasan por el registro de la cuenta, que es
+justamente lo que **no** hace el panel real: ahí el claim lo pone el script de
+`admin:claim` y llega por el registro.
+
+Mientras el emulador corría en otro proyecto (B-894) esa doble vía **tapaba** el
+desajuste: los archivos que solo usan `setCustomUserClaims` —`rol-publicador` y
+`usuarios`— fueron los únicos que se cayeron. Con B-894 arreglado ya no tapa
+nada, así que esto no es urgente; es unificar hacia la vía fiel para que el
+próximo desajuste se vea en todos los archivos y no en dos.
+
+Es un cambio mecánico —sacar el segundo argumento de `createCustomToken`— y su
+verificación es que la suite siga verde.
+
+### B-823 · El scroll al fallar la validación, con más de una sección en error y en vista apilada — ✅ hecho (2026-09-08) · P3
+
+> **Un caso en `formulario-apilado.render.test.tsx`** con el formulario vacío, que
+> tiene varias secciones incompletas. Afirma que el **último** scroll de sección
+> es el de la sección más arriba, derivando cuál es de la barra —que las lista en
+> orden del documento— y no de un id escrito a mano: la sección que se agregue
+> mañana no rompe el caso.
+>
+> Mira solo los scrolls **de sección**, porque después de los `rAF` hay un
+> `setTimeout` que scrollea hasta `[data-campo-con-error]`: el último scroll de
+> todos no es de una sección, y afirmar sobre ése habría sido verificar otra cosa.
+>
+> El comportamiento ya era correcto —los `rAF` corren en el orden en que se
+> agendaron, y la iteración inversa hace que el último en ejecutarse sea el de la
+> primera sección—; lo que faltaba era la red.
+
+
+**Lo encontró el `auditor-trampas` cerrando B-814.**
+`src/components/admin/ActividadFormulario.tsx` recorre `faltantes.secciones` en
+orden inverso llamando a `irASeccion` por cada una. En vista «PC» eso converge
+bien: cada `setPestania` pisa al anterior y queda la primera sección con error.
+En apilado, cada llamada además agenda su propio
+`requestAnimationFrame(() => scrollIntoView(...))`; el resultado **también**
+converge, porque los callbacks corren en el orden en que se agendaron — pero eso
+depende de que los `rAF` no se re-ordenen entre sí, y hoy nadie lo verifica con
+más de un error a la vez.
+
+**Qué se pierde.** Poco, y por eso es P3: el peor caso es que el formulario
+scrollee a la sección equivocada al intentar publicar, no que se pierda nada.
+`tests/formulario-apilado.render.test.tsx` cubre el click manual en la barra —una
+sección sola—, así que el punto ciego es exactamente el caso de dos o tres.
+
+**Dónde.** Un caso con dos o tres secciones incompletas, con assert sobre cuál
+`scrollIntoView` fue el último llamado.
+
+### B-824 · La frase de cierre de B-620 quedó falsa, y ya van dos cambios que la empeoran — ✅ hecho (2026-09-08) · P3
+
+> **Se quitó la frase en vez de corregirla**, que es lo que el ítem proponía: el
+> dato vive en D-330 y repetirlo acá es lo que lo hizo envejecer dos veces. En su
+> lugar quedó escrito **por qué** no está, para que el próximo no la reponga.
+
+
+**Lo encontró el `auditor-documentacion` cerrando B-814.** B-620 (P2, cerrado el
+2026-09-03) cierra diciendo «**ancho por vista**: solo el listado usa la pantalla
+completa». Dejó de ser cierto **antes** de B-814: B-621 le sumó `estadisticas` y
+`calendario` a `VISTAS_A_TODO_ANCHO` el 2026-09-07. B-814 lo empeora, porque
+ahora también el formulario en vista «PC».
+
+**Qué se pierde.** Es drift de lectura, no de funcionamiento — el código está
+bien y **D-330** documenta la lista real. Pero es la tercera vez que un ítem
+cerrado repite un dato que vive en otro lado y envejece solo (ver **B-118** y
+**B-92**, los dos por lo mismo). El arreglo que no vuelve a envejecer es **quitar
+la frase**, no corregirla: D-330 ya la tiene, y B-620 no necesita repetirla.
+
+**Dónde.** `docs/BACKLOG.md`, el cierre de **B-620**.
+
+### B-812 · El `offers` del JSON-LD no emite `validFrom`, y son 24 avisos — ✅ hecho (2026-09-09), con la opción 1 · P3
+
+> ✅ **Hecho con la opción 1 (`creadoEn`), y la 2 queda escrita como lo que sigue.**
+> No es «desde cuándo se puede inscribir» —ese campo no existe (§3.1) y agregarlo
+> es un `/campo-nuevo` entero— pero tampoco lo inventa: **nada se pudo ofrecer
+> antes de existir**, así que es una **cota inferior**. Ésa es la diferencia con el
+> `price: '0'` que la regla 4 rechaza, donde el valor falso es justo el que una
+> persona lee.
+>
+> **Y el ítem tenía dos cosas mal, las dos en la opción 1.** `creadoEn` **no**
+> viajaba al detalle —viaja a `ActividadPublica`, y `datosEstructurados` solo ve el
+> view-model— y no era «una línea»: había un caso pedido por el
+> `auditor-privacidad` («la celda 6 que estaba resuelta por omisión») afirmando que
+> la fecha de alta **no llega al detalle**. O sea que esto **abre una celda que
+> estaba cerrada con un test**. Lo que lo hace aceptable es que el mismo día, con
+> la misma precisión, ya sale en el `events.json` de la misma actividad (D-138).
+>
+> El campo se llama **`ofertaDesde`** y no `creadoEn`: lo que se publica es «desde
+> cuándo se ofrece», y el nombre es lo que evita que mañana alguien lo pinte como
+> «cargado el …», que sería la agenda de trabajo del dueño en una página indexada.
+> El test viejo no se borró, se **acotó**: la fecha de alta puede estar en
+> exactamente un campo y en ningún otro —el segundo campo es el modo de falla
+> real— y `updatedAt` sigue sin salir a ninguna parte.
+>
+> **Lo que queda pendiente y no es de este ítem:** `inscripcion.abre`. Si alguna
+> vez se agrega, `ofertaDesde` es la única línea de esta salida que cambia.
+
+Sale del informe «Eventos» del 2026-09-08 (ver la lectura en **B-731**):
+`Falta el campo "validFrom" (en "offers")`, 24 elementos. Es el único de los
+nueve avisos que es **código y no dato faltante**: el campo no se emite nunca.
+
+`validFrom` es «desde cuándo se puede conseguir esto». Google lo pide en un
+`Offer` para saber si la oferta ya está vigente, y sin él lo trata como válido
+desde siempre.
+
+**Qué habría para poner, y por qué no es obvio.** El dato honesto sería «desde
+cuándo se puede inscribir», y ese campo no existe en el modelo: `inscripcion`
+tiene `cierra` y no tiene «abre» (§3.1). Las opciones, de más honesta a más
+cómoda:
+
+1. **`creadoEn`** — ya viaja al detalle público (`toPublic`, B-109) y es cierto:
+   la actividad se ofrece desde que se cargó. Es una línea en el `offers` de
+   `armarJsonLd` (`src/lib/detallePublico.ts`).
+2. **un campo nuevo `inscripcion.abre`** — más preciso y más caro: campo,
+   formulario, schema, proyección y las dieciocho salidas.
+
+La 1 alcanza para el aviso y no afirma nada falso. **No hacerlo no rompe nada**:
+es un aviso, no un error, y el resultado enriquecido sale igual. De ahí el P3.
+
+### B-806 · `10-salud-del-codigo.md` dice que hay cuatro tests de render y hay doce — ✅ hecho (2026-09-09), y son diecisiete · P3
+
+> ✅ **Hecho, y no eran doce: son diecisiete.** El ítem contó doce y entre medio
+> nacieron cinco más, que es exactamente su propio argumento sobre por qué el
+> número hay que medirlo y no leerlo. Se remidió **toda** la frase y no solo la
+> lista: **155 casos de render** (`npx vitest list 'render.test'`) sobre los
+> **3.968 que la suite corre en verde** en 178 archivos, con el denominador en
+> **60 componentes y 14.678 LOC** de `.tsx` (eran 48 y 9.962). Y apareció un
+> **tercer** lugar con el número viejo que el ítem no nombraba: `05-patrones.md`,
+> corregido en el mismo cambio.
+>
+> La medición del 2026-09-03 se conservó como historia y la nueva va debajo,
+> fechada: este documento vale porque cada número dice cuándo se contó — y ahora
+> también **con qué comando**, que era la otra mitad que faltaba (`vitest list`
+> colecta 3.995, veintisiete más que la corrida, porque incluye lo salteado).
+>
+> **Lo que este cierre NO hizo y queda como ítem propio: B-849.**
+
+
+**Lo encontró el `auditor-documentacion`** cerrando B-805, y ya estaba mal antes de
+ese cierre. El §«Problema 1» dice: «hoy hay cuatro: `menu-acciones`,
+`historial-actividad`, `reportes-panel` y `estadisticas-pestanias`. Son 21 casos de
+render sobre 2.637».
+
+Los archivos `*.render.test.tsx` de hoy son **doce**: además de esos cuatro están
+`ayuda-de-seccion`, `buscador-de-pasadas`, `filtros-del-panel`,
+`formulario-en-pestanias`, `lista-actividades`, `texto-alternativo`,
+`visor-de-galeria` y `si-no-carga`. El conteo de casos y el total de la suite
+también quedaron atrás.
+
+**El propio documento explica por qué nada lo ata** —esas cifras se mueven con
+cualquier commit ajeno, y un test que las fije sería rojo en cada test nuevo
+(B-180)— y dice cómo remedirlas: `scripts/salud-del-codigo.mjs`. O sea que esto no
+es un chequeo que falte: es una corrida del script y una reescritura de la lista.
+
+Se anota en vez de arreglarse a ojo porque **los números hay que medirlos**: la
+lista de archivos se puede leer, pero «21 casos de render» y el total de la suite
+salen del script, y escribirlos a mano es cómo envejecieron la primera vez.
+
+**Y la misma cifra aparece dos veces en el propio documento**: además del §«Problema
+1», el párrafo de síntesis del cierre la repite («48 componentes y 9.962 LOC de
+`.tsx` con cuatro archivos de render test encima»). Las dos se remiden con la misma
+corrida y se actualizan juntas — no es un segundo hallazgo, es el mismo número
+citado dos veces.
+
+### B-733 · ✅ hecho (2026-09-07) — El `url` de cada `subEvent` lleva el ancla de su fila
+
+**Aprobado por el dueño**, que era lo único que faltaba: el ítem estaba resuelto
+salvo la decisión de agregar `sesiones.id` a la lista blanca de la salida 6.
+
+Hecho como el ítem lo describía: `url` de cada `subEvent` pasa de heredar la
+canónica de la página a `…/actividad/x/#ses_9f2a`, el ancla de esa fila — que
+**ya existe en el HTML** (`id={e.id}` en el `<li>`).
+
+**El barrido de centinelas lo había frenado, y tenía razón.** Volvió a frenarlo
+al implementarlo, y la excepción entró con su motivo escrito: lo que la hace
+aceptable no es que sea inofensivo en general, es que **el uuid ya es público en
+el HTML de esta misma página**. Es el mismo dato en el mismo documento, no un dato
+nuevo.
+
+**Lo que sigue sin ancla, y es la mitad que el ítem pedía no olvidar:** el `url`
+del `Offer` y el del `VirtualLocation`. El arancel y el acceso son de la
+actividad, no de una de sus filas — un ancla ahí afirmaría que el precio es de ese
+encuentro.
+
+Y el caso que afirmaba la herencia (`sub.url === ld.url`, de B-730) se dio vuelta
+con su original citado, más uno nuevo: **las anclas de dos encuentros distintos
+tienen que ser distintas**. Sin eso, «lleva ancla» lo cumpliría un `#` de adorno
+repetido.
+
+**La asimetría entre los dos barridos que el ítem anotaba sigue siendo cierta y
+no cambió:** el gate sobre `dist/` tiene `sesionId` como excepción de la página
+entera, y el JSON-LD viaja adentro de ese mismo HTML, así que el gate no puede
+separarlos. Lo que frena esto es el barrido de vitest, donde la lista del JSON-LD
+es propia. Uno de los dos, no los dos.
+
+El planteo original queda abajo.
+
+---
+
+
+El ejemplo del §5.3 del diseño lo dibuja así desde el principio
+(`…/actividad/x/#ses_9f2a`) y **el código nunca lo emitió**. Con B-730 cada
+`subEvent` heredó el `url` de la página, que no es menos verdadero pero es el
+mismo link repetido N veces; el ancla apuntaría a la fila que describe ese
+encuentro, y las anclas **existen** en el HTML (`id={e.id}` en el `<li>`, o sea
+`id="ses_…"`).
+
+**Por qué no se hizo:** publica el `id` de la sesión en el JSON-LD, y eso es una
+entrada nueva en la lista blanca del §5.1. El barrido de centinelas lo frenó al
+intentarlo —`sesiones.id → CENTINELA.sesiones.id`— y tiene razón: el uuid ya es
+público en el HTML de la página (es el ancla), así que no habría fuga nueva, pero
+**agregar un centinela a la lista de la salida 6 es una decisión del dueño y no
+de un frente**.
+
+Si se aprueba: una línea en `datosEstructurados` y una excepción justificada en
+`PERMITIDO_EN_EL_JSON_LD` (`tests/barrido-de-salidas-publicas.test.ts`). El
+`url` del `Offer` y el del `VirtualLocation` **no** llevarían ancla: el arancel y
+el acceso son de la actividad, no de una de sus filas.
+
+**Y hay una asimetría entre los dos barridos que conviene saber si esto avanza**,
+la encontró el `auditor-privacidad`: el gate sobre `dist/` tiene `sesionId` como
+excepción **de la página entera** (`scripts/build-contra-emulador.mjs`), y el
+JSON-LD viaja adentro de ese mismo HTML — el gate no puede separar el
+`<script type="application/ld+json">` del resto. O sea que el ancla la frena
+**solo** el barrido de vitest, donde `sesiones.id` está en
+`PERMITIDO_EN_EL_DETALLE` pero no en `PERMITIDO_EN_EL_JSON_LD`. Uno de los dos,
+no los dos.
+
+### B-630 · ✅ hecho (2026-09-07) — El barrido de versiones huérfanas no tiene script en seco
+
+Hecho como el ítem lo pedía: `scripts/limpiar-versiones-huerfanas.mjs`, espejo del
+de imágenes, reusando la **misma** `decidirPurga` de la Function.
+
+Dos cosas que el ítem no pedía y valen:
+
+- **Informa lo mismo que haría la Function, incluido lo que NO haría.**
+  `decidirPurga` recorta a `MAX_ACTIVIDADES_POR_CORRIDA` y marca el resto como
+  `diferida-por-tope`; el script no relaja ese tope. Un script que barriera «todo
+  de una» mostraría un plan que la Function nunca ejecuta, y mirarlo antes de
+  confiar en la corrida programada no probaría nada.
+- **La guarda de entorno pasó a ser una clase con test**
+  (`tests/guardas-de-los-scripts.test.ts`): todo `.mjs` de `scripts/` que acepte
+  `--aplicar` tiene que detectar el emulador, pedir `--produccion` explícito y
+  **cortar**. Era una regla escrita en `05-patrones.md` que nada verificaba, y el
+  `auditor-trampas` ya la había encontrado faltando una vez.
+
+**Y el chequeo encontró un tercero antes de existir del todo:**
+`optimizar-imagenes.mjs` acepta `--aplicar`, **reescribe todos los objetos del
+bucket** y no tenía la guarda. No es más benigno que borrar: un `--aplicar` con el
+host del emulador sin exportar pasa el pipeline entero por las imágenes de
+producción, y con el `sharp` de la máquina de quien lo corre en vez del de la
+Function — que es el riesgo que el propio archivo se había escrito unas líneas más
+arriba. Guarda agregada.
+
+Verificado a mano contra el emulador: sembrada una huérfana de 40 días y otra de
+5, el script marca solo la primera, `--aplicar` borra sus dos versiones, la corrida
+siguiente ya no la ve, y `--aplicar` sin el host del emulador aborta con código 1.
+
+El planteo original queda abajo.
+
+---
+
+
+`limpiarImagenesHuerfanas` (B-221) tiene `scripts/limpiar-imagenes-huerfanas.mjs`:
+lista qué borraría sin borrar nada, reusa la misma decisión pura que la Function
+—no hay una segunda copia—, y sirve para correr el barrido a mano sin esperar el
+tick del reloj o para verlo en seco contra producción antes de confiar en la
+corrida programada.
+
+`limpiarVersionesHuerfanas` (B-89) no lo tiene, y la asimetría no es de diseño:
+el frente que la escribió no podía tocar `scripts/`. Hoy la única forma de
+verificar la primera corrida es por logs, ya documentada en `08-operacion.md`.
+
+El script sería el espejo del de imágenes: `subcoleccionesHuerfanas(db)` +
+`decidirPurga(...)` + imprimir, con `--aplicar` para ejecutar y la misma guarda
+de entorno que el otro (§ «Idempotencia en los scripts» de `05-patrones.md`).
+Media hora, y lo que compra es poder mirar qué va a borrar **antes** de que lo
+borre — que en una Function que borra la única copia de una actividad ya no
+existente vale más que en una que borra imágenes.
+
+### B-621 · El calendario y el tablero del panel siguen angostos — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el calendario y el tablero usan todo el ancho — **falta repartir la grilla del mes**.
+
+**D-330** dejó el ancho del panel decidido **por vista** y solo ensanchó el
+listado. Las otras dos pantallas que se recorren de un barrido —la grilla del mes
+(`CalendarioActividades`) y «Estado del catálogo» (`EstadisticasPanel`)— siguen en
+`max-w-3xl lg:max-w-4xl`, y las dos ganarían: una grilla de siete columnas en
+896px da celdas de 120px, y el tablero apila paneles que podrían ir al lado.
+
+**No se hizo con B-620 a propósito:** ensanchar cada una es un cambio visual
+propio —qué crece, qué se reparte en columnas, qué queda con su ancho—, no el mismo
+cambio aplicado dos veces más. Y el tablero se estaba rehaciendo en paralelo.
+
+**El costo es una línea por pantalla**: agregar `'calendario'` y/o `'estadisticas'`
+a `VISTAS_A_TODO_ANCHO` en [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts),
+y después mirar la pantalla y repartir lo que corresponda. `tests/ancho-del-panel.test.ts`
+lista hoy esas dos vistas entre las que arrancan angostas, así que hay que moverlas
+de grupo en el mismo cambio — que es la señal de que la decisión se está tomando y
+no filtrando por descuido.
+
+### B-622 · La tarjeta del panel no muestra `destacado` ni los tags — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la tarjeta dice «Destacada»; los tags no, por decisión.
+
+La fila no los mostraba y la tarjeta tampoco, así que **no es una regresión**: es
+que la tarjeta ahora tiene lugar y sigue sin decirlos. `destacado` decide el orden
+en el sitio público y `tags` es el eje que D-74 dejó afuera de los filtros; desde
+el panel, «¿cuáles marqué como destacadas?» solo se contesta abriendo una por una.
+
+**Qué haría falta:** una marca más en la tarjeta para `destacado` (la píldora ya
+existe, `CLASE_MARCA`) y decidir si los tags entran — que es la parte que no es
+gratis: una actividad puede tener seis y la tarjeta se convierte en una nube de
+etiquetas. Recomendación: `destacado` sí, tags no hasta que alguien lo pida.
+
+### B-601 · El tríptico de «¿Qué hay ahora?» no se mide — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el tríptico entra al vocabulario de la analítica — **falta el enganche**.
+
+El sitio público mide **dos** eventos propios —`busqueda` y `clic_inscripcion`
+(B-375, [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md))— y el tríptico de
+**B-600** no está en ninguno de los dos. Es deliberado y no un olvido: se decidió
+al construirlo, para no meter un evento nuevo en la misma tanda que la sección.
+
+Lo que no se puede contestar sin medirlo es justamente lo que decide si la sección
+se queda como está:
+
+- **¿Se usa?** Un clic en una fila del tríptico y un clic en una fila del listado
+  llevan al mismo lugar, así que hoy son indistinguibles. Si nadie toca el
+  tríptico, es una banda que empuja el listado abajo del pliegue por nada.
+- **¿Cuál de los tres paneles?** Si todo el uso es «Hoy», el tope de cuatro está
+  mal repartido y el finde podría ser un solo panel con más filas.
+- **¿El «+N más» frustra?** El pie dice que hay más y no linkea a ninguna parte
+  (D-320, y el motivo es bueno). Si se toca —o si scrollean al listado justo
+  después—, la decisión de que el día no sea una URL merece revisarse con un dato.
+
+**Cuidado con el default de no decidir** (§5.1 de [`07-seguridad.md`](07-seguridad.md)):
+un evento del tríptico tiene que viajar con el panel (`hoy`/`manana`/`finde`) y la
+posición de la fila, **nunca con el slug ni el título de la actividad** — eso es
+contenido, y `detalle` es un enum cerrado en todos los eventos de este proyecto.
+
+### B-604 · El comentario de B-190 estaba duplicado literal en `tarjetaPublica.ts` — ✅ hecho (2026-09-03) · P3
+
+**Renumerado desde el `B-600` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+En `src/lib/tarjetaPublica.ts`, el bloque de `lugarDeTarjeta` que explica B-190
+(«Online por A confirmar» se lee como si «A confirmar» fuera el nombre de una
+plataforma) estaba pegado **dos veces seguidas**, palabra por palabra. No venía de
+un merge: lo agregó duplicado un solo commit (`fix: 5 hallazgos del
+auditor-privacidad sobre B-190/B-340/B-342`).
+
+No afectaba comportamiento; el costo es que un lector futuro lo lee dos veces
+preguntándose si el segundo dice algo distinto — y en un repo donde el comentario
+**es** la documentación de la decisión, eso es exactamente el ruido que hace que se
+dejen de leer. **Cerrado borrando el segundo bloque.**
+
+Lo encontró el `auditor-documentacion` en el barrido del 2026-09-03, que además
+buscó otros duplicados de bloques de 4+ líneas en `src/**`, `functions/**` y
+`tests/**`: los demás candidatos son falsos positivos (código repetitivo por
+patrón). El frente de salud no lo tocó porque `src/**` era de otro frente.
+
+### B-606 · La definición del `auditor-documentacion` sobre-afirma que nada atrapa los duplicados de merge — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la ficha del auditor ya no sobre-afirma.
+
+**Renumerado desde el `B-602` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`.claude/agents/auditor-documentacion.md`, Parte 2 punto 3, dice que
+`tests/sin-marcadores-de-conflicto.test.ts` «no atrapa esto» hablando de bloques
+duplicados o fusionados por merges. Dejó de ser del todo cierto: desde **B-367**,
+`tests/red-de-contencion.test.ts` atrapa exactamente ese patrón — pero **solo** para
+la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`.
+
+Sin la aclaración, el próximo auditor reporta como hallazgo algo que el CI ya frena
+ahí. Es la clase que este repo ya conoce: un auditor que duplica lo que un test
+frena reporta ruido, y la tabla de `13-agentes.md` existe justamente para eso.
+
+Texto propuesto, al final del punto 3:
+
+    **Excepción:** la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`
+    sí tiene red desde B-367 (`tests/red-de-contencion.test.ts`, filas fusionadas
+    con `||` o duplicadas) — no lo reportes ahí, seguí buscando el patrón en el
+    resto de la documentación.
+
+### B-607 · `npm audit fix` de `uuid`, la única vulnerabilidad de producción sin breaking — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `uuid` desaparece al subir `google-auth-library`.
+
+**Renumerado desde el `B-603` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`uuid` <11.1.1 (vía `gaxios`; moderada: falta un chequeo de límites de buffer en
+v3/v5/v6 cuando se pasa `buf`) se cierra con un `npm audit fix` **sin cambios
+incompatibles**. No se hizo el 2026-09-03 a propósito: toca `package-lock.json`,
+que es de todos los frentes, y un lock reescrito en medio de una tanda de tres
+agentes en paralelo es un conflicto garantizado.
+
+Las otras cuatro vulnerabilidades de producción quedan **fuera** de este ítem:
+`sharp` (alta, libvips) y `esbuild` (baja) solo se cierran subiendo a `astro@7.3.1`,
+dos mayores arriba — eso es la decisión que ya vive en el Problema 4 de
+`docs/10-salud-del-codigo.md`, no un `audit fix`.
+
+### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
+
+**La conclusión es «no se toca», y se cierra para que deje de contarse como
+trabajo pendiente.** El texto de abajo ya tenía los tres argumentos y se
+verificaron contra el código: `src/pages/cartelera.astro:139` pinta
+`{tipoEtiqueta} · {cuando}` con `claseRotulo`, que es
+`'label-caps text-azul'` (`src/components/sitio/estilos.ts:110`) — exactamente
+lo que el ítem describe.
+
+Por qué se descarta en vez de dejarse abierto: **no hay ninguna afirmación falsa
+que corregir**, que es lo que sí había en B-273. Es una **propuesta de diseño
+nueva** —dos colores en un renglón de tres palabras— cuyo único camino a
+ejecución es que el dueño decida que la pared también tiene que identificar la
+categoría por color, y nadie lo pidió. Un ítem que espera un pedido que no
+existe es exactamente lo que hace que la lista deje de significar algo.
+
+**No se pierde nada al cerrarlo**, que es la condición: el razonamiento sigue
+escrito acá, y el camino corto —una cajita como la del listado en vez de teñir
+la línea entera, medida con `contrasteCaladoDelTono` o `contrasteDelTono`, sin
+nada nuevo que medir— también. Si el dueño lo pide, se reabre con eso ya
+resuelto, que era el propósito de haberlo anotado.
+
+---
+
+#### El planteo original — B-275
+**Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
+vuelva a discutir desde cero.**
+
+`src/pages/cartelera.astro` pone `{tipoEtiqueta} · {cuando}` con `claseRotulo`
+(`label-caps text-azul`). Es la tercera pieza pública que nombra la categoría, después
+de la cajita del listado y la de la cabecera del detalle — que desde D-153 llevan las
+dos el color de su tipo.
+
+**Por qué no entró en B-273:**
+
+- **No es la misma pieza.** Las otras dos son una cajita con la categoría sola; ésta
+  es una **línea compuesta** donde el tipo comparte renglón con la fecha. Pintarla del
+  color de la categoría pintaría también el «jue 24 sep», que es exactamente lo que
+  D-150 dejó afuera con su motivo escrito: «extenderlo al resto de la fila lo
+  convierte en decoración y devuelve la textura de plataforma».
+- **No hay salto que arreglar.** Nadie ve una cajita cambiar de color al navegar: acá
+  no hay cajita, hay texto en `azul`, que es la tinta que el sistema visual le asigna
+  a lo funcional y a las categorías. Sigue siendo coherente con el sistema.
+- **Partir la línea para pintar solo el tipo** es una decisión de diseño nueva —dos
+  colores en un renglón de tres palabras— y no la corrección de una afirmación falsa,
+  que es lo que B-273 era.
+
+Qué haría falta para cerrarlo: que el dueño decida si la pared también tiene que
+identificar la categoría por color. Si dice que sí, el camino corto es una cajita
+como la del listado en vez de teñir la línea entera, y el par a medir es el mismo que
+ya mide `contrasteCaladoDelTono` (si va calada) o `contrasteDelTono` (si va con
+borde) — no hace falta medir nada nuevo.
+
+### B-345 · Cinco citas apuntan a D-100 para una decisión que es D-111 — ✅ hecho (2026-09-02) · P3
+
+**Corregidas las dos heredadas que el ítem nombraba**, más una tercera que
+apareció buscándolas: `docs/BACKLOG.md` cuerpo de **B-72** («Resuelto así
+(D-100)» → D-111), cuerpo de **B-177** («Con el orden de escritura de D-100»
+→ D-111), y `docs/CHANGELOG.md` («el orden de escritura de B-71/D-100» →
+D-111) — esta última es irónica: es la propia entrada del changelog que
+**anunciaba** haber corregido las tres apariciones nuevas de este cruce
+(«D-187, `04-funcionalidades.md` y este CHANGELOG: los tres corregidos»), y
+una de las tres no se había tocado. Verificado que las otras dos sí:
+`D-187` y `04-funcionalidades.md` ya decían D-111.
+
+**Verificadas y dejadas como estaban, por ser citas correctas**: las cuatro
+apariciones de D-100 que hablan de su tema real —`taxonomia.ts`, la mitad
+cliente del §4.2 (`docs/04-funcionalidades.md:314`, `docs/BACKLOG.md:4151`,
+`docs/CHANGELOG.md:5420`)— y la definición misma en `docs/06-decisiones.md`.
+
+**Lo que se dejó sin resolver, a propósito y por prudencia:** dos citas más de
+D-100 en `docs/BACKLOG.md` (cuerpos de B-50 y B-35) que tampoco hablan de
+`taxonomia.ts` ni del orden de escrituras, sino de un tercer patrón —derivar
+un chequeo del grafo de imports real en vez de comparar literales, y sacar una
+decisión a un módulo puro con un único punto de entrada—. No encajan en
+ninguno de los dos casos que este ítem resuelve (D-100 real vs. D-111
+correcto), y no hay ningún D-número que las nombre con precisión: inventar uno
+sería el mismo error al revés. Quedan anotadas acá para quien quiera
+formalizar esa decisión con su propio número, en vez de seguir citando D-100
+por analogía.
+
+El texto original queda abajo.
+
+**Lo encontró el `auditor-documentacion` el 2026-09-02**, y las tres que este
+cambio había agregado ya se corrigieron. Quedan las heredadas.
+
+La decisión «primero la actividad, después las etiquetas nuevas» es **D-111** («La
+actividad se escribe antes que las etiquetas nuevas»). **D-100** es otra cosa: «La
+mitad cliente del §4.2 vive en un módulo puro, y los widgets no se unifican», o
+sea `taxonomia.ts` — no dice nada de orden de escrituras. Las dos nacieron
+arreglando B-71/B-72 el mismo día, y la cita se cruzó ahí.
+
+Dónde quedó mal, todo preexistente a este cambio:
+
+- `docs/BACKLOG.md`, cuerpo de **B-177**: «Con el orden de escritura de D-100, si
+  la actividad se guarda pero falla el alta…»
+- `docs/BACKLOG.md`, cuerpo de **B-72**: «**Resuelto así (D-100):** se invirtió el
+  orden, en `src/lib/formulario/guardar.ts`»
+- y las apariciones del mismo párrafo que hayan quedado en otros ítems que citan
+  esa inversión.
+
+**No se tocaron acá a propósito**: están en cuerpos de ítems cerrados que sirven
+como rastro, y editarlos en el mismo commit que otras seis cosas mezcla un arreglo
+de trazabilidad con el cambio del día. Es P3 porque no rompe nada: quien siga la
+cita cae en una decisión real, solo que en la que no explica lo que fue a buscar
+— que es exactamente el costo que el índice de decisiones existe para no tener.
+
+Ojo al corregirlas: **hay citas de D-100 que están bien** y no se tocan, como la de
+`04-funcionalidades.md` sobre el desplegable y el input de etiquetas usando la
+misma lógica. Es su tema.
+
+### B-342 · Las filas de material no están en el chasis `FilasEditor`, y se editan por índice · P3 — ✅ hecho (2026-09-02)
+
+**Se miró haciendo B-197 y se decidió no tocarlo; queda anotado para no volver a
+discutirlo desde cero.**
+
+`MaterialEditor` es el único editor de filas del panel que no usa `FilasEditor`
+(B-224): tiene su propio botón de agregar, su propio borrar y ningún «Duplicar»,
+contador ni estado vacío. Y edita, borra y renderiza **por índice** (`key={i}`,
+`editar(i, …)`, `items.filter((_, j) => j !== i)`), que es lo que la trampa 2
+prohíbe para las sesiones.
+
+**No es la trampa 2, y por eso es P3.** La trampa 2 es del *diff contra Calendar*:
+los ids de sesión existen porque un índice renumerado le hace creer al diff que
+cambiaron cinco encuentros y le borra los eventos a la gente. Un ítem de material
+**no va a Calendar** y no tiene identidad que preservar, así que renumerarlo no
+destruye nada del otro lado. Y las filas son controladas (`value={it.titulo}`), así
+que borrar la primera de tres no corrompe los valores de las otras.
+
+**Lo que el índice sí cuesta**, y es chico: `key={i}` reusa el nodo del DOM, así que
+borrar una fila mueve el foco y el cursor a la fila de al lado, y cualquier estado
+local por fila que se agregue en el futuro va a saltar de fila. Más el precio del
+chasis duplicado: el arreglo que se aplique al de sesiones no llega a este.
+
+**Si se hace**, va con `id` de cliente en `ItemMaterial` —uuid, no índice— y eso
+toca el schema, `formADocumento`, `documentoAForm`, `duplicar.ts` y las fixtures.
+Es un cambio de modelo por una mejora de foco: por eso está acá y no en P2.
+
+**Hecho, exactamente con ese alcance.** `MaterialEditor` al chasis `FilasEditor`
+(gana Duplicar/contador/estado vacío gratis) e `ItemMaterial.id` nuevo
+(`mat_<uuid>`, generado en `src/lib/material.ts`). Los documentos anteriores a
+este cambio se leen con un id determinístico por índice
+(`idItemMaterialMigrado`, mismo criterio que `ID_IMAGEN_MIGRADA` de D-125: un id
+que cambiara en cada lectura ensuciaría el formulario), y duplicar una actividad
+regenera los ids del material igual que ya hacía con las modalidades. Tocó más
+archivos de los previstos —`analytics-eventos.ts` (`CAMPOS_VALIDABLES`),
+`camposFaltantes.ts` y nueve archivos de test que construían `ItemMaterial` a
+mano— porque el `id` nuevo es un campo más del schema y `tsc` los encontró a
+todos.
+
+**Campo nuevo → skill `campo-nuevo`, corrido después.** Las doce salidas públicas, una por una: `material.items[].id` no sale en ninguna — `toPublic.ts` (`ItemMaterialPublico`) ya era whitelist sin `id` desde antes de este cambio, y lo mismo `functions/calendario.js` y `textoRedes.ts` (que de hecho excluye `material` entero, D-20). Confirmado, no solo leído: mutación en `toPublic.ts` agregando `id` a la proyección — `tests/barrido-de-salidas-publicas.test.ts` lo agarra nombrando exactamente «material.id → CENTINELA.material.id» en `events.json`. Fila nueva en el «Qué NUNCA sale» de `07-seguridad.md`.
+
+### B-343 · Los encuentros no muestran los errores del schema por fila · P3 — ✅ hecho (2026-09-02)
+
+**La otra mitad de B-197**, y la más suave de las tres.
+
+`SesionesEditor` recibe `error` —el de la lista— y no `errorDe`, así que
+`sesiones.N.inicio` y `sesiones.N.fin` («Falta la fecha de inicio», «Falta la fecha
+de fin») no se pintan en la fila.
+
+**Está en P3 y no al lado de B-341 por dos razones que hay que mirar juntas:**
+
+- **El caso caro ya está cubierto, por otro camino.** El `.refine` de
+  `sesionSchema` («El encuentro tiene que terminar después de empezar») tiene su
+  propio aviso vivo en la fila: `resumirSesion` deriva `finAntesDelInicio` y la
+  línea de abajo cambia a «Cae martes, pero el fin no es posterior al inicio». O
+  sea que la fila **sí** dice lo que está mal, con una derivación paralela en lugar
+  del error del schema. Que sean dos caminos para lo mismo es la deuda real de este
+  ítem.
+- **Lo que queda sin cubrir es raro.** `sesionVacia` nace siempre con fecha y hora
+  puestas, así que un `inicio` vacío solo aparece si alguien lo borró a mano.
+
+Lo barato es lo de B-197: `errorDe` en lugar de `error`, y de paso decidir si la
+derivación paralela se queda (es más rica: dice el día de la semana) o si el schema
+pasa a ser la única fuente.
+
+**Hecho, y la derivación paralela se queda.** `SesionesEditor` recibe `errorDe`
+completo; Inicio y Fin pasan a usar `Campo` (antes eran `<label>` a mano) y leen
+`errorDe('sesiones.N.inicio'/'fin')`, con `data-campo-con-error` para el scroll
+de B-184. `resumirSesion`/`finAntesDelInicio` sigue viva tal cual: es más rica
+(dice el día de la semana) y este ítem dejaba la decisión abierta a propósito —
+los dos caminos conviven.
+
+### B-276 · La suite completa falla a veces en los tests de integración, y es el orden — ✅ hecho (2026-09-02, con B-219)
+
+**Cerrado por B-219 (D-195), y era la misma familia**, como este ítem sospechaba.
+Su párrafo final decía la salida correcta: «darle a cada archivo de integración su
+propio `projectId`, que es lo que aísla de verdad y de paso protege del emulador
+compartido entre worktrees». Se hizo por **checkout** y no por archivo, y el
+motivo es que la otra mitad ya estaba cubierta: `fileParallelism: false` serializa
+los archivos de una corrida. Los dos mecanismos juntos cubren los dos casos.
+
+Y lo que este ítem pedía para cerrarlo —«correr la suite en un loop hasta
+reproducirlo»— ahora es un script: `scripts/probar-concurrencia.sh --misma-base`
+lo reproduce a pedido, 6 de 6.
+
+
+Apareció al cerrar B-273: sobre unas nueve corridas de `npx vitest run
+--no-file-parallelism`, **dos fallaron** con errores del tipo «el fixture dejó de
+tener a "taller" como base» o «La opción «taller» ya no está en tipo» en
+`opciones.integracion.test.ts`, y una vez además en `sitio-publico.integracion.test.ts`
+y `events-json-endpoint.integracion.test.ts`. Las mismas corridas aisladas —cada
+archivo solo, y los tres archivos de integración juntos— pasan siempre, y la suite
+completa pasó **seis veces seguidas** después. No se pudo reproducir a voluntad.
+
+**La sospecha:** varios `describe` de integración llaman a `limpiarFirestore()`, que
+hace un `DELETE` sobre **toda** la base del emulador, en `beforeAll` y en `afterAll`.
+Si alguno de esos borrados sigue en vuelo cuando el archivo siguiente ya sembró su
+fixture, el fixture desaparece y el error que se ve es «el dato base no está» — que
+es justo la forma que tuvieron los fallos. El emulador además es **compartido entre
+worktrees**, así que un build contra el emulador o una corrida en otro directorio
+alcanzarían para lo mismo.
+
+No es de B-273: el patrón de barrer entero en `beforeAll` es anterior (el describe de
+D-30 de `sitio-publico.integracion.test.ts` ya lo hacía) y la suite en `main` también
+pasa. Lo que B-273 hizo fue agregar un tercer `describe` que barre en ese archivo, o
+sea subir la frecuencia si la sospecha es correcta.
+
+Qué haría falta para cerrarlo: correr la suite en un loop hasta reproducirlo con el
+log del emulador a la vista. Si se confirma, la salida es dejar de barrer la base
+entera —borrar solo las colecciones que el archivo sembró— o darle a cada archivo de
+integración su propio `projectId`, que es lo que aísla de verdad y de paso protege
+del emulador compartido entre worktrees.
+
+### B-281 · El aviso del mes vencido manda a `/` y no a `/pasadas` — ✅ hecho (2026-09-02)
+
+**Hecho con B-109**, y fue exactamente la línea que este ítem prometía:
+`DESTINO_DEL_MES_VENCIDO` (`src/lib/mesPublico.ts`) apunta a `RUTA_PASADAS`, que
+ahora existe. **El texto del link se cambió junto con el destino** —«Mirá todo lo
+que ya pasó» en vez de «Mirá lo que viene en la agenda»—: un link cuyo texto
+promete otra cosa que la página a la que lleva es peor que no tenerlo, y los dos
+son una sola frase.
+
+El test que lo cubría no cambió ni una línea: verifica que el destino sea una ruta
+que el sitio sirve de verdad, así que sostuvo el `/` de antes y sostiene el
+`/pasadas` de ahora — y sigue frenando el error inverso.
+
+El texto original:
+
+El §2.2 dice que la página de un mes que terminó se emite una última vez «con un
+aviso "este mes ya pasó" y link a `/pasadas`». `/pasadas` es parte de **B-109** y
+todavía no existe, así que enlazarla sería poner un 404 en la única salida que esa
+página ofrece — peor que el problema que la página vencida resuelve. Hoy manda a la
+home.
+
+Es P3 porque no rompe nada y el arreglo es una línea: el destino vive en
+`DESTINO_DEL_MES_VENCIDO` (`src/lib/mesPublico.ts`) y no escrito en la plantilla.
+`tests/mesPublico.test.ts` verifica que apunte a **una ruta que el sitio sirve de
+verdad**, así que también frena el error inverso —apuntarla a `/pasadas` antes de
+construirla— y deja de hacer ruido solo cuando esa página exista. Ver **D-155**.
+
+### B-282 · Cuatro cosas que el `auditor-privacidad` encontró en la salida nueva de B-113 — ✅ hecho (2026-09-01)
+
+Entran acá porque la regla es que todo lo que aparece en el camino quede anotado,
+incluso arreglado en el momento. Las cuatro son de la misma familia: **ninguna
+filtraba nada hoy y ninguna dejaba el build en rojo**.
+
+| # | Qué | Cómo quedó |
+|---|---|---|
+| P1 | La página de mes es una **salida pública nueva** y no estaba en ninguno de los tres índices —`docs/07-seguridad.md`, la ficha del agente y el skill `campo-nuevo`—, así que un cambio futuro a `mesPublico.ts` no despertaba al auditor por nombre de archivo. Es el agujero de la salida 5 del 2026-08-27, repetido: no de cobertura, de índice | Fila **8** en las tres tablas, «siete» → «ocho» en los cuatro lugares. `tests/agentes-y-skills.test.ts` (B-216) las ata solas desde ahora |
+| P1 | La salida se arma **interpolando texto** (`descripcionDelMes` mete tres títulos en la `meta description`) y no tenía barrido de centinelas. El peor caso estaba a un carácter: `e.searchText` en lugar de `e.titulo` publica tres descripciones enteras normalizadas | `describe` propio en `tests/barrido-de-salidas-publicas.test.ts`, sobre las tres frases y en sus dos ramas (mes vigente y vencido) |
+| P2 | La plantilla recibía la página por props **y además** hacía `indiceDelSitio()` en el frontmatter, o sea que se traía el índice entero —con `searchText` y `creadoEn`— por la puerta de al lado. La garantía dejaba de darla el tipo (D-140) y pasaba a darla un grep | `caminosDeMes` arma un `VistaDeMes` con lo que la página muestra y nada más; la plantilla importa una sola función, y hay aserto por lista blanca de imports |
+| P2 | El aserto que cerraba la plantilla era **lista negra** de tres nombres: `{e.resumen}` o `{e.creadoEn}` pasaban limpios | Invertido a lista blanca —qué puede sacar del view-model, campo por campo— más la mitad que la lista no da: `entradas` viaja entera a la lista y no se abre (ni indexar, ni recorrer, ni desestructurar) |
+
+Las cinco mutaciones de los arreglos mueren.
+
+### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` — ✅ hecho (2026-09-07) · P3
+
+Al revertir D-74 para el arancel (B-272, D-152) se revisaron sus otros tres
+descartes uno por uno. **No se agregó ninguno —no se pidieron— pero dos de los tres
+motivos ya no son ciertos, y eso tiene que quedar anotado o el descarte sobrevive a
+su razón.**
+
+| Filtro | Qué decía D-74 | Qué pasó |
+|---|---|---|
+| `tags` | «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. **Cuando exista B-06, se reconsidera**» | **B-05 y B-06 existen.** La condición que el propio D-74 puso para reconsiderarlo se cumplió. Lo que sigue en pie es la otra mitad del argumento: es multivaluado y necesita un control de selección múltiple, que ninguno de los cinco desplegables del panel tiene. O sea que el costo es real pero ya no es «la lista está sucia» |
+| `destacado` | «un booleano que hoy no consume nadie: **el sitio público todavía no existe** (B-01)» | El sitio existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. El motivo caducó entero. Lo que queda como argumento es otro y más débil: con pocas destacadas, un filtro booleano compra menos que un orden |
+| quién la cargó | «el dato es un identificador de usuario y no un nombre, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre» | **Sigue valiendo igual.** No hay nada que revisar acá |
+
+Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, primero
+hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
+`EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
+
+**El dueño decidió el 2026-09-07: «los dos». Hecho, y está en D-480.** «Destacada»
+es un desplegable de tres valores que solo aparece si hay alguna destacada; las
+etiquetas son chips de alternancia debajo de la grilla, con el número de cada una y
+las tres reglas de conteo del sitio.
+
+Dos cosas que el ítem no había previsto:
+
+- **el camino corto no se tomó.** Traer el `EjeDeFiltro` del sitio metía su sistema
+  visual —`label-caps`, `bg-acento`, radio 0— adentro del panel, que tiene el suyo, y
+  ponía a los tests visuales del sitio a medir un componente usado sobre otras
+  superficies. Se comparte lo que no puede divergir: la aritmética del foco, la forma
+  del chip y el motivo de cada regla de conteo. Está argumentado en D-480;
+- **apareció un ciclo de imports.** `chipsDeTags` devuelve la misma forma que
+  `chipsDe`, y `listadoPublico` ya importaba `ETIQUETA_MODALIDAD` del panel, así que
+  importarle el tipo `Chip` cerró el círculo. Lo cobró `salud-del-codigo` y el tipo
+  se mudó a `lib/chip.ts`, que los dos importan.
+
+Y una decisión de conteo que vale escribir: **las etiquetas suman UNO al número del
+botón «Filtros»**, no una por etiqueta. Adentro del eje se unen con «o», así que la
+segunda ensancha el resultado; contarlas de a una diría que hay más recorte cuando
+hay menos.
+
+### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda — ✅ hecho (2026-09-07) · P2
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `publicadaAlgunaVez` se guarda, con «ausente» leído como la inferencia.
+
+**Decidido el 2026-09-03 por el dueño: guardarlo en el documento.** Un campo más,
+escrito una sola vez por el trigger, que saca la inferencia de los tres lugares
+donde hoy se rehace. Va en la tanda de modelo junto con **B-301**.
+
+
+B-110 necesita saber si una actividad cancelada estuvo publicada alguna vez —para
+no publicar la página de un borrador por otra puerta— y esa pregunta **no vive en
+el modelo**. Hoy se infiere en el build (`estuvoPublicada`,
+`contenidoDelSitio.ts`): primero por si alguna sesión conserva `calendarEventId`
+—la heurística del §7.3, que en la práctica no sobrevive porque el sync la borra al
+cancelar (D-159)— y si no, por si `/actividades/{id}/versiones` tiene una entrada
+con `documento.estado: 'publicado'`.
+
+Funciona y era lo correcto para cerrar B-110, porque **el historial funciona
+retroactivamente**: las actividades ya canceladas en producción recuperan su página
+sin que nadie las vuelva a guardar, que es justo lo que un campo nuevo no puede
+hacer. Lo que se paga:
+
+- una query extra por cancelada (son pocas, y solo ellas la pagan);
+- **la retención de D-42**: 20 versiones por actividad. Editar una cancelada veinte
+  veces empuja la versión publicada afuera del historial y la página vuelve a dar
+  404. Falla cerrado, que es el lado correcto del error, pero es un límite real;
+- el build depende de una subcolección interna para decidir qué HTML genera.
+
+Lo correcto a mediano plazo es `publicadaAlgunaVez: boolean` —ya era la decisión 4
+del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md)—: un booleano pegajoso
+que se prende al guardar con `estado: 'publicado'` y nunca vuelve a `false`. Toca
+el tipo, el schema, la conversión form ⇄ documento, `duplicar.ts` (**tiene que
+nacer en `false`**: un duplicado nunca estuvo publicado), `camposFaltantes.ts`, el
+fixture de centinelas y el barrido — o sea el recorrido completo del skill
+`campo-nuevo`. No se hizo con B-110 porque no lo bloqueaba y porque solo sirve
+hacia adelante.
+
+Cuando exista, `estuvoPublicada` se queda con el campo y las dos inferencias pasan
+a ser el default de lectura de los documentos anteriores.
+
+### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` — ✅ hecho (2026-09-02)
+
+**Cómo quedó.** El aserto verifica que `indiceDeTecla` **se llame** y que su
+resultado se use, más el `onKeyDown` que la alimenta: sin manejador la llamada no
+ocurre nunca, así que son las dos mitades de lo que el `it` promete.
+
+Lo que a propósito **no** se hizo: apretar el aserto a la línea exacta de hoy. Eso
+volvería a ser un test de ortografía —renombrar la variable local lo rompería sin
+que el comportamiento cambie— y un test que se rompe por un renombre está mal
+escrito, no es el código el que está mal.
+
+**De los dos, quedaba uno.** La segunda instancia que este ítem nombraba
+(`toContain('SELECTOR_ENFOCABLE')` sobre `CentroAyuda.tsx`) ya no existe: el
+refactor de B-210 mudó el cableado al hook, y el aserto que quedó en su lugar es
+la lista negra invertida —ninguna capa puede nombrar `SELECTOR_ENFOCABLE` por su
+cuenta—, que un import haría **fallar** en vez de pasar.
+
+La mutación muere: reemplazar la llamada por `null` pone el `it` en rojo. Antes
+pasaba.
+
+
+Los encontró el `auditor-privacidad` en el cierre de `1.2.0`, buscando otras
+instancias de la clase que apareció ahí. `tests/foco.test.ts:97` y `:105`:
+
+```js
+expect(src).toContain('indiceDeTecla');      // MenuAcciones.tsx:3 es un import
+expect(src).toContain('SELECTOR_ENFOCABLE'); // CentroAyuda.tsx:11 es un import
+```
+
+El `it` promete «navega con teclas» y «atrapa el Tab»; lo que verifica es que el
+nombre **aparezca** en el archivo, y el import alcanza para eso. O sea que borrar
+la llamada dejaría el test verde.
+
+Es P3 y no más porque es más flojo que el caso de B-80: los asertos de al lado sí
+afirman llamadas, y un import sin usar lo levanta el linter. El arreglo es
+`toContain('indiceDeTecla(')` y
+`toContain('querySelectorAll<HTMLElement>(SELECTOR_ENFOCABLE)')`, con el mismo
+colapso de espacios que usa `tests/autoguardado.test.ts`.
+
+**La lección general, que vale más que los dos asertos:** un test que lee un
+fuente y busca un **nombre** no verifica nada — el import lo satisface. Tiene que
+afirmar la llamada, la sentencia completa o un dato. Quedó anotada en
+`13-agentes.md`, y se llegó a ella dos veces en el mismo cierre: primero en el
+test de la guarda de B-80, y después **en el test escrito para arreglar eso**.
+
+### B-200 · La guarda de forma del borrador no valida las fechas, y el autoguardado agranda la superficie · P3 — ✅ hecho (2026-09-02)
+
+Lo encontró el `auditor-trampas` en el cierre de `1.2.0`, y es **preexistente**:
+`pareceFormulario()` (`lib/formulario/autoguardado.ts`) chequea que `titulo` sea
+string y `sesiones` sea array, y el schema —en los dos niveles de D-120— pide que
+`inicio`/`fin` sean no vacíos, no que sean fechas parseables. Un borrador con una
+fecha corrupta pasa la validación y recién `formADocumento` tira
+`Fecha inválida: "<lo tipeado>"`, que el `try/catch` de `guardarActividad` convierte
+en un `{estado:'error'}`.
+
+O sea: **falla visible, no dato corrupto**, y por eso es P3 y no bloqueó el push.
+
+Lo que cambió con B-191 no es el bug sino su superficie: el autoguardado
+institucionaliza formularios de hasta 30 días que nadie volvió a tocar, así que la
+fecha corrupta ahora puede venir de un borrador viejo y no solo de un tecleo de
+hace un minuto. El arreglo natural es que el `refine` de `sesionSchema` valide que
+la fecha se pueda convertir —que es lo que `formADocumento` ya hace, o sea la
+tercera copia de la misma regla si no se comparte (B-72, B-75)—.
+
+**Hecho, y el agujero real no era donde este ítem apuntaba.** Medido antes de
+tocar nada: el `.refine` de `sesionSchema` **ya** rechazaba una fecha corrupta
+—`new Date(corrupta) > new Date(otra)` da `false` por las reglas de `NaN`—,
+solo que con el mensaje equivocado («tiene que terminar después de empezar» en
+vez de «fecha inválida»). El agujero de verdad estaba en dos campos que
+comparten la misma forma pero con las dos fechas **opcionales**:
+`modalidadFilaSchema`, cuyo corto circuito `!m.inicio || !m.fin || …` dejaba
+pasar una ventana con una sola punta corrupta sin comparar nada, e
+`inscripcion.cierra`, que no tenía ninguna guarda de forma. Los dos llegaban
+intactos a `formADocumento`, que ahí sí tiraba `Fecha inválida` — el crash real
+del ítem, no una hipótesis. `fechaValida()` en `schema.ts` usa el mismo parser
+que `formADocumento` (`deDatetimeLocal` de `lib/sesiones.ts`, importado y no
+copiado — D-20, B-72/B-75).
+
+### B-201 · El conteo de líneas de `10-salud-del-codigo.md` §1.3 quedó viejo — ✅ hecho (2026-09-02)
+
+**Remedido, no estimado**, que era la condición del ítem. Y con el criterio del
+conteo escrito al lado, que era la otra:
+
+| | 2026-08-27 | Hoy |
+|---|---:|---:|
+| `ActividadFormulario.tsx` | 379 LOC | **376** |
+| Su fan-out | 25 | **26** |
+| Su puesto en la lista | 14º | **28º** |
+
+El criterio, en la sección: LOC por `wc -l`; fan-out = imports distintos **del
+proyecto**, sin `node_modules` y sin `react`, como el grafo del §1.4 (y no hay
+`import()` diferido en el archivo); puesto sobre el corpus del §1.1, hoy 156
+archivos.
+
+**Lo que la medición dice, que es el trabajo que el ítem no podía hacer:** el
+número que se venía siguiendo dejó de subir —tres líneas menos y un import más
+en seis días, sigue siendo un composer, y el umbral escrito entonces (550 LOC
+con fan-out 30) no se movió— y el que se movió no significa lo que parece. El
+salto de 14º a 28º es que **catorce archivos le pasaron por arriba sin que él
+cambiara**: seis nacieron con el sitio público, uno el mismo día de la medición
+anterior y siete ya estaban y crecieron. De ahí la conclusión que quedó escrita:
+el puesto es la peor de las tres cifras para seguir un archivo.
+
+**Lo que sigue viejo, y ahora está dicho con una vara:** el resto del documento
+es del 2026-08-27. El §1.1 declara 111 archivos de producción y hoy son 156. La
+pasada completa es **B-311**.
+
+Lo marcó el `auditor-documentacion` en el cierre de `1.2.0`. La tabla dice
+`ActividadFormulario.tsx | 858 LOC | 258 LOC` y "6 módulos de dominio puros", y hoy
+son diez módulos y el `.tsx` creció (B-184 y B-191 le sumaron el aviso, el
+autoguardado y la navegación a los campos que faltan).
+
+No se corrigió en el mismo cambio a propósito, por el mismo criterio que el conteo
+de tests: **el número depende de la metodología del conteo original** —qué cuenta
+como módulo de dominio, si el fan-out incluye los tipos— y ponerle un número
+inventado es peor que dejarlo viejo, porque el viejo al menos se sabe viejo. Hay que
+recontarlo una vez, con el criterio escrito al lado, y ahí sí se puede automatizar.
+
+`04-funcionalidades.md` ya dejó de citar el número y ahora apunta a esa tabla.
+
+### B-197 · El título de cada fila de material no muestra su error al lado del campo — ✅ hecho (2026-09-02)
+
+Apareció haciendo B-183/B-184. `material.items.N.titulo` es obligatorio al
+publicar, pero `MaterialEditor` recibe un solo `error` —el de la lista— y no el
+mapa completo, así que el rechazo de una fila puntual **solo** se ve en el
+mensaje de la barra («Título del material») y no en rojo al lado del campo, que
+es donde el resto del formulario lo muestra. Con dos filas cargadas y una sin
+título, el mensaje no dice cuál de las dos.
+
+Hoy no deja a nadie sin salida: la sección Material se abre sola al fallar el
+guardado (B-184) y la fila vacía se ve. Pero es la única familia de campos del
+formulario que no muestra su propio error, y el patrón que la mantiene así es que
+el editor de filas no recibe `errores`. Lo barato es pasarle el mapa y que cada
+fila lea el suyo con su índice — lo mismo que ya hace `SesionesEditor` con el
+error de la lista, un nivel más abajo.
+
+
+**Hecho como decía el ítem**, y con lo barato que proponía: `MaterialEditor`
+recibe `errorDe` —la misma prop que `ModalidadesEditor`— y cada campo lee el suyo
+con `ruta()`, el índice en el medio como lo emite el `path` del `superRefine`.
+
+Lo que el ítem no pedía y entró igual: **los cuatro campos pasaron a usar
+`Campo`**. No es prolijidad — `Campo` es quien marca `data-campo-con-error`, y sin
+eso el scroll de B-184 seguía cayendo en la línea de la lista o en el principio de
+la sección, o sea que el error se veía pero seguía sin llevar a ningún lado.
+
+**El test destapó el campo que se habría saltado.** `tests/errores-de-fila.test.ts`
+deriva los sufijos de `CAMPOS_VALIDABLES` en lugar de listarlos, y con eso apareció
+`material.items.N.publico` —la casilla, que no usa `Campo` porque su etiqueta va al
+lado y no arriba—: es una ruta que el schema puede rechazar y no tenía dónde
+mostrarse. Pinta su error a mano. Escrito a mano, la lista habría sido «título y
+url» y ese cuarto no aparecía.
+
+**La clase sigue viva en otros dos editores** y quedó anotada: **B-341** (la
+galería no muestra ningún error, y su prop `error` no se pasa nunca) y **B-343**
+(los encuentros). El chasis de filas de material quedó como estaba, y eso también
+tiene su ítem: **B-342**.
+
+### B-198 · El aviso de «lo que falta para publicar» corre una validación por tecla — ✅ hecho (2026-09-02)
+
+También de B-184. `pendientesParaPublicar` es un `useMemo` sobre `form`, así que
+cada tecleo dispara un `safeParse` de zod sobre el formulario entero. Es del
+mismo orden que el `JSON.stringify` que ya corre en cada tecla para saber si hay
+cambios sin guardar (`useFormularioSucio`) y para el autoguardado, así que hoy no
+se nota — y en un teléfono viejo con un ciclo de 20 encuentros es lo primero que
+se notaría.
+
+No se optimizó por adelantado a propósito: medir primero. Si hay que bajarlo, lo
+barato es el mismo debounce que usa el autoguardado, porque el aviso no necesita
+estar al día con la última letra.
+
+
+**Cerrado midiendo, que es lo que el ítem pedía, y la medición dice que no hay
+nada que hacer.** Detalle completo en D-185.
+
+| Encuentros | `faltaParaPublicar` | `JSON.stringify` del mismo form |
+|---|---|---|
+| 1 | 0,107 ms | 0,001 ms |
+| 8 | 0,107 ms | 0,007 ms |
+| 20 | 0,123 ms | 0,012 ms |
+| 50 | 0,205 ms | 0,025 ms |
+
+**Las dos frases de este ítem eran falsas, y en direcciones opuestas.** No es del
+mismo orden que el `JSON.stringify` —es ~10× más caro—, y da igual, porque el
+costo es **fijo del schema y no escala con los encuentros**: con uno ya cuesta
+0,107 ms. El «ciclo de 20 encuentros en un teléfono viejo» que este ítem temía es
+indistinguible del caso chico, y a diez veces más lento sigue siendo una octava
+parte de un frame.
+
+Así que **no se debouncea**: sería un número mágico y una ventana en la que el
+aviso dice algo que ya no es cierto, a cambio de nada medible. Lo que queda es la
+medición, en `tests/costo-por-tecla.test.ts`, con un techo de dos órdenes de
+magnitud: no es un objetivo de performance, es el piso de lo absurdo — detecta que
+alguien meta red, `crypto` o una regla cuadrática en el camino del tecleo, no un
+20 % de variación de máquina.
+
+### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-02 por B-219; reconfirmado 2026-09-07) · P3
+
+> ✅ **Dos cierres del mismo ítem, unidos el 2026-09-07.** Había **dos
+> encabezados con el mismo número, pegados uno al otro**: el de B-219 (2026-09-02)
+> y el de la tanda del 2026-09-07 —«confirmado con cinco corridas, y el chequeo
+> pasó a ser de clase»—, que no cerraba nada nuevo sino que **reconfirmaba** lo
+> mismo. Es la cicatriz de merge de B-294, esta vez en un encabezado.
+
+**Cerrado por B-219 (D-195).** La sospecha de este ítem apuntaba a la interacción
+entre el script y «el estado que dejan los otros archivos de integración», y era
+correcta pero le faltaba el sujeto: el estado lo dejaba **otro checkout**, no otro
+archivo — por eso `fileParallelism: false` no lo tapaba, como el ítem notaba.
+
+Los tres tests son los que ejecutan `scripts/aprobar-opciones.mjs` de verdad, y el
+script resolvía el proyecto por su cuenta (`process.env.PUBLIC_FIREBASE_PROJECT_ID
+?? 'agenda-literaria'`). Ahora se le pasa por el entorno, así que el script y el
+test miran la misma base. Sin eso, el síntoma habría sido el de la cuarta
+observación de B-219: «No existe(n) en `opciones/arancel`», que parece un script
+roto y son dos bases distintas mirándose.
+
+Corriendo `npx vitest run` entero, tres tests de
+`tests/opciones.integracion.test.ts` fallaron —«aprobar dos veces no rompe nada»,
+«--listar muestra las pendientes y solo esas» y «--backfill hace explícito ese
+default»— y el mismo archivo corrido solo pasó, y la corrida completa siguiente
+también. O sea: **flaky, no roto**.
+
+Los tres son los que ejecutan `scripts/aprobar-opciones.mjs` de verdad contra el
+emulador (`execFileSync`), así que la sospecha es la interacción entre el script
+—que abre su propia app de firebase-admin— y el estado que dejan los otros
+archivos de integración. `fileParallelism: false` ya está puesto, así que no es
+paralelismo de archivos.
+
+Vale la pena porque un test que falla una de cada N corridas enseña a ignorar el
+rojo, que es lo único peor que no tener el test. Primer paso: correr la suite en
+loop unas cuantas veces para ver cada cuánto pasa y con qué vecino.
+
+### B-114 · Precio real en los datos estructurados — ✅ hecho (2026-09-07)
+
+`arancel.tipo` es un slug de taxonomía, no un monto, así que el `offers` del
+JSON-LD puede decir "a la gorra" pero no un precio. Google muestra el precio en
+el resultado enriquecido cuando lo tiene, y en un taller arancelado eso es
+información que la gente quiere antes de escribir.
+
+Hace falta un campo de monto en el modelo (`arancel.monto` + moneda, `ARS`),
+opcional y solo para los tipos que lo tengan. Mientras no exista, la regla del
+diseño (§5.3) es **no emitir precio salvo `gratis`**: un `0` en un taller pago es
+un dato falso en un formato que las máquinas creen.
+
+Es P3 porque `arancel.tipo` ya comunica lo esencial —y en la mitad de los casos
+del circuito es "a la gorra", que no tiene precio que publicar.
+
+**Hecho el 2026-09-07, decidido por el dueño («sí: agregar `arancel.monto` al
+modelo»), y está en D-500.** El campo es un entero en pesos o `null`, la moneda es
+`ARS` siempre —un campo de moneda con un solo valor posible es una decisión que
+nadie tomó— y el alcance lo eligió él: **en todo lo que ya dice el arancel** (la
+tarjeta, el detalle, el evento de Calendar y el texto para redes), más el
+`offers.price` que era el pedido original.
+
+Lo que el ítem tenía bien y no cambió: **la tercera rama sigue existiendo.** Con
+monto se emite el monto, con `gratis` se emite `0`, y **sin monto y sin ser gratis
+se sigue sin emitir precio** — no es una excepción por falta de tiempo, es «a la
+gorra» y el arancelado al que nadie le cargó el número.
+
+Tres cosas que el ítem no había previsto:
+
+- **la regla «solo donde tiene sentido» es del schema y va en los dos niveles**, no
+  solo del formulario. Un borrador con «Gratis · $8.000» no está incompleto: dice
+  dos cosas que no pueden ser ciertas a la vez, y el documento también entra por
+  «Duplicar» y por «Restaurar»;
+- **el formato del número no podía ir en `src/lib/`.** La descripción del evento la
+  arma una Function, que no puede importar de `src/` (D-20), así que `admiteMonto` y
+  `montoLegible` viven en `functions/calendario.js` y `src/lib/arancel.ts`
+  reexporta. Y `montoLegible` es a mano y no `Intl`, porque el mismo número lo
+  escriben tres entornos con distinta ICU;
+- **el barrido de centinelas no servía tal cual**: son strings y el monto es un
+  entero, así que registrarlo habría dado un chequeo verde para siempre. Se ancla
+  por valor y en las dos formas —el crudo y el formateado—, con su `describe`
+  propio.
+
+**Y un P1 que encontró el `auditor-trampas` sobre el propio cambio:** el campo era
+un `<input type="number">` y para HTML **el punto separa decimales**, así que
+`15.000` es un número válido que vale **quince**, aceptado por `min`, por `step` y
+por el schema. El taller de $15.000 se publicaba como **$15** en las cinco salidas.
+Hoy el campo es `type="text"` con `inputMode="numeric"` y lo lee `montoDesdeTexto`,
+que trata el punto como miles y corta en la coma.
+
+### B-33 · Las etiquetas de GitHub hay que crearlas una vez — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** script idempotente de etiquetas.
+
+El issue se crea con `reporte-panel` y `bug`/`sugerencia`. GitHub crea las
+etiquetas que no existan, pero sin color ni descripción. Crearlas a mano una vez
+(los comandos están en [`08-operacion.md`](08-operacion.md)) deja la lista
+prolija y filtrable.
+
+### B-34 · Nada limita cuántos reportes se pueden cargar — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: nada por ahora.** Con dos cuentas de
+confianza no hay canilla que cerrar, y un tope mal puesto le rompe el reporte a
+quien sí lo necesita. La mitad que importa —que el límite de verdad va en las
+reglas y no en el cliente, porque el cliente se puede saltear— queda escrita
+arriba para quien lo agarre. **Vuelve cuando entre una tercera cuenta que no sea
+de confianza**, que es el mismo disparador de B-28 y no es casualidad: los dos
+ítems son el mismo cambio de contexto.
+
+
+Las reglas validan la forma del reporte y que quien lo carga sea admin, pero no
+la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
+cuentas de confianza no es un problema real; si alguna vez se le da el panel a
+más gente, conviene un tope por autor y por día.
+
+**Mirado en la fase 4 y dejado sin hacer, a propósito (2026-08-24).** El tope
+vive en `firestore.rules`, que no es propiedad de este frente, y no hay ninguna
+forma de escribir la red de contención antes que la regla: un test no puede
+frenar un límite que no existe. Además la forma del límite es una decisión, no
+una implementación — hay dos y no dan lo mismo:
+
+- **por autor y por día**, contando con una query en la regla (`allow create if
+  ...`): Firestore no puede contar documentos dentro de una regla, así que pide
+  un contador escrito por el propio cliente (`/reportes-contador/{uid}-{fecha}`)
+  y una regla que lo obligue a incrementarse de a uno. Es el patrón estándar y
+  es feo pero funciona sin Function;
+- **en la Function**, cortando en `decidirAccion` cuando el autor pasó el tope
+  del día. No frena la escritura del reporte (que es lo que garantiza no
+  perderlo, ver el encabezado de `reportes-trigger.js`), frena el **issue**, que
+  es el efecto caro.
+
+La segunda es más barata y más alineada con el diseño de reportes: el reporte se
+guarda igual y lo que se limita es la salida a GitHub. Necesita decisión del
+dueño sobre el tope. Toca `functions/**`, o sea la fase 1.
+
+### B-580 · La pantalla de Reportes mostraba todo lo que se cargó alguna vez — ✅ hecho (2026-09-03)
+
+El dueño pidió que refleje solo los abiertos: los reportes resueltos no
+tenían por qué seguir ocupando la lista.
+
+**Cómo quedó.** Un flag `resuelto?: boolean` en `/reportes/{id}` (ausente o
+`false` = abierto), marcado a mano por un admin desde el panel —**no** una sync
+que lo derive de que el issue se cerró en GitHub: esa alternativa es
+exactamente lo que **B-30** ya describía, y el dueño la descartó en esta misma
+tanda ("dejamos como está"). Ver **D-310**.
+
+`ReportesPanel.tsx` filtra por defecto a los no resueltos, con botón «Marcar
+resuelto»/«Reabrir» por fila y un toggle «Ver resueltos». El filtro es en
+memoria y no en la query —Firestore no matchea con `!=`/`==false` un documento
+que no tiene el campo, así que filtrar en la query habría ocultado de la vista
+"abiertos" a todo lo cargado antes de este cambio— y el `limit()` del
+`onSnapshot` sube de 10 a 50 para que ese filtro no le coma cupo a los reportes
+abiertos.
+
+`firestore.rules` suma `resueltoValido()` (mismo patrón que `reintentoValido`
+de B-31): acota la escritura del cliente a `resuelto` + `actualizadoEn`, exige
+el claim `admin` y que `resuelto` sea booleano. `tests/reportes-resuelto.integracion.test.ts`
+fija diez casos contra el emulador — la mutación que más importa es que un
+anónimo, o un admin sin el claim, no pueda escribir `resuelto`, porque es el
+flag que decide qué se sigue mostrando en la bandeja. `tests/reportes-panel.render.test.tsx`
+cubre el filtro por defecto y el botón con DOM real.
+
+### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
+
+
+Las opciones creadas con "Otro" nacen pendientes: funcionan para quien las creó
+y no aparecen en el desplegable de las demás cuentas hasta aprobarlas. Se aprueba
+con `scripts/aprobar-opciones.mjs`. Decisiones: D-26 a D-30. Lo que quedó
+abierto está en B-25 a B-29.
+
+### B-11 · Duplicar una actividad entera — ✅ hecho (2026-08-21)
+
+Menú "⋯" por fila en el listado, con "Duplicar", que abre el formulario
+precargado con una copia. La copia rehace los ids de sesión, pone
+`calendarEventId` en `null`, propone slug nuevo, arranca en borrador y corre las
+fechas en semanas enteras.
+
+Ver [CHANGELOG](CHANGELOG.md), D-17, D-18 y D-19. Lógica en
+`src/lib/duplicar.ts`, tests en `tests/duplicar.test.ts`.
+
+### B-12 · Vista previa de cómo queda el evento — ✅ hecho (2026-08-21)
+
+Sección colapsada al final del formulario: título, ubicación y descripción del
+evento para el encuentro que se elija, armados con `construirEvento` de
+`functions/calendario.js` —la misma función que publica el evento (D-20)—, así
+que no puede divergir de lo que sale. Ver el
+[changelog](CHANGELOG.md) y [`04-funcionalidades.md`](04-funcionalidades.md).
+
+Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
+mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
+
+
+Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
+mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
+
+> **Este cuerpo estaba debajo del encabezado de B-13**, que es un tema
+> completamente distinto (los reintentos del rebuild), y B-12 quedaba sin ninguno.
+> Un merge mal resuelto, preexistente: `tests/sin-marcadores-de-conflicto.test.ts`
+> no lo agarra porque no hay marcadores de git, solo texto en el lugar equivocado.
+> Lo encontró el `auditor-documentacion` el 2026-09-02 y se movió a su lugar.
+
+### B-45 · Los links cortos de Maps (`maps.app.goo.gl`) no se pueden pegar — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** los links cortos de Maps se pegan.
+
+El campo de coordenadas (D-46) acepta el link largo y el par `lat, lng`, pero no
+el link corto del botón "Compartir", que es justo el que ofrece la app de Maps
+en el teléfono. Es un redirect y seguirlo desde el navegador lo bloquea CORS.
+
+Hoy el campo lo detecta y explica que hay que abrirlo para copiar el link largo.
+Si molesta seguido, la salida es una Function que siga el redirect y devuelva la
+URL final — otro endpoint y otro deploy, así que no se hizo de entrada.
+
+### B-13 · El schedule de `dispararRebuild` no reintenta con backoff — ✅ hecho (D-23), y el encabezado estaba pisado (B-351)
+
+Cerrado hace tiempo: `dispararRebuild` reintenta con backoff exponencial (5, 10,
+20, 40 min) hasta cinco veces, deja `intentos`/`ultimoError`/`agotado` en
+`sistema/rebuild`, loguea `error` al agotarse y se rearma con el próximo cambio.
+Ver **D-23**, el [changelog](CHANGELOG.md) y `tests/rebuild.test.ts`. El debounce
+del §8 no cambió: el schedule sigue tickeando cada 5 minutos y el backoff solo
+decide en qué ticks se intenta.
+
+Lo que estaba mal era el BACKLOG: este encabezado tenía debajo el **cuerpo de
+B-12** (la vista previa del evento) y la línea tachada de B-13 al final, o sea dos
+ítems pisados por un merge. Corregido el 2026-09-02 — el detalle en **B-351**.
+
+> **Mirado el 2026-09-02. La resolución desde el cliente no es una opción caedible:
+> es una que no funciona.** Este ítem dice «es un redirect y seguirlo desde el
+> navegador lo bloquea CORS», y eso subestima el problema — no es que falle a
+> veces:
+>
+> - en modo `cors`, `maps.app.goo.gl` no manda `Access-Control-Allow-Origin`, así
+>   que el `fetch` **tira** antes de ver el redirect;
+> - con `redirect: 'manual'` la respuesta es un *opaque redirect* y el header
+>   `Location` **no se puede leer**;
+> - en `no-cors` la respuesta es opaca: `response.url` viene vacío.
+>
+> O sea que no hay forma de que el navegador se entere de la URL larga. La única
+> salida que funciona es la Function que este ítem propone, y **su costo es más que
+> «otro endpoint y otro deploy»**: es un *fetcher de URLs arbitrarias*, o sea
+> superficie de SSRF. Necesita allowlist de hosts (`maps.app.goo.gl`, `goo.gl/maps`,
+> `g.co/kgs` y nada más), tope de saltos, timeout, y no devolver el body. Es diseño
+> de seguridad, no una línea — y si se hace, el `auditor-privacidad` tiene que
+> mirarlo.
+>
+> **Y ahora hay con qué decidirlo.** B-55 quedó cerrado el mismo día, así que
+> `coordenadas-fallo` empezó a emitir con `coord-link-corto` distinguido del resto
+> **y con su denominador** (`coordenadas-pegar`, cada intento). El criterio que este
+> ítem se puso —«si el 80 % de los fallos es un link corto, hay que resolverlos»—
+> pasó de ser una hipótesis a una consulta a GA4.
+>
+> **Mientras tanto no se toca nada.** El mensaje del campo ya explica cómo salir
+> del paso, y desde B-55 el otro caso frecuente —la coma decimal— también tiene el
+> suyo. El próximo paso es **leer el dato**, no escribir código.
+
+<!-- B-13 tenía acá un segundo encabezado con una lápida —«~~B-13…~~ → cerrado»—
+     que ya no dice nada: el ítem está cerrado arriba, con su motivo y sus
+     referencias. Se sacó el 2026-09-07 junto con las otras tres cicatrices de la
+     misma clase (B-294): un número repetido en dos encabezados hace que el
+     índice del documento tenga dos entradas para el mismo ítem, y que quien
+     busque «B-13» encuentre primero la que no dice nada. -->
+
+### B-14 · El menú de acciones del listado no se navega con flechas — ✅ hecho (2026-08-24)
+
+`MenuAcciones` cierra con `Escape` y con un click afuera, y sus ítems son
+`<button role="menuitem">` alcanzables con Tab, pero no implementa el patrón
+completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
+cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
+
+### B-25 · Aprobar taxonomías desde el panel — ✅ hecho (2026-08-24)
+
+**Hecho** junto con B-06, como decía el ítem: botón "Aprobar" en la fila, sobre
+`aprobarOpcion` (transaccional, rechaza las `fijo`). Ya no hace falta una máquina
+con Node y `gcloud`.
+
+**Ojo:** con B-131 nada nace pendiente, así que hoy esto solo alcanza a lo que
+quedó pendiente antes de esa decisión (D-104). Es la maquinaria dormida, y se
+deja lista a propósito.
+
+**Cómo quedó, y por qué antes de que el menú creciera.** Se hizo junto con el
+tercer punto de **B-64** (la capa de ayuda no atrapaba el foco) porque son la
+misma clase vista en dos pantallas: un patrón de teclado a medio hacer. La
+aritmética —dónde cae el foco al pasarse del último, qué tecla mueve a dónde—
+salió a `src/lib/foco.ts`, pura y con tests; el DOM queda en cada componente.
+
+El menú tiene ahora ↓/↑ con vuelta, `Home`/`End`, se abre con ↓ o ↑ cayendo en el
+primero o el último, y **devuelve el foco al "⋯" al cerrarse con `Escape`** — sin
+eso había que re-tabular el listado entero para volver a la fila donde se estaba,
+que es lo que hacía inservible el `Escape`. La capa de ayuda cicla el Tab y
+devuelve el foco a lo que estaba enfocado antes de abrirla.
+
+Un bug que apareció escribiendo la cuenta: tratar "ninguno enfocado" como el
+índice `-1` a secas hacía que ↑ cayera en el **penúltimo**. Con dos ítems —los
+que el menú tiene hoy— el resultado parece razonable, así que habría entrado sin
+que nadie lo viera.
+
+### B-26 · Nadie se entera de que hay algo para aprobar — ✅ hecho (2026-08-24)
+
+**Hecho a medias, y la mitad que falta es de otro frente.** La pantalla de
+taxonomías muestra arriba cuántas etiquetas esperan aprobación, y
+`usePendientesDeAprobacion()` (en `useOpciones.ts`) deja el número listo para la
+**cabecera** del panel, que es lo que pedía el ítem — pero la cabecera vive en
+`AdminApp.tsx`. Va con B-170.
+
+Con B-131 el contador da 0 salvo por lo viejo (D-104).
+
+
+Una etiqueta pendiente queda invisible para la otra cuenta y **no hay ningún
+aviso**: si nadie corre `--listar`, la etiqueta puede quedar pendiente para
+siempre y las dos personas terminan creando dos slugs para lo mismo (justo lo
+que el §4.2 evita).
+
+Mínimo útil: un contador de pendientes en la cabecera del panel. Cuadra con
+B-25.
+
+### B-27 · El `events.json` tiene que publicar solo las opciones aprobadas — ✅ hecho (desde B-212, 2026-08-25)
+
+`opcionesPublicas` en `toPublic.ts` arma `opciones.*` con
+`opcionesVisibles(valores)` **sin uid**, que devuelve exactamente las aprobadas, y
+lo fija el barrido de `/opciones/*` en
+`tests/barrido-de-salidas-publicas.test.ts` —incluido el caso de la opción `fijo`
+con `aprobada: false`, que no puede desaparecer de los filtros—. **Quedó sin marcar
+al cerrar B-212**; lo encontró el `auditor-documentacion` durante B-227.
+
+Y el matiz que B-227 tuvo que resolver, porque este ítem no lo anticipaba: filtrar
+lo **elegible** es correcto para los chips, pero **no** para resolver la etiqueta de
+un slug que una actividad ya tiene guardado. Son dos mapas distintos — ver D-30 y
+la tabla de [`07-seguridad.md`](07-seguridad.md).
+
+El texto original decía «parte de B-01, el sitio público, que todavía no existe».
+El sitio existe desde B-227.
+
+### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Ratificado el 2026-09-03 por el dueño: no, queda como está.** Es la segunda vez
+que se decide lo mismo (la primera fue el 2026-08-26), así que el ítem se cierra
+en vez de quedar esperando una tercera. Con dos cuentas de confianza es
+maquinaria de permisos para un problema que no existe, y mover la aprobación a un
+campo propio toca reglas, modelo y la pantalla de taxonomías. Vuelve con la
+tercera cuenta.
+
+
+Hoy cualquiera de las dos cuentas con claim `admin` puede aprobar (D-28), y las
+opciones nuevas nacen pendientes **incluso las del dueño**, porque el código no
+distingue dueño de admin.
+
+Si el dueño quiere ser el único que valida, o que lo suyo nazca aprobado, hace
+falta un claim aparte (`curador`) y mover la aprobación a un campo o documento
+propio para que las reglas puedan verificarla — hoy no pueden, porque `valores`
+es un array de maps y no se puede comparar elemento por elemento.
+
+No se implementó por cuenta propia: cambia el modelo de permisos.
+
+### B-29 · ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? — decisión del dueño — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** auto-aprobación con marca reversible.
+
+Si la cuenta B tipea en "Otro" una etiqueta que ya existe como pendiente de la
+cuenta A, hoy se reusa el slug (bien, §4.2) pero la opción **sigue pendiente**:
+dos personas la usan y ninguna la ve en su desplegable.
+
+Que dos cuentas distintas la usen es buena señal de que es vocabulario real, y
+aprobarla ahí sería automático y barato. Contra: aprueba sin que nadie mire, y
+alcanza con que la segunda persona repita el mismo typo.
+
+### B-59 · La instrumentación suma 2.8 KB gzip al chunk del panel — ❌ descartado (2026-08-24)
+
+El SDK de analítica está diferido y no toca el chunk inicial (D-58); la
+proyección y la taxonomía sí. La propuesta era moverlas al lado diferido y dejar
+que `medir()` encole los valores crudos.
+
+**Medido primero** (cierre estático de imports de `/admin`, el build real contra
+el mismo build con la instrumentación en no-ops):
+
+| | raw | gzip |
+|---|---|---|
+| Carga inicial de `/admin` hoy | 386.303 B | 107.590 B |
+| Sin ninguna instrumentación | 377.245 B | 104.464 B |
+| Toda la instrumentación | 9.058 B | 3.126 B (2,9 %) |
+| **Solo la taxonomía + la proyección** | **6.522 B** | **2.188 B (2,0 %)** |
+
+O sea que el techo de lo que este ítem podía ganar es **2,14 kB gzip**: el 2,0 %
+de la carga inicial comprimida, el 1,7 % de la cruda. (El número viejo, 2.8 KB,
+medía toda la instrumentación, no la parte que se iba a mover.)
+
+**Se descarta con ese número.** Hoy la proyección es un único portón sincrónico:
+`medir()` proyecta **antes** de encolar, así que lo que espera en la cola —hasta
+30 eventos si el SDK no cargó, o nunca carga porque un ad blocker lo bloquea— son
+payloads ya sanitizados. Del otro lado, la cola guardaría los valores **crudos**:
+contenido del formulario en memoria, y la propiedad que hace valer a los 11 tests
+de `analytics-privacidad.test.ts` pasaría a depender de dos pasos en vez de uno.
+2,14 kB gzip no paga eso, y si el bundle necesitara kilobytes hay 34,5 kB de SDK
+y 186 kB de runtime de React antes en la fila. Ver **D-99**.
+
+
+---
+
+### B-60 · Ayuda dentro del panel — ✅ hecho (2026-08-21)
+
+Botón "Ayuda" en el encabezado, que abre una capa con la guía: los seis avisos
+de lo que no se puede deshacer y un capítulo por sección del formulario, más el
+recorrido de una actividad, el listado, las listas que crecen y la carga desde
+el teléfono. Contenido en `src/lib/ayuda.ts`, tests en `tests/ayuda.test.ts`.
+
+Ver [CHANGELOG](CHANGELOG.md), D-61 y D-62. Lo que quedó afuera está en B-62 y
+B-63.
+
+### B-61 · Historial de novedades del panel — ✅ hecho (2026-08-21)
+
+Pestaña "Novedades" en la misma capa, con "qué podés hacer ahora que antes no
+podías" en el idioma de quien carga actividades. Contenido en
+`src/lib/novedades.ts` (en el repo, se despliega con el build: D-63), lo no
+leído se marca con el id de la última vista en el navegador (D-64), y el aviso
+es un número en el botón.
+
+Ver [CHANGELOG](CHANGELOG.md), D-63, D-64 y D-65. Limitaciones en B-64.
+
+### B-64 · Pendientes chicos del centro de ayuda — ✅ hecho (2026-08-24)
+
+Tres cosas conocidas, ninguna urgente. **Dos quedaron cerradas**; la del medio no
+es trabajo pendiente sino un costo aceptado en D-63, así que el ítem cierra acá:
+
+- ~~**Las novedades no se anclan a la versión del panel.**~~ ✅ hecho
+  (2026-08-24). Mostrarla ya se mostraba; lo que faltaba era **de dónde sale**, y
+  esa era la razón de que el campo quedara vacío: `VERSION_APP` incluye el
+  `+<sha>` del build, que quien escribe la entrada no puede saber. La versión de
+  una novedad es la de `package.json` —la release en la que entra—, y eso quedó
+  escrito en el tipo, en el paso 4 del skill `cerrar-cambio` (que era el que
+  decía "si se sabe" y por eso nunca se llenaba) y en dos tests: la forma, y que
+  no retroceda al bajar por la lista.
+- **No se puede corregir una errata ni avisar nada sin desplegar** — costo
+  aceptado en D-63. Si algún día hace falta un aviso urgente (una caída), es
+  otro problema y otra herramienta.
+- ~~**La capa no atrapa el foco.**~~ ✅ hecho (2026-08-24), junto con B-14, que
+  era la misma clase en otra pantalla: la capa cicla el Tab sobre sus propios
+  controles y devuelve el foco a lo que estaba enfocado antes de abrirse. Ver
+  `src/lib/foco.ts`.
+
+### B-100 · ❌ descartado (2026-09-07) — Prellenar sede, organizador e inscripción desde lo ya cargado
+
+**Decisión del dueño: no. «Con Duplicar alcanza.»**
+
+Era la condición que el propio ítem tenía escrita —competía con «Duplicar»
+(B-11), que ya resuelve el caso repetitivo real de este circuito: el ciclo del año
+pasado— y el dueño la resolvió del lado de no duplicar la funcionalidad.
+
+Queda el planteo abajo por si el caso cambia: si alguna vez se carga mucho de
+espacios nuevos en vez de repetir los mismos, el argumento de «Duplicar» deja de
+cubrirlo.
+
+El planteo original queda abajo.
+
+---
+
+
+Extender el patrón del §4 para que elegir "Casa Brandon" complete nombre,
+dirección, barrio, ciudad, indicaciones y coordenadas; y lo mismo con el
+organizador y su Instagram, y con el canal de inscripción.
+
+**Está en P3 a propósito, y con una condición.** Compite con "Duplicar" (B-11),
+que ya resuelve el caso repetitivo real de este circuito —el ciclo del año pasado
+con otras fechas— y lo resuelve para los 30 campos, no para tres. Lo que quedaría
+es "tres talleres distintos en la misma sede", que existe y es menos frecuente.
+
+Costo escondido: el §4.1 guarda **solo el slug** para que renombrar no toque
+documentos, y con una sede eso no sirve (si la sede se mudó, la actividad del año
+pasado no debe cambiar de dirección). La actividad tendría que guardar una
+**copia** del objeto — segunda fuente de verdad, y el problema de B-04
+multiplicado.
+
+Vale la pena **si los datos dicen que las sedes se repiten**, y hoy nadie lo
+mide. El vocabulario del §9 puede contestarlo antes de escribir una línea.
+
+
+> **Mirado el 2026-09-02 y NO implementado: el criterio que este ítem se puso no
+> se cumple todavía.** «Vale la pena si los datos dicen que las sedes se repiten, y
+> hoy nadie lo mide» — y sigue sin medirse.
+>
+> **Una corrección al párrafo de arriba:** dice que «el vocabulario del §9 puede
+> contestarlo antes de escribir una línea», y **no puede**. `sede.nombre` es texto
+> libre, no una taxonomía, así que ningún evento lo lleva — ni debe: es contenido, y
+> el §9 lo prohíbe. Lo que el vocabulario **sí** contesta hoy, y nadie leyó todavía:
+>
+> - `actividad-duplicar` y `duplicar-desmarcar` — si «Duplicar» (B-11) ya está
+>   resolviendo el caso repetitivo, este ítem no hace falta. Es el competidor que el
+>   propio ítem nombra, y está instrumentado.
+> - `barrio.usos` — desde B-168 cuenta de verdad (B-86), así que la repetición de
+>   **barrio** ya es un número. No es la de sede, pero es la señal más cercana que
+>   existe sin tocar nada.
+>
+> Lo único que contesta «se repiten las sedes» es una **query read-only sobre
+> `/actividades` contando `sede.nombre` normalizado repetido**. Son cuarenta y seis
+> documentos: es un script de veinte líneas, no una feature.
+>
+> **Y si algún día se hace, va explícito.** Un botón «copiar de la última», nunca
+> automático, por dos motivos que se suman: prellenar sin que nadie revise **publica
+> la sede de otra actividad** —y la sede es la línea que decide si alguien llega o
+> no—, y el costo escondido que este ítem ya nombra sigue en pie: el §4.1 guarda
+> solo el slug, con una sede eso no sirve (si la sede se mudó, la actividad del año
+> pasado no debe cambiar de dirección), así que la actividad tendría que guardar una
+> **copia** del objeto. Segunda fuente de verdad, y el problema de B-04
+> multiplicado. Un botón explícito deja el problema de la copia igual, pero al menos
+> la copia la pidió alguien mirando la pantalla.
+
+### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+> ⚠️ **La afirmación de fondo dejó de ser cierta el 2026-09-09, y el bloque queda
+> como estaba escrito para que se lea contra su original** (mismo criterio que los
+> avisos de D-125/D-128 en el `CLAUDE.md`). Lo que sigue diciendo «el sistema no
+> guarda ni un dato personal de un tercero» describe el estado anterior a
+> **B-830**: `/propuestas` guarda `contacto` —el mail, el WhatsApp o el Instagram
+> de quien propone— a propósito, porque sin forma de repreguntar la bandeja no
+> sirve. **La decisión de B-102 no cambió**: sigue sin guardarse nada de quien se
+> **inscribe**. Lo que cambió es la premisa «no guardamos ninguno», y con ella
+> apareció lo que este ítem no necesitaba: retención (**DEC-13**, **B-838**, 30
+> días para la rechazada) y los estados que todavía no caducan (**B-844**). Lo
+> marcó el `auditor-documentacion`.
+
+**Ratificado el 2026-09-03 por el dueño: no.** El sistema no guarda ni un dato
+personal de un tercero, y por eso el §5 de seguridad cabe en una tabla. La
+inscripción sigue siendo un mail o un WhatsApp fuera del sistema.
+
+Lo que queda escrito para el día que haga falta es **el orden**, que es al revés
+del intuitivo: primero el aviso público (**B-98**), después el estado agregado
+(**B-97**), y la lista de personas solo si eso no alcanzó.
+
+
+Recomendación: **no**, y queda anotado para que la pregunta no vuelva a aparecer
+sin el razonamiento.
+
+Hoy el sistema **no guarda ni un dato personal de un tercero**, y por eso el §5
+cabe en una tabla y el §7 se verifica de un pantallazo. Una lista de inscriptos
+mete nombres y teléfonos de gente que no usa el sistema, y a partir de ahí la
+privacidad, la retención y el borrado pasan a ser responsabilidad del proyecto.
+
+Los tres casos que la pedirían tienen salidas más baratas: el conteo lo resuelve
+B-97 con un booleano; el aviso de cancelación lo resuelve B-98 por el calendario,
+sin guardar nada de nadie; y la conversación ya vive en el DM, que es donde
+además se contesta. Copiarla a mano al panel es trabajo nuevo, y una lista
+copiada a mano queda incompleta el primer día ocupado.
+
+Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso
+público (B-98), después el estado agregado (B-97), y la lista de personas solo si
+eso no alcanzó. Detalle en
+[`11-ideas-de-producto.md`](11-ideas-de-producto.md).
+
+### B-77 · `functions/index.js` es el único archivo de `functions/` sin el corte puro/trigger — ✅ hecho (2026-09-03)
+
+**Siguió creciendo mientras estuvo abierto**, y conviene decirlo en vez de
+maquillarlo: el ítem lo describía con 327 LOC y para cuando se resolvió ya eran
+542. Nadie le achicó el alcance en el camino.
+
+Ahora `index.js` queda en init del Admin SDK + re-exports, nada más. El resto se
+repartió en `despliegue.js` (región, cuenta de servicio y opciones comunes),
+`github.js` (el `repository_dispatch`, con el `fetch` inyectable — lo que el
+ítem pedía), `etiquetas.js` (el caché de `/opciones/*`, que comparten los dos
+triggers del lado de Calendar), `calendario-api.js` (auth y creación de
+eventos), `marca-de-rebuild.js`, y los tres triggers en `calendario-trigger.js`,
+`opciones-trigger.js` y `rebuild-trigger.js`.
+
+**El riesgo era D-35 y se verificó, no se razonó.** En ESM los imports se
+evalúan antes que el cuerpo del importador, así que el `setGlobalOptions` de
+`index.js` ya no alcanza a una Function definida en otro módulo: heredar habría
+dejado tres Functions en `us-central1` con la service account por defecto de
+Compute, a la que Calendar le contesta 404 en todo. Cada trigger declara sus
+opciones, y se comparó el `__endpoint` de las nueve Functions antes y después:
+región, cuenta de servicio, `maxInstances`, timeout, secretos y tipo de trigger
+salen **idénticos**.
+
+`github.js` estrena once tests, que es lo que el módulo hizo posible: el 401 con
+su cuerpo, el cuerpo ilegible que no puede convertir un 502 en «no falló», el
+fetch que tira sin propagar la excepción, el `AbortSignal` de B-74 y que el PAT
+no aparezca en el mensaje que se guarda en `sistema/rebuild.ultimoError`.
+
+**Y siete chequeos que leían `functions/index.js` por su nombre se pusieron
+rojos de golpe**, que es el buen final: el otro —seguir en verde leyendo un
+archivo donde ya no está lo que buscan— es el modo de falla que este repo
+persigue en todas partes. Ahora preguntan **qué archivo declara esa Function**
+(`tests/fixtures/functions.ts`). De paso apareció uno que se apagaba en
+silencio: el detector de llamadas a la red de B-85 buscaba `fetch(` en el
+archivo del trigger, y al irse el cliente a `github.js` devolvía lista vacía —
+con lo cual el regex caía en el primer paréntesis del cuerpo y la comparación de
+orden daba falso—. Ahora sigue los imports y tiene su control positivo.
+
+**No se movió la copia de `CAMPOS_TAXONOMIA`:** sigue sin poder importar de
+`src/` (D-20), y este refactor no era el lugar para discutirlo.
+
+**El drift que el propio corte dejó**, encontrado por el `auditor-documentacion`
+y cerrado en el mismo cambio: dos afirmaciones de doc que quedaron falsas
+(`02-infraestructura.md` sobre las opciones heredadas, `07-seguridad.md`
+ubicando `cargarLabels`) y tres comentarios que ubicaban `MAX_EVENTOS_RESYNC` en
+`index.js` — uno de ellos escrito por este mismo frente, o sea nacido stale.
+
+### B-78 · El 26 % de `src/lib/` es prosa, no lógica — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** cerrado con el argumento: no hay prosa que borrar.
+
+`ayuda.ts` (616 LOC de guía) y el array `NOVEDADES` (175 de las 300 LOC de
+`novedades.ts`), más `opciones-base.json`, son 937 LOC de **contenido
+editorial** conviviendo con un `slugify.ts` de 13 líneas. Se editan cuando cambia
+la funcionalidad, no cuando cambia la lógica, y son los archivos #2 y #6 más
+grandes del repo por eso.
+
+Mover el contenido a `src/contenido/` y dejar en `novedades.ts` solo las cuatro
+funciones (`novedadesNoLeidas`, `leerVisto`, `guardarVisto`, `fechaLegible`) hace
+que el ranking de tamaño vuelva a hablar de código. Es cosmético: no cambia
+comportamiento ni destraba nada, por eso es P3.
+
+Que el contenido viva en el repo y no en Firestore es decisión cerrada (D-63) y
+que sea data tipada y testeada también (D-62). Esto es solo dónde vive el
+archivo.
+
+### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección — ✅ hecho (2026-08-24)
+
+Después de B-70 el archivo queda en ~630 LOC, todas de JSX: nueve `<Seccion>`
+en un solo `return`.
+
+| Sección | Líneas | Aprox. |
+|---|---|---|
+| Qué es | 286-363 | 78 |
+| Encuentros | 364-385 | 22 |
+| Dónde | 386-515 | 130 |
+| Quién | 516-593 | 78 |
+| Arancel e inscripción | 594-693 | 100 |
+| Material / Opcional / Difusión / Vista previa | 694-858 | 165 |
+
+Vale por la superficie de conflicto: es el segundo archivo más tocado del repo
+(9 de 41 commits) y en este proyecto ya se commitearon marcadores de conflicto
+que sobrevivieron dos commits
+(`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
+ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
+`ActividadFormulario.tsx` en nueve lugares).
+
+**Hecho (D-104).** Diez archivos en `src/components/admin/formulario/`: las
+nueve secciones, la barra de acciones, el tipo de props común y el vocabulario
+de etiquetas de la UI. El JSX se movió verbatim —las props se llaman igual que
+las variables que tenían adentro—, así que el diff no esconde ningún cambio de
+comportamiento. `ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas,
+guardado y el orden de las secciones.
+
+Costo: +583 B en la carga inicial de `/admin` (+0,15 %), mismos 4 chunks.
+
+Dos tests que leían el `.tsx` como texto se arreglaron en el mismo cambio
+(`ayuda` y `opciones-orden`): ahora leen el directorio, y el de `opciones-orden`
+verifica primero que **encontró** el campo, porque un `not.toContain` sobre un
+string vacío pasa sin haber mirado nada.
+
+> Este párrafo estuvo pegado por error al final de **B-175** entre la
+> renumeración B-167→B-175 y el 2026-08-27. Volvió acá.
+
+### B-174 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado — ✅ hecho (2026-09-02)
+
+**Cómo quedó.** Los cuatro archivos que faltaban empujan el `firestore.rules` de
+su propio checkout con `cargarReglas()` en el `beforeAll`. Y con la base por
+checkout de B-219 **dejó de ser una mejora y pasó a ser obligatorio**: una base
+nueva arranca sin ninguna regla cargada, así que un archivo que use el SDK de
+cliente sin llamarla no está probando nada.
+
+Eso también resolvió la advertencia con la que este ítem terminaba —«corriendo dos
+suites en paralelo, la última que carga gana»—: con el proyecto particionado, la
+carga de reglas es por base. Está verificado contra el emulador, no supuesto
+(`emulador-aislado.test.ts`: se cargan reglas cerradas en la base propia y las del
+vecino siguen abiertas).
+
+`emulador-aislado.test.ts` deriva además la lista en vez de nombrar los cuatro
+archivos: **todo** archivo de integración que use el SDK de cliente tiene que
+cargarlas, así que el que se escriba mañana entra solo. El texto original queda
+abajo.
+
+
+El emulador sirve las reglas **del directorio desde el que se lo arrancó**, no las
+del checkout donde corren los tests. Con un solo repo no se nota. Con varios
+worktrees en paralelo —que es cómo se está trabajando este backlog— un test de
+reglas puede estar verificando el archivo de otra rama y **dar verde sin haber
+probado el cambio**. Es el modo de falla más caro que tiene un test de reglas:
+dice "las reglas pasaron" cuando quiere decir "unas reglas pasaron".
+
+Se descubrió haciendo B-31: el emulador estaba levantado desde el checkout
+principal, así que la regla nueva no existía para los tests de la rama que la
+agregaba. La salida ya está escrita —`cargarReglas()` en `tests/emulador.ts`
+empuja el archivo local por la API del emulador— y la usa
+`tests/reportes-reintento.integracion.test.ts`.
+
+**Lo que falta** es que la usen los otros tres archivos de integración
+(`reportes`, `actividades`, `opciones`), que hoy siguen dependiendo de dónde se
+arrancó el emulador. Es una línea en cada `beforeAll`. Se dejó afuera de B-31 a
+propósito: tocar los tres archivos a la vez pisa a los otros frentes, y el
+`EXIGIR_EMULADOR=1` del CI ya arranca el emulador en el checkout correcto.
+
+Ojo con el efecto compartido: `cargarReglas` cambia las reglas del emulador
+**para todos** los tests que estén corriendo contra él. Con un solo checkout es
+inocuo; corriendo dos suites en paralelo, la última que carga gana.
+
+### B-175 · El formulario y el listado tienen cada uno su vocabulario de etiquetas — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** un solo vocabulario de etiquetas.
+
+Residual de **B-76**, y la parte que era la causa y no el síntoma. El listado ya
+usa `ETIQUETA_ESTADO` de `src/lib/filtrosActividades.ts`, pero
+`ActividadFormulario.tsx:71-78` mantiene sus tres mapas propios
+(`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`).
+
+Ya divergieron: para `modalidad: 'hibrido'` el formulario dice **"Híbrido"** y el
+desplegable de filtros dice **"Presencial y virtual"**. Las dos pantallas están a
+un clic de distancia y hablan del mismo valor guardado.
+
+El arreglo es el `src/lib/etiquetas.ts` de ~20 LOC que proponía B-76 —con los
+mapas de `estado`, `modalidad` y `via`— del que tiren las dos pantallas. **No se
+hizo ahora porque toca `ActividadFormulario.tsx`**, que es de la fase 2 del
+saneamiento. `tests/etiquetas-de-ui.test.ts` tiene el `it.fails` que se vuelve
+`it` el día que se cierre.
+
+Ojo con lo que **no** entra: los `ETIQUETA_*` de `functions/calendario.js` son
+prosa del evento público, no etiquetas de UI (el motivo, en B-76).
+
+> **Nota de edición (2026-08-27).** Acá abajo estaba pegado un párrafo que
+> empezaba «**Hecho (D-104).** Diez archivos en
+> `src/components/admin/formulario/`…» y que **es el cierre de B-79**, no de este
+> ítem: `git log -S` lo ubica escrito junto a B-79 en el commit que partió el JSX
+> del formulario. Se perdió de allá y apareció acá durante la renumeración
+> B-167→B-175. Efecto mientras duró: **B-175 se leía como cerrada estando
+> abierta** —su `it.fails('las modalidades coinciden')` sigue en rojo— y B-79
+> quedó sin su cierre. El párrafo volvió a B-79.
+
+### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` — ✅ hecho (2026-09-02)
+
+**Cómo quedó.** Se importa de `@/lib/analytics-eventos` y la copia se fue.
+
+Lo que se agregó además: una guarda en la clase de B-88 que cuenta las
+declaraciones de `FORMATO_VERSION` en el repo y exige que haya **una**. Sin eso,
+la próxima copia nace sin que nada falle — es un modo de falla silencioso, porque
+el test sigue verde con el regex viejo.
+
+**Y esa guarda enseñó algo que vale para todas las de su clase:** el primer
+intento usaba `git grep`, y está mal. `git grep` solo mira el índice, así que un
+archivo nuevo **todavía sin agregar** —el estado exacto de una copia recién
+escrita— es invisible: la guarda daba verde justo en el momento en que tenía que
+hablar. Va con `grep -r` sobre el disco. La guarda de `MESES` (B-215) nació con el
+mismo error y se corrigió igual.
+
+
+La tercera copia del formato de versión está en el test de privacidad
+(`tests/analytics-privacidad.test.ts:60`), que la usa como predicado de
+admisibilidad: un string que matchea el formato se acepta como valor de
+parámetro. B-88 amplió el formato real y **no** tocó esa copia, así que hoy es
+estrictamente más angosta que la del código.
+
+**No es una fuga y no puede volverse una**: al ser más angosta, lo único que
+puede hacer es rechazar un valor que el código sí acepta, o sea dar una falsa
+alarma. Hoy ni eso, porque ningún caso del test mete una versión válida en el
+payload. El arreglo es importar `FORMATO_VERSION` de `@/lib/analytics-eventos`,
+que ya se exporta, y borrar la copia.
+
+No se hizo junto con B-88 a propósito: ese cambio tenía que dejar los 11 tests de
+privacidad en verde **sin tocarlos**, que es la única forma de que la garantía
+signifique algo.
+
+### B-166 · Un build sin versión estampada es indistinguible de un formato inválido — ✅ hecho (2026-09-02)
+
+**Cómo quedó (D-199).** `'desconocida'` es un valor propio del vocabulario
+(`SIN_VERSION_ESTAMPADA`), que es lo que este ítem proponía. Se **importa** de
+`src/lib/version.ts` en vez de escribir el literal: que el consumidor derive por su
+cuenta un valor del productor es la clase de B-88, la misma que este parámetro ya
+tenía del lado del formato.
+
+Tres asertos, que son las tres mitades: sale entero, **no** cae en la bolsa de
+`otro`, y la bolsa sigue existiendo para lo que sí es un formato ilegible. La
+mutación muere.
+
+
+`VERSION_APP` vale `'desconocida'` cuando no hay versión estampada (dev server,
+tests), y el sanitizador lo manda como `'otro'` — el mismo valor que usa para "el
+formato no lo reconozco". Después de B-88 el segundo caso no debería ocurrir
+nunca, así que un `version: otro` con volumen es una alarma… que hoy se confunde
+con el ruido de dev.
+
+Es chico y es de datos, no de código: en dev no se mide (`PUBLIC_USE_EMULATORS`),
+así que en producción no debería haber ninguno de los dos. Si algún día se quiere
+usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
+vocabulario en vez de caer en la bolsa.
+
+### B-172 · La trampa 7 del §13 no tiene ningún test · ✅ hecho (2026-08-27)
+
+**Cerrado como efecto de B-208, y vale anotar cómo.** Este ítem decía que faltaba
+escribir la query de colección en el test de reglas, y era cierto. Lo que no
+decía —porque nadie había mirado esa mitad— es que la query **con** el `where`
+pasaba y devolvía los documentos crudos: no era una trampa sin red, era una fuga
+abierta. Arreglar la fuga (D-128) obligó a escribir exactamente los dos `it` que
+este ítem pedía.
+
+El texto original queda abajo sin tocar, porque la parte mejor razonada es la que
+salió mal: «muerde el día de la primera lectura en vivo, que es justo cuando
+nadie se va a acordar del §5.3». Eso justificó postergarlo, y era falso — la
+trampa se podía ejercitar **ese mismo día**. Lo que faltaba no era esperar a
+B-01, era mirar la misma regla desde el otro lado.
+
+---
+
+Salió de armar el mapa de B-119, que la calcula en vez de suponerla: de las
+trampas del §13, la 7 —query pública sin `where('estado','==','publicado')`— es
+la única que quedó sin red.
+
+`tests/actividades.integracion.test.ts` cubre las reglas **por documento** (un
+anónimo lee lo publicado, no lee un borrador). La trampa habla de otra cosa: con
+`allow read` condicionado a `resource.data`, una **query de colección** sin el
+`where` se rechaza **entera** en lugar de devolver el subconjunto visible. Es un
+modo de falla de la consulta, no del documento, y hoy no hay ninguna query de
+colección en el test de reglas.
+
+Casi no muerde mientras el público lea el `events.json` estático (§2.5). Muerde
+el día de la primera lectura en vivo del sitio público (B-01), que es justo
+cuando nadie se va a acordar del §5.3 — o sea, el peor momento posible.
+
+Son dos `it` en el test de reglas: una `getDocs(collection(db,'actividades'))`
+anónima que tiene que rechazarse, y la misma con el `where` que tiene que
+devolver solo lo publicado. Toca un test que no es de la fase 4.
+
+### B-171 · El detector de triggers blindados dejó de ver las guardas mudadas a helpers — ✅ hecho (2026-08-24)
+
+> **Numeración:** en la consigna de la fase 4 este ítem se llamó "B-166", pero
+> ese número ya estaba tomado por lo de la versión sin estampar. Es B-171.
+
+El chequeo de la clase de B-82 en `tests/clases-de-bug.test.ts` estaba en
+`it.skip`. Causa: después del refactor de B-77 el efecto y la guarda de los
+triggers viven en helpers, y el detector los buscaba en el cuerpo del trigger.
+Dos consecuencias, y la segunda no la había visto nadie:
+
+1. `guardarVersion` y `guardarVersionAlBorrar` dejaron de contar como triggers
+   con efecto (su `.set()` se mudó a `guardar()`), así que no había dos
+   blindados que contar y el test hubo que apagarlo;
+2. `syncCalendar`, que **ya estaba blindado** (B-82 cerrado: `idDeEvento` dentro
+   de `crearEvento`), seguía contándose como desguarnecido, así que el
+   `it.fails` de B-82 seguía fallando mucho después de que el bug estaba
+   arreglado. **Un detector ciego no solo pierde regresiones: también miente
+   sobre lo que sigue roto.**
+
+Arreglado siguiendo la llamada (D-102) y con nueve tests del propio detector
+contra cuerpos sintéticos, que es lo que faltaba la primera vez. El `it.skip`
+volvió a `it` y el `it.fails` de B-82 pasó a `it`.
+
+### B-173 · `npx tsc --noEmit` sale con doce errores de `ImportMeta` — ✅ hecho (2026-09-02)
+
+**El arreglo que el ítem proponía está aplicado en los dos lugares que nombraba**,
+y se verificó reproduciendo el bug primero, en este worktree recién creado —o sea
+en el entorno limpio donde el ítem decía que el hallazgo es más grave:
+
+```
+$ ls .astro                → No such file or directory
+$ npx tsc --noEmit         → los 12 `Property 'env' does not exist on type 'ImportMeta'`
+$ npx astro sync && npx tsc --noEmit   → limpio, exit 0
+```
+
+Dónde está el `astro sync`: `scripts/verificar-todo.sh:49` (el comando que corren
+todos los frentes) y `.github/workflows/push-main.yml:109` (el CI). O sea que el
+modo de falla que el ítem describía —«el comando de verificación sale siempre en
+rojo, así que un error nuevo de verdad se esconde entre los doce»— no existe más
+en ninguno de los dos lugares donde el comando decide algo.
+
+**La condición, dicha para que nadie la descubra de nuevo:** `npm run typecheck`
+a secas sigue siendo `tsc --noEmit` y sigue saliendo en rojo en un checkout sin
+`.astro/`. Es a propósito y está documentado en
+[`08-operacion.md`](08-operacion.md) § «Verificar»: el `astro sync` va antes. Si
+alguna vez molesta, la respuesta es el script del `package.json`, no este ítem.
+
+Verificación de la fase 4: `npx tsc --noEmit` termina con doce
+`Property 'env' does not exist on type 'ImportMeta'` en `src/lib/analytics.ts`,
+`src/lib/firebase-client.ts` y `src/lib/version.ts`. Es ruido conocido —faltan
+los tipos que genera `astro sync` (`.astro/types.d.ts`, que no está versionado)—
+y el código está bien.
+
+Es P3 porque no rompe nada, y no es cosmético: **el comando de verificación que
+usan todos los frentes sale siempre en rojo**, así que un error nuevo de verdad
+se esconde entre los doce y nadie lo ve. Se arregla con un `astro sync` antes del
+`tsc` en `scripts/verificar-todo.sh` y en el CI, o versionando el
+`env.d.ts` con el `/// <reference types="astro/client" />`.
+
+No entró en la fase 4 porque `scripts/verificar-todo.sh` lo corren los cuatro
+frentes ahora mismo y tocarlo era pedir un conflicto en el archivo que todos
+usan para verificar.
+
+**Y no se descarta mirando `main`, donde sale limpio.** Sale limpio ahí porque
+`.astro/` ya está generado en ese directorio de hace rato. Los doce errores
+aparecen donde `.astro/` no existe todavía: un **worktree recién creado**, un
+clone fresco y **el CI** — o sea, exactamente los tres lugares donde el comando
+se corre para decidir algo. Un hallazgo que solo se reproduce en el entorno
+limpio es más grave, no menos.
+
+### B-176 · Regenerar los encuentros borra los temas y las lecturas cargados — ✅ hecho (2026-08-26)
+
+`generarSesiones` devuelve `tema: ''` y `lectura: ''` en todas las filas, así
+que volver a generar las fechas de un club de lectura de ocho encuentros borra
+las ocho lecturas asignadas — que es lo más caro de tipear de toda la actividad.
+Pasaba desde siempre (el generador reemplazaba la lista entera) y por eso no es
+una regresión, pero después de D-103 la fila **conserva su identidad**: el
+encuentro 3 sigue siendo el encuentro 3, con su evento de calendario, y perder
+su tema dejó de tener sentido.
+
+Es una línea al lado de las dos que ya heredan `id` y `calendarEventId`. Lo que
+hay que decidir antes es si conservar el tema es lo que espera quien aprieta el
+botón: hoy el cartel dice explícitamente que los borra. Sale con la UI, no
+suelto.
+
+El caso que lo hace doler: el ciclo se corre una semana, se regeneran las fechas
+y hay que volver a tipear ocho lecturas que no cambiaron.
+
+**Cómo quedó (2026-08-26).** El generador recalcula **solo las fechas**: tema,
+lectura y cancelación salen de la fila previa, y una fila que no existía antes nace
+limpia. Salió con la UI, como pedía el ítem: el cartel decía «borra los temas y
+lecturas ya cargados» y ahora dice qué se conserva — si el código conserva y el
+cartel dice que borra, la que miente es la pantalla, y nadie aprieta el botón.
+
+**`cancelada` cambió de lado y el ítem no lo nombraba.** Antes se pisaba a `false`,
+y había un test que lo afirmaba sin decir por qué. El razonamiento escrito que
+justificaba limpiarla —«una cancelación es una excepción del ciclo viejo»— es de
+`duplicarSesionParaCopia`, y **ahí vale**: la copia es una actividad nueva, sin nada
+en el calendario de nadie. Regenerar pasa sobre una actividad que puede estar
+publicada, así que destildarla **recrea el evento en la agenda de todo el que esté
+suscripto**, y eso no lo pidió nadie. Es la asimetría de D-124: volver a tildar
+cuesta un click y se ve, porque la sección Encuentros no está colapsada.
+
+Dos redes, y las dos verificadas rompiéndolas: el comportamiento en
+`tests/sesiones.test.ts` y **el texto del cartel** en `tests/etiquetas-de-ui.test.ts`
+—que es la clase de B-63 aplicada al único cartel que describe una operación
+destructiva—. Sin lo segundo, el código y la pantalla podían separarse en silencio.
+
+### B-177 · Nadie avisa cuando una etiqueta nueva no se registró — ✅ hecho (2026-09-02)
+
+Con el orden de escritura de D-111, si la actividad se guarda pero falla el alta
+de la etiqueta en `/opciones/*`, el guardado es un éxito y la etiqueta queda sin
+registrar. Es el modo de falla que se eligió a propósito —es recuperable
+tipeándola otra vez— pero hoy **no se ve**: `guardarActividad` devuelve
+`etiquetasSinRegistrar: true` y el formulario no lo mira.
+
+No hay dónde mostrarlo con lo que hay: al guardar, el formulario se desmonta y
+la pantalla pasa al listado. Las salidas son una franja en el listado (archivo
+del frente 3B) o quedarse en el formulario con el aviso. Vale poco por sí solo;
+vale más el día que exista la UI de taxonomías (B-06), que es donde la etiqueta
+faltante se arregla en un clic.
+
+
+**Hecho, y por la razón que este ítem anticipaba: la pantalla de taxonomías ya
+existe** (B-06, montada en B-170), así que el aviso tiene a dónde mandar y no es
+solo una mala noticia. Detalle en D-187.
+
+De las dos salidas que el ítem nombraba se eligió una tercera, y las dos suyas se
+descartaron con motivo: **quedarse en el formulario** es peor, porque la actividad
+**ya está escrita** y un formulario abierto invita a un segundo guardado que choca
+contra su propio slug; y la **franja en el listado** se comería el aviso cuando se
+vuelve al calendario, que es de donde se entró si se editó desde ahí. La franja
+vive en `AdminApp`, afuera de la vista.
+
+Y **nombra la etiqueta**. El ítem describía el dato como un booleano, y con un
+booleano el aviso solo puede decir «alguna etiqueta nueva no se registró»: con
+cinco campos de taxonomía eso no es accionable. El resultado pasó a la lista de
+labels, descontando los que sí se alcanzaron a escribir.
+
+**Un bug de al lado, arreglado en el camino:** `registrarUsos` compartía el
+`try/catch` con las altas, así que un fallo al **contar el uso** se reportaba como
+«la etiqueta no se registró». Es mentira —la etiqueta está— y con el aviso en
+pantalla habría mandado a arreglar algo que no está roto. Ahora tiene su propio
+`try` y su fallo **no se reporta**: lo único que se pierde es una posición en el
+orden del desplegable.
+
+### B-150 · El panel sigue siendo dueño de `calendarEventId` — ✅ hecho (2026-09-03) · P3
+
+**Cerrado por la única salida que quedaba viva** (la corrección del 2026-09-02
+ya había descartado la otra): `actualizarActividad` relee el documento y fusiona
+los campos de máquina por id de sesión antes de escribir. Ver **D-360**.
+
+Tres cosas que la implementación decidió y no eran obvias:
+
+- **La lista de campos de máquina se importa, no se copia.** Sale de
+  `CAMPOS_DE_MAQUINA_SESION` (`functions/historial.js`) por el alias
+  `@historial`, que existe exactamente para esto: sin eso el panel tendría su
+  propia idea de "qué escribe la máquina" y un campo nuevo entraría en una lista
+  y no en la otra. Y la dirección es la segura por D-41: con una lista blanca de
+  campos *editables*, olvidarse de sumar un campo del formulario descartaría su
+  edición en silencio.
+- **El tercer argumento de `payloadDeActualizacion` es obligatorio.** Un default
+  habría devuelto el bug al primer llamador que se olvide de releer, que es
+  justamente el olvido que el ítem describe.
+- **El emparejamiento ahora es uno solo.** `valorARestaurar` (restaurar
+  `sesiones` desde el historial) tenía el mismo `Map` por id escrito aparte:
+  eran dos derivaciones de la misma idea, la clase que D-20/D-71 evitan.
+
+Fijado por cinco tests. Tres en `tests/clases-de-bug.test.ts` —el `it.fails` de
+B-80 **promovido a `it`**, más la clave que tiene que seguir viajando y la fila
+nueva que nace en `null`— y dos de integración en
+`tests/actividades.integracion.test.ts`, que son los únicos que pueden verificar
+lo que ningún test puro puede: que `actualizarActividad` haga la lectura. Las
+tres mutaciones probadas ponen los cinco en rojo: sacar la fusión, omitir la
+clave, y sacar la relectura.
+
+---
+
+### B-290 · La fila de una actividad pasada decía «Inscripción abierta» — ✅ hecho (2026-09-02)
+
+**Lo puso a la vista `/pasadas` (B-109), pero ya estaba en producción.**
+`avisoDeTarjeta` (`src/lib/tarjetaPublica.ts`) miraba `inscripcion.cierra` sin
+mirar antes si la actividad ya había pasado, así que un taller **sin fecha de
+cierre cargada** caía en el default y la fila decía «Inscripción abierta». Es
+literalmente el modo de falla que el §7.1 del diseño nombra —«`abierta` solo mira
+`cierra`: una actividad sin fecha de cierre queda `abierta: true` para siempre y
+mostraría *Anotate* en un taller de hace un año»— y que la **página de detalle** ya
+evitaba decidiendo el CTA por fecha. La fila no.
+
+**Dónde se veía antes de B-109**, que es lo que lo hace un bug y no una
+consecuencia: la fila de una pasada ya se renderizaba en la página de un **mes
+vencido** (B-113) y con el filtro «Cuándo» puesto en un mes que pasó. `/pasadas`
+es una página entera de filas pasadas, así que fue la que lo hizo evidente.
+
+**El arreglo:** `avisoDeTarjeta` devuelve `null` cuando `estado.paso`, y la fila
+no pinta el párrafo. Sin frase propia a propósito: el bloque de fecha ya dice
+«Pasó» y la línea del ciclo dice «terminó el 20 de agosto» — una tercera sería
+repetir. Con la mutación puesta (sacar la rama de `paso`) los otros seis casos del
+`describe` quedan en verde y solo falla el nuevo.
+
+### B-291 · ❌ descartado (2026-09-07) — Las cinco imágenes de Open Graph por tipo
+
+**Decisión del dueño: dejarlo. Los links sin flyer siguen sin preview.**
+
+Se decide **con el bloqueante medido enfrente**, que es lo que cambió respecto del
+2026-09-03: «generarlas en el build» era la salida elegida, y rasterizar con lo
+que ya está en el árbol **no usa nuestras tipografías** —`Fraunces` da bytes
+idénticos a `sans-serif`, y un `@font-face` con el `.woff2` como data URI
+también—. Saldrían en la Helvetica de turno, que es lo contrario de
+«tipográficas, con el sistema visual del sitio».
+
+Las dos salidas que quedaban costaban lo mismo cada una en su moneda: dos
+dependencias nuevas en un repo que se cuidó de no tenerlas, o instalar las fuentes
+para fontconfig en el CI **y** en cada máquina que buildee. Con eso enfrente, el
+dueño eligió no pagar ninguna.
+
+**Qué queda como está:** la página de detalle sigue mandando el flyer como
+`og:image` —que es la mejor imagen posible— y las actividades **sin flyer** más la
+home, la cartelera, `/pasadas` y las páginas de mes siguen compartiendo un link
+sin preview. No se emite un `og:image` roto: `Base.astro` no emite la etiqueta si
+no hay imagen y `twitter:card` baja a `summary` sola.
+
+La medición queda escrita abajo para que la próxima vez que se evalúe no haya que
+volver a hacerla.
+
+El planteo original queda abajo.
+
+---
+
+
+**Decidido el 2026-09-03 por el dueño: generarlas en el build.** Tipográficas,
+con el sistema visual del sitio, en vez de cinco archivos que haya que rehacer el
+día que cambie la marca. Va con el frente de imágenes, que entra después del
+rescate de D-210.
+
+
+Lo último que le queda a **B-107**, y lo único del §5.1 del diseño que B-109 no
+pudo cerrar porque no depende del dominio: cinco archivos de 1200×630 en
+`public/og/`, uno por tipo de actividad, «en papel y tinta con el nombre del
+sitio».
+
+Hoy la **página de detalle** manda `og:image` con el flyer de la actividad, que es
+la mejor imagen posible; las actividades **sin flyer** y todas las otras páginas
+—la home, la cartelera, `/pasadas`, las de mes— comparten un link sin preview. No
+se emite un `og:image` roto: `Base.astro` no emite la etiqueta si no hay imagen, y
+`twitter:card` baja a `summary` sola.
+
+Dos cosas ya están hechas y conviene no rehacerlas: la prop existe y **la URL se
+absolutiza sola** (`urlAbsoluta`), así que una ruta local como `/og/taller.png`
+sirve tal cual — un `og:image` relativo lo ignoran los scrapers en silencio, y eso
+lo cerró el `auditor-privacidad` en B-109. Falta **diseñar y generar los cinco
+archivos**, y elegirlos por tipo con la misma derivación que el color (`identidad.ts`),
+no con un `switch` que deje sin imagen al tipo que alguien cree mañana (§4, trampa 6).
+
+> ⚠️ **2026-09-07 — «generarlas en el build» tiene un bloqueante medido, y no es
+> el diseño: es la fuente.** Se intentó y quedó a mitad de camino a propósito, con
+> la medición escrita para que nadie la repita.
+>
+> El camino obvio sin dependencias nuevas es armar un SVG de 1200×630 con los
+> tokens del sistema visual y rasterizarlo con **`sharp`**, que ya está en el árbol
+> (dependencia **opcional** de Astro, así que `npm ci` la trae). Rasteriza bien.
+> **Lo que no hace es usar nuestras tipografías**, y se comprobó por bytes:
+>
+> | SVG | bytes del PNG |
+> |---|---|
+> | `font-family='Fraunces'` | 4994 |
+> | `font-family='sans-serif'` | **4994** |
+> | `font-family='serif'` | 6511 |
+> | `@font-face` con el `.woff2` como **data URI** | **4994** |
+>
+> Idéntico al fallback en los dos casos que nos interesan: `sharp` rasteriza con
+> **librsvg**, que resuelve familias por **fontconfig** —o sea fuentes instaladas
+> en el sistema— y **no soporta `@font-face`**, ni con archivo ni con data URI. Así
+> que un `og:image` generado por este camino saldría en la Helvetica de turno, que
+> es justamente lo contrario de «tipográficas, con el sistema visual del sitio».
+>
+> **Dos caminos, y los dos son una decisión del dueño porque los dos cuestan:**
+>
+> | | Qué cuesta |
+> |---|---|
+> | **Un renderizador de texto a paths** (`satori` + `@resvg/resvg-js`, el stack estándar de OG): recibe el `.ttf`/`.woff` y emite el texto como curvas, así que la tipografía viaja en el archivo | **Dos dependencias nuevas** en un repo que se cuidó de no tenerlas —se autoalojaron las fuentes para no depender de un tercero (B-481) y se descartó Algolia por prematuro—. Son de build, no van al bundle del sitio |
+> | **Instalar las fuentes para fontconfig** en cada máquina que buildea | Toca el workflow de Actions **y** el setup local, y es la clase de arreglo que funciona en la máquina de quien lo escribió. Cero dependencias nuevas |
+>
+> **Y hay una tercera que no es un camino sino un recorte:** aceptar cinco PNG
+> hechos a mano en `public/og/`. Es lo que el dueño descartó el 2026-09-03 —«en vez
+> de cinco archivos que haya que rehacer el día que cambie la marca»— y se anota
+> solo para que la decisión se relea con el costo real del otro lado enfrente.
+>
+> **Lo que ya se puede dar por sabido cuando esto se retome:** `sharp` está
+> disponible pero **no declarado** en `package.json` (llega como opcional de
+> Astro). Si el build pasa a depender de él, **hay que declararlo**: es la lección
+> de B-561, donde una dependencia que vivía en `functions/package.json` resolvía en
+> local y rompía el CI, que hace `npm ci` solo de la raíz. Una dependencia opcional
+> que no instala en una plataforma deja el build roto **solo ahí**.
+
+### B-292 · ✅ hecho — `/pasadas` no tiene buscador propio
+
+**Ya estaba resuelto cuando se revisó el 2026-09-07**, y con la salida que este
+ítem descartaba —«enseñarle un modo nuevo a esa island»— cambiada por otra mejor:
+`BuscadorDePasadas` es una **island propia y chica**, y lo que se compartió es **el
+match**, no el componente. `buscarEnPasadas` (`src/lib/pasadasPublicas.ts`) filtra
+con `coincideBusqueda`, que se separó de `filtrarPublico` justamente para esto: una
+sola definición de «coincide» para la home y para el archivo, que era la clase de
+B-88 en la funcionalidad que la gente usa tipeando.
+
+El planteo original queda abajo.
+
+---
+
+
+El §4.5 pide la página «sin filtros salvo la búsqueda», y la búsqueda que el sitio
+tiene es la island de la home, que filtra `vigentesDelIndice` — el índice de lo
+**vigente**, que por definición no incluye una pasada. Traerla a `/pasadas` es
+enseñarle un modo nuevo a esa island y cambiar su contrato con el `events.json`,
+no un cambio de esta página. Ver **D-167**.
+
+Mientras tanto la página enlaza la búsqueda de la agenda, que es lo que sí existe,
+y quien busca una actividad vieja por su nombre la encuentra por Google —que es
+para lo que la página está indexada.
+
+### B-293 · Los `href` internos pagan el 301 de la barra final — ✅ hecho (2026-09-02)
+
+Firebase Hosting responde `/cartelera` con un **301** a `/cartelera/` —Astro emite
+una carpeta con `index.html` por página—, medido contra producción el 2026-09-02.
+La canónica y el sitemap ya salen **con** la barra (`rutaCanonica`, D-165) porque a
+ellos sí les importa: una canónica que apunta a una redirección es un aviso en
+Search Console y una entrada de sitemap que redirige es una URL menos rastreada.
+
+Los `href` del propio sitio —el encabezado, el pie, cada fila del listado— siguen
+sin la barra y pagan un salto extra por navegación. No rompe nada y no se ve; lo
+que cuesta es un viaje de ida y vuelta por click.
+
+Las dos salidas posibles, y **ninguna es obvia**: agregar `"trailingSlash": false`
+en `firebase.json` (Firebase sirve `/cartelera` directo y redirige `/cartelera/`,
+o sea que hay que dar vuelta `rutaCanonica` **en el mismo commit**), o agregar la
+barra a los `href` (una línea en `rutasPublicas.ts` y un barrido de los literales
+del markup). La primera es más linda y toca producción; la segunda es más segura y
+deja URLs con barra a la vista. **Lo que no se puede hacer es tocar una sola de
+las dos mitades**, y por eso `tests/canonico.test.ts` afirma hoy que `cleanUrls`,
+`trailingSlash` y `build.format` siguen sin tocarse, con el motivo escrito: el par
+lo señaló el `auditor-privacidad`.
+
+**Hecho**, con [D-180](06-decisiones.md), y salió la **segunda**: la barra en los
+`href`. El argumento decisorio no fue el estético — la primera pone la corrección
+de un lado del par (`firebase.json`) y la comprobación del otro (`rutaCanonica`),
+y este repo no puede verificar la config del host sin deployar.
+
+Lo que quedó, y es más que el 301: **una sola forma de la ruta, y la produce
+`rutaCanonica`.** Las seis constantes de las páginas fijas viven en
+`src/lib/rutasPublicas.ts` definidas pasándolas por ella, así que el literal que
+redirige no se puede escribir. Entraron en el mismo cambio los constructores de los
+hubs (`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`) para que B-330 no
+pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
+
+**Y el relevamiento de este ítem estaba corto:** decía «un barrido de los literales
+del markup», y los literales no estaban solo en el markup — `ayudaDelSitio.ts`
+tenía siete y `contactoDelSitio.ts` uno, y esos textos se renderizan en dos páginas
+públicas. El chequeo nuevo de `tests/canonico.test.ts` barre `.astro` y `.tsx` de
+`src/pages`, `src/components` y `src/layouts`; los dos módulos de texto pasaron a
+importar las constantes.
+
+### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas — ✅ hecho (2026-09-02)
+
+> **Y tuvo una segunda cara el 2026-09-07, con la misma causa y peor efecto:
+> seis bloques de documentación estaban adentro de un bloque de código.** Está
+> abajo, en «La segunda cara de este ítem». Los dos cierres viven bajo **un solo
+> encabezado** porque tener dos `### B-294` hacía que el índice del documento
+> tuviera dos entradas para el mismo ítem — que es, otra vez, la misma clase.
+
+**Catorce filas pasaron a once, eligiendo texto** — que era el trabajo que nadie
+quería hacer, porque las versiones no eran iguales: se contradecían. Qué quedó y
+con qué evidencia:
+
+| Fila | Qué versión quedó | Cómo se decidió |
+|---|---|---|
+| `estilos-del-sitio.test.ts` | la que dice que `index.astro` **entró** al alcance en B-113 y que `publico/*` queda afuera por ser React | el docblock del test documenta el alcance con ese mismo motivo |
+| `cartelera.test.ts` | la que cubre la **cancelada** (B-110) | `tests/cartelera.test.ts:124` tiene el `it`, con la mutación anotada |
+| `events-json-endpoint...` | la que agrega el aserto sobre el **HTML** que salió | `scripts/build-contra-emulador.mjs`, paso 4 |
+| `color-de-tipo.test.ts` | la que mide **las dos direcciones** de la tinta (B-273, D-153) | es la más nueva y contiene a la otra |
+| `afiche.test.ts` | cualquiera | las dos copias eran idénticas |
+
+Y una cicatriz más del mismo tipo que el ítem no nombraba: la fila de
+`suscribirse.test.ts` tenía pegada la de `sin-marcadores-de-conflicto.test.ts`
+detrás de un `||`. Separadas. **Hoy el archivo tiene cero `||`.**
+
+Revisado lo que el ítem pedía de paso: los 41 nombres de test que la tabla cita
+existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
+
+**Y una corrección al párrafo de abajo:** dice que `docs/README.md` quedó con
+«2.175 tests en 93 archivos». El archivo dice 2.173, y 2.173 es lo que mide la
+suite hoy — así que el número del documento está bien y el de esta nota estaba
+mal.
+
+#### La segunda cara de este ítem — seis bloques de doc dentro de un bloque de código
+
+> **2026-09-07 — la clase de este ítem tenía una segunda cara, peor y sin red.**
+> Buscando la cicatriz de «merge mal resuelto» en el resto del repo aparecieron
+> **seis bloques de documentación adentro de un bloque de código**: D-460 y D-461
+> completas, siete ítems del BACKLOG (B-780 a B-786), las filas de B-770, trece
+> ítems viejos (B-78 a B-150), y dos entradas del CHANGELOG. **Más de
+> cuatrocientas líneas** que se renderizaban como código plano —sin tablas, sin
+> negritas, sin links— y que nadie podía leer como documentación.
+>
+> Misma causa que las filas duplicadas: texto pegado desde un `.estado/*.md`
+> **con sus propias marcas de bloque**. Y nadie lo veía porque en un editor el
+> texto se lee igual, `red-de-contencion.test.ts` cuenta filas y no fences, y el
+> `auditor-documentacion` lee el **contenido** —que está bien; lo que estaba mal
+> es cómo se renderiza—.
+>
+> Arreglado, y con red: `tests/bloques-de-codigo-en-la-doc.test.ts`, con las dos
+> mitades que hacen falta. La primera —**todo bloque cierra**— agarra el fence sin
+> pareja que mete el resto del archivo adentro de un bloque. La segunda —**ningún
+> bloque contiene un encabezado ni una fila de tabla del backlog**— es la que
+> agarra el daño real, porque los fences de sobra venían **en pares** y la primera
+> mitad los veía balanceados. Mutación probada en las dos direcciones.
+>
+> Un detalle del parseo que hizo falta para ver el daño: en CommonMark **un fence
+> de cierre no lleva info string**, así que un ` ```md ` adentro de un bloque
+> abierto es contenido y no lo cierra. Sin eso, el caso del BACKLOG se leía como
+> dos bloques chicos y el encabezado de adentro quedaba «afuera».
+
+#### El planteo original — B-294
+
+**Ya estaba resuelto cuando se revisó el 2026-09-07, y tiene red.** Verificado a
+mano contra el archivo: la tabla tiene **67 filas**, ninguna con `||`, **ninguna
+primera celda repetida**, y los **67 tests que nombra existen todos**. Las cuatro
+filas que este ítem señalaba —`color-de-tipo`, `estilos-del-sitio`, `cartelera` y
+`afiche`— aparecen una vez cada una como dueñas de su fila.
+
+Y la red que impide que vuelva ya existe: `tests/red-de-contencion.test.ts`,
+`describe('la tabla «no automatizar» no se rompe por merges — B-367/B-294')`, con
+las cuatro mitades —hay filas de verdad, ninguna línea con `||`, toda línea empieza
+con `|`, ninguna primera celda repetida— más «todos los tests que nombra existen» y
+«ninguna línea de prosa quedó pegada a otra por un merge».
+
+O sea que el ítem quedó abierto en el BACKLOG después de arreglarse, que es el
+mismo drift que el ítem describe una vuelta más arriba. El planteo original queda
+abajo.
+
+---
+
+**Drift de documentación, no de código.** En la tabla «Porque ya hay un test, y
+duplicarlo daría falsa cobertura» hay filas concatenadas con `||` dentro de una
+celda en vez de separadas por salto de línea, y por eso hay filas **repetidas dos
+y tres veces**: `color-de-tipo.test.ts` aparece tres, y `estilos-del-sitio.test.ts`,
+`cartelera.test.ts` y `afiche.test.ts` dos, cada una con una versión distinta del
+mismo texto —o sea que además de repetir, se contradicen (una dice «el peor da
+5,90:1» y la otra agrega la medición de B-273).
+
+Es el patrón de «merge mal resuelto» que el `auditor-documentacion` busca, y lo
+encontró él mismo auditando B-109 (es **anterior** a ese cambio). No rompe nada:
+lo que se pierde es la confiabilidad de la única tabla que sostiene *qué se
+decidió no automatizar*, que es la que se consulta antes de escribir un agente
+nuevo. Quien lo arregle tiene que **elegir cuál versión de cada texto queda** —no
+concatenarlas— y de paso revisar si alguna fila quedó describiendo un test que ya
+cambió de trabajo.
+
+**Y la misma cicatriz estaba en `docs/README.md`, arreglada de paso el 2026-09-02
+(B-296).** El paso 2 de «Antes de tocar nada» aparecía **tres veces**, con tres
+conteos distintos —2.148/92, 2.006/88 y 2.039/89— y con la continuación de la
+frase pegada al final de una de las líneas. Se colapsó a una sola, con el conteo
+medido en esa corrida: **2.175 tests en 93 archivos**. Lo de `13-agentes.md` sigue
+abierto: son ocho filas y hay que **elegir** cuál texto queda en cada una, que es
+trabajo de criterio y no de merge.
+
+### B-310 · ✅ hecho — La página `/404` está diseñada y no existe
+
+**Ya estaba resuelta cuando se revisó el 2026-09-07**, y con las dos cosas que este
+ítem pedía cuidar: `src/pages/404.astro` existe y se construye (`dist/404.html`),
+lleva `noIndex` —su docblock dice que es **la única página del sitio público que lo
+lleva**— y está en la **lista de excepciones** de `tests/sitemap.test.ts` con su
+motivo escrito, que era la parte que el ítem pedía no saltear.
+
+También están las tres cosas del §4.5: el buscador, los hubs —la misma tira de la
+home, ya recortada, no una lista propia— y el enlace al archivo. El texto vive en
+`src/lib/noEncontrado.ts`.
+
+El planteo original queda abajo.
+
+---
+
+
+**Salió del barrido de B-234.** El §4.5 y el §5.1 de
+[`12-sitio-publico.md`](12-sitio-publico.md) diseñan un `/404` con buscador, los
+hubs y «quizá la actividad que buscás ya pasó: mirá el archivo». No se construyó
+y **no tenía ítem**, así que era un pendiente que solo existía en un documento de
+diseño — que es exactamente el drift que B-234 vino a cerrar. Hoy responde el 404
+por defecto de Firebase Hosting.
+
+Es P3 y el motivo importa, porque explica por qué nunca subió: **mientras el slug
+sea inmutable (trampa 10) ninguna URL nuestra se rompe sola**, así que el 404 lo
+ven sobre todo los bots y quien tipea mal una dirección. Lo que sí gana la página
+es el caso del link viejo de Instagram hacia algo que se renombró antes de la
+regla, y el destino natural de esos es `/pasadas`, no una pared blanca.
+
+Cuando se haga, dos cosas que el diseño ya decidió: lleva `noindex` (§5.1) y no
+entra al `sitemap.xml`, así que va a la **lista de excepciones** de
+`tests/sitemap.test.ts` con su motivo — el test exige que toda página estática
+esté en `RUTAS_FIJAS` o exceptuada, y no deja nacer una página fuera del sitemap
+sin que alguien lo decida.
+
+### B-311 · Remedir `10-salud-del-codigo.md` completo, con la metodología escrita — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** remedido entero.
+
+**Sale de B-201**, que remidió solo el §1.3 porque era lo único que el backlog
+pedía. Todo el resto del documento es del **2026-08-27** y quedó viejo por el
+sitio público: el §1.1 declara **111** archivos de producción y hoy son **156**,
+o sea un 40 % más de código que ningún número de ahí refleja.
+
+Qué hay que recontar: el tamaño por área (§1.1), la concentración y la lista de
+los quince más grandes (§1.2), el fan-in/fan-out (§1.4), los ciclos (§1.5) y la
+prosa (§1.6). Y el §0, que es el que compara contra la medición anterior.
+
+**La condición es la misma que puso B-201 y que sigue valiendo:** el número
+depende de la metodología, así que se recuenta con el criterio escrito al lado y
+no se estima ninguno. El encabezado del documento ya lo dice —«estimarlas para
+que queden actualizadas es exactamente lo que lo haría inútil»— y el §1.3 quedó
+como el modelo de cómo se escribe: las tres definiciones arriba de la tabla.
+
+Lo que conviene decidir en esa pasada, y es la mitad del valor: **cuáles de estas
+cifras se pueden automatizar**. Tamaño, concentración y ciclos son un script;
+fan-out y prosa dependen de qué cuenta como módulo de dominio y como comentario,
+y ahí el criterio hay que escribirlo una vez. Un documento que se remide a mano
+cada cuarenta commits vuelve a quedar viejo solo.
+
+### B-360 · Dos asertos de `reportes.test.ts` que no podían fallar — ✅ hecho (2026-09-02) · P3
+
+Los encontró el `auditor-privacidad` sobre B-137. `tests/reportes.test.ts:129` y
+`:350` decían `expect(...).not.toContain('librosdelatiahilda')`, y ese string **no
+existe en ningún fixture** — el mail del fixture es `tia-hilda@ejemplo.com`. Las
+dos aserciones no podían fallar nunca, y leerlas daba una cobertura que no existía.
+
+La mitad «el uid no sale» sí estaba viva (`uid_tia_hilda` no matchea ningún patrón
+del saneador, así que si se interpola, aparece).
+
+**Lo que costó ver:** comparar contra el mail del fixture **tampoco sirve**.
+`redactar` tapa los mails, así que interpolar `reportadoPor.email` en el cuerpo
+deja ese aserto en verde igual. Se probó con la mutación y sobrevivió. O sea que el
+arreglo obvio —usar el valor real del fixture— habría cambiado una tautología por
+un aserto casi tan débil.
+
+**Cómo quedó:** los dos preguntan por la **forma** (que en el cuerpo no quede
+ningún mail, de nadie), que sí es falsable — muere si un mail entra por un camino
+que el saneador no cubre, y hay uno abierto: **B-363**. Y la garantía de que esos
+dos campos no están interpolados la da el barrido de B-361, no estos asertos.
+
+### B-361 · El barrido de centinelas del issue no barría los campos privados — ✅ hecho (2026-09-02) · P1
+
+Lo encontró el `auditor-privacidad` sobre B-137, y es el modo de falla más caro que
+puede tener un barrido por centinelas: **parece cobertura y no lo es**.
+
+El fixture `REPORTE` de `tests/clases-de-bug.test.ts` tenía 8 de las 13 claves que
+`reporteValido()` enumera en `firestore.rules`, y las que faltaban eran justo las
+que el §5.1 prohíbe publicar: `reportadoPor.uid`, `reportadoPor.email`, más
+`estado`, `intentos`, `github` y `error`. El `it` promete «ningún string de la
+entrada llega crudo al issue público» y no barría los strings privados del reporte.
+
+**Y hay una segunda mitad que era peor.** El `CENTINELA` del archivo es un link de
+zoom, o sea **justo una de las dos cosas que el saneador tapa**. Eso lo hace
+perfecto para verificar que el saneador corre, e **inútil** para verificar que un
+campo no está interpolado: un campo que se cuela y se sanea deja el barrido en
+verde igual que uno que no se cuela. Los dos hechos se confunden.
+
+Se comprobó por mutación: interpolar el mail del reportante en el encabezado del
+issue **sobrevive** a un aserto contra el mail del fixture.
+
+**Cómo quedó.** Las cinco claves entraron al fixture (sigue verde: ninguna está
+interpolada hoy, y ése es el punto — entran a la garantía desde ahora), la lista de
+claves se **lee de `firestore.rules`** para que una clave nueva del modelo entre
+sola, y hay un segundo barrido con `CENTINELA_CRUDO`, un valor que el saneador deja
+pasar. Ése sí muere con la mutación.
+
+### B-362 · El orden sanear→recortar del título no lo fijaba ningún test — ✅ hecho (2026-09-02) · P2
+
+Lo encontró el `auditor-privacidad` sobre B-137. El docblock de `construirIssue`
+afirma que el orden importa, y era la única parte del repo donde esa regla estaba
+escrita.
+
+**Y el recorte es alcanzable**, que es la mitad que hacía falta para que valga la
+pena: `redactar` no acorta, **expande** — «link de reunión oculto» son 24
+caracteres contra los 12 de un `http://wa.me`. Así que un título al tope que las
+reglas permiten (120) lleno de links cortos pasa de 200 al redactarse.
+
+Con el orden invertido, ese caso publicaría un `https://us02web.zoom` cortado antes
+del dominio: un prefijo que ya no matchea el patrón, o sea **medio link de reunión,
+legible, en un repo público**.
+
+**Cómo quedó.** Un caso con nueve `http://wa.me` (116 caracteres, dentro del tope
+de las reglas), con control positivo de que llega al recorte —el primer intento usó
+links **largos** y no llegaba: 106 caracteres, porque con un link largo el saneador
+**acorta**— y los dos asertos de que no sobrevive nada del link. La mutación muere.
+
+### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver — ✅ decidido: no se hace (2026-09-03) · P3
+
+**Decidido el 2026-09-03 por el dueño: queda anotado y no se hace.** Las
+miniaturas JPEG ya bajaron el peso del recorrido completo un 71 %, así que WebP y
+AVIF serían optimización sobre optimización — y arrastran construir la zona de
+subida privada, que es lo caro. **Lo que no se descarta es la trampa 13** (`allow
+read` en Storage incluye `list`): esa vale por sí sola y no depende de este ítem.
+
+
+**B-220 decía que volvían con la Function y no volvieron** (D-175). El argumento
+de B-220 era que la Function recomprime todo y por lo tanto los hace seguros, y no
+alcanza: el objeto es público **desde el instante en que se sube**
+(`allow get: if true`) y la Function corre unos segundos después. En esa ventana un
+WebP con GPS es una URL pública con las coordenadas de una casa particular. Y el
+panel no puede taparlo, porque justamente no sabe limpiar esos contenedores: por
+eso están afuera.
+
+**Lo que lo desbloquea es otra forma, no otro parser.** Subir a un prefijo
+`entrada/` con `allow get: if esAdmin()`, que la Function lea de ahí, escriba el
+resultado saneado en `imagenes/` y borre la entrada. Con eso:
+
+- WebP y AVIF vuelven a `TIPOS_SUBIBLES` sin que el panel tenga que saber
+  limpiarlos, que es la promesa que B-220 no podía cumplir;
+- **la ventana desaparece para todos los formatos**, incluidos JPG y PNG: hoy la
+  foto cruda es pública durante los segundos que tarda el trigger, y eso es cierto
+  aunque el panel ya le haya sacado los metadatos;
+- deja de hacer falta sobreescribir el original, así que la guarda por
+  `customMetadata` pasaría a ser opcional en vez de obligatoria (D-175).
+
+El precio es el que B-220 evitó: al escribir en un path distinto del de entrada
+**vuelve el problema del write-back** —hay que decirle al documento dónde quedó la
+imagen—, y esa es la pregunta que D-175 disolvió en vez de resolver. Con
+`allow list` cerrado y el path derivado del id de la fila puede alcanzar con
+derivarlo, igual que la miniatura; hay que mirarlo.
+
+### B-325 · ✅ hecho — El `package-lock.json` decía 1.1.0 con el `package.json` en 1.5.0
+
+**Cerrado por el `npm install` de la subida a Astro 7**, y su propio autor lo había
+previsto: el `it.fails` que marcaba la clase pasó a verde y hubo que promoverlo a
+`it`, que es exactamente la señal que ese patrón existe para dar. Verificado el
+2026-09-07 **dos veces, y la segunda es la que importa**: decían los dos 1.8.0, y
+al cortar la 1.9.0 se movieron **los dos juntos** —el `it` que los ata no dejó
+avanzar con uno solo—, así que hoy dicen los dos **1.9.0**. Es la primera
+publicación de versión desde que existe el chequeo, o sea la primera prueba de que
+la clase quedó cerrada de verdad.
+
+El planteo original queda abajo.
+
+---
+
+
+Encontrado de paso al instalar dependencias en un worktree nuevo el 2026-09-02
+(B-220): `npm install` cambió **dos líneas** del lock, las dos el campo `version`
+de la raíz, de `1.1.0` a `1.5.0`. O sea que nadie corrió `npm install` en cuatro
+publicaciones de versión.
+
+**No rompe nada** —el `version` de la raíz del lock es informativo, y las
+dependencias resueltas estaban al día— así que es P3 y va anotado solo para que no
+se descubra otra vez. El arreglo es correr `npm install` y commitear el lock; lo
+que conviene mirar es si vale la pena que el bump de versión lo haga.
+
+**Por qué no entró en el commit de B-220:** ese frente lo revirtió a propósito
+para que sus commits fueran atómicos. Un lock que cambia por un motivo ajeno al
+cambio es exactamente el ruido que hace que después nadie lea un diff de lock.
+
+### B-1070 · El chequeo de ciclos diferidos que el § 1.5 pedía por escrito · ✅ hecho (2026-09-17) · P3 — de remedir B-1010
+
+El § 1.5 de `10-salud-del-codigo.md` pedía **por escrito** un chequeo que compare
+los ciclos del grafo de imports completo contra los declarados ahí, y B-849 lo
+dejó sin escribir. Ahora existe: lee el bloque indentado de esa sección, canoniza
+la rotación y compara. **Si nace otro ciclo diferido hay rojo, y si éste
+desaparece también** — esa segunda mitad es la que ningún script iba a avisar, y
+es la diferencia entre una guarda y una lista.
+
+### B-1071 · Dos conteos de la suite que se contradecían, los dos fechados el mismo día · ✅ hecho (2026-09-17) · P3 — de remedir B-1010
+
+El § 1.1 decía «4.044 casos en 179 archivos» y el § 2 «3.968 casos en 178», las
+dos como medición del **2026-09-09** y escritas por dos commits distintos de ese
+día, ninguno de los cuales dejó dicho sobre qué árbol contó. **Ningún test podía
+verlo**: son dos afirmaciones de prosa, no un valor derivado.
+
+El conteo pasa a escribirse **una sola vez** —en el § 6.1— y el resto apunta ahí;
+el test lo exige, con el regex tolerante al envoltorio a 80 columnas, que es la
+forma exacta en que la segunda copia se escondía.
+
+### B-1010 · Las tablas de `10-salud-del-codigo.md` miden 254 archivos y el árbol tiene 341 · ✅ hecho (2026-09-17) · P3 — de cerrar B-877
+
+> **Remedido sobre `f80f935`**, con `node scripts/salud-del-codigo.mjs` escrito al
+> lado de cada tabla. Eran 254 archivos y 63.983 LOC del 2026-09-09; el árbol
+> tiene **342 y 95.868**. Se remidieron el § 0, el § 1.1 y el § 1.2.
+>
+> **Dos filas cambian de signo por primera vez en cinco mediciones**, y ésa es la
+> parte que no se veía: el ratio de tests **baja** (1,69 → 1,56, porque el código
+> testeable creció 50 % y `tests/` 38 %) y el archivo más grande **sube** (2,9 % →
+> 3,1 %) — y ya no es código del producto sino el gate de build. La
+> concentración de los quince más grandes, en cambio, siguió bajando (26,6 % →
+> 22,3 %).
+>
+> De remedirlo salieron **B-1070**, **B-1071**, **B-1072** y **B-1073**.
+
+
+La última pasada completa es del 2026-09-09 (B-849): **254 archivos de
+producción, 63.983 LOC**. Hoy son **341 y 94.925** — un 48 % más en ocho días, de
+trabajo de varios frentes. Los §0, §1.1, §1.2, §1.4 y §1.6 siguen con las cifras
+viejas.
+
+**No se remidió al cerrar B-877/B-878 a propósito**, y conviene que quede el
+motivo: esos dos arreglos cambian cómo se mide, así que remedirlo todo en el
+mismo cambio mezclaría el efecto del instrumento con ocho días de crecimiento
+ajeno y dejaría ilegible cuál de los dos movió cada número. Los §1.3 y §1.5, que
+son los que esos ítems tocan, **sí** están remedidos.
+
+`node scripts/salud-del-codigo.mjs` imprime las tablas listas para pegar. Es una
+pasada del tamaño de B-849, no un renglón.
+
+### B-910 · Seis `D-nnn` citados y nunca escritos en `06-decisiones.md` · ✅ hecho (2026-09-17) · P3
+
+> **`node scripts/decisiones-referenciadas.mjs` dice «sin referencias huérfanas»
+> por primera vez.** Pero el resultado no es el que el ítem anticipaba, y las dos
+> sorpresas valen más que las entradas:
+>
+> **1 · La sexta nunca fue una decisión.** `D-9` no es una decisión que falte: es
+> `## D-09 · La descripción del evento lleva todo lo publicable`, que está en el
+> registro desde el principio. El barrido comparaba **cadenas y no números**, y
+> las nueve primeras entradas llevan cero a la izquierda. Escribir una entrada
+> `D-9` habría sido **inventar una decisión para tapar un falso positivo** — el
+> peor de los dos finales posibles de este ítem. El script ahora compara por
+> número, e informa **aparte** las citadas con otra grafía, porque
+> `06-decisiones.md#d-9` no resuelve a `## D-09` y un ancla que resuelve sin
+> resolver es justamente lo que este script existe para ver.
+>
+> **2 · A las otras cinco no hubo que reconstruirlas: estaban escritas.** El texto
+> completo de D-380 y D-381 estaba en `.estado/sitio.md` y el de D-430 en
+> `.estado/galeria.md` — el commit `4ff3379` lo dice con todas las letras («ver
+> D-381, cuyo texto queda en `.estado/sitio.md`»). Lo que faltó no fue redactar:
+> fue **pegar**.
+>
+> Y eso mueve el pendiente de lugar. No era «escribir seis entradas» sino el paso
+> que las perdió: **el número se acuña en un commit, el texto se escribe en un
+> directorio del `.gitignore`, y lo único que los une es que alguien se acuerde.**
+> Queda como **B-1090**, y es la misma forma que **B-1125**.
+>
+> De paso se corrigió la nota al pie de D-560, que enumeraba las seis y decía que
+> «siguen abiertas»: es la afirmación que este ítem volvió falsa, y está en el
+> mismo archivo.
+
+
+`node scripts/decisiones-referenciadas.mjs` lista D-9 (`docs/13-agentes.md`),
+D-340/D-341 (`docs/16-analitica-del-sitio.md`) y D-380/D-381/D-430
+(`docs/12-sitio-publico.md`). Ninguno de esos archivos es parte de una tanda en
+vuelo: son entradas que nadie llegó a escribir. Del `auditor-documentacion`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1
@@ -13862,2506 +16543,6 @@ Tres cosas que se pierden si se hace distinto:
 
 El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
 puestos y no hay que tocarlos.
-
-## P3 — cuando sobre tiempo
-
-### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
-
-**Lo trajo el dueño desde Search Console.** Queda anotado sobre todo para que
-nadie vuelva a investigarlo como si fuera código: **se investigó y no hay nada
-roto de este lado.**
-
-Qué se verificó, URL por URL, contra producción:
-
-| Chequeo | Resultado |
-|---|---|
-| Código HTTP | **200** las diez visibles |
-| ¿En el `sitemap.xml`? | **sí**, las diez |
-| `<meta name="robots">` | **ninguna** — no hay `noindex` |
-| Canónica | **propia y absoluta**, apunta a sí misma |
-| ¿Enlazadas desde la home? | **sí** — 227 enlaces a actividades en el HTML del build; `/suscribirse` aparece tres veces. Ninguna es huérfana |
-
-Y la hipótesis que quedaba —«son más flacas que el resto»— **se midió y es
-falsa**:
-
-- sin indexar: 330, 335, 346, 417 palabras;
-- indexadas: 283, 320, 329, 343, 383 palabras.
-
-Son el mismo rango. No hay nada que distinga a las 16.
-
-**Qué significa entonces «Rastreada: actualmente sin indexar».** Es Google
-diciendo que la buscó y **decidió no indexarla**: no es un error de rastreo, es
-una decisión suya de prioridad. Son 16 de **361** URLs del sitemap, o sea ~96 %
-indexado, que para un sitio de este año es sano. Y el «Resultado de la
-validación: error» que muestra el panel no agrega información: solo dice que una
-validación pedida el 7/9 terminó sin que Google cambiara de opinión.
-
-**Por qué no hay tarea de código.** Las palancas reales son las que no se tocan
-desde el repo: antigüedad y autoridad del dominio, y profundidad del contenido de
-cada actividad —que la escribe quien carga, no el build—. Inventar un cambio
-técnico acá sería mover algo que funciona para perseguir un síntoma que no
-depende de eso. Si alguna vez conviene empujar, lo que sí está en nuestras manos
-es **enriquecer la ficha**: hoy son ~330 palabras y buena parte es plantilla.
-
-**Cuándo sí volver a mirar:** si la cifra crece fuerte contra el total, si
-aparecen URLs con 404 o `noindex` en esa lista, o si empiezan a caer páginas que
-**ya estaban** indexadas. Eso último sí sería un bug.
-
-### B-916 · El chequeo de exportación de un trigger pasa con el `export` comentado — ✅ hecho (2026-09-17) · P3
-
-> ✅ **Hecho, y eran siete archivos, no dos.** Además de
-> `directorios-rebuild.test.ts` y `lugares.test.ts`: `librerias.test.ts`,
-> `suscripciones.test.ts`, `retencion-de-guias.test.ts`,
-> `flyer-por-callable.test.ts` e `historial.test.ts`. Se barre el fuente con
-> `sinComentarios` antes de buscar la cadena, y **no** con `await import(...)`:
-> `functions/index.js` llama `initializeApp()` en el top-level, así que
-> importarlo desde un test unitario arranca el Admin SDK de verdad. Mutación
-> probada en las dos direcciones sobre seis exports: comentar el `export` y
-> borrarlo ponen en rojo.
-
-`tests/directorios-rebuild.test.ts` y `tests/lugares.test.ts` verifican el trigger
-de rebuild con `expect(index).toContain("export { rebuildPorX } …")`. **Una mutación
-lo delató:** comentar la línea (`// export { … }`) deja los dos casos **en verde**,
-porque el comentario contiene la cadena. Borrar la línea entera sí los pone rojos.
-
-Es preexistente —viene de B-901 y lo heredaron B-832 y B-833— y el daño es acotado
-(comentar un `export` es un acto raro), pero es exactamente la clase de falso verde
-que este repo persigue: el chequeo dice «está exportado» y lo que verifica es «la
-cadena está en el archivo».
-
-El arreglo es leer el módulo (`await import('…/index.js')`) y exigir que la clave
-exista, o barrer el fuente sin comentarios (`sinComentarios`, que ya se usa para
-`firestore.rules`).
-
-### B-895 · Los tests de integración viejos pasan los claims por dos vías, y una no es la de producción — ✅ hecho (2026-09-17) · P3
-
-> ✅ **Hecho en diez archivos**, sacando el segundo argumento de
-> `createCustomToken`. Los 301 tests de esos archivos siguen verdes contra el
-> emulador.
->
-> **Y el undécimo es el hallazgo, que queda abierto en B-1030.**
-> `tests/storage-reglas.integracion.test.ts` nunca pasaba el claim por el
-> registro, solo embebido en el token; sacarlo pone **6 de sus 19** tests en
-> rojo. Se revirtió y quedó como el único archivo con la vía infiel, que es
-> justo lo que este ítem quería terminar — pero terminarlo acá habría tapado la
-> asimetría en vez de mostrarla.
-
-`tokenAdmin()` de `reportes`, `opciones`, `sistema`, `propuestas` y compañía hace
-`setCustomUserClaims(uid, claims)` **y** `createCustomToken(uid, claims)`. Los
-segundos viajan dentro del token y no pasan por el registro de la cuenta, que es
-justamente lo que **no** hace el panel real: ahí el claim lo pone el script de
-`admin:claim` y llega por el registro.
-
-Mientras el emulador corría en otro proyecto (B-894) esa doble vía **tapaba** el
-desajuste: los archivos que solo usan `setCustomUserClaims` —`rol-publicador` y
-`usuarios`— fueron los únicos que se cayeron. Con B-894 arreglado ya no tapa
-nada, así que esto no es urgente; es unificar hacia la vía fiel para que el
-próximo desajuste se vea en todos los archivos y no en dos.
-
-Es un cambio mecánico —sacar el segundo argumento de `createCustomToken`— y su
-verificación es que la suite siga verde.
-
-### B-823 · El scroll al fallar la validación, con más de una sección en error y en vista apilada — ✅ hecho (2026-09-08) · P3
-
-> **Un caso en `formulario-apilado.render.test.tsx`** con el formulario vacío, que
-> tiene varias secciones incompletas. Afirma que el **último** scroll de sección
-> es el de la sección más arriba, derivando cuál es de la barra —que las lista en
-> orden del documento— y no de un id escrito a mano: la sección que se agregue
-> mañana no rompe el caso.
->
-> Mira solo los scrolls **de sección**, porque después de los `rAF` hay un
-> `setTimeout` que scrollea hasta `[data-campo-con-error]`: el último scroll de
-> todos no es de una sección, y afirmar sobre ése habría sido verificar otra cosa.
->
-> El comportamiento ya era correcto —los `rAF` corren en el orden en que se
-> agendaron, y la iteración inversa hace que el último en ejecutarse sea el de la
-> primera sección—; lo que faltaba era la red.
-
-
-**Lo encontró el `auditor-trampas` cerrando B-814.**
-`src/components/admin/ActividadFormulario.tsx` recorre `faltantes.secciones` en
-orden inverso llamando a `irASeccion` por cada una. En vista «PC» eso converge
-bien: cada `setPestania` pisa al anterior y queda la primera sección con error.
-En apilado, cada llamada además agenda su propio
-`requestAnimationFrame(() => scrollIntoView(...))`; el resultado **también**
-converge, porque los callbacks corren en el orden en que se agendaron — pero eso
-depende de que los `rAF` no se re-ordenen entre sí, y hoy nadie lo verifica con
-más de un error a la vez.
-
-**Qué se pierde.** Poco, y por eso es P3: el peor caso es que el formulario
-scrollee a la sección equivocada al intentar publicar, no que se pierda nada.
-`tests/formulario-apilado.render.test.tsx` cubre el click manual en la barra —una
-sección sola—, así que el punto ciego es exactamente el caso de dos o tres.
-
-**Dónde.** Un caso con dos o tres secciones incompletas, con assert sobre cuál
-`scrollIntoView` fue el último llamado.
-
-### B-824 · La frase de cierre de B-620 quedó falsa, y ya van dos cambios que la empeoran — ✅ hecho (2026-09-08) · P3
-
-> **Se quitó la frase en vez de corregirla**, que es lo que el ítem proponía: el
-> dato vive en D-330 y repetirlo acá es lo que lo hizo envejecer dos veces. En su
-> lugar quedó escrito **por qué** no está, para que el próximo no la reponga.
-
-
-**Lo encontró el `auditor-documentacion` cerrando B-814.** B-620 (P2, cerrado el
-2026-09-03) cierra diciendo «**ancho por vista**: solo el listado usa la pantalla
-completa». Dejó de ser cierto **antes** de B-814: B-621 le sumó `estadisticas` y
-`calendario` a `VISTAS_A_TODO_ANCHO` el 2026-09-07. B-814 lo empeora, porque
-ahora también el formulario en vista «PC».
-
-**Qué se pierde.** Es drift de lectura, no de funcionamiento — el código está
-bien y **D-330** documenta la lista real. Pero es la tercera vez que un ítem
-cerrado repite un dato que vive en otro lado y envejece solo (ver **B-118** y
-**B-92**, los dos por lo mismo). El arreglo que no vuelve a envejecer es **quitar
-la frase**, no corregirla: D-330 ya la tiene, y B-620 no necesita repetirla.
-
-**Dónde.** `docs/BACKLOG.md`, el cierre de **B-620**.
-
-### B-812 · El `offers` del JSON-LD no emite `validFrom`, y son 24 avisos — ✅ hecho (2026-09-09), con la opción 1 · P3
-
-> ✅ **Hecho con la opción 1 (`creadoEn`), y la 2 queda escrita como lo que sigue.**
-> No es «desde cuándo se puede inscribir» —ese campo no existe (§3.1) y agregarlo
-> es un `/campo-nuevo` entero— pero tampoco lo inventa: **nada se pudo ofrecer
-> antes de existir**, así que es una **cota inferior**. Ésa es la diferencia con el
-> `price: '0'` que la regla 4 rechaza, donde el valor falso es justo el que una
-> persona lee.
->
-> **Y el ítem tenía dos cosas mal, las dos en la opción 1.** `creadoEn` **no**
-> viajaba al detalle —viaja a `ActividadPublica`, y `datosEstructurados` solo ve el
-> view-model— y no era «una línea»: había un caso pedido por el
-> `auditor-privacidad` («la celda 6 que estaba resuelta por omisión») afirmando que
-> la fecha de alta **no llega al detalle**. O sea que esto **abre una celda que
-> estaba cerrada con un test**. Lo que lo hace aceptable es que el mismo día, con
-> la misma precisión, ya sale en el `events.json` de la misma actividad (D-138).
->
-> El campo se llama **`ofertaDesde`** y no `creadoEn`: lo que se publica es «desde
-> cuándo se ofrece», y el nombre es lo que evita que mañana alguien lo pinte como
-> «cargado el …», que sería la agenda de trabajo del dueño en una página indexada.
-> El test viejo no se borró, se **acotó**: la fecha de alta puede estar en
-> exactamente un campo y en ningún otro —el segundo campo es el modo de falla
-> real— y `updatedAt` sigue sin salir a ninguna parte.
->
-> **Lo que queda pendiente y no es de este ítem:** `inscripcion.abre`. Si alguna
-> vez se agrega, `ofertaDesde` es la única línea de esta salida que cambia.
-
-Sale del informe «Eventos» del 2026-09-08 (ver la lectura en **B-731**):
-`Falta el campo "validFrom" (en "offers")`, 24 elementos. Es el único de los
-nueve avisos que es **código y no dato faltante**: el campo no se emite nunca.
-
-`validFrom` es «desde cuándo se puede conseguir esto». Google lo pide en un
-`Offer` para saber si la oferta ya está vigente, y sin él lo trata como válido
-desde siempre.
-
-**Qué habría para poner, y por qué no es obvio.** El dato honesto sería «desde
-cuándo se puede inscribir», y ese campo no existe en el modelo: `inscripcion`
-tiene `cierra` y no tiene «abre» (§3.1). Las opciones, de más honesta a más
-cómoda:
-
-1. **`creadoEn`** — ya viaja al detalle público (`toPublic`, B-109) y es cierto:
-   la actividad se ofrece desde que se cargó. Es una línea en el `offers` de
-   `armarJsonLd` (`src/lib/detallePublico.ts`).
-2. **un campo nuevo `inscripcion.abre`** — más preciso y más caro: campo,
-   formulario, schema, proyección y las dieciocho salidas.
-
-La 1 alcanza para el aviso y no afirma nada falso. **No hacerlo no rompe nada**:
-es un aviso, no un error, y el resultado enriquecido sale igual. De ahí el P3.
-
-### B-806 · `10-salud-del-codigo.md` dice que hay cuatro tests de render y hay doce — ✅ hecho (2026-09-09), y son diecisiete · P3
-
-> ✅ **Hecho, y no eran doce: son diecisiete.** El ítem contó doce y entre medio
-> nacieron cinco más, que es exactamente su propio argumento sobre por qué el
-> número hay que medirlo y no leerlo. Se remidió **toda** la frase y no solo la
-> lista: **155 casos de render** (`npx vitest list 'render.test'`) sobre los
-> **3.968 que la suite corre en verde** en 178 archivos, con el denominador en
-> **60 componentes y 14.678 LOC** de `.tsx` (eran 48 y 9.962). Y apareció un
-> **tercer** lugar con el número viejo que el ítem no nombraba: `05-patrones.md`,
-> corregido en el mismo cambio.
->
-> La medición del 2026-09-03 se conservó como historia y la nueva va debajo,
-> fechada: este documento vale porque cada número dice cuándo se contó — y ahora
-> también **con qué comando**, que era la otra mitad que faltaba (`vitest list`
-> colecta 3.995, veintisiete más que la corrida, porque incluye lo salteado).
->
-> **Lo que este cierre NO hizo y queda como ítem propio: B-849.**
-
-
-**Lo encontró el `auditor-documentacion`** cerrando B-805, y ya estaba mal antes de
-ese cierre. El §«Problema 1» dice: «hoy hay cuatro: `menu-acciones`,
-`historial-actividad`, `reportes-panel` y `estadisticas-pestanias`. Son 21 casos de
-render sobre 2.637».
-
-Los archivos `*.render.test.tsx` de hoy son **doce**: además de esos cuatro están
-`ayuda-de-seccion`, `buscador-de-pasadas`, `filtros-del-panel`,
-`formulario-en-pestanias`, `lista-actividades`, `texto-alternativo`,
-`visor-de-galeria` y `si-no-carga`. El conteo de casos y el total de la suite
-también quedaron atrás.
-
-**El propio documento explica por qué nada lo ata** —esas cifras se mueven con
-cualquier commit ajeno, y un test que las fije sería rojo en cada test nuevo
-(B-180)— y dice cómo remedirlas: `scripts/salud-del-codigo.mjs`. O sea que esto no
-es un chequeo que falte: es una corrida del script y una reescritura de la lista.
-
-Se anota en vez de arreglarse a ojo porque **los números hay que medirlos**: la
-lista de archivos se puede leer, pero «21 casos de render» y el total de la suite
-salen del script, y escribirlos a mano es cómo envejecieron la primera vez.
-
-**Y la misma cifra aparece dos veces en el propio documento**: además del §«Problema
-1», el párrafo de síntesis del cierre la repite («48 componentes y 9.962 LOC de
-`.tsx` con cuatro archivos de render test encima»). Las dos se remiden con la misma
-corrida y se actualizan juntas — no es un segundo hallazgo, es el mismo número
-citado dos veces.
-
-### B-733 · ✅ hecho (2026-09-07) — El `url` de cada `subEvent` lleva el ancla de su fila
-
-**Aprobado por el dueño**, que era lo único que faltaba: el ítem estaba resuelto
-salvo la decisión de agregar `sesiones.id` a la lista blanca de la salida 6.
-
-Hecho como el ítem lo describía: `url` de cada `subEvent` pasa de heredar la
-canónica de la página a `…/actividad/x/#ses_9f2a`, el ancla de esa fila — que
-**ya existe en el HTML** (`id={e.id}` en el `<li>`).
-
-**El barrido de centinelas lo había frenado, y tenía razón.** Volvió a frenarlo
-al implementarlo, y la excepción entró con su motivo escrito: lo que la hace
-aceptable no es que sea inofensivo en general, es que **el uuid ya es público en
-el HTML de esta misma página**. Es el mismo dato en el mismo documento, no un dato
-nuevo.
-
-**Lo que sigue sin ancla, y es la mitad que el ítem pedía no olvidar:** el `url`
-del `Offer` y el del `VirtualLocation`. El arancel y el acceso son de la
-actividad, no de una de sus filas — un ancla ahí afirmaría que el precio es de ese
-encuentro.
-
-Y el caso que afirmaba la herencia (`sub.url === ld.url`, de B-730) se dio vuelta
-con su original citado, más uno nuevo: **las anclas de dos encuentros distintos
-tienen que ser distintas**. Sin eso, «lleva ancla» lo cumpliría un `#` de adorno
-repetido.
-
-**La asimetría entre los dos barridos que el ítem anotaba sigue siendo cierta y
-no cambió:** el gate sobre `dist/` tiene `sesionId` como excepción de la página
-entera, y el JSON-LD viaja adentro de ese mismo HTML, así que el gate no puede
-separarlos. Lo que frena esto es el barrido de vitest, donde la lista del JSON-LD
-es propia. Uno de los dos, no los dos.
-
-El planteo original queda abajo.
-
----
-
-
-El ejemplo del §5.3 del diseño lo dibuja así desde el principio
-(`…/actividad/x/#ses_9f2a`) y **el código nunca lo emitió**. Con B-730 cada
-`subEvent` heredó el `url` de la página, que no es menos verdadero pero es el
-mismo link repetido N veces; el ancla apuntaría a la fila que describe ese
-encuentro, y las anclas **existen** en el HTML (`id={e.id}` en el `<li>`, o sea
-`id="ses_…"`).
-
-**Por qué no se hizo:** publica el `id` de la sesión en el JSON-LD, y eso es una
-entrada nueva en la lista blanca del §5.1. El barrido de centinelas lo frenó al
-intentarlo —`sesiones.id → CENTINELA.sesiones.id`— y tiene razón: el uuid ya es
-público en el HTML de la página (es el ancla), así que no habría fuga nueva, pero
-**agregar un centinela a la lista de la salida 6 es una decisión del dueño y no
-de un frente**.
-
-Si se aprueba: una línea en `datosEstructurados` y una excepción justificada en
-`PERMITIDO_EN_EL_JSON_LD` (`tests/barrido-de-salidas-publicas.test.ts`). El
-`url` del `Offer` y el del `VirtualLocation` **no** llevarían ancla: el arancel y
-el acceso son de la actividad, no de una de sus filas.
-
-**Y hay una asimetría entre los dos barridos que conviene saber si esto avanza**,
-la encontró el `auditor-privacidad`: el gate sobre `dist/` tiene `sesionId` como
-excepción **de la página entera** (`scripts/build-contra-emulador.mjs`), y el
-JSON-LD viaja adentro de ese mismo HTML — el gate no puede separar el
-`<script type="application/ld+json">` del resto. O sea que el ancla la frena
-**solo** el barrido de vitest, donde `sesiones.id` está en
-`PERMITIDO_EN_EL_DETALLE` pero no en `PERMITIDO_EN_EL_JSON_LD`. Uno de los dos,
-no los dos.
-
-### B-630 · ✅ hecho (2026-09-07) — El barrido de versiones huérfanas no tiene script en seco
-
-Hecho como el ítem lo pedía: `scripts/limpiar-versiones-huerfanas.mjs`, espejo del
-de imágenes, reusando la **misma** `decidirPurga` de la Function.
-
-Dos cosas que el ítem no pedía y valen:
-
-- **Informa lo mismo que haría la Function, incluido lo que NO haría.**
-  `decidirPurga` recorta a `MAX_ACTIVIDADES_POR_CORRIDA` y marca el resto como
-  `diferida-por-tope`; el script no relaja ese tope. Un script que barriera «todo
-  de una» mostraría un plan que la Function nunca ejecuta, y mirarlo antes de
-  confiar en la corrida programada no probaría nada.
-- **La guarda de entorno pasó a ser una clase con test**
-  (`tests/guardas-de-los-scripts.test.ts`): todo `.mjs` de `scripts/` que acepte
-  `--aplicar` tiene que detectar el emulador, pedir `--produccion` explícito y
-  **cortar**. Era una regla escrita en `05-patrones.md` que nada verificaba, y el
-  `auditor-trampas` ya la había encontrado faltando una vez.
-
-**Y el chequeo encontró un tercero antes de existir del todo:**
-`optimizar-imagenes.mjs` acepta `--aplicar`, **reescribe todos los objetos del
-bucket** y no tenía la guarda. No es más benigno que borrar: un `--aplicar` con el
-host del emulador sin exportar pasa el pipeline entero por las imágenes de
-producción, y con el `sharp` de la máquina de quien lo corre en vez del de la
-Function — que es el riesgo que el propio archivo se había escrito unas líneas más
-arriba. Guarda agregada.
-
-Verificado a mano contra el emulador: sembrada una huérfana de 40 días y otra de
-5, el script marca solo la primera, `--aplicar` borra sus dos versiones, la corrida
-siguiente ya no la ve, y `--aplicar` sin el host del emulador aborta con código 1.
-
-El planteo original queda abajo.
-
----
-
-
-`limpiarImagenesHuerfanas` (B-221) tiene `scripts/limpiar-imagenes-huerfanas.mjs`:
-lista qué borraría sin borrar nada, reusa la misma decisión pura que la Function
-—no hay una segunda copia—, y sirve para correr el barrido a mano sin esperar el
-tick del reloj o para verlo en seco contra producción antes de confiar en la
-corrida programada.
-
-`limpiarVersionesHuerfanas` (B-89) no lo tiene, y la asimetría no es de diseño:
-el frente que la escribió no podía tocar `scripts/`. Hoy la única forma de
-verificar la primera corrida es por logs, ya documentada en `08-operacion.md`.
-
-El script sería el espejo del de imágenes: `subcoleccionesHuerfanas(db)` +
-`decidirPurga(...)` + imprimir, con `--aplicar` para ejecutar y la misma guarda
-de entorno que el otro (§ «Idempotencia en los scripts» de `05-patrones.md`).
-Media hora, y lo que compra es poder mirar qué va a borrar **antes** de que lo
-borre — que en una Function que borra la única copia de una actividad ya no
-existente vale más que en una que borra imágenes.
-
-### B-621 · El calendario y el tablero del panel siguen angostos — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el calendario y el tablero usan todo el ancho — **falta repartir la grilla del mes**.
-
-**D-330** dejó el ancho del panel decidido **por vista** y solo ensanchó el
-listado. Las otras dos pantallas que se recorren de un barrido —la grilla del mes
-(`CalendarioActividades`) y «Estado del catálogo» (`EstadisticasPanel`)— siguen en
-`max-w-3xl lg:max-w-4xl`, y las dos ganarían: una grilla de siete columnas en
-896px da celdas de 120px, y el tablero apila paneles que podrían ir al lado.
-
-**No se hizo con B-620 a propósito:** ensanchar cada una es un cambio visual
-propio —qué crece, qué se reparte en columnas, qué queda con su ancho—, no el mismo
-cambio aplicado dos veces más. Y el tablero se estaba rehaciendo en paralelo.
-
-**El costo es una línea por pantalla**: agregar `'calendario'` y/o `'estadisticas'`
-a `VISTAS_A_TODO_ANCHO` en [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts),
-y después mirar la pantalla y repartir lo que corresponda. `tests/ancho-del-panel.test.ts`
-lista hoy esas dos vistas entre las que arrancan angostas, así que hay que moverlas
-de grupo en el mismo cambio — que es la señal de que la decisión se está tomando y
-no filtrando por descuido.
-
-### B-622 · La tarjeta del panel no muestra `destacado` ni los tags — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la tarjeta dice «Destacada»; los tags no, por decisión.
-
-La fila no los mostraba y la tarjeta tampoco, así que **no es una regresión**: es
-que la tarjeta ahora tiene lugar y sigue sin decirlos. `destacado` decide el orden
-en el sitio público y `tags` es el eje que D-74 dejó afuera de los filtros; desde
-el panel, «¿cuáles marqué como destacadas?» solo se contesta abriendo una por una.
-
-**Qué haría falta:** una marca más en la tarjeta para `destacado` (la píldora ya
-existe, `CLASE_MARCA`) y decidir si los tags entran — que es la parte que no es
-gratis: una actividad puede tener seis y la tarjeta se convierte en una nube de
-etiquetas. Recomendación: `destacado` sí, tags no hasta que alguien lo pida.
-
-### B-601 · El tríptico de «¿Qué hay ahora?» no se mide — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el tríptico entra al vocabulario de la analítica — **falta el enganche**.
-
-El sitio público mide **dos** eventos propios —`busqueda` y `clic_inscripcion`
-(B-375, [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md))— y el tríptico de
-**B-600** no está en ninguno de los dos. Es deliberado y no un olvido: se decidió
-al construirlo, para no meter un evento nuevo en la misma tanda que la sección.
-
-Lo que no se puede contestar sin medirlo es justamente lo que decide si la sección
-se queda como está:
-
-- **¿Se usa?** Un clic en una fila del tríptico y un clic en una fila del listado
-  llevan al mismo lugar, así que hoy son indistinguibles. Si nadie toca el
-  tríptico, es una banda que empuja el listado abajo del pliegue por nada.
-- **¿Cuál de los tres paneles?** Si todo el uso es «Hoy», el tope de cuatro está
-  mal repartido y el finde podría ser un solo panel con más filas.
-- **¿El «+N más» frustra?** El pie dice que hay más y no linkea a ninguna parte
-  (D-320, y el motivo es bueno). Si se toca —o si scrollean al listado justo
-  después—, la decisión de que el día no sea una URL merece revisarse con un dato.
-
-**Cuidado con el default de no decidir** (§5.1 de [`07-seguridad.md`](07-seguridad.md)):
-un evento del tríptico tiene que viajar con el panel (`hoy`/`manana`/`finde`) y la
-posición de la fila, **nunca con el slug ni el título de la actividad** — eso es
-contenido, y `detalle` es un enum cerrado en todos los eventos de este proyecto.
-
-### B-604 · El comentario de B-190 estaba duplicado literal en `tarjetaPublica.ts` — ✅ hecho (2026-09-03) · P3
-
-**Renumerado desde el `B-600` que propuso el frente de salud** (ver la nota de
-huecos del encabezado).
-
-En `src/lib/tarjetaPublica.ts`, el bloque de `lugarDeTarjeta` que explica B-190
-(«Online por A confirmar» se lee como si «A confirmar» fuera el nombre de una
-plataforma) estaba pegado **dos veces seguidas**, palabra por palabra. No venía de
-un merge: lo agregó duplicado un solo commit (`fix: 5 hallazgos del
-auditor-privacidad sobre B-190/B-340/B-342`).
-
-No afectaba comportamiento; el costo es que un lector futuro lo lee dos veces
-preguntándose si el segundo dice algo distinto — y en un repo donde el comentario
-**es** la documentación de la decisión, eso es exactamente el ruido que hace que se
-dejen de leer. **Cerrado borrando el segundo bloque.**
-
-Lo encontró el `auditor-documentacion` en el barrido del 2026-09-03, que además
-buscó otros duplicados de bloques de 4+ líneas en `src/**`, `functions/**` y
-`tests/**`: los demás candidatos son falsos positivos (código repetitivo por
-patrón). El frente de salud no lo tocó porque `src/**` era de otro frente.
-
-### B-606 · La definición del `auditor-documentacion` sobre-afirma que nada atrapa los duplicados de merge — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la ficha del auditor ya no sobre-afirma.
-
-**Renumerado desde el `B-602` que propuso el frente de salud** (ver la nota de
-huecos del encabezado).
-
-`.claude/agents/auditor-documentacion.md`, Parte 2 punto 3, dice que
-`tests/sin-marcadores-de-conflicto.test.ts` «no atrapa esto» hablando de bloques
-duplicados o fusionados por merges. Dejó de ser del todo cierto: desde **B-367**,
-`tests/red-de-contencion.test.ts` atrapa exactamente ese patrón — pero **solo** para
-la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`.
-
-Sin la aclaración, el próximo auditor reporta como hallazgo algo que el CI ya frena
-ahí. Es la clase que este repo ya conoce: un auditor que duplica lo que un test
-frena reporta ruido, y la tabla de `13-agentes.md` existe justamente para eso.
-
-Texto propuesto, al final del punto 3:
-
-    **Excepción:** la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`
-    sí tiene red desde B-367 (`tests/red-de-contencion.test.ts`, filas fusionadas
-    con `||` o duplicadas) — no lo reportes ahí, seguí buscando el patrón en el
-    resto de la documentación.
-
-### B-607 · `npm audit fix` de `uuid`, la única vulnerabilidad de producción sin breaking — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `uuid` desaparece al subir `google-auth-library`.
-
-**Renumerado desde el `B-603` que propuso el frente de salud** (ver la nota de
-huecos del encabezado).
-
-`uuid` <11.1.1 (vía `gaxios`; moderada: falta un chequeo de límites de buffer en
-v3/v5/v6 cuando se pasa `buf`) se cierra con un `npm audit fix` **sin cambios
-incompatibles**. No se hizo el 2026-09-03 a propósito: toca `package-lock.json`,
-que es de todos los frentes, y un lock reescrito en medio de una tanda de tres
-agentes en paralelo es un conflicto garantizado.
-
-Las otras cuatro vulnerabilidades de producción quedan **fuera** de este ítem:
-`sharp` (alta, libvips) y `esbuild` (baja) solo se cierran subiendo a `astro@7.3.1`,
-dos mayores arriba — eso es la decisión que ya vive en el Problema 4 de
-`docs/10-salud-del-codigo.md`, no un `audit fix`.
-
-### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
-
-**La conclusión es «no se toca», y se cierra para que deje de contarse como
-trabajo pendiente.** El texto de abajo ya tenía los tres argumentos y se
-verificaron contra el código: `src/pages/cartelera.astro:139` pinta
-`{tipoEtiqueta} · {cuando}` con `claseRotulo`, que es
-`'label-caps text-azul'` (`src/components/sitio/estilos.ts:110`) — exactamente
-lo que el ítem describe.
-
-Por qué se descarta en vez de dejarse abierto: **no hay ninguna afirmación falsa
-que corregir**, que es lo que sí había en B-273. Es una **propuesta de diseño
-nueva** —dos colores en un renglón de tres palabras— cuyo único camino a
-ejecución es que el dueño decida que la pared también tiene que identificar la
-categoría por color, y nadie lo pidió. Un ítem que espera un pedido que no
-existe es exactamente lo que hace que la lista deje de significar algo.
-
-**No se pierde nada al cerrarlo**, que es la condición: el razonamiento sigue
-escrito acá, y el camino corto —una cajita como la del listado en vez de teñir
-la línea entera, medida con `contrasteCaladoDelTono` o `contrasteDelTono`, sin
-nada nuevo que medir— también. Si el dueño lo pide, se reabre con eso ya
-resuelto, que era el propósito de haberlo anotado.
-
----
-
-#### El planteo original — B-275
-**Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
-vuelva a discutir desde cero.**
-
-`src/pages/cartelera.astro` pone `{tipoEtiqueta} · {cuando}` con `claseRotulo`
-(`label-caps text-azul`). Es la tercera pieza pública que nombra la categoría, después
-de la cajita del listado y la de la cabecera del detalle — que desde D-153 llevan las
-dos el color de su tipo.
-
-**Por qué no entró en B-273:**
-
-- **No es la misma pieza.** Las otras dos son una cajita con la categoría sola; ésta
-  es una **línea compuesta** donde el tipo comparte renglón con la fecha. Pintarla del
-  color de la categoría pintaría también el «jue 24 sep», que es exactamente lo que
-  D-150 dejó afuera con su motivo escrito: «extenderlo al resto de la fila lo
-  convierte en decoración y devuelve la textura de plataforma».
-- **No hay salto que arreglar.** Nadie ve una cajita cambiar de color al navegar: acá
-  no hay cajita, hay texto en `azul`, que es la tinta que el sistema visual le asigna
-  a lo funcional y a las categorías. Sigue siendo coherente con el sistema.
-- **Partir la línea para pintar solo el tipo** es una decisión de diseño nueva —dos
-  colores en un renglón de tres palabras— y no la corrección de una afirmación falsa,
-  que es lo que B-273 era.
-
-Qué haría falta para cerrarlo: que el dueño decida si la pared también tiene que
-identificar la categoría por color. Si dice que sí, el camino corto es una cajita
-como la del listado en vez de teñir la línea entera, y el par a medir es el mismo que
-ya mide `contrasteCaladoDelTono` (si va calada) o `contrasteDelTono` (si va con
-borde) — no hace falta medir nada nuevo.
-
-### B-345 · Cinco citas apuntan a D-100 para una decisión que es D-111 — ✅ hecho (2026-09-02) · P3
-
-**Corregidas las dos heredadas que el ítem nombraba**, más una tercera que
-apareció buscándolas: `docs/BACKLOG.md` cuerpo de **B-72** («Resuelto así
-(D-100)» → D-111), cuerpo de **B-177** («Con el orden de escritura de D-100»
-→ D-111), y `docs/CHANGELOG.md` («el orden de escritura de B-71/D-100» →
-D-111) — esta última es irónica: es la propia entrada del changelog que
-**anunciaba** haber corregido las tres apariciones nuevas de este cruce
-(«D-187, `04-funcionalidades.md` y este CHANGELOG: los tres corregidos»), y
-una de las tres no se había tocado. Verificado que las otras dos sí:
-`D-187` y `04-funcionalidades.md` ya decían D-111.
-
-**Verificadas y dejadas como estaban, por ser citas correctas**: las cuatro
-apariciones de D-100 que hablan de su tema real —`taxonomia.ts`, la mitad
-cliente del §4.2 (`docs/04-funcionalidades.md:314`, `docs/BACKLOG.md:4151`,
-`docs/CHANGELOG.md:5420`)— y la definición misma en `docs/06-decisiones.md`.
-
-**Lo que se dejó sin resolver, a propósito y por prudencia:** dos citas más de
-D-100 en `docs/BACKLOG.md` (cuerpos de B-50 y B-35) que tampoco hablan de
-`taxonomia.ts` ni del orden de escrituras, sino de un tercer patrón —derivar
-un chequeo del grafo de imports real en vez de comparar literales, y sacar una
-decisión a un módulo puro con un único punto de entrada—. No encajan en
-ninguno de los dos casos que este ítem resuelve (D-100 real vs. D-111
-correcto), y no hay ningún D-número que las nombre con precisión: inventar uno
-sería el mismo error al revés. Quedan anotadas acá para quien quiera
-formalizar esa decisión con su propio número, en vez de seguir citando D-100
-por analogía.
-
-El texto original queda abajo.
-
-**Lo encontró el `auditor-documentacion` el 2026-09-02**, y las tres que este
-cambio había agregado ya se corrigieron. Quedan las heredadas.
-
-La decisión «primero la actividad, después las etiquetas nuevas» es **D-111** («La
-actividad se escribe antes que las etiquetas nuevas»). **D-100** es otra cosa: «La
-mitad cliente del §4.2 vive en un módulo puro, y los widgets no se unifican», o
-sea `taxonomia.ts` — no dice nada de orden de escrituras. Las dos nacieron
-arreglando B-71/B-72 el mismo día, y la cita se cruzó ahí.
-
-Dónde quedó mal, todo preexistente a este cambio:
-
-- `docs/BACKLOG.md`, cuerpo de **B-177**: «Con el orden de escritura de D-100, si
-  la actividad se guarda pero falla el alta…»
-- `docs/BACKLOG.md`, cuerpo de **B-72**: «**Resuelto así (D-100):** se invirtió el
-  orden, en `src/lib/formulario/guardar.ts`»
-- y las apariciones del mismo párrafo que hayan quedado en otros ítems que citan
-  esa inversión.
-
-**No se tocaron acá a propósito**: están en cuerpos de ítems cerrados que sirven
-como rastro, y editarlos en el mismo commit que otras seis cosas mezcla un arreglo
-de trazabilidad con el cambio del día. Es P3 porque no rompe nada: quien siga la
-cita cae en una decisión real, solo que en la que no explica lo que fue a buscar
-— que es exactamente el costo que el índice de decisiones existe para no tener.
-
-Ojo al corregirlas: **hay citas de D-100 que están bien** y no se tocan, como la de
-`04-funcionalidades.md` sobre el desplegable y el input de etiquetas usando la
-misma lógica. Es su tema.
-
-### B-342 · Las filas de material no están en el chasis `FilasEditor`, y se editan por índice · P3 — ✅ hecho (2026-09-02)
-
-**Se miró haciendo B-197 y se decidió no tocarlo; queda anotado para no volver a
-discutirlo desde cero.**
-
-`MaterialEditor` es el único editor de filas del panel que no usa `FilasEditor`
-(B-224): tiene su propio botón de agregar, su propio borrar y ningún «Duplicar»,
-contador ni estado vacío. Y edita, borra y renderiza **por índice** (`key={i}`,
-`editar(i, …)`, `items.filter((_, j) => j !== i)`), que es lo que la trampa 2
-prohíbe para las sesiones.
-
-**No es la trampa 2, y por eso es P3.** La trampa 2 es del *diff contra Calendar*:
-los ids de sesión existen porque un índice renumerado le hace creer al diff que
-cambiaron cinco encuentros y le borra los eventos a la gente. Un ítem de material
-**no va a Calendar** y no tiene identidad que preservar, así que renumerarlo no
-destruye nada del otro lado. Y las filas son controladas (`value={it.titulo}`), así
-que borrar la primera de tres no corrompe los valores de las otras.
-
-**Lo que el índice sí cuesta**, y es chico: `key={i}` reusa el nodo del DOM, así que
-borrar una fila mueve el foco y el cursor a la fila de al lado, y cualquier estado
-local por fila que se agregue en el futuro va a saltar de fila. Más el precio del
-chasis duplicado: el arreglo que se aplique al de sesiones no llega a este.
-
-**Si se hace**, va con `id` de cliente en `ItemMaterial` —uuid, no índice— y eso
-toca el schema, `formADocumento`, `documentoAForm`, `duplicar.ts` y las fixtures.
-Es un cambio de modelo por una mejora de foco: por eso está acá y no en P2.
-
-**Hecho, exactamente con ese alcance.** `MaterialEditor` al chasis `FilasEditor`
-(gana Duplicar/contador/estado vacío gratis) e `ItemMaterial.id` nuevo
-(`mat_<uuid>`, generado en `src/lib/material.ts`). Los documentos anteriores a
-este cambio se leen con un id determinístico por índice
-(`idItemMaterialMigrado`, mismo criterio que `ID_IMAGEN_MIGRADA` de D-125: un id
-que cambiara en cada lectura ensuciaría el formulario), y duplicar una actividad
-regenera los ids del material igual que ya hacía con las modalidades. Tocó más
-archivos de los previstos —`analytics-eventos.ts` (`CAMPOS_VALIDABLES`),
-`camposFaltantes.ts` y nueve archivos de test que construían `ItemMaterial` a
-mano— porque el `id` nuevo es un campo más del schema y `tsc` los encontró a
-todos.
-
-**Campo nuevo → skill `campo-nuevo`, corrido después.** Las doce salidas públicas, una por una: `material.items[].id` no sale en ninguna — `toPublic.ts` (`ItemMaterialPublico`) ya era whitelist sin `id` desde antes de este cambio, y lo mismo `functions/calendario.js` y `textoRedes.ts` (que de hecho excluye `material` entero, D-20). Confirmado, no solo leído: mutación en `toPublic.ts` agregando `id` a la proyección — `tests/barrido-de-salidas-publicas.test.ts` lo agarra nombrando exactamente «material.id → CENTINELA.material.id» en `events.json`. Fila nueva en el «Qué NUNCA sale» de `07-seguridad.md`.
-
-### B-343 · Los encuentros no muestran los errores del schema por fila · P3 — ✅ hecho (2026-09-02)
-
-**La otra mitad de B-197**, y la más suave de las tres.
-
-`SesionesEditor` recibe `error` —el de la lista— y no `errorDe`, así que
-`sesiones.N.inicio` y `sesiones.N.fin` («Falta la fecha de inicio», «Falta la fecha
-de fin») no se pintan en la fila.
-
-**Está en P3 y no al lado de B-341 por dos razones que hay que mirar juntas:**
-
-- **El caso caro ya está cubierto, por otro camino.** El `.refine` de
-  `sesionSchema` («El encuentro tiene que terminar después de empezar») tiene su
-  propio aviso vivo en la fila: `resumirSesion` deriva `finAntesDelInicio` y la
-  línea de abajo cambia a «Cae martes, pero el fin no es posterior al inicio». O
-  sea que la fila **sí** dice lo que está mal, con una derivación paralela en lugar
-  del error del schema. Que sean dos caminos para lo mismo es la deuda real de este
-  ítem.
-- **Lo que queda sin cubrir es raro.** `sesionVacia` nace siempre con fecha y hora
-  puestas, así que un `inicio` vacío solo aparece si alguien lo borró a mano.
-
-Lo barato es lo de B-197: `errorDe` en lugar de `error`, y de paso decidir si la
-derivación paralela se queda (es más rica: dice el día de la semana) o si el schema
-pasa a ser la única fuente.
-
-**Hecho, y la derivación paralela se queda.** `SesionesEditor` recibe `errorDe`
-completo; Inicio y Fin pasan a usar `Campo` (antes eran `<label>` a mano) y leen
-`errorDe('sesiones.N.inicio'/'fin')`, con `data-campo-con-error` para el scroll
-de B-184. `resumirSesion`/`finAntesDelInicio` sigue viva tal cual: es más rica
-(dice el día de la semana) y este ítem dejaba la decisión abierta a propósito —
-los dos caminos conviven.
-
-### B-276 · La suite completa falla a veces en los tests de integración, y es el orden — ✅ hecho (2026-09-02, con B-219)
-
-**Cerrado por B-219 (D-195), y era la misma familia**, como este ítem sospechaba.
-Su párrafo final decía la salida correcta: «darle a cada archivo de integración su
-propio `projectId`, que es lo que aísla de verdad y de paso protege del emulador
-compartido entre worktrees». Se hizo por **checkout** y no por archivo, y el
-motivo es que la otra mitad ya estaba cubierta: `fileParallelism: false` serializa
-los archivos de una corrida. Los dos mecanismos juntos cubren los dos casos.
-
-Y lo que este ítem pedía para cerrarlo —«correr la suite en un loop hasta
-reproducirlo»— ahora es un script: `scripts/probar-concurrencia.sh --misma-base`
-lo reproduce a pedido, 6 de 6.
-
-
-Apareció al cerrar B-273: sobre unas nueve corridas de `npx vitest run
---no-file-parallelism`, **dos fallaron** con errores del tipo «el fixture dejó de
-tener a "taller" como base» o «La opción «taller» ya no está en tipo» en
-`opciones.integracion.test.ts`, y una vez además en `sitio-publico.integracion.test.ts`
-y `events-json-endpoint.integracion.test.ts`. Las mismas corridas aisladas —cada
-archivo solo, y los tres archivos de integración juntos— pasan siempre, y la suite
-completa pasó **seis veces seguidas** después. No se pudo reproducir a voluntad.
-
-**La sospecha:** varios `describe` de integración llaman a `limpiarFirestore()`, que
-hace un `DELETE` sobre **toda** la base del emulador, en `beforeAll` y en `afterAll`.
-Si alguno de esos borrados sigue en vuelo cuando el archivo siguiente ya sembró su
-fixture, el fixture desaparece y el error que se ve es «el dato base no está» — que
-es justo la forma que tuvieron los fallos. El emulador además es **compartido entre
-worktrees**, así que un build contra el emulador o una corrida en otro directorio
-alcanzarían para lo mismo.
-
-No es de B-273: el patrón de barrer entero en `beforeAll` es anterior (el describe de
-D-30 de `sitio-publico.integracion.test.ts` ya lo hacía) y la suite en `main` también
-pasa. Lo que B-273 hizo fue agregar un tercer `describe` que barre en ese archivo, o
-sea subir la frecuencia si la sospecha es correcta.
-
-Qué haría falta para cerrarlo: correr la suite en un loop hasta reproducirlo con el
-log del emulador a la vista. Si se confirma, la salida es dejar de barrer la base
-entera —borrar solo las colecciones que el archivo sembró— o darle a cada archivo de
-integración su propio `projectId`, que es lo que aísla de verdad y de paso protege
-del emulador compartido entre worktrees.
-
-### B-281 · El aviso del mes vencido manda a `/` y no a `/pasadas` — ✅ hecho (2026-09-02)
-
-**Hecho con B-109**, y fue exactamente la línea que este ítem prometía:
-`DESTINO_DEL_MES_VENCIDO` (`src/lib/mesPublico.ts`) apunta a `RUTA_PASADAS`, que
-ahora existe. **El texto del link se cambió junto con el destino** —«Mirá todo lo
-que ya pasó» en vez de «Mirá lo que viene en la agenda»—: un link cuyo texto
-promete otra cosa que la página a la que lleva es peor que no tenerlo, y los dos
-son una sola frase.
-
-El test que lo cubría no cambió ni una línea: verifica que el destino sea una ruta
-que el sitio sirve de verdad, así que sostuvo el `/` de antes y sostiene el
-`/pasadas` de ahora — y sigue frenando el error inverso.
-
-El texto original:
-
-El §2.2 dice que la página de un mes que terminó se emite una última vez «con un
-aviso "este mes ya pasó" y link a `/pasadas`». `/pasadas` es parte de **B-109** y
-todavía no existe, así que enlazarla sería poner un 404 en la única salida que esa
-página ofrece — peor que el problema que la página vencida resuelve. Hoy manda a la
-home.
-
-Es P3 porque no rompe nada y el arreglo es una línea: el destino vive en
-`DESTINO_DEL_MES_VENCIDO` (`src/lib/mesPublico.ts`) y no escrito en la plantilla.
-`tests/mesPublico.test.ts` verifica que apunte a **una ruta que el sitio sirve de
-verdad**, así que también frena el error inverso —apuntarla a `/pasadas` antes de
-construirla— y deja de hacer ruido solo cuando esa página exista. Ver **D-155**.
-
-### B-282 · Cuatro cosas que el `auditor-privacidad` encontró en la salida nueva de B-113 — ✅ hecho (2026-09-01)
-
-Entran acá porque la regla es que todo lo que aparece en el camino quede anotado,
-incluso arreglado en el momento. Las cuatro son de la misma familia: **ninguna
-filtraba nada hoy y ninguna dejaba el build en rojo**.
-
-| # | Qué | Cómo quedó |
-|---|---|---|
-| P1 | La página de mes es una **salida pública nueva** y no estaba en ninguno de los tres índices —`docs/07-seguridad.md`, la ficha del agente y el skill `campo-nuevo`—, así que un cambio futuro a `mesPublico.ts` no despertaba al auditor por nombre de archivo. Es el agujero de la salida 5 del 2026-08-27, repetido: no de cobertura, de índice | Fila **8** en las tres tablas, «siete» → «ocho» en los cuatro lugares. `tests/agentes-y-skills.test.ts` (B-216) las ata solas desde ahora |
-| P1 | La salida se arma **interpolando texto** (`descripcionDelMes` mete tres títulos en la `meta description`) y no tenía barrido de centinelas. El peor caso estaba a un carácter: `e.searchText` en lugar de `e.titulo` publica tres descripciones enteras normalizadas | `describe` propio en `tests/barrido-de-salidas-publicas.test.ts`, sobre las tres frases y en sus dos ramas (mes vigente y vencido) |
-| P2 | La plantilla recibía la página por props **y además** hacía `indiceDelSitio()` en el frontmatter, o sea que se traía el índice entero —con `searchText` y `creadoEn`— por la puerta de al lado. La garantía dejaba de darla el tipo (D-140) y pasaba a darla un grep | `caminosDeMes` arma un `VistaDeMes` con lo que la página muestra y nada más; la plantilla importa una sola función, y hay aserto por lista blanca de imports |
-| P2 | El aserto que cerraba la plantilla era **lista negra** de tres nombres: `{e.resumen}` o `{e.creadoEn}` pasaban limpios | Invertido a lista blanca —qué puede sacar del view-model, campo por campo— más la mitad que la lista no da: `entradas` viaja entera a la lista y no se abre (ni indexar, ni recorrer, ni desestructurar) |
-
-Las cinco mutaciones de los arreglos mueren.
-
-### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` — ✅ hecho (2026-09-07) · P3
-
-Al revertir D-74 para el arancel (B-272, D-152) se revisaron sus otros tres
-descartes uno por uno. **No se agregó ninguno —no se pidieron— pero dos de los tres
-motivos ya no son ciertos, y eso tiene que quedar anotado o el descarte sobrevive a
-su razón.**
-
-| Filtro | Qué decía D-74 | Qué pasó |
-|---|---|---|
-| `tags` | «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. **Cuando exista B-06, se reconsidera**» | **B-05 y B-06 existen.** La condición que el propio D-74 puso para reconsiderarlo se cumplió. Lo que sigue en pie es la otra mitad del argumento: es multivaluado y necesita un control de selección múltiple, que ninguno de los cinco desplegables del panel tiene. O sea que el costo es real pero ya no es «la lista está sucia» |
-| `destacado` | «un booleano que hoy no consume nadie: **el sitio público todavía no existe** (B-01)» | El sitio existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. El motivo caducó entero. Lo que queda como argumento es otro y más débil: con pocas destacadas, un filtro booleano compra menos que un orden |
-| quién la cargó | «el dato es un identificador de usuario y no un nombre, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre» | **Sigue valiendo igual.** No hay nada que revisar acá |
-
-Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, primero
-hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
-`EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
-
-**El dueño decidió el 2026-09-07: «los dos». Hecho, y está en D-480.** «Destacada»
-es un desplegable de tres valores que solo aparece si hay alguna destacada; las
-etiquetas son chips de alternancia debajo de la grilla, con el número de cada una y
-las tres reglas de conteo del sitio.
-
-Dos cosas que el ítem no había previsto:
-
-- **el camino corto no se tomó.** Traer el `EjeDeFiltro` del sitio metía su sistema
-  visual —`label-caps`, `bg-acento`, radio 0— adentro del panel, que tiene el suyo, y
-  ponía a los tests visuales del sitio a medir un componente usado sobre otras
-  superficies. Se comparte lo que no puede divergir: la aritmética del foco, la forma
-  del chip y el motivo de cada regla de conteo. Está argumentado en D-480;
-- **apareció un ciclo de imports.** `chipsDeTags` devuelve la misma forma que
-  `chipsDe`, y `listadoPublico` ya importaba `ETIQUETA_MODALIDAD` del panel, así que
-  importarle el tipo `Chip` cerró el círculo. Lo cobró `salud-del-codigo` y el tipo
-  se mudó a `lib/chip.ts`, que los dos importan.
-
-Y una decisión de conteo que vale escribir: **las etiquetas suman UNO al número del
-botón «Filtros»**, no una por etiqueta. Adentro del eje se unen con «o», así que la
-segunda ensancha el resultado; contarlas de a una diría que hay más recorte cuando
-hay menos.
-
-### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda — ✅ hecho (2026-09-07) · P2
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `publicadaAlgunaVez` se guarda, con «ausente» leído como la inferencia.
-
-**Decidido el 2026-09-03 por el dueño: guardarlo en el documento.** Un campo más,
-escrito una sola vez por el trigger, que saca la inferencia de los tres lugares
-donde hoy se rehace. Va en la tanda de modelo junto con **B-301**.
-
-
-B-110 necesita saber si una actividad cancelada estuvo publicada alguna vez —para
-no publicar la página de un borrador por otra puerta— y esa pregunta **no vive en
-el modelo**. Hoy se infiere en el build (`estuvoPublicada`,
-`contenidoDelSitio.ts`): primero por si alguna sesión conserva `calendarEventId`
-—la heurística del §7.3, que en la práctica no sobrevive porque el sync la borra al
-cancelar (D-159)— y si no, por si `/actividades/{id}/versiones` tiene una entrada
-con `documento.estado: 'publicado'`.
-
-Funciona y era lo correcto para cerrar B-110, porque **el historial funciona
-retroactivamente**: las actividades ya canceladas en producción recuperan su página
-sin que nadie las vuelva a guardar, que es justo lo que un campo nuevo no puede
-hacer. Lo que se paga:
-
-- una query extra por cancelada (son pocas, y solo ellas la pagan);
-- **la retención de D-42**: 20 versiones por actividad. Editar una cancelada veinte
-  veces empuja la versión publicada afuera del historial y la página vuelve a dar
-  404. Falla cerrado, que es el lado correcto del error, pero es un límite real;
-- el build depende de una subcolección interna para decidir qué HTML genera.
-
-Lo correcto a mediano plazo es `publicadaAlgunaVez: boolean` —ya era la decisión 4
-del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md)—: un booleano pegajoso
-que se prende al guardar con `estado: 'publicado'` y nunca vuelve a `false`. Toca
-el tipo, el schema, la conversión form ⇄ documento, `duplicar.ts` (**tiene que
-nacer en `false`**: un duplicado nunca estuvo publicado), `camposFaltantes.ts`, el
-fixture de centinelas y el barrido — o sea el recorrido completo del skill
-`campo-nuevo`. No se hizo con B-110 porque no lo bloqueaba y porque solo sirve
-hacia adelante.
-
-Cuando exista, `estuvoPublicada` se queda con el campo y las dos inferencias pasan
-a ser el default de lectura de los documentos anteriores.
-
-### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` — ✅ hecho (2026-09-02)
-
-**Cómo quedó.** El aserto verifica que `indiceDeTecla` **se llame** y que su
-resultado se use, más el `onKeyDown` que la alimenta: sin manejador la llamada no
-ocurre nunca, así que son las dos mitades de lo que el `it` promete.
-
-Lo que a propósito **no** se hizo: apretar el aserto a la línea exacta de hoy. Eso
-volvería a ser un test de ortografía —renombrar la variable local lo rompería sin
-que el comportamiento cambie— y un test que se rompe por un renombre está mal
-escrito, no es el código el que está mal.
-
-**De los dos, quedaba uno.** La segunda instancia que este ítem nombraba
-(`toContain('SELECTOR_ENFOCABLE')` sobre `CentroAyuda.tsx`) ya no existe: el
-refactor de B-210 mudó el cableado al hook, y el aserto que quedó en su lugar es
-la lista negra invertida —ninguna capa puede nombrar `SELECTOR_ENFOCABLE` por su
-cuenta—, que un import haría **fallar** en vez de pasar.
-
-La mutación muere: reemplazar la llamada por `null` pone el `it` en rojo. Antes
-pasaba.
-
-
-Los encontró el `auditor-privacidad` en el cierre de `1.2.0`, buscando otras
-instancias de la clase que apareció ahí. `tests/foco.test.ts:97` y `:105`:
-
-```js
-expect(src).toContain('indiceDeTecla');      // MenuAcciones.tsx:3 es un import
-expect(src).toContain('SELECTOR_ENFOCABLE'); // CentroAyuda.tsx:11 es un import
-```
-
-El `it` promete «navega con teclas» y «atrapa el Tab»; lo que verifica es que el
-nombre **aparezca** en el archivo, y el import alcanza para eso. O sea que borrar
-la llamada dejaría el test verde.
-
-Es P3 y no más porque es más flojo que el caso de B-80: los asertos de al lado sí
-afirman llamadas, y un import sin usar lo levanta el linter. El arreglo es
-`toContain('indiceDeTecla(')` y
-`toContain('querySelectorAll<HTMLElement>(SELECTOR_ENFOCABLE)')`, con el mismo
-colapso de espacios que usa `tests/autoguardado.test.ts`.
-
-**La lección general, que vale más que los dos asertos:** un test que lee un
-fuente y busca un **nombre** no verifica nada — el import lo satisface. Tiene que
-afirmar la llamada, la sentencia completa o un dato. Quedó anotada en
-`13-agentes.md`, y se llegó a ella dos veces en el mismo cierre: primero en el
-test de la guarda de B-80, y después **en el test escrito para arreglar eso**.
-
-### B-200 · La guarda de forma del borrador no valida las fechas, y el autoguardado agranda la superficie · P3 — ✅ hecho (2026-09-02)
-
-Lo encontró el `auditor-trampas` en el cierre de `1.2.0`, y es **preexistente**:
-`pareceFormulario()` (`lib/formulario/autoguardado.ts`) chequea que `titulo` sea
-string y `sesiones` sea array, y el schema —en los dos niveles de D-120— pide que
-`inicio`/`fin` sean no vacíos, no que sean fechas parseables. Un borrador con una
-fecha corrupta pasa la validación y recién `formADocumento` tira
-`Fecha inválida: "<lo tipeado>"`, que el `try/catch` de `guardarActividad` convierte
-en un `{estado:'error'}`.
-
-O sea: **falla visible, no dato corrupto**, y por eso es P3 y no bloqueó el push.
-
-Lo que cambió con B-191 no es el bug sino su superficie: el autoguardado
-institucionaliza formularios de hasta 30 días que nadie volvió a tocar, así que la
-fecha corrupta ahora puede venir de un borrador viejo y no solo de un tecleo de
-hace un minuto. El arreglo natural es que el `refine` de `sesionSchema` valide que
-la fecha se pueda convertir —que es lo que `formADocumento` ya hace, o sea la
-tercera copia de la misma regla si no se comparte (B-72, B-75)—.
-
-**Hecho, y el agujero real no era donde este ítem apuntaba.** Medido antes de
-tocar nada: el `.refine` de `sesionSchema` **ya** rechazaba una fecha corrupta
-—`new Date(corrupta) > new Date(otra)` da `false` por las reglas de `NaN`—,
-solo que con el mensaje equivocado («tiene que terminar después de empezar» en
-vez de «fecha inválida»). El agujero de verdad estaba en dos campos que
-comparten la misma forma pero con las dos fechas **opcionales**:
-`modalidadFilaSchema`, cuyo corto circuito `!m.inicio || !m.fin || …` dejaba
-pasar una ventana con una sola punta corrupta sin comparar nada, e
-`inscripcion.cierra`, que no tenía ninguna guarda de forma. Los dos llegaban
-intactos a `formADocumento`, que ahí sí tiraba `Fecha inválida` — el crash real
-del ítem, no una hipótesis. `fechaValida()` en `schema.ts` usa el mismo parser
-que `formADocumento` (`deDatetimeLocal` de `lib/sesiones.ts`, importado y no
-copiado — D-20, B-72/B-75).
-
-### B-201 · El conteo de líneas de `10-salud-del-codigo.md` §1.3 quedó viejo — ✅ hecho (2026-09-02)
-
-**Remedido, no estimado**, que era la condición del ítem. Y con el criterio del
-conteo escrito al lado, que era la otra:
-
-| | 2026-08-27 | Hoy |
-|---|---:|---:|
-| `ActividadFormulario.tsx` | 379 LOC | **376** |
-| Su fan-out | 25 | **26** |
-| Su puesto en la lista | 14º | **28º** |
-
-El criterio, en la sección: LOC por `wc -l`; fan-out = imports distintos **del
-proyecto**, sin `node_modules` y sin `react`, como el grafo del §1.4 (y no hay
-`import()` diferido en el archivo); puesto sobre el corpus del §1.1, hoy 156
-archivos.
-
-**Lo que la medición dice, que es el trabajo que el ítem no podía hacer:** el
-número que se venía siguiendo dejó de subir —tres líneas menos y un import más
-en seis días, sigue siendo un composer, y el umbral escrito entonces (550 LOC
-con fan-out 30) no se movió— y el que se movió no significa lo que parece. El
-salto de 14º a 28º es que **catorce archivos le pasaron por arriba sin que él
-cambiara**: seis nacieron con el sitio público, uno el mismo día de la medición
-anterior y siete ya estaban y crecieron. De ahí la conclusión que quedó escrita:
-el puesto es la peor de las tres cifras para seguir un archivo.
-
-**Lo que sigue viejo, y ahora está dicho con una vara:** el resto del documento
-es del 2026-08-27. El §1.1 declara 111 archivos de producción y hoy son 156. La
-pasada completa es **B-311**.
-
-Lo marcó el `auditor-documentacion` en el cierre de `1.2.0`. La tabla dice
-`ActividadFormulario.tsx | 858 LOC | 258 LOC` y "6 módulos de dominio puros", y hoy
-son diez módulos y el `.tsx` creció (B-184 y B-191 le sumaron el aviso, el
-autoguardado y la navegación a los campos que faltan).
-
-No se corrigió en el mismo cambio a propósito, por el mismo criterio que el conteo
-de tests: **el número depende de la metodología del conteo original** —qué cuenta
-como módulo de dominio, si el fan-out incluye los tipos— y ponerle un número
-inventado es peor que dejarlo viejo, porque el viejo al menos se sabe viejo. Hay que
-recontarlo una vez, con el criterio escrito al lado, y ahí sí se puede automatizar.
-
-`04-funcionalidades.md` ya dejó de citar el número y ahora apunta a esa tabla.
-
-### B-197 · El título de cada fila de material no muestra su error al lado del campo — ✅ hecho (2026-09-02)
-
-Apareció haciendo B-183/B-184. `material.items.N.titulo` es obligatorio al
-publicar, pero `MaterialEditor` recibe un solo `error` —el de la lista— y no el
-mapa completo, así que el rechazo de una fila puntual **solo** se ve en el
-mensaje de la barra («Título del material») y no en rojo al lado del campo, que
-es donde el resto del formulario lo muestra. Con dos filas cargadas y una sin
-título, el mensaje no dice cuál de las dos.
-
-Hoy no deja a nadie sin salida: la sección Material se abre sola al fallar el
-guardado (B-184) y la fila vacía se ve. Pero es la única familia de campos del
-formulario que no muestra su propio error, y el patrón que la mantiene así es que
-el editor de filas no recibe `errores`. Lo barato es pasarle el mapa y que cada
-fila lea el suyo con su índice — lo mismo que ya hace `SesionesEditor` con el
-error de la lista, un nivel más abajo.
-
-
-**Hecho como decía el ítem**, y con lo barato que proponía: `MaterialEditor`
-recibe `errorDe` —la misma prop que `ModalidadesEditor`— y cada campo lee el suyo
-con `ruta()`, el índice en el medio como lo emite el `path` del `superRefine`.
-
-Lo que el ítem no pedía y entró igual: **los cuatro campos pasaron a usar
-`Campo`**. No es prolijidad — `Campo` es quien marca `data-campo-con-error`, y sin
-eso el scroll de B-184 seguía cayendo en la línea de la lista o en el principio de
-la sección, o sea que el error se veía pero seguía sin llevar a ningún lado.
-
-**El test destapó el campo que se habría saltado.** `tests/errores-de-fila.test.ts`
-deriva los sufijos de `CAMPOS_VALIDABLES` en lugar de listarlos, y con eso apareció
-`material.items.N.publico` —la casilla, que no usa `Campo` porque su etiqueta va al
-lado y no arriba—: es una ruta que el schema puede rechazar y no tenía dónde
-mostrarse. Pinta su error a mano. Escrito a mano, la lista habría sido «título y
-url» y ese cuarto no aparecía.
-
-**La clase sigue viva en otros dos editores** y quedó anotada: **B-341** (la
-galería no muestra ningún error, y su prop `error` no se pasa nunca) y **B-343**
-(los encuentros). El chasis de filas de material quedó como estaba, y eso también
-tiene su ítem: **B-342**.
-
-### B-198 · El aviso de «lo que falta para publicar» corre una validación por tecla — ✅ hecho (2026-09-02)
-
-También de B-184. `pendientesParaPublicar` es un `useMemo` sobre `form`, así que
-cada tecleo dispara un `safeParse` de zod sobre el formulario entero. Es del
-mismo orden que el `JSON.stringify` que ya corre en cada tecla para saber si hay
-cambios sin guardar (`useFormularioSucio`) y para el autoguardado, así que hoy no
-se nota — y en un teléfono viejo con un ciclo de 20 encuentros es lo primero que
-se notaría.
-
-No se optimizó por adelantado a propósito: medir primero. Si hay que bajarlo, lo
-barato es el mismo debounce que usa el autoguardado, porque el aviso no necesita
-estar al día con la última letra.
-
-
-**Cerrado midiendo, que es lo que el ítem pedía, y la medición dice que no hay
-nada que hacer.** Detalle completo en D-185.
-
-| Encuentros | `faltaParaPublicar` | `JSON.stringify` del mismo form |
-|---|---|---|
-| 1 | 0,107 ms | 0,001 ms |
-| 8 | 0,107 ms | 0,007 ms |
-| 20 | 0,123 ms | 0,012 ms |
-| 50 | 0,205 ms | 0,025 ms |
-
-**Las dos frases de este ítem eran falsas, y en direcciones opuestas.** No es del
-mismo orden que el `JSON.stringify` —es ~10× más caro—, y da igual, porque el
-costo es **fijo del schema y no escala con los encuentros**: con uno ya cuesta
-0,107 ms. El «ciclo de 20 encuentros en un teléfono viejo» que este ítem temía es
-indistinguible del caso chico, y a diez veces más lento sigue siendo una octava
-parte de un frame.
-
-Así que **no se debouncea**: sería un número mágico y una ventana en la que el
-aviso dice algo que ya no es cierto, a cambio de nada medible. Lo que queda es la
-medición, en `tests/costo-por-tecla.test.ts`, con un techo de dos órdenes de
-magnitud: no es un objetivo de performance, es el piso de lo absurdo — detecta que
-alguien meta red, `crypto` o una regla cuadrática en el camino del tecleo, no un
-20 % de variación de máquina.
-
-### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-02 por B-219; reconfirmado 2026-09-07) · P3
-
-> ✅ **Dos cierres del mismo ítem, unidos el 2026-09-07.** Había **dos
-> encabezados con el mismo número, pegados uno al otro**: el de B-219 (2026-09-02)
-> y el de la tanda del 2026-09-07 —«confirmado con cinco corridas, y el chequeo
-> pasó a ser de clase»—, que no cerraba nada nuevo sino que **reconfirmaba** lo
-> mismo. Es la cicatriz de merge de B-294, esta vez en un encabezado.
-
-**Cerrado por B-219 (D-195).** La sospecha de este ítem apuntaba a la interacción
-entre el script y «el estado que dejan los otros archivos de integración», y era
-correcta pero le faltaba el sujeto: el estado lo dejaba **otro checkout**, no otro
-archivo — por eso `fileParallelism: false` no lo tapaba, como el ítem notaba.
-
-Los tres tests son los que ejecutan `scripts/aprobar-opciones.mjs` de verdad, y el
-script resolvía el proyecto por su cuenta (`process.env.PUBLIC_FIREBASE_PROJECT_ID
-?? 'agenda-literaria'`). Ahora se le pasa por el entorno, así que el script y el
-test miran la misma base. Sin eso, el síntoma habría sido el de la cuarta
-observación de B-219: «No existe(n) en `opciones/arancel`», que parece un script
-roto y son dos bases distintas mirándose.
-
-Corriendo `npx vitest run` entero, tres tests de
-`tests/opciones.integracion.test.ts` fallaron —«aprobar dos veces no rompe nada»,
-«--listar muestra las pendientes y solo esas» y «--backfill hace explícito ese
-default»— y el mismo archivo corrido solo pasó, y la corrida completa siguiente
-también. O sea: **flaky, no roto**.
-
-Los tres son los que ejecutan `scripts/aprobar-opciones.mjs` de verdad contra el
-emulador (`execFileSync`), así que la sospecha es la interacción entre el script
-—que abre su propia app de firebase-admin— y el estado que dejan los otros
-archivos de integración. `fileParallelism: false` ya está puesto, así que no es
-paralelismo de archivos.
-
-Vale la pena porque un test que falla una de cada N corridas enseña a ignorar el
-rojo, que es lo único peor que no tener el test. Primer paso: correr la suite en
-loop unas cuantas veces para ver cada cuánto pasa y con qué vecino.
-
-### B-114 · Precio real en los datos estructurados — ✅ hecho (2026-09-07)
-
-`arancel.tipo` es un slug de taxonomía, no un monto, así que el `offers` del
-JSON-LD puede decir "a la gorra" pero no un precio. Google muestra el precio en
-el resultado enriquecido cuando lo tiene, y en un taller arancelado eso es
-información que la gente quiere antes de escribir.
-
-Hace falta un campo de monto en el modelo (`arancel.monto` + moneda, `ARS`),
-opcional y solo para los tipos que lo tengan. Mientras no exista, la regla del
-diseño (§5.3) es **no emitir precio salvo `gratis`**: un `0` en un taller pago es
-un dato falso en un formato que las máquinas creen.
-
-Es P3 porque `arancel.tipo` ya comunica lo esencial —y en la mitad de los casos
-del circuito es "a la gorra", que no tiene precio que publicar.
-
-**Hecho el 2026-09-07, decidido por el dueño («sí: agregar `arancel.monto` al
-modelo»), y está en D-500.** El campo es un entero en pesos o `null`, la moneda es
-`ARS` siempre —un campo de moneda con un solo valor posible es una decisión que
-nadie tomó— y el alcance lo eligió él: **en todo lo que ya dice el arancel** (la
-tarjeta, el detalle, el evento de Calendar y el texto para redes), más el
-`offers.price` que era el pedido original.
-
-Lo que el ítem tenía bien y no cambió: **la tercera rama sigue existiendo.** Con
-monto se emite el monto, con `gratis` se emite `0`, y **sin monto y sin ser gratis
-se sigue sin emitir precio** — no es una excepción por falta de tiempo, es «a la
-gorra» y el arancelado al que nadie le cargó el número.
-
-Tres cosas que el ítem no había previsto:
-
-- **la regla «solo donde tiene sentido» es del schema y va en los dos niveles**, no
-  solo del formulario. Un borrador con «Gratis · $8.000» no está incompleto: dice
-  dos cosas que no pueden ser ciertas a la vez, y el documento también entra por
-  «Duplicar» y por «Restaurar»;
-- **el formato del número no podía ir en `src/lib/`.** La descripción del evento la
-  arma una Function, que no puede importar de `src/` (D-20), así que `admiteMonto` y
-  `montoLegible` viven en `functions/calendario.js` y `src/lib/arancel.ts`
-  reexporta. Y `montoLegible` es a mano y no `Intl`, porque el mismo número lo
-  escriben tres entornos con distinta ICU;
-- **el barrido de centinelas no servía tal cual**: son strings y el monto es un
-  entero, así que registrarlo habría dado un chequeo verde para siempre. Se ancla
-  por valor y en las dos formas —el crudo y el formateado—, con su `describe`
-  propio.
-
-**Y un P1 que encontró el `auditor-trampas` sobre el propio cambio:** el campo era
-un `<input type="number">` y para HTML **el punto separa decimales**, así que
-`15.000` es un número válido que vale **quince**, aceptado por `min`, por `step` y
-por el schema. El taller de $15.000 se publicaba como **$15** en las cinco salidas.
-Hoy el campo es `type="text"` con `inputMode="numeric"` y lo lee `montoDesdeTexto`,
-que trata el punto como miles y corta en la coma.
-
-### B-33 · Las etiquetas de GitHub hay que crearlas una vez — ✅ hecho (2026-09-07)
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** script idempotente de etiquetas.
-
-El issue se crea con `reporte-panel` y `bug`/`sugerencia`. GitHub crea las
-etiquetas que no existan, pero sin color ni descripción. Crearlas a mano una vez
-(los comandos están en [`08-operacion.md`](08-operacion.md)) deja la lista
-prolija y filtrable.
-
-### B-34 · Nada limita cuántos reportes se pueden cargar — ✅ decidido: no se hace (2026-09-03)
-
-**Decidido el 2026-09-03 por el dueño: nada por ahora.** Con dos cuentas de
-confianza no hay canilla que cerrar, y un tope mal puesto le rompe el reporte a
-quien sí lo necesita. La mitad que importa —que el límite de verdad va en las
-reglas y no en el cliente, porque el cliente se puede saltear— queda escrita
-arriba para quien lo agarre. **Vuelve cuando entre una tercera cuenta que no sea
-de confianza**, que es el mismo disparador de B-28 y no es casualidad: los dos
-ítems son el mismo cambio de contexto.
-
-
-Las reglas validan la forma del reporte y que quien lo carga sea admin, pero no
-la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
-cuentas de confianza no es un problema real; si alguna vez se le da el panel a
-más gente, conviene un tope por autor y por día.
-
-**Mirado en la fase 4 y dejado sin hacer, a propósito (2026-08-24).** El tope
-vive en `firestore.rules`, que no es propiedad de este frente, y no hay ninguna
-forma de escribir la red de contención antes que la regla: un test no puede
-frenar un límite que no existe. Además la forma del límite es una decisión, no
-una implementación — hay dos y no dan lo mismo:
-
-- **por autor y por día**, contando con una query en la regla (`allow create if
-  ...`): Firestore no puede contar documentos dentro de una regla, así que pide
-  un contador escrito por el propio cliente (`/reportes-contador/{uid}-{fecha}`)
-  y una regla que lo obligue a incrementarse de a uno. Es el patrón estándar y
-  es feo pero funciona sin Function;
-- **en la Function**, cortando en `decidirAccion` cuando el autor pasó el tope
-  del día. No frena la escritura del reporte (que es lo que garantiza no
-  perderlo, ver el encabezado de `reportes-trigger.js`), frena el **issue**, que
-  es el efecto caro.
-
-La segunda es más barata y más alineada con el diseño de reportes: el reporte se
-guarda igual y lo que se limita es la salida a GitHub. Necesita decisión del
-dueño sobre el tope. Toca `functions/**`, o sea la fase 1.
-
-### B-580 · La pantalla de Reportes mostraba todo lo que se cargó alguna vez — ✅ hecho (2026-09-03)
-
-El dueño pidió que refleje solo los abiertos: los reportes resueltos no
-tenían por qué seguir ocupando la lista.
-
-**Cómo quedó.** Un flag `resuelto?: boolean` en `/reportes/{id}` (ausente o
-`false` = abierto), marcado a mano por un admin desde el panel —**no** una sync
-que lo derive de que el issue se cerró en GitHub: esa alternativa es
-exactamente lo que **B-30** ya describía, y el dueño la descartó en esta misma
-tanda ("dejamos como está"). Ver **D-310**.
-
-`ReportesPanel.tsx` filtra por defecto a los no resueltos, con botón «Marcar
-resuelto»/«Reabrir» por fila y un toggle «Ver resueltos». El filtro es en
-memoria y no en la query —Firestore no matchea con `!=`/`==false` un documento
-que no tiene el campo, así que filtrar en la query habría ocultado de la vista
-"abiertos" a todo lo cargado antes de este cambio— y el `limit()` del
-`onSnapshot` sube de 10 a 50 para que ese filtro no le coma cupo a los reportes
-abiertos.
-
-`firestore.rules` suma `resueltoValido()` (mismo patrón que `reintentoValido`
-de B-31): acota la escritura del cliente a `resuelto` + `actualizadoEn`, exige
-el claim `admin` y que `resuelto` sea booleano. `tests/reportes-resuelto.integracion.test.ts`
-fija diez casos contra el emulador — la mutación que más importa es que un
-anónimo, o un admin sin el claim, no pueda escribir `resuelto`, porque es el
-flag que decide qué se sigue mostrando en la bandeja. `tests/reportes-panel.render.test.tsx`
-cubre el filtro por defecto y el botón con DOM real.
-
-### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
-
-
-Las opciones creadas con "Otro" nacen pendientes: funcionan para quien las creó
-y no aparecen en el desplegable de las demás cuentas hasta aprobarlas. Se aprueba
-con `scripts/aprobar-opciones.mjs`. Decisiones: D-26 a D-30. Lo que quedó
-abierto está en B-25 a B-29.
-
-### B-11 · Duplicar una actividad entera — ✅ hecho (2026-08-21)
-
-Menú "⋯" por fila en el listado, con "Duplicar", que abre el formulario
-precargado con una copia. La copia rehace los ids de sesión, pone
-`calendarEventId` en `null`, propone slug nuevo, arranca en borrador y corre las
-fechas en semanas enteras.
-
-Ver [CHANGELOG](CHANGELOG.md), D-17, D-18 y D-19. Lógica en
-`src/lib/duplicar.ts`, tests en `tests/duplicar.test.ts`.
-
-### B-12 · Vista previa de cómo queda el evento — ✅ hecho (2026-08-21)
-
-Sección colapsada al final del formulario: título, ubicación y descripción del
-evento para el encuentro que se elija, armados con `construirEvento` de
-`functions/calendario.js` —la misma función que publica el evento (D-20)—, así
-que no puede divergir de lo que sale. Ver el
-[changelog](CHANGELOG.md) y [`04-funcionalidades.md`](04-funcionalidades.md).
-
-Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
-mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
-
-
-Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
-mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
-
-> **Este cuerpo estaba debajo del encabezado de B-13**, que es un tema
-> completamente distinto (los reintentos del rebuild), y B-12 quedaba sin ninguno.
-> Un merge mal resuelto, preexistente: `tests/sin-marcadores-de-conflicto.test.ts`
-> no lo agarra porque no hay marcadores de git, solo texto en el lugar equivocado.
-> Lo encontró el `auditor-documentacion` el 2026-09-02 y se movió a su lugar.
-
-### B-45 · Los links cortos de Maps (`maps.app.goo.gl`) no se pueden pegar — ✅ hecho (2026-09-07)
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** los links cortos de Maps se pegan.
-
-El campo de coordenadas (D-46) acepta el link largo y el par `lat, lng`, pero no
-el link corto del botón "Compartir", que es justo el que ofrece la app de Maps
-en el teléfono. Es un redirect y seguirlo desde el navegador lo bloquea CORS.
-
-Hoy el campo lo detecta y explica que hay que abrirlo para copiar el link largo.
-Si molesta seguido, la salida es una Function que siga el redirect y devuelva la
-URL final — otro endpoint y otro deploy, así que no se hizo de entrada.
-
-### B-13 · El schedule de `dispararRebuild` no reintenta con backoff — ✅ hecho (D-23), y el encabezado estaba pisado (B-351)
-
-Cerrado hace tiempo: `dispararRebuild` reintenta con backoff exponencial (5, 10,
-20, 40 min) hasta cinco veces, deja `intentos`/`ultimoError`/`agotado` en
-`sistema/rebuild`, loguea `error` al agotarse y se rearma con el próximo cambio.
-Ver **D-23**, el [changelog](CHANGELOG.md) y `tests/rebuild.test.ts`. El debounce
-del §8 no cambió: el schedule sigue tickeando cada 5 minutos y el backoff solo
-decide en qué ticks se intenta.
-
-Lo que estaba mal era el BACKLOG: este encabezado tenía debajo el **cuerpo de
-B-12** (la vista previa del evento) y la línea tachada de B-13 al final, o sea dos
-ítems pisados por un merge. Corregido el 2026-09-02 — el detalle en **B-351**.
-
-> **Mirado el 2026-09-02. La resolución desde el cliente no es una opción caedible:
-> es una que no funciona.** Este ítem dice «es un redirect y seguirlo desde el
-> navegador lo bloquea CORS», y eso subestima el problema — no es que falle a
-> veces:
->
-> - en modo `cors`, `maps.app.goo.gl` no manda `Access-Control-Allow-Origin`, así
->   que el `fetch` **tira** antes de ver el redirect;
-> - con `redirect: 'manual'` la respuesta es un *opaque redirect* y el header
->   `Location` **no se puede leer**;
-> - en `no-cors` la respuesta es opaca: `response.url` viene vacío.
->
-> O sea que no hay forma de que el navegador se entere de la URL larga. La única
-> salida que funciona es la Function que este ítem propone, y **su costo es más que
-> «otro endpoint y otro deploy»**: es un *fetcher de URLs arbitrarias*, o sea
-> superficie de SSRF. Necesita allowlist de hosts (`maps.app.goo.gl`, `goo.gl/maps`,
-> `g.co/kgs` y nada más), tope de saltos, timeout, y no devolver el body. Es diseño
-> de seguridad, no una línea — y si se hace, el `auditor-privacidad` tiene que
-> mirarlo.
->
-> **Y ahora hay con qué decidirlo.** B-55 quedó cerrado el mismo día, así que
-> `coordenadas-fallo` empezó a emitir con `coord-link-corto` distinguido del resto
-> **y con su denominador** (`coordenadas-pegar`, cada intento). El criterio que este
-> ítem se puso —«si el 80 % de los fallos es un link corto, hay que resolverlos»—
-> pasó de ser una hipótesis a una consulta a GA4.
->
-> **Mientras tanto no se toca nada.** El mensaje del campo ya explica cómo salir
-> del paso, y desde B-55 el otro caso frecuente —la coma decimal— también tiene el
-> suyo. El próximo paso es **leer el dato**, no escribir código.
-
-<!-- B-13 tenía acá un segundo encabezado con una lápida —«~~B-13…~~ → cerrado»—
-     que ya no dice nada: el ítem está cerrado arriba, con su motivo y sus
-     referencias. Se sacó el 2026-09-07 junto con las otras tres cicatrices de la
-     misma clase (B-294): un número repetido en dos encabezados hace que el
-     índice del documento tenga dos entradas para el mismo ítem, y que quien
-     busque «B-13» encuentre primero la que no dice nada. -->
-
-### B-14 · El menú de acciones del listado no se navega con flechas — ✅ hecho (2026-08-24)
-
-`MenuAcciones` cierra con `Escape` y con un click afuera, y sus ítems son
-`<button role="menuitem">` alcanzables con Tab, pero no implementa el patrón
-completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
-cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
-
-### B-25 · Aprobar taxonomías desde el panel — ✅ hecho (2026-08-24)
-
-**Hecho** junto con B-06, como decía el ítem: botón "Aprobar" en la fila, sobre
-`aprobarOpcion` (transaccional, rechaza las `fijo`). Ya no hace falta una máquina
-con Node y `gcloud`.
-
-**Ojo:** con B-131 nada nace pendiente, así que hoy esto solo alcanza a lo que
-quedó pendiente antes de esa decisión (D-104). Es la maquinaria dormida, y se
-deja lista a propósito.
-
-**Cómo quedó, y por qué antes de que el menú creciera.** Se hizo junto con el
-tercer punto de **B-64** (la capa de ayuda no atrapaba el foco) porque son la
-misma clase vista en dos pantallas: un patrón de teclado a medio hacer. La
-aritmética —dónde cae el foco al pasarse del último, qué tecla mueve a dónde—
-salió a `src/lib/foco.ts`, pura y con tests; el DOM queda en cada componente.
-
-El menú tiene ahora ↓/↑ con vuelta, `Home`/`End`, se abre con ↓ o ↑ cayendo en el
-primero o el último, y **devuelve el foco al "⋯" al cerrarse con `Escape`** — sin
-eso había que re-tabular el listado entero para volver a la fila donde se estaba,
-que es lo que hacía inservible el `Escape`. La capa de ayuda cicla el Tab y
-devuelve el foco a lo que estaba enfocado antes de abrirla.
-
-Un bug que apareció escribiendo la cuenta: tratar "ninguno enfocado" como el
-índice `-1` a secas hacía que ↑ cayera en el **penúltimo**. Con dos ítems —los
-que el menú tiene hoy— el resultado parece razonable, así que habría entrado sin
-que nadie lo viera.
-
-### B-26 · Nadie se entera de que hay algo para aprobar — ✅ hecho (2026-08-24)
-
-**Hecho a medias, y la mitad que falta es de otro frente.** La pantalla de
-taxonomías muestra arriba cuántas etiquetas esperan aprobación, y
-`usePendientesDeAprobacion()` (en `useOpciones.ts`) deja el número listo para la
-**cabecera** del panel, que es lo que pedía el ítem — pero la cabecera vive en
-`AdminApp.tsx`. Va con B-170.
-
-Con B-131 el contador da 0 salvo por lo viejo (D-104).
-
-
-Una etiqueta pendiente queda invisible para la otra cuenta y **no hay ningún
-aviso**: si nadie corre `--listar`, la etiqueta puede quedar pendiente para
-siempre y las dos personas terminan creando dos slugs para lo mismo (justo lo
-que el §4.2 evita).
-
-Mínimo útil: un contador de pendientes en la cabecera del panel. Cuadra con
-B-25.
-
-### B-27 · El `events.json` tiene que publicar solo las opciones aprobadas — ✅ hecho (desde B-212, 2026-08-25)
-
-`opcionesPublicas` en `toPublic.ts` arma `opciones.*` con
-`opcionesVisibles(valores)` **sin uid**, que devuelve exactamente las aprobadas, y
-lo fija el barrido de `/opciones/*` en
-`tests/barrido-de-salidas-publicas.test.ts` —incluido el caso de la opción `fijo`
-con `aprobada: false`, que no puede desaparecer de los filtros—. **Quedó sin marcar
-al cerrar B-212**; lo encontró el `auditor-documentacion` durante B-227.
-
-Y el matiz que B-227 tuvo que resolver, porque este ítem no lo anticipaba: filtrar
-lo **elegible** es correcto para los chips, pero **no** para resolver la etiqueta de
-un slug que una actividad ya tiene guardado. Son dos mapas distintos — ver D-30 y
-la tabla de [`07-seguridad.md`](07-seguridad.md).
-
-El texto original decía «parte de B-01, el sitio público, que todavía no existe».
-El sitio existe desde B-227.
-
-### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
-
-**Ratificado el 2026-09-03 por el dueño: no, queda como está.** Es la segunda vez
-que se decide lo mismo (la primera fue el 2026-08-26), así que el ítem se cierra
-en vez de quedar esperando una tercera. Con dos cuentas de confianza es
-maquinaria de permisos para un problema que no existe, y mover la aprobación a un
-campo propio toca reglas, modelo y la pantalla de taxonomías. Vuelve con la
-tercera cuenta.
-
-
-Hoy cualquiera de las dos cuentas con claim `admin` puede aprobar (D-28), y las
-opciones nuevas nacen pendientes **incluso las del dueño**, porque el código no
-distingue dueño de admin.
-
-Si el dueño quiere ser el único que valida, o que lo suyo nazca aprobado, hace
-falta un claim aparte (`curador`) y mover la aprobación a un campo o documento
-propio para que las reglas puedan verificarla — hoy no pueden, porque `valores`
-es un array de maps y no se puede comparar elemento por elemento.
-
-No se implementó por cuenta propia: cambia el modelo de permisos.
-
-### B-29 · ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? — decisión del dueño — ✅ hecho (2026-09-07)
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** auto-aprobación con marca reversible.
-
-Si la cuenta B tipea en "Otro" una etiqueta que ya existe como pendiente de la
-cuenta A, hoy se reusa el slug (bien, §4.2) pero la opción **sigue pendiente**:
-dos personas la usan y ninguna la ve en su desplegable.
-
-Que dos cuentas distintas la usen es buena señal de que es vocabulario real, y
-aprobarla ahí sería automático y barato. Contra: aprueba sin que nadie mire, y
-alcanza con que la segunda persona repita el mismo typo.
-
-### B-59 · La instrumentación suma 2.8 KB gzip al chunk del panel — ❌ descartado (2026-08-24)
-
-El SDK de analítica está diferido y no toca el chunk inicial (D-58); la
-proyección y la taxonomía sí. La propuesta era moverlas al lado diferido y dejar
-que `medir()` encole los valores crudos.
-
-**Medido primero** (cierre estático de imports de `/admin`, el build real contra
-el mismo build con la instrumentación en no-ops):
-
-| | raw | gzip |
-|---|---|---|
-| Carga inicial de `/admin` hoy | 386.303 B | 107.590 B |
-| Sin ninguna instrumentación | 377.245 B | 104.464 B |
-| Toda la instrumentación | 9.058 B | 3.126 B (2,9 %) |
-| **Solo la taxonomía + la proyección** | **6.522 B** | **2.188 B (2,0 %)** |
-
-O sea que el techo de lo que este ítem podía ganar es **2,14 kB gzip**: el 2,0 %
-de la carga inicial comprimida, el 1,7 % de la cruda. (El número viejo, 2.8 KB,
-medía toda la instrumentación, no la parte que se iba a mover.)
-
-**Se descarta con ese número.** Hoy la proyección es un único portón sincrónico:
-`medir()` proyecta **antes** de encolar, así que lo que espera en la cola —hasta
-30 eventos si el SDK no cargó, o nunca carga porque un ad blocker lo bloquea— son
-payloads ya sanitizados. Del otro lado, la cola guardaría los valores **crudos**:
-contenido del formulario en memoria, y la propiedad que hace valer a los 11 tests
-de `analytics-privacidad.test.ts` pasaría a depender de dos pasos en vez de uno.
-2,14 kB gzip no paga eso, y si el bundle necesitara kilobytes hay 34,5 kB de SDK
-y 186 kB de runtime de React antes en la fila. Ver **D-99**.
-
-
----
-
-### B-60 · Ayuda dentro del panel — ✅ hecho (2026-08-21)
-
-Botón "Ayuda" en el encabezado, que abre una capa con la guía: los seis avisos
-de lo que no se puede deshacer y un capítulo por sección del formulario, más el
-recorrido de una actividad, el listado, las listas que crecen y la carga desde
-el teléfono. Contenido en `src/lib/ayuda.ts`, tests en `tests/ayuda.test.ts`.
-
-Ver [CHANGELOG](CHANGELOG.md), D-61 y D-62. Lo que quedó afuera está en B-62 y
-B-63.
-
-### B-61 · Historial de novedades del panel — ✅ hecho (2026-08-21)
-
-Pestaña "Novedades" en la misma capa, con "qué podés hacer ahora que antes no
-podías" en el idioma de quien carga actividades. Contenido en
-`src/lib/novedades.ts` (en el repo, se despliega con el build: D-63), lo no
-leído se marca con el id de la última vista en el navegador (D-64), y el aviso
-es un número en el botón.
-
-Ver [CHANGELOG](CHANGELOG.md), D-63, D-64 y D-65. Limitaciones en B-64.
-
-### B-64 · Pendientes chicos del centro de ayuda — ✅ hecho (2026-08-24)
-
-Tres cosas conocidas, ninguna urgente. **Dos quedaron cerradas**; la del medio no
-es trabajo pendiente sino un costo aceptado en D-63, así que el ítem cierra acá:
-
-- ~~**Las novedades no se anclan a la versión del panel.**~~ ✅ hecho
-  (2026-08-24). Mostrarla ya se mostraba; lo que faltaba era **de dónde sale**, y
-  esa era la razón de que el campo quedara vacío: `VERSION_APP` incluye el
-  `+<sha>` del build, que quien escribe la entrada no puede saber. La versión de
-  una novedad es la de `package.json` —la release en la que entra—, y eso quedó
-  escrito en el tipo, en el paso 4 del skill `cerrar-cambio` (que era el que
-  decía "si se sabe" y por eso nunca se llenaba) y en dos tests: la forma, y que
-  no retroceda al bajar por la lista.
-- **No se puede corregir una errata ni avisar nada sin desplegar** — costo
-  aceptado en D-63. Si algún día hace falta un aviso urgente (una caída), es
-  otro problema y otra herramienta.
-- ~~**La capa no atrapa el foco.**~~ ✅ hecho (2026-08-24), junto con B-14, que
-  era la misma clase en otra pantalla: la capa cicla el Tab sobre sus propios
-  controles y devuelve el foco a lo que estaba enfocado antes de abrirse. Ver
-  `src/lib/foco.ts`.
-
-### B-100 · ❌ descartado (2026-09-07) — Prellenar sede, organizador e inscripción desde lo ya cargado
-
-**Decisión del dueño: no. «Con Duplicar alcanza.»**
-
-Era la condición que el propio ítem tenía escrita —competía con «Duplicar»
-(B-11), que ya resuelve el caso repetitivo real de este circuito: el ciclo del año
-pasado— y el dueño la resolvió del lado de no duplicar la funcionalidad.
-
-Queda el planteo abajo por si el caso cambia: si alguna vez se carga mucho de
-espacios nuevos en vez de repetir los mismos, el argumento de «Duplicar» deja de
-cubrirlo.
-
-El planteo original queda abajo.
-
----
-
-
-Extender el patrón del §4 para que elegir "Casa Brandon" complete nombre,
-dirección, barrio, ciudad, indicaciones y coordenadas; y lo mismo con el
-organizador y su Instagram, y con el canal de inscripción.
-
-**Está en P3 a propósito, y con una condición.** Compite con "Duplicar" (B-11),
-que ya resuelve el caso repetitivo real de este circuito —el ciclo del año pasado
-con otras fechas— y lo resuelve para los 30 campos, no para tres. Lo que quedaría
-es "tres talleres distintos en la misma sede", que existe y es menos frecuente.
-
-Costo escondido: el §4.1 guarda **solo el slug** para que renombrar no toque
-documentos, y con una sede eso no sirve (si la sede se mudó, la actividad del año
-pasado no debe cambiar de dirección). La actividad tendría que guardar una
-**copia** del objeto — segunda fuente de verdad, y el problema de B-04
-multiplicado.
-
-Vale la pena **si los datos dicen que las sedes se repiten**, y hoy nadie lo
-mide. El vocabulario del §9 puede contestarlo antes de escribir una línea.
-
-
-> **Mirado el 2026-09-02 y NO implementado: el criterio que este ítem se puso no
-> se cumple todavía.** «Vale la pena si los datos dicen que las sedes se repiten, y
-> hoy nadie lo mide» — y sigue sin medirse.
->
-> **Una corrección al párrafo de arriba:** dice que «el vocabulario del §9 puede
-> contestarlo antes de escribir una línea», y **no puede**. `sede.nombre` es texto
-> libre, no una taxonomía, así que ningún evento lo lleva — ni debe: es contenido, y
-> el §9 lo prohíbe. Lo que el vocabulario **sí** contesta hoy, y nadie leyó todavía:
->
-> - `actividad-duplicar` y `duplicar-desmarcar` — si «Duplicar» (B-11) ya está
->   resolviendo el caso repetitivo, este ítem no hace falta. Es el competidor que el
->   propio ítem nombra, y está instrumentado.
-> - `barrio.usos` — desde B-168 cuenta de verdad (B-86), así que la repetición de
->   **barrio** ya es un número. No es la de sede, pero es la señal más cercana que
->   existe sin tocar nada.
->
-> Lo único que contesta «se repiten las sedes» es una **query read-only sobre
-> `/actividades` contando `sede.nombre` normalizado repetido**. Son cuarenta y seis
-> documentos: es un script de veinte líneas, no una feature.
->
-> **Y si algún día se hace, va explícito.** Un botón «copiar de la última», nunca
-> automático, por dos motivos que se suman: prellenar sin que nadie revise **publica
-> la sede de otra actividad** —y la sede es la línea que decide si alguien llega o
-> no—, y el costo escondido que este ítem ya nombra sigue en pie: el §4.1 guarda
-> solo el slug, con una sede eso no sirve (si la sede se mudó, la actividad del año
-> pasado no debe cambiar de dirección), así que la actividad tendría que guardar una
-> **copia** del objeto. Segunda fuente de verdad, y el problema de B-04
-> multiplicado. Un botón explícito deja el problema de la copia igual, pero al menos
-> la copia la pidió alguien mirando la pantalla.
-
-### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
-
-> ⚠️ **La afirmación de fondo dejó de ser cierta el 2026-09-09, y el bloque queda
-> como estaba escrito para que se lea contra su original** (mismo criterio que los
-> avisos de D-125/D-128 en el `CLAUDE.md`). Lo que sigue diciendo «el sistema no
-> guarda ni un dato personal de un tercero» describe el estado anterior a
-> **B-830**: `/propuestas` guarda `contacto` —el mail, el WhatsApp o el Instagram
-> de quien propone— a propósito, porque sin forma de repreguntar la bandeja no
-> sirve. **La decisión de B-102 no cambió**: sigue sin guardarse nada de quien se
-> **inscribe**. Lo que cambió es la premisa «no guardamos ninguno», y con ella
-> apareció lo que este ítem no necesitaba: retención (**DEC-13**, **B-838**, 30
-> días para la rechazada) y los estados que todavía no caducan (**B-844**). Lo
-> marcó el `auditor-documentacion`.
-
-**Ratificado el 2026-09-03 por el dueño: no.** El sistema no guarda ni un dato
-personal de un tercero, y por eso el §5 de seguridad cabe en una tabla. La
-inscripción sigue siendo un mail o un WhatsApp fuera del sistema.
-
-Lo que queda escrito para el día que haga falta es **el orden**, que es al revés
-del intuitivo: primero el aviso público (**B-98**), después el estado agregado
-(**B-97**), y la lista de personas solo si eso no alcanzó.
-
-
-Recomendación: **no**, y queda anotado para que la pregunta no vuelva a aparecer
-sin el razonamiento.
-
-Hoy el sistema **no guarda ni un dato personal de un tercero**, y por eso el §5
-cabe en una tabla y el §7 se verifica de un pantallazo. Una lista de inscriptos
-mete nombres y teléfonos de gente que no usa el sistema, y a partir de ahí la
-privacidad, la retención y el borrado pasan a ser responsabilidad del proyecto.
-
-Los tres casos que la pedirían tienen salidas más baratas: el conteo lo resuelve
-B-97 con un booleano; el aviso de cancelación lo resuelve B-98 por el calendario,
-sin guardar nada de nadie; y la conversación ya vive en el DM, que es donde
-además se contesta. Copiarla a mano al panel es trabajo nuevo, y una lista
-copiada a mano queda incompleta el primer día ocupado.
-
-Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso
-público (B-98), después el estado agregado (B-97), y la lista de personas solo si
-eso no alcanzó. Detalle en
-[`11-ideas-de-producto.md`](11-ideas-de-producto.md).
-
-### B-77 · `functions/index.js` es el único archivo de `functions/` sin el corte puro/trigger — ✅ hecho (2026-09-03)
-
-**Siguió creciendo mientras estuvo abierto**, y conviene decirlo en vez de
-maquillarlo: el ítem lo describía con 327 LOC y para cuando se resolvió ya eran
-542. Nadie le achicó el alcance en el camino.
-
-Ahora `index.js` queda en init del Admin SDK + re-exports, nada más. El resto se
-repartió en `despliegue.js` (región, cuenta de servicio y opciones comunes),
-`github.js` (el `repository_dispatch`, con el `fetch` inyectable — lo que el
-ítem pedía), `etiquetas.js` (el caché de `/opciones/*`, que comparten los dos
-triggers del lado de Calendar), `calendario-api.js` (auth y creación de
-eventos), `marca-de-rebuild.js`, y los tres triggers en `calendario-trigger.js`,
-`opciones-trigger.js` y `rebuild-trigger.js`.
-
-**El riesgo era D-35 y se verificó, no se razonó.** En ESM los imports se
-evalúan antes que el cuerpo del importador, así que el `setGlobalOptions` de
-`index.js` ya no alcanza a una Function definida en otro módulo: heredar habría
-dejado tres Functions en `us-central1` con la service account por defecto de
-Compute, a la que Calendar le contesta 404 en todo. Cada trigger declara sus
-opciones, y se comparó el `__endpoint` de las nueve Functions antes y después:
-región, cuenta de servicio, `maxInstances`, timeout, secretos y tipo de trigger
-salen **idénticos**.
-
-`github.js` estrena once tests, que es lo que el módulo hizo posible: el 401 con
-su cuerpo, el cuerpo ilegible que no puede convertir un 502 en «no falló», el
-fetch que tira sin propagar la excepción, el `AbortSignal` de B-74 y que el PAT
-no aparezca en el mensaje que se guarda en `sistema/rebuild.ultimoError`.
-
-**Y siete chequeos que leían `functions/index.js` por su nombre se pusieron
-rojos de golpe**, que es el buen final: el otro —seguir en verde leyendo un
-archivo donde ya no está lo que buscan— es el modo de falla que este repo
-persigue en todas partes. Ahora preguntan **qué archivo declara esa Function**
-(`tests/fixtures/functions.ts`). De paso apareció uno que se apagaba en
-silencio: el detector de llamadas a la red de B-85 buscaba `fetch(` en el
-archivo del trigger, y al irse el cliente a `github.js` devolvía lista vacía —
-con lo cual el regex caía en el primer paréntesis del cuerpo y la comparación de
-orden daba falso—. Ahora sigue los imports y tiene su control positivo.
-
-**No se movió la copia de `CAMPOS_TAXONOMIA`:** sigue sin poder importar de
-`src/` (D-20), y este refactor no era el lugar para discutirlo.
-
-**El drift que el propio corte dejó**, encontrado por el `auditor-documentacion`
-y cerrado en el mismo cambio: dos afirmaciones de doc que quedaron falsas
-(`02-infraestructura.md` sobre las opciones heredadas, `07-seguridad.md`
-ubicando `cargarLabels`) y tres comentarios que ubicaban `MAX_EVENTOS_RESYNC` en
-`index.js` — uno de ellos escrito por este mismo frente, o sea nacido stale.
-
-### B-78 · El 26 % de `src/lib/` es prosa, no lógica — ✅ hecho (2026-09-07)
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** cerrado con el argumento: no hay prosa que borrar.
-
-`ayuda.ts` (616 LOC de guía) y el array `NOVEDADES` (175 de las 300 LOC de
-`novedades.ts`), más `opciones-base.json`, son 937 LOC de **contenido
-editorial** conviviendo con un `slugify.ts` de 13 líneas. Se editan cuando cambia
-la funcionalidad, no cuando cambia la lógica, y son los archivos #2 y #6 más
-grandes del repo por eso.
-
-Mover el contenido a `src/contenido/` y dejar en `novedades.ts` solo las cuatro
-funciones (`novedadesNoLeidas`, `leerVisto`, `guardarVisto`, `fechaLegible`) hace
-que el ranking de tamaño vuelva a hablar de código. Es cosmético: no cambia
-comportamiento ni destraba nada, por eso es P3.
-
-Que el contenido viva en el repo y no en Firestore es decisión cerrada (D-63) y
-que sea data tipada y testeada también (D-62). Esto es solo dónde vive el
-archivo.
-
-### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección — ✅ hecho (2026-08-24)
-
-Después de B-70 el archivo queda en ~630 LOC, todas de JSX: nueve `<Seccion>`
-en un solo `return`.
-
-| Sección | Líneas | Aprox. |
-|---|---|---|
-| Qué es | 286-363 | 78 |
-| Encuentros | 364-385 | 22 |
-| Dónde | 386-515 | 130 |
-| Quién | 516-593 | 78 |
-| Arancel e inscripción | 594-693 | 100 |
-| Material / Opcional / Difusión / Vista previa | 694-858 | 165 |
-
-Vale por la superficie de conflicto: es el segundo archivo más tocado del repo
-(9 de 41 commits) y en este proyecto ya se commitearon marcadores de conflicto
-que sobrevivieron dos commits
-(`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
-ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
-`ActividadFormulario.tsx` en nueve lugares).
-
-**Hecho (D-104).** Diez archivos en `src/components/admin/formulario/`: las
-nueve secciones, la barra de acciones, el tipo de props común y el vocabulario
-de etiquetas de la UI. El JSX se movió verbatim —las props se llaman igual que
-las variables que tenían adentro—, así que el diff no esconde ningún cambio de
-comportamiento. `ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas,
-guardado y el orden de las secciones.
-
-Costo: +583 B en la carga inicial de `/admin` (+0,15 %), mismos 4 chunks.
-
-Dos tests que leían el `.tsx` como texto se arreglaron en el mismo cambio
-(`ayuda` y `opciones-orden`): ahora leen el directorio, y el de `opciones-orden`
-verifica primero que **encontró** el campo, porque un `not.toContain` sobre un
-string vacío pasa sin haber mirado nada.
-
-> Este párrafo estuvo pegado por error al final de **B-175** entre la
-> renumeración B-167→B-175 y el 2026-08-27. Volvió acá.
-
-### B-174 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado — ✅ hecho (2026-09-02)
-
-**Cómo quedó.** Los cuatro archivos que faltaban empujan el `firestore.rules` de
-su propio checkout con `cargarReglas()` en el `beforeAll`. Y con la base por
-checkout de B-219 **dejó de ser una mejora y pasó a ser obligatorio**: una base
-nueva arranca sin ninguna regla cargada, así que un archivo que use el SDK de
-cliente sin llamarla no está probando nada.
-
-Eso también resolvió la advertencia con la que este ítem terminaba —«corriendo dos
-suites en paralelo, la última que carga gana»—: con el proyecto particionado, la
-carga de reglas es por base. Está verificado contra el emulador, no supuesto
-(`emulador-aislado.test.ts`: se cargan reglas cerradas en la base propia y las del
-vecino siguen abiertas).
-
-`emulador-aislado.test.ts` deriva además la lista en vez de nombrar los cuatro
-archivos: **todo** archivo de integración que use el SDK de cliente tiene que
-cargarlas, así que el que se escriba mañana entra solo. El texto original queda
-abajo.
-
-
-El emulador sirve las reglas **del directorio desde el que se lo arrancó**, no las
-del checkout donde corren los tests. Con un solo repo no se nota. Con varios
-worktrees en paralelo —que es cómo se está trabajando este backlog— un test de
-reglas puede estar verificando el archivo de otra rama y **dar verde sin haber
-probado el cambio**. Es el modo de falla más caro que tiene un test de reglas:
-dice "las reglas pasaron" cuando quiere decir "unas reglas pasaron".
-
-Se descubrió haciendo B-31: el emulador estaba levantado desde el checkout
-principal, así que la regla nueva no existía para los tests de la rama que la
-agregaba. La salida ya está escrita —`cargarReglas()` en `tests/emulador.ts`
-empuja el archivo local por la API del emulador— y la usa
-`tests/reportes-reintento.integracion.test.ts`.
-
-**Lo que falta** es que la usen los otros tres archivos de integración
-(`reportes`, `actividades`, `opciones`), que hoy siguen dependiendo de dónde se
-arrancó el emulador. Es una línea en cada `beforeAll`. Se dejó afuera de B-31 a
-propósito: tocar los tres archivos a la vez pisa a los otros frentes, y el
-`EXIGIR_EMULADOR=1` del CI ya arranca el emulador en el checkout correcto.
-
-Ojo con el efecto compartido: `cargarReglas` cambia las reglas del emulador
-**para todos** los tests que estén corriendo contra él. Con un solo checkout es
-inocuo; corriendo dos suites en paralelo, la última que carga gana.
-
-### B-175 · El formulario y el listado tienen cada uno su vocabulario de etiquetas — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** un solo vocabulario de etiquetas.
-
-Residual de **B-76**, y la parte que era la causa y no el síntoma. El listado ya
-usa `ETIQUETA_ESTADO` de `src/lib/filtrosActividades.ts`, pero
-`ActividadFormulario.tsx:71-78` mantiene sus tres mapas propios
-(`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`).
-
-Ya divergieron: para `modalidad: 'hibrido'` el formulario dice **"Híbrido"** y el
-desplegable de filtros dice **"Presencial y virtual"**. Las dos pantallas están a
-un clic de distancia y hablan del mismo valor guardado.
-
-El arreglo es el `src/lib/etiquetas.ts` de ~20 LOC que proponía B-76 —con los
-mapas de `estado`, `modalidad` y `via`— del que tiren las dos pantallas. **No se
-hizo ahora porque toca `ActividadFormulario.tsx`**, que es de la fase 2 del
-saneamiento. `tests/etiquetas-de-ui.test.ts` tiene el `it.fails` que se vuelve
-`it` el día que se cierre.
-
-Ojo con lo que **no** entra: los `ETIQUETA_*` de `functions/calendario.js` son
-prosa del evento público, no etiquetas de UI (el motivo, en B-76).
-
-> **Nota de edición (2026-08-27).** Acá abajo estaba pegado un párrafo que
-> empezaba «**Hecho (D-104).** Diez archivos en
-> `src/components/admin/formulario/`…» y que **es el cierre de B-79**, no de este
-> ítem: `git log -S` lo ubica escrito junto a B-79 en el commit que partió el JSX
-> del formulario. Se perdió de allá y apareció acá durante la renumeración
-> B-167→B-175. Efecto mientras duró: **B-175 se leía como cerrada estando
-> abierta** —su `it.fails('las modalidades coinciden')` sigue en rojo— y B-79
-> quedó sin su cierre. El párrafo volvió a B-79.
-
-### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` — ✅ hecho (2026-09-02)
-
-**Cómo quedó.** Se importa de `@/lib/analytics-eventos` y la copia se fue.
-
-Lo que se agregó además: una guarda en la clase de B-88 que cuenta las
-declaraciones de `FORMATO_VERSION` en el repo y exige que haya **una**. Sin eso,
-la próxima copia nace sin que nada falle — es un modo de falla silencioso, porque
-el test sigue verde con el regex viejo.
-
-**Y esa guarda enseñó algo que vale para todas las de su clase:** el primer
-intento usaba `git grep`, y está mal. `git grep` solo mira el índice, así que un
-archivo nuevo **todavía sin agregar** —el estado exacto de una copia recién
-escrita— es invisible: la guarda daba verde justo en el momento en que tenía que
-hablar. Va con `grep -r` sobre el disco. La guarda de `MESES` (B-215) nació con el
-mismo error y se corrigió igual.
-
-
-La tercera copia del formato de versión está en el test de privacidad
-(`tests/analytics-privacidad.test.ts:60`), que la usa como predicado de
-admisibilidad: un string que matchea el formato se acepta como valor de
-parámetro. B-88 amplió el formato real y **no** tocó esa copia, así que hoy es
-estrictamente más angosta que la del código.
-
-**No es una fuga y no puede volverse una**: al ser más angosta, lo único que
-puede hacer es rechazar un valor que el código sí acepta, o sea dar una falsa
-alarma. Hoy ni eso, porque ningún caso del test mete una versión válida en el
-payload. El arreglo es importar `FORMATO_VERSION` de `@/lib/analytics-eventos`,
-que ya se exporta, y borrar la copia.
-
-No se hizo junto con B-88 a propósito: ese cambio tenía que dejar los 11 tests de
-privacidad en verde **sin tocarlos**, que es la única forma de que la garantía
-signifique algo.
-
-### B-166 · Un build sin versión estampada es indistinguible de un formato inválido — ✅ hecho (2026-09-02)
-
-**Cómo quedó (D-199).** `'desconocida'` es un valor propio del vocabulario
-(`SIN_VERSION_ESTAMPADA`), que es lo que este ítem proponía. Se **importa** de
-`src/lib/version.ts` en vez de escribir el literal: que el consumidor derive por su
-cuenta un valor del productor es la clase de B-88, la misma que este parámetro ya
-tenía del lado del formato.
-
-Tres asertos, que son las tres mitades: sale entero, **no** cae en la bolsa de
-`otro`, y la bolsa sigue existiendo para lo que sí es un formato ilegible. La
-mutación muere.
-
-
-`VERSION_APP` vale `'desconocida'` cuando no hay versión estampada (dev server,
-tests), y el sanitizador lo manda como `'otro'` — el mismo valor que usa para "el
-formato no lo reconozco". Después de B-88 el segundo caso no debería ocurrir
-nunca, así que un `version: otro` con volumen es una alarma… que hoy se confunde
-con el ruido de dev.
-
-Es chico y es de datos, no de código: en dev no se mide (`PUBLIC_USE_EMULATORS`),
-así que en producción no debería haber ninguno de los dos. Si algún día se quiere
-usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
-vocabulario en vez de caer en la bolsa.
-
-### B-172 · La trampa 7 del §13 no tiene ningún test · ✅ hecho (2026-08-27)
-
-**Cerrado como efecto de B-208, y vale anotar cómo.** Este ítem decía que faltaba
-escribir la query de colección en el test de reglas, y era cierto. Lo que no
-decía —porque nadie había mirado esa mitad— es que la query **con** el `where`
-pasaba y devolvía los documentos crudos: no era una trampa sin red, era una fuga
-abierta. Arreglar la fuga (D-128) obligó a escribir exactamente los dos `it` que
-este ítem pedía.
-
-El texto original queda abajo sin tocar, porque la parte mejor razonada es la que
-salió mal: «muerde el día de la primera lectura en vivo, que es justo cuando
-nadie se va a acordar del §5.3». Eso justificó postergarlo, y era falso — la
-trampa se podía ejercitar **ese mismo día**. Lo que faltaba no era esperar a
-B-01, era mirar la misma regla desde el otro lado.
-
----
-
-Salió de armar el mapa de B-119, que la calcula en vez de suponerla: de las
-trampas del §13, la 7 —query pública sin `where('estado','==','publicado')`— es
-la única que quedó sin red.
-
-`tests/actividades.integracion.test.ts` cubre las reglas **por documento** (un
-anónimo lee lo publicado, no lee un borrador). La trampa habla de otra cosa: con
-`allow read` condicionado a `resource.data`, una **query de colección** sin el
-`where` se rechaza **entera** en lugar de devolver el subconjunto visible. Es un
-modo de falla de la consulta, no del documento, y hoy no hay ninguna query de
-colección en el test de reglas.
-
-Casi no muerde mientras el público lea el `events.json` estático (§2.5). Muerde
-el día de la primera lectura en vivo del sitio público (B-01), que es justo
-cuando nadie se va a acordar del §5.3 — o sea, el peor momento posible.
-
-Son dos `it` en el test de reglas: una `getDocs(collection(db,'actividades'))`
-anónima que tiene que rechazarse, y la misma con el `where` que tiene que
-devolver solo lo publicado. Toca un test que no es de la fase 4.
-
-### B-171 · El detector de triggers blindados dejó de ver las guardas mudadas a helpers — ✅ hecho (2026-08-24)
-
-> **Numeración:** en la consigna de la fase 4 este ítem se llamó "B-166", pero
-> ese número ya estaba tomado por lo de la versión sin estampar. Es B-171.
-
-El chequeo de la clase de B-82 en `tests/clases-de-bug.test.ts` estaba en
-`it.skip`. Causa: después del refactor de B-77 el efecto y la guarda de los
-triggers viven en helpers, y el detector los buscaba en el cuerpo del trigger.
-Dos consecuencias, y la segunda no la había visto nadie:
-
-1. `guardarVersion` y `guardarVersionAlBorrar` dejaron de contar como triggers
-   con efecto (su `.set()` se mudó a `guardar()`), así que no había dos
-   blindados que contar y el test hubo que apagarlo;
-2. `syncCalendar`, que **ya estaba blindado** (B-82 cerrado: `idDeEvento` dentro
-   de `crearEvento`), seguía contándose como desguarnecido, así que el
-   `it.fails` de B-82 seguía fallando mucho después de que el bug estaba
-   arreglado. **Un detector ciego no solo pierde regresiones: también miente
-   sobre lo que sigue roto.**
-
-Arreglado siguiendo la llamada (D-102) y con nueve tests del propio detector
-contra cuerpos sintéticos, que es lo que faltaba la primera vez. El `it.skip`
-volvió a `it` y el `it.fails` de B-82 pasó a `it`.
-
-### B-173 · `npx tsc --noEmit` sale con doce errores de `ImportMeta` — ✅ hecho (2026-09-02)
-
-**El arreglo que el ítem proponía está aplicado en los dos lugares que nombraba**,
-y se verificó reproduciendo el bug primero, en este worktree recién creado —o sea
-en el entorno limpio donde el ítem decía que el hallazgo es más grave:
-
-```
-$ ls .astro                → No such file or directory
-$ npx tsc --noEmit         → los 12 `Property 'env' does not exist on type 'ImportMeta'`
-$ npx astro sync && npx tsc --noEmit   → limpio, exit 0
-```
-
-Dónde está el `astro sync`: `scripts/verificar-todo.sh:49` (el comando que corren
-todos los frentes) y `.github/workflows/push-main.yml:109` (el CI). O sea que el
-modo de falla que el ítem describía —«el comando de verificación sale siempre en
-rojo, así que un error nuevo de verdad se esconde entre los doce»— no existe más
-en ninguno de los dos lugares donde el comando decide algo.
-
-**La condición, dicha para que nadie la descubra de nuevo:** `npm run typecheck`
-a secas sigue siendo `tsc --noEmit` y sigue saliendo en rojo en un checkout sin
-`.astro/`. Es a propósito y está documentado en
-[`08-operacion.md`](08-operacion.md) § «Verificar»: el `astro sync` va antes. Si
-alguna vez molesta, la respuesta es el script del `package.json`, no este ítem.
-
-Verificación de la fase 4: `npx tsc --noEmit` termina con doce
-`Property 'env' does not exist on type 'ImportMeta'` en `src/lib/analytics.ts`,
-`src/lib/firebase-client.ts` y `src/lib/version.ts`. Es ruido conocido —faltan
-los tipos que genera `astro sync` (`.astro/types.d.ts`, que no está versionado)—
-y el código está bien.
-
-Es P3 porque no rompe nada, y no es cosmético: **el comando de verificación que
-usan todos los frentes sale siempre en rojo**, así que un error nuevo de verdad
-se esconde entre los doce y nadie lo ve. Se arregla con un `astro sync` antes del
-`tsc` en `scripts/verificar-todo.sh` y en el CI, o versionando el
-`env.d.ts` con el `/// <reference types="astro/client" />`.
-
-No entró en la fase 4 porque `scripts/verificar-todo.sh` lo corren los cuatro
-frentes ahora mismo y tocarlo era pedir un conflicto en el archivo que todos
-usan para verificar.
-
-**Y no se descarta mirando `main`, donde sale limpio.** Sale limpio ahí porque
-`.astro/` ya está generado en ese directorio de hace rato. Los doce errores
-aparecen donde `.astro/` no existe todavía: un **worktree recién creado**, un
-clone fresco y **el CI** — o sea, exactamente los tres lugares donde el comando
-se corre para decidir algo. Un hallazgo que solo se reproduce en el entorno
-limpio es más grave, no menos.
-
-### B-176 · Regenerar los encuentros borra los temas y las lecturas cargados — ✅ hecho (2026-08-26)
-
-`generarSesiones` devuelve `tema: ''` y `lectura: ''` en todas las filas, así
-que volver a generar las fechas de un club de lectura de ocho encuentros borra
-las ocho lecturas asignadas — que es lo más caro de tipear de toda la actividad.
-Pasaba desde siempre (el generador reemplazaba la lista entera) y por eso no es
-una regresión, pero después de D-103 la fila **conserva su identidad**: el
-encuentro 3 sigue siendo el encuentro 3, con su evento de calendario, y perder
-su tema dejó de tener sentido.
-
-Es una línea al lado de las dos que ya heredan `id` y `calendarEventId`. Lo que
-hay que decidir antes es si conservar el tema es lo que espera quien aprieta el
-botón: hoy el cartel dice explícitamente que los borra. Sale con la UI, no
-suelto.
-
-El caso que lo hace doler: el ciclo se corre una semana, se regeneran las fechas
-y hay que volver a tipear ocho lecturas que no cambiaron.
-
-**Cómo quedó (2026-08-26).** El generador recalcula **solo las fechas**: tema,
-lectura y cancelación salen de la fila previa, y una fila que no existía antes nace
-limpia. Salió con la UI, como pedía el ítem: el cartel decía «borra los temas y
-lecturas ya cargados» y ahora dice qué se conserva — si el código conserva y el
-cartel dice que borra, la que miente es la pantalla, y nadie aprieta el botón.
-
-**`cancelada` cambió de lado y el ítem no lo nombraba.** Antes se pisaba a `false`,
-y había un test que lo afirmaba sin decir por qué. El razonamiento escrito que
-justificaba limpiarla —«una cancelación es una excepción del ciclo viejo»— es de
-`duplicarSesionParaCopia`, y **ahí vale**: la copia es una actividad nueva, sin nada
-en el calendario de nadie. Regenerar pasa sobre una actividad que puede estar
-publicada, así que destildarla **recrea el evento en la agenda de todo el que esté
-suscripto**, y eso no lo pidió nadie. Es la asimetría de D-124: volver a tildar
-cuesta un click y se ve, porque la sección Encuentros no está colapsada.
-
-Dos redes, y las dos verificadas rompiéndolas: el comportamiento en
-`tests/sesiones.test.ts` y **el texto del cartel** en `tests/etiquetas-de-ui.test.ts`
-—que es la clase de B-63 aplicada al único cartel que describe una operación
-destructiva—. Sin lo segundo, el código y la pantalla podían separarse en silencio.
-
-### B-177 · Nadie avisa cuando una etiqueta nueva no se registró — ✅ hecho (2026-09-02)
-
-Con el orden de escritura de D-111, si la actividad se guarda pero falla el alta
-de la etiqueta en `/opciones/*`, el guardado es un éxito y la etiqueta queda sin
-registrar. Es el modo de falla que se eligió a propósito —es recuperable
-tipeándola otra vez— pero hoy **no se ve**: `guardarActividad` devuelve
-`etiquetasSinRegistrar: true` y el formulario no lo mira.
-
-No hay dónde mostrarlo con lo que hay: al guardar, el formulario se desmonta y
-la pantalla pasa al listado. Las salidas son una franja en el listado (archivo
-del frente 3B) o quedarse en el formulario con el aviso. Vale poco por sí solo;
-vale más el día que exista la UI de taxonomías (B-06), que es donde la etiqueta
-faltante se arregla en un clic.
-
-
-**Hecho, y por la razón que este ítem anticipaba: la pantalla de taxonomías ya
-existe** (B-06, montada en B-170), así que el aviso tiene a dónde mandar y no es
-solo una mala noticia. Detalle en D-187.
-
-De las dos salidas que el ítem nombraba se eligió una tercera, y las dos suyas se
-descartaron con motivo: **quedarse en el formulario** es peor, porque la actividad
-**ya está escrita** y un formulario abierto invita a un segundo guardado que choca
-contra su propio slug; y la **franja en el listado** se comería el aviso cuando se
-vuelve al calendario, que es de donde se entró si se editó desde ahí. La franja
-vive en `AdminApp`, afuera de la vista.
-
-Y **nombra la etiqueta**. El ítem describía el dato como un booleano, y con un
-booleano el aviso solo puede decir «alguna etiqueta nueva no se registró»: con
-cinco campos de taxonomía eso no es accionable. El resultado pasó a la lista de
-labels, descontando los que sí se alcanzaron a escribir.
-
-**Un bug de al lado, arreglado en el camino:** `registrarUsos` compartía el
-`try/catch` con las altas, así que un fallo al **contar el uso** se reportaba como
-«la etiqueta no se registró». Es mentira —la etiqueta está— y con el aviso en
-pantalla habría mandado a arreglar algo que no está roto. Ahora tiene su propio
-`try` y su fallo **no se reporta**: lo único que se pierde es una posición en el
-orden del desplegable.
-
-### B-150 · El panel sigue siendo dueño de `calendarEventId` — ✅ hecho (2026-09-03) · P3
-
-**Cerrado por la única salida que quedaba viva** (la corrección del 2026-09-02
-ya había descartado la otra): `actualizarActividad` relee el documento y fusiona
-los campos de máquina por id de sesión antes de escribir. Ver **D-360**.
-
-Tres cosas que la implementación decidió y no eran obvias:
-
-- **La lista de campos de máquina se importa, no se copia.** Sale de
-  `CAMPOS_DE_MAQUINA_SESION` (`functions/historial.js`) por el alias
-  `@historial`, que existe exactamente para esto: sin eso el panel tendría su
-  propia idea de "qué escribe la máquina" y un campo nuevo entraría en una lista
-  y no en la otra. Y la dirección es la segura por D-41: con una lista blanca de
-  campos *editables*, olvidarse de sumar un campo del formulario descartaría su
-  edición en silencio.
-- **El tercer argumento de `payloadDeActualizacion` es obligatorio.** Un default
-  habría devuelto el bug al primer llamador que se olvide de releer, que es
-  justamente el olvido que el ítem describe.
-- **El emparejamiento ahora es uno solo.** `valorARestaurar` (restaurar
-  `sesiones` desde el historial) tenía el mismo `Map` por id escrito aparte:
-  eran dos derivaciones de la misma idea, la clase que D-20/D-71 evitan.
-
-Fijado por cinco tests. Tres en `tests/clases-de-bug.test.ts` —el `it.fails` de
-B-80 **promovido a `it`**, más la clave que tiene que seguir viajando y la fila
-nueva que nace en `null`— y dos de integración en
-`tests/actividades.integracion.test.ts`, que son los únicos que pueden verificar
-lo que ningún test puro puede: que `actualizarActividad` haga la lectura. Las
-tres mutaciones probadas ponen los cinco en rojo: sacar la fusión, omitir la
-clave, y sacar la relectura.
-
----
-
-### B-290 · La fila de una actividad pasada decía «Inscripción abierta» — ✅ hecho (2026-09-02)
-
-**Lo puso a la vista `/pasadas` (B-109), pero ya estaba en producción.**
-`avisoDeTarjeta` (`src/lib/tarjetaPublica.ts`) miraba `inscripcion.cierra` sin
-mirar antes si la actividad ya había pasado, así que un taller **sin fecha de
-cierre cargada** caía en el default y la fila decía «Inscripción abierta». Es
-literalmente el modo de falla que el §7.1 del diseño nombra —«`abierta` solo mira
-`cierra`: una actividad sin fecha de cierre queda `abierta: true` para siempre y
-mostraría *Anotate* en un taller de hace un año»— y que la **página de detalle** ya
-evitaba decidiendo el CTA por fecha. La fila no.
-
-**Dónde se veía antes de B-109**, que es lo que lo hace un bug y no una
-consecuencia: la fila de una pasada ya se renderizaba en la página de un **mes
-vencido** (B-113) y con el filtro «Cuándo» puesto en un mes que pasó. `/pasadas`
-es una página entera de filas pasadas, así que fue la que lo hizo evidente.
-
-**El arreglo:** `avisoDeTarjeta` devuelve `null` cuando `estado.paso`, y la fila
-no pinta el párrafo. Sin frase propia a propósito: el bloque de fecha ya dice
-«Pasó» y la línea del ciclo dice «terminó el 20 de agosto» — una tercera sería
-repetir. Con la mutación puesta (sacar la rama de `paso`) los otros seis casos del
-`describe` quedan en verde y solo falla el nuevo.
-
-### B-291 · ❌ descartado (2026-09-07) — Las cinco imágenes de Open Graph por tipo
-
-**Decisión del dueño: dejarlo. Los links sin flyer siguen sin preview.**
-
-Se decide **con el bloqueante medido enfrente**, que es lo que cambió respecto del
-2026-09-03: «generarlas en el build» era la salida elegida, y rasterizar con lo
-que ya está en el árbol **no usa nuestras tipografías** —`Fraunces` da bytes
-idénticos a `sans-serif`, y un `@font-face` con el `.woff2` como data URI
-también—. Saldrían en la Helvetica de turno, que es lo contrario de
-«tipográficas, con el sistema visual del sitio».
-
-Las dos salidas que quedaban costaban lo mismo cada una en su moneda: dos
-dependencias nuevas en un repo que se cuidó de no tenerlas, o instalar las fuentes
-para fontconfig en el CI **y** en cada máquina que buildee. Con eso enfrente, el
-dueño eligió no pagar ninguna.
-
-**Qué queda como está:** la página de detalle sigue mandando el flyer como
-`og:image` —que es la mejor imagen posible— y las actividades **sin flyer** más la
-home, la cartelera, `/pasadas` y las páginas de mes siguen compartiendo un link
-sin preview. No se emite un `og:image` roto: `Base.astro` no emite la etiqueta si
-no hay imagen y `twitter:card` baja a `summary` sola.
-
-La medición queda escrita abajo para que la próxima vez que se evalúe no haya que
-volver a hacerla.
-
-El planteo original queda abajo.
-
----
-
-
-**Decidido el 2026-09-03 por el dueño: generarlas en el build.** Tipográficas,
-con el sistema visual del sitio, en vez de cinco archivos que haya que rehacer el
-día que cambie la marca. Va con el frente de imágenes, que entra después del
-rescate de D-210.
-
-
-Lo último que le queda a **B-107**, y lo único del §5.1 del diseño que B-109 no
-pudo cerrar porque no depende del dominio: cinco archivos de 1200×630 en
-`public/og/`, uno por tipo de actividad, «en papel y tinta con el nombre del
-sitio».
-
-Hoy la **página de detalle** manda `og:image` con el flyer de la actividad, que es
-la mejor imagen posible; las actividades **sin flyer** y todas las otras páginas
-—la home, la cartelera, `/pasadas`, las de mes— comparten un link sin preview. No
-se emite un `og:image` roto: `Base.astro` no emite la etiqueta si no hay imagen, y
-`twitter:card` baja a `summary` sola.
-
-Dos cosas ya están hechas y conviene no rehacerlas: la prop existe y **la URL se
-absolutiza sola** (`urlAbsoluta`), así que una ruta local como `/og/taller.png`
-sirve tal cual — un `og:image` relativo lo ignoran los scrapers en silencio, y eso
-lo cerró el `auditor-privacidad` en B-109. Falta **diseñar y generar los cinco
-archivos**, y elegirlos por tipo con la misma derivación que el color (`identidad.ts`),
-no con un `switch` que deje sin imagen al tipo que alguien cree mañana (§4, trampa 6).
-
-> ⚠️ **2026-09-07 — «generarlas en el build» tiene un bloqueante medido, y no es
-> el diseño: es la fuente.** Se intentó y quedó a mitad de camino a propósito, con
-> la medición escrita para que nadie la repita.
->
-> El camino obvio sin dependencias nuevas es armar un SVG de 1200×630 con los
-> tokens del sistema visual y rasterizarlo con **`sharp`**, que ya está en el árbol
-> (dependencia **opcional** de Astro, así que `npm ci` la trae). Rasteriza bien.
-> **Lo que no hace es usar nuestras tipografías**, y se comprobó por bytes:
->
-> | SVG | bytes del PNG |
-> |---|---|
-> | `font-family='Fraunces'` | 4994 |
-> | `font-family='sans-serif'` | **4994** |
-> | `font-family='serif'` | 6511 |
-> | `@font-face` con el `.woff2` como **data URI** | **4994** |
->
-> Idéntico al fallback en los dos casos que nos interesan: `sharp` rasteriza con
-> **librsvg**, que resuelve familias por **fontconfig** —o sea fuentes instaladas
-> en el sistema— y **no soporta `@font-face`**, ni con archivo ni con data URI. Así
-> que un `og:image` generado por este camino saldría en la Helvetica de turno, que
-> es justamente lo contrario de «tipográficas, con el sistema visual del sitio».
->
-> **Dos caminos, y los dos son una decisión del dueño porque los dos cuestan:**
->
-> | | Qué cuesta |
-> |---|---|
-> | **Un renderizador de texto a paths** (`satori` + `@resvg/resvg-js`, el stack estándar de OG): recibe el `.ttf`/`.woff` y emite el texto como curvas, así que la tipografía viaja en el archivo | **Dos dependencias nuevas** en un repo que se cuidó de no tenerlas —se autoalojaron las fuentes para no depender de un tercero (B-481) y se descartó Algolia por prematuro—. Son de build, no van al bundle del sitio |
-> | **Instalar las fuentes para fontconfig** en cada máquina que buildea | Toca el workflow de Actions **y** el setup local, y es la clase de arreglo que funciona en la máquina de quien lo escribió. Cero dependencias nuevas |
->
-> **Y hay una tercera que no es un camino sino un recorte:** aceptar cinco PNG
-> hechos a mano en `public/og/`. Es lo que el dueño descartó el 2026-09-03 —«en vez
-> de cinco archivos que haya que rehacer el día que cambie la marca»— y se anota
-> solo para que la decisión se relea con el costo real del otro lado enfrente.
->
-> **Lo que ya se puede dar por sabido cuando esto se retome:** `sharp` está
-> disponible pero **no declarado** en `package.json` (llega como opcional de
-> Astro). Si el build pasa a depender de él, **hay que declararlo**: es la lección
-> de B-561, donde una dependencia que vivía en `functions/package.json` resolvía en
-> local y rompía el CI, que hace `npm ci` solo de la raíz. Una dependencia opcional
-> que no instala en una plataforma deja el build roto **solo ahí**.
-
-### B-292 · ✅ hecho — `/pasadas` no tiene buscador propio
-
-**Ya estaba resuelto cuando se revisó el 2026-09-07**, y con la salida que este
-ítem descartaba —«enseñarle un modo nuevo a esa island»— cambiada por otra mejor:
-`BuscadorDePasadas` es una **island propia y chica**, y lo que se compartió es **el
-match**, no el componente. `buscarEnPasadas` (`src/lib/pasadasPublicas.ts`) filtra
-con `coincideBusqueda`, que se separó de `filtrarPublico` justamente para esto: una
-sola definición de «coincide» para la home y para el archivo, que era la clase de
-B-88 en la funcionalidad que la gente usa tipeando.
-
-El planteo original queda abajo.
-
----
-
-
-El §4.5 pide la página «sin filtros salvo la búsqueda», y la búsqueda que el sitio
-tiene es la island de la home, que filtra `vigentesDelIndice` — el índice de lo
-**vigente**, que por definición no incluye una pasada. Traerla a `/pasadas` es
-enseñarle un modo nuevo a esa island y cambiar su contrato con el `events.json`,
-no un cambio de esta página. Ver **D-167**.
-
-Mientras tanto la página enlaza la búsqueda de la agenda, que es lo que sí existe,
-y quien busca una actividad vieja por su nombre la encuentra por Google —que es
-para lo que la página está indexada.
-
-### B-293 · Los `href` internos pagan el 301 de la barra final — ✅ hecho (2026-09-02)
-
-Firebase Hosting responde `/cartelera` con un **301** a `/cartelera/` —Astro emite
-una carpeta con `index.html` por página—, medido contra producción el 2026-09-02.
-La canónica y el sitemap ya salen **con** la barra (`rutaCanonica`, D-165) porque a
-ellos sí les importa: una canónica que apunta a una redirección es un aviso en
-Search Console y una entrada de sitemap que redirige es una URL menos rastreada.
-
-Los `href` del propio sitio —el encabezado, el pie, cada fila del listado— siguen
-sin la barra y pagan un salto extra por navegación. No rompe nada y no se ve; lo
-que cuesta es un viaje de ida y vuelta por click.
-
-Las dos salidas posibles, y **ninguna es obvia**: agregar `"trailingSlash": false`
-en `firebase.json` (Firebase sirve `/cartelera` directo y redirige `/cartelera/`,
-o sea que hay que dar vuelta `rutaCanonica` **en el mismo commit**), o agregar la
-barra a los `href` (una línea en `rutasPublicas.ts` y un barrido de los literales
-del markup). La primera es más linda y toca producción; la segunda es más segura y
-deja URLs con barra a la vista. **Lo que no se puede hacer es tocar una sola de
-las dos mitades**, y por eso `tests/canonico.test.ts` afirma hoy que `cleanUrls`,
-`trailingSlash` y `build.format` siguen sin tocarse, con el motivo escrito: el par
-lo señaló el `auditor-privacidad`.
-
-**Hecho**, con [D-180](06-decisiones.md), y salió la **segunda**: la barra en los
-`href`. El argumento decisorio no fue el estético — la primera pone la corrección
-de un lado del par (`firebase.json`) y la comprobación del otro (`rutaCanonica`),
-y este repo no puede verificar la config del host sin deployar.
-
-Lo que quedó, y es más que el 301: **una sola forma de la ruta, y la produce
-`rutaCanonica`.** Las seis constantes de las páginas fijas viven en
-`src/lib/rutasPublicas.ts` definidas pasándolas por ella, así que el literal que
-redirige no se puede escribir. Entraron en el mismo cambio los constructores de los
-hubs (`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`) para que B-330 no
-pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
-
-**Y el relevamiento de este ítem estaba corto:** decía «un barrido de los literales
-del markup», y los literales no estaban solo en el markup — `ayudaDelSitio.ts`
-tenía siete y `contactoDelSitio.ts` uno, y esos textos se renderizan en dos páginas
-públicas. El chequeo nuevo de `tests/canonico.test.ts` barre `.astro` y `.tsx` de
-`src/pages`, `src/components` y `src/layouts`; los dos módulos de texto pasaron a
-importar las constantes.
-
-### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas — ✅ hecho (2026-09-02)
-
-> **Y tuvo una segunda cara el 2026-09-07, con la misma causa y peor efecto:
-> seis bloques de documentación estaban adentro de un bloque de código.** Está
-> abajo, en «La segunda cara de este ítem». Los dos cierres viven bajo **un solo
-> encabezado** porque tener dos `### B-294` hacía que el índice del documento
-> tuviera dos entradas para el mismo ítem — que es, otra vez, la misma clase.
-
-**Catorce filas pasaron a once, eligiendo texto** — que era el trabajo que nadie
-quería hacer, porque las versiones no eran iguales: se contradecían. Qué quedó y
-con qué evidencia:
-
-| Fila | Qué versión quedó | Cómo se decidió |
-|---|---|---|
-| `estilos-del-sitio.test.ts` | la que dice que `index.astro` **entró** al alcance en B-113 y que `publico/*` queda afuera por ser React | el docblock del test documenta el alcance con ese mismo motivo |
-| `cartelera.test.ts` | la que cubre la **cancelada** (B-110) | `tests/cartelera.test.ts:124` tiene el `it`, con la mutación anotada |
-| `events-json-endpoint...` | la que agrega el aserto sobre el **HTML** que salió | `scripts/build-contra-emulador.mjs`, paso 4 |
-| `color-de-tipo.test.ts` | la que mide **las dos direcciones** de la tinta (B-273, D-153) | es la más nueva y contiene a la otra |
-| `afiche.test.ts` | cualquiera | las dos copias eran idénticas |
-
-Y una cicatriz más del mismo tipo que el ítem no nombraba: la fila de
-`suscribirse.test.ts` tenía pegada la de `sin-marcadores-de-conflicto.test.ts`
-detrás de un `||`. Separadas. **Hoy el archivo tiene cero `||`.**
-
-Revisado lo que el ítem pedía de paso: los 41 nombres de test que la tabla cita
-existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
-
-**Y una corrección al párrafo de abajo:** dice que `docs/README.md` quedó con
-«2.175 tests en 93 archivos». El archivo dice 2.173, y 2.173 es lo que mide la
-suite hoy — así que el número del documento está bien y el de esta nota estaba
-mal.
-
-#### La segunda cara de este ítem — seis bloques de doc dentro de un bloque de código
-
-> **2026-09-07 — la clase de este ítem tenía una segunda cara, peor y sin red.**
-> Buscando la cicatriz de «merge mal resuelto» en el resto del repo aparecieron
-> **seis bloques de documentación adentro de un bloque de código**: D-460 y D-461
-> completas, siete ítems del BACKLOG (B-780 a B-786), las filas de B-770, trece
-> ítems viejos (B-78 a B-150), y dos entradas del CHANGELOG. **Más de
-> cuatrocientas líneas** que se renderizaban como código plano —sin tablas, sin
-> negritas, sin links— y que nadie podía leer como documentación.
->
-> Misma causa que las filas duplicadas: texto pegado desde un `.estado/*.md`
-> **con sus propias marcas de bloque**. Y nadie lo veía porque en un editor el
-> texto se lee igual, `red-de-contencion.test.ts` cuenta filas y no fences, y el
-> `auditor-documentacion` lee el **contenido** —que está bien; lo que estaba mal
-> es cómo se renderiza—.
->
-> Arreglado, y con red: `tests/bloques-de-codigo-en-la-doc.test.ts`, con las dos
-> mitades que hacen falta. La primera —**todo bloque cierra**— agarra el fence sin
-> pareja que mete el resto del archivo adentro de un bloque. La segunda —**ningún
-> bloque contiene un encabezado ni una fila de tabla del backlog**— es la que
-> agarra el daño real, porque los fences de sobra venían **en pares** y la primera
-> mitad los veía balanceados. Mutación probada en las dos direcciones.
->
-> Un detalle del parseo que hizo falta para ver el daño: en CommonMark **un fence
-> de cierre no lleva info string**, así que un ` ```md ` adentro de un bloque
-> abierto es contenido y no lo cierra. Sin eso, el caso del BACKLOG se leía como
-> dos bloques chicos y el encabezado de adentro quedaba «afuera».
-
-#### El planteo original — B-294
-
-**Ya estaba resuelto cuando se revisó el 2026-09-07, y tiene red.** Verificado a
-mano contra el archivo: la tabla tiene **67 filas**, ninguna con `||`, **ninguna
-primera celda repetida**, y los **67 tests que nombra existen todos**. Las cuatro
-filas que este ítem señalaba —`color-de-tipo`, `estilos-del-sitio`, `cartelera` y
-`afiche`— aparecen una vez cada una como dueñas de su fila.
-
-Y la red que impide que vuelva ya existe: `tests/red-de-contencion.test.ts`,
-`describe('la tabla «no automatizar» no se rompe por merges — B-367/B-294')`, con
-las cuatro mitades —hay filas de verdad, ninguna línea con `||`, toda línea empieza
-con `|`, ninguna primera celda repetida— más «todos los tests que nombra existen» y
-«ninguna línea de prosa quedó pegada a otra por un merge».
-
-O sea que el ítem quedó abierto en el BACKLOG después de arreglarse, que es el
-mismo drift que el ítem describe una vuelta más arriba. El planteo original queda
-abajo.
-
----
-
-**Drift de documentación, no de código.** En la tabla «Porque ya hay un test, y
-duplicarlo daría falsa cobertura» hay filas concatenadas con `||` dentro de una
-celda en vez de separadas por salto de línea, y por eso hay filas **repetidas dos
-y tres veces**: `color-de-tipo.test.ts` aparece tres, y `estilos-del-sitio.test.ts`,
-`cartelera.test.ts` y `afiche.test.ts` dos, cada una con una versión distinta del
-mismo texto —o sea que además de repetir, se contradicen (una dice «el peor da
-5,90:1» y la otra agrega la medición de B-273).
-
-Es el patrón de «merge mal resuelto» que el `auditor-documentacion` busca, y lo
-encontró él mismo auditando B-109 (es **anterior** a ese cambio). No rompe nada:
-lo que se pierde es la confiabilidad de la única tabla que sostiene *qué se
-decidió no automatizar*, que es la que se consulta antes de escribir un agente
-nuevo. Quien lo arregle tiene que **elegir cuál versión de cada texto queda** —no
-concatenarlas— y de paso revisar si alguna fila quedó describiendo un test que ya
-cambió de trabajo.
-
-**Y la misma cicatriz estaba en `docs/README.md`, arreglada de paso el 2026-09-02
-(B-296).** El paso 2 de «Antes de tocar nada» aparecía **tres veces**, con tres
-conteos distintos —2.148/92, 2.006/88 y 2.039/89— y con la continuación de la
-frase pegada al final de una de las líneas. Se colapsó a una sola, con el conteo
-medido en esa corrida: **2.175 tests en 93 archivos**. Lo de `13-agentes.md` sigue
-abierto: son ocho filas y hay que **elegir** cuál texto queda en cada una, que es
-trabajo de criterio y no de merge.
-
-### B-310 · ✅ hecho — La página `/404` está diseñada y no existe
-
-**Ya estaba resuelta cuando se revisó el 2026-09-07**, y con las dos cosas que este
-ítem pedía cuidar: `src/pages/404.astro` existe y se construye (`dist/404.html`),
-lleva `noIndex` —su docblock dice que es **la única página del sitio público que lo
-lleva**— y está en la **lista de excepciones** de `tests/sitemap.test.ts` con su
-motivo escrito, que era la parte que el ítem pedía no saltear.
-
-También están las tres cosas del §4.5: el buscador, los hubs —la misma tira de la
-home, ya recortada, no una lista propia— y el enlace al archivo. El texto vive en
-`src/lib/noEncontrado.ts`.
-
-El planteo original queda abajo.
-
----
-
-
-**Salió del barrido de B-234.** El §4.5 y el §5.1 de
-[`12-sitio-publico.md`](12-sitio-publico.md) diseñan un `/404` con buscador, los
-hubs y «quizá la actividad que buscás ya pasó: mirá el archivo». No se construyó
-y **no tenía ítem**, así que era un pendiente que solo existía en un documento de
-diseño — que es exactamente el drift que B-234 vino a cerrar. Hoy responde el 404
-por defecto de Firebase Hosting.
-
-Es P3 y el motivo importa, porque explica por qué nunca subió: **mientras el slug
-sea inmutable (trampa 10) ninguna URL nuestra se rompe sola**, así que el 404 lo
-ven sobre todo los bots y quien tipea mal una dirección. Lo que sí gana la página
-es el caso del link viejo de Instagram hacia algo que se renombró antes de la
-regla, y el destino natural de esos es `/pasadas`, no una pared blanca.
-
-Cuando se haga, dos cosas que el diseño ya decidió: lleva `noindex` (§5.1) y no
-entra al `sitemap.xml`, así que va a la **lista de excepciones** de
-`tests/sitemap.test.ts` con su motivo — el test exige que toda página estática
-esté en `RUTAS_FIJAS` o exceptuada, y no deja nacer una página fuera del sitemap
-sin que alguien lo decida.
-
-### B-311 · Remedir `10-salud-del-codigo.md` completo, con la metodología escrita — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** remedido entero.
-
-**Sale de B-201**, que remidió solo el §1.3 porque era lo único que el backlog
-pedía. Todo el resto del documento es del **2026-08-27** y quedó viejo por el
-sitio público: el §1.1 declara **111** archivos de producción y hoy son **156**,
-o sea un 40 % más de código que ningún número de ahí refleja.
-
-Qué hay que recontar: el tamaño por área (§1.1), la concentración y la lista de
-los quince más grandes (§1.2), el fan-in/fan-out (§1.4), los ciclos (§1.5) y la
-prosa (§1.6). Y el §0, que es el que compara contra la medición anterior.
-
-**La condición es la misma que puso B-201 y que sigue valiendo:** el número
-depende de la metodología, así que se recuenta con el criterio escrito al lado y
-no se estima ninguno. El encabezado del documento ya lo dice —«estimarlas para
-que queden actualizadas es exactamente lo que lo haría inútil»— y el §1.3 quedó
-como el modelo de cómo se escribe: las tres definiciones arriba de la tabla.
-
-Lo que conviene decidir en esa pasada, y es la mitad del valor: **cuáles de estas
-cifras se pueden automatizar**. Tamaño, concentración y ciclos son un script;
-fan-out y prosa dependen de qué cuenta como módulo de dominio y como comentario,
-y ahí el criterio hay que escribirlo una vez. Un documento que se remide a mano
-cada cuarenta commits vuelve a quedar viejo solo.
-
-### B-360 · Dos asertos de `reportes.test.ts` que no podían fallar — ✅ hecho (2026-09-02) · P3
-
-Los encontró el `auditor-privacidad` sobre B-137. `tests/reportes.test.ts:129` y
-`:350` decían `expect(...).not.toContain('librosdelatiahilda')`, y ese string **no
-existe en ningún fixture** — el mail del fixture es `tia-hilda@ejemplo.com`. Las
-dos aserciones no podían fallar nunca, y leerlas daba una cobertura que no existía.
-
-La mitad «el uid no sale» sí estaba viva (`uid_tia_hilda` no matchea ningún patrón
-del saneador, así que si se interpola, aparece).
-
-**Lo que costó ver:** comparar contra el mail del fixture **tampoco sirve**.
-`redactar` tapa los mails, así que interpolar `reportadoPor.email` en el cuerpo
-deja ese aserto en verde igual. Se probó con la mutación y sobrevivió. O sea que el
-arreglo obvio —usar el valor real del fixture— habría cambiado una tautología por
-un aserto casi tan débil.
-
-**Cómo quedó:** los dos preguntan por la **forma** (que en el cuerpo no quede
-ningún mail, de nadie), que sí es falsable — muere si un mail entra por un camino
-que el saneador no cubre, y hay uno abierto: **B-363**. Y la garantía de que esos
-dos campos no están interpolados la da el barrido de B-361, no estos asertos.
-
-### B-361 · El barrido de centinelas del issue no barría los campos privados — ✅ hecho (2026-09-02) · P1
-
-Lo encontró el `auditor-privacidad` sobre B-137, y es el modo de falla más caro que
-puede tener un barrido por centinelas: **parece cobertura y no lo es**.
-
-El fixture `REPORTE` de `tests/clases-de-bug.test.ts` tenía 8 de las 13 claves que
-`reporteValido()` enumera en `firestore.rules`, y las que faltaban eran justo las
-que el §5.1 prohíbe publicar: `reportadoPor.uid`, `reportadoPor.email`, más
-`estado`, `intentos`, `github` y `error`. El `it` promete «ningún string de la
-entrada llega crudo al issue público» y no barría los strings privados del reporte.
-
-**Y hay una segunda mitad que era peor.** El `CENTINELA` del archivo es un link de
-zoom, o sea **justo una de las dos cosas que el saneador tapa**. Eso lo hace
-perfecto para verificar que el saneador corre, e **inútil** para verificar que un
-campo no está interpolado: un campo que se cuela y se sanea deja el barrido en
-verde igual que uno que no se cuela. Los dos hechos se confunden.
-
-Se comprobó por mutación: interpolar el mail del reportante en el encabezado del
-issue **sobrevive** a un aserto contra el mail del fixture.
-
-**Cómo quedó.** Las cinco claves entraron al fixture (sigue verde: ninguna está
-interpolada hoy, y ése es el punto — entran a la garantía desde ahora), la lista de
-claves se **lee de `firestore.rules`** para que una clave nueva del modelo entre
-sola, y hay un segundo barrido con `CENTINELA_CRUDO`, un valor que el saneador deja
-pasar. Ése sí muere con la mutación.
-
-### B-362 · El orden sanear→recortar del título no lo fijaba ningún test — ✅ hecho (2026-09-02) · P2
-
-Lo encontró el `auditor-privacidad` sobre B-137. El docblock de `construirIssue`
-afirma que el orden importa, y era la única parte del repo donde esa regla estaba
-escrita.
-
-**Y el recorte es alcanzable**, que es la mitad que hacía falta para que valga la
-pena: `redactar` no acorta, **expande** — «link de reunión oculto» son 24
-caracteres contra los 12 de un `http://wa.me`. Así que un título al tope que las
-reglas permiten (120) lleno de links cortos pasa de 200 al redactarse.
-
-Con el orden invertido, ese caso publicaría un `https://us02web.zoom` cortado antes
-del dominio: un prefijo que ya no matchea el patrón, o sea **medio link de reunión,
-legible, en un repo público**.
-
-**Cómo quedó.** Un caso con nueve `http://wa.me` (116 caracteres, dentro del tope
-de las reglas), con control positivo de que llega al recorte —el primer intento usó
-links **largos** y no llegaba: 106 caracteres, porque con un link largo el saneador
-**acorta**— y los dos asertos de que no sobrevive nada del link. La mutación muere.
-
-### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver — ✅ decidido: no se hace (2026-09-03) · P3
-
-**Decidido el 2026-09-03 por el dueño: queda anotado y no se hace.** Las
-miniaturas JPEG ya bajaron el peso del recorrido completo un 71 %, así que WebP y
-AVIF serían optimización sobre optimización — y arrastran construir la zona de
-subida privada, que es lo caro. **Lo que no se descarta es la trampa 13** (`allow
-read` en Storage incluye `list`): esa vale por sí sola y no depende de este ítem.
-
-
-**B-220 decía que volvían con la Function y no volvieron** (D-175). El argumento
-de B-220 era que la Function recomprime todo y por lo tanto los hace seguros, y no
-alcanza: el objeto es público **desde el instante en que se sube**
-(`allow get: if true`) y la Function corre unos segundos después. En esa ventana un
-WebP con GPS es una URL pública con las coordenadas de una casa particular. Y el
-panel no puede taparlo, porque justamente no sabe limpiar esos contenedores: por
-eso están afuera.
-
-**Lo que lo desbloquea es otra forma, no otro parser.** Subir a un prefijo
-`entrada/` con `allow get: if esAdmin()`, que la Function lea de ahí, escriba el
-resultado saneado en `imagenes/` y borre la entrada. Con eso:
-
-- WebP y AVIF vuelven a `TIPOS_SUBIBLES` sin que el panel tenga que saber
-  limpiarlos, que es la promesa que B-220 no podía cumplir;
-- **la ventana desaparece para todos los formatos**, incluidos JPG y PNG: hoy la
-  foto cruda es pública durante los segundos que tarda el trigger, y eso es cierto
-  aunque el panel ya le haya sacado los metadatos;
-- deja de hacer falta sobreescribir el original, así que la guarda por
-  `customMetadata` pasaría a ser opcional en vez de obligatoria (D-175).
-
-El precio es el que B-220 evitó: al escribir en un path distinto del de entrada
-**vuelve el problema del write-back** —hay que decirle al documento dónde quedó la
-imagen—, y esa es la pregunta que D-175 disolvió en vez de resolver. Con
-`allow list` cerrado y el path derivado del id de la fila puede alcanzar con
-derivarlo, igual que la miniatura; hay que mirarlo.
-
-### B-325 · ✅ hecho — El `package-lock.json` decía 1.1.0 con el `package.json` en 1.5.0
-
-**Cerrado por el `npm install` de la subida a Astro 7**, y su propio autor lo había
-previsto: el `it.fails` que marcaba la clase pasó a verde y hubo que promoverlo a
-`it`, que es exactamente la señal que ese patrón existe para dar. Verificado el
-2026-09-07 **dos veces, y la segunda es la que importa**: decían los dos 1.8.0, y
-al cortar la 1.9.0 se movieron **los dos juntos** —el `it` que los ata no dejó
-avanzar con uno solo—, así que hoy dicen los dos **1.9.0**. Es la primera
-publicación de versión desde que existe el chequeo, o sea la primera prueba de que
-la clase quedó cerrada de verdad.
-
-El planteo original queda abajo.
-
----
-
-
-Encontrado de paso al instalar dependencias en un worktree nuevo el 2026-09-02
-(B-220): `npm install` cambió **dos líneas** del lock, las dos el campo `version`
-de la raíz, de `1.1.0` a `1.5.0`. O sea que nadie corrió `npm install` en cuatro
-publicaciones de versión.
-
-**No rompe nada** —el `version` de la raíz del lock es informativo, y las
-dependencias resueltas estaban al día— así que es P3 y va anotado solo para que no
-se descubra otra vez. El arreglo es correr `npm install` y commitear el lock; lo
-que conviene mirar es si vale la pena que el bump de versión lo haga.
-
-**Por qué no entró en el commit de B-220:** ese frente lo revirtió a propósito
-para que sus commits fueran atómicos. Un lock que cambia por un motivo ajeno al
-cambio es exactamente el ruido que hace que después nadie lea un diff de lock.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 

@@ -283,9 +283,22 @@ export const EXTENSIONES = [
   '.rules', '.yml', '.yaml', '.sh', '.txt', '.html', '.css', '.indexes',
 ];
 
+/**
+ * Archivos que quedan afuera, con el motivo de cada uno.
+ *
+ * - `package-lock.json`: megabytes de hashes donde `B-` no significa nada.
+ * - `tests/items-referenciados.test.ts`: **el archivo que prueba este barrido**.
+ *   Sus controles positivos necesitan citar ids inventados —un `B-` que no
+ *   existe es literalmente el caso que hay que ejercitar— así que barrerlo hace
+ *   que el chequeo se reporte a sí mismo y no pueda quedar verde nunca. Es la
+ *   misma excepción que se le hace a un barrido que contiene su propio
+ *   contraejemplo.
+ */
+const AFUERA = new Set(['package-lock.json', 'tests/items-referenciados.test.ts']);
+
 /** @param {string} archivo */
 export const seBarre = (archivo) =>
-  archivo !== 'package-lock.json' && EXTENSIONES.some((e) => archivo.endsWith(e));
+  !AFUERA.has(archivo) && EXTENSIONES.some((e) => archivo.endsWith(e));
 
 /**
  * El relevamiento completo contra el disco: qué ítems hay escritos, qué se cita

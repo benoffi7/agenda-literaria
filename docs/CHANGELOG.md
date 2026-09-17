@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **La tanda de «ítems no visibles»: siete frentes sobre trabajo que el backlog
+  abierto no mostraba.** El pedido fue buscar lo que no se ve, y resultó haber
+  cinco lugares donde este repo esconde trabajo: frases del tipo «queda para
+  cuando cierre la tanda» dentro de un documento, sobrantes declarados adentro de
+  ítems ya ✅, pendientes anotados en `.estado/` —que está en el `.gitignore`—,
+  ids citados que nunca fueron ítem, y pantallas enteras sin doc.
+
+  **Lo que se cerró:** las dos vulnerabilidades altas de producción (`npm audit
+  fix`, a cero); **B-1030**, que resultó no existir —la asimetría de
+  `storage.rules` era artefacto de worktree, 19/19 en el árbol principal, y con
+  eso el último archivo de integración con la vía infiel se unificó (**B-1060**)—;
+  **B-910**, donde la sexta huérfana era `D-09` escrita sin el cero y las otras
+  cinco **ya estaban redactadas** en un directorio sin versionar; **B-1010**, con
+  el documento de salud remedido sobre 342 archivos en vez de 254; **B-1080**, la
+  pestaña «Estado del catálogo», con quince días de pantalla y ninguna entrada en
+  las funcionalidades; **B-1110** y **B-1120**, dos formatos derivados por
+  separado; y **B-1100**, el barrido que hace visible el resto.
+
+  **Tres redes nuevas**, las tres con la mutación probada en rojo:
+  `tests/comandos-de-los-skills.test.ts` (los comandos y las 257 rutas que las
+  definiciones de `.claude/` citan), `tests/items-referenciados.test.ts` (los
+  `B-nnn` citados sin entrada) y `tests/credenciales-del-emulador.test.ts` (la
+  copia dieciséis de las credenciales).
+
+  **El número que resume el hallazgo: 46 `B-nnn` se citan en el repo y no tienen
+  entrada en ninguno de los dos archivos del backlog, 40 de ellos desde el
+  código.** `B-919` aparece en 45 archivos —`firestore.rules` incluido— con su
+  decisión y su commit, y no existe como ítem; mientras tanto B-920 y B-921,
+  abiertos hoy, arrancan diciendo «dos bordes que B-919 dejó abiertos». No se
+  escribieron las 46 entradas a propósito: una entrada inventada es peor que un
+  hueco, que es exactamente lo que enseñó `D-9`. Lo que faltaba era poder verlas.
+
+  **Y una lección de método, que costó y conviene no pagar de nuevo:** los cinco
+  frentes que quedaban vivos se cayeron **juntos**, por límite de sesión. No se
+  perdió nada —13 commits en cinco ramas, y los dos que tenían trabajo sin
+  commitear lo tenían completo— porque el brief exigía commits atómicos por
+  tramo. Es la misma regla que el 2026-09-02 no existía y costó seis frentes.
+  Lo que sí se perdió fueron **los informes finales de cuatro de ellos**: hubo
+  que reconstruirlos de los mensajes de commit.
+
 - **Los comandos que los skills dicen correr apuntaban al archivo viejo del
   backlog — B-1120.** Un `grep` que no matchea no falla: devuelve vacío, el
   agente lee «no hay nada» y sigue de largo. `al-backlog` buscaba ids duplicados
