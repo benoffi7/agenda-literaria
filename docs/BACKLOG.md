@@ -6937,6 +6937,79 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-981 · «Dirección web» era el slug, y abajo había otro campo web — ✅ hecho (2026-09-17) · P2 — reportado por el dueño
+
+**Lo reportó cargando una librería desde el panel: «lugar para página web 2
+veces».** No estaba duplicado, y por eso es peor: son **dos campos distintos con
+nombres que compiten**.
+
+- `lib-slug`, rotulado **«Dirección web»** — es el slug, el que arma
+  `/guia/librerias/<slug>`.
+- `lib-web`, rotulado **«Sitio web»** — la web de la librería.
+
+Y en librerías y lugares hay además un **«Dirección»**, que es la de la calle:
+tres rótulos peleando por la misma palabra. Pasaba en **las tres** categorías
+(librerías, lugares, suscripciones), porque los tres formularios del panel se
+escribieron con el mismo molde.
+
+> **Cerrado renombrando a «Link de la ficha»** en los tres. Es lo que la ayuda de
+> abajo ya explicaba («Queda en /guia/librerias/…») y el título contradecía.
+
+### B-982 · Ninguna ficha de la Guía tiene horario de atención · P2 — reportado por el dueño (2026-09-17)
+
+**«No tiene horario de atención».** Es cierto y no es un olvido de un formulario:
+**ninguno de los tres modelos lo tiene** — `libreria.ts`, `lugar.ts` y
+`suscripcion-literaria.ts` no mencionan la palabra.
+
+Para una **librería** es el dato que más se busca después de la dirección: un
+directorio que dice dónde queda y no cuándo abre manda a la gente a la puerta
+cerrada. Para un **lugar para eventos** aplica distinto —lo que importa es la
+disponibilidad, no el horario de mostrador— y para una **suscripción** no aplica.
+
+**Lo que hay que decidir antes de escribir nada, y por eso no se hizo de una:**
+
+1. **La forma.** Texto libre («Lun a vie de 10 a 20, sábados hasta las 14») es
+   una línea de código y cero estructura: no se puede filtrar por «abierto
+   ahora», no se puede emitir `openingHours` en el JSON-LD —que es lo que Google
+   muestra al costado— y cada quien lo escribe distinto. Estructurado (día ×
+   rango) es un editor entero, con feriados, corte del mediodía y temporada.
+2. **En cuáles.** Librerías seguro. Lugares, a discutir. Suscripciones, no.
+3. **Si entra al JSON-LD.** Es la mitad del valor del campo y es lo que empuja
+   hacia lo estructurado.
+
+Un campo de texto libre puesto hoy es difícil de migrar después: queda cargado en
+todas las fichas y hay que releerlo a mano para estructurarlo.
+
+### B-983 · Cargar desde el panel no publica, y hay que ir a la bandeja a validarlo · P2 — reportado por el dueño (2026-09-17)
+
+**«No se sube automáticamente, lo tengo que validar después de cargar».** Es
+cierto, y **está puesto a propósito** — por eso entra como decisión a revisar y no
+como bug:
+
+- `formALibreria` escribe `estado: ESTADO_INICIAL` (`'pendiente'`) sin mirar el
+  origen;
+- `firestore.rules` lo **exige**: `libreriaValida()` pide `d.estado ==
+  'pendiente'` en el `create`, con el motivo escrito («sin esto, un `curl` publica
+  su propia librería y la bandeja no sirve para nada»);
+- y el formulario lo **avisa**: «Guardar no la publica. Para que entre al sitio
+  hay que publicarla desde la lista de librerías».
+
+Pasa en las tres categorías (`libreriaValida`, `suscripcionValida`, `lugarValida`).
+
+**El argumento de la regla es sobre el anónimo, no sobre el admin.** Para
+`origen == 'panel' && esAdmin()` no hay tercero que revisar: quien carga **es** el
+revisor, y el paso por la bandeja es ceremonia. Aflojarlo ahí **no da poder
+nuevo** —un admin ya puede publicar desde la bandeja—, solo saca un paso.
+
+**Lo que hay que decidir, y por eso está abierto:** hoy los estados del
+directorio son `pendiente | publicado | rechazado`, **sin `borrador`**. O sea que
+`pendiente` hace de borrador. Si cargar desde el panel publica siempre, se pierde
+poder guardar una ficha a medio cargar sin que salga al sitio. Las dos salidas:
+
+- **Publicar siempre desde el panel** — un paso menos, y se pierde el borrador.
+- **Dos botones** («Guardar sin publicar» / «Guardar y publicar») — conserva las
+  dos, y son tres formularios más la regla.
+
 ### B-961 · Un banner en el filtro de una ciudad — ✅ hecho (2026-09-15), faltan las imágenes (B-962) · P2 — pedido del dueño (2026-09-15)
 
 Cuando alguien pone el filtro **Ciudad → Mar del Plata** en la home, arriba del

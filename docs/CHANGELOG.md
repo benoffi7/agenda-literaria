@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **«Dirección web» era el slug, no la web** — **B-981**, reportado por el dueño
+  («lugar para página web 2 veces»). No estaba duplicado: eran dos campos
+  distintos con nombres que competían, y en librerías y lugares hay además un
+  «Dirección» que es la de la calle. Pasa a llamarse **«Link de la ficha»** en los
+  tres formularios del panel, que es lo que la ayuda de abajo ya explicaba.
+
 - **«Cupo completo» también se marca desde el formulario** — **B-956**, pedido del
   dueño. Revierte media decisión de B-97 a propósito: aquello dejó un aviso y no un
   control, y con una segunda persona cargando el «⋯» del listado no se encuentra.

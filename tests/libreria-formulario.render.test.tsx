@@ -73,7 +73,7 @@ describe('los dos carteles sobre datos, y dicen cosas opuestas', () => {
   });
 });
 
-describe('la dirección web se congela al publicar — trampa 10', () => {
+describe('el link de la ficha se congela al publicar — trampa 10', () => {
   const ficha = (over = {}) => ({
     id: 'lib1',
     nombre: 'Del Otro Lado',
@@ -100,7 +100,7 @@ describe('la dirección web se congela al publicar — trampa 10', () => {
 
   it('mientras espera decisión se puede corregir: es el trabajo de la bandeja', () => {
     montar({ inicial: ficha() });
-    expect((screen.getByLabelText('Dirección web') as HTMLInputElement).disabled).toBe(false);
+    expect((screen.getByLabelText('Link de la ficha') as HTMLInputElement).disabled).toBe(false);
   });
 
   it('publicada, el campo se apaga **y se explica por qué**', () => {
@@ -113,7 +113,7 @@ describe('la dirección web se congela al publicar — trampa 10', () => {
      * primer aserto en rojo; borrar la rama del `ayuda` deja el segundo.
      */
     montar({ inicial: ficha({ estado: 'publicado' }) });
-    expect((screen.getByLabelText('Dirección web') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Link de la ficha') as HTMLInputElement).disabled).toBe(true);
     expect(screen.getByText(/fija desde que se publicó/i)).toBeTruthy();
   });
 
@@ -121,6 +121,6 @@ describe('la dirección web se congela al publicar — trampa 10', () => {
     // `publicadaAlgunaVez` gana sobre el estado actual: una ficha que se publicó y
     // se bajó del sitio tiene su URL en Google igual.
     montar({ inicial: ficha({ estado: 'pendiente', publicadaAlgunaVez: true }) });
-    expect((screen.getByLabelText('Dirección web') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Link de la ficha') as HTMLInputElement).disabled).toBe(true);
   });
 });

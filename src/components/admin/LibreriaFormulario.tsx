@@ -217,8 +217,21 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
           />
         </Campo>
 
+        {/*
+          B-981 — **«Link de la ficha» y no «Dirección web».**
+
+          Lo reportó el dueño cargando una librería desde el panel: «lugar para
+          página web 2 veces». No estaba duplicado — este campo es el **slug** y
+          más abajo está el **sitio web de la librería**, pero los dos se
+          llamaban casi igual. Y en librerías y lugares hay además un
+          «Dirección», que es la de la calle: tres rótulos peleando por la misma
+          palabra.
+
+          El rótulo dice ahora de qué link se trata, que es lo que la ayuda de
+          abajo ya explicaba y el título contradecía.
+        */}
         <Campo
-          label="Dirección web"
+          label="Link de la ficha"
           htmlFor="lib-slug"
           error={errorDe('slug')}
           ayuda={
