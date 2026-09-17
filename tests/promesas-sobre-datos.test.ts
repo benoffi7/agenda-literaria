@@ -68,19 +68,71 @@ const sinComentarios = (src: string): string =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 /**
+ * Un `.tsx` reducido a lo que **se lee**: el texto entre `>` y `<` de los
+ * children de JSX, y todo literal de string o template — sin la sintaxis que
+ * los rodea (nombres de etiqueta, `className=`, llaves, identificadores).
+ *
+ * ── Por qué hace falta, y por qué no es una lista de atributos a borrar ────
+ * Un componente no es una página: la misma frase que en un `.astro` es prosa
+ * corrida, en un `.tsx` vive rodeada de JSX — `<p className="body-md mt-4
+ * text-super"> Todavía no guardaste nada. …`. Sin este paso, `className=…`
+ * queda pegado a la frase real y la ventana de contexto de abajo mira código,
+ * no lo que alguien lee (B-925).
+ *
+ * **No se descartan los valores de los atributos, solo el envoltorio.** Un
+ * `ayuda="Lo usamos solo para escribirte si falta un dato. No sale al
+ * sitio."` es prosa de verdad —la ayuda de un campo, visible en pantalla— y
+ * borrar el atributo entero se la comería en silencio: exactamente el modo de
+ * falla que este archivo existe para no tener (B-873, «da falsa cobertura»).
+ * Por eso la regla no es «por nombre de atributo» —una lista de nombres se
+ * desactualiza sola— sino «todo literal de string, esté donde esté»: la regla
+ * general en vez de la lista de casos.
+ *
+ * Motivo por el que la segunda mitad de la alternancia no filtra `className`
+ * de otras: no hay forma de saber, mirando solo el literal, si es una clase o
+ * una frase — así que las dos entran, y son las fórmulas de abajo las que
+ * deciden si hay algo que decir de lo que quedó.
+ */
+const textoLegibleDeJsx = (src: string): string => {
+  const piezas: string[] = [];
+  const patron =
+    />([^<>{}]*)<|'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g;
+  for (const m of src.matchAll(patron)) {
+    const texto = (m[1] ?? m[2] ?? m[3] ?? m[4] ?? '').trim();
+    if (texto) piezas.push(texto);
+  }
+  return piezas.join(' ');
+};
+
+/**
  * El fuente como **prosa corrida**.
  *
- * Los dos reemplazos del medio son lo que hace que esto funcione sobre código: el
- * texto de estas páginas vive en literales **concatenados** —`'…no cobra y ' +
- * 'no guardamos…'`— y una frase partida en dos literales no se puede leer con un
- * regex de frase. Pegando la concatenación, la oración vuelve a ser una oración,
- * y la ventana de contexto de abajo puede buscarle la condición.
+ * `esJsx` se pasa **solo** para un `.tsx`: un `.ts` no tiene JSX y su prosa ya
+ * es legible tal cual (`apoyoDelSitio.ts`, `ayudaDelSitio.ts`…); pasarlo
+ * igual no rompería nada —un `.ts` no tiene `>texto<` para encontrar—, pero
+ * mentiría sobre qué archivo lo necesita.
+ *
+ * Los dos reemplazos del medio son lo que hace que esto funcione sobre código
+ * **sin JSX**: el texto de esas páginas vive en literales **concatenados**
+ * —`'…no cobra y ' + 'no guardamos…'`— y una frase partida en dos literales no
+ * se puede leer con un regex de frase. Pegando la concatenación, la oración
+ * vuelve a ser una oración, y la ventana de contexto de abajo puede buscarle
+ * la condición.
+ *
+ * Con JSX no hacen nada, y a propósito: `textoLegibleDeJsx` ya extrae cada
+ * literal **sin comillas** y los pega con un espacio —el mismo efecto, un
+ * paso antes—, así que para cuando estos dos `replace` corren ya no queda
+ * ninguna comilla que unir. Quedan igual en el pipeline en vez de un `if`
+ * aparte: no hacen daño y evitan dos caminos que hacer lo mismo.
  */
-const prosaDe = (src: string): string =>
-  sinComentarios(src)
+const prosaDe = (src: string, esJsx = false): string => {
+  const limpio = sinComentarios(src);
+  const base = esJsx ? textoLegibleDeJsx(limpio) : limpio;
+  return base
     .replace(/'\s*\+\s*'/g, '')
     .replace(/`\s*\+\s*`/g, '')
     .replace(/\s+/g, ' ');
+};
 
 /**
  * Toda página de `src/pages`, **a cualquier profundidad**.
@@ -149,7 +201,10 @@ interface Fuente {
 }
 
 const deArchivos = (archivos: readonly string[]): Fuente[] =>
-  archivos.map((archivo) => ({ archivo, prosa: prosaDe(readFileSync(raiz(archivo), 'utf8')) }));
+  archivos.map((archivo) => ({
+    archivo,
+    prosa: prosaDe(readFileSync(raiz(archivo), 'utf8'), archivo.endsWith('.tsx')),
+  }));
 
 const deTexto = (archivo: string, texto: string): Fuente => ({ archivo, prosa: prosaDe(texto) });
 
@@ -457,6 +512,46 @@ describe('el barrido mira archivos de verdad — control positivo', () => {
      */
     const partida = "const x = 'No guardamos nada ' +\n  'salvo si lo aceptás.';";
     expect(prosaDe(partida)).toContain('No guardamos nada salvo si lo aceptás.');
+  });
+
+  it('con esJsx, la prosa de un .tsx es lo que se lee y no el JSX que lo rodea — B-925', () => {
+    /*
+     * El caso real que motivó el cambio: `className=…` pegado a la frase real
+     * dejaba una ventana de contexto que era código, no prosa. Con `esJsx`,
+     * `<p className="body-md mt-4 text-super">` desaparece del todo y la
+     * frase queda como la leería alguien.
+     */
+    const jsx = `
+      export function X() {
+        return (
+          <p className="body-md mt-4 text-super">
+            Todavía no guardaste nada.
+          </p>
+        );
+      }
+    `;
+    const prosa = prosaDe(jsx, true);
+    expect(prosa).toContain('Todavía no guardaste nada.');
+    // Lo que desaparece es el nombre del atributo y el `=` — no el valor:
+    // ver el caso de `ayuda` más abajo.
+    expect(prosa).not.toContain('className=');
+    expect(prosa).not.toContain('<p');
+    expect(prosa).not.toContain('export function');
+
+    /*
+     * Y lo que NO se descarta: un valor de atributo es un literal de string
+     * como cualquier otro, y puede ser prosa real (la `ayuda` de un campo).
+     * Borrarlo por ser atributo se comería una promesa entera en silencio —
+     * exactamente el modo de falla que este archivo persigue (B-873). La regla
+     * no distingue por nombre de atributo, así que `className` entra también
+     * —no hay forma de saber, mirando solo el literal, si es una clase o una
+     * frase—, y son las fórmulas de más abajo las que deciden si hay algo que
+     * decir de lo que quedó.
+     */
+    const conAyuda = `<input ayuda="No sale al sitio." className="x" />`;
+    const prosaAyuda = prosaDe(conAyuda, true);
+    expect(prosaAyuda).toContain('No sale al sitio.');
+    expect(prosaAyuda).not.toContain('ayuda=');
   });
 });
 
