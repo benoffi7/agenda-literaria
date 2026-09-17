@@ -81,6 +81,16 @@ describe('las guardas de los scripts que escriben — B-630', () => {
       'scripts/limpiar-versiones-huerfanas.mjs',
       'scripts/optimizar-imagenes.mjs',
       /*
+       * B-976 — la reubicación de los barrios que eran provincias. Entró por esta
+       * puerta como todos: apareció acá en rojo el día que se escribió.
+       *
+       * Es el que **más** dispara de la lista: reescribe 58 actividades, o sea una
+       * versión del §12 cada una **y** los eventos de Calendar de todas sus
+       * sesiones (`modalidades` y `sede` están en la guarda del §7.1). La guarda
+       * de los dos flags le corresponde entera y con margen.
+       */
+      'scripts/reubicar-barrios.mjs',
+      /*
        * B-919 / D-690 — el backfill de `ciudades`. Entró por esta puerta como
        * los otros dos: apareció acá en rojo el día que se escribió. Escribe en
        * **cada actividad del catálogo** que no tenga el campo al día, así que la

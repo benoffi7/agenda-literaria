@@ -2,6 +2,27 @@
 
 ## Sin publicar
 
+- **Los barrios que en realidad eran provincias** — **B-976**. Hasta B-950 el
+  barrio era el único campo de lugar del formulario, así que quien cargaba en
+  Tandil puso la provincia donde había lugar: «Provincia de Buenos Aires» entre
+  Belgrano y Colegiales, con 54 actividades detrás. **58 actividades reubicadas**
+  en producción con `scripts/reubicar-barrios.mjs`, ensayado antes contra el
+  emulador con las formas reales.
+
+  La regla vive en `src/lib/reubicacion-de-barrio.mjs`, es pura y **se niega a
+  adivinar**: reubica cuando el dato lo dice (el barrio es una provincia) y marca
+  ambiguo cuando el documento se contradice. No invierte «barrio=ciudad +
+  ciudad=provincia» aunque parezca obvio — funciona para `rosario | santa-fe` y
+  sobre `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén».
+
+  Quedan 5 para el dueño, con sus enlaces, y cinco valores de `/opciones/barrio`
+  que ahora sí se pueden borrar sin dejar un slug colgado.
+
+- **Dos P0 que estaban hechos y sin cerrar** — **B-890** (las tres guías, siete
+  rutas en 200) y **B-896** (la callable con `enforceAppCheck`, `/proponer` vivo y
+  en el sitemap). Verificados contra producción. Un P0 falso encabeza el backlog y
+  enseña a no mirarlo.
+
 - **El desplegable de ciudad estaba casi vacío en un catálogo lleno de ciudades**
   — **B-975**. `/opciones/ciudad` tenía **un** valor mientras las actividades
   cargadas nombraban treinta: había que volver a tipear Mar del Plata aunque

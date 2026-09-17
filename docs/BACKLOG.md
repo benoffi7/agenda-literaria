@@ -130,7 +130,47 @@ Resueltas el 2026-08-21:
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
 
-### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro · P1 (2026-09-16)
+### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1
+
+> **Corrido en producción el 2026-09-17**: 58 actividades reubicadas con
+> `scripts/reubicar-barrios.mjs`. Segunda corrida: `A reubicar: 0`.
+>
+> Antes se ensayó contra el emulador con las **formas reales** de producción —una
+> por clase, incluidas las ambiguas y dos sanas de control—, y ahí se verificó lo
+> que importaba: que la ciudad salga **slugificada** (`Tres arroyos` →
+> `tres-arroyos`; cruda habría reintroducido el bug que la migración arregla),
+> que `sede` y `ciudades[]` se recalculen, que las sanas no se toquen y que sea
+> idempotente.
+>
+> **La regla vive en `src/lib/reubicacion-de-barrio.mjs`, es pura y tiene 12
+> casos.** Reubica solo cuando el propio dato lo dice: el barrio es una provincia
+> → va a `provincia`. No deduce la provincia de una ciudad —«Tandil» es
+> bonaerense para una persona y para nadie más acá—, que es la misma línea que
+> `sembrar-geografia.mjs` ya había trazado.
+>
+> **Y no invierte «barrio=ciudad + ciudad=provincia», aunque parezca obvio.** La
+> primera versión sí lo hacía: funciona para `rosario | santa-fe` y sobre
+> `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén». Distinguirlos pide
+> cablear los 48 barrios de CABA, o sea la tabla que el módulo se niega a
+> inventar con otro nombre. Está fijado por test con la mutación probada.
+>
+> **Lo que queda, y es del dueño** (se le pasaron los enlaces el 2026-09-17):
+>
+> | Actividad | Qué dice | Por qué no se tocó |
+> |---|---|---|
+> | Club de lectura - «Basura» | `barrio=provincia-de-buenos-aires` + `ciudad=CABA` | CABA no está en la provincia de Buenos Aires |
+> | Club de lectura La Fonseca | `barrio=nunez` + `ciudad=Neuquén` | Núñez es barrio de CABA |
+> | Lectura y análisis de Mariana Pineda | `barrio=rosario` + `ciudad=Santa fé` | parecen invertidos, indistinguible del anterior |
+> | FINDE - Feria de editores independientes | `barrio=palermo` + `ciudad=avellaneda` | Palermo es CABA, Avellaneda no |
+> | Club de lectura: ESCRITURAS DEL MUNDO | `provincia=buenos-aires` sin ciudad | falta el segundo nivel |
+>
+> **Y cinco valores de `/opciones/barrio` quedaron sin ninguna actividad detrás**
+> —`beccar`, `ramos-mejia`, `cordoba`, `neuquen`, `santa-fe`—: recién ahora se
+> pueden borrar desde la pantalla de taxonomías sin dejar un slug colgado.
+> `provincia-de-buenos-aires` **no** quedó libre: la sostiene «Basura», la primera
+> ambigua.
+>
+> El texto original queda abajo.
 
 **Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre
 Belgrano y Colegiales. Y no está solo — de los 30 valores de `/opciones/barrio`,
@@ -476,7 +516,19 @@ guarda la versión del borrado— y **puede publicar el link de la reunión** co
 campo, y lo que el rol recorta es la confianza sobre lo ajeno y lo compartido, no
 sobre lo que él mismo carga.
 
-### B-890 · Las tres guías —librerías, suscripciones y lugares— son lo siguiente, y son lo único que se ve · P0
+### B-890 · Las tres guías —librerías, suscripciones y lugares— — ✅ hecho (verificado 2026-09-17) · P0
+
+> **Las tres están construidas y desplegadas.** Las siete rutas responden 200 el
+> 2026-09-17: `/guia`, `/guia/librerias`, `/guia/suscripciones`, `/guia/lugares` y
+> los tres `/sumar`. Cada una con su ficha, su JSON propio, su entrada de sitemap
+> y su bandeja en el panel.
+>
+> **La tabla de abajo quedó falsa** —decía «solo PRD» para las tres— y es
+> exactamente el drift que este ítem denunciaba en su propio reclamo: trabajo
+> hecho que no se ve. Acá se veía, y el backlog decía que no.
+>
+> El texto original queda porque el reclamo que lo abrió sigue valiendo como
+> criterio: lo que no cambia la superficie del sitio no cuenta como avance.
 
 **Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que
 importa:** «tanto tiempo trabajando estas semanas entre que te pasé la tarea y al
@@ -812,7 +864,19 @@ nacer este test sobrevivió meses en un archivo que nadie sospechaba.
 
 ---
 
-### B-896 · La subida anónima va a una callable con App Check exigido, y así `storage.rules` no se abre nunca · P0
+### B-896 · La subida anónima va a una callable con App Check exigido — ✅ hecho (verificado 2026-09-17) · P0
+
+> **Estaba hecho y sin cerrar, y eso es lo que se arregla acá.** Verificado contra
+> el código y contra producción el 2026-09-17:
+>
+> - `functions/flyer-de-propuesta.js` es la callable, con `enforceAppCheck: true`;
+> - `storage.rules` mantiene `propuestas/` cerrado al cliente —`get` para admin,
+>   `list` para nadie—, que era el punto: más fuerte que abrirlo, no menos;
+> - `/proponer` responde 200, **está en el sitemap y enlazado desde la home**, que
+>   es justo lo que este ítem bloqueaba.
+>
+> Un P0 que en realidad está resuelto es peor que ninguno: encabeza el backlog y
+> enseña a no mirarlo.
 
 **Decidido por el dueño el 2026-09-11, sobre el hallazgo del frente de B-872.**
 
