@@ -38,7 +38,7 @@ import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebas
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
-import { PROJECT_ID } from '../emulador';
+import { PROJECT_ID, faltaVerificarProyectoDeAuth, verificarProyectoDeAuth } from '../emulador';
 
 /**
  * Los claims de la cuenta. `unknown` y no `boolean` porque el valor no siempre
@@ -121,11 +121,22 @@ export const tokenDe = async (
   }
 };
 
-/** `tokenDe` y el login del cliente, que es lo que casi todos los tests quieren. */
+/**
+ * `tokenDe` y el login del cliente, que es lo que casi todos los tests quieren.
+ *
+ * El primer login del proceso paga además una lectura del ID token, para
+ * `verificarProyectoDeAuth` (D-730, B-1112): es el único momento donde el
+ * desajuste de proyecto del emulador de Auth es visible, y si no se mira acá el
+ * síntoma llega después como un `PERMISSION_DENIED` sobre un documento válido.
+ * Del segundo login en adelante no cuesta nada.
+ */
 export const entrarComo = async (
   uid: string,
   claims: Claims = {},
   opciones: OpcionesDeCuenta = {},
 ): Promise<void> => {
-  await signInWithCustomToken(auth(), await tokenDe(uid, claims, opciones));
+  const credencial = await signInWithCustomToken(auth(), await tokenDe(uid, claims, opciones));
+  if (faltaVerificarProyectoDeAuth()) {
+    verificarProyectoDeAuth(await credencial.user.getIdToken());
+  }
 };

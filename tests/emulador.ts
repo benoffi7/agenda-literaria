@@ -154,6 +154,99 @@ export const cargarReglas = async (
  * tests que usaban un literal (`trampa 7` incluido, que ya estaba en el repo).
  * `tests/emulador-aislado.test.ts` lo frena por grep desde ahora.
  */
+/**
+ * ¿El emulador de Auth sirve el proyecto contra el que creemos estar corriendo?
+ *
+ * **D-730, B-1112.** Ésta es la única de los tres bordes que se puede detectar, y
+ * hubo que medirla para saber cómo: el emulador de Auth es de **un solo proyecto**
+ * —el de su `--project` de arranque— y no lo dice por ninguna vía consultable.
+ *
+ * Lo que **no** sirve, medido el 2026-09-17 contra un emulador efímero para que
+ * nadie lo vuelva a intentar:
+ *
+ *  - **`/emulator/v1/projects/{p}/config` responde `200` para cualquier proyecto**,
+ *    propio o ajeno, con el body idéntico. Por eso `emuladorAuthVivo()` no puede
+ *    afinarse a `status === 200` y quedar de detector: daría verde con aire de red.
+ *  - **`"singleProjectMode": false` tampoco particiona.** Está puesto en
+ *    `firebase.json` y solo controla el aviso por stderr; con el flag en los dos
+ *    estados el `aud` del ID token es el del emulador y el claim llega `undefined`.
+ *    El emulador de Auth sirve un proyecto y punto.
+ *
+ * Lo que sí sirve es el `aud` del ID token después del primer login: lo emite el
+ * emulador, así que dice **su** proyecto y no el que pedimos. Si no coinciden, el
+ * Admin SDK escribió el claim en un namespace de Auth y el cliente entró en otro —
+ * el uid con claims no existe del lado donde el cliente entra y `esAdmin()` da
+ * `false`.
+ *
+ * **Por qué vale la pena:** sin esto el síntoma es un `PERMISSION_DENIED` sobre un
+ * documento perfectamente válido, y encima **asimétrico** — un uid que ya existe en
+ * el store del emulador pasa, y uno nuevo no, con el mismo código. Eso ya costó
+ * cerrar B-1021 y B-1030 con la causa equivocada.
+ *
+ * Corre **una sola vez** por proceso (no por archivo) y **no se saltea**: si se
+ * llegó hasta acá el emulador está vivo, así que un `aud` que no coincide es rojo.
+ */
+let proyectoDeAuthVerificado = false;
+
+/**
+ * El payload de un JWT, sin verificar la firma: es un token del emulador.
+ *
+ * Degrada a `{}` con cualquier entrada rara, y eso es deliberado: el `aud` sale
+ * `undefined` y `desajusteDeProyecto` contesta `null`. **El modo de falla seguro
+ * de este chequeo es no disparar** — corre en el login de todos los tests de
+ * integración, así que un falso positivo acá se parecería demasiado al bug que
+ * viene a nombrar.
+ */
+export const cargaDelToken = (jwt: string): Record<string, unknown> => {
+  const payload = jwt.split('.')[1];
+  if (!payload) return {};
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
+/** ¿Hace falta verificar, o ya se hizo en este proceso? */
+export const faltaVerificarProyectoDeAuth = (): boolean => !proyectoDeAuthVerificado;
+
+/**
+ * El proyecto que sirve el emulador, si **no** es contra el que corremos; `null`
+ * si coinciden o si el token no dice nada.
+ *
+ * Es la mitad que decide, y es pura para que tenga test: la que no se puede
+ * testear sin un emulador mal levantado es la que la llama.
+ */
+export const desajusteDeProyecto = (idToken: string, nuestro: string): string | null => {
+  const aud = cargaDelToken(idToken).aud;
+  return typeof aud === 'string' && aud !== nuestro ? aud : null;
+};
+
+/**
+ * Falla nombrando los dos proyectos si el emulador de Auth no es el nuestro.
+ *
+ * Se le pasa el ID token del primer login. Idempotente: la segunda llamada no
+ * hace nada.
+ */
+export const verificarProyectoDeAuth = (idToken: string): void => {
+  if (proyectoDeAuthVerificado) return;
+  proyectoDeAuthVerificado = true;
+
+  const aud = desajusteDeProyecto(idToken, PROJECT_ID);
+  if (aud === null) return;
+
+  throw new Error(
+    `El emulador de Auth sirve el proyecto "${aud}" y este checkout corre contra ` +
+      `"${PROJECT_ID}" (D-730, B-1112).\n` +
+      'El Admin SDK escribe los claims en un namespace de Auth y el cliente entra ' +
+      'en otro, así que `esAdmin()` va a dar `false` sobre documentos válidos — y ' +
+      'de forma asimétrica: un uid que ya exista en el emulador va a pasar igual.\n' +
+      'El emulador de Auth es de un solo proyecto: el de su `--project` de arranque. ' +
+      'Levantalo desde este checkout, o corré con ' +
+      `PUBLIC_FIREBASE_PROJECT_ID="${aud}".`,
+  );
+};
+
 export const proyectoAparte = (sufijo: string): string => `${PROJECT_ID}-${sufijo}`;
 
 /**
