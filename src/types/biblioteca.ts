@@ -180,8 +180,6 @@ export const MIN_MAIL_BIBLIOTECA = 3;
  * 120 caracteres: entra «$3.000 por año, gratis para jubilados» con margen.
  */
 export const TOPE_COSTO_DE_ASOCIARSE_BIBLIOTECA = 120;
-/** «No vacío», para los campos sin patrón propio. Ver el homónimo de librerías. */
-export const MIN_NO_VACIO_BIBLIOTECA = 1;
 /** El `searchText` normalizado (§6). Lo deriva el armado; ningún humano lo escribe. */
 export const TOPE_SEARCH_TEXT_BIBLIOTECA = 2000;
 /**

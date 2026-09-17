@@ -45,6 +45,7 @@ import {
   TOPE_DIRECCION_BIBLIOTECA,
   TOPE_HORARIO_DE_SALA_BIBLIOTECA,
   TOPE_HORARIOS_BIBLIOTECA,
+  TOPE_INSTAGRAM_BIBLIOTECA,
   TOPE_MAIL_BIBLIOTECA,
   TOPE_NOMBRE_BIBLIOTECA,
   TOPE_PROVINCIA_BIBLIOTECA,
@@ -75,8 +76,17 @@ export const RE_BARRIO = RE_SLUG;
 export const RE_TIPO = RE_SLUG;
 /** El WhatsApp se guarda **solo con dígitos**: de él sale un `wa.me/<digitos>`. */
 export const RE_WHATSAPP = `^[0-9]{${MIN_WHATSAPP_BIBLIOTECA},${TOPE_WHATSAPP_BIBLIOTECA}}$`;
-/** El alfabeto real de un handle de Instagram, el de `handleInstagram`. */
-export const RE_INSTAGRAM = '^[A-Za-z0-9._]{1,30}$';
+/**
+ * El alfabeto real de un handle de Instagram, el de `handleInstagram`.
+ *
+ * **El 30 sale de la constante y no está tipeado adentro del patrón**, que es la
+ * única diferencia con el `RE_INSTAGRAM` de librerías: allá el número está
+ * escrito a mano acá y en `types/libreria.ts`, y `TOPE_INSTAGRAM_LIBRERIA`
+ * quedó sin ningún lector — o sea una constante que se puede cambiar sin que
+ * cambie nada, que es la misma clase de letra muerta que este repo persigue en
+ * las cláusulas de las reglas.
+ */
+export const RE_INSTAGRAM = `^[A-Za-z0-9._]{1,${TOPE_INSTAGRAM_BIBLIOTECA}}$`;
 
 /** `+54 9 11 2222-3333` → `5491122223333`. Lo que se publica es esto. */
 export const soloDigitos = (valor: string): string => valor.replace(/\D/g, '');
