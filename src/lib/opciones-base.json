@@ -854,5 +854,71 @@
       "usos": 0,
       "aprobada": true
     }
+  ],
+  "tipo-biblioteca": [
+    {
+      "slug": "popular",
+      "label": "Popular",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "municipal",
+      "label": "Municipal",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "provincial",
+      "label": "Provincial",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "nacional",
+      "label": "Nacional",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "universitaria",
+      "label": "Universitaria",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "especializada",
+      "label": "Especializada",
+      "orden": 6,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "comunitaria",
+      "label": "Comunitaria",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "escolar",
+      "label": "Escolar",
+      "orden": 8,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
   ]
 }

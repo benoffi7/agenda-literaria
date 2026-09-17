@@ -239,6 +239,7 @@ export const RUTA_GUIA = rutaCanonica(PREFIJO_GUIA);
 export const PREFIJO_LIBRERIAS = `${PREFIJO_GUIA}/librerias`;
 export const PREFIJO_SUSCRIPCIONES = `${PREFIJO_GUIA}/suscripciones`;
 export const PREFIJO_LUGARES = `${PREFIJO_GUIA}/lugares`;
+export const PREFIJO_BIBLIOTECAS = `${PREFIJO_GUIA}/bibliotecas`;
 
 /** `/guia/librerias/` — el directorio de librerías (B-831). */
 export const RUTA_LIBRERIAS = rutaCanonica(PREFIJO_LIBRERIAS);
@@ -246,6 +247,15 @@ export const RUTA_LIBRERIAS = rutaCanonica(PREFIJO_LIBRERIAS);
 export const RUTA_SUSCRIPCIONES = rutaCanonica(PREFIJO_SUSCRIPCIONES);
 /** `/guia/lugares/` — el directorio de lugares para hacer eventos (B-833). */
 export const RUTA_LUGARES = rutaCanonica(PREFIJO_LUGARES);
+/**
+ * `/guia/bibliotecas/` — el directorio de bibliotecas (**B-960**), el cuarto.
+ *
+ * Dónde sacar libros, no dónde comprarlos: convive con `/guia/librerias` y con
+ * `/guia/lugares` sin superponerse, y la institución que además presta su sala
+ * tiene **dos** fichas (la decisión del dueño del 2026-09-17, en el docblock de
+ * `types/biblioteca.ts`).
+ */
+export const RUTA_BIBLIOTECAS = rutaCanonica(PREFIJO_BIBLIOTECAS);
 
 /**
  * **Los tres formularios públicos de la Guía** — `/guia/<x>/sumar`.
@@ -266,6 +276,7 @@ export const RUTA_LUGARES = rutaCanonica(PREFIJO_LUGARES);
 export const RUTA_SUMAR_LIBRERIA = rutaCanonica(`${PREFIJO_LIBRERIAS}/sumar`);
 export const RUTA_SUMAR_SUSCRIPCION = rutaCanonica(`${PREFIJO_SUSCRIPCIONES}/sumar`);
 export const RUTA_SUMAR_LUGAR = rutaCanonica(`${PREFIJO_LUGARES}/sumar`);
+export const RUTA_SUMAR_BIBLIOTECA = rutaCanonica(`${PREFIJO_BIBLIOTECAS}/sumar`);
 
 /**
  * **¿Este texto puede ser el segmento de la URL de una ficha?**
@@ -319,6 +330,8 @@ export const rutaDeLibreria = (slug: string): string =>
 export const rutaDeSuscripcion = (slug: string): string =>
   rutaCanonica(`${PREFIJO_SUSCRIPCIONES}/${slug}`);
 export const rutaDeLugar = (slug: string): string => rutaCanonica(`${PREFIJO_LUGARES}/${slug}`);
+export const rutaDeBiblioteca = (slug: string): string =>
+  rutaCanonica(`${PREFIJO_BIBLIOTECAS}/${slug}`);
 
 /**
  * `/apoyar/` — la página de aportes, B-780.
