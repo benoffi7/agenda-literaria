@@ -7,13 +7,10 @@
  * `createCustomToken`, `deleteApp`— y las diferencias entre las copias eran
  * **el problema**: casi todas accidentales (el nombre del helper, el prefijo de
  * la app, `esAdmin: boolean` contra un objeto de claims, devolver el token
- * contra loguearse adentro), y dos de verdad deliberadas, que quedan acá como
- * **opciones con nombre** en vez de como un cuerpo distinto que hay que leer
- * entero para notar en qué se parte:
- *
- *  - `claimsEnElToken` — la vía **infiel** a producción (B-895, **B-1030**);
- *  - `email` / `emailVerificado` — el correo va en el **registro de la cuenta**
- *    y nunca en los claims (B-888).
+ * contra loguearse adentro), y una sola de verdad deliberada, que queda acá
+ * como **opción con nombre** en vez de como un cuerpo distinto que hay que leer
+ * entero para notar en qué se parte: `email` / `emailVerificado`, porque el
+ * correo va en el **registro de la cuenta** y nunca en los claims (B-888).
  *
  * El costo de la copia no era el tipeo. Era que una copia podía diferir en algo
  * que importa sin que nadie lo viera: B-895 unificó diez archivos hacia la vía
@@ -21,6 +18,18 @@
  * pasaba los claims por las dos vías a la vez y por eso no se habría caído
  * aunque la vía fiel dejara de funcionar. Nadie lo notó hasta que se contaron
  * las catorce copias una al lado de la otra.
+ *
+ * **Una sola vía para los claims: `setCustomUserClaims`, la de producción.** Es
+ * lo que hace `npm run admin:claim` (`scripts/set-admin-claim.mjs`) y es como le
+ * llega el claim al panel. Este helper **no ofrece** embeberlos dentro del
+ * custom token, y la ausencia es la decisión: mientras B-894 estuvo vivo esa
+ * segunda vía **tapaba** el desajuste (B-895), y el único archivo que parecía
+ * necesitarla —`storage-reglas.integracion.test.ts`— resultó estar midiendo el
+ * worktree y no a Storage (**B-1030**, cerrado el 2026-09-17: la misma mutación
+ * en el árbol principal da 19/19). Si un test tuyo solo pasa con los claims
+ * adentro del token, lo que encontraste es otra cara de **B-1021** —un emulador
+ * medido desde un directorio que no es el que lo levantó— y lo que corresponde
+ * es anotarlo, no volver a agregar la vía.
  *
  * `tests/credenciales-del-emulador.test.ts` barre `tests/` para que la copia
  * quince no vuelva a nacer.
@@ -60,29 +69,6 @@ export interface OpcionesDeCuenta {
    */
   emailVerificado?: boolean;
   /**
-   * Embeber los claims **dentro** del custom token, además del registro — la
-   * vía **infiel** a producción, y por eso hay que pedirla a mano.
-   *
-   * Producción pone los claims con `setCustomUserClaims` y nada más
-   * (`npm run admin:claim`, `scripts/set-admin-claim.mjs`), y el panel lee el
-   * claim del token de sesión que sale de ahí. Un custom token con claims
-   * embebidos toma un atajo que producción no tiene, y mientras B-894 estuvo
-   * vivo ese atajo **tapaba** el desajuste: los tests pasaban por la vía que
-   * nunca se usa (B-895).
-   *
-   * Existe igual porque hoy **sostiene un hallazgo**:
-   * `tests/storage-reglas.integracion.test.ts` es el único archivo que la
-   * necesita, y seis de sus diecinueve casos se ponen rojos al sacarla. Eso es
-   * **B-1030** —`storage.rules` no ve el claim cuando llega por el registro y
-   * `firestore.rules` sí—, todavía sin decidir si es del emulador o de
-   * producción. Unificar ese archivo a la vía fiel taparía el ítem, así que la
-   * opción se llama por su nombre y se pide explícita.
-   *
-   * **No la uses en un archivo nuevo.** Si un test tuyo solo pasa con esto,
-   * encontraste otra cara de B-1030 y lo que corresponde es anotarlo.
-   */
-  claimsEnElToken?: boolean;
-  /**
    * Prefijo del nombre de la app admin efímera. Solo sirve para leer una traza:
    * el nombre termina siendo único de todos modos.
    */
@@ -104,7 +90,7 @@ export const tokenDe = async (
   claims: Claims = {},
   opciones: OpcionesDeCuenta = {},
 ): Promise<string> => {
-  const { email, emailVerificado, claimsEnElToken = false, etiqueta = 'cred' } = opciones;
+  const { email, emailVerificado, etiqueta = 'cred' } = opciones;
 
   const app = initAdmin(
     { projectId: PROJECT_ID },
@@ -124,11 +110,12 @@ export const tokenDe = async (
     if (!existe) await a.createUser({ uid, ...datos });
     else if (Object.keys(datos).length > 0) await a.updateUser(uid, datos);
 
-    // La vía de producción, siempre. `claimsEnElToken` **agrega** la otra, no la
-    // reemplaza: así el archivo que la pide registra el claim igual que el resto
-    // y lo único que cambia es que además viaja adentro del token.
+    // Los claims se **escriben siempre**, también cuando `claims` viene vacío:
+    // el emulador de Auth no se limpia entre archivos, así que «esta cuenta no
+    // tiene claims» tiene que ser una afirmación y no una suposición sobre lo
+    // que dejó la corrida anterior.
     await a.setCustomUserClaims(uid, claims);
-    return await a.createCustomToken(uid, claimsEnElToken ? claims : undefined);
+    return await a.createCustomToken(uid);
   } finally {
     await deleteAdminApp(app);
   }

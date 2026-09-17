@@ -38,39 +38,48 @@ const UID = 'uid_test_storage';
 const BUCKET = 'agenda-literaria.firebasestorage.app';
 
 /**
- * **El único archivo del repo que pide `claimsEnElToken`, y no es un descuido:
- * es lo que sostiene B-1030.**
- *
- * Los demás tests de integración entran por la vía de producción —el claim se
- * registra con `setCustomUserClaims` y nada viaja adentro del custom token
- * (B-895)—. Acá seis de los diecinueve casos se ponen rojos con esa vía:
- * `storage.rules` no ve `request.auth.token.admin` cuando el claim llega por el
- * registro, y `firestore.rules`, contra el mismo emulador y el mismo login, sí.
- *
- * Unificar este archivo taparía el hallazgo, así que **se queda con la vía
- * infiel a propósito** y la pide por su nombre. La repro de B-1030 es cambiar
- * este `claimsEnElToken: true` por `false` y correr el archivo.
- *
- * `esAdmin: boolean` y no un objeto de claims, también **a propósito**: este
- * archivo prueba `storage.rules`, donde el único rol que existe es `admin`. El
+ * `esAdmin: boolean` y no un objeto de claims, **a propósito**: este archivo
+ * prueba `storage.rules`, donde el único rol que existe es `admin`. El
  * `publicador` de B-888 tiene su propio helper abajo, separado, para que la
  * diferencia se vea en el nombre y no haya que leer el argumento.
+ *
+ * ── Por qué el claim viaja por el registro y no dentro del token ──────────
+ * `setCustomUserClaims` es la vía de **producción**: es lo que hace
+ * `npm run admin:claim` y es como le llega el claim al panel. B-895 unificó
+ * hacia ella los diez archivos de integración y **este quedó afuera**, porque
+ * migrarlo ponía **6 de 19** en rojo. De ese rojo salió **B-1030**, que
+ * afirmaba que `storage.rules` no ve el claim cuando llega por el registro
+ * mientras `firestore.rules` sí.
+ *
+ * **La medición era del worktree, no de Storage.** Rehecha la misma mutación
+ * en el árbol principal, con el mismo emulador, pasan **19/19** (2026-09-17,
+ * dos corridas). Con eso B-1030 se cierra sin cambiar una línea de
+ * `storage.rules`, y el archivo deja de ser el único con la vía infiel. Es la
+ * misma clase que **B-1021** y la segunda vuelta de **B-894**: un emulador
+ * medido desde un directorio que no es el que lo levantó no mide lo que
+ * parece.
+ *
+ * Con el helper compartido (B-1060) el `esAdmin: false` **limpia** los claims
+ * de la cuenta en vez de dejar los que tuviera: el emulador de Auth no se
+ * borra entre archivos, así que «sin claim» tiene que ser una afirmación y no
+ * una suposición sobre lo que quedó de la corrida anterior.
  */
 const tokenPara = (uid: string, esAdmin: boolean) =>
-  tokenDe(uid, esAdmin ? { admin: true } : {}, { claimsEnElToken: true, etiqueta: 's' });
+  tokenDe(uid, esAdmin ? { admin: true } : {}, { etiqueta: 's' });
 
 /** Un token con el claim `publicador` de B-888, y **sin** `admin`. */
 const tokenPublicador = (uid: string) =>
-  tokenDe(uid, { publicador: true }, { claimsEnElToken: true, etiqueta: 'sp' });
+  tokenDe(uid, { publicador: true }, { etiqueta: 'sp' });
 
 let _almacen: ReturnType<typeof getStorage> | null = null;
 const almacen = () => {
   if (_almacen) return _almacen;
   _almacen = getStorage(app(), `gs://${BUCKET}`);
   // El host sale de `HOST_STORAGE` y no de un `'127.0.0.1', 9199` escrito acá:
-  // era la única copia del puerto dentro de `tests/`, y apuntaba al emulador
-  // por su cuenta. Con `FIREBASE_STORAGE_EMULATOR_HOST` apuntando a otro lado
-  // —el caso de B-344— este archivo se habría quedado hablándole al de siempre.
+  // era la única copia de un puerto de emulador dentro de `tests/`, y apuntaba
+  // al emulador por su cuenta. Con `FIREBASE_STORAGE_EMULATOR_HOST` apuntando a
+  // otro lado —el caso de B-344— este archivo se habría quedado hablándole al
+  // de siempre.
   const [host, puerto] = HOST_STORAGE.split(':');
   connectStorageEmulator(_almacen, host, Number(puerto));
   return _almacen;
