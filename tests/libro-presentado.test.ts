@@ -6,6 +6,7 @@ import { camposCambiados, huboCambioDeContenido } from '../functions/historial.j
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { esCharla, muestraLibro } from '@/lib/formulario/condicionales';
 import { formVacio, libroVacio } from '@/lib/formulario/estadoInicial';
+import { formGuardable } from './fixtures/formulario';
 import { CAMPOS, etiquetaDeCampo, seccionDeCampo } from '@/lib/formulario/camposFaltantes';
 import { buildSearchText } from '@/lib/normalize';
 import { actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
@@ -82,7 +83,7 @@ const presentacion = (over: Partial<Actividad> = {}): Actividad =>
   }) as Actividad;
 
 const conLibro = (over: Partial<ActividadForm> = {}): ActividadForm => ({
-  ...formVacio(),
+  ...formGuardable(),
   tipo: 'presentacion' as ActividadForm['tipo'],
   titulo: 'Presentación de Los detectives salvajes',
   slug: 'presentacion-detectives',

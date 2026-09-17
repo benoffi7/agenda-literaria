@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { formularioLleno } from './fixtures/formulario';
+import { actividadFormSchema } from '@/lib/schema';
 import { FUNCIONES } from '@/lib/analytics-eventos';
 import {
   aDatetimeLocal,
@@ -398,5 +400,59 @@ describe('generarSesiones con comisiones (B-181)', () => {
         ['ses_b', 'Segundo'],
       ]);
     });
+  });
+});
+
+/**
+ * **B-957 — un encuentro nuevo no viene con la fecha de ahora.**
+ *
+ * Pedido del dueño: «inicio y fin no estén precargados». `sesionVacia` hacía
+ * `inicio ?? new Date()`, o sea que agregar una fila escribía **la fecha y la
+ * hora en que se apretó el botón**, que nunca es la del encuentro.
+ *
+ * Lo que parece una ayuda es una corrección obligatoria, y es peor que un campo
+ * vacío por una razón concreta: **un valor puesto se puede guardar sin darse
+ * cuenta**, y uno vacío no pasa el schema.
+ */
+describe('B-957 · sesionVacia no inventa una fecha', () => {
+  it('sin `inicio`, las dos fechas nacen vacías', () => {
+    const s = sesionVacia();
+    expect(s.inicio).toBe('');
+    expect(s.fin).toBe('');
+  });
+
+  /**
+   * **Con `inicio` sigue precargando, y eso es lo que NO había que romper.**
+   * `duplicarSesion` y `generarSesiones` existen para ahorrar tipeo sobre una
+   * fecha que alguien ya eligió; la diferencia con el caso de arriba no es el
+   * ahorro sino de dónde sale la fecha.
+   */
+  it('con `inicio`, precarga las dos como siempre', () => {
+    const s = sesionVacia(new Date('2026-10-01T19:00:00'), 90 * 60_000);
+    expect(s.inicio).toBe('2026-10-01T19:00');
+    expect(s.fin).toBe('2026-10-01T20:30');
+  });
+
+  /** Lo demás de la fila no cambia según haya fecha o no. */
+  it('el resto de la fila es igual en los dos casos', () => {
+    const vacia = sesionVacia(undefined, undefined, 'com_1');
+    expect(vacia.comisionId).toBe('com_1');
+    expect(vacia.cancelada).toBe(false);
+    expect(vacia.calendarEventId).toBeNull();
+    expect(vacia.tema).toBe('');
+    expect(vacia.id).toMatch(/^ses_/);
+  });
+
+  /**
+   * Y el schema **sí** la rechaza al guardar, que es lo que hace que el vacío sea
+   * más seguro que el valor inventado. Sin este caso, «nace vacía» podría
+   * significar «se guarda vacía», que sería peor que el bug original.
+   */
+  it('una fila sin fecha no pasa el schema', () => {
+    const r = actividadFormSchema.safeParse(formularioLleno({ sesiones: [sesionVacia()] }));
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.join('.') === 'sesiones.0.inicio')).toBe(true);
+    }
   });
 });

@@ -24,6 +24,7 @@ import { esSoloLectura } from '@/lib/formulario/autoria';
 import { formADocumento, documentoAForm } from '@/lib/actividades';
 import { payloadDeRestauracion } from '@/lib/historial';
 import { formVacio, modalidadVacia } from '@/lib/formulario/estadoInicial';
+import { formGuardable } from './fixtures/formulario';
 import type { ActividadForm, Sede } from '@/types/actividad';
 
 const sede = (over: Partial<Sede> = {}): Sede => ({
@@ -45,7 +46,7 @@ const fila = (over: Partial<ActividadForm['modalidades'][number]> = {}) => ({
 });
 
 const formConFilas = (filas: ActividadForm['modalidades']): ActividadForm => ({
-  ...formVacio(),
+  ...formGuardable(),
   titulo: 'Club de lectura del puerto',
   slug: 'club-del-puerto',
   descripcion: 'Ocho encuentros sobre narrativa argentina.',

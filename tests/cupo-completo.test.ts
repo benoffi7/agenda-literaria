@@ -5,6 +5,7 @@ import { construirDescripcion, construirEvento } from '@calendario';
 import { camposCambiados, huboCambioDeContenido } from '../functions/historial.js';
 import { documentoAForm, formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import { formVacio } from '@/lib/formulario/estadoInicial';
+import { formGuardable } from './fixtures/formulario';
 import { formularioLleno } from './fixtures/formulario';
 import { CAMPOS, etiquetaDeCampo, seccionDeCampo } from '@/lib/formulario/camposFaltantes';
 import { CAMPOS_VALIDABLES, FUNCIONES } from '@/lib/analytics-eventos';
@@ -101,7 +102,7 @@ const lleno = (over: Partial<Actividad> = {}): Actividad =>
   });
 
 const formLleno = (over: Partial<ActividadForm> = {}): ActividadForm => ({
-  ...formVacio(),
+  ...formGuardable(),
   titulo: 'Taller de crónica',
   slug: 'taller-de-cronica',
   inscripcion: { ...formVacio().inscripcion, requiere: true, via: 'mail', destino: 'hola@brandon.example', cupo: 12, completo: true },

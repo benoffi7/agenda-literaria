@@ -2,6 +2,15 @@
 
 ## Sin publicar
 
+- **Un encuentro nuevo ya no viene con la fecha de hoy** — **B-957**, pedido del
+  dueño: «inicio y fin no estén precargados». Agregar una fila escribía la fecha y
+  la hora en que se apretó el botón, que nunca es la del encuentro. Lo que parece
+  una ayuda es una corrección obligatoria, y es **peor que un campo vacío**: un
+  valor puesto se puede guardar sin darse cuenta, y uno vacío no pasa el schema.
+
+  Duplicar y «generar N encuentros semanales» siguen precargando, y el `+7 días`
+  sobre una fila existente también: ahí la fecha sale de una que alguien eligió.
+
 - **Pegar el link de Instagram ahora funciona** — **B-928**, pedido del dueño. El
   botón «Compartir» de Instagram pega `…/casabrandon/?igsh=MWx…` y ese era
   justamente el caso que fallaba: el handle salía `null`, el link no se armaba y

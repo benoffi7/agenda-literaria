@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'encuentros-sin-fecha-precargada',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'Los encuentros nuevos ya no vienen con la fecha de hoy',
+    detalle:
+      'Antes, cada encuentro que agregabas nacía con la fecha y la hora en que ' +
+      'apretabas el botón, y había que borrarlas. Ahora nace vacío. Duplicar un ' +
+      'encuentro y generar varios de una siguen proponiendo la fecha, porque ahí ' +
+      'salen de una que vos elegiste.',
+    donde: 'En Encuentros, al agregar uno nuevo.',
+  },
+  {
     id: 'sede-ahora-es-lugar',
     fecha: '2026-09-16',
     version: '1.11.0',

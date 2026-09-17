@@ -281,7 +281,13 @@ export function SesionesEditor({
         // Arranca una semana después de la última, que es el caso más común.
         const ultima = filas[filas.length - 1];
         const base = ultima ? deDatetimeLocal(ultima.inicio) : null;
-        const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : new Date();
+        /*
+         * B-957 — **sin fila previa no se inventa una fecha**. Antes caía en
+         * `new Date()` y la fila nacía con la hora en que se apretó el botón. El
+         * `+7 días` se queda: ahí se deriva de una fecha que alguien eligió, que
+         * es la diferencia que el ítem marca entre ayudar e imponer.
+         */
+        const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : undefined;
         /*
          * B-181 — hereda la opción de la última fila, y si no hay filas, la
          * primera opción. Es la respuesta correcta en los dos casos que

@@ -14,6 +14,7 @@ import { formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { slugRestaurable } from '@/lib/historial';
 import { formVacio } from '@/lib/formulario/estadoInicial';
+import { formGuardable } from './fixtures/formulario';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';
 import { ts } from './fixtures/tiempo';
@@ -152,7 +153,7 @@ describe('la otra mitad de la guarda anti-loop: es campo de máquina (D-41, D-07
 });
 
 describe('un solo dueño por campo: el panel no lo escribe (clase de B-80)', () => {
-  const form = { ...formVacio(), titulo: 'Taller', slug: 'taller' };
+  const form = { ...formGuardable(), titulo: 'Taller', slug: 'taller' };
 
   it('formADocumento no lo emite', () => {
     // Es lo que hace que `updateDoc` no pueda apagarlo por omisión: la clave no

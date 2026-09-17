@@ -7683,7 +7683,30 @@ Dos cosas del código que ya empujan para este lado:
   esa línea deja de ser obviamente correcta. Hay que decidirlo de nuevo, no
   dejarlo como está sin mirar.
 
-### B-957 · Cada encuentro nuevo viene con la fecha y la hora de ahora, y hay que borrarlas · P2 — pedido del dueño (2026-09-15)
+### B-957 · Cada encuentro nuevo viene con la fecha y la hora de ahora — ✅ hecho (2026-09-17) · P2
+
+> **`sesionVacia()` sin `inicio` nace con las dos fechas en blanco.** Y el otro
+> lado del mismo cambio: `SesionesEditor` ya no pasa `new Date()` cuando **no hay
+> fila previa** — el `+7 días` sobre una fila existente se queda, porque ahí se
+> deriva de una fecha que alguien eligió. `duplicarSesion` y `generarSesiones`
+> intactos, como el ítem pedía.
+>
+> **Lo que el cambio dejó en rojo, y por qué no era un bug:** 45 casos en siete
+> archivos hacían `...formVacio()` y se lo pasaban a `formADocumento`, que tira
+> `Fecha inválida: ""`. Se verificó el camino real antes de tocar los fixtures:
+> `guardarActividad` valida con `safeParse` **antes** —el schema contesta «Falta
+> la fecha de inicio»— y el autoguardado persiste el **estado del formulario**, no
+> el documento. O sea que en el panel nadie llega a convertir una fecha vacía.
+>
+> Los fixtures ganaron `formGuardable()` (`tests/fixtures/formulario.ts`), con
+> fecha fija y no `new Date()` porque un test no puede depender de qué día es hoy
+> (B-875). `formDeCiclo` pasó a usarlo de base: un formulario que no se puede
+> guardar no es «el `ActividadForm` como lo escribe el panel», que es lo que ese
+> fixture promete.
+>
+> El caso que cierra el razonamiento está escrito: **una fila sin fecha no pasa el
+> schema**. Sin él, «nace vacía» podría volverse «se guarda vacía», que sería peor
+> que el bug original.
 
 *«Inicio y fin no estén precargados.»*
 

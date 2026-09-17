@@ -1,5 +1,6 @@
-import { formVacio, modalidadVacia } from '@/lib/formulario/estadoInicial';
+import { modalidadVacia } from '@/lib/formulario/estadoInicial';
 import { sesionVacia } from '@/lib/sesiones';
+import { formGuardable } from './formulario';
 import type { ActividadForm } from '@/types/actividad';
 
 /**
@@ -47,7 +48,14 @@ import type { ActividadForm } from '@/types/actividad';
  * ítem.
  */
 export const formDeCiclo = (over: Partial<ActividadForm> = {}): ActividadForm => ({
-  ...formVacio(),
+  /*
+   * B-957 — la base es `formGuardable()` y no `formVacio()`: desde ese ítem la
+   * sesión que nace sin `inicio` tiene las dos fechas en blanco, y un formulario
+   * que no se puede guardar no es «el `ActividadForm` como lo escribe el panel»,
+   * que es lo que este fixture promete. Quien declara sus propias `sesiones`
+   * —los tres archivos que el docblock nombra— la pisa igual.
+   */
+  ...formGuardable(),
   tipo: 'club-lectura',
   titulo: 'Club de lectura latinoamericana',
   slug: 'club-latinoamericana',

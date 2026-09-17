@@ -30,6 +30,7 @@ import { describe, expect, it } from 'vitest';
 import { construirDescripcion } from '@calendario';
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { formVacio } from '@/lib/formulario/estadoInicial';
+import { formGuardable } from './fixtures/formulario';
 import { CAMPOS, etiquetaDeCampo, seccionDeCampo } from '@/lib/formulario/camposFaltantes';
 import { labelsPendientesDe, usosAContar } from '@/lib/formulario/etiquetas';
 import { actividadFormSchema } from '@/lib/schema';
@@ -44,7 +45,7 @@ import { ts } from './fixtures/tiempo';
 const DOS = ['merienda', 'material-de-lectura'];
 
 const conIncluye = (over: Partial<ActividadForm> = {}): ActividadForm => ({
-  ...formVacio(),
+  ...formGuardable(),
   titulo: 'Taller de crónica',
   slug: 'taller-de-cronica',
   descripcion: 'Cuatro encuentros para escribir crónica urbana, con lecturas.',

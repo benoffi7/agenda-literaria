@@ -46,7 +46,34 @@ export const sesionVacia = (
    */
   comisionId: string | null = null,
 ): SesionForm => {
-  const desde = inicio ?? new Date();
+  /**
+   * **Sin `inicio` las dos fechas nacen VACÍAS** — B-957, pedido del dueño:
+   * «inicio y fin no estén precargados».
+   *
+   * Antes era `inicio ?? new Date()`, o sea que agregar una fila escribía **la
+   * fecha y la hora en que se apretó el botón**, que nunca es la del encuentro.
+   * Lo que parece una ayuda es una corrección obligatoria, y es peor que un campo
+   * vacío por una razón concreta: **un valor puesto se puede guardar sin darse
+   * cuenta**, y uno vacío no pasa el schema («Falta la fecha de inicio»).
+   *
+   * **Con `inicio` sigue precargando, y eso no se toca**: `duplicarSesion` (una
+   * semana después) y `generarSesiones` (el botón de N encuentros semanales)
+   * existen para ahorrar tipeo sobre una fecha que alguien **ya eligió**. La
+   * diferencia es esa y no el ahorro: acá se inventaba una que nadie eligió.
+   */
+  if (!inicio) {
+    return {
+      id: nuevaSesionId(),
+      inicio: '',
+      fin: '',
+      tema: '',
+      lectura: '',
+      cancelada: false,
+      calendarEventId: null,
+      comisionId,
+    };
+  }
+  const desde = inicio;
   return {
     id: nuevaSesionId(),
     inicio: aDatetimeLocal(desde),

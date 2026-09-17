@@ -1,3 +1,5 @@
+import { formVacio } from '@/lib/formulario/estadoInicial';
+import { sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
 
 /**
@@ -168,5 +170,27 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
   // no hay nada que alguien tipee acá — la etiqueta vive en `/opciones/*`.
   incluye: ['merienda', 'material-de-lectura'],
   destacado: false,
+  ...over,
+});
+
+/**
+ * `formVacio()` **con una sesión fechada** — B-957.
+ *
+ * Desde B-957 `sesionVacia()` sin `inicio` nace con las dos fechas en blanco:
+ * agregar una fila escribía la hora en que se apretó el botón, y un valor puesto
+ * se guarda sin darse cuenta mientras que un vacío no pasa el schema.
+ *
+ * Eso dejó en rojo los fixtures que hacían `...formVacio()` y se lo pasaban a
+ * `formADocumento`, que convierte las fechas y tira `Fecha inválida: ""`. **No es
+ * un bug**: en el panel `guardarActividad` valida con `safeParse` antes, y el
+ * schema contesta «Falta la fecha de inicio» sin llegar a convertir nada. Lo que
+ * esos fixtures necesitan es un formulario **guardable**, que es lo que esto es.
+ *
+ * La fecha es fija y no `new Date()`, por la razón de siempre en este repo: un
+ * test no puede depender de qué día es hoy (es lo que B-875 dejó escrito).
+ */
+export const formGuardable = (over: Partial<ActividadForm> = {}): ActividadForm => ({
+  ...formVacio(),
+  sesiones: [sesionVacia(new Date('2026-10-01T19:00:00'))],
   ...over,
 });

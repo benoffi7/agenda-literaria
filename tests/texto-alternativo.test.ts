@@ -4,6 +4,7 @@ import { camposCambiados, huboCambioDeContenido } from '../functions/historial.j
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { formVacio } from '@/lib/formulario/estadoInicial';
+import { formGuardable } from './fixtures/formulario';
 import { CAMPOS } from '@/lib/formulario/camposFaltantes';
 import { CAMPOS_VALIDABLES } from '@/lib/analytics-eventos';
 import { imagenExterna, imagenesDe } from '@/lib/imagenes';
@@ -89,7 +90,7 @@ const actividad = (imagenes: Imagen[], over: Partial<Actividad> = {}): Actividad
   }) as Actividad;
 
 const conImagen = (over: Partial<Imagen> = {}): ActividadForm => ({
-  ...formVacio(),
+  ...formGuardable(),
   titulo: 'Taller de crónica urbana',
   slug: 'taller-cronica',
   imagenes: [imagen(over)],
@@ -189,7 +190,7 @@ describe('la ida y vuelta formulario y documento no pierde el alternativo', () =
 
 describe('el resto del recorrido del skill campo-nuevo', () => {
   it('la copia hereda el alternativo: es la misma imagen', () => {
-    const origen = { ...formVacio(), titulo: 'Club', slug: 'club', imagenes: [imagen()] };
+    const origen = { ...formGuardable(), titulo: 'Club', slug: 'club', imagenes: [imagen()] };
     const copia = duplicarActividadForm(origen, { tomados: [] });
     // Se hereda por el mismo motivo que el epígrafe y el libro: duplicar es la
     // misma actividad en otra fecha, y describir de nuevo la misma foto sería
