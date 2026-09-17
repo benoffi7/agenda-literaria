@@ -33,6 +33,7 @@ import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import {
   ESTADOS_DIRECTORIO,
   ESTADO_INICIAL,
+  ESTADO_PUBLICO,
   TRANSICIONES,
 } from '@/lib/directorios';
 import {
@@ -520,5 +521,67 @@ describe('el armado del documento', () => {
     expect(d.searchText).toContain('popular');
     // Y normalizado: «Crónica» matchea «cronica».
     expect(doc({ nombre: 'Biblioteca Crónica' }).searchText).toContain('cronica');
+  });
+});
+
+/**
+ * **La lectura del build filtra en la query, no en memoria.**
+ *
+ * Es la misma atadura que B-903 le puso a librerías y que heredaron
+ * suscripciones y lugares. **Bibliotecas nació sin ella**, y lo encontró el
+ * `auditor-privacidad` al integrar B-960: el docblock de
+ * `src/lib/contenidoDelSitio.ts` afirmaba que «`tests/bibliotecas.test.ts` lo
+ * afirma leyendo este archivo» y **acá no había nada que lo afirmara**. Es la
+ * peor forma de faltar: una afirmación sobre un testigo que no existe, que el
+ * próximo que audite va a creer.
+ *
+ * El daño de filtrar después de leer es el mismo de siempre y acá tiene su cara
+ * propia: el documento **entero** —con el `contactoDeQuienCargo` de quien pidió
+ * el alta— pasaría por el proceso de build y quedaría en memoria del runner de
+ * CI, que es exactamente lo que el `.select()` de D-159 evita.
+ */
+describe('la lectura del build no lee lo que no va a publicar', () => {
+  const CONTENIDO = readFileSync(raiz('src/lib/contenidoDelSitio.ts'), 'utf8');
+
+  it('control positivo: el archivo tiene la lectura de bibliotecas', () => {
+    expect(CONTENIDO).toContain('const bibliotecasPublicadas =');
+    expect(CONTENIDO).toContain(".collection('bibliotecas')");
+  });
+
+  it('la query lleva el `where`, y el estado sale de `ESTADO_PUBLICO` del motor', () => {
+    /*
+     * MUTACIÓN PROBADA: reemplazar el `.where(...)` por un `.filter(...)` sobre
+     * el snapshot completo deja este caso en rojo.
+     */
+    const cuerpo = sinComentarios(CONTENIDO);
+    const desde = cuerpo.indexOf('const bibliotecasPublicadas =');
+    const lectura = cuerpo.slice(desde, cuerpo.indexOf('};', desde));
+    expect(lectura, 'la lectura de bibliotecas no filtra en la query').toContain(
+      ".where('estado', '==', ESTADO_PUBLICO_DE_FICHA)",
+    );
+    expect(ESTADO_PUBLICO).toBe('publicado');
+  });
+
+  it('y no baja los campos que no va a publicar — `.select()`, D-159', () => {
+    /*
+     * El `.select()` es lo que hace que el `contactoDeQuienCargo` **no llegue** al
+     * proceso de build: no es que se proyecte afuera después, es que nunca se
+     * pide. La whitelist de `bibliotecaPublica()` es la segunda capa, no la
+     * primera.
+     *
+     * MUTACIÓN PROBADA: sacar el `.select(...)` de la lectura deja este caso en
+     * rojo.
+     */
+    const cuerpo = sinComentarios(CONTENIDO);
+    const desde = cuerpo.indexOf('const bibliotecasPublicadas =');
+    const lectura = cuerpo.slice(desde, cuerpo.indexOf('};', desde));
+    expect(lectura, 'la lectura de bibliotecas baja el documento entero').toContain(
+      '.select(...CAMPOS_DE_LA_PROYECCION_BIBLIOTECA)',
+    );
+    const bloque = /const CAMPOS_DE_LA_PROYECCION_BIBLIOTECA = \[([\s\S]*?)\] as const;/.exec(
+      cuerpo,
+    );
+    expect(bloque, 'no se encontró `CAMPOS_DE_LA_PROYECCION_BIBLIOTECA`').not.toBeNull();
+    expect(bloque![1]).not.toContain('contactoDeQuienCargo');
   });
 });

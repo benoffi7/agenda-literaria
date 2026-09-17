@@ -127,9 +127,10 @@ const COLECCIONES_ABIERTAS: readonly string[] = [
    */
   'propuestas',
   /*
-   * **`/librerias`, `/suscripciones` y `/lugares` — el `create` anónimo, abierto
-   * el 2026-09-15.** Son los tres formularios de `/guia/<x>/sumar`, y entran
-   * juntas porque son la misma puerta con tres vocabularios: el ciclo de vida es
+   * **`/librerias`, `/suscripciones`, `/lugares` y `/bibliotecas` — el `create`
+   * anónimo.** Las tres primeras se abrieron el 2026-09-15 y la cuarta con B-960
+   * el 2026-09-17. Son los cuatro formularios de `/guia/<x>/sumar`, y entran
+   * juntas porque son la misma puerta con cuatro vocabularios: el ciclo de vida es
    * el de `lib/directorios.ts` y las tres reglas tienen las mismas cinco
    * cláusulas (`estado` forzado, `revision` en null, `creadoEn == request.time`,
    * la coherencia de `origen` y la galería vacía).
@@ -150,6 +151,21 @@ const COLECCIONES_ABIERTAS: readonly string[] = [
   'librerias',
   'suscripciones',
   'lugares',
+  /*
+   * **`/bibliotecas` llegó cuarta, y llegó sin pasar por acá** — lo encontró el
+   * `auditor-privacidad` el 2026-09-17, al integrar B-960. La puerta estaba
+   * abierta en `firestore.rules` (`allow create: if bibliotecaValida()`) y el
+   * comentario de esa misma regla afirmaba que `'bibliotecas'` ya estaba en esta
+   * lista. No estaba.
+   *
+   * O sea que **la constante que existe para que abrir una puerta sea un diff
+   * visible se salteó justamente la cuarta puerta**, y nada se puso rojo: una
+   * lista escrita a mano no se queja de lo que le falta. Es la misma forma que
+   * los otros cinco registros que B-960 tuvo que extender uno por uno, y el
+   * argumento de por qué esta lista no puede derivarse de `firestore.rules`
+   * sigue en pie — si se derivara, no sería un testigo de nada.
+   */
+  'bibliotecas',
 ];
 
 const UID_ADMIN = 'uid_anon_admin';
