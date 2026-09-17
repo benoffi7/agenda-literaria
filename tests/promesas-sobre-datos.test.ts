@@ -68,19 +68,71 @@ const sinComentarios = (src: string): string =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 /**
+ * Un `.tsx` reducido a lo que **se lee**: el texto entre `>` y `<` de los
+ * children de JSX, y todo literal de string o template — sin la sintaxis que
+ * los rodea (nombres de etiqueta, `className=`, llaves, identificadores).
+ *
+ * ── Por qué hace falta, y por qué no es una lista de atributos a borrar ────
+ * Un componente no es una página: la misma frase que en un `.astro` es prosa
+ * corrida, en un `.tsx` vive rodeada de JSX — `<p className="body-md mt-4
+ * text-super"> Todavía no guardaste nada. …`. Sin este paso, `className=…`
+ * queda pegado a la frase real y la ventana de contexto de abajo mira código,
+ * no lo que alguien lee (B-925).
+ *
+ * **No se descartan los valores de los atributos, solo el envoltorio.** Un
+ * `ayuda="Lo usamos solo para escribirte si falta un dato. No sale al
+ * sitio."` es prosa de verdad —la ayuda de un campo, visible en pantalla— y
+ * borrar el atributo entero se la comería en silencio: exactamente el modo de
+ * falla que este archivo existe para no tener (B-873, «da falsa cobertura»).
+ * Por eso la regla no es «por nombre de atributo» —una lista de nombres se
+ * desactualiza sola— sino «todo literal de string, esté donde esté»: la regla
+ * general en vez de la lista de casos.
+ *
+ * Motivo por el que la segunda mitad de la alternancia no filtra `className`
+ * de otras: no hay forma de saber, mirando solo el literal, si es una clase o
+ * una frase — así que las dos entran, y son las fórmulas de abajo las que
+ * deciden si hay algo que decir de lo que quedó.
+ */
+const textoLegibleDeJsx = (src: string): string => {
+  const piezas: string[] = [];
+  const patron =
+    />([^<>{}]*)<|'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g;
+  for (const m of src.matchAll(patron)) {
+    const texto = (m[1] ?? m[2] ?? m[3] ?? m[4] ?? '').trim();
+    if (texto) piezas.push(texto);
+  }
+  return piezas.join(' ');
+};
+
+/**
  * El fuente como **prosa corrida**.
  *
- * Los dos reemplazos del medio son lo que hace que esto funcione sobre código: el
- * texto de estas páginas vive en literales **concatenados** —`'…no cobra y ' +
- * 'no guardamos…'`— y una frase partida en dos literales no se puede leer con un
- * regex de frase. Pegando la concatenación, la oración vuelve a ser una oración,
- * y la ventana de contexto de abajo puede buscarle la condición.
+ * `esJsx` se pasa **solo** para un `.tsx`: un `.ts` no tiene JSX y su prosa ya
+ * es legible tal cual (`apoyoDelSitio.ts`, `ayudaDelSitio.ts`…); pasarlo
+ * igual no rompería nada —un `.ts` no tiene `>texto<` para encontrar—, pero
+ * mentiría sobre qué archivo lo necesita.
+ *
+ * Los dos reemplazos del medio son lo que hace que esto funcione sobre código
+ * **sin JSX**: el texto de esas páginas vive en literales **concatenados**
+ * —`'…no cobra y ' + 'no guardamos…'`— y una frase partida en dos literales no
+ * se puede leer con un regex de frase. Pegando la concatenación, la oración
+ * vuelve a ser una oración, y la ventana de contexto de abajo puede buscarle
+ * la condición.
+ *
+ * Con JSX no hacen nada, y a propósito: `textoLegibleDeJsx` ya extrae cada
+ * literal **sin comillas** y los pega con un espacio —el mismo efecto, un
+ * paso antes—, así que para cuando estos dos `replace` corren ya no queda
+ * ninguna comilla que unir. Quedan igual en el pipeline en vez de un `if`
+ * aparte: no hacen daño y evitan dos caminos que hacer lo mismo.
  */
-const prosaDe = (src: string): string =>
-  sinComentarios(src)
+const prosaDe = (src: string, esJsx = false): string => {
+  const limpio = sinComentarios(src);
+  const base = esJsx ? textoLegibleDeJsx(limpio) : limpio;
+  return base
     .replace(/'\s*\+\s*'/g, '')
     .replace(/`\s*\+\s*`/g, '')
     .replace(/\s+/g, ' ');
+};
 
 /**
  * Toda página de `src/pages`, **a cualquier profundidad**.
@@ -106,33 +158,53 @@ const paginasDeSrc = (dir = 'src/pages'): string[] =>
         : [],
   );
 
-/** Los archivos barridos, por glob y no a mano. */
+/**
+ * Los archivos barridos, por glob y no a mano.
+ *
+ * ── `src/components/publico/*.tsx` entró — B-925 ──────────────────────────
+ * El `auditor-privacidad` lo había propuesto: los tres formularios repiten en
+ * el componente los mismos carteles que su página («la dirección exacta no se
+ * publica»), y hasta ahora esa repetición no tenía red — una promesa que
+ * existiera **solo** en el componente (y no en la página que sí se barre)
+ * podía colarse sin que nada la mirara.
+ *
+ * No entró en el primer intento por dos falsos positivos, y ninguno era una
+ * promesa: «Todavía no guardaste nada» (`MisGuardados.tsx`, la lista vacía) y
+ * «si no cobran o preferís no ponerlo» (`SumarLugar.tsx`, sobre lo que cobra
+ * el lugar). Lo que arreglaba el hallazgo no era el glob: eran los detectores,
+ * afinados para prosa de página y ciegos al sujeto de la frase. Se resolvió
+ * en dos pasos, cada uno su propio commit:
+ *
+ * 1. `prosaDe()` sabe leer JSX (`esJsx`): un `.tsx` se reduce al texto entre
+ *    `>` y `<` y a los literales de string, sin `className=…` ni el resto del
+ *    envoltorio — la frase que queda es la que se lee.
+ * 2. Los dos detectores que disparaban se acotaron al **sujeto**: «no
+ *    guardaste» es segunda persona (la acción de quien lee) y no «no
+ *    guardamos»; «cobran» es tercera del plural (un tercero) y no «nosotros».
+ *
+ * Con los dos cambios, el glob extendido no encuentra los dos falsos
+ * positivos — la suite completa de este archivo lo verifica cada vez que
+ * corre — y no se aflojó ningún detector con una excepción por archivo.
+ *
+ * **Verificado por mutación (regla del repo, B-873):** se metió a propósito
+ * «No guardamos tu dirección exacta.» en `SumarLugar.tsx` — una promesa
+ * falsa, porque el formulario sí manda `direccion` a Firestore aunque no se
+ * publique — y `npx vitest run tests/promesas-sobre-datos.test.ts` se puso en
+ * rojo, señalando el archivo, la fórmula (`no se guarda / no guardamos / no
+ * se mide`) y la frase exacta. Se sacó después de confirmarlo. Sin este
+ * commit el hallazgo no existía: el barrido no llegaba al archivo.
+ */
 const archivosBarridos = (): string[] => {
   const libs = readdirSync(raiz('src/lib'))
     .filter((f) => /DelSitio\.ts$/.test(f))
     .map((f) => `src/lib/${f}`);
-  const componentes = readdirSync(raiz('src/components/sitio'))
+  const componentesSitio = readdirSync(raiz('src/components/sitio'))
     .filter((f) => f.endsWith('.astro'))
     .map((f) => `src/components/sitio/${f}`);
-  /*
-   * ── Lo que NO entra: `src/components/publico/*.tsx` ──────────────────────
-   * El `auditor-privacidad` lo propuso, y se probó: los tres formularios
-   * repiten en el componente los mismos carteles que la página («la dirección
-   * exacta no se publica»), así que agregarlo parecía cerrar la otra mitad.
-   *
-   * **Salieron dos falsos positivos y ninguno es una promesa.** «Todavía no
-   * guardaste nada» (`MisGuardados.tsx`, la lista vacía) cae en el detector de
-   * medición; «si no cobran o preferís no ponerlo» (`SumarLugar.tsx`, sobre lo
-   * que cobra el lugar) cae en el de plata. Los detectores están afinados para
-   * **copy de página**, y en un `.tsx` la prosa extraída trae el JSX adentro
-   * (`className=…`), así que la frase que ven no es la frase que se lee.
-   *
-   * Se deja afuera y se anota (**B-925**): lo que hay que reformar para que
-   * entre son los detectores, no este glob. La promesa que importa está en la
-   * página —que desde hoy sí se barre— y el componente la repite; lo que queda
-   * sin red es una frase que exista **solo** en el componente.
-   */
-  return [...libs, ...paginasDeSrc(), ...componentes];
+  const componentesPublico = readdirSync(raiz('src/components/publico'))
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => `src/components/publico/${f}`);
+  return [...libs, ...paginasDeSrc(), ...componentesSitio, ...componentesPublico];
 };
 
 /**
@@ -149,7 +221,10 @@ interface Fuente {
 }
 
 const deArchivos = (archivos: readonly string[]): Fuente[] =>
-  archivos.map((archivo) => ({ archivo, prosa: prosaDe(readFileSync(raiz(archivo), 'utf8')) }));
+  archivos.map((archivo) => ({
+    archivo,
+    prosa: prosaDe(readFileSync(raiz(archivo), 'utf8'), archivo.endsWith('.tsx')),
+  }));
 
 const deTexto = (archivo: string, texto: string): Fuente => ({ archivo, prosa: prosaDe(texto) });
 
@@ -164,8 +239,19 @@ const deTexto = (archivo: string, texto: string): Fuente => ({ archivo, prosa: p
 const NEGACIONES: readonly { nombre: string; patron: RegExp }[] = [
   {
     nombre: 'no se guarda / no guardamos / no se mide',
+    /*
+     * **Acotada al sujeto — B-925.** «No guardaste nada» es la acción de
+     * quien lee (segunda persona, pretérito: guard-**aste**) y no una
+     * promesa del sitio; «no guardamos» y «no se guarda» sí lo son. Las dos
+     * comparten el mismo prefijo —«guarda»— así que un `\w*` abierto después
+     * del verbo capturaba las dos por igual. El `(?!ste\b)` es la exclusión
+     * mínima: bloquea el pretérito de segunda persona de los verbos en
+     * `-ar` de esta lista (guard**aste**, almacen**aste**, registr**aste**,
+     * rastre**aste**) sin tocar la primera persona del plural ni la forma
+     * impersonal, que siguen entrando por el mismo `\w*`.
+     */
     patron:
-      /no (se |te )?(guarda|guardamos|almacena|almacenamos|registra|registramos|mide|medimos|rastrea|rastreamos|sigue|seguimos)\w*/gi,
+      /no (se |te )?(guarda|guardamos|almacena|almacenamos|registra|registramos|mide|medimos|rastrea|rastreamos|sigue|seguimos)(?!ste\b)\w*/gi,
   },
   {
     nombre: 'sin analítica / sin seguimiento / sin cookies',
@@ -335,7 +421,18 @@ const PROMESAS_SOBRE_PLATA: readonly FormulaDePlata[] = [
   },
   {
     nombre: 'nunca vamos a cobrar / no se cobra',
-    patron: /(nunca|jam[áa]s|no) (te |se |le )?(vamos a |va a |van a )?(cobrar|cobra|cobramos|cobran)\w*/gi,
+    /*
+     * **Acotada al sujeto — B-925.** «Si no cobran» sobre lo que cobra un
+     * lugar (tercero, plural: `SumarLugar.tsx`) no es «nunca vamos a
+     * cobrar» sobre el sitio. Gramaticalmente «cobran» es siempre tercera
+     * persona del plural —nunca «nosotros»—, así que no hace falta una
+     * ventana de contexto para distinguirlas: alcanza con no matchearla. Se
+     * saca `cobran` de la lista y `van a` del auxiliar —el mismo motivo,
+     * tercera del plural— y queda `cobra` bare (impersonal: «esta agenda no
+     * cobra», la frase real de `/ayuda`), `cobramos` (primera del plural) y
+     * `cobrar` (infinitivo, para «no vamos/va a cobrar»).
+     */
+    patron: /(nunca|jam[áa]s|no) (te |se |le )?(vamos a |va a )?(cobrar|cobra(?!n\b)|cobramos)\w*/gi,
     acotable: true,
   },
   {
@@ -416,6 +513,17 @@ describe('el barrido mira archivos de verdad — control positivo', () => {
     expect(archivos).toContain('src/pages/ayuda.astro');
   });
 
+  it('y desde B-925 llega a `src/components/publico/*.tsx`, donde vivían los dos falsos positivos', () => {
+    /*
+     * Los dos componentes concretos que motivaron el ítem: si el glob dejara
+     * de traerlos, este caso lo dice antes de que alguien note que el barrido
+     * de más abajo quedó mirando menos de lo que cree.
+     */
+    const archivos = archivosBarridos();
+    expect(archivos).toContain('src/components/publico/MisGuardados.tsx');
+    expect(archivos).toContain('src/components/publico/SumarLugar.tsx');
+  });
+
   it('y llega a CUALQUIER profundidad de `src/pages`, no a dos niveles', () => {
     /*
      * **El hallazgo del `auditor-privacidad` del 2026-09-15.** El glob era un
@@ -457,6 +565,46 @@ describe('el barrido mira archivos de verdad — control positivo', () => {
      */
     const partida = "const x = 'No guardamos nada ' +\n  'salvo si lo aceptás.';";
     expect(prosaDe(partida)).toContain('No guardamos nada salvo si lo aceptás.');
+  });
+
+  it('con esJsx, la prosa de un .tsx es lo que se lee y no el JSX que lo rodea — B-925', () => {
+    /*
+     * El caso real que motivó el cambio: `className=…` pegado a la frase real
+     * dejaba una ventana de contexto que era código, no prosa. Con `esJsx`,
+     * `<p className="body-md mt-4 text-super">` desaparece del todo y la
+     * frase queda como la leería alguien.
+     */
+    const jsx = `
+      export function X() {
+        return (
+          <p className="body-md mt-4 text-super">
+            Todavía no guardaste nada.
+          </p>
+        );
+      }
+    `;
+    const prosa = prosaDe(jsx, true);
+    expect(prosa).toContain('Todavía no guardaste nada.');
+    // Lo que desaparece es el nombre del atributo y el `=` — no el valor:
+    // ver el caso de `ayuda` más abajo.
+    expect(prosa).not.toContain('className=');
+    expect(prosa).not.toContain('<p');
+    expect(prosa).not.toContain('export function');
+
+    /*
+     * Y lo que NO se descarta: un valor de atributo es un literal de string
+     * como cualquier otro, y puede ser prosa real (la `ayuda` de un campo).
+     * Borrarlo por ser atributo se comería una promesa entera en silencio —
+     * exactamente el modo de falla que este archivo persigue (B-873). La regla
+     * no distingue por nombre de atributo, así que `className` entra también
+     * —no hay forma de saber, mirando solo el literal, si es una clase o una
+     * frase—, y son las fórmulas de más abajo las que deciden si hay algo que
+     * decir de lo que quedó.
+     */
+    const conAyuda = `<input ayuda="No sale al sitio." className="x" />`;
+    const prosaAyuda = prosaDe(conAyuda, true);
+    expect(prosaAyuda).toContain('No sale al sitio.');
+    expect(prosaAyuda).not.toContain('ayuda=');
   });
 });
 
@@ -538,6 +686,24 @@ describe('ninguna página promete sobre datos algo que el sitio contradice — B
      * verdaderas y tienen que pasar.
      */
     expect(barrerPromesas(['tests/fixtures/promesa-condicionada.ts'])).toEqual([]);
+  });
+
+  it('DETECTOR: «no guardaste» es la acción de quien lee, no una promesa — B-925', () => {
+    /*
+     * La clase, no la instancia: no es solo `MisGuardados.tsx`, es *cualquier*
+     * pretérito de segunda persona de estos verbos. Las tres primeras son la
+     * acción de quien lee y no tienen que disparar nunca; la cuarta es la
+     * misma frase con el sujeto que sí importa, y tiene que seguir disparando
+     * — si dejara de hacerlo, la exclusión se pasó de rosca.
+     */
+    expect(
+      barrerFuentes([
+        deTexto('la lista vacía de guardados', 'Todavía no guardaste nada.'),
+        deTexto('otro verbo de la lista, misma persona', 'No almacenaste ningún dato acá.'),
+        deTexto('tercer verbo', 'No registraste tu actividad en esta sesión.'),
+        deTexto('control: la misma clase de frase, sujeto correcto', 'No guardamos nada de lo que mirás.'),
+      ]).map((h) => `${h.archivo} · ${h.formula}`),
+    ).toEqual(['control: la misma clase de frase, sujeto correcto · no se guarda / no guardamos / no se mide']);
   });
 });
 
@@ -741,5 +907,23 @@ describe('ninguna página promete sobre plata algo que el sitio desmiente — B-
         ),
       ]),
     ).toEqual([]);
+  });
+
+  it('DETECTOR: «si no cobran» es sobre un lugar, no sobre el sitio — B-925', () => {
+    /*
+     * La clase: «cobran» es siempre tercera persona del plural —nunca
+     * «nosotros»—, así que hablar de si un lugar, un club o un tallerista
+     * cobra no puede ser la promesa de esta familia. La segunda frase es la
+     * misma clase con «van a cobrar» (el mismo auxiliar en plural); la
+     * tercera es el control: la promesa real sobre el sitio, que tiene que
+     * seguir disparando.
+     */
+    expect(
+      barrerPlata([
+        deTexto('sobre un lugar, la frase real de SumarLugar.tsx', 'Si no cobran, dejalo vacío.'),
+        deTexto('sobre un club de lectura', 'Algunos clubes no cobran por sumarse.'),
+        deTexto('control: la misma clase, sujeto correcto', 'Nosotros nunca cobramos nada.'),
+      ]).map((h) => `${h.archivo} · ${h.formula}`),
+    ).toEqual(['control: la misma clase, sujeto correcto · nunca vamos a cobrar / no se cobra']);
   });
 });
