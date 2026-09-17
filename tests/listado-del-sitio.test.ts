@@ -1,7 +1,7 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * El fuente **sin comentarios** — B-855.
@@ -107,22 +107,15 @@ const TINTAS_DE_REGLA = ['borde', 'regla'];
 /**
  * Los componentes del listado público.
  *
- * **`--others --exclude-standard` es la lección de B-826**, que acá faltaba y la
- * encontró el `auditor-privacidad` sobre B-961: `git ls-files` a secas enumera
- * solo lo **rastreado**, así que un componente nuevo —el caso normal, el archivo
- * todavía sin `git add`— no lo veía ninguna de las cuatro partes de este archivo.
- * El barrido pasaba en verde justo en la corrida que tenía que decir algo, y
- * empezaba a hablar recién después del `add`. Con las dos banderas, un `.tsx`
- * nuevo entra a las reglas apenas existe en el disco.
+ * Usaba su propio `git ls-files` a secas, y eso lo encontró el
+ * `auditor-privacidad` sobre B-961: un componente nuevo —el caso normal, el
+ * archivo todavía sin `git add`— no lo veía ninguna de las cuatro partes de
+ * este archivo. B-964 lo mudó a `archivosDelRepo`, la misma mecánica
+ * (`--cached` + `--others --exclude-standard`) compartida ahora con el resto
+ * de los barridos.
  */
 const archivos = (): string[] =>
-  execFileSync(
-    'git',
-    ['ls-files', '--cached', '--others', '--exclude-standard', 'src/components/publico'],
-    { encoding: 'utf8' },
-  )
-    .split('\n')
-    .filter((f) => f.endsWith('.tsx'));
+  archivosDelRepo('src/components/publico').filter((f) => f.endsWith('.tsx'));
 
 /**
  * Los componentes de esta carpeta que **no son el listado** — B-720.
@@ -478,8 +471,8 @@ describe('el listado es puramente tipográfico', () => {
 
   it('y la portada generada ya no existe en ninguna parte', () => {
     // Se retiró con D-146: sin color por tipo no hay portada generada que pintar.
-    const todos = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' });
-    expect(todos).not.toContain('PortadaDeTarjeta');
+    const todos = archivosDelRepo('src');
+    expect(todos.some((f) => f.includes('PortadaDeTarjeta'))).toBe(false);
   });
 });
 
@@ -900,8 +893,7 @@ describe('la estructura del listado — D-146', () => {
      * barrido sobre el texto crudo los marcaría por documentar la decisión — la
      * salida fácil sería dejar de explicarla.
      */
-    const conDisplay = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
-      .split('\n')
+    const conDisplay = archivosDelRepo('src')
       .filter((f) => /\.(tsx?|astro|css)$/.test(f))
       .filter((f) => f !== 'src/styles/global.css')
       .filter((f) => {

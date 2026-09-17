@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * La decisión de qué deployar en un push a main.
@@ -249,11 +250,7 @@ describe('qué deployar — lo que se excluye tiene que ser demostrable (B-215)'
    * archivo de `src/` hace fallar este caso.
    */
   it('nada de `src/` ni del config del build alcanza `.claude/` ni `githooks/`', () => {
-    const archivos = execFileSync('git', ['ls-files', '-z', 'src', 'astro.config.mjs'], {
-      encoding: 'utf8',
-    })
-      .split('\0')
-      .filter(Boolean);
+    const archivos = archivosDelRepo('src', 'astro.config.mjs');
 
     // Control positivo: si el listado sale vacío, el `for` no compara nada.
     expect(archivos.length).toBeGreaterThan(50);

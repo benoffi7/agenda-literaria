@@ -27,8 +27,8 @@
  * 4. la canónica que sale al HTML es **absoluta** y la arma el layout una vez.
  */
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 import {
   RUTA_AGENDA,
   RUTA_AYUDA,
@@ -65,9 +65,8 @@ const fuente = (rel: string): string => readFileSync(rel, 'utf8');
 const sinComentarios = (src: string): string =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-/** Los archivos versionados de `src/`, que es donde no puede haber un dominio. */
-const archivosDeSrc = (): string[] =>
-  execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+/** Los archivos de `src/`, que es donde no puede haber un dominio. */
+const archivosDeSrc = (): string[] => archivosDelRepo('src');
 
 describe('SITIO — la forma del origen', () => {
   it('es https y no lleva barra final ni path', () => {
