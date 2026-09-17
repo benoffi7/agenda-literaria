@@ -7690,6 +7690,112 @@ La modalidad que se muestra es la **resultante** de las filas de «Dónde» (B-2
 no la de la primera fila: «la primera manda» dependería del orden del array, que es
 la trampa 2 con otra cara.
 
+## D-340 · Las tipografías se autoalojan; no se condicionan
+
+**2026-09-03 · B-481.** *Pegada acá el 2026-09-17 (**B-910**). El número se citaba
+desde `16-analitica-del-sitio.md` y el `BACKLOG.md` y no tenía entrada, así que un
+enlace a `#d-340` abría el documento sin ancla y sin error. **No hizo falta
+reconstruirla:** el commit que la acuñó dice dónde había quedado el texto —«listo
+para pegar en 06-decisiones.md, está en `.estado/analitica-sitio.md`», `ce30fae`—
+y ese archivo sigue existiendo en el árbol principal, sin versionar. Lo que sigue
+es ese texto tal como se escribió el 2026-09-03; lo único agregado es el párrafo
+final, que apunta a dónde quedó registrado el resto.*
+
+**El problema.** `Base.astro` abría dos `preconnect` y pedía una hoja de estilos a
+`fonts.googleapis.com` en el load de **toda** página pública. Es la misma clase de
+conexión que **D-254** acababa de sacar para `googletagmanager.com`: no manda la
+URL ni cookies, pero le dice al borde de un tercero que este navegador, desde esta
+IP, entró al sitio — y pasaba **antes** de que la persona tocara el banner y
+también para quien **rechaza**. D-254 lo dejó anotado como pendiente (B-481) y no
+como aceptado, con la lista blanca del test guardándolo.
+
+**Lo que se descartó.** Condicionarlo, que es lo que uno intenta primero: no
+existe. En un sitio estático el `<head>` es el mismo para todo el mundo y la
+decisión de consentimiento vive en el `localStorage` de cada visitante — el mismo
+argumento de D-254, que ya estaba escrito.
+
+**La decisión.** Servir los `.woff2` desde `/fuentes/` de este dominio, con
+`@font-face` propias en `global.css`. **Los mismos archivos** que servía
+`fonts.gstatic.com`, con los mismos pesos, los mismos `unicode-range` y el mismo
+`font-display: swap`: la página se ve igual, y el peso de tipografía no cambia
+(63.696 B). Lo que cambia es que hay **un pedido y dos handshakes TLS menos** y
+**cero terceros**. `vietnamese` se descartó (20,3 KB para un caso que no existe);
+`latin-ext` se conserva con su `unicode-range`, así que sigue bajándose solo
+cuando la página tiene una de esas letras.
+
+**El costo, y la parte que no es gratis.** Los `.woff2` viven en el repo (116 KB)
+y hay que acordarse de actualizarlos a mano — con la contrapartida de que la
+versión está en el nombre del archivo, así que el `immutable` es cierto. Y el
+`Cache-Control` de un año hay que replicarlo en `firebase.json` (`/fuentes/**`):
+**sin esa regla Firebase sirve `public/` con una hora de cache**, o sea que
+autoalojar sin tocar el hosting cambia una mejora por una regresión de 24×.
+
+**La red.** La lista blanca de `tests/terceros-antes-del-consentimiento.test.ts`
+queda **vacía** —la constante se conserva para que agregar un tercero sea
+agregarle una entrada con el motivo escrito— y el barrido se extendió al **CSS
+construido**, que es por donde volverían de verdad: un `@import url('https://…')`
+o un `src: url('https://fonts.gstatic…')` no aparecen en ninguna etiqueta del
+HTML.
+
+**Dónde quedó lo demás** (agregado al pegarla, y por eso separado). La tabla de
+antes y después —bytes, pedidos y cache, medidos contra un build real— está en el
+[§7.4ter](16-analitica-del-sitio.md#74ter--las-tipografías-autoalojadas-b-481), y
+no se copia acá para no tener dos versiones del mismo dato. Ahí están también los
+otros dos tests que el cambio movió: `tests/sistema-visual.test.ts`, que pasó a
+leer las `font-family` de las `@font-face` en vez de los `family=` de la query de
+Google —el mismo aserto, en el archivo que hoy lo decide—, y el barrido de
+`tests/canonico.test.ts`, que marcaba los `<link rel="preload">` nuevos y **no era
+un hallazgo**: un `<link>` de recurso lleva la ruta de un archivo, así que se
+acotó el barrido (descarta los `rel` de recurso, **nunca `canonical`**) en vez de
+tocar `rutaCanonica`, cuyo caso está decidido a propósito.
+
+## D-341 · La lectura de GA4 va por un documento de Firestore, no por un `onCall`
+
+**2026-09-03 · B-374.** *Pegada acá el 2026-09-17 (**B-910**), por lo mismo que
+D-340 y desde el mismo `.estado/analitica-sitio.md`. Texto original, salvo el
+párrafo final.*
+
+**El problema.** El §9.1 de `16-analitica-del-sitio.md` listaba, para traer los
+números de GA4 al panel, siete piezas: la Data API, una Function nueva, una cuenta
+de servicio nueva, **autorizar la Function con un `onCall` que verifique el claim
+`admin`**, un caché en Firestore con su invalidación, los tests y la latencia.
+
+**La decisión.** Un `onSchedule` diario que escribe `sistema/analitica-sitio`, y
+ni `onCall` ni cuenta de servicio nueva.
+
+- **El `onCall` sobra porque el caché ya está.** Si el resultado se cachea igual
+  en Firestore, el endpoint solo agrega una superficie de autenticación nueva que
+  hay que escribir, testear y no equivocar. La autorización ya la hacen las
+  reglas: `sistema/{doc}` es `read: if esAdmin()` / `write: if false`. Es
+  textualmente el razonamiento de `reportes-trigger.js` (trigger sobre `onCall`) y
+  el criterio general que dejó `reconciliacion.js`.
+- **La cuenta de servicio nueva sobra porque ya hay una** que el proyecto autoriza
+  a mano en consolas de Google: `calendar-sync@`, la del calendario. Sumarle dos
+  permisos de **solo lectura** es un paso de consola menos y una identidad menos
+  que rotar.
+
+**Lo que se pierde, dicho de frente.** El panel no puede pedir «recalculá ahora»:
+ve el resumen de la última corrida. No es una pérdida real —los informes de GA4
+tardan 24 a 48 h y Search Console 2 a 3 días, así que un botón de refrescar
+traería el mismo número— pero es un desvío del pedido.
+
+**Y la decisión que la acompaña, que es la que sostiene D-272 con datos
+entrando:** la pantalla distingue **cuatro** situaciones y no dos. Sin documento /
+sin configurar / falla / **sin datos**. La cuarta es la que un tablero corriente
+muestra como «0 visitas», y es exactamente la que D-272 vino a evitar: un cero
+durante tres semanas parece un tablero roto y el dueño no lo puede distinguir de
+un enganche que no funciona. Las separa `src/lib/resumenDelSitio.ts`, que es puro
+y las testea una por una.
+
+**Dónde quedó lo demás** (agregado al pegarla). Qué dice la pantalla en cada una
+de las cuatro situaciones, y las decisiones chicas que el diseño no tenía —un
+informe por pregunta con las tandas en serie por la cuota de la Data API, la
+variación `null` y no `0 %` sobre una base de cero, el evento propio que todavía
+no ocurrió en cero explícito, la respuesta cruda de un error al log y **nunca** al
+documento, y la lista blanca de dimensiones donde `pagePath` entra y
+`pagePathPlusQueryString` no— están en el
+[§9.3bis](16-analitica-del-sitio.md#93bis--cómo-quedó-construido-b-374-y-b-373).
+
 ## D-350 · El auditor caro se dispara solo cuando el diff toca una salida pública
 
 **2026-09-03 · B-124.** *Escrita a posteriori el 2026-09-09 (**B-808**): el número
@@ -8071,6 +8177,103 @@ encontró el `auditor-trampas`, y la regla que deja es la general: **una caché
 nueva se agrega al `olvidar` de todos los consumidores que ya tenían esa
 disciplina, en el mismo cambio.**
 
+## D-380 · El buscador del `/404` es un formulario a la home, no la island
+
+**2026-09-03 · B-310.** *Pegada acá el 2026-09-17 (**B-910**). El número se citaba
+cuatro veces desde `12-sitio-publico.md` y no tenía entrada. **No hizo falta
+reconstruirla:** el frente que la decidió dejó el texto completo en
+`.estado/sitio.md`, bajo un encabezado «Para `06-decisiones.md`», y ese archivo
+sigue existiendo en el árbol principal sin versionar. Va tal como se escribió.*
+
+**Contexto.** El §4.5 del diseño del sitio pide para la página de error
+«buscador, los hubs, y "quizá la actividad que buscás ya pasó: mirá el
+archivo"». Los hubs y el archivo son enlaces; el buscador no.
+
+**Decisión: un `<form method="get">` con `action="/"` y `name="q"`.** El §6.2 ya
+define que la búsqueda del sitio **vive en la query string de la home**
+(`/?q=…`) — es lo que `aQuery` escribe y `desdeQuery` lee. Un formulario GET
+manda exactamente ahí, así que es *la misma* búsqueda y no una segunda
+implementación, y la página sale del build sin un byte de JavaScript.
+
+**La alternativa descartada era montar `Buscador`**, y no se descartó por peso
+sino por lo que arrastra: trae su propio listado completo, el riel de filtros, la
+hoja modal del teléfono, el selector de orden y el fetch del `events.json`. La
+página de error se habría convertido en una segunda portada.
+
+**El nombre del parámetro no se escribe a mano**: sale de `CLAVE_BUSQUEDA`
+(`lib/noEncontrado.ts`) y `tests/no-encontrado.test.ts` lo mete por `aQuery` y lo
+saca por `desdeQuery`. Escrito como literal, el día que ese parámetro se renombre
+el formulario mandaría a la agenda sin filtro y nadie se enteraría (la clase de
+B-88).
+
+**Lo que se paga, dicho:** con JavaScript apagado el formulario llega a la home y
+**no aplica el texto** —el filtrado es del cliente (§2.5)—, así que se ve la
+agenda completa. Es una degradación honesta: se llega a algo, y no a un enlace
+roto.
+
+**Y una precisión sobre la canónica.** El §5.1 pone «—» en la columna `canonical`
+de la fila del 404, y la página **sí la emite**: `Base.astro` la arma para todas
+las páginas de una sola vez (B-109) para que ninguna se publique sin ella, y
+abrirle una excepción a una página sería devolverle a cada plantilla la
+posibilidad de olvidarse. Acá es inerte: Firebase la sirve con estado 404 y con
+`noindex, nofollow`.
+
+**Y el nombre del archivo es el cableado entero.** Firebase Hosting sirve
+`dist/404.html` de la raíz; Astro emite `404.astro` como archivo suelto incluso
+con `build.format` en `directory` (su caso especial para 404 y 500), así que no
+hace falta ninguna `rewrite` en `firebase.json`. Renombrar el archivo apaga la
+página sin romper el build ni ningún test de contenido, por eso
+`tests/no-encontrado.test.ts` lo verifica sobre `dist/`.
+
+## D-381 · El archivo tiene su propio buscador, y lo que se comparte es el match
+
+**2026-09-03 · B-292.** *Pegada acá el 2026-09-17 (**B-910**), desde el mismo
+`.estado/sitio.md`. El commit que la acuñó ya decía dónde estaba: «Ver D-381, cuyo
+texto queda en `.estado/sitio.md`» (`4ff3379`). Texto original.*
+
+**Contexto.** D-167 dejó `/pasadas` sin buscador con el motivo escrito: la
+búsqueda del sitio es la island de la home, que filtra `vigentesDelIndice` —el
+índice de lo **vigente**, que por definición no incluye una pasada—, así que
+traerla era enseñarle un modo nuevo y cambiarle el contrato con el
+`events.json` (**B-292**).
+
+**Decisión: una island propia y chica, que reusa el match y el markup.**
+`BuscadorDePasadas` tiene **una** dimensión, que es la que el §4.5 pide («sin
+filtros salvo la búsqueda»), y no repite nada de lo que podría contestar
+distinto:
+
+| Qué | De dónde sale | Por qué compartido |
+|---|---|---|
+| qué coincide | `coincideBusqueda` (`lib/listadoPublico.ts`), vía `buscarEnPasadas` | dos definiciones de «coincide» son la home y el archivo contestando distinto a la misma consulta, en lo único que la gente usa tipeando (la clase de B-88) |
+| el markup de la fila | `ListaDeActividades` | es el mismo componente que imprime el build, o sea la regla del §6.3 aplicada a esta página |
+| qué es una pasada y en qué orden | `pasadasDelSitio` | la misma función que usó el build, así la lista no se reacomoda sola al hidratar |
+| el texto | `frasesDePasadas` | es lo que mete las frases nuevas en el barrido de centinelas de la salida 10 |
+
+`coincideBusqueda` **se extrajo de `filtrarPublico` en este mismo cambio** y
+`filtrarPublico` pasó a llamarla: no es una función nueva al lado, es la misma
+movida a donde la puedan usar los dos.
+
+**Alternativa descartada 1: enseñarle el modo a la island de la home.** Es lo que
+D-167 anticipaba y lo que este cambio evita. La island de la home tiene el riel,
+la hoja modal, el orden, los chips y la serialización a la query; darle un modo
+«archivo» habría hecho que cada uno de esos controles necesite decidir qué
+significa en ese modo.
+
+**Alternativa descartada 2: filtrar el DOM con un script chico.** Sale más barato
+en bytes y necesita publicar el `searchText` de cada fila en el HTML de
+`/pasadas` (o comparar contra el texto visible de la fila, que es *otra*
+búsqueda: la de la home mira la descripción y el organizador, que en la fila no
+están). Las dos mitades de esa alternativa empeoran justo lo que esta página
+cuida.
+
+**Lo que se paga, medido:** la página deja de ser de cero JavaScript. El chunk
+propio son **2,9 KB**; el resto —el runtime de React (187 KB) y
+`ListaDeActividades`— es compartido con la home, que es de donde se llega acá. Y
+lo que **no** se paga: el HTML del build sigue completo y la island saca la lista
+de abajo recién cuando tiene el índice; **si el fetch falla no saca nada**, así
+que lo que se pierde es el buscador y no el archivo — que es la propiedad por la
+que esta página existe (§2.1).
+
 ## D-410 · Un `subEvent` repite los datos de su actividad, y eso no es inventar
 
 **Contexto.** Search Console reportó `description`, `organizer` y `offers`
@@ -8139,6 +8342,75 @@ sitio emite antes de tocar nada. Concretamente:
 **La regla corta:** un aviso de Google no es un argumento para inventar un dato.
 Cuando el campo se puede llenar con algo verdadero, se llena; cuando no, se
 escribe por qué y se deja ausente.
+
+## D-430 · B-720 — la galería del detalle se abre en una capa, y se acepta la primera island de esa página
+
+**2026-09-04 · B-720.** *Pegada acá el 2026-09-17 (**B-910**). El número se citaba
+desde `12-sitio-publico.md`, desde cuatro archivos de `src/` y desde cinco de
+`tests/`, y no tenía entrada. **No hizo falta reconstruirla:** el frente que la
+decidió dejó el texto completo en `.estado/galeria.md`, bajo «Para las decisiones
+(`docs/06-decisiones.md`)», y ese archivo sigue existiendo en el árbol principal
+sin versionar. Va tal como se escribió.*
+
+**Decisión:** la página de detalle gana una capa a pantalla completa para las
+imágenes, recorrible con las flechas, montada como **una** island de React
+(`client:idle`). Es la primera de esa página, que hasta acá mandaba cero.
+
+**El pedido.** El dueño, el 2026-09-03, mirando el sitio publicado: que la
+galería sea clickeable para recorrer las fotos y verlas en pantalla completa. El
+caso concreto es la portada, no la tira: un flyer es texto tipografiado adentro de
+un JPEG (D-147), y al tamaño que entra en la columna no se lee. O sea que la
+página mostraba imágenes que **no se podían mirar**.
+
+**Qué se da vuelta, y era una decisión escrita.** D-168 (B-296) cerró la tira de
+secundarias diciendo «sin lightbox: no agrega ninguna parada de tabulación», y el
+§4.3 del diseño decía «cero islands, cero hidratación». Las dos mitades de aquel
+argumento se separan acá: la de la accesibilidad **sigue siendo cierta y se
+atiende** (un enlace alrededor de un `alt=""` se anuncia sin nombre, así que cada
+abridor lleva su `rotuloDeAmpliar`), y la del costo se paga con el número medido.
+
+**El número, contra `dist/` el 2026-09-04:** 59.815 bytes gzip de JS (58.536 el
+runtime de React + 1.279 el componente; 189.332 sin comprimir) más 3.808 de HTML.
+Los dos vecinos de la misma página: el HTML de un detalle con tres imágenes pesa
+24.847 (6.752 gzip) y el `gtag.js` que D-251 aceptó acá pesa 155.578 gzip. La
+island es el 38 % del tag ya aprobado, y ~9 veces el HTML.
+
+**Lo que se rechazó, con su motivo.** Escribir la capa en JavaScript a mano
+costaba ~2 KB en vez de 58, y se descartó: duplicaría el cableado de
+`lib/capaModal.ts` —foco atrapado, `Escape`, scroll de atrás, foco devuelto— que
+ya tienen las otras tres capas del repo, y esa duplicación es exactamente la clase
+de bug que ese archivo existe para cerrar (dos copias, una con el arreglo y la
+otra sin él). También se rechazó una librería: cero dependencias nuevas es regla
+del repo.
+
+**Las cuatro decisiones que hacen barata la capa**, y ninguna es una optimización
+posterior:
+
+1. **El abridor es un `<a href>` y no un `<button>`.** Sin JavaScript —y antes de
+   que la island hidrate— el click abre el archivo en el visor del navegador. Un
+   `<button>` impreso por el build sería un control que miente. Un click con
+   Cmd/Ctrl/Shift o del botón del medio no se intercepta.
+2. **La capa muestra el `href`**, o sea el original y nunca la miniatura de 480px
+   del `srcset` (D-210), por construcción y no por acordarse.
+3. **Una sola imagen en el aire:** ni precarga ni tira de miniaturas. Las
+   originales de una actividad suman hasta 3,15 MB (D-168) porque la recompresión
+   no existe (B-220, DEC-7d).
+4. **Las imágenes no viajan como props.** La island las lee del HTML que imprimió
+   el build (§6.3, «el HTML es la verdad»): su única prop es el título, que es el
+   nombre accesible del diálogo. Así ninguna URL se serializa dos veces y no hay
+   dos fuentes de la misma galería.
+
+**Y una consecuencia de forma:** sobre `tinta` el acento del sistema da **2,57:1**
+(medido con `lib/contraste.ts` sobre los tokens de `global.css`), así que dentro de
+la capa la señal de «esto es interactivo» no puede ser el color: los controles van
+calados en papel (16,27:1) y subrayados.
+
+**Y lo que quedó dicho después** (agregado al pegarla, y por eso separado). La
+island **no se monta** cuando la actividad no tiene imágenes, así que las 16 de 46
+publicadas que no tienen ninguna siguen mandando cero bytes; el `client:idle` hace
+que tampoco participe de la primera pantalla. Y la mitad del «cero» que **no** se
+desvió sigue en pie: esta página sigue sin bajar el `events.json`. Está en el §4.3
+y el §9 de [`12-sitio-publico.md`](12-sitio-publico.md).
 
 ## D-440 · El texto alternativo es un campo **de la imagen**, y se pide una sola vez: en la portada
 
@@ -9384,8 +9656,20 @@ próxima persona la reinvente distinta, y acá lo que se reinventaría es el dis
 automático, que es justo lo que esta entrada sacó. Con ella escrita, la cita
 resuelve y esta revisión tiene a qué apuntar.
 
-Las huérfanas que quedan —D-9, D-340, D-341, D-380, D-381 y D-430— siguen abiertas
-y son su propio pendiente.
+~~Las huérfanas que quedan —D-9, D-340, D-341, D-380, D-381 y D-430— siguen
+abiertas y son su propio pendiente.~~ **Cerradas el 2026-09-17 (B-910), y la sexta
+no era una.** D-340, D-341, D-380, D-381 y D-430 están escritas y **no hizo falta
+reconstruir ninguna**: las cinco estaban redactadas enteras en un `.estado/*.md`,
+bajo un cartel que decía «para `06-decisiones.md`», y lo que no ocurrió fue el paso
+de pegarlas. `D-9` era un falso positivo del barrido —es `D-09`, escrita sin el
+cero a la izquierda, y las dos menciones que la producían no eran citas sino un
+ejemplo de ordenamiento—; `scripts/decisiones-referenciadas.mjs` compara por número
+desde ese día, y las citadas con otra grafía se informan aparte.
+
+Y lo que esa tanda dejó como pregunta es más grande que las seis entradas, porque
+no es «escribir la decisión» sino **dónde se pega**: el número se acuña en un
+commit, el texto se escribe en un pizarrón que no está versionado, y lo único que
+los une es que alguien se acuerde. Queda anotado en B-1090.
 
 ---
 
