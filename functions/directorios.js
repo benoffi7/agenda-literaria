@@ -157,6 +157,42 @@ export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
     'mail',
     'web',
   ],
+  /*
+   * B-960 — el cuarto directorio. `asociarse` está entero y no desarmado en dos:
+   * es un mapa `{ haceFalta, costo }` y `JSON.stringify` lo compara completo, así
+   * que apagar el flag **o** cambiar el costo disparan el build igual. Partirlo
+   * sería declarar `asociarse.costo`, que no es un campo de primer nivel y
+   * compararía contra `undefined` en los dos lados — la trampa 8 por la puerta de
+   * al lado, que es exactamente lo que este mapa vino a cerrar.
+   *
+   * `horarioDeSala` y `catalogo` están por lo mismo que `horarios`: entran a la
+   * proyección, así que corregirlos tiene que rehacer la ficha.
+   *
+   * `searchText` **no está**, y no es un olvido: la proyección lo **deriva** de
+   * los otros campos en vez de copiarlo del documento (ver `searchTextDeBiblioteca`),
+   * así que lo que cambia el índice publicado es alguno de los que ya están acá.
+   */
+  bibliotecas: [
+    'estado',
+    'slug',
+    'nombre',
+    'descripcion',
+    'tipo',
+    'direccion',
+    'horarios',
+    'horarioDeSala',
+    'asociarse',
+    'catalogo',
+    'provincia',
+    'barrio',
+    'ciudad',
+    'geo',
+    'imagenes',
+    'instagram',
+    'whatsapp',
+    'web',
+    'mail',
+  ],
 };
 
 /**

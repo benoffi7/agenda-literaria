@@ -352,10 +352,21 @@ describe('la Guía y sus tres filas — B-835', () => {
     ...over,
   });
 
-  it('son los tres del PRD, en el orden en que se construyen', () => {
+  it('son los cuatro, en el orden en que se construyen', () => {
     // Control positivo: con un arreglo vacío, los cruces de abajo pasarían sin
     // haber mirado una sola fila.
-    expect(DIRECTORIOS.map((d) => d.id)).toEqual(['librerias', 'suscripciones', 'lugares']);
+    //
+    // **Eran los tres del PRD y desde B-960 son cuatro**: las bibliotecas no
+    // tienen PRD propio —el pedido fue «lo mismo de librerías pero con
+    // bibliotecas»— y entran al mismo registro igual, que es lo que B-834
+    // prometía cuando dijo que el cuarto directorio sería «una entrada acá y
+    // nada más».
+    expect(DIRECTORIOS.map((d) => d.id)).toEqual([
+      'librerias',
+      'suscripciones',
+      'lugares',
+      'bibliotecas',
+    ]);
     expect(directorioPorId('librerias')?.titulo).toBe('Librerías');
     expect(directorioPorId('no-existe')).toBeUndefined();
   });

@@ -56,6 +56,14 @@ export const VISTAS_CON_FORMULARIO = [
    * la que conviene que se pierda a mitad de camino.
    */
   'lugar',
+  /*
+   * `'biblioteca'` entra con B-960. Lo que se pierde al abandonarla es lo mismo
+   * que en una librería —la galería, que puede llevar cuatro fotos subidas a
+   * mano, y ésas no se recuperan tecleando de nuevo— más algo propio: el costo
+   * de asociarse, cuya fecha la pone el servidor al guardar. Volver a tipearlo
+   * es barato; lo que no vuelve es la fecha en que se había cargado.
+   */
+  'biblioteca',
 ] as const;
 
 export type VistaConFormulario = (typeof VISTAS_CON_FORMULARIO)[number];

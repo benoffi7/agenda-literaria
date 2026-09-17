@@ -299,6 +299,8 @@ evento por función.
 | `suscripcion-guardar` | se guardó una suscripción desde el panel, alta o edición | — | — |
 | `lugares-abrir` | se abre la pantalla de lugares para eventos de la Guía | — | lugares esperando decisión (B-833) |
 | `lugar-guardar` | se guardó un lugar desde el panel, alta o edición | — | — |
+| `bibliotecas-abrir` | se abre la pantalla de bibliotecas de la Guía | — | bibliotecas esperando decisión (B-960) |
+| `biblioteca-guardar` | se guardó una biblioteca desde el panel, alta o edición | — | — |
 
 > ⚠️ **El piso del `valor` es negativo por una sola función, y la historia vale.**
 > El 2026-09-07 este documento estrenó una fila que decía que `encuentro-correr`
