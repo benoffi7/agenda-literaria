@@ -65,7 +65,7 @@ const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.
  * que `tests/apoyo-del-sitio.test.ts`.
  */
 const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  src.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 /**
  * Un `.tsx` reducido a lo que **se lee**: el texto entre `>` y `<` de los
