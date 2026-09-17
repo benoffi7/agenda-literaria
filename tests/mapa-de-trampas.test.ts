@@ -19,8 +19,8 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 const ruta = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 const fuente = (rel: string): string => readFileSync(ruta(rel), 'utf8');
@@ -56,10 +56,8 @@ const FILAS: Fila[] = (() => {
   return filas;
 })();
 
-/** Los archivos de `tests/` versionados, que es el universo donde se busca la red. */
-const TESTS_VERSIONADOS = execFileSync('git', ['ls-files', '-z', 'tests'], { encoding: 'utf8' })
-  .split('\0')
-  .filter((f) => f.endsWith('.ts'));
+/** Los archivos de `tests/`, versionados y sin rastrear, donde se busca la red. */
+const TESTS_VERSIONADOS = archivosDelRepo('tests').filter((f) => f.endsWith('.ts'));
 
 /** Qué tests nombran cada trampa. Es la convención, aplicada al repo de hoy. */
 const testsQueNombran = (numero: number): string[] =>

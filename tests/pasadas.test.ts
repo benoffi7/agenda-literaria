@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -30,6 +29,7 @@ import { RUTA_PASADAS } from '@/lib/rutasPublicas';
 import { RUTAS_FIJAS } from '@/lib/sitemap';
 import { construirIndice } from '@/lib/eventsJson';
 import { entradaDePrueba } from './fixtures/indice';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * `/pasadas` — el archivo. B-109, §4.5 del diseño.
@@ -548,9 +548,7 @@ describe('la página', () => {
   const src = () => sinComentarios(fuente(PAGINA));
 
   it('control positivo: la página existe y está versionada', () => {
-    expect(
-      execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' }),
-    ).toContain(PAGINA);
+    expect(archivosDelRepo('src/pages')).toContain(PAGINA);
     expect(src().length).toBeGreaterThan(200);
   });
 

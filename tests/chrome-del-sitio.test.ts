@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 /**
  * Toda página del sitio público lleva encabezado y pie — B-229.
@@ -37,9 +37,7 @@ const SIN_CHROME: Record<string, string> = {
 };
 
 const paginasAstro = (): string[] =>
-  execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
-    .split('\n')
-    .filter((f) => f.endsWith('.astro'));
+  archivosDelRepo('src/pages').filter((f) => f.endsWith('.astro'));
 
 describe('el chrome del sitio público — B-229', () => {
   it('el barrido encuentra páginas de verdad', () => {
