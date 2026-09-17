@@ -29,10 +29,12 @@ import {
 import { libreriaPublica } from '@/lib/libreriaPublica';
 import { suscripcionPublica } from '@/lib/suscripcionPublica';
 import { lugarPublico } from '@/lib/lugarPublico';
+import { bibliotecaPublica } from '@/lib/bibliotecaPublica';
 import { DIRECTORIOS } from '@/lib/directorios';
 import { libreriaCentinela } from './fixtures/centinelas-libreria';
 import { suscripcionCentinela } from './fixtures/centinelas-suscripcion';
 import { lugarCentinela } from './fixtures/centinelas-lugar';
+import { bibliotecaCentinela } from './fixtures/centinelas-biblioteca';
 
 /**
  * Las dos colecciones, con su proyección y el campo derivado que **no** dispara
@@ -109,6 +111,20 @@ const DIRECTORIOS_CON_PROYECCION = [
     desdeElDocumento: {
       donde: [...clavesDeDondePublico(), 'direccionPublica'],
     } as Record<string, readonly string[]>,
+  },
+  {
+    /*
+     * B-960 — la cuarta, y entró tarde: el frente extendió
+     * `CAMPOS_PUBLICOS_POR_DIRECTORIO` y no esta tabla, así que la única
+     * colección de la Guía **sin** esta red era la nueva. Lo cobró el
+     * `auditor-trampas`. Verificado a mano que las dos listas ya coincidían: el
+     * caso nace en verde, y lo que agrega es que siga estándolo.
+     */
+    coleccion: 'bibliotecas',
+    proyeccion: () => bibliotecaPublica(bibliotecaCentinela()),
+    documento: () => bibliotecaCentinela() as unknown as Record<string, unknown>,
+    derivados: ['searchText'],
+    desdeElDocumento: {} as Record<string, readonly string[]>,
   },
 ] as const;
 
