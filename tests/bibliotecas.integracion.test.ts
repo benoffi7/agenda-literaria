@@ -513,9 +513,18 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     it('la marca `publicadaAlgunaVez` no la puede bajar un cliente', async () => {
       const ref = nuevaRef();
       await conAdminSdk(async (adb) => {
+        /*
+         * ⚠️ **`new Date()` y no `Timestamp.now()`.** Este bloque escribe con el
+         * **Admin SDK** y el `Timestamp` importado arriba es el del SDK
+         * **cliente**: son dos clases de dos paquetes distintos, y el Admin SDK
+         * rechaza el documento entero con «Detected an object of type
+         * "Timestamp" that doesn't match the expected instance». Un `Date` lo
+         * convierten los dos sin discutir, así que es lo que sirve de los dos
+         * lados de la frontera.
+         */
         await adb.doc(ref.path).set({
-          ...formABiblioteca(form(), Timestamp.now() as never, 'panel'),
-          creadoEn: Timestamp.now(),
+          ...formABiblioteca(form(), new Date() as never, 'panel'),
+          creadoEn: new Date(),
           publicadaAlgunaVez: true,
         });
       });
