@@ -191,7 +191,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       expect((await getDoc(ref)).data()!.estado).toBe('publicado');
     });
 
-    it('borra una ficha: es lo único que honra un «borrame» mientras no haya retención', async () => {
+    it('borra una ficha: la retención tarda 30 días y esto es inmediato', async () => {
       const ref = nuevaRef();
       await setDoc(ref, documento());
       await deleteDoc(ref);

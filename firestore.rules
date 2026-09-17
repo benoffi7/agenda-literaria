@@ -1628,10 +1628,14 @@ service cloud.firestore {
       /*
        * **Borrar sí, y es una decisión.** Al revés que `/propuestas`, donde el
        * `delete` está en `false` porque la borra la Function de retención
-       * (DEC-13): acá esa Function **no existe todavía**, así que una ficha
-       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
-       * siempre y el borrado manual es lo único con lo que se puede honrar un
-       * «borrame». Que ese plazo falte está anotado en el backlog.
+       * (DEC-13): acá la Function de retención **ya existe**
+       * (`borrarFichasVencidas`, `functions/retencion-trigger.js`): recorre
+       * `COLECCIONES_DE_DIRECTORIO`, que se deriva de
+       * `CAMPOS_PUBLICOS_POR_DIRECTORIO`, así que esta colección entró sola. Borra
+       * la rechazada a los 30 días del rechazo y la que nadie tocó a los 30 días
+       * de su última señal de vida. El borrado manual sigue haciendo falta porque
+       * es **inmediato**: es lo único que honra un «borrame» hoy y no dentro de
+       * treinta días.
        *
        * El camino normal sigue siendo `rechazado` —la ficha queda como registro
        * de que alguien la propuso—, y borrar es para el alta de spam y para el
@@ -2091,11 +2095,14 @@ service cloud.firestore {
       allow update: if esAdmin() && suscripcionActualizable();
 
       /*
-       * **Borrar sí**, con el mismo argumento que en `/librerias`: la Function de
-       * retención de esta colección **no existe todavía**, así que una ficha
-       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
-       * siempre y el borrado manual es lo único con lo que se puede honrar un
-       * «borrame». El camino normal sigue siendo `rechazado`. **No hay
+       * **Borrar sí**, con el mismo argumento que en `/librerias`: la Function de retención **ya existe**
+       * (`borrarFichasVencidas`, `functions/retencion-trigger.js`): recorre
+       * `COLECCIONES_DE_DIRECTORIO`, que se deriva de
+       * `CAMPOS_PUBLICOS_POR_DIRECTORIO`, así que esta colección entró sola. Borra
+       * la rechazada a los 30 días del rechazo y la que nadie tocó a los 30 días
+       * de su última señal de vida. El borrado manual sigue haciendo falta porque
+       * es **inmediato**: es lo único que honra un «borrame» hoy y no dentro de
+       * treinta días. El camino normal sigue siendo `rechazado`. **No hay
        * subcolección `/versiones` acá**, así que un borrado no se recupera.
        */
       allow delete: if esAdmin();
@@ -2608,11 +2615,14 @@ service cloud.firestore {
       allow update: if esAdmin() && lugarDeGuiaActualizable();
 
       /*
-       * **Borrar sí**, con el mismo argumento que en las otras dos: la Function de
-       * retención de esta colección **no existe todavía**, así que una ficha
-       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
-       * siempre y el borrado manual es lo único con lo que se puede honrar un
-       * «borrame». Acá hay una razón más: una ficha descartada puede conservar la
+       * **Borrar sí**, con el mismo argumento que en las otras dos: la Function de retención **ya existe**
+       * (`borrarFichasVencidas`, `functions/retencion-trigger.js`): recorre
+       * `COLECCIONES_DE_DIRECTORIO`, que se deriva de
+       * `CAMPOS_PUBLICOS_POR_DIRECTORIO`, así que esta colección entró sola. Borra
+       * la rechazada a los 30 días del rechazo y la que nadie tocó a los 30 días
+       * de su última señal de vida. El borrado manual sigue haciendo falta porque
+       * es **inmediato**: es lo único que honra un «borrame» hoy y no dentro de
+       * treinta días. Acá hay una razón más: una ficha descartada puede conservar la
        * dirección de una casa. El camino normal sigue siendo `rechazado`. **No hay
        * subcolección `/versiones` acá**, así que un borrado no se recupera.
        */
@@ -3046,11 +3056,14 @@ service cloud.firestore {
       allow update: if esAdmin() && bibliotecaActualizable();
 
       /*
-       * **Borrar sí**, con el mismo argumento que en las otras tres: la Function
-       * de retención de esta colección **no existe todavía**, así que una ficha
-       * descartada conserva el `contactoDeQuienCargo` de quien la cargó para
-       * siempre y el borrado manual es lo único con lo que se puede honrar un
-       * «borrame». El camino normal sigue siendo `rechazado`. **No hay
+       * **Borrar sí**, con el mismo argumento que en las otras tres: la Function de retención **ya existe**
+       * (`borrarFichasVencidas`, `functions/retencion-trigger.js`): recorre
+       * `COLECCIONES_DE_DIRECTORIO`, que se deriva de
+       * `CAMPOS_PUBLICOS_POR_DIRECTORIO`, así que esta colección entró sola. Borra
+       * la rechazada a los 30 días del rechazo y la que nadie tocó a los 30 días
+       * de su última señal de vida. El borrado manual sigue haciendo falta porque
+       * es **inmediato**: es lo único que honra un «borrame» hoy y no dentro de
+       * treinta días. El camino normal sigue siendo `rechazado`. **No hay
        * subcolección `/versiones` acá**, así que un borrado no se recupera.
        */
       allow delete: if esAdmin();
