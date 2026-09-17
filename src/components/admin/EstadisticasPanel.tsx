@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseEnlaceCelda } from '@/components/campos/Campo';
 import { Reparto } from '@/components/admin/estadisticas/Reparto';
 import { useLabelsTaxonomia, useOpciones } from '@/components/admin/useOpciones';
@@ -1083,7 +1084,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
       })
       .catch((e: unknown) => {
         if (!vivo) return;
-        setFallo(e instanceof Error ? e.message : 'No se pudieron leer las actividades.');
+        setFallo(textoDeFallo(e, { respaldo: 'No se pudieron leer las actividades.' }));
         setCargando(false);
       });
     return () => {

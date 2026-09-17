@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import {
   claseBotonFila,
   claseBotonSecundario,
@@ -160,7 +161,7 @@ export function TaxonomiasPanel() {
       setPintando(null);
       setTexto('');
     } catch (e) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo guardar el cambio.');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo guardar el cambio.' }));
     } finally {
       setOcupado(false);
     }

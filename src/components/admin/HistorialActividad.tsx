@@ -1,4 +1,5 @@
 import { Seccion } from '@/components/admin/campos-del-panel';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { useCallback, useEffect, useState } from 'react';
 import { claseBotonSecundario } from '@/components/campos/Campo';
 import { leerActividad } from '@/lib/actividades';
@@ -123,7 +124,7 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
       setVersiones(vs);
       if (a) setActual(a);
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo leer el historial');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo leer el historial' }));
     } finally {
       setCargando(false);
     }
@@ -145,7 +146,7 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
       // propia versión y cambia qué campos siguen estando distintos.
       await cargar();
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo restaurar');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo restaurar' }));
     } finally {
       setRestaurando(null);
     }

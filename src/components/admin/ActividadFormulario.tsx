@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { useAutoguardado } from '@/components/admin/useAutoguardado';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { useMedicionFormulario } from '@/components/admin/useMedicionFormulario';
@@ -500,7 +501,22 @@ export function ActividadFormulario({
       }
       if (r.estado === 'error') {
         medicion.guardadoFallido(r.error, accion);
-        setFallo(r.error instanceof Error ? r.error.message : 'No se pudo guardar.');
+        /*
+         * **B-929 — y este es el único lugar del panel con `hayBorrador`.**
+         *
+         * El autoguardado (`useAutoguardado`, D-122) existe solo acá, así que es
+         * el único cartel que puede prometer que lo escrito sobrevivió. Decirlo
+         * desde otra pantalla sería prometer que el trabajo está a salvo cuando
+         * no lo está — por eso la frase va por parámetro y no pegada al texto de
+         * `red` en `fallosDelPanel.ts`.
+         *
+         * `medicion.guardadoFallido` recibe el **mismo** error, así que la
+         * etiqueta que va a GA4 y el texto que lee la persona salen de la misma
+         * clasificación. Eso es lo que B-929 vino a arreglar: la métrica ya decía
+         * «red» mientras el cartel decía «Failed to get document because the
+         * client is offline».
+         */
+        setFallo(textoDeFallo(r.error, { respaldo: 'No se pudo guardar.', hayBorrador: true }));
         return;
       }
 

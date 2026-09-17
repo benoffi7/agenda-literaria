@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseBotonPrimario } from '@/components/campos/Campo';
 import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/DirectorioPanel';
 import { SuscripcionFormulario } from '@/components/admin/SuscripcionFormulario';
@@ -116,7 +117,7 @@ export function SuscripcionesPanel({
       await moverSuscripcion(ficha.id, usuario.uid, estado);
       setFallo(null);
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo mover la suscripción');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo mover la suscripción' }));
     }
   };
 

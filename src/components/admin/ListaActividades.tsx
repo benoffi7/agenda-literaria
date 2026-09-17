@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import {
   claseBotonPrimario,
   claseBotonSecundario,
@@ -274,7 +275,7 @@ export function ListaActividades({
         ),
       )
       .catch((e: unknown) =>
-        setFallo(e instanceof Error ? e.message : 'No se pudo cambiar el cupo'),
+        setFallo(textoDeFallo(e, { respaldo: 'No se pudo cambiar el cupo' })),
       );
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseBotonSecundario } from '@/components/campos/Campo';
 import { ReporteFormulario } from '@/components/admin/ReporteFormulario';
 import { marcarResuelto, observarReportes, reintentarReporte } from '@/lib/reportes';
@@ -101,7 +102,7 @@ export function ReportesPanel({ usuario }: Props) {
       await reintentarReporte(id);
       setFallo(null);
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo reintentar');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo reintentar' }));
     } finally {
       setReintentando(null);
     }
@@ -118,7 +119,7 @@ export function ReportesPanel({ usuario }: Props) {
       await marcarResuelto(r.id, !r.resuelto);
       setFallo(null);
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo actualizar');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo actualizar' }));
     } finally {
       setActualizando(null);
     }

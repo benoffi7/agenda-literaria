@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { listarActividades } from '@/lib/actividades';
 import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { ActividadConId } from '@/types/actividad';
@@ -71,7 +72,7 @@ export const useActividades = (
     setCargando(true);
     listarActividades(rol, uid, ciudad)
       .then((as) => vivo && setActividades(as))
-      .catch((e: unknown) => vivo && setFallo(e instanceof Error ? e.message : 'Error al listar'))
+      .catch((e: unknown) => vivo && setFallo(textoDeFallo(e, { respaldo: 'Error al listar' })))
       .finally(() => vivo && setCargando(false));
     return () => {
       vivo = false;
