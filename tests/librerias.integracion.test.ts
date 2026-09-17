@@ -395,15 +395,58 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
   });
 
   describe('lo que hace que la bandeja sirva para algo', () => {
-    it('la ficha no puede nacer publicada ni descartada', async () => {
-      // Es **el** caso: si el estado lo decidiera el cliente, un `curl` publica
-      // su propia librería y la moderación no existe (§1 del `prd/README.md`).
-      await expect(
-        setDoc(doc(db(), 'librerias', 'l_publicada'), documento({ estado: 'publicado' })),
-      ).rejects.toThrow(RECHAZADA);
+    /**
+     * **B-983 — un admin cargando desde el panel SÍ puede nacer publicada.**
+     *
+     * El argumento de la regla («si el estado lo decidiera el cliente, un `curl`
+     * publica su propia librería») es **sobre el anónimo**. Para `origen ==
+     * 'panel'`, que la regla ata a `esAdmin()`, no hay tercero que revisar: quien
+     * carga es el revisor. Y no da poder nuevo — ese admin ya podía publicarla
+     * desde la bandeja con un `update`.
+     *
+     * Es el control **positivo** del caso de abajo, que es el que importa.
+     */
+    it('un admin desde el panel puede crearla ya publicada (B-983)', async () => {
+      await setDoc(doc(db(), 'librerias', 'l_nace_publicada'), documento({ estado: 'publicado' }));
+      const d = (await getDoc(doc(db(), 'librerias', 'l_nace_publicada'))).data() as Libreria;
+      expect(d.estado).toBe('publicado');
+    });
+
+    it('la ficha no puede nacer descartada', async () => {
+      // Nadie nace rechazado: `rechazado` es el resultado de una revisión, y la
+      // revisión tiene que estar sin firmar al crear (los casos de arriba).
       await expect(
         setDoc(doc(db(), 'librerias', 'l_rechazada'), documento({ estado: 'rechazado' })),
       ).rejects.toThrow(RECHAZADA);
+    });
+
+    /**
+     * **Y ésta es la mitad que B-983 NO tocó, que es la que sostiene la bandeja.**
+     *
+     * Una ficha que dice venir del formulario público no puede nacer publicada, y
+     * acá se prueba por los dos lados a la vez: como admin el `origen` no le
+     * cierra (un admin no puede hacer pasar su carga por una de afuera), y sin
+     * sesión tampoco, que es el `curl` del argumento original.
+     *
+     * MUTACIÓN PROBADA: sacarle el `&& d.origen == 'panel' && esAdmin()` a la
+     * cláusula del estado deja este caso en rojo.
+     */
+    it('pero una que dice venir del formulario público, no — ni anónima', async () => {
+      await expect(
+        setDoc(
+          doc(db(), 'librerias', 'l_publica_desde_afuera'),
+          documento({ estado: 'publicado', origen: 'formulario-publico' }),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+
+      await signOut(auth());
+      await expect(
+        setDoc(
+          doc(db(), 'librerias', 'l_publica_anonima'),
+          documento({ estado: 'publicado', origen: 'formulario-publico' }),
+        ),
+      ).rejects.toThrow(RECHAZADA);
+      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
     });
 
     /**

@@ -65,11 +65,23 @@ describe('los dos carteles sobre datos, y dicen cosas opuestas', () => {
     expect(screen.getByText(/interno — no se publica/i)).toBeTruthy();
   });
 
-  it('y el formulario dice que guardar no publica la ficha', () => {
-    // El estado lo mueve la bandeja, no este formulario. Sin decirlo, alguien
-    // carga una librería, la ve guardada y espera verla en el sitio.
+  /**
+   * **B-983 — los dos botones, y el texto que dice qué hace cada uno.**
+   *
+   * Antes había uno solo y un aviso: «Guardar no la publica. Para que entre al
+   * sitio hay que publicarla desde la lista de librerías». Lo reportó el dueño —
+   * «no se sube automáticamente, lo tengo que validar después de cargar»— y el
+   * paso era ceremonia: quien carga desde el panel **es** el revisor.
+   *
+   * «Guardar sin publicar» se queda porque los estados del directorio no tienen
+   * `borrador`: es la única forma de guardar una ficha a medio cargar sin que
+   * salga al sitio, y sin ella el arreglo habría sacado una capacidad.
+   */
+  it('al crear ofrece publicar y no publicar, y dice qué pasa si no', () => {
     montar();
-    expect(screen.getByText(/guardar no la publica/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Guardar y publicar' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Guardar sin publicar' })).toBeTruthy();
+    expect(screen.getByText(/no se ve en el sitio/i)).toBeTruthy();
   });
 });
 
@@ -96,6 +108,23 @@ describe('el link de la ficha se congela al publicar — trampa 10', () => {
     creadoEn: null as never,
     revision: { porUid: null, en: null, motivo: null },
     ...over,
+  });
+
+  /**
+   * **B-983 — al editar hay un botón solo, y es a propósito.**
+   *
+   * `crearLibreria` es lo único que elige el estado; `guardarLibreria` no lo toca
+   * —el estado de una ficha que ya existe lo mueve la bandeja, que es donde está
+   * el historial de revisión—. Un «Guardar y publicar» acá sería un botón que a
+   * veces publica y a veces no: un botón que miente.
+   *
+   * Sin este caso, poner los dos también al editar pasaría en verde.
+   */
+  it('al editar no ofrece publicar: eso lo mueve la bandeja', () => {
+    montar({ inicial: ficha() });
+    expect(screen.queryByRole('button', { name: 'Guardar y publicar' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeTruthy();
+    expect(screen.getByText(/editar no cambia si está publicada/i)).toBeTruthy();
   });
 
   it('mientras espera decisión se puede corregir: es el trabajo de la bandeja', () => {

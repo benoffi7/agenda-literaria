@@ -185,7 +185,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
     return [...new Set(sinRegistrar)];
   };
 
-  const guardar = async () => {
+  const guardar = async (publicar = false) => {
     const parsed = suscripcionFormSchema.safeParse(form);
     if (!parsed.success) {
       setErrores(erroresDe(parsed.error.issues));
@@ -210,7 +210,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
       if (inicial) {
         await guardarSuscripcion(inicial.id, parsed.data as SuscripcionLiterariaForm, inicial);
       } else {
-        await crearSuscripcion(parsed.data as SuscripcionLiterariaForm);
+        await crearSuscripcion(parsed.data as SuscripcionLiterariaForm, publicar);
       }
       medirFuncion('suscripcion-guardar');
       const sinRegistrar = await registrarEtiquetas();
@@ -739,28 +739,41 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
         </div>
       </fieldset>
 
+      {/*
+        B-983 — **dos botones al crear, uno solo al editar.** El porqué completo
+        está en `LibreriaFormulario`, que es donde el dueño lo reportó: cargar
+        desde el panel dejaba la ficha en `pendiente` y había que ir a la bandeja,
+        y ahí quien carga **es** el revisor. «Guardar sin publicar» se queda
+        porque los estados del directorio no tienen `borrador`.
+      */}
       <div className="flex flex-wrap gap-2">
+        {!inicial && (
+          <button
+            type="button"
+            onClick={() => void guardar(true)}
+            disabled={guardando}
+            className={`${claseBotonPrimario} disabled:opacity-50`}
+          >
+            {guardando ? 'Guardando…' : 'Guardar y publicar'}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => void guardar()}
           disabled={guardando}
-          className={`${claseBotonPrimario} disabled:opacity-50`}
+          className={`${inicial ? claseBotonPrimario : claseBotonSecundario} disabled:opacity-50`}
         >
-          {guardando ? 'Guardando…' : 'Guardar'}
+          {guardando ? 'Guardando…' : inicial ? 'Guardar' : 'Guardar sin publicar'}
         </button>
         <button type="button" onClick={onCancelar} className={claseBotonSecundario}>
           Cancelar
         </button>
       </div>
 
-      {/*
-        **Guardar no publica.** Es la misma advertencia que la bandeja pone
-        arriba, y acá hace falta igual: el estado lo mueve la bandeja, no este
-        formulario.
-      */}
       <p className="text-xs text-tinta/55">
-        Guardar no la publica. Para que entre al sitio hay que publicarla desde la lista de
-        suscripciones.
+        {inicial
+          ? 'Editar no cambia si está publicada o no. Eso se mueve desde la lista de suscripciones.'
+          : 'Sin publicar queda esperando en la lista de suscripciones, y no se ve en el sitio.'}
       </p>
     </section>
   );

@@ -6980,7 +6980,35 @@ disponibilidad, no el horario de mostrador— y para una **suscripción** no apl
 Un campo de texto libre puesto hoy es difícil de migrar después: queda cargado en
 todas las fichas y hay que releerlo a mano para estructurarlo.
 
-### B-983 · Cargar desde el panel no publica, y hay que ir a la bandeja a validarlo · P2 — reportado por el dueño (2026-09-17)
+### B-983 · Cargar desde el panel no publica — ✅ hecho (2026-09-17) · P2 — reportado por el dueño
+
+> **Dos botones al crear, uno solo al editar** — decisión del dueño del
+> 2026-09-17, sobre las cuatro opciones que se le presentaron.
+>
+> - **«Guardar y publicar»** — la ficha nace en `publicado`. Es el paso que
+>   sobraba: desde el panel, quien carga **es** el revisor.
+> - **«Guardar sin publicar»** — nace en `pendiente`. Se queda porque los estados
+>   del directorio son `pendiente | publicado | rechazado`, **sin `borrador`**: es
+>   la única forma de guardar una ficha a medio cargar sin que salga al sitio.
+>   Sacarla habría cambiado una fricción por una capacidad perdida.
+> - **Al editar hay un botón solo.** `guardarLibreria` no toca el estado a
+>   propósito —el de una ficha que ya existe lo mueve la bandeja, que es donde
+>   está el historial de revisión—, así que un «publicar» ahí sería un botón que a
+>   veces publica y a veces no.
+>
+> **La regla es lo que lo autoriza, no el TypeScript.** `libreriaValida()`,
+> `lugarValida()` y `suscripcionValida()` aceptan ahora `estado == 'publicado'`
+> **solo** con `origen == 'panel' && esAdmin()`. El argumento original —«sin esto
+> un `curl` publica su propia librería»— era sobre el anónimo, y esa mitad quedó
+> intacta: una ficha que dice venir del formulario público no puede nacer
+> publicada, ni con sesión de admin ni sin sesión.
+>
+> **Y no da poder nuevo**: ese mismo admin ya podía publicarla desde la bandeja
+> con un `update`. Lo único que se sacó es el paso intermedio.
+>
+> Los tres tests de integración se partieron en dos —el control positivo y el
+> negativo— en vez de borrarse, con la mutación anotada: sacarle el `&& d.origen
+> == 'panel' && esAdmin()` a la cláusula deja el negativo en rojo.
 
 **«No se sube automáticamente, lo tengo que validar después de cargar».** Es
 cierto, y **está puesto a propósito** — por eso entra como decisión a revisar y no
@@ -19041,6 +19069,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **B-984** · El tablero listaba **46 ítems cerrados entre lo que falta hacer**, y seis descartados los tachaba diciendo que se habían hecho | el archivo marca el estado con cinco emojis (`✅ ❌ ⚠️ 🟡 🟠`) y el parser reconocía dos, **solo detrás de una raya larga**: todo `· ✅ hecho (fecha)` se leía como abierto, y todo lo que no fuera `✅` o `🟠` también. De 105 «abiertos» quedaron 59. Cerrado **sin tocar una línea del backlog** —el vocabulario se lee del archivo, no se le impone; reescribir 46 encabezados a mano habría aguantado hasta el próximo escrito en el estilo de siempre— y con red de clase: un barrido sobre este archivo que falla si un encabezado con emoji de estado se lee como abierto, o si sacarle el marcador deja el título vacío. De paso, la fecha de la tarjeta pasó a ser la del **cierre** y no la última de la línea | `scripts/tablero/parseo.mjs`, `scripts/tablero/tablero.html`, `tests/tablero.test.ts` (2026-09-17) |
 | **El mismo saneador se comía el 83% de `Buscador.tsx`, y ningún consumidor lo estaba sufriendo** | la segunda cara de la fila de B-830, encontrada **midiendo** desde otro frente. El disparador no era un regex ni un string con `/*`: era el `\s*` del patrón de JSX, que deja que `interface Props {` más el docblock de su primera propiedad sean una apertura de comentario; como el cierre exige el `*/` pegado a un `}`, la búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**. Lo notable no es el caso sino que **el agujero estaba latente**: los cinco consumidores actuales daban salida idéntica antes y después, y el bug esperaba a que alguien apuntara el saneador compartido a cualquiera de los **23** archivos que destrozaba (`VisorDeGaleria.tsx` al 91%, `PropuestasPanel.tsx` al 84%, `ActividadFormulario.tsx` al 78%, y `sin-comentarios.mjs` a sí mismo al 96%). Cerrado reemplazando las cuatro pasadas de `replace` por **un solo recorrido de izquierda a derecha**, que cierra la familia entera en vez del caso, y con red de clase: un barrido que compara contra el **parser de TypeScript** sobre los 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de código | B-853, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |
 | **B-841 dejó la medición del panel colgando de una prop opcional que nadie verificaba** | lo encontró el `auditor-trampas` sobre el propio commit de B-841, y es la clase que ese refactor crea: sacar la medición a una prop **opcional** hace que dejar de pasarla se vea idéntico. Si un refactor deja el `medir={medirSeccion}` afuera, el build queda verde, `tsc` queda verde —son opcionales— y lo que se pierde es GA4 sin `funcion_usada` para **todas** las aperturas de sección y toda interacción de taxonomía del panel; se nota semanas después, mirando un hueco en el tablero. **Y de paso degradó un aserto existente**: «TagsInput mide la taxonomía» hace `toContain('taxonomia-nueva')` sobre el fuente, y esos literales siguen ahí como argumentos de `onMedir?.(…)` — o sea que seguía pasando y ya no probaba que se midiera, solo que el string existía. Cerrado con `tests/campos-del-panel.render.test.tsx`, que monta la capa y afirma **la llamada** (y el «?» de la guía, con su control negativo), más la otra dirección —que el control **genérico** no mida sin la prop, que es lo que hace que un formulario público pueda usarlo—; y el caso degradado se renombró a lo que de verdad prueba: que los dos widgets nombran el mismo vocabulario (B-72). Las tres ataduras verificadas por mutación | B-841, `tests/campos-del-panel.render.test.tsx`, `tests/taxonomia.test.ts` (2026-09-09) |
 | **El grafo de la red nueva no resolvía los alias a `functions/`, y uno de los tres archivos auditados usa uno** | `aArchivo` de `panel-fuera-del-sitio.test.ts` solo resolvía `@/` y los relativos, y `campos/TaxonomiaSelect.tsx` importa `desSlug` de **`@calendario`**. Sin resolverlo, el recorrido lo trata como paquete externo y se corta ahí — así que `caminoHasta` devolvía `null` por **no haber sabido resolver** y no por no haber camino: un verde falso. Hoy no era explotable porque `functions/calendario.js` no importa nada —y `bundle-panel.test.ts` lo exige—, pero es el mismo punto ciego que B-323 ya cerró para ese archivo, reintroducido al reusar el recorrido para una raíz nueva. Lo encontró el `auditor-trampas`. Cerrado leyendo los alias de `astro.config.mjs`, con el control positivo calcado del original y su mutación probada | B-841, `tests/panel-fuera-del-sitio.test.ts` (2026-09-09) |

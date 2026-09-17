@@ -42,7 +42,7 @@ import {
   precioDelForm,
 } from '@/lib/suscripcion-literaria-schema';
 import { PERIODICIDAD_POR_DEFECTO } from '@/types/suscripcion-literaria';
-import type { EstadoDirectorio } from '@/lib/directorios';
+import { ESTADO_INICIAL, ESTADO_PUBLICO, type EstadoDirectorio } from '@/lib/directorios';
 import type { TimestampLike } from '@/types/actividad';
 import type {
   SuscripcionLiteraria,
@@ -180,10 +180,23 @@ export const suscripcionAFormulario = (
  * cargada tiene el precio recién cargado, y la regla lo exige igual
  * (`d.precio.cargadoEn == request.time`).
  */
-export const crearSuscripcion = async (f: SuscripcionLiterariaForm): Promise<string> => {
+/**
+ * **`publicar` decide si nace publicada** — B-983, los dos botones del panel.
+ *
+ * `false` (el default) la deja en `pendiente`, que es lo que hace de borrador:
+ * los estados del directorio no tienen `borrador`, así que es la única forma de
+ * guardar una ficha a medio cargar sin que salga al sitio.
+ *
+ * Lo que lo autoriza es `firestore.rules` —exige `origen == 'panel' &&
+ * esAdmin()` para aceptar `publicado`—, no este parámetro.
+ */
+export const crearSuscripcion = async (
+  f: SuscripcionLiterariaForm,
+  publicar = false,
+): Promise<string> => {
   const ref = doc(collection(db(), COL));
   await setDoc(ref, {
-    ...formASuscripcion(f, ahoraDelServidor(), 'panel'),
+    ...formASuscripcion(f, ahoraDelServidor(), 'panel', publicar ? ESTADO_PUBLICO : ESTADO_INICIAL),
     creadoEn: serverTimestamp(),
   });
   return ref.id;

@@ -44,7 +44,7 @@ import {
 import { db } from '@/lib/firestore-client';
 import { formALibreria } from '@/lib/libreria-schema';
 import { CIUDAD_POR_DEFECTO } from '@/types/libreria';
-import type { EstadoDirectorio } from '@/lib/directorios';
+import { ESTADO_INICIAL, ESTADO_PUBLICO, type EstadoDirectorio } from '@/lib/directorios';
 import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import type { Libreria, LibreriaConId, LibreriaForm } from '@/types/libreria';
 
@@ -160,9 +160,19 @@ export const libreriaAFormulario = (l: Libreria): LibreriaForm => ({
  * `setDoc` sobre una ref acuñada en el cliente y no `addDoc`: así el id se conoce
  * antes de la ida, que es lo que deja abrir el formulario de edición sin releer.
  */
-export const crearLibreria = async (f: LibreriaForm): Promise<string> => {
+/**
+ * **`publicar` decide si nace publicada** — B-983, los dos botones del panel.
+ *
+ * `false` (el default) la deja en `pendiente`, que es lo que hace de borrador:
+ * los estados del directorio no tienen `borrador`, así que es la única forma de
+ * guardar una ficha a medio cargar sin que salga al sitio.
+ *
+ * Lo que lo autoriza es `firestore.rules` —exige `origen == 'panel' &&
+ * esAdmin()` para aceptar `publicado`—, no este parámetro.
+ */
+export const crearLibreria = async (f: LibreriaForm, publicar = false): Promise<string> => {
   const ref = doc(collection(db(), COL));
-  await setDoc(ref, { ...formALibreria(f, 'panel'), creadoEn: serverTimestamp() });
+  await setDoc(ref, { ...formALibreria(f, 'panel', publicar ? ESTADO_PUBLICO : ESTADO_INICIAL), creadoEn: serverTimestamp() });
   return ref.id;
 };
 

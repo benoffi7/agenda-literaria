@@ -2,6 +2,45 @@
 
 ## Sin publicar
 
+- **Publicar una ficha de la Guía desde el formulario** — **B-983**, reportado por
+  el dueño («no se sube automáticamente, lo tengo que validar después de
+  cargar»). Dos botones al crear: «Guardar y publicar» y «Guardar sin publicar».
+  El segundo se queda porque los estados del directorio no tienen `borrador`.
+
+  Lo autoriza `firestore.rules`, que ahora acepta `publicado` al crear **solo**
+  con `origen == 'panel' && esAdmin()`. El argumento original era sobre el
+  anónimo y esa mitad quedó intacta: una ficha que dice venir del formulario
+  público no puede nacer publicada, ni con sesión de admin ni sin sesión. Y no da
+  poder nuevo — ese admin ya podía publicarla desde la bandeja.
+
+- **El tablero del backlog listaba 46 ítems cerrados entre lo que falta hacer** —
+  **B-984**, reportado por el dueño («los hechos no hace falta que estén»). El
+  archivo marca el estado con **cinco** emojis y el parser reconocía **dos**, y
+  solo detrás de una raya larga: todo `· ✅ hecho (fecha)` se leía como abierto.
+  De 105 «abiertos» quedan **59**, que son los que de verdad faltan.
+
+  **No se tocó una línea de `docs/BACKLOG.md`.** El vocabulario se lee del
+  archivo, no se le impone: reescribir 46 encabezados a mano habría aguantado
+  hasta el próximo que alguien escriba en el estilo de siempre, y el rastro —que
+  es para lo que existe el archivo— no se toca. El arreglo entero está en
+  `scripts/tablero/parseo.mjs`.
+
+  Tres cosas más que salieron del mismo hilo:
+
+  - **`❌ descartado` dejó de contarse como «hecho».** Eran seis ítems que la
+    pantalla tachaba afirmando que se habían hecho. Es un estado propio, con su
+    chip, y `⚠️ sin bug que arreglar` entra ahí: es la misma puerta cerrada.
+  - **`🟡 a medias` es trabajo empezado**, que es lo que le importa a quien mira
+    el tablero: hay algo hecho y queda algo por hacer.
+  - **La fecha de la tarjeta es la del cierre, no la última de la línea.**
+    `✅ hecho (2026-09-16) · P1 — pedido del dueño (2026-09-15)` mostraba el 15,
+    o sea el día en que se pidió.
+
+  Los cerrados siguen sin verse al abrir —su chip nace apagado, como el de
+  «Hechos»—, así que la pantalla muestra lo que falta. La red: un barrido sobre el
+  backlog real que falla si un encabezado con emoji de estado se lee como abierto,
+  o si sacarle el marcador deja el título vacío.
+
 - **«Dirección web» era el slug, no la web** — **B-981**, reportado por el dueño
   («lugar para página web 2 veces»). No estaba duplicado: eran dos campos
   distintos con nombres que competían, y en librerías y lugares hay además un

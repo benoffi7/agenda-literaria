@@ -1376,10 +1376,28 @@ service cloud.firestore {
     function libreriaValida() {
       let d = request.resource.data;
       return formaDeLibreria()
-        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
-        // `curl` publica su propia librería y la bandeja no sirve para nada
-        // (§1 del `prd/README.md`).
-        && d.estado == 'pendiente'
+        /*
+         * **El estado inicial lo fuerza la REGLA y no el cliente.** Sin esto, un
+         * `curl` publica su propia librería y la bandeja no sirve para nada
+         * (§1 del `prd/README.md`).
+         *
+         * ── B-983 · desde el panel, un admin puede nacer publicado ───────────
+         * El argumento de arriba es **sobre el anónimo**. Para `origen == 'panel'`
+         * —que la cláusula de más abajo ata a `esAdmin()`— no hay tercero que
+         * revisar: quien carga **es** el revisor, y el paso por la bandeja era
+         * ceremonia. Lo reportó el dueño: «no se sube automáticamente, lo tengo
+         * que validar después de cargar».
+         *
+         * **No da poder nuevo**: un admin ya podía publicar desde la bandeja con
+         * un `update`. Lo único que saca es el paso intermedio.
+         *
+         * `pendiente` sigue siendo alcanzable desde el panel a propósito: los
+         * estados del directorio no tienen `borrador`, así que es lo que permite
+         * guardar una ficha a medio cargar sin que salga al sitio. De ahí los dos
+         * botones del formulario.
+         */
+        && (d.estado == 'pendiente'
+             || (d.estado == 'publicado' && d.origen == 'panel' && esAdmin()))
         /*
          * Y `revision` entera en null: nadie nace revisado. Con `.get(clave,
          * 'x')` —un centinela que **no es `null`**— la clave ausente tampoco
@@ -1860,10 +1878,28 @@ service cloud.firestore {
     function suscripcionValida() {
       let d = request.resource.data;
       return formaDeSuscripcion()
-        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
-        // `curl` publica su propia suscripción —con su link de cobro— y la
-        // bandeja no sirve para nada (§1 del `prd/README.md`).
-        && d.estado == 'pendiente'
+        /*
+         * **El estado inicial lo fuerza la REGLA y no el cliente.** Sin esto, un
+         * `curl` publica su propia suscripción —con su link de cobro— y la bandeja no sirve para nada
+         * (§1 del `prd/README.md`).
+         *
+         * ── B-983 · desde el panel, un admin puede nacer publicado ───────────
+         * El argumento de arriba es **sobre el anónimo**. Para `origen == 'panel'`
+         * —que la cláusula de más abajo ata a `esAdmin()`— no hay tercero que
+         * revisar: quien carga **es** el revisor, y el paso por la bandeja era
+         * ceremonia. Lo reportó el dueño: «no se sube automáticamente, lo tengo
+         * que validar después de cargar».
+         *
+         * **No da poder nuevo**: un admin ya podía publicar desde la bandeja con
+         * un `update`. Lo único que saca es el paso intermedio.
+         *
+         * `pendiente` sigue siendo alcanzable desde el panel a propósito: los
+         * estados del directorio no tienen `borrador`, así que es lo que permite
+         * guardar una ficha a medio cargar sin que salga al sitio. De ahí los dos
+         * botones del formulario.
+         */
+        && (d.estado == 'pendiente'
+             || (d.estado == 'publicado' && d.origen == 'panel' && esAdmin()))
         // Y `revision` entera en null: nadie nace revisado. Con un centinela que
         // **no es `null`**, la clave ausente tampoco pasa.
         && d.revision.get('porUid', 'x') == null
@@ -2331,10 +2367,28 @@ service cloud.firestore {
     function lugarDeGuiaValido() {
       let d = request.resource.data;
       return formaDeLugar()
-        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
-        // `curl` publica su propio lugar y la bandeja no sirve para nada
-        // (§1 del `prd/README.md`).
-        && d.estado == 'pendiente'
+        /*
+         * **El estado inicial lo fuerza la REGLA y no el cliente.** Sin esto, un
+         * `curl` publica su propia lugar y la bandeja no sirve para nada
+         * (§1 del `prd/README.md`).
+         *
+         * ── B-983 · desde el panel, un admin puede nacer publicado ───────────
+         * El argumento de arriba es **sobre el anónimo**. Para `origen == 'panel'`
+         * —que la cláusula de más abajo ata a `esAdmin()`— no hay tercero que
+         * revisar: quien carga **es** el revisor, y el paso por la bandeja era
+         * ceremonia. Lo reportó el dueño: «no se sube automáticamente, lo tengo
+         * que validar después de cargar».
+         *
+         * **No da poder nuevo**: un admin ya podía publicar desde la bandeja con
+         * un `update`. Lo único que saca es el paso intermedio.
+         *
+         * `pendiente` sigue siendo alcanzable desde el panel a propósito: los
+         * estados del directorio no tienen `borrador`, así que es lo que permite
+         * guardar una ficha a medio cargar sin que salga al sitio. De ahí los dos
+         * botones del formulario.
+         */
+        && (d.estado == 'pendiente'
+             || (d.estado == 'publicado' && d.origen == 'panel' && esAdmin()))
         // Y `revision` entera en null: nadie nace revisado. Con un centinela que
         // **no es `null`**, la clave ausente tampoco pasa.
         && d.revision.get('porUid', 'x') == null

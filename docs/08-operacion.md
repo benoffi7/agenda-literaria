@@ -96,7 +96,8 @@ una pestaña con las ideas de [`11-ideas-de-producto.md`](11-ideas-de-producto.m
 **El markdown sigue siendo la fuente de verdad.** El tablero no guarda nada
 propio: lee los dos archivos en cada pedido y, cuando se cambia algo, reescribe
 **la línea del encabezado** o inserta una cita. Las cuatro cosas que puede
-escribir son la prioridad, el estado (`✅ hecho` / `🟠 empezado` / abierto), una
+escribir son la prioridad, el estado (`✅ hecho` / `❌ descartado` /
+`🟠 empezado` / abierto), una
 nota fechada debajo del encabezado, y un ítem nuevo al principio de su sección con
 el próximo `B-` libre. **Nunca toca el cuerpo de un ítem**, que es lo que el skill
 `al-backlog` pide: «no borres el texto, el rastro importa más que la prolijidad de
@@ -114,6 +115,16 @@ la lista». Todo lo que hace se ve en `git diff`.
   el disco justo antes de escribir, no cuando se abrió el formulario.
 - **Escritura atómica** (temporal al lado + `rename`): un Ctrl-C en el medio deja
   el archivo entero.
+
+**El estado se lee del archivo, con el vocabulario del archivo** (B-984). Son
+cinco emojis —`✅` hecho, `❌` descartado, `⚠️` mirado y sin nada que
+arreglar, `🟡` a medias, `🟠` empezado— y cuatro estados en la pantalla:
+`hecho`, `descartado`, `empezado` (que junta `🟡` y `🟠`) y `abierto`, que es
+no tener marcador. El separador de adelante puede ser `—` o `·`, y el marcador
+puede ir **antes** del título (`### B-733 · ✅ hecho (fecha) — El url de cada
+subEvent…`) o después: reconocer solo `— ✅` y `— 🟠` era lo que dejaba
+**46 ítems cerrados listados entre lo que falta hacer**. Los dos estados cerrados
+nacen apagados en el filtro, así que lo que se ve al abrir es lo que falta.
 
 Cada ítem tiene URL propia: `http://127.0.0.1:4173/#B-950` abre esa ficha
 directo, que es lo que se le pega a alguien en un mensaje.

@@ -303,10 +303,29 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
     const rechaza = async (id: string, over: Record<string, unknown>) =>
       expect(setDoc(doc(db(), 'suscripciones', id), documento(over))).rejects.toThrow(RECHAZADA);
 
-    it('el estado inicial lo fuerza la REGLA, no el cliente', async () => {
-      // Sin esto, un `curl` publica su propia suscripción —con su link de cobro— y
-      // la bandeja no sirve para nada.
-      await rechaza('s_pub', { estado: 'publicado' });
+    /**
+     * **B-983 — un admin desde el panel SÍ puede crearla ya publicada.**
+     *
+     * El argumento de la regla es **sobre el anónimo**: para `origen == 'panel'`,
+     * que la regla ata a `esAdmin()`, no hay tercero que revisar. Y no da poder
+     * nuevo — ese admin ya podía publicarla desde la bandeja con un `update`.
+     */
+    it('un admin desde el panel puede crearla ya publicada (B-983)', async () => {
+      await setDoc(doc(db(), 'suscripciones', 's_nace_pub'), documento({ estado: 'publicado' }));
+      expect(
+        ((await getDoc(doc(db(), 'suscripciones', 's_nace_pub'))).data() as { estado: string }).estado,
+      ).toBe('publicado');
+    });
+
+    /**
+     * **Y la mitad que B-983 no tocó, que es la que sostiene la bandeja:** una
+     * que dice venir del formulario público no puede nacer publicada.
+     *
+     * MUTACIÓN PROBADA: sacarle el `&& d.origen == 'panel' && esAdmin()` a la
+     * cláusula del estado deja este caso en rojo.
+     */
+    it('pero no una que dice venir del formulario público', async () => {
+      await rechaza('s_pub_afuera', { estado: 'publicado', origen: 'formulario-publico' });
     });
 
     it('nadie nace revisado ni «ya publicado alguna vez»', async () => {

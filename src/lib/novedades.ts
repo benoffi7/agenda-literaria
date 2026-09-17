@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'guardar-y-publicar-en-la-guia',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'Publicar una ficha de la Guía sin pasar por la bandeja',
+    detalle:
+      'Al cargar una librería, un lugar o una suscripción desde el panel ahora ' +
+      'hay dos botones: «Guardar y publicar», que la manda al sitio de una, y ' +
+      '«Guardar sin publicar», para dejarla a medio cargar sin que se vea. Antes ' +
+      'siempre quedaba esperando y había que publicarla aparte.',
+    donde: 'Al final del formulario de una librería, un lugar o una suscripción.',
+  },
+  {
     id: 'cupo-completo-en-el-formulario',
     fecha: '2026-09-17',
     version: '1.11.0',

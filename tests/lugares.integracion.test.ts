@@ -324,10 +324,29 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
     const rechaza = async (id: string, over: Record<string, unknown>, f?: LugarForm) =>
       expect(setDoc(doc(db(), 'lugares', id), documento(over, f))).rejects.toThrow(RECHAZADA);
 
-    it('el estado inicial lo fuerza la REGLA, no el cliente', async () => {
-      // Sin esto, un `curl` publica su propio lugar —con la dirección adentro— y
-      // la bandeja no sirve para nada.
-      await rechaza('l_pub', { estado: 'publicado' });
+    /**
+     * **B-983 — un admin desde el panel SÍ puede crearlo ya publicado.**
+     *
+     * El argumento de la regla es **sobre el anónimo**: para `origen == 'panel'`,
+     * que la regla ata a `esAdmin()`, no hay tercero que revisar. Y no da poder
+     * nuevo — ese admin ya podía publicarlo desde la bandeja con un `update`.
+     */
+    it('un admin desde el panel puede crearlo ya publicado (B-983)', async () => {
+      await setDoc(doc(db(), 'lugares', 'l_nace_pub'), documento({ estado: 'publicado' }));
+      expect(
+        ((await getDoc(doc(db(), 'lugares', 'l_nace_pub'))).data() as { estado: string }).estado,
+      ).toBe('publicado');
+    });
+
+    /**
+     * **Y la mitad que B-983 no tocó, que es la que sostiene la bandeja:** uno
+     * que dice venir del formulario público no puede nacer publicado.
+     *
+     * MUTACIÓN PROBADA: sacarle el `&& d.origen == 'panel' && esAdmin()` a la
+     * cláusula del estado deja este caso en rojo.
+     */
+    it('pero no una que dice venir del formulario público', async () => {
+      await rechaza('l_pub_afuera', { estado: 'publicado', origen: 'formulario-publico' });
     });
 
     it('nadie nace revisado ni «ya publicado alguna vez»', async () => {

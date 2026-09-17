@@ -44,7 +44,7 @@
  * @property {string | null} seccion
  * @property {string | null} prioridad
  * @property {boolean} prioridadPropia ¿la trae el encabezado, o la hereda?
- * @property {'abierto' | 'hecho' | 'empezado'} estado
+ * @property {'abierto' | 'hecho' | 'empezado' | 'descartado'} estado
  * @property {string | null} fecha
  * @property {string} cuerpo
  */
@@ -69,25 +69,58 @@
  * @typedef {{texto: string, id?: string} | {error: string}} Resultado
  */
 
+/** El id de un ítem, que el archivo escribe `B-950`, `B-836a` o `DEC-6`. */
+const ID = String.raw`(?:B|DEC)-\d+[a-z]?`;
+
 /** Un encabezado de ítem: `### B-950 · Título… · P1 — pedido del dueño (fecha)`. */
-const ENCABEZADO = /^### +((?:B|DEC)-\d+[a-z]?)\b(.*)$/u;
+const ENCABEZADO = new RegExp(String.raw`^### +(${ID})\b(.*)$`, 'u');
 
 /** La prioridad escrita en el encabezado, que gana sobre la de la sección. */
 const PRIORIDAD = /·\s*(P[0-4])\b/u;
 
 /**
- * El marcador de estado, anclado **en el emoji y no en la raya**.
+ * Los cinco emojis con los que el archivo marca el estado de un ítem.
  *
- * Los títulos de este archivo usan rayas largas para todo («…y nadie se entera
- * de cuál de las dos es»), así que cortar por `—` se llevaría medio título. Lo
- * que no aparece en un título es `✅` o `🟠`. Se come hasta el próximo `·`
- * —que es donde suele empezar la prioridad— o hasta el final, y el lookahead
- * deja el espacio de antes afuera: sin eso, sacarle el marcador a `… retención
- * — ✅ hecho (fecha) · P1` devolvía `… retención· P1`, pegado.
+ * Son cinco y no dos porque el archivo real usa cinco, y el tablero mostraba
+ * **46 ítems cerrados como si estuvieran abiertos** por reconocer solo `✅` y
+ * `🟠` detrás de una raya larga (2026-09-17). El vocabulario se lee del
+ * archivo, no se le impone: `✅` hecho, `❌` descartado, `⚠️` mirado y sin
+ * nada que arreglar, `🟡` a medias, `🟠` empezado.
  */
-const MARCADOR = /\s*—\s*(✅|🟠)[^·]*?(?=\s*·|\s*$)/u;
+const ESTADOS = String.raw`✅|❌|⚠️|🟡|🟠`;
 
-/** `(2026-09-15)`, la última del encabezado: es la fecha del estado. */
+/**
+ * El marcador **cuando va detrás del título**, que es la forma más común.
+ *
+ * Anclado en el emoji y no en la raya: los títulos de este archivo usan rayas
+ * largas para todo («…y nadie se entera de cuál de las dos es»), así que cortar
+ * por `—` se llevaría medio título. Lo que no aparece en un título es un emoji
+ * de estado. El separador de adelante puede ser `—` o `·` —el archivo usa los
+ * dos, y exigir la raya era la mitad de los 46 falsos abiertos—. Se come hasta
+ * el próximo `·` —que es donde suele empezar la prioridad— o hasta el final, y
+ * el lookahead deja el espacio de antes afuera: sin eso, sacarle el marcador a
+ * `… retención — ✅ hecho (fecha) · P1` devolvía `… retención· P1`, pegado.
+ */
+const MARCADOR_DETRAS = new RegExp(String.raw`\s*[—·]\s*(${ESTADOS})[^·]*?(?=\s*·|\s*$)`, 'u');
+
+/**
+ * El marcador **cuando va adelante del título**, que es la otra mitad.
+ *
+ * Treinta ítems (2026-09-17) se escribieron `### B-733 · ✅ hecho (2026-09-07) — El url de
+ * cada subEvent…`: el marcador primero y el título después. Ahí no se puede
+ * comer hasta el próximo `·`, porque no hay ninguno y se llevaría el título
+ * entero. Corta en la fecha entre paréntesis, y si no la hay, en la raya larga
+ * que abre el título.
+ *
+ * El prefijo tolera los ítems que nombran más de un id (`### B-772 / B-654 · ✅
+ * hecho…`), porque esos ids son parte del encabezado y no del título.
+ */
+const MARCADOR_ADELANTE = new RegExp(
+  String.raw`^(### +${ID}(?:\s*[·/y]\s*|\s+a\s+)*(?:${ID}\s*)*)\s*[—·]\s*(${ESTADOS})\s*[^·—(]*(?:\([^)]*\))?`,
+  'u',
+);
+
+/** `(2026-09-15)`. Cuál de las del encabezado es la del estado lo decide `fechaDe`. */
 const FECHA = /\((\d{4}-\d{2}-\d{2})\)/gu;
 
 /** Los títulos de sección de primer nivel: `## P1 — bloquean el objetivo…`. */
@@ -103,21 +136,77 @@ const prioridadDeSeccion = (seccion) => {
 };
 
 /**
- * El estado de un ítem, leído del encabezado.
+ * El marcador de estado del encabezado: dónde empieza, dónde termina y con qué
+ * emoji. `null` si el encabezado no tiene ninguno.
  *
- * Tres y no dos: `hecho` es lo que ya no se toca (incluye «✅ decidido: no se
- * hace», que también es una puerta cerrada), `empezado` es el 🟠 que el archivo
- * ya usaba a mano, y `abierto` es todo lo demás.
+ * Se prueba primero la forma «adelante» porque es la más acotada: si el
+ * marcador abre el encabezado, comerse hasta el próximo `·` se llevaría el
+ * título. Devolver los índices y no el texto es lo que permite sacarlo con un
+ * `slice` — reemplazar por texto podría pegarle a una aparición anterior.
+ *
+ * @returns {{emoji: string, desde: number, hasta: number} | null}
  */
-const estadoDe = (encabezado) => {
-  const m = MARCADOR.exec(encabezado);
-  if (!m) return 'abierto';
-  return m[1] === '✅' ? 'hecho' : 'empezado';
+const marcadorDe = (encabezado) => {
+  const adelante = MARCADOR_ADELANTE.exec(encabezado);
+  if (adelante) {
+    return {
+      emoji: adelante[2],
+      desde: adelante[1].length,
+      hasta: adelante[0].length,
+    };
+  }
+  const detras = MARCADOR_DETRAS.exec(encabezado);
+  if (!detras) return null;
+  return { emoji: detras[1], desde: detras.index, hasta: detras.index + detras[0].length };
 };
 
-const ultimaFecha = (linea) => {
-  const todas = [...linea.matchAll(FECHA)];
-  return todas.length > 0 ? todas[todas.length - 1][1] : null;
+/** El encabezado sin su marcador de estado, si lo tenía. */
+const sinMarcador = (encabezado) => {
+  const m = marcadorDe(encabezado);
+  return m ? encabezado.slice(0, m.desde) + encabezado.slice(m.hasta) : encabezado;
+};
+
+/**
+ * A qué estado del tablero corresponde cada emoji.
+ *
+ * Cuatro y no dos. `hecho` es lo que se hizo; `descartado` es la puerta que se
+ * cerró sin hacer nada —el `❌` explícito, y el `⚠️` de «se miró y no hay bug
+ * que arreglar», que es lo mismo con otro nombre—; `empezado` junta el `🟠` y
+ * el `🟡` de «a medias», que para quien mira el tablero son la misma cosa: hay
+ * trabajo empezado y queda trabajo. Separar `descartado` de `hecho` no es
+ * cosmética: el tablero tachaba seis ítems descartados diciendo que se habían
+ * hecho.
+ */
+const ESTADO_DE_EMOJI = {
+  '✅': 'hecho',
+  '❌': 'descartado',
+  '⚠️': 'descartado',
+  '🟡': 'empezado',
+  '🟠': 'empezado',
+};
+
+/** El estado de un ítem, leído del encabezado. `abierto` es no tener marcador. */
+const estadoDe = (encabezado) => {
+  const m = marcadorDe(encabezado);
+  return m ? ESTADO_DE_EMOJI[m.emoji] : 'abierto';
+};
+
+/**
+ * La fecha del estado: la del **marcador** cuando lo hay, y la última del
+ * encabezado cuando no.
+ *
+ * No siempre es la última de la línea: `✅ contestado (2026-09-07) — … —
+ * revisado el 2026-09-08 (D-560)` cierra el 7 y anota una relectura posterior.
+ * La tarjeta dice cuándo se cerró, así que la fecha sale de donde se cerró.
+ */
+const fechaDe = (linea) => {
+  const m = marcadorDe(linea);
+  const donde = m ? linea.slice(m.desde, m.hasta) : linea;
+  const todas = [...donde.matchAll(FECHA)];
+  if (todas.length > 0) return todas[todas.length - 1][1];
+  if (!m) return null;
+  const enLaLinea = [...linea.matchAll(FECHA)];
+  return enLaLinea.length > 0 ? enLaLinea[enLaLinea.length - 1][1] : null;
 };
 
 /**
@@ -129,9 +218,12 @@ const ultimaFecha = (linea) => {
  */
 const tituloDe = (resto) =>
   resto
-    .replace(MARCADOR, '')
     .replace(PRIORIDAD, '')
-    .replace(/^\s*·\s*/u, '')
+    // Dos veces: el marcador puede haber dejado el título abierto con su propia
+    // raya (`· ✅ hecho (fecha) — El url de cada subEvent…`), y esa raya no es
+    // parte del título.
+    .replace(/^\s*[·—]\s*/u, '')
+    .replace(/^\s*[·—]\s*/u, '')
     .replace(/\s+—\s*$/u, '')
     // Sacar la prioridad del medio deja dos espacios pegados. Se colapsan acá y
     // no en la pantalla: el título limpio es un dato, no una decisión de estilo.
@@ -183,7 +275,7 @@ export const parsearBacklog = (texto) => {
     actual = {
       tipo: 'backlog',
       id,
-      titulo: tituloDe(resto),
+      titulo: tituloDe(ENCABEZADO.exec(sinMarcador(linea))[2]),
       encabezado: linea,
       /** 1-indexada: es la que se le pasa al editor para abrir el archivo ahí. */
       linea: i + 1,
@@ -191,7 +283,7 @@ export const parsearBacklog = (texto) => {
       prioridad: prioridad ? prioridad[1] : prioridadDeSeccion(seccion),
       prioridadPropia: Boolean(prioridad),
       estado: estadoDe(linea),
-      fecha: ultimaFecha(linea),
+      fecha: fechaDe(linea),
       cuerpo: '',
     };
   });
@@ -310,8 +402,8 @@ export const conPrioridad = (texto, encabezado, prioridad) => {
   return reemplazarEncabezado(texto, encabezado, nuevo);
 };
 
-const EMOJI = { hecho: '✅', empezado: '🟠' };
-const PALABRA = { hecho: 'hecho', empezado: 'empezado' };
+const EMOJI = { hecho: '✅', empezado: '🟠', descartado: '❌' };
+const PALABRA = { hecho: 'hecho', empezado: 'empezado', descartado: 'descartado' };
 
 /**
  * Marca un ítem como hecho, empezado, o lo devuelve a abierto.
@@ -328,10 +420,10 @@ const PALABRA = { hecho: 'hecho', empezado: 'empezado' };
  * @returns {Resultado}
  */
 export const conEstado = (texto, encabezado, estado, hoy) => {
-  if (!['abierto', 'hecho', 'empezado'].includes(estado)) {
+  if (!['abierto', 'hecho', 'empezado', 'descartado'].includes(estado)) {
     return { error: `Estado inválido: ${estado}` };
   }
-  const limpio = encabezado.replace(MARCADOR, '').trimEnd();
+  const limpio = sinMarcador(encabezado).trimEnd();
   const nuevo =
     estado === 'abierto' ? limpio : `${limpio} — ${EMOJI[estado]} ${PALABRA[estado]} (${hoy})`;
   return reemplazarEncabezado(texto, encabezado, nuevo);

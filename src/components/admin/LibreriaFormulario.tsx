@@ -130,7 +130,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
 
   const congelado = inicial ? slugBloqueado(inicial) : false;
 
-  const guardar = async () => {
+  const guardar = async (publicar = false) => {
     const parsed = libreriaFormSchema.safeParse(form);
     if (!parsed.success) {
       setErrores(erroresDe(parsed.error.issues));
@@ -155,7 +155,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         return;
       }
       if (inicial) await guardarLibreria(inicial.id, parsed.data as LibreriaForm);
-      else await crearLibreria(parsed.data as LibreriaForm);
+      else await crearLibreria(parsed.data as LibreriaForm, publicar);
       medirFuncion('libreria-guardar');
       setFallo(null);
       /*
@@ -494,29 +494,54 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         </div>
       </fieldset>
 
+      {/*
+        B-983 — **dos botones al crear, uno solo al editar.**
+
+        Antes había un botón y un aviso que decía «Guardar no la publica»: cargar
+        desde el panel dejaba la ficha en `pendiente` y había que ir a la bandeja
+        a publicarla. Lo reportó el dueño — «no se sube automáticamente, lo tengo
+        que validar después de cargar»—, y el paso era ceremonia: **quien carga
+        desde el panel es el revisor**, no hay tercero a quien revisarle nada.
+
+        **«Guardar sin publicar» se queda**, y no por simetría: los estados del
+        directorio son `pendiente | publicado | rechazado`, **sin `borrador`**, así
+        que es la única forma de guardar una ficha a medio cargar sin que salga al
+        sitio.
+
+        **Al editar no aparecen los dos.** `crearLibreria` es lo único que elige
+        el estado; `guardarLibreria` no lo toca a propósito —el estado de una
+        ficha que ya existe lo mueve la bandeja, que es donde está el historial de
+        revisión—. Poner acá un «publicar» que a veces publica y a veces no sería
+        un botón que miente.
+      */}
       <div className="flex flex-wrap gap-2">
+        {!inicial && (
+          <button
+            type="button"
+            onClick={() => void guardar(true)}
+            disabled={guardando}
+            className={`${claseBotonPrimario} disabled:opacity-50`}
+          >
+            {guardando ? 'Guardando…' : 'Guardar y publicar'}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => void guardar()}
           disabled={guardando}
-          className={`${claseBotonPrimario} disabled:opacity-50`}
+          className={`${inicial ? claseBotonPrimario : claseBotonSecundario} disabled:opacity-50`}
         >
-          {guardando ? 'Guardando…' : 'Guardar'}
+          {guardando ? 'Guardando…' : inicial ? 'Guardar' : 'Guardar sin publicar'}
         </button>
         <button type="button" onClick={onCancelar} className={claseBotonSecundario}>
           Cancelar
         </button>
       </div>
 
-      {/*
-        **Guardar no publica.** Es la misma advertencia que la bandeja pone
-        arriba, y acá hace falta igual: el estado lo mueve la bandeja, no este
-        formulario, y sin decirlo alguien carga una librería, la ve guardada y
-        espera verla en el sitio.
-      */}
       <p className="text-xs text-tinta/55">
-        Guardar no la publica. Para que entre al sitio hay que publicarla desde la lista de
-        librerías.
+        {inicial
+          ? 'Editar no cambia si está publicada o no. Eso se mueve desde la lista de librerías.'
+          : 'Sin publicar queda esperando en la lista de librerías, y no se ve en el sitio.'}
       </p>
     </section>
   );

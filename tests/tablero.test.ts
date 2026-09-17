@@ -239,6 +239,107 @@ describe('crear un ítem', () => {
   });
 });
 
+/**
+ * Las cinco formas que el tablero no reconocía hasta el 2026-09-17, sacadas del
+ * archivo real: el separador `·` en vez de la raya, el marcador **adelante** del
+ * título, `❌`, `🟡` y `⚠️`, y el marcador sin fecha. Eran 46 ítems cerrados
+ * que la pantalla listaba como abiertos.
+ */
+const FORMAS = [
+  '# Backlog',
+  '',
+  '## P2 — mejoras reales',
+  '',
+  '### B-910 · La trampa 7 del §13 no tiene ningún test · ✅ hecho (2026-08-27)',
+  '',
+  'Separador `·` y marcador al final.',
+  '',
+  '### B-911 · ✅ hecho (2026-09-07) — El barrido de versiones huérfanas no tiene script en seco',
+  '',
+  'Marcador adelante: el título viene después, y no se puede comer hasta el próximo `·`.',
+  '',
+  '### B-912 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)',
+  '',
+  'Una puerta cerrada que no es «hecho».',
+  '',
+  '### B-913 · 🟡 la mitad hecha (2026-09-07) — Dos interacciones sin medir, por no tocar el JSX',
+  '',
+  'A medias es trabajo empezado.',
+  '',
+  '### B-914 · ✅ hecho — La página `/404` está diseñada y no existe',
+  '',
+  'Sin fecha: el marcador corta en la raya que abre el título.',
+  '',
+  '### B-915 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)',
+  '',
+  'Se miró y no había nada que arreglar: cerrado igual.',
+  '',
+  '### B-916 · ✅ contestado (2026-09-07) — ¿cuándo corren los auditores? — revisado el 2026-09-08 (D-560)',
+  '',
+  'Dos fechas: la del cierre y la de una relectura posterior.',
+  '',
+].join('\n');
+
+describe('las formas de encabezado que el archivo real tiene', () => {
+  const items = parsearBacklog(FORMAS).items;
+  const de = (id: string) => items.find((i) => i.id === id)!;
+
+  it('lee el estado con `·` de separador, no solo con raya larga', () => {
+    // Exigir la raya era la mitad de los 46 falsos abiertos: el archivo usa los
+    // dos separadores y nadie se acordó nunca de cuál tocaba.
+    expect(de('B-910').estado).toBe('hecho');
+    expect(de('B-910').titulo).toBe('La trampa 7 del §13 no tiene ningún test');
+  });
+
+  it('no se come el título cuando el marcador va adelante', () => {
+    expect(de('B-911').estado).toBe('hecho');
+    expect(de('B-911').titulo).toBe(
+      'El barrido de versiones huérfanas no tiene script en seco',
+    );
+    expect(de('B-914').estado).toBe('hecho');
+    expect(de('B-914').titulo).toBe('La página `/404` está diseñada y no existe');
+  });
+
+  it('descartado no es hecho, y «sin bug que arreglar» es descartado', () => {
+    // La pantalla tachaba seis ítems descartados diciendo que se habían hecho.
+    expect(de('B-912').estado).toBe('descartado');
+    expect(de('B-912').titulo).toBe('El rótulo de la cartelera nombra la categoría en azul fijo');
+    expect(de('B-915').estado).toBe('descartado');
+  });
+
+  it('«a medias» es trabajo empezado, que es lo que le importa a quien mira', () => {
+    expect(de('B-913').estado).toBe('empezado');
+    expect(de('B-913').titulo).toBe('Dos interacciones sin medir, por no tocar el JSX');
+  });
+
+  it('la fecha es la del marcador, no la última de la línea', () => {
+    // B-916 cierra el 7 y anota una relectura del 8: la tarjeta dice cuándo se
+    // cerró.
+    expect(de('B-916').fecha).toBe('2026-09-07');
+    expect(de('B-916').titulo).toBe('¿cuándo corren los auditores? — revisado el 2026-09-08 (D-560)');
+  });
+
+  it('marcar descartado escribe el ❌ que el archivo ya usaba', () => {
+    const r = conEstado(FORMAS, de('B-910').encabezado, 'descartado', '2026-09-20') as {
+      texto: string;
+    };
+    const nuevo = parsearBacklog(r.texto).items.find((i) => i.id === 'B-910')!;
+    expect(nuevo.encabezado).toBe(
+      '### B-910 · La trampa 7 del §13 no tiene ningún test — ❌ descartado (2026-09-20)',
+    );
+    expect(nuevo.estado).toBe('descartado');
+  });
+
+  it('reabrir cualquiera de las formas deja el encabezado sin marcador', () => {
+    for (const id of ['B-910', 'B-911', 'B-912', 'B-913', 'B-914', 'B-915', 'B-916']) {
+      const r = conEstado(FORMAS, de(id).encabezado, 'abierto', '2026-09-20') as { texto: string };
+      const nuevo = parsearBacklog(r.texto).items.find((i) => i.id === id)!;
+      expect(nuevo.estado).toBe('abierto');
+      expect(nuevo.encabezado).not.toMatch(/✅|❌|⚠️|🟡|🟠/u);
+    }
+  });
+});
+
 describe('contra el archivo real', () => {
   it('parsea docs/BACKLOG.md entero y no pierde ítems', async () => {
     /*
@@ -255,6 +356,18 @@ describe('contra el archivo real', () => {
     expect(items.every((i) => i.id.startsWith('B-') || i.id.startsWith('DEC-'))).toBe(true);
     expect(items.some((i) => i.estado === 'hecho')).toBe(true);
     expect(items.some((i) => i.estado === 'abierto')).toBe(true);
+    /*
+     * La red que impide que vuelva a pasar lo del 2026-09-17: **un encabezado
+     * con emoji de estado no puede leerse como abierto**. Eran 46, y la pantalla
+     * los listaba entre lo que falta hacer. Se mantiene sola —no tiene número
+     * escrito— y se cae el día que alguien invente un sexto emoji, que es
+     * exactamente cuando hay que enterarse.
+     */
+    const conEmoji = items.filter((i) => /✅|❌|⚠️|🟡|🟠/u.test(i.encabezado));
+    expect(conEmoji.length).toBeGreaterThan(300);
+    expect(conEmoji.filter((i) => i.estado === 'abierto')).toEqual([]);
+    // Y ninguno perdió el título al sacarle el marcador.
+    expect(conEmoji.filter((i) => i.titulo.trim() === '')).toEqual([]);
     // Y el encabezado que devuelve es el que está en el archivo, carácter por
     // carácter: es la precondición de toda escritura.
     const lineas = texto.split('\n');

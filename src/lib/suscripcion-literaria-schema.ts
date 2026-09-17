@@ -25,7 +25,7 @@
  */
 import { z } from 'zod';
 import type { DatoConFecha } from '@/lib/datoConFecha';
-import { ESTADO_INICIAL, slugDeFicha } from '@/lib/directorios';
+import { ESTADO_INICIAL, type EstadoDirectorio, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { searchTextDeSuscripcion } from '@/lib/suscripcionPublica';
@@ -488,6 +488,21 @@ export const formASuscripcion = (
   f: SuscripcionLiterariaForm,
   cargadoEn: TimestampLike,
   origen: SuscripcionLiteraria['origen'] = 'formulario-publico',
+  /**
+   * **Con qué estado nace** — B-983.
+   *
+   * `pendiente` es el default y lo único que la regla acepta del formulario
+   * público. Desde el panel se puede pedir `publicado`, y ahí no hay tercero que
+   * revisar: quien carga es el revisor. Lo reportó el dueño — «no se sube
+   * automáticamente, lo tengo que validar después de cargar».
+   *
+   * **Este parámetro no es lo que lo autoriza.** Lo autoriza `firestore.rules`,
+   * que exige `origen == 'panel' && esAdmin()` para aceptar `publicado`; acá es
+   * solo lo que el formulario pide. Un valor en un módulo de TypeScript no le
+   * impide nada a nadie, que es lo mismo que dice el docblock de
+   * `ESTADO_INICIAL`.
+   */
+  estado: EstadoDirectorio = ESTADO_INICIAL,
 ): Omit<SuscripcionLiteraria, 'creadoEn'> => {
   const oNull = (s: string): string | null => (s.trim() ? s.trim() : null);
   const digitos = soloDigitos(f.whatsapp);
@@ -545,7 +560,7 @@ export const formASuscripcion = (
     contactoDeQuienCargo: f.contactoDeQuienCargo.valor.trim()
       ? { via: f.contactoDeQuienCargo.via, valor: f.contactoDeQuienCargo.valor.trim() }
       : null,
-    estado: ESTADO_INICIAL,
+    estado,
     origen,
     /*
      * §6 — el índice de búsqueda, normalizado al escribir para que «Crónica»

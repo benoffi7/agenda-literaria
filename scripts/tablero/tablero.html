@@ -111,7 +111,7 @@
       .tarjeta .tit { margin: 5px 0 0; font-weight: 600; }
       .tarjeta .meta { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--super); }
       .punto { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: 1px; margin-inline-end: 5px; }
-      .hecho .tit { text-decoration: line-through; opacity: 0.6; }
+      .cerrado .tit { text-decoration: line-through; opacity: 0.6; }
 
       dialog {
         width: min(760px, 94vw);
@@ -167,6 +167,7 @@
         <button class="chip" data-estado="abierto" aria-pressed="true">Abiertos</button>
         <button class="chip" data-estado="empezado" aria-pressed="true">Empezados</button>
         <button class="chip" data-estado="hecho" aria-pressed="false">Hechos</button>
+        <button class="chip" data-estado="descartado" aria-pressed="false">Descartados</button>
       </div>
       <select id="agrupar" aria-label="Agrupar por">
         <option value="prioridad">Por prioridad</option>
@@ -198,6 +199,7 @@
             <option value="abierto">abierto</option>
             <option value="empezado">empezado</option>
             <option value="hecho">hecho</option>
+            <option value="descartado">descartado</option>
           </select>
         </label>
         <button id="f-nota">Agregar nota…</button>
@@ -244,7 +246,13 @@
       let datos = null;
       let vista = 'backlog';
       let seleccionado = null;
+      /*
+        Lo que se ve al abrir: lo que falta. Los cerrados están detrás de su chip
+        —el backlog tiene más de 350 ítems hechos y la pantalla sería ilegible—,
+        pero siguen en el archivo: el rastro es el punto (skill `al-backlog`).
+      */
       const estados = new Set(['abierto', 'empezado']);
+      const CERRADOS = new Set(['hecho', 'descartado']);
 
       const avisar = (texto, ms = 2600) => {
         const a = $('#aviso');
@@ -385,7 +393,10 @@
           col.innerHTML = `<h2><span>${escapar(String(clave))}</span><span>${items.length}</span></h2>`;
           for (const it of items) {
             const b = document.createElement('button');
-            b.className = `tarjeta ${it.estado === 'hecho' ? 'hecho' : ''}`;
+            // Tachado para las dos puertas cerradas —hecho y descartado—, que
+            // es lo que el ojo busca al barrer la columna. El chip de arriba dice
+            // cuál de las dos, y ninguna de las dos se muestra por omisión.
+            b.className = `tarjeta ${CERRADOS.has(it.estado) ? 'cerrado' : ''}`;
             b.innerHTML =
               `<span class="id">${it.estado === 'abierto' || vista === 'ideas'
                 ? `<i class="punto" style="background:${colorDe(it.prioridad)}"></i>` : ''}${escapar(it.id)}</span>` +
