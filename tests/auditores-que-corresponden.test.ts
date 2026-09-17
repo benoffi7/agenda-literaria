@@ -283,3 +283,61 @@ describe('la derivación sale de la ficha y no de una lista escondida', () => {
     expect(d.privacidad.corresponde).toBe(false);
   });
 });
+
+/**
+ * **Las Functions que deciden sobre el dato personal de un tercero disparan
+ * `privacidad`.**
+ *
+ * No es una lista de conveniencia: es la única clase de archivo del proyecto que
+ * toca el dato personal de alguien **sin login** y que corre con el **Admin
+ * SDK**, o sea que ni `firestore.rules` ni `storage.rules` la alcanzan. Si no
+ * dispara el auditor, no la mira nadie.
+ *
+ * ── Por qué existe este caso, con la medición ─────────────────────────────
+ * El 2026-09-17 los cuatro **faltaban** en la ficha, y el motivo de que importe
+ * está medido: la auditoría de B-926 se despertó de casualidad, por dos archivos
+ * de `src/lib/`. Un cambio que tocara **solo** estas Functions no habría
+ * disparado nada. Fue la **segunda** vez ese día que una auditoría no corría por
+ * una tabla incompleta.
+ *
+ * Y el que más pesa no era ninguno de los dos que se reportaron:
+ * `flyer-de-propuesta.js` es el que le saca a la foto el **EXIF con las
+ * coordenadas de la casa** donde se hace el taller. Que ese saneo corriera solo
+ * en el cliente era el bug que B-896 cerró — o sea que ese archivo **es** la
+ * garantía, y si deja de sanear no hay segunda capa.
+ *
+ * ── Por qué una lista escrita y no derivada ───────────────────────────────
+ * No hay señal mecánica para «decide sobre el dato personal de un tercero»: se
+ * sabe leyendo. Así que la lista se escribe, **con el motivo de cada una**, y
+ * agregar una es una decisión y no un descuido — el mismo criterio que
+ * `COLECCIONES_ABIERTAS`. Lo que este caso impide es que una de las cuatro se
+ * **caiga** de la ficha sin que nadie lo vea, que es el riesgo real: dos ramas
+ * la editaron el mismo día con listas de distinto largo.
+ */
+describe('las Functions del dato de un tercero disparan `privacidad`', () => {
+  const DEL_DATO_DE_UN_TERCERO: Record<string, string> = {
+    'functions/propuestas.js':
+      'decide CUÁNDO se destruye la foto que mandó un tercero (B-863), con Admin SDK',
+    'functions/propuestas-trigger.js': 'el trigger de esa decisión',
+    'functions/flyer-de-propuesta.js':
+      'le saca a la foto el EXIF con las coordenadas de la casa — B-896 paso 1',
+    'functions/flyer-de-propuesta-trigger.js':
+      'el único endpoint de escritura anónimo que recibe bytes',
+    'functions/retencion.js': 'decide cuánto tiempo sigue existiendo ese dato — B-838',
+  };
+
+  it.each(Object.entries(DEL_DATO_DE_UN_TERCERO))('%s — %s', (ruta) => {
+    /*
+     * Se mira `disparadores` y **no** `corresponde`, que es la diferencia entre
+     * este caso y uno que pasaría siempre: `corresponde` da `true` también
+     * cuando el auditor entra por otro archivo del mismo cambio, así que un
+     * aserto sobre él quedaría verde con la ruta afuera de la ficha. Lo que se
+     * afirma acá es que **este archivo, solo, lo despierta**.
+     */
+    expect(
+      decidir([ruta]).privacidad.disparadores,
+      `${ruta} no dispara el auditor de privacidad: agregalo al \`description\` de ` +
+        '`.claude/agents/auditor-privacidad.md`, que es de donde se deriva el disparador',
+    ).toContain(ruta);
+  });
+});
