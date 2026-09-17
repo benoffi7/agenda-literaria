@@ -85,7 +85,7 @@ const tokenAdmin = async (uid: string) => {
     /* ya existía */
   }
   await a.setCustomUserClaims(uid, { admin: true });
-  const token = await a.createCustomToken(uid, { admin: true });
+  const token = await a.createCustomToken(uid);
   await deleteAdminApp(app);
   return token;
 };

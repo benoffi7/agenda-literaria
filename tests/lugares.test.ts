@@ -872,11 +872,12 @@ describe('la lectura del build no lee lo que no va a publicar', () => {
      * HTML publicado no se rehace.
      *
      * MUTACIÓN PROBADA: sacar el `export { rebuildPorLugares }` de
-     * `functions/index.js` deja este caso en rojo.
+     * `functions/index.js` deja este caso en rojo — y **comentarlo** también
+     * (B-916): `sinComentarios` barre el fuente antes de buscar la cadena.
      */
-    const index = readFileSync(raiz('functions/index.js'), 'utf8');
+    const index = sinComentarios(readFileSync(raiz('functions/index.js'), 'utf8'));
     expect(index).toContain("export { rebuildPorLugares } from './directorios-trigger.js';");
-    const trigger = readFileSync(raiz('functions/directorios-trigger.js'), 'utf8');
+    const trigger = sinComentarios(readFileSync(raiz('functions/directorios-trigger.js'), 'utf8'));
     expect(trigger).toContain("document: 'lugares/{id}'");
     expect(trigger).toContain('marcarRebuild(getFirestore(), `lugar ${id}`)');
   });

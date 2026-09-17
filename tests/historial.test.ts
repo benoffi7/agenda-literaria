@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
   camposCambiados,
@@ -379,13 +380,17 @@ describe('B-41 · borrar una actividad guarda su última versión', () => {
       readFileSync(fileURLToPath(new URL(`../${relativo}`, import.meta.url)), 'utf8');
 
     const trigger = fuente('functions/historial-trigger.js');
-    expect(trigger).toContain('export const guardarVersionAlBorrar = onDocumentDeleted(OPCIONES,');
+    // B-916: `sinComentarios` antes de buscar el `export`, si no un
+    // `// export const …` comentado queda verde por contener la misma cadena.
+    expect(sinComentarios(trigger)).toContain(
+      'export const guardarVersionAlBorrar = onDocumentDeleted(OPCIONES,',
+    );
     // Las dos escrituras pasan por el mismo helper: la retención, el id y la
     // forma del documento no se pueden separar entre "editaron" y "borraron".
     expect(trigger.match(/await guardar\(\{/g)).toHaveLength(2);
     expect(trigger.match(/versionesAborrar\(/g)).toHaveLength(1);
     // Y está exportado desde el entrypoint, o si no no se despliega.
-    expect(fuente('functions/index.js')).toContain(
+    expect(sinComentarios(fuente('functions/index.js'))).toContain(
       "export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';",
     );
   });

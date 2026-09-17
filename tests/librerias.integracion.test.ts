@@ -73,11 +73,12 @@ const token = async (uid: string, claims: Record<string, boolean>) => {
   } catch {
     /* ya existía */
   }
+  // Solo el registro (`setCustomUserClaims`), que es lo que hace producción —
+  // el script `admin:claim` lo pone así y el panel real lee el claim del
+  // token de sesión, no de un custom token con claims embebidos. Pasarlos
+  // también acá tapaba el desajuste de B-894 y es la vía infiel (B-895).
   await a.setCustomUserClaims(uid, claims);
-  // Los dos caminos, como el resto de los archivos de integración: el registro
-  // (que es lo que hace producción) y el custom token. B-894 es el motivo por el
-  // que esto importa.
-  const t = await a.createCustomToken(uid, claims);
+  const t = await a.createCustomToken(uid);
   await deleteAdminApp(app);
   return t;
 };

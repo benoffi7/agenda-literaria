@@ -125,7 +125,8 @@ describe('la callable está atestada — B-896', () => {
   it('está exportada en `index.js`: una Function que no se exporta no se despliega', () => {
     // Es la trampa 11 con otra cara: el archivo parsea, el test de arriba pasa, y
     // la Function no existe en producción porque nadie la re-exportó.
-    expect(fuente('functions/index.js')).toContain(
+    // B-916: `sinComentarios` evita que un `export` comentado quede verde.
+    expect(sinComentarios(fuente('functions/index.js'))).toContain(
       "export { subirFlyerDePropuesta } from './flyer-de-propuesta-trigger.js';",
     );
     expect(sinComentarios(fuente(TRIGGER))).toContain('export const subirFlyerDePropuesta = onCall(');
@@ -140,7 +141,7 @@ describe('la callable está atestada — B-896', () => {
      */
     const enElCliente = /const CALLABLE_FLYER = '([^']+)'/.exec(fuente(CLIENTE))?.[1];
     expect(enElCliente, 'no se encontró el nombre en el cliente').toBeTruthy();
-    expect(fuente('functions/index.js')).toContain(`export { ${enElCliente} }`);
+    expect(sinComentarios(fuente('functions/index.js'))).toContain(`export { ${enElCliente} }`);
   });
 
   it('y la región también, que si no el SDK le pega a us-central1', () => {
