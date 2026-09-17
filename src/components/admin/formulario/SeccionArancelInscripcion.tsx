@@ -125,26 +125,44 @@ export function SeccionArancelInscripcion({
       </label>
 
       {/*
-        B-97 — **se ve acá y se prende en otra parte**, y las dos mitades son a
-        propósito.
+        B-956 — **acá hay una casilla, y eso revierte media decisión de B-97 a
+        propósito.**
 
-        Se prende desde el menú «⋯» del listado porque el caso es «se llenó, lo
-        marco desde el teléfono» y abrir 30+ campos para tocar una casilla no se
-        hace. Pero lo que se publica tiene que poder verse desde el panel: el
-        cartel ya está en el sitio y en la descripción de los N eventos, así que
-        quien está editando la actividad no puede no saberlo. De ahí un aviso y
-        no un control — si acá hubiera una casilla, habría dos lugares donde
-        prenderlo y ninguno sería el bueno.
+        Aquello dejó un aviso y no un control, con este argumento escrito: «si
+        acá hubiera una casilla, habría dos lugares donde prenderlo y ninguno
+        sería el bueno». El dueño pidió que haya dos, y el motivo es el de toda
+        esta tanda: **con una segunda persona cargando, el «⋯» del listado no se
+        encuentra**, y quien ya está adentro del formulario no tiene por qué
+        salir a buscarlo.
+
+        **El «⋯» se queda**, y no por compatibilidad: es el caso para el que
+        nació —«se llenó, lo marco desde el teléfono»— y sacarlo sería cambiar un
+        problema por el otro. Las dos escriben el mismo campo.
+
+        Lo que sí sobrevive entero de B-97 es la otra mitad: **lo que se publica
+        tiene que poder verse desde el panel**. Por eso la casilla lleva debajo lo
+        que el aviso decía —qué pasa cuando está prendida—, en vez de ser una
+        casilla muda.
 
         No se reusa el texto del evento: ahí es prosa pública con su paréntesis,
-        acá es una etiqueta del panel. Es la misma razón por la que
-        `ETIQUETA_ENTREGA` no se comparte (D-20).
+        acá es una etiqueta del panel. Misma razón por la que `ETIQUETA_ENTREGA`
+        no se comparte (D-20).
       */}
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={form.inscripcion.completo === true}
+          onChange={(e) =>
+            set('inscripcion', { ...form.inscripcion, completo: e.target.checked })
+          }
+        />
+        Cupo completo
+      </label>
       {form.inscripcion.completo && (
-        <p className="mt-3 rounded-md border border-tinta/20 bg-tinta/[0.04] px-3 py-2 text-xs">
-          Está marcada como <strong>cupo completo</strong>: el evento del calendario lo dice
-          al lado del contacto de inscripción, que sigue a la vista por si se libera un
-          lugar. Se saca desde el menú «⋯» del listado.
+        <p className="mt-2 text-xs text-tinta/60">
+          Se muestra en el sitio y en el evento del calendario, al lado del contacto de
+          inscripción — que sigue a la vista por si se libera un lugar. También se puede
+          marcar y desmarcar desde el «⋯» del listado.
         </p>
       )}
 

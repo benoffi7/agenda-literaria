@@ -7671,7 +7671,36 @@ un cambio de pantalla; o persistirlo en `localStorage` como los borradores
 peor que ninguno— así que si se elige, que muera con la pestaña
 (`sessionStorage`).
 
-### B-956 · «Cupo completo» solo se prende desde el «⋯», y quien está editando no lo encuentra · P2 — pedido del dueño (2026-09-15)
+### B-956 · «Cupo completo» solo se prende desde el «⋯» — ✅ hecho (2026-09-17) · P2
+
+> **Una casilla en Arancel/Inscripción, y el «⋯» se queda.** Las dos escriben
+> `inscripcion.completo`. Revierte media decisión de B-97 a propósito: aquello
+> dejó un aviso y no un control porque «habría dos lugares donde prenderlo y
+> ninguno sería el bueno», y el dueño pidió que haya dos — con una segunda persona
+> cargando, el «⋯» del listado no se encuentra.
+>
+> **La otra mitad de B-97 sobrevive entera**: lo que se publica tiene que poder
+> verse desde el panel. Por eso la casilla lleva debajo lo que el aviso decía —qué
+> pasa cuando está prendida— en vez de ser una casilla muda.
+>
+> **El borde que el ítem marcaba, decidido de nuevo y no heredado.**
+> `conLoQueEsDelDocumento` (autoguardado) toma `completo` del documento y descarta
+> el del borrador recuperado. El argumento original era en parte «el formulario no
+> puede tocarlo», y **esa frase acaba de dejar de ser cierta**. Se rehízo la
+> pregunta:
+>
+> - **Se queda**, porque el daño sigue siendo asimétrico: un borrador de hace
+>   veinte días con `false` apaga el cartel de una actividad marcada hoy, y uno con
+>   `true` publica «Cupo completo» con el cupo libre — en el sitio y en el
+>   calendario de todos los suscriptos.
+> - El costo del otro lado es **volver a tildar una casilla** que ahora está a la
+>   vista, en la misma pantalla.
+>
+> Y de paso quedó corregido el criterio de esa lista, que se estaba leyendo mal:
+> **no es «lo que el formulario no puede tocar»** sino «lo que otra pantalla o el
+> backend también escriben, y manda a una salida pública». `sesiones[].cancelada`
+> ya lo mostraba —se edita desde el editor de sesiones y está en la lista igual—,
+> pero nadie lo había escrito.
 
 *«Marcar completo en arancel.»* Confirmado el 2026-09-15: **una casilla en la
 sección Arancel/Inscripción del formulario**.

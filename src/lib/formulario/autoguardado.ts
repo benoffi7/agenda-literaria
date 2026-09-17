@@ -430,6 +430,12 @@ export const conIdsDeCalendarioDe = (
  * después sin `inscripcion.completo` (B-97). Las tres veces el campo nuevo tenía el
  * mismo perfil —lo escribe otra pantalla o el backend, y manda a una salida
  * pública— así que la pregunta al agregar un campo es esa, y no «¿es importante?».
+ *
+ * **Y el criterio NO es «lo que el formulario no puede tocar»** — B-956. Esa
+ * lectura era cómoda mientras `completo` solo se prendía desde el «⋯», y se cayó
+ * el día que ganó una casilla en el formulario. `cancelada` ya mostraba que no
+ * era esa: se edita desde el editor de sesiones y está en la lista igual. Lo que
+ * decide es **quién más lo escribe y adónde sale**, no quién lo puede tocar.
  */
 export const conLoQueEsDelDocumento = (
   recuperado: ActividadForm,
@@ -441,12 +447,26 @@ export const conLoQueEsDelDocumento = (
     ...recuperado,
     estado: actual.estado,
     slug: slugBloqueado ? actual.slug : recuperado.slug,
-    // B-97 — el mismo perfil que `cancelada`, y por eso entra acá: es estado que
-    // cambia **después** de publicar, se prende **fuera del formulario** (desde el
-    // menú del listado) y manda a las dos salidas públicas. Un borrador de hace
-    // veinte días con `false` apaga el cartel de una actividad marcada hoy; uno con
-    // `true` publica «Cupo completo» con el cupo libre, en el sitio y en el
-    // calendario de todos los suscriptos.
+    /*
+     * B-97, **re-decidido en B-956**. Se queda acá, y el motivo cambió.
+     *
+     * El argumento original era en parte «el formulario no puede tocarlo», y eso
+     * **dejó de ser cierto**: B-956 le puso una casilla en Arancel/Inscripción,
+     * porque con una segunda persona cargando el «⋯» del listado no se encuentra.
+     * Así que la pregunta se rehízo en vez de heredarse.
+     *
+     * Y la respuesta es la misma, por lo que **no** cambió: el daño sigue siendo
+     * asimétrico. Un borrador de hace veinte días con `false` apaga el cartel de
+     * una actividad marcada hoy; uno con `true` publica «Cupo completo» con el
+     * cupo libre, en el sitio y en el calendario de todos los suscriptos. Del otro
+     * lado, el costo de tomarlo del documento es **volver a tildar una casilla**
+     * que ahora está a la vista, en la misma pantalla.
+     *
+     * Es exactamente la contra que `sesiones[].cancelada` ya tiene asumida dos
+     * líneas más abajo, y ese campo también es editable desde el formulario: la
+     * lista no es «lo que el formulario no toca», es «lo que otra pantalla o el
+     * backend también escriben, y manda a una salida pública».
+     */
     inscripcion: { ...recuperado.inscripcion, completo: actual.inscripcion.completo },
     sesiones: recuperado.sesiones.map((s) =>
       canceladaHoy.has(s.id) ? { ...s, cancelada: canceladaHoy.get(s.id)! } : s,

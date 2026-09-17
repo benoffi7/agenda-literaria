@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **«Cupo completo» también se marca desde el formulario** — **B-956**, pedido del
+  dueño. Revierte media decisión de B-97 a propósito: aquello dejó un aviso y no un
+  control, y con una segunda persona cargando el «⋯» del listado no se encuentra.
+  El «⋯» se queda —es el caso para el que nació— y las dos escriben el mismo campo.
+
+  El borde que el ítem marcaba se **decidió de nuevo**: el autoguardado sigue
+  tomando `completo` del documento y descartando el del borrador, pero ya no
+  porque «el formulario no puede tocarlo» —eso dejó de ser cierto— sino porque el
+  daño es asimétrico. De paso quedó escrito el criterio real de esa lista: no es
+  «lo que el formulario no toca», es «lo que otra pantalla también escribe y manda
+  a una salida pública».
+
 - **Ir a ver la actividad publicada desde el panel** — **B-954**, pedido del
   dueño. En el «⋯» de cada tarjeta publicada y abajo de la vista previa. Es la
   primera acción del menú que **no escribe**, así que `MenuAcciones` aprendió a

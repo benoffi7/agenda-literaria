@@ -669,11 +669,22 @@ describe('recuperar no publica ni despublica nada (§5.1, trampa 10)', () => {
     );
   });
 
-  it('el cupo completo sale del documento de hoy, no del borrador (B-97)', () => {
-    // Cuarto campo de la lista, y el que la dejó corta por tercera vez. Mismo
-    // perfil que `cancelada`: lo prende **otra pantalla** (el menú del listado),
-    // cambia después de publicar, y manda a las dos salidas públicas. Un borrador
-    // de hace veinte días con `false` apaga el cartel de una actividad marcada hoy.
+  /**
+   * **B-97, re-decidido en B-956 y con el mismo resultado por otro motivo.**
+   *
+   * El argumento original era en parte «el formulario no puede tocarlo», y **dejó
+   * de ser cierto**: B-956 le puso una casilla en Arancel/Inscripción. La
+   * pregunta se rehízo en vez de heredarse, y la respuesta no cambió por lo que
+   * no cambió — **el daño sigue siendo asimétrico**: un borrador de hace veinte
+   * días con `false` apaga el cartel de una actividad marcada hoy, y uno con
+   * `true` publica «Cupo completo» con el cupo libre, en el sitio y en el
+   * calendario de todos los suscriptos. Del otro lado, el costo es volver a
+   * tildar una casilla que ahora está a la vista en la misma pantalla.
+   *
+   * `cancelada` ya mostraba que el criterio no es «lo que el formulario no
+   * toca»: se edita desde el editor de sesiones y está en la lista igual.
+   */
+  it('el cupo completo sale del documento de hoy, no del borrador (B-97, B-956)', () => {
     const borrador = {
       ...formVacio(),
       inscripcion: { ...formVacio().inscripcion, completo: false },

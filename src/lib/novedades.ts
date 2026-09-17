@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cupo-completo-en-el-formulario',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'Marcar «cupo completo» sin salir del formulario',
+    detalle:
+      'Antes solo se podía desde el «⋯» del listado. Ahora también hay una ' +
+      'casilla en Arancel e inscripción, así no tenés que salir de la actividad ' +
+      'que estás editando. El «⋯» sigue estando, que es lo práctico cuando te ' +
+      'enterás desde el teléfono.',
+    donde: 'En Arancel e inscripción, abajo de «Requiere inscripción previa».',
+  },
+  {
     id: 'ver-en-el-sitio-desde-el-panel',
     fecha: '2026-09-17',
     version: '1.11.0',

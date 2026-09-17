@@ -401,10 +401,42 @@ describe('se prende desde el menú del listado, no desde el formulario', () => {
     expect(codigoSinEspacios('src/lib/tarjetaDelPanel.ts')).toContain("'Cupocompleto'");
     const listado = codigoSinEspacios('src/components/admin/ListaActividades.tsx');
     expect(listado).toContain('t.marcas.map(');
-    // Y la sección del formulario lo avisa, aunque no lo edite.
-    expect(codigoSinEspacios('src/components/admin/formulario/SeccionArancelInscripcion.tsx')).toContain(
-      'form.inscripcion.completo&&',
+    /*
+     * Y la sección del formulario **lo edita** desde B-956, no solo lo avisa.
+     * Las dos cosas: la casilla escribe el campo, y el texto de abajo sigue
+     * diciendo qué pasa cuando está prendida — que es la mitad de B-97 que no se
+     * revirtió (lo que se publica tiene que poder verse desde el panel).
+     */
+    const seccion = codigoSinEspacios(
+      'src/components/admin/formulario/SeccionArancelInscripcion.tsx',
     );
+    expect(seccion).toContain('completo:e.target.checked');
+    expect(seccion).toContain('form.inscripcion.completo&&');
+  });
+
+  /**
+   * **B-956 — las dos vías escriben el mismo campo, y las dos siguen estando.**
+   *
+   * Esto revierte media decisión de B-97 a propósito: aquello dejó un aviso y no
+   * un control porque «habría dos lugares donde prenderlo y ninguno sería el
+   * bueno». El dueño pidió que haya dos — con una segunda persona cargando, el
+   * «⋯» del listado no se encuentra y quien está adentro del formulario no tiene
+   * por qué salir a buscarlo.
+   *
+   * **El «⋯» se queda**, y es la mitad que este caso protege: es el caso para el
+   * que nació («se llenó, lo marco desde el teléfono»), y sacarlo sería cambiar
+   * un problema por el otro.
+   */
+  it('se marca desde el formulario Y desde el «⋯», sobre el mismo campo', () => {
+    const seccion = codigoSinEspacios(
+      'src/components/admin/formulario/SeccionArancelInscripcion.tsx',
+    );
+    const listado = codigoSinEspacios('src/components/admin/ListaActividades.tsx');
+
+    expect(seccion, 'la casilla del formulario dejó de escribir el campo').toContain(
+      'completo:e.target.checked',
+    );
+    expect(listado, 'el «⋯» dejó de ofrecer marcar el cupo').toContain('marcarCupo(a,');
   });
 
   it('el uso de la función se mide, con vocabulario cerrado (§9)', () => {
