@@ -231,6 +231,24 @@ const ID_LUGAR_CASA = `${PREFIJO}lugar-casa`;
 const SLUG_LUGAR = `${PREFIJO}lugar`;
 const SLUG_LUGAR_PENDIENTE = `${PREFIJO}lugar-pendiente`;
 const SLUG_LUGAR_CASA = `${PREFIJO}lugar-casa`;
+
+/**
+ * **Las dos bibliotecas del gate** — B-960. El par publicada/pendiente, como
+ * librerías y suscripciones; no hace falta un tercer documento como la casa de
+ * lugares, porque bibliotecas no tiene ninguna ausencia condicional: su dirección
+ * sale siempre.
+ *
+ * **Entraron en el pase de auditores y no con el frente**, que es el hallazgo que
+ * las trajo: el paso de esta colección no existía, así que el barrido del paso 9
+ * recorría `dist/bibliotecas.json` y `dist/guia/bibliotecas/**` **sin un solo
+ * centinela que pudiera encontrar** y pasaba trivialmente. Un barrido sin nada
+ * que buscar es verde por vacuidad, que es la clase de B-873 en su forma más
+ * pura.
+ */
+const ID_BIBLIOTECA = `${PREFIJO}biblioteca`;
+const ID_BIBLIOTECA_PENDIENTE = `${PREFIJO}biblioteca-pendiente`;
+const SLUG_BIBLIOTECA = `${PREFIJO}biblioteca`;
+const SLUG_BIBLIOTECA_PENDIENTE = `${PREFIJO}biblioteca-pendiente`;
 /**
  * La latitud de la casa del gate — **un número que no aparece en ningún otro
  * lado**, ni del gate ni del sitio.
@@ -348,6 +366,17 @@ const CENTINELA = {
   lugarMotivo: 'gate.lugar.revision.motivo',
   lugarPendiente: 'gate.lugar.pendiente.descripcion',
   lugarDireccionDeCasa: 'gate.lugar.casa.direccion',
+  /*
+   * B-960 — la cuarta colección de la Guía. `bibliotecaDescripcion` y
+   * `bibliotecaDireccion` salen a propósito (son los datos de una institución con
+   * puerta, y son el punto de la ficha); los otros tres quedan prohibidos en todo
+   * el `dist/`, igual que sus hermanos de las otras tres colecciones.
+   */
+  bibliotecaDescripcion: 'gate.biblioteca.descripcion',
+  bibliotecaDireccion: 'gate.biblioteca.direccion',
+  bibliotecaContacto: 'gate.biblioteca.contactoDeQuienCargo',
+  bibliotecaMotivo: 'gate.biblioteca.revision.motivo',
+  bibliotecaPendiente: 'gate.biblioteca.pendiente.descripcion',
   // B-296 — el epígrafe **sí** sale a la página de detalle (es el `figcaption` de
   // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
   // O sea que este centinela se afirma en las dos direcciones a la vez.
@@ -774,6 +803,24 @@ const CENTINELA_DE_SUSCRIPCIONES = ['suscripcionDescripcion', 'suscripcionTemati
 const CENTINELA_DE_LUGARES = ['lugarDescripcion', 'lugarDireccion'];
 
 /**
+ * **La octava canasta: el directorio de bibliotecas** — B-960.
+ *
+ * `/bibliotecas.json`, `/guia/bibliotecas/` y cada `/guia/bibliotecas/{slug}/`
+ * publican a propósito la descripción y la dirección: son los datos de una
+ * institución con puerta y son el punto de la ficha.
+ *
+ * **Lo que no está acá es la mitad que importa**: `bibliotecaContacto`,
+ * `bibliotecaMotivo` y `bibliotecaPendiente` quedan prohibidos en los tres
+ * archivos igual que en todo el resto del `dist/`. Y `storagePath` tampoco está.
+ *
+ * ⚠️ **Sin esta canasta el barrido no era laxo: era vacío.** Hasta el pase de
+ * auditores de B-960 el gate no sembraba ninguna biblioteca, así que los archivos
+ * de esta sección se recorrían sin que existiera un solo valor que pudiera
+ * aparecer en ellos. Verde por vacuidad.
+ */
+const CENTINELA_DE_BIBLIOTECAS = ['bibliotecaDescripcion', 'bibliotecaDireccion'];
+
+/**
  * **La cuarta canasta** — B-804.
  *
  * Las tres de arriba (`actividad/`, `events.json`, `cartelera/`) alcanzaban
@@ -1006,14 +1053,20 @@ const limpiar = async () => {
   // siembra, por lo mismo que `librerias`.
   // B-833 — `lugares` entra a la limpieza en el **mismo** cambio que la siembra,
   // por lo mismo que las otras dos.
-  const [actividades, usuarios, librerias, suscripciones, lugares] = await Promise.all([
-    borrar('actividades'),
-    borrar('usuarios'),
-    borrar('librerias'),
-    borrar('suscripciones'),
-    borrar('lugares'),
-  ]);
-  return actividades + usuarios + librerias + suscripciones + lugares + ciudadDelGate;
+  // B-960 — `bibliotecas` entra a la limpieza en el **mismo** cambio que la
+  // siembra, por lo mismo que las otras tres.
+  const [actividades, usuarios, librerias, suscripciones, lugares, bibliotecas] =
+    await Promise.all([
+      borrar('actividades'),
+      borrar('usuarios'),
+      borrar('librerias'),
+      borrar('suscripciones'),
+      borrar('lugares'),
+      borrar('bibliotecas'),
+    ]);
+  return (
+    actividades + usuarios + librerias + suscripciones + lugares + bibliotecas + ciudadDelGate
+  );
 };
 
 const fallo = (mensaje) => {
@@ -1319,6 +1372,73 @@ try {
     }),
   );
 
+  /*
+   * **Las dos bibliotecas** — B-960. El par publicada/pendiente, con el mismo
+   * molde que librerías y suscripciones.
+   *
+   * `asociarse` va con `haceFalta: true` y su costo **como frase con fecha**
+   * (D-570, B-837): es la forma que la proyección publica, y sembrarla acá es lo
+   * que permite que el `dist/` sea testigo de que salió como frase y nunca como
+   * número suelto.
+   */
+  const biblioteca = (slug, estado, descripcion, sobre = {}) => ({
+    nombre: `Gate biblioteca ${estado}`,
+    slug,
+    descripcion,
+    imagenes: [
+      {
+        id: 'img_gate_biblioteca',
+        url: 'https://example.invalid/gate-biblioteca.jpg',
+        epigrafe: '',
+        textoAlternativo: '',
+        origen: 'propia',
+        storagePath: CENTINELA.storagePath,
+        ancho: 1200,
+        alto: 800,
+        portada: true,
+      },
+    ],
+    tipo: 'popular',
+    direccion: CENTINELA.bibliotecaDireccion,
+    horarios: 'Lunes a viernes de 10 a 20',
+    horarioDeSala: 'Lunes a viernes de 10 a 18',
+    asociarse: {
+      haceFalta: true,
+      costo: { valor: '$3.000 por año', cargadoEn: new Date('2026-09-01T12:00:00Z') },
+    },
+    catalogo: 'https://example.invalid/gate-catalogo',
+    provincia: 'ciudad-autonoma-de-buenos-aires',
+    barrio: 'gate-barrio',
+    ciudad: 'Ciudad de Buenos Aires',
+    geo: { lat: -34.60009, lng: -58.43009 },
+    instagram: 'gatebiblioteca',
+    whatsapp: null,
+    web: null,
+    mail: null,
+    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.bibliotecaContacto },
+    estado,
+    origen: 'formulario-publico',
+    // Mismo criterio que las otras tres: el `searchText` del gate **no lleva la
+    // dirección**, así que si aparece en el `dist/` es porque la publicó la
+    // proyección y no porque viajó de contrabando en el índice de búsqueda.
+    searchText: descripcion,
+    creadoEn: new Date('2026-09-01T12:00:00Z'),
+    revision: {
+      porUid: CENTINELA.createdBy,
+      en: new Date('2026-09-02T12:00:00Z'),
+      motivo: CENTINELA.bibliotecaMotivo,
+    },
+    publicadaAlgunaVez: estado === 'publicado',
+    ...sobre,
+  });
+
+  await db
+    .doc(`bibliotecas/${ID_BIBLIOTECA}`)
+    .set(biblioteca(SLUG_BIBLIOTECA, 'publicado', CENTINELA.bibliotecaDescripcion));
+  await db
+    .doc(`bibliotecas/${ID_BIBLIOTECA_PENDIENTE}`)
+    .set(biblioteca(SLUG_BIBLIOTECA_PENDIENTE, 'pendiente', CENTINELA.bibliotecaPendiente));
+
   // B-888 — la cuenta del panel con su mail. No la lee ninguna parte del build;
   // se siembra para que el barrido del paso 9 tenga qué encontrar el día que
   // alguien la conecte a una salida. Ver `CENTINELA.mailDePanel`.
@@ -1329,9 +1449,10 @@ try {
 
   console.log(
     `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
-      'una con tres imágenes; 2 librerías y 2 suscripciones, cada par con una ' +
-      'publicada y una esperando decisión; y 3 lugares: uno publicado, uno ' +
-      'esperando decisión y una casa publicada SIN dirección publicada)',
+      'una con tres imágenes; 2 librerías, 2 suscripciones y 2 bibliotecas, cada ' +
+      'par con una publicada y una esperando decisión; y 3 lugares: uno ' +
+      'publicado, uno esperando decisión y una casa publicada SIN dirección ' +
+      'publicada)',
   );
 
   const build = spawnSync('npm', ['run', 'build'], {
@@ -2689,6 +2810,166 @@ try {
     }
 
     /*
+     * 8l · **B-960 — el directorio de bibliotecas, sobre los archivos
+     * construidos.**
+     *
+     * Lo mismo que el 8i/8j/8k una colección más abajo, y **entró tarde**: el
+     * frente construyó la sección entera y no tocó este archivo, así que hasta el
+     * pase de auditores el gate no sembraba ninguna biblioteca. Eso no dejaba el
+     * barrido laxo: lo dejaba **vacío** — el paso 9 recorría
+     * `dist/bibliotecas.json` y `dist/guia/bibliotecas/**` sin que existiera un
+     * solo centinela de esta colección que pudiera aparecer ahí, y pasaba
+     * trivialmente. Un barrido sin nada que encontrar es verde por vacuidad.
+     *
+     * Lo propio de esta colección es **el costo de asociarse**: es un dato con
+     * fecha (D-570, B-837) y la garantía es que salga como **frase con su fecha
+     * pegada** y nunca como número suelto ni como `Offer` del JSON-LD, por el
+     * mismo motivo que el precio de una suscripción (DEC-12).
+     */
+    {
+      const crudoBib = await readFile(
+        new URL('../dist/bibliotecas.json', import.meta.url),
+        'utf8',
+      ).catch(() => null);
+
+      if (crudoBib === null) {
+        fallo(
+          'no se escribió dist/bibliotecas.json.\n' +
+            '  Es el índice que baja el listado de /guia/bibliotecas: sin él, la sección\n' +
+            '  carga el HTML del build y los filtros quedan apagados para siempre.',
+        );
+        salida = 1;
+      } else {
+        const indiceBib = JSON.parse(crudoBib);
+        const slugsBib = (indiceBib.bibliotecas ?? []).map((b) => b.slug);
+
+        // 8l.1 · El build tiene que haber LEÍDO algo.
+        if (!slugsBib.includes(SLUG_BIBLIOTECA)) {
+          fallo(
+            `dist/bibliotecas.json salió con ${slugsBib.length} bibliotecas y ninguna es la\n` +
+              '  sembrada. El build no leyó /bibliotecas, así que nada de lo que sigue prueba nada.',
+          );
+          salida = 1;
+        }
+
+        // 8l.2 · El control del `where`: la pendiente no puede estar.
+        if (slugsBib.includes(SLUG_BIBLIOTECA_PENDIENTE)) {
+          fallo(
+            'dist/bibliotecas.json trae la biblioteca que ESPERA DECISIÓN.\n' +
+              "  Falta o está mal el where('estado','==','publicado') de bibliotecasPublicadas\n" +
+              '  (src/lib/contenidoDelSitio.ts). Y con ella se publica el contactoDeQuienCargo\n' +
+              '  de quien la cargó, que es un dato de una persona y no de la institución.',
+          );
+          salida = 1;
+        }
+
+        // 8l.3 · La ficha existe en disco, y la de la pendiente no.
+        const fichaBib = await readFile(
+          new URL(`../dist/guia/bibliotecas/${SLUG_BIBLIOTECA}/index.html`, import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (fichaBib === null) {
+          fallo(
+            `no se generó la página /guia/bibliotecas/${SLUG_BIBLIOTECA}/.\n` +
+              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
+          );
+          salida = 1;
+        } else {
+          if (!fichaBib.includes('"@type":"Library"')) {
+            fallo(
+              'la ficha de la biblioteca no emite el JSON-LD `Library`.\n' +
+                '  Es el SEO de esta sección entera.',
+            );
+            salida = 1;
+          }
+          /*
+           * 8l.4 · **El costo de asociarse no va al marcado.** Mismo argumento
+           * que DEC-12 para el precio de una suscripción: Google **muestra** el
+           * precio de un `Offer` en el resultado, y un carnet de hace tres meses
+           * se publica equivocado en el lugar de más visibilidad y con la
+           * credibilidad de un dato estructurado. En la página va, con su fecha
+           * al lado.
+           */
+          const ldBib = fichaBib.slice(fichaBib.indexOf('"@type":"Library"'));
+          const finLdBib = ldBib.indexOf('</script>');
+          if (/"price"|"priceCurrency"|"priceRange"|"offers"/i.test(ldBib.slice(0, finLdBib))) {
+            fallo(
+              'el JSON-LD de la biblioteca publica el costo de asociarse.\n' +
+                '  Queda afuera a propósito, por el mismo motivo que el precio de una\n' +
+                '  suscripción (DEC-12). En la página va, como frase y con su fecha.',
+            );
+            salida = 1;
+          }
+          /*
+           * 8l.5 · **El costo sale como frase con su fecha, nunca como número
+           * suelto** — B-837, D-570. El gate lo siembra como `'$3.000 por año'`
+           * con su `cargadoEn`, así que si el monto aparece en la página sin un
+           * «cargado el» cerca, la proyección lo publicó crudo.
+           */
+          if (fichaBib.includes('$3.000') && !/cargado el/i.test(fichaBib)) {
+            fallo(
+              'la ficha de la biblioteca muestra el costo de asociarse SIN su fecha de carga.\n' +
+                '  D-570 y B-837: el monto no se muestra nunca solo — la frase lleva pegado\n' +
+                '  el «cargado el», que es lo que evita publicar un carnet viejo como si\n' +
+                '  fuera el de hoy.',
+            );
+            salida = 1;
+          }
+        }
+
+        const fichaBibPendiente = await readFile(
+          new URL(
+            `../dist/guia/bibliotecas/${SLUG_BIBLIOTECA_PENDIENTE}/index.html`,
+            import.meta.url,
+          ),
+          'utf8',
+        ).catch(() => null);
+        if (fichaBibPendiente !== null) {
+          fallo(
+            `se generó la página /guia/bibliotecas/${SLUG_BIBLIOTECA_PENDIENTE}/.\n` +
+              '  Es la ficha de una biblioteca que NADIE revisó: la cargó un desconocido y\n' +
+              '  está publicada en HTML indexable, con el nombre y la dirección que tipeó.',
+          );
+          salida = 1;
+        }
+
+        /*
+         * 8l.6 · **La ficha entra al sitemap, y la pendiente no.** Es la mitad
+         * que faltaba del hallazgo: `sitemap.ts` no tenía a bibliotecas, así que
+         * el listado entraba y las fichas no.
+         */
+        const sitemapBib = await readFile(
+          new URL('../dist/sitemap.xml', import.meta.url),
+          'utf8',
+        ).catch(() => null);
+        if (sitemapBib !== null) {
+          if (!sitemapBib.includes(`/guia/bibliotecas/${SLUG_BIBLIOTECA}/`)) {
+            fallo(
+              'la ficha de la biblioteca publicada no está en el sitemap.\n' +
+                '  La página existe, se navega, y el buscador no la conoce.',
+            );
+            salida = 1;
+          }
+          if (sitemapBib.includes(`/guia/bibliotecas/${SLUG_BIBLIOTECA_PENDIENTE}/`)) {
+            fallo(
+              'el sitemap ofrece la ficha de la biblioteca que ESPERA DECISIÓN.\n' +
+                '  Se le está pidiendo al buscador que indexe contenido sin revisar.',
+            );
+            salida = 1;
+          }
+        }
+
+        if (salida === 0) {
+          console.log(
+            '  ✓ el directorio de bibliotecas salió con la publicada y sin la que espera ' +
+              'decisión, con su ficha, su Library sin el costo en el marcado, el costo con ' +
+              'su fecha en la página y su entrada de sitemap.',
+          );
+        }
+      }
+    }
+
+    /*
      * 9 · **B-121 — el barrido sobre TODO el `dist/`, y no sobre tres páginas
      * elegidas a mano.**
      *
@@ -2771,7 +3052,10 @@ try {
                   ? CENTINELA_DE_SUSCRIPCIONES
                 : relativa === 'lugares.json' || relativa.startsWith('guia/lugares/')
                   ? CENTINELA_DE_LUGARES
-                  : [];
+                  : relativa === 'bibliotecas.json' ||
+                      relativa.startsWith('guia/bibliotecas/')
+                    ? CENTINELA_DE_BIBLIOTECAS
+                    : [];
         const prohibidos = Object.entries(CENTINELA).filter(
           ([campo]) => !permitido.includes(campo),
         );
