@@ -1018,8 +1018,24 @@ service cloud.firestore {
       return d.diff(previo).affectedKeys().hasOnly(['estado', 'revision'])
         && d.diff(previo).affectedKeys().hasAny(['estado'])
         && d.estado in ['nueva', 'en-revision', 'aceptada', 'rechazada']
-        && d.revision.keys().hasOnly(['porUid', 'en', 'actividadId', 'motivo'])
+        /*
+         * **`fotoDescartada` está en `hasOnly` y NO en `hasAll`** — B-926, y es
+         * el mismo trato que `publicadaAlgunaVez` en los directorios. Es un flag
+         * opcional que solo viaja cuando se convierte una propuesta con foto, y
+         * exigirlo en el `hasAll` haría que toda revisión anterior —y todo
+         * rechazo, que no tiene foto que descartar— rebotara.
+         *
+         * Se acota el **tipo** y nada más: quién puede prenderlo ya lo decide
+         * `allow update: if esAdmin()`, y **qué significa** lo decide el trigger,
+         * que es el único que borra. La regla no puede verificar que la foto
+         * exista ni que la persona la haya mirado; lo que sí puede es que no
+         * entre un string donde va un booleano, porque
+         * `decidirBorradoDeImagen` lo lee con `=== true` y un valor raro no tiene
+         * que poder autorizar un borrado irreversible.
+         */
+        && d.revision.keys().hasOnly(['porUid', 'en', 'actividadId', 'motivo', 'fotoDescartada'])
         && d.revision.keys().hasAll(['porUid', 'en', 'actividadId', 'motivo'])
+        && d.revision.get('fotoDescartada', false) is bool
         && d.revision.get('porUid', '') == request.auth.uid
         && d.revision.get('en', null) == request.time
         && (d.revision.get('actividadId', null) == null

@@ -167,6 +167,92 @@ describe('decidirBorradoDeImagen — cerrar una propuesta se lleva la foto (DEC-
     }
   });
 
+  /**
+   * **La foto descartada a propósito** — B-926, y es la única rama que borra el
+   * original de una **aceptada** sin verificar ninguna copia.
+   *
+   * La asimetría con el caso de abajo es el punto entero del ítem: sin el flag,
+   * una conversión que no promueve la imagen cae en `sin-copia`, el trigger
+   * conserva el original —que es lo correcto cuando nadie decidió nada— y la
+   * foto de un tercero se queda para siempre, porque la `aceptada` no vence
+   * (B-844). Con el flag, la pregunta «¿quedó una copia?» ya la contestó una
+   * persona mirando la foto.
+   */
+  it('una aceptada con la foto descartada borra el original, sin actividad ni copia', () => {
+    const { accion, objeto, motivo, actividadId, dejaLaFoto } = decidirBorradoDeImagen({
+      before: propuesta(),
+      after: propuesta({
+        estado: 'aceptada',
+        revision: { porUid: 'u', en: null, actividadId: null, motivo: null, fotoDescartada: true },
+      }),
+    });
+    expect(accion).toBe('borrar');
+    expect(motivo).toBe('descartada');
+    expect(objeto).not.toBeNull();
+    /*
+     * **`actividadId: null` y no el de la revisión**, aunque lo hubiera: esta
+     * rama no verifica nada contra la actividad, y pasar un id sugeriría que sí.
+     * El trigger la enruta por el borrado crudo justamente porque no hay nada
+     * que mirar allá.
+     */
+    expect(actividadId).toBeNull();
+    expect(dejaLaFoto).toBe(false);
+  });
+
+  it('y gana sobre `aceptada-sin-actividad`: descartar no necesita una actividad', () => {
+    /*
+     * El orden de las dos guardas importa y por eso tiene caso propio. Con la
+     * rama del descarte **abajo** de la de `actividadId`, una conversión que
+     * descarta la foto y todavía no tiene actividad caería en
+     * `aceptada-sin-actividad` —que conserva el original— y el flag no serviría
+     * de nada justo en el camino que vino a arreglar.
+     *
+     * MUTACIÓN PROBADA: moviendo el `if (after.revision?.fotoDescartada)` abajo
+     * del `if (typeof actividadId !== 'string' …)`, este caso se pone rojo con
+     * `aceptada-sin-actividad`.
+     */
+    const { motivo } = decidirBorradoDeImagen({
+      before: propuesta(),
+      after: propuesta({
+        estado: 'aceptada',
+        revision: { porUid: 'u', en: null, actividadId: null, motivo: null, fotoDescartada: true },
+      }),
+    });
+    expect(motivo).toBe('descartada');
+  });
+
+  it('un `fotoDescartada` que no es exactamente `true` NO autoriza el borrado', () => {
+    /*
+     * Se lee con `=== true` y no con un truthy: el borrado es irreversible y no
+     * tiene copia detrás, así que un valor raro llegado de un camino que la
+     * regla no cubra —un backfill, la consola— tiene que caer del lado
+     * conservador. `firestore.rules` ya exige `is bool`; esto es la otra mitad.
+     */
+    for (const valor of ['true', 1, 'si', {}, [], 'false']) {
+      const { motivo } = decidirBorradoDeImagen({
+        before: propuesta(),
+        after: propuesta({
+          estado: 'aceptada',
+          revision: { porUid: 'u', en: null, actividadId: null, motivo: null, fotoDescartada: valor },
+        }),
+      });
+      expect(motivo, JSON.stringify(valor)).toBe('aceptada-sin-actividad');
+    }
+  });
+
+  it('sin el flag, una aceptada con actividad sigue yendo por la verificación', () => {
+    // Control positivo del par: sin esto, «el flag borra» podría querer decir
+    // que ahora **todo** borra.
+    const { motivo } = decidirBorradoDeImagen({
+      before: propuesta(),
+      after: propuesta({
+        estado: 'aceptada',
+        revision: { porUid: 'u', en: null, actividadId: 'act_1', motivo: null },
+      }),
+    });
+    expect(motivo).toBe('aceptada');
+  });
+
   it('los estados que no cierran no borran nada', () => {
     for (const estado of ['nueva', 'en-revision']) {
       const { accion, motivo } = decidirBorradoDeImagen({
@@ -490,35 +576,81 @@ describe('borrarOriginalAlAceptar — verificar la copia, después borrar el ori
  * `return` en el medio, y por eso se afirma que el borrado crudo vive **adentro
  * del `else`**.
  */
-describe('el trigger cablea las dos ramas, y el borrado crudo vive solo en el rechazo', () => {
-  it('la aceptada pasa por la verificación y no por el `delete` directo', () => {
+describe('el trigger cablea las tres ramas, y el borrado crudo nunca vive en la aceptada', () => {
+  /**
+   * **Eran dos ramas y desde B-926 son tres**, y la invariante que este caso
+   * cuida no cambió: el borrado **sin verificar** no puede ser alcanzable desde
+   * la rama de la aceptada, porque ahí perder el original es irreversible y
+   * puede no haber copia.
+   *
+   * Lo que sí cambió es que ahora hay **dos** borrados crudos —el del rechazo y
+   * el del descarte— y los dos son correctos por el mismo motivo: en los dos la
+   * foto se tira a propósito, así que no hay copia que verificar. Por eso el
+   * aserto pasa de «hay uno solo» a «todos están después de que la rama de la
+   * aceptada terminó», que es la propiedad de verdad — contar era una forma
+   * indirecta de decirlo cuando la rama era una sola.
+   */
+  it('la aceptada pasa por la verificación y no por ningún `delete` directo', () => {
     const src = fuente('functions/propuestas-trigger.js');
 
     const rama = src.indexOf("if (motivo === 'aceptada') {");
     const verificado = src.indexOf('borrarOriginalAlAceptar(', rama);
-    const sino = src.indexOf('} else {', verificado);
-    const crudo = src.indexOf('.file(objeto).delete(', verificado);
+    // Donde la rama de la aceptada **termina**: el primer `} else` después de su
+    // llamada verificada. De ahí para abajo viven las otras dos.
+    const finDeLaAceptada = src.indexOf('} else', verificado);
+    const crudos = [...src.matchAll(/\.file\(objeto\)\.delete\(/g)];
 
     // Controles positivos: si alguno no se encuentra, los asertos de abajo
     // compararían contra `-1` y pasarían sin mirar nada.
     expect(rama, 'no se encontró la rama de la aceptada').toBeGreaterThan(0);
     expect(verificado, 'la rama de la aceptada no llama a `borrarOriginalAlAceptar`').toBeGreaterThan(rama);
-    expect(sino, 'la bifurcación dejó de ser `if/else`').toBeGreaterThan(verificado);
-    expect(crudo, 'no se encontró el borrado directo del rechazo').toBeGreaterThan(0);
+    expect(finDeLaAceptada, 'la bifurcación dejó de ser `if/else`').toBeGreaterThan(verificado);
+    expect(crudos.length, 'no se encontró ningún borrado directo').toBeGreaterThan(0);
 
     /*
-     * **El borrado sin verificar está después del `else`**, o sea en la rama del
-     * rechazo y en ninguna otra.
+     * **Todos los borrados sin verificar están después de que la rama de la
+     * aceptada cerró.**
      *
-     * MUTACIÓN PROBADA (dos): cambiando el `} else {` por `}` + `if (true) {`,
-     * este caso se pone rojo; y moviendo el `delete` crudo arriba de la
-     * bifurcación —el refactor que de verdad haría daño— también.
+     * MUTACIÓN PROBADA (tres): cambiando el `} else if` por `}` + `if (true) {`,
+     * este caso se pone rojo; moviendo cualquiera de los dos `delete` crudos
+     * arriba de la bifurcación —el refactor que de verdad haría daño—, también;
+     * y agregando un tercer `delete` adentro del `try` de la aceptada, también.
      */
-    expect(crudo, 'el borrado sin verificar tiene que vivir adentro del `else`').toBeGreaterThan(sino);
+    for (const m of crudos) {
+      expect(
+        m.index,
+        'un borrado sin verificar quedó alcanzable desde la rama de la aceptada',
+      ).toBeGreaterThan(finDeLaAceptada);
+    }
 
-    // Y hay **uno solo**: un segundo borrado crudo en cualquier otra rama sería
-    // la misma pérdida por otra puerta.
-    expect([...src.matchAll(/\.file\(objeto\)\.delete\(/g)]).toHaveLength(1);
+    // Y son **dos**: el del rechazo y el del descarte. Un tercero sería una
+    // tercera puerta a la misma pérdida, y tendría que justificarse acá.
+    expect(crudos).toHaveLength(2);
+  });
+
+  /**
+   * **El descarte es una rama propia y no el `else` del rechazo**, aunque el
+   * borrado sea idéntico — B-926.
+   *
+   * Lo que los separa es qué pasa **si falla**: el rechazo tiene red (la
+   * retención de los 30 días se lleva el objeto con el documento) y el descarte
+   * no (la propuesta queda `aceptada`, que no vence, B-844). Juntarlos habría
+   * hecho que el caso sin red heredara el log del caso con red, o sea sin
+   * `alerta` y sin forma de filtrarlo.
+   */
+  it('el descarte tiene su rama, y su fallo avisa como el de la aceptada', () => {
+    const src = fuente('functions/propuestas-trigger.js');
+    const rama = src.indexOf("} else if (motivo === 'descartada') {");
+    expect(rama, 'el descarte dejó de tener rama propia').toBeGreaterThan(0);
+
+    // El `catch` de esa rama lleva `alerta`, que es lo que lo hace filtrable
+    // junto con los de la aceptada (B-871).
+    const finDeLaRama = src.indexOf('} else {', rama);
+    expect(finDeLaRama, 'no se encontró el final de la rama del descarte').toBeGreaterThan(rama);
+    const cuerpo = src.slice(rama, finDeLaRama);
+    expect(cuerpo, 'el fallo del descarte no emite la alerta: quedaría sin red y sin rastro').toContain(
+      "alerta: 'flyer-de-propuesta-sin-borrar'",
+    );
   });
 
   /**
@@ -572,16 +704,19 @@ describe('el trigger cablea las dos ramas, y el borrado crudo vive solo en el re
     }
   });
 
-  it('los tres caminos que dejan la foto viva se pueden filtrar por `alerta`', () => {
+  it('los cuatro caminos que dejan la foto viva se pueden filtrar por `alerta`', () => {
     const src = fuente('functions/propuestas-trigger.js');
     /*
-     * Tres y no dos: los dos del `try`/`catch` de la rama de la aceptada, más el
-     * de `dejaLaFoto` en la rama de ignorar, que agregó el
-     * `auditor-privacidad`. Ese tercero es el que faltaba: salía por `debug` con
-     * el mismo estado del mundo que los otros dos, y este aserto —cuando decía
-     * `2`— lo habría congelado así.
+     * **Cuatro desde B-926.** Eran tres —los dos del `try`/`catch` de la rama de
+     * la aceptada, más el de `dejaLaFoto` en la rama de ignorar— y el cuarto es
+     * el `catch` del descarte: si el borrado falla ahí, la propuesta queda
+     * `aceptada` con su original vivo, que es exactamente el estado del mundo de
+     * los otros tres.
+     *
+     * Este aserto ya hizo su trabajo una vez: cuando decía `2` habría congelado
+     * el tercero saliendo por `debug`. Por eso se sube en vez de aflojarse.
      */
-    expect([...src.matchAll(/alerta: 'flyer-de-propuesta-sin-borrar'/g)]).toHaveLength(3);
+    expect([...src.matchAll(/alerta: 'flyer-de-propuesta-sin-borrar'/g)]).toHaveLength(4);
   });
 });
 

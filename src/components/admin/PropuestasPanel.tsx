@@ -278,6 +278,14 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   /** Id de la propuesta cuya imagen se está trayendo a la galería (paso 8). */
   const [promoviendo, setPromoviendo] = useState<string | null>(null);
   /** Id de la que se está rechazando: mientras tanto se pide el motivo. */
+  /**
+   * **La propuesta cuyo flyer está esperando decisión** — B-926.
+   *
+   * Solo se abre para las que **traen una foto subida**: sin foto no hay nada
+   * que decidir y «Convertir en actividad» sigue yendo derecho, que es lo que
+   * hace que el paso no se convierta en un click de más para el caso común.
+   */
+  const [decidiendoFoto, setDecidiendoFoto] = useState<string | null>(null);
   const [rechazando, setRechazando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
   /** Apagado por defecto: la bandeja arranca mostrando lo que espera decisión. */
@@ -361,7 +369,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    * formulario y no guardar, y lo barre `limpiarImagenesHuerfanas` a las 72 horas
    * (B-221). No hace falta nada nuevo, y la propuesta conserva su foto.
    */
-  const convertir = async (p: PropuestaConId) => {
+  const convertir = async (p: PropuestaConId, usarLaFoto = true) => {
     /*
      * **`elegibles` y no `valores`** — B-859. Las dos funcionan y se ven igual,
      * y por eso nadie lo agarró: `valores` son **todas** las opciones y existen
@@ -385,7 +393,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
     const imagenes = [...form.imagenes];
     const avisosDeLaImagen = [...avisos];
 
-    if (p.imagen && 'storagePath' in p.imagen) {
+    if (usarLaFoto && p.imagen && 'storagePath' in p.imagen) {
       setPromoviendo(p.id);
       try {
         // `import()` y no estático: `subir-imagen` es el único dueño de
@@ -445,7 +453,22 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
          * evento: ver `rechazar`.
          */
         medirFuncion('propuesta-convertida');
-        await revisarPropuesta(p.id, usuario.uid, 'aceptada', { actividadId });
+        /*
+         * **`fotoDescartada` viaja acá y no antes** — B-926. Es una decisión de
+         * quien revisó, tomada en el mismo acto que el cambio de estado, y es lo
+         * único que autoriza al trigger a borrar el original sin verificar una
+         * copia. Sin el flag, una conversión sin promover la imagen deja la foto
+         * de un tercero viva para siempre: la `aceptada` no vence (B-844).
+         *
+         * Solo se manda cuando **había una foto y se decidió no usarla**: una
+         * propuesta sin foto no tiene nada que descartar, y mandar el flag ahí
+         * sería escribir una decisión que nadie tomó.
+         */
+        const habiaFoto = Boolean(p.imagen && 'storagePath' in p.imagen);
+        await revisarPropuesta(p.id, usuario.uid, 'aceptada', {
+          actividadId,
+          ...(habiaFoto && !usarLaFoto ? { fotoDescartada: true } : {}),
+        });
       },
     });
   };
@@ -653,7 +676,70 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                 <p className="mt-2 text-xs text-tinta/55">Motivo del rechazo: {p.revision.motivo}</p>
               )}
 
-              {rechazando === p.id ? (
+              {decidiendoFoto === p.id ? (
+                /*
+                 * **El paso que B-926 vino a agregar.**
+                 *
+                 * El ítem lo dice mejor que cualquier resumen: «el único momento
+                 * en que esa foto existe y alguien la está mirando es esta
+                 * pantalla, y ahí no hay ni un botón». Al aceptar, el original se
+                 * borra (B-863); al rechazar, también.
+                 *
+                 * Las cuatro opciones del ítem son estas dos más las dos que ya
+                 * viven en otro lado: **bajar** está arriba, al lado de la
+                 * miniatura (se puede usar antes de elegir, que es el orden en el
+                 * que sirve), y **subir otra** la resuelve el `GaleriaEditor` del
+                 * formulario, que se abre a continuación.
+                 */
+                <div className="mt-3 flex flex-col gap-2">
+                  <p className="text-xs text-tinta/70">
+                    ¿La actividad se queda con la foto que mandaron?
+                  </p>
+                  {/*
+                    **El aviso va arriba de los botones y dice qué se pierde.**
+                    Es la misma frase que ya está escrita para el rechazo, y acá
+                    hace más falta: descartar **borra el original** y no se puede
+                    deshacer. Si alguien la quiere guardar, el botón de bajarla
+                    está arriba — por eso este texto lo nombra en vez de suponer
+                    que se vio.
+                  */}
+                  <p className="text-xs text-tinta/55">
+                    Si no la usás se borra y no se puede recuperar. Si la querés guardar, bajala
+                    antes con el botón de arriba.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDecidiendoFoto(null);
+                        void convertir(p);
+                      }}
+                      disabled={promoviendo === p.id}
+                      className={`${claseBotonPrimario} disabled:opacity-50`}
+                    >
+                      {promoviendo === p.id ? 'Trayendo la imagen…' : 'Sí, usarla'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDecidiendoFoto(null);
+                        void convertir(p, false);
+                      }}
+                      disabled={promoviendo === p.id}
+                      className={`${claseBotonSecundario} disabled:opacity-50`}
+                    >
+                      No usarla
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDecidiendoFoto(null)}
+                      className={claseBotonSecundario}
+                    >
+                      Mejor no
+                    </button>
+                  </div>
+                </div>
+              ) : rechazando === p.id ? (
                 <div className="mt-3 flex flex-col gap-2">
                   <label className="text-xs text-tinta/70" htmlFor={`motivo-${p.id}`}>
                     Por qué se rechaza (opcional, no lo ve quien la mandó)
@@ -692,7 +778,18 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                   {p.estado !== 'aceptada' && (
                     <button
                       type="button"
-                      onClick={() => void convertir(p)}
+                      onClick={() => {
+                        /*
+                         * **Con foto se pregunta; sin foto se convierte derecho.**
+                         * El paso existe para decidir sobre la imagen, así que
+                         * ponerlo delante de una propuesta que no trajo ninguna
+                         * sería un click de más en el caso más común — y de los
+                         * que se aprenden a apretar sin leer, que es justo lo que
+                         * no puede pasar con un aviso que dice «se borra».
+                         */
+                        if (p.imagen && 'storagePath' in p.imagen) setDecidiendoFoto(p.id);
+                        else void convertir(p);
+                      }}
                       disabled={promoviendo === p.id}
                       className={`${claseBotonPrimario} disabled:opacity-50`}
                     >

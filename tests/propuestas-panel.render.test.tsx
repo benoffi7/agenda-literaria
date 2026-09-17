@@ -359,7 +359,14 @@ describe('convertir en actividad — el orden de D-600', () => {
     });
     const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
 
+    /*
+     * **Dos clicks y no uno desde B-926**: con una propuesta que trajo foto, el
+     * botón abre el paso que pregunta si la actividad se queda con ella. Es el
+     * paso entero del ítem — el único momento en que esa foto existe y alguien
+     * la está mirando es esta pantalla.
+     */
     await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, usarla' }));
     await waitFor(() => expect(onConvertir).toHaveBeenCalled());
 
     expect(promoverImagenDePropuesta).toHaveBeenCalledWith('propuestas/abc.jpg');
@@ -380,11 +387,62 @@ describe('convertir en actividad — el orden de D-600', () => {
     const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
 
     await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, usarla' }));
     await waitFor(() => expect(onConvertir).toHaveBeenCalled());
 
     const c = onConvertir.mock.calls[0]![0];
     expect(c.copia.imagenes).toHaveLength(0);
     expect(c.avisos.join(' ')).toContain('se cayó la red');
+  });
+
+  /**
+   * **El descarte, que es la mitad (a) de B-926.**
+   *
+   * Tres propiedades y las tres importan por separado: no se toca Storage (no
+   * hay nada que promover), la galería nace vacía, y —la que hace que el ítem
+   * esté cerrado y no a medias— la revisión viaja con `fotoDescartada: true`,
+   * que es lo único que autoriza al trigger a borrar el original **sin**
+   * verificar una copia. Sin ese flag, la foto de un tercero se queda para
+   * siempre: la `aceptada` no vence (B-844).
+   */
+  it('«No usarla» no promueve nada y marca la foto como descartada', async () => {
+    const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await userEvent.click(screen.getByRole('button', { name: 'No usarla' }));
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+
+    expect(promoverImagenDePropuesta).not.toHaveBeenCalled();
+    expect(onConvertir.mock.calls[0]![0].copia.imagenes).toHaveLength(0);
+
+    await onConvertir.mock.calls[0]![0].alGuardar('act_sin_foto');
+    expect(revisarPropuesta).toHaveBeenCalledWith('p1', 'uid_admin', 'aceptada', {
+      actividadId: 'act_sin_foto',
+      fotoDescartada: true,
+    });
+  });
+
+  it('y el aviso dice que se borra, antes de que alguien lo elija', async () => {
+    /*
+     * El texto no es decoración: descartar **borra el original** y no se puede
+     * deshacer. Es la misma frase que ya está escrita para el rechazo, y acá
+     * hace más falta porque el botón de al lado dice «Sí, usarla» — sin el
+     * aviso, «No usarla» se lee como «la dejo para después».
+     */
+    montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    expect(screen.getByText(/se borra y no se puede recuperar/i)).toBeTruthy();
+  });
+
+  it('una propuesta CON foto no convierte de un solo click: pregunta primero', async () => {
+    /*
+     * El control positivo del paso. Sin él, «los dos clicks funcionan» no
+     * distingue entre «hay un paso» y «el segundo botón es inofensivo».
+     */
+    const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    expect(onConvertir).not.toHaveBeenCalled();
+    expect(promoverImagenDePropuesta).not.toHaveBeenCalled();
   });
 
   it('una propuesta sin imagen propia no toca Storage', async () => {

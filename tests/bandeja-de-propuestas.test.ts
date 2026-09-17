@@ -103,10 +103,48 @@ describe('la única escritura del panel sobre una propuesta', () => {
       ...bloquePropuestas.matchAll(/revision\.keys\(\)\.hasOnly\(\[([^\]]+)\]\)/g),
     ].map((m) => m[1]!.split(',').map((k) => k.trim().replace(/'/g, '')).sort());
     expect(declaradas.length).toBeGreaterThanOrEqual(2);
+
+    /*
+     * **Desde B-926 el `hasOnly` del `update` tiene una clave más que el del
+     * `create`**, y la comparación pasó de «las dos listas son iguales al mapa»
+     * a «cada una es exactamente la que le corresponde». Sin el matiz, esto
+     * frenaría un cambio correcto; sin la comparación, `fotoDescartada` podría
+     * desaparecer de la regla sin que nada se pusiera rojo.
+     *
+     * - El **create**: los cuatro de siempre. Una propuesta nace sin revisar, y
+     *   no hay ninguna foto que descartar antes de mirarla.
+     * - El **update**: esos cuatro más `fotoDescartada`, que está en el `hasOnly`
+     *   y **no** en el `hasAll` — es opcional y solo viaja cuando se descartó una
+     *   foto de verdad.
+     */
     const { revision } = cambioDeRevision('u', 'aceptada', 'AHORA');
+    const siempre = Object.keys(revision).sort();
+    const conDescarte = Object.keys(
+      cambioDeRevision('u', 'aceptada', 'AHORA', { fotoDescartada: true }).revision,
+    ).sort();
+
+    // Control positivo de la propia derivación: si el constructor dejara de
+    // agregar la clave, los dos arreglos serían iguales y el `for` de abajo no
+    // distinguiría nada.
+    expect(conDescarte).not.toEqual(siempre);
+    expect(conDescarte).toContain('fotoDescartada');
+
     for (const claves of declaradas) {
-      expect(claves).toEqual(Object.keys(revision).sort());
+      expect(
+        claves,
+        'cada `hasOnly` tiene que ser el mapa del `create` (cuatro) o el del `update` (cinco)',
+      ).toEqual(claves.includes('fotoDescartada') ? conDescarte : siempre);
     }
+
+    /*
+     * Y que **exista** la variante de cinco: con las dos listas en cuatro, el
+     * `for` de arriba pasaría y `fotoDescartada` no estaría en ninguna regla —
+     * o sea que el panel no podría escribirlo y el trigger no borraría nunca.
+     */
+    expect(
+      declaradas.some((c) => c.includes('fotoDescartada')),
+      'ninguna regla acepta `fotoDescartada`: el panel no podría marcarlo',
+    ).toBe(true);
   });
 
   it('los estados pendientes son estados de verdad, y las cerradas no lo son', () => {

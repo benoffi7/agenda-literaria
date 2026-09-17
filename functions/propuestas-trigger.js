@@ -70,12 +70,21 @@ export const borrarImagenAlCerrar = onDocumentWritten(
 
     /*
      * **`if/else` y no dos `if` con `return`, y es una guarda estructural.**
-     * El `else` de abajo borra el original **sin verificar nada**, que es lo
-     * correcto para el rechazo (ahí no hay copia que verificar: la foto se
-     * descarta) y sería el peor bug posible en la aceptación. Con dos `if` y un
-     * `return`, borrar ese `return` en un refactor haría que una aceptada cayera
-     * también en el borrado crudo, con toda la suite en verde. Escrito como
-     * bifurcación, eso no se puede.
+     * Las ramas de abajo borran el original **sin verificar nada**, que es lo
+     * correcto para el rechazo y para el descarte (en los dos la foto se tira a
+     * propósito y no hay copia que verificar) y sería el peor bug posible en la
+     * aceptación. Con `if`s sueltos y `return`, borrar uno en un refactor haría
+     * que una aceptada cayera también en el borrado crudo, con toda la suite en
+     * verde. Escrito como bifurcación, eso no se puede.
+     *
+     * **Son tres ramas desde B-926 y no dos**, y el descarte no se pudo meter en
+     * el `else` del rechazo aunque el borrado sea idéntico: lo que cambia es qué
+     * pasa **si falla**. El rechazo tiene red —la retención de los 30 días borra
+     * el objeto con el documento— y el descarte no: la propuesta queda
+     * `aceptada`, que no vence (B-844). Un fallo ahí deja la foto de un tercero
+     * para siempre, igual que en la aceptación, así que loguea con `alerta` y no
+     * con un `error` pelado. Juntarlas habría hecho que el caso sin red heredara
+     * el log del caso con red.
      */
     if (motivo === 'aceptada') {
       try {
@@ -129,6 +138,41 @@ export const borrarImagenAlCerrar = onDocumentWritten(
           propuesta: id,
           objeto,
           actividad: actividadId,
+          error: e?.message,
+          alerta: 'flyer-de-propuesta-sin-borrar',
+        });
+      }
+    } else if (motivo === 'descartada') {
+      try {
+        /*
+         * **B-926 — la foto que quien revisó decidió no usar.**
+         *
+         * Borrado crudo y sin verificar ninguna copia, por lo que dice
+         * `decidirBorradoDeImagen`: la pregunta que la verificación de B-863
+         * hace —«¿quedó una copia?»— acá ya la contestó una persona mirando la
+         * foto. `ignoreNotFound` por lo de siempre: la entrega de eventos es al
+         * menos una vez.
+         */
+        await getStorage().bucket().file(objeto).delete({ ignoreNotFound: true });
+        logger.info('imagen de una propuesta descartada al convertirla borrada', {
+          propuesta: id,
+          objeto,
+        });
+      } catch (e) {
+        /*
+         * **Con `alerta`, al revés que el rechazo y por el mismo motivo que la
+         * aceptación: acá no hay red.** La propuesta queda `aceptada`, que no
+         * vence (B-844), así que la retención no va a pasar por este documento
+         * nunca y `limpiarImagenesHuerfanas` no recorre este prefijo. Un fallo
+         * deja la foto de un tercero en el bucket para siempre.
+         *
+         * Es el mismo estado del mundo que el `warn` de arriba, así que lleva el
+         * mismo campo `alerta` — que es lo que hace que el filtro de
+         * `08-operacion.md` los junte en vez de tener que buscarlos por separado.
+         */
+        logger.error('no se pudo borrar la imagen descartada de una propuesta', {
+          propuesta: id,
+          objeto,
           error: e?.message,
           alerta: 'flyer-de-propuesta-sin-borrar',
         });

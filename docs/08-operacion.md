@@ -1427,7 +1427,7 @@ eso es **B-871**, porque la `aceptada` no vence y nadie más va a pasar por ahí
 
 ### Cuando suena `flyer-de-propuesta-sin-borrar`
 
-Son **seis** caminos, todos con el mismo estado del mundo —una propuesta
+Son **siete** caminos, todos con el mismo estado del mundo —una propuesta
 `aceptada` con su flyer original vivo en `propuestas/`, y ningún barrido que vaya
 a pasar por ahí— y por eso comparten el campo `alerta`. Se distinguen por el
 `resultado` (cuando el borrado se intentó) o por el `motivo` (cuando la decisión
@@ -1441,6 +1441,7 @@ ni siquiera llegó a intentarlo):
 | `objeto-ajeno` | el `storagePath` no está bajo `propuestas/<un segmento>`. **No es un caso de operación: es un bug o un documento escrito a mano** | **no borrar nada** hasta saber a quién apunta ese path. La guarda existe justamente porque puede ser el flyer de una actividad publicada |
 | `aceptada-sin-actividad` | la propuesta quedó `aceptada` sin `revision.actividadId` (se la marcó a mano) | ídem `sin-actividad` |
 | `imagen-fuera-del-prefijo` | mismo desajuste que `objeto-ajeno`, detectado antes de intentar nada | **no borrar nada**, mismo motivo |
+| `descartada` con un `error` | **B-926** — quien revisó eligió «No usarla» al convertir y el borrado del original falló. Es el único camino donde el borrado se intentó **sin** verificar copia, porque no hay ninguna: la decisión ya la tomó una persona mirando la foto | reintentar el borrado a mano. Acá **no hay nada que decidir**: la foto ya se descartó a propósito, así que el objeto sobra |
 | un `error` en vez de un `warn` | falló la lectura de la actividad o el `delete` | reintentar el borrado a mano; si se repite, mirar el IAM de `calendar-sync@` |
 
 **Y «a mano» es literal, porque no hay botón**: `storage.rules` cierra el

@@ -557,6 +557,85 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
       // los cuatro campos siempre, así que no queda un motivo colgado de un
       // estado que ya no es.
       expect(d.revision.motivo).toBeNull();
+      /*
+       * **Y `fotoDescartada` NO está**, que es la otra mitad de B-926: la clave
+       * solo viaja cuando se descartó una foto de verdad. Una conversión normal
+       * no escribe una decisión que nadie tomó.
+       */
+      expect(d.revision.fotoDescartada).toBeUndefined();
+    });
+
+    /**
+     * **`fotoDescartada`, las tres cosas que la regla tiene que sostener** —
+     * B-926. Es el flag que autoriza al trigger a borrar el original **sin
+     * verificar ninguna copia**, así que lo que pase acá es irreversible.
+     */
+    it('acepta el flag de foto descartada que arma la bandeja, y solo como booleano', async () => {
+      const { cambioDeRevision } = await import('@/lib/bandejaDePropuestas');
+      await setDoc(doc(db(), 'propuestas', 'p_descarte'), documento());
+
+      // 1. El camino real: lo que el panel manda cuando alguien elige «No usarla».
+      await updateDoc(
+        doc(db(), 'propuestas', 'p_descarte'),
+        cambioDeRevision(UID, 'aceptada', serverTimestamp(), {
+          actividadId: 'act_sin_foto',
+          fotoDescartada: true,
+        }),
+      );
+      const d = (await getDoc(doc(db(), 'propuestas', 'p_descarte'))).data() as Propuesta;
+      expect(d.revision.fotoDescartada).toBe(true);
+
+      // 2. No es un booleano → la regla lo rechaza. El trigger lo lee con
+      //    `=== true`, así que un string no borraría nada; la regla es la mitad
+      //    que impide que el valor raro llegue siquiera a guardarse.
+      await expect(
+        updateDoc(doc(db(), 'propuestas', 'p_descarte'), {
+          estado: 'rechazada',
+          revision: {
+            porUid: UID,
+            en: serverTimestamp(),
+            actividadId: null,
+            motivo: null,
+            fotoDescartada: 'si',
+          },
+        }),
+      ).rejects.toThrow(RECHAZADA);
+
+      // 3. Control positivo del par: el mismo update con un booleano entra.
+      await updateDoc(doc(db(), 'propuestas', 'p_descarte'), {
+        estado: 'rechazada',
+        revision: {
+          porUid: UID,
+          en: serverTimestamp(),
+          actividadId: null,
+          motivo: null,
+          fotoDescartada: false,
+        },
+      });
+      expect(
+        ((await getDoc(doc(db(), 'propuestas', 'p_descarte'))).data() as Propuesta).estado,
+      ).toBe('rechazada');
+    });
+
+    it('una clave de más en `revision` sigue rechazándose', async () => {
+      /*
+       * El `hasOnly` creció de cuatro claves a cinco, y este caso es el que
+       * impide que crecer signifique «ya no acota nada». Sin él, agregar
+       * `fotoDescartada` al `hasOnly` se lee como haber abierto el mapa.
+       */
+      await setDoc(doc(db(), 'propuestas', 'p_clave_de_mas'), documento());
+      await expect(
+        updateDoc(doc(db(), 'propuestas', 'p_clave_de_mas'), {
+          estado: 'en-revision',
+          revision: {
+            porUid: UID,
+            en: serverTimestamp(),
+            actividadId: null,
+            motivo: null,
+            inventada: true,
+          },
+        }),
+      ).rejects.toThrow(RECHAZADA);
     });
 
     it('borrar está prohibido: rechazar es un estado, no una desaparición', async () => {

@@ -228,7 +228,15 @@ export const cambioDeRevision = <T>(
   uid: string,
   estado: EstadoPropuesta,
   en: T,
-  extras: { actividadId?: string | null; motivo?: string | null } = {},
+  extras: {
+    actividadId?: string | null;
+    motivo?: string | null;
+    /**
+     * **La foto se descartó al convertir** — B-926. Solo viaja cuando es `true`:
+     * ver abajo.
+     */
+    fotoDescartada?: boolean;
+  } = {},
 ): { estado: EstadoPropuesta; revision: Record<string, unknown> } => ({
   estado,
   revision: {
@@ -236,6 +244,21 @@ export const cambioDeRevision = <T>(
     en,
     actividadId: extras.actividadId ?? null,
     motivo: extras.motivo ?? null,
+    /*
+     * **La clave solo aparece cuando es `true`** — B-926, y es deliberado al
+     * revés que los cuatro de arriba.
+     *
+     * Aquéllos van siempre porque `revisionValida()` los exige con un `hasAll`.
+     * Éste está en el `hasOnly` y **no** en el `hasAll`, así que mandarlo en
+     * `false` sería escribir un campo que no significa nada en las tres cuartas
+     * partes de los casos —todo rechazo, toda propuesta sin foto— y dejarlo
+     * guardado en el documento como si alguien hubiera decidido algo.
+     *
+     * Y la asimetría tiene un segundo motivo, más concreto: el trigger lo lee
+     * con `=== true`. Un `false` explícito y una clave ausente significan lo
+     * mismo para quien decide, así que la forma más chica es la que no miente.
+     */
+    ...(extras.fotoDescartada === true ? { fotoDescartada: true } : {}),
   },
 });
 
@@ -371,7 +394,11 @@ export const revisarPropuesta = async (
   id: string,
   uid: string,
   estado: EstadoPropuesta,
-  extras: { actividadId?: string | null; motivo?: string | null } = {},
+  extras: {
+    actividadId?: string | null;
+    motivo?: string | null;
+    fotoDescartada?: boolean;
+  } = {},
 ): Promise<void> => {
   await updateDoc(doc(db(), COL, id), cambioDeRevision(uid, estado, serverTimestamp(), extras));
 };
