@@ -89,8 +89,12 @@ describe('los comandos de los skills y agentes de .claude/ — la clase de `ada6
 
   it.each(casos)('$archivo · $comando', ({ comando }) => {
     const args = argumentosDe(comando);
+    // `[/]` y no `\/`: un literal que termina en barra escapada deja un `//`
+    // literal en el fuente, y el saneador de `sin-comentarios.test.ts` lo lee
+    // como el comienzo de un comentario y se come el resto de la línea. Es el
+    // control positivo que esa guarda ya tenía escrito (B-876), y lo cobró acá.
     const rutas = args.filter(
-      (a) => !a.startsWith('-') && /^(docs|src|tests|scripts|functions|\.github|\.claude)\//.test(a),
+      (a) => !a.startsWith('-') && /^(docs|src|tests|scripts|functions|\.github|\.claude)[/]/.test(a),
     );
 
     // 1 · Las rutas que nombra tienen que existir.
