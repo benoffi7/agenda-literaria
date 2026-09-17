@@ -1008,20 +1008,22 @@ del admin en la clave.
   lista contesta mejor «cuántas exactamente», que es lo que un tablero de
   programación pregunta más seguido. La torta contesta la otra: la proporción de un
   vistazo. Como ninguna gana siempre, se elige.
-- **El de barrio arranca en lista**, y es el único: el circuito porteño tiene
-  veinte barrios, así que la torta mostraría «las cinco primeras y el resto», que
-  contesta menos que la lista entera. Cuenta **solo lo presencial**, sale de todas
+- **De los cuatro, el de barrio es el único que arranca en lista** (la torta
+  sigue a un clic): el circuito porteño tiene veinte barrios, así que la torta
+  mostraría «las cinco primeras y el resto», que contesta menos que la lista
+  entera. Cuenta **solo lo presencial**, sale de todas
   las filas de «Dónde» —no del `sede` derivado, que es «la primera fila que tenga
   sede»— y una actividad en dos barrios cuenta en los dos, pero una sola vez por
   barrio aunque tenga dos filas ahí.
 - **Cada reparto dice sobre qué todo reparte**, siempre, y es obligatorio por firma
   del componente: «sobre 47 formas de cursar ofrecidas», no «sobre 40 actividades».
 
-**«Por forma de cursar» va abajo y sin torta** (B-224). Es el único reparto donde
-una actividad cuenta en más de una tajada —cuenta en **cada** forma que ofrece, así
-que las cantidades suman más que el total— y una torta que dibuja «47 formas» al
-lado de tres que dibujan «40 actividades» invita a compararlas, que es justo lo que
-no se puede hacer. Al lado, en una frase: cuántos ciclos, cuántas actividades
+**«Por forma de cursar» va abajo y también arranca en lista** (B-224). Es el único
+reparto donde una actividad cuenta en más de una tajada —cuenta en **cada** forma
+que ofrece, así que las cantidades suman más que el total— y una torta que dibuja
+«47 formas» al lado de tres que dibujan «40 actividades» invita a compararlas, que
+es justo lo que no se puede hacer; la lista dice el número sin sugerir esa
+comparación. El toggle está igual, como en todos: lo que cambia es con qué abre. Al lado, en una frase: cuántos ciclos, cuántas actividades
 sueltas y cuántos encuentros cargados en total. **Ciclos contra sueltas se queda
 como frase y no pasa a gráfico**: son dos categorías, y una torta de dos cuñas no
 dice nada que «12 ciclos y 28 sueltas» no diga mejor y en menos lugar.
@@ -1037,7 +1039,7 @@ paquete de iconos. Lo que el módulo decide:
 | Qué | Cómo |
 |---|---|
 | El todo | **la suma de las tajadas, nunca «la cantidad de actividades»** — la función que arma las cuñas no recibe ningún total, así que no hay forma de pasarle uno equivocado y dibujar 117 % de circunferencia |
-| La cola | de la sexta categoría en adelante se junta en **«Otras N»**, conservando la suma; a partir de la sexta cuña la etiqueta ya no entra al lado y el ojo deja de comparar áreas. Solo agrupa si la cola tiene al menos dos: esconderle el nombre a una sola no gana ni una cuña de legibilidad |
+| La cola | **con siete categorías o más** se dibujan las cinco primeras y el resto se junta en **«Otras N»**, conservando la suma: a partir de la sexta cuña la etiqueta ya no entra al lado y el ojo deja de comparar áreas. Con seis se dibujan las seis — solo agrupa si la cola tiene al menos dos, porque esconderle el nombre a una sola no gana ni una cuña de legibilidad, y el catálogo chico de seis barrios es el caso más frecuente |
 | El orden | por cantidad, y alfabético para desempatar, **calculado ahí y no heredado del reparto**: sin el desempate, dos categorías con la misma cantidad quedan en el orden en que llegaron y la torta se reordena sola entre dos recargas |
 | El color | de `colorDeTipo` (**D-150**) para todos los repartos y no solo el de tipo: es la misma función que pinta la categoría en el sitio público, con su piso de contraste ya verificado, así que el mismo valor se ve igual en las dos puntas. «Otras N» va con una tinta con nombre, porque no es una categoría sino la ausencia de una |
 | El porcentaje | `<1 %` y no `0 %` para una tajada que existe: redondear a cero una categoría con actividades adentro es afirmar que no tiene ninguna |
