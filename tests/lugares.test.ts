@@ -68,6 +68,7 @@ import {
   TOPE_CONDICION_NOTAS_LUGAR,
   TOPE_CONTACTO_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
+  TOPE_HORARIOS_LUGAR,
   TOPE_DIRECCION_LUGAR,
   TOPE_MAIL_LUGAR,
   TOPE_MOTIVO_LUGAR,
@@ -185,6 +186,8 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
       ['d.nombre', '<=', TOPE_NOMBRE_LUGAR],
       ['d.slug', '<=', TOPE_SLUG_LUGAR],
       ['d.descripcion', '<=', TOPE_DESCRIPCION_LUGAR],
+      // B-982 — el horario, texto libre.
+      ['d.horarios', '<=', TOPE_HORARIOS_LUGAR],
       ['d.imagenes', '<=', MAX_IMAGENES_LUGAR],
       ['d.tipo', '<=', TOPE_SLUG_TAXONOMIA_LUGAR],
       ['d.direccion', '>=', MIN_DIRECCION_LUGAR],

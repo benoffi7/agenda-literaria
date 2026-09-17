@@ -278,6 +278,33 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         </Campo>
 
         {/*
+          B-982 — el horario de atención, **texto libre y opcional**, reportado
+          por el dueño: «no tiene horario de atención». Es el dato que más se
+          busca después de la dirección.
+
+          La ayuda muestra la forma esperada en vez de imponerla con un editor:
+          la decisión del dueño fue texto libre, y el costo asumido es que no se
+          puede filtrar por «abierto ahora» ni emitir `openingHours` en el
+          JSON-LD — `schema.org` lo quiere en un formato fijo y un texto libre no
+          valida. Publicar un horario mal formado es peor que no publicarlo.
+        */}
+        <Campo
+          label="Horario de atención"
+          htmlFor="lib-horarios"
+          error={errorDe('horarios')}
+          ayuda="Como quieras: «Lun a vie de 10 a 20, sábados de 10 a 14»."
+        >
+          <input
+            id="lib-horarios"
+            className={claseInput}
+            maxLength={200}
+            placeholder="Lun a vie de 10 a 20, sábados de 10 a 14"
+            value={form.horarios}
+            onChange={(e) => set('horarios', e.target.value)}
+          />
+        </Campo>
+
+        {/*
           **La misma cascada que una sede** — B-967, D-710. Provincia primero, y de
           ahí barrio (CABA) o ciudad (el resto), con la misma `subdivisionDe` que
           usan el editor de modalidades y el riel del sitio.

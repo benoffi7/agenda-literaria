@@ -68,6 +68,9 @@ const RUTAS = [
   // PRD 4, y es la única ruta de los cuatro fixtures cuya lista de permitidos
   // cambia según otro campo del mismo documento.
   'direccion',
+  // B-982 — cuándo se puede usar. PÚBLICO y **sin depender de
+  // `direccionPublica`**: no identifica una casa, eso lo hace la calle.
+  'horarios',
   // B-967 — los tres de la geografía son slugs de taxonomía. Sus centinelas son
   // **su propio slug** por lo mismo que en los otros dos fixtures: la proyección
   // los normaliza, así que un centinela con puntos no sobreviviría.
@@ -123,6 +126,8 @@ export const CENTINELA_LUGAR = {
   tipo: 'centinela-tipo-de-lugar',
   // ⚠️ El dato del § 6. Texto libre, entre 4 y 160.
   direccion: 'CENTINELA.direccionDelLugar 1234',
+  // B-982 — cuándo se puede usar. Público y SIN depender de `direccionPublica`.
+  horarios: 'CENTINELA.horariosDelLugar',
   // Slug de `/opciones/barrio`, el mismo vocabulario que las actividades.
   barrio: 'centinela-barrio',
   ciudad: 'centinela-ciudad-del-lugar',
@@ -242,6 +247,7 @@ export const lugarCentinela = (): Lugar => ({
   ],
   tipo: CENTINELA_LUGAR.tipo,
   direccion: CENTINELA_LUGAR.direccion,
+  horarios: CENTINELA_LUGAR.horarios,
   provincia: CENTINELA_LUGAR.provincia,
   barrio: CENTINELA_LUGAR.barrio,
   ciudad: CENTINELA_LUGAR.ciudad,

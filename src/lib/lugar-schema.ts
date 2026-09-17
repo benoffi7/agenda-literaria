@@ -56,6 +56,7 @@ import {
   TOPE_CONTACTO_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
   TOPE_DIRECCION_LUGAR,
+  TOPE_HORARIOS_LUGAR,
   TOPE_MAIL_LUGAR,
   TOPE_NOMBRE_LUGAR,
   TOPE_OTRO_LUGAR,
@@ -174,6 +175,12 @@ const base = z.object({
    * tiene que estar**. El par se cierra en las dos direcciones.
    */
   direccion: texto.max(TOPE_DIRECCION_LUGAR, 'La dirección quedó muy larga').default(''),
+  /*
+   * B-982 — opcional y texto libre, igual que en una librería. Acá es **cuándo
+   * se puede usar** y no el horario de mostrador, así que el rótulo del
+   * formulario lo dice distinto.
+   */
+  horarios: texto.max(TOPE_HORARIOS_LUGAR, 'Quedó muy largo, resumilo').default(''),
   /*
    * B-967 — la cascada, igual que en una sede y en una librería: la **provincia**
    * se exige (sin ella la ficha no aparece bajo ningún filtro de lugar) y la
@@ -434,6 +441,7 @@ export const lugarVacio = (): LugarForm => ({
   imagenes: [],
   tipo: '',
   direccion: '',
+  horarios: '',
   barrio: '',
   provincia: PROVINCIA_POR_DEFECTO,
   ciudad: CIUDAD_POR_DEFECTO,
@@ -597,6 +605,7 @@ export const formALugar = (
     })),
     tipo,
     direccion: oNull(f.direccion),
+    horarios: oNull(f.horarios),
     provincia,
     barrio,
     ciudad,

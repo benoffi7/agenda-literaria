@@ -91,6 +91,33 @@ export const MIN_NOMBRE_LIBRERIA = 2;
 export const TOPE_NOMBRE_LIBRERIA = 80;
 /** «Qué tiene, qué la hace distinta». Opcional. */
 export const TOPE_DESCRIPCION_LIBRERIA = 1000;
+/**
+ * **El horario de atención, texto libre** — B-982, reportado por el dueño.
+ *
+ * Es el dato que más se busca después de la dirección: un directorio que dice
+ * dónde queda y no cuándo abre manda a la gente a la puerta cerrada.
+ *
+ * ── Por qué texto libre y no estructurado ─────────────────────────────────
+ * Decisión del dueño, 2026-09-17, sobre las dos formas que se le presentaron.
+ * Texto libre es un campo y cero editor; estructurado (día × rango) permitiría
+ * filtrar por «abierto ahora» y emitir `openingHours` en el JSON-LD, pero pide
+ * feriados, corte del mediodía y temporada.
+ *
+ * **Consecuencia dicha, para que no se descubra después: NO se emite en el
+ * JSON-LD.** `schema.org/openingHours` quiere un formato fijo (`Mo-Fr
+ * 10:00-20:00`) y un texto libre no valida — emitirlo mal es peor que no
+ * emitirlo, porque Google puede mostrar un horario equivocado al costado del
+ * resultado. Entra el día que el campo se estructure.
+ *
+ * **Y migrar esto después es caro**, que es la otra mitad de la decisión: queda
+ * cargado en todas las fichas y hay que releerlo a mano para estructurarlo.
+ *
+ * 200 caracteres: entra «Lun a vie de 10 a 20, sábados de 10 a 14. Feriados
+ * cerrado» con margen, y no alcanza para un párrafo — para eso está la
+ * descripción.
+ */
+export const TOPE_HORARIOS_LIBRERIA = 200;
+
 /** La dirección, texto libre: «Thames 1762». */
 export const MIN_DIRECCION_LIBRERIA = 4;
 export const TOPE_DIRECCION_LIBRERIA = 160;
@@ -187,6 +214,8 @@ export interface Libreria {
   /** Reusa `Imagen` de `types/actividad.ts` — D-125. Exactamente una `portada`. */
   imagenes: Imagen[];
   direccion: string;
+  /** Texto libre, o `null` si no se cargó — B-982. Ver `TOPE_HORARIOS_LIBRERIA`. */
+  horarios: string | null;
   /**
    * Slug de `/opciones/provincia` — B-967. **El mismo vocabulario que una
    * actividad**, igual que el barrio: la cascada es una sola.
@@ -298,6 +327,8 @@ export interface LibreriaForm {
   descripcion: string;
   imagenes: Imagen[];
   direccion: string;
+  /** B-982 — `''` ⇒ `null` en el documento. */
+  horarios: string;
   /** B-967 — los tres de la geografía, slugs de taxonomía como en una sede. */
   provincia: string;
   barrio: string;

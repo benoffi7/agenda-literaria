@@ -93,6 +93,8 @@ describe('el link de la ficha se congela al publicar — trampa 10', () => {
     descripcion: null,
     imagenes: [],
     direccion: 'Thames 1762',
+    // B-982 — el horario de atención, texto libre.
+    horarios: null,
     barrio: 'villa-crespo',
     provincia: 'caba',
     ciudad: 'caba',

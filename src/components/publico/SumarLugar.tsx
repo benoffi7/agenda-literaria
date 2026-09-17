@@ -11,6 +11,7 @@ import {
   TOPE_CONTACTO_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
   TOPE_DIRECCION_LUGAR,
+  TOPE_HORARIOS_LUGAR,
   TOPE_MAIL_LUGAR,
   TOPE_NOMBRE_LUGAR,
   TOPE_OTRO_LUGAR,
@@ -273,6 +274,18 @@ export function SumarLugar({
               value={form.direccion}
               onChange={(e) => set('direccion', e.target.value)}
               placeholder="Honduras 4321"
+            />
+          </Campo>
+
+          {/* B-982 — el horario, texto libre. Lo pidió el dueño; acá lo carga quien manda la ficha. */}
+          <Campo label="Cuándo se puede usar" htmlFor="lug-pub-horarios" error={errorDe('horarios')}>
+            <input
+              id="lug-pub-horarios"
+              className={claseInput}
+              maxLength={TOPE_HORARIOS_LUGAR}
+              value={form.horarios}
+              onChange={(e) => set('horarios', e.target.value)}
+              placeholder="Todos los días de 9 a 23"
             />
           </Campo>
         </div>

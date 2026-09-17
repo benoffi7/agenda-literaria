@@ -128,6 +128,8 @@ export const libreriaAFormulario = (l: Libreria): LibreriaForm => ({
   descripcion: l.descripcion ?? '',
   imagenes: l.imagenes ?? [],
   direccion: l.direccion,
+  // B-982 — default de lectura: las fichas anteriores al campo no lo tienen.
+  horarios: l.horarios ?? '',
   /*
    * B-967 — el **default de lectura** de la geografía (D-26), el mismo que usa
    * una actividad: una ficha anterior guarda la ciudad como se tipeó («Ciudad de

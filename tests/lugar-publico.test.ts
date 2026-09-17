@@ -74,6 +74,16 @@ type Excepcion = { nombre: string; centinelas: readonly RutaDeLugar[]; porque: s
  */
 const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   {
+    nombre: 'cuándo se puede usar',
+    // B-982 — el horario, y **no** depende de `direccionPublica`.
+    centinelas: ['horarios'],
+    porque:
+      'cuándo se puede usar un lugar no identifica una casa — lo que la identifica es la calle y ' +
+      'el número, y de eso se ocupa `direccionPublica` (§ 6 del PRD). Por eso sale **siempre**, ' +
+      'incluso en una casa con la dirección reservada: es justamente lo que esa persona sí quiere ' +
+      'decir. No entra al JSON-LD, por lo mismo que en una librería.',
+  },
+  {
     nombre: 'identidad',
     centinelas: ['nombre', 'slug', 'descripcion'],
     porque:

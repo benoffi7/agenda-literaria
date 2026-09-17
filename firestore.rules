@@ -1257,6 +1257,17 @@ service cloud.firestore {
     function formaDeLibreria() {
       let d = request.resource.data;
       let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'direccion',
+                          /*
+                           * B-982 — el horario de atención, texto libre. Entra a
+                           * `hasAll` igual que `provincia` en B-967 y por el mismo
+                           * motivo: el formulario lo escribe en cada guardado
+                           * —`null` si está vacío—, así que no hay documento nuevo
+                           * sin la clave. Las siete fichas anteriores se migran al
+                           * reeditarse; hasta entonces la regla las rechazaría en
+                           * un `update`, que es el trato que ya recibieron
+                           * `searchText` y `provincia`.
+                           */
+                          'horarios',
                           // B-967 — los tres de la geografía, los tres slugs de
                           // taxonomía. `provincia` es nueva y entra a `hasAll`: la
                           // escribe el formulario en cada guardado, así que no hay
@@ -1302,6 +1313,14 @@ service cloud.firestore {
         && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
         && (d.get('descripcion', null) == null
              || (d.descripcion is string && d.descripcion.size() <= 1000))
+        /*
+         * B-982 — `null` o texto de hasta 200. El tope tiene que estar acá y no
+         * solo en el schema: el schema es del formulario y esto es lo que aguanta
+         * un `curl`. 200 es `TOPE_HORARIOS_LIBRERIA`, y que los dos digan lo mismo
+         * lo ata `tests/librerias.test.ts`.
+         */
+        && (d.get('horarios', null) == null
+             || (d.horarios is string && d.horarios.size() <= 200))
         && d.imagenes is list && d.imagenes.size() <= 4
         && d.direccion is string && d.direccion.size() >= 4 && d.direccion.size() <= 160
         // El mismo slug de `/opciones/barrio` que usan las actividades (§ 2 del
@@ -2231,6 +2250,10 @@ service cloud.firestore {
     function formaDeLugar() {
       let d = request.resource.data;
       let obligatorios = ['nombre', 'slug', 'descripcion', 'imagenes', 'tipo', 'direccion',
+                          // B-982 — el horario, texto libre. Mismo trato que en
+                          // una librería: a `hasAll`, y las fichas anteriores se
+                          // migran al reeditarse. Acá no hay ninguna todavía.
+                          'horarios',
                           // B-967 — los tres de la geografía, como en una librería.
                           'provincia', 'barrio', 'ciudad', 'geo', 'direccionPublica', 'capacidad',
                           'capacidadNotas', 'incluye', 'incluyeOtro', 'condicion', 'precio',
@@ -2276,6 +2299,13 @@ service cloud.firestore {
         && (d.get('direccion', null) == null
              || (d.direccion is string && d.direccion.size() >= 4
                   && d.direccion.size() <= 160))
+        /*
+         * B-982 — `null` o texto de hasta 200 (`TOPE_HORARIOS_LUGAR`). **No
+         * depende de `direccionPublica`**, a diferencia de la dirección: cuándo
+         * se puede usar un lugar no identifica una casa.
+         */
+        && (d.get('horarios', null) == null
+             || (d.horarios is string && d.horarios.size() <= 200))
         // El mismo slug de `/opciones/barrio` que usan las actividades y las
         // librerías (§ 3 del PRD): con otro alfabeto, el hub de barrio no cruza
         // las tres cosas. **Sale siempre**, también para una casa: es el «más o

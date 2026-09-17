@@ -43,6 +43,7 @@ import {
   TOPE_CONTACTO_LIBRERIA,
   TOPE_DESCRIPCION_LIBRERIA,
   TOPE_DIRECCION_LIBRERIA,
+  TOPE_HORARIOS_LIBRERIA,
   TOPE_MAIL_LIBRERIA,
   TOPE_NOMBRE_LIBRERIA,
   TOPE_SLUG_LIBRERIA,
@@ -139,6 +140,12 @@ const base = z.object({
   direccion: texto
     .min(MIN_DIRECCION_LIBRERIA, '¿Dónde queda?')
     .max(TOPE_DIRECCION_LIBRERIA, 'La dirección quedó muy larga'),
+  /*
+   * B-982 — **opcional y texto libre.** No se exige para publicar: una librería
+   * sin horario cargado sigue siendo una ficha útil, y bloquear la publicación
+   * por un campo nuevo dejaría inguardables las siete que ya están.
+   */
+  horarios: texto.max(TOPE_HORARIOS_LIBRERIA, 'Quedó muy largo, resumilo').default(''),
   /*
    * B-967 — la cascada, igual que en una sede: la **provincia** se exige (es el
    * primer nivel, y sin ella la ficha no aparece bajo ningún filtro de lugar) y
@@ -297,6 +304,7 @@ export const libreriaVacia = (): LibreriaForm => ({
   descripcion: '',
   imagenes: [],
   direccion: '',
+  horarios: '',
   provincia: PROVINCIA_POR_DEFECTO,
   barrio: '',
   ciudad: CIUDAD_POR_DEFECTO,
@@ -392,6 +400,7 @@ export const formALibreria = (
       portada: i.portada,
     })),
     direccion,
+    horarios: oNull(f.horarios),
     barrio,
     ciudad,
     geo: hayGeo ? { lat, lng } : null,

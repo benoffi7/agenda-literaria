@@ -126,6 +126,18 @@ const contactos = [
 
     <p class="body-md mt-1 text-super">{ficha.direccion}</p>
 
+    {/*
+      B-982 — el horario, si se cargó. Pegado a la dirección porque contestan la
+      misma pregunta: «¿voy o no voy ahora?». Un directorio que dice dónde queda y
+      no cuándo abre manda a la gente a la puerta cerrada.
+
+      **No entra al JSON-LD**: `schema.org/openingHours` quiere un formato fijo
+      (`Mo-Fr 10:00-20:00`) y esto es texto libre, así que emitirlo sería
+      publicar un horario que Google puede mostrar mal al costado del resultado.
+      Ver `TOPE_HORARIOS_LIBRERIA`.
+    */}
+    {ficha.horarios && <p class="body-sm mt-1 text-super">{ficha.horarios}</p>}
+
     {
       portada && (
         <img

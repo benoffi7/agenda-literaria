@@ -50,6 +50,17 @@ type Excepcion = { nombre: string; centinelas: readonly RutaDeLibreria[]; porque
 
 const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   {
+    nombre: 'cuándo abre',
+    // B-982 — pedido del dueño: «no tiene horario de atención».
+    centinelas: ['horarios'],
+    porque:
+      'es el dato que más se busca después de la dirección: un directorio que dice dónde queda y ' +
+      'no cuándo abre manda a la gente a la puerta cerrada. Es un **local comercial** (§ 8 del ' +
+      'PRD), así que su horario no dice nada de nadie. **No entra al JSON-LD**: es texto libre y ' +
+      '`schema.org/openingHours` quiere un formato fijo — publicarlo mal formado haría que Google ' +
+      'muestre un horario equivocado, que es peor que no mostrarlo.',
+  },
+  {
     nombre: 'identidad',
     centinelas: ['nombre', 'slug', 'descripcion'],
     porque:

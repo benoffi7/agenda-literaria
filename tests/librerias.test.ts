@@ -61,6 +61,7 @@ import {
   TOPE_CIUDAD_LIBRERIA,
   TOPE_CONTACTO_LIBRERIA,
   TOPE_DESCRIPCION_LIBRERIA,
+  TOPE_HORARIOS_LIBRERIA,
   TOPE_DIRECCION_LIBRERIA,
   TOPE_MAIL_LIBRERIA,
   TOPE_MOTIVO_LIBRERIA,
@@ -169,6 +170,8 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
       ['d.nombre', '<=', TOPE_NOMBRE_LIBRERIA],
       ['d.slug', '<=', TOPE_SLUG_LIBRERIA],
       ['d.descripcion', '<=', TOPE_DESCRIPCION_LIBRERIA],
+      // B-982 — el horario de atención, texto libre.
+      ['d.horarios', '<=', TOPE_HORARIOS_LIBRERIA],
       ['d.imagenes', '<=', MAX_IMAGENES_LIBRERIA],
       ['d.direccion', '>=', MIN_DIRECCION_LIBRERIA],
       ['d.direccion', '<=', TOPE_DIRECCION_LIBRERIA],

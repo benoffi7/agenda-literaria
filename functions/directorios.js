@@ -66,6 +66,9 @@ export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
     'slug',
     'nombre',
     'descripcion',
+    // B-982 — el horario entra a la proyección, así que el trigger lo mira:
+    // cambiarlo tiene que rebuildear el sitio (§8, trampa 8).
+    'horarios',
     'direccion',
     // B-967 — los tres de la geografía.
     'provincia',
@@ -128,6 +131,9 @@ export const CAMPOS_PUBLICOS_POR_DIRECTORIO = {
     'slug',
     'nombre',
     'descripcion',
+    // B-982 — el horario entra a la proyección, así que el trigger lo mira:
+    // cambiarlo tiene que rebuildear el sitio (§8, trampa 8).
+    'horarios',
     'imagenes',
     'tipo',
     'direccion',

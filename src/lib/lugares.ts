@@ -130,6 +130,8 @@ export const lugarAFormulario = (l: Lugar): LugarForm => ({
   imagenes: l.imagenes ?? [],
   tipo: l.tipo ?? '',
   direccion: l.direccion ?? '',
+  // B-982 — default de lectura: las fichas anteriores al campo no lo tienen.
+  horarios: l.horarios ?? '',
   /*
    * B-967 — el **default de lectura** de la geografía (D-26), el mismo que usan
    * una actividad y una librería: una ficha anterior guarda la ciudad como se

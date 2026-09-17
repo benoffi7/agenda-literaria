@@ -186,6 +186,19 @@ const capacidad = [
           dirección no se publica: escribile y te la pasa.
         </p>
       )}
+
+      {/*
+        B-982 — cuándo se puede usar, si se cargó.
+
+        **Va adentro de esta sección pero FUERA del condicional de arriba**, y es
+        el punto del campo: la dirección la esconde `direccionPublica` (§ 6),
+        el horario no. Cuándo se puede usar un lugar no identifica una casa — lo
+        que la identifica es la calle y el número—, así que una casa con la
+        dirección reservada igual puede decir cuándo está disponible.
+
+        No entra al JSON-LD, por lo mismo que en una librería: es texto libre.
+      */}
+      {ficha.horarios && <p class="body-sm mt-2 text-super">{ficha.horarios}</p>}
     </section>
 
     {

@@ -9,6 +9,7 @@ import {
   TOPE_CONTACTO_LIBRERIA,
   TOPE_DESCRIPCION_LIBRERIA,
   TOPE_DIRECCION_LIBRERIA,
+  TOPE_HORARIOS_LIBRERIA,
   TOPE_MAIL_LIBRERIA,
   TOPE_NOMBRE_LIBRERIA,
   TOPE_WEB_LIBRERIA,
@@ -153,6 +154,18 @@ export function SumarLibreria({
             value={form.direccion}
             onChange={(e) => set('direccion', e.target.value)}
             placeholder="Thames 1762"
+          />
+        </Campo>
+
+        {/* B-982 — el horario, texto libre. Lo pidió el dueño; acá lo carga quien manda la ficha. */}
+        <Campo label="Horario de atención" htmlFor="lib-pub-horarios" error={errorDe('horarios')}>
+          <input
+            id="lib-pub-horarios"
+            className={claseInput}
+            maxLength={TOPE_HORARIOS_LIBRERIA}
+            value={form.horarios}
+            onChange={(e) => set('horarios', e.target.value)}
+            placeholder="Lun a vie de 10 a 20, sábados de 10 a 14"
           />
         </Campo>
 

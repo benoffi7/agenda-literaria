@@ -46,6 +46,9 @@ const RUTAS = [
 
   // Dónde queda. Público: es un local comercial (§ 8 del PRD).
   'direccion',
+  // B-982 — el horario de atención. PÚBLICO: es lo que el directorio existe
+  // para contestar después de la dirección, y no identifica a nadie.
+  'horarios',
   // B-967 — los tres de la geografía son slugs de taxonomía, como en una sede.
   // Sus centinelas son **su propio slug** por lo mismo que en
   // `tests/fixtures/centinelas.ts` (`RUTAS_SLUG`): la proyección los normaliza,
@@ -93,6 +96,9 @@ export const CENTINELA_LIBRERIA = {
   // Normalizado (§6): sin mayúsculas ni acentos, como lo deja `formALibreria`.
   searchText: 'centinela.searchtext',
   direccion: 'CENTINELA.direccion',
+  // B-982 — el horario de atención. Es público a propósito: la lista de
+  // permitidos lo tiene, y por eso el barrido no lo marca.
+  horarios: 'CENTINELA.horarios',
   // Slug de `/opciones/barrio`, el mismo que usan las actividades.
   barrio: 'centinela-barrio',
   // B-967 — slug-shaped, ver el comentario de arriba.
@@ -162,6 +168,7 @@ export const libreriaCentinela = (): Libreria => ({
     },
   ],
   direccion: CENTINELA_LIBRERIA.direccion,
+  horarios: CENTINELA_LIBRERIA.horarios,
   provincia: CENTINELA_LIBRERIA.provincia,
   barrio: CENTINELA_LIBRERIA.barrio,
   ciudad: CENTINELA_LIBRERIA.ciudad,

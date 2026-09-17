@@ -135,6 +135,18 @@ export const TOPE_SLUG_LUGAR = 120;
  */
 export const MIN_DIRECCION_LUGAR = 4;
 export const TOPE_DIRECCION_LUGAR = 160;
+
+/**
+ * **El horario de atención, texto libre** — B-982.
+ *
+ * El porqué de la forma —texto libre y no estructurado, y por qué NO entra al
+ * JSON-LD— está en `TOPE_HORARIOS_LIBRERIA` (`types/libreria.ts`), que es donde
+ * el dueño lo reportó. Acá vale lo mismo con un matiz: en un lugar para eventos
+ * el horario **no es el de mostrador sino el de acceso** —cuándo se puede usar—,
+ * así que el rótulo del formulario lo dice distinto.
+ */
+export const TOPE_HORARIOS_LUGAR = 200;
+
 /**
  * La ciudad. **Slug de `/opciones/ciudad` desde B-967**, igual que en una
  * librería y que en una sede: la cascada es una sola para las cuatro entidades.
@@ -287,6 +299,8 @@ export interface Lugar {
    * tiene, la proyección decide.
    */
   direccion: string | null;
+  /** Texto libre, o `null` — B-982. A diferencia de `direccion`, **no** depende del flag: cuándo se puede usar no identifica una casa. */
+  horarios: string | null;
   /**
    * Slug de `/opciones/provincia` — B-967. Primer nivel de la cascada, **el mismo
    * vocabulario que una actividad y que una librería**.
@@ -420,6 +434,8 @@ export interface LugarForm {
   imagenes: Imagen[];
   tipo: string;
   direccion: string;
+  /** B-982 — `''` ⇒ `null` en el documento. */
+  horarios: string;
   /** B-967 — los tres de la geografía, slugs de taxonomía como en una sede. */
   provincia: string;
   barrio: string;

@@ -124,6 +124,17 @@ export interface LugarPublico {
   /** «Hasta N personas», o `null`. Filtro 1 del § 7, en rangos. */
   capacidad: number | null;
   capacidadNotas: string;
+  /**
+   * El horario, texto libre — B-982. `''` si no se cargó.
+   *
+   * **Al nivel de arriba y NO adentro de `donde`**, que es la decisión del
+   * campo: `donde` está gateado por `direccionPublica` (§ 6 del PRD), y «cuándo
+   * se puede usar» no identifica una casa — lo que la identifica es la calle y
+   * el número. Meterlo ahí lo escondería por una razón que no le aplica.
+   *
+   * No entra al JSON-LD: ver `TOPE_HORARIOS_LIBRERIA`.
+   */
+  horarios: string;
   /** Slugs de `/opciones/incluye-lugar`, ya filtrados. Eje de filtro 4. */
   incluye: string[];
   incluyeOtro: string;
@@ -459,6 +470,7 @@ export const lugarPublico = (l: Lugar): LugarPublico => {
     },
     capacidad: capacidad !== null && capacidad > 0 && capacidad <= MAX_CAPACIDAD_LUGAR ? capacidad : null,
     capacidadNotas: l.capacidadNotas ?? '',
+    horarios: l.horarios ?? '',
     incluye: slugsPublicables(l.incluye, MAX_INCLUYE_LUGAR),
     incluyeOtro: l.incluyeOtro ?? '',
     condicion,
@@ -674,6 +686,8 @@ export interface FichaDeLugar {
   };
   capacidad: number | null;
   capacidadNotas: string;
+  /** B-982 — texto libre, `''` si no se cargó. No entra al JSON-LD. */
+  horarios: string;
   /** Etiquetas, no slugs. */
   incluye: string[];
   incluyeOtro: string;
@@ -740,6 +754,7 @@ export const fichaDeLugar = (l: LugarPublico, e: EtiquetasDeLugar = {}): FichaDe
   },
   capacidad: l.capacidad,
   capacidadNotas: l.capacidadNotas,
+  horarios: l.horarios,
   incluye: l.incluye.map((slug) => etiquetaDe(e, 'incluye-lugar', slug)),
   incluyeOtro: l.incluyeOtro,
   condicion: etiquetaDe(e, 'condicion-de-uso', l.condicion),

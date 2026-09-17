@@ -102,6 +102,14 @@ export interface LibreriaPublica {
   descripcion: string;
   direccion: string;
   /**
+   * El horario de atención, texto libre — B-982. `''` cuando no se cargó.
+   *
+   * **Es público a propósito y sin flag**, a diferencia de la dirección de un
+   * lugar: cuándo abre una librería es exactamente lo que el directorio existe
+   * para contestar, y no identifica a nadie.
+   */
+  horarios: string;
+  /**
    * El **mismo slug** de `/opciones/provincia` que usan las actividades — B-967.
    * Primer nivel de la cascada; sin él la ficha no aparece bajo ningún filtro.
    */
@@ -256,6 +264,7 @@ export const libreriaPublica = (l: Libreria): LibreriaPublica => ({
   nombre: l.nombre,
   descripcion: l.descripcion ?? '',
   direccion: l.direccion,
+  horarios: l.horarios ?? '',
   /*
    * B-967 — **se deriva, no se copia**, igual que en `toPublic` (D-710): una
    * ficha anterior guarda la ciudad como se tipeó y sin provincia, y copiarla
@@ -434,6 +443,8 @@ export interface FichaDeLibreria {
   nombre: string;
   descripcion: string;
   direccion: string;
+  /** B-982 — texto libre, `''` si no se cargó. No entra al JSON-LD: ver `TOPE_HORARIOS_LIBRERIA`. */
+  horarios: string;
   /** La etiqueta del barrio ya resuelta: la página no ve la taxonomía. */
   barrio: string;
   /**
@@ -509,6 +520,7 @@ export const fichaDeLibreria = (
   nombre: l.nombre,
   descripcion: l.descripcion,
   direccion: l.direccion,
+  horarios: l.horarios,
   barrio: etiquetaDeBarrio ?? l.barrio,
   rutaDelBarrio,
   // B-967 — las dos resueltas, con el mismo patrón que el barrio ya tenía.

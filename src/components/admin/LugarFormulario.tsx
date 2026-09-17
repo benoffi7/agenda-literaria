@@ -33,6 +33,7 @@ import {
   TOPE_CONDICION_NOTAS_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
   TOPE_DIRECCION_LUGAR,
+  TOPE_HORARIOS_LUGAR,
   TOPE_MAIL_LUGAR,
   TOPE_NOMBRE_LUGAR,
   TOPE_OTRO_LUGAR,
@@ -419,6 +420,32 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
               maxLength={TOPE_DIRECCION_LUGAR}
               value={form.direccion}
               onChange={(e) => set('direccion', e.target.value)}
+            />
+          </Campo>
+
+          {/*
+            B-982 — el horario, texto libre y opcional. Acá el rótulo dice
+            **«Cuándo se puede usar»** y no «horario de atención»: un lugar para
+            eventos no tiene mostrador, tiene disponibilidad.
+
+            **No depende de `direccionPublica`**, a diferencia del campo de
+            arriba: cuándo se puede usar no identifica una casa — lo que la
+            identifica es la calle y el número.
+          */}
+          <Campo
+            label="Cuándo se puede usar"
+            htmlFor="lug-horarios"
+            error={errorDe('horarios')}
+            className="sm:col-span-2"
+            ayuda="Como quieras: «Todos los días de 9 a 23» o «A convenir»."
+          >
+            <input
+              id="lug-horarios"
+              className={claseInput}
+              maxLength={TOPE_HORARIOS_LUGAR}
+              placeholder="Todos los días de 9 a 23"
+              value={form.horarios}
+              onChange={(e) => set('horarios', e.target.value)}
             />
           </Campo>
 

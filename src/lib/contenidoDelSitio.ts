@@ -415,6 +415,8 @@ const canceladas = async (): Promise<{
  * ata `tests/librerias.test.ts` comparando las dos listas.
  */
 const CAMPOS_DE_LA_PROYECCION = [
+  // B-982 — el horario se publica, así que el build tiene que bajarlo.
+  'horarios',
   'slug',
   'nombre',
   'descripcion',
@@ -585,6 +587,8 @@ const suscripcionesPublicadas = async (): Promise<SuscripcionPublica[]> => {
  * `contactoDeQuienCargo` y el motivo del rechazo.
  */
 const CAMPOS_DE_LA_PROYECCION_LUGAR = [
+  // B-982 — el horario se publica, así que el build tiene que bajarlo.
+  'horarios',
   'slug',
   'nombre',
   'descripcion',
