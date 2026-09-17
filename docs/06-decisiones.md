@@ -7690,6 +7690,112 @@ La modalidad que se muestra es la **resultante** de las filas de «Dónde» (B-2
 no la de la primera fila: «la primera manda» dependería del orden del array, que es
 la trampa 2 con otra cara.
 
+## D-340 · Las tipografías se autoalojan; no se condicionan
+
+**2026-09-03 · B-481.** *Pegada acá el 2026-09-17 (**B-910**). El número se citaba
+desde `16-analitica-del-sitio.md` y el `BACKLOG.md` y no tenía entrada, así que un
+enlace a `#d-340` abría el documento sin ancla y sin error. **No hizo falta
+reconstruirla:** el commit que la acuñó dice dónde había quedado el texto —«listo
+para pegar en 06-decisiones.md, está en `.estado/analitica-sitio.md`», `ce30fae`—
+y ese archivo sigue existiendo en el árbol principal, sin versionar. Lo que sigue
+es ese texto tal como se escribió el 2026-09-03; lo único agregado es el párrafo
+final, que apunta a dónde quedó registrado el resto.*
+
+**El problema.** `Base.astro` abría dos `preconnect` y pedía una hoja de estilos a
+`fonts.googleapis.com` en el load de **toda** página pública. Es la misma clase de
+conexión que **D-254** acababa de sacar para `googletagmanager.com`: no manda la
+URL ni cookies, pero le dice al borde de un tercero que este navegador, desde esta
+IP, entró al sitio — y pasaba **antes** de que la persona tocara el banner y
+también para quien **rechaza**. D-254 lo dejó anotado como pendiente (B-481) y no
+como aceptado, con la lista blanca del test guardándolo.
+
+**Lo que se descartó.** Condicionarlo, que es lo que uno intenta primero: no
+existe. En un sitio estático el `<head>` es el mismo para todo el mundo y la
+decisión de consentimiento vive en el `localStorage` de cada visitante — el mismo
+argumento de D-254, que ya estaba escrito.
+
+**La decisión.** Servir los `.woff2` desde `/fuentes/` de este dominio, con
+`@font-face` propias en `global.css`. **Los mismos archivos** que servía
+`fonts.gstatic.com`, con los mismos pesos, los mismos `unicode-range` y el mismo
+`font-display: swap`: la página se ve igual, y el peso de tipografía no cambia
+(63.696 B). Lo que cambia es que hay **un pedido y dos handshakes TLS menos** y
+**cero terceros**. `vietnamese` se descartó (20,3 KB para un caso que no existe);
+`latin-ext` se conserva con su `unicode-range`, así que sigue bajándose solo
+cuando la página tiene una de esas letras.
+
+**El costo, y la parte que no es gratis.** Los `.woff2` viven en el repo (116 KB)
+y hay que acordarse de actualizarlos a mano — con la contrapartida de que la
+versión está en el nombre del archivo, así que el `immutable` es cierto. Y el
+`Cache-Control` de un año hay que replicarlo en `firebase.json` (`/fuentes/**`):
+**sin esa regla Firebase sirve `public/` con una hora de cache**, o sea que
+autoalojar sin tocar el hosting cambia una mejora por una regresión de 24×.
+
+**La red.** La lista blanca de `tests/terceros-antes-del-consentimiento.test.ts`
+queda **vacía** —la constante se conserva para que agregar un tercero sea
+agregarle una entrada con el motivo escrito— y el barrido se extendió al **CSS
+construido**, que es por donde volverían de verdad: un `@import url('https://…')`
+o un `src: url('https://fonts.gstatic…')` no aparecen en ninguna etiqueta del
+HTML.
+
+**Dónde quedó lo demás** (agregado al pegarla, y por eso separado). La tabla de
+antes y después —bytes, pedidos y cache, medidos contra un build real— está en el
+[§7.4ter](16-analitica-del-sitio.md#74ter--las-tipografías-autoalojadas-b-481), y
+no se copia acá para no tener dos versiones del mismo dato. Ahí están también los
+otros dos tests que el cambio movió: `tests/sistema-visual.test.ts`, que pasó a
+leer las `font-family` de las `@font-face` en vez de los `family=` de la query de
+Google —el mismo aserto, en el archivo que hoy lo decide—, y el barrido de
+`tests/canonico.test.ts`, que marcaba los `<link rel="preload">` nuevos y **no era
+un hallazgo**: un `<link>` de recurso lleva la ruta de un archivo, así que se
+acotó el barrido (descarta los `rel` de recurso, **nunca `canonical`**) en vez de
+tocar `rutaCanonica`, cuyo caso está decidido a propósito.
+
+## D-341 · La lectura de GA4 va por un documento de Firestore, no por un `onCall`
+
+**2026-09-03 · B-374.** *Pegada acá el 2026-09-17 (**B-910**), por lo mismo que
+D-340 y desde el mismo `.estado/analitica-sitio.md`. Texto original, salvo el
+párrafo final.*
+
+**El problema.** El §9.1 de `16-analitica-del-sitio.md` listaba, para traer los
+números de GA4 al panel, siete piezas: la Data API, una Function nueva, una cuenta
+de servicio nueva, **autorizar la Function con un `onCall` que verifique el claim
+`admin`**, un caché en Firestore con su invalidación, los tests y la latencia.
+
+**La decisión.** Un `onSchedule` diario que escribe `sistema/analitica-sitio`, y
+ni `onCall` ni cuenta de servicio nueva.
+
+- **El `onCall` sobra porque el caché ya está.** Si el resultado se cachea igual
+  en Firestore, el endpoint solo agrega una superficie de autenticación nueva que
+  hay que escribir, testear y no equivocar. La autorización ya la hacen las
+  reglas: `sistema/{doc}` es `read: if esAdmin()` / `write: if false`. Es
+  textualmente el razonamiento de `reportes-trigger.js` (trigger sobre `onCall`) y
+  el criterio general que dejó `reconciliacion.js`.
+- **La cuenta de servicio nueva sobra porque ya hay una** que el proyecto autoriza
+  a mano en consolas de Google: `calendar-sync@`, la del calendario. Sumarle dos
+  permisos de **solo lectura** es un paso de consola menos y una identidad menos
+  que rotar.
+
+**Lo que se pierde, dicho de frente.** El panel no puede pedir «recalculá ahora»:
+ve el resumen de la última corrida. No es una pérdida real —los informes de GA4
+tardan 24 a 48 h y Search Console 2 a 3 días, así que un botón de refrescar
+traería el mismo número— pero es un desvío del pedido.
+
+**Y la decisión que la acompaña, que es la que sostiene D-272 con datos
+entrando:** la pantalla distingue **cuatro** situaciones y no dos. Sin documento /
+sin configurar / falla / **sin datos**. La cuarta es la que un tablero corriente
+muestra como «0 visitas», y es exactamente la que D-272 vino a evitar: un cero
+durante tres semanas parece un tablero roto y el dueño no lo puede distinguir de
+un enganche que no funciona. Las separa `src/lib/resumenDelSitio.ts`, que es puro
+y las testea una por una.
+
+**Dónde quedó lo demás** (agregado al pegarla). Qué dice la pantalla en cada una
+de las cuatro situaciones, y las decisiones chicas que el diseño no tenía —un
+informe por pregunta con las tandas en serie por la cuota de la Data API, la
+variación `null` y no `0 %` sobre una base de cero, el evento propio que todavía
+no ocurrió en cero explícito, la respuesta cruda de un error al log y **nunca** al
+documento, y la lista blanca de dimensiones donde `pagePath` entra y
+`pagePathPlusQueryString` no— están en el
+[§9.3bis](16-analitica-del-sitio.md#93bis--cómo-quedó-construido-b-374-y-b-373).
+
 ## D-350 · El auditor caro se dispara solo cuando el diff toca una salida pública
 
 **2026-09-03 · B-124.** *Escrita a posteriori el 2026-09-09 (**B-808**): el número
