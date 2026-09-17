@@ -65,7 +65,7 @@ const tokenPara = async (uid: string, esAdmin: boolean) => {
     /* ya existía */
   }
   await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const token = await a.createCustomToken(uid, esAdmin ? { admin: true } : {});
+  const token = await a.createCustomToken(uid);
   await deleteAdminApp(app);
   return token;
 };

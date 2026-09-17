@@ -80,7 +80,7 @@ const token = async (uid: string, claims: Record<string, boolean>) => {
     /* ya existía */
   }
   await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid, claims);
+  const t = await a.createCustomToken(uid);
   await deleteAdminApp(app);
   return t;
 };

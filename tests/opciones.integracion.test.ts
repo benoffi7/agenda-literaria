@@ -57,7 +57,7 @@ const entrarComoAdmin = async (uid: string) => {
     /* ya existía */
   }
   await adminAuth.setCustomUserClaims(uid, { admin: true });
-  const token = await adminAuth.createCustomToken(uid, { admin: true });
+  const token = await adminAuth.createCustomToken(uid);
   await deleteAdminApp(adminApp);
   await signInWithCustomToken(auth(), token);
 };
