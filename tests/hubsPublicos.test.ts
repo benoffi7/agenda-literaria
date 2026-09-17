@@ -64,7 +64,7 @@ const fuente = (rel: string): string => readFileSync(raiz(rel), 'utf8');
 
 /** El archivo sin comentarios: los docblocks explican lo que se prohíbe. */
 const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  src.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const ETIQUETAS = mapaDeEtiquetas({
   tipo: [

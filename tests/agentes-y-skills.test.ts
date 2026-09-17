@@ -105,7 +105,7 @@ describe('las definiciones de .claude/ cargan de verdad — B-139', () => {
   it('el `name` coincide con el nombre del archivo (agentes) o de la carpeta (skills)', () => {
     const desalineados: string[] = [];
     for (const archivo of AGENTES) {
-      const esperado = archivo.replace(/^.*\//, '').replace(/\.md$/, '');
+      const esperado = archivo.replace(/^.*\/{1}/, '').replace(/\.md$/, '');
       const { claves } = frontmatter(fuente(archivo));
       if (claves.name !== esperado) desalineados.push(`${archivo}: name=${claves.name}`);
     }

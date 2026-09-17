@@ -168,7 +168,7 @@ const HOSTS_CORTOS = new Set(FORMAS_CORTAS.map((f) => f.split('/')[0]!));
 export const linkCortoParaAbrir = (entrada: string): string | null => {
   const encontrado = RE_CORTO_EN_TEXTO.exec((entrada ?? '').trim());
   if (!encontrado) return null;
-  const sinEsquema = encontrado[0].replace(/^https?:\/\//i, '');
+  const sinEsquema = encontrado[0].replace(/^https?:\/{2}/i, '');
   let url: URL;
   try {
     url = new URL(`https://${sinEsquema}`);
@@ -210,7 +210,7 @@ const RE_DATA = new RegExp(String.raw`!3d(${NUM})!4d(${NUM})`);
 const RE_AT = new RegExp(String.raw`@(${NUM}),(${NUM})`);
 
 const pareceLink = (t: string) =>
-  /^[a-z]+:\/\//i.test(t) || /google\.[a-z.]+|goo\.gl|\/maps|maps\./i.test(t);
+  /^[a-z]+:\/{2}/i.test(t) || /google\.[a-z.]+|goo\.gl|\/maps|maps\./i.test(t);
 
 const decodificar = (t: string) => {
   try {

@@ -54,7 +54,7 @@ const fuente = (rel: string): string => readFileSync(raiz(rel), 'utf8');
  * `promesas-sobre-datos.test.ts`.
  */
 const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  src.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 const PAGINA = 'src/pages/suscribirse.astro';
 const COMPONENTE = 'src/components/sitio/SuscribirseBoletin.astro';
@@ -185,7 +185,7 @@ describe('el destino sale de `enlaces.ts` y tiene la forma que Mailchimp espera'
     expect(src).toMatch(/name=\{formulario\.campoTrampa\}/);
     // Y la regla de raíz de esta página, ya cubierta por `suscribirse.test.ts`
     // para el resto: ninguna dirección escrita en el marcado.
-    expect(src.match(/\b(https?|webcal):\/\//g) ?? []).toEqual([]);
+    expect(src.match(/\b(https?|webcal):\/{2}/g) ?? []).toEqual([]);
   });
 
   it('mientras la lista no exista, la sección no se dibuja y no promete nada', () => {

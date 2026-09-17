@@ -178,7 +178,7 @@ export const MENSAJES_DE_PRIVACIDAD = {
 export const ES_RECHAZO_DE_PRIVACIDAD: readonly string[] = Object.values(MENSAJES_DE_PRIVACIDAD);
 
 export const llevaLinkDeReunion = (texto: string): boolean =>
-  /https?:\/\//i.test(texto) || HOSTS_DE_REUNION.test(texto);
+  /https?:\/{2}/i.test(texto) || HOSTS_DE_REUNION.test(texto);
 
 /** Una URL válida, para las validaciones que solo corren al publicar. */
 const esUrl = (valor: string): boolean => z.string().url().safeParse(valor).success;

@@ -82,7 +82,7 @@ describe('la vista del panel se elige, no se detecta (B-814)', () => {
       fileURLToPath(new URL('../src/lib/vistaDelPanel.ts', import.meta.url)),
       'utf8',
     );
-    const codigo = fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const codigo = fuente.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/^\s*\/\/.*$/gm, '');
 
     for (const deteccion of ['matchMedia', 'innerWidth', 'outerWidth', 'userAgent', 'maxTouchPoints']) {
       expect(codigo, `el módulo detecta con ${deteccion} y el pedido dice que no`).not.toContain(
@@ -197,7 +197,7 @@ describe('el cableado del interruptor en AdminApp', () => {
       fileURLToPath(new URL('../src/components/admin/AdminApp.tsx', import.meta.url)),
       'utf8',
     );
-    const codigo = fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const codigo = fuente.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/^\s*\/\/.*$/gm, '');
     const cuerpo = codigo.match(/const elegirVista = \([^)]*\) => \{([\s\S]*?)\n {2}\};/);
     expect(cuerpo, 'no se encontró `elegirVista` en AdminApp.tsx').not.toBeNull();
     return cuerpo![1];
@@ -220,7 +220,7 @@ describe('el cableado del interruptor en AdminApp', () => {
       fileURLToPath(new URL('../src/components/admin/AdminApp.tsx', import.meta.url)),
       'utf8',
     );
-    const codigo = fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const codigo = fuente.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/^\s*\/\/.*$/gm, '');
     const almacen = 'globalThis.localStorage ?? null';
     expect(codigo).toContain(`vistaInicialDelPanel(${almacen})`);
     expect(codigo).toContain(`recordarVistaDelPanel(${almacen},`);

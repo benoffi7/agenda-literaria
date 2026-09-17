@@ -54,7 +54,7 @@ const fuente = (rel: string): string => readFileSync(raiz(rel), 'utf8');
  * positivos. Mismo helper que `tests/estilos-del-sitio.test.ts`.
  */
 const sinComentarios = (src: string): string =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  src.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 /** El texto de la página, todo junto y en minúsculas, para buscar fórmulas. */
 const todoElTexto = (): string => TEXTO_DE_APOYO.join('\n').toLowerCase();
@@ -486,7 +486,7 @@ describe('es texto libre en una salida pública (§5.1)', () => {
     const CENTINELAS: { patron: RegExp; que: string }[] = [
       { patron: /zoom\.us|meet\.google\.com|teams\.microsoft\.com/i, que: 'link de reunión' },
       { patron: /\b\d{2,4}[-\s]?\d{4}[-\s]?\d{4}\b/, que: 'algo que parece un teléfono' },
-      { patron: /\bwa\.me\//i, que: 'un WhatsApp directo' },
+      { patron: /\bwa\.me\/{1}/i, que: 'un WhatsApp directo' },
       { patron: /[\w.+-]+@[\w-]+\.[\w.]+/, que: 'una dirección de mail' },
     ];
     const fugas = CENTINELAS.filter((c) => TEXTO_DE_APOYO.some((t) => c.patron.test(t))).map(

@@ -46,7 +46,11 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { sinComentarios, sinComentariosConFormato } from '../scripts/sin-comentarios.mjs';
+import {
+  sinComentarios,
+  sinComentariosConFormato,
+  tramosBorrados,
+} from '../scripts/sin-comentarios.mjs';
 
 /**
  * El frontmatter de un `.astro`: lo que va entre los dos `---`, que es la parte
@@ -395,6 +399,36 @@ describe('un `//` o un `*/` adentro de un string es texto, no comentario', () =>
  * vez de enseñarle al saneador a lexear expresiones regulares — que es lo que el
  * módulo ya argumentó que no vale la pena: necesita el token anterior, o sea
  * medio parser de JavaScript, que además no serviría para `firestore.rules`.
+ *
+ * ── Por posición, no por presencia — B-892 ─────────────────────────────────
+ * Hasta B-892 «se perdió un identificador» quería decir «desapareció del
+ * **archivo entero**»: se armaba el set de nombres que el parser ve como código
+ * y se preguntaba, por texto, si cada uno seguía apareciendo en algún lado del
+ * saneado. Eso solo detecta el caso en que el nombre no tiene ninguna otra
+ * ocurrencia — que es el que dejó B-876 (`Base.astro` era el único `.astro`
+ * afectado, y ahí `test` y `urlAbsoluta` no aparecían en ningún otro lado). Con
+ * un nombre repetido —un identificador usado dos veces, o el mismo campo en dos
+ * archivos que este chequeo no distingue— la desaparición de **una** ocurrencia
+ * queda tapada por la supervivencia de las demás.
+ *
+ * Midiendo por posición en vez de por nombre, con el árbol de B-892 esto daba
+ * rojo: `src/lib/schema.ts:181` pierde el `||` completo —`HOSTS_DE_REUNION` y el
+ * segundo `.test(texto)`— porque la línea de arriba, `/https?:\/\//i`, termina
+ * en el mismo par `\/\/` que rompía a `Base.astro`; pero `HOSTS_DE_REUNION` es
+ * el nombre de una constante que también se define en el propio archivo, así
+ * que el chequeo por presencia no lo veía. Iguales, en `coordenadas.ts`,
+ * `enlaceSeguro.ts`, dos scripts y once tests: la lista completa quedó en
+ * B-892.
+ *
+ * El predicado nuevo no pregunta «¿sigue este nombre en algún lado?» sino «¿la
+ * posición de **esta** ocurrencia cae en un tramo que `tramosBorrados` marcó
+ * como descartado?» — `tramosBorrados` es la primitiva de la que
+ * `sinComentariosConFormato` ya se arma, así que no hay un segundo mecanismo
+ * que pueda divergir del que de verdad sanea. Es estrictamente más estricto que
+ * el chequeo por presencia: todo lo que el viejo predicado detectaba (un nombre
+ * que desaparece del archivo entero tiene, por fuerza, todas sus ocurrencias
+ * adentro de tramos borrados) lo sigue detectando el nuevo, y además detecta lo
+ * que el viejo tapaba.
  */
 describe('control de clase: el saneador no borra código, sobre todo el repo', () => {
   /** Los archivos versionados de las cuatro carpetas que tienen código. */
@@ -406,41 +440,98 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
       .filter((f) => extensiones.test(f));
 
   /**
-   * Los identificadores que el parser de TypeScript ve como **código** en un
-   * texto. `.mjs` se le pasa con nombre de `.js` y el frontmatter de un `.astro`
-   * con nombre de `.ts`: en los dos casos es para que TypeScript no aplique las
-   * reglas de lexado de otra extensión sobre el mismo contenido.
+   * La misma lista que `versionados`, pero derivada con una herramienta
+   * distinta — `grep -E` en vez del `.filter` de JavaScript — y sin pasar por
+   * la función de arriba.
+   *
+   * Es lo que le falta a la guarda de `archivos.length` de los dos casos de
+   * abajo: `toBeGreaterThan(100)`/`toBeGreaterThan(20)` es un **piso**, no una
+   * derivación — protege contra que `git ls-files` falle y devuelva vacío, no
+   * contra que `versionados` mire **menos** archivos de los que dice. Nada
+   * impide agregarle a `versionados` un `.filter()` de exclusión (a mano o por
+   * error) y la suite queda verde igual: sacar un puñado de archivos de
+   * cientos no cruza el piso. Es la misma forma de B-873 que el control
+   * positivo de arriba ya cerró para la comparación por presencia — acá es la
+   * **lista de archivos** la que necesitaba su propio control.
+   *
+   * Comparar contra esto, hecho con un comando aparte, cierra el hueco: si
+   * `versionados` se angosta, esta cuenta no se entera (no pasa por la misma
+   * función) y la comparación de abajo muestra la diferencia exacta, no un
+   * número que sigue arriba del piso.
+   *
+   * MUTACIÓN PROBADA: agregarle a `versionados` un
+   * `.filter((f) => !f.includes('coordenadas'))` deja `archivos.length` en
+   * 529 —sigue arriba de 100, así que el piso viejo no lo veía— y pone en rojo
+   * la comparación de abajo, con `src/lib/coordenadas.ts` y
+   * `tests/coordenadas.test.ts` del lado de lo que le falta a `archivos`.
    */
-  const identificadores = (nombre: string, src: string): Set<string> => {
-    const sf = ts.createSourceFile(nombre, src, ts.ScriptTarget.Latest, true);
-    const ids = new Set<string>();
+  const porGrep = (extensionesExtendidas: string): string[] =>
+    execFileSync(
+      'sh',
+      ['-c', `git ls-files src scripts functions tests | grep -E '${extensionesExtendidas}'`],
+      { encoding: 'utf8' },
+    )
+      .split('\n')
+      .filter(Boolean);
+
+  /**
+   * Los identificadores de `texto` que el parser de TypeScript ve como
+   * **código** y que **esa ocurrencia concreta** perdió: no si el nombre
+   * sigue apareciendo en algún lado del archivo (eso es lo que tapaba la
+   * mayoría de los casos — B-892), sino si la posición de este nodo cae en
+   * alguno de los `tramos` — los mismos que `tramosBorrados` calculó sobre el
+   * **archivo entero**, que es lo que sanean los consumidores.
+   *
+   * `.mjs` se le pasa con nombre de `.js` y el frontmatter de un `.astro` con
+   * nombre de `.ts`: en los dos casos es para que TypeScript no aplique las
+   * reglas de lexado de otra extensión sobre el mismo contenido. `offset`
+   * corre las posiciones de `texto` —que puede ser un recorte, como el
+   * frontmatter— a las coordenadas del archivo completo, que es en las que
+   * están `tramos`.
+   */
+  const identificadoresPerdidos = (
+    nombre: string,
+    texto: string,
+    offset: number,
+    tramos: readonly (readonly number[])[],
+  ): string[] => {
+    const sf = ts.createSourceFile(nombre, texto, ts.ScriptTarget.Latest, true);
+    const perdidos = new Set<string>();
     const recorrer = (n: ts.Node): void => {
-      if (ts.isIdentifier(n)) ids.add(n.text);
+      if (ts.isIdentifier(n)) {
+        const inicio = n.getStart(sf) + offset;
+        const fin = n.getEnd() + offset;
+        // Superposición de rangos: alcanza con que una punta del identificador
+        // caiga adentro de un tramo borrado, no hace falta que esté completo —
+        // un identificador nunca queda partido a la mitad por un tramo (son
+        // caracteres contiguos), así que esto es equivalente y más simple.
+        if (tramos.some(([bi, bf]) => inicio < bf && fin > bi)) perdidos.add(n.text);
+      }
       n.forEachChild(recorrer);
     };
     recorrer(sf);
-    return ids;
+    return [...perdidos];
   };
 
   /**
    * Qué archivos perdieron un identificador al pasar por el saneador.
    *
-   * `codigo` dice qué parte del archivo entiende el parser; el saneado se corre
+   * `codigo` dice qué parte del archivo entiende el parser (y, si es un
+   * recorte, en qué `offset` empieza dentro del archivo); el saneado se corre
    * siempre sobre el **archivo entero**, que es lo que hacen los consumidores —
    * así una apertura falsa que arranca en una parte y se come la otra queda
    * adentro del chequeo.
    */
   const ofensores = (
     archivos: string[],
-    codigo: (archivo: string, src: string) => { nombre: string; texto: string },
+    codigo: (archivo: string, src: string) => { nombre: string; texto: string; offset?: number },
     leer: (archivo: string) => string = (f) => readFileSync(f, 'utf8'),
   ): string[] =>
     archivos
       .map((archivo) => {
         const src = leer(archivo);
-        const { nombre, texto } = codigo(archivo, src);
-        const limpio = sinComentarios(src);
-        const faltan = [...identificadores(nombre, texto)].filter((i) => !limpio.includes(i));
+        const { nombre, texto, offset = 0 } = codigo(archivo, src);
+        const faltan = identificadoresPerdidos(nombre, texto, offset, tramosBorrados(src));
         return { archivo, faltan };
       })
       .filter((o) => o.faltan.length > 0)
@@ -456,6 +547,11 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     expect(archivos.length, 'no se listó ningún archivo: el `git ls-files` falló').toBeGreaterThan(
       100,
     );
+    expect(
+      [...archivos].sort(),
+      'versionados() difiere de la misma lista armada con `grep`: se angostó el ' +
+        'filtro y el piso de arriba no lo iba a notar (B-892)',
+    ).toEqual(porGrep('\\.(ts|tsx|mjs|js)$').sort());
 
     expect(
       ofensores(archivos, (archivo, src) => ({
@@ -497,6 +593,11 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     expect(archivos.length, 'no se listó ningún `.astro`: el `git ls-files` falló').toBeGreaterThan(
       20,
     );
+    expect(
+      [...archivos].sort(),
+      'versionados() difiere de la misma lista armada con `grep`: se angostó el ' +
+        'filtro y el piso de arriba no lo iba a notar (B-892)',
+    ).toEqual(porGrep('\\.astro$').sort());
 
     const sinFrontmatter = archivos.filter((f) => !FRONTMATTER.test(readFileSync(f, 'utf8')));
     expect(
@@ -505,11 +606,18 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
         'el control mirando menos archivos de los que dice (B-873)',
     ).toEqual([]);
 
+    /**
+     * El `offset`: las posiciones del frontmatter (`texto`) arrancan en 0,
+     * pero `tramosBorrados` se calcula sobre `src` completo — el `---` de
+     * apertura corre todo lo que sigue. `m[0].indexOf(m[1])` en vez de la
+     * constante `4` (`'---\n'.length`) para que, si el delimitador cambiara,
+     * esto no quede mintiendo en silencio.
+     */
     expect(
-      ofensores(archivos, (archivo, src) => ({
-        nombre: `${archivo}.ts`,
-        texto: FRONTMATTER.exec(src)![1]!,
-      })),
+      ofensores(archivos, (archivo, src) => {
+        const m = FRONTMATTER.exec(src)!;
+        return { nombre: `${archivo}.ts`, texto: m[1]!, offset: m.index + m[0].indexOf(m[1]!) };
+      }),
       EXPLICACION,
     ).toEqual([]);
   });
@@ -524,11 +632,13 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
    *
    * MUTACIÓN PROBADA: es literalmente la línea que se revirtió para medir. Con
    * `\/\/` en `src/layouts/Base.astro`, el caso de los `.astro` de arriba da
-   * `['src/layouts/Base.astro: test']` — **un solo** identificador, porque en el
-   * archivo de verdad `urlAbsoluta` sobrevive gracias a la línea de la canónica,
-   * unas líneas más arriba. Acá, con el recorte solo, se pierden los dos: es el
-   * recordatorio de que este control detecta por **desaparición total** del
-   * identificador, así que un nombre repetido en otra línea tapa el destrozo.
+   * `['src/layouts/Base.astro: test, paraOg, urlAbsoluta']`. **Hasta B-892**
+   * daba solo `test, urlAbsoluta`: en el recorte aislado de acá los dos se
+   * pierden del todo, pero `paraOg` sobrevive por su propia declaración una
+   * línea arriba —así que el chequeo por presencia lo dejaba pasar— aunque las
+   * **tres** ocurrencias de la línea rota (`.test(paraOg)`, `? paraOg :`,
+   * `urlAbsoluta(paraOg)`) estén tan perdidas como `test` y `urlAbsoluta`. Por
+   * posición, las tres se marcan.
    */
   it('control positivo: el `\\/\\/` de un literal de regex lo marca como ofensor — B-876', () => {
     const COMO_ESTABA = [
@@ -542,11 +652,14 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     expect(
       ofensores(
         ['Base.astro'],
-        (archivo, src) => ({ nombre: `${archivo}.ts`, texto: FRONTMATTER.exec(src)![1]! }),
+        (archivo, src) => {
+          const m = FRONTMATTER.exec(src)!;
+          return { nombre: `${archivo}.ts`, texto: m[1]!, offset: m.index + m[0].indexOf(m[1]!) };
+        },
         () => COMO_ESTABA,
       ),
       'el control no vio desaparecer el `.test(…)` que el saneador se come',
-    ).toEqual(['Base.astro: test, urlAbsoluta']);
+    ).toEqual(['Base.astro: test, paraOg, urlAbsoluta']);
 
     // Y la mitad que explica por qué: el saneado corta la línea en el par `//`.
     expect(sinComentarios(COMO_ESTABA)).not.toContain('urlAbsoluta(paraOg)');
@@ -554,5 +667,35 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     expect(sinComentarios(COMO_ESTABA.replace('\\/\\/', '\\/{2}'))).toContain(
       'urlAbsoluta(paraOg)',
     );
+  });
+
+  /**
+   * **Y detecta la ocurrencia perdida aunque el nombre sobreviva en otra
+   * línea — el caso que da nombre a B-892.**
+   *
+   * El de arriba es el caso que B-876 ya conocía (dos nombres sin ninguna otra
+   * ocurrencia). Este es el que se le escapaba: `HOSTS_DE_REUNION` es el mismo
+   * `\/\/` de siempre, pero en `src/lib/schema.ts` real el nombre que se pierde
+   * **también se define** en el propio archivo — así que por presencia
+   * «sigue estando» y el chequeo viejo no lo veía. Por posición, la ocurrencia
+   * de adentro de la línea rota se marca igual, sin que importe que el nombre
+   * exista en otro lado.
+   */
+  it('y detecta la ocurrencia perdida aunque el nombre sobreviva en otra línea — B-892', () => {
+    const src = [
+      'export const HOSTS_DE_REUNION = /meet|zoom/i;',
+      'export const llevaLinkDeReunion = (texto) =>',
+      '  /https?:\\/\\//i.test(texto) || HOSTS_DE_REUNION.test(texto);',
+    ].join('\n');
+
+    expect(
+      ofensores(['x.ts'], (archivo, s) => ({ nombre: archivo, texto: s }), () => src),
+      'el control no vio la ocurrencia perdida de HOSTS_DE_REUNION porque el nombre sigue en su propia definición',
+    ).toEqual(['x.ts: test, texto, HOSTS_DE_REUNION']);
+
+    // La mitad que explica por qué hacía falta el cambio: por presencia en
+    // TODO el archivo, `HOSTS_DE_REUNION` sigue ahí — sobrevive en su propia
+    // declaración — así que el barrido viejo no lo habría marcado nunca.
+    expect(sinComentarios(src)).toContain('HOSTS_DE_REUNION');
   });
 });

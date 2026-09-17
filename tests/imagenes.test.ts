@@ -455,7 +455,7 @@ describe('ninguna salida pública deriva la miniatura a ciegas — D-210', () =>
 
   /** Sin comentarios: los docblocks de D-210 nombran la función que prohíben. */
   const sinComentarios = (s: string): string =>
-    s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    s.replace(/\/\*[\s\S]*?\*\/{1}/g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
   const archivos = (dir: string): string[] =>
     readdirSync(raiz(dir), { withFileTypes: true }).flatMap((e) =>
