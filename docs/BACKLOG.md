@@ -1290,6 +1290,65 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1130 · `propuestaValida()` **tira** en vez de devolver `false`, y el test lo da verde igual · P2 — lo encontró `frente/conversion` (2026-09-17)
+
+**Reproducido acá, contra un emulador efímero, sobre las reglas de `main`.** Un
+`create` anónimo sobre `/propuestas` no termina en un `false` limpio: termina en
+un **error de evaluación** de la regla. Y lo medí más ancho de lo que venía
+reportado: pasa con `origen: 'panel'` **y también con `origen: 'publico'`**, o
+sea que no es el caso de un origen incoherente sino la evaluación misma.
+
+**Por qué es un ítem y no una curiosidad: el test lo da verde.**
+`tests/propuestas.integracion.test.ts` espera un rechazo, y **un throw rechaza
+igual**. O sea que la regla puede dejar de correr —dejar de verificar lo que
+dice verificar— sin que nada se ponga rojo.
+
+Es **B-1129 con otra cara**, y de las más finas: el chequeo pasa por dónde está
+parado —«hubo rechazo»— y no por lo que dice mirar —«la regla rechazó»—. Este
+repo ya tenía la clase escrita y no la había atado: el comentario de
+`propuestas.integracion.test.ts` dice, sobre otro caso, «acceder a un campo
+`null` en las reglas no es `false`: es un error de evaluación, y un error deniega
+igual».
+
+**Y el síntoma es el que ya costó una hora este mismo día** (B-1112): llega como
+`PERMISSION_DENIED` sobre un documento perfectamente válido, así que el primero
+que lo vea va a ir a buscar el bug al documento.
+
+**La salida que cierra la clase y no el caso** —es de quien lo encontró y es la
+correcta—: un helper de test que distinga **«rechazada por la regla»** de **«la
+regla tiró»**, comparando el mensaje y no solo el `code`. Con eso, cualquier
+regla que empiece a tirar se pone roja en vez de seguir verde. Hoy los helpers
+miran `code === 'permission-denied'`, que es lo mismo en los dos casos — y esa
+decisión está documentada y era correcta para lo que resolvía (el emulador
+devuelve textos distintos según el rechazo); lo que falta es la segunda pregunta.
+
+### B-1131 · La ayuda no puede citar el test de nada que sea UI · P2 — clase D-88 (2026-09-17)
+
+`tests/ayuda.test.ts` exige que el `atadoA` de cada entrada apunte a un archivo
+que entre en la corrida, y lo decide con
+`archivo.startsWith('tests/') && archivo.endsWith('.test.ts')`. El config dice
+otra cosa:
+
+```
+vitest.config.ts:36   include: ['tests/**/*.test.ts', 'tests/**/*.render.test.tsx']
+```
+
+**Los dos lados derivan «qué archivo es un test» por separado y uno quedó viejo**
+— clase D-88, la misma de B-1110 y B-1113. El comentario del propio chequeo lo
+deja a la vista sin querer: cita **media** línea del config.
+
+**La consecuencia práctica:** los **25** archivos `.render.test.tsx` del repo no
+se pueden citar, o sea que **la ayuda de cualquier cosa que sea UI no puede
+atarse a lo que la prueba**. Lo pagó `frente/conversion` de frente: el aviso
+nuevo promete «si decís que no, el original se borra y no se puede recuperar», y
+el caso que verifica que ese texto esté en pantalla vive en
+`propuestas-panel.render.test.tsx` — hubo que citar el mecanismo y dejar el
+texto sin citar.
+
+**El arreglo mínimo es agregar el segundo sufijo; el que cierra la clase es leer
+los dos del propio `vitest.config.ts`**, que es lo que hizo B-1110 con el formato
+del backlog.
+
 ### B-1129 · La clase que apareció dos veces el 2026-09-17: un chequeo que pasa por dónde está parado y no por lo que dice mirar · P2
 
 **No es un bug: es una clase, y tiene dos casos medidos del mismo día.** Los dos
