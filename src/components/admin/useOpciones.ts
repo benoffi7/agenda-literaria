@@ -260,6 +260,9 @@ export function useTodasLasOpciones(): {
   const tipoLugar = useOpciones('tipo-lugar');
   const incluyeLugar = useOpciones('incluye-lugar');
   const condicionDeUso = useOpciones('condicion-de-uso');
+  // B-960 — la de las bibliotecas, por el mismo motivo que las de arriba: esta
+  // pantalla la **administra**.
+  const tipoBiblioteca = useOpciones('tipo-biblioteca');
 
   return useMemo(
     () => ({
@@ -281,6 +284,7 @@ export function useTodasLasOpciones(): {
         'tipo-lugar': tipoLugar.valores,
         'incluye-lugar': incluyeLugar.valores,
         'condicion-de-uso': condicionDeUso.valores,
+        'tipo-biblioteca': tipoBiblioteca.valores,
       },
       cargando:
         arancel.cargando ||

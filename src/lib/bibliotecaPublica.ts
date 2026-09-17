@@ -393,7 +393,7 @@ export interface IndiceDeBibliotecas {
  * ficha. Meterlo acá obligaría a inventarle un vocabulario de dos valores y a que
  * el JSON lo publicara como si fuera una opción renombrable, que no lo es.
  */
-export const EJES_DE_BIBLIOTECA = ['provincia', 'barrio', 'ciudad', 'tipo'] as const;
+export const EJES_DE_BIBLIOTECA = ['provincia', 'barrio', 'ciudad', 'tipo-biblioteca'] as const;
 export type EjeDeBiblioteca = (typeof EJES_DE_BIBLIOTECA)[number];
 
 /** De qué campo de la ficha sale cada eje. Un solo lugar: de él salen el recorte y los chips. */
@@ -401,7 +401,15 @@ const VALORES_DEL_EJE: Record<EjeDeBiblioteca, (b: BibliotecaPublica) => string[
   provincia: (b) => (b.provincia ? [b.provincia] : []),
   barrio: (b) => (b.barrio ? [b.barrio] : []),
   ciudad: (b) => (b.ciudad ? [b.ciudad] : []),
-  tipo: (b) => (b.tipo ? [b.tipo] : []),
+  /*
+   * **La clave es el nombre de la taxonomía y el valor sale del campo**, que no
+   * se llaman igual: el documento dice `tipo` y `/opciones/tipo-biblioteca` es
+   * el vocabulario. Es la misma asimetría que `tipo-lugar`, y es lo que hace que
+   * `indiceDeBibliotecas` pueda armar los vocabularios recorriendo los ejes sin
+   * una tabla de traducción — si el eje se llamara `tipo`, buscaría
+   * `/opciones/tipo`, que es la taxonomía de una **actividad**.
+   */
+  'tipo-biblioteca': (b) => (b.tipo ? [b.tipo] : []),
 };
 
 /**

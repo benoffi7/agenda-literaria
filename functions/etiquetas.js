@@ -83,6 +83,12 @@ export const TAXONOMIAS_FUERA_DEL_EVENTO = [
   'tipo-lugar',
   'incluye-lugar',
   'condicion-de-uso',
+  /*
+   * **La de las bibliotecas** (B-960), con el mismo motivo que las de arriba: es
+   * de **otra colección**, una biblioteca no tiene encuentros y no hay evento de
+   * Calendar donde pudiera aparecer.
+   */
+  'tipo-biblioteca',
 ];
 
 /**
