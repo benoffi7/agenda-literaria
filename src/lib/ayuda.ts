@@ -1011,6 +1011,107 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'bibliotecas',
+    titulo: 'Las bibliotecas',
+    paraQue:
+      'Cargar y revisar el directorio de bibliotecas —dónde sacar libros, con qué horario de ' +
+      'sala y si hay que asociarse— y entender por qué una biblioteca puede estar cargada dos ' +
+      'veces en la Guía.',
+    puntos: [
+      {
+        texto:
+          'Es la cuarta sección de la Guía y funciona igual que las otras tres: se carga desde ' +
+          'el botón «Bibliotecas» del listado, guardar no publica, y la ficha espera decisión ' +
+          'hasta que toques «Publicar».',
+      },
+      {
+        texto:
+          'Una biblioteca que presta su sala para hacer eventos va **también** en «Lugares», y ' +
+          'son dos fichas distintas a propósito. Son dos preguntas de dos personas distintas: ' +
+          'quien organiza busca sala y quien lee busca catálogo, y una ficha que contesta las ' +
+          'dos obliga a las dos a leer la mitad que no les sirve. El costo es cargarla dos ' +
+          'veces, y se aceptó sabiéndolo.',
+      },
+      {
+        texto:
+          'Los dos horarios son dos campos porque en una biblioteca no son lo mismo: el ' +
+          'mostrador puede abrir de 9 a 20 para retirar y devolver, y la sala de lectura de 14 ' +
+          'a 19 — o no existir. Si no tiene sala, dejá el segundo vacío.',
+      },
+      {
+        texto:
+          'El horario se escribe como quieras, igual que en las otras secciones. Eso tiene un ' +
+          'costo asumido: el sitio no puede filtrar por «abierta ahora» ni decirle el horario a ' +
+          'Google, porque para eso haría falta un formato fijo. Publicar un horario mal armado ' +
+          'sería peor que no publicarlo.',
+      },
+      {
+        texto:
+          'El costo de asociarse se escribe como texto y no como número: el carnet casi nunca ' +
+          'es un número solo («$3.000 por año, gratis para jubilados»). Por eso tampoco se ' +
+          'puede filtrar ni ordenar por él, que es la misma decisión que ya rige para el precio ' +
+          'de una suscripción.',
+      },
+      {
+        texto:
+          'Si cargás el costo, se publica siempre con la fecha en que lo cargaste al lado, y ' +
+          'esa fecha la pone el servidor: no se tipea. Se mueve sola cuando cambiás el número, ' +
+          'y no se mueve cuando corregís cualquier otra cosa de la ficha — si se moviera, el ' +
+          'sitio estaría diciendo que el monto es más fresco de lo que es.',
+      },
+      {
+        texto:
+          'Si marcás que **no** hace falta asociarse, el costo se borra solo. No es capricho: ' +
+          'una ficha que dijera «no hace falta asociarse» y al lado un precio se estaría ' +
+          'contradiciendo, y el guardado la rechaza.',
+      },
+      {
+        texto:
+          'El catálogo online es un campo aparte del sitio web, y no están duplicados: muchas ' +
+          'bibliotecas tienen el catálogo en un sistema compartido y no tienen web propia. Es ' +
+          'el dato que más le sirve a quien lee — poder mirar desde casa si el libro está.',
+      },
+      {
+        texto:
+          'El WhatsApp, el Instagram, el mail y la web se publican: son para que la gente ' +
+          'escriba. El contacto del recuadro «Interno» es otra cosa: es por dónde repreguntarle ' +
+          'a quien pidió el alta, y no sale nunca al sitio.',
+      },
+      {
+        texto:
+          'La dirección web queda fija desde la primera vez que se publica, igual que en las ' +
+          'otras tres secciones: después ese enlace ya está en Google y cambiarlo lo rompe sin ' +
+          'avisar.',
+      },
+      {
+        texto:
+          'Una biblioteca también puede llegar sola, desde el formulario público de «Sumar una ' +
+          'biblioteca» que está en la Guía. Entra a la bandeja igual que si la hubieras cargado ' +
+          'vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde afuera no ' +
+          'tiene el editor de galería, así que si la vas a publicar conviene agregarle una antes.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'Y si nadie la mira, se borra sola: a los 30 días de descartada, o a los 30 días sin ' +
+          'que la toques si quedó esperando decisión. Es el mismo plazo que las otras tres y por ' +
+          'el mismo motivo — no quedarnos para siempre con el contacto de alguien de afuera. Una ' +
+          'vez publicada no vence.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una rechazada hace 31 días se va, y cuenta desde el rechazo',
+          },
+          {
+            archivo: 'tests/retencion-de-guias.test.ts',
+            it: 'una pendiente que nadie tocó en 31 días se va — el caso del formulario público',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'lugares',
     titulo: 'Los lugares para hacer eventos',
     paraQue:
@@ -2235,6 +2336,8 @@ export const CAPITULO_POR_CONTEXTO = {
   suscripciones: 'suscripciones',
   // B-833 — la tercera pantalla de la Guía. Mismo motivo que las otras dos.
   lugares: 'lugares',
+  // B-960 — la cuarta pantalla de la Guía. Mismo motivo que las otras tres.
+  bibliotecas: 'bibliotecas',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;
