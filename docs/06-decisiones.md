@@ -11230,3 +11230,60 @@ barata. No es conservadurismo: es que el criterio pedido —equilibrio entre có
 usabilidad— **descarta por sí solo todo lo que agranda el modelo para ganar
 precisión que nadie ve en la pantalla**, y deja pasar lo que se nota al usar el
 sitio. La única que se nota al usarlo es la 6.
+
+---
+
+## D-730 · Una biblioteca que presta su sala son **dos fichas**, no una con dos caras
+
+**B-960, 2026-09-17. La decidió el dueño**, sobre las tres opciones que se le
+presentaron.
+
+### El problema
+
+`/opciones/tipo-lugar` ya tiene `biblioteca`, así que la institución que presta
+su sala para un encuentro **ya tiene ficha** en `/guia/lugares`. Al agregar el
+directorio de bibliotecas, la misma institución podía quedar cargada dos veces, y
+el ítem del backlog marcaba esto como «lo único que no es copiar-y-pegar».
+
+### Las tres opciones
+
+| | Qué era | Qué costaba |
+|---|---|---|
+| **Dos fichas** ← elegida | Una como lugar (dónde hacer un evento) y otra como biblioteca (dónde sacar libros) | La misma institución aparece dos veces en la Guía y hay que cargarla dos veces |
+| Una ficha con dos caras | Un documento que declara si presta sala, si presta libros, o ambas | Mezcla dos modelos con campos distintos y obliga a decidir en qué sección de la Guía aparece |
+| Ninguna colección nueva | `/guia/lugares` filtrado por `tipo: biblioteca` | No entran los campos propios (asociarse, catálogo, horario de sala) y no hay directorio de bibliotecas de verdad |
+
+### Por qué dos
+
+**Son dos preguntas distintas de dos personas distintas.** Quien organiza busca
+sala; quien lee busca catálogo. Una ficha que contesta las dos obliga a las dos a
+leer la mitad que no les sirve, y obliga además a que la Guía decida en qué
+sección mostrarla — una decisión que no tiene respuesta correcta.
+
+Y lo que se compra, que es lo que más pesa: **cada colección mantiene su propia
+whitelist y su propio formulario**. El § 1.2 del inventario de los PRDs prohíbe
+la proyección genérica con todas las letras —«un `toPublic` genérico que proyecte
+"todo menos lo prohibido" invierte el default y el primer campo nuevo sale
+solo»—, y la ficha con dos caras habría sido esa generalización entrando por la
+puerta del modelo en vez de por la de la proyección.
+
+### El costo, dicho
+
+La duplicación es real y no se esconde: hay que cargar la institución dos veces y
+en la Guía aparece dos veces. El capítulo de ayuda del panel lo explica con esas
+palabras, porque la primera vez que alguien vea la misma biblioteca en «Lugares»
+y en «Bibliotecas» va a querer borrar una.
+
+### Los cuatro campos que la distinguen
+
+También los eligió el dueño el mismo día: **tipo** (taxonomía nueva
+`/opciones/tipo-biblioteca`), **asociarse** (si hace falta y cuánto),
+**catálogo online** y **horario de sala** —aparte del horario de atención de
+B-982, porque el mostrador y la sala pueden abrir distinto—.
+
+De los cuatro, el que tuvo decisión propia es el costo: va como **texto y no como
+entero**, al revés que el precio de una suscripción. El carnet casi nunca es un
+número solo («$3.000 por año, gratis para jubilados»), y como la regla 2 de
+`datoConFecha.ts` (D-570) prohíbe filtrar u ordenar por un dato que envejece, el
+entero no compraba nada que se pudiera usar.
+
