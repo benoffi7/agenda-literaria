@@ -15,7 +15,10 @@
   eso el último archivo de integración con la vía infiel se unificó (**B-1060**)—;
   **B-910**, donde la sexta huérfana era `D-09` escrita sin el cero y las otras
   cinco **ya estaban redactadas** en un directorio sin versionar; **B-1010**, con
-  el documento de salud remedido sobre 342 archivos en vez de 254; **B-1080**, la
+  el documento de salud remedido sobre 342 archivos en vez de 254 —y de paso
+  **B-1070**, el chequeo de ciclos diferidos que el § 1.5 pedía por escrito y que
+  nunca se había escrito, y **B-1071**, los dos conteos de la suite que se
+  contradecían con la misma fecha—; **B-1080**, la
   pestaña «Estado del catálogo», con quince días de pantalla y ninguna entrada en
   las funcionalidades; **B-1110** y **B-1120**, dos formatos derivados por
   separado; y **B-1100**, el barrido que hace visible el resto.

@@ -337,6 +337,94 @@ distintas:
 
 ## P1 — bloquean el objetivo del proyecto
 
+### B-1112 · El aislamiento del emulador cubre Firestore y **no** Auth, y por eso un uid viejo da verde donde uno nuevo da rojo · P1 — de `frente/bibliotecas` (2026-09-17)
+
+**Es la causa que faltaba abajo de B-1021 y de B-1030**, los dos cerrados hoy
+sin ella. B-219 deriva un `projectId` por working-tree (sha256 de la ruta) para
+que dos worktrees no se pisen la base. Funciona para Firestore. **Auth no.**
+
+Medido desde `frente/bibliotecas`:
+
+    PROJECT_ID (el derivado del worktree)      agenda-literaria-0326695e
+    aud del ID token del cliente               agenda-literaria-c7201d89
+    claims.admin                               undefined
+
+El Admin SDK escribe el custom claim en el proyecto **del worktree**; el cliente
+se autentica contra el proyecto **con el que se levantó el emulador**. Son dos
+namespaces de Auth distintos: el uid con claims no existe del lado donde el
+cliente entra, y `esAdmin()` da `false`.
+
+**Lo que esto explica, y es lo que lo hace P1:**
+
+- **B-1021** — los cuatro rojos de `rol-publicador.integracion.test.ts` desde
+  cualquier worktree, con CI y el árbol principal en verde. El ítem dejó la
+  hipótesis escrita y sin confirmar. Ésta es la confirmación.
+- **B-1030** — «`storage.rules` no ve el claim que llega por el registro». Se
+  cerró midiendo 19/19 en el árbol principal, donde los dos proyectos coinciden.
+  La conclusión era correcta y el mecanismo faltaba: no era Storage.
+
+**Y el síntoma es un falso verde, que es lo peor de todo.**
+`tests/librerias.integracion.test.ts` pasaba **60/60 desde un worktree** — no
+porque funcionara, sino porque `uid_librerias_admin` **ya existía con sus
+claims** en el store del emulador, de una corrida vieja en el árbol principal. Un
+uid **nuevo** (`uid_bibliotecas_admin`) se pone rojo con el mismo código. O sea
+que el error no aparece cuando se rompe: aparece meses después, cuando alguien
+agrega una entidad nueva, y llega como `PERMISSION_DENIED` sobre un documento
+perfectamente válido — así que el primer lugar donde se lo busca es
+`firestore.rules`, que no tiene nada que ver. Es B-894 con otra cara: el
+desajuste de proyecto apaga solo lo que las reglas **otorgan**.
+
+**El mecanismo, y esto es lo que hay que entender antes de tocar nada: un
+emulador limpio NO lo arregla.** El emulador de Auth es de **un solo proyecto**
+—el de su `--project` de arranque— y no particiona como sí hace Firestore.
+`createCustomToken` lo mintea para el proyecto del Admin SDK, el emulador lo
+acepta igual y emite el ID token **para el suyo**. `npm run emu` levanta con
+`--project "$(node scripts/project-id-emulador.mjs)"`, derivado de la ruta del
+checkout **desde donde se lo corre**: o sea que el emulador es de quien lo
+prendió, y coincide con el cliente solo para ese checkout. No es que los
+worktrees estén rotos.
+
+**El arrastre, aparte, ya no existe:** el emulador de seis días se paró el
+2026-09-17 y había arrancado **sin `--export-on-exit`**, así que su estado era
+memoria y se fue entero. La próxima corrida de `librerias.integracion.test.ts`
+desde un worktree va a ser la primera sin uid preexistente — y si
+`uid_librerias_admin` ya no está, ese archivo cae por lo mismo.
+
+**Repro determinística** (el `uid_${Date.now()}` es lo que la hace determinística:
+con un uid fijo, la segunda corrida pasa por el arrastre que dejó la primera).
+El archivo tiene que terminar en `.integracion.test.ts` para caer en el glob que
+exporta las variables de entorno:
+
+```ts
+const uid = `uid_probe_${Date.now()}`;            // nuevo: sin arrastre
+await a.createUser({ uid });
+await a.setCustomUserClaims(uid, { admin: true });
+const t = await a.createCustomToken(uid);
+const res = await (await signInWithCustomToken(auth(), t)).user.getIdTokenResult();
+expect(res.claims.aud, 'el cliente entra a otro proyecto').toBe(PROJECT_ID);
+expect(res.claims.admin).toBe(true);
+```
+
+**Tres salidas, y la primera es la que conviene hacer primero** porque ataca el
+daño real —las horas de diagnóstico— y no cuesta casi nada: (a) que
+`tests/emulador.ts` **detecte el desajuste y falle con un mensaje que lo nombre**,
+en vez de dejar que se manifieste como `PERMISSION_DENIED` sobre un documento
+válido; (b) que el gate levante un emulador por corrida, que es lo que
+`verificar-todo.sh` ya hace; (c) sembrar los claims contra el `aud` real,
+leyéndolo de un primer token.
+
+**Qué habría que decidir**, y por eso no se cierra acá: o el emulador se levanta
+con el `projectId` del working-tree que lo usa —que es volver a una tanda de
+emuladores por worktree, lo que B-219 quiso evitar—, o los tests de integración
+dejan de derivar el `projectId` por su cuenta y leen el del emulador vivo. La
+segunda es la que se parece a lo que ya hace `scripts/emuladores-arriba.sh`, y
+se apoya en el mismo argumento que **B-1111**: un valor derivado dos veces
+diverge.
+
+**Pendiente de verificación, y no se cuenta como verde:**
+`tests/bibliotecas.integracion.test.ts` —37 casos, los que prueban lo que la
+regla **rechaza**— está escrito y commiteado y **no pudo correr** por esto.
+
 El proyecto existe para que la gente encuentre los talleres en Google (§2.3). Hoy
 eso todavía no pasa, pero por un motivo distinto que antes: **el sitio existe y no
 está desplegado.** Falta elegir el dominio (B-109), sin el cual no hay canonical ni
@@ -1172,6 +1260,46 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
+
+### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas · P2 — del `auditor-trampas` (2026-09-17)
+
+**D-88 se cerró en un archivo y se reintrodujo en otro el mismo día.** B-1110
+sacó la copia del formato del backlog de `archivar-backlog.mjs` y la dejó una
+sola vez en `parseo.mjs`, con una red. En paralelo, el frente de **B-1100** nació
+con su **propia** noción de cómo se escribe un id —cuatro literales en
+`scripts/items-referenciados.mjs`, y sus únicos imports son `readFileSync`,
+`fileURLToPath` y `archivosDelRepo`—. Los dos frentes trabajaron el mismo día sin
+enterarse uno del otro.
+
+**Y hay una tercera copia, preexistente:** `tests/bloques-de-codigo-en-la-doc.test.ts:206`
+usa `/^### (B-\d+)/`, que es **más angosta** que la canónica —no reconoce `DEC-`
+ni el sufijo de letra— así que su `Map` de duplicados puede confundir `B-836a` con
+`B-836`, con la suite en verde.
+
+**Por qué la red no las agarra, y por qué no alcanza con ensanchar la lista.** El
+test recorre un `MIOS` hardcodeado de cuatro archivos. La tentación es cambiarlo
+por un barrido real del repo —hay `tests/fixtures/archivos-del-repo.ts`, que es lo
+que hace bien el barrido de credenciales de B-1060, donde un archivo nuevo entra
+solo—. **Medido: no alcanza.** Con la firma actual (`^##` / `^###` adentro de un
+literal) el repo entero da **cuatro** archivos: `parseo.mjs` (el canónico),
+`archivar-backlog.test.ts` (la guarda misma, que lo contiene por ser la guarda),
+`comandos-de-los-skills.test.ts` (una cita en prosa dentro de un docblock) y
+`bloques-de-codigo-en-la-doc.test.ts` (la copia de verdad). **Dos de los tres
+hallazgos serían falsos positivos, y la copia que más duele —`items-referenciados.mjs`,
+que usa `^#{1,6}`— no aparece: no matchea la firma.**
+
+O sea que el trabajo no es ensanchar el alcance sino **cambiar la firma**: la red
+tiene que preguntarse quién redefine el **formato del id**, no quién escribe un
+literal de encabezado. Se hace con el barrido del repo, no con una lista.
+
+**Un ensanche a medias sería peor que dejarlo:** una guarda que parece canónica y
+no lo es es exactamente lo que produjo estas tres copias.
+
+**El límite conocido del barrido de B-1100, que va acá porque es de la misma
+familia:** cuenta como «citado» cualquier `B-nnn` dentro de un comentario, un
+bloque de código o una URL, así que un ejemplo ilustrativo con un id inventado se
+autorreporta. El autor lo reconoce en el propio código, y por eso el archivo que
+lo prueba está excluido del corpus.
 
 ### B-1081 · El ritmo del catálogo está calculado, testeado, y nadie lo dibuja · P2 — de documentar el tablero (2026-09-17)
 
