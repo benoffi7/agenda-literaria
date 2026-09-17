@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'ver-en-el-sitio-desde-el-panel',
+    fecha: '2026-09-17',
+    version: '1.11.0',
+    titulo: 'Ir a ver la actividad publicada, desde el panel',
+    detalle:
+      'En el «⋯» de cada tarjeta publicada hay una opción para abrir su página ' +
+      'en el sitio, y el mismo enlace está abajo de la vista previa. Se abre en ' +
+      'otra pestaña, así no perdés lo que estés editando. Ojo: si la acabás de ' +
+      'publicar, la página tarda unos minutos en aparecer.',
+    donde: 'En el «⋯» de cada tarjeta del listado, y al final de Vista previa.',
+  },
+  {
     id: 'encuentros-sin-fecha-precargada',
     fecha: '2026-09-17',
     version: '1.11.0',

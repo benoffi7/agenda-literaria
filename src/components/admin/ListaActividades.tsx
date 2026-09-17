@@ -43,6 +43,7 @@ import type { RolDelPanel } from '@/lib/rolDelPanel';
 // uno, la fila y el formulario se arreglan por separado (B-175).
 import { esSoloLectura } from '@/lib/formulario/autoria';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
+import { urlDeDetalle } from '@/lib/rutasPublicas';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
 interface Props {
@@ -455,6 +456,21 @@ export function ListaActividades({
                         : 'Marcar cupo completo',
                     onSelect: () => marcarCupo(a, a.inscripcion?.completo !== true),
                   },
+                  /*
+                   * B-954 — pedido del dueño. **La primera acción del menú que no
+                   * escribe**: hasta acá, para ver cómo quedó lo publicado había
+                   * que saberse la URL o buscarla en el sitio.
+                   *
+                   * Va **solo si está publicado**, y no por prolijidad: si no lo
+                   * está, la página no se generó y el enlace es un 404 seguro.
+                   *
+                   * Y la URL sale de `urlDeDetalle`, no armada a mano: ese archivo
+                   * existe para que el path se escriba una sola vez, y el panel es
+                   * el único lugar desde donde se podría escribir distinto.
+                   */
+                  ...(a.estado === 'publicado'
+                    ? [{ label: 'Ver en el sitio', href: urlDeDetalle(a.slug) }]
+                    : []),
                   // `devuelveFoco`: abre una capa encima del listado, así que
                   // el foco tiene que estar en el "⋯" cuando la capa se monta —
                   // es a ese botón al que vuelve al cerrarse (B-14).

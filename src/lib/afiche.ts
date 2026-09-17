@@ -104,11 +104,20 @@ export const estiloDeAfiche = (medida: MedidaDeImagen): string | undefined => {
  * medida que se cargan, la pared se densifica sola sin que nadie toque nada.
  *
  * Es el tope: el CSS igual baja a una sola columna en el teléfono.
+ *
+ * ── B-958 · la cuarta columna es un escalón, no un techo más alto ─────────
+ * Pedido del dueño: «cuatro flyers por fila». Entra **desde ocho**, y ese número
+ * no es arbitrario: es lo que mantiene la proporción de los dos saltos que ya
+ * había —3 abre la segunda, 6 abre la tercera, 8 abre la cuarta—. Subir el tope
+ * sin agregar el escalón habría puesto cuatro afiches en cuatro columnas, o sea
+ * una pared de un renglón flaco: exactamente el «mal armado» que el párrafo de
+ * arriba existe para evitar.
  */
-export const columnasDeCartelera = (n: number): 1 | 2 | 3 => {
+export const columnasDeCartelera = (n: number): 1 | 2 | 3 | 4 => {
   if (n <= 2) return 1;
   if (n <= 5) return 2;
-  return 3;
+  if (n <= 7) return 3;
+  return 4;
 };
 
 /**

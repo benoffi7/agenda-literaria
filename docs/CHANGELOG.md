@@ -2,6 +2,21 @@
 
 ## Sin publicar
 
+- **Ir a ver la actividad publicada desde el panel** — **B-954**, pedido del
+  dueño. En el «⋯» de cada tarjeta publicada y abajo de la vista previa. Es la
+  primera acción del menú que **no escribe**, así que `MenuAcciones` aprendió a
+  pintar un `<a>` de verdad: botón del medio, «copiar dirección» y el lector de
+  pantalla lo anuncia como enlace. El texto dice la latencia del SSG —«si la
+  acabás de publicar, aparece unos minutos después»—, que si no el enlace da 404
+  justo cuando más ganas hay de apretarlo.
+
+- **Cuatro flyers por fila en la cartelera** — **B-958**, pedido del dueño. Es un
+  escalón nuevo y no un techo más alto: la cuarta columna entra desde ocho
+  afiches. **La objeción de B-249 sigue siendo cierta** —cuatro columnas dan
+  ~320px por afiche, y un flyer con mucho texto ahí se lee mal—, así que la cuarta
+  entra solo en `2xl` (≥1536px), donde el contenedor ya está en su ancho máximo.
+  En 1366px se siguen viendo tres. Verificado contra el CSS construido.
+
 - **Un encuentro nuevo ya no viene con la fecha de hoy** — **B-957**, pedido del
   dueño: «inicio y fin no estén precargados». Agregar una fila escribía la fecha y
   la hora en que se apretó el botón, que nunca es la del encuentro. Lo que parece

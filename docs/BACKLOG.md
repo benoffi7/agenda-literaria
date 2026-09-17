@@ -7604,7 +7604,26 @@ hasta que exista lo único que se puede sumar es la ciudad. La regla de CABA
 y no en la plantilla: es la misma decisión que van a necesitar la ficha pública
 (B-951) y el JSON-LD.
 
-### B-954 · Desde el panel no hay forma de ir a ver la actividad publicada · P2 — pedido del dueño (2026-09-15)
+### B-954 · Desde el panel no hay forma de ir a ver la actividad publicada — ✅ hecho (2026-09-17) · P2
+
+> En los dos lugares que el pedido nombra: el «⋯» del listado y la vista previa.
+> La URL sale de `urlDeDetalle`, no armada a mano.
+>
+> **Es la primera acción del menú que no escribe**, y por eso `MenuAcciones` solo
+> sabía de botones. Ahora una acción con `href` se pinta como un `<a>` de verdad
+> —no un botón con `window.open`—, y la diferencia se nota al usarlo: botón del
+> medio, «copiar dirección», y el lector de pantalla lo anuncia como enlace.
+> Pestaña nueva con `noopener`: el panel es una SPA y salir sería perder lo que se
+> esté editando.
+>
+> **Las dos condiciones están puestas, y la segunda es la que muerde.** Solo si
+> `estado === 'publicado'` —si no, la página no se generó y es un 404 seguro—, y
+> el texto de la vista previa **dice la latencia** del SSG: «si la acabás de
+> publicar, aparece unos minutos después». Sin eso, el enlace da 404 justo cuando
+> más ganas hay de apretarlo y parece que algo se rompió.
+>
+> El control negativo está escrito: **un borrador no ofrece la acción**. Sin ese
+> caso, el test de arriba pasaría igual con la condición borrada.
 
 *«En los 3 puntitos de la tarjeta de cada actividad, agregar una opción para verlo
 en la web pública, y en la vista previa también agregar un enlace cuando esté
@@ -7811,7 +7830,30 @@ campos la distinguen de una librería: no vende, presta — horario de sala, si 
 que asociarse y cuánto sale, si el catálogo está online, y de qué tipo es (popular,
 municipal, nacional, especializada).
 
-### B-958 · La cartelera nunca pasa de tres columnas · P3 — pedido del dueño (2026-09-15)
+### B-958 · La cartelera nunca pasa de tres columnas — ✅ hecho (2026-09-17) · P3
+
+> **Un escalón, no un techo más alto**: la cuarta columna entra **desde ocho**
+> afiches, que es lo que mantiene la proporción de los saltos que ya había (3 abre
+> la segunda, 6 la tercera). Subir el tope sin el escalón habría puesto cuatro
+> afiches en cuatro columnas — el «mal armado» que esa función existe para evitar.
+>
+> **La objeción de B-249 no desapareció, se acotó, y conviene que quede escrita.**
+> Aquel ítem descartó la cuarta columna con un número, y el número sigue siendo
+> cierto: el contenedor de `/cartelera` es `max-w-[90rem]` con `px-10`, o sea
+> ~1360px de contenido, y cuatro columnas dan **~320px por afiche** — «para un
+> flyer con texto adentro es ilegible». Lo que cambió es que el dueño lo pidió
+> igual.
+>
+> Lo que sí se hizo para acotarlo: la cuarta entra en **`2xl`** (≥1536px) y no en
+> `lg` ni en `xl`. Es el único breakpoint donde el contenedor ya está en su ancho
+> máximo, así que esos 320px son los más anchos posibles; con `xl` cada afiche
+> caía a ~280px. **En 1366px —la pantalla de notebook más común— se siguen viendo
+> tres.**
+>
+> Verificado contra el CSS construido, no supuesto: `@media (width>=96rem){.\32
+> xl\:columns-4` está en `dist/_astro/Base.*.css`. Era el riesgo real del ítem
+> —Tailwind no ve una clase armada por concatenación— y el marcador de B-600 lo
+> cubre de rebote, pero se miró igual.
 
 *«Cuatro flyers por fila (en cartelera).»*
 

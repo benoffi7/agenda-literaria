@@ -330,10 +330,32 @@ export const claseBotonDelVisor = `label-caps inline-flex min-h-touch items-cent
  * Con **una** columna se agrega un tope de ancho: es el caso de hoy (dos flyers)
  * y sin el tope el afiche mediría el ancho entero de un monitor de 27".
  */
-export const CLASES_DE_PARED: Record<1 | 2 | 3, string> = {
+export const CLASES_DE_PARED: Record<1 | 2 | 3 | 4, string> = {
   1: 'mx-auto max-w-3xl',
   2: 'sm:columns-2',
   3: 'sm:columns-2 lg:columns-3',
+  /*
+   * B-958 — la cuarta entra en **`2xl`**, y el breakpoint es la mitad del
+   * trabajo. El contenedor de `/cartelera` es `max-w-[90rem]` con `px-10`, o sea
+   * ~1360px de contenido: cuatro columnas ahí dan **~320px por afiche**, que es
+   * el número exacto con el que B-249 había descartado la cuarta columna («para
+   * un flyer con texto adentro es ilegible»).
+   *
+   * `2xl` (≥1536px de viewport) es el único breakpoint donde el contenedor ya
+   * está en su ancho máximo, así que es donde esos 320px son los más anchos
+   * posibles. Con `xl` (1280px) el contenido mide ~1200 y cada afiche cae a
+   * ~280px — la misma cantidad de columnas, peor resultado.
+   *
+   * **La objeción de B-249 no desapareció, se acotó**: a 320px un flyer con
+   * mucho texto se sigue leyendo mal, y quien mire en 1366px —la pantalla de
+   * notebook más común— va a ver tres, no cuatro. El pedido del dueño era
+   * «cuatro por fila»; esto lo cumple donde la pantalla lo banca.
+   *
+   * **Escrita entera**, como las otras tres y por el mismo motivo: Tailwind no ve
+   * una clase armada por concatenación, así que `columns-4` tiene que aparecer
+   * literal en un archivo que su `content` mire.
+   */
+  4: 'sm:columns-2 lg:columns-3 2xl:columns-4',
 };
 
 /**

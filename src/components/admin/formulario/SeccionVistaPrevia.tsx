@@ -20,6 +20,7 @@
  */
 import { Seccion } from '@/components/admin/campos-del-panel';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
+import { urlDeDetalle } from '@/lib/rutasPublicas';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadForm } from '@/types/actividad';
 
@@ -40,6 +41,35 @@ export function SeccionVistaPrevia({ form, labelsPendientes }: Props) {
       recuerdaComo="vista-previa"
     >
       <VistaPreviaEvento form={form} labelsPendientes={labelsPendientes} />
+
+      {/*
+        B-954 — el enlace a la página publicada, pedido del dueño. Va acá y en el
+        «⋯» del listado: son los dos momentos en que aparece la pregunta «¿cómo
+        quedó?», y el de adentro del formulario es el que no obliga a salir.
+
+        **Solo si está publicado.** Si no, la página no se generó y el enlace es
+        un 404 seguro.
+
+        **Y el texto dice la latencia**, que es la parte que muerde: el sitio es
+        estático, así que una actividad recién publicada no existe hasta el
+        rebuild (§8, ~2 a 7 minutos). Sin la aclaración, el enlace da 404 justo
+        cuando más ganas hay de apretarlo y parece que algo se rompió.
+      */}
+      {form.estado === 'publicado' && form.slug && (
+        <p className="body-sm mt-4 border-t border-borde pt-4">
+          <a
+            href={urlDeDetalle(form.slug)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+          >
+            Ver la página publicada
+          </a>{' '}
+          <span className="text-tinta/60">
+            — si la acabás de publicar, aparece unos minutos después.
+          </span>
+        </p>
+      )}
     </Seccion>
   );
 }

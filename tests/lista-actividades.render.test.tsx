@@ -212,7 +212,7 @@ describe('ninguna acción se perdió al pasar de fila a tarjeta (B-620)', () => 
     expect(props.onEditar.mock.calls[0]![0]).toMatchObject({ id: '2' });
   });
 
-  it('el menú de una tarjeta ofrece las cuatro acciones, y ninguna de otra tarjeta', async () => {
+  it('el menú de una tarjeta ofrece todas las acciones, y ninguna de otra tarjeta', async () => {
     await montar();
     const tarjeta = tarjetaDe('Club de lectura de Saer');
     await userEvent.click(
@@ -221,9 +221,19 @@ describe('ninguna acción se perdió al pasar de fila a tarjeta (B-620)', () => 
 
     const menu = screen.getByRole('menu');
     const items = within(menu).getAllByRole('menuitem').map((b) => b.textContent);
-    // Las cuatro que traía la fila. `Marcar cupo…` viene en la variante que
-    // corresponde: esta actividad está marcada como completa.
-    expect(items).toEqual(['Marcar cupo disponible', 'Duplicar', 'Historial', 'Borrar']);
+    /*
+     * Las cuatro que traía la fila, más «Ver en el sitio» de B-954. `Marcar
+     * cupo…` viene en la variante que corresponde: esta actividad está marcada
+     * como completa. Y «Ver en el sitio» aparece porque **está publicada** — el
+     * caso de que no aparezca está abajo.
+     */
+    expect(items).toEqual([
+      'Marcar cupo disponible',
+      'Ver en el sitio',
+      'Duplicar',
+      'Historial',
+      'Borrar',
+    ]);
     // Y hay UN solo menú abierto: el de esta tarjeta.
     expect(screen.getAllByRole('menu')).toHaveLength(1);
     expect(tarjeta.contains(menu)).toBe(true);
@@ -238,6 +248,44 @@ describe('ninguna acción se perdió al pasar de fila a tarjeta (B-620)', () => 
       if (label.startsWith('Marcar cupo')) continue; // las dos caras del mismo ítem
       expect(items, `la tarjeta no ofrece «${label}»`).toContain(label);
     }
+  });
+
+  /**
+   * **B-954 — y un borrador no lo ofrece.** No es prolijidad: el sitio es
+   * estático, así que si la actividad no está publicada su página **no se
+   * generó** y el enlace sería un 404 seguro.
+   *
+   * Sin este caso, el `toEqual` de arriba pasaría igual con la condición
+   * `a.estado === 'publicado'` borrada, porque esa tarjeta está publicada.
+   */
+  it('una actividad sin publicar no ofrece «Ver en el sitio»', async () => {
+    await montar();
+    const tarjeta = tarjetaDe('Charla con la autora');
+    await userEvent.click(
+      within(tarjeta).getByRole('button', { name: 'Más acciones de Charla con la autora' }),
+    );
+    const items = within(screen.getByRole('menu'))
+      .getAllByRole('menuitem')
+      .map((b) => b.textContent);
+    expect(items).not.toContain('Ver en el sitio');
+  });
+
+  /**
+   * Y cuando sí está, es un **enlace de verdad**: se abre en pestaña nueva —el
+   * panel es una SPA con lo que se esté editando adentro— y con `noopener`.
+   */
+  it('«Ver en el sitio» es un enlace a la página pública, en pestaña nueva', async () => {
+    await montar();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Más acciones de Club de lectura de Saer' }),
+    );
+    const enlace = within(screen.getByRole('menu')).getByRole('menuitem', {
+      name: 'Ver en el sitio',
+    });
+    expect(enlace.tagName).toBe('A');
+    expect(enlace.getAttribute('href')).toContain('/actividad/');
+    expect(enlace.getAttribute('target')).toBe('_blank');
+    expect(enlace.getAttribute('rel')).toContain('noopener');
   });
 
   it('«Historial» avisa con la actividad de esa tarjeta', async () => {

@@ -88,14 +88,36 @@ describe('columnasDeCartelera — la pared con pocos afiches también tiene que 
     expect(columnasDeCartelera(3)).toBe(2);
     expect(columnasDeCartelera(5)).toBe(2);
     expect(columnasDeCartelera(6)).toBe(3);
-    expect(columnasDeCartelera(42)).toBe(3);
+    expect(columnasDeCartelera(7)).toBe(3);
   });
 
-  it('nunca crece más allá de tres', () => {
-    // Es el tope, no el número de columnas: el CSS igual baja a una en el
-    // teléfono. Cuatro columnas de afiche en 1440px dan 320px cada una, que para
-    // un flyer con texto adentro es ilegible.
-    for (const n of [7, 20, 100, 1000]) expect(columnasDeCartelera(n)).toBeLessThanOrEqual(3);
+  /**
+   * **B-958 — la cuarta columna entra desde ocho.** Pedido del dueño: «cuatro
+   * flyers por fila».
+   *
+   * Ocho no es arbitrario: mantiene la proporción de los dos saltos que ya había
+   * —3 abre la segunda, 6 la tercera, 8 la cuarta—. Subir el tope **sin** agregar
+   * el escalón habría puesto cuatro afiches en cuatro columnas, o sea una pared
+   * de un renglón flaco: el «mal armado» que esta función existe para evitar.
+   */
+  it('desde ocho abre la cuarta', () => {
+    expect(columnasDeCartelera(8)).toBe(4);
+    expect(columnasDeCartelera(42)).toBe(4);
+  });
+
+  /**
+   * **Y nunca crece más allá de cuatro, con la objeción de B-249 anotada.**
+   *
+   * Aquel ítem descartó la cuarta columna con un número: en el contenedor de
+   * `/cartelera` —`max-w-[90rem]` con `px-10`, ~1360px de contenido— cuatro
+   * columnas dan **~320px por afiche**, y «para un flyer con texto adentro es
+   * ilegible». Ese número **no cambió**; lo que cambió es que el dueño lo pidió
+   * igual, y `CLASES_DE_PARED` lo acota poniendo la cuarta recién en `2xl`, que
+   * es donde el contenedor ya está en su ancho máximo. En 1366px se siguen viendo
+   * tres.
+   */
+  it('nunca crece más allá de cuatro', () => {
+    for (const n of [20, 100, 1000]) expect(columnasDeCartelera(n)).toBeLessThanOrEqual(4);
   });
 });
 

@@ -4,7 +4,22 @@ import { indiceDeTecla } from '@/lib/foco';
 
 export interface Accion {
   label: string;
-  onSelect: () => void;
+  /** Qué hace al elegirla. No va cuando la acción es `href`. */
+  onSelect?: () => void;
+  /**
+   * **La acción es ir a otro lado** — B-954.
+   *
+   * Se pinta como un `<a>` de verdad y no como un botón con `window.open`, y la
+   * diferencia se nota al usarlo: un enlace se puede abrir con el botón del
+   * medio, copiar con «copiar dirección» y anunciar como enlace al lector de
+   * pantalla. Las cuatro acciones que había hasta acá **escriben**; ésta es la
+   * primera que no, y por eso el menú tenía solo botones.
+   *
+   * Abre en pestaña nueva con `rel="noopener noreferrer"`: el panel es una SPA
+   * con sesión, y salir de ella para ver una página pública sería perder lo que
+   * se esté editando.
+   */
+  href?: string;
   /** Acción destructiva: se pinta con el acento y se separa del resto. */
   peligrosa?: boolean;
   /**
@@ -131,28 +146,56 @@ export function MenuAcciones({ acciones, etiqueta }: Props) {
           }}
           className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-borde bg-white p-1 shadow-lg"
         >
-          {acciones.map((a, i) => (
-            <button
-              key={a.label}
-              ref={(el) => {
-                items.current[i] = el;
-              }}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                // Se cierra antes de actuar: la acción puede cambiar de vista y
-                // dejar el menú abierto colgado en la pantalla siguiente.
-                if (a.devuelveFoco) cerrarYVolverAlDisparador();
-                else setAbierto(false);
-                a.onSelect();
-              }}
-              className={`${claseBotonMenu} ${
-                a.peligrosa ? 'text-acento hover:bg-acento/10' : 'hover:bg-black/5'
-              }`}
-            >
-              {a.label}
-            </button>
-          ))}
+          {acciones.map((a, i) => {
+            const clase = `${claseBotonMenu} ${
+              a.peligrosa ? 'text-acento hover:bg-acento/10' : 'hover:bg-black/5'
+            }`;
+            const refDelItem = (el: HTMLElement | null) => {
+              items.current[i] = el as HTMLButtonElement | null;
+            };
+
+            /*
+             * B-954 — un `<a>` de verdad cuando la acción es ir a otro lado. El
+             * teclado sigue funcionando igual: las flechas y el `Escape` los
+             * maneja el contenedor, y `role="menuitem"` más el `ref` en la misma
+             * lista hacen que el `<a>` sea un ítem más para el foco.
+             */
+            if (a.href) {
+              return (
+                <a
+                  key={a.label}
+                  ref={refDelItem}
+                  role="menuitem"
+                  href={a.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setAbierto(false)}
+                  className={`${clase} block`}
+                >
+                  {a.label}
+                </a>
+              );
+            }
+
+            return (
+              <button
+                key={a.label}
+                ref={refDelItem}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  // Se cierra antes de actuar: la acción puede cambiar de vista y
+                  // dejar el menú abierto colgado en la pantalla siguiente.
+                  if (a.devuelveFoco) cerrarYVolverAlDisparador();
+                  else setAbierto(false);
+                  a.onSelect?.();
+                }}
+                className={clase}
+              >
+                {a.label}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
