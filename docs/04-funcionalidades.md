@@ -23,7 +23,7 @@ no ofrecer lo que va a ser rechazado:
 |---|---|
 | Listado y vista calendario | Lo suyo **más lo de su ciudad**. **No es un filtro**: son **dos** consultas —`where('createdBy','==',uid)` y `where('ciudades','array-contains',ciudad)`— unidas en memoria, porque la regla es una disyunción y una query que no la satisface entera se rechaza completa (trampa 7); la pantalla quedaría rota, no acotada |
 | Una actividad de su ciudad que cargó otra cuenta | **Se mira y no se toca.** La fila dice «Solo lectura», el botón dice «Ver» en vez de «Editar» y no tiene menú de acciones; el formulario se abre con todos los campos apagados y sin los botones de guardar. Es lo que la regla permite: `read` sí, `update` y `delete` no |
-| Opciones de los desplegables, estado del catálogo, propuestas, reportar algo, historial de una actividad | No aparecen |
+| Opciones de los desplegables, estado del catálogo, propuestas, reportar algo, historial de una actividad, y los tres directorios de la Guía (librerías, suscripciones, lugares) | No aparecen. Las cinco pantallas que sí ve están escritas una por una en `PERMISOS`: listado, calendario, y el formulario en sus tres formas |
 | «Otro…» en los desplegables de taxonomía | No aparece: crear una etiqueta cambia lo que ve todo el sitio, y `/opciones/*` es de admin. Elegir de la lista sí |
 | Subir la imagen de su actividad | Sí. Lo único que no puede es **pisar** un objeto que ya existe, ni borrar ni enumerar el prefijo |
 | La dirección web única | La verifica igual, contra el índice `/slugs` (D-660): un `get` por id en vez del barrido del catálogo |
@@ -46,12 +46,23 @@ en el teléfono; de `md` en adelante se abren columnas, y son **2 / 3 / 4** en
 `md`-`lg` / `xl` / `2xl`. Antes era una columna angosta en cualquier pantalla, así
 que en un monitor de 1920px el panel mostraba seis actividades y había que
 scrollear veinte veces para ver cuarenta — que es justo lo que un listado existe
-para evitar. El ancho del panel también pasó a decidirse **por vista**: solo el
-listado usa la pantalla completa, el formulario y las demás pantallas se quedan en
-el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
-calendario y el tablero quedaron angostos a propósito— está en el docblock de
+para evitar. El ancho del panel también pasó a decidirse **por vista**: el listado
+usa la pantalla completa y las pantallas de lectura —historial, reportes,
+opciones, propuestas— se quedan en el ancho de siempre. El motivo de cada
+exclusión está en el docblock de
 [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts) y la decisión completa en
 **D-330** ([`06-decisiones.md`](06-decisiones.md)).
+
+**La lista de las que usan todo el ancho creció desde entonces, y hoy son tres.**
+El tablero «Estado del catálogo» entró con B-621 —un tablero de gráficos es el
+caso puro de lo que se recorre de un barrido— y la grilla del mes el 2026-09-07,
+por pedido del dueño mirando el panel publicado: en 896px daba celdas de 120px.
+Las dos habían quedado afuera con un motivo escrito («ensanchar cada una es un
+cambio visual propio»), y la advertencia sigue valiendo para el calendario:
+**entrar a esa lista es una línea, repartir la grilla por dentro es el trabajo
+real**, y eso todavía no está hecho. El formulario tampoco es ya una exclusión
+fija: desde B-814 su ancho depende de la forma elegida (ver «Dos formas del
+formulario, y las elige quien carga»).
 **La marca de autoría dice el mail** (B-888). Hasta la tajada 2 decía «La cargó
 otra cuenta» y no cuál, porque el panel solo tenía uids; con `/usuarios` dice
 `La cargó fulano@…`, y además avisa `La cambió fulano@…` cuando algo que cargaste
@@ -684,10 +695,12 @@ El formulario es usable en teléfono:
   ni autocorregir en slug, handles y URLs.
 
 Y en la otra punta, **el escritorio también es un caso** (B-620): el listado abre
-columnas y usa el ancho de la pantalla, mientras el formulario se queda en el
-ancho de lectura. Las dos mitades son la misma idea —el ancho lo decide lo que se
-está haciendo— y la tabla de qué pantalla usa cuál está en
-[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
+columnas y usa el ancho de la pantalla, y con él el tablero y la grilla del mes
+(B-621), mientras las pantallas de lectura se quedan en el ancho de lectura. Las
+dos mitades son la misma idea —el ancho lo decide lo que se está haciendo— y la
+tabla de qué pantalla usa cuál está en
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts). El formulario es el
+caso aparte: desde B-814 su ancho sale de la forma elegida, no de esta tabla.
 
 ### La versión está siempre a la vista
 
@@ -871,6 +884,255 @@ cargó quedan en Firestore.
 
 **Limitación:** las respuestas del dueño se leen en GitHub. El panel todavía no
 las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
+
+### El tablero — «Estado del catálogo» (B-370)
+
+Botón **«Estadísticas»** en el encabezado del listado, al lado de «Opciones» y
+«Propuestas», y **solo para el admin**: el publicador no lo ve (`PERMISOS` de
+[`src/lib/rolDelPanel.ts`](../src/lib/rolDelPanel.ts)), y no es solo una decisión
+de pantalla — la segunda pestaña lee `/sistema/*`, que su rol tiene cerrado. El
+botón dice «Estadísticas» y la vista se titula **«Estado del catálogo»**: el
+nombre largo es el que dice de qué se trata, y es el que usa esta sección.
+
+**Por qué el tablero arranca por el catálogo y no por las visitas.** El pedido era
+«una opción para ver estadísticas del sitio», y el hecho que lo reordenó es que el
+sitio público no medía nada: no había una sola visita que mostrar. Lo que sí había
+era el catálogo, y agrupado contesta tres de las diez preguntas de
+[`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) —qué se ofrece, qué de eso
+no se puede usar, y qué está incompleto—, que son justo las que se convierten en
+trabajo del día siguiente. El criterio completo está en el § 8 de ese documento.
+
+Va a **todo ancho** (B-621), como el listado y el calendario: un tablero de
+gráficos es el caso puro de lo que se recorre de un barrido. La tabla de qué
+pantalla usa cuál ancho está en
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
+
+**Dos pestañas, y no una página larga** (B-501, B-502, **D-271**): «El catálogo»
+—lo que hay cargado, que se mide desde el primer día— y «El sitio público» —cómo
+se usa, que durante un mes no tuvo un solo número—. Apiladas competían por el
+primer scroll. Son pestañas de verdad y no rutas: el tablero es un island
+`client:only`, así que sobra JavaScript para el patrón de pestañas de WAI-ARIA con
+activación automática —las flechas mueven el foco **y** cambian de pestaña en el
+mismo gesto, `Home`/`End` van a los extremos, y Tab entra una sola vez, a la
+activa—. Es la misma familia que el menú del listado y que la capa de ayuda.
+
+#### La pestaña «El catálogo»
+
+**No agrega ninguna consulta.** Lee el catálogo con la misma `listarActividades()`
+que usa el listado y lo agrupa en memoria; no hay una colección de agregados ni un
+contador que mantener. El cálculo entero es puro y vive en
+[`src/lib/estadoDelCatalogo.ts`](../src/lib/estadoDelCatalogo.ts) — la pantalla
+solo acomoda, que es el mismo corte que `tarjetaDelPanel.ts` hace del listado.
+**El reloj se congela al montar**, así que «lo que queda por pasar» no puede
+cambiar entre dos renders del mismo tablero.
+
+**Y no mide a nadie.** Nada de esta pestaña sale del navegador del admin, y la
+pantalla lo dice en su primera línea. Lo único que se mide es que el tablero se
+abrió — ver «Analítica del panel», más abajo.
+
+Con el catálogo vacío no dibuja nada: dice que cuando haya actividades va a
+aparecer qué se está ofreciendo y qué le falta.
+
+**Arriba, cuatro números**: actividades, publicadas, encuentros por venir y
+encuentros **en los próximos 30 días**. Los encuentros son los que de verdad
+pueden pasar: no cuentan los cancelados ni los de una actividad cancelada.
+
+**Después, los avisos, y van primero porque son lo accionable.** Un tablero que
+abre con gráficos y esconde «hay tres publicadas a las que no se puede entrar»
+tiene el orden al revés. Son seis clases, ordenadas **por gravedad y no por
+cantidad** —arriba lo que le hace perder algo a alguien de afuera, abajo lo que
+nos hace perder algo a nosotros— y solo aparece la que tiene al menos una
+actividad:
+
+| Aviso | Qué cuesta que pase |
+|---|---|
+| Publicadas con la inscripción ya cerrada y encuentros por venir | el sitio las sigue ofreciendo: alguien va a escribir y no va a poder entrar. **Estar completa no cuenta** como inscripción cerrada — mostrar el canal con el cupo lleno es lo que B-97 decidió, porque siempre hay lista de espera y las bajas existen |
+| Publicadas sin imagen | no aparecen en la cartelera, y el link compartido sale con la imagen genérica del sitio |
+| Publicadas sin etiquetas | están en el sitio pero no se encuentran filtrando por etiqueta |
+| Publicadas con una descripción muy corta | menos de **80 caracteres**: el resultado en Google queda flaco, y es lo que decide el clic |
+| Publicadas con una web del organizador que no enlaza (B-813) | está cargada **y no sirve**: la página la muestra como texto, el JSON-LD no emite `organizer.url` y el texto para redes tampoco la enlaza. `organizador.web` es texto libre, así que nada lo frena en la carga |
+| Sin publicar y sin tocarse hace más de **30 días** | es trabajo ya hecho que no está rindiendo: publicalo o descartalo |
+
+Cada aviso trae **la lista de las actividades señaladas, por título y en orden
+alfabético**, y cada título es un botón que abre esa actividad en el formulario; al
+salir se vuelve **al tablero y no al listado**, porque lo más probable es que haya
+más de un aviso para atender en la misma sentada. Un aviso sin salida no se
+atiende. Desde `xl` los avisos se reparten en dos columnas (B-621): a 1600px en una
+sola, la tarjeta queda con más blanco que texto.
+
+**No hay un aviso de «ya pasó y sigue publicada»**, y no es un olvido: se probó, se
+reformuló y se sacó del todo (**D-273**). Listaba toda publicada sin fecha futura,
+o sea el archivo entero, que sólo crece; para la mayoría no hay ninguna acción, y
+el caso que sí la tiene —un ciclo que vuelve y necesita fechas nuevas— no se
+distingue del resto con los datos que hay. Lo que quedó es la cobertura «con
+encuentros por venir», que dice lo mismo sin crecer.
+
+**«Lo que se publica, completo o no»** — cuatro coberturas sobre las publicadas,
+cada una con su número, su porcentaje, una barra decorativa y, cuando falta alguna,
+qué se pierde: con imagen, con etiquetas, con descripción suficiente y con
+encuentros por venir.
+
+**«Lo que Google puede mostrar»** (B-813) va debajo de esas cuatro, y **son
+proporciones y no coberturas** — la distinción es si hay una acción pendiente
+detrás: «8 de 20 sin imagen» la tiene, «12 de 20 piden inscripción» no. Son tres
+—dicen quién la da, con web del organizador, y aranceladas con el monto cargado— y
+salieron de los cuatro avisos del informe «Eventos» de Search Console que **no**
+eran un defecto del markup: el código los emite cuando el dato está cargado
+(B-731), así que lo que falta es la carga. Listarlos como pendientes sería **D-273
+otra vez** — 65 de 68 publicadas sin tallerista no es una lista de trabajo, es el
+catálogo con otro nombre, y casi ninguna entrada tiene algo que hacer (un club de
+lectura no tiene tallerista, la mitad de los organizadores del circuito no tiene
+web, y una arancelada «a convenir» es legítima, porque B-114 dejó el monto opcional
+a propósito). Son **tres y no cuatro** porque la imagen ya es la primera cobertura
+de arriba, y repetirla sería una segunda derivación de la misma pregunta. La del
+monto **se reparte sobre las que admiten monto**, no sobre todas las publicadas:
+gratis y a la gorra no lo llevan, así que contarlas como «sin precio» sería el
+denominador equivocado.
+
+**Las tres de inscripción** (B-703) cierran el bloque, y solo si alguna publicada
+la pide: cuántas piden, cuántas de ésas declaran cupo y cuántas están completas.
+**Tampoco son un gráfico**: son tres preguntas de sí/no independientes y no las
+partes de un todo — una torta sobre ellas sumaría porcentajes que se solapan (una
+actividad puede estar en las tres) y dibujaría más de una vuelta.
+
+**«Qué hay cargado» — cuatro repartos, cada uno con torta o lista** (B-700, B-701,
+B-702): por estado, por tipo, por arancel y por barrio. El toggle es por reparto y
+**se recuerda en el navegador** (`agenda:grafico:*`), porque la preferencia es de
+quien mira: alguien que lee con lector de pantalla no quiere elegir «lista» cuatro
+veces cada vez que abre el tablero. Lo que se guarda es el nombre del reparto y la
+palabra `torta` o `lista` — una marca, no contenido (§5.1), y por eso sin la huella
+del admin en la clave.
+
+- **La lista no es un modo degradado de la torta: es su alternativa accesible.**
+  Un `<svg>` de cuñas no lo lee un lector de pantalla ni se puede copiar, y la
+  lista contesta mejor «cuántas exactamente», que es lo que un tablero de
+  programación pregunta más seguido. La torta contesta la otra: la proporción de un
+  vistazo. Como ninguna gana siempre, se elige.
+- **De los cuatro, el de barrio es el único que arranca en lista** (la torta
+  sigue a un clic): el circuito porteño tiene veinte barrios, así que la torta
+  mostraría «las cinco primeras y el resto», que contesta menos que la lista
+  entera. Cuenta **solo lo presencial**, sale de todas
+  las filas de «Dónde» —no del `sede` derivado, que es «la primera fila que tenga
+  sede»— y una actividad en dos barrios cuenta en los dos, pero una sola vez por
+  barrio aunque tenga dos filas ahí.
+- **Cada reparto dice sobre qué todo reparte**, siempre, y es obligatorio por firma
+  del componente: «sobre 47 formas de cursar ofrecidas», no «sobre 40 actividades».
+
+**«Por forma de cursar» va abajo y también arranca en lista** (B-224). Es el único
+reparto donde una actividad cuenta en más de una tajada —cuenta en **cada** forma
+que ofrece, así que las cantidades suman más que el total— y una torta que dibuja
+«47 formas» al lado de tres que dibujan «40 actividades» invita a compararlas, que
+es justo lo que no se puede hacer; la lista dice el número sin sugerir esa
+comparación. El toggle está igual, como en todos: lo que cambia es con qué abre. Al lado, en una frase: cuántos ciclos, cuántas actividades
+sueltas y cuántos encuentros cargados en total. **Ciclos contra sueltas se queda
+como frase y no pasa a gráfico**: son dos categorías, y una torta de dos cuñas no
+dice nada que «12 ciclos y 28 sueltas» no diga mejor y en menos lugar.
+
+**La torta está dibujada a mano**, en
+[`src/lib/tortaDelPanel.ts`](../src/lib/tortaDelPanel.ts), y no con una librería:
+el panel tiene un corte de bundle que se sostiene sobre el grafo de imports (B-09) y
+una librería de gráficos son 50-200 kB para dibujar cinco cuñas, que acá son veinte
+líneas de aritmética —y testeables, que es lo que ninguna librería da—. Es el mismo
+precedente que la flecha del `select`, que es un triángulo de tres bordes y no un
+paquete de iconos. Lo que el módulo decide:
+
+| Qué | Cómo |
+|---|---|
+| El todo | **la suma de las tajadas, nunca «la cantidad de actividades»** — la función que arma las cuñas no recibe ningún total, así que no hay forma de pasarle uno equivocado y dibujar 117 % de circunferencia |
+| La cola | **con siete categorías o más** se dibujan las cinco primeras y el resto se junta en **«Otras N»**, conservando la suma: a partir de la sexta cuña la etiqueta ya no entra al lado y el ojo deja de comparar áreas. Con seis se dibujan las seis — solo agrupa si la cola tiene al menos dos, porque esconderle el nombre a una sola no gana ni una cuña de legibilidad, y el catálogo chico de seis barrios es el caso más frecuente |
+| El orden | por cantidad, y alfabético para desempatar, **calculado ahí y no heredado del reparto**: sin el desempate, dos categorías con la misma cantidad quedan en el orden en que llegaron y la torta se reordena sola entre dos recargas |
+| El color | de `colorDeTipo` (**D-150**) para todos los repartos y no solo el de tipo: es la misma función que pinta la categoría en el sitio público, con su piso de contraste ya verificado, así que el mismo valor se ve igual en las dos puntas. «Otras N» va con una tinta con nombre, porque no es una categoría sino la ausencia de una |
+| El porcentaje | `<1 %` y no `0 %` para una tajada que existe: redondear a cero una categoría con actividades adentro es afirmar que no tiene ninguna |
+
+La torta lleva `role="img"` con el reparto entero escrito en el `aria-label`, así
+que no es un callejón sin salida para un lector de pantalla ni antes de tocar el
+toggle, y las cuñas van separadas por un filete del color del papel — dos barrios
+con matices derivados de slugs parecidos pueden caer a pocos grados uno del otro.
+
+#### La pestaña «El sitio público»
+
+Lo que se lee acá lo escribe una Cloud Function una vez por día en
+`/sistema/analitica-sitio` (B-374, B-373); el panel hace **una** lectura, y la hace
+**al abrir la pestaña**, no al montar el tablero: la pestaña por defecto es la del
+catálogo y la mayoría de las visitas no la necesita. Una vez pedida queda, porque el
+documento no cambia hasta el día siguiente. Un fallo de red o un permiso denegado se
+leen igual que «todavía no hay documento»: esta pestaña no puede romper el panel.
+
+**Nació como andamiaje honesto, y esa decisión no cambió** (**D-272**): cuando no
+hay datos, no se inventa ninguno. Lo que sí cambió cuando la Function existió es
+que ahora dice **por qué** está vacía — cuatro situaciones con cuatro acciones
+distintas, y por fuente (Google Analytics y Search Console van por separado):
+
+| Situación | Qué dice |
+|---|---|
+| Nunca llegó un resumen | la lectura corre una vez por día; si la función se acaba de desplegar, aparece mañana |
+| Falta un paso de consola | **cuál** falta, y que los pasos están en `16-analitica-del-sitio.md` |
+| La fuente devolvió un error | el motivo, y en la tinta de acento |
+| Contestó y todavía no hay volumen | los números están en cero de verdad, no falta nada |
+
+Un «no hay datos» sin decir por qué obliga a adivinar entre desplegar una Function,
+cargar una variable de entorno, revisar un permiso y esperar. Al pie, cuándo se
+calculó el resumen.
+
+Con números, la pestaña muestra tres bloques:
+
+- **«Para ofrecer a un anunciante»** — visitas, personas y vistas de página, más
+  las tres que sumó B-800: gente nueva, cuánto se quedan y sesiones con
+  interacción. Cada una con su variación contra los 28 días anteriores, o **«sin
+  comparación todavía»** cuando no hay ventana anterior con qué comparar — que no
+  es lo mismo que «0 %», y es el estado del primer mes entero de medición. Las tres
+  de B-800 se dibujan **una por una**: una propiedad de GA4 puede contestar las
+  primeras y no éstas, y en ese caso la fila no aparece, en vez de mostrar un cero
+  que no midió nada. Debajo, tres rankings con la misma barra del catálogo: las
+  páginas más vistas, de dónde entra la gente y con qué aparato.
+- **«Para mejorar el sitio»** — los eventos propios del sitio, uno por fila, con su
+  nombre en castellano y qué mide cada uno. **Un cero se escribe, no se esconde**:
+  «cero clics de inscripción» es un dato, y una fila ausente se confunde con un
+  enganche roto. Cuando todavía no hay datos, las filas se derivan del
+  **vocabulario real de eventos** y no de una lista escrita al lado, así que el
+  evento que se agregue mañana no puede aparecer en la pantalla con datos y faltar
+  en la vacía.
+- **«¿Google nos encuentra?»** (B-373) — de Search Console, que no usa cookies ni
+  JavaScript. Dice los clics y las apariciones **sumando las diez búsquedas más
+  frecuentes, no todo el sitio**, y lo aclara en la misma frase; debajo, dos tablas
+  con clics, apariciones, CTR y posición: con qué se nos busca y qué páginas
+  rankean. Cada tabla scrollea sola, porque una consulta larga o una URL entera
+  empujarían el ancho del panel entero en el teléfono.
+
+**La fila de «filtros que no encuentran nada» dice cuántas veces, no cuál filtro**,
+y lo aclara. El evento sí lleva el eje y el slug elegidos, pero la Function le pide
+a GA4 el nombre y la cuenta y nada más, así que lo que llega al panel es el número.
+Traer el desglose es **B-798**, y no es solo código: pide registrar dos dimensiones
+personalizadas en la consola de GA4 —que **no es retroactivo**— y sumarlas a la
+lista blanca que existe justamente para que no entre la ubicación ni la demografía.
+
+**Arriba de los números ya no hay ningún párrafo explicativo**, y también es de
+B-798: la pestaña llegó a tener cuatro —de qué es, desde cuándo hay datos, de dónde
+salen y cuándo se recalculó— y los sacó el dueño el 2026-09-07 mirando la pantalla
+publicada. El nombre de la pestaña ya dice de qué es, y una explicación de la
+pantalla que se está mirando envejece mal: la lee cien veces la misma persona, que
+después de la primera ya sabe. Nada de lo que calificaba esos números se perdió — la
+comparación que no se puede hacer sigue diciendo «sin comparación todavía», los
+cuatro estados vacíos siguen abajo, y el «desde cuándo» sigue en el dato.
+
+#### Lo que está calculado y todavía no se dibuja
+
+[`src/lib/ritmoDelCatalogo.ts`](../src/lib/ritmoDelCatalogo.ts) (B-704, B-705,
+B-706) contesta **cuándo** pasan las cosas, que es la pregunta que un listado no
+contesta nunca: un mapa de calor de ocho semanas desde el lunes de la semana en
+curso, el reparto por día de la semana y el reparto por franja horaria —mañana,
+tarde y noche, con los cortes del circuito y no los del reloj: un taller de las 19
+en Buenos Aires es de noche—. Está entero y con sus tests, y **ninguna pantalla lo
+importa todavía**: el commit que lo trajo dejó escrito que faltaba la pantalla y el
+tablero se ve igual que antes de él.
+
+Lo que ya quedó decidido para cuando se dibuje: trabaja sobre los mismos
+`Encuentro[]` que alimentan la grilla del mes —no hay un segundo aplanado de
+sesiones que pueda divergir—, cuenta los mismos encuentros que el encabezado del
+tablero, la grilla es rectangular de siete columnas porque **los huecos son el
+dato**, y con un máximo de uno o dos encuentros por día no hay escala de tres
+niveles sino «hay o no hay»: un mapa de calor sobre datos ralos no dice poco, dice
+mal.
 
 ### La bandeja de propuestas
 
