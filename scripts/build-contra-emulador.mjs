@@ -1714,7 +1714,7 @@ try {
         salida = 1;
       }
 
-      const malFormadas = locs.filter((u) => !/^https:\/\/[^/]+\//.test(u) || !u.endsWith('/'));
+      const malFormadas = locs.filter((u) => !/^https:\/{2}[^/]+\/{1}/.test(u) || !u.endsWith('/'));
       if (malFormadas.length > 0) {
         fallo(
           'el sitemap.xml tiene URLs que no son absolutas o no llevan la barra final:\n' +
