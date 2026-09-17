@@ -34,12 +34,12 @@
  * Lo bloquea **B-872** (App Check sin exigir en Storage), no la falta de código.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import type { Firestore as FirestoreAdmin } from 'firebase-admin/firestore';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import {
   Timestamp,
   collection,
@@ -70,20 +70,6 @@ const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 const UID = 'uid_lugares_admin';
 const UID_PELADO = 'uid_lugares_sin_claim';
 const UID_PUBLICADOR = 'uid_lugares_publicador';
-
-const token = async (uid: string, claims: Record<string, boolean>) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `l-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return t;
-};
 
 /** El Admin SDK, para sembrar lo que ningún cliente puede escribir. */
 const conAdminSdk = async (fn: (db: FirestoreAdmin) => Promise<void>) => {
@@ -153,7 +139,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
     // B-174 / B-219 — las reglas de este checkout, sobre la base de este
     // working-tree, que arranca sin ninguna.
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   describe('el camino que hoy funciona: un admin carga un lugar', () => {
@@ -421,7 +407,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
           `el tipo «${tipo}» publicó la dirección desde el camino público`,
         ).rejects.toThrow(RECHAZADA);
       }
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('y el control POSITIVO: el camino público SÍ puede crear, con el flag apagado', async () => {
@@ -662,7 +648,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       await signOut(auth());
       await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_privado')), 'get anónimo');
       await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list anónimo');
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('un publicador no lee, no lista, no edita y no borra', async () => {
@@ -677,7 +663,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
        * nace con `direccionPublica: false` como la de cualquiera, que es lo que
        * mantiene el argumento de arriba intacto.
        */
-      await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
+      await entrarComo(UID_PUBLICADOR, { publicador: true });
       await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_privado')), 'get publicador');
       await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list publicador');
       // Lo que no puede es hacer pasar su carga por una del panel: no es admin.
@@ -685,7 +671,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
         RECHAZADA,
       );
       await expect(deleteDoc(doc(db(), 'lugares', 'l_privado'))).rejects.toThrow(RECHAZADA);
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
   });
 
@@ -713,13 +699,13 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
     it('un anónimo crea la ficha que el formulario manda', async () => {
       await signOut(auth());
       await expect(setDoc(doc(db(), 'lugares', 'l_anon'), publico())).resolves.toBeUndefined();
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('y alguien logueado sin el claim también', async () => {
-      await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
+      await entrarComo(UID_PELADO);
       await expect(setDoc(doc(db(), 'lugares', 'l_pelado'), publico())).resolves.toBeUndefined();
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('⚠️ y su dirección NO se publica, aunque el formulario mande el flag prendido', async () => {
@@ -741,7 +727,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
        */
       await signOut(auth());
       await setDoc(doc(db(), 'lugares', 'l_anon_dir'), publico());
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       const guardado = await getDoc(doc(db(), 'lugares', 'l_anon_dir'));
       expect(guardado.data()!.direccionPublica).toBe(false);
 
@@ -757,14 +743,14 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
           publico(form({ tipo: 'mi-living' }), { direccionPublica: true }),
         ),
       ).rejects.toThrow(RECHAZADA);
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('un admin SÍ puede prenderlo — pidió permiso a quien vive ahí', async () => {
       // El control negativo de la cláusula de arriba: sin esto,
       // `direccionPublica == false` a secas pasaría los casos anteriores y se
       // llevaría puesto el único camino legítimo.
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       await expect(
         setDoc(doc(db(), 'lugares', 'l_admin_dir'), documento({}, form({ direccionPublica: true }))),
       ).resolves.toBeUndefined();
@@ -784,7 +770,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       await expect(setDoc(doc(db(), 'lugares', 'l_anon_panel'), documento())).rejects.toThrow(
         RECHAZADA,
       );
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('ni traer fotos — la ficha que llega de afuera nace con la galería vacía', async () => {
@@ -809,7 +795,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
           ),
         ),
       ).rejects.toThrow(RECHAZADA);
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     it('y leer o listar sigue siendo de un admin: la cosecha de direcciones no se abre', async () => {
@@ -819,7 +805,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_anon')), 'get anónimo');
       await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list anónimo');
       await expect(deleteDoc(doc(db(), 'lugares', 'l_anon'))).rejects.toThrow(RECHAZADA);
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
   });
 });

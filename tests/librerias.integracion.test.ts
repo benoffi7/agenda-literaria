@@ -28,13 +28,13 @@
  * API del emulador en el `beforeAll` (B-174).
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import type { Firestore as FirestoreAdmin } from 'firebase-admin/firestore';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import {
   collection,
   deleteDoc,
@@ -64,24 +64,6 @@ const UID = 'uid_librerias_admin';
 const UID_OTRO = 'uid_librerias_admin_2';
 const UID_PELADO = 'uid_librerias_sin_claim';
 const UID_PUBLICADOR = 'uid_librerias_publicador';
-
-const token = async (uid: string, claims: Record<string, boolean>) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `l-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  // Solo el registro (`setCustomUserClaims`), que es lo que hace producción —
-  // el script `admin:claim` lo pone así y el panel real lee el claim del
-  // token de sesión, no de un custom token con claims embebidos. Pasarlos
-  // también acá tapaba el desajuste de B-894 y es la vía infiel (B-895).
-  await a.setCustomUserClaims(uid, claims);
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return t;
-};
 
 /** El Admin SDK, para sembrar lo que ningún cliente puede escribir. */
 const conAdminSdk = async (fn: (db: FirestoreAdmin) => Promise<void>) => {
@@ -143,7 +125,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     // B-174 / B-219 — las reglas de este checkout, sobre la base de este
     // working-tree, que arranca sin ninguna.
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   describe('el camino que hoy funciona: un admin carga una librería', () => {
@@ -447,7 +429,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
           documento({ estado: 'publicado', origen: 'formulario-publico' }),
         ),
       ).rejects.toThrow(RECHAZADA);
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
     });
 
     /**
@@ -513,7 +495,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
 
   describe('lo que un admin SÍ puede cambiarle: es una ficha de catálogo, no una propuesta', () => {
     beforeAll(async () => {
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       await setDoc(doc(db(), 'librerias', 'l_edit'), documento());
     });
 
@@ -733,7 +715,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     it('un admin lee por id y lista: sin esto, el panel no existe', async () => {
       // El control positivo va **primero**: todo lo que sigue es una denegación,
       // y una denegación la devuelve también un emulador mal apuntado (B-894).
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       expect((await getDoc(doc(db(), 'librerias', 'l_ok'))).exists()).toBe(true);
       expect((await getDocs(collection(db(), 'librerias'))).empty).toBe(false);
     });
@@ -750,7 +732,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     it('y alguien logueado sin claim tampoco, ni por id ni listando', async () => {
       // «No está logueado» no es la defensa: cualquiera puede crear una cuenta
       // con la API key web, que es pública por diseño. La defensa es el claim.
-      await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
+      await entrarComo(UID_PELADO);
       await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_ok')), 'get sin claim');
       await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list sin claim');
     });
@@ -764,7 +746,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      * tiene.
      */
     it('un publicador no lee, no lista, no edita y no borra', async () => {
-      await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
+      await entrarComo(UID_PUBLICADOR, { publicador: true });
       await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_ok')), 'get publicador');
       await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list publicador');
       await expect(
@@ -790,7 +772,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      * falso.
      */
     it('pero sí puede proponer una, como cualquiera — y no puede decir que vino del panel', async () => {
-      await signInWithCustomToken(auth(), await token(UID_PUBLICADOR, { publicador: true }));
+      await entrarComo(UID_PUBLICADOR, { publicador: true });
       await expect(
         setDoc(doc(db(), 'librerias', 'l_pub_ok'), {
           ...formALibreria(form(), 'formulario-publico'),
@@ -843,7 +825,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       // `!esAdmin()` y no `request.auth == null`: crear una cuenta está al
       // alcance de cualquiera con la API key pública, así que «no está logueado»
       // nunca fue la defensa.
-      await signInWithCustomToken(auth(), await token(UID_PELADO, {}));
+      await entrarComo(UID_PELADO);
       await expect(
         setDoc(doc(db(), 'librerias', 'l_anon2'), {
           ...formALibreria(form(), 'formulario-publico'),
@@ -932,7 +914,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
        * Sin este caso, `d.imagenes.size() == 0` a secas —sin la rama del
        * origen— pasaría los cinco casos anteriores.
        */
-      await signInWithCustomToken(auth(), await token(UID, { admin: true }));
+      await entrarComo(UID, { admin: true });
       await expect(
         setDoc(
           doc(db(), 'librerias', 'l_admin_foto'),
