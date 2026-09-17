@@ -11233,10 +11233,26 @@ sitio. La única que se nota al usarlo es la 6.
 
 ---
 
-## D-730 · Una biblioteca que presta su sala son **dos fichas**, no una con dos caras
+## D-740 · Una biblioteca que presta su sala son **dos fichas**, no una con dos caras
 
 **B-960, 2026-09-17. La decidió el dueño**, sobre las tres opciones que se le
 presentaron.
+
+> **Nació como D-730 y se renumeró el mismo día.** Dos frentes en paralelo
+> tomaron «la siguiente libre» cuando la última escrita era D-723, y ninguno
+> podía ver la del otro: la otra D-730 —el aislamiento del emulador por
+> `projectId`— ya estaba en `main` y citada en cinco lugares, así que se movió
+> ésta, que solo se citaba adentro de su propia rama. Es el mismo criterio que el
+> BACKLOG usa para sus huecos de numeración: **se mueve lo que todavía no está
+> escrito en otro lado**, y el salto queda dicho para que no se lea como una
+> entrada perdida. D-731 a D-739 quedan de margen.
+>
+> **Y el hueco destapó algo que no tiene red:** `tests/bloques-de-codigo-en-la-doc.test.ts`
+> detecta dos `### B-` con el mismo número, y **nada detecta dos `## D-`
+> repetidos** — `tests/decisiones-referenciadas.test.ts` valida el formato y
+> `scripts/decisiones-referenciadas.mjs` busca el caso inverso (citadas y nunca
+> escritas). Mismo riesgo, misma clase de día de trabajo, media red. Anotado al
+> BACKLOG por el frente que lo encontró.
 
 ### El problema
 

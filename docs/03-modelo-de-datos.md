@@ -1179,7 +1179,7 @@ Dónde sacar libros. Es la cuarta colección de la Guía y la que más se parece
 galería, mismo `contactoDeQuienCargo` interno.
 
 **Una biblioteca que además presta su sala tiene dos fichas** —una acá y otra en
-`/lugares`—, y eso es una decisión del dueño, no un descuido: **D-730**.
+`/lugares`—, y eso es una decisión del dueño, no un descuido: **D-740**.
 
 ### Los cuatro campos que no tiene ninguna otra ficha
 

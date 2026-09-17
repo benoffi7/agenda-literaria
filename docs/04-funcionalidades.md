@@ -1156,7 +1156,7 @@ listado), bandeja genérica de `DirectorioPanel`, formulario propio y formulario
 público en `/guia/bibliotecas/sumar`.
 
 **Una biblioteca que además presta su sala tiene dos fichas** —una acá y otra en
-«Lugares»—, y es una decisión del dueño (**D-730**): son dos preguntas de dos
+«Lugares»—, y es una decisión del dueño (**D-740**): son dos preguntas de dos
 personas distintas, y una ficha que contesta las dos obliga a las dos a leer la
 mitad que no les sirve. El capítulo de ayuda del panel lo explica, porque la
 primera vez que alguien vea la misma institución en las dos secciones va a querer
