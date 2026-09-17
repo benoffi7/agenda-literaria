@@ -12,6 +12,13 @@
  * nadie lo nota. Es la forma exacta en que nació uno de los hallazgos del
  * `auditor-documentacion`: una entrada citada que nunca se escribió.
  *
+ * Informa **dos cosas distintas**, y separadas porque no piden el mismo trabajo:
+ * las referencias **sin entrada** —hay que escribir la decisión— y las citadas
+ * **con otra grafía** (`D-9` contra `## D-09`), donde la decisión existe y lo
+ * único que no resuelve es el ancla. Las nueve primeras entradas llevan cero a la
+ * izquierda y ninguna de `D-10` en adelante lo lleva; mezclar las dos listas hacía
+ * que una decisión escrita se reportara como inexistente (**B-910**).
+ *
  * ── Por qué NO es un test bloqueante ──────────────────────────────
  * Porque **citar una decisión antes de escribirla es legítimo y frecuente en
  * este repo.** Los frentes trabajan en paralelo sobre ramas distintas: el que
@@ -60,6 +67,23 @@ export const referenciasDe = (contenido) => [
 ];
 
 /**
+ * El número de una decisión, sin el cero a la izquierda.
+ *
+ * **La identidad de una decisión es su número, no cómo se escribió.** Las nueve
+ * primeras entradas del registro llevan cero (`D-01` … `D-09`) y de `D-10` en
+ * adelante no lo lleva ninguna, así que la misma decisión aparece con dos
+ * grafías según quién la cite. Comparar cadenas hacía que `D-9` se reportara
+ * como huérfana teniendo `D-09` escrita — que es exactamente lo que pasó con la
+ * sexta huérfana de **B-910**, donde además la «cita» era un ejemplo de
+ * ordenamiento en prosa (`13-agentes.md`: «que ordene `D-9` después de
+ * `D-100`») y no un enlace a nada.
+ *
+ * @param {string} decision
+ * @returns {number}
+ */
+const numeroDe = (decision) => Number(decision.slice(2));
+
+/**
  * Las referencias que no tienen entrada, con el archivo donde aparecen.
  *
  * @param {Record<string, string>} textos archivo → contenido
@@ -67,18 +91,50 @@ export const referenciasDe = (contenido) => [
  * @returns {{ decision: string, archivos: string[] }[]}
  */
 export const huerfanas = (textos, escritas) => {
-  const conocidas = new Set(escritas);
+  const conocidas = new Set(escritas.map(numeroDe));
   /** @type {Map<string, string[]>} */
   const porDecision = new Map();
   for (const [archivo, contenido] of Object.entries(textos)) {
     for (const ref of referenciasDe(contenido)) {
-      if (conocidas.has(ref)) continue;
+      if (conocidas.has(numeroDe(ref))) continue;
       porDecision.set(ref, [...(porDecision.get(ref) ?? []), archivo]);
     }
   }
   return [...porDecision.entries()]
     .map(([decision, archivos]) => ({ decision, archivos: archivos.sort() }))
-    .sort((a, b) => Number(a.decision.slice(2)) - Number(b.decision.slice(2)));
+    .sort((a, b) => numeroDe(a.decision) - numeroDe(b.decision));
+};
+
+/**
+ * Las referencias a una decisión **que existe**, escritas con otra grafía que la
+ * del encabezado: `D-9` contra `## D-09`.
+ *
+ * Va aparte de las huérfanas a propósito, porque no es la misma falla y no pide
+ * el mismo trabajo. Una huérfana es una decisión que no existe y hay que
+ * escribir; esto es una decisión que existe y está bien citada en prosa. Lo
+ * único que se pierde es el ancla: `06-decisiones.md#d-9` no resuelve a
+ * `## D-09`, así que **si la cita es un enlace** el enlace abre el documento sin
+ * ancla, que es la falla que este script existe para ver. Si es prosa, no hay
+ * nada que arreglar.
+ *
+ * @param {Record<string, string>} textos archivo → contenido
+ * @param {string[]} escritas
+ * @returns {{ citada: string, escrita: string, archivos: string[] }[]}
+ */
+export const otraGrafia = (textos, escritas) => {
+  const porNumero = new Map(escritas.map((d) => [numeroDe(d), d]));
+  /** @type {Map<string, { escrita: string, archivos: string[] }>} */
+  const porCita = new Map();
+  for (const [archivo, contenido] of Object.entries(textos)) {
+    for (const ref of referenciasDe(contenido)) {
+      const escrita = porNumero.get(numeroDe(ref));
+      if (escrita === undefined || escrita === ref) continue;
+      porCita.set(ref, { escrita, archivos: [...(porCita.get(ref)?.archivos ?? []), archivo] });
+    }
+  }
+  return [...porCita.entries()]
+    .map(([citada, { escrita, archivos }]) => ({ citada, escrita, archivos: archivos.sort() }))
+    .sort((a, b) => numeroDe(a.citada) - numeroDe(b.citada));
 };
 
 /**
@@ -109,9 +165,22 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   const sueltas = huerfanas(textos, escritas);
+  const grafias = otraGrafia(textos, escritas);
 
   process.stdout.write(`decisiones escritas en ${REGISTRO}: ${escritas.length}\n`);
   process.stdout.write(`archivos barridos: ${Object.keys(textos).length}\n`);
+
+  if (grafias.length > 0) {
+    process.stdout.write(`\ncitadas con otra grafía (la decisión existe): ${grafias.length}\n`);
+    for (const { citada, escrita, archivos } of grafias) {
+      process.stdout.write(`  ${citada} → ${escrita} — ${archivos.join(', ')}\n`);
+    }
+    process.stdout.write(
+      '  El ancla no resuelve con esa grafía. Si la cita es un enlace hay que corregirla;\n' +
+        '  si es prosa, no hay nada que hacer.\n\n',
+    );
+  }
+
   if (sueltas.length === 0) {
     process.stdout.write('sin referencias huérfanas\n');
     process.exit(0);

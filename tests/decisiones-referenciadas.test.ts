@@ -28,6 +28,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decisionesEscritas,
   huerfanas,
+  otraGrafia,
   referenciasDe,
 } from '../scripts/decisiones-referenciadas.mjs';
 
@@ -97,5 +98,45 @@ describe('el cruce', () => {
 
   it('con todo escrito no devuelve nada', () => {
     expect(huerfanas({ 'docs/a.md': 'D-01 y D-02' }, ['D-01', 'D-02'])).toEqual([]);
+  });
+
+  it('el cero a la izquierda no hace huérfana a una decisión escrita', () => {
+    /*
+     * **La sexta «huérfana» de B-910 era esto.** El registro escribe las nueve
+     * primeras con cero (`## D-09`) y de `D-10` en adelante ninguna lo lleva, así
+     * que comparar cadenas reportaba `D-9` como una decisión que nadie escribió
+     * teniendo su entrada ahí. Y el daño no es solo el ruido: una lista de
+     * huérfanas con una entrada falsa es una lista que se aprende a no mirar, que
+     * es el modo de falla de B-180 aplicado a un informe en vez de a un gate.
+     *
+     * Las dos direcciones, porque la cita puede venir escrita de cualquiera de
+     * las dos formas y el registro también puede cambiar de convención.
+     */
+    expect(huerfanas({ 'docs/a.md': 'ver D-9' }, ['D-09'])).toEqual([]);
+    expect(huerfanas({ 'docs/a.md': 'ver D-09' }, ['D-9'])).toEqual([]);
+  });
+});
+
+describe('las citadas con otra grafía', () => {
+  it('se informan aparte, con la grafía que el registro usa', () => {
+    // No es una huérfana —la decisión existe— pero `#d-9` no resuelve a
+    // `## D-09`, así que si la cita fuera un enlace habría que corregirla.
+    expect(otraGrafia({ 'docs/a.md': 'ver D-9', 'docs/b.md': 'ver D-9' }, ['D-09'])).toEqual([
+      { citada: 'D-9', escrita: 'D-09', archivos: ['docs/a.md', 'docs/b.md'] },
+    ]);
+  });
+
+  it('una cita con la misma grafía que el encabezado no se informa', () => {
+    // El control que evita que esta lista se vuelva todo el registro.
+    expect(otraGrafia({ 'docs/a.md': 'ver D-09 y D-100' }, ['D-09', 'D-100'])).toEqual([]);
+  });
+
+  it('una decisión que no existe es huérfana y no un problema de grafía', () => {
+    // La separación entre las dos listas, atada: `D-99` no está escrita de
+    // ninguna forma, así que sale por la puerta que pide escribir la decisión.
+    expect(otraGrafia({ 'docs/a.md': 'ver D-99' }, ['D-09'])).toEqual([]);
+    expect(huerfanas({ 'docs/a.md': 'ver D-99' }, ['D-09'])).toEqual([
+      { decision: 'D-99', archivos: ['docs/a.md'] },
+    ]);
   });
 });
