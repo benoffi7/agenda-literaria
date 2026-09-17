@@ -32,11 +32,11 @@
  * empujan por la API del emulador en el `beforeAll`.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
@@ -55,20 +55,6 @@ const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 const UID_ADMIN = 'uid_sistema_admin';
 const UID_PELADO = 'uid_sistema_sin_claim';
-
-const tokenPara = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `s-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const token = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return token;
-};
 
 /** El path del resumen, armado con la constante que usa el panel de verdad. */
 const RUTA = RUTA_RESUMEN.join('/');
@@ -163,7 +149,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
   it('un usuario logueado SIN el claim de admin tampoco', async () => {
     // Entrar con Google no alcanza: el claim se setea a mano con el Admin SDK
     // (§5.3). Es la diferencia entre «hay login» y «hay autorización».
-    await signInWithCustomToken(auth(), await tokenPara(UID_PELADO, false));
+    await entrarComo(UID_PELADO);
     await rechazadaPorPermisos(
       getDoc(doc(db(), ...RUTA_RESUMEN)),
       'logueado sin claim lee el resumen',
@@ -171,7 +157,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
   });
 
   it('un admin sí lo lee — que es lo que hace la pestaña del panel', async () => {
-    await signInWithCustomToken(auth(), await tokenPara(UID_ADMIN, true));
+    await entrarComo(UID_ADMIN, { admin: true });
     const snap = await getDoc(doc(db(), ...RUTA_RESUMEN));
     expect(snap.exists()).toBe(true);
     expect(snap.data()!.ga4.estado).toBe('ok');
@@ -184,7 +170,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
      * cierra que el panel (o alguien con el claim) le pise al tablero un número
      * inventado o borre el flag de rebuild.
      */
-    await signInWithCustomToken(auth(), await tokenPara(UID_ADMIN, true));
+    await entrarComo(UID_ADMIN, { admin: true });
     await rechazadaPorPermisos(
       setDoc(doc(db(), ...RUTA_RESUMEN), { version: 99 }, { merge: true }),
       'un admin pisa el resumen',
@@ -205,7 +191,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
     await getAdminFirestore(app).doc('sistema/rebuild').set({ pendiente: false });
     await deleteAdminApp(app);
 
-    await signInWithCustomToken(auth(), await tokenPara(UID_ADMIN, true));
+    await entrarComo(UID_ADMIN, { admin: true });
     expect((await getDoc(doc(db(), 'sistema', 'rebuild'))).exists()).toBe(true);
 
     await signOut(auth());

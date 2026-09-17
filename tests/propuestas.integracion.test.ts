@@ -21,18 +21,16 @@
  * API del emulador en el `beforeAll` (B-174).
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { formAPropuesta, propuestaVacia } from '@/lib/propuesta-schema';
 import type { Propuesta, PropuestaForm } from '@/types/propuesta';
 import {
-  PROJECT_ID,
   cargarReglas,
   emuladorAuthVivo,
   emuladorVivo,
@@ -45,20 +43,6 @@ const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 const UID = 'uid_propuestas_admin';
 const UID_OTRO = 'uid_propuestas_admin_2';
 const UID_PELADO = 'uid_propuestas_sin_claim';
-
-const token = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `p-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const t = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return t;
-};
 
 const form = (over: Partial<PropuestaForm> = {}): PropuestaForm => ({
   ...propuestaVacia(),
@@ -90,7 +74,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
     // B-174 / B-219 — las reglas de este checkout, sobre la base de este
     // working-tree, que arranca sin ninguna.
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await token(UID, true));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   describe('el camino que hoy funciona: un admin carga lo que llegó por DM', () => {
@@ -431,7 +415,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
 
   describe('el único cambio que un admin puede hacer: revisarla', () => {
     beforeAll(async () => {
-      await signInWithCustomToken(auth(), await token(UID, true));
+      await entrarComo(UID, { admin: true });
       await setDoc(doc(db(), 'propuestas', 'p_rev'), documento());
     });
 
@@ -589,7 +573,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
     });
 
     it('y alguien logueado sin el claim tampoco', async () => {
-      await signInWithCustomToken(auth(), await token(UID_PELADO, false));
+      await entrarComo(UID_PELADO);
       await expect(getDoc(doc(db(), 'propuestas', 'p_ok'))).rejects.toThrow();
     });
   });
@@ -637,7 +621,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
     });
 
     it('y alguien logueado sin el claim también: la puerta es la forma, no la sesión', async () => {
-      await signInWithCustomToken(auth(), await token(UID_PELADO, false));
+      await entrarComo(UID_PELADO);
       await setDoc(doc(db(), 'propuestas', 'p_pelado_ok'), {
         ...formAPropuesta(form(), 'formulario-publico'),
         creadoEn: serverTimestamp(),

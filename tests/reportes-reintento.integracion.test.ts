@@ -13,10 +13,9 @@
  * hacer daño que la regla tiene que tapar.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { fileURLToPath } from 'node:url';
 import { auth } from '@/lib/firebase-client';
@@ -76,25 +75,11 @@ const sembrarReporte = async (id: string, over: Record<string, unknown> = {}) =>
   await cerrar();
 };
 
-const tokenAdmin = async (uid: string) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `t-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, { admin: true });
-  const token = await a.createCustomToken(uid);
-  await deleteAdminApp(app);
-  return token;
-};
-
 describe.skipIf(!vivo)('reintentar un reporte fallido — B-31', () => {
   beforeAll(async () => {
     await limpiarFirestore();
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await tokenAdmin(UID));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   it('un reporte en error vuelve a la cola, con los intentos a cero', async () => {

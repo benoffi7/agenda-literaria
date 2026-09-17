@@ -13,10 +13,10 @@
  * el flag que decide qué se sigue mostrando en la pantalla de reportes.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { fileURLToPath } from 'node:url';
 import { auth } from '@/lib/firebase-client';
@@ -72,25 +72,11 @@ const sembrarReporte = async (id: string, over: Record<string, unknown> = {}) =>
   await cerrar();
 };
 
-const tokenAdmin = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `t-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  await a.setCustomUserClaims(uid, esAdmin ? { admin: true } : {});
-  const token = await a.createCustomToken(uid, esAdmin ? { admin: true } : {});
-  await deleteAdminApp(app);
-  return token;
-};
-
 describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
   beforeAll(async () => {
     await limpiarFirestore();
     await cargarReglas(REGLAS);
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
   }, 30_000);
 
   it('un admin marca resuelto un reporte, sin tocar el resto del documento', async () => {
@@ -163,10 +149,10 @@ describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
 
   it('MUTACIÓN — un admin sin el claim no puede marcar resuelto', async () => {
     await sembrarReporte('sinClaim');
-    await signInWithCustomToken(auth(), await tokenAdmin('uid_pelado_resuelto', false));
+    await entrarComo('uid_pelado_resuelto');
     await expect(marcarResuelto('sinClaim', true)).rejects.toThrow(/permission|insufficient/i);
     // Vuelve a loguearse como admin para no romper los `it` que siguen.
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
   });
 
   it('MUTACIÓN — un anónimo no puede escribir `resuelto`', async () => {
@@ -176,7 +162,7 @@ describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
     await signOut(auth());
     await expect(marcarResuelto('anonimo', true)).rejects.toThrow(/permission|insufficient/i);
     // Vuelve a loguearse como admin para no romper los `it` que siguen.
-    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    await entrarComo(UID, { admin: true });
   });
 
   it('borrar un reporte sigue prohibido, incluso resuelto', async () => {

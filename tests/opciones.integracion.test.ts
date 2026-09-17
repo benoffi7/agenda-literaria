@@ -1,9 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { signInWithCustomToken } from 'firebase/auth';
+import { entrarComo } from './fixtures/credenciales-del-emulador';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 // `db` sale de firestore-client desde el corte del bundle (B-09).
@@ -48,19 +46,8 @@ const UID_OTRO = 'uid_test_admin_2';
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 /** Loguea al panel con el claim `admin`, como lo haría scripts/set-admin-claim.mjs. */
-const entrarComoAdmin = async (uid: string) => {
-  const adminApp = initAdmin({ projectId: PROJECT_ID }, `test-${Date.now()}`);
-  const adminAuth = getAdminAuth(adminApp);
-  try {
-    await adminAuth.createUser({ uid, email: `${uid}@test.local` });
-  } catch {
-    /* ya existía */
-  }
-  await adminAuth.setCustomUserClaims(uid, { admin: true });
-  const token = await adminAuth.createCustomToken(uid);
-  await deleteAdminApp(adminApp);
-  await signInWithCustomToken(auth(), token);
-};
+const entrarComoAdmin = (uid: string) =>
+  entrarComo(uid, { admin: true }, { email: `${uid}@test.local` });
 
 /** Siembra las base, como hace scripts/seed-emulador.mjs. */
 const sembrarBase = async () => {
