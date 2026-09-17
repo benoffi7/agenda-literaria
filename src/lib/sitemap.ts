@@ -76,6 +76,7 @@ import {
   rutaDeDetalle,
   rutaDeLibreria,
   rutaDeLugar,
+  rutaDeBiblioteca,
   rutaDeMes,
   rutaDeSuscripcion,
   urlAbsoluta,
@@ -356,12 +357,25 @@ export interface EntradaDelSitio {
    * `librerias` y `suscripciones`: una lista de slugs, opcional, y la ruta la
    * produce `rutaDeLugar`.
    *
-   * Con esto la familia queda cerrada y el argumento de arriba se ve completo:
-   * son **tres campos y no uno genérico** (`fichas: { directorio, slug }[]`)
-   * porque con uno genérico quien arma la lista elige el prefijo, que es justo lo
-   * que B-330 sacó de las manos de los llamadores.
+   * El argumento de arriba se ve completo acá: son **campos separados y no uno
+   * genérico** (`fichas: { directorio, slug }[]`) porque con uno genérico quien
+   * arma la lista elige el prefijo, que es justo lo que B-330 sacó de las manos
+   * de los llamadores.
    */
   lugares?: readonly { slug: string }[];
+  /**
+   * Las fichas del cuarto directorio — B-960. Mismo trato y mismo motivo que las
+   * tres de arriba: una lista de slugs, opcional, y la ruta la produce
+   * `rutaDeBiblioteca`.
+   *
+   * **Entró tarde**: B-960 construyó la sección entera y no tocó este archivo, así
+   * que el listado `/guia/bibliotecas/` entraba —lo deriva `directoriosDisponibles`—
+   * y las fichas no. No es una fuga; es la dirección contraria, páginas indexables
+   * que no se le ofrecían al buscador. Lo cobró el `auditor-privacidad`, y no lo
+   * agarró ningún test porque `tests/sitemap.test.ts` excluye a propósito las
+   * rutas dinámicas del chequeo de cobertura.
+   */
+  bibliotecas?: readonly { slug: string }[];
   /**
    * Las opciones de taxonomía del índice, **para los hubs** — B-108.
    *
@@ -402,6 +416,7 @@ export const rutasDelSitemap = ({
   librerias = [],
   suscripciones = [],
   lugares = [],
+  bibliotecas = [],
   ahora,
 }: EntradaDelSitio): string[] => [
   ...new Set([
@@ -448,6 +463,9 @@ export const rutasDelSitemap = ({
     // abajo. El listado `/guia/lugares/` entra arriba por
     // `directoriosDisponibles()` en cuanto la fila deja de decir «en camino».
     ...lugares.filter((l) => l.slug).map((l) => rutaDeLugar(l.slug)),
+    // Ídem para el cuarto — B-960. El listado `/guia/bibliotecas/` entra arriba
+    // por `directoriosDisponibles`; acá van las fichas.
+    ...bibliotecas.filter((b) => b.slug).map((b) => rutaDeBiblioteca(b.slug)),
   ]),
 ];
 

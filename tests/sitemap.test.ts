@@ -18,6 +18,7 @@ import {
   rutaCanonica,
   rutaDeDetalle,
   rutaDeLibreria,
+  rutaDeBiblioteca,
   rutaDeMes,
   urlAbsoluta,
 } from '@/lib/rutasPublicas';
@@ -68,11 +69,13 @@ const rutas = (o: {
   entradas?: ReturnType<typeof entradaDePrueba>[];
   canceladas?: { slug: string; editadaEn: string | null }[];
   librerias?: { slug: string }[];
+  bibliotecas?: { slug: string }[];
 }) =>
   rutasDelSitemap({
     entradas: o.entradas ?? [],
     canceladas: o.canceladas ?? [],
     librerias: o.librerias ?? [],
+    bibliotecas: o.bibliotecas ?? [],
     ahora: AHORA,
   });
 
@@ -124,6 +127,39 @@ describe('las fichas de la Guía — B-901, §6 #7 del inventario', () => {
       rutas({ librerias: [{ slug: '' }] }).filter((r) => r.includes('/guia/librerias/')).sort(),
     ).toEqual(FIJAS_DE_LIBRERIAS);
   });
+
+  /*
+   * B-960 — la cuarta sección, y el caso que faltaba. El frente construyó
+   * `/guia/bibliotecas/` entera y no tocó `sitemap.ts`, así que el **listado**
+   * entraba —lo deriva `directoriosDisponibles()`— y las **fichas** no: páginas
+   * indexables que nadie le ofrecía al buscador. No lo agarró ningún test porque
+   * el chequeo de cobertura de páginas excluye a propósito las rutas dinámicas
+   * (`[slug]`), así que este bloque es el único lugar donde la ausencia se ve.
+   * Lo cobró el `auditor-privacidad`.
+   */
+  const FIJAS_DE_BIBLIOTECAS = ['/guia/bibliotecas/', '/guia/bibliotecas/sumar/'];
+
+  it('cada biblioteca publicada tiene su URL, con la barra final de B-330', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el `...bibliotecas.filter(...).map(rutaDeBiblioteca)`
+     * de `rutasDelSitemap` deja este caso en rojo.
+     */
+    const todas = rutas({ bibliotecas: [{ slug: 'nacional' }, { slug: 'del-congreso' }] });
+    expect(todas).toContain('/guia/bibliotecas/nacional/');
+    expect(todas).toContain('/guia/bibliotecas/del-congreso/');
+  });
+
+  it('la URL la arma `rutaDeBiblioteca`, no una interpolación del sitemap', () => {
+    expect(rutas({ bibliotecas: [{ slug: 'x' }] })).toContain(rutaDeBiblioteca('x'));
+  });
+
+  it('una biblioteca sin slug no puede tener URL, así que no entra', () => {
+    expect(
+      rutas({ bibliotecas: [{ slug: '' }] })
+        .filter((r) => r.includes('/guia/bibliotecas/'))
+        .sort(),
+    ).toEqual(FIJAS_DE_BIBLIOTECAS);
+  });
 });
 
 describe('las páginas fijas', () => {
@@ -143,8 +179,15 @@ describe('las páginas fijas', () => {
       // era el único que podía entrar al sitemap sin que nada lo dijera, y eso es
       // ofrecerle al buscador una URL para que indexe un JSON.
       '/suscripciones.json',
-      // B-833 — el cuarto y último. Mismo motivo.
+      // B-833 — el cuarto. Mismo motivo.
       '/lugares.json',
+      /*
+       * B-960 — el quinto, y la razón por la que el comentario de arriba dejó de
+       * decir «y último»: la Guía ganó una sección más. Entró en el pase de
+       * auditores y no con el frente, que es el mismo olvido del sitemap: quien
+       * construye la sección extiende lo que ve, y esta lista no se ve desde ahí.
+       */
+      '/bibliotecas.json',
       '/version.json',
       '/sitemap.xml',
       '/robots.txt',

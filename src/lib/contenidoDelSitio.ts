@@ -1810,6 +1810,7 @@ export const sitemapDelSitio = async (
     librerias,
     suscripciones,
     lugares,
+    bibliotecas,
   } = await contenidoDelSitio();
   const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
 
@@ -1827,6 +1828,11 @@ export const sitemapDelSitio = async (
     // misma garantía: salen de la lectura filtrada, así que un lugar pendiente no
     // puede llegar acá aunque alguien se olvide de filtrar en otro lado.
     lugares: lugares.map((l) => ({ slug: l.slug })),
+    // B-960 — las fichas del cuarto directorio, por el mismo camino y con la
+    // misma garantía. Entró después que las tres de arriba: el frente construyó
+    // la sección y no tocó el sitemap, así que las fichas quedaron sin ofrecerle
+    // al buscador hasta el pase de auditores.
+    bibliotecas: bibliotecas.map((b) => ({ slug: b.slug })),
     canceladas: canceladas.map((a) => ({
       slug: a.slug,
       editadaEn: canceladasEditadasEn[a.slug] ?? null,
