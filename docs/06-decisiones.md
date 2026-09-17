@@ -11611,8 +11611,24 @@ presentaron.
 > detecta dos `### B-` con el mismo número, y **nada detecta dos `## D-`
 > repetidos** — `tests/decisiones-referenciadas.test.ts` valida el formato y
 > `scripts/decisiones-referenciadas.mjs` busca el caso inverso (citadas y nunca
-> escritas). Mismo riesgo, misma clase de día de trabajo, media red. Anotado al
-> BACKLOG por el frente que lo encontró.
+> escritas). Mismo riesgo, misma clase de día de trabajo, media red. Es
+> **B-1128**, y el mismo día lo demostró **tres veces**: esta colisión más los
+> dos ítems de librerías que nacieron como B-1113 y B-1114 sobre números ya
+> ocupados. Las tres las agarró alguien al integrar, ninguna un chequeo.
+>
+> Dos cosas que el ítem necesita y no son obvias:
+>
+> 1. **Una `D-` duplicada es peor que una `B-` duplicada**, porque una decisión
+>    es lo que el **código cita**: `tests/emulador.ts` y
+>    `scripts/project-id-emulador.mjs` apuntan a D-730 desde sus comentarios. Dos
+>    decisiones con el mismo número hacen que un comentario del fuente mande a la
+>    equivocada, y eso **no se descubre leyendo el código** — se descubre el día
+>    que alguien va a buscar por qué se hizo algo y encuentra otra cosa.
+> 2. **El caso que casi se cuela no fue el merge, fue la resolución.** El merge
+>    da conflicto y avisa; lo que entra en verde es quedarse con los dos bloques
+>    —buenos los dos, y sin pisarse en el archivo— y no renumerar. Un chequeo que
+>    confíe en que el merge avisa no cubre nada: el duplicado nace **después**,
+>    al resolver.
 
 ### El problema
 
