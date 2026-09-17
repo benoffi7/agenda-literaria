@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { tokenDe } from './fixtures/credenciales-del-emulador';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import {
   connectStorageEmulator,
@@ -16,7 +15,7 @@ import { adminBucket } from '@/lib/firebase-admin';
 import { MAXIMO_BYTES } from '@/lib/imagenes';
 import { rutaDeImagen, rutaDeImagenPropuesta } from '@/lib/imagenes-archivo';
 import { MARCA_OPTIMIZADA } from '../functions/imagenes.js';
-import { PROJECT_ID, cargarReglasStorage, emuladorStorageVivo } from './emulador';
+import { cargarReglasStorage, emuladorStorageVivo } from './emulador';
 
 /**
  * `storage.rules` — la mitad de DEC-7b que el schema no puede dar.
@@ -39,37 +38,30 @@ const UID = 'uid_test_storage';
 const BUCKET = 'agenda-literaria.firebasestorage.app';
 
 /**
- * `esAdmin: boolean` y no un objeto de claims, **a propósito**: este archivo
- * prueba `storage.rules`, donde el único rol que existe es `admin`. El
+ * **El único archivo del repo que pide `claimsEnElToken`, y no es un descuido:
+ * es lo que sostiene B-1030.**
+ *
+ * Los demás tests de integración entran por la vía de producción —el claim se
+ * registra con `setCustomUserClaims` y nada viaja adentro del custom token
+ * (B-895)—. Acá seis de los diecinueve casos se ponen rojos con esa vía:
+ * `storage.rules` no ve `request.auth.token.admin` cuando el claim llega por el
+ * registro, y `firestore.rules`, contra el mismo emulador y el mismo login, sí.
+ *
+ * Unificar este archivo taparía el hallazgo, así que **se queda con la vía
+ * infiel a propósito** y la pide por su nombre. La repro de B-1030 es cambiar
+ * este `claimsEnElToken: true` por `false` y correr el archivo.
+ *
+ * `esAdmin: boolean` y no un objeto de claims, también **a propósito**: este
+ * archivo prueba `storage.rules`, donde el único rol que existe es `admin`. El
  * `publicador` de B-888 tiene su propio helper abajo, separado, para que la
  * diferencia se vea en el nombre y no haya que leer el argumento.
  */
-const tokenPara = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `s-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  const token = await a.createCustomToken(uid, esAdmin ? { admin: true } : {});
-  await deleteAdminApp(app);
-  return token;
-};
+const tokenPara = (uid: string, esAdmin: boolean) =>
+  tokenDe(uid, esAdmin ? { admin: true } : {}, { claimsEnElToken: true, etiqueta: 's' });
 
 /** Un token con el claim `publicador` de B-888, y **sin** `admin`. */
-const tokenPublicador = async (uid: string) => {
-  const app = initAdmin({ projectId: PROJECT_ID }, `sp-${uid}-${Date.now()}`);
-  const a = getAdminAuth(app);
-  try {
-    await a.createUser({ uid });
-  } catch {
-    /* ya existía */
-  }
-  const token = await a.createCustomToken(uid, { publicador: true });
-  await deleteAdminApp(app);
-  return token;
-};
+const tokenPublicador = (uid: string) =>
+  tokenDe(uid, { publicador: true }, { claimsEnElToken: true, etiqueta: 'sp' });
 
 let _almacen: ReturnType<typeof getStorage> | null = null;
 const almacen = () => {
