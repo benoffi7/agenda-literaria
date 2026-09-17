@@ -29,8 +29,9 @@ No inventes candidatos: sacalos del rastro que ya existe.
 git log --oneline -60
 
 # La tabla de Cerrados del backlog: la columna que sirve es la CAUSA, no el
-# síntoma. Dos ítems con la misma causa son un candidato.
-grep -n -A2 '^## Cerrados' docs/BACKLOG.md
+# síntoma. Dos ítems con la misma causa son un candidato. Vive en el archivo del
+# rastro, no en el vivo (`ada6be0` partió el backlog en dos).
+grep -n -A2 '^## Cerrados' docs/BACKLOG-cerrados.md
 
 # Pasos duplicados entre workflows (la lección de verificar-bundle.sh).
 grep -rn 'run:' .github/workflows/ | sort | uniq -d

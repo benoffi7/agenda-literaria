@@ -7956,6 +7956,39 @@ la asimetría en vez de mostrarla.
 **Repro:** con el emulador arriba, sacarle a `tokenPara`/`tokenPublicador` el
 objeto de claims del `createCustomToken`, dejando el `setCustomUserClaims`.
 
+### B-1120 · Los comandos que los skills dicen correr apuntaban al archivo viejo del backlog · ✅ hecho (2026-09-17) · P2 — de la tanda de ítems no visibles
+
+**Un `grep` que no matchea no falla: devuelve vacío.** El agente lee «no hay
+nada», sigue al paso siguiente y toma la decisión contraria a la que el skill
+quería. Nadie ve el error porque el que corre el comando es un modelo, no el CI.
+
+`ada6be0` partió el backlog en dos y **369 de los 430 ítems se mudaron** a
+`BACKLOG-cerrados.md`. Dos skills se quedaron mirando el archivo vivo:
+
+- **`al-backlog`** buscaba ids duplicados con `grep -n "B-" docs/BACKLOG.md`, o
+  sea **sin ver el 86% de los ids que existen**. El paso se llama literalmente
+  «¿ya está?» y contestaba que no sobre un archivo que no tiene la respuesta.
+  Con seis frentes anotando ítems en paralelo eso es una colisión de `B-`
+  garantizada: el choque de B-930, otra vez, y por una causa nueva.
+- **`automatizar`** buscaba la tabla de causas con
+  `grep -n -A2 '^## Cerrados' docs/BACKLOG.md`. Ese encabezado da **0** ahí y
+  **1** en el archivo del rastro. Referencia muerta literal.
+
+Lo encontró el `auditor-documentacion`. **Los dos arreglados**, y el de
+`al-backlog` además ahora dice lo que el tablero no sabe: un id reservado y nunca
+escrito (B-1051) y un id citado desde el código que nunca fue ítem no cuentan
+para `proximoNumero`.
+
+**La red es `tests/comandos-de-los-skills.test.ts`, y verifica la clase por dos
+lados:** ejecuta los `grep` de los bloques ```bash de cada definición de
+`.claude/` y exige que encuentren algo —corriendo `grep` de verdad, no
+traduciendo el patrón a una `RegExp` de JS, porque un chequeo que aproxima el
+patrón verifica su propia traducción—; y verifica que **las 257 rutas del repo
+que las definiciones citan entre backticks** existan. Las dos mutaciones se
+probaron en rojo. Es la familia de B-139 con el daño un paso más adelante: allá
+la definición no cargaba, acá carga bien y lo que está roto es lo que dice
+adentro.
+
 ## Pendiente de acción manual del dueño
 
 ### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1

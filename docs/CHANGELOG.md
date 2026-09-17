@@ -2,6 +2,38 @@
 
 ## Sin publicar
 
+- **Los comandos que los skills dicen correr apuntaban al archivo viejo del
+  backlog — B-1120.** Un `grep` que no matchea no falla: devuelve vacío, el
+  agente lee «no hay nada» y sigue de largo. `al-backlog` buscaba ids duplicados
+  solo en `docs/BACKLOG.md`, o sea **sin ver el 86% de los ids que existen**
+  desde que el backlog se partió en dos, justo en el paso que se llama «¿ya
+  está?»; y `automatizar` buscaba la tabla de causas con un encabezado que ya no
+  vive ahí. Los dos arreglados.
+
+  **La red nueva es `tests/comandos-de-los-skills.test.ts`**, y mira la clase por
+  dos lados: **ejecuta** los `grep` de los bloques de las definiciones de
+  `.claude/` y exige que encuentren algo —corriendo `grep` de verdad, no
+  traduciendo el patrón a una `RegExp`, porque un chequeo que aproxima el patrón
+  termina verificando su propia traducción—, y verifica que las **257 rutas del
+  repo** que esas definiciones citan existan. Es la familia de B-139 con el daño
+  un paso más adelante: allá la definición no cargaba, acá carga bien y lo que
+  está roto es lo que dice adentro.
+
+- **Cuatro sobrantes que estaban enterrados adentro de ítems ya cerrados, ahora
+  con número** — B-1121 (el chequeo que B-205 prometió y no existe), B-1122 (el
+  nodo `Organization` del sitio, que además tiene a B-785 esperándolo), B-1123
+  (un patrón citado tres veces como «D-100» sin `D-` propio) y B-1124 (las cinco
+  fichas que B-976 dejó para corregir a mano, y que nadie confirmó). Los cuatro
+  se verificaron contra el código de hoy antes de escribirse: de los siete que
+  salieron del barrido, **uno ya estaba resuelto y otro había cambiado de forma**,
+  y ésos no se escribieron. Un ítem nuevo que manda a buscar un bug que no existe
+  es peor que no tenerlo.
+
+- **`.estado/` está en el `.gitignore` — B-1125.** El protocolo de las tandas en
+  paralelo manda anotar ahí lo que queda abierto, y es el único directorio del
+  repo que no se versiona: hoy hay pendientes marcados en once archivos que se
+  borran con el disco. Ya costó dos veces, las dos medidas.
+
 - **`storage.rules` sí ve el claim que llega por el registro: B-1030 se cierra
   sin tocar una regla.** El ítem afirmaba una asimetría —`firestore.rules` ve
   `request.auth.token.admin` cuando el claim llega por `setCustomUserClaims` y

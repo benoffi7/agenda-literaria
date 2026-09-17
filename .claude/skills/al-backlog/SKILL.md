@@ -14,13 +14,27 @@ El reporte a anotar viene en `$ARGUMENTS` o de la conversación.
 
 ## 1 · Antes de escribir: ¿ya está?
 
+**El backlog son DOS archivos desde `ada6be0`** (2026-09-17): `docs/BACKLOG.md`
+tiene lo que falta y `docs/BACKLOG-cerrados.md` el rastro de lo hecho y lo
+descartado — **369 de los 430 ítems están en el segundo**. Buscá en los dos o vas
+a reusar un id que ya existe:
+
 ```bash
-grep -n "B-" docs/BACKLOG.md | tail -40
+grep -n "^### B-" docs/BACKLOG.md docs/BACKLOG-cerrados.md | tail -40
 ```
 
-Leé la sección **Cerrados** además de las abiertas. Si el ítem ya existe, **no
-abras otro**: agregá el dato nuevo al que está (un síntoma más, un caso que lo
-reproduce, la versión en que se vio) y decilo.
+Para el **próximo número libre**, `npm run tablero` lo calcula sobre los dos. Dos
+cosas que ese número no sabe, y que son las que producen los choques:
+
+- un id **reservado por una tanda y nunca escrito** no está en ningún archivo, así
+  que se ofrece como libre (**B-1051**). Antes de tomarlo, mirá los rangos
+  reservados en `EN-CURSO.md`;
+- hay ids **citados desde el código** que nunca fueron ítem, y tampoco cuentan.
+
+Leé la sección **Cerrados** —que vive en `BACKLOG-cerrados.md`— además de las
+abiertas. Si el ítem ya existe, **no abras otro**: agregá el dato nuevo al que
+está (un síntoma más, un caso que lo reproduce, la versión en que se vio) y
+decilo.
 
 ## 2 · Clasificar
 

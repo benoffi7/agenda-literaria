@@ -150,6 +150,27 @@ Resueltas el 2026-08-21:
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
 
+### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? · P3 — solo se ve en el panel
+
+**Sobrante declarado adentro de B-976** (la migración de `/opciones/barrio`, ✅
+2026-09-17): su propio título dice «quedan 5 a mano», y lista cinco actividades
+con `barrio` y `ciudad` incoherentes —CABA contra provincia de Buenos Aires,
+Núñez contra Neuquén— esperando que las corrija el dueño.
+
+**Nadie confirmó nunca que se hayan hecho, y no se puede confirmar desde el
+repo:** es dato de producción. Lo que sí está verificado es que el mecanismo de
+soporte sigue vigente y con tests (`src/lib/reubicacion-de-barrio.mjs`) y que
+**se niega a adivinar a propósito**: marca «ambiguo» y no reubica solo, que es lo
+correcto y también el motivo de que estas cinco queden a mano.
+
+**Y hay un segundo número, más nuevo y distinto, que conviene no confundir:**
+`docs/CHANGELOG.md:337-338` dice «quedan 9 sedes para el dueño», de un backfill
+posterior (`sembrar-geografia.mjs`). No son las mismas cinco.
+
+**Qué hacer:** mirar en el panel si esas cinco fichas siguen cruzadas. Si ya
+están, esto se cierra con una línea; si no, son cinco ediciones. Lo que no puede
+seguir es que nadie sepa cuál de las dos es.
+
 ### B-962 · Las dos imágenes del banner de Mar del Plata · P2 — abierto el 2026-09-15
 
 El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
@@ -1152,6 +1173,47 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1121 · El chequeo que B-205 prometió —comparar lo publicado contra `main`— sigue sin existir · P2
+
+**Sobrante declarado adentro de un ítem ✅.** B-205 (recuperación de un deploy que
+no arrancó, P1, cerrado el 2026-09-02) proponía **dos** arreglos y dejó escrito
+que el segundo «sigue sin existir»: un chequeo que compare lo que hay publicado
+contra `main` y avise si difieren. Verificado hoy: no hay script ni paso de
+workflow que lo haga (`scripts/verificar-produccion.mjs`, sin nada de `sha`
+contra `main`).
+
+**El matiz importa para no buscar el bug equivocado:** la mitad automática de
+B-205 **hoy funciona**. Tuvo su propio bug —quedó inerte por la trampa de
+mock≠realidad— y se reparó bajo la cita `B-562`, que está comentada en
+`scripts/commit-base-deploy.sh:35-38` y que **tampoco existe como ítem**. Lo que
+falta es solo la visibilidad: que alguien se entere sin ir a mirar.
+
+### B-1125 · `.estado/` está en el `.gitignore`, así que los pendientes de los frentes no sobreviven al disco · P2 — de la tanda de ítems no visibles (2026-09-17)
+
+**Es el caso más puro de «ítem no visible» que produjo este repo, y lo produce
+solo.** El protocolo de las tandas en paralelo pide que cada frente anote su
+avance en `.estado/<frente>.md`, con un formato que distingue lo hecho (`✅`) de
+lo que **quedó abierto** (`⏸`) y de las preguntas al orquestador (`❓`).
+`.gitignore:50` tiene `.estado/`, y `git ls-files .estado` devuelve **cero**.
+
+O sea: **el lugar donde el protocolo manda anotar lo que falta es el único
+directorio del repo que no se versiona.** Hoy hay ⏸ y ❓ en once archivos de ahí.
+Dos ejemplos de lo que eso costó, los dos verificados:
+
+- El `npm audit fix` de `uuid` quedó anotado en `.estado/salud.md` el
+  2026-09-03 y **nunca se hizo**; se cerró de casualidad catorce días después,
+  cuando el salto a `astro@7.3.1` se llevó puesta esa rama de dependencias.
+- El helper compartido de credenciales del emulador —quince archivos copiando
+  `tokenAdmin`/`tokenPara`— quedó como `❓` en `.estado/falsos-verdes.md` el
+  2026-09-17 y no llegó a ningún backlog. Se rescató a mano.
+
+**No es que `.estado/` deba versionarse**: son archivos de coordinación, ruidosos
+y de una sola tanda, y el `.gitignore` está bien. Lo que falta es que el cierre
+de una tanda **no dependa de que alguien se acuerde de leerlos**. Lo más barato
+que se ve: que integrar incluya un barrido de `⏸`/`❓` sobre `.estado/*.md` y que
+cada uno salga como ítem o como línea del informe. Es la misma forma de B-1051 y
+de B-1120 — lo que no deja rastro derivado, se pierde.
+
 ### B-1051 · Un id reservado por una tanda y nunca escrito se ofrece como libre · P2 — salió de la partición del backlog (2026-09-17)
 
 `proximoNumero` deriva el próximo `B-` del número más alto que **encuentre
@@ -2127,6 +2189,37 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1122 · El nodo `Organization` del sitio, con el `sameAs` a Cafecito, nunca se escribió · P3
+
+**Sobrante declarado adentro de B-107** (Meta/OpenGraph/JSON-LD, ✅ 2026-09-02):
+«`Organization` en `/contacto` sigue afuera: nadie la pidió, y no tiene ítem
+propio (§4.5 del diseño)». Verificado hoy, sigue siendo cierto — y conviene
+decir por qué no alcanza con lo que hay: los tres `Organization` que existen en
+el código son **otra cosa**. `src/lib/detallePublico.ts:1670` es el organizador
+de cada actividad; `src/lib/suscripcionPublica.ts:717,739` son el `brand` y el
+`seller` de una oferta. Ninguno describe al sitio. En `src/pages/contacto.astro`
+y `src/lib/contactoDelSitio.ts` no hay `Organization` ni `sameAs`.
+
+Es el nodo que ata la identidad del sitio con sus perfiles, y **B-785 está
+bloqueado esperándolo**: su mitad pendiente es agregarle el `sameAs` al perfil de
+Cafecito, que no se puede hasta que el nodo exista.
+
+### B-1123 · Un patrón citado tres veces como «D-100» y que no tiene ningún `D-` propio · P3
+
+**Sobrante declarado adentro de B-345** (las citas a D-100 corregidas a D-111,
+✅ 2026-09-02). Quedaron dos citas más a D-100, en los cuerpos de B-50 y B-35
+(`docs/BACKLOG-cerrados.md:4301-4310` y `4312-4333`, verificadas hoy), que
+describen **un tercer patrón**: derivar un chequeo del grafo de imports, y sacar
+una decisión a un módulo puro para poder probarla. El propio B-345 lo dejó
+escrito: «quedan anotadas acá para quien quiera formalizar esa decisión con su
+propio número».
+
+Es exactamente la misma forma que B-910 —una decisión que el repo aplica en todos
+lados y que nunca se escribió— con la diferencia de que acá ni siquiera hay un
+número reservado. Y el patrón que nombra es de los más usados del proyecto: sacar
+la decisión del lugar imposible de probar es lo que hizo `que-deployar.sh`,
+`emuladores-arriba.sh` y media docena más.
 
 ### B-1010 · Las tablas de `10-salud-del-codigo.md` miden 254 archivos y el árbol tiene 341 · P3 — de cerrar B-877 (2026-09-17)
 
