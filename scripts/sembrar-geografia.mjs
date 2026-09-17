@@ -32,6 +32,10 @@
  * ciudad→provincia sería inventar el dato, y el primer error se publicaría en el
  * `addressLocality` del JSON-LD.
  *
+ * Y desde B-976 **tampoco toca una sede que se contradiga** —un barrio que dice
+ * una provincia junto a una ciudad que dice otra—: ahí deducir es desempatar, y
+ * el resultado tiene pinta de decidido. Esas se saltean enteras.
+ *
  * Esas sedes quedan **sin provincia**, se cuentan aparte al final, y se completan
  * al reeditar la actividad desde el panel. Es exactamente lo que B-950 pide: «la
  * provincia de lo que ya está cargado se completa con un backfill propio o al
@@ -61,6 +65,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 // actividad que el filtro del sitio no encuentra. Es la clase de B-88.
 import { geografiaNormalizada } from '../src/lib/geografia.mjs';
 import { ciudadesDe } from '../src/lib/ciudades.mjs';
+// B-976 — para **no** normalizar una sede que se contradice. Ver `modalidadesMigradas`.
+import { reubicacionDe } from '../src/lib/reubicacion-de-barrio.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
 const confirmaProduccion = process.argv.includes('--produccion');
@@ -102,6 +108,23 @@ const modalidadesMigradas = (modalidades = []) => {
   let cambio = false;
   const nuevas = modalidades.map((m) => {
     if (!m?.sede) return m;
+    /*
+     * **Una sede que se contradice se saltea** — B-976.
+     *
+     * `geografiaNormalizada` deduce la provincia de la ciudad, y eso está bien
+     * mientras la sede diga una sola cosa. Cuando dice dos, la deducción **elige
+     * una y la escribe**: la actividad «Basura» tiene `barrio=provincia-de-buenos-aires`
+     * y `ciudad=CABA`, y sin esta guarda quedaría como `caba / caba /
+     * provincia-de-buenos-aires` — o sea, con la contradicción resuelta a la
+     * fuerza, en una dirección, y con pinta de decidida. Eso es peor que el
+     * estado de ahora: el dato malo deja de verse.
+     *
+     * `reubicacionDe` ya sabe reconocer esos casos, así que la guarda es
+     * consultarla. Es el mismo principio que este script declara arriba —«no
+     * inventa la provincia de una ciudad que no sea CABA»— aplicado a la otra
+     * forma de inventar: desempatar.
+     */
+    if (reubicacionDe(m.sede).estado === 'ambiguo') return m;
     const geo = geografiaNormalizada(m.sede);
     const igual =
       (m.sede.provincia ?? '') === geo.provincia &&

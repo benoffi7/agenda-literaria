@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { provinciaQueDenota, reubicacionDe } from '@/lib/reubicacion-de-barrio.mjs';
 import { PROVINCIAS } from '@/lib/geografia.mjs';
+import { readFileSync } from 'node:fs';
 
 /**
  * **B-976 — el barrio que en realidad era una provincia.**
@@ -145,5 +146,43 @@ describe('B-976 · reubicacionDe', () => {
       geo: { lat: -1, lng: -2 },
     });
     expect(Object.keys(r.geografia!).sort()).toEqual(['barrio', 'ciudad', 'provincia']);
+  });
+});
+
+/**
+ * **B-976 — y `sembrar-geografia.mjs` no desempata.**
+ *
+ * `geografiaNormalizada` deduce la provincia de la ciudad, y eso está bien
+ * mientras la sede diga una sola cosa. Cuando dice dos, la deducción **elige una
+ * y la escribe**: la actividad «Basura» tiene `barrio=provincia-de-buenos-aires`
+ * con `ciudad=CABA`, y el backfill la habría dejado como `caba / caba /
+ * provincia-de-buenos-aires` — la contradicción resuelta a la fuerza y con pinta
+ * de decidida, que es peor que el estado de antes porque el dato malo deja de
+ * verse.
+ *
+ * Se descubrió corriendo el ensayo antes de aplicar, con los 183 documentos
+ * planificados a la vista. Este caso es lo que evita que vuelva.
+ */
+describe('B-976 · el backfill de geografía no toca lo contradictorio', () => {
+  const script = readFileSync('scripts/sembrar-geografia.mjs', 'utf8');
+
+  it('`sembrar-geografia.mjs` consulta `reubicacionDe` y saltea lo ambiguo', () => {
+    expect(script).toContain("from '../src/lib/reubicacion-de-barrio.mjs'");
+    /*
+     * El `return m` sin tocar, y **antes** de `geografiaNormalizada`: si la
+     * guarda quedara después, la deducción ya habría corrido.
+     */
+    expect(script).toMatch(/reubicacionDe\(m\.sede\)\.estado === 'ambiguo'\) return m;[\s\S]{0,80}geografiaNormalizada/);
+  });
+
+  /**
+   * Y el control de que la guarda **no** se lleve puesto lo que sí hay que
+   * migrar: una sede sana de CABA no es ambigua, así que el backfill la sigue
+   * normalizando. Sin este caso, marcar todo como ambiguo pasaría el test de
+   * arriba y desactivaría el backfill entero.
+   */
+  it('una sede sana no la frena', () => {
+    expect(reubicacionDe({ barrio: 'palermo', ciudad: 'CABA' }).estado).toBe('sin-cambios');
+    expect(reubicacionDe({ barrio: '', ciudad: 'Mar del Plata' }).estado).toBe('sin-cambios');
   });
 });

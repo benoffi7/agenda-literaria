@@ -170,6 +170,23 @@ crear ni ver (§5.4).
 > `provincia-de-buenos-aires` **no** quedó libre: la sostiene «Basura», la primera
 > ambigua.
 >
+> **Y el mismo día se corrió `sembrar-geografia.mjs`, que existía desde B-950 y
+> nunca se había corrido**: 180 actividades más. La geografía de las sedes pasó de
+> **0 filas con provincia a 251 de 259**.
+>
+> **Ese ensayo encontró un hueco en el propio backfill, y se tapó antes de
+> aplicar.** `geografiaNormalizada` deduce la provincia de la ciudad, y sobre una
+> sede que se contradice eso **no es deducir sino desempatar**: «Basura» habría
+> quedado como `caba / caba / provincia-de-buenos-aires`, con la contradicción
+> resuelta a la fuerza, en una dirección, y con pinta de decidida — peor que el
+> estado anterior, porque el dato malo deja de verse. Ahora consulta
+> `reubicacionDe` y saltea lo ambiguo, con su test.
+>
+> Después de las dos corridas quedan **9 sedes** para mirar a mano: las 3
+> ambiguas, la de `palermo | avellaneda`, la que tiene provincia sin ciudad, y 4
+> sin provincia porque el backfill no la puede deducir (Neuquén, Santa Fe,
+> Rosario y una sin ciudad). Los enlaces se le pasaron al dueño el 2026-09-17.
+>
 > El texto original queda abajo.
 
 **Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre

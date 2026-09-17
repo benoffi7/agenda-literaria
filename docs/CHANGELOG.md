@@ -15,8 +15,16 @@
   ciudad=provincia» aunque parezca obvio — funciona para `rosario | santa-fe` y
   sobre `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén».
 
-  Quedan 5 para el dueño, con sus enlaces, y cinco valores de `/opciones/barrio`
-  que ahora sí se pueden borrar sin dejar un slug colgado.
+  Y el mismo día se corrió `sembrar-geografia.mjs`, que existía desde B-950 y
+  nunca se había corrido: 180 actividades más. **La geografía de las sedes pasó de
+  0 filas con provincia a 251 de 259.**
+
+  Ese ensayo encontró un hueco en el propio backfill: `geografiaNormalizada`
+  deduce la provincia de la ciudad, y sobre una sede que se contradice eso no es
+  deducir sino **desempatar**. Ahora consulta `reubicacionDe` y saltea lo ambiguo.
+
+  Quedan 9 sedes para el dueño, con sus enlaces, y cinco valores de
+  `/opciones/barrio` que ahora sí se pueden borrar sin dejar un slug colgado.
 
 - **Dos P0 que estaban hechos y sin cerrar** — **B-890** (las tres guías, siete
   rutas en 200) y **B-896** (la callable con `enforceAppCheck`, `/proponer` vivo y
