@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Tocar una imagen del formulario la abre entera en otra pestaña** — pedido del
+  dueño. La vista previa mide 80px de alto: sirve para reconocer cuál es, no para
+  mirarla, y el panel es el único lugar donde se la puede ver antes de publicar.
+  El link sale con `rel="noreferrer"` por el mismo motivo que la vista previa ya
+  llevaba `referrerPolicy`: el host de la imagen es de un tercero, y sin eso la
+  pestaña le contaría que un admin la abrió y desde qué URL del panel.
+
 - **El cartel rojo del panel dejó de hablar en inglés** — **B-929**, reportado por
   el dueño. Decía «Failed to get document because the client is offline»: texto
   del SDK de Firestore tal cual, hablando de «document», sin decir qué pasó con

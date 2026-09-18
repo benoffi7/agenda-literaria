@@ -296,28 +296,49 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
                     No se pudo cargar
                   </span>
                 ) : (
-                  <img
-                    src={img.url}
-                    alt=""
-                    /*
-                      El host de la imagen es de un tercero y esta petición sale
-                      del panel: sin esto se lleva el `Referer` con la URL de
-                      `/admin`, o sea aprende que un admin lo abrió y cuándo.
-                    */
-                    referrerPolicy="no-referrer"
-                    className="h-full w-full object-cover"
-                    onLoad={(e) => {
-                      marcarPrevia(img.id, 'lista');
-                      // B-263 — ver el docblock de `porMedir`.
-                      if (!porMedir.current.has(img.id)) return;
-                      const { naturalWidth, naturalHeight } = e.currentTarget;
-                      porMedir.current.delete(img.id);
-                      if (naturalWidth > 0 && naturalHeight > 0) {
-                        editar(img.id, { ancho: naturalWidth, alto: naturalHeight });
-                      }
-                    }}
-                    onError={() => marcarPrevia(img.id, 'rota')}
-                  />
+                  /*
+                    **La miniatura abre la imagen entera en otra pestaña** —
+                    pedido del dueño. Mide 80px de alto: alcanza para reconocer
+                    cuál es, no para mirarla. Y es el único momento en que se la
+                    puede ver antes de publicar.
+
+                    `target="_blank"` va con `rel="noreferrer"` por lo mismo que
+                    el `referrerPolicy` del `<img>`: el host es de un tercero y la
+                    pestaña saldría del panel, o sea le contaría que un admin la
+                    abrió y desde dónde. Y `noopener` viaja adentro de
+                    `noreferrer`, así que la página de destino no puede tocar la
+                    nuestra.
+                  */
+                  <a
+                    href={img.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block h-full w-full"
+                    title="Abrir la imagen en otra pestaña"
+                  >
+                    <img
+                      src={img.url}
+                      alt=""
+                      /*
+                        El host de la imagen es de un tercero y esta petición sale
+                        del panel: sin esto se lleva el `Referer` con la URL de
+                        `/admin`, o sea aprende que un admin lo abrió y cuándo.
+                      */
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-cover"
+                      onLoad={(e) => {
+                        marcarPrevia(img.id, 'lista');
+                        // B-263 — ver el docblock de `porMedir`.
+                        if (!porMedir.current.has(img.id)) return;
+                        const { naturalWidth, naturalHeight } = e.currentTarget;
+                        porMedir.current.delete(img.id);
+                        if (naturalWidth > 0 && naturalHeight > 0) {
+                          editar(img.id, { ancho: naturalWidth, alto: naturalHeight });
+                        }
+                      }}
+                      onError={() => marcarPrevia(img.id, 'rota')}
+                    />
+                  </a>
                 )}
               </div>
 

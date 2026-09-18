@@ -21,7 +21,7 @@
  * Vive en `.render.test.tsx` porque `vitest.config.ts` monta jsdom solo para ese
  * patrón, y `cleanup()` va a mano porque este proyecto no prende `test.globals`.
  */
-import { render, screen, cleanup } from '@testing-library/react';
+import { fireEvent, render, screen, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
 import type { Imagen } from '@/types/actividad';
@@ -49,6 +49,42 @@ const pintar = (imagenes: Imagen[], errorDe: (p: string) => string | undefined =
   );
 
 const camposDeAlternativo = () => screen.queryAllByLabelText('Descripción de la portada');
+
+describe('la miniatura abre la imagen entera en otra pestaña', () => {
+  /*
+   * Pedido del dueño. La miniatura mide 80px de alto: alcanza para reconocer cuál
+   * es y no para mirarla, y el panel es el único lugar donde se la puede ver
+   * antes de publicar.
+   */
+  it('la miniatura está adentro de un link a la imagen, que abre en otra pestaña', () => {
+    pintar([img({ url: 'https://ejemplo.test/flyer.jpg' })]);
+    const link = screen.getByTitle('Abrir la imagen en otra pestaña');
+    expect(link.getAttribute('href')).toBe('https://ejemplo.test/flyer.jpg');
+    expect(link.getAttribute('target')).toBe('_blank');
+  });
+
+  it('y sale con `rel="noreferrer"`, que es lo que no puede faltar', () => {
+    /*
+     * Mismo motivo que el `referrerPolicy` del `<img>` de al lado: el host es de
+     * un tercero, y sin esto la pestaña le cuenta que un admin la abrió y desde
+     * qué URL del panel. `noopener` viaja adentro de `noreferrer`, así que la
+     * página de destino tampoco puede tocar la nuestra.
+     */
+    pintar([img()]);
+    expect(screen.getByTitle('Abrir la imagen en otra pestaña').getAttribute('rel')).toBe(
+      'noreferrer',
+    );
+  });
+
+  it('una imagen que no cargó no ofrece el link: no hay nada que abrir', () => {
+    // Con la previa rota se pinta «No se pudo cargar» en vez de la miniatura.
+    const { container } = pintar([img()]);
+    const imagen = container.querySelector('img');
+    expect(imagen).toBeTruthy();
+    fireEvent.error(imagen!);
+    expect(screen.queryByTitle('Abrir la imagen en otra pestaña')).toBeNull();
+  });
+});
 
 describe('el texto alternativo se pide una sola vez (B-301, D-440)', () => {
   it('con una imagen, hay exactamente un campo', () => {

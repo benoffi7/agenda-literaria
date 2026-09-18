@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'la-miniatura-abre-la-imagen-entera',
+    fecha: '2026-09-18',
+    version: '1.11.0',
+    titulo: 'Tocar una imagen la abre entera en otra pestaña',
+    detalle:
+      'La vista previa del formulario es chica: sirve para reconocer cuál es, no ' +
+      'para mirarla. Ahora tocándola se abre en otra pestaña, en su tamaño real, ' +
+      'sin perder lo que estabas cargando.',
+    donde: 'En «Flyer e imágenes», tocando la vista previa de cualquier imagen.',
+  },
+  {
     id: 'los-carteles-de-error-hablan-en-castellano',
     fecha: '2026-09-18',
     version: '1.11.0',
