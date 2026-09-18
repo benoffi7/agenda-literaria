@@ -2,6 +2,33 @@
 
 ## Sin publicar
 
+- **Un rechazo esperado ya no puede ser la regla explotando** — **B-1130**. Todo
+  test de reglas afirma «esto tiene que ser rechazado» y lo verificaba mirando el
+  `code`, que es `permission-denied` tanto cuando la regla corrió y dijo que no
+  como cuando **explotó antes de contestar**. Ahora hay un solo helper
+  (`tests/fixtures/rechazos-del-emulador.ts`) que pregunta las dos cosas, y lo
+  usan las ~280 aserciones de rechazo de la suite.
+
+  **Y el ítem se cerró con el diagnóstico corregido, que es la parte que importa.**
+  Decía que los casos negativos con `serverTimestamp()` «no probaban lo que dicen
+  probar». **Mutar la regla mostró que sí**: sacándole la cláusula del origen, el
+  mismo documento que el caso manda pasa a escribirse. El `evaluation error` que
+  se veía es de una pasada intermedia —un documento con un sentinel se evalúa dos
+  veces, y la primera lo ve sin resolver—, y convive con un `false` para la misma
+  puerta. Sin esa medición se habrían «arreglado» 195 tests que estaban bien.
+
+  Lo que sí apareció son **seis casos donde la regla de verdad no llega a
+  contestar**, y los seis por una decisión que el repo ya tenía escrita:
+  `geoDeLibreriaValida()` no lleva `is number` a propósito y se apoya en que un
+  string no se puede comparar con `>=`; `reservaValida()` hace lo mismo con el
+  `.size()`. Funciona —deniega igual— y ahora está **dicho en el test**, con
+  `denegadaOReglaQueTira()`, en vez de escondido bajo un `permission-denied`.
+
+  Había **nueve** copias del helper viejo, no las cuatro que el repo tenía
+  anotadas: tres archivos llevaban además uno aparte para lecturas, y eso lo
+  encontró la guarda nueva (`tests/rechazos-sin-copia.test.ts`), no el recuento a
+  mano.
+
 - **Tocar una imagen del formulario la abre entera en otra pestaña** — pedido del
   dueño. La vista previa mide 80px de alto: sirve para reconocer cuál es, no para
   mirarla, y el panel es el único lugar donde se la puede ver antes de publicar.

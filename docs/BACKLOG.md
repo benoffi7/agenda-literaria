@@ -1247,71 +1247,6 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
-### B-1130 · Un `serverTimestamp()` en un documento denegado convierte el rechazo en un error de evaluación, y el test lo da verde igual · P1 — lo encontró `frente/conversion` (2026-09-17), diagnosticado el 2026-09-18
-
-> **Diagnosticado, y no era de `propuestaValida()`.** El título viejo decía «`propuestaValida()` tira»;
-> la función está bien. **Lo que tira es tener un `serverTimestamp()` sin resolver en el documento
-> cuando la regla deniega.** Medido por bisección contra un emulador efímero, sobre las reglas de
-> `main`:
->
-> | Caso (anónimo, `create` denegado) | Resultado |
-> |---|---|
-> | la cláusula del origen **sola**, con `serverTimestamp()` en el doc | ⚠️ evaluation error |
-> | la misma cláusula, con un `Timestamp` fijo en vez del sentinel | **`false` limpio** |
-> | `origen && creadoEn`, y también `creadoEn && origen` | ⚠️ evaluation error (el orden no importa) |
-> | `fechasValidas`, `lugarValido`, `imagenValida`, `esAdmin`, `esPublicador`, los `hasOnly` — **cada una aislada** | todas limpias |
->
-> La tercera fila descarta el orden de las cláusulas; la primera descarta que sea una cláusula en
-> particular —tira una que ni siquiera toca `creadoEn`—; y la segunda aísla la causa en el sentinel.
-> El camino legítimo (`origen: 'formulario-publico'`, anónimo) **escribe bien**: con la regla en `true`
-> el sentinel se resuelve y no hay error.
->
-> **Por eso el alcance es mucho mayor que un caso raro del origen, y por eso sube a P1.** Todo caso
-> negativo que mande `serverTimestamp()` —que es como se arma un documento de verdad— recibe un
-> error de evaluación en vez de un rechazo de la regla. **No está probando lo que dice probar**, y
-> nadie se entera porque el `RECHAZADA = /permission|insufficient/i` de
-> `tests/propuestas.integracion.test.ts` matchea las dos cosas: un throw también rechaza.
->
-> **Qué hacer.** El arreglo no es de la regla, que está bien. Es el helper que -06 propuso: distinguir
-> «rechazada por la regla» de «la regla tiró», comparando el **mensaje** y no solo el `code`. Con eso,
-> cualquier regla que empiece a tirar se pone roja en vez de seguir verde. Y hay que decidir, caso por
-> caso, si el negativo debe usar un `Timestamp` fijo —para probar la regla de verdad— o si el
-> evaluation error es aceptable y solo hay que dejarlo dicho.
->
-> El repo ya tenía media lección escrita: el docblock del `create` anónimo avisa que en una **lectura**
-> denegada el emulador devuelve la traza (`false for 'get' @ L977`) y no la frase de permisos, «y acá
-> se pagó de nuevo». Éste es el tercer formato de mensaje del mismo emulador.
-
-**Reproducido acá, contra un emulador efímero, sobre las reglas de `main`.** Un
-`create` anónimo sobre `/propuestas` no termina en un `false` limpio: termina en
-un **error de evaluación** de la regla. Y lo medí más ancho de lo que venía
-reportado: pasa con `origen: 'panel'` **y también con `origen: 'publico'`**, o
-sea que no es el caso de un origen incoherente sino la evaluación misma.
-
-**Por qué es un ítem y no una curiosidad: el test lo da verde.**
-`tests/propuestas.integracion.test.ts` espera un rechazo, y **un throw rechaza
-igual**. O sea que la regla puede dejar de correr —dejar de verificar lo que
-dice verificar— sin que nada se ponga rojo.
-
-Es **B-1129 con otra cara**, y de las más finas: el chequeo pasa por dónde está
-parado —«hubo rechazo»— y no por lo que dice mirar —«la regla rechazó»—. Este
-repo ya tenía la clase escrita y no la había atado: el comentario de
-`propuestas.integracion.test.ts` dice, sobre otro caso, «acceder a un campo
-`null` en las reglas no es `false`: es un error de evaluación, y un error deniega
-igual».
-
-**Y el síntoma es el que ya costó una hora este mismo día** (B-1112): llega como
-`PERMISSION_DENIED` sobre un documento perfectamente válido, así que el primero
-que lo vea va a ir a buscar el bug al documento.
-
-**La salida que cierra la clase y no el caso** —es de quien lo encontró y es la
-correcta—: un helper de test que distinga **«rechazada por la regla»** de **«la
-regla tiró»**, comparando el mensaje y no solo el `code`. Con eso, cualquier
-regla que empiece a tirar se pone roja en vez de seguir verde. Hoy los helpers
-miran `code === 'permission-denied'`, que es lo mismo en los dos casos — y esa
-decisión está documentada y era correcta para lo que resolvía (el emulador
-devuelve textos distintos según el rechazo); lo que falta es la segunda pregunta.
-
 ### B-1129 · La clase que apareció dos veces el 2026-09-17: un chequeo que pasa por dónde está parado y no por lo que dice mirar · P2
 
 **No es un bug: es una clase, y tiene dos casos medidos del mismo día.** Los dos
@@ -2412,6 +2347,37 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
+
+**Lo satisface un emulador caído.** Un `expect(...).rejects.toThrow()` sin
+argumento afirma «algo tiró», que es menos incluso que la regex `RECHAZADA` que
+B-1130 eliminó: no exige `permission-denied`, así que un `db()` roto o un
+`projectId` mal apuntado lo pintan verde sin haber probado ninguna regla. Es
+exactamente el riesgo que describe la subsección nueva de
+[`05-patrones.md`](05-patrones.md) § «Un rechazo esperado no es cualquier
+rechazo».
+
+**Lo que lo hace un ítem y no una limpieza: la guarda de B-1130 no lo puede
+perseguir por texto.** Quedan dos usos legítimos que tienen la misma forma:
+
+- `storage-reglas.integracion.test.ts` — es **otro emulador**, con sus propios
+  códigos, y el helper de B-1130 es de Firestore;
+- `opciones.integracion.test.ts:132` — lo que tira es `upsertOpcion()`, o sea el
+  código del panel validando antes de escribir, y no una regla.
+
+Un barrido que los distinga tiene que entender **en qué `describe` está parada
+cada llamada**, y eso es otra clase de chequeo que la firma de texto que usa
+`tests/rechazos-sin-copia.test.ts`.
+
+**Y hay una medición que respalda la prioridad, aunque sea P3:** los cuatro que
+sí eran de esta clase —dos `getDoc` en `/reportes` y dos en `/propuestas`—
+estaban en archivos que la migración de B-1130 **tocó línea por línea** y
+quedaron afuera igual. Los encontró el `auditor-trampas`, no la guarda ni la
+suite. O sea que el punto ciego no es teórico: ya dejó pasar cuatro instancias en
+el mismo cambio que venía a cerrar la clase. Es **B-1129 con otra cara** —un
+chequeo que pasa por dónde está parado— y la salida es la misma que allá: cambiar
+la firma, no ensanchar el alcance (**B-1113**).
 
 ### B-1128 · Las `B-` tienen red contra duplicados y las `D-` no, siendo el mismo riesgo · P3 — lo demostró la colisión de D-730 (2026-09-17)
 

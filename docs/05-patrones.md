@@ -525,6 +525,41 @@ que la mayoría de lo que parece pedir render en realidad es una pregunta pura
 (se testea sin DOM) o algo que jsdom no puede medir (el scroll no existe sin
 layout real).
 
+### Un rechazo esperado no es cualquier rechazo
+
+Un test de reglas afirma *esta operación tiene que ser rechazada*, y la forma
+barata de verificarlo —`rejects.toThrow()`— la satisface también un emulador que
+se cayó. Por eso los helpers de este repo miran el `code`: `permission-denied` es
+«la regla denegó» y `unavailable` es «no se pudo preguntar».
+
+**Falta una segunda pregunta, y es la que B-1130 agregó:** `permission-denied`
+también es lo que llega cuando la regla **explotó antes de contestar**. Un error
+de evaluación deniega igual, así que un caso negativo puede estar midiendo que la
+regla se caiga en vez de la cláusula que nombra.
+
+La distinción está en la traza del `message`, y es más fina de lo que parece: un
+`evaluation error` **no** alcanza para condenar. El emulador evalúa dos veces un
+documento que lleva un sentinel (`serverTimestamp()`, `increment()`), y la
+primera pasada lo ve sin resolver; también evalúa el `allow update` de un
+`setDoc` sobre un documento que todavía no existe. Las dos cosas fallan sin que
+haya nada roto. Lo que separa el ruido del problema es si **alguna** evaluación
+de esa puerta terminó en `false`.
+
+Nada de eso se escribe a mano en cada caso: va en
+`tests/fixtures/rechazos-del-emulador.ts`, con `denegada()` para el caso normal y
+`denegadaOReglaQueTira()` para la excepción —una regla que a propósito se apoya
+en el error de evaluación, como la geo de los directorios, que no lleva
+`is number`—. La excepción es una **función con otro nombre** y no una opción del
+helper, justamente para que se lea en el diff.
+
+**La lección de método, que es lo que vale para el próximo caso: medir antes de
+arreglar, y medir con mutación.** El primer helper de B-1130 puso 197 casos en
+rojo y la conclusión obvia era que estaban todos mal. Mutar la regla —sacarle la
+cláusula que el caso decía probar— mostró lo contrario: el documento pasaba a
+escribirse, o sea que el caso sí la protegía. Sin esa medición se habrían
+«arreglado» 195 tests que estaban bien, y el arreglo habría tapado los seis que
+no.
+
 ### Verificar la clase, no la instancia
 
 Un test que verifica una instancia protege esa instancia. `costuras.test.ts`

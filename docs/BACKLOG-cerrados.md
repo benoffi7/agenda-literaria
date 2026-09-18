@@ -8243,6 +8243,64 @@ primer lugar donde el guardado toca la red.
 Del mismo lote que B-926, B-927 y B-928: apareció porque hay una segunda persona
 cargando, y un cartel que no dice qué hacer le cuesta a ella, no a nosotros.
 
+### B-1130 · Un `serverTimestamp()` en un documento denegado convierte el rechazo en un error de evaluación, y el test lo da verde igual — ✅ hecho (2026-09-18) · P1 — lo encontró `frente/conversion` (2026-09-17)
+
+> **Cerrado con el helper, y con el diagnóstico corregido: los casos negativos sí
+> probaban su cláusula.** La premisa del ítem era correcta —el `code` no
+> distingue «la regla denegó» de «la regla tiró», y había **nueve** copias del
+> helper que solo miraba el `code`— pero la conclusión no: «no está probando lo
+> que dice probar» resultó falso para los ~195 casos que el primer helper puso en
+> rojo.
+>
+> **Lo que lo dio vuelta fue mutar la regla**, que es lo que B-1129 pide como
+> método. Con la regla entera, el documento de origen incorrecto se rechaza;
+> **sacando la cláusula del origen, el mismo documento escribe**. O sea que el
+> caso negativo se pone rojo si la cláusula desaparece: era válido.
+>
+> **La explicación, medida el 2026-09-18 contra un emulador efímero:** un
+> documento con un sentinel de transformación se evalúa **dos veces**, y la
+> primera pasada ve el sentinel sin resolver. Por eso la traza trae el error
+> **y**, para la misma puerta, un `false`:
+>
+> | traza | qué pasó |
+> |---|---|
+> | `evaluation error at L5:24 for 'create' @ L5, false for 'create' @ L5` | la regla corrió |
+> | `evaluation error at L5:24 for 'create' @ L5, Property noExiste is undefined on object. for 'create' @ L5` | la regla nunca contestó |
+>
+> Y tres correcciones más al diagnóstico, todas medidas:
+>
+> - **No es del `serverTimestamp()`: cualquier sentinel** lo hace, `increment()`
+>   incluido.
+> - **No alcanza con que el documento lleve uno.** `if false` con un sentinel
+>   deniega limpio; la regla tiene que además tocar `request.resource.data` sin
+>   cortocircuitar antes.
+> - **Los formatos de mensaje son tres, y el tercero no dice «evaluation
+>   error»** (`Property … is undefined on object.`). Un matcher por esa frase
+>   habría dejado pasar la mitad de los casos y puesto rojos 197 que estaban
+>   bien.
+>
+> **Qué quedó:** `tests/fixtures/rechazos-del-emulador.ts` con `denegada()` y
+> `denegadaOReglaQueTira()`, las nueve copias migradas (~280 aserciones),
+> `tests/rechazos-del-emulador.test.ts` con los mensajes transcritos —la parte
+> que decide es pura, corre sin emulador— y `tests/rechazos-sin-copia.test.ts`
+> como guarda, con mutación probada. **La guarda encontró tres copias que el
+> recuento a mano no vio**: tres archivos tenían, además del helper de
+> escrituras, uno aparte para lecturas.
+>
+> **Y el hallazgo de verdad, que es el que el ítem no buscaba: seis casos donde
+> la regla efectivamente no llega a contestar**, y los seis por una decisión que
+> el repo ya tenía escrita. `geoDeLibreriaValida()` no lleva `is number` a
+> propósito —su docblock lo argumenta: «una cláusula que no puede fallar se lee
+> como load-bearing»— y se apoya en que un string no se puede comparar con `>=`.
+> Igual `reservaValida()` con el `is string` y el `.size()`. Eso **funciona**
+> (deniega igual) y ahora está **dicho en el test**, con `denegadaOReglaQueTira`,
+> en vez de escondido bajo un `permission-denied`. Los otros dos son la trampa 7:
+> una condición por ruta no es evaluable en un `list`.
+>
+> Lo que **no** cubre, escrito en el docblock de la guarda: el
+> `rejects.toThrow()` pelado de `storage-reglas.integracion.test.ts`. El emulador
+> de Storage tiene sus propios códigos y este helper es de Firestore.
+
 ## P1 — bloquean el objetivo del proyecto
 
 ### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual — ✅ hecho (2026-09-17) · P1
