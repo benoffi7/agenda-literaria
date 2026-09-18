@@ -500,16 +500,51 @@ describe('B-63 · cada aviso está atado a un test de comportamiento', () => {
     expect(VINCULOS.length).toBeGreaterThanOrEqual(AVISOS.length);
   });
 
+  /**
+   * **Los sufijos de test salen del `include` de `vitest.config.ts`, no de acá**
+   * — B-1131, clase D-88.
+   *
+   * Hasta el 2026-09-17 este chequeo pedía `.test.ts` y nada más, mientras el
+   * config corría además los `.render.test.tsx`. O sea que **la ayuda de
+   * cualquier cosa que sea UI no podía citar el test que la prueba**: 25
+   * archivos afuera. Se descubrió al escribir el aviso de B-926, cuyo texto
+   * —«el original se borra y no se puede recuperar»— lo verifica un test de
+   * render, así que hubo que dejarlo sin citar.
+   *
+   * El comentario que estaba acá citaba **media línea** del config: la que
+   * nombra `.test.ts` y no la que agrega el `.tsx`. Por eso ahora se lee el
+   * archivo en vez de repetirlo — si el config gana un patrón, este chequeo se
+   * entera solo.
+   */
+  const SUFIJOS_DE_LA_CORRIDA = (() => {
+    const config = readFileSync('vitest.config.ts', 'utf8');
+    const include = /include:\s*\[([^\]]*)\]/.exec(config);
+    expect(include, 'no se encontró el `include` de vitest.config.ts').toBeTruthy();
+    const patrones = [...include![1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+    expect(patrones.length, 'el `include` del config quedó vacío').toBeGreaterThan(0);
+    // De un patrón como `tests/<glob>/<glob>.render.test.tsx` queda el sufijo.
+    return patrones.map((patron) => patron.slice(patron.lastIndexOf('*') + 1));
+  })();
+
+  it('los sufijos que este archivo acepta son los que corre vitest', () => {
+    // El control positivo del helper: si el config cambia y el regex deja de
+    // encontrar los patrones, lo de abajo pasaría a aceptar cualquier cosa.
+    expect(SUFIJOS_DE_LA_CORRIDA).toContain('.test.ts');
+    expect(SUFIJOS_DE_LA_CORRIDA).toContain('.render.test.tsx');
+  });
+
   it.each(VINCULOS.map((v) => [`${v.donde} → ${v.vinculo.it}`, v] as [string, Vinculado]))(
     '%s',
     (_etiqueta, { donde, vinculo }) => {
       const { archivo } = vinculo;
       const buscado = vinculo.it;
 
-      // Que el archivo entre en la corrida: `tests/**/*.test.ts` del config.
+      // Que el archivo entre en la corrida, con los sufijos que el config dice.
       expect(
-        archivo.startsWith('tests/') && archivo.endsWith('.test.ts'),
-        `${donde}: «${archivo}» no entra en la corrida de \`npm test\`.`,
+        archivo.startsWith('tests/') &&
+          SUFIJOS_DE_LA_CORRIDA.some((sufijo) => archivo.endsWith(sufijo)),
+        `${donde}: «${archivo}» no entra en la corrida de \`npm test\` ` +
+          `(sufijos que corren: ${SUFIJOS_DE_LA_CORRIDA.join(', ')}).`,
       ).toBe(true);
 
       // Los de integración se saltean solos sin emuladores (`tests/emulador.ts`):

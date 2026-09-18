@@ -1279,33 +1279,6 @@ miran `code === 'permission-denied'`, que es lo mismo en los dos casos — y esa
 decisión está documentada y era correcta para lo que resolvía (el emulador
 devuelve textos distintos según el rechazo); lo que falta es la segunda pregunta.
 
-### B-1131 · La ayuda no puede citar el test de nada que sea UI · P2 — clase D-88 (2026-09-17)
-
-`tests/ayuda.test.ts` exige que el `atadoA` de cada entrada apunte a un archivo
-que entre en la corrida, y lo decide con
-`archivo.startsWith('tests/') && archivo.endsWith('.test.ts')`. El config dice
-otra cosa:
-
-```
-vitest.config.ts:36   include: ['tests/**/*.test.ts', 'tests/**/*.render.test.tsx']
-```
-
-**Los dos lados derivan «qué archivo es un test» por separado y uno quedó viejo**
-— clase D-88, la misma de B-1110 y B-1113. El comentario del propio chequeo lo
-deja a la vista sin querer: cita **media** línea del config.
-
-**La consecuencia práctica:** los **25** archivos `.render.test.tsx` del repo no
-se pueden citar, o sea que **la ayuda de cualquier cosa que sea UI no puede
-atarse a lo que la prueba**. Lo pagó `frente/conversion` de frente: el aviso
-nuevo promete «si decís que no, el original se borra y no se puede recuperar», y
-el caso que verifica que ese texto esté en pantalla vive en
-`propuestas-panel.render.test.tsx` — hubo que citar el mecanismo y dejar el
-texto sin citar.
-
-**El arreglo mínimo es agregar el segundo sufijo; el que cierra la clase es leer
-los dos del propio `vitest.config.ts`**, que es lo que hizo B-1110 con el formato
-del backlog.
-
 ### B-1129 · La clase que apareció dos veces el 2026-09-17: un chequeo que pasa por dónde está parado y no por lo que dice mirar · P2
 
 **No es un bug: es una clase, y tiene dos casos medidos del mismo día.** Los dos

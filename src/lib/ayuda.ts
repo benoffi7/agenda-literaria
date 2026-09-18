@@ -1404,17 +1404,14 @@ export const CAPITULOS: CapituloAyuda[] = [
           'formulario, que se abre a continuación.',
         cuidado: true,
         /*
-         * **Los dos casos que sostienen el aviso son puros, y hay un tercero en
-         * `tests/propuestas-panel.render.test.tsx` que no se puede citar acá.**
+         * **Tres casos: dos del mecanismo y uno de la pantalla.**
          *
-         * `tests/ayuda.test.ts` exige que el archivo termine en `.test.ts`, y el
-         * de render es un `.render.test.tsx` — entra en la corrida de `npm test`
-         * (está en el `include` del config) pero no en lo que este chequeo
-         * acepta. Así que lo que se cita es el mecanismo, que es lo que el aviso
-         * promete de verdad: descartar borra el original sin verificar ninguna
-         * copia. Que el botón diga «se borra y no se puede recuperar» lo sostiene
-         * `y el aviso dice que se borra, antes de que alguien lo elija`, en el
-         * archivo de render.
+         * El tercero estuvo sin citar hasta B-1131: `tests/ayuda.test.ts` pedía
+         * que el archivo terminara en `.test.ts` y el de render termina en
+         * `.render.test.tsx`, que el config corre igual. O sea que **la promesa
+         * más fuerte de esta pantalla era justo la que no se podía atar a su
+         * prueba**. Hoy los sufijos salen del `include` del config, así que el
+         * caso de render entra como cualquier otro.
          */
         atadoA: [
           {
@@ -1424,6 +1421,10 @@ export const CAPITULOS: CapituloAyuda[] = [
           {
             archivo: 'tests/propuestas-imagen.test.ts',
             it: 'un `fotoDescartada` que no es exactamente `true` NO autoriza el borrado',
+          },
+          {
+            archivo: 'tests/propuestas-panel.render.test.tsx',
+            it: 'y el aviso dice que se borra, antes de que alguien lo elija',
           },
         ],
       },

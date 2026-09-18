@@ -2,6 +2,16 @@
 
 ## Sin publicar
 
+- **La ayuda ya puede citar el test de algo que se ve en pantalla** — **B-1131**.
+  El chequeo que ata cada aviso a su test pedía que el archivo terminara en
+  `.test.ts`, y el config corre además los `.render.test.tsx`: 25 archivos que no
+  se podían citar, o sea **la ayuda de cualquier cosa que sea UI**. Ahora los
+  sufijos salen del `include` del propio `vitest.config.ts`, con control
+  positivo, así que el día que el config gane un patrón el chequeo se entera
+  solo. Apareció escribiendo el aviso de B-926, cuya promesa más fuerte —«el
+  original se borra y no se puede recuperar»— la verifica justamente un test de
+  render, y quedó sin citar; hoy ya está citada.
+
 - **Convertir una propuesta ya no decide sola qué pasa con la foto** — **B-926**,
   pedido del dueño. El panel pregunta antes: se puede **bajar** la imagen al
   disco, **usarla** o **descartarla**, y si se descarta el original se borra y no
