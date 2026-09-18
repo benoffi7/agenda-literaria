@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **Dos constantes de librerías que no hacían nada** — **B-1126** y **B-1127**,
+  los dos residuos que dejó espejar librerías en bibliotecas. Son la misma clase
+  con las dos caras: una constante que **nadie leía** (el tope del handle de
+  Instagram estaba tipeado a mano adentro del patrón) y otra que **ya no tenía
+  para qué** (el piso de «no vacío» de `ciudad`, cuya cota B-967 había podado de
+  la regla sin que nadie volviera a mirarla).
+
+  En los dos casos la señal fue la misma y conviene anotarla: **la asimetría con
+  `/bibliotecas`**, que es gemela y hace lo contrario. La primera se arregló
+  armando el patrón desde la constante —y **ahora la mutación la delata**, que es
+  justamente lo que el ítem decía que faltaba— y la segunda borrándola.
+
 - **La cartelera muestra cuatro flyers por fila en desktop de verdad** —
   **B-1133**, pedido del dueño **por segunda vez** («cuatro flyers por fila en la
   cartelera para desktop»). B-958 lo había implementado el día anterior y el

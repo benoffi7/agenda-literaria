@@ -46,6 +46,7 @@ import {
   TOPE_HORARIOS_LIBRERIA,
   TOPE_MAIL_LIBRERIA,
   TOPE_NOMBRE_LIBRERIA,
+  TOPE_INSTAGRAM_LIBRERIA,
   TOPE_SLUG_LIBRERIA,
   TOPE_WEB_LIBRERIA,
   TOPE_WHATSAPP_LIBRERIA,
@@ -70,8 +71,17 @@ export const RE_SLUG = '^[a-z0-9]+(-[a-z0-9]+)*$';
 export const RE_BARRIO = RE_SLUG;
 /** El WhatsApp se guarda **solo con dígitos**: de él sale un `wa.me/<digitos>`. */
 export const RE_WHATSAPP = `^[0-9]{${MIN_WHATSAPP_LIBRERIA},${TOPE_WHATSAPP_LIBRERIA}}$`;
-/** El alfabeto real de un handle de Instagram, el de `handleInstagram`. */
-export const RE_INSTAGRAM = '^[A-Za-z0-9._]{1,30}$';
+/**
+ * El alfabeto real de un handle de Instagram, el de `handleInstagram`.
+ *
+ * **El tope sale de la constante y no está tipeado acá** — B-1126. Estaba
+ * escrito a mano (`{1,30}`) y `TOPE_INSTAGRAM_LIBRERIA` no tenía ningún lector:
+ * se podía cambiar la constante sin que cambiara nada, que es la letra muerta
+ * que este repo persigue en las cláusulas de las reglas, con el agravante de que
+ * acá **no hay mutación que la delate**. `biblioteca-schema.ts` ya lo armaba
+ * así; era la asimetría entre dos colecciones gemelas.
+ */
+export const RE_INSTAGRAM = `^[A-Za-z0-9._]{1,${TOPE_INSTAGRAM_LIBRERIA}}$`;
 
 /** `+54 9 11 2222-3333` → `5491122223333`. Lo que se publica es esto. */
 export const soloDigitos = (valor: string): string => valor.replace(/\D/g, '');

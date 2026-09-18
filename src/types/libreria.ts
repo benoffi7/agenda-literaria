@@ -165,18 +165,19 @@ export const TOPE_MOTIVO_LIBRERIA = 500;
  * del cual no puede haber ninguno: `a@b.c` ya son cinco.
  */
 export const MIN_MAIL_LIBRERIA = 3;
-/**
- * «No vacío». Hoy lo usa **un solo campo, `ciudad`**, y esa soledad es un
- * resultado de la verificación por mutación y no un descuido: el slug, el barrio
- * y la web tenían el mismo piso y los tres eran **letra muerta**, porque sus
- * `matches` ya exigen al menos un carácter. `ciudad` es el único sin patrón.
+/*
+ * **`MIN_NO_VACIO_LIBRERIA` se borró acá** — B-1127.
  *
- * Va declarado y no escrito a mano en `firestore.rules` por lo que señaló el
- * `auditor-trampas` sobre `/propuestas`: **un número de la regla que no está
- * declarado en ninguna parte no se puede atar**, o sea que cambiarlo o borrarlo
- * no pone nada en rojo.
+ * Existía para el `size() >= 1` de `ciudad`, el único campo que no tenía patrón.
+ * **B-967 le dio a `ciudad` un `matches` cuyo `+` ya exige un carácter**, así que
+ * la cota se podó de la regla y la constante quedó sola: la importaba
+ * `tests/librerias.test.ts` y ni siquiera la usaba. Su propio docblock explicaba
+ * que el slug, el barrio y la web habían perdido ese piso por ser letra
+ * muerta — le pasó lo mismo y nadie volvió.
+ *
+ * La asimetría con `/bibliotecas`, que es gemela y nunca la declaró, era la
+ * señal: no faltaba la cota en una, sobraba la constante en la otra.
  */
-export const MIN_NO_VACIO_LIBRERIA = 1;
 /**
  * El `searchText` normalizado (§6). Lo **deriva** el armado del documento y
  * ningún humano lo escribe, así que el tope no es una regla de producto: es el

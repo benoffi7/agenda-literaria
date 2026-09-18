@@ -430,9 +430,16 @@ segunda es la que se parece a lo que ya hace `scripts/emuladores-arriba.sh`, y
 se apoya en el mismo argumento que **B-1111**: un valor derivado dos veces
 diverge.
 
-**Pendiente de verificación, y no se cuenta como verde:**
+~~**Pendiente de verificación, y no se cuenta como verde:**
 `tests/bibliotecas.integracion.test.ts` —37 casos, los que prueban lo que la
-regla **rechaza**— está escrito y commiteado y **no pudo correr** por esto.
+regla **rechaza**— está escrito y commiteado y **no pudo correr** por esto.~~
+
+> ✅ **Ya corrió, y esta parte del ítem estaba vieja.** El cierre de B-960 lo
+> decía («la corrida llegó después») y acá no se había actualizado, así que el
+> ítem seguía afirmando que había 37 casos sin verificar. **Remedido el
+> 2026-09-18 contra el emulador: 36/36 en verde** (36 y no 37: el conteo viejo
+> tampoco era el de hoy). Lo que sigue abierto de B-1112 es el mecanismo —el
+> aislamiento del emulador de Auth—, no la verificación de bibliotecas.
 
 El proyecto existe para que la gente encuentre los talleres en Google (§2.3). Hoy
 eso todavía no pasa, pero por un motivo distinto que antes: **el sitio existe y no
@@ -2277,28 +2284,6 @@ de las decisiones.
 **Al pasar, algo para el mismo barrido:** hoy `D-88` figura como referencia sin
 entrada —se la cita desde los dos backlogs y nunca se escribió—, además de D-400 y
 D-401, que ya tiene **B-1082**.
-
-### B-1126 · `TOPE_INSTAGRAM_LIBRERIA` no tiene ningún lector · P4 — de espejar librerías en bibliotecas (2026-09-17)
-
-`src/types/libreria.ts` lo declara en 30 y **nadie lo importa**: el número está
-tipeado a mano adentro de `RE_INSTAGRAM` (`libreria-schema.ts`). Es una constante
-que se puede cambiar sin que cambie nada — la misma clase de letra muerta que este
-repo persigue en las cláusulas de las reglas, con la diferencia de que acá **no hay
-mutación que la delate**.
-
-En `biblioteca-schema.ts` el patrón se arma desde la constante
-(`` `^[A-Za-z0-9._]{1,${TOPE_INSTAGRAM_BIBLIOTECA}}$` ``), que es la forma que no
-se puede separar. Arreglo: una línea, y borrar la constante si al final no se usa.
-
-### B-1127 · `MIN_NO_VACIO_LIBRERIA` solo lo lee su propio test · P4 — de espejar librerías en bibliotecas (2026-09-17)
-
-Se declaró para el `size() >= 1` de `ciudad`, y **B-967 le dio a `ciudad` un
-`matches` cuyo `+` ya exige un carácter** — o sea que la cota se podó de la regla y
-la constante quedó. Hoy la importa `tests/librerias.test.ts` y nadie más.
-
-En bibliotecas no hizo falta declararla, y **esa asimetría entre dos colecciones
-que por lo demás son gemelas es lo que vale mirar**: o falta la cota en una, o
-sobra la constante en la otra.
 
 ### B-1083 · `D-200` nombra dos decisiones distintas · P3 — de documentar el tablero (2026-09-17)
 

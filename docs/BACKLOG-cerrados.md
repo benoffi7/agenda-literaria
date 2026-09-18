@@ -2633,6 +2633,49 @@ vuelo: son entradas que nadie llegó a escribir. Del `auditor-documentacion`.
 > «hoy hay dos flyers cargados». Son 218. El razonamiento del escalón sigue
 > valiendo, pero para la cartelera que se **vacía**, no para el estado normal.
 
+### B-1126 · `TOPE_INSTAGRAM_LIBRERIA` no tiene ningún lector — ✅ hecho (2026-09-18) · P4 — de espejar librerías en bibliotecas (2026-09-17)
+
+> **El patrón se arma desde la constante**, como ya hacía `biblioteca-schema.ts`.
+> Una línea, y la asimetría entre dos colecciones gemelas se cierra.
+>
+> **Verificado por mutación, que es lo que el ítem decía que faltaba** («no hay
+> mutación que la delate»): bajar `TOPE_INSTAGRAM_LIBRERIA` a 25 ahora pone rojo
+> el caso que compara los `matches` de la regla contra los del schema (B-364,
+> clase de B-88). Antes ese cambio no movía nada.
+
+
+`src/types/libreria.ts` lo declara en 30 y **nadie lo importa**: el número está
+tipeado a mano adentro de `RE_INSTAGRAM` (`libreria-schema.ts`). Es una constante
+que se puede cambiar sin que cambie nada — la misma clase de letra muerta que este
+repo persigue en las cláusulas de las reglas, con la diferencia de que acá **no hay
+mutación que la delate**.
+
+En `biblioteca-schema.ts` el patrón se arma desde la constante
+(`` `^[A-Za-z0-9._]{1,${TOPE_INSTAGRAM_BIBLIOTECA}}$` ``), que es la forma que no
+se puede separar. Arreglo: una línea, y borrar la constante si al final no se usa.
+
+### B-1127 · `MIN_NO_VACIO_LIBRERIA` solo lo lee su propio test — ✅ hecho (2026-09-18) · P4 — de espejar librerías en bibliotecas (2026-09-17)
+
+> **Sobraba la constante, no faltaba la cota** — de las dos salidas que el ítem
+> planteaba, ésta es la que la evidencia sostiene: la regla de `ciudad` en
+> `/librerias` tiene `size() <= 80` y un `matches` con `+` que ya exige un
+> carácter, así que el piso está cubierto. Y `/bibliotecas`, que es gemela, nunca
+> la declaró.
+>
+> **Ni siquiera la usaba quien la importaba:** `tests/librerias.test.ts` la traía
+> en la lista de imports y no la nombraba en ningún caso. Su propio docblock
+> contaba que el slug, el barrio y la web habían perdido ese piso por ser letra
+> muerta; le pasó lo mismo con B-967 y nadie volvió a mirarla.
+
+
+Se declaró para el `size() >= 1` de `ciudad`, y **B-967 le dio a `ciudad` un
+`matches` cuyo `+` ya exige un carácter** — o sea que la cota se podó de la regla y
+la constante quedó. Hoy la importa `tests/librerias.test.ts` y nadie más.
+
+En bibliotecas no hizo falta declararla, y **esa asimetría entre dos colecciones
+que por lo demás son gemelas es lo que vale mirar**: o falta la cota en una, o
+sobra la constante en la otra.
+
 ## P2 — mejoras reales
 
 ### B-981 · «Dirección web» era el slug, y abajo había otro campo web — ✅ hecho (2026-09-17) · P2 — reportado por el dueño
