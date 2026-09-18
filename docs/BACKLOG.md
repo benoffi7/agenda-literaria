@@ -171,26 +171,6 @@ posterior (`sembrar-geografia.mjs`). No son las mismas cinco.
 están, esto se cierra con una línea; si no, son cinco ediciones. Lo que no puede
 seguir es que nadie sepa cuál de las dos es.
 
-### B-962 · Las dos imágenes del banner de Mar del Plata · P2 — abierto el 2026-09-15
-
-El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
-manda quien publica la ciudad**:
-
-| Pieza | Medida | Dónde va |
-|---|---|---|
-| Apaisada (de 640px para arriba) | **2400 × 600** (4:1) | `public/banners/biblioguia-ancha.webp` |
-| Compacta (teléfono) | **1200 × 900** (4:3) | `public/banners/biblioguia-compacta.webp` |
-
-WebP, JPG o PNG; hasta ~150 KB cada una. Hace falta además **una frase que
-describa qué se ve en la imagen** (el `textoAlternativo`: lo lee quien no ve la
-imagen, y describe el contenido, no el rol — nada de «banner de X»).
-
-Con los archivos en `public/banners/`, se agrega la fila a `BANNERS_DE_CIUDAD`
-(`src/lib/bannerDeCiudad.ts` la tiene escrita en su docblock) y listo:
-`tests/banner-de-ciudad.test.ts` verifica que los archivos existan y que la
-relación de aspecto sea la que se pidió. **La fila y las imágenes van en el mismo
-cambio**: declarada sin los archivos, es una imagen rota en producción.
-
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** · P1
 
 **Los dos primeros pasos están hechos el 2026-09-09**, y el que faltaba lo hizo

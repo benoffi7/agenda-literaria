@@ -49,8 +49,9 @@ import { CORTE_DE_BANNER, type BannerDeCiudad as Banner } from '@/lib/bannerDeCi
  * texto de ningún formulario en el camino, que es lo que `urlSegura`
  * (`lib/enlaceSeguro.ts`) existe para sanear. Lo que sostiene esa premisa es el
  * chequeo de `tests/banner-de-ciudad.test.ts`, que exige `https:` en cada banner
- * declarado **y se prueba a sí mismo** contra banners de mentira, porque la lista
- * real arranca vacía. **El día que un banner venga de un documento** —cargarlo
+ * declarado **y se prueba a sí mismo** contra banners de mentira, que es lo que lo
+ * mantiene honesto ahora que la lista real tiene una fila (B-962) y lo que lo
+ * mantenía vivo cuando estaba vacía. **El día que un banner venga de un documento** —cargarlo
  * desde el panel es la continuación natural de esto— **este `href` tiene que
  * pasar por `urlSegura` antes de entrar al marcado.**
  */

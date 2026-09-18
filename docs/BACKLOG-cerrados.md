@@ -13,6 +13,507 @@ archivo vivo vuelve a ser lo que falta hacer cada vez que se corre.
 calcula sobre los ids de los dos — si se calculara solo sobre el vivo,
 propondría un número ya usado.
 
+## Pendiente de acción manual del dueño
+
+### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1
+
+> **Corrido en producción el 2026-09-17**: 58 actividades reubicadas con
+> `scripts/reubicar-barrios.mjs`. Segunda corrida: `A reubicar: 0`.
+>
+> Antes se ensayó contra el emulador con las **formas reales** de producción —una
+> por clase, incluidas las ambiguas y dos sanas de control—, y ahí se verificó lo
+> que importaba: que la ciudad salga **slugificada** (`Tres arroyos` →
+> `tres-arroyos`; cruda habría reintroducido el bug que la migración arregla),
+> que `sede` y `ciudades[]` se recalculen, que las sanas no se toquen y que sea
+> idempotente.
+>
+> **La regla vive en `src/lib/reubicacion-de-barrio.mjs`, es pura y tiene 12
+> casos.** Reubica solo cuando el propio dato lo dice: el barrio es una provincia
+> → va a `provincia`. No deduce la provincia de una ciudad —«Tandil» es
+> bonaerense para una persona y para nadie más acá—, que es la misma línea que
+> `sembrar-geografia.mjs` ya había trazado.
+>
+> **Y no invierte «barrio=ciudad + ciudad=provincia», aunque parezca obvio.** La
+> primera versión sí lo hacía: funciona para `rosario | santa-fe` y sobre
+> `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén». Distinguirlos pide
+> cablear los 48 barrios de CABA, o sea la tabla que el módulo se niega a
+> inventar con otro nombre. Está fijado por test con la mutación probada.
+>
+> **Lo que queda, y es del dueño** (se le pasaron los enlaces el 2026-09-17):
+>
+> | Actividad | Qué dice | Por qué no se tocó |
+> |---|---|---|
+> | Club de lectura - «Basura» | `barrio=provincia-de-buenos-aires` + `ciudad=CABA` | CABA no está en la provincia de Buenos Aires |
+> | Club de lectura La Fonseca | `barrio=nunez` + `ciudad=Neuquén` | Núñez es barrio de CABA |
+> | Lectura y análisis de Mariana Pineda | `barrio=rosario` + `ciudad=Santa fé` | parecen invertidos, indistinguible del anterior |
+> | FINDE - Feria de editores independientes | `barrio=palermo` + `ciudad=avellaneda` | Palermo es CABA, Avellaneda no |
+> | Club de lectura: ESCRITURAS DEL MUNDO | `provincia=buenos-aires` sin ciudad | falta el segundo nivel |
+>
+> **Y cinco valores de `/opciones/barrio` quedaron sin ninguna actividad detrás**
+> —`beccar`, `ramos-mejia`, `cordoba`, `neuquen`, `santa-fe`—: recién ahora se
+> pueden borrar desde la pantalla de taxonomías sin dejar un slug colgado.
+> `provincia-de-buenos-aires` **no** quedó libre: la sostiene «Basura», la primera
+> ambigua.
+>
+> **Y el mismo día se corrió `sembrar-geografia.mjs`, que existía desde B-950 y
+> nunca se había corrido**: 180 actividades más. La geografía de las sedes pasó de
+> **0 filas con provincia a 251 de 259**.
+>
+> **Ese ensayo encontró un hueco en el propio backfill, y se tapó antes de
+> aplicar.** `geografiaNormalizada` deduce la provincia de la ciudad, y sobre una
+> sede que se contradice eso **no es deducir sino desempatar**: «Basura» habría
+> quedado como `caba / caba / provincia-de-buenos-aires`, con la contradicción
+> resuelta a la fuerza, en una dirección, y con pinta de decidida — peor que el
+> estado anterior, porque el dato malo deja de verse. Ahora consulta
+> `reubicacionDe` y saltea lo ambiguo, con su test.
+>
+> Después de las dos corridas quedan **9 sedes** para mirar a mano: las 3
+> ambiguas, la de `palermo | avellaneda`, la que tiene provincia sin ciudad, y 4
+> sin provincia porque el backfill no la puede deducir (Neuquén, Santa Fe,
+> Rosario y una sin ciudad). Los enlaces se le pasaron al dueño el 2026-09-17.
+>
+> El texto original queda abajo.
+
+**Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre
+Belgrano y Colegiales. Y no está solo — de los 30 valores de `/opciones/barrio`,
+**siete no son barrios de CABA**:
+
+| Valor | Qué es en realidad | Actividades |
+|---|---|---|
+| `provincia-de-buenos-aires` | una provincia | **54** |
+| `cordoba` | provincia (o su capital) | 8 |
+| `beccar`, `ramos-mejia` | ciudades bonaerenses | 1 c/u |
+| `rosario` | ciudad de Santa Fe | 1 |
+| `neuquen`, `santa-fe` | provincia (o su capital) | 1 c/u |
+
+**Por qué pasó, y por qué no es descuido de nadie:** hasta B-950 el barrio era
+**el único campo de lugar** que el formulario ofrecía. Quien cargaba una
+actividad en Tandil no tenía dónde ponerlo, así que lo puso donde había lugar. El
+vocabulario es el registro fiel de un formulario que faltaba.
+
+**Cuánto abarca:** 129 filas de sede tienen el barrio contaminado, y se parten en
+dos:
+
+- **123 son mecánicas.** `barrio=provincia-de-buenos-aires` + `ciudad=Tandil`
+  significa `provincia=buenos-aires, barrio='', ciudad=tandil`, sin ambigüedad. Lo
+  mismo con `cordoba`, `neuquen` y `santa-fe`. Hay dos invertidas
+  (`barrio=rosario | ciudad=santa-fe`) que son las mismas dos al revés, y una
+  `"Villa Crespo, CABA"` que es un barrio con la ciudad pegada.
+- **6 necesitan criterio del dueño**, porque el documento se contradice:
+  - `barrio=nunez | ciudad=neuquen` (2) — Núñez es de CABA, Neuquén no.
+  - `barrio=palermo | ciudad=avellaneda` (2) — Palermo es de CABA, Avellaneda es
+    bonaerense.
+  - `barrio=provincia-de-buenos-aires | ciudad=caba` (2).
+
+**Por qué no se hizo en el momento.** Sacar los siete del desplegable **no
+alcanza**: 54 actividades seguirían con `barrio: 'provincia-de-buenos-aires'` en
+el documento, y ahí el slug deja de resolver etiqueta y se publica crudo. El
+arreglo de verdad es migrar los documentos, y eso reescribe ~100 actividades: una
+versión del §12 por actividad y **una llamada a Calendar por sesión** (`sede` está
+en los campos que la guarda del §7.1 mira). El propio `sembrar-geografia.mjs`
+dice «correrlo una vez, fuera de hora». Es una decisión del dueño, no una
+prolijidad que se cuela en otro cambio.
+
+**Lo que sí quedó hecho** (B-975): `/opciones/ciudad` pasó de 1 a 30 valores con
+las ciudades reales del catálogo, así que **al reeditar una de esas actividades la
+ciudad correcta ya está en el desplegable** y el arreglo manual es elegir la
+provincia. Sin eso, migrar a mano era volver a tipear treinta ciudades.
+
+### B-974 · Diez taxonomías de las guías nunca se sembraron en producción — ✅ hecho (2026-09-16) · P1
+
+> **Sembradas el 2026-09-16** con `npm run opciones:sembrar:prod`, y verificadas
+> con `npm run taxonomias:verificar`: las 17 declaradas existen. Las siete que ya
+> estaban no se tocaron (el script es idempotente). El rebuild se dispara solo por
+> la escritura en `/opciones/*` (trampa 8).
+>
+> **Lo que estuvo roto, y cuánto:** desde que se creó cada guía. Los desplegables
+> de `/guia/librerias/sumar`, `/guia/lugares/sumar` y `/guia/suscripciones/sumar`
+> —el formulario de gente de afuera— salían vacíos para esos ejes, y los chips de
+> filtro de las tres guías también. El panel se veía bien todo ese tiempo, que es
+> lo que lo mantuvo invisible.
+>
+> El texto original queda abajo.
+
+**Un solo comando, y necesita tu aprobación** porque escribe en producción:
+
+```bash
+npm run opciones:sembrar:prod
+```
+
+Lo encontró el chequeo nuevo de B-973 apenas se lo corrió contra producción:
+`incluye-actividad`, `periodicidad`, `tipo-oferente`, `perfil-editorial`,
+`incluye-suscripcion`, `extras-suscripcion`, `alcance-envio`, `tipo-lugar`,
+`incluye-lugar` y `condicion-de-uso` **no existen** como documentos de
+`/opciones/*`. Nunca existieron: se crearon con las guías y la siembra nunca se
+volvió a correr.
+
+**Qué está roto hoy, exactamente.** El panel se ve bien, y eso es lo que tapó el
+problema: `leerOpciones` cae de vuelta a `opciones-base.json` cuando el documento
+falta. El **build** no tiene ese fallback —`contenidoDelSitio.ts` hace
+`snap.data()?.valores ?? []`—, así que lo que sale vacío es lo público:
+
+- los desplegables de `/guia/librerias/sumar`, `/guia/lugares/sumar` y
+  `/guia/suscripciones/sumar`, que es gente de afuera que no puede completar el
+  formulario;
+- los chips de filtro de las tres guías para esos ejes.
+
+El comando es idempotente (no pisa nada existente) y dispara el rebuild solo
+(trampa 8), así que los chips aparecen en la corrida siguiente. Después,
+`npm run taxonomias:verificar` tiene que dar las 17 en verde.
+
+**Hasta que se corra, el job `hosting` falla y no se deploya nada** — que es
+exactamente lo que el chequeo tiene que hacer, pero conviene saberlo antes de
+pushear.
+
+### B-20 · Activar el rebuild automático (cierra B-02) — ✅ hecho y verificado de punta a punta (2026-08-25)
+
+Los cinco pasos que dependían del dueño, en el orden en que se hicieron (comandos
+exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automático"):
+
+1. ~~Crear el PAT de GitHub~~ — **hecho** (existe desde el 2026-08-21).
+2. ~~Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
+   dándole `secretAccessor` a `calendar-sync@`~~ — **hecho** (2026-08-21).
+3. ~~Crear la service account `deploy-ci@` con `datastore.viewer` +
+   `firebasehosting.admin`~~ — **hecho el 2026-08-25**, con esos dos roles y sin
+   ninguna key.
+4. ~~Bajar la key de `deploy-ci@`, cargarla como secret
+   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco~~ — **hecho el
+   2026-08-25**. La corrida de las 18:04 publicó `1.1.0+675d9e5` desde CI: reglas,
+   índices, sitio y panel, todo verde.
+5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
+   ACTIVE, y su `repository_dispatch` ahora sí arranca el workflow (era **B-188**,
+   arreglado el mismo día).
+
+**Los cinco pasos están hechos y el lazo funciona.** Verificado el 2026-08-25
+mandando el mismo `event_type: 'rebuild'` que manda la Function: «Build y deploy del
+sitio» arrancó, imprimió el motivo del `client_payload` y publicó `1.1.0+ad973b8`.
+Lo que faltaba después de las credenciales era un bug, **B-188**, arreglado el mismo
+día.
+
+Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
+solo**. Lo que no, y era una contra asumida: todo push que toque `functions/` deja
+la corrida roja, porque `deploy-ci@` no tiene —a propósito— los roles para
+desplegar Functions, y con la corrida roja se saltea también el job del tag de
+versión. El razonamiento está en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
+
+> **Se levantó el 2026-08-28 (D-132, B-194).** Los seis jobs terminan bien; un
+> push publica reglas, índices, sitio, panel, Functions y tag. Lo de arriba queda
+> como el estado del 2026-08-25.
+
+#### Lo que enseñó el camino, que valía más que los pasos
+
+Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsión:
+
+- **El inventario mentía, siempre hacia el mismo lado.** Los pasos 1, 2 y 5
+  figuraban como pendientes y estaban hechos desde el 2026-08-21 (el PAT en Secret
+  Manager, y `dispararRebuild`/`guardarVersion`/`reporteAIssue` **ACTIVE**). Este
+  ítem parecía mucho más grande de lo que era porque la doc mostraba como pendiente
+  trabajo terminado hacía días.
+- **El paso 4 era el que desbloqueaba todo.** Sin `FIREBASE_SERVICE_ACCOUNT` no se
+  publica ni el sitio ni el panel, o sea que **ningún** cambio de código llegaba a
+  producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
+  ítem al escribirse.
+- **Un job de reglas que falla bloquea el deploy del sitio.** El `if` del job de
+  Hosting pide `needs.firestore.result != 'failure'`, así que la primera corrida con
+  credencial salteó Hosting por un permiso que le faltaba al job de reglas. Es el
+  "reglas primero" llevado hasta el final y está bien que sea así, pero conviene
+  saberlo antes de leer una corrida roja.
+- **`workflow_dispatch` siempre deploya todo**, con o sin el checkbox: sin
+  `github.event.before` el script no puede diffear y falla hacia el lado de
+  deployar. El botón *Run workflow* no sirve para probar solo Hosting.
+- **El build pasa sin credencial, y hoy está bien que pase:** ninguna página lee
+  Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
+  `hayCredenciales()`, **existía y no la llamaba nadie** (**B-189**, cerrado en
+  `1.2.0`).
+
+### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) — ✅ hecho (2026-09-03) · P1
+
+**Cerrado el 2026-09-03: los tres pasos están resueltos.**
+
+1. **El 301 de `agendaleh.com.ar`** — hecho por el dueño, propagando. Medido a
+   las 18:40 todavía respondía 200, que es lo esperable mientras propaga:
+   **conviene reverificar** con `curl -sI https://agendaleh.com.ar/ | head -3`,
+   que tiene que decir `301` y `location: https://agendaleh.ar/`.
+2. **El `www`** — **descartado a propósito**: queda sin configurar. Un hostname
+   que no existe no puede duplicar contenido, y agregarlo como sitio hubiera sido
+   un cuarto nombre sirviendo lo mismo.
+3. **Search Console** — conectado y con el sitemap mandado: **descubrió 80
+   páginas**. Con eso el sitemap dejó de ser un archivo que nadie lee.
+
+Las dos trampas de falla diferida **siguen vigentes y no se cierran con este
+ítem**, porque no son pasos: el TXT de verificación es permanente (borrarlo tira
+el certificado ~90 días después) y la renovación de NIC.ar no es automática (la
+delegación se apaga el día 31, así que el margen real son 30 días).
+
+
+Código terminado y publicado; estos tres no se pueden hacer desde el repo porque
+los dominios de Hosting se configuran en la consola, no en `firebase.json`. El
+paso a paso, con la casilla exacta que la consola ofrece, está en
+[`08-operacion.md`](08-operacion.md) § «El dominio».
+
+1. **El 301 de `agendaleh.com.ar` al canónico.** Hoy los dos hostnames devuelven
+   **200 con el mismo contenido** (medido el 2026-09-02). No es urgente
+   —el `canonical` absoluto ya le dice a Google cuál es la buena, y por eso esto
+   es P1 y no P0— pero mientras no esté, el alias gasta rastreo y puede aparecer
+   en un resultado. Consola → Hosting → la fila del dominio → la casilla
+   «Redireccionar este dominio a otro».
+   Verificar: `curl -sI https://agendaleh.com.ar/` tiene que decir `301`.
+2. **Decidir el `www`.** Hoy `www.agendaleh.ar` y `www.agendaleh.com.ar` **no
+   responden**. Las dos opciones son válidas —dejarlo así, o agregarlo
+   redirigiendo— y lo que **no** hay que hacer es agregarlo como sitio, que sería
+   un cuarto nombre sirviendo el mismo contenido.
+3. **Registrar la propiedad en Search Console y mandar el sitemap.** El sitemap
+   existe desde B-109 y hoy no lo lee nadie: Google lo va a encontrar solo por la
+   línea `Sitemap:` del `robots.txt`, que es bastante más lento. Es además la
+   única forma de ver si algo salió mal —una canónica rechazada, una URL
+   «indexada aunque bloqueada»— y de medir si el proyecto está cumpliendo su
+   objetivo (§2.3: si la gente no encuentra los talleres en Google, el sitio no
+   sirve).
+
+**Y dos cosas que no son pasos sino avisos, las dos de falla diferida** — están en
+el runbook y conviene tenerlas también acá, porque el día que se rompan nadie va a
+buscar en esta lista:
+
+- **el TXT de verificación del dominio es permanente**, no un paso que se cumple:
+  Firebase lo relee para renovar el certificado. Borrarlo «porque ya verificó» no
+  rompe nada ese día y deja el sitio con error de certificado **~90 días
+  después**;
+- **la renovación de NIC.ar no es automática.** Hay 45 días de gracia, pero
+  **desde el día 31 la delegación se apaga** y el sitio se cae aunque el dominio
+  siga siendo del dueño. O sea que el margen real son 30 días: conviene un
+  recordatorio un mes antes del vencimiento, no el día.
+
+### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: no se hace.** La alerta de GCP queda sin
+configurar. El log sigue existiendo con nivel `error` y el motivo en
+`sistema/rebuild`, así que la información está: lo que no va a haber es un aviso
+que la empuje.
+
+Se cierra en vez de quedar abierto para siempre, que es lo honesto: un ítem que
+espera un click que nadie va a hacer es ruido en la lista. Si algún día el
+rebuild se cae sin que nadie lo note, el runbook de `08-operacion.md` tiene la
+configuración lista.
+
+
+Cuando el rebuild se rinde después de cinco intentos, loguea
+`el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
+`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP:
+configuración de consola, no código, y queda a criterio del dueño (D-23).
+
+**Lo que se hizo del lado del código (2026-08-24):** ese log lleva ahora el
+campo `alerta: "rebuild-agotado"`, para que el filtro de la alerta apunte a un
+campo estable y no al texto del mensaje —que se rompería en silencio el día que
+alguien reescriba la frase—. El filtro exacto y los pasos de la consola están en
+[`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
+
+**Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
+de GCP con un canal de notificación propio. **Ya tiene sentido:** `dispararRebuild`
+está desplegada, B-20 cerrado y el lazo verificado de punta a punta el 2026-08-25.
+
+**Este ítem apuntaba a un runbook que no existía**, y eso se arregló el 2026-08-25:
+decía que "el filtro exacto y los pasos de la consola están en `08-operacion.md`
+§ 'Alerta de rebuild agotado'" y `grep -i alerta` sobre ese archivo no devolvía nada.
+La referencia era una promesa, no una instrucción, justo en el único paso que solo
+puede dar el dueño. **Ahora la sección existe**, con los tres pasos: mirar una entrada
+real antes de fijar el filtro (las Functions v2 aparecen como `cloud_run_revision` y
+no como `cloud_function`, y el `service_name` va en minúsculas), crear la alerta, y
+qué hacer cuando llegue.
+
+Lo único que queda es el click y el canal de notificación, que es dato personal y
+configuración de consola (§5.4).
+
+### B-888 · El rol publicador: la frontera y el panel — ✅ cerrado (2026-09-11) · P1
+
+> ✅ **Las dos tajadas.** La 1 (frontera): claim `publicador`, las cuatro reglas de
+> `/actividades` por dueño, `/usuarios/{uid}`, el script y el índice — **D-650**.
+> La 2 (el panel): el listado y el calendario piden lo propio con el `where`; el
+> slug único lo contesta el índice `/slugs` (**D-660**); las taxonomías no se
+> intentan y no se ofrecen; y la subida se abrió con `resource == null`, **sin
+> tocar la forma del prefijo**. Más `registrarUsuario()` al entrar, el gating de
+> las cinco pantallas, el filtro «Quién la cargó» y la marca con el mail.
+>
+> **Lo que queda es del dueño, y en este orden:**
+> 1. desplegar reglas (Firestore **y** Storage) e índices;
+> 2. **sembrar el índice de slugs** —`npm run slugs:sembrar:prod -- --aplicar
+>    --produccion`— **antes** de darle el claim a nadie: hasta que corra, el panel
+>    **se niega a guardar**, a propósito;
+> 3. desplegar el sitio;
+> 4. `npm run admin:claim:prod -- --publicador <mail>`.
+>
+> **Y tres preguntas que el frente devolvió en vez de contestar:** si la cuenta
+> acotada tiene que poder **reportar un bug** (hoy no tiene por dónde avisar si algo
+> le falla); si los **`usos`** de las taxonomías tienen que contar cuando guarda un
+> publicador (hoy no, así que el orden por frecuencia ignora lo que carga esa
+> cuenta); y que un publicador **puede reservar un nombre sin cargar la actividad**
+> —falla cerrada y lo barre `--reparar`, pero es una forma de bloquear un nombre—.
+>
+> Siguen en pie las dos decisiones de la tajada 1 que conviene revisar: **puede
+> borrar lo suyo** y **puede publicar el link de la reunión**.
+
+**Lo hecho (2026-09-11): la frontera de autorización.** Claim `publicador` + las
+cuatro reglas de `/actividades` por dueño + `/usuarios/{uid}` con el mail de cada
+cuenta + `--publicador`/`--quitar` en `set-admin-claim.mjs` + el índice compuesto +
+**29 mutaciones contra el emulador**. Decisión completa en **D-650**, modelo de
+amenaza en `docs/07-seguridad.md` § «Los dos roles del panel».
+
+**Lo que falta es el panel, y hoy el rol no se puede usar con una persona.** Una
+cuenta con el claim entra a `/admin` y ve «Sin permisos»; si se lo destrabara sin
+lo de abajo, su pantalla principal quedaría **rota**, no acotada. Las tres roturas
+conocidas, en orden de bloqueo:
+
+1. **El listado.** `listarActividades()` consulta sin `where`, y con la regla nueva
+   Firestore **rechaza la query entera** (trampa 7 — una regla no filtra). Tiene que
+   ser `where('createdBy','==',uid)` + `orderBy('updatedAt','desc')`, con el índice
+   que ya está en `firestore.indexes.json`.
+2. **El slug único.** `slugDisponible()` barre toda la colección sin `where`, así
+   que también se rechaza entera — y **no tiene arreglo dentro de la regla**: el
+   slug es un invariante de **todo** el catálogo y no se puede verificar mirando
+   solo lo propio. Las dos salidas son una colección índice `/slugs/{slug}` de
+   lectura abierta o una Function que resuelva el choque.
+3. **Las taxonomías al guardar.** `upsertOpcion()` y `registrarUsos()` corren en
+   cada guardado (D-02) y escriben en `/opciones/*`, que es de admin — y el `catch`
+   de `registrarUsos` es **silencioso a propósito**, pensado para una carrera rara,
+   no para que falle siempre.
+
+**Y una cuarta, de Storage.** `storage.rules` no conoce el rol, así que un
+publicador **no puede subir la imagen de su actividad**. Falla cerrada, y **no se
+arregla con un `|| esPublicador()`**: el prefijo `imagenes/{archivo}` es plano y el
+nombre es un uuid opaco (B-206), así que **el objeto no dice de quién es** y «solo
+las suyas» no es expresable. Hay un caso que se pone rojo el día que alguien lo
+abra.
+
+**Lo que el panel además tiene que hacer:** llamar a `registrarUsuario()` al entrar
+(hoy `src/lib/usuarios.ts` no tiene consumidor y la colección está vacía), esconder
+reportes/propuestas/taxonomías/historial/tablero, agregarle al admin el **filtro por
+quién creó** cada actividad, y cambiar «La cargó otra cuenta» por **el mail de quien
+lo cambió**, resuelto con `mailesPorUid()`.
+
+**Dos decisiones que tomó el frente y conviene que el dueño revise**, porque las dos
+se dan vuelta en una cláusula: el publicador **puede borrar lo suyo** —el argumento
+es que `borrador` ya lo saca del sitio, así que negarlo no protege nada y el §12
+guarda la versión del borrado— y **puede publicar el link de la reunión** con
+`urlPublica: true`, igual que un admin (D-15): una regla no puede hacer política de
+campo, y lo que el rol recorta es la confianza sobre lo ajeno y lo compartido, no
+sobre lo que él mismo carga.
+
+### B-890 · Las tres guías —librerías, suscripciones y lugares— — ✅ hecho (verificado 2026-09-17) · P0
+
+> **Las tres están construidas y desplegadas.** Las siete rutas responden 200 el
+> 2026-09-17: `/guia`, `/guia/librerias`, `/guia/suscripciones`, `/guia/lugares` y
+> los tres `/sumar`. Cada una con su ficha, su JSON propio, su entrada de sitemap
+> y su bandeja en el panel.
+>
+> **La tabla de abajo quedó falsa** —decía «solo PRD» para las tres— y es
+> exactamente el drift que este ítem denunciaba en su propio reclamo: trabajo
+> hecho que no se ve. Acá se veía, y el backlog decía que no.
+>
+> El texto original queda porque el reclamo que lo abrió sigue valiendo como
+> criterio: lo que no cambia la superficie del sitio no cuenta como avance.
+
+**Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que
+importa:** «tanto tiempo trabajando estas semanas entre que te pasé la tarea y al
+final no había nada hecho».
+
+**Y es cierto en lo que se ve.** Las tajadas 2, 3 y 4 del PRD están **escritas y no
+construidas**, y lo que sí se construyó no cambió la superficie:
+
+| Qué | Estado | Se ve |
+|---|---|---|
+| `/proponer` (tajada 1) | construido y desplegado | **no** — sin enlace ni sitemap, esperando App Check en Storage (B-872) |
+| El correo semanal (B-847) | construido | **no** — apagado hasta que exista la lista en Mailchimp |
+| «Mis favoritos» (B-848) | construido y desplegado | **sí** |
+| Librerías, suscripciones, lugares | **solo PRD** | no |
+
+O sea: **de todo lo de estas semanas, una sola cosa cambió el sitio.** El resto fue
+infraestructura, redes de contención y arreglos —incluido descubrir que la
+publicación estaba rota (B-875)— y nada de eso se nota desde afuera.
+
+**Lo siguiente son las tres guías, y no hace falta diseñar nada:** cada una tiene su
+PRD (`docs/prd/02-librerias.md`, `03-suscripciones-literarias.md`,
+`04-lugares-para-eventos.md`) y el inventario archivo por archivo está en
+`05-inventario-de-archivos.md`. Cada una son dos rutas —`/guia/<x>` y
+`/guia/<x>/sumar`— más su bandeja en el panel.
+
+**Y el PRD dice algo que conviene hacer primero:** las tres son **secciones nuevas
+de la barra de navegación** —pedido textual del dueño: «cada uno de estos
+formularios también es una sección superior en la web»—. Con eso la navbar cambia
+de forma, así que conviene resolverla con las tres en la mano y no pelear antes por
+dónde entra el enlace de `/proponer`.
+
+> **Orden confirmado por el dueño (2026-09-11): primero se termina el publicador
+> (B-888 y su tajada del panel), y las guías son lo siguiente.** El publicador ya
+> está en vuelo y dejarlo a medias sería el mismo problema que este ítem señala,
+> con otra cara: trabajo hecho que no se ve porque le falta la última mitad.
+
+**El orden sugerido adentro de este ítem: librerías primero**, entera y de punta a punta. Es la que
+abre el patrón —modelo, reglas, formulario público, bandeja, rutas, sitemap— y las
+otras dos lo repiten. Terminar una y verla en el sitio vale más que avanzar las
+tres a la mitad.
+
+### B-962 · Las dos imágenes del banner de Mar del Plata — ✅ hecho (2026-09-18) · P2 — abierto el 2026-09-15
+
+> **Las mandó el dueño el 2026-09-18** y entraron con la fila, en el mismo
+> cambio, que es lo que este ítem pedía. Convertidas a WebP con `cwebp -q 85`:
+> 23 KB la apaisada y 31 KB la compacta, las dos muy abajo del tope de ~150 KB.
+>
+> **La compacta llegó exacta (1200×900); la apaisada no, y se aceptó igual.** Vino
+> en **1600×400** en vez de 2400×600 —la relación 4:1 es la correcta, el ancho
+> no—, así que cubre la columna de 1080px con holgura en una pantalla común y
+> queda algo justa en densidad doble. Se decidió usarla: es tipografía sobre
+> fondo liso, que es lo que menos sufre un ancho corto. **Y se declara con su
+> medida real y no con `MEDIDA_ANCHA`**, porque `ancho`/`alto` están en el marcado
+> para reservar el espacio (§CLS): con 2400×600 escritos ahí, el navegador
+> reservaría un alto que la imagen no tiene.
+>
+> El `textoAlternativo` describe **lo que se lee** —«Biblioguía, portal literario
+> de Mar del Plata, @biblioguia.ok.»— porque eso es todo lo que hay en la pieza:
+> no hay escena que describir. **La primera versión decía «En Instagram», y el
+> `auditor-privacidad` lo cobró:** la pieza muestra el handle sin nombrar la
+> plataforma, así que agregarla era una afirmación **nuestra** sobre un tercero en
+> la home indexada.
+>
+> **Y el pase dejó dos hallazgos que valen más que el ítem**, los dos de la misma
+> forma —una regla escrita en prosa que ningún test verificaba—, los dos cerrados
+> acá:
+>
+> 1. **El chequeo comparaba la relación y no las medidas.** 2400×600 declarados
+>    sobre un archivo de 1600×400 dan 4:1 = 4:1, o sea que el caso que este mismo
+>    cierre prohíbe en prosa pasaba en verde.
+> 2. **`public/` es el único camino por el que una imagen de un tercero llega a
+>    HTML indexado sin pasar por ningún saneador.** Toda otra pasa por uno
+>    obligatorio —la foto de una propuesta pierde el EXIF con las coordenadas de
+>    la casa, B-896— y un archivo commiteado no pasa por nada: el barrido del
+>    build mira `.html`, `.json`, `.xml` y `.txt`, no binarios. Los dos archivos
+>    de hoy están limpios (un solo chunk `VP8 `, verificado byte a byte), pero eso
+>    era una propiedad de quien los convirtió y no del código.
+>
+> El chequeo ahora **abre el archivo** (`src/lib/webp.ts`): enumera los chunks
+> RIFF, rechaza `EXIF`/`XMP `/`ICCP`, compara las medidas reales contra las
+> declaradas y mide el peso contra el tope. Con mutación en los dos ejes, y con
+> el caso que **no sabe leer** (`VP8L`) reportado como problema en vez de dado
+> por bueno.
+
+
+El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
+manda quien publica la ciudad**:
+
+| Pieza | Medida | Dónde va |
+|---|---|---|
+| Apaisada (de 640px para arriba) | **2400 × 600** (4:1) | `public/banners/biblioguia-ancha.webp` |
+| Compacta (teléfono) | **1200 × 900** (4:3) | `public/banners/biblioguia-compacta.webp` |
+
+WebP, JPG o PNG; hasta ~150 KB cada una. Hace falta además **una frase que
+describa qué se ve en la imagen** (el `textoAlternativo`: lo lee quien no ve la
+imagen, y describe el contenido, no el rol — nada de «banner de X»).
+
+Con los archivos en `public/banners/`, se agrega la fila a `BANNERS_DE_CIUDAD`
+(`src/lib/bannerDeCiudad.ts` la tiene escrita en su docblock) y listo:
+`tests/banner-de-ciudad.test.ts` verifica que los archivos existan y que la
+relación de aspecto sea la que se pidió. **La fila y las imágenes van en el mismo
+cambio**: declarada sin los archivos, es una imagen rota en producción.
+
 ## P1 — bloquean el objetivo del proyecto
 
 ### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual — ✅ hecho (2026-09-17) · P1
@@ -16169,445 +16670,6 @@ pasada del tamaño de B-849, no un renglón.
 D-340/D-341 (`docs/16-analitica-del-sitio.md`) y D-380/D-381/D-430
 (`docs/12-sitio-publico.md`). Ninguno de esos archivos es parte de una tanda en
 vuelo: son entradas que nadie llegó a escribir. Del `auditor-documentacion`.
-
-## Pendiente de acción manual del dueño
-
-### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1
-
-> **Corrido en producción el 2026-09-17**: 58 actividades reubicadas con
-> `scripts/reubicar-barrios.mjs`. Segunda corrida: `A reubicar: 0`.
->
-> Antes se ensayó contra el emulador con las **formas reales** de producción —una
-> por clase, incluidas las ambiguas y dos sanas de control—, y ahí se verificó lo
-> que importaba: que la ciudad salga **slugificada** (`Tres arroyos` →
-> `tres-arroyos`; cruda habría reintroducido el bug que la migración arregla),
-> que `sede` y `ciudades[]` se recalculen, que las sanas no se toquen y que sea
-> idempotente.
->
-> **La regla vive en `src/lib/reubicacion-de-barrio.mjs`, es pura y tiene 12
-> casos.** Reubica solo cuando el propio dato lo dice: el barrio es una provincia
-> → va a `provincia`. No deduce la provincia de una ciudad —«Tandil» es
-> bonaerense para una persona y para nadie más acá—, que es la misma línea que
-> `sembrar-geografia.mjs` ya había trazado.
->
-> **Y no invierte «barrio=ciudad + ciudad=provincia», aunque parezca obvio.** La
-> primera versión sí lo hacía: funciona para `rosario | santa-fe` y sobre
-> `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén». Distinguirlos pide
-> cablear los 48 barrios de CABA, o sea la tabla que el módulo se niega a
-> inventar con otro nombre. Está fijado por test con la mutación probada.
->
-> **Lo que queda, y es del dueño** (se le pasaron los enlaces el 2026-09-17):
->
-> | Actividad | Qué dice | Por qué no se tocó |
-> |---|---|---|
-> | Club de lectura - «Basura» | `barrio=provincia-de-buenos-aires` + `ciudad=CABA` | CABA no está en la provincia de Buenos Aires |
-> | Club de lectura La Fonseca | `barrio=nunez` + `ciudad=Neuquén` | Núñez es barrio de CABA |
-> | Lectura y análisis de Mariana Pineda | `barrio=rosario` + `ciudad=Santa fé` | parecen invertidos, indistinguible del anterior |
-> | FINDE - Feria de editores independientes | `barrio=palermo` + `ciudad=avellaneda` | Palermo es CABA, Avellaneda no |
-> | Club de lectura: ESCRITURAS DEL MUNDO | `provincia=buenos-aires` sin ciudad | falta el segundo nivel |
->
-> **Y cinco valores de `/opciones/barrio` quedaron sin ninguna actividad detrás**
-> —`beccar`, `ramos-mejia`, `cordoba`, `neuquen`, `santa-fe`—: recién ahora se
-> pueden borrar desde la pantalla de taxonomías sin dejar un slug colgado.
-> `provincia-de-buenos-aires` **no** quedó libre: la sostiene «Basura», la primera
-> ambigua.
->
-> **Y el mismo día se corrió `sembrar-geografia.mjs`, que existía desde B-950 y
-> nunca se había corrido**: 180 actividades más. La geografía de las sedes pasó de
-> **0 filas con provincia a 251 de 259**.
->
-> **Ese ensayo encontró un hueco en el propio backfill, y se tapó antes de
-> aplicar.** `geografiaNormalizada` deduce la provincia de la ciudad, y sobre una
-> sede que se contradice eso **no es deducir sino desempatar**: «Basura» habría
-> quedado como `caba / caba / provincia-de-buenos-aires`, con la contradicción
-> resuelta a la fuerza, en una dirección, y con pinta de decidida — peor que el
-> estado anterior, porque el dato malo deja de verse. Ahora consulta
-> `reubicacionDe` y saltea lo ambiguo, con su test.
->
-> Después de las dos corridas quedan **9 sedes** para mirar a mano: las 3
-> ambiguas, la de `palermo | avellaneda`, la que tiene provincia sin ciudad, y 4
-> sin provincia porque el backfill no la puede deducir (Neuquén, Santa Fe,
-> Rosario y una sin ciudad). Los enlaces se le pasaron al dueño el 2026-09-17.
->
-> El texto original queda abajo.
-
-**Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre
-Belgrano y Colegiales. Y no está solo — de los 30 valores de `/opciones/barrio`,
-**siete no son barrios de CABA**:
-
-| Valor | Qué es en realidad | Actividades |
-|---|---|---|
-| `provincia-de-buenos-aires` | una provincia | **54** |
-| `cordoba` | provincia (o su capital) | 8 |
-| `beccar`, `ramos-mejia` | ciudades bonaerenses | 1 c/u |
-| `rosario` | ciudad de Santa Fe | 1 |
-| `neuquen`, `santa-fe` | provincia (o su capital) | 1 c/u |
-
-**Por qué pasó, y por qué no es descuido de nadie:** hasta B-950 el barrio era
-**el único campo de lugar** que el formulario ofrecía. Quien cargaba una
-actividad en Tandil no tenía dónde ponerlo, así que lo puso donde había lugar. El
-vocabulario es el registro fiel de un formulario que faltaba.
-
-**Cuánto abarca:** 129 filas de sede tienen el barrio contaminado, y se parten en
-dos:
-
-- **123 son mecánicas.** `barrio=provincia-de-buenos-aires` + `ciudad=Tandil`
-  significa `provincia=buenos-aires, barrio='', ciudad=tandil`, sin ambigüedad. Lo
-  mismo con `cordoba`, `neuquen` y `santa-fe`. Hay dos invertidas
-  (`barrio=rosario | ciudad=santa-fe`) que son las mismas dos al revés, y una
-  `"Villa Crespo, CABA"` que es un barrio con la ciudad pegada.
-- **6 necesitan criterio del dueño**, porque el documento se contradice:
-  - `barrio=nunez | ciudad=neuquen` (2) — Núñez es de CABA, Neuquén no.
-  - `barrio=palermo | ciudad=avellaneda` (2) — Palermo es de CABA, Avellaneda es
-    bonaerense.
-  - `barrio=provincia-de-buenos-aires | ciudad=caba` (2).
-
-**Por qué no se hizo en el momento.** Sacar los siete del desplegable **no
-alcanza**: 54 actividades seguirían con `barrio: 'provincia-de-buenos-aires'` en
-el documento, y ahí el slug deja de resolver etiqueta y se publica crudo. El
-arreglo de verdad es migrar los documentos, y eso reescribe ~100 actividades: una
-versión del §12 por actividad y **una llamada a Calendar por sesión** (`sede` está
-en los campos que la guarda del §7.1 mira). El propio `sembrar-geografia.mjs`
-dice «correrlo una vez, fuera de hora». Es una decisión del dueño, no una
-prolijidad que se cuela en otro cambio.
-
-**Lo que sí quedó hecho** (B-975): `/opciones/ciudad` pasó de 1 a 30 valores con
-las ciudades reales del catálogo, así que **al reeditar una de esas actividades la
-ciudad correcta ya está en el desplegable** y el arreglo manual es elegir la
-provincia. Sin eso, migrar a mano era volver a tipear treinta ciudades.
-
-### B-974 · Diez taxonomías de las guías nunca se sembraron en producción — ✅ hecho (2026-09-16) · P1
-
-> **Sembradas el 2026-09-16** con `npm run opciones:sembrar:prod`, y verificadas
-> con `npm run taxonomias:verificar`: las 17 declaradas existen. Las siete que ya
-> estaban no se tocaron (el script es idempotente). El rebuild se dispara solo por
-> la escritura en `/opciones/*` (trampa 8).
->
-> **Lo que estuvo roto, y cuánto:** desde que se creó cada guía. Los desplegables
-> de `/guia/librerias/sumar`, `/guia/lugares/sumar` y `/guia/suscripciones/sumar`
-> —el formulario de gente de afuera— salían vacíos para esos ejes, y los chips de
-> filtro de las tres guías también. El panel se veía bien todo ese tiempo, que es
-> lo que lo mantuvo invisible.
->
-> El texto original queda abajo.
-
-**Un solo comando, y necesita tu aprobación** porque escribe en producción:
-
-```bash
-npm run opciones:sembrar:prod
-```
-
-Lo encontró el chequeo nuevo de B-973 apenas se lo corrió contra producción:
-`incluye-actividad`, `periodicidad`, `tipo-oferente`, `perfil-editorial`,
-`incluye-suscripcion`, `extras-suscripcion`, `alcance-envio`, `tipo-lugar`,
-`incluye-lugar` y `condicion-de-uso` **no existen** como documentos de
-`/opciones/*`. Nunca existieron: se crearon con las guías y la siembra nunca se
-volvió a correr.
-
-**Qué está roto hoy, exactamente.** El panel se ve bien, y eso es lo que tapó el
-problema: `leerOpciones` cae de vuelta a `opciones-base.json` cuando el documento
-falta. El **build** no tiene ese fallback —`contenidoDelSitio.ts` hace
-`snap.data()?.valores ?? []`—, así que lo que sale vacío es lo público:
-
-- los desplegables de `/guia/librerias/sumar`, `/guia/lugares/sumar` y
-  `/guia/suscripciones/sumar`, que es gente de afuera que no puede completar el
-  formulario;
-- los chips de filtro de las tres guías para esos ejes.
-
-El comando es idempotente (no pisa nada existente) y dispara el rebuild solo
-(trampa 8), así que los chips aparecen en la corrida siguiente. Después,
-`npm run taxonomias:verificar` tiene que dar las 17 en verde.
-
-**Hasta que se corra, el job `hosting` falla y no se deploya nada** — que es
-exactamente lo que el chequeo tiene que hacer, pero conviene saberlo antes de
-pushear.
-
-### B-20 · Activar el rebuild automático (cierra B-02) — ✅ hecho y verificado de punta a punta (2026-08-25)
-
-Los cinco pasos que dependían del dueño, en el orden en que se hicieron (comandos
-exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automático"):
-
-1. ~~Crear el PAT de GitHub~~ — **hecho** (existe desde el 2026-08-21).
-2. ~~Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
-   dándole `secretAccessor` a `calendar-sync@`~~ — **hecho** (2026-08-21).
-3. ~~Crear la service account `deploy-ci@` con `datastore.viewer` +
-   `firebasehosting.admin`~~ — **hecho el 2026-08-25**, con esos dos roles y sin
-   ninguna key.
-4. ~~Bajar la key de `deploy-ci@`, cargarla como secret
-   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco~~ — **hecho el
-   2026-08-25**. La corrida de las 18:04 publicó `1.1.0+675d9e5` desde CI: reglas,
-   índices, sitio y panel, todo verde.
-5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
-   ACTIVE, y su `repository_dispatch` ahora sí arranca el workflow (era **B-188**,
-   arreglado el mismo día).
-
-**Los cinco pasos están hechos y el lazo funciona.** Verificado el 2026-08-25
-mandando el mismo `event_type: 'rebuild'` que manda la Function: «Build y deploy del
-sitio» arrancó, imprimió el motivo del `client_payload` y publicó `1.1.0+ad973b8`.
-Lo que faltaba después de las credenciales era un bug, **B-188**, arreglado el mismo
-día.
-
-Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
-solo**. Lo que no, y era una contra asumida: todo push que toque `functions/` deja
-la corrida roja, porque `deploy-ci@` no tiene —a propósito— los roles para
-desplegar Functions, y con la corrida roja se saltea también el job del tag de
-versión. El razonamiento está en
-[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
-
-> **Se levantó el 2026-08-28 (D-132, B-194).** Los seis jobs terminan bien; un
-> push publica reglas, índices, sitio, panel, Functions y tag. Lo de arriba queda
-> como el estado del 2026-08-25.
-
-#### Lo que enseñó el camino, que valía más que los pasos
-
-Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsión:
-
-- **El inventario mentía, siempre hacia el mismo lado.** Los pasos 1, 2 y 5
-  figuraban como pendientes y estaban hechos desde el 2026-08-21 (el PAT en Secret
-  Manager, y `dispararRebuild`/`guardarVersion`/`reporteAIssue` **ACTIVE**). Este
-  ítem parecía mucho más grande de lo que era porque la doc mostraba como pendiente
-  trabajo terminado hacía días.
-- **El paso 4 era el que desbloqueaba todo.** Sin `FIREBASE_SERVICE_ACCOUNT` no se
-  publica ni el sitio ni el panel, o sea que **ningún** cambio de código llegaba a
-  producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
-  ítem al escribirse.
-- **Un job de reglas que falla bloquea el deploy del sitio.** El `if` del job de
-  Hosting pide `needs.firestore.result != 'failure'`, así que la primera corrida con
-  credencial salteó Hosting por un permiso que le faltaba al job de reglas. Es el
-  "reglas primero" llevado hasta el final y está bien que sea así, pero conviene
-  saberlo antes de leer una corrida roja.
-- **`workflow_dispatch` siempre deploya todo**, con o sin el checkbox: sin
-  `github.event.before` el script no puede diffear y falla hacia el lado de
-  deployar. El botón *Run workflow* no sirve para probar solo Hosting.
-- **El build pasa sin credencial, y hoy está bien que pase:** ninguna página lee
-  Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
-  `hayCredenciales()`, **existía y no la llamaba nadie** (**B-189**, cerrado en
-  `1.2.0`).
-
-### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) — ✅ hecho (2026-09-03) · P1
-
-**Cerrado el 2026-09-03: los tres pasos están resueltos.**
-
-1. **El 301 de `agendaleh.com.ar`** — hecho por el dueño, propagando. Medido a
-   las 18:40 todavía respondía 200, que es lo esperable mientras propaga:
-   **conviene reverificar** con `curl -sI https://agendaleh.com.ar/ | head -3`,
-   que tiene que decir `301` y `location: https://agendaleh.ar/`.
-2. **El `www`** — **descartado a propósito**: queda sin configurar. Un hostname
-   que no existe no puede duplicar contenido, y agregarlo como sitio hubiera sido
-   un cuarto nombre sirviendo lo mismo.
-3. **Search Console** — conectado y con el sitemap mandado: **descubrió 80
-   páginas**. Con eso el sitemap dejó de ser un archivo que nadie lee.
-
-Las dos trampas de falla diferida **siguen vigentes y no se cierran con este
-ítem**, porque no son pasos: el TXT de verificación es permanente (borrarlo tira
-el certificado ~90 días después) y la renovación de NIC.ar no es automática (la
-delegación se apaga el día 31, así que el margen real son 30 días).
-
-
-Código terminado y publicado; estos tres no se pueden hacer desde el repo porque
-los dominios de Hosting se configuran en la consola, no en `firebase.json`. El
-paso a paso, con la casilla exacta que la consola ofrece, está en
-[`08-operacion.md`](08-operacion.md) § «El dominio».
-
-1. **El 301 de `agendaleh.com.ar` al canónico.** Hoy los dos hostnames devuelven
-   **200 con el mismo contenido** (medido el 2026-09-02). No es urgente
-   —el `canonical` absoluto ya le dice a Google cuál es la buena, y por eso esto
-   es P1 y no P0— pero mientras no esté, el alias gasta rastreo y puede aparecer
-   en un resultado. Consola → Hosting → la fila del dominio → la casilla
-   «Redireccionar este dominio a otro».
-   Verificar: `curl -sI https://agendaleh.com.ar/` tiene que decir `301`.
-2. **Decidir el `www`.** Hoy `www.agendaleh.ar` y `www.agendaleh.com.ar` **no
-   responden**. Las dos opciones son válidas —dejarlo así, o agregarlo
-   redirigiendo— y lo que **no** hay que hacer es agregarlo como sitio, que sería
-   un cuarto nombre sirviendo el mismo contenido.
-3. **Registrar la propiedad en Search Console y mandar el sitemap.** El sitemap
-   existe desde B-109 y hoy no lo lee nadie: Google lo va a encontrar solo por la
-   línea `Sitemap:` del `robots.txt`, que es bastante más lento. Es además la
-   única forma de ver si algo salió mal —una canónica rechazada, una URL
-   «indexada aunque bloqueada»— y de medir si el proyecto está cumpliendo su
-   objetivo (§2.3: si la gente no encuentra los talleres en Google, el sitio no
-   sirve).
-
-**Y dos cosas que no son pasos sino avisos, las dos de falla diferida** — están en
-el runbook y conviene tenerlas también acá, porque el día que se rompan nadie va a
-buscar en esta lista:
-
-- **el TXT de verificación del dominio es permanente**, no un paso que se cumple:
-  Firebase lo relee para renovar el certificado. Borrarlo «porque ya verificó» no
-  rompe nada ese día y deja el sitio con error de certificado **~90 días
-  después**;
-- **la renovación de NIC.ar no es automática.** Hay 45 días de gracia, pero
-  **desde el día 31 la delegación se apaga** y el sitio se cae aunque el dominio
-  siga siendo del dueño. O sea que el margen real son 30 días: conviene un
-  recordatorio un mes antes del vencimiento, no el día.
-
-### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño — ✅ decidido: no se hace (2026-09-03)
-
-**Decidido el 2026-09-03 por el dueño: no se hace.** La alerta de GCP queda sin
-configurar. El log sigue existiendo con nivel `error` y el motivo en
-`sistema/rebuild`, así que la información está: lo que no va a haber es un aviso
-que la empuje.
-
-Se cierra en vez de quedar abierto para siempre, que es lo honesto: un ítem que
-espera un click que nadie va a hacer es ruido en la lista. Si algún día el
-rebuild se cae sin que nadie lo note, el runbook de `08-operacion.md` tiene la
-configuración lista.
-
-
-Cuando el rebuild se rinde después de cinco intentos, loguea
-`el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
-`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP:
-configuración de consola, no código, y queda a criterio del dueño (D-23).
-
-**Lo que se hizo del lado del código (2026-08-24):** ese log lleva ahora el
-campo `alerta: "rebuild-agotado"`, para que el filtro de la alerta apunte a un
-campo estable y no al texto del mensaje —que se rompería en silencio el día que
-alguien reescriba la frase—. El filtro exacto y los pasos de la consola están en
-[`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
-
-**Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
-de GCP con un canal de notificación propio. **Ya tiene sentido:** `dispararRebuild`
-está desplegada, B-20 cerrado y el lazo verificado de punta a punta el 2026-08-25.
-
-**Este ítem apuntaba a un runbook que no existía**, y eso se arregló el 2026-08-25:
-decía que "el filtro exacto y los pasos de la consola están en `08-operacion.md`
-§ 'Alerta de rebuild agotado'" y `grep -i alerta` sobre ese archivo no devolvía nada.
-La referencia era una promesa, no una instrucción, justo en el único paso que solo
-puede dar el dueño. **Ahora la sección existe**, con los tres pasos: mirar una entrada
-real antes de fijar el filtro (las Functions v2 aparecen como `cloud_run_revision` y
-no como `cloud_function`, y el `service_name` va en minúsculas), crear la alerta, y
-qué hacer cuando llegue.
-
-Lo único que queda es el click y el canal de notificación, que es dato personal y
-configuración de consola (§5.4).
-
-### B-888 · El rol publicador: la frontera y el panel — ✅ cerrado (2026-09-11) · P1
-
-> ✅ **Las dos tajadas.** La 1 (frontera): claim `publicador`, las cuatro reglas de
-> `/actividades` por dueño, `/usuarios/{uid}`, el script y el índice — **D-650**.
-> La 2 (el panel): el listado y el calendario piden lo propio con el `where`; el
-> slug único lo contesta el índice `/slugs` (**D-660**); las taxonomías no se
-> intentan y no se ofrecen; y la subida se abrió con `resource == null`, **sin
-> tocar la forma del prefijo**. Más `registrarUsuario()` al entrar, el gating de
-> las cinco pantallas, el filtro «Quién la cargó» y la marca con el mail.
->
-> **Lo que queda es del dueño, y en este orden:**
-> 1. desplegar reglas (Firestore **y** Storage) e índices;
-> 2. **sembrar el índice de slugs** —`npm run slugs:sembrar:prod -- --aplicar
->    --produccion`— **antes** de darle el claim a nadie: hasta que corra, el panel
->    **se niega a guardar**, a propósito;
-> 3. desplegar el sitio;
-> 4. `npm run admin:claim:prod -- --publicador <mail>`.
->
-> **Y tres preguntas que el frente devolvió en vez de contestar:** si la cuenta
-> acotada tiene que poder **reportar un bug** (hoy no tiene por dónde avisar si algo
-> le falla); si los **`usos`** de las taxonomías tienen que contar cuando guarda un
-> publicador (hoy no, así que el orden por frecuencia ignora lo que carga esa
-> cuenta); y que un publicador **puede reservar un nombre sin cargar la actividad**
-> —falla cerrada y lo barre `--reparar`, pero es una forma de bloquear un nombre—.
->
-> Siguen en pie las dos decisiones de la tajada 1 que conviene revisar: **puede
-> borrar lo suyo** y **puede publicar el link de la reunión**.
-
-**Lo hecho (2026-09-11): la frontera de autorización.** Claim `publicador` + las
-cuatro reglas de `/actividades` por dueño + `/usuarios/{uid}` con el mail de cada
-cuenta + `--publicador`/`--quitar` en `set-admin-claim.mjs` + el índice compuesto +
-**29 mutaciones contra el emulador**. Decisión completa en **D-650**, modelo de
-amenaza en `docs/07-seguridad.md` § «Los dos roles del panel».
-
-**Lo que falta es el panel, y hoy el rol no se puede usar con una persona.** Una
-cuenta con el claim entra a `/admin` y ve «Sin permisos»; si se lo destrabara sin
-lo de abajo, su pantalla principal quedaría **rota**, no acotada. Las tres roturas
-conocidas, en orden de bloqueo:
-
-1. **El listado.** `listarActividades()` consulta sin `where`, y con la regla nueva
-   Firestore **rechaza la query entera** (trampa 7 — una regla no filtra). Tiene que
-   ser `where('createdBy','==',uid)` + `orderBy('updatedAt','desc')`, con el índice
-   que ya está en `firestore.indexes.json`.
-2. **El slug único.** `slugDisponible()` barre toda la colección sin `where`, así
-   que también se rechaza entera — y **no tiene arreglo dentro de la regla**: el
-   slug es un invariante de **todo** el catálogo y no se puede verificar mirando
-   solo lo propio. Las dos salidas son una colección índice `/slugs/{slug}` de
-   lectura abierta o una Function que resuelva el choque.
-3. **Las taxonomías al guardar.** `upsertOpcion()` y `registrarUsos()` corren en
-   cada guardado (D-02) y escriben en `/opciones/*`, que es de admin — y el `catch`
-   de `registrarUsos` es **silencioso a propósito**, pensado para una carrera rara,
-   no para que falle siempre.
-
-**Y una cuarta, de Storage.** `storage.rules` no conoce el rol, así que un
-publicador **no puede subir la imagen de su actividad**. Falla cerrada, y **no se
-arregla con un `|| esPublicador()`**: el prefijo `imagenes/{archivo}` es plano y el
-nombre es un uuid opaco (B-206), así que **el objeto no dice de quién es** y «solo
-las suyas» no es expresable. Hay un caso que se pone rojo el día que alguien lo
-abra.
-
-**Lo que el panel además tiene que hacer:** llamar a `registrarUsuario()` al entrar
-(hoy `src/lib/usuarios.ts` no tiene consumidor y la colección está vacía), esconder
-reportes/propuestas/taxonomías/historial/tablero, agregarle al admin el **filtro por
-quién creó** cada actividad, y cambiar «La cargó otra cuenta» por **el mail de quien
-lo cambió**, resuelto con `mailesPorUid()`.
-
-**Dos decisiones que tomó el frente y conviene que el dueño revise**, porque las dos
-se dan vuelta en una cláusula: el publicador **puede borrar lo suyo** —el argumento
-es que `borrador` ya lo saca del sitio, así que negarlo no protege nada y el §12
-guarda la versión del borrado— y **puede publicar el link de la reunión** con
-`urlPublica: true`, igual que un admin (D-15): una regla no puede hacer política de
-campo, y lo que el rol recorta es la confianza sobre lo ajeno y lo compartido, no
-sobre lo que él mismo carga.
-
-### B-890 · Las tres guías —librerías, suscripciones y lugares— — ✅ hecho (verificado 2026-09-17) · P0
-
-> **Las tres están construidas y desplegadas.** Las siete rutas responden 200 el
-> 2026-09-17: `/guia`, `/guia/librerias`, `/guia/suscripciones`, `/guia/lugares` y
-> los tres `/sumar`. Cada una con su ficha, su JSON propio, su entrada de sitemap
-> y su bandeja en el panel.
->
-> **La tabla de abajo quedó falsa** —decía «solo PRD» para las tres— y es
-> exactamente el drift que este ítem denunciaba en su propio reclamo: trabajo
-> hecho que no se ve. Acá se veía, y el backlog decía que no.
->
-> El texto original queda porque el reclamo que lo abrió sigue valiendo como
-> criterio: lo que no cambia la superficie del sitio no cuenta como avance.
-
-**Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que
-importa:** «tanto tiempo trabajando estas semanas entre que te pasé la tarea y al
-final no había nada hecho».
-
-**Y es cierto en lo que se ve.** Las tajadas 2, 3 y 4 del PRD están **escritas y no
-construidas**, y lo que sí se construyó no cambió la superficie:
-
-| Qué | Estado | Se ve |
-|---|---|---|
-| `/proponer` (tajada 1) | construido y desplegado | **no** — sin enlace ni sitemap, esperando App Check en Storage (B-872) |
-| El correo semanal (B-847) | construido | **no** — apagado hasta que exista la lista en Mailchimp |
-| «Mis favoritos» (B-848) | construido y desplegado | **sí** |
-| Librerías, suscripciones, lugares | **solo PRD** | no |
-
-O sea: **de todo lo de estas semanas, una sola cosa cambió el sitio.** El resto fue
-infraestructura, redes de contención y arreglos —incluido descubrir que la
-publicación estaba rota (B-875)— y nada de eso se nota desde afuera.
-
-**Lo siguiente son las tres guías, y no hace falta diseñar nada:** cada una tiene su
-PRD (`docs/prd/02-librerias.md`, `03-suscripciones-literarias.md`,
-`04-lugares-para-eventos.md`) y el inventario archivo por archivo está en
-`05-inventario-de-archivos.md`. Cada una son dos rutas —`/guia/<x>` y
-`/guia/<x>/sumar`— más su bandeja en el panel.
-
-**Y el PRD dice algo que conviene hacer primero:** las tres son **secciones nuevas
-de la barra de navegación** —pedido textual del dueño: «cada uno de estos
-formularios también es una sección superior en la web»—. Con eso la navbar cambia
-de forma, así que conviene resolverla con las tres en la mano y no pelear antes por
-dónde entra el enlace de `/proponer`.
-
-> **Orden confirmado por el dueño (2026-09-11): primero se termina el publicador
-> (B-888 y su tajada del panel), y las guías son lo siguiente.** El publicador ya
-> está en vuelo y dejarlo a medias sería el mismo problema que este ítem señala,
-> con otra cara: trabajo hecho que no se ve porque le falta la última mitad.
-
-**El orden sugerido adentro de este ítem: librerías primero**, entera y de punta a punta. Es la que
-abre el patrón —modelo, reglas, formulario público, bandeja, rutas, sitemap— y las
-otras dos lo repiten. Terminar una y verla en el sitio vale más que avanzar las
-tres a la mitad.
 
 ## P0 — rompe algo o pierde datos
 

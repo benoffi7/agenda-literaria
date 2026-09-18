@@ -47,6 +47,13 @@
  * contra los archivos de verdad: un banner declarado con otra relación se pone
  * rojo antes de deformarse en producción.
  *
+ * **Lo que se le pide y lo que se declara en la fila son dos cosas distintas, y
+ * conviene no confundirlas** (B-962): la fila lleva las medidas **del archivo**,
+ * porque `ancho`/`alto` están en el marcado para reservar el espacio. El test
+ * compara la **relación** contra estas constantes y las **medidas** contra los
+ * bytes del archivo; el primer arte real llegó en 1600×400 y ese desacople es
+ * exactamente el caso que lo hizo falta.
+ *
  * ── Qué NO hay acá ────────────────────────────────────────────────────────
  * - **No se mide el clic.** Hoy el sitio emite tres eventos propios y sumar uno
  *   toca el vocabulario de `analyticsSitio.ts`, `EVENTOS_PROPIOS` de
@@ -120,26 +127,43 @@ export const MEDIDA_COMPACTA = { ancho: 1200, alto: 900 } as const;
 /**
  * Los banners declarados, uno por ciudad.
  *
- * **Está vacío a propósito hasta que lleguen los archivos.** Un banner declarado
- * cuyas imágenes no están en `public/` es una imagen rota en producción, y
- * `tests/banner-de-ciudad.test.ts` exige que cada archivo declarado exista: la
- * fila se agrega en el mismo cambio que las dos imágenes, no antes. Es el mismo
- * patrón que `LISTA_DE_CORREO` en `lib/enlaces.ts`.
+ * **Estuvo vacío a propósito hasta que llegaron los archivos** (B-962, las mandó
+ * el dueño el 2026-09-18). Un banner declarado cuyas imágenes no están en
+ * `public/` es una imagen rota en producción, y `tests/banner-de-ciudad.test.ts`
+ * exige que cada archivo declarado exista: la fila se agrega en el mismo cambio
+ * que las dos imágenes, no antes. Es el mismo patrón que `LISTA_DE_CORREO` en
+ * `lib/enlaces.ts`, y sigue valiendo para la segunda ciudad.
  *
- * La fila de Mar del Plata, para cuando estén (`public/banners/`):
- *
- * ```ts
- * {
- *   ciudad: 'mar-del-plata',
- *   nombre: 'Biblioguía',
- *   href: 'https://biblioguia.com.ar/',
- *   textoAlternativo: '…qué se ve en la imagen…',
- *   ancha: { src: '/banners/biblioguia-ancha.webp', ...MEDIDA_ANCHA },
- *   compacta: { src: '/banners/biblioguia-compacta.webp', ...MEDIDA_COMPACTA },
- * }
- * ```
+ * **Las medidas de la apaisada son las del archivo, no las de `MEDIDA_ANCHA`**, y
+ * eso es deliberado: el arte llegó en 1600×400 (4:1, la relación correcta) en vez
+ * de 2400×600, y `ancho`/`alto` están en el marcado para reservar el espacio
+ * (§CLS) — o sea que tienen que ser los del archivo de verdad o el navegador
+ * reserva mal. El test compara la **relación**, que es lo que importa para que no
+ * se deforme. 1600 cubre la columna de 1080px con holgura en una pantalla común y
+ * queda algo justo en densidad doble; se aceptó así, y es tipografía sobre fondo
+ * plano, que es lo que menos lo sufre.
  */
-export const BANNERS_DE_CIUDAD: readonly BannerDeCiudad[] = [];
+export const BANNERS_DE_CIUDAD: readonly BannerDeCiudad[] = [
+  {
+    ciudad: 'mar-del-plata',
+    nombre: 'Biblioguía',
+    href: 'https://biblioguia.com.ar/',
+    /*
+     * Describe **lo que se lee**, que es todo lo que hay en la pieza: es
+     * tipografía sobre un fondo liso, sin foto ni escena. Un «banner de
+     * Biblioguía» no le diría nada a quien no la ve (B-301).
+     *
+     * **Y no dice «en Instagram»**, aunque el handle lo parezca: la pieza muestra
+     * `@biblioguia.ok` sin nombrar la plataforma, así que agregarla sería una
+     * afirmación **nuestra** sobre un tercero, en la home indexada. Lo marcó el
+     * `auditor-privacidad` sobre el borrador de esta fila. El alternativo dice lo
+     * que se lee y nada más.
+     */
+    textoAlternativo: 'Biblioguía, portal literario de Mar del Plata, @biblioguia.ok.',
+    ancha: { src: '/banners/biblioguia-ancha.webp', ancho: 1600, alto: 400 },
+    compacta: { src: '/banners/biblioguia-compacta.webp', ...MEDIDA_COMPACTA },
+  },
+];
 
 /**
  * El banner que corresponde a las ciudades elegidas en el filtro, o `null`.

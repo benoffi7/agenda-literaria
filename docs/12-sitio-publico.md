@@ -1833,12 +1833,21 @@ claim, B-919). Cuatro decisiones adentro:
    compacta de **1200 × 900** para el teléfono. La misma pieza en los dos lugares
    o se ve ilegible achicada a 360px o desperdicia media pantalla estirada.
 
+   > **Esas son las medidas que se le piden a quien manda el arte; lo que se
+   > declara en la fila es lo que el archivo mide de verdad** (B-962). La primera
+   > apaisada llegó en 1600 × 400 —la relación 4:1 es la correcta, el ancho no— y
+   > se aceptó: es tipografía sobre fondo liso, que es lo que menos sufre un ancho
+   > corto. `ancho`/`alto` están en el marcado para **reservar el espacio** (§CLS),
+   > así que escribir ahí 2400 × 600 sobre un archivo de 1600 × 400 haría que el
+   > navegador reserve un alto que la imagen no tiene. Por eso el test compara la
+   > **relación de aspecto** y no las medidas: lo que evita es que se deforme.
+
 **Solo existe con JavaScript**, y no es una omisión: sin la island no hay filtro
 puesto: la lista del build no tiene ninguna ciudad elegida. El efecto lateral es
 bueno — la imagen no se baja nunca para quien no filtra por esa ciudad.
 
 Los dos archivos viven en `public/banners/` y **la fila se declara en el mismo
-cambio que las imágenes**: `tests/banner-de-ciudad.test.ts` exige que cada `src`
+cambio que las imágenes** —así entró la de Mar del Plata el 2026-09-18, B-962—: `tests/banner-de-ciudad.test.ts` exige que cada `src`
 declarado exista en disco, porque nada del build mira `public/` y un `src` con un
 typo sale a producción en verde. Ese chequeo **se prueba a sí mismo** contra
 banners de mentira, porque con la lista vacía un `it.each` no registra ningún
