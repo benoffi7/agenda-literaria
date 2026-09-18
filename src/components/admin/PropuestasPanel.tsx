@@ -883,8 +883,20 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                          * que se aprenden a apretar sin leer, que es justo lo que
                          * no puede pasar con un aviso que dice «se borra».
                          */
-                        if (p.imagen && 'storagePath' in p.imagen) setDecidiendoFoto(p.id);
-                        else void convertir(p);
+                        /*
+                         * **Y una rechazada tampoco pregunta**, aunque su
+                         * documento siga trayendo el `storagePath`: al rechazar,
+                         * el objeto se borró en el acto, así que no hay foto
+                         * sobre la cual decidir. Sin esta condición el paso se
+                         * abría igual, con el flyer sin montar —o sea sin poder
+                         * verse—, el descarte escondido por eso, y un aviso que
+                         * ofrece «recargar la página para volver a intentarlo»:
+                         * un consejo que en este estado no va a funcionar nunca.
+                         * Lo cobró el `auditor-privacidad`.
+                         */
+                        if (p.imagen && 'storagePath' in p.imagen && p.estado !== 'rechazada') {
+                          setDecidiendoFoto(p.id);
+                        } else void convertir(p);
                       }}
                       disabled={promoviendo === p.id}
                       className={`${claseBotonPrimario} disabled:opacity-50`}

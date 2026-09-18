@@ -505,6 +505,24 @@ describe('convertir en actividad — el orden de D-600', () => {
     );
   });
 
+  it('convertir una rechazada no pregunta por una foto que ya se borró', async () => {
+    /*
+     * Una rechazada conserva el `storagePath` en su documento, pero el objeto se
+     * borró en el acto al rechazarla. Sin esta guarda el paso de decisión se
+     * abría igual: con el flyer sin montar, el descarte escondido por eso, y un
+     * aviso ofreciendo «recargar la página», que acá no va a funcionar nunca.
+     */
+    const onConvertir = montar([
+      propuesta({ estado: 'rechazada', imagen: { storagePath: 'propuestas/abc.jpg' } }),
+    ]);
+    // Una rechazada vive en la otra vista: la bandeja abre con las que esperan.
+    await userEvent.click(screen.getByRole('checkbox', { name: /aceptadas y rechazadas/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    expect(screen.queryByRole('button', { name: 'No usarla' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sí, usarla' })).toBeNull();
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+  });
+
   it('mientras la foto todavía carga, el descarte NO se ofrece', async () => {
     /*
      * El tercer estado, y el que una mutación deja escapar si no está escrito:
