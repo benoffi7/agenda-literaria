@@ -78,7 +78,15 @@ export interface AlmacenDeFormatoDeHora {
   setItem(clave: string, valor: string): void;
 }
 
-/** La clave. Una sola: el formato es del panel entero, no de un campo. */
+/**
+ * La clave. Una sola: el formato es del panel entero, no de un campo.
+ *
+ * **Fija y sin la huella del uid**, porque lo que guarda es una **marca** y no
+ * contenido: el valor es `'24'` o `'12'` y nadie lo tipeó. Esa distinción es la
+ * del § 5.1 de `docs/07-seguridad.md`, y la clave está declarada en su tabla —
+ * `tests/clases-de-bug.test.ts` la deriva de ahí y del fuente, y falla en los dos
+ * sentidos. Esa red cobró esta clave al escribirla.
+ */
 export const CLAVE_FORMATO_DE_HORA = 'agenda:formato-de-hora';
 
 /** ¿Esta cadena es uno de los dos formatos? Guarda de **lectura**, no de escritura. */

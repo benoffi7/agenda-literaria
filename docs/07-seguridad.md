@@ -811,8 +811,9 @@ solo la primera dejaría sin avisar un link público cargado en la segunda.
 El formulario se persiste solo en el navegador de quien está cargando. **Es la
 única cosa que el panel guarda fuera de Firestore que es contenido**: todo lo
 demás que vive en el navegador son marcas (qué novedad se leyó, qué acordeón se
-abrió, qué versión se vio, con qué forma se dibuja el formulario —B-814—, con qué
-vista se pinta un reparto del tablero).
+abrió, qué versión se vio, con qué forma se dibuja el formulario —B-814—, en qué
+formato se tipean las horas —B-889—, con qué vista se pinta un reparto del
+tablero).
 
 Esa distinción es la que decide **cómo se llama la clave**, y por eso está escrita
 acá y no solo en cada módulo: el borrador lleva la huella del uid porque es
@@ -833,6 +834,7 @@ campos que había».
 | Clave | Qué guarda | Dónde |
 |---|---|---|
 | `agenda:vista-del-panel` | con qué forma se dibuja el formulario, `pc` o `celular` (B-814) | `lib/vistaDelPanel.ts` |
+| `agenda:formato-de-hora` | en qué formato se tipean las horas, `24` o `12` (B-889, D-720) | `lib/formatoDeHora.ts` |
 | `agenda:grafico:` | con qué vista se pinta un reparto del tablero (B-701) | `lib/vistaDeGrafico.ts` |
 | `agenda:seccion:` | qué acordeón del formulario quedó abierto | `components/campos/Seccion.tsx` |
 | `agenda:version-recargada` | qué versión del bundle ya se recargó, para no recargar en loop | `components/admin/useVersionPublicada.ts` |

@@ -2,6 +2,38 @@
 
 ## Sin publicar
 
+- **El filtro «Ciudad → Mar del Plata» ya muestra su banner** — **B-962**. El
+  mecanismo estaba entero y probado desde B-961; lo que faltaba eran los dos
+  archivos, que mandó el dueño. `BANNERS_DE_CIUDAD` deja de estar vacío.
+
+  **La apaisada se declara en 1600×400 y no con `MEDIDA_ANCHA`**, y eso es
+  deliberado: el arte llegó en esa medida —4:1, la relación correcta— en vez de
+  2400×600, y el `ancho`/`alto` del marcado existe para reservar el espacio
+  (§CLS), así que tiene que ser el del archivo de verdad o el navegador reserva
+  mal.
+
+  **Y ese desacople destapó dos cosas que el `auditor-privacidad` cobró sobre el
+  mismo cambio, las dos de la misma forma: una regla escrita en prosa que ningún
+  test verificaba.**
+
+  1. El chequeo comparaba **la relación**, y 2400×600 declarados sobre un archivo
+     de 1600×400 dan 4:1 = 4:1: el caso que la prosa prohíbe pasaba en verde.
+  2. **`public/` es el único camino por el que una imagen de un tercero llega a
+     HTML indexado sin pasar por ningún saneador.** La foto de una propuesta
+     pierde el EXIF con las coordenadas de la casa en `flyer-de-propuesta.js`
+     (B-896); un archivo commiteado no pasa por nada, porque el barrido del build
+     mira texto y no binarios. Los dos de hoy están limpios —se verificó chunk por
+     chunk— pero eso era una propiedad de quien los convirtió, no del código.
+
+  Ahora el chequeo **abre el archivo**: enumera sus chunks RIFF y compara las
+  medidas reales contra las declaradas (`src/lib/webp.ts`, con controles de
+  mutación en los dos ejes). Un `VP8L`, que el lector todavía no sabe leer, se
+  reporta como problema en vez de darse por bueno.
+
+  **El texto alternativo también cambió por el pase:** decía «En Instagram,
+  @biblioguia.ok» y la pieza muestra el handle **sin** nombrar la plataforma.
+  Inferirla era una afirmación nuestra sobre un tercero, en la home indexada.
+
 - **Las horas se pueden cargar en AM/PM** — **B-889**, **D-720**, pedido dos
   veces por el dueño. El campo de hora era un `<input type="datetime-local">`, y
   ese control **no decide el formato: lo decide el navegador** a partir del
@@ -28,6 +60,13 @@
   `celular`) en vez del ancho de la ventana. El panel ya tiene esa elección
   explícita y B-814 la decidió contra la detección; un `matchMedia` habría
   metido las dos políticas a la vez.
+
+  **Lo cobró además una red que ya estaba:** la clave nueva de `localStorage`
+  (`agenda:formato-de-hora`) no estaba declarada en la tabla del § 5.1 de
+  `07-seguridad.md`, y `clases-de-bug.test.ts` —que la deriva de ahí y del
+  fuente— se puso roja sola. Es exactamente lo que B-821 quería poder detectar:
+  la marca número ocho naciendo sin que nadie decidiera si lo que guarda es una
+  marca o contenido.
 
   **Y una que encontró el `auditor-trampas` sobre el propio cambio:** el módulo
   nuevo nació con **dos** parsers del string de `datetime-local` —el de las
