@@ -1247,7 +1247,40 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
-### B-1130 · `propuestaValida()` **tira** en vez de devolver `false`, y el test lo da verde igual · P2 — lo encontró `frente/conversion` (2026-09-17)
+### B-1130 · Un `serverTimestamp()` en un documento denegado convierte el rechazo en un error de evaluación, y el test lo da verde igual · P1 — lo encontró `frente/conversion` (2026-09-17), diagnosticado el 2026-09-18
+
+> **Diagnosticado, y no era de `propuestaValida()`.** El título viejo decía «`propuestaValida()` tira»;
+> la función está bien. **Lo que tira es tener un `serverTimestamp()` sin resolver en el documento
+> cuando la regla deniega.** Medido por bisección contra un emulador efímero, sobre las reglas de
+> `main`:
+>
+> | Caso (anónimo, `create` denegado) | Resultado |
+> |---|---|
+> | la cláusula del origen **sola**, con `serverTimestamp()` en el doc | ⚠️ evaluation error |
+> | la misma cláusula, con un `Timestamp` fijo en vez del sentinel | **`false` limpio** |
+> | `origen && creadoEn`, y también `creadoEn && origen` | ⚠️ evaluation error (el orden no importa) |
+> | `fechasValidas`, `lugarValido`, `imagenValida`, `esAdmin`, `esPublicador`, los `hasOnly` — **cada una aislada** | todas limpias |
+>
+> La tercera fila descarta el orden de las cláusulas; la primera descarta que sea una cláusula en
+> particular —tira una que ni siquiera toca `creadoEn`—; y la segunda aísla la causa en el sentinel.
+> El camino legítimo (`origen: 'formulario-publico'`, anónimo) **escribe bien**: con la regla en `true`
+> el sentinel se resuelve y no hay error.
+>
+> **Por eso el alcance es mucho mayor que un caso raro del origen, y por eso sube a P1.** Todo caso
+> negativo que mande `serverTimestamp()` —que es como se arma un documento de verdad— recibe un
+> error de evaluación en vez de un rechazo de la regla. **No está probando lo que dice probar**, y
+> nadie se entera porque el `RECHAZADA = /permission|insufficient/i` de
+> `tests/propuestas.integracion.test.ts` matchea las dos cosas: un throw también rechaza.
+>
+> **Qué hacer.** El arreglo no es de la regla, que está bien. Es el helper que -06 propuso: distinguir
+> «rechazada por la regla» de «la regla tiró», comparando el **mensaje** y no solo el `code`. Con eso,
+> cualquier regla que empiece a tirar se pone roja en vez de seguir verde. Y hay que decidir, caso por
+> caso, si el negativo debe usar un `Timestamp` fijo —para probar la regla de verdad— o si el
+> evaluation error es aceptable y solo hay que dejarlo dicho.
+>
+> El repo ya tenía media lección escrita: el docblock del `create` anónimo avisa que en una **lectura**
+> denegada el emulador devuelve la traza (`false for 'get' @ L977`) y no la frase de permisos, «y acá
+> se pagó de nuevo». Éste es el tercer formato de mensaje del mismo emulador.
 
 **Reproducido acá, contra un emulador efímero, sobre las reglas de `main`.** Un
 `create` anónimo sobre `/propuestas` no termina en un `false` limpio: termina en
