@@ -22,7 +22,7 @@
  * resto del módulo es el de verdad, incluida `enlaceDeContacto`.
  */
 import { readFileSync } from 'node:fs';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PropuestaConId } from '@/types/propuesta';
@@ -406,7 +406,13 @@ describe('convertir en actividad — el orden de D-600', () => {
    * siempre: la `aceptada` no vence (B-844).
    */
   it('«No usarla» no promueve nada y marca la foto como descartada', async () => {
+    // La foto **se tiene que haber visto** para que el descarte se ofrezca, así
+    // que el caso lo simula en vez de apoyarse en el mock sin configurar: hasta
+    // el pase de auditoría este `it` pasaba con el flyer diciendo «Trayendo la
+    // imagen…», o sea probando el estado contrario al que dice probar.
+    vi.mocked(urlDeImagenDePropuesta).mockResolvedValue('https://emu.test/abc.jpg');
     const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    await laFotoSePinta();
 
     await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
     await userEvent.click(screen.getByRole('button', { name: 'No usarla' }));
@@ -429,7 +435,9 @@ describe('convertir en actividad — el orden de D-600', () => {
      * hace más falta porque el botón de al lado dice «Sí, usarla» — sin el
      * aviso, «No usarla» se lee como «la dejo para después».
      */
+    vi.mocked(urlDeImagenDePropuesta).mockResolvedValue('https://emu.test/abc.jpg');
     montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    await laFotoSePinta();
     await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
     expect(screen.getByText(/se borra y no se puede recuperar/i)).toBeTruthy();
   });
@@ -472,14 +480,65 @@ describe('convertir en actividad — el orden de D-600', () => {
     expect(onConvertir).not.toHaveBeenCalled();
   });
 
+  /**
+   * **La foto se pintó**, que es distinto de «la URL resolvió» — B-926.
+   *
+   * En jsdom un `<img>` no carga nada, así que `onLoad` no dispara solo: hay que
+   * emitirlo. Y eso es exactamente lo que hace fiel a este helper — el gate del
+   * panel se abre con el `load` del `<img>` y no con la promesa que trajo la
+   * URL, porque una URL válida todavía puede terminar en un ícono roto.
+   */
+  const laFotoSePinta = async () => {
+    const img = await screen.findByAltText('El flyer que mandaron con esta propuesta');
+    fireEvent.load(img);
+  };
+
   it('con la foto a la vista, el descarte sí se ofrece', async () => {
     // Control positivo del par: sin esto, «no se ofrece» podría querer decir que
     // no se ofrece nunca.
     vi.mocked(urlDeImagenDePropuesta).mockResolvedValue('https://emu.test/abc.jpg');
     montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    await laFotoSePinta();
     await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'No usarla' })).toBeTruthy(),
+    );
+  });
+
+  it('mientras la foto todavía carga, el descarte NO se ofrece', async () => {
+    /*
+     * El tercer estado, y el que una mutación deja escapar si no está escrito:
+     * con el gate en `!== false`, «cargando» —que es `undefined`— vuelve a
+     * ofrecer el borrado, y los otros dos casos del par siguen en verde porque
+     * uno es `true` y el otro `false`. **Verificado con esa mutación exacta.**
+     *
+     * Se simula con una promesa que nunca resuelve, que es lo que pasa de verdad
+     * con una red lenta: la URL todavía no llegó y el `<img>` ni existe.
+     */
+    vi.mocked(urlDeImagenDePropuesta).mockReturnValue(new Promise(() => {}));
+    montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    expect(await screen.findByText('Trayendo la imagen…')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'No usarla' })).toBeNull(),
+    );
+  });
+
+  it('la URL resolvió pero el `<img>` falló: el descarte NO se ofrece', async () => {
+    /*
+     * El caso que el gate viejo dejaba pasar: `getDownloadURL` devolvió una URL
+     * y el navegador no pudo pintarla (objeto borrado en la carrera, red caída,
+     * un bloqueador). Con la señal en la promesa, «No usarla» se ofrecía sobre
+     * un ícono roto — que es autorizar un borrado irreversible de una foto que
+     * nadie vio.
+     */
+    vi.mocked(urlDeImagenDePropuesta).mockResolvedValue('https://emu.test/abc.jpg');
+    montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    const img = await screen.findByAltText('El flyer que mandaron con esta propuesta');
+    fireEvent.error(img);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'No usarla' })).toBeNull(),
     );
   });
 

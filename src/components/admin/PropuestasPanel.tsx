@@ -139,10 +139,15 @@ function FlyerDeLaPropuesta({
       try {
         const { urlDeImagenDePropuesta } = await import('@/lib/subir-imagen');
         const u = await urlDeImagenDePropuesta(storagePath);
-        if (vivo) {
-          setUrl(u);
-          onEstado(true);
-        }
+        /*
+         * **No se avisa acá que la foto se vio, y es el punto entero** — B-926.
+         * Que `getDownloadURL` haya resuelto dice que hay una URL, no que el
+         * navegador haya pintado algo: un `<img>` que 404ea después (objeto
+         * borrado en la carrera, red caída, bloqueador de contenido) dejaría al
+         * admin mirando el ícono roto con «No usarla» disponible. La señal sale
+         * del `onLoad`/`onError` del propio `<img>`, más abajo.
+         */
+        if (vivo) setUrl(u);
       } catch (e) {
         /*
          * Las dos causas se distinguen porque se arreglan distinto: si el chunk
@@ -194,6 +199,14 @@ function FlyerDeLaPropuesta({
            * quien escucha la pantalla es qué es esto y de quién vino.
            */
           alt="El flyer que mandaron con esta propuesta"
+          /*
+           * **Acá está la garantía de «se pudo mirar»**, y no en la promesa que
+           * trajo la URL. Mientras ninguno de los dos haya disparado, el estado
+           * queda `undefined` y el gate del padre (`=== true`) esconde «No
+           * usarla»: el default es no ofrecer el borrado.
+           */
+          onLoad={() => onEstado(true)}
+          onError={() => onEstado(false)}
           loading="lazy"
           className="max-h-40 rounded-md border border-borde"
         />
