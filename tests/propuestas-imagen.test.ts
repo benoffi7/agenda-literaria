@@ -645,9 +645,27 @@ describe('el trigger cablea las tres ramas, y el borrado crudo nunca vive en la 
       "} else if (motivo === 'rechazada') {",
     );
     // El `else` final existe, y lo que tiene adentro es un log y ningún borrado.
-    const ultimo = src.lastIndexOf('} else {');
-    expect(ultimo, 'no quedó un `else` final que atrape lo desconocido').toBeGreaterThan(0);
-    const cola = src.slice(ultimo);
+    /*
+     * **Anclado a la cadena de este trigger, y acotado** — B-1129.
+     *
+     * La primera versión era `src.slice(src.lastIndexOf('} else {'))`, y tenía
+     * las dos mitades del problema: el corte llegaba al final físico del
+     * archivo, y el ancla era «el último `else` del archivo». Acotar sola no
+     * alcanza — **medido**: agregando un segundo trigger con su propio
+     * `if/else` al final del archivo, `lastIndexOf` engancha *su* `else` y el
+     * chequeo pasa a mirar código ajeno, acotado o no.
+     *
+     * Así que el ancla sale de la cadena de ramas de **este** trigger: desde el
+     * `rechazada`, el `else` que sigue es el suyo. Es el mismo idioma que el
+     * caso del descarte de veinte líneas más abajo, que ya lo hacía bien.
+     */
+    const delRechazo = src.indexOf("} else if (motivo === 'rechazada') {");
+    expect(delRechazo, 'no se encontró la rama del rechazo').toBeGreaterThan(0);
+    const ultimo = src.indexOf('} else {', delRechazo);
+    expect(ultimo, 'no quedó un `else` final que atrape lo desconocido').toBeGreaterThan(delRechazo);
+    const finDeLaCola = src.indexOf('\n    }', ultimo);
+    expect(finDeLaCola, 'no se encontró el cierre del `else` final').toBeGreaterThan(ultimo);
+    const cola = src.slice(ultimo, finDeLaCola);
     expect(cola).toContain('motivo de borrado desconocido');
     expect(cola, 'el default volvió a borrar').not.toContain('.delete(');
   });
