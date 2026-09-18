@@ -1427,7 +1427,7 @@ eso es **B-871**, porque la `aceptada` no vence y nadie más va a pasar por ahí
 
 ### Cuando suena `flyer-de-propuesta-sin-borrar`
 
-Son **siete** caminos, todos con el mismo estado del mundo —una propuesta
+Son **ocho** caminos, todos con el mismo estado del mundo —una propuesta
 `aceptada` con su flyer original vivo en `propuestas/`, y ningún barrido que vaya
 a pasar por ahí— y por eso comparten el campo `alerta`. Se distinguen por el
 `resultado` (cuando el borrado se intentó) o por el `motivo` (cuando la decisión
@@ -1442,6 +1442,7 @@ ni siquiera llegó a intentarlo):
 | `aceptada-sin-actividad` | la propuesta quedó `aceptada` sin `revision.actividadId` (se la marcó a mano) | ídem `sin-actividad` |
 | `imagen-fuera-del-prefijo` | mismo desajuste que `objeto-ajeno`, detectado antes de intentar nada | **no borrar nada**, mismo motivo |
 | `descartada` con un `error` | **B-926** — quien revisó eligió «No usarla» al convertir y el borrado del original falló. Es el único camino donde el borrado se intentó **sin** verificar copia, porque no hay ninguna: la decisión ya la tomó una persona mirando la foto | reintentar el borrado a mano. Acá **no hay nada que decidir**: la foto ya se descartó a propósito, así que el objeto sobra |
+| `motivo de borrado desconocido` | **B-926** — el vocabulario de `motivo` creció y el trigger no conoce el valor nuevo, así que **no borró nada**. Hoy es inalcanzable: `decidirBorradoDeImagen` solo devuelve los tres literales que la cadena reconoce. Existe para que agregar un cuarto motivo y olvidarse de su rama sea un aviso y no un borrado silencioso | mirar qué `motivo` devolvió `decidirBorradoDeImagen` y agregarle su rama. Mientras tanto el original está vivo, que es el lado seguro |
 | un `error` en vez de un `warn` | falló la lectura de la actividad o el `delete` | reintentar el borrado a mano; si se repite, mirar el IAM de `calendar-sync@` |
 
 **Y «a mano» es literal, porque no hay botón**: `storage.rules` cierra el
@@ -1450,11 +1451,11 @@ alcanza a la aceptada. Se borra desde la consola de Storage, o con
 `gsutil rm gs://<bucket>/propuestas/prop_<uuid>.jpg`. Que esto sea manual es
 justamente **B-871**.
 
-> **De dónde sacar el path, que no es el mismo lugar en los seis.** Los cuatro
+> **De dónde sacar el path, que no es el mismo lugar en los siete.** Los cuatro
 > primeros son `resultado`, y ahí el log trae el campo `objeto` con el path
-> exacto. Los dos últimos son `motivo`, y salen de la rama que **decidió no
+> exacto. Los tres que salen por `motivo` vienen de la rama que **decidió no
 > hacer nada**: el log trae `propuesta` y `motivo`, y **no** `objeto` — porque
-> en esos dos casos el path o no existe o es justamente el que no sabemos de
+> en esos casos el path o no existe o es justamente el que no sabemos de
 > quién es, y ponerlo en el log invitaría a copiarlo a un `gsutil rm`. Hay que
 > abrir la propuesta por su id y mirar su `imagen.storagePath` antes de tocar
 > nada.

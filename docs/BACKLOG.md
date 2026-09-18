@@ -555,49 +555,6 @@ Firestore en `Unenforced` en la consola destraba el panel en el acto — pero ab
 también las escrituras anónimas de `/proponer` y de las tres guías, que es la capa
 que las sostiene. Es una decisión con costo, no un botón de reinicio.
 
-### B-926 · Convertir una propuesta decide sola qué pasa con la foto, y deja el slug vacío · P1 — **pedido del dueño (2026-09-15), primera prioridad**
-
-Son dos cosas del mismo momento —la pantalla de conversión de la bandeja— y por
-eso van juntas.
-
-**(a) La foto se reutiliza sola, o se pierde sin que nadie haya elegido.** Hoy
-`convertir()` (`src/components/admin/PropuestasPanel.tsx`) promueve la imagen
-subida a `imagenes/`, la agrega a la galería y la marca portada si es la primera.
-No hay dónde decir «esta no», «quiero otra», ni **bajarla al disco antes de que se
-vaya**. Y se va: `borrarImagenAlCerrar` borra el original de `propuestas/` cuando
-la propuesta pasa a `aceptada` (B-863). O sea que **el único momento en que esa
-foto existe y alguien la está mirando es esta pantalla**, y ahí no hay ni un botón.
-
-Las cuatro opciones que hay que ofrecer: **descargar**, **reutilizar** (lo de hoy,
-que queda como default), **descartar** y **subir otra**. Tres son baratas — la
-descarga es un `<a download>` sobre la URL que el panel ya trae
-(`urlDeImagenDePropuesta`), descartar es no promover, y subir otra ya la resuelve
-el `GaleriaEditor` que el formulario tiene abajo.
-
-**Lo que hay que mirar con cuidado es el cruce con B-863**, porque descartar abre
-el agujero que ese ítem cerró: el trigger borra el original solo si verifica que
-la actividad nombra una imagen propia **y** que el objeto está en el bucket. Si se
-descarta y no se promueve nada, esa verificación no se cumple, y como la
-`aceptada` no vence (B-844), la foto de un tercero queda sin fecha de vencimiento
-bajo un prefijo que `limpiarImagenesHuerfanas` no barre. **Descartar tiene que
-borrar el original, y el texto tiene que decirlo** — es la misma frase que ya
-está escrita para el rechazo.
-
-**(b) El slug llega en blanco y el guardado no pasa.** `propuestaAFormulario`
-(`src/lib/propuestas.ts`) lo deja vacío a propósito y lo dice: «prellenarlo acá
-sería fijar una URL que nadie revisó». Pero el slug **solo se deriva cuando
-alguien escribe el título** (`cambiarTitulo`, `src/lib/formulario/cascadas.ts`), y
-en una conversión el título llega puesto: nadie lo escribe. Resultado: el
-formulario abre con el slug en blanco y el guardado falla contra «El slug es
-obligatorio» (`src/lib/schema.ts`), con la única salida de tocarle una letra al
-título para que la cascada dispare. Un formulario que se abre ya inválido, y sin
-decir por qué.
-
-La revisión que el comentario quería proteger no se pierde prellenándolo: el slug
-queda **editable hasta publicar**, que es cuando se congela (trampa 10), y el
-formulario ya avisa que hay que revisarlo antes. Es `slug: slugify(p.titulo)` en
-la conversión, y borrar el párrafo del docblock que dice lo contrario.
-
 ### B-897 · `/guia` es una salida pública indexada y no está numerada · P1
 
 **Del `auditor-privacidad`.** Es HTML indexado, enlazado desde la barra, con texto

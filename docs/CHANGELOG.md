@@ -2,6 +2,28 @@
 
 ## Sin publicar
 
+- **Convertir una propuesta ya no decide sola qué pasa con la foto** — **B-926**,
+  pedido del dueño. El panel pregunta antes: se puede **bajar** la imagen al
+  disco, **usarla** o **descartarla**, y si se descarta el original se borra y no
+  se recupera. Es el tercer cierre del ciclo de esa foto y el único que borra
+  **sin** verificar que exista una copia, porque no hay ninguna: esa pregunta ya
+  la contestó una persona mirándola. Además el link de la ficha sale prellenado
+  del título, en vez de abrir vacío y frenar el guardado con «El slug es
+  obligatorio».
+
+  **Un pase de auditoría encontró nueve hallazgos sobre esto y el más importante
+  volvió dos veces.** «Descartar» se podía apretar con la foto sin mostrar —el
+  botón para bajarla ni siquiera se dibujaba en ese estado, y el aviso decía
+  «bajala antes con el botón de arriba»—. El primer arreglo escondió el botón
+  hasta que la foto estuviera visible; el segundo descubrió que «visible»
+  significaba «la URL resolvió» y no «el navegador pintó algo», y movió la señal
+  al `<img>`. Los estados son tres —se ve, falló, todavía carga— y el del medio
+  era el que quedaba afuera.
+
+  De paso: una propuesta **rechazada** ya no pregunta por una foto que se borró al
+  rechazarla, y «los dos cierres» pasó a decir **tres** en los cinco lugares donde
+  estaba escrito, incluido el docblock del archivo que los implementa.
+
 - **El pase de auditores de la Guía encontró seis registros a mano que la cuarta
   colección no extendió, y tres de ellos afirmaban por escrito lo contrario.**
   B-960 construyó `/bibliotecas` de punta a punta y salió con la proyección
