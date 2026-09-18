@@ -2,6 +2,20 @@
 
 ## Sin publicar
 
+- **El pie dejó de medir media pantalla** — **B-1135**, reportado por el dueño
+  con dos capturas. Los nueve enlaces se apilaban en una sola columna en
+  cualquier ancho: ~400px de pie en un sitio cuyas páginas a veces miden menos
+  que eso, y en escritorio un hueco enorme en el medio. Ahora van en dos
+  columnas y el pie mide la mitad.
+
+  **Columnas de CSS y no una grilla**, por lo mismo que la pared de la cartelera:
+  las filas tienen alto distinto y una grilla alinearía renglones, dejando huecos
+  debajo de los más cortos.
+
+  Y apareció **un error de marcado que la tira escondía**: «Anunciar» y «Apoyar»
+  compartían un `<li>`, así que un lector de pantalla anunciaba ocho elementos
+  sobre una lista de nueve.
+
 - **El encabezado entra en la pantalla de un teléfono** — **B-1134**, reportado
   por el dueño con una captura. Las ocho secciones se envolvían en **tres filas**
   y el logo, que comparte la fila, se partía en dos renglones y quedaba debajo:

@@ -76,9 +76,9 @@ import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
 const claseFila = `label-caps flex min-h-touch items-center text-tinta underline decoration-2 decoration-transparent underline-offset-4 transition-colors hover:decoration-acento hover:text-acento ${foco}`;
 ---
 
-<footer class="regla-gruesa-arriba mt-16 bg-hondo">
+<footer class="regla-gruesa-arriba mt-12 bg-hondo">
   <div
-    class="mx-auto grid max-w-[90rem] gap-8 px-4 py-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-12 sm:px-10"
+    class="mx-auto grid max-w-[90rem] gap-8 px-4 py-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-12 sm:px-10"
   >
     <div class="min-w-0">
       <p class="marca text-acento">{NOMBRE}</p>
@@ -96,8 +96,25 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
 
     <nav aria-label="Enlaces del pie" class="min-w-0">
       <p class={claseRotulo}>Ir a</p>
-      <ul class="mt-2 flex flex-col sm:text-end">
-        <li>
+      {/*
+        **En columnas y no en una tira** — B-1135, reportado por el dueño con dos
+        capturas. Los nueve enlaces se apilaban **siempre**, en cualquier ancho:
+        con `min-h-touch` por fila eso son ~400px de pie, más el bloque de la
+        marca, en un sitio cuyas páginas a veces miden menos que eso. En
+        escritorio además dejaba un hueco enorme en el medio, con la marca a la
+        izquierda y una columna flaca pegada al borde derecho.
+        
+        `columns-2` y no un `grid`: son filas de alto distinto —hay textos de una
+        y de dos líneas— y una grilla alinea renglones, así que dejaría huecos
+        debajo de los más cortos. Es la misma razón por la que la cartelera usa
+        columnas de CSS (`CLASES_DE_PARED`), y acá pesa igual.
+        
+        **`break-inside-avoid` en cada fila** es la mitad que no se puede
+        olvidar: sin él, CSS parte «Suscribirse al calendario» entre el pie de una
+        columna y la cabeza de la otra.
+      */}
+      <ul class="mt-2 columns-2 gap-x-8 sm:columns-1 lg:columns-2 sm:text-end">
+        <li class="break-inside-avoid">
           <a class={`${claseFila} sm:justify-end`} href={urlDeInstagram()} rel="me noopener" target="_blank">
             {/* El @ va afuera del nombre para que un lector de pantalla no lo
                 deletree como parte del handle. */}
@@ -105,7 +122,7 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             <span class="sr-only">(Instagram, se abre en una pestaña nueva)</span>
           </a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           {/*
             **`/pasadas` se enlaza desde el pie y no desde el encabezado** —
             B-109. El §2.1 dice para qué existe: que ninguna página de detalle
@@ -121,7 +138,7 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_PASADAS}>Lo que ya pasó</a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           {/*
             **Lo guardado se enlaza desde el pie y no desde el encabezado** —
             B-848, el mismo criterio con el que están acá `/pasadas` (B-229) y
@@ -133,10 +150,10 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_MIS_FAVORITOS}>Mis favoritos</a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           <a class={`${claseFila} sm:justify-end`} href={RUTA_SUSCRIBIRSE}>Suscribirse al calendario</a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           {/*
             **`/proponer` se anuncia acá y no en la barra de arriba** — B-896
             paso 4. La barra acaba de pasar a ocho pestañas con «Guía» y tiene un
@@ -151,13 +168,13 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_PROPONER}>Proponer una actividad</a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           <a class={`${claseFila} sm:justify-end`} href={RUTA_CONTACTO}>Sugerir una actividad</a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           <a class={`${claseFila} sm:justify-end`} href={RUTA_AYUDA}>Ayuda</a>
         </li>
-        <li>
+        <li class="break-inside-avoid">
           {/*
             **La sección comercial se enlaza desde el pie y no desde el
             encabezado** — B-770, el mismo criterio con el que `/pasadas` está
@@ -170,6 +187,12 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             quedan las cuatro que sirven a quien vino por una actividad.
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_ANUNCIAR}>Anunciar en la agenda</a>
+        </li>
+        {/* **Cada enlace en su propio `<li>`** — los dos últimos compartían uno,
+            así que un lector de pantalla anunciaba «ocho elementos» sobre una
+            lista de nueve. En columnas se notaba además a la vista: quedaban
+            pegados y sin poder repartirse. */}
+        <li class="break-inside-avoid">
           {/*
             **`/apoyar` se enlaza desde el pie y no desde el encabezado** —
             B-780, mismo criterio con el que `/pasadas` vive acá (B-109): la

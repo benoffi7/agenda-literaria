@@ -431,6 +431,44 @@ qué se hace con nueve enlaces en un teléfono. Un menú desplegable, un scroll
 horizontal de una fila, o partir en «lo principal + el resto adentro de algo».
 Tiene que decidirlo el dueño: es la puerta de entrada al sitio.
 
+### B-1135 · El pie mide media pantalla, en el teléfono y en el escritorio — ✅ hecho (2026-09-18) · P0 — del dueño con captura (2026-09-18)
+
+> **Los nueve enlaces pasan a dos columnas**, y el pie baja de ~400px de tira a
+> ~200px en las dos pantallas. Medido con capturas antes y después, no leyendo el
+> diff.
+>
+> **`columns-2` y no un `grid`, y el motivo es el mismo que el de la cartelera:**
+> las filas tienen alto distinto —hay textos de una y de dos líneas— y una grilla
+> alinea renglones, así que dejaría huecos debajo de los más cortos. Con columnas
+> de CSS cada una arranca donde terminó la anterior. Va con `break-inside-avoid`
+> en cada fila, que es la mitad que no se puede olvidar: sin eso, «Suscribirse al
+> calendario» se parte entre el pie de una columna y la cabeza de la otra.
+>
+> **Y apareció un error de marcado que nadie había visto:** «Anunciar en la
+> agenda» y «Apoyar la agenda» compartían un `<li>`, así que un lector de
+> pantalla anunciaba **ocho** elementos sobre una lista de nueve. En una tira no
+> se notaba; en columnas quedaban pegados y sin poder repartirse. Cada enlace
+> tiene ahora el suyo, y el test lo cuenta contra la cantidad de `<a>`.
+>
+> El aire de arriba y de adentro también bajó (`mt-16`→`mt-12`, `py-10`→`py-8`).
+
+
+**Once enlaces en una sola columna**, uno abajo del otro y alineados a la
+derecha, más el bloque de la marca a la izquierda: el pie ocupa más alto que
+varias de las páginas que cierra. En la captura de escritorio se ve además el
+**hueco en blanco** que queda entre el final del contenido y el pie, que lo hace
+parecer todavía más grande.
+
+**Dónde está:** `src/components/sitio/PieDePagina.astro:79` (`mt-16`) y `:97-99`
+— la lista es `flex flex-col` sin columnas, así que los once enlaces se apilan
+**siempre**, en cualquier ancho. En escritorio hay lugar de sobra para repartirlos
+en dos o tres columnas.
+
+**Por qué es P0 y no cosmética:** el pie es lo que sostiene las rutas que no están
+en la barra —«lo que ya pasó», «mis favoritos», «proponer»— y un pie que se lee
+como una pared se saltea entero. Además empuja el aviso de cookies y el contenido
+real fuera de la vista en el teléfono.
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
