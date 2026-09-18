@@ -2,6 +2,35 @@
 
 ## Sin publicar
 
+- **La cartelera muestra cuatro flyers por fila en desktop de verdad** —
+  **B-1133**, pedido del dueño **por segunda vez** («cuatro flyers por fila en la
+  cartelera para desktop»). B-958 lo había implementado el día anterior y el
+  pedido volvió igual: eso es el dato.
+
+  **Por qué no se veía, medido con una captura de producción:** hacían falta
+  **dos** condiciones a la vez —ocho flyers o más, y una pantalla de 1536px
+  (`2xl`)— y la segunda es la que pegaba. Con **218 flyers** cargados el escalón
+  de ocho nunca fue el problema; el breakpoint sí, porque en 1280–1535px —que es
+  donde mira cualquier notebook— la función devolvía cuatro y la pantalla
+  mostraba tres. **Un escalón que no se alcanza es lo mismo que no tenerlo.**
+
+  Se corrieron los dos: la cuarta columna entra **desde cuatro afiches** y
+  **desde `xl` (1280px)**. El `lg:columns-3` intermedio se queda —sin él, el
+  rango 1024–1279 habría caído de tres columnas a dos, o sea que destrabar la
+  cuarta habría empeorado una pantalla que estaba bien.
+
+  **El costo es el de B-249 y se asume con los ojos abiertos:** a 1280px cada
+  afiche mide ~280px, y ese ítem había descartado la cuarta columna con ese
+  número («para un flyer con texto adentro es ilegible»). Se presentó escrito
+  antes de decidir. Es el criterio que el dueño fijó en B-928 y que D-720 ya
+  había aplicado: «no podemos obligarlos a hacerlo como queremos, sino ajustarnos
+  nosotros».
+
+  **Y de paso se remidió un número que la doc daba por vigente:** tres lugares
+  del código decían «hoy hay dos flyers cargados» y razonaban sobre eso. Son
+  218. El razonamiento sigue valiendo, pero para la cartelera que se **vacía**,
+  no para el estado normal.
+
 - **Los filtros del panel sobreviven a entrar y salir de una actividad** —
   **B-955**, pedido del dueño: «en el admin, preservar filtros al ir y venir de
   una actividad». Filtrar «pendientes de septiembre», abrir una, guardar y
@@ -915,7 +944,7 @@
   en rojo — o sea que el bug que se escapó a los unitarios ya tiene red donde
   importa.
 
-  **B-966 — los filtros de lugar del sitio miraban una sola sede.** El índice
+  **B-1133 — los filtros de lugar del sitio miraban una sola sede.** El índice
   lleva ahora `zonas`, la geografía de **todas** las filas, con el mismo
   precedente que `modalidades[]`: una actividad presencial en dos ciudades
   aparece bajo las dos. Una sola clave y no tres, porque este archivo lo baja

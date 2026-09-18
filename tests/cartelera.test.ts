@@ -558,7 +558,7 @@ describe('las clases de la pared existen para los tres tamaños', () => {
      */
     const estilos = readFileSync(raiz('src/components/sitio/estilos.ts'), 'utf8');
     expect(estilos).toContain(CLASES_DE_PARED[2]);
-    expect(estilos).toContain(CLASES_DE_PARED[3].split(' ').at(-1));
+    expect(estilos).toContain(CLASES_DE_PARED[4].split(' ').at(-1));
     // Sin comentarios: el docblock de `CLASES_DE_PARED` explica justamente por
     // qué no se arma en runtime, y un barrido sobre el texto crudo fallaría
     // contra su propia documentación.

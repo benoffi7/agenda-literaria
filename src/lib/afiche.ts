@@ -92,12 +92,14 @@ export const estiloDeAfiche = (medida: MedidaDeImagen): string | undefined => {
 /**
  * Cuántas columnas puede tener la pared de la cartelera con `n` afiches.
  *
- * ── Por qué no es un `columns-3` fijo ─────────────────────────────────────
- * Hoy hay **dos** flyers cargados. Con tres columnas, CSS reparte el alto y esos
- * dos quedan del ancho de un tercio de pantalla, cada uno en su columna y con la
- * tercera vacía: una pared de afiches que se ve como una plantilla a medio
- * llenar. El pedido dice que con pocos se va a ver pobre y está bien, pero
- * «pobre» tiene que ser *poco*, no *mal armado*.
+ * ── Por qué no es un `columns-4` fijo ─────────────────────────────────────
+ * **Cuando esto se escribió había dos flyers cargados**; al 2026-09-18 hay
+ * **218** (medido en producción, captura del dueño). O sea que el caso que esta
+ * función cuida dejó de ser el de todos los días — pero sigue siendo el de la
+ * cartelera vacía o casi, que es donde se ve peor: con cuatro columnas, CSS
+ * reparte el alto y dos afiches quedan del ancho de un cuarto de pantalla, cada
+ * uno en su columna y con dos vacías. El pedido decía que con pocos se va a ver
+ * pobre y está bien, pero «pobre» tiene que ser *poco*, no *mal armado*.
  *
  * Con el tope atado a la cantidad, dos flyers salen **uno abajo del otro y
  * grandes**, que es como se ve una cartelera con dos afiches pegados; y a
@@ -105,18 +107,32 @@ export const estiloDeAfiche = (medida: MedidaDeImagen): string | undefined => {
  *
  * Es el tope: el CSS igual baja a una sola columna en el teléfono.
  *
- * ── B-958 · la cuarta columna es un escalón, no un techo más alto ─────────
- * Pedido del dueño: «cuatro flyers por fila». Entra **desde ocho**, y ese número
- * no es arbitrario: es lo que mantiene la proporción de los dos saltos que ya
- * había —3 abre la segunda, 6 abre la tercera, 8 abre la cuarta—. Subir el tope
- * sin agregar el escalón habría puesto cuatro afiches en cuatro columnas, o sea
- * una pared de un renglón flaco: exactamente el «mal armado» que el párrafo de
- * arriba existe para evitar.
+ * ── B-958 · la cuarta columna entró como escalón ──────────────────────────
+ * Pedido del dueño: «cuatro flyers por fila». Entró **desde ocho**, para
+ * mantener la proporción de los dos saltos que ya había —3 abre la segunda, 6 la
+ * tercera, 8 la cuarta—: poner cuatro afiches en cuatro columnas es una pared de
+ * un renglón flaco, que es el «mal armado» del párrafo de arriba.
+ *
+ * ── B-1133 · el pedido volvió, y los escalones se corrieron ────────────────
+ * **«Cuatro flyers por fila en la cartelera para desktop»**, otra vez y al día
+ * siguiente. Que un pedido vuelva es el dato: entre el escalón de ocho y el
+ * breakpoint `2xl` de `CLASES_DE_PARED`, en la práctica no se veía nunca — hacían
+ * falta ocho flyers **y** un monitor de 1536px. Es la misma lección que D-720
+ * dejó escrita sobre B-889, con el criterio que el dueño ya había fijado en
+ * B-928: *«no podemos obligarlos a hacerlo como queremos, sino ajustarnos
+ * nosotros»*.
+ *
+ * Así que **la cuarta entra desde cuatro afiches**, que es cuando existe la
+ * primera fila de cuatro, y el tercer escalón desaparece: de dos columnas se
+ * pasa a cuatro. **El costo está medido y se asume**, no se descubrió después —
+ * es el de B-249, ~280px por afiche en una notebook de 1280px—, y se le presentó
+ * escrito antes de elegir. La contención de que pocos no se vean mal armados
+ * sigue en pie en los dos primeros escalones: uno y dos afiches van grandes y a
+ * una columna, tres van a dos.
  */
-export const columnasDeCartelera = (n: number): 1 | 2 | 3 | 4 => {
+export const columnasDeCartelera = (n: number): 1 | 2 | 4 => {
   if (n <= 2) return 1;
-  if (n <= 5) return 2;
-  if (n <= 7) return 3;
+  if (n <= 3) return 2;
   return 4;
 };
 

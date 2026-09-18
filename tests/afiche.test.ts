@@ -19,7 +19,8 @@ const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.
 
 describe('proporcionDeAfiche — la caja sale de la imagen, o no sale', () => {
   it('con las dos medidas devuelve la razón tal cual', () => {
-    // 720 × 826 son los dos flyers que hay cargados hoy: verticales, 0,87.
+    // 720 × 826 eran los dos flyers cargados cuando se escribió esto (hoy hay
+    // 218): verticales, 0,87.
     expect(proporcionDeAfiche({ ancho: 720, alto: 826 })).toBe('720 / 826');
     expect(proporcionDeAfiche({ ancho: 1080, alto: 1350 })).toBe('1080 / 1350');
   });
@@ -74,35 +75,42 @@ describe('proporcionDeAfiche — la caja sale de la imagen, o no sale', () => {
 describe('columnasDeCartelera — la pared con pocos afiches también tiene que verse', () => {
   it('con dos o menos va a una columna: grandes y uno abajo del otro', () => {
     /*
-     * Hoy hay exactamente **dos** flyers cargados. Con `columns-3` fijo, CSS
-     * reparte el alto y esos dos quedan del ancho de un tercio de pantalla, cada
-     * uno en su columna y con la tercera vacía. Se ve como una plantilla a medio
-     * llenar, que es distinto de verse poco.
+     * Con una grilla fija, CSS reparte el alto y dos afiches quedan del ancho de
+     * un cuarto de pantalla, cada uno en su columna y con dos vacías: se ve como
+     * una plantilla a medio llenar, que es distinto de verse poco.
+     *
+     * Era el caso de todos los días cuando se escribió (dos flyers cargados) y
+     * al 2026-09-18 hay 218, así que hoy protege la cartelera que se vacía —un
+     * mes flojo, o el día después de una tanda de vencimientos— y no el estado
+     * normal.
      */
     expect(columnasDeCartelera(0)).toBe(1);
     expect(columnasDeCartelera(1)).toBe(1);
     expect(columnasDeCartelera(2)).toBe(1);
   });
 
-  it('la pared se densifica sola a medida que se cargan', () => {
+  it('con tres van a dos columnas: sigue habiendo un escalón intermedio', () => {
     expect(columnasDeCartelera(3)).toBe(2);
-    expect(columnasDeCartelera(5)).toBe(2);
-    expect(columnasDeCartelera(6)).toBe(3);
-    expect(columnasDeCartelera(7)).toBe(3);
   });
 
   /**
-   * **B-958 — la cuarta columna entra desde ocho.** Pedido del dueño: «cuatro
-   * flyers por fila».
+   * **B-1133 — la cuarta entra desde cuatro, y antes entraba desde ocho.**
    *
-   * Ocho no es arbitrario: mantiene la proporción de los dos saltos que ya había
-   * —3 abre la segunda, 6 la tercera, 8 la cuarta—. Subir el tope **sin** agregar
-   * el escalón habría puesto cuatro afiches en cuatro columnas, o sea una pared
-   * de un renglón flaco: el «mal armado» que esta función existe para evitar.
+   * B-958 la había puesto en ocho para mantener la proporción de los saltos. El
+   * pedido volvió al día siguiente —«cuatro flyers por fila en la cartelera para
+   * desktop»— y la medición explica por qué: con **218 flyers cargados** el
+   * escalón de ocho no era lo que lo tapaba, era el breakpoint `2xl` de
+   * `CLASES_DE_PARED`. Se corrieron los dos, y éste queda en cuatro porque es
+   * cuando existe la primera fila de cuatro.
+   *
+   * Lo que sigue en pie es la contención de los dos primeros escalones: uno y
+   * dos van grandes a una columna, tres van a dos. Eso es lo que evita la pared
+   * «mal armada» que esta función existe para evitar.
    */
-  it('desde ocho abre la cuarta', () => {
+  it('desde cuatro abre la cuarta', () => {
+    expect(columnasDeCartelera(4)).toBe(4);
     expect(columnasDeCartelera(8)).toBe(4);
-    expect(columnasDeCartelera(42)).toBe(4);
+    expect(columnasDeCartelera(218)).toBe(4);
   });
 
   /**
@@ -112,9 +120,10 @@ describe('columnasDeCartelera — la pared con pocos afiches también tiene que 
    * `/cartelera` —`max-w-[90rem]` con `px-10`, ~1360px de contenido— cuatro
    * columnas dan **~320px por afiche**, y «para un flyer con texto adentro es
    * ilegible». Ese número **no cambió**; lo que cambió es que el dueño lo pidió
-   * igual, y `CLASES_DE_PARED` lo acota poniendo la cuarta recién en `2xl`, que
-   * es donde el contenedor ya está en su ancho máximo. En 1366px se siguen viendo
-   * tres.
+   * dos veces. `CLASES_DE_PARED` lo acotaba poniendo la cuarta en `2xl`, y eso
+   * resultó ser justamente lo que hacía que no se viera nunca: desde B-1133 entra
+   * en `xl` (~280px por afiche), con el escalón de `lg:columns-3` intacto para
+   * que 1024–1279 no caiga de tres a dos.
    */
   it('nunca crece más allá de cuatro', () => {
     for (const n of [20, 100, 1000]) expect(columnasDeCartelera(n)).toBeLessThanOrEqual(4);

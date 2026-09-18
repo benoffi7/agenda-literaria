@@ -327,35 +327,40 @@ export const claseBotonDelVisor = `label-caps inline-flex min-h-touch items-cent
  * afiche sobre una pared. Nada se mueve solo: es continuo porque no termina, no
  * porque avance.
  *
- * Con **una** columna se agrega un tope de ancho: es el caso de hoy (dos flyers)
- * y sin el tope el afiche mediría el ancho entero de un monitor de 27".
+ * Con **una** columna se agrega un tope de ancho: sin él, el afiche mediría el
+ * ancho entero de un monitor de 27". Era el caso de todos los días cuando esto se
+ * escribió —había dos flyers cargados— y al 2026-09-18 hay **218**, así que hoy
+ * es el caso de una cartelera que se vacía, no el normal.
  */
-export const CLASES_DE_PARED: Record<1 | 2 | 3 | 4, string> = {
+export const CLASES_DE_PARED: Record<1 | 2 | 4, string> = {
   1: 'mx-auto max-w-3xl',
   2: 'sm:columns-2',
-  3: 'sm:columns-2 lg:columns-3',
   /*
-   * B-958 — la cuarta entra en **`2xl`**, y el breakpoint es la mitad del
-   * trabajo. El contenedor de `/cartelera` es `max-w-[90rem]` con `px-10`, o sea
-   * ~1360px de contenido: cuatro columnas ahí dan **~320px por afiche**, que es
-   * el número exacto con el que B-249 había descartado la cuarta columna («para
-   * un flyer con texto adentro es ilegible»).
+   * **B-1133 — la cuarta entra en `xl` (≥1280px), y antes entraba en `2xl`.**
    *
-   * `2xl` (≥1536px de viewport) es el único breakpoint donde el contenedor ya
-   * está en su ancho máximo, así que es donde esos 320px son los más anchos
-   * posibles. Con `xl` (1280px) el contenido mide ~1200 y cada afiche cae a
-   * ~280px — la misma cantidad de columnas, peor resultado.
+   * B-958 la había puesto en `2xl` con un número medido: el contenedor de
+   * `/cartelera` es `max-w-[90rem]` con `px-10`, o sea ~1360px de contenido, y
+   * cuatro columnas dan **~320px por afiche** — el ancho con el que B-249 había
+   * descartado la cuarta columna («para un flyer con texto adentro es
+   * ilegible»). `2xl` es el único breakpoint donde el contenedor ya está en su
+   * ancho máximo, así que ahí esos 320px son los más anchos posibles.
    *
-   * **La objeción de B-249 no desapareció, se acotó**: a 320px un flyer con
-   * mucho texto se sigue leyendo mal, y quien mire en 1366px —la pantalla de
-   * notebook más común— va a ver tres, no cuatro. El pedido del dueño era
-   * «cuatro por fila»; esto lo cumple donde la pantalla lo banca.
+   * **Ese número no cambió y sigue siendo la objeción.** Lo que cambió es que el
+   * pedido volvió al día siguiente: con `2xl`, quien mira en 1366px o 1440px
+   * —las pantallas de notebook más comunes— **nunca** veía cuatro, así que la
+   * función devolvía 4 y la pantalla mostraba 3. Un escalón que no se alcanza es
+   * lo mismo que no tenerlo.
    *
-   * **Escrita entera**, como las otras tres y por el mismo motivo: Tailwind no ve
-   * una clase armada por concatenación, así que `columns-4` tiene que aparecer
-   * literal en un archivo que su `content` mire.
+   * En `xl` cada afiche cae a ~280px. Se asume, con el costo escrito y
+   * presentado antes de elegir: es la decisión de siempre de este proyecto
+   * cuando el pedido vuelve (D-720, B-928).
+   *
+   * **El `lg:columns-3` intermedio se queda**, y no es un resto: entre 1024 y
+   * 1279 el contenedor no da para cuatro, y sin ese escalón ese rango caería de
+   * tres columnas a dos — o sea que destrabar la cuarta habría empeorado una
+   * pantalla que hoy está bien.
    */
-  4: 'sm:columns-2 lg:columns-3 2xl:columns-4',
+  4: 'sm:columns-2 lg:columns-3 xl:columns-4',
 };
 
 /**
