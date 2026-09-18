@@ -68,6 +68,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
@@ -172,29 +173,12 @@ const COLECCIONES_ABIERTAS: readonly string[] = [
 const UID_ADMIN = 'uid_anon_admin';
 const UID_PELADO = 'uid_anon_sin_claim';
 
-/**
- * `code === 'permission-denied'` y no el mensaje.
- *
- * El emulador devuelve la traza de evaluación en el `message` de algunos
- * rechazos (`false for 'create' @ L263`) y «Missing or insufficient permissions»
- * en otros, así que un matcher por texto falla contra la mitad de los casos. El
- * `code`, en cambio, distingue lo único que importa: `permission-denied` es «la
- * regla denegó» y `unavailable` es «no se pudo preguntar». Es el mismo helper que
- * `actividades.integracion.test.ts`, y está acá y no importado porque ese archivo
- * no lo exporta.
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
  */
-const rechazada = async (operacion: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await operacion;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
 
 /** Las tres formas de escribir. Borrar va aparte: necesita el documento puesto. */
 const escrituras = (coleccion: string, id: string) => [
@@ -267,7 +251,7 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
       const abierta = COLECCIONES_ABIERTAS.includes(coleccion);
       for (const [verbo, operacion] of escrituras(coleccion, 'anon_intento')) {
         if (abierta && verbo === 'create') continue;
-        await rechazada(operacion(), `${verbo} anónimo en /${coleccion}`);
+        await denegada(operacion(), `${verbo} anónimo en /${coleccion}`);
       }
     });
 
@@ -276,16 +260,16 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
       // «hoy nadie escribe» sea cierto de verdad y no solo de las cuatro
       // colecciones que alguien se acordó de nombrar.
       for (const [verbo, operacion] of escrituras(coleccion, 'anon_intento')) {
-        await rechazada(operacion(), `${verbo} anónimo en /${coleccion}`);
+        await denegada(operacion(), `${verbo} anónimo en /${coleccion}`);
       }
     });
 
     it('ni en una ruta inventada, ni en una subcolección', async () => {
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'coleccion-que-nadie-nombro', 'x'), { a: 1 }),
         'una colección inventada',
       );
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'actividades', 'act_1', 'versiones', 'v1'), { a: 1 }),
         'el historial de una actividad',
       );
@@ -294,7 +278,7 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
     it('y no lee nada que no sea /opciones', async () => {
       for (const coleccion of [...coleccionesDeLasReglas(), ...COLECCIONES_FUTURAS]) {
         if (coleccion === 'opciones') continue;
-        await rechazada(getDoc(doc(db(), coleccion, 'x')), `lectura anónima de /${coleccion}`);
+        await denegada(getDoc(doc(db(), coleccion, 'x')), `lectura anónima de /${coleccion}`);
       }
     });
   });
@@ -308,21 +292,21 @@ describe.skipIf(!vivo)('hoy nadie escribe sin el claim admin — B-836', () => {
 
     it.each(coleccionesDeLasReglas())('no escribe en /%s', async (coleccion) => {
       for (const [verbo, operacion] of escrituras(coleccion, 'pelado_intento')) {
-        await rechazada(operacion(), `${verbo} sin claim en /${coleccion}`);
+        await denegada(operacion(), `${verbo} sin claim en /${coleccion}`);
       }
     });
 
     it.each(COLECCIONES_FUTURAS)('tampoco en /%s', async (coleccion) => {
       for (const [verbo, operacion] of escrituras(coleccion, 'pelado_intento')) {
-        await rechazada(operacion(), `${verbo} sin claim en /${coleccion}`);
+        await denegada(operacion(), `${verbo} sin claim en /${coleccion}`);
       }
     });
 
     it('lee /opciones como cualquiera, y nada más', async () => {
       const snap = await getDoc(doc(db(), 'opciones', 'arancel'));
       expect(snap.exists()).toBe(false);
-      await rechazada(getDoc(doc(db(), 'actividades', 'x')), 'lectura sin claim de /actividades');
-      await rechazada(getDoc(doc(db(), 'reportes', 'x')), 'lectura sin claim de /reportes');
+      await denegada(getDoc(doc(db(), 'actividades', 'x')), 'lectura sin claim de /actividades');
+      await denegada(getDoc(doc(db(), 'reportes', 'x')), 'lectura sin claim de /reportes');
     });
   });
 

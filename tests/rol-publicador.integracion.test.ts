@@ -58,6 +58,7 @@ import {
 import { olvidarCentinela } from '@/lib/slugs';
 import { formDeCiclo } from './fixtures/formulario-de-ciclo';
 import { PROJECT_ID, cargarReglas, emuladorAuthVivo, emuladorVivo, limpiarFirestore } from './emulador';
+import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulador';
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
 // abajo (una tanda a medias) no puede leerse como «está todo».
@@ -84,28 +85,12 @@ const MAIL_PUB_2 = 'otro.publicador.b888@ejemplo.test';
 /** Una sola app del Admin SDK para sembrar, creada en el `beforeAll`. */
 let appSiembra: ReturnType<typeof initAdmin> | null = null;
 
-/**
- * `code === 'permission-denied'` y no el mensaje — el mismo helper que
- * `actividades.integracion.test.ts` y `escritura-anonima.integracion.test.ts`.
- *
- * Un `rejects.toThrow()` pelado lo satisface también un emulador caído; y un
- * matcher por texto falla contra la traza de evaluación (`false for 'get' @
- * L58`), que es lo que el emulador devuelve en las lecturas denegadas. El
- * `code` distingue lo único que importa: `permission-denied` es «la regla
- * denegó» y `unavailable` es «no se pudo preguntar».
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
  */
-const rechazada = async (operacion: Promise<unknown>, que: string): Promise<void> => {
-  let error: unknown;
-  try {
-    await operacion;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
 
 /** Siembra con el Admin SDK, que **no pasa por las reglas**: prepara el escenario sin usarlas. */
 const sembrar = async (id: string, datos: Record<string, unknown>): Promise<void> => {
@@ -333,7 +318,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('no edita una actividad ajena', async () => {
       // Mutación: borrar `resource.data.get('createdBy','') == request.auth.uid`
       // del `allow update`. Este caso se pone rojo.
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'actividades', AJENA), { titulo: 'Mío ahora', updatedBy: UID_PUB }),
         'editar una actividad ajena',
       );
@@ -350,7 +335,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * `request.resource.data`. Este caso se pone rojo (y el anterior sigue verde,
        * que es lo que lo hace un caso aparte y no el mismo dos veces).
        */
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'actividades', AJENA), {
           createdBy: UID_PUB,
           updatedBy: UID_PUB,
@@ -363,7 +348,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       // Mutación: borrar la cláusula
       // `request.resource.data.get('createdBy','') == resource.data.get('createdBy','')`.
       // Este caso se pone rojo.
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'actividades', MIA), {
           createdBy: UID_ADMIN,
           updatedBy: UID_PUB,
@@ -389,14 +374,14 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * request.auth.uid` del `allow create` → se pone rojo el primero. Borrar
        * `…get('updatedBy','') == request.auth.uid` → el segundo.
        */
-      await rechazada(
+      await denegada(
         setDoc(
           doc(db(), 'actividades', 'act_b888_impostora_a'),
           actividadDe(UID_ADMIN, { updatedBy: UID_PUB }),
         ),
         'crear una actividad con el createdBy de otro',
       );
-      await rechazada(
+      await denegada(
         setDoc(
           doc(db(), 'actividades', 'act_b888_impostora_b'),
           actividadDe(UID_PUB, { updatedBy: UID_ADMIN }),
@@ -415,7 +400,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * Mutación: borrar `request.resource.data.get('updatedBy','') ==
        * request.auth.uid` del `allow update`. Este caso se pone rojo.
        */
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'actividades', MIA), { titulo: 'Ojo', updatedBy: UID_ADMIN }),
         'firmar una edición propia con el updatedBy de otro',
       );
@@ -424,7 +409,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('no borra una ajena, y sí la suya', async () => {
       // Mutación: borrar la condición de dueño del `allow delete`. La primera
       // mitad de este caso se pone roja.
-      await rechazada(deleteDoc(doc(db(), 'actividades', AJENA)), 'borrar una actividad ajena');
+      await denegada(deleteDoc(doc(db(), 'actividades', AJENA)), 'borrar una actividad ajena');
       await deleteDoc(doc(db(), 'actividades', MIA));
     });
 
@@ -437,12 +422,12 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * Mutación: cambiar el default de `resource.data.get('createdBy', '')` por
        * `request.auth.uid`. Este caso se pone rojo (las tres operaciones).
        */
-      await rechazada(getDoc(doc(db(), 'actividades', VIEJA)), 'leer una actividad sin createdBy');
-      await rechazada(
+      await denegada(getDoc(doc(db(), 'actividades', VIEJA)), 'leer una actividad sin createdBy');
+      await denegada(
         updateDoc(doc(db(), 'actividades', VIEJA), { titulo: 'x', updatedBy: UID_PUB }),
         'editar una actividad sin createdBy',
       );
-      await rechazada(deleteDoc(doc(db(), 'actividades', VIEJA)), 'borrar una actividad sin createdBy');
+      await denegada(deleteDoc(doc(db(), 'actividades', VIEJA)), 'borrar una actividad sin createdBy');
     });
   });
 
@@ -457,7 +442,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('no lee una actividad ajena, documento por documento', async () => {
       // Mutación: volver el `allow read` a `esAdmin() || esPublicador()`. Este
       // caso se pone rojo.
-      await rechazada(getDoc(doc(db(), 'actividades', AJENA)), 'leer una actividad ajena');
+      await denegada(getDoc(doc(db(), 'actividades', AJENA)), 'leer una actividad ajena');
     });
 
     it('la query SIN `where` se rechaza entera — no devuelve las suyas (trampa 7)', async () => {
@@ -471,13 +456,13 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * Es también por qué `slugDisponible()` (`src/lib/actividades.ts`), que barre
        * la colección sin `where`, no funciona con este rol. Está anotado en B-888.
        */
-      await rechazada(getDocs(collection(db(), 'actividades')), 'listar todas las actividades');
+      await denegada(getDocs(collection(db(), 'actividades')), 'listar todas las actividades');
     });
 
     it('tampoco pidiendo explícitamente las de otro', async () => {
       // Mutación: la misma que el caso anterior de lectura. Va aparte porque el
       // camino es otro: acá la query es válida y lo que falla es el dueño.
-      await rechazada(
+      await denegada(
         getDocs(query(collection(db(), 'actividades'), where('createdBy', '==', UID_ADMIN))),
         'listar las actividades de otra cuenta',
       );
@@ -494,11 +479,11 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * Mutación: poner `esDelPanel()` en el `allow read` de `versiones`. La
        * primera mitad de este caso se pone roja.
        */
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', MIA, 'versiones', 'v1')),
         'leer el historial de una actividad propia',
       );
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', AJENA, 'versiones', 'v1')),
         'leer el historial de una actividad ajena',
       );
@@ -527,7 +512,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * este caso se pone roja.
        */
       await getDoc(doc(db(), 'opciones', 'arancel'));
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }),
         'reescribir la taxonomía compartida',
       );
@@ -545,12 +530,12 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * Mutación: `esDelPanel()` en cualquiera de las tres cláusulas de
        * `/reportes`. La mitad correspondiente se pone roja.
        */
-      await rechazada(getDoc(doc(db(), 'reportes', 'r_b888')), 'leer un reporte');
-      await rechazada(
+      await denegada(getDoc(doc(db(), 'reportes', 'r_b888')), 'leer un reporte');
+      await denegada(
         setDoc(doc(db(), 'reportes', 'r_b888_nuevo'), reporteDeAlta(UID_PUB)),
         'crear un reporte (con el documento que la regla acepta)',
       );
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'reportes', 'r_b888'), {
           resuelto: true,
           actualizadoEn: serverTimestamp(),
@@ -577,17 +562,17 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('no entra a la bandeja de propuestas, que lleva el contacto de un tercero', async () => {
       // Mutación: `esDelPanel()` en el `allow read`/`update` de `/propuestas`. La
       // mitad correspondiente se pone roja.
-      await rechazada(getDoc(doc(db(), 'propuestas', 'p_b888')), 'leer una propuesta');
+      await denegada(getDoc(doc(db(), 'propuestas', 'p_b888')), 'leer una propuesta');
       // Igual que con `/reportes`: el update tiene la forma que `revisionValida()`
       // acepta, o sea que lo único que puede rechazarlo es el `esAdmin()`.
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_b888'), {
           estado: 'aceptada',
           revision: { porUid: UID_PUB, en: serverTimestamp(), actividadId: null, motivo: null },
         }),
         'revisar una propuesta (con el cambio que la regla acepta)',
       );
-      await rechazada(deleteDoc(doc(db(), 'propuestas', 'p_b888')), 'borrar una propuesta');
+      await denegada(deleteDoc(doc(db(), 'propuestas', 'p_b888')), 'borrar una propuesta');
     });
 
     /**
@@ -601,7 +586,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('pero sí puede proponer una actividad, como cualquiera (B-896)', async () => {
       await setDoc(doc(db(), 'propuestas', 'p_b888_del_publicador'), propuestaDeAlta());
       // Y tampoco la puede volver a leer: el `create` abierto no abre la bandeja.
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'propuestas', 'p_b888_del_publicador')),
         'leer la propuesta que acaba de mandar',
       );
@@ -610,7 +595,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('no lee /sistema, que trae las consultas de Google y el flag de rebuild', async () => {
       // Mutación: `esDelPanel()` en el `allow read` de `/sistema`. Este caso se
       // pone rojo.
-      await rechazada(getDoc(doc(db(), 'sistema', 'analitica-sitio')), 'leer el tablero');
+      await denegada(getDoc(doc(db(), 'sistema', 'analitica-sitio')), 'leer el tablero');
     });
   });
 
@@ -635,15 +620,15 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
     it('no lee una actividad ajena, aunque tenga el claim admin', async () => {
       // Mutación: sacarle el `&& !esPublicador()` a `esAdmin()`. Este caso se pone
       // rojo — y es el único lugar del archivo donde esa cláusula se puede cobrar.
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', AJENA)),
         'leer lo ajeno con los dos claims puestos',
       );
     });
 
     it('tampoco escribe la taxonomía compartida ni lee la bandeja', async () => {
-      await rechazada(setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }), 'taxonomía');
-      await rechazada(getDoc(doc(db(), 'reportes', 'r_b888')), 'bandeja de reportes');
+      await denegada(setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }), 'taxonomía');
+      await denegada(getDoc(doc(db(), 'reportes', 'r_b888')), 'bandeja de reportes');
     });
 
     it('y sigue pudiendo lo suyo: el rol acotado se ejerce de verdad', async () => {
@@ -672,12 +657,12 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * mundo, que es lo que sería si cualquiera con sesión pudiera registrarse.
        */
       await entrarComo(UID_PELADO, {}, { email: 'pelado.b888@ejemplo.test' });
-      await rechazada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin claim');
-      await rechazada(
+      await denegada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin claim');
+      await denegada(
         setDoc(doc(db(), 'actividades', 'act_b888_pelada'), actividadDe(UID_PELADO)),
         'crear sin claim',
       );
-      await rechazada(
+      await denegada(
         // **Con `serverTimestamp()`**, que es el documento que la regla acepta:
         // con un `actualizadoEn` de mentira el rechazo venía de `usuarioValido()`
         // y no del claim, así que sacar el `esDelPanel()` dejaba este aserto
@@ -692,8 +677,8 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
 
     it('anónima: nada, como antes', async () => {
       await signOut(auth());
-      await rechazada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin sesión');
-      await rechazada(getDoc(doc(db(), 'usuarios', UID_PUB)), 'leer el directorio sin sesión');
+      await denegada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin sesión');
+      await denegada(getDoc(doc(db(), 'usuarios', UID_PUB)), 'leer el directorio sin sesión');
     });
   });
   // ══════════════════════════════════════════════════════════════════════
@@ -740,7 +725,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * por encima de una Function.
        */
       await setDoc(doc(db(), 'slugs', 'taller-disputado'), reserva(UID_PUB, 'act_1'));
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'slugs', 'taller-disputado'), reserva(UID_PUB, 'act_2')),
         'pisar una reserva ajena',
       );
@@ -755,7 +740,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       // `reservaValida()`. Este caso se pone rojo. Es lo que hace verificable el
       // `delete` de más abajo: sin esa cláusula, `porUid` sería un dato que el
       // cliente elige y soltar el nombre de otro sería escribirlo primero.
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'slugs', 'taller-firmado-por-otro'), reserva(UID_ADMIN, 'act_1')),
         'reservar a nombre de otra cuenta',
       );
@@ -774,7 +759,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        *
        * Mutación: sacar ese `matches`. Este caso se pone rojo.
        */
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'slugs', '_indice'), reserva(UID_PUB, 'act_1')),
         'escribir el centinela del índice',
       );
@@ -784,7 +769,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       // Mutación: `allow list: if esDelPanel()`. Este caso se pone rojo. Es la
       // misma trampa 13 de `storage.rules`: un `read` abierto entrega el prefijo
       // entero, y acá el prefijo son las URLs de lo que todavía no se publicó.
-      await rechazada(getDocs(collection(db(), 'slugs')), 'enumerar el índice de slugs');
+      await denegada(getDocs(collection(db(), 'slugs')), 'enumerar el índice de slugs');
     });
 
     it('suelta la suya y no la de otro', async () => {
@@ -802,7 +787,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
         porUid: UID_ADMIN,
         creadoEn: new Date(),
       });
-      await rechazada(deleteDoc(doc(db(), 'slugs', 'taller-del-admin')), 'soltar el nombre de otro');
+      await denegada(deleteDoc(doc(db(), 'slugs', 'taller-del-admin')), 'soltar el nombre de otro');
 
       await setDoc(doc(db(), 'slugs', 'taller-para-soltar'), reserva(UID_PUB, 'act_3'));
       await deleteDoc(doc(db(), 'slugs', 'taller-para-soltar'));
@@ -829,7 +814,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * que fijarlo — lo que no hay es una cláusula de adorno que lo finja.
        */
       const base = { porUid: UID_PUB, creadoEn: serverTimestamp() };
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'slugs', 'con-campo-de-mas'), {
           ...base,
           actividadId: 'act_1',
@@ -837,15 +822,21 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
         }),
         'una reserva con un campo de más',
       );
-      await rechazada(
+      /*
+       * `reservaValida()` tampoco lleva `is string` —misma decisión que la geo
+       * de los directorios—, así que un `42` no deniega: revienta el `.size()`
+       * (`Function not found error: Name: [size]`). El helper que lo admite deja
+       * eso a la vista en vez de taparlo bajo un `permission-denied` (B-1130).
+       */
+      await denegadaOReglaQueTira(
         setDoc(doc(db(), 'slugs', 'con-id-numerico'), { ...base, actividadId: 42 }),
         'un actividadId que no es string',
       );
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'slugs', 'con-id-vacio'), { ...base, actividadId: '' }),
         'un actividadId vacío',
       );
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'slugs', 'con-id-larguisimo'), {
           ...base,
           actividadId: 'x'.repeat(201),
@@ -899,7 +890,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
 
     it('un anónimo no lee el índice: es la lista de lo que todavía no se publicó', async () => {
       await signOut(auth());
-      await rechazada(getDoc(doc(db(), 'slugs', 'taller-nuevo')), 'leer el índice sin sesión');
+      await denegada(getDoc(doc(db(), 'slugs', 'taller-nuevo')), 'leer el índice sin sesión');
     });
   });
   // ══════════════════════════════════════════════════════════════════════
@@ -944,7 +935,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       // La otra punta: con el rol equivocado, la misma función hace el barrido y
       // el servidor la corta. Es el control negativo que hace que la primera
       // mitad signifique algo.
-      await rechazada(listarActividades('admin', UID_PUB), 'el barrido sin where');
+      await denegada(listarActividades('admin', UID_PUB), 'el barrido sin where');
     });
 
     it('`slugDisponible` contesta sin barrer el catálogo — la rotura 2', async () => {
@@ -1233,7 +1224,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * un caso aparte y no el mismo dos veces.
        */
       await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
-      await rechazada(
+      await denegada(
         updateDoc(doc(db(), 'actividades', AJENA_MDQ), {
           titulo: 'Le corrijo el título al de al lado',
           createdBy: UID_ADMIN,
@@ -1250,7 +1241,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * distintas del archivo: aflojar una no afloja la otra.
        */
       await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
-      await rechazada(
+      await denegada(
         deleteDoc(doc(db(), 'actividades', AJENA_MDQ)),
         'borrar una actividad ajena de su propia ciudad',
       );
@@ -1264,11 +1255,11 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * `get` del documento y el `list` de la query.
        */
       await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', AJENA_ROSARIO)),
         'leer una actividad ajena de otra ciudad',
       );
-      await rechazada(
+      await denegada(
         getDocs(
           query(collection(db(), 'actividades'), where('ciudades', 'array-contains', OTRA_CIUDAD)),
         ),
@@ -1290,7 +1281,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * catálogo entero anterior a B-919 a cualquier publicador.
        */
       await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', AJENA_SIN_CIUDADES)),
         'leer una actividad ajena sin el campo ciudades',
       );
@@ -1311,7 +1302,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * cubre.
        */
       await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', AJENA_CIUDAD_VACIA)),
         'leer una actividad con la ciudad vacía, sin ciudad en el claim',
       );
@@ -1321,7 +1312,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       // El caso normal del claim sin `--ciudad`: es exactamente el rol de B-888,
       // ve lo suyo y nada más.
       await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
-      await rechazada(
+      await denegada(
         getDoc(doc(db(), 'actividades', AJENA_MDQ)),
         'leer una actividad de una ciudad sin tener ciudad en el claim',
       );

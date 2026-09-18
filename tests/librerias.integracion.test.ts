@@ -56,6 +56,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -97,27 +98,13 @@ const documento = (over: Record<string, unknown> = {}, f: LibreriaForm = form())
   ...over,
 });
 
-const RECHAZADA = /permission|insufficient/i;
 
-/**
- * Una lectura denegada **por permisos**, no por cualquier cosa.
- *
- * Un `rejects.toThrow()` pelado lo satisface un emulador caído, y el mensaje de
- * una lectura denegada no es «insufficient permissions» sino la traza de
- * evaluación — el `code`, en cambio, sí es `permission-denied` siempre.
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
  */
-const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await lectura;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
 
 describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
   beforeAll(async () => {
@@ -201,10 +188,10 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
 
   describe('la forma: lo que `formaDeLibreria()` rechaza', () => {
     const rechaza = async (que: string, over: Record<string, unknown>) => {
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', `l_no_${que}`), documento(over)),
         que,
-      ).rejects.toThrow(RECHAZADA);
+      );
     };
 
     /**
@@ -232,10 +219,10 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       for (const campo of ['nombre', 'web', 'geo', 'contactoDeQuienCargo', 'searchText']) {
         const d = documento() as Record<string, unknown>;
         delete d[campo];
-        await expect(
+        await denegada(
           setDoc(doc(db(), 'librerias', `l_falta_${campo}`), d),
           `sin ${campo}`,
-        ).rejects.toThrow(RECHAZADA);
+        );
       }
     });
 
@@ -312,7 +299,19 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     it('una geo rota: clave de más, valor que no es número, o fuera de rango', async () => {
       await rechaza('geo_extra', { geo: { lat: -34.6, lng: -58.4, alt: 25 } });
       await rechaza('geo_parcial', { geo: { lat: -34.6 } });
-      await rechaza('geo_string', { geo: { lat: '-34.6', lng: '-58.4' } });
+      /*
+       * **Éste no es un rechazo: es la regla explotando, y está decidido así.**
+       * `geoDeLibreriaValida()` no lleva `is number` a propósito —su docblock lo
+       * argumenta: una cláusula que no puede fallar se lee como load-bearing— y
+       * se apoya en que un string no se puede comparar con `>=`. La traza lo
+       * dice (`any >= constraint`), así que el caso va con el helper que lo
+       * admite, y queda visible que la denegación viene del error y no del
+       * rango (B-1130).
+       */
+      await denegadaOReglaQueTira(
+        setDoc(doc(db(), 'librerias', 'l_no_geo_string'), documento({ geo: { lat: '-34.6', lng: '-58.4' } })),
+        'geo_string',
+      );
       // Los cuatro bordes, y no solo dos: con `lat: 200` sola, el piso (`>= -90`)
       // no tiene quién lo mute y se lee como load-bearing sin poder fallar.
       await rechaza('geo_lat_alta', { geo: { lat: 200, lng: -58.4 } });
@@ -398,9 +397,9 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     it('la ficha no puede nacer descartada', async () => {
       // Nadie nace rechazado: `rechazado` es el resultado de una revisión, y la
       // revisión tiene que estar sin firmar al crear (los casos de arriba).
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_rechazada'), documento({ estado: 'rechazado' })),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**
@@ -415,20 +414,20 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      * cláusula del estado deja este caso en rojo.
      */
     it('pero una que dice venir del formulario público, no — ni anónima', async () => {
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'librerias', 'l_publica_desde_afuera'),
           documento({ estado: 'publicado', origen: 'formulario-publico' }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
 
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'librerias', 'l_publica_anonima'),
           documento({ estado: 'publicado', origen: 'formulario-publico' }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
       await entrarComo(UID, { admin: true });
     });
 
@@ -443,15 +442,15 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       ['porUid', { porUid: UID, en: null, motivo: null }],
       ['motivo', { porUid: null, en: null, motivo: 'ya lo revisaron' }],
     ])('ni con la revisión ya firmada: `%s`', async (campo, revision) => {
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', `l_firmada_${campo}`), documento({ revision })),
         campo,
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni con la fecha de revisión puesta', async () => {
       const { Timestamp } = await import('firebase/firestore');
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'librerias', 'l_firmada_en'),
           documento({
@@ -462,34 +461,34 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
             },
           }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni antedatada: `creadoEn` es `request.time`', async () => {
       const { Timestamp } = await import('firebase/firestore');
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'librerias', 'l_antigua'),
           documento({ creadoEn: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')) }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni marcada como que ya estuvo publicada: nacería con el slug congelado', async () => {
       // Trampa 10 al revés: la marca la escribe un trigger, y una ficha que nace
       // con ella nace con el candado del lado de afuera.
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_marcada'), documento({ publicadaAlgunaVez: true })),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('el origen tiene que coincidir con quién escribe', async () => {
       // Un admin no puede hacer pasar su carga por una ficha del formulario
       // público: es lo que hace que `origen` signifique algo el día que la puerta
       // se abra.
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_origen'), documento({ origen: 'formulario-publico' })),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
   });
 
@@ -521,9 +520,9 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
     it('pero NO puede cambiarle la dirección web una vez publicada — trampa 10', async () => {
       // La ficha quedó `publicado` en el caso anterior. Cambiar el slug ahora es
       // un 404 sin aviso y el SEO perdido.
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_edit'), { slug: 'del-otro-lado' }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('y sí puede mientras espera decisión, que es el trabajo de la bandeja', async () => {
@@ -549,41 +548,41 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      * puede mover.
      */
     it('ni ponerle un estado que no es del vocabulario del motor', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), {
           estado: 'cancelado',
           revision: { porUid: UID, en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), {
           estado: 'borrador',
           revision: { porUid: UID, en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni cambiar de cuándo es la ficha ni por dónde entró', async () => {
       const { Timestamp } = await import('firebase/firestore');
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), { origen: 'formulario-publico' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), {
           creadoEn: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni firmar la revisión a nombre de otro admin, ni antedatarla', async () => {
       const { Timestamp } = await import('firebase/firestore');
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), {
           estado: 'rechazado',
           revision: { porUid: UID_OTRO, en: serverTimestamp(), motivo: 'no' },
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), {
           estado: 'rechazado',
           revision: {
@@ -592,7 +591,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
             motivo: 'no',
           },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**
@@ -607,12 +606,12 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      * podía quedar sin la clave que el tipo declara.
      */
     it('la revisión del update tampoco puede venir con claves de menos', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_slug'), {
           estado: 'rechazado',
           revision: { porUid: UID, en: serverTimestamp() },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('y puede corregir un typo sin refirmar la revisión', async () => {
@@ -637,12 +636,12 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
         estado: 'rechazado',
         revision: { porUid: UID, en: serverTimestamp(), motivo: 'ya cerró' },
       });
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_desc'), {
           estado: 'publicado',
           revision: { porUid: UID, en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('pero sí reabrirla y publicarla desde ahí: dos clicks y un estado en el medio', async () => {
@@ -679,12 +678,12 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       // Con la marca puesta el slug está congelado aunque el estado sea
       // `pendiente`: es la puerta de atrás del candado (publicar, despublicar,
       // renombrar) y esto es lo que la cierra.
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_marca'), { slug: 'otra-direccion' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_marca'), { publicadaAlgunaVez: false }),
-      ).rejects.toThrow(RECHAZADA);
+      );
       // Y con la marca puesta el resto se sigue pudiendo editar: lo que se
       // congela es la dirección web, no la ficha.
       await updateDoc(doc(db(), 'librerias', 'l_marca'), { direccion: 'Thames 1766' });
@@ -722,19 +721,19 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
 
     it('un anónimo no lee una ficha por id: lleva el contacto de quien la cargó', async () => {
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_ok')), 'get anónimo');
+      await denegada(getDoc(doc(db(), 'librerias', 'l_ok')), 'get anónimo');
     });
 
     it('ni lista la colección — trampa 13', async () => {
-      await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list anónimo');
+      await denegada(getDocs(collection(db(), 'librerias')), 'list anónimo');
     });
 
     it('y alguien logueado sin claim tampoco, ni por id ni listando', async () => {
       // «No está logueado» no es la defensa: cualquiera puede crear una cuenta
       // con la API key web, que es pública por diseño. La defensa es el claim.
       await entrarComo(UID_PELADO);
-      await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_ok')), 'get sin claim');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list sin claim');
+      await denegada(getDoc(doc(db(), 'librerias', 'l_ok')), 'get sin claim');
+      await denegada(getDocs(collection(db(), 'librerias')), 'list sin claim');
     });
 
     /**
@@ -747,12 +746,12 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
      */
     it('un publicador no lee, no lista, no edita y no borra', async () => {
       await entrarComo(UID_PUBLICADOR, { publicador: true });
-      await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_ok')), 'get publicador');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list publicador');
-      await expect(
+      await denegada(getDoc(doc(db(), 'librerias', 'l_ok')), 'get publicador');
+      await denegada(getDocs(collection(db(), 'librerias')), 'list publicador');
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_ok'), { direccion: 'Otra 123' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(deleteDoc(doc(db(), 'librerias', 'l_ok'))).rejects.toThrow(RECHAZADA);
+      );
+      await denegada(deleteDoc(doc(db(), 'librerias', 'l_ok')));
     });
 
     /**
@@ -781,9 +780,9 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       ).resolves.toBeUndefined();
       // Y la otra mitad de la cláusula de `origen`: no es admin, así que la rama
       // del panel no es suya.
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_pub_panel'), documento({ origen: 'panel' })),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('y su sesión está viva, que es lo que hace que lo de arriba signifique algo', async () => {
@@ -838,25 +837,25 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       // Sin esta cláusula un `curl` publica su propia librería y la bandeja no
       // sirve para nada (§1 del `prd/README.md`).
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_anon_pub'), {
           ...formALibreria(form(), 'formulario-publico'),
           estado: 'publicado',
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni revisada, ni marcada como ya publicada alguna vez', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_anon_rev'), {
           ...formALibreria(form(), 'formulario-publico'),
           revision: { porUid: 'uid_admin', en: serverTimestamp(), motivo: null },
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_anon_marca'), {
           ...formALibreria(form(), 'formulario-publico'),
           // La marca de la trampa 10: nacer con el slug congelado es nacer con
@@ -864,14 +863,14 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
           publicadaAlgunaVez: true,
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni decir que vino del panel', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_anon_panel'), documento({ origen: 'panel' })),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni traer fotos — la ficha que llega de afuera nace con la galería vacía', async () => {
@@ -886,7 +885,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
        * `libreriaValida()`. Este caso se pone rojo y ningún otro se mueve.
        */
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'librerias', 'l_anon_foto'), {
           ...formALibreria(
             form({
@@ -904,7 +903,7 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
           ),
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('un admin SÍ puede cargarla con fotos desde el panel — el control negativo de la cláusula', async () => {
@@ -940,12 +939,12 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       // Lo que separa un buzón de una bandeja, y es lo que hace que abrir el
       // `create` no abra el directorio entero con los contactos adentro.
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(doc(db(), 'librerias', 'l_anon')), 'get anónimo');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'librerias')), 'list anónimo');
-      await expect(
+      await denegada(getDoc(doc(db(), 'librerias', 'l_anon')), 'get anónimo');
+      await denegada(getDocs(collection(db(), 'librerias')), 'list anónimo');
+      await denegada(
         updateDoc(doc(db(), 'librerias', 'l_anon'), { direccion: 'Otra 123' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(deleteDoc(doc(db(), 'librerias', 'l_anon'))).rejects.toThrow(RECHAZADA);
+      );
+      await denegada(deleteDoc(doc(db(), 'librerias', 'l_anon')));
     });
 
     it('la regla dice que la puerta está abierta y nombra sus testigos', () => {

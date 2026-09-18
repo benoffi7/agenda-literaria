@@ -29,6 +29,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
@@ -112,45 +113,45 @@ describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
     // Si `resueltoValido` no acotara `affectedKeys`, esto pasaría: es la
     // clase de daño que la regla existe para tapar.
     await sembrarReporte('texto');
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', 'texto'), {
         resuelto: true,
         titulo: 'Otra cosa completamente distinta',
       }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('MUTACIÓN — no se puede adelantar el ciclo de vida de envío de paso', async () => {
     await sembrarReporte('adelanta', { estado: 'error' });
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', 'adelanta'), {
         resuelto: true,
         estado: 'creado',
       }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('MUTACIÓN — `resuelto` tiene que ser booleano, no cualquier valor', async () => {
     await sembrarReporte('noBooleano');
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', 'noBooleano'), {
         resuelto: 'si',
         actualizadoEn: new Date(),
       }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('MUTACIÓN — tocar solo `actualizadoEn`, sin `resuelto` en el diff, no alcanza', async () => {
     await sembrarReporte('soloTimestamp');
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', 'soloTimestamp'), { actualizadoEn: new Date() }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('MUTACIÓN — un admin sin el claim no puede marcar resuelto', async () => {
     await sembrarReporte('sinClaim');
     await entrarComo('uid_pelado_resuelto');
-    await expect(marcarResuelto('sinClaim', true)).rejects.toThrow(/permission|insufficient/i);
+    await denegada(marcarResuelto('sinClaim', true));
     // Vuelve a loguearse como admin para no romper los `it` que siguen.
     await entrarComo(UID, { admin: true });
   });
@@ -160,7 +161,7 @@ describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
     // podría intentar ocultar reportes de la bandeja si esto no rechazara.
     await sembrarReporte('anonimo');
     await signOut(auth());
-    await expect(marcarResuelto('anonimo', true)).rejects.toThrow(/permission|insufficient/i);
+    await denegada(marcarResuelto('anonimo', true));
     // Vuelve a loguearse como admin para no romper los `it` que siguen.
     await entrarComo(UID, { admin: true });
   });
@@ -168,8 +169,6 @@ describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
   it('borrar un reporte sigue prohibido, incluso resuelto', async () => {
     await sembrarReporte('borrableResuelto', { resuelto: true });
     const { deleteDoc } = await import('firebase/firestore');
-    await expect(deleteDoc(doc(db(), 'reportes', 'borrableResuelto'))).rejects.toThrow(
-      /permission|insufficient/i,
-    );
+    await denegada(deleteDoc(doc(db(), 'reportes', 'borrableResuelto')));
   });
 });

@@ -62,6 +62,7 @@ import {
   limpiarFirestore,
 } from './emulador';
 import type { TimestampLike } from '@/types/actividad';
+import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -118,21 +119,13 @@ const documento = (over: Record<string, unknown> = {}, f: SuscripcionLiterariaFo
   ...over,
 });
 
-const RECHAZADA = /permission|insufficient/i;
 
-/** Una lectura denegada **por permisos**, no por cualquier cosa. */
-const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await lectura;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
+ */
 
 describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', () => {
   beforeAll(async () => {
@@ -205,13 +198,13 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
 
   describe('la forma del documento: lo que `formaDeSuscripcion()` rechaza', () => {
     const rechaza = async (id: string, over: Record<string, unknown>, f?: SuscripcionLiterariaForm) =>
-      expect(setDoc(doc(db(), 'suscripciones', id), documento(over, f))).rejects.toThrow(RECHAZADA);
+      denegada(setDoc(doc(db(), 'suscripciones', id), documento(over, f)));
 
     it('un campo de más o uno de menos', async () => {
       await rechaza('s_extra', { colado: 'x' });
       const { mail, ...sinMail } = documento();
       void mail;
-      await expect(setDoc(doc(db(), 'suscripciones', 's_falta'), sinMail)).rejects.toThrow(RECHAZADA);
+      await denegada(setDoc(doc(db(), 'suscripciones', 's_falta'), sinMail));
     });
 
     it('un nombre o una descripción fuera de rango', async () => {
@@ -269,7 +262,16 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
     it('cuántos libros por entrega, fuera de rango', async () => {
       await rechaza('s_c1', { envio: { ...documento().envio, cuantos: 0 } });
       await rechaza('s_c2', { envio: { ...documento().envio, cuantos: 21 } });
-      await rechaza('s_c3', { envio: { ...documento().envio, cuantos: 'dos' } });
+      // Mismo caso que la geo de las otras dos fichas: el rango se apoya en que
+      // un string no se puede comparar con `>=`, así que esto explota en vez de
+      // denegar (B-1130).
+      await denegadaOReglaQueTira(
+        setDoc(
+          doc(db(), 'suscripciones', 's_c3'),
+          documento({ envio: { ...documento().envio, cuantos: 'dos' } }),
+        ),
+        's_c3',
+      );
     });
 
     it('un contacto interno demasiado corto o con una vía inventada', async () => {
@@ -287,7 +289,7 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
 
   describe('lo que solo vale al crearse — `suscripcionValida()`', () => {
     const rechaza = async (id: string, over: Record<string, unknown>) =>
-      expect(setDoc(doc(db(), 'suscripciones', id), documento(over))).rejects.toThrow(RECHAZADA);
+      denegada(setDoc(doc(db(), 'suscripciones', id), documento(over)));
 
     /**
      * **B-983 — un admin desde el panel SÍ puede crearla ya publicada.**
@@ -368,32 +370,32 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
     });
 
     it('pero no puede reescribir la historia', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_edit'), { origen: 'formulario-publico' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_edit'), {
           creadoEn: Timestamp.fromDate(new Date('2020-01-01')),
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_edit'), { publicadaAlgunaVez: true }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('mover el estado exige firmar con el uid propio y la hora del servidor', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_edit'), {
           estado: 'publicado',
           revision: { porUid: 'otro-uid', en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_edit'), {
           estado: 'publicado',
           revision: { porUid: UID, en: Timestamp.fromDate(new Date('2020-01-01')), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
       // Y el control positivo: firmada como corresponde, entra.
       await updateDoc(doc(db(), 'suscripciones', 's_edit'), {
         estado: 'publicado',
@@ -406,9 +408,9 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
     it('con la ficha publicada, el slug queda congelado — trampa 10', async () => {
       // Una dirección publicada está en Instagram, en un mail y en el índice de
       // Google: cambiarla es un 404 sin aviso.
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_edit'), { slug: 'otro-slug' }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('y no se puede publicar de un saque lo que ya se había descartado', async () => {
@@ -417,12 +419,12 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
         estado: 'rechazado',
         revision: { porUid: UID, en: serverTimestamp(), motivo: 'spam' },
       });
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'suscripciones', 's_rechazada'), {
           estado: 'publicado',
           revision: { porUid: UID, en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
       // Reabrir sí: es el paso que obliga a mirarla de nuevo.
       await updateDoc(doc(db(), 'suscripciones', 's_rechazada'), {
         estado: 'pendiente',
@@ -453,11 +455,11 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
       it('cambiar el monto sin refechar, rechazado', async () => {
         const previo = (await getDoc(doc(db(), 'suscripciones', CON_PRECIO)))
           .data() as SuscripcionLiteraria;
-        await expect(
+        await denegada(
           updateDoc(doc(db(), 'suscripciones', CON_PRECIO), {
             precio: { valor: { monto: 25000, porPeriodo: 'mensual' }, cargadoEn: previo.precio!.cargadoEn },
           }),
-        ).rejects.toThrow(RECHAZADA);
+        );
       });
 
       it('pero refechar un precio que NO cambió con el reloj del servidor sí se puede, y es a propósito', async () => {
@@ -504,14 +506,14 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
          * verdadero y la escritura entraba por la puerta legítima. Un caso que
          * pasa o falla según el milisegundo no verifica nada.
          */
-        await expect(
+        await denegada(
           updateDoc(doc(db(), 'suscripciones', CON_PRECIO), {
             precio: {
               valor: previo.precio!.valor,
               cargadoEn: Timestamp.fromDate(new Date('2026-09-10T10:00:00Z')),
             },
           }),
-        ).rejects.toThrow(RECHAZADA);
+        );
       });
 
       it('corregir otra cosa conservando la fecha del precio, aceptado', async () => {
@@ -569,8 +571,8 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
        * directorio completo de una sentada (trampa 13).
        */
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(doc(db(), 'suscripciones', 's_privada')), 'get anónimo');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'suscripciones')), 'list anónimo');
+      await denegada(getDoc(doc(db(), 'suscripciones', 's_privada')), 'get anónimo');
+      await denegada(getDocs(collection(db(), 'suscripciones')), 'list anónimo');
       await entrarComo(UID, { admin: true });
     });
 
@@ -586,13 +588,13 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
        * proponer como cualquiera. Tiene su caso abajo.
        */
       await entrarComo(UID_PUBLICADOR, { publicador: true });
-      await rechazadaPorPermisos(getDoc(doc(db(), 'suscripciones', 's_privada')), 'get publicador');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'suscripciones')), 'list publicador');
+      await denegada(getDoc(doc(db(), 'suscripciones', 's_privada')), 'get publicador');
+      await denegada(getDocs(collection(db(), 'suscripciones')), 'list publicador');
       // Lo que no puede es hacer pasar su carga por una del panel: no es admin.
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'suscripciones', 's_pub_intento'), documento()),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(deleteDoc(doc(db(), 'suscripciones', 's_privada'))).rejects.toThrow(RECHAZADA);
+      );
+      await denegada(deleteDoc(doc(db(), 'suscripciones', 's_privada')));
       await entrarComo(UID, { admin: true });
     });
   });
@@ -636,18 +638,18 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
 
     it('pero NO puede nacer publicada, ni revisada, ni diciendo que vino del panel', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'suscripciones', 's_anon_pub'), publica(form(), { estado: 'publicado' })),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         setDoc(
           doc(db(), 'suscripciones', 's_anon_rev'),
           publica(form(), { revision: { porUid: 'uid_admin', en: serverTimestamp(), motivo: null } }),
         ),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         setDoc(doc(db(), 'suscripciones', 's_anon_panel'), documento()),
-      ).rejects.toThrow(RECHAZADA);
+      );
       await entrarComo(UID, { admin: true });
     });
 
@@ -655,7 +657,7 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
       // Mutación: borrar `&& (d.origen == 'panel' || d.imagenes.size() == 0)` de
       // `suscripcionValida()`. Este caso se pone rojo y ningún otro se mueve.
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'suscripciones', 's_anon_foto'),
           publica(
@@ -672,7 +674,7 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
             }),
           ),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
       await entrarComo(UID, { admin: true });
     });
 
@@ -701,21 +703,21 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
         }),
         'el control positivo: con `request.time` la ficha con precio entra',
       ).resolves.toBeUndefined();
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'suscripciones', 's_anon_precio'), {
           ...conPrecio,
           precio: { ...conPrecio.precio!, cargadoEn: new Date('2020-01-01') },
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
       await entrarComo(UID, { admin: true });
     });
 
     it('y leer, editar o borrar sigue siendo de un admin: mandar no es ver', async () => {
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(doc(db(), 'suscripciones', 's_anon')), 'get anónimo');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'suscripciones')), 'list anónimo');
-      await expect(deleteDoc(doc(db(), 'suscripciones', 's_anon'))).rejects.toThrow(RECHAZADA);
+      await denegada(getDoc(doc(db(), 'suscripciones', 's_anon')), 'get anónimo');
+      await denegada(getDocs(collection(db(), 'suscripciones')), 'list anónimo');
+      await denegada(deleteDoc(doc(db(), 'suscripciones', 's_anon')));
       await entrarComo(UID, { admin: true });
     });
   });

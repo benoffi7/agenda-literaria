@@ -48,6 +48,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
@@ -59,33 +60,12 @@ const UID_PELADO = 'uid_sistema_sin_claim';
 /** El path del resumen, armado con la constante que usa el panel de verdad. */
 const RUTA = RUTA_RESUMEN.join('/');
 
-/**
- * Afirma que se rechazó **por permisos** y no por cualquier otra cosa — el
- * mismo helper que `actividades.integracion.test.ts`, y por el mismo motivo que
- * su docblock explica: un `rejects.toThrow()` pelado también lo satisface un
- * emulador caído, y entonces los tests de reglas pintan verde sin haber
- * probado ninguna regla.
- *
- * Y **no se aprieta el mensaje**: para una lectura denegada el emulador no
- * devuelve «Missing or insufficient permissions» —eso es de las escrituras—
- * sino la traza de evaluación (`false for 'get' @ L242`). El `code` de la
- * `FirebaseError` es `permission-denied` en los dos casos, y `unavailable` si
- * el emulador no está: eso es lo que separa «la regla denegó» de «no se pudo
- * preguntar». Se comprobó acá también: el matcher por mensaje falla en las
- * tres lecturas.
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
  */
-const rechazadaPorPermisos = async (operacion: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await operacion;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
 
 describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
   beforeAll(async () => {
@@ -126,7 +106,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
      * restauró y volvió a pasar.
      */
     await signOut(auth());
-    await rechazadaPorPermisos(getDoc(doc(db(), ...RUTA_RESUMEN)), 'anónimo lee el resumen');
+    await denegada(getDoc(doc(db(), ...RUTA_RESUMEN)), 'anónimo lee el resumen');
   });
 
   it('y tampoco puede LISTAR la colección — get y list son dos permisos', async () => {
@@ -140,7 +120,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
      * arriba se entere. Lo pidió el `auditor-privacidad`.
      */
     await signOut(auth());
-    await rechazadaPorPermisos(
+    await denegada(
       getDocs(collection(db(), 'sistema')),
       'anónimo lista /sistema entera',
     );
@@ -150,7 +130,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
     // Entrar con Google no alcanza: el claim se setea a mano con el Admin SDK
     // (§5.3). Es la diferencia entre «hay login» y «hay autorización».
     await entrarComo(UID_PELADO);
-    await rechazadaPorPermisos(
+    await denegada(
       getDoc(doc(db(), ...RUTA_RESUMEN)),
       'logueado sin claim lee el resumen',
     );
@@ -171,12 +151,12 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
      * inventado o borre el flag de rebuild.
      */
     await entrarComo(UID_ADMIN, { admin: true });
-    await rechazadaPorPermisos(
+    await denegada(
       setDoc(doc(db(), ...RUTA_RESUMEN), { version: 99 }, { merge: true }),
       'un admin pisa el resumen',
     );
     // Y tampoco un documento nuevo de la misma colección.
-    await rechazadaPorPermisos(
+    await denegada(
       setDoc(doc(db(), 'sistema', 'inventado'), { x: 1 }),
       'un admin crea un documento en /sistema',
     );
@@ -195,7 +175,7 @@ describe.skipIf(!vivo)('las reglas de /sistema contra el emulador', () => {
     expect((await getDoc(doc(db(), 'sistema', 'rebuild'))).exists()).toBe(true);
 
     await signOut(auth());
-    await rechazadaPorPermisos(
+    await denegada(
       getDoc(doc(db(), 'sistema', 'rebuild')),
       'anónimo lee el flag de rebuild',
     );

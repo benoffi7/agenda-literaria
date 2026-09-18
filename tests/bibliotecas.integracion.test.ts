@@ -63,6 +63,7 @@ import {
  * proyectos, en vez de dejar un `PERMISSION_DENIED` que se diagnostica de cero.
  */
 import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -115,27 +116,13 @@ const documento = (
   ...over,
 });
 
-const RECHAZADA = /permission|insufficient/i;
 
-/**
- * Una escritura o lectura denegada **por permisos**, no por cualquier cosa.
- *
- * Un `rejects.toThrow()` pelado lo satisface un emulador caído, y el mensaje de
- * una denegación no es «insufficient permissions» sino la traza de evaluación —
- * el `code`, en cambio, sí es `permission-denied` siempre.
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
  */
-const rechazadaPorPermisos = async (op: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await op;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
 
 /** Un id nuevo por caso: los documentos no se pisan entre tests. */
 let n = 0;
@@ -214,7 +201,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
        * asociarse · $3.000 por año». El schema lo frena para quien mira la
        * pantalla; esto lo frena para el `curl`.
        */
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(
           nuevaRef(),
           documento({
@@ -237,7 +224,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     it('la fecha del costo no se puede antedatar: tiene que ser la hora del servidor', async () => {
       // El reloj del navegador no puede decir que el número es más viejo —ni más
       // nuevo— de lo que es. Es toda la razón por la que la fecha existe.
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(
           nuevaRef(),
           documento({
@@ -282,7 +269,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       const ref = nuevaRef();
       await setDoc(ref, documento());
       const antes = (await getDoc(ref)).data()!.asociarse.costo.cargadoEn;
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, {
           asociarse: { haceFalta: true, costo: { valor: '$9.000 por año', cargadoEn: antes } },
         }),
@@ -302,7 +289,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     });
 
     it('el costo es texto: un número se rechaza', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(
           nuevaRef(),
           documento({
@@ -314,7 +301,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     });
 
     it('`haceFalta` tiene que ser un booleano', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ asociarse: { haceFalta: 'si', costo: null } })),
         'un `haceFalta` de texto',
       );
@@ -340,7 +327,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
 
     it('un anónimo no puede publicar la suya', async () => {
       await signOut(auth());
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ estado: 'publicado' }, form(), 'formulario-publico')),
         'un anónimo publicando',
       );
@@ -349,7 +336,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
 
     it('un anónimo no puede decir que su ficha vino del panel', async () => {
       await signOut(auth());
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({}, form(), 'panel')),
         'un anónimo con origen panel',
       );
@@ -369,7 +356,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         ],
       });
       await signOut(auth());
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({}, conFoto, 'formulario-publico')),
         'un anónimo con una foto',
       );
@@ -382,21 +369,21 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     });
 
     it('nadie nace revisado ni con la marca de la trampa 10 puesta', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(
           nuevaRef(),
           documento({ revision: { porUid: UID, en: serverTimestamp(), motivo: null } }),
         ),
         'una ficha que nace revisada',
       );
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ publicadaAlgunaVez: true })),
         'una ficha que nace con el slug congelado',
       );
     });
 
     it('`creadoEn` no se puede antedatar', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(
           nuevaRef(),
           documento({ creadoEn: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')) }),
@@ -408,14 +395,14 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
 
   describe('los topes y los alfabetos de `formaDeBiblioteca()`', () => {
     it('el slug tiene que tener el alfabeto de `slugify`', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ slug: 'Alberdi Recoleta' })),
         'un slug con mayúsculas y espacios',
       );
     });
 
     it('el tipo tiene que ser un slug, y `\'\'` se acepta', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ tipo: 'Biblioteca Popular' })),
         'un tipo sin slugificar',
       );
@@ -425,18 +412,18 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     });
 
     it('los dos horarios están capados, y por separado', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ horarios: 'x'.repeat(201) })),
         'un horario de atención de 201',
       );
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ horarioDeSala: 'x'.repeat(201) })),
         'un horario de sala de 201',
       );
     });
 
     it('el costo está capado en 120', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(
           nuevaRef(),
           documento({
@@ -453,28 +440,28 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     it('el catálogo necesita esquema http(s), igual que la web', async () => {
       // `javascript:` en un `href` de una página indexada. Sin esta cláusula la
       // defensa la pondría el consumidor y no el dato.
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ catalogo: 'javascript:alert(1)' })),
         'un catálogo con esquema javascript',
       );
     });
 
     it('la provincia tiene que ser una de las 24 (B-972)', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ provincia: 'cordoba-capital' })),
         'una provincia inventada',
       );
     });
 
     it('el `searchText` está capado: un campo que nadie mira no es una bolsa', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ searchText: 'x'.repeat(2001) })),
         'un searchText de 2001',
       );
     });
 
     it('una geo rota se rechaza y una sana entra', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ geo: { lat: 200, lng: -58.4 } })),
         'una latitud de 200',
       );
@@ -484,7 +471,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     });
 
     it('un campo que no está en el `hasOnly` tira la escritura entera', async () => {
-      await rechazadaPorPermisos(
+      await denegada(
         setDoc(nuevaRef(), documento({ presupuesto: 100 })),
         'un campo de más',
       );
@@ -495,7 +482,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     it('el slug de una ficha publicada queda congelado — trampa 10', async () => {
       const ref = nuevaRef();
       await setDoc(ref, documento({ estado: 'publicado' }));
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, { slug: 'otro-slug' }),
         'el slug de una publicada',
       );
@@ -519,7 +506,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
           publicadaAlgunaVez: true,
         });
       });
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, { publicadaAlgunaVez: false }),
         'bajar la marca del slug congelado',
       );
@@ -528,11 +515,11 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     it('`origen` y `creadoEn` no se reescriben', async () => {
       const ref = nuevaRef();
       await setDoc(ref, documento());
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, { origen: 'formulario-publico' }),
         'repintar el origen',
       );
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, { creadoEn: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')) }),
         'reescribir la fecha de alta',
       );
@@ -545,7 +532,7 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         estado: 'rechazado',
         revision: { porUid: UID, en: serverTimestamp(), motivo: 'Duplicada' },
       });
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, {
           estado: 'publicado',
           revision: { porUid: UID, en: serverTimestamp(), motivo: null },
@@ -564,14 +551,14 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
     it('nadie firma una revisión a nombre de otro ni la antedata', async () => {
       const ref = nuevaRef();
       await setDoc(ref, documento());
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, {
           estado: 'publicado',
           revision: { porUid: 'uid_de_otro', en: serverTimestamp(), motivo: null },
         }),
         'firmar a nombre de otro',
       );
-      await rechazadaPorPermisos(
+      await denegada(
         updateDoc(ref, {
           estado: 'publicado',
           revision: {
@@ -597,8 +584,8 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       const ref = nuevaRef();
       await setDoc(ref, documento({ estado: 'publicado' }));
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(ref), 'un anónimo leyendo una publicada');
-      await rechazadaPorPermisos(
+      await denegada(getDoc(ref), 'un anónimo leyendo una publicada');
+      await denegada(
         getDocs(collection(db(), 'bibliotecas')),
         'un anónimo listando el directorio',
       );
@@ -611,19 +598,21 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
       const ref = nuevaRef();
       await setDoc(ref, documento({ estado: 'publicado' }));
       await entrarComo(UID_PELADO);
-      await rechazadaPorPermisos(getDoc(ref), 'una cuenta pelada leyendo');
-      await rechazadaPorPermisos(
+      await denegada(getDoc(ref), 'una cuenta pelada leyendo');
+      await denegada(
         updateDoc(ref, { descripcion: 'otra' }),
         'una cuenta pelada editando',
       );
-      await rechazadaPorPermisos(deleteDoc(ref), 'una cuenta pelada borrando');
+      await denegada(deleteDoc(ref), 'una cuenta pelada borrando');
       await entrarComo(UID, { admin: true });
     });
   });
 
-  it('el mensaje de rechazo es el esperado y no otro error', () => {
-    // La forma sigue siendo la del resto del repo; se deja afirmada para que el
-    // helper no se degrade en silencio a un `toThrow()` pelado.
-    expect(RECHAZADA.test('Missing or insufficient permissions.')).toBe(true);
-  });
+  /*
+   * Acá había un `it` que fijaba la regex local de rechazo para que «el helper
+   * no se degrade en silencio». Ese trabajo lo hace ahora
+   * `tests/rechazos-del-emulador.test.ts`, que fija las **cuatro** formas de
+   * mensaje medidas contra el emulador en vez de una sola, y sin necesitarlo
+   * levantado (B-1130).
+   */
 });

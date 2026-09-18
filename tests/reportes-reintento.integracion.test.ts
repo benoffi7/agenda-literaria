@@ -28,6 +28,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
@@ -101,14 +102,14 @@ describe.skipIf(!vivo)('reintentar un reporte fallido — B-31', () => {
     // Es lo que termina en un repo PÚBLICO: si el reintento permitiera tocarlo,
     // el documento que se revisó al crearlo dejaría de ser el que se publica.
     await sembrarReporte('texto');
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', 'texto'), {
         estado: 'pendiente',
         intentos: 0,
         error: null,
         titulo: 'Otra cosa completamente distinta',
       }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('no se puede reintentar uno que ya tiene issue: serían dos issues del mismo reporte', async () => {
@@ -116,14 +117,14 @@ describe.skipIf(!vivo)('reintentar un reporte fallido — B-31', () => {
       estado: 'error',
       github: { numero: 7, url: 'https://github.com/x/y/issues/7', creadoEn: new Date() },
     });
-    await expect(reintentarReporte('yaEsta')).rejects.toThrow(/permission|insufficient/i);
+    await denegada(reintentarReporte('yaEsta'));
   });
 
   it('no se puede reintentar uno que está en vuelo', async () => {
     // `enviando` significa que la Function lo tomó hace un segundo. Reintentarlo
     // ahí es la carrera que crea el issue duplicado.
     await sembrarReporte('enVuelo', { estado: 'enviando', intentos: 1, error: null });
-    await expect(reintentarReporte('enVuelo')).rejects.toThrow(/permission|insufficient/i);
+    await denegada(reintentarReporte('enVuelo'));
   });
 
   it('no se puede reintentar uno que ya se publicó bien', async () => {
@@ -132,21 +133,21 @@ describe.skipIf(!vivo)('reintentar un reporte fallido — B-31', () => {
       error: null,
       github: { numero: 9, url: 'https://github.com/x/y/issues/9', creadoEn: new Date() },
     });
-    await expect(reintentarReporte('creado')).rejects.toThrow(/permission|insufficient/i);
+    await denegada(reintentarReporte('creado'));
   });
 
   it('el reintento no es una puerta para adelantar el ciclo de vida', async () => {
     // La transición permitida es una sola: error → pendiente. Cualquier otra
     // sigue siendo de la Function.
     await sembrarReporte('adelanta');
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', 'adelanta'), {
         estado: 'creado',
         intentos: 0,
         error: null,
         github: { numero: 1, url: 'https://x', creadoEn: new Date() },
       }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('borrar un reporte sigue prohibido', async () => {
@@ -154,8 +155,6 @@ describe.skipIf(!vivo)('reintentar un reporte fallido — B-31', () => {
     // hacerlo desaparecer.
     await sembrarReporte('borrable');
     const { deleteDoc } = await import('firebase/firestore');
-    await expect(deleteDoc(doc(db(), 'reportes', 'borrable'))).rejects.toThrow(
-      /permission|insufficient/i,
-    );
+    await denegada(deleteDoc(doc(db(), 'reportes', 'borrable')));
   });
 });

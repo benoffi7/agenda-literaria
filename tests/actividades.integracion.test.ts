@@ -38,6 +38,7 @@ import {
   sembrarCentinelaDeSlugs,
   proyectoAparte,
 } from './emulador';
+import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulador';
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
@@ -54,38 +55,21 @@ const UID = 'uid_test_admin';
  */
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-/**
- * Afirma que una lectura se rechazó **por permisos**, y no por cualquier otra
- * cosa.
+/*
+ * El helper que afirma «la regla corrió y denegó» vive en
+ * `fixtures/rechazos-del-emulador.ts` — B-1130.
  *
- * Un `rejects.toThrow()` pelado también lo satisface un emulador que se cayó a
- * mitad de corrida, un `db()` que tira o un projectId equivocado: los tests de
- * reglas pintarían verde sin haber probado ninguna regla. Lo señaló el
- * `auditor-privacidad` sobre este mismo cambio.
+ * Acá había una copia que miraba solo el `code`, y su docblock ya explicaba la
+ * mitad del problema: el emulador devuelve tres formatos de mensaje distintos
+ * para el mismo `permission-denied`, así que apretar el texto falla contra la
+ * mitad de los casos. Lo que faltaba era la segunda pregunta —si la regla
+ * denegó o si **explotó**, que también llega como `permission-denied`— y está
+ * allá, con los mensajes medidos.
  *
- * Lo que **no** sirve es apretar el mensaje. Para una lectura denegada el
- * emulador no devuelve "Missing or insufficient permissions" —eso es de las
- * escrituras— sino la traza de evaluación (`false for 'get' @ L50`) o incluso
- * `Property estado is undefined on object`, que es la forma que toma la trampa 7
- * cuando la regla no se puede evaluar sin el `where`. Se probó: el matcher por
- * mensaje falla en las cuatro.
- *
- * El `code` de la `FirebaseError`, en cambio, es `permission-denied` en todos
- * esos casos, y es `unavailable` si el emulador no está. Eso es lo que separa
- * "la regla denegó" de "no se pudo preguntar".
+ * El caso de la trampa 7 que este archivo nombra (`Property estado is undefined
+ * on object`) es justamente una regla que no se puede evaluar: va con
+ * `denegadaOReglaQueTira`, que lo deja dicho en vez de taparlo.
  */
-const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await lectura;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: la lectura NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
 
 /**
  * El formulario que va y vuelve del emulador.
@@ -495,9 +479,9 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
 
   it('sin el claim admin no se puede escribir', async () => {
     await entrarComo('uid_pelado');
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'actividades', 'intento'), { titulo: 'No', estado: 'borrador' }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   /*
@@ -540,7 +524,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
    */
   it('un anónimo NO lee una actividad publicada: el documento trae el link y la difusión (§5.1)', async () => {
     await signOut(auth());
-    await rechazadaPorPermisos(
+    await denegada(
       getDoc(doc(db(), 'actividades', 'publicada')),
       'la publicada, por documento',
     );
@@ -559,7 +543,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
    */
   it('una query anónima no devuelve documentos, ni con el where del §5.3', async () => {
     await signOut(auth());
-    await rechazadaPorPermisos(
+    await denegada(
       getDocs(query(collection(db(), 'actividades'), where('estado', '==', 'publicado'))),
       'la query con el where',
     );
@@ -567,7 +551,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
 
   it('un anónimo NO lee un borrador', async () => {
     await signOut(auth());
-    await rechazadaPorPermisos(getDoc(doc(db(), 'actividades', 'borrador')), 'el borrador');
+    await denegada(getDoc(doc(db(), 'actividades', 'borrador')), 'el borrador');
   });
 
   it('las opciones se leen sin estar logueado (§4.4)', async () => {
@@ -577,9 +561,9 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
 
   it('sin el claim admin no se pueden escribir opciones', async () => {
     await signOut(auth());
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 });
 
@@ -687,6 +671,10 @@ describe.skipIf(!vivo)('trampa 7 — el mecanismo, con una regla condicionada', 
     // Esta es la trampa: uno esperaría un resultado filtrado y recibe un
     // rechazo. Es lo que hace que una lectura en vivo del sitio público falle
     // por completo si alguien olvida el where del §5.3.
-    await rechazadaPorPermisos(getDocs(collection(base, 'cosas')), 'la query sin el where');
+    //
+    // Y el rechazo es **la regla sin poder evaluarse** (`Property estado is
+    // undefined on object`), que es el mecanismo mismo de la trampa: por eso va
+    // con el helper que lo admite y no con `denegada` (B-1130).
+    await denegadaOReglaQueTira(getDocs(collection(base, 'cosas')), 'la query sin el where');
   });
 });

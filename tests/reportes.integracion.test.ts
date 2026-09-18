@@ -21,6 +21,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
@@ -111,50 +112,50 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
   });
 
   it('el reporte no puede nacer con el issue ya asignado', async () => {
-    await expect(
+    await denegada(
       setDoc(
         doc(db(), 'reportes', 'trucho1'),
         documento(UID, { github: { numero: 1, url: 'https://x' } }),
       ),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('el reporte no puede nacer con el ciclo de vida adelantado', async () => {
     // Si naciera "creado" o con los intentos gastados, la Function no lo
     // tomaría nunca y el reporte quedaría muerto en Firestore.
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'reportes', 'trucho2'), documento(UID, { estado: 'creado' })),
-    ).rejects.toThrow(/permission|insufficient/i);
-    await expect(
+    );
+    await denegada(
       setDoc(doc(db(), 'reportes', 'trucho3'), documento(UID, { intentos: 5 })),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('nadie puede cargar un reporte a nombre de otro admin', async () => {
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'reportes', 'trucho4'), documento('otro_uid')),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('no se puede antedatar un reporte', async () => {
-    await expect(
+    await denegada(
       setDoc(
         doc(db(), 'reportes', 'trucho5'),
         documento(UID, { creadoEn: Timestamp.fromDate(new Date('2020-01-01')) }),
       ),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('no se puede meter un campo de más', async () => {
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'reportes', 'trucho6'), documento(UID, { labels: ['sos-el-dueño'] })),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('rechaza el texto que pasa los topes del issue', async () => {
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'reportes', 'trucho7'), documento(UID, { titulo: 'x'.repeat(121) })),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   describe('contexto.pantalla acotado — B-363', () => {
@@ -168,12 +169,12 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
      * Estos dos tests verifican que ahora también lo frenan las reglas.
      */
     it('rechaza un valor que no es ninguna de las cinco pantallas', async () => {
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'reportes', 'trucho-pantalla-1'),
           documento(UID, { contexto: { ...contexto(), pantalla: 'https://mi-org.zoom.us/j/x' } }),
         ),
-      ).rejects.toThrow(/permission|insufficient/i);
+      );
     });
 
     it('acepta las cinco pantallas reales, una por una', async () => {
@@ -189,23 +190,23 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
 
   it('el cliente no puede tocar un reporte ya creado: el estado lo mueve la Function', async () => {
     const id = await crearReporte(form(), contexto(), { uid: UID, email: 'admin@test.com' });
-    await expect(
+    await denegada(
       updateDoc(doc(db(), 'reportes', id), { estado: 'creado' }),
-    ).rejects.toThrow(/permission|insufficient/i);
+    );
   });
 
   it('sin el claim admin no se puede crear ni leer un reporte', async () => {
     const id = await crearReporte(form(), contexto(), { uid: UID, email: 'admin@test.com' });
     await entrarComo('uid_pelado_reportes');
-    await expect(
+    await denegada(
       setDoc(doc(db(), 'reportes', 'trucho8'), documento('uid_pelado_reportes')),
-    ).rejects.toThrow(/permission|insufficient/i);
-    await expect(getDoc(doc(db(), 'reportes', id))).rejects.toThrow();
+    );
+    await denegada(getDoc(doc(db(), 'reportes', id)), 'sin el claim, leer un reporte');
   });
 
   it('un anónimo no lee los reportes', async () => {
     const idAjeno = 'cualquiera';
     await signOut(auth());
-    await expect(getDoc(doc(db(), 'reportes', idAjeno))).rejects.toThrow();
+    await denegada(getDoc(doc(db(), 'reportes', idAjeno)), 'un anónimo leyendo un reporte');
   });
 });

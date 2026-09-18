@@ -63,6 +63,7 @@ import {
   limpiarFirestore,
 } from './emulador';
 import type { TimestampLike } from '@/types/actividad';
+import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -117,21 +118,13 @@ const documento = (over: Record<string, unknown> = {}, f: LugarForm = form()) =>
   ...over,
 });
 
-const RECHAZADA = /permission|insufficient/i;
 
-/** Una lectura denegada **por permisos**, no por cualquier cosa. */
-const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
-  let error: unknown;
-  try {
-    await lectura;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
+ */
 
 describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () => {
   beforeAll(async () => {
@@ -210,13 +203,13 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
 
   describe('la forma del documento: lo que `formaDeLugar()` rechaza', () => {
     const rechaza = async (id: string, over: Record<string, unknown>, f?: LugarForm) =>
-      expect(setDoc(doc(db(), 'lugares', id), documento(over, f))).rejects.toThrow(RECHAZADA);
+      denegada(setDoc(doc(db(), 'lugares', id), documento(over, f)));
 
     it('un campo de más o uno de menos', async () => {
       await rechaza('l_extra', { colado: 'x' });
       const { mail, ...sinMail } = documento();
       void mail;
-      await expect(setDoc(doc(db(), 'lugares', 'l_falta'), sinMail)).rejects.toThrow(RECHAZADA);
+      await denegada(setDoc(doc(db(), 'lugares', 'l_falta'), sinMail));
     });
 
     it('un nombre o una descripción fuera de rango', async () => {
@@ -258,7 +251,13 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       await rechaza('l_geo', { geo: { lat: 200, lng: 0 } });
       await rechaza('l_geo2', { geo: { lat: -34.6, lng: 500 } });
       await rechaza('l_geo3', { geo: { lat: -34.6 } });
-      await rechaza('l_geo4', { geo: { lat: '-34.6', lng: '-58.4' } });
+      // La geo sin `is number` se apoya en que un string no se puede comparar
+      // con `>=`: no deniega, explota. Es la decisión escrita en el docblock de
+      // `geoDeLugarValida()`, y acá queda visible (B-1130).
+      await denegadaOReglaQueTira(
+        setDoc(doc(db(), 'lugares', 'l_geo4'), documento({ geo: { lat: '-34.6', lng: '-58.4' } })),
+        'l_geo4',
+      );
     });
 
     it('una capacidad fuera de rango', async () => {
@@ -308,7 +307,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
 
   describe('lo que solo vale al crearse — `lugarDeGuiaValido()`', () => {
     const rechaza = async (id: string, over: Record<string, unknown>, f?: LugarForm) =>
-      expect(setDoc(doc(db(), 'lugares', id), documento(over, f))).rejects.toThrow(RECHAZADA);
+      denegada(setDoc(doc(db(), 'lugares', id), documento(over, f)));
 
     /**
      * **B-983 — un admin desde el panel SÍ puede crearlo ya publicado.**
@@ -402,10 +401,10 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
           origen: 'formulario-publico',
           direccionPublica: true,
         };
-        await expect(
+        await denegada(
           setDoc(doc(db(), 'lugares', `l_anon_${tipo}`), lugar),
           `el tipo «${tipo}» publicó la dirección desde el camino público`,
-        ).rejects.toThrow(RECHAZADA);
+        );
       }
       await entrarComo(UID, { admin: true });
     });
@@ -501,32 +500,32 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
     });
 
     it('pero no puede reescribir la historia', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_edit'), { origen: 'formulario-publico' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_edit'), {
           creadoEn: Timestamp.fromDate(new Date('2020-01-01')),
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_edit'), { publicadaAlgunaVez: true }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('mover el estado exige firmar con el uid propio y la hora del servidor', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_edit'), {
           estado: 'publicado',
           revision: { porUid: 'otro-uid', en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_edit'), {
           estado: 'publicado',
           revision: { porUid: UID, en: Timestamp.fromDate(new Date('2020-01-01')), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
       // Y el control positivo: firmada como corresponde, entra.
       await updateDoc(doc(db(), 'lugares', 'l_edit'), {
         estado: 'publicado',
@@ -537,9 +536,9 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
     });
 
     it('con la ficha publicada, el slug queda congelado — trampa 10', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_edit'), { slug: 'otro-slug' }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('y no se puede publicar de un saque lo que ya se había descartado', async () => {
@@ -548,12 +547,12 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
         estado: 'rechazado',
         revision: { porUid: UID, en: serverTimestamp(), motivo: 'spam' },
       });
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_rechazado'), {
           estado: 'publicado',
           revision: { porUid: UID, en: serverTimestamp(), motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
       // Reabrir sí: es el paso que obliga a mirarlo de nuevo.
       await updateDoc(doc(db(), 'lugares', 'l_rechazado'), {
         estado: 'pendiente',
@@ -578,22 +577,22 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       const previo = (await getDoc(doc(db(), 'lugares', 'l_precio'))).data() as Lugar;
 
       // (1) Una fecha elegida, con el mismo precio: no.
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_precio'), {
           precio: {
             valor: { monto: 25000, porUnidad: 'hora' },
             cargadoEn: Timestamp.fromDate(new Date('2026-01-01')),
           },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
 
       // (2) Un precio nuevo con la fecha vieja: tampoco. Sería publicar un número
       // nuevo diciendo que es de hace meses.
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'lugares', 'l_precio'), {
           precio: { valor: { monto: 30000, porUnidad: 'hora' }, cargadoEn: previo.precio!.cargadoEn },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
 
       // (3) El camino normal: corregir otra cosa deja la fecha donde estaba.
       await updateDoc(doc(db(), 'lugares', 'l_precio'), {
@@ -646,8 +645,8 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
        * direcciones, todos los contactos internos (trampa 13).
        */
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_privado')), 'get anónimo');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list anónimo');
+      await denegada(getDoc(doc(db(), 'lugares', 'l_privado')), 'get anónimo');
+      await denegada(getDocs(collection(db(), 'lugares')), 'list anónimo');
       await entrarComo(UID, { admin: true });
     });
 
@@ -664,13 +663,11 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
        * mantiene el argumento de arriba intacto.
        */
       await entrarComo(UID_PUBLICADOR, { publicador: true });
-      await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_privado')), 'get publicador');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list publicador');
+      await denegada(getDoc(doc(db(), 'lugares', 'l_privado')), 'get publicador');
+      await denegada(getDocs(collection(db(), 'lugares')), 'list publicador');
       // Lo que no puede es hacer pasar su carga por una del panel: no es admin.
-      await expect(setDoc(doc(db(), 'lugares', 'l_pub_intento'), documento())).rejects.toThrow(
-        RECHAZADA,
-      );
-      await expect(deleteDoc(doc(db(), 'lugares', 'l_privado'))).rejects.toThrow(RECHAZADA);
+      await denegada(setDoc(doc(db(), 'lugares', 'l_pub_intento'), documento()));
+      await denegada(deleteDoc(doc(db(), 'lugares', 'l_privado')));
       await entrarComo(UID, { admin: true });
     });
   });
@@ -733,16 +730,16 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
 
       // Y a mano, con el flag prendido: rechazado por la regla.
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'lugares', 'l_anon_dir2'), publico(form(), { direccionPublica: true })),
-      ).rejects.toThrow(RECHAZADA);
+      );
       // Ni con un `tipo` que ninguna lista negra sospecharía.
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'lugares', 'l_anon_dir3'),
           publico(form({ tipo: 'mi-living' }), { direccionPublica: true }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
       await entrarComo(UID, { admin: true });
     });
 
@@ -758,18 +755,16 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
 
     it('pero NO puede nacer publicada, ni revisada, ni diciendo que vino del panel', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'lugares', 'l_anon_pub'), publico(form(), { estado: 'publicado' })),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         setDoc(
           doc(db(), 'lugares', 'l_anon_rev'),
           publico(form(), { revision: { porUid: 'uid_admin', en: serverTimestamp(), motivo: null } }),
         ),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(setDoc(doc(db(), 'lugares', 'l_anon_panel'), documento())).rejects.toThrow(
-        RECHAZADA,
       );
+      await denegada(setDoc(doc(db(), 'lugares', 'l_anon_panel'), documento()));
       await entrarComo(UID, { admin: true });
     });
 
@@ -777,7 +772,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       // Mutación: borrar `&& (d.origen == 'panel' || d.imagenes.size() == 0)` de
       // `lugarDeGuiaValido()`. Este caso se pone rojo y ningún otro se mueve.
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'lugares', 'l_anon_foto'),
           publico(
@@ -794,7 +789,7 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
             }),
           ),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
       await entrarComo(UID, { admin: true });
     });
 
@@ -802,9 +797,9 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       // Trampa 13 con otra cara: un `list` abierto entregaría todas las
       // direcciones y todos los contactos internos de una sentada.
       await signOut(auth());
-      await rechazadaPorPermisos(getDoc(doc(db(), 'lugares', 'l_anon')), 'get anónimo');
-      await rechazadaPorPermisos(getDocs(collection(db(), 'lugares')), 'list anónimo');
-      await expect(deleteDoc(doc(db(), 'lugares', 'l_anon'))).rejects.toThrow(RECHAZADA);
+      await denegada(getDoc(doc(db(), 'lugares', 'l_anon')), 'get anónimo');
+      await denegada(getDocs(collection(db(), 'lugares')), 'list anónimo');
+      await denegada(deleteDoc(doc(db(), 'lugares', 'l_anon')));
       await entrarComo(UID, { admin: true });
     });
   });

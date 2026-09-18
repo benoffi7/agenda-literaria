@@ -36,6 +36,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -66,7 +67,6 @@ const documento = (over: Record<string, unknown> = {}, f: PropuestaForm = form()
   ...over,
 });
 
-const RECHAZADA = /permission|insufficient/i;
 
 describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
   beforeAll(async () => {
@@ -151,10 +151,10 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
 
   describe('la forma: lo que `propuestaValida()` rechaza', () => {
     const rechaza = async (que: string, over: Record<string, unknown>) => {
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'propuestas', `p_no_${que}`), documento(over)),
         que,
-      ).rejects.toThrow(RECHAZADA);
+      );
     };
 
     it('un campo de más no entra', async () => {
@@ -164,9 +164,9 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
 
     it('un campo de menos tampoco', async () => {
       const { contacto: _, ...sinContacto } = documento();
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'propuestas', 'p_no_falta'), sinContacto),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('el título fuera de 6–120', async () => {
@@ -371,45 +371,45 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
       // Es **el** caso: si el estado lo decidiera el cliente, un `curl` marca su
       // propia propuesta como aceptada y la moderación no existe (§1 del
       // `prd/README.md`).
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'propuestas', 'p_aceptada'), documento({ estado: 'aceptada' })),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         setDoc(doc(db(), 'propuestas', 'p_revision'), documento({ estado: 'en-revision' })),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni con la revisión ya firmada', async () => {
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'propuestas', 'p_firmada'),
           documento({
             revision: { porUid: UID, en: null, actividadId: 'act_1', motivo: null },
           }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni antedatada: `creadoEn` es `request.time`', async () => {
       const { Timestamp } = await import('firebase/firestore');
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'propuestas', 'p_antigua'),
           documento({ creadoEn: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')) }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('el origen tiene que coincidir con quién escribe', async () => {
       // Un admin no puede hacer pasar su carga por una propuesta del formulario
       // público: es lo que hace que `origen` signifique algo el día que la puerta
       // se abra.
-      await expect(
+      await denegada(
         setDoc(
           doc(db(), 'propuestas', 'p_origen'),
           documento({ origen: 'formulario-publico' }),
         ),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
   });
 
@@ -435,16 +435,16 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
     });
 
     it('pero NO puede editar el contenido: la propuesta es prueba de qué se pidió', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), { titulo: 'Otro título' }),
-      ).rejects.toThrow(RECHAZADA);
-      await expect(
+      );
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), {
           estado: 'rechazada',
           titulo: 'Otro título',
           revision: { porUid: UID, en: serverTimestamp(), actividadId: null, motivo: 'no' },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**
@@ -461,7 +461,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
      * no quiere.
      */
     it('un update que toca solo `revision`, sin mover el estado, se rechaza', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), {
           revision: {
             porUid: UID,
@@ -470,16 +470,16 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
             motivo: null,
           },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni firmar la revisión a nombre de otro admin', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), {
           estado: 'rechazada',
           revision: { porUid: UID_OTRO, en: serverTimestamp(), actividadId: null, motivo: 'no' },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**
@@ -495,17 +495,17 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
      * presencia. Verificado por mutación en los dos lados.
      */
     it('la revisión del update tampoco puede venir con claves de menos', async () => {
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), {
           estado: 'rechazada',
           revision: { porUid: UID, en: serverTimestamp() },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni antedatar la revisión', async () => {
       const { Timestamp } = await import('firebase/firestore');
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), {
           estado: 'rechazada',
           revision: {
@@ -515,7 +515,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
             motivo: 'no',
           },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**
@@ -588,7 +588,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
       // 2. No es un booleano → la regla lo rechaza. El trigger lo lee con
       //    `=== true`, así que un string no borraría nada; la regla es la mitad
       //    que impide que el valor raro llegue siquiera a guardarse.
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_descarte'), {
           estado: 'rechazada',
           revision: {
@@ -599,7 +599,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
             fotoDescartada: 'si',
           },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
 
       // 3. Control positivo del par: el mismo update con un booleano entra.
       await updateDoc(doc(db(), 'propuestas', 'p_descarte'), {
@@ -624,7 +624,7 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
        * `fotoDescartada` al `hasOnly` se lee como haber abierto el mapa.
        */
       await setDoc(doc(db(), 'propuestas', 'p_clave_de_mas'), documento());
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_clave_de_mas'), {
           estado: 'en-revision',
           revision: {
@@ -635,25 +635,31 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
             inventada: true,
           },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('borrar está prohibido: rechazar es un estado, no una desaparición', async () => {
       // La borra la Function de retención a los 30 días (DEC-13), con el Admin
       // SDK, que no pasa por estas reglas.
-      await expect(deleteDoc(doc(db(), 'propuestas', 'p_rev'))).rejects.toThrow(RECHAZADA);
+      await denegada(deleteDoc(doc(db(), 'propuestas', 'p_rev')));
     });
   });
 
   describe('quién puede mirar la bandeja', () => {
     it('un anónimo no lee una propuesta: lleva el contacto de quien la cargó', async () => {
       await signOut(auth());
-      await expect(getDoc(doc(db(), 'propuestas', 'p_ok'))).rejects.toThrow();
+      await denegada(
+        getDoc(doc(db(), 'propuestas', 'p_ok')),
+        'un anónimo leyendo una propuesta',
+      );
     });
 
     it('y alguien logueado sin el claim tampoco', async () => {
       await entrarComo(UID_PELADO);
-      await expect(getDoc(doc(db(), 'propuestas', 'p_ok'))).rejects.toThrow();
+      await denegada(
+        getDoc(doc(db(), 'propuestas', 'p_ok')),
+        'una cuenta sin el claim leyendo una propuesta',
+      );
     });
   });
 
@@ -684,18 +690,15 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
        * Y no la puede volver a leer: `read` sigue en `esAdmin()`. Mandar no es
        * ver, que es lo que separa un buzón de una bandeja.
        *
-       * Por `code` y no por texto, a propósito: en una **lectura** denegada el
-       * emulador devuelve la traza de evaluación (`false for 'get' @ L977`) y no
-       * la frase de permisos, así que `RECHAZADA` no matchea. Es lo que ya dice
-       * el docblock de `rechazada()` en `rol-publicador.integracion.test.ts`, y
-       * acá se pagó de nuevo.
+       * El rechazo estaba escrito a mano acá, mirando el `code`, porque en una
+       * **lectura** denegada el emulador devuelve la traza de evaluación
+       * (`false for 'get' @ L977`) y no la frase de permisos. Eso lo sabe el
+       * helper compartido, que además pregunta lo que aquella copia no podía:
+       * si la regla denegó o si tiró (B-1130).
        */
-      const leer = await getDoc(doc(db(), 'propuestas', 'p_anon_ok')).then(
-        () => null,
-        (e: { code?: string }) => e.code,
-      );
-      expect(leer, 'un anónimo pudo leer la propuesta que acaba de mandar').toBe(
-        'permission-denied',
+      await denegada(
+        getDoc(doc(db(), 'propuestas', 'p_anon_ok')),
+        'un anónimo pudo leer la propuesta que acaba de mandar',
       );
     });
 
@@ -714,20 +717,20 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
      */
     it('pero no con un documento mal formado: `propuestaValida()` sigue mandando', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'propuestas', 'p_anon_basura'), { hola: 'mundo' }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni llegando ya revisada, que sería saltearse la bandeja entera', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'propuestas', 'p_anon_revisada'), {
           ...formAPropuesta(form(), 'formulario-publico'),
           creadoEn: serverTimestamp(),
           estado: 'aceptada',
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**
@@ -753,22 +756,22 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
      */
     it('ni corrige lo que mandó, ni con una revisión bien formada', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         updateDoc(doc(db(), 'propuestas', 'p_anon_ok'), {
           estado: 'aceptada',
           revision: { porUid: 'uid_cualquiera', en: serverTimestamp(), actividadId: null, motivo: null },
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     it('ni firmando `origen: \'panel\'`, que es el camino del admin', async () => {
       await signOut(auth());
-      await expect(
+      await denegada(
         setDoc(doc(db(), 'propuestas', 'p_anon_panel'), {
           ...formAPropuesta(form(), 'panel'),
           creadoEn: serverTimestamp(),
         }),
-      ).rejects.toThrow(RECHAZADA);
+      );
     });
 
     /**

@@ -29,6 +29,7 @@ import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'fireb
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { cargarReglas, emuladorAuthVivo, emuladorVivo, limpiarFirestore } from './emulador';
+import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const RUTA_REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
@@ -57,18 +58,12 @@ const MAIL_OTRO = 'otro.u888@ejemplo.test';
 const entrarSinMail = (uid: string, claims: Claims): Promise<void> =>
   entrarComo(uid, claims, { emailVerificado: true });
 
-const rechazada = async (operacion: Promise<unknown>, que: string): Promise<void> => {
-  let error: unknown;
-  try {
-    await operacion;
-  } catch (e) {
-    error = e;
-  }
-  expect(error, `${que}: NO se rechazó`).toBeDefined();
-  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
-    'permission-denied',
-  );
-};
+/*
+ * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—
+ * vive en `fixtures/rechazos-del-emulador.ts` (B-1130). Acá había una copia que
+ * miraba solo el `code`; el porqué de cada decisión, y los mensajes medidos que
+ * la sostienen, están en su docblock.
+ */
 
 /** El documento que la regla acepta: los dos campos, y el `actualizadoEn` del servidor. */
 const registro = (email: string) => ({ email, actualizadoEn: serverTimestamp() });
@@ -148,7 +143,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        * Mutación: borrar `uid == request.auth.uid` del `allow create, update`.
        * Este caso se pone rojo.
        */
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_OTRO), registro(MAIL_PUB)),
         'escribir el registro de otra cuenta',
       );
@@ -164,7 +159,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        * Mutación: borrar `d.email == request.auth.token.get('email','')`. Este caso
        * se pone rojo.
        */
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_OTRO)),
         'registrarse con el mail de otra cuenta',
       );
@@ -180,11 +175,11 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        *
        * Mutación: borrar el `hasOnly` de `usuarioValido()`. Este caso se pone rojo.
        */
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_PUB), { ...registro(MAIL_PUB), rol: 'admin' }),
         'meter un rol en el registro propio',
       );
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_PUB), { ...registro(MAIL_PUB), admin: true }),
         'meter un flag admin en el registro propio',
       );
@@ -203,11 +198,11 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        * otra cara). Borrar `d.get('actualizadoEn', null) == request.time` → el
        * segundo.
        */
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_PUB), { actualizadoEn: serverTimestamp() }),
         'un registro sin mail',
       );
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_PUB), {
           email: MAIL_PUB,
           actualizadoEn: new Date('2020-01-01'),
@@ -226,7 +221,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        */
       await setDoc(doc(db(), 'usuarios', UID_PUB), registro(MAIL_PUB));
       const { deleteDoc } = await import('firebase/firestore');
-      await rechazada(deleteDoc(doc(db(), 'usuarios', UID_PUB)), 'borrar el registro propio');
+      await denegada(deleteDoc(doc(db(), 'usuarios', UID_PUB)), 'borrar el registro propio');
     });
   });
 
@@ -240,24 +235,32 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       await setDoc(doc(db(), 'usuarios', UID_ADMIN), registro(MAIL_ADMIN));
 
       await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
-      await rechazada(getDoc(doc(db(), 'usuarios', UID_ADMIN)), 'leer el registro del admin');
+      await denegada(getDoc(doc(db(), 'usuarios', UID_ADMIN)), 'leer el registro del admin');
     });
 
     it('un publicador tampoco lista el directorio entero', async () => {
       /*
        * La condición es por **ruta** (`uid == request.auth.uid`), y una condición
        * por ruta no es satisfacible en un `list`: Firestore rechaza la query
-       * completa. O sea que `listarUsuarios()` es del admin y de nadie más, y el
-       * rechazo es limpio y no una lista recortada.
+       * completa. O sea que `listarUsuarios()` es del admin y de nadie más, y lo
+       * que se recibe es un rechazo y no una lista recortada.
+       *
+       * **Rechazo, pero no denegación**: el `uid` del path no existe en un
+       * `list`, así que la regla ni siquiera se puede evaluar (`Null value
+       * error`). Es la trampa 7 con otra cara, y el helper que lo admite lo deja
+       * dicho (B-1130).
        */
       await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
-      await rechazada(getDocs(collection(db(), 'usuarios')), 'listar el directorio');
+      await denegadaOReglaQueTira(
+        getDocs(collection(db(), 'usuarios')),
+        'listar el directorio',
+      );
     });
 
     it('un anónimo no lee nada: no es una salida pública', async () => {
       await signOut(auth());
-      await rechazada(getDoc(doc(db(), 'usuarios', UID_PUB)), 'leer un registro sin sesión');
-      await rechazada(getDocs(collection(db(), 'usuarios')), 'listar el directorio sin sesión');
+      await denegada(getDoc(doc(db(), 'usuarios', UID_PUB)), 'leer un registro sin sesión');
+      await denegada(getDocs(collection(db(), 'usuarios')), 'listar el directorio sin sesión');
     });
   });
 
@@ -280,7 +283,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
         { publicador: true },
         { email: 'sin-verificar.u888@ejemplo.test', emailVerificado: false },
       );
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_SIN_VERIFICAR), registro('sin-verificar.u888@ejemplo.test')),
         'registrarse con un mail sin verificar',
       );
@@ -308,7 +311,7 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
        * hace el único testigo de esa cláusula.
        */
       await entrarSinMail(UID_SIN_MAIL, { publicador: true });
-      await rechazada(
+      await denegada(
         setDoc(doc(db(), 'usuarios', UID_SIN_MAIL), { email: '', actualizadoEn: serverTimestamp() }),
         'registrarse con el mail vacío',
       );
