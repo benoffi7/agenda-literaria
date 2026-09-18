@@ -437,6 +437,19 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Al lado hay un segundo interruptor, «24 h / AM/PM», y decide cómo tipeás las horas ' +
+          'de los encuentros. En «24 h» el campo es el del navegador y las horas van de 0 a 23, ' +
+          'que es como sale en Argentina. En «AM/PM» el campo se parte en cuatro: la fecha, la ' +
+          'hora de 1 a 12, los minutos y un desplegable AM o PM; abajo queda escrito lo que ' +
+          'entendió («miércoles, 7 de octubre, 7:30 PM»), así que se puede verificar de un ' +
+          'vistazo. Lo que se guarda es lo mismo en los dos casos: cambia cómo se escribe, no ' +
+          'qué queda. Como el de arriba, queda guardado en ese navegador y desde otro aparato ' +
+          'se elige de nuevo. Con el interruptor de la izquierda en «Celular» este queda ' +
+          'apagado: ahí gana el selector de hora del teléfono, que es mejor que cuatro cajitas ' +
+          'en una pantalla chica.',
+      },
+      {
+        texto:
           'Cada fila tiene «Editar» y un menú «⋯» con «Marcar cupo completo», «Duplicar», ' +
           '«Historial» y «Borrar». Están en el menú, y no como botones sueltos, para que ' +
           '«Borrar» no quede pegado a «Editar» en el teléfono.',

@@ -1490,6 +1490,51 @@ para que se elija en vez de decidirse.
 «celular» vuelve al ancho de lectura; lo que cambió es que con pestañas lo que se
 pinta son seis campos y no treinta.
 
+## El formato de hora, al lado del mismo interruptor
+
+Junto al de arriba hay un segundo interruptor, **«24 h / AM/PM»** (B-889,
+**D-720**), y decide cómo se **tipea** la hora en los tres campos de fecha y hora
+del panel: el inicio y el fin de cada encuentro, la ventana de cada forma de
+cursar y el cierre de la inscripción.
+
+**Existe porque el control nativo no deja elegir.** Un `<input
+type="datetime-local">` dibuja 24 horas o AM/PM según el idioma del sistema
+operativo, sin que la página tenga nada que ver: en `es-AR` sale en 24. Así que
+ofrecer el formato no era cambiar una opción, era **reemplazar el control** — la
+cara de las dos alternativas que se presentaron, y la que el dueño eligió sobre
+un cartel de lectura al lado del nativo. El pedido, hecho dos veces, era «un
+selector de am/pm», y un cartel no es un selector.
+
+| | «24 h» (el default) | «AM/PM» |
+|---|---|---|
+| Control | el `datetime-local` del navegador | cuatro piezas: fecha, hora de 1 a 12, minutos y AM/PM |
+| Debajo | nada | el **eco**: lo que quedó cargado, en palabras («miércoles, 7 de octubre, 7:30 PM») |
+| En la vista «Celular» | igual | el interruptor queda **apagado**, y dice por qué: gana el selector del teléfono |
+
+**Lo que se guarda no cambia en ninguno de los dos.** Las cuatro piezas se
+recomponen en el mismo string que el formulario ya manejaba, y de ahí sale el
+mismo `Timestamp` de siempre (trampa 1). Esa composición vive en
+`src/lib/formatoDeHora.ts`, pura y con test, y no adentro del JSX: con un control
+propio, escribir texto donde va un `Timestamp` deja de ser difícil.
+
+Y **una hora fuera de rango no se recorta**: si se tipea `13` en AM/PM el campo
+queda sin valor, que es lo que el schema ya lee como «falta». Un `13` que se
+convierte solo en `1 PM` mientras alguien escribe cambia lo que la persona puso
+sin avisarle.
+
+La elección se recuerda en el navegador (`agenda:formato-de-hora`), con la misma
+consecuencia que la de arriba: es por navegador y no por persona, y eso se dice
+en pantalla.
+
+**Por qué queda atado a la vista y no al ancho de la ventana.** D-720 decía
+«abajo de cierto ancho se sigue usando el nativo» y al implementarlo quedó
+`formato === '12' && vista === 'pc'`. El motivo está en la decisión misma: el
+panel **ya tiene** la elección explícita de forma del interruptor de arriba, y
+B-814 la decidió contra la detección. Un `matchMedia` acá metería las dos
+políticas a la vez en el mismo panel, y en el caso raro —una notebook con la
+ventana a media pantalla— ganaría la que ya se había descartado. El detalle está
+en [`06-decisiones.md`](06-decisiones.md) → D-720.
+
 ## Analítica del panel
 
 El panel está instrumentado para encontrar **fricción**, no para contar visitas:

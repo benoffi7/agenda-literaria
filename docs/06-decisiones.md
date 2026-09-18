@@ -11361,6 +11361,19 @@ por escrito lo que quedó cargado más que uno que garantiza el navegador.
    el selector del teléfono; cuatro cajitas para tipear son peores en una pantalla
    chica. La preferencia de 12/24 es de escritorio — el mismo criterio por el que
    `/proponer` se queda con el control nativo.
+
+   > **Al implementarlo (2026-09-18) esto quedó atado a la vista elegida y no al
+   > ancho de la ventana, y es la única desviación de lo escrito acá.** El motivo
+   > es que el panel **ya tiene** una elección explícita de forma —el interruptor
+   > «PC / Celular» de B-814— y aquella decisión fue justamente **contra** la
+   > detección: *«que no sea automatico por deteccion sino eleccion del usuario»*.
+   > Un `matchMedia` acá metería las dos políticas a la vez en el mismo panel, y
+   > la que ganaría en el caso raro —una notebook con la ventana a media
+   > pantalla— sería la que el dueño ya había descartado. Así que la regla es
+   > `formato === '12' && vista === 'pc'` (`usaControlDeHoraPropio`), y quien
+   > quiera el nativo lo tiene a un interruptor de distancia: el mismo que ya
+   > usa. La consecuencia visible es que el interruptor de formato queda
+   > **apagado** en la vista de celular, y lo dice.
 2. **Accesibilidad:** `datetime-local` es **un** campo con una etiqueta; esto son
    cuatro controles que tienen que leerse como uno solo.
 3. **`min-h-touch` del §11** en las cuatro piezas.

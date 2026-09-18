@@ -2,6 +2,42 @@
 
 ## Sin publicar
 
+- **Las horas se pueden cargar en AM/PM** — **B-889**, **D-720**, pedido dos
+  veces por el dueño. El campo de hora era un `<input type="datetime-local">`, y
+  ese control **no decide el formato: lo decide el navegador** a partir del
+  idioma del sistema. Así que ofrecer elegir significaba dejar de usar el
+  nativo, que es la opción cara de las dos que se le presentaron y la que
+  eligió.
+
+  Hay un interruptor «24 h / AM/PM» al lado del de «PC / Celular», y en «AM/PM»
+  los tres campos de fecha y hora del panel —los dos de cada encuentro, la
+  ventana de cada forma de cursar y el cierre de la inscripción— se parten en
+  cuatro piezas, con el **eco** debajo escribiendo lo que quedó cargado. El eco
+  era la opción (a) que se había recomendado; entra adentro de la (b) porque un
+  control que dibujamos nosotros necesita confirmar lo que entendió más que uno
+  que garantiza el navegador.
+
+  **Lo que se guarda no cambió**: las cuatro piezas se componen en el mismo
+  string de `datetime-local` que el formulario ya manejaba, y de ahí sale el
+  `Timestamp` de siempre (trampa 1). Esa composición vive en `lib/formatoDeHora.ts`,
+  pura y con test, y no adentro del JSX — que es lo que hace fácil caer en la
+  trampa cuando el control es propio.
+
+  **Una desviación de D-720, anotada allá:** el punto 1 decía «abajo de cierto
+  ancho se sigue usando el nativo», y quedó atado a la **vista elegida** (`pc` /
+  `celular`) en vez del ancho de la ventana. El panel ya tiene esa elección
+  explícita y B-814 la decidió contra la detección; un `matchMedia` habría
+  metido las dos políticas a la vez.
+
+  **Y una que encontró el `auditor-trampas` sobre el propio cambio:** el módulo
+  nuevo nació con **dos** parsers del string de `datetime-local` —el de las
+  piezas y el del eco— más el que ya existía en `lib/sesiones.ts`. Hoy los tres
+  daban lo mismo, pero el día que el formato se extienda en uno solo, el eco
+  mostraría una hora distinta de la que el formulario compone **y nada se
+  pondría rojo**, justo en el texto que existe para confirmar la hora. Quedó uno
+  solo, y una red que lo cruza contra el de `sesiones.ts` para que no se
+  separen (D-88).
+
 - **Un rechazo esperado ya no puede ser la regla explotando** — **B-1130**. Todo
   test de reglas afirma «esto tiene que ser rechazado» y lo verificaba mirando el
   `code`, que es `permission-denied` tanto cuando la regla corrió y dijo que no

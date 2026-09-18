@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'las-horas-se-cargan-en-am-pm',
+    fecha: '2026-09-18',
+    version: '1.11.0',
+    titulo: 'Las horas se pueden cargar en AM/PM',
+    detalle:
+      'Arriba del panel hay un interruptor nuevo, «24 h / AM/PM». En «AM/PM» el ' +
+      'campo de cada encuentro se parte en cuatro —fecha, hora de 1 a 12, ' +
+      'minutos y AM o PM— y abajo queda escrito lo que entendió, para ' +
+      'verificarlo de un vistazo. Lo que se guarda es lo mismo: cambia cómo se ' +
+      'escribe, no qué queda. Se recuerda en ese navegador.',
+    donde: 'Arriba de todo, al lado del interruptor «PC / Celular».',
+  },
+  {
     id: 'la-miniatura-abre-la-imagen-entera',
     fecha: '2026-09-18',
     version: '1.11.0',

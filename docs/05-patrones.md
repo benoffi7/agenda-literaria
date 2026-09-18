@@ -512,10 +512,11 @@ una excepción angosta y a propósito**: `@testing-library/react`,
 instalados, pero **solo** para el cableado real de DOM que un test que lee el
 fuente no puede verificar sin arriesgarse a un falso verde (B-202 fue
 exactamente eso) — el primero fue `tests/menu-acciones.render.test.tsx` y al
-2026-09-14 son **veintidós** (`ls tests/*.render.test.tsx`, remedido con B-919:
-decía «diecisiete» y ya eran veintiuno — es el cuarto remedido de este número, y
-la tercera vez que se queda viejo solo, lo cual dice algo del número y no de quien
-lo escribió). Que hayan nacido veintiuno más sin que nadie ampliara la política es
+2026-09-18 son **26** (`ls tests/*.render.test.tsx`, remedido con B-889: decía
+«veintidós» al 2026-09-14 y ya eran 26 — es el **quinto** remedido de este
+número, y la cuarta vez que se queda viejo solo, lo cual a esta altura dice que el
+número no tiene que estar escrito acá: el comando de al lado es el dato, igual que
+en `10-salud-del-codigo.md` § B-662). Que hayan nacido veinticinco más sin que nadie ampliara la política es
 la señal de que el criterio está bien puesto: se usan donde el cableado de DOM **es**
 la pregunta, y no se derramaron al resto. Viven en
 `*.render.test.tsx` y `vitest.config.ts` monta jsdom nada más que para ese
