@@ -16,6 +16,8 @@
  * Vive en `.render.test.tsx` porque `vitest.config.ts` monta jsdom solo para ese
  * patrón (`environmentMatchGlobs`).
  */
+import { useState } from 'react';
+import { FILTROS_VACIOS, ORDEN_POR_DEFECTO } from '@/lib/filtrosActividades';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,7 +48,10 @@ vi.mock('@/components/admin/useOpciones', () => ({
 
 import { listarActividades } from '@/lib/actividades';
 import { listarUsuarios } from '@/lib/usuarios';
-import { ListaActividades } from '@/components/admin/ListaActividades';
+import {
+  ListaActividades,
+  type Props as PropsDeLista,
+} from '@/components/admin/ListaActividades';
 
 const UID_PROPIO = 'uid_propio';
 const UID_OTRA = 'uid_otra_cuenta';
@@ -73,6 +78,29 @@ const acto = (over: Partial<ActividadConId> = {}): ActividadConId =>
     ...over,
   }) as unknown as ActividadConId;
 
+/**
+ * **El estado de los filtros entra por props desde B-955**, así que el montaje
+ * del test lo provee: subirlo a `AdminApp` es justamente lo que arregló el ítem
+ * —el listado se desmonta al editar y perdía todo—, y acá hace falta un lugar
+ * donde viva para que el componente se comporte como en el panel.
+ *
+ * Es un wrapper y no un objeto fijo a propósito: con `filtros` constante, un
+ * caso que tipee en el buscador no vería cambiar nada y pasaría por vacío.
+ */
+const ConFiltros = (p: Omit<PropsDeLista, 'filtros' | 'setFiltros' | 'orden' | 'setOrden'>) => {
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
+  const [orden, setOrden] = useState(ORDEN_POR_DEFECTO);
+  return (
+    <ListaActividades
+      {...p}
+      filtros={filtros}
+      setFiltros={setFiltros}
+      orden={orden}
+      setOrden={setOrden}
+    />
+  );
+};
+
 const props = {
   onEditar: vi.fn(),
   onNueva: vi.fn(),
@@ -93,7 +121,7 @@ afterEach(() => {
 });
 
 const montar = async (rol: 'admin' | 'publicador', ciudad = '') => {
-  render(<ListaActividades {...props} rol={rol} ciudad={ciudad} />);
+  render(<ConFiltros {...props} rol={rol} ciudad={ciudad} />);
   return await screen.findByRole('list');
 };
 

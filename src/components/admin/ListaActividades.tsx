@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
 import {
   claseBotonPrimario,
@@ -27,8 +27,6 @@ import {
 } from '@/lib/duplicar';
 import {
   ETIQUETA_ESTADO,
-  FILTROS_VACIOS,
-  ORDEN_POR_DEFECTO,
   hayFiltros,
   listaVisible,
   opcionesPresentes,
@@ -47,7 +45,32 @@ import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import { urlDeDetalle } from '@/lib/rutasPublicas';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
-interface Props {
+export interface Props {
+  /**
+   * **Los filtros y el orden viven en `AdminApp`, no acá** — B-955, pedido del
+   * dueño: «en el admin, preservar filtros al ir y venir de una actividad».
+   *
+   * Estaban en un `useState` de este componente, y `AdminApp` lo **desmonta**
+   * cuando la vista pasa a `editar`, `nueva`, `duplicar` o `historial`: al
+   * volver, el componente se montaba de cero y el estado nacía vacío. Se llevaba
+   * puestos los ocho ejes, el texto de búsqueda y el orden — o sea, filtrar
+   * «pendientes de septiembre», abrir una, guardar, y volver a la lista completa
+   * para reencontrar la siguiente.
+   *
+   * Suben al mismo lugar donde ya viven `vista` y `volverA`, que es donde está
+   * lo que tiene que sobrevivir a un cambio de pantalla. **No se persisten**:
+   * mueren con la pestaña, a propósito. Un filtro pegado de ayer es peor que
+   * ninguno, porque quien abre el panel ve una lista recortada sin haber pedido
+   * nada.
+   *
+   * Llegan como el par `estado` + `setEstado` y no como `onFiltros` porque el
+   * buscador de acá abajo usa la forma funcional (`setFiltros((f) => …)`): es el
+   * mismo estado elevado, no una interfaz nueva.
+   */
+  filtros: Filtros;
+  setFiltros: Dispatch<SetStateAction<Filtros>>;
+  orden: Orden;
+  setOrden: Dispatch<SetStateAction<Orden>>;
   onEditar: (a: ActividadConId) => void;
   onNueva: () => void;
   /** Abre el formulario con una copia lista para editar y guardar como nueva. */
@@ -110,6 +133,10 @@ const CLASE_MARCA =
   'whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70';
 
 export function ListaActividades({
+  filtros,
+  setFiltros,
+  orden,
+  setOrden,
   onEditar,
   onNueva,
   onDuplicar,
@@ -136,9 +163,6 @@ export function ListaActividades({
    * dibuja y la marca dice «otra cuenta».
    */
   const mailes = useMailesDelPanel(rol);
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS);
-  const [orden, setOrden] = useState<Orden>(ORDEN_POR_DEFECTO);
-
   /**
    * B-199 — la actividad que se está por duplicar, con las casillas que le
    * aplican. `null` mientras no hay modal abierto.

@@ -10,6 +10,13 @@ import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
+// B-955 — los filtros y el orden del listado viven acá: ver el estado, más abajo.
+import {
+  FILTROS_VACIOS,
+  ORDEN_POR_DEFECTO,
+  type Filtros,
+  type Orden,
+} from '@/lib/filtrosActividades';
 import { motivoDeLoginFallido, type MotivoDeLogin } from '@/lib/motivoDeLogin';
 // B-620 — qué vista usa todo el ancho. Puro y con su test, por lo mismo que
 // `salida-del-panel.ts`: la vista que se agregue mañana arranca angosta y quien
@@ -389,6 +396,21 @@ export function AdminApp() {
     setFormatoDeHora(nuevo);
     recordarFormatoDeHora(globalThis.localStorage ?? null, nuevo);
   };
+  /**
+   * **Los filtros y el orden del listado** — B-955, pedido del dueño.
+   *
+   * Viven acá y no en `ListaActividades` porque ese componente se **desmonta**
+   * en cuanto la vista deja de ser la lista: al volver de editar una actividad,
+   * su estado nacía vacío y se llevaba puestos los ocho ejes, el texto de
+   * búsqueda y el orden. Es el mismo motivo por el que `volverA` vive acá.
+   *
+   * **No se persiste**, y es una decisión: mueren con la pestaña. Un filtro
+   * pegado de ayer es peor que ninguno, porque quien abre el panel ve una lista
+   * recortada sin haber pedido nada.
+   */
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS);
+  const [orden, setOrden] = useState<Orden>(ORDEN_POR_DEFECTO);
+
   const [version, setVersion] = useState(0);
 
   // Una sola llamada: el hook hace el fetch de /version.json y el reload().
@@ -908,6 +930,10 @@ export function AdminApp() {
 
       {vista.tipo === 'lista' && (
         <ListaActividades
+          filtros={filtros}
+          setFiltros={setFiltros}
+          orden={orden}
+          setOrden={setOrden}
           version={version}
           onNueva={() => {
             setVolverA('lista');

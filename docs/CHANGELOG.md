@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **Los filtros del panel sobreviven a entrar y salir de una actividad** —
+  **B-955**, pedido del dueño: «en el admin, preservar filtros al ir y venir de
+  una actividad». Filtrar «pendientes de septiembre», abrir una, guardar y
+  volver dejaba la lista completa otra vez, con los ocho ejes, el texto de
+  búsqueda y el orden en cero.
+
+  La causa era de una línea y el arreglo también: el `useState` vivía dentro de
+  `ListaActividades`, y `AdminApp` **desmonta** ese componente en cuanto la
+  vista deja de ser la lista. Subió al mismo lugar donde ya viven `vista` y
+  `volverA`.
+
+  **No se persisten, y es una decisión**: mueren con la pestaña. Un filtro
+  pegado de ayer es peor que ninguno, porque quien abre el panel ve una lista
+  recortada sin haber pedido nada.
+
+  Lo cuida `tests/filtros-que-sobreviven.test.ts`, que afirma dónde vive el
+  estado y no lo que hacen los filtros —eso ya está cubierto—, con la mutación
+  probada: devolver el `useState` al listado lo pone rojo.
+
 - **El filtro «Ciudad → Mar del Plata» ya muestra su banner** — **B-962**. El
   mecanismo estaba entero y probado desde B-961; lo que faltaba eran los dos
   archivos, que mandó el dueño. `BANNERS_DE_CIUDAD` deja de estar vacío.

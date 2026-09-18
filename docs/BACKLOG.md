@@ -1421,26 +1421,6 @@ listas sean idénticas— y `docs/16-analitica-del-sitio.md`. El parámetro ser�
 **ciudad en slug**, vocabulario cerrado con las ciudades que tienen banner, y
 nunca el destino ni el nombre del emprendimiento.
 
-### B-955 · Entrar a una actividad y volver borra todos los filtros · P2 — pedido del dueño (2026-09-15)
-
-*«En el admin, preservar filtros al ir y venir de una actividad.»*
-
-**La causa es de una línea:** `const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS)`
-vive dentro de `ListaActividades.tsx`, y `AdminApp` **desmonta ese componente**
-cuando la vista pasa a `editar` (o a `nueva`, `duplicar`, `historial`). Al volver,
-el componente se monta de cero y el estado nace vacío. Se lleva puestos los ocho
-ejes, el texto de búsqueda y el orden.
-
-Duele en el uso real que ya tenemos: filtrar «pendientes de septiembre», abrir
-una, guardar, y volver a la lista completa para reencontrar la siguiente.
-
-Dos arreglos posibles y conviene el primero: **subir el estado a `AdminApp`**, al
-lado de `vista` y de `volverA`, que es donde ya vive lo que tiene que sobrevivir a
-un cambio de pantalla; o persistirlo en `localStorage` como los borradores
-(D-122). El segundo agrega la pregunta de cuánto dura —un filtro pegado de ayer es
-peor que ninguno— así que si se elige, que muera con la pestaña
-(`sessionStorage`).
-
 ### B-959 · Efemérides: cargarlas en el panel, mostrarlas en el sitio, y que no lleguen al calendario · P2 — pedido del dueño (2026-09-15)
 
 > 📌 **Orden fijado por el dueño el 2026-09-16: va después de los P1.** Vale igual

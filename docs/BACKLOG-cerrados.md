@@ -13,5789 +13,6 @@ archivo vivo vuelve a ser lo que falta hacer cada vez que se corre.
 calcula sobre los ids de los dos — si se calculara solo sobre el vivo,
 propondría un número ya usado.
 
-## Pendiente de acción manual del dueño
-
-### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1
-
-> **Corrido en producción el 2026-09-17**: 58 actividades reubicadas con
-> `scripts/reubicar-barrios.mjs`. Segunda corrida: `A reubicar: 0`.
->
-> Antes se ensayó contra el emulador con las **formas reales** de producción —una
-> por clase, incluidas las ambiguas y dos sanas de control—, y ahí se verificó lo
-> que importaba: que la ciudad salga **slugificada** (`Tres arroyos` →
-> `tres-arroyos`; cruda habría reintroducido el bug que la migración arregla),
-> que `sede` y `ciudades[]` se recalculen, que las sanas no se toquen y que sea
-> idempotente.
->
-> **La regla vive en `src/lib/reubicacion-de-barrio.mjs`, es pura y tiene 12
-> casos.** Reubica solo cuando el propio dato lo dice: el barrio es una provincia
-> → va a `provincia`. No deduce la provincia de una ciudad —«Tandil» es
-> bonaerense para una persona y para nadie más acá—, que es la misma línea que
-> `sembrar-geografia.mjs` ya había trazado.
->
-> **Y no invierte «barrio=ciudad + ciudad=provincia», aunque parezca obvio.** La
-> primera versión sí lo hacía: funciona para `rosario | santa-fe` y sobre
-> `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén». Distinguirlos pide
-> cablear los 48 barrios de CABA, o sea la tabla que el módulo se niega a
-> inventar con otro nombre. Está fijado por test con la mutación probada.
->
-> **Lo que queda, y es del dueño** (se le pasaron los enlaces el 2026-09-17):
->
-> | Actividad | Qué dice | Por qué no se tocó |
-> |---|---|---|
-> | Club de lectura - «Basura» | `barrio=provincia-de-buenos-aires` + `ciudad=CABA` | CABA no está en la provincia de Buenos Aires |
-> | Club de lectura La Fonseca | `barrio=nunez` + `ciudad=Neuquén` | Núñez es barrio de CABA |
-> | Lectura y análisis de Mariana Pineda | `barrio=rosario` + `ciudad=Santa fé` | parecen invertidos, indistinguible del anterior |
-> | FINDE - Feria de editores independientes | `barrio=palermo` + `ciudad=avellaneda` | Palermo es CABA, Avellaneda no |
-> | Club de lectura: ESCRITURAS DEL MUNDO | `provincia=buenos-aires` sin ciudad | falta el segundo nivel |
->
-> **Y cinco valores de `/opciones/barrio` quedaron sin ninguna actividad detrás**
-> —`beccar`, `ramos-mejia`, `cordoba`, `neuquen`, `santa-fe`—: recién ahora se
-> pueden borrar desde la pantalla de taxonomías sin dejar un slug colgado.
-> `provincia-de-buenos-aires` **no** quedó libre: la sostiene «Basura», la primera
-> ambigua.
->
-> **Y el mismo día se corrió `sembrar-geografia.mjs`, que existía desde B-950 y
-> nunca se había corrido**: 180 actividades más. La geografía de las sedes pasó de
-> **0 filas con provincia a 251 de 259**.
->
-> **Ese ensayo encontró un hueco en el propio backfill, y se tapó antes de
-> aplicar.** `geografiaNormalizada` deduce la provincia de la ciudad, y sobre una
-> sede que se contradice eso **no es deducir sino desempatar**: «Basura» habría
-> quedado como `caba / caba / provincia-de-buenos-aires`, con la contradicción
-> resuelta a la fuerza, en una dirección, y con pinta de decidida — peor que el
-> estado anterior, porque el dato malo deja de verse. Ahora consulta
-> `reubicacionDe` y saltea lo ambiguo, con su test.
->
-> Después de las dos corridas quedan **9 sedes** para mirar a mano: las 3
-> ambiguas, la de `palermo | avellaneda`, la que tiene provincia sin ciudad, y 4
-> sin provincia porque el backfill no la puede deducir (Neuquén, Santa Fe,
-> Rosario y una sin ciudad). Los enlaces se le pasaron al dueño el 2026-09-17.
->
-> El texto original queda abajo.
-
-**Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre
-Belgrano y Colegiales. Y no está solo — de los 30 valores de `/opciones/barrio`,
-**siete no son barrios de CABA**:
-
-| Valor | Qué es en realidad | Actividades |
-|---|---|---|
-| `provincia-de-buenos-aires` | una provincia | **54** |
-| `cordoba` | provincia (o su capital) | 8 |
-| `beccar`, `ramos-mejia` | ciudades bonaerenses | 1 c/u |
-| `rosario` | ciudad de Santa Fe | 1 |
-| `neuquen`, `santa-fe` | provincia (o su capital) | 1 c/u |
-
-**Por qué pasó, y por qué no es descuido de nadie:** hasta B-950 el barrio era
-**el único campo de lugar** que el formulario ofrecía. Quien cargaba una
-actividad en Tandil no tenía dónde ponerlo, así que lo puso donde había lugar. El
-vocabulario es el registro fiel de un formulario que faltaba.
-
-**Cuánto abarca:** 129 filas de sede tienen el barrio contaminado, y se parten en
-dos:
-
-- **123 son mecánicas.** `barrio=provincia-de-buenos-aires` + `ciudad=Tandil`
-  significa `provincia=buenos-aires, barrio='', ciudad=tandil`, sin ambigüedad. Lo
-  mismo con `cordoba`, `neuquen` y `santa-fe`. Hay dos invertidas
-  (`barrio=rosario | ciudad=santa-fe`) que son las mismas dos al revés, y una
-  `"Villa Crespo, CABA"` que es un barrio con la ciudad pegada.
-- **6 necesitan criterio del dueño**, porque el documento se contradice:
-  - `barrio=nunez | ciudad=neuquen` (2) — Núñez es de CABA, Neuquén no.
-  - `barrio=palermo | ciudad=avellaneda` (2) — Palermo es de CABA, Avellaneda es
-    bonaerense.
-  - `barrio=provincia-de-buenos-aires | ciudad=caba` (2).
-
-**Por qué no se hizo en el momento.** Sacar los siete del desplegable **no
-alcanza**: 54 actividades seguirían con `barrio: 'provincia-de-buenos-aires'` en
-el documento, y ahí el slug deja de resolver etiqueta y se publica crudo. El
-arreglo de verdad es migrar los documentos, y eso reescribe ~100 actividades: una
-versión del §12 por actividad y **una llamada a Calendar por sesión** (`sede` está
-en los campos que la guarda del §7.1 mira). El propio `sembrar-geografia.mjs`
-dice «correrlo una vez, fuera de hora». Es una decisión del dueño, no una
-prolijidad que se cuela en otro cambio.
-
-**Lo que sí quedó hecho** (B-975): `/opciones/ciudad` pasó de 1 a 30 valores con
-las ciudades reales del catálogo, así que **al reeditar una de esas actividades la
-ciudad correcta ya está en el desplegable** y el arreglo manual es elegir la
-provincia. Sin eso, migrar a mano era volver a tipear treinta ciudades.
-
-### B-974 · Diez taxonomías de las guías nunca se sembraron en producción — ✅ hecho (2026-09-16) · P1
-
-> **Sembradas el 2026-09-16** con `npm run opciones:sembrar:prod`, y verificadas
-> con `npm run taxonomias:verificar`: las 17 declaradas existen. Las siete que ya
-> estaban no se tocaron (el script es idempotente). El rebuild se dispara solo por
-> la escritura en `/opciones/*` (trampa 8).
->
-> **Lo que estuvo roto, y cuánto:** desde que se creó cada guía. Los desplegables
-> de `/guia/librerias/sumar`, `/guia/lugares/sumar` y `/guia/suscripciones/sumar`
-> —el formulario de gente de afuera— salían vacíos para esos ejes, y los chips de
-> filtro de las tres guías también. El panel se veía bien todo ese tiempo, que es
-> lo que lo mantuvo invisible.
->
-> El texto original queda abajo.
-
-**Un solo comando, y necesita tu aprobación** porque escribe en producción:
-
-```bash
-npm run opciones:sembrar:prod
-```
-
-Lo encontró el chequeo nuevo de B-973 apenas se lo corrió contra producción:
-`incluye-actividad`, `periodicidad`, `tipo-oferente`, `perfil-editorial`,
-`incluye-suscripcion`, `extras-suscripcion`, `alcance-envio`, `tipo-lugar`,
-`incluye-lugar` y `condicion-de-uso` **no existen** como documentos de
-`/opciones/*`. Nunca existieron: se crearon con las guías y la siembra nunca se
-volvió a correr.
-
-**Qué está roto hoy, exactamente.** El panel se ve bien, y eso es lo que tapó el
-problema: `leerOpciones` cae de vuelta a `opciones-base.json` cuando el documento
-falta. El **build** no tiene ese fallback —`contenidoDelSitio.ts` hace
-`snap.data()?.valores ?? []`—, así que lo que sale vacío es lo público:
-
-- los desplegables de `/guia/librerias/sumar`, `/guia/lugares/sumar` y
-  `/guia/suscripciones/sumar`, que es gente de afuera que no puede completar el
-  formulario;
-- los chips de filtro de las tres guías para esos ejes.
-
-El comando es idempotente (no pisa nada existente) y dispara el rebuild solo
-(trampa 8), así que los chips aparecen en la corrida siguiente. Después,
-`npm run taxonomias:verificar` tiene que dar las 17 en verde.
-
-**Hasta que se corra, el job `hosting` falla y no se deploya nada** — que es
-exactamente lo que el chequeo tiene que hacer, pero conviene saberlo antes de
-pushear.
-
-### B-20 · Activar el rebuild automático (cierra B-02) — ✅ hecho y verificado de punta a punta (2026-08-25)
-
-Los cinco pasos que dependían del dueño, en el orden en que se hicieron (comandos
-exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automático"):
-
-1. ~~Crear el PAT de GitHub~~ — **hecho** (existe desde el 2026-08-21).
-2. ~~Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
-   dándole `secretAccessor` a `calendar-sync@`~~ — **hecho** (2026-08-21).
-3. ~~Crear la service account `deploy-ci@` con `datastore.viewer` +
-   `firebasehosting.admin`~~ — **hecho el 2026-08-25**, con esos dos roles y sin
-   ninguna key.
-4. ~~Bajar la key de `deploy-ci@`, cargarla como secret
-   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco~~ — **hecho el
-   2026-08-25**. La corrida de las 18:04 publicó `1.1.0+675d9e5` desde CI: reglas,
-   índices, sitio y panel, todo verde.
-5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
-   ACTIVE, y su `repository_dispatch` ahora sí arranca el workflow (era **B-188**,
-   arreglado el mismo día).
-
-**Los cinco pasos están hechos y el lazo funciona.** Verificado el 2026-08-25
-mandando el mismo `event_type: 'rebuild'` que manda la Function: «Build y deploy del
-sitio» arrancó, imprimió el motivo del `client_payload` y publicó `1.1.0+ad973b8`.
-Lo que faltaba después de las credenciales era un bug, **B-188**, arreglado el mismo
-día.
-
-Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
-solo**. Lo que no, y era una contra asumida: todo push que toque `functions/` deja
-la corrida roja, porque `deploy-ci@` no tiene —a propósito— los roles para
-desplegar Functions, y con la corrida roja se saltea también el job del tag de
-versión. El razonamiento está en
-[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
-
-> **Se levantó el 2026-08-28 (D-132, B-194).** Los seis jobs terminan bien; un
-> push publica reglas, índices, sitio, panel, Functions y tag. Lo de arriba queda
-> como el estado del 2026-08-25.
-
-#### Lo que enseñó el camino, que valía más que los pasos
-
-Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsión:
-
-- **El inventario mentía, siempre hacia el mismo lado.** Los pasos 1, 2 y 5
-  figuraban como pendientes y estaban hechos desde el 2026-08-21 (el PAT en Secret
-  Manager, y `dispararRebuild`/`guardarVersion`/`reporteAIssue` **ACTIVE**). Este
-  ítem parecía mucho más grande de lo que era porque la doc mostraba como pendiente
-  trabajo terminado hacía días.
-- **El paso 4 era el que desbloqueaba todo.** Sin `FIREBASE_SERVICE_ACCOUNT` no se
-  publica ni el sitio ni el panel, o sea que **ningún** cambio de código llegaba a
-  producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
-  ítem al escribirse.
-- **Un job de reglas que falla bloquea el deploy del sitio.** El `if` del job de
-  Hosting pide `needs.firestore.result != 'failure'`, así que la primera corrida con
-  credencial salteó Hosting por un permiso que le faltaba al job de reglas. Es el
-  "reglas primero" llevado hasta el final y está bien que sea así, pero conviene
-  saberlo antes de leer una corrida roja.
-- **`workflow_dispatch` siempre deploya todo**, con o sin el checkbox: sin
-  `github.event.before` el script no puede diffear y falla hacia el lado de
-  deployar. El botón *Run workflow* no sirve para probar solo Hosting.
-- **El build pasa sin credencial, y hoy está bien que pase:** ninguna página lee
-  Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
-  `hayCredenciales()`, **existía y no la llamaba nadie** (**B-189**, cerrado en
-  `1.2.0`).
-
-### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) — ✅ hecho (2026-09-03) · P1
-
-**Cerrado el 2026-09-03: los tres pasos están resueltos.**
-
-1. **El 301 de `agendaleh.com.ar`** — hecho por el dueño, propagando. Medido a
-   las 18:40 todavía respondía 200, que es lo esperable mientras propaga:
-   **conviene reverificar** con `curl -sI https://agendaleh.com.ar/ | head -3`,
-   que tiene que decir `301` y `location: https://agendaleh.ar/`.
-2. **El `www`** — **descartado a propósito**: queda sin configurar. Un hostname
-   que no existe no puede duplicar contenido, y agregarlo como sitio hubiera sido
-   un cuarto nombre sirviendo lo mismo.
-3. **Search Console** — conectado y con el sitemap mandado: **descubrió 80
-   páginas**. Con eso el sitemap dejó de ser un archivo que nadie lee.
-
-Las dos trampas de falla diferida **siguen vigentes y no se cierran con este
-ítem**, porque no son pasos: el TXT de verificación es permanente (borrarlo tira
-el certificado ~90 días después) y la renovación de NIC.ar no es automática (la
-delegación se apaga el día 31, así que el margen real son 30 días).
-
-
-Código terminado y publicado; estos tres no se pueden hacer desde el repo porque
-los dominios de Hosting se configuran en la consola, no en `firebase.json`. El
-paso a paso, con la casilla exacta que la consola ofrece, está en
-[`08-operacion.md`](08-operacion.md) § «El dominio».
-
-1. **El 301 de `agendaleh.com.ar` al canónico.** Hoy los dos hostnames devuelven
-   **200 con el mismo contenido** (medido el 2026-09-02). No es urgente
-   —el `canonical` absoluto ya le dice a Google cuál es la buena, y por eso esto
-   es P1 y no P0— pero mientras no esté, el alias gasta rastreo y puede aparecer
-   en un resultado. Consola → Hosting → la fila del dominio → la casilla
-   «Redireccionar este dominio a otro».
-   Verificar: `curl -sI https://agendaleh.com.ar/` tiene que decir `301`.
-2. **Decidir el `www`.** Hoy `www.agendaleh.ar` y `www.agendaleh.com.ar` **no
-   responden**. Las dos opciones son válidas —dejarlo así, o agregarlo
-   redirigiendo— y lo que **no** hay que hacer es agregarlo como sitio, que sería
-   un cuarto nombre sirviendo el mismo contenido.
-3. **Registrar la propiedad en Search Console y mandar el sitemap.** El sitemap
-   existe desde B-109 y hoy no lo lee nadie: Google lo va a encontrar solo por la
-   línea `Sitemap:` del `robots.txt`, que es bastante más lento. Es además la
-   única forma de ver si algo salió mal —una canónica rechazada, una URL
-   «indexada aunque bloqueada»— y de medir si el proyecto está cumpliendo su
-   objetivo (§2.3: si la gente no encuentra los talleres en Google, el sitio no
-   sirve).
-
-**Y dos cosas que no son pasos sino avisos, las dos de falla diferida** — están en
-el runbook y conviene tenerlas también acá, porque el día que se rompan nadie va a
-buscar en esta lista:
-
-- **el TXT de verificación del dominio es permanente**, no un paso que se cumple:
-  Firebase lo relee para renovar el certificado. Borrarlo «porque ya verificó» no
-  rompe nada ese día y deja el sitio con error de certificado **~90 días
-  después**;
-- **la renovación de NIC.ar no es automática.** Hay 45 días de gracia, pero
-  **desde el día 31 la delegación se apaga** y el sitio se cae aunque el dominio
-  siga siendo del dueño. O sea que el margen real son 30 días: conviene un
-  recordatorio un mes antes del vencimiento, no el día.
-
-### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño — ✅ decidido: no se hace (2026-09-03)
-
-**Decidido el 2026-09-03 por el dueño: no se hace.** La alerta de GCP queda sin
-configurar. El log sigue existiendo con nivel `error` y el motivo en
-`sistema/rebuild`, así que la información está: lo que no va a haber es un aviso
-que la empuje.
-
-Se cierra en vez de quedar abierto para siempre, que es lo honesto: un ítem que
-espera un click que nadie va a hacer es ruido en la lista. Si algún día el
-rebuild se cae sin que nadie lo note, el runbook de `08-operacion.md` tiene la
-configuración lista.
-
-
-Cuando el rebuild se rinde después de cinco intentos, loguea
-`el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
-`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP:
-configuración de consola, no código, y queda a criterio del dueño (D-23).
-
-**Lo que se hizo del lado del código (2026-08-24):** ese log lleva ahora el
-campo `alerta: "rebuild-agotado"`, para que el filtro de la alerta apunte a un
-campo estable y no al texto del mensaje —que se rompería en silencio el día que
-alguien reescriba la frase—. El filtro exacto y los pasos de la consola están en
-[`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
-
-**Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
-de GCP con un canal de notificación propio. **Ya tiene sentido:** `dispararRebuild`
-está desplegada, B-20 cerrado y el lazo verificado de punta a punta el 2026-08-25.
-
-**Este ítem apuntaba a un runbook que no existía**, y eso se arregló el 2026-08-25:
-decía que "el filtro exacto y los pasos de la consola están en `08-operacion.md`
-§ 'Alerta de rebuild agotado'" y `grep -i alerta` sobre ese archivo no devolvía nada.
-La referencia era una promesa, no una instrucción, justo en el único paso que solo
-puede dar el dueño. **Ahora la sección existe**, con los tres pasos: mirar una entrada
-real antes de fijar el filtro (las Functions v2 aparecen como `cloud_run_revision` y
-no como `cloud_function`, y el `service_name` va en minúsculas), crear la alerta, y
-qué hacer cuando llegue.
-
-Lo único que queda es el click y el canal de notificación, que es dato personal y
-configuración de consola (§5.4).
-
-### B-888 · El rol publicador: la frontera y el panel — ✅ cerrado (2026-09-11) · P1
-
-> ✅ **Las dos tajadas.** La 1 (frontera): claim `publicador`, las cuatro reglas de
-> `/actividades` por dueño, `/usuarios/{uid}`, el script y el índice — **D-650**.
-> La 2 (el panel): el listado y el calendario piden lo propio con el `where`; el
-> slug único lo contesta el índice `/slugs` (**D-660**); las taxonomías no se
-> intentan y no se ofrecen; y la subida se abrió con `resource == null`, **sin
-> tocar la forma del prefijo**. Más `registrarUsuario()` al entrar, el gating de
-> las cinco pantallas, el filtro «Quién la cargó» y la marca con el mail.
->
-> **Lo que queda es del dueño, y en este orden:**
-> 1. desplegar reglas (Firestore **y** Storage) e índices;
-> 2. **sembrar el índice de slugs** —`npm run slugs:sembrar:prod -- --aplicar
->    --produccion`— **antes** de darle el claim a nadie: hasta que corra, el panel
->    **se niega a guardar**, a propósito;
-> 3. desplegar el sitio;
-> 4. `npm run admin:claim:prod -- --publicador <mail>`.
->
-> **Y tres preguntas que el frente devolvió en vez de contestar:** si la cuenta
-> acotada tiene que poder **reportar un bug** (hoy no tiene por dónde avisar si algo
-> le falla); si los **`usos`** de las taxonomías tienen que contar cuando guarda un
-> publicador (hoy no, así que el orden por frecuencia ignora lo que carga esa
-> cuenta); y que un publicador **puede reservar un nombre sin cargar la actividad**
-> —falla cerrada y lo barre `--reparar`, pero es una forma de bloquear un nombre—.
->
-> Siguen en pie las dos decisiones de la tajada 1 que conviene revisar: **puede
-> borrar lo suyo** y **puede publicar el link de la reunión**.
-
-**Lo hecho (2026-09-11): la frontera de autorización.** Claim `publicador` + las
-cuatro reglas de `/actividades` por dueño + `/usuarios/{uid}` con el mail de cada
-cuenta + `--publicador`/`--quitar` en `set-admin-claim.mjs` + el índice compuesto +
-**29 mutaciones contra el emulador**. Decisión completa en **D-650**, modelo de
-amenaza en `docs/07-seguridad.md` § «Los dos roles del panel».
-
-**Lo que falta es el panel, y hoy el rol no se puede usar con una persona.** Una
-cuenta con el claim entra a `/admin` y ve «Sin permisos»; si se lo destrabara sin
-lo de abajo, su pantalla principal quedaría **rota**, no acotada. Las tres roturas
-conocidas, en orden de bloqueo:
-
-1. **El listado.** `listarActividades()` consulta sin `where`, y con la regla nueva
-   Firestore **rechaza la query entera** (trampa 7 — una regla no filtra). Tiene que
-   ser `where('createdBy','==',uid)` + `orderBy('updatedAt','desc')`, con el índice
-   que ya está en `firestore.indexes.json`.
-2. **El slug único.** `slugDisponible()` barre toda la colección sin `where`, así
-   que también se rechaza entera — y **no tiene arreglo dentro de la regla**: el
-   slug es un invariante de **todo** el catálogo y no se puede verificar mirando
-   solo lo propio. Las dos salidas son una colección índice `/slugs/{slug}` de
-   lectura abierta o una Function que resuelva el choque.
-3. **Las taxonomías al guardar.** `upsertOpcion()` y `registrarUsos()` corren en
-   cada guardado (D-02) y escriben en `/opciones/*`, que es de admin — y el `catch`
-   de `registrarUsos` es **silencioso a propósito**, pensado para una carrera rara,
-   no para que falle siempre.
-
-**Y una cuarta, de Storage.** `storage.rules` no conoce el rol, así que un
-publicador **no puede subir la imagen de su actividad**. Falla cerrada, y **no se
-arregla con un `|| esPublicador()`**: el prefijo `imagenes/{archivo}` es plano y el
-nombre es un uuid opaco (B-206), así que **el objeto no dice de quién es** y «solo
-las suyas» no es expresable. Hay un caso que se pone rojo el día que alguien lo
-abra.
-
-**Lo que el panel además tiene que hacer:** llamar a `registrarUsuario()` al entrar
-(hoy `src/lib/usuarios.ts` no tiene consumidor y la colección está vacía), esconder
-reportes/propuestas/taxonomías/historial/tablero, agregarle al admin el **filtro por
-quién creó** cada actividad, y cambiar «La cargó otra cuenta» por **el mail de quien
-lo cambió**, resuelto con `mailesPorUid()`.
-
-**Dos decisiones que tomó el frente y conviene que el dueño revise**, porque las dos
-se dan vuelta en una cláusula: el publicador **puede borrar lo suyo** —el argumento
-es que `borrador` ya lo saca del sitio, así que negarlo no protege nada y el §12
-guarda la versión del borrado— y **puede publicar el link de la reunión** con
-`urlPublica: true`, igual que un admin (D-15): una regla no puede hacer política de
-campo, y lo que el rol recorta es la confianza sobre lo ajeno y lo compartido, no
-sobre lo que él mismo carga.
-
-### B-890 · Las tres guías —librerías, suscripciones y lugares— — ✅ hecho (verificado 2026-09-17) · P0
-
-> **Las tres están construidas y desplegadas.** Las siete rutas responden 200 el
-> 2026-09-17: `/guia`, `/guia/librerias`, `/guia/suscripciones`, `/guia/lugares` y
-> los tres `/sumar`. Cada una con su ficha, su JSON propio, su entrada de sitemap
-> y su bandeja en el panel.
->
-> **La tabla de abajo quedó falsa** —decía «solo PRD» para las tres— y es
-> exactamente el drift que este ítem denunciaba en su propio reclamo: trabajo
-> hecho que no se ve. Acá se veía, y el backlog decía que no.
->
-> El texto original queda porque el reclamo que lo abrió sigue valiendo como
-> criterio: lo que no cambia la superficie del sitio no cuenta como avance.
-
-**Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que
-importa:** «tanto tiempo trabajando estas semanas entre que te pasé la tarea y al
-final no había nada hecho».
-
-**Y es cierto en lo que se ve.** Las tajadas 2, 3 y 4 del PRD están **escritas y no
-construidas**, y lo que sí se construyó no cambió la superficie:
-
-| Qué | Estado | Se ve |
-|---|---|---|
-| `/proponer` (tajada 1) | construido y desplegado | **no** — sin enlace ni sitemap, esperando App Check en Storage (B-872) |
-| El correo semanal (B-847) | construido | **no** — apagado hasta que exista la lista en Mailchimp |
-| «Mis favoritos» (B-848) | construido y desplegado | **sí** |
-| Librerías, suscripciones, lugares | **solo PRD** | no |
-
-O sea: **de todo lo de estas semanas, una sola cosa cambió el sitio.** El resto fue
-infraestructura, redes de contención y arreglos —incluido descubrir que la
-publicación estaba rota (B-875)— y nada de eso se nota desde afuera.
-
-**Lo siguiente son las tres guías, y no hace falta diseñar nada:** cada una tiene su
-PRD (`docs/prd/02-librerias.md`, `03-suscripciones-literarias.md`,
-`04-lugares-para-eventos.md`) y el inventario archivo por archivo está en
-`05-inventario-de-archivos.md`. Cada una son dos rutas —`/guia/<x>` y
-`/guia/<x>/sumar`— más su bandeja en el panel.
-
-**Y el PRD dice algo que conviene hacer primero:** las tres son **secciones nuevas
-de la barra de navegación** —pedido textual del dueño: «cada uno de estos
-formularios también es una sección superior en la web»—. Con eso la navbar cambia
-de forma, así que conviene resolverla con las tres en la mano y no pelear antes por
-dónde entra el enlace de `/proponer`.
-
-> **Orden confirmado por el dueño (2026-09-11): primero se termina el publicador
-> (B-888 y su tajada del panel), y las guías son lo siguiente.** El publicador ya
-> está en vuelo y dejarlo a medias sería el mismo problema que este ítem señala,
-> con otra cara: trabajo hecho que no se ve porque le falta la última mitad.
-
-**El orden sugerido adentro de este ítem: librerías primero**, entera y de punta a punta. Es la que
-abre el patrón —modelo, reglas, formulario público, bandeja, rutas, sitemap— y las
-otras dos lo repiten. Terminar una y verla en el sitio vale más que avanzar las
-tres a la mitad.
-
-### B-962 · Las dos imágenes del banner de Mar del Plata — ✅ hecho (2026-09-18) · P2 — abierto el 2026-09-15
-
-> **Las mandó el dueño el 2026-09-18** y entraron con la fila, en el mismo
-> cambio, que es lo que este ítem pedía. Convertidas a WebP con `cwebp -q 85`:
-> 23 KB la apaisada y 31 KB la compacta, las dos muy abajo del tope de ~150 KB.
->
-> **La compacta llegó exacta (1200×900); la apaisada no, y se aceptó igual.** Vino
-> en **1600×400** en vez de 2400×600 —la relación 4:1 es la correcta, el ancho
-> no—, así que cubre la columna de 1080px con holgura en una pantalla común y
-> queda algo justa en densidad doble. Se decidió usarla: es tipografía sobre
-> fondo liso, que es lo que menos sufre un ancho corto. **Y se declara con su
-> medida real y no con `MEDIDA_ANCHA`**, porque `ancho`/`alto` están en el marcado
-> para reservar el espacio (§CLS): con 2400×600 escritos ahí, el navegador
-> reservaría un alto que la imagen no tiene.
->
-> El `textoAlternativo` describe **lo que se lee** —«Biblioguía, portal literario
-> de Mar del Plata, @biblioguia.ok.»— porque eso es todo lo que hay en la pieza:
-> no hay escena que describir. **La primera versión decía «En Instagram», y el
-> `auditor-privacidad` lo cobró:** la pieza muestra el handle sin nombrar la
-> plataforma, así que agregarla era una afirmación **nuestra** sobre un tercero en
-> la home indexada.
->
-> **Y el pase dejó dos hallazgos que valen más que el ítem**, los dos de la misma
-> forma —una regla escrita en prosa que ningún test verificaba—, los dos cerrados
-> acá:
->
-> 1. **El chequeo comparaba la relación y no las medidas.** 2400×600 declarados
->    sobre un archivo de 1600×400 dan 4:1 = 4:1, o sea que el caso que este mismo
->    cierre prohíbe en prosa pasaba en verde.
-> 2. **`public/` es el único camino por el que una imagen de un tercero llega a
->    HTML indexado sin pasar por ningún saneador.** Toda otra pasa por uno
->    obligatorio —la foto de una propuesta pierde el EXIF con las coordenadas de
->    la casa, B-896— y un archivo commiteado no pasa por nada: el barrido del
->    build mira `.html`, `.json`, `.xml` y `.txt`, no binarios. Los dos archivos
->    de hoy están limpios (un solo chunk `VP8 `, verificado byte a byte), pero eso
->    era una propiedad de quien los convirtió y no del código.
->
-> El chequeo ahora **abre el archivo** (`src/lib/webp.ts`): enumera los chunks
-> RIFF, rechaza `EXIF`/`XMP `/`ICCP`, compara las medidas reales contra las
-> declaradas y mide el peso contra el tope. Con mutación en los dos ejes, y con
-> el caso que **no sabe leer** (`VP8L`) reportado como problema en vez de dado
-> por bueno.
-
-
-El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
-manda quien publica la ciudad**:
-
-| Pieza | Medida | Dónde va |
-|---|---|---|
-| Apaisada (de 640px para arriba) | **2400 × 600** (4:1) | `public/banners/biblioguia-ancha.webp` |
-| Compacta (teléfono) | **1200 × 900** (4:3) | `public/banners/biblioguia-compacta.webp` |
-
-WebP, JPG o PNG; hasta ~150 KB cada una. Hace falta además **una frase que
-describa qué se ve en la imagen** (el `textoAlternativo`: lo lee quien no ve la
-imagen, y describe el contenido, no el rol — nada de «banner de X»).
-
-Con los archivos en `public/banners/`, se agrega la fila a `BANNERS_DE_CIUDAD`
-(`src/lib/bannerDeCiudad.ts` la tiene escrita en su docblock) y listo:
-`tests/banner-de-ciudad.test.ts` verifica que los archivos existan y que la
-relación de aspecto sea la que se pidió. **La fila y las imágenes van en el mismo
-cambio**: declarada sin los archivos, es una imagen rota en producción.
-
-## P1 — bloquean el objetivo del proyecto
-
-### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual — ✅ hecho (2026-09-17) · P1
-
-> **Los tres arreglos, y uno más que apareció haciéndolos.**
->
-> 1. **`handleInstagram` tolera lo que Instagram pega de verdad**: se descarta el
->    query string y el fragmento. El botón «Compartir» pega
->    `…/casabrandon/?igsh=MWx…`, o sea que el caso **más común de todos** era el
->    que fallaba: el handle salía `null`, el link no se armaba, y quedaba una URL
->    escrita que no lleva a ninguna parte.
-> 2. **Y el `https://` pasó a ser opcional.** El docblock prometía desde siempre
->    que `instagram.com/casabrandon` andaba, y no andaba: el patrón exigía el
->    esquema. Copiar de la barra del navegador es lo que hace cualquiera.
-> 3. **Normalizan al guardar la actividad y la propuesta**, que eran los dos que
->    faltaban. Lo que no se reconoce **se conserva**, no se borra: el
->    `superRefine` ya lo rechaza al publicar, y perder lo que alguien escribió le
->    saca a quien edita justo el dato que tiene que corregir.
-> 4. **El mensaje y los once placeholders.** Decían «sin la arroba» y «Poné el
->    usuario de Instagram, sin el @» — o sea, le pedían a quien carga lo contrario
->    de lo que el validador acepta. Ahora dicen «@casabrandon o el link del
->    perfil».
->
-> **Lo que apareció haciéndolo: había dos normalizadores.**
-> `scripts/handle-instagram.mjs` era una **copia**, atada a la del sitio por un
-> test que corría las dos contra la misma batería. La red funcionó —se puso en
-> rojo apenas se tocó una sola de las dos— y **ahí se vio su límite**: un test de
-> equivalencia avisa *después*, y el arreglo hay que escribirlo dos veces igual.
-> La implementación pasó a `src/lib/handle-instagram.mjs`, el cuarto módulo con el
-> patrón de fachada (`slugify`, `geografia`, `etiqueta-presentable`), y el archivo
-> del script quedó reexportando. El test ahora verifica **que siga sin haber
-> copia**, que es la afirmación que tiene contenido: comparar la función consigo
-> misma no prueba nada.
->
-> **No se reescribió nada ya guardado**, como el ítem pedía: lo que está cargado
-> con URL se arregla al reeditarlo.
-
-**Salió de que hay una segunda persona cargando**, y con ella la forma real de
-hacerlo: copiar la URL del perfil y pegarla es más fácil que acordarse del handle.
-El criterio del dueño, que vale más allá de este campo: *«no podemos obligarlos a
-hacerlo como queremos, sino ajustarnos nosotros»*. Las dos formas tienen que
-entrar — la URL **y** el usuario pelado, como hoy.
-
-Hoy eso cae distinto según el formulario, y en el peor de los dos se publica:
-
-- **Actividades y propuestas: se guarda crudo.** `schema.ts` tiene `instagram:
-  opcional` sin normalizar (ídem `propuesta-schema.ts`), y la página de detalle
-  publica ese texto como el **nombre visible** (`detallePublico.ts`: `instagram:
-  a.organizador.instagram`). Así que en la ficha pública se lee
-  `https://www.instagram.com/casabrandon/` donde tendría que leerse
-  `@casabrandon`. Y si la URL trae el `?igsh=…` que Instagram pega al compartir,
-  `handleInstagram` no la reconoce, `instagramUrl` da `null` y **el link no se
-  arma**: queda una URL escrita que no lleva a ninguna parte.
-- **Las tres guías** (librerías, lugares, suscripciones) **sí** normalizan al
-  guardar — `handleInstagram` en sus `…-schema.ts` —, así que el dato queda
-  limpio. Pero el mensaje de rechazo dice «Poné el usuario de Instagram, sin el
-  @», que le pide a quien carga **lo contrario de lo que el validador acepta**, y
-  no menciona que pegar la URL está bien.
-
-Tres arreglos, en orden de lo que más duele:
-
-1. **Normalizar al guardar en los dos que faltan** (actividad y propuesta) con la
-   función que ya existe, `handleInstagram` (`src/lib/enlaceSeguro.ts`) — el mismo
-   patrón que las guías. Lo que queda guardado es el handle, y el campo del
-   formulario se puede normalizar al salir del foco para que se vea qué quedó.
-2. **Que `handleInstagram` tolere lo que Instagram pega de verdad**: hoy saca el
-   `@`, el `https://www.instagram.com/` y la barra final, pero **no el query
-   string**, que es justo lo que trae el botón de compartir. Es el caso más común
-   de todos y hoy es el que falla.
-3. **El mensaje y el placeholder**, que son lo que evita el problema antes de que
-   nazca: decir que se puede pegar la URL o escribir el usuario, en vez de pedir
-   una sola de las dos.
-
-Ojo con lo que **no** hay que hacer: reescribir los documentos ya guardados por
-las bravas. Lo que ya está cargado con URL se arregla al reeditarlo, o con un
-barrido aparte que se anote si hace falta.
-
-### B-950 · Provincia, ciudad y barrio hay que rehacerlos casi en todos lados, y en la web tienen que ser selectores en cascada — ✅ hecho (2026-09-16) · P1 — pedido del dueño (2026-09-15)
-
-> ✅ **Hecho el 2026-09-16 — D-710.** Las tres decisiones que el ítem dejaba
-> abiertas se tomaron así: **`ciudad` pasó a ser taxonomía** (es lo que hace
-> expresable la cascada, y lo que le dio al hub de B-951 la puerta de «aprobada»),
-> **`provincia` también** —sembrada con las 24 jurisdicciones `fijo: true`: no
-> gana autogestión, gana el desplegable, la deduplicación, la pantalla que las
-> administra y el contador de pendientes—, y **la cascada quedó de dos niveles**,
-> «provincia → barrio *o* ciudad», que es lo que el ítem pedía escribir desde el
-> principio para no tener que deshacerlo.
->
-> CABA se **guarda** con ciudad (`'caba'`) y solo se **esconde** al mostrarla: con
-> la ciudad vacía, `ciudades[]` dejaría a todo CABA fuera del alcance de cualquier
-> publicador, y tres salidas más dejarían de verla sin nada en rojo.
->
-> `sede` sigue siendo el derivado que era (D-130): todo se agregó adentro de la
-> fila. El backfill es `npm run geografia:sembrar`, **opcional** porque el default
-> de lectura es idempotente, y **no adivina** la provincia de una ciudad que no
-> sea CABA — las lista una por una.
->
-> **Lo que queda afuera es el cuarto frente que el ítem nombra**: las guías
-> (librerías y lugares) siguen con la ciudad como texto libre. Va en **B-967**,
-> porque tiene su propia migración: su `CIUDAD_POR_DEFECTO` es «Ciudad de Buenos
-> Aires», que slugifica a `ciudad-de-buenos-aires` y no a `caba`.
->
-> Dos cosas que costó, las dos anotadas: **B-965** (`ciudades` perdió su ancla por
-> valor) y el corte de la serie histórica del parámetro `eje` de la analítica.
-
-**Es el paraguas de la tanda**: B-951, B-952 y B-953 son las tres salidas de esto
-y ninguna se puede hacer bien antes. Dicho por el dueño: *«lo de provincia, barrio
-y ciudad hay que rehacerlo casi en todos lados. En la web no puede ser una lista
-enorme sino selectores: provincia primero (CABA y Buenos Aires) y de ahí despliega
-barrios o ciudades»*.
-
-**Lo primero, y lo que explica todo lo demás: `provincia` no existe.** No está en
-`Sede` (`src/types/actividad.ts`), ni en el schema, ni en el formulario, ni en las
-tres guías. El único lugar del repo donde la palabra aparece como campo es
-[`12-sitio-publico.md`](12-sitio-publico.md) § 2247, anotada como el
-`addressRegion` del `PostalAddress` del JSON-LD que *se puede omitir* — o sea que
-entró a la doc como un opcional que nunca se cargó. Agregarla es un
-**`campo-nuevo` de punta a punta** (el skill): tipo, zod, conversión form ⇄
-documento, formulario, proyección pública, evento de Calendar, analítica, ayuda,
-doc y tests.
-
-**Y «casi en todos lados» es literal**, porque el mismo par vive en cuatro
-entidades: `sede` de una actividad, y `barrio`/`ciudad` de librerías
-(`src/types/libreria.ts`), lugares (`src/types/lugar.ts`) y —por herencia del
-formulario— lo que venga después. Las cuatro comparten la taxonomía
-`/opciones/barrio` a propósito (§ 2 del PRD de librerías), así que lo que se
-decida acá las alcanza a todas.
-
-**La asimetría que hace difícil la cascada, y hay que mirarla antes de escribir
-nada:** `barrio` es **taxonomía autogestionada** (§ 4, `/opciones/barrio`, con
-`slug`, `aprobada` y `usos`), y `ciudad` es un **`<input>` de texto libre**. Eso ya
-mordió una vez: `src/lib/ciudades.mjs` (B-919, D-690) existe justamente porque
-«Mar del Plata», «mar del plata» y « Mar del Plata » son tres strings distintos, y
-tuvo que derivar `ciudades: string[]` en la raíz del documento para que una regla
-de Firestore pudiera preguntar por la ciudad. Una cascada «provincia → ciudad» no
-se puede armar sobre texto libre sin repetir ese trabajo, así que la decisión de
-fondo es **si `ciudad` pasa a ser taxonomía como `barrio`** — con lo que eso
-arrastra: normalización (§ 4.2), aprobación, y `usos` para ordenar.
-
-**CABA es el caso raro y es el que el dueño puso primero:** es ciudad **y**
-provincia a la vez, y su subdivisión útil es el barrio, no la ciudad. O sea que la
-cascada no es «provincia → ciudad → barrio» sino **«provincia → barrio *o*
-ciudad»**, con CABA de un lado y todo lo demás del otro. Escribirlo así desde el
-principio evita el modelo de tres niveles que después hay que deshacer.
-
-**Dónde pega en el sitio, que es la mitad del pedido.** Los ejes del buscador son
-seis y planos: `EJES = ['tipo','arancel','modalidad','barrio','ciudad','tag']`
-(`src/lib/listadoPublico.ts`), cada uno una lista de chips. Con dos barrios
-funciona; con los treinta y pico que ya hay cargados, no — es el mismo problema
-que D-143 topeó a mano en el teléfono. Un selector en cascada cambia la forma del
-riel de filtros, así que toca `Buscador.tsx`, `EjeDeFiltro.tsx`, `chipsDe`,
-`ejeQueSobra` y los eventos de analítica que llevan `eje` adentro (`eje` es una
-dimensión medida: cambiar el conjunto parte la serie histórica — ver el docblock
-de `ejeQueExplicaElCero`).
-
-**Lo que no hay que hacer:** reescribir los documentos ya guardados por las
-bravas. La provincia de lo que ya está cargado se completa con un backfill
-propio —el patrón de `scripts/sembrar-ciudades.mjs`, que ya existe para esto
-mismo— o al reeditar. Y **`sede` sigue siendo el derivado** que es hoy (D-130): la
-lista real es `modalidades[]`, así que todo lo que se agregue va adentro de la
-fila, no en la raíz.
-
-### B-951 · El «Dónde» del detalle no dice la ciudad, y no lleva a ninguna parte — ✅ hecho (2026-09-16) · P1 — pedido del dueño (2026-09-15)
-
-> ✅ **Hecho el 2026-09-16**, las dos mitades. `donde` dejó de ser una cadena y es
-> una **lista de piezas**, cada una con su enlace: con una cadena, la plantilla
-> tendría que volver a partirla para saber qué tramo linkear.
->
-> **`/ciudad/{slug}` existe**, y salió tan barato como el ítem predijo: una entrada
-> en `CLASES_DE_HUB`, una página calcada de la de barrio, y el sitemap que ya se
-> deriva solo. De las dos salidas que el ítem dejaba para la defensa, se tomó la
-> primera: **esperar a que B-950 convirtiera `ciudad` en taxonomía**, así el hub
-> heredó la misma puerta de «aprobada» que el de barrio y no hizo falta inventar
-> ninguna otra.
->
-> **`provincia` no tiene hub**, y es una decisión escrita en `CLASES_DE_TAXONOMIA`:
-> sus 24 valores están sembrados, así que emitiría hasta 24 páginas casi todas
-> vacías. Se dice en el renglón, no se enlaza.
->
-> Ningún enlace se pinta a ciegas: si ese hub no se emitió, la pieza sale sin
-> enlace — el mismo criterio que la ficha de un lugar de la Guía ya usaba.
-
-*«En "Dónde" del perfil público mostrar la ciudad y que sea linkeable para ver más
-de esa ciudad.»*
-
-**Lo que pasa hoy son dos cosas.** La fila «Dónde» de la ficha
-(`src/pages/actividad/[slug].astro`) imprime `detalle.donde`, y `donde` lo arma
-`dondeCorto` (`src/lib/detallePublico.ts`) con **`[m.sede.nombre,
-m.sede.barrio]`**: la ciudad queda afuera. Y es texto plano — ni el barrio, que sí
-tiene hub propio desde B-108, es un enlace. (Más abajo, en «Cómo se cursa», la
-ciudad **sí** aparece, junto a la dirección y el barrio, también sin enlace.)
-
-**La segunda mitad —«ver más de esa ciudad»— no tiene adónde ir: `/ciudad/{slug}`
-no existe.** Los hubs son cuatro clases: `/tipo/*`, `/barrio/*`, `/online` y
-`/gratis`. Y esto es lo que sube el ítem a P1 y no lo deja en una mejora de la
-ficha: es exactamente el argumento con el que el hub de barrio se justificó a sí
-mismo —«`taller de escritura villa crespo` es una consulta con intención altísima
-y competencia baja; un filtro no puede ganarla porque no tiene título, ni `h1`, ni
-URL»— aplicado a la consulta que hoy no tenemos cómo ganar: **«taller de escritura
-en Mar del Plata»**. Con las actividades de afuera de CABA entrando, el hub de
-ciudad es la página que falta.
-
-**Lo barato y lo caro.** Barato: `hubsPublicos.ts` decide qué se emite y
-`CuerpoDeHub.astro` es el markup compartido por las cuatro clases, así que la
-quinta es una entrada en el primero, una página `src/pages/ciudad/[ciudad].astro`
-calcada de `barrio/[barrio].astro`, y el sitemap que ya se deriva solo.
-
-**Caro, y es el mismo nudo de B-950:** el hub de barrio se genera recorriendo las
-opciones **aprobadas** que tienen alguna actividad publicada, y esa palabra es una
-defensa escrita — «ofrecer un hub es publicar vocabulario, y un barrio recién
-tipeado puede ser un typo; un typo con página propia es una URL indexada para
-siempre». `ciudad` **no tiene aprobación porque no es taxonomía**. Así que el hub
-de ciudad o espera a que B-950 la convierta, o se defiende con otra puerta (un
-mínimo de actividades publicadas, y `noIndex` por debajo de ese mínimo, que es lo
-que `esIndexable` ya sabe hacer). **No se emite un hub por cada string tipeado.**
-
-### B-912 · `/suscripciones` tampoco tiene retención — ✅ hecho (2026-09-15) · P1
-
-> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
-> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
-> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
-> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
-> una».
->
-> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
-> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
-> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
-> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
-> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
-> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
-> parámetros con el default de hoy — `estadoRechazado` y `tope`.
->
-> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
-> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
-> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
-> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
-> la retención automática viene a sacar. Con el formulario público abierto, ésa es
-> además la ficha típica: la que llegó de afuera y nadie miró.
->
-> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
-> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
-> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
->
-> **No borra nada de Storage, y ése es el cambio de forma respecto de las
-> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
-> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
-> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
-> que un admin reabre en el último segundo se salva **entera**.
->
-> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
-> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
-> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
-> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
-> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
-> afirma que el contacto del tercero **no entra a la memoria de la Function**.
-
-
-Es **B-904 con otra colección**, y conviene resolverlas juntas. Una ficha
-`rechazado` conserva el `contactoDeQuienCargo` de quien la cargó para siempre; lo
-único que hay es `allow delete: if esAdmin()`, el borrado manual, y está puesto por
-eso.
-
-Con dos directorios sin retención y un tercero en camino, lo que corresponde no es
-una Function por colección sino **extender `functions/retencion.js` con la lista de
-colecciones** — que ya existe como mapa del lado del rebuild
-(`CAMPOS_PUBLICOS_POR_DIRECTORIO`).
-
-### B-904 · `/librerias` no tiene retención: una ficha descartada se queda con el contacto de quien la cargó — ✅ hecho (2026-09-15) · P1
-
-> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
-> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
-> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
-> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
-> una».
->
-> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
-> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
-> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
-> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
-> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
-> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
-> parámetros con el default de hoy — `estadoRechazado` y `tope`.
->
-> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
-> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
-> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
-> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
-> la retención automática viene a sacar. Con el formulario público abierto, ésa es
-> además la ficha típica: la que llegó de afuera y nadie miró.
->
-> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
-> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
-> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
->
-> **No borra nada de Storage, y ése es el cambio de forma respecto de las
-> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
-> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
-> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
-> que un admin reabre en el último segundo se salva **entera**.
->
-> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
-> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
-> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
-> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
-> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
-> afirma que el contacto del tercero **no entra a la memoria de la Function**.
-
-
-Es **DEC-13 sin contestar** para la colección nueva. `contactoDeQuienCargo` es el
-**segundo** dato personal de un tercero que el proyecto guarda, y a diferencia de
-`/propuestas` —donde `borrarPropuestasVencidas` lo borra a los 30 días— acá no hay
-ninguna Function: una ficha `rechazado` lo conserva para siempre.
-
-Lo único que hay mientras tanto es `allow delete: if esAdmin()`, o sea el borrado
-manual, y está puesto **por eso**: sin él no habría forma de honrar un «borrame».
-Pero un borrado a mano depende de que alguien se acuerde, que es exactamente lo que
-B-838 decidió no aceptar.
-
-Cuando se resuelva conviene mirarlo junto con la imagen: si la ficha se borra y su
-objeto de Storage queda vivo, es el huérfano de B-221 con otra cara. **Y junto con
-B-912**, que es este mismo problema en `/suscripciones`: con tres directorios, lo
-que corresponde es extender `functions/retencion.js` con la lista de colecciones,
-no escribir una Function por cada una.
-
-### B-903 · La query del primer directorio tiene que filtrar por `ESTADO_PUBLICO` — ✅ hecho (2026-09-11) · P1
-
-> `libreriasPublicadas` (`src/lib/contenidoDelSitio.ts`) filtra **en la query** con
-> `.where('estado','==', ESTADO_PUBLICO)`, y la constante sale de
-> `lib/directorios.ts` como el ítem pedía. **Y una mitad más que el ítem no pedía y
-> el `auditor-privacidad` sí**: `.select()` con exactamente las claves de
-> `LibreriaPublica` (D-159, el precedente de `/versiones`). El `where` decide qué
-> documentos se leen; sin el `select`, el `contactoDeQuienCargo`, el motivo del
-> rechazo y el `storagePath` de cada imagen entran igual a la memoria del build.
->
-> Atado en tres capas: el test de fuente con mutación probada, el cruce de las dos
-> listas (un campo nuevo de la whitelist obliga a tocar las dos mitades), y el paso
-> 8i del gate contra el emulador **con una librería pendiente como control** — con
-> una sola sembrada, un build que leyera la colección entera daría exactamente el
-> mismo `dist/`.
-
-### B-898 · `directoriosDisponibles` decide qué URL se le ofrece al buscador y no está en el índice de salidas — ✅ hecho (2026-09-11) · P1
-
-> Cerrado con B-832. `src/lib/directorios.ts — directoriosDisponibles` entró como
-> **tercer** dueño de «qué página se ofrece y no vive en `sitemap.ts`» en las tres
-> tablas atadas: la fila 9 de `docs/07-seguridad.md`, la misma fila de
-> `.claude/agents/auditor-privacidad.md` y la del checklist de
-> `.claude/skills/campo-nuevo/SKILL.md`. El `description` del agente ya nombraba el
-> archivo desde B-901, así que el disparo por nombre estaba; lo que faltaba era la
-> fila.
->
-> Y dejó de ser hipotético en el mismo cambio: con **dos** directorios publicados,
-> marcar una sección como disponible sin escribir su página le ofrece a Google un
-> 404, y escribir la página sin marcarla la deja invisible desde su propio índice —
-> lo cruza `tests/directorios.test.ts` en las dos direcciones.
-
-### B-841 · `campos/` es un `import` de distancia de medir sin consentimiento en una página pública — ✅ hecho (2026-09-09) · P1
-
-> **Resuelto con el corte que el ítem pedía, y con la red desde los dos lados.**
->
-> Los tres controles de `campos/` quedaron **genéricos**: reciben la medición
-> (`medir`, `onMedir`), el nodo de ayuda (`ayuda`) y las opciones
-> (`valores`/`elegibles`) en vez de importarlos.
-> `src/components/admin/campos-del-panel.tsx` los ata a lo del panel y **conserva
-> la API que los usos tenían** —`conAyuda`, `uid`—, así que los quince archivos que
-> los usan cambiaron de dónde importan y nada más.
->
-> **Y había un cuarto import que el ítem no nombraba:** `estaAprobada` se traía de
-> `@/lib/opciones`, que arrastra `firestore-client` → `firebase/firestore`. Ya
-> vivía en `lib/taxonomia.ts` —el módulo puro del §4.2— y `opciones` solo lo
-> reexporta, así que fue cambiar el origen del import. Sin eso, el corte estaba a
-> medias: los controles ya no medían y seguían bajando el SDK.
->
-> **Dos redes, y las dos hacen falta.** `tests/panel-fuera-del-sitio.test.ts` mira
-> la propiedad desde **las páginas** —ninguna salvo `/admin` alcanza la plomería—
-> y desde **el directorio**: ningún archivo de `campos/` alcanza
-> `@/lib/analytics`, `firebase-client`, `appcheck`, `lib/opciones` ni
-> `firebase/firestore`. Aquél se pone rojo cuando alguien **ya escribió** el
-> formulario público que lo arrastra, o sea tarde; éste cuando alguien mete el
-> import en `campos/`, que es donde el error se comete. Con control positivo —la
-> capa del panel **sí** alcanza las cinco cosas— y verificado por mutación.
->
-> El corte del bundle del panel no se movió: `campos-del-panel.tsx` no es
-> alcanzable estáticamente desde la island, porque todo lo que lo usa está detrás
-> de un `import()`.
-
-
-**Sale de haber hecho el movimiento de la tajada 0**, y hay que decirlo así: el
-directorio se movió, o sea que **parece** compartido, y tres de sus seis archivos
-todavía no lo son. Un `import` es lo único que decide qué viaja.
-
-**Estaba anotado como P2 y como un problema de capas. No lo es.** Lo re-dimensionó
-el `auditor-privacidad` sobre esta misma tanda, y **B-836a lo empeoró**: el import
-estático de App Check alargó la cadena un eslabón más. La cadena real, si un
-formulario público importa cualquiera de los tres:
-
-```
-campos/{Seccion,TagsInput,TaxonomiaSelect}
-  → @/lib/analytics            ← la medición del PANEL
-    → @/lib/firebase-client
-      → @/lib/appcheck          ← estático desde B-836a
-        → firebase/app-check
-```
-
-| Archivo de `campos/` | De dónde tira |
-|---|---|
-| `TaxonomiaSelect.tsx` | `@/components/admin/useOpciones` + `@/lib/analytics` |
-| `TagsInput.tsx` | idem |
-| `Seccion.tsx` | `@/components/admin/ayuda/AyudaDeSeccion` + `@/lib/analytics` |
-
-**Dos cosas pasarían en el navegador de un visitante anónimo, y las dos son de
-las caras:**
-
-1. **Se mide sin consentimiento.** `debeMedir` tiene tres portones —navegador,
-   no-emuladores, `measurementId`— y **ninguno es el consentimiento**: la
-   analítica del panel nunca lo necesitó. La del sitio (salida 12) sí lo tiene.
-   Un `Seccion` en una página pública dispara `funcion_usada` y crea el perfil de
-   medición en `localStorage` —un identificador pseudónimo persistente— para
-   alguien que todavía no tocó el banner, y va a la **misma propiedad de GA4**,
-   que las dos comparten (B-801). Contradice **D-250** y la promesa de `/apoyar`,
-   que es lo que B-780 costó como P0.
-2. **Se cargan dos terceros de Google antes del consentimiento**: `gtag.js` y el
-   desafío de reCAPTCHA, el segundo con cuota facturable por visitante.
-
-Lo que **no** se filtra es contenido: `seccionASlug` es vocabulario cerrado con
-caída a `'otro'`, así que un título derivado de un dato no publica nada. Ese lado
-aguanta.
-
-**Y la cadena de `useOpciones` sigue arrastrando el SDK de Firestore**, que era lo
-único que estaba anotado antes: `useOpciones` → `lib/opciones` →
-`lib/firestore-client` → `firebase/firestore`, estático. Una página pública que
-importe `TaxonomiaSelect` se baja el chunk pesado que `bundle-panel.test.ts`
-existe para mantener afuera del primer render del panel.
-
-**Lo que ya está hecho, y es lo que permite que esto espere:**
-`tests/panel-fuera-del-sitio.test.ts` recorre el grafo de imports **desde cada
-página de `src/pages`** —siguiendo también los `import()`, porque un diferido mide
-igual— y exige que ninguna salvo `/admin` alcance `@/lib/analytics`,
-`@/lib/firebase-client` ni `@/lib/appcheck`. Con control positivo (`/admin` **sí**
-la alcanza, así que el grafo sabe encontrarla) y verificado por mutación: un
-`import` de `TaxonomiaSelect` en `/cartelera` lo pone en rojo nombrando la cadena
-entera. Ninguna de las redes que ya existían lo veía —
-`terceros-antes-del-consentimiento.test.ts` lee el HTML de `dist/` buscando
-`<script src>` absolutos y los dos SDK se inyectan en runtime desde un chunk
-local; `bundle-panel.test.ts` mira el chunk inicial **del panel**, la dirección
-contraria.
-
-**Dónde y el molde.** El arreglo de fondo son dos cortes, y el primero es el
-barato:
-
-1. **La medición se recibe, no se importa.** Una prop opcional
-   (`onMedir?: (funcion, detalle) => void`) en los tres componentes: el panel pasa
-   `medirFuncion`, un formulario público no pasa nada. Es el corte que hace a
-   `campos/` genérico de verdad, y de paso saca `AyudaDeSeccion` de `Seccion` por
-   el mismo camino (la ayuda es del panel, el sitio tiene la suya).
-2. **Las opciones se reciben, no se buscan.** La respuesta ya está escrita en otro
-   lado: del **JSON** (§4.4 del `CLAUDE.md` — «las opciones viajan en el JSON», y
-   la web arma los chips recorriendo `opciones.*`), no de un `onSnapshot`. O sea
-   que `TaxonomiaSelect` necesita recibir sus valores y el hook queda del lado del
-   panel.
-
-**Cuándo.** Antes del primer formulario público que use un desplegable de
-taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
-en la suite y no en producción, que es exactamente para lo que se escribió.
-
-### B-847 · Newsletter con Mailchimp, adentro de `/suscribirse` — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
-
-**El pedido, textual:** «un formulario para un newsletter, la idea es usar
-mailchimp. la idea es meterlo dentro de suscribirse».
-
-Encaja donde lo pide: `/suscribirse` ya es la página de «no te pierdas nada», y
-hoy ofrece **una sola forma** —suscribirse al calendario público— que sirve a
-quien vive en su calendario y no a quien vive en su casilla. Son dos maneras de la
-misma intención y la página es el lugar natural para las dos.
-
-**Lo que cambia de fondo, y hay que decirlo antes de elegir cómo:** hoy el sitio
-público **no le manda ni un dato de nadie a ningún tercero** —eso es lo que
-`tests/terceros-antes-del-consentimiento.test.ts` (D-254) verifica sobre el `dist/`
-de verdad, y lo que deja que `/ayuda` y `/contacto` afirmen lo que afirman—. Un
-newsletter mueve la casilla de una persona a **Mailchimp**, que es un tercero en
-otro país. No es un impedimento; es lo que hay que escribir en `07-seguridad.md`,
-en la página misma y en la ayuda **en el mismo cambio**, con el doble opt-in de
-Mailchimp como parte de la promesa.
-
-**Tres formas, y no son equivalentes:**
-
-| Cómo | Qué cuesta | Qué rompe |
-|---|---|---|
-| **`<form>` HTML que postea a `list-manage.com`** | nada: el sitio es estático y esto no necesita backend | **Nada de la red de contención**: no carga ningún script de tercero, así que D-254 sigue verde. Se lleva a la persona a una página de Mailchimp al enviar |
-| El **embed con JS** de Mailchimp | copiar y pegar | Carga `mc-validate.js` desde `chimpstatic.com` **antes de cualquier consentimiento** → pone en rojo D-254, y con razón |
-| Una **Function** que llame a la API con la key en Secret Manager | una Function más, y **es un endpoint de escritura anónimo**: la misma conversación de App Check que B-836a | Nada, y es la única que deja validar y limitar de nuestro lado. La casilla igual termina en Mailchimp |
-
-**Mi recomendación es la primera** para la v1: es la que no toca ninguna de las
-capas que costó construir, y el precio —que el «gracias» lo dé Mailchimp y no
-nuestro sitio— se puede revisar después. La tercera es la buena el día que
-`/proponer` haya abierto la puerta anónima con App Check exigiendo: ahí el costo
-marginal es chico y el formulario queda adentro del sitio de punta a punta.
-
-**Lo que hay que decidir antes de escribir una línea:** (1) cuál de las tres; (2)
-qué se le promete a quien se anota —cada cuánto, quién manda, cómo se da de baja—,
-porque eso es texto de una página pública y lo barre
-`tests/promesas-sobre-datos.test.ts`; (3) si la lista de Mailchimp se crea con
-doble opt-in (debería) y quién es el remitente.
-
-> ✅ **Las tres, contestadas por el dueño el 2026-09-10.** Queda desbloqueado.
->
-> 1. **La forma recomendada: el `<form>` HTML que postea a `list-manage.com`.**
->    Ningún script de tercero, así que **D-254 sigue verde** y las afirmaciones de
->    `/ayuda` y `/contacto` no se tocan. El precio aceptado es que el «gracias» lo
->    da Mailchimp y no nuestro sitio.
-> 2. **Lo manda el proyecto, al menos una vez por semana, con eventos curados de
->    la agenda «para todos los gustos y modalidades».** Eso es a la vez la
->    promesa de la página y la línea editorial.
-> 3. **El remitente es `agendaleh@gmail.com`** — que es **la casilla que el sitio
->    ya usa**: `CONTACTO`, en `src/lib/enlaces.ts`. Se reusa esa constante y no se
->    escribe a mano: esa cuenta ya cambió una vez (B-839).
->
-> **Dos cosas que la respuesta deja para resolver al construirlo:**
->
-> - **El doble opt-in no lo dijo explícitamente.** Se adopta como default porque
->   es lo que la página va a prometer y porque es lo que hace que la casilla sea
->   de quien la escribió. No es código: es una casilla de la configuración de la
->   lista en Mailchimp, así que cambiarlo después no cuesta un cambio acá.
-> - **«Al menos una vez por semana» es un piso, y un piso es más fácil de
->   incumplir que un promedio.** Va a quedar escrito en una página pública que
->   `tests/promesas-sobre-datos.test.ts` barre, así que conviene elegir la
->   redacción sabiendo eso: si una semana no sale, «al menos una vez por semana»
->   pasa a ser falso y «semanal» sobrevive. La decisión es del dueño; lo que no
->   vale es escribir el piso sin haberlo pensado.
-
-> ✅ **Hecho el 2026-09-10 — D-640, y las dos preguntas abiertas contestadas.**
->
-> 1. **El piso no se escribió.** La página dice el ritmo **y nombra la
->    excepción**: «sale semanal; la semana que no haya nada que valga la pena, no
->    sale». La salida no fue aflojar la promesa sino la que este repo ya usó dos
->    veces — «casi nunca trae el link de la reunión», en esta misma página, y la
->    corrección de `/ayuda` sobre la publicidad (B-785).
-> 2. **El doble opt-in quedó escrito como supuesto** en el módulo, en
->    `07-seguridad.md` §5 y en el checklist de `08-operacion.md`, con un test que
->    exige que esté en los tres. **Que la casilla esté prendida no lo puede
->    sostener ningún test** — es la clase de B-480.
->
-> **Sale apagada.** `LISTA_DE_CORREO` es `null` y con `null` la sección no se
-> dibuja: con `u`/`id` inventados el formulario **postea igual**, contra un
-> endpoint que puede ser de otra cuenta. Es el orden de B-780.
->
-> **No es una salida pública nueva**, y se argumentó: el formulario no recibe ni
-> un campo del modelo, así que su celda sería siempre «no sale» (D-320). Entra en
-> la fila 13 de las tres tablas. Siguen siendo diecinueve.
->
-> **Seis hallazgos del `auditor-privacidad` sobre el propio cambio, los seis
-> adentro.** Dos valen solas: «es lo único que la agenda le manda a un tercero»
-> era **falso** con el banner de GA4 al lado —y el barrido no lo ve porque es una
-> exclusividad afirmativa, no una negación—; y el cuarto interruptor del Enhanced
-> Measurement, que es **B-874**.
-
-### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
-
-**El pedido, textual:** «empezar a tener un usuario en el frente público (por
-ahora sin login ni nada). la idea es que pueda guardar favoritos de lugares (y con
-todo lo que implica de verlos y quitarlos en una sección propia) y guardar un
-filtro determinado. puede tener varios filtros predeterminados».
-
-**«Sin login» es la decisión más importante del ítem y la que lo hace barato:** si
-no hay cuenta, no hay nada que guardar del lado nuestro. Todo vive en el
-`localStorage` del navegador de cada persona, que es exactamente el patrón que el
-panel ya usa para los borradores (D-122) y el que hace que el sitio siga sin
-guardar un dato de nadie — la promesa que B-102 sostiene y que
-`07-seguridad.md` afirma. Es **también** lo que hay que decir en la pantalla: los
-favoritos son de **ese** navegador, no viajan al teléfono, y se van si se borran
-los datos del sitio.
-
-**Lo que ya está y lo hace más chico de lo que parece:**
-
-- los filtros del listado **ya viajan en la URL** (`?tag=poesia`, `?barrio=…`), así
-  que «guardar un filtro» es guardar **una URL con un nombre**. No hay que inventar
-  ninguna serialización;
-- el sitio ya tiene islands de React en el listado, así que la sección propia es
-  una página estática que se hidrata desde `localStorage`;
-- y el chequeo de terceros y el banner de cookies **no aplican**: `localStorage`
-  para una función que la persona pidió no es analítica.
-
-**Favoritos de qué: contestado por el dueño (2026-09-09) — «puede ser un evento,
-una librería, una suscripción…».** O sea el favorito es **genérico**: guarda
-cualquier ficha del sitio, con su tipo. Eso resuelve la única ambigüedad grande
-del ítem y tiene una consecuencia que hay que aprovechar **ahora**, no después:
-
-> **La forma de lo guardado lleva el tipo desde el día uno, aunque el día uno haya
-> una sola entidad.** Los favoritos viven en el `localStorage` de cada persona, o
-> sea que son datos que **no podemos ver ni migrar**: el día que haya que
-> agregarles un campo, lo guardado no se convierte solo y el que quede viejo o se
-> pierde o hay que leerlo con un default para siempre. Guardar
-> `{ v: 1, tipo, slug, guardadoEn }` cuesta una línea hoy; guardar solo el slug y
-> tener que adivinar de qué era, cuando existan las cuatro entidades, no tiene
-> arreglo bueno. Es la misma forma de B-843: una decisión que cuesta una línea
-> ahora y un rediseño después.
-
-La llave es **tipo + slug**, y funciona porque el slug es **inmutable después de
-publicar** (trampa 10): un favorito sobrevive a que le editen el título, la sede o
-la fecha.
-
-**Se puede construir entero con actividades y crecer solo.** Las otras tres
-entidades son las tajadas 2 a 4 de `prd/`; mientras no existan, el mismo mecanismo
-funciona con una sola y no hay que volver a diseñarlo — cada tajada nueva agrega su
-tipo, su JSON y su fila en la sección.
-
-**Lo que queda por decidir:**
-
-1. **Qué hace la sección con un favorito que ya no está** — el sitio es estático,
-   así que la página resuelve contra los JSON del build (`events.json` y los tres
-   que vienen) y **tiene que tolerar que el slug no exista**: despublicado o
-   borrado.
-
-   **Lo que pasó lo contestó el dueño (2026-09-09): la actividad vencida sigue
-   siendo favorita**, y no se esconde. «De última se puede hacer una
-   diferenciación por color (tipo más griseada o algo). Hay que probar cómo
-   queda.» Es la decisión correcta y la barata: esconderla obliga a explicar dónde
-   se fue, y una actividad que pasó sigue diciendo algo de quien la guardó — el
-   ciclo del año que viene, el taller que se perdió. Tres cosas que se saben ya:
-
-   - **el «griseado» tiene un piso que el repo ya hace cumplir**: bajarle la tinta
-     a una tarjeta la puede dejar por debajo del contraste mínimo, y eso no es una
-     preferencia — `tests/contraste-del-sitio.test.ts` y
-     `contraste-de-superficies.test.ts` lo verifican sobre los tokens. La forma
-     que sí sobrevive a ese piso es la que el panel ya usa para lo cerrado
-     (`opacity` sobre la fila entera, no un gris nuevo), o un rótulo;
-   - **el color solo no puede ser la señal** (es la regla de accesibilidad de
-     siempre y el sitio la respeta en los estados de la tarjeta): va con una
-     palabra —«ya pasó»— y no solo con tinta;
-   - y hay a dónde mandarla: `/pasadas` existe y es el archivo del sitio.
-2. **Dónde vive la sección**: una página propia (`/mis-favoritos`) con **`noindex`
-   y fuera del sitemap** —para Google estaría siempre vacía, y una página vacía
-   indexada es peor que ninguna— o un panel dentro del listado.
-3. **Cuántos filtros guardados y si se pueden renombrar.**
-4. **El costo de hidratación, que es el único técnico y hay que mirarlo antes:** el
-   corazón va en cada tarjeta **y en cada ficha**. El listado ya tiene una island;
-   **la página de detalle es HTML puro hoy**, y ponerle un botón con estado le
-   agrega el runtime de React a la página más visitada del sitio. B-239 ya discutió
-   exactamente ese trade-off para la home y **se descartó** por eso. La salida
-   probable es un botón que no necesite React —un `<button>` con un script chico
-   propio, que es lo que hace el aviso de cookies— y conviene decidirlo antes de
-   escribir el componente, no después.
-
-**Y una consecuencia de SEO que conviene tener escrita:** cualquier página cuyo
-contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt` y
-`sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
-página vacía indexada es peor que ninguna.
-
-> ✅ **Hecho el 2026-09-10 — D-630, y las cuatro preguntas abiertas contestadas.**
->
-> 1. **Un favorito cuyo slug ya no está se muestra igual**, con lo que sabemos de
->    él y su botón para sacarlo. Esconderlo sería borrarle a alguien algo que
->    guardó sin decirle nada; dejarlo sin botón, dejárselo para siempre. Y con el
->    `events.json` caído el rótulo dice «No se pudo cargar la agenda» y no «ya no
->    está»: con la CDN muerta todos resuelven a `null`.
-> 2. **Página propia `/mis-favoritos`**, con `noIndex` y fuera del sitemap —
->    **sin** `Disallow`, que impediría leer el `noindex`. La afirmación de este
->    ítem se verificó contra `sitemap.ts` y es correcta; lo que **faltaba** era la
->    otra mitad y se agregó: estar fuera del sitemap no impide que un link de
->    afuera la indexe.
-> 3. **Veinte búsquedas, sin tope de favoritos, y sin renombrar.** El tope
->    **rechaza** en vez de descartar la más vieja: un dato que vive solo en el
->    navegador de alguien no se puede devolver.
-> 4. **El botón de la ficha es un `<script>` liso**: 360 B gzip contra 57,3 KB
->    del runtime de React. **El corazón no va en cada fila del listado**, y eso
->    quedó afuera con motivo: la fila entera es un `<a>`.
->
-> **El «griseado» no entró, y el ítem tenía razón sobre el piso pero no sobre
-> cuál era.** No es que baje del contraste mínimo: el sistema visual **prohíbe
-> las opacidades** (D-146, B-235), y el pedido idéntico para `/pasadas` ya se
-> había resuelto con **tinta** (D-167). No hizo falta agregar nada — la fila
-> distingue una pasada con la tinta **y con la palabra «Pasó»**.
->
-> Es la **salida pública 19**, numerada por la promesa y no por la proyección.
-
-### B-858 · `docs/README.md` tiene el paso «Correr los tests» dos veces, y la guarda que lo impide está verde sobre la copia — ✅ hecho (2026-09-09) · P2
-
-**Salió de integrar el frente de B-849**, y es la tercera vez en el día que
-aparece la misma clase: **un chequeo verde sobre exactamente el caso que existe
-para atrapar.**
-
-Dos partes que son la misma. `docs/README.md` tenía el paso «2. Correr los tests»
-**dos veces**, uno detrás del otro — y la segunda copia es la que explica que el
-número «no está escrito acá a propósito» porque «en un merge este mismo paso llegó
-a estar **tres veces** con tres números distintos (B-296)». El documento tenía la
-cicatriz que él mismo describe. Y la primera copia llevaba el conteo a mano:
-«**107** de esos tests … repartidos en **9** archivos», contra los **210 en 15**
-que mide el §6.1 remedido.
-
-**Lo que de verdad importa** es que existe una guarda para esto —el caso de B-662
-en `tests/salud-del-codigo.test.ts`— y estaba **verde**. Su regex pedía el número
-**pegado** al sustantivo y el texto real decía `**107** de esos tests`: ni la
-negrita ni las palabras del medio entraban. La mitad colgada de «archivos» tampoco,
-porque en su línea no aparece la palabra `test`. **La lección no es el regex: es
-que la mutación probada del docblock validaba la forma que el chequeo ya sabía
-leer, no la que una persona escribe.**
-
-> ✅ **Hecho, y el arreglo del documento es la parte chica.**
->
-> La copia vieja se fue; la que quedó es la que no escribe números. El puntero al
-> desglose del §6.1 se rescató sin cifras y se verificó contra el documento
-> remedido. La guarda se ensanchó en tres ejes —énfasis de markdown normalizado,
-> nexo «de …» con lista cerrada de determinantes, conteo de archivos por **párrafo**
-> y no por adyacencia— con el alcance intacto.
->
-> **Las dos restricciones que la mantienen no-ruidosa tienen su mutación en rojo:**
-> con nexo libre entra «B-219 los tests corren contra…» y el conteo sería el id del
-> ticket; sin contexto de párrafo entra «llegó a declarar 111 archivos de
-> producción», que es un relato fechado. Ocho mutaciones en total, seis de código y
-> dos de texto.
->
-> **Y el docblock quedó con las dos formas.** La mutación original —«2.637 tests en
-> 118 archivos»— era cierta y no alcanzaba: probaba la forma que el chequeo ya
-> sabía leer. La que importa es la humana, porque es la que una persona escribe
-> cuando quiere que el dato se vea, y es la que estuvo meses en el documento con el
-> chequeo en verde.
->
-> **De paso salió un tercer conteo viejo que sigue sin red:** la copia buena decía
-> «**Dos** archivos más se saltean sin un `dist/`» y son tres. Está escrito con
-> letras, así que ninguna versión de la guarda lo ve. Se dejó sin número; que la
-> guarda lea números escritos con palabras es otra pasada, y probablemente no valga
-> la pena.
-
-### B-885 · La salida 2 publica el tallerista con nombre de solo espacios, y es la quinta variante del predicado — ✅ hecho (2026-09-11) · P2
-
-> ✅ **Cerrado.** `construirDescripcion` pregunta `?.nombre?.trim()`, el mismo
-> predicado de las otras cuatro: la celda que faltaba de la convergencia.
->
-> **El camino de entrada es exacto en lo mecánico, con un matiz:** las dos puertas
-> usan `safeParse` **para el veredicto y descartan `parsed.data`**, así que el trim
-> del schema no llega al disco por ningún camino. Pero `formADocumento` tiene el
-> predicado desde el primer commit, así que la restauración **propaga** la cáscara
-> y no la origina — el origen es un escritor de afuera del panel.
->
-> **Había dos predicados más de la misma forma en el mismo bloque**, y entraron con
-> el mismo arreglo: `organizador` publicaba su Instagram y su web con el nombre en
-> blanco, y el libro publicaba `Libro:    — Bolaño`.
->
-> **El valor emitido no se trimea**, y tiene su aserto: lo que converge es la
-> pregunta, no el texto. Trimear lo que se escribe le reescribiría el evento a
-> quien lo tiene agendado (B-162, D-95).
->
-> **Sale B-891.**
-
-**Lo encontró el frente de B-881**, que fue a verificar si quedaba un cuarto lugar y
-encontró un quinto. `functions/calendario.js` condiciona por `persona?.nombre`
-**sin `trim()`**, así que con `{ nombre: '   ', bio: 'Cronista…', instagram: '@ana' }`
-la descripción del evento emite `Tallerista:    · @ana` **y la bio**, mientras las
-salidas 1, 5 y 6 ya dicen que no hay tallerista.
-
-**Y la salida 2 tiene una propiedad que la vuelve peor de lo que el número
-sugiere:** el evento ya está sincronizado al Google Calendar público, o sea **en el
-calendario de cada persona que se suscribió**. Corregirlo después no saca lo que ya
-se copió a un dispositivo.
-
-**El camino de entrada existe y no es teórico:** el schema acepta un nombre de solo
-espacios (`src/lib/schema.ts`), y `restaurarCampo` (`src/lib/historial.ts`) escribe
-con `updateDoc` **sin pasar por el formulario**, así que `formADocumento` no lo
-normaliza.
-
-Es más angosto que B-881 —solo espacios, no `''`— pero es la misma clase y **es la
-última celda de la convergencia**: con ésta, «¿esta actividad tiene tallerista?» se
-contesta igual en las cinco. El arreglo es
-`const nombre = persona?.nombre?.trim(); if (nombre) …`, con su caso.
-
-### B-882 · El sitio se queda viejo y nadie se entera hasta que alguien lo mira — ✅ hecho (2026-09-11) · P1
-
-El 2026-09-11 el dueño cargó ocho actividades, las publicó y **ninguna apareció**.
-El rebuild venía fallando desde el día anterior, y el único que se enteró fue él.
-**Ninguna alarma existente podía verlo:** los ocho dispatches salieron bien, así
-que `alerta: 'rebuild-agotado'` nunca se disparó y `sistema/rebuild` decía que
-estaba todo al día (B-884).
-
-**Por qué ésta y no vigilar el workflow: mide el efecto y no el mecanismo.** Las
-otras medidas vigilan eslabones; ésta vigila la promesa del producto — «lo que
-publicás aparece». Es complementaria de B-883, no su repuesto: aquél sabe **por
-qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow rojo.
-
-> ✅ **Cerrado.** `verificarFrescuraDelSitio`, `onSchedule every 30 minutes`, con
-> las cuatro decisiones resueltas:
->
-> | | |
-> |---|---|
-> | **Qué compara** | el **conjunto de slugs**, las dos direcciones. No el conteo: dos diferencias que se cancelan dan el mismo número, y el conjunto además **nombra** lo que falta |
-> | **Cuánto tolera** | 40 min = debounce (5) + `timeout-minutes` (15) + otro build (15, por `cancel-in-progress`) + propagación (5). **Cada sumando anclado a otro archivo**, con test que se pone rojo si divergen |
-> | **Cómo avisa** | issue + `logger.error` con `alerta`. Uno por divergencia distinta, reaviso a las 24 h. **No cierra issues**: cerrar es del dueño, y un bot que cierra tapa cuánto duró |
-> | **Si no puede leer** | `sin-lectura` y contador; recién a las 4 seguidas habla, de otra cosa. **Un 200 que no es el índice no es «cero actividades»** |
->
-> **Cuatro hallazgos sobre el propio arreglo.** El issue publicaba el minuto exacto
-> y eso reconstruye el `updatedAt` de un documento contra el `created_at` público
-> del issue (§5, D-138). `vistas` era un mapa y **el merge no borra claves**, así
-> que el documento crecía hasta el tope de 1 MB — y ahí la transacción falla y **la
-> alarma se muere en silencio**, que es el modo de falla exacto que este ítem
-> cierra. Más el `.select()` que faltaba y el vocabulario cerrado del motivo.
->
-> **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
-> push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
-
-### B-892 · El control del saneador detecta por desaparición total del identificador, y eso tapa la mayoría de los casos — ✅ hecho (2026-09-17) · P2
-
-> ✅ **Hecho, las dos mitades, y la medición del ítem se quedaba corta.** El
-> predicado pasó a comparar **posiciones** —`tramosBorrados`, extraída como
-> primitiva del propio saneador— en vez de presencia de nombres. Probado por
-> mutación en los dos sentidos: sobre el árbol de ese día el predicado nuevo dio
-> rojo en **14 archivos** y el viejo veía **2 de esos 14**. Los otros doce
-> quedaban tapados por el propio nombre sobreviviendo en otra línea, que es
-> exactamente lo que este ítem describe.
->
-> Las ~17 líneas se arreglaron con la salida (a) que B-876 ya había decidido
-> (`\/{2}` en vez de `\/\/`): `src/lib/schema.ts`, `src/lib/coordenadas.ts`
-> (dos), `scripts/build-contra-emulador.mjs` y los once recortes locales de
-> `tests/`. **Once, no diez:** el frente que cerró esto no podía tocar
-> `tests/promesas-sobre-datos.test.ts` —era del frente de B-925, en la misma
-> tanda— y lo dejó anotado; se aplicó al integrar los dos, y es lo que deja el
-> control de clase en verde. Ese sobrante llegó a tener número propio (B-1020) y
-> no hizo falta escribirlo.
->
-> **Y la segunda mitad, la de la guarda de cantidad:** `> 100` y `> 20` eran un
-> piso, no una derivación. Ahora la lista se compara contra la misma armada con
-> `grep -E` en un subproceso aparte. Mutación probada: el `.filter()` de ejemplo
-> dejaba 529 archivos, arriba del piso, y pone en rojo la comparación nueva.
-
-**Lo corrigió el frente de B-876 sobre su propia medición**, y es la parte que
-importa de ese ítem. El control compara los identificadores que el parser ve contra
-los que sobreviven al saneado, o sea que **solo detecta cuando un nombre desaparece
-del archivo entero**. Si el mismo nombre aparece en otra línea, el destrozo es
-invisible.
-
-**Midiendo el texto truncado en vez de los identificadores, hay ~17 líneas de código
-más** que el saneador corta hoy por un `\/\/`:
-
-- `src/lib/schema.ts:180` — `/https?:\/\//i.test(texto) || HOSTS_DE_REUNION.test(texto)`, **se pierde el `||` entero**;
-- `src/lib/coordenadas.ts:171` y `:213`, `src/lib/enlaceSeguro.ts:49`;
-- `scripts/handle-instagram.mjs:30`, `scripts/build-contra-emulador.mjs:997`;
-- once en `tests/`.
-
-**Y dos de ellas son insumo vivo:** `tests/guardas-de-los-scripts.test.ts` sanea
-**todo** `scripts/` con `readdirSync`, así que esas dos líneas llegan cortadas a un
-barrido que corre de verdad. Ninguna rompe un aserto hoy — es la misma forma de
-agujero latente de B-853, que también esperaba a que alguien apuntara el saneador al
-archivo equivocado.
-
-Un predicado más fuerte compararía **posiciones** o contaría tokens perdidos, no
-presencia de nombres.
-
-> 📌 **Y una segunda mitad del mismo frente, más chica:** la guarda de cantidad del
-> control es un **piso** (`> 100`, `> 20`), no una derivación verificada. Nada
-> impide agregarle un `.filter()` de exclusión a la lista y que la suite quede verde
-> mirando menos archivos — probado por mutación, pasa. Aplica igual al chequeo viejo
-> de los `.ts`.
-
-### B-887 · Un error de sintaxis en un trigger pasa la suite, el typecheck y el gate — ✅ hecho (2026-09-11) · P1
-
-**Pasó el 2026-09-11 y lo causó el integrador**, aplicando a mano un diff que un
-frente había devuelto: un `import` quedó **adentro** de un bloque
-`import { … }` multilínea de `functions/frescura-trigger.js`. Verde en todo:
-**4.373 casos**, `tsc --noEmit` limpio, **los seis pasos del gate de pre-push**. El
-deploy murió con `SyntaxError: Unexpected reserved word` y el sitio se quedó sin
-las Functions nuevas.
-
-**La ceguera es estructural.** Nadie importa los triggers: los módulos puros sí los
-importan los tests —ahí un error de sintaxis se ve en el acto— pero el archivo del
-trigger es el pegamento, lo carga solo el runtime, y lo que el repo hace con él es
-**leerlo como texto**. `clases-de-bug.test.ts` recorre su cuerpo con expresiones
-regulares, y **un `readFileSync` no parsea nada**: un archivo roto se lee igual de
-bien que uno sano.
-
-Dicho de otro modo: **el corte puro/pegamento de B-77 —lo que hace testeable a este
-proyecto— dejó del lado no testeado a los archivos que ningún test toca**, y el
-primer lector real era el deploy.
-
-> ✅ **Cerrado.** `node --check` sobre cada `functions/*.js` en
-> `tests/guardas-de-los-scripts.test.ts`, con control positivo. Es el **mismo
-> parser** que va a cargarlos en el runtime y no un regex: la pregunta es
-> literalmente «¿esto lo puede cargar Node?». Va en un test y no en el gate porque
-> tiene que llegar **antes** de empujar — el costo de este bug no fue el error, fue
-> enterarse quince minutos tarde y con el sitio a medio publicar. Probado por
-> mutación reintroduciendo el bug exacto.
-
-### B-883 · El rebuild falló quince corridas seguidas y nadie recibió nada — ✅ hecho (2026-09-11) · P1
-
-**El dueño cargó ocho actividades, las publicó y se enteró mirando el sitio.** Entre
-medio no llegó nada. Lo que se rompía era **B-875**; esto es la otra mitad.
-
-**La sospecha era falsa, y verificarla cambió el arreglo.** Se creía que un
-`repository_dispatch` lo dispara un token y GitHub no tiene a quién avisarle.
-Medido contra la API: el `actor` de las quince corridas es `benoffi7`, tipo
-**`User`** — un PAT actúa como su dueño. La causa real son tres cosas que no se
-arreglan configurando nada:
-
-1. GitHub avisa **solo a quien disparó la corrida**: no hay watchers ni lista, es de
-   a uno y el repo no elige cuál.
-2. Ese uno es el **dueño del PAT** que vive en Secret Manager. El aviso de que el
-   sitio no se publica está atado a una credencial de infraestructura: se la rota y
-   el destinatario cambia sin que nadie lo decida.
-3. Llega a la bandeja **web** de esa cuenta, no por mail — el mail de Actions es un
-   opt-in por cuenta que el repo no puede ver.
-
-**Y la cuarta, que es la que más duele: aun llegando, el texto no sirve.** El título
-es `AUTOMATIC - <workflow> workflow run failed for <branch> branch`. De ahí nadie
-deduce «mis ocho actividades no están publicadas».
-
-> ✅ **Cerrado con dos jobs en `deploy.yml`** (`avisar` / `cerrar-aviso`) que abren y
-> cierran **un** issue por racha con la etiqueta `deploy-roto`: se busca por
-> etiqueta —lo único que sobrevive a que alguien edite el título—, el abierto se
-> **edita** en vez de comentarse, y se **cierra con la corrida verde**, que es lo
-> que lo vuelve un indicador y no un registro. El cuerpo dice **desde cuándo** el
-> sitio está atrasado, no solo qué paso falló.
->
-> **No publica el `motivo` del rebuild**: es texto de Firestore y el repo es
-> público. **No recibe la service account** (job aparte, §5.4). **Y no puede agregar
-> su propio rojo**, con tres cinturones exigidos por test.
->
-> **El chequeo es por clase:** «un workflow disparado por una máquina avisa cuando
-> falla», así que un `schedule` futuro entra solo. `push-main.yml` queda afuera a
-> propósito: lo dispara un push y hay alguien esperando.
->
-> **Verificado corriendo los scripts extraídos del YAML**, lo que encontró dos bugs
-> que un YAML válido escondía: bash comiéndose los bytes del `»` en
-> `«$NOMBRE_WORKFLOW»`, y `date -d` siendo GNU —o sea imposible de probar en la
-> máquina de quien lo escribe—.
-
-### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — ✅ hecho (2026-09-11) · P1
-
-> ✅ **Cerrado con B-882.** `remarcarPorFrescura` (`functions/marca-de-rebuild.js`)
-> vuelve a levantar el flag cuando el chequeo de frescura confirma una divergencia.
-> **Existe con nombre propio y no llama a `marcarRebuild` directo** por una razón
-> que encontró el chequeo de clase de B-83, no una preferencia: aquélla está
-> declarada como efecto **incondicional** —corresponde siempre que el documento
-> cambió, y no puede quedar debajo de un `return`— y acá el uso es un reintento
-> **condicionado**. Llamarla igual convertía un uso legítimo en una violación de la
-> invariante del otro.
->
-> Cuelga de la misma decisión que abre el issue, o sea acotado por la firma de la
-> divergencia y por el reaviso de 24 h: **a lo sumo un build extra por día y por
-> divergencia distinta**, no uno cada media hora.
-
-**El flag se baja cuando GitHub acepta el `repository_dispatch`, no cuando el sitio
-tiene el cambio.** `registrarExito` computa `pendiente: milis(marcaActual) !==
-milis(marcaLeida)`, o sea que solo queda arriba si llegó una marca **nueva** durante
-el dispatch (B-85). Si el build muere después, **nadie reintenta y el documento dice
-que está todo bien.**
-
-**Verificado, no supuesto.** Los únicos tres escritores son `marcarRebuild`,
-`registrarFallo` y `registrarExito`, y ninguno conoce el resultado del build.
-`deploy.yml` no escribe en Firestore —ni el job `deploy` ni los dos que le agregó
-B-883—. **No hay ningún camino por el que un build fallido vuelva a levantar el
-flag.**
-
-**Y el corte es más temprano de lo que parece.** `repository_dispatch` contesta 204
-sin devolver ningún run id, y contesta 204 igual si el workflow **no corre** (el
-archivo no parsea, trampa 11; Actions desactivado). «GitHub aceptó» no es siquiera
-«el build arrancó».
-
-**Lo que pasó el 2026-09-11, y por qué no se vio antes.** El rebuild falló ocho
-corridas seguidas y ninguna actividad publicada llegó al sitio. **Lo tapó el
-volumen:** ocho actividades son ocho marcas y ocho disparos. **Con una sola no había
-octava oportunidad.**
-
-**Es la otra mitad de B-883.** Aquél hace que un build roto llegue a una **persona**;
-esto es que el **estado** sigue diciendo que está bien. El issue no cubre dos casos:
-si el workflow **no arranca**, el aviso tampoco corre porque cuelga del job de
-deploy; y si el fallo fue transitorio y nadie pushea, no hay re-disparo — el sitio
-espera a la próxima edición.
-
-**Lo hecho (2026-09-11), la mitad que no depende de la confirmación:** el desfasaje
-quedó escrito en el código con su instrucción de lectura, y `registrarExito` escribe
-`despacho: { cubreHasta, motivo }` en la misma escritura que baja el flag —
-`cubreHasta` es la marca leída **antes** del `fetch`, o sea el piso que el sitio vivo
-tiene que contener. Más `cubiertoPorElUltimoDespacho(estado)`, que normaliza y
-devuelve `null` cuando no hay ancla: **`null` es «no sé», no «al día»**.
-
-**Lo que falta para cerrarlo: el chequeo de frescura** (B-882), que al detectar la
-divergencia vuelva a levantar el flag con `marcarRebuild(db, 'frescura')` — no con un
-`set` a mano, que dejaría un `agotado: true` sin rearmar.
-
-### B-881 · El texto para redes arroba al tallerista sin nombre, y B-861 lo dejó siendo el único que lo hace — ✅ hecho (2026-09-11) · P3
-
-> ✅ **Cerrado.** El dueño contestó: **es un olvido del formulario**, así que va la
-> primera rama. `handlesDe` condiciona por `?.nombre?.trim()`, el mismo predicado
-> de las otras cuatro respuestas, y `difusion.arrobar` queda intacto —el camino
-> para arrobar a alguien a propósito sigue abierto y ahora tiene su test—.
->
-> **El borde estaba sin cubrir, con un agravante:** el barrido de centinelas del
-> archivo corre por `formADocumento`, que nulea la cáscara, **así que no podía
-> verlo**. Los tres casos nuevos entran por `construirTextoRedes` con el documento
-> crudo, que es la frontera que el tipo declara.
->
-> **Sale B-885:** `functions/calendario.js` condiciona sin `trim()`. Es la quinta y
-> última variante del predicado.
-
-**Lo encontró el `auditor-privacidad` sobre B-861**, y es la misma clase que ese
-par de ítems vino a cerrar, un escalón más arriba.
-
-`handlesDe` (`src/lib/textoRedes.ts`) arma los arrobas del pie del posteo con
-`actividad.tallerista?.instagram ?? ''`. `ActividadParaRedes` es un
-`Pick<Actividad, …>` —**el documento crudo, no `ActividadPublica`**—, así que B-861
-no lo alcanza: con la cáscara `{ nombre: '', instagram: '@ana' }` el texto para
-redes sigue poniendo `@ana` mientras el `events.json` y la página de detalle ya
-dicen que no hay tallerista.
-
-**Lo que lo vuelve un ítem y no un descuido: antes de B-861 las tres salidas
-coincidían** (las tres publicaban). Arreglar dos dejó a la tercera sola, y la
-tercera es **la salida 5, la más irreversible** — un posteo con un arroba no se
-despublica.
-
-**No se arregló en el mismo cambio a propósito.** Un handle cargado a mano con el
-nombre en blanco puede ser un olvido del formulario o puede ser deliberado
-(«etiquetá a esta cuenta»), y `difusion.arrobar` existe justamente para el segundo
-caso. La decisión es del dueño:
-
-- **si es olvido** → `handlesDe` condiciona por `?.nombre?.trim()`, una línea, más
-  un caso en `tests/textoRedes.test.ts` (los de hoy siempre tienen nombre, así que
-  el borde no está cubierto);
-- **si es deliberado** → no se toca el código y se acota la prosa de
-  `07-seguridad.md` y del docblock de `toPublic.ts` a «las salidas que derivan de
-  `toPublic`», que es lo que hoy dicen provisoriamente.
-
-### B-880 · Quedan dos tests con la forma de B-873, y uno es peor: pasa en vez de saltearse — ✅ hecho (2026-09-11) · P2
-
-> ✅ **Hecho, con los dos diagnósticos medidos y uno confirmado peor de lo que el
-> ítem decía.** Moviendo el `dist/`: `no-encontrado` sale `1 skipped`;
-> `ahoraPublico` sale **`✓ … 0ms`** — verde, contado como aprobado, cero bytes.
->
-> Los dos son la **sección 4 de `verificar-bundle.sh`** (la simétrica de la 2: qué
-> TIENE que estar), derivando **del fuente** lo que le exigen al artefacto, y los
-> tests manejan el script sobre artefactos sintéticos. Las dos filas de `CON_DEUDA`
-> salieron en el mismo cambio: la lista queda **vacía y no borrada**.
->
-> **Un agujero que el ítem no tenía**, por la mutación: el selector se buscaba por
-> subcadena, así que `.grid` lo satisfacía `.grid-cols-1` — desde B-600.
->
-> **Verificado con build real:** renombrar `404.astro` deja build y typecheck verdes
-> y solo cae el gate; sacar `estilos.ts` del scan deja las cuatro utilidades en la
-> hoja y solo cae el **marcador**.
->
-> **Y la frase se volvió cierta:** cero `it.skipIf`, y el mismo resultado con `dist/`
-> y sin él. Lo que queda son los 25 del emulador, que fallan duro con
-> `EXIGIR_EMULADOR=1`.
-
-**Salieron del chequeo de clase que dejó B-873** (`tests/workflows.test.ts`,
-`CON_DEUDA`), que es exactamente para lo que está: los enumera en vez de taparlos.
-
-- **`tests/no-encontrado.test.ts`** lee `dist/404.html` con `it.skipIf(!hayBuild)`.
-  Es B-873 otra vez, y es el **único skip que le queda a la suite entera**.
-- **`tests/ahoraPublico.test.ts` es peor, y por eso el ítem no es P3.** No usa
-  `skipIf`: lee `dist/_astro` y si no hay hojas hace `if (hojas === '') return;`.
-  O sea que **el caso se reporta PASSED** —no salteado, verde— habiendo mirado
-  cero bytes. Y su docblock repite la frase falsa de B-873: «en CI el build siempre
-  corre». Lo que promete es que las clases del tríptico llegaron al CSS
-  construido, y hoy esa promesa no la sostiene nadie.
-
-La salida es la de B-873 y ya está construida: el barrido va a
-`scripts/verificar-bundle.sh` —el único punto del pipeline donde `dist/` existe— y
-el test pasa a manejar el script sobre un artefacto sintético. Las dos filas de
-`CON_DEUDA` salen en el mismo cambio: el chequeo verifica las dos direcciones, así
-que dejarlas una vez resueltas lo pone en rojo.
-
-**Y con los dos resueltos, «la suite no tiene ni un skip silencioso» pasa a ser
-cierto** — que es lo que hace que ese número valga la pena mirarlo.
-
-### B-877 · El grafo de imports pierde todo `import` multilínea, y el §1.5 verifica «cero ciclos» sobre un grafo incompleto — ✅ hecho (2026-09-17) · P2
-
-> ✅ **Hecho.** Se sacó el `\n` de la clase negada. **Recontado sobre el árbol de
-> hoy, no sobre las cifras de esta descripción:** 1.987 aristas contra 1.695 con
-> el regex viejo, o sea **292 recuperadas en 211 de 572 archivos**. Los ciclos
-> **siguen en cero estáticos / uno diferido**, sin ninguno nuevo: la propiedad
-> que el test afirma aguanta, y lo que no aguantaba era la idea de que se estaba
-> verificando entera. Caso de control real del corpus, probado por mutación.
->
-> Lo que **no** se hizo, a propósito: remedir §0/§1.1/§1.2/§1.4/§1.6. El árbol
-> creció de 254 a 341 archivos de producción desde la última pasada, por trabajo
-> ajeno a este ítem, y mezclarlo haría ilegible el efecto del arreglo. Sale
-> **B-1010**.
-
-**Lo encontró B-856 al verificar el fan-out del formulario.** El regex `IMPORTS`
-de `scripts/salud-del-codigo.mjs` tiene un `\n` dentro de la clase negada, así que
-obliga a que `import … from` entre en **una sola línea**. Todo import con las
-llaves abiertas en varias líneas es invisible para el grafo.
-
-Son **234 aristas a módulos del proyecto en 180 archivos** del corpus. En
-`ActividadFormulario.tsx` son 4 — exactamente la diferencia entre el fan-out que
-el §1.3 declaraba (**27**) y el real (**31**). Verificado: el regex ve 28 de 32
-`from`-clauses en ese archivo.
-
-**Lo que toca, y lo serio no es el fan-out:** `tests/salud-del-codigo.test.ts`
-afirma «cero ciclos estáticos» como **la única propiedad del documento que está
-atada a un test**, y la estaba afirmando sobre un grafo al que le faltaba el
-**16 %** de las aristas. Un ciclo cerrado por un import multilínea no se habría
-visto.
-
-**Se recalculó con el regex arreglado: siguen siendo cero** (1.424 aristas contra
-las ~1.190 que el script ve). La propiedad aguanta; lo que no aguanta es la idea
-de que se estaba verificando entera. El arreglo es sacar el `\n` de la clase
-negada, y el caso de control es un archivo del corpus con un import multilínea
-conocido.
-
-### B-878 · `contarLineas` no reconoce `{/* … */}`, así que el §1.1 sobrecuenta el código de todo `.tsx` — ✅ hecho (2026-09-17) · P3
-
-> ✅ **Hecho**, y con el gemelo que el ítem pedía. `contarLineas` trata
-> `{/* … */}` igual que `/* … */`. Medido sobre el árbol de hoy:
-> `ActividadFormulario.tsx` da **397** significativas contra **455** con el
-> contador viejo. Dos casos nuevos, los dos probados por mutación: el gemelo
-> exacto del existente para JSX de una línea, y un bloque multilínea.
-
-**Salió de B-856.** El clasificador pregunta `l.startsWith('/*')`, y una línea de
-comentario JSX empieza con `{`. Cae en el `else` y cuenta como **significativa**.
-
-En `ActividadFormulario.tsx` son **35 líneas**: el script dice 407 significativas
-donde las de verdad son 372. Afecta a los 81 archivos de `src/components/` y a los
-`.astro`, o sea al total del §1.1, a la prosa del §1.6 y —desde B-856— al umbral
-del §1.3, que ahora se mide en significativas.
-
-**El sesgo va del lado seguro para el umbral** (la alarma dispara antes), así que
-no es urgente; pero el §1.1 está declarando como código líneas que son prosa, que
-es justamente lo que ese número pretende separar. El arreglo es una línea, y el
-caso de control ya tiene forma en el test —el que verifica que «una línea con
-código y comentario al final cuenta como significativa»— y le falta el gemelo para
-JSX.
-
-### B-876 · El control de clase del saneador no mira los `.astro`, y hay un literal de regex que lo rompe hoy — ✅ hecho (2026-09-11) · P2
-
-> ✅ **Hecho, con (a), y las dos mediciones del ítem eran exactas.**
->
-> **`Base.astro` es el único ofensor: confirmado** sobre los 28 `.astro`. Lo que se
-> comía era el resto de la línea —`const ogImagen = /^https?:\/\` sin el ternario—,
-> o sea **la decisión entera** entre URL absoluta y relativa.
->
-> **Se eligió (a), y el argumento decisivo no es el costo: es que (b) tampoco
-> alcanza.** Un lexer de literales de regex necesita el token anterior y deja
-> `firestore.rules` igual de expuesto, que es donde esta familia ya costó quince
-> cláusulas.
->
-> **Lo que el ítem no pedía y el cambio sí:** un `expect` que prohíbe saltear en
-> silencio un `.astro` sin frontmatter, y un **control positivo permanente** que le
-> pasa al mecanismo el frontmatter viejo y exige que lo marque — un barrido que
-> compara dos listas queda verde igual porque no encuentra nada que porque no busca
-> nada, y desde afuera se ven iguales (B-873).
->
-> **Y una corrección al alcance de «único ofensor»: sale B-892.**
-
-**Salió de B-855.** `tests/sin-comentarios.test.ts` compara contra el parser de
-TypeScript sobre los `.ts/.tsx/.mjs/.js` del repo — **no** sobre los `.astro`. Y
-los `.astro` son justamente lo que leen los dos tests que B-855 acaba de conectar
-al saneador compartido, más otros ocho que lo hacen con recortes locales.
-
-**No es hipotético: extender el control al frontmatter se probó y da rojo con el
-árbol de hoy.** `src/layouts/Base.astro` tiene una regex cuyo `\/\/` contiene el
-par `//` literal. El saneador lo lee como comentario de línea —exactamente el caso
-que su propio docblock declara no poder distinguir, «no lexea literales de
-expresión regular»— y se come el resto de la línea. Es **el único ofensor** entre
-los 28 `.astro` de `src/`, medido.
-
-Ningún aserto actual lo sufre —se verificó predicado por predicado en B-855— pero
-es la misma forma de agujero latente que B-853: espera a que alguien apunte un
-barrido a `Base.astro` preguntando por algo de esa línea.
-
-Dos salidas y hay que elegir: **(a)** escribir la regex sin el par literal, que
-cuesta una línea y deja el control de clase extensible; o **(b)** enseñarle al
-saneador a reconocer un literal de regex, que el módulo ya argumentó que no vale
-—necesita el token anterior, o sea medio parser de JS, y no serviría para
-`firestore.rules`—. Si sale (a), el control se extiende a los `.astro` en el mismo
-cambio; sin eso no hay red.
-
-> 📌 **Y un dato del barrido que cambia la escala del problema:** B-855 hablaba de
-> **dos** recortes locales. Son **veinticinco** archivos de test con su propio
-> saneador, todos con el modo de falla que B-855 vino a cerrar. Uno
-> (`analyticsSitio.test.ts`) documenta a propósito por qué usa el suyo. El criterio
-> de qué unificar hay que decidirlo archivo por archivo, pero el argumento de
-> B-855 aplica con fuerza 25 a 2.
-
-### B-875 · Un fixture con fecha cableada rompió la publicación del sitio entero, y nadie se enteró — ✅ hecho (2026-09-17) · P1
-
-> ✅ **Cerrado, los tres puntos, y uno de los tres ya estaba hecho.**
->
-> 1. **La guarda** (`tests/fixtures-contra-el-reloj.test.ts`) pide las tres cosas
->    juntas: fecha que todavía no pasó, un sujeto que lee el reloj real sin poder
->    recibirlo (`useState(() => new Date())` — la forma de `ListaActividades.tsx`,
->    y también la de `CalendarioActividades.tsx`, encontrada al armar el
->    predicado) y ningún `vi.setSystemTime` que lo neutralice. **No prohíbe
->    fechas fijas**, que es lo que este ítem pedía no hacer: la lógica pura que
->    recibe `ahora` por parámetro queda afuera. Hoy la lista da vacía, con dos
->    controles positivos para que ese vacío signifique algo. Mutación probada:
->    reponer la fecha original la pone en rojo.
-> 2. **Que el rebuild no muera en silencio: ya estaba resuelto** por B-883 (los
->    jobs `avisar`/`cerrar-aviso` de `deploy.yml`, que abren y cierran un issue
->    con etiqueta `deploy-roto`) y B-882, mergeados el mismo 2026-09-11. Se
->    verificó antes de escribir nada y no había nada para enganchar.
-> 3. **El hueco del detector de B-211**: `clases-de-bug.test.ts` filtraba con
->    `f.endsWith('.ts')`, **falso para `.tsx`**, así que los 24
->    `*.render.test.tsx` no se leían nunca. Por eso no vio el doble del archivo
->    que rompió. Arreglado con `/\.tsx?$/` y una excepción documentada para ese
->    doble, que se deja para **B-1050**.
-
-**Lo reportó el dueño el 2026-09-11** preguntando por qué una actividad publicada
-no aparecía en el sitio. La respuesta no era de esa actividad: **el sitio no se
-reconstruía desde el día anterior.** Las ocho últimas corridas del rebuild habían
-fallado, todas en el paso **Tests**, que corre **antes** del build — así que nada
-de lo que se publicara llegaba nunca.
-
-La causa es una línea de `tests/lista-actividades.render.test.tsx`:
-
-```ts
-{ id: 'ses_1', inicio: ts('2026-09-10T22:00:00Z'), fin: ts('2026-09-11T00:00:00Z'), … }
-```
-
-Una fecha **cableada en el futuro cercano**. La fila del panel dice «Próximo:»
-solo si el encuentro no pasó, así que el caso pasó en verde hasta el 2026-09-10 y
-**se puso rojo solo el 11**, sin que nadie tocara una línea. Arreglado haciendo la
-fecha relativa a `Date.now()`, que es lo que el caso de verdad necesita: «un
-encuentro que todavía no pasó».
-
-**Lo que hay que cerrar, que es la clase y no el caso:**
-
-1. **Una guarda contra la fecha cableada que se compara con el reloj real.** No
-   es «no usar fechas fijas»: los módulos puros reciben `ahora` por parámetro y
-   ahí una fecha fija es **correcta y deseable**. El caso peligroso es el
-   subconjunto que compara un fixture contra `Date.now()`. Hay **46 archivos** con
-   fechas del 2026-09-11 en adelante y la enorme mayoría son inofensivos, así que
-   una prohibición general sería ruido puro — hay que encontrar el predicado que
-   separa los dos.
-2. **Que el rebuild no muera en silencio.** Ocho corridas rojas seguidas y el
-   único que se enteró fue el dueño, mirando el sitio. Es la misma forma que B-21
-   —«está en el log» no es «alguien se entera»— pero acá el efecto es que **el
-   producto deja de publicar**. El aviso puede ser el que GitHub ya manda por
-   corrida fallida, si está prendido, o un chequeo propio.
-
-**Y de paso, un segundo bug en la misma línea:** ese archivo define **su propio
-doble de `Timestamp`** (`const ts = (iso) => ({ toDate, toMillis })`), que es
-exactamente la clase de B-211 y que el chequeo de `clases-de-bug.test.ts` **no
-está agarrando** — sí agarró otro archivo esta semana, así que el detector existe
-y tiene un hueco. Se dejó el doble local (achicarlo es de otro ítem) pero la
-pregunta de por qué no lo ve queda abierta.
-
-### B-873 · Los dos tests que leen `dist/` no verifican nada en CI, y sus docblocks afirman lo contrario — ✅ hecho (2026-09-11) · P2
-
-> ✅ **Hecho, con el diagnóstico medido y dos agravantes que este ítem no tenía.**
->
-> Tampoco corrían del todo en `verificar-todo.sh` —los tests son el paso 3 y el
-> build el paso 4, así que miraban el `dist/` de una corrida **anterior**— y un
-> build local sin credenciales emite 14 páginas y **cero de detalle**, o sea que el
-> barrido nunca vio la superficie SSG que depende de datos.
->
-> **Se eligió la salida 2, y el costo del build no fue el argumento** (2,5 s).
-> Buildear en el job de tests verifica un artefacto que **nadie publica**, y obliga
-> a elegir entre darle la única key del proyecto a un job más o barrer un artefacto
-> degradado. Y la salida 3 no es una salida por sí sola: sin `dist/` en ese job,
-> `EXIGIR_DIST=1` deja el CI rojo para siempre — es lo que la distingue de
-> `EXIGIR_EMULADOR=1`, donde el workflow sí levanta lo que el flag exige.
->
-> **Los tests no se borraron: pasan a manejar el script** sobre artefactos
-> sintéticos. 41 casos sin un solo `skipIf`. Y el gate gana una guarda que es la
-> lección hecha aserto: **un `dist/` sin una sola página falla**, más el recuento
-> impreso.
->
-> **La clase quedó cerrada y no la instancia**, y ya cobró: **B-880**.
-
-**Salió de decidir dónde poner el barrido de B-868**, y es el hallazgo más grande
-de esa tanda. `sin-comentarios-en-el-html.test.ts` (B-261) y
-`terceros-antes-del-consentimiento.test.ts` (D-254) se saltean si no hay `dist/`,
-y los dos escriben en su docblock: «En CI el build siempre corre, así que ahí no
-se saltea nunca».
-
-**No corre.** En `deploy.yml` el paso `Tests` está **antes** del paso `Build`; en
-`push-main.yml` los tests son el job `verificar` y el build es el job `hosting`,
-otro runner sin `dist/`. Verificado el 2026-09-10 moviendo el `dist/`: la corrida
-sale **verde con los casos salteados** y no lo dice.
-
-Así que las dos promesas quedan colgadas de que alguien haya buildeado local antes
-de correr la suite — y **un `skipIf` que se salta en silencio es peor que no tener
-el test**, porque la fila de la red de contención dice que están cubiertas. Es la
-misma clase que viene apareciendo toda esta tanda: un chequeo verde sobre
-exactamente el caso que existe para atrapar, y acá con el agravante de que el
-propio docblock afirma la cobertura que no existe.
-
-Tres salidas, y hay que elegir:
-
-1. **buildear en el job de tests** — caro y duplica el build;
-2. **mover los dos chequeos a `verificar-bundle.sh`**, que es el paso post-build de
-   los dos workflows: es lo que hizo B-868 y por eso mismo apareció esto;
-3. **que la ausencia de `dist/` falle en CI** en vez de saltear (un `EXIGIR_DIST=1`,
-   la misma forma que el `EXIGIR_EMULADOR=1` que existe por esta misma clase de
-   bug).
-
-Y en cualquier caso, **corregir los dos docblocks**: hoy afirman una cobertura que
-no existe, que es lo que hizo que nadie lo notara.
-
-### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? — ❌ decidido: no se exige (2026-09-16) · P3
-
-> ❌ **Decidido el 2026-09-16: `firebasestorage` se queda en `UNENFORCED`, y la
-> pregunta 1 no se mide** (**D-722**). El dueño delegó esta explícitamente («no
-> entiendo de eso, solo soy producto»), así que queda el razonamiento entero y no
-> solo el veredicto.
->
-> **Lo que decide es que el beneficio de exigir hoy es cero, y es demostrable.**
-> Exigir App Check en un servicio sirve para una sola cosa: frenar al cliente que
-> no pasa por la página. Contra Storage, hoy, **no queda ningún cliente así**:
->
-> | Camino que escribe en Storage | Quién es | Ya atestado por |
-> |---|---|---|
-> | `imagenes/` desde el panel | admin/publicador con sesión | reglas + Firestore `ENFORCED` |
-> | `propuestas/` desde `/proponer` | anónimo | **la callable de B-896**, con `enforceAppCheck: true` |
-> | Las tres guías | anónimo | nada que subir: la ficha nace **sin fotos** (D-700) |
-> | build y Functions | Admin SDK | fuera de App Check por diseño |
->
-> El `create` de `propuestas/` está en `if false` **para todo cliente**. O sea que
-> exigir protegería un camino que ya no existe.
->
-> **Y el riesgo no es cero, es el sitio entero.** Las tres deducciones del
-> 2026-09-11 apuntan todas al mismo lado —el GET de `?alt=media&token=` entra en
-> la métrica, pega contra `firebasestorage.googleapis.com`, y `Unknown origin`
-> describe literalmente un `<img src>`—. Si aciertan, exigir **se lleva puestas
-> todas las imágenes públicas**, `og:image` incluido: cada link compartido queda
-> sin preview, y con caché pegada encima. Es una apuesta asimétrica en la
-> dirección equivocada: se arriesga todo para ganar nada.
->
-> **Por qué tampoco se mide, que es la parte que podría discutirse.** La medición
-> es honesta y está bien diseñada (proyecto de prueba, dos `curl`, `allow read: if
-> true` para distinguir quién cortó). Pero contesta una pregunta cuya respuesta
-> **no cambia ninguna acción**: si da `200`, exigir sigue sin proteger nada; si da
-> `403`, tampoco se exige. Un experimento que no mueve ninguna decisión es trabajo
-> con forma de rigor. **Se mide el día que la respuesta importe**, y ese día tiene
-> nombre: es el de abajo.
->
-> **La condición de reapertura, y es un orden, no una fecha: primero B-846.**
-> Exigir Storage solo empieza a tener sentido cuando las lecturas públicas **dejen
-> de salir por `firebasestorage`** — o sea cuando se cierre B-846 (no acuñar
-> tokens: `getBlob` para lo privado) y B-222 (servir las imágenes públicas por
-> dominio propio o rewrite de Hosting). Con los bytes públicos fuera del servicio,
-> el 99% sin verificar desaparece **solo**, la métrica pasa a decir algo, y exigir
-> se vuelve barato y sin riesgo. Eso es lo que «mirarlos juntos» quería decir y
-> nunca estaba escrito: **no son dos preguntas en paralelo, son dos escalones**.
->
-> También se reabre si aparece un **segundo** camino de subida a Storage desde un
-> cliente no atestado. Hoy no hay ninguno y la fila de arriba es la prueba.
->
-> El texto de abajo —la investigación del 2026-09-11— queda entero: es el insumo
-> que sostiene todo esto.
-
-> **2026-09-15 — deja de ser un bloqueo, y baja de P1 a P3.** Este ítem decía
-> «bloquea el anuncio de `/proponer`» y después, por extensión, se lo citó como lo
-> que cerraba el `create` anónimo de las tres guías —así estaba escrito en los tres
-> bloques de `firestore.rules` y en media docena de lugares de `docs/`—.
->
-> **Las dos cosas se resolvieron sin contestar la pregunta**, y por el mismo lado:
-> sacando los bytes del camino. `/proponer` con **B-896** (la subida va por una
-> callable atestada, no por `storage.rules`) y las tres guías con **D-700** (la
-> ficha que llega de afuera nace sin fotos, así que no hay nada que subir). En
-> ninguno de los dos casos hizo falta exigir App Check en Storage.
->
-> **Lo que sigue vivo es la pregunta de arquitectura en sí**, y nadie la contestó
-> con fuente autoritativa: si conviene igual exigirlo algún día, y qué pasaría con
-> las imágenes públicas que hoy se sirven por URL de descarga. Sin nada urgente
-> colgando de la respuesta, y con **B-846** —la URL de descarga es una capability—
-> del mismo lado del problema: conviene mirarlos juntos.
->
-> El texto original queda abajo, incluida la parte que fechó el bloqueo, porque es
-> la investigación del 2026-09-11 y sigue siendo el mejor insumo para contestarla.
-
-**Bloqueaba el anuncio de `/proponer`, y era la única pregunta que quedaba entre el
-estado de aquel momento y abrir el formulario público.**
-
-Con Firestore ya en `ENFORCED` (B-836a paso 6, 2026-09-10), Storage sigue en
-`UNENFORCED` por un dato concreto: su métrica de App Check marcaba **1%
-verificado contra 99% sin verificar**, mientras Firestore marcaba 7%. Esa
-asimetría no es ruido de la ventana — es que Storage tiene un tipo de tráfico que
-Firestore no tiene.
-
-**La sospecha, que hay que confirmar antes de tocar nada:** ese 99% son las
-**lecturas públicas de imágenes**. Cada página de detalle y `/cartelera` sirven
-las fotos por la URL de descarga con token (`getDownloadURL`), que es un GET
-anónimo del navegador y **no lleva token de App Check** — ni puede llevarlo, no
-pasa por el SDK. Si el enforcement bloqueara ese camino, **se caen todas las
-imágenes del sitio público**.
-
-**Lo que hay que averiguar, en este orden:**
-
-1. **¿El enforcement de Storage alcanza a las URLs de descarga?** La documentación
-   de Firebase habla de las operaciones del SDK; la URL con token es una vía
-   pensada para compartir y podría quedar afuera. **No asumir ninguna de las
-   dos.** La forma barata de saberlo sin arriesgar el sitio es medirlo en un
-   proyecto de prueba, o encontrarlo afirmado por Google.
-2. **Qué compone realmente ese 99%**, mirando el reparto en el tiempo y no el
-   acumulado.
-3. Recién con las dos contestadas, exigir o no.
-
-**Y hay una consecuencia de diseño que aparece si el enforcement sí las bloquea:**
-las imágenes públicas tendrían que dejar de servirse por URL de descarga. Eso ya
-está anotado por otro motivo en **B-846** —la URL con token es una *capability* y
-sirve el objeto sin volver a evaluar las reglas—, así que las dos preguntas se
-contestan mejor juntas que por separado.
-
-> **2026-09-11 — investigado. La pregunta 1 no tiene respuesta pública; la 2 sí, y la contesta el repo.**
->
-> **Pregunta 1 — sin fuente autoritativa, y no por falta de buscar.** Ni la doc de
-> App Check (enforcement, métricas, overview), ni la de descarga de archivos en
-> Web, ni ninguna nota de release, ni ningún issue de `firebase-js-sdk` /
-> `flutterfire` / `firebase-android-sdk` / `firebase-admin-node` contestado por
-> alguien de Firebase dice si el enforcement alcanza al GET de
-> `?alt=media&token=`. **La doc no menciona las URLs de descarga en ninguna página
-> de App Check**, ni para incluirlas ni para eximirlas. Lo único escrito es la
-> regla general: «all unverified requests to that product will be rejected».
->
-> **La evidencia indirecta apunta a que SÍ las alcanza, y ninguna pieza es
-> concluyente:**
->
-> 1. [`flutterfire#10084`](https://github.com/firebase/flutterfire/issues/10084) es
->    nuestro caso exacto —Storage casi todo sin verificar, Firestore normal,
->    imágenes servidas por download URL— y cierra con «I solved it by sending
->    headers appCheckToken». O sea que el GET crudo **entra en la métrica** y que
->    el endpoint **lee el header `X-Firebase-AppCheck`**. Un endpoint que lee el
->    token está dentro de la superficie. *Es un usuario, no un ingeniero de
->    Google: en el hilo nadie de Firebase concluye nada.*
-> 2. La download URL pega contra **`firebasestorage.googleapis.com`**, que es el
->    servicio que se pone en `ENFORCED`. *Deducción.*
-> 3. La categoría `Unknown origin` de la doc de métricas —«missing a token, and
->    don't look like they come from the Firebase SDK»— describe literalmente un
->    `<img src>`, y la misma página dice que tras el enforcement solo se permiten
->    las `Verified`. *Deducción.*
-> 4. **Ningún reporte público de nadie que lo haya medido.** Varios repos de
->    terceros razonan lo mismo que nosotros y se quedan en el mismo callejón.
->
-> **Pregunta 2 — contestada, y la sospecha era correcta.** No hace falta el reparto
-> en el tiempo: lo dice el código. Todo el volumen es `<img>`/`<a>` de HTML
-> estático más crawlers —portada del detalle, galería secundaria, `og:image`,
-> JSON-LD, cartelera, el `imagenUrl` publicado en `/events.json`, la
-> previsualización del editor— y **ninguno puede mandar el header**. Lo verificado
-> son solo `uploadBytes` + `getDownloadURL` desde el panel y `/proponer`, que salen
-> de `getStorage(app())`, la misma app que tiene App Check. Uno por subida contra
-> uno o varios **por pageview**: de ahí el 1%. El build y las Functions ni cuentan,
-> van por `storage.googleapis.com` con Admin SDK.
->
-> **Y apareció una salida que este ítem no contemplaba: `/proponer` puede
-> destrabarse sin exigir Storage nunca.** El supuesto de que hay que exigir viene
-> de que el enforcement es **por servicio y no por path** —no se puede exigir solo
-> `propuestas/`—. Pero si la subida anónima no va directo a Storage sino a **una
-> callable con App Check exigido** (el enforcement de Functions es independiente y
-> no toca las lecturas de Storage), que valide la atestación y escriba con el Admin
-> SDK: el endpoint anónimo queda atestado, `storage.rules` para `propuestas/`
-> **sigue cerrado al cliente** —más fuerte que abrirlo— y `firebasestorage` puede
-> quedarse en `UNENFORCED`. Es **B-896**.
->
-> **Y hay algo que ya es cierto hoy y conviene no perder de vista: Firestore ya
-> está `ENFORCED`.** O sea que el `create` anónimo de `/propuestas` **ya estaría
-> protegido por App Check**; lo único sin proteger es la subida del flyer. El
-> bloqueo de `/proponer` no es entero: es de la foto.
->
-> **La medición, si se hace, va en un proyecto de prueba y no en producción.** El
-> emulador no verifica App Check. El enforcement tarda *hasta 15 min* en aplicar y
-> otro tanto en revertirse: probarlo en producción son ~30 minutos de sitio sin
-> imágenes —incluido `og:image`, o sea todo link compartido sin preview— más caché
-> pegada. En el proyecto de prueba: subir un JPEG, `allow read: if true` (para que
-> el experimento distinga «lo cortó una regla» de «lo cortó App Check»), medir con
-> `curl -sSI` la URL **con** token y **sin** token (las miniaturas van sin token a
-> propósito y son otro camino), poner `firebasestorage` en `ENFORCED`, esperar,
-> repetir los dos `curl`. `200` → se puede exigir. `403` → no, y hay que sacar las
-> imágenes públicas de `firebasestorage`, que es lo mismo que ya pide **B-846**.
-
-**Mientras tanto `/proponer` no se puede anunciar**, y el motivo es preciso: el
-formulario sube el flyer a Storage, así que abrir el `create` de `/propuestas` en
-`firestore.rules` sin abrir el de `storage.rules` da un formulario que acepta el
-texto y rechaza la foto; y abrir los dos con Storage sin exigir deja un **endpoint
-de subida anónimo sin App Check**, que es exactamente lo que las cinco capas de
-B-836 existen para que no pase.
-
-### B-869 · El saneador rechaza lo que no sabe sacar: `APP_A_TIRAR` es lista negra y C2PA viaja en APP11 — ✅ hecho (2026-09-10) · P1
-
-**Lo reportó el dueño el 2026-09-10 con una foto normal.** El panel se la rechazó
-con este cartel:
-
-> «No pudimos sacarle todos los datos ocultos a esta foto (algunos celulares le
-> guardan una segunda copia adentro). Abrila en el editor de fotos del teléfono,
-> guardala de nuevo o recortala, y volvé a intentar.»
-
-**Y era falso.** No había ninguna segunda copia: la foto traía un manifiesto
-**C2PA** —el que exporta Google Fotos, firmado por Google— y en JPEG eso viaja en
-**APP11** (`0xEB`).
-
-**El agujero, medido ejecutándolo:**
-
-| caso | `sinMetadatos` lo saca | `quedanMetadatos` lo ve | resultado |
-|---|---|---|---|
-| C2PA en APP11 (`0xEB`) | no | **sí** | la subida se **rechaza** |
-| índice MPF en APP2 (`0xE2`) | no | no | la foto **sube** con el bloque |
-
-`sinMetadatos` tiraba una lista **negra** de tres marcadores —APP1, APP13 y COM—
-y `quedanMetadatos` busca cinco cadenas. **Dos de las cinco no podían estar
-cubiertas por esa lista.** El detector rechazaba un bloque que el saneador no
-sabía sacar, y la persona pagaba con un cartel que le echaba la culpa a su
-teléfono. El caso del MPF es el mismo agujero con el signo contrario: no tiene
-centinela, así que no se rechaza — se sube.
-
-**La decisión que este ítem revierte, y por qué.** B-323 dejó escrito que el JPEG
-se quedaba con lista negra a propósito (ver la corrección fechada en ese ítem).
-Sus dos argumentos se cayeron:
-
-1. **La red que invocaba está río abajo del punto que falla.**
-   `estructuraConocida` vive en `functions/imagenes-optimizar.js` y la corre
-   `optimizarImagen`, un `onObjectFinalized`: **después** de la subida. Acá la
-   subida nunca llega, porque `quedanMetadatos` la corta antes.
-2. **Envejeció.** Cuando se escribió, el detector tenía **tres** centinelas y los
-   tres estaban cubiertos. **B-220 le agregó los dos de C2PA** —que viven en un
-   marcador que la lista no nombra— y nadie volvió a mirar el saneador.
-
-**Lo que se hizo**, en `functions/jpeg-appn-seguros.js` (nuevo) + alias
-`@jpeg-appn-seguros`:
-
-- **Lo estructural se conserva por su marcador** —los quince SOF más DHT y DAC,
-  DQT, DNL, DRI, DHP, EXP, SOS, los ocho RSTn y el TEM— y **no pasa por la
-  lista**. Es la tabla B.1 de ITU-T T.81, que está **cerrada**.
-- **Todo lo demás se tira** salvo que la lista lo reconozca **por su firma** y, en
-  los dos de forma fija, por su **largo declarado**: `JFIF\0` (16 bytes, sin
-  thumbnail), `ICC_PROFILE\0` y `Adobe` (14 bytes).
-- **Una sola tabla**: `estructuraConocida` borró su `BLOQUES_CONOCIDOS` y usa la
-  misma. Es el precedente de B-323 aplicado al lado JPEG.
-- **El cartel** dice ahora lo único que sabemos y pide **avisar**, no mandar la
-  foto: este pipeline lo usa también `/proponer`, así que quien lo lee puede ser
-  alguien sin cuenta.
-
-Decisión completa: **D-620**.
-
-> **2026-09-10 — hecho, y los auditores encontraron cuatro veces la misma forma de
-> error sobre el propio arreglo:** *la regla decía más de lo que el código
-> chequeaba*.
->
-> 1. **El APP0/JFIF también trae thumbnail.** El NUL de `JFIF\0` deja afuera a
->    `JFXX` —el thumbnail *de otro* APP0— pero el JFIF base tiene el suyo:
->    `Xthumbnail`/`Ythumbnail` en los bytes 12 y 13 del cuerpo, más hasta
->    255×255×3 ≈ 195 KB de RGB sin comprimir. Misma imagen-adentro-de-la-imagen de
->    **antes** de cualquier recorte, y pasaba **las dos capas**.
-> 2. **`0xC8` no es un SOF.** El spec lo lista como `JPG`, «reserved for JPEG
->    extensions». El primer conjunto estructural lo metió adentro «porque cae en el
->    rango `0xC*`», así que se conservaba entero mientras su gemelo `0xF7` se
->    tiraba. Lo encontraron los **dos** auditores por separado.
-> 3. **Reconocer la firma no acota el cuerpo.** Un APP0 con la firma buena y un
->    largo de 500 se conservaba entero. Los dos de forma fija se acotan al byte.
-> 4. **El corte no podía ser «APPn o COM»:** dejaba conservados los `JPG0`–`JPG13`
->    y los reservados, o sea exactamente lo que hacía la lista negra.
->
-> Se corrigió además la frase «un perfil ICC no lleva ubicación, autor ni fecha»,
-> repetida en cuatro lugares: es cierta de los perfiles **enlatados** y falsa del
-> contenedor. Y el cartel dejó de pedir que manden la foto.
->
-> **Quince mutaciones probadas**, y una nació de un hallazgo que dejaba la suite
-> **verde**: sacar `RST0` del conjunto estructural. Suite completa (4143) y `tsc`
-> en verde.
-
-**Dos residuos abiertos, aceptados y con dueño acá:**
-
-- **Un tope de bytes de ICC conservados.** El perfil es lo único de la lista que no
-  se puede acotar por largo —es variable por diseño y se parte en varios APP2
-  encadenados— y `quedanMetadatos` no tiene ningún centinela que caiga adentro de
-  un ICC. Un perfil **custom** (Lightroom, Capture One) puede llevar un nombre en
-  `cprt`. Se acepta porque los perfiles que emite un teléfono son enlatados y la
-  alternativa es publicar la foto con los colores cambiados.
-- **Los APPn intercalados entre scans de un JPEG progresivo no pasan por la
-  lista**, en ninguno de los dos runtimes. `quedanMetadatos` barre el archivo
-  completo, así que un EXIF o un C2PA puestos ahí se **rechazan** igual — pero se
-  rechazan, que es el modo de falla que este ítem vino a eliminar; lo que pasa en
-  silencio es lo que no tiene centinela (MPF, JFXX, un APPn de fabricante). No se
-  cerró acá porque tocar `finDelJpeg` es tocar la guarda que cierra el segundo
-  agujero de D-131 §3, y un error ahí corta el dato comprimido.
-
-### B-870 · Hay dos apps web en el proyecto, con dos GA4 distintos, y Hosting apunta a la que el sitio no usa — ✅ hecho (2026-09-10) · P3
-
-> ✅ **Resuelto el 2026-09-10, y dejó una trampa escrita.**
->
-> Se quitó «Agenda Literaria» (`…2e7ce6a6`, `G-GG31S5P1YY`), la que no usaba nadie
-> —el repo nombra a `G-9CFMHSSGRC` en ocho lugares y a la otra en ninguno—. Firebase
-> la deja **recuperable 30 días**: aparece como «app pendiente de eliminación», así
-> que la advertencia de «irreversible» con la que se planteó esto era **falsa** y
-> queda corregida.
->
-> **La trampa: borrar primero deja a la consola sin poder arreglar el vínculo.** El
-> sitio de Hosting seguía apuntando a la app borrada, y al abrir «Vincular a un
-> sitio de Firebase Hosting» en la app buena, la única opción que ofrece es
-> `agenda-literaria (Ya vinculado)`, **deshabilitada**. O sea: la consola considera
-> el sitio ya vinculado —a un fantasma— y no da forma de repuntarlo. El orden que
-> lo evita es **vincular la buena antes de quitar la otra**; se propuso así y no se
-> siguió, y por eso quedó registrado.
->
-> La salida fue la API de Hosting, que sí expone el campo:
->
-> ```sh
-> curl -X PATCH -H "Authorization: Bearer $(gcloud auth print-access-token)" \
->   -H "x-goog-user-project: agenda-literaria" -H "Content-Type: application/json" \
->   -d '{"appId":"1:1038157194972:web:5b52810ed763c2d3cd7619"}' \
->   "https://firebasehosting.googleapis.com/v1beta1/projects/agenda-literaria/sites/agenda-literaria?updateMask=appId"
-> ```
->
-> Verificado después: `hosting:sites:list` muestra la app buena, y el sitio entero
-> sigue en 200 (home, `/admin`, `/proponer`, `/cartelera`, `events.json`).
-> `/__/firebase/init.js` se sirve con `max-age=3600` y tarda hasta una hora en
-> reflejarlo — no hay que esperarlo, nada nuestro lo lee.
->
-> **Y lo que este ítem existía para evitar, se evitó:** las métricas de App Check
-> ahora tienen una sola fila, así que la decisión del paso 6 de B-836a no se puede
-> tomar mirando la app equivocada.
-
-**Salió de mirar la consola de App Check el 2026-09-10**, cuando el dueño fue a
-verificar el paso 5 de B-836a. La pestaña «Apps» lista **dos**, que difieren en
-una mayúscula:
-
-| App | `appId` | `measurementId` | |
-|---|---|---|---|
-| Agenda Literaria | `…2e7ce6a6…` | `G-GG31S5P1YY` | la que Firebase Hosting tiene asociada |
-| Agenda literaria | `…5b52810e…` | `G-9CFMHSSGRC` | **la que usa el sitio** (`.env.production`) |
-
-**App Check no está en riesgo:** las dos tienen registrada la **misma** clave de
-sitio, con `minValidScore: 0.5` y TTL de una hora, así que la verificación
-funciona por cualquiera de las dos. Verificado por API, no por la consola.
-
-Lo que sí trae:
-
-1. **Leer la consola es ambiguo.** Las métricas de App Check se reparten por app,
-   así que la fila de «Agenda Literaria» va a mostrar cero para siempre. Quien
-   vaya a decidir el paso 6 —exigir— mirando la fila equivocada concluye que la
-   verificación no funciona **cuando funciona**, que es el peor error posible
-   justo en ese paso.
-2. **Son dos propiedades de GA4.** El sitio manda todo a `G-9CFMHSSGRC`; la otra
-   existe y está vacía.
-3. **La autoconfiguración de Hosting serviría la app equivocada.**
-   `/__/firebase/init.js` devuelve la config de la app asociada al sitio, que es
-   `…2e7ce6a6…`. Hoy no la usamos —la config está escrita en `.env.production` y
-   eso es deliberado— pero es la clase de cosa que muerde el día que alguien la
-   use creyendo que es equivalente.
-
-**No se resuelve borrando la que sobra sin pensarlo:** borrar una app web es
-irreversible, y hay que decidir cuál queda. La que el sitio usa tiene el GA4 con
-los datos históricos; la otra es la que Hosting conoce. Lo barato y reversible es
-**asociar el sitio de Hosting a la app que el código usa** y dejar la otra
-marcada, o al menos que la doc diga cuál es cuál — hoy no lo dice en ningún lado,
-y eso es lo que hizo que apareciera recién ahora.
-
-### B-868 · Nada sostenía que el bundle construido llevara App Check, y el modo de falla es «la aplicación entera deja de escribir» — ✅ hecho (2026-09-10) · P2
-
-**Salió de verificar a mano el paso 5 de B-836a** el 2026-09-10, que es
-justamente la señal de que falta la guarda: hubo que bajarse el chunk de
-producción y buscar la clave con `grep`.
-
-`scripts/verificar-bundle.sh` —el paso del gate que mira el artefacto— chequea
-**una sola cosa**: que no haya rastros del Admin SDK. Nada verifica lo simétrico:
-que lo que **tiene que estar**, esté.
-
-**Y acá el modo de falla es de los peores que tiene el proyecto.** Si
-`PUBLIC_RECAPTCHA_SITE_KEY` desaparece de `.env.production` —un merge, una
-limpieza de variables «que no se usan»—, o si alguien cambia el proveedor a
-`ReCaptchaV3Provider` porque le parece el nombre razonable:
-
-- la suite queda **verde** (`tests/appcheck.test.ts` mira el fuente, no el `dist/`);
-- el gate queda **verde** (solo busca el Admin SDK);
-- el deploy queda **verde**;
-- y **con el enforcement puesto, el panel y `/proponer` dejan de poder escribir**,
-  con la consola mostrando cero peticiones verificadas y ninguna pista de por qué.
-
-Hoy no muerde porque el enforcement está apagado. El día del paso 6 pasa a ser la
-diferencia entre un deploy y una caída.
-
-Lo que hay que agregar al barrido del artefacto, sobre `dist/`:
-
-1. la clave de sitio aparece en algún chunk;
-2. viaja a `activarAppCheck` con `usarEmuladores: false` —o sea que el build de
-   producción no quedó con la configuración de emuladores—;
-3. el proveedor es el de Enterprise (`recaptcha/enterprise.js`) y **no**
-   `recaptcha/api.js`, que es la distinción que `tests/appcheck.test.ts` ya fija
-   sobre el fuente y que nadie fija sobre lo que se publica.
-
-**Y el (3) tiene una trampa que hay que resolver antes de escribirlo:** el SDK de
-Auth trae su propio `recaptcha/api.js` para el reCAPTCHA v2 de sus flujos, así que
-la presencia de esa cadena **no** es evidencia de que estemos usando el proveedor
-equivocado. El aserto tiene que ser sobre `enterprise.js` presente, no sobre
-`api.js` ausente — verificado a mano el 2026-09-10, donde conviven los dos.
-
-> ✅ **Hecho el mismo día, y la trampa era más ancha de lo que este ítem decía —
-> el aserto que pedía no sirve.**
->
-> **Ya no es condicional.** El ítem decía «hoy no muerde porque el enforcement
-> está apagado; el día del paso 6 es la diferencia entre un deploy y una caída».
-> Ese día fue el **2026-09-10 a las 17:42 UTC**.
->
-> **Lo que falla del (3):** Auth trae también `recaptcha/enterprise.js`, las dos
-> cadenas en el mismo objeto. Medido sobre **dos builds reales**, esa cadena está
-> presente con `ReCaptchaEnterpriseProvider` **y** con `ReCaptchaV3Provider`. O sea
-> que «`enterprise.js` presente» es un aserto que **solo puede pasar**. Lo que
-> discrimina es el endpoint de canje, que el bundler sí resuelve a uno solo:
-> `exchangeRecaptchaEnterpriseToken` presente y `exchangeRecaptchaV3Token`
-> ausente. Van los dos: con solo el primero, un bundle con los dos proveedores
-> conviviendo pasaría.
->
-> **Va en el script y no en un test sobre `dist/`** —que era el precedente— por el
-> orden del pipeline, y eso destapó **B-873**: los dos tests que hoy leen `dist/`
-> no verifican nada en CI. Cinco asertos, siete mutaciones, cada una con el build
-> real que la rompería.
-
-### B-867 · El detector de la clase de B-85 no ve un barrido que borra, y hay un caso que congela esa ceguera como garantía — ✅ hecho (2026-09-11) · P3
-
-> ✅ **Hecho, con el alcance medido antes del ensanche y con las dos mitades.**
->
-> **La medición, que era la condición del ítem:** `.delete(` suma cuatro triggers
-> y **ninguno queda en la clase** — a los tres barridos les falta la red, y al
-> cuarto la lectura. Lo que se puso rojo fue el caso que congelaba la ceguera
-> («pasan porque borran») y la copia mala en versión `delete`, que pasaba en
-> verde. Los dos se reescribieron diciendo lo cierto; el segundo ahora afirma lo
-> contrario.
->
-> **Y por eso el regex solo no alcanzaba:** los tres pasan hoy por no hablar con la
-> red, que es un motivo más débil que el que tenían escrito. `GUARDAS_DE_BARRIDO`
-> declara por barrido su guarda —precondición en `borrarPropuestasVencidas`
-> (ventana **cubierta**), margen en los otros dos (ventana **aceptada**, con el
-> motivo escrito)—, con la declaración **y el uso** anclados en el fuente, y no
-> deja declarar un margen como si cubriera la corrida. Queda **B-879**.
-
-**Lo encontró el `auditor-privacidad` sobre B-864.** `sintomasDeB85`
-(`tests/clases-de-bug.test.ts`) define el efecto como `/\.(set|update)\(/`, así que
-un barrido que **borra** lo que leyó sin comparar la versión es invisible para el
-chequeo. Y hay un caso que lo declara limpio con esas palabras: «los tres barridos
-entran al chequeo, y pasan **porque borran**».
-
-B-864 es el contraejemplo exacto: `borrarPropuestasVencidas` tenía la forma de B-85
-—leer al principio de la corrida, actuar segundos después sin comparar— y ese caso
-la daba por buena. **Es la misma clase que B-845 cerró hace un día, del otro lado:**
-allá el chequeo no veía el efecto porque estaba en el módulo de al lado, acá no lo
-ve porque el verbo es otro.
-
-Ahora **uno de los tres barridos tiene la guarda y los otros dos no**, y nada nombra
-la diferencia; `limpiarImagenesHuerfanas` mitiga con `MARGEN_DE_GRACIA_MS` (72 h),
-que es otra cosa y no cubre la ventana intra-corrida.
-
-El arreglo es sumar `\.delete\(` al síntoma y declarar por barrido cuál es su guarda
-—precondición, generación, o margen de gracia con el motivo escrito—. Y por eso
-mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que medir qué
-entra que hoy no entra **antes** de aplicarlo, no después. Es el mismo motivo por el
-que B-862 está anotado y no hecho.
-
-### B-863 · La propuesta aceptada conserva el contacto para siempre — y también la foto — ✅ hecho (2026-09-10) · P2
-
-**Lo encontró el `auditor-privacidad` sobre B-844.** `aceptada: null` se decidió
-**por el contacto** («ahí sirve: la actividad existe y puede haber que
-repreguntar») y los tres textos que la justifican hablan solo de eso. Pero al
-convertir se promueve una **copia** a `imagenes/` y el objeto de `propuestas/` no
-se toca —«se lo lleva el ciclo de la propuesta», dice el comentario del panel—,
-así que con `aceptada` sin plazo **ese ciclo no llega nunca**: la foto de un
-tercero queda sin fecha de vencimiento bajo un prefijo que
-`limpiarImagenesHuerfanas` **no barre** (solo recorre `imagenes/` y `miniaturas/`).
-
-O sea que una decisión que se tomó mirando un campo se aplicó a dos, y del
-segundo no se habló.
-
-Lo barato es borrar el original cuando la promoción sale bien: la copia ya existe.
-Pero es **una decisión y no un renglón** —el original es también la prueba de qué
-mandaron— así que va acá y no en B-844. Su test:
-`it('la aceptada conserva el contacto pero no la foto original')`.
-
-> ✅ **Decidido por el dueño el 2026-09-10: se borra al convertir.** El original
-> no se guarda como prueba; la copia promovida alcanza.
->
-> **Lo que la decisión no dice y hay que resolver al implementarla es *cuándo*
-> dentro de la conversión, y no es un detalle:** «convertir» hoy son dos momentos.
-> Al apretar el botón se promueve la copia y se abre el formulario, y **no se
-> escribe nada más hasta que la actividad se guarda** (D-600). Si el original se
-> borra en el primer momento y el admin abandona el formulario, la copia promovida
-> se la lleva `limpiarImagenesHuerfanas` a las 72 horas y **la propuesta queda sin
-> flyer sin haber sido aceptada nunca** — no se puede reintentar, y nadie se
-> entera. Así que el borrado va en el segundo momento, cuando la actividad
-> efectivamente se guardó y la copia dejó de ser huérfana.
->
-> Y el orden importa igual que en B-838, en el sentido opuesto: acá lo barato es
-> **verificar la copia primero y borrar el original después**. Si el borrado del
-> original falla queda un duplicado, que es inofensivo; al revés se pierde la foto.
->
-> ✅ **Hecho (2026-09-10).** El borrado vive en el trigger de `propuestas/{id}`
-> —renombrado a **`borrarImagenAlCerrar`**, porque el cierre dejó de ser uno
-> solo— y acierta el segundo momento **por construcción**: la transición a
-> `aceptada` **es**, por D-600, «la actividad ya se guardó». El panel no podría
-> hacerlo aunque quisiera: `storage.rules` cierra el `delete` de `propuestas/`
-> para todo cliente. Sigue siendo un trigger y no dos (B-89), partido en
-> `if/else` para que la aceptada no pueda caer en el borrado crudo del rechazo.
->
-> **La verificación son dos y no una:** que la actividad nombre una imagen propia
-> **y** que ese objeto esté en el bucket, porque una copia promovida se va sola a
-> las 72 horas si el formulario queda abierto. Si no pasa, el original se
-> conserva. Lo que **no** puede afirmar, y va dicho: cuál de las imágenes es la
-> copia promovida.
->
-> Su caso vive contra el emulador y afirma **las dos mitades en el mismo `it`** a
-> propósito: mirar sólo la foto pasaría en verde el día que alguien «arregle»
-> esto haciendo caducar la aceptada, que se llevaría puesta la decisión de B-844.
->
-> **Deja un paso manual:** la Function vieja está desplegada y hay que borrarla
-> **después** del deploy de ésta. **Y lo que no cierra es B-871.**
-
-### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja — ✅ hecho (2026-09-10) · P2
-
-**Lo encontró el `auditor-privacidad` sobre B-844.** `borrarPropuesta` hace
-`delete()` con el id que se decidió al principio de la corrida, sin condición.
-Antes la carrera existía solo sobre las rechazadas; ahora cubre **toda la bandeja
-pendiente** y choca de frente con la promesa nueva («moverla de estado le renueva
-el plazo»): entre `propuestasVencibles()` y el `delete()`, un admin que aprieta
-«la estoy mirando» sobre una vencida ve el plazo renovado en Firestore y **pierde
-el documento igual**.
-
-Peor variante, y es propia de D-600: `convertir()` **no escribe nada** hasta que
-la actividad se guarda, así que convertir una propuesta vieja no renueva nada y el
-barrido se la puede llevar **con el formulario abierto** — el `revisarPropuesta`
-posterior falla con NOT_FOUND.
-
-Ventana real: segundos por día. El arreglo que el auditor propone es devolver
-`updateTime` en `propuestasVencibles` (es metadata, no agrega ningún campo del
-documento a memoria) y borrar con `delete({ lastUpdateTime })`.
-
-> ⚠️ **Y no es una línea, por una razón que el auditor no vio: choca con el orden
-> de B-838.** El objeto se borra **primero**, así que una precondición que falle
-> en el documento deja la foto borrada y el documento vivo — el huérfano que B-838
-> eligió como «el menos malo», pero acá cae justo sobre la propuesta que un admin
-> acaba de rescatar, que se queda con el flyer roto. La precondición tiene que
-> verificarse **antes** de tocar Storage (una relectura, o mover la guarda arriba),
-> y eso es rediseñar `borrarPropuesta`. Por eso se anota y no se hizo.
-
-> ✅ **Hecho (2026-09-10).** El barrido borra con **dos guardas y no una**, porque
-> son dos almacenes con capacidades distintas: `delete({ lastUpdateTime })` sobre
-> el documento —atómico, sin ventana— y una **relectura de metadata antes de tocar
-> Storage**, que es la única forma de proteger el objeto (Storage no tiene
-> precondición que ponerle a un `delete()`). **El orden de B-838 no se cambió**: el
-> objeto sigue primero, la guarda nueva va arriba de los dos, y su test sobre el
-> fuente pasó de fijar dos posiciones a fijar tres. Se evaluó invertir el orden
-> cuando hay precondición y se descartó con el argumento escrito: vuelve
-> catastrófico el fallo **más probable** —un transitorio de Storage—, que dejaría
-> la foto sin documento y sin corrida de mañana que reintente.
->
-> La relectura es `getAll(ref, { fieldMask: [] })` y **no** un `ref.get()`: un
-> `get()` traería el contacto del tercero a la memoria de la Function y desharía la
-> garantía de B-838. El `updateTime` que la query ahora devuelve es metadata del
-> snapshot, no un campo.
->
-> **Agrega una cuarta forma de perder la mitad del borrado, y va dicha:**
-> `la-tocaron-tarde` —documento vivo, foto muerta— si la tocan en la ventana que
-> queda entre la relectura y el `delete`. Cae del lado que B-838 eligió como el
-> menos malo pero sobre la peor propuesta posible; no se puede cerrar mientras
-> Storage no tenga precondición, así que se mide: `warn` con contador propio, y su
-> caso forzando la ventana con un `db` que mete la escritura del admin adentro del
-> `getAll`. Doce mutaciones probadas, tres siendo el argumento del diseño.
->
-> **Lo que NO cierra es la variante de `convertir()`** —el barrido se la lleva con
-> el formulario abierto—: **B-866**. La precondición no puede cubrirla porque D-600
-> no escribe nada, así que no hay versión nueva contra la cual proteger. Y salió
-> **B-867**, del `auditor-privacidad`.
-
-### B-865 · El barrido de retención no lleva `limit()` — ✅ hecho (2026-09-11) · P3
-
-> ✅ **Hecho.** La query pagina de a 200 con cursor y corta cuando las candidatas
-> llenan `MAX_PROPUESTAS_POR_CORRIDA` — ese tope ahora acota la lectura además del
-> borrado. **Lo que el ítem no decía y resultó ser el contenido del cambio: un
-> `limit()` a secas habría dejado de cumplir el plazo en silencio.** Sin `orderBy`
-> el orden es por id, así que leería siempre las mismas cincuenta y una vencida más
-> adelante en la colección no se borraría nunca. El corte es por **trabajo** y no
-> por cantidad leída.
->
-> **Queda un residual que merece mirarse el día de B-836a:** sin nada vencido, la
-> búsqueda recorre la colección igual. No hay índice que lo evite —el reloj es el
-> máximo entre dos campos y depende del estado— y la única salida sería
-> denormalizar un `venceEn`, que es un campo nuevo del modelo.
-
-Nota operativa del `auditor-privacidad` sobre B-844. La query ahora arrastra
-**toda la bandeja pendiente** en cada corrida, no solo las rechazadas. Con la
-escritura anónima cerrada da igual —la colección está vacía—; el día que se abra
-`allow create` (**B-836a**) conviene revisarlo junto con
-`MAX_PROPUESTAS_POR_CORRIDA`, que hoy recorta el **borrado** y no la **lectura**.
-
-### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` — ✅ hecho (2026-09-11) · P4
-
-> ✅ **Hecho junto con B-867** (mismo archivo, misma función). `RE_RED` pasó a
-> `\bgoogle\.\w+\(` y quedó declarada **una sola vez**: estaba copiada literal en
-> `helpersConRed` y en `nombresConRed`, o sea la clase de B-88 esperando a que
-> alguien ensanchara una de las dos.
->
-> **Medido:** el único trigger que cambia de respuesta es `traerAnaliticaDelSitio`,
-> por su helper `clientes`. Sigue afuera de la clase por lo que el ítem decía: **no
-> lee estado**. Las dos mitades están afirmadas por separado, así que el día que
-> aparezca ese cursor el chequeo lo agarra — la mutación que le agrega un `.get()`
-> pone en rojo el chequeo de B-85 mismo.
-
-**Lo midió el frente de B-845** al ensanchar el chequeo del otro lado.
-`helpersConRed` busca `fetch(`, `cal.events.` y `google.calendar(`, así que
-`traerAnaliticaDelSitio` —que habla con GA4 y con Search Console— da `red: false`.
-
-**Hoy no tapa nada, y el motivo es preciso:** ese schedule **no lee estado**
-(`lectura: false`), escribe una foto completa. O sea que le falta el primer
-síntoma de la clase, no solo el segundo. Pero el día que lea algo suyo —un cursor
-de la última ventana traída, por ejemplo— entra en la clase de B-85 y el chequeo
-no lo vería, **por el mismo tipo de ceguera que B-845 acaba de cerrar del otro
-lado**: el detector reconoce las formas que ya vio, no la que hay.
-
-El arreglo es una línea del regex (`google\.\w+\(` en vez de `google\.calendar\(`)
-y por eso mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que
-medir qué entra que hoy no entra antes de aplicarlo, no después.
-
-### B-860 · El `imagenUrl` del `events.json` es la tercera respuesta a «cuál es la imagen», y la única cruda — ✅ hecho (2026-09-11) · P4
-
-> ✅ **Hecho.** `imagenUrlDe` usa `imagenesPublicables` + `urlSegura`: las mismas
-> dos funciones que `imagenesDeDetalle` y **el mismo orden** —filtrar primero,
-> elegir portada después—, que es el que evita que una portada rota deje al índice
-> sin imagen habiendo una sana.
->
-> **El atenuante se verificó, no se asumió:** ninguno de los ocho consumidores de
-> `EntradaDeIndice` lee `imagenUrl`.
->
-> **Y el ítem se quedó corto:** el arreglo prometía convergencia índice↔detalle y
-> la habría dejado fijada por **dos literales en dos archivos de test distintos**
-> —su propia clase un nivel más arriba—. Lo cobró el `auditor-privacidad`.
-
-**Lo encontró el frente de B-854** después de unificar las otras dos.
-`imagenUrlDe` (`src/lib/eventsJson.ts`) es `portadaDe(a.imagenes)?.url ?? null`:
-**ni `urlSegura` ni el filtro de `imagenesPublicables`**. O sea que el
-`events.json` publica `imagenUrl: "javascript:alert(1)"` para una actividad con el
-`imagenUrl` legacy roto.
-
-**El atenuante, que es lo que lo baja a P4 y hay que decirlo entero: hoy ese campo
-no tiene lector.** D-146 sacó las imágenes del listado y el `og:image` sale de
-`detalle.imagenes[0]`, ya saneado. Es un campo público sin consumidor, no un XSS
-—no hay ningún `href` ni ningún `src` que lo reciba—. Pero es un dato crudo en un
-artefacto público y estático, y el día que alguien lo lea va a leerlo creyendo que
-pasó por el mismo filtro que las otras dos respuestas.
-
-El arreglo es la línea que el frente dejó escrita:
-`urlSegura(portadaDe(imagenesPublicables(a.imagenes))?.url ?? null)`. Va con su
-caso y con el barrido de la salida 1, que es lo que lo hace más que un `sed`.
-
-### B-861 · El `tallerista` del `events.json` sigue mirando el objeto y no el nombre — ✅ hecho (2026-09-11) · P4
-
-> ✅ **Hecho, y valía más de lo que el ítem decía.** No es solo el `''` vs `null`:
-> con el predicado viejo, la cáscara `{ nombre: '', bio: 'algo', instagram: '@x' }`
-> **publicaba la bio y el Instagram de alguien sin nombre** en la salida más barata
-> de cosechar.
->
-> Se corrigió en `toPublic` y no en `entradaDeIndice`: es la frontera por la que
-> pasan las dos salidas, así que el índice hereda el `null` sin un segundo
-> predicado.
->
-> **Lo que NO cierra: la salida 5.** `handlesDe` lee el documento crudo, así que el
-> texto para redes sigue arrobando al tallerista sin nombre. Antes de este ítem las
-> tres coincidían; ahora divergen. Es **B-881**.
-
-**La hermana de B-854 del lado de la proyección.** `toPublic.ts` decide
-`tallerista: a.tallerista ? {…} : null`, y `entradaDeIndice` lo colapsa a
-`a.tallerista?.nombre ?? null`, que para la cáscara vacía da `''` y no `null`.
-
-Es el mismo predicado que B-854 corrigió en la página de detalle, en el único lugar
-donde todavía se contesta con el objeto. Vale menos que aquél —el `events.json` no
-es lo que Google lee como `performer`— pero es la misma pregunta con dos respuestas
-en el repo, que es exactamente lo que B-854 vino a cerrar.
-
-**Ojo con el alcance:** esto sí ripplea al `events.json` y al barrido de salidas
-públicas, así que no es un cambio de una línea sino de una línea más su fixture.
-
-### B-859 · La bandeja acepta un `incluye` que `/proponer` deliberadamente no ofrece — ✅ hecho (2026-09-09) · P3
-
-**Lo encontró el frente de B-842** verificando de dónde sale la taxonomía que usa
-la conversión, y es la asimetría al revés de la que ese ítem describe: acá no falla
-la regla, falla que **las dos puntas del mismo camino usan listas distintas**.
-
-`useOpciones` devuelve dos: `valores` es **todas** las opciones —existe para
-*resolver etiquetas*, porque una actividad vieja puede estar usando una opción
-pendiente de otra cuenta— y `elegibles` es lo que esta cuenta **puede elegir**, que
-sin `uid` son las aprobadas. `/proponer` ofrece `opcionesPublicas(...)`, o sea las
-aprobadas. Pero `PropuestasPanel` le pasa a la conversión `incluyeConocido.valores`.
-
-O sea que un `curl` puede nombrar un slug que **existe pero está pendiente de
-aprobación**, y la conversión lo trata como conocido. **No es una fuga de texto de
-un tercero** —la etiqueta que se publica la escribió un admin, no quien propuso—
-pero deja que un anónimo elija una opción que el formulario público deliberadamente
-no ofrece, que es exactamente lo que **D-30** decide. La distinción entre las dos
-listas ya existe para esto: es usar la otra.
-
-Y el motivo por el que no lo agarró nadie es el de siempre: **las dos listas
-funcionan**. El resultado se ve bien en la bandeja, se publica bien, y la única
-diferencia es cuál de las dos preguntas se contestó.
-
-> ✅ **El hallazgo principal está arreglado (2026-09-09).**
-> `PropuestasPanel.convertir` pasa a `incluyeConocido.elegibles`, que es la misma
-> lista que ofrece `/proponer`. Caso nuevo con mutación probada en
-> `tests/propuestas-panel.render.test.tsx`, y —de yapa— **el mock de
-> `useOpciones` de ese archivo pasó a derivar `elegibles` con el `opcionesVisibles`
-> real**: devolvía `[]`, o sea que no ejercitaba nada. Los dos menores de abajo
-> siguen abiertos.
-
-**Dos hallazgos menores del mismo frente, que van acá porque son del mismo camino:**
-
-1. **La bandeja pinta los `incluye` sin distinguir conocido de inventado**
-   (`etiqueta` devuelve el slug crudo si no está en la taxonomía). Funciona, pero
-   mezcla en una línea de texto lo que se va a publicar y lo que no — que es
-   literalmente el punto de B-842 («doce chips que parecen taxonomía se leen como
-   taxonomía») aplicado a la única pantalla donde el admin decide. Un `†` o un
-   color costaría una línea.
-2. **Los duplicados sobreviven la conversión.** El formulario público no puede
-   producirlos (el toggle usa `includes`), pero un `curl` sí: doce veces
-   `merienda` llega al formulario y, si el admin no mira, a la ficha como el mismo
-   chip repetido. Es cosmético y **el admin lo ve como lo que es**, a diferencia
-   del slug inventado, que se disfraza. Un `[...new Set(incluye)]` con su caso.
-
-### B-856 · `ActividadFormulario.tsx` pasó el umbral de 550 LOC que el §1.3 tenía escrito — ✅ hecho (2026-09-11) · P3
-
-> ✅ **Decidido: el umbral estaba mal calibrado, y lo que estaba mal es la
-> unidad.** No se partió nada.
->
-> **La medición contestó la pregunta sola.** De las 727 líneas, **324 son prosa y
-> 372 son código**; de las 314 que sumó desde la medición anterior, **198 son
-> comentario**. Y la comparación que cierra el caso: la hipertrofia de este mismo
-> archivo (`af90b4e`) tenía 858 LOC con **780 significativas**; hoy son 727 con
-> **407**. 46 líneas de código por import entonces, **13** ahora.
->
-> **El umbral nuevo: 550 líneas significativas, no 550 `wc -l`.** El número no se
-> toca. El fan-out pasa de término de la alarma a lectura — el umbral viejo era una
-> conjunción y se había dado por cruzado leyendo media.
->
-> **Y la otra mitad: las pestañas ya son componentes propios.** Ocho de las nueve
-> tienen una sola sección, así que un panel por pestaña sería un envoltorio de la
-> sección que ya existe. El estado tampoco puede bajar.
->
-> **Una corrección al propio ítem:** el fan-out no fue de 24 a 27 sino de **26 a
-> 31** — el instrumento pierde los imports multilínea (**B-877**). La conclusión
-> sobrevive con más margen: aun con el numerador corregido, el LOC crece cuatro
-> veces más rápido que los módulos que el archivo conoce.
-
-**Lo disparó la remedición de B-849**, y es la primera vez que un umbral escrito
-en `docs/10-salud-del-codigo.md` se cruza: **727 LOC** contra las 550, y del
-puesto 28º al **18º de 254**. Contado commit por commit, cruzó el umbral el
-**2026-09-07 con D-490** (las pestañas) y siguió con B-814.
-
-**El dato que dice qué clase de problema es:** el fan-out creció de 24 a **27**
-mientras el LOC crecía un 76 %. O sea que **no se volvió un módulo que sabe de
-todo**: sigue teniendo forma de compositor, y lo que engordó es el armado. Eso
-descarta el diagnóstico fácil («hay que partirlo en cinco») y hace que valga
-mirarlo antes de tocarlo.
-
-Lo que hay que decidir mirándolo: si las pestañas pueden ser componentes propios
-sin que el estado del formulario se disperse —que es lo que hoy lo mantiene en un
-solo archivo— o si el umbral está mal calibrado para un compositor y hay que
-subirlo con argumento. Las dos son respuestas válidas; la que no vale es dejarlo
-sin decidir, porque entonces el umbral deja de significar algo.
-
-### B-855 · Dos tests sobre fuente tienen su propio saneador, y uno de ellos ya puede dejarlo — ✅ hecho (2026-09-11) · P3
-
-> ✅ **Hecho. Las dos afirmaciones eran ciertas; la primera estaba incompleta.**
->
-> El compartido no saca «de más» solo los `<!-- -->`: la familia más grande son
-> los **`//` que no arrancan la línea**, que el recorte local no tocaba porque
-> anclaba en `^\s*`. Van en la misma dirección que el ítem decía —más comentario,
-> ningún identificador de código— pero la que más texto sacaba no estaba anotada.
->
-> La segunda fue exacta al caso: con el default, `listado-del-sitio` da **1 de
-> 47** en rojo, y es el `cerrarPanel`.
->
-> **Lo que el ítem dejaba abierto: el default sigue siendo el que colapsa.**
-> Colapsar le saca el formato de encima al aserto, y `sinComentariosConFormato` es
-> la elección frágil, así que se pide por nombre. El contrafáctico pesa igual:
-> `appcheck.test.ts` dice en un comentario propio que su aserto está escrito
-> **porque** esto colapsa.
->
-> **Y la verificación que el ítem no pedía pero el cambio sí:** que los asertos
-> sigan **significando** lo mismo se midió predicado por predicado, no por «quedó
-> verde». Uno hubo que reescribir. Quedó abierto **B-876**.
-
-**La segunda mitad de B-853.** `tests/listado-del-sitio.test.ts` y
-`tests/pagina-de-detalle.test.ts` se escribieron con un recorte de comentarios
-propio en vez del compartido, y ese esquive era la señal de que el problema de
-B-853 se conocía a medias. Con el saneador arreglado se probó sacarlos:
-
-- **`pagina-de-detalle` se puede y queda verde.** Verificado sobre los 26 `.astro`
-  de `src/`: lo único que el compartido saca de más son palabras de prosa adentro
-  de `<!-- -->`, que el recorte local **no** sacaba y debería. Ningún identificador
-  de código perdido.
-- **`listado-del-sitio` no todavía, y el motivo no es el bug**: el saneador
-  compartido **colapsa el espacio en blanco** (`\s+ → ' '`) y ese archivo tiene
-  regexes que dependen de la indentación literal —
-  `/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/` da `null` sobre el texto
-  colapsado—. El camino limpio es **exportar la variante sin colapsar**: el colapso
-  es la última línea del módulo, separarlo es trivial, y `listado-del-sitio` pasa a
-  usar esa.
-
-Lo que se gana no es dedupliar por deduplicar: es que los dos recortes locales
-**no tienen** la red de clase contra el parser de TypeScript que B-853 le puso al
-compartido, así que hoy son dos lugares donde el mismo bug puede volver a nacer sin
-que nada se ponga rojo.
-
-### B-854 · El panel dice «tiene flyer» y «tiene tallerista» con un predicado distinto del que publica el JSON-LD — ✅ hecho (2026-09-09) · P3
-
-**Salió del frente de B-813**, que evitó esta clase donde estaba mirando —los tres
-números nuevos usan `urlSegura` y `admiteMonto`, las mismas funciones que deciden
-el markup— y encontró dos instancias viejas al lado.
-
-1. **`faltaElFlyer` y el `image` del JSON-LD no son el mismo predicado.**
-   `faltaElFlyer` (`src/lib/imagenes.ts`) pregunta «¿la portada tiene una `url` no
-   vacía?»; `datosEstructurados` pregunta «¿hay alguna imagen que `urlSegura`
-   acepte?». Divergen en los dos sentidos, y el peligroso es éste: **una portada
-   con url no vacía pero inválida** —posible en los documentos con el `imagenUrl`
-   legacy, que nunca pasó por `esUrl`— hace que el panel diga «tiene flyer»,
-   `/cartelera` no la muestre y Google no reciba `image`. Nadie se entera.
-   El arreglo natural es que `faltaElFlyer` use `urlSegura`; toca tres consumidores
-   (el aviso del formulario, la marca del listado y `/cartelera`), así que la parte
-   fina es revisar qué se rompe en cada uno, no la línea.
-
-2. **`datosEstructurados` emite `performer` mirando el objeto y no el nombre**
-   (`d.tallerista ? { …, name: d.tallerista.nombre }`, `detallePublico.ts`). Hoy lo
-   tapa `formADocumento`, que escribe `tallerista: null` cuando no hay nombre
-   (`actividades.ts:116`), pero un documento **anterior a esa regla** publica
-   `performer.name: ''` en el JSON-LD. Es una línea, y merece su caso.
-
-Las dos son la clase de **B-88** con la cara menos visible: no es una segunda lista
-de reglas escrita a mano, es la **misma pregunta contestada por dos funciones** que
-nacieron para cosas distintas y hoy se leen como si fueran la misma.
-
-> ✅ **Arreglado (2026-09-09). Los dos diagnósticos eran ciertos, y el (1) tenía un
-> consumidor de menos y un agravante de más.**
->
-> **La corrección al ítem: `/cartelera` no llamaba a `faltaElFlyer`.** Lo decía su
-> docblock y no el código. Los call-sites reales son cuatro en tres módulos —el
-> aviso del formulario, el chip del listado, y el aviso `sin-flyer` más la cobertura
-> `conFlyer` del tablero—. La cartelera y el `image` del JSON-LD son la **cuarta**
-> respuesta, escrita por el consumidor sobre `DetallePublico.imagenes`, y eso es
-> justo lo que hacía invisible la divergencia: no había dos funciones enfrentadas en
-> la misma lista, había una lista de tres y un consumidor que contestaba por su
-> cuenta.
->
-> **El agravante:** el docblock de `enGoogle` (B-813, de esta misma tanda) afirma
-> que `image` «ya es» la cobertura «Con imagen» y el aviso `sin-flyer`, y con dos
-> predicados distintos esa frase era falsa — una legacy rota se contaba como «Con
-> imagen» y Google no recibía nada. Hoy es cierta.
->
-> **El arreglo no es «`faltaElFlyer` usa `urlSegura`», es una sola derivación**:
-> `imagenesPublicables` (`lib/imagenes.ts`) es la mitad de `imagenesDeDetalle` que
-> decide cuáles entran, y ahora la llaman las dos puntas. Y el predicado del panel
-> pasó de «la portada tiene dirección» a «queda alguna publicable», que es lo que la
-> salida hace a propósito: `imagenesDeDetalle` busca la portada **después** de
-> filtrar para que una portada rota no deje la página sin imagen habiendo otras. El
-> arreglo literal del ítem habría dejado la misma grieta un tamaño más chico —
-> portada rota + foto sana daría «Sin flyer» con la pared mostrando la foto.
->
-> **El (2) se corrigió en `detalleDeActividad` y no en la línea del `performer`, y
-> por eso cerró dos superficies:** la plantilla gatea la sección «Quién lo da» con
-> el mismo objeto, así que la cáscara vacía también pintaba un `<h2>` con el nombre
-> en blanco. Se pierde la `bio` de un documento sin nombre, y está bien:
-> `formADocumento` ya la tira en el próximo guardado. Mismo criterio que
-> `libroPublico`.
->
-> **Lo que impide que se separen de nuevo es la atadura y no los casos.** Sobre una
-> familia de ocho galerías: «falta el flyer» ⟺ la página no publica ninguna imagen ⟺
-> no entra a la cartelera ⟺ el JSON-LD no lleva `image`. Cuatro mutaciones probadas;
-> la que justifica el diseño es la cuarta —sacarle el filtro a `imagenesDeDetalle`—,
-> porque pone la atadura en rojo desde el lado de la **salida**, que es la dirección
-> que ningún caso suelto cubría. Nota honesta: la atadura sola no alcanza —una
-> mutación que mueve las dos puntas a la vez la deja verde—, y por eso convive con
-> los casos por valor.
->
-> **Quedaron dos hermanas afuera, en la proyección del `events.json`:** son **B-860**
-> y **B-861**.
-
-### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan — ✅ hecho (2026-09-09) · P2
-
-**Lo encontró el frente de B-798 midiendo**, y es previo a su cambio: verificado
-contra el archivo de `HEAD`. El saneador compartido reduce `Buscador.tsx` de
-**41.363 a 6.904 caracteres** —se pierden `export function Buscador` y las dos
-llamadas a `medirSitio`—, así que **cualquier test que lo use sobre ese archivo
-está afirmando sobre casi nada**.
-
-Es la **misma clase** que el bug que ese script ya tuvo con `firestore.rules`
-(2026-09-09, en la tanda de B-830): un `/*` que aparece adentro de un comentario de
-línea abre un bloque que se come todo hasta el próximo `*/`. Aquella vez se arregló
-**el orden** de los dos reemplazos; esto es otra forma del mismo agujero, así que
-el arreglo de entonces no lo cubrió y el docblock del script sigue prometiendo que
-«se audita de más y nunca de menos», que es **exactamente lo contrario** de lo que
-pasa acá.
-
-Lo que hay que hacer: encontrar cuál construcción de `Buscador.tsx` lo dispara
-—probablemente una expresión regular o un string con `/*` adentro, que es lo que un
-recorrido por texto no puede distinguir—, arreglarlo con su caso, y **barrer quién
-más lo usa**: `tests/listado-del-sitio.test.ts` y `pagina-de-detalle.test.ts` ya lo
-esquivan con un recorte propio, y ese esquive es la señal de que el problema se
-conocía a medias.
-
-> ✅ **Arreglado (2026-09-09), y el disparador no era ninguno de los dos que este
-> ítem sospechaba.** No era un regex ni un string con `/*`: era el `\s*` del patrón
-> de JSX, que deja que `interface Props {` más el docblock de su primera propiedad
-> sean una apertura de comentario. Como el cierre exige el `*/` pegado a un `}`, la
-> búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**.
->
-> **Se reemplazaron las cuatro pasadas de `replace` por un solo recorrido de
-> izquierda a derecha** sobre una alternación de tokens (comentarios + strings).
-> Eso cierra las **cuatro** instancias de la familia y no solo la de este ítem: el
-> `/*` adentro de un `//` (B-830), el `//` adentro de un bloque, el `{` de acá, y
-> el `//`/`*/` adentro de un string. **Y desmiente lo que este ítem daba por
-> hecho**: el arreglo de B-830 no «no lo cubrió» por casualidad, no podía cubrirlo,
-> porque el problema nunca fue el orden sino que cada pasada arranca de cero sobre
-> un texto que la anterior ya reinterpretó.
->
-> La promesa «se audita de más y nunca de menos» se corrigió en el docblock: no hay
-> lado seguro al que apostar —los consumidores piden las dos direcciones— así que
-> hay que no equivocarse, y el error residual se elige del lado del residuo porque
-> es el único acotado.
->
-> **No se escribió un parser**, y el argumento está en el módulo: lexear literales
-> de expresión regular necesita el token anterior, o sea medio parser de JS, que
-> además no cubriría `.astro` ni `firestore.rules`. En su lugar hay red de clase —
-> `tests/sin-comentarios.test.ts` compara contra el parser de TypeScript sobre los
-> 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de
-> código. Contra la implementación vieja da rojo en **23 archivos**.
->
-> **Ningún consumidor actual estaba afectado: el agujero era latente.** Los cinco
-> dan salida idéntica antes y después. Lo que esperaba no era un bug con víctima
-> sino que alguien apuntara el saneador a cualquiera de esos 23 —`VisorDeGaleria`
-> al 91%, `PropuestasPanel` al 84%, `ActividadFormulario` al 78%—. La segunda mitad
-> del ítem, la de unificar los recortes locales, quedó como **B-855**.
-
-### B-851 · El barrido de promesas no cubre las promesas sobre plata — ✅ hecho (2026-09-09) · P2
-
-> ✅ **Cerrado: la familia está en el barrido que ya existía, y su premisa se
-> deriva.**
->
-> `PROMESAS_SOBRE_PLATA` son cinco fórmulas con las dos escapatorias de siempre, y
-> `elSitioVendeEspacio()` —la prosa de `comercialDelSitio.ts` más la existencia de
-> `/anunciar`— es lo que las hace exigibles: **el día que el sitio deje de vender
-> espacio, el barrido se apaga solo** y la promesa vuelve a ser escribible, en vez
-> de quedar un test exigiendo callar algo que ya es verdad. Un caso aparte afirma
-> la premisa, para que esa derivación no se pueda romper **en silencio**.
->
-> **Un campo que la familia de datos no necesitaba: `acotable`.** La promesa de que
-> no hay publicidad **no** se acota —habla de lo que el sitio hace, no de lo que le
-> cobra a quien lee— y sin esa distinción el barrido se pierde justo la frase de
-> B-785, que traía «es gratis» pegado en la misma ventana. Es exactamente como esa
-> frase llegó a producción.
->
-> **El barrido no pasa por vacío:** hoy hay tres frases publicadas que disparan una
-> fórmula y las rescata el alcance. Sacar la escapatoria las nombra.
->
-> **Dos cosas anotadas y no tocadas:** «La agenda es gratis y va a seguir siendo
-> gratis» (`apoyoDelSitio.ts`) queda **rescatada** por el alcance —mismo criterio
-> con el que B-785 conservó el «es gratis» de `/ayuda`: `/anunciar` le cobra a un
-> café por que se lo vea, no a quien lee ni a quien publica—, y el docblock de
-> `POR_QUE_ACA` en `comercialDelSitio.ts` dice «los cuatro argumentos» cuando el
-> array tiene **tres**.
-
-**Salió de cerrar la mitad de la ayuda de B-785.** `tests/promesas-sobre-datos.test.ts`
-barre todos los `*DelSitio.ts` buscando negaciones absolutas **sobre datos del
-visitante**, y por eso no vio que la ayuda dijera «no tiene publicidad y va a
-seguir así» con `/anunciar` vendiendo espacio en el encabezado.
-
-Es **la misma clase** —una afirmación pública que el sitio desmiente, en HTML
-indexado— sobre otro eje. Y el caso quedó resuelto en `tests/ayuda-del-sitio.test.ts`,
-o sea **en una sola página**: exactamente lo que B-781 dijo que no alcanzaba cuando
-el caso de `/apoyar` vivía solo en `apoyo-del-sitio.test.ts`.
-
-La versión general es una familia `PROMESAS_SOBRE_PLATA` en el barrido que ya
-existe, con la misma forma que la de datos: patrones de promesa («no tiene
-publicidad», «siempre va a ser gratis», «nunca vamos a cobrar»), las escapatorias
-que la acoten o la condicionen, y **la premisa derivada** de `comercialDelSitio.ts`
-—si algún día el sitio deja de vender espacio, la promesa vuelve a ser escribible y
-el barrido tiene que dejar de exigirla—. Los dos sentidos del detector, como el
-otro.
-
-### B-849 · El §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice 250 — ✅ hecho (2026-09-09) · P3
-
-> ✅ **Hecho, con una corrección al propio ítem y dos problemas que la medición
-> cerró de paso.**
->
-> El §1 y el §6 están remedidos con `node scripts/salud-del-codigo.mjs`,
-> `npm test`, `npx tsc --noEmit` y `npm audit --omit=dev`, **y cada cifra dice con
-> cuál** — que era la mitad faltante de la pasada anterior. Los números viejos
-> quedaron como historia fechada, no se borraron. Producción: **254 archivos /
-> 63.983 LOC** (eran 180 / 41.388); concentración **26,6 %**; ratio de tests
-> **1,69**.
->
-> **La corrección: el ciclo no nació con B-841.** Nació con **B-62 el 2026-09-07**
-> —`campos/Seccion.tsx → AyudaDeSeccion → import(CentroAyuda) → campos/Seccion.tsx`—
-> y B-841 le renombró un nodo. Se **declara** en el §1.5 en vez de romperse: la
-> arista del medio es un `lazy(import())`, que no cierra un ciclo de
-> inicialización, y cortar la de vuelta metería un segundo amarre del panel en
-> `CentroAyuda` — la duplicación que la capa de B-841 existe para evitar. El test
-> sigue verde porque corre sobre el grafo estático, y se pone rojo el día que ese
-> `import()` deje de ser diferido.
->
-> **Cerraron el Problema 3** (`functions/index.js`, 48 LOC) **y el Problema 4**
-> (Astro 7.3.1). **Se abrió B-856** (`ActividadFormulario.tsx` pasó las 550 LOC), y
-> quedaron reportados dos pendientes dentro del propio documento: nada verifica que
-> el ciclo diferido siga siendo el único, y el barrido de prosa envejecida del §1.6
-> se hizo sobre 41.388 de las 63.983 LOC que hay.
-
-**Lo trajo el frente de B-806** cerrando el conteo de tests de render, y lo dejó
-afuera a propósito: es otra pasada, no una línea suelta. El §1 declara **180
-archivos y 41.388 LOC** de producción; `node scripts/salud-del-codigo.mjs` hoy
-mide **250 y 62.139** (con `src/` en 197 archivos).
-
-El documento **vale porque cada número dice cuándo se contó**, así que la pasada
-completa es el trabajo: correr el script, actualizar las cifras del §1 y del §6, y
-dejar la medición vieja como historia con su fecha, igual que se hizo con el
-Problema 1. De paso el script reporta un **ciclo de imports vivo**
-(`campos-del-panel.tsx → AyudaDeSeccion.tsx → CentroAyuda.tsx → campos-del-panel.tsx`),
-que nació con el refactor de B-841 y no está anotado en ninguna parte.
-
-### B-850 · El campo de texto alternativo sigue diciendo «Se necesita para publicar», y su error es código muerto — ✅ hecho (2026-09-09) · P2
-
-> ✅ **Cerrado, con una corrección al propio diagnóstico y un tercer resto que el
-> ítem no nombraba.**
->
-> El cartel dice ahora lo que es cierto —no frena la publicación, y por qué conviene
-> completarlo igual— **en sus dos ramas**. Del punto 2 se eligió **sacar la ruta
-> muerta** y no darle largo máximo al campo, por un dato que el ítem no tenía a
-> mano: **ningún campo de texto del schema tiene `.max()`** —los únicos son
-> `geo.lat` y `geo.lng`—, así que la otra salida era inventar una regla que el
-> modelo no tiene en ninguna parte para que una rama de render volviera a tener con
-> qué alimentarse.
->
-> **La corrección: la fila de `camposFaltantes.ts` NO estaba sin consumidor**, y el
-> ítem se equivocaba. `campos-faltantes.test.ts` compara ese mapa contra
-> `CAMPOS_VALIDABLES` **en las dos direcciones**, y ese set es la *forma* del schema
-> —derivada recorriendo el `ZodObject`— y no la lista de lo rechazable, igual que
-> `imagenes.N.alto` o `imagenes.N.id`, que tampoco pueden fallar. Sacarla habría
-> puesto el test en rojo. Se corrigió su comentario, que era donde vivía la
-> afirmación falsa.
->
-> **Y el tercer resto, que el frente encontró y no era suyo: `src/lib/ayuda.ts` lo
-> contradecía tres veces**, una de ellas marcada `cuidado: true` —o sea presentada
-> como aviso irreversible— y otra afirmando además que «el aviso de abajo dice que
-> falta desde el momento en que agregás la imagen», que tampoco es cierto:
-> `faltaParaPublicar` ya no lo devuelve. Corregidas las tres en el mismo cambio, que
-> es donde correspondía: es el archivo que existe para contarle a quien no participó
-> de la decisión lo que no se ve en pantalla.
->
-> Lo que reemplaza al caso borrado **no es otro `toContain`**: el viejo pasaba
-> porque solo miraba el fuente —afirmaba que dos strings estaban en el `.tsx`, y
-> esos dos strings eran la rama muerta—. En su lugar hay una afirmación sobre el
-> **comportamiento**: los rechazos de un texto de 5.000 caracteres tienen que ser
-> exactamente los de uno corto, y se pone en rojo el día que el campo gane una regla
-> de forma.
-
-**Dos hallazgos del mismo frente (B-815), y los dos salen de la misma reversión:**
-el 2026-09-07 el dueño mandó sacar el bloqueo que D-440 había puesto —el
-`textoAlternativo` de la portada dejó de frenar el publicado— y quedaron dos cosas
-sin actualizar.
-
-1. **`GaleriaEditor.tsx` (~línea 397) sigue diciendo «Se necesita para publicar»,
-   dos veces.** `novedades.ts` sí se corrigió (`describir-la-portada-ya-no-frena`);
-   esta copia no. Le está mintiendo a quien carga, en el campo exacto de la
-   decisión — y es la clase de mentira que este repo persigue en la ayuda del
-   sitio, adentro del panel.
-2. **El error de ese campo es código muerto, y la justificación escrita para
-   conservarlo es falsa.** `opcional = z.string().trim().default('')` **no tiene
-   largo máximo**, así que nada puede producir un issue en
-   `imagenes.N.textoAlternativo`: quedan sin consumidor el `errorAlternativo` de
-   `GaleriaEditor.tsx`, su `<p role="alert">` y la fila de `camposFaltantes.ts`. El
-   CHANGELOG lo justificó diciendo «el campo sigue teniendo forma (largo máximo)»
-   — no la tiene. Y el caso `it('el alternativo de la portada también tiene su ruta
-   y su cartel')` pasa igual **porque solo mira el fuente**: es un chequeo que ya no
-   puede fallar, que es justo la clase que este repo persigue.
-
-Lo barato y honesto: corregir el texto, y **decidir** el error — o el campo gana su
-largo máximo (y entonces el error vuelve a ser alcanzable, que es lo que la
-justificación decía) o se saca la ruta muerta con su caso.
-
-### B-845 · El chequeo de B-85 es ciego a todo trigger que delega en su módulo puro — ✅ hecho (2026-09-09) · P3
-
-> ✅ **Hecho, con el punto ciego comprobado antes del arreglo y una corrección a un
-> aserto propio.**
->
-> **El diagnóstico era correcto y se verificó con un control positivo:** la misma
-> copia mala (leer estado → `fetch` → escribir lo leído, sin transacción) daba
-> **rojo** inline en `retencion-trigger.js` y **verde** una llamada más allá, en
-> `retencion.js`. Los tres barridos no entraban al chequeo.
->
-> El chequeo mira ahora `trazaDe(t).cuerpos`, el recorrido que ya existía — no se
-> escribió un segundo. **Lo que cambió además: el orden salió de la condición.**
-> `cuerpos` no ordena entre cuerpos, y medido sobre `dispararRebuild` su `fetch`
-> cae **después** de su `ref.set(fallo)`: pedir `red < escritura` dejaría escapar la
-> clase viva por un artefacto de la concatenación. Pedir la conjunción es más
-> estricto y es lo correcto.
->
-> **Que no se vuelva ruidoso está afirmado, no esperado:** los tres barridos pasan
-> con `lectura: true` y `escritura: false` —los ve, y salen limpios porque borran—
-> y `dispararRebuild` pasa con los tres síntomas prendidos por su transacción, que
-> es el positivo contra el verde vacío. La copia mala vive como test con cuerpos
-> sintéticos, el patrón que el archivo ya tenía para el detector de B-82.
->
-> **La corrección al propio trabajo:** la mutación «borrar cuenta como escribir»
-> dejó verde el aserto `borrar lo que se leyó no es la clase` — pasaba por no tener
-> red, no por borrar. Se le agregó el `fetch` que le faltaba. Sin cambios en
-> `functions/`.
->
-> De paso quedó anotado **B-862**.
-
-**Lo señaló el `auditor-trampas` auditando B-838**, y es un punto ciego heredado y
-no un bug de ese cambio. El chequeo de la clase de B-85 —«ninguna función
-programada escribe el estado que leyó sin compararlo»— busca `.get()`, `.set()` y
-`.update()` **en el cuerpo del trigger**. Desde que el repo adoptó el corte
-puro/pegamento (B-77), esos verbos viven en el módulo de al lado: ni
-`imagenes-limpieza-trigger.js` ni `versiones-limpieza-trigger.js` ni
-`retencion-trigger.js` los tienen literales, así que **ninguno de los tres pasa
-por ese chequeo**.
-
-Hoy no tapa nada: los tres barridos borran y ninguno escribe lo que leyó. Lo que
-importa es que el próximo que **sí** lo haga entre igual de invisible, y el corte
-puro/pegamento —que es la convención del repo— hace que ese sea el caso normal y
-no la excepción.
-
-Lo barato: que el chequeo trace las llamadas del trigger a su módulo, que es lo
-que ya hace `trazaDe` para los efectos duplicables (`RE_TOKEN` + `enFunctions`).
-O sea, reusar el recorrido que ya existe en el mismo archivo en vez de mirar solo
-el texto del trigger.
-
-### B-844 · Solo caduca la propuesta rechazada: una `nueva` abandonada guarda el contacto para siempre — ✅ hecho (2026-09-09) · P2
-
-> ✅ **Hecho (2026-09-09).** `RETENCION_POR_ESTADO` (`functions/retencion.js`)
-> agrega el segundo plazo. **El dueño contestó 30 días**, no los 90 con que se le
-> hizo la pregunta: `nueva`/`en-revision` caducan a los 30 contados desde la
-> **última señal de vida** (el máximo entre `creadoEn` y `revision.en`).
->
-> **Da el mismo número que la rechazada y son dos constantes a propósito**: dos
-> decisiones que hoy coinciden y pueden divergir —el margen de un arrepentimiento
-> contra cuánto tarda una bandeja en dejar de mirarse—, con un aserto que lo dice
-> al revés y un guard sobre el fuente para que nadie las una por prolijidad
-> (colapsarlas deja hoy **toda la suite en verde**). Criterio de
-> `MINIMO_DESCRIPCION` frente a `LARGO_RESUMEN`.
->
-> El «contados desde `creadoEn`» de abajo se resolvió al revés a propósito:
-> `revision.en` se escribe en todo movimiento de estado, así que una reabierta el
-> día 40 se habría borrado esa misma noche. **Y con 30 días una propuesta puede
-> caducar antes de que nadie la haya abierto**: es correcto —es el caso que el
-> plazo cubre— y la mitigación es que la ficha diga cuántos días quedan durante la
-> última semana (`AVISO_DE_CADUCIDAD_DIAS = 7`, criterio en el docblock y en un
-> aserto, D-273).
->
-> Cruzado contra la Function por catorce fixtures en
-> `tests/bandeja-de-propuestas.test.ts`, y no por import (motivo de alcance en el
-> docblock de `bandejaDePropuestas.ts`).
->
-> **Queda abierta una pregunta chica, y es del código y no del dueño: ¿la
-> `aceptada` tiene que vencer?** Hoy no vence, con el argumento de que ahí el
-> contacto sirve (la actividad existe y puede haber que repreguntar). El dueño no
-> la contestó. Y lo que esa decisión **no** cubre es la foto original — **B-863**.
-
-**Sale de escribir la retención** (B-838, paso 11) y es la mitad que DEC-13 no
-contestó porque no se le preguntó: la decisión del dueño fue «¿cuántos días se
-guarda una **rechazada**? 30», y `decidirRetencion` hace exactamente eso. Las
-otras tres —`nueva`, `en-revision`, `aceptada`— no vencen nunca.
-
-El caso que importa no es la aceptada (ahí el contacto sirve: la actividad existe
-y puede haber que repreguntar) sino **la que nadie miró**. Una propuesta que
-llegó, no interesó y quedó ahí conserva el mail o el WhatsApp de una persona
-**para siempre**, y es el mismo dato que B-102 daba por inexistente y que B-843
-punto 1 obligó a poder borrar.
-
-Hoy hay una salida y está documentada: **rechazarla** la pone en la cola de los 30
-días. O sea que el borrado existe y depende de que un admin toque un botón, que es
-justo lo que la retención automática vino a no depender.
-
-Lo barato: que `decidirRetencion` acepte un segundo plazo, más largo, para la
-`nueva`/`en-revision` sin tocar —90 días, digamos, contados desde `creadoEn`— y
-que la bandeja lo diga. Lo que hay que decidir antes es el número y si la
-`aceptada` entra o no, y eso es del dueño, no mío.
-
-### B-819 · Restaurar puede volver a publicar un link que estaba apagado — y el flag es un par — ✅ hecho (2026-09-08) · P1
-
-> **Resuelto con una sola función para las dos mitades**, como pedía el ítem:
-> `flagsDePublicacionRestaurables` en `src/lib/historial.ts`. Saca «Modalidades» y
-> «Material» de la pantalla cuando la versión prende un flag que hoy está apagado
-> y la actividad tiene página. Se casa por `id` y nunca por posición; un item sin
-> `id` (material anterior a B-342) bloquea igual, porque no se puede probar que ya
-> sea público.
->
-> **Y apareció una tercera cosa que el ítem no nombraba:** la guarda nacía con el
-> agujero de B-285 —decidía contra el snapshot del montaje, así que publicar desde
-> otra pestaña la dejaba pasar—. Lo señaló el docblock de `07-seguridad.md`, que ya
-> contaba que las otras dos se re-evalúan contra lo releído. Ahora se re-evalúan
-> **las tres**, y eso lo fija un control de **clase**: el test barre las llamadas
-> del cuerpo de `restaurarCampo` y rechaza cualquiera que mire `actual`. Con eso, la
-> cuarta guarda que entre no puede repetir el agujero — que es lo que pasó tres
-> veces seguidas.
->
-> **Y la auditoría de cierre encontró un P0 en el propio arreglo**, que vale más
-> que el ítem: la guarda definía «hoy este link ya sale» como `flag === true`, y
-> los tres productores lo definen como `flag && url`. Con
-> `{urlPublica: true, url: ''}` —el estado que queda cuando alguien borra el link
-> apurado para cortar un zoombombing, porque el input y la casilla son
-> independientes y ni `formADocumento` ni el schema atan una cosa a la otra— la
-> guarda leía «ya publicado», dejaba pasar la restauración y la URL volvía a las
-> dos salidas. **El escenario literal de B-819 después del arreglo de B-819.**
->
-> Es la clase D-30/B-88 en el eje que no se había mirado: no el par de campos
-> —eso ya estaba resuelto con una función para los dos flags— sino el par
-> **guarda ⇄ productor**. El predicado se extrajo a `toPublic.ts`
-> (`linkDeReunionQueSale`, `urlDeMaterialQueSale`) y la guarda lo **importa**, con
-> un test de clase que rechaza cualquier copia local. Eso cerró de una vez los
-> otros tres hallazgos menores: el gate de `material.tiene` que estrenaba la
-> página indexada, el `Set<id>` que colapsaba dos filas con el mismo id (la clave
-> es `id|url`), y el `=== true` que dependía del `z.boolean()` del piso de B-818.
->
-> **Se abrió la sección «Las puertas» en la ficha del `auditor-privacidad`.** El
-> agregado de `historial.ts` a los disparadores no lo sostenía ningún test —la
-> lista se deriva de las **productoras**, y una puerta no produce ninguna salida—,
-> así que sacarlo no habría puesto nada en rojo: el mismo modo de falla que el
-> agregado vino a cerrar, un nivel más arriba. Entraron también
-> `actividades.ts`, `opciones.ts` y `reportes.ts`, con la tabla que dice por qué
-> cada una es una puerta y dos asertos que la atan al `description`.
-> `formulario/autoguardado.ts` queda afuera a propósito, con el argumento escrito.
->
-> **No se abrió una D-xxx**, y el motivo es del `auditor-documentacion`: B-819 no
-> decide nada nuevo, aplica **D-124** —que ya estableció que los dos flags son un
-> par y se tratan con una sola función— a una segunda puerta. Abrir D-570 sería
-> documentar dos veces la misma decisión.
->
-> 23 casos nuevos y siete mutaciones probadas. Las que importan: olvidarse de la
-> mitad del material rompe dos casos (D-30/B-88); volver al predicado del flag
-> rompe los siete del P0; y hacer regresar una guarda **vieja** al snapshot lo
-> agarra el control de clase, que es la prueba de que sirve para la cuarta.
-
-
-**Lo encontró el `auditor-privacidad` cerrando B-818**, y lo nombró como lo que
-queda afuera a propósito: ni las guardas puntuales del historial ni el piso nuevo
-de B-818 lo pueden ver.
-
-`online.urlPublica` es el flag de D-15: con `false` el link de la reunión no sale
-a ninguna parte, con `true` sale al `events.json` y al evento de Calendar. **El
-schema no tiene ninguna regla sobre ese flag** —la decisión se delegó al flag a
-propósito— así que `issuesDeRestauracion` devuelve `[]` y no hay nada que frenar.
-
-`online` está en `CAMPOS_DERIVADOS` y no se restaura suelto, pero **`modalidades`
-sí, y lo trae adentro**: restaurar una versión anterior a que el dueño apagara el
-flag lo vuelve a prender, y con eso el link vuelve a las dos salidas. La escritura
-marca rebuild, así que sale solo.
-
-**Y la pantalla no puede avisar**, que es lo que lo hace P1 y no P2: `resumenDeCampo`
-resume un array como «2 elementos», o sea que la fila dice «Modalidades — Decía: 2
-elementos». Quien aprieta no ve que está volviendo a publicar un link que hoy está
-apagado. Es exactamente la forma de B-181, con otro campo y sin el schema atrás.
-
-**Dónde y el molde.** `src/lib/historial.ts`, al lado de `comisionesRestaurables`:
-no restaurar unas `modalidades` que traen `urlPublica: true` sobre un documento que
-hoy lo tiene en `false` y tiene página. La alternativa —nombrarlo en el `confirm()`
-en vez de bloquear— es más barata y peor: el `confirm()` ya dice «¿Restaurar
-modalidades…?» y agregarle una advertencia no cambia que la fila sigue diciendo «2
-elementos».
-
-**El caso legítimo que no hay que romper:** volver a prender el flag a propósito se
-hace desde el formulario, que es donde está la casilla y donde el texto dice qué
-hace (B-240). El historial no es el lugar para eso.
-
-#### Y es un par: `material.items[].publico` es la otra mitad
-
-Lo agregó la segunda pasada del `auditor-privacidad`, sobre la primera versión de
-este ítem, que nombraba solo `online.urlPublica`. **El precedente lo escribió el
-propio repo:** el P1 nº 1 de D-124 —el borrador autoguardado— trató los dos flags
-**juntos** y los apagó juntos con `sinFlagsDePublicacion`. Por la puerta del
-historial se había nombrado uno.
-
-`material` es restaurable, el schema no tiene ninguna regla sobre `publico` (la
-decisión se delegó al flag, D-15), así que `issuesDeRestauracion` devuelve `[]`. Y
-`resumenDeCampo` sobre un objeto sin `nombre` emite **las claves**, o sea que la
-fila dice «Material — Decía: tiene, items»: quien aprieta no ve que vuelve a
-publicar la URL del material que había despublicado. Destino: el `events.json`, la
-descripción del evento y el detalle.
-
-**Cerrar una mitad de un par y no la otra es la clase D-30/B-88** que
-`historial.ts` ya cita tres veces, así que las dos mitades van con **una sola
-función**, no con dos guardas parecidas.
-
-**Lo que NO entra:** `inscripcion.destino`. Ese valor ya era público en las dos
-versiones, así que no hay flag que se prenda ni destino que se abra.
-
-### B-818 · Restaurar «Estado» desde el historial publica sin pasar por ninguna validación — ✅ hecho (2026-09-08) · P1
-
-> **Resuelto con la segunda de las tres salidas: validar el documento resultante**
-> (decisión del dueño, escrita como **D-540**). No se filtró `estado`: filtrarlo
-> cerraba la instancia visible y dejaba la puerta abierta — restaurar una
-> `inscripcion` sin destino o unas `modalidades` incompletas **sobre una
-> publicada** saltea el mismo nivel por el mismo `updateDoc`, y eso no lo tapaba
-> ninguna de las guardas puntuales.
->
-> `issuesDeRestauracion` (`src/lib/historial.ts`) corre el documento que va a
-> quedar por el mismo `actividadFormSchema` que usa `guardarActividad`, entrando
-> por el mismo `documentoAForm`, y **compara los rechazos de antes y de después:
-> solo bloquean los nuevos**. Sin esa resta, una actividad publicada antes de que
-> existiera la regla que hoy la rechaza quedaría con la pantalla de recuperación
-> entera bloqueada, que es justo la pantalla a la que se va cuando algo está roto.
-> El caso de este ítem igual queda bloqueado porque restaurar `publicado` **mueve
-> el nivel de validación**, así que todos los rechazos del nivel largo son nuevos
-> por definición.
->
-> **Las guardas puntuales se quedan todas**, y no por prudencia: `documentoAForm`
-> lee `imagenes: null` con `imagenesDe`, que cae al `imagenUrl` viejo y devuelve
-> una galería **válida**, así que el schema no puede distinguir «restaurado a
-> `null`» de «no tiene imágenes» — eso lo sigue viendo solo `existiaEnLaVersion`
-> (B-167). La validación general es un piso, no un reemplazo.
->
-> Siete casos en `tests/historial-restaurar.test.ts`, uno de ellos **sobre la
-> fuente** (`readFileSync`): `issuesDeRestauracion` es pura, así que un test suyo
-> no podría notar que nadie la llame ni que la llamen **después** del `updateDoc`.
-> Las dos mutaciones se corrieron de verdad y las dos fallan.
->
-> El texto de abajo queda como estaba escrito, con las tres alternativas, para que
-> la decisión se lea contra lo que se decidió.
-
-**Lo encontró el `auditor-privacidad`** cerrando B-181, como la mitad general de
-un hallazgo cuya mitad puntual ya se arregló (el historial no restaura una
-etiqueta de comisión con un link de reunión sobre una página indexada).
-
-`restaurarCampo` escribe con un `updateDoc` que **no pasa por el schema** —lo dice
-el propio `historial.ts`— y `camposRestaurables` filtra `slug` (trampa 10, B-285),
-los cuatro derivados, los campos que no existían en esa versión y, desde B-181,
-`comisiones` con un link. **`estado` no está filtrado.**
-
-O sea que «Restaurar → Estado» escribe `estado: 'publicado'` **salteando todas las
-reglas del nivel publicar**: la sede incompleta, el canal de inscripción sin
-destino, el monto contradictorio, el slug `-copia`, el link en una etiqueta. El
-camino no necesita mala fe ni consola:
-
-1. publicada → se pasa a borrador y se edita algo que en borrador está permitido
-   (por ejemplo el link en la etiqueta de una opción, que es legítimo ahí);
-2. «Restaurar → Estado» sobre una versión que decía `publicado`;
-3. la actividad queda publicada con ese contenido, y la escritura **marca
-   rebuild**, así que sale al sitio sola.
-
-**Es P1 y es preexistente**: vale para todas las reglas de publicar desde que
-existe la pantalla de restaurar (B-40), no solo para las de B-181. Lo que lo hizo
-visible es la guarda nueva, que es la primera regla de «que un dato no salga» que
-vive en ese nivel.
-
-**El arreglo probablemente sea filtrar `estado`**, con el argumento de que
-restaurar «publicado» no es recuperar contenido: **es publicar**, y publicar tiene
-una puerta con validación. Pero es una decisión de producto y no un bug obvio —
-saca una fila de una pantalla que el dueño usa— así que va anotado y no aplicado.
-Las alternativas, para que la decisión se tome sobre las tres:
-
-| Salida | Costo |
-|---|---|
-| filtrar `estado` de `camposRestaurables` | una línea; se pierde «volver a publicar desde el historial», que probablemente nadie usa — **el único lugar donde se cambia el estado es el select del formulario, y ése sí valida** (`guardarActividad` hace `safeParse` antes de escribir). El menú del listado tiene «se llenó / se liberó», «Duplicar», «Historial» y «Borrar»: ninguna publica. Lo corrigió el `auditor-privacidad`, y la afirmación anterior —«despublicar y publicar están en el menú del listado»— era falsa |
-| validar el documento resultante antes de escribir | lo correcto en general y lo más caro: `restaurarCampo` pasa a armar el documento completo y correrlo por el schema, que hoy no conoce |
-| dejarlo y documentarlo | gratis, y deja abierta una puerta que ya se sabe que existe |
-
-Dónde: `camposRestaurables` en `src/lib/historial.ts`, al lado del filtro del slug
-y del de comisiones. El test iría en `tests/historial-restaurar.test.ts`, al lado
-del `describe` de la trampa 10.
-
-### B-263 · La portada recortaba el 51 % del flyer — ✅ hecho (2026-09-01)
-
-**El bug con el que arranca toda la tanda.** `src/pages/actividad/[slug].astro`
-pintaba la portada con `class="aspect-portada … object-cover"` y
-`--aspect-portada` valía **16/9**. Los dos flyers que hay cargados en producción
-miden **720 × 826** —verticales, tipo historia de Instagram, 0,87— así que con
-`cover` sobre una caja apaisada se perdía el **51 %** de la imagen, mitad arriba
-y mitad abajo.
-
-Y no era margen lo que se perdía: **un flyer es texto metido adentro de un
-JPEG**. El título, la fecha y cómo anotarse están tipografiados ahí. El recorte
-se llevaba justo los datos.
-
-La decisión completa —incluidas las tres alternativas descartadas y qué pasa con
-el motivo por el que existía el token— está en **D-147**. En una línea: el token
-se retira, no se reemplaza por otro número, y lo sustituye una **regla
-compartida** («ninguna salida recorta») con un barrido sobre todos los `.astro`
-del sitio.
-
-**Lo que se hizo de paso, y que era la condición para poder reservar la caja:**
-el panel ahora **mide** la imagen externa en su vista previa
-(`naturalWidth`/`naturalHeight`) y guarda `ancho`/`alto`. Solo las filas que la
-sesión agregó o cuya dirección cambió — medir las ya guardadas escribiría en el
-formulario apenas se abre y `useFormularioSucio` diría «tenés cambios sin
-guardar» sin que nadie tocara nada.
-
-Siete mutaciones probadas, todas rojas: sin la guarda de medidas corruptas, la
-clase copiada a mano, `object-cover` al lado de la clase, sin `estiloDeAfiche`,
-la clase sin `max-h`, sin `object-contain`, y el token volviendo a `global.css`.
-
-### B-264 · Nadie cargaba el flyer, y el panel no lo pedía — ✅ hecho (2026-09-01)
-
-**El cuello de botella real, y es medible:** 42 actividades publicadas, **2 con
-imagen**. El 4 % es bajo en parte porque subir archivos existe hace cuatro días
-—casi todas se cargaron cuando lo único posible era pegar una URL— pero sobre
-todo porque el campo estaba escondido y nada lo pedía nunca:
-
-- vivía en **«Opcional»**, un acordeón **cerrado por defecto** y llamado
-  literalmente así;
-- la descripción de la sección era «Tags, imagen, destacado»;
-- y la única frase que acompañaba al editor **tranquilizaba**: «sin imagen, la
-  tarjeta del sitio no reserva un hueco gris: se ve igual de bien».
-
-Cuatro mitades, y ninguna bloquea:
-
-1. **El editor se muda a «Qué es»**, la primera sección y la que no colapsa. Es
-   donde ya viven el título y la descripción, y un flyer es eso mismo contado en
-   una imagen. En «Opcional» quedan las etiquetas y «destacar», que sí lo son.
-2. **La barra de acciones gana un tercer nivel**, abajo del gris de «para
-   publicar falta». Dice **qué se pierde** y no qué falta —«falta el flyer» no
-   mueve a nadie; «no entra en la cartelera» sí— y lleva hasta el campo. Vive en
-   `lib/formulario/recomendaciones.ts`, que es donde se puede testear.
-3. **El listado marca «Sin flyer»**, y solo en las publicadas que no lo tienen.
-   Es la misma regla que la marca de autoría de B-130: si todo lleva marca, la
-   marca deja de avisar.
-4. **`guardado_ok` manda `imagenes` como entero.** Cruzado con `estado`, que ese
-   evento ya mandaba, contesta la pregunta que abrió el cambio: qué proporción de
-   lo que se publica lleva flyer. Sin eso, el cambio se hace a ciegas.
-
-**No se puso traba, y hay un test que lo fija.** El empujón se convierte en
-bloqueo con una línea —agregar `imagenes` a la validación de publicación de
-D-120— y el pedido fue explícito: frenar la publicación por una imagen frena que
-se carguen actividades, que es peor que una actividad sin flyer. La mutación que
-agrega esa exigencia pone el test en rojo y ningún otro se entera.
-
-La condición sale de `faltaElFlyer`, **una sola derivación** para el aviso, la
-marca del listado y la cartelera: tres lugares que tienen que decir lo mismo.
-
-Nueve mutaciones probadas, todas rojas.
-
-### B-265 · `/cartelera`, la pared de afiches — ✅ hecho (2026-09-01)
-
-La página que hace que valga la pena cargar el flyer, y la otra mitad de B-264:
-el panel promete «sin imagen no entra en la cartelera» y esto es la cartelera.
-Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada
-uno enlazando a su actividad.
-
-Las decisiones están en **D-148**. Las que conviene tener a mano:
-
-- **Una pared, no un carrusel.** «En continuado» es que no termina, no que se
-  mueva. Nada avanza solo, así que no hay `prefers-reduced-motion` que respetar.
-- **Columnas de CSS y no una grilla**, con el número de columnas **atado a la
-  cantidad**: con los dos flyers de hoy sale una sola columna con tope de ancho y
-  la pared se densifica sola. Con cero no se dibuja una grilla vacía.
-- **Se arma desde el mismo `DetallePublico`** que genera cada página de detalle,
-  **nunca** desde un listado de Storage (trampa 13, con test propio).
-- Entra **segunda** en la navegación, pegada a «Agenda».
-
-Diez mutaciones probadas, todas rojas.
-
-### B-267 · Tres textos del panel describían pantallas que ya no existen — ✅ hecho (2026-09-01)
-
-Aparecieron al mudar el editor de imágenes (B-264) y los tres son de la misma
-familia: **texto de interfaz que quedó viejo cuando cambió lo que describe, sin
-que nada fallara**.
-
-| Dónde | Qué decía | Desde cuándo era falso |
-|---|---|---|
-| `src/lib/ayuda.ts`, capítulo del flujo | «Por ahora se pegan direcciones… subir fotos desde el teléfono todavía no está» | **D-131** (2026-08-27), que trajo la subida |
-| `src/components/admin/GaleriaEditor.tsx` | «Sin imagen, la tarjeta del sitio no reserva un hueco gris: se ve igual de bien» | **D-146** (2026-08-31), que sacó las portadas del listado |
-| `src/lib/ayuda.ts`, capítulo del flujo | un punto con la frase duplicada a medias («…queda así para la próxima.» + «cerradas para que el formulario no sea infinito. Se abren tocando el título.») | arrastre de un merge |
-
-Los tres corregidos. El segundo es el que más costaba: no solo describía una
-pantalla inexistente, **tranquilizaba justo donde había que empujar** — es parte
-de por qué el campo estaba en 2 de 42.
-
-**Lo que esto deja abierto es la clase, no la instancia.** `tests/ayuda.test.ts`
-exige que cada sección del formulario tenga capítulo y que el texto no tenga
-jerga; no puede exigir que el capítulo **diga la verdad**. Un chequeo de esa
-clase tendría que atar cada afirmación a un test de comportamiento, que es lo que
-`atadoA` ya hace para los seis avisos irreversibles. Extenderlo al resto de los
-puntos es trabajo del `auditor-documentacion`, que hoy lo cubre a criterio.
-
-### B-268 · La portada que se elegía en el panel no era la que se mostraba — ✅ hecho (2026-09-01)
-
-**Lo encontró el `auditor-trampas` sobre B-265, y es preexistente**: la página de
-detalle lo tenía desde B-227 y este cambio lo iba a propagar a `/cartelera`
-—además de documentarlo como invariante decidido en vez de arreglarlo—.
-
-`detalleDeActividad` mapeaba `imagenes` en el orden del array y **tiraba el flag
-`portada`**, mientras los dos consumidores toman `imagenes[0]`. Entonces:
-
-1. se carga una foto del lugar → nace portada, porque es la primera;
-2. se carga el flyer → segunda;
-3. se marca el flyer como portada con el radio del panel, que existe exactamente
-   para eso (`conPortada` togglea el booleano y **no mueve la fila**, y está bien
-   que no la mueva: el orden del array es el orden de carga y es lo que la
-   galería respeta);
-4. la cabecera de la actividad y la cartelera siguen mostrando **la foto del
-   lugar**.
-
-**El modo de falla es el peor de los baratos: no falla nada y falla coherente.**
-Las dos páginas muestran la misma imagen equivocada, así que compararlas no lo
-delata; se nota semanas después, cuando alguien pregunta por qué el flyer que
-cargó no está en la cartelera.
-
-**Arreglado en la proyección y no en las plantillas.** «Cuál es la portada» es una
-decisión del dominio y ya tenía una sola respuesta escrita —`portadaDe` en
-`src/lib/imagenes.ts`, la que usan el panel y la vista previa—; ahora
-`detalleDeActividad` pone primera la que tiene el flag, y todo consumidor del
-view-model hereda la respuesta correcta sin acordarse. Se **ordena**, no se
-filtra: la galería del detalle sigue mostrando el resto.
-
-Un detalle que no se adivina: el flag se busca **después** de descartar las URLs
-que `urlSegura` rechaza. Buscarlo antes dejaría la página sin imagen habiendo
-otras válidas.
-
-**Por qué el test que había no lo vio:** `tests/cartelera.test.ts` afirmaba el
-caso con la portada ya en el índice 0, o sea el comportamiento actual y no el
-invariante. Ahora están los dos casos y el de la URL inválida, con la mutación
-probada (volver a `a.imagenes.map(...)` sin reordenar deja el caso viejo en verde
-y el nuevo en rojo).
-
-### B-266 · El peso de la cartelera sin la Function de recompresión — ✅ resuelto del todo (2026-09-02)
-
-> **La miniatura existe** (B-220 / D-175) **y desde B-320 la pared la pinta.**
-> Medido sobre las 30 imágenes de producción: recorrer la pared entera pasa de
-> **3518,5 KB a 1032,4 KB (−71 %)** con miniaturas de 480 px. El disparador
-> escrito abajo —«cuando la cartelera pase de 20 afiches»— deja de aplicar: 30
-> miniaturas pesan menos de la mitad de lo que este ítem midió para 30
-> originales.
->
-> **480 px y no 320** (que daba −84 %) porque la pared es de flyers y un flyer es
-> texto metido adentro de un JPEG (D-147): bajarle la resolución es bajarle la
-> legibilidad, no el peso de una foto.
-
-**Medido, no estimado** — los números y el método están en **D-149**.
-
-La cartelera es la **única** página del sitio que pide **muchas** imágenes: la home
-no pide ninguna desde D-146, y el detalle pide una si la actividad no tiene galería
-y hasta cuatro si la tiene (**B-296**; el techo por página está en **B-300**). Hoy,
-sin la Function de **B-220**, una imagen propia se sirve tal cual la subió quien
-organiza, hasta 3 MB.
-
-| | 2 flyers (hoy) | 30 flyers |
-|---|---|---|
-| HTML de la página | 8,2 KB | 30,8 KB |
-| bytes de imagen al entrar | ~120 KB | ~180–360 KB |
-| bytes al recorrerla entera | ~120 KB | **~2,6 MB** |
-
-**Por pantalla se sostiene y va a seguir sosteniéndose**: `loading="lazy"` más la
-caja reservada hacen que el costo de entrada no crezca con el total —es el mismo
-con 30 flyers que con 300—. **Por recorrido completo deja de sostenerse alrededor
-de los 20-25 flyers**, y el techo es peor que el promedio: un solo flyer de 3 MB
-pesa más que toda la pared medida.
-
-**No se construye nada más acá para taparlo**, porque no hay nada más que
-construir sin variantes de imagen: `sizes` sin `srcset` no hace nada, y las
-variantes son B-220. Lo que queda es el **disparador**:
-
-> Cuando la cartelera pase de **20 afiches**, o cuando alguna imagen propia
-> publicada pase de **500 KB**, B-220 deja de ser P1 y pasa a ser lo que bloquea
-> el sitio en un teléfono con datos.
-
-Mientras tanto, lo barato y no automatizado: al subir un flyer conviene
-recortarlo. El mensaje de rechazo de DEC-7b ya empuja en esa dirección, pero solo
-a partir de los 3 MB.
-
-### B-270 · El color del tipo de actividad, elegible desde Opciones — ✅ hecho (2026-09-01)
-
-Recupera lo que **D-146** había retirado de **D-141** y le agrega la mitad que
-faltaba: el color ya no lo impone el sistema visual, lo administra el sitio.
-El porqué completo está en **D-150**; lo que conviene tener anotado acá:
-
-- **Se deriva del slug y lo elegido es la excepción.** `tipo` es taxonomía
-  autogestionada: si el color se asignara solo a mano, el tipo creado desde «Otro»
-  nacería sin color y nadie se enteraría.
-- **El selector ofrece la banda, no un color.** Luminosidad y croma fijos, doce
-  matices con nombre. Así *cualquier cosa que se pueda elegir* pasa AA: los 360
-  tonos posibles están medidos contra las tres superficies del sitio y el peor da
-  **5,90:1** contra un piso de 4,5 (`tests/color-de-tipo.test.ts`).
-- **Tres guardas más**, las tres mutadas: `revisarTono` al guardar (con el ratio y
-  el piso en el mensaje), `esTonoElegible` al leer, y el mismo filtro al proyectar
-  al `events.json`.
-- **`pintarOpcion` es la única operación que puede tocar una opción base**, y tiene
-  que serlo: los siete tipos son `fijo: true`. Renombrar y borrar la siguen
-  respetando, con un test de integración que lo fija.
-- **Campo nuevo:** `tono?: number` en `/opciones/{campo}`, opcional, y `tono?` en
-  `OpcionPublica`. Salida pública tocada → pasó por el barrido de centinelas y por
-  el `auditor-privacidad`.
-- **Abierto en el camino:** **B-273** (la ficha del detalle sigue en azul fijo).
-
-### B-273 · La ficha del detalle pinta el tipo en azul fijo, y su comentario dice que es el mismo color que el listado — ✅ hecho (2026-09-01)
-
-**Lo encontró el `auditor-trampas` al cerrar B-270**, y es la otra mitad de D-150
-que no se pudo hacer.
-
-`src/pages/actividad/[slug].astro` pinta la cajita del tipo con `bg-azul` y el
-texto calado, con este comentario al lado:
-
-> «La cajita va en **azul tinta**, que es lo que el sistema le asigna a las
-> categorías, y es **la misma que abre cada fila del listado**: quien viene del
-> listado reconoce la pieza.»
-
-B-270 volvió falsa esa última frase: en el listado la cajita ahora lleva el color
-de su categoría. **Quien navegue del listado al detalle ve la cajita saltar de
-color**, que es justo lo contrario de «reconoce la pieza».
-
-No se arregló en B-270 porque `[slug].astro` y `detallePublico.ts` los estaba
-tocando otro frente en paralelo (las imágenes), y tocar los mismos archivos desde
-dos lados es cómo se pierde trabajo.
-
-**Arreglo:** `detallePublico.ts` hoy expone solo `tipoEtiqueta` (el label), así que
-la ficha no tiene con qué derivar el color. Hay que sumar el slug —o el tono ya
-resuelto— al view-model y usar `estiloDeTipo`/`colorDeTipo` en la plantilla. Ojo con
-que ahí la cajita es **tinta plena con el texto en papel**, no texto sobre papel:
-el par a medir es el papel encima del color, no el color sobre el papel, así que el
-test nuevo no es el mismo que el del listado. Si se decide dejarlo en azul, la
-corrección es igual de obligatoria: **arreglar el comentario**, que hoy afirma algo
-que no pasa.
-
-**Sin red:** no existe ningún test que compare el color del tipo en las dos
-pantallas. Vale escribirlo con el arreglo, porque es la clase de B-88 —dos
-derivaciones del mismo valor separándose— con las dos mitades a la vista.
-
-**Arreglado — D-153.** El color llega ya resuelto en `DetallePublico.tipoColor`,
-derivado con `colorDeTipo`, la misma función que pinta la fila; `tonosDelSitio()` es
-el único lugar del build que arma el mapa de matices y lo usan las dos pantallas; y
-el cuarto parámetro de `detalleDeActividad` es **obligatorio**, porque un default
-`{}` habría reproducido el bug en silencio y solo para los tipos pintados a mano.
-
-El par de contraste de la cabecera es **el papel calado encima del color** y no el
-del listado: `contrasteCaladoDelTono` lo mide sobre los 360 matices posibles y el
-peor —el tono 191— da **7,27:1** contra un piso de 4,5, mejor que los 5,90:1 de la
-dirección de texto y que el 6,14:1 del `azul` que había.
-
-La red que faltaba, escrita: el cruce listado/detalle en `tests/color-de-tipo.test.ts`
-compara los dos valores producidos; el guard de markup en
-`tests/detalle-visual.test.ts` impide que una clase de fondo sobreviva al lado del
-`style`; y un caso de integración fija que el color salga de la lista **filtrada por
-aprobación** —la asimetría opuesta a la de la etiqueta (D-30)—, que era la única
-decisión de privacidad nueva del cambio y no tenía test. Cuatro hallazgos del
-`auditor-privacidad`, los cuatro cerrados.
-
-**Se miró si había más de lo mismo y no había** — el detalle es la única otra pieza
-que el listado pinta con el color de la categoría. El rótulo de la cartelera se
-evaluó y **no es el mismo bug**: queda como **B-275**.
-
-### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
-
-El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y
-construye el listado del §6 del diseño entero. El detalle está en
-[`04-funcionalidades.md`](04-funcionalidades.md) y el estado sección por sección,
-en la caja de arriba de [`12-sitio-publico.md`](12-sitio-publico.md).
-
-Lo que conviene tener anotado acá, que es lo que costó decidir:
-
-- **Cuatro decisiones nuevas** — **D-137** (hay selector de orden, contra el §6.1),
-  **D-138** (`creadoEn` es público, con precisión de día), **D-139** (el link de la
-  reunión tampoco sale al detalle) y **D-140** (la plantilla recibe un view-model,
-  no el documento).
-- **Una salida pública nueva**, la sexta: la página de detalle y su JSON-LD.
-  Entró al barrido de centinelas **en el mismo cambio que la creó**, que es la
-  lección de B-212 y de la salida 5 aplicada a tiempo.
-- **Dos bugs que ningún test podía ver** — **B-237** (lo encontró el build de
-  verdad) y **B-243** (lo encontró calcular el contraste, que nadie había
-  calculado).
-- **Cinco hallazgos del `auditor-privacidad`**, todos arreglados: el `url` del
-  organizador sin sanear en el JSON-LD, la hora exacta de carga en `creadoEn`, el
-  import del lector que dejaba a la plantilla recuperar el documento, las
-  etiquetas del detalle filtradas por aprobación (contra D-30) y la salida 6 sin
-  nombrar en el mapa de salidas.
-- **Abiertos en el camino:** B-238 (hoja de filtros y CTA fijo), B-239 (el peso de
-  React en la home), B-240 (la casilla del link dice algo que el sitio no hace),
-  B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
-  panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
-
-### B-260 · Brutalismo editorial: la tercera dirección visual — ✅ hecho (2026-08-31)
-
-**El dueño rechazó la dirección de D-141 al verla terminada.** B-247 y B-253 la
-dejaron completa y el rechazo no fue por la ejecución ni por la paleta: la
-estructura de Eventbrite es la estructura de una plataforma. Es el **segundo**
-rechazo, así que esta vez la referencia se aprobó **antes** de escribir código
-—`docs/referencias/sistema-visual.md` y `stitch-detalle.md`— y el contraste se midió
-antes de implementar. Decisión: **D-146**.
-
-- **Tres reglas nuevas para todo el sitio:** radio 0, estrictamente plano, y tintas
-  con nombre en vez de opacidades. La tercera deja el sitio con **cero** atenuaciones
-  de color y cierra la clase de B-235 de raíz.
-- **Tipografía:** Bodoni Moda + Archivo Narrow + Public Sans en lugar de Lora +
-  Inter, y **pesan menos** (58,8 KB contra 84,2 KB, medido sobre los woff2 que sirve
-  la URL del build). `--font-serif` y `--color-acento-hondo` se borraron.
-- **El listado pasa de grilla de tarjetas a filas y pierde toda imagen** — ni foto ni
-  portada generada. Se retiran `Tarjeta.tsx`, `PortadaDeTarjeta.tsx`,
-  `GrupoDeChips.tsx` y el color derivado por tipo de `identidad.ts`. Los filtros van
-  a un riel izquierdo **solo en escritorio**.
-- **La página de detalle** se rehízo sobre `stitch-detalle.md`, conservando los dos
-  casos que la referencia resolvió bien: el encuentro cancelado visible y tachado, y
-  el material distinguido sin iconos.
-- **Diez correcciones a la referencia**, todas con motivo en D-146.
-- **`tests/sistema-visual.test.ts`** (nuevo) ata cada token al hex de la referencia
-  aprobada y barre el sitio entero. **28 mutaciones probadas, las 28 atrapadas.**
-
-**Qué sigue abierto, sin cambios: B-238** — la hoja inferior de filtros de móvil
-sigue siendo una capa modal y no se construyó a medias. El disclosure de D-143 se
-conservó entero.
-
-**Lo que este cambio NO tocó:** el panel de admin, que tiene su propio criterio
-visual y su propio centralizador de clases.
-
-### B-253 · El detalle, el chrome y las tres páginas de texto, con la forma de Eventbrite — ✅ hecho (2026-08-31)
-
-Segundo frente del rediseño de **D-141**: el primero le dio nombre y paleta al sitio
-(B-245); éste aplica la **estructura** —portada arriba, jerarquía fuerte, tarjetas
-apiladas con superficie y borde y **ninguna sombra**— a la página de detalle, el
-encabezado, el pie y `/ayuda`, `/contacto` y `/suscribirse`. La home y el listado son
-de otro frente y no se tocaron.
-
-- **Dos decisiones nuevas.** **D-144** (la portada va arriba, con la relación de
-  aspecto de `--aspect-portada`; desvío del §4.3 del diseño) y **D-145** (el CTA fijo
-  de móvil sin una línea de JavaScript, que cierra la mitad «CTA fijo» de **B-238**).
-- **Un archivo nuevo**, `src/components/sitio/estilos.ts`, con el anillo de foco y las
-  clases de botón: estaban copiados doce y cinco veces. Lo sostiene **B-257**.
-- **El contraste pasa a medirse sobre las tres superficies** y no solo sobre `papel`
-  (**B-256**), que con la paleta de D-141 daba un número optimista.
-- **Tres cosas que arregló mirar el HTML del build**, ninguna visible para un test
-  unitario: **B-254** (todo cancelado no es «ya pasó»), **B-258** (la página daba dos
-  cuentas distintas de los mismos encuentros) y la sección «Cómo se cursa» que se
-  pintaba vacía sin `modalidades`.
-- **Dos cosas que encontró el `auditor-privacidad`**, las dos de red y ninguna de
-  fuga: el JSON-LD podía cerrar su propio `<script>` con un título que trajera
-  `</script>` (venía de B-227), y el barrido de centinelas ejercitaba **una** de las
-  cuatro ramas del aviso — justo no la que interpola un valor.
-
-**Lo que este frente necesita de otros archivos**, y no pudo tocar: `Base.astro` le
-pone `overflow-x-hidden` al `body`, que es lo que obliga a que la barra sea `fixed` y
-no `sticky` (ver D-145); y `src/pages/index.astro` con `src/components/publico/*`
-quedan fuera del alcance del chequeo del anillo de foco hasta que se los migre.
-
-**Sigue sin resolver, y no es nuevo:** una actividad `estado: 'cancelado'` no tiene
-página. Es **B-110**.
-
-### B-244 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
-
-El skill que se invoca **cada vez que se agrega un campo al modelo**
-(`.claude/skills/campo-nuevo/SKILL.md`, decisión 1) nombraba `events.json`,
-Calendar, el issue de GitHub y GA4. No nombraba `textoRedes.ts` —la salida 5,
-desde **B-95**— ni `detallePublico.ts` —la 6, desde **B-227**—.
-
-O sea que se podía seguir el procedimiento al pie de la letra y terminar
-publicando un campo nuevo en el **posteo de Instagram** o en la **página que
-Google indexa**, sin que nada lo frenara: es exactamente la clase de bug que el
-skill existe para evitar, y las dos salidas que faltaban son las dos de las que no
-se puede volver.
-
-Lo encontró el `auditor-documentacion`. **La 5 llevaba tres años-persona de
-distancia con su propia lección:** la ficha del `auditor-privacidad` había tenido
-el mismo agujero, se arregló el 2026-08-27 (B-216) con un test que ata las dos
-tablas… y nadie miró el skill, que es el documento que de verdad se ejecuta.
-
-Arreglado con la tabla de las seis y una nota de por qué. El paso «Proyección
-pública» también se reescribió: eran cuatro archivos en cadena y nombraba uno.
-
-### B-01 · Sitio público (paso 3 del §10) — ✅ hecho (2026-09-02)
-
-**El paso 3 está terminado y el sitio está publicado en
-[`agendaleh.ar`](https://agendaleh.ar).** Verificado contra el código y contra el
-build del 2026-09-02, no contra el recuerdo. Qué lo compone — **ocho salidas
-indexables**, todas en `src/pages/`:
-
-| # | Ruta | Qué es | Con qué entró |
-|---|---|---|---|
-| 1 | `/` | el listado de lo vigente, completo en HTML, con la island de filtros encima | **B-227** |
-| 2 | `/actividad/{slug}` | el detalle, SSG por `getStaticPaths`, cero JavaScript | **B-227**, **B-110** (las canceladas), **B-296** (la galería) |
-| 3 | `/cartelera` | la pared de afiches: solo las que tienen flyer, la imagen entera | **B-265** |
-| 4 | `/agenda/{aaaa-mm}` | qué hay en un mes, solo los vigentes con 3 o más | **B-113** |
-| 5 | `/pasadas` | el archivo, y el único link interno permanente de lo que ya pasó | **B-109** |
-| 6 | `/ayuda` | qué es cada tipo de actividad y cómo se lee una ficha | **B-232** |
-| 7 | `/contacto` | el canal para proponer una, con qué conviene contar | **B-232**, **B-233** |
-| 8 | `/suscribirse` | los cuatro caminos para sumar la agenda a tu calendario | **B-230** |
-
-Más lo que las sostiene y no es una página: **el dominio propio** —`SITIO` en
-`src/lib/rutasPublicas.ts`, la única vez que se escribe, y `astro.config.mjs` lo
-importa (**B-109**, D-165)—, el `canonical` absoluto y el Open Graph que pone
-`Base.astro` para todas de una vez, el **`/events.json`** que la island filtra en
-memoria (**B-106**) y los endpoints `/sitemap.xml` y `/robots.txt` (**B-109**).
-
-**Cómo se verificó, para que el cierre no sea una afirmación:**
-
-- `npm run build` verde, emitiendo las páginas y los cuatro endpoints;
-- `dist/sitemap.xml` sale con las seis rutas fijas bajo `https://agendaleh.ar/` y
-  con barra final, y `dist/robots.txt` bloquea solo `/admin`;
-- el único `noIndex` fijo del sitio es `/admin`; el de `/agenda/{mes}` es
-  condicional y solo aplica al mes vencido (§2.2);
-- la suite completa en verde: **2.173 tests en 93 archivos**, con los de
-  emuladores incluidos.
-
-**Lo que queda abierto tiene número propio y no es el paso 3.** Los hubs de
-taxonomía (**B-108**) son la pieza de indexación que falta; el marcado de
-navegación del JSON-LD es **B-107**; las cinco imágenes de Open Graph, **B-291**;
-la búsqueda de `/pasadas`, **B-292**; el `lastmod`, **B-112**; el precio real del
-JSON-LD, **B-114**; el eje de encuentros del índice, **B-99**; el peso de las
-imágenes, **B-266**, **B-300** y **B-220**; la hoja de filtros de móvil y el
-runtime de React, **B-238** y **B-239**; y los auditores del sitio, **B-121** y
-**B-122**. Ninguno impide que el sitio exista, se indexe y se use, que es lo que
-el paso 3 pedía.
-
-El texto original, con su lista de pendientes tal como estaba:
-
-Lo que falta:
-
-- ~~`src/pages/index.astro` — listado con la island de filtros.~~ ✅ B-227
-- ~~La island que lee `events.json` y filtra en memoria (§2.5).~~ ✅ B-227
-  (`src/components/publico/Buscador.tsx`)
-- ~~`src/pages/actividad/[slug].astro` — detalle por SSG con `getStaticPaths`.~~
-  ✅ B-227
-- ~~Generación de `events.json` en build time con el Admin SDK.~~ ✅ B-106
-- Los hubs (B-108), `/pasadas` y el SEO absoluto (B-109), las canceladas (B-110).
-
-Ya está hecho y testeado: la proyección (`toPublic.ts`), la normalización de
-búsqueda (`normalize.ts`) y el acceso de build time (`firebase-admin.ts`).
-
-**Ojo:** toda query pública necesita `where('estado','==','publicado')` o
-Firestore rechaza la query entera (trampa 7).
-
-**El diseño está hecho: [`12-sitio-publico.md`](12-sitio-publico.md).** URLs,
-pantallas, SEO, filtros y casos borde, decididos con su motivo. B-01 queda como
-el paraguas; lo construible son **B-105 a B-114**, en el orden del §13 de ese
-documento.
-
-### B-105 · El detalle y la home — ✅ hecho (2026-08-28, en **B-227**)
-
-Construido con dos desvíos del plan de abajo, los dos anotados en la caja de
-estado de [`12-sitio-publico.md`](12-sitio-publico.md): el markup de la tarjeta se
-define una sola vez en un **componente React** que Astro renderiza sin hidratar
-(en vez de un componente Astro más un `<template>`), y la island **monta su propia
-lista sacando la del build del DOM** en vez de mostrar y ocultar por `data-id`. Se
-conservan las cuatro propiedades que el §6.3 perseguía —HTML completo del build,
-sin-JS servido, sin parpadeo, un solo markup— y el filtrado queda como lógica pura
-testeable (`src/lib/listadoPublico.ts`, 58 casos).
-
-Lo que queda afuera y tiene su ítem: la hoja inferior de filtros y el CTA fijo de
-móvil (**B-238**), el peso del runtime de React en la home (**B-239**).
-
-El plan original, como estaba escrito:
-
-`src/pages/actividad/[slug].astro` (SSG con `getStaticPaths`, **cero
-JavaScript**) y `src/pages/index.astro` con `src/components/Filtros.tsx` como
-island.
-
-El detalle primero: es el que recibe el tráfico de Google y de Instagram, y es
-el que no depende de nada más (§1 y §4.3 del diseño).
-
-La home es un **listado híbrido** (§6.3): el build imprime en HTML todas las
-tarjetas vigentes con sus `data-*` de filtrado, y la island muestra y oculta lo
-que ya está en el DOM. Con JS apagado se ve la lista completa y "Explorá por"
-—links a los hubs— es la navegación. El markup de la tarjeta se define **una
-sola vez**, en el componente Astro, y la island clona un `<template>` para las
-tarjetas que no están en el HTML (las pasadas).
-
-**Ojo:** todas las fechas se formatean con
-`Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })`,
-en el build y en el cliente. El JSON las lleva en UTC (trampa 1).
-
-### B-106 · `events.json` en build time — ✅ hecho (2026-08-27)
-
-**Hecho.** `src/pages/events.json.ts` lee Firestore con el Admin SDK en el build y
-`src/lib/eventsJson.ts` arma el índice. Las tres cosas que el ítem marcaba como no
-obvias salieron como estaban diseñadas:
-
-- **El recorte** (§3.1) es una proyección aparte y **recibe una `ActividadPublica`,
-  no una `Actividad`**: así no puede volver a decidir sobre `difusion` o
-  `createdBy` — esa decisión ya está tomada un eslabón antes. Tiene su propio
-  barrido de centinelas, con control negativo que exige que la falta de recorte
-  falle nombrando `inscripcion.destino`.
-- **La guarda de credenciales** (D-123): en CI sin credenciales el build **falla**
-  —probado: sale con estado 1 y no emite el archivo— y en local sigue con lista
-  vacía y un aviso. Las dos ramas verificadas a mano.
-- **La cabecera `no-cache`** en `firebase.json` → **cierra B-37**.
-
-Y arrastró **B-111**, que era dependencia dura de la forma diseñada: el índice
-lleva `cierraEn` y no el booleano `abierta`, que se congela en el build.
-
-Lo que **no** entra y queda para el sitio: el `?v=` con el que la island va a pedir
-el archivo (no hay island todavía, es B-105) y el `estado` en la proyección, que es
-B-112 y lo necesita la franja CANCELADA del detalle, no el filtrado.
-
-
-Lectura de Firestore con el Admin SDK, `toPublic.ts`, y el índice que la island
-filtra en memoria (§2.4, §2.5). Incluye las opciones de `/opciones/*` en el
-mismo archivo (§4.4) para que los chips no tengan nada cableado.
-
-Tres cosas que no son obvias (§3 del diseño):
-
-- **El JSON recorta más que `toPublic`**: no lleva `descripcion`,
-  `inscripcion.destino`, `sede.direccion`, `sede.geo`, `sede.indicaciones`,
-  `material`, `tallerista.bio`, `sesiones[].tema` ni `sesiones[].lectura`. Nada
-  de eso se usa para filtrar, todo vive en el HTML del detalle, y sacar el mail
-  de inscripción del JSON deja de servirlo en lote a los bots.
-- **Sin credenciales, en CI el build falla** (`hayCredenciales()`). Un deploy
-  con cero actividades borra el sitio de Google y se recupera en semanas. En
-  local sigue con lista vacía.
-- **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
-  island lo pide con `?v={VERSION_APP}`.
-
-### B-107 · Meta, Open Graph y JSON-LD — ✅ hecho (2026-09-02)
-
-> ✅ **Reverificado el 2026-09-02, línea por línea contra el código.** De lo que
-> este ítem enumeraba **falta una sola cosa suya**, y no es lo que el texto de
-> abajo hacía suponer:
->
-> | Qué pedía el ítem | Estado |
-> |---|---|
-> | `title` / `description` por tipo de página | ✅ B-227 |
-> | JSON-LD `Event` completo (subtipos, `EventSeries`, offset, `offers`, `performer`, cancelados) | ✅ B-227 |
-> | el link de la reunión fuera del JSON-LD | ✅ B-227, y más estricto |
-> | `canonical` absoluto | ✅ B-109 — lo pone `Base.astro`, `urlAbsoluta` |
-> | Open Graph completo + `twitter:card` | ✅ B-109 — `Base.astro:161-168` |
-> | el `url` del evento, del `VirtualLocation` y de `offers` | ✅ B-109 — `detallePublico.ts:919, 1053-1077` |
-> | las cinco imágenes de `public/og/` | ❌ pero **no es de acá**: es **B-291**. Hoy `public/` tiene `compartir.png`, la marca, y `Base.astro` la usa de respaldo (B-295); el detalle manda el flyer |
-> | `BreadcrumbList` en el detalle | ❌ **lo que le queda a este ítem** |
-> | `CollectionPage` + `ItemList` en la home y los hubs | ❌ **lo otro**, y va con **B-108** |
->
-> Comprobado con `grep -rn "BreadcrumbList\|CollectionPage\|ItemList" src/`:
-> **cero apariciones**. Las dos cosas que faltan son marcado de navegación y
-> ninguna dependía del dominio: el `BreadcrumbList` necesita **decidir la
-> jerarquía** —¿la actividad cuelga de la home, del tipo o del barrio?— y el
-> `ItemList` conviene hacerlo con los hubs, que son las páginas de colección de
-> verdad.
->
-> **Y por eso baja a P2.** Era P1 porque «una página de detalle sin datos
-> estructurados no sirve para lo que existe el proyecto», y esa mitad está: el
-> sitio se indexa, el `Event` sale completo y la canónica es absoluta. Lo que
-> queda mejora cómo Google entiende la **navegación**, no si la página entra al
-> índice. La marca explícita `· P2` es la que vale por encima de la sección,
-> igual que en B-221 y B-222 — el bloque no se mueve para no pisar a los frentes
-> en paralelo.
-
-El texto original, con la caja de B-109 que lo dejó a mitad de camino:
-
-**Hecho:** `title` y `description` de la home y del detalle; el JSON-LD completo
-—`EducationEvent`/`LiteraryEvent`/`Event`, `EventSeries` con `subEvent` por sesión,
-fechas con offset, `offers` con precio solo si es gratis, `performer` solo si hay
-tallerista, cancelados marcados con su fecha original— y **el link de la reunión
-fuera del JSON-LD**, que ahora es más estricto de lo que decía este ítem: tampoco
-va la URL canónica, porque no existe (ver abajo). Fijado en
-`tests/detallePublico.test.ts` y en su `describe` del barrido de centinelas.
-
-**Falta, y todo por el mismo motivo — `site` no existe hasta que haya dominio
-(B-109):** `canonical`, Open Graph, `twitter:card`, las cinco imágenes de
-`public/og/`, el `url` de `VirtualLocation` y de `offers`, el `BreadcrumbList` y
-el `CollectionPage`/`ItemList`. Inventar una URL absoluta ahora es peor que no
-ponerla: una canónica equivocada le dice a Google que la página buena es otra.
-
-> ✅ **Casi todo eso entró el 2026-09-02 con B-109** (D-165), que era el motivo
-> por el que faltaba: `canonical` absoluto y Open Graph en **todas** las páginas
-> —los pone `Base.astro`—, `twitter:card`, el `url` del evento, el del
-> `VirtualLocation` (§5.4) y el de `offers`.
->
-> **Quedan tres cosas, y ninguna dependía del dominio:** las cinco imágenes de
-> `public/og/` (**B-291** — hoy solo el detalle manda `og:image`, con el flyer de
-> la actividad), y el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList`
-> de la home y los hubs, que se quedan en este ítem. Los dos últimos son marcado
-> de navegación: el `BreadcrumbList` necesita decidir la jerarquía —¿la actividad
-> cuelga de la home, del tipo o del barrio?— y el `ItemList` conviene hacerlo con
-> los hubs (**B-108**), que son las páginas de colección de verdad.
-
-El plan original, como estaba escrito:
-
-Va pegado a B-105: una página de detalle sin datos estructurados no sirve para
-lo que existe el proyecto (§2.3).
-
-- `title` / `description` / `canonical` por tipo de página (§5.1 del diseño). El
-  título de la actividad primero, y el barrio adentro.
-- Open Graph completo + `twitter:card`. Sin `imagenUrl`, cinco imágenes
-  estáticas de 1200×630 en `public/og/`, una por tipo: un link sin preview en
-  Instagram no se toca.
-- **JSON-LD `Event`**: `EducationEvent` para taller y club de lectura,
-  `LiteraryEvent` para encuentro, presentación y charla. Un ciclo es un
-  `EventSeries` con un `subEvent` por sesión — una actividad, N encuentros
-  (§2.2), no ocho eventos que compiten entre sí.
-- **Fechas con offset `-03:00`**, no `Z`.
-- **`offers` con precio solo si `arancel.tipo == 'gratis'`** (`0` / `ARS`). Un
-  `0` en un taller arancelado es un dato falso en un formato que las máquinas
-  creen.
-- **El link de la reunión no va al JSON-LD nunca**, ni con `urlPublica: true`
-  (D-15): `VirtualLocation.url` es la URL canónica de la actividad. El JSON-LD
-  es lo primero que cosecha un bot (trampa 5).
-- Además: `BreadcrumbList` en el detalle, `CollectionPage` + `ItemList` en la
-  home y los hubs, `Organization` en `/acerca`.
-
-> ✅ **Lo último que le quedaba a este ítem —el marcado de navegación— se cerró
-> el 2026-09-02, apoyado en los hubs de B-108.** `migasDeDetalle`
-> (`src/lib/detallePublico.ts`) arma el `BreadcrumbList` del detalle —Agenda →
-> {Tipo} → {título}—, y `coleccionSchema` (`src/lib/hubsPublicos.ts`) arma el
-> `CollectionPage`/`ItemList` de la home y de los cuatro hubs, compartiendo una
-> sola función entre las cinco páginas.
->
-> **Un caso que no estaba escrito en el diseño:** el segundo nivel de la miga
-> —el hub de tipo— no siempre existe. Un `/tipo/{slug}` se emite si alguna
-> actividad **publicada** usó ese tipo alguna vez, y una cancelada no entra a
-> esa cuenta (D-159, B-108). Una actividad cancelada cuyo tipo nadie más usa
-> podría quedar con una miga apuntando a un 404. Se resolvió con un campo
-> nuevo, `DetallePublico.tipoTieneHub`, que calcula el lector
-> (`contenidoDelSitio.ts`) sobre el índice entero —la página de detalle sola no
-> puede saberlo— y que por default es `false`: el lado que no publica un link
-> que puede no existir, mismo criterio que ya usaban `cancelada` y
-> `mesesConPagina`. Con `tipoTieneHub: false` la miga sale con dos niveles
-> (Agenda → título) en vez de tres.
->
-> `Organization` en `/contacto` sigue afuera: nadie la pidió, y no tiene ítem
-> propio (§4.5 del diseño).
->
-> Verificado con `npx vitest run` (mutación probada en el default de
-> `tipoTieneHub` y en el caso de lista vacía de `coleccionSchema`) y con un
-> build real contra el emulador (`scripts/build-contra-emulador.mjs`): los dos
-> bloques nuevos de `<script type="application/ld+json">` salen bien formados,
-> con el mismo escape de `<` que ya usaba el `Event`, y sin el segundo nivel de
-> la miga cuando el hub de tipo no se generó.
-
-### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis` — ✅ hecho (2026-09-02)
-
-**Hecho.** Un solo componente de página (`src/lib/hubsPublicos.ts` +
-`CuerpoDeHub.astro`) para las cuatro clases, con el subconjunto ya filtrado en
-HTML — **no una island**: el hub no lleva JavaScript, es HTML del build igual
-que el resto de las páginas nuevas del sitio. El «buscar dentro» del §4.4 es un
-link `?tipo=taller` a la home, que sí tiene la island. Es lo que gana `taller de
-escritura villa crespo` y `club de lectura online`: un filtro no puede, porque
-no tiene URL ni `h1` (§2.1 del diseño).
-
-Los de tipo y barrio se generan recorriendo `/opciones/{tipo,barrio}` — una
-opción nueva trae su hub sola. El slug de la URL es el **slug** de la taxonomía,
-nunca el label: el label se renombra (§4.1) y una URL no (trampa 10).
-
-Un hub que se queda sin actividades vigentes **no se borra**: se genera vacío,
-con aviso y links, y sale con `noindex`. `esIndexable` fija que esa señal y "está
-en el sitemap" sean las dos mitades de una sola decisión, nunca una sin la otra
-— `tests/hubsPublicos.test.ts` lo prueba en las dos direcciones.
-
-**Los hubs entraron a `RUTAS_FIJAS`/`hubsOfrecidos`** (`src/lib/sitemap.ts`),
-como el ítem preveía: los dos temáticos por la lista fija, los de tipo y barrio
-por su propia regla dinámica, igual que las actividades y los meses.
-`tests/sitemap.test.ts` sigue exigiendo que toda página estática esté en una de
-las dos listas.
-
-La navegación es la tira **«Explorá por»** (`ExploraPor.astro`), que
-**reemplazó** a la tira «La agenda mes por mes» de B-113: los meses son ahora un
-grupo más, junto con los hubs. Sin esa tira los hubs serían páginas indexadas sin
-un solo enlace interno.
-
-**Lo que encontró la integración con los otros frentes, y no este ítem en
-soledad:** los cuatro hubs no habían entrado a las tres listas que atan una
-salida pública nueva —la ficha de `auditor-privacidad`, `docs/07-seguridad.md`
-y el skill `campo-nuevo`— así que el auditor no se disparaba al tocarlos. Se
-cerró como la **salida 11** del índice, con su `describe` en
-`tests/barrido-de-salidas-publicas.test.ts` (detalle en el CHANGELOG del
-2026-09-02). Y una precisión de ese mismo barrido: **las frases y la URL de un
-hub se recorren por separado**, porque en el título tiene que estar la etiqueta
-y en la ruta el slug (trampa 10) — un barrido único dejaba pasar el slug en el
-título nada más porque coincidía con el de la URL.
-
-**Lo que queda, y es de otro ítem:** el `CollectionPage`/`ItemList` de datos
-estructurados sobre la home y los hubs sigue en **B-107**, que es además donde
-va el `BreadcrumbList` del detalle — las dos piezas de marcado de navegación que
-faltaban.
-
-### B-109 · `site`, `robots.txt`, `sitemap.xml` y `/pasadas` — ✅ hecho (2026-09-02)
-
-**Hecho**, con [D-165](06-decisiones.md), [D-166](06-decisiones.md) y
-[D-167](06-decisiones.md). Era el bloqueo de la cadena entera y estuvo esperando
-el dominio desde el 2026-08-27 (DEC-6).
-
-**El canónico es `https://agendaleh.ar`**, decisión del dueño. Lo que se
-construyó, en cuatro tramos:
-
-| | Qué |
-|---|---|
-| `site` + el canónico | `SITIO` (`src/lib/rutasPublicas.ts`) es la **única** aparición del dominio en el repo; `astro.config.mjs` la importa. De ahí salen el `canonical`, el Open Graph, las URLs del JSON-LD y el sitemap — cuatro consumidores, una constante |
-| canonical y Open Graph | en **todas** las páginas, y los pone `Base.astro` una sola vez: con una prop por página, la que se olvidara se publicaría sin canónica y nada fallaría |
-| `sitemap.xml` y `robots.txt` | endpoints a mano, con las reglas del §5.6 |
-| `/pasadas` | el archivo, y el único link interno permanente de lo que ya pasó |
-
-**Lo que se aprendió midiendo, y que este ítem no preveía:**
-
-- **La canónica lleva barra final.** `curl -I https://agendaleh.ar/cartelera`
-  devuelve un **301** a `/cartelera/`: es el comportamiento por defecto de
-  Firebase con las páginas que Astro emite como `carpeta/index.html`. Una canónica
-  que apunta a una redirección es un aviso en Search Console y una entrada de
-  sitemap que redirige es una URL menos rastreada, así que las dos la llevan
-  (`rutaCanonica`). Que los `href` internos sigan sin barra —y coman el 301 al
-  navegar— quedó como **B-293**, cerrado el 2026-09-02 con **D-180**.
-- **El canonical tiene que ser absoluto y no relativo**, y no por prolijidad:
-  `agenda-literaria.web.app` **no se apaga nunca** y sirve este mismo HTML. Uno
-  relativo se resuelve contra el host que lo sirvió, o sea que en el espejo diría
-  que la página buena es la del espejo.
-- **`updatedAt` se resolvió sin agregarlo a la proyección.** El ítem avisaba que
-  no está (es `actualizadoEn`, B-112). Lo lee **el lector** del documento crudo y
-  viaja **al lado** de la proyección (`canceladasEditadasEn`, un mapa `slug → ISO`),
-  igual que la bandera `cancelada` de B-110. Y es un **predicado**: decide si la
-  URL entra al sitemap y no se emite en ninguna parte —el sitemap va sin
-  `lastmod`—, así que `updatedAt` sigue sin salir a ninguna salida. El
-  razonamiento está en D-166.
-- **Un bug que ya estaba en producción**, y que apareció al poner cuarenta filas
-  pasadas en una página: la fila de una actividad que ya pasó decía «Inscripción
-  abierta». Es **B-290**.
-- **Dos salidas públicas nuevas** (la 9 y la 10), que entraron a las tres tablas
-  que las atan y al barrido de centinelas. Y el parseo que compara esas tablas
-  se podía acortar sin fallar: leía `(\d)` y la fila `| 10 |` no matcheaba, así
-  que las tres seguían coincidiendo entre sí cortadas en la 9.
-
-**Catorce mutaciones probadas, todas rojas** — las seis que pedía el ítem (la URL
-escrita a mano, el canonical relativo, la pasada de 91 días, la cancelada de 31,
-el mes con 2 y `/admin` colándose) y ocho más. Tres guardas pasaron en verde con
-la mutación puesta y se arreglaron: el `noindex` del panel se verificaba contra el
-archivo entero y su propio comentario lo nombraba; el `url` del `VirtualLocation`
-(§5.4) no lo miraba nadie porque el detalle por defecto es presencial; y el parseo
-de la tabla de salidas.
-
-**Lo que sigue abierto y era de este ítem:** las cinco imágenes de Open Graph por
-tipo (**B-291**, lo último que le queda a B-107), la búsqueda en `/pasadas`
-(**B-292**), el `lastmod` (**B-112**) y los hubs, que cuando existan entran a
-`RUTAS_FIJAS` — el test de la lista lo va a pedir (**B-108**).
-
-**Y lo que queda del lado del dueño**, en la consola de Firebase: el 301 de
-`agendaleh.com.ar`, la decisión sobre el `www` y el alta en Search Console. Está
-en **B-295** y paso por paso en [`08-operacion.md`](08-operacion.md) § «El
-dominio», con las dos trampas de falla diferida que encontró la investigación del
-dominio.
-
-El texto original, para que las decisiones se lean contra él:
-
-**Va primero de todo**, porque depende de la decisión del dominio (§11.1 del
-diseño) y porque canonical, Open Graph y sitemap necesitan URLs absolutas.
-`astro.config.mjs` hoy **no tiene `site`**.
-
-El sitemap se genera a mano (endpoint estático), no con `@astrojs/sitemap`: las
-reglas de qué entra —90 días para las pasadas, 30 para las canceladas, meses con
-3 o más— son nuestras. `lastmod` necesita B-112; sin eso se omite, que es mejor
-que estampar la fecha del build en todo.
-
-**Los 30 días de las canceladas, con el criterio escrito** (B-110 dejó la página;
-sacarla del sitemap es de acá). La regla del §7.3 es «30 días **desde que se
-canceló**», y *cuándo se canceló* no es un dato del modelo — igual que
-«estuvo publicada alguna vez» (B-285). Lo disponible:
-
-| Fecha | Sirve | Problema |
-|---|---|---|
-| `updatedAt` | es la edición que la canceló, si nadie la tocó después | cualquier corrección posterior corre el reloj; y **no está en la proyección** (es `actualizadoEn`, B-112) |
-| la versión de `/versiones` cuya edición cambió `estado` | es la fecha exacta | una lectura más por cancelada, y la retención de D-42 la puede podar |
-| `publicadaAlgunaVez` + un `canceladaEn` | exacto y barato de leer | dos campos nuevos |
-
-Lo razonable al escribir el sitemap es **`updatedAt` con el error dicho** —correr
-el reloj hacia adelante deja la URL un poco más de tiempo, que es el lado
-inofensivo— y no ir al historial por esto. La página **no se borra a los 30 días**:
-sigue existiendo para quien tenga el link, lo único que sale es la entrada del
-sitemap.
-
-`/pasadas` entra acá y no en B-108 porque su razón de ser es de indexación: sin
-esa página, cada actividad que pasa se convierte en una página huérfana que solo
-el sitemap enlaza.
-
-### B-110 · Una actividad cancelada no puede devolver 404 — ✅ hecho (2026-09-01)
-
-**Hecho**, con [D-159](06-decisiones.md). El build trae también
-`estado == 'cancelado'` y genera la página si esa actividad **estuvo publicada
-alguna vez**: franja «Esta actividad se canceló» arriba de todos los otros avisos,
-sin CTA ni canal, fechas intactas, `eventStatus: EventCancelled` y sin `offers`. No
-entra al `events.json`, ni al listado, ni a la cartelera.
-
-El lector se amplió **sin tocar la query de las publicadas**: las canceladas entran
-por una segunda query con su propio `==` —un `in` convierte el estado en una lista,
-y a una lista alguien le agrega un elemento— y van a un campo aparte de
-`ContenidoDelSitio`, así que ninguna lista del sitio las recibe.
-
-**Y la heurística que este ítem proponía no sobrevive en producción.** Al cancelar,
-`syncCalendar` borra los eventos y escribe `calendarEventId: null` de vuelta en
-cada sesión (`reponerIds`, B-80): la prueba que el §7.3 pedía la borra el propio
-sync. Con esa heurística sola, esto habría pasado todos sus tests sin generar una
-sola página. Se resolvió leyendo `/actividades/{id}/versiones` —cancelar deja una
-versión con `documento.estado: 'publicado'`—, con `.limit(1).select()` para no
-traer ningún campo. El `publicadaAlgunaVez` explícito sigue siendo lo correcto y
-queda en **B-285**.
-
-El texto original, para que la decisión se lea contra él:
-
-
-Hoy el camino natural (`estado == 'publicado'`) hace que una actividad cancelada
-pierda su página. La URL estuvo tres semanas en Instagram y en Google, y a quien
-pregunta "¿se hace o no se hace?" el sitio le contesta "no existe".
-
-Lo que hay que hacer (§7.3 del diseño): el build también trae
-`estado == 'cancelado'`, genera la página con la franja `CANCELADA`, sin CTA, con
-las fechas intactas y `eventStatus: EventCancelled` — que es exactamente lo que
-Google pide. No entra al listado ni a `events.json`. Sale del sitemap a los 30
-días.
-
-**Sigue abierto después de B-253 (2026-08-31), y ahora hay una promesa esperándolo.**
-El rediseño de la página de detalle le dio forma al aviso de arriba —los cuatro
-estados con su prioridad, incluida la rama `cancelado`— pero el lector
-(`contenidoDelSitio.ts`) sigue trayendo solo `estado == 'publicado'`, así que esa rama
-solo se activa cuando **todos los encuentros** están cancelados y nunca cuando lo está
-la actividad. Nada de este punto cambió.
-
-Lo que sí cambió es que ahora se sabe que **`src/lib/ayudaDelSitio.ts` ya le promete
-esto a quien lee el sitio**: «si se cancela la actividad entera, la página no
-desaparece: queda con el aviso de que se canceló». Hoy devuelve 404. Lo encontró el
-`auditor-privacidad` mirando B-253. Al cerrar este ítem hay que verificar ese texto —
-o corregirlo antes, si esto se demora.
-
-**Solo si estuvo publicada alguna vez**, que hoy no es un dato del modelo. La
-heurística disponible es que alguna sesión tenga `calendarEventId` (el sync solo
-crea eventos de actividades publicadas), y el build la puede leer porque trabaja
-sobre el documento crudo. Lo correcto es un `publicadaAlgunaVez: boolean` — es
-una de las decisiones de §11.1.
-
-### B-111 · `inscripcion.abierta` se congela en el build y miente — ✅ hecho (2026-08-27)
-
-**Hecho** como parte de B-106, porque era dependencia dura de la forma diseñada del
-índice: `toPublic` proyecta `cierraEn` (el ISO de `cierra`) **además** del booleano,
-y el `events.json` lleva la fecha. Quien consume la recalcula con **su** reloj.
-
-`abierta` se conserva —el arreglo era «además del booleano», no «en lugar de»—
-porque un consumidor sin JavaScript no puede recalcular nada.
-
-**De paso, la lista de claves de `toPublic.test.ts` hizo su trabajo:** agregar la
-clave puso la suite en rojo nombrándola, que es exactamente para lo que está esa
-lista. Un campo nuevo en una proyección pública tiene que ser una decisión.
-
-
-`toPublic` calcula `abierta` con `Date.now()` **del momento del build**. Una
-inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild
-siguiente. El rebuild automático ya corre solo (**B-20**, cerrado el 2026-08-25),
-así que la ventana bajó de días a los ~2-7 minutos del debounce del §8 — pero
-sigue siendo real, y no depende de que alguien edite: el `abierta: false` se
-calcula **en el build**, así que sin un cambio que dispare rebuild nadie
-recalcula nada y el sitio invita a anotarse en algo que ya cerró.
-
-Arreglo: proyectar **`inscripcion.cierraEn`** (el ISO de `cierra`) además del
-booleano. Con la fecha, el HTML puede decir "las inscripciones cierran el 22 de
-septiembre" —que es lo que hace que alguien escriba hoy— y el cliente recalcula
-si ya cerró. No expone nada nuevo: es una fecha que la página ya quiere mostrar.
-
-Hoy no se nota porque no hay sitio público. Va antes de B-108 porque el detalle
-ya lo necesita.
-
-~~B-02 · Trigger de rebuild~~ → [cerrado](#cerrados), con pasos manuales
-pendientes del dueño (ver arriba).
-
-### B-83 · El rebuild del sitio cuelga del sync a Calendar — ✅ hecho (2026-08-24)
-
-**Arreglado:** `marcarRebuild` pasó arriba de los dos cortes, con la condición
-`huboCambioDeContenido(antes, despues)` — el mismo criterio del historial
-(D-41), para que el write-back de la propia Function no pida un build por cada
-sincronización (D-92).
-
-`syncCalendar` marca `sistema/rebuild` en la **última** línea, después de dos
-cortes tempranos: `if (ops.length === 0) return;` y `if (!CALENDAR_ID) return;`.
-Consecuencia: un cambio que no altera el evento del calendario no pide rebuild y
-el sitio público se queda con el dato viejo.
-
-Los campos que salen al `events.json` (§5.2) y **no** entran al evento de
-Calendar son `destacado`, `imagenUrl`, `searchText` y el `slug`. Así que tildar
-"Destacar en la portada" o corregir la imagen de una actividad ya publicada no
-se ve nunca en el sitio, hasta que alguien edite otra cosa. Es la trampa 8 del
-§13 con otro disparador: ahí era olvidarse de `/opciones/*`, acá es que el
-rebuild sea un efecto secundario del sync.
-
-Segundo caso, el mismo agujero: sin `GOOGLE_CALENDAR_ID` configurado la Function
-loguea el error y vuelve **antes** de marcar el rebuild, así que un proyecto sin
-calendario no publica nada nunca.
-
-El arreglo es mover `marcarRebuild` arriba de los dos cortes: el rebuild
-corresponde porque la actividad cambió, no porque el calendario haya recibido
-operaciones. Cuesta un build de más cuando el cambio es solo interno
-(`difusion`), que al lado de esto es gratis — el debounce del §8 ya los junta.
-
-Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
-
----
-
-### B-167 · Galería de imágenes: una lista, con descripción, propias o de afuera — ✅ las dos tajadas hechas (2026-08-26 y 2026-08-27)
-
-> **Estado al 2026-08-27.** La primera tajada (modelo + editor de URLs externas)
-> salió en `1.3.0`. La segunda —**subir un archivo propio**, que es lo que el dueño
-> reclamó con «no estoy viendo lo de cargar imágenes»— salió después: entra
-> `storage.rules`, el emulador de Storage, la línea `storage=` de
-> `que-deployar.sh`, y `src/lib/subir-imagen.ts` cargado con `import()`. Razonamiento
-> en **D-131**; las dos preguntas que bloqueaban están resueltas en **B-206**.
->
-> **Lo que sigue abierto**, y con ítem propio para que no se confunda con esto: la
-> Function de DEC-7d —recompresión y miniatura— es **B-208**; la limpieza de objetos
-> huérfanos es **B-209**; servirlas por dominio propio, **B-210**. Todo lo que este
-> ítem describe abajo se hizo salvo esos tres, y las anotaciones de más abajo dicen
-> cómo quedó cada punto.
-
-Pedido del dueño (2026-08-24): una actividad tiene una **lista** de imágenes,
-cada una con descripción opcional; cada imagen puede ser una **URL de otro lado**
-o un archivo que **subimos y alojamos nosotros**. Y **vista previa**, incluida en
-el momento de pegar una URL.
-
-Está en P1 y no en P2 por una razón de orden, no de urgencia: **el modelo pasa de
-un campo a una lista**, y B-107 (Open Graph y JSON-LD) necesita exactamente una
-imagen. Si la galería entra después del sitio público, se rehace la tarjeta, el
-detalle, la proyección y el `events.json`. Entra antes de B-01, o se paga dos
-veces.
-
-#### El cambio de modelo, y la migración que no se ve
-
-Hoy es `imagenUrl: string | null` y toca nueve archivos: `types/actividad.ts`,
-`schema.ts`, `actividades.ts` (las dos conversiones), `toPublic.ts` (tipo y
-proyección), `ActividadFormulario.tsx`, `analytics-eventos.ts` y un comentario de
-`functions/index.js`.
-
-Pasa a algo como `imagenes: [{ id, url, descripcion, origen: 'externa'|'propia',
-storagePath?, ancho?, alto?, portada? }]`.
-
-**Los ids se generan en el cliente, nunca por índice** — es la trampa 2 del §13,
-la misma que costó el diff de sesiones: borrar la segunda imagen renumera todo y
-cualquier cosa que compare por posición cree que cambiaron todas.
-
-**El default de lectura es la parte que se olvida.** Los documentos que ya están
-en producción tienen `imagenUrl` y no tienen `imagenes`. La lectura tiene que
-convertir `imagenUrl` en una lista de un elemento marcada como portada, y hay que
-decidir si se hace **al leer para siempre** (compatible, código que queda) o con
-una **migración de una vez** (más limpio, pero es un script que escribe en
-producción). Con el volumen actual la migración es de minutos.
-
-#### Lo que aparece por primera vez: Firebase Storage
-
-No hay Storage en el proyecto. `firebase.json` tiene `firestore` y `hosting`, y
-nada más. Entra un producto nuevo, y con él:
-
-- **`storage.rules`, que son un archivo aparte de `firestore.rules`.** Escritura
-  solo con el claim `admin`, y ahí aplica D-05 tal cual: `request.auth.token.admin
-  == true` es un **error de evaluación** cuando el claim no está, no `false`. Va
-  `token.get('admin', false)`.
-- **Un target de deploy que `scripts/que-deployar.sh` no conoce.** Hoy decide
-  `hosting`, `functions` y `firestore`. Sin una regla nueva, un cambio en
-  `storage.rules` se deploya nunca — y las reglas por defecto de Storage son
-  abiertas o cerradas según cómo se cree el bucket, así que "nunca" es el peor de
-  los dos casos. El script tiene 20 tests: la regla nueva va con los suyos.
-- **`firebase/storage` en el bundle.** El corte de B-09/D-51 dejó la carga
-  inicial de `/admin` en ~385 KB separando `firebase-client.ts` (app+auth) de
-  `firestore-client.ts` (db). Meter el SDK de Storage en cualquiera de los dos lo
-  deshace. Va en su propio módulo, cargado lazy junto con la sección de imágenes
-  del formulario, y `tests/bundle-panel.test.ts` tiene que cubrirlo — importar
-  desde el módulo equivocado ya deshizo este corte **tres veces** sin que nada
-  fallara.
-- **Validación del archivo, del lado de las reglas y no solo del cliente.** Tipo
-  (`image/jpeg`, `png`, `webp`, `avif`) y tamaño máximo. **SVG no**: es un
-  documento ejecutable, y si algún día se sirve por un rewrite de Hosting pasa a
-  ser mismo origen que el panel.
-
-**Cómo quedó (2026-08-27).** Los cuatro puntos de arriba, uno por uno:
-
-- `storage.rules` existe, con `token.get('admin', false)` como pedía D-05, y lo
-  verifica `tests/storage-reglas.integracion.test.ts` **subiendo de verdad** contra
-  el emulador — que además hubo que agregar (`firebase.json` y el `--only` de los
-  dos lugares que corren la suite). Lo que las reglas **no** pueden validar es el
-  tope de 4 imágenes: una regla de Storage no cuenta los objetos de un prefijo. Ese
-  tope se queda en el schema, y está escrito para que no se lea como olvido.
-- `que-deployar.sh` emite una cuarta línea, `storage=`, y `storage.rules` entró
-  además a la lista **negra** de hosting por el mismo motivo que `firestore.rules`:
-  es config del servidor y nadie la importa. El job «Reglas e índices» de
-  `push-main.yml` arma el `--only` con lo que haya cambiado.
-- El SDK vive solo en `src/lib/subir-imagen.ts`, cargado con `import()`. Se cubrió
-  con **dos** chequeos y no uno, porque el obvio no alcanzaba: `firebase/storage`
-  entró a `SDK_PESADO` (no puede llegar al chunk inicial) **y** hay un bloque nuevo
-  «quién es dueño de Storage» que exige que nadie lo importe de forma estática. El
-  segundo hace falta porque el editor de la galería ya está en un chunk diferido:
-  volver estático ese `import()` no metería el SDK en el chunk inicial y el primer
-  chequeo seguiría en verde — lo habría pegado al chunk del formulario, que baja
-  todo el mundo. Verificado por mutación.
-- Tipo y tamaño se validan en las reglas. **Los tipos que se pueden subir son menos
-  que los que la galería muestra:** solo JPG y PNG, porque WebP y AVIF también
-  llevan EXIF/XMP y todavía no hay quien se lo saque. Vuelven con B-208. SVG queda
-  afuera igual que siempre.
-
-#### EXIF: la privacidad que no está en el §5 y debería
-
-Una foto de celular trae GPS. En este dominio eso es concreto: **muchos talleres
-se dan en casas particulares**, y la lista es pública y scrapeable. Subir la foto
-del living publica las coordenadas del living, aunque `sede.direccion` diga solo
-el barrio.
-
-Hay que **quitar el EXIF al subir**, y el lugar es del lado del servidor o en la
-Function, no en el cliente (el cliente es lo que se puede saltear). Esto es una
-fila nueva en la tabla del §5.1 de `CLAUDE.md` y en
-[`07-seguridad.md`](07-seguridad.md).
-
-**Cómo quedó (2026-08-27), y por qué se hizo en el cliente igual.** El argumento de
-arriba sigue en pie y por eso la Function sigue en el plan (**B-208**): es la que no
-se puede saltear. Pero la Function es justamente lo que la segunda tajada dejó
-afuera, y **entre una tajada y la otra hay imágenes propias públicas**. Publicar las
-coordenadas del living no es una optimización pendiente: es irreversible. Así que el
-panel las saca ahora (`sinMetadatos`, en `src/lib/imagenes-archivo.ts`) y la Function
-las va a sacar otra vez — defensa en profundidad, el mismo patrón que DEC-7b ya había
-elegido para el tamaño.
-
-Dos consecuencias que no se adivinan y están en D-131 §3:
-
-- **Se saca sin recomprimir.** Recomprimir en un `canvas` también borraría el EXIF, y
-  haría que el tope de 3 MB de DEC-7b deje de significar lo que se decidió: una foto
-  de 8 MB entraría recomprimida y el mensaje que empuja a recortar no aparecería
-  nunca. Recorriendo segmentos JPEG y chunks PNG a mano, la función es pura y el test
-  verifica **sobre los bytes de salida** que el bloque `Exif` no está.
-- **Por eso solo se suben JPG y PNG.** WebP y AVIF también llevan EXIF/XMP y no hay
-  quien se lo saque todavía; se siguen mostrando si son externas, y vuelven a ser
-  subibles con B-208.
-
-La fila del §5.1 está puesta: `07-seguridad.md` § «Las imágenes propias, y qué se
-sube al bucket».
-
-#### La vista previa, que es la otra mitad del pedido
-
-Pegar una URL y verla. Los casos que hay que resolver, porque son los que se
-ven en la demo y no en el diseño:
-
-- la URL no es una imagen (devuelve HTML) → mensaje, no un roto silencioso;
-- la URL es `http://` y el panel es `https://` → contenido mixto, el navegador la
-  bloquea y no se entiende por qué;
-- la imagen tarda o no carga nunca → estado de carga y de error, con la URL
-  igual guardable si el dueño insiste;
-- el dominio de afuera puede caerse mañana → la vista previa es del momento de
-  cargar, no una garantía. Vale detectar links muertos, pero como aviso.
-
-**Y ojo con `astro:assets`.** El sitio público es SSG: una imagen remota no se
-optimiza en build sin descargarla, y Astro exige declarar los dominios
-permitidos (`image.domains` / `remotePatterns`) o el build se comporta distinto
-de lo que se probó. Con URLs arbitrarias cargadas por un admin, la lista de
-dominios no se puede enumerar de antemano — hay que decidir entre no optimizar
-las externas, o descargarlas al build (que las convierte en propias por la
-puerta de atrás).
-
-#### Borrado y huérfanos
-
-Quitar una imagen de la lista, o borrar la actividad, tiene que **borrar el
-objeto de Storage**. Si no: archivos que nadie referencia, que siguen siendo
-públicos y que se pagan.
-
-Es exactamente la clase de **B-71** (un guardado que falla deja opciones
-huérfanas en la taxonomía), y el orden correcto es el mismo que ahí: primero el
-documento, después el archivo. Si falla el borrado del archivo queda basura
-invisible; si falla al revés, el documento apunta a un archivo que no está.
-
-Dos casos que lo complican y hay que resolver explícitamente:
-
-- **Duplicar una actividad.** Si la copia comparte el `storagePath`, borrar una
-  le rompe las imágenes a la otra. O se copian los objetos, o se cuentan las
-  referencias.
-- **Restaurar una versión (§12, B-40).** Una versión vieja referencia un archivo
-  que quizá ya se borró. Restaurar tiene que decir qué imágenes no volvieron, en
-  lugar de dejar la lista con agujeros.
-
-#### El rebuild: esto ya fue un bug, con estos mismos campos
-
-`functions/index.js` tiene el comentario: el rebuild del sitio colgaba del sync a
-Calendar, así que **`destacado` e `imagenUrl` no llegaban nunca al sitio** —
-porque no van al calendario y por lo tanto no había operaciones que lo
-dispararan. Eso es **B-83**, ya arreglado.
-
-Una galería es más de lo mismo y de manual: las imágenes no van a Google Calendar
-(la API no tiene campo de imagen; el §7.4 arma solo `summary`, `description`,
-`location` y las fechas). Así que hay que **verificar** que la lista entre por el
-camino que B-83 dejó arreglado, y no asumirlo.
-
-#### Los lugares que toca, para no descubrirlos de a uno
-
-El criterio del skill `campo-nuevo` es que un campo del modelo toca once lugares
-y los que se olvidan son siempre los mismos tres: **la proyección pública, el
-default de lectura de los documentos que ya existen, y la ayuda**. Acá:
-
-| Lugar | Qué |
-|---|---|
-| `types/actividad.ts` | la lista y el ítem |
-| `schema.ts` | zod: URL válida, largo de la descripción, y **una sola portada** |
-| `actividades.ts` | las dos conversiones, más el default de lectura de `imagenUrl` |
-| `toPublic.ts` | §5.2 — qué campos de cada imagen se publican. `storagePath` **no** |
-| `ActividadFormulario.tsx` | sección nueva: filas, orden, portada, subida, vista previa |
-| `functions/` | borrado de objetos al borrar la actividad; quitar EXIF |
-| `storage.rules` | archivo nuevo |
-| `que-deployar.sh` | target nuevo + sus tests |
-| `analytics-eventos.ts` | cuántas imágenes, propias vs externas — sin la URL |
-| `ayuda.ts` / `novedades.ts` | se nota al usar el panel: va a los dos |
-| `searchText` (§6) | decidir si la descripción entra. Recomendado **no**: infla el índice con texto que nadie busca |
-| tests | la familia de fixtures del §2.2, con y sin imágenes, propias y externas |
-
-#### Costo
-
-Storage se paga por almacenamiento y por egreso, y una galería en un sitio
-público indexado es egreso real. Hace falta al menos un tamaño derivado (una
-miniatura para la tarjeta) en lugar de servir el original de 4 MB en un listado
-de treinta actividades. Y el budget alert del §2.3 está puesto para Functions:
-conviene revisarlo antes, no después de la factura.
-
-### B-183 · «Guardar borrador» exige el formulario completo, así que no se puede guardar a medias — ✅ hecho (2026-08-26)
-
-Reporte del dueño usando el panel (2026-08-25):
-
-> No me deja GUARDAR BORRADOR si no completo todo. Tiene que ser más flexible el
-> guardar borrador.
-
-`actividadFormSchema` (`src/lib/schema.ts`) se valida **igual para borrador que
-para publicado**: título, dirección web, descripción, un encuentro, el arancel
-elegido, sede y dirección si es presencial, plataforma si es virtual, vía y
-destino si requiere inscripción. La única regla que hoy distingue el estado es la
-del slug `-copia`, que corre solo al publicar (trampa 10) — o sea que **el patrón
-ya existe en el archivo**, aplicado a una regla sola.
-
-**Por qué es P1 y no una molestia.** Un borrador es, por definición, lo que
-todavía no está completo: es la mitad de la razón por la que el estado existe. Y
-desde B-35 el panel avisa al salir con cambios sin guardar, así que el que carga
-queda encerrado entre un aviso que le dice que va a perder el trabajo y un
-guardado que no lo acepta. La salida es completar campos inventados o perder lo
-cargado, y las dos terminan igual: la actividad no se carga, y la que no se carga
-no se publica ni se indexa.
-
-**La forma del arreglo.** Partir la validación en dos niveles sobre el mismo
-schema, no en dos schemas:
-
-- **Guardar borrador** — lo mínimo para que el documento exista y se pueda
-  encontrar después en el listado: título no vacío, y el slug (que ya se genera
-  solo desde el título mientras no esté publicado). Nada más.
-- **Publicar** — todo lo de hoy, que es lo que hace que el sitio y el evento no
-  publiquen algo a medias.
-
-Los `superRefine` no cambian de contenido: cambian de condición, igual que la
-regla del slug. Y los `sesiones`/`arancel`/`sede` obligatorios pasan a ser
-obligatorios **al publicar**.
-
-Dos cosas para no romper en el camino:
-
-- **La barra de errores no debe mentir.** Hoy cuenta "campos a revisar" contra el
-  schema único; si el borrador valida con menos, la barra tiene que seguir
-  mostrando lo que va a faltar **para publicar**, o quien carga se va a
-  encontrar el bloqueo recién al final. Que sea aviso, no bloqueo.
-- **Lo que el modelo necesita para no corromperse sigue siendo obligatorio** en
-  los dos niveles: los `id` de sesión (trampa 2) y que las fechas sean
-  `Timestamp` (trampa 1). Eso no es "completar el formulario", es que el
-  documento sea legible.
-
-El sync a Calendar no se toca: ya borra los eventos de todo lo que no está
-`publicado` (§7.3), así que un borrador más incompleto no llega a Calendar por
-definición.
-
-**Cómo quedó (2026-08-26, `1.2.0`).** Dos niveles sobre el mismo schema con la
-condición `estado === 'publicado'`, como decía este ítem: los `superRefine`
-cambiaron de condición, no de contenido. El borrador pide título y slug; en los
-dos niveles siguen bloqueando el `id` de sesión, las fechas convertibles a
-`Timestamp`, el formato del slug y el rango de las coordenadas. La barra no
-miente: muestra en gris lo que va a faltar para publicar (`faltaParaPublicar`).
-Ver **D-120**; los dos niveles están fijados en `tests/schema.test.ts`, con el
-par "el mismo borrador a medias NO se puede publicar".
-
-### B-184 · Cuando el guardado falla, la barra dice cuántos campos faltan pero no cuáles — ✅ hecho (2026-08-26)
-
-Reporte del dueño usando el panel (2026-08-25):
-
-> cuando no se pueda guardar y diga que faltan campos, siempre especificarlos
-
-Hoy `BarraAcciones` muestra `«3 campos para revisar»` y nada más. Fue una
-decisión escrita —listar las rutas de campo tapaba media pantalla en mobile, y el
-detalle está en rojo al lado de cada campo— y **el reporte la da por equivocada**.
-Con razón, y hay un motivo concreto que la decisión no tuvo en cuenta:
-
-**las secciones «Material», «Opcional», «Difusión» y «Vista previa» arrancan
-colapsadas.** Un campo rechazado adentro de un acordeón cerrado no se ve en
-ninguna parte: el contador dice que hay tres, la pantalla muestra cero, y no hay
-forma de saber dónde mirar salvo abrir todo y bajar. Eso no es un resumen
-apretado, es un mensaje que no se puede accionar.
-
-**La forma del arreglo**, que además resuelve lo que motivó la decisión original:
-
-- Nombrar los campos, no las rutas del schema (`sede.direccion` → «Dirección»);
-  ya hay vocabulario de UI para eso en `formulario/etiquetasUI.ts`.
-- Con muchos, nombrar la **sección** y no cada campo: «Falta completar: Dónde
-  (2), Arancel e inscripción (1)». Es corto en mobile y alcanza para saber a
-  dónde ir.
-- Que cada nombre **lleve al campo**: abrir la sección si está colapsada y
-  scrollear hasta él. Es lo que cierra el agujero del acordeón.
-
-Depende de **B-183**: mientras el borrador exija el formulario completo, el
-mensaje va a listar campos que a quien está guardando a medias no le importan
-todavía. Con los dos niveles de validación, el mensaje del borrador es la lista
-corta y el de publicar es la larga. Se pueden hacer en cualquier orden, pero el
-valor del mensaje bueno se cobra recién con B-183 hecho.
-
-Ojo con el criterio de B-63: si se agrega el mensaje, el punto de la guía que hoy
-dice «esa barra dice cuántos campos hay que revisar» queda mintiendo.
-
-**Cómo quedó (2026-08-26, `1.2.0`).** Nombra los campos hasta tres y las
-secciones con su cuenta a partir de cuatro; cada nombre abre la sección y
-scrollea hasta el primer campo rechazado. El diccionario de nombres es data
-(`lib/formulario/camposFaltantes.ts`), atado al schema por
-`tests/campos-faltantes.test.ts`, que también lee los `.tsx` para que un
-renombre de sección no deje el mensaje apuntando a una sección inexistente. La
-advertencia de este ítem sobre B-63 se cumplió: el punto de la guía que describía
-la barra vieja se reescribió en el mismo cambio. Ver **D-121**.
-
-### B-189 · `hayCredenciales()` existe y no la llama nadie, así que el build va a publicar un sitio vacío — ✅ hecho (2026-08-26)
-
-`src/lib/firebase-admin.ts` exporta:
-
-```ts
-/** ¿Tenemos con qué leer Firestore en este build? */
-export const hayCredenciales = (): boolean => …
-```
-
-y `grep -rn hayCredenciales src/ scripts/` no la encuentra en ningún otro lado.
-Es la guarda escrita para esta situación exacta, sin cablear.
-
-**Hoy no rompe nada**, y por eso pasa desapercibida: ninguna página lee Firestore
-en el build —el sitio público es el paso 3 del §10 y `index.astro` es un
-placeholder—, así que un build sin credenciales es correcto. Se comprobó con el
-primer push de CI (2026-08-25): `npm run build` sin `FIREBASE_SERVICE_ACCOUNT`
-terminó en verde, como corresponde.
-
-**Rompe con B-106.** El día que el build lea Firestore para armar `events.json` y
-las páginas de detalle, un build sin credenciales no va a fallar: va a producir
-cero actividades y un `events.json` vacío, y el deploy lo va a publicar encima del
-sitio que sí tenía datos. Sin error, sin log, con el workflow en verde. Es la
-misma familia que el `EXIGIR_EMULADOR=1` del §CI —"verde" no puede significar a la
-vez "los datos están" y "no había datos que leer"— y que B-187: una condición que
-solo se evalúa cuando ya deployó.
-
-**El arreglo es una línea, y hay que hacerlo antes de B-106, no después.** El
-lugar es el paso de build de los dos workflows, o el módulo que lea Firestore:
-
-```ts
-if (!hayCredenciales()) throw new Error('build sin credenciales: no se puede leer Firestore');
-```
-
-Con un test que lo ate, porque el patrón que lo apaga otra vez es exactamente el
-que lo dejó apagado: alguien escribe la guarda pensando en el consumidor que
-todavía no existe, y el consumidor nace sin llamarla.
-
-Queda **P1** y no P2 aunque hoy no se note: cuando se note, el síntoma es el sitio
-público vacío e indexado por Google, que es el objetivo del proyecto al revés.
-
-**Cómo quedó (2026-08-26, `1.2.0`).** La llama `adminApp()`, la única puerta a
-Firestore en build time, y no el paso de build de los workflows: `1.1.0` se
-desplegó a mano, que es el camino que ningún `if` de un YAML mira. La regla del
-§3.2 de `12-sitio-publico.md` no cambió —falla en CI, en local sigue con lista
-vacía— porque es del lector de Firestore; esto es la red de atrás para el
-consumidor que se olvide, que es el patrón que dejó la guarda apagada un mes. Ese
-documento ahora dice qué mitad implementa cada uno.
-`tests/build-credenciales.test.ts` fija que la puerta tire y que nada más en
-`src/` importe el Admin SDK, y se verificó reintroduciendo el bug. Ver **D-123**.
-
-### B-191 · No hay autoguardado, así que una interrupción se lleva todo lo escrito — ✅ hecho (2026-08-26)
-
-[Issue #6](https://github.com/benoffi7/agenda-literaria/issues/6), del panel,
-Android, versión `1.0.1+538bef7`:
-
-> Se podrá guardar algo como borrador o auto guardado, como en word? Porque
-> reporté algo y todo lo que escribí se borró:(
-
-**El accidente concreto ya está cerrado**: tocar «Reportar algo» con el formulario
-a medio llenar lo descartaba sin decir nada, y eso es **B-35**, arreglado el
-2026-08-24 y publicado en 1.1.0 — ahora pregunta antes. Quien reportó esto todavía
-no lo tenía.
-
-**Lo que pidió no es eso, y sigue abierto.** Un aviso evita el accidente; no
-recupera el trabajo. Y hoy se combina mal con **B-183**: si «Guardar borrador»
-exige el formulario completo, la única respuesta honesta al aviso es "sí, perdelo".
-Los tres ítems son una sola historia contada en tres pedazos: **no podés guardar
-(B-183), no sabés por qué (B-184), y si te vas lo perdés (este)**.
-
-**La forma, que es más chica de lo que parece:** persistir el borrador del
-formulario en `localStorage`, con clave por actividad (más una para «nueva»), y al
-abrir ofrecer lo recuperado con un botón para descartarlo. **No toca Firestore**,
-así que no hay reglas nuevas, ni modelo, ni calendario, ni una escritura por tecla
-que cueste plata. El estado ya está centralizado desde B-70, y `formulario-sucio.ts`
-ya sabe cuándo hay algo que perder: son los dos ganchos que hacen falta.
-
-Tres cosas para no equivocarse:
-
-- **Lo guardado es contenido**, a diferencia de todo lo demás que el panel
-  persiste. Nunca sale del navegador y no puede filtrarse a la analítica, que
-  solo acepta enums y contadores (§9). Vale un test de eso.
-- **Recuperar en silencio es peor que no recuperar.** Si al abrir una actividad
-  aparece texto que no está en Firestore sin decir de dónde salió, la próxima
-  duda es "¿esto lo guardé o no?". Tiene que decirlo y tiene que poder
-  descartarse.
-- **Limpiar al guardar bien**, o el borrador viejo va a reaparecer encima de la
-  versión buena la próxima vez.
-
-**Orden:** B-183 primero. Es más barato, cierra el agujero de raíz y baja mucho la
-urgencia de esto.
-
-**Cómo quedó (2026-08-26, `1.2.0`).** `localStorage` con clave por admin y por
-formulario, debounce de 800 ms, y el aviso que ofrece lo recuperado con su fecha y
-un botón para descartarlo. Las tres cosas que este ítem pedía no equivocar están
-cubiertas y con test: no pasa por la analítica (se lee el código del módulo y del
-hook, sin comentarios), no recupera en silencio, y se limpia al guardar bien. De
-más: descarta lo ilegible, lo de otra `VERSION_BORRADOR` y lo de más de 30 días, y
-no tira nunca —`localStorage` lanza excepción en modo privado—. Ver **D-122** y la
-sección nueva de `07-seguridad.md`.
-
-Y una que este ítem no anticipaba: un borrador de hasta 30 días es un formulario
-viejo, así que recuperarlo pisaba `calendarEventId` —el único campo que escribe
-el backend— y duplicaba el evento en la edición **siguiente**, que es la familia
-de B-80. Lo recuperado pasa por `conIdsDeCalendarioDe`; queda anotado en
-`15-mapa-de-trampas.md` como vía nueva de una clase conocida.
-
-**Lo que encontraron los auditores antes del push, y se arregló en el mismo
-cambio (`1.2.0`, D-124).** Los cuatro son de esta función, y el primero es la
-misma clase que el párrafo de arriba con otro campo — o sea que el razonamiento
-estaba bien y la lista estaba corta:
-
-1. **P1 de privacidad — el borrador recuperado reactivaba los dos flags de
-   publicación.** `online.urlPublica` y `material.items[].publico` deciden si el
-   link de la reunión y las URLs del material salen a `events.json` y a la
-   descripción del evento (trampa 5). Se destilda, no se guarda, se recupera a los
-   veinte días, se publica, y sale. Vuelven a `false` (`sinFlagsDePublicacion`) y
-   el aviso lo dice cuando había alguna tildada — necesario porque `Seccion` lee
-   `abiertaPorDefecto` **solo al montar**, así que un flag que llega con el
-   borrador quedaba en una sección cerrada.
-2. **La clave no llevaba el uid y no se borraba al cerrar sesión.** Con dos admins
-   en la misma máquina (D-57), a B se le ofrecía el borrador de A; y el contenido
-   —parte de él interno por §5.1— sobrevivía al logout hasta 30 días, lo que
-   además hacía falsa una frase que `07-seguridad.md` ya afirmaba. Ahora la clave
-   lleva la huella del uid y `cerrarSesion()` borra todos.
-3. **La clave de "nueva" era la misma que la de "duplicar".** Las dos nacen sin
-   id. Un borrador de una carga nueva interrumpida se ofrecía dentro de un
-   duplicado y, aceptado, publicaba una actividad distinta de la que se quiso
-   duplicar. El discriminador ya existía una línea más abajo, en la medición.
-4. **`pareceFormulario` valida 2 campos de ~30**, y aguas abajo `formADocumento`
-   copia `sede`, `online`, `organizador` y `tallerista` tal cual y `toPublic`
-   proyecta los tres primeros enteros: una clave de más terminaba en
-   `events.json`. Lo recuperado entra podado contra el molde del formulario.
-
-Y un quinto que apareció al verificar los otros cuatro: **el test que fijaba la
-guarda de `calendarEventId` no la fijaba.** Decía
-`toContain('conIdsDeCalendarioDe')`, y esa cadena la satisface el `import`: con la
-llamada borrada seguía verde. Los dos tests de saneadores ahora afirman la
-composición con los espacios colapsados, y se verificó que caen. Es la clase de
-"chequeo que no chequea", y vale para cualquier test que lea un fuente buscando un
-nombre.
-
-### B-205 · Un push cuya corrida no arranca no se deploya nunca, y el push siguiente no lo repara · ✅ hecho (2026-09-02) · P1
-
-**Se hizo el arreglo de raíz, el primero de los dos que el ítem proponía.**
-`decidir` ya no diffea contra `github.event.before`: prefiere lo que
-`/version.json` dice que está PUBLICADO (`INFO_VERSION.sha`), y solo cae al
-`before` del push cuando esa fuente no sirve (el sitio no contesta, no trae
-`sha`, o ese commit no está en el historial del checkout).
-
-La decisión vive en `scripts/commit-base-deploy.sh`, por el mismo motivo que
-`que-deployar.sh`: para poder probarla sin pegarle al sitio real ni depender de
-qué esté publicado en el momento de correr el test.
-`tests/commit-base-deploy.test.ts` apunta `VERSION_JSON_URL` a un servidor de
-mentira y cubre las cinco formas en que la fuente preferida puede fallar (sha
-inexistente en el historial, campo ausente, 5xx, sin respuesta, ninguna de las
-dos fuentes) más el caso feliz — y un sexto test que el workflow consuma el
-script y no repita el `curl` por su cuenta.
-
-**Mutado, no solo verde.** Deshacer la preferencia por lo publicado (dejar que
-`ANTES` nazca del `before` y no del `sha`) tira roja la primera prueba; saltear
-la validación `git cat-file -e` contra el sha publicado tira roja la segunda.
-Las dos mutaciones se probaron y se restauraron.
-
-**Lo que no se hizo, a propósito:** el segundo arreglo que el ítem proponía —un
-chequeo que compare lo publicado con `main` y avise si difieren— sigue sin
-existir. El primero ya cierra el agujero (la recuperación es automática en el
-push siguiente); el segundo queda para si hace falta hacerlo *visible* además
-de corregido. El texto original queda abajo.
-
-Pasó el 2026-08-26 con el push de la `1.2.0` (`9fd50f3`): la corrida de
-«Deploy desde main» terminó en **`startup_failure` a los 0 segundos**, sin ningún
-job. Verificado que la causa no era del repo: el YAML parseaba (`workflows.test.ts`
-en verde), el workflow estaba `active`, Actions habilitado con `allowed_actions:
-all`, el repo público y no fork, el actor era el dueño, y el archivo **no se había
-tocado** en el push. Con todo eso, la corrida no se puede reintentar
-(`gh run rerun` → "This workflow run cannot be retried").
-
-**La causa, confirmada:** GitHub Actions estaba en `major_outage`. El incidente se
-abrió a las **15:11:58Z** y la corrida es de las **15:31:44Z**, o sea en el medio;
-el republish a mano de `deploy.yml`, quince minutos después, falló igual y del
-mismo modo. Se confirmó contra
-`https://www.githubstatus.com/api/v2/summary.json`, que es el chequeo que conviene
-hacer **primero** la próxima vez: dos workflows distintos fallando al arrancar, sin
-cambios en `.github/`, es afuera y no adentro.
-
-Que la causa sea de afuera es justamente lo que hace que este ítem valga: las
-caídas de Actions van a volver a pasar, y lo que falla acá es la **recuperación**.
-
-**El bug no es la falla transitoria: es que nada la repara y nada la nota.**
-`decidir` diffea con `ANTES: ${{ github.event.before }}`, o sea el head del push
-anterior. Entonces:
-
-1. el push N no deploya (corrida fallida al arrancar, cancelada, o lo que sea);
-2. el push N+1 diffea **desde el commit de N**, que ya está en `main`;
-3. los cambios de N quedan fuera del diff **para siempre**, y el deploy los
-   saltea sin decir nada.
-
-En este caso concreto el push siguiente iba a ser de `docs/` solamente, así que
-`que-deployar.sh` habría decidido "nada que deployar" y la `1.2.0` se quedaba en
-`main` sin publicarse, con producción en `1.1.0+c84da0c` y **ningún síntoma**. Se
-descubrió mirando `/version.json` a mano, no porque algo avisara.
-
-Es la misma familia que B-188 —un deploy que no ocurre y no se nota de este
-lado— y que la lección de B-20 sobre el job de reglas que bloquea Hosting. La
-diferencia es que acá el estado queda **inconsistente hacia adelante**: no alcanza
-con arreglar la causa, hay que republicar.
-
-**Qué se hizo el 2026-08-26**, y es el workaround, no el arreglo: disparar
-`deploy.yml` a mano (`gh workflow run deploy.yml --ref main`), que es el deploy de
-datos y publica **Hosting solo** — sin tocar Functions ni reglas, que en este
-cambio no se tocaron. Su `workflow_dispatch` está documentado para esto
-("republicar después de un cambio de código"). Se prefirió a `push-main.yml` a
-mano porque ése, sin `github.event.before`, deploya **todo**, y el job de
-Functions termina rojo a propósito (los roles que `deploy-ci@` no tiene, D-119).
-
-**Los dos arreglos posibles, y el segundo es el que vale:**
-
-- **Diffear contra lo publicado y no contra el push anterior.** `/version.json`
-  del sitio en vivo ya dice qué commit está publicado (`1.1.0+c84da0c`), así que
-  `decidir` puede usar **ese** sha como base en lugar de `github.event.before`.
-  Con eso, un deploy que no ocurrió se recupera solo en el push siguiente, que es
-  exactamente la propiedad que falta. Es el arreglo de raíz y es chico.
-- **Un chequeo que compare lo publicado con `main`**, del estilo de
-  `relevar-infra.sh` (B-123): si `/version.json` no coincide con el head de
-  `main`, avisar. Sin esto, la única red es que alguien mire.
-
-Lo primero cierra el agujero; lo segundo lo hace visible cuando falle igual.
-Conviene el primero, y el segundo si sobra tiempo.
-
-### B-206 · Lo que había que decidir antes de la subida de imágenes propias — ✅ decidido (2026-08-26) e implementado (2026-08-27)
-
-Las encontró el `auditor-privacidad` en el cierre de la primera tajada. **Hoy
-ninguna filtra nada** —no hay imágenes propias porque no hay subida— y las dos se
-vuelven reales el día que la haya. Van juntas porque bloquean el mismo trabajo.
-
-**1 · La URL pública de una imagen propia contiene el `storagePath`.** Esto
-desarma el argumento con el que se decidió no publicar el campo. La URL canónica
-de Firebase Storage es
-`…/v0/b/<bucket>/o/actividades%2F<id>%2Ftapa.jpg?alt=media&token=…`: el path va
-URL-encodeado adentro, y el `token` es un bearer **permanente** hasta que se
-revoca. Con `origen: 'propia'` publicado al lado, un scraper tiene bucket, path y
-token.
-
-No publicar `storagePath` sigue siendo correcto —es el handle autoritativo, y las
-externas no tienen path— pero **no logra lo que el comentario de `toPublic.ts`
-dice**. Hay que decidir cómo se sirve una propia: por un rewrite de Hosting o un
-dominio propio (el path deja de ser visible, y de paso el egreso pasa por el CDN),
-o con `getDownloadURL()` asumiendo que path y token son públicos y escribiéndolo
-como tal. La primera es más trabajo y la única que cumple la promesa.
-
-**2 · `storagePath`, `ancho` y `alto` van a tener dos dueños.** El plan es que los
-escriba la Function al subir, pero `formADocumento` hoy copia la fila entera con un
-spread. Serían dos escritores para un campo de máquina **adentro de un array de
-contenido**, que es `calendarEventId` dentro de `sesiones` otra vez — la familia de
-B-80, por una puerta nueva.
-
-Las dos consecuencias concretas, ninguna de privacidad:
-
-- `functions/historial.js` tiene `CAMPOS_DE_MAQUINA_SESION = ['calendarEventId']` y
-  **no** tiene el equivalente para `imagenes`. Cuando la Function escriba de vuelta,
-  `huboCambioDeContenido` va a ver un cambio de contenido: **una versión de
-  historial y un rebuild del sitio por cada imagen optimizada**.
-- El borrador de `localStorage` vive 30 días y `sinFlagsDePublicacion` no toca
-  `imagenes`: un borrador viejo puede volver con un `storagePath` a un objeto que ya
-  se borró. Es el sexto campo de la lista de D-124, que se quedó corta dos veces.
-
-**El arreglo, cuando se haga:** `CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']`
-en `functions/historial.js`, y que `formADocumento` los **conserve explícitamente**
-del documento de hoy en vez de spreadearlos del formulario — igual que ya hace con
-`calendarEventId: s.calendarEventId ?? null`.
-
-#### Cómo quedaron las dos (2026-08-27, con la subida) — razonamiento completo en **D-131**
-
-**1 · Se eligió `getDownloadURL()`, la opción barata, con dos condiciones que la
-vuelven honesta.** El ítem decía que el rewrite de Hosting era «la única que cumple
-la promesa», y lo que cambió la cuenta es que **la promesa estaba mal escrita**: el
-comentario de `toPublic.ts` decía que publicar el path «dibuja la estructura del
-bucket». Con un prefijo plano (`imagenes/`) y el nombre del objeto siendo el uuid de
-la fila, no hay estructura que dibujar; y con `allow read: if true` bajo ese prefijo,
-el token permanente no protege nada que no estuviera abierto. `storagePath` sigue
-afuera del `events.json`, pero por lo que sí es —el handle autoritativo, que un
-consumidor del JSON no usa— y no por un secreto que la URL desmiente. El comentario
-se reescribió; **una afirmación de seguridad que miente es peor que no tenerla**
-(B-195). El rewrite quedó abierto abajo, con el motivo corregido: costo y
-portabilidad, no privacidad.
-
-**2 · Implementado tal cual estaba escrito**, sin cambiarle nada:
-`CAMPOS_DE_MAQUINA_IMAGEN` en `functions/historial.js` y `formADocumento`
-enumerando las claves de cada imagen. Hoy el segundo escritor no existe todavía —los
-tres campos los escribe la subida del panel—, así que las dos mitades son
-preventivas; se hicieron ahora porque es cuando son gratis. Lo cuida
-`tests/clases-de-bug.test.ts`, que además verifica que **ninguna clave de más** entre
-al documento (el camino del §5.2 por el que un borrador viejo mete algo inventado).
-
-Un detalle que el ítem no anticipaba: los tres se copian con «si está» y **no** con
-`?? null`. Firestore guardaría el `null` como valor presente y `huboCambioDeContenido`
-no unifica ausente con `null` (D-41), así que un `storagePath: null` en cada imagen
-externa produciría una versión de historial y un rebuild por guardado.
-
----
-
-**Decidido el 2026-08-26. Tres respuestas, y la primera cambia la doc y no el código.**
-
-**1 · Las propias se sirven con `getDownloadURL()`, y el path del bucket pasa a ser
-público — escrito como tal.** Se eligió el camino sin infra: es lo que el SDK
-devuelve y funciona hoy. La contra se asume y se anota donde se lee: para una imagen
-propia, **el path y un token permanente son públicos**, porque viajan adentro de la
-URL. Deja de ser cierto que «`storagePath` no sale»; lo que sigue siendo cierto es
-que no lo publicamos nosotros en la proyección, y eso se mantiene —no hay motivo
-para emitir el handle autoritativo— pero como prolijidad, no como defensa.
-
-**La consecuencia que esto arrastra, y es la parte que no era obvia: si el path es
-público, el nombre del archivo también lo es.** Un
-`actividades/<id>/taller-en-casa-de-ana.jpg` cuenta algo que la actividad no cuenta,
-y el id ya es público (va en el `events.json`). Así que **la Function renombra a algo
-opaco** —el id de la fila más la extensión, `img_<uuid>.webp`— y nunca conserva el
-nombre que traía el archivo. Va con test.
-
-Si algún día molesta, la salida está escrita arriba: un rewrite de Hosting, que
-además saca el egreso de Storage y lo pasa por el CDN.
-
-**2 · El dueño de `storagePath`, `ancho` y `alto` es la Function.** El formulario los
-**conserva** del documento de hoy en vez de spreadearlos, igual que ya hace con
-`calendarEventId: s.calendarEventId ?? null`. Arrastra dos cosas que van en el mismo
-cambio y no después:
-
-- `CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']` en
-  `functions/historial.js`. Sin eso hay **una versión de historial y un rebuild del
-  sitio por cada imagen optimizada**.
-- Los tres campos entran a los saneadores del borrador recuperado (**D-124**), que es
-  la lista que ya se quedó corta dos veces. Un borrador de hace tres semanas no puede
-  devolver un `storagePath` a un objeto que se borró.
-
-**3 · Se guarda el original saneado más una miniatura.** Dos objetos por imagen: el
-original sin EXIF y recomprimido para la página de detalle, y una miniatura para la
-tarjeta del listado. Es el mínimo que evita servir 3 MB en un listado de treinta
-tarjetas, que es el egreso que se paga, y deja de dónde volver a generar otro tamaño
-sin pedir la foto de nuevo. El almacenamiento duplicado es la parte barata.
-
-**Y una que sale de la 3 y hay que hacer antes de la primera subida:** el budget
-alert del §2.3 está puesto **solo para Functions**. Storage se paga por
-almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
-Conviene extenderlo antes, no después de la factura.
-
-### B-236 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes — ✅ hecho (2026-09-02) · P1
-
-**Se hizo la salida de fondo #2 de la lista de abajo**: el helper
-`scripts/wip.sh`. `guardar` commitea todo (staged y no) con un mensaje
-reconocible, para dejar el árbol limpio antes de rebasear o cambiar de rama
-sin tocar `refs/stash`; `restaurar` deshace **ese mismo** commit —comprobando
-antes que el HEAD sea de verdad un commit del script, no un `reset --soft`
-a ciegas— y los cambios vuelven al árbol.
-
-`tests/wip.test.ts` corre contra un repo git temporal y descartable, nunca
-contra este checkout: seis casos, incluido el árbol limpio (no hace nada) y
-un commit real cuyo mensaje empieza parecido a la marca del script (no
-engaña el chequeo de `restaurar`). **Mutado, no solo verde**: sacar la
-verificación del mensaje en `restaurar` tira rojo los dos tests que la
-sostienen, y sacar el chequeo de árbol limpio en `guardar` tira rojo el suyo.
-Las tres mutaciones se restauraron después.
-
-Además, la salida #3: una regla nueva en
-[`docs/14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) («Regla para
-cualquiera que ejecute una fase», punto 7) que explica el mecanismo, nombra
-`wip.sh` y recuerda no borrar una entrada ajena del stash si aparece una.
-
-**Lo que no se hizo, a propósito**: nada obliga a usar `wip.sh` en vez de
-`git stash` — es un gesto interactivo y, como dice el texto original, "un test
-no lo puede atajar". La red es que exista y esté documentado, no un hook que
-lo fuerce.
-
-El texto original queda abajo.
-
-
-**Pasó dos veces el 2026-08-27/28, en dos worktrees distintos**, y la segunda quedó
-grabada en el propio `git stash list`: una entrada se llama literalmente
-`recuperado: cambios de otro worktree (pop accidental de stash compartido)`.
-
-**La causa, y es de git, no de nadie.** El stash vive en `refs/stash`, que es del
-**repositorio**, no del working-tree. `git worktree` aísla el índice, el `HEAD` y
-los archivos — **no el stash**. Entonces:
-
-```
-worktree A:  git stash push        # queda stash@{0} = A
-worktree B:  git stash push        # ahora stash@{0} = B, y A pasó a stash@{1}
-worktree A:  git stash pop         # ← se trae el trabajo de B a su árbol
-```
-
-En el caso real, un frente hizo `stash push` para poder rebasear, otro frente
-stasheó en el medio, y el `pop` del primero trajo 1061 líneas del segundo —cuatro
-archivos nuevos de una feature ajena— sobre su propio checkout, con conflictos.
-
-**Por qué es P1 y no una curiosidad.** Se recupera, pero solo si uno se da cuenta:
-`git stash pop` con conflictos **conserva la entrada**, así que el trabajo del otro
-no se pierde. El modo malo es el que no da conflicto — ahí el `pop` **borra la
-entrada** y los cambios del otro frente quedan mezclados en un árbol ajeno, sin
-rastro en el stash y sin que nadie los esté buscando. Y el repo trabaja con varios
-worktrees en paralelo a propósito (`docs/14-plan-de-saneamiento.md`), o sea que la
-condición que lo dispara es el modo de trabajo normal, no un accidente.
-
-**Es la misma familia que B-219** (dos worktrees compartiendo el emulador): algo que
-uno supone aislado por worktree y es global del repositorio. Vale la pena buscar el
-resto de esa familia — `refs/stash`, el emulador, y probablemente `.firebase/`.
-
-**Cómo se sale, hoy y a mano.** Nunca `git stash pop` a secas desde un worktree:
-
-```bash
-git stash list                    # mirar el nombre: dice de qué worktree salió
-git rev-parse 'stash@{N}'         # anotar el sha
-git stash apply <sha>             # apply, no pop: no toca la pila
-# …verificar que es lo tuyo…
-git stash drop 'stash@{N}'        # recién ahí, y confirmando el sha otra vez
-```
-
-Los dos detalles que hacen la diferencia: **`apply` y no `pop`** (si te equivocaste,
-la entrada del otro sigue ahí), y **por sha y no por índice** (los índices se corren
-solos cuando otro worktree stashea).
-
-**Las salidas de fondo, de menos a más:**
-
-1. **No usar `stash` en un worktree.** Para rebasear con el árbol sucio alcanza con
-   un commit temporal (`git commit -m wip` → `git rebase` → `git reset --soft HEAD~1`),
-   y un commit **sí** es por-worktree. Es lo más barato y no necesita nada nuevo.
-2. **Un helper `scripts/wip.sh`** que haga exactamente eso, para que no dependa de
-   que cada uno se acuerde. Encaja con el criterio del skill `automatizar`: esto ya
-   pasó dos veces.
-3. **Un test no lo puede atajar** —es un gesto interactivo, no código versionado—
-   pero **una línea en `docs/14-plan-de-saneamiento.md` sí**, que es donde se explica
-   cómo conviven los frentes en paralelo. Hoy ese documento reparte archivos y no
-   dice nada del stash.
-
-**Y una consecuencia operativa mientras tanto:** si te encontrás un `git stash list`
-con entradas de otros worktrees, **no las limpies**. Son el trabajo en curso de otro
-frente, y borrar una es la única forma de que esto sí pierda datos.
-
-### B-300 · Con la galería, el techo de peso de una página de detalle pasó de 3 MB a 12 MB — ✅ cerrado (2026-09-02) · P1
-
-> **Cerrado por B-220 / D-175, con el número medido en vez de supuesto.** La
-> página de «Usted está aquí» —el caso, y el único— pasa de **3226,7 KB a 184,3
-> KB**, 17,5 veces más liviana, **sin tocar una sola plantilla**: la Function
-> escribe la imagen optimizada encima del original, así que la misma URL de
-> siempre devuelve los bytes nuevos.
->
-> **Y el diagnóstico de abajo estaba errado en un punto que importa.** Este ítem
-> decía «un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB»: no era un JPEG.
-> Las **tres** imágenes de esa página son **PNG**, y ahí estaba todo el problema.
-> Un PNG de una ilustración pesa diez o treinta veces lo que el mismo contenido en
-> JPEG, y los tres resultaron completamente opacos —declaran canal alfa y no lo
-> usan—, así que convertirlos no cambia un píxel.
->
-> Las dos cosas para hacer que decía abajo:
->
-> 1. **La barata ya no hace falta.** «Volver a subir las dos imágenes
->    recomprimidas» era un gesto manual del dueño; ahora lo hace el servidor. Lo
->    que sí hay que correr una vez es `scripts/optimizar-imagenes.mjs`, porque el
->    trigger solo corre cuando un objeto **se escribe** y esas tres ya estaban.
-> 2. **La cara está hecha**, y salió más barata de lo previsto: no hizo falta
->    `srcset` para cerrar esto. El `srcset` sigue teniendo sentido y queda en
->    **B-320** (cartelera) y **B-321** (la portada del detalle), pero ya no como lo
->    que bloquea.
->
-> **El techo legal sigue siendo 12 MB al subir** (4 × 3 MB, DEC-7b), a propósito:
-> el tope de subida es lo que empuja a recortar. Lo que cambió es el techo
-> **servido** — cuatro imágenes optimizadas de una actividad real quedan en el
-> orden de los 200-400 KB.
-
-Salió de auditar **B-296** (**D-168** §3), no de un reporte aparte. Y no es trabajo
-nuevo: es el mismo **B-220** de siempre, con un número más fuerte para adelantarlo.
-
-Hasta la galería, la página de detalle servía **una** imagen, así que su peor caso
-legal era el tope de subida de DEC-7b: **3 MB**. Con hasta cuatro imágenes por
-actividad, el techo pasa a **12 MB** en una sola página — la que recibe el tráfico
-de Google y de Instagram.
-
-**Medido contra producción el 2026-09-02**, con el `Content-Length` real de las 30
-imágenes que hay cargadas: mediana **92,6 KB**, p90 **124,2 KB**, máximo **1091,5
-KB**. Las cuatro páginas con galería:
-
-| Actividad | Portada | Secundarias | Total |
-|---|---|---|---|
-| 2do Festival Literario San Isidro | 106,8 KB | 107,5 KB | 214,3 KB |
-| Desayuno epistolar | 60,9 KB | 51,0 KB | 111,9 KB |
-| Taller de cuento (Lamberti) | 34,0 KB | 96,8 KB | 130,8 KB |
-| **Usted está aquí** | **1091,5 KB** | 1808,5 + 326,7 KB | **3226,7 KB** |
-
-**Tres de las cuatro no son un problema** —+51 a +108 KB, por debajo de la mediana
-de una sola portada— y las otras 42 páginas no cambian un byte. El caso es la
-cuarta, y **ya pesaba eso antes de la galería**: su portada sola son 1,07 MB, o sea
-**11,8 veces** la mediana del sitio. La galería no lo crea, lo hace visible, y le
-suma 2,1 MB que se bajan solo si alguien scrollea hasta el final (las secundarias
-van `lazy` y al final de la página, D-168 §2).
-
-**Dos cosas para hacer, una barata y una cara:**
-
-1. **Barata y ya:** volver a subir las dos imágenes de «Usted está aquí»
-   recomprimidas. Un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB — es el
-   **59 %** del tope de 3 MB en una imagen que en pantalla mide 105px de ancho.
-   Es un gesto del dueño en el panel, no código.
-2. **Cara y la de fondo: B-220.** Sin variantes de imagen no hay nada más que
-   hacer del lado del código: las tres palancas que existen ya están puestas
-   (`lazy` salvo la portada, `width`/`height` más `aspect-ratio`, `decoding`), y
-   `sizes` sin `srcset` es decoración que parece optimización (D-149).
-
-El disparador escrito de B-220 sigue en **B-266**; esto es el segundo, y el que
-mueve el peor caso de una página en vez del de un recorrido.
-
-### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño — ✅ hecho (2026-09-07) · P3
-
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el texto alternativo se pide en la portada.
-
-**Decidido el 2026-09-03 por el dueño: obligatorio solo en la portada.** Ni un
-campo por imagen —nadie lo llenaría en las cuatro— ni seguir derivando todo del
-título: la portada es la que va a Open Graph y a la tarjeta, o sea la que se
-comparte, y es un campo solo.
-
-Es un cambio de modelo, así que va en la tanda de modelo junto con **B-285**,
-cuando aterricen los frentes que hoy tienen el schema y el formulario.
-
-
-Anotado al cerrar **B-296** (**D-168** §1). DEC-7a (**D-125**) decidió que hay **un
-solo campo opcional** por imagen —el epígrafe— y que el texto alternativo sale del
-**título de la actividad**, a propósito, y con la contra escrita: con varias
-imágenes el mismo alternativo se repite. B-296 tuvo que elegir cómo vivir con eso
-—las secundarias quedaron decorativas, `alt=""`, y la cuenta se dice una vez en el
-encabezado— **sin tocar la decisión de fondo**, porque no es una decisión de
-implementación.
-
-**Lo que se pierde con la salida elegida, dicho explícito:** una imagen secundaria
-con contenido propio —la fachada del lugar, la tapa de un libro, la foto de la
-edición anterior— no se describe para quien usa un lector de pantalla, salvo que
-quien la cargue le escriba un epígrafe. Y hoy **ninguna de las cuatro secundarias
-de producción tiene epígrafe**, así que en la práctica no se describe ninguna.
-
-**Por qué DEC-7a lo descartó, y sigue siendo un buen argumento:** un campo
-obligatorio por imagen en un panel de una persona produce «foto» como texto
-alternativo, que es peor que un título descriptivo. Un campo **opcional** por
-imagen no tiene ese problema, pero suma un campo por fila a un formulario de 30+
-campos y hay que decidir qué pasa cuando está vacío — que es exactamente el caso
-que D-168 ya resolvió con `alt=""`.
-
-Vuelve a esta lista para que no se pierda, no para resolverse sola. Si el dueño
-dice que sí, el cambio es chico: un campo en el schema, uno en la fila del editor
-de imágenes, y en la plantilla `alt={imagen.textoAlternativo || ''}` — la tira ya
-está armada para recibirlo.
-
-### B-220 · La Function que optimiza las imágenes propias (DEC-7d) — ✅ hecha (2026-09-02) · P1
-
-> **Hecha. El porqué completo está en D-175**, y conviene leerlo porque la
-> medición cambió el diseño respecto de lo que este ítem daba por sentado:
->
-> - **La salida se escribe encima del original**, y eso **disuelve el write-back**
->   que este ítem daba por bloqueante: la `url` del documento sigue valiendo, así
->   que no hay nada que escribir y no hace falta ni la query `array-contains` ni el
->   documento puente. `ancho`/`alto` siguen siendo verdad como **razón**, que es lo
->   único para lo que se usan.
-> - **La guarda anti-recursión son las dos**, no una: `customMetadata` es
->   obligatoria (con la derivada en la misma dirección que el disparador, la del
->   prefijo es imposible) y la del prefijo hace falta igual (un trigger de Storage
->   v2 no se filtra por prefijo en la declaración). **Y Storage no corta la
->   recursión** como Firestore corta la suya a las ~20: medido contra el emulador,
->   5077 ejecuciones en 40 s desde una subida de 2,6 KB.
-> - **Recomprimir los JPEG no servía para nada** —29 de 30 ahorran entre 0 y 5 %,
->   y dos pesan más— y **el peor caso del sitio era un PNG**: 1091,5 → 34,0 KB. La
->   palanca no era la compresión, era el formato.
-> - **WebP y AVIF no volvieron a `TIPOS_SUBIBLES`.** El argumento de abajo («la
->   Function que recomprime todo los vuelve seguros») no alcanza: el objeto es
->   público desde el instante en que se sube y la Function corre unos segundos
->   después. Queda como **B-322**.
-> - **Falta un paso manual del dueño**: los permisos de IAM sobre el bucket, y
->   después el barrido de las 30 que ya estaban
->   (`scripts/optimizar-imagenes.mjs`). Ver `08-operacion.md`.
-> - Lo que queda de código es el **consumidor** de la miniatura: **B-320**.
->
-> El texto original queda abajo, para que D-175 se lea contra lo que este ítem
-> suponía.
-
-> **2026-09-01 — ahora hay números y un disparador.** Con `/cartelera` (B-265) las
-> imágenes dejaron de estar repartidas de a una por página: la pared las junta
-> todas. Lo medido y el punto en el que esto deja de sostenerse están en **B-266**
-> y **D-149** — por pantalla aguanta indefinidamente gracias al `lazy`, por
-> recorrido completo se cae alrededor de los 20-25 flyers. La mención de abajo a
-> «la tarjeta del listado» quedó vieja con D-146: el listado no muestra imágenes.
->
-> **2026-09-02 — segundo disparador, y es peor que el primero.** Con la galería del
-> detalle (B-296, D-168) el peor caso de **una sola página** pasó de 3 MB a 12 MB, y
-> ya hay una página real de 3,15 MB con una imagen de 1,77 MB adentro. Los números
-> por archivo están en **B-300**. La diferencia con B-266: aquello movía el costo de
-> un *recorrido*, esto mueve el de *una página* — y la de detalle es la que recibe
-> el tráfico de Google y de Instagram.
-
-**Es la mitad que la segunda tajada de B-167 dejó afuera a propósito**, y el criterio
-del corte fue el del repo: preferimos subir imágenes sin miniatura a no subir nada.
-Hoy una imagen propia se sube **tal cual la eligió la persona**, sin recomprimir y sin
-miniatura. Funciona, y las fotos de 3 MB pesan 3 MB en la tarjeta del listado.
-
-Lo que falta, y por qué cada parte es cara:
-
-- **Recomprimir y derivar la miniatura.** Necesita una librería de imágenes nativa en
-  `functions/` (`sharp` o equivalente), que es la primera dependencia binaria del
-  proyecto y cambia el tiempo de deploy de las Functions.
-- **La guarda anti-loop, que es la trampa 3 con otra cara.** El trigger es
-  `onObjectFinalized` sobre el mismo bucket en el que escribe la miniatura: sin guarda,
-  se dispara a sí mismo. Las dos formas conocidas: escribir la derivada bajo un prefijo
-  que el trigger ignore, o marcarla con `customMetadata` y cortar al leerla. La
-  segunda es la que sobrevive a que alguien mueva el prefijo.
-  **La red ya está puesta:** `tests/clases-de-bug.test.ts` descubre desde el 2026-08-27
-  las clases `onObjectFinalized|onObjectDeleted|onObjectArchived|onObjectMetadataUpdated`,
-  así que el trigger nuevo entra solo y va a pedir la guarda. Antes no: el descubridor
-  solo conocía `onDocument*` y `onSchedule` (D-131 §4).
-- **El write-back al documento.** La Function tiene que escribir `storagePath`, `ancho`
-  y `alto` en la fila de la galería, y para eso tiene que **encontrar** la actividad
-  que la referencia — que hoy no puede, porque el path no lleva el id de la actividad
-  (y no lo lleva por una razón dura: al subir todavía no hay actividad, ver D-131 §1).
-  La salida más barata es una query `where('imagenes', 'array-contains', …)`, que
-  Firestore no sabe hacer sobre un subcampo; la otra es que el panel escriba un
-  documento puente. **Esto hay que decidirlo antes de escribir código.**
-  Lo que sí ya está resuelto es la mitad que le sigue: `CAMPOS_DE_MAQUINA_IMAGEN`
-  (B-206 #2) evita que ese write-back deje una versión de historial y un rebuild del
-  sitio por imagen.
-- **Vuelven WebP y AVIF a `TIPOS_SUBIBLES`.** Hoy están afuera porque el panel no sabe
-  sacarles los metadatos; la Function que recomprime todo los vuelve seguros. Es un
-  cambio de una línea en `imagenes-archivo.ts` y una en `storage.rules`, con su test.
-
-**Lo que NO hay que rehacer:** el EXIF ya se saca en el panel, sin recomprimir y
-verificado sobre los bytes. La Function lo va a sacar otra vez, y eso está bien —es la
-capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
-
-### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2 — ✅ hecho (2026-09-03)
-
-> **2026-09-02 — B-220 no lo resolvió, y le sumó la mitad de un problema.** Está
-> dicho explícito porque el frente de B-220 lo tenía en su alcance y decidió no
-> hacerlo.
->
-> **Qué le agrega.** Ahora cada imagen propia son **dos** objetos: el original en
-> `imagenes/` y su miniatura en `miniaturas/`. El bucket crece al doble de
-> velocidad, y el barrido —cuando se escriba— **tiene que conocer los dos
-> prefijos**. Lo que sí quedó resuelto es que eso sea barato: la ruta de la
-> miniatura es una función pura del nombre del original (`rutaDeMiniatura`,
-> exportada de `functions/imagenes.js`), así que el barrido no necesita ningún
-> índice nuevo — cruza los `storagePath` de las actividades contra los dos
-> prefijos derivando uno del otro.
->
-> **Por qué no ahora, y no es que no se sepa cómo.** El barrido del primer camino
-> de abajo está claro y el margen de gracia lo hace seguro. Lo que no es aceptable
-> es **estrenar un trigger que borra objetos en el mismo cambio que estrena un
-> trigger que reescribe todos los objetos de ese bucket**: si el barrido tiene un
-> bug se lleva imágenes de producción y no hay papelera de la que sacarlas, y
-> mientras el reescritor todavía no corrió en producción un barrido no puede
-> distinguir «huérfano» de «todavía no procesado». Va en su propio cambio, con su
-> propia verificación contra el bucket real, después de que B-220 esté desplegado.
->
-> **Y mientras tanto el problema no crece solo**: no se borra nada de Storage, así
-> que un huérfano aparece únicamente cuando alguien quita una fila de la galería o
-> abandona una subida a medias. Sigue costando centavos.
->
-> **2026-09-02 — verificado, la condición de arriba todavía no se cumple.**
-> `docs/08-operacion.md` § «Permisos que necesita `optimizarImagen`» sigue
-> listando los tres pasos de IAM como pendientes del dueño («hasta que estén,
-> el trigger falla o no se crea»), y el barrido de `scripts/optimizar-imagenes.mjs`
-> —el que reprocesa las imágenes que ya estaban antes de la Function— todavía
-> no corrió contra el bucket real. O sea que **B-220 sigue mergeado y no
-> desplegado**, que es exactamente la condición que este ítem pone como
-> bloqueante. Sigue sin implementarse acá por el mismo motivo escrito arriba,
-> no por falta de tiempo: escribir el barrido de huérfanos ahora sería
-> estrenarlo contra un bucket donde el reescritor de B-220 todavía no corrió,
-> así que no podría distinguir «huérfano» de «original sin optimizar
-> todavía».
-
-> **2026-09-03 — hecho.** `optimizarImagen` está desplegada y barrida (ver
-> `docs/08-operacion.md`), así que la precondición de arriba ya se cumple. Se
-> tomó el **primer camino**: barrido periódico, `onSchedule every 24 hours`
-> (`limpiarImagenesHuerfanas`, `functions/imagenes-limpieza-trigger.js`), que
-> cruza los `storagePath` de **todas** las actividades —sin filtrar por
-> `estado`: un borrador sigue siendo dueño de su imagen— contra los objetos de
-> `imagenes/` y `miniaturas/`, y borra los que ya nadie referencia.
->
-> La decisión de qué borrar es pura (`decidirLimpieza`,
-> `functions/limpieza-imagenes.js`), probada en `tests/limpieza-imagenes.test.ts`
-> con cada guarda mutada y vista fallar: sacar el corte del margen de gracia
-> pone rojos 3 tests, sacar el tope de la corrida pone rojo 1, y vaciar
-> `miniaturasReferenciadas` a mano pone rojo 1. Se corrió además, de solo
-> lectura, contra el emulador compartido de otro worktree en vivo (209 objetos
-> reales): el margen de gracia de 72 horas protegió los 209 —todos recién
-> subidos por esa suite— sin que se ejecutara ningún borrado, que es la
-> propiedad que la guarda existe para dar.
->
-> Dos salvaguardas nuevas, la misma clase que ya usa este repo en otros lados:
-> **margen de gracia de 72 horas** (no se toca nada creado hace menos de eso) y
-> **tope de 20 borrados por corrida** (mismo criterio que `MAX_EVENTOS_RESYNC`
-> de B-04). No hace falta IAM nuevo: `roles/storage.objectUser`, que ya tiene
-> `calendar-sync@` desde B-220, incluye `storage.objects.delete`.
->
-> `scripts/limpiar-imagenes-huerfanas.mjs` reusa la misma `decidirLimpieza` —no
-> hay una segunda copia de la decisión— para poder correr el barrido a mano en
-> seco (default) o con `--aplicar`, igual que `optimizar-imagenes.mjs` de
-> B-220.
->
-> **Lo que quedó afuera, a propósito y anotado.** El cruce es contra los
-> documentos **en vivo** de `/actividades`, no contra
-> `/actividades/{id}/versiones/*` (§12): restaurar una versión vieja que
-> referenciaba una imagen ya barrida restauraría una `url` rota. El ítem
-> original solo pedía cruzar contra las actividades, así que no se resolvió
-> acá — queda anotado como **B-560**.
->
-> El conteo de referencias de B-71 (para poder copiar imágenes al duplicar)
-> sigue sin hacer falta, tal como decía el ítem: "el barrido primero; el
-> conteo solo si hace falta copiar".
-
-**Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
-actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
-escrito en `subir-imagen.ts`: un objeto huérfano cuesta centavos y es invisible; un
-borrado automático no tiene papelera de la que sacarlo, y hoy no hay ningún conteo de
-referencias que diga si ese archivo lo usa otra actividad.
-
-Se vuelve real cuando el bucket tenga volumen, y la pregunta a contestar es la misma
-que B-199 movió y no resolvió: **quién es dueño del objeto**. Dos caminos:
-
-- **Barrido periódico** (`onSchedule`): listar el prefijo `imagenes/`, cruzar contra
-  los `storagePath` de todas las actividades, borrar lo que no referencia nadie con un
-  margen de gracia de días —sin el margen se borra la imagen que alguien subió hace
-  cinco minutos y todavía no guardó—. Es el más simple y no necesita estado nuevo.
-- **Conteo de referencias**, que es la variante con estado compartido de B-71 y la que
-  habilitaría copiar imágenes propias al duplicar (hoy la casilla del modal está
-  escondida justamente porque no se puede, D-131 §5).
-
-El barrido primero; el conteo solo si hace falta copiar.
-
-### B-560 · El barrido de B-221 no sabe de `/actividades/{id}/versiones/*` — ✅ hecho (2026-09-09) · P3
-
-> ✅ **Cerrado por el camino 1 —sumar el historial a `referenciasEnUso`— y no por
-> el 3, que este ítem prefería.**
->
-> El aviso al restaurar **reporta** una pérdida; esto la **evita**, y para una
-> feature cuyo valor entero es recuperar lo que se pisó, avisar de que no se puede
-> recuperar es la mitad. Y las dos objeciones que el ítem le hacía al camino 1 no
-> sobrevivieron a mirarlas contra lo que ya está construido:
->
-> - **«agranda la lectura, crece sin tope»** — es **una** query
->   (`collectionGroup('versiones').select('documento.imagenes')`) y no N: el
->   recorrido de a una de `subcoleccionesHuerfanas` hace falta **allá** porque
->   necesita saber de qué actividad es cada versión, y acá solo interesa el
->   conjunto de paths. Y está acotada por **D-42** (20 versiones por actividad) y
->   por **B-89** (las huérfanas se purgan a los 30 días): ≤ 21 lecturas por
->   actividad, una vez cada 24 horas, con el número escrito en el docblock.
-> - **«alarga indefinidamente la vida de una imagen sacada a propósito»** — la
->   alarga, y quedó escrito como precio; pero no indefinidamente: vive lo que viva
->   la última versión que la nombra, y eso lo acotan las mismas dos cosas. Los dos
->   barridos se destraban en orden — primero B-89 suelta las versiones, la corrida
->   siguiente suelta las imágenes.
->
-> **Y arregla de yapa el rescate de B-41, que este ítem no mencionaba:** al borrar
-> una actividad, `guardarVersionAlBorrar` deja la única copia recuperable y B-89 le
-> da 30 días — pero sus imágenes se iban a las 72 horas, así que el rescate
-> devolvía la actividad **con la galería rota**. El `collectionGroup` es lo que ve
-> esas subcolecciones huérfanas (una query sobre `/actividades` no las ve), así que
-> ahora la subcolección sostiene sus imágenes exactamente el mismo tiempo que se
-> sostiene a sí misma.
->
-> Las tres premisas del diseño se comprobaron **contra el emulador** y no solo con
-> el `db` falso: que el `select` de campo anidado conserva el anidado y deja afuera
-> el resto del documento, que el `collectionGroup` ve las subcolecciones de padres
-> inexistentes, y que una versión sin `imagenes` vuelve vacía. Sin índice nuevo.
->
-> **Lo que sigue abierto es otro ítem y no éste: B-852** — las versiones que
-> quedaron rotas **antes** de este arreglo.
-
-**Encontrado implementando B-221, sin tocar código.** `limpiarImagenesHuerfanas`
-cruza los `storagePath` de los documentos **en vivo** de `/actividades` contra
-los objetos del bucket — exactamente lo que el ítem original pedía. Lo que no
-pedía, y por eso no está resuelto, es cruzar también contra
-`/actividades/{id}/versiones/*` (§12, D-41): el historial guarda el `before`
-completo de cada edición, `imagenes` incluido.
-
-**La secuencia que rompe:** se saca una fila de la galería y se guarda → la
-imagen queda huérfana → el barrido la borra 72 horas después (o antes, si el
-tope de la corrida no la salteó) → alguien abre el historial y restaura esa
-versión vieja, que todavía referencia la imagen ya borrada → la fila vuelve con
-una `url` que da 404.
-
-**Por qué no es P2.** Restaurar una versión que trae de vuelta una imagen es un
-caso angosto —hay que haber sacado la imagen, esperado el barrido, y restaurado
-esa versión puntual y no una más nueva— y el modo de falla es una imagen rota
-en el panel, no un dato que se pierda ni algo público mal expuesto.
-
-**Caminos, ninguno implementado:**
-
-- Sumar `/actividades/{id}/versiones/*` a `referenciasEnUso` en
-  `imagenes-limpieza-trigger.js`: más simple, pero agranda la lectura de
-  Firestore de la Function con cada versión guardada de cada actividad —hoy son
-  pocas, pero crece sin tope— y alarga indefinidamente la vida de una imagen
-  que alguien sacó a propósito.
-- Un margen de gracia más largo que el de retención de versiones (que hoy no
-  tiene, `versiones` crece para siempre — otro posible ítem) no alcanza por sí
-  solo: no resuelve el caso, solo lo hace menos probable.
-- Que restaurar una versión avise si alguna de sus imágenes ya no existe en el
-  bucket, en vez de prevenir el borrado. Es el único camino que no le pide nada
-  nuevo al barrido.
-
-> **2026-09-07 — verificado contra el código: el caso es alcanzable hoy, y el
-> ítem no lo decía.** Faltaba comprobar la premisa, así que se comprobó:
->
-> - **La UI de restaurar existe** (`src/components/admin/HistorialActividad.tsx`,
->   `restaurarCampo` de `src/lib/historial.ts`), y no es un plan: está construida.
-> - **`imagenes` es uno de los campos restaurables** —está en el mapa de rótulos
->   del historial— así que la secuencia entera del ítem se puede ejecutar con
->   clics: sacar la fila, esperar el barrido, restaurar esa versión.
->
-> O sea que no es teórico. Lo que **sí** sigue siendo cierto es por qué es P3: el
-> modo de falla es una imagen rota en el panel, no un dato perdido ni algo
-> público mal expuesto, y hay que encadenar tres cosas para llegar.
->
-> **Y de los tres caminos, el tercero sigue siendo el bueno**, ahora con un
-> argumento más: `historial.ts` ya tiene escrito un problema de la misma familia
-> —restaurar `imagenes` cuando la versión es anterior a B-167 escribe
-> `imagenes: null` y «la galería entera se»— o sea que **restaurar imágenes ya es
-> el campo con más aristas del historial**. Avisar ahí, donde ya hay lógica
-> propia, es más barato que enseñarle al barrido a leer todas las versiones de
-> todas las actividades (camino 1), que además alargaría indefinidamente la vida
-> de una imagen que alguien sacó a propósito.
->
-> No se implementó en esta pasada por lo que el ítem ya dice —es P3 y el daño es
-> una miniatura rota— y para no meterle una llamada de red por imagen a un flujo
-> que hoy no hace ninguna sin decidirlo primero.
-
-### B-223 · `12-sitio-publico.md` sigue diseñando contra `imagenUrl`, que ya no existe — ✅ hecho (2026-09-02)
-
-**Corregidos los seis lugares**, más dos que el ítem no contaba. El §4.2 y el
-§7.6 pasan a hablar de la **portada** y de la **lista vacía** (`imagenes: []`),
-el `og:image` del §5.1 y la fila `image` del §5.2 salen de `portadaDe()`, la
-caja de estado dejó de citar el campo viejo, y el §9 se rehízo entero: había un
-consejo —«es una URL externa que no controlamos»— que hoy vale para **una de las
-dos clases** de imagen, así que ahora distingue la externa (que puede caerse
-mañana, el riesgo que el §7.6 daba para todas) de la propia (que vive en nuestro
-Storage y **trae `ancho` y `alto`**).
-
-Las dos puntas que el ítem pedía que no se perdieran quedaron escritas donde se
-van a leer: que el índice recorta a `imagenUrl: portadaDe(...)` **sin las
-medidas** —y que meterlas es agrandar una salida pública, o sea el fixture de
-centinelas— está en el §9 y en una nota nueva del §3, que además aclara que el
-`imagenUrl` **del JSON** sí existe y es un derivado con el nombre del diseño.
-
-Se hizo junto con **B-234**, como el propio B-234 pedía: los dos son drift del
-mismo documento y arreglarlos desde dos frentes produce dos versiones del mismo
-párrafo.
-
-Lo encontró el `auditor-documentacion` en el cierre de la segunda tajada de B-167.
-El diseño del sitio público modela la imagen como **un campo único**
-(«la tarjeta sin `imagenUrl`…», «`imagenUrl: null` es frecuente…», `og:image`:
-`imagenUrl` cuando hay) en al menos seis lugares: líneas 201, 381, 552, 579, 932 y
-1017.
-
-**El modelo real es `imagenes[]` con `portada` desde la primera tajada** (D-125),
-que está en producción hace días. Y desde la segunda hay además imágenes
-**propias**, con `storagePath`, `ancho` y `alto` — que es justo lo que la tarjeta
-necesita para no saltar al cargar, y el documento no lo sabe.
-
-**No bloquea nada hoy**: el sitio público todavía no se construye. El daño es
-diferido y concreto: quien implemente B-01 va a leer ese documento y va a escribir
-la tarjeta contra un campo que no existe, y el `getStaticPaths` contra una forma
-que el `events.json` no tiene. Se arregla **antes** de empezar B-01, no después.
-
-Lo que hay que actualizar, además de reemplazar el nombre del campo:
-
-- El caso «sin imagen» (§7.6) pasa a ser «lista vacía», no `null`.
-- `og:image` sale de la **portada** (`portadaDe()`), no de «la imagen».
-- La tarjeta puede usar `ancho`/`alto` de una imagen propia para reservar el
-  hueco; una externa no los tiene y ahí sigue sin poder reservarlo. **Ojo con
-  dónde entra eso:** hoy `src/lib/eventsJson.ts` recorta el índice a
-  `imagenUrl: portadaDe(a.imagenes)?.url ?? null` y **no lleva las medidas**. No
-  está roto —el índice sigue funcionando igual con imágenes propias, y la
-  proyección larga sí las publica—, pero si la tarjeta las va a usar, el campo
-  tiene que entrar al índice, y eso es una salida pública: pasa por el fixture de
-  centinelas como cualquier otra.
-- El §7.6 dice que una imagen externa puede caerse mañana. Con las propias eso
-  deja de valer para la mitad de los casos, y conviene decirlo.
-
-### B-207 · `searchText` tenía dos listas de fuentes, y restaurar del historial publicaba la vieja — ✅ hecho (2026-08-26)
-
-Lo encontró el `auditor-privacidad` sobre DEC-1, y es consecuencia directa de ese
-cambio. `historial.ts` tenía **su propia copia** de «de qué campos sale el
-`searchText`» (`CAMPOS_DE_BUSQUEDA`, cinco entradas) mientras `buildSearchText`
-consumía seis. Al agregar el libro, restaurar un libro viejo desde la pantalla de
-versiones **escribía el campo y dejaba el `searchText` con el título descartado** —
-y ese `searchText` sale al `events.json`, o sea el documento diciendo una cosa y el
-índice público de búsqueda diciendo otra. El camino estaba abierto: la pantalla ya
-ofrecía restaurar «Libro presentado», y esa rama no tenía **ningún** test.
-
-Es la clase de B-88 y la de B-72 a la vez: el productor y el consumidor de la misma
-regla derivando por separado.
-
-**Cómo quedó.** No se arregló agregando `'libro'` a la lista y un test que compare
-las dos: eso deja el par vivo. **Ahora hay una sola lista** —
-`CAMPOS_DE_SEARCH_TEXT` en `normalize.ts`, al lado de la función que la usa— y
-`historial.ts` la importa.
-
-La red va en las dos direcciones y ninguna compara literales: un test **de
-comportamiento** que mete un centinela en cada campo de la lista y exige que
-aparezca en el `searchText` (si la lista nombra un campo que la función ignora,
-restaurarlo recalcula al vacío), y otro que lee la función —ocho líneas— extrae los
-`a.<campo>` que consume y exige que estén todos en la lista (la dirección que
-falló). Verificadas las dos: sacando `libro` de la lista y agregándole un campo
-inventado, cada rotura cae con el mensaje que nombra qué drifteó.
-
-### B-210 · La trampa de foco está copiada en dos diálogos y la copia se quedó con el bug — ✅ hecho (2026-08-27)
-
-**Hecho.** El cableado salió a `src/components/admin/useCapaModal.ts` y las dos capas lo
-usan. `CentroAyuda` recupera el `ref` del callback que solo `DialogoDuplicar` tenía, así
-que leer las novedades ya no remonta el efecto ni le roba el foco.
-
-**Y lo que costó más que el arreglo: los tests que se rompieron.** Cuatro `it` que leían
-el fuente buscaban `e.key===Escape` o `alCancelar=useRef(onCancelar)` dentro de
-`DialogoDuplicar.tsx`, así que **un refactor que mejora el código los puso en rojo**. Es
-la tercera vez que pasa lo mismo (§10, problema 1). No se los repuntó al archivo nuevo
-—sería el mismo chequeo frágil con otra ruta—: ahora afirman la **propiedad** de que
-ninguna capa tenga cableado propio, lo que además cubre a la próxima capa que alguien
-escriba. Verificado por mutación en las dos direcciones: reintroducir `alCerrar` en las
-dependencias rompe, y escribir un `keydown` en una capa rompe.
-
-`src/lib/foco.ts` comparte la **aritmética** del foco a propósito: su docblock
-dice que la parte que toca el DOM «queda en cada componente, que es donde está el
-`ref`». Esa decisión era razonable con un solo diálogo. Hoy hay dos, y el bloque
-que toca el DOM —el `useEffect` con el handler de `keydown`, el ciclo de Tab, el
-`overflow: hidden` del body, la devolución del foco al abridor— está copiado
-verbatim en `DialogoDuplicar.tsx` y en `ayuda/CentroAyuda.tsx`. Son ~40 líneas
-idénticas.
-
-**Y ya divergieron, en el sentido que importa: una copia tiene el arreglo y la
-otra no.** `DialogoDuplicar` guarda el callback en un `ref` y usa deps `[]`, con
-un comentario que explica por qué —un `onCancelar` inline es una función nueva por
-render, así que cualquier re-render con la capa abierta corre la limpieza,
-devuelve el foco, lo re-captura y se lo lleva de vuelta a la caja—.
-`CentroAyuda` quedó con `useEffect(..., [onCerrar])`, y `ayuda/BotonAyuda.tsx` le
-pasa `onCerrar={() => setAbierto(false)}`, que es exactamente el caso inline que
-el comentario del otro archivo describe.
-
-**Cómo se ve:** `BotonAyuda` tiene estado propio (el contador de novedades sin
-leer). Marcar las novedades como leídas lo re-renderiza → `onCerrar` es una
-función nueva → el efecto de `CentroAyuda` se desmonta y se vuelve a montar →
-devuelve el foco al botón «Ayuda» y se lo roba de nuevo hacia la caja, y el
-scroll del body parpadea en el medio.
-
-Arreglo: un `useCapaModal({ alCerrar, caja })` en `src/lib/` o en
-`components/admin/`, con el `ref` del callback adentro, del que tiren los dos. El
-test de `foco.test.ts` ya cubre la aritmética; lo que falta es que el cableado
-tenga un solo dueño. **Es P1 y no P2 porque el arreglo ya está escrito en el
-repo** — solo está en el archivo equivocado.
-
-### B-211 · El doble de `Timestamp` está definido 13 veces en 4 formas, y dos mienten — ✅ hecho (2026-08-27)
-
-**Hecho.** Uno solo, en `tests/fixtures/tiempo.ts`, devolviendo `TimestampLike` — el tipo
-que el modelo declara y que las copias de dos campos no satisfacían. `seconds` y
-`nanoseconds` salen de la fecha: las dos variantes que decían `seconds: 0` afirmaban que
-todo Timestamp es la época.
-
-**Lo que faltaba no era el fixture: era la guarda.** Esta es la clase que el repo ya
-había automatizado (`fixtures/ciclo.ts` + `invariantes-de-ciclo.test.ts`, después de
-aparecer cuatro veces) y volvió igual, porque **la automatización se escribió y no se
-adoptó** — un modo de falla distinto del que se atajó, y sin red. La clase de B-211 en
-`clases-de-bug.test.ts` busca la **forma** (`toDate` y `toMillis` juntos) y no el nombre,
-así que también caza al que se llame `stamp` o `t`. Verificado reintroduciendo una copia:
-falla nombrando el archivo.
-
-`const ts = (iso) => ...` está escrito a mano en 11 archivos de `tests/` y
-exportado dos veces más desde `tests/fixtures/` (`ciclo.ts` y `centinelas.ts`,
-cada uno con una forma distinta). Cuatro variantes:
-
-| Forma | Dónde |
-|---|---|
-| `{ toDate, toMillis }` | `reportes`, `calendario`, `sincronizacion`, `historial`, `costuras`, `fixtures/ciclo` |
-| `{ toDate, toMillis, seconds: Math.floor(…), nanoseconds: 0 }` | `toPublic`, `libro-presentado`, `cupo-completo`, `fixtures/centinelas` |
-| `{ toDate, toMillis, seconds: 0, nanoseconds: 0 }` | `calendarioPanel`, `filtrosActividades` |
-| delega en `tsDe` | `textoRedes` |
-
-**La tercera forma es un fixture que miente**: dice que todo `Timestamp` es la
-época. Hoy no rompe porque ningún código de producción lee `.seconds` —lee
-`.toDate()` y `.toMillis()`—, pero el `Timestamp` real de Firestore sí lo expone,
-y el día que algo lo use esos dos archivos van a pasar con datos falsos. Es la
-trampa 1 del §13 dentro del fixture que existe para atajarla.
-
-**Es la misma clase que el repo ya automatizó** —«un fixture que no ejercita el
-caso central del dominio»— y que hizo nacer `tests/fixtures/ciclo.ts` y
-`invariantes-de-ciclo.test.ts`. Reapareció con otra cara: no es que el fixture no
-ejercite el caso, es que hay trece fixtures y no se parecen entre sí.
-
-Arreglo: **un** `ts()` exportado de `tests/fixtures/`, con la forma completa (la
-segunda), y los otros doce borrados. Es mecánico y sin riesgo: los cuerpos son
-compatibles hacia arriba. Lo que conviene decidir de paso es dónde vive — hoy
-`ciclo.ts` y `centinelas.ts` se lo copian entre ellos, que es el mismo bug un
-nivel más adentro.
-
-### B-212 · La proyección pública de `/opciones/*` no existe, y el barrido no la ve — ✅ hecho (2026-08-27)
-
-**Hecho.** `opcionPublica` y `opcionesPublicas` en `toPublic.ts`, con whitelist de dos
-campos y sin spread, escritas **antes** de su consumidor (B-106) porque el punto era
-llegar antes que el atajo.
-
-`ValorOpcion` salió de la lista de interfaces AJENAS del barrido de B-196 y pasó a estar
-anclada, con `opcionCentinela()` y tres rutas de centinela nuevas.
-
-**El `auditor-privacidad` encontró cinco cosas sobre este mismo cierre, y las cinco
-eran de índice y de red — ninguna una fuga.** Vale listarlas porque cuatro eran
-afirmaciones que el cierre había escrito:
-
-1. La ficha del agente seguía atribuyendo la salida 1 solo a `toPublic`, y el guard
-   de B-216 **no podía verlo**: comparaba el primer path de cada fila y las dos
-   colapsaban a `src/lib/toPublic.ts`. Es el modo de falla de B-216 un nivel más
-   adentro — el índice envejeció y el test que lo ataba miraba el archivo, no qué de
-   ese archivo produce la salida. El guard ahora compara las **funciones**, y es
-   direccional: la ficha puede saber más que el documento, nunca menos.
-2. Anclar `ValorOpcion` la metió en el chequeo de cobertura pero **no** en el
-   recorrido que exige que cada string del fixture sea rastreable. Un campo de texto
-   nuevo en la taxonomía quedaba obligado a declararse y podía entrar con un valor
-   inocente: obligatorio de declarar, invisible para todo barrido.
-3. «Verificado por mutación» era **a mano**. Ahora hay un `it` que mete el spread y
-   exige que el barrido falle nombrando `opcion.huellaCreador` — el gemelo del
-   control negativo que la actividad ya tenía para `libro`.
-4. El docblock que explica por qué el import va a `@/lib/taxonomia` y no a
-   `@/lib/opciones` **no lo fijaba nadie**: el atajo typechequeaba y dejaba toda la
-   suite verde, arrastrando `firebase/firestore` al módulo de la proyección pública.
-   Y el grafo de `bundle-panel.test.ts` tampoco lo veía, porque `toPublic` no tiene
-   importador todavía (B-106). Hay guarda nueva, sobre el cierre transitivo de sus
-   imports.
-5. La tabla de `07-seguridad.md` atribuía todo a `opcionesPublicas`, que **no
-   interviene en dos de los tres caminos**. Son tres —`opcionesPublicas`,
-   `labelsDeOpciones` y el `cargarLabels` de la Function— y el tercero **no se puede
-   unificar**: `functions/` no importa de `src/` (D-20). La política del repo para
-   ese caso ya estaba escrita en `10-salud-del-codigo.md`: un test que compare las
-   listas, no un import imposible. Es la clase de B-212 en `clases-de-bug.test.ts`.
-
-**Y ese último test salió mal la primera vez**, que es el detalle que más vale:
-rastreaba los accesos por una variable llamada `v`, así que meter un
-`sort((a, b) => b.usos - a.usos)` pasaba en verde. Un chequeo que depende del nombre
-que eligió quien escribió el código verifica la convención de nombres, no el código.
-Ahora deriva del modelo qué campos están prohibidos y busca el **acceso** sin
-importar de qué variable. Verificado con las dos mutaciones.
-
-**Un error propio que vale anotar:** la primera versión filtraba las no aprobadas con
-`v.aprobada !== false` en vez de reusar `estaAprobada`, que es
-`v.fijo || (v.aprobada ?? true)`. Eso habría borrado de los filtros del sitio a una
-opción **base** que tuviera `aprobada: false` — o sea «Gratis» y «A la gorra». Es la
-clase de B-72 (la misma regla escrita dos veces) apareciendo en el acto de cerrar otro
-ítem. Hay dos `it` que lo fijan.
-
-`toPublic.ts` proyecta la actividad campo por campo, con whitelist y sin un solo
-spread. Para `/opciones/*` no hay nada equivalente, y B-106 la va a necesitar: el
-§4.4 dice que el `events.json` lleva `{ slug, label }`, pero el documento tiene
-además `orden`, `fijo`, `usos`, `aprobada` y `huellaCreador`.
-
-El default cuando se implemente B-106 es escribir `valores` tal cual —una línea, y
-se ve razonable— y ahí `huellaCreador` (un pseudónimo derivado de un uid) y `usos`
-entran al JSON público. **Nada lo detiene:** el barrido de centinelas de B-196
-está anclado a las interfaces de una *actividad* (`ANCLAS`), y `ValorOpcion` /
-`DocOpciones` están explícitamente en `AJENAS`. O sea: la única salida pública
-nueva que ya está planificada nace fuera de la red.
-
-Arreglo, hoy y aunque el consumidor no exista todavía —que es el punto—:
-`export const opcionPublica = (v: ValorOpcion) => ({ slug: v.slug, label: v.label })`
-en `toPublic.ts`, al lado de `imagenPublica` y `libroPublico`, que ya establecieron
-el patrón; más su `it` y su ancla en el barrido. Escribir la whitelist antes que
-el consumidor es lo que evita que la decisión la tome un spread.
-
----
-
-### B-217 · El paso 4 del gate pasaba en verde sin leer Firestore — ✅ hecho (2026-08-27)
-
-`1.4.0` agregó al paso 4 de `scripts/verificar-todo.sh` un
-`FIRESTORE_EMULATOR_HOST` apuntado al emulador, con el comentario de que así el
-build «ejercita la lectura real» ahora que `src/pages/events.json.ts` arma el
-`events.json`. No la ejercitaba, por dos motivos que se tapaban entre sí:
-
-1. **El paso 3 tiene dos ramas.** Si detecta un hub de emuladores arriba lo reusa
-   y queda vivo; si no, usa `firebase emulators:exec`, que **levanta y apaga** los
-   emuladores alrededor de los tests. En esa segunda rama, al llegar al paso 4 no
-   había nadie escuchando: medido, el build se quedaba **44 segundos** y moría con
-   `14 UNAVAILABLE`. O sea que el gate corrido sin un emulador previo **fallaba
-   siempre y por su propia plomería** — exactamente lo que el paso 3 había
-   aprendido a no hacer (B-180), reintroducido un paso más abajo.
-2. **Y con el emulador vivo tampoco probaba nada.** Los tests de integración del
-   paso 3 terminan llamando a `limpiarFirestore()`, así que el paso 4 llegaba a
-   una base **vacía**. Medido en el emulador de la sesión: `0` actividades. El
-   build leía cero, escribía un `events.json` sin ninguna, y salía en verde.
-
-Las dos mitades juntas dan el peor resultado posible: un chequeo agregado **para**
-garantizar «esto leyó Firestore» que pasa idéntico leyendo cero documentos. Es la
-trampa que el propio commit decía prevenir — D-123 dice que leer cero actividades
-no falla solo, produce un `events.json` vacío, y el deploy lo publica encima del
-sitio que sí tenía datos.
-
-**El arreglo.** La detección del hub se hace **una vez** y la comparten los pasos 3
-y 4 (tenerla escrita dos veces fue lo que dejó al paso 4 apuntando a un puerto que
-el paso 3 apagaba). El paso 4 corre `scripts/build-contra-emulador.mjs`, contra el
-hub que ya está o contra uno efímero, y ese script siembra una actividad publicada
-y una en borrador, buildea, y **afirma sobre el `dist/events.json` que salió**: la
-publicada está, la borrador no, y ningún centinela de los campos recortados
-sobrevivió. Los documentos sembrados se borran en un `finally`.
-
-**Verificado por mutación**, que es lo único que distingue un chequeo de un
-comentario: con el `where` apuntado a un estado inexistente el gate falla
-nombrando las cero actividades; sin el `where` falla nombrando la borrador; con
-`destino: a.inscripcion.destino` agregado al índice falla nombrando el campo.
-
-No se testea el script del gate: no hay precedente de testear `verificar-todo.sh`
-en este repo y B-180 (P3) sigue siendo el ítem que lo pide para el paso 3.
-
-### B-218 · Las redes que faltaban alrededor de `/events.json` — ✅ hecho (2026-08-27)
-
-Cuatro hallazgos del `auditor-privacidad` sobre `4d223c1`, los cuatro
-verificados antes de acatarlos y los cuatro cerrados. **Ninguno era una fuga**:
-el recorte del índice, la query y `cierraEn` estaban bien. Lo que faltaba era la
-red que los sostenga.
-
-1. **Ningún test nombraba `src/pages/events.json.ts`.** `tests/eventsJson.test.ts`
-   prueba la librería y el barrido prueba la proyección: los dos entran a la
-   cadena **después** de que el endpoint eligió qué documentos leer, así que
-   ninguno miraba la query. Medido: borrar el `.where('estado','==','publicado')`
-   dejaba la suite entera en verde. Cerrado con
-   `tests/events-json-endpoint.integracion.test.ts`, que siembra una publicada y
-   las tres no públicas —borrador, cancelada, pendiente— y afirma sobre el JSON
-   que el endpoint devuelve. De integración y no de texto: un `grep` al fuente
-   pasaría con la cláusula escrita mal. El mismo archivo cubre las dos ramas de
-   credenciales (D-123, B-189), que hasta hoy las sostenía una frase de un mensaje
-   de commit.
-2. **La tabla de salidas nombraba un solo productor de la salida 1.**
-   `docs/07-seguridad.md` y la ficha del agente decían `src/lib/toPublic.ts`;
-   desde B-106 son **tres archivos en serie**. Es la forma de B-216 un archivo más
-   adentro: un cambio futuro que tocara solo `src/lib/eventsJson.ts` no despertaba
-   al auditor por nombre de archivo. Actualizadas las dos tablas y el
-   `description` del frontmatter, que es el disparador.
-3. **La guarda de B-212 estaba cableada a un archivo.**
-   `tests/bundle-panel.test.ts` tenía `const PROYECCION = 'src/lib/toPublic.ts'`, y
-   su docblock decía «`toPublic` no tiene hoy ningún importador en `src/`», frase
-   que B-106 dejó falsa. `src/lib/eventsJson.ts` **hereda la posición exacta** —
-   proyección pura, sin consumidor cliente hoy, con uno previsto en B-105 — y
-   ninguna de las tres redes lo veía. Ahora es un `describe.each` sobre los dos.
-4. **Dos celdas sin decidir.** El link de la reunión con `urlPublica: true` no
-   tenía caso en el barrido del índice (ver **D-129**), y el `resumen` era un
-   recorte solo por el nombre de la función: cambiar la línea a
-   `resumen: a.descripcion` dejaba todo verde, porque el test de ausencia busca la
-   clave `"descripcion"` —que sigue sin existir— y el barrido permite ese centinela
-   justamente porque el resumen lo contiene.
-
-Los tres tests nuevos se verificaron **por mutación**: se rompió la condición a
-propósito y se confirmó el rojo antes de darlos por buenos.
-
-Lo que el auditor reportó y **no** se acató: nada — los cuatro resultaron ciertos
-contra el árbol.
-
-### B-320 · La cartelera todavía no pinta la miniatura: falta el `srcset` — ✅ hecho (2026-09-02)
-
-**Hecho, tal cual estaba escrito abajo.** `src/pages/cartelera.astro` ahora
-pide la miniatura de 480px como candidato chico de `srcset`, con el original
-siempre en `src` y como candidato grande, y `sizes` a su lado. Verificado por
-mutación en `tests/cartelera.test.ts` (`src={afiche.urlMiniatura ?? afiche.url}`
-en vez de `src={afiche.url}` pone el test en rojo). Con esto, **B-266 queda
-resuelto del todo**.
-
-**Y el `auditor-trampas` encontró un B-88 de paso:** el `480w` era un literal
-sin atar a `ANCHO_MINIATURA` de `functions/imagenes.js` (el que `sharp` usa de
-verdad). Se movió a una constante propia en `src/lib/imagenes.ts`, atada por
-`tests/imagenes-function.test.ts` — mutación probada: subir un valor sin el
-otro pone ese test en rojo.
-
-**Y el `auditor-privacidad` encontró dos cosas más:** el `srcset` se armaba con
-un template en la plantilla, sobre `afiche.url` crudo del documento —una coma
-ahí partiría la lista de candidatos, y nada lo impedía—; se movió a
-`srcsetDeMiniatura` en `src/lib/imagenes.ts`, probada por valor. Y el `for` de
-`tests/barrido-de-salidas-publicas.test.ts` que afirma «todo lo que la pared
-publica ya lo publicaba el detalle» saltaba `urlMiniatura` en silencio, sin
-ejercitar nunca la rama no nula; ahora se saltea por nombre y hay un test
-dedicado con una URL real. Las dos mutaciones probadas.
-
-El texto original queda abajo, para que quede el rastro de cómo tenía que ser.
-
-**El campo está, probado, y no lo usa nadie.** `Afiche.urlMiniatura`
-(`src/lib/cartelera.ts`) trae la URL de la miniatura de 480 px que deriva la
-Function de B-220, y `src/pages/cartelera.astro` sigue pidiendo el original. Es
-lo único que falta para cobrar los números de **B-266**: recorrer la pared entera
-pasa de 3518,5 KB a **1032,4 KB (−71 %)** con las 30 imágenes de producción.
-
-**Es de otro frente y por eso está acá y no hecho:** `src/pages/` lo estaba
-tocando otra rama en paralelo el 2026-09-02.
-
-**Cómo tiene que ser, y esto no es opcional:** la miniatura va como candidato de
-`srcset` **con el original como `src`**.
-
-```astro
-<img
-  src={afiche.url}
-  srcset={afiche.urlMiniatura ? `${afiche.urlMiniatura} 480w, ${afiche.url} 1600w` : undefined}
-  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-  ...
-/>
-```
-
-Tres cosas que se pierden si se hace distinto:
-
-- **El `src` tiene que quedar en el original.** `urlMiniatura` es una URL
-  **derivada**, no un dato guardado: una imagen subida antes de que la Function
-  estuviera desplegada **no tiene miniatura** hasta que corra
-  `scripts/optimizar-imagenes.mjs`. Un `srcset` cuyo candidato no existe hace que
-  el navegador caiga al `src`, y eso degrada bien; un `src` apuntando a la
-  miniatura degrada a imagen rota.
-- **`urlMiniatura` es `null` para las externas** (DEC-7d no las toca), así que el
-  atributo tiene que salir ausente y no vacío.
-- **`sizes` recién sirve acá.** Sin `srcset` era decoración que parece
-  optimización (D-149); con `srcset` es lo que decide qué candidato baja.
-
-El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
-puestos y no hay que tocarlos.
-
-### B-926 · Convertir una propuesta decide sola qué pasa con la foto, y deja el slug vacío · ✅ hecho (2026-09-17) · P1 — pedido del dueño (2026-09-15), primera prioridad
-
-> **Hecho.** Al convertir, el panel pregunta qué hacer con el flyer: **bajarlo**
-> (un botón al lado de la miniatura, antes de decidir), **usarlo** —el camino de
-> siempre— o **descartarlo**. Descartar marca `revision.fotoDescartada: true`,
-> que es lo único que autoriza al trigger a borrar el original **sin** verificar
-> ninguna copia: sin ese flag el descarte caería en `sin-copia` y el original
-> quedaría vivo para siempre. Es el tercer cierre de `borrarImagenAlCerrar` y el
-> único que se saltea el orden de B-863, porque la pregunta que esa verificación
-> hace ya la contestó una persona que pudo ver la foto. El slug sale prellenado
-> del título con el mismo `slugify` que la cascada, y sigue editable hasta
-> publicar.
->
-> **Un pase de auditoría posterior encontró nueve hallazgos y todos están
-> cerrados.** El que más importaba: se podía autorizar el borrado con la foto sin
-> mostrar. Se arregló dos veces — primero escondiendo el botón hasta que la foto
-> estuviera visible, y después moviendo esa señal del `then` de la promesa al
-> `onLoad`/`onError` del `<img>`, porque «la URL resolvió» no es «el navegador
-> pintó algo». Los estados son **tres** y no dos: el del medio —cargando— es el
-> que una mutación deja escapar si no está escrito.
->
-> Commits `2e85b38`, `51518b2`, `8d0948d`, merge `1c81323`, y los cinco del pase
-> sobre las correcciones.
-
-Son dos cosas del mismo momento —la pantalla de conversión de la bandeja— y por
-eso van juntas.
-
-**(a) La foto se reutiliza sola, o se pierde sin que nadie haya elegido.** Hoy
-`convertir()` (`src/components/admin/PropuestasPanel.tsx`) promueve la imagen
-subida a `imagenes/`, la agrega a la galería y la marca portada si es la primera.
-No hay dónde decir «esta no», «quiero otra», ni **bajarla al disco antes de que se
-vaya**. Y se va: `borrarImagenAlCerrar` borra el original de `propuestas/` cuando
-la propuesta pasa a `aceptada` (B-863). O sea que **el único momento en que esa
-foto existe y alguien la está mirando es esta pantalla**, y ahí no hay ni un botón.
-
-Las cuatro opciones que hay que ofrecer: **descargar**, **reutilizar** (lo de hoy,
-que queda como default), **descartar** y **subir otra**. Tres son baratas — la
-descarga es un `<a download>` sobre la URL que el panel ya trae
-(`urlDeImagenDePropuesta`), descartar es no promover, y subir otra ya la resuelve
-el `GaleriaEditor` que el formulario tiene abajo.
-
-**Lo que hay que mirar con cuidado es el cruce con B-863**, porque descartar abre
-el agujero que ese ítem cerró: el trigger borra el original solo si verifica que
-la actividad nombra una imagen propia **y** que el objeto está en el bucket. Si se
-descarta y no se promueve nada, esa verificación no se cumple, y como la
-`aceptada` no vence (B-844), la foto de un tercero queda sin fecha de vencimiento
-bajo un prefijo que `limpiarImagenesHuerfanas` no barre. **Descartar tiene que
-borrar el original, y el texto tiene que decirlo** — es la misma frase que ya
-está escrita para el rechazo.
-
-**(b) El slug llega en blanco y el guardado no pasa.** `propuestaAFormulario`
-(`src/lib/propuestas.ts`) lo deja vacío a propósito y lo dice: «prellenarlo acá
-sería fijar una URL que nadie revisó». Pero el slug **solo se deriva cuando
-alguien escribe el título** (`cambiarTitulo`, `src/lib/formulario/cascadas.ts`), y
-en una conversión el título llega puesto: nadie lo escribe. Resultado: el
-formulario abre con el slug en blanco y el guardado falla contra «El slug es
-obligatorio» (`src/lib/schema.ts`), con la única salida de tocarle una letra al
-título para que la cascada dispare. Un formulario que se abre ya inválido, y sin
-decir por qué.
-
-La revisión que el comentario quería proteger no se pierde prellenándolo: el slug
-queda **editable hasta publicar**, que es cuando se congela (trampa 10), y el
-formulario ya avisa que hay que revisarlo antes. Es `slug: slugify(p.titulo)` en
-la conversión, y borrar el párrafo del docblock que dice lo contrario.
-
-### B-889 · Las horas se cargan sin saber si son AM o PM, y el panel no ofrece elegir formato — ✅ hecho (2026-09-18) · P2 — **pedido dos veces por el dueño (2026-09-11 y 2026-09-15)**
-
-> **Cerrado con el control propio, que es la opción (b) que el dueño eligió.**
-> Lo que quedó: el interruptor «24 h / AM/PM» en la cabecera (gemelo del de
-> B-814 y en el mismo lugar por el mismo argumento), `lib/formatoDeHora.ts` con
-> la preferencia y la composición de las piezas —puro, con el almacén como
-> puerto—, y `components/campos/CampoDeFechaYHora.tsx` en los **tres**
-> `datetime-local` del panel.
->
-> **Las cuatro cosas que el control propio tenía que resolver, y cómo quedaron:**
->
-> 1. **El celular** → `usaControlDeHoraPropio(formato, vista)`. Atado a la vista
->    elegida y **no al ancho de la ventana**, que es la única desviación de D-720
->    y está argumentada allá: el panel ya decidió preferir la elección a la
->    detección (B-814), y meter un `matchMedia` sería tener las dos políticas a
->    la vez.
-> 2. **Accesibilidad** → `Campo comoGrupo` ya emitía `role="group"` +
->    `aria-labelledby`; lo que hubo que agregar es el nombre de **cada** pieza,
->    porque «Inicio» nombra al grupo y no a la cajita de los minutos. El rótulo
->    del grupo lleva su propio id: reusar el del campo lo duplicaba con el
->    `<input>` de la fecha.
-> 3. **`min-h-touch`** → las cuatro piezas lo heredan de `claseInput`.
-> 4. **Que nadie guarde texto** → `dePiezas()` compone el mismo string de
->    `datetime-local` de siempre, y un campo incompleto da `''`, que es lo que el
->    schema ya lee como «falta». Una hora fuera de rango **no se recorta**: un
->    `13` que se vuelve `1 PM` mientras alguien tipea cambia lo que la persona
->    escribió sin avisar.
->
-> **El eco entró adentro del control**, como decía el ítem, y se muestra solo con
-> el control propio: al lado del nativo sería repetir en palabras lo que el
-> navegador ya dibuja. Siempre en 12 horas aunque el panel esté en 24 — repetir
-> `19:30` al lado de `19:30` no contesta la pregunta del pedido.
->
-> **Un test de render, y por qué:** el modo de falla del control no es la
-> conversión —eso es puro y se verifica sin DOM— sino que **lo tipeado se borre
-> entre teclas**, que es lo que pasa si el valor compuesto es la única fuente. El
-> componente es controlado y las piezas se tipean de a una, así que un campo a
-> medio llenar compone `''` y ese `''` volvería a vaciar la cajita. Eso solo se
-> ve tipeando.
->
-> **Lo que cobró el pase de auditores, y es de la clase D-88:** el módulo nuevo
-> nació con **dos** parsers del string de `datetime-local` —el de `aPiezas` y el
-> del eco—, más el `deDatetimeLocal` que ya existía en `lib/sesiones.ts`. Los
-> tres daban lo mismo, así que no se veía; el día que el formato se extienda en
-> uno solo, el eco diría una hora y el formulario compondría otra, **sin que nada
-> se ponga rojo**. Quedó `partesDeDatetimeLocal()` como único parseo del módulo,
-> y una red que lo cruza contra el de `sesiones.ts` —que sigue aparte a propósito:
-> aquél devuelve un `Date` y acá hacen falta los componentes— sobre la misma
-> lista de valores y de basura.
-
-
-> **Sube de P3 a P2 el 2026-09-15.** Volvió a pedirse, con esas palabras
-> («selector de am/pm»), en la tanda de B-950 a B-960. Un pedido que vuelve a los
-> cuatro días no es «cuando sobre tiempo»: es la segunda persona que carga
-> chocándose con lo mismo. No se abre ítem nuevo — esto ya está escrito acá
-> entero, con las tres decisiones que hay que tomar antes de escribir código.
-
-**Pedido del dueño (2026-09-11):** un sistema de 12/24 horas al cargar las fechas,
-**solo en el admin**.
-
-Hoy los campos de hora son `<input type="time">`, y ese control **no decide el
-formato: lo decide el navegador**, a partir del idioma del sistema operativo. En
-`es-AR` sale en 24 horas y en `en-US` sale con AM/PM, sin que la página tenga nada
-que ver. Por eso el pedido no es «cambiar el formato» sino **ofrecer elegirlo**,
-que es una cosa distinta y más cara.
-
-**Lo que hay que decidir antes de escribir nada:**
-
-1. **Qué se guarda no cambia**, y conviene dejarlo escrito para que nadie lo
-   toque: en Firestore va un `Timestamp` y hacia Calendar va con `timeZone`
-   explícito (trampa 1). El formato es **presentación**, no dato. Si en algún
-   momento alguien guarda «7:30 PM» como texto, eso es la trampa 1 otra vez.
-2. **Dónde vive la preferencia.** No hay perfil de usuario en el panel, así que o
-   nace uno, o va en `localStorage` —el patrón que el panel ya usa para los
-   borradores (D-122) y el sitio para los favoritos (B-848)—. La segunda es la
-   barata y tiene la consecuencia de siempre: es por navegador, y hay que decirlo.
-
-   > ✅ **Decidido por el dueño el 2026-09-16: `localStorage`** (**D-720**). No
-   > nace un perfil de usuario para esto. La consecuencia hay que **decirla en la
-   > pantalla**, no dejarla implícita: la preferencia es de **este navegador**, así
-   > que quien carga desde la compu y desde el teléfono la elige dos veces, y un
-   > modo incógnito la pierde. Es el mismo trato que ya tienen los borradores del
-   > panel (D-122) y los favoritos del sitio (B-848), y es lo que lo hace
-   > consistente y no una excepción.
-
-3. **Y la parte que no es obvia: un `<input type="time">` no acepta que le impongan
-   el formato.** Ofrecer 12/24 significa dejar de usar el control nativo, o
-   envolverlo. Eso toca el teclado del celular, la accesibilidad y el `min-h-touch`
-   del §11 — o sea que el costo real no está en el formato sino en reemplazar un
-   control que hoy el navegador resuelve bien.
-
-   > ✅ **Decidido por el dueño el 2026-09-16: control propio** (**D-720**), o sea
-   > la opción cara de las dos que se le presentaron:
-   >
-   > | Forma | Qué cuesta | Qué resuelve |
-   > |---|---|---|
-   > | (a) Eco al lado del control nativo — «19:30 → 7:30 PM» | un componente de lectura, sin tocar el control | la duda reportada: «no sé si lo que cargué es AM o PM» |
-   > | **(b) Control propio** (fecha + hora + minutos + AM/PM) ← **elegida** | reemplaza el nativo | además, **escribir** en 12h |
-   >
-   > **Se recomendó (a) y el dueño eligió (b), habiendo visto el costo escrito.**
-   > Queda dicho porque el motivo importa para lo que viene: el pedido original fue
-   > *«un selector de am/pm»*, dos veces, y (a) no es un selector — es un cartel. La
-   > lectura de este ítem («el síntoma es de lectura») subestimaba el pedido:
-   > **quien carga quiere tipear en 12 horas**, no confirmar que tipeó bien en 24.
-   > Con una segunda persona cargando, eso es exactamente el criterio que el dueño
-   > ya había fijado en B-928: *«no podemos obligarlos a hacerlo como queremos,
-   > sino ajustarnos nosotros»*.
-   >
-   > **El eco de (a) no se tira: entra adentro de (b).** Un control propio tiene
-   > que confirmar por escrito lo que quedó cargado, justamente porque ya no hay un
-   > control nativo que el navegador garantice. Sale casi gratis y es la red de que
-   > el control propio no esté mintiendo.
-   >
-   > **Las cuatro cosas que el control propio tiene que resolver, y son la razón
-   > por la que era la cara:**
-   >
-   > 1. **El celular.** Hoy `datetime-local` abre el selector nativo del teléfono.
-   >    Tres cajitas para tipear son peores en una pantalla chica que lo que hay
-   >    hoy, así que **abajo de cierto ancho hay que seguir usando el nativo** — el
-   >    formato ahí lo pone el sistema y está bien que así sea, que es lo mismo que
-   >    ya se decidió para `/proponer`. La preferencia de 12/24 es de escritorio.
-   > 2. **Accesibilidad.** Un `datetime-local` es **un** campo con una etiqueta; esto
-   >    son cuatro controles que tienen que leerse como uno solo (grupo con nombre
-   >    accesible, orden de tabulación, y que el lector de pantalla no anuncie
-   >    «cuadro combinado» cuatro veces).
-   > 3. **`min-h-touch` del §11** en cada una de las cuatro piezas.
-   > 4. **Que nadie guarde texto.** Las cuatro piezas se componen en un
-   >    `Timestamp` antes de salir del formulario. El día que se guarde `"7:30 PM"`
-   >    como string, es la trampa 1 otra vez — y ahora hay un control propio que lo
-   >    hace fácil.
-   >
-   > **Dónde aplica:** `SesionesEditor`, `ModalidadesEditor` y el `cierra` de
-   > `SeccionArancelInscripcion` — los tres `datetime-local` del panel. **No** en
-   > `FormularioPublico` (los dos `type="time"` de `/proponer`), que se queda con el
-   > nativo por lo ya decidido.
-
-**Solo en el admin**, dicho por el dueño. El formulario público (`/proponer`) se
-queda con el control nativo: ahí quien carga usa su propio teléfono una sola vez y
-el formato que le da su sistema es el que entiende.
-
 ## P2 — mejoras reales
 
 ### B-981 · «Dirección web» era el slug, y abajo había otro campo web — ✅ hecho (2026-09-17) · P2 — reportado por el dueño
@@ -14083,6 +8300,5827 @@ cargando, y un cartel que no dice qué hacer le cuesta a ella, no a nosotros.
 > Lo que **no** cubre, escrito en el docblock de la guarda: el
 > `rejects.toThrow()` pelado de `storage-reglas.integracion.test.ts`. El emulador
 > de Storage tiene sus propios códigos y este helper es de Firestore.
+
+### B-955 · Entrar a una actividad y volver borra todos los filtros — ✅ hecho (2026-09-18) · P2 — pedido del dueño (2026-09-15)
+
+> **Cerrado con el primero de los dos arreglos, que es el que el ítem
+> recomendaba:** el estado sube a `AdminApp`, al lado de `vista` y `volverA`. No
+> se persiste — la pregunta de cuánto dura un filtro no hay que contestarla si
+> muere con la pestaña, y un filtro pegado de ayer es peor que ninguno.
+>
+> **Lo que hubo que resolver y el ítem no anticipaba:** los dos `.render.test.tsx`
+> que montan `ListaActividades` aislada necesitaban un lugar donde viva el
+> estado. Se les puso un wrapper con `useState` y no un objeto fijo, porque con
+> `filtros` constante un caso que tipea en el buscador no vería cambiar nada y
+> pasaría por vacío — la clase de B-202.
+>
+> El testigo es `tests/filtros-que-sobreviven.test.ts`, y afirma **dónde vive el
+> estado** en vez de lo que hacen los filtros (eso ya está cubierto puro y
+> renderizado). Incluye la premisa que lo hace importar —que `AdminApp` desmonta
+> el listado al cambiar de vista—, así que el día que eso cambie se pone rojo y
+> hay que venir a releer la decisión.
+
+
+*«En el admin, preservar filtros al ir y venir de una actividad.»*
+
+**La causa es de una línea:** `const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS)`
+vive dentro de `ListaActividades.tsx`, y `AdminApp` **desmonta ese componente**
+cuando la vista pasa a `editar` (o a `nueva`, `duplicar`, `historial`). Al volver,
+el componente se monta de cero y el estado nace vacío. Se lleva puestos los ocho
+ejes, el texto de búsqueda y el orden.
+
+Duele en el uso real que ya tenemos: filtrar «pendientes de septiembre», abrir
+una, guardar, y volver a la lista completa para reencontrar la siguiente.
+
+Dos arreglos posibles y conviene el primero: **subir el estado a `AdminApp`**, al
+lado de `vista` y de `volverA`, que es donde ya vive lo que tiene que sobrevivir a
+un cambio de pantalla; o persistirlo en `localStorage` como los borradores
+(D-122). El segundo agrega la pregunta de cuánto dura —un filtro pegado de ayer es
+peor que ninguno— así que si se elige, que muera con la pestaña
+(`sessionStorage`).
+
+## Pendiente de acción manual del dueño
+
+### B-976 · `/opciones/barrio` tiene provincias y ciudades adentro — ✅ las 58 migradas (2026-09-17) · quedan 5 a mano · P1
+
+> **Corrido en producción el 2026-09-17**: 58 actividades reubicadas con
+> `scripts/reubicar-barrios.mjs`. Segunda corrida: `A reubicar: 0`.
+>
+> Antes se ensayó contra el emulador con las **formas reales** de producción —una
+> por clase, incluidas las ambiguas y dos sanas de control—, y ahí se verificó lo
+> que importaba: que la ciudad salga **slugificada** (`Tres arroyos` →
+> `tres-arroyos`; cruda habría reintroducido el bug que la migración arregla),
+> que `sede` y `ciudades[]` se recalculen, que las sanas no se toquen y que sea
+> idempotente.
+>
+> **La regla vive en `src/lib/reubicacion-de-barrio.mjs`, es pura y tiene 12
+> casos.** Reubica solo cuando el propio dato lo dice: el barrio es una provincia
+> → va a `provincia`. No deduce la provincia de una ciudad —«Tandil» es
+> bonaerense para una persona y para nadie más acá—, que es la misma línea que
+> `sembrar-geografia.mjs` ya había trazado.
+>
+> **Y no invierte «barrio=ciudad + ciudad=provincia», aunque parezca obvio.** La
+> primera versión sí lo hacía: funciona para `rosario | santa-fe` y sobre
+> `nunez | Neuquén` produce «la ciudad de Núñez, en Neuquén». Distinguirlos pide
+> cablear los 48 barrios de CABA, o sea la tabla que el módulo se niega a
+> inventar con otro nombre. Está fijado por test con la mutación probada.
+>
+> **Lo que queda, y es del dueño** (se le pasaron los enlaces el 2026-09-17):
+>
+> | Actividad | Qué dice | Por qué no se tocó |
+> |---|---|---|
+> | Club de lectura - «Basura» | `barrio=provincia-de-buenos-aires` + `ciudad=CABA` | CABA no está en la provincia de Buenos Aires |
+> | Club de lectura La Fonseca | `barrio=nunez` + `ciudad=Neuquén` | Núñez es barrio de CABA |
+> | Lectura y análisis de Mariana Pineda | `barrio=rosario` + `ciudad=Santa fé` | parecen invertidos, indistinguible del anterior |
+> | FINDE - Feria de editores independientes | `barrio=palermo` + `ciudad=avellaneda` | Palermo es CABA, Avellaneda no |
+> | Club de lectura: ESCRITURAS DEL MUNDO | `provincia=buenos-aires` sin ciudad | falta el segundo nivel |
+>
+> **Y cinco valores de `/opciones/barrio` quedaron sin ninguna actividad detrás**
+> —`beccar`, `ramos-mejia`, `cordoba`, `neuquen`, `santa-fe`—: recién ahora se
+> pueden borrar desde la pantalla de taxonomías sin dejar un slug colgado.
+> `provincia-de-buenos-aires` **no** quedó libre: la sostiene «Basura», la primera
+> ambigua.
+>
+> **Y el mismo día se corrió `sembrar-geografia.mjs`, que existía desde B-950 y
+> nunca se había corrido**: 180 actividades más. La geografía de las sedes pasó de
+> **0 filas con provincia a 251 de 259**.
+>
+> **Ese ensayo encontró un hueco en el propio backfill, y se tapó antes de
+> aplicar.** `geografiaNormalizada` deduce la provincia de la ciudad, y sobre una
+> sede que se contradice eso **no es deducir sino desempatar**: «Basura» habría
+> quedado como `caba / caba / provincia-de-buenos-aires`, con la contradicción
+> resuelta a la fuerza, en una dirección, y con pinta de decidida — peor que el
+> estado anterior, porque el dato malo deja de verse. Ahora consulta
+> `reubicacionDe` y saltea lo ambiguo, con su test.
+>
+> Después de las dos corridas quedan **9 sedes** para mirar a mano: las 3
+> ambiguas, la de `palermo | avellaneda`, la que tiene provincia sin ciudad, y 4
+> sin provincia porque el backfill no la puede deducir (Neuquén, Santa Fe,
+> Rosario y una sin ciudad). Los enlaces se le pasaron al dueño el 2026-09-17.
+>
+> El texto original queda abajo.
+
+**Lo vio el dueño en el desplegable**: «Provincia de Buenos Aires» aparece entre
+Belgrano y Colegiales. Y no está solo — de los 30 valores de `/opciones/barrio`,
+**siete no son barrios de CABA**:
+
+| Valor | Qué es en realidad | Actividades |
+|---|---|---|
+| `provincia-de-buenos-aires` | una provincia | **54** |
+| `cordoba` | provincia (o su capital) | 8 |
+| `beccar`, `ramos-mejia` | ciudades bonaerenses | 1 c/u |
+| `rosario` | ciudad de Santa Fe | 1 |
+| `neuquen`, `santa-fe` | provincia (o su capital) | 1 c/u |
+
+**Por qué pasó, y por qué no es descuido de nadie:** hasta B-950 el barrio era
+**el único campo de lugar** que el formulario ofrecía. Quien cargaba una
+actividad en Tandil no tenía dónde ponerlo, así que lo puso donde había lugar. El
+vocabulario es el registro fiel de un formulario que faltaba.
+
+**Cuánto abarca:** 129 filas de sede tienen el barrio contaminado, y se parten en
+dos:
+
+- **123 son mecánicas.** `barrio=provincia-de-buenos-aires` + `ciudad=Tandil`
+  significa `provincia=buenos-aires, barrio='', ciudad=tandil`, sin ambigüedad. Lo
+  mismo con `cordoba`, `neuquen` y `santa-fe`. Hay dos invertidas
+  (`barrio=rosario | ciudad=santa-fe`) que son las mismas dos al revés, y una
+  `"Villa Crespo, CABA"` que es un barrio con la ciudad pegada.
+- **6 necesitan criterio del dueño**, porque el documento se contradice:
+  - `barrio=nunez | ciudad=neuquen` (2) — Núñez es de CABA, Neuquén no.
+  - `barrio=palermo | ciudad=avellaneda` (2) — Palermo es de CABA, Avellaneda es
+    bonaerense.
+  - `barrio=provincia-de-buenos-aires | ciudad=caba` (2).
+
+**Por qué no se hizo en el momento.** Sacar los siete del desplegable **no
+alcanza**: 54 actividades seguirían con `barrio: 'provincia-de-buenos-aires'` en
+el documento, y ahí el slug deja de resolver etiqueta y se publica crudo. El
+arreglo de verdad es migrar los documentos, y eso reescribe ~100 actividades: una
+versión del §12 por actividad y **una llamada a Calendar por sesión** (`sede` está
+en los campos que la guarda del §7.1 mira). El propio `sembrar-geografia.mjs`
+dice «correrlo una vez, fuera de hora». Es una decisión del dueño, no una
+prolijidad que se cuela en otro cambio.
+
+**Lo que sí quedó hecho** (B-975): `/opciones/ciudad` pasó de 1 a 30 valores con
+las ciudades reales del catálogo, así que **al reeditar una de esas actividades la
+ciudad correcta ya está en el desplegable** y el arreglo manual es elegir la
+provincia. Sin eso, migrar a mano era volver a tipear treinta ciudades.
+
+### B-974 · Diez taxonomías de las guías nunca se sembraron en producción — ✅ hecho (2026-09-16) · P1
+
+> **Sembradas el 2026-09-16** con `npm run opciones:sembrar:prod`, y verificadas
+> con `npm run taxonomias:verificar`: las 17 declaradas existen. Las siete que ya
+> estaban no se tocaron (el script es idempotente). El rebuild se dispara solo por
+> la escritura en `/opciones/*` (trampa 8).
+>
+> **Lo que estuvo roto, y cuánto:** desde que se creó cada guía. Los desplegables
+> de `/guia/librerias/sumar`, `/guia/lugares/sumar` y `/guia/suscripciones/sumar`
+> —el formulario de gente de afuera— salían vacíos para esos ejes, y los chips de
+> filtro de las tres guías también. El panel se veía bien todo ese tiempo, que es
+> lo que lo mantuvo invisible.
+>
+> El texto original queda abajo.
+
+**Un solo comando, y necesita tu aprobación** porque escribe en producción:
+
+```bash
+npm run opciones:sembrar:prod
+```
+
+Lo encontró el chequeo nuevo de B-973 apenas se lo corrió contra producción:
+`incluye-actividad`, `periodicidad`, `tipo-oferente`, `perfil-editorial`,
+`incluye-suscripcion`, `extras-suscripcion`, `alcance-envio`, `tipo-lugar`,
+`incluye-lugar` y `condicion-de-uso` **no existen** como documentos de
+`/opciones/*`. Nunca existieron: se crearon con las guías y la siembra nunca se
+volvió a correr.
+
+**Qué está roto hoy, exactamente.** El panel se ve bien, y eso es lo que tapó el
+problema: `leerOpciones` cae de vuelta a `opciones-base.json` cuando el documento
+falta. El **build** no tiene ese fallback —`contenidoDelSitio.ts` hace
+`snap.data()?.valores ?? []`—, así que lo que sale vacío es lo público:
+
+- los desplegables de `/guia/librerias/sumar`, `/guia/lugares/sumar` y
+  `/guia/suscripciones/sumar`, que es gente de afuera que no puede completar el
+  formulario;
+- los chips de filtro de las tres guías para esos ejes.
+
+El comando es idempotente (no pisa nada existente) y dispara el rebuild solo
+(trampa 8), así que los chips aparecen en la corrida siguiente. Después,
+`npm run taxonomias:verificar` tiene que dar las 17 en verde.
+
+**Hasta que se corra, el job `hosting` falla y no se deploya nada** — que es
+exactamente lo que el chequeo tiene que hacer, pero conviene saberlo antes de
+pushear.
+
+### B-20 · Activar el rebuild automático (cierra B-02) — ✅ hecho y verificado de punta a punta (2026-08-25)
+
+Los cinco pasos que dependían del dueño, en el orden en que se hicieron (comandos
+exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automático"):
+
+1. ~~Crear el PAT de GitHub~~ — **hecho** (existe desde el 2026-08-21).
+2. ~~Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
+   dándole `secretAccessor` a `calendar-sync@`~~ — **hecho** (2026-08-21).
+3. ~~Crear la service account `deploy-ci@` con `datastore.viewer` +
+   `firebasehosting.admin`~~ — **hecho el 2026-08-25**, con esos dos roles y sin
+   ninguna key.
+4. ~~Bajar la key de `deploy-ci@`, cargarla como secret
+   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco~~ — **hecho el
+   2026-08-25**. La corrida de las 18:04 publicó `1.1.0+675d9e5` desde CI: reglas,
+   índices, sitio y panel, todo verde.
+5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
+   ACTIVE, y su `repository_dispatch` ahora sí arranca el workflow (era **B-188**,
+   arreglado el mismo día).
+
+**Los cinco pasos están hechos y el lazo funciona.** Verificado el 2026-08-25
+mandando el mismo `event_type: 'rebuild'` que manda la Function: «Build y deploy del
+sitio» arrancó, imprimió el motivo del `client_payload` y publicó `1.1.0+ad973b8`.
+Lo que faltaba después de las credenciales era un bug, **B-188**, arreglado el mismo
+día.
+
+Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
+solo**. Lo que no, y era una contra asumida: todo push que toque `functions/` deja
+la corrida roja, porque `deploy-ci@` no tiene —a propósito— los roles para
+desplegar Functions, y con la corrida roja se saltea también el job del tag de
+versión. El razonamiento está en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
+
+> **Se levantó el 2026-08-28 (D-132, B-194).** Los seis jobs terminan bien; un
+> push publica reglas, índices, sitio, panel, Functions y tag. Lo de arriba queda
+> como el estado del 2026-08-25.
+
+#### Lo que enseñó el camino, que valía más que los pasos
+
+Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsión:
+
+- **El inventario mentía, siempre hacia el mismo lado.** Los pasos 1, 2 y 5
+  figuraban como pendientes y estaban hechos desde el 2026-08-21 (el PAT en Secret
+  Manager, y `dispararRebuild`/`guardarVersion`/`reporteAIssue` **ACTIVE**). Este
+  ítem parecía mucho más grande de lo que era porque la doc mostraba como pendiente
+  trabajo terminado hacía días.
+- **El paso 4 era el que desbloqueaba todo.** Sin `FIREBASE_SERVICE_ACCOUNT` no se
+  publica ni el sitio ni el panel, o sea que **ningún** cambio de código llegaba a
+  producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
+  ítem al escribirse.
+- **Un job de reglas que falla bloquea el deploy del sitio.** El `if` del job de
+  Hosting pide `needs.firestore.result != 'failure'`, así que la primera corrida con
+  credencial salteó Hosting por un permiso que le faltaba al job de reglas. Es el
+  "reglas primero" llevado hasta el final y está bien que sea así, pero conviene
+  saberlo antes de leer una corrida roja.
+- **`workflow_dispatch` siempre deploya todo**, con o sin el checkbox: sin
+  `github.event.before` el script no puede diffear y falla hacia el lado de
+  deployar. El botón *Run workflow* no sirve para probar solo Hosting.
+- **El build pasa sin credencial, y hoy está bien que pase:** ninguna página lee
+  Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
+  `hayCredenciales()`, **existía y no la llamaba nadie** (**B-189**, cerrado en
+  `1.2.0`).
+
+### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) — ✅ hecho (2026-09-03) · P1
+
+**Cerrado el 2026-09-03: los tres pasos están resueltos.**
+
+1. **El 301 de `agendaleh.com.ar`** — hecho por el dueño, propagando. Medido a
+   las 18:40 todavía respondía 200, que es lo esperable mientras propaga:
+   **conviene reverificar** con `curl -sI https://agendaleh.com.ar/ | head -3`,
+   que tiene que decir `301` y `location: https://agendaleh.ar/`.
+2. **El `www`** — **descartado a propósito**: queda sin configurar. Un hostname
+   que no existe no puede duplicar contenido, y agregarlo como sitio hubiera sido
+   un cuarto nombre sirviendo lo mismo.
+3. **Search Console** — conectado y con el sitemap mandado: **descubrió 80
+   páginas**. Con eso el sitemap dejó de ser un archivo que nadie lee.
+
+Las dos trampas de falla diferida **siguen vigentes y no se cierran con este
+ítem**, porque no son pasos: el TXT de verificación es permanente (borrarlo tira
+el certificado ~90 días después) y la renovación de NIC.ar no es automática (la
+delegación se apaga el día 31, así que el margen real son 30 días).
+
+
+Código terminado y publicado; estos tres no se pueden hacer desde el repo porque
+los dominios de Hosting se configuran en la consola, no en `firebase.json`. El
+paso a paso, con la casilla exacta que la consola ofrece, está en
+[`08-operacion.md`](08-operacion.md) § «El dominio».
+
+1. **El 301 de `agendaleh.com.ar` al canónico.** Hoy los dos hostnames devuelven
+   **200 con el mismo contenido** (medido el 2026-09-02). No es urgente
+   —el `canonical` absoluto ya le dice a Google cuál es la buena, y por eso esto
+   es P1 y no P0— pero mientras no esté, el alias gasta rastreo y puede aparecer
+   en un resultado. Consola → Hosting → la fila del dominio → la casilla
+   «Redireccionar este dominio a otro».
+   Verificar: `curl -sI https://agendaleh.com.ar/` tiene que decir `301`.
+2. **Decidir el `www`.** Hoy `www.agendaleh.ar` y `www.agendaleh.com.ar` **no
+   responden**. Las dos opciones son válidas —dejarlo así, o agregarlo
+   redirigiendo— y lo que **no** hay que hacer es agregarlo como sitio, que sería
+   un cuarto nombre sirviendo el mismo contenido.
+3. **Registrar la propiedad en Search Console y mandar el sitemap.** El sitemap
+   existe desde B-109 y hoy no lo lee nadie: Google lo va a encontrar solo por la
+   línea `Sitemap:` del `robots.txt`, que es bastante más lento. Es además la
+   única forma de ver si algo salió mal —una canónica rechazada, una URL
+   «indexada aunque bloqueada»— y de medir si el proyecto está cumpliendo su
+   objetivo (§2.3: si la gente no encuentra los talleres en Google, el sitio no
+   sirve).
+
+**Y dos cosas que no son pasos sino avisos, las dos de falla diferida** — están en
+el runbook y conviene tenerlas también acá, porque el día que se rompan nadie va a
+buscar en esta lista:
+
+- **el TXT de verificación del dominio es permanente**, no un paso que se cumple:
+  Firebase lo relee para renovar el certificado. Borrarlo «porque ya verificó» no
+  rompe nada ese día y deja el sitio con error de certificado **~90 días
+  después**;
+- **la renovación de NIC.ar no es automática.** Hay 45 días de gracia, pero
+  **desde el día 31 la delegación se apaga** y el sitio se cae aunque el dominio
+  siga siendo del dueño. O sea que el margen real son 30 días: conviene un
+  recordatorio un mes antes del vencimiento, no el día.
+
+### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: no se hace.** La alerta de GCP queda sin
+configurar. El log sigue existiendo con nivel `error` y el motivo en
+`sistema/rebuild`, así que la información está: lo que no va a haber es un aviso
+que la empuje.
+
+Se cierra en vez de quedar abierto para siempre, que es lo honesto: un ítem que
+espera un click que nadie va a hacer es ruido en la lista. Si algún día el
+rebuild se cae sin que nadie lo note, el runbook de `08-operacion.md` tiene la
+configuración lista.
+
+
+Cuando el rebuild se rinde después de cinco intentos, loguea
+`el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
+`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP:
+configuración de consola, no código, y queda a criterio del dueño (D-23).
+
+**Lo que se hizo del lado del código (2026-08-24):** ese log lleva ahora el
+campo `alerta: "rebuild-agotado"`, para que el filtro de la alerta apunte a un
+campo estable y no al texto del mensaje —que se rompería en silencio el día que
+alguien reescriba la frase—. El filtro exacto y los pasos de la consola están en
+[`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
+
+**Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
+de GCP con un canal de notificación propio. **Ya tiene sentido:** `dispararRebuild`
+está desplegada, B-20 cerrado y el lazo verificado de punta a punta el 2026-08-25.
+
+**Este ítem apuntaba a un runbook que no existía**, y eso se arregló el 2026-08-25:
+decía que "el filtro exacto y los pasos de la consola están en `08-operacion.md`
+§ 'Alerta de rebuild agotado'" y `grep -i alerta` sobre ese archivo no devolvía nada.
+La referencia era una promesa, no una instrucción, justo en el único paso que solo
+puede dar el dueño. **Ahora la sección existe**, con los tres pasos: mirar una entrada
+real antes de fijar el filtro (las Functions v2 aparecen como `cloud_run_revision` y
+no como `cloud_function`, y el `service_name` va en minúsculas), crear la alerta, y
+qué hacer cuando llegue.
+
+Lo único que queda es el click y el canal de notificación, que es dato personal y
+configuración de consola (§5.4).
+
+### B-888 · El rol publicador: la frontera y el panel — ✅ cerrado (2026-09-11) · P1
+
+> ✅ **Las dos tajadas.** La 1 (frontera): claim `publicador`, las cuatro reglas de
+> `/actividades` por dueño, `/usuarios/{uid}`, el script y el índice — **D-650**.
+> La 2 (el panel): el listado y el calendario piden lo propio con el `where`; el
+> slug único lo contesta el índice `/slugs` (**D-660**); las taxonomías no se
+> intentan y no se ofrecen; y la subida se abrió con `resource == null`, **sin
+> tocar la forma del prefijo**. Más `registrarUsuario()` al entrar, el gating de
+> las cinco pantallas, el filtro «Quién la cargó» y la marca con el mail.
+>
+> **Lo que queda es del dueño, y en este orden:**
+> 1. desplegar reglas (Firestore **y** Storage) e índices;
+> 2. **sembrar el índice de slugs** —`npm run slugs:sembrar:prod -- --aplicar
+>    --produccion`— **antes** de darle el claim a nadie: hasta que corra, el panel
+>    **se niega a guardar**, a propósito;
+> 3. desplegar el sitio;
+> 4. `npm run admin:claim:prod -- --publicador <mail>`.
+>
+> **Y tres preguntas que el frente devolvió en vez de contestar:** si la cuenta
+> acotada tiene que poder **reportar un bug** (hoy no tiene por dónde avisar si algo
+> le falla); si los **`usos`** de las taxonomías tienen que contar cuando guarda un
+> publicador (hoy no, así que el orden por frecuencia ignora lo que carga esa
+> cuenta); y que un publicador **puede reservar un nombre sin cargar la actividad**
+> —falla cerrada y lo barre `--reparar`, pero es una forma de bloquear un nombre—.
+>
+> Siguen en pie las dos decisiones de la tajada 1 que conviene revisar: **puede
+> borrar lo suyo** y **puede publicar el link de la reunión**.
+
+**Lo hecho (2026-09-11): la frontera de autorización.** Claim `publicador` + las
+cuatro reglas de `/actividades` por dueño + `/usuarios/{uid}` con el mail de cada
+cuenta + `--publicador`/`--quitar` en `set-admin-claim.mjs` + el índice compuesto +
+**29 mutaciones contra el emulador**. Decisión completa en **D-650**, modelo de
+amenaza en `docs/07-seguridad.md` § «Los dos roles del panel».
+
+**Lo que falta es el panel, y hoy el rol no se puede usar con una persona.** Una
+cuenta con el claim entra a `/admin` y ve «Sin permisos»; si se lo destrabara sin
+lo de abajo, su pantalla principal quedaría **rota**, no acotada. Las tres roturas
+conocidas, en orden de bloqueo:
+
+1. **El listado.** `listarActividades()` consulta sin `where`, y con la regla nueva
+   Firestore **rechaza la query entera** (trampa 7 — una regla no filtra). Tiene que
+   ser `where('createdBy','==',uid)` + `orderBy('updatedAt','desc')`, con el índice
+   que ya está en `firestore.indexes.json`.
+2. **El slug único.** `slugDisponible()` barre toda la colección sin `where`, así
+   que también se rechaza entera — y **no tiene arreglo dentro de la regla**: el
+   slug es un invariante de **todo** el catálogo y no se puede verificar mirando
+   solo lo propio. Las dos salidas son una colección índice `/slugs/{slug}` de
+   lectura abierta o una Function que resuelva el choque.
+3. **Las taxonomías al guardar.** `upsertOpcion()` y `registrarUsos()` corren en
+   cada guardado (D-02) y escriben en `/opciones/*`, que es de admin — y el `catch`
+   de `registrarUsos` es **silencioso a propósito**, pensado para una carrera rara,
+   no para que falle siempre.
+
+**Y una cuarta, de Storage.** `storage.rules` no conoce el rol, así que un
+publicador **no puede subir la imagen de su actividad**. Falla cerrada, y **no se
+arregla con un `|| esPublicador()`**: el prefijo `imagenes/{archivo}` es plano y el
+nombre es un uuid opaco (B-206), así que **el objeto no dice de quién es** y «solo
+las suyas» no es expresable. Hay un caso que se pone rojo el día que alguien lo
+abra.
+
+**Lo que el panel además tiene que hacer:** llamar a `registrarUsuario()` al entrar
+(hoy `src/lib/usuarios.ts` no tiene consumidor y la colección está vacía), esconder
+reportes/propuestas/taxonomías/historial/tablero, agregarle al admin el **filtro por
+quién creó** cada actividad, y cambiar «La cargó otra cuenta» por **el mail de quien
+lo cambió**, resuelto con `mailesPorUid()`.
+
+**Dos decisiones que tomó el frente y conviene que el dueño revise**, porque las dos
+se dan vuelta en una cláusula: el publicador **puede borrar lo suyo** —el argumento
+es que `borrador` ya lo saca del sitio, así que negarlo no protege nada y el §12
+guarda la versión del borrado— y **puede publicar el link de la reunión** con
+`urlPublica: true`, igual que un admin (D-15): una regla no puede hacer política de
+campo, y lo que el rol recorta es la confianza sobre lo ajeno y lo compartido, no
+sobre lo que él mismo carga.
+
+### B-890 · Las tres guías —librerías, suscripciones y lugares— — ✅ hecho (verificado 2026-09-17) · P0
+
+> **Las tres están construidas y desplegadas.** Las siete rutas responden 200 el
+> 2026-09-17: `/guia`, `/guia/librerias`, `/guia/suscripciones`, `/guia/lugares` y
+> los tres `/sumar`. Cada una con su ficha, su JSON propio, su entrada de sitemap
+> y su bandeja en el panel.
+>
+> **La tabla de abajo quedó falsa** —decía «solo PRD» para las tres— y es
+> exactamente el drift que este ítem denunciaba en su propio reclamo: trabajo
+> hecho que no se ve. Acá se veía, y el backlog decía que no.
+>
+> El texto original queda porque el reclamo que lo abrió sigue valiendo como
+> criterio: lo que no cambia la superficie del sitio no cuenta como avance.
+
+**Pedido del dueño el 2026-09-11, con el reclamo escrito porque es la parte que
+importa:** «tanto tiempo trabajando estas semanas entre que te pasé la tarea y al
+final no había nada hecho».
+
+**Y es cierto en lo que se ve.** Las tajadas 2, 3 y 4 del PRD están **escritas y no
+construidas**, y lo que sí se construyó no cambió la superficie:
+
+| Qué | Estado | Se ve |
+|---|---|---|
+| `/proponer` (tajada 1) | construido y desplegado | **no** — sin enlace ni sitemap, esperando App Check en Storage (B-872) |
+| El correo semanal (B-847) | construido | **no** — apagado hasta que exista la lista en Mailchimp |
+| «Mis favoritos» (B-848) | construido y desplegado | **sí** |
+| Librerías, suscripciones, lugares | **solo PRD** | no |
+
+O sea: **de todo lo de estas semanas, una sola cosa cambió el sitio.** El resto fue
+infraestructura, redes de contención y arreglos —incluido descubrir que la
+publicación estaba rota (B-875)— y nada de eso se nota desde afuera.
+
+**Lo siguiente son las tres guías, y no hace falta diseñar nada:** cada una tiene su
+PRD (`docs/prd/02-librerias.md`, `03-suscripciones-literarias.md`,
+`04-lugares-para-eventos.md`) y el inventario archivo por archivo está en
+`05-inventario-de-archivos.md`. Cada una son dos rutas —`/guia/<x>` y
+`/guia/<x>/sumar`— más su bandeja en el panel.
+
+**Y el PRD dice algo que conviene hacer primero:** las tres son **secciones nuevas
+de la barra de navegación** —pedido textual del dueño: «cada uno de estos
+formularios también es una sección superior en la web»—. Con eso la navbar cambia
+de forma, así que conviene resolverla con las tres en la mano y no pelear antes por
+dónde entra el enlace de `/proponer`.
+
+> **Orden confirmado por el dueño (2026-09-11): primero se termina el publicador
+> (B-888 y su tajada del panel), y las guías son lo siguiente.** El publicador ya
+> está en vuelo y dejarlo a medias sería el mismo problema que este ítem señala,
+> con otra cara: trabajo hecho que no se ve porque le falta la última mitad.
+
+**El orden sugerido adentro de este ítem: librerías primero**, entera y de punta a punta. Es la que
+abre el patrón —modelo, reglas, formulario público, bandeja, rutas, sitemap— y las
+otras dos lo repiten. Terminar una y verla en el sitio vale más que avanzar las
+tres a la mitad.
+
+### B-962 · Las dos imágenes del banner de Mar del Plata — ✅ hecho (2026-09-18) · P2 — abierto el 2026-09-15
+
+> **Las mandó el dueño el 2026-09-18** y entraron con la fila, en el mismo
+> cambio, que es lo que este ítem pedía. Convertidas a WebP con `cwebp -q 85`:
+> 23 KB la apaisada y 31 KB la compacta, las dos muy abajo del tope de ~150 KB.
+>
+> **La compacta llegó exacta (1200×900); la apaisada no, y se aceptó igual.** Vino
+> en **1600×400** en vez de 2400×600 —la relación 4:1 es la correcta, el ancho
+> no—, así que cubre la columna de 1080px con holgura en una pantalla común y
+> queda algo justa en densidad doble. Se decidió usarla: es tipografía sobre
+> fondo liso, que es lo que menos sufre un ancho corto. **Y se declara con su
+> medida real y no con `MEDIDA_ANCHA`**, porque `ancho`/`alto` están en el marcado
+> para reservar el espacio (§CLS): con 2400×600 escritos ahí, el navegador
+> reservaría un alto que la imagen no tiene.
+>
+> El `textoAlternativo` describe **lo que se lee** —«Biblioguía, portal literario
+> de Mar del Plata, @biblioguia.ok.»— porque eso es todo lo que hay en la pieza:
+> no hay escena que describir. **La primera versión decía «En Instagram», y el
+> `auditor-privacidad` lo cobró:** la pieza muestra el handle sin nombrar la
+> plataforma, así que agregarla era una afirmación **nuestra** sobre un tercero en
+> la home indexada.
+>
+> **Y el pase dejó dos hallazgos que valen más que el ítem**, los dos de la misma
+> forma —una regla escrita en prosa que ningún test verificaba—, los dos cerrados
+> acá:
+>
+> 1. **El chequeo comparaba la relación y no las medidas.** 2400×600 declarados
+>    sobre un archivo de 1600×400 dan 4:1 = 4:1, o sea que el caso que este mismo
+>    cierre prohíbe en prosa pasaba en verde.
+> 2. **`public/` es el único camino por el que una imagen de un tercero llega a
+>    HTML indexado sin pasar por ningún saneador.** Toda otra pasa por uno
+>    obligatorio —la foto de una propuesta pierde el EXIF con las coordenadas de
+>    la casa, B-896— y un archivo commiteado no pasa por nada: el barrido del
+>    build mira `.html`, `.json`, `.xml` y `.txt`, no binarios. Los dos archivos
+>    de hoy están limpios (un solo chunk `VP8 `, verificado byte a byte), pero eso
+>    era una propiedad de quien los convirtió y no del código.
+>
+> El chequeo ahora **abre el archivo** (`src/lib/webp.ts`): enumera los chunks
+> RIFF, rechaza `EXIF`/`XMP `/`ICCP`, compara las medidas reales contra las
+> declaradas y mide el peso contra el tope. Con mutación en los dos ejes, y con
+> el caso que **no sabe leer** (`VP8L`) reportado como problema en vez de dado
+> por bueno.
+
+
+El mecanismo de B-961 está entero y probado; lo que falta son **dos archivos que
+manda quien publica la ciudad**:
+
+| Pieza | Medida | Dónde va |
+|---|---|---|
+| Apaisada (de 640px para arriba) | **2400 × 600** (4:1) | `public/banners/biblioguia-ancha.webp` |
+| Compacta (teléfono) | **1200 × 900** (4:3) | `public/banners/biblioguia-compacta.webp` |
+
+WebP, JPG o PNG; hasta ~150 KB cada una. Hace falta además **una frase que
+describa qué se ve en la imagen** (el `textoAlternativo`: lo lee quien no ve la
+imagen, y describe el contenido, no el rol — nada de «banner de X»).
+
+Con los archivos en `public/banners/`, se agrega la fila a `BANNERS_DE_CIUDAD`
+(`src/lib/bannerDeCiudad.ts` la tiene escrita en su docblock) y listo:
+`tests/banner-de-ciudad.test.ts` verifica que los archivos existan y que la
+relación de aspecto sea la que se pidió. **La fila y las imágenes van en el mismo
+cambio**: declarada sin los archivos, es una imagen rota en producción.
+
+## P1 — bloquean el objetivo del proyecto
+
+### B-928 · Se pegan URLs de Instagram y el panel las guarda tal cual — ✅ hecho (2026-09-17) · P1
+
+> **Los tres arreglos, y uno más que apareció haciéndolos.**
+>
+> 1. **`handleInstagram` tolera lo que Instagram pega de verdad**: se descarta el
+>    query string y el fragmento. El botón «Compartir» pega
+>    `…/casabrandon/?igsh=MWx…`, o sea que el caso **más común de todos** era el
+>    que fallaba: el handle salía `null`, el link no se armaba, y quedaba una URL
+>    escrita que no lleva a ninguna parte.
+> 2. **Y el `https://` pasó a ser opcional.** El docblock prometía desde siempre
+>    que `instagram.com/casabrandon` andaba, y no andaba: el patrón exigía el
+>    esquema. Copiar de la barra del navegador es lo que hace cualquiera.
+> 3. **Normalizan al guardar la actividad y la propuesta**, que eran los dos que
+>    faltaban. Lo que no se reconoce **se conserva**, no se borra: el
+>    `superRefine` ya lo rechaza al publicar, y perder lo que alguien escribió le
+>    saca a quien edita justo el dato que tiene que corregir.
+> 4. **El mensaje y los once placeholders.** Decían «sin la arroba» y «Poné el
+>    usuario de Instagram, sin el @» — o sea, le pedían a quien carga lo contrario
+>    de lo que el validador acepta. Ahora dicen «@casabrandon o el link del
+>    perfil».
+>
+> **Lo que apareció haciéndolo: había dos normalizadores.**
+> `scripts/handle-instagram.mjs` era una **copia**, atada a la del sitio por un
+> test que corría las dos contra la misma batería. La red funcionó —se puso en
+> rojo apenas se tocó una sola de las dos— y **ahí se vio su límite**: un test de
+> equivalencia avisa *después*, y el arreglo hay que escribirlo dos veces igual.
+> La implementación pasó a `src/lib/handle-instagram.mjs`, el cuarto módulo con el
+> patrón de fachada (`slugify`, `geografia`, `etiqueta-presentable`), y el archivo
+> del script quedó reexportando. El test ahora verifica **que siga sin haber
+> copia**, que es la afirmación que tiene contenido: comparar la función consigo
+> misma no prueba nada.
+>
+> **No se reescribió nada ya guardado**, como el ítem pedía: lo que está cargado
+> con URL se arregla al reeditarlo.
+
+**Salió de que hay una segunda persona cargando**, y con ella la forma real de
+hacerlo: copiar la URL del perfil y pegarla es más fácil que acordarse del handle.
+El criterio del dueño, que vale más allá de este campo: *«no podemos obligarlos a
+hacerlo como queremos, sino ajustarnos nosotros»*. Las dos formas tienen que
+entrar — la URL **y** el usuario pelado, como hoy.
+
+Hoy eso cae distinto según el formulario, y en el peor de los dos se publica:
+
+- **Actividades y propuestas: se guarda crudo.** `schema.ts` tiene `instagram:
+  opcional` sin normalizar (ídem `propuesta-schema.ts`), y la página de detalle
+  publica ese texto como el **nombre visible** (`detallePublico.ts`: `instagram:
+  a.organizador.instagram`). Así que en la ficha pública se lee
+  `https://www.instagram.com/casabrandon/` donde tendría que leerse
+  `@casabrandon`. Y si la URL trae el `?igsh=…` que Instagram pega al compartir,
+  `handleInstagram` no la reconoce, `instagramUrl` da `null` y **el link no se
+  arma**: queda una URL escrita que no lleva a ninguna parte.
+- **Las tres guías** (librerías, lugares, suscripciones) **sí** normalizan al
+  guardar — `handleInstagram` en sus `…-schema.ts` —, así que el dato queda
+  limpio. Pero el mensaje de rechazo dice «Poné el usuario de Instagram, sin el
+  @», que le pide a quien carga **lo contrario de lo que el validador acepta**, y
+  no menciona que pegar la URL está bien.
+
+Tres arreglos, en orden de lo que más duele:
+
+1. **Normalizar al guardar en los dos que faltan** (actividad y propuesta) con la
+   función que ya existe, `handleInstagram` (`src/lib/enlaceSeguro.ts`) — el mismo
+   patrón que las guías. Lo que queda guardado es el handle, y el campo del
+   formulario se puede normalizar al salir del foco para que se vea qué quedó.
+2. **Que `handleInstagram` tolere lo que Instagram pega de verdad**: hoy saca el
+   `@`, el `https://www.instagram.com/` y la barra final, pero **no el query
+   string**, que es justo lo que trae el botón de compartir. Es el caso más común
+   de todos y hoy es el que falla.
+3. **El mensaje y el placeholder**, que son lo que evita el problema antes de que
+   nazca: decir que se puede pegar la URL o escribir el usuario, en vez de pedir
+   una sola de las dos.
+
+Ojo con lo que **no** hay que hacer: reescribir los documentos ya guardados por
+las bravas. Lo que ya está cargado con URL se arregla al reeditarlo, o con un
+barrido aparte que se anote si hace falta.
+
+### B-950 · Provincia, ciudad y barrio hay que rehacerlos casi en todos lados, y en la web tienen que ser selectores en cascada — ✅ hecho (2026-09-16) · P1 — pedido del dueño (2026-09-15)
+
+> ✅ **Hecho el 2026-09-16 — D-710.** Las tres decisiones que el ítem dejaba
+> abiertas se tomaron así: **`ciudad` pasó a ser taxonomía** (es lo que hace
+> expresable la cascada, y lo que le dio al hub de B-951 la puerta de «aprobada»),
+> **`provincia` también** —sembrada con las 24 jurisdicciones `fijo: true`: no
+> gana autogestión, gana el desplegable, la deduplicación, la pantalla que las
+> administra y el contador de pendientes—, y **la cascada quedó de dos niveles**,
+> «provincia → barrio *o* ciudad», que es lo que el ítem pedía escribir desde el
+> principio para no tener que deshacerlo.
+>
+> CABA se **guarda** con ciudad (`'caba'`) y solo se **esconde** al mostrarla: con
+> la ciudad vacía, `ciudades[]` dejaría a todo CABA fuera del alcance de cualquier
+> publicador, y tres salidas más dejarían de verla sin nada en rojo.
+>
+> `sede` sigue siendo el derivado que era (D-130): todo se agregó adentro de la
+> fila. El backfill es `npm run geografia:sembrar`, **opcional** porque el default
+> de lectura es idempotente, y **no adivina** la provincia de una ciudad que no
+> sea CABA — las lista una por una.
+>
+> **Lo que queda afuera es el cuarto frente que el ítem nombra**: las guías
+> (librerías y lugares) siguen con la ciudad como texto libre. Va en **B-967**,
+> porque tiene su propia migración: su `CIUDAD_POR_DEFECTO` es «Ciudad de Buenos
+> Aires», que slugifica a `ciudad-de-buenos-aires` y no a `caba`.
+>
+> Dos cosas que costó, las dos anotadas: **B-965** (`ciudades` perdió su ancla por
+> valor) y el corte de la serie histórica del parámetro `eje` de la analítica.
+
+**Es el paraguas de la tanda**: B-951, B-952 y B-953 son las tres salidas de esto
+y ninguna se puede hacer bien antes. Dicho por el dueño: *«lo de provincia, barrio
+y ciudad hay que rehacerlo casi en todos lados. En la web no puede ser una lista
+enorme sino selectores: provincia primero (CABA y Buenos Aires) y de ahí despliega
+barrios o ciudades»*.
+
+**Lo primero, y lo que explica todo lo demás: `provincia` no existe.** No está en
+`Sede` (`src/types/actividad.ts`), ni en el schema, ni en el formulario, ni en las
+tres guías. El único lugar del repo donde la palabra aparece como campo es
+[`12-sitio-publico.md`](12-sitio-publico.md) § 2247, anotada como el
+`addressRegion` del `PostalAddress` del JSON-LD que *se puede omitir* — o sea que
+entró a la doc como un opcional que nunca se cargó. Agregarla es un
+**`campo-nuevo` de punta a punta** (el skill): tipo, zod, conversión form ⇄
+documento, formulario, proyección pública, evento de Calendar, analítica, ayuda,
+doc y tests.
+
+**Y «casi en todos lados» es literal**, porque el mismo par vive en cuatro
+entidades: `sede` de una actividad, y `barrio`/`ciudad` de librerías
+(`src/types/libreria.ts`), lugares (`src/types/lugar.ts`) y —por herencia del
+formulario— lo que venga después. Las cuatro comparten la taxonomía
+`/opciones/barrio` a propósito (§ 2 del PRD de librerías), así que lo que se
+decida acá las alcanza a todas.
+
+**La asimetría que hace difícil la cascada, y hay que mirarla antes de escribir
+nada:** `barrio` es **taxonomía autogestionada** (§ 4, `/opciones/barrio`, con
+`slug`, `aprobada` y `usos`), y `ciudad` es un **`<input>` de texto libre**. Eso ya
+mordió una vez: `src/lib/ciudades.mjs` (B-919, D-690) existe justamente porque
+«Mar del Plata», «mar del plata» y « Mar del Plata » son tres strings distintos, y
+tuvo que derivar `ciudades: string[]` en la raíz del documento para que una regla
+de Firestore pudiera preguntar por la ciudad. Una cascada «provincia → ciudad» no
+se puede armar sobre texto libre sin repetir ese trabajo, así que la decisión de
+fondo es **si `ciudad` pasa a ser taxonomía como `barrio`** — con lo que eso
+arrastra: normalización (§ 4.2), aprobación, y `usos` para ordenar.
+
+**CABA es el caso raro y es el que el dueño puso primero:** es ciudad **y**
+provincia a la vez, y su subdivisión útil es el barrio, no la ciudad. O sea que la
+cascada no es «provincia → ciudad → barrio» sino **«provincia → barrio *o*
+ciudad»**, con CABA de un lado y todo lo demás del otro. Escribirlo así desde el
+principio evita el modelo de tres niveles que después hay que deshacer.
+
+**Dónde pega en el sitio, que es la mitad del pedido.** Los ejes del buscador son
+seis y planos: `EJES = ['tipo','arancel','modalidad','barrio','ciudad','tag']`
+(`src/lib/listadoPublico.ts`), cada uno una lista de chips. Con dos barrios
+funciona; con los treinta y pico que ya hay cargados, no — es el mismo problema
+que D-143 topeó a mano en el teléfono. Un selector en cascada cambia la forma del
+riel de filtros, así que toca `Buscador.tsx`, `EjeDeFiltro.tsx`, `chipsDe`,
+`ejeQueSobra` y los eventos de analítica que llevan `eje` adentro (`eje` es una
+dimensión medida: cambiar el conjunto parte la serie histórica — ver el docblock
+de `ejeQueExplicaElCero`).
+
+**Lo que no hay que hacer:** reescribir los documentos ya guardados por las
+bravas. La provincia de lo que ya está cargado se completa con un backfill
+propio —el patrón de `scripts/sembrar-ciudades.mjs`, que ya existe para esto
+mismo— o al reeditar. Y **`sede` sigue siendo el derivado** que es hoy (D-130): la
+lista real es `modalidades[]`, así que todo lo que se agregue va adentro de la
+fila, no en la raíz.
+
+### B-951 · El «Dónde» del detalle no dice la ciudad, y no lleva a ninguna parte — ✅ hecho (2026-09-16) · P1 — pedido del dueño (2026-09-15)
+
+> ✅ **Hecho el 2026-09-16**, las dos mitades. `donde` dejó de ser una cadena y es
+> una **lista de piezas**, cada una con su enlace: con una cadena, la plantilla
+> tendría que volver a partirla para saber qué tramo linkear.
+>
+> **`/ciudad/{slug}` existe**, y salió tan barato como el ítem predijo: una entrada
+> en `CLASES_DE_HUB`, una página calcada de la de barrio, y el sitemap que ya se
+> deriva solo. De las dos salidas que el ítem dejaba para la defensa, se tomó la
+> primera: **esperar a que B-950 convirtiera `ciudad` en taxonomía**, así el hub
+> heredó la misma puerta de «aprobada» que el de barrio y no hizo falta inventar
+> ninguna otra.
+>
+> **`provincia` no tiene hub**, y es una decisión escrita en `CLASES_DE_TAXONOMIA`:
+> sus 24 valores están sembrados, así que emitiría hasta 24 páginas casi todas
+> vacías. Se dice en el renglón, no se enlaza.
+>
+> Ningún enlace se pinta a ciegas: si ese hub no se emitió, la pieza sale sin
+> enlace — el mismo criterio que la ficha de un lugar de la Guía ya usaba.
+
+*«En "Dónde" del perfil público mostrar la ciudad y que sea linkeable para ver más
+de esa ciudad.»*
+
+**Lo que pasa hoy son dos cosas.** La fila «Dónde» de la ficha
+(`src/pages/actividad/[slug].astro`) imprime `detalle.donde`, y `donde` lo arma
+`dondeCorto` (`src/lib/detallePublico.ts`) con **`[m.sede.nombre,
+m.sede.barrio]`**: la ciudad queda afuera. Y es texto plano — ni el barrio, que sí
+tiene hub propio desde B-108, es un enlace. (Más abajo, en «Cómo se cursa», la
+ciudad **sí** aparece, junto a la dirección y el barrio, también sin enlace.)
+
+**La segunda mitad —«ver más de esa ciudad»— no tiene adónde ir: `/ciudad/{slug}`
+no existe.** Los hubs son cuatro clases: `/tipo/*`, `/barrio/*`, `/online` y
+`/gratis`. Y esto es lo que sube el ítem a P1 y no lo deja en una mejora de la
+ficha: es exactamente el argumento con el que el hub de barrio se justificó a sí
+mismo —«`taller de escritura villa crespo` es una consulta con intención altísima
+y competencia baja; un filtro no puede ganarla porque no tiene título, ni `h1`, ni
+URL»— aplicado a la consulta que hoy no tenemos cómo ganar: **«taller de escritura
+en Mar del Plata»**. Con las actividades de afuera de CABA entrando, el hub de
+ciudad es la página que falta.
+
+**Lo barato y lo caro.** Barato: `hubsPublicos.ts` decide qué se emite y
+`CuerpoDeHub.astro` es el markup compartido por las cuatro clases, así que la
+quinta es una entrada en el primero, una página `src/pages/ciudad/[ciudad].astro`
+calcada de `barrio/[barrio].astro`, y el sitemap que ya se deriva solo.
+
+**Caro, y es el mismo nudo de B-950:** el hub de barrio se genera recorriendo las
+opciones **aprobadas** que tienen alguna actividad publicada, y esa palabra es una
+defensa escrita — «ofrecer un hub es publicar vocabulario, y un barrio recién
+tipeado puede ser un typo; un typo con página propia es una URL indexada para
+siempre». `ciudad` **no tiene aprobación porque no es taxonomía**. Así que el hub
+de ciudad o espera a que B-950 la convierta, o se defiende con otra puerta (un
+mínimo de actividades publicadas, y `noIndex` por debajo de ese mínimo, que es lo
+que `esIndexable` ya sabe hacer). **No se emite un hub por cada string tipeado.**
+
+### B-912 · `/suscripciones` tampoco tiene retención — ✅ hecho (2026-09-15) · P1
+
+> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
+> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
+> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
+> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
+> una».
+>
+> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
+> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
+> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
+> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
+> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
+> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
+> parámetros con el default de hoy — `estadoRechazado` y `tope`.
+>
+> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
+> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
+> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
+> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
+> la retención automática viene a sacar. Con el formulario público abierto, ésa es
+> además la ficha típica: la que llegó de afuera y nadie miró.
+>
+> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
+> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
+> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
+>
+> **No borra nada de Storage, y ése es el cambio de forma respecto de las
+> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
+> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
+> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
+> que un admin reabre en el último segundo se salva **entera**.
+>
+> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
+> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
+> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
+> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
+> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
+> afirma que el contacto del tercero **no entra a la memoria de la Function**.
+
+
+Es **B-904 con otra colección**, y conviene resolverlas juntas. Una ficha
+`rechazado` conserva el `contactoDeQuienCargo` de quien la cargó para siempre; lo
+único que hay es `allow delete: if esAdmin()`, el borrado manual, y está puesto por
+eso.
+
+Con dos directorios sin retención y un tercero en camino, lo que corresponde no es
+una Function por colección sino **extender `functions/retencion.js` con la lista de
+colecciones** — que ya existe como mapa del lado del rebuild
+(`CAMPOS_PUBLICOS_POR_DIRECTORIO`).
+
+### B-904 · `/librerias` no tiene retención: una ficha descartada se queda con el contacto de quien la cargó — ✅ hecho (2026-09-15) · P1
+
+> ✅ **Hecho el 2026-09-15**, los tres juntos y con una sola Function:
+> `borrarFichasVencidas` (`functions/retencion-trigger.js`), que recorre
+> `COLECCIONES_DE_DIRECTORIO` — o sea que **la cuarta guía entra sola**, que es lo
+> que el ítem pedía al decir «la lista de colecciones, no una Function por cada
+> una».
+>
+> **La decisión pura se reusa, no se copia.** `decidirRetencionDeFichas` es
+> `decidirRetencion` con otra tabla, otro estado terminal y otro tope: el reloj de
+> «la última señal de vida» (B-844), el `Object.hasOwn` contra las claves
+> heredadas, el fallar cerrado ante una fecha ilegible y el recorte por tope
+> costaron un ítem cada uno, y una segunda implementación los habría perdido de a
+> uno sin que nada falle. Lo único que se agregó a la función compartida son dos
+> parámetros con el default de hoy — `estadoRechazado` y `tope`.
+>
+> **Y el que más importaba no era el que el ítem nombraba.** `rechazado` a los 30
+> días es DEC-13; el que hacía falta de verdad es **`pendiente` a los 30 días sin
+> tocar**, o sea B-844 aplicado acá: con el otro plazo solo, la única forma de que
+> una ficha caducara sería que un admin apretara «Descartar» — la dependencia que
+> la retención automática viene a sacar. Con el formulario público abierto, ésa es
+> además la ficha típica: la que llegó de afuera y nadie miró.
+>
+> **`publicado` no vence, y es una decisión** con su caso propio para que nadie le
+> ponga un número por simetría: está en el sitio, y su contacto es lo que deja
+> avisarle a la librería que su ficha existe o darla de baja cuando cierra.
+>
+> **No borra nada de Storage, y ése es el cambio de forma respecto de las
+> propuestas.** Las fotos de una ficha viven en `imagenes/` y las levanta
+> `limpiarImagenesHuerfanas` — **desde B-922, que es el cambio que lo hizo
+> cierto**. Consecuencia: no existe el final `la-tocaron-tarde`, así que la ficha
+> que un admin reabre en el último segundo se salva **entera**.
+>
+> 21 casos puros (`tests/retencion-de-guias.test.ts`) y 6 contra el emulador
+> (`tests/retencion-de-guias.integracion.test.ts`, la precondición de B-864, que
+> es lo único que un doble a mano no puede afirmar). Mutaciones probadas: el
+> estado terminal equivocado (`'rechazada'` en vez de `'rechazado'`) pone dos en
+> rojo, y sacar el `select()` de la query pone otros dos — uno de ellos el que
+> afirma que el contacto del tercero **no entra a la memoria de la Function**.
+
+
+Es **DEC-13 sin contestar** para la colección nueva. `contactoDeQuienCargo` es el
+**segundo** dato personal de un tercero que el proyecto guarda, y a diferencia de
+`/propuestas` —donde `borrarPropuestasVencidas` lo borra a los 30 días— acá no hay
+ninguna Function: una ficha `rechazado` lo conserva para siempre.
+
+Lo único que hay mientras tanto es `allow delete: if esAdmin()`, o sea el borrado
+manual, y está puesto **por eso**: sin él no habría forma de honrar un «borrame».
+Pero un borrado a mano depende de que alguien se acuerde, que es exactamente lo que
+B-838 decidió no aceptar.
+
+Cuando se resuelva conviene mirarlo junto con la imagen: si la ficha se borra y su
+objeto de Storage queda vivo, es el huérfano de B-221 con otra cara. **Y junto con
+B-912**, que es este mismo problema en `/suscripciones`: con tres directorios, lo
+que corresponde es extender `functions/retencion.js` con la lista de colecciones,
+no escribir una Function por cada una.
+
+### B-903 · La query del primer directorio tiene que filtrar por `ESTADO_PUBLICO` — ✅ hecho (2026-09-11) · P1
+
+> `libreriasPublicadas` (`src/lib/contenidoDelSitio.ts`) filtra **en la query** con
+> `.where('estado','==', ESTADO_PUBLICO)`, y la constante sale de
+> `lib/directorios.ts` como el ítem pedía. **Y una mitad más que el ítem no pedía y
+> el `auditor-privacidad` sí**: `.select()` con exactamente las claves de
+> `LibreriaPublica` (D-159, el precedente de `/versiones`). El `where` decide qué
+> documentos se leen; sin el `select`, el `contactoDeQuienCargo`, el motivo del
+> rechazo y el `storagePath` de cada imagen entran igual a la memoria del build.
+>
+> Atado en tres capas: el test de fuente con mutación probada, el cruce de las dos
+> listas (un campo nuevo de la whitelist obliga a tocar las dos mitades), y el paso
+> 8i del gate contra el emulador **con una librería pendiente como control** — con
+> una sola sembrada, un build que leyera la colección entera daría exactamente el
+> mismo `dist/`.
+
+### B-898 · `directoriosDisponibles` decide qué URL se le ofrece al buscador y no está en el índice de salidas — ✅ hecho (2026-09-11) · P1
+
+> Cerrado con B-832. `src/lib/directorios.ts — directoriosDisponibles` entró como
+> **tercer** dueño de «qué página se ofrece y no vive en `sitemap.ts`» en las tres
+> tablas atadas: la fila 9 de `docs/07-seguridad.md`, la misma fila de
+> `.claude/agents/auditor-privacidad.md` y la del checklist de
+> `.claude/skills/campo-nuevo/SKILL.md`. El `description` del agente ya nombraba el
+> archivo desde B-901, así que el disparo por nombre estaba; lo que faltaba era la
+> fila.
+>
+> Y dejó de ser hipotético en el mismo cambio: con **dos** directorios publicados,
+> marcar una sección como disponible sin escribir su página le ofrece a Google un
+> 404, y escribir la página sin marcarla la deja invisible desde su propio índice —
+> lo cruza `tests/directorios.test.ts` en las dos direcciones.
+
+### B-841 · `campos/` es un `import` de distancia de medir sin consentimiento en una página pública — ✅ hecho (2026-09-09) · P1
+
+> **Resuelto con el corte que el ítem pedía, y con la red desde los dos lados.**
+>
+> Los tres controles de `campos/` quedaron **genéricos**: reciben la medición
+> (`medir`, `onMedir`), el nodo de ayuda (`ayuda`) y las opciones
+> (`valores`/`elegibles`) en vez de importarlos.
+> `src/components/admin/campos-del-panel.tsx` los ata a lo del panel y **conserva
+> la API que los usos tenían** —`conAyuda`, `uid`—, así que los quince archivos que
+> los usan cambiaron de dónde importan y nada más.
+>
+> **Y había un cuarto import que el ítem no nombraba:** `estaAprobada` se traía de
+> `@/lib/opciones`, que arrastra `firestore-client` → `firebase/firestore`. Ya
+> vivía en `lib/taxonomia.ts` —el módulo puro del §4.2— y `opciones` solo lo
+> reexporta, así que fue cambiar el origen del import. Sin eso, el corte estaba a
+> medias: los controles ya no medían y seguían bajando el SDK.
+>
+> **Dos redes, y las dos hacen falta.** `tests/panel-fuera-del-sitio.test.ts` mira
+> la propiedad desde **las páginas** —ninguna salvo `/admin` alcanza la plomería—
+> y desde **el directorio**: ningún archivo de `campos/` alcanza
+> `@/lib/analytics`, `firebase-client`, `appcheck`, `lib/opciones` ni
+> `firebase/firestore`. Aquél se pone rojo cuando alguien **ya escribió** el
+> formulario público que lo arrastra, o sea tarde; éste cuando alguien mete el
+> import en `campos/`, que es donde el error se comete. Con control positivo —la
+> capa del panel **sí** alcanza las cinco cosas— y verificado por mutación.
+>
+> El corte del bundle del panel no se movió: `campos-del-panel.tsx` no es
+> alcanzable estáticamente desde la island, porque todo lo que lo usa está detrás
+> de un `import()`.
+
+
+**Sale de haber hecho el movimiento de la tajada 0**, y hay que decirlo así: el
+directorio se movió, o sea que **parece** compartido, y tres de sus seis archivos
+todavía no lo son. Un `import` es lo único que decide qué viaja.
+
+**Estaba anotado como P2 y como un problema de capas. No lo es.** Lo re-dimensionó
+el `auditor-privacidad` sobre esta misma tanda, y **B-836a lo empeoró**: el import
+estático de App Check alargó la cadena un eslabón más. La cadena real, si un
+formulario público importa cualquiera de los tres:
+
+```
+campos/{Seccion,TagsInput,TaxonomiaSelect}
+  → @/lib/analytics            ← la medición del PANEL
+    → @/lib/firebase-client
+      → @/lib/appcheck          ← estático desde B-836a
+        → firebase/app-check
+```
+
+| Archivo de `campos/` | De dónde tira |
+|---|---|
+| `TaxonomiaSelect.tsx` | `@/components/admin/useOpciones` + `@/lib/analytics` |
+| `TagsInput.tsx` | idem |
+| `Seccion.tsx` | `@/components/admin/ayuda/AyudaDeSeccion` + `@/lib/analytics` |
+
+**Dos cosas pasarían en el navegador de un visitante anónimo, y las dos son de
+las caras:**
+
+1. **Se mide sin consentimiento.** `debeMedir` tiene tres portones —navegador,
+   no-emuladores, `measurementId`— y **ninguno es el consentimiento**: la
+   analítica del panel nunca lo necesitó. La del sitio (salida 12) sí lo tiene.
+   Un `Seccion` en una página pública dispara `funcion_usada` y crea el perfil de
+   medición en `localStorage` —un identificador pseudónimo persistente— para
+   alguien que todavía no tocó el banner, y va a la **misma propiedad de GA4**,
+   que las dos comparten (B-801). Contradice **D-250** y la promesa de `/apoyar`,
+   que es lo que B-780 costó como P0.
+2. **Se cargan dos terceros de Google antes del consentimiento**: `gtag.js` y el
+   desafío de reCAPTCHA, el segundo con cuota facturable por visitante.
+
+Lo que **no** se filtra es contenido: `seccionASlug` es vocabulario cerrado con
+caída a `'otro'`, así que un título derivado de un dato no publica nada. Ese lado
+aguanta.
+
+**Y la cadena de `useOpciones` sigue arrastrando el SDK de Firestore**, que era lo
+único que estaba anotado antes: `useOpciones` → `lib/opciones` →
+`lib/firestore-client` → `firebase/firestore`, estático. Una página pública que
+importe `TaxonomiaSelect` se baja el chunk pesado que `bundle-panel.test.ts`
+existe para mantener afuera del primer render del panel.
+
+**Lo que ya está hecho, y es lo que permite que esto espere:**
+`tests/panel-fuera-del-sitio.test.ts` recorre el grafo de imports **desde cada
+página de `src/pages`** —siguiendo también los `import()`, porque un diferido mide
+igual— y exige que ninguna salvo `/admin` alcance `@/lib/analytics`,
+`@/lib/firebase-client` ni `@/lib/appcheck`. Con control positivo (`/admin` **sí**
+la alcanza, así que el grafo sabe encontrarla) y verificado por mutación: un
+`import` de `TaxonomiaSelect` en `/cartelera` lo pone en rojo nombrando la cadena
+entera. Ninguna de las redes que ya existían lo veía —
+`terceros-antes-del-consentimiento.test.ts` lee el HTML de `dist/` buscando
+`<script src>` absolutos y los dos SDK se inyectan en runtime desde un chunk
+local; `bundle-panel.test.ts` mira el chunk inicial **del panel**, la dirección
+contraria.
+
+**Dónde y el molde.** El arreglo de fondo son dos cortes, y el primero es el
+barato:
+
+1. **La medición se recibe, no se importa.** Una prop opcional
+   (`onMedir?: (funcion, detalle) => void`) en los tres componentes: el panel pasa
+   `medirFuncion`, un formulario público no pasa nada. Es el corte que hace a
+   `campos/` genérico de verdad, y de paso saca `AyudaDeSeccion` de `Seccion` por
+   el mismo camino (la ayuda es del panel, el sitio tiene la suya).
+2. **Las opciones se reciben, no se buscan.** La respuesta ya está escrita en otro
+   lado: del **JSON** (§4.4 del `CLAUDE.md` — «las opciones viajan en el JSON», y
+   la web arma los chips recorriendo `opciones.*`), no de un `onSnapshot`. O sea
+   que `TaxonomiaSelect` necesita recibir sus valores y el hook queda del lado del
+   panel.
+
+**Cuándo.** Antes del primer formulario público que use un desplegable de
+taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
+en la suite y no en producción, que es exactamente para lo que se escribió.
+
+### B-847 · Newsletter con Mailchimp, adentro de `/suscribirse` — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
+
+**El pedido, textual:** «un formulario para un newsletter, la idea es usar
+mailchimp. la idea es meterlo dentro de suscribirse».
+
+Encaja donde lo pide: `/suscribirse` ya es la página de «no te pierdas nada», y
+hoy ofrece **una sola forma** —suscribirse al calendario público— que sirve a
+quien vive en su calendario y no a quien vive en su casilla. Son dos maneras de la
+misma intención y la página es el lugar natural para las dos.
+
+**Lo que cambia de fondo, y hay que decirlo antes de elegir cómo:** hoy el sitio
+público **no le manda ni un dato de nadie a ningún tercero** —eso es lo que
+`tests/terceros-antes-del-consentimiento.test.ts` (D-254) verifica sobre el `dist/`
+de verdad, y lo que deja que `/ayuda` y `/contacto` afirmen lo que afirman—. Un
+newsletter mueve la casilla de una persona a **Mailchimp**, que es un tercero en
+otro país. No es un impedimento; es lo que hay que escribir en `07-seguridad.md`,
+en la página misma y en la ayuda **en el mismo cambio**, con el doble opt-in de
+Mailchimp como parte de la promesa.
+
+**Tres formas, y no son equivalentes:**
+
+| Cómo | Qué cuesta | Qué rompe |
+|---|---|---|
+| **`<form>` HTML que postea a `list-manage.com`** | nada: el sitio es estático y esto no necesita backend | **Nada de la red de contención**: no carga ningún script de tercero, así que D-254 sigue verde. Se lleva a la persona a una página de Mailchimp al enviar |
+| El **embed con JS** de Mailchimp | copiar y pegar | Carga `mc-validate.js` desde `chimpstatic.com` **antes de cualquier consentimiento** → pone en rojo D-254, y con razón |
+| Una **Function** que llame a la API con la key en Secret Manager | una Function más, y **es un endpoint de escritura anónimo**: la misma conversación de App Check que B-836a | Nada, y es la única que deja validar y limitar de nuestro lado. La casilla igual termina en Mailchimp |
+
+**Mi recomendación es la primera** para la v1: es la que no toca ninguna de las
+capas que costó construir, y el precio —que el «gracias» lo dé Mailchimp y no
+nuestro sitio— se puede revisar después. La tercera es la buena el día que
+`/proponer` haya abierto la puerta anónima con App Check exigiendo: ahí el costo
+marginal es chico y el formulario queda adentro del sitio de punta a punta.
+
+**Lo que hay que decidir antes de escribir una línea:** (1) cuál de las tres; (2)
+qué se le promete a quien se anota —cada cuánto, quién manda, cómo se da de baja—,
+porque eso es texto de una página pública y lo barre
+`tests/promesas-sobre-datos.test.ts`; (3) si la lista de Mailchimp se crea con
+doble opt-in (debería) y quién es el remitente.
+
+> ✅ **Las tres, contestadas por el dueño el 2026-09-10.** Queda desbloqueado.
+>
+> 1. **La forma recomendada: el `<form>` HTML que postea a `list-manage.com`.**
+>    Ningún script de tercero, así que **D-254 sigue verde** y las afirmaciones de
+>    `/ayuda` y `/contacto` no se tocan. El precio aceptado es que el «gracias» lo
+>    da Mailchimp y no nuestro sitio.
+> 2. **Lo manda el proyecto, al menos una vez por semana, con eventos curados de
+>    la agenda «para todos los gustos y modalidades».** Eso es a la vez la
+>    promesa de la página y la línea editorial.
+> 3. **El remitente es `agendaleh@gmail.com`** — que es **la casilla que el sitio
+>    ya usa**: `CONTACTO`, en `src/lib/enlaces.ts`. Se reusa esa constante y no se
+>    escribe a mano: esa cuenta ya cambió una vez (B-839).
+>
+> **Dos cosas que la respuesta deja para resolver al construirlo:**
+>
+> - **El doble opt-in no lo dijo explícitamente.** Se adopta como default porque
+>   es lo que la página va a prometer y porque es lo que hace que la casilla sea
+>   de quien la escribió. No es código: es una casilla de la configuración de la
+>   lista en Mailchimp, así que cambiarlo después no cuesta un cambio acá.
+> - **«Al menos una vez por semana» es un piso, y un piso es más fácil de
+>   incumplir que un promedio.** Va a quedar escrito en una página pública que
+>   `tests/promesas-sobre-datos.test.ts` barre, así que conviene elegir la
+>   redacción sabiendo eso: si una semana no sale, «al menos una vez por semana»
+>   pasa a ser falso y «semanal» sobrevive. La decisión es del dueño; lo que no
+>   vale es escribir el piso sin haberlo pensado.
+
+> ✅ **Hecho el 2026-09-10 — D-640, y las dos preguntas abiertas contestadas.**
+>
+> 1. **El piso no se escribió.** La página dice el ritmo **y nombra la
+>    excepción**: «sale semanal; la semana que no haya nada que valga la pena, no
+>    sale». La salida no fue aflojar la promesa sino la que este repo ya usó dos
+>    veces — «casi nunca trae el link de la reunión», en esta misma página, y la
+>    corrección de `/ayuda` sobre la publicidad (B-785).
+> 2. **El doble opt-in quedó escrito como supuesto** en el módulo, en
+>    `07-seguridad.md` §5 y en el checklist de `08-operacion.md`, con un test que
+>    exige que esté en los tres. **Que la casilla esté prendida no lo puede
+>    sostener ningún test** — es la clase de B-480.
+>
+> **Sale apagada.** `LISTA_DE_CORREO` es `null` y con `null` la sección no se
+> dibuja: con `u`/`id` inventados el formulario **postea igual**, contra un
+> endpoint que puede ser de otra cuenta. Es el orden de B-780.
+>
+> **No es una salida pública nueva**, y se argumentó: el formulario no recibe ni
+> un campo del modelo, así que su celda sería siempre «no sale» (D-320). Entra en
+> la fila 13 de las tres tablas. Siguen siendo diecinueve.
+>
+> **Seis hallazgos del `auditor-privacidad` sobre el propio cambio, los seis
+> adentro.** Dos valen solas: «es lo único que la agenda le manda a un tercero»
+> era **falso** con el banner de GA4 al lado —y el barrido no lo ve porque es una
+> exclusividad afirmativa, no una negación—; y el cuarto interruptor del Enhanced
+> Measurement, que es **B-874**.
+
+### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
+
+**El pedido, textual:** «empezar a tener un usuario en el frente público (por
+ahora sin login ni nada). la idea es que pueda guardar favoritos de lugares (y con
+todo lo que implica de verlos y quitarlos en una sección propia) y guardar un
+filtro determinado. puede tener varios filtros predeterminados».
+
+**«Sin login» es la decisión más importante del ítem y la que lo hace barato:** si
+no hay cuenta, no hay nada que guardar del lado nuestro. Todo vive en el
+`localStorage` del navegador de cada persona, que es exactamente el patrón que el
+panel ya usa para los borradores (D-122) y el que hace que el sitio siga sin
+guardar un dato de nadie — la promesa que B-102 sostiene y que
+`07-seguridad.md` afirma. Es **también** lo que hay que decir en la pantalla: los
+favoritos son de **ese** navegador, no viajan al teléfono, y se van si se borran
+los datos del sitio.
+
+**Lo que ya está y lo hace más chico de lo que parece:**
+
+- los filtros del listado **ya viajan en la URL** (`?tag=poesia`, `?barrio=…`), así
+  que «guardar un filtro» es guardar **una URL con un nombre**. No hay que inventar
+  ninguna serialización;
+- el sitio ya tiene islands de React en el listado, así que la sección propia es
+  una página estática que se hidrata desde `localStorage`;
+- y el chequeo de terceros y el banner de cookies **no aplican**: `localStorage`
+  para una función que la persona pidió no es analítica.
+
+**Favoritos de qué: contestado por el dueño (2026-09-09) — «puede ser un evento,
+una librería, una suscripción…».** O sea el favorito es **genérico**: guarda
+cualquier ficha del sitio, con su tipo. Eso resuelve la única ambigüedad grande
+del ítem y tiene una consecuencia que hay que aprovechar **ahora**, no después:
+
+> **La forma de lo guardado lleva el tipo desde el día uno, aunque el día uno haya
+> una sola entidad.** Los favoritos viven en el `localStorage` de cada persona, o
+> sea que son datos que **no podemos ver ni migrar**: el día que haya que
+> agregarles un campo, lo guardado no se convierte solo y el que quede viejo o se
+> pierde o hay que leerlo con un default para siempre. Guardar
+> `{ v: 1, tipo, slug, guardadoEn }` cuesta una línea hoy; guardar solo el slug y
+> tener que adivinar de qué era, cuando existan las cuatro entidades, no tiene
+> arreglo bueno. Es la misma forma de B-843: una decisión que cuesta una línea
+> ahora y un rediseño después.
+
+La llave es **tipo + slug**, y funciona porque el slug es **inmutable después de
+publicar** (trampa 10): un favorito sobrevive a que le editen el título, la sede o
+la fecha.
+
+**Se puede construir entero con actividades y crecer solo.** Las otras tres
+entidades son las tajadas 2 a 4 de `prd/`; mientras no existan, el mismo mecanismo
+funciona con una sola y no hay que volver a diseñarlo — cada tajada nueva agrega su
+tipo, su JSON y su fila en la sección.
+
+**Lo que queda por decidir:**
+
+1. **Qué hace la sección con un favorito que ya no está** — el sitio es estático,
+   así que la página resuelve contra los JSON del build (`events.json` y los tres
+   que vienen) y **tiene que tolerar que el slug no exista**: despublicado o
+   borrado.
+
+   **Lo que pasó lo contestó el dueño (2026-09-09): la actividad vencida sigue
+   siendo favorita**, y no se esconde. «De última se puede hacer una
+   diferenciación por color (tipo más griseada o algo). Hay que probar cómo
+   queda.» Es la decisión correcta y la barata: esconderla obliga a explicar dónde
+   se fue, y una actividad que pasó sigue diciendo algo de quien la guardó — el
+   ciclo del año que viene, el taller que se perdió. Tres cosas que se saben ya:
+
+   - **el «griseado» tiene un piso que el repo ya hace cumplir**: bajarle la tinta
+     a una tarjeta la puede dejar por debajo del contraste mínimo, y eso no es una
+     preferencia — `tests/contraste-del-sitio.test.ts` y
+     `contraste-de-superficies.test.ts` lo verifican sobre los tokens. La forma
+     que sí sobrevive a ese piso es la que el panel ya usa para lo cerrado
+     (`opacity` sobre la fila entera, no un gris nuevo), o un rótulo;
+   - **el color solo no puede ser la señal** (es la regla de accesibilidad de
+     siempre y el sitio la respeta en los estados de la tarjeta): va con una
+     palabra —«ya pasó»— y no solo con tinta;
+   - y hay a dónde mandarla: `/pasadas` existe y es el archivo del sitio.
+2. **Dónde vive la sección**: una página propia (`/mis-favoritos`) con **`noindex`
+   y fuera del sitemap** —para Google estaría siempre vacía, y una página vacía
+   indexada es peor que ninguna— o un panel dentro del listado.
+3. **Cuántos filtros guardados y si se pueden renombrar.**
+4. **El costo de hidratación, que es el único técnico y hay que mirarlo antes:** el
+   corazón va en cada tarjeta **y en cada ficha**. El listado ya tiene una island;
+   **la página de detalle es HTML puro hoy**, y ponerle un botón con estado le
+   agrega el runtime de React a la página más visitada del sitio. B-239 ya discutió
+   exactamente ese trade-off para la home y **se descartó** por eso. La salida
+   probable es un botón que no necesite React —un `<button>` con un script chico
+   propio, que es lo que hace el aviso de cookies— y conviene decidirlo antes de
+   escribir el componente, no después.
+
+**Y una consecuencia de SEO que conviene tener escrita:** cualquier página cuyo
+contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt` y
+`sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
+página vacía indexada es peor que ninguna.
+
+> ✅ **Hecho el 2026-09-10 — D-630, y las cuatro preguntas abiertas contestadas.**
+>
+> 1. **Un favorito cuyo slug ya no está se muestra igual**, con lo que sabemos de
+>    él y su botón para sacarlo. Esconderlo sería borrarle a alguien algo que
+>    guardó sin decirle nada; dejarlo sin botón, dejárselo para siempre. Y con el
+>    `events.json` caído el rótulo dice «No se pudo cargar la agenda» y no «ya no
+>    está»: con la CDN muerta todos resuelven a `null`.
+> 2. **Página propia `/mis-favoritos`**, con `noIndex` y fuera del sitemap —
+>    **sin** `Disallow`, que impediría leer el `noindex`. La afirmación de este
+>    ítem se verificó contra `sitemap.ts` y es correcta; lo que **faltaba** era la
+>    otra mitad y se agregó: estar fuera del sitemap no impide que un link de
+>    afuera la indexe.
+> 3. **Veinte búsquedas, sin tope de favoritos, y sin renombrar.** El tope
+>    **rechaza** en vez de descartar la más vieja: un dato que vive solo en el
+>    navegador de alguien no se puede devolver.
+> 4. **El botón de la ficha es un `<script>` liso**: 360 B gzip contra 57,3 KB
+>    del runtime de React. **El corazón no va en cada fila del listado**, y eso
+>    quedó afuera con motivo: la fila entera es un `<a>`.
+>
+> **El «griseado» no entró, y el ítem tenía razón sobre el piso pero no sobre
+> cuál era.** No es que baje del contraste mínimo: el sistema visual **prohíbe
+> las opacidades** (D-146, B-235), y el pedido idéntico para `/pasadas` ya se
+> había resuelto con **tinta** (D-167). No hizo falta agregar nada — la fila
+> distingue una pasada con la tinta **y con la palabra «Pasó»**.
+>
+> Es la **salida pública 19**, numerada por la promesa y no por la proyección.
+
+### B-858 · `docs/README.md` tiene el paso «Correr los tests» dos veces, y la guarda que lo impide está verde sobre la copia — ✅ hecho (2026-09-09) · P2
+
+**Salió de integrar el frente de B-849**, y es la tercera vez en el día que
+aparece la misma clase: **un chequeo verde sobre exactamente el caso que existe
+para atrapar.**
+
+Dos partes que son la misma. `docs/README.md` tenía el paso «2. Correr los tests»
+**dos veces**, uno detrás del otro — y la segunda copia es la que explica que el
+número «no está escrito acá a propósito» porque «en un merge este mismo paso llegó
+a estar **tres veces** con tres números distintos (B-296)». El documento tenía la
+cicatriz que él mismo describe. Y la primera copia llevaba el conteo a mano:
+«**107** de esos tests … repartidos en **9** archivos», contra los **210 en 15**
+que mide el §6.1 remedido.
+
+**Lo que de verdad importa** es que existe una guarda para esto —el caso de B-662
+en `tests/salud-del-codigo.test.ts`— y estaba **verde**. Su regex pedía el número
+**pegado** al sustantivo y el texto real decía `**107** de esos tests`: ni la
+negrita ni las palabras del medio entraban. La mitad colgada de «archivos» tampoco,
+porque en su línea no aparece la palabra `test`. **La lección no es el regex: es
+que la mutación probada del docblock validaba la forma que el chequeo ya sabía
+leer, no la que una persona escribe.**
+
+> ✅ **Hecho, y el arreglo del documento es la parte chica.**
+>
+> La copia vieja se fue; la que quedó es la que no escribe números. El puntero al
+> desglose del §6.1 se rescató sin cifras y se verificó contra el documento
+> remedido. La guarda se ensanchó en tres ejes —énfasis de markdown normalizado,
+> nexo «de …» con lista cerrada de determinantes, conteo de archivos por **párrafo**
+> y no por adyacencia— con el alcance intacto.
+>
+> **Las dos restricciones que la mantienen no-ruidosa tienen su mutación en rojo:**
+> con nexo libre entra «B-219 los tests corren contra…» y el conteo sería el id del
+> ticket; sin contexto de párrafo entra «llegó a declarar 111 archivos de
+> producción», que es un relato fechado. Ocho mutaciones en total, seis de código y
+> dos de texto.
+>
+> **Y el docblock quedó con las dos formas.** La mutación original —«2.637 tests en
+> 118 archivos»— era cierta y no alcanzaba: probaba la forma que el chequeo ya
+> sabía leer. La que importa es la humana, porque es la que una persona escribe
+> cuando quiere que el dato se vea, y es la que estuvo meses en el documento con el
+> chequeo en verde.
+>
+> **De paso salió un tercer conteo viejo que sigue sin red:** la copia buena decía
+> «**Dos** archivos más se saltean sin un `dist/`» y son tres. Está escrito con
+> letras, así que ninguna versión de la guarda lo ve. Se dejó sin número; que la
+> guarda lea números escritos con palabras es otra pasada, y probablemente no valga
+> la pena.
+
+### B-885 · La salida 2 publica el tallerista con nombre de solo espacios, y es la quinta variante del predicado — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Cerrado.** `construirDescripcion` pregunta `?.nombre?.trim()`, el mismo
+> predicado de las otras cuatro: la celda que faltaba de la convergencia.
+>
+> **El camino de entrada es exacto en lo mecánico, con un matiz:** las dos puertas
+> usan `safeParse` **para el veredicto y descartan `parsed.data`**, así que el trim
+> del schema no llega al disco por ningún camino. Pero `formADocumento` tiene el
+> predicado desde el primer commit, así que la restauración **propaga** la cáscara
+> y no la origina — el origen es un escritor de afuera del panel.
+>
+> **Había dos predicados más de la misma forma en el mismo bloque**, y entraron con
+> el mismo arreglo: `organizador` publicaba su Instagram y su web con el nombre en
+> blanco, y el libro publicaba `Libro:    — Bolaño`.
+>
+> **El valor emitido no se trimea**, y tiene su aserto: lo que converge es la
+> pregunta, no el texto. Trimear lo que se escribe le reescribiría el evento a
+> quien lo tiene agendado (B-162, D-95).
+>
+> **Sale B-891.**
+
+**Lo encontró el frente de B-881**, que fue a verificar si quedaba un cuarto lugar y
+encontró un quinto. `functions/calendario.js` condiciona por `persona?.nombre`
+**sin `trim()`**, así que con `{ nombre: '   ', bio: 'Cronista…', instagram: '@ana' }`
+la descripción del evento emite `Tallerista:    · @ana` **y la bio**, mientras las
+salidas 1, 5 y 6 ya dicen que no hay tallerista.
+
+**Y la salida 2 tiene una propiedad que la vuelve peor de lo que el número
+sugiere:** el evento ya está sincronizado al Google Calendar público, o sea **en el
+calendario de cada persona que se suscribió**. Corregirlo después no saca lo que ya
+se copió a un dispositivo.
+
+**El camino de entrada existe y no es teórico:** el schema acepta un nombre de solo
+espacios (`src/lib/schema.ts`), y `restaurarCampo` (`src/lib/historial.ts`) escribe
+con `updateDoc` **sin pasar por el formulario**, así que `formADocumento` no lo
+normaliza.
+
+Es más angosto que B-881 —solo espacios, no `''`— pero es la misma clase y **es la
+última celda de la convergencia**: con ésta, «¿esta actividad tiene tallerista?» se
+contesta igual en las cinco. El arreglo es
+`const nombre = persona?.nombre?.trim(); if (nombre) …`, con su caso.
+
+### B-882 · El sitio se queda viejo y nadie se entera hasta que alguien lo mira — ✅ hecho (2026-09-11) · P1
+
+El 2026-09-11 el dueño cargó ocho actividades, las publicó y **ninguna apareció**.
+El rebuild venía fallando desde el día anterior, y el único que se enteró fue él.
+**Ninguna alarma existente podía verlo:** los ocho dispatches salieron bien, así
+que `alerta: 'rebuild-agotado'` nunca se disparó y `sistema/rebuild` decía que
+estaba todo al día (B-884).
+
+**Por qué ésta y no vigilar el workflow: mide el efecto y no el mecanismo.** Las
+otras medidas vigilan eslabones; ésta vigila la promesa del producto — «lo que
+publicás aparece». Es complementaria de B-883, no su repuesto: aquél sabe **por
+qué** falló y ésta no, pero ésta ve los atrasos que no pasan por un workflow rojo.
+
+> ✅ **Cerrado.** `verificarFrescuraDelSitio`, `onSchedule every 30 minutes`, con
+> las cuatro decisiones resueltas:
+>
+> | | |
+> |---|---|
+> | **Qué compara** | el **conjunto de slugs**, las dos direcciones. No el conteo: dos diferencias que se cancelan dan el mismo número, y el conjunto además **nombra** lo que falta |
+> | **Cuánto tolera** | 40 min = debounce (5) + `timeout-minutes` (15) + otro build (15, por `cancel-in-progress`) + propagación (5). **Cada sumando anclado a otro archivo**, con test que se pone rojo si divergen |
+> | **Cómo avisa** | issue + `logger.error` con `alerta`. Uno por divergencia distinta, reaviso a las 24 h. **No cierra issues**: cerrar es del dueño, y un bot que cierra tapa cuánto duró |
+> | **Si no puede leer** | `sin-lectura` y contador; recién a las 4 seguidas habla, de otra cosa. **Un 200 que no es el índice no es «cero actividades»** |
+>
+> **Cuatro hallazgos sobre el propio arreglo.** El issue publicaba el minuto exacto
+> y eso reconstruye el `updatedAt` de un documento contra el `created_at` público
+> del issue (§5, D-138). `vistas` era un mapa y **el merge no borra claves**, así
+> que el documento crecía hasta el tope de 1 MB — y ahí la transacción falla y **la
+> alarma se muere en silencio**, que es el modo de falla exacto que este ítem
+> cierra. Más el `.select()` que faltaba y el vocabulario cerrado del motivo.
+>
+> **Falta lo que un agente no puede hacer:** desplegarla (sube sola con el próximo
+> push que toque `functions/`) y crear las etiquetas `frescura` y `bug`.
+
+### B-892 · El control del saneador detecta por desaparición total del identificador, y eso tapa la mayoría de los casos — ✅ hecho (2026-09-17) · P2
+
+> ✅ **Hecho, las dos mitades, y la medición del ítem se quedaba corta.** El
+> predicado pasó a comparar **posiciones** —`tramosBorrados`, extraída como
+> primitiva del propio saneador— en vez de presencia de nombres. Probado por
+> mutación en los dos sentidos: sobre el árbol de ese día el predicado nuevo dio
+> rojo en **14 archivos** y el viejo veía **2 de esos 14**. Los otros doce
+> quedaban tapados por el propio nombre sobreviviendo en otra línea, que es
+> exactamente lo que este ítem describe.
+>
+> Las ~17 líneas se arreglaron con la salida (a) que B-876 ya había decidido
+> (`\/{2}` en vez de `\/\/`): `src/lib/schema.ts`, `src/lib/coordenadas.ts`
+> (dos), `scripts/build-contra-emulador.mjs` y los once recortes locales de
+> `tests/`. **Once, no diez:** el frente que cerró esto no podía tocar
+> `tests/promesas-sobre-datos.test.ts` —era del frente de B-925, en la misma
+> tanda— y lo dejó anotado; se aplicó al integrar los dos, y es lo que deja el
+> control de clase en verde. Ese sobrante llegó a tener número propio (B-1020) y
+> no hizo falta escribirlo.
+>
+> **Y la segunda mitad, la de la guarda de cantidad:** `> 100` y `> 20` eran un
+> piso, no una derivación. Ahora la lista se compara contra la misma armada con
+> `grep -E` en un subproceso aparte. Mutación probada: el `.filter()` de ejemplo
+> dejaba 529 archivos, arriba del piso, y pone en rojo la comparación nueva.
+
+**Lo corrigió el frente de B-876 sobre su propia medición**, y es la parte que
+importa de ese ítem. El control compara los identificadores que el parser ve contra
+los que sobreviven al saneado, o sea que **solo detecta cuando un nombre desaparece
+del archivo entero**. Si el mismo nombre aparece en otra línea, el destrozo es
+invisible.
+
+**Midiendo el texto truncado en vez de los identificadores, hay ~17 líneas de código
+más** que el saneador corta hoy por un `\/\/`:
+
+- `src/lib/schema.ts:180` — `/https?:\/\//i.test(texto) || HOSTS_DE_REUNION.test(texto)`, **se pierde el `||` entero**;
+- `src/lib/coordenadas.ts:171` y `:213`, `src/lib/enlaceSeguro.ts:49`;
+- `scripts/handle-instagram.mjs:30`, `scripts/build-contra-emulador.mjs:997`;
+- once en `tests/`.
+
+**Y dos de ellas son insumo vivo:** `tests/guardas-de-los-scripts.test.ts` sanea
+**todo** `scripts/` con `readdirSync`, así que esas dos líneas llegan cortadas a un
+barrido que corre de verdad. Ninguna rompe un aserto hoy — es la misma forma de
+agujero latente de B-853, que también esperaba a que alguien apuntara el saneador al
+archivo equivocado.
+
+Un predicado más fuerte compararía **posiciones** o contaría tokens perdidos, no
+presencia de nombres.
+
+> 📌 **Y una segunda mitad del mismo frente, más chica:** la guarda de cantidad del
+> control es un **piso** (`> 100`, `> 20`), no una derivación verificada. Nada
+> impide agregarle un `.filter()` de exclusión a la lista y que la suite quede verde
+> mirando menos archivos — probado por mutación, pasa. Aplica igual al chequeo viejo
+> de los `.ts`.
+
+### B-887 · Un error de sintaxis en un trigger pasa la suite, el typecheck y el gate — ✅ hecho (2026-09-11) · P1
+
+**Pasó el 2026-09-11 y lo causó el integrador**, aplicando a mano un diff que un
+frente había devuelto: un `import` quedó **adentro** de un bloque
+`import { … }` multilínea de `functions/frescura-trigger.js`. Verde en todo:
+**4.373 casos**, `tsc --noEmit` limpio, **los seis pasos del gate de pre-push**. El
+deploy murió con `SyntaxError: Unexpected reserved word` y el sitio se quedó sin
+las Functions nuevas.
+
+**La ceguera es estructural.** Nadie importa los triggers: los módulos puros sí los
+importan los tests —ahí un error de sintaxis se ve en el acto— pero el archivo del
+trigger es el pegamento, lo carga solo el runtime, y lo que el repo hace con él es
+**leerlo como texto**. `clases-de-bug.test.ts` recorre su cuerpo con expresiones
+regulares, y **un `readFileSync` no parsea nada**: un archivo roto se lee igual de
+bien que uno sano.
+
+Dicho de otro modo: **el corte puro/pegamento de B-77 —lo que hace testeable a este
+proyecto— dejó del lado no testeado a los archivos que ningún test toca**, y el
+primer lector real era el deploy.
+
+> ✅ **Cerrado.** `node --check` sobre cada `functions/*.js` en
+> `tests/guardas-de-los-scripts.test.ts`, con control positivo. Es el **mismo
+> parser** que va a cargarlos en el runtime y no un regex: la pregunta es
+> literalmente «¿esto lo puede cargar Node?». Va en un test y no en el gate porque
+> tiene que llegar **antes** de empujar — el costo de este bug no fue el error, fue
+> enterarse quince minutos tarde y con el sitio a medio publicar. Probado por
+> mutación reintroduciendo el bug exacto.
+
+### B-883 · El rebuild falló quince corridas seguidas y nadie recibió nada — ✅ hecho (2026-09-11) · P1
+
+**El dueño cargó ocho actividades, las publicó y se enteró mirando el sitio.** Entre
+medio no llegó nada. Lo que se rompía era **B-875**; esto es la otra mitad.
+
+**La sospecha era falsa, y verificarla cambió el arreglo.** Se creía que un
+`repository_dispatch` lo dispara un token y GitHub no tiene a quién avisarle.
+Medido contra la API: el `actor` de las quince corridas es `benoffi7`, tipo
+**`User`** — un PAT actúa como su dueño. La causa real son tres cosas que no se
+arreglan configurando nada:
+
+1. GitHub avisa **solo a quien disparó la corrida**: no hay watchers ni lista, es de
+   a uno y el repo no elige cuál.
+2. Ese uno es el **dueño del PAT** que vive en Secret Manager. El aviso de que el
+   sitio no se publica está atado a una credencial de infraestructura: se la rota y
+   el destinatario cambia sin que nadie lo decida.
+3. Llega a la bandeja **web** de esa cuenta, no por mail — el mail de Actions es un
+   opt-in por cuenta que el repo no puede ver.
+
+**Y la cuarta, que es la que más duele: aun llegando, el texto no sirve.** El título
+es `AUTOMATIC - <workflow> workflow run failed for <branch> branch`. De ahí nadie
+deduce «mis ocho actividades no están publicadas».
+
+> ✅ **Cerrado con dos jobs en `deploy.yml`** (`avisar` / `cerrar-aviso`) que abren y
+> cierran **un** issue por racha con la etiqueta `deploy-roto`: se busca por
+> etiqueta —lo único que sobrevive a que alguien edite el título—, el abierto se
+> **edita** en vez de comentarse, y se **cierra con la corrida verde**, que es lo
+> que lo vuelve un indicador y no un registro. El cuerpo dice **desde cuándo** el
+> sitio está atrasado, no solo qué paso falló.
+>
+> **No publica el `motivo` del rebuild**: es texto de Firestore y el repo es
+> público. **No recibe la service account** (job aparte, §5.4). **Y no puede agregar
+> su propio rojo**, con tres cinturones exigidos por test.
+>
+> **El chequeo es por clase:** «un workflow disparado por una máquina avisa cuando
+> falla», así que un `schedule` futuro entra solo. `push-main.yml` queda afuera a
+> propósito: lo dispara un push y hay alguien esperando.
+>
+> **Verificado corriendo los scripts extraídos del YAML**, lo que encontró dos bugs
+> que un YAML válido escondía: bash comiéndose los bytes del `»` en
+> `«$NOMBRE_WORKFLOW»`, y `date -d` siendo GNU —o sea imposible de probar en la
+> máquina de quien lo escribe—.
+
+### B-884 · `pendiente` significa «sin despachar» y el nombre promete «sin publicar» — ✅ hecho (2026-09-11) · P1
+
+> ✅ **Cerrado con B-882.** `remarcarPorFrescura` (`functions/marca-de-rebuild.js`)
+> vuelve a levantar el flag cuando el chequeo de frescura confirma una divergencia.
+> **Existe con nombre propio y no llama a `marcarRebuild` directo** por una razón
+> que encontró el chequeo de clase de B-83, no una preferencia: aquélla está
+> declarada como efecto **incondicional** —corresponde siempre que el documento
+> cambió, y no puede quedar debajo de un `return`— y acá el uso es un reintento
+> **condicionado**. Llamarla igual convertía un uso legítimo en una violación de la
+> invariante del otro.
+>
+> Cuelga de la misma decisión que abre el issue, o sea acotado por la firma de la
+> divergencia y por el reaviso de 24 h: **a lo sumo un build extra por día y por
+> divergencia distinta**, no uno cada media hora.
+
+**El flag se baja cuando GitHub acepta el `repository_dispatch`, no cuando el sitio
+tiene el cambio.** `registrarExito` computa `pendiente: milis(marcaActual) !==
+milis(marcaLeida)`, o sea que solo queda arriba si llegó una marca **nueva** durante
+el dispatch (B-85). Si el build muere después, **nadie reintenta y el documento dice
+que está todo bien.**
+
+**Verificado, no supuesto.** Los únicos tres escritores son `marcarRebuild`,
+`registrarFallo` y `registrarExito`, y ninguno conoce el resultado del build.
+`deploy.yml` no escribe en Firestore —ni el job `deploy` ni los dos que le agregó
+B-883—. **No hay ningún camino por el que un build fallido vuelva a levantar el
+flag.**
+
+**Y el corte es más temprano de lo que parece.** `repository_dispatch` contesta 204
+sin devolver ningún run id, y contesta 204 igual si el workflow **no corre** (el
+archivo no parsea, trampa 11; Actions desactivado). «GitHub aceptó» no es siquiera
+«el build arrancó».
+
+**Lo que pasó el 2026-09-11, y por qué no se vio antes.** El rebuild falló ocho
+corridas seguidas y ninguna actividad publicada llegó al sitio. **Lo tapó el
+volumen:** ocho actividades son ocho marcas y ocho disparos. **Con una sola no había
+octava oportunidad.**
+
+**Es la otra mitad de B-883.** Aquél hace que un build roto llegue a una **persona**;
+esto es que el **estado** sigue diciendo que está bien. El issue no cubre dos casos:
+si el workflow **no arranca**, el aviso tampoco corre porque cuelga del job de
+deploy; y si el fallo fue transitorio y nadie pushea, no hay re-disparo — el sitio
+espera a la próxima edición.
+
+**Lo hecho (2026-09-11), la mitad que no depende de la confirmación:** el desfasaje
+quedó escrito en el código con su instrucción de lectura, y `registrarExito` escribe
+`despacho: { cubreHasta, motivo }` en la misma escritura que baja el flag —
+`cubreHasta` es la marca leída **antes** del `fetch`, o sea el piso que el sitio vivo
+tiene que contener. Más `cubiertoPorElUltimoDespacho(estado)`, que normaliza y
+devuelve `null` cuando no hay ancla: **`null` es «no sé», no «al día»**.
+
+**Lo que falta para cerrarlo: el chequeo de frescura** (B-882), que al detectar la
+divergencia vuelva a levantar el flag con `marcarRebuild(db, 'frescura')` — no con un
+`set` a mano, que dejaría un `agotado: true` sin rearmar.
+
+### B-881 · El texto para redes arroba al tallerista sin nombre, y B-861 lo dejó siendo el único que lo hace — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Cerrado.** El dueño contestó: **es un olvido del formulario**, así que va la
+> primera rama. `handlesDe` condiciona por `?.nombre?.trim()`, el mismo predicado
+> de las otras cuatro respuestas, y `difusion.arrobar` queda intacto —el camino
+> para arrobar a alguien a propósito sigue abierto y ahora tiene su test—.
+>
+> **El borde estaba sin cubrir, con un agravante:** el barrido de centinelas del
+> archivo corre por `formADocumento`, que nulea la cáscara, **así que no podía
+> verlo**. Los tres casos nuevos entran por `construirTextoRedes` con el documento
+> crudo, que es la frontera que el tipo declara.
+>
+> **Sale B-885:** `functions/calendario.js` condiciona sin `trim()`. Es la quinta y
+> última variante del predicado.
+
+**Lo encontró el `auditor-privacidad` sobre B-861**, y es la misma clase que ese
+par de ítems vino a cerrar, un escalón más arriba.
+
+`handlesDe` (`src/lib/textoRedes.ts`) arma los arrobas del pie del posteo con
+`actividad.tallerista?.instagram ?? ''`. `ActividadParaRedes` es un
+`Pick<Actividad, …>` —**el documento crudo, no `ActividadPublica`**—, así que B-861
+no lo alcanza: con la cáscara `{ nombre: '', instagram: '@ana' }` el texto para
+redes sigue poniendo `@ana` mientras el `events.json` y la página de detalle ya
+dicen que no hay tallerista.
+
+**Lo que lo vuelve un ítem y no un descuido: antes de B-861 las tres salidas
+coincidían** (las tres publicaban). Arreglar dos dejó a la tercera sola, y la
+tercera es **la salida 5, la más irreversible** — un posteo con un arroba no se
+despublica.
+
+**No se arregló en el mismo cambio a propósito.** Un handle cargado a mano con el
+nombre en blanco puede ser un olvido del formulario o puede ser deliberado
+(«etiquetá a esta cuenta»), y `difusion.arrobar` existe justamente para el segundo
+caso. La decisión es del dueño:
+
+- **si es olvido** → `handlesDe` condiciona por `?.nombre?.trim()`, una línea, más
+  un caso en `tests/textoRedes.test.ts` (los de hoy siempre tienen nombre, así que
+  el borde no está cubierto);
+- **si es deliberado** → no se toca el código y se acota la prosa de
+  `07-seguridad.md` y del docblock de `toPublic.ts` a «las salidas que derivan de
+  `toPublic`», que es lo que hoy dicen provisoriamente.
+
+### B-880 · Quedan dos tests con la forma de B-873, y uno es peor: pasa en vez de saltearse — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Hecho, con los dos diagnósticos medidos y uno confirmado peor de lo que el
+> ítem decía.** Moviendo el `dist/`: `no-encontrado` sale `1 skipped`;
+> `ahoraPublico` sale **`✓ … 0ms`** — verde, contado como aprobado, cero bytes.
+>
+> Los dos son la **sección 4 de `verificar-bundle.sh`** (la simétrica de la 2: qué
+> TIENE que estar), derivando **del fuente** lo que le exigen al artefacto, y los
+> tests manejan el script sobre artefactos sintéticos. Las dos filas de `CON_DEUDA`
+> salieron en el mismo cambio: la lista queda **vacía y no borrada**.
+>
+> **Un agujero que el ítem no tenía**, por la mutación: el selector se buscaba por
+> subcadena, así que `.grid` lo satisfacía `.grid-cols-1` — desde B-600.
+>
+> **Verificado con build real:** renombrar `404.astro` deja build y typecheck verdes
+> y solo cae el gate; sacar `estilos.ts` del scan deja las cuatro utilidades en la
+> hoja y solo cae el **marcador**.
+>
+> **Y la frase se volvió cierta:** cero `it.skipIf`, y el mismo resultado con `dist/`
+> y sin él. Lo que queda son los 25 del emulador, que fallan duro con
+> `EXIGIR_EMULADOR=1`.
+
+**Salieron del chequeo de clase que dejó B-873** (`tests/workflows.test.ts`,
+`CON_DEUDA`), que es exactamente para lo que está: los enumera en vez de taparlos.
+
+- **`tests/no-encontrado.test.ts`** lee `dist/404.html` con `it.skipIf(!hayBuild)`.
+  Es B-873 otra vez, y es el **único skip que le queda a la suite entera**.
+- **`tests/ahoraPublico.test.ts` es peor, y por eso el ítem no es P3.** No usa
+  `skipIf`: lee `dist/_astro` y si no hay hojas hace `if (hojas === '') return;`.
+  O sea que **el caso se reporta PASSED** —no salteado, verde— habiendo mirado
+  cero bytes. Y su docblock repite la frase falsa de B-873: «en CI el build siempre
+  corre». Lo que promete es que las clases del tríptico llegaron al CSS
+  construido, y hoy esa promesa no la sostiene nadie.
+
+La salida es la de B-873 y ya está construida: el barrido va a
+`scripts/verificar-bundle.sh` —el único punto del pipeline donde `dist/` existe— y
+el test pasa a manejar el script sobre un artefacto sintético. Las dos filas de
+`CON_DEUDA` salen en el mismo cambio: el chequeo verifica las dos direcciones, así
+que dejarlas una vez resueltas lo pone en rojo.
+
+**Y con los dos resueltos, «la suite no tiene ni un skip silencioso» pasa a ser
+cierto** — que es lo que hace que ese número valga la pena mirarlo.
+
+### B-877 · El grafo de imports pierde todo `import` multilínea, y el §1.5 verifica «cero ciclos» sobre un grafo incompleto — ✅ hecho (2026-09-17) · P2
+
+> ✅ **Hecho.** Se sacó el `\n` de la clase negada. **Recontado sobre el árbol de
+> hoy, no sobre las cifras de esta descripción:** 1.987 aristas contra 1.695 con
+> el regex viejo, o sea **292 recuperadas en 211 de 572 archivos**. Los ciclos
+> **siguen en cero estáticos / uno diferido**, sin ninguno nuevo: la propiedad
+> que el test afirma aguanta, y lo que no aguantaba era la idea de que se estaba
+> verificando entera. Caso de control real del corpus, probado por mutación.
+>
+> Lo que **no** se hizo, a propósito: remedir §0/§1.1/§1.2/§1.4/§1.6. El árbol
+> creció de 254 a 341 archivos de producción desde la última pasada, por trabajo
+> ajeno a este ítem, y mezclarlo haría ilegible el efecto del arreglo. Sale
+> **B-1010**.
+
+**Lo encontró B-856 al verificar el fan-out del formulario.** El regex `IMPORTS`
+de `scripts/salud-del-codigo.mjs` tiene un `\n` dentro de la clase negada, así que
+obliga a que `import … from` entre en **una sola línea**. Todo import con las
+llaves abiertas en varias líneas es invisible para el grafo.
+
+Son **234 aristas a módulos del proyecto en 180 archivos** del corpus. En
+`ActividadFormulario.tsx` son 4 — exactamente la diferencia entre el fan-out que
+el §1.3 declaraba (**27**) y el real (**31**). Verificado: el regex ve 28 de 32
+`from`-clauses en ese archivo.
+
+**Lo que toca, y lo serio no es el fan-out:** `tests/salud-del-codigo.test.ts`
+afirma «cero ciclos estáticos» como **la única propiedad del documento que está
+atada a un test**, y la estaba afirmando sobre un grafo al que le faltaba el
+**16 %** de las aristas. Un ciclo cerrado por un import multilínea no se habría
+visto.
+
+**Se recalculó con el regex arreglado: siguen siendo cero** (1.424 aristas contra
+las ~1.190 que el script ve). La propiedad aguanta; lo que no aguanta es la idea
+de que se estaba verificando entera. El arreglo es sacar el `\n` de la clase
+negada, y el caso de control es un archivo del corpus con un import multilínea
+conocido.
+
+### B-878 · `contarLineas` no reconoce `{/* … */}`, así que el §1.1 sobrecuenta el código de todo `.tsx` — ✅ hecho (2026-09-17) · P3
+
+> ✅ **Hecho**, y con el gemelo que el ítem pedía. `contarLineas` trata
+> `{/* … */}` igual que `/* … */`. Medido sobre el árbol de hoy:
+> `ActividadFormulario.tsx` da **397** significativas contra **455** con el
+> contador viejo. Dos casos nuevos, los dos probados por mutación: el gemelo
+> exacto del existente para JSX de una línea, y un bloque multilínea.
+
+**Salió de B-856.** El clasificador pregunta `l.startsWith('/*')`, y una línea de
+comentario JSX empieza con `{`. Cae en el `else` y cuenta como **significativa**.
+
+En `ActividadFormulario.tsx` son **35 líneas**: el script dice 407 significativas
+donde las de verdad son 372. Afecta a los 81 archivos de `src/components/` y a los
+`.astro`, o sea al total del §1.1, a la prosa del §1.6 y —desde B-856— al umbral
+del §1.3, que ahora se mide en significativas.
+
+**El sesgo va del lado seguro para el umbral** (la alarma dispara antes), así que
+no es urgente; pero el §1.1 está declarando como código líneas que son prosa, que
+es justamente lo que ese número pretende separar. El arreglo es una línea, y el
+caso de control ya tiene forma en el test —el que verifica que «una línea con
+código y comentario al final cuenta como significativa»— y le falta el gemelo para
+JSX.
+
+### B-876 · El control de clase del saneador no mira los `.astro`, y hay un literal de regex que lo rompe hoy — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Hecho, con (a), y las dos mediciones del ítem eran exactas.**
+>
+> **`Base.astro` es el único ofensor: confirmado** sobre los 28 `.astro`. Lo que se
+> comía era el resto de la línea —`const ogImagen = /^https?:\/\` sin el ternario—,
+> o sea **la decisión entera** entre URL absoluta y relativa.
+>
+> **Se eligió (a), y el argumento decisivo no es el costo: es que (b) tampoco
+> alcanza.** Un lexer de literales de regex necesita el token anterior y deja
+> `firestore.rules` igual de expuesto, que es donde esta familia ya costó quince
+> cláusulas.
+>
+> **Lo que el ítem no pedía y el cambio sí:** un `expect` que prohíbe saltear en
+> silencio un `.astro` sin frontmatter, y un **control positivo permanente** que le
+> pasa al mecanismo el frontmatter viejo y exige que lo marque — un barrido que
+> compara dos listas queda verde igual porque no encuentra nada que porque no busca
+> nada, y desde afuera se ven iguales (B-873).
+>
+> **Y una corrección al alcance de «único ofensor»: sale B-892.**
+
+**Salió de B-855.** `tests/sin-comentarios.test.ts` compara contra el parser de
+TypeScript sobre los `.ts/.tsx/.mjs/.js` del repo — **no** sobre los `.astro`. Y
+los `.astro` son justamente lo que leen los dos tests que B-855 acaba de conectar
+al saneador compartido, más otros ocho que lo hacen con recortes locales.
+
+**No es hipotético: extender el control al frontmatter se probó y da rojo con el
+árbol de hoy.** `src/layouts/Base.astro` tiene una regex cuyo `\/\/` contiene el
+par `//` literal. El saneador lo lee como comentario de línea —exactamente el caso
+que su propio docblock declara no poder distinguir, «no lexea literales de
+expresión regular»— y se come el resto de la línea. Es **el único ofensor** entre
+los 28 `.astro` de `src/`, medido.
+
+Ningún aserto actual lo sufre —se verificó predicado por predicado en B-855— pero
+es la misma forma de agujero latente que B-853: espera a que alguien apunte un
+barrido a `Base.astro` preguntando por algo de esa línea.
+
+Dos salidas y hay que elegir: **(a)** escribir la regex sin el par literal, que
+cuesta una línea y deja el control de clase extensible; o **(b)** enseñarle al
+saneador a reconocer un literal de regex, que el módulo ya argumentó que no vale
+—necesita el token anterior, o sea medio parser de JS, y no serviría para
+`firestore.rules`—. Si sale (a), el control se extiende a los `.astro` en el mismo
+cambio; sin eso no hay red.
+
+> 📌 **Y un dato del barrido que cambia la escala del problema:** B-855 hablaba de
+> **dos** recortes locales. Son **veinticinco** archivos de test con su propio
+> saneador, todos con el modo de falla que B-855 vino a cerrar. Uno
+> (`analyticsSitio.test.ts`) documenta a propósito por qué usa el suyo. El criterio
+> de qué unificar hay que decidirlo archivo por archivo, pero el argumento de
+> B-855 aplica con fuerza 25 a 2.
+
+### B-875 · Un fixture con fecha cableada rompió la publicación del sitio entero, y nadie se enteró — ✅ hecho (2026-09-17) · P1
+
+> ✅ **Cerrado, los tres puntos, y uno de los tres ya estaba hecho.**
+>
+> 1. **La guarda** (`tests/fixtures-contra-el-reloj.test.ts`) pide las tres cosas
+>    juntas: fecha que todavía no pasó, un sujeto que lee el reloj real sin poder
+>    recibirlo (`useState(() => new Date())` — la forma de `ListaActividades.tsx`,
+>    y también la de `CalendarioActividades.tsx`, encontrada al armar el
+>    predicado) y ningún `vi.setSystemTime` que lo neutralice. **No prohíbe
+>    fechas fijas**, que es lo que este ítem pedía no hacer: la lógica pura que
+>    recibe `ahora` por parámetro queda afuera. Hoy la lista da vacía, con dos
+>    controles positivos para que ese vacío signifique algo. Mutación probada:
+>    reponer la fecha original la pone en rojo.
+> 2. **Que el rebuild no muera en silencio: ya estaba resuelto** por B-883 (los
+>    jobs `avisar`/`cerrar-aviso` de `deploy.yml`, que abren y cierran un issue
+>    con etiqueta `deploy-roto`) y B-882, mergeados el mismo 2026-09-11. Se
+>    verificó antes de escribir nada y no había nada para enganchar.
+> 3. **El hueco del detector de B-211**: `clases-de-bug.test.ts` filtraba con
+>    `f.endsWith('.ts')`, **falso para `.tsx`**, así que los 24
+>    `*.render.test.tsx` no se leían nunca. Por eso no vio el doble del archivo
+>    que rompió. Arreglado con `/\.tsx?$/` y una excepción documentada para ese
+>    doble, que se deja para **B-1050**.
+
+**Lo reportó el dueño el 2026-09-11** preguntando por qué una actividad publicada
+no aparecía en el sitio. La respuesta no era de esa actividad: **el sitio no se
+reconstruía desde el día anterior.** Las ocho últimas corridas del rebuild habían
+fallado, todas en el paso **Tests**, que corre **antes** del build — así que nada
+de lo que se publicara llegaba nunca.
+
+La causa es una línea de `tests/lista-actividades.render.test.tsx`:
+
+```ts
+{ id: 'ses_1', inicio: ts('2026-09-10T22:00:00Z'), fin: ts('2026-09-11T00:00:00Z'), … }
+```
+
+Una fecha **cableada en el futuro cercano**. La fila del panel dice «Próximo:»
+solo si el encuentro no pasó, así que el caso pasó en verde hasta el 2026-09-10 y
+**se puso rojo solo el 11**, sin que nadie tocara una línea. Arreglado haciendo la
+fecha relativa a `Date.now()`, que es lo que el caso de verdad necesita: «un
+encuentro que todavía no pasó».
+
+**Lo que hay que cerrar, que es la clase y no el caso:**
+
+1. **Una guarda contra la fecha cableada que se compara con el reloj real.** No
+   es «no usar fechas fijas»: los módulos puros reciben `ahora` por parámetro y
+   ahí una fecha fija es **correcta y deseable**. El caso peligroso es el
+   subconjunto que compara un fixture contra `Date.now()`. Hay **46 archivos** con
+   fechas del 2026-09-11 en adelante y la enorme mayoría son inofensivos, así que
+   una prohibición general sería ruido puro — hay que encontrar el predicado que
+   separa los dos.
+2. **Que el rebuild no muera en silencio.** Ocho corridas rojas seguidas y el
+   único que se enteró fue el dueño, mirando el sitio. Es la misma forma que B-21
+   —«está en el log» no es «alguien se entera»— pero acá el efecto es que **el
+   producto deja de publicar**. El aviso puede ser el que GitHub ya manda por
+   corrida fallida, si está prendido, o un chequeo propio.
+
+**Y de paso, un segundo bug en la misma línea:** ese archivo define **su propio
+doble de `Timestamp`** (`const ts = (iso) => ({ toDate, toMillis })`), que es
+exactamente la clase de B-211 y que el chequeo de `clases-de-bug.test.ts` **no
+está agarrando** — sí agarró otro archivo esta semana, así que el detector existe
+y tiene un hueco. Se dejó el doble local (achicarlo es de otro ítem) pero la
+pregunta de por qué no lo ve queda abierta.
+
+### B-873 · Los dos tests que leen `dist/` no verifican nada en CI, y sus docblocks afirman lo contrario — ✅ hecho (2026-09-11) · P2
+
+> ✅ **Hecho, con el diagnóstico medido y dos agravantes que este ítem no tenía.**
+>
+> Tampoco corrían del todo en `verificar-todo.sh` —los tests son el paso 3 y el
+> build el paso 4, así que miraban el `dist/` de una corrida **anterior**— y un
+> build local sin credenciales emite 14 páginas y **cero de detalle**, o sea que el
+> barrido nunca vio la superficie SSG que depende de datos.
+>
+> **Se eligió la salida 2, y el costo del build no fue el argumento** (2,5 s).
+> Buildear en el job de tests verifica un artefacto que **nadie publica**, y obliga
+> a elegir entre darle la única key del proyecto a un job más o barrer un artefacto
+> degradado. Y la salida 3 no es una salida por sí sola: sin `dist/` en ese job,
+> `EXIGIR_DIST=1` deja el CI rojo para siempre — es lo que la distingue de
+> `EXIGIR_EMULADOR=1`, donde el workflow sí levanta lo que el flag exige.
+>
+> **Los tests no se borraron: pasan a manejar el script** sobre artefactos
+> sintéticos. 41 casos sin un solo `skipIf`. Y el gate gana una guarda que es la
+> lección hecha aserto: **un `dist/` sin una sola página falla**, más el recuento
+> impreso.
+>
+> **La clase quedó cerrada y no la instancia**, y ya cobró: **B-880**.
+
+**Salió de decidir dónde poner el barrido de B-868**, y es el hallazgo más grande
+de esa tanda. `sin-comentarios-en-el-html.test.ts` (B-261) y
+`terceros-antes-del-consentimiento.test.ts` (D-254) se saltean si no hay `dist/`,
+y los dos escriben en su docblock: «En CI el build siempre corre, así que ahí no
+se saltea nunca».
+
+**No corre.** En `deploy.yml` el paso `Tests` está **antes** del paso `Build`; en
+`push-main.yml` los tests son el job `verificar` y el build es el job `hosting`,
+otro runner sin `dist/`. Verificado el 2026-09-10 moviendo el `dist/`: la corrida
+sale **verde con los casos salteados** y no lo dice.
+
+Así que las dos promesas quedan colgadas de que alguien haya buildeado local antes
+de correr la suite — y **un `skipIf` que se salta en silencio es peor que no tener
+el test**, porque la fila de la red de contención dice que están cubiertas. Es la
+misma clase que viene apareciendo toda esta tanda: un chequeo verde sobre
+exactamente el caso que existe para atrapar, y acá con el agravante de que el
+propio docblock afirma la cobertura que no existe.
+
+Tres salidas, y hay que elegir:
+
+1. **buildear en el job de tests** — caro y duplica el build;
+2. **mover los dos chequeos a `verificar-bundle.sh`**, que es el paso post-build de
+   los dos workflows: es lo que hizo B-868 y por eso mismo apareció esto;
+3. **que la ausencia de `dist/` falle en CI** en vez de saltear (un `EXIGIR_DIST=1`,
+   la misma forma que el `EXIGIR_EMULADOR=1` que existe por esta misma clase de
+   bug).
+
+Y en cualquier caso, **corregir los dos docblocks**: hoy afirman una cobertura que
+no existe, que es lo que hizo que nadie lo notara.
+
+### B-872 · Antes de exigir App Check en Storage: ¿qué pasa con las URLs de descarga? — ❌ decidido: no se exige (2026-09-16) · P3
+
+> ❌ **Decidido el 2026-09-16: `firebasestorage` se queda en `UNENFORCED`, y la
+> pregunta 1 no se mide** (**D-722**). El dueño delegó esta explícitamente («no
+> entiendo de eso, solo soy producto»), así que queda el razonamiento entero y no
+> solo el veredicto.
+>
+> **Lo que decide es que el beneficio de exigir hoy es cero, y es demostrable.**
+> Exigir App Check en un servicio sirve para una sola cosa: frenar al cliente que
+> no pasa por la página. Contra Storage, hoy, **no queda ningún cliente así**:
+>
+> | Camino que escribe en Storage | Quién es | Ya atestado por |
+> |---|---|---|
+> | `imagenes/` desde el panel | admin/publicador con sesión | reglas + Firestore `ENFORCED` |
+> | `propuestas/` desde `/proponer` | anónimo | **la callable de B-896**, con `enforceAppCheck: true` |
+> | Las tres guías | anónimo | nada que subir: la ficha nace **sin fotos** (D-700) |
+> | build y Functions | Admin SDK | fuera de App Check por diseño |
+>
+> El `create` de `propuestas/` está en `if false` **para todo cliente**. O sea que
+> exigir protegería un camino que ya no existe.
+>
+> **Y el riesgo no es cero, es el sitio entero.** Las tres deducciones del
+> 2026-09-11 apuntan todas al mismo lado —el GET de `?alt=media&token=` entra en
+> la métrica, pega contra `firebasestorage.googleapis.com`, y `Unknown origin`
+> describe literalmente un `<img src>`—. Si aciertan, exigir **se lleva puestas
+> todas las imágenes públicas**, `og:image` incluido: cada link compartido queda
+> sin preview, y con caché pegada encima. Es una apuesta asimétrica en la
+> dirección equivocada: se arriesga todo para ganar nada.
+>
+> **Por qué tampoco se mide, que es la parte que podría discutirse.** La medición
+> es honesta y está bien diseñada (proyecto de prueba, dos `curl`, `allow read: if
+> true` para distinguir quién cortó). Pero contesta una pregunta cuya respuesta
+> **no cambia ninguna acción**: si da `200`, exigir sigue sin proteger nada; si da
+> `403`, tampoco se exige. Un experimento que no mueve ninguna decisión es trabajo
+> con forma de rigor. **Se mide el día que la respuesta importe**, y ese día tiene
+> nombre: es el de abajo.
+>
+> **La condición de reapertura, y es un orden, no una fecha: primero B-846.**
+> Exigir Storage solo empieza a tener sentido cuando las lecturas públicas **dejen
+> de salir por `firebasestorage`** — o sea cuando se cierre B-846 (no acuñar
+> tokens: `getBlob` para lo privado) y B-222 (servir las imágenes públicas por
+> dominio propio o rewrite de Hosting). Con los bytes públicos fuera del servicio,
+> el 99% sin verificar desaparece **solo**, la métrica pasa a decir algo, y exigir
+> se vuelve barato y sin riesgo. Eso es lo que «mirarlos juntos» quería decir y
+> nunca estaba escrito: **no son dos preguntas en paralelo, son dos escalones**.
+>
+> También se reabre si aparece un **segundo** camino de subida a Storage desde un
+> cliente no atestado. Hoy no hay ninguno y la fila de arriba es la prueba.
+>
+> El texto de abajo —la investigación del 2026-09-11— queda entero: es el insumo
+> que sostiene todo esto.
+
+> **2026-09-15 — deja de ser un bloqueo, y baja de P1 a P3.** Este ítem decía
+> «bloquea el anuncio de `/proponer`» y después, por extensión, se lo citó como lo
+> que cerraba el `create` anónimo de las tres guías —así estaba escrito en los tres
+> bloques de `firestore.rules` y en media docena de lugares de `docs/`—.
+>
+> **Las dos cosas se resolvieron sin contestar la pregunta**, y por el mismo lado:
+> sacando los bytes del camino. `/proponer` con **B-896** (la subida va por una
+> callable atestada, no por `storage.rules`) y las tres guías con **D-700** (la
+> ficha que llega de afuera nace sin fotos, así que no hay nada que subir). En
+> ninguno de los dos casos hizo falta exigir App Check en Storage.
+>
+> **Lo que sigue vivo es la pregunta de arquitectura en sí**, y nadie la contestó
+> con fuente autoritativa: si conviene igual exigirlo algún día, y qué pasaría con
+> las imágenes públicas que hoy se sirven por URL de descarga. Sin nada urgente
+> colgando de la respuesta, y con **B-846** —la URL de descarga es una capability—
+> del mismo lado del problema: conviene mirarlos juntos.
+>
+> El texto original queda abajo, incluida la parte que fechó el bloqueo, porque es
+> la investigación del 2026-09-11 y sigue siendo el mejor insumo para contestarla.
+
+**Bloqueaba el anuncio de `/proponer`, y era la única pregunta que quedaba entre el
+estado de aquel momento y abrir el formulario público.**
+
+Con Firestore ya en `ENFORCED` (B-836a paso 6, 2026-09-10), Storage sigue en
+`UNENFORCED` por un dato concreto: su métrica de App Check marcaba **1%
+verificado contra 99% sin verificar**, mientras Firestore marcaba 7%. Esa
+asimetría no es ruido de la ventana — es que Storage tiene un tipo de tráfico que
+Firestore no tiene.
+
+**La sospecha, que hay que confirmar antes de tocar nada:** ese 99% son las
+**lecturas públicas de imágenes**. Cada página de detalle y `/cartelera` sirven
+las fotos por la URL de descarga con token (`getDownloadURL`), que es un GET
+anónimo del navegador y **no lleva token de App Check** — ni puede llevarlo, no
+pasa por el SDK. Si el enforcement bloqueara ese camino, **se caen todas las
+imágenes del sitio público**.
+
+**Lo que hay que averiguar, en este orden:**
+
+1. **¿El enforcement de Storage alcanza a las URLs de descarga?** La documentación
+   de Firebase habla de las operaciones del SDK; la URL con token es una vía
+   pensada para compartir y podría quedar afuera. **No asumir ninguna de las
+   dos.** La forma barata de saberlo sin arriesgar el sitio es medirlo en un
+   proyecto de prueba, o encontrarlo afirmado por Google.
+2. **Qué compone realmente ese 99%**, mirando el reparto en el tiempo y no el
+   acumulado.
+3. Recién con las dos contestadas, exigir o no.
+
+**Y hay una consecuencia de diseño que aparece si el enforcement sí las bloquea:**
+las imágenes públicas tendrían que dejar de servirse por URL de descarga. Eso ya
+está anotado por otro motivo en **B-846** —la URL con token es una *capability* y
+sirve el objeto sin volver a evaluar las reglas—, así que las dos preguntas se
+contestan mejor juntas que por separado.
+
+> **2026-09-11 — investigado. La pregunta 1 no tiene respuesta pública; la 2 sí, y la contesta el repo.**
+>
+> **Pregunta 1 — sin fuente autoritativa, y no por falta de buscar.** Ni la doc de
+> App Check (enforcement, métricas, overview), ni la de descarga de archivos en
+> Web, ni ninguna nota de release, ni ningún issue de `firebase-js-sdk` /
+> `flutterfire` / `firebase-android-sdk` / `firebase-admin-node` contestado por
+> alguien de Firebase dice si el enforcement alcanza al GET de
+> `?alt=media&token=`. **La doc no menciona las URLs de descarga en ninguna página
+> de App Check**, ni para incluirlas ni para eximirlas. Lo único escrito es la
+> regla general: «all unverified requests to that product will be rejected».
+>
+> **La evidencia indirecta apunta a que SÍ las alcanza, y ninguna pieza es
+> concluyente:**
+>
+> 1. [`flutterfire#10084`](https://github.com/firebase/flutterfire/issues/10084) es
+>    nuestro caso exacto —Storage casi todo sin verificar, Firestore normal,
+>    imágenes servidas por download URL— y cierra con «I solved it by sending
+>    headers appCheckToken». O sea que el GET crudo **entra en la métrica** y que
+>    el endpoint **lee el header `X-Firebase-AppCheck`**. Un endpoint que lee el
+>    token está dentro de la superficie. *Es un usuario, no un ingeniero de
+>    Google: en el hilo nadie de Firebase concluye nada.*
+> 2. La download URL pega contra **`firebasestorage.googleapis.com`**, que es el
+>    servicio que se pone en `ENFORCED`. *Deducción.*
+> 3. La categoría `Unknown origin` de la doc de métricas —«missing a token, and
+>    don't look like they come from the Firebase SDK»— describe literalmente un
+>    `<img src>`, y la misma página dice que tras el enforcement solo se permiten
+>    las `Verified`. *Deducción.*
+> 4. **Ningún reporte público de nadie que lo haya medido.** Varios repos de
+>    terceros razonan lo mismo que nosotros y se quedan en el mismo callejón.
+>
+> **Pregunta 2 — contestada, y la sospecha era correcta.** No hace falta el reparto
+> en el tiempo: lo dice el código. Todo el volumen es `<img>`/`<a>` de HTML
+> estático más crawlers —portada del detalle, galería secundaria, `og:image`,
+> JSON-LD, cartelera, el `imagenUrl` publicado en `/events.json`, la
+> previsualización del editor— y **ninguno puede mandar el header**. Lo verificado
+> son solo `uploadBytes` + `getDownloadURL` desde el panel y `/proponer`, que salen
+> de `getStorage(app())`, la misma app que tiene App Check. Uno por subida contra
+> uno o varios **por pageview**: de ahí el 1%. El build y las Functions ni cuentan,
+> van por `storage.googleapis.com` con Admin SDK.
+>
+> **Y apareció una salida que este ítem no contemplaba: `/proponer` puede
+> destrabarse sin exigir Storage nunca.** El supuesto de que hay que exigir viene
+> de que el enforcement es **por servicio y no por path** —no se puede exigir solo
+> `propuestas/`—. Pero si la subida anónima no va directo a Storage sino a **una
+> callable con App Check exigido** (el enforcement de Functions es independiente y
+> no toca las lecturas de Storage), que valide la atestación y escriba con el Admin
+> SDK: el endpoint anónimo queda atestado, `storage.rules` para `propuestas/`
+> **sigue cerrado al cliente** —más fuerte que abrirlo— y `firebasestorage` puede
+> quedarse en `UNENFORCED`. Es **B-896**.
+>
+> **Y hay algo que ya es cierto hoy y conviene no perder de vista: Firestore ya
+> está `ENFORCED`.** O sea que el `create` anónimo de `/propuestas` **ya estaría
+> protegido por App Check**; lo único sin proteger es la subida del flyer. El
+> bloqueo de `/proponer` no es entero: es de la foto.
+>
+> **La medición, si se hace, va en un proyecto de prueba y no en producción.** El
+> emulador no verifica App Check. El enforcement tarda *hasta 15 min* en aplicar y
+> otro tanto en revertirse: probarlo en producción son ~30 minutos de sitio sin
+> imágenes —incluido `og:image`, o sea todo link compartido sin preview— más caché
+> pegada. En el proyecto de prueba: subir un JPEG, `allow read: if true` (para que
+> el experimento distinga «lo cortó una regla» de «lo cortó App Check»), medir con
+> `curl -sSI` la URL **con** token y **sin** token (las miniaturas van sin token a
+> propósito y son otro camino), poner `firebasestorage` en `ENFORCED`, esperar,
+> repetir los dos `curl`. `200` → se puede exigir. `403` → no, y hay que sacar las
+> imágenes públicas de `firebasestorage`, que es lo mismo que ya pide **B-846**.
+
+**Mientras tanto `/proponer` no se puede anunciar**, y el motivo es preciso: el
+formulario sube el flyer a Storage, así que abrir el `create` de `/propuestas` en
+`firestore.rules` sin abrir el de `storage.rules` da un formulario que acepta el
+texto y rechaza la foto; y abrir los dos con Storage sin exigir deja un **endpoint
+de subida anónimo sin App Check**, que es exactamente lo que las cinco capas de
+B-836 existen para que no pase.
+
+### B-869 · El saneador rechaza lo que no sabe sacar: `APP_A_TIRAR` es lista negra y C2PA viaja en APP11 — ✅ hecho (2026-09-10) · P1
+
+**Lo reportó el dueño el 2026-09-10 con una foto normal.** El panel se la rechazó
+con este cartel:
+
+> «No pudimos sacarle todos los datos ocultos a esta foto (algunos celulares le
+> guardan una segunda copia adentro). Abrila en el editor de fotos del teléfono,
+> guardala de nuevo o recortala, y volvé a intentar.»
+
+**Y era falso.** No había ninguna segunda copia: la foto traía un manifiesto
+**C2PA** —el que exporta Google Fotos, firmado por Google— y en JPEG eso viaja en
+**APP11** (`0xEB`).
+
+**El agujero, medido ejecutándolo:**
+
+| caso | `sinMetadatos` lo saca | `quedanMetadatos` lo ve | resultado |
+|---|---|---|---|
+| C2PA en APP11 (`0xEB`) | no | **sí** | la subida se **rechaza** |
+| índice MPF en APP2 (`0xE2`) | no | no | la foto **sube** con el bloque |
+
+`sinMetadatos` tiraba una lista **negra** de tres marcadores —APP1, APP13 y COM—
+y `quedanMetadatos` busca cinco cadenas. **Dos de las cinco no podían estar
+cubiertas por esa lista.** El detector rechazaba un bloque que el saneador no
+sabía sacar, y la persona pagaba con un cartel que le echaba la culpa a su
+teléfono. El caso del MPF es el mismo agujero con el signo contrario: no tiene
+centinela, así que no se rechaza — se sube.
+
+**La decisión que este ítem revierte, y por qué.** B-323 dejó escrito que el JPEG
+se quedaba con lista negra a propósito (ver la corrección fechada en ese ítem).
+Sus dos argumentos se cayeron:
+
+1. **La red que invocaba está río abajo del punto que falla.**
+   `estructuraConocida` vive en `functions/imagenes-optimizar.js` y la corre
+   `optimizarImagen`, un `onObjectFinalized`: **después** de la subida. Acá la
+   subida nunca llega, porque `quedanMetadatos` la corta antes.
+2. **Envejeció.** Cuando se escribió, el detector tenía **tres** centinelas y los
+   tres estaban cubiertos. **B-220 le agregó los dos de C2PA** —que viven en un
+   marcador que la lista no nombra— y nadie volvió a mirar el saneador.
+
+**Lo que se hizo**, en `functions/jpeg-appn-seguros.js` (nuevo) + alias
+`@jpeg-appn-seguros`:
+
+- **Lo estructural se conserva por su marcador** —los quince SOF más DHT y DAC,
+  DQT, DNL, DRI, DHP, EXP, SOS, los ocho RSTn y el TEM— y **no pasa por la
+  lista**. Es la tabla B.1 de ITU-T T.81, que está **cerrada**.
+- **Todo lo demás se tira** salvo que la lista lo reconozca **por su firma** y, en
+  los dos de forma fija, por su **largo declarado**: `JFIF\0` (16 bytes, sin
+  thumbnail), `ICC_PROFILE\0` y `Adobe` (14 bytes).
+- **Una sola tabla**: `estructuraConocida` borró su `BLOQUES_CONOCIDOS` y usa la
+  misma. Es el precedente de B-323 aplicado al lado JPEG.
+- **El cartel** dice ahora lo único que sabemos y pide **avisar**, no mandar la
+  foto: este pipeline lo usa también `/proponer`, así que quien lo lee puede ser
+  alguien sin cuenta.
+
+Decisión completa: **D-620**.
+
+> **2026-09-10 — hecho, y los auditores encontraron cuatro veces la misma forma de
+> error sobre el propio arreglo:** *la regla decía más de lo que el código
+> chequeaba*.
+>
+> 1. **El APP0/JFIF también trae thumbnail.** El NUL de `JFIF\0` deja afuera a
+>    `JFXX` —el thumbnail *de otro* APP0— pero el JFIF base tiene el suyo:
+>    `Xthumbnail`/`Ythumbnail` en los bytes 12 y 13 del cuerpo, más hasta
+>    255×255×3 ≈ 195 KB de RGB sin comprimir. Misma imagen-adentro-de-la-imagen de
+>    **antes** de cualquier recorte, y pasaba **las dos capas**.
+> 2. **`0xC8` no es un SOF.** El spec lo lista como `JPG`, «reserved for JPEG
+>    extensions». El primer conjunto estructural lo metió adentro «porque cae en el
+>    rango `0xC*`», así que se conservaba entero mientras su gemelo `0xF7` se
+>    tiraba. Lo encontraron los **dos** auditores por separado.
+> 3. **Reconocer la firma no acota el cuerpo.** Un APP0 con la firma buena y un
+>    largo de 500 se conservaba entero. Los dos de forma fija se acotan al byte.
+> 4. **El corte no podía ser «APPn o COM»:** dejaba conservados los `JPG0`–`JPG13`
+>    y los reservados, o sea exactamente lo que hacía la lista negra.
+>
+> Se corrigió además la frase «un perfil ICC no lleva ubicación, autor ni fecha»,
+> repetida en cuatro lugares: es cierta de los perfiles **enlatados** y falsa del
+> contenedor. Y el cartel dejó de pedir que manden la foto.
+>
+> **Quince mutaciones probadas**, y una nació de un hallazgo que dejaba la suite
+> **verde**: sacar `RST0` del conjunto estructural. Suite completa (4143) y `tsc`
+> en verde.
+
+**Dos residuos abiertos, aceptados y con dueño acá:**
+
+- **Un tope de bytes de ICC conservados.** El perfil es lo único de la lista que no
+  se puede acotar por largo —es variable por diseño y se parte en varios APP2
+  encadenados— y `quedanMetadatos` no tiene ningún centinela que caiga adentro de
+  un ICC. Un perfil **custom** (Lightroom, Capture One) puede llevar un nombre en
+  `cprt`. Se acepta porque los perfiles que emite un teléfono son enlatados y la
+  alternativa es publicar la foto con los colores cambiados.
+- **Los APPn intercalados entre scans de un JPEG progresivo no pasan por la
+  lista**, en ninguno de los dos runtimes. `quedanMetadatos` barre el archivo
+  completo, así que un EXIF o un C2PA puestos ahí se **rechazan** igual — pero se
+  rechazan, que es el modo de falla que este ítem vino a eliminar; lo que pasa en
+  silencio es lo que no tiene centinela (MPF, JFXX, un APPn de fabricante). No se
+  cerró acá porque tocar `finDelJpeg` es tocar la guarda que cierra el segundo
+  agujero de D-131 §3, y un error ahí corta el dato comprimido.
+
+### B-870 · Hay dos apps web en el proyecto, con dos GA4 distintos, y Hosting apunta a la que el sitio no usa — ✅ hecho (2026-09-10) · P3
+
+> ✅ **Resuelto el 2026-09-10, y dejó una trampa escrita.**
+>
+> Se quitó «Agenda Literaria» (`…2e7ce6a6`, `G-GG31S5P1YY`), la que no usaba nadie
+> —el repo nombra a `G-9CFMHSSGRC` en ocho lugares y a la otra en ninguno—. Firebase
+> la deja **recuperable 30 días**: aparece como «app pendiente de eliminación», así
+> que la advertencia de «irreversible» con la que se planteó esto era **falsa** y
+> queda corregida.
+>
+> **La trampa: borrar primero deja a la consola sin poder arreglar el vínculo.** El
+> sitio de Hosting seguía apuntando a la app borrada, y al abrir «Vincular a un
+> sitio de Firebase Hosting» en la app buena, la única opción que ofrece es
+> `agenda-literaria (Ya vinculado)`, **deshabilitada**. O sea: la consola considera
+> el sitio ya vinculado —a un fantasma— y no da forma de repuntarlo. El orden que
+> lo evita es **vincular la buena antes de quitar la otra**; se propuso así y no se
+> siguió, y por eso quedó registrado.
+>
+> La salida fue la API de Hosting, que sí expone el campo:
+>
+> ```sh
+> curl -X PATCH -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+>   -H "x-goog-user-project: agenda-literaria" -H "Content-Type: application/json" \
+>   -d '{"appId":"1:1038157194972:web:5b52810ed763c2d3cd7619"}' \
+>   "https://firebasehosting.googleapis.com/v1beta1/projects/agenda-literaria/sites/agenda-literaria?updateMask=appId"
+> ```
+>
+> Verificado después: `hosting:sites:list` muestra la app buena, y el sitio entero
+> sigue en 200 (home, `/admin`, `/proponer`, `/cartelera`, `events.json`).
+> `/__/firebase/init.js` se sirve con `max-age=3600` y tarda hasta una hora en
+> reflejarlo — no hay que esperarlo, nada nuestro lo lee.
+>
+> **Y lo que este ítem existía para evitar, se evitó:** las métricas de App Check
+> ahora tienen una sola fila, así que la decisión del paso 6 de B-836a no se puede
+> tomar mirando la app equivocada.
+
+**Salió de mirar la consola de App Check el 2026-09-10**, cuando el dueño fue a
+verificar el paso 5 de B-836a. La pestaña «Apps» lista **dos**, que difieren en
+una mayúscula:
+
+| App | `appId` | `measurementId` | |
+|---|---|---|---|
+| Agenda Literaria | `…2e7ce6a6…` | `G-GG31S5P1YY` | la que Firebase Hosting tiene asociada |
+| Agenda literaria | `…5b52810e…` | `G-9CFMHSSGRC` | **la que usa el sitio** (`.env.production`) |
+
+**App Check no está en riesgo:** las dos tienen registrada la **misma** clave de
+sitio, con `minValidScore: 0.5` y TTL de una hora, así que la verificación
+funciona por cualquiera de las dos. Verificado por API, no por la consola.
+
+Lo que sí trae:
+
+1. **Leer la consola es ambiguo.** Las métricas de App Check se reparten por app,
+   así que la fila de «Agenda Literaria» va a mostrar cero para siempre. Quien
+   vaya a decidir el paso 6 —exigir— mirando la fila equivocada concluye que la
+   verificación no funciona **cuando funciona**, que es el peor error posible
+   justo en ese paso.
+2. **Son dos propiedades de GA4.** El sitio manda todo a `G-9CFMHSSGRC`; la otra
+   existe y está vacía.
+3. **La autoconfiguración de Hosting serviría la app equivocada.**
+   `/__/firebase/init.js` devuelve la config de la app asociada al sitio, que es
+   `…2e7ce6a6…`. Hoy no la usamos —la config está escrita en `.env.production` y
+   eso es deliberado— pero es la clase de cosa que muerde el día que alguien la
+   use creyendo que es equivalente.
+
+**No se resuelve borrando la que sobra sin pensarlo:** borrar una app web es
+irreversible, y hay que decidir cuál queda. La que el sitio usa tiene el GA4 con
+los datos históricos; la otra es la que Hosting conoce. Lo barato y reversible es
+**asociar el sitio de Hosting a la app que el código usa** y dejar la otra
+marcada, o al menos que la doc diga cuál es cuál — hoy no lo dice en ningún lado,
+y eso es lo que hizo que apareciera recién ahora.
+
+### B-868 · Nada sostenía que el bundle construido llevara App Check, y el modo de falla es «la aplicación entera deja de escribir» — ✅ hecho (2026-09-10) · P2
+
+**Salió de verificar a mano el paso 5 de B-836a** el 2026-09-10, que es
+justamente la señal de que falta la guarda: hubo que bajarse el chunk de
+producción y buscar la clave con `grep`.
+
+`scripts/verificar-bundle.sh` —el paso del gate que mira el artefacto— chequea
+**una sola cosa**: que no haya rastros del Admin SDK. Nada verifica lo simétrico:
+que lo que **tiene que estar**, esté.
+
+**Y acá el modo de falla es de los peores que tiene el proyecto.** Si
+`PUBLIC_RECAPTCHA_SITE_KEY` desaparece de `.env.production` —un merge, una
+limpieza de variables «que no se usan»—, o si alguien cambia el proveedor a
+`ReCaptchaV3Provider` porque le parece el nombre razonable:
+
+- la suite queda **verde** (`tests/appcheck.test.ts` mira el fuente, no el `dist/`);
+- el gate queda **verde** (solo busca el Admin SDK);
+- el deploy queda **verde**;
+- y **con el enforcement puesto, el panel y `/proponer` dejan de poder escribir**,
+  con la consola mostrando cero peticiones verificadas y ninguna pista de por qué.
+
+Hoy no muerde porque el enforcement está apagado. El día del paso 6 pasa a ser la
+diferencia entre un deploy y una caída.
+
+Lo que hay que agregar al barrido del artefacto, sobre `dist/`:
+
+1. la clave de sitio aparece en algún chunk;
+2. viaja a `activarAppCheck` con `usarEmuladores: false` —o sea que el build de
+   producción no quedó con la configuración de emuladores—;
+3. el proveedor es el de Enterprise (`recaptcha/enterprise.js`) y **no**
+   `recaptcha/api.js`, que es la distinción que `tests/appcheck.test.ts` ya fija
+   sobre el fuente y que nadie fija sobre lo que se publica.
+
+**Y el (3) tiene una trampa que hay que resolver antes de escribirlo:** el SDK de
+Auth trae su propio `recaptcha/api.js` para el reCAPTCHA v2 de sus flujos, así que
+la presencia de esa cadena **no** es evidencia de que estemos usando el proveedor
+equivocado. El aserto tiene que ser sobre `enterprise.js` presente, no sobre
+`api.js` ausente — verificado a mano el 2026-09-10, donde conviven los dos.
+
+> ✅ **Hecho el mismo día, y la trampa era más ancha de lo que este ítem decía —
+> el aserto que pedía no sirve.**
+>
+> **Ya no es condicional.** El ítem decía «hoy no muerde porque el enforcement
+> está apagado; el día del paso 6 es la diferencia entre un deploy y una caída».
+> Ese día fue el **2026-09-10 a las 17:42 UTC**.
+>
+> **Lo que falla del (3):** Auth trae también `recaptcha/enterprise.js`, las dos
+> cadenas en el mismo objeto. Medido sobre **dos builds reales**, esa cadena está
+> presente con `ReCaptchaEnterpriseProvider` **y** con `ReCaptchaV3Provider`. O sea
+> que «`enterprise.js` presente» es un aserto que **solo puede pasar**. Lo que
+> discrimina es el endpoint de canje, que el bundler sí resuelve a uno solo:
+> `exchangeRecaptchaEnterpriseToken` presente y `exchangeRecaptchaV3Token`
+> ausente. Van los dos: con solo el primero, un bundle con los dos proveedores
+> conviviendo pasaría.
+>
+> **Va en el script y no en un test sobre `dist/`** —que era el precedente— por el
+> orden del pipeline, y eso destapó **B-873**: los dos tests que hoy leen `dist/`
+> no verifican nada en CI. Cinco asertos, siete mutaciones, cada una con el build
+> real que la rompería.
+
+### B-867 · El detector de la clase de B-85 no ve un barrido que borra, y hay un caso que congela esa ceguera como garantía — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Hecho, con el alcance medido antes del ensanche y con las dos mitades.**
+>
+> **La medición, que era la condición del ítem:** `.delete(` suma cuatro triggers
+> y **ninguno queda en la clase** — a los tres barridos les falta la red, y al
+> cuarto la lectura. Lo que se puso rojo fue el caso que congelaba la ceguera
+> («pasan porque borran») y la copia mala en versión `delete`, que pasaba en
+> verde. Los dos se reescribieron diciendo lo cierto; el segundo ahora afirma lo
+> contrario.
+>
+> **Y por eso el regex solo no alcanzaba:** los tres pasan hoy por no hablar con la
+> red, que es un motivo más débil que el que tenían escrito. `GUARDAS_DE_BARRIDO`
+> declara por barrido su guarda —precondición en `borrarPropuestasVencidas`
+> (ventana **cubierta**), margen en los otros dos (ventana **aceptada**, con el
+> motivo escrito)—, con la declaración **y el uso** anclados en el fuente, y no
+> deja declarar un margen como si cubriera la corrida. Queda **B-879**.
+
+**Lo encontró el `auditor-privacidad` sobre B-864.** `sintomasDeB85`
+(`tests/clases-de-bug.test.ts`) define el efecto como `/\.(set|update)\(/`, así que
+un barrido que **borra** lo que leyó sin comparar la versión es invisible para el
+chequeo. Y hay un caso que lo declara limpio con esas palabras: «los tres barridos
+entran al chequeo, y pasan **porque borran**».
+
+B-864 es el contraejemplo exacto: `borrarPropuestasVencidas` tenía la forma de B-85
+—leer al principio de la corrida, actuar segundos después sin comparar— y ese caso
+la daba por buena. **Es la misma clase que B-845 cerró hace un día, del otro lado:**
+allá el chequeo no veía el efecto porque estaba en el módulo de al lado, acá no lo
+ve porque el verbo es otro.
+
+Ahora **uno de los tres barridos tiene la guarda y los otros dos no**, y nada nombra
+la diferencia; `limpiarImagenesHuerfanas` mitiga con `MARGEN_DE_GRACIA_MS` (72 h),
+que es otra cosa y no cubre la ventana intra-corrida.
+
+El arreglo es sumar `\.delete\(` al síntoma y declarar por barrido cuál es su guarda
+—precondición, generación, o margen de gracia con el motivo escrito—. Y por eso
+mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que medir qué
+entra que hoy no entra **antes** de aplicarlo, no después. Es el mismo motivo por el
+que B-862 está anotado y no hecho.
+
+### B-863 · La propuesta aceptada conserva el contacto para siempre — y también la foto — ✅ hecho (2026-09-10) · P2
+
+**Lo encontró el `auditor-privacidad` sobre B-844.** `aceptada: null` se decidió
+**por el contacto** («ahí sirve: la actividad existe y puede haber que
+repreguntar») y los tres textos que la justifican hablan solo de eso. Pero al
+convertir se promueve una **copia** a `imagenes/` y el objeto de `propuestas/` no
+se toca —«se lo lleva el ciclo de la propuesta», dice el comentario del panel—,
+así que con `aceptada` sin plazo **ese ciclo no llega nunca**: la foto de un
+tercero queda sin fecha de vencimiento bajo un prefijo que
+`limpiarImagenesHuerfanas` **no barre** (solo recorre `imagenes/` y `miniaturas/`).
+
+O sea que una decisión que se tomó mirando un campo se aplicó a dos, y del
+segundo no se habló.
+
+Lo barato es borrar el original cuando la promoción sale bien: la copia ya existe.
+Pero es **una decisión y no un renglón** —el original es también la prueba de qué
+mandaron— así que va acá y no en B-844. Su test:
+`it('la aceptada conserva el contacto pero no la foto original')`.
+
+> ✅ **Decidido por el dueño el 2026-09-10: se borra al convertir.** El original
+> no se guarda como prueba; la copia promovida alcanza.
+>
+> **Lo que la decisión no dice y hay que resolver al implementarla es *cuándo*
+> dentro de la conversión, y no es un detalle:** «convertir» hoy son dos momentos.
+> Al apretar el botón se promueve la copia y se abre el formulario, y **no se
+> escribe nada más hasta que la actividad se guarda** (D-600). Si el original se
+> borra en el primer momento y el admin abandona el formulario, la copia promovida
+> se la lleva `limpiarImagenesHuerfanas` a las 72 horas y **la propuesta queda sin
+> flyer sin haber sido aceptada nunca** — no se puede reintentar, y nadie se
+> entera. Así que el borrado va en el segundo momento, cuando la actividad
+> efectivamente se guardó y la copia dejó de ser huérfana.
+>
+> Y el orden importa igual que en B-838, en el sentido opuesto: acá lo barato es
+> **verificar la copia primero y borrar el original después**. Si el borrado del
+> original falla queda un duplicado, que es inofensivo; al revés se pierde la foto.
+>
+> ✅ **Hecho (2026-09-10).** El borrado vive en el trigger de `propuestas/{id}`
+> —renombrado a **`borrarImagenAlCerrar`**, porque el cierre dejó de ser uno
+> solo— y acierta el segundo momento **por construcción**: la transición a
+> `aceptada` **es**, por D-600, «la actividad ya se guardó». El panel no podría
+> hacerlo aunque quisiera: `storage.rules` cierra el `delete` de `propuestas/`
+> para todo cliente. Sigue siendo un trigger y no dos (B-89), partido en
+> `if/else` para que la aceptada no pueda caer en el borrado crudo del rechazo.
+>
+> **La verificación son dos y no una:** que la actividad nombre una imagen propia
+> **y** que ese objeto esté en el bucket, porque una copia promovida se va sola a
+> las 72 horas si el formulario queda abierto. Si no pasa, el original se
+> conserva. Lo que **no** puede afirmar, y va dicho: cuál de las imágenes es la
+> copia promovida.
+>
+> Su caso vive contra el emulador y afirma **las dos mitades en el mismo `it`** a
+> propósito: mirar sólo la foto pasaría en verde el día que alguien «arregle»
+> esto haciendo caducar la aceptada, que se llevaría puesta la decisión de B-844.
+>
+> **Deja un paso manual:** la Function vieja está desplegada y hay que borrarla
+> **después** del deploy de ésta. **Y lo que no cierra es B-871.**
+
+### B-864 · El barrido borra sin precondición, y B-844 ensanchó la carrera a toda la bandeja — ✅ hecho (2026-09-10) · P2
+
+**Lo encontró el `auditor-privacidad` sobre B-844.** `borrarPropuesta` hace
+`delete()` con el id que se decidió al principio de la corrida, sin condición.
+Antes la carrera existía solo sobre las rechazadas; ahora cubre **toda la bandeja
+pendiente** y choca de frente con la promesa nueva («moverla de estado le renueva
+el plazo»): entre `propuestasVencibles()` y el `delete()`, un admin que aprieta
+«la estoy mirando» sobre una vencida ve el plazo renovado en Firestore y **pierde
+el documento igual**.
+
+Peor variante, y es propia de D-600: `convertir()` **no escribe nada** hasta que
+la actividad se guarda, así que convertir una propuesta vieja no renueva nada y el
+barrido se la puede llevar **con el formulario abierto** — el `revisarPropuesta`
+posterior falla con NOT_FOUND.
+
+Ventana real: segundos por día. El arreglo que el auditor propone es devolver
+`updateTime` en `propuestasVencibles` (es metadata, no agrega ningún campo del
+documento a memoria) y borrar con `delete({ lastUpdateTime })`.
+
+> ⚠️ **Y no es una línea, por una razón que el auditor no vio: choca con el orden
+> de B-838.** El objeto se borra **primero**, así que una precondición que falle
+> en el documento deja la foto borrada y el documento vivo — el huérfano que B-838
+> eligió como «el menos malo», pero acá cae justo sobre la propuesta que un admin
+> acaba de rescatar, que se queda con el flyer roto. La precondición tiene que
+> verificarse **antes** de tocar Storage (una relectura, o mover la guarda arriba),
+> y eso es rediseñar `borrarPropuesta`. Por eso se anota y no se hizo.
+
+> ✅ **Hecho (2026-09-10).** El barrido borra con **dos guardas y no una**, porque
+> son dos almacenes con capacidades distintas: `delete({ lastUpdateTime })` sobre
+> el documento —atómico, sin ventana— y una **relectura de metadata antes de tocar
+> Storage**, que es la única forma de proteger el objeto (Storage no tiene
+> precondición que ponerle a un `delete()`). **El orden de B-838 no se cambió**: el
+> objeto sigue primero, la guarda nueva va arriba de los dos, y su test sobre el
+> fuente pasó de fijar dos posiciones a fijar tres. Se evaluó invertir el orden
+> cuando hay precondición y se descartó con el argumento escrito: vuelve
+> catastrófico el fallo **más probable** —un transitorio de Storage—, que dejaría
+> la foto sin documento y sin corrida de mañana que reintente.
+>
+> La relectura es `getAll(ref, { fieldMask: [] })` y **no** un `ref.get()`: un
+> `get()` traería el contacto del tercero a la memoria de la Function y desharía la
+> garantía de B-838. El `updateTime` que la query ahora devuelve es metadata del
+> snapshot, no un campo.
+>
+> **Agrega una cuarta forma de perder la mitad del borrado, y va dicha:**
+> `la-tocaron-tarde` —documento vivo, foto muerta— si la tocan en la ventana que
+> queda entre la relectura y el `delete`. Cae del lado que B-838 eligió como el
+> menos malo pero sobre la peor propuesta posible; no se puede cerrar mientras
+> Storage no tenga precondición, así que se mide: `warn` con contador propio, y su
+> caso forzando la ventana con un `db` que mete la escritura del admin adentro del
+> `getAll`. Doce mutaciones probadas, tres siendo el argumento del diseño.
+>
+> **Lo que NO cierra es la variante de `convertir()`** —el barrido se la lleva con
+> el formulario abierto—: **B-866**. La precondición no puede cubrirla porque D-600
+> no escribe nada, así que no hay versión nueva contra la cual proteger. Y salió
+> **B-867**, del `auditor-privacidad`.
+
+### B-865 · El barrido de retención no lleva `limit()` — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Hecho.** La query pagina de a 200 con cursor y corta cuando las candidatas
+> llenan `MAX_PROPUESTAS_POR_CORRIDA` — ese tope ahora acota la lectura además del
+> borrado. **Lo que el ítem no decía y resultó ser el contenido del cambio: un
+> `limit()` a secas habría dejado de cumplir el plazo en silencio.** Sin `orderBy`
+> el orden es por id, así que leería siempre las mismas cincuenta y una vencida más
+> adelante en la colección no se borraría nunca. El corte es por **trabajo** y no
+> por cantidad leída.
+>
+> **Queda un residual que merece mirarse el día de B-836a:** sin nada vencido, la
+> búsqueda recorre la colección igual. No hay índice que lo evite —el reloj es el
+> máximo entre dos campos y depende del estado— y la única salida sería
+> denormalizar un `venceEn`, que es un campo nuevo del modelo.
+
+Nota operativa del `auditor-privacidad` sobre B-844. La query ahora arrastra
+**toda la bandeja pendiente** en cada corrida, no solo las rechazadas. Con la
+escritura anónima cerrada da igual —la colección está vacía—; el día que se abra
+`allow create` (**B-836a**) conviene revisarlo junto con
+`MAX_PROPUESTAS_POR_CORRIDA`, que hoy recorta el **borrado** y no la **lectura**.
+
+### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` — ✅ hecho (2026-09-11) · P4
+
+> ✅ **Hecho junto con B-867** (mismo archivo, misma función). `RE_RED` pasó a
+> `\bgoogle\.\w+\(` y quedó declarada **una sola vez**: estaba copiada literal en
+> `helpersConRed` y en `nombresConRed`, o sea la clase de B-88 esperando a que
+> alguien ensanchara una de las dos.
+>
+> **Medido:** el único trigger que cambia de respuesta es `traerAnaliticaDelSitio`,
+> por su helper `clientes`. Sigue afuera de la clase por lo que el ítem decía: **no
+> lee estado**. Las dos mitades están afirmadas por separado, así que el día que
+> aparezca ese cursor el chequeo lo agarra — la mutación que le agrega un `.get()`
+> pone en rojo el chequeo de B-85 mismo.
+
+**Lo midió el frente de B-845** al ensanchar el chequeo del otro lado.
+`helpersConRed` busca `fetch(`, `cal.events.` y `google.calendar(`, así que
+`traerAnaliticaDelSitio` —que habla con GA4 y con Search Console— da `red: false`.
+
+**Hoy no tapa nada, y el motivo es preciso:** ese schedule **no lee estado**
+(`lectura: false`), escribe una foto completa. O sea que le falta el primer
+síntoma de la clase, no solo el segundo. Pero el día que lea algo suyo —un cursor
+de la última ventana traída, por ejemplo— entra en la clase de B-85 y el chequeo
+no lo vería, **por el mismo tipo de ceguera que B-845 acaba de cerrar del otro
+lado**: el detector reconoce las formas que ya vio, no la que hay.
+
+El arreglo es una línea del regex (`google\.\w+\(` en vez de `google\.calendar\(`)
+y por eso mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que
+medir qué entra que hoy no entra antes de aplicarlo, no después.
+
+### B-860 · El `imagenUrl` del `events.json` es la tercera respuesta a «cuál es la imagen», y la única cruda — ✅ hecho (2026-09-11) · P4
+
+> ✅ **Hecho.** `imagenUrlDe` usa `imagenesPublicables` + `urlSegura`: las mismas
+> dos funciones que `imagenesDeDetalle` y **el mismo orden** —filtrar primero,
+> elegir portada después—, que es el que evita que una portada rota deje al índice
+> sin imagen habiendo una sana.
+>
+> **El atenuante se verificó, no se asumió:** ninguno de los ocho consumidores de
+> `EntradaDeIndice` lee `imagenUrl`.
+>
+> **Y el ítem se quedó corto:** el arreglo prometía convergencia índice↔detalle y
+> la habría dejado fijada por **dos literales en dos archivos de test distintos**
+> —su propia clase un nivel más arriba—. Lo cobró el `auditor-privacidad`.
+
+**Lo encontró el frente de B-854** después de unificar las otras dos.
+`imagenUrlDe` (`src/lib/eventsJson.ts`) es `portadaDe(a.imagenes)?.url ?? null`:
+**ni `urlSegura` ni el filtro de `imagenesPublicables`**. O sea que el
+`events.json` publica `imagenUrl: "javascript:alert(1)"` para una actividad con el
+`imagenUrl` legacy roto.
+
+**El atenuante, que es lo que lo baja a P4 y hay que decirlo entero: hoy ese campo
+no tiene lector.** D-146 sacó las imágenes del listado y el `og:image` sale de
+`detalle.imagenes[0]`, ya saneado. Es un campo público sin consumidor, no un XSS
+—no hay ningún `href` ni ningún `src` que lo reciba—. Pero es un dato crudo en un
+artefacto público y estático, y el día que alguien lo lea va a leerlo creyendo que
+pasó por el mismo filtro que las otras dos respuestas.
+
+El arreglo es la línea que el frente dejó escrita:
+`urlSegura(portadaDe(imagenesPublicables(a.imagenes))?.url ?? null)`. Va con su
+caso y con el barrido de la salida 1, que es lo que lo hace más que un `sed`.
+
+### B-861 · El `tallerista` del `events.json` sigue mirando el objeto y no el nombre — ✅ hecho (2026-09-11) · P4
+
+> ✅ **Hecho, y valía más de lo que el ítem decía.** No es solo el `''` vs `null`:
+> con el predicado viejo, la cáscara `{ nombre: '', bio: 'algo', instagram: '@x' }`
+> **publicaba la bio y el Instagram de alguien sin nombre** en la salida más barata
+> de cosechar.
+>
+> Se corrigió en `toPublic` y no en `entradaDeIndice`: es la frontera por la que
+> pasan las dos salidas, así que el índice hereda el `null` sin un segundo
+> predicado.
+>
+> **Lo que NO cierra: la salida 5.** `handlesDe` lee el documento crudo, así que el
+> texto para redes sigue arrobando al tallerista sin nombre. Antes de este ítem las
+> tres coincidían; ahora divergen. Es **B-881**.
+
+**La hermana de B-854 del lado de la proyección.** `toPublic.ts` decide
+`tallerista: a.tallerista ? {…} : null`, y `entradaDeIndice` lo colapsa a
+`a.tallerista?.nombre ?? null`, que para la cáscara vacía da `''` y no `null`.
+
+Es el mismo predicado que B-854 corrigió en la página de detalle, en el único lugar
+donde todavía se contesta con el objeto. Vale menos que aquél —el `events.json` no
+es lo que Google lee como `performer`— pero es la misma pregunta con dos respuestas
+en el repo, que es exactamente lo que B-854 vino a cerrar.
+
+**Ojo con el alcance:** esto sí ripplea al `events.json` y al barrido de salidas
+públicas, así que no es un cambio de una línea sino de una línea más su fixture.
+
+### B-859 · La bandeja acepta un `incluye` que `/proponer` deliberadamente no ofrece — ✅ hecho (2026-09-09) · P3
+
+**Lo encontró el frente de B-842** verificando de dónde sale la taxonomía que usa
+la conversión, y es la asimetría al revés de la que ese ítem describe: acá no falla
+la regla, falla que **las dos puntas del mismo camino usan listas distintas**.
+
+`useOpciones` devuelve dos: `valores` es **todas** las opciones —existe para
+*resolver etiquetas*, porque una actividad vieja puede estar usando una opción
+pendiente de otra cuenta— y `elegibles` es lo que esta cuenta **puede elegir**, que
+sin `uid` son las aprobadas. `/proponer` ofrece `opcionesPublicas(...)`, o sea las
+aprobadas. Pero `PropuestasPanel` le pasa a la conversión `incluyeConocido.valores`.
+
+O sea que un `curl` puede nombrar un slug que **existe pero está pendiente de
+aprobación**, y la conversión lo trata como conocido. **No es una fuga de texto de
+un tercero** —la etiqueta que se publica la escribió un admin, no quien propuso—
+pero deja que un anónimo elija una opción que el formulario público deliberadamente
+no ofrece, que es exactamente lo que **D-30** decide. La distinción entre las dos
+listas ya existe para esto: es usar la otra.
+
+Y el motivo por el que no lo agarró nadie es el de siempre: **las dos listas
+funcionan**. El resultado se ve bien en la bandeja, se publica bien, y la única
+diferencia es cuál de las dos preguntas se contestó.
+
+> ✅ **El hallazgo principal está arreglado (2026-09-09).**
+> `PropuestasPanel.convertir` pasa a `incluyeConocido.elegibles`, que es la misma
+> lista que ofrece `/proponer`. Caso nuevo con mutación probada en
+> `tests/propuestas-panel.render.test.tsx`, y —de yapa— **el mock de
+> `useOpciones` de ese archivo pasó a derivar `elegibles` con el `opcionesVisibles`
+> real**: devolvía `[]`, o sea que no ejercitaba nada. Los dos menores de abajo
+> siguen abiertos.
+
+**Dos hallazgos menores del mismo frente, que van acá porque son del mismo camino:**
+
+1. **La bandeja pinta los `incluye` sin distinguir conocido de inventado**
+   (`etiqueta` devuelve el slug crudo si no está en la taxonomía). Funciona, pero
+   mezcla en una línea de texto lo que se va a publicar y lo que no — que es
+   literalmente el punto de B-842 («doce chips que parecen taxonomía se leen como
+   taxonomía») aplicado a la única pantalla donde el admin decide. Un `†` o un
+   color costaría una línea.
+2. **Los duplicados sobreviven la conversión.** El formulario público no puede
+   producirlos (el toggle usa `includes`), pero un `curl` sí: doce veces
+   `merienda` llega al formulario y, si el admin no mira, a la ficha como el mismo
+   chip repetido. Es cosmético y **el admin lo ve como lo que es**, a diferencia
+   del slug inventado, que se disfraza. Un `[...new Set(incluye)]` con su caso.
+
+### B-856 · `ActividadFormulario.tsx` pasó el umbral de 550 LOC que el §1.3 tenía escrito — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Decidido: el umbral estaba mal calibrado, y lo que estaba mal es la
+> unidad.** No se partió nada.
+>
+> **La medición contestó la pregunta sola.** De las 727 líneas, **324 son prosa y
+> 372 son código**; de las 314 que sumó desde la medición anterior, **198 son
+> comentario**. Y la comparación que cierra el caso: la hipertrofia de este mismo
+> archivo (`af90b4e`) tenía 858 LOC con **780 significativas**; hoy son 727 con
+> **407**. 46 líneas de código por import entonces, **13** ahora.
+>
+> **El umbral nuevo: 550 líneas significativas, no 550 `wc -l`.** El número no se
+> toca. El fan-out pasa de término de la alarma a lectura — el umbral viejo era una
+> conjunción y se había dado por cruzado leyendo media.
+>
+> **Y la otra mitad: las pestañas ya son componentes propios.** Ocho de las nueve
+> tienen una sola sección, así que un panel por pestaña sería un envoltorio de la
+> sección que ya existe. El estado tampoco puede bajar.
+>
+> **Una corrección al propio ítem:** el fan-out no fue de 24 a 27 sino de **26 a
+> 31** — el instrumento pierde los imports multilínea (**B-877**). La conclusión
+> sobrevive con más margen: aun con el numerador corregido, el LOC crece cuatro
+> veces más rápido que los módulos que el archivo conoce.
+
+**Lo disparó la remedición de B-849**, y es la primera vez que un umbral escrito
+en `docs/10-salud-del-codigo.md` se cruza: **727 LOC** contra las 550, y del
+puesto 28º al **18º de 254**. Contado commit por commit, cruzó el umbral el
+**2026-09-07 con D-490** (las pestañas) y siguió con B-814.
+
+**El dato que dice qué clase de problema es:** el fan-out creció de 24 a **27**
+mientras el LOC crecía un 76 %. O sea que **no se volvió un módulo que sabe de
+todo**: sigue teniendo forma de compositor, y lo que engordó es el armado. Eso
+descarta el diagnóstico fácil («hay que partirlo en cinco») y hace que valga
+mirarlo antes de tocarlo.
+
+Lo que hay que decidir mirándolo: si las pestañas pueden ser componentes propios
+sin que el estado del formulario se disperse —que es lo que hoy lo mantiene en un
+solo archivo— o si el umbral está mal calibrado para un compositor y hay que
+subirlo con argumento. Las dos son respuestas válidas; la que no vale es dejarlo
+sin decidir, porque entonces el umbral deja de significar algo.
+
+### B-855 · Dos tests sobre fuente tienen su propio saneador, y uno de ellos ya puede dejarlo — ✅ hecho (2026-09-11) · P3
+
+> ✅ **Hecho. Las dos afirmaciones eran ciertas; la primera estaba incompleta.**
+>
+> El compartido no saca «de más» solo los `<!-- -->`: la familia más grande son
+> los **`//` que no arrancan la línea**, que el recorte local no tocaba porque
+> anclaba en `^\s*`. Van en la misma dirección que el ítem decía —más comentario,
+> ningún identificador de código— pero la que más texto sacaba no estaba anotada.
+>
+> La segunda fue exacta al caso: con el default, `listado-del-sitio` da **1 de
+> 47** en rojo, y es el `cerrarPanel`.
+>
+> **Lo que el ítem dejaba abierto: el default sigue siendo el que colapsa.**
+> Colapsar le saca el formato de encima al aserto, y `sinComentariosConFormato` es
+> la elección frágil, así que se pide por nombre. El contrafáctico pesa igual:
+> `appcheck.test.ts` dice en un comentario propio que su aserto está escrito
+> **porque** esto colapsa.
+>
+> **Y la verificación que el ítem no pedía pero el cambio sí:** que los asertos
+> sigan **significando** lo mismo se midió predicado por predicado, no por «quedó
+> verde». Uno hubo que reescribir. Quedó abierto **B-876**.
+
+**La segunda mitad de B-853.** `tests/listado-del-sitio.test.ts` y
+`tests/pagina-de-detalle.test.ts` se escribieron con un recorte de comentarios
+propio en vez del compartido, y ese esquive era la señal de que el problema de
+B-853 se conocía a medias. Con el saneador arreglado se probó sacarlos:
+
+- **`pagina-de-detalle` se puede y queda verde.** Verificado sobre los 26 `.astro`
+  de `src/`: lo único que el compartido saca de más son palabras de prosa adentro
+  de `<!-- -->`, que el recorte local **no** sacaba y debería. Ningún identificador
+  de código perdido.
+- **`listado-del-sitio` no todavía, y el motivo no es el bug**: el saneador
+  compartido **colapsa el espacio en blanco** (`\s+ → ' '`) y ese archivo tiene
+  regexes que dependen de la indentación literal —
+  `/const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/` da `null` sobre el texto
+  colapsado—. El camino limpio es **exportar la variante sin colapsar**: el colapso
+  es la última línea del módulo, separarlo es trivial, y `listado-del-sitio` pasa a
+  usar esa.
+
+Lo que se gana no es dedupliar por deduplicar: es que los dos recortes locales
+**no tienen** la red de clase contra el parser de TypeScript que B-853 le puso al
+compartido, así que hoy son dos lugares donde el mismo bug puede volver a nacer sin
+que nada se ponga rojo.
+
+### B-854 · El panel dice «tiene flyer» y «tiene tallerista» con un predicado distinto del que publica el JSON-LD — ✅ hecho (2026-09-09) · P3
+
+**Salió del frente de B-813**, que evitó esta clase donde estaba mirando —los tres
+números nuevos usan `urlSegura` y `admiteMonto`, las mismas funciones que deciden
+el markup— y encontró dos instancias viejas al lado.
+
+1. **`faltaElFlyer` y el `image` del JSON-LD no son el mismo predicado.**
+   `faltaElFlyer` (`src/lib/imagenes.ts`) pregunta «¿la portada tiene una `url` no
+   vacía?»; `datosEstructurados` pregunta «¿hay alguna imagen que `urlSegura`
+   acepte?». Divergen en los dos sentidos, y el peligroso es éste: **una portada
+   con url no vacía pero inválida** —posible en los documentos con el `imagenUrl`
+   legacy, que nunca pasó por `esUrl`— hace que el panel diga «tiene flyer»,
+   `/cartelera` no la muestre y Google no reciba `image`. Nadie se entera.
+   El arreglo natural es que `faltaElFlyer` use `urlSegura`; toca tres consumidores
+   (el aviso del formulario, la marca del listado y `/cartelera`), así que la parte
+   fina es revisar qué se rompe en cada uno, no la línea.
+
+2. **`datosEstructurados` emite `performer` mirando el objeto y no el nombre**
+   (`d.tallerista ? { …, name: d.tallerista.nombre }`, `detallePublico.ts`). Hoy lo
+   tapa `formADocumento`, que escribe `tallerista: null` cuando no hay nombre
+   (`actividades.ts:116`), pero un documento **anterior a esa regla** publica
+   `performer.name: ''` en el JSON-LD. Es una línea, y merece su caso.
+
+Las dos son la clase de **B-88** con la cara menos visible: no es una segunda lista
+de reglas escrita a mano, es la **misma pregunta contestada por dos funciones** que
+nacieron para cosas distintas y hoy se leen como si fueran la misma.
+
+> ✅ **Arreglado (2026-09-09). Los dos diagnósticos eran ciertos, y el (1) tenía un
+> consumidor de menos y un agravante de más.**
+>
+> **La corrección al ítem: `/cartelera` no llamaba a `faltaElFlyer`.** Lo decía su
+> docblock y no el código. Los call-sites reales son cuatro en tres módulos —el
+> aviso del formulario, el chip del listado, y el aviso `sin-flyer` más la cobertura
+> `conFlyer` del tablero—. La cartelera y el `image` del JSON-LD son la **cuarta**
+> respuesta, escrita por el consumidor sobre `DetallePublico.imagenes`, y eso es
+> justo lo que hacía invisible la divergencia: no había dos funciones enfrentadas en
+> la misma lista, había una lista de tres y un consumidor que contestaba por su
+> cuenta.
+>
+> **El agravante:** el docblock de `enGoogle` (B-813, de esta misma tanda) afirma
+> que `image` «ya es» la cobertura «Con imagen» y el aviso `sin-flyer`, y con dos
+> predicados distintos esa frase era falsa — una legacy rota se contaba como «Con
+> imagen» y Google no recibía nada. Hoy es cierta.
+>
+> **El arreglo no es «`faltaElFlyer` usa `urlSegura`», es una sola derivación**:
+> `imagenesPublicables` (`lib/imagenes.ts`) es la mitad de `imagenesDeDetalle` que
+> decide cuáles entran, y ahora la llaman las dos puntas. Y el predicado del panel
+> pasó de «la portada tiene dirección» a «queda alguna publicable», que es lo que la
+> salida hace a propósito: `imagenesDeDetalle` busca la portada **después** de
+> filtrar para que una portada rota no deje la página sin imagen habiendo otras. El
+> arreglo literal del ítem habría dejado la misma grieta un tamaño más chico —
+> portada rota + foto sana daría «Sin flyer» con la pared mostrando la foto.
+>
+> **El (2) se corrigió en `detalleDeActividad` y no en la línea del `performer`, y
+> por eso cerró dos superficies:** la plantilla gatea la sección «Quién lo da» con
+> el mismo objeto, así que la cáscara vacía también pintaba un `<h2>` con el nombre
+> en blanco. Se pierde la `bio` de un documento sin nombre, y está bien:
+> `formADocumento` ya la tira en el próximo guardado. Mismo criterio que
+> `libroPublico`.
+>
+> **Lo que impide que se separen de nuevo es la atadura y no los casos.** Sobre una
+> familia de ocho galerías: «falta el flyer» ⟺ la página no publica ninguna imagen ⟺
+> no entra a la cartelera ⟺ el JSON-LD no lleva `image`. Cuatro mutaciones probadas;
+> la que justifica el diseño es la cuarta —sacarle el filtro a `imagenesDeDetalle`—,
+> porque pone la atadura en rojo desde el lado de la **salida**, que es la dirección
+> que ningún caso suelto cubría. Nota honesta: la atadura sola no alcanza —una
+> mutación que mueve las dos puntas a la vez la deja verde—, y por eso convive con
+> los casos por valor.
+>
+> **Quedaron dos hermanas afuera, en la proyección del `events.json`:** son **B-860**
+> y **B-861**.
+
+### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan — ✅ hecho (2026-09-09) · P2
+
+**Lo encontró el frente de B-798 midiendo**, y es previo a su cambio: verificado
+contra el archivo de `HEAD`. El saneador compartido reduce `Buscador.tsx` de
+**41.363 a 6.904 caracteres** —se pierden `export function Buscador` y las dos
+llamadas a `medirSitio`—, así que **cualquier test que lo use sobre ese archivo
+está afirmando sobre casi nada**.
+
+Es la **misma clase** que el bug que ese script ya tuvo con `firestore.rules`
+(2026-09-09, en la tanda de B-830): un `/*` que aparece adentro de un comentario de
+línea abre un bloque que se come todo hasta el próximo `*/`. Aquella vez se arregló
+**el orden** de los dos reemplazos; esto es otra forma del mismo agujero, así que
+el arreglo de entonces no lo cubrió y el docblock del script sigue prometiendo que
+«se audita de más y nunca de menos», que es **exactamente lo contrario** de lo que
+pasa acá.
+
+Lo que hay que hacer: encontrar cuál construcción de `Buscador.tsx` lo dispara
+—probablemente una expresión regular o un string con `/*` adentro, que es lo que un
+recorrido por texto no puede distinguir—, arreglarlo con su caso, y **barrer quién
+más lo usa**: `tests/listado-del-sitio.test.ts` y `pagina-de-detalle.test.ts` ya lo
+esquivan con un recorte propio, y ese esquive es la señal de que el problema se
+conocía a medias.
+
+> ✅ **Arreglado (2026-09-09), y el disparador no era ninguno de los dos que este
+> ítem sospechaba.** No era un regex ni un string con `/*`: era el `\s*` del patrón
+> de JSX, que deja que `interface Props {` más el docblock de su primera propiedad
+> sean una apertura de comentario. Como el cierre exige el `*/` pegado a un `}`, la
+> búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**.
+>
+> **Se reemplazaron las cuatro pasadas de `replace` por un solo recorrido de
+> izquierda a derecha** sobre una alternación de tokens (comentarios + strings).
+> Eso cierra las **cuatro** instancias de la familia y no solo la de este ítem: el
+> `/*` adentro de un `//` (B-830), el `//` adentro de un bloque, el `{` de acá, y
+> el `//`/`*/` adentro de un string. **Y desmiente lo que este ítem daba por
+> hecho**: el arreglo de B-830 no «no lo cubrió» por casualidad, no podía cubrirlo,
+> porque el problema nunca fue el orden sino que cada pasada arranca de cero sobre
+> un texto que la anterior ya reinterpretó.
+>
+> La promesa «se audita de más y nunca de menos» se corrigió en el docblock: no hay
+> lado seguro al que apostar —los consumidores piden las dos direcciones— así que
+> hay que no equivocarse, y el error residual se elige del lado del residuo porque
+> es el único acotado.
+>
+> **No se escribió un parser**, y el argumento está en el módulo: lexear literales
+> de expresión regular necesita el token anterior, o sea medio parser de JS, que
+> además no cubriría `.astro` ni `firestore.rules`. En su lugar hay red de clase —
+> `tests/sin-comentarios.test.ts` compara contra el parser de TypeScript sobre los
+> 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de
+> código. Contra la implementación vieja da rojo en **23 archivos**.
+>
+> **Ningún consumidor actual estaba afectado: el agujero era latente.** Los cinco
+> dan salida idéntica antes y después. Lo que esperaba no era un bug con víctima
+> sino que alguien apuntara el saneador a cualquiera de esos 23 —`VisorDeGaleria`
+> al 91%, `PropuestasPanel` al 84%, `ActividadFormulario` al 78%—. La segunda mitad
+> del ítem, la de unificar los recortes locales, quedó como **B-855**.
+
+### B-851 · El barrido de promesas no cubre las promesas sobre plata — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Cerrado: la familia está en el barrido que ya existía, y su premisa se
+> deriva.**
+>
+> `PROMESAS_SOBRE_PLATA` son cinco fórmulas con las dos escapatorias de siempre, y
+> `elSitioVendeEspacio()` —la prosa de `comercialDelSitio.ts` más la existencia de
+> `/anunciar`— es lo que las hace exigibles: **el día que el sitio deje de vender
+> espacio, el barrido se apaga solo** y la promesa vuelve a ser escribible, en vez
+> de quedar un test exigiendo callar algo que ya es verdad. Un caso aparte afirma
+> la premisa, para que esa derivación no se pueda romper **en silencio**.
+>
+> **Un campo que la familia de datos no necesitaba: `acotable`.** La promesa de que
+> no hay publicidad **no** se acota —habla de lo que el sitio hace, no de lo que le
+> cobra a quien lee— y sin esa distinción el barrido se pierde justo la frase de
+> B-785, que traía «es gratis» pegado en la misma ventana. Es exactamente como esa
+> frase llegó a producción.
+>
+> **El barrido no pasa por vacío:** hoy hay tres frases publicadas que disparan una
+> fórmula y las rescata el alcance. Sacar la escapatoria las nombra.
+>
+> **Dos cosas anotadas y no tocadas:** «La agenda es gratis y va a seguir siendo
+> gratis» (`apoyoDelSitio.ts`) queda **rescatada** por el alcance —mismo criterio
+> con el que B-785 conservó el «es gratis» de `/ayuda`: `/anunciar` le cobra a un
+> café por que se lo vea, no a quien lee ni a quien publica—, y el docblock de
+> `POR_QUE_ACA` en `comercialDelSitio.ts` dice «los cuatro argumentos» cuando el
+> array tiene **tres**.
+
+**Salió de cerrar la mitad de la ayuda de B-785.** `tests/promesas-sobre-datos.test.ts`
+barre todos los `*DelSitio.ts` buscando negaciones absolutas **sobre datos del
+visitante**, y por eso no vio que la ayuda dijera «no tiene publicidad y va a
+seguir así» con `/anunciar` vendiendo espacio en el encabezado.
+
+Es **la misma clase** —una afirmación pública que el sitio desmiente, en HTML
+indexado— sobre otro eje. Y el caso quedó resuelto en `tests/ayuda-del-sitio.test.ts`,
+o sea **en una sola página**: exactamente lo que B-781 dijo que no alcanzaba cuando
+el caso de `/apoyar` vivía solo en `apoyo-del-sitio.test.ts`.
+
+La versión general es una familia `PROMESAS_SOBRE_PLATA` en el barrido que ya
+existe, con la misma forma que la de datos: patrones de promesa («no tiene
+publicidad», «siempre va a ser gratis», «nunca vamos a cobrar»), las escapatorias
+que la acoten o la condicionen, y **la premisa derivada** de `comercialDelSitio.ts`
+—si algún día el sitio deja de vender espacio, la promesa vuelve a ser escribible y
+el barrido tiene que dejar de exigirla—. Los dos sentidos del detector, como el
+otro.
+
+### B-849 · El §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice 250 — ✅ hecho (2026-09-09) · P3
+
+> ✅ **Hecho, con una corrección al propio ítem y dos problemas que la medición
+> cerró de paso.**
+>
+> El §1 y el §6 están remedidos con `node scripts/salud-del-codigo.mjs`,
+> `npm test`, `npx tsc --noEmit` y `npm audit --omit=dev`, **y cada cifra dice con
+> cuál** — que era la mitad faltante de la pasada anterior. Los números viejos
+> quedaron como historia fechada, no se borraron. Producción: **254 archivos /
+> 63.983 LOC** (eran 180 / 41.388); concentración **26,6 %**; ratio de tests
+> **1,69**.
+>
+> **La corrección: el ciclo no nació con B-841.** Nació con **B-62 el 2026-09-07**
+> —`campos/Seccion.tsx → AyudaDeSeccion → import(CentroAyuda) → campos/Seccion.tsx`—
+> y B-841 le renombró un nodo. Se **declara** en el §1.5 en vez de romperse: la
+> arista del medio es un `lazy(import())`, que no cierra un ciclo de
+> inicialización, y cortar la de vuelta metería un segundo amarre del panel en
+> `CentroAyuda` — la duplicación que la capa de B-841 existe para evitar. El test
+> sigue verde porque corre sobre el grafo estático, y se pone rojo el día que ese
+> `import()` deje de ser diferido.
+>
+> **Cerraron el Problema 3** (`functions/index.js`, 48 LOC) **y el Problema 4**
+> (Astro 7.3.1). **Se abrió B-856** (`ActividadFormulario.tsx` pasó las 550 LOC), y
+> quedaron reportados dos pendientes dentro del propio documento: nada verifica que
+> el ciclo diferido siga siendo el único, y el barrido de prosa envejecida del §1.6
+> se hizo sobre 41.388 de las 63.983 LOC que hay.
+
+**Lo trajo el frente de B-806** cerrando el conteo de tests de render, y lo dejó
+afuera a propósito: es otra pasada, no una línea suelta. El §1 declara **180
+archivos y 41.388 LOC** de producción; `node scripts/salud-del-codigo.mjs` hoy
+mide **250 y 62.139** (con `src/` en 197 archivos).
+
+El documento **vale porque cada número dice cuándo se contó**, así que la pasada
+completa es el trabajo: correr el script, actualizar las cifras del §1 y del §6, y
+dejar la medición vieja como historia con su fecha, igual que se hizo con el
+Problema 1. De paso el script reporta un **ciclo de imports vivo**
+(`campos-del-panel.tsx → AyudaDeSeccion.tsx → CentroAyuda.tsx → campos-del-panel.tsx`),
+que nació con el refactor de B-841 y no está anotado en ninguna parte.
+
+### B-850 · El campo de texto alternativo sigue diciendo «Se necesita para publicar», y su error es código muerto — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Cerrado, con una corrección al propio diagnóstico y un tercer resto que el
+> ítem no nombraba.**
+>
+> El cartel dice ahora lo que es cierto —no frena la publicación, y por qué conviene
+> completarlo igual— **en sus dos ramas**. Del punto 2 se eligió **sacar la ruta
+> muerta** y no darle largo máximo al campo, por un dato que el ítem no tenía a
+> mano: **ningún campo de texto del schema tiene `.max()`** —los únicos son
+> `geo.lat` y `geo.lng`—, así que la otra salida era inventar una regla que el
+> modelo no tiene en ninguna parte para que una rama de render volviera a tener con
+> qué alimentarse.
+>
+> **La corrección: la fila de `camposFaltantes.ts` NO estaba sin consumidor**, y el
+> ítem se equivocaba. `campos-faltantes.test.ts` compara ese mapa contra
+> `CAMPOS_VALIDABLES` **en las dos direcciones**, y ese set es la *forma* del schema
+> —derivada recorriendo el `ZodObject`— y no la lista de lo rechazable, igual que
+> `imagenes.N.alto` o `imagenes.N.id`, que tampoco pueden fallar. Sacarla habría
+> puesto el test en rojo. Se corrigió su comentario, que era donde vivía la
+> afirmación falsa.
+>
+> **Y el tercer resto, que el frente encontró y no era suyo: `src/lib/ayuda.ts` lo
+> contradecía tres veces**, una de ellas marcada `cuidado: true` —o sea presentada
+> como aviso irreversible— y otra afirmando además que «el aviso de abajo dice que
+> falta desde el momento en que agregás la imagen», que tampoco es cierto:
+> `faltaParaPublicar` ya no lo devuelve. Corregidas las tres en el mismo cambio, que
+> es donde correspondía: es el archivo que existe para contarle a quien no participó
+> de la decisión lo que no se ve en pantalla.
+>
+> Lo que reemplaza al caso borrado **no es otro `toContain`**: el viejo pasaba
+> porque solo miraba el fuente —afirmaba que dos strings estaban en el `.tsx`, y
+> esos dos strings eran la rama muerta—. En su lugar hay una afirmación sobre el
+> **comportamiento**: los rechazos de un texto de 5.000 caracteres tienen que ser
+> exactamente los de uno corto, y se pone en rojo el día que el campo gane una regla
+> de forma.
+
+**Dos hallazgos del mismo frente (B-815), y los dos salen de la misma reversión:**
+el 2026-09-07 el dueño mandó sacar el bloqueo que D-440 había puesto —el
+`textoAlternativo` de la portada dejó de frenar el publicado— y quedaron dos cosas
+sin actualizar.
+
+1. **`GaleriaEditor.tsx` (~línea 397) sigue diciendo «Se necesita para publicar»,
+   dos veces.** `novedades.ts` sí se corrigió (`describir-la-portada-ya-no-frena`);
+   esta copia no. Le está mintiendo a quien carga, en el campo exacto de la
+   decisión — y es la clase de mentira que este repo persigue en la ayuda del
+   sitio, adentro del panel.
+2. **El error de ese campo es código muerto, y la justificación escrita para
+   conservarlo es falsa.** `opcional = z.string().trim().default('')` **no tiene
+   largo máximo**, así que nada puede producir un issue en
+   `imagenes.N.textoAlternativo`: quedan sin consumidor el `errorAlternativo` de
+   `GaleriaEditor.tsx`, su `<p role="alert">` y la fila de `camposFaltantes.ts`. El
+   CHANGELOG lo justificó diciendo «el campo sigue teniendo forma (largo máximo)»
+   — no la tiene. Y el caso `it('el alternativo de la portada también tiene su ruta
+   y su cartel')` pasa igual **porque solo mira el fuente**: es un chequeo que ya no
+   puede fallar, que es justo la clase que este repo persigue.
+
+Lo barato y honesto: corregir el texto, y **decidir** el error — o el campo gana su
+largo máximo (y entonces el error vuelve a ser alcanzable, que es lo que la
+justificación decía) o se saca la ruta muerta con su caso.
+
+### B-845 · El chequeo de B-85 es ciego a todo trigger que delega en su módulo puro — ✅ hecho (2026-09-09) · P3
+
+> ✅ **Hecho, con el punto ciego comprobado antes del arreglo y una corrección a un
+> aserto propio.**
+>
+> **El diagnóstico era correcto y se verificó con un control positivo:** la misma
+> copia mala (leer estado → `fetch` → escribir lo leído, sin transacción) daba
+> **rojo** inline en `retencion-trigger.js` y **verde** una llamada más allá, en
+> `retencion.js`. Los tres barridos no entraban al chequeo.
+>
+> El chequeo mira ahora `trazaDe(t).cuerpos`, el recorrido que ya existía — no se
+> escribió un segundo. **Lo que cambió además: el orden salió de la condición.**
+> `cuerpos` no ordena entre cuerpos, y medido sobre `dispararRebuild` su `fetch`
+> cae **después** de su `ref.set(fallo)`: pedir `red < escritura` dejaría escapar la
+> clase viva por un artefacto de la concatenación. Pedir la conjunción es más
+> estricto y es lo correcto.
+>
+> **Que no se vuelva ruidoso está afirmado, no esperado:** los tres barridos pasan
+> con `lectura: true` y `escritura: false` —los ve, y salen limpios porque borran—
+> y `dispararRebuild` pasa con los tres síntomas prendidos por su transacción, que
+> es el positivo contra el verde vacío. La copia mala vive como test con cuerpos
+> sintéticos, el patrón que el archivo ya tenía para el detector de B-82.
+>
+> **La corrección al propio trabajo:** la mutación «borrar cuenta como escribir»
+> dejó verde el aserto `borrar lo que se leyó no es la clase` — pasaba por no tener
+> red, no por borrar. Se le agregó el `fetch` que le faltaba. Sin cambios en
+> `functions/`.
+>
+> De paso quedó anotado **B-862**.
+
+**Lo señaló el `auditor-trampas` auditando B-838**, y es un punto ciego heredado y
+no un bug de ese cambio. El chequeo de la clase de B-85 —«ninguna función
+programada escribe el estado que leyó sin compararlo»— busca `.get()`, `.set()` y
+`.update()` **en el cuerpo del trigger**. Desde que el repo adoptó el corte
+puro/pegamento (B-77), esos verbos viven en el módulo de al lado: ni
+`imagenes-limpieza-trigger.js` ni `versiones-limpieza-trigger.js` ni
+`retencion-trigger.js` los tienen literales, así que **ninguno de los tres pasa
+por ese chequeo**.
+
+Hoy no tapa nada: los tres barridos borran y ninguno escribe lo que leyó. Lo que
+importa es que el próximo que **sí** lo haga entre igual de invisible, y el corte
+puro/pegamento —que es la convención del repo— hace que ese sea el caso normal y
+no la excepción.
+
+Lo barato: que el chequeo trace las llamadas del trigger a su módulo, que es lo
+que ya hace `trazaDe` para los efectos duplicables (`RE_TOKEN` + `enFunctions`).
+O sea, reusar el recorrido que ya existe en el mismo archivo en vez de mirar solo
+el texto del trigger.
+
+### B-844 · Solo caduca la propuesta rechazada: una `nueva` abandonada guarda el contacto para siempre — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Hecho (2026-09-09).** `RETENCION_POR_ESTADO` (`functions/retencion.js`)
+> agrega el segundo plazo. **El dueño contestó 30 días**, no los 90 con que se le
+> hizo la pregunta: `nueva`/`en-revision` caducan a los 30 contados desde la
+> **última señal de vida** (el máximo entre `creadoEn` y `revision.en`).
+>
+> **Da el mismo número que la rechazada y son dos constantes a propósito**: dos
+> decisiones que hoy coinciden y pueden divergir —el margen de un arrepentimiento
+> contra cuánto tarda una bandeja en dejar de mirarse—, con un aserto que lo dice
+> al revés y un guard sobre el fuente para que nadie las una por prolijidad
+> (colapsarlas deja hoy **toda la suite en verde**). Criterio de
+> `MINIMO_DESCRIPCION` frente a `LARGO_RESUMEN`.
+>
+> El «contados desde `creadoEn`» de abajo se resolvió al revés a propósito:
+> `revision.en` se escribe en todo movimiento de estado, así que una reabierta el
+> día 40 se habría borrado esa misma noche. **Y con 30 días una propuesta puede
+> caducar antes de que nadie la haya abierto**: es correcto —es el caso que el
+> plazo cubre— y la mitigación es que la ficha diga cuántos días quedan durante la
+> última semana (`AVISO_DE_CADUCIDAD_DIAS = 7`, criterio en el docblock y en un
+> aserto, D-273).
+>
+> Cruzado contra la Function por catorce fixtures en
+> `tests/bandeja-de-propuestas.test.ts`, y no por import (motivo de alcance en el
+> docblock de `bandejaDePropuestas.ts`).
+>
+> **Queda abierta una pregunta chica, y es del código y no del dueño: ¿la
+> `aceptada` tiene que vencer?** Hoy no vence, con el argumento de que ahí el
+> contacto sirve (la actividad existe y puede haber que repreguntar). El dueño no
+> la contestó. Y lo que esa decisión **no** cubre es la foto original — **B-863**.
+
+**Sale de escribir la retención** (B-838, paso 11) y es la mitad que DEC-13 no
+contestó porque no se le preguntó: la decisión del dueño fue «¿cuántos días se
+guarda una **rechazada**? 30», y `decidirRetencion` hace exactamente eso. Las
+otras tres —`nueva`, `en-revision`, `aceptada`— no vencen nunca.
+
+El caso que importa no es la aceptada (ahí el contacto sirve: la actividad existe
+y puede haber que repreguntar) sino **la que nadie miró**. Una propuesta que
+llegó, no interesó y quedó ahí conserva el mail o el WhatsApp de una persona
+**para siempre**, y es el mismo dato que B-102 daba por inexistente y que B-843
+punto 1 obligó a poder borrar.
+
+Hoy hay una salida y está documentada: **rechazarla** la pone en la cola de los 30
+días. O sea que el borrado existe y depende de que un admin toque un botón, que es
+justo lo que la retención automática vino a no depender.
+
+Lo barato: que `decidirRetencion` acepte un segundo plazo, más largo, para la
+`nueva`/`en-revision` sin tocar —90 días, digamos, contados desde `creadoEn`— y
+que la bandeja lo diga. Lo que hay que decidir antes es el número y si la
+`aceptada` entra o no, y eso es del dueño, no mío.
+
+### B-819 · Restaurar puede volver a publicar un link que estaba apagado — y el flag es un par — ✅ hecho (2026-09-08) · P1
+
+> **Resuelto con una sola función para las dos mitades**, como pedía el ítem:
+> `flagsDePublicacionRestaurables` en `src/lib/historial.ts`. Saca «Modalidades» y
+> «Material» de la pantalla cuando la versión prende un flag que hoy está apagado
+> y la actividad tiene página. Se casa por `id` y nunca por posición; un item sin
+> `id` (material anterior a B-342) bloquea igual, porque no se puede probar que ya
+> sea público.
+>
+> **Y apareció una tercera cosa que el ítem no nombraba:** la guarda nacía con el
+> agujero de B-285 —decidía contra el snapshot del montaje, así que publicar desde
+> otra pestaña la dejaba pasar—. Lo señaló el docblock de `07-seguridad.md`, que ya
+> contaba que las otras dos se re-evalúan contra lo releído. Ahora se re-evalúan
+> **las tres**, y eso lo fija un control de **clase**: el test barre las llamadas
+> del cuerpo de `restaurarCampo` y rechaza cualquiera que mire `actual`. Con eso, la
+> cuarta guarda que entre no puede repetir el agujero — que es lo que pasó tres
+> veces seguidas.
+>
+> **Y la auditoría de cierre encontró un P0 en el propio arreglo**, que vale más
+> que el ítem: la guarda definía «hoy este link ya sale» como `flag === true`, y
+> los tres productores lo definen como `flag && url`. Con
+> `{urlPublica: true, url: ''}` —el estado que queda cuando alguien borra el link
+> apurado para cortar un zoombombing, porque el input y la casilla son
+> independientes y ni `formADocumento` ni el schema atan una cosa a la otra— la
+> guarda leía «ya publicado», dejaba pasar la restauración y la URL volvía a las
+> dos salidas. **El escenario literal de B-819 después del arreglo de B-819.**
+>
+> Es la clase D-30/B-88 en el eje que no se había mirado: no el par de campos
+> —eso ya estaba resuelto con una función para los dos flags— sino el par
+> **guarda ⇄ productor**. El predicado se extrajo a `toPublic.ts`
+> (`linkDeReunionQueSale`, `urlDeMaterialQueSale`) y la guarda lo **importa**, con
+> un test de clase que rechaza cualquier copia local. Eso cerró de una vez los
+> otros tres hallazgos menores: el gate de `material.tiene` que estrenaba la
+> página indexada, el `Set<id>` que colapsaba dos filas con el mismo id (la clave
+> es `id|url`), y el `=== true` que dependía del `z.boolean()` del piso de B-818.
+>
+> **Se abrió la sección «Las puertas» en la ficha del `auditor-privacidad`.** El
+> agregado de `historial.ts` a los disparadores no lo sostenía ningún test —la
+> lista se deriva de las **productoras**, y una puerta no produce ninguna salida—,
+> así que sacarlo no habría puesto nada en rojo: el mismo modo de falla que el
+> agregado vino a cerrar, un nivel más arriba. Entraron también
+> `actividades.ts`, `opciones.ts` y `reportes.ts`, con la tabla que dice por qué
+> cada una es una puerta y dos asertos que la atan al `description`.
+> `formulario/autoguardado.ts` queda afuera a propósito, con el argumento escrito.
+>
+> **No se abrió una D-xxx**, y el motivo es del `auditor-documentacion`: B-819 no
+> decide nada nuevo, aplica **D-124** —que ya estableció que los dos flags son un
+> par y se tratan con una sola función— a una segunda puerta. Abrir D-570 sería
+> documentar dos veces la misma decisión.
+>
+> 23 casos nuevos y siete mutaciones probadas. Las que importan: olvidarse de la
+> mitad del material rompe dos casos (D-30/B-88); volver al predicado del flag
+> rompe los siete del P0; y hacer regresar una guarda **vieja** al snapshot lo
+> agarra el control de clase, que es la prueba de que sirve para la cuarta.
+
+
+**Lo encontró el `auditor-privacidad` cerrando B-818**, y lo nombró como lo que
+queda afuera a propósito: ni las guardas puntuales del historial ni el piso nuevo
+de B-818 lo pueden ver.
+
+`online.urlPublica` es el flag de D-15: con `false` el link de la reunión no sale
+a ninguna parte, con `true` sale al `events.json` y al evento de Calendar. **El
+schema no tiene ninguna regla sobre ese flag** —la decisión se delegó al flag a
+propósito— así que `issuesDeRestauracion` devuelve `[]` y no hay nada que frenar.
+
+`online` está en `CAMPOS_DERIVADOS` y no se restaura suelto, pero **`modalidades`
+sí, y lo trae adentro**: restaurar una versión anterior a que el dueño apagara el
+flag lo vuelve a prender, y con eso el link vuelve a las dos salidas. La escritura
+marca rebuild, así que sale solo.
+
+**Y la pantalla no puede avisar**, que es lo que lo hace P1 y no P2: `resumenDeCampo`
+resume un array como «2 elementos», o sea que la fila dice «Modalidades — Decía: 2
+elementos». Quien aprieta no ve que está volviendo a publicar un link que hoy está
+apagado. Es exactamente la forma de B-181, con otro campo y sin el schema atrás.
+
+**Dónde y el molde.** `src/lib/historial.ts`, al lado de `comisionesRestaurables`:
+no restaurar unas `modalidades` que traen `urlPublica: true` sobre un documento que
+hoy lo tiene en `false` y tiene página. La alternativa —nombrarlo en el `confirm()`
+en vez de bloquear— es más barata y peor: el `confirm()` ya dice «¿Restaurar
+modalidades…?» y agregarle una advertencia no cambia que la fila sigue diciendo «2
+elementos».
+
+**El caso legítimo que no hay que romper:** volver a prender el flag a propósito se
+hace desde el formulario, que es donde está la casilla y donde el texto dice qué
+hace (B-240). El historial no es el lugar para eso.
+
+#### Y es un par: `material.items[].publico` es la otra mitad
+
+Lo agregó la segunda pasada del `auditor-privacidad`, sobre la primera versión de
+este ítem, que nombraba solo `online.urlPublica`. **El precedente lo escribió el
+propio repo:** el P1 nº 1 de D-124 —el borrador autoguardado— trató los dos flags
+**juntos** y los apagó juntos con `sinFlagsDePublicacion`. Por la puerta del
+historial se había nombrado uno.
+
+`material` es restaurable, el schema no tiene ninguna regla sobre `publico` (la
+decisión se delegó al flag, D-15), así que `issuesDeRestauracion` devuelve `[]`. Y
+`resumenDeCampo` sobre un objeto sin `nombre` emite **las claves**, o sea que la
+fila dice «Material — Decía: tiene, items»: quien aprieta no ve que vuelve a
+publicar la URL del material que había despublicado. Destino: el `events.json`, la
+descripción del evento y el detalle.
+
+**Cerrar una mitad de un par y no la otra es la clase D-30/B-88** que
+`historial.ts` ya cita tres veces, así que las dos mitades van con **una sola
+función**, no con dos guardas parecidas.
+
+**Lo que NO entra:** `inscripcion.destino`. Ese valor ya era público en las dos
+versiones, así que no hay flag que se prenda ni destino que se abra.
+
+### B-818 · Restaurar «Estado» desde el historial publica sin pasar por ninguna validación — ✅ hecho (2026-09-08) · P1
+
+> **Resuelto con la segunda de las tres salidas: validar el documento resultante**
+> (decisión del dueño, escrita como **D-540**). No se filtró `estado`: filtrarlo
+> cerraba la instancia visible y dejaba la puerta abierta — restaurar una
+> `inscripcion` sin destino o unas `modalidades` incompletas **sobre una
+> publicada** saltea el mismo nivel por el mismo `updateDoc`, y eso no lo tapaba
+> ninguna de las guardas puntuales.
+>
+> `issuesDeRestauracion` (`src/lib/historial.ts`) corre el documento que va a
+> quedar por el mismo `actividadFormSchema` que usa `guardarActividad`, entrando
+> por el mismo `documentoAForm`, y **compara los rechazos de antes y de después:
+> solo bloquean los nuevos**. Sin esa resta, una actividad publicada antes de que
+> existiera la regla que hoy la rechaza quedaría con la pantalla de recuperación
+> entera bloqueada, que es justo la pantalla a la que se va cuando algo está roto.
+> El caso de este ítem igual queda bloqueado porque restaurar `publicado` **mueve
+> el nivel de validación**, así que todos los rechazos del nivel largo son nuevos
+> por definición.
+>
+> **Las guardas puntuales se quedan todas**, y no por prudencia: `documentoAForm`
+> lee `imagenes: null` con `imagenesDe`, que cae al `imagenUrl` viejo y devuelve
+> una galería **válida**, así que el schema no puede distinguir «restaurado a
+> `null`» de «no tiene imágenes» — eso lo sigue viendo solo `existiaEnLaVersion`
+> (B-167). La validación general es un piso, no un reemplazo.
+>
+> Siete casos en `tests/historial-restaurar.test.ts`, uno de ellos **sobre la
+> fuente** (`readFileSync`): `issuesDeRestauracion` es pura, así que un test suyo
+> no podría notar que nadie la llame ni que la llamen **después** del `updateDoc`.
+> Las dos mutaciones se corrieron de verdad y las dos fallan.
+>
+> El texto de abajo queda como estaba escrito, con las tres alternativas, para que
+> la decisión se lea contra lo que se decidió.
+
+**Lo encontró el `auditor-privacidad`** cerrando B-181, como la mitad general de
+un hallazgo cuya mitad puntual ya se arregló (el historial no restaura una
+etiqueta de comisión con un link de reunión sobre una página indexada).
+
+`restaurarCampo` escribe con un `updateDoc` que **no pasa por el schema** —lo dice
+el propio `historial.ts`— y `camposRestaurables` filtra `slug` (trampa 10, B-285),
+los cuatro derivados, los campos que no existían en esa versión y, desde B-181,
+`comisiones` con un link. **`estado` no está filtrado.**
+
+O sea que «Restaurar → Estado» escribe `estado: 'publicado'` **salteando todas las
+reglas del nivel publicar**: la sede incompleta, el canal de inscripción sin
+destino, el monto contradictorio, el slug `-copia`, el link en una etiqueta. El
+camino no necesita mala fe ni consola:
+
+1. publicada → se pasa a borrador y se edita algo que en borrador está permitido
+   (por ejemplo el link en la etiqueta de una opción, que es legítimo ahí);
+2. «Restaurar → Estado» sobre una versión que decía `publicado`;
+3. la actividad queda publicada con ese contenido, y la escritura **marca
+   rebuild**, así que sale al sitio sola.
+
+**Es P1 y es preexistente**: vale para todas las reglas de publicar desde que
+existe la pantalla de restaurar (B-40), no solo para las de B-181. Lo que lo hizo
+visible es la guarda nueva, que es la primera regla de «que un dato no salga» que
+vive en ese nivel.
+
+**El arreglo probablemente sea filtrar `estado`**, con el argumento de que
+restaurar «publicado» no es recuperar contenido: **es publicar**, y publicar tiene
+una puerta con validación. Pero es una decisión de producto y no un bug obvio —
+saca una fila de una pantalla que el dueño usa— así que va anotado y no aplicado.
+Las alternativas, para que la decisión se tome sobre las tres:
+
+| Salida | Costo |
+|---|---|
+| filtrar `estado` de `camposRestaurables` | una línea; se pierde «volver a publicar desde el historial», que probablemente nadie usa — **el único lugar donde se cambia el estado es el select del formulario, y ése sí valida** (`guardarActividad` hace `safeParse` antes de escribir). El menú del listado tiene «se llenó / se liberó», «Duplicar», «Historial» y «Borrar»: ninguna publica. Lo corrigió el `auditor-privacidad`, y la afirmación anterior —«despublicar y publicar están en el menú del listado»— era falsa |
+| validar el documento resultante antes de escribir | lo correcto en general y lo más caro: `restaurarCampo` pasa a armar el documento completo y correrlo por el schema, que hoy no conoce |
+| dejarlo y documentarlo | gratis, y deja abierta una puerta que ya se sabe que existe |
+
+Dónde: `camposRestaurables` en `src/lib/historial.ts`, al lado del filtro del slug
+y del de comisiones. El test iría en `tests/historial-restaurar.test.ts`, al lado
+del `describe` de la trampa 10.
+
+### B-263 · La portada recortaba el 51 % del flyer — ✅ hecho (2026-09-01)
+
+**El bug con el que arranca toda la tanda.** `src/pages/actividad/[slug].astro`
+pintaba la portada con `class="aspect-portada … object-cover"` y
+`--aspect-portada` valía **16/9**. Los dos flyers que hay cargados en producción
+miden **720 × 826** —verticales, tipo historia de Instagram, 0,87— así que con
+`cover` sobre una caja apaisada se perdía el **51 %** de la imagen, mitad arriba
+y mitad abajo.
+
+Y no era margen lo que se perdía: **un flyer es texto metido adentro de un
+JPEG**. El título, la fecha y cómo anotarse están tipografiados ahí. El recorte
+se llevaba justo los datos.
+
+La decisión completa —incluidas las tres alternativas descartadas y qué pasa con
+el motivo por el que existía el token— está en **D-147**. En una línea: el token
+se retira, no se reemplaza por otro número, y lo sustituye una **regla
+compartida** («ninguna salida recorta») con un barrido sobre todos los `.astro`
+del sitio.
+
+**Lo que se hizo de paso, y que era la condición para poder reservar la caja:**
+el panel ahora **mide** la imagen externa en su vista previa
+(`naturalWidth`/`naturalHeight`) y guarda `ancho`/`alto`. Solo las filas que la
+sesión agregó o cuya dirección cambió — medir las ya guardadas escribiría en el
+formulario apenas se abre y `useFormularioSucio` diría «tenés cambios sin
+guardar» sin que nadie tocara nada.
+
+Siete mutaciones probadas, todas rojas: sin la guarda de medidas corruptas, la
+clase copiada a mano, `object-cover` al lado de la clase, sin `estiloDeAfiche`,
+la clase sin `max-h`, sin `object-contain`, y el token volviendo a `global.css`.
+
+### B-264 · Nadie cargaba el flyer, y el panel no lo pedía — ✅ hecho (2026-09-01)
+
+**El cuello de botella real, y es medible:** 42 actividades publicadas, **2 con
+imagen**. El 4 % es bajo en parte porque subir archivos existe hace cuatro días
+—casi todas se cargaron cuando lo único posible era pegar una URL— pero sobre
+todo porque el campo estaba escondido y nada lo pedía nunca:
+
+- vivía en **«Opcional»**, un acordeón **cerrado por defecto** y llamado
+  literalmente así;
+- la descripción de la sección era «Tags, imagen, destacado»;
+- y la única frase que acompañaba al editor **tranquilizaba**: «sin imagen, la
+  tarjeta del sitio no reserva un hueco gris: se ve igual de bien».
+
+Cuatro mitades, y ninguna bloquea:
+
+1. **El editor se muda a «Qué es»**, la primera sección y la que no colapsa. Es
+   donde ya viven el título y la descripción, y un flyer es eso mismo contado en
+   una imagen. En «Opcional» quedan las etiquetas y «destacar», que sí lo son.
+2. **La barra de acciones gana un tercer nivel**, abajo del gris de «para
+   publicar falta». Dice **qué se pierde** y no qué falta —«falta el flyer» no
+   mueve a nadie; «no entra en la cartelera» sí— y lleva hasta el campo. Vive en
+   `lib/formulario/recomendaciones.ts`, que es donde se puede testear.
+3. **El listado marca «Sin flyer»**, y solo en las publicadas que no lo tienen.
+   Es la misma regla que la marca de autoría de B-130: si todo lleva marca, la
+   marca deja de avisar.
+4. **`guardado_ok` manda `imagenes` como entero.** Cruzado con `estado`, que ese
+   evento ya mandaba, contesta la pregunta que abrió el cambio: qué proporción de
+   lo que se publica lleva flyer. Sin eso, el cambio se hace a ciegas.
+
+**No se puso traba, y hay un test que lo fija.** El empujón se convierte en
+bloqueo con una línea —agregar `imagenes` a la validación de publicación de
+D-120— y el pedido fue explícito: frenar la publicación por una imagen frena que
+se carguen actividades, que es peor que una actividad sin flyer. La mutación que
+agrega esa exigencia pone el test en rojo y ningún otro se entera.
+
+La condición sale de `faltaElFlyer`, **una sola derivación** para el aviso, la
+marca del listado y la cartelera: tres lugares que tienen que decir lo mismo.
+
+Nueve mutaciones probadas, todas rojas.
+
+### B-265 · `/cartelera`, la pared de afiches — ✅ hecho (2026-09-01)
+
+La página que hace que valga la pena cargar el flyer, y la otra mitad de B-264:
+el panel promete «sin imagen no entra en la cartelera» y esto es la cartelera.
+Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada
+uno enlazando a su actividad.
+
+Las decisiones están en **D-148**. Las que conviene tener a mano:
+
+- **Una pared, no un carrusel.** «En continuado» es que no termina, no que se
+  mueva. Nada avanza solo, así que no hay `prefers-reduced-motion` que respetar.
+- **Columnas de CSS y no una grilla**, con el número de columnas **atado a la
+  cantidad**: con los dos flyers de hoy sale una sola columna con tope de ancho y
+  la pared se densifica sola. Con cero no se dibuja una grilla vacía.
+- **Se arma desde el mismo `DetallePublico`** que genera cada página de detalle,
+  **nunca** desde un listado de Storage (trampa 13, con test propio).
+- Entra **segunda** en la navegación, pegada a «Agenda».
+
+Diez mutaciones probadas, todas rojas.
+
+### B-267 · Tres textos del panel describían pantallas que ya no existen — ✅ hecho (2026-09-01)
+
+Aparecieron al mudar el editor de imágenes (B-264) y los tres son de la misma
+familia: **texto de interfaz que quedó viejo cuando cambió lo que describe, sin
+que nada fallara**.
+
+| Dónde | Qué decía | Desde cuándo era falso |
+|---|---|---|
+| `src/lib/ayuda.ts`, capítulo del flujo | «Por ahora se pegan direcciones… subir fotos desde el teléfono todavía no está» | **D-131** (2026-08-27), que trajo la subida |
+| `src/components/admin/GaleriaEditor.tsx` | «Sin imagen, la tarjeta del sitio no reserva un hueco gris: se ve igual de bien» | **D-146** (2026-08-31), que sacó las portadas del listado |
+| `src/lib/ayuda.ts`, capítulo del flujo | un punto con la frase duplicada a medias («…queda así para la próxima.» + «cerradas para que el formulario no sea infinito. Se abren tocando el título.») | arrastre de un merge |
+
+Los tres corregidos. El segundo es el que más costaba: no solo describía una
+pantalla inexistente, **tranquilizaba justo donde había que empujar** — es parte
+de por qué el campo estaba en 2 de 42.
+
+**Lo que esto deja abierto es la clase, no la instancia.** `tests/ayuda.test.ts`
+exige que cada sección del formulario tenga capítulo y que el texto no tenga
+jerga; no puede exigir que el capítulo **diga la verdad**. Un chequeo de esa
+clase tendría que atar cada afirmación a un test de comportamiento, que es lo que
+`atadoA` ya hace para los seis avisos irreversibles. Extenderlo al resto de los
+puntos es trabajo del `auditor-documentacion`, que hoy lo cubre a criterio.
+
+### B-268 · La portada que se elegía en el panel no era la que se mostraba — ✅ hecho (2026-09-01)
+
+**Lo encontró el `auditor-trampas` sobre B-265, y es preexistente**: la página de
+detalle lo tenía desde B-227 y este cambio lo iba a propagar a `/cartelera`
+—además de documentarlo como invariante decidido en vez de arreglarlo—.
+
+`detalleDeActividad` mapeaba `imagenes` en el orden del array y **tiraba el flag
+`portada`**, mientras los dos consumidores toman `imagenes[0]`. Entonces:
+
+1. se carga una foto del lugar → nace portada, porque es la primera;
+2. se carga el flyer → segunda;
+3. se marca el flyer como portada con el radio del panel, que existe exactamente
+   para eso (`conPortada` togglea el booleano y **no mueve la fila**, y está bien
+   que no la mueva: el orden del array es el orden de carga y es lo que la
+   galería respeta);
+4. la cabecera de la actividad y la cartelera siguen mostrando **la foto del
+   lugar**.
+
+**El modo de falla es el peor de los baratos: no falla nada y falla coherente.**
+Las dos páginas muestran la misma imagen equivocada, así que compararlas no lo
+delata; se nota semanas después, cuando alguien pregunta por qué el flyer que
+cargó no está en la cartelera.
+
+**Arreglado en la proyección y no en las plantillas.** «Cuál es la portada» es una
+decisión del dominio y ya tenía una sola respuesta escrita —`portadaDe` en
+`src/lib/imagenes.ts`, la que usan el panel y la vista previa—; ahora
+`detalleDeActividad` pone primera la que tiene el flag, y todo consumidor del
+view-model hereda la respuesta correcta sin acordarse. Se **ordena**, no se
+filtra: la galería del detalle sigue mostrando el resto.
+
+Un detalle que no se adivina: el flag se busca **después** de descartar las URLs
+que `urlSegura` rechaza. Buscarlo antes dejaría la página sin imagen habiendo
+otras válidas.
+
+**Por qué el test que había no lo vio:** `tests/cartelera.test.ts` afirmaba el
+caso con la portada ya en el índice 0, o sea el comportamiento actual y no el
+invariante. Ahora están los dos casos y el de la URL inválida, con la mutación
+probada (volver a `a.imagenes.map(...)` sin reordenar deja el caso viejo en verde
+y el nuevo en rojo).
+
+### B-266 · El peso de la cartelera sin la Function de recompresión — ✅ resuelto del todo (2026-09-02)
+
+> **La miniatura existe** (B-220 / D-175) **y desde B-320 la pared la pinta.**
+> Medido sobre las 30 imágenes de producción: recorrer la pared entera pasa de
+> **3518,5 KB a 1032,4 KB (−71 %)** con miniaturas de 480 px. El disparador
+> escrito abajo —«cuando la cartelera pase de 20 afiches»— deja de aplicar: 30
+> miniaturas pesan menos de la mitad de lo que este ítem midió para 30
+> originales.
+>
+> **480 px y no 320** (que daba −84 %) porque la pared es de flyers y un flyer es
+> texto metido adentro de un JPEG (D-147): bajarle la resolución es bajarle la
+> legibilidad, no el peso de una foto.
+
+**Medido, no estimado** — los números y el método están en **D-149**.
+
+La cartelera es la **única** página del sitio que pide **muchas** imágenes: la home
+no pide ninguna desde D-146, y el detalle pide una si la actividad no tiene galería
+y hasta cuatro si la tiene (**B-296**; el techo por página está en **B-300**). Hoy,
+sin la Function de **B-220**, una imagen propia se sirve tal cual la subió quien
+organiza, hasta 3 MB.
+
+| | 2 flyers (hoy) | 30 flyers |
+|---|---|---|
+| HTML de la página | 8,2 KB | 30,8 KB |
+| bytes de imagen al entrar | ~120 KB | ~180–360 KB |
+| bytes al recorrerla entera | ~120 KB | **~2,6 MB** |
+
+**Por pantalla se sostiene y va a seguir sosteniéndose**: `loading="lazy"` más la
+caja reservada hacen que el costo de entrada no crezca con el total —es el mismo
+con 30 flyers que con 300—. **Por recorrido completo deja de sostenerse alrededor
+de los 20-25 flyers**, y el techo es peor que el promedio: un solo flyer de 3 MB
+pesa más que toda la pared medida.
+
+**No se construye nada más acá para taparlo**, porque no hay nada más que
+construir sin variantes de imagen: `sizes` sin `srcset` no hace nada, y las
+variantes son B-220. Lo que queda es el **disparador**:
+
+> Cuando la cartelera pase de **20 afiches**, o cuando alguna imagen propia
+> publicada pase de **500 KB**, B-220 deja de ser P1 y pasa a ser lo que bloquea
+> el sitio en un teléfono con datos.
+
+Mientras tanto, lo barato y no automatizado: al subir un flyer conviene
+recortarlo. El mensaje de rechazo de DEC-7b ya empuja en esa dirección, pero solo
+a partir de los 3 MB.
+
+### B-270 · El color del tipo de actividad, elegible desde Opciones — ✅ hecho (2026-09-01)
+
+Recupera lo que **D-146** había retirado de **D-141** y le agrega la mitad que
+faltaba: el color ya no lo impone el sistema visual, lo administra el sitio.
+El porqué completo está en **D-150**; lo que conviene tener anotado acá:
+
+- **Se deriva del slug y lo elegido es la excepción.** `tipo` es taxonomía
+  autogestionada: si el color se asignara solo a mano, el tipo creado desde «Otro»
+  nacería sin color y nadie se enteraría.
+- **El selector ofrece la banda, no un color.** Luminosidad y croma fijos, doce
+  matices con nombre. Así *cualquier cosa que se pueda elegir* pasa AA: los 360
+  tonos posibles están medidos contra las tres superficies del sitio y el peor da
+  **5,90:1** contra un piso de 4,5 (`tests/color-de-tipo.test.ts`).
+- **Tres guardas más**, las tres mutadas: `revisarTono` al guardar (con el ratio y
+  el piso en el mensaje), `esTonoElegible` al leer, y el mismo filtro al proyectar
+  al `events.json`.
+- **`pintarOpcion` es la única operación que puede tocar una opción base**, y tiene
+  que serlo: los siete tipos son `fijo: true`. Renombrar y borrar la siguen
+  respetando, con un test de integración que lo fija.
+- **Campo nuevo:** `tono?: number` en `/opciones/{campo}`, opcional, y `tono?` en
+  `OpcionPublica`. Salida pública tocada → pasó por el barrido de centinelas y por
+  el `auditor-privacidad`.
+- **Abierto en el camino:** **B-273** (la ficha del detalle sigue en azul fijo).
+
+### B-273 · La ficha del detalle pinta el tipo en azul fijo, y su comentario dice que es el mismo color que el listado — ✅ hecho (2026-09-01)
+
+**Lo encontró el `auditor-trampas` al cerrar B-270**, y es la otra mitad de D-150
+que no se pudo hacer.
+
+`src/pages/actividad/[slug].astro` pinta la cajita del tipo con `bg-azul` y el
+texto calado, con este comentario al lado:
+
+> «La cajita va en **azul tinta**, que es lo que el sistema le asigna a las
+> categorías, y es **la misma que abre cada fila del listado**: quien viene del
+> listado reconoce la pieza.»
+
+B-270 volvió falsa esa última frase: en el listado la cajita ahora lleva el color
+de su categoría. **Quien navegue del listado al detalle ve la cajita saltar de
+color**, que es justo lo contrario de «reconoce la pieza».
+
+No se arregló en B-270 porque `[slug].astro` y `detallePublico.ts` los estaba
+tocando otro frente en paralelo (las imágenes), y tocar los mismos archivos desde
+dos lados es cómo se pierde trabajo.
+
+**Arreglo:** `detallePublico.ts` hoy expone solo `tipoEtiqueta` (el label), así que
+la ficha no tiene con qué derivar el color. Hay que sumar el slug —o el tono ya
+resuelto— al view-model y usar `estiloDeTipo`/`colorDeTipo` en la plantilla. Ojo con
+que ahí la cajita es **tinta plena con el texto en papel**, no texto sobre papel:
+el par a medir es el papel encima del color, no el color sobre el papel, así que el
+test nuevo no es el mismo que el del listado. Si se decide dejarlo en azul, la
+corrección es igual de obligatoria: **arreglar el comentario**, que hoy afirma algo
+que no pasa.
+
+**Sin red:** no existe ningún test que compare el color del tipo en las dos
+pantallas. Vale escribirlo con el arreglo, porque es la clase de B-88 —dos
+derivaciones del mismo valor separándose— con las dos mitades a la vista.
+
+**Arreglado — D-153.** El color llega ya resuelto en `DetallePublico.tipoColor`,
+derivado con `colorDeTipo`, la misma función que pinta la fila; `tonosDelSitio()` es
+el único lugar del build que arma el mapa de matices y lo usan las dos pantallas; y
+el cuarto parámetro de `detalleDeActividad` es **obligatorio**, porque un default
+`{}` habría reproducido el bug en silencio y solo para los tipos pintados a mano.
+
+El par de contraste de la cabecera es **el papel calado encima del color** y no el
+del listado: `contrasteCaladoDelTono` lo mide sobre los 360 matices posibles y el
+peor —el tono 191— da **7,27:1** contra un piso de 4,5, mejor que los 5,90:1 de la
+dirección de texto y que el 6,14:1 del `azul` que había.
+
+La red que faltaba, escrita: el cruce listado/detalle en `tests/color-de-tipo.test.ts`
+compara los dos valores producidos; el guard de markup en
+`tests/detalle-visual.test.ts` impide que una clase de fondo sobreviva al lado del
+`style`; y un caso de integración fija que el color salga de la lista **filtrada por
+aprobación** —la asimetría opuesta a la de la etiqueta (D-30)—, que era la única
+decisión de privacidad nueva del cambio y no tenía test. Cuatro hallazgos del
+`auditor-privacidad`, los cuatro cerrados.
+
+**Se miró si había más de lo mismo y no había** — el detalle es la única otra pieza
+que el listado pinta con el color de la categoría. El rótulo de la cartelera se
+evaluó y **no es el mismo bug**: queda como **B-275**.
+
+### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
+
+El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y
+construye el listado del §6 del diseño entero. El detalle está en
+[`04-funcionalidades.md`](04-funcionalidades.md) y el estado sección por sección,
+en la caja de arriba de [`12-sitio-publico.md`](12-sitio-publico.md).
+
+Lo que conviene tener anotado acá, que es lo que costó decidir:
+
+- **Cuatro decisiones nuevas** — **D-137** (hay selector de orden, contra el §6.1),
+  **D-138** (`creadoEn` es público, con precisión de día), **D-139** (el link de la
+  reunión tampoco sale al detalle) y **D-140** (la plantilla recibe un view-model,
+  no el documento).
+- **Una salida pública nueva**, la sexta: la página de detalle y su JSON-LD.
+  Entró al barrido de centinelas **en el mismo cambio que la creó**, que es la
+  lección de B-212 y de la salida 5 aplicada a tiempo.
+- **Dos bugs que ningún test podía ver** — **B-237** (lo encontró el build de
+  verdad) y **B-243** (lo encontró calcular el contraste, que nadie había
+  calculado).
+- **Cinco hallazgos del `auditor-privacidad`**, todos arreglados: el `url` del
+  organizador sin sanear en el JSON-LD, la hora exacta de carga en `creadoEn`, el
+  import del lector que dejaba a la plantilla recuperar el documento, las
+  etiquetas del detalle filtradas por aprobación (contra D-30) y la salida 6 sin
+  nombrar en el mapa de salidas.
+- **Abiertos en el camino:** B-238 (hoja de filtros y CTA fijo), B-239 (el peso de
+  React en la home), B-240 (la casilla del link dice algo que el sitio no hace),
+  B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
+  panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
+
+### B-260 · Brutalismo editorial: la tercera dirección visual — ✅ hecho (2026-08-31)
+
+**El dueño rechazó la dirección de D-141 al verla terminada.** B-247 y B-253 la
+dejaron completa y el rechazo no fue por la ejecución ni por la paleta: la
+estructura de Eventbrite es la estructura de una plataforma. Es el **segundo**
+rechazo, así que esta vez la referencia se aprobó **antes** de escribir código
+—`docs/referencias/sistema-visual.md` y `stitch-detalle.md`— y el contraste se midió
+antes de implementar. Decisión: **D-146**.
+
+- **Tres reglas nuevas para todo el sitio:** radio 0, estrictamente plano, y tintas
+  con nombre en vez de opacidades. La tercera deja el sitio con **cero** atenuaciones
+  de color y cierra la clase de B-235 de raíz.
+- **Tipografía:** Bodoni Moda + Archivo Narrow + Public Sans en lugar de Lora +
+  Inter, y **pesan menos** (58,8 KB contra 84,2 KB, medido sobre los woff2 que sirve
+  la URL del build). `--font-serif` y `--color-acento-hondo` se borraron.
+- **El listado pasa de grilla de tarjetas a filas y pierde toda imagen** — ni foto ni
+  portada generada. Se retiran `Tarjeta.tsx`, `PortadaDeTarjeta.tsx`,
+  `GrupoDeChips.tsx` y el color derivado por tipo de `identidad.ts`. Los filtros van
+  a un riel izquierdo **solo en escritorio**.
+- **La página de detalle** se rehízo sobre `stitch-detalle.md`, conservando los dos
+  casos que la referencia resolvió bien: el encuentro cancelado visible y tachado, y
+  el material distinguido sin iconos.
+- **Diez correcciones a la referencia**, todas con motivo en D-146.
+- **`tests/sistema-visual.test.ts`** (nuevo) ata cada token al hex de la referencia
+  aprobada y barre el sitio entero. **28 mutaciones probadas, las 28 atrapadas.**
+
+**Qué sigue abierto, sin cambios: B-238** — la hoja inferior de filtros de móvil
+sigue siendo una capa modal y no se construyó a medias. El disclosure de D-143 se
+conservó entero.
+
+**Lo que este cambio NO tocó:** el panel de admin, que tiene su propio criterio
+visual y su propio centralizador de clases.
+
+### B-253 · El detalle, el chrome y las tres páginas de texto, con la forma de Eventbrite — ✅ hecho (2026-08-31)
+
+Segundo frente del rediseño de **D-141**: el primero le dio nombre y paleta al sitio
+(B-245); éste aplica la **estructura** —portada arriba, jerarquía fuerte, tarjetas
+apiladas con superficie y borde y **ninguna sombra**— a la página de detalle, el
+encabezado, el pie y `/ayuda`, `/contacto` y `/suscribirse`. La home y el listado son
+de otro frente y no se tocaron.
+
+- **Dos decisiones nuevas.** **D-144** (la portada va arriba, con la relación de
+  aspecto de `--aspect-portada`; desvío del §4.3 del diseño) y **D-145** (el CTA fijo
+  de móvil sin una línea de JavaScript, que cierra la mitad «CTA fijo» de **B-238**).
+- **Un archivo nuevo**, `src/components/sitio/estilos.ts`, con el anillo de foco y las
+  clases de botón: estaban copiados doce y cinco veces. Lo sostiene **B-257**.
+- **El contraste pasa a medirse sobre las tres superficies** y no solo sobre `papel`
+  (**B-256**), que con la paleta de D-141 daba un número optimista.
+- **Tres cosas que arregló mirar el HTML del build**, ninguna visible para un test
+  unitario: **B-254** (todo cancelado no es «ya pasó»), **B-258** (la página daba dos
+  cuentas distintas de los mismos encuentros) y la sección «Cómo se cursa» que se
+  pintaba vacía sin `modalidades`.
+- **Dos cosas que encontró el `auditor-privacidad`**, las dos de red y ninguna de
+  fuga: el JSON-LD podía cerrar su propio `<script>` con un título que trajera
+  `</script>` (venía de B-227), y el barrido de centinelas ejercitaba **una** de las
+  cuatro ramas del aviso — justo no la que interpola un valor.
+
+**Lo que este frente necesita de otros archivos**, y no pudo tocar: `Base.astro` le
+pone `overflow-x-hidden` al `body`, que es lo que obliga a que la barra sea `fixed` y
+no `sticky` (ver D-145); y `src/pages/index.astro` con `src/components/publico/*`
+quedan fuera del alcance del chequeo del anillo de foco hasta que se los migre.
+
+**Sigue sin resolver, y no es nuevo:** una actividad `estado: 'cancelado'` no tiene
+página. Es **B-110**.
+
+### B-244 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
+
+El skill que se invoca **cada vez que se agrega un campo al modelo**
+(`.claude/skills/campo-nuevo/SKILL.md`, decisión 1) nombraba `events.json`,
+Calendar, el issue de GitHub y GA4. No nombraba `textoRedes.ts` —la salida 5,
+desde **B-95**— ni `detallePublico.ts` —la 6, desde **B-227**—.
+
+O sea que se podía seguir el procedimiento al pie de la letra y terminar
+publicando un campo nuevo en el **posteo de Instagram** o en la **página que
+Google indexa**, sin que nada lo frenara: es exactamente la clase de bug que el
+skill existe para evitar, y las dos salidas que faltaban son las dos de las que no
+se puede volver.
+
+Lo encontró el `auditor-documentacion`. **La 5 llevaba tres años-persona de
+distancia con su propia lección:** la ficha del `auditor-privacidad` había tenido
+el mismo agujero, se arregló el 2026-08-27 (B-216) con un test que ata las dos
+tablas… y nadie miró el skill, que es el documento que de verdad se ejecuta.
+
+Arreglado con la tabla de las seis y una nota de por qué. El paso «Proyección
+pública» también se reescribió: eran cuatro archivos en cadena y nombraba uno.
+
+### B-01 · Sitio público (paso 3 del §10) — ✅ hecho (2026-09-02)
+
+**El paso 3 está terminado y el sitio está publicado en
+[`agendaleh.ar`](https://agendaleh.ar).** Verificado contra el código y contra el
+build del 2026-09-02, no contra el recuerdo. Qué lo compone — **ocho salidas
+indexables**, todas en `src/pages/`:
+
+| # | Ruta | Qué es | Con qué entró |
+|---|---|---|---|
+| 1 | `/` | el listado de lo vigente, completo en HTML, con la island de filtros encima | **B-227** |
+| 2 | `/actividad/{slug}` | el detalle, SSG por `getStaticPaths`, cero JavaScript | **B-227**, **B-110** (las canceladas), **B-296** (la galería) |
+| 3 | `/cartelera` | la pared de afiches: solo las que tienen flyer, la imagen entera | **B-265** |
+| 4 | `/agenda/{aaaa-mm}` | qué hay en un mes, solo los vigentes con 3 o más | **B-113** |
+| 5 | `/pasadas` | el archivo, y el único link interno permanente de lo que ya pasó | **B-109** |
+| 6 | `/ayuda` | qué es cada tipo de actividad y cómo se lee una ficha | **B-232** |
+| 7 | `/contacto` | el canal para proponer una, con qué conviene contar | **B-232**, **B-233** |
+| 8 | `/suscribirse` | los cuatro caminos para sumar la agenda a tu calendario | **B-230** |
+
+Más lo que las sostiene y no es una página: **el dominio propio** —`SITIO` en
+`src/lib/rutasPublicas.ts`, la única vez que se escribe, y `astro.config.mjs` lo
+importa (**B-109**, D-165)—, el `canonical` absoluto y el Open Graph que pone
+`Base.astro` para todas de una vez, el **`/events.json`** que la island filtra en
+memoria (**B-106**) y los endpoints `/sitemap.xml` y `/robots.txt` (**B-109**).
+
+**Cómo se verificó, para que el cierre no sea una afirmación:**
+
+- `npm run build` verde, emitiendo las páginas y los cuatro endpoints;
+- `dist/sitemap.xml` sale con las seis rutas fijas bajo `https://agendaleh.ar/` y
+  con barra final, y `dist/robots.txt` bloquea solo `/admin`;
+- el único `noIndex` fijo del sitio es `/admin`; el de `/agenda/{mes}` es
+  condicional y solo aplica al mes vencido (§2.2);
+- la suite completa en verde: **2.173 tests en 93 archivos**, con los de
+  emuladores incluidos.
+
+**Lo que queda abierto tiene número propio y no es el paso 3.** Los hubs de
+taxonomía (**B-108**) son la pieza de indexación que falta; el marcado de
+navegación del JSON-LD es **B-107**; las cinco imágenes de Open Graph, **B-291**;
+la búsqueda de `/pasadas`, **B-292**; el `lastmod`, **B-112**; el precio real del
+JSON-LD, **B-114**; el eje de encuentros del índice, **B-99**; el peso de las
+imágenes, **B-266**, **B-300** y **B-220**; la hoja de filtros de móvil y el
+runtime de React, **B-238** y **B-239**; y los auditores del sitio, **B-121** y
+**B-122**. Ninguno impide que el sitio exista, se indexe y se use, que es lo que
+el paso 3 pedía.
+
+El texto original, con su lista de pendientes tal como estaba:
+
+Lo que falta:
+
+- ~~`src/pages/index.astro` — listado con la island de filtros.~~ ✅ B-227
+- ~~La island que lee `events.json` y filtra en memoria (§2.5).~~ ✅ B-227
+  (`src/components/publico/Buscador.tsx`)
+- ~~`src/pages/actividad/[slug].astro` — detalle por SSG con `getStaticPaths`.~~
+  ✅ B-227
+- ~~Generación de `events.json` en build time con el Admin SDK.~~ ✅ B-106
+- Los hubs (B-108), `/pasadas` y el SEO absoluto (B-109), las canceladas (B-110).
+
+Ya está hecho y testeado: la proyección (`toPublic.ts`), la normalización de
+búsqueda (`normalize.ts`) y el acceso de build time (`firebase-admin.ts`).
+
+**Ojo:** toda query pública necesita `where('estado','==','publicado')` o
+Firestore rechaza la query entera (trampa 7).
+
+**El diseño está hecho: [`12-sitio-publico.md`](12-sitio-publico.md).** URLs,
+pantallas, SEO, filtros y casos borde, decididos con su motivo. B-01 queda como
+el paraguas; lo construible son **B-105 a B-114**, en el orden del §13 de ese
+documento.
+
+### B-105 · El detalle y la home — ✅ hecho (2026-08-28, en **B-227**)
+
+Construido con dos desvíos del plan de abajo, los dos anotados en la caja de
+estado de [`12-sitio-publico.md`](12-sitio-publico.md): el markup de la tarjeta se
+define una sola vez en un **componente React** que Astro renderiza sin hidratar
+(en vez de un componente Astro más un `<template>`), y la island **monta su propia
+lista sacando la del build del DOM** en vez de mostrar y ocultar por `data-id`. Se
+conservan las cuatro propiedades que el §6.3 perseguía —HTML completo del build,
+sin-JS servido, sin parpadeo, un solo markup— y el filtrado queda como lógica pura
+testeable (`src/lib/listadoPublico.ts`, 58 casos).
+
+Lo que queda afuera y tiene su ítem: la hoja inferior de filtros y el CTA fijo de
+móvil (**B-238**), el peso del runtime de React en la home (**B-239**).
+
+El plan original, como estaba escrito:
+
+`src/pages/actividad/[slug].astro` (SSG con `getStaticPaths`, **cero
+JavaScript**) y `src/pages/index.astro` con `src/components/Filtros.tsx` como
+island.
+
+El detalle primero: es el que recibe el tráfico de Google y de Instagram, y es
+el que no depende de nada más (§1 y §4.3 del diseño).
+
+La home es un **listado híbrido** (§6.3): el build imprime en HTML todas las
+tarjetas vigentes con sus `data-*` de filtrado, y la island muestra y oculta lo
+que ya está en el DOM. Con JS apagado se ve la lista completa y "Explorá por"
+—links a los hubs— es la navegación. El markup de la tarjeta se define **una
+sola vez**, en el componente Astro, y la island clona un `<template>` para las
+tarjetas que no están en el HTML (las pasadas).
+
+**Ojo:** todas las fechas se formatean con
+`Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })`,
+en el build y en el cliente. El JSON las lleva en UTC (trampa 1).
+
+### B-106 · `events.json` en build time — ✅ hecho (2026-08-27)
+
+**Hecho.** `src/pages/events.json.ts` lee Firestore con el Admin SDK en el build y
+`src/lib/eventsJson.ts` arma el índice. Las tres cosas que el ítem marcaba como no
+obvias salieron como estaban diseñadas:
+
+- **El recorte** (§3.1) es una proyección aparte y **recibe una `ActividadPublica`,
+  no una `Actividad`**: así no puede volver a decidir sobre `difusion` o
+  `createdBy` — esa decisión ya está tomada un eslabón antes. Tiene su propio
+  barrido de centinelas, con control negativo que exige que la falta de recorte
+  falle nombrando `inscripcion.destino`.
+- **La guarda de credenciales** (D-123): en CI sin credenciales el build **falla**
+  —probado: sale con estado 1 y no emite el archivo— y en local sigue con lista
+  vacía y un aviso. Las dos ramas verificadas a mano.
+- **La cabecera `no-cache`** en `firebase.json` → **cierra B-37**.
+
+Y arrastró **B-111**, que era dependencia dura de la forma diseñada: el índice
+lleva `cierraEn` y no el booleano `abierta`, que se congela en el build.
+
+Lo que **no** entra y queda para el sitio: el `?v=` con el que la island va a pedir
+el archivo (no hay island todavía, es B-105) y el `estado` en la proyección, que es
+B-112 y lo necesita la franja CANCELADA del detalle, no el filtrado.
+
+
+Lectura de Firestore con el Admin SDK, `toPublic.ts`, y el índice que la island
+filtra en memoria (§2.4, §2.5). Incluye las opciones de `/opciones/*` en el
+mismo archivo (§4.4) para que los chips no tengan nada cableado.
+
+Tres cosas que no son obvias (§3 del diseño):
+
+- **El JSON recorta más que `toPublic`**: no lleva `descripcion`,
+  `inscripcion.destino`, `sede.direccion`, `sede.geo`, `sede.indicaciones`,
+  `material`, `tallerista.bio`, `sesiones[].tema` ni `sesiones[].lectura`. Nada
+  de eso se usa para filtrar, todo vive en el HTML del detalle, y sacar el mail
+  de inscripción del JSON deja de servirlo en lote a los bots.
+- **Sin credenciales, en CI el build falla** (`hayCredenciales()`). Un deploy
+  con cero actividades borra el sitio de Google y se recupera en semanas. En
+  local sigue con lista vacía.
+- **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
+  island lo pide con `?v={VERSION_APP}`.
+
+### B-107 · Meta, Open Graph y JSON-LD — ✅ hecho (2026-09-02)
+
+> ✅ **Reverificado el 2026-09-02, línea por línea contra el código.** De lo que
+> este ítem enumeraba **falta una sola cosa suya**, y no es lo que el texto de
+> abajo hacía suponer:
+>
+> | Qué pedía el ítem | Estado |
+> |---|---|
+> | `title` / `description` por tipo de página | ✅ B-227 |
+> | JSON-LD `Event` completo (subtipos, `EventSeries`, offset, `offers`, `performer`, cancelados) | ✅ B-227 |
+> | el link de la reunión fuera del JSON-LD | ✅ B-227, y más estricto |
+> | `canonical` absoluto | ✅ B-109 — lo pone `Base.astro`, `urlAbsoluta` |
+> | Open Graph completo + `twitter:card` | ✅ B-109 — `Base.astro:161-168` |
+> | el `url` del evento, del `VirtualLocation` y de `offers` | ✅ B-109 — `detallePublico.ts:919, 1053-1077` |
+> | las cinco imágenes de `public/og/` | ❌ pero **no es de acá**: es **B-291**. Hoy `public/` tiene `compartir.png`, la marca, y `Base.astro` la usa de respaldo (B-295); el detalle manda el flyer |
+> | `BreadcrumbList` en el detalle | ❌ **lo que le queda a este ítem** |
+> | `CollectionPage` + `ItemList` en la home y los hubs | ❌ **lo otro**, y va con **B-108** |
+>
+> Comprobado con `grep -rn "BreadcrumbList\|CollectionPage\|ItemList" src/`:
+> **cero apariciones**. Las dos cosas que faltan son marcado de navegación y
+> ninguna dependía del dominio: el `BreadcrumbList` necesita **decidir la
+> jerarquía** —¿la actividad cuelga de la home, del tipo o del barrio?— y el
+> `ItemList` conviene hacerlo con los hubs, que son las páginas de colección de
+> verdad.
+>
+> **Y por eso baja a P2.** Era P1 porque «una página de detalle sin datos
+> estructurados no sirve para lo que existe el proyecto», y esa mitad está: el
+> sitio se indexa, el `Event` sale completo y la canónica es absoluta. Lo que
+> queda mejora cómo Google entiende la **navegación**, no si la página entra al
+> índice. La marca explícita `· P2` es la que vale por encima de la sección,
+> igual que en B-221 y B-222 — el bloque no se mueve para no pisar a los frentes
+> en paralelo.
+
+El texto original, con la caja de B-109 que lo dejó a mitad de camino:
+
+**Hecho:** `title` y `description` de la home y del detalle; el JSON-LD completo
+—`EducationEvent`/`LiteraryEvent`/`Event`, `EventSeries` con `subEvent` por sesión,
+fechas con offset, `offers` con precio solo si es gratis, `performer` solo si hay
+tallerista, cancelados marcados con su fecha original— y **el link de la reunión
+fuera del JSON-LD**, que ahora es más estricto de lo que decía este ítem: tampoco
+va la URL canónica, porque no existe (ver abajo). Fijado en
+`tests/detallePublico.test.ts` y en su `describe` del barrido de centinelas.
+
+**Falta, y todo por el mismo motivo — `site` no existe hasta que haya dominio
+(B-109):** `canonical`, Open Graph, `twitter:card`, las cinco imágenes de
+`public/og/`, el `url` de `VirtualLocation` y de `offers`, el `BreadcrumbList` y
+el `CollectionPage`/`ItemList`. Inventar una URL absoluta ahora es peor que no
+ponerla: una canónica equivocada le dice a Google que la página buena es otra.
+
+> ✅ **Casi todo eso entró el 2026-09-02 con B-109** (D-165), que era el motivo
+> por el que faltaba: `canonical` absoluto y Open Graph en **todas** las páginas
+> —los pone `Base.astro`—, `twitter:card`, el `url` del evento, el del
+> `VirtualLocation` (§5.4) y el de `offers`.
+>
+> **Quedan tres cosas, y ninguna dependía del dominio:** las cinco imágenes de
+> `public/og/` (**B-291** — hoy solo el detalle manda `og:image`, con el flyer de
+> la actividad), y el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList`
+> de la home y los hubs, que se quedan en este ítem. Los dos últimos son marcado
+> de navegación: el `BreadcrumbList` necesita decidir la jerarquía —¿la actividad
+> cuelga de la home, del tipo o del barrio?— y el `ItemList` conviene hacerlo con
+> los hubs (**B-108**), que son las páginas de colección de verdad.
+
+El plan original, como estaba escrito:
+
+Va pegado a B-105: una página de detalle sin datos estructurados no sirve para
+lo que existe el proyecto (§2.3).
+
+- `title` / `description` / `canonical` por tipo de página (§5.1 del diseño). El
+  título de la actividad primero, y el barrio adentro.
+- Open Graph completo + `twitter:card`. Sin `imagenUrl`, cinco imágenes
+  estáticas de 1200×630 en `public/og/`, una por tipo: un link sin preview en
+  Instagram no se toca.
+- **JSON-LD `Event`**: `EducationEvent` para taller y club de lectura,
+  `LiteraryEvent` para encuentro, presentación y charla. Un ciclo es un
+  `EventSeries` con un `subEvent` por sesión — una actividad, N encuentros
+  (§2.2), no ocho eventos que compiten entre sí.
+- **Fechas con offset `-03:00`**, no `Z`.
+- **`offers` con precio solo si `arancel.tipo == 'gratis'`** (`0` / `ARS`). Un
+  `0` en un taller arancelado es un dato falso en un formato que las máquinas
+  creen.
+- **El link de la reunión no va al JSON-LD nunca**, ni con `urlPublica: true`
+  (D-15): `VirtualLocation.url` es la URL canónica de la actividad. El JSON-LD
+  es lo primero que cosecha un bot (trampa 5).
+- Además: `BreadcrumbList` en el detalle, `CollectionPage` + `ItemList` en la
+  home y los hubs, `Organization` en `/acerca`.
+
+> ✅ **Lo último que le quedaba a este ítem —el marcado de navegación— se cerró
+> el 2026-09-02, apoyado en los hubs de B-108.** `migasDeDetalle`
+> (`src/lib/detallePublico.ts`) arma el `BreadcrumbList` del detalle —Agenda →
+> {Tipo} → {título}—, y `coleccionSchema` (`src/lib/hubsPublicos.ts`) arma el
+> `CollectionPage`/`ItemList` de la home y de los cuatro hubs, compartiendo una
+> sola función entre las cinco páginas.
+>
+> **Un caso que no estaba escrito en el diseño:** el segundo nivel de la miga
+> —el hub de tipo— no siempre existe. Un `/tipo/{slug}` se emite si alguna
+> actividad **publicada** usó ese tipo alguna vez, y una cancelada no entra a
+> esa cuenta (D-159, B-108). Una actividad cancelada cuyo tipo nadie más usa
+> podría quedar con una miga apuntando a un 404. Se resolvió con un campo
+> nuevo, `DetallePublico.tipoTieneHub`, que calcula el lector
+> (`contenidoDelSitio.ts`) sobre el índice entero —la página de detalle sola no
+> puede saberlo— y que por default es `false`: el lado que no publica un link
+> que puede no existir, mismo criterio que ya usaban `cancelada` y
+> `mesesConPagina`. Con `tipoTieneHub: false` la miga sale con dos niveles
+> (Agenda → título) en vez de tres.
+>
+> `Organization` en `/contacto` sigue afuera: nadie la pidió, y no tiene ítem
+> propio (§4.5 del diseño).
+>
+> Verificado con `npx vitest run` (mutación probada en el default de
+> `tipoTieneHub` y en el caso de lista vacía de `coleccionSchema`) y con un
+> build real contra el emulador (`scripts/build-contra-emulador.mjs`): los dos
+> bloques nuevos de `<script type="application/ld+json">` salen bien formados,
+> con el mismo escape de `<` que ya usaba el `Event`, y sin el segundo nivel de
+> la miga cuando el hub de tipo no se generó.
+
+### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis` — ✅ hecho (2026-09-02)
+
+**Hecho.** Un solo componente de página (`src/lib/hubsPublicos.ts` +
+`CuerpoDeHub.astro`) para las cuatro clases, con el subconjunto ya filtrado en
+HTML — **no una island**: el hub no lleva JavaScript, es HTML del build igual
+que el resto de las páginas nuevas del sitio. El «buscar dentro» del §4.4 es un
+link `?tipo=taller` a la home, que sí tiene la island. Es lo que gana `taller de
+escritura villa crespo` y `club de lectura online`: un filtro no puede, porque
+no tiene URL ni `h1` (§2.1 del diseño).
+
+Los de tipo y barrio se generan recorriendo `/opciones/{tipo,barrio}` — una
+opción nueva trae su hub sola. El slug de la URL es el **slug** de la taxonomía,
+nunca el label: el label se renombra (§4.1) y una URL no (trampa 10).
+
+Un hub que se queda sin actividades vigentes **no se borra**: se genera vacío,
+con aviso y links, y sale con `noindex`. `esIndexable` fija que esa señal y "está
+en el sitemap" sean las dos mitades de una sola decisión, nunca una sin la otra
+— `tests/hubsPublicos.test.ts` lo prueba en las dos direcciones.
+
+**Los hubs entraron a `RUTAS_FIJAS`/`hubsOfrecidos`** (`src/lib/sitemap.ts`),
+como el ítem preveía: los dos temáticos por la lista fija, los de tipo y barrio
+por su propia regla dinámica, igual que las actividades y los meses.
+`tests/sitemap.test.ts` sigue exigiendo que toda página estática esté en una de
+las dos listas.
+
+La navegación es la tira **«Explorá por»** (`ExploraPor.astro`), que
+**reemplazó** a la tira «La agenda mes por mes» de B-113: los meses son ahora un
+grupo más, junto con los hubs. Sin esa tira los hubs serían páginas indexadas sin
+un solo enlace interno.
+
+**Lo que encontró la integración con los otros frentes, y no este ítem en
+soledad:** los cuatro hubs no habían entrado a las tres listas que atan una
+salida pública nueva —la ficha de `auditor-privacidad`, `docs/07-seguridad.md`
+y el skill `campo-nuevo`— así que el auditor no se disparaba al tocarlos. Se
+cerró como la **salida 11** del índice, con su `describe` en
+`tests/barrido-de-salidas-publicas.test.ts` (detalle en el CHANGELOG del
+2026-09-02). Y una precisión de ese mismo barrido: **las frases y la URL de un
+hub se recorren por separado**, porque en el título tiene que estar la etiqueta
+y en la ruta el slug (trampa 10) — un barrido único dejaba pasar el slug en el
+título nada más porque coincidía con el de la URL.
+
+**Lo que queda, y es de otro ítem:** el `CollectionPage`/`ItemList` de datos
+estructurados sobre la home y los hubs sigue en **B-107**, que es además donde
+va el `BreadcrumbList` del detalle — las dos piezas de marcado de navegación que
+faltaban.
+
+### B-109 · `site`, `robots.txt`, `sitemap.xml` y `/pasadas` — ✅ hecho (2026-09-02)
+
+**Hecho**, con [D-165](06-decisiones.md), [D-166](06-decisiones.md) y
+[D-167](06-decisiones.md). Era el bloqueo de la cadena entera y estuvo esperando
+el dominio desde el 2026-08-27 (DEC-6).
+
+**El canónico es `https://agendaleh.ar`**, decisión del dueño. Lo que se
+construyó, en cuatro tramos:
+
+| | Qué |
+|---|---|
+| `site` + el canónico | `SITIO` (`src/lib/rutasPublicas.ts`) es la **única** aparición del dominio en el repo; `astro.config.mjs` la importa. De ahí salen el `canonical`, el Open Graph, las URLs del JSON-LD y el sitemap — cuatro consumidores, una constante |
+| canonical y Open Graph | en **todas** las páginas, y los pone `Base.astro` una sola vez: con una prop por página, la que se olvidara se publicaría sin canónica y nada fallaría |
+| `sitemap.xml` y `robots.txt` | endpoints a mano, con las reglas del §5.6 |
+| `/pasadas` | el archivo, y el único link interno permanente de lo que ya pasó |
+
+**Lo que se aprendió midiendo, y que este ítem no preveía:**
+
+- **La canónica lleva barra final.** `curl -I https://agendaleh.ar/cartelera`
+  devuelve un **301** a `/cartelera/`: es el comportamiento por defecto de
+  Firebase con las páginas que Astro emite como `carpeta/index.html`. Una canónica
+  que apunta a una redirección es un aviso en Search Console y una entrada de
+  sitemap que redirige es una URL menos rastreada, así que las dos la llevan
+  (`rutaCanonica`). Que los `href` internos sigan sin barra —y coman el 301 al
+  navegar— quedó como **B-293**, cerrado el 2026-09-02 con **D-180**.
+- **El canonical tiene que ser absoluto y no relativo**, y no por prolijidad:
+  `agenda-literaria.web.app` **no se apaga nunca** y sirve este mismo HTML. Uno
+  relativo se resuelve contra el host que lo sirvió, o sea que en el espejo diría
+  que la página buena es la del espejo.
+- **`updatedAt` se resolvió sin agregarlo a la proyección.** El ítem avisaba que
+  no está (es `actualizadoEn`, B-112). Lo lee **el lector** del documento crudo y
+  viaja **al lado** de la proyección (`canceladasEditadasEn`, un mapa `slug → ISO`),
+  igual que la bandera `cancelada` de B-110. Y es un **predicado**: decide si la
+  URL entra al sitemap y no se emite en ninguna parte —el sitemap va sin
+  `lastmod`—, así que `updatedAt` sigue sin salir a ninguna salida. El
+  razonamiento está en D-166.
+- **Un bug que ya estaba en producción**, y que apareció al poner cuarenta filas
+  pasadas en una página: la fila de una actividad que ya pasó decía «Inscripción
+  abierta». Es **B-290**.
+- **Dos salidas públicas nuevas** (la 9 y la 10), que entraron a las tres tablas
+  que las atan y al barrido de centinelas. Y el parseo que compara esas tablas
+  se podía acortar sin fallar: leía `(\d)` y la fila `| 10 |` no matcheaba, así
+  que las tres seguían coincidiendo entre sí cortadas en la 9.
+
+**Catorce mutaciones probadas, todas rojas** — las seis que pedía el ítem (la URL
+escrita a mano, el canonical relativo, la pasada de 91 días, la cancelada de 31,
+el mes con 2 y `/admin` colándose) y ocho más. Tres guardas pasaron en verde con
+la mutación puesta y se arreglaron: el `noindex` del panel se verificaba contra el
+archivo entero y su propio comentario lo nombraba; el `url` del `VirtualLocation`
+(§5.4) no lo miraba nadie porque el detalle por defecto es presencial; y el parseo
+de la tabla de salidas.
+
+**Lo que sigue abierto y era de este ítem:** las cinco imágenes de Open Graph por
+tipo (**B-291**, lo último que le queda a B-107), la búsqueda en `/pasadas`
+(**B-292**), el `lastmod` (**B-112**) y los hubs, que cuando existan entran a
+`RUTAS_FIJAS` — el test de la lista lo va a pedir (**B-108**).
+
+**Y lo que queda del lado del dueño**, en la consola de Firebase: el 301 de
+`agendaleh.com.ar`, la decisión sobre el `www` y el alta en Search Console. Está
+en **B-295** y paso por paso en [`08-operacion.md`](08-operacion.md) § «El
+dominio», con las dos trampas de falla diferida que encontró la investigación del
+dominio.
+
+El texto original, para que las decisiones se lean contra él:
+
+**Va primero de todo**, porque depende de la decisión del dominio (§11.1 del
+diseño) y porque canonical, Open Graph y sitemap necesitan URLs absolutas.
+`astro.config.mjs` hoy **no tiene `site`**.
+
+El sitemap se genera a mano (endpoint estático), no con `@astrojs/sitemap`: las
+reglas de qué entra —90 días para las pasadas, 30 para las canceladas, meses con
+3 o más— son nuestras. `lastmod` necesita B-112; sin eso se omite, que es mejor
+que estampar la fecha del build en todo.
+
+**Los 30 días de las canceladas, con el criterio escrito** (B-110 dejó la página;
+sacarla del sitemap es de acá). La regla del §7.3 es «30 días **desde que se
+canceló**», y *cuándo se canceló* no es un dato del modelo — igual que
+«estuvo publicada alguna vez» (B-285). Lo disponible:
+
+| Fecha | Sirve | Problema |
+|---|---|---|
+| `updatedAt` | es la edición que la canceló, si nadie la tocó después | cualquier corrección posterior corre el reloj; y **no está en la proyección** (es `actualizadoEn`, B-112) |
+| la versión de `/versiones` cuya edición cambió `estado` | es la fecha exacta | una lectura más por cancelada, y la retención de D-42 la puede podar |
+| `publicadaAlgunaVez` + un `canceladaEn` | exacto y barato de leer | dos campos nuevos |
+
+Lo razonable al escribir el sitemap es **`updatedAt` con el error dicho** —correr
+el reloj hacia adelante deja la URL un poco más de tiempo, que es el lado
+inofensivo— y no ir al historial por esto. La página **no se borra a los 30 días**:
+sigue existiendo para quien tenga el link, lo único que sale es la entrada del
+sitemap.
+
+`/pasadas` entra acá y no en B-108 porque su razón de ser es de indexación: sin
+esa página, cada actividad que pasa se convierte en una página huérfana que solo
+el sitemap enlaza.
+
+### B-110 · Una actividad cancelada no puede devolver 404 — ✅ hecho (2026-09-01)
+
+**Hecho**, con [D-159](06-decisiones.md). El build trae también
+`estado == 'cancelado'` y genera la página si esa actividad **estuvo publicada
+alguna vez**: franja «Esta actividad se canceló» arriba de todos los otros avisos,
+sin CTA ni canal, fechas intactas, `eventStatus: EventCancelled` y sin `offers`. No
+entra al `events.json`, ni al listado, ni a la cartelera.
+
+El lector se amplió **sin tocar la query de las publicadas**: las canceladas entran
+por una segunda query con su propio `==` —un `in` convierte el estado en una lista,
+y a una lista alguien le agrega un elemento— y van a un campo aparte de
+`ContenidoDelSitio`, así que ninguna lista del sitio las recibe.
+
+**Y la heurística que este ítem proponía no sobrevive en producción.** Al cancelar,
+`syncCalendar` borra los eventos y escribe `calendarEventId: null` de vuelta en
+cada sesión (`reponerIds`, B-80): la prueba que el §7.3 pedía la borra el propio
+sync. Con esa heurística sola, esto habría pasado todos sus tests sin generar una
+sola página. Se resolvió leyendo `/actividades/{id}/versiones` —cancelar deja una
+versión con `documento.estado: 'publicado'`—, con `.limit(1).select()` para no
+traer ningún campo. El `publicadaAlgunaVez` explícito sigue siendo lo correcto y
+queda en **B-285**.
+
+El texto original, para que la decisión se lea contra él:
+
+
+Hoy el camino natural (`estado == 'publicado'`) hace que una actividad cancelada
+pierda su página. La URL estuvo tres semanas en Instagram y en Google, y a quien
+pregunta "¿se hace o no se hace?" el sitio le contesta "no existe".
+
+Lo que hay que hacer (§7.3 del diseño): el build también trae
+`estado == 'cancelado'`, genera la página con la franja `CANCELADA`, sin CTA, con
+las fechas intactas y `eventStatus: EventCancelled` — que es exactamente lo que
+Google pide. No entra al listado ni a `events.json`. Sale del sitemap a los 30
+días.
+
+**Sigue abierto después de B-253 (2026-08-31), y ahora hay una promesa esperándolo.**
+El rediseño de la página de detalle le dio forma al aviso de arriba —los cuatro
+estados con su prioridad, incluida la rama `cancelado`— pero el lector
+(`contenidoDelSitio.ts`) sigue trayendo solo `estado == 'publicado'`, así que esa rama
+solo se activa cuando **todos los encuentros** están cancelados y nunca cuando lo está
+la actividad. Nada de este punto cambió.
+
+Lo que sí cambió es que ahora se sabe que **`src/lib/ayudaDelSitio.ts` ya le promete
+esto a quien lee el sitio**: «si se cancela la actividad entera, la página no
+desaparece: queda con el aviso de que se canceló». Hoy devuelve 404. Lo encontró el
+`auditor-privacidad` mirando B-253. Al cerrar este ítem hay que verificar ese texto —
+o corregirlo antes, si esto se demora.
+
+**Solo si estuvo publicada alguna vez**, que hoy no es un dato del modelo. La
+heurística disponible es que alguna sesión tenga `calendarEventId` (el sync solo
+crea eventos de actividades publicadas), y el build la puede leer porque trabaja
+sobre el documento crudo. Lo correcto es un `publicadaAlgunaVez: boolean` — es
+una de las decisiones de §11.1.
+
+### B-111 · `inscripcion.abierta` se congela en el build y miente — ✅ hecho (2026-08-27)
+
+**Hecho** como parte de B-106, porque era dependencia dura de la forma diseñada del
+índice: `toPublic` proyecta `cierraEn` (el ISO de `cierra`) **además** del booleano,
+y el `events.json` lleva la fecha. Quien consume la recalcula con **su** reloj.
+
+`abierta` se conserva —el arreglo era «además del booleano», no «en lugar de»—
+porque un consumidor sin JavaScript no puede recalcular nada.
+
+**De paso, la lista de claves de `toPublic.test.ts` hizo su trabajo:** agregar la
+clave puso la suite en rojo nombrándola, que es exactamente para lo que está esa
+lista. Un campo nuevo en una proyección pública tiene que ser una decisión.
+
+
+`toPublic` calcula `abierta` con `Date.now()` **del momento del build**. Una
+inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild
+siguiente. El rebuild automático ya corre solo (**B-20**, cerrado el 2026-08-25),
+así que la ventana bajó de días a los ~2-7 minutos del debounce del §8 — pero
+sigue siendo real, y no depende de que alguien edite: el `abierta: false` se
+calcula **en el build**, así que sin un cambio que dispare rebuild nadie
+recalcula nada y el sitio invita a anotarse en algo que ya cerró.
+
+Arreglo: proyectar **`inscripcion.cierraEn`** (el ISO de `cierra`) además del
+booleano. Con la fecha, el HTML puede decir "las inscripciones cierran el 22 de
+septiembre" —que es lo que hace que alguien escriba hoy— y el cliente recalcula
+si ya cerró. No expone nada nuevo: es una fecha que la página ya quiere mostrar.
+
+Hoy no se nota porque no hay sitio público. Va antes de B-108 porque el detalle
+ya lo necesita.
+
+~~B-02 · Trigger de rebuild~~ → [cerrado](#cerrados), con pasos manuales
+pendientes del dueño (ver arriba).
+
+### B-83 · El rebuild del sitio cuelga del sync a Calendar — ✅ hecho (2026-08-24)
+
+**Arreglado:** `marcarRebuild` pasó arriba de los dos cortes, con la condición
+`huboCambioDeContenido(antes, despues)` — el mismo criterio del historial
+(D-41), para que el write-back de la propia Function no pida un build por cada
+sincronización (D-92).
+
+`syncCalendar` marca `sistema/rebuild` en la **última** línea, después de dos
+cortes tempranos: `if (ops.length === 0) return;` y `if (!CALENDAR_ID) return;`.
+Consecuencia: un cambio que no altera el evento del calendario no pide rebuild y
+el sitio público se queda con el dato viejo.
+
+Los campos que salen al `events.json` (§5.2) y **no** entran al evento de
+Calendar son `destacado`, `imagenUrl`, `searchText` y el `slug`. Así que tildar
+"Destacar en la portada" o corregir la imagen de una actividad ya publicada no
+se ve nunca en el sitio, hasta que alguien edite otra cosa. Es la trampa 8 del
+§13 con otro disparador: ahí era olvidarse de `/opciones/*`, acá es que el
+rebuild sea un efecto secundario del sync.
+
+Segundo caso, el mismo agujero: sin `GOOGLE_CALENDAR_ID` configurado la Function
+loguea el error y vuelve **antes** de marcar el rebuild, así que un proyecto sin
+calendario no publica nada nunca.
+
+El arreglo es mover `marcarRebuild` arriba de los dos cortes: el rebuild
+corresponde porque la actividad cambió, no porque el calendario haya recibido
+operaciones. Cuesta un build de más cuando el cambio es solo interno
+(`difusion`), que al lado de esto es gratis — el debounce del §8 ya los junta.
+
+Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
+
+---
+
+### B-167 · Galería de imágenes: una lista, con descripción, propias o de afuera — ✅ las dos tajadas hechas (2026-08-26 y 2026-08-27)
+
+> **Estado al 2026-08-27.** La primera tajada (modelo + editor de URLs externas)
+> salió en `1.3.0`. La segunda —**subir un archivo propio**, que es lo que el dueño
+> reclamó con «no estoy viendo lo de cargar imágenes»— salió después: entra
+> `storage.rules`, el emulador de Storage, la línea `storage=` de
+> `que-deployar.sh`, y `src/lib/subir-imagen.ts` cargado con `import()`. Razonamiento
+> en **D-131**; las dos preguntas que bloqueaban están resueltas en **B-206**.
+>
+> **Lo que sigue abierto**, y con ítem propio para que no se confunda con esto: la
+> Function de DEC-7d —recompresión y miniatura— es **B-208**; la limpieza de objetos
+> huérfanos es **B-209**; servirlas por dominio propio, **B-210**. Todo lo que este
+> ítem describe abajo se hizo salvo esos tres, y las anotaciones de más abajo dicen
+> cómo quedó cada punto.
+
+Pedido del dueño (2026-08-24): una actividad tiene una **lista** de imágenes,
+cada una con descripción opcional; cada imagen puede ser una **URL de otro lado**
+o un archivo que **subimos y alojamos nosotros**. Y **vista previa**, incluida en
+el momento de pegar una URL.
+
+Está en P1 y no en P2 por una razón de orden, no de urgencia: **el modelo pasa de
+un campo a una lista**, y B-107 (Open Graph y JSON-LD) necesita exactamente una
+imagen. Si la galería entra después del sitio público, se rehace la tarjeta, el
+detalle, la proyección y el `events.json`. Entra antes de B-01, o se paga dos
+veces.
+
+#### El cambio de modelo, y la migración que no se ve
+
+Hoy es `imagenUrl: string | null` y toca nueve archivos: `types/actividad.ts`,
+`schema.ts`, `actividades.ts` (las dos conversiones), `toPublic.ts` (tipo y
+proyección), `ActividadFormulario.tsx`, `analytics-eventos.ts` y un comentario de
+`functions/index.js`.
+
+Pasa a algo como `imagenes: [{ id, url, descripcion, origen: 'externa'|'propia',
+storagePath?, ancho?, alto?, portada? }]`.
+
+**Los ids se generan en el cliente, nunca por índice** — es la trampa 2 del §13,
+la misma que costó el diff de sesiones: borrar la segunda imagen renumera todo y
+cualquier cosa que compare por posición cree que cambiaron todas.
+
+**El default de lectura es la parte que se olvida.** Los documentos que ya están
+en producción tienen `imagenUrl` y no tienen `imagenes`. La lectura tiene que
+convertir `imagenUrl` en una lista de un elemento marcada como portada, y hay que
+decidir si se hace **al leer para siempre** (compatible, código que queda) o con
+una **migración de una vez** (más limpio, pero es un script que escribe en
+producción). Con el volumen actual la migración es de minutos.
+
+#### Lo que aparece por primera vez: Firebase Storage
+
+No hay Storage en el proyecto. `firebase.json` tiene `firestore` y `hosting`, y
+nada más. Entra un producto nuevo, y con él:
+
+- **`storage.rules`, que son un archivo aparte de `firestore.rules`.** Escritura
+  solo con el claim `admin`, y ahí aplica D-05 tal cual: `request.auth.token.admin
+  == true` es un **error de evaluación** cuando el claim no está, no `false`. Va
+  `token.get('admin', false)`.
+- **Un target de deploy que `scripts/que-deployar.sh` no conoce.** Hoy decide
+  `hosting`, `functions` y `firestore`. Sin una regla nueva, un cambio en
+  `storage.rules` se deploya nunca — y las reglas por defecto de Storage son
+  abiertas o cerradas según cómo se cree el bucket, así que "nunca" es el peor de
+  los dos casos. El script tiene 20 tests: la regla nueva va con los suyos.
+- **`firebase/storage` en el bundle.** El corte de B-09/D-51 dejó la carga
+  inicial de `/admin` en ~385 KB separando `firebase-client.ts` (app+auth) de
+  `firestore-client.ts` (db). Meter el SDK de Storage en cualquiera de los dos lo
+  deshace. Va en su propio módulo, cargado lazy junto con la sección de imágenes
+  del formulario, y `tests/bundle-panel.test.ts` tiene que cubrirlo — importar
+  desde el módulo equivocado ya deshizo este corte **tres veces** sin que nada
+  fallara.
+- **Validación del archivo, del lado de las reglas y no solo del cliente.** Tipo
+  (`image/jpeg`, `png`, `webp`, `avif`) y tamaño máximo. **SVG no**: es un
+  documento ejecutable, y si algún día se sirve por un rewrite de Hosting pasa a
+  ser mismo origen que el panel.
+
+**Cómo quedó (2026-08-27).** Los cuatro puntos de arriba, uno por uno:
+
+- `storage.rules` existe, con `token.get('admin', false)` como pedía D-05, y lo
+  verifica `tests/storage-reglas.integracion.test.ts` **subiendo de verdad** contra
+  el emulador — que además hubo que agregar (`firebase.json` y el `--only` de los
+  dos lugares que corren la suite). Lo que las reglas **no** pueden validar es el
+  tope de 4 imágenes: una regla de Storage no cuenta los objetos de un prefijo. Ese
+  tope se queda en el schema, y está escrito para que no se lea como olvido.
+- `que-deployar.sh` emite una cuarta línea, `storage=`, y `storage.rules` entró
+  además a la lista **negra** de hosting por el mismo motivo que `firestore.rules`:
+  es config del servidor y nadie la importa. El job «Reglas e índices» de
+  `push-main.yml` arma el `--only` con lo que haya cambiado.
+- El SDK vive solo en `src/lib/subir-imagen.ts`, cargado con `import()`. Se cubrió
+  con **dos** chequeos y no uno, porque el obvio no alcanzaba: `firebase/storage`
+  entró a `SDK_PESADO` (no puede llegar al chunk inicial) **y** hay un bloque nuevo
+  «quién es dueño de Storage» que exige que nadie lo importe de forma estática. El
+  segundo hace falta porque el editor de la galería ya está en un chunk diferido:
+  volver estático ese `import()` no metería el SDK en el chunk inicial y el primer
+  chequeo seguiría en verde — lo habría pegado al chunk del formulario, que baja
+  todo el mundo. Verificado por mutación.
+- Tipo y tamaño se validan en las reglas. **Los tipos que se pueden subir son menos
+  que los que la galería muestra:** solo JPG y PNG, porque WebP y AVIF también
+  llevan EXIF/XMP y todavía no hay quien se lo saque. Vuelven con B-208. SVG queda
+  afuera igual que siempre.
+
+#### EXIF: la privacidad que no está en el §5 y debería
+
+Una foto de celular trae GPS. En este dominio eso es concreto: **muchos talleres
+se dan en casas particulares**, y la lista es pública y scrapeable. Subir la foto
+del living publica las coordenadas del living, aunque `sede.direccion` diga solo
+el barrio.
+
+Hay que **quitar el EXIF al subir**, y el lugar es del lado del servidor o en la
+Function, no en el cliente (el cliente es lo que se puede saltear). Esto es una
+fila nueva en la tabla del §5.1 de `CLAUDE.md` y en
+[`07-seguridad.md`](07-seguridad.md).
+
+**Cómo quedó (2026-08-27), y por qué se hizo en el cliente igual.** El argumento de
+arriba sigue en pie y por eso la Function sigue en el plan (**B-208**): es la que no
+se puede saltear. Pero la Function es justamente lo que la segunda tajada dejó
+afuera, y **entre una tajada y la otra hay imágenes propias públicas**. Publicar las
+coordenadas del living no es una optimización pendiente: es irreversible. Así que el
+panel las saca ahora (`sinMetadatos`, en `src/lib/imagenes-archivo.ts`) y la Function
+las va a sacar otra vez — defensa en profundidad, el mismo patrón que DEC-7b ya había
+elegido para el tamaño.
+
+Dos consecuencias que no se adivinan y están en D-131 §3:
+
+- **Se saca sin recomprimir.** Recomprimir en un `canvas` también borraría el EXIF, y
+  haría que el tope de 3 MB de DEC-7b deje de significar lo que se decidió: una foto
+  de 8 MB entraría recomprimida y el mensaje que empuja a recortar no aparecería
+  nunca. Recorriendo segmentos JPEG y chunks PNG a mano, la función es pura y el test
+  verifica **sobre los bytes de salida** que el bloque `Exif` no está.
+- **Por eso solo se suben JPG y PNG.** WebP y AVIF también llevan EXIF/XMP y no hay
+  quien se lo saque todavía; se siguen mostrando si son externas, y vuelven a ser
+  subibles con B-208.
+
+La fila del §5.1 está puesta: `07-seguridad.md` § «Las imágenes propias, y qué se
+sube al bucket».
+
+#### La vista previa, que es la otra mitad del pedido
+
+Pegar una URL y verla. Los casos que hay que resolver, porque son los que se
+ven en la demo y no en el diseño:
+
+- la URL no es una imagen (devuelve HTML) → mensaje, no un roto silencioso;
+- la URL es `http://` y el panel es `https://` → contenido mixto, el navegador la
+  bloquea y no se entiende por qué;
+- la imagen tarda o no carga nunca → estado de carga y de error, con la URL
+  igual guardable si el dueño insiste;
+- el dominio de afuera puede caerse mañana → la vista previa es del momento de
+  cargar, no una garantía. Vale detectar links muertos, pero como aviso.
+
+**Y ojo con `astro:assets`.** El sitio público es SSG: una imagen remota no se
+optimiza en build sin descargarla, y Astro exige declarar los dominios
+permitidos (`image.domains` / `remotePatterns`) o el build se comporta distinto
+de lo que se probó. Con URLs arbitrarias cargadas por un admin, la lista de
+dominios no se puede enumerar de antemano — hay que decidir entre no optimizar
+las externas, o descargarlas al build (que las convierte en propias por la
+puerta de atrás).
+
+#### Borrado y huérfanos
+
+Quitar una imagen de la lista, o borrar la actividad, tiene que **borrar el
+objeto de Storage**. Si no: archivos que nadie referencia, que siguen siendo
+públicos y que se pagan.
+
+Es exactamente la clase de **B-71** (un guardado que falla deja opciones
+huérfanas en la taxonomía), y el orden correcto es el mismo que ahí: primero el
+documento, después el archivo. Si falla el borrado del archivo queda basura
+invisible; si falla al revés, el documento apunta a un archivo que no está.
+
+Dos casos que lo complican y hay que resolver explícitamente:
+
+- **Duplicar una actividad.** Si la copia comparte el `storagePath`, borrar una
+  le rompe las imágenes a la otra. O se copian los objetos, o se cuentan las
+  referencias.
+- **Restaurar una versión (§12, B-40).** Una versión vieja referencia un archivo
+  que quizá ya se borró. Restaurar tiene que decir qué imágenes no volvieron, en
+  lugar de dejar la lista con agujeros.
+
+#### El rebuild: esto ya fue un bug, con estos mismos campos
+
+`functions/index.js` tiene el comentario: el rebuild del sitio colgaba del sync a
+Calendar, así que **`destacado` e `imagenUrl` no llegaban nunca al sitio** —
+porque no van al calendario y por lo tanto no había operaciones que lo
+dispararan. Eso es **B-83**, ya arreglado.
+
+Una galería es más de lo mismo y de manual: las imágenes no van a Google Calendar
+(la API no tiene campo de imagen; el §7.4 arma solo `summary`, `description`,
+`location` y las fechas). Así que hay que **verificar** que la lista entre por el
+camino que B-83 dejó arreglado, y no asumirlo.
+
+#### Los lugares que toca, para no descubrirlos de a uno
+
+El criterio del skill `campo-nuevo` es que un campo del modelo toca once lugares
+y los que se olvidan son siempre los mismos tres: **la proyección pública, el
+default de lectura de los documentos que ya existen, y la ayuda**. Acá:
+
+| Lugar | Qué |
+|---|---|
+| `types/actividad.ts` | la lista y el ítem |
+| `schema.ts` | zod: URL válida, largo de la descripción, y **una sola portada** |
+| `actividades.ts` | las dos conversiones, más el default de lectura de `imagenUrl` |
+| `toPublic.ts` | §5.2 — qué campos de cada imagen se publican. `storagePath` **no** |
+| `ActividadFormulario.tsx` | sección nueva: filas, orden, portada, subida, vista previa |
+| `functions/` | borrado de objetos al borrar la actividad; quitar EXIF |
+| `storage.rules` | archivo nuevo |
+| `que-deployar.sh` | target nuevo + sus tests |
+| `analytics-eventos.ts` | cuántas imágenes, propias vs externas — sin la URL |
+| `ayuda.ts` / `novedades.ts` | se nota al usar el panel: va a los dos |
+| `searchText` (§6) | decidir si la descripción entra. Recomendado **no**: infla el índice con texto que nadie busca |
+| tests | la familia de fixtures del §2.2, con y sin imágenes, propias y externas |
+
+#### Costo
+
+Storage se paga por almacenamiento y por egreso, y una galería en un sitio
+público indexado es egreso real. Hace falta al menos un tamaño derivado (una
+miniatura para la tarjeta) en lugar de servir el original de 4 MB en un listado
+de treinta actividades. Y el budget alert del §2.3 está puesto para Functions:
+conviene revisarlo antes, no después de la factura.
+
+### B-183 · «Guardar borrador» exige el formulario completo, así que no se puede guardar a medias — ✅ hecho (2026-08-26)
+
+Reporte del dueño usando el panel (2026-08-25):
+
+> No me deja GUARDAR BORRADOR si no completo todo. Tiene que ser más flexible el
+> guardar borrador.
+
+`actividadFormSchema` (`src/lib/schema.ts`) se valida **igual para borrador que
+para publicado**: título, dirección web, descripción, un encuentro, el arancel
+elegido, sede y dirección si es presencial, plataforma si es virtual, vía y
+destino si requiere inscripción. La única regla que hoy distingue el estado es la
+del slug `-copia`, que corre solo al publicar (trampa 10) — o sea que **el patrón
+ya existe en el archivo**, aplicado a una regla sola.
+
+**Por qué es P1 y no una molestia.** Un borrador es, por definición, lo que
+todavía no está completo: es la mitad de la razón por la que el estado existe. Y
+desde B-35 el panel avisa al salir con cambios sin guardar, así que el que carga
+queda encerrado entre un aviso que le dice que va a perder el trabajo y un
+guardado que no lo acepta. La salida es completar campos inventados o perder lo
+cargado, y las dos terminan igual: la actividad no se carga, y la que no se carga
+no se publica ni se indexa.
+
+**La forma del arreglo.** Partir la validación en dos niveles sobre el mismo
+schema, no en dos schemas:
+
+- **Guardar borrador** — lo mínimo para que el documento exista y se pueda
+  encontrar después en el listado: título no vacío, y el slug (que ya se genera
+  solo desde el título mientras no esté publicado). Nada más.
+- **Publicar** — todo lo de hoy, que es lo que hace que el sitio y el evento no
+  publiquen algo a medias.
+
+Los `superRefine` no cambian de contenido: cambian de condición, igual que la
+regla del slug. Y los `sesiones`/`arancel`/`sede` obligatorios pasan a ser
+obligatorios **al publicar**.
+
+Dos cosas para no romper en el camino:
+
+- **La barra de errores no debe mentir.** Hoy cuenta "campos a revisar" contra el
+  schema único; si el borrador valida con menos, la barra tiene que seguir
+  mostrando lo que va a faltar **para publicar**, o quien carga se va a
+  encontrar el bloqueo recién al final. Que sea aviso, no bloqueo.
+- **Lo que el modelo necesita para no corromperse sigue siendo obligatorio** en
+  los dos niveles: los `id` de sesión (trampa 2) y que las fechas sean
+  `Timestamp` (trampa 1). Eso no es "completar el formulario", es que el
+  documento sea legible.
+
+El sync a Calendar no se toca: ya borra los eventos de todo lo que no está
+`publicado` (§7.3), así que un borrador más incompleto no llega a Calendar por
+definición.
+
+**Cómo quedó (2026-08-26, `1.2.0`).** Dos niveles sobre el mismo schema con la
+condición `estado === 'publicado'`, como decía este ítem: los `superRefine`
+cambiaron de condición, no de contenido. El borrador pide título y slug; en los
+dos niveles siguen bloqueando el `id` de sesión, las fechas convertibles a
+`Timestamp`, el formato del slug y el rango de las coordenadas. La barra no
+miente: muestra en gris lo que va a faltar para publicar (`faltaParaPublicar`).
+Ver **D-120**; los dos niveles están fijados en `tests/schema.test.ts`, con el
+par "el mismo borrador a medias NO se puede publicar".
+
+### B-184 · Cuando el guardado falla, la barra dice cuántos campos faltan pero no cuáles — ✅ hecho (2026-08-26)
+
+Reporte del dueño usando el panel (2026-08-25):
+
+> cuando no se pueda guardar y diga que faltan campos, siempre especificarlos
+
+Hoy `BarraAcciones` muestra `«3 campos para revisar»` y nada más. Fue una
+decisión escrita —listar las rutas de campo tapaba media pantalla en mobile, y el
+detalle está en rojo al lado de cada campo— y **el reporte la da por equivocada**.
+Con razón, y hay un motivo concreto que la decisión no tuvo en cuenta:
+
+**las secciones «Material», «Opcional», «Difusión» y «Vista previa» arrancan
+colapsadas.** Un campo rechazado adentro de un acordeón cerrado no se ve en
+ninguna parte: el contador dice que hay tres, la pantalla muestra cero, y no hay
+forma de saber dónde mirar salvo abrir todo y bajar. Eso no es un resumen
+apretado, es un mensaje que no se puede accionar.
+
+**La forma del arreglo**, que además resuelve lo que motivó la decisión original:
+
+- Nombrar los campos, no las rutas del schema (`sede.direccion` → «Dirección»);
+  ya hay vocabulario de UI para eso en `formulario/etiquetasUI.ts`.
+- Con muchos, nombrar la **sección** y no cada campo: «Falta completar: Dónde
+  (2), Arancel e inscripción (1)». Es corto en mobile y alcanza para saber a
+  dónde ir.
+- Que cada nombre **lleve al campo**: abrir la sección si está colapsada y
+  scrollear hasta él. Es lo que cierra el agujero del acordeón.
+
+Depende de **B-183**: mientras el borrador exija el formulario completo, el
+mensaje va a listar campos que a quien está guardando a medias no le importan
+todavía. Con los dos niveles de validación, el mensaje del borrador es la lista
+corta y el de publicar es la larga. Se pueden hacer en cualquier orden, pero el
+valor del mensaje bueno se cobra recién con B-183 hecho.
+
+Ojo con el criterio de B-63: si se agrega el mensaje, el punto de la guía que hoy
+dice «esa barra dice cuántos campos hay que revisar» queda mintiendo.
+
+**Cómo quedó (2026-08-26, `1.2.0`).** Nombra los campos hasta tres y las
+secciones con su cuenta a partir de cuatro; cada nombre abre la sección y
+scrollea hasta el primer campo rechazado. El diccionario de nombres es data
+(`lib/formulario/camposFaltantes.ts`), atado al schema por
+`tests/campos-faltantes.test.ts`, que también lee los `.tsx` para que un
+renombre de sección no deje el mensaje apuntando a una sección inexistente. La
+advertencia de este ítem sobre B-63 se cumplió: el punto de la guía que describía
+la barra vieja se reescribió en el mismo cambio. Ver **D-121**.
+
+### B-189 · `hayCredenciales()` existe y no la llama nadie, así que el build va a publicar un sitio vacío — ✅ hecho (2026-08-26)
+
+`src/lib/firebase-admin.ts` exporta:
+
+```ts
+/** ¿Tenemos con qué leer Firestore en este build? */
+export const hayCredenciales = (): boolean => …
+```
+
+y `grep -rn hayCredenciales src/ scripts/` no la encuentra en ningún otro lado.
+Es la guarda escrita para esta situación exacta, sin cablear.
+
+**Hoy no rompe nada**, y por eso pasa desapercibida: ninguna página lee Firestore
+en el build —el sitio público es el paso 3 del §10 y `index.astro` es un
+placeholder—, así que un build sin credenciales es correcto. Se comprobó con el
+primer push de CI (2026-08-25): `npm run build` sin `FIREBASE_SERVICE_ACCOUNT`
+terminó en verde, como corresponde.
+
+**Rompe con B-106.** El día que el build lea Firestore para armar `events.json` y
+las páginas de detalle, un build sin credenciales no va a fallar: va a producir
+cero actividades y un `events.json` vacío, y el deploy lo va a publicar encima del
+sitio que sí tenía datos. Sin error, sin log, con el workflow en verde. Es la
+misma familia que el `EXIGIR_EMULADOR=1` del §CI —"verde" no puede significar a la
+vez "los datos están" y "no había datos que leer"— y que B-187: una condición que
+solo se evalúa cuando ya deployó.
+
+**El arreglo es una línea, y hay que hacerlo antes de B-106, no después.** El
+lugar es el paso de build de los dos workflows, o el módulo que lea Firestore:
+
+```ts
+if (!hayCredenciales()) throw new Error('build sin credenciales: no se puede leer Firestore');
+```
+
+Con un test que lo ate, porque el patrón que lo apaga otra vez es exactamente el
+que lo dejó apagado: alguien escribe la guarda pensando en el consumidor que
+todavía no existe, y el consumidor nace sin llamarla.
+
+Queda **P1** y no P2 aunque hoy no se note: cuando se note, el síntoma es el sitio
+público vacío e indexado por Google, que es el objetivo del proyecto al revés.
+
+**Cómo quedó (2026-08-26, `1.2.0`).** La llama `adminApp()`, la única puerta a
+Firestore en build time, y no el paso de build de los workflows: `1.1.0` se
+desplegó a mano, que es el camino que ningún `if` de un YAML mira. La regla del
+§3.2 de `12-sitio-publico.md` no cambió —falla en CI, en local sigue con lista
+vacía— porque es del lector de Firestore; esto es la red de atrás para el
+consumidor que se olvide, que es el patrón que dejó la guarda apagada un mes. Ese
+documento ahora dice qué mitad implementa cada uno.
+`tests/build-credenciales.test.ts` fija que la puerta tire y que nada más en
+`src/` importe el Admin SDK, y se verificó reintroduciendo el bug. Ver **D-123**.
+
+### B-191 · No hay autoguardado, así que una interrupción se lleva todo lo escrito — ✅ hecho (2026-08-26)
+
+[Issue #6](https://github.com/benoffi7/agenda-literaria/issues/6), del panel,
+Android, versión `1.0.1+538bef7`:
+
+> Se podrá guardar algo como borrador o auto guardado, como en word? Porque
+> reporté algo y todo lo que escribí se borró:(
+
+**El accidente concreto ya está cerrado**: tocar «Reportar algo» con el formulario
+a medio llenar lo descartaba sin decir nada, y eso es **B-35**, arreglado el
+2026-08-24 y publicado en 1.1.0 — ahora pregunta antes. Quien reportó esto todavía
+no lo tenía.
+
+**Lo que pidió no es eso, y sigue abierto.** Un aviso evita el accidente; no
+recupera el trabajo. Y hoy se combina mal con **B-183**: si «Guardar borrador»
+exige el formulario completo, la única respuesta honesta al aviso es "sí, perdelo".
+Los tres ítems son una sola historia contada en tres pedazos: **no podés guardar
+(B-183), no sabés por qué (B-184), y si te vas lo perdés (este)**.
+
+**La forma, que es más chica de lo que parece:** persistir el borrador del
+formulario en `localStorage`, con clave por actividad (más una para «nueva»), y al
+abrir ofrecer lo recuperado con un botón para descartarlo. **No toca Firestore**,
+así que no hay reglas nuevas, ni modelo, ni calendario, ni una escritura por tecla
+que cueste plata. El estado ya está centralizado desde B-70, y `formulario-sucio.ts`
+ya sabe cuándo hay algo que perder: son los dos ganchos que hacen falta.
+
+Tres cosas para no equivocarse:
+
+- **Lo guardado es contenido**, a diferencia de todo lo demás que el panel
+  persiste. Nunca sale del navegador y no puede filtrarse a la analítica, que
+  solo acepta enums y contadores (§9). Vale un test de eso.
+- **Recuperar en silencio es peor que no recuperar.** Si al abrir una actividad
+  aparece texto que no está en Firestore sin decir de dónde salió, la próxima
+  duda es "¿esto lo guardé o no?". Tiene que decirlo y tiene que poder
+  descartarse.
+- **Limpiar al guardar bien**, o el borrador viejo va a reaparecer encima de la
+  versión buena la próxima vez.
+
+**Orden:** B-183 primero. Es más barato, cierra el agujero de raíz y baja mucho la
+urgencia de esto.
+
+**Cómo quedó (2026-08-26, `1.2.0`).** `localStorage` con clave por admin y por
+formulario, debounce de 800 ms, y el aviso que ofrece lo recuperado con su fecha y
+un botón para descartarlo. Las tres cosas que este ítem pedía no equivocar están
+cubiertas y con test: no pasa por la analítica (se lee el código del módulo y del
+hook, sin comentarios), no recupera en silencio, y se limpia al guardar bien. De
+más: descarta lo ilegible, lo de otra `VERSION_BORRADOR` y lo de más de 30 días, y
+no tira nunca —`localStorage` lanza excepción en modo privado—. Ver **D-122** y la
+sección nueva de `07-seguridad.md`.
+
+Y una que este ítem no anticipaba: un borrador de hasta 30 días es un formulario
+viejo, así que recuperarlo pisaba `calendarEventId` —el único campo que escribe
+el backend— y duplicaba el evento en la edición **siguiente**, que es la familia
+de B-80. Lo recuperado pasa por `conIdsDeCalendarioDe`; queda anotado en
+`15-mapa-de-trampas.md` como vía nueva de una clase conocida.
+
+**Lo que encontraron los auditores antes del push, y se arregló en el mismo
+cambio (`1.2.0`, D-124).** Los cuatro son de esta función, y el primero es la
+misma clase que el párrafo de arriba con otro campo — o sea que el razonamiento
+estaba bien y la lista estaba corta:
+
+1. **P1 de privacidad — el borrador recuperado reactivaba los dos flags de
+   publicación.** `online.urlPublica` y `material.items[].publico` deciden si el
+   link de la reunión y las URLs del material salen a `events.json` y a la
+   descripción del evento (trampa 5). Se destilda, no se guarda, se recupera a los
+   veinte días, se publica, y sale. Vuelven a `false` (`sinFlagsDePublicacion`) y
+   el aviso lo dice cuando había alguna tildada — necesario porque `Seccion` lee
+   `abiertaPorDefecto` **solo al montar**, así que un flag que llega con el
+   borrador quedaba en una sección cerrada.
+2. **La clave no llevaba el uid y no se borraba al cerrar sesión.** Con dos admins
+   en la misma máquina (D-57), a B se le ofrecía el borrador de A; y el contenido
+   —parte de él interno por §5.1— sobrevivía al logout hasta 30 días, lo que
+   además hacía falsa una frase que `07-seguridad.md` ya afirmaba. Ahora la clave
+   lleva la huella del uid y `cerrarSesion()` borra todos.
+3. **La clave de "nueva" era la misma que la de "duplicar".** Las dos nacen sin
+   id. Un borrador de una carga nueva interrumpida se ofrecía dentro de un
+   duplicado y, aceptado, publicaba una actividad distinta de la que se quiso
+   duplicar. El discriminador ya existía una línea más abajo, en la medición.
+4. **`pareceFormulario` valida 2 campos de ~30**, y aguas abajo `formADocumento`
+   copia `sede`, `online`, `organizador` y `tallerista` tal cual y `toPublic`
+   proyecta los tres primeros enteros: una clave de más terminaba en
+   `events.json`. Lo recuperado entra podado contra el molde del formulario.
+
+Y un quinto que apareció al verificar los otros cuatro: **el test que fijaba la
+guarda de `calendarEventId` no la fijaba.** Decía
+`toContain('conIdsDeCalendarioDe')`, y esa cadena la satisface el `import`: con la
+llamada borrada seguía verde. Los dos tests de saneadores ahora afirman la
+composición con los espacios colapsados, y se verificó que caen. Es la clase de
+"chequeo que no chequea", y vale para cualquier test que lea un fuente buscando un
+nombre.
+
+### B-205 · Un push cuya corrida no arranca no se deploya nunca, y el push siguiente no lo repara · ✅ hecho (2026-09-02) · P1
+
+**Se hizo el arreglo de raíz, el primero de los dos que el ítem proponía.**
+`decidir` ya no diffea contra `github.event.before`: prefiere lo que
+`/version.json` dice que está PUBLICADO (`INFO_VERSION.sha`), y solo cae al
+`before` del push cuando esa fuente no sirve (el sitio no contesta, no trae
+`sha`, o ese commit no está en el historial del checkout).
+
+La decisión vive en `scripts/commit-base-deploy.sh`, por el mismo motivo que
+`que-deployar.sh`: para poder probarla sin pegarle al sitio real ni depender de
+qué esté publicado en el momento de correr el test.
+`tests/commit-base-deploy.test.ts` apunta `VERSION_JSON_URL` a un servidor de
+mentira y cubre las cinco formas en que la fuente preferida puede fallar (sha
+inexistente en el historial, campo ausente, 5xx, sin respuesta, ninguna de las
+dos fuentes) más el caso feliz — y un sexto test que el workflow consuma el
+script y no repita el `curl` por su cuenta.
+
+**Mutado, no solo verde.** Deshacer la preferencia por lo publicado (dejar que
+`ANTES` nazca del `before` y no del `sha`) tira roja la primera prueba; saltear
+la validación `git cat-file -e` contra el sha publicado tira roja la segunda.
+Las dos mutaciones se probaron y se restauraron.
+
+**Lo que no se hizo, a propósito:** el segundo arreglo que el ítem proponía —un
+chequeo que compare lo publicado con `main` y avise si difieren— sigue sin
+existir. El primero ya cierra el agujero (la recuperación es automática en el
+push siguiente); el segundo queda para si hace falta hacerlo *visible* además
+de corregido. El texto original queda abajo.
+
+Pasó el 2026-08-26 con el push de la `1.2.0` (`9fd50f3`): la corrida de
+«Deploy desde main» terminó en **`startup_failure` a los 0 segundos**, sin ningún
+job. Verificado que la causa no era del repo: el YAML parseaba (`workflows.test.ts`
+en verde), el workflow estaba `active`, Actions habilitado con `allowed_actions:
+all`, el repo público y no fork, el actor era el dueño, y el archivo **no se había
+tocado** en el push. Con todo eso, la corrida no se puede reintentar
+(`gh run rerun` → "This workflow run cannot be retried").
+
+**La causa, confirmada:** GitHub Actions estaba en `major_outage`. El incidente se
+abrió a las **15:11:58Z** y la corrida es de las **15:31:44Z**, o sea en el medio;
+el republish a mano de `deploy.yml`, quince minutos después, falló igual y del
+mismo modo. Se confirmó contra
+`https://www.githubstatus.com/api/v2/summary.json`, que es el chequeo que conviene
+hacer **primero** la próxima vez: dos workflows distintos fallando al arrancar, sin
+cambios en `.github/`, es afuera y no adentro.
+
+Que la causa sea de afuera es justamente lo que hace que este ítem valga: las
+caídas de Actions van a volver a pasar, y lo que falla acá es la **recuperación**.
+
+**El bug no es la falla transitoria: es que nada la repara y nada la nota.**
+`decidir` diffea con `ANTES: ${{ github.event.before }}`, o sea el head del push
+anterior. Entonces:
+
+1. el push N no deploya (corrida fallida al arrancar, cancelada, o lo que sea);
+2. el push N+1 diffea **desde el commit de N**, que ya está en `main`;
+3. los cambios de N quedan fuera del diff **para siempre**, y el deploy los
+   saltea sin decir nada.
+
+En este caso concreto el push siguiente iba a ser de `docs/` solamente, así que
+`que-deployar.sh` habría decidido "nada que deployar" y la `1.2.0` se quedaba en
+`main` sin publicarse, con producción en `1.1.0+c84da0c` y **ningún síntoma**. Se
+descubrió mirando `/version.json` a mano, no porque algo avisara.
+
+Es la misma familia que B-188 —un deploy que no ocurre y no se nota de este
+lado— y que la lección de B-20 sobre el job de reglas que bloquea Hosting. La
+diferencia es que acá el estado queda **inconsistente hacia adelante**: no alcanza
+con arreglar la causa, hay que republicar.
+
+**Qué se hizo el 2026-08-26**, y es el workaround, no el arreglo: disparar
+`deploy.yml` a mano (`gh workflow run deploy.yml --ref main`), que es el deploy de
+datos y publica **Hosting solo** — sin tocar Functions ni reglas, que en este
+cambio no se tocaron. Su `workflow_dispatch` está documentado para esto
+("republicar después de un cambio de código"). Se prefirió a `push-main.yml` a
+mano porque ése, sin `github.event.before`, deploya **todo**, y el job de
+Functions termina rojo a propósito (los roles que `deploy-ci@` no tiene, D-119).
+
+**Los dos arreglos posibles, y el segundo es el que vale:**
+
+- **Diffear contra lo publicado y no contra el push anterior.** `/version.json`
+  del sitio en vivo ya dice qué commit está publicado (`1.1.0+c84da0c`), así que
+  `decidir` puede usar **ese** sha como base en lugar de `github.event.before`.
+  Con eso, un deploy que no ocurrió se recupera solo en el push siguiente, que es
+  exactamente la propiedad que falta. Es el arreglo de raíz y es chico.
+- **Un chequeo que compare lo publicado con `main`**, del estilo de
+  `relevar-infra.sh` (B-123): si `/version.json` no coincide con el head de
+  `main`, avisar. Sin esto, la única red es que alguien mire.
+
+Lo primero cierra el agujero; lo segundo lo hace visible cuando falle igual.
+Conviene el primero, y el segundo si sobra tiempo.
+
+### B-206 · Lo que había que decidir antes de la subida de imágenes propias — ✅ decidido (2026-08-26) e implementado (2026-08-27)
+
+Las encontró el `auditor-privacidad` en el cierre de la primera tajada. **Hoy
+ninguna filtra nada** —no hay imágenes propias porque no hay subida— y las dos se
+vuelven reales el día que la haya. Van juntas porque bloquean el mismo trabajo.
+
+**1 · La URL pública de una imagen propia contiene el `storagePath`.** Esto
+desarma el argumento con el que se decidió no publicar el campo. La URL canónica
+de Firebase Storage es
+`…/v0/b/<bucket>/o/actividades%2F<id>%2Ftapa.jpg?alt=media&token=…`: el path va
+URL-encodeado adentro, y el `token` es un bearer **permanente** hasta que se
+revoca. Con `origen: 'propia'` publicado al lado, un scraper tiene bucket, path y
+token.
+
+No publicar `storagePath` sigue siendo correcto —es el handle autoritativo, y las
+externas no tienen path— pero **no logra lo que el comentario de `toPublic.ts`
+dice**. Hay que decidir cómo se sirve una propia: por un rewrite de Hosting o un
+dominio propio (el path deja de ser visible, y de paso el egreso pasa por el CDN),
+o con `getDownloadURL()` asumiendo que path y token son públicos y escribiéndolo
+como tal. La primera es más trabajo y la única que cumple la promesa.
+
+**2 · `storagePath`, `ancho` y `alto` van a tener dos dueños.** El plan es que los
+escriba la Function al subir, pero `formADocumento` hoy copia la fila entera con un
+spread. Serían dos escritores para un campo de máquina **adentro de un array de
+contenido**, que es `calendarEventId` dentro de `sesiones` otra vez — la familia de
+B-80, por una puerta nueva.
+
+Las dos consecuencias concretas, ninguna de privacidad:
+
+- `functions/historial.js` tiene `CAMPOS_DE_MAQUINA_SESION = ['calendarEventId']` y
+  **no** tiene el equivalente para `imagenes`. Cuando la Function escriba de vuelta,
+  `huboCambioDeContenido` va a ver un cambio de contenido: **una versión de
+  historial y un rebuild del sitio por cada imagen optimizada**.
+- El borrador de `localStorage` vive 30 días y `sinFlagsDePublicacion` no toca
+  `imagenes`: un borrador viejo puede volver con un `storagePath` a un objeto que ya
+  se borró. Es el sexto campo de la lista de D-124, que se quedó corta dos veces.
+
+**El arreglo, cuando se haga:** `CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']`
+en `functions/historial.js`, y que `formADocumento` los **conserve explícitamente**
+del documento de hoy en vez de spreadearlos del formulario — igual que ya hace con
+`calendarEventId: s.calendarEventId ?? null`.
+
+#### Cómo quedaron las dos (2026-08-27, con la subida) — razonamiento completo en **D-131**
+
+**1 · Se eligió `getDownloadURL()`, la opción barata, con dos condiciones que la
+vuelven honesta.** El ítem decía que el rewrite de Hosting era «la única que cumple
+la promesa», y lo que cambió la cuenta es que **la promesa estaba mal escrita**: el
+comentario de `toPublic.ts` decía que publicar el path «dibuja la estructura del
+bucket». Con un prefijo plano (`imagenes/`) y el nombre del objeto siendo el uuid de
+la fila, no hay estructura que dibujar; y con `allow read: if true` bajo ese prefijo,
+el token permanente no protege nada que no estuviera abierto. `storagePath` sigue
+afuera del `events.json`, pero por lo que sí es —el handle autoritativo, que un
+consumidor del JSON no usa— y no por un secreto que la URL desmiente. El comentario
+se reescribió; **una afirmación de seguridad que miente es peor que no tenerla**
+(B-195). El rewrite quedó abierto abajo, con el motivo corregido: costo y
+portabilidad, no privacidad.
+
+**2 · Implementado tal cual estaba escrito**, sin cambiarle nada:
+`CAMPOS_DE_MAQUINA_IMAGEN` en `functions/historial.js` y `formADocumento`
+enumerando las claves de cada imagen. Hoy el segundo escritor no existe todavía —los
+tres campos los escribe la subida del panel—, así que las dos mitades son
+preventivas; se hicieron ahora porque es cuando son gratis. Lo cuida
+`tests/clases-de-bug.test.ts`, que además verifica que **ninguna clave de más** entre
+al documento (el camino del §5.2 por el que un borrador viejo mete algo inventado).
+
+Un detalle que el ítem no anticipaba: los tres se copian con «si está» y **no** con
+`?? null`. Firestore guardaría el `null` como valor presente y `huboCambioDeContenido`
+no unifica ausente con `null` (D-41), así que un `storagePath: null` en cada imagen
+externa produciría una versión de historial y un rebuild por guardado.
+
+---
+
+**Decidido el 2026-08-26. Tres respuestas, y la primera cambia la doc y no el código.**
+
+**1 · Las propias se sirven con `getDownloadURL()`, y el path del bucket pasa a ser
+público — escrito como tal.** Se eligió el camino sin infra: es lo que el SDK
+devuelve y funciona hoy. La contra se asume y se anota donde se lee: para una imagen
+propia, **el path y un token permanente son públicos**, porque viajan adentro de la
+URL. Deja de ser cierto que «`storagePath` no sale»; lo que sigue siendo cierto es
+que no lo publicamos nosotros en la proyección, y eso se mantiene —no hay motivo
+para emitir el handle autoritativo— pero como prolijidad, no como defensa.
+
+**La consecuencia que esto arrastra, y es la parte que no era obvia: si el path es
+público, el nombre del archivo también lo es.** Un
+`actividades/<id>/taller-en-casa-de-ana.jpg` cuenta algo que la actividad no cuenta,
+y el id ya es público (va en el `events.json`). Así que **la Function renombra a algo
+opaco** —el id de la fila más la extensión, `img_<uuid>.webp`— y nunca conserva el
+nombre que traía el archivo. Va con test.
+
+Si algún día molesta, la salida está escrita arriba: un rewrite de Hosting, que
+además saca el egreso de Storage y lo pasa por el CDN.
+
+**2 · El dueño de `storagePath`, `ancho` y `alto` es la Function.** El formulario los
+**conserva** del documento de hoy en vez de spreadearlos, igual que ya hace con
+`calendarEventId: s.calendarEventId ?? null`. Arrastra dos cosas que van en el mismo
+cambio y no después:
+
+- `CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']` en
+  `functions/historial.js`. Sin eso hay **una versión de historial y un rebuild del
+  sitio por cada imagen optimizada**.
+- Los tres campos entran a los saneadores del borrador recuperado (**D-124**), que es
+  la lista que ya se quedó corta dos veces. Un borrador de hace tres semanas no puede
+  devolver un `storagePath` a un objeto que se borró.
+
+**3 · Se guarda el original saneado más una miniatura.** Dos objetos por imagen: el
+original sin EXIF y recomprimido para la página de detalle, y una miniatura para la
+tarjeta del listado. Es el mínimo que evita servir 3 MB en un listado de treinta
+tarjetas, que es el egreso que se paga, y deja de dónde volver a generar otro tamaño
+sin pedir la foto de nuevo. El almacenamiento duplicado es la parte barata.
+
+**Y una que sale de la 3 y hay que hacer antes de la primera subida:** el budget
+alert del §2.3 está puesto **solo para Functions**. Storage se paga por
+almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
+Conviene extenderlo antes, no después de la factura.
+
+### B-236 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes — ✅ hecho (2026-09-02) · P1
+
+**Se hizo la salida de fondo #2 de la lista de abajo**: el helper
+`scripts/wip.sh`. `guardar` commitea todo (staged y no) con un mensaje
+reconocible, para dejar el árbol limpio antes de rebasear o cambiar de rama
+sin tocar `refs/stash`; `restaurar` deshace **ese mismo** commit —comprobando
+antes que el HEAD sea de verdad un commit del script, no un `reset --soft`
+a ciegas— y los cambios vuelven al árbol.
+
+`tests/wip.test.ts` corre contra un repo git temporal y descartable, nunca
+contra este checkout: seis casos, incluido el árbol limpio (no hace nada) y
+un commit real cuyo mensaje empieza parecido a la marca del script (no
+engaña el chequeo de `restaurar`). **Mutado, no solo verde**: sacar la
+verificación del mensaje en `restaurar` tira rojo los dos tests que la
+sostienen, y sacar el chequeo de árbol limpio en `guardar` tira rojo el suyo.
+Las tres mutaciones se restauraron después.
+
+Además, la salida #3: una regla nueva en
+[`docs/14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) («Regla para
+cualquiera que ejecute una fase», punto 7) que explica el mecanismo, nombra
+`wip.sh` y recuerda no borrar una entrada ajena del stash si aparece una.
+
+**Lo que no se hizo, a propósito**: nada obliga a usar `wip.sh` en vez de
+`git stash` — es un gesto interactivo y, como dice el texto original, "un test
+no lo puede atajar". La red es que exista y esté documentado, no un hook que
+lo fuerce.
+
+El texto original queda abajo.
+
+
+**Pasó dos veces el 2026-08-27/28, en dos worktrees distintos**, y la segunda quedó
+grabada en el propio `git stash list`: una entrada se llama literalmente
+`recuperado: cambios de otro worktree (pop accidental de stash compartido)`.
+
+**La causa, y es de git, no de nadie.** El stash vive en `refs/stash`, que es del
+**repositorio**, no del working-tree. `git worktree` aísla el índice, el `HEAD` y
+los archivos — **no el stash**. Entonces:
+
+```
+worktree A:  git stash push        # queda stash@{0} = A
+worktree B:  git stash push        # ahora stash@{0} = B, y A pasó a stash@{1}
+worktree A:  git stash pop         # ← se trae el trabajo de B a su árbol
+```
+
+En el caso real, un frente hizo `stash push` para poder rebasear, otro frente
+stasheó en el medio, y el `pop` del primero trajo 1061 líneas del segundo —cuatro
+archivos nuevos de una feature ajena— sobre su propio checkout, con conflictos.
+
+**Por qué es P1 y no una curiosidad.** Se recupera, pero solo si uno se da cuenta:
+`git stash pop` con conflictos **conserva la entrada**, así que el trabajo del otro
+no se pierde. El modo malo es el que no da conflicto — ahí el `pop` **borra la
+entrada** y los cambios del otro frente quedan mezclados en un árbol ajeno, sin
+rastro en el stash y sin que nadie los esté buscando. Y el repo trabaja con varios
+worktrees en paralelo a propósito (`docs/14-plan-de-saneamiento.md`), o sea que la
+condición que lo dispara es el modo de trabajo normal, no un accidente.
+
+**Es la misma familia que B-219** (dos worktrees compartiendo el emulador): algo que
+uno supone aislado por worktree y es global del repositorio. Vale la pena buscar el
+resto de esa familia — `refs/stash`, el emulador, y probablemente `.firebase/`.
+
+**Cómo se sale, hoy y a mano.** Nunca `git stash pop` a secas desde un worktree:
+
+```bash
+git stash list                    # mirar el nombre: dice de qué worktree salió
+git rev-parse 'stash@{N}'         # anotar el sha
+git stash apply <sha>             # apply, no pop: no toca la pila
+# …verificar que es lo tuyo…
+git stash drop 'stash@{N}'        # recién ahí, y confirmando el sha otra vez
+```
+
+Los dos detalles que hacen la diferencia: **`apply` y no `pop`** (si te equivocaste,
+la entrada del otro sigue ahí), y **por sha y no por índice** (los índices se corren
+solos cuando otro worktree stashea).
+
+**Las salidas de fondo, de menos a más:**
+
+1. **No usar `stash` en un worktree.** Para rebasear con el árbol sucio alcanza con
+   un commit temporal (`git commit -m wip` → `git rebase` → `git reset --soft HEAD~1`),
+   y un commit **sí** es por-worktree. Es lo más barato y no necesita nada nuevo.
+2. **Un helper `scripts/wip.sh`** que haga exactamente eso, para que no dependa de
+   que cada uno se acuerde. Encaja con el criterio del skill `automatizar`: esto ya
+   pasó dos veces.
+3. **Un test no lo puede atajar** —es un gesto interactivo, no código versionado—
+   pero **una línea en `docs/14-plan-de-saneamiento.md` sí**, que es donde se explica
+   cómo conviven los frentes en paralelo. Hoy ese documento reparte archivos y no
+   dice nada del stash.
+
+**Y una consecuencia operativa mientras tanto:** si te encontrás un `git stash list`
+con entradas de otros worktrees, **no las limpies**. Son el trabajo en curso de otro
+frente, y borrar una es la única forma de que esto sí pierda datos.
+
+### B-300 · Con la galería, el techo de peso de una página de detalle pasó de 3 MB a 12 MB — ✅ cerrado (2026-09-02) · P1
+
+> **Cerrado por B-220 / D-175, con el número medido en vez de supuesto.** La
+> página de «Usted está aquí» —el caso, y el único— pasa de **3226,7 KB a 184,3
+> KB**, 17,5 veces más liviana, **sin tocar una sola plantilla**: la Function
+> escribe la imagen optimizada encima del original, así que la misma URL de
+> siempre devuelve los bytes nuevos.
+>
+> **Y el diagnóstico de abajo estaba errado en un punto que importa.** Este ítem
+> decía «un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB»: no era un JPEG.
+> Las **tres** imágenes de esa página son **PNG**, y ahí estaba todo el problema.
+> Un PNG de una ilustración pesa diez o treinta veces lo que el mismo contenido en
+> JPEG, y los tres resultaron completamente opacos —declaran canal alfa y no lo
+> usan—, así que convertirlos no cambia un píxel.
+>
+> Las dos cosas para hacer que decía abajo:
+>
+> 1. **La barata ya no hace falta.** «Volver a subir las dos imágenes
+>    recomprimidas» era un gesto manual del dueño; ahora lo hace el servidor. Lo
+>    que sí hay que correr una vez es `scripts/optimizar-imagenes.mjs`, porque el
+>    trigger solo corre cuando un objeto **se escribe** y esas tres ya estaban.
+> 2. **La cara está hecha**, y salió más barata de lo previsto: no hizo falta
+>    `srcset` para cerrar esto. El `srcset` sigue teniendo sentido y queda en
+>    **B-320** (cartelera) y **B-321** (la portada del detalle), pero ya no como lo
+>    que bloquea.
+>
+> **El techo legal sigue siendo 12 MB al subir** (4 × 3 MB, DEC-7b), a propósito:
+> el tope de subida es lo que empuja a recortar. Lo que cambió es el techo
+> **servido** — cuatro imágenes optimizadas de una actividad real quedan en el
+> orden de los 200-400 KB.
+
+Salió de auditar **B-296** (**D-168** §3), no de un reporte aparte. Y no es trabajo
+nuevo: es el mismo **B-220** de siempre, con un número más fuerte para adelantarlo.
+
+Hasta la galería, la página de detalle servía **una** imagen, así que su peor caso
+legal era el tope de subida de DEC-7b: **3 MB**. Con hasta cuatro imágenes por
+actividad, el techo pasa a **12 MB** en una sola página — la que recibe el tráfico
+de Google y de Instagram.
+
+**Medido contra producción el 2026-09-02**, con el `Content-Length` real de las 30
+imágenes que hay cargadas: mediana **92,6 KB**, p90 **124,2 KB**, máximo **1091,5
+KB**. Las cuatro páginas con galería:
+
+| Actividad | Portada | Secundarias | Total |
+|---|---|---|---|
+| 2do Festival Literario San Isidro | 106,8 KB | 107,5 KB | 214,3 KB |
+| Desayuno epistolar | 60,9 KB | 51,0 KB | 111,9 KB |
+| Taller de cuento (Lamberti) | 34,0 KB | 96,8 KB | 130,8 KB |
+| **Usted está aquí** | **1091,5 KB** | 1808,5 + 326,7 KB | **3226,7 KB** |
+
+**Tres de las cuatro no son un problema** —+51 a +108 KB, por debajo de la mediana
+de una sola portada— y las otras 42 páginas no cambian un byte. El caso es la
+cuarta, y **ya pesaba eso antes de la galería**: su portada sola son 1,07 MB, o sea
+**11,8 veces** la mediana del sitio. La galería no lo crea, lo hace visible, y le
+suma 2,1 MB que se bajan solo si alguien scrollea hasta el final (las secundarias
+van `lazy` y al final de la página, D-168 §2).
+
+**Dos cosas para hacer, una barata y una cara:**
+
+1. **Barata y ya:** volver a subir las dos imágenes de «Usted está aquí»
+   recomprimidas. Un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB — es el
+   **59 %** del tope de 3 MB en una imagen que en pantalla mide 105px de ancho.
+   Es un gesto del dueño en el panel, no código.
+2. **Cara y la de fondo: B-220.** Sin variantes de imagen no hay nada más que
+   hacer del lado del código: las tres palancas que existen ya están puestas
+   (`lazy` salvo la portada, `width`/`height` más `aspect-ratio`, `decoding`), y
+   `sizes` sin `srcset` es decoración que parece optimización (D-149).
+
+El disparador escrito de B-220 sigue en **B-266**; esto es el segundo, y el que
+mueve el peor caso de una página en vez del de un recorrido.
+
+### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el texto alternativo se pide en la portada.
+
+**Decidido el 2026-09-03 por el dueño: obligatorio solo en la portada.** Ni un
+campo por imagen —nadie lo llenaría en las cuatro— ni seguir derivando todo del
+título: la portada es la que va a Open Graph y a la tarjeta, o sea la que se
+comparte, y es un campo solo.
+
+Es un cambio de modelo, así que va en la tanda de modelo junto con **B-285**,
+cuando aterricen los frentes que hoy tienen el schema y el formulario.
+
+
+Anotado al cerrar **B-296** (**D-168** §1). DEC-7a (**D-125**) decidió que hay **un
+solo campo opcional** por imagen —el epígrafe— y que el texto alternativo sale del
+**título de la actividad**, a propósito, y con la contra escrita: con varias
+imágenes el mismo alternativo se repite. B-296 tuvo que elegir cómo vivir con eso
+—las secundarias quedaron decorativas, `alt=""`, y la cuenta se dice una vez en el
+encabezado— **sin tocar la decisión de fondo**, porque no es una decisión de
+implementación.
+
+**Lo que se pierde con la salida elegida, dicho explícito:** una imagen secundaria
+con contenido propio —la fachada del lugar, la tapa de un libro, la foto de la
+edición anterior— no se describe para quien usa un lector de pantalla, salvo que
+quien la cargue le escriba un epígrafe. Y hoy **ninguna de las cuatro secundarias
+de producción tiene epígrafe**, así que en la práctica no se describe ninguna.
+
+**Por qué DEC-7a lo descartó, y sigue siendo un buen argumento:** un campo
+obligatorio por imagen en un panel de una persona produce «foto» como texto
+alternativo, que es peor que un título descriptivo. Un campo **opcional** por
+imagen no tiene ese problema, pero suma un campo por fila a un formulario de 30+
+campos y hay que decidir qué pasa cuando está vacío — que es exactamente el caso
+que D-168 ya resolvió con `alt=""`.
+
+Vuelve a esta lista para que no se pierda, no para resolverse sola. Si el dueño
+dice que sí, el cambio es chico: un campo en el schema, uno en la fila del editor
+de imágenes, y en la plantilla `alt={imagen.textoAlternativo || ''}` — la tira ya
+está armada para recibirlo.
+
+### B-220 · La Function que optimiza las imágenes propias (DEC-7d) — ✅ hecha (2026-09-02) · P1
+
+> **Hecha. El porqué completo está en D-175**, y conviene leerlo porque la
+> medición cambió el diseño respecto de lo que este ítem daba por sentado:
+>
+> - **La salida se escribe encima del original**, y eso **disuelve el write-back**
+>   que este ítem daba por bloqueante: la `url` del documento sigue valiendo, así
+>   que no hay nada que escribir y no hace falta ni la query `array-contains` ni el
+>   documento puente. `ancho`/`alto` siguen siendo verdad como **razón**, que es lo
+>   único para lo que se usan.
+> - **La guarda anti-recursión son las dos**, no una: `customMetadata` es
+>   obligatoria (con la derivada en la misma dirección que el disparador, la del
+>   prefijo es imposible) y la del prefijo hace falta igual (un trigger de Storage
+>   v2 no se filtra por prefijo en la declaración). **Y Storage no corta la
+>   recursión** como Firestore corta la suya a las ~20: medido contra el emulador,
+>   5077 ejecuciones en 40 s desde una subida de 2,6 KB.
+> - **Recomprimir los JPEG no servía para nada** —29 de 30 ahorran entre 0 y 5 %,
+>   y dos pesan más— y **el peor caso del sitio era un PNG**: 1091,5 → 34,0 KB. La
+>   palanca no era la compresión, era el formato.
+> - **WebP y AVIF no volvieron a `TIPOS_SUBIBLES`.** El argumento de abajo («la
+>   Function que recomprime todo los vuelve seguros») no alcanza: el objeto es
+>   público desde el instante en que se sube y la Function corre unos segundos
+>   después. Queda como **B-322**.
+> - **Falta un paso manual del dueño**: los permisos de IAM sobre el bucket, y
+>   después el barrido de las 30 que ya estaban
+>   (`scripts/optimizar-imagenes.mjs`). Ver `08-operacion.md`.
+> - Lo que queda de código es el **consumidor** de la miniatura: **B-320**.
+>
+> El texto original queda abajo, para que D-175 se lea contra lo que este ítem
+> suponía.
+
+> **2026-09-01 — ahora hay números y un disparador.** Con `/cartelera` (B-265) las
+> imágenes dejaron de estar repartidas de a una por página: la pared las junta
+> todas. Lo medido y el punto en el que esto deja de sostenerse están en **B-266**
+> y **D-149** — por pantalla aguanta indefinidamente gracias al `lazy`, por
+> recorrido completo se cae alrededor de los 20-25 flyers. La mención de abajo a
+> «la tarjeta del listado» quedó vieja con D-146: el listado no muestra imágenes.
+>
+> **2026-09-02 — segundo disparador, y es peor que el primero.** Con la galería del
+> detalle (B-296, D-168) el peor caso de **una sola página** pasó de 3 MB a 12 MB, y
+> ya hay una página real de 3,15 MB con una imagen de 1,77 MB adentro. Los números
+> por archivo están en **B-300**. La diferencia con B-266: aquello movía el costo de
+> un *recorrido*, esto mueve el de *una página* — y la de detalle es la que recibe
+> el tráfico de Google y de Instagram.
+
+**Es la mitad que la segunda tajada de B-167 dejó afuera a propósito**, y el criterio
+del corte fue el del repo: preferimos subir imágenes sin miniatura a no subir nada.
+Hoy una imagen propia se sube **tal cual la eligió la persona**, sin recomprimir y sin
+miniatura. Funciona, y las fotos de 3 MB pesan 3 MB en la tarjeta del listado.
+
+Lo que falta, y por qué cada parte es cara:
+
+- **Recomprimir y derivar la miniatura.** Necesita una librería de imágenes nativa en
+  `functions/` (`sharp` o equivalente), que es la primera dependencia binaria del
+  proyecto y cambia el tiempo de deploy de las Functions.
+- **La guarda anti-loop, que es la trampa 3 con otra cara.** El trigger es
+  `onObjectFinalized` sobre el mismo bucket en el que escribe la miniatura: sin guarda,
+  se dispara a sí mismo. Las dos formas conocidas: escribir la derivada bajo un prefijo
+  que el trigger ignore, o marcarla con `customMetadata` y cortar al leerla. La
+  segunda es la que sobrevive a que alguien mueva el prefijo.
+  **La red ya está puesta:** `tests/clases-de-bug.test.ts` descubre desde el 2026-08-27
+  las clases `onObjectFinalized|onObjectDeleted|onObjectArchived|onObjectMetadataUpdated`,
+  así que el trigger nuevo entra solo y va a pedir la guarda. Antes no: el descubridor
+  solo conocía `onDocument*` y `onSchedule` (D-131 §4).
+- **El write-back al documento.** La Function tiene que escribir `storagePath`, `ancho`
+  y `alto` en la fila de la galería, y para eso tiene que **encontrar** la actividad
+  que la referencia — que hoy no puede, porque el path no lleva el id de la actividad
+  (y no lo lleva por una razón dura: al subir todavía no hay actividad, ver D-131 §1).
+  La salida más barata es una query `where('imagenes', 'array-contains', …)`, que
+  Firestore no sabe hacer sobre un subcampo; la otra es que el panel escriba un
+  documento puente. **Esto hay que decidirlo antes de escribir código.**
+  Lo que sí ya está resuelto es la mitad que le sigue: `CAMPOS_DE_MAQUINA_IMAGEN`
+  (B-206 #2) evita que ese write-back deje una versión de historial y un rebuild del
+  sitio por imagen.
+- **Vuelven WebP y AVIF a `TIPOS_SUBIBLES`.** Hoy están afuera porque el panel no sabe
+  sacarles los metadatos; la Function que recomprime todo los vuelve seguros. Es un
+  cambio de una línea en `imagenes-archivo.ts` y una en `storage.rules`, con su test.
+
+**Lo que NO hay que rehacer:** el EXIF ya se saca en el panel, sin recomprimir y
+verificado sobre los bytes. La Function lo va a sacar otra vez, y eso está bien —es la
+capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
+
+### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2 — ✅ hecho (2026-09-03)
+
+> **2026-09-02 — B-220 no lo resolvió, y le sumó la mitad de un problema.** Está
+> dicho explícito porque el frente de B-220 lo tenía en su alcance y decidió no
+> hacerlo.
+>
+> **Qué le agrega.** Ahora cada imagen propia son **dos** objetos: el original en
+> `imagenes/` y su miniatura en `miniaturas/`. El bucket crece al doble de
+> velocidad, y el barrido —cuando se escriba— **tiene que conocer los dos
+> prefijos**. Lo que sí quedó resuelto es que eso sea barato: la ruta de la
+> miniatura es una función pura del nombre del original (`rutaDeMiniatura`,
+> exportada de `functions/imagenes.js`), así que el barrido no necesita ningún
+> índice nuevo — cruza los `storagePath` de las actividades contra los dos
+> prefijos derivando uno del otro.
+>
+> **Por qué no ahora, y no es que no se sepa cómo.** El barrido del primer camino
+> de abajo está claro y el margen de gracia lo hace seguro. Lo que no es aceptable
+> es **estrenar un trigger que borra objetos en el mismo cambio que estrena un
+> trigger que reescribe todos los objetos de ese bucket**: si el barrido tiene un
+> bug se lleva imágenes de producción y no hay papelera de la que sacarlas, y
+> mientras el reescritor todavía no corrió en producción un barrido no puede
+> distinguir «huérfano» de «todavía no procesado». Va en su propio cambio, con su
+> propia verificación contra el bucket real, después de que B-220 esté desplegado.
+>
+> **Y mientras tanto el problema no crece solo**: no se borra nada de Storage, así
+> que un huérfano aparece únicamente cuando alguien quita una fila de la galería o
+> abandona una subida a medias. Sigue costando centavos.
+>
+> **2026-09-02 — verificado, la condición de arriba todavía no se cumple.**
+> `docs/08-operacion.md` § «Permisos que necesita `optimizarImagen`» sigue
+> listando los tres pasos de IAM como pendientes del dueño («hasta que estén,
+> el trigger falla o no se crea»), y el barrido de `scripts/optimizar-imagenes.mjs`
+> —el que reprocesa las imágenes que ya estaban antes de la Function— todavía
+> no corrió contra el bucket real. O sea que **B-220 sigue mergeado y no
+> desplegado**, que es exactamente la condición que este ítem pone como
+> bloqueante. Sigue sin implementarse acá por el mismo motivo escrito arriba,
+> no por falta de tiempo: escribir el barrido de huérfanos ahora sería
+> estrenarlo contra un bucket donde el reescritor de B-220 todavía no corrió,
+> así que no podría distinguir «huérfano» de «original sin optimizar
+> todavía».
+
+> **2026-09-03 — hecho.** `optimizarImagen` está desplegada y barrida (ver
+> `docs/08-operacion.md`), así que la precondición de arriba ya se cumple. Se
+> tomó el **primer camino**: barrido periódico, `onSchedule every 24 hours`
+> (`limpiarImagenesHuerfanas`, `functions/imagenes-limpieza-trigger.js`), que
+> cruza los `storagePath` de **todas** las actividades —sin filtrar por
+> `estado`: un borrador sigue siendo dueño de su imagen— contra los objetos de
+> `imagenes/` y `miniaturas/`, y borra los que ya nadie referencia.
+>
+> La decisión de qué borrar es pura (`decidirLimpieza`,
+> `functions/limpieza-imagenes.js`), probada en `tests/limpieza-imagenes.test.ts`
+> con cada guarda mutada y vista fallar: sacar el corte del margen de gracia
+> pone rojos 3 tests, sacar el tope de la corrida pone rojo 1, y vaciar
+> `miniaturasReferenciadas` a mano pone rojo 1. Se corrió además, de solo
+> lectura, contra el emulador compartido de otro worktree en vivo (209 objetos
+> reales): el margen de gracia de 72 horas protegió los 209 —todos recién
+> subidos por esa suite— sin que se ejecutara ningún borrado, que es la
+> propiedad que la guarda existe para dar.
+>
+> Dos salvaguardas nuevas, la misma clase que ya usa este repo en otros lados:
+> **margen de gracia de 72 horas** (no se toca nada creado hace menos de eso) y
+> **tope de 20 borrados por corrida** (mismo criterio que `MAX_EVENTOS_RESYNC`
+> de B-04). No hace falta IAM nuevo: `roles/storage.objectUser`, que ya tiene
+> `calendar-sync@` desde B-220, incluye `storage.objects.delete`.
+>
+> `scripts/limpiar-imagenes-huerfanas.mjs` reusa la misma `decidirLimpieza` —no
+> hay una segunda copia de la decisión— para poder correr el barrido a mano en
+> seco (default) o con `--aplicar`, igual que `optimizar-imagenes.mjs` de
+> B-220.
+>
+> **Lo que quedó afuera, a propósito y anotado.** El cruce es contra los
+> documentos **en vivo** de `/actividades`, no contra
+> `/actividades/{id}/versiones/*` (§12): restaurar una versión vieja que
+> referenciaba una imagen ya barrida restauraría una `url` rota. El ítem
+> original solo pedía cruzar contra las actividades, así que no se resolvió
+> acá — queda anotado como **B-560**.
+>
+> El conteo de referencias de B-71 (para poder copiar imágenes al duplicar)
+> sigue sin hacer falta, tal como decía el ítem: "el barrido primero; el
+> conteo solo si hace falta copiar".
+
+**Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
+actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
+escrito en `subir-imagen.ts`: un objeto huérfano cuesta centavos y es invisible; un
+borrado automático no tiene papelera de la que sacarlo, y hoy no hay ningún conteo de
+referencias que diga si ese archivo lo usa otra actividad.
+
+Se vuelve real cuando el bucket tenga volumen, y la pregunta a contestar es la misma
+que B-199 movió y no resolvió: **quién es dueño del objeto**. Dos caminos:
+
+- **Barrido periódico** (`onSchedule`): listar el prefijo `imagenes/`, cruzar contra
+  los `storagePath` de todas las actividades, borrar lo que no referencia nadie con un
+  margen de gracia de días —sin el margen se borra la imagen que alguien subió hace
+  cinco minutos y todavía no guardó—. Es el más simple y no necesita estado nuevo.
+- **Conteo de referencias**, que es la variante con estado compartido de B-71 y la que
+  habilitaría copiar imágenes propias al duplicar (hoy la casilla del modal está
+  escondida justamente porque no se puede, D-131 §5).
+
+El barrido primero; el conteo solo si hace falta copiar.
+
+### B-560 · El barrido de B-221 no sabe de `/actividades/{id}/versiones/*` — ✅ hecho (2026-09-09) · P3
+
+> ✅ **Cerrado por el camino 1 —sumar el historial a `referenciasEnUso`— y no por
+> el 3, que este ítem prefería.**
+>
+> El aviso al restaurar **reporta** una pérdida; esto la **evita**, y para una
+> feature cuyo valor entero es recuperar lo que se pisó, avisar de que no se puede
+> recuperar es la mitad. Y las dos objeciones que el ítem le hacía al camino 1 no
+> sobrevivieron a mirarlas contra lo que ya está construido:
+>
+> - **«agranda la lectura, crece sin tope»** — es **una** query
+>   (`collectionGroup('versiones').select('documento.imagenes')`) y no N: el
+>   recorrido de a una de `subcoleccionesHuerfanas` hace falta **allá** porque
+>   necesita saber de qué actividad es cada versión, y acá solo interesa el
+>   conjunto de paths. Y está acotada por **D-42** (20 versiones por actividad) y
+>   por **B-89** (las huérfanas se purgan a los 30 días): ≤ 21 lecturas por
+>   actividad, una vez cada 24 horas, con el número escrito en el docblock.
+> - **«alarga indefinidamente la vida de una imagen sacada a propósito»** — la
+>   alarga, y quedó escrito como precio; pero no indefinidamente: vive lo que viva
+>   la última versión que la nombra, y eso lo acotan las mismas dos cosas. Los dos
+>   barridos se destraban en orden — primero B-89 suelta las versiones, la corrida
+>   siguiente suelta las imágenes.
+>
+> **Y arregla de yapa el rescate de B-41, que este ítem no mencionaba:** al borrar
+> una actividad, `guardarVersionAlBorrar` deja la única copia recuperable y B-89 le
+> da 30 días — pero sus imágenes se iban a las 72 horas, así que el rescate
+> devolvía la actividad **con la galería rota**. El `collectionGroup` es lo que ve
+> esas subcolecciones huérfanas (una query sobre `/actividades` no las ve), así que
+> ahora la subcolección sostiene sus imágenes exactamente el mismo tiempo que se
+> sostiene a sí misma.
+>
+> Las tres premisas del diseño se comprobaron **contra el emulador** y no solo con
+> el `db` falso: que el `select` de campo anidado conserva el anidado y deja afuera
+> el resto del documento, que el `collectionGroup` ve las subcolecciones de padres
+> inexistentes, y que una versión sin `imagenes` vuelve vacía. Sin índice nuevo.
+>
+> **Lo que sigue abierto es otro ítem y no éste: B-852** — las versiones que
+> quedaron rotas **antes** de este arreglo.
+
+**Encontrado implementando B-221, sin tocar código.** `limpiarImagenesHuerfanas`
+cruza los `storagePath` de los documentos **en vivo** de `/actividades` contra
+los objetos del bucket — exactamente lo que el ítem original pedía. Lo que no
+pedía, y por eso no está resuelto, es cruzar también contra
+`/actividades/{id}/versiones/*` (§12, D-41): el historial guarda el `before`
+completo de cada edición, `imagenes` incluido.
+
+**La secuencia que rompe:** se saca una fila de la galería y se guarda → la
+imagen queda huérfana → el barrido la borra 72 horas después (o antes, si el
+tope de la corrida no la salteó) → alguien abre el historial y restaura esa
+versión vieja, que todavía referencia la imagen ya borrada → la fila vuelve con
+una `url` que da 404.
+
+**Por qué no es P2.** Restaurar una versión que trae de vuelta una imagen es un
+caso angosto —hay que haber sacado la imagen, esperado el barrido, y restaurado
+esa versión puntual y no una más nueva— y el modo de falla es una imagen rota
+en el panel, no un dato que se pierda ni algo público mal expuesto.
+
+**Caminos, ninguno implementado:**
+
+- Sumar `/actividades/{id}/versiones/*` a `referenciasEnUso` en
+  `imagenes-limpieza-trigger.js`: más simple, pero agranda la lectura de
+  Firestore de la Function con cada versión guardada de cada actividad —hoy son
+  pocas, pero crece sin tope— y alarga indefinidamente la vida de una imagen
+  que alguien sacó a propósito.
+- Un margen de gracia más largo que el de retención de versiones (que hoy no
+  tiene, `versiones` crece para siempre — otro posible ítem) no alcanza por sí
+  solo: no resuelve el caso, solo lo hace menos probable.
+- Que restaurar una versión avise si alguna de sus imágenes ya no existe en el
+  bucket, en vez de prevenir el borrado. Es el único camino que no le pide nada
+  nuevo al barrido.
+
+> **2026-09-07 — verificado contra el código: el caso es alcanzable hoy, y el
+> ítem no lo decía.** Faltaba comprobar la premisa, así que se comprobó:
+>
+> - **La UI de restaurar existe** (`src/components/admin/HistorialActividad.tsx`,
+>   `restaurarCampo` de `src/lib/historial.ts`), y no es un plan: está construida.
+> - **`imagenes` es uno de los campos restaurables** —está en el mapa de rótulos
+>   del historial— así que la secuencia entera del ítem se puede ejecutar con
+>   clics: sacar la fila, esperar el barrido, restaurar esa versión.
+>
+> O sea que no es teórico. Lo que **sí** sigue siendo cierto es por qué es P3: el
+> modo de falla es una imagen rota en el panel, no un dato perdido ni algo
+> público mal expuesto, y hay que encadenar tres cosas para llegar.
+>
+> **Y de los tres caminos, el tercero sigue siendo el bueno**, ahora con un
+> argumento más: `historial.ts` ya tiene escrito un problema de la misma familia
+> —restaurar `imagenes` cuando la versión es anterior a B-167 escribe
+> `imagenes: null` y «la galería entera se»— o sea que **restaurar imágenes ya es
+> el campo con más aristas del historial**. Avisar ahí, donde ya hay lógica
+> propia, es más barato que enseñarle al barrido a leer todas las versiones de
+> todas las actividades (camino 1), que además alargaría indefinidamente la vida
+> de una imagen que alguien sacó a propósito.
+>
+> No se implementó en esta pasada por lo que el ítem ya dice —es P3 y el daño es
+> una miniatura rota— y para no meterle una llamada de red por imagen a un flujo
+> que hoy no hace ninguna sin decidirlo primero.
+
+### B-223 · `12-sitio-publico.md` sigue diseñando contra `imagenUrl`, que ya no existe — ✅ hecho (2026-09-02)
+
+**Corregidos los seis lugares**, más dos que el ítem no contaba. El §4.2 y el
+§7.6 pasan a hablar de la **portada** y de la **lista vacía** (`imagenes: []`),
+el `og:image` del §5.1 y la fila `image` del §5.2 salen de `portadaDe()`, la
+caja de estado dejó de citar el campo viejo, y el §9 se rehízo entero: había un
+consejo —«es una URL externa que no controlamos»— que hoy vale para **una de las
+dos clases** de imagen, así que ahora distingue la externa (que puede caerse
+mañana, el riesgo que el §7.6 daba para todas) de la propia (que vive en nuestro
+Storage y **trae `ancho` y `alto`**).
+
+Las dos puntas que el ítem pedía que no se perdieran quedaron escritas donde se
+van a leer: que el índice recorta a `imagenUrl: portadaDe(...)` **sin las
+medidas** —y que meterlas es agrandar una salida pública, o sea el fixture de
+centinelas— está en el §9 y en una nota nueva del §3, que además aclara que el
+`imagenUrl` **del JSON** sí existe y es un derivado con el nombre del diseño.
+
+Se hizo junto con **B-234**, como el propio B-234 pedía: los dos son drift del
+mismo documento y arreglarlos desde dos frentes produce dos versiones del mismo
+párrafo.
+
+Lo encontró el `auditor-documentacion` en el cierre de la segunda tajada de B-167.
+El diseño del sitio público modela la imagen como **un campo único**
+(«la tarjeta sin `imagenUrl`…», «`imagenUrl: null` es frecuente…», `og:image`:
+`imagenUrl` cuando hay) en al menos seis lugares: líneas 201, 381, 552, 579, 932 y
+1017.
+
+**El modelo real es `imagenes[]` con `portada` desde la primera tajada** (D-125),
+que está en producción hace días. Y desde la segunda hay además imágenes
+**propias**, con `storagePath`, `ancho` y `alto` — que es justo lo que la tarjeta
+necesita para no saltar al cargar, y el documento no lo sabe.
+
+**No bloquea nada hoy**: el sitio público todavía no se construye. El daño es
+diferido y concreto: quien implemente B-01 va a leer ese documento y va a escribir
+la tarjeta contra un campo que no existe, y el `getStaticPaths` contra una forma
+que el `events.json` no tiene. Se arregla **antes** de empezar B-01, no después.
+
+Lo que hay que actualizar, además de reemplazar el nombre del campo:
+
+- El caso «sin imagen» (§7.6) pasa a ser «lista vacía», no `null`.
+- `og:image` sale de la **portada** (`portadaDe()`), no de «la imagen».
+- La tarjeta puede usar `ancho`/`alto` de una imagen propia para reservar el
+  hueco; una externa no los tiene y ahí sigue sin poder reservarlo. **Ojo con
+  dónde entra eso:** hoy `src/lib/eventsJson.ts` recorta el índice a
+  `imagenUrl: portadaDe(a.imagenes)?.url ?? null` y **no lleva las medidas**. No
+  está roto —el índice sigue funcionando igual con imágenes propias, y la
+  proyección larga sí las publica—, pero si la tarjeta las va a usar, el campo
+  tiene que entrar al índice, y eso es una salida pública: pasa por el fixture de
+  centinelas como cualquier otra.
+- El §7.6 dice que una imagen externa puede caerse mañana. Con las propias eso
+  deja de valer para la mitad de los casos, y conviene decirlo.
+
+### B-207 · `searchText` tenía dos listas de fuentes, y restaurar del historial publicaba la vieja — ✅ hecho (2026-08-26)
+
+Lo encontró el `auditor-privacidad` sobre DEC-1, y es consecuencia directa de ese
+cambio. `historial.ts` tenía **su propia copia** de «de qué campos sale el
+`searchText`» (`CAMPOS_DE_BUSQUEDA`, cinco entradas) mientras `buildSearchText`
+consumía seis. Al agregar el libro, restaurar un libro viejo desde la pantalla de
+versiones **escribía el campo y dejaba el `searchText` con el título descartado** —
+y ese `searchText` sale al `events.json`, o sea el documento diciendo una cosa y el
+índice público de búsqueda diciendo otra. El camino estaba abierto: la pantalla ya
+ofrecía restaurar «Libro presentado», y esa rama no tenía **ningún** test.
+
+Es la clase de B-88 y la de B-72 a la vez: el productor y el consumidor de la misma
+regla derivando por separado.
+
+**Cómo quedó.** No se arregló agregando `'libro'` a la lista y un test que compare
+las dos: eso deja el par vivo. **Ahora hay una sola lista** —
+`CAMPOS_DE_SEARCH_TEXT` en `normalize.ts`, al lado de la función que la usa— y
+`historial.ts` la importa.
+
+La red va en las dos direcciones y ninguna compara literales: un test **de
+comportamiento** que mete un centinela en cada campo de la lista y exige que
+aparezca en el `searchText` (si la lista nombra un campo que la función ignora,
+restaurarlo recalcula al vacío), y otro que lee la función —ocho líneas— extrae los
+`a.<campo>` que consume y exige que estén todos en la lista (la dirección que
+falló). Verificadas las dos: sacando `libro` de la lista y agregándole un campo
+inventado, cada rotura cae con el mensaje que nombra qué drifteó.
+
+### B-210 · La trampa de foco está copiada en dos diálogos y la copia se quedó con el bug — ✅ hecho (2026-08-27)
+
+**Hecho.** El cableado salió a `src/components/admin/useCapaModal.ts` y las dos capas lo
+usan. `CentroAyuda` recupera el `ref` del callback que solo `DialogoDuplicar` tenía, así
+que leer las novedades ya no remonta el efecto ni le roba el foco.
+
+**Y lo que costó más que el arreglo: los tests que se rompieron.** Cuatro `it` que leían
+el fuente buscaban `e.key===Escape` o `alCancelar=useRef(onCancelar)` dentro de
+`DialogoDuplicar.tsx`, así que **un refactor que mejora el código los puso en rojo**. Es
+la tercera vez que pasa lo mismo (§10, problema 1). No se los repuntó al archivo nuevo
+—sería el mismo chequeo frágil con otra ruta—: ahora afirman la **propiedad** de que
+ninguna capa tenga cableado propio, lo que además cubre a la próxima capa que alguien
+escriba. Verificado por mutación en las dos direcciones: reintroducir `alCerrar` en las
+dependencias rompe, y escribir un `keydown` en una capa rompe.
+
+`src/lib/foco.ts` comparte la **aritmética** del foco a propósito: su docblock
+dice que la parte que toca el DOM «queda en cada componente, que es donde está el
+`ref`». Esa decisión era razonable con un solo diálogo. Hoy hay dos, y el bloque
+que toca el DOM —el `useEffect` con el handler de `keydown`, el ciclo de Tab, el
+`overflow: hidden` del body, la devolución del foco al abridor— está copiado
+verbatim en `DialogoDuplicar.tsx` y en `ayuda/CentroAyuda.tsx`. Son ~40 líneas
+idénticas.
+
+**Y ya divergieron, en el sentido que importa: una copia tiene el arreglo y la
+otra no.** `DialogoDuplicar` guarda el callback en un `ref` y usa deps `[]`, con
+un comentario que explica por qué —un `onCancelar` inline es una función nueva por
+render, así que cualquier re-render con la capa abierta corre la limpieza,
+devuelve el foco, lo re-captura y se lo lleva de vuelta a la caja—.
+`CentroAyuda` quedó con `useEffect(..., [onCerrar])`, y `ayuda/BotonAyuda.tsx` le
+pasa `onCerrar={() => setAbierto(false)}`, que es exactamente el caso inline que
+el comentario del otro archivo describe.
+
+**Cómo se ve:** `BotonAyuda` tiene estado propio (el contador de novedades sin
+leer). Marcar las novedades como leídas lo re-renderiza → `onCerrar` es una
+función nueva → el efecto de `CentroAyuda` se desmonta y se vuelve a montar →
+devuelve el foco al botón «Ayuda» y se lo roba de nuevo hacia la caja, y el
+scroll del body parpadea en el medio.
+
+Arreglo: un `useCapaModal({ alCerrar, caja })` en `src/lib/` o en
+`components/admin/`, con el `ref` del callback adentro, del que tiren los dos. El
+test de `foco.test.ts` ya cubre la aritmética; lo que falta es que el cableado
+tenga un solo dueño. **Es P1 y no P2 porque el arreglo ya está escrito en el
+repo** — solo está en el archivo equivocado.
+
+### B-211 · El doble de `Timestamp` está definido 13 veces en 4 formas, y dos mienten — ✅ hecho (2026-08-27)
+
+**Hecho.** Uno solo, en `tests/fixtures/tiempo.ts`, devolviendo `TimestampLike` — el tipo
+que el modelo declara y que las copias de dos campos no satisfacían. `seconds` y
+`nanoseconds` salen de la fecha: las dos variantes que decían `seconds: 0` afirmaban que
+todo Timestamp es la época.
+
+**Lo que faltaba no era el fixture: era la guarda.** Esta es la clase que el repo ya
+había automatizado (`fixtures/ciclo.ts` + `invariantes-de-ciclo.test.ts`, después de
+aparecer cuatro veces) y volvió igual, porque **la automatización se escribió y no se
+adoptó** — un modo de falla distinto del que se atajó, y sin red. La clase de B-211 en
+`clases-de-bug.test.ts` busca la **forma** (`toDate` y `toMillis` juntos) y no el nombre,
+así que también caza al que se llame `stamp` o `t`. Verificado reintroduciendo una copia:
+falla nombrando el archivo.
+
+`const ts = (iso) => ...` está escrito a mano en 11 archivos de `tests/` y
+exportado dos veces más desde `tests/fixtures/` (`ciclo.ts` y `centinelas.ts`,
+cada uno con una forma distinta). Cuatro variantes:
+
+| Forma | Dónde |
+|---|---|
+| `{ toDate, toMillis }` | `reportes`, `calendario`, `sincronizacion`, `historial`, `costuras`, `fixtures/ciclo` |
+| `{ toDate, toMillis, seconds: Math.floor(…), nanoseconds: 0 }` | `toPublic`, `libro-presentado`, `cupo-completo`, `fixtures/centinelas` |
+| `{ toDate, toMillis, seconds: 0, nanoseconds: 0 }` | `calendarioPanel`, `filtrosActividades` |
+| delega en `tsDe` | `textoRedes` |
+
+**La tercera forma es un fixture que miente**: dice que todo `Timestamp` es la
+época. Hoy no rompe porque ningún código de producción lee `.seconds` —lee
+`.toDate()` y `.toMillis()`—, pero el `Timestamp` real de Firestore sí lo expone,
+y el día que algo lo use esos dos archivos van a pasar con datos falsos. Es la
+trampa 1 del §13 dentro del fixture que existe para atajarla.
+
+**Es la misma clase que el repo ya automatizó** —«un fixture que no ejercita el
+caso central del dominio»— y que hizo nacer `tests/fixtures/ciclo.ts` y
+`invariantes-de-ciclo.test.ts`. Reapareció con otra cara: no es que el fixture no
+ejercite el caso, es que hay trece fixtures y no se parecen entre sí.
+
+Arreglo: **un** `ts()` exportado de `tests/fixtures/`, con la forma completa (la
+segunda), y los otros doce borrados. Es mecánico y sin riesgo: los cuerpos son
+compatibles hacia arriba. Lo que conviene decidir de paso es dónde vive — hoy
+`ciclo.ts` y `centinelas.ts` se lo copian entre ellos, que es el mismo bug un
+nivel más adentro.
+
+### B-212 · La proyección pública de `/opciones/*` no existe, y el barrido no la ve — ✅ hecho (2026-08-27)
+
+**Hecho.** `opcionPublica` y `opcionesPublicas` en `toPublic.ts`, con whitelist de dos
+campos y sin spread, escritas **antes** de su consumidor (B-106) porque el punto era
+llegar antes que el atajo.
+
+`ValorOpcion` salió de la lista de interfaces AJENAS del barrido de B-196 y pasó a estar
+anclada, con `opcionCentinela()` y tres rutas de centinela nuevas.
+
+**El `auditor-privacidad` encontró cinco cosas sobre este mismo cierre, y las cinco
+eran de índice y de red — ninguna una fuga.** Vale listarlas porque cuatro eran
+afirmaciones que el cierre había escrito:
+
+1. La ficha del agente seguía atribuyendo la salida 1 solo a `toPublic`, y el guard
+   de B-216 **no podía verlo**: comparaba el primer path de cada fila y las dos
+   colapsaban a `src/lib/toPublic.ts`. Es el modo de falla de B-216 un nivel más
+   adentro — el índice envejeció y el test que lo ataba miraba el archivo, no qué de
+   ese archivo produce la salida. El guard ahora compara las **funciones**, y es
+   direccional: la ficha puede saber más que el documento, nunca menos.
+2. Anclar `ValorOpcion` la metió en el chequeo de cobertura pero **no** en el
+   recorrido que exige que cada string del fixture sea rastreable. Un campo de texto
+   nuevo en la taxonomía quedaba obligado a declararse y podía entrar con un valor
+   inocente: obligatorio de declarar, invisible para todo barrido.
+3. «Verificado por mutación» era **a mano**. Ahora hay un `it` que mete el spread y
+   exige que el barrido falle nombrando `opcion.huellaCreador` — el gemelo del
+   control negativo que la actividad ya tenía para `libro`.
+4. El docblock que explica por qué el import va a `@/lib/taxonomia` y no a
+   `@/lib/opciones` **no lo fijaba nadie**: el atajo typechequeaba y dejaba toda la
+   suite verde, arrastrando `firebase/firestore` al módulo de la proyección pública.
+   Y el grafo de `bundle-panel.test.ts` tampoco lo veía, porque `toPublic` no tiene
+   importador todavía (B-106). Hay guarda nueva, sobre el cierre transitivo de sus
+   imports.
+5. La tabla de `07-seguridad.md` atribuía todo a `opcionesPublicas`, que **no
+   interviene en dos de los tres caminos**. Son tres —`opcionesPublicas`,
+   `labelsDeOpciones` y el `cargarLabels` de la Function— y el tercero **no se puede
+   unificar**: `functions/` no importa de `src/` (D-20). La política del repo para
+   ese caso ya estaba escrita en `10-salud-del-codigo.md`: un test que compare las
+   listas, no un import imposible. Es la clase de B-212 en `clases-de-bug.test.ts`.
+
+**Y ese último test salió mal la primera vez**, que es el detalle que más vale:
+rastreaba los accesos por una variable llamada `v`, así que meter un
+`sort((a, b) => b.usos - a.usos)` pasaba en verde. Un chequeo que depende del nombre
+que eligió quien escribió el código verifica la convención de nombres, no el código.
+Ahora deriva del modelo qué campos están prohibidos y busca el **acceso** sin
+importar de qué variable. Verificado con las dos mutaciones.
+
+**Un error propio que vale anotar:** la primera versión filtraba las no aprobadas con
+`v.aprobada !== false` en vez de reusar `estaAprobada`, que es
+`v.fijo || (v.aprobada ?? true)`. Eso habría borrado de los filtros del sitio a una
+opción **base** que tuviera `aprobada: false` — o sea «Gratis» y «A la gorra». Es la
+clase de B-72 (la misma regla escrita dos veces) apareciendo en el acto de cerrar otro
+ítem. Hay dos `it` que lo fijan.
+
+`toPublic.ts` proyecta la actividad campo por campo, con whitelist y sin un solo
+spread. Para `/opciones/*` no hay nada equivalente, y B-106 la va a necesitar: el
+§4.4 dice que el `events.json` lleva `{ slug, label }`, pero el documento tiene
+además `orden`, `fijo`, `usos`, `aprobada` y `huellaCreador`.
+
+El default cuando se implemente B-106 es escribir `valores` tal cual —una línea, y
+se ve razonable— y ahí `huellaCreador` (un pseudónimo derivado de un uid) y `usos`
+entran al JSON público. **Nada lo detiene:** el barrido de centinelas de B-196
+está anclado a las interfaces de una *actividad* (`ANCLAS`), y `ValorOpcion` /
+`DocOpciones` están explícitamente en `AJENAS`. O sea: la única salida pública
+nueva que ya está planificada nace fuera de la red.
+
+Arreglo, hoy y aunque el consumidor no exista todavía —que es el punto—:
+`export const opcionPublica = (v: ValorOpcion) => ({ slug: v.slug, label: v.label })`
+en `toPublic.ts`, al lado de `imagenPublica` y `libroPublico`, que ya establecieron
+el patrón; más su `it` y su ancla en el barrido. Escribir la whitelist antes que
+el consumidor es lo que evita que la decisión la tome un spread.
+
+---
+
+### B-217 · El paso 4 del gate pasaba en verde sin leer Firestore — ✅ hecho (2026-08-27)
+
+`1.4.0` agregó al paso 4 de `scripts/verificar-todo.sh` un
+`FIRESTORE_EMULATOR_HOST` apuntado al emulador, con el comentario de que así el
+build «ejercita la lectura real» ahora que `src/pages/events.json.ts` arma el
+`events.json`. No la ejercitaba, por dos motivos que se tapaban entre sí:
+
+1. **El paso 3 tiene dos ramas.** Si detecta un hub de emuladores arriba lo reusa
+   y queda vivo; si no, usa `firebase emulators:exec`, que **levanta y apaga** los
+   emuladores alrededor de los tests. En esa segunda rama, al llegar al paso 4 no
+   había nadie escuchando: medido, el build se quedaba **44 segundos** y moría con
+   `14 UNAVAILABLE`. O sea que el gate corrido sin un emulador previo **fallaba
+   siempre y por su propia plomería** — exactamente lo que el paso 3 había
+   aprendido a no hacer (B-180), reintroducido un paso más abajo.
+2. **Y con el emulador vivo tampoco probaba nada.** Los tests de integración del
+   paso 3 terminan llamando a `limpiarFirestore()`, así que el paso 4 llegaba a
+   una base **vacía**. Medido en el emulador de la sesión: `0` actividades. El
+   build leía cero, escribía un `events.json` sin ninguna, y salía en verde.
+
+Las dos mitades juntas dan el peor resultado posible: un chequeo agregado **para**
+garantizar «esto leyó Firestore» que pasa idéntico leyendo cero documentos. Es la
+trampa que el propio commit decía prevenir — D-123 dice que leer cero actividades
+no falla solo, produce un `events.json` vacío, y el deploy lo publica encima del
+sitio que sí tenía datos.
+
+**El arreglo.** La detección del hub se hace **una vez** y la comparten los pasos 3
+y 4 (tenerla escrita dos veces fue lo que dejó al paso 4 apuntando a un puerto que
+el paso 3 apagaba). El paso 4 corre `scripts/build-contra-emulador.mjs`, contra el
+hub que ya está o contra uno efímero, y ese script siembra una actividad publicada
+y una en borrador, buildea, y **afirma sobre el `dist/events.json` que salió**: la
+publicada está, la borrador no, y ningún centinela de los campos recortados
+sobrevivió. Los documentos sembrados se borran en un `finally`.
+
+**Verificado por mutación**, que es lo único que distingue un chequeo de un
+comentario: con el `where` apuntado a un estado inexistente el gate falla
+nombrando las cero actividades; sin el `where` falla nombrando la borrador; con
+`destino: a.inscripcion.destino` agregado al índice falla nombrando el campo.
+
+No se testea el script del gate: no hay precedente de testear `verificar-todo.sh`
+en este repo y B-180 (P3) sigue siendo el ítem que lo pide para el paso 3.
+
+### B-218 · Las redes que faltaban alrededor de `/events.json` — ✅ hecho (2026-08-27)
+
+Cuatro hallazgos del `auditor-privacidad` sobre `4d223c1`, los cuatro
+verificados antes de acatarlos y los cuatro cerrados. **Ninguno era una fuga**:
+el recorte del índice, la query y `cierraEn` estaban bien. Lo que faltaba era la
+red que los sostenga.
+
+1. **Ningún test nombraba `src/pages/events.json.ts`.** `tests/eventsJson.test.ts`
+   prueba la librería y el barrido prueba la proyección: los dos entran a la
+   cadena **después** de que el endpoint eligió qué documentos leer, así que
+   ninguno miraba la query. Medido: borrar el `.where('estado','==','publicado')`
+   dejaba la suite entera en verde. Cerrado con
+   `tests/events-json-endpoint.integracion.test.ts`, que siembra una publicada y
+   las tres no públicas —borrador, cancelada, pendiente— y afirma sobre el JSON
+   que el endpoint devuelve. De integración y no de texto: un `grep` al fuente
+   pasaría con la cláusula escrita mal. El mismo archivo cubre las dos ramas de
+   credenciales (D-123, B-189), que hasta hoy las sostenía una frase de un mensaje
+   de commit.
+2. **La tabla de salidas nombraba un solo productor de la salida 1.**
+   `docs/07-seguridad.md` y la ficha del agente decían `src/lib/toPublic.ts`;
+   desde B-106 son **tres archivos en serie**. Es la forma de B-216 un archivo más
+   adentro: un cambio futuro que tocara solo `src/lib/eventsJson.ts` no despertaba
+   al auditor por nombre de archivo. Actualizadas las dos tablas y el
+   `description` del frontmatter, que es el disparador.
+3. **La guarda de B-212 estaba cableada a un archivo.**
+   `tests/bundle-panel.test.ts` tenía `const PROYECCION = 'src/lib/toPublic.ts'`, y
+   su docblock decía «`toPublic` no tiene hoy ningún importador en `src/`», frase
+   que B-106 dejó falsa. `src/lib/eventsJson.ts` **hereda la posición exacta** —
+   proyección pura, sin consumidor cliente hoy, con uno previsto en B-105 — y
+   ninguna de las tres redes lo veía. Ahora es un `describe.each` sobre los dos.
+4. **Dos celdas sin decidir.** El link de la reunión con `urlPublica: true` no
+   tenía caso en el barrido del índice (ver **D-129**), y el `resumen` era un
+   recorte solo por el nombre de la función: cambiar la línea a
+   `resumen: a.descripcion` dejaba todo verde, porque el test de ausencia busca la
+   clave `"descripcion"` —que sigue sin existir— y el barrido permite ese centinela
+   justamente porque el resumen lo contiene.
+
+Los tres tests nuevos se verificaron **por mutación**: se rompió la condición a
+propósito y se confirmó el rojo antes de darlos por buenos.
+
+Lo que el auditor reportó y **no** se acató: nada — los cuatro resultaron ciertos
+contra el árbol.
+
+### B-320 · La cartelera todavía no pinta la miniatura: falta el `srcset` — ✅ hecho (2026-09-02)
+
+**Hecho, tal cual estaba escrito abajo.** `src/pages/cartelera.astro` ahora
+pide la miniatura de 480px como candidato chico de `srcset`, con el original
+siempre en `src` y como candidato grande, y `sizes` a su lado. Verificado por
+mutación en `tests/cartelera.test.ts` (`src={afiche.urlMiniatura ?? afiche.url}`
+en vez de `src={afiche.url}` pone el test en rojo). Con esto, **B-266 queda
+resuelto del todo**.
+
+**Y el `auditor-trampas` encontró un B-88 de paso:** el `480w` era un literal
+sin atar a `ANCHO_MINIATURA` de `functions/imagenes.js` (el que `sharp` usa de
+verdad). Se movió a una constante propia en `src/lib/imagenes.ts`, atada por
+`tests/imagenes-function.test.ts` — mutación probada: subir un valor sin el
+otro pone ese test en rojo.
+
+**Y el `auditor-privacidad` encontró dos cosas más:** el `srcset` se armaba con
+un template en la plantilla, sobre `afiche.url` crudo del documento —una coma
+ahí partiría la lista de candidatos, y nada lo impedía—; se movió a
+`srcsetDeMiniatura` en `src/lib/imagenes.ts`, probada por valor. Y el `for` de
+`tests/barrido-de-salidas-publicas.test.ts` que afirma «todo lo que la pared
+publica ya lo publicaba el detalle» saltaba `urlMiniatura` en silencio, sin
+ejercitar nunca la rama no nula; ahora se saltea por nombre y hay un test
+dedicado con una URL real. Las dos mutaciones probadas.
+
+El texto original queda abajo, para que quede el rastro de cómo tenía que ser.
+
+**El campo está, probado, y no lo usa nadie.** `Afiche.urlMiniatura`
+(`src/lib/cartelera.ts`) trae la URL de la miniatura de 480 px que deriva la
+Function de B-220, y `src/pages/cartelera.astro` sigue pidiendo el original. Es
+lo único que falta para cobrar los números de **B-266**: recorrer la pared entera
+pasa de 3518,5 KB a **1032,4 KB (−71 %)** con las 30 imágenes de producción.
+
+**Es de otro frente y por eso está acá y no hecho:** `src/pages/` lo estaba
+tocando otra rama en paralelo el 2026-09-02.
+
+**Cómo tiene que ser, y esto no es opcional:** la miniatura va como candidato de
+`srcset` **con el original como `src`**.
+
+```astro
+<img
+  src={afiche.url}
+  srcset={afiche.urlMiniatura ? `${afiche.urlMiniatura} 480w, ${afiche.url} 1600w` : undefined}
+  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+  ...
+/>
+```
+
+Tres cosas que se pierden si se hace distinto:
+
+- **El `src` tiene que quedar en el original.** `urlMiniatura` es una URL
+  **derivada**, no un dato guardado: una imagen subida antes de que la Function
+  estuviera desplegada **no tiene miniatura** hasta que corra
+  `scripts/optimizar-imagenes.mjs`. Un `srcset` cuyo candidato no existe hace que
+  el navegador caiga al `src`, y eso degrada bien; un `src` apuntando a la
+  miniatura degrada a imagen rota.
+- **`urlMiniatura` es `null` para las externas** (DEC-7d no las toca), así que el
+  atributo tiene que salir ausente y no vacío.
+- **`sizes` recién sirve acá.** Sin `srcset` era decoración que parece
+  optimización (D-149); con `srcset` es lo que decide qué candidato baja.
+
+El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
+puestos y no hay que tocarlos.
+
+### B-926 · Convertir una propuesta decide sola qué pasa con la foto, y deja el slug vacío · ✅ hecho (2026-09-17) · P1 — pedido del dueño (2026-09-15), primera prioridad
+
+> **Hecho.** Al convertir, el panel pregunta qué hacer con el flyer: **bajarlo**
+> (un botón al lado de la miniatura, antes de decidir), **usarlo** —el camino de
+> siempre— o **descartarlo**. Descartar marca `revision.fotoDescartada: true`,
+> que es lo único que autoriza al trigger a borrar el original **sin** verificar
+> ninguna copia: sin ese flag el descarte caería en `sin-copia` y el original
+> quedaría vivo para siempre. Es el tercer cierre de `borrarImagenAlCerrar` y el
+> único que se saltea el orden de B-863, porque la pregunta que esa verificación
+> hace ya la contestó una persona que pudo ver la foto. El slug sale prellenado
+> del título con el mismo `slugify` que la cascada, y sigue editable hasta
+> publicar.
+>
+> **Un pase de auditoría posterior encontró nueve hallazgos y todos están
+> cerrados.** El que más importaba: se podía autorizar el borrado con la foto sin
+> mostrar. Se arregló dos veces — primero escondiendo el botón hasta que la foto
+> estuviera visible, y después moviendo esa señal del `then` de la promesa al
+> `onLoad`/`onError` del `<img>`, porque «la URL resolvió» no es «el navegador
+> pintó algo». Los estados son **tres** y no dos: el del medio —cargando— es el
+> que una mutación deja escapar si no está escrito.
+>
+> Commits `2e85b38`, `51518b2`, `8d0948d`, merge `1c81323`, y los cinco del pase
+> sobre las correcciones.
+
+Son dos cosas del mismo momento —la pantalla de conversión de la bandeja— y por
+eso van juntas.
+
+**(a) La foto se reutiliza sola, o se pierde sin que nadie haya elegido.** Hoy
+`convertir()` (`src/components/admin/PropuestasPanel.tsx`) promueve la imagen
+subida a `imagenes/`, la agrega a la galería y la marca portada si es la primera.
+No hay dónde decir «esta no», «quiero otra», ni **bajarla al disco antes de que se
+vaya**. Y se va: `borrarImagenAlCerrar` borra el original de `propuestas/` cuando
+la propuesta pasa a `aceptada` (B-863). O sea que **el único momento en que esa
+foto existe y alguien la está mirando es esta pantalla**, y ahí no hay ni un botón.
+
+Las cuatro opciones que hay que ofrecer: **descargar**, **reutilizar** (lo de hoy,
+que queda como default), **descartar** y **subir otra**. Tres son baratas — la
+descarga es un `<a download>` sobre la URL que el panel ya trae
+(`urlDeImagenDePropuesta`), descartar es no promover, y subir otra ya la resuelve
+el `GaleriaEditor` que el formulario tiene abajo.
+
+**Lo que hay que mirar con cuidado es el cruce con B-863**, porque descartar abre
+el agujero que ese ítem cerró: el trigger borra el original solo si verifica que
+la actividad nombra una imagen propia **y** que el objeto está en el bucket. Si se
+descarta y no se promueve nada, esa verificación no se cumple, y como la
+`aceptada` no vence (B-844), la foto de un tercero queda sin fecha de vencimiento
+bajo un prefijo que `limpiarImagenesHuerfanas` no barre. **Descartar tiene que
+borrar el original, y el texto tiene que decirlo** — es la misma frase que ya
+está escrita para el rechazo.
+
+**(b) El slug llega en blanco y el guardado no pasa.** `propuestaAFormulario`
+(`src/lib/propuestas.ts`) lo deja vacío a propósito y lo dice: «prellenarlo acá
+sería fijar una URL que nadie revisó». Pero el slug **solo se deriva cuando
+alguien escribe el título** (`cambiarTitulo`, `src/lib/formulario/cascadas.ts`), y
+en una conversión el título llega puesto: nadie lo escribe. Resultado: el
+formulario abre con el slug en blanco y el guardado falla contra «El slug es
+obligatorio» (`src/lib/schema.ts`), con la única salida de tocarle una letra al
+título para que la cascada dispare. Un formulario que se abre ya inválido, y sin
+decir por qué.
+
+La revisión que el comentario quería proteger no se pierde prellenándolo: el slug
+queda **editable hasta publicar**, que es cuando se congela (trampa 10), y el
+formulario ya avisa que hay que revisarlo antes. Es `slug: slugify(p.titulo)` en
+la conversión, y borrar el párrafo del docblock que dice lo contrario.
+
+### B-889 · Las horas se cargan sin saber si son AM o PM, y el panel no ofrece elegir formato — ✅ hecho (2026-09-18) · P2 — **pedido dos veces por el dueño (2026-09-11 y 2026-09-15)**
+
+> **Cerrado con el control propio, que es la opción (b) que el dueño eligió.**
+> Lo que quedó: el interruptor «24 h / AM/PM» en la cabecera (gemelo del de
+> B-814 y en el mismo lugar por el mismo argumento), `lib/formatoDeHora.ts` con
+> la preferencia y la composición de las piezas —puro, con el almacén como
+> puerto—, y `components/campos/CampoDeFechaYHora.tsx` en los **tres**
+> `datetime-local` del panel.
+>
+> **Las cuatro cosas que el control propio tenía que resolver, y cómo quedaron:**
+>
+> 1. **El celular** → `usaControlDeHoraPropio(formato, vista)`. Atado a la vista
+>    elegida y **no al ancho de la ventana**, que es la única desviación de D-720
+>    y está argumentada allá: el panel ya decidió preferir la elección a la
+>    detección (B-814), y meter un `matchMedia` sería tener las dos políticas a
+>    la vez.
+> 2. **Accesibilidad** → `Campo comoGrupo` ya emitía `role="group"` +
+>    `aria-labelledby`; lo que hubo que agregar es el nombre de **cada** pieza,
+>    porque «Inicio» nombra al grupo y no a la cajita de los minutos. El rótulo
+>    del grupo lleva su propio id: reusar el del campo lo duplicaba con el
+>    `<input>` de la fecha.
+> 3. **`min-h-touch`** → las cuatro piezas lo heredan de `claseInput`.
+> 4. **Que nadie guarde texto** → `dePiezas()` compone el mismo string de
+>    `datetime-local` de siempre, y un campo incompleto da `''`, que es lo que el
+>    schema ya lee como «falta». Una hora fuera de rango **no se recorta**: un
+>    `13` que se vuelve `1 PM` mientras alguien tipea cambia lo que la persona
+>    escribió sin avisar.
+>
+> **El eco entró adentro del control**, como decía el ítem, y se muestra solo con
+> el control propio: al lado del nativo sería repetir en palabras lo que el
+> navegador ya dibuja. Siempre en 12 horas aunque el panel esté en 24 — repetir
+> `19:30` al lado de `19:30` no contesta la pregunta del pedido.
+>
+> **Un test de render, y por qué:** el modo de falla del control no es la
+> conversión —eso es puro y se verifica sin DOM— sino que **lo tipeado se borre
+> entre teclas**, que es lo que pasa si el valor compuesto es la única fuente. El
+> componente es controlado y las piezas se tipean de a una, así que un campo a
+> medio llenar compone `''` y ese `''` volvería a vaciar la cajita. Eso solo se
+> ve tipeando.
+>
+> **Lo que cobró el pase de auditores, y es de la clase D-88:** el módulo nuevo
+> nació con **dos** parsers del string de `datetime-local` —el de `aPiezas` y el
+> del eco—, más el `deDatetimeLocal` que ya existía en `lib/sesiones.ts`. Los
+> tres daban lo mismo, así que no se veía; el día que el formato se extienda en
+> uno solo, el eco diría una hora y el formulario compondría otra, **sin que nada
+> se ponga rojo**. Quedó `partesDeDatetimeLocal()` como único parseo del módulo,
+> y una red que lo cruza contra el de `sesiones.ts` —que sigue aparte a propósito:
+> aquél devuelve un `Date` y acá hacen falta los componentes— sobre la misma
+> lista de valores y de basura.
+
+
+> **Sube de P3 a P2 el 2026-09-15.** Volvió a pedirse, con esas palabras
+> («selector de am/pm»), en la tanda de B-950 a B-960. Un pedido que vuelve a los
+> cuatro días no es «cuando sobre tiempo»: es la segunda persona que carga
+> chocándose con lo mismo. No se abre ítem nuevo — esto ya está escrito acá
+> entero, con las tres decisiones que hay que tomar antes de escribir código.
+
+**Pedido del dueño (2026-09-11):** un sistema de 12/24 horas al cargar las fechas,
+**solo en el admin**.
+
+Hoy los campos de hora son `<input type="time">`, y ese control **no decide el
+formato: lo decide el navegador**, a partir del idioma del sistema operativo. En
+`es-AR` sale en 24 horas y en `en-US` sale con AM/PM, sin que la página tenga nada
+que ver. Por eso el pedido no es «cambiar el formato» sino **ofrecer elegirlo**,
+que es una cosa distinta y más cara.
+
+**Lo que hay que decidir antes de escribir nada:**
+
+1. **Qué se guarda no cambia**, y conviene dejarlo escrito para que nadie lo
+   toque: en Firestore va un `Timestamp` y hacia Calendar va con `timeZone`
+   explícito (trampa 1). El formato es **presentación**, no dato. Si en algún
+   momento alguien guarda «7:30 PM» como texto, eso es la trampa 1 otra vez.
+2. **Dónde vive la preferencia.** No hay perfil de usuario en el panel, así que o
+   nace uno, o va en `localStorage` —el patrón que el panel ya usa para los
+   borradores (D-122) y el sitio para los favoritos (B-848)—. La segunda es la
+   barata y tiene la consecuencia de siempre: es por navegador, y hay que decirlo.
+
+   > ✅ **Decidido por el dueño el 2026-09-16: `localStorage`** (**D-720**). No
+   > nace un perfil de usuario para esto. La consecuencia hay que **decirla en la
+   > pantalla**, no dejarla implícita: la preferencia es de **este navegador**, así
+   > que quien carga desde la compu y desde el teléfono la elige dos veces, y un
+   > modo incógnito la pierde. Es el mismo trato que ya tienen los borradores del
+   > panel (D-122) y los favoritos del sitio (B-848), y es lo que lo hace
+   > consistente y no una excepción.
+
+3. **Y la parte que no es obvia: un `<input type="time">` no acepta que le impongan
+   el formato.** Ofrecer 12/24 significa dejar de usar el control nativo, o
+   envolverlo. Eso toca el teclado del celular, la accesibilidad y el `min-h-touch`
+   del §11 — o sea que el costo real no está en el formato sino en reemplazar un
+   control que hoy el navegador resuelve bien.
+
+   > ✅ **Decidido por el dueño el 2026-09-16: control propio** (**D-720**), o sea
+   > la opción cara de las dos que se le presentaron:
+   >
+   > | Forma | Qué cuesta | Qué resuelve |
+   > |---|---|---|
+   > | (a) Eco al lado del control nativo — «19:30 → 7:30 PM» | un componente de lectura, sin tocar el control | la duda reportada: «no sé si lo que cargué es AM o PM» |
+   > | **(b) Control propio** (fecha + hora + minutos + AM/PM) ← **elegida** | reemplaza el nativo | además, **escribir** en 12h |
+   >
+   > **Se recomendó (a) y el dueño eligió (b), habiendo visto el costo escrito.**
+   > Queda dicho porque el motivo importa para lo que viene: el pedido original fue
+   > *«un selector de am/pm»*, dos veces, y (a) no es un selector — es un cartel. La
+   > lectura de este ítem («el síntoma es de lectura») subestimaba el pedido:
+   > **quien carga quiere tipear en 12 horas**, no confirmar que tipeó bien en 24.
+   > Con una segunda persona cargando, eso es exactamente el criterio que el dueño
+   > ya había fijado en B-928: *«no podemos obligarlos a hacerlo como queremos,
+   > sino ajustarnos nosotros»*.
+   >
+   > **El eco de (a) no se tira: entra adentro de (b).** Un control propio tiene
+   > que confirmar por escrito lo que quedó cargado, justamente porque ya no hay un
+   > control nativo que el navegador garantice. Sale casi gratis y es la red de que
+   > el control propio no esté mintiendo.
+   >
+   > **Las cuatro cosas que el control propio tiene que resolver, y son la razón
+   > por la que era la cara:**
+   >
+   > 1. **El celular.** Hoy `datetime-local` abre el selector nativo del teléfono.
+   >    Tres cajitas para tipear son peores en una pantalla chica que lo que hay
+   >    hoy, así que **abajo de cierto ancho hay que seguir usando el nativo** — el
+   >    formato ahí lo pone el sistema y está bien que así sea, que es lo mismo que
+   >    ya se decidió para `/proponer`. La preferencia de 12/24 es de escritorio.
+   > 2. **Accesibilidad.** Un `datetime-local` es **un** campo con una etiqueta; esto
+   >    son cuatro controles que tienen que leerse como uno solo (grupo con nombre
+   >    accesible, orden de tabulación, y que el lector de pantalla no anuncie
+   >    «cuadro combinado» cuatro veces).
+   > 3. **`min-h-touch` del §11** en cada una de las cuatro piezas.
+   > 4. **Que nadie guarde texto.** Las cuatro piezas se componen en un
+   >    `Timestamp` antes de salir del formulario. El día que se guarde `"7:30 PM"`
+   >    como string, es la trampa 1 otra vez — y ahora hay un control propio que lo
+   >    hace fácil.
+   >
+   > **Dónde aplica:** `SesionesEditor`, `ModalidadesEditor` y el `cierra` de
+   > `SeccionArancelInscripcion` — los tres `datetime-local` del panel. **No** en
+   > `FormularioPublico` (los dos `type="time"` de `/proponer`), que se queda con el
+   > nativo por lo ya decidido.
+
+**Solo en el admin**, dicho por el dueño. El formulario público (`/proponer`) se
+queda con el control nativo: ahí quien carga usa su propio teléfono una sola vez y
+el formato que le da su sistema es el que entiende.
 
 ## P3 — cuando sobre tiempo
 
