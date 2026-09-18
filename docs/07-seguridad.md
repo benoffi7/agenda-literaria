@@ -1561,9 +1561,12 @@ CORS configurado en el bucket): es **B-846**.
 propuesta.** Se promueve a `imagenes/` al convertir —el panel lo baja y lo vuelve
 a subir por `subirImagen`, que le saca los metadatos: la foto de un taller en una
 casa lleva las coordenadas de esa casa, y esta vez la mandó alguien de afuera— y
-el original se borra **en los dos cierres** (`borrarImagenAlCerrar`): al
+el original se borra **en los tres cierres** (`borrarImagenAlCerrar`): al
 rechazar, en el acto; al **aceptar**, cuando la actividad se guardó y la copia
-promovida ya lo reemplaza. El `delete` está en `false` para todo cliente, así que
+promovida ya lo reemplaza; y al **descartar** la foto en la conversión
+(**B-926**), en el acto y sin verificar ninguna copia, porque no hay ninguna —
+esa pregunta ya la contestó una persona que pudo ver la imagen. El detalle del
+tercero está dos párrafos más abajo. El `delete` está en `false` para todo cliente, así que
 el borrado es **consecuencia del estado** y no un botón que alguien puede
 olvidarse de tocar.
 

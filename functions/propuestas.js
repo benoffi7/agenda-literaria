@@ -2,7 +2,8 @@
  * **La foto que mandó un tercero sigue la suerte de su propuesta** — B-830 paso
  * 8 (DEC-11) y **B-863**.
  *
- * Son dos cierres y no uno, y hasta B-863 solo estaba escrito el primero:
+ * Son **tres** cierres —dos hasta B-863, que escribió el segundo, y el tercero
+ * desde B-926— y hasta B-863 solo estaba escrito el primero:
  *
  *  - **Se rechaza** → la imagen se borra **en el acto**. El dueño lo pidió con
  *    estas palabras: «si el evento lo descartamos se tiene que borrar». Y no

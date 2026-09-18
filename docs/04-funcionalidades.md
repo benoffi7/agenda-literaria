@@ -1180,9 +1180,13 @@ hay que cerrarla a mano o se convierte dos veces.
 **La imagen que mandan (DEC-11, paso 8) ya está**: la bandeja **muestra el
 flyer** —solo un admin puede verlo, y nadie puede enumerar el prefijo—, al
 convertir se copia sola a la galería de la actividad ya sin los datos ocultos que
-traía, y el original **se borra en los dos cierres**: al rechazar, en el acto; al
+traía, y el original **se borra en los tres cierres**: al rechazar, en el acto; al
 aceptar (**B-863**, 2026-09-10), cuando la actividad se guardó y la copia
-promovida ya lo reemplaza. Reabrir una cerrada —rechazada o aceptada— no la trae
+promovida ya lo reemplaza; y al **descartar** la foto al convertir (**B-926**),
+en el acto y sin verificar ninguna copia. Descartar es una opción de la pantalla
+de conversión, al lado de un botón para bajar la imagen antes de decidir: el
+botón de descarte **no se dibuja** hasta que la miniatura se pudo mostrar, para
+que nadie descarte una foto que no llegó a ver. Reabrir una cerrada —rechazada o aceptada— no la trae
 de vuelta, y la pantalla lo dice.
 
 **El formulario público `/proponer` ya está escrito (paso 9), y todavía no se

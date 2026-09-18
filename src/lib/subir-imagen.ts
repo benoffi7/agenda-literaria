@@ -128,8 +128,9 @@ export interface Subida {
  * ser cierto: decía «si se acepta, la retención lo borra con el documento a los
  * 30 días», y desde B-844 la `aceptada` **no vence**, así que la retención no
  * pasaba nunca por ahí. Lo que se lleva el original es el trigger
- * `borrarImagenAlCerrar`, en los dos cierres: al rechazar, en el acto; al
- * aceptar, cuando la actividad se guardó y la copia promovida ya la reemplaza.
+ * `borrarImagenAlCerrar`, en los tres cierres: al rechazar, en el acto; al
+ * aceptar, cuando la actividad se guardó y la copia promovida ya la reemplaza; y
+ * al descartar la foto al convertir (**B-926**), sin copia que verificar.
  *
  * **Y no en esta función, que es el otro punto de B-863.** Acá estamos en el
  * primer momento de la conversión (D-600): el formulario todavía no se guardó y
