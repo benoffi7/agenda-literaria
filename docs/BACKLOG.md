@@ -285,8 +285,87 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 
 ## P0 — rompe algo o pierde datos
 
-**Todos arreglados.** Los cuatro primeros, en dos tandas y de dos clases
-distintas:
+> **Tres abiertos desde el 2026-09-18, los tres del chrome del sitio público y
+> los tres con capturas del dueño.** No pierden datos: lo que rompen es la
+> **primera pantalla**, que es por donde entra todo el mundo. Van acá porque el
+> dueño los pidió con máxima urgencia y porque dos de los tres se ven **rotos**,
+> no mejorables. Se atacan de a uno.
+
+### B-1137 · El sitio tiene scroll horizontal en el teléfono, y corta el texto a la derecha · P0 — medido al arreglar B-1134 (2026-09-18)
+
+**Apareció comparando dos capturas** y **es anterior a B-1134**: al fotografiar
+`/ayuda` a 390px con el encabezado nuevo y con el viejo, las dos salen con el
+contenido corrido hacia la derecha. El título se corta a mitad de palabra
+(«…en Argentin»), el chip «Anotarme» queda partido y el botón «Aceptar» del aviso
+de cookies se sale de la pantalla.
+
+**Algo mide más de 390px y ensancha el documento entero.** No es el encabezado
+—se verificó con las dos versiones— y pasa en más de una página, así que está en
+el chrome o en algo que todas comparten. Los candidatos, sin haberlo medido
+todavía: el aviso de cookies (`AvisoDeCookies.astro`, dos botones en fila), la
+tira de «En esta página», o algún ancho fijo del sistema.
+
+**Por qué es P0:** el desborde horizontal en un teléfono no se percibe como «hay
+scroll»; se percibe como **texto cortado**. Y es la primera pantalla. Va con los
+otros dos del chrome porque es la misma tanda de capturas del dueño, aunque éste
+no lo reportó él: salió de ir a verificar el suyo.
+
+**Lo primero es medirlo, no arreglarlo**: hay que saber **qué** elemento desborda
+antes de tocar nada, o se termina poniendo `overflow-x: hidden` en el `body`, que
+esconde el síntoma y deja el contenido cortado igual.
+
+### B-1135 · El pie mide media pantalla, en el teléfono y en el escritorio · P0 — del dueño con captura (2026-09-18)
+
+**Once enlaces en una sola columna**, uno abajo del otro y alineados a la
+derecha, más el bloque de la marca a la izquierda: el pie ocupa más alto que
+varias de las páginas que cierra. En la captura de escritorio se ve además el
+**hueco en blanco** que queda entre el final del contenido y el pie, que lo hace
+parecer todavía más grande.
+
+**Dónde está:** `src/components/sitio/PieDePagina.astro:79` (`mt-16`) y `:97-99`
+— la lista es `flex flex-col` sin columnas, así que los once enlaces se apilan
+**siempre**, en cualquier ancho. En escritorio hay lugar de sobra para repartirlos
+en dos o tres columnas.
+
+**Por qué es P0 y no cosmética:** el pie es lo que sostiene las rutas que no están
+en la barra —«lo que ya pasó», «mis favoritos», «proponer»— y un pie que se lee
+como una pared se saltea entero. Además empuja el aviso de cookies y el contenido
+real fuera de la vista en el teléfono.
+
+### B-1136 · Filtrar desde el tríptico no se percibe: el resultado cambia abajo del pliegue · P0 — del dueño (2026-09-18)
+
+*«Estás en el home, presionás "+11 más hoy" o cualquiera del tríptico. Los eventos
+cambian, sí, pero como el tríptico ocupa mucho espacio, el usuario percibe que no
+pasó nada.»*
+
+**El síntoma es de feedback, no de ubicación, y conviene no confundirlos:** el
+filtro se aplica y el listado se actualiza, pero el tríptico mide lo que mide y el
+listado queda **abajo del pliegue**. La pantalla no se mueve, así que el clic se
+lee como que no hizo nada. Quien no entiende qué pasó vuelve a tocar.
+
+**Dónde está:** el tríptico es `src/components/publico/PanelesDeAhora.tsx` (B-600)
+y el filtro por su pie es B-791 (`diasDelCuando`, `Buscador.tsx:431`). El
+Buscador **no scrollea ni anuncia nada** al cambiar los filtros: no hay un solo
+`scrollIntoView` ni un `aria-live` sobre el conteo de resultados.
+
+**Tres alternativas, y una recomendación** —la decisión es del dueño porque toca
+la primera pantalla—:
+
+| | Qué hace | Qué cuesta |
+|---|---|---|
+| **(a) Llevar la vista al listado al filtrar** ← *recomendada* | `scrollIntoView` suave al encabezado del listado + `aria-live` con «N actividades», así el cambio también se **oye**. Ataca el síntoma que el dueño describe: el clic pasa a tener consecuencia visible | Chico, y **no toca ninguna decisión tomada** |
+| (b) Colapsar el tríptico cuando hay un filtro puesto | Se contrae a una línea con el filtro aplicado y un botón para volver a abrirlo; el listado sube solo | Medio. Hay que decidir si vuelve a abrirse al limpiar |
+| (c) Dejarlo solo en la home sin filtros | Es lo que el dueño plantea. Simple y drástico | Contradice a medias a **B-600**, que lo puso ahí para orientar; y la home *es* el único lugar donde vive hoy |
+
+**Ojo con una decisión escrita que no hay que pisar:** el tríptico **no mira los
+filtros** a propósito (`Buscador.tsx:411-420`) — contesta «¿qué hay hoy?» y no
+«¿qué hay hoy entre lo que filtraste». Cualquiera de las tres opciones tiene que
+dejar esa propiedad intacta: se trata de dónde está y cuánto ocupa, no de qué
+muestra.
+
+## P0 — ya arreglados
+
+**Los cuatro primeros, en dos tandas y de dos clases distintas:**
 
 - **B-80 y B-82** (2026-08-24) salieron de revisar las costuras del merge del
   2026-08-21: cada feature estaba testeada por dentro, el par no. Los tests que

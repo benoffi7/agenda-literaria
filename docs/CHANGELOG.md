@@ -2,6 +2,28 @@
 
 ## Sin publicar
 
+- **El encabezado entra en la pantalla de un teléfono** — **B-1134**, reportado
+  por el dueño con una captura. Las ocho secciones se envolvían en **tres filas**
+  y el logo, que comparte la fila, se partía en dos renglones y quedaba debajo:
+  el encabezado ocupaba casi un tercio de la pantalla de entrada.
+
+  Ahora quedan tres a la vista y las otras cinco en un desplegable. **El corte ya
+  estaba escrito**: es el primer grupo de la lista, el que el comentario de
+  «Guía» define como las tres formas de buscar algo en este sitio. Es un
+  `<details>` nativo, así que el sitio público no gana una línea de JavaScript.
+
+  **Creció sin que nadie lo decidiera**, y eso es lo que el test nuevo protege:
+  eran cuatro secciones y Guía, Anunciar y Apoyar se sumaron de a una. El propio
+  archivo lo había anticipado —«si en algún momento no entran, lo que hay que
+  revisar es esta fila entera»— y ese momento llegó sin que nada se pusiera rojo.
+
+  **Dos correcciones que salieron de mirar la captura y no el código**, las dos
+  fijadas con su motivo: quitar el `flex-wrap` hacía que las cuatro restantes
+  **desbordaran** en vez de envolverse —empujando el ancho de la página entera—, y
+  el desplegable tenía que **flotar**, porque naciendo abierto en `/ayuda`
+  estiraba el encabezado a media pantalla. Las dos versiones intermedias se veían
+  razonables en el diff.
+
 - **Dos constantes de librerías que no hacían nada** — **B-1126** y **B-1127**,
   los dos residuos que dejó espejar librerías en bibliotecas. Son la misma clase
   con las dos caras: una constante que **nadie leía** (el tope del handle de

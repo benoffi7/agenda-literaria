@@ -13,6 +13,424 @@ archivo vivo vuelve a ser lo que falta hacer cada vez que se corre.
 calcula sobre los ids de los dos — si se calculara solo sobre el vivo,
 propondría un número ya usado.
 
+## P0 — rompe algo o pierde datos
+
+### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento — ✅ hecho (2026-08-24)
+
+**Arreglado** del lado de la Function: el write-back repone el id en **toda**
+operación del plan, no solo en `crear` y `borrar` (`reponerIds` en
+`functions/sincronizacion.js`, D-91). La pasada que pisa el campo es la misma
+que lo repara. La salida del lado del panel —que `actualizarActividad` relea y
+fusione los ids, y el panel deje de ser dueño del campo— sigue valiendo y quedó
+abierta como **B-150**.
+
+
+**Qué se rompe.** Dos eventos en el calendario público para el mismo encuentro,
+y el primero huérfano: nada del sistema lo referencia, así que nada lo va a
+borrar nunca. Es el daño de la trampa 3 del §13 por una puerta distinta.
+
+**Cómo se llega.** Es el camino normal, no una carrera exótica:
+
+1. Se publica la actividad. `syncCalendar` crea el evento y **después** escribe
+   `calendarEventId` en el documento (segundos, más si la Function arranca en
+   frío).
+2. `onGuardado` refresca el listado en ese mismo instante
+   (`setVersion(v + 1)` → `listarActividades()`), así que el snapshot que queda
+   en memoria es de **antes** del write-back: `calendarEventId: null`.
+3. Se vuelve a tocar "Editar" en esa fila. `documentoAForm` copia el `null` al
+   form y `formADocumento` lo escribe: el id se perdió. El guardado todavía
+   actualiza el evento correcto —`planificar` lo saca del `before`—, así que no
+   se nota nada.
+4. La edición siguiente ya no tiene de dónde sacarlo: `planificar` emite
+   `crear`. Segundo evento.
+
+**Por qué no lo agarró nadie.** `syncCalendar` solo escribe ids de vuelta para
+las ops `crear` y `borrar` (`idsNuevos` / `idsBorrados`); una `actualizar` no
+repone el id que el panel borró. Y el panel es dueño de un campo que escribe la
+Function: `formADocumento` lo emite en cada guardado.
+
+**Salidas posibles**, en orden de prolijidad:
+
+- que `actualizarActividad` relea el documento y fusione los `calendarEventId`
+  por id de sesión antes de escribir (el panel deja de ser dueño del campo);
+- o que `syncCalendar` reponga el id también en las ops `actualizar`, que tapa
+  el síntoma pero deja la ventana abierta entre las dos escrituras;
+- o que el listado escuche con `onSnapshot` en lugar de `getDocs`, que angosta
+  la ventana sin cerrarla (el form se arma una vez, al montar).
+
+### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento — ✅ hecho (2026-08-24)
+
+**Arreglado** con el id del evento elegido por el cliente y derivado del id de
+sesión (`idDeEvento`, D-90): el `insert` repetido devuelve 409 y se resuelve
+actualizando ese mismo evento. La idempotencia quedó en el sistema externo, sin
+ningún registro nuevo que la Function tenga que mantener.
+
+La entrega de eventos de Firestore es **al menos una vez**. `syncCalendar`
+decide con el payload del evento (`before`/`after`) y no mira el estado actual
+del documento, así que la reentrega de la escritura que publicó una actividad
+vuelve a emitir `crear`: segundo evento en el calendario público, y el primero
+huérfano.
+
+Los otros dos triggers del proyecto sí se blindan, y es la comparación que
+muestra el agujero:
+
+- `guardarVersion` usa `idDeVersion(event.time, event.id)`: el reintento
+  reescribe el mismo documento (D-43).
+- `reporteAIssue` toma el reporte en una transacción y mira `estado`/`github`.
+- `syncCalendar` no usa `event.id` en ninguna parte.
+
+La guarda anti-loop del §7.1 no cubre esto: corta la recursión porque la
+*segunda* escritura produce el mismo payload, pero una reentrega de la *misma*
+escritura trae el mismo `before` y el mismo `after`.
+
+El arreglo natural es el mismo del historial: llevar los ids de evento ya
+aplicados por `event.id`, o relee el documento dentro de la transacción del
+write-back y no crear si la sesión ya tiene un `calendarEventId`.
+
+---
+
+### B-208 · Un anónimo leía el documento crudo de toda actividad publicada — ✅ hecho (2026-08-27)
+
+**Lo encontró el `auditor-privacidad` en el barrido del 2026-08-27 y se reprodujo
+contra el emulador antes de tocar nada.** `firestore.rules` decía
+`allow read: if esAdmin() || resource.data.estado == 'publicado'`, que es lo que
+prescribe el §5.3 del `CLAUDE.md`. Una query anónima con el
+`where('estado','==','publicado')` —permitida, porque cada documento devuelto
+cumple la condición— entregaba los documentos **enteros**: `online.url` con
+`urlPublica:false`, `difusion.notas` y `arrobar`, la URL del material con
+`publico:false`, `createdBy`/`updatedBy`, `sesiones[].calendarEventId` y
+`imagenes[].storagePath`. La lista completa del §5.1, salteando `toPublic`.
+
+**Era explotable, no teórico.** El repo es público, `.env.production` está
+versionado con `PUBLIC_FIREBASE_PROJECT_ID` y `PUBLIC_FIREBASE_API_KEY`, y
+`push-main.yml` deploya las reglas tal cual. Clonar el repo alcanzaba.
+
+**Por qué ninguna red lo vio.** Las cuatro salidas estaban auditadas y correctas.
+Esto no era una salida: era una **quinta** puerta que ninguna proyección
+atravesaba. Y el test que fijaba el comportamiento —`it('un anónimo lee lo
+publicado')`— estaba **en verde y era correcto respecto de su especificación**.
+Lo que estaba mal era la especificación. Agrava que `toPublic` todavía no tiene
+consumidor (B-106): el 100 % de lo alcanzable desde afuera entraba por acá.
+
+**Arreglo:** `allow read: if esAdmin();` — D-128, con la alternativa descartada
+(partir el documento en una subcolección `privado/`) escrita para el día que haga
+falta lectura en vivo.
+
+**Red:** tres `it` en `tests/actividades.integracion.test.ts` — el rechazo por
+documento, el rechazo por query, y un **control positivo** (`el admin SÍ lee la
+publicada, con sus campos privados adentro`) sin el cual los dos rechazos darían
+verde sobre una colección vacía. El fixture de la publicada lleva los campos del
+§5.1 adentro a propósito: si alguien afloja la regla, el diff dice qué se
+filtraba. De paso, este archivo era el único test de reglas que **no** empujaba
+las reglas del checkout al emulador (`cargarReglas`), así que en un worktree podía
+estar verificando el archivo de otra rama. Ahora las empuja.
+
+**Cierra B-172** (la trampa 7 del §13 quedó cubierta como efecto).
+
+### B-209 · El repo público publicaba los uids y los mails de las dos cuentas admin — ✅ hecho (2026-08-27)
+
+`docs/02-infraestructura.md` tenía una tabla titulada «Cuentas con claim `admin`»
+con mail → uid de las dos cuentas, mapeados uno contra otro. El repo es público.
+El §5.1 y D-57 son explícitos: uid y mail de admin no salen ni crudos ni
+hasheados.
+
+**Lo peor no era la tabla.** Los mismos dos valores estaban como `CENTINELAS.uid`
+y `CENTINELAS.mailAdmin` en `tests/fixtures/formulario.ts` — o sea, el dato que no
+puede salir vivía en el archivo cuyo trabajo es verificar que no sale, y eran los
+dos únicos centinelas de esa lista que no cumplían lo que su propio docblock
+promete («inventados y bien reconocibles»). Estaban además en
+`tests/opciones-aprobacion.test.ts`, y el mail del dueño en
+`docs/02-infraestructura.md` y `docs/09-analitica.md`.
+
+**Es irreversible**, y hay que decirlo: para cuando se detecta, ya está scrapeado
+e indexado. Lo que el arreglo consigue es cortar el sangrado, no revertirlo. Un
+uid no es una credencial, pero es la mitad del trabajo de un ataque dirigido.
+
+**Arreglo:** los valores salieron de los cinco archivos; los centinelas pasaron a
+`CENTINELAuid…` / `centinela-admin@ejemplo.com` (el uid conserva los 28
+caracteres, así la forma real se sigue ejercitando); el número de cuenta de
+facturación salió de la misma tabla por el mismo motivo; y
+`scripts/preparar-produccion.mjs --listar` reemplaza a la tabla — la lista se saca
+de Auth cuando se la necesita en vez de vivir versionada.
+
+**Red:** `tests/sin-datos-personales.test.ts`, que recorre `git ls-files`
+buscando la **forma** de un uid de Firebase (28 alfanuméricos con las tres clases
+de carácter) y casillas en proveedores de correo personales. Es angosto a
+propósito y lo dice: un mail en dominio propio (`hola@casabrandon.org`) puede ser
+un fixture inventado o real, y este test no puede distinguirlos sin versionar la
+lista de dominios reales, que es el dato que no queremos versionar. Esa mitad
+queda en el `auditor-privacidad`. Un chequeo angosto que nunca da falsos
+positivos vale más que uno ancho que se apaga con excepciones: la tabla que hizo
+nacer este test sobrevivió meses en un archivo que nadie sospechaba.
+
+---
+
+### B-896 · La subida anónima va a una callable con App Check exigido — ✅ hecho (verificado 2026-09-17) · P0
+
+> **Estaba hecho y sin cerrar, y eso es lo que se arregla acá.** Verificado contra
+> el código y contra producción el 2026-09-17:
+>
+> - `functions/flyer-de-propuesta.js` es la callable, con `enforceAppCheck: true`;
+> - `storage.rules` mantiene `propuestas/` cerrado al cliente —`get` para admin,
+>   `list` para nadie—, que era el punto: más fuerte que abrirlo, no menos;
+> - `/proponer` responde 200, **está en el sitemap y enlazado desde la home**, que
+>   es justo lo que este ítem bloqueaba.
+>
+> Un P0 que en realidad está resuelto es peor que ninguno: encabeza el backlog y
+> enseña a no mirarlo.
+
+**Decidido por el dueño el 2026-09-11, sobre el hallazgo del frente de B-872.**
+
+El bloqueo de `/proponer` venía de un supuesto: que para que un anónimo suba el
+flyer hay que abrirle `storage.rules`, y que para que eso no sea un endpoint sin
+atestación hay que exigir App Check en Storage — que no se puede hacer sin
+arriesgar las imágenes del sitio (B-872) porque **el enforcement es por servicio y
+no por path**.
+
+**La salida rompe el acoplamiento:** la subida no va directo a Storage, va a una
+**Cloud Function callable con `enforceAppCheck: true`**. El enforcement de
+Functions es independiente del de Storage y no toca ninguna lectura de imagen. La
+callable valida la atestación y escribe el objeto con el Admin SDK.
+
+Lo que se gana, y es más de lo que se pedía:
+
+- el endpoint de subida anónimo **queda atestado de verdad**, que es lo que las
+  cinco capas de B-836 existen para garantizar;
+- **`storage.rules` para `propuestas/` se queda en `create: if false`** para el
+  cliente — más fuerte que abrirlo, no menos;
+- `firebasestorage` puede quedarse en `UNENFORCED` sin que eso bloquee producto, y
+  **B-872 deja de ser un bloqueo**: baja a lo que en realidad es, una decisión de
+  arquitectura de entrega de imágenes, que se junta con B-846.
+
+**Y una mitad ya está lista sin hacer nada: Firestore ya está `ENFORCED`**, así que
+el `create` anónimo de `/propuestas` ya estaría protegido por App Check. Lo único
+que faltaba proteger era la foto.
+
+**Lo que hay que resolver, y son las dos cosas que pueden salir mal:**
+
+1. **El saneado del JPEG.** Hoy corre en el cliente (`subir-imagen.ts`, con
+   `jpeg-appn-seguros` / `png-chunks-seguros`, B-323/B-869). Un cliente puede
+   saltearse el saneado del cliente, así que por la callable **tiene que volver a
+   correr del lado del servidor** — el módulo ya se comparte por alias, que es
+   justo para esto. Sanear solo en el cliente sería la misma clase de falso verde
+   que este repo persigue.
+2. **El límite de tamaño del request de un callable.** Las imágenes están topadas
+   en 3 MB (DEC-7) y un callable admite más, pero en base64 el payload crece ~33%.
+   Hay que medirlo y que el mensaje de rechazo diga el tamaño real y el máximo.
+
+**Orden de trabajo:** (1) ✅ **hecho (2026-09-11)** — la callable
+`subirFlyerDePropuesta` con `enforceAppCheck: true` y el saneado del servidor, con
+`storage.rules` dejando `propuestas/` en `create: if false` **para todo cliente**;
+(2) ✅ **hecho** — el `create` de `/propuestas` abierto, y **solo** el `create`:
+leer, revisar y borrar siguen en `esAdmin()`; (3) ✅ **hecho** — `/proponer` en
+`RUTAS_FIJAS` y la excepción del sitemap borrada; (4) ✅ **hecho** — enlazado desde
+el pie y desde `/contacto`, con el formulario primero y el `mailto:` debajo
+(DEC-10).
+
+> **En el pie y no en la barra de arriba, y es una decisión.** La barra acaba de
+> pasar a ocho pestañas con «Guía» y tiene un techo escrito; y las tres primeras
+> son las formas de *buscar algo*, mientras que quien viene a proponer llega con
+> algo para dar — el lado del pie, donde ya viven «Anunciar» y «Apoyar».
+>
+> **Dos afirmaciones que las mutaciones corrigieron:**
+>
+> 1. Se escribió que el barrido de `escritura-anonima.integracion.test.ts`
+>    atraparía a alguien que abriera de más el `update`. **Siguió en verde.** Ese
+>    archivo prueba con un documento sonda que la validación de forma rechaza con
+>    la puerta abierta o cerrada, así que **no puede ser testigo de ninguna puerta
+>    en una colección que valida la forma**. El comentario dice ahora lo que
+>    alcanza, y el testigo se mudó al archivo de la colección.
+> 2. **Borrar el `esAdmin() &&` del `allow update` no abre nada**, porque
+>    `revisionValida()` ya fija la identidad por su cuenta
+>    (`porUid == request.auth.uid`) y un anónimo no tiene `request.auth`. Ahí el
+>    `esAdmin()` es un **segundo** candado, y quien sostiene la puerta es una
+>    cláusula que se lee como validación de forma. Con la regla abierta del todo el
+>    testigo sí dispara, y con él tres casos más.
+>
+> Y el caso del `publicador` cambió de forma: **puede proponer, como cualquiera**,
+> con la bandeja cerrada. Se agregó el control positivo que lo dice, porque sin él
+> el caso se leía como «no toca `/propuestas`» y eso pasó a ser falso.
+
+> **Lo que el paso 1 destapó, y no estaba en el enunciado: el saneado corría SOLO
+> en el cliente.** O sea que la garantía que el proyecto creía tener no la podía
+> dar: alcanzaba con abrir la consola del navegador y llamar a `uploadBytes` para
+> que la foto entrara al bucket con su EXIF —y las coordenadas de la casa donde se
+> hace el taller— adentro. Es la clase de bug que este repo persigue, en el lugar
+> más caro. Ahora corre en el servidor reusando `optimizar()` y el barrido
+> `traeMetadatos`/`estructuraConocida`, o sea las tablas compartidas por alias, y
+> verificado en los **dos** sentidos: la salida no trae metadatos, y la acepta
+> `quedanMetadatos` del panel —que es quien la promueve al aceptar la propuesta—.
+>
+> **El límite del request está medido:** 3 MB de imagen → **4.194.352 bytes (4,00
+> MiB)** de cuerpo JSON, contra 10 MB, que es el más chico de los dos límites de
+> Google y se eligió a propósito para que la cuenta no dependa de acordarse de qué
+> generación es la Function. Margen 2,5×.
+>
+> **Y una consecuencia que no estaba prevista:** el `matches` del nombre del
+> objeto bajó de `storage.rules` a la callable. Con `create: if false` la regla ya
+> no tiene cliente al que chequearle la forma — y la callable además mira lo que el
+> archivo tiene **adentro**, que es lo único que una regla de Storage nunca pudo
+> ver.
+
+### B-894 · El emulador de CI corría en otro proyecto que los tests, y eso apagaba solo los controles positivos — ✅ hecho (2026-09-11) · P0
+
+> **Lo encontró el deploy de B-888: 23 tests en rojo en CI y los 4541 en verde en
+> la máquina de al lado.** El sitio no se publicó, que es lo que hizo que se
+> notara.
+
+`push-main.yml` levantaba el emulador con `--project agenda-literaria` cableado a
+mano, y `vitest.config.ts` inyecta `PUBLIC_FIREBASE_PROJECT_ID` con el id
+**derivado del checkout** (`agenda-literaria-<huella>`, B-219). O sea que el
+emulador y los tests hablaban de dos proyectos distintos.
+
+**Lo que rompe el desajuste:** el emulador de Auth busca la cuenta en *su*
+proyecto, no la encuentra, y el ID token sale **sin los claims de
+`setCustomUserClaims`** y sin el `email` / `email_verified` del registro. La
+consecuencia es asimétrica y por eso es grave:
+
+- todo lo que la regla **niega** sigue dando verde —un token sin claims tiene que
+  ser rechazado, y lo es—;
+- se cae **únicamente lo que otorga**.
+
+Dicho de otra forma: el desajuste apaga exactamente los **controles positivos**,
+que son los que este repo agrega justamente para que una regla no pase por
+«funciona» solo negando. Es la clase de bug del §13 con otra cara — un verde que
+cubre el caso que existe para atrapar.
+
+**Por qué recién ahora.** Los archivos de integración anteriores pasan los claims
+**dos veces**: `setCustomUserClaims(uid, claims)` *y*
+`createCustomToken(uid, claims)`. Los segundos viajan dentro del token y no
+dependen del registro, así que tapaban el desajuste. `rol-publicador` y
+`usuarios` (B-888) usan solo el primero —que es lo que hace producción— y por eso
+fueron los primeros en cobrarlo.
+
+**El arreglo:** `--project "$(node scripts/project-id-emulador.mjs)"`. **Y el gate
+de pre-push tenía el mismo literal**, dos líneas debajo de donde ya calculaba el
+valor bueno (`PROJECT_ID_EMU`) — lo cobró él mismo: frenó el push del arreglo del
+workflow porque corría la suite con el desajuste. El tercer uso, el del build, no
+rompía nada (el Admin SDK no pasa por las reglas y siembra en el mismo proyecto
+que lee) y se unificó igual: un literal suelto al lado de dos que sí eran el bug
+es cómo vuelve. **Y había un cuarto, que es el que más se usa:** `npm run emu` no
+pasaba `--project`, así que tomaba el `default` de `.firebaserc` —el proyecto
+real— y el camino normal de trabajo (`npm run emu` en una terminal, `npx vitest
+run` en otra) reproducía el bug entero; encima el gate detecta ese emulador ya
+arriba y corre la suite contra él. Lo ata `tests/guardas-de-los-scripts.test.ts`, con la mutación
+probada en los dos caminos: devolver el literal deja la guarda en rojo y ningún
+otro test se mueve.
+
+**Lo que queda anotado y no se tocó:** los archivos viejos siguen pasando los
+claims por las dos vías. Ya no tapa nada —el proyecto coincide—, pero es una
+diferencia de estilo que vale unificar hacia `setCustomUserClaims` solo, que es
+lo fiel a producción. Es **B-895**, P3.
+
+### B-922 · El barrido de huérfanas borraba las fotos de las tres guías a las 72 horas — ✅ hecho (2026-09-15) · P0
+
+**Encontrado abriendo los formularios públicos de la Guía, sin que nadie lo
+reportara.** `limpiarImagenesHuerfanas` (B-221, `onSchedule` cada 24 h) borra
+todo objeto de `imagenes/` que tenga más de 72 horas y que **nadie referencie**,
+y hasta acá «nadie» significaba: ninguna actividad viva y ninguna versión de su
+historial (B-560).
+
+`LibreriaFormulario`, `SuscripcionFormulario` y `LugarFormulario` usan el
+**mismo** `GaleriaEditor` que una actividad (D-125), así que la foto del frente
+de una librería se sube a `imagenes/img_<uuid>.jpg` — el mismo prefijo, y desde
+el bucket indistinguible de la de un taller. O sea que **toda** foto de una ficha
+de directorio nacía huérfana y la corrida siguiente se la llevaba, dejando la
+ficha publicada con la imagen rota y su miniatura borrada por derivación.
+
+**Es la clase de bug que el barrido de B-560 ya había tenido una vez**, con el
+historial en lugar de los directorios, y por el mismo motivo: `referenciasEnUso`
+es una whitelist de dueños, y el dueño que no se agrega no existe. La diferencia
+es que allá el síntoma tardaba en verse (restaurar una versión vieja) y acá se ve
+en la ficha publicada.
+
+**Cómo fallaba, y por qué la suite estaba verde:** no hay error, no hay log y no
+hay excepción. El objeto se borra *porque nadie dijo que lo usaba*, que es
+exactamente lo que el barrido tiene que hacer. Los 21 casos que ya existían
+seguían pasando con el agujero adentro — verificado por mutación.
+
+**El arreglo** suma las tres colecciones al `Promise.all` de `referenciasEnUso`,
+con `.select('imagenes')` como las actividades (sin él, el
+`contactoDeQuienCargo` de quien cargó la ficha entra a la memoria de la Function
+para leerle un array de paths). **La lista sale de `COLECCIONES_DE_DIRECTORIO`**
+(`functions/directorios.js`), que ya es quien declara qué directorios existen:
+un cuarto entra a este barrido solo, y el test lo exige derivando de esa misma
+constante. Escribir las tres a mano era repetir el modo de falla con un
+directorio más.
+
+Cuatro casos nuevos en `tests/limpieza-imagenes.test.ts`, los cuatro rojos sin el
+arreglo. De paso el `db` falso del archivo pasó a responder **por nombre de
+colección**: devolvía la misma lista para cualquier `collection(x)`, y con cuatro
+colecciones leídas eso habría hecho pasar un barrido que no lee `/librerias` en
+absoluto. El script en seco (`scripts/limpiar-imagenes-huerfanas.mjs`) reusa
+`referenciasEnUso`, así que queda arreglado por el mismo cambio.
+
+**Lo desplegado hasta ahora ya se perdió lo que se haya perdido.** El barrido
+corre en producción desde B-221 y las tres guías se cargaron el 2026-09-11, así
+que cualquier foto subida a una ficha antes de este commit y con más de 72 horas
+puede no estar. No hay forma de recuperarla desde el repo: hay que volver a
+subirla desde el panel.
+
+### B-1134 · El encabezado se colapsa en el teléfono: la navegación se parte en tres filas y le come el logo — ✅ hecho (2026-09-18) · P0 — del dueño con captura (2026-09-18)
+
+> **Tres a la vista y las otras cinco en un desplegable**, elegido por el dueño
+> sobre otras dos formas. El corte **no** es «cuántas entran»: es el primer grupo
+> de `ENLACES`, el que el comentario de «Guía» ya definía como *las tres formas
+> de buscar algo en este sitio*. O sea que el criterio estaba escrito desde
+> B-835 y lo único que se hizo fue usarlo (`A_LA_VISTA_EN_MOBILE = 3`).
+>
+> Es un **`<details>` nativo y no una isla**: abrir y cerrar un menú es lo que el
+> elemento hace —con teclado, con `Esc` y anunciado como desplegable—, así que
+> una isla acá sería bajar un runtime al sitio público para reimplementar peor lo
+> que el navegador trae. Y nace **abierto** si la sección actual quedó adentro,
+> con la regla de acento en su rótulo: sin eso, quien está en «Ayuda» abre el
+> sitio en el teléfono y no ve dónde está parado.
+>
+> **Las dos cosas que salieron de mirar una captura y no el código**, que es lo
+> que vale del cierre:
+>
+> 1. **Sacar el `flex-wrap` era el atajo equivocado.** Sin él, las cuatro cosas
+>    que quedan no envuelven: **desbordan**, y empujan el ancho de la página
+>    entera —el título de la home pasó a cortarse—. El bug era tener **ocho** para
+>    envolver, no envolver.
+> 2. **El desplegable tenía que flotar.** En el flujo, y naciendo abierto,
+>    entrar a `/ayuda` desde el teléfono estiraba el encabezado a media pantalla y
+>    mandaba el logo al fondo: peor que el problema original. Las dos quedaron
+>    fijadas en `tests/encabezado-en-el-telefono.test.ts`, con la lección escrita
+>    para que nadie repita el atajo.
+>
+> **Y de ir a verificarlo salió B-1137**, que es anterior y no lo había reportado
+> nadie: el sitio ya tenía scroll horizontal en el teléfono, con el encabezado
+> viejo y con el nuevo.
+>
+> El testigo se lee del fuente y no monta nada: es un `.astro` y el ancho de
+> pantalla no existe en un test. Lo que se afirma es la estructura —que es lo que
+> se rompió— y que el estilo de una pestaña esté escrito **una sola vez**, ahora
+> que hay tres lugares que dibujan pestañas (clase de D-88).
+
+
+**Lo que se ve en la captura, en un teléfono de ~390px:** los nueve enlaces de la
+barra se envuelven en **tres filas** alineadas a la derecha, y el logo «AGENDA
+LEH» —que queda a la izquierda— se parte en **dos renglones** y se mete debajo de
+ellas. El encabezado ocupa casi un tercio de la pantalla de entrada y no se lee
+como una barra: se lee como algo roto.
+
+**Dónde está:** `src/components/sitio/Encabezado.astro:198` (la fila) y `:234`
+(`-me-2 flex flex-wrap items-end justify-end gap-x-1`). El `flex-wrap` es lo que
+produce las tres filas, y no hay ninguna variante de teléfono: **la misma barra
+de escritorio se envuelve**. En `sm` en adelante funciona bien, que es por lo que
+pasó desapercibido.
+
+**Y creció sin que nadie lo decidiera:** eran menos enlaces. Cada sección nueva
+—Guía, Anunciar, Apoyar— sumó uno a una barra pensada para cuatro, y ninguna
+tenía por qué mirar cómo se veía el conjunto en 390px. Es la clase de lo que
+empeora de a poco y no dispara nada.
+
+**Lo que hay que decidir antes de escribir** —y por eso no se arregla de una—:
+qué se hace con nueve enlaces en un teléfono. Un menú desplegable, un scroll
+horizontal de una fila, o partir en «lo principal + el resto adentro de algo».
+Tiene que decidirlo el dueño: es la puerta de entrada al sitio.
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
@@ -16784,364 +17202,6 @@ que es una cosa distinta y más cara.
 **Solo en el admin**, dicho por el dueño. El formulario público (`/proponer`) se
 queda con el control nativo: ahí quien carga usa su propio teléfono una sola vez y
 el formato que le da su sistema es el que entiende.
-
-## P0 — rompe algo o pierde datos
-
-### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento — ✅ hecho (2026-08-24)
-
-**Arreglado** del lado de la Function: el write-back repone el id en **toda**
-operación del plan, no solo en `crear` y `borrar` (`reponerIds` en
-`functions/sincronizacion.js`, D-91). La pasada que pisa el campo es la misma
-que lo repara. La salida del lado del panel —que `actualizarActividad` relea y
-fusione los ids, y el panel deje de ser dueño del campo— sigue valiendo y quedó
-abierta como **B-150**.
-
-
-**Qué se rompe.** Dos eventos en el calendario público para el mismo encuentro,
-y el primero huérfano: nada del sistema lo referencia, así que nada lo va a
-borrar nunca. Es el daño de la trampa 3 del §13 por una puerta distinta.
-
-**Cómo se llega.** Es el camino normal, no una carrera exótica:
-
-1. Se publica la actividad. `syncCalendar` crea el evento y **después** escribe
-   `calendarEventId` en el documento (segundos, más si la Function arranca en
-   frío).
-2. `onGuardado` refresca el listado en ese mismo instante
-   (`setVersion(v + 1)` → `listarActividades()`), así que el snapshot que queda
-   en memoria es de **antes** del write-back: `calendarEventId: null`.
-3. Se vuelve a tocar "Editar" en esa fila. `documentoAForm` copia el `null` al
-   form y `formADocumento` lo escribe: el id se perdió. El guardado todavía
-   actualiza el evento correcto —`planificar` lo saca del `before`—, así que no
-   se nota nada.
-4. La edición siguiente ya no tiene de dónde sacarlo: `planificar` emite
-   `crear`. Segundo evento.
-
-**Por qué no lo agarró nadie.** `syncCalendar` solo escribe ids de vuelta para
-las ops `crear` y `borrar` (`idsNuevos` / `idsBorrados`); una `actualizar` no
-repone el id que el panel borró. Y el panel es dueño de un campo que escribe la
-Function: `formADocumento` lo emite en cada guardado.
-
-**Salidas posibles**, en orden de prolijidad:
-
-- que `actualizarActividad` relea el documento y fusione los `calendarEventId`
-  por id de sesión antes de escribir (el panel deja de ser dueño del campo);
-- o que `syncCalendar` reponga el id también en las ops `actualizar`, que tapa
-  el síntoma pero deja la ventana abierta entre las dos escrituras;
-- o que el listado escuche con `onSnapshot` en lugar de `getDocs`, que angosta
-  la ventana sin cerrarla (el form se arma una vez, al montar).
-
-### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento — ✅ hecho (2026-08-24)
-
-**Arreglado** con el id del evento elegido por el cliente y derivado del id de
-sesión (`idDeEvento`, D-90): el `insert` repetido devuelve 409 y se resuelve
-actualizando ese mismo evento. La idempotencia quedó en el sistema externo, sin
-ningún registro nuevo que la Function tenga que mantener.
-
-La entrega de eventos de Firestore es **al menos una vez**. `syncCalendar`
-decide con el payload del evento (`before`/`after`) y no mira el estado actual
-del documento, así que la reentrega de la escritura que publicó una actividad
-vuelve a emitir `crear`: segundo evento en el calendario público, y el primero
-huérfano.
-
-Los otros dos triggers del proyecto sí se blindan, y es la comparación que
-muestra el agujero:
-
-- `guardarVersion` usa `idDeVersion(event.time, event.id)`: el reintento
-  reescribe el mismo documento (D-43).
-- `reporteAIssue` toma el reporte en una transacción y mira `estado`/`github`.
-- `syncCalendar` no usa `event.id` en ninguna parte.
-
-La guarda anti-loop del §7.1 no cubre esto: corta la recursión porque la
-*segunda* escritura produce el mismo payload, pero una reentrega de la *misma*
-escritura trae el mismo `before` y el mismo `after`.
-
-El arreglo natural es el mismo del historial: llevar los ids de evento ya
-aplicados por `event.id`, o relee el documento dentro de la transacción del
-write-back y no crear si la sesión ya tiene un `calendarEventId`.
-
----
-
-### B-208 · Un anónimo leía el documento crudo de toda actividad publicada — ✅ hecho (2026-08-27)
-
-**Lo encontró el `auditor-privacidad` en el barrido del 2026-08-27 y se reprodujo
-contra el emulador antes de tocar nada.** `firestore.rules` decía
-`allow read: if esAdmin() || resource.data.estado == 'publicado'`, que es lo que
-prescribe el §5.3 del `CLAUDE.md`. Una query anónima con el
-`where('estado','==','publicado')` —permitida, porque cada documento devuelto
-cumple la condición— entregaba los documentos **enteros**: `online.url` con
-`urlPublica:false`, `difusion.notas` y `arrobar`, la URL del material con
-`publico:false`, `createdBy`/`updatedBy`, `sesiones[].calendarEventId` y
-`imagenes[].storagePath`. La lista completa del §5.1, salteando `toPublic`.
-
-**Era explotable, no teórico.** El repo es público, `.env.production` está
-versionado con `PUBLIC_FIREBASE_PROJECT_ID` y `PUBLIC_FIREBASE_API_KEY`, y
-`push-main.yml` deploya las reglas tal cual. Clonar el repo alcanzaba.
-
-**Por qué ninguna red lo vio.** Las cuatro salidas estaban auditadas y correctas.
-Esto no era una salida: era una **quinta** puerta que ninguna proyección
-atravesaba. Y el test que fijaba el comportamiento —`it('un anónimo lee lo
-publicado')`— estaba **en verde y era correcto respecto de su especificación**.
-Lo que estaba mal era la especificación. Agrava que `toPublic` todavía no tiene
-consumidor (B-106): el 100 % de lo alcanzable desde afuera entraba por acá.
-
-**Arreglo:** `allow read: if esAdmin();` — D-128, con la alternativa descartada
-(partir el documento en una subcolección `privado/`) escrita para el día que haga
-falta lectura en vivo.
-
-**Red:** tres `it` en `tests/actividades.integracion.test.ts` — el rechazo por
-documento, el rechazo por query, y un **control positivo** (`el admin SÍ lee la
-publicada, con sus campos privados adentro`) sin el cual los dos rechazos darían
-verde sobre una colección vacía. El fixture de la publicada lleva los campos del
-§5.1 adentro a propósito: si alguien afloja la regla, el diff dice qué se
-filtraba. De paso, este archivo era el único test de reglas que **no** empujaba
-las reglas del checkout al emulador (`cargarReglas`), así que en un worktree podía
-estar verificando el archivo de otra rama. Ahora las empuja.
-
-**Cierra B-172** (la trampa 7 del §13 quedó cubierta como efecto).
-
-### B-209 · El repo público publicaba los uids y los mails de las dos cuentas admin — ✅ hecho (2026-08-27)
-
-`docs/02-infraestructura.md` tenía una tabla titulada «Cuentas con claim `admin`»
-con mail → uid de las dos cuentas, mapeados uno contra otro. El repo es público.
-El §5.1 y D-57 son explícitos: uid y mail de admin no salen ni crudos ni
-hasheados.
-
-**Lo peor no era la tabla.** Los mismos dos valores estaban como `CENTINELAS.uid`
-y `CENTINELAS.mailAdmin` en `tests/fixtures/formulario.ts` — o sea, el dato que no
-puede salir vivía en el archivo cuyo trabajo es verificar que no sale, y eran los
-dos únicos centinelas de esa lista que no cumplían lo que su propio docblock
-promete («inventados y bien reconocibles»). Estaban además en
-`tests/opciones-aprobacion.test.ts`, y el mail del dueño en
-`docs/02-infraestructura.md` y `docs/09-analitica.md`.
-
-**Es irreversible**, y hay que decirlo: para cuando se detecta, ya está scrapeado
-e indexado. Lo que el arreglo consigue es cortar el sangrado, no revertirlo. Un
-uid no es una credencial, pero es la mitad del trabajo de un ataque dirigido.
-
-**Arreglo:** los valores salieron de los cinco archivos; los centinelas pasaron a
-`CENTINELAuid…` / `centinela-admin@ejemplo.com` (el uid conserva los 28
-caracteres, así la forma real se sigue ejercitando); el número de cuenta de
-facturación salió de la misma tabla por el mismo motivo; y
-`scripts/preparar-produccion.mjs --listar` reemplaza a la tabla — la lista se saca
-de Auth cuando se la necesita en vez de vivir versionada.
-
-**Red:** `tests/sin-datos-personales.test.ts`, que recorre `git ls-files`
-buscando la **forma** de un uid de Firebase (28 alfanuméricos con las tres clases
-de carácter) y casillas en proveedores de correo personales. Es angosto a
-propósito y lo dice: un mail en dominio propio (`hola@casabrandon.org`) puede ser
-un fixture inventado o real, y este test no puede distinguirlos sin versionar la
-lista de dominios reales, que es el dato que no queremos versionar. Esa mitad
-queda en el `auditor-privacidad`. Un chequeo angosto que nunca da falsos
-positivos vale más que uno ancho que se apaga con excepciones: la tabla que hizo
-nacer este test sobrevivió meses en un archivo que nadie sospechaba.
-
----
-
-### B-896 · La subida anónima va a una callable con App Check exigido — ✅ hecho (verificado 2026-09-17) · P0
-
-> **Estaba hecho y sin cerrar, y eso es lo que se arregla acá.** Verificado contra
-> el código y contra producción el 2026-09-17:
->
-> - `functions/flyer-de-propuesta.js` es la callable, con `enforceAppCheck: true`;
-> - `storage.rules` mantiene `propuestas/` cerrado al cliente —`get` para admin,
->   `list` para nadie—, que era el punto: más fuerte que abrirlo, no menos;
-> - `/proponer` responde 200, **está en el sitemap y enlazado desde la home**, que
->   es justo lo que este ítem bloqueaba.
->
-> Un P0 que en realidad está resuelto es peor que ninguno: encabeza el backlog y
-> enseña a no mirarlo.
-
-**Decidido por el dueño el 2026-09-11, sobre el hallazgo del frente de B-872.**
-
-El bloqueo de `/proponer` venía de un supuesto: que para que un anónimo suba el
-flyer hay que abrirle `storage.rules`, y que para que eso no sea un endpoint sin
-atestación hay que exigir App Check en Storage — que no se puede hacer sin
-arriesgar las imágenes del sitio (B-872) porque **el enforcement es por servicio y
-no por path**.
-
-**La salida rompe el acoplamiento:** la subida no va directo a Storage, va a una
-**Cloud Function callable con `enforceAppCheck: true`**. El enforcement de
-Functions es independiente del de Storage y no toca ninguna lectura de imagen. La
-callable valida la atestación y escribe el objeto con el Admin SDK.
-
-Lo que se gana, y es más de lo que se pedía:
-
-- el endpoint de subida anónimo **queda atestado de verdad**, que es lo que las
-  cinco capas de B-836 existen para garantizar;
-- **`storage.rules` para `propuestas/` se queda en `create: if false`** para el
-  cliente — más fuerte que abrirlo, no menos;
-- `firebasestorage` puede quedarse en `UNENFORCED` sin que eso bloquee producto, y
-  **B-872 deja de ser un bloqueo**: baja a lo que en realidad es, una decisión de
-  arquitectura de entrega de imágenes, que se junta con B-846.
-
-**Y una mitad ya está lista sin hacer nada: Firestore ya está `ENFORCED`**, así que
-el `create` anónimo de `/propuestas` ya estaría protegido por App Check. Lo único
-que faltaba proteger era la foto.
-
-**Lo que hay que resolver, y son las dos cosas que pueden salir mal:**
-
-1. **El saneado del JPEG.** Hoy corre en el cliente (`subir-imagen.ts`, con
-   `jpeg-appn-seguros` / `png-chunks-seguros`, B-323/B-869). Un cliente puede
-   saltearse el saneado del cliente, así que por la callable **tiene que volver a
-   correr del lado del servidor** — el módulo ya se comparte por alias, que es
-   justo para esto. Sanear solo en el cliente sería la misma clase de falso verde
-   que este repo persigue.
-2. **El límite de tamaño del request de un callable.** Las imágenes están topadas
-   en 3 MB (DEC-7) y un callable admite más, pero en base64 el payload crece ~33%.
-   Hay que medirlo y que el mensaje de rechazo diga el tamaño real y el máximo.
-
-**Orden de trabajo:** (1) ✅ **hecho (2026-09-11)** — la callable
-`subirFlyerDePropuesta` con `enforceAppCheck: true` y el saneado del servidor, con
-`storage.rules` dejando `propuestas/` en `create: if false` **para todo cliente**;
-(2) ✅ **hecho** — el `create` de `/propuestas` abierto, y **solo** el `create`:
-leer, revisar y borrar siguen en `esAdmin()`; (3) ✅ **hecho** — `/proponer` en
-`RUTAS_FIJAS` y la excepción del sitemap borrada; (4) ✅ **hecho** — enlazado desde
-el pie y desde `/contacto`, con el formulario primero y el `mailto:` debajo
-(DEC-10).
-
-> **En el pie y no en la barra de arriba, y es una decisión.** La barra acaba de
-> pasar a ocho pestañas con «Guía» y tiene un techo escrito; y las tres primeras
-> son las formas de *buscar algo*, mientras que quien viene a proponer llega con
-> algo para dar — el lado del pie, donde ya viven «Anunciar» y «Apoyar».
->
-> **Dos afirmaciones que las mutaciones corrigieron:**
->
-> 1. Se escribió que el barrido de `escritura-anonima.integracion.test.ts`
->    atraparía a alguien que abriera de más el `update`. **Siguió en verde.** Ese
->    archivo prueba con un documento sonda que la validación de forma rechaza con
->    la puerta abierta o cerrada, así que **no puede ser testigo de ninguna puerta
->    en una colección que valida la forma**. El comentario dice ahora lo que
->    alcanza, y el testigo se mudó al archivo de la colección.
-> 2. **Borrar el `esAdmin() &&` del `allow update` no abre nada**, porque
->    `revisionValida()` ya fija la identidad por su cuenta
->    (`porUid == request.auth.uid`) y un anónimo no tiene `request.auth`. Ahí el
->    `esAdmin()` es un **segundo** candado, y quien sostiene la puerta es una
->    cláusula que se lee como validación de forma. Con la regla abierta del todo el
->    testigo sí dispara, y con él tres casos más.
->
-> Y el caso del `publicador` cambió de forma: **puede proponer, como cualquiera**,
-> con la bandeja cerrada. Se agregó el control positivo que lo dice, porque sin él
-> el caso se leía como «no toca `/propuestas`» y eso pasó a ser falso.
-
-> **Lo que el paso 1 destapó, y no estaba en el enunciado: el saneado corría SOLO
-> en el cliente.** O sea que la garantía que el proyecto creía tener no la podía
-> dar: alcanzaba con abrir la consola del navegador y llamar a `uploadBytes` para
-> que la foto entrara al bucket con su EXIF —y las coordenadas de la casa donde se
-> hace el taller— adentro. Es la clase de bug que este repo persigue, en el lugar
-> más caro. Ahora corre en el servidor reusando `optimizar()` y el barrido
-> `traeMetadatos`/`estructuraConocida`, o sea las tablas compartidas por alias, y
-> verificado en los **dos** sentidos: la salida no trae metadatos, y la acepta
-> `quedanMetadatos` del panel —que es quien la promueve al aceptar la propuesta—.
->
-> **El límite del request está medido:** 3 MB de imagen → **4.194.352 bytes (4,00
-> MiB)** de cuerpo JSON, contra 10 MB, que es el más chico de los dos límites de
-> Google y se eligió a propósito para que la cuenta no dependa de acordarse de qué
-> generación es la Function. Margen 2,5×.
->
-> **Y una consecuencia que no estaba prevista:** el `matches` del nombre del
-> objeto bajó de `storage.rules` a la callable. Con `create: if false` la regla ya
-> no tiene cliente al que chequearle la forma — y la callable además mira lo que el
-> archivo tiene **adentro**, que es lo único que una regla de Storage nunca pudo
-> ver.
-
-### B-894 · El emulador de CI corría en otro proyecto que los tests, y eso apagaba solo los controles positivos — ✅ hecho (2026-09-11) · P0
-
-> **Lo encontró el deploy de B-888: 23 tests en rojo en CI y los 4541 en verde en
-> la máquina de al lado.** El sitio no se publicó, que es lo que hizo que se
-> notara.
-
-`push-main.yml` levantaba el emulador con `--project agenda-literaria` cableado a
-mano, y `vitest.config.ts` inyecta `PUBLIC_FIREBASE_PROJECT_ID` con el id
-**derivado del checkout** (`agenda-literaria-<huella>`, B-219). O sea que el
-emulador y los tests hablaban de dos proyectos distintos.
-
-**Lo que rompe el desajuste:** el emulador de Auth busca la cuenta en *su*
-proyecto, no la encuentra, y el ID token sale **sin los claims de
-`setCustomUserClaims`** y sin el `email` / `email_verified` del registro. La
-consecuencia es asimétrica y por eso es grave:
-
-- todo lo que la regla **niega** sigue dando verde —un token sin claims tiene que
-  ser rechazado, y lo es—;
-- se cae **únicamente lo que otorga**.
-
-Dicho de otra forma: el desajuste apaga exactamente los **controles positivos**,
-que son los que este repo agrega justamente para que una regla no pase por
-«funciona» solo negando. Es la clase de bug del §13 con otra cara — un verde que
-cubre el caso que existe para atrapar.
-
-**Por qué recién ahora.** Los archivos de integración anteriores pasan los claims
-**dos veces**: `setCustomUserClaims(uid, claims)` *y*
-`createCustomToken(uid, claims)`. Los segundos viajan dentro del token y no
-dependen del registro, así que tapaban el desajuste. `rol-publicador` y
-`usuarios` (B-888) usan solo el primero —que es lo que hace producción— y por eso
-fueron los primeros en cobrarlo.
-
-**El arreglo:** `--project "$(node scripts/project-id-emulador.mjs)"`. **Y el gate
-de pre-push tenía el mismo literal**, dos líneas debajo de donde ya calculaba el
-valor bueno (`PROJECT_ID_EMU`) — lo cobró él mismo: frenó el push del arreglo del
-workflow porque corría la suite con el desajuste. El tercer uso, el del build, no
-rompía nada (el Admin SDK no pasa por las reglas y siembra en el mismo proyecto
-que lee) y se unificó igual: un literal suelto al lado de dos que sí eran el bug
-es cómo vuelve. **Y había un cuarto, que es el que más se usa:** `npm run emu` no
-pasaba `--project`, así que tomaba el `default` de `.firebaserc` —el proyecto
-real— y el camino normal de trabajo (`npm run emu` en una terminal, `npx vitest
-run` en otra) reproducía el bug entero; encima el gate detecta ese emulador ya
-arriba y corre la suite contra él. Lo ata `tests/guardas-de-los-scripts.test.ts`, con la mutación
-probada en los dos caminos: devolver el literal deja la guarda en rojo y ningún
-otro test se mueve.
-
-**Lo que queda anotado y no se tocó:** los archivos viejos siguen pasando los
-claims por las dos vías. Ya no tapa nada —el proyecto coincide—, pero es una
-diferencia de estilo que vale unificar hacia `setCustomUserClaims` solo, que es
-lo fiel a producción. Es **B-895**, P3.
-
-### B-922 · El barrido de huérfanas borraba las fotos de las tres guías a las 72 horas — ✅ hecho (2026-09-15) · P0
-
-**Encontrado abriendo los formularios públicos de la Guía, sin que nadie lo
-reportara.** `limpiarImagenesHuerfanas` (B-221, `onSchedule` cada 24 h) borra
-todo objeto de `imagenes/` que tenga más de 72 horas y que **nadie referencie**,
-y hasta acá «nadie» significaba: ninguna actividad viva y ninguna versión de su
-historial (B-560).
-
-`LibreriaFormulario`, `SuscripcionFormulario` y `LugarFormulario` usan el
-**mismo** `GaleriaEditor` que una actividad (D-125), así que la foto del frente
-de una librería se sube a `imagenes/img_<uuid>.jpg` — el mismo prefijo, y desde
-el bucket indistinguible de la de un taller. O sea que **toda** foto de una ficha
-de directorio nacía huérfana y la corrida siguiente se la llevaba, dejando la
-ficha publicada con la imagen rota y su miniatura borrada por derivación.
-
-**Es la clase de bug que el barrido de B-560 ya había tenido una vez**, con el
-historial en lugar de los directorios, y por el mismo motivo: `referenciasEnUso`
-es una whitelist de dueños, y el dueño que no se agrega no existe. La diferencia
-es que allá el síntoma tardaba en verse (restaurar una versión vieja) y acá se ve
-en la ficha publicada.
-
-**Cómo fallaba, y por qué la suite estaba verde:** no hay error, no hay log y no
-hay excepción. El objeto se borra *porque nadie dijo que lo usaba*, que es
-exactamente lo que el barrido tiene que hacer. Los 21 casos que ya existían
-seguían pasando con el agujero adentro — verificado por mutación.
-
-**El arreglo** suma las tres colecciones al `Promise.all` de `referenciasEnUso`,
-con `.select('imagenes')` como las actividades (sin él, el
-`contactoDeQuienCargo` de quien cargó la ficha entra a la memoria de la Function
-para leerle un array de paths). **La lista sale de `COLECCIONES_DE_DIRECTORIO`**
-(`functions/directorios.js`), que ya es quien declara qué directorios existen:
-un cuarto entra a este barrido solo, y el test lo exige derivando de esa misma
-constante. Escribir las tres a mano era repetir el modo de falla con un
-directorio más.
-
-Cuatro casos nuevos en `tests/limpieza-imagenes.test.ts`, los cuatro rojos sin el
-arreglo. De paso el `db` falso del archivo pasó a responder **por nombre de
-colección**: devolvía la misma lista para cualquier `collection(x)`, y con cuatro
-colecciones leídas eso habría hecho pasar un barrido que no lee `/librerias` en
-absoluto. El script en seco (`scripts/limpiar-imagenes-huerfanas.mjs`) reusa
-`referenciasEnUso`, así que queda arreglado por el mismo cambio.
-
-**Lo desplegado hasta ahora ya se perdió lo que se haya perdido.** El barrido
-corre en producción desde B-221 y las tres guías se cargaron el 2026-09-11, así
-que cualquier foto subida a una ficha antes de este commit y con más de 72 horas
-puede no estar. No hay forma de recuperarla desde el repo: hay que volver a
-subirla desde el panel.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 

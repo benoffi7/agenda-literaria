@@ -169,6 +169,56 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
   { seccion: 'anunciar', href: RUTA_ANUNCIAR, texto: 'Anunciar' },
   { seccion: 'apoyar', href: RUTA_APOYAR, texto: 'Apoyar' },
 ];
+
+/**
+ * **Cuántas quedan a la vista en el teléfono** — B-1134.
+ *
+ * Tres, y no es un número elegido por cuántas entran: es **el primer grupo de la
+ * lista de arriba**, el que el comentario de «Guía» define como «las tres formas
+ * de buscar algo en este sitio» —la lista de actividades, la pared de afiches y
+ * el directorio—. Las cinco que siguen son las de después de haber encontrado y
+ * las de cómo se sostiene el proyecto.
+ *
+ * O sea que el corte **ya estaba escrito y argumentado**; lo único que hace esta
+ * constante es usarlo. Si mañana entra una sección que también es una forma de
+ * buscar, va acá arriba y este número sube con ella.
+ */
+const A_LA_VISTA_EN_MOBILE = 3;
+
+const PRINCIPALES = ENLACES.slice(0, A_LA_VISTA_EN_MOBILE);
+const SECUNDARIAS = ENLACES.slice(A_LA_VISTA_EN_MOBILE);
+
+/**
+ * ¿La sección actual quedó adentro del desplegable?
+ *
+ * Si es así el desplegable nace **abierto**, y su rótulo lleva la misma regla de
+ * acento que llevaría la pestaña: sin eso, quien está en «Ayuda» abre el sitio en
+ * el teléfono y no ve por ningún lado dónde está parado.
+ */
+/**
+ * El estilo de una pestaña, en una sola función — B-1134.
+ *
+ * Estaba escrito inline adentro del `.map`, y desde que hay **tres** lugares que
+ * dibujan pestañas —las principales, las del desplegable del teléfono y las de la
+ * fila de escritorio— inline serían tres copias del mismo `class:list`. La que se
+ * olvide de actualizar es la que muestra la sección activa sin marcar.
+ *
+ * La sección actual se marca con **regla y tinta**, no solo con color:
+ * `aria-current` ya lo dice para quien escucha, y la regla de 2px lo dice para
+ * quien no distingue el terracota del azul. `acento` sobre `papel` da 6,33:1 y
+ * `azul` 6,14:1 — los dos AA, que es lo que hay que exigirle a 11px en
+ * versalitas.
+ */
+const clasePestania = (seccion: Seccion): string =>
+  [
+    'label-caps flex min-h-touch items-end px-2 pb-1 transition-colors',
+    foco,
+    activa === seccion
+      ? 'border-b-2 border-acento text-acento'
+      : 'border-b-2 border-transparent text-azul hover:border-super hover:text-super',
+  ].join(' ');
+
+const activaEstaAdentro = SECUNDARIAS.some((e) => e.seccion === activa);
 ---
 
 {/*
@@ -232,32 +282,82 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
         pisarla.
       */}
       <ul class="-me-2 flex flex-wrap items-end justify-end gap-x-1">
-        {
-          ENLACES.map(({ seccion, href, texto }) => (
-            <li>
-              <a
-                href={href}
-                aria-current={activa === seccion ? 'page' : undefined}
-                class:list={[
-                  'label-caps flex min-h-touch items-end px-2 pb-1 transition-colors',
-                  foco,
-                  /*
-                    La sección actual se marca con **regla y tinta**, no solo con
-                    color: `aria-current` ya lo dice para quien escucha, y la
-                    regla de 2px lo dice para quien no distingue el terracota del
-                    azul. `acento` sobre `papel` da 6,33:1 y `azul` 6,14:1 — los
-                    dos AA, que es lo que hay que exigirle a 11px en versalitas.
-                  */
-                  activa === seccion
-                    ? 'border-b-2 border-acento text-acento'
-                    : 'border-b-2 border-transparent text-azul hover:border-super hover:text-super',
-                ]}
-              >
-                {texto}
-              </a>
-            </li>
-          ))
-        }
+        {PRINCIPALES.map(({ seccion, href, texto }) => (
+          <li>
+            <a href={href} aria-current={activa === seccion ? 'page' : undefined} class={clasePestania(seccion)}>
+              {texto}
+            </a>
+          </li>
+        ))}
+
+        {/*
+          **Las cinco que siguen, en el teléfono, adentro de un desplegable** —
+          B-1134. Con las ocho en una fila y `flex-wrap`, en 390px se envolvían en
+          tres renglones y el logo se partía en dos: el encabezado ocupaba un
+          tercio de la pantalla de entrada y se leía como algo roto.
+
+          **Es un `<details>` nativo y no una isla.** Abrir y cerrar un menú es
+          exactamente lo que el elemento hace —con teclado, con `Esc` y anunciado
+          como desplegable—, así que una isla de React acá sería bajar un runtime
+          al sitio público para reimplementar peor lo que el navegador ya trae. Es
+          el mismo criterio de D-239 sobre la home.
+
+          Los cinco enlaces aparecen **dos veces en el marcado** —acá y en la fila
+          de escritorio de abajo— y las dos salen del mismo `SECUNDARIAS.map`, así
+          que no hay dos listas que se puedan separar. La copia que no corresponde
+          lleva `display:none`, que la saca también del árbol de accesibilidad: un
+          lector de pantalla encuentra cada sección una sola vez.
+        */}
+        <li class="sm:hidden">
+          <details open={activaEstaAdentro} class="relative">
+            <summary
+              class:list={[
+                'label-caps flex min-h-touch cursor-pointer list-none items-end gap-1 px-2 pb-1 transition-colors',
+                foco,
+                activaEstaAdentro
+                  ? 'border-b-2 border-acento text-acento'
+                  : 'border-b-2 border-transparent text-azul',
+              ]}
+            >
+              Más
+              {/* Sin `aria-hidden` que lo tape: el `<summary>` ya se anuncia como
+                  desplegable y esta flecha es la mitad visual del mismo estado. */}
+              <span aria-hidden="true" class="text-[0.7em] leading-none pb-1">▾</span>
+            </summary>
+            {/*
+              **Flotante y no en el flujo, y esto costó una captura.** La primera
+              versión lo dejaba empujar: como el desplegable nace abierto cuando
+              la sección actual está adentro, entrar a `/ayuda` desde el teléfono
+              estiraba el encabezado a media pantalla y mandaba el logo al fondo
+              —peor que el problema que este ítem venía a arreglar—.
+
+              `absolute` + `end-0` lo cuelga del borde derecho del `<details>`
+              (de ahí su `relative`), y el borde y el fondo opaco son lo que lo
+              separa del contenido de abajo. **Sin sombra**, que es la regla 1 de
+              `global.css`: lo que separa una superficie de otra en este sistema
+              es una regla, no una sombra.
+            */}
+            <ul class="absolute end-0 z-30 mt-1 flex min-w-max flex-col items-end gap-y-1 border border-borde bg-papel px-3 py-2">
+              {SECUNDARIAS.map(({ seccion, href, texto }) => (
+                <li>
+                  <a href={href} aria-current={activa === seccion ? 'page' : undefined} class={clasePestania(seccion)}>
+                    {texto}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </li>
+
+        {/* Las mismas cinco, en fila, de `sm` en adelante: ahí entran las ocho y
+            el encabezado se ve como se veía. */}
+        {SECUNDARIAS.map(({ seccion, href, texto }) => (
+          <li class="hidden sm:block">
+            <a href={href} aria-current={activa === seccion ? 'page' : undefined} class={clasePestania(seccion)}>
+              {texto}
+            </a>
+          </li>
+        ))}
       </ul>
     </nav>
   </div>
