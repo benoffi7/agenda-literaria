@@ -171,7 +171,13 @@ describe('ReportesPanel — marcar resuelto saca la fila de la lista (B-580)', (
     const fila = screen.getByText('Un bug cualquiera').closest('li')!;
     await userEvent.click(within(fila).getByRole('button', { name: 'Marcar resuelto' }));
 
-    await screen.findByText('sin permiso');
+    /*
+     * **El cartel dice lo nuestro** — B-929. Un `Error` pelado sin `code` cae en
+     * `desconocido` y se muestra el respaldo de esta pantalla. Lo que el caso
+     * afirma —que el fallo se ve y que la fila no desaparece— no cambió.
+     */
+    await screen.findByText(/No se pudo actualizar/);
+    expect(screen.queryByText('sin permiso')).toBeNull();
     // Como el mock no cambió `reportes` (nadie llamó al `cb` de vuelta), la
     // fila sigue ahí: el filtro depende del snapshot, no de un estado local
     // optimista que la pantalla no tiene.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseBotonPrimario } from '@/components/campos/Campo';
 import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/DirectorioPanel';
 import { LibreriaFormulario } from '@/components/admin/LibreriaFormulario';
@@ -118,7 +119,7 @@ export function LibreriasPanel({
       await moverLibreria(ficha.id, usuario.uid, estado);
       setFallo(null);
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo mover la librería');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo mover la librería' }));
     }
   };
 

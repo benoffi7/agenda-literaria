@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseBotonPrimario } from '@/components/campos/Campo';
 import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/DirectorioPanel';
 import { LugarFormulario } from '@/components/admin/LugarFormulario';
@@ -111,7 +112,7 @@ export function LugaresPanel({
       await moverLugar(ficha.id, usuario.uid, estado);
       setFallo(null);
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo mover el lugar');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo mover el lugar' }));
     }
   };
 

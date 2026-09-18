@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { z } from 'zod';
 import {
   Campo,
@@ -253,7 +254,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
       }
       onGuardado();
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo guardar el lugar');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo guardar el lugar' }));
     } finally {
       setGuardando(false);
     }

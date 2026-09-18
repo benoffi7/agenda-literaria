@@ -643,7 +643,20 @@ describe('los otros dos movimientos', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Rechazar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar el rechazo' }));
 
-    await waitFor(() => expect(screen.getByText('sin permisos')).toBeTruthy());
+    /*
+     * **El cartel dice lo nuestro, no el mensaje del error** — B-929. Un `Error`
+     * pelado sin `code` de Firebase cae en `desconocido`, así que se muestra el
+     * respaldo de esta pantalla: dice **qué operación** falló, que es lo que un
+     * texto genérico no sabe.
+     *
+     * El caso sigue afirmando lo mismo que antes —que el fallo se ve y que la
+     * métrica no se emite—; lo que cambió es contra qué texto se compara.
+     */
+    await waitFor(() =>
+      expect(screen.getByText(/No se pudo actualizar la propuesta/)).toBeTruthy(),
+    );
+    // Y el mensaje crudo **no** sale: es lo que B-929 vino a sacar del cartel.
+    expect(screen.queryByText('sin permisos')).toBeNull();
     expect(medirFuncion).not.toHaveBeenCalledWith('propuesta-rechazada');
   });
 

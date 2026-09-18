@@ -1,4 +1,5 @@
 import { Seccion } from '@/components/admin/campos-del-panel';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { useEffect, useState } from 'react';
 import {
   claseBotonPrimario,
@@ -99,7 +100,7 @@ export function ReporteFormulario({ usuario, onEnviado }: Props) {
     } catch (e) {
       // El reporte no se perdió en el aire: si la escritura falló, el texto
       // sigue en el formulario.
-      setFallo(e instanceof Error ? e.message : 'No se pudo enviar el reporte.');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo enviar el reporte.' }));
     } finally {
       setEnviando(false);
     }

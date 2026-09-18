@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from '@/components/campos/Campo';
 import { useOpciones } from '@/components/admin/useOpciones';
 import { esFalloDeCarga } from '@/lib/carga-diferida';
@@ -397,7 +398,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       setFallo(null);
       return true;
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo actualizar la propuesta');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo actualizar la propuesta' }));
       return false;
     } finally {
       setMoviendo(null);
@@ -480,6 +481,19 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
          * obligaría a resolver un problema de Storage antes de poder cargar una
          * actividad que ya está escrita, y la foto se puede volver a poner a
          * mano desde el formulario mientras la propuesta siga en la bandeja.
+         */
+        /*
+         * ⚠️ **Acá NO va `textoDeFallo`, y es la excepción del cambio de B-929.**
+         * Ese helper devuelve una frase completa —«Se cortó la conexión. No se
+         * guardó nada y no se perdió nada…»— pensada para el cartel rojo, donde
+         * es todo lo que se lee. Metida entre paréntesis adentro de **otra**
+         * frase queda una oración dentro de otra y se lee peor que el original.
+         *
+         * Lo que corresponde acá es la causa en dos palabras, y por ahora eso es
+         * el mensaje crudo. Que siga en inglés es un resto conocido de B-929 y no
+         * un olvido: lo que el ítem venía a arreglar es el cartel, que es donde
+         * la persona se queda sin saber qué hacer. Acá la frase de alrededor ya
+         * lo dice («la actividad se abre sin ella»).
          */
         avisosDeLaImagen.push(
           `La imagen que mandaron no se pudo traer (${

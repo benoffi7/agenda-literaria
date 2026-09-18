@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { z } from 'zod';
 import {
   Campo,
@@ -184,7 +185,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
       }
       onGuardado();
     } catch (e: unknown) {
-      setFallo(e instanceof Error ? e.message : 'No se pudo guardar la librería');
+      setFallo(textoDeFallo(e, { respaldo: 'No se pudo guardar la librería' }));
     } finally {
       setGuardando(false);
     }
