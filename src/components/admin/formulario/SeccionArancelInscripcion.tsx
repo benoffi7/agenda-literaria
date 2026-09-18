@@ -3,6 +3,8 @@
  * inscripción abre sus campos solo si se pide.
  */
 import { Seccion, TaxonomiaSelect } from '@/components/admin/campos-del-panel';
+import { CampoDeFechaYHora } from '@/components/campos/CampoDeFechaYHora';
+import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { admiteMonto, montoDesdeTexto } from '@/lib/arancel';
 import { ETIQUETA_VIA } from '@/components/admin/formulario/etiquetasUI';
@@ -11,6 +13,8 @@ import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';
 import { VIAS_INSCRIPCION, type ActividadForm } from '@/types/actividad';
 
 interface Props extends PropsSeccion {
+  /** B-889 / D-720 — en qué formato se tipea el cierre de la inscripción. */
+  hora: PreferenciaDeHora;
   anotarLabel: (campo: CampoLabelUnico, label?: string) => void;
   /**
    * B-114 — elegir el arancel pasa por la cascada (`cambiarArancel`) y no por un
@@ -21,6 +25,7 @@ interface Props extends PropsSeccion {
 }
 
 export function SeccionArancelInscripcion({
+  hora,
   form,
   set,
   errorDe,
@@ -221,17 +226,14 @@ export function SeccionArancelInscripcion({
               }
             />
           </Campo>
-          <Campo label="Cierra la inscripción" htmlFor="insc-cierra">
-            <input
-              id="insc-cierra"
-              type="datetime-local"
-              className={claseInput}
-              value={form.inscripcion.cierra}
-              onChange={(e) =>
-                set('inscripcion', { ...form.inscripcion, cierra: e.target.value })
-              }
-            />
-          </Campo>
+          <CampoDeFechaYHora
+            label="Cierra la inscripción"
+            id="insc-cierra"
+            value={form.inscripcion.cierra}
+            onChange={(v) => set('inscripcion', { ...form.inscripcion, cierra: v })}
+            formato={hora.formato}
+            vista={hora.vista}
+          />
         </div>
       )}
     </Seccion>

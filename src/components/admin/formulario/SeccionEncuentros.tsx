@@ -9,12 +9,15 @@
  * de opciones a la vista.
  */
 import { Seccion } from '@/components/admin/campos-del-panel';
+import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
 import { ComisionesEditor } from '@/components/admin/ComisionesEditor';
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 
 type Props = Omit<PropsSeccion, 'uid'> & {
+  /** B-889 — en qué formato se tipean las horas de los encuentros. */
+  hora: PreferenciaDeHora;
   /** Los clubes de lectura muestran la lectura de cada encuentro. */
   esClub: boolean;
   /**
@@ -30,7 +33,7 @@ type Props = Omit<PropsSeccion, 'uid'> & {
   borrarComision: (id: string) => void;
 };
 
-export function SeccionEncuentros({ form, set, errorDe, esClub, borrarComision }: Props) {
+export function SeccionEncuentros({ hora, form, set, errorDe, esClub, borrarComision }: Props) {
   return (
     <Seccion
       ancla="encuentros"
@@ -69,6 +72,7 @@ export function SeccionEncuentros({ form, set, errorDe, esClub, borrarComision }
         />
       )}
       <SesionesEditor
+        hora={hora}
         sesiones={form.sesiones}
         onChange={(s) => set('sesiones', s)}
         mostrarLectura={esClub || form.esCiclo}

@@ -235,8 +235,13 @@ describe('el error de una fila de encuentros se pinta al lado del campo (B-343)'
   it('inicio y fin usan `Campo`, que es quien marca el ancla de B-184', () => {
     // `\s+` y no un espacio: desde B-827 el tag lleva `htmlFor` y quedó
     // multilínea, y el label sigue siendo el primer prop.
-    expect(EDITOR).toMatch(/<Campo\s+label="Inicio"/);
-    expect(EDITOR).toMatch(/<Campo\s+label="Fin"/);
+    //
+    // Desde B-889 el tag es `CampoDeFechaYHora`, que **envuelve** a `Campo` —el
+    // ancla la sigue poniendo el mismo componente, una capa más abajo—. La
+    // regex admite los dos nombres a propósito: lo que este caso protege es que
+    // el ancla exista, no cómo se llama el envoltorio.
+    expect(EDITOR).toMatch(/<Campo(?:DeFechaYHora)?\s+label="Inicio"/);
+    expect(EDITOR).toMatch(/<Campo(?:DeFechaYHora)?\s+label="Fin"/);
   });
 
   it('la derivación paralela de "fin antes del inicio" se conserva', () => {

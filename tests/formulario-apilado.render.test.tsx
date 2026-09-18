@@ -58,6 +58,7 @@ const pintar = () =>
     <ActividadFormulario
       rol="admin"
       vistaDelPanel="celular"
+      formatoDeHora="24"
       uid="uid-de-prueba"
       onGuardado={vi.fn()}
       onCancelar={vi.fn()}
@@ -167,6 +168,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
       <ActividadFormulario
       rol="admin"
         vistaDelPanel={vista}
+        formatoDeHora="24"
         uid="uid-de-prueba"
         onGuardado={vi.fn()}
         onCancelar={vi.fn()}
@@ -195,6 +197,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
       <ActividadFormulario
       rol="admin"
         vistaDelPanel="celular"
+        formatoDeHora="24"
         uid="uid-de-prueba"
         onGuardado={vi.fn()}
         onCancelar={vi.fn()}
@@ -218,6 +221,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
       <ActividadFormulario
       rol="admin"
         vistaDelPanel="pc"
+        formatoDeHora="24"
         uid="uid-de-prueba"
         onGuardado={vi.fn()}
         onCancelar={vi.fn()}

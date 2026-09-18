@@ -43,6 +43,7 @@ import {
   pestaniaDe,
   type IdPestania,
 } from '@/lib/formulario/pestanias';
+import { type FormatoDeHora, type PreferenciaDeHora } from '@/lib/formatoDeHora';
 import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
 import { cambiarArancel, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import { esCharla, esClub, esTaller, nombrePersona } from '@/lib/formulario/condicionales';
@@ -86,6 +87,12 @@ interface Props {
    * compilador — así que se pide, y quien monte el formulario elige.
    */
   vistaDelPanel: VistaDelPanel;
+  /**
+   * En qué formato se tipean las horas — B-889, D-720. Llega de arriba y no se
+   * lee acá: es una preferencia del panel entero, y `AdminApp` es quien la
+   * recuerda. Viaja hasta los tres campos de fecha y hora del formulario.
+   */
+  formatoDeHora: FormatoDeHora;
   /** Si viene, el formulario edita; si no, crea. */
   inicial?: ActividadConId;
   /**
@@ -153,6 +160,7 @@ export function ActividadFormulario({
   uid,
   rol,
   vistaDelPanel,
+  formatoDeHora,
   inicial,
   copia,
   tituloOrigen,
@@ -169,6 +177,12 @@ export function ActividadFormulario({
    * `usaPestanias`.
    */
   const conPestanias = usaPestanias(vistaDelPanel);
+  /*
+   * B-889 / D-720 — las dos mitades de «cómo se tipea una hora acá», juntas y en
+   * una sola prop: el formato elegido y la vista, que es la que decide si el
+   * control propio entra (ver `usaControlDeHoraPropio`).
+   */
+  const hora: PreferenciaDeHora = { formato: formatoDeHora, vista: vistaDelPanel };
   const [form, setForm] = useState<ActividadForm>(() =>
     inicial ? documentoAForm(inicial) : (copia ?? formVacio()),
   );
@@ -708,6 +722,7 @@ export function ActividadFormulario({
           ),
           encuentros: (
             <SeccionEncuentros
+              hora={hora}
               form={form}
               set={set}
               errorDe={errorDe}
@@ -716,7 +731,14 @@ export function ActividadFormulario({
             />
           ),
           donde: (
-            <SeccionDonde form={form} set={set} errorDe={errorDe} uid={uid} anotarLabel={anotarLabel} />
+            <SeccionDonde
+              hora={hora}
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              uid={uid}
+              anotarLabel={anotarLabel}
+            />
           ),
           quien: (
             <SeccionQuien
@@ -730,6 +752,7 @@ export function ActividadFormulario({
           ),
           'arancel-inscripcion': (
             <SeccionArancelInscripcion
+              hora={hora}
               form={form}
               set={set}
               errorDe={errorDe}

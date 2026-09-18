@@ -230,8 +230,10 @@ describe('el editor de encuentros usa los saltos y la duración conservada', () 
   it('el campo de inicio pasa por conInicioNuevo y no escribe el string crudo', () => {
     // Se afirma la **llamada** y no el nombre: el nombre solo lo satisface la
     // definición de la función, tres pantallas más arriba.
-    expect(editor()).toContain('conInicioNuevo(x, e.target.value)');
-    expect(editor()).not.toContain('editar(s.id, { inicio: e.target.value })');
+    // Desde B-889 el campo es `CampoDeFechaYHora`, cuyo `onChange` entrega el
+    // valor compuesto y no el evento: lo que se afirma sigue siendo la llamada.
+    expect(editor()).toContain('conInicioNuevo(x, v)');
+    expect(editor()).not.toContain('editar(s.id, { inicio:');
   });
 
   it('los botones de correr llaman a correrSesion con el salto de la lista', () => {

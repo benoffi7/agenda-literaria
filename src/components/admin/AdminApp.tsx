@@ -15,7 +15,13 @@ import { motivoDeLoginFallido, type MotivoDeLogin } from '@/lib/motivoDeLogin';
 // `salida-del-panel.ts`: la vista que se agregue mañana arranca angosta y quien
 // la escriba decide en una línea, en vez de heredar un `===` suelto en el JSX.
 import { ocupaTodoElAncho } from '@/lib/anchoDelPanel';
+import { InterruptorDeFormato } from '@/components/admin/InterruptorDeFormato';
 import { InterruptorDeVista } from '@/components/admin/InterruptorDeVista';
+import {
+  formatoInicialDeHora,
+  recordarFormatoDeHora,
+  type FormatoDeHora,
+} from '@/lib/formatoDeHora';
 import {
   recordarVistaDelPanel,
   vistaInicialDelPanel,
@@ -367,6 +373,21 @@ export function AdminApp() {
   const elegirVista = (nueva: VistaDelPanel) => {
     setVistaDelPanel(nueva);
     recordarVistaDelPanel(globalThis.localStorage ?? null, nueva);
+  };
+
+  /**
+   * En qué formato se **tipean** las horas — B-889, D-720. Misma forma que la
+   * vista de arriba, y por el mismo motivo: se lee del almacén en el
+   * inicializador (no en un `useEffect`) para que el primer dibujo ya sea el
+   * elegido, y se recuerda al cambiarla.
+   */
+  const [formatoDeHora, setFormatoDeHora] = useState<FormatoDeHora>(() =>
+    formatoInicialDeHora(globalThis.localStorage ?? null),
+  );
+
+  const elegirFormatoDeHora = (nuevo: FormatoDeHora) => {
+    setFormatoDeHora(nuevo);
+    recordarFormatoDeHora(globalThis.localStorage ?? null, nuevo);
   };
   const [version, setVersion] = useState(0);
 
@@ -813,6 +834,16 @@ export function AdminApp() {
           que también se puede elegir antes de entrar a cargar.
         */}
         <InterruptorDeVista vista={vistaDelPanel} onCambiar={elegirVista} />
+        {/*
+          B-889 / D-720 — en qué formato se tipean las horas. Al lado del de
+          arriba y por el mismo argumento: es una preferencia. Queda inerte en la
+          vista de celular, donde el control del teléfono es el que gana.
+        */}
+        <InterruptorDeFormato
+          formato={formatoDeHora}
+          onCambiar={elegirFormatoDeHora}
+          inerte={vistaDelPanel === 'celular'}
+        />
         {/* Única entrada a la ayuda y a las novedades (D-61): el encabezado se
             ve en todas las pantallas, y al ser una capa se puede consultar sin
             perder el formulario a medio cargar. */}
@@ -1053,6 +1084,7 @@ export function AdminApp() {
             vista.tipo === 'editar' && esSoloLectura(rol, vista.actividad, usuario.uid)
           }
           vistaDelPanel={vistaDelPanel}
+          formatoDeHora={formatoDeHora}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
           copia={
             vista.tipo === 'duplicar' || vista.tipo === 'convertir' ? vista.copia : undefined

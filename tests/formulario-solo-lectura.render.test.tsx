@@ -52,6 +52,7 @@ const pintar = (soloLectura: boolean) =>
     <ActividadFormulario
       rol="publicador"
       vistaDelPanel="celular"
+      formatoDeHora="24"
       uid="uid-de-prueba"
       soloLectura={soloLectura}
       onGuardado={vi.fn()}
@@ -137,6 +138,7 @@ describe('en solo lectura no hay dónde guardar (B-919)', () => {
       <ActividadFormulario
         rol="publicador"
         vistaDelPanel="pc"
+        formatoDeHora="24"
         uid="uid-de-prueba"
         soloLectura
         onGuardado={vi.fn()}

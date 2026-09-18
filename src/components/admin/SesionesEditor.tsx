@@ -8,6 +8,8 @@ import {
 } from '@/components/campos/Campo';
 import { FilasEditor } from '@/components/campos/FilasEditor';
 import { medirFuncion } from '@/lib/analytics';
+import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
+import { CampoDeFechaYHora } from '@/components/campos/CampoDeFechaYHora';
 import {
   aDatetimeLocal,
   deDatetimeLocal,
@@ -20,6 +22,8 @@ import {
 import type { Comision, SesionForm } from '@/types/actividad';
 
 interface Props {
+  /** B-889 / D-720 — en qué formato se tipean el inicio y el fin. */
+  hora: PreferenciaDeHora;
   sesiones: SesionForm[];
   onChange: (s: SesionForm[]) => void;
   /**
@@ -209,6 +213,7 @@ const FUNCION = {
  * fecha de B-186 y la cancelación.
  */
 export function SesionesEditor({
+  hora,
   sesiones,
   onChange,
   mostrarLectura,
@@ -437,34 +442,26 @@ export function SesionesEditor({
         return (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Campo
+              <CampoDeFechaYHora
                 label="Inicio"
-                htmlFor={`sesion-inicio-${s.id}`}
+                id={`sesion-inicio-${s.id}`}
                 requerido
                 error={errorDe(ruta('inicio'))}
-              >
-                <input
-                  id={`sesion-inicio-${s.id}`}
-                  type="datetime-local"
-                  value={s.inicio}
-                  onChange={(e) => reemplazar(s.id, (x) => conInicioNuevo(x, e.target.value))}
-                  className={claseInput}
-                />
-              </Campo>
-              <Campo
+                value={s.inicio}
+                onChange={(v) => reemplazar(s.id, (x) => conInicioNuevo(x, v))}
+                formato={hora.formato}
+                vista={hora.vista}
+              />
+              <CampoDeFechaYHora
                 label="Fin"
-                htmlFor={`sesion-fin-${s.id}`}
+                id={`sesion-fin-${s.id}`}
                 requerido
                 error={errorDe(ruta('fin'))}
-              >
-                <input
-                  id={`sesion-fin-${s.id}`}
-                  type="datetime-local"
-                  value={s.fin}
-                  onChange={(e) => editar({ fin: e.target.value })}
-                  className={claseInput}
-                />
-              </Campo>
+                value={s.fin}
+                onChange={(v) => editar({ fin: v })}
+                formato={hora.formato}
+                vista={hora.vista}
+              />
               <label className="flex flex-col gap-1 text-xs">
                 Tema
                 <input

@@ -18,6 +18,8 @@
  * son strings de `datetime-local` y en Firestore son `Timestamp`.
  */
 import { TaxonomiaSelect } from '@/components/admin/campos-del-panel';
+import { CampoDeFechaYHora } from '@/components/campos/CampoDeFechaYHora';
+import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { FilasEditor } from '@/components/campos/FilasEditor';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
@@ -36,6 +38,8 @@ import {
 import { MODALIDADES, type ModalidadFilaForm } from '@/types/actividad';
 
 interface Props {
+  /** B-889 / D-720 — en qué formato se tipea la ventana de cada forma de cursar. */
+  hora: PreferenciaDeHora;
   modalidades: ModalidadFilaForm[];
   onChange: (m: ModalidadFilaForm[]) => void;
   uid: string;
@@ -51,7 +55,14 @@ const FUNCION = {
   borrar: 'modalidad-borrar',
 } as const;
 
-export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, errorDe }: Props) {
+export function ModalidadesEditor({
+  hora,
+  modalidades,
+  onChange,
+  uid,
+  anotarLabel,
+  errorDe,
+}: Props) {
   return (
     <FilasEditor
       filas={modalidades}
@@ -116,24 +127,22 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
               como algo que falta completar.
             */}
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs">
-                Desde (opcional)
-                <input
-                  type="datetime-local"
-                  value={fila.inicio}
-                  onChange={(e) => editar({ inicio: e.target.value })}
-                  className={claseInput}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs">
-                Hasta (opcional)
-                <input
-                  type="datetime-local"
-                  value={fila.fin}
-                  onChange={(e) => editar({ fin: e.target.value })}
-                  className={claseInput}
-                />
-              </label>
+              <CampoDeFechaYHora
+                label="Desde (opcional)"
+                id={`modalidad-desde-${fila.id}`}
+                value={fila.inicio}
+                onChange={(v) => editar({ inicio: v })}
+                formato={hora.formato}
+                vista={hora.vista}
+              />
+              <CampoDeFechaYHora
+                label="Hasta (opcional)"
+                id={`modalidad-hasta-${fila.id}`}
+                value={fila.fin}
+                onChange={(v) => editar({ fin: v })}
+                formato={hora.formato}
+                vista={hora.vista}
+              />
               <p
                 className={`sm:col-span-2 text-xs ${
                   invertida ? 'font-medium text-acento' : 'text-tinta/55'
