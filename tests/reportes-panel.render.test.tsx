@@ -166,18 +166,24 @@ describe('ReportesPanel — marcar resuelto saca la fila de la lista (B-580)', (
 
   it('CONTROL NEGATIVO — si `marcarResuelto` falla, la fila sigue en la lista y se ve el error', async () => {
     montar([reporte({ id: 'r1', titulo: 'Un bug cualquiera' })]);
-    vi.mocked(marcarResuelto).mockRejectedValue(new Error('sin permiso'));
+    // El fallo, como llega de verdad: del SDK y con `code`. Ver el caso gemelo
+    // en `propuestas-panel.render.test.tsx`.
+    vi.mocked(marcarResuelto).mockRejectedValue(
+      Object.assign(new Error('Missing or insufficient permissions.'), {
+      code: 'permission-denied',
+    }),
+    );
 
     const fila = screen.getByText('Un bug cualquiera').closest('li')!;
     await userEvent.click(within(fila).getByRole('button', { name: 'Marcar resuelto' }));
 
     /*
-     * **El cartel dice lo nuestro** — B-929. Un `Error` pelado sin `code` cae en
-     * `desconocido` y se muestra el respaldo de esta pantalla. Lo que el caso
-     * afirma —que el fallo se ve y que la fila no desaparece— no cambió.
+     * **El cartel dice lo nuestro** — B-929. Un `permission-denied` se traduce a
+     * la frase de permisos. Lo que el caso afirma —que el fallo se ve y que la
+     * fila no desaparece— no cambió.
      */
-    await screen.findByText(/No se pudo actualizar/);
-    expect(screen.queryByText('sin permiso')).toBeNull();
+    await screen.findByText(/no tiene permiso para hacer esto/i);
+    expect(screen.queryByText(/Missing or insufficient permissions/)).toBeNull();
     // Como el mock no cambió `reportes` (nadie llamó al `cb` de vuelta), la
     // fila sigue ahí: el filtro depende del snapshot, no de un estado local
     // optimista que la pantalla no tiene.

@@ -638,25 +638,36 @@ describe('los otros dos movimientos', () => {
    * arriba —el rechazo que sí sale— sigue verde.
    */
   it('y si la escritura falla, no se mide un rechazo que no ocurrió', async () => {
-    vi.mocked(revisarPropuesta).mockRejectedValueOnce(new Error('sin permisos'));
+    /*
+     * **El fallo se simula como llega de verdad: del SDK y con `code`.** Un
+     * `Error` pelado no representa ninguno de los dos casos reales — ni un fallo
+     * de Firestore, que trae código, ni un mensaje propio del dominio, que está
+     * en castellano y dice qué corregir. Y desde que el traductor distingue por
+     * origen, un `Error` pelado **se muestra**: probar con uno haría que este
+     * caso afirmara lo contrario de lo que dice.
+     */
+    vi.mocked(revisarPropuesta).mockRejectedValueOnce(
+      Object.assign(new Error('Missing or insufficient permissions.'), {
+      code: 'permission-denied',
+    }),
+    );
     montar([propuesta()]);
     await userEvent.click(screen.getByRole('button', { name: 'Rechazar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar el rechazo' }));
 
     /*
-     * **El cartel dice lo nuestro, no el mensaje del error** — B-929. Un `Error`
-     * pelado sin `code` de Firebase cae en `desconocido`, así que se muestra el
-     * respaldo de esta pantalla: dice **qué operación** falló, que es lo que un
-     * texto genérico no sabe.
+     * **El cartel dice lo nuestro, no el mensaje del SDK** — B-929. Un
+     * `permission-denied` se traduce a la frase de permisos, que dice qué hacer
+     * («salí y volvé a entrar»); el mensaje en inglés del SDK no sale.
      *
      * El caso sigue afirmando lo mismo que antes —que el fallo se ve y que la
      * métrica no se emite—; lo que cambió es contra qué texto se compara.
      */
     await waitFor(() =>
-      expect(screen.getByText(/No se pudo actualizar la propuesta/)).toBeTruthy(),
+      expect(screen.getByText(/no tiene permiso para hacer esto/i)).toBeTruthy(),
     );
     // Y el mensaje crudo **no** sale: es lo que B-929 vino a sacar del cartel.
-    expect(screen.queryByText('sin permisos')).toBeNull();
+    expect(screen.queryByText(/Missing or insufficient permissions/)).toBeNull();
     expect(medirFuncion).not.toHaveBeenCalledWith('propuesta-rechazada');
   });
 
