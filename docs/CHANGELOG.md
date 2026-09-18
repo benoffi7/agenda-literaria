@@ -2,6 +2,23 @@
 
 ## Sin publicar
 
+- **La parte de arriba de la home dejó de tener cuatro bloques** — **B-1138**,
+  pedido del dueño. Se fue la bajada («N actividades con fecha próxima. Buscá
+  por barrio…»), el título pasó a ocupar el lugar que tenía la franja del
+  eslogan, y «Leer, escribir, hacer» se mudó pegado al nombre del sitio.
+
+  **El `<h1>` no se mudó al `<header>`**, que es lo único que había que cuidar:
+  la franja vivía ahí, y llevarlo adentro habría dejado a la home sin encabezado
+  de nivel 1 en su contenido, en la página que más se indexa. Cambió dónde se
+  dibuja, no qué es.
+
+  La franja desapareció de **todas** las páginas, y es consecuencia y no efecto
+  colateral: solo repetía el eslogan.
+
+  De paso se corrigió un chequeo que **medía prosa** (D-124): el que exige un
+  solo `<h1>` en la home contaba sobre el fuente con comentarios, así que el
+  docblock nuevo lo puso en rojo contando cuatro.
+
 - **El pie dejó de medir media pantalla** — **B-1135**, reportado por el dueño
   con dos capturas. Los nueve enlaces se apilaban en una sola columna en
   cualquier ancho: ~400px de pie en un sitio cuyas páginas a veces miden menos

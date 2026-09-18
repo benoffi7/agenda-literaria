@@ -1,3 +1,4 @@
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -535,7 +536,14 @@ describe('el bloque corto de «suscribirse» en la home — B-231', () => {
      * pasarle `nivel={3}` — y este aserto es el que obliga a venir a pensarlo.
      */
     const src = fuente(HOME);
-    expect((src.match(/<h1[\s>]/g) ?? []).length).toBe(1);
+    /*
+     * **Sin comentarios** (D-124). Contar `<h1` sobre el fuente crudo mide
+     * también la prosa: el docblock del título de la home lo nombra tres veces
+     * para explicar por qué sigue siendo un `h1` y por qué sigue adentro del
+     * `<main>` (B-1138), y este aserto pasó a contar cuatro. Un chequeo que lee
+     * prosa mide la prosa.
+     */
+    expect((sinComentarios(src).match(/<h1[\s>]/g) ?? []).length).toBe(1);
     // La home puede pasarle `class` (el margen de posición, B-482), pero **no**
     // `nivel`: cuelga del h1 como h2, que es el default. Se mira el tag entero y
     // se exige que no mencione `nivel`, en vez de la forma desnuda —que rompía al

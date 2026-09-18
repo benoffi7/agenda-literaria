@@ -314,31 +314,6 @@ no lo reportó él: salió de ir a verificar el suyo.
 antes de tocar nada, o se termina poniendo `overflow-x: hidden` en el `body`, que
 esconde el síntoma y deja el contenido cortado igual.
 
-### B-1138 · La cabecera de la home dice tres cosas y ninguna en su lugar · P0 — pedido del dueño (2026-09-18)
-
-**Tres cambios, dichos por el dueño:**
-
-1. **Fuera la bajada** «235 actividades con fecha próxima. Buscá por barrio, por
-   tema o por lo que salga».
-2. **«Talleres, clubes de lectura y encuentros literarios en Argentina» pasa a
-   donde hoy está «Leer, escribir, hacer»** — la franja del eslogan, debajo del
-   encabezado.
-3. **«Leer, escribir, hacer» pasa debajo de «Agenda LEH»**, o sea a la marca del
-   encabezado.
-
-**Lo que hay que mirar antes de moverlo**, porque son tres piezas con dueño
-distinto y una es de SEO:
-
-- el `<h1>` de la home es hoy el título largo (`src/pages/index.astro`), y **es el
-  encabezado de nivel 1 de la página indexada**: si el texto se muda a la franja,
-  hay que decidir **qué queda como `<h1>`** — moverlo sin más deja la home sin
-  uno, o con uno que es el eslogan;
-- la franja (`Encabezado.astro`, el `<p>` de abajo de la barra) y la marca del
-  pie usan `BAJADA`, que está en `identidad.ts` y se dibuja en **las dos**: mover
-  el eslogan a la marca no puede dejar la franja vacía en el resto de las páginas;
-- y hay tests que fijan los encabezados y los títulos por página
-  (`tests/canonico.test.ts`, el barrido de jerarquía de `13-agentes.md`).
-
 ### B-1136 · Filtrar desde el tríptico no se percibe: el resultado cambia abajo del pliegue · P0 — del dueño (2026-09-18)
 
 *«Estás en el home, presionás "+11 más hoy" o cualquiera del tríptico. Los eventos

@@ -169,14 +169,28 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
       32px— y **no** en `display-lg`: el cuerpo de 72px es del marcador de mes, y
       dos cosas al mismo tamaño máximo es ninguna.
     */}
-    <div class="max-w-3xl">
-      <h1 class="headline-md text-balance text-tinta">{TITULO_DE_LA_HOME}</h1>
-      <p class="body-md mt-3 text-super">
-        {cuantas === 0
-          ? 'Todavía no hay actividades con fecha próxima.'
-          : `${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima. Buscá por barrio, por tema o por lo que salga.`}
-      </p>
-    </div>
+    {/*
+      **El título toma el lugar que tenía la franja del eslogan** — B-1138,
+      pedido del dueño. Va de ancho completo y sobre `crema`, que es exactamente
+      la franja que `Encabezado.astro` dibujaba en todas las páginas: el eslogan
+      se mudó pegado al nombre y este lugar quedó para lo único que se lo gana,
+      que es el `<h1>` de la página indexada.
+
+      **Sigue siendo un `<h1>` y sigue adentro del `<main>`**, que es la parte
+      que no se puede perder al moverlo: la franja vivía en el `<header>`, y un
+      `<h1>` ahí adentro dejaría a la home sin encabezado de nivel 1 en su
+      contenido. Lo que cambia es dónde se dibuja, no qué es.
+
+      **Y se fue la bajada** («N actividades con fecha próxima. Buscá por
+      barrio…»), también pedido del dueño: el conteo se repite dos renglones más
+      abajo, arriba del listado, y la invitación a buscar la dice el buscador que
+      viene enseguida.
+    */}
+    <h1
+      class="regla-fina -mx-4 bg-crema px-4 py-3 text-center headline-md text-balance text-tinta sm:-mx-10 sm:px-10"
+    >
+      {TITULO_DE_LA_HOME}
+    </h1>
 
     {/*
       **El `id="listado"` envuelve al tríptico, al buscador Y a la lista**, y no

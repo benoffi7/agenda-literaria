@@ -267,7 +267,26 @@ const activaEstaAdentro = SECUNDARIAS.some((e) => e.seccion === activa);
         height="40"
         class="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
       />
-      <span class="marca text-tinta group-hover:text-acento">{NOMBRE}</span>
+      {/*
+        **El eslogan va acá abajo del nombre desde B-1138** — pedido del dueño.
+        Antes vivía en una franja de ancho completo debajo de la barra, que era un
+        bloque más antes de llegar al contenido: en un teléfono, entre encabezado,
+        franja, título y bajada había cuatro cosas apiladas antes de la primera
+        actividad.
+
+        Pegado al nombre dice lo mismo —qué quiere decir la sigla— y no ocupa una
+        fila propia. **Sin `aria-hidden`**, por lo que decía la franja: es parte
+        del nombre del sitio, y quien escucha la página también necesita saberlo.
+
+        En un `<span>` de bloque y no en un `<p>`: está adentro del enlace de la
+        marca, y un `<p>` dentro de un `<a>` es marcado inválido.
+      */}
+      <span class="flex min-w-0 flex-col">
+        <span class="marca text-tinta group-hover:text-acento">{NOMBRE}</span>
+        <span class="label-caps text-[0.6rem] leading-tight tracking-[0.2em] text-super sm:text-[0.65rem]">
+          {BAJADA}
+        </span>
+      </span>
     </a>
 
     <nav aria-label="Secciones del sitio" class="min-w-0">
@@ -364,18 +383,16 @@ const activaEstaAdentro = SECUNDARIAS.some((e) => e.seccion === activa);
 </header>
 
 {/*
-  La franja de la bajada: la «marca de registro» que cruza la página.
+  **La franja del eslogan se fue** — B-1138, pedido del dueño. Decía
+  «Leer, escribir, hacer» de ancho completo debajo de la barra, y ese texto ahora
+  vive pegado al nombre, arriba. Era un bloque entero entre la barra y el
+  contenido, en todas las páginas.
 
-  Va **fuera** del `<header>` sticky a propósito. Si fuera parte de la barra fija
-  sumaría otros 28px permanentes en escritorio, y lo que tiene que quedar fijo es
-  la navegación, no el eslogan: la bajada se lee una vez, al entrar.
-
-  Sin `aria-hidden`: es parte del nombre del sitio y quien escucha la página
-  también necesita saber qué quiere decir la sigla.
+  El lugar que ocupaba lo usa ahora **el título de la home** (`index.astro`), que
+  es el único texto que se gana el ancho completo: es el `<h1>` de la página
+  indexada. En el resto de las páginas no hay franja y el contenido arranca
+  directo, que es lo que el dueño pidió al sacar la bajada.
 */}
-<p class="regla-fina label-caps bg-crema px-4 py-2 text-center tracking-[0.28em] text-super sm:px-10">
-  {BAJADA}
-</p>
 
 <style>
   /*

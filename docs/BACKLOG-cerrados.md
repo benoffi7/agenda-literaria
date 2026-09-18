@@ -469,6 +469,53 @@ en la barra —«lo que ya pasó», «mis favoritos», «proponer»— y un pie 
 como una pared se saltea entero. Además empuja el aviso de cookies y el contenido
 real fuera de la vista en el teléfono.
 
+### B-1138 · La cabecera de la home dice tres cosas y ninguna en su lugar — ✅ hecho (2026-09-18) · P0 — pedido del dueño (2026-09-18)
+
+> **Los tres cambios, tal como se pidieron.** La bajada se fue, el título de la
+> home toma el lugar que tenía la franja del eslogan —ancho completo sobre
+> `crema`— y «Leer, escribir, hacer» pasó a vivir pegado al nombre, en el
+> encabezado.
+>
+> **Lo que había que cuidar y se cuidó: el `<h1>` no se mudó al `<header>`.** La
+> franja vivía ahí, y llevar el título adentro habría dejado a la home sin
+> encabezado de nivel 1 en su contenido —en la página que más se indexa—. Lo que
+> cambió es **dónde se dibuja**, no qué es: sigue siendo un `<h1>` y sigue adentro
+> del `<main>`, sangrado al borde con `-mx-4` para ganar el ancho completo.
+>
+> **La franja desapareció de todas las páginas**, y es consecuencia y no efecto
+> colateral: solo repetía el eslogan, que ahora está arriba. El resto de las
+> páginas arranca directo en su contenido.
+>
+> **Y el cierre destapó un chequeo que medía prosa** (clase D-124): el caso de
+> `tests/suscribirse.test.ts` que exige un solo `<h1>` en la home contaba sobre el
+> fuente **con comentarios**, así que el docblock nuevo —que explica tres veces
+> por qué sigue siendo un `h1`— lo puso en rojo contando cuatro. Ahora cuenta
+> sobre el código, como el resto de los barridos del repo.
+
+
+**Tres cambios, dichos por el dueño:**
+
+1. **Fuera la bajada** «235 actividades con fecha próxima. Buscá por barrio, por
+   tema o por lo que salga».
+2. **«Talleres, clubes de lectura y encuentros literarios en Argentina» pasa a
+   donde hoy está «Leer, escribir, hacer»** — la franja del eslogan, debajo del
+   encabezado.
+3. **«Leer, escribir, hacer» pasa debajo de «Agenda LEH»**, o sea a la marca del
+   encabezado.
+
+**Lo que hay que mirar antes de moverlo**, porque son tres piezas con dueño
+distinto y una es de SEO:
+
+- el `<h1>` de la home es hoy el título largo (`src/pages/index.astro`), y **es el
+  encabezado de nivel 1 de la página indexada**: si el texto se muda a la franja,
+  hay que decidir **qué queda como `<h1>`** — moverlo sin más deja la home sin
+  uno, o con uno que es el eslogan;
+- la franja (`Encabezado.astro`, el `<p>` de abajo de la barra) y la marca del
+  pie usan `BAJADA`, que está en `identidad.ts` y se dibuja en **las dos**: mover
+  el eslogan a la marca no puede dejar la franja vacía en el resto de las páginas;
+- y hay tests que fijan los encabezados y los títulos por página
+  (`tests/canonico.test.ts`, el barrido de jerarquía de `13-agentes.md`).
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
