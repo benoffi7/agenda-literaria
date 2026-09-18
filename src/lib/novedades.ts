@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'los-carteles-de-error-hablan-en-castellano',
+    fecha: '2026-09-18',
+    version: '1.11.0',
+    titulo: 'Los avisos de error dicen qué pasó y qué hacer',
+    detalle:
+      'Cuando se cortaba la conexión, el panel mostraba el mensaje del servidor ' +
+      'en inglés, hablando de «documents». Ahora dice qué pasó y qué hacer: si ' +
+      'se cortó la red, que no se guardó nada y que lo que escribiste sigue ahí; ' +
+      'si se venció la sesión, que entres de nuevo. Los avisos propios —«Fecha ' +
+      'inválida», «El slug está tomado»— no cambian: ésos ya nombraban el dato.',
+    donde: 'En el cartel rojo de cualquier pantalla del panel.',
+  },
+  {
     id: 'decidir-la-foto-al-convertir',
     fecha: '2026-09-17',
     version: '1.11.0',

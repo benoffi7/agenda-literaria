@@ -1597,40 +1597,6 @@ listas sean idénticas— y `docs/16-analitica-del-sitio.md`. El parámetro ser�
 **ciudad en slug**, vocabulario cerrado con las ciudades que tienen banner, y
 nunca el destino ni el nombre del emprendimiento.
 
-### B-929 · El panel muestra el mensaje crudo de Firebase, en inglés, cuando se cae la conexión · P2 — reportado por el dueño (2026-09-15)
-
-**El síntoma:** «Failed to get document because the client is offline» en el
-cartel rojo del panel. Es texto del SDK de Firestore, tal cual, en inglés y
-hablando de «document» — no dice qué pasó con lo que se estaba cargando, que es
-lo único que importa en ese momento.
-
-Sale de que el panel muestra `e.message` sin traducir en una docena de lugares:
-`ActividadFormulario.tsx` («No se pudo guardar» solo si el error no es un
-`Error`), `HistorialActividad.tsx`, `EstadisticasPanel.tsx`, `LibreriasPanel.tsx`,
-`LugaresPanel.tsx`, `PropuestasPanel.tsx`, `LibreriaFormulario.tsx`,
-`LugarFormulario.tsx`.
-
-**Y lo que lo vuelve un ítem y no una queja de estilo: el panel ya sabe lo que le
-pasó, y no lo usa para hablar.** `clasificarFalloGuardado`
-(`src/lib/analytics-eventos.ts`) mapea `unavailable` y `deadline-exceeded` a
-`motivo: 'red'` — o sea que la **métrica** queda bien etiquetada mientras la
-persona lee una frase en inglés. La clasificación existe; lo que falta es que
-también decida el texto.
-
-Lo que el cartel tendría que decir en ese caso es lo que nadie puede deducir del
-mensaje del SDK: **no se guardó nada, no se perdió nada de lo escrito, reintentá**
-— el borrador del navegador sigue ahí (`useAutoguardado`). Y para `permisos` y
-`sin-sesion`, que ya están clasificados, lo mismo.
-
-**Dónde pega más fuerte, y por qué aparece justo al guardar:** `slugLibre()`
-(`src/lib/slugs.ts`) hace **dos `getDoc`** antes de escribir —el centinela
-`/slugs/_indice` y la reserva del slug—, así que un corte de conexión al apretar
-«Guardar» sale por ahí, con el «get **document**» en singular del mensaje. Es el
-primer lugar donde el guardado toca la red.
-
-Del mismo lote que B-926, B-927 y B-928: apareció porque hay una segunda persona
-cargando, y un cartel que no dice qué hacer le cuesta a ella, no a nosotros.
-
 ### B-955 · Entrar a una actividad y volver borra todos los filtros · P2 — pedido del dueño (2026-09-15)
 
 *«En el admin, preservar filtros al ir y venir de una actividad.»*

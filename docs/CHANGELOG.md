@@ -2,6 +2,24 @@
 
 ## Sin publicar
 
+- **El cartel rojo del panel dejó de hablar en inglés** — **B-929**, reportado por
+  el dueño. Decía «Failed to get document because the client is offline»: texto
+  del SDK de Firestore tal cual, hablando de «document», sin decir qué pasó con
+  lo que se estaba cargando.
+
+  Lo que lo hacía un ítem y no una queja de estilo es que **el panel ya sabía lo
+  que había pasado y no lo usaba para hablar**: `clasificarFalloGuardado` mapeaba
+  `unavailable` y `deadline-exceeded` a `motivo: 'red'` desde antes, o sea que la
+  métrica quedaba bien etiquetada mientras la persona leía una frase en inglés.
+  Por eso `src/lib/fallosDelPanel.ts` **no clasifica**: importa esa función y
+  traduce su resultado, para que no queden dos clasificadores que se separen sin
+  que nada falle.
+
+  Los mensajes **propios** no se tocan: «Fecha inválida: "31/02"» o «El slug está
+  tomado» nombran el dato y dicen qué corregir, así que reemplazarlos por una
+  frase genérica sería perder información. La regla está escrita como código y no
+  como criterio.
+
 - **La ayuda ya puede citar el test de algo que se ve en pantalla** — **B-1131**.
   El chequeo que ata cada aviso a su test pedía que el archivo terminara en
   `.test.ts`, y el config corre además los `.render.test.tsx`: 25 archivos que no
