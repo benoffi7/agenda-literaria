@@ -76,10 +76,47 @@ describe('lo que NO se traduce, y es una decisión', () => {
     expect(texto).toBe('Fecha inválida: "31/02"');
   });
 
-  it('un error desconocido muestra el respaldo de la pantalla, que dice qué falló', () => {
+  it('lo que no es un `Error` muestra el respaldo, que dice qué falló', () => {
     // El respaldo sabe **qué operación** era; un texto genérico no.
-    expect(textoDeFallo(new Error('Kaboom'), { respaldo: RESPALDO })).toBe(RESPALDO);
     expect(textoDeFallo('no es un error', { respaldo: RESPALDO })).toBe(RESPALDO);
+    expect(textoDeFallo(null, { respaldo: RESPALDO })).toBe(RESPALDO);
+    expect(textoDeFallo(new Error(''), { respaldo: RESPALDO })).toBe(RESPALDO);
+  });
+
+  /*
+   * **Un `Error` pelado y sin código del SDK es nuestro, y se muestra.**
+   *
+   * Hasta que lo cobró el `auditor-trampas`, esto se decidía por el motivo del
+   * clasificador, que solo distingue `fecha-invalida`. Todo el resto caía en
+   * `desconocido` y se tapaba con el respaldo — así que `opciones.ts` e
+   * `historial.ts`, que tiran ocho mensajes propios, pasaron con B-929 a decir
+   * **menos** de lo que decían antes. Justo al revés del ítem.
+   */
+  it('un mensaje propio del proyecto se muestra tal cual, aunque el clasificador no lo distinga', () => {
+    const propios = [
+      '«Gratis» es una opción base: no se puede editar ni borrar desde el panel (§4.3).',
+      'Esa dirección web ya la usa otra actividad. Cambiala desde el formulario antes de restaurarla.',
+      'La etiqueta no puede quedar vacía.',
+    ];
+    for (const mensaje of propios) {
+      expect(textoDeFallo(new Error(mensaje), { respaldo: RESPALDO })).toBe(mensaje);
+    }
+  });
+
+  it('pero un error del runtime NO: ése es un bug nuestro, y su frase es en inglés', () => {
+    /*
+     * `instanceof Error` también es cierto para un `TypeError`, así que el
+     * criterio es `constructor === Error`. Sin esa distinción, «Cannot read
+     * properties of undefined» llegaría al cartel — que es exactamente la clase
+     * de frase que este módulo vino a sacar de la pantalla, con otro idioma de
+     * origen.
+     */
+    expect(
+      textoDeFallo(new TypeError('Cannot read properties of undefined'), { respaldo: RESPALDO }),
+    ).toBe(RESPALDO);
+    expect(textoDeFallo(new RangeError('Invalid array length'), { respaldo: RESPALDO })).toBe(
+      RESPALDO,
+    );
   });
 
   it('y si el SDK trajo un código, se agrega: es lo que hace reportable el fallo', () => {

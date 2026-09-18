@@ -137,11 +137,46 @@ export const textoDeFallo = (error: unknown, { respaldo, hayBorrador }: Opciones
   }
 
   /*
-   * Motivo reconocido por **mensaje propio**: se muestra tal cual. Es castellano
-   * y nombra el dato —«Fecha inválida: "31/02"»— así que taparlo con una frase
-   * genérica sería perder lo único accionable que hay.
+   * **Mensaje propio: se muestra tal cual, y el criterio es la ausencia de
+   * código de Firebase.**
+   *
+   * Un `Error` con mensaje y **sin** código del SDK no vino del SDK: lo tiró una
+   * función nuestra, así que está en castellano, nombra el dato y dice qué
+   * corregir —«Fecha inválida: "31/02"», «"Gratis" es una opción base: no se
+   * puede editar ni borrar desde el panel», «Esa dirección web ya la usa otra
+   * actividad»—. Taparlo con una frase genérica es perder lo único accionable.
+   *
+   * **Se reconoce así y no por el motivo, que fue el primer intento.** El
+   * clasificador vive en `analytics-eventos.ts` y su vocabulario es **cerrado a
+   * propósito** —es lo que se manda a GA4, y no puede llevar contenido (§9)—,
+   * así que de los mensajes propios solo distingue uno, `fecha-invalida`. Atar
+   * esta decisión a ese vocabulario hacía que todo el resto cayera en
+   * `desconocido` y se mostrara el respaldo: `opciones.ts` y `historial.ts`
+   * tiran ocho mensajes así, y con B-929 pasaron a decir **menos** de lo que
+   * decían antes. Justo al revés del ítem. Lo cobró el `auditor-trampas`.
+   *
+   * Preguntar por el código en vez de por el motivo separa las dos cosas de
+   * verdad: la métrica sigue con su vocabulario cerrado, y el cartel decide por
+   * el origen del error.
+   *
+   * ── Y por qué `constructor === Error` y no `instanceof` ──────────────────
+   * Porque `instanceof Error` también es cierto para un `TypeError` o un
+   * `RangeError`, o sea para **un bug nuestro**: «Cannot read properties of
+   * undefined» es exactamente el tipo de frase que este ítem vino a sacar de la
+   * pantalla, y dejarla pasar sería reemplazar el inglés del SDK por el de una
+   * excepción de JavaScript. Lo que este repo tira a propósito es siempre
+   * `new Error(...)` con una frase en castellano; las subclases las tira el
+   * runtime cuando algo se rompió. La distinción no es perfecta —un bug podría
+   * tirar un `Error` pelado— pero separa los dos casos que de verdad pasan.
    */
-  if (motivo !== 'desconocido' && error instanceof Error) return error.message;
+  if (
+    error instanceof Error &&
+    error.constructor === Error &&
+    !codigo &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
 
   return codigo ? `${respaldo} (${codigo})` : respaldo;
 };
