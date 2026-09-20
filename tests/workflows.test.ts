@@ -376,6 +376,8 @@ describe('ningún test depende de un `dist/` — B-873', () => {
 describe('un workflow que nadie está mirando avisa cuando falla — B-883', () => {
   type Paso = {
     name?: string;
+    /** La action que usa el paso, si usa una. B-1140 la acota a una lista. */
+    uses?: string;
     run?: string;
     env?: Record<string, string>;
     'continue-on-error'?: boolean;
