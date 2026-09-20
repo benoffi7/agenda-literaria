@@ -410,12 +410,16 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
   };
 
   /**
-   * Un job de aviso se reconoce por el **permiso**, no por el nombre: `issues:
-   * write` es lo único que un job necesita para poder dejar el aviso, y es lo
-   * único que no se puede renombrar sin romperlo.
+   * Un job de aviso se reconoce por **la casilla a la que escribe**, no por el
+   * nombre — B-1140. Hasta el 2026-09-18 se reconocía por `issues: write`, que
+   * era lo mismo con el mecanismo anterior: lo único que el job necesita para
+   * poder avisar, y lo único que no se puede renombrar sin romperlo. Con el
+   * aviso por mail ese lugar lo ocupa el secret del destino.
    */
   const avisos = (archivo: string) =>
-    jobsDe(archivo).filter(([, j]) => j.permissions?.issues === 'write');
+    jobsDe(archivo).filter(([, j]) =>
+      (j.steps ?? []).some((p) => 'MAIL_AVISOS_DESTINO' in (p.env ?? {})),
+    );
 
   /** Los scripts de los jobs de aviso cuyo `if:` cumple la condición. */
   const guion = (archivo: string, cuando: RegExp) =>
@@ -435,7 +439,7 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
     expect(
       archivos.flatMap((a) => avisos(a).map(([n]) => `${a} · ${n}`)).sort(),
       'no se encontró ningún job que pueda dejar el aviso',
-    ).toEqual(['deploy.yml · avisar', 'deploy.yml · cerrar-aviso']);
+    ).toEqual(['deploy.yml · avisar', 'deploy.yml · avisar-recuperado']);
   });
 
   it.each(archivos)('%s: si lo dispara una máquina, avisa cuando falla', (archivo) => {
@@ -504,52 +508,87 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
     }
   });
 
-  it('reusa el issue abierto en vez de abrir uno por corrida roja', () => {
+  it('el mail sale por SMTP, desde un script, y sin actions de terceros', () => {
     /*
-     * Ocho corridas rojas seguidas serían ocho issues idénticos, y eso es el
-     * mismo bug con otra cara: un aviso que se aprende a ignorar no avisa.
+     * **B-1140 — el aviso pasó de un issue a un mail**, decisión del dueño: «si
+     * algo falla necesitamos saber», y el issue hay que ir a mirarlo.
      *
-     * Las tres piezas de la decisión, y las tres se afirman porque cada una se
-     * puede deshacer sola:
+     * Las tres piezas que se afirman, porque cada una se puede deshacer sola:
      *
-     *  - **se busca antes de crear**, y se busca por **etiqueta**, que es lo
-     *    único que sobrevive a que alguien le edite el título al issue;
-     *  - cuando ya hay uno, se **edita el cuerpo** (`PATCH`) — un comentario por
-     *    corrida sería la misma avalancha con otro nombre, y encima notificaría
-     *    quince veces;
-     *  - el único comentario que este mecanismo escribe es el del cierre, y por
-     *    eso el camino del fallo no puede tocar `/comments`.
+     *  - **el envío vive en `scripts/mail-de-aviso.sh`**, una sola vez para los
+     *    dos jobs. Dos bloques de `curl` en el YAML serían dos copias del mismo
+     *    envío (D-88), y —lo que más importa— un script se puede **correr a
+     *    mano**, que es lo único que convierte un aviso escrito en uno probado;
+     *  - **es `curl` al SMTP y no una action de terceros**: una action acá
+     *    recibiría las credenciales del correo, y esa es superficie que un aviso
+     *    no necesita. La única permitida es `actions/checkout`, que es oficial y
+     *    va en un paso propio sin ningún secret del correo;
+     *  - **la casilla y la contraseña son secrets**, nunca literales. El repo es
+     *    público: un mail escrito en el YAML lo agarraría
+     *    `sin-datos-personales.test.ts`, y una contraseña ahí es una fuga.
      *
-     * MUTACIÓN PROBADA: reemplazar el `PATCH` del cuerpo por un POST a
-     * `/comments` deja este caso en rojo por los dos asertos de abajo.
+     * MUTACIÓN PROBADA: reemplazar la llamada al script por `uses:
+     * dawidd6/action-send-mail` deja este caso en rojo por los dos primeros
+     * asertos.
      */
     const alFallar = guion('deploy.yml', /failure\(\)/);
-    expect(alFallar, 'no busca si ya hay un aviso abierto').toMatch(/issues\?state=open&labels=/);
-    expect(alFallar, 'no actualiza el que ya está abierto').toContain('--method PATCH');
-    expect(alFallar, 'comenta en cada corrida roja: quince corridas, quince avisos').not.toMatch(
-      /issues\/[^\s"']*\/comments/,
+    expect(alFallar, 'el aviso no pasa por el script de envío').toContain(
+      'scripts/mail-de-aviso.sh',
     );
+
+    const envio = readFileSync('scripts/mail-de-aviso.sh', 'utf8');
+    expect(envio, 'el script de envío no manda por SMTP').toMatch(/curl[\s\S]*smtps:\/\//);
+    expect(envio, 'la casilla no puede estar escrita en el repo').not.toMatch(/@gmail\.com/);
+
+    const ACTIONS_PERMITIDAS = ['actions/checkout@v4'];
+    for (const [nombre, job] of avisos('deploy.yml')) {
+      for (const paso of job.steps ?? []) {
+        const donde = `deploy.yml · ${nombre}`;
+        if (paso.uses) {
+          expect(ACTIONS_PERMITIDAS, `${donde}: action de terceros en el aviso`).toContain(
+            paso.uses,
+          );
+          // Y la action no ve las credenciales del correo: van en el paso que
+          // corre el script, no en el del checkout.
+          expect(Object.keys(paso.env ?? {}), `${donde}: la action recibe secrets`).toEqual([]);
+        }
+        for (const [clave, valor] of Object.entries(paso.env ?? {})) {
+          if (!clave.startsWith('MAIL_')) continue;
+          expect(valor, `${donde}: ${clave} no sale de un secret`).toMatch(
+            /^\$\{\{\s*secrets\./,
+          );
+        }
+      }
+    }
   });
 
-  it('y se cierra solo cuando la corrida vuelve a publicar', () => {
+  it('y avisa cuando vuelve a publicar, solo si venía roto', () => {
     /*
-     * Lo que convierte el issue en un **indicador** y no en un registro: si se
-     * cierra con la corrida verde, «hay un issue abierto» significa «ahora mismo
-     * el sitio está atrasado», que es la única pregunta que alguien necesita
-     * contestar de un vistazo. Un aviso que hay que cerrar a mano se queda
-     * abierto para siempre y deja de decir nada.
+     * **Lo que el mail perdió respecto del issue, repuesto a mano.** El issue se
+     * cerraba con la corrida verde, así que «hay uno abierto» significaba «ahora
+     * mismo el sitio está atrasado». Un mail no se cierra: sin este job, el
+     * último que queda en la casilla dice que está roto aunque ya no lo esté.
+     *
+     * **Y solo si la corrida anterior fue roja**, que es lo que lo hace un aviso
+     * y no ruido: sin esa condición llegaría un mail por cada rebuild, o sea uno
+     * cada vez que alguien toca una actividad — y un aviso que se aprende a
+     * ignorar no avisa, que es el mismo argumento por el que el issue se reusaba.
      *
      * MUTACIÓN PROBADA: cambiar el `if: success()` del job por `if: failure()`
      * deja este caso en rojo.
      */
     const alPublicar = guion('deploy.yml', /^success\(\)$/);
-    expect(alPublicar, 'no hay ningún job que cierre el aviso cuando vuelve a publicar').not.toBe(
-      '',
+    expect(alPublicar, 'no hay ningún job que avise cuando vuelve a publicar').not.toBe('');
+    expect(alPublicar, 'el aviso de recuperación no pasa por el script de envío').toContain(
+      'scripts/mail-de-aviso.sh',
     );
-    expect(alPublicar, 'no cierra el issue').toContain('state=closed');
+    expect(
+      alPublicar,
+      'manda el mail siempre: llegaría uno por cada rebuild, y se aprende a ignorarlo',
+    ).toContain('failure');
   });
 
-  it('el issue dice que el sitio quedó atrasado, no solo que un paso falló', () => {
+  it('el aviso dice que el sitio quedó atrasado, no solo que un paso falló', () => {
     /*
      * El punto 2 de B-883, y es el que hace que el aviso sirva. Alguien que lee
      * «Tests: failure» no deduce «las ocho actividades que cargué no están
@@ -563,13 +602,13 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
      * issue deja este caso en rojo.
      */
     const alFallar = guion('deploy.yml', /failure\(\)/);
-    expect(alFallar, 'el issue no dice desde cuándo el sitio está atrasado').toContain(
-      'Última publicación buena',
+    expect(alFallar, 'el aviso no dice desde cuándo el sitio está atrasado').toContain(
+      'Ultima publicacion correcta',
     );
-    expect(alFallar, 'el issue no dice qué significa para quien carga actividades').toContain(
-      'no está apareciendo en el sitio',
+    expect(alFallar, 'el aviso no dice qué significa para quien carga actividades').toContain(
+      'no esta publicado',
     );
-    expect(alFallar, 'el issue no dice qué paso se rompió').toContain('Paso que se rompe');
+    expect(alFallar, 'el aviso no dice qué paso se rompió').toContain('Paso que se rompio');
   });
 
   it('y no publica el motivo del rebuild, que es texto de Firestore — §5', () => {

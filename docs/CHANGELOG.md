@@ -2,6 +2,26 @@
 
 ## Sin publicar
 
+- **El aviso de que el sitio no se está publicando ahora llega por mail** —
+  **B-1140**, decisión del dueño: «si algo falla necesitamos saber». Antes abría
+  un issue (B-883), y el issue hay que ir a mirarlo.
+
+  **El mail se manda activamente y no se delega en la notificación de GitHub**,
+  porque las tres razones que B-883 verificó contra la API siguen siendo
+  ciertas: el aviso nativo va solo a quien disparó la corrida, ese destinatario
+  es el dueño del PAT que vive en Secret Manager, y llega a la bandeja web.
+
+  **Lo que el issue tenía y un mail no, repuesto a mano:** el issue se cerraba
+  solo al volver a publicar, así que «hay uno abierto» significaba «ahora mismo
+  está atrasado». Ahora hay un segundo aviso cuando el sitio **vuelve** — y solo
+  si la corrida anterior fue roja, porque un mail por cada rebuild es uno cada
+  vez que alguien toca una actividad.
+
+  El envío vive en `scripts/mail-de-aviso.sh` y **se puede correr a mano**: es lo
+  único que convierte un aviso escrito en un aviso probado. Va por `curl` al
+  SMTP y no por una action de terceros, que recibiría las credenciales del
+  correo. La casilla es un secret y no un literal — el repo es público.
+
 - **La parte de arriba de la home dejó de tener cuatro bloques** — **B-1138**,
   pedido del dueño. Se fue la bajada («N actividades con fecha próxima. Buscá
   por barrio…»), el título pasó a ocupar el lugar que tenía la franja del

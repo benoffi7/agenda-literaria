@@ -516,6 +516,51 @@ distinto y una es de SEO:
 - y hay tests que fijan los encabezados y los títulos por página
   (`tests/canonico.test.ts`, el barrido de jerarquía de `13-agentes.md`).
 
+### B-1140 · El aviso de que el sitio no se publica va por mail, no por un issue — ✅ hecho (2026-09-18) · P0 — decisión del dueño
+
+*«Si algo falla necesitamos saber. Issue de gh, no. Un aviso al mail quizás.»*
+
+> **Lo que se cambió, y lo que se conserva del mecanismo anterior.** B-883 había
+> puesto un issue después de que este workflow fallara **quince corridas
+> seguidas** sin que nadie se enterara, y con tres razones verificadas contra la
+> API de por qué el aviso nativo de GitHub no alcanza: va **solo a quien disparó**
+> la corrida, ese destinatario es el dueño del PAT que vive en Secret Manager
+> —así que el aviso viaja atado a una credencial— y llega a la bandeja **web**,
+> porque el mail de Actions es un opt-in por cuenta que el repo no puede ver ni
+> configurar.
+>
+> Las tres siguen siendo ciertas, y por eso **el mail se manda activamente** y no
+> se delega en la notificación de GitHub. Lo que el issue no resolvía es que hay
+> que ir a mirarlo.
+>
+> **Lo que se perdió y se repuso a mano:** el issue **se cerraba solo** cuando el
+> sitio volvía a publicar, así que «hay uno abierto» significaba «ahora mismo está
+> atrasado». Un mail no se cierra, así que hay un segundo job que avisa **cuando
+> vuelve a publicar** — y solo si la corrida anterior fue roja, porque un mail por
+> cada rebuild es uno cada vez que alguien toca una actividad, y un aviso que se
+> aprende a ignorar no avisa. Es el mismo argumento por el que el issue se reusaba
+> en vez de abrir uno nuevo.
+>
+> **Tres decisiones del cómo:**
+>
+> - **El envío vive en `scripts/mail-de-aviso.sh`**, no en el YAML. Dos bloques de
+>   `curl` serían dos copias (D-88) y, sobre todo, **un script se puede correr a
+>   mano**: es lo único que convierte un aviso escrito en un aviso probado. Un
+>   aviso que nunca se probó se descubre roto el día que hacía falta, que es
+>   exactamente lo que pasó acá.
+> - **`curl` al SMTP y no una action de terceros**, que recibiría las
+>   credenciales del correo. La única action del job es `actions/checkout`, en un
+>   paso propio y sin ningún secret.
+> - **La casilla es un secret, nunca un literal.** El repo es público y
+>   `sin-datos-personales.test.ts` frena cualquier `@gmail.com` versionado que no
+>   sea la casilla del proyecto — con razón: lo que se pidió avisar es a una
+>   persona.
+>
+> **Pendiente del dueño:** crear los tres secrets (`MAIL_AVISOS_DESTINO`,
+> `MAIL_AVISOS_USUARIO`, `MAIL_AVISOS_PASSWORD`) y **probar el envío a mano** con
+> el script. Sin ellos el job no rompe nada: avisa por el log y termina en verde,
+> que es lo mismo que hacía el issue cuando no podía escribir.
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
