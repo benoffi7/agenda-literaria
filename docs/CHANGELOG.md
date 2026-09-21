@@ -2,6 +2,30 @@
 
 ## Sin publicar
 
+- **El `rejects.toThrow()` pelado de un test de reglas ya tiene red** —
+  **B-1132**, el punto ciego que B-1130 dejó escrito. Un `toThrow()` sin
+  argumento afirma «algo tiró»: **no exige `permission-denied`**, así que lo
+  satisface un emulador caído o un `projectId` mal apuntado, y es más débil que
+  la regex que B-1130 vino a eliminar.
+
+  **El diseño costó menos de lo que el ítem estimaba, y por dónde se lo miró.**
+  El ítem pedía un barrido que entendiera en qué `describe` vive cada llamada,
+  para no marcar los dos usos legítimos. Medido, el discriminador correcto es
+  más angosto: **qué operación se espera**, que está en la misma expresión. El
+  test del emulador de Storage no importa nada de `firebase/firestore`, y el de
+  `opciones` espera `upsertOpcion()`, que es código del panel. Con eso el
+  barrido no necesita **ninguna** excepción escrita a mano — que era la
+  condición, porque una lista de excepciones es una guarda que parece canónica
+  sin serlo (B-1113).
+
+  La lista de operaciones tampoco se escribe: sale de los `import` del propio
+  archivo, así que el día que un caso use una operación nueva el barrido se
+  entera solo.
+
+  Probado contra el caso histórico: volver uno de los cuatro que se colaron en
+  la migración de B-1130 a su forma vieja —multilínea, la que el barrido por
+  texto no podía ver— pone la red en rojo nombrando el archivo.
+
 - **La red contra decisiones duplicadas ya existía; lo que estaba roto era su
   nombre** — **B-1128**. El ítem decía que las `B-` tienen guarda contra ids
   repetidos y las `D-` no. Es falso:

@@ -2355,37 +2355,6 @@ Es la misma confusión que B-1141 sacó de `conHandle`, en otro archivo.
 
 **Dónde:** `scripts/instagrams-de-la-base.mjs:36-57`.
 
-### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
-
-**Lo satisface un emulador caído.** Un `expect(...).rejects.toThrow()` sin
-argumento afirma «algo tiró», que es menos incluso que la regex `RECHAZADA` que
-B-1130 eliminó: no exige `permission-denied`, así que un `db()` roto o un
-`projectId` mal apuntado lo pintan verde sin haber probado ninguna regla. Es
-exactamente el riesgo que describe la subsección nueva de
-[`05-patrones.md`](05-patrones.md) § «Un rechazo esperado no es cualquier
-rechazo».
-
-**Lo que lo hace un ítem y no una limpieza: la guarda de B-1130 no lo puede
-perseguir por texto.** Quedan dos usos legítimos que tienen la misma forma:
-
-- `storage-reglas.integracion.test.ts` — es **otro emulador**, con sus propios
-  códigos, y el helper de B-1130 es de Firestore;
-- `opciones.integracion.test.ts:132` — lo que tira es `upsertOpcion()`, o sea el
-  código del panel validando antes de escribir, y no una regla.
-
-Un barrido que los distinga tiene que entender **en qué `describe` está parada
-cada llamada**, y eso es otra clase de chequeo que la firma de texto que usa
-`tests/rechazos-sin-copia.test.ts`.
-
-**Y hay una medición que respalda la prioridad, aunque sea P3:** los cuatro que
-sí eran de esta clase —dos `getDoc` en `/reportes` y dos en `/propuestas`—
-estaban en archivos que la migración de B-1130 **tocó línea por línea** y
-quedaron afuera igual. Los encontró el `auditor-trampas`, no la guarda ni la
-suite. O sea que el punto ciego no es teórico: ya dejó pasar cuatro instancias en
-el mismo cambio que venía a cerrar la clase. Es **B-1129 con otra cara** —un
-chequeo que pasa por dónde está parado— y la salida es la misma que allá: cambiar
-la firma, no ensanchar el alcance (**B-1113**).
-
 ### B-1083 · `D-200` nombra dos decisiones distintas · P3 — de documentar el tablero (2026-09-17)
 
 La entrada escrita en `06-decisiones.md` es «Los nombres de los meses se

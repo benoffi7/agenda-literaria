@@ -561,6 +561,22 @@ escribirse, o sea que el caso sí la protegía. Sin esa medición se habrían
 «arreglado» 195 tests que estaban bien, y el arreglo habría tapado los seis que
 no.
 
+Esa lección quedó escrita como decisión: **D-750** en
+[`06-decisiones.md`](06-decisiones.md), con sus otros dos casos.
+
+**Y el `rejects.toThrow()` pelado ya no depende de que alguien se acuerde**
+(B-1132). `tests/rechazos-sin-copia.test.ts` tiene dos guardas: una contra
+escribir otra vez el helper, y otra contra afirmar un rechazo de Firestore con
+`toThrow()` sin argumento —que es **más débil** que la regex que B-1130
+eliminó, porque ni siquiera exige `permission-denied`—.
+
+Lo que distingue un caso de reglas de los usos legítimos de esa forma es **qué
+operación se espera**, y sale de los `import … from 'firebase/firestore'` del
+propio archivo: el test del emulador de Storage no importa ninguna, y el que
+espera `upsertOpcion()` está esperando código del panel. Con eso el barrido no
+necesita **ninguna** excepción escrita a mano, que era la condición — una lista
+de excepciones es una guarda que parece canónica sin serlo (B-1113).
+
 ### Verificar la clase, no la instancia
 
 Un test que verifica una instancia protege esa instancia. `costuras.test.ts`

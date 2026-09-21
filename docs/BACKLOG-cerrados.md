@@ -765,6 +765,74 @@ quedó atrasado»). La segunda se parece más a lo que el propio documento dice:
 
 ## P3 — cuando sobre tiempo
 
+### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
+
+> **Cerrado con la firma corrida de lugar, y salió más barato que lo que el
+> ítem estimaba.** El ítem pedía «un barrido que entienda en qué `describe`
+> está parada cada llamada». **Medido, no hace falta:** lo que separa un caso
+> de reglas de los dos usos legítimos es **qué operación se espera**, y eso
+> está en la misma expresión que el `toThrow()`.
+>
+> La red lee los `import … from 'firebase/firestore'` de cada archivo, corta el
+> argumento de cada `expect(…)` que va seguido de `.rejects.toThrow()` sin
+> nada adentro, y marca solo si ahí se llama a una de esas operaciones.
+>
+> - `storage-reglas.integracion.test.ts` **no importa nada de Firestore**, así
+>   que sus seis pelados quedan afuera solos.
+> - `opciones.integracion.test.ts` sí importa `doc`, `getDoc` y `setDoc`, pero
+>   lo que espera es `upsertOpcion()`.
+>
+> **Cero excepciones escritas a mano**, que era la condición: una lista de
+> excepciones es una guarda que parece canónica sin serlo (B-1113).
+>
+> **Y la lista de operaciones no se escribe:** sale de los imports del propio
+> archivo. Escribirla acá sería la copia de D-88 otra vez, y envejecería sola
+> el día que un caso use una operación nueva.
+>
+> MUTACIÓN PROBADA, y sobre el caso histórico: volver
+> `tests/reportes.integracion.test.ts` a `await expect(setDoc(…)).rejects.toThrow()`
+> —la forma exacta, multilínea, que el barrido viejo no podía ver— deja la red
+> en rojo nombrando el archivo. Hay además cuatro mutaciones sintéticas: el
+> `getDoc` pelado se marca; el mismo con `denegada()`, con un argumento en el
+> `toThrow`, o esperando código del panel, no.
+>
+> **Los dos límites quedan escritos en el código**, porque el segundo es el que
+> importa: (1) el corte por paréntesis es literal, así que un `)` adentro de
+> una cadena descuadraría el corte — por eso hay un **control positivo** que
+> exige que el barrido siga viendo los pelados que hoy existen, en vez de
+> quedar mirando al vacío y verde (D-750); (2) **marca de más antes que de
+> menos** — un `expect(algoMio(doc(db, 'x')))` con `toThrow()` pelado se marca
+> aunque `doc` no sea la operación esperada. Es la dirección que se quiere.
+
+**Lo satisface un emulador caído.** Un `expect(...).rejects.toThrow()` sin
+argumento afirma «algo tiró», que es menos incluso que la regex `RECHAZADA` que
+B-1130 eliminó: no exige `permission-denied`, así que un `db()` roto o un
+`projectId` mal apuntado lo pintan verde sin haber probado ninguna regla. Es
+exactamente el riesgo que describe la subsección nueva de
+[`05-patrones.md`](05-patrones.md) § «Un rechazo esperado no es cualquier
+rechazo».
+
+**Lo que lo hace un ítem y no una limpieza: la guarda de B-1130 no lo puede
+perseguir por texto.** Quedan dos usos legítimos que tienen la misma forma:
+
+- `storage-reglas.integracion.test.ts` — es **otro emulador**, con sus propios
+  códigos, y el helper de B-1130 es de Firestore;
+- `opciones.integracion.test.ts:132` — lo que tira es `upsertOpcion()`, o sea el
+  código del panel validando antes de escribir, y no una regla.
+
+Un barrido que los distinga tiene que entender **en qué `describe` está parada
+cada llamada**, y eso es otra clase de chequeo que la firma de texto que usa
+`tests/rechazos-sin-copia.test.ts`.
+
+**Y hay una medición que respalda la prioridad, aunque sea P3:** los cuatro que
+sí eran de esta clase —dos `getDoc` en `/reportes` y dos en `/propuestas`—
+estaban en archivos que la migración de B-1130 **tocó línea por línea** y
+quedaron afuera igual. Los encontró el `auditor-trampas`, no la guarda ni la
+suite. O sea que el punto ciego no es teórico: ya dejó pasar cuatro instancias en
+el mismo cambio que venía a cerrar la clase. Es **B-1129 con otra cara** —un
+chequeo que pasa por dónde está parado— y la salida es la misma que allá: cambiar
+la firma, no ensanchar el alcance (**B-1113**).
+
 ### B-1128 · Las `B-` tienen red contra duplicados y las `D-` no, siendo el mismo riesgo — ✅ hecho (2026-09-21) · P3 — lo demostró la colisión de D-730 (2026-09-17)
 
 > **Cerrado, y la premisa del ítem era falsa: la red ya existía.**

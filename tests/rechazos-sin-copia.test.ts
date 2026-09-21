@@ -43,9 +43,10 @@
  * `/reportes` y dos en `/propuestas` quedaron con el `toThrow()` pelado en
  * archivos que esta misma migración tocó línea por línea. Están migrados —los
  * encontró el `auditor-trampas` sobre este cambio, no la guarda ni la suite—, y
- * el que se quede sin red es el **próximo**. Cerrarlo pediría un barrido que
- * entienda en qué `describe` está parada cada llamada; queda anotado como
- * **B-1132**, porque es otra clase de chequeo y no un `if` más acá.
+ * el que se quedaba sin red era el **próximo**.
+ *
+ * **Cerrado en B-1132**, con el segundo `describe` de este archivo. El párrafo
+ * de arriba queda como estaba para que se lea contra lo que lo cerró.
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -153,5 +154,181 @@ describe('nadie escribe su propio helper de rechazo — B-1130', () => {
     );
 
     expect(infractores()).not.toContain(COPIA_TMP);
+  });
+});
+
+/**
+ * **El `rejects.toThrow()` pelado sobre una operación de Firestore** — B-1132.
+ *
+ * Es el punto ciego que el docblock de arriba dejaba escrito, y el más débil
+ * de todos: `rejects.toThrow()` sin argumento afirma «algo tiró». Eso es menos
+ * incluso que la regex `RECHAZADA` que B-1130 eliminó — **no exige
+ * `permission-denied`**, así que un `db()` roto o un `projectId` mal apuntado
+ * lo pintan verde sin haber probado ninguna regla. Es el riesgo que describe
+ * `05-patrones.md` § «Un rechazo esperado no es cualquier rechazo».
+ *
+ * ── La firma: **qué se está esperando**, no en qué `describe` está parada ──
+ *
+ * El ítem proponía un barrido que entendiera en qué `describe` vive cada
+ * llamada, para no marcar los dos usos legítimos. **Medido, no hace falta, y el
+ * discriminador correcto es más angosto:** lo que separa un caso de reglas de
+ * los otros dos es **qué operación se espera**, y eso está en la misma
+ * expresión.
+ *
+ *  - `storage-reglas.integracion.test.ts` **no importa nada de
+ *    `firebase/firestore`** —es otro emulador, con sus propios códigos—, así
+ *    que sus seis `toThrow()` pelados quedan afuera solos.
+ *  - `opciones.integracion.test.ts` sí importa `doc`, `getDoc` y `setDoc`, pero
+ *    lo que espera es `upsertOpcion(…)`: código del panel validando antes de
+ *    escribir, no una regla.
+ *
+ * Resultado: **cero excepciones escritas a mano**, que es la diferencia con el
+ * diseño que el ítem imaginaba. Una lista de excepciones es lo que B-1113 dice
+ * que no hay que construir.
+ *
+ * ── Y la lista de operaciones sale de los imports, no de acá ──────────────
+ *
+ * Qué cuenta como «operación de Firestore» se lee del `import … from
+ * 'firebase/firestore'` de cada archivo. Escribir la lista acá sería la copia
+ * de D-88 otra vez, y además envejecería: el día que un caso use una operación
+ * nueva, el barrido se entera solo.
+ *
+ * ── Los límites, dichos ───────────────────────────────────────────────────
+ *
+ * 1. **El conteo de paréntesis es literal**, así que un `)` adentro de una
+ *    cadena en el argumento de `expect(` descuadra el corte y esa aparición se
+ *    saltea. Por eso el control positivo de abajo exige que el barrido siga
+ *    viendo los pelados que hoy existen: si el parseo se rompe, se pone rojo en
+ *    vez de quedar mirando al vacío (D-750).
+ * 2. **Marca de más antes que de menos.** Un `expect(algoMio(doc(db, 'x')))`
+ *    con `toThrow()` pelado se marca, porque `doc` viene del import aunque no
+ *    sea la operación esperada. Es la dirección que se quiere: se ve en el
+ *    primer rojo y se arregla poniéndole el helper, que es lo correcto igual.
+ */
+describe('un rechazo de Firestore no se afirma con `toThrow()` pelado — B-1132', () => {
+  afterEach(() => {
+    const absoluto = ruta(COPIA_TMP);
+    if (existsSync(absoluto)) rmSync(absoluto);
+  });
+
+  /** Los identificadores que un archivo trae de `firebase/firestore`. */
+  const opsDeFirestore = (fuente: string): string[] =>
+    [...fuente.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*'firebase\/firestore'/gu)]
+      .flatMap((m) => m[1]!.split(','))
+      .map((s) => s.trim().split(/\s+as\s+/u).pop()!.trim())
+      .filter(Boolean);
+
+  /**
+   * El argumento de cada `expect(…)` **seguido de `.rejects.toThrow()` sin
+   * nada adentro**. Se corta contando paréntesis desde el `expect(`, que es lo
+   * que permite que el argumento tenga llamadas anidadas.
+   */
+  const esperasPeladas = (fuente: string): string[] => {
+    const salida: string[] = [];
+    const re = /\bexpect\s*\(/gu;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(fuente)) !== null) {
+      const inicio = m.index + m[0].length;
+      let nivel = 1;
+      let i = inicio;
+      for (; i < fuente.length && nivel > 0; i += 1) {
+        if (fuente[i] === '(') nivel += 1;
+        else if (fuente[i] === ')') nivel -= 1;
+      }
+      if (nivel !== 0) continue;
+      if (/^\s*\.rejects\s*\.\s*toThrow\(\s*\)/u.test(fuente.slice(i))) {
+        salida.push(fuente.slice(inicio, i - 1));
+      }
+    }
+    return salida;
+  };
+
+  /** Los archivos donde un `toThrow()` pelado espera una operación de Firestore. */
+  const pelados = (): string[] =>
+    candidatos().filter((f) => {
+      if (f in EXCEPCIONES) return false;
+      const fuente = readFileSync(ruta(f), 'utf8');
+      const ops = opsDeFirestore(fuente);
+      if (ops.length === 0) return false;
+      const llamaAUnaOp = new RegExp(String.raw`\b(?:${ops.join('|')})\s*\(`, 'u');
+      return esperasPeladas(fuente).some((arg) => llamaAUnaOp.test(arg));
+    });
+
+  it('el barrido sigue viendo los `toThrow()` pelados que hoy existen', () => {
+    /*
+     * **Control positivo, y es el que sostiene todo lo de abajo** (D-750): el
+     * corte por paréntesis es literal, así que si un día deja de cuadrar este
+     * barrido devolvería `[]` por no haber encontrado nada — verde, y sin haber
+     * mirado. Los dos archivos que se nombran son justamente los dos usos
+     * legítimos, o sea los que tienen que existir y **no** ser infractores.
+     */
+    const conPelados = candidatos().filter(
+      (f) => esperasPeladas(readFileSync(ruta(f), 'utf8')).length > 0,
+    );
+    expect(conPelados).toContain('tests/storage-reglas.integracion.test.ts');
+    expect(conPelados).toContain('tests/opciones.integracion.test.ts');
+  });
+
+  it('ninguna operación de Firestore se afirma con un `toThrow()` pelado', () => {
+    expect(
+      pelados(),
+      'un `rejects.toThrow()` sin argumento lo satisface un emulador caído: no ' +
+        'exige `permission-denied`, así que no prueba ninguna regla. Usá ' +
+        `\`denegada()\` de \`${HELPER}\` — o \`denegadaOReglaQueTira()\` si lo que ` +
+        'el caso afirma es que la puerta está cerrada y da igual por dónde. ' +
+        `Archivos: ${pelados().join(', ') || '(ninguno)'}`,
+    ).toEqual([]);
+  });
+
+  it('los dos usos legítimos de hoy NO se marcan', () => {
+    // Es la mitad que define la firma: Storage no importa Firestore, y lo que
+    // `opciones` espera es código del panel. Si el barrido los marcara, la
+    // salida sería una lista de excepciones — lo que B-1113 dice no construir.
+    expect(pelados()).not.toContain('tests/storage-reglas.integracion.test.ts');
+    expect(pelados()).not.toContain('tests/opciones.integracion.test.ts');
+  });
+
+  it('mutación — un `getDoc` con `toThrow()` pelado se marca', () => {
+    writeFileSync(
+      ruta(COPIA_TMP),
+      `import { doc, getDoc } from 'firebase${'/'}firestore';\n` +
+        'export const caso = async (db: never) =>\n' +
+        "  await expect(getDoc(doc(db, 'actividades', 'x'))).rejects.toThrow();\n",
+    );
+
+    expect(pelados()).toContain(COPIA_TMP);
+  });
+
+  it('mutación al revés — con el helper, o con un argumento, no se marca', () => {
+    writeFileSync(
+      ruta(COPIA_TMP),
+      `import { doc, getDoc } from 'firebase${'/'}firestore';\n` +
+        'export const caso = async (db: never) =>\n' +
+        "  await denegada(getDoc(doc(db, 'actividades', 'x')), 'leer sin login');\n",
+    );
+    expect(pelados()).not.toContain(COPIA_TMP);
+
+    writeFileSync(
+      ruta(COPIA_TMP),
+      `import { doc, getDoc } from 'firebase${'/'}firestore';\n` +
+        'export const caso = async (db: never) =>\n' +
+        "  await expect(getDoc(doc(db, 'actividades', 'x'))).rejects.toThrow(/denegada/);\n",
+    );
+    expect(pelados()).not.toContain(COPIA_TMP);
+  });
+
+  it('mutación al revés — un `toThrow()` pelado sobre código propio no se marca', () => {
+    // El caso de `opciones.integracion.test.ts`, sintético: el archivo importa
+    // Firestore para armar el escenario, pero lo que espera es una función del
+    // panel. Marcarlo obligaría a escribir una excepción, que es lo que no se
+    // quiere.
+    writeFileSync(
+      ruta(COPIA_TMP),
+      `import { doc, getDoc } from 'firebase${'/'}firestore';\n` +
+        'export const caso = async () =>\n' +
+        "  await expect(upsertOpcion('barrio', '!!', 'uid')).rejects.toThrow();\n",
+    );
+
+    expect(pelados()).not.toContain(COPIA_TMP);
   });
 });
