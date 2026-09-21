@@ -3428,6 +3428,104 @@ sobra la constante en la otra.
 
 ## P2 — mejoras reales
 
+### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
+
+> **Cerrado cambiando la firma, como pedía el ítem — no ensanchando el
+> alcance.** La red de `tests/archivar-backlog.test.ts` ahora pregunta **quién
+> redefine el formato del id** —`B-` o `DEC-` seguido de una clase de dígitos
+> escrita a mano— y barre el **repo entero** con `archivosDelRepo` (B-964, así
+> entra lo que todavía no llegó a `git add`), descartando comentarios antes de
+> mirar.
+>
+> **La medición, que es lo que decidió el diseño** (D-750, regla 1): con la
+> firma nueva sobre el repo entero salen **tres** archivos y **ninguno es falso
+> positivo** — `parseo.mjs` (el canónico), `items-referenciados.mjs` (cinco
+> copias) y `bloques-de-codigo-en-la-doc.test.ts` (dos). Con la firma vieja
+> ensanchada al repo eran cuatro, **dos de ellos falsos positivos** y sin la
+> copia que más dolía. El descarte de comentarios es lo que saca esos dos: los
+> dos vivían adentro de un docblock, y una cita en prosa no es una copia.
+>
+> **Las siete copias se arreglaron, no se congelaron.** Era la condición del
+> propio ítem —«un ensanche a medias sería peor que dejarlo»—: una lista de
+> congelados habría dejado la guarda pareciendo canónica sin serlo, que es lo
+> que produjo las copias.
+>
+> - `parseo.mjs` ahora **exporta los átomos**: `DIGITOS` y `SUFIJO` eran
+>   privados y solo salía `ID` ya compuesto. Eso era el agujero real: el que
+>   necesita `B-(\d+)([a-z]?)` **con grupos de captura propios** no puede usar
+>   `ID` —`ID` no captura— así que lo reescribía. Con los átomos afuera, cada
+>   consumidor compone su matcher sin volver a escribir el formato.
+> - `items-referenciados.mjs` compone sus cinco desde los átomos. El prefijo
+>   `B-` se deja explícito a propósito: ese barrido es el de los `B-` y el de
+>   las `D-` es otro script. Lo que se comparte es la forma del **número**, que
+>   es donde estaba la divergencia.
+> - `bloques-de-codigo-en-la-doc.test.ts` importa `ENCABEZADO` e `ID`. **Acá
+>   había un bug latente, no solo una copia:** `/^### (B-\d+)/` no reconoce el
+>   sufijo de letra, así que su mapa de duplicados guardaba `B-836a` bajo la
+>   clave `B-836` — las dos entradas se veían como el duplicado que el caso
+>   persigue, con la suite en verde porque hoy no hay ninguna pareja así.
+>   Tampoco reconocía `DEC-`.
+>
+> **Y la red ganó un control positivo**, que es la otra mitad de D-750: un caso
+> que exige que la firma reconozca al canónico. Sin eso, cambiar cómo
+> `parseo.mjs` escribe el formato dejaría el barrido mirando al vacío y verde.
+>
+> MUTACIÓN PROBADA: devolverle a `items-referenciados.mjs` cualquiera de sus
+> cinco literales deja la red en rojo nombrando el archivo. Con la firma vieja,
+> los dos archivos pasaban.
+>
+> **Lo que NO se tocó, y queda dicho:** el límite del barrido de B-1100 que este
+> ítem describe al final —cuenta como «citado» cualquier `B-nnn` adentro de un
+> comentario, un bloque de código o una URL— sigue igual. Es un límite del
+> barrido de citas, no del formato del id, y el autor ya lo reconoce en el
+> código.
+>
+> **Al pasar, un hallazgo para el otro lado del vocabulario:**
+> `scripts/decisiones-referenciadas.mjs` barre **27 archivos, todos `.md`**,
+> mientras su gemelo de los `B-` barre el repo entero. O sea que una `D-`
+> citada solo desde el código no puede aparecer como huérfana — y hay al menos
+> un caso: **`D-88` se cita desde `parseo.mjs`, `archivar-backlog.mjs`,
+> `mail-de-aviso.sh` y ocho tests**, y el barrido la reporta nombrando solo los
+> tres `.md`. Va anotado en **B-1147**.
+
+**D-88 se cerró en un archivo y se reintrodujo en otro el mismo día.** B-1110
+sacó la copia del formato del backlog de `archivar-backlog.mjs` y la dejó una
+sola vez en `parseo.mjs`, con una red. En paralelo, el frente de **B-1100** nació
+con su **propia** noción de cómo se escribe un id —cuatro literales en
+`scripts/items-referenciados.mjs`, y sus únicos imports son `readFileSync`,
+`fileURLToPath` y `archivosDelRepo`—. Los dos frentes trabajaron el mismo día sin
+enterarse uno del otro.
+
+**Y hay una tercera copia, preexistente:** `tests/bloques-de-codigo-en-la-doc.test.ts:206`
+usa `/^### (B-\d+)/`, que es **más angosta** que la canónica —no reconoce `DEC-`
+ni el sufijo de letra— así que su `Map` de duplicados puede confundir `B-836a` con
+`B-836`, con la suite en verde.
+
+**Por qué la red no las agarra, y por qué no alcanza con ensanchar la lista.** El
+test recorre un `MIOS` hardcodeado de cuatro archivos. La tentación es cambiarlo
+por un barrido real del repo —hay `tests/fixtures/archivos-del-repo.ts`, que es lo
+que hace bien el barrido de credenciales de B-1060, donde un archivo nuevo entra
+solo—. **Medido: no alcanza.** Con la firma actual (`^##` / `^###` adentro de un
+literal) el repo entero da **cuatro** archivos: `parseo.mjs` (el canónico),
+`archivar-backlog.test.ts` (la guarda misma, que lo contiene por ser la guarda),
+`comandos-de-los-skills.test.ts` (una cita en prosa dentro de un docblock) y
+`bloques-de-codigo-en-la-doc.test.ts` (la copia de verdad). **Dos de los tres
+hallazgos serían falsos positivos, y la copia que más duele —`items-referenciados.mjs`,
+que usa `^#{1,6}`— no aparece: no matchea la firma.**
+
+O sea que el trabajo no es ensanchar el alcance sino **cambiar la firma**: la red
+tiene que preguntarse quién redefine el **formato del id**, no quién escribe un
+literal de encabezado. Se hace con el barrido del repo, no con una lista.
+
+**Un ensanche a medias sería peor que dejarlo:** una guarda que parece canónica y
+no lo es es exactamente lo que produjo estas tres copias.
+
+**El límite conocido del barrido de B-1100, que va acá porque es de la misma
+familia:** cuenta como «citado» cualquier `B-nnn` dentro de un comentario, un
+bloque de código o una URL, así que un ejemplo ilustrativo con un id inventado se
+autorreporta. El autor lo reconoce en el propio código, y por eso el archivo que
+lo prueba está excluido del corpus.
+
 ### B-1129 · La clase que apareció dos veces el 2026-09-17: un chequeo que pasa por dónde está parado y no por lo que dice mirar — ✅ hecho (2026-09-21) · P2
 
 > **Cerrado escribiendo la clase: D-750** en [`06-decisiones.md`](06-decisiones.md),

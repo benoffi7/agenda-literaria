@@ -16,6 +16,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { archivar, despiezar, verificar } from '../scripts/archivar-backlog.mjs';
+import { archivosDelRepo } from './fixtures/archivos-del-repo';
 import { ENCABEZADO, ID, SECCION, idsUsados, parsearBacklog, proximoNumero } from '../scripts/tablero/parseo.mjs';
 
 /** Un backlog de juguete con las piezas que el real tiene: cabecera, prosa de
@@ -230,7 +231,8 @@ describe('contra el archivo real', () => {
 });
 
 /**
- * **Una sola definición del formato** — el hallazgo D-88 del 2026-09-17.
+ * **Una sola definición del formato** — el hallazgo D-88 del 2026-09-17, con la
+ * firma corregida en **B-1113**.
  *
  * El archivador tenía su propia copia de `ENCABEZADO` y de `SECCION`, idéntica
  * por casualidad a la de `parseo.mjs`. Nada rompía, y ese es exactamente el
@@ -240,34 +242,97 @@ describe('contra el archivo real', () => {
  * `auditor-privacidad` persigue —un formato cuyo consumidor deriva por separado—
  * y acá hay dos redes distintas:
  *
- * 1. **La de arriba, de texto:** ningún archivo del tablero ni el archivador
- *    puede volver a escribir el regex. Es la que frena la próxima copia **antes**
- *    de que diverja.
+ * 1. **La de arriba, de texto:** nadie en el repo puede volver a escribir el
+ *    formato del id. Es la que frena la próxima copia **antes** de que diverja.
  * 2. **La de abajo, de comportamiento:** los prefijos salen de `ID`, así que
  *    agregarle uno a `parseo.mjs` genera el caso solo. Es la que frena la
  *    divergencia si alguien igual escribe la copia.
+ *
+ * ── Por qué la (1) cambió de firma **y** de alcance — B-1113 ───────────────
+ *
+ * La versión anterior recorría una lista de cuatro archivos escrita a mano y
+ * buscaba `^##` / `^###` adentro de un literal. **No vio las dos copias que
+ * existían el día que se escribió**, y no por el alcance sino por la firma:
+ *
+ * - `scripts/items-referenciados.mjs` nació el mismo día con **cinco** copias
+ *   propias del formato. Su literal es `^#{1,6}`, así que **no matchea la firma
+ *   vieja** — ensanchar la lista al repo entero no lo habría encontrado.
+ * - `tests/bloques-de-codigo-en-la-doc.test.ts` tenía otras dos, una **más
+ *   angosta que la canónica** (`/^### (B-\d+)/`, sin sufijo de letra), así que
+ *   su mapa de duplicados metía `B-836a` y `B-836` bajo la misma clave.
+ *
+ * Y medido en su momento, ensanchar el alcance con la firma vieja daba **cuatro**
+ * archivos de los cuales **dos eran falsos positivos** (una guarda que se
+ * contiene a sí misma y una cita en prosa). Una guarda que parece canónica y no
+ * lo es es lo que produjo estas copias: el arreglo no era el alcance.
+ *
+ * **La firma nueva pregunta quién redefine el formato del id** —`B-` o `DEC-`
+ * seguido de una clase de dígitos escrita a mano— y barre **el repo entero**
+ * (`archivosDelRepo`, B-964: incluye lo que todavía no llegó a `git add`). Los
+ * comentarios se descartan antes de mirar: los dos falsos positivos de la
+ * medición vivían adentro de un docblock, y una cita en prosa no es una copia.
+ *
+ * MUTACIÓN PROBADA: devolverle a `items-referenciados.mjs` cualquiera de sus
+ * cinco literales, o a `bloques-de-codigo-en-la-doc.test.ts` el suyo, deja este
+ * caso en rojo nombrando el archivo. Con la firma vieja, los dos pasaban.
  */
 describe('el formato del backlog se define una sola vez', () => {
-  const MIOS = [
-    'scripts/archivar-backlog.mjs',
-    'scripts/tablero/parseo.mjs',
-    'scripts/tablero/servidor.mjs',
-    'scripts/tablero/tablero.html',
-  ];
+  /**
+   * **El formato del id escrito a mano**: `B-\d`, `B-(\d`, `(?:B|DEC)-` o
+   * `DEC-\d`. Es la firma de una copia — el que necesita otra forma del id la
+   * compone con `DIGITOS`, `SUFIJO` e `ID`, que `parseo.mjs` exporta para eso.
+   */
+  const FORMATO_A_MANO = /B-\\d|B-\(\\d|\(\?:B\|DEC\)-|DEC-\\d/u;
 
-  it('solo `parseo.mjs` escribe el regex de encabezado y el de sección', async () => {
+  /**
+   * Solo dos archivos pueden contener la firma, y los dos por el mismo motivo:
+   * uno **es** la definición y el otro **es** la guarda —para buscar la firma
+   * hay que escribirla—. Cualquier tercero es una copia.
+   */
+  const CANONICO = 'scripts/tablero/parseo.mjs';
+  const ESTA_GUARDA = 'tests/archivar-backlog.test.ts';
+
+  /**
+   * Las líneas de código, sin comentarios. Se descartan por su primer carácter
+   * —`*`, `/*`, `*\/`, `//`— en vez de recortar por pares de delimitadores: un
+   * recorte así sobre un archivo con regexes es la clase que D-750 persigue.
+   */
+  const soloCodigo = (fuente: string): string =>
+    fuente
+      .split('\n')
+      .filter((l) => !/^\s*(\*|\/\*|\*\/|\/\/)/u.test(l))
+      .join('\n');
+
+  it('nadie en el repo redefine el formato del id', async () => {
     const { readFile } = await import('node:fs/promises');
     const conCopia: string[] = [];
-    for (const ruta of MIOS) {
-      const fuente = await readFile(`${process.cwd()}/${ruta}`, 'utf8');
-      // `^### ` y `^## ` adentro de un literal son la firma de una copia: nadie
-      // los escribe salvo para reconocer el formato del archivo.
-      if (/\^#{2,3} /u.test(fuente) && ruta !== 'scripts/tablero/parseo.mjs') conCopia.push(ruta);
+    for (const ruta of archivosDelRepo()) {
+      if (!/\.(mjs|js|ts|tsx|html)$/u.test(ruta)) continue;
+      if (ruta === CANONICO || ruta === ESTA_GUARDA) continue;
+      const fuente = await readFile(`${process.cwd()}/${ruta}`, 'utf8').catch(() => '');
+      if (FORMATO_A_MANO.test(soloCodigo(fuente))) conCopia.push(ruta);
     }
-    expect(conCopia, 'importalo de parseo.mjs en vez de volver a escribirlo').toEqual([]);
+    expect(
+      conCopia,
+      'componelo con `DIGITOS`, `SUFIJO` o `ID` de parseo.mjs en vez de volver a ' +
+        'escribir el formato del id. Una copia más angosta que la canónica no rompe ' +
+        'nada hoy y se lleva puesto el sufijo de letra el día que importe (B-1113).',
+    ).toEqual([]);
   });
 
-  it('el archivador importa el formato, no lo redefine', async () => {
+  /**
+   * **Control positivo**, que es lo que impide que el caso de arriba pase por
+   * estar mirando nada: la firma tiene que reconocer el canónico. Si alguien
+   * cambia cómo `parseo.mjs` escribe el formato sin actualizar la firma, este
+   * caso avisa en vez de dejar el barrido vacío y verde.
+   */
+  it('la firma reconoce al canónico, así que no está mirando al vacío', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const fuente = await readFile(`${process.cwd()}/${CANONICO}`, 'utf8');
+    expect(FORMATO_A_MANO.test(soloCodigo(fuente))).toBe(true);
+  });
+
+  it('el archivador importa el formato de sección y encabezado, no lo redefine', async () => {
     const { readFile } = await import('node:fs/promises');
     const fuente = await readFile(`${process.cwd()}/scripts/archivar-backlog.mjs`, 'utf8');
     expect(fuente).toMatch(/import \{[^}]*ENCABEZADO[^}]*SECCION[^}]*\} from '\.\/tablero\/parseo\.mjs'/u);

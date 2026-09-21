@@ -82,14 +82,36 @@
  * `tests/archivar-backlog.test.ts` frena la próxima.
  */
 
+/**
+ * **Los átomos del formato de un id, y por qué se exportan** — B-1113.
+ *
+ * `DIGITOS`, `SUFIJO` e `ID` son lo que cualquier consumidor necesita para
+ * armar **su** matcher sin volver a escribir el formato. Antes eran privados y
+ * solo salía `ID` ya compuesto, y eso no alcanzaba: el que necesita
+ * `B-(\d+)([a-z]?)` **con grupos de captura propios** —para sacar el número y
+ * la letra por separado— no puede usar `ID`, porque `ID` no captura. Así que
+ * los escribía de nuevo, que es exactamente la copia que D-88 existe para
+ * evitar.
+ *
+ * Pasó: `scripts/items-referenciados.mjs` nació con **cinco** copias del
+ * formato y `tests/bloques-de-codigo-en-la-doc.test.ts` tenía otras dos, una de
+ * ellas **más angosta** —`/^### (B-\d+)/`, sin sufijo de letra— así que su mapa
+ * de duplicados confundía `B-836a` con `B-836` con la suite en verde.
+ *
+ * La regla que queda: **el que necesite otra forma del id la compone con estos
+ * átomos**, no la reescribe. La red que lo obliga está en
+ * `tests/archivar-backlog.test.ts` y su firma es justamente «quién redefine el
+ * formato», no «quién escribe un literal de encabezado».
+ */
+
 /** Los dígitos de un id, que son lo que se compara para saber cuál es el próximo. */
-const DIGITOS = String.raw`\d+`;
+export const DIGITOS = String.raw`\d+`;
 
 /**
  * El sufijo de letra: `B-836a` es «la mitad manual del dueño de B-836», y va con
  * letra justamente para que no se lea como un ítem independiente.
  */
-const SUFIJO = String.raw`[a-z]?`;
+export const SUFIJO = String.raw`[a-z]?`;
 
 /** El id de un ítem, que el archivo escribe `B-950`, `B-836a` o `DEC-6`. */
 export const ID = String.raw`(?:B|DEC)-${DIGITOS}${SUFIJO}`;

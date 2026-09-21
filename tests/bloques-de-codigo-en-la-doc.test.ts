@@ -35,6 +35,24 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
+// El módulo canónico del formato del id. Es `.mjs` para que lo puedan importar
+// también los scripts de Node plano — misma razón que `handle-instagram.mjs`.
+import { ENCABEZADO, ID } from '../scripts/tablero/parseo.mjs';
+
+/**
+ * **El formato del id se importa, no se reescribe** — B-1113, clase D-88.
+ *
+ * Este archivo tenía dos copias, y una era **más angosta que la canónica**:
+ * `/^### (B-\d+)/` no reconoce el sufijo de letra, así que el mapa de
+ * duplicados de abajo guardaba `B-836a` bajo la clave `B-836` y **las dos
+ * entradas se veían como el duplicado que el caso persigue** — con la suite en
+ * verde, porque hoy no hay ninguna pareja así. Tampoco reconocía `DEC-`.
+ *
+ * Ahora sale de `parseo.mjs`, que es donde el formato está escrito una sola
+ * vez. La red que lo obliga vive en `tests/archivar-backlog.test.ts`.
+ */
+
+
 
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
 
@@ -142,7 +160,8 @@ describe('ningún `.md` versionado tiene un bloque de código roto — B-294', (
     for (const rel of documentos()) {
       const { bloques } = bloquesDe(readFileSync(raiz(rel), 'utf8'));
       for (const { abre, cierra, cuerpo } of bloques) {
-        const linea = cuerpo.find((l) => /^#{2,4} /.test(l) || /^\|\s*\*\*B-\d+\*\*/.test(l));
+        const filaEnNegrita = new RegExp(String.raw`^\|\s*\*\*${ID}\*\*`, 'u');
+    const linea = cuerpo.find((l) => /^#{2,4} /.test(l) || filaEnNegrita.test(l));
         if (linea) ofensores.push(`${rel}:${abre}-${cierra} → «${linea.slice(0, 60)}…»`);
       }
     }
@@ -203,7 +222,7 @@ describe('ningún ítem del backlog tiene dos encabezados — B-294', () => {
       readFileSync(raiz(archivo), 'utf8')
         .split('\n')
         .forEach((l, i) => {
-          const m = /^### (B-\d+)/.exec(l);
+          const m = ENCABEZADO.exec(l);
           if (!m) return;
           const previo = porNumero.get(m[1]!) ?? [];
           porNumero.set(m[1]!, [...previo, `${archivo}:${i + 1}`]);

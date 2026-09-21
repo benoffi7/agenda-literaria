@@ -69,6 +69,34 @@ import { fileURLToPath } from 'node:url';
 // El helper de B-964, y no un `git ls-files` propio: lo rastreado **más** lo
 // nuevo sin `git add`, que es justo el archivo que estrena una cita.
 import { archivosDelRepo } from '../tests/fixtures/archivos-del-repo.ts';
+import { DIGITOS, SUFIJO } from './tablero/parseo.mjs';
+
+/**
+ * **El formato del id se compone, no se reescribe** — B-1113, clase D-88.
+ *
+ * Este archivo nació el mismo día que B-1110 sacaba la copia del formato del
+ * archivador, y con **cinco** copias propias: `ID`, el regex de `orden`,
+ * `TRAMO`, el de `itemsEscritos` y el de `itemsDeFilaEnNegrita`. Los dos
+ * frentes trabajaron sin enterarse uno del otro, y la red de entonces no podía
+ * verlo: su firma era «quién escribe `^###` adentro de un literal» y acá el
+ * literal es `^#{1,6}`.
+ *
+ * Ahora las cinco se arman con `DIGITOS` y `SUFIJO` de `parseo.mjs`, que es el
+ * único lugar donde el formato está escrito. Si mañana un id acepta otra forma
+ * —un prefijo nuevo, dos letras de sufijo— este barrido se entera solo.
+ *
+ * **El prefijo se deja en `B-` a propósito y no se toma de `ID`:** `ID` es
+ * `(?:B|DEC)-…` y este barrido es explícitamente el de los `B-`
+ * (`scripts/decisiones-referenciadas.mjs` es el de las `D-`). Lo que se
+ * comparte es la forma del **número**, que es donde estaba la divergencia real:
+ * el sufijo de letra.
+ */
+
+/** `B-` seguido del número y la letra, cada uno en su grupo. */
+const B_CON_GRUPOS = String.raw`B-(${DIGITOS})(${SUFIJO})`;
+
+/** `B-836a` entero, sin grupos, para cuando solo hace falta reconocerlo. */
+const B_ENTERO = String.raw`B-${DIGITOS}${SUFIJO}`;
 
 /** Los dos archivos donde un ítem puede estar escrito. */
 export const REGISTROS = ['docs/BACKLOG.md', 'docs/BACKLOG-cerrados.md'];
@@ -112,7 +140,7 @@ export const RESERVADOS_SIN_ESCRIBIR = {
 export const idCanonico = (numero, letra = '') => `B-${String(Number(numero)).padStart(2, '0')}${letra}`;
 
 /** Un id suelto, tal como se escribe. */
-const ID = /B-(\d+)([a-z])?\b/;
+const ID = new RegExp(String.raw`${B_CON_GRUPOS}\b`, 'u');
 
 /**
  * El número de un id canónico, para ordenar. `B-836a` va justo después de
@@ -122,7 +150,7 @@ const ID = /B-(\d+)([a-z])?\b/;
  * @returns {[number, string]}
  */
 const orden = (id) => {
-  const m = id.match(/^B-(\d+)([a-z]?)$/);
+  const m = new RegExp(String.raw`^${B_CON_GRUPOS}$`, 'u').exec(id);
   return m ? [Number(m[1]), m[2]] : [Infinity, ''];
 };
 
@@ -146,7 +174,7 @@ export const expandir = (texto) => {
   const ids = [];
   // Cada tramo es «un id» o «un id `a` otro id». El separador entre tramos es
   // una coma o una `y`.
-  const TRAMO = /B-(\d+)([a-z])?(?:\s+a\s+B-(\d+)([a-z])?)?/g;
+  const TRAMO = new RegExp(String.raw`${B_CON_GRUPOS}(?:\s+a\s+${B_CON_GRUPOS})?`, 'gu');
   for (const m of texto.matchAll(TRAMO)) {
     const [, desdeN, desdeL, hastaN, hastaL] = m;
     ids.push(idCanonico(desdeN, desdeL));
@@ -174,9 +202,14 @@ export const expandir = (texto) => {
  * @returns {string[]}
  */
 export const itemsEscritos = (contenido) =>
-  [...contenido.matchAll(/^#{1,6}\s+\**\s*(B-\d+[a-z]?(?:\s*(?:a|y|,)\s*\**B-\d+[a-z]?)*)/gm)].flatMap(
-    (m) => expandir(m[1]),
-  );
+  [
+    ...contenido.matchAll(
+      new RegExp(
+        String.raw`^#{1,6}\s+\**\s*(${B_ENTERO}(?:\s*(?:a|y|,)\s*\**${B_ENTERO})*)`,
+        'gmu',
+      ),
+    ),
+  ].flatMap((m) => expandir(m[1]));
 
 /**
  * Los ítems escritos como **fila de tabla con el id en negrita**.
@@ -198,7 +231,9 @@ export const itemsEscritos = (contenido) =>
  * @returns {string[]}
  */
 export const itemsDeFilaEnNegrita = (contenido) =>
-  [...contenido.matchAll(/^\|\s*\*\*\s*B-(\d+)([a-z])?\b/gm)].map((m) => idCanonico(m[1], m[2]));
+  [
+    ...contenido.matchAll(new RegExp(String.raw`^\|\s*\*\*\s*${B_CON_GRUPOS}\b`, 'gmu')),
+  ].map((m) => idCanonico(m[1], m[2]));
 
 /**
  * Los ids que la cabecera de `BACKLOG.md` declara **inexistentes a propósito**.

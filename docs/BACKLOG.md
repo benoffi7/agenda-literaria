@@ -1174,6 +1174,35 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1147 · El barrido de decisiones huérfanas mira 27 `.md` y su gemelo mira el repo entero · P2 — salió de cerrar B-1113 (2026-09-21)
+
+**Mismo desbalance que B-1128, del lado del barrido en vez del de los
+duplicados.** `scripts/items-referenciados.mjs` busca los `B-` huérfanos en
+**todo** el repo —código incluido, que el propio script declara como el caso
+más caro: «el comentario explica el porqué de una línea y manda a buscar un
+ítem que nadie escribió»—. `scripts/decisiones-referenciadas.mjs` barre **27
+archivos, todos `.md`**.
+
+**O sea que una `D-` citada solo desde el código no puede aparecer como
+huérfana.** Y no es hipotético: **`D-88`** está huérfana y se la cita desde
+`scripts/tablero/parseo.mjs`, `scripts/archivar-backlog.mjs`,
+`scripts/mail-de-aviso.sh` y ocho archivos de `tests/` — el barrido la reporta
+nombrando solo los tres `.md`, así que quien lea el informe subestima el
+alcance por un factor de cuatro.
+
+**Por qué importa más en las `D-` que en las `B-`,** y es el mismo argumento que
+D-740 escribió para los duplicados: una decisión es lo que el **código** cita.
+Un comentario que manda a una `D-` inexistente no se descubre leyendo el código
+— se descubre el día que alguien va a buscar por qué se hizo algo.
+
+**El arreglo es copiarle el corpus al gemelo**, que ya usa `archivosDelRepo`
+(B-964). Lo que hay que mirar al hacerlo es el ruido: el barrido de los `B-`
+tiene su lista de huérfanas congeladas justamente porque abrir el corpus las
+destapó de golpe, y acá va a pasar lo mismo.
+
+**Dónde:** `scripts/decisiones-referenciadas.mjs`; el corpus del gemelo, en
+`scripts/items-referenciados.mjs`.
+
 ### B-1144 · El Instagram de la actividad es el único del repo que no se valida al publicar · P2 — del `auditor-privacidad` sobre el cierre de B-1141 (2026-09-21)
 
 **Lo destapó el tercer arreglo de B-1141.** El comentario de `conHandle` decía
@@ -1278,46 +1307,6 @@ Los dos se cierran de una si se decide la opción (b) de B-1145, que es migrar
 los documentos.
 
 **Dónde:** `handlesDe` en `src/lib/textoRedes.ts:233-247`.
-
-### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas · P2 — del `auditor-trampas` (2026-09-17)
-
-**D-88 se cerró en un archivo y se reintrodujo en otro el mismo día.** B-1110
-sacó la copia del formato del backlog de `archivar-backlog.mjs` y la dejó una
-sola vez en `parseo.mjs`, con una red. En paralelo, el frente de **B-1100** nació
-con su **propia** noción de cómo se escribe un id —cuatro literales en
-`scripts/items-referenciados.mjs`, y sus únicos imports son `readFileSync`,
-`fileURLToPath` y `archivosDelRepo`—. Los dos frentes trabajaron el mismo día sin
-enterarse uno del otro.
-
-**Y hay una tercera copia, preexistente:** `tests/bloques-de-codigo-en-la-doc.test.ts:206`
-usa `/^### (B-\d+)/`, que es **más angosta** que la canónica —no reconoce `DEC-`
-ni el sufijo de letra— así que su `Map` de duplicados puede confundir `B-836a` con
-`B-836`, con la suite en verde.
-
-**Por qué la red no las agarra, y por qué no alcanza con ensanchar la lista.** El
-test recorre un `MIOS` hardcodeado de cuatro archivos. La tentación es cambiarlo
-por un barrido real del repo —hay `tests/fixtures/archivos-del-repo.ts`, que es lo
-que hace bien el barrido de credenciales de B-1060, donde un archivo nuevo entra
-solo—. **Medido: no alcanza.** Con la firma actual (`^##` / `^###` adentro de un
-literal) el repo entero da **cuatro** archivos: `parseo.mjs` (el canónico),
-`archivar-backlog.test.ts` (la guarda misma, que lo contiene por ser la guarda),
-`comandos-de-los-skills.test.ts` (una cita en prosa dentro de un docblock) y
-`bloques-de-codigo-en-la-doc.test.ts` (la copia de verdad). **Dos de los tres
-hallazgos serían falsos positivos, y la copia que más duele —`items-referenciados.mjs`,
-que usa `^#{1,6}`— no aparece: no matchea la firma.**
-
-O sea que el trabajo no es ensanchar el alcance sino **cambiar la firma**: la red
-tiene que preguntarse quién redefine el **formato del id**, no quién escribe un
-literal de encabezado. Se hace con el barrido del repo, no con una lista.
-
-**Un ensanche a medias sería peor que dejarlo:** una guarda que parece canónica y
-no lo es es exactamente lo que produjo estas tres copias.
-
-**El límite conocido del barrido de B-1100, que va acá porque es de la misma
-familia:** cuenta como «citado» cualquier `B-nnn` dentro de un comentario, un
-bloque de código o una URL, así que un ejemplo ilustrativo con un id inventado se
-autorreporta. El autor lo reconoce en el propio código, y por eso el archivo que
-lo prueba está excluido del corpus.
 
 ### B-1081 · El ritmo del catálogo está calculado, testeado, y nadie lo dibuja · P2 — de documentar el tablero (2026-09-17)
 

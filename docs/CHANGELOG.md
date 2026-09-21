@@ -2,6 +2,34 @@
 
 ## Sin publicar
 
+- **La red que impide copiar el formato de un id ahora ve las copias que
+  existían** — **B-1113**. Estaba en verde y no verificaba lo que su nombre
+  afirmaba: es D-750 aplicado a sí mismo, el mismo día que se escribió.
+
+  **El arreglo fue cambiar la firma, no ensanchar el alcance**, y la diferencia
+  es todo el ítem. La red preguntaba «quién escribe `^###` adentro de un
+  literal» sobre una lista de cuatro archivos. Barrer el repo entero con **esa**
+  firma daba cuatro archivos, dos de ellos falsos positivos, y **sin** la copia
+  que más dolía: `items-referenciados.mjs` escribe `^#{1,6}`, así que no
+  matcheaba. Ahora la firma pregunta **quién redefine el formato del id** y
+  barre el repo entero descartando comentarios: tres archivos, cero falsos
+  positivos.
+
+  **Las siete copias se arreglaron en vez de congelarse**, porque una lista de
+  congelados habría dejado la guarda pareciendo canónica sin serlo — que es lo
+  que produjo las copias. `parseo.mjs` ahora **exporta los átomos** (`DIGITOS`,
+  `SUFIJO`), que era el agujero de fondo: el que necesita el id **con grupos de
+  captura propios** no puede usar `ID`, así que lo reescribía.
+
+  **Y había un bug latente, no solo una copia:** el chequeo de encabezados
+  duplicados usaba `/^### (B-\d+)/`, sin el sufijo de letra, así que metía
+  `B-836a` y `B-836` bajo la misma clave y **los habría visto como el duplicado
+  que persigue**. Hoy no hay ninguna pareja así, por eso estaba en verde.
+
+  La red ganó además un **control positivo** —que la firma reconozca al
+  canónico— para que cambiar cómo se escribe el formato no la deje mirando al
+  vacío.
+
 - **Se escribió la clase de los dos chequeos laxos del 17: D-750** — **B-1129**,
   decisión del dueño. No es un arreglo: los dos casos ya estaban corregidos con
   mutación probada. Lo que faltaba era decidir si la lección se escribía, y
