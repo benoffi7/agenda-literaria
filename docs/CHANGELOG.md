@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **Los dos caminos que publican el sitio miran producción** — **B-1139**,
+  decisión del dueño. El chequeo que verifica que las taxonomías existan en la
+  base vivía **solo** en el deploy por `push`; el rebuild automático —el que
+  corre cada vez que alguien toca una actividad, y el único desatendido—
+  publicaba sin mirar.
+
+  Lo que eso costó, medido: el 2026-09-17 entró `tipo-biblioteca`, nadie la
+  sembró, el deploy por `push` se puso rojo **y el sitio se siguió publicando un
+  día entero** con el desplegable en blanco.
+
+  **Ahora el rebuild tampoco publica si falta el dato**, que es la opción
+  estricta de las tres que se presentaron. El costo va dicho: un dato faltante
+  frena la publicación de lo que se cargó. Lo acotan el aviso por mail de
+  B-1140, que sale solo cuando el job falla, y que sembrar es un comando.
+
+  La red no persigue el paso sino **la simetría**: deriva del YAML qué workflows
+  publican y exige que todos lo corran. Un tercer camino tendría que pasar por
+  ahí.
+
 - **Tocar «+11 más hoy» ahora se nota** — **B-1136**, pedido del dueño: «los
   eventos cambian, sí, pero el usuario percibe que no pasó nada». El filtro se
   aplicaba bien; lo que faltaba era que se viera, porque la página volvía a

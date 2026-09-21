@@ -84,6 +84,37 @@ jobs:
         # sitio con los datos de ayer que publicar una proyección rota (§5.1).
         run: npm test
 
+      - name: Que toda taxonomía declarada exista en la base
+        # **B-1139 — este chequeo estaba solo en `push-main.yml`, y ésta es la
+        # mitad que faltaba.** Decisión del dueño: que el rebuild **no publique**
+        # hasta que el dato esté.
+        #
+        # El 2026-09-17 entró `tipo-biblioteca` y nadie la sembró en producción.
+        # El deploy por `push` se puso rojo y lo dijo; **este workflow siguió
+        # publicando un día entero**, porque es el que corre solo cada vez que
+        # alguien toca una actividad y no miraba producción. O sea que el único
+        # chequeo del pipeline que puede ver un vocabulario faltante no cubría el
+        # camino que más publica — y encima el rojo del `push` se lee como «no se
+        # publicó» cuando el sitio sí se estaba publicando.
+        #
+        # ── Lo que cuesta, dicho ───────────────────────────────────────
+        # Con esto, **un dato que falta en producción frena la publicación de
+        # todo lo que se cargó**, y este workflow corre desatendido. Se aceptó a
+        # cambio de no publicar en silencio un sitio con los desplegables en
+        # blanco, y el costo está acotado por dos cosas: el aviso por mail sale
+        # solo cuando este job falla (B-1140), y sembrar es un comando
+        # (`npm run opciones:sembrar:prod`).
+        #
+        # Va **antes del Build** por lo mismo que en `push-main.yml`: el build no
+        # falla ante un vocabulario faltante —lee `snap.data()?.valores ?? []`—
+        # así que publicaría los chips vacíos en verde.
+        #
+        # Es de solo lectura: no siembra. Escribir en producción desde un job
+        # desatendido es otra decisión, y lo que falta no siempre es sembrar.
+        run: node scripts/taxonomias-en-produccion.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
       - name: Build
         # `astro build` lee Firestore con el Admin SDK (§2.4) y produce el HTML
         # de las páginas de detalle y el `events.json`.

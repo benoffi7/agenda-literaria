@@ -671,6 +671,65 @@ filtros** a propósito (`Buscador.tsx:411-420`) — contesta «¿qué hay hoy?»
 dejar esa propiedad intacta: se trata de dónde está y cuánto ocupa, no de qué
 muestra.
 
+### B-1139 · El sitio se publica por dos caminos y solo uno mira producción — ✅ hecho (2026-09-21) · P0 — medido al ver por qué fallaba el deploy (2026-09-18)
+
+> **Decisión del dueño: que el rebuild no publique hasta que el dato esté.** Se
+> le presentaron las tres —publicar y avisar, no publicar, o dejarlo— con el
+> costo de cada una escrito, y eligió la estricta.
+>
+> El chequeo de B-973 (`taxonomias-en-produccion.mjs`) ahora corre en los **dos**
+> caminos, y antes del build en los dos: el build no falla ante un vocabulario
+> faltante —lee `snap.data()?.valores ?? []`— así que después ya estarían armados
+> los chips vacíos.
+>
+> **Lo que cuesta, y se aceptó sabiéndolo:** un dato que falta en producción
+> **frena la publicación de todo lo que se cargó**, y este workflow corre
+> desatendido. Dos cosas lo acotan: el aviso por mail de B-1140 sale solo cuando
+> el job falla —o sea que no hay que ir a mirar nada—, y sembrar es un comando.
+>
+> **La red es `tests/workflows.test.ts`**, y no persigue el paso: persigue **la
+> simetría**. Deriva del YAML qué workflows publican —los que usan el action de
+> Hosting— y exige que todos corran el chequeo, con control positivo sobre la
+> lista. Un tercer camino tendría que pasar por ahí. Es lo que no existía: son
+> dos archivos que hacen lo mismo y nadie los lee juntos, así que un paso
+> presente en uno y ausente en el otro **no rompe nada, publica igual y en
+> verde**.
+
+
+**Los deploys por `push` a `main` vienen fallando desde que entró bibliotecas, y
+el sitio se siguió publicando igual.** Las dos mitades importan:
+
+1. **Por qué falla** — `push-main.yml:236` corre
+   `scripts/taxonomias-en-produccion.mjs`, que compara `CAMPOS_TAXONOMIA` contra
+   `/opciones/*` de la base **real**. Dice, con razón: *«1 taxonomía declarada que
+   NO existe en la base: `tipo-biblioteca`»*. Es el chequeo de B-973 haciendo
+   exactamente su trabajo, y lo que falta es la siembra (ver más abajo, es de
+   quien tiene las credenciales).
+2. **Por qué el sitio se publicó igual** — `deploy.yml`, el workflow del
+   `repository_dispatch` del §8, **no corre ese paso**. Hace `npm ci`, tests,
+   build, verifica el artefacto y deploya. O sea que el rebuild automático
+   —que se dispara solo, cada cinco minutos, cuando alguien toca una actividad—
+   **publica salteando el único chequeo del pipeline que mira producción.**
+
+**Eso es lo que hace a esto un ítem y no un recordatorio de sembrar.** El
+chequeo se escribió porque «el deploy salió verde y producción quedó con el
+formulario inguardable» (B-950, § «Sembrar una taxonomía NUEVA» de
+`08-operacion.md`), y hoy el camino que más publica no lo tiene. Un gate que
+cubre uno de dos caminos protege menos de lo que parece, y **el que quedó afuera
+es el desatendido**: el del `push` al menos lo mira una persona que acaba de
+pushear.
+
+Peor: el rojo del `push` es fácil de leer como «falló el deploy» cuando el sitio
+**se publicó**, así que el aviso que el chequeo quería dar queda tapado dos veces.
+
+**Qué hay que decidir**, porque no es obvio: copiar el paso a `deploy.yml` lo
+convierte en un job desatendido que puede dejar de publicar por algo que no está
+en el código —y ahí un dato faltante en producción frena la publicación de todas
+las actividades—, o el chequeo corre igual pero **avisa sin frenar** en ese
+camino (el workflow ya sabe abrir un issue: tiene el job «Avisar que el sitio
+quedó atrasado»). La segunda se parece más a lo que el propio documento dice:
+«el chequeo dice qué falta; la escritura la decide una persona».
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)

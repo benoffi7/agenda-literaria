@@ -41,6 +41,17 @@ import { sinComentarios } from '../scripts/sin-comentarios.mjs';
  */
 const DIR = '.github/workflows';
 
+/**
+ * El YAML sin sus comentarios. Los docblocks de estos workflows **citan** los
+ * comandos que explican —«va antes del Build», «es `npm run build`»— y un aserto
+ * de orden que los cuente mediría la prosa y no los pasos (D-124).
+ */
+const sinComentariosDeYaml = (s: string): string =>
+  s
+    .split('\n')
+    .filter((l) => !/^\s*#/.test(l))
+    .join('\n');
+
 const archivos = readdirSync(DIR).filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'));
 
 /** El YAML de un workflow, parseado como lo haría GitHub: estricto y sin claves repetidas. */
@@ -373,6 +384,64 @@ describe('ningún test depende de un `dist/` — B-873', () => {
  * por una máquina tiene que avisar», y un `schedule` que se agregue mañana cae
  * acá solo — que es exactamente donde volvería a aparecer este bug.
  */
+/**
+ * **Los dos caminos que publican el sitio miran producción — B-1139.**
+ *
+ * El sitio se publica por dos lados: el `push` a `main` y el rebuild automático
+ * del §8, que dispara una Function cada vez que hay cambios pendientes. El
+ * chequeo de taxonomías (B-973) vivía **solo en el primero**.
+ *
+ * Lo que eso costó, medido y no supuesto: el 2026-09-17 entró
+ * `tipo-biblioteca`, nadie la sembró en producción, el deploy por `push` se puso
+ * rojo — y el sitio se siguió publicando **un día entero** por el otro camino,
+ * con el desplegable en blanco. O sea que el único chequeo del pipeline que
+ * puede ver un vocabulario faltante no cubría el camino que más publica, y que
+ * además es el desatendido: al del `push` al menos lo mira quien acaba de
+ * pushear.
+ *
+ * **Por qué un test y no «acordarse»:** son dos archivos que hacen lo mismo y
+ * nadie los lee juntos. Un paso que existe en uno y falta en el otro no rompe
+ * nada — publica igual, en verde.
+ */
+describe('todo camino que publica el sitio mira producción — B-1139', () => {
+  const CHEQUEO = 'scripts/taxonomias-en-produccion.mjs';
+
+  /** Los workflows que terminan publicando: los que deployan a Hosting. */
+  const publican = archivos.filter((a) =>
+    readFileSync(join(DIR, a), 'utf8').includes('FirebaseExtended/action-hosting-deploy'),
+  );
+
+  it('el control positivo: hay más de un camino que publica', () => {
+    /*
+     * Sin esto, un rename del action o un tercer camino dejaría el barrido en
+     * cero y el caso de abajo pasaría sin mirar nada (B-873). Y si algún día hay
+     * un tercero, este número cambia y hay que venir a pensarlo — que es
+     * exactamente lo que no pasó cuando nació el segundo.
+     */
+    expect(publican.sort()).toEqual(['deploy.yml', 'push-main.yml']);
+  });
+
+  it.each(['deploy.yml', 'push-main.yml'])('%s corre el chequeo de producción', (archivo) => {
+    const yml = readFileSync(join(DIR, archivo), 'utf8');
+    expect(yml, `${archivo} publica sin mirar producción`).toContain(CHEQUEO);
+  });
+
+  it.each(['deploy.yml', 'push-main.yml'])('%s lo corre ANTES del build', (archivo) => {
+    /*
+     * El orden es la mitad del chequeo: el build **no falla** ante un
+     * vocabulario faltante —`contenidoDelSitio.ts` lee
+     * `snap.data()?.valores ?? []`— así que después del build ya estarían
+     * armados los chips vacíos, y el único efecto sería tardar más en decirlo.
+     */
+    const yml = sinComentariosDeYaml(readFileSync(join(DIR, archivo), 'utf8'));
+    const chequeo = yml.indexOf(CHEQUEO);
+    const build = yml.indexOf('npm run build');
+    expect(chequeo, `${archivo}: no se encontró el chequeo`).toBeGreaterThan(-1);
+    expect(build, `${archivo}: no se encontró el build`).toBeGreaterThan(-1);
+    expect(chequeo, `${archivo}: el chequeo corre después del build`).toBeLessThan(build);
+  });
+});
+
 describe('un workflow que nadie está mirando avisa cuando falla — B-883', () => {
   type Paso = {
     name?: string;

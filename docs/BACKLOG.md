@@ -315,42 +315,6 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 > dueño los pidió con máxima urgencia y porque dos de los tres se ven **rotos**,
 > no mejorables. Se atacan de a uno.
 
-### B-1139 · El sitio se publica por dos caminos y solo uno mira producción · P0 — medido al ver por qué fallaba el deploy (2026-09-18)
-
-**Los deploys por `push` a `main` vienen fallando desde que entró bibliotecas, y
-el sitio se siguió publicando igual.** Las dos mitades importan:
-
-1. **Por qué falla** — `push-main.yml:236` corre
-   `scripts/taxonomias-en-produccion.mjs`, que compara `CAMPOS_TAXONOMIA` contra
-   `/opciones/*` de la base **real**. Dice, con razón: *«1 taxonomía declarada que
-   NO existe en la base: `tipo-biblioteca`»*. Es el chequeo de B-973 haciendo
-   exactamente su trabajo, y lo que falta es la siembra (ver más abajo, es de
-   quien tiene las credenciales).
-2. **Por qué el sitio se publicó igual** — `deploy.yml`, el workflow del
-   `repository_dispatch` del §8, **no corre ese paso**. Hace `npm ci`, tests,
-   build, verifica el artefacto y deploya. O sea que el rebuild automático
-   —que se dispara solo, cada cinco minutos, cuando alguien toca una actividad—
-   **publica salteando el único chequeo del pipeline que mira producción.**
-
-**Eso es lo que hace a esto un ítem y no un recordatorio de sembrar.** El
-chequeo se escribió porque «el deploy salió verde y producción quedó con el
-formulario inguardable» (B-950, § «Sembrar una taxonomía NUEVA» de
-`08-operacion.md`), y hoy el camino que más publica no lo tiene. Un gate que
-cubre uno de dos caminos protege menos de lo que parece, y **el que quedó afuera
-es el desatendido**: el del `push` al menos lo mira una persona que acaba de
-pushear.
-
-Peor: el rojo del `push` es fácil de leer como «falló el deploy» cuando el sitio
-**se publicó**, así que el aviso que el chequeo quería dar queda tapado dos veces.
-
-**Qué hay que decidir**, porque no es obvio: copiar el paso a `deploy.yml` lo
-convierte en un job desatendido que puede dejar de publicar por algo que no está
-en el código —y ahí un dato faltante en producción frena la publicación de todas
-las actividades—, o el chequeo corre igual pero **avisa sin frenar** en ese
-camino (el workflow ya sabe abrir un issue: tiene el job «Avisar que el sitio
-quedó atrasado»). La segunda se parece más a lo que el propio documento dice:
-«el chequeo dice qué falta; la escritura la decide una persona».
-
 ## P0 — ya arreglados
 
 **Los cuatro primeros, en dos tandas y de dos clases distintas:**
