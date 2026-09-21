@@ -315,56 +315,6 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 > dueño los pidió con máxima urgencia y porque dos de los tres se ven **rotos**,
 > no mejorables. Se atacan de a uno.
 
-### B-1137 · El sitio tiene scroll horizontal en el teléfono, y corta el texto a la derecha · P0 — medido al arreglar B-1134 (2026-09-18)
-
-**Apareció comparando dos capturas** y **es anterior a B-1134**: al fotografiar
-`/ayuda` a 390px con el encabezado nuevo y con el viejo, las dos salen con el
-contenido corrido hacia la derecha. El título se corta a mitad de palabra
-(«…en Argentin»), el chip «Anotarme» queda partido y el botón «Aceptar» del aviso
-de cookies se sale de la pantalla.
-
-**Algo mide más de 390px y ensancha el documento entero.** No es el encabezado
-—se verificó con las dos versiones— y pasa en más de una página, así que está en
-el chrome o en algo que todas comparten. Los candidatos, sin haberlo medido
-todavía: el aviso de cookies (`AvisoDeCookies.astro`, dos botones en fila), la
-tira de «En esta página», o algún ancho fijo del sistema.
-
-**Por qué es P0:** el desborde horizontal en un teléfono no se percibe como «hay
-scroll»; se percibe como **texto cortado**. Y es la primera pantalla. Va con los
-otros dos del chrome porque es la misma tanda de capturas del dueño, aunque éste
-no lo reportó él: salió de ir a verificar el suyo.
-
-**Lo primero es medirlo, no arreglarlo**: hay que saber **qué** elemento desborda
-antes de tocar nada, o se termina poniendo `overflow-x: hidden` en el `body`, que
-esconde el síntoma y deja el contenido cortado igual.
-
-> **Primera medición (2026-09-18), por bisección de ancho sobre `/mis-favoritos`:**
->
-> | viewport | resultado |
-> |---|---|
-> | 390px | desborda ~90px |
-> | 480px | desborda ~20px |
-> | **600px** | **no desborda** |
-> | 768px y más | no desborda |
->
-> O sea que **algo pide ~500-600px y no se encoge**, y el faltante crece a medida
-> que la ventana se angosta. Eso descarta un elemento de ancho proporcional y
-> apunta a uno con ancho mínimo propio.
->
-> **Los dos sospechosos obvios quedaron descartados, y conviene que esté escrito
-> para no volver a mirarlos:**
->
-> - **el aviso de cookies no puede ser**: es `fixed inset-x-0`, así que se ajusta
->   al viewport y no ensancha el documento — aunque en las capturas sea donde más
->   se ve el corte, porque sus dos botones llegan al borde;
-> - **no hay anchos fijos ni `whitespace-nowrap` en el marcado de la página**: el
->   único `min-w-max` del HTML es el del desplegable del encabezado (B-1134), y
->   vive dentro de un `<details>` **cerrado**, o sea en `display:none`.
->
-> Falta lo que no se puede hacer con capturas: **preguntarle al navegador cuál es
-> el elemento cuyo `scrollWidth` supera al del `body`**. Eso pide ejecutar una
-> línea de JS en la página, y es el próximo paso.
-
 ### B-1139 · El sitio se publica por dos caminos y solo uno mira producción · P0 — medido al ver por qué fallaba el deploy (2026-09-18)
 
 **Los deploys por `push` a `main` vienen fallando desde que entró bibliotecas, y

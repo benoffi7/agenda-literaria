@@ -561,6 +561,46 @@ distinto y una es de SEO:
 > el script. Sin ellos el job no rompe nada: avisa por el log y termina en verde,
 > que es lo mismo que hacía el issue cuando no podía escribir.
 
+### B-1137 · El sitio tiene scroll horizontal en el teléfono: son 6px y los pone el marcador de mes — ✅ hecho (2026-09-21) · P0 — abierto el 2026-09-18
+
+> ⚠️ **La primera medición de este ítem estaba mal, y el error vale más que el
+> arreglo.** Decía «se sale ~90px a 390px» y descartaba sospechosos a partir de
+> eso. **Los 90px los ponía la herramienta, no el sitio.**
+>
+> `chrome --headless --screenshot --window-size=390,844` **fotografía 390px de
+> ancho pero maqueta con un viewport de 500**. O sea: la imagen sale recortada a
+> 390 sobre un layout de 500, y todo parece cortado a la derecha. La bisección
+> —«a 480 se sale poco, a 600 no se sale»— medía exactamente eso: el ancho de la
+> foto acercándose al viewport fijo de la herramienta. El `--dump-dom` tampoco
+> sirve: también reporta 500.
+>
+> **Cómo se mide de verdad**, y queda escrito porque es transferible: se carga la
+> página en un **`<iframe>` del ancho que se quiere probar**. El iframe tiene su
+> propio viewport y los media queries responden a él, así que
+> `document.documentElement.clientWidth` dice 390 y no 500.
+>
+> **Lo que apareció con la medición buena, contra producción y a 390px:**
+>
+> ```
+> viewport=390  scrollWidth=396  body.scrollWidth=396
+> +6px  w=22  span.label-caps.shrink-0.text-super     ← el año del marcador de mes
+> ```
+>
+> **Son 6px y los pone `MarcadorDeMes`**: «SEPTIEMBRE» a 48px más el año más el
+> `gap-4` no entran en la columna, y como el año es `shrink-0` y el mes no puede
+> encogerse, el `<h2>` empuja el documento. Seis píxeles no se perciben como «hay
+> scroll»: se perciben como que la página se mueve sola al tocarla.
+>
+> **El arreglo es `flex-wrap`**, que baja el año **solo cuando no entra**. Se
+> descartó bajar el `gap` a `gap-2`: también daba 390 exactos, pero con **2px de
+> holgura** — volvería a romperse con un mes más ancho o con la fuente cargando
+> distinto. Un arreglo que depende de milímetros no es un arreglo.
+>
+> **Los dos sospechosos que el ítem había descartado seguían bien descartados:**
+> el aviso de cookies es `fixed` y no ensancha el documento, y no había anchos
+> fijos en el marcado. Lo que estaba mal era el **tamaño** del problema, no esa
+> parte del razonamiento.
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)

@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **El sitio ya no se mueve solo en el teléfono** — **B-1137**. Había 6px de
+  scroll horizontal en todas las páginas, y los ponía el **marcador de mes**:
+  «SEPTIEMBRE» a 48px más el año más el `gap` no entran en 390px, y como el año
+  no se encoge, el `<h2>` empujaba el documento a 396px. Seis píxeles no se
+  perciben como «hay scroll»: se perciben como que la página se mueve sola al
+  tocarla y el texto queda desalineado con el borde.
+
+  Se arregla con `flex-wrap`, que baja el año **solo cuando no entra**. Se
+  descartó bajar el `gap`: también daba 390 exactos, pero con 2px de holgura —
+  volvería a romperse con un mes más ancho o con la fuente cargando distinto.
+
+  **Y la primera medición de este ítem estaba mal, lo que vale más que el
+  arreglo.** Decía «se sale ~90px» y esos 90px los ponía la herramienta:
+  `chrome --headless --screenshot --window-size=390,844` **fotografía 390px de
+  ancho pero maqueta con un viewport de 500**, así que la imagen sale recortada
+  sobre un layout más ancho y todo parece cortado. La forma correcta de medir un
+  ancho de teléfono quedó escrita en el ítem: cargar la página en un `<iframe>`
+  del ancho que se quiere probar, que sí tiene su propio viewport.
+
 - **El aviso de que el sitio no se está publicando ahora llega por mail** —
   **B-1140**, decisión del dueño: «si algo falla necesitamos saber». Antes abría
   un issue (B-883), y el issue hay que ir a mirarlo.

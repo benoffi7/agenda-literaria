@@ -47,7 +47,29 @@ export function MarcadorDeMes({ clave, id }: Props) {
   const { mes, anio } = partesDeMes(clave);
 
   return (
-    <h2 id={id} className="regla-gruesa flex items-baseline justify-between gap-4 pb-2">
+    /*
+     * **`flex-wrap`, y es lo que evita el scroll horizontal del sitio en un
+     * teléfono** — B-1137.
+     *
+     * Medido a 390px contra producción: «SEPTIEMBRE» a 48px más el año más el
+     * `gap` no entran en la columna, y como el año es `shrink-0` y el mes no
+     * puede encogerse, el `<h2>` empujaba el documento a **396px**. Seis píxeles
+     * de más no se perciben como «hay scroll»: se perciben como que la página se
+     * mueve sola al tocarla, y todo el texto queda desalineado con el borde.
+     *
+     * Con `flex-wrap` el año baja de línea **solo cuando no entra**, que es
+     * exactamente el caso que antes desbordaba; en el resto de los meses y en
+     * cualquier pantalla de `sm` para arriba nada cambia. Es preferible a bajar
+     * el `gap` —que dejaba 2px de holgura y volvería a romperse con un mes más
+     * ancho o con la fuente cargando distinto— porque no depende de milímetros.
+     *
+     * `gap-y-0` para que, cuando envuelva, el año quede pegado al mes y no
+     * abra una fila con aire propio.
+     */
+    <h2
+      id={id}
+      className="regla-gruesa flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0 pb-2"
+    >
       <span className="display-lg text-acento">{mes}</span>
       {anio && <span className="label-caps shrink-0 text-super">{anio}</span>}
     </h2>
