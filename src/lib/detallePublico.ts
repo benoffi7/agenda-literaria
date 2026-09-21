@@ -67,7 +67,7 @@ import {
   tituloDeEvento,
 } from '@calendario';
 
-import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
+import { handleInstagram, arrobaInstagram, urlSegura } from '@/lib/enlaceSeguro';
 
 /*
  * Los dos saneadores de `href` **se mudaron a `lib/enlaceSeguro.ts`** (B-830,
@@ -80,7 +80,7 @@ import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
  * es la clase de B-88 en el peor archivo posible: dos versiones de «qué URL es
  * segura» divergen y una queda vieja.
  */
-export { handleInstagram, urlSegura };
+export { handleInstagram, arrobaInstagram, urlSegura };
 
 
 /** La URL del perfil, o `null` si el handle no es uno. El texto se muestra igual. */
@@ -487,6 +487,15 @@ export interface DetallePublico {
    * que no linkearlo: quien cargó «Casa Brandon / IG @casa.brandon» escribió algo
    * que una persona entiende y una URL no. El texto sale igual; el `href` solo
    * cuando `handleInstagram` / `urlSegura` dan algo válido.
+   *
+   * ── El texto del Instagram es **derivado**, no el crudo (B-1141) ──────────
+   * `instagram` pasa por `arrobaInstagram`: sale `@casabrandon` y no
+   * `casabrandon` ni —en las fichas cargadas antes del 2026-09-17, que tienen la
+   * URL guardada porque B-928 no reescribió lo ya cargado—
+   * `https://www.instagram.com/casabrandon/?igsh=…`. Lo que no se reconoce como
+   * handle sigue saliendo tal cual, que es lo que este bloque decide y no
+   * cambia. `web` **no** se toca: ahí el texto es el dominio que se escribió y
+   * no hay una forma canónica que derivar.
    */
   organizador: {
     nombre: string;
@@ -1419,7 +1428,7 @@ export const detalleDeActividad = (
 
     organizador: {
       nombre: a.organizador.nombre,
-      instagram: a.organizador.instagram,
+      instagram: arrobaInstagram(a.organizador.instagram),
       instagramUrl: enlaceInstagram(a.organizador.instagram),
       web: a.organizador.web,
       webUrl: urlSegura(a.organizador.web),
@@ -1446,7 +1455,7 @@ export const detalleDeActividad = (
       ? {
           nombre: a.tallerista.nombre,
           bio: a.tallerista.bio,
-          instagram: a.tallerista.instagram,
+          instagram: arrobaInstagram(a.tallerista.instagram),
           instagramUrl: enlaceInstagram(a.tallerista.instagram),
         }
       : null,

@@ -3428,6 +3428,63 @@ sobra la constante en la otra.
 
 ## P2 — mejoras reales
 
+### B-1141 · El Instagram del organizador en la ficha: la URL cruda de las fichas viejas, la arroba que falta, y una afirmación falsa en dos comentarios — ✅ hecho (2026-09-21) · P2 — del dueño (2026-09-21)
+
+> **Cerrado con los tres arreglos, y el del medio resultó ser el mismo que el
+> primero.** El texto visible del Instagram ahora se **deriva** en el view-model
+> (`arrobaInstagram`, `lib/handle-instagram.mjs`), así que la arroba y la URL
+> cruda se arreglan con la misma línea.
+>
+> **Se derivó al mostrar y no se migraron los documentos**, que era la otra
+> opción. Motivos, en orden: arregla las fichas viejas y las nuevas con el mismo
+> cambio; no toca datos de producción; y deja el crudo adentro del documento,
+> que es lo que le permite a quien edita ver qué se tipeó. El costo dicho: el
+> documento sigue teniendo la URL adentro, así que **cualquier otra salida que
+> lea el campo directo la sigue mostrando**. Los auditores barrieron las salidas
+> y quedaron **dos**: B-1142 (el pie del posteo para redes) y B-1145 (la
+> descripción del evento de Calendar, la única que se ve hoy y la única cuyo
+> arreglo no es gratis). El `events.json` **no** está entre ellas — publica el
+> nombre del organizador y nada más—, y eso quedó escrito en B-1142 porque un
+> auditor lo reportó mal mirando `toPublic.ts`.
+>
+> **Y destapó un tercer ítem, que es el que vale:** el campo no lo valida nadie
+> (B-1144). Corregir el comentario no cierra el agujero que describía mal.
+>
+> **La función vive al lado de `handleInstagram` y no en cada salida**: uno dice
+> cuál es la cuenta y el otro cómo se escribe, y son la misma pregunta. Separarlas
+> es la clase de B-88.
+>
+> **El tercer arreglo es el que más valía.** Dos comentarios —el docblock de
+> `conHandle` (`lib/actividades.ts`) y el del test que lo copió
+> (`tests/detallePublico.test.ts`)— afirmaban que «el `superRefine` del schema ya
+> lo rechaza al publicar». **Es falso**: `organizador.instagram` es `opcional` en
+> `actividadFormSchema` y ninguna regla lo mira, ni al guardar ni al publicar. La
+> afirmación no era inocua: describía una red inexistente como razón para dejar
+> pasar lo que no se reconoce, así que quien leyera el docblock concluiría que el
+> caso ya está cubierto. Ahora los dos dicen lo que pasa de verdad y nombran la
+> puerta que quedaría por cerrar (una regla en el nivel «publicar», como la que
+> **sí** tienen las tres guías).
+
+Reportados juntos por el dueño el 2026-09-21, sobre el campo «Instagram del
+organizador»:
+
+1. **En las fichas cargadas antes del 2026-09-17 se ve la URL entera.** B-928
+   normalizó al **guardar** (`formADocumento`) y no reescribió lo ya cargado, así
+   que esos documentos siguen con
+   `https://www.instagram.com/casabrandon/?igsh=…` adentro del campo — y
+   `detallePublico` publica ese texto como el **nombre visible**.
+2. **Falta la arroba al mostrarlo.** Aun con el handle bien guardado, la ficha
+   mostraba `casabrandon` pelado, que no se lee como una cuenta.
+3. **Dos comentarios afirman un `superRefine` que no existe.** Ver el bloque de
+   cierre.
+
+**Dónde:** `src/lib/handle-instagram.mjs` (la función nueva),
+`src/lib/enlaceSeguro.ts` (el re-export), `src/lib/detallePublico.ts` (los dos
+usos, organizador y tallerista), `src/lib/actividades.ts` y
+`tests/detallePublico.test.ts` (los comentarios).
+
+## P0 — rompe algo o pierde datos
+
 ### B-981 · «Dirección web» era el slug, y abajo había otro campo web — ✅ hecho (2026-09-17) · P2 — reportado por el dueño
 
 **Lo reportó cargando una librería desde el panel: «lugar para página web 2

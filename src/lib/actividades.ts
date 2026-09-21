@@ -180,9 +180,19 @@ export const formADocumento = (
    * El criterio del dueño vale más allá del campo: «no podemos obligarlos a
    * hacerlo como queremos, sino ajustarnos nosotros».
    *
-   * **Si no se reconoce, se guarda lo tipeado.** No se borra: el `superRefine`
-   * del schema ya lo rechaza al publicar, y perder lo que alguien escribió para
-   * castigar un formato es peor que guardarlo tal cual mientras es borrador.
+   * **Si no se reconoce, se guarda lo tipeado.** No se borra porque es la única
+   * copia del dato: perder lo que alguien escribió para castigar un formato deja
+   * a quien edita sin saber qué corregir.
+   *
+   * **Y nada lo rechaza al publicar** — B-1141. El comentario que estaba acá
+   * decía que sí («el `superRefine` del schema ya lo rechaza»), y era falso: el
+   * campo es `instagram: opcional` en `actividadFormSchema` y **ninguna** regla
+   * lo mira, ni al guardar ni al publicar. Las tres guías —librerías,
+   * suscripciones, lugares— sí validan el suyo contra el alfabeto del handle;
+   * este campo no, y el documento sale publicado igual. Lo que avisa es la
+   * ficha: `arrobaInstagram` muestra lo tipeado **sin arroba y sin link**, que
+   * es visible pero llega tarde. Si hay que cerrarlo de verdad, va una regla en
+   * el `superRefine` del nivel «publicar», como la de las guías.
    */
   const conHandle = (crudo: string): string => handleInstagram(crudo) ?? crudo.trim();
 

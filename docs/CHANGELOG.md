@@ -2,6 +2,43 @@
 
 ## Sin publicar
 
+- **El Instagram de la ficha se muestra como `@casabrandon`** — **B-1141**, tres
+  arreglos chicos del dueño sobre el mismo campo.
+
+  Dos eran el mismo: faltaba la arroba, y en las fichas cargadas **antes del
+  2026-09-17** se veía la URL entera. B-928 normalizó al **guardar** y no
+  reescribió lo ya cargado, así que esos documentos siguen con
+  `https://www.instagram.com/casabrandon/?igsh=…` adentro del campo — y la ficha
+  publica ese texto como el nombre visible.
+
+  **Se deriva al mostrar, no se migraron los documentos.** Arregla las fichas
+  viejas y las nuevas con la misma línea, no toca datos de producción, y deja el
+  crudo adentro por si hay que ver qué se tipeó. **El costo va dicho:** cualquier
+  otra salida que lea el campo directo sigue mostrando la URL, y quedan dos — el
+  pie del posteo para redes (B-1142) y la descripción del evento de Google
+  Calendar (B-1145). La segunda es la única que se ve hoy, y la única cuyo
+  arreglo **no es gratis**: normalizar ahí reescribe el payload de todo evento
+  ya publicado con un Instagram sin migrar, o sea un update masivo de una sola
+  vez contra el calendario de gente que lo tiene agendado (D-95). Se anota para
+  decidirlo, no se cuela. El `events.json` **no** está entre ellas: publica el
+  nombre del organizador y nada más.
+
+  **Y el tercer arreglo destapó un ítem que vale más que él** (B-1144): ese campo
+  es el **único** Instagram del repo que no se valida al publicar — las cuatro
+  guías sí validan el suyo. Corregir el comentario no cierra el agujero que
+  describía mal.
+
+  La función (`arrobaInstagram`) vive **al lado de `handleInstagram`**: uno dice
+  cuál es la cuenta, el otro cómo se escribe, y son la misma pregunta.
+
+  **Y el tercer arreglo es el que más valía: dos comentarios afirmaban una red
+  que no existe.** Decían que «el `superRefine` del schema ya lo rechaza al
+  publicar», y `organizador.instagram` es `opcional` en `actividadFormSchema` —
+  ninguna regla lo mira, ni al guardar ni al publicar. Describir una red
+  inexistente como razón para dejar pasar un formato raro hace que nadie vaya a
+  buscarla. Los dos comentarios ahora dicen lo que pasa y nombran la puerta que
+  queda abierta.
+
 - **Los dos caminos que publican el sitio miran producción** — **B-1139**,
   decisión del dueño. El chequeo que verifica que las taxonomías existan en la
   base vivía **solo** en el deploy por `push`; el rebuild automático —el que
@@ -834,6 +871,11 @@
   query string, el `https://` es opcional, y la actividad y la propuesta
   normalizan al guardar como ya hacían las tres guías — en la ficha pública se
   leía la URL entera donde tenía que decir `@casabrandon`.
+
+  **Esto arregló lo que se guarda de ahí en adelante, y nada más: las fichas
+  cargadas antes siguieron mostrando la URL** hasta B-1141, que derivó el texto
+  visible al mostrarlo. Se anota acá porque el párrafo de arriba se lee como si
+  la ficha hubiera quedado bien, y quedó bien solo para lo nuevo.
 
   Los mensajes decían «sin la arroba», o sea lo contrario de lo que el validador
   acepta; ahora dicen «@casabrandon o el link del perfil».

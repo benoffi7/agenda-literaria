@@ -55,3 +55,32 @@ export const handleInstagram = (/** @type {string | null | undefined} */ crudo) 
     .replace(/\/+$/, '');
   return /^[A-Za-z0-9._]{1,30}$/.test(limpio) ? limpio : null;
 };
+
+/**
+ * **El texto con el que se muestra ese handle: `@casabrandon`** — B-1141.
+ *
+ * Es la otra mitad de la misma pregunta que contesta `handleInstagram`, y vive
+ * al lado por eso: uno dice *cuál es la cuenta*, éste dice *cómo se escribe*.
+ * Tenerlo acá es lo que evita que cada salida se arme la arroba por su cuenta y
+ * que una quede vieja — la clase de B-88.
+ *
+ * ── Los dos arreglos que motivaron la función ─────────────────────────────
+ * 1. **La arroba faltaba.** La ficha pública mostraba `casabrandon` pelado,
+ *    que no se lee como una cuenta de Instagram sino como una palabra suelta.
+ * 2. **Las fichas cargadas antes del 2026-09-17 tienen la URL guardada.** La
+ *    normalización al guardar llegó con B-928 (`formADocumento`,
+ *    `lib/actividades.ts`) y **no reescribió lo ya cargado**: esos documentos
+ *    siguen con `https://www.instagram.com/casabrandon/?igsh=…` adentro, y la
+ *    ficha lo publicaba tal cual como nombre visible. Derivarlo **al mostrar**
+ *    —y no con una migración— arregla las viejas y las nuevas con el mismo
+ *    cambio, y deja el documento intacto por si hay que ver qué se tipeó.
+ *
+ * **Lo que no se reconoce sale como se escribió**, sin arroba: es el mismo
+ * criterio que `enlaceInstagram` con el `href`. Perder «Casa Brandon / IG» por
+ * no ser un handle es peor que mostrarlo sin link, y ponerle una arroba adelante
+ * a algo que no es una cuenta sería afirmar algo falso.
+ */
+export const arrobaInstagram = (/** @type {string | null | undefined} */ crudo) => {
+  const handle = handleInstagram(crudo);
+  return handle ? `@${handle}` : (crudo ?? '').trim();
+};

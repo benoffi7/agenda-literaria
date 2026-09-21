@@ -1,5 +1,12 @@
 /**
- * **Los dos saneadores de `href` del proyecto.**
+ * **Los dos saneadores de `href` del proyecto** — y, desde B-1141, la fachada
+ * por la que también pasa el texto visible de un handle.
+ *
+ * La distinción importa y está al principio a propósito: `urlSegura` y
+ * `handleInstagram` deciden qué puede terminar en un `href`; `arrobaInstagram`
+ * **no sanea nada**, decide cómo se **lee** ese handle en una página indexada.
+ * Son dos preguntas distintas que este archivo sirve juntas, y la segunda
+ * también es una salida pública.
  *
  * Vivían en `detallePublico.ts` —el view-model de la página de detalle— hasta
  * B-830 paso 7, y salieron de ahí cuando apareció el segundo consumidor: la
@@ -41,5 +48,9 @@ export const urlSegura = (crudo: string | null | undefined): string | null => {
  * mismo que `slugify` y `geografia`: los scripts corren en Node plano. Se
  * re-exporta acá para que ningún import haya tenido que cambiar de ruta, y el
  * porqué de cada regla está en el docblock de allá.
+ *
+ * **`arrobaInstagram` viaja con él** (B-1141): es cómo se escribe ese mismo
+ * handle cuando se lo muestra —`@casabrandon`—, y separarlos dejaría a un
+ * consumidor con el handle y sin la forma de mostrarlo.
  */
-export { handleInstagram } from '@/lib/handle-instagram.mjs';
+export { handleInstagram, arrobaInstagram } from '@/lib/handle-instagram.mjs';

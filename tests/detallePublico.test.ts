@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   accionDeInscripcion,
   datosEstructurados,
+  arrobaInstagram,
   detalleDeActividad,
   handleInstagram,
   migasDeDetalle,
@@ -206,6 +207,50 @@ describe('handleInstagram', () => {
     expect(handleInstagram('https://www.instagram.com/p/ABC/')).toBeNull();
     expect(handleInstagram('miinstagram.com/otra')).toBeNull();
     expect(handleInstagram('instagram.com.ar/casabrandon')).toBeNull();
+  });
+});
+
+/**
+ * **`arrobaInstagram` — el texto con el que se muestra el handle** (B-1141).
+ *
+ * Son los dos arreglos que motivaron la función, en su nivel más chico: la
+ * arroba que faltaba y la URL que quedó guardada en las fichas anteriores a
+ * B-928 (2026-09-17), que la normalización al guardar no reescribió.
+ */
+describe('arrobaInstagram', () => {
+  it.each([
+    ['casabrandon', '@casabrandon'],
+    ['@casabrandon', '@casabrandon'],
+    ['casa.brandon_2', '@casa.brandon_2'],
+  ])('la arroba no falta: %s → %s', (crudo, esperado) => {
+    expect(arrobaInstagram(crudo)).toBe(esperado);
+  });
+
+  /**
+   * **Las fichas cargadas antes de B-928 tienen la URL adentro del campo.** No
+   * se migraron, así que el texto visible se deriva al mostrar.
+   *
+   * MUTACIÓN PROBADA: devolver `(crudo ?? '').trim()` sin pasar por
+   * `handleInstagram` deja estos tres en rojo con la URL entera.
+   */
+  it.each([
+    ['https://www.instagram.com/casabrandon/', '@casabrandon'],
+    ['https://www.instagram.com/casabrandon/?igsh=MWxyZg%3D%3D', '@casabrandon'],
+    ['instagram.com/casabrandon', '@casabrandon'],
+  ])('la ficha vieja con la URL guardada: %s → %s', (crudo, esperado) => {
+    expect(arrobaInstagram(crudo)).toBe(esperado);
+  });
+
+  /**
+   * Lo que no es un handle sale como se escribió y **sin arroba**: ponérsela
+   * sería afirmar que «Casa Brandon / IG» es una cuenta. Mismo criterio que
+   * `enlaceInstagram` con el `href`.
+   */
+  it('lo que no es un handle sale tal cual, sin arroba', () => {
+    expect(arrobaInstagram('Casa Brandon / IG')).toBe('Casa Brandon / IG');
+    expect(arrobaInstagram('  casa brandon!!  ')).toBe('casa brandon!!');
+    expect(arrobaInstagram('')).toBe('');
+    expect(arrobaInstagram(null)).toBe('');
   });
 });
 
@@ -2567,12 +2612,65 @@ describe('B-928 · el Instagram se normaliza al guardar', () => {
   });
 
   /**
-   * **Lo que no se reconoce se guarda tal cual, no se borra.** El `superRefine`
-   * del schema ya lo rechaza al publicar; perder lo que alguien escribió para
-   * castigar un formato es peor que guardarlo mientras es borrador — y encima
-   * deja a quien edita sin el dato que tiene que corregir.
+   * **Lo que no se reconoce se guarda tal cual, no se borra.** Perder lo que
+   * alguien escribió para castigar un formato deja a quien edita sin el dato que
+   * tiene que corregir.
+   *
+   * Este comentario decía que «el `superRefine` del schema ya lo rechaza al
+   * publicar», y **es falso** (B-1141): `organizador.instagram` es `opcional` en
+   * `actividadFormSchema` y ninguna regla lo mira. Se corrige acá y en el
+   * docblock de `conHandle` (`lib/actividades.ts`), que era la misma afirmación
+   * escrita dos veces — el test la repetía porque la copió de ahí.
    */
   it('lo que no se reconoce se conserva, no se pierde', () => {
     expect(conInstagram('casa brandon!!').organizador.instagram).toBe('casa brandon!!');
+  });
+});
+
+/**
+ * **B-1141 — y la ficha lo muestra con arroba, incluso si el documento tiene
+ * la URL.**
+ *
+ * B-928 (arriba) arregló lo que se **guarda** de ahí en adelante y no reescribió
+ * lo ya cargado: los documentos anteriores al 2026-09-17 siguen con la URL
+ * adentro del campo. Por eso el texto visible se deriva en el view-model, que es
+ * el punto de paso obligado de la página (D-140): con el mismo cambio salen bien
+ * las fichas viejas y las nuevas, y no hace falta tocar datos de producción.
+ *
+ * Se afirma sobre el organizador **y** sobre el tallerista porque son dos líneas
+ * distintas de `detalleDeActividad` y la segunda es la que se olvida.
+ *
+ * MUTACIÓN PROBADA: volver a `instagram: a.organizador.instagram` en
+ * `detallePublico.ts` deja el primer aserto de cada `it` en rojo.
+ */
+describe('B-1141 · el texto del Instagram en la ficha', () => {
+  it('el del organizador sale como @handle, venga como venga', () => {
+    const viejo = detalleDe({}, {
+      organizador: { nombre: 'Casa Brandon', instagram: 'https://www.instagram.com/casabrandon/?igsh=MWx', web: '' },
+    } as Partial<Actividad>);
+    expect(viejo.organizador.instagram).toBe('@casabrandon');
+    expect(viejo.organizador.instagramUrl).toBe('https://instagram.com/casabrandon');
+
+    const nuevo = detalleDe({}, {
+      organizador: { nombre: 'Casa Brandon', instagram: 'casabrandon', web: '' },
+    } as Partial<Actividad>);
+    expect(nuevo.organizador.instagram).toBe('@casabrandon');
+  });
+
+  it('el del tallerista también', () => {
+    const d = detalleDe({}, {
+      tallerista: { nombre: 'Ana', bio: '', instagram: 'https://www.instagram.com/ana.escribe/' },
+    } as Partial<Actividad>);
+    expect(d.tallerista?.instagram).toBe('@ana.escribe');
+    expect(d.tallerista?.instagramUrl).toBe('https://instagram.com/ana.escribe');
+  });
+
+  /** Lo que no es un handle no se pierde ni se disfraza: sale tal cual y sin link. */
+  it('lo que no es un handle sale sin arroba y sin link', () => {
+    const d = detalleDe({}, {
+      organizador: { nombre: 'Casa Brandon', instagram: 'Casa Brandon / IG', web: '' },
+    } as Partial<Actividad>);
+    expect(d.organizador.instagram).toBe('Casa Brandon / IG');
+    expect(d.organizador.instagramUrl).toBeNull();
   });
 });

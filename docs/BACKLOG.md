@@ -1174,6 +1174,111 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1144 · El Instagram de la actividad es el único del repo que no se valida al publicar · P2 — del `auditor-privacidad` sobre el cierre de B-1141 (2026-09-21)
+
+**Lo destapó el tercer arreglo de B-1141.** El comentario de `conHandle` decía
+que «el `superRefine` del schema ya lo rechaza al publicar»; se corrigió porque
+es falso, pero **corregir el comentario no cierra el agujero que describía mal**,
+y un comentario no es un ítem: nadie lo va a encontrar.
+
+**El hecho:** `organizador.instagram` y `tallerista.instagram` son `opcional` en
+`actividadFormSchema` (`src/lib/schema.ts:458` y `:462`) y **ninguna regla los
+mira**, ni al guardar ni al publicar. Son los **únicos** campos de Instagram del
+repo sin validación: las cuatro guías sí validan el suyo contra el alfabeto del
+handle —`libreria-schema.ts:234`, `biblioteca-schema.ts:268`,
+`lugar-schema.ts:377`, `suscripcion-literaria-schema.ts:327` y `:330`—.
+
+**Por qué importa más ahora, no menos.** De ese campo sale texto libre a **dos**
+salidas públicas: la descripción del evento de Calendar (B-1145) y el pie del
+posteo para redes (B-1142). B-1141 le sacó el síntoma que se veía —la URL en la
+ficha— y dejó el resto igual: ahora la ficha lo muestra prolijo y el crudo sigue
+saliendo por las otras dos. El aviso de que algo está mal cargado quedó más
+débil, no más fuerte.
+
+**La ruta ya está escrita** en el comentario corregido: una regla en el
+`superRefine` del nivel «publicar», como la de las cuatro guías. Lo que hay que
+decidir es si frenar el publicado por un handle mal escrito, que es el costo.
+
+**Test que lo fijaría:** `it('publicar con un Instagram que no es un handle no
+pasa, como en las cuatro guías (§4.2)')` en `tests/schema.test.ts`.
+
+**Dónde:** `src/lib/schema.ts:458` y `:462`; el `superRefine` del nivel
+«publicar» arranca en `:564`.
+
+### B-1145 · La descripción del evento de Google Calendar pega la URL cruda del Instagram, y arreglarlo reescribe todo lo publicado · P2 — del `auditor-trampas` sobre el cierre de B-1141 (2026-09-21)
+
+**Es la única de las tres que se ve hoy, y la única cuyo arreglo no es gratis.**
+`functions/calendario.js` arma el bloque «Organiza:» concatenando
+`[org.nombre, org.instagram, org.web]`, así que una actividad con el Instagram
+sin migrar sincroniza al calendario **público** (§7.4) una descripción con la
+URL pegada tal cual.
+
+**Por qué no entró con B-1141, y por qué no es un two-liner:** el propio archivo
+explica en el docblock de arriba (líneas 706-717) que **a propósito** no
+normaliza estos valores. La guarda anti-loop compara el payload recalculado
+contra el guardado (`decidirAccion`/`mismoEvento`, trampa 3 del §13, B-162), así
+que envolver `org.instagram` con `arrobaInstagram` haría que **todo** evento ya
+publicado con un Instagram sin migrar se vea distinto del guardado y se
+actualice — la primera vez que corra el sync después del deploy. No es un loop:
+es un update masivo de una sola vez contra el calendario de gente que tiene el
+evento agendado, que es justo lo que D-95 decidió evitar.
+
+**O sea que la decisión no es «arreglarlo o no», es cuál de estas:**
+
+- **(a)** Normalizar y aceptar el update masivo de una vez. Costo: un pulso de
+  escrituras a la API de Calendar y una notificación de «evento actualizado» a
+  quien lo tenga agendado, por un cambio de texto.
+- **(b)** Migrar los documentos (un script que pase `handleInstagram` sobre
+  `organizador.instagram` y `tallerista.instagram` de la colección). Arregla
+  ésta, B-1142 y B-1144 de una sola vez y **sin** tocar la lógica del sync… pero
+  el sync se dispara igual al escribir el documento, así que el update masivo
+  ocurre lo mismo. La diferencia es que queda hecho en los datos y no hay que
+  acordarse en cada salida nueva.
+- **(c)** Dejarlo. Las fichas viejas se van corrigiendo solas a medida que
+  alguien las edita, porque `formADocumento` normaliza al guardar desde B-928.
+
+**Sin red:** no hay test sobre el Instagram en la descripción del evento. Va con
+la decisión, no antes.
+
+**Dónde:** `functions/calendario.js:721` y `:727`; el docblock que explica el
+criterio, `:706-717`.
+
+### B-1142 · El pie del posteo para redes arroba la URL cruda en las fichas anteriores a B-928 · P2 — salió de cerrar B-1141 (2026-09-21)
+
+**Es la misma causa que B-1141, y son dos las salidas que quedaron sin
+cubrir: ésta y la descripción del evento de Calendar (B-1145).** El
+documento de una ficha cargada antes del 2026-09-17 tiene
+`https://www.instagram.com/casabrandon/` adentro de `organizador.instagram`.
+B-1141 derivó el texto visible **en la ficha pública**; el texto para redes del
+panel (`lib/textoRedes.ts`) lee el campo directo.
+
+Lo que pasa ahí: `conArroba` exige `^[A-Za-z0-9._-]+$` para poner la arroba, y
+una URL no lo cumple, así que **sale la URL pelada en el pie del posteo** —
+donde tenía que ir `@casabrandon`. No se rompe nada; lo que no pasa es lo único
+que ese pie existe para hacer, que es etiquetar la cuenta. Quien copia la caption
+la pega así.
+
+**Por qué no se arregló junto con B-1141:** `conArroba` no es solo para
+Instagram. También arma los handles de `difusion.arrobar`, que admiten `-` —que
+Instagram no tiene— y que pueden ser de otra red. Pasarlo entero por
+`arrobaInstagram` rompería esos. El arreglo es aplicar `arrobaInstagram` **solo a
+los dos campos de Instagram** (`organizador.instagram` y `tallerista.instagram`)
+antes de que entren a `handlesDe`, y dejar `difusion.arrobar` como está.
+
+**El `events.json` NO está entre ellas, y se verificó:** el índice publica el
+organizador como **el nombre solo** (`entradaDeIndice`, `src/lib/eventsJson.ts:451`)
+y `tests/eventsJson.test.ts:242` afirma que los dos centinelas de Instagram no
+aparecen. El `auditor-trampas` lo había reportado como fuga mirando `toPublic.ts`,
+que sí lo proyecta — pero el único consumidor de ese campo es la página de
+detalle, que desde B-1141 lo deriva. Queda escrito para que no se vuelva a
+reportar.
+
+**Hermano de costo distinto:** B-1145, la descripción del evento de Calendar.
+Los dos se cierran de una si se decide la opción (b) de B-1145, que es migrar
+los documentos.
+
+**Dónde:** `handlesDe` en `src/lib/textoRedes.ts:233-247`.
+
 ### B-1129 · La clase que apareció dos veces el 2026-09-17: un chequeo que pasa por dónde está parado y no por lo que dice mirar · P2
 
 **No es un bug: es una clase, y tiene dos casos medidos del mismo día.** Los dos
@@ -2254,6 +2359,62 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1146 · Correr el archivador del backlog reordena `BACKLOG-cerrados.md` entero: 19.000 líneas de diff para mover un ítem · P3 — medido al cerrar B-1141 (2026-09-21)
+
+**El archivador es la herramienta documentada** —la cabecera de `BACKLOG.md`
+dice que lo cerrado «se mueve solo» con `node scripts/archivar-backlog.mjs`— y
+**nadie lo está corriendo**. Se ve en el historial: los últimos commits que
+cerraron ítems (B-1136, B-1137, B-1139, B-1140) tocan `BACKLOG-cerrados.md` con
+diffs de 13 a 59 líneas, o sea que escribieron la entrada a mano.
+
+**Por qué, medido hoy.** Correrlo para mover **un** ítem produjo un diff de
+**19.207 líneas** sobre `BACKLOG-cerrados.md` (9.627 inserciones, 9.580 bajas)
+para un contenido que crece 47 líneas. La causa es que reescribe el archivo
+agrupando por sección en el orden en que las encuentra, y eso **reordena las
+secciones**: pasó de `P0 → P3 → P2 → Pendiente → P1` a
+`P2 → P0 → P3 → Pendiente → P1`. Ninguno de los dos órdenes es el de las
+prioridades, así que el reordenamiento no arregla nada — solo mueve.
+
+**El daño no es el archivo, es la revisión.** Un diff de 19.000 líneas es
+irrevisable, así que el cambio real queda enterrado y cualquier edición manual
+que alguien hubiera hecho en el medio se vuelve invisible. Por eso el ítem se
+cerró insertando la entrada a mano, como venían haciendo los anteriores: 49
+líneas de diff en vez de 19.207.
+
+**Lo que hay que decidir es cuál de las dos:** que el archivador **conserve** el
+orden de secciones del archivo destino (inserta en su sección y no toca el
+resto), o que **ordene** de verdad por prioridad, de una vez, en un commit
+dedicado que se revise sabiendo que es puro movimiento. Lo que no puede quedar
+es que la herramienta documentada sea la que nadie usa porque su salida no se
+puede mirar.
+
+**Dónde:** `scripts/archivar-backlog.mjs`. La red que lo obliga a existir es
+`tests/tablero.test.ts:395` («parsea docs/BACKLOG.md entero y no pierde ítems»),
+que se pone roja si un ítem `✅ hecho` se queda en el archivo vivo — y está
+bien: es lo que detectó que faltaba archivar.
+
+### B-1143 · El docblock de `instagrams-de-la-base.mjs` describe una copia y un test de equivalencia que B-928 borró · P3 — salió de cerrar B-1141 (2026-09-21)
+
+**Misma clase que el tercer arreglo de B-1141: un comentario que afirma una red
+que no existe.** El docblock de `scripts/instagrams-de-la-base.mjs` dedica
+veinte líneas a explicar que la normalización del handle es «una copia, y atada
+por un test»: que `scripts/handle-instagram.mjs` tiene una segunda
+implementación y que `tests/instagrams-de-la-base.test.ts` corre las dos contra
+la misma batería exigiendo que contesten igual.
+
+**Nada de eso es cierto desde B-928.** `scripts/handle-instagram.mjs` es hoy una
+reexportación de tres líneas —su propio docblock lo dice— y la implementación es
+única. El comentario también manda a `src/lib/detallePublico.ts` como «la
+normalización de verdad», y la implementación vive en
+`src/lib/handle-instagram.mjs` desde el mismo ítem.
+
+**Por qué importa aunque no rompa nada:** quien lea ese docblock antes de tocar
+el handle va a creer que tiene que escribir el arreglo dos veces, o va a buscar
+un test de equivalencia que ya no existe para entender por qué está en verde.
+Es la misma confusión que B-1141 sacó de `conHandle`, en otro archivo.
+
+**Dónde:** `scripts/instagrams-de-la-base.mjs:36-57`.
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
 
