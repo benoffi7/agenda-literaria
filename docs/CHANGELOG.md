@@ -2,6 +2,30 @@
 
 ## Sin publicar
 
+- **La red contra decisiones duplicadas ya existía; lo que estaba roto era su
+  nombre** — **B-1128**. El ítem decía que las `B-` tienen guarda contra ids
+  repetidos y las `D-` no. Es falso:
+  `tests/decisiones-referenciadas.test.ts` exige unicidad desde el 2026-09-03, y
+  se comprobó mutando el archivo.
+
+  **Dos documentos concluyeron lo mismo leyendo el mismo caso**, y ése es el
+  hallazgo: el aserto vivía dentro de un `it` llamado «las entradas leídas están
+  en orden y sin repetir formatos raros», que no dice lo que verifica y encima
+  promete un orden que nadie chequea **y que el archivo no cumple** (hay 16
+  decisiones fuera de orden). Lo leyeron el ítem y la propia D-740, que lo había
+  anotado en `06-decisiones.md` como algo sin red. Las dos afirmaciones quedaron
+  corregidas.
+
+  **Es D-750 con el signo cambiado**, escrito el mismo día: allá una red que
+  parece red y no verifica nada; acá una que verifica y no lo parece. Mismo
+  daño —el trabajo se hace dos veces o no se hace— y misma causa: afirmar
+  cobertura sin medirla. El caso se partió en dos, cada uno nombrado por lo que
+  comprueba.
+
+  Lo que el ítem tenía bien queda escrito: las tres colisiones de ids del
+  2026-09-17 **las agarró alguien al integrar, ninguna un chequeo**. El
+  duplicado nace al resolver el merge, y ahí el archivo todavía no lo vio.
+
 - **La red que impide copiar el formato de un id ahora ve las copias que
   existían** — **B-1113**. Estaba en verde y no verificaba lo que su nombre
   afirmaba: es D-750 aplicado a sí mismo, el mismo día que se escribió.

@@ -45,9 +45,39 @@ describe('las entradas se leen de los encabezados, no de cualquier mención', ()
     expect(decisionesEscritas(registro).length).toBeGreaterThan(100);
   });
 
-  it('las entradas leídas están en orden y sin repetir formatos raros', () => {
+  it('cada entrada tiene la forma canónica de un id de decisión', () => {
+    expect(decisionesEscritas(registro).every((d) => /^D-\d+$/.test(d))).toBe(true);
+  });
+
+  /**
+   * **La red contra `## D-` duplicadas, que ya existía y nadie veía** — B-1128.
+   *
+   * Este aserto está acá desde el 2026-09-03 y es exactamente la guarda que
+   * hacía falta: el 2026-09-17 dos frentes escribieron dos decisiones distintas
+   * con el número **D-730**, tomando «la siguiente libre» sin poder ver la del
+   * otro, y si las dos hubieran llegado al archivo este caso se ponía rojo
+   * nombrando el número.
+   *
+   * **Lo que falló no fue la red: fue su nombre.** Vivía dentro de un `it`
+   * llamado «las entradas leídas están en orden y sin repetir formatos raros»,
+   * que no dice lo que verifica y además promete un orden que nadie chequea —ni
+   * existe: hay 16 decisiones fuera de orden numérico en el archivo—. Dos
+   * documentos distintos concluyeron leyéndolo que la unicidad **no** estaba
+   * cubierta: el ítem B-1128 («valida el formato, no su unicidad») y la propia
+   * D-740 («nada detecta dos `## D-` repetidos»). Los dos se corrigieron al
+   * medirlo.
+   *
+   * Es D-750 con el signo cambiado: allá una red que parece red y no verifica
+   * nada; acá una red que verifica y **no parece**. El daño es el mismo — se
+   * escribe dos veces o no se escribe— y la causa también: afirmar cobertura
+   * sin medirla.
+   *
+   * MUTACIÓN PROBADA: agregar un `## D-740 · …` al final de
+   * `docs/06-decisiones.md` deja este caso en rojo diciendo «expected 205 to be
+   * 206».
+   */
+  it('ningún número de decisión está escrito dos veces — B-1128', () => {
     const escritas = decisionesEscritas(registro);
-    expect(escritas.every((d) => /^D-\d+$/.test(d))).toBe(true);
     expect(new Set(escritas).size, 'hay dos encabezados con el mismo número').toBe(escritas.length);
   });
 

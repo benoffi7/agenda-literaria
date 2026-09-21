@@ -765,6 +765,68 @@ quedó atrasado»). La segunda se parece más a lo que el propio documento dice:
 
 ## P3 — cuando sobre tiempo
 
+### B-1128 · Las `B-` tienen red contra duplicados y las `D-` no, siendo el mismo riesgo — ✅ hecho (2026-09-21) · P3 — lo demostró la colisión de D-730 (2026-09-17)
+
+> **Cerrado, y la premisa del ítem era falsa: la red ya existía.**
+> `tests/decisiones-referenciadas.test.ts` exige unicidad de los `## D-` **desde
+> el 2026-09-03** —`new Set(escritas).size === escritas.length`, con el mensaje
+> «hay dos encabezados con el mismo número»—. Se comprobó mutando el archivo:
+> agregar un `## D-740` de más lo pone en rojo. Si las dos D-730 hubieran
+> llegado a `06-decisiones.md`, el caso las agarraba.
+>
+> **Lo que sí estaba roto era el nombre, y es lo que se arregló.** El aserto
+> vivía dentro de un `it` llamado «las entradas leídas están en orden y sin
+> repetir formatos raros»: no dice lo que verifica, y encima promete un orden
+> que nadie chequea **y que el archivo no cumple** —hay 16 decisiones fuera de
+> orden numérico—. Dos documentos distintos lo leyeron y concluyeron que la
+> unicidad no estaba cubierta: **este ítem** y **la propia D-740**, que lo
+> escribió en `06-decisiones.md` como hallazgo. Los dos quedaron corregidos.
+>
+> **Es D-750 con el signo cambiado**, y por eso se cierra el mismo día que se
+> escribió esa decisión: allá una red que parece red y no verifica nada, acá una
+> red que verifica y no lo parece. El daño es el mismo —el trabajo se hace dos
+> veces o no se hace— y la causa también: **afirmar cobertura sin medirla**. El
+> `it` se partió en dos, cada uno nombrado por lo que comprueba, y el de
+> unicidad lleva su mutación escrita.
+>
+> **Lo que el ítem tenía bien:** las tres colisiones del 2026-09-17 —esta más
+> B-1126 y B-1127— **las agarró alguien al integrar, ninguna un chequeo**. Que
+> la red exista no quiere decir que haya sido la que las frenó: las tres se
+> resolvieron antes de que el archivo las viera. Contra eso no hay test posible,
+> porque el duplicado nace al resolver el merge y el archivo nunca lo ve.
+>
+> **Y el `D-88` huérfano que el ítem nombra al pasar sigue abierto**, en dos
+> mitades: el alcance del barrido que hace que se subestime (**B-1147**, del
+> mismo día) y escribir la entrada, que es decisión del dueño.
+
+**No hay que argumentarlo: acaba de pasar.** Dos frentes escribieron el mismo día
+dos decisiones distintas con el número **D-730** —el aislamiento del emulador y
+las dos fichas de una biblioteca—, los dos tomando «la siguiente libre» con D-723
+como última y sin poder ver la del otro. Se resolvió al integrar, con el
+precedente de B-600: se queda la que ya estaba escrita en archivos fuente y
+pusheada, y la otra pasó a **D-740**.
+
+**Lo que falta es la red, y el desbalance está medido:**
+
+- `tests/bloques-de-codigo-en-la-doc.test.ts` **sí** detecta `### B-` duplicados,
+  y se extendió hace poco para mirar los dos archivos del backlog.
+- `tests/decisiones-referenciadas.test.ts` valida el **formato** de una `D-`
+  (`/^D-\d+$/`), no su unicidad.
+- `scripts/decisiones-referenciadas.mjs` detecta las **huérfanas**, que es el caso
+  inverso: citada y nunca escrita.
+
+O sea que para el mismo riesgo hay guarda de un lado y no del otro. El arreglo se
+parece al que ya existe: un `it` que barra `^## D-` y exija números únicos.
+
+**Es hermano de B-1113** —la red de D-88 con la firma equivocada—: los dos son
+«hay guarda para una mitad y no para la otra». Y es la misma clase que el
+`/al-backlog` que buscaba ids duplicados en un solo archivo (**B-1120**), del lado
+de las decisiones.
+
+**Al pasar, algo para el mismo barrido:** hoy `D-88` figura como referencia sin
+entrada —se la cita desde los dos backlogs y nunca se escribió—, además de D-400 y
+D-401, que ya tiene **B-1082**.
+
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
 
 **Lo trajo el dueño desde Search Console.** Queda anotado sobre todo para que

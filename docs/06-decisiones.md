@@ -11620,15 +11620,29 @@ presentaron.
 > escrito en otro lado**, y el salto queda dicho para que no se lea como una
 > entrada perdida. D-731 a D-739 quedan de margen.
 >
-> **Y el hueco destapó algo que no tiene red:** `tests/bloques-de-codigo-en-la-doc.test.ts`
-> detecta dos `### B-` con el mismo número, y **nada detecta dos `## D-`
-> repetidos** — `tests/decisiones-referenciadas.test.ts` valida el formato y
-> `scripts/decisiones-referenciadas.mjs` busca el caso inverso (citadas y nunca
-> escritas). Mismo riesgo, misma clase de día de trabajo, media red. Es
-> **B-1128**, y el mismo día lo demostró **tres veces**: esta colisión más los
-> dos ítems de librerías que nacieron sobre números ya ocupados y entraron
-> renumerados como **B-1126** y **B-1127**. Las tres las agarró alguien al
-> integrar, ninguna un chequeo.
+> **Y el hueco pareció destapar algo sin red, y no lo era** (corregido el
+> 2026-09-21, al cerrar **B-1128**). Este párrafo decía que
+> `tests/bloques-de-codigo-en-la-doc.test.ts` detecta dos `### B-` con el mismo
+> número y que **nada detecta dos `## D-` repetidos**. Es falso: la guarda
+> existe en `tests/decisiones-referenciadas.test.ts` **desde el 2026-09-03** y
+> se comprobó mutando el archivo —agregar un `## D-740` de más la pone en rojo
+> nombrando el número—. Si las dos D-730 hubieran llegado al archivo, el caso
+> las agarraba.
+>
+> **Lo que falló fue el nombre del caso, no la red.** El aserto vivía dentro de
+> un `it` llamado «las entradas leídas están en orden y sin repetir formatos
+> raros», que no dice lo que verifica y encima promete un orden que nadie
+> chequea. Dos documentos lo leyeron y concluyeron lo mismo: este párrafo y el
+> ítem B-1128. Es **D-750 con el signo cambiado** —una red que verifica y no lo
+> parece, en vez de una que lo parece y no verifica— y la causa es la misma:
+> afirmar cobertura sin medirla. El `it` se partió en dos, cada uno nombrado por
+> lo que comprueba.
+>
+> Lo que sí es cierto de este párrafo: el mismo día pasó **tres veces** —esta
+> colisión más los dos ítems de librerías que nacieron sobre números ya ocupados
+> y entraron renumerados como **B-1126** y **B-1127**— y **las tres las agarró
+> alguien al integrar**. Que la red exista no quiere decir que haya sido la que
+> las frenó: las tres se resolvieron antes de que el archivo las viera.
 >
 > Dos cosas que el ítem necesita y no son obvias:
 >

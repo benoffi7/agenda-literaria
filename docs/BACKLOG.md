@@ -2386,36 +2386,6 @@ el mismo cambio que venía a cerrar la clase. Es **B-1129 con otra cara** —un
 chequeo que pasa por dónde está parado— y la salida es la misma que allá: cambiar
 la firma, no ensanchar el alcance (**B-1113**).
 
-### B-1128 · Las `B-` tienen red contra duplicados y las `D-` no, siendo el mismo riesgo · P3 — lo demostró la colisión de D-730 (2026-09-17)
-
-**No hay que argumentarlo: acaba de pasar.** Dos frentes escribieron el mismo día
-dos decisiones distintas con el número **D-730** —el aislamiento del emulador y
-las dos fichas de una biblioteca—, los dos tomando «la siguiente libre» con D-723
-como última y sin poder ver la del otro. Se resolvió al integrar, con el
-precedente de B-600: se queda la que ya estaba escrita en archivos fuente y
-pusheada, y la otra pasó a **D-740**.
-
-**Lo que falta es la red, y el desbalance está medido:**
-
-- `tests/bloques-de-codigo-en-la-doc.test.ts` **sí** detecta `### B-` duplicados,
-  y se extendió hace poco para mirar los dos archivos del backlog.
-- `tests/decisiones-referenciadas.test.ts` valida el **formato** de una `D-`
-  (`/^D-\d+$/`), no su unicidad.
-- `scripts/decisiones-referenciadas.mjs` detecta las **huérfanas**, que es el caso
-  inverso: citada y nunca escrita.
-
-O sea que para el mismo riesgo hay guarda de un lado y no del otro. El arreglo se
-parece al que ya existe: un `it` que barra `^## D-` y exija números únicos.
-
-**Es hermano de B-1113** —la red de D-88 con la firma equivocada—: los dos son
-«hay guarda para una mitad y no para la otra». Y es la misma clase que el
-`/al-backlog` que buscaba ids duplicados en un solo archivo (**B-1120**), del lado
-de las decisiones.
-
-**Al pasar, algo para el mismo barrido:** hoy `D-88` figura como referencia sin
-entrada —se la cita desde los dos backlogs y nunca se escribió—, además de D-400 y
-D-401, que ya tiene **B-1082**.
-
 ### B-1083 · `D-200` nombra dos decisiones distintas · P3 — de documentar el tablero (2026-09-17)
 
 La entrada escrita en `06-decisiones.md` es «Los nombres de los meses se
