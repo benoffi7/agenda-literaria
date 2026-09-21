@@ -452,6 +452,8 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
     'continue-on-error'?: boolean;
   };
   type Job = {
+    /** De qué job cuelga. Vacío en los que arrancan solos. */
+    needs?: string[];
     if?: string;
     permissions?: Record<string, string>;
     'continue-on-error'?: boolean;
@@ -488,8 +490,25 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
    * aviso por mail ese lugar lo ocupa el secret del destino.
    */
   const avisos = (archivo: string) =>
-    jobsDe(archivo).filter(([, j]) =>
-      (j.steps ?? []).some((p) => 'MAIL_AVISOS_DESTINO' in (p.env ?? {})),
+    jobsDe(archivo).filter(
+      ([, j]) =>
+        (j.steps ?? []).some((p) => 'MAIL_AVISOS_DESTINO' in (p.env ?? {})) &&
+        /*
+         * **Y que cuelgue del deploy**, que es lo que separa un aviso
+         * automático de la prueba a mano — B-1140.
+         *
+         * Todo lo de este bloque (el `continue-on-error`, el `exit 0`, la
+         * prohibición del `::error::`) existe porque un aviso **no puede agregar
+         * su propio rojo** a la corrida que venía a avisar de otra cosa: el
+         * segundo rojo se lee último y tapa al primero (punto 3 de B-883).
+         *
+         * El job `probar-aviso` es lo contrario: no cuelga de nadie, **es** la
+         * corrida, y tiene que ponerse rojo si el mail no sale. Un verde que no
+         * manda nada sería la prueba mintiendo, que es justo lo que viene a
+         * descartar. Por eso se lo mide por `needs` y no por los secrets: lo que
+         * distingue a los dos no es a quién le escriben, es de qué cuelgan.
+         */
+        (j.needs ?? []).length > 0,
     );
 
   /** Los scripts de los jobs de aviso cuyo `if:` cumple la condición. */
@@ -558,6 +577,31 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
         }
       }
     }
+  });
+
+  it('y el botón de prueba, al revés: ése SÍ se pone rojo si el mail no sale', () => {
+    /*
+     * **B-1140.** Es la contracara de todo lo de arriba y por eso va acá al
+     * lado: si el job que prueba el aviso terminara en verde cuando el mail no
+     * sale, la prueba mentiría — y una prueba que miente es peor que no
+     * probar, porque deja la sensación de que está verificado.
+     *
+     * Se afirma lo que lo hace fallar: mira lo que dijo el script (que nunca
+     * devuelve error, a propósito) y sale con `exit 1` si no mandó nada.
+     *
+     * MUTACIÓN PROBADA: cambiar el `exit 1` por `exit 0` deja este caso en rojo.
+     */
+    const jobs = jobsDe('deploy.yml');
+    const prueba = jobs.find(([n]) => n === 'probar-aviso');
+    expect(prueba, 'no existe el job que prueba el aviso').toBeDefined();
+
+    const [, job] = prueba!;
+    expect(job['continue-on-error'], 'la prueba no puede tragarse su propio fallo').not.toBe(true);
+    expect((job.needs ?? []).length, 'la prueba no cuelga del deploy: es la corrida').toBe(0);
+
+    const guion = (job.steps ?? []).map((p) => p.run ?? '').join('\n');
+    expect(guion, 'la prueba no mira si el mail salió').toContain('aviso mandado');
+    expect(guion, 'la prueba no falla cuando el mail no sale').toContain('exit 1');
   });
 
   it('y no tiene la key del proyecto en la mano — §5.4', () => {

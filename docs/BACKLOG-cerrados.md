@@ -556,10 +556,30 @@ distinto y una es de SEO:
 >   sea la casilla del proyecto — con razón: lo que se pidió avisar es a una
 >   persona.
 >
-> **Pendiente del dueño:** crear los tres secrets (`MAIL_AVISOS_DESTINO`,
-> `MAIL_AVISOS_USUARIO`, `MAIL_AVISOS_PASSWORD`) y **probar el envío a mano** con
-> el script. Sin ellos el job no rompe nada: avisa por el log y termina en verde,
-> que es lo mismo que hacía el issue cuando no podía escribir.
+> **Los tres secrets están cargados** (`MAIL_AVISOS_DESTINO`,
+> `MAIL_AVISOS_USUARIO`, `MAIL_AVISOS_PASSWORD`, el 2026-09-21). Sin ellos el job
+> no rompe nada: avisa por el log y termina en verde, que es lo mismo que hacía
+> el issue cuando no podía escribir.
+>
+> **Y hay un botón para probar el aviso**, que es lo que faltaba para que dejara
+> de ser un mecanismo escrito y sin verificar: Actions → «Build y deploy del
+> sitio» → «Run workflow» → tildar *«Mandar un mail de prueba»*. Con
+> `probar_aviso` el deploy **no corre**: la corrida existe solo para mandar el
+> mail.
+>
+> **Ese job sí se pone rojo si el mail no sale**, y es la única excepción a la
+> regla de que un aviso no puede agregar su propio rojo (punto 3 de B-883): los
+> otros dos cuelgan de una corrida que venía a avisar de otra cosa, y éste **es**
+> la corrida. Un verde que no manda nada sería la prueba mintiendo, que es peor
+> que no probar — deja la sensación de que está verificado.
+>
+> El test los distingue **por `needs` y no por los secrets**: lo que separa un
+> aviso automático de la prueba no es a quién le escribe, es de qué cuelga.
+>
+> **Por qué el botón y no solo el script:** correr `mail-de-aviso.sh` a mano
+> obliga a tener la contraseña de aplicación en la terminal. Desde Actions sale
+> con los secrets ya cargados y sin que nadie la toque — y quedó disponible para
+> cualquier día en que haga falta confirmar que el aviso sigue vivo.
 
 ### B-1137 · El sitio tiene scroll horizontal en el teléfono: son 6px y los pone el marcador de mes — ✅ hecho (2026-09-21) · P0 — abierto el 2026-09-18
 

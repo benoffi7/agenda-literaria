@@ -80,6 +80,12 @@
   SMTP y no por una action de terceros, que recibiría las credenciales del
   correo. La casilla es un secret y no un literal — el repo es público.
 
+  **Y desde Actions hay un botón para probarlo** («Run workflow» → *Mandar un
+  mail de prueba*), que no publica nada y no pide tener la contraseña en la
+  terminal. Ese job **sí se pone rojo** si el mail no sale: es la única
+  excepción a la regla de que un aviso no agrega su propio rojo, porque acá la
+  corrida **es** la prueba y un verde que no manda nada mentiría.
+
 - **La parte de arriba de la home dejó de tener cuatro bloques** — **B-1138**,
   pedido del dueño. Se fue la bajada («N actividades con fecha próxima. Buscá
   por barrio…»), el título pasó a ocupar el lugar que tenía la franja del

@@ -13,6 +13,20 @@ on:
   # A mano, desde la pestaña Actions. Sirve para probar el workflow sin tocar
   # Firestore, y para republicar después de un cambio de código.
   workflow_dispatch:
+    inputs:
+      # **B-1140 — el botón para probar el aviso sin esperar a que algo se
+      # rompa.** El envío también se puede correr a mano
+      # (`scripts/mail-de-aviso.sh`), pero eso obliga a tener la contraseña de
+      # aplicación en la terminal; desde acá sale con los secrets que ya están
+      # cargados y sin que nadie la toque.
+      #
+      # Un aviso que nunca se probó es un aviso que no existe: se descubre roto
+      # el día que hacía falta, que es exactamente lo que pasó con el mecanismo
+      # anterior (B-883, quince corridas rojas sin que nadie se enterara).
+      probar_aviso:
+        description: 'Mandar un mail de prueba y NO publicar el sitio'
+        type: boolean
+        default: false
 
 # Un deploy a la vez. Si mientras corre uno llega otro dispatch, el que está a
 # medias se cancela: el build nuevo lee los mismos datos y además los más
@@ -28,6 +42,10 @@ permissions:
 jobs:
   deploy:
     name: Build y deploy
+    # Con `probar_aviso` no se publica nada: la corrida existe solo para mandar
+    # el mail. `inputs` no existe en un `repository_dispatch` —ahí es `null`—
+    # así que el rebuild automático entra siempre por acá.
+    if: ${{ !inputs.probar_aviso }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -344,3 +362,52 @@ jobs:
 
           ./scripts/mail-de-aviso.sh 'Agenda LEH: el sitio volvio a publicarse' "$CUERPO"
           exit 0
+
+  # ───────────────────────────────────────────────────────────────
+  # **Probar el aviso** — B-1140. Actions → «Build y deploy del sitio» → «Run
+  # workflow» → tildar «Mandar un mail de prueba».
+  #
+  # **Este job SÍ se pone rojo si el mail no sale**, y es la diferencia con los
+  # dos de arriba. Aquéllos no pueden agregar su propio rojo a una corrida que
+  # venía a avisar de otra cosa (punto 3 de B-883); éste **es** la corrida, y un
+  # verde que no manda nada sería la prueba mintiendo — exactamente lo que viene
+  # a descartar.
+  # ───────────────────────────────────────────────────────────────
+  probar-aviso:
+    name: Probar el aviso por mail
+    if: ${{ inputs.probar_aviso }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mandar un mail de prueba
+        env:
+          MAIL_AVISOS_DESTINO: ${{ secrets.MAIL_AVISOS_DESTINO }}
+          MAIL_AVISOS_USUARIO: ${{ secrets.MAIL_AVISOS_USUARIO }}
+          MAIL_AVISOS_PASSWORD: ${{ secrets.MAIL_AVISOS_PASSWORD }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+
+          CUERPO=$(cat <<TEXTO
+          Esto es una prueba, pedida a mano desde Actions.
+
+          Si llego, el aviso de "el sitio no se esta publicando" tambien va a
+          llegar cuando haga falta.
+
+          La corrida: $RUN_URL
+          TEXTO
+          )
+
+          SALIDA=$(./scripts/mail-de-aviso.sh 'Agenda LEH: prueba del aviso' "$CUERPO" 2>&1)
+          printf '%s\n' "$SALIDA"
+
+          # El script nunca devuelve error —no puede tumbar la corrida que avisa—
+          # así que acá se mira lo que dijo. En una prueba, «no se pudo mandar»
+          # tiene que ser rojo: un verde que no manda nada es la prueba mintiendo.
+          case "$SALIDA" in
+            *'aviso mandado'*) echo "::notice::el mail salio: revisa la casilla" ;;
+            *) echo "::error::el mail NO salio"; exit 1 ;;
+          esac
