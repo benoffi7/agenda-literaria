@@ -232,6 +232,15 @@ ya bloquea es ruido y devalúa el resto del reporte. No propone refactors.
 red"** (las trampas que el cambio toca y que nadie verifica, con el `it(...)`
 que habría que escribir).
 
+**Y la lista «sin red» tiene su contracara, que es D-750.** Cuando alguien
+escribe la red que el agente pidió, lo que decide si esa red sirve son tres
+reglas —medir cuántos casos anteriores habrían pasado igual, mutar **todos** los
+sujetos y no uno, y desconfiar del recorte «hasta el final del archivo»—. Se
+escribieron porque el 2026-09-17 aparecieron **dos** chequeos en verde que no
+verificaban lo que su nombre afirmaba, y en uno de los dos la medición dio
+**cuatro de cinco sujetos pasando la mutación**. Un control laxo con forma de red
+es peor que ninguno: el agente que lo lea va a reportarlo como «cubierto».
+
 ### 📚 `auditor-documentacion`
 
 **Para qué.** Dos cosas que se saltean solas. Una es la **regla de proceso**: un

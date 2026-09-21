@@ -2,6 +2,34 @@
 
 ## Sin publicar
 
+- **Se escribió la clase de los dos chequeos laxos del 17: D-750** — **B-1129**,
+  decisión del dueño. No es un arreglo: los dos casos ya estaban corregidos con
+  mutación probada. Lo que faltaba era decidir si la lección se escribía, y
+  dónde.
+
+  **La clase:** un chequeo que pasa por dónde está parado y no por lo que dice
+  mirar. Un test ausente se nota cuando alguien lo busca; **una red laxa hace
+  que nadie lo busque nunca**, porque el que la lee concluye que la salida está
+  cubierta.
+
+  Las tres reglas que salieron de los dos casos: **medir antes de arreglar**
+  —en el caso de las reglas de Firestore el número fue cuatro de cinco sujetos
+  pasando la mutación, que es lo que convierte «parece laxo» en «no agarraba
+  nada»—, **mutar todos los sujetos y no uno**, y tratar el recorte «hasta el
+  final del archivo» (o el `includes` sobre un archivo entero) **como la firma**
+  de que el chequeo mira un ámbito más grande que su sujeto.
+
+  **Se descartó ponerle una red mecánica, y el motivo es la propia decisión:**
+  los dos patrones son legítimos en muchos lugares, así que la guarda nacería
+  con una lista de congelados grande — y una guarda que parece canónica y no lo
+  es es exactamente el problema que D-750 describe. Queda como regla escrita: no
+  frena nada, se aplica al escribir y al revisar. El costo va dicho ahí.
+
+  **Y el material sobrevivió de casualidad.** Vivía en
+  `/tmp/agenda-literaria-frentes.md`, fuera del control de versiones — B-1125
+  aplicado a la lección sobre cómo se pierden las cosas. Se revisó entero: lo
+  único que no estaba en el repo era la clase.
+
 - **El Instagram de la ficha se muestra como `@casabrandon`** — **B-1141**, tres
   arreglos chicos del dueño sobre el mismo campo.
 

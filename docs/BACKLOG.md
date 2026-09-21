@@ -1279,56 +1279,6 @@ los documentos.
 
 **Dónde:** `handlesDe` en `src/lib/textoRedes.ts:233-247`.
 
-### B-1129 · La clase que apareció dos veces el 2026-09-17: un chequeo que pasa por dónde está parado y no por lo que dice mirar · P2
-
-**No es un bug: es una clase, y tiene dos casos medidos del mismo día.** Los dos
-chequeos existían, estaban en verde, y **no verificaban lo que su nombre
-afirmaba**. Un test ausente se nota cuando alguien lo busca; una red laxa hace
-que nadie lo busque nunca — el que la lee concluye que la salida está cubierta.
-
-**Caso 1 · «cada colección abierta tiene el estado forzado en la regla»**
-(`tests/escritura-anonima.integracion.test.ts`). Recortaba
-`reglas.slice(indexOf('match /<x>/'))` —**hasta el final del archivo**— y
-preguntaba si ahí aparecía `estado ==`. Lo satisfacían tres cosas que no son
-«la regla fuerza el estado»: texto de **otra** colección más abajo, un
-**comentario** del propio bloque que cita `resource.data.estado == 'publicado'`
-para razonar sobre él, y el `allow update`, que mira el estado por otro motivo.
-
-> **La medición es lo que convierte «parece laxo» en «no agarraba nada»:**
-> mutando el validador de cada una de las cinco colecciones abiertas, con la
-> versión vieja **cuatro seguían en verde**. Con la corregida, las cinco dan
-> rojo.
-
-Y el detalle que explica por qué aguantó cinco colecciones: **`/bibliotecas` fue
-la primera en caer por ser la última del archivo**, o sea por no tener nada
-debajo que la tapara.
-
-**Caso 2 · el paso 8l.5 del gate de build** (`scripts/build-contra-emulador.mjs`).
-Preguntaba con un `includes` sobre el archivo entero si la ficha tenía «cargado
-el» en alguna parte: daba verde aunque el monto saliera suelto en otro lugar de
-esa misma página, y no miraba ni el listado ni el JSON. Su hermano, el 8j, usa
-**ventana de 160 caracteres alrededor de cada aparición sobre todo el `dist/`**.
-Lo encontró quien lo había escrito, revisando su propio trabajo veinte minutos
-después — **por inspección y sin medir**, que es la diferencia con el caso 1.
-
-**Lo que este ítem pide no es arreglar esos dos** —ya están arreglados, los dos
-con mutación probada— sino decidir si la clase merece su `D-` y una fila en
-`13-agentes.md`. Lo que la haría valer es la regla de método que sale de los dos:
-
-1. **Medir antes de arreglar.** Sin el número de cuántos casos anteriores habrían
-   pasado igual, no se sabe si era una grieta o si el chequeo nunca verificó nada.
-2. **La mutación tiene que correr sobre TODOS los sujetos del chequeo**, no sobre
-   uno. El caso 1 pasaba la mutación de `/bibliotecas` y fallaba la de las otras
-   cuatro; probar una sola habría dado por bueno el chequeo viejo.
-3. **Un recorte «hasta el final del archivo» es la firma.** Igual que el
-   `includes` sobre un archivo entero: los dos miran un ámbito más grande que el
-   sujeto, y crecen en falsos verdes a medida que el archivo crece.
-
-**Y va acá, en el repo, por un motivo que es parte del hallazgo:** el material de
-los dos casos quedó anotado en `/tmp/agenda-literaria-frentes.md`, fuera del
-control de versiones. Es exactamente **B-1125** —lo que no deja rastro
-versionado se pierde— aplicado a la lección sobre cómo se pierden las cosas.
-
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas · P2 — del `auditor-trampas` (2026-09-17)
 
 **D-88 se cerró en un archivo y se reintrodujo en otro el mismo día.** B-1110

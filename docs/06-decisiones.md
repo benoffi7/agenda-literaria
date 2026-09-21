@@ -11693,3 +11693,81 @@ número solo («$3.000 por año, gratis para jubilados»), y como la regla 2 de
 `datoConFecha.ts` (D-570) prohíbe filtrar u ordenar por un dato que envejece, el
 entero no compraba nada que se pudiera usar.
 
+
+---
+
+## D-750 · Un chequeo se valida mutando **todos** sus sujetos, y el recorte abierto es la firma de que no valida nada
+
+**B-1129, 2026-09-17. Salió de dos casos del mismo día**, encontrados por el
+mismo camino: alguien fue a mirar por qué algo *debería* haber fallado y no
+falló.
+
+> **No es una decisión de producto ni de arquitectura: es una regla de método
+> sobre cómo se escriben las redes de este repo.** Va acá igual porque es lo que
+> el resto del repo cita cuando escribe una: el `auditor-trampas` reporta «sin
+> red» y alguien la escribe, y **lo que decide si esa red sirve se estaba
+> resolviendo de memoria**.
+
+### El problema
+
+Un test ausente se nota cuando alguien lo busca. **Una red laxa hace que nadie
+lo busque nunca:** el que la lee concluye que la salida está cubierta, y el
+próximo chequeo que haga falta no se escribe. El daño no es no tener guarda —
+es tener una que parece guarda.
+
+Los dos casos del 2026-09-17, los dos ya arreglados:
+
+**Caso 1 · «cada colección abierta tiene el estado forzado en la regla»**
+(`tests/escritura-anonima.integracion.test.ts`). Recortaba
+`reglas.slice(indexOf('match /<x>/'))` —o sea **hasta el final del archivo**— y
+preguntaba si ahí aparecía `estado ==`. Lo satisfacían tres cosas que no son «la
+regla fuerza el estado»: texto de **otra** colección más abajo, un **comentario**
+del propio bloque que cita `resource.data.estado == 'publicado'` para razonar
+sobre él, y el `allow update`, que mira el estado por otro motivo.
+
+**Caso 2 · el paso 8l.5 del gate de build**
+(`scripts/build-contra-emulador.mjs`). Preguntaba con un `includes` sobre el
+archivo entero si la ficha tenía «cargado el» en alguna parte: daba verde aunque
+el monto saliera suelto en otro lugar de **esa misma página**, y no miraba ni el
+listado ni el JSON.
+
+### Las tres reglas
+
+**1 · Medir antes de arreglar.** Sin el número de cuántos casos anteriores
+habrían pasado igual, no se sabe si lo que había era una grieta o un chequeo que
+nunca verificó nada — y son dos arreglos distintos. En el caso 1 el número fue
+**cuatro de cinco**: mutando el validador de cada colección abierta, con la
+versión vieja cuatro seguían en verde. Eso convierte «parece laxo» en «no
+agarraba nada», y es lo que justifica reescribir el recorte en vez de agregarle
+una condición.
+
+**2 · La mutación corre sobre TODOS los sujetos del chequeo, no sobre uno.** El
+caso 1 pasaba la mutación de `/bibliotecas` y fallaba las otras cuatro: probar
+una sola habría dado por bueno el chequeo viejo. Y el detalle que explica por
+qué aguantó cinco colecciones vale como regla propia — **`/bibliotecas` cayó por
+ser la última del archivo**, o sea por no tener nada debajo que la tapara. Un
+chequeo con recorte abierto se rompe primero en el último sujeto, que es el que
+nadie prueba.
+
+**3 · El recorte «hasta el final del archivo» es la firma.** Igual que un
+`includes` sobre un archivo entero: los dos miran **un ámbito más grande que el
+sujeto**, así que crecen en falsos verdes a medida que el archivo crece. Cuando
+aparezca uno, la pregunta no es si hoy anda — es qué lo satisface además del
+sujeto. La forma correcta está en los dos arreglos: acotar el bloque por su
+límite real (`indexOf('\n    match /', desde + 1)`) o usar **ventana alrededor de
+cada aparición** (160 caracteres, el criterio del paso 8j).
+
+### Lo que esta decisión no hace
+
+**No frena nada.** No hay red mecánica detrás: se evaluó un `it` que marcara las
+dos firmas y se descartó porque los dos patrones son legítimos en muchos lugares
+—la lista de congelados nacería grande— y **una guarda que parece canónica y no
+lo es es exactamente el problema que esta decisión describe** (es el argumento de
+B-1113). Queda como regla escrita, que se aplica al escribir y al revisar.
+
+### Y el rastro, que es parte del hallazgo
+
+El material de los dos casos vivió tres días en `/tmp/agenda-literaria-frentes.md`,
+fuera del control de versiones. Es **B-1125** —lo que no deja rastro versionado
+se pierde— aplicado a la lección sobre cómo se pierden las cosas. Se recuperó
+para escribir esto, y por eso esta entrada existe.
