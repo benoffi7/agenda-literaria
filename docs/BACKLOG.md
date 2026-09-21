@@ -351,37 +351,6 @@ camino (el workflow ya sabe abrir un issue: tiene el job «Avisar que el sitio
 quedó atrasado»). La segunda se parece más a lo que el propio documento dice:
 «el chequeo dice qué falta; la escritura la decide una persona».
 
-### B-1136 · Filtrar desde el tríptico no se percibe: el resultado cambia abajo del pliegue · P0 — del dueño (2026-09-18)
-
-*«Estás en el home, presionás "+11 más hoy" o cualquiera del tríptico. Los eventos
-cambian, sí, pero como el tríptico ocupa mucho espacio, el usuario percibe que no
-pasó nada.»*
-
-**El síntoma es de feedback, no de ubicación, y conviene no confundirlos:** el
-filtro se aplica y el listado se actualiza, pero el tríptico mide lo que mide y el
-listado queda **abajo del pliegue**. La pantalla no se mueve, así que el clic se
-lee como que no hizo nada. Quien no entiende qué pasó vuelve a tocar.
-
-**Dónde está:** el tríptico es `src/components/publico/PanelesDeAhora.tsx` (B-600)
-y el filtro por su pie es B-791 (`diasDelCuando`, `Buscador.tsx:431`). El
-Buscador **no scrollea ni anuncia nada** al cambiar los filtros: no hay un solo
-`scrollIntoView` ni un `aria-live` sobre el conteo de resultados.
-
-**Tres alternativas, y una recomendación** —la decisión es del dueño porque toca
-la primera pantalla—:
-
-| | Qué hace | Qué cuesta |
-|---|---|---|
-| **(a) Llevar la vista al listado al filtrar** ← *recomendada* | `scrollIntoView` suave al encabezado del listado + `aria-live` con «N actividades», así el cambio también se **oye**. Ataca el síntoma que el dueño describe: el clic pasa a tener consecuencia visible | Chico, y **no toca ninguna decisión tomada** |
-| (b) Colapsar el tríptico cuando hay un filtro puesto | Se contrae a una línea con el filtro aplicado y un botón para volver a abrirlo; el listado sube solo | Medio. Hay que decidir si vuelve a abrirse al limpiar |
-| (c) Dejarlo solo en la home sin filtros | Es lo que el dueño plantea. Simple y drástico | Contradice a medias a **B-600**, que lo puso ahí para orientar; y la home *es* el único lugar donde vive hoy |
-
-**Ojo con una decisión escrita que no hay que pisar:** el tríptico **no mira los
-filtros** a propósito (`Buscador.tsx:411-420`) — contesta «¿qué hay hoy?» y no
-«¿qué hay hoy entre lo que filtraste». Cualquiera de las tres opciones tiene que
-dejar esa propiedad intacta: se trata de dónde está y cuánto ocupa, no de qué
-muestra.
-
 ## P0 — ya arreglados
 
 **Los cuatro primeros, en dos tandas y de dos clases distintas:**

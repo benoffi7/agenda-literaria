@@ -68,7 +68,7 @@ import {
 } from '@/lib/fechasPublicas';
 import { cuandoDeDias, etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
-import { RUTA_AGENDA, rutaDeDetalle } from '@/lib/rutasPublicas';
+import { ANCLA_RESULTADOS, RUTA_AGENDA, rutaDeDetalle } from '@/lib/rutasPublicas';
 import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
 
 /**
@@ -493,7 +493,10 @@ export const panelesDeAhora = (
       encuentros,
       restantes,
       resto: restantes > 0 ? FRASES[clave].resto(restantes) : null,
-      rutaDelResto: restantes > 0 ? `${RUTA_AGENDA}?cuando=${cuandoDeDias(dias)}` : null,
+      rutaDelResto:
+        restantes > 0
+          ? `${RUTA_AGENDA}?cuando=${cuandoDeDias(dias)}#${ANCLA_RESULTADOS}`
+          : null,
     };
   });
 

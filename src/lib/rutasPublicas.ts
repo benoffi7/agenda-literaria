@@ -172,6 +172,22 @@ export const rutaCanonica = (ruta: string): string => {
  * página, y no uno para el enlace y otro para el sitemap.
  */
 export const RUTA_AGENDA = rutaCanonica('/');
+
+/**
+ * **El ancla del listado de resultados de la home** — B-1136.
+ *
+ * La usan dos módulos que no se conocen: `index.astro`, que la escribe como
+ * `id` en el contenedor del buscador, y `ahoraPublico.ts`, que la pega al final
+ * del link del pie del tríptico para que la página abra **mostrando el
+ * resultado** y no el tríptico que se acaba de tocar.
+ *
+ * Está acá, al lado de las rutas, por lo mismo que ellas: escrita dos veces, el
+ * día que cambie en uno el link sigue existiendo y el salto deja de pasar —
+ * silenciosamente, porque un ancla que no existe **no es un error**, el
+ * navegador se queda arriba y nadie se entera (es la misma forma de romperse que
+ * `rutaDelResto` describe para la gramática de `?cuando=`).
+ */
+export const ANCLA_RESULTADOS = 'resultados';
 export const RUTA_CARTELERA = rutaCanonica('/cartelera');
 export const RUTA_SUSCRIBIRSE = rutaCanonica('/suscribirse');
 export const RUTA_AYUDA = rutaCanonica('/ayuda');

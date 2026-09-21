@@ -49,7 +49,7 @@ import { claseSalto } from '@/components/sitio/estilos';
 import { exploracionDeLaHome, indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
 import { coleccionSchema } from '@/lib/hubsPublicos';
 import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
-import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import { ANCLA_RESULTADOS, RUTA_AGENDA } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 
 const indice = await indiceDelSitio();
@@ -77,6 +77,7 @@ const etiquetas = mapaDeEtiquetas(indice.opciones);
 const tonos = await tonosDelSitio();
 const vigentes = vigentesDelIndice(indice, ahora);
 
+const ID_RESULTADOS = ANCLA_RESULTADOS;
 const ID_LISTADO = 'listado-del-build';
 const ID_PANELES = 'ahora-del-build';
 
@@ -222,12 +223,35 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
         </div>
       )}
 
-      <Buscador
-        client:load
-        version={indice.version}
-        idListadoEstatico={ID_LISTADO}
-        idPanelesEstaticos={ID_PANELES}
-      />
+      {/*
+        **El ancla a la que salta el pie del tríptico** — B-1136, pedido del
+        dueño: «presionás "+11 más hoy", los eventos cambian, sí, pero el usuario
+        percibe que no pasó nada».
+
+        El filtro se aplicaba bien; lo que faltaba era que se **viera**. El pie
+        del tríptico es un `<a>` de página completa (B-791), así que la página
+        volvía a cargar arriba de todo y el resultado quedaba abajo del pliegue,
+        detrás del mismo tríptico que se acababa de tocar.
+
+        **Es un ancla y no un `scrollIntoView`**, y esa es la decisión: el salto
+        lo hace el navegador al cargar, así que funciona **antes de que la island
+        hidrate** y sin una línea de JavaScript — la misma propiedad que el
+        comentario de `rutaDelResto` defiende para el link.
+
+        **Va acá y no en `#listado`**, que envuelve también al tríptico: saltar
+        ahí dejaría a la vista justo lo que hay que correr. Y va en el contenedor
+        del `<Buscador>` y no en la lista, porque la island **saca del DOM** la
+        lista del build (y el tríptico) para montar los suyos: un ancla ahí
+        adentro desaparece al hidratar. Este contenedor no lo toca nadie.
+      */}
+      <div id={ID_RESULTADOS} class="scroll-mt-4">
+        <Buscador
+          client:load
+          version={indice.version}
+          idListadoEstatico={ID_LISTADO}
+          idPanelesEstaticos={ID_PANELES}
+        />
+      </div>
 
       {/*
         La lista del build. La island la saca del DOM cuando tiene el índice; si

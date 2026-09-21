@@ -14,7 +14,7 @@ import {
 import { CLASES_DE_PARED, CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { cuandoDeDias, desdeQuery, diasDelCuando } from '@/lib/listadoPublico';
-import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import { ANCLA_RESULTADOS, RUTA_AGENDA } from '@/lib/rutasPublicas';
 import { claveDeDia, diaDeSemana, fechaCortaDeDia, hora } from '@/lib/fechasPublicas';
 import { etiquetaDe, mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
@@ -520,12 +520,19 @@ describe('el tope del panel, el sorteo y el «+N más»', () => {
     ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
 
+    /*
+     * **Y termina en `#resultados`** — B-1136. Sin el ancla la página volvía a
+     * cargar arriba de todo, con el resultado abajo del pliegue y detrás del
+     * mismo tríptico que se acababa de tocar: el filtro se aplicaba y no se
+     * veía. El ancla la declara `rutasPublicas.ts` y la escribe `index.astro`
+     * como `id`; acá se afirma que el link la usa.
+     */
     expect(panelDe(programacion, 'hoy').rutaDelResto).toBe(
-      `${RUTA_AGENDA}?cuando=${cuandoDeDias(['2026-09-14'])}`,
+      `${RUTA_AGENDA}?cuando=${cuandoDeDias(['2026-09-14'])}#${ANCLA_RESULTADOS}`,
     );
     // El finde son dos días, así que el filtro es un rango.
     expect(panelDe(programacion, 'finde').rutaDelResto).toBe(
-      `${RUTA_AGENDA}?cuando=${cuandoDeDias(['2026-09-19', '2026-09-20'])}`,
+      `${RUTA_AGENDA}?cuando=${cuandoDeDias(['2026-09-19', '2026-09-20'])}#${ANCLA_RESULTADOS}`,
     );
   });
 
@@ -539,8 +546,22 @@ describe('el tope del panel, el sorteo y el «+N más»', () => {
      */
     const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18]));
     const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
-    const { filtros } = desdeQuery(hoy.rutaDelResto!.split('?')[1]!);
+    /*
+     * **Se parsea con `new URL(...).search`, que es lo que hace el navegador**, y
+     * no partiendo por `?`. Desde que el link termina en `#resultados` (B-1136)
+     * la diferencia importa: un `split('?')[1]` se lleva el fragmento adentro de
+     * la query y el filtro deja de leerse. El que corre de verdad es
+     * `window.location.search`, que **no** incluye el fragmento — o sea que el
+     * test partido a mano era menos fiel que el navegador, y lo habría dicho al
+     * revés.
+     */
+    const query = new URL(hoy.rutaDelResto!, 'https://agendaleh.ar').search;
+    const { filtros } = desdeQuery(query);
     expect(diasDelCuando(filtros.cuando)).toEqual(['2026-09-14']);
+
+    // Y el fragmento queda **afuera** de la query, que es la propiedad de la que
+    // depende todo lo de arriba.
+    expect(query, 'el ancla se coló en la query').not.toContain('#');
   });
 
   it('sin resto no hay ruta: el pie no existe y no hay a dónde ir', () => {

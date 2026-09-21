@@ -2,6 +2,26 @@
 
 ## Sin publicar
 
+- **Tocar «+11 más hoy» ahora se nota** — **B-1136**, pedido del dueño: «los
+  eventos cambian, sí, pero el usuario percibe que no pasó nada». El filtro se
+  aplicaba bien; lo que faltaba era que se viera, porque la página volvía a
+  cargar arriba de todo y el resultado quedaba abajo del pliegue, **detrás del
+  mismo tríptico que se acababa de tocar**.
+
+  Ahora el link termina en un ancla y la página abre mostrando el listado.
+  **Es un ancla y no JavaScript**: el salto lo hace el navegador al cargar, así
+  que funciona antes de que la island hidrate y el sitio público no gana un byte
+  de JS.
+
+  Dos cosas que había que esquivar y quedaron escritas: el `#listado` que ya
+  existía **envuelve también al tríptico** —saltar ahí no corre nada— y el ancla
+  no podía vivir adentro del tríptico ni de la lista del build, porque la island
+  **saca los dos del DOM** al montar los suyos: existiría en el artefacto y
+  desaparecería al hidratar.
+
+  El tríptico sigue **sin mirar los filtros** (B-600): cambió a dónde lleva su
+  pie, no qué muestra.
+
 - **El sitio ya no se mueve solo en el teléfono** — **B-1137**. Había 6px de
   scroll horizontal en todas las páginas, y los ponía el **marcador de mes**:
   «SEPTIEMBRE» a 48px más el año más el `gap` no entran en 390px, y como el año

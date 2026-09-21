@@ -601,6 +601,76 @@ distinto y una es de SEO:
 > fijos en el marcado. Lo que estaba mal era el **tamaño** del problema, no esa
 > parte del razonamiento.
 
+### B-1136 · Filtrar desde el tríptico no se percibe: el resultado cambia abajo del pliegue — ✅ hecho (2026-09-21) · P0 — del dueño (2026-09-18)
+
+> **Cerrado con la opción (a), elegida por el dueño: que la vista baje al
+> listado.** Y resultó más barato de lo que el ítem estimaba, porque el pie del
+> tríptico **ya era un `<a>` de página completa** (B-791): no hacía falta
+> `scrollIntoView` ni `aria-live`, alcanzaba con que el link terminara en un
+> ancla.
+>
+> **Es un ancla y no JavaScript**, y esa es la decisión: el salto lo hace el
+> navegador al cargar, así que funciona **antes de que la island hidrate** — la
+> misma propiedad que el comentario de `rutaDelResto` defiende para el link.
+> Cero bytes de JS nuevos en el sitio público.
+>
+> **Las dos trampas de dónde poner el ancla**, que son lo que este ítem deja
+> aprendido:
+>
+> 1. **No podía ser `#listado`**, que ya existía: ese `id` envuelve al tríptico,
+>    al buscador **y** a la lista, así que saltar ahí deja a la vista justo lo que
+>    hay que correr del medio.
+> 2. **Y no podía ir adentro del tríptico ni de la lista del build**, porque la
+>    island **saca los dos del DOM** para montar los suyos. Un ancla ahí existe en
+>    el HTML del artefacto —o sea que un test sobre el `dist/` pasaría— y
+>    desaparece en cuanto carga el JavaScript. Va en el contenedor del
+>    `<Buscador>`, que no lo toca nadie.
+>
+> **El nombre del ancla se declara una vez** (`ANCLA_RESULTADOS` en
+> `rutasPublicas.ts`) porque lo usan dos módulos que no se conocen: el que arma
+> el link y el que escribe el `id`. Escrito dos veces, el día que cambie en uno
+> **el salto deja de pasar sin que nada falle**: un ancla que no existe no es un
+> error, el navegador se queda arriba y nadie se entera.
+>
+> **Y la decisión de B-600 quedó intacta**: el tríptico sigue sin mirar los
+> filtros. Lo que cambió es a dónde lleva su pie, no qué muestra.
+>
+> **Lo que falta verificar en el sitio publicado** —y es honesto decirlo—: que al
+> hidratar, el tríptico de la island no sea más alto que el del build. Si lo
+> fuera, empujaría el contenido después de que el navegador ya saltó, y el
+> resultado quedaría otra vez debajo. No se pudo medir acá porque la base del
+> emulador no tiene suficientes actividades para que aparezca el «+N más».
+
+
+*«Estás en el home, presionás "+11 más hoy" o cualquiera del tríptico. Los eventos
+cambian, sí, pero como el tríptico ocupa mucho espacio, el usuario percibe que no
+pasó nada.»*
+
+**El síntoma es de feedback, no de ubicación, y conviene no confundirlos:** el
+filtro se aplica y el listado se actualiza, pero el tríptico mide lo que mide y el
+listado queda **abajo del pliegue**. La pantalla no se mueve, así que el clic se
+lee como que no hizo nada. Quien no entiende qué pasó vuelve a tocar.
+
+**Dónde está:** el tríptico es `src/components/publico/PanelesDeAhora.tsx` (B-600)
+y el filtro por su pie es B-791 (`diasDelCuando`, `Buscador.tsx:431`). El
+Buscador **no scrollea ni anuncia nada** al cambiar los filtros: no hay un solo
+`scrollIntoView` ni un `aria-live` sobre el conteo de resultados.
+
+**Tres alternativas, y una recomendación** —la decisión es del dueño porque toca
+la primera pantalla—:
+
+| | Qué hace | Qué cuesta |
+|---|---|---|
+| **(a) Llevar la vista al listado al filtrar** ← *recomendada* | `scrollIntoView` suave al encabezado del listado + `aria-live` con «N actividades», así el cambio también se **oye**. Ataca el síntoma que el dueño describe: el clic pasa a tener consecuencia visible | Chico, y **no toca ninguna decisión tomada** |
+| (b) Colapsar el tríptico cuando hay un filtro puesto | Se contrae a una línea con el filtro aplicado y un botón para volver a abrirlo; el listado sube solo | Medio. Hay que decidir si vuelve a abrirse al limpiar |
+| (c) Dejarlo solo en la home sin filtros | Es lo que el dueño plantea. Simple y drástico | Contradice a medias a **B-600**, que lo puso ahí para orientar; y la home *es* el único lugar donde vive hoy |
+
+**Ojo con una decisión escrita que no hay que pisar:** el tríptico **no mira los
+filtros** a propósito (`Buscador.tsx:411-420`) — contesta «¿qué hay hoy?» y no
+«¿qué hay hoy entre lo que filtraste». Cualquiera de las tres opciones tiene que
+dejar esa propiedad intacta: se trata de dónde está y cuánto ocupa, no de qué
+muestra.
+
 ## P3 — cuando sobre tiempo
 
 ### B-977 · Search Console: 16 páginas «rastreadas y sin indexar» — ⚠️ sin bug que arreglar (2026-09-16)
