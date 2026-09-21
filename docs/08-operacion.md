@@ -2435,6 +2435,73 @@ El `grep` tiene que devolver el host de **nuestra** cuenta y el `u`/`id` que
 figuran en la consola. Si devuelve otra cosa, el formulario está apuntando a una
 lista ajena.
 
+## El aviso por mail de que el sitio no se publica (B-1140)
+
+Cuando el deploy falla, llega un mail. Antes se abría un issue; el cambio es
+decisión del dueño y el porqué está en **B-1140** — el issue hay que ir a
+mirarlo.
+
+### Los tres secrets
+
+| Secret | Qué va |
+|---|---|
+| `MAIL_AVISOS_DESTINO` | la casilla que recibe el aviso |
+| `MAIL_AVISOS_USUARIO` | la casilla **desde la que sale** el mail |
+| `MAIL_AVISOS_PASSWORD` | una **contraseña de aplicación** de esa cuenta de Google |
+
+**No es la contraseña normal de Gmail**: se genera en
+`myaccount.google.com/apppasswords`, con la verificación en 2 pasos activada, y
+son 16 caracteres que se muestran **una sola vez**. La casilla no puede ir
+escrita en el repo —es público— y `tests/sin-datos-personales.test.ts` frena
+cualquier `@gmail.com` versionado que no sea la del proyecto.
+
+### ⚠️ `gh secret set` sin `--body` puede crear el secret VACÍO
+
+Pasó al cargarlos, el 2026-09-21, y cuesta media hora si no está escrito:
+
+```bash
+gh secret set MAIL_AVISOS_PASSWORD        # espera el valor por stdin
+```
+
+Sin una terminal interactiva de verdad —lanzado desde una sesión de agente, un
+script, un pipe— **no lee nada y crea el secret con el valor vacío, sin
+quejarse**. Y después `gh secret list` lo muestra igual que uno cargado: con su
+nombre y su fecha. El síntoma llega del otro lado y no se parece a la causa: el
+job falla diciendo `falta MAIL_AVISOS_PASSWORD` **sobre un secret que existe**.
+
+Las dos formas que sí funcionan:
+
+- por la web (Settings → Secrets and variables → Actions), que es la más
+  simple para una contraseña;
+- o `gh secret set NOMBRE --body "…"`, con la contra de que queda en el
+  historial del shell.
+
+### Probar el aviso sin esperar a que algo se rompa
+
+**Actions → «Build y deploy del sitio» → «Run workflow» → tildar «Mandar un mail
+de prueba y NO publicar el sitio».** Con esa opción el deploy no corre: la
+corrida existe solo para mandar el mail, tarda unos segundos y **se pone roja si
+el mail no sale**.
+
+Es la única excepción a la regla de que un aviso no agrega su propio rojo (punto
+3 de B-883): los otros dos cuelgan de una corrida que venía a avisar de otra
+cosa, y éste **es** la corrida — un verde que no manda nada sería la prueba
+mintiendo.
+
+El envío también se puede correr a mano, que es lo que sirve para probar contra
+otro servidor:
+
+```bash
+MAIL_AVISOS_DESTINO=… MAIL_AVISOS_USUARIO=… MAIL_AVISOS_PASSWORD=… \
+  ./scripts/mail-de-aviso.sh 'Prueba' 'Si esto llega, funciona.'
+```
+
+`MAIL_AVISOS_SMTP` cambia el servidor (default `smtps://smtp.gmail.com:465`), así
+que mudarse de proveedor no toca ni el workflow ni el script.
+
+**El primer mail suele caer en spam.** Marcarlo como «no es spam» una vez y
+listo: si el aviso vive en spam, es como no tenerlo.
+
 ## Alerta de rebuild agotado (B-21)
 
 El único log del proyecto que amerita despertar a alguien. Cuando el

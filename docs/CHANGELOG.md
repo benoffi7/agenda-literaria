@@ -86,6 +86,13 @@
   excepción a la regla de que un aviso no agrega su propio rojo, porque acá la
   corrida **es** la prueba y un verde que no manda nada mentiría.
 
+  **El botón encontró algo en su primera corrida**, que es para lo que estaba:
+  el secret de la contraseña existía pero **estaba vacío**. `gh secret set` sin
+  `--body` lo crea así cuando no hay una terminal interactiva, y `gh secret
+  list` lo muestra como cualquier otro. Quedó escrito en `08-operacion.md`
+  junto con los tres secrets, porque el síntoma —«falta X» sobre un secret que
+  existe— no se parece a la causa.
+
 - **La parte de arriba de la home dejó de tener cuatro bloques** — **B-1138**,
   pedido del dueño. Se fue la bajada («N actividades con fecha próxima. Buscá
   por barrio…»), el título pasó a ocupar el lugar que tenía la franja del

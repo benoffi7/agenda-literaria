@@ -580,6 +580,19 @@ distinto y una es de SEO:
 > obliga a tener la contraseña de aplicación en la terminal. Desde Actions sale
 > con los secrets ya cargados y sin que nadie la toque — y quedó disponible para
 > cualquier día en que haga falta confirmar que el aviso sigue vivo.
+>
+> **Y el botón se ganó el sueldo en su primera corrida.** Dio rojo en 8 segundos:
+> `MAIL_AVISOS_PASSWORD` existía pero **estaba vacío**. `gh secret set NOMBRE`
+> sin `--body` espera el valor por stdin y, sin una terminal interactiva de
+> verdad, **crea el secret vacío sin quejarse**; después `gh secret list` lo
+> muestra igual que uno cargado, con su nombre y su fecha. El síntoma llega del
+> otro lado y no se parece a la causa —`falta MAIL_AVISOS_PASSWORD` sobre un
+> secret que existe—, así que quedó escrito en
+> [`08-operacion.md`](08-operacion.md) § «El aviso por mail».
+>
+> Sin el botón, eso se descubría el día que el sitio dejara de publicarse: el
+> aviso habría estado ahí, configurado, y no habría salido. **Segunda corrida:
+> el mail llegó** (2026-09-21).
 
 ### B-1137 · El sitio tiene scroll horizontal en el teléfono: son 6px y los pone el marcador de mes — ✅ hecho (2026-09-21) · P0 — abierto el 2026-09-18
 
