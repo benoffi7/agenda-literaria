@@ -35,7 +35,10 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > anotarlo. Cinco frentes: `decisiones-2` **B-1150-1159**, `instagram`
 > **B-1160-1169**, `analitica-doc` **B-1170-1179**, `calendario-ig`
 > **B-1180-1189**, `form-ig` **B-1190-1199**. `B-1148` y `B-1149` quedan de
-> margen. Del lado de las decisiones: **D-751 a D-770**, repartidas en el mismo
+> margen. **Y `B-1200` a `B-1219` los tiene reservados una sesión hermana que
+> trabaja B-1112 y B-1121 en el árbol principal, fuera de la tanda.** Del lado de
+> las decisiones: **D-751 a D-770** para los cinco frentes y **D-771 a D-774**
+> para la sesión hermana, repartidas en el mismo
 > orden. El detalle vivo está en `/tmp/agenda-literaria-frentes.md` y en
 > `EN-CURSO.md`. **Lo que sobre al cerrar se anota como hueco acá**, con esta
 > misma nota reescrita — si no, es exactamente el agujero que B-1051 describe.
