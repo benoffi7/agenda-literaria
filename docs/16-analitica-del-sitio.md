@@ -7,7 +7,7 @@
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
 | Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
-| **Lo que falta antes de que mida en producción** | Nada de configuración para el tag: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta el deploy del código, y —para que los números lleguen al panel— los **pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño)**, que solo puede hacer el dueño |
+| **Qué falta hoy** | **Ya mide en producción**: B-480 se resolvió el 2026-09-03 (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)) y los **cinco pasos de consola** del [§9.4](#94--los-pasos-de-consola-del-dueño) están hechos y verificados de punta a punta (B-790, 2026-09-07). Quedan **el mes de datos** —que ninguna de las dos APIs mide para atrás— y el **paso 7**, registrar `eje` y `slug` como dimensiones, que tampoco es retroactivo |
 | También construido, el 2026-09-03 a la tarde | las **tipografías autoalojadas** ([§7.4ter](#74ter--las-tipografías-autoalojadas-b-481), B-481: cero terceros en el load), el **evento del tríptico** ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), B-601, sin enganche todavía) y la **lectura de GA4 + Search Console al panel** ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373), B-374/B-373) |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
@@ -75,7 +75,7 @@ documento es para la mitad **b**.
 **Y la segunda consecuencia, que es la que ahorra plata:** la mitad **a** se
 puede leer en GA4, gratis, sin construir un tablero. Lo que el panel tiene que
 mostrar de la mitad **a** es el resumen que uno pega en un mail —cuatro números y
-su período—, no una réplica peor de GA4 ([§9.3](#93-qué-muestra-el-panel-de-la-mitad-vendible-y-con-qué-período)).
+su período—, no una réplica peor de GA4 ([§9.3](#93--qué-muestra-el-panel-de-la-mitad-vendible-y-con-qué-período)).
 
 ---
 
@@ -91,9 +91,9 @@ dueño**, y cada una dice a qué mitad pertenece y quién la contesta.
 | 2 | **¿Qué páginas se miran más?** | a | qué se destaca, y qué se le ofrece a un anunciante como lugar caro | GA4, solo — pero ver [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) | 🟡 B-372 |
 | 3 | **¿De dónde es la gente, con qué aparato y qué sistema entra?** | a | lo que un anunciante pregunta segundo, después del volumen | GA4, solo | 🟡 B-372 |
 | 4 | **¿Por dónde entra la gente?** (buscador, Instagram, un link pegado, directo) | a y b | dónde publicar; y qué canal se le puede prometer a un anunciante | GA4, solo | 🟡 B-372 |
-| 5 | **¿Cuántos llegan a escribirle al organizador?** | b | **el único número que dice si el sitio sirve.** Sin esto, «el sitio anda» significa «carga rápido» | un **evento propio** | ❌ → **B-375** |
-| 6 | **¿Qué filtro usa la gente, y cuál deja cero resultados?** | b | qué ejes quedan y cuáles se retiran; qué taxonomías del §4 vale la pena curar | un **evento propio**, en la island de filtros que **ya corre en el navegador** | ❌ → **B-375** |
-| 7 | **¿Google nos está encontrando?** ¿con qué búsquedas? | a y b | si el trabajo de SEO de B-109 rindió. Es la razón de ser del sitio (§2.3 del `CLAUDE.md`) | **Search Console**, que no es GA4 | 🟡 **no necesita ni JS ni cookies**, solo conectar el dominio → **B-373** |
+| 5 | **¿Cuántos llegan a escribirle al organizador?** | b | **el único número que dice si el sitio sirve.** Sin esto, «el sitio anda» significa «carga rápido» | un **evento propio** | ✅ `clic_inscripcion` **construido y midiendo** (B-375) desde el 2026-09-03, con B-372 y B-480 cerrados |
+| 6 | **¿Qué filtro usa la gente, y cuál deja cero resultados?** | b | qué ejes quedan y cuáles se retiran; qué taxonomías del §4 vale la pena curar | un **evento propio**, en la island de filtros que **ya corre en el navegador** | 🟡 `filtro_sin_resultados` **construido y midiendo** (B-375), y desde **B-798** dice **cuál** eje dejó la lista vacía — el `eje` no se puede **consultar** hasta el paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño), que es lo único que falta |
+| 7 | **¿Google nos está encontrando?** ¿con qué búsquedas? | a y b | si el trabajo de SEO de B-109 rindió. Es la razón de ser del sitio (§2.3 del `CLAUDE.md`) | **Search Console**, que no es GA4 | 🟡 **no necesita ni JS ni cookies**. Dominio conectado el 2026-09-03 y la lectura al panel construida (**B-373**); falta el paso de consola del dueño ([§9.4](#94--los-pasos-de-consola-del-dueño)) |
 | 8 | **¿Qué se está ofreciendo hoy, y en qué estado está?** | b | el trabajo del día: qué falta publicar, qué quedó a medias | el propio catálogo | ✅ **implementado** |
 | 9 | **¿Hay algo publicado que no se pueda usar?** | b | lo que hace que alguien escriba y no le contesten | el catálogo + el reloj | ✅ **implementado** |
 | 10 | **¿Lo que publicamos está completo?** (imagen, etiquetas, descripción) | b | lo que decide si una actividad aparece en la cartelera, en los filtros y con imagen en un link compartido | el catálogo | ✅ **implementado** |
@@ -127,8 +127,19 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | 4 | **Una actividad publicada sin etiquetas** | catálogo | ponerle etiquetas: sin ellas existe en el sitio pero no se encuentra filtrando | ✅ |
 | 5 | **Una actividad publicada con descripción demasiado corta** | catálogo | escribir dos frases más: la `meta description` sale de ahí, y es la que decide el clic | ✅ |
 | 6 | **Algo que quedó a medio publicar** — en `borrador` o `pendiente` sin tocarse hace más de 30 días | catálogo + reloj | publicarlo o descartarlo. Es trabajo hecho que no rinde | ✅ |
-| 7 | **Un filtro que se aplica y deja cero resultados** | un evento propio en la island de filtros, con la combinación que quedó vacía | retirar el eje, o cargar lo que falta. Un eje que da cero seguido es un eje que estorba | ❌ **B-375** |
-| 8 | **Una actividad que se abre mucho y no genera ni un mensaje** | vistas de página (GA4) + clic en el botón de inscripción (evento propio) | revisar la descripción, el precio o la forma de anotarse de **esa** actividad | ❌ **B-375** |
+| 7 | **Un filtro que se aplica y deja cero resultados** | un evento propio en la island de filtros, con la combinación que quedó vacía | retirar el eje, o cargar lo que falta. Un eje que da cero seguido es un eje que estorba | 🟡 **el evento está y mide** (B-375, con el eje desde B-798) — falta registrar `eje` como dimensión para poder consultarlo (paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)) |
+| 8 | **Una actividad que se abre mucho y no genera ni un mensaje** | vistas de página (GA4) + clic en el botón de inscripción (evento propio) | revisar la descripción, el precio o la forma de anotarse de **esa** actividad | ❌ el clic ya se mide (B-375); falta la otra mitad del cruce — las vistas por actividad, que son **B-374** y un mes de datos |
+| 9 | **Una actividad publicada con una web del organizador que no enlaza** — está cargada y no es una dirección | catálogo | corregirla: suele ser un espacio o una palabra de más. Mientras tanto las tres salidas la tiran sin decir nada — la página de detalle la muestra como texto plano, el JSON-LD no emite `organizer.url` y el texto para redes tampoco la enlaza | ✅ **B-813** |
+
+**La 9 llegó después que las ocho, y de otro lado** (**B-813**, 2026-09-08): no
+salió de pensar fricciones sino del informe «Eventos» de Search Console, que
+avisaba por cuatro datos faltantes del resultado enriquecido. Tres de esos cuatro
+**no** son una fricción —una actividad sin tallerista, sin web o sin un monto
+cerrado es legítima— y quedaron como proporciones del tablero, no como avisos
+([§8.1](#81--qué-muestra-la-pestaña-el-catálogo)). El cuarto sí lo es, y es éste:
+**`organizador.web` es texto libre** —el schema lo valida como texto opcional, no
+como URL—, así que nada frena en la carga un valor que después ninguna salida
+puede enlazar.
 
 ### 4.1 · Las dos que hay que leer con cuidado
 
@@ -148,7 +159,7 @@ un barrio que ninguna actividad usa es ofrecer un filtro que siempre devuelve
 cero»). Lo que **no** se deriva es qué combinación **eligió una persona**, que es
 la mitad valiosa: un cruce vacío que nadie intentó no es un problema.
 
-### 4.2 · El límite que ninguna de las ocho esquiva
+### 4.2 · El límite que ninguna de las nueve esquiva
 
 **Con el tráfico que este sitio tiene, la mayoría de las métricas de fricción no
 va a alcanzar significancia por un buen rato.** Es el mismo aviso que
@@ -829,8 +840,9 @@ Es además el único tramo claramente seguro:
 - **no manda nada a ningún tercero** — nada sale del navegador del dueño;
 - **no cuesta una lectura de Firestore de más** — es la misma lectura de
   `/actividades` que el listado ya hace, agrupada de otra manera;
-- **contesta las preguntas 8, 9 y 10 y cinco de las ocho fricciones** (la de «ya
-  pasó» se sacó, D-273), que son las que se convierten en trabajo del día siguiente.
+- **contesta las preguntas 8, 9 y 10 y seis de las nueve fricciones** (la de «ya
+  pasó» se sacó, D-273; las otras dos necesitan medir a alguien), que son las que
+  se convierten en trabajo del día siguiente.
 
 ### 8.0 · Dos pestañas, no una página larga (B-501)
 
@@ -859,21 +871,74 @@ medir.
 
 ### 8.1 · Qué muestra la pestaña «El catálogo»
 
-Tres bloques, en el orden de lo que hay que hacer primero:
+**Arriba, cuatro números:** actividades, publicadas, encuentros por venir y
+encuentros en los próximos 30 días. Los encuentros son los que **de verdad pueden
+pasar**: no cuentan los cancelados ni los de una actividad cancelada. Con el
+catálogo vacío no se dibuja nada — dice que cuando haya actividades va a aparecer
+qué se está ofreciendo y qué le falta.
 
-1. **Los avisos** — las cinco fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas), cada una con las
-   actividades que la disparan y un click para abrirlas. Van primero porque son
-   lo accionable. Si no hay ninguno, lo dice. **No hay un aviso de «ya pasó»
+Debajo, tres bloques, en el orden de lo que hay que hacer primero:
+
+1. **Los avisos** — las **seis** fricciones detectables del
+   [§4](#4--las-fricciones-a-detectar-traducidas) (las cinco originales, más la
+   web del organizador que no enlaza que sumó **B-813**), cada una con las
+   actividades que la disparan y un click para
+   abrirlas. Van primero porque son lo accionable, y entre ellas el orden es por
+   **gravedad y no por cantidad**: arriba lo que le hace perder algo a alguien de
+   afuera —escribir y que no le contesten—, abajo lo que nos hace perder algo a
+   nosotros —trabajo hecho que no rinde—. Solo aparece el aviso que tiene al menos
+   una actividad; si no hay ninguno, lo dice. **No hay un aviso de «ya pasó»
    (D-273):** se probó —reencuadrado y todo (D-270)— y se sacó, porque listaba el
    archivo entero, que sólo crece y para casi nada pide acción. Lo que sí queda es
    la cobertura acotada «cuántas publicadas tienen fecha futura» (punto 2), que
    dice lo mismo sin ser una lista que envejece.
-2. **Lo que se publica, completo o no** — de las publicadas: cuántas con imagen,
-   cuántas con etiquetas, cuántas con descripción suficiente, cuántas con
-   encuentros por venir. Es el termómetro de B-264 («2 de 42 con imagen») **medido
-   exacto**, y no estimado desde un cruce de GA4.
-3. **Qué hay cargado** — el reparto por estado, tipo, arancel y forma de cursar,
-   más ciclos, sueltas y encuentros.
+2. **Lo que se publica, completo o no** — hoy son **tres** tandas de números, y
+   lo que las separa es si hay una acción pendiente detrás:
+   - **Cuatro coberturas** sobre las publicadas: cuántas con imagen, cuántas con
+     etiquetas, cuántas con descripción suficiente, cuántas con encuentros por
+     venir. Es el termómetro de B-264 («2 de 42 con imagen») **medido exacto**, y
+     no estimado desde un cruce de GA4. «8 de 20 sin imagen» tiene algo que
+     hacer detrás, y eso es lo que las hace coberturas.
+   - **«Lo que Google puede mostrar»** (**B-813**) — tres **proporciones**: dicen
+     quién la da, con web del organizador, y aranceladas con el monto cargado.
+     Salieron de los cuatro avisos del informe «Eventos» que **no** eran un
+     defecto del markup —`datosEstructurados` los emite cuando el dato está
+     cargado (B-731)—, menos la imagen, que ya es la primera cobertura de
+     arriba. Van como proporción y no como aviso porque listarlas sería **D-273
+     otra vez**: 65 de 68 publicadas sin tallerista no es una lista de trabajo,
+     es el catálogo con otro nombre, y para casi ninguna entrada hay algo que
+     hacer. La del monto se reparte **sobre las que admiten monto** y no sobre
+     todas las publicadas: gratis y a la gorra no lo llevan, así que el
+     denominador entero sería la mentira que el punto siguiente ya esquivaba.
+   - **Las tres de inscripción** (**B-703**), y solo si alguna publicada la pide:
+     cuántas piden, cuántas de ésas declaran cupo, cuántas están completas. **No
+     son un reparto y por eso no llevan torta** (**D-401**): son tres preguntas
+     de sí/no independientes y no las partes de un todo — una torta sobre ellas
+     sumaría porcentajes que se solapan (una actividad puede estar en las tres) y
+     dibujaría más de una vuelta. Las dos últimas van sobre las que piden
+     inscripción y no sobre todas las publicadas: un cupo en una actividad de
+     entrada libre no significa nada, y el denominador equivocado es lo que
+     convierte una proporción en una mentira.
+3. **Qué hay cargado** — **cuatro repartos en la grilla** (B-700, B-701,
+   **B-702**): por estado, por tipo, por arancel y **por barrio**. Cada uno con
+   torta o lista, el toggle propio de cada reparto —que se recuerda en el
+   navegador, porque la preferencia es de quien mira— y, siempre, la nota de
+   sobre qué todo reparte, que es obligatoria por firma del componente
+   (**D-401**). Los cuatro tienen el mismo toggle; lo que cambia es con qué
+   abren, y el de barrio es el único de la grilla que abre en lista: el circuito
+   porteño tiene veinte barrios, así que la torta mostraría «las cinco primeras
+   y el resto», que contesta menos que la lista entera. Cuenta **solo lo
+   presencial** y sale de todas las filas de «Dónde» —no del `sede` derivado—,
+   así que una actividad en dos barrios cuenta en los dos, pero una sola vez por
+   barrio.
+   **La forma de cursar va aparte, abajo, y también abre en lista** (B-224), y
+   no es un descuido de maquetación: es el único reparto donde una actividad
+   cuenta en más de una tajada por razones que no son geográficas, y una torta
+   de «47 formas» al lado de tres de «40 actividades» invita a compararlas, que
+   es justo lo que no se puede hacer. Cierra una frase con ciclos, sueltas y
+   encuentros cargados, que se quedó como frase a propósito: una torta de dos
+   cuñas no dice nada que «12 ciclos y 28 sueltas» no diga mejor y en menos
+   lugar.
 
 ### 8.1bis · Qué muestra la pestaña «El sitio público» — el andamiaje, no los datos (B-502)
 
@@ -922,9 +987,13 @@ retirado a propósito.
 |---|---|---|
 | El cálculo | `src/lib/estadoDelCatalogo.ts` | **puro**. Recibe `ActividadConId[]` y un reloj, devuelve el estado. No sabe de React, ni de Firestore, ni de pantallas |
 | La pantalla, las pestañas y el andamiaje de «El sitio público» | `src/components/admin/EstadisticasPanel.tsx` | lee `/actividades` en vivo, como las otras vistas del panel, y acomoda las dos pestañas |
-| Los gráficos | el mismo componente | **barras de CSS**, sin ninguna dependencia nueva. Cada barra lleva su número escrito al lado: el gráfico ayuda a comparar, no informa solo — de ahí que vaya `aria-hidden` |
-| La entrada | `src/components/admin/AdminApp.tsx` | una vista más del router propio, **diferida** por `import()` como las otras cinco (el corte de bundle de B-09 / B-117) |
+| Las barras de cobertura y proporción | el mismo componente | **barras de CSS**, sin ninguna dependencia. Cada barra lleva su número escrito al lado: el gráfico ayuda a comparar, no informa solo — de ahí que vaya `aria-hidden` |
+| Un reparto, con sus dos vistas | `src/components/admin/estadisticas/Reparto.tsx` | maquetación y cableado, y **acá no se decide nada**: los ángulos, la agrupación de la cola, el color y el porcentaje salen de los dos módulos puros de abajo. Lo único que sí decide son tres cosas de presentación — el `role="img"` con el reparto entero en palabras (un `<svg>` de cuñas no lo lee nada), el filete del color del papel entre cuña y cuña, y la nota de unidad, **obligatoria por firma** (D-401) |
+| La aritmética de la torta | `src/lib/tortaDelPanel.ts` | **puro, y dibujada a mano** (B-700): una cuña es un `path` con dos puntos y un arco, así que no entra ninguna librería de gráficos —son 50-200 KB para cinco cuñas, contra el corte de bundle de B-09— y a cambio la aritmética es testeable. `arcosDeTorta` **no recibe ningún total**: el todo es siempre la suma de sus tajadas (D-401), así que no hay forma de pasarle uno equivocado |
+| Con qué vista arranca un reparto, y que se recuerde | `src/lib/vistaDeGrafico.ts` | **puro**, con el almacén como puerto, así que se testea sin DOM. La lista no es un modo degradado de la torta sino su alternativa accesible (B-701), y la preferencia es de quien mira. Lo que se guarda es el nombre del reparto y la palabra `torta` o `lista` — una marca, no contenido ([§5.1](#51--el-page_view-automático-manda-la-url-y-la-url-lleva-el-título)) |
+| La entrada | `src/components/admin/AdminApp.tsx` | una vista más del router propio, **diferida** por `import()` como las otras once (el corte de bundle de B-09 / B-117) |
 | Los tests del cálculo | `tests/estado-del-catalogo.test.ts` | el módulo puro caso por caso, con los bordes de cada umbral, más el barrido de que nada de lo que la pantalla ve llega a la analítica |
+| Los tests de los gráficos | `tests/torta-del-panel.test.ts`, `tests/vista-de-grafico.test.ts` | los dos módulos puros: que la torta cierre en 360° aun con la cola agrupada, y que la memoria de la vista no invente un valor que no existe |
 | Los tests de las pestañas | `tests/estadisticas-pestanias.render.test.tsx` | renderizado real (jsdom): qué panel se ve al hacer click y al navegar con las flechas, y el roving `tabIndex` — cableado que un test del fuente no puede verificar sin arriesgar un falso verde |
 
 ### 8.3 · Dos cosas que no hace, y una que sí
@@ -1069,7 +1138,7 @@ número— pero es un desvío del pedido y conviene tenerlo escrito.
    que escribe** y no solo del que lee: `e.message` lo arma `googleapis`, no
    este repo, y el tope en el lector llega después de persistir.
 6. **Las dimensiones que se le piden a GA4 son una lista blanca.** Es el
-   invariante del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear)
+   invariante del [§5.3](#53--el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear)
    visto **del lado que lee**, que hasta acá no lo protegía nada. `pagePath` no
    lleva la query; **`pagePathPlusQueryString` sí** — una palabra de diferencia,
    y el ranking de páginas del panel mostraría `?q=<lo que alguien tipeó>`. Por
@@ -1119,9 +1188,17 @@ puede distinguirlo de un enganche que no funciona. Las distingue
 
 **Un agente no puede hacer ninguno de estos, y no es una limitación técnica: es
 el §5.4 del `CLAUDE.md`.** Son credenciales y permisos sobre recursos del dueño.
-Hasta que estén, la Function está desplegada y la pantalla dice exactamente qué
-falta («falta un paso de configuración para Google Analytics: `GA4_PROPERTY_ID`
-sin configurar»), así que no hay nada roto mientras tanto.
+**Los cinco primeros están hechos** — el dueño los corrió el 2026-09-07 y se
+verificaron de punta a punta forzando una corrida del job: el log dice
+`analítica del sitio actualizada`, o sea que las dos APIs contestaron y
+`sistema/analitica-sitio` se escribió (**B-790**). Quedan el **6** (opcional) y
+el **7**, que es el que corre el reloj.
+
+Quedan escritos igual, y no es archivología: son los pasos a rehacer si se cambia
+de propiedad de GA4, de dominio o de cuenta de servicio, y cada uno dice con qué
+error se manifiesta cuando falta. Mientras alguno faltaba, la pantalla lo decía
+con todas las letras («falta un paso de configuración para Google Analytics:
+`GA4_PROPERTY_ID` sin configurar») en vez de mostrar un cero.
 
 Van en este orden porque cada uno se verifica con el anterior hecho.
 
@@ -1134,7 +1211,7 @@ gcloud services enable analyticsdata.googleapis.com \
 
 > ✅ **Hecho el 2026-09-07** por el dueño, y verificado con el comando de abajo:
 > las dos APIs aparecen habilitadas (`Google Analytics Data API`, `Google Search
-> Console API`). **Faltan los pasos 2, 3 y 4.**
+> Console API`).
 
 *Cómo verificar:* `gcloud services list --enabled --project agenda-literaria | grep -E 'analyticsdata|searchconsole'`
 tiene que devolver las dos líneas. Sin esto, la Function loguea un 403 con
@@ -1165,7 +1242,7 @@ permisos** → Agregar usuario → pegar el mismo mail → permiso
 *Cómo verificar:* aparece en la lista. Con el permiso mal puesto la API devuelve
 403 con `User does not have sufficient permission for site`.
 
-**4 · Cargar los dos identificadores en `functions/.env` y desplegar**
+**4 · Cargar los dos identificadores en `functions/.env` y desplegar** — ✅ **hecho el 2026-09-07**
 
 ```
 GA4_PROPERTY_ID=<el id NUMÉRICO de la propiedad>
@@ -1234,8 +1311,8 @@ dimensión personalizada*, alcance **Evento**, dos veces:
 
 | Nombre de la dimensión | Parámetro del evento | Qué va a tener |
 |---|---|---|
-| `eje` | `eje` | `tipo` · `arancel` · `modalidad` · `barrio` · `ciudad` · `tag` · `busqueda` · `cuando` · `abierta` · `cursada` · `otro` |
-| `slug` | `slug` | slugs de taxonomía, unidos por coma — **solo** de los seis primeros ejes ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) |
+| `eje` | `eje` | `tipo` · `arancel` · `modalidad` · `provincia` · `barrio` · `ciudad` · `tag` · `busqueda` · `cuando` · `abierta` · `cursada` · `otro` |
+| `slug` | `slug` | slugs de taxonomía, unidos por coma — **solo** de los siete primeros ejes ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) |
 
 Los dos son vocabulario cerrado o slugs de una taxonomía que ya es pública:
 **ninguno puede llevar el texto que alguien tipeó**, y eso es una garantía del
@@ -1319,8 +1396,8 @@ semana sin el tag es una semana de historia que no se recupera**.
 | 1 | **El tablero del catálogo** | ✅ hecho. Sirve desde hoy y no espera nada |
 | 2 | **Search Console** (**B-373**) | no necesita ninguna decisión, no pone cookies, no agrega JS, y contesta la pregunta que justifica el proyecto. **Diferido a propósito, no descartado**: el dueño lo deja para el final de todo. El motivo por el que igual conviene no demorarlo mucho es de calendario y sigue vigente — Search Console no muestra histórico anterior a la conexión, así que cada día sin conectarlo es un día que no se recupera |
 | 3 | **El banner y el consentimiento** (**B-376**, camino C3) | ✅ construido — es la pieza que hace que el tag esté informado desde el primer día en que mide de verdad |
-| 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **⛔ Bloqueado por B-480** antes de medir en producción — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480) |
-| 5 | **Los eventos propios** (**B-375**) | ✅ construidos: el clic en el botón de inscripción y el filtro que deja cero. Inertes hasta que B-480 se resuelva, igual que el resto de B-372 |
+| 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53--el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **B-480 se resolvió el 2026-09-03** — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)— y desde ahí el tag mide en producción |
+| 5 | **Los eventos propios** (**B-375**) | ✅ construidos **y midiendo** desde el 2026-09-03, con B-372 y B-480 cerrados: el clic en el botón de inscripción y el filtro que deja cero. El tercero, el del tríptico (**B-601**), se enganchó el 2026-09-07 |
 | 6 | **El resumen vendible en el panel** (**B-374**) | ✅ construido (2026-09-03) — y con un desvío del criterio que decía «recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre». **El criterio era correcto para el orden y se cumplió por el otro lado:** lo que se construyó no muestra un cero ni un número inventado, sino cuál de las cuatro situaciones está pasando ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)), así que sirve **antes** de que haya datos — dice si los pasos de consola están bien. Lo que sigue esperando el mes de datos son los números, no la pantalla. Ver [§9.4](#94--los-pasos-de-consola-del-dueño) para lo que falta del lado del dueño |
 
 ---
@@ -1329,17 +1406,17 @@ semana sin el tag es una semana de historia que no se recupera**.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Lo que falta no es código: los **pasos de consola del dueño** del [§9.4](#94--los-pasos-de-consola-del-dueño), el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **enganche del evento del tríptico** (B-601). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
+| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Los cinco pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño) se hicieron el 2026-09-07 (B-790) y el evento del tríptico se enganchó el mismo día (B-601). Lo que falta: el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **paso 7** del §9.4 con su mitad de código (B-798). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
 | **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
-| **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** para medir en producción |
-| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Falta el paso de consola del dueño: darle acceso de lectura a la cuenta de servicio y cargar `SEARCH_CONSOLE_SITE` ([§9.4](#94--los-pasos-de-consola-del-dueño), pasos 3 y 4) |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | 🟡 **construida** (2026-09-03): `traerAnaliticaDelSitio`, diaria, escribe `sistema/analitica-sitio`, y el panel la lee con estado vacío honesto por situación ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)). Falta lo que un agente no puede hacer: habilitar la Data API, dar acceso a la cuenta de servicio y cargar `GA4_PROPERTY_ID` ([§9.4](#94--los-pasos-de-consola-del-dueño)) — y **un mes de datos**, que es lo que la pantalla dice mientras no lo haya |
-| **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos — inertes hasta que B-372/B-480 midan de verdad |
+| **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | ✅ **hecho (2026-09-03)** — código, enganche en `Base.astro` y B-480 resuelto en la consola. En el camino salió D-254, el `preconnect` a `googletagmanager.com` sin condicionar al consentimiento |
+| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Los dos pasos que faltaban —el permiso **Restringido** para `calendar-sync@` y `SEARCH_CONSOLE_SITE=sc-domain:agendaleh.ar`— se hicieron el 2026-09-07 (B-790). Falta el volumen, no un paso |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | 🟡 **construida** (2026-09-03): `traerAnaliticaDelSitio`, diaria, escribe `sistema/analitica-sitio`, y el panel la lee con estado vacío honesto por situación ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)). Lo que un agente no podía hacer —habilitar la Data API, el rol **Lector** para `calendar-sync@` y `GA4_PROPERTY_ID`— lo hizo el dueño el 2026-09-07 y quedó verificado con una corrida forzada del job (B-790, [§9.4](#94--los-pasos-de-consola-del-dueño)). Falta **un mes de datos**, que es lo que la pantalla dice mientras no lo haya |
+| **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos **y ya miden**, con B-372 y B-480 cerrados |
 | **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
 | **B-377** | El **inventario publicitario**: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
 | **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
-| **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
+| **B-480** | **Era bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ✅ **hecho (2026-09-03)**, y con dos apagados más que aparecieron al configurarlo: los `page_view` por historial de navegación —el buscador reescribe la URL en cada filtro— y el borrado de la clave de consulta `q` en «Ocultar datos», que es la red durable |
 | **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) eran una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la elimina | ✅ **hecho (2026-09-03)** — servidas desde `/fuentes/`, **cero terceros** en el load y un pedido menos, con los números en [§7.4ter](#74ter--las-tipografías-autoalojadas-b-481). D-340 |
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
@@ -1355,7 +1432,7 @@ semana sin el tag es una semana de historia que no se recupera**.
   su vocabulario y la garantía de que no sale contenido. Es el estándar que la
   mitad **b** tiene que cumplir.
 - [`07-seguridad.md`](07-seguridad.md#analítica-del-panel) — la salida 4 y cómo se
-  verifica; el alcance nuevo del [§5.2](#52-por-qué-eso-igual-está-bien-dicho-con-precisión);
+  verifica; el alcance nuevo del [§5.2](#52--por-qué-eso-igual-está-bien-dicho-con-precisión);
   y la **salida 12**, la analítica del sitio público, con la advertencia de
   Enhanced Measurement que este documento cita en el [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480).
 - [`12-sitio-publico.md`](12-sitio-publico.md) §11.1 — la decisión 4 del dueño,
