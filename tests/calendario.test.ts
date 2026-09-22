@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import { describe, expect, it } from 'vitest';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
@@ -1327,9 +1328,6 @@ describe('construirDescripcion — «existe» es tener el nombre con contenido, 
  * nombrando la entrada exacta que las separó.
  */
 describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)', () => {
-  /** El fuente sin docblocks ni comentarios de línea: se afirma sobre el código. */
-  const sinComentarios = (src: string) =>
-    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   /**
    * Las formas en que un Instagram llega cargado, más las que tienen que ser
