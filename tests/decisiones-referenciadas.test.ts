@@ -244,7 +244,9 @@ describe('el corpus — B-1147', () => {
   it('el archivo que prueba este barrido queda afuera, o no puede quedar limpio nunca', () => {
     /*
      * La excepción está en el script y el motivo vive en los dos lados: los
-     * controles positivos de acá abajo citan `D-999` a propósito. Sin esta
+     * controles positivos de este archivo citan decisiones inventadas a
+     * propósito —`D-999` en la cabecera, `D-99999` y `D-88888` acá abajo, `D-99`
+     * en el cruce—, que es literalmente el caso que hay que ejercitar. Sin esta
      * exclusión, el informe reportaría para siempre una huérfana que es este
      * archivo haciendo su trabajo — que es la forma en que una lista deja de
      * mirarse (B-180 aplicado a un informe). Misma excepción que

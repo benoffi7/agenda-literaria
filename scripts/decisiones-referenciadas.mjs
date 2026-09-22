@@ -30,9 +30,11 @@
  * barrido persigue no es el link roto: es la decisión que alguien va a buscar y
  * no está. Y una decisión es, sobre todo, lo que el **código** cita — el mismo
  * argumento que D-740 escribió del lado de los duplicados. El caso que lo midió
- * es **D-88**: huérfana, citada desde `scripts/`, desde un `.sh` y desde ocho
- * archivos de `tests/`, y el informe nombraba solo los tres `.md` — quien lo
- * leía subestimaba el alcance por un factor de cuatro. Las otras dos las midió
+ * es **D-88**: huérfana, citada desde **dieciocho** archivos —cuatro `.mjs` de
+ * `scripts/`, un `.sh`, un módulo de `src/` y nueve de `tests/`— y el informe
+ * nombraba solo los tres `.md`. Quien lo leía subestimaba el alcance por un
+ * factor de seis. (El ítem estimaba «cuatro» y se quedó corto, justamente porque
+ * la cuenta se hizo a mano con el barrido que no los veía.) Las otras dos las midió
  * **B-1082**: D-400 y D-401 se citaban **diecisiete veces desde siete archivos**
  * de `src/` y `tests/` —el ítem dice «doce», que es la cuenta de D-401 sola— y
  * **no podían aparecer acá**, que es la puerta abierta justo donde el repo más
