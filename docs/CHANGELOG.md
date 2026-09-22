@@ -2,6 +2,44 @@
 
 ## Sin publicar
 
+- **Un documento que afirma el estado de un ítem ahora se compara contra el
+  backlog** — **B-1170**, **D-775**. Los dos barridos que existían verifican que un
+  `B-nnnn` o un `D-nnn` citado **exista**; ninguno miraba lo que la cita **afirma**.
+  Una fila `| **B-nnn** | … | ⛔ acción manual del dueño |` pasa los dos: el id tiene
+  el formato correcto, tiene entrada, y el enlace resuelve. Lo único falso es el
+  estado — que es justamente lo que alguien lee para decidir qué hacer esta semana.
+
+  El caso que lo abrió es **B-480**: `16-analitica-del-sitio.md` lo llamó «⛔
+  bloqueado» durante **diecinueve días** después de que dejara de bloquear, con su
+  propia cabecera diciendo «B-480 resuelto el 2026-09-03» tres párrafos más arriba. Y
+  no se quedó quieto: el frente que estaba arreglando ese archivo **propagó la
+  redacción vieja a filas nuevas**. **B-784** ya existía entero por lo mismo y se
+  había arreglado a mano, sin dejar nada que impidiera la próxima.
+
+  **Lo caro fue elegir el corte, y se eligió midiendo.** «Un emoji cerca de un id» da
+  71 coincidencias y **54 son historia fechada** —«✅ Construida el 2026-09-02
+  (B-109)»—, que no se pudre nunca. Se comparan las dos formas de **registro
+  paralelo**: una fila con columna de estado, y «bloqueado por» seguido de un id.
+  Quedan 17 afirmaciones contra 513 ítems. **Y la comparación es binaria** —cerrado
+  contra no cerrado— porque el vocabulario de «abierto» tiene cuatro emojis y elegir
+  entre ellos es de quien escribe: el corte binario reporta una de las cinco
+  afirmaciones con `🟡` y es verdadera, mientras que comparar el emoji exacto habría
+  reportado además una falsa.
+
+  **Cinco contradicciones, cero falsos positivos, y la que importa es la que nadie
+  había visto.** Cuatro eran las de B-480/B-372, corregidas a mano por el frente de
+  B-1085 mientras esto se escribía — que es de paso la prueba de que el barrido mira
+  donde dice mirar: las vio en el árbol donde existían y dejó de verlas en el árbol
+  donde se arreglaron. La quinta va en la dirección contraria, la teóricamente
+  ruidosa, y es la peor: **B-481 estaba hecho desde el 2026-09-03** y `BACKLOG.md`
+  decía `🔵 futuro`. Ahí el que miente es el **registro**, así que quien buscara
+  trabajo podía rehacer algo ya hecho (**B-1220**, corregido en la misma tanda).
+
+  **Deliberadamente no mira la historia de git**, y eso también se midió: de los ítems
+  abiertos, 8 tenían commits `feat/fix(B-nnn)` en `main` con la tanda en vuelo y solo
+  2 con la tanda integrada — y esos 2 son los dos falsos positivos duros. Cero
+  verdaderos positivos en el estado estable. Va como **B-1221**.
+
 - **El script de verificación dice si lo publicado es lo que hay en `main`** —
   **B-1121**, la mitad que B-205 había dejado escrita como «sigue sin existir».
   `verificar-produccion.mjs` leía la versión publicada y no la comparaba con nada;

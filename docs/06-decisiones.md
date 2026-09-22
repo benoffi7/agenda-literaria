@@ -12162,3 +12162,105 @@ Tampoco dice que haya que bajar siempre al sujeto más chico. La red de punta a
 punta que quedó en `commit-base-deploy.test.ts` —la que corre el `sh` entero— sigue
 valiendo y no se sacó: prueba el camino completo, que es otra pregunta. Lo que se
 agregó al lado es la que prueba la extracción sola. **Las dos, no una.**
+
+## D-775 · Un chequeo de documentación compara lo que la cita afirma, no solo que el id exista — y lo compara binario
+
+**B-1170, 2026-09-22.** Este repo tenía dos barridos de referencias cruzadas
+—`items-referenciados.mjs` para los `B-`, `decisiones-referenciadas.mjs` para las
+`D-`— y los dos contestan la misma pregunta: **¿el id existe?** Ninguno contesta la
+que rompe cosas: **¿lo que la cita dice de ese id sigue siendo cierto?**
+
+Una fila `| **B-nnn** | … | ⛔ acción manual del dueño |` pasa los dos barridos con
+todo bien. El id tiene el formato canónico, tiene entrada en el backlog, y si la
+cita fuera un enlace el ancla resolvería. Lo único falso es el **estado**, que es el
+único dato de esa fila que alguien usa para decidir algo.
+
+> **Como D-750 y D-771, es una regla de método.** D-750 dice **que** hay que mutar.
+> D-771 dice **qué** mutar. Ésta dice **qué comparar** cuando el chequeo es sobre
+> documentación: que un identificador resuelva no es que la afirmación alrededor del
+> identificador siga viva.
+
+### El problema, con las dos veces que se pagó
+
+**`docs/16-analitica-del-sitio.md` marcó ocho filas como bloqueadas por B-480 —con
+la frase exacta que este barrido busca— sobre algo resuelto el 2026-09-03, durante
+diecinueve días.** El documento se contradecía **a tres párrafos
+de distancia** —su propia cabecera decía «B-480 resuelto el 2026-09-03»— y nadie lo
+vio. Peor: el frente que estaba arreglando ese archivo **propagó la redacción vieja
+a filas nuevas**, porque lo razonable al escribir una fila es copiar el formato de la
+de al lado. Un estado falso no se queda quieto: se reproduce.
+
+> **Nota de redacción, y es un borde real:** esta entrada **no puede** escribir la
+> frase que describe con el id real al lado, porque el propio barrido la leería como
+> una afirmación viva. Pasó al escribirla. Es el mismo borde que el ejemplo de fila
+> de más arriba, y la razón por la que los dos van con `B-nnn`.
+
+Y no fue la primera vez. **B-784** existe entero por lo mismo, con el título escrito
+como un parte médico: «la ficha del auditor dice que B-480 está pendiente, y ya está
+hecho». Se arregló a mano y no quedó nada que impidiera la próxima — que llegó,
+sobre el mismo ítem.
+
+### Las tres decisiones, y las tres se tomaron midiendo
+
+**1 · Se compara la afirmación de *registro*, no la prosa.** «Un emoji cerca de un
+id» da **71 coincidencias** en los `.md` y **54 son historia fechada** —«✅
+Construida el 2026-09-02 (B-109)»—, que **no se pudre**: fue construida ese día y lo
+sigue siendo para siempre, pase lo que pase con B-109. Lo que se compara son las dos
+formas con las que un documento lleva un **registro paralelo** del que el backlog ya
+lleva: una **fila de tabla con columna de estado** (una celda que es *solo* el id,
+una última celda que abre con emoji) y la frase **«bloqueado por» seguida de un id**,
+que no cuenta una fecha sino una condición vigente. Quedan 17 afirmaciones contra
+513 ítems con estado. **Y hay un borde que esta misma decisión estrenó:**
+el ejemplo de fila que estos párrafos usan para explicar el corte **también se lee
+como una afirmación**, porque estar dentro de backticks no lo distingue. Se escribe
+con `B-nnn` y no con un id real — lo destapó el propio barrido al escribir esta
+entrada, que es la primera vez que un chequeo de este repo se queja de su propia
+documentación. Un chequeo con 54 falsos positivos no se lee dos veces, y un
+chequeo que la gente aprende a ignorar es la otra cara de D-750.
+
+**2 · La comparación es binaria: cerrado contra no cerrado.** El vocabulario de
+«abierto» tiene cuatro emojis —`🟡` a medias, `🟠` empezado, `⛔` bloqueado, `🔵`
+futuro— y elegir entre ellos es de quien escribe, no un dato: `16-analitica` dice
+`🟡 construida` de B-374 y `BACKLOG.md` dice `⛔ depende de un mes de datos`, y las
+dos son ciertas. Medido sobre las 5 afirmaciones con `🟡` del repo: el corte binario
+reporta **1** y es verdadera; el emoji exacto habría reportado además B-374, que es
+falsa. **La respuesta no era «`🟡` no se compara»: era «`🟡` se compara, y lo que se
+elige es contra qué».**
+
+**3 · Las dos direcciones se informan por separado, porque no son la misma falla.**
+
+- **El documento se quedó atrás** (dice ⛔/🟡, el backlog dice ✅). Es B-480: el
+  trabajo está hecho y el documento sigue mandando a esperar. Se arregla en el
+  documento.
+- **El documento va adelante** (dice ✅, el backlog lo tiene abierto). **Es la peor de
+  las dos, y es la que un diseño «solo la asimétrica barata» se habría perdido**: acá
+  el que miente es el **registro**, o sea la fuente de verdad, y quien busque trabajo
+  en el backlog puede rehacer algo que ya está. Salió una y nadie la había visto:
+  **B-481** estaba hecho desde el 2026-09-03 y el backlog decía `🔵 futuro`
+  (**B-1220**).
+
+### Lo que se decidió NO hacer, y el número
+
+La otra mitad de la clase es «un ítem abierto cuyo trabajo ya está commiteado en
+`main`» — que es como B-1112 casi se rehace. **Se midió y se descartó**: con la tanda
+del 2026-09-22 en vuelo, 8 de 64 ítems abiertos tenían commits `feat/fix(B-nnn)` en
+`main`, cuatro de ellos porque un frente los estaba trabajando en ese momento; con la
+tanda integrada, **2 de 67, y los dos son falsos positivos** (ítems con varias
+salidas de los que se hizo una). **Cero verdaderos positivos en el estado estable.**
+Un chequeo rojo mientras hay una tanda abierta —rojo por razones que no son el cambio
+de quien lo corre— es el modo de falla de B-180 y se aprende a saltear. Va como ítem
+con el número adentro (**B-1221**), no como chequeo.
+
+### La consecuencia
+
+- La deuda de hoy se **congela** con el patrón de B-1100 y la lista **solo puede
+  bajar**: rojo con una contradicción nueva, rojo también al cerrar una vieja sin
+  sacarla de la lista.
+- El barrido **informa** y el test **frena**, igual que el gemelo de los `B-`.
+- **El vocabulario de emojis tiene su propia red.** `parseo.mjs` conoce cinco porque
+  es lo que un **encabezado** puede llevar; este barrido conoce siete porque las
+  **tablas** usan además `⛔` y `🔵`. Son dos formas distintas del archivo, no dos
+  copias — pero el día que un encabezado estrene un emoji nuevo, el barrido dejaría
+  de reconocerlo y **compararía menos, en silencio**. Un caso del test lee los
+  encabezados del archivo y exige que el mapa los cubra. Unificarlos de verdad es
+  **B-1222**.

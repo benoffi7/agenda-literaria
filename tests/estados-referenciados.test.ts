@@ -77,7 +77,7 @@ const ATRASADAS_CONGELADAS: string[] = [];
  * busque trabajo en el backlog puede rehacer algo que ya está. Sobrevive a la
  * integración de esta tanda: se cierra marcando el ítem en `docs/BACKLOG.md`.
  */
-const ADELANTADAS_CONGELADAS = ['docs/16-analitica-del-sitio.md · B-481'];
+const ADELANTADAS_CONGELADAS: string[] = [];
 
 describe('los estados que el repo afirma de un ítem — B-1170', () => {
   const { atrasadas, adelantadas } = relevar();

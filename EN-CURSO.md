@@ -4,24 +4,39 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
-## Tanda del 2026-09-22 — integrada salvo un frente, y **sin pushear**
+## Tanda del 2026-09-22 — integrada entera, **sin pushear y con la suite en rojo**
 
-> # ⚠️ LO PRIMERO AL RETOMAR: hay 58 commits sin pushear
+> # ⚠️ AL RETOMAR: la suite está en rojo, y nada de hoy está pusheado
 >
-> **Todo el trabajo de esta tanda existe solo en el disco de esta máquina.** Siete
-> ramas mergeadas, dos decisiones del dueño, veintiún ítems escritos y dos
-> decisiones nuevas. Nada de eso está en `origin`.
+> **Se intentó pushear y lo rechazó el gate, no la autenticación.** La cuenta se
+> cambió a `benoffi7`, el hook de `pre-push` corrió, `npm test` salió en 1 —«la
+> suite no pasa con los emuladores arriba»— y la cuenta se devolvió a
+> `gonza-benoffi-modo`, verificado. **`origin/main` quedó en `1acad60`.**
 >
-> El push necesita `gh auth switch --user benoffi7`: la cuenta activa suele ser la
-> del trabajo y da **403**, y en ese caso el hook de `pre-push` **ni siquiera
-> corre**, así que un 403 no dice nada del estado del árbol. El switch es global
-> —mientras dure, cualquier sesión abierta en un repo de Modo ve la cuenta
-> personal—, por eso lo autoriza el dueño y no se hace solo.
+> **Eso invierte el orden que este archivo decía hace una hora.** El push ya no
+> está bloqueado por la cuenta de `gh`: está bloqueado por la suite. **Lo primero
+> al retomar es identificar el rojo**, no pushear.
 >
-> **Dato medido el 2026-09-22, y es el argumento:** producción sirve
+> **No sabemos en qué está roja**, y el dueño decidió cerrar sin averiguarlo — una
+> corrida cortada por el horario no dice nada y deja el emulador colgado.
+> Candidatos, por probabilidad: el **B-853** que se arregló hoy sobre
+> `tests/calendario.test.ts` (verificado en verde acá, pero la suite completa no
+> se corrió después), o algo que entró con alguno de los siete merges.
+>
+> **Los 61 commits de hoy existen solo en el disco de esta máquina.** Siete ramas
+> mergeadas, tres decisiones del dueño, catorce ítems cerrados. Nada de eso está
+> en `origin`.
+>
+> **Y una trampa del propio repo que costó la mitad de este párrafo:** `ls
+> .git/hooks/` da un **falso negativo** — los hooks versionados viven en
+> `githooks/`, enchufados por `core.hooksPath`, justamente porque `.git/hooks/` no
+> se versiona. Quien planifique «pushear rápido» tiene que saber que **el push
+> corre la suite entera**.
+>
+> **Dato medido hoy, y es el argumento de por qué esto importa:** producción sirve
 > `1.10.0+1acad60` con `main` **49 commits por encima**. Lo encontró el chequeo que
-> nació ese mismo día (B-1121) — o sea que la primera cosa que hizo la red nueva
-> fue destapar exactamente lo que B-205 describía.
+> nació hoy (B-1121) — la red nueva destapó, en su primera corrida, exactamente lo
+> que B-205 describía.
 
 ### Qué entró
 
@@ -35,18 +50,20 @@ internas de `docs/` en cero.
 Cerrados: **B-1082, B-1085, B-1111, B-1112, B-1121, B-1142, B-1144, B-1145,
 B-1147, B-1183**. Decisiones nuevas: **D-763**, **D-767**, **D-771**.
 
-### Qué NO entró, y por qué
+### El frente que casi no entra, y por qué entró
 
-**`frente/estados` queda viva con 2 commits** (`e5dec4e`, `5e5a0cb`, B-1170 — el
-barrido que compara el estado que un documento afirma de un ítem contra el
-backlog). **No se mergeó a propósito:** no pasó sus auditores y no tiene escrito su
-texto de BACKLOG ni de CHANGELOG. Entrar a `main` a medias sin su documentación
-rompe la regla de proceso justo en el commit que cierra la jornada, y mañana nadie
-sabría si ese barrido está terminado. En la rama es inequívoco.
+**`frente/estados` terminó y se mergeó** (B-1170, el barrido que compara el estado
+que un documento afirma de un ítem contra el backlog). **Se mergeó pese a que sus
+auditores no corrieron**, y el motivo es que cuando entregó ya no era trabajo a
+medias: 22 casos, ocho mutaciones probadas, puramente aditivo, y su documentación
+entró en el mismo empujón. **Lo que falta —sus dos auditores y tres mutaciones
+declaradas— está anotado como pendiente explícito en el cierre de B-1170.**
 
-**La suite completa no se corrió.** Es lo segundo a hacer al retomar, después del
-push. **No se arrancó a propósito**: una corrida cortada a la mitad no dice nada y
-deja el emulador colgado, que es el arrastre que costó B-1112.
+**La suite completa no se corrió por decisión, y después el gate la corrió igual y
+salió en rojo.** No arrancarla a mitad de la jornada era lo correcto —una corrida
+cortada no dice nada y deja el emulador colgado, el arrastre que costó B-1112—,
+pero el `pre-push` no pregunta: la corrió al intentar publicar. **Así que el rojo
+se conoce y su causa no.** Es lo primero de mañana.
 
 ### Para correr la suite, dos cosas que cuestan una tarde si no se saben
 
@@ -77,9 +94,11 @@ mutar» es a «hay que mutar».
 **Dos errores de quien integró, los dos agarrados antes de commitear y los dos de
 la misma familia:** un barrido de anclas que borraba los `_` cuando GitHub los
 conserva —llegó a «arreglar» dos enlaces que funcionaban— y una nota de rangos
-reservados que escribía los extremos como `B-1150`/`B-1199`, que el barrido de
-huérfanos leyó como **citas**: la nota que existe para no perder ids generó cinco
-huérfanos y puso el chequeo en rojo.
+reservados que escribía los extremos con el prefijo, y el barrido de huérfanos los
+leyó como **citas**: la nota que existe para no perder ids generó huérfanos y puso
+el chequeo en rojo. **Costó dos correcciones**, porque la segunda versión sacó el
+prefijo pero dejó «del X al Y» y el barrido **expande rangos**. Esta frase tampoco
+puede escribir los números, y por eso no los escribe.
 
 ### Lo que quedó abierto y vale más
 
@@ -106,10 +125,17 @@ entero. Varias suites de vitest a la vez agotan la memoria y el sistema mata
 procesos de fondo sin avisar; cada frente corre solo sus archivos y la suite
 completa va una vez, al integrar.
 
-**Al frenar no se perdió nada, y eso no fue suerte:** los seis worktrees estaban
-limpios y los dos commits del único frente sin mergear estaban commiteados. Es lo
-contrario del 2026-09-02, y lo que lo produjo fue exigir commits atómicos en el
-brief de cada frente.
+**Al frenar no se perdió nada, y eso no fue suerte:** los seis worktrees quedaron
+limpios, todo commiteado, y el último frente alcanzó a entregar. Es lo contrario
+del 2026-09-02, y lo que lo produjo fue exigir commits atómicos en el brief de cada
+frente — no la prolijidad del final.
+
+**Lo que sí quedó mal medido fue el final, y conviene que se lea:** este archivo
+llegó a decir «lo primero al retomar es pushear» cuando el push estaba bloqueado
+por otra cosa, y lo dijo porque nadie había corrido la suite. El gate lo corrigió
+en el único momento en que podía. **Un plan de cierre escrito sobre un chequeo que
+no se corrió es una afirmación sin medir**, que es exactamente lo que esta tanda
+anotó tres veces en otros archivos (B-1162, D-771, D-775) y una cuarta acá.
 
 ## Tanda del 2026-09-17: seis frentes de infra y tests — cerrada e integrada
 

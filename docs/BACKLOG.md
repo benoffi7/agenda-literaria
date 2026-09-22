@@ -27,22 +27,24 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > Lo que ningún archivo sabe es un id **reservado por una tanda y nunca
 > escrito**: esos hay que buscarlos a mano en los ítems que los reservaron.
 
-> **Rangos reservados por la tanda del 2026-09-22 — los `B-` del 1150 al 1199 y
-> las `D-` de la 751 a la 770.** Esto es **B-1051 aplicado a sí mismo**: ese ítem
+> **Rangos reservados por la tanda del 2026-09-22 — cincuenta números, de diez en
+> diez por frente, a partir del 1150; y veinte de las decisiones a partir de la
+> 751.** Esto es **B-1051 aplicado a sí mismo**: ese ítem
 > dice que un id reservado por una tanda y nunca escrito se ofrece como libre,
 > porque la reserva no queda escrita en ningún lado que el tablero pueda leer.
 > Acá queda, y **al abrir la tanda**, que es el momento en que el ítem señala que
 > nadie se acuerda de anotarlo. Cinco frentes, de diez en diez: `decisiones-2`
 > desde el 1150, `instagram` desde el 1160, `analitica-doc` desde el 1170,
 > `calendario-ig` desde el 1180 y `form-ig` desde el 1190. Del 1200 al 1219 los
-> tomó una sesión hermana que trabajó B-1112 y B-1121 en paralelo, con las `D-`
-> de la 771 a la 774. Los números 1148 y 1149 quedaron de margen.
+> tomó una sesión hermana que trabajó B-1112 y B-1121 en paralelo, con veinte
+> decisiones a partir de la 771. Los números 1148 y 1149 quedaron de margen.
 >
-> **Los extremos de un rango se escriben así, sin la forma `B-nnnn`, y no es
-> capricho:** la primera versión de esta nota los escribió con el prefijo y
-> `items-referenciados.mjs` los leyó como **citas**, así que la nota que existe
-> para no perder ids se convirtió ella misma en cinco huérfanos y puso el chequeo
-> en rojo. Es la misma clase que esa red persigue, producida por la nota que la
+> **Los rangos se escriben así —sin la forma `B-nnnn` y sin «del X al Y»— y no es
+> capricho: costó dos correcciones el mismo día.** La primera versión escribía los
+> extremos con el prefijo y `items-referenciados.mjs` los leyó como **citas**; la
+> segunda los sacó pero dejó «del 1150 al 1199», y el barrido **expande rangos**,
+> así que volvió a inventar una huérfana. La nota que existe para no perder ids se
+> convirtió dos veces en huérfanas y puso el chequeo en rojo las dos. Es la misma clase que esa red persigue, producida por la nota que la
 > documenta. **Lo que sobre al cerrar se anota como hueco acá**, con esta misma
 > nota reescrita — si no, es exactamente el agujero que B-1051 describe.
 
@@ -1284,6 +1286,85 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1220 · `docs/BACKLOG.md` decía que las tipografías eran trabajo futuro, y están autoalojadas desde hace tres semanas — ✅ hecho (2026-09-22) · P2 — del barrido de B-1170
+
+> **Corregido en la misma tanda**, junto con vaciar `ADELANTADAS_CONGELADAS` en
+> `tests/estados-referenciados.test.ts` — las dos cosas van juntas o el caso «las
+> viejas siguen ahí» se pone rojo.
+
+**La fila de `B-481` decía `🔵 futuro, anotado a propósito por D-254`, y el trabajo
+estaba hecho desde el 2026-09-03.** Lo encontró `npm run backlog:contradicciones` la
+primera vez que corrió, y fue la única contradicción que sobrevivió a integrar la
+tanda.
+
+**Verificado contra el código, no contra la prosa:** `public/fuentes/` tiene los seis
+`.woff2`, `src/styles/global.css` los sirve con `@font-face` desde `/fuentes/`,
+`src/layouts/Base.astro` los precarga y ya no tiene el `preconnect` a
+`fonts.googleapis.com`, y la decisión está escrita — **D-340**.
+
+**Por qué era P2 y no cosmético.** Es la dirección cara de las dos que B-1170
+distingue: acá el que miente es el **registro**, o sea la fuente de verdad. Quien
+buscara trabajo en el backlog podía **rehacer** las tipografías. Es el mismo
+mecanismo por el que otra sesión casi rehace la salida (a) de B-1112, en el archivo
+donde más duele.
+
+### B-1221 · El backlog puede estar tres semanas atrás de `main` y nada lo mira — medido, y el chequeo obvio es inservible · P2 — de cerrar B-1170 (2026-09-22)
+
+**La segunda mitad de la clase de B-1170, la que no entró.** Un ítem puede estar
+listado como abierto mientras su trabajo ya está commiteado en `main`. Pasó con
+**B-1112**: su opción (a) estaba hecha en `b8a5068` y otra sesión casi la rehace. Es
+peor que el caso de B-480 porque ocurre en `docs/BACKLOG.md`, que es *la fuente de
+verdad*.
+
+**El chequeo obvio —cruzar los ítems abiertos contra los commits `feat(B-nnn)` /
+`fix(B-nnn)` de `main`— se midió el 2026-09-22 y es inservible tal cual:**
+
+| árbol | ítems abiertos | con commit en `main` | verdaderos positivos |
+|---|---|---|---|
+| tanda en vuelo | 64 | **8** | 1 o 2, discutible |
+| tanda integrada | 67 | **2** | **0** |
+
+Los ocho del árbol inestable: B-1144, B-1145, B-1142 y B-1147 **los estaba trabajando
+un frente en ese mismo momento**; B-1111 y B-1112 son multi-salida; B-813 y B-836a son
+ítems de los que se hizo **una** de varias salidas. Los dos que sobreviven a la
+integración son precisamente los dos falsos duros: **`B-836a` lo dice en su propio
+título** — «registrado y cableado, **falta** publicar, verificar y exigir».
+
+**O sea: cero verdaderos positivos en el estado estable, seis de ocho falsos en el
+inestable, y el número depende de si hay una tanda abierta.** Un chequeo rojo por
+razones que no son el cambio de quien lo corre es el modo de falla de **B-180**, y se
+aprende a saltear — la otra cara de D-750.
+
+**Qué habría que resolver antes de intentarlo de nuevo**, y ninguna es barata:
+
+1. **Distinguir «ítem con varias salidas, se hizo una» de «ítem hecho».** Es la mitad
+   de los falsos y no hay señal mecánica: hoy vive en la prosa del cuerpo.
+2. **Excluir lo que una tanda está trabajando ahora**, sin que el chequeo tenga que
+   leer `EN-CURSO.md`.
+3. **Decidir si informa o frena.** Si informa, el consumidor natural es el
+   `auditor-documentacion`, que sí puede dar el juicio que un test no puede — el mismo
+   reparto que B-124 eligió para las `D-` huérfanas.
+
+### B-1222 · El mapa de emoji→estado está escrito dos veces, y las dos copias son distintas a propósito · P3 — de cerrar B-1170 (2026-09-22)
+
+`scripts/tablero/parseo.mjs` tiene `ESTADOS`/`ESTADO_DE_EMOJI` **privados**, con cinco
+emojis: los que un **encabezado** de ítem puede llevar. `scripts/estados-referenciados.mjs`
+tiene el suyo con **siete**, porque las **tablas** usan además `⛔` y `🔵`, que ningún
+encabezado lleva.
+
+**No es una copia de D-88 en sentido estricto** —son dos formas distintas del archivo,
+y una es superset de la otra— pero tiene su mismo modo de fallar: el día que un
+encabezado estrene un emoji nuevo, el barrido de estados deja de reconocerlo y
+**compara menos, en silencio**. Hoy lo tapa un caso de `tests/estados-referenciados.test.ts`
+que lee los encabezados del archivo y exige que el mapa los cubra, que es la red
+mínima.
+
+**El arreglo de verdad es exportar `ESTADOS` y `ESTADO_DE_EMOJI` desde `parseo.mjs` y
+componer los dos de más ahí**, que es literalmente lo que B-1113 dejó escrito para los
+átomos del id: «el que necesite otra forma la compone con estos átomos, no la
+reescribe». No se hizo en B-1170 porque `parseo.mjs` no era un archivo de ese frente y
+tocarlo mueve `archivar-backlog.test.ts`.
+
 ### B-1150 · `D-239` se cita desde el encabezado del sitio y nunca se escribió · P2 — la destapó B-1147 (2026-09-22)
 
 **Es la primera huérfana que el barrido no podía ver, y salió en la corrida en
@@ -1387,7 +1468,32 @@ juntos, en una sola pasada por las tres tablas.
 en la celda dentro del `description`, no solo el primero. Así el índice no se
 puede volver a desfasar.
 
-### B-1170 · Un documento de diseño afirma el estado de un ítem y nada lo compara contra el backlog · P2 — de cerrar B-1085 (2026-09-22)
+### B-1170 · Un documento de diseño afirma el estado de un ítem y nada lo compara contra el backlog — ✅ hecho (2026-09-22) · P2 — de cerrar B-1085 (2026-09-22)
+
+> **Hecho el 2026-09-22 — `scripts/estados-referenciados.mjs` (D-775).** Tercer
+> hermano de `items-referenciados.mjs` y `decisiones-referenciadas.mjs`:
+> `npm run backlog:contradicciones`. Compara lo que una fila con columna de estado
+> (o la frase «bloqueado por») **afirma** de un `B-`, contra lo que el ítem tiene en
+> los dos backlogs. El corte descarta la historia fechada —de 71 coincidencias de
+> «emoji cerca de un id» en los `.md`, **54 son «✅ Construida el 2026-09-02
+> (B-109)»**, que no se pudre— y la comparación es **binaria**, cerrado contra no
+> cerrado, porque `🟡`/`🟠`/`⛔`/`🔵` los elige quien escribe.
+>
+> **Encontró 5 contradicciones y cero falsos positivos.** Cuatro eran las de
+> B-480/B-372 —el caso que abrió el ítem, ya corregidas por el frente de B-1085
+> mientras esto se escribía, que es de paso la prueba de que el barrido mira donde
+> dice mirar: las vio en el árbol donde existían y dejó de verlas en el árbol donde
+> se arreglaron—. La quinta va en la dirección contraria y **nadie la había visto**:
+> **B-1220**. La mitad que compara contra la historia de git se midió y **no entró**:
+> es **B-1221**.
+>
+> **⏸ Lo que falta, y no se tapa: sus dos auditores no corrieron.** Se cerró la
+> jornada antes. `auditor-documentacion` es el que más importa —el barrido nuevo
+> construye justo lo que él hace a mano, y su ficha invoca hoy solo a los otros dos—.
+> Faltan también tres mutaciones declaradas en el informe del frente.
+>
+> Red en `tests/estados-referenciados.test.ts`, 22 casos, ocho mutaciones probadas.
+
 
 **El caso que lo abre es el más caro que produjo este repo hasta ahora en
 documentación.** `16-analitica-del-sitio.md` tiene tres lugares que declaran
@@ -1410,7 +1516,7 @@ escribir una fila es copiar el formato de la de al lado, y la de al lado era del
 
 **Por qué ningún barrido lo ve.** `scripts/items-referenciados.mjs` verifica que
 un `B-nnnn` citado **exista**; `decisiones-referenciadas.mjs` hace lo mismo con
-las `D-`. Ninguno mira lo que la cita **afirma**. Un `| **B-480** | … | ⛔ acción
+las `D-`. Ninguno mira lo que la cita **afirma**. Un `| **B-nnn** | … | ⛔ acción
 manual del dueño |` es un id válido con una entrada válida, y lo único falso es el
 estado — que es lo que alguien lee para decidir qué hacer esta semana.
 
@@ -2596,7 +2702,7 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-378** | El tablero del catálogo es una foto y no una serie | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | — ✅ hecho (2026-09-03). El dueño apagó en la consola de GA4 (flujo `G-9CFMHSSGRC`, Enhanced Measurement) **«Búsquedas en el sitio»** y **«Clics salientes»**, y —al configurarlo— dos cosas más que aparecieron: **desactivó los `page_view` basados en el historial de navegación** (el buscador reescribe la URL con `replaceState` en cada filtro, así que sin esto cada toque contaba una vista con el texto de `q` en la URL), y en **Ocultar datos** activó el borrado de la clave de consulta **`q`** —el parámetro donde viaja el texto del buscador—, que es la red durable: GA4 lo borra al recibirlo pase por donde pase. Con esto B-372 queda cerrado. | ✅ hecho (2026-09-03) |
-| **B-481** | **Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son, hoy, una conexión a un tercero en el load** — el mismo `preconnect` que D-254 sacó para GA4, pero decidido antes de que hubiera un banner y sin la lupa del consentimiento encima. Autoalojarlas (servir los `.woff2` desde el propio dominio) la eliminaría del todo. No es privacidad en el mismo sentido que B-480 —una tipografía no manda datos de la persona—, es la misma clase de dato de red (que este navegador entró al sitio) que ya se decidió aceptar para las fuentes, y conviene tenerlo escrito ahora que el tema está sobre la mesa | 🔵 futuro, anotado a propósito por D-254 |
+| **B-481** | **Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son, hoy, una conexión a un tercero en el load** — el mismo `preconnect` que D-254 sacó para GA4, pero decidido antes de que hubiera un banner y sin la lupa del consentimiento encima. Autoalojarlas (servir los `.woff2` desde el propio dominio) la eliminaría del todo. No es privacidad en el mismo sentido que B-480 —una tipografía no manda datos de la persona—, es la misma clase de dato de red (que este navegador entró al sitio) que ya se decidió aceptar para las fuentes, y conviene tenerlo escrito ahora que el tema está sobre la mesa | ✅ **hecho (2026-09-03)** — autoalojadas en `public/fuentes/`, servidas con `@font-face` desde `src/styles/global.css` y precargadas en `Base.astro`. **Cero terceros en el load** y un pedido menos; el `preconnect` a `fonts.googleapis.com` ya no está. La decisión es **D-340**. Lo encontró `npm run backlog:contradicciones` (B-1170, B-1220): el documento lo decía bien y este registro no |
 | **B-500** | El aviso «ya-paso»: el dueño no entendía por qué el tablero marcaba como problema algo que es el archivo funcionando bien | ✅ hecho (2026-09-03) — primero reencuadrado (D-270), después **sacado del todo** (D-273): el dueño señaló que la lista crece sin techo y no pide ninguna acción para casi nada. Queda la cobertura acotada «cuántas tienen fecha futura», no la lista |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
