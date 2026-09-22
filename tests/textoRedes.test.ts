@@ -17,6 +17,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { agregarChips } from '@/lib/formulario/chips';
+// B-1142 — el pie compara contra la **misma** función que deriva el texto
+// visible del handle en la ficha, no contra una cadena escrita acá.
+import { arrobaInstagram } from '@/lib/enlaceSeguro';
 import {
   AYUDA_VARIANTE,
   ETIQUETA_VARIANTE,
@@ -615,6 +618,110 @@ describe('el pie de handles (B-95: el campo que no se usaba para nada)', () => {
     );
   });
 
+  /**
+   * B-1142 — el Instagram guardado como URL sale arrobado.
+   *
+   * **Es la misma causa que B-1141 y la salida que ése no cubrió.** Las fichas
+   * cargadas antes del 2026-09-17 tienen `https://www.instagram.com/casabrandon/`
+   * adentro del campo: B-928 normalizó al guardar y **no reescribió lo ya
+   * cargado**. La ficha pública lo deriva desde B-1141; el pie del posteo leía el
+   * campo directo, y una URL no cumple el alfabeto de `conArroba`, así que salía
+   * pelada donde tenía que ir `@casabrandon`.
+   *
+   * No rompía nada, y por eso es el borde que ningún fixture de este archivo
+   * producía: los de acá siempre traen el handle ya normalizado, que es lo que el
+   * formulario guarda **desde** B-928. Lo que no pasaba es lo único que el pie
+   * existe para hacer — etiquetar la cuenta—, en una salida de la que no se
+   * puede volver: quien copia la caption la pega así.
+   *
+   * Se fija la forma real de equivocarse, que es la del botón «Compartir» de
+   * Instagram (con `?igsh=…`) y la de copiar de la barra del navegador (sin
+   * `https://`), no una URL de manual.
+   */
+  it('el Instagram guardado como URL sale arrobado, en las fichas anteriores a B-928 (B-1142)', () => {
+    const vieja = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: {
+        nombre: 'Casa Brandon',
+        instagram: 'https://www.instagram.com/casabrandon/?igsh=MWx',
+        web: '',
+      },
+      tallerista: { nombre: 'María Moreno', bio: '', instagram: 'instagram.com/mmoreno' },
+    });
+    const salida = texto(vieja);
+    expect(pie(vieja)).toBe('@casabrandon @mmoreno');
+    // Y la URL no queda dando vueltas en ninguna otra parte del posteo.
+    expect(salida).not.toContain('instagram.com');
+  });
+
+  /**
+   * La otra mitad del arreglo, y la razón de que no haya entrado con B-1141:
+   * **el mismo valor se trata distinto según de qué campo venga.**
+   *
+   * `difusion.arrobar` no es un campo de Instagram —admite el `-` que Instagram
+   * no tiene, puede ser de otra red, y existe para etiquetar lo que quien publica
+   * quiso etiquetar (§5.1)—. Pasarlo por el saneador de Instagram le cambiaría el
+   * valor a algo que nadie escribió. `organizador.instagram` dice Instagram en el
+   * nombre, y ahí hay una sola forma correcta.
+   *
+   * Es el test que cae si algún día se «simplifica» mapeando `arrobaInstagram`
+   * sobre los tres orígenes de una sola pasada.
+   */
+  it('el mismo valor se deriva si viene del campo de Instagram y no si viene de «arrobar» (B-1142)', () => {
+    const url = 'https://www.instagram.com/casabrandon/';
+    const sinOrganizador = { nombre: '', instagram: '', web: '' };
+
+    const enArrobar = act({
+      difusion: { arrobar: [url], notas: '' },
+      organizador: sinOrganizador,
+      tallerista: null,
+    });
+    expect(pie(enArrobar)).toBe(url);
+
+    const enElCampo = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: url, web: '' },
+      tallerista: null,
+    });
+    expect(pie(enElCampo)).toBe('@casabrandon');
+  });
+
+  it('un handle de «arrobar» con guion medio sigue arrobándose igual que hoy (B-1142)', () => {
+    // El `-` es el alfabeto de `conArroba` y **no** el de Instagram: un handle de
+    // otra red cargado a propósito no puede perder la arroba por este arreglo.
+    const otraRed = act({
+      difusion: { arrobar: ['la-mona', '@editorial-de-la-mona'], notas: '' },
+      organizador: { nombre: '', instagram: '', web: '' },
+      tallerista: null,
+    });
+    expect(pie(otraRed)).toBe('@la-mona @editorial-de-la-mona');
+  });
+
+  it('el organizador cargado como URL deduplica contra el mismo handle de «arrobar» (B-1142)', () => {
+    // De yapa, porque la derivación entra **antes** de `agregarChips`: hasta hoy
+    // la URL y el handle eran dos entradas distintas y el pie etiquetaba dos veces
+    // a la misma cuenta, una de ellas con una URL.
+    const repetida = act({
+      difusion: { arrobar: ['casabrandon'], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: 'https://www.instagram.com/casabrandon/', web: '' },
+      tallerista: null,
+    });
+    expect(pie(repetida)).toBe('@casabrandon');
+  });
+
+  it('cómo se escribe el handle lo decide `arrobaInstagram`, no una copia de acá (D-20)', () => {
+    // Se afirma la equivalencia con la función que usa la ficha pública, no el
+    // literal: si el pie se armara su propia arroba, este test cae en cuanto las
+    // dos ideas de «cómo se escribe esta cuenta» se separen — la clase de B-88.
+    const crudo = 'https://www.instagram.com/casabrandon/?igsh=MWx';
+    const a = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: crudo, web: '' },
+      tallerista: null,
+    });
+    expect(pie(a)).toBe(arrobaInstagram(crudo));
+  });
+
   it('sin ningún handle no deja un bloque vacío al final', () => {
     const sinHandles = act({
       difusion: { arrobar: [], notas: 'coordinar con prensa' },
@@ -948,6 +1055,51 @@ describe('textoRedesDeForm — el camino del panel', () => {
       expect(r.texto).not.toContain(CENTINELAS.direccion);
       expect(r.texto).not.toContain(CENTINELAS.sede);
     }
+  });
+
+  /**
+   * B-1142 — **por acá el pie ya llegaba normalizado**, y el ítem no lo decía.
+   *
+   * Se midió al arreglar `handlesDe` y el resultado corrige el reporte: el ítem
+   * daba la URL cruda por visible en el pie del posteo, leyendo `handlesDe`
+   * sola. Pero el único consumidor del módulo es esta función, que arma el
+   * documento con `formADocumento` — y ése normaliza `organizador.instagram` con
+   * `conHandle` desde B-928. Con la URL cruda cargada en el formulario, el pie
+   * que sale **ya era** `@casabrandon`.
+   *
+   * O sea que el arreglo de `handlesDe` no le saca un síntoma al panel: le saca
+   * al módulo una dependencia de la normalización de otro —que existe para *qué
+   * se guarda*, no para *cómo se muestra*—. Este test fija las **dos mitades**:
+   * que por el formulario sale bien (y que si `conHandle` dejara de normalizar,
+   * la derivación de `handlesDe` lo sostiene igual), y que las dos puertas del
+   * módulo contestan lo mismo.
+   *
+   * Sin él, el próximo barrido vuelve a reportar esto como visible: es
+   * exactamente lo que pasó acá, y la clase de D-750 con el signo cambiado.
+   */
+  it('el Instagram guardado como URL ya salía arrobado por el formulario (B-1142)', () => {
+    const url = 'https://www.instagram.com/casabrandon/?igsh=MWx';
+    const vieja = formularioLleno({
+      organizador: { nombre: 'Casa Brandon', instagram: url, web: '' },
+      difusion: { arrobar: [], notas: '' },
+      tallerista: { nombre: 'María Moreno', bio: '', instagram: url },
+    });
+    const r = textoRedesDeForm(vieja, 'anuncio', ANTES, LABELS);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const pieDelPanel = r.texto.split('\n\n').at(-1)!;
+    expect(pieDelPanel).toBe('@casabrandon');
+    expect(r.texto).not.toContain('instagram.com');
+
+    // Y las dos puertas del módulo contestan lo mismo: el documento crudo —la
+    // que usaría cualquier segundo consumidor que no pase por el formulario—
+    // llega al mismo pie desde que `handlesDe` deriva.
+    const documento = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: url, web: '' },
+      tallerista: { nombre: 'María Moreno', bio: '', instagram: url },
+    });
+    expect(texto(documento).split('\n\n').at(-1)).toBe(pieDelPanel);
   });
 
   it('las dos variantes tienen etiqueta y ayuda, y no hay una tercera suelta', () => {

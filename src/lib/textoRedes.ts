@@ -78,6 +78,9 @@ import { encuentrosDe, fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_MODALIDAD, proximoEncuentro } from '@/lib/filtrosActividades';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { agregarChips } from '@/lib/formulario/chips';
+// B-1142 — cómo se escribe un handle de Instagram lo decide `arrobaInstagram`
+// (B-1141), no un regex de acá: ver `handlesDe`.
+import { arrobaInstagram } from '@/lib/enlaceSeguro';
 import { instanteDeTimestamp } from '@/lib/sesiones';
 // B-312 — la URL absoluta del detalle, de la misma función que la canónica y el
 // sitemap. `rutasPublicas` es puro y sin dependencias: entra al bundle del panel
@@ -185,6 +188,15 @@ const ETIQUETA_VIA: Record<ViaInscripcion, string> = {
  * que hay parece un handle —una sola palabra de letras, números, punto o guion
  * bajo—. Un mail, una URL o un nombre con espacios salen como se escribieron, y
  * uno que ya trae `@` no lo duplica.
+ *
+ * ── Lo que esta función **no** es, y por qué (B-1142) ───────────────────────
+ *
+ * **No es el normalizador de Instagram.** Ve los tres orígenes del pie mezclados
+ * —`difusion.arrobar` primero, que admite `-`, que puede ser de otra red y que
+ * es texto libre del §3.2—, así que lo único que puede hacer con seguridad es
+ * decorar. Un handle **de Instagram** guardado como URL no lo cumple y sale
+ * pelado: eso no se arregla acá, se arregla antes, en `handlesDe`, donde se sabe
+ * de qué campo viene cada valor.
  */
 const conArroba = (handle: string): string =>
   /^[A-Za-z0-9._-]+$/.test(handle) ? `@${handle}` : handle;
@@ -229,13 +241,75 @@ const conArroba = (handle: string): string =>
  * El encabezado ya usaba este mismo `?.nombre?.trim()` para decidir el «Con tal»
  * (`bloqueEncabezado`), así que el módulo se contestaba a sí mismo distinto en
  * dos líneas: el posteo podía no nombrar a nadie y arrobarlo en el pie.
+ *
+ * ── Los dos campos de Instagram pasan por `arrobaInstagram` (B-1142) ────────
+ *
+ * Y los otros no. Es la distinción que hace este arreglo, y la razón de que no
+ * haya entrado con B-1141: **`difusion.arrobar` no es un campo de Instagram**.
+ * Admite el `-` que Instagram no tiene, puede ser un handle de otra red, y su
+ * razón de existir es etiquetar lo que quien publica quiso etiquetar (§5.1).
+ * Pasarlo por el saneador de Instagram convertiría `@la-mona` en texto sin
+ * arroba: rompería el caso que el campo existe para servir. Los otros dos
+ * **dicen Instagram en el nombre**, y ahí sí hay una sola forma correcta de
+ * escribirlos.
+ *
+ * **El caso**: las fichas cargadas antes del 2026-09-17 tienen
+ * `https://www.instagram.com/casabrandon/` guardado adentro del campo —B-928
+ * normalizó al guardar y **no reescribió lo ya cargado**—, y esa URL no cumple
+ * el alfabeto de `conArroba`, así que un valor así llega hasta el pie y sale
+ * pelado donde tenía que ir `@casabrandon`: no rompe nada, simplemente no hace
+ * lo único que el pie existe para hacer, que es etiquetar la cuenta.
+ *
+ * ── Y por el panel **no se veía**, que es lo que B-1142 no decía ────────────
+ *
+ * Se midió antes de escribir esto, no se dedujo. El único consumidor del módulo
+ * es `textoRedesDeForm`, que arma el documento con `formADocumento` — y ése
+ * normaliza el campo con `conHandle` desde B-928. O sea que al `handlesDe` de
+ * hoy **le llega el handle ya pelado** y el pie del panel ya decía
+ * `@casabrandon`. El ítem lo daba por visible leyendo esta función sola; con el
+ * formulario cargado con la URL cruda, el pie que sale es `@casabrandon`, y hay
+ * un test que lo fija.
+ *
+ * **Entonces esto no es el arreglo de un síntoma, es sacarle al pie una
+ * dependencia que no controla.** La correctitud del texto para redes colgaba de
+ * una normalización que vive en otro módulo y que existe para otra pregunta
+ * —*qué se guarda*, no *cómo se muestra*—: si `conHandle` dejara de reescribir
+ * lo tipeado (por ejemplo si B-1144 lo cambia por una validación que rechaza en
+ * vez de normalizar), el pie volvía a la URL en silencio. Y `construirTextoRedes`
+ * está exportado y toma un documento: cualquier segundo consumidor que no pase
+ * por el formulario entra por la puerta sin cubrir.
+ *
+ * Se deriva **al mostrar** y no con una migración, igual que en la ficha
+ * pública (B-1141): vale para las viejas y las nuevas con la misma línea y no
+ * toca datos de producción. `arrobaInstagram` es esa misma función —no una
+ * copia—, así que el pie del posteo y la ficha no pueden discrepar sobre cómo se
+ * escribe una cuenta (D-20).
+ *
+ * **Lo que no se reconoce sigue saliendo como se escribió**, sin arroba: es el
+ * criterio de `arrobaInstagram` y el de `conArroba`, y acá suman igual. Y entra
+ * **antes** de `agregarChips`, lo que de yapa deduplica un organizador cargado
+ * como URL contra el mismo handle escrito a mano en «arrobar». Por el panel eso
+ * ya pasaba —lo deduplicaba `formADocumento`, ver abajo—; lo que se empareja es
+ * la puerta del documento, que hasta hoy sacaba las dos.
+ *
+ * **El borde que ese orden deja afuera, dicho**: un campo de Instagram con dos
+ * handles separados por coma falla el alfabeto **entero**, así que vuelve crudo
+ * y recién después `separarPegado` lo parte — salen los dos sin derivar. Se
+ * acepta: el campo es uno solo por definición (el organizador tiene una cuenta),
+ * y el orden inverso perdería la deduplicación, que es el caso real.
+ *
+ * **Este arreglo cubre esta salida y nada más.** La validación del campo al
+ * publicar es B-1144, y la descripción del evento de Calendar va por B-1145 —que
+ * se resuelve aparte porque ahí no es gratis: normalizar cambia el payload que
+ * la guarda anti-loop compara, así que dispara un update de una sola vez contra
+ * el calendario de quien tenga el evento agendado (D-95, trampa 3 del §13).
  */
 const handlesDe = (actividad: ActividadParaRedes): string[] => {
   const tallerista = actividad.tallerista;
   const candidatos = [
     ...(actividad.difusion?.arrobar ?? []),
-    actividad.organizador?.instagram ?? '',
-    tallerista?.nombre?.trim() ? (tallerista.instagram ?? '') : '',
+    arrobaInstagram(actividad.organizador?.instagram),
+    tallerista?.nombre?.trim() ? arrobaInstagram(tallerista.instagram) : '',
   ]
     .map((h) => h.trim())
     .filter(Boolean);
