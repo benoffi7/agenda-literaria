@@ -49,6 +49,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { shaDeVersion } from './version.mjs';
 
 const RAIZ = new URL('..', import.meta.url);
 const leer = (r) => readFileSync(fileURLToPath(new URL(r, RAIZ)), 'utf8');
@@ -229,6 +230,106 @@ const verificarVersion = async () => {
   }
 };
 
+// ── 3bis · Lo publicado contra `main` ────────────────────────────────────
+
+/**
+ * Qué decir sobre el sha publicado, dados los hechos de git. **Puro, para que
+ * tenga test** — B-1121, la mitad que B-205 dejó escrita como «sigue sin
+ * existir».
+ *
+ * La mitad automática de B-205 —deployar diffeando contra lo publicado— hoy
+ * funciona. Lo que faltaba era que alguien **se entere** sin ir a mirar: que el
+ * sitio esté sirviendo un commit viejo no se nota desde ningún lado.
+ *
+ * **Los cuatro estados, y por qué `main` adelante cuenta como fallado.** Es la
+ * decisión discutible de este chequeo, así que queda escrita: este script se
+ * corre **después de deployar** —es lo que dice su propio encabezado— y en ese
+ * momento «main tiene commits sin publicar» es exactamente el caso de B-205, un
+ * deploy que no arrancó. Corrido a mitad de una tarde de trabajo va a dar rojo
+ * por el motivo aburrido (todavía no deployaste), y por eso el detalle lo dice en
+ * vez de solo contar: la diferencia entre las dos lecturas la pone quien lo corre,
+ * no el script, y es mejor que avise de más a que se lea «todo bien» mientras el
+ * sitio sirve lo de anteayer.
+ *
+ * @param {{ sha: string|null, version: string, conocido: boolean, ancestro: boolean, adelanto: number }} hechos
+ * @returns {{ estado: 'ok'|'mal'|'saltado', detalle: string }}
+ */
+export const estadoDeLoPublicado = ({ sha, version, conocido, ancestro, adelanto }) => {
+  if (sha === null) {
+    return {
+      estado: 'saltado',
+      detalle: `"${version}" no trae un sha limpio (build sucio o sin git): no hay contra qué comparar`,
+    };
+  }
+  if (!conocido) {
+    return {
+      estado: 'mal',
+      detalle: `lo publicado es ${sha}, que no está en este repo — se buildeó desde un checkout que este clon no tiene`,
+    };
+  }
+  if (!ancestro) {
+    return {
+      estado: 'mal',
+      detalle: `lo publicado (${sha}) no es ancestro de main — se deployó algo que main no tiene`,
+    };
+  }
+  if (adelanto === 0) return { estado: 'ok', detalle: `${sha} — al día con main` };
+  return {
+    estado: 'mal',
+    detalle:
+      `main tiene ${adelanto} commit(s) por encima de lo publicado (${sha}). ` +
+      'Si acabás de deployar, esto es B-205: el deploy no llegó. Si todavía no deployaste, es lo esperable',
+  };
+};
+
+/** Lo que git sabe del sha publicado. `null` en cualquier campo que no se pueda saber. */
+const hechosDeGit = (sha) => {
+  const git = (args) => execFileSync('git', args, { cwd: fileURLToPath(RAIZ), encoding: 'utf8' }).trim();
+  const conocido = (() => {
+    try {
+      git(['cat-file', '-e', `${sha}^{commit}`]);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  if (!conocido) return { conocido: false, ancestro: false, adelanto: 0 };
+
+  let ancestro = false;
+  try {
+    git(['merge-base', '--is-ancestor', sha, 'main']);
+    ancestro = true;
+  } catch {
+    ancestro = false;
+  }
+  const adelanto = ancestro ? Number(git(['rev-list', '--count', `${sha}..main`])) : 0;
+  return { conocido: true, ancestro, adelanto };
+};
+
+const verificarPublicadoContraMain = async () => {
+  const que = 'lo publicado contra main';
+  let version;
+  try {
+    const { status, cuerpo } = await pedir(`${SITIO}/version.json`);
+    if (status !== 200) return saltado(que, `HTTP ${status} en /version.json`);
+    ({ version } = JSON.parse(cuerpo));
+    if (!version) return saltado(que, '/version.json no trae `version`');
+  } catch (e) {
+    return saltado(que, `no se pudo leer: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const sha = shaDeVersion(version);
+  let hechos;
+  try {
+    hechos = sha === null ? { conocido: false, ancestro: false, adelanto: 0 } : hechosDeGit(sha);
+  } catch (e) {
+    return saltado(que, `no se pudo preguntarle a git: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const { estado, detalle } = estadoDeLoPublicado({ sha, version, ...hechos });
+  ({ ok, mal, saltado })[estado](que, detalle);
+};
+
 // ── 4 · El calendario real no filtró el link de la reunión ───────────────
 const PLATAFORMAS = ['zoom.us', 'meet.google.com', 'us02web', 'teams.microsoft.com', 'whereby.com'];
 
@@ -308,6 +409,7 @@ const main = async () => {
   await verificarFirestore();
   await verificarCache();
   await verificarVersion();
+  await verificarPublicadoContraMain();
   await verificarICS();
   verificarIssues();
 
