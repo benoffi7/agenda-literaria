@@ -131,7 +131,15 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | 8 | **Una actividad que se abre mucho y no genera ni un mensaje** | vistas de página (GA4) + clic en el botón de inscripción (evento propio) | revisar la descripción, el precio o la forma de anotarse de **esa** actividad | ❌ el clic ya se mide (B-375); falta la otra mitad del cruce — las vistas por actividad, que son **B-374** y un mes de datos |
 | 9 | **Una actividad publicada con una web del organizador que no enlaza** — está cargada y no es una dirección | catálogo | corregirla: suele ser un espacio o una palabra de más. Mientras tanto las tres salidas la tiran sin decir nada — la página de detalle la muestra como texto plano, el JSON-LD no emite `organizer.url` y el texto para redes tampoco la enlaza | ✅ **B-813** |
 
-**La 9 llegó después que las ocho, y de otro lado** (**B-813**, 2026-09-08): no salió de pensar fricciones sino del informe «Eventos» de Search Console, que avisaba por cuatro datos faltantes del resultado enriquecido. Tres de esos cuatro **no** son una fricción —una actividad sin tallerista, sin web o sin un monto cerrado es legítima— y quedaron como proporciones del tablero, no como avisos ([§8.1](#81--qué-muestra-la-pestaña-el-catálogo)). El cuarto sí lo es, y es éste: **`organizador.web` es texto libre** —el schema lo valida como texto opcional, no como URL—, así que nada frena en la carga un valor que después ninguna salida puede enlazar.
+**La 9 llegó después que las ocho, y de otro lado** (**B-813**, 2026-09-08): no
+salió de pensar fricciones sino del informe «Eventos» de Search Console, que
+avisaba por cuatro datos faltantes del resultado enriquecido. Tres de esos cuatro
+**no** son una fricción —una actividad sin tallerista, sin web o sin un monto
+cerrado es legítima— y quedaron como proporciones del tablero, no como avisos
+([§8.1](#81--qué-muestra-la-pestaña-el-catálogo)). El cuarto sí lo es, y es éste:
+**`organizador.web` es texto libre** —el schema lo valida como texto opcional, no
+como URL—, así que nada frena en la carga un valor que después ninguna salida
+puede enlazar.
 
 ### 4.1 · Las dos que hay que leer con cuidado
 
@@ -871,9 +879,10 @@ qué se está ofreciendo y qué le falta.
 
 Debajo, tres bloques, en el orden de lo que hay que hacer primero:
 
-1. **Los avisos** — las **seis** fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas)
-   (las cinco originales, más la web del organizador que no enlaza que sumó
-   **B-813**), cada una con las actividades que la disparan y un click para
+1. **Los avisos** — las **seis** fricciones detectables del
+   [§4](#4--las-fricciones-a-detectar-traducidas) (las cinco originales, más la
+   web del organizador que no enlaza que sumó **B-813**), cada una con las
+   actividades que la disparan y un click para
    abrirlas. Van primero porque son lo accionable, y entre ellas el orden es por
    **gravedad y no por cantidad**: arriba lo que le hace perder algo a alguien de
    afuera —escribir y que no le contesten—, abajo lo que nos hace perder algo a
