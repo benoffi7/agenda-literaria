@@ -155,6 +155,29 @@ describe('el Instagram del formulario se corrige al salir del campo — B-1144',
       expect(input.value).toBe('https://www.instagram.com/p/ABC123/');
     });
 
+    /**
+     * **Fija el bug de B-1160, no lo bendice.** `handleInstagram` corta por el
+     * primer `?` o `#` sobre cualquier valor —no solo sobre los que traen
+     * `instagram.com/` adelante—, así que un handle con un `#` adentro se
+     * recorta y termina apuntando a **otra cuenta**. El arreglo es del saneador
+     * y vive en B-1160; acá se deja escrito qué se ve en el formulario mientras
+     * tanto, que es lo que este ítem cambió: hasta B-1144 ese recorte lo hacía
+     * `conHandle` al guardar, en silencio.
+     *
+     * Cuando B-1160 se arregle, este caso se pone rojo. La respuesta correcta
+     * es darlo vuelta —esperar `'casa#brandon'`—, no aflojar el aserto.
+     */
+    it('un `#` adentro del handle lo recorta, y se ve en el campo — B-1160', () => {
+      const escrituras = { n: 0 };
+      render(<Arnes escrituras={escrituras} />);
+      const input = tipearYSalir(etiqueta, 'casa#brandon');
+      expect(
+        input.value,
+        'B-1160 — `casa` es una cuenta de otra persona. Que se vea en el campo ' +
+          'es peor que nada y mejor que el recorte silencioso al guardar',
+      ).toBe('casa');
+    });
+
     it('el campo vacío sigue vacío: ni `null` ni un string raro', () => {
       const escrituras = { n: 0 };
       render(<Arnes escrituras={escrituras} />);
