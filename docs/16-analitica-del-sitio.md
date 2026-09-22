@@ -7,7 +7,7 @@
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
 | Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
-| **Lo que falta antes de que mida en producción** | Nada de configuración para el tag: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta el deploy del código, y —para que los números lleguen al panel— los **pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño)**, que solo puede hacer el dueño |
+| **Qué falta hoy** | **Ya mide en producción**: B-480 se resolvió el 2026-09-03 (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)) y los **cinco pasos de consola** del [§9.4](#94--los-pasos-de-consola-del-dueño) están hechos y verificados de punta a punta (B-790, 2026-09-07). Quedan **el mes de datos** —que ninguna de las dos APIs mide para atrás— y el **paso 7**, registrar `eje` y `slug` como dimensiones, que tampoco es retroactivo |
 | También construido, el 2026-09-03 a la tarde | las **tipografías autoalojadas** ([§7.4ter](#74ter--las-tipografías-autoalojadas-b-481), B-481: cero terceros en el load), el **evento del tríptico** ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), B-601, sin enganche todavía) y la **lectura de GA4 + Search Console al panel** ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373), B-374/B-373) |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
@@ -1188,9 +1188,17 @@ puede distinguirlo de un enganche que no funciona. Las distingue
 
 **Un agente no puede hacer ninguno de estos, y no es una limitación técnica: es
 el §5.4 del `CLAUDE.md`.** Son credenciales y permisos sobre recursos del dueño.
-Hasta que estén, la Function está desplegada y la pantalla dice exactamente qué
-falta («falta un paso de configuración para Google Analytics: `GA4_PROPERTY_ID`
-sin configurar»), así que no hay nada roto mientras tanto.
+**Los cinco primeros están hechos** — el dueño los corrió el 2026-09-07 y se
+verificaron de punta a punta forzando una corrida del job: el log dice
+`analítica del sitio actualizada`, o sea que las dos APIs contestaron y
+`sistema/analitica-sitio` se escribió (**B-790**). Quedan el **6** (opcional) y
+el **7**, que es el que corre el reloj.
+
+Quedan escritos igual, y no es archivología: son los pasos a rehacer si se cambia
+de propiedad de GA4, de dominio o de cuenta de servicio, y cada uno dice con qué
+error se manifiesta cuando falta. Mientras alguno faltaba, la pantalla lo decía
+con todas las letras («falta un paso de configuración para Google Analytics:
+`GA4_PROPERTY_ID` sin configurar») en vez de mostrar un cero.
 
 Van en este orden porque cada uno se verifica con el anterior hecho.
 
@@ -1203,7 +1211,7 @@ gcloud services enable analyticsdata.googleapis.com \
 
 > ✅ **Hecho el 2026-09-07** por el dueño, y verificado con el comando de abajo:
 > las dos APIs aparecen habilitadas (`Google Analytics Data API`, `Google Search
-> Console API`). **Faltan los pasos 2, 3 y 4.**
+> Console API`).
 
 *Cómo verificar:* `gcloud services list --enabled --project agenda-literaria | grep -E 'analyticsdata|searchconsole'`
 tiene que devolver las dos líneas. Sin esto, la Function loguea un 403 con
@@ -1234,7 +1242,7 @@ permisos** → Agregar usuario → pegar el mismo mail → permiso
 *Cómo verificar:* aparece en la lista. Con el permiso mal puesto la API devuelve
 403 con `User does not have sufficient permission for site`.
 
-**4 · Cargar los dos identificadores en `functions/.env` y desplegar**
+**4 · Cargar los dos identificadores en `functions/.env` y desplegar** — ✅ **hecho el 2026-09-07**
 
 ```
 GA4_PROPERTY_ID=<el id NUMÉRICO de la propiedad>
@@ -1398,11 +1406,11 @@ semana sin el tag es una semana de historia que no se recupera**.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Lo que falta no es código: los **pasos de consola del dueño** del [§9.4](#94--los-pasos-de-consola-del-dueño), el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **enganche del evento del tríptico** (B-601). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
+| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Los cinco pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño) se hicieron el 2026-09-07 (B-790) y el evento del tríptico se enganchó el mismo día (B-601). Lo que falta: el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **paso 7** del §9.4 con su mitad de código (B-798). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
 | **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
 | **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | ✅ **hecho (2026-09-03)** — código, enganche en `Base.astro` y B-480 resuelto en la consola. En el camino salió D-254, el `preconnect` a `googletagmanager.com` sin condicionar al consentimiento |
-| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Falta el paso de consola del dueño: darle acceso de lectura a la cuenta de servicio y cargar `SEARCH_CONSOLE_SITE` ([§9.4](#94--los-pasos-de-consola-del-dueño), pasos 3 y 4) |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | 🟡 **construida** (2026-09-03): `traerAnaliticaDelSitio`, diaria, escribe `sistema/analitica-sitio`, y el panel la lee con estado vacío honesto por situación ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)). Falta lo que un agente no puede hacer: habilitar la Data API, dar acceso a la cuenta de servicio y cargar `GA4_PROPERTY_ID` ([§9.4](#94--los-pasos-de-consola-del-dueño)) — y **un mes de datos**, que es lo que la pantalla dice mientras no lo haya |
+| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Los dos pasos que faltaban —el permiso **Restringido** para `calendar-sync@` y `SEARCH_CONSOLE_SITE=sc-domain:agendaleh.ar`— se hicieron el 2026-09-07 (B-790). Falta el volumen, no un paso |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | 🟡 **construida** (2026-09-03): `traerAnaliticaDelSitio`, diaria, escribe `sistema/analitica-sitio`, y el panel la lee con estado vacío honesto por situación ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)). Lo que un agente no podía hacer —habilitar la Data API, el rol **Lector** para `calendar-sync@` y `GA4_PROPERTY_ID`— lo hizo el dueño el 2026-09-07 y quedó verificado con una corrida forzada del job (B-790, [§9.4](#94--los-pasos-de-consola-del-dueño)). Falta **un mes de datos**, que es lo que la pantalla dice mientras no lo haya |
 | **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos **y ya miden**, con B-372 y B-480 cerrados |
 | **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
 | **B-377** | El **inventario publicitario**: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
