@@ -68,6 +68,34 @@ export const componerVersion = ({ base, sha, sucio, ahora }) => {
 };
 
 /**
+ * El sha que estampó un build, sacado de la cadena de versión. **El inverso de
+ * `componerVersion`, y vive al lado por eso** — B-1121.
+ *
+ * Solo contesta para un build **limpio** (`<base>+<7-40 hex>` y nada después), y
+ * eso no es una limitación sino la decisión: un build sucio
+ * (`+<sha>-sucio.<sello>`) o sin git (`+sin-git.<sello>`) no corresponde a ningún
+ * commit, así que su sha no sirve ni como base de un diff ni para comparar contra
+ * `main`. `commit-base-deploy.sh` ya tomaba esa decisión y este módulo la
+ * conserva.
+ *
+ * **Por qué acá y no en el consumidor.** El formato lo define `componerVersion`,
+ * ocho líneas más arriba; un parser escrito en otro archivo es la clase D-88 —dos
+ * lados sabiendo lo mismo, uno se queda atrás— que acaba de costar B-1111. Hoy ya
+ * hay un segundo lado: el `sed` de `commit-base-deploy.sh`, que no puede importar
+ * un módulo. No se lo saca —es el camino del deploy y tocarlo por esto sería
+ * cambiar producción para arreglar un reporte—, pero **queda atado por un test que
+ * corre el `sh` de verdad y exige que los dos contesten lo mismo** sobre todas las
+ * versiones que `versionesPosibles()` enumera.
+ *
+ * @param {string | null | undefined} version
+ * @returns {string | null}
+ */
+export const shaDeVersion = (version) => {
+  const m = /^[^+]*\+([0-9a-f]{7,40})$/.exec(String(version ?? ''));
+  return m ? m[1] : null;
+};
+
+/**
  * El dominio **completo** de entradas que puede tener un build: hay commit o no
  * lo hay, y el árbol está limpio o no. Cuatro combinaciones, tres formas de
  * versión (sin `.git` no hay nada que ensuciar).
