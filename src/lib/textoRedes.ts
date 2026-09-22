@@ -292,6 +292,12 @@ const conArroba = (handle: string): string =>
  * ya pasaba —lo deduplicaba `formADocumento`, ver abajo—; lo que se empareja es
  * la puerta del documento, que hasta hoy sacaba las dos.
  *
+ * **El borde que ese orden deja afuera, dicho**: un campo de Instagram con dos
+ * handles separados por coma falla el alfabeto **entero**, así que vuelve crudo
+ * y recién después `separarPegado` lo parte — salen los dos sin derivar. Se
+ * acepta: el campo es uno solo por definición (el organizador tiene una cuenta),
+ * y el orden inverso perdería la deduplicación, que es el caso real.
+ *
  * **Este arreglo cubre esta salida y nada más.** La validación del campo al
  * publicar es B-1144, y la descripción del evento de Calendar va por B-1145 —que
  * se resuelve aparte porque ahí no es gratis: normalizar cambia el payload que
