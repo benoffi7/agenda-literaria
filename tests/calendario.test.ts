@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
@@ -11,6 +13,11 @@ import {
   TIMEZONE,
 } from '../functions/calendario.js';
 import { ts } from './fixtures/tiempo';
+// B-1145 — las dos puntas del saneador del handle, para atarlas. La de la
+// Function es la que se despliega; la de `@/lib/enlaceSeguro` es la que usan la
+// ficha pública, las cuatro guías y la bandeja de propuestas.
+import { arrobaInstagram as deLaFunction, handleInstagram as handleDeLaFunction } from '../functions/handle-instagram.js';
+import { arrobaInstagram as delSitio, handleInstagram as handleDelSitio } from '@/lib/enlaceSeguro';
 
 /** Timestamp mínimo, como el que entrega Firestore a la Function. */
 
@@ -1293,6 +1300,110 @@ describe('construirDescripcion — «existe» es tener el nombre con contenido, 
  * «Quién» en `functions/calendario.js` deja en rojo los casos 1; devolver
  * `mismoEvento` a un `true` constante deja en rojo los del caso 3.
  */
+/**
+ * **B-1145 — el saneador de la Function es el mismo del sitio, y esto lo ata.**
+ *
+ * `functions/` se despliega con su propio `package.json` y no puede importar
+ * `src/` (D-20), así que la implementación **baja** a `functions/`: es el reparto
+ * que B-968 ya hizo con `slugify.js` y `geografia.js`, y que este ítem repite con
+ * `functions/handle-instagram.js`.
+ *
+ * **Falta el último tramo**: `src/lib/handle-instagram.mjs` todavía tiene su
+ * propio cuerpo en vez de reexportar el de abajo, así que hoy hay dos. Eso es
+ * B-1180, y el archivo que hay que tocar pertenece a otro frente de esta tanda.
+ *
+ * Mientras tanto, esto es la red. Es exactamente la que B-928 corrió entre
+ * `scripts/handle-instagram.mjs` y el módulo del sitio, y funcionó —se puso en
+ * rojo apenas alguien tocó una sola de las dos—; y es también la que ese mismo
+ * ítem dejó escrito que **no alcanza sola**, porque avisa después y el arreglo
+ * hay que escribirlo dos veces. De ahí que B-1180 no sea opcional.
+ *
+ * **El daño que cubre no es cosmético.** Si las dos se separan, el handle que la
+ * ficha pública muestra y el que sale al calendario **público** dejan de ser el
+ * mismo, y nada falla: son dos salidas distintas que nadie compara a ojo.
+ *
+ * MUTACIÓN PROBADA: tocar una sola de las dos implementaciones —sacarle el corte
+ * del `?igsh=…`, o ampliar el alfabeto con `-`— deja el primer caso en rojo
+ * nombrando la entrada exacta que las separó.
+ */
+describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)', () => {
+  /**
+   * Las formas en que un Instagram llega cargado, más las que tienen que ser
+   * rechazadas. Es la batería de `tests/instagrams-de-la-base.test.ts`, que salió
+   * de correr el script contra la base: las dos últimas son la **forma** de dos
+   * datos reales que aparecieron el 2026-09-07 —alguien cargó un nombre y alguien
+   * un mail en el campo de Instagram—, con el mail inventado a propósito (la
+   * casilla de un tercero en un repo público es la fuga de B-246).
+   */
+  const ENTRADAS = [
+    '@casabrandon',
+    'casabrandon',
+    'https://instagram.com/casabrandon',
+    'https://www.instagram.com/casabrandon/',
+    'https://www.instagram.com/casabrandon/?igsh=MWx0eXo4a2Rr',
+    'https://www.instagram.com/casabrandon#tag',
+    'HTTP://INSTAGRAM.COM/CasaBrandon',
+    'instagram.com/casabrandon',
+    '  @casabrandon  ',
+    'casa.brandon',
+    'casa_brandon',
+    'casabrandon/',
+    'casabrandon//',
+    '@',
+    '',
+    '   ',
+    'casabrandon/otracuenta',
+    'instagram.com/casabrandon/otracuenta',
+    'instagram.com/p/ABC/',
+    'miinstagram.com/otra',
+    'instagram.com.ar/casabrandon',
+    '@casa brandon',
+    'casa-brandon',
+    'ñoño',
+    'a'.repeat(30),
+    'a'.repeat(31),
+    'Festival Argentino de Historieta',
+    'unclubdelectura@example.com',
+  ];
+
+  it('las dos implementaciones contestan exactamente lo mismo, entrada por entrada', () => {
+    const distintas = ENTRADAS.filter(
+      (e) => handleDeLaFunction(e) !== handleDelSitio(e) || deLaFunction(e) !== delSitio(e),
+    ).map((e) => ({
+      entrada: e,
+      function: [handleDeLaFunction(e), deLaFunction(e)],
+      sitio: [handleDelSitio(e), delSitio(e)],
+    }));
+    expect(distintas, 'la copia de `functions/` se separó de la del sitio').toEqual([]);
+  });
+
+  /** Y los dos bordes que no son strings, que es donde una copia suele quedarse corta. */
+  it('y también con `null` y `undefined`', () => {
+    for (const vacio of [null, undefined]) {
+      expect(handleDeLaFunction(vacio)).toBe(handleDelSitio(vacio));
+      expect(deLaFunction(vacio)).toBe(delSitio(vacio));
+    }
+  });
+
+  /**
+   * La otra mitad de la clase: que `calendario.js` **importe** el saneador en vez
+   * de armarse el suyo. Se lee del fuente porque un regex propio que hoy da el
+   * mismo resultado no rompe ningún test de comportamiento — que es justamente el
+   * modo de falla de esta clase (el chequeo hermano de `milisDe` en
+   * `tests/clases-de-bug.test.ts` está escrito por lo mismo).
+   */
+  it('`calendario.js` importa el saneador, no se arma un regex propio', () => {
+    const fuente = readFileSync(
+      fileURLToPath(new URL('../functions/calendario.js', import.meta.url)),
+      'utf8',
+    );
+    expect(fuente).toContain("import { arrobaInstagram } from './handle-instagram.js';");
+    for (const señal of ['instagram\\.com', 'A-Za-z0-9._]{1,30}']) {
+      expect(fuente, `volvió a haber una copia del saneador: ${señal}`).not.toContain(señal);
+    }
+  });
+});
+
 describe('construirDescripcion — el Instagram se muestra como handle (B-1145, D-763)', () => {
   /** Las formas reales en que quedó guardado un Instagram antes de B-928. */
   const SIN_MIGRAR = [
