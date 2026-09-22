@@ -23,10 +23,10 @@ no se pueden deshacer después.
    | # | Salida | Quién la produce |
    |---|---|---|
    | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts`, y para el `CollectionPage`/`ItemList` de la home `src/lib/hubsPublicos.ts` (`coleccionSchema`, B-107) , y para el **tríptico «¿Qué hay ahora?»** de la home `src/lib/ahoraPublico.ts` (B-600), y para el **banner de la ciudad filtrada** `src/lib/bannerDeCiudad.ts` + `src/components/publico/BannerDeCiudad.tsx` (B-961, texto cableado: no recibe ningún campo del documento) |
-   | 2 | el evento de Calendar | `functions/calendario.js` |
+   | 2 | el evento de Calendar | `functions/calendario.js`; desde B-1145 también `functions/handle-instagram.js` (el `@handle` del bloque «Organiza:») y `functions/geografia.js` (la dirección del bloque «Dónde») — B-1182 |
    | 3 | el issue de GitHub | `functions/reportes.js` — `redactar`, `construirIssue`, `actividadParaIssue`; `functions/frescura.js` — `issueDeAtraso`, `issueDeSinLectura`, `slugImprimible`/`FORMA_DE_SLUG`; `functions/github-issues.js` (transporte) |
    | 4 | GA4 (panel) | `src/lib/analytics-eventos.ts` |
-   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts`, `src/lib/rutasPublicas.ts` (`urlDeDetalle`, B-312) |
+   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts`, `src/lib/rutasPublicas.ts` (`urlDeDetalle`, B-312); desde B-1142 también `src/lib/handle-instagram.mjs` (`arrobaInstagram` decide el texto del pie) — B-1161 |
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` (incluido `migasDeDetalle`, el `BreadcrumbList`, B-107), y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts`, `src/lib/imagenes.ts` (`urlDeMiniatura`, B-220) |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |

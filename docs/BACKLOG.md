@@ -369,6 +369,15 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 
 ### B-1182 · El índice de salidas públicas no nombra a dos productores de la descripción del evento · P1 — del `auditor-privacidad` sobre el cierre de B-1145 (2026-09-22)
 
+> **🟡 Las tres tablas ya lo nombran (2026-09-22)** — `docs/07-seguridad.md`,
+> `.claude/agents/auditor-privacidad.md` (fila 2 y el `description`) y
+> `.claude/skills/campo-nuevo/SKILL.md`—, y `tests/agentes-y-skills.test.ts` las
+> sostiene: al escribirlas se puso **en rojo** nombrando los cuatro productores
+> que faltaban, que es exactamente para lo que existe. **Lo que queda abierto es
+> la red de B-1161**: ese chequeo exige las *funciones* de la celda, pero toma el
+> **primer** archivo como «el productor», así que un archivo agregado a la celda
+> y no al `description` todavía puede pasar.
+
 `arrobaInstagram` **decide texto visible del calendario público**: el
 `@casabrandon` de la descripción. Es productor de la salida 2 en el mismo sentido
 exacto en que `src/lib/handle-instagram.mjs` es productor de la salida 6 — y la
@@ -1320,6 +1329,13 @@ ponerse rojo ese día.
 en `functions/handle-instagram.js`, así que el arreglo va allá y `src/` lo hereda.
 
 ### B-1161 · `handle-instagram` es productor de la salida más irreversible y no está en ninguna de las tres tablas que la indexan · P2 — del `auditor-privacidad` sobre el cierre de B-1142 (2026-09-22)
+
+> **🟡 La fila 5 ya nombra el saneador (2026-09-22)** en las tres tablas, junto
+> con la fila 2 de B-1182. **Lo que queda es la red**, que es la parte que cierra
+> la clase: extender `tests/agentes-y-skills.test.ts` para que exija **todos**
+> los archivos nombrados en la celda dentro del `description` del agente, y no
+> solo el primero. Hasta entonces el índice se puede volver a desfasar por la
+> misma puerta.
 
 **Es la reincidencia exacta de lo que B-1141 ya arregló una vez**, y por eso vale
 como ítem y no como línea suelta. Desde B-1142, quién decide el texto literal que

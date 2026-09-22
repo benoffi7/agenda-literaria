@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'el-instagram-se-prolija-al-salir-del-campo',
+    fecha: '2026-09-22',
+    version: '1.11.0',
+    titulo: 'El Instagram se prolija solo al salir del campo',
+    detalle:
+      'Pegá el link del perfil —el que copia el botón «Compartir» de Instagram, ' +
+      'con todo lo que le cuelga— y al salir del campo queda solo el usuario, ' +
+      '«casabrandon». Antes ese acomodo pasaba en silencio recién al guardar. Si ' +
+      'ponés algo que no se reconoce como una cuenta, queda tal cual y se publica ' +
+      'igual: nada te frena.',
+    donde: 'En «Quién», en el Instagram del organizador y en el de quien está adelante.',
+  },
+  {
     id: 'las-horas-se-cargan-en-am-pm',
     fecha: '2026-09-18',
     version: '1.11.0',

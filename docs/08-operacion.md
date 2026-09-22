@@ -968,6 +968,15 @@ firebase deploy --only functions:rebuildPorSuscripciones
 firebase deploy --only functions:rebuildPorLugares
 ```
 
+> **Este deploy NO reescribe eventos** (B-1145, D-763), a diferencia de
+> `npm run geografia:sembrar:prod`. La guarda anti-loop compara **dos recálculos
+> con el mismo código desplegado** —`construirEvento(antes)` contra
+> `construirEvento(despues)`—, no el payload contra uno guardado, así que un
+> cambio de formato en la descripción no produce **ninguna** operación hasta que
+> el documento se escriba por otro motivo. El reverso es que tampoco corrige los
+> eventos ya publicados, y eso está decidido: **B-1181**, descartado el
+> 2026-09-22.
+
 ### Los tres vocabularios nuevos de los lugares (B-833)
 
 Lo mismo que abajo, con `tipo-lugar`, `incluye-lugar` y `condicion-de-uso`. El

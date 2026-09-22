@@ -269,11 +269,15 @@ cambió. Eso es exactamente el hueco de B-63, y no lo puede cubrir un test.
 en `src/components/admin/AdminApp.tsx`. Quedó anotado como B-118: no se tocó
 B-56 porque el ítem no es de este bloque de trabajo.
 
-**Y tiene un barrido que no hace a ojo** (B-124): `node
-scripts/decisiones-referenciadas.mjs` lista las referencias `D-nnn` de `docs/`
-que **no tienen entrada** en `06-decisiones.md`. Vale la pena porque ese enlace
-roto no se ve roto — `06-decisiones.md#d-350` abre el documento igual, sin ancla
-y sin error, así que la decisión se lee como que existe.
+**Y tiene un barrido que no hace a ojo** (B-124, ampliado a todo el repo en
+**B-1147**): `node scripts/decisiones-referenciadas.mjs` lista las referencias
+`D-nnn` que **el repo entero cita** —código incluido, no solo `docs/`— y que
+**no tienen entrada** en `06-decisiones.md`. Vale la pena porque ese enlace roto
+no se ve roto — `06-decisiones.md#d-350` abre el documento igual, sin ancla y sin
+error, así que la decisión se lee como que existe. Y porque **citada desde un
+docblock es el caso caro**: el comentario explica el porqué de una línea y manda a
+buscar una decisión que nadie escribió. Antes miraba 27 archivos y ahora 679; el
+informe separa las citas de código de las de prosa.
 
 **No es un test bloqueante, y el motivo es la forma de trabajo de este repo:**
 citar una decisión antes de escribirla es legítimo y frecuente, porque los

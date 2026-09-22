@@ -378,6 +378,15 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   resuelve solo, pero ofrece el botón que los abre, que es lo que el mensaje ya
   pedía hacer a mano. La medición sigue sirviendo para lo que queda: si aun así el
   link corto es la mitad de los fallos, ahí sí se justifica la Function.
+- El **Instagram del organizador y de quien está adelante se prolija solo**: se
+  pega el link del perfil —o lo que copia el botón «Compartir» de Instagram, con
+  el `?igsh=` y todo— y al salir del campo queda el usuario solo, «casabrandon»
+  (B-1144, D-767). No es una regla nueva: `formADocumento` lo normalizaba con el
+  mismo saneador desde B-928, en silencio y recién al guardar; lo que cambió es
+  que **se ve antes**. Lo que no se puede reconocer como una cuenta se deja tal
+  cual y **se publica igual** — a diferencia de las cuatro guías, que ahí frenan
+  el publicado. Son dos criterios para el mismo dato en el mismo panel, y el costo
+  está aceptado y escrito en D-767.
 - **Guardar borrador pide lo mínimo: título y dirección web.** Nada más. Todo lo
   demás —tipo, descripción, organizador, arancel, encuentros, sede— se exige
   **al publicar**, que es lo que sale al sitio y al calendario (B-183, D-120).
