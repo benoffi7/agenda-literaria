@@ -178,6 +178,23 @@ describe('el Instagram del formulario se corrige al salir del campo — B-1144',
       ).toBe('casa');
     });
 
+    /**
+     * **Lo que se ve tiene que ser lo que se guarda** — lo pidió el
+     * `auditor-trampas`. `conHandle` (`lib/actividades.ts`) resuelve este mismo
+     * campo con `handleInstagram(crudo) ?? crudo.trim()`, así que un texto no
+     * reconocido con espacios al final se guarda recortado. Si el campo no los
+     * sacara, mostraría una cosa y el documento guardaría otra — y la asimetría
+     * solo se descubre al reabrir la actividad.
+     *
+     * Recortar no es perder: no se va nada de lo que alguien escribió.
+     */
+    it('un texto no reconocido se recorta igual que al guardar, sin perder nada', () => {
+      const escrituras = { n: 0 };
+      render(<Arnes escrituras={escrituras} />);
+      const input = tipearYSalir(etiqueta, '  Casa Brandon / IG  ');
+      expect(input.value).toBe('Casa Brandon / IG');
+    });
+
     it('el campo vacío sigue vacío: ni `null` ni un string raro', () => {
       const escrituras = { n: 0 };
       render(<Arnes escrituras={escrituras} />);

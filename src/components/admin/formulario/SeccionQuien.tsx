@@ -38,9 +38,12 @@ const AYUDA_INSTAGRAM = 'Podés pegar el link del perfil: al salir del campo que
  * B-928 (`lib/actividades.ts`, `conHandle`). O sea que lo guardado ya salía
  * como handle; lo que faltaba era **verlo antes de guardar**. Por eso la
  * corrección vive acá y no en `lib/formulario/`: la regla del modelo ya está
- * escrita del otro lado, y esto es su eco en la pantalla. Es el mismo patrón
- * que `CoordenadasSede` con `parsearCoordenadas` — el `onBlur` aplica una
- * función pura de `lib/` y el componente sigue siendo presentación.
+ * escrita del otro lado, y esto es su eco en la pantalla. Es el principio de
+ * `CoordenadasSede` con `parsearCoordenadas` —el `onBlur` aplica una función
+ * pura de `lib/` y el componente sigue siendo presentación—, con el mecanismo
+ * cambiado porque allá hay un buffer `texto` que se vacía al acertar y acá el
+ * campo **es** el valor del formulario: lo que evita reescribir de más no es el
+ * buffer sino la comparación de abajo.
  *
  * ── Lo que el saneador no entiende NO se toca, y es a propósito ────────────
  * `handleInstagram` devuelve `null` para lo que no reconoce —«Casa Brandon /
@@ -77,14 +80,26 @@ const AYUDA_INSTAGRAM = 'Podés pegar el link del perfil: al salir del campo que
  * tipeó una cuenta de Instagram. No es una inconsistencia que quedó: es la
  * decisión.
  *
+ * ── La expresión es la misma que la de `conHandle`, letra por letra ───────
+ * `handleInstagram(crudo) ?? crudo.trim()`, y eso incluye el `.trim()` del
+ * caso no reconocido. Lo señaló el `auditor-trampas`: con `?? crudo` a secas,
+ * «Casa Brandon / IG » se quedaba con el espacio en pantalla y lo perdía al
+ * guardar, así que el campo mostraba una cosa y el documento guardaba otra. Es
+ * cosmético, pero un campo que miente sobre lo que va a guardar es justo lo que
+ * este ítem vino a cerrar: la promesa acá es **lo que ves es lo que se
+ * guarda**, y para eso las dos expresiones tienen que ser la misma. Sacar el
+ * texto no es tocarlo: no se pierde nada de lo que alguien escribió.
+ *
  * Solo escribe si el saneado difiere de lo tipeado. Un blur que no cambia nada
  * no toca el formulario, así que tabular por encima del campo no dispara el
  * «hay cambios sin guardar» de `useFormularioSucio` ni el autoguardado — la
  * misma precaución que el docblock de `GaleriaEditor` sobre medir al abrir.
  */
-const alSalirDelInstagram = (crudo: string, guardar: (handle: string) => void): void => {
-  const handle = handleInstagram(crudo);
-  if (handle && handle !== crudo) guardar(handle);
+const alSalirDelInstagram = (crudo: string, guardar: (saneado: string) => void): void => {
+  // La misma expresión que `conHandle` (`lib/actividades.ts`), a propósito: si
+  // las dos se separan, el campo vuelve a mostrar algo distinto de lo guardado.
+  const saneado = handleInstagram(crudo) ?? crudo.trim();
+  if (saneado !== crudo) guardar(saneado);
 };
 
 export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePersona }: Props) {
