@@ -4,6 +4,7 @@
  */
 import { Seccion } from '@/components/admin/campos-del-panel';
 import { Campo, claseInput } from '@/components/campos/Campo';
+import { handleInstagram } from '@/lib/enlaceSeguro';
 import { muestraLibro } from '@/lib/formulario/condicionales';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
@@ -12,6 +13,63 @@ type Props = Omit<PropsSeccion, 'uid'> & {
   esCharla: boolean;
   /** "Tallerista" o "Autor o autora invitada", según el tipo. */
   nombrePersona: string;
+};
+
+/**
+ * Lo que se lee debajo de los dos campos de Instagram. Es la ayuda corta de un
+ * campo puntual, así que va en la prop `ayuda` de `Campo` y no en `ayuda.ts`
+ * (regla de proceso, `docs/05-patrones.md`): se lee al lado del campo, que es
+ * donde importa.
+ */
+const AYUDA_INSTAGRAM = 'Podés pegar el link del perfil: al salir del campo queda «casabrandon».';
+
+/**
+ * **El Instagram se corrige al salir del campo** — B-1144, D-767.
+ *
+ * Quien pega `https://www.instagram.com/casabrandon/?igsh=…` —el botón
+ * «Compartir» de Instagram, que es la forma real en que se copia una cuenta—
+ * ve `casabrandon` en cuanto sale del campo. El saneador es `handleInstagram`,
+ * el mismo de las cuatro guías, de la ficha pública (B-1141) y de la bandeja de
+ * propuestas: acá no hay un regex propio, porque una segunda implementación del
+ * alfabeto del handle es la clase de bug de B-88.
+ *
+ * ── Esto no inventa una regla: muestra la que ya existe ────────────────────
+ * `formADocumento` normaliza este mismo campo con este mismo saneador desde
+ * B-928 (`lib/actividades.ts`, `conHandle`). O sea que lo guardado ya salía
+ * como handle; lo que faltaba era **verlo antes de guardar**. Por eso la
+ * corrección vive acá y no en `lib/formulario/`: la regla del modelo ya está
+ * escrita del otro lado, y esto es su eco en la pantalla. Es el mismo patrón
+ * que `CoordenadasSede` con `parsearCoordenadas` — el `onBlur` aplica una
+ * función pura de `lib/` y el componente sigue siendo presentación.
+ *
+ * ── Lo que el saneador no entiende NO se toca, y es a propósito ────────────
+ * `handleInstagram` devuelve `null` para lo que no reconoce —«Casa Brandon /
+ * IG», un handle con una barra adentro, un link a un posteo—. En ese caso el
+ * campo **queda exactamente como se tipeó**: no se borra, no se recorta y no se
+ * frena nada. Borrarlo sería perder la única copia de lo que alguien escribió
+ * para castigar un formato, y dejaría a quien edita sin saber qué corregir; es
+ * el mismo criterio que `conHandle` al guardar y que `arrobaInstagram` al
+ * mostrar. Si aparece un valor así, se publica igual: la actividad sale, y en
+ * la ficha ese texto se muestra sin arroba y sin link, que es el aviso.
+ *
+ * ── El costo aceptado, escrito acá para que no se lea como un descuido ─────
+ * D-767 — este campo queda con un criterio **distinto** del de las cuatro guías
+ * (librerías, bibliotecas, lugares, suscripciones), que sí frenan el publicado
+ * con una regla en su `superRefine` cuando el Instagram no es un handle. Son
+ * dos criterios para el mismo dato en el mismo panel: acá se corrige, allá se
+ * frena. El dueño eligió esto el 2026-09-22, con el costo a la vista y contra
+ * la recomendación, porque publicar una actividad no puede depender de cómo se
+ * tipeó una cuenta de Instagram. No es una inconsistencia que quedó: es la
+ * decisión.
+ *
+ * Solo escribe si el saneado difiere de lo tipeado. Un blur que no cambia nada
+ * no toca el formulario, así que tabular por encima del campo no dispara el
+ * «hay cambios sin guardar» de `useFormularioSucio` ni el autoguardado — la
+ * misma precaución que el docblock de `GaleriaEditor` sobre medir al abrir.
+ */
+const alSalirDelInstagram = (crudo: string, guardar: (handle: string) => void): void => {
+  const handle = handleInstagram(crudo);
+  if (handle && handle !== crudo) guardar(handle);
 };
 
 export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePersona }: Props) {
@@ -26,7 +84,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             onChange={(e) => set('organizador', { ...form.organizador, nombre: e.target.value })}
           />
         </Campo>
-        <Campo label="Instagram del organizador" htmlFor="org-instagram">
+        <Campo label="Instagram del organizador" htmlFor="org-instagram" ayuda={AYUDA_INSTAGRAM}>
           <input
             id="org-instagram"
             className={claseInput}
@@ -35,6 +93,14 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             spellCheck={false}
             value={form.organizador.instagram}
             onChange={(e) => set('organizador', { ...form.organizador, instagram: e.target.value })}
+            // B-1144 — el saneado va al salir del campo y no en cada tecla: a
+            // medio tipear, `instagram.com/ca` todavía no es nada, y recortarlo
+            // mientras alguien escribe le mueve el cursor de abajo de los dedos.
+            onBlur={(e) =>
+              alSalirDelInstagram(e.target.value, (handle) =>
+                set('organizador', { ...form.organizador, instagram: handle }),
+              )
+            }
             placeholder="@casabrandon o el link del perfil"
           />
         </Campo>
@@ -66,10 +132,13 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                 }
               />
             </Campo>
-            <Campo label="Instagram" htmlFor="persona-instagram">
+            <Campo label="Instagram" htmlFor="persona-instagram" ayuda={AYUDA_INSTAGRAM}>
               <input
                 id="persona-instagram"
                 className={claseInput}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={form.tallerista?.instagram ?? ''}
                 onChange={(e) =>
                   set('tallerista', {
@@ -77,6 +146,18 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                     bio: form.tallerista?.bio ?? '',
                     instagram: e.target.value,
                   })
+                }
+                // El mismo saneo que el del organizador, y por eso pasa por la
+                // misma función: son dos campos del mismo dato, y una copia acá
+                // es la que se olvida de corregir el día que cambie la regla.
+                onBlur={(e) =>
+                  alSalirDelInstagram(e.target.value, (handle) =>
+                    set('tallerista', {
+                      nombre: form.tallerista?.nombre ?? '',
+                      bio: form.tallerista?.bio ?? '',
+                      instagram: handle,
+                    }),
+                  )
                 }
               />
             </Campo>
