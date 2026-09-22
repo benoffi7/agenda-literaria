@@ -1486,7 +1486,31 @@ dice en pantalla')` en `tests/seccionQuien.render.test.tsx`.
 
 **Dónde:** `src/components/admin/formulario/SeccionQuien.tsx`.
 
-### B-1147 · El barrido de decisiones huérfanas mira 27 `.md` y su gemelo mira el repo entero · P2 — salió de cerrar B-1113 (2026-09-21)
+### B-1147 · El barrido de decisiones huérfanas mira 27 `.md` y su gemelo mira el repo entero — ✅ hecho (2026-09-22) · P2 — salió de cerrar B-1113 (2026-09-21)
+
+> **Arreglado copiándole el corpus al gemelo**, que era la ruta que el ítem
+> proponía: `archivosDelRepo` (B-964), lista blanca de extensiones —**importada**
+> de `items-referenciados.mjs`, no copiada— y el informe separa las citas desde el
+> código de las de prosa, que es el control de ruido del gemelo aplicado acá. Pasó
+> de 27 archivos a **679**.
+>
+> **Las cifras del ítem estaban estimadas y salieron cortas:** `D-88` no se cita
+> desde catorce archivos sino desde **dieciocho**, así que el informe subestimaba
+> por casi seis y no por cuatro. La estimación se había hecho a mano con el barrido
+> que no los veía, que es el ítem describiéndose a sí mismo.
+>
+> **Lo que destapó:** `D-239`, citada desde `src/components/sitio/Encabezado.astro`
+> desde el 2026-09-18 y sin entrada en ninguna parte → **B-1150**.
+>
+> **Sobre el ruido, que es lo que el ítem pedía mirar:** acá **no** va lista
+> congelada de huérfanas, a diferencia del gemelo, y no es olvido — el motivo está
+> escrito en la cabecera del script desde que nació: una `D-` se acuña en el commit
+> que la decide, así que congelarlas deja el test rojo mientras una tanda está
+> abierta (B-180). Lo que sí se congela es **el corpus**: ocho casos nuevos exigen
+> que siga incluyendo `src/`, `tests/` y `scripts/`, con sus ocho mutaciones
+> probadas. Un barrido que se encoge no rompe nada visible —sigue corriendo, sigue
+> en verde— y lo único que cambia es lo que deja de ver.
+
 
 **Mismo desbalance que B-1128, del lado del barrido en vez del de los
 duplicados.** `scripts/items-referenciados.mjs` busca los `B-` huérfanos en
@@ -1515,7 +1539,37 @@ destapó de golpe, y acá va a pasar lo mismo.
 **Dónde:** `scripts/decisiones-referenciadas.mjs`; el corpus del gemelo, en
 `scripts/items-referenciados.mjs`.
 
-### B-1144 · El Instagram de la actividad es el único del repo que no se valida al publicar · P2 — del `auditor-privacidad` sobre el cierre de B-1141 (2026-09-21)
+### B-1144 · El Instagram de la actividad es el único del repo que no se valida al publicar — ✅ hecho (2026-09-22) · P2 — del `auditor-privacidad` sobre el cierre de B-1141 (2026-09-21)
+
+> **Cerrado por una ruta distinta de la que este ítem proponía, por decisión del
+> dueño (D-767) y contra la recomendación.** La ruta escrita acá era una regla en
+> el `superRefine` del nivel «publicar», como la de las cuatro guías. El dueño
+> eligió **corregir al vuelo en el formulario y no frenar el publicado**:
+> `organizador.instagram` y `tallerista.instagram` siguen sin ninguna regla en
+> `actividadFormSchema` —el hecho que abrió este ítem sigue siendo cierto—, pero
+> `SeccionQuien.tsx` aplica `handleInstagram` en el `onBlur` de los dos campos, así
+> que quien pega el link del perfil ve el handle antes de guardar.
+>
+> **El costo, a la vista y aceptado:** este campo queda con un criterio distinto
+> del de las cuatro guías —ellas frenan, éste corrige—, dos criterios para el mismo
+> dato en el mismo panel. Que no exista ninguna tabla donde los tres criterios de
+> Instagram del repo estén juntos es **B-1191**.
+>
+> **Lo que el ítem no pedía y salió al hacerlo, que era la mitad del valor:** la
+> normalización que protege a las salidas públicas no es la del formulario sino
+> `conHandle` dentro de `formADocumento` —el `onBlur` es salteable abriendo una
+> actividad vieja y guardándola sin tocar el campo— y **no tenía ningún test**. Lo
+> contó el `auditor-privacidad`: los dieciocho casos nuevos probaban el eco y cero
+> la regla. Era la condición exacta para que alguien borrara el original por
+> redundante y los dieciocho siguieran verdes. Quedó con red, probada mutando
+> `conHandle` a un `trim()` pelado.
+>
+> **Y un bug del propio saneador quedó a la vista en vez de en silencio**
+> (B-1160). Que el campo lo diga con un cartel en vez de por omisión es **B-1190**,
+> y es una decisión de UI que el dueño todavía no tomó.
+>
+> Siete mutaciones probadas.
+
 
 **Lo destapó el tercer arreglo de B-1141.** El comentario de `conHandle` decía
 que «el `superRefine` del schema ya lo rechaza al publicar»; se corrigió porque
@@ -1546,7 +1600,39 @@ pasa, como en las cuatro guías (§4.2)')` en `tests/schema.test.ts`.
 **Dónde:** `src/lib/schema.ts:458` y `:462`; el `superRefine` del nivel
 «publicar» arranca en `:564`.
 
-### B-1145 · La descripción del evento de Google Calendar pega la URL cruda del Instagram, y arreglarlo reescribe todo lo publicado · P2 — del `auditor-trampas` sobre el cierre de B-1141 (2026-09-21)
+### B-1145 · La descripción del evento de Google Calendar pega la URL cruda del Instagram, y arreglarlo reescribe todo lo publicado — ✅ hecho (2026-09-22) · P2 — del `auditor-trampas` sobre el cierre de B-1141 (2026-09-21)
+
+> **Cerrado con la opción (a) que eligió el dueño —normalizar en la Function
+> (D-763)—, y la premisa del título era falsa: no reescribe nada.** El ítem decía
+> que la guarda anti-loop compara «el payload recalculado contra el guardado». No
+> hay payload guardado: `mismoEvento` compara dos recálculos con el mismo código
+> desplegado, así que una normalización simétrica es invisible para el diff.
+> `planificar(doc, doc)` devuelve `[]`, y sin una escritura al documento el trigger
+> no corre. Verificado además contra los otros tres caminos que arman el evento
+> (`replanificarPorEtiquetas`, `reconciliacion.js`,
+> `scripts/verificar-calendario.mjs`).
+>
+> **Así que el título habría que leerlo al revés: lo que no hace es reescribir.**
+> El arreglo no es retroactivo — los eventos ya publicados conservan la URL cruda
+> hasta que alguien edite esa ficha. Se le volvió a preguntar al dueño con el
+> número medido y **eligió dejarlo**: **B-1181**, descartado con el motivo escrito.
+>
+> **Dos cosas que el ítem no nombraba y aparecieron al medir:**
+>
+> 1. **No era solo un problema de fichas viejas.** Desde B-928 el documento guarda
+>    el handle **pelado**, sin arroba, así que el evento decía «Casa Brandon ·
+>    casabrandon» para **todas**. Es la otra mitad de B-1141.
+> 2. **El saneador que había que usar derivaba a la cuenta de otra persona**:
+>    `casa#brandon` → `@casa`. El calendario no lo deriva cuando el corte
+>    descartaría texto que no viene de una URL de Instagram. Acotarlo en el
+>    saneador, para las seis salidas, es **B-1160**.
+>
+> El saneador no se reescribió: **bajó** a `functions/` (D-20, B-968), porque
+> `functions/` se despliega con su propio `package.json` y no puede importar
+> `src/`. Falta el último tramo —la fachada de una línea— y es **B-1180**.
+>
+> Catorce mutaciones probadas.
+
 
 **Es la única de las tres que se ve hoy, y la única cuyo arreglo no es gratis.**
 `functions/calendario.js` arma el bloque «Organiza:» concatenando
@@ -1584,7 +1670,42 @@ la decisión, no antes.
 **Dónde:** `functions/calendario.js:721` y `:727`; el docblock que explica el
 criterio, `:706-717`.
 
-### B-1142 · El pie del posteo para redes arroba la URL cruda en las fichas anteriores a B-928 · P2 — salió de cerrar B-1141 (2026-09-21)
+### B-1142 · El pie del posteo para redes arroba la URL cruda en las fichas anteriores a B-928 — ✅ hecho (2026-09-22) · P2 — salió de cerrar B-1141 (2026-09-21)
+
+> **Cerrado aplicando `arrobaInstagram` solo a los dos campos que dicen Instagram
+> en el nombre.** `handlesDe` (`src/lib/textoRedes.ts`) los deriva con la misma
+> función que la ficha pública usa desde B-1141, antes de que entren a
+> `agregarChips`, así que el pie y la ficha no pueden discrepar sobre cómo se
+> escribe una cuenta (D-20). `difusion.arrobar` queda como estaba: no es un campo
+> de Instagram, admite el `-` que Instagram no tiene y puede ser de otra red, así
+> que pasarlo por el mismo saneador le cambiaría el valor a algo que nadie
+> escribió.
+>
+> **Y el ítem estaba mal en lo principal: por el panel el pie ya decía
+> `@casabrandon`.** Se midió al arreglarlo. El único consumidor del módulo es
+> `textoRedesDeForm`, que arma el documento con `formADocumento`, y ése normaliza
+> el campo con `conHandle` desde B-928. El ítem concluyó leyendo `handlesDe`
+> —donde el campo, efectivamente, se lee directo— y no la puerta por la que se
+> entra. **Es D-750 con el signo cambiado**: allá una red que parecía red y no
+> verificaba nada, acá un bug que parecía bug y no se veía. La consecuencia
+> práctica no es que el arreglo sobrara, es que la prioridad mintió → **B-1162**.
+>
+> **El arreglo vale igual**, y por eso quedó: la correctitud del pie colgaba de una
+> normalización que vive en otro módulo y contesta otra pregunta —*qué se guarda*,
+> no *cómo se muestra*—. Y `construirTextoRedes` está exportado y toma un
+> documento, así que un segundo consumidor que no pase por el formulario entra por
+> la puerta sin cubrir. Ahora las dos puertas contestan lo mismo y hay un test que
+> las compara entre sí, no contra un literal.
+>
+> **El hermano de costo distinto ya no está abierto:** B-1145, la descripción del
+> evento de Calendar, se cerró el mismo día normalizando **al mostrar** (D-763) y
+> no migrando los documentos — la opción (b) no se tomó, y el costo que la hacía
+> cara resultó no existir. Si alguna vez se la vuelve a considerar, hay que medir
+> el costo de nuevo.
+>
+> Destapó **B-1160** (`casa#brandon` deriva a `@casa`) y **B-1161** (el índice de
+> productores de la salida 5). Cinco mutaciones probadas.
+
 
 **Es la misma causa que B-1141, y son dos las salidas que quedaron sin
 cubrir: ésta y la descripción del evento de Calendar (B-1145).** El
@@ -1637,7 +1758,25 @@ Dos salidas, y la decisión es del dueño: dibujarlo (es la pregunta que un list
 no contesta nunca: qué semanas están vacías, qué día está saturado), o borrarlo y
 dejar el rastro. Lo que no conviene es el estado de hoy.
 
-### B-1082 · `D-400` y `D-401` se citan doce veces desde el código y nunca se escribieron · P2 — de documentar el tablero (2026-09-17)
+### B-1082 · `D-400` y `D-401` se citan doce veces desde el código y nunca se escribieron — ✅ hecho (2026-09-22) · P2 — de documentar el tablero (2026-09-17)
+
+> **Escritas, y no hizo falta reconstruirlas.** Van en `06-decisiones.md` en su
+> lugar numérico, entre D-381 y D-410. El primer intento las redactó de los
+> docblocks, que es lo que este ítem pedía; al verificarlo apareció que el frente
+> del tablero las había dejado **redactadas enteras** en `.estado/tablero.md`,
+> bajo «Para `docs/06-decisiones.md`», con la advertencia «quien integre tiene que
+> pegarlo, si no quedan dos referencias colgadas». Nadie lo pegó: es **B-1090** con
+> la misma forma que las seis de B-910. Van con el texto original —precedente de
+> D-430—, nota de procedencia, y aparte lo verificado contra el código de hoy.
+> D-400 suma además el bloque de acotación que le faltaba: su título dice «y el
+> calendario todavía no» y el calendario entró cuatro días después.
+>
+> **Y la cuenta del título estaba corta:** son **diecisiete citas en siete
+> archivos**, no doce. El doce era la cuenta de D-401 sola.
+>
+> **Las dos mitades quedan cerradas por el mismo frente:** escribir las entradas, y
+> decidir que el barrido mire `src/` y `tests/` — que es **B-1147**.
+
 
 `EstadisticasPanel.tsx`, `Reparto.tsx`, `tortaDelPanel.ts`, `estadoDelCatalogo.ts`,
 `anchoDelPanel.ts` y dos tests citan **D-400** (el tablero a todo ancho y el
@@ -1653,7 +1792,39 @@ cita decisiones: los docblocks. Es la mitad medible de **B-1090**.
 Dos mitades: escribir las dos entradas (el razonamiento está entero en los
 docblocks, es transcribir) y decidir si el barrido pasa a mirar `src/` y `tests/`.
 
-### B-1085 · El § 8.1 de `16-analitica-del-sitio.md` quedó atrás del tablero que describe · P2 — de documentar el tablero (2026-09-17)
+### B-1085 · El § 8.1 de `16-analitica-del-sitio.md` quedó atrás del tablero que describe — ✅ hecho (2026-09-22) · P2 — de documentar el tablero (2026-09-17)
+
+> **Cerrado, y los tres puntos del ítem eran ciertos contados contra el código:**
+> seis avisos (`CLASES_DE_AVISO`), la grilla es estado/tipo/arancel/**barrio** con
+> forma de cursar aparte, y el bloque «Lo que se publica» son **diez** números
+> —cuatro coberturas, tres proporciones de Google (B-813) y tres de inscripción
+> (B-703)— donde el § 8.1 nombraba cuatro.
+>
+> **Lo que el ítem no vio, y era la mitad del punto 1:** el sexto aviso tampoco
+> estaba en la tabla de fricciones del § 4, que es de donde el § 8.1 dice que
+> salen. La tabla ganó su fila 9, y el conteo pasó a «seis de las nueve».
+>
+> **Y lo que apareció al pasarle el `auditor-documentacion` es más grande que el
+> ítem: la capa de estado del documento se congeló el 2026-09-02/03 mientras el
+> trabajo cerró el 09-07.** Ocho filas llamaban «bloqueante» a **B-480**, que está
+> ✅ desde el 2026-09-03, y el § 9.4 pedía tres pasos de consola que B-790 hizo y
+> verificó de punta a punta el 2026-09-07. El archivo se contradecía a tres
+> párrafos de distancia. **El commit de esta misma tanda que subió las preguntas 5
+> y 6 del § 3 de ❌ a 🟡 nació desactualizado por copiar esa redacción vieja**, y
+> lo agarró el auditor: es la causa exacta que **B-1170** anota.
+>
+> Del mismo barrido: el § 8.2 no nombraba `tortaDelPanel.ts` ni `vistaDeGrafico.ts`;
+> la tabla de dimensiones del § 9.4 se quedó sin `provincia` (B-950); y cuatro
+> anclas internas tenían un guion de menos → **B-1171**.
+>
+> **Una autocorrección queda escrita porque es la lección:** en el commit del punto
+> 2 se escribió «forma de cursar va sin torta» y «barrio es el único que arranca en
+> lista», copiando el comentario del componente. Los dos falsos — el toggle está en
+> los cinco repartos y abren en lista dos. Cruzarlo con `04-funcionalidades.md`,
+> que lo tenía bien, es lo que lo encontró.
+>
+> **No se tocó el § 8.1bis:** su drift tiene ítem propio (**B-1086**).
+
 
 Tres cosas que ya no son ciertas en el documento de diseño de la pantalla: los
 avisos son **seis** y dice cinco (B-813 sumó «publicadas con una web del
@@ -2610,6 +2781,20 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1183 · Los `node_modules` symlinkeados de un worktree no están ignorados, y un `git add -A` los commitea — ✅ hecho (2026-09-22) · P3 — de la tanda del 2026-09-22
+
+> **Arreglado sacándoles la barra final a los dos patrones**, y verificado con
+> `git check-ignore -v` en vez de leyendo el `.gitignore`.
+
+El `.gitignore` tenía `node_modules/` y `functions/node_modules/`, **las dos con
+barra final**, así que matchean un directorio y **no** un link simbólico. En un
+worktree de `.claude/worktrees/` —donde `node_modules` se symlinkea al árbol
+principal— los dos aparecían como `??` en `git status`, no como ignorados, y un
+`git add -A` los metía al índice como blobs de modo `120000`. Le pasó a un frente
+de esta tanda, que lo revirtió en un commit propio.
+
+**Dónde:** `.gitignore:1` y `:37`.
 
 ### B-1162 · Un hallazgo que afirma «esto se ve» no dice si se reprodujo o si se dedujo leyendo · P3 — de cerrar B-1142 (2026-09-22)
 

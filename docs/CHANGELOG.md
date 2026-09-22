@@ -2,6 +2,150 @@
 
 ## Sin publicar
 
+- **El Instagram de una actividad se corrige al salir del campo, en vez de en
+  silencio al guardar** — **B-1144**, **D-767**. `organizador.instagram` y
+  `tallerista.instagram` eran los únicos campos de Instagram del repo sin ninguna
+  validación: las cuatro guías frenan el publicado con una regla en su
+  `superRefine` y acá no los miraba nadie.
+
+  **El dueño eligió contra la recomendación, con el costo a la vista:** corregir
+  al vuelo y **no** frenar el publicado. Quien pega
+  `https://www.instagram.com/casabrandon/?igsh=…` —lo que copia el botón
+  «Compartir», que es la forma real en que se copia una cuenta— ve `casabrandon`
+  al salir del campo. **El costo aceptado es que este campo queda con un criterio
+  distinto del de las cuatro guías: ellas frenan, éste corrige.** Son dos
+  criterios para el mismo dato en el mismo panel, y quedan escritos en D-767 y en
+  el docblock del componente para que no se lean como un descuido.
+
+  **No inventa una regla: muestra la que ya existía.** `conHandle` normaliza este
+  mismo campo con este mismo saneador desde B-928; lo que faltaba era verlo antes
+  de guardar. Lo que el saneador no reconoce queda tal cual y se publica igual:
+  borrarlo sería perder la única copia de lo que alguien escribió.
+
+  **El hallazgo lo puso el `auditor-privacidad`, y es la parte que más valía:** los
+  dieciocho casos nuevos probaban el eco en la pantalla y **cero probaban la
+  regla**. El `onBlur` es salteable por el camino más común de todos —abrir una
+  actividad vieja y guardarla sin tocar el Instagram—, así que la barrera que
+  protege al `events.json`, al evento de Calendar, al pie del posteo y a la ficha
+  es `conHandle`, y no tenía ningún test. Era la condición exacta para que alguien
+  lo borrara por redundante y los dieciocho siguieran verdes.
+
+- **La descripción del evento de Google Calendar dice `@casabrandon` y ya no la
+  URL pegada** — **B-1145**, **D-763**. El bloque «Organiza:» concatenaba
+  `organizador.instagram` tal como está en el documento, y `functions/` lee el
+  documento de Firestore **crudo**, sin un `formADocumento` en el medio. Es la
+  salida que peor se corrige de todas: el evento ya está copiado en el dispositivo
+  de quien se suscribió.
+
+  **Y no era solo un problema de las fichas viejas, que es lo primero que apareció
+  al medir.** Desde B-928 el documento guarda el handle **pelado**, sin arroba, así
+  que el evento venía diciendo «Casa Brandon · casabrandon» para **todas** las
+  fichas nuevas — la otra mitad de B-1141, que el ítem no nombraba.
+
+  **El costo que frenó este arreglo durante B-1141 no existe, y quedó medido.** El
+  ítem daba por hecho —y con eso se decidió— que normalizar acá iba a reescribir de
+  golpe todos los eventos ya publicados. **La primera corrida del sync después del
+  deploy no actualiza nada:** la guarda anti-loop no compara el payload recalculado
+  contra uno *guardado*, compara `construirEvento(antes)` contra
+  `construirEvento(despues)`, dos recálculos con el mismo código desplegado, así
+  que una normalización que toca los dos lados por igual es invisible para el diff.
+  El `auditor-trampas` lo verificó de forma independiente rastreando los cuatro
+  caminos que llaman a `construirEvento`.
+
+  **Lo que sí queda, y es el reverso de lo mismo: el arreglo no es retroactivo.**
+  Se le volvió a preguntar al dueño con el número medido y eligió **dejarlo**
+  (B-1181): lo nuevo sale limpio, y una ficha que nadie vuelva a tocar conserva la
+  URL cruda en su evento. Cero escrituras y cero notificaciones de «evento
+  actualizado».
+
+  **Un hallazgo que apareció en el camino y valía más que el ítem: el saneador
+  derivaba a la cuenta de otra persona.** `handleInstagram` corta en el primer `?`
+  o `#` para tolerar el `?igsh=…` del botón «Compartir», pero el corte se aplica a
+  **cualquier** valor: `casa#brandon` da `casa`. En esta salida eso es peor que el
+  bug original, así que acá, ante la duda, sale el crudo. Acotarlo para las seis
+  salidas es **B-1160**. Y el saneador no se reescribió: **bajó** a `functions/`,
+  el mismo reparto que `slugify` y `geografia` desde B-968.
+
+- **El pie del posteo para redes deriva `@casabrandon` — y lo que se encontró es
+  que por el panel ya lo decía** — **B-1142**. Las fichas cargadas antes del
+  2026-09-17 tienen la URL completa guardada adentro de `organizador.instagram`, y
+  `conArroba` no reconoce una URL como handle.
+
+  **Pero el ítem daba eso por visible, y se midió que no.** El único consumidor del
+  módulo es `textoRedesDeForm`, que arma el documento con `formADocumento`, y ése
+  normaliza desde B-928: el pie que salía **ya era** `@casabrandon`. El ítem
+  concluyó leyendo `handlesDe` y no la puerta por la que se entra. Es D-750 con el
+  signo cambiado: allá una red que parecía red y no verificaba nada, acá un bug que
+  parecía bug y no se veía.
+
+  **El arreglo vale igual, y ahora está escrito por qué:** la correctitud del pie
+  colgaba de una normalización que vive en otro módulo y contesta otra pregunta
+  —*qué se guarda*, no *cómo se muestra*—, y `construirTextoRedes` está exportado y
+  toma un documento, así que un segundo consumidor que no pase por el formulario
+  entra por la puerta sin cubrir. `difusion.arrobar` queda como estaba: no es un
+  campo de Instagram, admite el `-` que Instagram no tiene y puede ser de otra red.
+
+  Lo que costó de verdad fue la **prioridad**: éste y B-1145 salieron en la misma
+  lista con la misma etiqueta de «se ve hoy», y solo B-1145 la merecía. Eso es
+  **B-1162**.
+
+- **`D-400` y `D-401` ya existen en el registro, y no hubo que reconstruirlas** —
+  **B-1082**. El tablero a todo ancho y la regla que hace honesta a una torta se
+  citaban **diecisiete veces desde siete archivos** de `src/` y `tests/` sin tener
+  entrada en `06-decisiones.md`. El primer intento las redactó de los docblocks,
+  que era lo que el ítem pedía; al verificarlo apareció lo otro: el frente que las
+  decidió las había dejado **redactadas enteras** en `.estado/tablero.md`, con el
+  aviso incluido —«quien integre tiene que pegarlo, si no quedan dos referencias
+  colgadas»—. Nadie lo pegó. Es **B-1090** otra vez: lo que faltó no fue redactar.
+
+  **D-400 necesitaba además un bloque de acotación**, y es lo que una
+  reconstrucción no podía saber: su título dice «y el calendario todavía no», y
+  cuatro días después el calendario entró a `VISTAS_A_TODO_ANCHO` por pedido del
+  dueño. La decisión no se cae —no se ensanchó por simetría, se ensanchó cuando
+  hubo un reparto decidido— pero leída sin eso, miente.
+
+- **El barrido de decisiones huérfanas mira el repo entero, y destapó una que
+  nadie podía ver** — **B-1147**. Miraba 27 archivos, todos `.md`, con un motivo
+  escrito que sonaba razonable. **Contestaba la pregunta equivocada:** lo que este
+  barrido persigue no es el link roto, es la decisión que alguien va a ir a buscar
+  y no está. Y una decisión es, sobre todo, lo que el **código** cita. Medido:
+  `D-88` se reportaba nombrando tres `.md` y se la cita desde **dieciocho**
+  archivos; y D-400 y D-401, citadas solo desde `src/` y `tests/`, **no podían
+  aparecer nunca**.
+
+  Abrir el corpus destapó lo que se esperaba: **`D-239`**, citada desde
+  `src/components/sitio/Encabezado.astro` desde el 2026-09-18 y sin entrada en
+  ningún lado — ni siquiera en un `.estado/`, que es donde B-910 encontró las
+  suyas. Queda como **B-1150**: una entrada inventada es peor que un hueco.
+
+  El corpus es el del gemelo y no uno nuevo, y se **importa** en vez de copiarse.
+  **Lo único en que se aparta es que acá no hay lista congelada de huérfanas**, y
+  el motivo ya estaba escrito: una `D-` se acuña en el commit que la decide, así
+  que congelarlas dejaría el test rojo mientras una tanda está abierta (B-180). Lo
+  que sí se congela es **el corpus**: un barrido que se encoge no rompe nada
+  visible, sigue corriendo y sigue en verde, y lo único que cambia es lo que deja
+  de ver.
+
+- **El documento de diseño del tablero volvió a coincidir con el tablero, y de
+  paso se descubrió que su capa de estado llevaba tres semanas congelada** —
+  **B-1085**. El § 8.1 de `16-analitica-del-sitio.md` describía la pestaña «El
+  catálogo» con la forma de agosto: cinco avisos donde hay seis, cuatro números
+  donde hay diez, y un reparto que hoy es otro.
+
+  **Los tres puntos del ítem eran ciertos**, pero el primero escondía la mitad que
+  faltaba: el sexto aviso tampoco estaba en la tabla de fricciones del § 4, que es
+  de donde el § 8.1 dice que salen los avisos. Corregir «cinco» a «seis» y nada más
+  habría dejado el § 8.1 apuntando a una lista de ocho que no lo contiene.
+
+  **El hallazgo que no estaba en el ítem es más grande que el ítem.** Apareció que
+  **el estado del documento se congeló el 2026-09-02/03 mientras el trabajo cerró
+  el 09-07**: ocho filas seguían llamando a **B-480** «bloqueante» —se resolvió el
+  2026-09-03— y el § 9.4 seguía pidiendo tres pasos de consola que el dueño hizo el
+  2026-09-07. El propio archivo se contradecía a tres párrafos de distancia. Y el
+  commit de esta misma tanda que subió dos preguntas de ❌ a 🟡 **nació
+  desactualizado por copiar esa redacción vieja** — lo agarró el auditor, no el que
+  escribía. Eso es **B-1170**, y el barrido que lo cierra se está construyendo.
+
 - **El `projectId` de los tests deja de derivarse dos veces** — **B-1111**.
   `tests/emulador.ts` resolvía la base del emulador con
   `process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria'`, o sea una
