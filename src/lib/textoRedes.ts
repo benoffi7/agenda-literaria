@@ -78,6 +78,9 @@ import { encuentrosDe, fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_MODALIDAD, proximoEncuentro } from '@/lib/filtrosActividades';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { agregarChips } from '@/lib/formulario/chips';
+// B-1142 — cómo se escribe un handle de Instagram lo decide `arrobaInstagram`
+// (B-1141), no un regex de acá: ver `handlesDe`.
+import { arrobaInstagram } from '@/lib/enlaceSeguro';
 import { instanteDeTimestamp } from '@/lib/sesiones';
 // B-312 — la URL absoluta del detalle, de la misma función que la canónica y el
 // sitemap. `rutasPublicas` es puro y sin dependencias: entra al bundle del panel
@@ -185,6 +188,15 @@ const ETIQUETA_VIA: Record<ViaInscripcion, string> = {
  * que hay parece un handle —una sola palabra de letras, números, punto o guion
  * bajo—. Un mail, una URL o un nombre con espacios salen como se escribieron, y
  * uno que ya trae `@` no lo duplica.
+ *
+ * ── Lo que esta función **no** es, y por qué (B-1142) ───────────────────────
+ *
+ * **No es el normalizador de Instagram.** Ve los tres orígenes del pie mezclados
+ * —`difusion.arrobar` primero, que admite `-`, que puede ser de otra red y que
+ * es texto libre del §3.2—, así que lo único que puede hacer con seguridad es
+ * decorar. Un handle **de Instagram** guardado como URL no lo cumple y sale
+ * pelado: eso no se arregla acá, se arregla antes, en `handlesDe`, donde se sabe
+ * de qué campo viene cada valor.
  */
 const conArroba = (handle: string): string =>
   /^[A-Za-z0-9._-]+$/.test(handle) ? `@${handle}` : handle;
@@ -229,13 +241,50 @@ const conArroba = (handle: string): string =>
  * El encabezado ya usaba este mismo `?.nombre?.trim()` para decidir el «Con tal»
  * (`bloqueEncabezado`), así que el módulo se contestaba a sí mismo distinto en
  * dos líneas: el posteo podía no nombrar a nadie y arrobarlo en el pie.
+ *
+ * ── Los dos campos de Instagram pasan por `arrobaInstagram` (B-1142) ────────
+ *
+ * Y los otros no. Es la distinción que hace este arreglo, y la razón de que no
+ * haya entrado con B-1141: **`difusion.arrobar` no es un campo de Instagram**.
+ * Admite el `-` que Instagram no tiene, puede ser un handle de otra red, y su
+ * razón de existir es etiquetar lo que quien publica quiso etiquetar (§5.1).
+ * Pasarlo por el saneador de Instagram convertiría `@la-mona` en texto sin
+ * arroba: rompería el caso que el campo existe para servir. `organizador.
+ * instagram` y `tallerista.instagram`, en cambio, **dicen Instagram en el
+ * nombre**, y ahí sí hay una sola forma correcta de escribirlos.
+ *
+ * **El caso concreto**: las fichas cargadas antes del 2026-09-17 tienen
+ * `https://www.instagram.com/casabrandon/` guardado adentro del campo —B-928
+ * normalizó al guardar y **no reescribió lo ya cargado**—, y esa URL no cumple
+ * el alfabeto de `conArroba`, así que el pie salía con la URL pelada donde tenía
+ * que ir `@casabrandon`. No rompía nada: simplemente no hacía lo único que el
+ * pie existe para hacer, que es etiquetar la cuenta, y quien copia la caption la
+ * pega así.
+ *
+ * Se deriva **al mostrar** y no con una migración, igual que en la ficha
+ * pública (B-1141): arregla las viejas y las nuevas con la misma línea y no toca
+ * datos de producción. `arrobaInstagram` es esa misma función —no una copia—,
+ * así que el pie del posteo y la ficha no pueden discrepar sobre cómo se escribe
+ * una cuenta (D-20).
+ *
+ * **Lo que no se reconoce sigue saliendo como se escribió**, sin arroba: es el
+ * criterio de `arrobaInstagram` y el de `conArroba`, y acá suman igual. Y entra
+ * **antes** de `agregarChips`, lo que de yapa deduplica un organizador cargado
+ * como URL contra el mismo handle escrito a mano en «arrobar» — dos entradas que
+ * hasta hoy salían las dos.
+ *
+ * **Este arreglo cubre esta salida y nada más.** La validación del campo al
+ * publicar es B-1144, y la descripción del evento de Calendar va por B-1145 —que
+ * se resuelve aparte porque ahí no es gratis: normalizar cambia el payload que
+ * la guarda anti-loop compara, así que dispara un update de una sola vez contra
+ * el calendario de quien tenga el evento agendado (D-95, trampa 3 del §13).
  */
 const handlesDe = (actividad: ActividadParaRedes): string[] => {
   const tallerista = actividad.tallerista;
   const candidatos = [
     ...(actividad.difusion?.arrobar ?? []),
-    actividad.organizador?.instagram ?? '',
-    tallerista?.nombre?.trim() ? (tallerista.instagram ?? '') : '',
+    arrobaInstagram(actividad.organizador?.instagram),
+    tallerista?.nombre?.trim() ? arrobaInstagram(tallerista.instagram) : '',
   ]
     .map((h) => h.trim())
     .filter(Boolean);
