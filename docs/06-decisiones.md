@@ -8904,7 +8904,7 @@ enganche.
 
 ## D-480 · El panel gana los filtros de etiquetas y destacada — se revierte D-74 del todo
 
-**Fecha:** 2026-09-07 · **Ítem:** B-274 · **Revisa:** [D-74](#d-74--el-listado-del-panel-filtra-por-cinco-ejes-y-no-por-todos) · **Continúa:** [D-152](#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74)
+**Fecha:** 2026-09-07 · **Ítem:** B-274 · **Revisa:** [D-74](#d-74--cinco-filtros-y-cuatro-descartados-con-su-motivo) · **Continúa:** [D-152](#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74)
 
 **Quién lo pidió.** El dueño, contestando la pregunta abierta de B-274: «los dos:
 filtro por tags y por destacado».
@@ -8998,7 +8998,7 @@ reexporta para no tocar los imports que ya estaban escritos.
 
 ## D-490 · El formulario de carga va en pestañas, y la barra de guardar sigue fija
 
-**Fecha:** 2026-09-07 · **Ítem:** pedido directo del dueño · **Revisa:** [D-121](#d-121--la-barra-de-acciones-dice-qué-campos-faltan-y-lleva-hasta-ellos), [B-184](BACKLOG.md), [B-193](BACKLOG.md)
+**Fecha:** 2026-09-07 · **Ítem:** pedido directo del dueño · **Revisa:** [D-121](#d-121--el-mensaje-de-la-barra-nombra-campos-o-secciones-y-lleva-hasta-ahí), [B-184](BACKLOG.md), [B-193](BACKLOG.md)
 
 **Quién lo pidió y con qué palabras.** «¿Podemos hacer un rediseño del formulario
 en la carga? Quedó muy largo. Que sean tabs y con la barra de guardar siempre
@@ -9072,7 +9072,7 @@ decisión y no un extra:
 
 ## D-500 · El monto del arancel se publica en las cinco salidas que ya dicen el arancel
 
-**Fecha:** 2026-09-07 · **Ítem:** B-114 · **Continúa:** [D-16](#d-16--el-arancel-no-se-preselecciona), [D-152](#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74)
+**Fecha:** 2026-09-07 · **Ítem:** B-114 · **Continúa:** [D-16](#d-16--arancel-no-se-preselecciona), [D-152](#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74)
 
 **Quién lo pidió.** El dueño: «sí: agregar `arancel.monto` al modelo», y después,
 sobre el alcance, «en todo lo que ya dice el arancel» y «solo donde tiene sentido».
