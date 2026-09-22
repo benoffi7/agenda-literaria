@@ -27,21 +27,24 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > Lo que ningún archivo sabe es un id **reservado por una tanda y nunca
 > escrito**: esos hay que buscarlos a mano en los ítems que los reservaron.
 
-> **Rangos reservados por la tanda EN CURSO del 2026-09-22 — `B-1150` a `B-1199`.**
-> Esto es **B-1051 aplicado a sí mismo**: ese ítem dice que un id reservado por
-> una tanda y nunca escrito se ofrece como libre, porque la reserva no queda
-> escrita en ningún lado que el tablero pueda leer. Acá queda, y **al abrir la
-> tanda**, que es el momento en que el ítem señala que nadie se acuerda de
-> anotarlo. Cinco frentes: `decisiones-2` **B-1150-1159**, `instagram`
-> **B-1160-1169**, `analitica-doc` **B-1170-1179**, `calendario-ig`
-> **B-1180-1189**, `form-ig` **B-1190-1199**. `B-1148` y `B-1149` quedan de
-> margen. **Y `B-1200` a `B-1219` los tiene reservados una sesión hermana que
-> trabaja B-1112 y B-1121 en el árbol principal, fuera de la tanda.** Del lado de
-> las decisiones: **D-751 a D-770** para los cinco frentes y **D-771 a D-774**
-> para la sesión hermana, repartidas en el mismo
-> orden. El detalle vivo está en `/tmp/agenda-literaria-frentes.md` y en
-> `EN-CURSO.md`. **Lo que sobre al cerrar se anota como hueco acá**, con esta
-> misma nota reescrita — si no, es exactamente el agujero que B-1051 describe.
+> **Rangos reservados por la tanda del 2026-09-22 — los `B-` del 1150 al 1199 y
+> las `D-` de la 751 a la 770.** Esto es **B-1051 aplicado a sí mismo**: ese ítem
+> dice que un id reservado por una tanda y nunca escrito se ofrece como libre,
+> porque la reserva no queda escrita en ningún lado que el tablero pueda leer.
+> Acá queda, y **al abrir la tanda**, que es el momento en que el ítem señala que
+> nadie se acuerda de anotarlo. Cinco frentes, de diez en diez: `decisiones-2`
+> desde el 1150, `instagram` desde el 1160, `analitica-doc` desde el 1170,
+> `calendario-ig` desde el 1180 y `form-ig` desde el 1190. Del 1200 al 1219 los
+> tomó una sesión hermana que trabajó B-1112 y B-1121 en paralelo, con las `D-`
+> de la 771 a la 774. Los números 1148 y 1149 quedaron de margen.
+>
+> **Los extremos de un rango se escriben así, sin la forma `B-nnnn`, y no es
+> capricho:** la primera versión de esta nota los escribió con el prefijo y
+> `items-referenciados.mjs` los leyó como **citas**, así que la nota que existe
+> para no perder ids se convirtió ella misma en cinco huérfanos y puso el chequeo
+> en rojo. Es la misma clase que esa red persigue, producida por la nota que la
+> documenta. **Lo que sobre al cerrar se anota como hueco acá**, con esta misma
+> nota reescrita — si no, es exactamente el agujero que B-1051 describe.
 
 > **Hueco de numeración: `B-297`, `B-298` y `B-299` no existen y no se borró nada.**
 > El último ítem abierto era B-296 y la tanda del 2026-09-02 arrancó a numerar en
@@ -363,6 +366,38 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 > reglas.
 
 ## P1 — bloquean el objetivo del proyecto
+
+### B-1182 · El índice de salidas públicas no nombra a dos productores de la descripción del evento · P1 — del `auditor-privacidad` sobre el cierre de B-1145 (2026-09-22)
+
+`arrobaInstagram` **decide texto visible del calendario público**: el
+`@casabrandon` de la descripción. Es productor de la salida 2 en el mismo sentido
+exacto en que `src/lib/handle-instagram.mjs` es productor de la salida 6 — y la
+fila 6 lo dice con todas las letras desde B-1141 («un cambio que toque solo ese
+archivo tiene que despertar esta auditoría»). La fila 2 nombra solo
+`functions/calendario.js`.
+
+**Consecuencia concreta:** un diff que toque **solo**
+`functions/handle-instagram.js` —ampliar el alfabeto, sacar el corte del
+`?igsh=`, invertir el orden de los `replace`— no dispara la auditoría por nombre
+de archivo, y reescribe texto de un calendario que ya está copiado en
+dispositivos ajenos. Es el modo de falla que B-863/B-896 dejaron escrito para
+`functions/propuestas*.js`.
+
+**Hay una instancia hermana, pre-existente y nunca anotada:**
+`functions/geografia.js` (`geografiaNormalizada`, vía `piezasDeDireccion`)
+produce la dirección del bloque «Dónde» del mismo evento y tampoco está en
+ninguna de las tres tablas — `src/lib/geografia.mjs` sí está, pero para la salida
+11. El arreglo es la misma línea, y por eso van juntos.
+
+**Y el mismo agujero tiene una tercera instancia, de otro frente de la misma
+tanda:** el archivo que decide cómo se escribe un handle no está nombrado en la
+fila de la salida 5 (el texto para redes) — eso es **B-1161**. Los dos se cierran
+con la misma pasada por las tres tablas.
+
+**Tres tablas atadas, las tres a mano:** `.claude/agents/auditor-privacidad.md`
+(fila 2 y el `description`), `docs/07-seguridad.md` (fila 2) y
+`.claude/skills/campo-nuevo/SKILL.md`. En cuanto entren, los `it` de
+`tests/agentes-y-skills.test.ts` los sostienen solos.
 
 ### B-1112 · El aislamiento del emulador cubre Firestore y **no** Auth, y por eso un uid viejo da verde donde uno nuevo da rojo — ✅ hecho (2026-09-22) · P1 — de `frente/bibliotecas` (2026-09-17)
 
@@ -1215,6 +1250,241 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
+
+### B-1150 · `D-239` se cita desde el encabezado del sitio y nunca se escribió · P2 — la destapó B-1147 (2026-09-22)
+
+**Es la primera huérfana que el barrido no podía ver, y salió en la corrida en
+que dejó de estar ciego.** `src/components/sitio/Encabezado.astro:322` dice «Es el
+mismo criterio de **D-239** sobre la home», justificando que el desplegable del
+encabezado sea un `<details>` nativo y no una isla de React. `06-decisiones.md` no
+tiene esa entrada: va de D-232 a D-250 sin pasar por ahí.
+
+**No es una tanda en vuelo.** La cita la trajo `ec2027f` (`fix(B-1134)`,
+2026-09-18), integrado en `main` cuatro días antes, y es la **única** del repo: no
+hay otro archivo que la nombre.
+
+**Y acá sí hay que reconstruir, a diferencia de B-1082.** Se buscó en los once
+`.estado/*.md` del árbol principal —que es donde B-910 encontró cinco de sus seis
+y donde estaban D-400 y D-401— y **D-239 no aparece en ninguno**. Tampoco hay
+ninguna decisión escrita sobre `<details>` en el registro, así que no es una cita
+con el número equivocado apuntando a algo que exista.
+
+**Dos salidas y conviene mirar cuál antes de escribir nada:** que el número se
+haya acuñado para una decisión que nunca se tomó —y entonces la cita se corrige o
+se borra— o que el criterio sea real y haya que redactarlo desde lo que el propio
+comentario ya da: elemento nativo semántico y accesible por encima de bajar un
+runtime de React al sitio público para reimplementar peor lo que el navegador
+trae. **Lo que no se hace es inventar la entrada**: una entrada inventada es peor
+que un hueco (la lección de `D-9` en B-910).
+
+**Dónde:** `src/components/sitio/Encabezado.astro:322`.
+
+### B-1160 · `handleInstagram` corta en el primer `#` o `?` aunque no haya URL, y deriva a **otra cuenta** · P2 — del `auditor-privacidad` sobre el cierre de B-1142 (2026-09-22)
+
+**Verificado corriendo el helper, no leyéndolo:** `handleInstagram('casa#brandon')`
+devuelve `'casa'`, y `handleInstagram('taller?2026')` devuelve `'taller'`. El
+corte por `?`/`#` (`src/lib/handle-instagram.mjs:53`) se aplica a **cualquier**
+valor, no solo a uno que haya empezado con `instagram.com/`, que es el único caso
+que B-928 vino a cubrir (el `?igsh=…` del botón «Compartir»).
+
+**Lo que pasa es peor que mostrar mal:** `@casa` es una cuenta real de otra
+persona. Y en un posteo de Instagram la arroba no es texto, **menciona**: linkea y
+notifica a la cuenta etiquetada. Es la salida de la que no se puede volver.
+
+**Y no se queda en la salida: se guarda.** `formADocumento` escribe
+`conHandle(crudo)` en el documento (`src/lib/actividades.ts:197`), así que quien
+tipea `casa#brandon` en el panel **guarda `casa`** — el valor original se pierde,
+y con él la posibilidad de ver qué se había escrito. Eso contradice de frente el
+criterio que el propio docblock declara dos párrafos más arriba: «si no se
+reconoce, se guarda lo tipeado, porque es la única copia del dato».
+
+**Lo tapan dos puertas puestas en la tanda del 2026-09-22, y ninguna lo arregla:**
+el calendario no deriva cuando el corte descartaría texto que no viene de una URL
+de Instagram (D-763), y el formulario lo deja a la vista en el campo en vez de en
+silencio (D-767). Las dos son locales a su salida. La ficha pública, el pie del
+posteo y el documento guardado siguen expuestos.
+
+**Los bordes que sí están cerrados** (verificados uno por uno): el prefijo está
+anclado con `^`, así que `ar.instagram.com/x`, `instagram.com.evil.com/x` y un
+redirect con `?u=instagram.com/otra` no derivan nada; cualquier valor con espacio,
+`/` o `:` falla el alfabeto y sale como se escribió; `instagram.com/p/ABC/` queda
+con barra y no deriva. El único agujero es el corte sobre un valor **pelado**.
+
+**Arreglo mínimo:** aplicar el corte de query/fragmento **solo si hubo prefijo de
+`instagram.com`**, dejando sin derivar el valor pelado con `#` o `?`. Al cerrarlo
+se saca la puerta de `functions/calendario.js` (D-763) y se cae el test que fija
+el caso en `tests/seccionQuien.render.test.tsx`, que está escrito a propósito para
+ponerse rojo ese día.
+
+**Dónde:** `src/lib/handle-instagram.mjs:53` — desde B-1145 la implementación vive
+en `functions/handle-instagram.js`, así que el arreglo va allá y `src/` lo hereda.
+
+### B-1161 · `handle-instagram` es productor de la salida más irreversible y no está en ninguna de las tres tablas que la indexan · P2 — del `auditor-privacidad` sobre el cierre de B-1142 (2026-09-22)
+
+**Es la reincidencia exacta de lo que B-1141 ya arregló una vez**, y por eso vale
+como ítem y no como línea suelta. Desde B-1142, quién decide el texto literal que
+se pega en Instagram no es solo `textoRedes.ts`: es `arrobaInstagram`. La fila 6
+de la tabla ya enuncia esa regla para sí misma —«ese archivo es un productor de
+esta salida y un cambio que toque solo ese archivo tiene que despertar esta
+auditoría»—. El mismo argumento vale ahora para la salida **5**, que es la
+irreversible.
+
+**Y la segunda mitad es peor y es anterior:** el archivo del saneador no está en
+la lista de archivos del `description` del `auditor-privacidad`, así que **hoy un
+cambio que lo toque solo a él no despierta la auditoría por ninguna de las dos
+salidas** — ni por la 6, donde la tabla dice que tiene que despertarla.
+
+Es el modo de falla que este índice ya documenta para esta misma fila: «la 5
+faltaba en esta tabla hasta el 2026-08-27, y el agujero era del tipo peor: no de
+cobertura, sino de índice». La cobertura está bien; falta la línea que hace que
+alguien abra el archivo.
+
+**Hermano:** **B-1182**, la misma falta en la fila 2 (el calendario). Se cierran
+juntos, en una sola pasada por las tres tablas.
+
+**La red que lo cierra de verdad, y es la que conviene:** extender
+`tests/agentes-y-skills.test.ts` para que exija **todos** los archivos nombrados
+en la celda dentro del `description`, no solo el primero. Así el índice no se
+puede volver a desfasar.
+
+### B-1170 · Un documento de diseño afirma el estado de un ítem y nada lo compara contra el backlog · P2 — de cerrar B-1085 (2026-09-22)
+
+**El caso que lo abre es el más caro que produjo este repo hasta ahora en
+documentación.** `16-analitica-del-sitio.md` tiene tres lugares que declaran
+estado —el encabezado, el § 11 y el § 12— más las columnas «¿Hoy?» del § 3 y del
+§ 4. El 2026-09-22 **ocho filas** llamaban «⛔ bloqueado por B-480» a cosas que
+B-480 dejó de bloquear el **2026-09-03**, y el § 9.4 pedía tres pasos de consola
+que **B-790 hizo y verificó de punta a punta el 2026-09-07**. Tres semanas.
+
+**Lo que lo vuelve un ítem y no una corrección:** el documento se contradecía a sí
+mismo a tres párrafos de distancia —el paso 1 del § 9.4 terminaba en «faltan los
+pasos 2, 3 y 4» encima de los pasos 2 y 3 marcados «✅ hecho el 2026-09-07»— y
+**nadie lo vio en diecinueve días**. Peor: el frente que estaba arreglando el
+§ 8.1 **propagó la redacción vieja a filas nuevas**, porque lo razonable al
+escribir una fila es copiar el formato de la de al lado, y la de al lado era del
+2026-09-02. Lo agarró el `auditor-documentacion`, no el que escribía.
+
+**Y el mismo día pasó del otro lado, en el archivo que es la fuente de verdad:**
+`docs/BACKLOG.md` listaba B-1112 como abierto cuando su opción (a) estaba en
+`main` desde el 2026-09-17, y otra sesión estuvo a punto de rehacer ese trabajo.
+
+**Por qué ningún barrido lo ve.** `scripts/items-referenciados.mjs` verifica que
+un `B-nnnn` citado **exista**; `decisiones-referenciadas.mjs` hace lo mismo con
+las `D-`. Ninguno mira lo que la cita **afirma**. Un `| **B-480** | … | ⛔ acción
+manual del dueño |` es un id válido con una entrada válida, y lo único falso es el
+estado — que es lo que alguien lee para decidir qué hacer esta semana.
+
+Es la misma forma de **B-1090** con el signo cambiado: allá falta el texto, acá
+sobra el viejo.
+
+> **Decidido el 2026-09-22: se construye el barrido**, que era la recomendación y
+> la única de las tres salidas que cierra la clase. Se aceptaron sus dos costos:
+> que va a tener falsos positivos —`🟡` significa cosas distintas según la fila— y
+> que la deuda de hoy se congela para que solo baje, el patrón de B-1100. Las dos
+> descartadas: sacar los estados de los documentos de diseño (barato, pero se
+> pierde leer el orden de trabajo con su estado al lado) y una regla de proceso
+> (cuesta cero y depende de la memoria, que es lo que falló seis veces en B-1090
+> y dos veces hoy). **En curso en el frente `estados`.**
+
+### B-1180 · El saneador del Instagram tiene dos cuerpos, y falta la línea que los junta · P2 — de cerrar B-1145 (2026-09-22)
+
+`functions/handle-instagram.js` nació en B-1145 porque `functions/` no puede
+importar `src/` (D-20) y la descripción del evento necesita el mismo handle que
+la ficha. **Falta el último tramo del patrón**, que es el que lo convierte en «una
+implementación, tres runtimes» en vez de en dos copias: que
+`src/lib/handle-instagram.mjs` reexporte en lugar de tener su propio cuerpo,
+exactamente como `src/lib/slugify.mjs` y `src/lib/geografia.mjs` desde B-968.
+
+**No se hizo en B-1145 porque ese archivo era de otro frente de la tanda.** El
+parche está escrito, aplicado en local y verificado —547 tests verdes y `tsc`
+limpio— y es una línea de código:
+
+```js
+export { handleInstagram, arrobaInstagram } from '../../functions/handle-instagram.js';
+```
+
+**Mientras tanto hay red**, y es la misma que B-928 corrió entre el script y el
+sitio: un test que importa las dos y las corre contra la misma batería exigiendo
+que contesten igual (`tests/calendario.test.ts`). Funcionó entonces y funciona
+ahora —probado mutando cada copia—, pero B-928 también dejó escrito su límite:
+avisa **después** y el arreglo hay que escribirlo dos veces. Por eso este ítem
+existe y no es opcional.
+
+**Al cerrarlo**, el `it` de equivalencia pasa a comparar la función consigo misma
+y deja de probar nada: hay que reemplazarlo por el chequeo de fuente de que la
+fachada no tiene implementación propia, igual que
+`tests/instagrams-de-la-base.test.ts:101`. Y conviene aprovechar para mover los
+dos chequeos de clase D-20 de `tests/calendario.test.ts` a
+`tests/clases-de-bug.test.ts`, donde viven los otros ocho.
+
+**Y hay un tercer cuerpo, que este ítem no baja:** `conArroba` en
+`src/lib/textoRedes.ts` también contesta «cómo se escribe este handle», con otro
+alfabeto a propósito (admite `-`, para `difusion.arrobar`). Son tres, B-1180 los
+deja en dos, y que no exista ninguna tabla que diga cuál va con cuál es **B-1191**.
+
+**Dónde:** `src/lib/handle-instagram.mjs`; el modelo, `src/lib/slugify.mjs`.
+
+### B-1181 · El arreglo del Instagram en Calendar no es retroactivo — ❌ descartado (2026-09-22), con el motivo escrito · P2 — de cerrar B-1145
+
+> **El dueño decidió dejarlo el 2026-09-22, con el número medido a la vista.** Lo
+> nuevo sale limpio desde ya; los eventos ya publicados se corrigen solos a medida
+> que alguien edite esa ficha por cualquier motivo, y ahí el cambio viaja en el
+> update que esa edición ya iba a producir igual. **Una ficha que nadie vuelva a
+> tocar deja su evento con la URL cruda para siempre**, y eso está aceptado: no es
+> una fuga —la URL de un perfil público no es un dato privado—, es una ficha que
+> se ve un poco peor en el calendario de alguien. A cambio, cero escrituras y cero
+> notificaciones de «evento actualizado».
+>
+> Se descartaron las dos que sí lo arreglaban, y las dos tenían el mismo costo:
+> `replanificarPorEtiquetas` (`functions/sincronizacion.js`), que nació para
+> exactamente esto —empujar un cambio de **texto** a los eventos publicados sin
+> tocar el documento, con tope por corrida ya incluido—, y la opción (b) de
+> B-1145, migrar los documentos. Las dos producen el pulso de updates a Calendar
+> que el dueño ya había decidido no pagar.
+
+**Queda escrito porque el razonamiento de por qué no muerde es el mismo que
+explica por qué D-763 salió gratis**, y quien lea uno va a preguntar por el otro.
+`construirDescripcion` deriva `@casabrandon` al armar el evento, así que todo lo
+que se publique de acá en más sale limpio. Pero el diff (`planificar`) solo emite
+una operación cuando el **documento** se vuelve a escribir, y comparar dos
+recálculos con el mismo código nunca da diferencia.
+
+**Lo que no hay que hacer, y conviene que quede escrito:** debilitar la guarda
+anti-loop ni agregarle una excepción para que el cambio se propague solo. Es la
+trampa 3 del § 13, el bug más caro del sistema.
+
+**Dónde:** `functions/calendario.js` (`planificar`, `mismoEvento`);
+`functions/sincronizacion.js` (`replanificarPorEtiquetas`, el molde si algún día
+se revierte esta decisión).
+
+### B-1190 · El campo de Instagram avisa por omisión: si no reconoce el valor, lo único que pasa es que no pasa nada · P2 — del `auditor-privacidad` sobre el cierre de B-1144 (2026-09-22)
+
+**Es la consecuencia deliberada de D-767, no un olvido — pero merece un ítem
+porque la decisión del dueño fue «no frenar», no «no avisar».** Las dos cosas se
+pueden tener a la vez y hoy solo está la primera.
+
+**El hecho:** cuando `handleInstagram` devuelve `null` —«Casa Brandon / IG», un
+handle con una barra, un link a un posteo—, el `onBlur` deja el campo como está.
+La ayuda del campo lo dice desde B-1144 («si el campo no cambia es que no lo
+reconocimos»), pero eso es una instrucción que se lee antes, no una señal que
+aparezca cuando el caso ocurre.
+
+**Por qué importa, y por qué es más ahora que antes.** Ese valor sale **crudo** al
+pie del posteo para redes (B-1142). Y el propio B-1144 debilitó la única señal que
+quedaba: antes, ver el link pegado tal cual en el campo no significaba nada;
+ahora, con un campo que se corrige solo, «quedó como lo pegué» se lee como «ya
+estaba bien». La ayuda nueva compensa, pero por instrucción y no por evidencia.
+
+**Lo que hay que decidir es de UI, y no lo tomó el dueño:** un aviso bajo el campo
+cuando `handleInstagram(valor) === null` y el valor no está vacío, del tipo «no lo
+reconocimos como una cuenta: se va a publicar tal cual». **No bloquea nada**
+—D-767 ya decidió eso y esto no lo toca—, es un cartel. La alternativa es dejarlo
+como está y aceptar que el aviso vive en la ayuda.
+
+**Test que lo fijaría:** `it('si el saneador no entiende el valor, el campo lo
+dice en pantalla')` en `tests/seccionQuien.render.test.tsx`.
+
+**Dónde:** `src/components/admin/formulario/SeccionQuien.tsx`.
 
 ### B-1147 · El barrido de decisiones huérfanas mira 27 `.md` y su gemelo mira el repo entero · P2 — salió de cerrar B-1113 (2026-09-21)
 
@@ -2340,6 +2610,95 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1162 · Un hallazgo que afirma «esto se ve» no dice si se reprodujo o si se dedujo leyendo · P3 — de cerrar B-1142 (2026-09-22)
+
+**El caso concreto es B-1142.** Se cerró B-1141 con un barrido de qué otras
+salidas leen el campo crudo y quedaron dos anotadas, las dos como «sale la URL
+pelada». Al arreglar una se midió y era falso: `formADocumento` ya normalizaba y
+el panel ya decía `@casabrandon`. El barrido miró **quién lee el campo**
+(`handlesDe`, cierto) y no **por qué puerta se entra** (`textoRedesDeForm` →
+`formADocumento`). Correcto sobre el módulo, falso sobre el producto.
+
+**El costo no fue el arreglo** —vale igual, y está escrito por qué—, **fue la
+prioridad**: B-1142 y B-1145 salieron en la misma lista con la misma etiqueta de
+visibilidad, y solo uno la merecía. Quien prioriza no tenía cómo distinguirlas.
+
+**Y la misma tanda dio el caso simétrico, que es lo que lo confirma como clase:**
+B-1145 afirmaba en su título que arreglarlo «reescribe todo lo publicado», y al
+medirlo resultó que no reescribe nada. Las dos afirmaciones se habían hecho
+leyendo el código correcto y sacando la conclusión equivocada sobre el sistema.
+
+**D-750 ya dice esto para los chequeos** («una red que no se probó mutando no se
+sabe si verifica algo»). Falta el gemelo para el reporte: un hallazgo que afirma
+que algo **se ve** tendría que decir si se reprodujo o si se concluyó leyendo.
+
+**Ruta:** que los tres auditores marquen cada hallazgo como «medido» o «leído», y
+que uno «leído» no pueda salir con una prioridad que afirme visibilidad. Vive en
+`.claude/agents/*.md` y en `docs/13-agentes.md`.
+
+**Sin red, y probablemente no la haya:** es una regla de redacción, no un
+invariante de código. Por eso es P3 — pero el costo de no hacerlo ya está medido:
+dos ítems de una misma lista con la prioridad puesta sobre una premisa falsa.
+
+### B-1171 · Nada verifica que un enlace `](#…)` de `docs/` resuelva a un encabezado · P3 — de cerrar B-1085 (2026-09-22)
+
+Un encabezado de este repo lleva `·`, que al generar el ancla se borra y **deja
+sus dos espacios**: `### 5.3 · El invariante…` es `#53--el-invariante…`, con dos
+guiones. Escribir uno solo da un enlace que **funciona** —la página carga— y no
+salta a ninguna parte. Es la rotura más silenciosa que puede tener un documento
+largo: no hay error, no hay 404, y quien la sufre supone que se distrajo.
+
+`16-analitica-del-sitio.md` tenía **cuatro** así desde el 2026-09-02/03, y el
+2026-09-22 se encontraron y arreglaron **otras cuatro** repartidas en
+`06-decisiones.md` (D-16, D-74, D-121) y `12-sitio-publico.md` (§ 4.5), las cuatro
+por un encabezado que se renombró sin actualizar a quien lo citaba. O sea que la
+clase **no es de un archivo**: es el costo de renombrar un encabezado en un repo
+con 96 citas cruzadas. Es hermano de `decisiones-referenciadas.mjs` e
+`items-referenciados.mjs` —mismo corte, misma salida— corrido sobre la tercera
+mitad del vocabulario: las anclas.
+
+**Y hay una trampa medida en el barrido ad-hoc que lo encontró, que quien lo
+escriba tiene que conocer:** la primera versión borraba el `_` al generar el
+ancla, y GitHub **lo conserva**. Reportó tres falsos positivos en
+`16-analitica-del-sitio.md` (`page_view`, `filtro_sin_resultados`) y se llegó a
+«arreglar» dos enlaces que funcionaban antes de agarrarlo releyendo el resultado.
+La regla correcta es: minúsculas, borrar lo que no sea `\w` —que **incluye** el
+guion bajo—, espacio o guion, y espacios a guiones. Corrido así, `docs/` da cero.
+
+**Lo que falta** es decidir si entra como test o como script con su test, y con
+qué se congela la deuda de hoy —que es cero— para que solo pueda bajar.
+
+### B-1191 · Los campos de Instagram del repo tienen tres criterios distintos y no hay ningún lugar donde esté escrito cuál va con cuál · P3 — salió de cerrar B-1144 (2026-09-22)
+
+**D-767 escribe el porqué de uno de los tres. La tabla no existe.**
+
+Hoy el mismo dato se resuelve de tres maneras según dónde se cargue:
+
+- **Frenan el publicado** con una regla en su `superRefine`: las cuatro guías
+  (`libreria-schema.ts:234`, `biblioteca-schema.ts:268`, `lugar-schema.ts:377`,
+  `suscripcion-literaria-schema.ts:327` y `:330`).
+- **Corrige al vuelo y no frena**: la actividad, desde B-1144 / D-767.
+- **Corrige al convertir**, sin campo que mostrar: la bandeja de propuestas
+  (`propuesta-schema.ts:255`, con su `?? f.organizador.instagram`).
+
+Los tres son defendibles por separado y el del medio tiene su decisión escrita. Lo
+que no hay es un lugar donde los tres estén juntos, así que **el próximo campo de
+Instagram —una guía nueva, un formulario público nuevo— se va a resolver a ojo**,
+copiando el vecino que quien lo escriba haya mirado primero. Es la clase de B-88
+aplicada a un criterio en vez de a un formato.
+
+**No es «unificar los tres».** Puede que la respuesta correcta siga siendo tres.
+Es escribir la tabla —qué campo, qué criterio, por qué— para que la cuarta
+instancia sea una elección y no una copia.
+
+**Y hay una cuarta columna que la tabla tiene que tener:** con qué **alfabeto**.
+`conArroba` en `textoRedes.ts` admite `-` y `handleInstagram` no, a propósito,
+porque el primero también arma `difusion.arrobar`, que puede ser de otra red. Eso
+hoy solo está en un comentario. Ver **B-1180**.
+
+**Dónde:** candidato natural, `docs/07-seguridad.md` al lado del mapa de salidas,
+o `docs/06-decisiones.md` colgado de D-767.
 
 ### B-1201 · De dónde sale el `projectId` del emulador: de la ruta del checkout o del emulador vivo · P3 — de cerrar B-1112 (2026-09-22)
 

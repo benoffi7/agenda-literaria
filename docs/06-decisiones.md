@@ -11871,3 +11871,170 @@ El material de los dos casos vivió tres días en `/tmp/agenda-literaria-frentes
 fuera del control de versiones. Es **B-1125** —lo que no deja rastro versionado
 se pierde— aplicado a la lección sobre cómo se pierden las cosas. Se recuperó
 para escribir esto, y por eso esta entrada existe.
+
+## D-763 · El Instagram del evento de Calendar se normaliza al mostrar, y eso no reescribe nada
+
+**B-1145, 2026-09-22. Decisión del dueño**, tomada sobre las tres opciones que el
+ítem dejó escritas y **contra la recomendación**, que era la (b).
+
+### El problema
+
+`functions/calendario.js` armaba el bloque «Organiza:» concatenando
+`[org.nombre, org.instagram, org.web]`. El documento guarda lo que se tipeó, y
+`functions/` lee el documento de Firestore **crudo** —no hay un `formADocumento`
+en el medio, que es lo que distingue este caso del de B-1142—, así que una ficha
+cargada antes del 2026-09-17 publicaba `https://www.instagram.com/casabrandon/`
+en el calendario **público**, donde iba `@casabrandon`.
+
+Y al medirlo apareció la otra mitad: desde B-928 el documento guarda el handle
+**pelado**, sin arroba, así que el evento decía «Casa Brandon · casabrandon» para
+**todas** las fichas, no solo las viejas. Es B-1141 —«la arroba faltaba»— en la
+salida que B-1141 no tocó.
+
+### Lo que se decidió, y las dos que no
+
+**Normalizar en la Function**, importando el mismo `arrobaInstagram` que ya usan
+la ficha pública, las cuatro guías y la bandeja de propuestas. Se descartaron:
+
+- **(b) migrar los documentos** con un script. Era la recomendación —arregla ésta,
+  B-1142 y B-1144 de una y deja el dato limpio en origen— y el dueño eligió no
+  tomarla.
+- **(c) dejarlo**, esperando que las fichas se corrijan al editarse. El calendario
+  es la salida que no se puede corregir después.
+
+### El costo que se aceptó, y que resultó no existir
+
+La objeción que había frenado el arreglo durante B-1141 —y con la que se tomó
+esta decisión— era que envolver el campo iba a actualizar de una **todos** los
+eventos ya publicados con un Instagram sin migrar, «la primera vez que corra el
+sync después del deploy»: el pulso de escrituras a la API y la notificación de
+«evento actualizado» a quien tenga el evento agendado, que es justo lo que D-95
+evita.
+
+**Medido contra el código, no pasa, y el motivo es mecánico.** El ítem afirmaba
+que la guarda compara «el payload recalculado contra el guardado». No hay payload
+guardado: `mismoEvento` compara `construirEvento(antes)` contra
+`construirEvento(despues)`, o sea **dos recálculos con el mismo código
+desplegado**. Un cambio que normaliza los dos lados por igual es, por
+construcción, invisible para el diff — `planificar(doc, doc)` devuelve `[]`. Y sin
+una escritura al documento el trigger no corre, así que desplegar por sí solo no
+dispara nada.
+
+Se verificó que **ningún** camino del repo lo contradiga: el trigger
+(`calendario-trigger.js`), `replanificarPorEtiquetas` (compara dos recálculos con
+la misma actividad y dos juegos de etiquetas), `reconciliacion.js` y
+`scripts/verificar-calendario.mjs` (solo **recrean** eventos ausentes, nunca
+comparan contenido contra lo que Calendar tiene) y los ocho `onSchedule` (ninguno
+toca Calendar).
+
+**Y el reverso, que es el costo de verdad:** por lo mismo, el arreglo **no es
+retroactivo**. Los eventos ya publicados conservan la URL cruda hasta que alguien
+escriba ese documento por cualquier otro motivo. **El dueño lo decidió el mismo
+día, con el número medido a la vista: se dejan como están** (B-1181). Lo nuevo
+sale limpio desde ya, y lo viejo se corrige solo a medida que alguien edite esa
+ficha.
+
+Conviene dejarlo escrito así, con las dos mitades: **la decisión se tomó con un
+costo que no era el real, y salió más barata y menos efectiva de lo que se le
+presentó al dueño.** Quien la revise sabe qué compró — y sabe que la segunda
+mitad se volvió a preguntar cuando se supo.
+
+### El saneador no se reescribió: bajó a `functions/` (D-20, B-968)
+
+`functions/` se despliega con su propio `package.json` y no puede importar `src/`,
+así que la implementación pasó a `functions/handle-instagram.js` y `src/` la
+reexporta — el mismo reparto que `slugify.js` y `geografia.js`. **No se escribió
+un regex propio**, y no es prolijidad: la regla no es «sacar el `https://`», es el
+alfabeto real de Instagram, el corte del `?igsh=…` del botón «Compartir», el orden
+entre ese corte y la barra final, y el criterio de que lo no reconocido sale como
+se escribió. Una sexta versión de esas cinco decisiones, con el resultado saliendo
+a un calendario público, es la clase de B-88 en su peor escenario. Falta el último
+tramo —que `src/lib/handle-instagram.mjs` sea la fachada de una línea— y es
+**B-1180**.
+
+### Y una excepción que esta decisión sí agrega: no toda derivación se publica
+
+El corte por `?`/`#` se aplica hoy a **cualquier** valor y no solo a una URL de
+Instagram, así que `casa#brandon` deriva a `casa` y `taller?2026` a `taller`:
+**cuentas de otra persona** (B-1160). Acotarlo adentro del saneador es un cambio
+de las seis salidas a la vez y no le toca a este archivo decidirlo.
+
+Lo que sí decide este archivo es **qué hace su salida con el caso**, y no puede
+ser lo mismo para todas: una ficha del sitio se corrige editándola, y un evento
+del calendario ya está copiado en el dispositivo de quien se suscribió. **Una URL
+cruda es fea; una arroba equivocada señala a un tercero.** Así que si derivar
+descartaría texto que no viene de una URL de Instagram, el calendario publica el
+crudo (`arrobaPublicable`). Con B-1160 resuelto la puerta deja de tener trabajo y
+se saca **con** ese ítem, no antes.
+
+**Dónde:** `functions/calendario.js` (el bloque «Quién» de `construirDescripcion`,
+y `arrobaPublicable` arriba), `functions/handle-instagram.js`,
+`tests/calendario.test.ts`.
+
+## D-767 · El Instagram de una actividad se corrige al cargarlo, y no se frena al publicarlo
+
+**B-1144, 2026-09-22. Decisión del dueño, contra la recomendación y con el costo
+a la vista.**
+
+El ítem que lo destapó traía la ruta ya escrita, y era la recomendación: una
+regla en el `superRefine` del nivel «publicar», igual que la que ya tienen las
+cuatro guías —librerías, bibliotecas, lugares, suscripciones— para su propio
+campo de Instagram (`libreria-schema.ts:234`, `biblioteca-schema.ts:268`,
+`lugar-schema.ts:377`, `suscripcion-literaria-schema.ts:327` y `:330`).
+
+### La decisión
+
+`organizador.instagram` y `tallerista.instagram` **no ganan una regla de
+publicación**. En cambio, `SeccionQuien.tsx` aplica `handleInstagram` —el mismo
+saneador de las cuatro guías, de la ficha pública (B-1141) y de la bandeja de
+propuestas— en el `onBlur` de los dos campos: quien pega el link del perfil ve el
+handle solo antes de guardar, y no lo descubre recién en la ficha pública.
+
+**Lo que el saneador no reconoce no se toca.** «Casa Brandon / IG», un handle con
+una barra adentro, un link a un posteo: el campo queda como se tipeó —recortado
+igual que lo recorta el guardado, y nada más— y la actividad se publica igual.
+Borrarlo sería perder la única copia de lo que alguien escribió para castigar un
+formato, y dejaría a quien edita sin saber qué corregir. Es el mismo criterio que
+`conHandle` al guardar y que `arrobaInstagram` al mostrar.
+
+### Esto no inventa una regla: le pone pantalla a la que ya existía
+
+`formADocumento` normaliza este mismo campo con este mismo saneador desde B-928
+(`lib/actividades.ts`, `conHandle`). Lo guardado ya salía como handle; lo que
+faltaba era **verlo antes de guardar**. Por eso la corrección vive en el
+componente y no en `lib/formulario/`: la regla del modelo está escrita del otro
+lado y esto es su eco. Las dos expresiones son idénticas letra por letra
+—`handleInstagram(crudo) ?? crudo.trim()`— a propósito: si se separan, el campo
+vuelve a mostrar algo distinto de lo que se guarda.
+
+### El costo, dicho para que no se lea como un descuido
+
+El Instagram de una actividad queda con un criterio **distinto** del de las
+cuatro guías: ellas frenan el publicado si el campo no es un handle, éste corrige
+lo que puede y deja pasar el resto. **Son dos criterios para el mismo dato en el
+mismo panel**, y quien cargue en los dos lados se va a topar con los dos. El
+argumento con el que el dueño la tomó: publicar una actividad no puede depender
+de cómo se tipeó una cuenta de Instagram.
+
+No es una inconsistencia que quedó. Es la decisión, y por eso está escrita acá y
+repetida en el docblock del componente — los dos lugares donde alguien va a ir a
+preguntar por qué. Que los tres criterios de Instagram del repo no estén juntos en
+ninguna tabla es **B-1191**.
+
+### Lo que esta decisión NO arregla
+
+- El texto libre de este campo sigue saliendo sin filtro adicional al pie del
+  posteo para redes (**B-1142**). La descripción del evento de Calendar sí quedó
+  cubierta, por **D-763**, el mismo día.
+- Deja a la vista —no lo crea— un bug del propio saneador: `handleInstagram`
+  corta por el primer `?` o `#` sobre cualquier valor y no solo sobre los que
+  traen `instagram.com/` adelante, así que `casa#brandon` se recorta a `casa`,
+  que es la cuenta de otra persona (**B-1160**). Ese recorte ya ocurría al
+  guardar, en silencio; ahora se ve en el campo. El arreglo va en B-1160.
+- **El campo avisa por omisión, no por mensaje.** Si el saneador no reconoce el
+  valor, lo único que pasa es que el campo no cambia; la ayuda lo dice, pero no
+  hay un cartel. Un aviso explícito es **B-1190**, y es una decisión de UI que el
+  dueño todavía no tomó — no se coló acá por la puerta de atrás.
+
+**Dónde:** `src/components/admin/formulario/SeccionQuien.tsx`,
+`tests/seccionQuien.render.test.tsx`, `src/lib/actividades.ts:197`.
