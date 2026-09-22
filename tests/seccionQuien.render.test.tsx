@@ -50,8 +50,10 @@ vi.mock('@/components/admin/useOpciones', () => ({
 }));
 
 import { SeccionQuien } from '@/components/admin/formulario/SeccionQuien';
+import { formADocumento } from '@/lib/actividades';
 import { formVacio } from '@/lib/formulario/estadoInicial';
 import type { ActividadForm } from '@/types/actividad';
+import { formGuardable } from './fixtures/formulario';
 
 afterEach(cleanup);
 
@@ -203,5 +205,77 @@ describe('el Instagram del formulario se corrige al salir del campo — B-1144',
       expect(input.value).toBe('');
       expect(escrituras.n, 'un blur sobre un campo vacío no escribe nada').toBe(0);
     });
+  });
+});
+
+/**
+ * **La red del original, que este archivo no puede no tener** — lo pidió el
+ * `auditor-privacidad` sobre B-1144, y la cuenta que da es la que importa: los
+ * dieciocho casos de arriba prueban el **eco** y cero probaban la **regla**.
+ *
+ * La normalización que protege a las cuatro salidas públicas —el `events.json`,
+ * la descripción del evento de Calendar, el pie del posteo para redes y la
+ * ficha de detalle— no es la del formulario: es `conHandle` dentro de
+ * `formADocumento` (`lib/actividades.ts`), porque el `onBlur` **es salteable
+ * por el camino más común de todos** —abrir una actividad vieja, no tocar el
+ * campo de Instagram, guardar—. Esa regla no tenía ningún test.
+ *
+ * Dejar así el repo es la condición exacta en la que alguien borra el original
+ * por redundante: el docblock del componente dice «la regla del modelo ya está
+ * escrita del otro lado, y esto es su eco en la pantalla», y si el otro lado
+ * desaparece los dieciocho casos de arriba **siguen verdes** mientras todo
+ * guardado sin blur publica la URL cruda.
+ *
+ * Vive acá y no en el archivo de `formADocumento` porque es este cambio el que
+ * la vuelve necesaria: son las dos mitades de la misma afirmación y se leen
+ * juntas.
+ */
+describe('la regla de la que esto es el eco: el guardado normaliza aunque nadie pase por el campo', () => {
+  /** El form que deja una actividad vieja abierta y guardada sin tocar nada. */
+  const conInstagram = (crudo: string): ActividadForm =>
+    formGuardable({
+      organizador: { nombre: 'Casa Brandon', instagram: crudo, web: '' },
+      tallerista: { nombre: 'Ana Pérez', bio: '', instagram: crudo },
+    });
+
+  const guardado = (crudo: string) =>
+    formADocumento(conInstagram(crudo), 'uid-de-prueba', false) as {
+      organizador: { instagram: string };
+      tallerista: { instagram: string } | null;
+    };
+
+  it('la URL completa se guarda como handle, sin que nadie haya tocado el campo', () => {
+    const doc = guardado('https://www.instagram.com/casabrandon/?igsh=MWx4bGs');
+    expect(
+      doc.organizador.instagram,
+      'si esto se rompe, toda actividad guardada sin pasar por el campo publica ' +
+        'la URL cruda en las cuatro salidas — y los tests de arriba no se enteran',
+    ).toBe('casabrandon');
+    expect(doc.tallerista?.instagram).toBe('casabrandon');
+  });
+
+  it('y lo que el saneador no entiende se guarda recortado, no borrado', () => {
+    const doc = guardado('  Casa Brandon / IG  ');
+    expect(doc.organizador.instagram).toBe('Casa Brandon / IG');
+  });
+
+  it('lo que el campo deja escrito es exactamente lo que el guardado produce', () => {
+    // Es la afirmación que une las dos mitades: el eco no puede decir una cosa
+    // y la regla otra. `handleInstagram` es idempotente, así que pasar por el
+    // blur y guardar tiene que dar lo mismo que guardar sin pasar por el blur.
+    for (const crudo of [
+      'https://www.instagram.com/casabrandon/?igsh=MWx4bGs',
+      '@casabrandon',
+      'casabrandon',
+      '  Casa Brandon / IG  ',
+      '',
+    ]) {
+      render(<Arnes escrituras={{ n: 0 }} />);
+      const enPantalla = tipearYSalir(/^instagram del organizador/i, crudo).value;
+      cleanup();
+      expect(guardado(enPantalla).organizador.instagram, `divergen para «${crudo}»`).toBe(
+        enPantalla,
+      );
+    }
   });
 });
