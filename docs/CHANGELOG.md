@@ -2,6 +2,26 @@
 
 ## Sin publicar
 
+- **El script de verificación dice si lo publicado es lo que hay en `main`** —
+  **B-1121**, la mitad que B-205 había dejado escrita como «sigue sin existir».
+  `verificar-produccion.mjs` leía la versión publicada y no la comparaba con nada;
+  ahora saca el sha, le pregunta a git si lo conoce, si es ancestro de `main` y
+  cuántos commits quedaron sin publicar, y lo dice en un renglón. Corrido contra el
+  sitio el 2026-09-22 avisó que estaba sirviendo un commit con **49 por encima**.
+  Para eso hizo falta el inverso de `componerVersion`, que no existía: vive al lado
+  de él, y una red nueva corre el `sed` del script de deploy para que los dos lados
+  no se separen.
+
+  **La parte que vale más que el arreglo:** esa red se escribió mal **dos veces
+  seguidas**, y las dos las encontró la mutación y no la inspección. La primera
+  versión recorría solo el dominio del build, donde todos los shas son de 7, así
+  que ensanchar el `sed` a `{6,40}` no cambiaba ninguna respuesta y quedaba verde.
+  La segunda agregó bordes pero la salida del `sh` no distingue «no lo extraje» de
+  «lo extraje y el commit no existe», así que el chequeo pasaba por un `git
+  cat-file` que tenía abajo y no por lo que decía mirar. Es **B-1129 dos veces en
+  el mismo chequeo**, y la salida fue la de allá las dos veces: correr el `sed`
+  aislado, leído del script con una regex en vez de copiado.
+
 - **El Instagram de una actividad se corrige al salir del campo, en vez de en
   silencio al guardar** — **B-1144**, **D-767**. `organizador.instagram` y
   `tallerista.instagram` eran los únicos campos de Instagram del repo sin ninguna

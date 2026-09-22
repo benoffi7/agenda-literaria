@@ -911,6 +911,30 @@ conversión abandonada dejando una `aceptada` que apunta a una actividad que no
 existe). Marcarla `en-revision` al abrir no tiene ese problema: `en-revision` es
 reversible, se ve en la bandeja y ya renueva el plazo por el reloj de B-844.
 
+### B-1200 · `npm run emu` no arranca en la máquina del dueño, y el motivo no es del repo · P4 — de levantar el emulador para B-1112 (2026-09-22)
+
+`npm run emu` levanta `auth, functions, firestore, hosting, storage, extensions` y
+muere entero con «Could not start Hosting Emulator, port taken». **El 5000 lo tiene
+`ControlCenter`** —el receptor de AirPlay de macOS, verificado con
+`lsof -nP -iTCP:5000 -sTCP:LISTEN`—, no otro emulador ni una corrida colgada.
+
+Lo que lo hace anotable y no una anécdota: **el emulador de Hosting no se usa para
+nada en esta suite** —los tests de integración hablan con Firestore, Auth y
+Storage— pero su puerto tomado se lleva puesta la tanda entera, así que el síntoma
+es «no puedo correr ningún test de integración» y la causa es un servicio del
+sistema operativo que no tiene nada que ver.
+
+**La salida de hoy es `--only auth,firestore` (o `auth,firestore,storage`)**, que
+arranca sin chistar. Las dos formas de cerrarlo de verdad, ninguna urgente: mover
+el puerto de Hosting en `firebase.json` —`emulators.hosting.port`, que es
+exactamente lo que sugiere el propio mensaje de error— o sacar `hosting` del
+arranque por default. **Lo primero es preferible**: cambia una línea y no le saca
+una capacidad al comando.
+
+Va **P4** porque el costo actual es cero para quien ya sabe el atajo. Lo que este
+ítem compra es que el próximo no pierda la tarde buscándolo en el repo, que es
+donde no está.
+
 ### B-857 · Un plugin desactivado sigue escribiendo en la raíz del repo, y el `.gitignore` lo tapa · P4
 
 **Lo trajo el frente de B-849** como «la línea `.mdd/` nunca se sacó», y al ir a
@@ -1870,7 +1894,45 @@ no aparecen. Las dos mitades de este ítem: que el barrido mire también el cód
 y que el cierre de una tanda no dependa de la memoria de quien integra. Es la
 misma forma que **B-1125** y que **B-1051**.
 
-### B-1121 · El chequeo que B-205 prometió —comparar lo publicado contra `main`— sigue sin existir · P2
+### B-1121 · El chequeo que B-205 prometió —comparar lo publicado contra `main`— sigue sin existir — ✅ hecho (2026-09-22) · P2
+
+> **Cerrado.** `scripts/verificar-produccion.mjs` leía `/version.json` y reportaba
+> la cadena, sin mirar nunca contra qué. Ahora saca el sha y le pregunta a git tres
+> cosas —si conoce el commit, si es ancestro de `main`, cuántos commits tiene
+> `main` por encima— y lo dice en un renglón. **Verificado contra el sitio real el
+> 2026-09-22: publica `1.10.0+1acad60` y `main` está 49 commits por encima**, que
+> es justamente lo que no se notaba desde ningún lado.
+>
+> **El parser del sha no existía y era la mitad del trabajo.** `componerVersion`
+> arma la cadena y nadie tenía su inverso: el único que sabía sacarle el sha era el
+> `sed` de `commit-base-deploy.sh`. Escribirlo en el consumidor habría sido un
+> tercer lado sabiendo el mismo formato —la clase **D-88**, la que acaba de costar
+> **B-1111**—, así que `shaDeVersion` va al lado de `componerVersion` y conserva su
+> decisión: solo contesta para un build limpio. El `sed` del bash no se saca —es el
+> camino del deploy, y tocarlo por un reporte sería cambiar producción para
+> arreglar visibilidad—, se lo **ata** con una red que lo corre de verdad.
+>
+> **Y esa red se escribió mal dos veces seguidas, por el mismo motivo, y las dos
+> las encontró la mutación y no la inspección.** Primero recorría solo
+> `ENTRADAS_DE_BUILD`: mutar el `sed` de `{7,40}` a `{6,40}` quedaba **verde**,
+> porque el dominio del build solo trae shas de 7 y ensancharlo no cambia ninguna
+> respuesta. Se agregaron bordes, corridos de punta a punta contra el `sh`: **dos
+> mutaciones más quedaron verdes**, porque la salida del `sh` no distingue «no lo
+> extraje» de «lo extraje y el commit no existe» —las dos caen al `before`— y
+> ningún sha inventado existe. El chequeo pasaba por el `git cat-file` que tenía
+> abajo, no por lo que decía mirar. La versión que quedó corre el `sed`
+> **aislado**, leído del script con una regex en vez de copiado, y las tres
+> mutaciones dan rojo. Es **B-1129 dos veces en el mismo chequeo**, y la salida fue
+> la de allá las dos veces: cambiar la firma, no ensanchar el alcance.
+>
+> **Una decisión chica quedó escrita en el código y se anota acá para que no se lea
+> después como un descuido:** `main` adelante cuenta como **fallado**. Corrido
+> después de deployar —que es lo que dice el encabezado del script— eso es
+> exactamente B-205, un deploy que no arrancó; corrido a mitad de la tarde es lo
+> aburrido y esperable. El script no puede saber cuál de las dos es, así que el
+> detalle **dice las dos** en vez de elegir. Si el dueño prefiere que sea
+> informativo y no rojo, es una línea.
+
 
 **Sobrante declarado adentro de un ítem ✅.** B-205 (recuperación de un deploy que
 no arrancó, P1, cerrado el 2026-09-02) proponía **dos** arreglos y dejó escrito
