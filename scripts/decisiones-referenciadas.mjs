@@ -33,7 +33,8 @@
  * es **D-88**: huérfana, citada desde `scripts/`, desde un `.sh` y desde ocho
  * archivos de `tests/`, y el informe nombraba solo los tres `.md` — quien lo
  * leía subestimaba el alcance por un factor de cuatro. Las otras dos las midió
- * **B-1082**: D-400 y D-401 se citaban doce veces desde `src/` y `tests/` y
+ * **B-1082**: D-400 y D-401 se citaban **diecisiete veces desde siete archivos**
+ * de `src/` y `tests/` —el ítem dice «doce», que es la cuenta de D-401 sola— y
  * **no podían aparecer acá**, que es la puerta abierta justo donde el repo más
  * cita decisiones: los docblocks.
  *
