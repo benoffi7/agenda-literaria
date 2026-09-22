@@ -915,19 +915,21 @@ Debajo, tres bloques, en el orden de lo que hay que hacer primero:
    torta o lista, el toggle propio de cada reparto —que se recuerda en el
    navegador, porque la preferencia es de quien mira— y, siempre, la nota de
    sobre qué todo reparte, que es obligatoria por firma del componente
-   (**D-401**). El de barrio es el único que arranca en lista: el circuito
-   porteño tiene veinte barrios, así que la torta mostraría «las cinco primeras y
-   el resto», que contesta menos que la lista entera. Cuenta **solo lo
-   presencial** y sale de todas las filas de «Dónde» —no del `sede` derivado—, así
-   que una actividad en dos barrios cuenta en los dos, pero una sola vez por
+   (**D-401**). Los cuatro tienen el mismo toggle; lo que cambia es con qué
+   abren, y el de barrio es el único de la grilla que abre en lista: el circuito
+   porteño tiene veinte barrios, así que la torta mostraría «las cinco primeras
+   y el resto», que contesta menos que la lista entera. Cuenta **solo lo
+   presencial** y sale de todas las filas de «Dónde» —no del `sede` derivado—,
+   así que una actividad en dos barrios cuenta en los dos, pero una sola vez por
    barrio.
-   **La forma de cursar va aparte, abajo y sin torta** (B-224), y no es un
-   descuido de maquetación: es el único reparto donde una actividad cuenta en más
-   de una tajada por razones que no son geográficas, y dibujar «47 formas» al
-   lado de tres tortas de «40 actividades» invitaría a una comparación que no se
-   puede hacer. Cierra una frase con ciclos, sueltas y encuentros cargados, que
-   se quedó como frase a propósito: una torta de dos cuñas no dice nada que «12
-   ciclos y 28 sueltas» no diga mejor y en menos lugar.
+   **La forma de cursar va aparte, abajo, y también abre en lista** (B-224), y
+   no es un descuido de maquetación: es el único reparto donde una actividad
+   cuenta en más de una tajada por razones que no son geográficas, y una torta
+   de «47 formas» al lado de tres de «40 actividades» invita a compararlas, que
+   es justo lo que no se puede hacer. Cierra una frase con ciclos, sueltas y
+   encuentros cargados, que se quedó como frase a propósito: una torta de dos
+   cuñas no dice nada que «12 ciclos y 28 sueltas» no diga mejor y en menos
+   lugar.
 
 ### 8.1bis · Qué muestra la pestaña «El sitio público» — el andamiaje, no los datos (B-502)
 
