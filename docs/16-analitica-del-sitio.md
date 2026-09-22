@@ -129,6 +129,9 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | 6 | **Algo que quedó a medio publicar** — en `borrador` o `pendiente` sin tocarse hace más de 30 días | catálogo + reloj | publicarlo o descartarlo. Es trabajo hecho que no rinde | ✅ |
 | 7 | **Un filtro que se aplica y deja cero resultados** | un evento propio en la island de filtros, con la combinación que quedó vacía | retirar el eje, o cargar lo que falta. Un eje que da cero seguido es un eje que estorba | ❌ **B-375** |
 | 8 | **Una actividad que se abre mucho y no genera ni un mensaje** | vistas de página (GA4) + clic en el botón de inscripción (evento propio) | revisar la descripción, el precio o la forma de anotarse de **esa** actividad | ❌ **B-375** |
+| 9 | **Una actividad publicada con una web del organizador que no enlaza** — está cargada y no es una dirección | catálogo | corregirla: suele ser un espacio o una palabra de más. Mientras tanto las tres salidas la tiran sin decir nada — la página de detalle la muestra como texto plano, el JSON-LD no emite `organizer.url` y el texto para redes tampoco la enlaza | ✅ **B-813** |
+
+**La 9 llegó después que las ocho, y de otro lado** (**B-813**, 2026-09-08): no salió de pensar fricciones sino del informe «Eventos» de Search Console, que avisaba por cuatro datos faltantes del resultado enriquecido. Tres de esos cuatro **no** son una fricción —una actividad sin tallerista, sin web o sin un monto cerrado es legítima— y quedaron como proporciones del tablero, no como avisos ([§8.1](#81--qué-muestra-la-pestaña-el-catálogo)). El cuarto sí lo es, y es éste: **`organizador.web` es texto libre** —el schema lo valida como texto opcional, no como URL—, así que nada frena en la carga un valor que después ninguna salida puede enlazar.
 
 ### 4.1 · Las dos que hay que leer con cuidado
 
@@ -148,7 +151,7 @@ un barrio que ninguna actividad usa es ofrecer un filtro que siempre devuelve
 cero»). Lo que **no** se deriva es qué combinación **eligió una persona**, que es
 la mitad valiosa: un cruce vacío que nadie intentó no es un problema.
 
-### 4.2 · El límite que ninguna de las ocho esquiva
+### 4.2 · El límite que ninguna de las nueve esquiva
 
 **Con el tráfico que este sitio tiene, la mayoría de las métricas de fricción no
 va a alcanzar significancia por un buen rato.** Es el mismo aviso que
@@ -829,8 +832,9 @@ Es además el único tramo claramente seguro:
 - **no manda nada a ningún tercero** — nada sale del navegador del dueño;
 - **no cuesta una lectura de Firestore de más** — es la misma lectura de
   `/actividades` que el listado ya hace, agrupada de otra manera;
-- **contesta las preguntas 8, 9 y 10 y cinco de las ocho fricciones** (la de «ya
-  pasó» se sacó, D-273), que son las que se convierten en trabajo del día siguiente.
+- **contesta las preguntas 8, 9 y 10 y seis de las nueve fricciones** (la de «ya
+  pasó» se sacó, D-273; las otras dos necesitan medir a alguien), que son las que
+  se convierten en trabajo del día siguiente.
 
 ### 8.0 · Dos pestañas, no una página larga (B-501)
 
@@ -861,9 +865,14 @@ medir.
 
 Tres bloques, en el orden de lo que hay que hacer primero:
 
-1. **Los avisos** — las cinco fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas), cada una con las
-   actividades que la disparan y un click para abrirlas. Van primero porque son
-   lo accionable. Si no hay ninguno, lo dice. **No hay un aviso de «ya pasó»
+1. **Los avisos** — las **seis** fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas)
+   (las cinco originales, más la web del organizador que no enlaza que sumó
+   **B-813**), cada una con las actividades que la disparan y un click para
+   abrirlas. Van primero porque son lo accionable, y entre ellas el orden es por
+   **gravedad y no por cantidad**: arriba lo que le hace perder algo a alguien de
+   afuera —escribir y que no le contesten—, abajo lo que nos hace perder algo a
+   nosotros —trabajo hecho que no rinde—. Solo aparece el aviso que tiene al menos
+   una actividad; si no hay ninguno, lo dice. **No hay un aviso de «ya pasó»
    (D-273):** se probó —reencuadrado y todo (D-270)— y se sacó, porque listaba el
    archivo entero, que sólo crece y para casi nada pide acción. Lo que sí queda es
    la cobertura acotada «cuántas publicadas tienen fecha futura» (punto 2), que
