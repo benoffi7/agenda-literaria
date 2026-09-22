@@ -1397,7 +1397,9 @@ describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)'
       fileURLToPath(new URL('../functions/calendario.js', import.meta.url)),
       'utf8',
     );
-    expect(fuente).toContain("import { arrobaInstagram } from './handle-instagram.js';");
+    expect(fuente).toContain(
+      "import { arrobaInstagram, cortaAlDerivar } from './handle-instagram.js';",
+    );
     for (const señal of ['instagram\\.com', 'A-Za-z0-9._]{1,30}']) {
       expect(fuente, `volvió a haber una copia del saneador: ${señal}`).not.toContain(señal);
     }
@@ -1479,6 +1481,117 @@ describe('construirDescripcion — el Instagram se muestra como handle (B-1145, 
   });
 
   /**
+   * **El caso 0, que es el que justifica todo el ítem: la premisa, medida.**
+   *
+   * El ítem hermano B-1142 salió del mismo barrido con la misma etiqueta de «se
+   * ve hoy» y su premisa resultó **falsa**: el pie del posteo ya decía
+   * `@casabrandon`, porque se entra por `formADocumento`, que normaliza desde
+   * B-928. Así que ésta se midió antes de darla por buena, y el camino es
+   * distinto: `syncCalendar` lee `event.data.after.data()` —el documento de
+   * Firestore **crudo**— y se lo pasa a `planificar` sin que nada lo normalice en
+   * el medio. No hay un `formADocumento` en este lado.
+   *
+   * De ahí que el documento sea el único que manda, y que haya **dos** cosas que
+   * arreglar y no una:
+   */
+  it('lo que hay guardado es lo que se publica: no hay normalización en el medio', () => {
+    // 1 · Una ficha anterior a B-928 tiene la URL entera adentro del campo.
+    const vieja = completa({
+      organizador: { nombre: 'Casa Brandon', instagram: SIN_MIGRAR[3], web: '' },
+    });
+    expect(construirDescripcion(vieja, sesion(), LABELS)).toContain('Casa Brandon · @casabrandon');
+
+    /*
+     * 2 · Y una posterior a B-928 tiene el handle **pelado**, sin arroba, porque
+     * `conHandle` (`src/lib/actividades.ts`) guarda lo que devuelve
+     * `handleInstagram`. O sea que el evento venía diciendo «Casa Brandon ·
+     * casabrandon» para **todas** las fichas nuevas, que es la otra mitad de
+     * B-1141 («la arroba faltaba») y que el ítem no nombraba: no es solo un
+     * problema de las fichas viejas.
+     */
+    const nueva = completa({
+      organizador: { nombre: 'Casa Brandon', instagram: 'casabrandon', web: '' },
+    });
+    expect(construirDescripcion(nueva, sesion(), LABELS)).toContain('Casa Brandon · @casabrandon');
+  });
+
+  /**
+   * **B-1160 — el saneador deriva a la cuenta de otra persona, y ésta es la
+   * salida donde eso no se puede deshacer.**
+   *
+   * Lo encontró el `auditor-privacidad` del frente hermano **corriendo** el
+   * helper, no leyéndolo: `handleInstagram` corta en el primer `?` o `#` para
+   * tolerar el `?igsh=…` del botón «Compartir» (B-928), pero el corte se aplica a
+   * **cualquier** valor. `casa#brandon` deriva a `casa` y `taller?2026` a
+   * `taller`, que son cuentas de otra gente.
+   *
+   * **Para esta salida es peor que para ninguna.** Una URL cruda en la
+   * descripción es fea y se corrige; una arroba equivocada señala a un tercero, y
+   * el evento ya está copiado en el calendario de quien se suscribió. Así que
+   * acá, ante la duda, sale el crudo (`arrobaPublicable`).
+   *
+   * **Este caso sigue siendo cierto el día que B-1160 se arregle**, y es
+   * deliberado: si el corte se acota a las URLs, `handleInstagram('casa#brandon')`
+   * pasa a dar `null` y `arrobaInstagram` devuelve el crudo igual. Los dos caminos
+   * llegan al mismo texto, así que la red no se cae ni hay que reescribirla —
+   * solo se podrá sacar la puerta, con ese ítem.
+   */
+  it('un valor con `#` o `?` que no es una URL no se arroba: sale crudo (B-1160)', () => {
+    const PELIGROSOS = [
+      ['casa#brandon', 'casa'],
+      ['taller?2026', 'taller'],
+      ['club#2026', 'club'],
+    ] as const;
+
+    /*
+     * Se afirma sobre **la línea**, y con igualdad, no con un `toContain` sobre el
+     * texto entero: `@casa` está adentro de `hola@casabrandon.example`, que es el
+     * destino de inscripción del fixture, así que un `not.toContain('@casa')`
+     * pelado da rojo por el motivo equivocado. Es la firma del §3 de D-750 —un
+     * ámbito más grande que el sujeto—, acá con el signo cambiado.
+     */
+    const lineaOrganiza = (texto: string) =>
+      texto.split('\n').find((l) => l.startsWith('Organiza:'));
+
+    for (const [cargado, cuentaAjena] of PELIGROSOS) {
+      const a = completa({ organizador: { nombre: 'Casa Brandon', instagram: cargado, web: '' } });
+      const texto = construirDescripcion(a, sesion(), LABELS);
+      expect(lineaOrganiza(texto), cargado).toBe(`Organiza: Casa Brandon · ${cargado}`);
+      expect(lineaOrganiza(texto), `derivó a la cuenta ajena @${cuentaAjena}`).not.toContain('@');
+      // Y tampoco por el payload entero, que es lo que viaja a la API (§7.4).
+      expect(JSON.stringify(construirEvento(a, sesion(), LABELS)), cargado).not.toContain(
+        `· @${cuentaAjena}`,
+      );
+    }
+  });
+
+  it('y lo mismo con el tallerista, que entra por la misma puerta (B-1160)', () => {
+    const a = completa({
+      tallerista: { nombre: 'María Moreno', bio: 'Cronista.', instagram: 'mmoreno?2026' },
+    });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain('Tallerista: María Moreno · mmoreno?2026');
+    expect(texto).not.toContain('@mmoreno');
+  });
+
+  /**
+   * El control positivo de la puerta, y no es decoración: sin él, cerrar la puerta
+   * del todo —no derivar nunca— también pasaría los dos casos de arriba, y eso
+   * sería deshacer el ítem entero. El `?igsh=…` es el caso **más común** de todos
+   * (es lo que pega el botón «Compartir») y tiene que seguir derivando.
+   */
+  it('pero el `?igsh=…` de una URL de Instagram de verdad sí sigue derivando', () => {
+    const a = completa({
+      organizador: {
+        nombre: 'Casa Brandon',
+        instagram: 'https://www.instagram.com/casabrandon/?igsh=MWx0eXo4a2Rr',
+        web: '',
+      },
+    });
+    expect(construirDescripcion(a, sesion(), LABELS)).toContain('Casa Brandon · @casabrandon');
+  });
+
+  /**
    * **El caso 3: la guarda anti-loop sigue entera, y por eso no hay pulso.**
    *
    * El ítem B-1145 daba por hecho que normalizar acá iba a reescribir de una todos
@@ -1516,6 +1629,26 @@ describe('construirDescripcion — el Instagram se muestra como handle (B-1145, 
         '@casabrandon',
       );
       expect(JSON.stringify(ops[0])).not.toContain('instagram.com');
+    });
+
+    /**
+     * El hueco que encontró el `auditor-trampas`: el caso de arriba cambia el
+     * **título**, así que no dice nada sobre el campo que este ítem toca. Si
+     * alguien le agregara mañana al diff una excepción para el Instagram —«para
+     * no hacer más ruido con esto»—, que es exactamente la tentación que el
+     * docblock de `functions/calendario.js` sale a desalentar, ningún otro caso
+     * de este archivo se enteraría.
+     */
+    it('y un cambio real del propio handle también: corregir el Instagram propaga', () => {
+      const antes = vieja();
+      const despues = vieja({
+        organizador: { nombre: 'Casa Brandon', instagram: '@otracuenta', web: '' },
+      });
+      const ops = planificar(antes, despues, LABELS);
+      expect(ops.map((o: { tipo: string }) => o.tipo)).toEqual(['actualizar']);
+      expect((ops[0] as { evento: { description: string } }).evento.description).toContain(
+        '@otracuenta',
+      );
     });
 
     it('y el retrigger que sigue a ese update vuelve a dar cero: no ocurre dos veces', () => {

@@ -11,7 +11,32 @@ import { geografiaNormalizada } from './geografia.js';
 // las cuatro guías y la bandeja de propuestas. Vive en `functions/` por lo mismo
 // que la geografía: este archivo lo tiene que poder importar y `functions/` no
 // puede importar `src/` (D-20).
-import { arrobaInstagram } from './handle-instagram.js';
+import { arrobaInstagram, cortaAlDerivar } from './handle-instagram.js';
+
+/**
+ * **El handle tal como lo publica el calendario** — B-1145, y la guarda es por
+ * B-1160.
+ *
+ * Es `arrobaInstagram` con una puerta: **si derivar descartaría texto que no
+ * viene de una URL de Instagram, no se deriva y sale el crudo.** `casa#brandon`
+ * deriva a `casa` y `taller?2026` a `taller`, que son cuentas de otra gente
+ * (`cortaAlDerivar`, con la tabla completa).
+ *
+ * **La puerta está acá y no adentro del saneador a propósito**, por dos motivos:
+ *
+ *  - el saneador es compartido —la ficha pública, las cuatro guías, la bandeja de
+ *    propuestas— y acotarle el corte es B-1160, un cambio de las seis salidas a la
+ *    vez que no le toca decidir a este archivo;
+ *  - y lo que justifica ser más conservador acá es **esta** salida, no el
+ *    saneador: el evento ya está copiado en el calendario de quien se suscribió,
+ *    así que una arroba equivocada no se saca editando. Una URL cruda es fea; una
+ *    arroba equivocada señala a un tercero, y es peor.
+ *
+ * Con B-1160 resuelto la puerta deja de tener trabajo y se saca **con** ese ítem,
+ * no antes.
+ */
+const arrobaPublicable = (crudo) =>
+  cortaAlDerivar(crudo) ? (crudo ?? '').trim() : arrobaInstagram(crudo);
 
 export const TIMEZONE = 'America/Argentina/Buenos_Aires';
 
@@ -736,6 +761,11 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    * `?igsh=…` que pega el botón «Compartir» y el criterio de que lo que no se
    * reconoce sale como se escribió. Ver `./handle-instagram.js`.
    *
+   * Entra por `arrobaPublicable` (arriba) y no por `arrobaInstagram` pelado: ese
+   * corte del `?`/`#` se aplica hoy a **cualquier** valor, así que `casa#brandon`
+   * derivaría a `@casa`, que es la cuenta de otra persona (B-1160). En esta
+   * salida eso no se puede deshacer, así que ante la duda sale el crudo.
+   *
    * ── Por qué esto NO reescribe los eventos ya publicados ───────────────────
    * **Y esto es lo que hay que entender antes de tocar la línea de abajo**, porque
    * la objeción que frenó el arreglo durante B-1141 era exactamente la contraria y
@@ -767,7 +797,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   const org = actividad.organizador;
   if (org?.nombre?.trim()) {
     quien.push(
-      `Organiza: ${[org.nombre, arrobaInstagram(org.instagram), org.web]
+      `Organiza: ${[org.nombre, arrobaPublicable(org.instagram), org.web]
         .filter(Boolean)
         .join(' · ')}`,
     );
@@ -777,7 +807,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
     const rol =
       actividad.tipo === 'presentacion' || actividad.tipo === 'charla' ? 'Invitado' : 'Tallerista';
     quien.push(
-      `${rol}: ${[persona.nombre, arrobaInstagram(persona.instagram)].filter(Boolean).join(' · ')}`,
+      `${rol}: ${[persona.nombre, arrobaPublicable(persona.instagram)].filter(Boolean).join(' · ')}`,
     );
     if (persona.bio) quien.push(persona.bio);
   }

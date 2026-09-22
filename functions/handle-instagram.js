@@ -35,6 +35,14 @@
  */
 
 /**
+ * El prefijo que `handleInstagram` sabe sacar, nombrado una sola vez porque lo
+ * miran **dos** funciones de este archivo: la que deriva y la que avisa cuándo
+ * derivar es peligroso (`cortaAlDerivar`). Escrito dos veces, el día que el
+ * prefijo cambie una de las dos se queda atrás — la clase de B-88.
+ */
+const PREFIJO_INSTAGRAM = /^(https?:\/\/)?(www\.)?instagram\.com\//i;
+
+/**
  * `@casabrandon` / `casabrandon` / `instagram.com/casabrandon` → el handle solo.
  *
  * Se valida contra el alfabeto real de Instagram: lo que no lo cumple no es un
@@ -53,7 +61,7 @@
 export const handleInstagram = (/** @type {string | null | undefined} */ crudo) => {
   const limpio = (crudo ?? '')
     .trim()
-    .replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '')
+    .replace(PREFIJO_INSTAGRAM, '')
     .replace(/[?#].*$/, '')
     .replace(/^@/, '')
     .replace(/\/+$/, '');
@@ -75,4 +83,38 @@ export const handleInstagram = (/** @type {string | null | undefined} */ crudo) 
 export const arrobaInstagram = (/** @type {string | null | undefined} */ crudo) => {
   const handle = handleInstagram(crudo);
   return handle ? `@${handle}` : (crudo ?? '').trim();
+};
+
+/**
+ * **¿Derivar este valor descartaría texto que NO viene de una URL de Instagram?**
+ * — B-1145, y existe por lo que el `auditor-privacidad` encontró en **B-1160**.
+ *
+ * `handleInstagram` corta en el primer `?` o `#` porque el botón «Compartir» de
+ * Instagram pega `…/casabrandon/?igsh=MWx…`, o sea el caso más común de todos
+ * (B-928). Pero el corte se aplica a **cualquier** valor, no solo al único que
+ * vino a cubrir, y eso deriva a la cuenta equivocada:
+ *
+ * | Cargado | Deriva a | Y `@casa` / `@taller` son |
+ * |---|---|---|
+ * | `casa#brandon` | `casa` | cuentas **de otra persona** |
+ * | `taller?2026` | `taller` | ídem |
+ *
+ * Un valor con espacios se salva solo —el alfabeto lo rechaza— así que lo que
+ * pasa es justamente el valor compacto, que es el que parece un handle.
+ *
+ * **Esto nombra el caso; no decide qué hacer con él.** La decisión es de cada
+ * salida y no puede ser la misma para todas: una ficha del sitio se corrige
+ * editándola, y un evento del calendario público ya está copiado en el
+ * dispositivo de quien se suscribió. `functions/calendario.js` —la salida
+ * irreversible— elige no derivar y publicar el crudo: mejor una URL fea que
+ * señalar a un tercero.
+ *
+ * El día que B-1160 acote el corte a los valores que empiezan con el prefijo,
+ * esta función pasa a devolver lo mismo que hoy por el camino de adentro y deja
+ * de tener trabajo. **No se borra sola**: hay que sacarla con B-1160, y hasta
+ * entonces es lo único que separa al calendario de publicar `@casa`.
+ */
+export const cortaAlDerivar = (/** @type {string | null | undefined} */ crudo) => {
+  const texto = (crudo ?? '').trim();
+  return /[?#]/.test(texto) && !PREFIJO_INSTAGRAM.test(texto);
 };
