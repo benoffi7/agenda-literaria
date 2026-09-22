@@ -24,6 +24,7 @@ import {
   ENTRADAS_DE_BUILD,
   componerVersion,
   infoVersion,
+  shaDeVersion,
   versionBase,
   versionesPosibles,
 } from '../scripts/version.mjs';
@@ -416,5 +417,75 @@ describe('el formato de versión que produce el build es el que la analítica ac
     // Un semver sin sufijo es legítimo: es lo que se ve si alguien estampa la
     // versión a mano.
     expect(medida('1.0.1')).toBe('1.0.1');
+  });
+});
+
+describe('shaDeVersion — el inverso de componerVersion (B-1121)', () => {
+  /*
+   * La propiedad que importa no es «parsea bien este string»: es que el inverso
+   * siga siendo el inverso cuando alguien cambie el formato. Por eso el caso
+   * recorre `ENTRADAS_DE_BUILD` —el dominio completo de un build, que vive al
+   * lado de `componerVersion`— en vez de tres literales escritos acá: una forma
+   * nueva la levanta sola, que es la misma razón por la que esa lista está en el
+   * módulo y no en este archivo.
+   */
+  const ahora = new Date('2026-09-22T12:00:00Z');
+  const SHA = '5e2cb50';
+
+  it('devuelve el sha de todo build limpio que `componerVersion` puede estampar', () => {
+    const limpios = ENTRADAS_DE_BUILD.filter((h) => h.sha !== null && !h.sucio);
+    expect(limpios.length).toBeGreaterThan(0);
+    for (const hechos of limpios) {
+      const version = componerVersion({ base: '1.10.0', ...hechos, ahora });
+      expect(shaDeVersion(version), version).toBe(hechos.sha);
+    }
+  });
+
+  it('no devuelve nada de un build sucio o sin git, y eso es la decisión', () => {
+    /*
+     * Un `+<sha>-sucio.<sello>` no corresponde a ningún commit y un
+     * `+sin-git.<sello>` no tiene sha: en los dos casos comparar contra `main`
+     * afirmaría algo falso. `commit-base-deploy.sh` ya tomaba esta decisión
+     * (cae al `before`), y el módulo la conserva en vez de inventar otra.
+     */
+    const inservibles = ENTRADAS_DE_BUILD.filter((h) => h.sha === null || h.sucio);
+    expect(inservibles.length).toBeGreaterThan(0);
+    for (const hechos of inservibles) {
+      const version = componerVersion({ base: '1.10.0', ...hechos, ahora });
+      expect(shaDeVersion(version), version).toBeNull();
+    }
+  });
+
+  it('cubre el dominio entero: ninguna entrada de build queda sin decidir', () => {
+    // Si alguien agrega una quinta forma a ENTRADAS_DE_BUILD, los dos casos de
+    // arriba tienen que seguir sumando el total. Sin esto, una forma nueva
+    // podría no caer en ninguno de los dos y nadie se enteraría.
+    const limpios = ENTRADAS_DE_BUILD.filter((h) => h.sha !== null && !h.sucio).length;
+    const inservibles = ENTRADAS_DE_BUILD.filter((h) => h.sha === null || h.sucio).length;
+    expect(limpios + inservibles).toBe(ENTRADAS_DE_BUILD.length);
+  });
+
+  it('acepta el sha corto y el largo, y nada que no sea hex puro', () => {
+    expect(shaDeVersion(`1.10.0+${SHA}`)).toBe(SHA);
+    expect(shaDeVersion(`1.10.0+${'a'.repeat(40)}`)).toBe('a'.repeat(40));
+    expect(shaDeVersion('1.10.0+xyz1234')).toBeNull();
+    expect(shaDeVersion('1.10.0+abc123')).toBeNull(); // seis, uno menos que el corto
+    expect(shaDeVersion('1.10.0')).toBeNull();
+  });
+
+  it('degrada sin romper con cualquier entrada rara', () => {
+    // Lo alimenta un JSON de la red: no puede tirar.
+    expect(shaDeVersion(null)).toBeNull();
+    expect(shaDeVersion(undefined)).toBeNull();
+    expect(shaDeVersion('')).toBeNull();
+  });
+
+  it('`versionesPosibles()` tiene al menos una que se puede comparar contra main', () => {
+    // Si un día ninguna forma trajera sha, el chequeo de B-1121 quedaría
+    // saltado para siempre sin que nadie lo note.
+    const conSha = versionesPosibles({ base: '1.10.0', ahora }).filter(
+      (v) => shaDeVersion(v) !== null,
+    );
+    expect(conSha.length).toBeGreaterThan(0);
   });
 });

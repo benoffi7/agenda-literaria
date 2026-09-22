@@ -4,6 +4,7 @@ import { createServer, type Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterAll, describe, expect, it } from 'vitest';
+import { ENTRADAS_DE_BUILD, componerVersion, shaDeVersion } from '../scripts/version.mjs';
 
 /**
  * Contra qué commit diffear un push a `main` — B-205.
@@ -43,6 +44,12 @@ const HEAD = execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], {
 // verdad, igual que fallaría contra un commit que el fetch superficial nunca
 // trajo.
 const SHA_INEXISTENTE = 'deadbee';
+
+/** El mismo commit que `HEAD`, en 40 hex: el sha largo que git también produce. */
+const HEAD_LARGO = execFileSync('git', ['rev-parse', 'HEAD'], {
+  cwd: RAIZ,
+  encoding: 'utf8',
+}).trim();
 
 const decidir = async (
   entorno: Record<string, string> = {},
@@ -169,5 +176,119 @@ describe('contra qué commit diffear un deploy — B-205', () => {
       workflow,
       'el workflow volvió a pedirle /version.json por su cuenta',
     ).not.toMatch(/curl[^\n]*version\.json/);
+  });
+});
+
+describe('el `sed` del script y `shaDeVersion` contestan lo mismo — B-1121, clase D-88', () => {
+  /*
+   * **Por qué existe esta red.** El formato de la versión lo define
+   * `componerVersion` (`scripts/version.mjs`). Desde B-1121 hay un parser al
+   * lado, `shaDeVersion`, que es su inverso — y hay un **segundo** lado que
+   * sabe el mismo formato: el `sed` de la línea 47 de este script, que no puede
+   * importar un módulo porque es bash.
+   *
+   * Dos lados derivando lo mismo es exactamente la clase D-88, la que acaba de
+   * costar B-1111 en `tests/emulador.ts`. Acá no se puede unificar sin tocar el
+   * camino del deploy —cambiar producción para arreglar un reporte—, así que en
+   * vez de unificarlos se los **ata**: para toda versión que este build puede
+   * llegar a estampar, los dos tienen que contestar lo mismo.
+   *
+   * Se recorre `ENTRADAS_DE_BUILD` y no tres literales por lo mismo que en
+   * `version.test.ts`: una forma nueva de versión entra sola en la red, y quien
+   * la agregue está parado al lado de `componerVersion`.
+   *
+   * El sha usado es **HEAD de verdad**, no uno inventado: el `sh` hace
+   * `git cat-file -e` antes de aceptarlo, así que con un sha falso las cuatro
+   * entradas darían vacío y el caso pasaría sin comparar nada.
+   */
+  const ahora = new Date('2026-09-22T12:00:00Z');
+
+  for (const hechos of ENTRADAS_DE_BUILD) {
+    const version = componerVersion({
+      base: '1.10.0',
+      sha: hechos.sha === null ? null : HEAD,
+      sucio: hechos.sucio,
+      ahora,
+    });
+    const esperado = shaDeVersion(version) ?? '';
+    const forma = `${hechos.sha === null ? 'sin git' : 'con sha'}, ${hechos.sucio ? 'sucio' : 'limpio'}`;
+
+    it(`build ${forma}: el sh saca "${esperado || '(nada)'}", igual que el módulo`, async () => {
+      const { url, cerrar } = await servidorVersion(JSON.stringify({ version }));
+      abiertos.push(cerrar);
+      // EVENT_BEFORE vacío a propósito: así lo que sale es la extracción y no
+      // el fallback, que es lo único que este caso compara.
+      expect(await decidir({ VERSION_JSON_URL: url, EVENT_BEFORE: '' })).toBe(esperado);
+    });
+  }
+
+  /**
+   * El `sed` del script, **leído del script** y no copiado acá.
+   *
+   * Es el mismo movimiento que `reglasDeCache` con `firebase.json`: si la red
+   * repitiera la expresión, sería una tercera copia del formato y el test
+   * pasaría para siempre aunque el script cambiara — exactamente la clase que
+   * esta red viene a cerrar.
+   */
+  const sedDelScript = (): string => {
+    const fuente = readFileSync(`${RAIZ}scripts/commit-base-deploy.sh`, 'utf8');
+    const m = /\|\s*sed -n '([^']+)'/.exec(fuente);
+    if (!m) throw new Error('no se encontró el `sed` de extracción en commit-base-deploy.sh');
+    return m[1]!;
+  };
+
+  /** Lo que el `sed` del script extrae de una versión, sin pasar por git. */
+  const extraeElSed = (version: string): string | null => {
+    const salida = execFileSync('sed', ['-n', sedDelScript()], {
+      input: version,
+      encoding: 'utf8',
+    }).trim();
+    return salida === '' ? null : salida;
+  };
+
+  /*
+   * **Los bordes van contra el `sed` aislado, y eso no es un atajo: es lo único
+   * que mide la extracción.** Medido con dos mutaciones que el camino completo
+   * dejó pasar —`{7,40}` → `{6,40}`, y sacarle el ancla de fin a la expresión—:
+   * las dos siguen en verde de punta a punta, porque la salida del `sh`
+   * **no distingue** «no lo extraje» de «lo extraje y el commit no existe»
+   * (las dos caen al `before`), y ningún sha inventado existe.
+   *
+   * Es B-1129 con una cara más: el chequeo pasaba por el `git cat-file` que
+   * tenía abajo, no por lo que decía mirar. Corriendo el `sed` solo, las dos
+   * mutaciones dan rojo.
+   */
+  const BORDES = [
+    { version: '1.10.0+abc123', que: 'seis hex — más corto que el sha corto' },
+    { version: `1.10.0+${'a'.repeat(40)}`, que: 'cuarenta hex — el sha largo' },
+    { version: `1.10.0+${'a'.repeat(41)}`, que: 'cuarenta y uno — pasado de largo' },
+    { version: '1.10.0+xyz1234', que: 'siete, pero no hex' },
+    { version: '1.10.0+abc1234-sucio.2609221200', que: 'el sufijo sucio, que no se usa de base' },
+    { version: '1.10.0+sin-git.2609221200', que: 'un build sin git' },
+    { version: '1.10.0', que: 'sin sufijo: estampada a mano' },
+  ];
+
+  for (const { version, que } of BORDES) {
+    it(`borde (${que}): el sed y el módulo extraen lo mismo`, () => {
+      expect(extraeElSed(version), que).toBe(shaDeVersion(version));
+    });
+  }
+
+  it('el `sed` se lee del script y no está copiado en este test', () => {
+    // Si alguien pega la expresión acá, la red deja de atar los dos lados.
+    const expr = sedDelScript();
+    expect(expr).toContain('0-9a-f');
+    expect(readFileSync(`${RAIZ}tests/commit-base-deploy.test.ts`, 'utf8')).not.toContain(
+      `'${expr}'`,
+    );
+  });
+
+  it('el dominio recorrido es el completo, no un subconjunto', () => {
+    // Sin esto, alguien podría vaciar ENTRADAS_DE_BUILD y los casos de arriba
+    // desaparecerían en silencio: cero tests corriendo se lee igual que verde.
+    expect(ENTRADAS_DE_BUILD.length).toBeGreaterThanOrEqual(4);
+    expect(ENTRADAS_DE_BUILD.some((h) => h.sha !== null && !h.sucio)).toBe(true);
+    expect(ENTRADAS_DE_BUILD.some((h) => h.sucio)).toBe(true);
+    expect(ENTRADAS_DE_BUILD.some((h) => h.sha === null)).toBe(true);
   });
 });

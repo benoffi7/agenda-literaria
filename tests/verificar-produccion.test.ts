@@ -5,6 +5,7 @@ import {
   PLATAFORMAS,
   desdoblarICS,
   esRechazo,
+  estadoDeLoPublicado,
   fugasEnICS,
   reglasDeCache,
 } from '../scripts/verificar-produccion.mjs';
@@ -175,5 +176,89 @@ describe('el script no toca ninguna credencial — B-116, §5.4', () => {
     // no tenerlo.
     expect(script).toContain('Un chequeo saltado NO es un chequeo verde');
     expect(script).toContain("saltado(");
+  });
+});
+
+describe('lo publicado contra `main` — B-1121, la mitad que B-205 dejó escrita', () => {
+  /*
+   * B-205 proponía dos arreglos y dejó anotado que el segundo «sigue sin
+   * existir»: un chequeo que compare lo publicado contra `main` y avise si
+   * difieren. La mitad automática —deployar diffeando contra lo publicado— hoy
+   * funciona (`commit-base-deploy.sh`, y su bug propio se reparó bajo B-562).
+   * Lo que faltaba era la **visibilidad**: que el sitio esté sirviendo un commit
+   * viejo no se nota desde ningún lado.
+   *
+   * La decisión es pura y los hechos de git entran por parámetro, que es lo que
+   * la hace testeable sin red y sin un repo de mentira — el mismo movimiento que
+   * hicieron `que-deployar.sh` y `emuladores-arriba.sh`.
+   */
+  const base = {
+    sha: 'abc1234',
+    version: '1.10.0+abc1234',
+    conocido: true,
+    ancestro: true,
+    adelanto: 0,
+  };
+
+  it('al día con main es lo único que cuenta como verde', () => {
+    const r = estadoDeLoPublicado(base);
+    expect(r.estado).toBe('ok');
+    expect(r.detalle).toContain('abc1234');
+  });
+
+  it('sin sha limpio se SALTEA, que no es lo mismo que estar bien', () => {
+    /*
+     * Un build sucio o sin git no corresponde a ningún commit, así que no hay
+     * contra qué comparar. Decir «ok» ahí sería afirmar que está al día sin
+     * haberlo mirado, que es la mitad del valor de este script (su encabezado:
+     * «un chequeo saltado NO es un chequeo verde»).
+     */
+    const r = estadoDeLoPublicado({
+      ...base,
+      sha: null,
+      version: '1.10.0+abc1234-sucio.2609221200',
+      conocido: false,
+      ancestro: false,
+    });
+    expect(r.estado).toBe('saltado');
+    expect(r.detalle).toContain('no hay contra qué comparar');
+  });
+
+  it('un sha que este clon no tiene falla, y dice por qué', () => {
+    // Clon superficial, o —lo que importa— un deploy hecho desde un checkout
+    // que nadie más tiene.
+    const r = estadoDeLoPublicado({ ...base, conocido: false, ancestro: false });
+    expect(r.estado).toBe('mal');
+    expect(r.detalle).toContain('no está en este repo');
+  });
+
+  it('publicar algo que main no tiene falla: es un deploy desde una rama', () => {
+    const r = estadoDeLoPublicado({ ...base, ancestro: false });
+    expect(r.estado).toBe('mal');
+    expect(r.detalle).toContain('no es ancestro de main');
+  });
+
+  it('main adelante falla, y el detalle distingue las dos lecturas', () => {
+    /*
+     * Es la decisión discutible de este chequeo y por eso tiene caso propio:
+     * corrido DESPUÉS de deployar, «main tiene commits sin publicar» es
+     * exactamente B-205 —el deploy no llegó—; corrido a mitad de la tarde es lo
+     * aburrido y esperable. El script no puede saber cuál de las dos es, así
+     * que **lo dice** en vez de elegir por su cuenta: avisar de más es mejor que
+     * leer «todo bien» mientras el sitio sirve lo de anteayer.
+     */
+    const r = estadoDeLoPublicado({ ...base, adelanto: 49 });
+    expect(r.estado).toBe('mal');
+    expect(r.detalle).toContain('49 commit(s)');
+    expect(r.detalle).toContain('B-205');
+    expect(r.detalle).toContain('todavía no deployaste');
+  });
+
+  it('el orden de los casos importa: un sha desconocido no se reporta como atrasado', () => {
+    // Si `conocido` se evaluara después de `adelanto`, un sha que no está en el
+    // repo saldría como «main tiene 0 commits por encima», o sea verde.
+    const r = estadoDeLoPublicado({ ...base, conocido: false, ancestro: false, adelanto: 0 });
+    expect(r.estado).toBe('mal');
+    expect(r.detalle).not.toContain('al día');
   });
 });
