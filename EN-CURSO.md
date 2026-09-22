@@ -4,58 +4,112 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
-## Tanda del 2026-09-22: cinco frentes sobre los hijos de B-1141 y del barrido — EN CURSO
+## Tanda del 2026-09-22 — integrada salvo un frente, y **sin pushear**
 
-**Esto está pasando ahora mismo.** Cinco worktrees en `.claude/worktrees/`, ramas
-`frente/*`, todos salidos del `main` **local** en `e025ca7` — que está **cinco
-commits por delante de `origin/main`** y no se pusheó antes de despachar. Es a
-propósito y es la diferencia con la tanda del 2026-09-09: los worktrees se
-crearon con `git worktree add ... main`, así que nacen del local y la trampa de
-«los worktrees nacen de `origin/main`» no aplica acá. **Si alguien pushea el
-`main` local mientras esto corre, no cambia nada para los frentes.**
+> # ⚠️ LO PRIMERO AL RETOMAR: hay 58 commits sin pushear
+>
+> **Todo el trabajo de esta tanda existe solo en el disco de esta máquina.** Siete
+> ramas mergeadas, dos decisiones del dueño, veintiún ítems escritos y dos
+> decisiones nuevas. Nada de eso está en `origin`.
+>
+> El push necesita `gh auth switch --user benoffi7`: la cuenta activa suele ser la
+> del trabajo y da **403**, y en ese caso el hook de `pre-push` **ni siquiera
+> corre**, así que un 403 no dice nada del estado del árbol. El switch es global
+> —mientras dure, cualquier sesión abierta en un repo de Modo ve la cuenta
+> personal—, por eso lo autoriza el dueño y no se hace solo.
+>
+> **Dato medido el 2026-09-22, y es el argumento:** producción sirve
+> `1.10.0+1acad60` con `main` **49 commits por encima**. Lo encontró el chequeo que
+> nació ese mismo día (B-1121) — o sea que la primera cosa que hizo la red nueva
+> fue destapar exactamente lo que B-205 describía.
 
-El estado compartido vivo —quién toca qué archivo, los rangos de ids, la tabla
-de commits— está **fuera del repo**, en `/tmp/agenda-literaria-frentes.md`.
+### Qué entró
 
-| Frente | Rama | Ítems | Archivos propios |
-|---|---|---|---|
-| `decisiones-2` | `frente/decisiones-2` | B-1147, B-1082 | `scripts/decisiones-referenciadas.mjs`, `tests/decisiones-referenciadas.test.ts`, `docs/06-decisiones.md` |
-| `instagram` | `frente/instagram` | B-1142 | `src/lib/textoRedes.ts`, `tests/textoRedes.test.ts` |
-| `analitica-doc` | `frente/analitica-doc` | B-1085 | `docs/16-analitica-del-sitio.md` |
-| `calendario-ig` | `frente/calendario-ig` | B-1145 | `functions/calendario.js`, `tests/calendario.test.ts` |
-| `form-ig` | `frente/form-ig` | B-1144 | `src/components/admin/formulario/SeccionQuien.tsx` + su test |
+Siete ramas mergeadas, **cero conflictos**: `frente/emulador` y `frente/produccion`
+(de una sesión hermana que trabajó en el árbol principal en paralelo) y los cinco
+frentes de la tanda — `decisiones-2`, `instagram`, `analitica-doc`,
+`calendario-ig`, `form-ig`. `tsc` limpio. Los barridos estructurales en verde:
+ítems huérfanos, decisiones huérfanas, `agentes-y-skills`, `novedades`, anclas
+internas de `docs/` en cero.
 
-**Tres de los cinco ítems son hijos directos de B-1141** (el Instagram que se
-mostraba como URL cruda, cerrado el 2026-09-21): B-1142, B-1144 y B-1145 son las
-tres salidas que aquel arreglo dejó sin cubrir. Los otros dos —B-1147 y B-1082—
-son hijos del barrido de B-1113/B-1128 de esa misma tanda.
+Cerrados: **B-1082, B-1085, B-1111, B-1112, B-1121, B-1142, B-1144, B-1145,
+B-1147, B-1183**. Decisiones nuevas: **D-763**, **D-767**, **D-771**.
 
-**Las dos decisiones del dueño se contestaron antes de despachar**, y las dos
-fueron contra la recomendación, que es el modo habitual y está bien:
+### Qué NO entró, y por qué
 
-- **B-1145 → opción (a)**, normalizar en la Function y aceptar el update masivo
-  de una sola vez contra los eventos ya agendados. La recomendada era (b),
-  migrar los documentos. **Consecuencia operativa que hay que tener presente en
-  el próximo deploy:** la primera corrida del sync después de publicar la
-  Function actualiza todos los eventos con un Instagram sin migrar, y eso manda
-  una notificación de «evento actualizado» a quien los tenga agendados.
-- **B-1144 → corregir al vuelo en el formulario, no frenar el publicado.** La
-  recomendada era la regla en el `superRefine`, como las cuatro guías.
-  **Costo aceptado, y conviene que no se lea después como un descuido:** el
-  Instagram de una actividad queda con un criterio distinto del de las cuatro
-  guías —ellas frenan, éste corrige— y son dos criterios para el mismo dato en
-  el mismo panel.
+**`frente/estados` queda viva con 2 commits** (`e5dec4e`, `5e5a0cb`, B-1170 — el
+barrido que compara el estado que un documento afirma de un ítem contra el
+backlog). **No se mergeó a propósito:** no pasó sus auditores y no tiene escrito su
+texto de BACKLOG ni de CHANGELOG. Entrar a `main` a medias sin su documentación
+rompe la regla de proceso justo en el commit que cierra la jornada, y mañana nadie
+sabría si ese barrido está terminado. En la rama es inequívoco.
 
-**Reglas de la tanda**, las mismas que funcionaron en las dos anteriores:
-propiedad exclusiva de archivos, rangos de ids reservados, commits atómicos con
-una línea en `.estado/<frente>.md`, y **nadie toca `docs/CHANGELOG.md`,
-`docs/BACKLOG.md` ni este archivo** — los frentes devuelven el texto y lo integra
-quien orquesta.
+**La suite completa no se corrió.** Es lo segundo a hacer al retomar, después del
+push. **No se arrancó a propósito**: una corrida cortada a la mitad no dice nada y
+deja el emulador colgado, que es el arrastre que costó B-1112.
 
-**Y una regla nueva, de esta máquina y no del repo:** ningún frente corre
-`npm test` entero. Cinco suites de vitest a la vez agotan la memoria y el sistema
-mata procesos de fondo sin avisar; cada frente corre solo sus archivos, y la
-suite completa se corre **una vez**, al integrar, en el árbol principal.
+### Para correr la suite, dos cosas que cuestan una tarde si no se saben
+
+- **`npm run emu` no arranca en esta máquina**: el 5000 lo tiene `ControlCenter`
+  (el receptor de AirPlay de macOS), no otro emulador. Va con
+  `--only auth,firestore,storage`. Es **B-1200**.
+- **Un emulador levantado desde OTRO checkout hace fallar en el acto todos los
+  tests de integración**, desde `b8a5068`, y los casos quedan `skipped`. Si aparece
+  esa cascada **no es que los frentes rompieron algo**: es que el emulador y el
+  checkout no son el mismo. Levantar y correr desde el árbol principal.
+
+### Lo que esta tanda enseñó, y es lo que conviene leer
+
+**Tres de los cinco ítems cerraron corrigiendo el ítem que los abrió.** B-1142
+daba por visible algo que no lo era —el panel ya mostraba el handle—; B-1145
+afirmaba en su título un costo que no existe —la guarda compara dos recálculos con
+el mismo código, no contra lo guardado—; y B-1147 estimaba un factor de cuatro que
+era de casi seis. **Las tres afirmaciones se habían hecho leyendo el código
+correcto y sacando la conclusión equivocada sobre el sistema.** Quedó como
+**B-1162**: un hallazgo que afirma «esto se ve» tiene que decir si se reprodujo o
+si se dedujo leyendo.
+
+**Y el mismo día, dos veces, un chequeo verde no verificaba nada** — la red
+cross-lenguaje de B-1121, escrita mal dos veces seguidas y delatada las dos por la
+mutación y no por la inspección. Eso es **D-771**, que es a D-750 lo que «qué
+mutar» es a «hay que mutar».
+
+**Dos errores de quien integró, los dos agarrados antes de commitear y los dos de
+la misma familia:** un barrido de anclas que borraba los `_` cuando GitHub los
+conserva —llegó a «arreglar» dos enlaces que funcionaban— y una nota de rangos
+reservados que escribía los extremos como `B-1150`/`B-1199`, que el barrido de
+huérfanos leyó como **citas**: la nota que existe para no perder ids generó cinco
+huérfanos y puso el chequeo en rojo.
+
+### Lo que quedó abierto y vale más
+
+- **B-1160** (P2, pero es el más filoso): `handleInstagram('casa#brandon')` devuelve
+  `casa` — una cuenta real de otra persona. En un posteo la arroba **menciona**:
+  linkea y notifica. Y no se queda en la salida, **se guarda así en el documento**.
+  Hoy lo tapan dos puertas locales (D-763 en el calendario, D-767 en el formulario)
+  y el saneador sigue igual.
+- **B-1180**: bajar `src/lib/handle-instagram.mjs` a fachada de una línea. El parche
+  está escrito y verificado.
+- **B-1182** y **B-1161** en 🟡: las tres tablas del índice de salidas ya nombran a
+  los productores que faltaban; falta la red que impide que se vuelvan a desfasar.
+
+### Cómo se coordinó
+
+Las mismas reglas de las dos tandas anteriores, y volvieron a funcionar: propiedad
+exclusiva de archivos, rangos de ids reservados, commits atómicos, y **nadie toca
+`docs/CHANGELOG.md`, `docs/BACKLOG.md` ni este archivo** — los frentes devuelven el
+texto y lo integra quien orquesta. Estado compartido vivo en
+`/tmp/agenda-literaria-frentes.md`, fuera del repo.
+
+**Y una nueva, de esta máquina y no del repo:** ningún frente corre `npm test`
+entero. Varias suites de vitest a la vez agotan la memoria y el sistema mata
+procesos de fondo sin avisar; cada frente corre solo sus archivos y la suite
+completa va una vez, al integrar.
+
+**Al frenar no se perdió nada, y eso no fue suerte:** los seis worktrees estaban
+limpios y los dos commits del único frente sin mergear estaban commiteados. Es lo
+contrario del 2026-09-02, y lo que lo produjo fue exigir commits atómicos en el
+brief de cada frente.
 
 ## Tanda del 2026-09-17: seis frentes de infra y tests — cerrada e integrada
 
