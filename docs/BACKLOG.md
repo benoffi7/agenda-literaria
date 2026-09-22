@@ -27,6 +27,19 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > Lo que ningún archivo sabe es un id **reservado por una tanda y nunca
 > escrito**: esos hay que buscarlos a mano en los ítems que los reservaron.
 
+> **Rangos reservados por la tanda EN CURSO del 2026-09-22 — `B-1150` a `B-1199`.**
+> Esto es **B-1051 aplicado a sí mismo**: ese ítem dice que un id reservado por
+> una tanda y nunca escrito se ofrece como libre, porque la reserva no queda
+> escrita en ningún lado que el tablero pueda leer. Acá queda, y **al abrir la
+> tanda**, que es el momento en que el ítem señala que nadie se acuerda de
+> anotarlo. Cinco frentes: `decisiones-2` **B-1150-1159**, `instagram`
+> **B-1160-1169**, `analitica-doc` **B-1170-1179**, `calendario-ig`
+> **B-1180-1189**, `form-ig` **B-1190-1199**. `B-1148` y `B-1149` quedan de
+> margen. Del lado de las decisiones: **D-751 a D-770**, repartidas en el mismo
+> orden. El detalle vivo está en `/tmp/agenda-literaria-frentes.md` y en
+> `EN-CURSO.md`. **Lo que sobre al cerrar se anota como hueco acá**, con esta
+> misma nota reescrita — si no, es exactamente el agujero que B-1051 describe.
+
 > **Hueco de numeración: `B-297`, `B-298` y `B-299` no existen y no se borró nada.**
 > El último ítem abierto era B-296 y la tanda del 2026-09-02 arrancó a numerar en
 > **B-300** por reserva de números entre frentes en paralelo. Queda escrito acá para
