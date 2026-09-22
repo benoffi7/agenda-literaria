@@ -1057,6 +1057,51 @@ describe('textoRedesDeForm — el camino del panel', () => {
     }
   });
 
+  /**
+   * B-1142 — **por acá el pie ya llegaba normalizado**, y el ítem no lo decía.
+   *
+   * Se midió al arreglar `handlesDe` y el resultado corrige el reporte: el ítem
+   * daba la URL cruda por visible en el pie del posteo, leyendo `handlesDe`
+   * sola. Pero el único consumidor del módulo es esta función, que arma el
+   * documento con `formADocumento` — y ése normaliza `organizador.instagram` con
+   * `conHandle` desde B-928. Con la URL cruda cargada en el formulario, el pie
+   * que sale **ya era** `@casabrandon`.
+   *
+   * O sea que el arreglo de `handlesDe` no le saca un síntoma al panel: le saca
+   * al módulo una dependencia de la normalización de otro —que existe para *qué
+   * se guarda*, no para *cómo se muestra*—. Este test fija las **dos mitades**:
+   * que por el formulario sale bien (y que si `conHandle` dejara de normalizar,
+   * la derivación de `handlesDe` lo sostiene igual), y que las dos puertas del
+   * módulo contestan lo mismo.
+   *
+   * Sin él, el próximo barrido vuelve a reportar esto como visible: es
+   * exactamente lo que pasó acá, y la clase de D-750 con el signo cambiado.
+   */
+  it('el Instagram guardado como URL ya salía arrobado por el formulario (B-1142)', () => {
+    const url = 'https://www.instagram.com/casabrandon/?igsh=MWx';
+    const vieja = formularioLleno({
+      organizador: { nombre: 'Casa Brandon', instagram: url, web: '' },
+      difusion: { arrobar: [], notas: '' },
+      tallerista: { nombre: 'María Moreno', bio: '', instagram: url },
+    });
+    const r = textoRedesDeForm(vieja, 'anuncio', ANTES, LABELS);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const pieDelPanel = r.texto.split('\n\n').at(-1)!;
+    expect(pieDelPanel).toBe('@casabrandon');
+    expect(r.texto).not.toContain('instagram.com');
+
+    // Y las dos puertas del módulo contestan lo mismo: el documento crudo —la
+    // que usaría cualquier segundo consumidor que no pase por el formulario—
+    // llega al mismo pie desde que `handlesDe` deriva.
+    const documento = act({
+      difusion: { arrobar: [], notas: '' },
+      organizador: { nombre: 'Casa Brandon', instagram: url, web: '' },
+      tallerista: { nombre: 'María Moreno', bio: '', instagram: url },
+    });
+    expect(texto(documento).split('\n\n').at(-1)).toBe(pieDelPanel);
+  });
+
   it('las dos variantes tienen etiqueta y ayuda, y no hay una tercera suelta', () => {
     expect(VARIANTES_REDES).toEqual(['anuncio', 'recordatorio']);
     for (const v of VARIANTES_REDES) {

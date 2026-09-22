@@ -249,29 +249,48 @@ const conArroba = (handle: string): string =>
  * Admite el `-` que Instagram no tiene, puede ser un handle de otra red, y su
  * razón de existir es etiquetar lo que quien publica quiso etiquetar (§5.1).
  * Pasarlo por el saneador de Instagram convertiría `@la-mona` en texto sin
- * arroba: rompería el caso que el campo existe para servir. `organizador.
- * instagram` y `tallerista.instagram`, en cambio, **dicen Instagram en el
- * nombre**, y ahí sí hay una sola forma correcta de escribirlos.
+ * arroba: rompería el caso que el campo existe para servir. Los otros dos
+ * **dicen Instagram en el nombre**, y ahí sí hay una sola forma correcta de
+ * escribirlos.
  *
- * **El caso concreto**: las fichas cargadas antes del 2026-09-17 tienen
+ * **El caso**: las fichas cargadas antes del 2026-09-17 tienen
  * `https://www.instagram.com/casabrandon/` guardado adentro del campo —B-928
  * normalizó al guardar y **no reescribió lo ya cargado**—, y esa URL no cumple
- * el alfabeto de `conArroba`, así que el pie salía con la URL pelada donde tenía
- * que ir `@casabrandon`. No rompía nada: simplemente no hacía lo único que el
- * pie existe para hacer, que es etiquetar la cuenta, y quien copia la caption la
- * pega así.
+ * el alfabeto de `conArroba`, así que un valor así llega hasta el pie y sale
+ * pelado donde tenía que ir `@casabrandon`: no rompe nada, simplemente no hace
+ * lo único que el pie existe para hacer, que es etiquetar la cuenta.
+ *
+ * ── Y por el panel **no se veía**, que es lo que B-1142 no decía ────────────
+ *
+ * Se midió antes de escribir esto, no se dedujo. El único consumidor del módulo
+ * es `textoRedesDeForm`, que arma el documento con `formADocumento` — y ése
+ * normaliza el campo con `conHandle` desde B-928. O sea que al `handlesDe` de
+ * hoy **le llega el handle ya pelado** y el pie del panel ya decía
+ * `@casabrandon`. El ítem lo daba por visible leyendo esta función sola; con el
+ * formulario cargado con la URL cruda, el pie que sale es `@casabrandon`, y hay
+ * un test que lo fija.
+ *
+ * **Entonces esto no es el arreglo de un síntoma, es sacarle al pie una
+ * dependencia que no controla.** La correctitud del texto para redes colgaba de
+ * una normalización que vive en otro módulo y que existe para otra pregunta
+ * —*qué se guarda*, no *cómo se muestra*—: si `conHandle` dejara de reescribir
+ * lo tipeado (por ejemplo si B-1144 lo cambia por una validación que rechaza en
+ * vez de normalizar), el pie volvía a la URL en silencio. Y `construirTextoRedes`
+ * está exportado y toma un documento: cualquier segundo consumidor que no pase
+ * por el formulario entra por la puerta sin cubrir.
  *
  * Se deriva **al mostrar** y no con una migración, igual que en la ficha
- * pública (B-1141): arregla las viejas y las nuevas con la misma línea y no toca
- * datos de producción. `arrobaInstagram` es esa misma función —no una copia—,
- * así que el pie del posteo y la ficha no pueden discrepar sobre cómo se escribe
- * una cuenta (D-20).
+ * pública (B-1141): vale para las viejas y las nuevas con la misma línea y no
+ * toca datos de producción. `arrobaInstagram` es esa misma función —no una
+ * copia—, así que el pie del posteo y la ficha no pueden discrepar sobre cómo se
+ * escribe una cuenta (D-20).
  *
  * **Lo que no se reconoce sigue saliendo como se escribió**, sin arroba: es el
  * criterio de `arrobaInstagram` y el de `conArroba`, y acá suman igual. Y entra
  * **antes** de `agregarChips`, lo que de yapa deduplica un organizador cargado
- * como URL contra el mismo handle escrito a mano en «arrobar» — dos entradas que
- * hasta hoy salían las dos.
+ * como URL contra el mismo handle escrito a mano en «arrobar». Por el panel eso
+ * ya pasaba —lo deduplicaba `formADocumento`, ver abajo—; lo que se empareja es
+ * la puerta del documento, que hasta hoy sacaba las dos.
  *
  * **Este arreglo cubre esta salida y nada más.** La validación del campo al
  * publicar es B-1144, y la descripción del evento de Calendar va por B-1145 —que
