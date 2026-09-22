@@ -41,7 +41,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { EXTENSIONES as EXTENSIONES_DEL_GEMELO } from '../scripts/items-referenciados.mjs';
 import {
+  EXTENSIONES,
   decisionesEscritas,
   esProsa,
   huerfanas,
@@ -221,7 +223,18 @@ describe('las citadas con otra grafía', () => {
  *    y en «sin disco»;
  * 5. sacar `.rules` de `EXTENSIONES` → rojo en «la lista de extensiones es
  *    blanca»;
- * 6. `seBarre` sin el filtro de extensiones (lista negra pura) → rojo en tres.
+ * 6. `seBarre` sin el filtro de extensiones (lista negra pura) → rojo en tres;
+ * 7. sacar el propio script de `AFUERA` → rojo en «no se cuenta a sí mismo»;
+ * 8. volver a declarar una `EXTENSIONES` local, aunque sea idéntica → rojo en
+ *    «la lista de extensiones es la misma del gemelo».
+ *
+ * **Y lo que estos casos NO cubren, dicho para que no se lea de más** (del
+ * `auditor-trampas`): los tres que verifican `seBarre(x) === false` sobre un
+ * archivo de `AFUERA` se satisfacen **igual con `EXTENSIONES` vacía**, porque
+ * `AFUERA.has(archivo)` corta el `&&` antes de mirar la extensión. El único
+ * aserto que denuncia el colapso del corpus es el `length > 100` del primer
+ * caso. No es un agujero —está cubierto— pero si algún día ese primer caso se
+ * afloja, los tres de `AFUERA` seguirían en verde sin cubrir nada.
  */
 describe('el corpus — B-1147', () => {
   it('barre el código, que es donde una decisión se cita de verdad', () => {
@@ -285,6 +298,46 @@ describe('el corpus — B-1147', () => {
         desdeCodigo: ['src/lib/cualquiera.ts'],
       },
     ]);
+  });
+
+  it('el barrido no se cuenta a sí mismo entre los citantes de su propio ejemplo', () => {
+    /*
+     * **La cabecera del script nombra `D-88`, que está huérfana** — es el caso
+     * que midió B-1147 y sin nombrarlo la explicación no explica nada. Con el
+     * corpus abierto eso hizo que el script apareciera como un archivo más
+     * «citando D-88 desde el código», que es justo lo que el informe mide para
+     * decir cuán caro sale el hueco: dieciocho archivos donde en realidad son
+     * diecisiete. Lo encontró el `auditor-trampas`, y es la trampa que el gemelo
+     * ya tenía documentada en `expandir()` («se reportó a sí mismo al
+     * escribirlo»).
+     *
+     * MUTACIÓN PROBADA: sacar el script de `AFUERA` deja este caso en rojo.
+     */
+    expect(seBarre('scripts/decisiones-referenciadas.mjs')).toBe(false);
+
+    const { sueltas } = relevar();
+    const d88 = sueltas.find((s) => s.decision === 'D-88');
+    expect(
+      d88?.archivos ?? [],
+      'el barrido se cuenta a sí mismo entre los citantes',
+    ).not.toContain('scripts/decisiones-referenciadas.mjs');
+  });
+
+  it('la lista de extensiones es la misma del gemelo, no una copia — clase D-88', () => {
+    /*
+     * **Copiar la lista para arreglar un corpus desalineado lo deja listo para
+     * volver a desalinearse**, que es B-1147 visto desde el otro lado: la
+     * primera versión de este cambio tenía las diecisiete extensiones escritas
+     * dos veces, byte a byte, y nada las ataba. Hoy `EXTENSIONES` se importa de
+     * `items-referenciados.mjs` y se reexporta, así que este caso no compara dos
+     * listas: comprueba que sean **el mismo objeto**, que es lo único que un
+     * `.mdx` agregado de un solo lado no puede saltear.
+     *
+     * MUTACIÓN PROBADA: volver a declarar una `EXTENSIONES` propia en
+     * `decisiones-referenciadas.mjs` —aunque sea idéntica— deja este caso en
+     * rojo.
+     */
+    expect(EXTENSIONES).toBe(EXTENSIONES_DEL_GEMELO);
   });
 
   it('el relevamiento se puede ejercitar sin disco, con el lector inyectado', () => {

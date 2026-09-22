@@ -30,11 +30,12 @@
  * barrido persigue no es el link roto: es la decisión que alguien va a buscar y
  * no está. Y una decisión es, sobre todo, lo que el **código** cita — el mismo
  * argumento que D-740 escribió del lado de los duplicados. El caso que lo midió
- * es **D-88**: huérfana, citada desde **dieciocho** archivos —cuatro `.mjs` de
- * `scripts/`, un `.sh`, un módulo de `src/` y nueve de `tests/`— y el informe
- * nombraba solo los tres `.md`. Quien lo leía subestimaba el alcance por un
- * factor de seis. (El ítem estimaba «cuatro» y se quedó corto, justamente porque
- * la cuenta se hizo a mano con el barrido que no los veía.) Las otras dos las midió
+ * es **D-88**: huérfana, citada desde **diecisiete** archivos —tres `.mjs` de
+ * `scripts/`, un `.sh`, un módulo de `src/`, nueve de `tests/` y los tres `.md`—
+ * y el informe nombraba solo esos tres `.md`. Quien lo leía subestimaba el
+ * alcance por un factor de casi seis. (El ítem estimaba «cuatro» y se quedó
+ * corto, justamente porque la cuenta se hizo a mano con el barrido que no los
+ * veía.) Las otras dos las midió
  * **B-1082**: D-400 y D-401 se citaban **diecisiete veces desde siete archivos**
  * de `src/` y `tests/` —el ítem dice «doce», que es la cuenta de D-401 sola— y
  * **no podían aparecer acá**, que es la puerta abierta justo donde el repo más
@@ -80,6 +81,29 @@ import { fileURLToPath } from 'node:url';
 // nuevo sin `git add`, que es justo el archivo que estrena una cita.
 import { archivosDelRepo } from '../tests/fixtures/archivos-del-repo.ts';
 
+/**
+ * **El corpus se comparte, no se copia** — B-1147, clase D-88.
+ *
+ * `EXTENSIONES` y `esProsa` **se importan del gemelo** y se reexportan acá. La
+ * primera versión de este cambio las copió byte a byte, que es exactamente el
+ * bug que B-1147 vino a cerrar visto desde el otro lado: dos barridos hermanos
+ * mirando corpus distintos sin que nada lo diga. Copiar la lista para arreglar
+ * un corpus desalineado lo dejaba listo para volver a desalinearse — lo encontró
+ * el `auditor-trampas` en el mismo cambio.
+ *
+ * **La dirección de la dependencia es la de la historia, no una jerarquía:** la
+ * lista blanca nació en `items-referenciados.mjs` (B-1100) y este barrido es el
+ * que se le acopla. El día que haya un tercer barrido con corpus, los dos se
+ * mudan a un módulo propio; con dos, un archivo nuevo sería más ceremonia que
+ * lista.
+ *
+ * Es la misma lección de **B-1113** («el formato del id se compone, no se
+ * reescribe») aplicada al corpus en vez de al id.
+ */
+import { EXTENSIONES, esProsa } from './items-referenciados.mjs';
+
+export { EXTENSIONES, esProsa };
+
 /** Dónde están escritas las decisiones. */
 export const REGISTRO = 'docs/06-decisiones.md';
 
@@ -123,9 +147,6 @@ export const referenciasDe = (contenido) => [
  * @returns {number}
  */
 const numeroDe = (decision) => Number(decision.slice(2));
-
-/** Los archivos que son prosa; el resto del corpus es código. */
-export const esProsa = (archivo) => archivo.endsWith('.md');
 
 /**
  * Las referencias que no tienen entrada, con el archivo donde aparecen y con
@@ -201,18 +222,6 @@ export const otraGrafia = (textos, escritas) => {
 };
 
 /**
- * Las extensiones que se barren.
- *
- * Lista blanca y no lista negra, por el mismo motivo que el gemelo: un `.png`
- * nuevo no tiene que acordarse de pedir permiso para quedar afuera, y un
- * formato de texto nuevo entra cuando alguien decide que entre.
- */
-export const EXTENSIONES = [
-  '.md', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.astro', '.json', '.jsonc',
-  '.rules', '.yml', '.yaml', '.sh', '.txt', '.html', '.css', '.indexes',
-];
-
-/**
  * Archivos que quedan afuera, con el motivo de cada uno.
  *
  * - `docs/06-decisiones.md`: es el registro, y se cita a sí mismo entero.
@@ -223,15 +232,19 @@ export const EXTENSIONES = [
  *   que barrerlo hace que el chequeo se reporte a sí mismo y no pueda quedar
  *   limpio nunca. Es la misma excepción, y por el mismo motivo, que
  *   `scripts/items-referenciados.mjs` le hace a la suya.
- *
- * **Este archivo no está en la lista, y es a propósito.** Los ejemplos de sus
- * docblocks usan números que existen (`D-9`, `D-100`) o la grafía en minúscula
- * del ancla, así que no inventa ninguno. Una `D-` inventada en un comentario de
- * acá sería exactamente lo que este barrido reporta — y se reportaría sola.
+ * - **Este archivo.** La primera versión de B-1147 lo dejó adentro razonando que
+ *   sus ejemplos usan números que existen (`D-9`, `D-100`) o la grafía en
+ *   minúscula del ancla. El razonamiento se cayó en el mismo cambio: la cabecera
+ *   necesita nombrar **D-88** —el caso medido, que está huérfano— y con eso el
+ *   script pasó a figurar entre los citantes de su propio ejemplo. Lo encontró
+ *   el `auditor-trampas`. La explicación de por qué existe un barrido **tiene**
+ *   que poder nombrar la huérfana que lo motivó sin contarse como un lugar donde
+ *   el código manda a buscarla, que es lo que este informe mide.
  */
 const AFUERA = new Set([
   REGISTRO,
   'package-lock.json',
+  'scripts/decisiones-referenciadas.mjs',
   'tests/decisiones-referenciadas.test.ts',
 ]);
 
