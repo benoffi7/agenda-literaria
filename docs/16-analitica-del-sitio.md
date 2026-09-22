@@ -1311,8 +1311,8 @@ dimensión personalizada*, alcance **Evento**, dos veces:
 
 | Nombre de la dimensión | Parámetro del evento | Qué va a tener |
 |---|---|---|
-| `eje` | `eje` | `tipo` · `arancel` · `modalidad` · `barrio` · `ciudad` · `tag` · `busqueda` · `cuando` · `abierta` · `cursada` · `otro` |
-| `slug` | `slug` | slugs de taxonomía, unidos por coma — **solo** de los seis primeros ejes ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) |
+| `eje` | `eje` | `tipo` · `arancel` · `modalidad` · `provincia` · `barrio` · `ciudad` · `tag` · `busqueda` · `cuando` · `abierta` · `cursada` · `otro` |
+| `slug` | `slug` | slugs de taxonomía, unidos por coma — **solo** de los siete primeros ejes ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) |
 
 Los dos son vocabulario cerrado o slugs de una taxonomía que ya es pública:
 **ninguno puede llevar el texto que alguien tipeó**, y eso es una garantía del
