@@ -1327,6 +1327,10 @@ describe('construirDescripcion — «existe» es tener el nombre con contenido, 
  * nombrando la entrada exacta que las separó.
  */
 describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)', () => {
+  /** El fuente sin docblocks ni comentarios de línea: se afirma sobre el código. */
+  const sinComentarios = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
   /**
    * Las formas en que un Instagram llega cargado, más las que tienen que ser
    * rechazadas. Es la batería de `tests/instagrams-de-la-base.test.ts`, que salió
@@ -1400,9 +1404,46 @@ describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)'
     expect(fuente).toContain(
       "import { arrobaInstagram, cortaAlDerivar } from './handle-instagram.js';",
     );
-    for (const señal of ['instagram\\.com', 'A-Za-z0-9._]{1,30}']) {
-      expect(fuente, `volvió a haber una copia del saneador: ${señal}`).not.toContain(señal);
+    /*
+     * Las señales se buscan sobre el fuente **sin comentarios**: los docblocks de
+     * este archivo nombran `instagram.com` y el `?igsh=` para explicar qué hace el
+     * saneador, y sin este recorte la guarda daría rojo por la prosa. Es el mismo
+     * criterio de ámbito del §3 de D-750: mirar el sujeto y no el archivo entero.
+     */
+    const codigo = sinComentarios(fuente);
+    for (const señal of ['instagram.com', 'A-Za-z0-9._]{1,30}', ".replace(/^@/, '')"]) {
+      expect(codigo, `volvió a haber una copia del saneador: ${señal}`).not.toContain(señal);
     }
+  });
+
+  /**
+   * **La clase, y no las dos instancias de hoy** — lo pidió el `auditor-privacidad`
+   * (clase de B-81).
+   *
+   * Los dos casos de arriba nombran `organizador.instagram` y
+   * `tallerista.instagram`, que son los dos únicos campos de Instagram del
+   * documento (`src/types/actividad.ts`). El hueco es **el tercero**: un
+   * `libro.autorInstagram`, el handle de una comisión, un `sede.instagram`. Nace
+   * sin saneador y ningún test de comportamiento se entera, porque el barrido de
+   * centinelas compara por substring y un centinela arrobado lo contiene igual.
+   *
+   * MUTACIÓN PROBADA: agregarle al bloque «Quién» un tercer campo sin envolver
+   * deja este caso en rojo nombrándolo; y renombrar el campo que el barrido busca
+   * lo deja en rojo por el aserto de que encontró al menos dos.
+   */
+  it('TODO campo de Instagram del evento pasa por el saneador, no solo los dos de hoy', () => {
+    const codigo = sinComentarios(
+      readFileSync(fileURLToPath(new URL('../functions/calendario.js', import.meta.url)), 'utf8'),
+    );
+    const usos = [...codigo.matchAll(/[A-Za-z_$][\w$]*\.instagram\b/g)].map((m) => m[0]);
+
+    // Sin esto la guarda pasaría vacía el día que alguien renombre el campo, que
+    // es la firma de un chequeo que no verifica nada (D-750).
+    expect(usos.length, 'el barrido dejó de encontrar los campos que vigila').toBeGreaterThanOrEqual(
+      2,
+    );
+    const crudos = usos.filter((u) => !codigo.includes(`arrobaPublicable(${u})`));
+    expect(crudos, 'un campo de Instagram entra crudo a la descripción del evento').toEqual([]);
   });
 });
 
@@ -1469,6 +1510,19 @@ describe('construirDescripcion — el Instagram se muestra como handle (B-1145, 
       organizador: { nombre: 'Casa Brandon', instagram: 'Casa Brandon / IG', web: '' },
     });
     expect(construirDescripcion(a, sesion(), LABELS)).toContain('Organiza: Casa Brandon · Casa Brandon / IG');
+  });
+
+  /**
+   * Un `instagram` que no es texto —un número escrito por consola, o repuesto por
+   * `restaurarCampo`— no puede voltear la sincronización de la actividad entera.
+   * Lo marcó el `auditor-privacidad`: el saneador hace `.trim()` sobre el crudo.
+   */
+  it('un Instagram que no es texto no rompe el sync: sale como salía', () => {
+    const a = completa({
+      organizador: { nombre: 'Casa Brandon', instagram: 123 as unknown as string, web: '' },
+    });
+    expect(() => construirEvento(a, sesion(), LABELS)).not.toThrow();
+    expect(construirDescripcion(a, sesion(), LABELS)).toContain('Organiza: Casa Brandon · 123');
   });
 
   it('un Instagram vacío sigue sin dejar el separador colgado', () => {

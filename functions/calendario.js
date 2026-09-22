@@ -35,8 +35,24 @@ import { arrobaInstagram, cortaAlDerivar } from './handle-instagram.js';
  * Con B-1160 resuelto la puerta deja de tener trabajo y se saca **con** ese ítem,
  * no antes.
  */
-const arrobaPublicable = (crudo) =>
-  cortaAlDerivar(crudo) ? (crudo ?? '').trim() : arrobaInstagram(crudo);
+const arrobaPublicable = (crudo) => {
+  /*
+   * **Lo que no es texto sale como salía**, y esto es robustez y no cosmética: el
+   * saneador hace `.trim()` sobre el crudo, así que un `instagram` que no sea
+   * string —un número o un objeto escritos por consola, o repuestos por
+   * `restaurarCampo` (`src/lib/historial.ts`), que es el camino de entrada que el
+   * bloque «Quién» de más abajo nombra— lo haría **tirar**. Y tirar acá no es
+   * fallar cerrado: se cae la sincronización entera de esa actividad, o sea que
+   * ninguno de sus ocho encuentros llega al calendario, por un campo de texto.
+   *
+   * Devolverlo tal cual reproduce exactamente lo que hacía la concatenación antes
+   * de B-1145. Coercionarlo con `String()` sería peor que las dos: `123` pasaría
+   * el alfabeto y saldría `@123`, o sea el calendario público afirmando una
+   * cuenta. Lo encontró el `auditor-privacidad`.
+   */
+  if (typeof crudo !== 'string') return crudo;
+  return cortaAlDerivar(crudo) ? crudo.trim() : arrobaInstagram(crudo);
+};
 
 export const TIMEZONE = 'America/Argentina/Buenos_Aires';
 
