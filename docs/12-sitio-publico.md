@@ -252,7 +252,7 @@ Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
 > pasa de **trece a catorce**. Es estática y escrita a mano como `/suscribirse`,
 > `/ayuda` y `/contacto`: no depende de los datos, así que no puede quedar vacía.
 > Entra al `sitemap.xml` y **sin `noindex`**; el motivo, y el de por qué no está
-> en el encabezado, están en su bullet del [§4.5](#45-pasadas-suscribirse-ayuda--contacto-404).
+> en el encabezado, están en su bullet del [§4.5](#45-pasadas-suscribirse-ayuda--contacto-404-anunciar).
 
 ### 2.1 Por qué cada hub es una URL y no un filtro
 
