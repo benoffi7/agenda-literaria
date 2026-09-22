@@ -286,6 +286,39 @@ describe('el cableado: todo lo que habla con el emulador usa esa base', () => {
     expect(config).toContain('PUBLIC_FIREBASE_PROJECT_ID: PROJECT_ID_EMULADOR');
   });
 
+  it('`tests/emulador.ts` importa el projectId, no lo deriva de nuevo', () => {
+    /*
+     * B-1111, y es el hueco que esta misma red tenía: hasta el 2026-09-22
+     * `tests/emulador.ts` resolvía `PROJECT_ID` con
+     * `process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria'` — una
+     * segunda derivación con **el proyecto real como fallback**, en el archivo
+     * del que importan los ~15 de integración.
+     *
+     * **Medido antes de arreglarlo (D-750): volviendo esa línea al literal, los
+     * 21 casos de este archivo y de `proyecto-de-auth` siguen en verde.** Ni
+     * siquiera lo agarra el `expect(PROJECT_ID).toBe(PROJECT_ID_EMULADOR)` de
+     * más arriba, y por eso aguantó: bajo vitest la variable **sí** está
+     * exportada, así que las dos derivaciones coinciden y el assert pasa. El
+     * modo de falla vive fuera de vitest —un script suelto, un `node` a mano—,
+     * donde el fallback manda la escritura a la base compartida.
+     *
+     * O sea que tiene que ser un chequeo **sobre la fuente**, como el de
+     * `vitest.config.ts` de acá arriba: en runtime el bug es invisible.
+     *
+     * Y se mira la **asignación** y no el archivo entero, que es la lección de
+     * B-1129: un `toContain('PROJECT_ID_EMULADOR')` lo satisfaría el docblock
+     * que explica el arreglo, sin que la línea lo use.
+     */
+    const src = fuente('tests/emulador.ts');
+    expect(src).toContain("from '../scripts/project-id-emulador.mjs'");
+
+    const asignacion = /^export const PROJECT_ID\s*=\s*(.+);$/m.exec(src);
+    expect(asignacion, '`export const PROJECT_ID = …` cambió de forma').not.toBeNull();
+    expect(asignacion![1], 'PROJECT_ID vuelve a derivarse en vez de importarse').toBe(
+      'PROJECT_ID_EMULADOR',
+    );
+  });
+
   it('el gate en bash lee el mismo valor del mismo lugar', () => {
     /*
      * `verificar-todo.sh` no puede importar un módulo, así que llama al CLI. Lo

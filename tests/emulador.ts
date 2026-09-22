@@ -1,5 +1,7 @@
 /** Helpers para los tests que necesitan los emuladores corriendo. */
 
+import { PROJECT_ID_EMULADOR } from '../scripts/project-id-emulador.mjs';
+
 export const HOST_FIRESTORE = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080';
 
 /**
@@ -12,6 +14,22 @@ export const HOST_FIRESTORE = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:
  * —la misma variable que leen `firebase-client.ts` y `firebase-admin.ts`, así
  * que el panel y el build apuntan solos a la base correcta.
  *
+ * **Se importa del módulo, no se vuelve a derivar del entorno — B-1111.** Hasta
+ * el 2026-09-22 esta línea era
+ * `process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria'`, o sea una
+ * segunda derivación del mismo dato con **el proyecto real como fallback**. Por
+ * vitest no se notaba —`vitest.config.ts` exporta la variable, así que las dos
+ * derivaciones coincidían—, y por eso aguantó: el modo de falla es todo lo que
+ * corra **fuera** de vitest —un script suelto, un `node` a mano, un helper
+ * importado desde otro runner—, que caía al literal compartido y **escribía en
+ * la base de todos**, que es exactamente lo que B-219 existe para evitar.
+ *
+ * `PROJECT_ID_EMULADOR` ya respeta `PUBLIC_FIREBASE_PROJECT_ID` cuando viene del
+ * entorno (es la salida de emergencia del gate), así que importar no pierde esa
+ * capacidad: lo que se pierde es el fallback equivocado. Es la clase **D-88** —
+ * dos lados derivando el mismo valor, uno de los dos desactualizado— y el tercer
+ * borde de **D-730**.
+ *
  * **Se lee de acá, nunca se escribe el literal.** Un `projectId:
  * 'agenda-literaria'` suelto en un test de integración vuelve a hablarle a la
  * base compartida, y el síntoma es el de siempre: verde catorce veces y rojo la
@@ -22,7 +40,7 @@ export const HOST_FIRESTORE = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:
  * que llamar a `cargarReglas()` en su `beforeAll`. Eso ya era lo correcto por
  * B-174; ahora además es obligatorio.
  */
-export const PROJECT_ID = process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria';
+export const PROJECT_ID = PROJECT_ID_EMULADOR;
 
 /**
  * ¿Están los emuladores arriba? Si no, los tests de integración se saltean —
