@@ -8274,6 +8274,99 @@ de abajo recién cuando tiene el índice; **si el fetch falla no saca nada**, as
 que lo que se pierde es el buscador y no el archivo — que es la propiedad por la
 que esta página existe (§2.1).
 
+## D-400 · B-621 — el tablero pasa a todo ancho, y el ancho ganado se gasta en columnas en el mismo cambio
+
+**2026-09-03 · B-621, B-700.** *Escrita acá el 2026-09-22 (**B-1082**). El número
+se acuñó en los commits del tablero (`a8e6486`, `1f41108`) y se citaba desde
+`src/lib/anchoDelPanel.ts`, desde dos bloques de `EstadisticasPanel.tsx` y desde
+`tests/ancho-del-panel.test.ts` sin tener entrada: es la forma de B-910 y la
+mitad medible de **B-1090**. A diferencia de las seis de aquel ítem, **acá no
+había `.estado/` del que pegarla** — se reconstruyó de los docblocks, que la
+tenían entera. Por eso el texto es más corto que el de sus vecinas: dice lo que
+el código afirma y nada más.*
+
+**Contexto.** D-330 decidió que el ancho del panel se resuelve **por vista** —una
+lista explícita, con el default en «angosta»— y dejó dos pantallas afuera con el
+motivo escrito: «ensanchar cada una es un cambio visual propio —qué crece, qué se
+reparte en columnas, qué queda con su ancho—, no el mismo cambio aplicado dos
+veces más». B-621 nombraba esas dos: el tablero de estadísticas y la grilla del
+mes.
+
+**La decisión: `estadisticas` entra en `VISTAS_A_TODO_ANCHO`, y el reparto de
+columnas entra en el mismo cambio.** Las dos mitades no se separan, y ése es el
+contenido de la decisión. El tablero tiene avisos, cuatro repartos con torta o
+lista, dos vistas de tiempo y un mapa de calor de ocho semanas; el ancho extra
+sin repartir lo dejaría con 1600px de pantalla y una sola columna de contenido,
+que es **peor** que el panel encajonado — más blanco alrededor del mismo texto.
+Los dos cortes que se eligieron, con lo que los fija:
+
+| Qué | Corte | Por qué ahí |
+|---|---|---|
+| los avisos | dos columnas desde `xl` | cada aviso es un título corto y una lista de títulos de actividad que envuelve; el título de un taller ya usa el ancho de media columna, así que cuatro columnas truncarían |
+| los repartos | dos desde `lg`, cuatro desde `2xl` | una torta de 112px con su referencia al lado entra en 380px, así que cuatro caben en 1600; en `lg` van de a dos, que es donde la referencia empieza a truncar títulos de barrio |
+
+**Y la grilla del mes queda afuera a propósito**, que es la otra mitad de B-621 y
+lo que evita leer esta decisión como «el panel se ensancha». Ensancharla sin
+decidir qué crece daría siete columnas de 220px con el mismo contenido de 120:
+más aire, no más información. Entró después, el 2026-09-07 y por pedido del dueño
+mirando el panel publicado, con su propio argumento anotado en
+`anchoDelPanel.ts`.
+
+**Consecuencia que se aceptó:** el tablero es la única vista que va a todo ancho
+en las dos vistas, celular y PC (`tests/ancho-del-panel.test.ts`). No hereda la
+excepción de B-814 —«lectura en celular, todo en PC»— porque no es un formulario:
+una grilla de gráficos es el caso puro de «se recorre de un barrido», que es el
+criterio de D-330, y sigue siéndolo en una pantalla chica.
+
+## D-401 · B-700 — el todo de una torta es la suma de sus tajadas, y decir sobre qué se reparte es obligatorio
+
+**2026-09-03 · B-700, B-701.** *Escrita acá el 2026-09-22 (**B-1082**), junto con
+D-400 y por el mismo motivo. Se citaba desde `src/lib/tortaDelPanel.ts` (cuatro
+veces), `src/components/admin/estadisticas/Reparto.tsx` (cuatro),
+`src/lib/estadoDelCatalogo.ts` (dos) y `tests/torta-del-panel.test.ts` (dos), y no
+tenía entrada. Reconstruida de esos docblocks.*
+
+**Contexto.** El tablero dibuja sus repartos con una torta hecha a mano —no hay
+librería de gráficos: el bundle del panel tiene un corte sostenido sobre el grafo
+de imports (B-09) y 50-200 KB para cinco cuñas no pasan por ahí—. Una torta a
+mano no valida nada sola: dibuja los grados que le den.
+
+**La trampa concreta, que no es hipotética.** Media docena de repartos de
+`estadoDelCatalogo.ts` **cuentan una actividad más de una vez**: `porModalidad`
+la cuenta en cada forma que ofrece (B-224) y `porBarrio` en cada barrio donde se
+dicta (B-702). Con 40 actividades que dan 47 tajadas, una torta dibujada «sobre
+40» cubre el 117 % de la circunferencia: las cuñas se montan unas sobre otras y
+**la torta se sigue viendo como una torta**. Nada se ve roto y todos los
+porcentajes mienten.
+
+**La decisión tiene dos mitades, y las dos son la decisión.**
+
+1. **El todo es la suma de las tajadas, y no se puede pasar de afuera.**
+   `arcosDeTorta` **no recibe ningún total**: lo calcula con `sumaDeTajadas` sobre
+   lo que va a dibujar. No es una convención que haya que recordar — es una firma
+   a la que no se le puede pasar un número equivocado. Lo mismo vale para
+   `agruparCola`, que junta la cola en «el resto» **conservando la suma**, así que
+   agrupar no corre ningún porcentaje y la torta sigue cerrando en 360°.
+2. **Quien pinta tiene que decir en palabras sobre qué todo reparte.** `Reparto`
+   lo exige por firma: `unidad` es una prop obligatoria y la nota se imprime
+   siempre, arriba del gráfico. «Sobre 47 formas de cursar ofrecidas», no «sobre
+   40 actividades». Es la mitad que el módulo puro no puede hacer cumplir —él sabe
+   cuánto suma, no de qué— y por eso va donde sí se puede: en el tipo.
+
+**Y el corolario que se usa para no dibujar:** un conjunto de números que **no**
+es un reparto no lleva torta. Las tres proporciones de inscripción de B-703
+—¿pide inscripción?, ¿declara cupo?, ¿está llena?— son tres preguntas de sí/no
+independientes que se solapan, no las partes de un todo: una torta sobre ellas
+sumaría más de una vuelta. Se muestran como proporciones, cada una con su
+denominador dicho (`conCupo` y `completas` van **sobre las que piden
+inscripción**, no sobre todas las publicadas — el denominador equivocado es lo que
+convierte una proporción en una mentira).
+
+**Lo que la decisión NO es:** no es una regla sobre tortas, es una sobre
+denominadores. Cualquier número del tablero que se presente como porcentaje cae
+bajo la misma vara, se dibuje como cuña o como renglón.
+
+
 ## D-410 · Un `subEvent` repite los datos de su actividad, y eso no es inventar
 
 **Contexto.** Search Console reportó `description`, `organizer` y `offers`
