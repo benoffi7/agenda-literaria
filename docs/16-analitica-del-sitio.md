@@ -75,7 +75,7 @@ documento es para la mitad **b**.
 **Y la segunda consecuencia, que es la que ahorra plata:** la mitad **a** se
 puede leer en GA4, gratis, sin construir un tablero. Lo que el panel tiene que
 mostrar de la mitad **a** es el resumen que uno pega en un mail —cuatro números y
-su período—, no una réplica peor de GA4 ([§9.3](#93-qué-muestra-el-panel-de-la-mitad-vendible-y-con-qué-período)).
+su período—, no una réplica peor de GA4 ([§9.3](#93--qué-muestra-el-panel-de-la-mitad-vendible-y-con-qué-período)).
 
 ---
 
@@ -1138,7 +1138,7 @@ número— pero es un desvío del pedido y conviene tenerlo escrito.
    que escribe** y no solo del que lee: `e.message` lo arma `googleapis`, no
    este repo, y el tope en el lector llega después de persistir.
 6. **Las dimensiones que se le piden a GA4 son una lista blanca.** Es el
-   invariante del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear)
+   invariante del [§5.3](#53--el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear)
    visto **del lado que lee**, que hasta acá no lo protegía nada. `pagePath` no
    lleva la query; **`pagePathPlusQueryString` sí** — una palabra de diferencia,
    y el ranking de páginas del panel mostraría `?q=<lo que alguien tipeó>`. Por
@@ -1396,7 +1396,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | 1 | **El tablero del catálogo** | ✅ hecho. Sirve desde hoy y no espera nada |
 | 2 | **Search Console** (**B-373**) | no necesita ninguna decisión, no pone cookies, no agrega JS, y contesta la pregunta que justifica el proyecto. **Diferido a propósito, no descartado**: el dueño lo deja para el final de todo. El motivo por el que igual conviene no demorarlo mucho es de calendario y sigue vigente — Search Console no muestra histórico anterior a la conexión, así que cada día sin conectarlo es un día que no se recupera |
 | 3 | **El banner y el consentimiento** (**B-376**, camino C3) | ✅ construido — es la pieza que hace que el tag esté informado desde el primer día en que mide de verdad |
-| 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **B-480 se resolvió el 2026-09-03** — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)— y desde ahí el tag mide en producción |
+| 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53--el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **B-480 se resolvió el 2026-09-03** — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)— y desde ahí el tag mide en producción |
 | 5 | **Los eventos propios** (**B-375**) | ✅ construidos **y midiendo** desde el 2026-09-03, con B-372 y B-480 cerrados: el clic en el botón de inscripción y el filtro que deja cero. El tercero, el del tríptico (**B-601**), se enganchó el 2026-09-07 |
 | 6 | **El resumen vendible en el panel** (**B-374**) | ✅ construido (2026-09-03) — y con un desvío del criterio que decía «recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre». **El criterio era correcto para el orden y se cumplió por el otro lado:** lo que se construyó no muestra un cero ni un número inventado, sino cuál de las cuatro situaciones está pasando ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)), así que sirve **antes** de que haya datos — dice si los pasos de consola están bien. Lo que sigue esperando el mes de datos son los números, no la pantalla. Ver [§9.4](#94--los-pasos-de-consola-del-dueño) para lo que falta del lado del dueño |
 
@@ -1432,7 +1432,7 @@ semana sin el tag es una semana de historia que no se recupera**.
   su vocabulario y la garantía de que no sale contenido. Es el estándar que la
   mitad **b** tiene que cumplir.
 - [`07-seguridad.md`](07-seguridad.md#analítica-del-panel) — la salida 4 y cómo se
-  verifica; el alcance nuevo del [§5.2](#52-por-qué-eso-igual-está-bien-dicho-con-precisión);
+  verifica; el alcance nuevo del [§5.2](#52--por-qué-eso-igual-está-bien-dicho-con-precisión);
   y la **salida 12**, la analítica del sitio público, con la advertencia de
   Enhanced Measurement que este documento cita en el [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480).
 - [`12-sitio-publico.md`](12-sitio-publico.md) §11.1 — la decisión 4 del dueño,
