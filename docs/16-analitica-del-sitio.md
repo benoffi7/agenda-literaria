@@ -863,7 +863,13 @@ medir.
 
 ### 8.1 · Qué muestra la pestaña «El catálogo»
 
-Tres bloques, en el orden de lo que hay que hacer primero:
+**Arriba, cuatro números:** actividades, publicadas, encuentros por venir y
+encuentros en los próximos 30 días. Los encuentros son los que **de verdad pueden
+pasar**: no cuentan los cancelados ni los de una actividad cancelada. Con el
+catálogo vacío no se dibuja nada — dice que cuando haya actividades va a aparecer
+qué se está ofreciendo y qué le falta.
+
+Debajo, tres bloques, en el orden de lo que hay que hacer primero:
 
 1. **Los avisos** — las **seis** fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas)
    (las cinco originales, más la web del organizador que no enlaza que sumó
