@@ -20,8 +20,20 @@ type Props = Omit<PropsSeccion, 'uid'> & {
  * campo puntual, así que va en la prop `ayuda` de `Campo` y no en `ayuda.ts`
  * (regla de proceso, `docs/05-patrones.md`): se lee al lado del campo, que es
  * donde importa.
+ *
+ * **Nombra las dos ramas, y la segunda no es un adorno.** Lo señaló el
+ * `auditor-privacidad`: una ayuda que promete solo «queda casabrandon» convierte
+ * «no pasó nada» en «el sistema lo revisó y estaba bien», y el valor que el
+ * saneador no reconoce es exactamente el que sale **crudo** a la descripción del
+ * evento de Calendar (B-1145) y al pie del posteo para redes (B-1142). Antes de
+ * B-1144 ver el link pegado tal cual no significaba nada; con media ayuda pasaría
+ * a significar lo contrario de lo que pasa. La corrección al vuelo no puede
+ * comerse la única señal que queda, porque D-767 ya decidió que acá no se frena
+ * nada.
  */
-const AYUDA_INSTAGRAM = 'Podés pegar el link del perfil: al salir del campo queda «casabrandon».';
+const AYUDA_INSTAGRAM =
+  'Podés pegar el link del perfil: al salir del campo queda «casabrandon». ' +
+  'Si el campo no cambia es que no lo reconocimos — revisalo, se publica tal cual.';
 
 /**
  * **El Instagram se corrige al salir del campo** — B-1144, D-767.
