@@ -12038,3 +12038,127 @@ ninguna tabla es **B-1191**.
 
 **Dónde:** `src/components/admin/formulario/SeccionQuien.tsx`,
 `tests/seccionQuien.render.test.tsx`, `src/lib/actividades.ts:197`.
+
+## D-771 · Una mutación que queda verde no absuelve al chequeo: hay que elegir bien el sujeto
+
+**B-1121, 2026-09-22. Salió de escribir mal la misma red dos veces seguidas**, y
+las dos veces la red parecía razonable, estaba verde, y la delató una mutación
+—no leerla—.
+
+> Redactada por la sesión que hizo el trabajo y verificada al integrarla: el
+> borrador citaba «§ D-100» como precedente del sujeto derivado de su fuente y
+> **D-100 no habla de eso** (es la unificación de `TaxonomiaSelect` y `TagsInput`).
+> La cita quedó reemplazada por el archivo donde el patrón de verdad vive. Es la
+> clase que B-1170 persigue, encontrada a tiempo.
+
+> **Como D-750, es una regla de método y no una decisión de producto.** D-750 dice
+> **que** hay que mutar, y sobre todos los sujetos. Ésta dice **qué** mutar, que
+> es la pregunta que aparece recién cuando uno ya está mutando y le sale verde.
+> Sin esto, un verde se lee como «el chequeo agarra» cuando puede significar «la
+> mutación no llegó».
+
+### El problema
+
+Una mutación verde tiene dos lecturas incompatibles: **el chequeo cubre el caso y
+la mutación no lo rompía**, o **el chequeo no cubre nada y la mutación nunca llegó
+a manifestarse**. Se parecen exactamente igual desde afuera, y la segunda es la
+que importa.
+
+El contexto: `componerVersion` (`scripts/version.mjs`) arma la cadena de versión,
+`shaDeVersion` es su inverso, y hay un **segundo** lado que sabe el mismo formato
+—el `sed` de `commit-base-deploy.sh`, que es bash y no puede importar el módulo—.
+No se los puede unificar sin tocar el camino del deploy, así que se los **ata**
+con una red que exige que los dos contesten lo mismo. Esa red se escribió mal dos
+veces.
+
+**Intento 1 · el corpus no discrimina.** La red recorría `ENTRADAS_DE_BUILD`, el
+dominio completo de un build. Mutación: en el `sed`, `[0-9a-f]\{7,40\}` →
+`[0-9a-f]\{6,40\}`. **Verde.** El chequeo era correcto y el corpus lo volvía ciego:
+todo lo que `ENTRADAS_DE_BUILD` produce lleva un sha de **7** (`rev-parse
+--short=7`), así que aflojar la cota inferior no cambia **ninguna** respuesta. La
+mutación tocó código que el corpus no ejercita.
+
+**Intento 2 · la salida colapsa dos casos distintos en uno.** Se agregaron casos
+borde —seis hex, cuarenta y uno, no-hex, el sufijo sucio— y se los corrió de punta
+a punta contra el `sh`. Dos mutaciones: la misma de arriba, y sacarle a la
+expresión el ancla de fin (`\)$/` → `\)/`), que la haría aceptar el sufijo
+`-sucio.<sello>`. **Verdes las dos.**
+
+El motivo es el que vale: la salida del `sh` es `ANTES=<sha>`, y **«no extraje
+nada» y «extraje algo que no es un commit de este repo» salen las dos como
+vacío**, porque abajo de la extracción hay un `git cat-file -e` que descarta lo
+segundo. Ningún sha de borde inventado existe en el repo, así que las dos
+mutaciones se manifestaban en una diferencia que la salida no puede expresar. **Lo
+que sostenía el chequeo no era lo que el chequeo decía mirar: era el `git cat-file`
+que tenía abajo.**
+
+El intento 2 es el peor de los dos y no por poco: el intento 1 se arregla
+agregando casos, y en el intento 2 **agregar casos no alcanza nunca** — es el
+canal de observación el que perdió la información, no el corpus.
+
+### La regla
+
+**Mutá el sujeto más chico que puedas observar directamente, y derivalo de su
+fuente en vez de copiarlo.**
+
+Tres preguntas antes de dar por buena una mutación verde:
+
+1. **¿El corpus ejercita la región que la mutación toca?** Si la mutación afloja un
+   borde (un largo, un límite, un caso raro), el corpus tiene que tener un sujeto
+   **de ese borde**. El dominio «realista» casi nunca lo tiene: por definición está
+   hecho de los casos que pasan.
+2. **¿La salida que asierto puede expresar la diferencia que la mutación causa?**
+   Si entre el sujeto y el aserto hay otra lógica —una validación, un fallback, un
+   `catch`—, esa lógica puede absorber la mutación entera. Es lo que pasó acá con el
+   `git cat-file`.
+3. **Si la respuesta a (2) es no, bajá el sujeto.** No ensanchés el corpus: sacá lo
+   de abajo del camino. Acá eso fue correr el `sed` **aislado**.
+
+Y lo que hace que bajar el sujeto no cree una copia nueva del formato —que sería el
+bug que la red viene a cerrar—: **el `sed` se lee del script con una regex sobre su
+fuente, no se pega en el test.** Es el mismo movimiento que `reglasDeCache` con
+`firebase.json` en `tests/verificar-produccion.test.ts`: la red deriva su sujeto
+del lugar donde vive la decisión, así que no puede quedar validando una versión
+vieja. El propio archivo tiene un caso que verifica que la expresión **no**
+esté copiada ahí.
+
+Con el sujeto bien elegido, las tres mutaciones dan rojo:
+
+| mutación | intento 2 | versión final |
+|---|---|---|
+| el `sed` acepta seis hex (`{7,40}`→`{6,40}`) | verde | **1 rojo** |
+| el `sed` pierde el ancla de fin (acepta el sufijo sucio) | verde | **2 rojos** |
+| `shaDeVersion` pierde el ancla | — | **3 rojos** |
+
+### Por qué esto es de toda red que ata dos lenguajes, y no de este caso
+
+La frontera entre dos lenguajes es siempre **un string**, y un string no tiene
+tipos que avisen que se perdió información en el camino. Un módulo y un `sh`, un
+`.mjs` y una regla de Firestore, un test y un `jq`: en todos, la única manera de
+comparar los dos lados es hacerlos hablar, y lo que dicen pasa antes por lo que
+cada uno haga con el resultado. **Ahí es donde una mutación se puede perder sin que
+nadie lo note**, y por eso la pregunta (2) se hace siempre que la red cruce un
+lenguaje.
+
+Es pariente de **D-88** —dos lados derivando el mismo valor— pero no es lo mismo:
+D-88 dice qué evitar, y esto dice cómo verificar la red que se escribe cuando
+evitarlo no se puede.
+
+> **Y hay que decirlo acá porque si no la cita miente: `D-88` todavía no tiene
+> entrada escrita.** Es la huérfana más citada del repo —dieciocho archivos, y
+> catorce de ellos código—, y recién se ve con su alcance real desde que B-1147 le
+> abrió el corpus al barrido. Escribirla es decisión del dueño y sigue pendiente.
+> Mientras tanto, lo que «D-88» significa se reconstruye de sus dieciocho citas,
+> que es exactamente el costo que el barrido existe para hacer visible.
+
+### Lo que no dice
+
+No dice que toda mutación verde sea sospechosa. Una mutación verde sobre un sujeto
+bien elegido y un corpus que lo ejercita **es información buena**: dice que ese
+código no estaba haciendo falta. Lo que la regla pide es **saber cuál de las dos
+cosas es**, y hoy eso se resolvía de memoria.
+
+Tampoco dice que haya que bajar siempre al sujeto más chico. La red de punta a
+punta que quedó en `commit-base-deploy.test.ts` —la que corre el `sh` entero— sigue
+valiendo y no se sacó: prueba el camino completo, que es otra pregunta. Lo que se
+agregó al lado es la que prueba la extracción sola. **Las dos, no una.**
