@@ -7,6 +7,11 @@
 // los filtros del panel y el historial. Vive en `functions/` justamente para que
 // este archivo la pueda importar: `functions/` no puede importar `src/` (D-20).
 import { geografiaNormalizada } from './geografia.js';
+// B-1145 — el MISMO saneador del handle de Instagram que usan la ficha pública,
+// las cuatro guías y la bandeja de propuestas. Vive en `functions/` por lo mismo
+// que la geografía: este archivo lo tiene que poder importar y `functions/` no
+// puede importar `src/` (D-20).
+import { arrobaInstagram } from './handle-instagram.js';
 
 export const TIMEZONE = 'America/Argentina/Buenos_Aires';
 
@@ -703,28 +708,77 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    * directo, valida con el schema pero **descarta lo que el schema normaliza**, y
    * por eso reescribe la cáscara tal cual.
    *
-   * **El valor emitido queda como está cargado** (`persona.nombre`, no el
-   * trimeado): lo que converge es la pregunta «¿existe?», igual que en las otras
-   * cuatro, que también proyectan el nombre crudo. Normalizar acá el texto
-   * cambiaría el payload de todo evento ya publicado cuyo nombre tenga un espacio
-   * de más —la guarda compara payloads recalculados (B-162)— y le reescribiría el
-   * evento a quien lo tiene agendado sin que nada hubiera cambiado (D-95).
-   *
    * `organizador` y `libro` llevan el mismo predicado por la misma razón y con el
    * mismo alcance: los tres son «el objeto solo cuenta si su campo identificador
    * tiene contenido», y los tres gatean datos de más —el Instagram y la web del
    * organizador, el autor de la obra— detrás de un nombre en blanco.
+   *
+   * ── Qué se normaliza acá y qué no (B-1145, D-763) ─────────────────────────
+   * **Este docblock decía lo contrario hasta B-1145 y hay que leerlo entero**: la
+   * versión anterior afirmaba que acá no se normaliza *nada* («el valor emitido
+   * queda como está cargado»), y ese criterio ahora vale para unos campos y no
+   * para otros. La diferencia no es estética, así que va escrita:
+   *
+   *  - **El nombre, la bio y la web salen crudos.** Lo que converge en ellos es la
+   *    pregunta «¿existe?», igual que en las otras cuatro salidas, que también
+   *    proyectan el nombre crudo. Trimear `persona.nombre` acá no arregla nada que
+   *    se vea: un espacio de más no se lee distinto en el calendario.
+   *  - **Los dos Instagram pasan por `arrobaInstagram`** —`organizador.instagram`
+   *    y `tallerista.instagram`—, y esto **sí** se ve: un documento cargado antes
+   *    de B-928 tiene `https://www.instagram.com/casabrandon/` adentro del campo,
+   *    y concatenarlo tal cual publicaba esa URL en el calendario **público**
+   *    donde iba `@casabrandon` (B-1145). La normalización al guardar llegó con
+   *    B-928 y no reescribió lo ya cargado; derivar al mostrar es el mismo camino
+   *    que tomó la ficha pública en B-1141.
+   *
+   * **Es el mismo saneador, importado, y no un regex de acá.** La regla no es
+   * «sacar el `https://`»: es el alfabeto real de Instagram, el corte del
+   * `?igsh=…` que pega el botón «Compartir» y el criterio de que lo que no se
+   * reconoce sale como se escribió. Ver `./handle-instagram.js`.
+   *
+   * ── Por qué esto NO reescribe los eventos ya publicados ───────────────────
+   * **Y esto es lo que hay que entender antes de tocar la línea de abajo**, porque
+   * la objeción que frenó el arreglo durante B-1141 era exactamente la contraria y
+   * resultó estar mal razonada. El ítem B-1145 daba por hecho que envolver el
+   * campo con el saneador iba a actualizar de una todos los eventos publicados con
+   * un Instagram sin migrar, «la primera vez que corra el sync después del
+   * deploy» — el pulso que D-95 evita. **El dueño eligió esta opción aceptando ese
+   * costo. El costo no existe, y el motivo es mecánico:**
+   *
+   * `mismoEvento` (más abajo, §7.1) no compara el payload recalculado contra uno
+   * **guardado**: compara `construirEvento(antes)` contra
+   * `construirEvento(despues)`, o sea **dos recálculos con el mismo código
+   * desplegado**. Un cambio que normaliza los dos lados por igual es, por
+   * construcción, invisible para la guarda: `planificar(doc, doc)` sigue
+   * devolviendo `[]`. Y sin una escritura al documento el trigger no corre, así que
+   * un deploy por sí solo no dispara nada.
+   *
+   * Lo que sí pasa, y es lo que hay que saber: el `@casabrandon` llega al
+   * calendario **recién cuando ese documento se escribe por cualquier otro
+   * motivo** — en el update que esa edición ya iba a producir igual. Los eventos
+   * de las fichas que nadie vuelva a tocar conservan la URL cruda. Eso está
+   * anotado como **B-1181**; no se resuelve desde acá.
+   *
+   * **No debilitar la guarda ni agregarle una excepción para el Instagram.** No
+   * hace falta —acaba de quedar dicho por qué— y hacerlo reabriría la trampa 3 del
+   * §13, que es el bug más caro del sistema.
    */
   const quien = [];
   const org = actividad.organizador;
   if (org?.nombre?.trim()) {
-    quien.push(`Organiza: ${[org.nombre, org.instagram, org.web].filter(Boolean).join(' · ')}`);
+    quien.push(
+      `Organiza: ${[org.nombre, arrobaInstagram(org.instagram), org.web]
+        .filter(Boolean)
+        .join(' · ')}`,
+    );
   }
   const persona = actividad.tallerista;
   if (persona?.nombre?.trim()) {
     const rol =
       actividad.tipo === 'presentacion' || actividad.tipo === 'charla' ? 'Invitado' : 'Tallerista';
-    quien.push(`${rol}: ${[persona.nombre, persona.instagram].filter(Boolean).join(' · ')}`);
+    quien.push(
+      `${rol}: ${[persona.nombre, arrobaInstagram(persona.instagram)].filter(Boolean).join(' · ')}`,
+    );
     if (persona.bio) quien.push(persona.bio);
   }
   if (quien.length) bloques.push(quien.join('\n'));
