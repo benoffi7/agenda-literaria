@@ -877,10 +877,33 @@ Tres bloques, en el orden de lo que hay que hacer primero:
    archivo entero, que sólo crece y para casi nada pide acción. Lo que sí queda es
    la cobertura acotada «cuántas publicadas tienen fecha futura» (punto 2), que
    dice lo mismo sin ser una lista que envejece.
-2. **Lo que se publica, completo o no** — de las publicadas: cuántas con imagen,
-   cuántas con etiquetas, cuántas con descripción suficiente, cuántas con
-   encuentros por venir. Es el termómetro de B-264 («2 de 42 con imagen») **medido
-   exacto**, y no estimado desde un cruce de GA4.
+2. **Lo que se publica, completo o no** — hoy son **tres** tandas de números, y
+   lo que las separa es si hay una acción pendiente detrás:
+   - **Cuatro coberturas** sobre las publicadas: cuántas con imagen, cuántas con
+     etiquetas, cuántas con descripción suficiente, cuántas con encuentros por
+     venir. Es el termómetro de B-264 («2 de 42 con imagen») **medido exacto**, y
+     no estimado desde un cruce de GA4. «8 de 20 sin imagen» tiene algo que
+     hacer detrás, y eso es lo que las hace coberturas.
+   - **«Lo que Google puede mostrar»** (**B-813**) — tres **proporciones**: dicen
+     quién la da, con web del organizador, y aranceladas con el monto cargado.
+     Salieron de los cuatro avisos del informe «Eventos» que **no** eran un
+     defecto del markup —`datosEstructurados` los emite cuando el dato está
+     cargado (B-731)—, menos la imagen, que ya es la primera cobertura de
+     arriba. Van como proporción y no como aviso porque listarlas sería **D-273
+     otra vez**: 65 de 68 publicadas sin tallerista no es una lista de trabajo,
+     es el catálogo con otro nombre, y para casi ninguna entrada hay algo que
+     hacer. La del monto se reparte **sobre las que admiten monto** y no sobre
+     todas las publicadas: gratis y a la gorra no lo llevan, así que el
+     denominador entero sería la mentira que el punto siguiente ya esquivaba.
+   - **Las tres de inscripción** (**B-703**), y solo si alguna publicada la pide:
+     cuántas piden, cuántas de ésas declaran cupo, cuántas están completas. **No
+     son un reparto y por eso no llevan torta** (**D-401**): son tres preguntas
+     de sí/no independientes y no las partes de un todo — una torta sobre ellas
+     sumaría porcentajes que se solapan (una actividad puede estar en las tres) y
+     dibujaría más de una vuelta. Las dos últimas van sobre las que piden
+     inscripción y no sobre todas las publicadas: un cupo en una actividad de
+     entrada libre no significa nada, y el denominador equivocado es lo que
+     convierte una proporción en una mentira.
 3. **Qué hay cargado** — el reparto por estado, tipo, arancel y forma de cursar,
    más ciclos, sueltas y encuentros.
 
