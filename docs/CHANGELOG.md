@@ -2,6 +2,30 @@
 
 ## Sin publicar
 
+- **El `projectId` de los tests deja de derivarse dos veces** — **B-1111**.
+  `tests/emulador.ts` resolvía la base del emulador con
+  `process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria'`, o sea una
+  segunda derivación del valor que `scripts/project-id-emulador.mjs` ya calcula,
+  **con el proyecto real como fallback**, en el archivo del que importan los
+  quince de integración. Bajo vitest no se notaba —la variable está exportada, así
+  que las dos derivaciones coincidían— y el modo de falla era todo lo que corriera
+  **fuera** de vitest: caía a la base compartida, que es lo que B-219 existe para
+  evitar. Ahora se importa de la fuente única, que sigue respetando la variable
+  del entorno cuando viene.
+
+  **Lo que se aprendió, y vale más que el arreglo:** con la línea vieja puesta a
+  propósito, los veintiún casos que cubren el aislamiento quedan **en verde** —
+  incluido el que compara `PROJECT_ID` con el valor del módulo, que parecía
+  cubrirlo exactamente. Es B-1129 otra vez: una red que pasa por dónde está
+  parada. El chequeo nuevo mira la **asignación** en la fuente y no el archivo
+  entero, y se probó mutándolo cuatro veces.
+
+- **El desajuste de proyecto del emulador de Auth queda cerrado** — **B-1112**,
+  con la decisión que le quedaba movida a **B-1201**. Verificado contra el
+  emulador vivo: un emulador levantado desde otro checkout ahora falla en el
+  primer login nombrando los dos proyectos, en vez de dar `PERMISSION_DENIED`
+  sobre documentos válidos y de forma asimétrica según el uid ya existiera o no.
+
 - **El `rejects.toThrow()` pelado de un test de reglas ya tiene red** —
   **B-1132**, el punto ciego que B-1130 dejó escrito. Un `toThrow()` sin
   argumento afirma «algo tiró»: **no exige `permission-denied`**, así que lo

@@ -364,7 +364,33 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 
 ## P1 — bloquean el objetivo del proyecto
 
-### B-1112 · El aislamiento del emulador cubre Firestore y **no** Auth, y por eso un uid viejo da verde donde uno nuevo da rojo · P1 — de `frente/bibliotecas` (2026-09-17)
+### B-1112 · El aislamiento del emulador cubre Firestore y **no** Auth, y por eso un uid viejo da verde donde uno nuevo da rojo — ✅ hecho (2026-09-22) · P1 — de `frente/bibliotecas` (2026-09-17)
+
+> **✅ Hecho el 2026-09-22, en dos tramos y con la decisión que quedaba movida a
+> su propio ítem.** La salida **(a)** —que `tests/emulador.ts` detecte el
+> desajuste y falle nombrándolo— entró el 2026-09-17 en `b8a5068`:
+> `verificarProyectoDeAuth` está cableada en
+> `tests/fixtures/credenciales-del-emulador.ts:139`, o sea que corre en el primer
+> login de **todo** test de integración, y tiene test propio en
+> `tests/proyecto-de-auth.test.ts` (9 casos). La salida **(b)** ya estaba: el gate
+> levanta un emulador por corrida. Lo que faltaba era la segunda mitad de la
+> pregunta de abajo —«o los tests de integración dejan de derivar el `projectId`
+> por su cuenta»—, que es **B-1111**, cerrado hoy.
+>
+> **Verificado contra el emulador vivo el 2026-09-22, que es lo que faltaba:** con
+> un emulador levantado en `…-57a98788` y los tests forzados a `…-0326695e`, la
+> detección dispara en el primer login, nombra los dos proyectos, nombra la causa
+> y dice qué hacer; los 10 casos del archivo quedan **skipped** en vez de rojos
+> con `PERMISSION_DENIED` sobre un documento válido, que era el síntoma caro. Con
+> los proyectos coincidiendo, 10/10 verde. O sea que (a) no es un test con un JWT
+> sintético: funciona contra el sistema real.
+>
+> **Lo que NO se hizo es la salida (c)** —sembrar los claims contra el `aud`
+> real—, y no se hizo porque es una decisión abierta y no trabajo pendiente: sale
+> como **B-1201**. Se cierra este ítem en vez de dejarlo esperando porque **un
+> ítem hecho en su mayor parte y listado como abierto ya costó una vez**: se leyó
+> como pendiente cuando (a) estaba en `main` hacía días, y otra sesión estuvo a
+> punto de rehacerlo. Es el caso que **B-1170** vino a cerrar.
 
 **Es la causa que faltaba abajo de B-1021 y de B-1030**, los dos cerrados hoy
 sin ella. B-219 deriva un `projectId` por working-tree (sha256 de la ruta) para
@@ -2315,6 +2341,38 @@ cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
 
+### B-1201 · De dónde sale el `projectId` del emulador: de la ruta del checkout o del emulador vivo · P3 — de cerrar B-1112 (2026-09-22)
+
+**Es la salida (c) de B-1112, y es una decisión, no un renglón.** Hoy hay **una
+sola** derivación —B-1111 sacó la segunda— y sale de la **ruta del working-tree**
+(`scripts/project-id-emulador.mjs`, sha256 de la ruta, B-219). El emulador de
+Auth, en cambio, es de **un solo proyecto**: el de su `--project` de arranque. O
+sea que los dos valores coinciden solo cuando el emulador se levantó desde el
+mismo checkout donde corre la suite, y cuando no coinciden lo que hay es el error
+de B-1112 — que ahora se nombra, pero sigue siendo una corrida que no se puede
+hacer.
+
+Las dos salidas siguen siendo las que B-1112 dejó escritas, y ninguna es gratis:
+
+- **Un emulador por worktree.** Es volver a la tanda de emuladores por checkout
+  que B-219 evaluó y descartó (cuatro puertos por checkout más el
+  `firebase.json`), y esta máquina ya no aguanta dos tandas a la vez.
+- **Que los tests lean el `projectId` del emulador vivo** en vez de derivarlo. Se
+  parece a lo que ya hace `scripts/emuladores-arriba.sh` y es la que B-1111 dejó
+  a mitad de camino: hoy hay una derivación sola, pero sigue siendo de la ruta.
+  Lo que cuesta es que el valor pasa a depender de un proceso externo, así que una
+  corrida sin emulador arriba no puede resolverlo y hay que decidir qué hace ahí.
+
+**Mientras tanto no muerde**, y conviene decir por qué para no sobreestimarlo: la
+detección de B-1112 convierte el caso en un error que se lee en un renglón, y la
+receta está en el propio mensaje (`levantá el emulador desde este checkout, o
+corré con PUBLIC_FIREBASE_PROJECT_ID=…`). Lo que este ítem compra es no tener que
+aplicarla a mano cada vez.
+
+**Lo que hay que decidir, y por eso no se toma sin el dueño:** si el `projectId`
+lo sigue mandando el checkout —y entonces la regla es «levantá el emulador donde
+corrés»— o lo manda el emulador vivo, y el checkout se adapta.
+
 ### B-1146 · Correr el archivador del backlog reordena `BACKLOG-cerrados.md` entero: 19.000 líneas de diff para mover un ítem · P3 — medido al cerrar B-1141 (2026-09-21)
 
 **El archivador es la herramienta documentada** —la cabecera de `BACKLOG.md`
@@ -2425,7 +2483,36 @@ calibrada (B-856 la recalibró mirando el archivo, y lo que estaba mal era el
 umbral); ésta no tiene ninguna, y es la que mide **de cuántas piezas depende el
 formulario** — o sea la que dice cuándo tocarlo empieza a ser caro.
 
-### B-1111 · `tests/emulador.ts` deriva el `projectId` por su cuenta, con el literal como fallback · P3 — del relevamiento del emulador (2026-09-17)
+### B-1111 · `tests/emulador.ts` deriva el `projectId` por su cuenta, con el literal como fallback — ✅ hecho (2026-09-22) · P3 — del relevamiento del emulador (2026-09-17)
+
+> **Cerrado importando el valor de su fuente única** (`scripts/project-id-emulador.mjs`),
+> que ya respeta `PUBLIC_FIREBASE_PROJECT_ID` cuando viene del entorno: la salida
+> de emergencia del gate no se pierde, lo que se pierde es el fallback
+> equivocado.
+>
+> **Medido antes de arreglar, y es lo que convierte «parece flojo» en «no
+> agarraba nada» (D-750).** Con la línea vieja puesta a propósito, los **21
+> casos** de `emulador-aislado` y `proyecto-de-auth` quedan **en verde** —
+> incluido el `expect(PROJECT_ID).toBe(PROJECT_ID_EMULADOR)` que parecía cubrirlo
+> exactamente. Bajo vitest la variable está exportada, así que las dos
+> derivaciones coinciden y el assert pasa: la red tenía el assert que nombra la
+> propiedad y no podía verla.
+>
+> **Es B-1129 con otra cara** —un chequeo que pasa por dónde está parado— y la
+> salida fue la misma que allá: **cambiar la firma, no ensanchar el alcance**. El
+> chequeo nuevo mira la **fuente** (en runtime el bug no existe) y, dentro de la
+> fuente, la **asignación** y no el archivo entero: un
+> `toContain('PROJECT_ID_EMULADOR')` lo satisfaría el propio docblock que explica
+> el arreglo, que es el caso 2 de B-1129 calcado.
+>
+> **Y el hueco estaba en la red que ya existía**, que es lo que lo hace valer: la
+> misma `emulador-aislado.test.ts` ya verificaba que `vitest.config.ts` importa y
+> no re-deriva, que el gate en bash llama al CLI, y que ningún
+> `*.integracion.test.ts` escribe el literal. El único archivo sin ese chequeo era
+> `tests/emulador.ts` —el hub del que importan todos los demás— porque el barrido
+> lista `*.integracion.test.ts` y él no termina así.
+>
+> Cuatro mutaciones probadas, las cuatro en rojo. Commit `75a6501`.
 
 `export const PROJECT_ID = process.env.PUBLIC_FIREBASE_PROJECT_ID || 'agenda-literaria';`
 
