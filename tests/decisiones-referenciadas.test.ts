@@ -21,15 +21,36 @@
  * aprende a saltear. El juicio de si una huérfana es una tanda en vuelo o una
  * entrada que nadie escribió lo da el `auditor-documentacion`, con la salida de
  * `scripts/decisiones-referenciadas.mjs` en la mano.
+ *
+ * ── Lo que sí se congela: el corpus — B-1147 ──────────────────────
+ * Su gemelo de los `B-` congela la **lista de huérfanos**; acá eso no se puede,
+ * por lo de arriba. Lo que sí se puede fijar, y es lo que este archivo suma, es
+ * **qué archivos mira el barrido**. Hasta el 2026-09-22 miraba 27 `.md` con un
+ * motivo escrito que sonaba razonable —«los enlaces resuelven a un ancla solo en
+ * `docs/`»— y por eso nadie lo revisó: D-400 y D-401, citadas doce veces desde
+ * `src/` y `tests/`, **no podían aparecer** en el informe, y las tres `.md` de
+ * D-88 escondían otras catorce. Un encogimiento así no rompe nada visible: el
+ * barrido sigue corriendo, sigue informando, y lo único que cambia es lo que
+ * deja de ver. Los casos de `el corpus` son la única forma de que eso dé rojo.
+ *
+ * **Este archivo queda fuera del corpus a propósito** (`AFUERA` en el script).
+ * Sus controles positivos tienen que citar decisiones inventadas —`D-999` es
+ * literalmente el caso que hay que ejercitar— así que barrerlo haría que el
+ * chequeo se reporte a sí mismo para siempre.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { EXTENSIONES as EXTENSIONES_DEL_GEMELO } from '../scripts/items-referenciados.mjs';
 import {
+  EXTENSIONES,
   decisionesEscritas,
+  esProsa,
   huerfanas,
   otraGrafia,
   referenciasDe,
+  relevar,
+  seBarre,
 } from '../scripts/decisiones-referenciadas.mjs';
 
 const registro = readFileSync(
@@ -116,7 +137,9 @@ describe('el cruce', () => {
       { 'docs/a.md': 'ver D-99', 'docs/b.md': 'ver D-99 y D-01', 'docs/c.md': 'nada' },
       ['D-01'],
     );
-    expect(sueltas).toEqual([{ decision: 'D-99', archivos: ['docs/a.md', 'docs/b.md'] }]);
+    expect(sueltas).toEqual([
+      { decision: 'D-99', archivos: ['docs/a.md', 'docs/b.md'], desdeCodigo: [] },
+    ]);
   });
 
   it('ordena por número y no alfabéticamente', () => {
@@ -152,7 +175,7 @@ describe('las citadas con otra grafía', () => {
     // No es una huérfana —la decisión existe— pero `#d-9` no resuelve a
     // `## D-09`, así que si la cita fuera un enlace habría que corregirla.
     expect(otraGrafia({ 'docs/a.md': 'ver D-9', 'docs/b.md': 'ver D-9' }, ['D-09'])).toEqual([
-      { citada: 'D-9', escrita: 'D-09', archivos: ['docs/a.md', 'docs/b.md'] },
+      { citada: 'D-9', escrita: 'D-09', archivos: ['docs/a.md', 'docs/b.md'], desdeCodigo: [] },
     ]);
   });
 
@@ -166,7 +189,178 @@ describe('las citadas con otra grafía', () => {
     // ninguna forma, así que sale por la puerta que pide escribir la decisión.
     expect(otraGrafia({ 'docs/a.md': 'ver D-99' }, ['D-09'])).toEqual([]);
     expect(huerfanas({ 'docs/a.md': 'ver D-99' }, ['D-09'])).toEqual([
-      { decision: 'D-99', archivos: ['docs/a.md'] },
+      { decision: 'D-99', archivos: ['docs/a.md'], desdeCodigo: [] },
+    ]);
+  });
+});
+
+/**
+ * **El corpus: el repo entero, no solo `docs/`** — B-1147.
+ *
+ * Lo que estos casos fijan es lo único de este barrido que se puede poner rojo
+ * sin depender de si hay una tanda en vuelo: **qué archivos mira**. Un barrido
+ * que se encoge no falla —sigue corriendo, sigue informando, sigue en verde— y
+ * lo único que cambia es lo que deja de ver. Así estuvo desde que nació hasta el
+ * 2026-09-22: `D-88` se reportaba nombrando tres `.md` y se la cita desde
+ * dieciocho archivos, y D-400/D-401 no aparecían nunca.
+ *
+ * Por eso los asertos son sobre **la forma** del corpus —que incluya código, que
+ * excluya lo que tiene que excluir— y no sobre un número de archivos, que sube
+ * con cada commit y haría que este archivo pida mantenimiento sin dar
+ * información.
+ *
+ * MUTACIONES PROBADAS (D-750 — una red que no se probó mutando no se sabe si
+ * verifica algo). Las seis se aplicaron al script, se vio el rojo y se
+ * revirtieron:
+ *
+ * 1. volver `relevar` a `docs/` (`.filter((a) => a.startsWith('docs/'))`) → rojo
+ *    en «barre el código» y en «sin disco»;
+ * 2. sacar este archivo de `AFUERA` → rojo en «el archivo que prueba este
+ *    barrido queda afuera»;
+ * 3. sacar `REGISTRO` de `AFUERA` → rojo en «el registro no se barre a sí mismo»
+ *    y en «sin disco»;
+ * 4. `esProsa` devolviendo siempre `true` → rojo en «separa las citas de código»
+ *    y en «sin disco»;
+ * 5. sacar `.rules` de `EXTENSIONES` → rojo en «la lista de extensiones es
+ *    blanca»;
+ * 6. `seBarre` sin el filtro de extensiones (lista negra pura) → rojo en tres;
+ * 7. sacar el propio script de `AFUERA` → rojo en «no se cuenta a sí mismo»;
+ * 8. volver a declarar una `EXTENSIONES` local, aunque sea idéntica → rojo en
+ *    «la lista de extensiones es la misma del gemelo».
+ *
+ * **Y lo que estos casos NO cubren, dicho para que no se lea de más** (del
+ * `auditor-trampas`): los tres que verifican `seBarre(x) === false` sobre un
+ * archivo de `AFUERA` se satisfacen **igual con `EXTENSIONES` vacía**, porque
+ * `AFUERA.has(archivo)` corta el `&&` antes de mirar la extensión. El único
+ * aserto que denuncia el colapso del corpus es el `length > 100` del primer
+ * caso. No es un agujero —está cubierto— pero si algún día ese primer caso se
+ * afloja, los tres de `AFUERA` seguirían en verde sin cubrir nada.
+ */
+describe('el corpus — B-1147', () => {
+  it('barre el código, que es donde una decisión se cita de verdad', () => {
+    const { corpus } = relevar();
+    expect(corpus.some((a) => a.startsWith('src/')), 'sin `src/` no se ve un docblock').toBe(true);
+    expect(corpus.some((a) => a.startsWith('tests/')), 'sin `tests/` no se ve un `describe`').toBe(
+      true,
+    );
+    expect(corpus.some((a) => a.startsWith('scripts/')), 'sin `scripts/` no se ve D-88').toBe(true);
+    expect(corpus.some((a) => a.startsWith('docs/')), 'y la prosa sigue adentro').toBe(true);
+    // Eran 27 cuando miraba solo los `.md` de `docs/`. El número exacto sube con
+    // cada commit; lo que no puede es volver a ese orden de magnitud.
+    expect(corpus.length).toBeGreaterThan(100);
+  });
+
+  it('el registro no se barre a sí mismo: se cita entero', () => {
+    expect(seBarre('docs/06-decisiones.md')).toBe(false);
+  });
+
+  it('el archivo que prueba este barrido queda afuera, o no puede quedar limpio nunca', () => {
+    /*
+     * La excepción está en el script y el motivo vive en los dos lados: los
+     * controles positivos de este archivo citan decisiones inventadas a
+     * propósito —`D-999` en la cabecera, `D-99999` y `D-88888` acá abajo, `D-99`
+     * en el cruce—, que es literalmente el caso que hay que ejercitar. Sin esta
+     * exclusión, el informe reportaría para siempre una huérfana que es este
+     * archivo haciendo su trabajo — que es la forma en que una lista deja de
+     * mirarse (B-180 aplicado a un informe). Misma excepción que
+     * `scripts/items-referenciados.mjs` le hace a la suya.
+     */
+    expect(seBarre('tests/decisiones-referenciadas.test.ts')).toBe(false);
+  });
+
+  it('la lista de extensiones es blanca: el binario no entra y el formato raro sí', () => {
+    // `.rules` y `.sh` citan decisiones en comentarios y entran a mano; una
+    // imagen nueva queda afuera sin que nadie tenga que acordarse de excluirla.
+    expect(seBarre('firestore.rules')).toBe(true);
+    expect(seBarre('scripts/mail-de-aviso.sh')).toBe(true);
+    expect(seBarre('src/components/sitio/Encabezado.astro')).toBe(true);
+    expect(seBarre('public/og.png')).toBe(false);
+    expect(seBarre('package-lock.json')).toBe(false);
+  });
+
+  it('separa las citas de código de las de prosa, que es lo que ordena el informe', () => {
+    /*
+     * El caso caro, y el que B-1147 midió: un docblock manda a buscar una
+     * decisión que nadie escribió. Sin esta marca las dieciocho citas de `D-88`
+     * se leen como una sola línea de ruido.
+     */
+    expect(esProsa('docs/BACKLOG.md')).toBe(true);
+    expect(esProsa('src/lib/tortaDelPanel.ts')).toBe(false);
+
+    const sueltas = huerfanas(
+      { 'src/lib/cualquiera.ts': '// el motivo está en D-99999\n', 'docs/a.md': 'ver D-99999' },
+      [],
+    );
+    expect(sueltas).toEqual([
+      {
+        decision: 'D-99999',
+        archivos: ['docs/a.md', 'src/lib/cualquiera.ts'],
+        desdeCodigo: ['src/lib/cualquiera.ts'],
+      },
+    ]);
+  });
+
+  it('el barrido no se cuenta a sí mismo entre los citantes de su propio ejemplo', () => {
+    /*
+     * **La cabecera del script nombra `D-88`, que está huérfana** — es el caso
+     * que midió B-1147 y sin nombrarlo la explicación no explica nada. Con el
+     * corpus abierto eso hizo que el script apareciera como un archivo más
+     * «citando D-88 desde el código», que es justo lo que el informe mide para
+     * decir cuán caro sale el hueco: dieciocho archivos donde en realidad son
+     * diecisiete. Lo encontró el `auditor-trampas`, y es la trampa que el gemelo
+     * ya tenía documentada en `expandir()` («se reportó a sí mismo al
+     * escribirlo»).
+     *
+     * MUTACIÓN PROBADA: sacar el script de `AFUERA` deja este caso en rojo.
+     */
+    expect(seBarre('scripts/decisiones-referenciadas.mjs')).toBe(false);
+
+    const { sueltas } = relevar();
+    const d88 = sueltas.find((s) => s.decision === 'D-88');
+    expect(
+      d88?.archivos ?? [],
+      'el barrido se cuenta a sí mismo entre los citantes',
+    ).not.toContain('scripts/decisiones-referenciadas.mjs');
+  });
+
+  it('la lista de extensiones es la misma del gemelo, no una copia — clase D-88', () => {
+    /*
+     * **Copiar la lista para arreglar un corpus desalineado lo deja listo para
+     * volver a desalinearse**, que es B-1147 visto desde el otro lado: la
+     * primera versión de este cambio tenía las diecisiete extensiones escritas
+     * dos veces, byte a byte, y nada las ataba. Hoy `EXTENSIONES` se importa de
+     * `items-referenciados.mjs` y se reexporta, así que este caso no compara dos
+     * listas: comprueba que sean **el mismo objeto**, que es lo único que un
+     * `.mdx` agregado de un solo lado no puede saltear.
+     *
+     * MUTACIÓN PROBADA: volver a declarar una `EXTENSIONES` propia en
+     * `decisiones-referenciadas.mjs` —aunque sea idéntica— deja este caso en
+     * rojo.
+     */
+    expect(EXTENSIONES).toBe(EXTENSIONES_DEL_GEMELO);
+  });
+
+  it('el relevamiento se puede ejercitar sin disco, con el lector inyectado', () => {
+    /*
+     * El control que hace que los casos de arriba signifiquen algo: si `relevar`
+     * no cruzara nada, el corpus podría estar perfecto y el informe vacío.
+     */
+    const archivos = ['docs/06-decisiones.md', 'src/lib/algo.ts', 'public/x.png'];
+    const contenido = {
+      'docs/06-decisiones.md': '## D-01 · La primera\n\nrevisita D-99999\n',
+      'src/lib/algo.ts': '/** ver D-01 y D-88888 */\n',
+      'public/x.png': 'no se lee',
+    };
+    const { escritas, corpus, sueltas } = relevar({
+      archivos,
+      leer: (a) => contenido[a as keyof typeof contenido],
+    });
+    expect(escritas).toEqual(['D-01']);
+    // El `.png` no entra, y el registro tampoco: `D-99999` está en su cuerpo y
+    // no se reporta.
+    expect(corpus).toEqual(['src/lib/algo.ts']);
+    expect(sueltas).toEqual([
+      { decision: 'D-88888', archivos: ['src/lib/algo.ts'], desdeCodigo: ['src/lib/algo.ts'] },
     ]);
   });
 });

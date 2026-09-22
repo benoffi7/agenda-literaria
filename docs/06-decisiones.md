@@ -8274,6 +8274,92 @@ de abajo recién cuando tiene el índice; **si el fetch falla no saca nada**, as
 que lo que se pierde es el buscador y no el archivo — que es la propiedad por la
 que esta página existe (§2.1).
 
+## D-400 · El tablero usa todo el ancho, y el calendario todavía no
+
+**2026-09-03 · B-621.** *Pegada acá el 2026-09-22 (**B-1082**). El número se
+acuñó en `49248b4` y se citaba desde `src/lib/anchoDelPanel.ts` (dos veces),
+desde dos bloques de `EstadisticasPanel.tsx` y desde
+`tests/ancho-del-panel.test.ts`, sin tener entrada. **No hizo falta
+reconstruirla:** el frente que la decidió dejó el texto completo en
+`.estado/tablero.md`, bajo «Para `docs/06-decisiones.md`», y ese archivo sigue
+existiendo en el árbol principal sin versionar. Es **B-1090** otra vez, con la
+misma forma que las seis de **B-910**: lo que faltó no fue redactar, fue pegar —
+y el propio frente lo dejó escrito («**Quien integre tiene que pegarlo, si no
+quedan dos referencias colgadas**»). Va tal como se escribió; lo que cambió
+después va en el bloque de abajo.*
+
+> **Superada en su segunda mitad el 2026-09-07.** «El calendario todavía no» dejó
+> de ser cierto cuatro días más tarde: el dueño pidió la grilla del mes a todo
+> ancho mirando el panel publicado, y `'calendario'` entró en
+> `VISTAS_A_TODO_ANCHO` con su motivo propio anotado en `anchoDelPanel.ts` —a
+> 896px las celdas quedaban en 120px—. Lo que **no** cambió es el argumento de esta
+> entrada: no se ensanchó por simetría, se ensanchó cuando hubo un reparto
+> decidido. La primera mitad sigue entera.
+
+B-621 nombraba dos pantallas y se resolvió una. El motivo está en el propio
+ítem: «ensanchar cada una es un cambio visual propio —qué crece, qué se reparte
+en columnas, qué queda con su ancho—, no el mismo cambio aplicado dos veces
+más». El tablero tenía siete visualizaciones nuevas que repartir y el calendario
+tiene tres preguntas sin contestar (¿crece la celda o el alto de la fila?,
+¿cuántas actividades antes del «+N»?, ¿entra la hora?). Entrar a
+`VISTAS_A_TODO_ANCHO` sin contestarlas daría siete columnas de 220px con el
+contenido de 120: más aire, no más información.
+
+El reparto del tablero: avisos en dos columnas desde `xl` —dos y no cuatro, el
+título de un taller ya usa media columna—; los cuatro repartos categóricos en
+`lg:grid-cols-2 2xl:grid-cols-4`, que es donde una torta de 112px con su
+referencia al lado deja de apretarse.
+
+**Lo que el texto original no dice porque todavía no existía**, verificado contra
+el código de hoy al pegar esta entrada: los 1600px sobre los que está calculado
+el reparto de cuatro columnas son `ANCHO_COMPLETO = 'max-w-[100rem]'`, que vive en
+`AdminApp.tsx`; y `estadisticas` entra por `VISTAS_A_TODO_ANCHO` y **no** por
+`VISTAS_DE_FORMULARIO`, así que la excepción de B-814 —«lectura en celular, todo
+en PC»— no lo toca: va completo en las dos vistas, y `tests/ancho-del-panel.test.ts`
+lo fija en las dos.
+
+## D-401 · El todo de una torta es la suma de sus tajadas
+
+**2026-09-03 · B-700, B-701.** *Pegada acá el 2026-09-22 (**B-1082**), junto con
+D-400 y desde el mismo `.estado/tablero.md`. El número se acuñó en `1f41108` y se
+citaba **doce veces**: cuatro en `src/lib/tortaDelPanel.ts`, cuatro en
+`src/components/admin/estadisticas/Reparto.tsx`, dos en
+`src/lib/estadoDelCatalogo.ts` y dos en `tests/torta-del-panel.test.ts`. Texto
+original.*
+
+Un reparto del tablero puede contar la misma actividad más de una vez —por forma
+de cursar (B-224) y por barrio (B-702)—, así que 40 actividades dan 47 tajadas.
+Una torta dibujada «sobre 40» pintaría 117 % de circunferencia: cuñas encima de
+cuñas, y la pantalla se ve perfecta.
+
+Dos mitades:
+
+1. **`arcosDeTorta` no recibe ningún total.** Lo saca de las tajadas, así que no
+   hay forma de pasarle uno equivocado. Es la misma clase de guarda que
+   `estiloDeTipo`, que no deja elegir un segundo color sin medir.
+2. **La unidad es obligatoria por firma.** `Reparto.tsx` pide `unidad`, y la
+   pantalla escribe «Sobre 47 formas de cursar ofrecidas» — nunca un porcentaje
+   sin decir de qué. El módulo puro no puede hacer cumplir esto, y es la mitad
+   que evita que alguien compare dos tortas que no se comparan.
+
+Corolario, y por eso la forma de cursar va aparte y arranca en lista: poner una
+torta que reparte «formas ofrecidas» al lado de tres que reparten «actividades»
+invita a compararlas, que es justo lo que no se puede.
+
+**Dos consecuencias que el código sacó de acá y el texto original no nombra**,
+verificadas al pegar la entrada:
+
+- **`agruparCola` conserva la suma.** Juntar la cola en «el resto» no puede correr
+  ningún porcentaje, porque si «el resto» no suma lo que junta la torta cierra
+  igual en 360° y cada tajada queda desplazada. Es lo que hace que el tope de
+  legibilidad no pelee con esta regla.
+- **Lo que no es un reparto no lleva torta.** Las tres proporciones de inscripción
+  de B-703 —¿pide inscripción?, ¿declara cupo?, ¿está llena?— son preguntas de
+  sí/no que se solapan, no las partes de un todo: una torta sobre ellas sumaría
+  más de una vuelta. Van como proporciones, cada una con su denominador dicho
+  (`conCupo` y `completas` se cuentan **sobre las que piden inscripción**, porque
+  el denominador equivocado es lo que convierte una proporción en una mentira).
+
 ## D-410 · Un `subEvent` repite los datos de su actividad, y eso no es inventar
 
 **Contexto.** Search Console reportó `description`, `organizer` y `offers`
