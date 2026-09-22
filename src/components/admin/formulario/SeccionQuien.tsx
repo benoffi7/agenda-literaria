@@ -174,6 +174,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                     }),
                   )
                 }
+                placeholder="@casabrandon o el link del perfil"
               />
             </Campo>
             <Campo label="Bio" htmlFor="persona-bio" className="sm:col-span-full">
