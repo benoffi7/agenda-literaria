@@ -131,6 +131,8 @@ type Vista =
       copia: ActividadForm;
       tituloOrigen: string;
       avisos: readonly string[];
+      /** B-1235 — la foto que pidieron usar y no entró: la alerta del formulario. */
+      imagenNoPromovida: string | null;
       alGuardar: (actividadId: string) => Promise<void>;
     }
   /*
@@ -1077,6 +1079,7 @@ export function AdminApp() {
               copia: c.copia,
               tituloOrigen: c.tituloOrigen,
               avisos: c.avisos,
+              imagenNoPromovida: c.imagenNoPromovida,
               alGuardar: c.alGuardar,
             });
           }}
@@ -1178,6 +1181,7 @@ export function AdminApp() {
           }
           origenDeLaCopia={vista.tipo === 'convertir' ? 'propuesta' : 'duplicado'}
           avisos={vista.tipo === 'convertir' ? vista.avisos : undefined}
+          imagenNoPromovida={vista.tipo === 'convertir' ? vista.imagenNoPromovida : null}
           onCancelar={() => salirDe(() => setVista({ tipo: volverA }))}
           onGuardado={(id, sinRegistrar) => {
             setVersion((v) => v + 1);

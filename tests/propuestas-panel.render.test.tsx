@@ -375,6 +375,8 @@ describe('convertir en actividad — el orden de D-600', () => {
     expect(copia.imagenes[0]!.storagePath).toBe('imagenes/img_nueva.jpg');
     // Primera de la galería: nace portada, igual que al subir una a mano.
     expect(copia.imagenes[0]!.portada).toBe(true);
+    // Entró, así que no hay alerta (B-1235).
+    expect(onConvertir.mock.calls[0]![0].imagenNoPromovida).toBeNull();
   });
 
   it('y si no se puede traer, la conversión sigue y el aviso lo dice', async () => {
@@ -392,7 +394,24 @@ describe('convertir en actividad — el orden de D-600', () => {
 
     const c = onConvertir.mock.calls[0]![0];
     expect(c.copia.imagenes).toHaveLength(0);
-    expect(c.avisos.join(' ')).toContain('se cayó la red');
+    /*
+     * B-1235 — el fallo va en **su propio campo** y no en `avisos`: metido en
+     * esa lista se leía como un detalle más y el dueño lo reportó como «apreté
+     * usarla y no la tomó». El formulario lo pinta como alerta.
+     */
+    expect(c.imagenNoPromovida).toContain('se cayó la red');
+    expect(c.avisos.join(' ')).not.toContain('se cayó la red');
+  });
+
+  it('el corte de CORS del bucket —lo que pasa en producción— se nombra como tal (B-1235)', async () => {
+    vi.mocked(promoverImagenDePropuesta).mockRejectedValue(new TypeError('Failed to fetch'));
+    const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, usarla' }));
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+
+    expect(onConvertir.mock.calls[0]![0].imagenNoPromovida).toMatch(/CORS/);
   });
 
   /**
