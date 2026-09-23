@@ -135,6 +135,26 @@ describe('tipear', () => {
     expect(onChange).toHaveBeenLastCalledWith('2026-10-07T20:30');
   });
 
+  it('y la medianoche montada: 00 queda 12 AM, no «0»', async () => {
+    /*
+     * El borde que el propio módulo señala como el que se escribe mal, acá
+     * arriba del cableado y no solo en la función pura: `aReloj12` lo resuelve
+     * bien desde B-889, pero lo que este caso afirma es que la cajita **y** el
+     * desplegable lo muestran — que es lo que le dice a quien carga que se
+     * entendió «medianoche» y no «cero».
+     */
+    const onChange = vi.fn();
+    dibujar({ value: '2026-10-07T19:30', onChange });
+    const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;
+
+    await userEvent.clear(hora);
+    await userEvent.type(hora, '00');
+
+    expect(hora.value).toBe('12');
+    expect((screen.getByLabelText('Inicio — AM o PM') as HTMLSelectElement).value).toBe('AM');
+    expect(onChange).toHaveBeenLastCalledWith('2026-10-07T00:30');
+  });
+
   it('y una hora que el reloj de 12 sí dice no se lleva puesto el AM/PM', async () => {
     // La otra mitad: con PM elegido, retipear `10` es las diez de la noche.
     const onChange = vi.fn();

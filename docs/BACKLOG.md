@@ -1014,6 +1014,27 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
+### B-1236 · Los minutos del control de 12 vacían la fecha en silencio igual que la hora antes de B-1234 · P2 — del auditor sobre B-1234 (2026-09-23)
+
+**La misma clase que B-1234, en la cajita de al lado.** Tipear `75` en los minutos
+del control de AM/PM hace que `dePiezas` componga `''`: el encuentro se queda sin
+fecha, la cajita sigue mostrando `75` y el eco de abajo desaparece. Nadie dice
+nada, que es exactamente lo que hizo que el de la hora tardara en verse.
+
+**Por qué no entró en B-1234 y por qué es P2 y no P1.** Acá no hay nada que
+interpretar: `75` no es una hora en otro formato, es un typo —el equivalente al
+`25` que aquel ítem decidió dejar quieto—. Así que el arreglo no es convertir sino
+**decirlo**: un error en el campo, o el eco diciendo qué falta, en vez del silencio.
+Y no lo reporta nadie porque tipear un minuto imposible es raro, mientras que
+tipear `20` en la hora es lo que hace todo el mundo que viene de cargar en 24.
+
+**Lo que el auditor dejó dicho, y vale más que el caso:** no hay en el repo ninguna
+red que recorra los controles compuestos del panel buscando esta forma —«una pieza
+fuera de rango vacía el compuesto entero y la pantalla no lo dice»—, ni una lista
+existente a la que agregarle una entrada. Sería una clase nueva a nombrar en
+`tests/clases-de-bug.test.ts`, y recién vale la pena cuando aparezca el tercer
+control compuesto: con dos, el costo de nombrarla es mayor que el de mirarlos.
+
 ### B-1221 · El backlog puede estar tres semanas atrás de `main` y nada lo mira — medido, y el chequeo obvio es inservible · P2 — de cerrar B-1170 (2026-09-22)
 
 **La segunda mitad de la clase de B-1170, la que no entró.** Un ítem puede estar

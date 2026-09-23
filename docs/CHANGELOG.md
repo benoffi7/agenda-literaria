@@ -13,7 +13,9 @@
   cual. Es un desvío de lo que D-720 había dejado escrito, y por eso va con
   decisión propia. Siete casos nuevos entre el test puro y el montado; el caso
   «hora inválida a medio tipear» pasó de usar `13` a usar `25`, que es la prueba
-  de que el cambio hizo lo que dice.
+  de que el cambio hizo lo que dice. El `auditor-trampas` lo dio limpio y dejó dos
+  cosas: falta el caso montado de la medianoche (`00` → `12 AM`), agregado, y la
+  misma forma sigue viva en la cajita de los minutos — anotada como **B-1236**.
 
 - **Abierto: la imagen de una propuesta no queda en la actividad** — B-1235, P1,
   reportado por el dueño y **sin arreglar**. Se corrió la cadena entera de punta a
