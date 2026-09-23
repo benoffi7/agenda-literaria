@@ -12,6 +12,7 @@
     "backlog:huerfanos": "node scripts/items-referenciados.mjs",
     "decisiones:huerfanas": "node scripts/decisiones-referenciadas.mjs",
     "backlog:contradicciones": "node scripts/estados-referenciados.mjs",
+    "docs:anclas": "node scripts/anclas-referenciadas.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
