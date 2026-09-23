@@ -45,6 +45,7 @@
  */
 import type { FirebaseApp } from 'firebase/app';
 import {
+  getToken,
   initializeAppCheck,
   ReCaptchaEnterpriseProvider,
   type AppCheck,
@@ -138,6 +139,31 @@ export const activarAppCheck = (
     console.warn('[app-check] no se pudo activar:', e);
     return null;
   }
+};
+
+/**
+ * Por qué App Check no se activó en esta carga, o `null` si se activó (o si
+ * todavía no se intentó). B-930: es lo que `verificacionDelNavegador.ts` mira
+ * para decidir si hay algo que verificar o si el cartel no corresponde.
+ */
+export const motivoSinAppCheck = (): MotivoSinAppCheck | null => _motivo;
+
+/**
+ * B-930 — **quién pide el token**, o `null` si no hay App Check activo.
+ *
+ * Devuelve la función y no la llama: la decisión de cuánto esperar y qué
+ * hacer con la respuesta es pura y vive en `verificacionDelNavegador.ts`, que
+ * se testea sin el SDK. Acá queda solo el enganche con `getToken`.
+ *
+ * `getToken` del SDK **rechaza** cuando el intercambio falla (403, red) pero
+ * **no vuelve nunca** cuando una extensión bloquea el script de reCAPTCHA: el
+ * SDK espera a que el widget se inicialice y eso no pasa. Por eso quien la usa
+ * le pone un umbral, y no alcanza con el `catch`.
+ */
+export const pedidorDeToken = (): (() => Promise<unknown>) | null => {
+  const instancia = _appCheck;
+  if (!instancia) return null;
+  return () => getToken(instancia, false);
 };
 
 /** Para los tests: olvida la activación anterior. */
