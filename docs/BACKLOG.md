@@ -111,6 +111,52 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Decisiones pendientes del usuario
 
+### DEC-14 · ¿El correo registra quién lo abrió y qué clickeó? · P1 — del `auditor-privacidad` sobre B-1231 (2026-09-23)
+
+**Sale de encender la lista, y es una decisión y no un bug.** Mailchimp trae
+prendidos por defecto dos registros en cada campaña: el **píxel de apertura** y
+la **reescritura de cada link** —cada `urlDeDetalle` del correo pasa a ser una
+URL de Mailchimp atada al suscriptor—. Con eso, el primer envío empieza a
+registrar **conducta de una persona identificada por su dirección de mail**: qué
+correos abre y en qué actividades hace clic.
+
+**Lo que lo hace una decisión y no un arreglo:** es exactamente para lo que sirve
+una lista de correo, es lo que hace posible saber si el correo le sirve a alguien,
+y es el default de la herramienta. Nadie lo hizo mal.
+
+**Y lo que lo hace P1:** la promesa `donde-queda` de `/suscribirse`
+(`src/lib/boletinDelSitio.ts`) dice que Mailchimp recibe **la dirección**. No dice
+que además registre qué abrió y qué clickeó. Es más angosta que la realidad, en
+HTML indexado, y es la clase exacta de B-781 — la promesa que nace falsa por lo
+que omite, no por lo que afirma. El sitio hoy es explícito hasta la incomodidad
+sobre qué se mide y con qué permiso (el banner, D-252); esto quedaría afuera de
+esa cuenta.
+
+**Las dos salidas, y las dos son legítimas:**
+
+1. **Dejarlo prendido y decirlo.** Una frase más en `donde-queda`: «Mailchimp
+   también registra si abrís el correo y en qué hacés clic». Cuesta un renglón y
+   deja la promesa cierta.
+2. **Apagarlo** (Campaign → Settings → destildar *Track opens* y *Track clicks*).
+   Se pierde saber si el correo sirve, que es lo único con lo que se lo puede
+   mejorar.
+
+**Recomiendo la 1.** Este proyecto ya eligió dos veces decir la incomodidad en vez
+de esconderla —el banner de cookies y la frase «tu dirección la recibe
+Mailchimp»—, y apagar la medición del único canal que tiene lector deja al correo
+sin forma de saber si vale la pena mandarlo.
+
+**Configuración y no código: ningún test lo puede sostener**, igual que el doble
+opt-in y que los interruptores de B-480. Lo que sí queda atado es la promesa: si
+se elige la 1, la frase nueva entra en `EL_TRATO` y `tests/boletin-del-sitio.test.ts`
+la exige como exige las otras cinco.
+
+> **Lo que sí está cerrado por código**, y conviene que quede dicho para que nadie
+> lo vuelva a mirar: si se prende además el «Google Analytics link tracking» de la
+> campaña, los `utm_*` que Mailchimp pega en la URL **no** llegan a GA4 —
+> `ubicacionSinQuery` recorta la query del `page_location` **y** del
+> `page_referrer` (salida 12). Ese lado no depende de ninguna casilla.
+
 Nada de esto se puede avanzar sin respuesta. Están primero porque bloquean
 trabajo.
 
@@ -329,6 +375,63 @@ Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
 ---
 
 ## P0 — rompe algo o pierde datos
+
+### B-1233 · El archivador reclasifica: 201 ítems P0 pasaron a leerse como P2 · P0 — del `auditor-documentacion` (2026-09-23)
+
+**Correr `node scripts/archivar-backlog.mjs` sobre `docs/BACKLOG-cerrados.md`
+mezcló las secciones.** Medido con el parser del propio repo
+(`scripts/tablero/parseo.mjs`), no a ojo:
+
+| | P0 | P1 | P2 | P3 | sin sección |
+|---|---|---|---|---|---|
+| antes (`7378d9b`) | **201** | 92 | 13 | 87 | 0 |
+| después | **1** | 92 | 215 | 87 | 1 |
+
+El cuerpo entero de la sección `## P0 — rompe algo o pierde datos` —201 ítems,
+empezando por **B-80**— quedó debajo de la cabecera `## P2 — mejoras reales`, y
+apareció una cabecera `## P0` nueva envolviendo **un solo** ítem que se
+autodeclara `· P2` en su propio encabezado: la cabecera y el ítem se
+contradicen.
+
+**Ningún texto se perdió** —verificado con `diff`—, y esa es justamente la parte
+que lo hace peligroso: el archivo se ve intacto. Lo que cambió es **bajo qué
+cabecera vive cada ítem**, que es lo único que el tablero lee para decir qué fue
+grave y qué no. `npm run tablero` hoy contaría 1 «P0 arreglado» donde hubo 201.
+
+**Es B-1219 con otra cara, y la reincidencia es lo que lo pone en P0.** Aquél se
+comía 186 ítems del rastro; éste no se come nada, les cambia la severidad. Las
+dos veces el script tocó secciones homónimas, las dos veces la guarda del propio
+script dijo que estaba todo bien, y las dos veces se vio por casualidad. La
+guarda de B-1219 verifica que **los ítems estén**; no verifica **dónde**.
+
+**Cómo se reprodujo:** correr el archivador dos veces en la misma tanda, con un
+ítem insertado a mano entremedio. La primera corrida ya había reordenado el
+archivo (el diff de 12.893 líneas que **B-1146** describe), se revirtió, se
+insertó el ítem a mano al final de su sección, y la segunda corrida produjo
+esto. No está claro si hace falta la secuencia completa o alcanza con una
+corrida sobre un archivo cuyo orden de secciones no coincide con el del vivo —
+**eso es lo primero que hay que aislar**, porque decide si el bug es de la
+fusión de secciones homónimas o del orden en que se emiten.
+
+**Ya reparado a mano en `docs/BACKLOG-cerrados.md`** (2026-09-23): se restauró el
+archivo desde `origin/main` y se reinsertaron los tres ítems de la tanda, cada
+uno al final de **su** sección (B-1231 en P1, B-1230 y B-1232 en P2). El diff
+quedó en 122 líneas insertadas y nada más, y el conteo por sección volvió a
+201/93/15/87. **El bug del script sigue vivo**: la próxima corrida lo vuelve a
+hacer.
+
+**Lo que hay que arreglar, y lo que hay que agregarle a la guarda:** que
+`verificar` compare, además de la presencia de cada ítem, **la sección de cada
+uno antes y después** — es la propiedad que las dos veces se rompió y ninguna de
+las dos veces se miró. Y el corpus de los tests tiene que archivar contra un
+archivo cuyo **orden de secciones difiera** del vivo, que es la entrada que
+ninguno de los dieciocho casos ejercita (la misma lección que B-1219 dejó
+escrita: el sujeto del chequeo estaba mal elegido).
+
+**Mientras tanto, no corras el archivador.** Mover un ítem a mano —cortar de
+`BACKLOG.md`, pegar al final de su sección en `BACKLOG-cerrados.md`— es además
+lo que **B-1146** ya recomendaba por otro motivo: el diff queda en decenas de
+líneas en vez de en decenas de miles.
 
 > **Tres abiertos desde el 2026-09-18, los tres del chrome del sitio público y
 > los tres con capturas del dueño.** No pierden datos: lo que rompen es la
@@ -701,7 +804,7 @@ Es una decisión y no un renglón: ensancharlo pone en rojo dos funciones que ho
 pasan, y la salida no es relajarlo sino decidir qué guarda le exigimos a un barrido
 que borra.
 
-### B-874 · «Interacciones con formularios» sigue prendido en GA4, y B-480 no lo apagó porque no había formularios · P2
+### B-874 · «Interacciones con formularios» sigue prendido en GA4, y desde el 2026-09-23 ya está filtrando · P1 — **era P2 mientras era hipotético**
 
 **Sale del `auditor-privacidad` sobre B-847.** El Enhanced Measurement de GA4
 tiene **cuatro** interruptores prendidos por default y B-480 apagó tres:
@@ -724,7 +827,20 @@ que el checklist lo nombre. El paso está en `08-operacion.md` como bloqueante
 junto al doble opt-in.
 
 **Y hay que mirar `/proponer` aparte**, que es lo que este ítem no resuelve: ahí
-el `form_submit` sale **hoy**, sin que la lista del correo exista.
+el `form_submit` salía **ya** cuando este ítem se escribió, sin que la lista del
+correo existiera.
+
+> ⚠️ **Subido a P1 el 2026-09-23: dejó de ser hipotético.** Este ítem nació
+> diciendo «el día que la lista exista, esto va a filtrar». **La lista existe**
+> (**B-1231**), el formulario de `/suscribirse` se dibuja, y cada alta manda
+> `form_start`/`form_submit` con su `form_destination` a GA4 **ahora**. No cambió
+> nada del análisis —lo que se escapa sigue siendo que este `client_id` interactuó
+> con el formulario y a qué destino, y **no** el contenido de los campos—; lo que
+> cambió es que el costo se está pagando en vez de estar por pagarse.
+>
+> **Sigue siendo un solo interruptor de consola**, y por eso el arreglo es de
+> minutos: Administrar → Flujos de datos → el flujo → Enhanced measurement. Es de
+> quien tiene la consola (§5.4), y ningún test lo puede sostener ni verificar.
 
 ### B-866 · Convertir no renueva el plazo, así que el barrido se lleva la propuesta con el formulario abierto · P3
 

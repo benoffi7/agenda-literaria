@@ -523,13 +523,16 @@ measurement), la misma clase de paso manual que `docs/09-analitica.md` ya pide
 para el panel. Acá es **bloqueante**: instalar el tag sin apagar «Búsquedas en el
 sitio» y «Clics salientes» filtra aunque todo el código esté bien.
 
-**Y el cuarto está pendiente.** «Interacciones con formularios» sigue **prendido**
-al 2026-09-10: nunca hizo falta apagarlo porque no había formularios que mirar.
-Con el alta al correo de B-847 pasa a ser el mismo tipo de fuga chica que los
-otros tres —conducta de una persona sobre un acto que hizo, mandada a un
-tercero— y **hay que apagarlo antes de que la lista exista**, que es cuando el
-formulario empieza a dibujarse. Está en el checklist de
-[`08-operacion.md`](08-operacion.md) § «Activar el correo semanal», junto al
+**Y el cuarto está pendiente, y desde el 2026-09-23 está VENCIDO.**
+«Interacciones con formularios» sigue **prendido**: nunca hizo falta apagarlo
+porque no había formularios que mirar. Con el alta al correo de B-847 pasa a ser
+el mismo tipo de fuga chica que los otros tres —conducta de una persona sobre un
+acto que hizo, mandada a un tercero— y correspondía apagarlo **antes** de que la
+lista existiera, que es cuando el formulario empieza a dibujarse. **La lista
+existe desde el 2026-09-23** (**B-1231**) y el interruptor sigue prendido: cada
+alta al correo **ya** manda `form_start`/`form_submit` con su destino a GA4. Dejó
+de ser preventivo. Está en el checklist de
+[`08-operacion.md`](08-operacion.md) § «El correo semanal», junto al
 doble opt-in y por el mismo motivo: **es configuración y no código, así que no
 hay ningún test que lo sostenga**. Lo único que un test puede fijar es que el
 checklist lo nombre, y eso lo hace `tests/boletin-del-sitio.test.ts`.

@@ -32,6 +32,12 @@ export interface OpcionesDeEntrada {
   modalidades?: ModalidadFila['modalidad'][];
   /** B-950 — slug de `/opciones/provincia`. */
   provincia?: string;
+  /**
+   * El nombre de la sede — texto libre, y por eso está acá: es uno de los dos
+   * campos que una persona tipea y que llegan al correo semanal (B-1230), donde
+   * un `&` o un `<` sin escapar sale roto en la casilla de todos.
+   */
+  sedeNombre?: string;
   barrio?: string;
   ciudad?: string;
   arancel?: string;
@@ -71,7 +77,7 @@ export const actividadDePrueba = (o: OpcionesDeEntrada = {}): Actividad => {
       m === 'virtual'
         ? null
         : {
-            nombre: 'Casa Brandon',
+            nombre: o.sedeNombre ?? 'Casa Brandon',
             direccion: 'Luis María Drago 236',
             provincia: o.provincia ?? 'caba',
             barrio: o.barrio ?? 'villa-crespo',

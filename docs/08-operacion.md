@@ -2408,11 +2408,15 @@ Los pasos de la consola de Mailchimp, uno por uno, están en
 [`02-infraestructura.md`](02-infraestructura.md) § «Mailchimp». Lo que hay que
 tener presente al hacerlos:
 
-- **El doble opt-in va prendido.** La página promete que llega un mail de
-  confirmación y que sin confirmar no queda nadie anotado. Es una casilla de la
-  configuración de la audience, **no** una línea de código, así que **no hay
-  ningún test que lo sostenga** — misma clase que los ajustes de GA4 de B-480.
-  Si se apaga, la página pasa a mentir y nada se pone en rojo.
+- **El doble opt-in va prendido.** — ⬜ **sin verificar en la consola.** La
+  página promete que llega un mail de confirmación y que sin confirmar no queda
+  nadie anotado. Es una casilla de la configuración de la audience, **no** una
+  línea de código, así que **no hay ningún test que lo sostenga** — misma clase
+  que los ajustes de GA4 de B-480. Si se apaga, la página pasa a mentir y nada se
+  pone en rojo, **y la promesa ya está publicada**: esto dejó de ser preventivo
+  el 2026-09-23. Cuando se confirme, la casilla de acá pasa a `✅ verificado en la
+  consola el AAAA-MM-DD`, que es el formato que usó B-480 y lo único que este
+  repo puede registrar de un ajuste que no puede leer.
 - **Y hay un segundo ajuste de consola, que no es de Mailchimp sino de GA4:
   apagar «Interacciones con formularios».** Es el **cuarto** interruptor del
   Enhanced Measurement y el único que B-480 no apagó, porque hasta ahora el
@@ -2425,7 +2429,12 @@ tener presente al hacerlos:
   encontró el `auditor-privacidad` sobre este mismo cambio; el detalle está en
   [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) §7.4. Como el doble
   opt-in: **configuración y no código, sin test que lo sostenga**.
-- **El remitente es `agendaleh@gmail.com`**, la casilla que el sitio ya usa
+  ⬜ **Sin apagar, y VENCIDO desde el 2026-09-23**: la lista ya está cargada y el
+  formulario ya se dibuja, así que cada alta manda el evento **ahora**. Es
+  **B-874**, subido a P1 por eso mismo. Cuando se apague, esta casilla pasa a
+  `✅ apagado el AAAA-MM-DD`.
+- **El remitente es `agendaleh@gmail.com`** — ⬜ **sin verificar en la consola**,
+  misma clase que el doble opt-in —, la casilla que el sitio ya usa
   (`CONTACTO`). La página lo dice con esa constante interpolada, no escrita a
   mano: esa cuenta ya cambió una vez (B-839).
 - **La cadencia que la página promete es semanal con su excepción escrita** —«si
@@ -2453,6 +2462,25 @@ npm run build && grep -o 'list-manage.com[^"]*' dist/suscribirse/index.html
 El `grep` tiene que devolver el host de **nuestra** cuenta y el `u`/`id` que
 figuran en la consola. Si devuelve otra cosa, el formulario está apuntando a una
 lista ajena.
+
+### Qué hacer cuando lo anunciado se cae
+
+**Un correo mandado no se corrige.** Es la diferencia práctica entre la salida 29
+y todas las demás: el sitio y el calendario se rehacen solos cuando la actividad
+cambia (§8, §7), pero lo que llegó a una casilla dice lo que decía para siempre.
+Los dos cuerpos del correo lo avisan con una línea (`AVISO_DE_CAMBIOS`), y eso es
+lo que hace honesto lo que sigue:
+
+| Qué pasó | Qué hacer |
+|---|---|
+| La actividad se **canceló** | nada. La página sobrevive a la cancelación (**B-110**) y muestra la franja de cancelada, así que el link del correo lleva exactamente a la noticia. Es el caso que está bien por construcción |
+| Cambió la **fecha**, la **sede** o el **horario** | nada en el correo viejo: el link lleva a la página, que ya dice lo nuevo. Si el cambio es grande y el encuentro es esta semana, va en el correo siguiente |
+| Volvió a **borrador**, o se **borró** | el link del correo queda en 404 **permanente**, desde una casilla ajena. No hay forma de arreglarlo del lado de acá. Si era la actividad principal del envío, corresponde contarlo en el correo siguiente |
+
+**No se manda una retractación.** Un segundo correo para corregir el primero
+duplica los envíos de la semana —que es lo que la página promete que no pasa— y
+llega a gente que no llegó a leer el primero. Lo que se cuenta, se cuenta en el
+próximo.
 
 **Y una vez que la lista exista, el correo se arma en el panel.** La vista
 «Correo» (B-1230) produce el borrador de los siete días que vienen —asunto, vista

@@ -61,6 +61,31 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'el-correo-semanal-se-arma-solo',
+    fecha: '2026-09-23',
+    version: '1.11.0',
+    titulo: 'El correo de la semana se arma solo',
+    detalle:
+      'Un botón nuevo, «Correo», arma el borrador de los siete días que vienen: ' +
+      'el asunto, la lista agrupada por día y dos cajas para copiar y pegar en ' +
+      'Mailchimp. Sale de lo que el sitio ya publica, así que lo que guardaste ' +
+      'recién aparece cuando el sitio se rehace. No manda nada: qué sale y ' +
+      'cuándo lo seguís decidiendo vos.',
+    donde: 'En el encabezado del listado, al lado de «Opciones» y «Estadísticas».',
+  },
+  {
+    id: 'ya-se-pueden-anotar-al-correo',
+    fecha: '2026-09-23',
+    version: '1.11.0',
+    titulo: 'La gente ya se puede anotar al correo',
+    detalle:
+      'La página «Suscribirse» del sitio tenía la sección para dejar el mail ' +
+      'construida y apagada, esperando que existiera la lista. Ya existe, así ' +
+      'que la sección se ve y la gente se puede anotar. Llega un mail de ' +
+      'confirmación: hasta que no lo confirman, no quedan anotados.',
+    donde: 'En el sitio, en «Suscribirse», debajo de las formas de sumarlo al calendario.',
+  },
+  {
     id: 'el-instagram-se-prolija-al-salir-del-campo',
     fecha: '2026-09-22',
     version: '1.11.0',

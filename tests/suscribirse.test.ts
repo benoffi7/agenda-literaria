@@ -29,6 +29,7 @@ import {
   sesionesDeCiclo,
 } from './fixtures/ciclo';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
+import { hayBoletin } from '@/lib/boletinDelSitio';
 
 /**
  * La página «Suscribirse» — B-230.
@@ -564,5 +565,121 @@ describe('el bloque corto de «suscribirse» en la home — B-231', () => {
     const repetido = paginasDelSitio().filter((f) => vecesQueLoUsa(f) > 1);
     expect(repetido, 'estas páginas renderizan el bloque más de una vez').toEqual([]);
     expect(vecesQueLoUsa(PAGINA), '/suscribirse no se resume a sí misma').toBe(0);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// El `<title>` y la bajada no pueden prometer más que la página (B-1231)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('la `meta description` no promete más que las cinco promesas del trato', () => {
+  /**
+   * **Lo abrió el `auditor-privacidad` sobre B-1231, y el bug ya había nacido.**
+   *
+   * Con la lista encendida, el `<title>` y la bajada pasaron a nombrar el correo
+   * —hasta ese día hablaban solo del calendario, y era cierto—. La primera
+   * redacción decía «recibí por mail **lo que viene cada semana**», y las dos
+   * mitades eran más anchas que `EL_TRATO`:
+   *
+   *  - **«cada semana» es un piso.** `EL_TRATO.cadencia` dice «si una semana no
+   *    hay nada que valga la pena mandarte, esa semana no sale», y eso se
+   *    redactó así a propósito (B-847): un piso se incumple con una sola semana
+   *    floja. La `meta description` es HTML indexado, igual que el trato.
+   *  - **«lo que viene» dice la agenda entera.** `EL_TRATO['que-llega']` dice
+   *    exactamente lo contrario: «no es la agenda entera volcada en un mail: es
+   *    una selección».
+   *
+   * **`promesas-sobre-datos.test.ts` no lo agarra y no es su culpa:** aquél
+   * barre **negaciones** («no guardamos», «no se comparte»), y esto es una
+   * afirmación. Es el punto ciego que ese archivo declara, y la misma forma que
+   * tuvo el bug de `/apoyar` (B-781) y el «es lo único que la agenda le manda a
+   * un tercero» que el auditor corrigió en el propio B-847.
+   *
+   * Así que el chequeo es **por fórmula conocida**, con su lista corta y
+   * nombrada. No pretende ser completo: pretende que la frase que ya se escribió
+   * mal una vez no se pueda volver a escribir sin que algo lo diga.
+   */
+  const bajada = (): string =>
+    fuente(PAGINA).match(/descripcion="([^"]*)"/)?.[1] ?? '';
+
+  /** Cada fórmula con qué promesa contradice, para que la falla se explique sola. */
+  const PROMESAS_MAS_ANCHAS: readonly { fórmula: RegExp; contra: string }[] = [
+    {
+      fórmula: /\bcada semana\b/i,
+      contra: 'EL_TRATO.cadencia dice que la semana sin nada no sale — «cada semana» es un piso',
+    },
+    {
+      /*
+       * **El «casi» es la diferencia, y no es una excusa para pasar el test.**
+       * «Todas las semanas» es el mismo piso que «cada semana»; «casi todas las
+       * semanas» dice el ritmo **y** nombra la excepción, que es exactamente la
+       * salida que este repo ya eligió dos veces: «casi nunca trae el link de la
+       * reunión» en esta misma página, y la corrección de `/ayuda` sobre la
+       * publicidad (B-785). Nombrar la excepción en vez de aflojar la promesa.
+       *
+       * Esta fórmula agarró la primera redacción corregida —que decía «casi todas
+       * las semanas»— y el lookbehind es lo que la dejó pasar. Si alguien saca el
+       * «casi», vuelve a ponerse en rojo.
+       */
+      fórmula: /(?<!casi )\btodas las semanas\b|\bsemanalmente\b/i,
+      contra: 'mismo piso que «cada semana», con otra forma — «casi todas las semanas» sí vale',
+    },
+    {
+      fórmula: /\bal menos una vez por semana\b/i,
+      contra: 'es literalmente la redacción que B-847 descartó por ser un piso',
+    },
+    {
+      fórmula: /\b(toda|todas) la[s]? (agenda|actividades)\b/i,
+      contra: "EL_TRATO['que-llega'] dice que es una selección, no la agenda entera",
+    },
+  ];
+
+  it('no usa ninguna de las fórmulas que prometen de más', () => {
+    const texto = bajada();
+    expect(texto, 'no pude leer la `meta description` de la página').not.toBe('');
+
+    const excedidas = PROMESAS_MAS_ANCHAS.filter(({ fórmula }) => fórmula.test(texto)).map(
+      ({ fórmula, contra }) => `${fórmula} → ${contra}`,
+    );
+    expect(
+      excedidas,
+      'la `meta description` promete más que el trato que la misma página publica ' +
+        'veinte centímetros más abajo. Es HTML indexado y es la clase de B-781:\n' +
+        excedidas.join('\n'),
+    ).toEqual([]);
+  });
+
+  it('y el control negativo: el barrido agarra la redacción que se corrigió', () => {
+    // Sin esto, una lista de fórmulas mal escrita pasaría por un barrido que no
+    // mira nada. La frase es la que estaba escrita antes de la corrección.
+    const comoEstaba =
+      'Sumá la agenda de talleres, clubes de lectura y encuentros literarios a tu Google ' +
+      'Calendar, a tu iPhone o a Outlook, o recibí por mail lo que viene cada semana.';
+    expect(PROMESAS_MAS_ANCHAS.some(({ fórmula }) => fórmula.test(comoEstaba))).toBe(true);
+
+    // Y la otra mitad: la redacción con la excepción nombrada **pasa**. Sin este
+    // par, una fórmula demasiado ancha obligaría a aflojar la promesa para que el
+    // test pase, que es lo contrario de lo que existe para hacer.
+    const conLaExcepcion = 'o que te llegue por mail una selección de lo que viene, casi todas las semanas.';
+    expect(PROMESAS_MAS_ANCHAS.some(({ fórmula }) => fórmula.test(conLaExcepcion))).toBe(false);
+  });
+
+  it('el `<title>` nombra las dos cosas que la página ofrece', () => {
+    /*
+     * Mientras `LISTA_DE_CORREO` fue `null` el título hablaba solo del calendario
+     * y **era cierto**: la sección del correo no se dibujaba. Con la lista
+     * encendida, un título que solo dice «calendario» esconde la mitad de la
+     * página en el único lugar donde se decide el clic.
+     */
+    const titulo = fuente(PAGINA).match(/titulo=\{`([^`]*)`\}/)?.[1] ?? '';
+    expect(titulo, 'no pude leer el `<title>` de la página').not.toBe('');
+    if (hayBoletin()) {
+      expect(titulo).toMatch(/correo|mail/i);
+      expect(titulo).toMatch(/calendario/i);
+    } else {
+      expect(titulo, 'con la lista apagada el título no puede prometer el correo').not.toMatch(
+        /correo|mail/i,
+      );
+    }
   });
 });

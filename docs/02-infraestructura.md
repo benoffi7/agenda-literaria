@@ -721,11 +721,11 @@ cuatro valores públicos que viajan escritos en el HTML del formulario.
 | Qué recibe | la dirección de mail de quien se anota, y nada más |
 | Dónde se escribe acá | `LISTA_DE_CORREO` en `src/lib/enlaces.ts` — los cuatro valores del formulario embebido (`cuenta`, `centro`, `u`, `id`) |
 | Plan | el gratis, mientras la lista sea chica. Está dicho en `/apoyar`, que enumera lo que cuesta |
-| Estado al 2026-09-10 | **la lista no existe todavía**: `LISTA_DE_CORREO` es `null` y la sección de `/suscribirse` no se dibuja |
+| Estado al 2026-09-23 | **la lista existe y el alta está publicada** (B-1231): la audience es `agendaleh` en el centro `us14`, `LISTA_DE_CORREO` tiene los cuatro valores y la sección de `/suscribirse` se dibuja. Verificado sobre el `dist/`: el `action` apunta a nuestra cuenta y el campo trampa que deriva el código coincide **carácter por carácter** con el que publica Mailchimp —que es lo que confirma que los dos ids están bien copiados: con uno mal, Mailchimp descartaría el alta en silencio— |
 
-**Lo que hay que hacer en la consola de Mailchimp para que esto funcione, en
-este orden** — es trabajo de consola, no de código, y hasta que esté hecho el
-sitio no ofrece el correo:
+**Lo que hubo que hacer en la consola de Mailchimp, en este orden** — es trabajo
+de consola y no de código, y queda escrito porque es lo que hay que rehacer el
+día que la cuenta cambie (los pasos 2 y 3 **no** los sostiene ningún test):
 
 1. Crear la cuenta y la **audience** (la lista).
 2. **Prender el doble opt-in** en los ajustes de la audience. Es lo que la

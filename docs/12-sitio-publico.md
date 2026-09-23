@@ -1032,14 +1032,17 @@ el subconjunto ya filtrado.
   > envío.
   >
   > Es el primer dato de una persona que el sitio público le manda a un tercero,
-  > y **no abre una salida pública nueva**: entra en la fila 13, por D-320 —no
-  > recibe ni un campo del modelo, así que su celda sería siempre «no sale»—.
-  > La cuenta sigue en diecinueve.
+  > y **el alta no abre una salida pública nueva**: entra en la fila 13, por
+  > D-320 —no recibe ni un campo del modelo, así que su celda sería siempre «no
+  > sale»—. Lo que sí abrió una fila es **el correo que se manda**, que es otra
+  > cosa: lleva títulos, horarios y sedes de actividades de verdad, y es la
+  > **salida 29** desde B-1230.
   >
-  > **Sale apagada.** `LISTA_DE_CORREO` es `null` hasta que exista la lista en
-  > Mailchimp, y con `null` la sección no se dibuja: es el orden de B-780 con el
-  > perfil de Cafecito. Los pasos de la consola están en
-  > [`08-operacion.md`](08-operacion.md) § «Activar el correo semanal».
+  > **Encendida el 2026-09-23** (B-1231): la audience existe, `LISTA_DE_CORREO`
+  > tiene los cuatro valores y la sección se dibuja. **Estuvo apagada dos semanas
+  > a propósito** —con `null` la sección no se dibujaba— y es el orden de B-780
+  > con el perfil de Cafecito. Los pasos de la consola están en
+  > [`08-operacion.md`](08-operacion.md) § «El correo semanal».
 - **`/acerca`** — qué es, quién lo mantiene, cómo se carga una actividad, y el
   canal para proponer una. Es la página que le da a un buscador y a una persona
   con quién está tratando. Necesita un canal de contacto — ver
@@ -1278,7 +1281,7 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | `/agenda/{aaaa-mm}` | `Qué hay en {mes} de {año} — Agenda literaria` | `{N} actividades literarias en {mes}: {tres títulos}.` | la propia |
 | `/pasadas` | `Actividades que ya pasaron — Agenda literaria` | escrita a mano | la propia |
 | `/cartelera` | `Cartelera de actividades literarias · {NOMBRE}` | armada con la cuenta de afiches | la propia |
-| `/suscribirse` | `Suscribirse al calendario — {NOMBRE}` | escrita a mano | la propia |
+| `/suscribirse` | `Suscribirse al calendario y al correo — {NOMBRE}` | escrita a mano | la propia |
 | `/ayuda` | `Ayuda — {NOMBRE}` | escrita a mano | la propia |
 | `/contacto` | `Contacto — {NOMBRE}` | escrita a mano | la propia |
 | `/anunciar` | `Anunciar en la agenda — {NOMBRE}` | escrita a mano | la propia |

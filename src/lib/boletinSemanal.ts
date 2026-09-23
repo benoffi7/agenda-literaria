@@ -233,18 +233,50 @@ export const boletinSemanal = (
   };
 };
 
-/** Los datos de una fila, ya unidos: `19:00 · Taller · Casa Brandon · Gratis`. */
-const metadatosDe = (e: EncuentroDelBoletin): string =>
+/**
+ * **Lo anunciado puede cambiar, y este correo no se entera** — lo pidió el
+ * `auditor-privacidad` sobre el propio cambio.
+ *
+ * Es la consecuencia práctica de ser la única salida que **se manda** en vez de
+ * publicarse: el calendario (salida 2) se corrige solo cuando la actividad cambia
+ * y el sitio se rehace con cada build, pero un correo que ya salió dice lo que
+ * decía la semana pasada para siempre. La agenda es la que manda, y eso hay que
+ * decirlo en el correo mismo —no alcanza con que sea cierto—, porque quien lo lee
+ * tres días después no tiene forma de saber que hubo un cambio.
+ *
+ * Va en los **dos** cuerpos y al lado del link a la agenda, que es la salida que
+ * ofrece.
+ */
+export const AVISO_DE_CAMBIOS = 'Las fechas y los lugares pueden cambiar: la agenda manda.';
+
+/**
+ * Los datos de una fila, ya unidos: `19:00 · Taller · Casa Brandon · Gratis`.
+ *
+ * **Exportada, y eso es lo que la vuelve una sola** (D-20). La vista previa del
+ * panel la tenía copiada —cuatro campos y un `join(' · ')`, idénticos— y es justo
+ * la copia que no se puede desincronizar: esa pantalla existe para **revisar la
+ * fila antes de mandarla**, así que el día que esto gane una pieza o cambie el
+ * separador, quien revisa aprobaría una fila que no es la que sale. Y el correo
+ * no se corrige después. Lo encontró el `auditor-privacidad`.
+ */
+export const metadatosDe = (e: EncuentroDelBoletin): string =>
   [e.hora, e.tipoEtiqueta, e.lugar, e.arancel].filter(Boolean).join(' · ');
 
 /**
  * El borrador **en texto plano**, para el cuerpo de texto de la campaña.
  *
+ * **`textoPlanoDelBoletin` y no `textoDelBoletin`**, que era el nombre con el que
+ * nació: `boletinDelSitio.ts` —la salida 13, la sección de alta— ya exporta un
+ * `textoDelBoletin`, y son cosas distintas (aquél es el corpus del barrido de
+ * tono de la página). Dos funciones con el mismo nombre nombradas en dos filas de
+ * la misma tabla hacen que un grep por nombre —que es como se audita— devuelva
+ * las dos sin distinguirlas. Lo encontró el `auditor-privacidad`.
+ *
  * Mailchimp manda las dos versiones y arma la de texto sola a partir del HTML si
  * no se le da otra; la que genera sale con los links repetidos y las etiquetas
  * pegoteadas. Esta es la que se pega en la pestaña «Plain-Text Email».
  */
-export const textoDelBoletin = (b: Boletin): string =>
+export const textoPlanoDelBoletin = (b: Boletin): string =>
   [
     `${b.asunto}`,
     '',
@@ -255,6 +287,7 @@ export const textoDelBoletin = (b: Boletin): string =>
       ...d.encuentros.flatMap((e) => [`· ${e.titulo}`, `  ${metadatosDe(e)}`, `  ${e.url}`]),
       '',
     ]),
+    AVISO_DE_CAMBIOS,
     `Todo lo que viene: ${b.urlDeLaAgenda}`,
   ].join('\n');
 
@@ -324,7 +357,8 @@ export const htmlDelBoletin = (b: Boletin): string => {
     '      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">',
     b.dias.map(dia).join('\n'),
     '      </table>',
-    `      <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;margin:24px 0 0 0;"><a href="${escaparHtml(b.urlDeLaAgenda)}" style="color:#1a1a1a;">Todo lo que viene en ${escaparHtml(SITIO.replace(/^https?:\/\//, ''))}</a></p>`,
+    `      <p style="color:#666666;font-family:Helvetica,Arial,sans-serif;font-size:13px;margin:24px 0 0 0;">${escaparHtml(AVISO_DE_CAMBIOS)}</p>`,
+    `      <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;margin:8px 0 0 0;"><a href="${escaparHtml(b.urlDeLaAgenda)}" style="color:#1a1a1a;">Todo lo que viene en ${escaparHtml(SITIO.replace(/^https?:\/\//, ''))}</a></p>`,
     '    </td>',
     '  </tr>',
     '</table>',

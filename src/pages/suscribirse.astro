@@ -57,8 +57,25 @@ const advertencias = advertenciasEnOrden();
 
 <Base
   seccion="suscribirse"
-  titulo={`Suscribirse al calendario — ${NOMBRE}`}
-  descripcion="Sumá la agenda de talleres, clubes de lectura y encuentros literarios a tu Google Calendar, a tu iPhone o a Outlook. Los cambios te llegan solos."
+  {/*
+    **El título y la bajada nombran las dos cosas desde B-1231**, y hasta ese día
+    nombraban solo el calendario a propósito: la sección del correo no se dibujaba
+    mientras `LISTA_DE_CORREO` fuera `null`, así que prometer un correo en el
+    `<title>` habría sido prometer en HTML indexado algo que la página no ofrecía.
+    Con la lista creada la página ofrece dos, y el resultado en Google es lo que
+    decide el clic de quien busca «suscribirse a la agenda» sin saber que hay mail.
+
+    **Y la bajada no puede prometer más que las cinco promesas de abajo**, que es
+    lo que el `auditor-privacidad` corrigió: decía «recibí por mail lo que viene
+    cada semana», y las dos mitades eran más anchas que `EL_TRATO`. «Cada semana»
+    es un piso —y un piso se incumple con una sola semana floja, en HTML
+    indexado— cuando la promesa dice «la semana que no hay nada, no sale»; y «lo
+    que viene» contradice «no es la agenda entera volcada en un mail: es una
+    selección». Es la clase de B-781 en su forma afirmativa, que es justo la que
+    `tests/promesas-sobre-datos.test.ts` no ve.
+  */}
+  titulo={`Suscribirse al calendario y al correo — ${NOMBRE}`}
+  descripcion="Sumá la agenda de talleres, clubes de lectura y encuentros literarios a tu Google Calendar, a tu iPhone o a Outlook, o que te llegue por mail una selección de lo que viene, casi todas las semanas."
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
     <h1 class="display-md text-balance text-acento">

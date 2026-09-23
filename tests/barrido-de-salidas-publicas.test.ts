@@ -54,7 +54,7 @@ import { CAMPOS_TAXONOMIA } from '@/types/actividad';
 import { datosEstructurados, detalleDeActividad, migasDeDetalle } from '@/lib/detallePublico';
 import { carteleraDeDetalles } from '@/lib/cartelera';
 import { panelesDeAhora } from '@/lib/ahoraPublico';
-import { boletinSemanal, htmlDelBoletin, textoDelBoletin } from '@/lib/boletinSemanal';
+import { boletinSemanal, htmlDelBoletin, textoPlanoDelBoletin } from '@/lib/boletinSemanal';
 import { urlDeMiniatura } from '@/lib/imagenes';
 import {
   AVISO_DEL_MES_VENCIDO,
@@ -3759,7 +3759,7 @@ describe('barrido del correo semanal (§5, salida 29, B-1230)', () => {
     }));
 
     barrer('correo semanal (HTML)', htmlDelBoletin(b), permitidoEnElCuerpo);
-    barrer('correo semanal (texto plano)', textoDelBoletin(b), permitidoEnElCuerpo);
+    barrer('correo semanal (texto plano)', textoPlanoDelBoletin(b), permitidoEnElCuerpo);
   });
 
   it('el barrido detecta la fuga si alguien mete la entrada entera en la fila', () => {

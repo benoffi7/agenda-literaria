@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AVISO_DE_CAMBIOS,
   DIAS_DEL_BOLETIN,
   boletinSemanal,
   htmlDelBoletin,
-  textoDelBoletin,
+  textoPlanoDelBoletin,
   ventanaDelBoletin,
 } from '@/lib/boletinSemanal';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
@@ -328,7 +329,7 @@ describe('el cuerpo del correo', () => {
   const boletin = () => boletinSemanal(indice(), manana('2026-09-14'), ETIQUETAS)!;
 
   it('el texto plano lleva cada fila con su link', () => {
-    const texto = textoDelBoletin(boletin());
+    const texto = textoPlanoDelBoletin(boletin());
     expect(texto).toContain('MARTES 15 DE SEPTIEMBRE');
     expect(texto).toContain('· Taller de crónica');
     expect(texto).toContain('19:00 · Taller · Casa Brandon · Villa Crespo · A la gorra');
@@ -370,13 +371,41 @@ describe('el cuerpo del correo', () => {
     expect(html).not.toContain('<taller>');
   });
 
+  it('escapa también el lugar y el arancel, no solo el título (trampa 11)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y el hueco era real:** el caso de
+     * arriba prueba `titulo`, que es uno de los cuatro huecos interpolados del
+     * armador. El otro que lleva texto que una persona tipeó es la línea de
+     * metadatos —`sede.nombre` es libre, y las etiquetas de taxonomía nacen de
+     * «Otro»—, así que borrar el `escaparHtml` de esa línea dejaba la suite
+     * verde. Una sede «Casa "El Ático" & Co» sale rota en la casilla de todos.
+     */
+    const indice = indiceDePrueba([
+      encuentro(1, '2026-09-15T22:00:00Z', { sedeNombre: 'Casa "El Ático" & Co <galpón>' }),
+    ]);
+    const html = htmlDelBoletin(boletinSemanal(indice, manana('2026-09-14'), ETIQUETAS)!);
+    expect(html).toContain('Casa &quot;El Ático&quot; &amp; Co &lt;galpón&gt;');
+    expect(html).not.toContain('<galpón>');
+  });
+
+  it('el pie dice que lo anunciado puede cambiar, en los dos cuerpos', () => {
+    /*
+     * Es la única salida que **se manda** en vez de publicarse: el sitio y el
+     * calendario se corrigen solos, un correo que salió no. Quien lo lee tres
+     * días después no tiene forma de saber que hubo un cambio si no se lo dicen.
+     */
+    const b = boletin();
+    expect(textoPlanoDelBoletin(b)).toContain(AVISO_DE_CAMBIOS);
+    expect(htmlDelBoletin(b)).toContain(AVISO_DE_CAMBIOS);
+  });
+
   it('el texto plano NO escapa: ahí un `&` es un `&`', () => {
     // El escape es del HTML, no del contenido. Escapar los dos sería imprimir
     // `&amp;` en la casilla de quien lee la versión de texto.
     const indice = indiceDePrueba([
       encuentro(1, '2026-09-15T22:00:00Z', { titulo: 'Café & letras' }),
     ]);
-    const texto = textoDelBoletin(boletinSemanal(indice, manana('2026-09-14'), ETIQUETAS)!);
+    const texto = textoPlanoDelBoletin(boletinSemanal(indice, manana('2026-09-14'), ETIQUETAS)!);
     expect(texto).toContain('Café & letras');
     expect(texto).not.toContain('&amp;');
   });

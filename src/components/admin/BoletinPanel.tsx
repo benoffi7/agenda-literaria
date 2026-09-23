@@ -3,7 +3,8 @@ import { claseBotonSecundario } from '@/components/campos/Campo';
 import {
   boletinSemanal,
   htmlDelBoletin,
-  textoDelBoletin,
+  metadatosDe,
+  textoPlanoDelBoletin,
   type Boletin,
 } from '@/lib/boletinSemanal';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -122,9 +123,13 @@ function VistaPrevia({ boletin }: { boletin: Boletin }) {
                 <a href={e.url} target="_blank" rel="noreferrer" className="text-sm font-semibold">
                   {e.titulo}
                 </a>
-                <p className="text-xs text-tinta/60">
-                  {[e.hora, e.tipoEtiqueta, e.lugar, e.arancel].filter(Boolean).join(' · ')}
-                </p>
+                {/*
+                  `metadatosDe` y no los cuatro campos unidos acá: esta pantalla
+                  existe para **revisar la fila antes de mandarla**, así que tiene
+                  que imprimir exactamente la que sale. Copiada, el día que la fila
+                  del correo cambie se aprobaría una que no es (D-20).
+                */}
+                <p className="text-xs text-tinta/60">{metadatosDe(e)}</p>
               </li>
             ))}
           </ul>
@@ -194,7 +199,7 @@ export function BoletinPanel() {
         <p className={`${claseCaja} border-amber-300 bg-amber-50 text-amber-900`}>
           <strong>La lista de correo todavía no existe</strong>, así que la sección para anotarse no
           se dibuja en <a href={RUTA_SUSCRIBIRSE}>/suscribirse</a> y no hay a quién mandarle esto.
-          Los pasos para crearla están en la documentación de operación, en «Activar el correo
+          Los pasos para crearla están en la documentación de operación, en «El correo
           semanal».
         </p>
       )}
@@ -231,7 +236,7 @@ export function BoletinPanel() {
           <ParaCopiar
             etiqueta="El cuerpo, en texto plano"
             ayuda="Va en la pestaña de texto plano. Si no se pega, Mailchimp arma una sola y le salen los links repetidos."
-            texto={textoDelBoletin(boletin)}
+            texto={textoPlanoDelBoletin(boletin)}
             filas={16}
           />
 

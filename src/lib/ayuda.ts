@@ -803,8 +803,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Lo que no vas a ver son las pantallas compartidas: las opciones de los desplegables, ' +
-          'el estado del catálogo, las propuestas que llegan de afuera, los bugs reportados y el ' +
-          'historial de versiones de una actividad.',
+          'el estado del catálogo, las propuestas que llegan de afuera, el correo semanal, los ' +
+          'bugs reportados y el historial de versiones de una actividad.',
       },
       {
         texto:
@@ -1225,6 +1225,52 @@ export const CAPITULOS: CapituloAyuda[] = [
             it: 'una pendiente que nadie tocó en 31 días se va — el caso del formulario público',
           },
         ],
+      },
+    ],
+  },
+  {
+    id: 'correo',
+    titulo: 'El correo semanal',
+    paraQue:
+      'Armar el correo de la semana sin copiar horarios y links a mano de otra pestaña.',
+    puntos: [
+      {
+        texto:
+          'El botón «Correo» del listado arma el borrador de los siete días que vienen, ' +
+          'contados desde hoy: el asunto, el texto que se ve en la bandeja antes de abrir, la ' +
+          'lista de lo que hay agrupada por día, y el cuerpo en dos versiones para copiar.',
+      },
+      {
+        texto:
+          'No manda nada. Lo que hace es dejarlo listo para pegar en Mailchimp, que es donde ' +
+          'está la lista de quienes se anotaron. Qué sale, cuándo sale y qué escribís arriba lo ' +
+          'seguís decidiendo vos: esto te ahorra la parte aburrida, que es la que se equivoca.',
+      },
+      {
+        texto:
+          'Sale de lo que el sitio ya publica, no de lo que está guardado. Una actividad que ' +
+          'cargaste recién no aparece hasta que el sitio se rehace, unos minutos después, y la ' +
+          'pantalla te dice de cuándo es lo que estás viendo. Es a propósito: así el correo ' +
+          'nunca anuncia algo cuyo link todavía no funciona.',
+      },
+      {
+        texto:
+          'Si en esos siete días no hay ningún encuentro publicado, te lo dice en vez de armar ' +
+          'un correo vacío. Es lo que la página de «Suscribirse» promete: la semana que no hay ' +
+          'nada que valga la pena, no sale.',
+        atadoA: [
+          {
+            archivo: 'tests/boletin-semanal.test.ts',
+            it: 'devuelve `null` cuando no hay nada en la ventana, y no un correo vacío',
+          },
+        ],
+      },
+      {
+        texto:
+          'Copiá las dos versiones del cuerpo, no una sola: la de HTML es la que se ve con los ' +
+          'títulos y los links, y la de texto plano es la que le llega a quien tiene las ' +
+          'imágenes apagadas. Si no pegás la segunda, Mailchimp arma una sola y le salen los ' +
+          'links repetidos.',
       },
     ],
   },

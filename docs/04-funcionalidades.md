@@ -931,10 +931,12 @@ encuentro publicado, la pantalla lo dice en vez de mostrar un correo vacío — 
 lo que [`/suscribirse`](../src/lib/boletinDelSitio.ts) promete en HTML indexado: la
 semana que no hay nada que valga la pena, no sale.
 
-**Y avisa que todavía no hay a quién mandárselo** mientras `LISTA_DE_CORREO` sea
-`null`: la sección de alta de `/suscribirse` no se dibuja y la lista de Mailchimp no
-existe. Los pasos son de consola y están en
-[`08-operacion.md`](08-operacion.md) § «El correo semanal».
+**Avisaba que todavía no había a quién mandárselo** mientras `LISTA_DE_CORREO`
+fuera `null`. Desde **B-1231** la lista existe y ese aviso quedó dormido: la
+condición (`LISTA_DE_CORREO === null`, `src/components/admin/BoletinPanel.tsx`) no
+se cumple más. **No se borró** — es lo que tiene que volver a aparecer el día que
+la cuenta de Mailchimp cambie y la constante vuelva a `null`, que es el mismo
+motivo por el que el orden de B-780 quedó escrito y no solo ejecutado.
 
 ### El tablero — «Estado del catálogo» (B-370)
 

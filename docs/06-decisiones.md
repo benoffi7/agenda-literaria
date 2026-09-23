@@ -10458,6 +10458,16 @@ O sea que la diferencia entre las dos formas, en la página que importa, es de
 
 ---
 
+> ⚠️ **El punto 4 de esta decisión describe un estado que cambió — ver B-1231.**
+> `LISTA_DE_CORREO` tiene hoy los cuatro valores de la audience y la sección de
+> `/suscribirse` **se dibuja**; cuando esto se escribió era `null` y no se
+> dibujaba. Y el título quedó angosto de un lado: **el alta** no es una salida
+> nueva y eso sigue en pie, pero **el correo que se manda sí lo es** desde
+> B-1230 — es la salida 29, con títulos, horarios y sedes de actividades de
+> verdad. Todo el resto de D-640 —el `<form>` sin script de tercero, la cadencia
+> con su excepción, el remitente— sigue vigente. El bloque de abajo queda como
+> estaba escrito.
+
 ## D-640 · El correo del sitio es un `<form>` a Mailchimp, no una salida nueva, y su promesa dice la excepción
 
 **B-847, 2026-09-10.** El dueño pidió «un formulario para un newsletter, la idea

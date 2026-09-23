@@ -2,6 +2,58 @@
 
 ## Sin publicar
 
+- **Los auditores sobre el correo: nueve hallazgos, siete adentro** — cerrando
+  B-1230 y B-1231. Los que valen solos:
+
+  **El archivador volvió a romper el rastro, con otra cara** (**B-1233**, P0). Correr
+  `scripts/archivar-backlog.mjs` dejó 201 ítems que eran `P0` viviendo bajo la
+  cabecera `P2`, y una cabecera `P0` nueva envolviendo un solo ítem que se
+  autodeclara `P2`. Ningún texto se perdió —y eso es lo que lo hace peligroso: el
+  archivo se ve intacto—, pero el tablero contaría 1 «P0 arreglado» donde hubo 201.
+  Medido con el parser del propio repo. **Es B-1219 con otra cara** (aquél se comía
+  ítems, éste les cambia la severidad) y las dos veces la guarda del script dijo que
+  estaba todo bien: verifica que los ítems **estén**, no **dónde**. Reparado a mano;
+  el bug del script sigue vivo y está anotado.
+
+  **La vista previa del panel derivaba la fila por su cuenta.** `metadatosDe` estaba
+  copiada en el `.tsx`, y es justo la copia que no puede desincronizarse: esa
+  pantalla existe para revisar la fila **antes de mandarla**. Ahora se exporta y se
+  usa (D-20).
+
+  **El escape del HTML estaba probado en uno de los dos huecos con texto ajeno.**
+  Borrar el `escaparHtml` de la línea de metadatos —que lleva el nombre de sede y
+  las etiquetas tipeadas con «Otro»— dejaba la suite verde. Hay caso, y agarra la
+  mutación.
+
+  **La `meta description` nueva de `/suscribirse` prometía más que la página.** Decía
+  «recibí por mail lo que viene cada semana»: «cada semana» es un piso —la promesa
+  dice que la semana sin nada no sale— y «lo que viene» contradice «no es la agenda
+  entera: es una selección». Es B-781 en su forma afirmativa, que es justo la que
+  `promesas-sobre-datos.test.ts` no ve. Corregida, y **con red**: un barrido de
+  fórmulas conocidas, con control negativo en las dos direcciones —la redacción vieja
+  falla, y «casi todas las semanas», que nombra la excepción, pasa—.
+
+  **El índice se contradecía consigo mismo.** La fila 13 mandaba a una sección
+  titulada «El correo no es una salida nueva» con la fila 29 tres renglones más
+  arriba. Los dos son ciertos y son cosas distintas: **el alta** no abre fila (no
+  recibe un campo del modelo, D-320); **el correo que se manda** sí. Retitulada y
+  cruzada en los dos sentidos.
+
+  **Lo anunciado puede cambiar y el correo no se entera**: los dos cuerpos cierran
+  ahora con esa línea, y `08-operacion.md` tiene el runbook de qué hacer cuando algo
+  anunciado se cae (respuesta corta: no se retracta, se cuenta en el siguiente).
+
+  Más: los cuatro productores de texto de la salida 29 nombrados en las tres tablas
+  —`fechaLargaDeDia` nació con este cambio y existe **solo** para el correo, la clase
+  de B-1161—, el rename de `textoDelBoletin` a `textoPlanoDelBoletin` (había dos con
+  ese nombre en dos filas de la misma tabla), la entrada de novedades y la sección de
+  ayuda del panel, y el ordinal de la ficha del auditor.
+
+  **Lo que queda y es del dueño:** el doble opt-in y el remitente sin verificar en la
+  consola, **B-874 subido a P1** —dejó de ser hipotético: con la lista encendida cada
+  alta ya manda `form_submit` a GA4— y **DEC-14**, si el correo registra quién lo
+  abre y qué clickea (recomendado: dejarlo y decirlo en la promesa).
+
 - **El correo tiene dónde anotarse: la lista de Mailchimp existe y el alta está
   publicada** — **B-1231**. La sección de `/suscribirse` que B-847 dejó construida
   y apagada se encendió con los cuatro valores de la audience (`agendaleh`, centro
