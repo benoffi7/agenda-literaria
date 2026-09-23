@@ -13,6 +13,53 @@ archivo vivo vuelve a ser lo que falta hacer cada vez que se corre.
 calcula sobre los ids de los dos — si se calculara solo sobre el vivo,
 propondría un número ya usado.
 
+### B-1232 · La franja del título de la home, y un salto que aterriza debajo del encabezado — ✅ hecho (2026-09-23) · P2 — reportado por el dueño con dos capturas (2026-09-23)
+
+*«Hay espacios que no deberían estar. Y "talleres…" tiene un fondo y una línea que
+no deberían ir. Cuando hacés click en "9 más hoy" o en el finde, no baja lo
+suficiente.»* — con la captura de la home marcada y la captura de dónde debería
+quedar el scroll.
+
+**Son dos bugs de la misma pantalla, de dos frentes distintos, y ninguno de los dos
+tiene forma de aparecer en un test.**
+
+**1 · El título estaba dibujado como una franja.** B-1138 lo mudó al lugar que
+ocupaba el eslogan y lo pintó como lo que reemplazaba: `bg-crema`, `regla-fina` y
+sangría negativa hasta el borde. Con eso la parte de arriba de la home volvía a
+tener **tres superficies apiladas** antes del primer resultado —la regla del
+encabezado, la franja del título y la cabecera del tríptico—, que es exactamente lo
+que B-1138 había ido a sacar. Más el `py` del `<main>`, que dejaba aire arriba de un
+bloque que ya traía el suyo.
+
+**2 · El salto del tríptico caía debajo del encabezado pegado.** El ancla de B-1136
+existía y el link apuntaba bien; lo que faltaba era el `scroll-mt`. El encabezado es
+`sticky` de `sm` en adelante y se apoya **encima** del punto de llegada, así que los
+primeros 4,5rem del destino quedaban tapados — justo el rótulo del riel y el conteo
+de resultados. El `scroll-mt-4` que había alcanzaba en el teléfono, donde la cabecera
+se va con el scroll, y no en el escritorio.
+
+> ✅ **Hecho el 2026-09-23.**
+>
+> El `<h1>` es texto sobre el papel: sin fondo, sin regla y sin sangría. El `<main>`
+> lleva `pb` y no `py`, así que el único aire entre la regla del encabezado y el
+> tríptico es el `py` del propio título, y el contenedor del listado perdió su `mt`.
+>
+> Los **dos** destinos de salto de la home —`#listado`, el link de accesibilidad, y
+> `#resultados`, el pie del tríptico— descuentan la altura de la cabecera con
+> `sm:scroll-mt-[calc(var(--spacing-encabezado)+1rem)]`. Sale del **mismo** token del
+> que salen `min-h-encabezado` y el `top` de todo lo que se pega debajo: escrito como
+> un número a mano, el día que el encabezado cambie de alto el salto vuelve a caer
+> corto, en silencio.
+>
+> **La red va sobre el origen del número, no sobre el número** —
+> `tests/ancla-de-resultados.test.ts`, tres casos nuevos: los dos destinos descuentan
+> el encabezado y ningún salto de la home usa un valor propio. Es la clase de D-88 y
+> es la misma razón por la que B-1136 existe como archivo: un salto que cae corto no
+> es un error, la página funciona, el HTML del build se ve perfecto, y solo se nota
+> mirando la pantalla. La mutación (`sm:scroll-mt-20`) da rojo en los tres.
+
+## P0 — rompe algo o pierde datos
+
 ### B-1230 · El correo semanal tiene formulario de alta y no tiene correo — ✅ hecho (2026-09-23) · P2
 
 **B-847 construyó la mitad del alta** —el `<form>` de `/suscribirse` que anota a

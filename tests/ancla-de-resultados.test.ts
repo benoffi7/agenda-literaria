@@ -86,3 +86,63 @@ describe('el ancla a la que salta el pie del tríptico — B-1136', () => {
       .toBeLessThan(listado);
   });
 });
+
+/**
+ * Y que el salto **se vea** — B-1232.
+ *
+ * La otra mitad del mismo pedido del dueño, un frente después: *«cuando hacés
+ * click en "+9 más hoy" o en el finde, no baja lo suficiente»*. El ancla existía
+ * y el link apuntaba bien; lo que faltaba era descontar el encabezado, que de
+ * `sm` en adelante es `sticky` y se apoya encima del punto de llegada.
+ *
+ * **Es exactamente la clase de bug que B-1136 documenta**: no hay error, la
+ * página funciona, el navegador salta — y el destino queda tapado. Un test sobre
+ * el link no lo ve, un test sobre el `id` tampoco, y el HTML del build se ve
+ * perfecto. Solo se nota mirando la pantalla.
+ *
+ * Lo que se afirma es el **origen del número**, no el número: que salga de
+ * `--spacing-encabezado`, que es el mismo token del que sale la altura de la
+ * cabecera (`min-h-encabezado`) y el `top` de todo lo que se pega debajo. Con un
+ * valor a mano el día que el encabezado cambie de alto el salto vuelve a caer
+ * corto, en silencio, que es como cayó esta vez — es la clase de D-88.
+ */
+describe('el salto descuenta el encabezado pegado — B-1232', () => {
+  /*
+   * Los dos destinos de salto de la home: `#listado` («Saltar al listado», el
+   * link de accesibilidad) y `#resultados` (el pie del tríptico). Los dos
+   * aterrizan debajo de la misma cabecera, así que los dos necesitan el mismo
+   * descuento — arreglar uno solo deja el otro roto igual.
+   */
+  const DESTINOS = [
+    { id: 'id="listado"', nombre: '«Saltar al listado»' },
+    { id: 'id={ID_RESULTADOS}', nombre: 'el pie del tríptico' },
+  ];
+
+  it.each(DESTINOS)('$nombre descuenta la altura de la cabecera', ({ id }) => {
+    const c = codigo();
+    const desde = c.indexOf(id);
+    expect(desde, `no se encontró el destino ${id}`).toBeGreaterThan(-1);
+    // La lista de clases del mismo elemento: de su `id` hasta el `>` que lo cierra.
+    const clases = c.slice(desde, c.indexOf('>', desde));
+    expect(clases, 'el destino no descuenta el encabezado en `sm`').toContain(
+      'sm:scroll-mt-[calc(var(--spacing-encabezado)',
+    );
+  });
+
+  it('y el descuento sale del token, no de un número a mano', () => {
+    /*
+     * **La mutación del bug**: `sm:scroll-mt-20` deja el salto bien hoy y mal el
+     * día que la cabecera crezca. El caso de arriba ya lo agarra por el `calc`,
+     * pero éste dice por qué, y falla también si alguien copia el valor resuelto
+     * (`sm:scroll-mt-[5.5rem]`) creyendo que es lo mismo.
+     */
+    const c = codigo();
+    const saltos = c.match(/sm:scroll-mt-\[[^\]]+\]/g) ?? [];
+    expect(saltos.length, 'la home ya no tiene ningún salto compensado').toBe(DESTINOS.length);
+    for (const salto of saltos) {
+      expect(salto, 'un salto se escribió con un valor propio en vez del token').toContain(
+        'var(--spacing-encabezado)',
+      );
+    }
+  });
+});

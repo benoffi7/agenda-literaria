@@ -2,6 +2,48 @@
 
 ## Sin publicar
 
+- **El correo tiene dónde anotarse: la lista de Mailchimp existe y el alta está
+  publicada** — **B-1231**. La sección de `/suscribirse` que B-847 dejó construida
+  y apagada se encendió con los cuatro valores de la audience (`agendaleh`, centro
+  `us14`). Sigue siendo un `<form method="post">` sin un solo script de tercero: el
+  `grep` de `chimpstatic` sobre el `dist/` da cero y D-254 sigue verde.
+
+  **Verificado sobre el `dist/` y no solo en los tests:** el `action` apunta a
+  nuestra cuenta, y el campo trampa que deriva el código coincide carácter por
+  carácter con el que publica Mailchimp. Eso es lo que confirma que los dos ids
+  están bien copiados — con uno mal, el `b_…` no coincidiría y Mailchimp
+  descartaría cada alta **en silencio**.
+
+  Con la lista, el `<title>` y la `meta description` de la página pasaron a nombrar
+  **las dos** cosas que ofrece; hasta hoy hablaban solo del calendario, y era
+  cierto. `/ayuda` y `/apoyar` ya contaban el correo del lado verdadero solas:
+  preguntan `hayBoletin()`.
+
+  **Lo que ningún test sostiene y queda en el checklist:** el doble opt-in y el
+  remitente (consola de Mailchimp) y el cuarto interruptor del Enhanced Measurement
+  de GA4, que ahora sí aplica porque el sitio tiene un formulario que habla de datos
+  (**B-874**).
+
+- **La parte de arriba de la home, otra vez: el título dejó de ser una franja y el
+  salto del tríptico baja hasta donde tiene que bajar** — **B-1232**, reportado por
+  el dueño con dos capturas. Dos cosas de la misma pantalla:
+
+  **El `<h1>` es texto sobre el papel.** B-1138 lo había mudado al lugar del eslogan
+  y lo pintó como lo que reemplazaba (`bg-crema` + regla + sangría hasta el borde),
+  y eso devolvía **tres superficies apiladas** antes del primer resultado — la regla
+  del encabezado, la franja del título y la cabecera del tríptico. Sin fondo, sin
+  regla, y sin el aire de arriba del `<main>`: el único espacio que queda entre la
+  cabecera y el tríptico es el del propio título.
+
+  **Y los dos destinos de salto descuentan el encabezado pegado.** El ancla de
+  B-1136 existía y el link apuntaba bien, pero el encabezado es `sticky` de `sm` en
+  adelante y se apoya encima del punto de llegada: los primeros 4,5rem del destino
+  —el rótulo del riel, el conteo de resultados— quedaban tapados. El descuento sale
+  del **mismo** token `--spacing-encabezado` que da la altura de la cabecera, así
+  que no se puede desincronizar; escrito a mano, el día que el encabezado cambie de
+  alto el salto vuelve a caer corto en silencio. La red de
+  `tests/ancla-de-resultados.test.ts` afirma **el origen del número**, no el número.
+
 - **El correo semanal ya tiene correo: el borrador se arma solo** — **B-1230**,
   **D-800**, **D-801**. B-847 dejó el formulario de alta de `/suscribirse` y con él la
   promesa de un correo semanal «con encuentros de la agenda para todos los gustos y

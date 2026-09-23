@@ -164,32 +164,41 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
     Saltar al listado
   </a>
 
-  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+  <main class="mx-auto max-w-[90rem] px-4 pb-8 sm:px-10 sm:pb-12">
     {/*
       El encabezado de la página. El `h1` va en `headline-md` —Archivo Narrow de
       32px— y **no** en `display-lg`: el cuerpo de 72px es del marcador de mes, y
       dos cosas al mismo tamaño máximo es ninguna.
     */}
     {/*
-      **El título toma el lugar que tenía la franja del eslogan** — B-1138,
-      pedido del dueño. Va de ancho completo y sobre `crema`, que es exactamente
-      la franja que `Encabezado.astro` dibujaba en todas las páginas: el eslogan
-      se mudó pegado al nombre y este lugar quedó para lo único que se lo gana,
-      que es el `<h1>` de la página indexada.
+      **El título tomó el lugar que tenía la franja del eslogan** — B-1138,
+      pedido del dueño: el eslogan se mudó pegado al nombre y este lugar quedó
+      para lo único que se lo gana, que es el `<h1>` de la página indexada.
+
+      **Pero es texto, no una franja** — B-1232, pedido del dueño sobre la
+      captura de la home: *«"talleres…" tiene un fondo y una línea que no
+      deberían ir»*. B-1138 lo había dibujado como la franja que reemplazaba
+      (`bg-crema` + `regla-fina` + sangría negativa hasta el borde), y eso dejaba
+      **tres** superficies apiladas antes del primer resultado: la regla del
+      encabezado, la franja del título y la cabecera del tríptico. Un título
+      centrado en el papel dice lo mismo y no compite con el bloque que sí es una
+      superficie, que es «¿Qué hay ahora?».
+
+      Con la franja se fue también el aire de arriba: el `<main>` lleva `pb` y no
+      `py`, así que el `<h1>` arranca contra la regla del encabezado y el único
+      espacio que queda es el suyo. Era el otro medio pedido de la captura
+      («hay espacios que no deberían estar»).
 
       **Sigue siendo un `<h1>` y sigue adentro del `<main>`**, que es la parte
-      que no se puede perder al moverlo: la franja vivía en el `<header>`, y un
-      `<h1>` ahí adentro dejaría a la home sin encabezado de nivel 1 en su
-      contenido. Lo que cambia es dónde se dibuja, no qué es.
+      que no se puede perder: la franja vivía en el `<header>`, y un `<h1>` ahí
+      adentro dejaría a la home sin encabezado de nivel 1 en su contenido.
 
       **Y se fue la bajada** («N actividades con fecha próxima. Buscá por
       barrio…»), también pedido del dueño: el conteo se repite dos renglones más
       abajo, arriba del listado, y la invitación a buscar la dice el buscador que
       viene enseguida.
     */}
-    <h1
-      class="regla-fina -mx-4 bg-crema px-4 py-3 text-center headline-md text-balance text-tinta sm:-mx-10 sm:px-10"
-    >
+    <h1 class="py-4 text-center headline-md text-balance text-tinta sm:py-5">
       {TITULO_DE_LA_HOME}
     </h1>
 
@@ -207,8 +216,17 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
       quedara afuera, el salto caería en un lugar distinto antes y después de
       hidratar. Dos: saltar directo a «lo que hay hoy» es mejor destino que
       saltar al buscador, que es lo que este link vino a saltear.
+
+      El `scroll-mt` es el mismo que el del ancla de abajo y por el mismo motivo
+      (B-1232): los dos son destinos de salto y los dos quedaban debajo del
+      encabezado pegado. El razonamiento completo está en el comentario de
+      `ID_RESULTADOS`.
+
+      **Y ya no lleva `mt`**: el aire que lo separaba del título es el `py` del
+      propio `<h1>`, que desde B-1232 es lo único que hay entre la regla del
+      encabezado y el tríptico.
     */}
-    <div id="listado" class="mt-8 scroll-mt-4 sm:mt-10">
+    <div id="listado" class="scroll-mt-4 sm:scroll-mt-[calc(var(--spacing-encabezado)+1rem)]">
       {/*
         El tríptico que imprimió el build. La island lo saca del DOM por este
         `id` cuando tiene el índice y monta el suyo —recalculado con el reloj de
@@ -238,13 +256,29 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
         hidrate** y sin una línea de JavaScript — la misma propiedad que el
         comentario de `rutaDelResto` defiende para el link.
 
+        **Y el `scroll-mt` tiene que descontar el encabezado pegado** — B-1232,
+        pedido del dueño: *«cuando hacés click en "+9 más hoy" o en el finde, no
+        baja lo suficiente»*. El salto caía bien, pero el encabezado es `sticky`
+        de `sm` en adelante (`Encabezado.astro`) y se apoya **encima** del punto
+        de llegada: los primeros 4,5rem del destino quedaban tapados, que es
+        justo el rótulo del riel y el conteo de resultados. Un `scroll-mt-4`
+        alcanzaba en el teléfono, donde la cabecera se va con el scroll, y no en
+        el escritorio.
+
+        Sale del **mismo** token `--spacing-encabezado` que le da la altura a la
+        cabecera y el `top` a todo lo que se pega debajo (el riel del buscador,
+        la ficha del detalle), más 1rem de aire para que el destino no quede
+        lamiendo la regla. Escrito como un número a mano, el día que el
+        encabezado cambie de alto este salto vuelve a caer corto — y en silencio,
+        que es como cayó esta vez.
+
         **Va acá y no en `#listado`**, que envuelve también al tríptico: saltar
         ahí dejaría a la vista justo lo que hay que correr. Y va en el contenedor
         del `<Buscador>` y no en la lista, porque la island **saca del DOM** la
         lista del build (y el tríptico) para montar los suyos: un ancla ahí
         adentro desaparece al hidratar. Este contenedor no lo toca nadie.
       */}
-      <div id={ID_RESULTADOS} class="scroll-mt-4">
+      <div id={ID_RESULTADOS} class="scroll-mt-4 sm:scroll-mt-[calc(var(--spacing-encabezado)+1rem)]">
         <Buscador
           client:load
           version={indice.version}
