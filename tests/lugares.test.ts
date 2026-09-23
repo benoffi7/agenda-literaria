@@ -27,6 +27,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { lugarAFormulario } from '@/lib/lugares';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import {
   ESTADOS_DIRECTORIO,
@@ -83,7 +84,7 @@ import {
   direccionPublicaPorDefecto,
 } from '@/types/lugar';
 import { ts } from './fixtures/tiempo';
-import type { LugarForm } from '@/types/lugar';
+import type { Lugar, LugarForm } from '@/types/lugar';
 
 /** Un archivo del repo, desde la raíz. */
 const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url));
@@ -602,6 +603,18 @@ describe('el schema — lo que se le avisa a quien completa antes de mandar', ()
     // Y el desplegable del panel tiene de dónde sacar ese `''`.
     const formulario = readFileSync(raiz('src/components/admin/LugarFormulario.tsx'), 'utf8');
     expect(formulario).toContain('<option value="">Sin precio</option>');
+  });
+
+  it('y editar un lugar sin precio tampoco lo rellena con una unidad — B-923', () => {
+    // La otra mitad: `lugarAFormulario` ponía `'hora'` aunque no hubiera precio,
+    // así que editar cualquier ficha que no cobra fallaba al guardar.
+    const sinPrecio = { nombre: 'El Salón', slug: 'el-salon', precio: null } as unknown as Lugar;
+    expect(lugarAFormulario(sinPrecio).precio).toEqual({ monto: '', porUnidad: '' });
+    const conPrecio = {
+      ...sinPrecio,
+      precio: { valor: { monto: 25000, porUnidad: 'dia' }, cargadoEn: null },
+    } as unknown as Lugar;
+    expect(lugarAFormulario(conPrecio).precio).toEqual({ monto: '25000', porUnidad: 'dia' });
   });
 
   it('el precio va con su unidad, o no va — B-837', () => {
