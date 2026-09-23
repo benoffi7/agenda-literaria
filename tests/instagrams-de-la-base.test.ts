@@ -130,6 +130,11 @@ describe('el normalizador es uno solo — B-928', () => {
     expect(delScript('casabrandon/otracuenta')).toBeNull();
     expect(delScript('Festival Argentino de Historieta')).toBeNull();
     expect(delScript('unclubdelectura@example.com')).toBeNull();
+    // B-1160 — el corte del `?`/`#` va solo detrás de `instagram.com/`: pelado,
+    // `casa#brandon` derivaba a `casa`, que es la cuenta de otra persona.
+    expect(delScript('casa#brandon')).toBeNull();
+    expect(delScript('taller?2026')).toBeNull();
+    expect(delScript('https://www.instagram.com/casabrandon/?igsh=MWx0eXo4a2Rr')).toBe('casabrandon');
     // Y el `undefined`/`null`, que el script puede pasarle desde un campo vacío.
     expect(delScript(undefined)).toBeNull();
     expect(delScript(null)).toBeNull();

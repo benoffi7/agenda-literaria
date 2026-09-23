@@ -158,26 +158,30 @@ describe('el Instagram del formulario se corrige al salir del campo — B-1144',
     });
 
     /**
-     * **Fija el bug de B-1160, no lo bendice.** `handleInstagram` corta por el
-     * primer `?` o `#` sobre cualquier valor —no solo sobre los que traen
-     * `instagram.com/` adelante—, así que un handle con un `#` adentro se
-     * recorta y termina apuntando a **otra cuenta**. El arreglo es del saneador
-     * y vive en B-1160; acá se deja escrito qué se ve en el formulario mientras
-     * tanto, que es lo que este ítem cambió: hasta B-1144 ese recorte lo hacía
-     * `conHandle` al guardar, en silencio.
-     *
-     * Cuando B-1160 se arregle, este caso se pone rojo. La respuesta correcta
-     * es darlo vuelta —esperar `'casa#brandon'`—, no aflojar el aserto.
+     * **B-1160 — un `#` adentro del handle ya no lo recorta.** Hasta B-1160
+     * `handleInstagram` cortaba por el primer `?` o `#` de cualquier valor, así
+     * que `casa#brandon` quedaba en `casa`, que es **la cuenta de otra
+     * persona**; este caso fijaba ese recorte a la vista, escrito para ponerse
+     * rojo el día del arreglo. Ahora el corte va solo detrás de
+     * `instagram.com/`, y el valor pelado falla el alfabeto: el campo queda como
+     * se tipeó, que es el criterio de todo lo que el saneador no reconoce.
      */
-    it('un `#` adentro del handle lo recorta, y se ve en el campo — B-1160', () => {
+    it('un `#` adentro del handle no lo recorta: queda como se tipeó — B-1160', () => {
       const escrituras = { n: 0 };
       render(<Arnes escrituras={escrituras} />);
       const input = tipearYSalir(etiqueta, 'casa#brandon');
       expect(
         input.value,
-        'B-1160 — `casa` es una cuenta de otra persona. Que se vea en el campo ' +
-          'es peor que nada y mejor que el recorte silencioso al guardar',
-      ).toBe('casa');
+        'B-1160 — recortarlo a `casa` apunta a la cuenta de otra persona',
+      ).toBe('casa#brandon');
+    });
+
+    /** Y el control positivo: detrás de una URL, el `?igsh=…` sí se sigue cortando. */
+    it('pero el `?igsh=…` de una URL de Instagram sí se corta', () => {
+      const escrituras = { n: 0 };
+      render(<Arnes escrituras={escrituras} />);
+      const input = tipearYSalir(etiqueta, 'https://www.instagram.com/casabrandon/?igsh=MWx0eXo4a2Rr');
+      expect(input.value).toBe('casabrandon');
     });
 
     /**

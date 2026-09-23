@@ -1367,7 +1367,7 @@ describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)'
       'utf8',
     );
     expect(fuente).toContain(
-      "import { arrobaInstagram, cortaAlDerivar } from './handle-instagram.js';",
+      "import { arrobaInstagram } from './handle-instagram.js';",
     );
     /*
      * Las señales se buscan sobre el fuente **sin comentarios**: los docblocks de
@@ -1546,14 +1546,16 @@ describe('construirDescripcion — el Instagram se muestra como handle (B-1145, 
    *
    * **Para esta salida es peor que para ninguna.** Una URL cruda en la
    * descripción es fea y se corrige; una arroba equivocada señala a un tercero, y
-   * el evento ya está copiado en el calendario de quien se suscribió. Así que
-   * acá, ante la duda, sale el crudo (`arrobaPublicable`).
+   * el evento ya está copiado en el calendario de quien se suscribió.
    *
-   * **Este caso sigue siendo cierto el día que B-1160 se arregle**, y es
-   * deliberado: si el corte se acota a las URLs, `handleInstagram('casa#brandon')`
-   * pasa a dar `null` y `arrobaInstagram` devuelve el crudo igual. Los dos caminos
-   * llegan al mismo texto, así que la red no se cae ni hay que reescribirla —
-   * solo se podrá sacar la puerta, con ese ítem.
+   * **B-1160 lo arregló en el saneador**: el corte va solo detrás del prefijo
+   * `instagram.com/`, así que `handleInstagram('casa#brandon')` da `null` y
+   * `arrobaInstagram` devuelve el crudo. Hasta entonces lo tapaba una puerta local
+   * de `calendario.js` (D-763), que se sacó con ese ítem; este caso se escribió
+   * para seguir siendo cierto por los dos caminos, y no hubo que tocarlo.
+   *
+   * MUTACIÓN PROBADA: volver a cortar por `?`/`#` sin mirar el prefijo en
+   * `functions/handle-instagram.js` deja los dos casos en rojo.
    */
   it('un valor con `#` o `?` que no es una URL no se arroba: sale crudo (B-1160)', () => {
     const PELIGROSOS = [
