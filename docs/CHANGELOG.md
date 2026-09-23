@@ -2,6 +2,15 @@
 
 ## Sin publicar
 
+- **La foto de una propuesta no llegaba a la actividad, y ahora se sabe por qué**
+  (B-1235). El bucket no tiene CORS: la descarga de los bytes (`alt=media`) no
+  manda `Access-Control-Allow-Origin`, así que el `fetch` con el que el panel copia
+  la foto para quitarle los metadatos fallaba en producción. En el emulador anda
+  porque no aplica el CORS del bucket; por eso toda la cadena daba verde. Queda
+  `cors.json` en la raíz (solo GET/HEAD desde los orígenes del sitio), que falta
+  aplicar en la consola (B-1235a). Y si la promoción falla por cualquier motivo, el
+  formulario muestra una alerta arriba —«La foto de la propuesta NO se agregó a
+  esta actividad»— con la causa y cómo subirla a mano.
 - **La doc de `/opciones` dice lo que B-893 cambió** — del `auditor-privacidad`:
   que el reuso entre dos cuentas aprueba sin admin (y con eso publica a los hubs y
   al sitemap, abierto como **DEC-15**), que «solo aprobadas» vale para el

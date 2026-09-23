@@ -203,6 +203,19 @@ Resueltas el 2026-08-21:
 
 ## Pendiente de acción manual del dueño
 
+### B-1235a · Aplicar el CORS del bucket de imágenes · P1 — la mitad de consola de B-1235 (2026-09-23)
+
+Desde la raíz del repo:
+
+```
+gcloud storage buckets update gs://agenda-literaria.firebasestorage.app --cors-file=cors.json
+```
+
+Solo habilita que el JavaScript del sitio **lea** bytes que ya lee cualquiera con
+la URL con token. Hoy el bucket tiene `cors_config: null`. Arregla B-1235 y B-1320
+a la vez. Lo intentó el orquestador y el modo automático lo frenó por ser un
+recurso compartido: es del dueño.
+
 ### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3
 
 > **Mirado el 2026-09-23 contra el `events.json` publicado** (generado 17:58 UTC,
@@ -285,7 +298,16 @@ seguir es que nadie sepa cuál de las dos es.
 
 ## P1 — bloquean el objetivo del proyecto
 
-### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — reportado por el dueño (2026-09-23)
+### B-1320 · «Bajar la imagen» de la bandeja tampoco anda en producción · P1 — de `propuesta-imagen` (2026-09-23)
+
+Misma causa que B-1235: hace un `fetch` a la URL de descarga, y el bucket no
+tiene CORS. Su docblock afirmaba que andaba (corregido en `de19dc2`). Hoy el botón
+falla y manda a «abrila en otra pestaña», que sí funciona. Importa porque es el
+resguardo antes del descarte irreversible de B-926. Se arregla solo con B-1235a.
+
+### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 causa encontrada, falta B-1235a (2026-09-23)
+
+> 🟡 **Causa encontrada y verificada contra el bucket de producción (2026-09-23).** No era la cadena de guardado: era el **CORS**. La respuesta con los bytes (`alt=media`) no manda `Access-Control-Allow-Origin` para ningún origen, así que el `fetch` de `promoverImagenDePropuesta` falla en el navegador («Failed to fetch»); en el emulador anda porque no aplica el CORS del bucket, y en la bandeja la foto «se ve» porque un `<img>` no lo necesita. **Hecho** (`de19dc2`, `d245919`): `cors.json` en la raíz (solo GET/HEAD desde los cuatro orígenes del sitio), y una alerta visible arriba del formulario cuando la foto no entra, con la causa y qué hacer (`avisoDeImagenNoPromovida`, `Conversion.imagenNoPromovida`). **Falta:** B-1235a, y probar una conversión real. Se cierra cuando una propuesta con foto se convierta y la actividad reabra con el flyer.
 
 **El reporte:** «cuando una propuesta con imagen se promueve a actividad, el
 usuario pulsó usar imagen pero no la tomó». Apretó «Sí, usarla», la imagen se veía
@@ -990,6 +1012,20 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
+
+### B-1321 · El CORS del bucket no está en `08-operacion.md` ni en ningún chequeo · P2 — de `propuesta-imagen` (2026-09-23)
+
+Es un paso de consola: si alguien lo borra o cambia el dominio, la promoción
+vuelve a fallar sin que nada se ponga rojo — el test mira `cors.json`, no el
+bucket. Sumar el paso a `08-operacion.md` y, a futuro, un chequeo de humo que haga
+`curl -H Origin` a una imagen de `events.json` y exija `Access-Control-Allow-Origin`.
+
+### B-1322 · Las propuestas aceptadas antes de B-1235 pueden tener el original huérfano · P2 — de `propuesta-imagen` (2026-09-23)
+
+Si se aceptaron sin copia, `borrarOriginalAlAceptar` devolvió `sin-copia` y la
+foto queda en `propuestas/` para siempre. `relevarFlyeresSinPlazo` (B-871) las
+lista. Con B-1235a aplicado, repasar esa lista y subir a mano el flyer a cada
+actividad, o descartarlo.
 
 ### B-1330 · `D-88` se cita desde el código y no tiene entrada · P2 — de `docblocks` (2026-09-23)
 
