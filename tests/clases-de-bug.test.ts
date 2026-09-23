@@ -1919,6 +1919,50 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
+   * B-906 — el schema de una fila de la galería llegó a estar escrito **cinco**
+   * veces (la actividad y las cuatro fichas de la Guía), porque el de
+   * `schema.ts` era privado y cada ficha nueva copiaba la anterior. Un campo
+   * nuevo de `Imagen` entraba en una y no en las otras, y lo único que las
+   * sostenía era que todas tipaban a `Imagen`.
+   *
+   * Lo que delata una copia es validar el prefijo `img_`: sin eso no es un
+   * schema de imagen. Se busca en todo `src/` y no solo en los `*-schema.ts`,
+   * porque la sexta copia la va a escribir quien no sabía que existía el
+   * módulo, y ese no respeta el nombre.
+   *
+   * `imagen-schema.ts` depende solo de `zod` a propósito: lo importan los
+   * formularios públicos de «sumá una ficha», y si arrastrara `schema.ts` el
+   * sitio cargaría el schema entero de la actividad.
+   */
+  it('B-906 — el schema de la imagen se escribe una sola vez, y no arrastra nada', () => {
+    const conPrefijo = execFileSync('grep', ['-rln', String.raw`\^img_`, 'src'], {
+      cwd: fileURLToPath(raiz),
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    expect(conPrefijo, 'importá imagenSchema de @/lib/imagen-schema en vez de copiarlo').toEqual([
+      'src/lib/imagen-schema.ts',
+    ]);
+
+    const modulo = sinComentarios(fuente('src/lib/imagen-schema.ts'));
+    const imports = [...modulo.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
+    expect(imports, 'imagen-schema.ts lo importa el bundle público: solo zod').toEqual(['zod']);
+
+    // Control positivo: las cinco entidades con galería lo usan de verdad.
+    for (const archivo of [
+      'src/lib/schema.ts',
+      'src/lib/libreria-schema.ts',
+      'src/lib/suscripcion-literaria-schema.ts',
+      'src/lib/lugar-schema.ts',
+      'src/lib/biblioteca-schema.ts',
+    ]) {
+      expect(fuente(archivo), archivo).toContain("from '@/lib/imagen-schema'");
+    }
+  });
+
+  /**
    * El otro lado de la clase, ya resuelto y con guarda: el panel no
    * reimplementa la descripción del evento, importa la del sync por el alias
    * `@calendario` (D-20). Si alguien vuelve a copiarla, las dos versiones se
@@ -2052,7 +2096,9 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
    * nombra uno solo no protege a los demás, y agregarlos cuesta una línea.
    */
   it('cada lista con ids de cliente tiene su prefijo validado en el schema', () => {
-    const schema = fuente('src/lib/schema.ts');
+    // B-906: el schema de la imagen vive en su propio módulo, que `schema.ts`
+    // importa; los dos fuentes juntos son «el schema» de la actividad.
+    const schema = fuente('src/lib/schema.ts') + fuente('src/lib/imagen-schema.ts');
     const productores: [string, string][] = [
       ['ses_', 'src/lib/sesiones.ts'],
       ['img_', 'src/lib/imagenes.ts'],
@@ -2559,16 +2605,12 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
       .filter((f) => /\.tsx?$/.test(f) && f !== FIXTURE);
 
   /**
-   * `lista-actividades.render.test.tsx` define su propio doble —exactamente
-   * lo que este `describe` existe para atajar— y se dejó **a propósito**
-   * (B-1050): achicarlo es otro ítem, y este archivo no lo toca. Sin esta
-   * excepción documentada, cerrar el hueco de arriba pondría en rojo un
-   * archivo que nadie vino a arreglar todavía, y el próximo frente que tope
-   * con eso no tiene cómo distinguir «regresión nueva» de «deuda conocida».
-   * Es una lista de uno, con motivo escrito — no una lista que crece: un
-   * segundo archivo acá sería una alarma, no una entrada más.
+   * El `.render.test.tsx` que B-875 encontró con su propio doble. Desde B-1050
+   * importa el fixture como los demás, así que ya no es una excepción: queda
+   * como el caso concreto con el que se controla que el barrido lee los `.tsx`.
+   * No hay lista de excepciones — un doble nuevo es una regresión, no deuda.
    */
-  const EXCEPCIONES_CONOCIDAS = ['tests/lista-actividades.render.test.tsx'];
+  const RENDER_QUE_SE_LE_ESCAPABA = 'tests/lista-actividades.render.test.tsx';
 
   /**
    * La **forma** de un doble de Timestamp, no su nombre: lo que lo delata es
@@ -2595,18 +2637,18 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
     // esta lista vacía aunque el archivo exista y tenga la forma del doble.
     const versionados = testsVersionados();
     expect(versionados.some((f) => f.endsWith('.render.test.tsx'))).toBe(true);
-    expect(versionados).toContain(EXCEPCIONES_CONOCIDAS[0]);
+    expect(versionados).toContain(RENDER_QUE_SE_LE_ESCAPABA);
   });
 
-  it('ningún test define su propio doble de Timestamp, salvo la excepción documentada', () => {
+  it('ningún test define su propio doble de Timestamp', () => {
     const conCopia: string[] = [];
     for (const archivo of testsVersionados()) {
       if (FORMA_DE_DOBLE.test(codigo(archivo))) conCopia.push(archivo);
     }
     expect(
       conCopia.sort(),
-      'importá { ts } de tests/fixtures/tiempo en vez de escribirlo de nuevo, o sumá el archivo a EXCEPCIONES_CONOCIDAS con el motivo si es deuda ya anotada',
-    ).toEqual([...EXCEPCIONES_CONOCIDAS].sort());
+      'importá { ts } o { tsDe } de tests/fixtures/tiempo en vez de escribirlo de nuevo',
+    ).toEqual([]);
   });
 
   it('el doble no miente en los campos que nadie lee todavía', () => {

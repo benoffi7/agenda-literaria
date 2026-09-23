@@ -47,6 +47,7 @@ import {
   type Props as PropsDeLista,
 } from '@/components/admin/ListaActividades';
 import type { ActividadConId } from '@/types/actividad';
+import { ts, tsDe } from './fixtures/tiempo';
 
 /**
  * Desde la raíz del repo, y **no** con el `new URL(…, import.meta.url)` que usa
@@ -56,10 +57,6 @@ import type { ActividadConId } from '@/types/actividad';
  * este entorno agrega y que en `node` no aparece.
  */
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
-
-/** `Timestamp` de mentira: la tarjeta solo llama a `toDate()`. */
-const tsDe = (d: Date) => ({ toDate: () => d, toMillis: () => d.getTime() });
-const ts = (iso: string) => tsDe(new Date(iso));
 
 const acto = (over: Partial<ActividadConId> & { id: string }): ActividadConId =>
   ({

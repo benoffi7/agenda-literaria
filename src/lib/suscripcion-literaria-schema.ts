@@ -27,6 +27,7 @@ import { z } from 'zod';
 import type { DatoConFecha } from '@/lib/datoConFecha';
 import { ESTADO_INICIAL, type EstadoDirectorio, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
+import { imagenSchema } from '@/lib/imagen-schema';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { searchTextDeSuscripcion } from '@/lib/suscripcionPublica';
 import {
@@ -112,27 +113,6 @@ export const pareceMail = (valor: string): boolean =>
 export const slugDeSuscripcion = (f: { nombre: string; slug: string }): string =>
   f.slug.trim() ? f.slug.trim() : slugDeFicha(f.nombre);
 
-/**
- * Una fila de la galería (D-125).
- *
- * ⚠️ **Es la tercera derivación de la misma forma** —`imagenSchema` de
- * `src/lib/schema.ts` y `imagenDeLibreriaSchema` de `libreria-schema.ts` son las
- * otras dos— y eso ya estaba anotado como deuda cuando eran dos (B-909). Se
- * escribe igual que la segunda a propósito: lo que hay que hacer es unificarlas,
- * no que la tercera invente una variante.
- */
-const imagenDeSuscripcionSchema = z.object({
-  id: z.string().regex(/^img_/, 'El id de la imagen tiene que empezar con img_'),
-  url: texto.min(1, 'Falta la dirección de la imagen'),
-  epigrafe: opcional,
-  textoAlternativo: opcional,
-  origen: z.enum(['externa', 'propia']),
-  storagePath: z.string().optional(),
-  ancho: z.number().optional(),
-  alto: z.number().optional(),
-  portada: z.boolean().default(false),
-});
-
 /** Un slug de taxonomía tal como lo guarda el documento. */
 const slugDeTaxonomia = texto.max(TOPE_SLUG_TAXONOMIA_SUSCRIPCION, 'Ese valor quedó muy largo');
 
@@ -149,7 +129,7 @@ const base = z.object({
   descripcion: texto
     .min(MIN_DESCRIPCION_SUSCRIPCION, 'Contá qué es y para quién, aunque sea en una línea')
     .max(TOPE_DESCRIPCION_SUSCRIPCION, 'Quedó muy largo, resumilo'),
-  imagenes: z.array(imagenDeSuscripcionSchema).default([]),
+  imagenes: z.array(imagenSchema).default([]),
   ofrecidaPor: z.object({
     nombre: texto
       .min(MIN_OFRECIDA_POR_SUSCRIPCION, '¿Quién la ofrece?')

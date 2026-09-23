@@ -33,6 +33,7 @@ import { esProvincia, geografiaNormalizada } from '@/lib/geografia.mjs';
 import type { DatoConFecha } from '@/lib/datoConFecha';
 import { ESTADO_INICIAL, type EstadoDirectorio, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
+import { imagenSchema } from '@/lib/imagen-schema';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 // La derivación del índice de búsqueda vive del lado **público** y se importa:
 // es la misma para el documento y para lo que se publica, así que no puede haber
@@ -116,32 +117,6 @@ export const pareceMail = (valor: string): boolean =>
 export const slugDeLugar = (f: { nombre: string; slug: string }): string =>
   f.slug.trim() ? f.slug.trim() : slugDeFicha(f.nombre);
 
-/**
- * Una fila de la galería (D-125).
- *
- * ⚠️ **Es la cuarta derivación de la misma forma** —`imagenSchema` de
- * `src/lib/schema.ts`, `imagenDeLibreriaSchema` y `imagenDeSuscripcionSchema`
- * son las otras tres— y eso está anotado como deuda desde que eran dos:
- * **B-906**, «`imagenSchema` está escrito dos veces: `src/lib/schema.ts` no lo
- * exporta». (El docblock equivalente de `suscripcion-literaria-schema.ts` cita
- * **B-909**, que es otra cosa —el slug sin reserva atómica—; queda anotado.)
- *
- * Se escribe igual que las otras **a propósito**: lo que hay que hacer es
- * unificarlas exportando la de `schema.ts`, no que la cuarta invente una
- * variante.
- */
-const imagenDeLugarSchema = z.object({
-  id: z.string().regex(/^img_/, 'El id de la imagen tiene que empezar con img_'),
-  url: texto.min(1, 'Falta la dirección de la imagen'),
-  epigrafe: opcional,
-  textoAlternativo: opcional,
-  origen: z.enum(['externa', 'propia']),
-  storagePath: z.string().optional(),
-  ancho: z.number().optional(),
-  alto: z.number().optional(),
-  portada: z.boolean().default(false),
-});
-
 /** ¿Este texto es una de las cuatro unidades de precio? */
 export const esUnidadDePrecio = (valor: string): valor is UnidadDePrecioLugar =>
   (UNIDADES_DE_PRECIO_LUGAR as readonly string[]).includes(valor);
@@ -160,7 +135,7 @@ const base = z.object({
   // **Opcional**, como en una librería: un café con su dirección y su capacidad
   // ya dice lo que hay que saber.
   descripcion: texto.max(TOPE_DESCRIPCION_LUGAR, 'Quedó muy largo, resumilo').default(''),
-  imagenes: z.array(imagenDeLugarSchema).default([]),
+  imagenes: z.array(imagenSchema).default([]),
   tipo: slugDeTaxonomia.default(''),
   /*
    * ⚠️ **Opcional, al revés que en una librería** — § 6 del PRD.

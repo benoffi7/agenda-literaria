@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { ESTADO_INICIAL, type EstadoDirectorio, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
 import { esProvincia, geografiaNormalizada } from '@/lib/geografia.mjs';
+import { imagenSchema } from '@/lib/imagen-schema';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { searchTextDeLibreria } from '@/lib/libreriaPublica';
 import {
@@ -114,29 +115,6 @@ export const pareceMail = (valor: string): boolean =>
 export const slugDeLibreria = (f: { nombre: string; slug: string }): string =>
   f.slug.trim() ? f.slug.trim() : slugDeFicha(f.nombre);
 
-/**
- * Una fila de la galería (D-125).
- *
- * ⚠️ **Es la segunda derivación de la misma forma**: la primera es
- * `imagenSchema` de `src/lib/schema.ts`, que no está exportado. Mientras sean
- * dos, un campo nuevo de `Imagen` entra en una y no en la otra sin que nada se
- * ponga rojo — la clase de B-88. Lo que hoy lo sostiene es el compilador (las
- * dos producen un `Imagen`) y lo que falta es unificarlas; está anotado para el
- * backlog. Los cuatro campos **opcionales** lo son por D-125/B-301 y se leen con
- * el default que preserva lo anterior, no se exigen acá.
- */
-const imagenDeLibreriaSchema = z.object({
-  id: z.string().regex(/^img_/, 'El id de la imagen tiene que empezar con img_'),
-  url: texto.min(1, 'Falta la dirección de la imagen'),
-  epigrafe: opcional,
-  textoAlternativo: opcional,
-  origen: z.enum(['externa', 'propia']),
-  storagePath: z.string().optional(),
-  ancho: z.number().optional(),
-  alto: z.number().optional(),
-  portada: z.boolean().default(false),
-});
-
 const base = z.object({
   nombre: texto
     .min(MIN_NOMBRE_LIBRERIA, '¿Cómo se llama la librería?')
@@ -146,7 +124,7 @@ const base = z.object({
   // normal. La forma se valida en el `superRefine`, sobre el slug ya derivado.
   slug: texto.max(TOPE_SLUG_LIBRERIA, 'La dirección web quedó muy larga').default(''),
   descripcion: texto.max(TOPE_DESCRIPCION_LIBRERIA, 'Quedó muy largo, resumilo').default(''),
-  imagenes: z.array(imagenDeLibreriaSchema).default([]),
+  imagenes: z.array(imagenSchema).default([]),
   direccion: texto
     .min(MIN_DIRECCION_LIBRERIA, '¿Dónde queda?')
     .max(TOPE_DIRECCION_LIBRERIA, 'La dirección quedó muy larga'),
