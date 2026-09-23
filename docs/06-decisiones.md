@@ -12404,6 +12404,73 @@ string de `datetime-local` y de ahí sale el mismo `Timestamp` (trampa 1).
 
 ---
 
+## D-810 · El publicador crea etiquetas por una callable que verifica el array, y la regla de `/opciones` no se abre
+
+**B-893, 2026-09-23.** Pedido del dueño: «las etiquetas nuevas entran sin
+aprobar». El publicador no podía crear etiquetas en absoluto desde B-888 —el
+panel no le ofrecía «Otro…» y el guardado salteaba el alta— porque
+`/opciones/{campo}` es un documento compartido por todo el sitio y **las reglas
+no pueden inspeccionar qué elemento del array `valores` cambió**: darle `write`
+era darle «reescribir la taxonomía entera». Y `aprobada: false` sola no
+alcanzaba como salvaguarda, porque la misma escritura podía pisar el resto.
+
+**Decisión: camino 1 del ítem.** Una Cloud Function v2 `onCall`,
+`crearOpcionDelPanel` (`functions/alta-de-opcion-trigger.js`), con
+`enforceAppCheck: true`. Exige claim `publicador` o `admin`, valida contra una
+lista blanca de campos, deriva el slug con el `slugify` compartido, y en una
+transacción del Admin SDK corre la transformación del alta y **verifica el
+resultado** (`cambioInesperado`) antes de escribir: lo único distinto puede ser
+un elemento agregado con `aprobada: false`, `usos: 1`, `fijo: false`, `orden: 99`
+y la huella de quien llama, o el `usos + 1` de uno que ya existía (con la
+aprobación por reuso de B-29 cuando la tipea otra cuenta). La regla sigue en
+`allow write: if esAdmin()`.
+
+**Alternativa descartada: el camino 2** (una colección `/opciones-propuestas`,
+un documento por etiqueta, verificable por reglas). Cuesta más de panel —una
+bandeja en la pantalla de taxonomías y un «mover al array» del admin— y deja la
+etiqueta **afuera** del desplegable de quien la creó hasta que alguien la
+mueva. Con el camino 1 la etiqueta ya está en el array, marcada, y toda la
+maquinaria de aprobación que existía (`estaAprobada`, `opcionesVisibles`,
+`aprobarOpcion`, el contador de pendientes, `opciones:aprobar`) sirve tal cual.
+
+**Una transformación, dos puertas.** El alta del admin (`upsertOpcion`) y la de
+la callable corren el mismo `valoresConLaEtiqueta`, que se mudó a
+`functions/alta-de-opcion.js` junto con `estaAprobada` y `elReusoLaAprueba`;
+`huellaCreador` y `etiquetaPresentable` bajaron a `functions/` con fachadas en
+`src/` (D-20). La única diferencia entre las dos puertas es `aprobada`, que la
+transformación recibe **sin default** a propósito.
+
+**La verificación mira el resultado, no la transformación.** Recalcular lo mismo
+para compararlo aprobaría cualquier bug de la transformación. Por eso
+`cambioInesperado` enumera lo permitido —largo, elementos ajenos idénticos,
+claves exactas del nuevo— y rechaza también un documento con el slug repetido.
+
+**No puede fallar en silencio.** El guardado del publicador llama a la callable
+etiqueta por etiqueta, cada una con su `try`; lo que no se confirma sale en
+`etiquetasSinRegistrar` y lo pinta el aviso de B-177, que para ese rol no ofrece
+«Ir a Opciones» (no ve esa pantalla) y dice cómo reintentar.
+
+**`PERMISOS` gana `creaEtiquetas`**, separado de `escribeTaxonomias`: el
+publicador crea pero no escribe el documento. Con los dos datos en uno, un rol
+futuro que no deba crear nada obligaría a elegir entre romperle el panel al
+publicador o abrirle la puerta al nuevo.
+
+**Lo que no se hizo:** los `usos` de lo que el publicador **elige** del
+desplegable siguen sin contar. Es el mismo camino (la callable, verificando que
+solo cambian contadores) y no entraba en el pedido.
+
+**Frenos al volumen:** App Check, `maxInstances: 5`, 80 caracteres por etiqueta
+y 25 pendientes propias por campo (`TOPE_DE_PENDIENTES_POR_CUENTA`). Sin el
+último, una sesión de publicador con un script engordaría un documento que se
+lee en cada formulario y en cada build hasta el límite de 1 MiB.
+
+**Lo que ningún test en CI ejecuta:** el `onCall` en sí (el CI no levanta el
+emulador de Functions, D-660). La decisión es pura (`tests/alta-de-opcion.test.ts`),
+la transacción corre contra el emulador de Firestore con el Admin SDK
+(`tests/alta-de-opcion.integracion.test.ts`), y lo que queda —App Check, el
+orden de los portones, el nombre y la región que usa el panel— se afirma sobre el
+fuente (`tests/alta-de-opcion-callable.test.ts`).
+
 ## D-820 · La verificación de App Check es un estado del panel, con umbral, y el fallo de guardado la usa para clasificar
 
 **B-930, 2026-09-23.** Con App Check exigido en Firestore, un navegador que no

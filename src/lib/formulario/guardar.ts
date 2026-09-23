@@ -13,6 +13,7 @@
  */
 import { actualizarActividad, crearActividad, slugDisponible } from '@/lib/actividades';
 import { usosAContar } from '@/lib/formulario/etiquetas';
+import { proponerOpcion } from '@/lib/opcion-por-function';
 import { registrarUsos, upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import { PERMISOS, type RolDelPanel } from '@/lib/rolDelPanel';
 import { actividadFormSchema } from '@/lib/schema';
@@ -112,6 +113,11 @@ export interface PuertosGuardado {
   upsertOpcion: (campo: CampoTaxonomia, label: string, uid: string) => Promise<string>;
   upsertOpciones: (campo: CampoTaxonomia, labels: string[], uid: string) => Promise<string[]>;
   registrarUsos: (campo: CampoTaxonomia, slugs: string[]) => Promise<void>;
+  /**
+   * B-893 — el alta de una etiqueta **por la callable**, para el rol que no
+   * escribe `/opciones/*`. Tira si la Function la rechaza o no responde.
+   */
+  proponerOpcion: (campo: CampoTaxonomia, label: string, slugEsperado: string) => Promise<string>;
   crearActividad: (f: ActividadForm, uid: string) => Promise<string>;
   actualizarActividad: (id: string, f: ActividadForm, uid: string) => Promise<void>;
 }
@@ -122,6 +128,7 @@ export const puertosFirestore: PuertosGuardado = {
   upsertOpcion,
   upsertOpciones,
   registrarUsos,
+  proponerOpcion,
   crearActividad,
   actualizarActividad,
 };
@@ -150,6 +157,7 @@ export const guardarActividad = async (
     upsertOpcion,
     upsertOpciones,
     registrarUsos,
+    proponerOpcion,
     crearActividad,
     actualizarActividad,
   } = puertos;
@@ -251,18 +259,23 @@ export const guardarActividad = async (
      */
     /*
      * ── El portón del rol, y por qué está acá y no en un `if` del componente ──
-     * B-888 tajada 2. `/opciones/{campo}` es de admin, así que para un publicador
-     * las dos escrituras de abajo se rechazan **siempre**. Saltearlas no es
-     * esconder un botón: es no hacer una llamada que ya sabemos que va a fallar.
+     * B-888 tajada 2 lo escribió para saltear: `/opciones/{campo}` es de admin,
+     * así que para un publicador las dos escrituras de abajo se rechazan
+     * **siempre**. B-893 (D-810) le dio al publicador **otro camino** para crear
+     * —la callable `crearOpcionDelPanel`, que verifica del lado del servidor lo
+     * que las reglas no pueden—, así que el portón ya no decide «se escribe o no»
+     * sino **por dónde**:
      *
-     * Y la salida es `restantes` **vacío**, no el conjunto completo: el aviso de
-     * B-177 dice «volvé a tipear esta etiqueta», y para este rol ese consejo no
-     * tiene arreglo posible —no va a poder crearla nunca—, así que sería un
-     * cartel que enseña a ignorar los carteles. La UI, por el otro lado, no le
-     * ofrece «Otro», así que en el camino normal no hay etiquetas nuevas que
-     * registrar: esto es el piso, no el mecanismo.
+     *   - `creaEtiquetas: false` → ni se intenta. Hoy no hay rol así; es el piso
+     *     para el que se agregue mañana, que arranca cerrado.
+     *   - `escribeTaxonomias: true` (admin) → la transacción del cliente, como
+     *     siempre.
+     *   - si no (publicador) → la callable, etiqueta por etiqueta.
+     *
+     * Van los dos del lado de `PERMISOS` para que la respuesta salga de donde ya
+     * está decidido qué puede cada rol, y no de un booleano de este archivo.
      */
-    if (!PERMISOS[rol].escribeTaxonomias) {
+    if (!PERMISOS[rol].creaEtiquetas) {
       return { estado: 'ok', id, guardado, etiquetasSinRegistrar: [] };
     }
 
@@ -273,6 +286,51 @@ export const guardarActividad = async (
         labels.map((l) => [clave(campo, l), l] as const),
       ),
     ]);
+
+    if (!PERMISOS[rol].escribeTaxonomias) {
+      /*
+       * ── El camino del publicador (B-893) ────────────────────────────────
+       * **No puede fallar en silencio**, que es lo que pidió el ítem: cada
+       * etiqueta que la callable no confirma se queda en `restantes` y sale en
+       * `etiquetasSinRegistrar`, y eso es lo que pinta el aviso de B-177
+       * (`AvisoEtiquetas`). Para este rol el aviso ahora **sí** tiene arreglo
+       * —volver a tipearla la vuelve a mandar—, que es lo que antes faltaba y
+       * por lo que la tajada 2 devolvía la lista vacía.
+       *
+       * **Una llamada por etiqueta, cada una con su `try`.** Al revés del camino
+       * del admin, acá no hay una transacción por campo que agrupe: cada alta es
+       * un pedido de red independiente, y que falle la segunda no dice nada de
+       * la tercera. Cortar en el primer fallo reportaría como sin registrar
+       * etiquetas que nadie intentó registrar.
+       *
+       * En serie a propósito: son transacciones sobre el mismo documento del
+       * otro lado, y en paralelo se reintentarían entre ellas.
+       *
+       * Y **sin** `registrarUsos`: contar los usos de lo que el publicador
+       * elige del desplegable también es escribir `/opciones/*`, y la callable
+       * de B-893 solo da de alta. Lo que se pierde es una posición en el orden
+       * del desplegable, lo mismo que ya se perdía.
+       */
+      const altas = [
+        ...labelsNuevos.map(({ campo, label }) => [campo as CampoTaxonomia, label] as const),
+        ...labelsPorCampo.flatMap(([campo, labels]) => labels.map((l) => [campo, l] as const)),
+      ];
+      for (const [campo, label] of altas) {
+        try {
+          await proponerOpcion(campo, label, slugify(label));
+          restantes.delete(clave(campo, label));
+        } catch {
+          // Queda en `restantes`: es exactamente lo que el aviso tiene que nombrar.
+        }
+      }
+      return {
+        estado: 'ok',
+        id,
+        guardado,
+        etiquetasSinRegistrar: [...new Set(restantes.values())],
+      };
+    }
+
     try {
       for (const { campo, label } of labelsNuevos) {
         await upsertOpcion(campo, label, uid);

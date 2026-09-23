@@ -45,6 +45,11 @@ export const rolActivo = (): RolDelPanel | null => activo;
  *
  * Sin rol fijado devuelve `true` — ver el docblock: el default preserva lo
  * anterior y este store no es la frontera.
+ *
+ * B-893 — mira `creaEtiquetas` y no `escribeTaxonomias`: desde D-810 el
+ * publicador crea por la callable sin escribir `/opciones/*`, así que hoy los dos
+ * roles lo tienen. Sigue siendo la pregunta por rol, para que el que se agregue
+ * mañana arranque cerrado.
  */
 export const puedeCrearEtiquetas = (): boolean =>
-  activo === null || PERMISOS[activo].escribeTaxonomias;
+  activo === null || PERMISOS[activo].creaEtiquetas;

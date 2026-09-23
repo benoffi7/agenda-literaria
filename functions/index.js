@@ -67,10 +67,15 @@ export { borrarPropuestasVencidas } from './retencion-trigger.js';
 // `COLECCIONES_DE_DIRECTORIO`.
 export { borrarFichasVencidas } from './retencion-trigger.js';
 export { borrarImagenAlCerrar } from './propuestas-trigger.js';
-// B-896 — la única callable del proyecto, y la única Function con
-// `enforceAppCheck: true`: recibe el flyer de `/proponer`, lo sanea del lado del
-// servidor y lo escribe con el Admin SDK. Es lo que deja `storage.rules` con el
-// `create` de `propuestas/` cerrado a todo cliente.
+// B-896 — la primera callable del proyecto, con `enforceAppCheck: true`: recibe
+// el flyer de `/proponer`, lo sanea del lado del servidor y lo escribe con el
+// Admin SDK. Es lo que deja `storage.rules` con el `create` de `propuestas/`
+// cerrado a todo cliente.
 export { subirFlyerDePropuesta } from './flyer-de-propuesta-trigger.js';
+// B-893 — la segunda, también con `enforceAppCheck: true`: el publicador crea
+// una etiqueta con «Otro…» sin tener `write` sobre `/opciones/*`. La Function
+// verifica que lo único que cambia del array es ese elemento, nacido sin
+// aprobar — lo que las reglas no pueden verificar (D-810).
+export { crearOpcionDelPanel } from './alta-de-opcion-trigger.js';
 export { traerAnaliticaDelSitio } from './analitica-trigger.js';
 export { verificarFrescuraDelSitio } from './frescura-trigger.js';

@@ -134,6 +134,13 @@ describe('PERMISOS — ninguna pantalla se olvida de decidir quién la ve', () =
     expect(PERMISOS.admin.escribeTaxonomias).toBe(true);
     expect(PERMISOS.admin.leeElDirectorio).toBe(true);
   });
+
+  it('B-893: los dos crean etiquetas, aunque solo el admin escriba `/opciones/*`', () => {
+    // `creaEtiquetas` decide si se ofrece «Otro…»; `escribeTaxonomias`, por qué
+    // puerta entra: la transacción del cliente o la callable (D-810).
+    expect(PERMISOS.admin.creaEtiquetas).toBe(true);
+    expect(PERMISOS.publicador.creaEtiquetas).toBe(true);
+  });
 });
 
 describe('el gating de `AdminApp` — la pantalla que no corresponde no tiene puerta', () => {

@@ -2420,7 +2420,10 @@ describe('clase de B-81 · el saneador va en un punto de paso obligado', () => {
  * primero. Meterlo en este registro invertiría su orden. Su propio caso está en
  * `tests/retencion.test.ts`, con el motivo escrito.
  */
-const EFECTO_IRREVERSIBLE = /await upsertOpcion(?:es)?\(/;
+// B-893 — `proponerOpcion` es el alta del publicador por la callable: el mismo
+// efecto (una etiqueta nueva en `/opciones/*`), otra puerta. Sin sumarlo acá, un
+// flujo que la llamara antes de escribir la actividad pasaría este chequeo.
+const EFECTO_IRREVERSIBLE = /await (?:upsertOpcion(?:es)?|proponerOpcion)\(/;
 const EFECTO_QUE_PUEDE_FALLAR = /await (?:crear|actualizar)Actividad\(/;
 
 const flujosQueEscribenEnDosLugares = () =>

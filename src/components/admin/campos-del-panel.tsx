@@ -100,12 +100,22 @@ export function TaxonomiaSelect({
       elegibles={elegibles}
       onMedir={medirFuncion}
       /*
-       * B-888 — un publicador no escribe `/opciones/*`, así que no se le ofrece
-       * crear una etiqueta. Va después del spread a propósito: un `permitirOtro`
-       * que llegue por props no puede aflojar esto sin que se vea en el diff de
-       * este archivo.
+       * B-888 — si el rol no puede crear etiquetas, no se le ofrece «Otro…». Va
+       * después del spread a propósito: un `permitirOtro` que llegue por props no
+       * puede aflojar esto sin que se vea en el diff de este archivo.
+       *
+       * B-893 — desde D-810 **los dos roles** crean (el publicador, por la
+       * callable), así que en la práctica esto hoy no apaga nada; queda como la
+       * pregunta por rol para el que se agregue mañana.
+       *
+       * B-1240 — y es un **y**, no un reemplazo. Como estaba —
+       * `permitirOtro={puedeCrearEtiquetas()}` a secas— pisaba el
+       * `permitirOtro={false}` que el llamador pone a propósito: la provincia
+       * (B-972, vocabulario cerrado de 24) volvía a ofrecer «Otro…» a toda
+       * sesión que pudiera crear, que era justo el camino que B-972 había
+       * cerrado. Las props pueden **cerrar**; lo que no pueden es abrir.
        */
-      permitirOtro={puedeCrearEtiquetas()}
+      permitirOtro={(props.permitirOtro ?? true) && puedeCrearEtiquetas()}
     />
   );
 }
@@ -126,7 +136,8 @@ export function TagsInput({
       valores={valores}
       elegibles={elegibles}
       onMedir={medirFuncion}
-      permitirOtro={puedeCrearEtiquetas()}
+      // Mismo criterio que arriba (B-888, B-1240): las props cierran, no abren.
+      permitirOtro={(props.permitirOtro ?? true) && puedeCrearEtiquetas()}
     />
   );
 }

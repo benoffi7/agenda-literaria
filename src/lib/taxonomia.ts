@@ -33,76 +33,15 @@ export const ordenarValores = (valores: ValorOpcion[]): ValorOpcion[] =>
   });
 
 /**
- * §4.3 — ¿la opción está validada? Las fijas lo están por definición: son las
- * base, las que puede haber cableadas en la lógica.
- *
- * **El campo ausente cuenta como aprobada, y eso es deliberado.** Los
- * documentos de `/opciones/*` que ya están en producción se escribieron antes
- * de que existiera `aprobada`, y `preparar-produccion.mjs` no los pisa (es
- * idempotente). Tratar la ausencia como "pendiente" haría desaparecer del
- * desplegable opciones que hoy se usan y que ya están guardadas en actividades
- * publicadas: el formulario mostraría el slug crudo en lugar de la etiqueta y
- * quien edite esa actividad tendría que volver a elegir un valor que ya estaba
- * bien.
- *
- * La regla general: un campo nuevo sobre documentos que ya existen se lee con
- * el default que preserva el comportamiento anterior. Solo lo nuevo arranca
- * pendiente, porque solo lo nuevo se escribe con el campo puesto.
+ * §4.3 — `estaAprobada` y `elReusoLaAprueba` (B-29) **viven en
+ * `functions/alta-de-opcion.js`** desde B-893, con sus docblocks enteros: la
+ * callable que crea la etiqueta de un publicador aplica la misma regla de reuso
+ * que `upsertOpcion`, y `functions/` no puede importar `src/` (D-20). Se
+ * re-exportan acá para que ningún import haya cambiado de ruta.
  */
-export const estaAprobada = (v: ValorOpcion): boolean => v.fijo || (v.aprobada ?? true);
+import { elReusoLaAprueba, estaAprobada } from '../../functions/alta-de-opcion.js';
 
-/**
- * §4.3 · B-29 — ¿alcanza este reuso para aprobar la etiqueta?
- *
- * **La decisión del dueño es que sí, y con la etiqueta marcada.** Si la cuenta B
- * tipea en «Otro» una etiqueta que ya existe como pendiente de la cuenta A, hoy
- * se reusa el slug (§4.2) y la opción **sigue pendiente**: dos personas la usan y
- * ninguna la ve en su desplegable, que es el peor de los estados posibles.
- *
- * Que dos personas distintas escriban el mismo vocabulario es la mejor señal
- * automática de que el vocabulario es real. El contra que el ítem nombra —«y
- * alcanza con que la segunda persona repita el mismo typo»— es lo que resuelve la
- * **marca**: la etiqueta queda aprobada *y* señalada como aprobada sin que nadie
- * la mirara, así que el typo de dos se puede deshacer desde la pantalla de
- * taxonomías. Sin la marca, aprobar así sería indistinguible de una aprobación
- * humana y no habría por dónde revisarla.
- *
- * Las tres condiciones, y las tres son necesarias:
- *
- * 1. **Todavía no está aprobada.** Si ya lo está no hay nada que hacer, y volver
- *    a escribirla la marcaría «aprobada por reuso» cuando la aprobó una persona.
- * 2. **Se sabe de quién era.** Sin `huellaCreador` —los documentos anteriores a
- *    que el campo existiera— no se puede decir que la esté reusando *otra*
- *    cuenta: podría ser la misma persona, y ahí no hay ninguna señal. El borde lo
- *    nombra el propio ítem, y el default seguro es no aprobar.
- * 3. **Es otra cuenta.** Quien la creó reusando su propia etiqueta no agrega
- *    ninguna información: la señal es *dos personas*, no *dos veces*.
- *
- * Puro y sobre la huella, nunca sobre el uid: `/opciones/{campo}` es de lectura
- * pública (§5.3) y los uids no salen al público (§5.1, D-27). Quien llama pasa la
- * huella ya calculada, así que este módulo no puede recibir un uid por error.
- *
- * **Aprobar es también publicar, y conviene tenerlo escrito.** `opcionesPublicas`
- * filtra con `opcionesVisibles` sin uid, o sea que emite **las aprobadas**: una
- * etiqueta que aprueba esta regla entra al `events.json` y a los chips del sitio
- * aunque solo la usen borradores. El `label` es texto que tipeó una persona, y el
- * `events.json` ya cosechado no se despublica renombrando después — la marca es
- * lo que permite **corregirlo**, no lo que evita que salga. Hoy el daño residual
- * es chico y por dos razones que no hay que deducir: con B-131 nada nace
- * pendiente, así que esto solo alcanza a lo heredado, y una actividad publicada
- * con una opción pendiente ya mostraba su etiqueta igual (D-11, D-30).
- *
- * **No se mide, y es una decisión y no un olvido** (§9). «Cuántas etiquetas se
- * aprueban solas» es una pregunta razonable y hoy no la contesta nadie; si algún
- * día se mide, va como **un valor más del enum cerrado de `funcion_usada`** —al
- * lado de `taxonomia-nueva` y `taxonomia-reusada`— y **nunca la etiqueta**, que
- * es contenido tipeado por una persona.
- */
-export const elReusoLaAprueba = (v: ValorOpcion, huellaDeQuienLaUsa: string): boolean =>
-  !estaAprobada(v) &&
-  Boolean(v.huellaCreador) &&
-  Boolean(huellaDeQuienLaUsa) &&
-  v.huellaCreador !== huellaDeQuienLaUsa;
+export { elReusoLaAprueba, estaAprobada };
 
 /**
  * §4.3 — qué opciones puede elegir quien está mirando: las aprobadas, más las
