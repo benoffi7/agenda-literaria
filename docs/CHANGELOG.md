@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- **El archivador del backlog se puede volver a usar** — B-1233 y B-1146. Mover
+  un ítem cerrado al archivo de cerrados reordenaba todas las secciones: doce
+  mil líneas de diff para un ítem. Deshacer eso a mano fue lo que el 2026-09-23
+  perdió la cabecera `## P0` y dejó 201 ítems graves leyéndose como mejoras
+  (`b9265f3`). Ahora el script conserva el orden y el diff es el del ítem (37
+  líneas, medido), la guarda verifica la sección de cada ítem además de su texto,
+  y no corre sobre un archivo con ítems fuera de toda sección.
+
 - **La promesa del correo dice que Mailchimp registra aperturas y clics** —
   DEC-14 resuelta (**D-802**). El dueño eligió dejar prendido el seguimiento de
   la campaña para saber qué enlaces se abren; `/suscribirse`, `/ayuda` y

@@ -176,6 +176,19 @@ negativo —un movimiento que se come una línea **tiene que** dar rojo—, más
 conservación contra el archivo real: mismos ítems, mismo cuerpo, mismo
 encabezado, misma sección.
 
+**Y verifica dónde queda cada ítem, no solo que esté** (B-1233). Si algún ítem
+cambiara de sección entre la entrada y la salida, no escribe nada y dice cuál. Y
+si algún ítem está **antes de la primera cabecera `## `** —la forma en que quedó
+el archivo de cerrados en `b9265f3`, con la línea `## P0` perdida—, ni siquiera
+corre: ese archivo ya está roto y hay que repararlo a mano primero.
+
+**No reordena nada** (B-1146). Las secciones del archivo de cerrados quedan en
+el orden en que están, y cada ítem movido va al final de la suya; una sección
+que el archivo no tenía va al final. Archivar un ítem es un diff del tamaño de
+ese ítem —medido: 37 líneas—, no las doce mil que daba antes, cuando la sección
+del ítem movido subía adelante de todas. Ese diff irrevisable era lo que
+empujaba a deshacerlo a mano, y deshacerlo a mano fue lo que rompió el archivo.
+
 **Lo que el corte podía romper y no rompe:** el próximo `B-` libre. La mitad de
 los ids usados vive en el archivo de cerrados, así que el tablero calcula
 `proximoNumero` sobre **los dos** textos; mirar solo el vivo propondría un número

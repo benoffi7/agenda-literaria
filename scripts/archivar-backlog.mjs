@@ -222,9 +222,7 @@ export const archivar = (textoVivo, textoArchivo = '') => {
   }
 
   // El archivo: su cabecera, después cada sección con lo que ya tenía y lo nuevo
-  // al final. El orden de las secciones es el del archivo vivo, que es el orden
-  // de prioridad — y las que solo existen en el archivo se conservan atrás.
-  // Una sección que solo existe del lado del archivo y tiene un ítem reabierto
+  // al final. Una sección que solo existe del lado del archivo y tiene un ítem reabierto
   // se recrea en el vivo: es raro, pero perder el ítem no es una opción.
   for (const [titulo, its] of aDevolver) {
     vivo.push(`## ${titulo}`);
@@ -253,9 +251,22 @@ export const archivar = (textoVivo, textoArchivo = '') => {
     viejasPorTitulo.get(vieja.titulo).push(vieja);
   }
 
-  // El `Set` es lo que evita emitir dos veces un título repetido: sin él, el
-  // mismo bloque fundido saldría una vez por aparición.
-  const orden = [...new Set([...aArchivar.keys(), ...yaArchivado.secciones.map((s) => s.titulo)])];
+  /*
+   * **El orden de las secciones es el que el archivo ya tiene — B-1233, B-1146.**
+   *
+   * Esto era `[...aArchivar.keys(), ...secciones del archivo]`: la sección del
+   * ítem que se movía pasaba **adelante de todas**. Archivar un P2 subía
+   * `## P2` arriba de los 201 ítems de P0, y el diff de una corrida era de
+   * doce mil líneas para mover un ítem. Nadie revisa eso; se revierte, y
+   * revertirlo a mano es donde el 2026-09-23 se perdió la línea `## P0` y 201
+   * ítems pasaron a leerse como P2 (`b9265f3`). Con el orden estable el diff es
+   * el ítem movido y nada más.
+   *
+   * Las secciones que el archivo no tiene todavía van al final, en el orden del
+   * vivo. El `Set` evita emitir dos veces un título repetido: sin él, el mismo
+   * bloque fundido saldría una vez por aparición.
+   */
+  const orden = [...new Set([...yaArchivado.secciones.map((s) => s.titulo), ...aArchivar.keys()])];
 
   const salida = [cabecera];
   for (const titulo of orden) {
@@ -320,6 +331,47 @@ export const verificar = (textoVivo, textoArchivo, salida) => {
   return perdidos;
 };
 
+/**
+ * La otra mitad de la guarda — B-1233: **dónde** queda cada ítem, no solo si
+ * está.
+ *
+ * `verificar` mira que el texto de cada ítem aparezca en la salida, y con eso
+ * dijo que estaba todo bien las dos veces que el archivo se rompió: en B-1219
+ * faltaban ítems que ella sí veía, y en B-1233 no faltaba ninguno — 201 habían
+ * cambiado de cabecera. La sección es lo único que el tablero lee para decir
+ * qué fue grave, así que es tan dato como el cuerpo.
+ *
+ * Devuelve `id: antes → después` por cada ítem cuya sección cambió. Un ítem que
+ * se mueve de archivo conserva su sección: `archivar` lo agrupa por el título de
+ * la sección de la que sale.
+ */
+export const reubicados = (textoVivo, textoArchivo, salida) => {
+  const secciones = (...textos) => {
+    const m = new Map();
+    for (const t of textos) for (const it of parsearBacklog(t).items) m.set(it.id, it.seccion);
+    return m;
+  };
+  const antes = secciones(textoArchivo, textoVivo);
+  const despues = secciones(salida.archivo, salida.vivo);
+  return [...antes]
+    .filter(([id, sec]) => despues.has(id) && despues.get(id) !== sec)
+    .map(([id, sec]) => `${id}: ${sec ?? '(sin sección)'} → ${despues.get(id) ?? '(sin sección)'}`);
+};
+
+/**
+ * Ítems que viven **antes de la primera sección** — B-1233.
+ *
+ * Es la forma exacta en que quedó `BACKLOG-cerrados.md` en `b9265f3`: un ítem
+ * pegado en el lugar de la línea `## P0`, arriba de todo. `despiezar` trata eso
+ * como cabecera del archivo, así que el script lo conservaría como prosa y
+ * seguiría adelante sobre un archivo que ya está roto. Si aparece uno, no se
+ * corre: primero se repara a mano.
+ */
+export const fueraDeSeccion = (texto) =>
+  parsearBacklog(texto)
+    .items.filter((it) => it.seccion === null)
+    .map((it) => it.id);
+
 /** Escribe un archivo sin dejarlo a medias: temporal al lado y `rename`. */
 const escribirAtomico = async (ruta, texto) => {
   const tmp = `${ruta}.archivar.tmp`;
@@ -332,7 +384,27 @@ const principal = async () => {
   const textoVivo = await readFile(VIVO, 'utf8');
   const textoArchivo = await readFile(ARCHIVO, 'utf8').catch(() => '');
 
+  const huerfanos = [...fueraDeSeccion(textoVivo), ...fueraDeSeccion(textoArchivo)];
+  if (huerfanos.length > 0) {
+    process.stderr.write(
+      `\n  ✗ No se corrió: ${huerfanos.length} ítems están antes de la primera sección.\n` +
+        `    ${huerfanos.slice(0, 10).join(', ')}\n` +
+        '    Falta una cabecera `## ` arriba de ellos. Reparalo a mano y volvé a correr.\n\n',
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const salida = archivar(textoVivo, textoArchivo);
+  const cambiados = reubicados(textoVivo, textoArchivo, salida);
+  if (cambiados.length > 0) {
+    process.stderr.write(
+      `\n  ✗ No se escribió nada: ${cambiados.length} ítems cambiarían de sección.\n` +
+        `    ${cambiados.slice(0, 10).join('\n    ')}\n\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   const perdidos = verificar(textoVivo, textoArchivo, salida);
   if (perdidos.length > 0) {
     process.stderr.write(

@@ -9137,6 +9137,91 @@ secciones `P0`. Se fundieron al archivar, así que el archivo ya no las tiene, p
 nadie sabe qué corrida vieja las creó. Si el archivador las pudo generar alguna
 vez, puede volver a hacerlo — y ahora la guarda lo frenaría, que es el punto.
 
+### B-1233 · El archivador reclasifica: 201 ítems P0 pasaron a leerse como P2 — ✅ hecho (2026-09-23) · P0 — del `auditor-documentacion` (2026-09-23)
+
+> **Aislado y arreglado el 2026-09-23.** La versión rota está en la historia:
+> `b9265f3`. Ahí `BACKLOG-cerrados.md` no tiene ninguna línea `## P0`, y en su
+> lugar —línea 16— está B-1230, antes de toda sección. Se reprodujo la corrida
+> con las entradas de ese commit: **el script solo no produce eso**. Lo que
+> produce es `## P2` arriba de todo, con B-1230 al final de P2 y `## P0` intacto
+> más abajo — el reordenamiento de B-1146, doce mil líneas de diff. La versión
+> rota es **esa salida deshecha a mano**: B-1230 movido arriba en lugar de
+> `## P2` y la línea `## P0` perdida en el camino. O sea que la pregunta que este
+> ítem dejaba abierta —¿fusión de secciones homónimas u orden de emisión?— se
+> contesta: **orden de emisión**, más el arreglo manual que ese diff invitaba.
+>
+> **Tres cambios en `scripts/archivar-backlog.mjs`, con un test cada uno y
+> mutación probada:**
+>
+> 1. **El orden de las secciones es el que el archivo ya tiene**, y lo nuevo va
+>    al final de su sección. Cierra también **B-1146**: archivar un ítem real da
+>    un diff de 37 líneas, las del ítem.
+> 2. **`reubicados`**: la guarda compara la sección de cada ítem antes y después,
+>    y si alguno cambia no escribe nada. Es la propiedad que las dos veces se
+>    rompió y ninguna se miraba.
+> 3. **`fueraDeSeccion`**: si hay un ítem antes de la primera cabecera, el script
+>    no corre. Sobre la versión de `b9265f3` se habría negado.
+>
+> El corpus de los tests ahora archiva contra un archivo cuyas secciones están
+> en **otro orden** que las del vivo, que es la entrada que ninguno de los
+> dieciocho casos ejercitaba. **Se puede volver a correr el archivador**; este
+> ítem y B-1146 se archivaron con él. El texto original queda abajo.
+
+**Correr `node scripts/archivar-backlog.mjs` sobre `docs/BACKLOG-cerrados.md`
+mezcló las secciones.** Medido con el parser del propio repo
+(`scripts/tablero/parseo.mjs`), no a ojo:
+
+| | P0 | P1 | P2 | P3 | sin sección |
+|---|---|---|---|---|---|
+| antes (`7378d9b`) | **201** | 92 | 13 | 87 | 0 |
+| después | **1** | 92 | 215 | 87 | 1 |
+
+El cuerpo entero de la sección `## P0 — rompe algo o pierde datos` —201 ítems,
+empezando por **B-80**— quedó debajo de la cabecera `## P2 — mejoras reales`, y
+apareció una cabecera `## P0` nueva envolviendo **un solo** ítem que se
+autodeclara `· P2` en su propio encabezado: la cabecera y el ítem se
+contradicen.
+
+**Ningún texto se perdió** —verificado con `diff`—, y esa es justamente la parte
+que lo hace peligroso: el archivo se ve intacto. Lo que cambió es **bajo qué
+cabecera vive cada ítem**, que es lo único que el tablero lee para decir qué fue
+grave y qué no. `npm run tablero` hoy contaría 1 «P0 arreglado» donde hubo 201.
+
+**Es B-1219 con otra cara, y la reincidencia es lo que lo pone en P0.** Aquél se
+comía 186 ítems del rastro; éste no se come nada, les cambia la severidad. Las
+dos veces el script tocó secciones homónimas, las dos veces la guarda del propio
+script dijo que estaba todo bien, y las dos veces se vio por casualidad. La
+guarda de B-1219 verifica que **los ítems estén**; no verifica **dónde**.
+
+**Cómo se reprodujo:** correr el archivador dos veces en la misma tanda, con un
+ítem insertado a mano entremedio. La primera corrida ya había reordenado el
+archivo (el diff de 12.893 líneas que **B-1146** describe), se revirtió, se
+insertó el ítem a mano al final de su sección, y la segunda corrida produjo
+esto. No está claro si hace falta la secuencia completa o alcanza con una
+corrida sobre un archivo cuyo orden de secciones no coincide con el del vivo —
+**eso es lo primero que hay que aislar**, porque decide si el bug es de la
+fusión de secciones homónimas o del orden en que se emiten.
+
+**Ya reparado a mano en `docs/BACKLOG-cerrados.md`** (2026-09-23): se restauró el
+archivo desde `origin/main` y se reinsertaron los tres ítems de la tanda, cada
+uno al final de **su** sección (B-1231 en P1, B-1230 y B-1232 en P2). El diff
+quedó en 122 líneas insertadas y nada más, y el conteo por sección volvió a
+201/93/15/87. **El bug del script sigue vivo**: la próxima corrida lo vuelve a
+hacer.
+
+**Lo que hay que arreglar, y lo que hay que agregarle a la guarda:** que
+`verificar` compare, además de la presencia de cada ítem, **la sección de cada
+uno antes y después** — es la propiedad que las dos veces se rompió y ninguna de
+las dos veces se miró. Y el corpus de los tests tiene que archivar contra un
+archivo cuyo **orden de secciones difiera** del vivo, que es la entrada que
+ninguno de los dieciocho casos ejercita (la misma lección que B-1219 dejó
+escrita: el sujeto del chequeo estaba mal elegido).
+
+**Mientras tanto, no corras el archivador.** Mover un ítem a mano —cortar de
+`BACKLOG.md`, pegar al final de su sección en `BACKLOG-cerrados.md`— es además
+lo que **B-1146** ya recomendaba por otro motivo: el diff queda en decenas de
+líneas en vez de en decenas de miles.
+
 ## P1 — bloquean el objetivo del proyecto
 
 ### DEC-14 · ¿El correo registra quién lo abrió y qué clickeó? — ✅ resuelta (2026-09-23, D-802) · P1
@@ -18346,6 +18431,45 @@ derivando el mismo valor por su cuenta, con uno de los dos desactualizado. Y va
 junto con el residual conocido de **B-366**: `cargarReglasStorage` usa el endpoint
 global `/internal/setRules`, así que `storage.rules` **no** está aislado por
 proyecto y la última carga gana para todos los worktrees.
+
+### B-1146 · Correr el archivador del backlog reordena `BACKLOG-cerrados.md` entero: 19.000 líneas de diff para mover un ítem — ✅ hecho (2026-09-23) · P3 — medido al cerrar B-1141 (2026-09-21)
+
+> **Resuelto con la primera de las dos opciones: conservar el orden del archivo
+> destino**, al arreglar B-1233 —el reordenamiento era la mitad de aquel bug—.
+> Archivar un ítem real da hoy un diff de 37 líneas. El texto original queda
+> abajo.
+
+**El archivador es la herramienta documentada** —la cabecera de `BACKLOG.md`
+dice que lo cerrado «se mueve solo» con `node scripts/archivar-backlog.mjs`— y
+**nadie lo está corriendo**. Se ve en el historial: los últimos commits que
+cerraron ítems (B-1136, B-1137, B-1139, B-1140) tocan `BACKLOG-cerrados.md` con
+diffs de 13 a 59 líneas, o sea que escribieron la entrada a mano.
+
+**Por qué, medido hoy.** Correrlo para mover **un** ítem produjo un diff de
+**19.207 líneas** sobre `BACKLOG-cerrados.md` (9.627 inserciones, 9.580 bajas)
+para un contenido que crece 47 líneas. La causa es que reescribe el archivo
+agrupando por sección en el orden en que las encuentra, y eso **reordena las
+secciones**: pasó de `P0 → P3 → P2 → Pendiente → P1` a
+`P2 → P0 → P3 → Pendiente → P1`. Ninguno de los dos órdenes es el de las
+prioridades, así que el reordenamiento no arregla nada — solo mueve.
+
+**El daño no es el archivo, es la revisión.** Un diff de 19.000 líneas es
+irrevisable, así que el cambio real queda enterrado y cualquier edición manual
+que alguien hubiera hecho en el medio se vuelve invisible. Por eso el ítem se
+cerró insertando la entrada a mano, como venían haciendo los anteriores: 49
+líneas de diff en vez de 19.207.
+
+**Lo que hay que decidir es cuál de las dos:** que el archivador **conserve** el
+orden de secciones del archivo destino (inserta en su sección y no toca el
+resto), o que **ordene** de verdad por prioridad, de una vez, en un commit
+dedicado que se revise sabiendo que es puro movimiento. Lo que no puede quedar
+es que la herramienta documentada sea la que nadie usa porque su salida no se
+puede mirar.
+
+**Dónde:** `scripts/archivar-backlog.mjs`. La red que lo obliga a existir es
+`tests/tablero.test.ts:395` («parsea docs/BACKLOG.md entero y no pierde ítems»),
+que se pone roja si un ítem `✅ hecho` se queda en el archivo vivo — y está
+bien: es lo que detectó que faltaba archivar.
 
 ## Pendiente de acción manual del dueño
 

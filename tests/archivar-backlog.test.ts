@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { archivar, despiezar, verificar } from '../scripts/archivar-backlog.mjs';
+import { archivar, despiezar, fueraDeSeccion, reubicados, verificar } from '../scripts/archivar-backlog.mjs';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
 import { ENCABEZADO, ID, SECCION, idsUsados, parsearBacklog, proximoNumero } from '../scripts/tablero/parseo.mjs';
 
@@ -503,3 +503,112 @@ describe('el archivo de cerrados NO es un `\'\'` — B-1219', () => {
     expect(dos.archivo).toBe(una.archivo);
   });
 });
+
+describe('dónde queda cada ítem, no solo si está — B-1233', () => {
+  /*
+   * El 2026-09-23 `BACKLOG-cerrados.md` quedó con 201 ítems de P0 debajo de la
+   * cabecera `## P2` (`b9265f3`). No faltaba ninguno, así que `verificar` dijo
+   * que estaba todo bien. La cadena fue: el script subía la sección del ítem
+   * movido adelante de todas (B-1146), el diff era de doce mil líneas, se
+   * deshizo a mano, y en ese arreglo se perdió la línea `## P0`.
+   *
+   * Todo el corpus de arriba archiva contra un archivo cuyas secciones están en
+   * el mismo orden que las del vivo, y así el reordenamiento no se ve. Éste no.
+   */
+  const CERRADOS_EN_OTRO_ORDEN = [
+    '# Cerrados',
+    '',
+    '## P3 — cuando sobre tiempo',
+    '',
+    '### B-600 · Uno de P3 · ✅ hecho (2026-01-01) · P3',
+    '',
+    'Cuerpo de P3.',
+    '',
+    '## P2 — mejoras reales',
+    '',
+    '### B-601 · Uno de P2 · ✅ hecho (2026-01-02) · P2',
+    '',
+    'Cuerpo de P2.',
+    '',
+  ].join('\n');
+
+  const cabeceras = (t: string) => t.split('\n').filter((l) => SECCION.test(l));
+
+  it('el orden de las secciones es el que el archivo ya tenía', () => {
+    /*
+     * MUTACIÓN PROBADA: volver a `[...aArchivar.keys(), ...secciones del
+     * archivo]` deja este caso en rojo — `## P2` sube adelante de `## P3`.
+     */
+    const s = archivar(VIVO, CERRADOS_EN_OTRO_ORDEN);
+    expect(cabeceras(s.archivo)).toEqual([
+      '## P3 — cuando sobre tiempo',
+      '## P2 — mejoras reales',
+      '## P1 — bloquean el objetivo del proyecto',
+      '## Cerrados',
+    ]);
+  });
+
+  it('el ítem movido va al final de su sección, y lo demás no se toca', () => {
+    // B-903 es P2 en el vivo: tiene que quedar después de B-601, sin mover P3.
+    const s = archivar(VIVO, CERRADOS_EN_OTRO_ORDEN);
+    const ids = parsearBacklog(s.archivo).items.map((i) => i.id);
+    expect(ids.indexOf('B-600')).toBeLessThan(ids.indexOf('B-601'));
+    expect(ids.indexOf('B-601')).toBeLessThan(ids.indexOf('B-903'));
+    expect(reubicados(VIVO, CERRADOS_EN_OTRO_ORDEN, s)).toEqual([]);
+  });
+
+  it('**la guarda nombra** a un ítem que cambió de cabecera aunque su texto esté entero', () => {
+    /*
+     * La forma exacta de `b9265f3`: se pierde una línea `## `, ningún texto
+     * falta, y los ítems de abajo pasan a vivir en la sección de arriba.
+     * `verificar` no lo ve —ése es el punto— y `reubicados` sí.
+     */
+    const sano = archivar(VIVO, CERRADOS_EN_OTRO_ORDEN);
+    const roto = { ...sano, archivo: sano.archivo.replace('## P2 — mejoras reales\n', '') };
+    expect(verificar(VIVO, CERRADOS_EN_OTRO_ORDEN, roto), 'verificar no puede verlo').toEqual([]);
+    expect(reubicados(VIVO, CERRADOS_EN_OTRO_ORDEN, roto)).toEqual([
+      'B-601: P2 — mejoras reales → P3 — cuando sobre tiempo',
+      'B-903: P2 — mejoras reales → P3 — cuando sobre tiempo',
+    ]);
+  });
+
+  it('un ítem antes de la primera sección se detecta, y el script no corre', () => {
+    // `b9265f3` tenía B-1230 pegado en el lugar de `## P0`, arriba de todo.
+    const pegadoArriba = CERRADOS_EN_OTRO_ORDEN.replace(
+      '## P3 — cuando sobre tiempo',
+      '### B-602 · Pegado donde iba la cabecera · ✅ hecho (2026-01-03) · P2\n\nCuerpo.\n\n## P3 — cuando sobre tiempo',
+    );
+    expect(fueraDeSeccion(pegadoArriba)).toEqual(['B-602']);
+    expect(fueraDeSeccion(CERRADOS_EN_OTRO_ORDEN)).toEqual([]);
+  });
+
+  it('contra los archivos reales: archivar un ítem cambia sus líneas y ninguna más', async () => {
+    /*
+     * B-1146 medía 19.000 líneas de diff para mover un ítem. Se marca como
+     * hecho un ítem abierto cualquiera del vivo real y se exige que el archivo
+     * de cerrados crezca en exactamente ese bloque y una línea en blanco.
+     */
+    const { readFile } = await import('node:fs/promises');
+    const vivo = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
+    const cerrados = await readFile(`${process.cwd()}/docs/BACKLOG-cerrados.md`, 'utf8').catch(
+      () => '',
+    );
+    if (!cerrados.trim()) return;
+    expect(fueraDeSeccion(vivo)).toEqual([]);
+    expect(fueraDeSeccion(cerrados)).toEqual([]);
+
+    const blanco = parsearBacklog(vivo).items.find((i) => i.seccion?.startsWith('P2') && i.estado === 'abierto');
+    expect(blanco, 'hay un P2 abierto para probar').toBeDefined();
+    const marcado = vivo.replace(blanco!.encabezado, `${blanco!.encabezado} — ✅ hecho (prueba)`);
+    const s = archivar(marcado, cerrados);
+
+    expect(reubicados(marcado, cerrados, s)).toEqual([]);
+    expect(cabeceras(s.archivo)).toEqual(cabeceras(cerrados));
+    const bloque = despiezar(marcado)
+      .secciones.flatMap((sec) => sec.items)
+      .find((i) => i.id === blanco!.id)!.texto.replace(/\s+$/u, '');
+    const crecio = s.archivo.split('\n').length - cerrados.split('\n').length;
+    expect(crecio).toBe(bloque.split('\n').length + 1);
+  });
+});
+
