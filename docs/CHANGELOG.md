@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **La doc de `/opciones` dice lo que B-893 cambió** — del `auditor-privacidad`:
+  que el reuso entre dos cuentas aprueba sin admin (y con eso publica a los hubs y
+  al sitemap, abierto como **DEC-15**), que «solo aprobadas» vale para el
+  `events.json` y no para el documento, que se lee crudo con las pendientes, y las
+  cuatro Functions nuevas como puertas en la ficha del auditor.
+
 - **En AM/PM, una hora o un minuto imposible ya no vacía la fecha en silencio: lo
   dice** (B-1236). Tipear `75` en los minutos (o `25` en la hora) del control de 12
   horas dejaba el encuentro sin fecha, con la cajita mostrando el número y el eco

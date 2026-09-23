@@ -119,8 +119,31 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Decisiones pendientes del usuario
 
-**No queda ninguna decisión del dueño pendiente.** DEC-14 se resolvió el
-2026-09-23 (D-802) y pasó a [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md).
+DEC-14 se resolvió el 2026-09-23 (D-802) y pasó a
+[`BACKLOG-cerrados.md`](BACKLOG-cerrados.md). Queda **DEC-15**.
+
+### DEC-15 · ¿Dos cuentas de publicador que tipean la misma etiqueta alcanzan para publicarla? · P2 — del `auditor-privacidad` sobre B-893 (2026-09-23)
+
+**Hoy sí, y es lo que B-29 decidió cuando había solo dos cuentas de confianza.**
+Desde B-893 el publicador crea etiquetas «sin aprobar», pero si **otra** cuenta
+tipea la misma, se aprueba sola (`elReusoLaAprueba`, `functions/alta-de-opcion.js`).
+Aprobada, sale al `events.json` y a los chips del sitio, y en `tipo`, `barrio` y
+`ciudad` hace nacer una página indexada y entra al sitemap. O sea que dos
+publicadores —o una persona con dos cuentas— publican vocabulario sin que lo vea
+un admin.
+
+**Las dos salidas:**
+
+1. **Dejarlo así.** Es lo que B-29 decidió y lo que hace que un barrio real que
+   tipean dos personas no espere a nadie. La doc ya lo dice (`07-seguridad.md`,
+   fila de `/opciones` y § «Aprobar taxonomías»).
+2. **Que el reuso apruebe solo si una de las dos cuentas es admin.** Es una línea
+   en `elReusoLaAprueba` y su test. Lo que dos publicadores tipean igual queda
+   pendiente hasta que lo apruebes.
+
+**Recomiendo la 2**: B-29 se decidió con la premisa «dos cuentas de confianza», y
+el publicador es justamente la cuenta que no lo es (es lo que reabrió B-28 como
+B-893). El costo es que un barrio real espera tu aprobación.
 
 Nada de esto se puede avanzar sin respuesta. Están primero porque bloquean
 trabajo.
