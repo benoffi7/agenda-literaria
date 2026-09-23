@@ -169,6 +169,55 @@ describe('tipear', () => {
     expect(onChange).toHaveBeenLastCalledWith('2026-10-07T22:30');
   });
 
+  /**
+   * **B-1236 — un minuto imposible vaciaba la fecha en silencio.**
+   *
+   * Con `75` la cajita seguía mostrando `75`, el eco desaparecía y hacia afuera
+   * iba `''`. Acá no hay nada que convertir, así que lo que se afirma es que
+   * **se dice**: el error en el campo, la cajita marcada, y que corregirlo lo saca.
+   * Va montado porque la pregunta es el cableado —que el mensaje llegue a
+   * pantalla por `Campo`—, no la regla, que está en `formato-de-hora.test.ts`.
+   */
+  it('75 en los minutos no vacía la fecha callado: lo dice, y se va al corregirlo', async () => {
+    const onChange = vi.fn();
+    dibujar({ value: '2026-10-07T19:30', onChange });
+    const minutos = screen.getByLabelText('Inicio — minutos') as HTMLInputElement;
+
+    await userEvent.clear(minutos);
+    await userEvent.type(minutos, '75');
+
+    expect(onChange).toHaveBeenLastCalledWith('');
+    expect(screen.getByRole('alert').textContent).toContain('«75» no son minutos');
+    expect(minutos.getAttribute('aria-invalid')).toBe('true');
+
+    await userEvent.clear(minutos);
+    await userEvent.type(minutos, '45');
+
+    expect(onChange).toHaveBeenLastCalledWith('2026-10-07T19:45');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(minutos.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('y un 25 en la hora, el typo que B-1234 dejó sin convertir, también', async () => {
+    dibujar({ value: '2026-10-07T19:30' });
+    const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;
+
+    await userEvent.clear(hora);
+    await userEvent.type(hora, '25');
+
+    expect(screen.getByRole('alert').textContent).toContain('«25» no es una hora');
+    expect(hora.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('un minuto a medio tipear no es un error', async () => {
+    // El `7` de `75` todavía puede ser `07`: hablar ahí sería ruido.
+    dibujar({ value: '2026-10-07T19:30' });
+    const minutos = screen.getByLabelText('Inicio — minutos') as HTMLInputElement;
+    await userEvent.clear(minutos);
+    await userEvent.type(minutos, '7');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('no deja tipear letras ni un tercer dígito en la hora', async () => {
     dibujar();
     const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;

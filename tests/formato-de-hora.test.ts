@@ -23,6 +23,7 @@ import {
   aReloj12,
   de12A24,
   horaTipeadaEn12,
+  piezaFueraDeRango,
   dePiezas,
   ecoDeFechaYHora,
   partesDeDatetimeLocal,
@@ -96,6 +97,53 @@ describe('lo que se tipea en la cajita de la hora — B-1234', () => {
     // sería adivinar sobre algo que no tiene lectura.
     expect(horaTipeadaEn12('25', 'AM')).toEqual({ hora: '25', meridiano: 'AM' });
     expect(horaTipeadaEn12('99', 'PM')).toEqual({ hora: '99', meridiano: 'PM' });
+  });
+});
+
+describe('la pieza que no puede valer, dicha — B-1236', () => {
+  /**
+   * La forma de B-1234 en la cajita de al lado: `75` en los minutos hacía que
+   * `dePiezas` compusiera `''` y la fecha se vaciara **sin que nada lo dijera**.
+   * Un `75` no se convierte —es un typo—, así que lo que se afirma es que se dice.
+   *
+   * MUTACIÓN PROBADA: devolviendo siempre `null`, se ponen rojos los dos primeros
+   * casos, el borde de 24 y los dos montados de `campo-de-fecha-y-hora`.
+   */
+  const piezas = (hora: string, minutos: string) => ({
+    fecha: '2026-10-07',
+    hora,
+    minutos,
+    meridiano: 'PM' as const,
+  });
+
+  it('75 en los minutos se dice, y nombra la pieza', () => {
+    const r = piezaFueraDeRango(piezas('7', '75'), '12');
+    expect(r?.pieza).toBe('minutos');
+    expect(r?.mensaje).toContain('«75»');
+    expect(r?.mensaje).toContain('00 a 59');
+    // Y es la misma situación que `dePiezas` compone como vacía: el mensaje
+    // explica ese `''`, no uno distinto.
+    expect(dePiezas(piezas('7', '75'), '12')).toBe('');
+  });
+
+  it('25 en la hora también, que es el typo que B-1234 dejó quieto', () => {
+    const r = piezaFueraDeRango(piezas('25', '30'), '12');
+    expect(r?.pieza).toBe('hora');
+    expect(r?.mensaje).toContain('1 a 12');
+  });
+
+  it('con un dígito solo, o incompleto, no hay error: es un campo que todavía no vale', () => {
+    expect(piezaFueraDeRango(piezas('7', '7'), '12')).toBeNull();
+    expect(piezaFueraDeRango(piezas('0', ''), '12')).toBeNull();
+    expect(piezaFueraDeRango(piezas('', ''), '12')).toBeNull();
+  });
+
+  it('los bordes que sí valen no se marcan', () => {
+    expect(piezaFueraDeRango(piezas('12', '59'), '12')).toBeNull();
+    expect(piezaFueraDeRango(piezas('01', '00'), '12')).toBeNull();
+    // En 24 el 23 vale y el 24 no.
+    expect(piezaFueraDeRango(piezas('23', '00'), '24')).toBeNull();
+    expect(piezaFueraDeRango(piezas('24', '00'), '24')?.pieza).toBe('hora');
   });
 });
 

@@ -347,6 +347,49 @@ export const dePiezas = (piezas: PiezasDeFechaYHora, formato: FormatoDeHora): st
 };
 
 /**
+ * **La pieza que no puede valer, dicha** — B-1236.
+ *
+ * `dePiezas` compone `''` tanto para un campo a medio tipear como para uno con
+ * una pieza imposible, y hacia afuera eso está bien: el schema lee las dos cosas
+ * como «falta la fecha». Lo que no estaba bien es la pantalla: con `75` en los
+ * minutos la cajita seguía mostrando `75`, el eco desaparecía y **nadie decía
+ * nada**. Es la forma de B-1234 en la cajita de al lado, pero acá no hay nada que
+ * convertir —`75` no es un minuto en otro formato, es un typo, como el `25` de la
+ * hora—, así que el arreglo es **decirlo**, no adivinar.
+ *
+ * Solo habla con **los dos dígitos puestos**: con uno solo el texto todavía puede
+ * crecer (el `0` de `05`) y un error a mitad de la tecla sería ruido. Y habla de
+ * una pieza por vez, la hora antes que los minutos, que es el orden en que se
+ * tipean.
+ *
+ * Devuelve `null` cuando no hay nada imposible —aunque falte algo—: un campo
+ * incompleto sigue sin ser un error, es un campo que todavía no vale.
+ */
+export const piezaFueraDeRango = (
+  piezas: PiezasDeFechaYHora,
+  formato: FormatoDeHora,
+): { pieza: 'hora' | 'minutos'; mensaje: string } | null => {
+  const { hora, minutos } = piezas;
+  if (/^\d{2}$/.test(hora)) {
+    const h = Number(hora);
+    const [min, max] = formato === '12' ? [1, 12] : [0, 23];
+    if (h < min || h > max) {
+      return {
+        pieza: 'hora',
+        mensaje: `«${hora}» no es una hora: va de ${min} a ${max}. Hasta que la corrijas, el encuentro queda sin fecha.`,
+      };
+    }
+  }
+  if (/^\d{2}$/.test(minutos) && Number(minutos) > 59) {
+    return {
+      pieza: 'minutos',
+      mensaje: `«${minutos}» no son minutos: van de 00 a 59. Hasta que los corrijas, el encuentro queda sin fecha.`,
+    };
+  }
+  return null;
+};
+
+/**
  * Lo que quedó cargado, escrito en palabras — el **eco** de D-720.
  *
  * No es decoración: un control que dibujamos nosotros necesita confirmar lo que
