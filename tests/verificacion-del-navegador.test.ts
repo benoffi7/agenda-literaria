@@ -186,6 +186,17 @@ describe('el cartel', () => {
 });
 
 describe('el cableado', () => {
+  /**
+   * **El panel es quien pide el token, al montarse.** Sin este aserto la parte
+   * pura podía estar perfecta y no llamarla nadie, que es el modo de falla de
+   * un aviso: no se ve que falta hasta que hace falta.
+   */
+  it('`AdminApp` llama a `verificarNavegadorAlArrancar` y pinta el aviso', () => {
+    const admin = codigo('src/components/admin/AdminApp.tsx');
+    expect(admin).toMatch(/verificarNavegadorAlArrancar\(\)/);
+    expect(admin).toMatch(/<AvisoVerificacion\b/);
+  });
+
   it('`firebase-client` activa App Check antes de preguntar cómo le fue', () => {
     const cliente = codigo('src/lib/firebase-client.ts');
     const cuerpo = cliente.slice(cliente.indexOf('verificarNavegadorAlArrancar'));

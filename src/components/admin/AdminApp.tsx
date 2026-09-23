@@ -4,6 +4,12 @@ import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type R
 // Firestore, así que no rompe el corte del bundle de D-51.
 import { AvisoEtiquetas } from '@/components/admin/AvisoEtiquetas';
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
+// B-930 — estático por lo mismo que el de versión nueva: tiene que poder
+// aparecer en la pantalla de login. Solo lee un store de módulo sin SDK.
+import {
+  AvisoVerificacion,
+  useVerificacionDelNavegador,
+} from '@/components/admin/AvisoVerificacion';
 import { PieVersion } from '@/components/admin/PieVersion';
 import { SiNoCarga } from '@/components/admin/SiNoCarga';
 import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
@@ -55,6 +61,7 @@ import {
   observarAuth,
   rolDelPanel,
   usarEmuladores,
+  verificarNavegadorAlArrancar,
 } from '@/lib/firebase-client';
 // Puro: la tabla de qué ve cada rol. No toca Firestore, así que puede ser un
 // import estático del chunk del login (B-09, D-51).
@@ -434,6 +441,17 @@ export function AdminApp() {
   // Dos componentes llamándolo serían dos chequeos y, en el peor caso, dos
   // recargas. Se reparte al aviso y al pie.
   const estadoVersion = useVersionPublicada();
+  /*
+   * B-930 — **el token de App Check se pide al entrar**, no en el primer
+   * guardado: con el enforcement puesto, un navegador sin token no puede leer
+   * ni guardar nada, y enterarse recién al apretar «Guardar» es tarde. El
+   * cartel va en las tres pantallas —login, sin permisos y panel—, porque el
+   * problema es del navegador y no de la sesión.
+   */
+  const verificacion = useVerificacionDelNavegador();
+  useEffect(() => {
+    verificarNavegadorAlArrancar();
+  }, []);
 
   /**
    * A dónde vuelve el formulario al guardar o cancelar. Sin esto, editar desde
@@ -619,6 +637,7 @@ export function AdminApp() {
   if (!usuario) {
     return (
       <div className="mx-auto max-w-sm px-segura py-24 text-center">
+        <AvisoVerificacion estado={verificacion} />
         <h1 className="font-serif text-2xl font-semibold">Panel de carga</h1>
         <p className="mt-2 text-sm text-tinta/60">
           Agenda de actividades literarias
@@ -660,6 +679,7 @@ export function AdminApp() {
   if (!rol) {
     return (
       <div className="mx-auto max-w-md px-segura py-24 text-center">
+        <AvisoVerificacion estado={verificacion} />
         <h1 className="font-serif text-xl font-semibold">Sin permisos</h1>
         <p className="mt-2 text-sm text-tinta/60">
           {usuario.email} no tiene el claim <code>admin</code> ni{' '}
@@ -702,6 +722,7 @@ export function AdminApp() {
       }`}
     >
       <AvisoVersionNueva {...estadoVersion} />
+      <AvisoVerificacion estado={verificacion} />
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-xl font-semibold">
