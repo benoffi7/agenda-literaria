@@ -1919,6 +1919,50 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
+   * B-906 — el schema de una fila de la galería llegó a estar escrito **cinco**
+   * veces (la actividad y las cuatro fichas de la Guía), porque el de
+   * `schema.ts` era privado y cada ficha nueva copiaba la anterior. Un campo
+   * nuevo de `Imagen` entraba en una y no en las otras, y lo único que las
+   * sostenía era que todas tipaban a `Imagen`.
+   *
+   * Lo que delata una copia es validar el prefijo `img_`: sin eso no es un
+   * schema de imagen. Se busca en todo `src/` y no solo en los `*-schema.ts`,
+   * porque la sexta copia la va a escribir quien no sabía que existía el
+   * módulo, y ese no respeta el nombre.
+   *
+   * `imagen-schema.ts` depende solo de `zod` a propósito: lo importan los
+   * formularios públicos de «sumá una ficha», y si arrastrara `schema.ts` el
+   * sitio cargaría el schema entero de la actividad.
+   */
+  it('B-906 — el schema de la imagen se escribe una sola vez, y no arrastra nada', () => {
+    const conPrefijo = execFileSync('grep', ['-rln', String.raw`\^img_`, 'src'], {
+      cwd: fileURLToPath(raiz),
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    expect(conPrefijo, 'importá imagenSchema de @/lib/imagen-schema en vez de copiarlo').toEqual([
+      'src/lib/imagen-schema.ts',
+    ]);
+
+    const modulo = sinComentarios(fuente('src/lib/imagen-schema.ts'));
+    const imports = [...modulo.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
+    expect(imports, 'imagen-schema.ts lo importa el bundle público: solo zod').toEqual(['zod']);
+
+    // Control positivo: las cinco entidades con galería lo usan de verdad.
+    for (const archivo of [
+      'src/lib/schema.ts',
+      'src/lib/libreria-schema.ts',
+      'src/lib/suscripcion-literaria-schema.ts',
+      'src/lib/lugar-schema.ts',
+      'src/lib/biblioteca-schema.ts',
+    ]) {
+      expect(fuente(archivo), archivo).toContain("from '@/lib/imagen-schema'");
+    }
+  });
+
+  /**
    * El otro lado de la clase, ya resuelto y con guarda: el panel no
    * reimplementa la descripción del evento, importa la del sync por el alias
    * `@calendario` (D-20). Si alguien vuelve a copiarla, las dos versiones se
@@ -2052,7 +2096,9 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
    * nombra uno solo no protege a los demás, y agregarlos cuesta una línea.
    */
   it('cada lista con ids de cliente tiene su prefijo validado en el schema', () => {
-    const schema = fuente('src/lib/schema.ts');
+    // B-906: el schema de la imagen vive en su propio módulo, que `schema.ts`
+    // importa; los dos fuentes juntos son «el schema» de la actividad.
+    const schema = fuente('src/lib/schema.ts') + fuente('src/lib/imagen-schema.ts');
     const productores: [string, string][] = [
       ['ses_', 'src/lib/sesiones.ts'],
       ['img_', 'src/lib/imagenes.ts'],

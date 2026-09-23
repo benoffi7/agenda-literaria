@@ -28,6 +28,7 @@ import type { DatoConFecha } from '@/lib/datoConFecha';
 import { ESTADO_INICIAL, type EstadoDirectorio, slugDeFicha } from '@/lib/directorios';
 import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
 import { esProvincia, geografiaNormalizada } from '@/lib/geografia.mjs';
+import { imagenSchema } from '@/lib/imagen-schema';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import {
   CIUDAD_POR_DEFECTO,
@@ -112,28 +113,6 @@ export const pareceMail = (valor: string): boolean =>
 export const slugDeBiblioteca = (f: { nombre: string; slug: string }): string =>
   f.slug.trim() ? f.slug.trim() : slugDeFicha(f.nombre);
 
-/**
- * Una fila de la galería (D-125).
- *
- * ⚠️ **Es la tercera derivación de la misma forma** —`imagenSchema` de
- * `src/lib/schema.ts` no está exportado, y `libreria-schema.ts` ya tenía la
- * segunda—. Mientras sean varias, un campo nuevo de `Imagen` entra en una y no
- * en las otras sin que nada se ponga rojo: es **B-906**, que está abierto
- * justamente por esto. Lo que hoy lo sostiene es el compilador (todas producen
- * un `Imagen`).
- */
-const imagenDeBibliotecaSchema = z.object({
-  id: z.string().regex(/^img_/, 'El id de la imagen tiene que empezar con img_'),
-  url: texto.min(1, 'Falta la dirección de la imagen'),
-  epigrafe: opcional,
-  textoAlternativo: opcional,
-  origen: z.enum(['externa', 'propia']),
-  storagePath: z.string().optional(),
-  ancho: z.number().optional(),
-  alto: z.number().optional(),
-  portada: z.boolean().default(false),
-});
-
 const base = z.object({
   nombre: texto
     .min(MIN_NOMBRE_BIBLIOTECA, '¿Cómo se llama la biblioteca?')
@@ -143,7 +122,7 @@ const base = z.object({
   // normal. La forma se valida en el `superRefine`, sobre el slug ya derivado.
   slug: texto.max(TOPE_SLUG_BIBLIOTECA, 'La dirección web quedó muy larga').default(''),
   descripcion: texto.max(TOPE_DESCRIPCION_BIBLIOTECA, 'Quedó muy largo, resumilo').default(''),
-  imagenes: z.array(imagenDeBibliotecaSchema).default([]),
+  imagenes: z.array(imagenSchema).default([]),
   /*
    * **Opcional**, con el mismo criterio que el horario de B-982: una ficha sin
    * el tipo cargado sigue diciendo dónde queda y qué presta, y exigirlo dejaría

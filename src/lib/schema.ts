@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { admiteMonto } from '@/lib/arancel';
 import { MAXIMO_IMAGENES, portadaDe } from '@/lib/imagenes';
+import { imagenSchema, MENSAJE_ID_IMAGEN } from '@/lib/imagen-schema';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esCopiaSinRevisar } from '@/lib/duplicar';
 import { deDatetimeLocal } from '@/lib/sesiones';
@@ -216,50 +217,17 @@ const ESQUEMA_PERMITIDO = /^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?
  */
 const MENSAJES_DE_ID = {
   sesion: 'El id de sesión debe venir de nuevaSesionId()',
-  imagen: 'El id de imagen debe venir de nuevaImagenId()',
+  imagen: MENSAJE_ID_IMAGEN,
   modalidad: 'El id de modalidad debe venir de nuevaModalidadId()',
   material: 'El id de material debe venir de nuevaItemMaterialId()',
   comision: 'El id de opción debe venir de nuevaComisionId()',
 } as const;
 
 /**
- * Una fila de la galería (B-167). Las reglas de forma van en los dos niveles: son
- * las que harían ilegible el documento, no las que lo harían incompleto.
- *
- * `epigrafe` es opcional a propósito (DEC-7a): es un pie de foto, no el texto
- * alternativo — ese es `textoAlternativo`, y **también es opcional**: B-301 /
- * D-440 lo había hecho obligatorio en la portada al publicar, y el dueño sacó ese
- * bloqueo el 2026-09-07. El campo sigue existiendo, se guarda y se edita; lo que
- * no hace es impedir publicar. El motivo largo está donde estaba el
- * `superRefine`, en el nivel «publicar».
+ * Una fila de la galería (B-167). Vive en `imagen-schema.ts` desde B-906 —ahí
+ * está el porqué— y se reexporta acá para quien ya lo buscaba en este módulo.
  */
-const imagenSchema = z.object({
-  id: z.string().regex(/^img_/, MENSAJES_DE_ID.imagen),
-  url: texto.min(1, 'Falta la dirección de la imagen'),
-  epigrafe: opcional,
-  /*
-   * B-301 — acá va sin regla: el campo es una cadena en las dos filas y en los
-   * dos niveles. La obligatoriedad es **condicional** —solo la portada, solo al
-   * publicar— y por eso vive en el `superRefine`, como los condicionales del §11
-   * y por el mismo motivo: en el tipo no se puede escribir «obligatorio si esta
-   * fila es la portada», y un `.min(1)` acá dejaría inguardable cualquier
-   * borrador con una imagen a medio cargar.
-   */
-  textoAlternativo: opcional,
-  origen: z.enum(['externa', 'propia']),
-  // `storagePath` no se valida contra un formato: atarlo a un patrón acá haría
-  // que un cambio del lado del servidor rompa el guardado del panel.
-  //
-  // **Quién lo escribe ya está decidido (B-206 #2).** Lo escribe la subida del
-  // panel, y mañana lo va a reescribir la Function de DEC-7d. Para que eso no sea
-  // `calendarEventId` dentro de `sesiones` otra vez, `formADocumento` **enumera**
-  // las claves de cada imagen en vez de spreadear la fila, y `functions/
-  // historial.js` lo declara en `CAMPOS_DE_MAQUINA_IMAGEN`.
-  storagePath: z.string().optional(),
-  ancho: z.number().optional(),
-  alto: z.number().optional(),
-  portada: z.boolean().default(false),
-});
+export { imagenSchema };
 
 const sesionSchema = z
   .object({
