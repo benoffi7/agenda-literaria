@@ -19,7 +19,7 @@ import { CENTINELAS } from './fixtures/formulario';
 import { ts } from './fixtures/tiempo';
 
 /**
- * El tablero «Estado del catálogo» — B-370, D-200.
+ * El tablero «Estado del catálogo» — B-370, D-860.
  *
  * Lo que estos tests cuidan, en orden de importancia:
  *

@@ -830,7 +830,7 @@ detección —los cuatro pasajes de `filtrarPublico`— vive en `Buscador.tsx`, 
 ## 8 · El primer tramo, el que se implementó
 
 **«Estado del catálogo»**, una vista nueva del panel. El criterio de por qué es
-éste y no otro está en **D-200**.
+éste y no otro está en **D-860**.
 
 Sigue siendo lo primero incluso con GA4 decidido, y el motivo es de calendario:
 **GA4 no mide retroactivamente**, así que su tablero muestra cero el primer día y
@@ -1440,7 +1440,7 @@ semana sin el tag es una semana de historia que no se recupera**.
   Enhanced Measurement que este documento cita en el [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480).
 - [`12-sitio-publico.md`](12-sitio-publico.md) §11.1 — la decisión 4 del dueño,
   que es la que se contestó acá.
-- [`06-decisiones.md`](06-decisiones.md) — **D-200** (por qué el tablero arranca
+- [`06-decisiones.md`](06-decisiones.md) — **D-860** (por qué el tablero arranca
   por el catálogo), **D-201** (GA4 en el sitio público, con su costo medido y el
   alcance de la regla de contenido), **D-250** (el banner es C3, y qué significa
   «rechazar» de verdad), **D-251** (el costo de JS aceptado, con el número),

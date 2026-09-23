@@ -248,7 +248,7 @@ export const FUNCIONES = [
    */
   'imagen-rotada',
   /**
-   * B-370 / D-200 — se abrió «Estado del catálogo», con cuántas actividades
+   * B-370 / D-860 — se abrió «Estado del catálogo», con cuántas actividades
    * tenía el catálogo en ese momento como `valor`.
    *
    * Contesta la única pregunta que decide si vale construir la otra mitad de
