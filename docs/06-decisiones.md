@@ -7220,6 +7220,22 @@ eso.
 
 ## D-272 · La pestaña «El sitio público»: andamiaje honesto, ni un número inventado
 
+> **Superada en parte (2026-09-07): la franja fija del punto 1 ya no existe.**
+> El dueño sacó, mirando la pantalla publicada, los cuatro párrafos de arriba de
+> la pestaña —el que explicaba de qué es, el «hay datos desde el…», el de
+> «GA4, 28 días contra los 28 anteriores» y el «resumen calculado el…»—. El
+> argumento para conservarlos y por qué perdió están en el comentario de
+> `PanelSitioPublico` (`src/components/admin/EstadisticasPanel.tsx`).
+>
+> **La decisión no cambió**: ni un número inventado, y un vacío que dice por qué
+> está vacío. Lo que caducó es la forma. Lo que hacía la franja lo siguen
+> haciendo otras piezas: los cuatro estados de `QueFalta` (nunca corrió, falta un
+> paso de consola, la API falló, o hay cero de verdad), la `variacion` en `null`
+> cuando no hay ventana anterior contra la cual comparar, y `ga4.desdeCuando`,
+> que sigue en el dato aunque no se pinte. B-1086.
+>
+> Lo de abajo queda como estaba escrito, igual que D-270 frente a D-273.
+
 **El problema que esta decisión resuelve.** El pedido quería vistas, páginas
 más vistas, secciones, clics y fricciones **en el panel**. Esa lectura —la
 Data API de GA4 vía una Cloud Function— es **B-374**, y no se puede construir

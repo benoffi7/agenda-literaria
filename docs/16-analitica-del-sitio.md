@@ -952,6 +952,12 @@ Debajo, tres bloques, en el orden de lo que hay que hacer primero:
 > [§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373). Lo que **no** cambió
 > es la decisión de esta sección —ni un número inventado— y lo que se agregó es
 > decir **cuál** de las cuatro situaciones explica el vacío.
+>
+> **Y la «franja fija» de la primera viñeta de abajo ya no está** desde el
+> 2026-09-07: el dueño sacó los cuatro párrafos de arriba de la pestaña mirando
+> la pantalla publicada. Qué sigue cubriendo lo que decían está en la nota de
+> **D-272** y en el comentario de `PanelSitioPublico`
+> (`EstadisticasPanel.tsx`).
 
 El pedido original quería vistas, páginas más vistas, secciones, clics y
 fricciones **en el panel**. Esa lectura es **B-374**, y hasta que haya un mes de
