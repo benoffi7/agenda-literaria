@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **`tipo-biblioteca` ya estaba en producción** — el pendiente manual que decía que
+  bloqueaba el deploy por `push` desde el 2026-09-17 había quedado viejo. Correr el
+  sembrado dio «ya existía» en las 18 taxonomías, y los deploys por `push` del
+  2026-09-23 salieron verdes. Cerrado en el BACKLOG.
+
 - **Los auditores sobre el correo: nueve hallazgos, siete adentro** — cerrando
   B-1230 y B-1231. Los que valen solos:
 

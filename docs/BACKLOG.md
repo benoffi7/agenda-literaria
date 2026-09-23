@@ -214,7 +214,14 @@ Resueltas el 2026-08-21:
 
 ## Pendiente de acción manual del dueño
 
-### ⚠️ Sembrar `tipo-biblioteca` en producción — bloquea el deploy por `push` desde el 2026-09-17
+### ✅ hecho (verificado el 2026-09-23) — Sembrar `tipo-biblioteca` en producción
+
+**Ya estaba sembrado cuando se corrió, y el ítem había quedado viejo.** El dueño
+corrió `npm run opciones:sembrar:prod` el 2026-09-23 y las 18 taxonomías
+—`tipo-biblioteca` incluida— respondieron «ya existía, no se toca»: alguien lo
+había sembrado antes sin cerrar esto. Lo confirman los dos deploys por `push` del
+mismo día (`Deploy desde main`, corridas 35877022796 y 35898746211), los dos
+verdes. Lo que sigue es el texto original.
 
 **Un comando, y es de quien tiene las credenciales de producción** (§5.4: un
 agente no las toca):
