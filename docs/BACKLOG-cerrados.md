@@ -19699,6 +19699,21 @@ Con los archivos en `public/banners/`, se agrega la fila a `BANNERS_DE_CIUDAD`
 relación de aspecto sea la que se pidió. **La fila y las imágenes van en el mismo
 cambio**: declarada sin los archivos, es una imagen rota en producción.
 
+### B-1235a · Aplicar el CORS del bucket de imágenes · P1 — la mitad de consola de B-1235 (2026-09-23) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23)** por el dueño. Verificado con `curl -H 'Origin: https://agendaleh.ar'` sobre una imagen de `events.json`: responde `access-control-allow-origin: https://agendaleh.ar`. Falta la prueba de punta a punta de B-1235 (convertir una propuesta con foto).
+
+Desde la raíz del repo:
+
+```
+gcloud storage buckets update gs://agenda-literaria.firebasestorage.app --cors-file=cors.json
+```
+
+Solo habilita que el JavaScript del sitio **lea** bytes que ya lee cualquiera con
+la URL con token. Hoy el bucket tiene `cors_config: null`. Arregla B-1235 y B-1320
+a la vez. Lo intentó el orquestador y el modo automático lo frenó por ser un
+recurso compartido: es del dueño.
+
 ## Agentes y automatización del flujo (B-115 a B-124)
 
 ### B-115 · Nada invoca a los auditores solos — ✅ hecho (2026-08-24, por B-139)

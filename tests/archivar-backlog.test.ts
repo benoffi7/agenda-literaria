@@ -589,13 +589,23 @@ describe('dónde queda cada ítem, no solo si está — B-1233', () => {
      * de cerrados crezca en exactamente ese bloque y una línea en blanco.
      */
     const { readFile } = await import('node:fs/promises');
-    const vivo = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
-    const cerrados = await readFile(`${process.cwd()}/docs/BACKLOG-cerrados.md`, 'utf8').catch(
+    const vivoCrudo = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
+    const cerradosCrudo = await readFile(`${process.cwd()}/docs/BACKLOG-cerrados.md`, 'utf8').catch(
       () => '',
     );
-    if (!cerrados.trim()) return;
-    expect(fueraDeSeccion(vivo)).toEqual([]);
-    expect(fueraDeSeccion(cerrados)).toEqual([]);
+    if (!cerradosCrudo.trim()) return;
+    expect(fueraDeSeccion(vivoCrudo)).toEqual([]);
+    expect(fueraDeSeccion(cerradosCrudo)).toEqual([]);
+    /*
+     * La base es el estado **ya archivado**: si el vivo trae un cerrado que
+     * nadie movió todavía —pasa entre que se marca y se corre el script, y ya
+     * lo tiene en cuenta `tablero.test.ts`—, este caso mediría dos movimientos
+     * y diría que el diff es de más. Lo que se afirma es el tamaño de mover
+     * **uno**.
+     */
+    const base = archivar(vivoCrudo, cerradosCrudo);
+    const vivo = base.vivo;
+    const cerrados = base.archivo;
 
     const blanco = parsearBacklog(vivo).items.find((i) => i.seccion?.startsWith('P2') && i.estado === 'abierto');
     expect(blanco, 'hay un P2 abierto para probar').toBeDefined();
