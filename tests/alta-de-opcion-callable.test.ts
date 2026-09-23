@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
+import { REGION } from '../functions/despliegue.js';
 
 const fuente = (rel: string): string => readFileSync(rel, 'utf8');
 
@@ -70,5 +71,27 @@ describe('crearOpcionDelPanel — B-893', () => {
     // saliera del cuerpo del pedido, cualquiera podría crear a nombre de otro.
     expect(codigo()).toContain('uid: peticion.auth.uid');
     expect(codigo()).not.toMatch(/peticion\.data\.uid|pedido\.uid/);
+  });
+
+  it('el nombre y la región que usa el panel son los de la Function (clase de B-88)', () => {
+    /*
+     * Productor y consumidor en dos runtimes que no se pueden importar entre sí:
+     * con el nombre equivocado el SDK contesta `functions/not-found`, y con la
+     * región equivocada le pega a `us-central1` — los dos recién en runtime, o
+     * sea cuando un publicador guarda.
+     */
+    const cliente = fuente('src/lib/opcion-por-function.ts');
+    const nombre = /const CALLABLE_OPCION = '([^']+)'/.exec(cliente)?.[1];
+    expect(nombre).toBe('crearOpcionDelPanel');
+    expect(sinComentarios(fuente('functions/index.js'))).toContain(`export { ${nombre} }`);
+    expect(/const REGION_FUNCTIONS = '([^']+)'/.exec(cliente)?.[1]).toBe(REGION);
+  });
+
+  it('el guardado del publicador pasa por la callable', () => {
+    // El otro extremo del cable: sin esto, el panel podría seguir salteando las
+    // etiquetas del publicador y todo lo de arriba estaría verde sin usarse.
+    const guardar = sinComentarios(fuente('src/lib/formulario/guardar.ts'));
+    expect(guardar).toContain("import { proponerOpcion } from '@/lib/opcion-por-function';");
+    expect(guardar).toMatch(/await proponerOpcion\(campo, label, slugify\(label\)\)/);
   });
 });

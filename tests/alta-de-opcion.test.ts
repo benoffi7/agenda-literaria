@@ -178,7 +178,7 @@ describe('cambioInesperado — lo único que cambia es ese elemento (B-893)', ()
     const antes = base();
     const desordenado = valoresConLaEtiqueta(antes, nueva).valores.map((v) =>
       Object.fromEntries(Object.entries(v).reverse()),
-    ) as ValorOpcion[];
+    ) as unknown as ValorOpcion[];
     expect(cambioInesperado(antes, desordenado, nueva)).toBeNull();
   });
 

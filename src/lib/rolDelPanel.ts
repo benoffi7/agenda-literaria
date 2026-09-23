@@ -106,8 +106,23 @@ export interface PermisosDelPanel {
    * elemento del array `valores` cambió: darle `write` no sería «puede agregar
    * una opción», sería «puede reescribir la taxonomía entera». Está argumentado
    * en `firestore.rules`.
+   *
+   * B-893 — que sea `false` **ya no quiere decir que no crea etiquetas**: quiere
+   * decir que no las crea **escribiendo el documento**. Eso lo dice
+   * `creaEtiquetas`.
    */
   escribeTaxonomias: boolean;
+  /**
+   * ¿Se le ofrece «Otro…» para crear una etiqueta? — B-893, D-810.
+   *
+   * Es una pregunta distinta de `escribeTaxonomias`, y por eso es otro campo: el
+   * publicador **crea** etiquetas pero **no escribe** `/opciones/*`; las crea por
+   * la callable `crearOpcionDelPanel`, que verifica del lado del servidor que lo
+   * único que agrega es un elemento sin aprobar. Con los dos datos en uno, el día
+   * que entre un rol que no deba crear nada habría que elegir entre romperle el
+   * panel al publicador o abrirle la puerta al nuevo.
+   */
+  creaEtiquetas: boolean;
   /**
    * ¿Puede leer el directorio `/usuarios` completo?
    *
@@ -142,6 +157,7 @@ export const PERMISOS: Record<RolDelPanel, PermisosDelPanel> = {
     pantallas: PANTALLAS_DEL_PANEL,
     veTodoElCatalogo: true,
     escribeTaxonomias: true,
+    creaEtiquetas: true,
     leeElDirectorio: true,
   },
   publicador: {
@@ -158,6 +174,9 @@ export const PERMISOS: Record<RolDelPanel, PermisosDelPanel> = {
     pantallas: ['lista', 'nueva', 'editar', 'duplicar', 'calendario'],
     veTodoElCatalogo: false,
     escribeTaxonomias: false,
+    // B-893 — por la callable: nacen sin aprobar y no le aparecen a nadie más
+    // hasta que el admin las apruebe (D-810).
+    creaEtiquetas: true,
     leeElDirectorio: false,
   },
 };

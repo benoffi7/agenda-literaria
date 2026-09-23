@@ -41,6 +41,7 @@ import {
   type ResultadoGuardado,
 } from '@/lib/formulario/guardar';
 import { OPCIONES_BASE, ordenarValores } from '@/lib/opciones';
+import { PERMISOS } from '@/lib/rolDelPanel';
 import { formularioLleno } from './fixtures/formulario';
 import type { ActividadForm } from '@/types/actividad';
 
@@ -414,6 +415,9 @@ const puertosFalsos = (over: Partial<PuertosGuardado> = {}) => {
     upsertOpciones: async (campo) => (llamadas.push(`upsertOpciones:${campo}`), []),
     registrarUsos: async (campo, slugs) =>
       void llamadas.push(`registrarUsos:${campo}:${slugs.join(',')}`),
+    proponerOpcion: async (campo, label, slug) => (
+      llamadas.push(`proponerOpcion:${campo}:${label}:${slug}`), slug
+    ),
     crearActividad: async () => (llamadas.push('crearActividad'), 'act1'),
     actualizarActividad: async () => void llamadas.push('actualizarActividad'),
     ...over,
@@ -1175,51 +1179,90 @@ describe('montoDesdeTexto — el punto agrupa miles, no separa decimales (B-114)
 });
 
 /**
- * **La rotura 3 de B-888: las taxonomías al guardar** — tajada 2.
+ * **Las taxonomías al guardar según el rol** — B-888 tajada 2, B-893.
  *
- * `upsertOpcion()`, `upsertOpciones()` y `registrarUsos()` corren en **cada**
- * guardado (D-02) y escriben en `/opciones/{campo}`, que es de admin: las reglas
- * no pueden inspeccionar qué elemento del array `valores` cambió, así que «agrega
- * una opción» y «reescribe la taxonomía del sitio» son el mismo permiso.
- *
- * Con el rol acotado esas escrituras se rechazan **siempre**, y el modo de falla
- * era silencioso en las dos direcciones: el `catch` de `registrarUsos` es mudo a
- * propósito —está pensado para una carrera rara, no para fallar en cada
- * guardado— y el de las altas habría emitido un aviso de «volvé a tipear la
- * etiqueta» que para esta cuenta no tiene arreglo posible.
+ * `/opciones/{campo}` es de admin: las reglas no pueden inspeccionar qué
+ * elemento del array `valores` cambió, así que para un publicador
+ * `upsertOpcion()`, `upsertOpciones()` y `registrarUsos()` se rechazan
+ * **siempre**. La tajada 2 las salteaba; B-893 (D-810) le dio al publicador
+ * **otro camino** para crear —la callable `crearOpcionDelPanel`, puerto
+ * `proponerOpcion`— y ese camino **no puede fallar en silencio**: lo que la
+ * callable no confirma sale en `etiquetasSinRegistrar` y lo pinta el aviso.
  */
-describe('guardarActividad — el rol acotado no toca `/opciones` (B-888)', () => {
-  it('un publicador no crea etiquetas ni cuenta usos', async () => {
+describe('guardarActividad — el publicador crea por la callable (B-888, B-893)', () => {
+  const conTags = () =>
+    entrada({
+      rol: 'publicador',
+      form: formularioLleno({ tags: ['micro-ficcion'] }),
+      multivalorNuevos: { tags: { 'micro-ficcion': 'Micro ficción' } },
+    });
+
+  it('un publicador no escribe `/opciones` directo: cada etiqueta nueva va por la callable', async () => {
     /*
-     * MUTACIÓN PROBADA: sacarle a `guardar.ts` el `if (!PERMISOS[rol]
-     * .escribeTaxonomias) return …` deja este caso en rojo nombrando las cuatro
-     * llamadas, y el de abajo en verde — que es la diferencia entre los dos.
+     * MUTACIÓN PROBADA: sacarle a `guardar.ts` el bloque
+     * `if (!PERMISOS[rol].escribeTaxonomias) { … }` deja este caso en rojo
+     * (el publicador cae en `upsertOpcion`/`upsertOpciones`, que las reglas le
+     * rechazan).
      */
     const { puertos, llamadas } = puertosFalsos();
-    const r = ok(await guardarActividad(entrada({ rol: 'publicador' }), puertos));
+    const r = ok(await guardarActividad(conTags(), puertos));
 
-    // La actividad SÍ se guarda: lo que el rol recorta es lo compartido.
+    // La actividad SÍ se guarda, y primero (B-71).
     expect(r.id).toBe('act1');
-    expect(llamadas).toContain('crearActividad');
-
     for (const llamada of llamadas) {
       expect(llamada, 'un publicador escribió en /opciones').not.toMatch(
         /^(upsertOpcion|upsertOpciones|registrarUsos)/,
       );
     }
+    // Las dos: la de valor único y la multivalor, con el slug derivado igual
+    // que el que la actividad guardó (trampa 6).
+    expect(llamadas.filter((l) => l.startsWith('proponerOpcion'))).toEqual([
+      'proponerOpcion:arancel:Con beca parcial:con-beca-parcial',
+      'proponerOpcion:tags:Micro ficción:micro-ficcion',
+    ]);
+    expect(llamadas.indexOf('crearActividad')).toBeLessThan(
+      llamadas.findIndex((l) => l.startsWith('proponerOpcion')),
+    );
+    expect(r.etiquetasSinRegistrar).toEqual([]);
   });
 
-  it('y no arrastra el aviso de «volvé a tipear la etiqueta», que no tendría arreglo', async () => {
+  it('si la callable rechaza una, el guardado lo dice — y las demás se intentan igual', async () => {
     /*
-     * B-177 — el aviso existe para decir **cuál** etiqueta volver a tipear. Para
-     * esta cuenta ese consejo no se puede seguir nunca (no va a poder crearla), y
-     * un cartel que enseña a ignorar los carteles es peor que ninguno. La UI
-     * además no le ofrece «Otro», así que en el camino normal no hay etiquetas
-     * nuevas: esto es el piso, no el mecanismo.
+     * El pedido explícito de B-893: «ese camino no puede fallar en silencio».
+     * Y una por una: que falle la primera no dice nada de la segunda, así que
+     * cortar ahí reportaría como no registrada una que nadie intentó.
+     *
+     * MUTACIÓN PROBADA: mover el `try` afuera del `for` de las altas del
+     * publicador deja en rojo la segunda aserción (la de `tags` no se intenta).
      */
-    const { puertos } = puertosFalsos();
-    const r = ok(await guardarActividad(entrada({ rol: 'publicador' }), puertos));
-    expect(r.etiquetasSinRegistrar).toEqual([]);
+    const { puertos, llamadas } = puertosFalsos({
+      proponerOpcion: async (campo, label, slug) => {
+        llamadas.push(`proponerOpcion:${campo}`);
+        if (campo === 'arancel') throw new Error('functions/unauthenticated');
+        return slug;
+      },
+    });
+    const r = ok(await guardarActividad(conTags(), puertos));
+    expect(r.etiquetasSinRegistrar).toEqual(['Con beca parcial']);
+    expect(llamadas).toContain('proponerOpcion:tags');
+  });
+
+  it('un rol que no crea etiquetas ni lo intenta, y no arrastra el aviso', async () => {
+    /*
+     * Hoy no hay rol así —los dos crean—, pero el portón `creaEtiquetas` es el
+     * piso para el que se agregue mañana. Se prueba apagándolo en `PERMISOS`
+     * mientras dura el caso.
+     */
+    const antes = PERMISOS.publicador.creaEtiquetas;
+    PERMISOS.publicador.creaEtiquetas = false;
+    try {
+      const { puertos, llamadas } = puertosFalsos();
+      const r = ok(await guardarActividad(conTags(), puertos));
+      expect(llamadas.filter((l) => /^(upsert|registrar|proponer)/.test(l))).toEqual([]);
+      expect(r.etiquetasSinRegistrar).toEqual([]);
+    } finally {
+      PERMISOS.publicador.creaEtiquetas = antes;
+    }
   });
 
   it('un admin sigue creándolas y contándolas, como siempre', async () => {
@@ -1229,5 +1272,7 @@ describe('guardarActividad — el rol acotado no toca `/opciones` (B-888)', () =
     ok(await guardarActividad(entrada({ rol: 'admin' }), puertos));
     expect(llamadas.some((l) => l.startsWith('upsertOpcion'))).toBe(true);
     expect(llamadas.some((l) => l.startsWith('registrarUsos'))).toBe(true);
+    // Y nunca por la callable: su camino es la transacción del cliente (B-131).
+    expect(llamadas.some((l) => l.startsWith('proponerOpcion'))).toBe(false);
   });
 });

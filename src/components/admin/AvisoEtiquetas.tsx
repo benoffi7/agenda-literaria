@@ -1,4 +1,6 @@
 import { claseBotonFila } from '@/components/campos/Campo';
+import { rolActivo } from '@/lib/rolActivo';
+import { puedeVer } from '@/lib/rolDelPanel';
 
 interface Props {
   /** Los labels tal como se tipearon. Vacío = no se pinta nada. */
@@ -38,6 +40,19 @@ interface Props {
 export function AvisoEtiquetas({ etiquetas, onIrAOpciones, onCerrar }: Props) {
   if (etiquetas.length === 0) return null;
   const una = etiquetas.length === 1;
+  /*
+   * B-893 — hasta D-810 este aviso **nunca** le aparecía a un publicador (el
+   * guardado salteaba sus etiquetas y devolvía la lista vacía). Ahora sí: si la
+   * callable no confirma una etiqueta, el guardado lo dice. Y a ese rol no se le
+   * puede ofrecer «Ir a Opciones», que es una pantalla que no ve
+   * (`PERMISOS.publicador.pantallas`): sería el botón que siempre falla. Su
+   * arreglo es otro —volver a tipearla—, y el texto lo dice.
+   *
+   * Por el store de `rolActivo` y no por una prop: `AdminApp` ya lo fija al
+   * resolver el claim, y sin rol fijado se comporta como antes.
+   */
+  const rol = rolActivo();
+  const veOpciones = rol === null || puedeVer(rol, 'taxonomias');
 
   return (
     <div
@@ -63,15 +78,19 @@ export function AvisoEtiquetas({ etiquetas, onIrAOpciones, onCerrar }: Props) {
         publique va a aparecer igual —puede que con las mayúsculas distintas de
         como {una ? 'la' : 'las'} escribiste—. Lo que no pasó es que se{' '}
         {una ? 'sume' : 'sumen'} a la lista de opciones para la próxima vez.
+        {!veOpciones &&
+          ` Para sumar${una ? 'la' : 'las'}, abrí la actividad y volvé a escribir${una ? 'la' : 'las'} en «Otro…».`}
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          onClick={onIrAOpciones}
-          className={`${claseBotonFila} border border-amber-300 bg-white text-amber-900 hover:bg-amber-100`}
-        >
-          Ir a Opciones
-        </button>
+        {veOpciones && (
+          <button
+            type="button"
+            onClick={onIrAOpciones}
+            className={`${claseBotonFila} border border-amber-300 bg-white text-amber-900 hover:bg-amber-100`}
+          >
+            Ir a Opciones
+          </button>
+        )}
         <button
           type="button"
           onClick={onCerrar}
