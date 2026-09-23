@@ -163,25 +163,47 @@ describe('huellaCreador — §4.3, §5.1', () => {
  * barata que alcance).
  */
 describe('default de `aprobada` en upsertOpcion — B-131', () => {
-  const bloqueNueva = (): string => {
+  /*
+   * B-893 — el constructor del elemento nuevo se mudó a
+   * `functions/alta-de-opcion.js` (`opcionNueva`), compartido con la callable
+   * del publicador, y `aprobada` **dejó de tener default ahí**: cada camino la
+   * pasa explícita. Así que lo que este bloque fija ahora es **lo que pasa el
+   * camino del admin**: el `alta` que `upsertOpcion` arma antes de la
+   * transacción.
+   */
+  const bloqueAlta = (): string => {
     const src = readFileSync('src/lib/opciones.ts', 'utf8');
-    const desde = src.indexOf('const nueva = ()');
-    expect(desde, 'no se encontró el constructor de la opción nueva').toBeGreaterThan(0);
+    const desde = src.indexOf('const alta = {');
+    expect(desde, 'no se encontró el alta de upsertOpcion').toBeGreaterThan(0);
     return src.slice(desde, src.indexOf('runTransaction', desde));
   };
 
   it('nace aprobada', () => {
-    expect(bloqueNueva()).toMatch(/aprobada:\s*true/);
+    expect(bloqueAlta()).toMatch(/aprobada:\s*true/);
   });
 
   it('con el motivo escrito al lado, para que no se lea como un descuido', () => {
-    expect(bloqueNueva()).toContain('B-131');
+    expect(bloqueAlta()).toContain('B-131');
   });
 
   it('y sigue guardando la huella de su autor', () => {
-    // Es el rastro de quién la creó y lo que hace falta el día que la
-    // aprobación se vuelva a prender: no es código muerto.
-    expect(bloqueNueva()).toContain('huellaCreador(uid)');
+    // Es el rastro de quién la creó y lo que hace falta para la aprobación, que
+    // desde B-893 está prendida para el publicador: no es código muerto.
+    expect(bloqueAlta()).toContain('huella: huellaCreador(uid)');
+    expect(readFileSync('functions/alta-de-opcion.js', 'utf8')).toContain('huellaCreador: huella,');
+  });
+
+  it('la transformación compartida no tiene un default de `aprobada` que un camino herede', () => {
+    /*
+     * MUTACIÓN PROBADA: escribir `aprobada = true` en la desestructuración de
+     * `opcionNueva` deja este caso en rojo. Con ese default, el camino que se
+     * olvide de pasarla —la callable, por ejemplo— crearía etiquetas aprobadas
+     * y la aprobación del publicador no existiría.
+     */
+    const src = readFileSync('functions/alta-de-opcion.js', 'utf8');
+    const firma = /export const opcionNueva = \(\{([^}]*)\}\)/.exec(src)?.[1];
+    expect(firma, 'no se encontró la firma de opcionNueva').toBeTruthy();
+    expect(firma).not.toMatch(/aprobada\s*=/);
   });
 });
 
@@ -252,13 +274,17 @@ describe('el reuso de otra cuenta aprueba la etiqueta (B-29)', () => {
      * resolverlo afuera —leer, decidir, escribir— compite con el otro guardado
      * simultáneo, que es lo que la transacción del §4.2 existe para evitar.
      */
-    const src = readFileSync('src/lib/opciones.ts', 'utf8');
-    expect(src).toContain('elReusoLaAprueba(v, huella)');
+    // B-893 — la transformación vive en `functions/alta-de-opcion.js`: la
+    // comparten el panel y la callable, y ahí es donde se mira.
+    const src = readFileSync('functions/alta-de-opcion.js', 'utf8');
+    expect(src).toContain('elReusoLaAprueba(v, alta.huella)');
     expect(src).toContain('aprobadaPorReuso: true');
-    // Y el incremento de `usos` pasa por la misma función, en los dos caminos
-    // (documento sembrado y documento existente): si alguno se saltea `conElUso`,
-    // ese camino aprueba distinto que el otro.
-    expect(src.match(/v\.slug === slug \? conElUso\(v\) : v/g)?.length).toBe(2);
+    // Y los dos caminos de `upsertOpcion` (documento sembrado y documento
+    // existente) pasan por **una** llamada a la transformación: si alguno la
+    // salteara, ese camino aprobaría distinto que el otro.
+    const panel = readFileSync('src/lib/opciones.ts', 'utf8');
+    expect(panel.match(/valoresConLaEtiqueta\(antes, alta\)/g)?.length).toBe(1);
+    expect(panel).not.toMatch(/conElUso\(/);
   });
 
   it('la pantalla de taxonomías muestra la marca', () => {

@@ -1,29 +1,14 @@
 /**
- * **La etiqueta con la que una opción se ve** — §4.2, B-05.
+ * §4.2 · B-05 — la etiqueta con la que una opción se ve, **reexportada**.
  *
- * Vive en un `.mjs` y no adentro de `taxonomia.ts` por lo mismo que `slugify` y
- * `geografia`: **los scripts de `scripts/` la necesitan y corren en Node plano**,
- * sin TypeScript. `taxonomia.ts` la re-exporta, así que ningún import existente
- * cambió de ruta y sigue habiendo **una sola** implementación — que es el punto:
- * una copia en el script haría que una ciudad sembrada desde ahí y la misma
- * tipeada en el panel se vieran distinto.
+ * La implementación vive en `functions/etiqueta-presentable.js` desde B-893: la
+ * callable que crea la etiqueta del publicador (`functions/alta-de-opcion.js`)
+ * tiene que presentarla **igual** que el panel, y `functions/` se despliega con
+ * su propio `package.json` y no puede importar `src/` (D-20). Es el mismo reparto
+ * que `slugify.mjs` y `geografia.mjs`: una implementación, N runtimes. Ver el
+ * docblock de allá.
  *
- * El slug es la identidad y esto es lo que se lee, en el desplegable, en el
- * evento de Calendar y en los chips del sitio (§4.4). Sin esto, un tag tipeado
- * "narrativa" se publica así al lado de "Poesía": la taxonomía se ve descuidada
- * aunque no esté duplicada. Ya pasó — `/opciones/tags` tiene
- * `narrativa="narrativa"`.
- *
- * **Solo la primera letra, y nada más.** Bajar el resto rompería "Villa Crespo",
- * "Google Meet" o unas siglas; subir cada palabra rompería "Club de lectura".
- * Los espacios internos se colapsan porque "A  la   gorra" y "A la gorra"
- * comparten slug y tienen que compartir etiqueta.
- *
- * No toca las que ya están guardadas: eso se arregla renombrando desde la
- * pantalla de taxonomías (B-06).
+ * Este archivo queda como fachada para que ni `taxonomia.ts` ni
+ * `scripts/vocabulario-desde-actividades.mjs` hayan tenido que cambiar de ruta.
  */
-export const etiquetaPresentable = (/** @type {string} */ label) => {
-  const limpio = label.trim().replace(/\s+/g, ' ');
-  if (!limpio) return '';
-  return limpio[0].toLocaleUpperCase('es') + limpio.slice(1);
-};
+export { etiquetaPresentable } from '../../functions/etiqueta-presentable.js';

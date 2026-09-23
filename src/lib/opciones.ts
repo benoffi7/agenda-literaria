@@ -20,6 +20,10 @@ import {
   ordenarValores,
 } from '@/lib/taxonomia';
 import type { CampoTaxonomia, DocOpciones, ValorOpcion } from '@/types/actividad';
+// B-893 — la transformación del alta, compartida con la callable del publicador.
+// Relativo y no con un alias, igual que `slugify.mjs`: es un archivo de
+// `functions/` sin dependencias (lo verifica `tests/alta-de-opcion.test.ts`).
+import { valoresConLaEtiqueta } from '../../functions/alta-de-opcion.js';
 
 /**
  * Las reglas puras del §4 viven en `taxonomia.ts` (B-72) y se re-exportan acá
@@ -71,19 +75,29 @@ export const observarOpciones = (
  * Va en transacción porque dos guardados simultáneos con la misma etiqueta
  * nueva pisarían el array uno al otro.
  *
+ * **Es el camino del admin.** El publicador no escribe `/opciones/*` (las reglas
+ * no pueden inspeccionar qué elemento del array cambió) y crea sus etiquetas por
+ * la callable `crearOpcionDelPanel` (B-893, `proponerOpcion` en
+ * `opcion-por-function.ts`). **Los dos caminos corren la misma transformación**
+ * —`valoresConLaEtiqueta`, de `functions/alta-de-opcion.js`—, así que un
+ * elemento creado por uno y por otro tienen la misma forma; lo único que cambia
+ * entre los dos es `aprobada`.
+ *
  * §4.3 — lo que se crea acá queda marcado con la huella de su autor y **nace
  * aprobada** (B-131, decisión del dueño). Reusar una opción existente suma un uso
  * y **nunca le cambia el autor**: registrar el uso de una opción base no la
  * vuelve pendiente ni la reasigna.
  *
  * §4.3 · B-29 — y si la opción reusada estaba **pendiente y era de otra cuenta**,
- * el reuso la aprueba y la deja marcada (`conElUso`, más abajo). Es el único
- * camino por el que eso puede pasar, y vale saber por qué: una opción pendiente
- * **no aparece en el desplegable de los demás** (`opcionesVisibles`), así que la
- * segunda cuenta solo puede llegar a ella tipeándola en «Otro» — o sea, pasando
- * por acá. `registrarUsos`, que es lo que corre al elegir del desplegable, no
- * necesita esta regla (ni recibe un uid): lo que se elige del desplegable ya
- * estaba visible, y lo visible ya estaba aprobado.
+ * el reuso la aprueba y la deja marcada (`conElUso`, en `valoresConLaEtiqueta`).
+ * Desde B-893 ése es el caso real: el publicador crea pendiente, y el admin que
+ * tipea lo mismo en «Otro» la aprueba por reuso. Pasa solo tipeando, y vale saber
+ * por qué: una opción pendiente **no aparece en el desplegable de los demás**
+ * (`opcionesVisibles`), así que la segunda cuenta solo puede llegar a ella
+ * tipeándola en «Otro» — o sea, pasando por acá o por la callable.
+ * `registrarUsos`, que es lo que corre al elegir del desplegable, no necesita
+ * esta regla (ni recibe un uid): lo que se elige del desplegable ya estaba
+ * visible, y lo visible ya estaba aprobado.
  *
  * B-05 — el label se guarda con `etiquetaPresentable`: el slug es la identidad
  * y esto es lo que se ve, en el desplegable, en el evento de Calendar y en los
@@ -98,74 +112,39 @@ export const upsertOpcion = async (
   if (!slug) throw new Error('La etiqueta quedó vacía después de normalizar.');
 
   const ref = refOpciones(campo);
-  const huella = huellaCreador(uid);
-
-  /**
-   * §4.3 · B-29 — reusar una opción le suma un uso y, si la creó **otra** cuenta
-   * y todavía estaba pendiente, la aprueba y la deja marcada.
-   *
-   * Va **adentro de la transacción que ya existe**, en el mismo `map` que
-   * incrementa `usos`: la opción ya está leída acá, así que la decisión no cuesta
-   * ni una lectura más. Resolverlo afuera —leer, decidir, escribir— sería además
-   * una carrera contra el otro guardado simultáneo, que es exactamente lo que
-   * esta transacción existe para evitar.
-   *
-   * La condición vive en `lib/taxonomia.ts` y no acá: es una regla del §4.3, es
-   * la que tiene los tres bordes (ya aprobada, sin huella, misma persona), y así
-   * se prueba sin Firestore.
-   */
-  const conElUso = (v: ValorOpcion): ValorOpcion => {
-    const sumado: ValorOpcion = { ...v, usos: (v.usos ?? 0) + 1 };
-    return elReusoLaAprueba(v, huella)
-      ? { ...sumado, aprobada: true, aprobadaPorReuso: true }
-      : sumado;
-  };
-  const nueva = (): ValorOpcion => ({
+  const alta = {
     slug,
-    label: etiquetaPresentable(label),
-    orden: 99,
-    fijo: false,
-    usos: 1,
+    label,
+    huella: huellaCreador(uid),
     /*
      * `true` por decisión, no por descuido (B-131). El dueño decidió que una
-     * etiqueta nueva quede disponible para las dos cuentas enseguida: el §4.2
-     * —slugify más el autocompletado— ya ataja los duplicados antes de que
-     * nazcan, y la aprobación agregaba control de vocabulario, no corrección.
+     * etiqueta nueva **del admin** quede disponible para todas las cuentas
+     * enseguida: el §4.2 —slugify más el autocompletado— ya ataja los
+     * duplicados antes de que nazcan, y la aprobación agregaba control de
+     * vocabulario, no corrección.
      *
-     * Con esto la maquinaria de aprobación (`estaAprobada`,
-     * `opcionesVisibles`, `huellaCreador`, `aprobarOpcion`, la pantalla de
-     * taxonomías y `scripts/aprobar-opciones.mjs`) queda **dormida, no
-     * muerta**: se deja entera para el escenario que anticipa el §4.3 ("si en
-     * el futuro carga gente además del dueño"). Volver a poner `false` acá la
-     * prende de nuevo, y nada más. `tests/opciones-aprobacion.test.ts` fija
-     * este default para que no se dé vuelta sin que nadie lo note.
+     * La maquinaria de aprobación (`estaAprobada`, `opcionesVisibles`,
+     * `huellaCreador`, `aprobarOpcion`, la pantalla de taxonomías y
+     * `scripts/aprobar-opciones.mjs`) **ya no está dormida** desde B-893: la
+     * prende el publicador, cuyas etiquetas nacen con `false` por la callable.
+     * Acá sigue en `true`. `tests/opciones-aprobacion.test.ts` fija este default
+     * para que no se dé vuelta sin que nadie lo note.
      */
     aprobada: true,
-    huellaCreador: huellaCreador(uid),
-  });
+  };
 
   return runTransaction(db(), async (tx) => {
     const snap = await tx.get(ref);
 
-    if (!snap.exists()) {
-      // Primer uso del campo: sembramos las base junto con la nueva.
-      const base = OPCIONES_BASE[campo];
-      const existe = base.find((v) => v.slug === slug);
-      const valores = existe
-        ? base.map((v) => (v.slug === slug ? conElUso(v) : v))
-        : [...base, nueva()];
-      tx.set(ref, { valores });
-      return slug;
-    }
+    // Primer uso del campo: se siembran las base junto con la nueva (o con el
+    // uso sumado, si la tipeada era una base).
+    const antes = snap.exists()
+      ? ((snap.data() as DocOpciones).valores ?? [])
+      : OPCIONES_BASE[campo];
+    const { valores } = valoresConLaEtiqueta(antes, alta);
 
-    const valores = (snap.data() as DocOpciones).valores ?? [];
-    const existe = valores.find((v) => v.slug === slug);
-
-    if (existe) {
-      tx.update(ref, { valores: valores.map((v) => (v.slug === slug ? conElUso(v) : v)) });
-    } else {
-      tx.update(ref, { valores: [...valores, nueva()] });
-    }
+    if (snap.exists()) tx.update(ref, { valores });
+    else tx.set(ref, { valores });
     return slug;
   });
 };
