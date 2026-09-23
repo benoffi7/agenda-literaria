@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **El archivador del backlog se comía 186 ítems del rastro, y su propia guarda
+  decía que estaba todo bien** — **B-1219**. Cerrar la tanda del 2026-09-22 dejó 13
+  ítems marcados y sin archivar, que es lo que ponía en rojo a `tests/tablero.test.ts`
+  —el único fallado de 6085— y lo que bloqueaba el push. El arreglo prescrito es
+  correr `scripts/archivar-backlog.mjs`; al correrlo, `docs/BACKLOG-cerrados.md` pasó
+  de **402 ítems a 229**, con un diff de 16.938 líneas borradas y la verificación
+  previa del script contestando que no faltaba nada. Se revirtió antes de commitear.
+
+  **Eran dos bugs.** El armado buscaba cada sección vieja con
+  `secciones.find((s) => s.titulo === titulo)`, y el archivo tiene **dos**
+  `## P0 — rompe algo o pierde datos` de corridas viejas: la segunda —186 ítems— no
+  se emitía nunca y la primera se emitía dos veces. Y `verificar` despiezaba **solo
+  el archivo vivo**, así que comprobaba los 13 que se mueven y nunca los cuatrocientos
+  que ya estaban guardados. Hoy las secciones homónimas se funden y la guarda recibe
+  los dos textos, con el parámetro requerido y no opcional — un default habría dejado
+  reproducir la ceguera sin escribir nada raro.
+
+  **Lo que se aprendió vale más que el arreglo: los dieciocho casos que cubrían este
+  script archivaban contra un archivo de cerrados vacío.** El corpus no ejercitaba
+  nunca la entrada que en producción tiene cuatrocientos ítems, así que ninguna de
+  las dos mitades podía salir. Es **D-771** aplicada a una guarda de datos: el sujeto
+  del chequeo estaba mal elegido, y lo que lo sostenía era el archivo chico, que es
+  el que casi nunca se rompe. Los cinco casos nuevos archivan contra un archivo con
+  contenido, y las tres mutaciones —el `find` por título, el `Set` del orden, la
+  guarda mirando solo el vivo— dan rojo.
+
+  Con eso archivados los 13 y fundidas las dos secciones `P0`: 494 ítems entre los
+  dos archivos, verificados uno por uno contra `HEAD` —ni un cuerpo ni un encabezado
+  distinto— antes de commitear el reordenamiento.
+
 - **Un documento que afirma el estado de un ítem ahora se compara contra el
   backlog** — **B-1170**, **D-775**. Los dos barridos que existían verifican que un
   `B-nnnn` o un `D-nnn` citado **exista**; ninguno miraba lo que la cita **afirma**.
