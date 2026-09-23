@@ -281,8 +281,67 @@ y mirar `webSettings.allowedDomains`.
 reCAPTCHA es un servicio de Google fuera del proyecto. Si no responde, el SDK no
 consigue token y **con enforcement activo la escritura se rechaza**: el formulario
 público deja de aceptar propuestas y el panel deja de guardar. No hay
-degradación parcial ni cola local — el modo de falla es «no se puede escribir»,
-y el aviso llega por donde llegue el reclamo, porque no hay alerta.
+degradación parcial ni cola local — el modo de falla es «no se puede escribir».
+Del lado de operación sigue sin haber alerta: el aviso llega por donde llegue el
+reclamo (es el paso 3 de B-930, que sigue abierto).
+
+**Lo que el SDK dice no es lo que pasó.** Firestore no informa que le faltó el
+token: acumula fallos de canal, se declara offline, y el error es el mismo
+`unavailable` de un wifi caído («Failed to get document because the client is
+offline»). Y no hace falta que reCAPTCHA se caiga: una extensión que bloquea
+`www.google.com/recaptcha/…`, la red de quien carga o un score bajo
+(`integrationType: SCORE` — una VPN o un navegador muy blindado pueden quedarse
+sin token siendo una persona de verdad) producen lo mismo, **a esa persona y no a
+vos**, en la misma versión del panel.
+
+**Desde B-930 el panel lo cuenta** (`src/lib/verificacionDelNavegador.ts`):
+
+- **Pide el token al arrancar** (`verificarNavegadorAlArrancar` en
+  `firebase-client.ts`, llamado por `AdminApp`), no en el primer guardado. Si
+  `getToken` rechaza, o no vuelve en `UMBRAL_VERIFICACION_MS` (diez segundos),
+  el estado pasa a `sin-verificar` y aparece el cartel **«No pudimos verificar tu
+  navegador»** con los tres primeros pasos del triaje de abajo. El umbral no es
+  un adorno: con el script de reCAPTCHA bloqueado, `getToken` **no rechaza
+  nunca** — el SDK espera a un widget que no se inicializa. Si el token llega
+  tarde, el cartel se va.
+- **El fallo de guardado lo distingue.** `clasificarFalloGuardado` manda
+  `unavailable`/`deadline-exceeded` con el navegador sin verificar al motivo
+  `verificacion` en vez de `red`, y el cartel rojo dice «no es la conexión:
+  esperar no lo arregla» en vez de «se cortó la conexión». La métrica
+  `guardado_fallido` lleva el mismo motivo ([`09-analitica.md`](09-analitica.md)).
+- **Nada de esto tira.** `activarAppCheck` sigue sin propagar la excepción y la
+  verificación tampoco: un fallo de App Check no puede dejar el login en blanco.
+- **Con emuladores, fuera del navegador o sin clave de sitio no se avisa.** Los
+  dos primeros son caminos deliberados; `sin-clave` es una configuración
+  incompleta del deploy, y el triaje de la persona no la resuelve (ya tiene su
+  `console.warn`).
+
+**Triaje cuando le pasa a otra persona**, en orden de lo que más descarta por
+minuto. Los tres primeros son los que el cartel le muestra, así que casi siempre
+llega resuelto:
+
+1. **Recargar.** Si vuelve a andar, fue transitorio: red o un token que no llegó
+   una vez.
+2. **Ventana de incógnito, sin extensiones.** Si ahí anda, es una extensión
+   bloqueando reCAPTCHA. Es el caso más común.
+3. **Otro navegador, o el celular con datos móviles.** Si con datos anda y con su
+   wifi no, es la red —oficina, VPN, portal cautivo—.
+4. **Si falla en las tres**, mirar la consola: la petición a
+   `firebaseappcheck.googleapis.com/…/exchangeRecaptchaEnterpriseToken`. 403 es
+   token rechazado; bloqueada o fallida es extensión o red.
+
+Para probar el enforcement desde afuera, sin consola: una lectura anónima de
+`opciones/tipo` devuelve `403 PERMISSION_DENIED` aunque la regla diga
+`allow read: if true` — lo que deniega está **arriba** de las reglas.
+
+```sh
+curl -s "https://firestore.googleapis.com/v1/projects/agenda-literaria/databases/(default)/documents/opciones/tipo?key=$PUBLIC_FIREBASE_API_KEY"
+```
+
+**La salida de emergencia**: poner Cloud Firestore en `Unenforced` en la consola
+destraba el panel en el acto — pero abre también las escrituras anónimas de
+`/proponer` y de las guías, que es la capa que las sostiene. Es una decisión con
+costo, no un botón de reinicio.
 
 Eso **ya es el presente para Firestore**. Hasta el 2026-09-10 un fallo de
 reCAPTCHA no rompía nada —`activarAppCheck` no propaga la excepción y la

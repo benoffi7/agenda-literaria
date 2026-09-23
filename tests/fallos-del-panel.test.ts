@@ -13,9 +13,14 @@
  * falle, y el día que se separen la métrica dice «red» y el cartel dice otra
  * cosa (la clase de B-88).
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { TEXTO_DEL_BORRADOR, textoDeFallo } from '@/lib/fallosDelPanel';
 import { MOTIVOS_FALLO, clasificarFalloGuardado } from '@/lib/analytics-eventos';
+import {
+  _fijarVerificacion,
+  _resetVerificacion,
+  TITULO_SIN_VERIFICAR,
+} from '@/lib/verificacionDelNavegador';
 
 /** Un error del SDK: lo que importa es el `code`, no el mensaje. */
 const deFirebase = (code: string, message = 'Something went wrong in English') => {
@@ -209,5 +214,79 @@ describe('una sola clasificación para medir y para hablar (B-88)', () => {
         textoDeFallo(motivo, { respaldo: RESPALDO }),
       );
     }
+  });
+});
+
+describe('«no hay internet» y «no pudimos verificar tu navegador» son dos textos (B-930)', () => {
+  afterEach(() => _resetVerificacion());
+
+  /**
+   * **El ítem en un caso.** Con App Check exigido, un navegador sin token
+   * recibe el mismo `unavailable` que un wifi caído. Con el estado de la
+   * verificación a mano, la frase deja de mandar a esperar a quien tiene que
+   * apagar una extensión.
+   *
+   * MUTACIÓN PROBADA (2026-09-23): volviendo la rama de `unavailable` de
+   * `clasificarFalloGuardado` a `{ motivo: 'red', codigo }` a secas, este caso y
+   * el de la métrica se ponen rojos; los de «sin conexión» de arriba siguen
+   * verdes, que es por qué hace falta éste.
+   */
+  it('con el navegador sin verificar, `unavailable` no dice «se cortó la conexión»', () => {
+    _fijarVerificacion('sin-verificar');
+    const texto = textoDeFallo(deFirebase('unavailable'), { respaldo: RESPALDO });
+
+    expect(texto.startsWith(TITULO_SIN_VERIFICAR)).toBe(true);
+    expect(texto).toContain('No se guardó nada');
+    expect(texto).toContain('no es la conexión');
+    expect(texto).not.toContain('Se cortó la conexión');
+    expect(texto).not.toContain('English');
+  });
+
+  it('`deadline-exceeded` va con `unavailable`: los dos pueden ser un token que no llegó', () => {
+    _fijarVerificacion('sin-verificar');
+    expect(textoDeFallo(deFirebase('deadline-exceeded'), { respaldo: RESPALDO })).toBe(
+      textoDeFallo(deFirebase('unavailable'), { respaldo: RESPALDO }),
+    );
+  });
+
+  /**
+   * Mientras el token está en camino (dentro del umbral) o ya llegó, un
+   * `unavailable` es la red: el caso de siempre no cambia.
+   */
+  it.each(['no-aplica', 'verificando', 'verificado'] as const)(
+    'con `%s`, `unavailable` sigue siendo «se cortó la conexión»',
+    (estado) => {
+      _fijarVerificacion(estado);
+      expect(textoDeFallo(deFirebase('unavailable'), { respaldo: RESPALDO })).toContain(
+        'Se cortó la conexión',
+      );
+    },
+  );
+
+  it('solo cambia lo que es de red: sin permiso sigue siendo sin permiso', () => {
+    _fijarVerificacion('sin-verificar');
+    expect(clasificarFalloGuardado(deFirebase('permission-denied')).motivo).toBe('permisos');
+    expect(clasificarFalloGuardado(deFirebase('unauthenticated')).motivo).toBe('sin-sesion');
+  });
+
+  it('la métrica dice lo mismo que el cartel: `verificacion`, no `red`', () => {
+    _fijarVerificacion('sin-verificar');
+    expect(clasificarFalloGuardado(deFirebase('unavailable'))).toEqual({
+      motivo: 'verificacion',
+      codigo: 'unavailable',
+    });
+    // Y el contexto explícito le gana al store, que es lo que usan los tests.
+    expect(
+      clasificarFalloGuardado(deFirebase('unavailable'), { navegadorSinVerificar: false }).motivo,
+    ).toBe('red');
+  });
+
+  it('con autoguardado, el borrador se promete igual que en `red`', () => {
+    _fijarVerificacion('sin-verificar');
+    const texto = textoDeFallo(deFirebase('unavailable'), {
+      respaldo: RESPALDO,
+      hayBorrador: true,
+    });
+    expect(texto.endsWith(TEXTO_DEL_BORRADOR)).toBe(true);
   });
 });

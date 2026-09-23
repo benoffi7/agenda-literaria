@@ -45,6 +45,7 @@
  */
 import type { FirebaseApp } from 'firebase/app';
 import {
+  getToken,
   initializeAppCheck,
   ReCaptchaEnterpriseProvider,
   type AppCheck,
@@ -96,10 +97,13 @@ let _motivo: MotivoSinAppCheck | null = null;
  *
  * **Un fallo acá no puede romper el panel.** `initializeAppCheck` puede tirar
  * —clave mal, reCAPTCHA sin responder, la app ya inicializada por otra vía— y
- * mientras el enforcement esté apagado el panel funciona igual: la autorización
- * real la siguen dando las reglas. Cuando el enforcement se active, la escritura
- * va a fallar del lado del servidor con un error propio, que es donde se tiene
- * que ver — y no acá, dejando la pantalla de login en blanco.
+ * propagarlo dejaría la pantalla de login en blanco.
+ *
+ * **Con el enforcement puesto (Firestore, desde el 2026-09-10) eso ya no alcanza
+ * para diagnosticar**: el servidor no devuelve un error propio, el SDK se declara
+ * offline. Por eso el motivo queda guardado (`motivoSinAppCheck`) y el panel
+ * pide el token al arrancar y lo cuenta —B-930, `verificacionDelNavegador.ts`—,
+ * en vez de tirar desde acá.
  */
 export const activarAppCheck = (
   app: FirebaseApp,
@@ -138,6 +142,31 @@ export const activarAppCheck = (
     console.warn('[app-check] no se pudo activar:', e);
     return null;
   }
+};
+
+/**
+ * Por qué App Check no se activó en esta carga, o `null` si se activó (o si
+ * todavía no se intentó). B-930: es lo que `verificacionDelNavegador.ts` mira
+ * para decidir si hay algo que verificar o si el cartel no corresponde.
+ */
+export const motivoSinAppCheck = (): MotivoSinAppCheck | null => _motivo;
+
+/**
+ * B-930 — **quién pide el token**, o `null` si no hay App Check activo.
+ *
+ * Devuelve la función y no la llama: la decisión de cuánto esperar y qué
+ * hacer con la respuesta es pura y vive en `verificacionDelNavegador.ts`, que
+ * se testea sin el SDK. Acá queda solo el enganche con `getToken`.
+ *
+ * `getToken` del SDK **rechaza** cuando el intercambio falla (403, red) pero
+ * **no vuelve nunca** cuando una extensión bloquea el script de reCAPTCHA: el
+ * SDK espera a que el widget se inicialice y eso no pasa. Por eso quien la usa
+ * le pone un umbral, y no alcanza con el `catch`.
+ */
+export const pedidorDeToken = (): (() => Promise<unknown>) | null => {
+  const instancia = _appCheck;
+  if (!instancia) return null;
+  return () => getToken(instancia, false);
 };
 
 /** Para los tests: olvida la activación anterior. */

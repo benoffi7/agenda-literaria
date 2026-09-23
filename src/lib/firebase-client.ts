@@ -8,7 +8,9 @@
  * `@/lib/firestore-client`. No re-exportar `db` desde acá.
  */
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { activarAppCheck } from '@/lib/appcheck';
+import { activarAppCheck, motivoSinAppCheck, pedidorDeToken } from '@/lib/appcheck';
+// B-930 — puro salvo un store de módulo; no arrastra ningún SDK.
+import { verificarNavegador } from '@/lib/verificacionDelNavegador';
 // Puro: no arrastra Firestore, así que no toca el corte del bundle de B-09/D-51.
 import { ciudadDeClaims, rolDeClaims, type SesionDelPanel } from '@/lib/rolDelPanel';
 import {
@@ -59,6 +61,32 @@ export const app = (): FirebaseApp => {
     claveDeSitio: import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY,
   });
   return _app;
+};
+
+/**
+ * B-930 — **pedir el token de App Check apenas arranca el panel**, y no en el
+ * primer guardado, que es tarde: para entonces la persona ya cargó media
+ * actividad y lo que ve es «se cortó la conexión».
+ *
+ * Lo llama `AdminApp` al montarse. Primero `app()`, que es lo que activa App
+ * Check; después se le pregunta a `appcheck.ts` cómo le fue y quién pide el
+ * token, y el resto —el umbral, el estado, el cartel— es de
+ * `verificacionDelNavegador.ts`, que es puro y tiene su test.
+ *
+ * **Nunca tira**, ni síncrono ni asíncrono: un fallo acá no puede dejar el
+ * login en blanco. Con emuladores `activarAppCheck` no activa nada y el estado
+ * queda en `no-aplica`, así que el cartel no puede aparecer.
+ */
+export const verificarNavegadorAlArrancar = (): void => {
+  try {
+    app();
+    void verificarNavegador({
+      motivo: motivoSinAppCheck(),
+      pedirToken: pedidorDeToken(),
+    }).catch(() => {});
+  } catch {
+    // Nada: ver el docblock.
+  }
 };
 
 export const auth = (): Auth => {

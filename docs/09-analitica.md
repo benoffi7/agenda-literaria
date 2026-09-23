@@ -239,12 +239,18 @@ documento. Hoy un valor nuevo del modelo se mide solo.
 |---|---|
 | `modo` | `nueva` · `editar` · `duplicar` · `propuesta` |
 | `accion` | `borrador` · `submit` |
-| `motivo` | `slug-tomado` · `permisos` · `sin-sesion` · `red` · `fecha-invalida` · `desconocido` |
+| `motivo` | `slug-tomado` · `permisos` · `sin-sesion` · `red` · `verificacion` · `fecha-invalida` · `desconocido` |
 | `codigo` | código del SDK de Firebase, de una lista cerrada |
 
 **El mensaje del error nunca viaja.** `formADocumento` tira
 `Fecha inválida: "<lo que se escribió>"`: el texto de ese error *es* contenido
 del formulario. Lo que sale es la etiqueta `fecha-invalida`.
+
+`verificacion` (B-930) es el mismo `unavailable` que `red`, con el navegador sin
+token de App Check: sin él, una extensión que bloquea reCAPTCHA se contaba como
+un corte de red. El clasificador es el mismo que decide el texto del cartel
+(`fallosDelPanel.ts`), así que la métrica y lo que la persona leyó no pueden
+decir cosas distintas.
 
 `slug-tomado` es el caso más probable: duplicar propone `…-copia` y dos copias
 de la misma actividad chocan (D-18).

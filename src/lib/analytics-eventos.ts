@@ -1,6 +1,8 @@
 import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
 import { colapsarIndices } from '@/lib/rutaCampo';
 import { slugify } from '@/lib/slugify';
+// B-930 — puro, sin SDK: es un store de módulo con el estado de App Check.
+import { navegadorSinVerificar } from '@/lib/verificacionDelNavegador';
 // B-166 — el valor de "sin versión estampada" sale de su productor.
 import { VERSION_DESCONOCIDA } from '@/lib/version';
 import {
@@ -109,6 +111,8 @@ export const MOTIVOS_FALLO = [
   'permisos',
   'sin-sesion',
   'red',
+  // B-930 — `unavailable` con el navegador sin token de App Check: no es la red.
+  'verificacion',
   'fecha-invalida',
   'desconocido',
 ] as const;
@@ -933,6 +937,23 @@ export const seccionASlug = (titulo: string): string => {
  */
 export const clasificarFalloGuardado = (
   error: unknown,
+  /*
+   * B-930 — **`unavailable` significaba dos cosas.** Con App Check exigido en
+   * Firestore, un navegador que no consigue token no recibe un rechazo: el SDK
+   * acumula fallos de canal y se declara offline, así que el error es el mismo
+   * `unavailable` que el de un wifi caído. Lo que los separa no está en el
+   * error sino en si el token llegó, y eso lo sabe `verificacionDelNavegador.ts`
+   * desde el arranque del panel.
+   *
+   * **Por defecto lee el store, y es a propósito**: así el cartel
+   * (`textoDeFallo`) y la métrica (`useMedicionFormulario`) no pueden
+   * separarse —los dos llaman acá sin pasar nada—, que es la clase de B-88 que
+   * `fallosDelPanel.ts` ya cuida. El parámetro existe para los tests. Fuera del
+   * panel el store vale `no-aplica` y nada cambia.
+   */
+  contexto: { navegadorSinVerificar: boolean } = {
+    navegadorSinVerificar: navegadorSinVerificar(),
+  },
 ): { motivo: MotivoFallo; codigo?: string } => {
   if (typeof error === 'string' && (MOTIVOS_FALLO as readonly string[]).includes(error)) {
     return { motivo: error as MotivoFallo };
@@ -949,7 +970,7 @@ export const clasificarFalloGuardado = (
   if (codigo === 'permission-denied') return { motivo: 'permisos', codigo };
   if (codigo === 'unauthenticated') return { motivo: 'sin-sesion', codigo };
   if (codigo === 'unavailable' || codigo === 'deadline-exceeded') {
-    return { motivo: 'red', codigo };
+    return { motivo: contexto.navegadorSinVerificar ? 'verificacion' : 'red', codigo };
   }
   if (/^Fecha inválida/.test(mensaje)) return { motivo: 'fecha-invalida' };
   return codigo ? { motivo: 'desconocido', codigo } : { motivo: 'desconocido' };

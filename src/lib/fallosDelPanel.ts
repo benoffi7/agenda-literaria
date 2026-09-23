@@ -37,6 +37,7 @@
  * Puro: se testea sin DOM y sin Firestore.
  */
 import { clasificarFalloGuardado, type MotivoFallo } from '@/lib/analytics-eventos';
+import { TITULO_SIN_VERIFICAR } from '@/lib/verificacionDelNavegador';
 
 /**
  * Los motivos cuyo texto **lo escribimos nosotros**, porque el original viene
@@ -70,6 +71,17 @@ const TEXTO_POR_MOTIVO: Record<MotivoFallo, string | null> = {
   permisos:
     'Tu cuenta no tiene permiso para hacer esto. Si te acaban de dar acceso, salí y volvé a ' +
     'entrar: el permiso viaja en la sesión.',
+  /*
+   * B-930 — **el mismo `unavailable` que `red`, con el navegador sin token de
+   * App Check.** Abre con la misma frase que el cartel de arriba del panel
+   * (`TITULO_SIN_VERIFICAR`) para que se lean como una sola cosa, y dice lo que
+   * cambia la acción: **no es la conexión**, así que esperar no sirve. El
+   * triaje completo está en el cartel; acá va el primer paso y el más común.
+   */
+  verificacion:
+    `${TITULO_SIN_VERIFICAR} No se guardó nada y no se perdió nada de lo que escribiste, ` +
+    'pero no es la conexión: esperar no lo arregla. Recargá la página y, si sigue, seguí los ' +
+    'pasos del aviso de arriba.',
   'sin-sesion': 'Se cerró tu sesión. Entrá de nuevo y volvé a intentarlo.',
   /*
    * Los tres de abajo son mensajes **propios**: ya están en castellano y nombran
@@ -131,9 +143,12 @@ export const textoDeFallo = (error: unknown, { respaldo, hayBorrador }: Opciones
   const nuestro = TEXTO_POR_MOTIVO[motivo];
 
   if (nuestro) {
-    // El borrador solo se promete donde existe, y solo para `red`: en `permisos`
-    // y `sin-sesion` lo que hay que hacer es otra cosa y la frase distraería.
-    return hayBorrador && motivo === 'red' ? `${nuestro} ${TEXTO_DEL_BORRADOR}` : nuestro;
+    // El borrador solo se promete donde existe, y solo cuando lo que falló es
+    // llegar al servidor (`red` y, desde B-930, `verificacion`): en `permisos` y
+    // `sin-sesion` lo que hay que hacer es otra cosa y la frase distraería.
+    return hayBorrador && (motivo === 'red' || motivo === 'verificacion')
+      ? `${nuestro} ${TEXTO_DEL_BORRADOR}`
+      : nuestro;
   }
 
   /*
