@@ -292,6 +292,18 @@ como los otros dos, y lo que frena es `tests/estados-referenciados.test.ts`, que
 congela la deuda de hoy y deja que la lista solo baje. La decisión de método es
 **D-775**.
 
+**Y desde B-1171 hay un cuarto, que mira la tercera parte del vocabulario: las
+anclas.** `node scripts/anclas-referenciadas.mjs` (`npm run docs:anclas`) resuelve
+cada `](#…)` y `](archivo.md#…)` de `docs/` y del `CLAUDE.md` contra los
+encabezados del documento de destino, con el slug de GitHub. Un ancla rota es la
+rotura más silenciosa de un documento largo —la página carga y el salto no va a
+ninguna parte— y en este repo tiene causa estructural: el `·` de los encabezados
+deja **dos** guiones (`### 5.3 · Algo` es `#53--algo`), y renombrar un encabezado
+deja colgado a quien lo citaba. **Ojo con el `_`:** GitHub lo conserva, y el
+barrido a mano que abrió el ítem lo borraba y «arregló» dos enlaces que
+funcionaban. Informa como los otros; lo que frena es
+`tests/anclas-referenciadas.test.ts`, con la deuda congelada en **cero**.
+
 **No es un test bloqueante, y el motivo es la forma de trabajo de este repo:**
 citar una decisión antes de escribirla es legítimo y frecuente, porque los
 frentes en paralelo documentan su cambio en una rama y la entrada de
@@ -622,6 +634,7 @@ veces se los invoca** ahora que nada los llama.
 | Que el salto al **finde siguiente** se rompa cruzando el año, y no solo el mes | `ahoraPublico.test.ts` (**B-600**, ídem). El panel del finde suma siete días, y el único caso que ejercitaba el cruce estaba a nivel de `diaDesplazado` y no de `ventanasDeAhora`, que es donde se decide qué finde se muestra. La semana del 27 de diciembre lo prueba de punta a punta: los dos primeros paneles quedan en 2026 y el tercero en enero del año siguiente |
 | Que el **disparo automático** del `auditor-privacidad` deje de ver una salida, o se prenda con lo que no es una | `auditores-que-corresponden.test.ts` (**B-124**, D-350): las dos direcciones, con el ancla en la tabla numerada de `07-seguridad.md` para que no se satisfaga sola. **Un auditor no tiene que revisar esto** — pero sí sigue siendo criterio suyo que una salida nueva entre a la ficha, que es el punto 7 de su propio contrato |
 | Que los hooks que disparan al auditor queden cableados a la nada | `red-de-contencion.test.ts` (**B-124**). Los tres modos de falla dejan el repo en verde: un `.claude/settings.json` con JSON inválido **descarta el archivo entero**, un script renombrado sale con 0 por la propia regla anti-B-180, y un modo mal escrito no verifica nada. Se atan las dos puntas — los modos que el `settings.json` invoca tienen que existir en el script, y al revés |
+| Que un enlace `](#…)` o `](archivo.md#…)` de `docs/` o del `CLAUDE.md` **no salte a ningún encabezado** —la página carga igual, así que nadie lo ve— | `anclas-referenciadas.test.ts` (**B-1171**). Resuelve cada ancla con el slug de GitHub —que **conserva el `_`**, la trampa que dio falsos positivos al barrido a mano— y congela la deuda en cero; los bloques de código y el código en línea no cuentan como cita. El informe con archivo y línea es `npm run docs:anclas` |
 | Que un documento afirme un estado de un `B-` que el backlog desmiente — y que la redacción vieja se copie a la fila de al lado | `estados-referenciados.test.ts` (**B-1170**, D-775). Congela las contradicciones de hoy y se pone rojo con una nueva, en las dos direcciones; y un caso lee los encabezados del backlog para exigir que el vocabulario de emojis del barrido los cubra, así el día que el registro estrene uno el barrido no compara menos en silencio |
 | Que el barrido de decisiones citadas **lea mal** el registro — que tome cualquier mención de `D-nnn` como una entrada escrita, o que ordene `D-9` después de `D-100` | `decisiones-referenciadas.test.ts` (**B-124**). Es la mitad que decide de `scripts/decisiones-referenciadas.mjs`, y sí es un test porque es pura. Lo que **no** se testea, a propósito, es que hoy no haya ninguna huérfana: citar una decisión antes de escribirla es legítimo con frentes en paralelo, así que ese aserto estaría rojo mientras una tanda está abierta (B-180). Ese juicio es del `auditor-documentacion` |
 | Que las **etiquetas de GitHub** que el script crea se separen de las que el panel aplica | `etiquetas-github.test.ts` (**B-33**). El script no lleva lista: ejecuta `construirIssue` de `functions/reportes.js` con cada `tipo` que `firestore.rules` permite. Lo que el test ata es lo único a mano —el color y la descripción de cada una—: si el productor empieza a aplicar una etiqueta sin cosmética elegida, se pone rojo. Y un caso verifica que los nombres **no estén cableados** en la lógica del script, que es la mutación que haría pasar a todos los demás |
