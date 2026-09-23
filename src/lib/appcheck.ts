@@ -97,10 +97,13 @@ let _motivo: MotivoSinAppCheck | null = null;
  *
  * **Un fallo acá no puede romper el panel.** `initializeAppCheck` puede tirar
  * —clave mal, reCAPTCHA sin responder, la app ya inicializada por otra vía— y
- * mientras el enforcement esté apagado el panel funciona igual: la autorización
- * real la siguen dando las reglas. Cuando el enforcement se active, la escritura
- * va a fallar del lado del servidor con un error propio, que es donde se tiene
- * que ver — y no acá, dejando la pantalla de login en blanco.
+ * propagarlo dejaría la pantalla de login en blanco.
+ *
+ * **Con el enforcement puesto (Firestore, desde el 2026-09-10) eso ya no alcanza
+ * para diagnosticar**: el servidor no devuelve un error propio, el SDK se declara
+ * offline. Por eso el motivo queda guardado (`motivoSinAppCheck`) y el panel
+ * pide el token al arrancar y lo cuenta —B-930, `verificacionDelNavegador.ts`—,
+ * en vez de tirar desde acá.
  */
 export const activarAppCheck = (
   app: FirebaseApp,

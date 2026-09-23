@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'el-panel-avisa-si-no-pudo-verificar-tu-navegador',
+    fecha: '2026-09-23',
+    version: '1.11.0',
+    titulo: 'El panel avisa cuando no pudo verificar tu navegador',
+    detalle:
+      'Para frenar a los robots, el panel verifica tu navegador al entrar. Si no ' +
+      'puede —una extensión que lo bloquea, la red de una oficina—, antes te decía ' +
+      '«se cortó la conexión» recién al guardar. Ahora lo avisa apenas entrás, con ' +
+      'tres cosas para probar en orden, y el error al guardar ya no lo confunde con ' +
+      'la falta de internet.',
+    donde: 'Arriba de todo, solo cuando pasa. Si no lo ves, está todo bien.',
+  },
+  {
     id: 'el-correo-semanal-se-arma-solo',
     fecha: '2026-09-23',
     version: '1.11.0',

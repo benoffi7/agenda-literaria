@@ -753,6 +753,26 @@ Recargar mientras alguien completa los 30+ campos le borra varios minutos de
 trabajo, y eso es peor que tener el JS viejo. De ahí que el único caso en que el
 panel no decide solo sea ese.
 
+### «No pudimos verificar tu navegador» (B-930)
+
+Desde el 2026-09-10 App Check está exigido en Firestore: un navegador que no
+consigue el token de reCAPTCHA **no puede leer ni guardar nada**, y el SDK lo
+cuenta como un corte de conexión. El panel lo dice en dos lugares:
+
+- **Al entrar.** El token se pide apenas arranca el panel, no en el primer
+  guardado. Si falla, o no vuelve en diez segundos, aparece un cartel arriba
+  —en el login, en «Sin permisos» y en el panel— con el triaje en tres pasos:
+  recargar; probar en una ventana de incógnito sin extensiones; probar con otro
+  navegador o con datos móviles. No se cierra: se va solo si el token termina
+  llegando.
+- **Al guardar.** El cartel rojo distingue «se cortó la conexión» (esperar y
+  reintentar) de «no pudimos verificar tu navegador» (esperar no sirve). Es el
+  mismo error del SDK (`unavailable`); lo que los separa es si el token llegó.
+
+Con emuladores App Check no se activa, así que el cartel no puede aparecer. El
+mecanismo y el triaje completo están en
+[`02-infraestructura.md`](02-infraestructura.md) § «Qué pasa si se cae».
+
 ### Ayuda y novedades del panel
 
 Botón **"Ayuda"** en el encabezado, visible en todas las pantallas. Abre una
