@@ -1195,6 +1195,14 @@ formulario público `/proponer`, que **ya está escrito y todavía no se anuncia
 (paso 9, ver más abajo): hoy la colección `/propuestas` solo la puede escribir un
 admin, porque la escritura anónima espera que App Check esté exigiendo (B-836a).
 
+> ⚠️ **Eso ya no es así desde el 2026-09-11 (B-896), y la mitad del flyer nunca
+> lo fue del todo.** El `create` anónimo de `/propuestas` en Firestore se abrió
+> con App Check exigido en `firestore.googleapis.com` (paso 2). El flyer **no**
+> espera a nada: no va a Storage desde el navegador sino a la callable
+> `subirFlyerDePropuesta`, y `storage.rules` para `propuestas/` quedó en
+> `create: if false` (paso 1) — ver «Proponer una actividad» más abajo. El
+> párrafo queda como estaba escrito. B-908.
+
 Cada propuesta se muestra entera —lo que escribieron, las fechas, el lugar, el
 arancel, qué se llevan— y con **el contacto de quien la mandó arriba de todo**,
 que es lo que hace que la bandeja sirva: sin forma de repreguntar, la mitad de las
@@ -1250,7 +1258,10 @@ de nadie sin el claim `admin`**. Por eso no está en el sitemap ni enlazada desd
 encabezado: indexar una página cuyo formulario rebota es prometer lo que no se
 cumple. Anunciarla son tres líneas —la ruta al sitemap, el enlace, y borrar los dos
 `esAdmin() &&`— y es el último paso de B-836a. Ver «Proponer una actividad» más
-abajo. **La retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
+abajo. *(Superado: `/proponer` está abierto y anunciado desde B-896, y los
+«dos `esAdmin() &&`» ya no son dos — el de Firestore se borró y el de Storage se
+reemplazó por un `if false`, porque el flyer entra por una callable y no por las
+reglas. B-908.)* **La retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
 se borra sola, con su imagen — ver `08-operacion.md` § «La retención de
 propuestas». **Y desde B-844 hay un segundo plazo**: la `nueva` o la
 `en-revision` que nadie toca se borra a los **30 días de su última señal de
@@ -1443,10 +1454,18 @@ nada de eso se publica: cae en la bandeja.
 
 | Capa | Qué frena | Dónde |
 |---|---|---|
-| **App Check** | un script | se activa **en el submit**, no al abrir la página |
+| **App Check** | un script | se activa **en el submit**, no al abrir la página. Lo exigen **dos** servicios distintos: Firestore para la propuesta (en la consola, `ENFORCED`) y la callable del flyer (`enforceAppCheck: true`, por función) |
 | **La regla de Firestore** | la forma, no el volumen — es la que un `curl` no se saltea | `firestore.rules` |
 | **Honeypot y tiempo mínimo** | lo automático y torpe, que es la mayoría | el componente |
 | **La bandeja** | el humano insistente: alguien mira y borra | el panel |
+
+**El flyer no pasa por `storage.rules`** (B-896 paso 1): lo recibe la callable
+`subirFlyerDePropuesta`, que valida la atestación, **lo vuelve a sanear del lado
+del servidor** —el saneado del cliente se saltea abriendo la consola del
+navegador— y lo escribe con el Admin SDK. El `create` de `propuestas/` en
+Storage está en `if false` para todo cliente, y no a la espera de App Check:
+exigirlo en `firebasestorage` rompería las lecturas públicas de las imágenes del
+sitio (B-872), porque el enforcement es por servicio y no por path.
 
 **Que App Check se active en el submit y no al abrir es una decisión, no una
 optimización.** El módulo que habla con Firebase entra por `import()` adentro del
