@@ -12356,3 +12356,38 @@ tres promesas nombren las aperturas y los clics.
 **Lo que no cambia:** si se prende además el «Google Analytics link tracking»,
 los `utm_*` no llegan a GA4, porque `ubicacionSinQuery` recorta la query del
 `page_location` y del `page_referrer` (salida 12).
+
+## D-820 · La verificación de App Check es un estado del panel, con umbral, y el fallo de guardado la usa para clasificar
+
+**B-930, 2026-09-23.** Con App Check exigido en Firestore, un navegador que no
+consigue token recibe `unavailable`, lo mismo que un wifi caído, y ni el error ni
+`activarAppCheck` —que a propósito no propaga nada— dejaban rastro de cuál de las
+dos cosas había pasado.
+
+1. **Pedir el token al arrancar el panel, con un umbral de 10 s.** El umbral no
+   es opcional: con el script de reCAPTCHA bloqueado, el `getToken` del SDK espera
+   un widget que nunca se inicializa y no rechaza jamás. Si el token llega después
+   del umbral, el cartel se va.
+2. **Un store de módulo** (`verificacionDelNavegador.ts`, mismo patrón que
+   `formulario-sucio.ts`) y no un contexto de React, porque el dato lo consulta el
+   clasificador de fallos que usan diecisiete pantallas. El store no importa
+   ningún SDK, porque lo importa `analytics-eventos.ts`, que también carga el
+   sitio público.
+3. **Un motivo nuevo en el vocabulario cerrado (`verificacion`)**, en vez de solo
+   cambiar el texto en `fallosDelPanel.ts`: cambiar solo el texto dejaba la
+   métrica diciendo `red` y el cartel otra cosa (clase de B-88). Por eso
+   `clasificarFalloGuardado` lee el store por defecto: los dos consumidores llaman
+   sin pasar nada y no pueden separarse.
+4. **Solo `sin-verificar` cambia la clasificación.** Mientras el token está en
+   camino (`verificando`, como mucho diez segundos), un `unavailable` es más
+   probablemente la red.
+5. **`sin-clave` no avisa.** Es una configuración incompleta del deploy, y
+   recargar o probar en incógnito no la resuelven; ya tiene su `console.warn`.
+
+**Descartado:** que `activarAppCheck` tire (dejaría el login en blanco); esperar
+al primer guardado para pedir el token (es tarde: la persona ya cargó media
+actividad); un cartel que se pueda cerrar (mientras no hay token no funciona nada
+del panel, y cerrarlo por reflejo deja a la persona frente a errores que no
+entiende).
+
+---

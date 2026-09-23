@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **El panel avisa cuando no pudo verificar el navegador, y el fallo de guardado
+  deja de llamarlo «corte de conexión»** — B-930 pasos 1 y 2, que cierra la otra
+  mitad de B-929 (**D-820**). Con App Check exigido en Firestore, un navegador sin
+  token de reCAPTCHA recibe el mismo `unavailable` que un wifi caído. Ahora el
+  panel pide el token al arrancar y, si falla o no vuelve en 10 s, muestra arriba
+  «No pudimos verificar tu navegador» con el triaje en tres pasos —el umbral hace
+  falta porque con el script de reCAPTCHA bloqueado `getToken` no rechaza nunca—.
+  `clasificarFalloGuardado` gana el motivo `verificacion`, que usan el texto del
+  cartel y la métrica `guardado_fallido`. Con emuladores, fuera del navegador o
+  sin clave de sitio no se avisa. Documentado en `02-infraestructura.md` § «Qué
+  pasa si se cae», `04-funcionalidades.md` y `09-analitica.md`.
+
 - **El índice de salidas públicas cuenta treinta, y el auditor se despierta con
   todos sus archivos** — B-897, B-1182 y B-1161. `/guia` era HTML indexado sin
   fila: ahora es la salida 30. Y el test que ata las tres tablas miraba solo el

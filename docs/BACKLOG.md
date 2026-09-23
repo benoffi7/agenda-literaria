@@ -256,6 +256,21 @@ seguir es que nadie sepa cuál de las dos es.
 
 ### B-930 · Con App Check exigiendo, un token que no llega se lee como «no hay internet» — y nadie se entera de cuál de las dos es · P1 — reportado por el dueño (2026-09-15)
 
+> 🟡 **Pasos 1 y 2 hechos (2026-09-23), queda el 3.** El panel pide el token de
+> App Check al arrancar (`src/lib/verificacionDelNavegador.ts`,
+> `verificarNavegadorAlArrancar` en `firebase-client.ts`) y, si `getToken` rechaza
+> o no vuelve en diez segundos, muestra arriba «No pudimos verificar tu
+> navegador» con los tres primeros pasos del triaje de abajo
+> (`AvisoVerificacion.tsx`) — en el login, en «Sin permisos» y en el panel. El
+> umbral es lo que hace que ande: con el script de reCAPTCHA bloqueado, `getToken`
+> **no rechaza nunca**, así que un `catch` solo no lo veía.
+> `clasificarFalloGuardado` gana el motivo `verificacion` y el cartel rojo dice
+> «no es la conexión: esperar no lo arregla»; el clasificador lee el mismo store
+> por defecto, así que la métrica y el texto no se pueden separar (clase de B-88).
+> Con emuladores el cartel no puede aparecer. Decisión en **D-820**. Sigue abierto
+> el **paso 3**, la alerta de operación. Y la renovación del token a mitad de
+> sesión no se mira todavía: **B-1250**.
+
 **Pasó de verdad, en el panel productivo:** «Failed to get document because the
 client is offline». Con este ítem queda escrito el mecanismo, porque el mensaje
 no lo dice y lleva a mirar el lugar equivocado.
@@ -2101,6 +2116,19 @@ Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que l
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
 ## P3 — cuando sobre tiempo
+
+### B-1250 · La verificación del navegador mira solo el primer token: si la renovación automática falla más tarde, el cartel no aparece · P3 — lo encontró `appcheck-panel` (2026-09-23)
+
+B-930 pide el token de App Check al arrancar el panel y avisa si no llega. Pero
+`isTokenAutoRefreshEnabled` renueva el token cada tanto, y si una renovación
+falla a mitad de la tarde —la persona cambió de red, prendió una VPN, una
+extensión se activó—, el estado sigue en `verificado`. Un guardado que falle en
+ese momento va a decir «se cortó la conexión», que es justo la confusión que
+B-930 vino a sacar. Es P3 porque el token dura una hora y el caso típico, una
+extensión, se ve desde el primer intento. El arreglo probable es
+`onTokenChanged(appCheck, siguiente, error)` alimentando el mismo store
+(`verificacionDelNavegador.ts`), con un test de que un error después de
+`verificado` lleva a `sin-verificar`.
 
 ### B-1162 · Un hallazgo que afirma «esto se ve» no dice si se reprodujo o si se dedujo leyendo · P3 — de cerrar B-1142 (2026-09-22)
 

@@ -8938,6 +8938,11 @@ del backlog.
 
 ### B-929 · El panel muestra el mensaje crudo de Firebase, en inglés, cuando se cae la conexión · ✅ hecho (2026-09-18) · P2 — reportado por el dueño (2026-09-15)
 
+> **Addenda (2026-09-23, B-930):** la mitad que faltaba —que `red` significaba a
+> la vez «no hay internet» y «no conseguiste token de App Check»— quedó resuelta
+> con el motivo `verificacion`. Mismo clasificador, mismo cartel, un texto
+> distinto.
+
 > ✅ **Hecho (2026-09-18).** `src/lib/fallosDelPanel.ts` traduce el fallo a algo
 > que se puede leer y accionar —«Se cortó la conexión. No se guardó nada y no se
 > perdió nada de lo que escribiste»— y lo usan los 17 lugares del panel que antes
