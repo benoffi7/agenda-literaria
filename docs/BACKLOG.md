@@ -203,7 +203,9 @@ Resueltas el 2026-08-21:
 
 ## Pendiente de acción manual del dueño
 
-### B-1235a · Aplicar el CORS del bucket de imágenes · P1 — la mitad de consola de B-1235 (2026-09-23)
+### B-1235a · Aplicar el CORS del bucket de imágenes · P1 — la mitad de consola de B-1235 (2026-09-23) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23)** por el dueño. Verificado con `curl -H 'Origin: https://agendaleh.ar'` sobre una imagen de `events.json`: responde `access-control-allow-origin: https://agendaleh.ar`. Falta la prueba de punta a punta de B-1235 (convertir una propuesta con foto).
 
 Desde la raíz del repo:
 
