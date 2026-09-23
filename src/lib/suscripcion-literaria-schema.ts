@@ -117,7 +117,7 @@ export const slugDeSuscripcion = (f: { nombre: string; slug: string }): string =
  *
  * ⚠️ **Es la tercera derivación de la misma forma** —`imagenSchema` de
  * `src/lib/schema.ts` y `imagenDeLibreriaSchema` de `libreria-schema.ts` son las
- * otras dos— y eso ya estaba anotado como deuda cuando eran dos (B-909). Se
+ * otras dos— y eso ya estaba anotado como deuda cuando eran dos (B-906). Se
  * escribe igual que la segunda a propósito: lo que hay que hacer es unificarlas,
  * no que la tercera invente una variante.
  */

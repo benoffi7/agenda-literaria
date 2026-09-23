@@ -123,8 +123,7 @@ export const slugDeLugar = (f: { nombre: string; slug: string }): string =>
  * `src/lib/schema.ts`, `imagenDeLibreriaSchema` y `imagenDeSuscripcionSchema`
  * son las otras tres— y eso está anotado como deuda desde que eran dos:
  * **B-906**, «`imagenSchema` está escrito dos veces: `src/lib/schema.ts` no lo
- * exporta». (El docblock equivalente de `suscripcion-literaria-schema.ts` cita
- * **B-909**, que es otra cosa —el slug sin reserva atómica—; queda anotado.)
+ * exporta».
  *
  * Se escribe igual que las otras **a propósito**: lo que hay que hacer es
  * unificarlas exportando la de `schema.ts`, no que la cuarta invente una
