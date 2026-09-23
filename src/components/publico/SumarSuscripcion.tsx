@@ -84,19 +84,18 @@ export function SumarSuscripcion({
 }: Props) {
   const alta = useAltaPublica<SuscripcionLiterariaForm>({
     /*
-     * **El precio arranca vacío de los DOS lados**, y no con el
-     * `porPeriodo: PERIODICIDAD_POR_DEFECTO` de `suscripcionVacia()`.
+     * **El precio arranca vacío de los DOS lados.**
      *
      * El schema pide el monto y el período **o ninguno de los dos**, así que un
      * período con default y un monto vacío es un formulario que no se puede
      * guardar sin precio — y no tener precio es el caso normal de este lado:
      * quien llena esto puede no querer publicarlo, y no hay un admin que sepa
-     * que además tiene que vaciar el desplegable. Es la misma clase de default
-     * que en `SumarLugar` con `direccionPublica`: el del panel no sirve acá.
+     * que además tiene que vaciar el desplegable.
      *
-     * (Del lado del panel esto es un bug y está anotado como **B-923**: la ayuda
-     * dice «si no querés publicarlo, dejalo vacío» y con el período en `mensual`
-     * el guardado falla.)
+     * Desde B-923 `suscripcionVacia()` ya arranca así (antes traía
+     * `PERIODICIDAD_POR_DEFECTO` y el panel no podía guardar sin precio). El
+     * override queda escrito igual: este formulario no puede depender de que el
+     * default del panel no vuelva a cambiar.
      */
     inicial: () => ({
       ...suscripcionVacia(),

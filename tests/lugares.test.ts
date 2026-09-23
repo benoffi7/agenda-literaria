@@ -588,6 +588,22 @@ describe('el schema — lo que se le avisa a quien completa antes de mandar', ()
     expect(rutas(valida({ capacidad: '12' }))).toEqual([]);
   });
 
+  it('el precio sin tocar de `lugarVacio()` se guarda — B-923', () => {
+    /*
+     * La ayuda del campo dice «si no cobra, dejalo vacío». Con `porUnidad: 'hora'`
+     * de default, dejarlo vacío caía en «unidad sin monto» y el guardado fallaba:
+     * un lugar sin precio —el caso normal de esta ficha— no se podía guardar.
+     *
+     * MUTACIÓN PROBADA: volver a `porUnidad: 'hora'` en `lugarVacio()` deja este
+     * caso en rojo.
+     */
+    expect(lugarVacio().precio).toEqual({ monto: '', porUnidad: '' });
+    expect(rutas(valida({ precio: lugarVacio().precio }))).toEqual([]);
+    // Y el desplegable del panel tiene de dónde sacar ese `''`.
+    const formulario = readFileSync(raiz('src/components/admin/LugarFormulario.tsx'), 'utf8');
+    expect(formulario).toContain('<option value="">Sin precio</option>');
+  });
+
   it('el precio va con su unidad, o no va — B-837', () => {
     expect(rutas(valida({ precio: { monto: '25000', porUnidad: '' } }))).toContain('precio.porUnidad');
     expect(rutas(valida({ precio: { monto: '', porUnidad: 'hora' } }))).toContain('precio.monto');

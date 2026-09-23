@@ -428,6 +428,20 @@ describe('el schema — lo que se le avisa a quien completa antes de mandar', ()
     expect(valida({ envio: { ...form().envio, cuantos: '' } }).success).toBe(true);
   });
 
+  it('el precio sin tocar de `suscripcionVacia()` se guarda — B-923', () => {
+    /*
+     * La ayuda del campo dice «si no querés publicarlo, dejalo vacío». Con el
+     * período en `mensual` de default, dejarlo vacío caía en «período sin monto»
+     * y el guardado fallaba. El desplegable (`TaxonomiaSelect`) arranca en
+     * «Elegí una opción…», que es su `value=""`.
+     *
+     * MUTACIÓN PROBADA: volver a `porPeriodo: PERIODICIDAD_POR_DEFECTO` en
+     * `suscripcionVacia()` deja este caso en rojo.
+     */
+    expect(suscripcionVacia().precio).toEqual({ monto: '', porPeriodo: '' });
+    expect(rutas(valida({ precio: suscripcionVacia().precio }))).toEqual([]);
+  });
+
   it('el precio va con su período, o no va — DEC-12', () => {
     expect(rutas(valida({ precio: { monto: '18000', porPeriodo: '' } }))).toContain(
       'precio.porPeriodo',

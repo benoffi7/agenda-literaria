@@ -415,7 +415,15 @@ export const suscripcionVacia = (): SuscripcionLiterariaForm => ({
   envio: { manda: false, cuantos: '', tematica: '', editoriales: '', sorpresa: '' },
   extras: [],
   extrasOtro: '',
-  precio: { monto: '', porPeriodo: PERIODICIDAD_POR_DEFECTO },
+  /*
+   * B-923 — **el precio arranca vacío de los dos lados.** El schema pide el monto
+   * y el período o ninguno de los dos, y la ayuda del campo dice «si no querés
+   * publicarlo, dejalo vacío»: con el período puesto por default, dejarlo vacío
+   * era justo lo que no se podía guardar. El desplegable arranca en «Elegí una
+   * opción…», que es un click más para quien sí carga un precio. Es lo mismo que
+   * ya hacía `SumarSuscripcion`.
+   */
+  precio: { monto: '', porPeriodo: '' },
   alcance: [],
   linkDeSuscripcion: '',
   instagram: '',
