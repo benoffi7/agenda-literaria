@@ -366,14 +366,19 @@ los cinco campos:
 
 | Campo | Tipo | Qué significa |
 |---|---|---|
-| `aprobada` | `boolean` opcional | ¿entra al desplegable de todos? Lo creado con "Otro" nace en `true` desde el 2026-08-24 (D-104); antes nacía en `false` |
+| `aprobada` | `boolean` opcional | ¿entra al desplegable de todos? Lo que crea un **admin** con "Otro" nace en `true` (D-104); lo que crea un **publicador** nace en `false` (B-893, D-810) |
 | `huellaCreador` | `string` opcional | quién la creó, **como huella del uid, no como uid** |
 
-Tres reglas, todas en `src/lib/opciones.ts`:
+Tres reglas, con la transformación en `functions/alta-de-opcion.js` y la
+lectura en `src/lib/taxonomia.ts`:
 
-0. **Lo nuevo nace aprobado** (D-104), así que hoy el único `aprobada: false`
-   que se puede encontrar en producción es de antes de esa decisión. La
-   maquinaria se conserva entera para el día que se vuelva a prender.
+0. **Lo del admin nace aprobado** (D-104); **lo del publicador, no** (D-810).
+   La maquinaria de aprobación, que desde D-104 estaba dormida, la prende el
+   publicador: su etiqueta le sirve a quien la creó (su actividad la guarda y su
+   desplegable la ofrece, marcada «sin aprobar»), no le aparece a nadie más ni
+   entra a los chips del sitio, y el admin la aprueba desde la pantalla de
+   taxonomías. Si otra cuenta la tipea en «Otro», se aprueba sola y queda
+   marcada (B-29, `aprobadaPorReuso`).
 1. **`fijo: true` implica aprobada.** Las base lo están por definición.
 2. **El campo ausente cuenta como aprobada** (`estaAprobada`). Los documentos
    que ya están en producción se escribieron antes de que existiera el campo, y
@@ -386,10 +391,32 @@ Tres reglas, todas en `src/lib/opciones.ts`:
    (en el formulario y en la descripción del evento), porque la actividad lo
    guardó legítimamente y el calendario es público. Ver [D-30](06-decisiones.md).
 
-`huellaCreador` es una huella FNV-1a de 8 hex (`src/lib/huella.ts`) y no el uid:
+`huellaCreador` es una huella FNV-1a de 8 hex (`functions/huella.js`, con
+`src/lib/huella.ts` como fachada desde B-893: la callable la calcula igual que
+el panel) y no el uid:
 este documento es de **lectura pública** (§5.3) y el §5.1 dice que los uids no
 salen al público. La visibilidad solo necesita comparar igualdad. Ver
 [D-27](06-decisiones.md) y [`07-seguridad.md`](07-seguridad.md).
+
+### Quién escribe el array, y por qué puerta (B-893)
+
+| Rol | Puerta | Qué verifica |
+|---|---|---|
+| admin | `upsertOpcion` (transacción del cliente); la regla es `allow write: if esAdmin()` | nada más que el claim: la regla no puede mirar qué elemento cambió |
+| publicador | la callable `crearOpcionDelPanel` (Admin SDK, `enforceAppCheck: true`) | `cambioInesperado`: que lo único distinto del array sea **un** elemento agregado con `usos: 1`, `fijo: false`, `orden: 99`, `aprobada: false` y la huella de quien llama —o el `usos + 1` de uno que ya existía, con la aprobación de B-29 si corresponde— |
+
+Las dos puertas corren **la misma** transformación (`valoresConLaEtiqueta`), así
+que un elemento creado por una y por otra tienen la misma forma. La callable
+además: acepta solo los campos del formulario de actividad que ofrecen «Otro…»
+(`CAMPOS_CREABLES_POR_FUNCTION`: arancel, tipo, barrio, ciudad, plataforma, tags,
+incluye-actividad — **no** provincia, B-972), corta la etiqueta en 80
+caracteres, frena en 25 pendientes propias por campo, y **no crea el documento**
+si no existe (sembrarlo le pediría una copia de `opciones-base.json`). Escribe con
+`update({ valores })`, y como `rebuildPorOpciones` es un trigger de Firestore,
+dispara el rebuild igual que una escritura del panel (trampa 8).
+
+Lo que el publicador **no** hace: contar los `usos` de lo que elige del
+desplegable (`registrarUsos` se saltea para su rol, como desde B-888).
 
 **Qué sale al `events.json`:** `slug`, `label` y —cuando está y es válido— `tono`
 (§4.4). `orden`, `fijo`, `usos`, `aprobada` y `huellaCreador` **no** — la proyección

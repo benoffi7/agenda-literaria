@@ -808,9 +808,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Y en los desplegables no aparece «Otro…»: podés elegir cualquier opción de la lista, ' +
-          'pero crear una etiqueta nueva cambia lo que ve todo el sitio, así que eso lo hace una ' +
-          'cuenta de la primera clase. Si te falta una, pedila.',
+          'Si te falta una opción en un desplegable, podés crearla con «Otro…», como cualquier ' +
+          'cuenta. La diferencia es que la tuya queda «sin aprobar»: tu actividad la usa y a vos ' +
+          'te aparece en la lista, pero nadie más la ve —ni en sus desplegables ni en los filtros ' +
+          'del sitio— hasta que una cuenta de la primera clase la apruebe.',
       },
       {
         texto:
