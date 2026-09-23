@@ -239,7 +239,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
        * tercer archivo de la fila 2— pasaba en verde con el barrido viejo y ahora
        * da rojo nombrando la salida.
        */
-      const celdaProductor = celdas.find((c) => /`(?:src|functions)\//.test(c)) ?? '';
+      const celdaProductor = celdas.find((c) => /`(?:src|functions)[/]/.test(c)) ?? '';
       const archivos = [
         ...new Set(
           [...celdaProductor.matchAll(/`((?:src|functions)\/[^`\s]+\.(?:m?[jt]sx?|astro|json))`/g)].map(
