@@ -2,6 +2,58 @@
 
 ## Sin publicar
 
+- **En AM/PM, una hora o un minuto imposible ya no vacía la fecha en silencio: lo
+  dice** (B-1236). Tipear `75` en los minutos (o `25` en la hora) del control de 12
+  horas dejaba el encuentro sin fecha, con la cajita mostrando el número y el eco
+  desaparecido. No se convierte —es un typo, no otra notación—: `piezaFueraDeRango`
+  (`src/lib/formatoDeHora.ts`, pura) nombra la pieza y el campo muestra el error
+  por el mismo canal que los del schema (`role="alert"`, `data-campo-con-error`),
+  con la cajita en `aria-invalid`. Solo habla con los dos dígitos puestos. Tests en
+  `tests/formato-de-hora.test.ts` y `tests/campo-de-fecha-y-hora.render.test.tsx`;
+  ayuda del panel actualizada.
+- **En el panel, una suscripción o un lugar sin precio se puede guardar** (B-923).
+  La ayuda decía «si no querés publicarlo, dejalo vacío», pero el formulario traía
+  el período (`mensual`) o la unidad (`hora`) puestos por default y el guardado
+  caía en «unidad sin monto». En lugares el desplegable ni tenía opción vacía, así
+  que un lugar que no cobra —el caso normal de esa ficha— no se podía guardar.
+  Ahora `suscripcionVacia()` y `lugarVacio()` arrancan con la unidad vacía, como
+  los formularios públicos, el desplegable de lugares suma «Sin precio», y
+  **editar** una ficha sin precio ya no le rellena la unidad
+  (`lugarAFormulario`/`suscripcionAFormulario`).
+- **El Instagram solo se corta en `?`/`#` detrás de `instagram.com/`** (B-1160):
+  `casa#brandon` y `taller?2026` ya no derivan a `@casa`/`@taller` —cuentas de otra
+  persona— en la ficha, el pie del posteo ni el documento guardado. El `?igsh=…`
+  del botón «Compartir» sigue derivando. Sale la puerta local de
+  `functions/calendario.js` (D-763), que ya no tenía trabajo. Los documentos ya
+  guardados recortados no se reescriben.
+- **Una implementación del saneador del Instagram, no dos** (B-1180):
+  `src/lib/handle-instagram.mjs` es fachada de `functions/handle-instagram.js`,
+  como `slugify.mjs`. El test de equivalencia pasó a chequeo de fuente más
+  identidad de función.
+- **`imagenSchema` se escribe una sola vez** (B-906, B-918, B-1300). Eran cinco
+  derivaciones de la misma forma (actividad, librerías, suscripciones, lugares y
+  bibliotecas). Viven en `src/lib/imagen-schema.ts`, que depende solo de `zod` y
+  `schema.ts` reexporta — aparte y no en `schema.ts` porque los `Sumar*.tsx` del
+  sitio importan el schema de su ficha y arrastrarían el de la actividad entera.
+  Test nuevo en `clases-de-bug.test.ts`; el `auditor-privacidad` suma el módulo a
+  su lista. El id de imagen de las fichas dice ahora el mismo mensaje que la
+  actividad.
+- **El detector de la clase de B-211 se queda sin excepciones** (B-1050):
+  `lista-actividades.render.test.tsx` usa el `Timestamp` de `tests/fixtures/tiempo.ts`.
+- **Las anclas de `docs/` se verifican** (B-1171): `scripts/anclas-referenciadas.mjs`
+  (`npm run docs:anclas`), tercer hermano de `decisiones-referenciadas` e
+  `items-referenciados`, resuelve cada `](#…)` y `](archivo.md#…)` de `docs/` y el
+  `CLAUDE.md` con el slug de GitHub —que conserva el `_`—. Su test lo frena con la
+  deuda en cero; la única rota de 124 (`07-seguridad.md` → `#d-640`) se arregló.
+- **Documentación que había dejado de ser cierta** (B-1150, B-1143, B-1083 / D-860,
+  B-1084, B-1086, B-908): el encabezado cita D-380 y D-145 en vez de un D-239 que
+  nunca existió; el docblock de `instagrams-de-la-base.mjs` describe la
+  implementación única; «el tablero arranca por el catálogo» tiene número propio
+  (D-860) y D-200 vuelve a ser una sola; `anchoDelPanel.ts` no afirma un mapa de
+  calor que no se dibuja; D-272 y el § 8.1bis dicen que la franja fija se sacó el
+  2026-09-07; y la subida del flyer figura por la callable `subirFlyerDePropuesta`,
+  no esperando a App Check en Storage (`02`, `04`, `07` y `08`).
+
 - **El publicador puede crear etiquetas con «Otro…», y nacen sin aprobar** (B-893,
   D-810). Van por una callable nueva, `crearOpcionDelPanel` (Functions v2,
   `enforceAppCheck: true`), que corre con el Admin SDK y verifica lo que las reglas

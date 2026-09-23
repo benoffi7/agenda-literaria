@@ -15805,6 +15805,222 @@ schema rechazaba lo que escribiera. Arreglado con B-893:
 `(props.permitirOtro ?? true) && puedeCrearEtiquetas()`, con su caso en
 `tests/campos-del-panel.render.test.tsx`.
 
+### B-1236 · Los minutos del control de 12 vacían la fecha en silencio igual que la hora antes de B-1234 · P2 — del auditor sobre B-1234 (2026-09-23) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** Cerrado en `a15fb03` + `382c885`: se eligió decirlo, no convertir. Con los dos dígitos puestos, un minuto por encima de 59 o una hora fuera de 1..12 muestran el error en el campo (`piezaFueraDeRango`, pura) y marcan la cajita con `aria-invalid`. Cubre también el `25` que B-1234 dejó quieto. La clase en `clases-de-bug.test.ts` sigue sin nombrarse: se espera al tercer control compuesto.
+
+**La misma clase que B-1234, en la cajita de al lado.** Tipear `75` en los minutos
+del control de AM/PM hace que `dePiezas` componga `''`: el encuentro se queda sin
+fecha, la cajita sigue mostrando `75` y el eco de abajo desaparece. Nadie dice
+nada, que es exactamente lo que hizo que el de la hora tardara en verse.
+
+**Por qué no entró en B-1234 y por qué es P2 y no P1.** Acá no hay nada que
+interpretar: `75` no es una hora en otro formato, es un typo —el equivalente al
+`25` que aquel ítem decidió dejar quieto—. Así que el arreglo no es convertir sino
+**decirlo**: un error en el campo, o el eco diciendo qué falta, en vez del silencio.
+Y no lo reporta nadie porque tipear un minuto imposible es raro, mientras que
+tipear `20` en la hora es lo que hace todo el mundo que viene de cargar en 24.
+
+**Lo que el auditor dejó dicho, y vale más que el caso:** no hay en el repo ninguna
+red que recorra los controles compuestos del panel buscando esta forma —«una pieza
+fuera de rango vacía el compuesto entero y la pantalla no lo dice»—, ni una lista
+existente a la que agregarle una entrada. Sería una clase nueva a nombrar en
+`tests/clases-de-bug.test.ts`, y recién vale la pena cuando aparezca el tercer
+control compuesto: con dos, el costo de nombrarla es mayor que el de mirarlos.
+
+### B-1150 · `D-239` se cita desde el encabezado del sitio y nunca se escribió · P2 — la destapó B-1147 (2026-09-22) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `768e8a7`: la cita pasa a D-380 y D-145, sin inventar la entrada.
+
+**Es la primera huérfana que el barrido no podía ver, y salió en la corrida en
+que dejó de estar ciego.** `src/components/sitio/Encabezado.astro:322` dice «Es el
+mismo criterio de **D-239** sobre la home», justificando que el desplegable del
+encabezado sea un `<details>` nativo y no una isla de React. `06-decisiones.md` no
+tiene esa entrada: va de D-232 a D-250 sin pasar por ahí.
+
+**No es una tanda en vuelo.** La cita la trajo `ec2027f` (`fix(B-1134)`,
+2026-09-18), integrado en `main` cuatro días antes, y es la **única** del repo: no
+hay otro archivo que la nombre.
+
+**Y acá sí hay que reconstruir, a diferencia de B-1082.** Se buscó en los once
+`.estado/*.md` del árbol principal —que es donde B-910 encontró cinco de sus seis
+y donde estaban D-400 y D-401— y **D-239 no aparece en ninguno**. Tampoco hay
+ninguna decisión escrita sobre `<details>` en el registro, así que no es una cita
+con el número equivocado apuntando a algo que exista.
+
+**Dos salidas y conviene mirar cuál antes de escribir nada:** que el número se
+haya acuñado para una decisión que nunca se tomó —y entonces la cita se corrige o
+se borra— o que el criterio sea real y haya que redactarlo desde lo que el propio
+comentario ya da: elemento nativo semántico y accesible por encima de bajar un
+runtime de React al sitio público para reimplementar peor lo que el navegador
+trae. **Lo que no se hace es inventar la entrada**: una entrada inventada es peor
+que un hueco (la lección de `D-9` en B-910).
+
+**Dónde:** `src/components/sitio/Encabezado.astro:322`.
+
+### B-1160 · `handleInstagram` corta en el primer `#` o `?` aunque no haya URL, y deriva a **otra cuenta** · P2 — del `auditor-privacidad` sobre el cierre de B-1142 (2026-09-22) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `9b85218`: el corte de `?`/`#` va solo detrás de `instagram.com/`; sale la puerta D-763 de `calendario.js` y el test de SeccionQuien se dio vuelta. D-763 y D-767 llevan la nota.
+
+**Verificado corriendo el helper, no leyéndolo:** `handleInstagram('casa#brandon')`
+devuelve `'casa'`, y `handleInstagram('taller?2026')` devuelve `'taller'`. El
+corte por `?`/`#` (`src/lib/handle-instagram.mjs:53`) se aplica a **cualquier**
+valor, no solo a uno que haya empezado con `instagram.com/`, que es el único caso
+que B-928 vino a cubrir (el `?igsh=…` del botón «Compartir»).
+
+**Lo que pasa es peor que mostrar mal:** `@casa` es una cuenta real de otra
+persona. Y en un posteo de Instagram la arroba no es texto, **menciona**: linkea y
+notifica a la cuenta etiquetada. Es la salida de la que no se puede volver.
+
+**Y no se queda en la salida: se guarda.** `formADocumento` escribe
+`conHandle(crudo)` en el documento (`src/lib/actividades.ts:197`), así que quien
+tipea `casa#brandon` en el panel **guarda `casa`** — el valor original se pierde,
+y con él la posibilidad de ver qué se había escrito. Eso contradice de frente el
+criterio que el propio docblock declara dos párrafos más arriba: «si no se
+reconoce, se guarda lo tipeado, porque es la única copia del dato».
+
+**Lo tapan dos puertas puestas en la tanda del 2026-09-22, y ninguna lo arregla:**
+el calendario no deriva cuando el corte descartaría texto que no viene de una URL
+de Instagram (D-763), y el formulario lo deja a la vista en el campo en vez de en
+silencio (D-767). Las dos son locales a su salida. La ficha pública, el pie del
+posteo y el documento guardado siguen expuestos.
+
+**Los bordes que sí están cerrados** (verificados uno por uno): el prefijo está
+anclado con `^`, así que `ar.instagram.com/x`, `instagram.com.evil.com/x` y un
+redirect con `?u=instagram.com/otra` no derivan nada; cualquier valor con espacio,
+`/` o `:` falla el alfabeto y sale como se escribió; `instagram.com/p/ABC/` queda
+con barra y no deriva. El único agujero es el corte sobre un valor **pelado**.
+
+**Arreglo mínimo:** aplicar el corte de query/fragmento **solo si hubo prefijo de
+`instagram.com`**, dejando sin derivar el valor pelado con `#` o `?`. Al cerrarlo
+se saca la puerta de `functions/calendario.js` (D-763) y se cae el test que fija
+el caso en `tests/seccionQuien.render.test.tsx`, que está escrito a propósito para
+ponerse rojo ese día.
+
+**Dónde:** `src/lib/handle-instagram.mjs:53` — desde B-1145 la implementación vive
+en `functions/handle-instagram.js`, así que el arreglo va allá y `src/` lo hereda.
+
+### B-1180 · El saneador del Instagram tiene dos cuerpos, y falta la línea que los junta · P2 — de cerrar B-1145 (2026-09-22) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `f97e79d`: `src/lib/handle-instagram.mjs` es fachada de `functions/`; el `it` de equivalencia pasó a chequeo de fuente + identidad. Los chequeos D-20 no se movieron a `clases-de-bug.test.ts`.
+
+`functions/handle-instagram.js` nació en B-1145 porque `functions/` no puede
+importar `src/` (D-20) y la descripción del evento necesita el mismo handle que
+la ficha. **Falta el último tramo del patrón**, que es el que lo convierte en «una
+implementación, tres runtimes» en vez de en dos copias: que
+`src/lib/handle-instagram.mjs` reexporte en lugar de tener su propio cuerpo,
+exactamente como `src/lib/slugify.mjs` y `src/lib/geografia.mjs` desde B-968.
+
+**No se hizo en B-1145 porque ese archivo era de otro frente de la tanda.** El
+parche está escrito, aplicado en local y verificado —547 tests verdes y `tsc`
+limpio— y es una línea de código:
+
+```js
+export { handleInstagram, arrobaInstagram } from '../../functions/handle-instagram.js';
+```
+
+**Mientras tanto hay red**, y es la misma que B-928 corrió entre el script y el
+sitio: un test que importa las dos y las corre contra la misma batería exigiendo
+que contesten igual (`tests/calendario.test.ts`). Funcionó entonces y funciona
+ahora —probado mutando cada copia—, pero B-928 también dejó escrito su límite:
+avisa **después** y el arreglo hay que escribirlo dos veces. Por eso este ítem
+existe y no es opcional.
+
+**Al cerrarlo**, el `it` de equivalencia pasa a comparar la función consigo misma
+y deja de probar nada: hay que reemplazarlo por el chequeo de fuente de que la
+fachada no tiene implementación propia, igual que
+`tests/instagrams-de-la-base.test.ts:101`. Y conviene aprovechar para mover los
+dos chequeos de clase D-20 de `tests/calendario.test.ts` a
+`tests/clases-de-bug.test.ts`, donde viven los otros ocho.
+
+**Y hay un tercer cuerpo, que este ítem no baja:** `conArroba` en
+`src/lib/textoRedes.ts` también contesta «cómo se escribe este handle», con otro
+alfabeto a propósito (admite `-`, para `difusion.arrobar`). Son tres, B-1180 los
+deja en dos, y que no exista ninguna tabla que diga cuál va con cuál es **B-1191**.
+
+**Dónde:** `src/lib/handle-instagram.mjs`; el modelo, `src/lib/slugify.mjs`.
+
+### B-923 · El panel dice «si no querés publicarlo, dejalo vacío» y el guardado falla · P2 · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** Salida 1 (`5af93de`, `46940c6`). Aparecieron dos cosas más: el `<select>` de unidad de `LugarFormulario` no tenía opción vacía (ahora «Sin precio»), y `lugarAFormulario`/`suscripcionAFormulario` rellenaban la unidad sin precio, así que editar una ficha sin precio fallaba igual. El mensaje de error no se movió.
+
+**Encontrado escribiendo los formularios públicos de la Guía (2026-09-15), sobre
+el formulario del panel.**
+
+`suscripcionVacia()` arranca con `precio: { monto: '', porPeriodo: 'mensual' }` y
+`lugarVacio()` con `precio: { monto: '', porUnidad: 'hora' }`. El schema pide el
+monto **y** la unidad, o **ninguno de los dos** —lo cual es correcto y está
+testeado (`tests/suscripciones.test.ts`, `tests/lugares.test.ts`)—. Con el
+período puesto por default y el monto vacío, la combinación cae del lado
+prohibido.
+
+O sea que **una suscripción o un lugar sin precio no se pueden guardar** a menos
+que quien carga se acuerde de vaciar *también* el desplegable. Y la ayuda del
+campo dice lo contrario con todas las letras:
+
+> «En pesos, sin puntos ni centavos. **Si no querés publicarlo, dejalo vacío.**»
+
+El error sale marcado sobre `precio.monto` («Cargá el precio y a qué período
+corresponde, o ninguno de los dos»), o sea sobre el campo que la persona
+**dejó vacío a propósito** y no sobre el que tiene el valor de más. Es la clase de
+rechazo que se lee como un bug del sistema.
+
+**Dónde duele más:** en lugares. El § 5 del PRD 4 nace de la pregunta del dueño
+—«no sé si todos cobran, o le dicen que tienen que consumir»— así que *no tener
+precio* es el caso normal de esa ficha, no el borde.
+
+**Lo que ya está resuelto y no hay que rehacer:** los tres formularios públicos
+(`/guia/<x>/sumar`) arrancan el precio **vacío de los dos lados**, con el motivo
+escrito en `SumarSuscripcion.tsx` y `SumarLugar.tsx`. Este ítem es solo el lado
+del panel.
+
+**Las dos salidas, en orden de costo:**
+
+1. **Que `suscripcionVacia()` y `lugarVacio()` arranquen sin unidad** (`''`). Es
+   una línea por archivo y deja el formulario coherente con su propia ayuda. Lo
+   que cuesta: el desplegable arranca en «elegí», que es un click más para quien
+   sí va a cargar un precio.
+2. **Que el formulario limpie la unidad cuando el monto se vacía.** Más amable de
+   usar y más fácil de romper: es estado derivado en un `onChange`, o sea la
+   clase de acople que se pierde la próxima vez que alguien toque el campo.
+
+La 1 es la que yo elegiría, y es la que ya usan los formularios públicos.
+
+### B-908 · La doc sigue diciendo que la subida anónima del flyer «espera que App Check exija» · P2 · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `0499e32`: actualizados `02`, `04`, `07` y `08`.
+
+B-896 paso 1 cerró ese camino por otro lado —la subida va a una callable y
+`storage.rules` para `propuestas/` quedó en `create: if false`— pero la doc no se
+actualizó, y en cinco lugares:
+
+- `docs/07-seguridad.md` §§ ~1396 y ~1417 — el prefijo `propuestas/` y su `create`.
+- `docs/04-funcionalidades.md` líneas ~874, ~921 y ~926 — «la escritura anónima
+  espera que App Check esté exigiendo (B-836a)». Sigue siendo cierto para el
+  `create` de Firestore (paso 2 de B-896) y **ya no** para el de Storage.
+- `docs/02-infraestructura.md` § App Check — falta la fila de `cloudfunctions`, y
+  con el matiz que es el punto entero del ítem: **no hace falta ponerlo en
+  `ENFORCED` en la consola**, `enforceAppCheck: true` es por función y rechaza
+  solo. Es lo que hace que exigir acá no cueste nada en Storage.
+- `docs/08-operacion.md` — la callable corre con `calendar-sync@` y necesita
+  `storage.objects.create`, el mismo permiso que ya tiene `optimizarImagen`: no hay
+  IAM nuevo que otorgar, y conviene que esté dicho para que no se busque.
+
+Es la clase de B-773 —afirmaciones que dejaron de ser ciertas y que ningún test
+sostiene— y el `auditor-documentacion` la encuentra sola si se lo corre sobre este
+commit.
+
+### B-918 · `suscripcion-literaria-schema.ts` cita B-909 donde corresponde B-906 · P4 · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `d4ee114`: cita corregida; el docblock después se fue con B-906.
+
+El docblock de `imagenDeSuscripcionSchema` dice que la duplicación del schema de
+`Imagen` «ya estaba anotada como deuda cuando eran dos (B-909)», y B-909 es otra
+cosa: el slug sin reserva atómica. El ítem correcto es **B-906**.
+
+Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que la
+cita mal se copie una quinta vez — la de lugares ya cita B-906.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -18696,6 +18912,136 @@ puede mirar.
 `tests/tablero.test.ts:395` («parsea docs/BACKLOG.md entero y no pierde ítems»),
 que se pone roja si un ítem `✅ hecho` se queda en el archivo vivo — y está
 bien: es lo que detectó que faltaba archivar.
+
+### B-1300 · `auditor-privacidad` no tenía a `src/lib/imagen-schema.ts` en su lista · P3 — de `schemas` (2026-09-23) · ✅ hecho (2026-09-23)
+
+Módulo nuevo de B-906 que entra al bundle público por los `Sumar*.tsx`.
+**✅ Hecho (2026-09-23)** en `72acf37`: sumado a la descripción y a la tabla.
+
+### B-1171 · Nada verifica que un enlace `](#…)` de `docs/` resuelva a un encabezado · P3 — de cerrar B-1085 (2026-09-22) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** Script con su test, como sus hermanos: `scripts/anclas-referenciadas.mjs` (`npm run docs:anclas`) y `tests/anclas-referenciadas.test.ts`, deuda congelada en cero. La única rota era `07-seguridad.md` → `#d-640`. Documentado en `13-agentes.md`.
+
+Un encabezado de este repo lleva `·`, que al generar el ancla se borra y **deja
+sus dos espacios**: `### 5.3 · El invariante…` es `#53--el-invariante…`, con dos
+guiones. Escribir uno solo da un enlace que **funciona** —la página carga— y no
+salta a ninguna parte. Es la rotura más silenciosa que puede tener un documento
+largo: no hay error, no hay 404, y quien la sufre supone que se distrajo.
+
+`16-analitica-del-sitio.md` tenía **cuatro** así desde el 2026-09-02/03, y el
+2026-09-22 se encontraron y arreglaron **otras cuatro** repartidas en
+`06-decisiones.md` (D-16, D-74, D-121) y `12-sitio-publico.md` (§ 4.5), las cuatro
+por un encabezado que se renombró sin actualizar a quien lo citaba. O sea que la
+clase **no es de un archivo**: es el costo de renombrar un encabezado en un repo
+con 96 citas cruzadas. Es hermano de `decisiones-referenciadas.mjs` e
+`items-referenciados.mjs` —mismo corte, misma salida— corrido sobre la tercera
+mitad del vocabulario: las anclas.
+
+**Y hay una trampa medida en el barrido ad-hoc que lo encontró, que quien lo
+escriba tiene que conocer:** la primera versión borraba el `_` al generar el
+ancla, y GitHub **lo conserva**. Reportó tres falsos positivos en
+`16-analitica-del-sitio.md` (`page_view`, `filtro_sin_resultados`) y se llegó a
+«arreglar» dos enlaces que funcionaban antes de agarrarlo releyendo el resultado.
+La regla correcta es: minúsculas, borrar lo que no sea `\w` —que **incluye** el
+guion bajo—, espacio o guion, y espacios a guiones. Corrido así, `docs/` da cero.
+
+**Lo que falta** es decidir si entra como test o como script con su test, y con
+qué se congela la deuda de hoy —que es cero— para que solo pueda bajar.
+
+### B-1143 · El docblock de `instagrams-de-la-base.mjs` describe una copia y un test de equivalencia que B-928 borró · P3 — salió de cerrar B-1141 (2026-09-21) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `790fa20` (y la ruta nueva de B-1180 en `6772b1f`).
+
+**Misma clase que el tercer arreglo de B-1141: un comentario que afirma una red
+que no existe.** El docblock de `scripts/instagrams-de-la-base.mjs` dedica
+veinte líneas a explicar que la normalización del handle es «una copia, y atada
+por un test»: que `scripts/handle-instagram.mjs` tiene una segunda
+implementación y que `tests/instagrams-de-la-base.test.ts` corre las dos contra
+la misma batería exigiendo que contesten igual.
+
+**Nada de eso es cierto desde B-928.** `scripts/handle-instagram.mjs` es hoy una
+reexportación de tres líneas —su propio docblock lo dice— y la implementación es
+única. El comentario también manda a `src/lib/detallePublico.ts` como «la
+normalización de verdad», y la implementación vive en
+`src/lib/handle-instagram.mjs` desde el mismo ítem.
+
+**Por qué importa aunque no rompa nada:** quien lea ese docblock antes de tocar
+el handle va a creer que tiene que escribir el arreglo dos veces, o va a buscar
+un test de equivalencia que ya no existe para entender por qué está en verde.
+Es la misma confusión que B-1141 sacó de `conHandle`, en otro archivo.
+
+**Dónde:** `scripts/instagrams-de-la-base.mjs:36-57`.
+
+### B-1083 · `D-200` nombra dos decisiones distintas · P3 — de documentar el tablero (2026-09-17) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `3dd48b2`: el criterio del tablero es **D-860** y las nueve citas se corrigieron.
+
+La entrada escrita en `06-decisiones.md` es «Los nombres de los meses se
+comparten» (B-215). Pero `EstadisticasPanel.tsx`, `estadoDelCatalogo.ts`,
+`analytics-eventos.ts`, `09-analitica.md` y dos secciones de
+`16-analitica-del-sitio.md` citan **D-200** como «por qué el tablero arranca por
+el catálogo». D-271 y D-273 también lo citan con ese segundo sentido.
+
+**No lo agarra el barrido de decisiones huérfanas —el número existe, solo que dice
+otra cosa— y el enlace resuelve**, así que quien lo siga lee una decisión sobre
+meses y se queda pensando que entendió. Se arregla eligiendo número nuevo para la
+del tablero (el criterio ya está redactado en el § 8 de `16-analitica-del-sitio.md`)
+o renumerando la de los meses. Cualquiera de las dos toca varias citas: por eso es
+P3.
+
+### B-1084 · El docblock de `anchoDelPanel.ts` describe un tablero que no existe · P3 — de documentar el tablero (2026-09-17) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `dbadeb4`: queda un puntero a B-1081.
+
+Para justificar que `estadisticas` use todo el ancho, dice: «el tablero pasó a
+tener repartos con torta, **dos vistas de tiempo y un mapa de calor de ocho
+semanas**». Los repartos con torta sí; las dos vistas de tiempo y el mapa de calor
+**no se dibujan en ninguna parte** (B-1081). El argumento del ancho sigue siendo
+bueno por los repartos y los avisos en dos columnas; lo que hay que sacar es la
+mitad que afirma pantalla que no hay. Se cierra solo si B-1081 se dibuja.
+
+### B-1086 · `D-272` y el § 8.1bis describen la franja fija que B-798 sacó · P3 — de documentar el tablero (2026-09-17) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `a2b1bd5`: nota de superada-en-parte en D-272 y una línea en el § 8.1bis. **Ojo:** el título dice B-798 y no es el ítem que sacó la franja — ver B-1332.
+
+Las dos describen «una franja fija con tres cosas» arriba de la pestaña del
+sitio. El dueño **sacó los cuatro párrafos el 2026-09-07** mirando la pantalla
+publicada (B-798), y el componente lo dejó escrito en un comentario largo con el
+argumento que perdió.
+
+**La decisión de D-272 no cambió** —ni un número inventado— y lo que caducó es la
+descripción de la forma. El § 8.1bis ya tiene un aviso de «esta sección describe
+el estado del 2026-09-03», así que ahí es una línea más; D-272 necesita una nota
+de superada-en-parte, con el precedente de cómo quedaron escritas D-270 y D-273.
+
+### B-1050 · El doble de `Timestamp` de `lista-actividades.render.test.tsx` no usa el fixture compartido · P3 — de cerrar B-875 (2026-09-17) · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `9a8d22f`: usa el fixture; `EXCEPCIONES_CONOCIDAS` borrada, el barrido espera cero.
+
+Ese archivo define su propio `ts` en vez de importar el de
+`tests/fixtures/tiempo.ts`, que es la clase de B-211. Se dejó **a propósito** al
+cerrar B-875 —ese ítem era el detector, no el fixture— y hoy vive como excepción
+documentada (`EXCEPCIONES_CONOCIDAS`) en `clases-de-bug.test.ts`, que es
+justamente el detector que hasta B-875 no lo veía por filtrar `.ts` y no `.tsx`.
+
+Reemplazarlo por el fixture compartido y borrar la excepción. Mientras la
+excepción exista, el detector tiene un agujero **declarado**, que es mejor que el
+que tenía, pero sigue siendo un agujero.
+
+### B-906 · `imagenSchema` está escrito dos veces: `src/lib/schema.ts` no lo exporta · P3 · ✅ hecho (2026-09-23)
+
+**✅ Hecho (2026-09-23).** `96775a1`: `src/lib/imagen-schema.ts`, solo `zod`, reexportado por `schema.ts`. Eran **cinco** copias contando `biblioteca-schema.ts`. Test en `clases-de-bug.test.ts`.
+
+`libreria-schema.ts` tiene su propia derivación zod de `Imagen` porque la de
+`schema.ts` es privada del módulo. Son dos versiones de la misma forma, o sea la
+clase de B-88: un campo nuevo de `Imagen` entra en una y no en la otra, y lo único
+que hoy lo sostiene es que las dos tipan a `Imagen`. Se cierra exportando la de
+`schema.ts` y borrando la copia; no se hizo en el commit de B-831 porque ese archivo
+era de otro frente.
+
+**Actualizado el 2026-09-11:** B-832 no lo hizo, así que ya son **tres** copias
+(`schema.ts`, `libreria-schema.ts`, `suscripcion-literaria-schema.ts`). Con la
+tajada 4 serían cuatro. Vale subirlo a P2.
 
 ## Pendiente de acción manual del dueño
 
