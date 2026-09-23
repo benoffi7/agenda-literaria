@@ -2602,16 +2602,12 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
       .filter((f) => /\.tsx?$/.test(f) && f !== FIXTURE);
 
   /**
-   * `lista-actividades.render.test.tsx` define su propio doble —exactamente
-   * lo que este `describe` existe para atajar— y se dejó **a propósito**
-   * (B-1050): achicarlo es otro ítem, y este archivo no lo toca. Sin esta
-   * excepción documentada, cerrar el hueco de arriba pondría en rojo un
-   * archivo que nadie vino a arreglar todavía, y el próximo frente que tope
-   * con eso no tiene cómo distinguir «regresión nueva» de «deuda conocida».
-   * Es una lista de uno, con motivo escrito — no una lista que crece: un
-   * segundo archivo acá sería una alarma, no una entrada más.
+   * El `.render.test.tsx` que B-875 encontró con su propio doble. Desde B-1050
+   * importa el fixture como los demás, así que ya no es una excepción: queda
+   * como el caso concreto con el que se controla que el barrido lee los `.tsx`.
+   * No hay lista de excepciones — un doble nuevo es una regresión, no deuda.
    */
-  const EXCEPCIONES_CONOCIDAS = ['tests/lista-actividades.render.test.tsx'];
+  const RENDER_QUE_SE_LE_ESCAPABA = 'tests/lista-actividades.render.test.tsx';
 
   /**
    * La **forma** de un doble de Timestamp, no su nombre: lo que lo delata es
@@ -2638,18 +2634,18 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
     // esta lista vacía aunque el archivo exista y tenga la forma del doble.
     const versionados = testsVersionados();
     expect(versionados.some((f) => f.endsWith('.render.test.tsx'))).toBe(true);
-    expect(versionados).toContain(EXCEPCIONES_CONOCIDAS[0]);
+    expect(versionados).toContain(RENDER_QUE_SE_LE_ESCAPABA);
   });
 
-  it('ningún test define su propio doble de Timestamp, salvo la excepción documentada', () => {
+  it('ningún test define su propio doble de Timestamp', () => {
     const conCopia: string[] = [];
     for (const archivo of testsVersionados()) {
       if (FORMA_DE_DOBLE.test(codigo(archivo))) conCopia.push(archivo);
     }
     expect(
       conCopia.sort(),
-      'importá { ts } de tests/fixtures/tiempo en vez de escribirlo de nuevo, o sumá el archivo a EXCEPCIONES_CONOCIDAS con el motivo si es deuda ya anotada',
-    ).toEqual([...EXCEPCIONES_CONOCIDAS].sort());
+      'importá { ts } o { tsDe } de tests/fixtures/tiempo en vez de escribirlo de nuevo',
+    ).toEqual([]);
   });
 
   it('el doble no miente en los campos que nadie lee todavía', () => {
