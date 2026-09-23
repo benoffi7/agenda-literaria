@@ -14760,6 +14760,84 @@ no toca las credenciales ni las cuentas de producción).
 > que apagar ahora que el sitio tiene un formulario que habla de datos. Los tres
 > están en el checklist de `08-operacion.md` § «El correo semanal».
 
+### B-1182 · El índice de salidas públicas no nombra a dos productores de la descripción del evento — ✅ hecho (2026-09-23) · P1 — del `auditor-privacidad` sobre el cierre de B-1145 (2026-09-22)
+
+> **✅ Cerrado el 2026-09-23 con la red que faltaba.** El barrido de
+> `tests/agentes-y-skills.test.ts` ahora toma **todos** los archivos de la celda
+> del productor, no el primero, y exige cada uno en el `description` del
+> `auditor-privacidad` y en disco. Al cerrarlo aparecieron **trece** archivos
+> nombrados en celdas y ausentes del `description` —entre ellos `enlaceSeguro.ts`,
+> `afiche.ts`, las cuatro páginas de hubs y `enviar-ficha.ts`—: se agregaron.
+> Mutación probada: sacar `functions/geografia.js`, tercer archivo de la fila 2,
+> antes pasaba en verde y ahora da rojo. Cierra también **B-1161**.
+
+
+> **🟡 Las tres tablas ya lo nombran (2026-09-22)** — `docs/07-seguridad.md`,
+> `.claude/agents/auditor-privacidad.md` (fila 2 y el `description`) y
+> `.claude/skills/campo-nuevo/SKILL.md`—, y `tests/agentes-y-skills.test.ts` las
+> sostiene: al escribirlas se puso **en rojo** nombrando los cuatro productores
+> que faltaban, que es exactamente para lo que existe. **Lo que queda abierto es
+> la red de B-1161**: ese chequeo exige las *funciones* de la celda, pero toma el
+> **primer** archivo como «el productor», así que un archivo agregado a la celda
+> y no al `description` todavía puede pasar.
+
+`arrobaInstagram` **decide texto visible del calendario público**: el
+`@casabrandon` de la descripción. Es productor de la salida 2 en el mismo sentido
+exacto en que `src/lib/handle-instagram.mjs` es productor de la salida 6 — y la
+fila 6 lo dice con todas las letras desde B-1141 («un cambio que toque solo ese
+archivo tiene que despertar esta auditoría»). La fila 2 nombra solo
+`functions/calendario.js`.
+
+**Consecuencia concreta:** un diff que toque **solo**
+`functions/handle-instagram.js` —ampliar el alfabeto, sacar el corte del
+`?igsh=`, invertir el orden de los `replace`— no dispara la auditoría por nombre
+de archivo, y reescribe texto de un calendario que ya está copiado en
+dispositivos ajenos. Es el modo de falla que B-863/B-896 dejaron escrito para
+`functions/propuestas*.js`.
+
+**Hay una instancia hermana, pre-existente y nunca anotada:**
+`functions/geografia.js` (`geografiaNormalizada`, vía `piezasDeDireccion`)
+produce la dirección del bloque «Dónde» del mismo evento y tampoco está en
+ninguna de las tres tablas — `src/lib/geografia.mjs` sí está, pero para la salida
+11. El arreglo es la misma línea, y por eso van juntos.
+
+**Y el mismo agujero tiene una tercera instancia, de otro frente de la misma
+tanda:** el archivo que decide cómo se escribe un handle no está nombrado en la
+fila de la salida 5 (el texto para redes) — eso es **B-1161**. Los dos se cierran
+con la misma pasada por las tres tablas.
+
+**Tres tablas atadas, las tres a mano:** `.claude/agents/auditor-privacidad.md`
+(fila 2 y el `description`), `docs/07-seguridad.md` (fila 2) y
+`.claude/skills/campo-nuevo/SKILL.md`. En cuanto entren, los `it` de
+`tests/agentes-y-skills.test.ts` los sostienen solos.
+
+### B-897 · `/guia` es una salida pública indexada y no está numerada — ✅ hecho (2026-09-23) · P1
+
+> **✅ Numerada el 2026-09-23 como salida 30** en las tres tablas atadas
+> (`docs/07-seguridad.md`, la ficha del `auditor-privacidad` y `campo-nuevo`), con
+> la celda «no proyecta ningún documento» y el criterio de las 13 a 18: se cuenta
+> por la promesa. Productores: `src/pages/guia/index.astro` —las frases viven en la
+> plantilla— y `src/lib/directorios.ts`. La cuenta pasó de veintinueve a treinta en
+> todos los lugares que la nombran, y el test de la cuenta lo sostiene.
+
+
+**Del `auditor-privacidad`.** Es HTML indexado, enlazado desde la barra, con texto
+escrito a mano: la clase de las filas 13 a 18, que se decidió numerar **por la
+promesa y no por la proyección**. El precedente para no numerarla sería
+`/proponer` — pero aquélla está fuera del sitemap **y** fuera del chrome, y tiene
+su propio párrafo en `07-seguridad.md`.
+
+**Actualizado el 2026-09-11:** la tajada de librerías metió sus **dos** salidas en
+las tres tablas en el mismo cambio que las creó, así que la cuenta pasó de
+diecinueve a **veintiuna** — pero `/guia` sigue sin numerar. O sea que lo que
+faltaba sigue faltando, con un número distinto.
+
+O la fila que le toque en las tres tablas atadas (`docs/07-seguridad.md`, la ficha
+del `auditor-privacidad`, `campo-nuevo/SKILL.md`) con su celda «no proyecta ningún
+documento», o el párrafo que diga por qué no. Lo que no puede quedar es sin
+decidir: cuando `/guia` tenga párrafos de verdad va a ser la página que presenta
+tres directorios cargados con datos de terceros.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -15578,6 +15656,45 @@ se va con el scroll, y no en el escritorio.
 > es la misma razón por la que B-1136 existe como archivo: un salto que cae corto no
 > es un error, la página funciona, el HTML del build se ve perfecto, y solo se nota
 > mirando la pantalla. La mutación (`sm:scroll-mt-20`) da rojo en los tres.
+
+### B-1161 · `handle-instagram` es productor de la salida más irreversible y no está en ninguna de las tres tablas que la indexan — ✅ hecho (2026-09-23) · P2 — del `auditor-privacidad` sobre el cierre de B-1142 (2026-09-22)
+
+> **✅ Cerrado el 2026-09-23 junto con B-1182**: la red que exige todos los
+> archivos de la celda en el `description` ya existe (ver B-1182).
+
+
+> **🟡 La fila 5 ya nombra el saneador (2026-09-22)** en las tres tablas, junto
+> con la fila 2 de B-1182. **Lo que queda es la red**, que es la parte que cierra
+> la clase: extender `tests/agentes-y-skills.test.ts` para que exija **todos**
+> los archivos nombrados en la celda dentro del `description` del agente, y no
+> solo el primero. Hasta entonces el índice se puede volver a desfasar por la
+> misma puerta.
+
+**Es la reincidencia exacta de lo que B-1141 ya arregló una vez**, y por eso vale
+como ítem y no como línea suelta. Desde B-1142, quién decide el texto literal que
+se pega en Instagram no es solo `textoRedes.ts`: es `arrobaInstagram`. La fila 6
+de la tabla ya enuncia esa regla para sí misma —«ese archivo es un productor de
+esta salida y un cambio que toque solo ese archivo tiene que despertar esta
+auditoría»—. El mismo argumento vale ahora para la salida **5**, que es la
+irreversible.
+
+**Y la segunda mitad es peor y es anterior:** el archivo del saneador no está en
+la lista de archivos del `description` del `auditor-privacidad`, así que **hoy un
+cambio que lo toque solo a él no despierta la auditoría por ninguna de las dos
+salidas** — ni por la 6, donde la tabla dice que tiene que despertarla.
+
+Es el modo de falla que este índice ya documenta para esta misma fila: «la 5
+faltaba en esta tabla hasta el 2026-08-27, y el agujero era del tipo peor: no de
+cobertura, sino de índice». La cobertura está bien; falta la línea que hace que
+alguien abra el archivo.
+
+**Hermano:** **B-1182**, la misma falta en la fila 2 (el calendario). Se cierran
+juntos, en una sola pasada por las tres tablas.
+
+**La red que lo cierra de verdad, y es la que conviene:** extender
+`tests/agentes-y-skills.test.ts` para que exija **todos** los archivos nombrados
+en la celda dentro del `description`, no solo el primero. Así el índice no se
+puede volver a desfasar.
 
 ## P3 — cuando sobre tiempo
 

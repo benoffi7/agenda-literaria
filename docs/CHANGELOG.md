@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **El índice de salidas públicas cuenta treinta, y el auditor se despierta con
+  todos sus archivos** — B-897, B-1182 y B-1161. `/guia` era HTML indexado sin
+  fila: ahora es la salida 30. Y el test que ata las tres tablas miraba solo el
+  primer archivo de cada celda de productor; ahora mira todos, y al hacerlo
+  encontró trece archivos que un cambio podía tocar sin despertar al
+  `auditor-privacidad`. Están agregados.
+
 - **El archivador del backlog se puede volver a usar** — B-1233 y B-1146. Mover
   un ítem cerrado al archivo de cerrados reordenaba todas las secciones: doce
   mil líneas de diff para un ítem. Deshacer eso a mano fue lo que el 2026-09-23

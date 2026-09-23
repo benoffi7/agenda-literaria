@@ -198,8 +198,10 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
    * productor de la última columna con contenido. Se corta en la primera línea
    * que no es fila: así una segunda tabla numerada más abajo no se mezcla.
    */
-  const salidas = (relativo: string): { n: string; archivo: string; funciones: string[] }[] => {
-    const filas: { n: string; archivo: string; funciones: string[] }[] = [];
+  const salidas = (
+    relativo: string,
+  ): { n: string; archivo: string; archivos: string[]; funciones: string[] }[] => {
+    const filas: { n: string; archivo: string; archivos: string[]; funciones: string[] }[] = [];
     let empezo = false;
     for (const linea of fuente(relativo).split('\n')) {
       /*
@@ -224,11 +226,33 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
       // La celda del productor es la primera que nombra un archivo del repo.
       const archivo = enBackticks.find((x) => /^(?:src|functions)\//.test(x));
       /*
+       * **Y todos los archivos de esa celda, no solo el primero — B-1161, B-1182.**
+       * Hasta el 2026-09-23 este barrido tomaba el primer archivo como «el
+       * productor». La fila 2 nombra tres (`calendario.js`, `handle-instagram.js`,
+       * `geografia.js`) y la 5 dos: un archivo agregado a la celda y no al
+       * `description` pasaba en verde, y un diff que tocara solo ése no despertaba
+       * la auditoría. Es exactamente el agujero que las dos filas vinieron a tapar.
+       * Al cerrarlo aparecieron **trece** archivos en celdas de productor que el
+       * `description` no nombraba.
+       *
+       * MUTACIÓN PROBADA: sacar `functions/geografia.js` del `description` —el
+       * tercer archivo de la fila 2— pasaba en verde con el barrido viejo y ahora
+       * da rojo nombrando la salida.
+       */
+      const celdaProductor = celdas.find((c) => /`(?:src|functions)\//.test(c)) ?? '';
+      const archivos = [
+        ...new Set(
+          [...celdaProductor.matchAll(/`((?:src|functions)\/[^`\s]+\.(?:m?[jt]sx?|astro|json))`/g)].map(
+            (x) => x[1]!,
+          ),
+        ),
+      ];
+      /*
        * Y **las funciones que esa fila nombra**, que es la parte que la primera
        * versión de este chequeo no miraba — ver el `it` de abajo.
        */
       const funciones = enBackticks.filter((x) => /^[a-z][A-Za-z0-9]*$/.test(x));
-      filas.push({ n: m[1]!, archivo: archivo ?? '(ninguno)', funciones });
+      filas.push({ n: m[1]!, archivo: archivo ?? '(ninguno)', archivos, funciones });
     }
     return filas;
   };
@@ -309,8 +333,11 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * («con la Guía completa, la próxima fila ya no va a ser un directorio»)
      * **resultó falsa**: la Guía tenía cuatro secciones y no tres. Se agrega uno
      * más con la misma lógica y sin volver a predecir cuál será la próxima.
+     *
+     * Y el 30 lo consumió B-897, que no es una salida nueva sino una vieja que
+     * faltaba contar: `/guia` existía desde B-835 sin fila.
      */
-    27: 'veintisiete', 28: 'veintiocho', 29: 'veintinueve',
+    27: 'veintisiete', 28: 'veintiocho', 29: 'veintinueve', 30: 'treinta',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {
@@ -747,9 +774,12 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // puede estar perfecta y el agente no despertarse nunca.
     const { claves } = frontmatter(fuente(FICHA));
     const sinNombrar = salidas(FICHA)
-      .map((s) => s.archivo)
-      .filter((archivo) => !(claves.description ?? '').includes(archivo));
+      .flatMap((s) => s.archivos.map((archivo) => `salida ${s.n}: ${archivo}`))
+      .filter((x) => !(claves.description ?? '').includes(x.split(': ')[1]!));
     expect(sinNombrar, 'productores ausentes del description').toEqual([]);
+    // Control positivo de la mitad nueva: la fila 2 nombra más de un archivo, y
+    // si el barrido volviera a quedarse con el primero esto lo diría.
+    expect(salidas(FICHA).find((s) => s.n === '2')!.archivos.length).toBeGreaterThan(1);
   });
 
   /**
@@ -813,7 +843,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // `definiciones()` de arriba lista solo `.claude/`, así que acá se mira el
     // disco: los productores viven en `src/` y en `functions/`.
     const inexistentes = salidas(FICHA)
-      .map((s) => s.archivo)
+      .flatMap((s) => s.archivos)
       .filter((archivo) => !existsSync(fileURLToPath(new URL(archivo, raiz))));
     expect(inexistentes).toEqual([]);
   });
