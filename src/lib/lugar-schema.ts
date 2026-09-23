@@ -459,7 +459,13 @@ export const lugarVacio = (): LugarForm => ({
   incluye: [],
   incluyeOtro: '',
   condicion: '',
-  precio: { monto: '', porUnidad: 'hora' },
+  /*
+   * B-923 — **el precio arranca vacío de los dos lados**, por lo mismo que en
+   * `suscripcionVacia()`: el schema pide el monto y la unidad o ninguno, y acá no
+   * cobrar es el caso normal (§ 5 del PRD: «no sé si todos cobran»). Con
+   * `porUnidad: 'hora'` de default, un lugar sin precio no se podía guardar.
+   */
+  precio: { monto: '', porUnidad: '' },
   condicionNotas: '',
   instagram: '',
   whatsapp: '',

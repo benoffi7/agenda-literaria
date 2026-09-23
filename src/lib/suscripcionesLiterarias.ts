@@ -160,7 +160,11 @@ export const suscripcionAFormulario = (
   extrasOtro: s.extrasOtro ?? '',
   precio: {
     monto: s.precio ? String(s.precio.valor.monto) : '',
-    porPeriodo: s.precio?.valor.porPeriodo || s.periodicidad || PERIODICIDAD_POR_DEFECTO,
+    // B-923 — sin precio, sin período: con el relleno, editar una suscripción
+    // sin precio caía en «período sin monto» y el guardado fallaba.
+    porPeriodo: s.precio
+      ? s.precio.valor.porPeriodo || s.periodicidad || PERIODICIDAD_POR_DEFECTO
+      : '',
   },
   alcance: s.alcance ?? [],
   linkDeSuscripcion: s.linkDeSuscripcion ?? '',

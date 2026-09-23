@@ -108,9 +108,10 @@ export function SumarLugar({
       /*
        * **Y el precio arranca vacío de los dos lados**, por lo mismo que en
        * `SumarSuscripcion`: el schema pide el monto y la unidad **o ninguno de
-       * los dos**, y `lugarVacio()` trae `porUnidad: 'hora'`. Acá el caso normal
-       * es no cobrar —el § 5 del PRD nace de «no sé si todos cobran»— así que un
-       * default que obliga a poner un número sería el peor default posible.
+       * los dos**. Acá el caso normal es no cobrar —el § 5 del PRD nace de «no sé
+       * si todos cobran»— así que un default que obliga a poner un número sería
+       * el peor default posible. Desde B-923 `lugarVacio()` ya arranca así; el
+       * override queda para no depender del default del panel.
        */
       precio: { monto: '', porUnidad: '' },
     }),

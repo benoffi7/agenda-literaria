@@ -152,7 +152,9 @@ export const lugarAFormulario = (l: Lugar): LugarForm => ({
   condicion: l.condicion ?? '',
   precio: {
     monto: l.precio ? String(l.precio.valor.monto) : '',
-    porUnidad: l.precio?.valor.porUnidad || 'hora',
+    // B-923 — sin precio, sin unidad: con `'hora'` de relleno, editar un lugar
+    // que no cobra caía en «unidad sin monto» y el guardado fallaba.
+    porUnidad: l.precio?.valor.porUnidad ?? '',
   },
   condicionNotas: l.condicionNotas ?? '',
   instagram: l.instagram ?? '',

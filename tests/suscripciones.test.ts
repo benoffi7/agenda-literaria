@@ -26,6 +26,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { suscripcionAFormulario } from '@/lib/suscripcionesLiterarias';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import {
   ESTADOS_DIRECTORIO,
@@ -80,7 +81,7 @@ import {
 } from '@/types/suscripcion-literaria';
 import { TOPE_SLUG_LIBRERIA } from '@/types/libreria';
 import { ts } from './fixtures/tiempo';
-import type { SuscripcionLiterariaForm } from '@/types/suscripcion-literaria';
+import type { SuscripcionLiteraria, SuscripcionLiterariaForm } from '@/types/suscripcion-literaria';
 
 /** Un archivo del repo, desde la raíz. */
 const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url));
@@ -426,6 +427,40 @@ describe('el schema — lo que se le avisa a quien completa antes de mandar', ()
     ).toContain('envio.cuantos');
     expect(rutas(valida({ envio: { ...form().envio, cuantos: '1.5' } }))).toContain('envio.cuantos');
     expect(valida({ envio: { ...form().envio, cuantos: '' } }).success).toBe(true);
+  });
+
+  it('el precio sin tocar de `suscripcionVacia()` se guarda — B-923', () => {
+    /*
+     * La ayuda del campo dice «si no querés publicarlo, dejalo vacío». Con el
+     * período en `mensual` de default, dejarlo vacío caía en «período sin monto»
+     * y el guardado fallaba. El desplegable (`TaxonomiaSelect`) arranca en
+     * «Elegí una opción…», que es su `value=""`.
+     *
+     * MUTACIÓN PROBADA: volver a `porPeriodo: PERIODICIDAD_POR_DEFECTO` en
+     * `suscripcionVacia()` deja este caso en rojo.
+     */
+    expect(suscripcionVacia().precio).toEqual({ monto: '', porPeriodo: '' });
+    expect(rutas(valida({ precio: suscripcionVacia().precio }))).toEqual([]);
+  });
+
+  it('y editar una suscripción sin precio tampoco le rellena el período — B-923', () => {
+    // La otra mitad: `suscripcionAFormulario` ponía la periodicidad aunque no
+    // hubiera precio, así que editar una ficha sin precio fallaba al guardar.
+    const sinPrecio = {
+      nombre: 'Caja de cuentos',
+      slug: 'caja-de-cuentos',
+      periodicidad: 'mensual',
+      precio: null,
+    } as unknown as SuscripcionLiteraria;
+    expect(suscripcionAFormulario(sinPrecio).precio).toEqual({ monto: '', porPeriodo: '' });
+    const conPrecio = {
+      ...sinPrecio,
+      precio: { valor: { monto: 18000, porPeriodo: 'trimestral' }, cargadoEn: null },
+    } as unknown as SuscripcionLiteraria;
+    expect(suscripcionAFormulario(conPrecio).precio).toEqual({
+      monto: '18000',
+      porPeriodo: 'trimestral',
+    });
   });
 
   it('el precio va con su período, o no va — DEC-12', () => {

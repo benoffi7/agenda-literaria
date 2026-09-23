@@ -708,6 +708,12 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
                 setForm((f) => ({ ...f, precio: { ...f.precio, porUnidad: e.target.value } }))
               }
             >
+              {/*
+                B-923 — la opción vacía existe porque **no poner precio es una
+                respuesta** y el schema la pide explícita: sin ella la unidad
+                quedaba siempre elegida y el guardado exigía un monto.
+              */}
+              <option value="">Sin precio</option>
               {UNIDADES_DE_PRECIO_LUGAR.map((u) => (
                 <option key={u} value={u}>
                   {TEXTO_UNIDAD[u]}
