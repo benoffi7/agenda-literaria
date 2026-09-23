@@ -67,20 +67,13 @@ const AYUDA_INSTAGRAM =
  * mostrar. Si aparece un valor así, se publica igual: la actividad sale, y en
  * la ficha ese texto se muestra sin arroba y sin link, que es el aviso.
  *
- * ── Y hay un caso en que el saneador entiende de más — B-1160 ─────────────
- * `handleInstagram('casa#brandon')` devuelve `'casa'`: el corte por `?`/`#` se
- * aplica a cualquier valor y no solo a los que vienen con `instagram.com/`
- * adelante, así que un handle con un `#` adentro se recorta y apunta a **otra
- * cuenta**. El arreglo es del saneador y vive en B-1160, no acá: escribir una
- * guarda local sería la segunda implementación del alfabeto del handle, que es
- * justo lo que este archivo no hace.
- *
- * Lo que sí cambia con B-1144 es que **se ve**. Ese recorte ya ocurría —lo hace
- * `conHandle` al guardar desde B-928, en silencio y contra el documento—; desde
- * acá queda escrito en el campo, en la pantalla de quien carga, antes de
- * guardar. Es la única forma en que hoy se puede notar. El test de
- * `tests/seccionQuien.render.test.tsx` lo fija con ese nombre: cuando B-1160 se
- * arregle, ese caso se pone rojo y hay que darlo vuelta.
+ * ── El caso en que el saneador entendía de más — B-1160, ya cerrado ───────
+ * Hasta B-1160, `handleInstagram` cortaba por `?`/`#` cualquier valor, y
+ * `casa#brandon` quedaba en `casa`: **la cuenta de otra persona**. Desde B-1160
+ * el corte va solo detrás de `instagram.com/`, así que ese valor queda como se
+ * tipeó. El arreglo fue del saneador y no de acá —una guarda local habría sido
+ * la segunda implementación del alfabeto del handle—, y el test de
+ * `tests/seccionQuien.render.test.tsx` fija el caso ya dado vuelta.
  *
  * ── El costo aceptado, escrito acá para que no se lea como un descuido ─────
  * D-767 — este campo queda con un criterio **distinto** del de las cuatro guías
