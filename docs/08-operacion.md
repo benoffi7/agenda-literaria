@@ -1423,7 +1423,7 @@ persona sino el estado de su documento. Las cuatro piezas:
 
 | Momento | Qué pasa | Dónde |
 |---|---|---|
-| **Sube** | a `propuestas/prop_<uuid>.jpg`, con el mismo tope de 3 MB y los mismos dos tipos que la galería | `storage.rules` |
+| **Sube** | a `propuestas/prop_<uuid>.jpg`, con el mismo tope de 3 MB y los mismos dos tipos que la galería, **por la callable** `subirFlyerDePropuesta`: exige App Check, sanea del lado del servidor y escribe con el Admin SDK. `storage.rules` tiene el `create` en `if false` para todo cliente desde B-896 | `functions/flyer-de-propuesta.js` + `-trigger.js` |
 | **Se mira** | solo un admin, y solo por su ruta: `get: esAdmin()`, `list: false` | ídem |
 | **Se acepta (1/2)** | el panel la baja y la vuelve a subir a `imagenes/` por `subirImagen`, y **no borra nada** | `src/lib/subir-imagen.ts` |
 | **Se acepta (2/2)** | al guardarse la actividad, se verifica que la copia esté y recién ahí se borra el original (**B-863**) | `borrarImagenAlCerrar` |
@@ -1446,6 +1446,15 @@ al revés se pierde la foto de un tercero y no hay de dónde sacarla. Cuando la
 verificación no pasa —la actividad se guardó sin ninguna imagen propia— el
 original **se conserva** y sale un `warn` con `alerta: "flyer-de-propuesta-sin-borrar"`:
 eso es **B-871**, porque la `aceptada` no vence y nadie más va a pasar por ahí.
+
+**La callable no necesita IAM nuevo, y conviene que esté dicho para que no se
+busque.** Corre como `calendar-sync@` (`CUENTA_DE_SERVICIO` de
+`functions/despliegue.js`), y para escribir el objeto necesita
+`storage.objects.create` sobre el bucket: es el mismo permiso que ya usa
+`optimizarImagen`, y viene en el `roles/storage.objectUser` que se otorgó para
+ella (§ «`optimizarImagen`», arriba). Tampoco hay que tocar la consola de App
+Check: `enforceAppCheck: true` es por función y no depende del `ENFORCED` de
+ningún servicio (ver `02-infraestructura.md` § App Check). B-908.
 
 ### Cuando suena `flyer-de-propuesta-sin-borrar`
 

@@ -33,24 +33,19 @@
  * cargado a su organizador, y para seguir una cuenta no hace falta esperar a
  * publicar la actividad.
  *
- * ── El handle: una copia, y atada por un test ─────────────────────────────
- * La normalización de verdad es `handleInstagram` (`src/lib/detallePublico.ts`):
- * resuelve `@casabrandon`, `casabrandon` y `instagram.com/casabrandon`, y
+ * ── El handle: una sola implementación ────────────────────────────────────
+ * La normalización es `handleInstagram`, de `src/lib/handle-instagram.mjs`: la
+ * misma que usa el sitio. Resuelve `@casabrandon`, `casabrandon`,
+ * `instagram.com/casabrandon` y el `?igsh=…` que pega el botón «Compartir», y
  * **valida contra el alfabeto real de Instagram** —lo que no lo cumple no se
  * convierte en link, porque un handle con una barra adentro armaría una URL a
  * **otra cuenta**—.
  *
- * **Este script no la puede importar**, y es la misma restricción que D-20 ya
- * había resuelto para las Functions: un `.mjs` que corre con `node` a secas no
- * resuelve los alias `@/` de TypeScript, y arrastrar un loader para un script de
- * una página no vale.
- *
- * Así que la copia vive en `scripts/handle-instagram.mjs` —aparte, porque
- * importar **este** archivo lo ejecuta— **con la misma red que usa D-20**:
- * `tests/instagrams-de-la-base.test.ts` corre las dos funciones contra la misma
- * batería de entradas y exige que contesten igual. Si divergen, esta página
- * armaría una URL distinta de la que arma el sitio para el mismo dato — y una de
- * las dos mandaría a la cuenta equivocada.
+ * El import pasa por `scripts/handle-instagram.mjs`, que desde B-928 es una
+ * **reexportación** de tres líneas y no una copia: el módulo es un `.mjs` que un
+ * script de Node plano puede importar sin loader, así que no hay nada que
+ * mantener dos veces. Un arreglo al handle se escribe una sola vez, en
+ * `src/lib/handle-instagram.mjs`, y esta página lo recibe sola.
  *
  * Lo que no pasa el filtro **no se descarta en silencio**: va a una sección
  * aparte con el valor crudo, porque un handle mal cargado es justamente algo que

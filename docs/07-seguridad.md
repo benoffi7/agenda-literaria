@@ -1567,6 +1567,18 @@ ya lee la propuesta entera en Firestore—. `list` está en `false` **y no en
 `storagePath` de su documento, y una lista de todas las fotos que mandaron
 personas distintas no le sirve a nadie.
 
+**Y el `create` de ese prefijo está en `if false` para todo cliente, anónimo o
+admin, desde B-896 paso 1.** No es una puerta entornada que espera a que App
+Check se exija en Storage: ese plan se descartó, porque el enforcement de App
+Check es **por servicio y no por path**, y exigirlo en `firebasestorage` se
+llevaba puestas las lecturas públicas de todas las imágenes del sitio (B-872). La
+subida va a la callable `subirFlyerDePropuesta` (`enforceAppCheck: true`), que
+vuelve a sanear la imagen del lado del servidor y escribe con el Admin SDK. Las
+cláusulas de forma que tenía la regla —tipo, tamaño, nombre— se mudaron a
+`functions/flyer-de-propuesta.js`, y el testigo de que el `create` no se reabra
+es el caso «nadie sube desde un cliente, ni un admin» de
+`tests/storage-reglas.integracion.test.ts`. B-908.
+
 **Y lo que ese `get` no cierra, dicho con todas las letras porque no es lo que uno
 supone:** la URL que `getDownloadURL()` acuña **sirve el objeto sin volver a
 evaluar las reglas**. Es una capability, igual que en `imagenes/` (donde es

@@ -366,7 +366,7 @@ existe— y por eso vale medirlo aparte: **el arreglo es distinto**. No hay nada
 corregir en la imagen, hay que recargar. Si aparece seguido, lo que hay que revisar
 es la política de actualización del panel y no las imágenes.
 
-**`estadisticas-abrir` es el termómetro del tablero del catálogo** (B-370, D-200,
+**`estadisticas-abrir` es el termómetro del tablero del catálogo** (B-370, D-860,
 [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md)). Contesta la única
 pregunta que decide si vale construir la mitad que lee GA4 (**B-374**): *¿alguien
 abre el tablero?* Si nadie lo abre, esa Function no vale lo que cuesta y el

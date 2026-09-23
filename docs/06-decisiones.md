@@ -6265,6 +6265,11 @@ empezarían a viajar como `'otro'` sin que nada se ponga rojo.
 
 ## D-200 · Los nombres de los meses se comparten; el argumento para duplicarlos no se sostiene
 
+> **Este número se citó durante un tiempo con otro sentido** —«por qué el
+> tablero arranca por el catálogo»— desde el panel, la analítica y dos
+> documentos. Esa decisión es **D-860**, y las citas se corrigieron el
+> 2026-09-23 (B-1083). Lo de abajo es la única decisión D-200.
+
 `calendarioPanel.ts` tenía los doce nombres con un comentario que justificaba la
 copia: «duplicados a propósito respecto de `novedades.ts`: ahí son contenido de
 una lista de novedades y acá son la navegación del calendario; atar los dos
@@ -6288,6 +6293,39 @@ virtual» en los filtros—, que también nació de dos mapas separados a propó
 eso es load-bearing: los tres llamadores usan ese `null` para caer en la clave
 cruda (`'2026-13'`), y una cadena vacía se colaría al HTML como un hueco
 silencioso — «de 2026» sin mes.
+
+---
+
+## D-860 · El tablero del panel arranca por el catálogo, no por las visitas
+
+**2026-09-23 · B-1083.** *Escrita acá el 2026-09-23. El criterio se citaba como
+**D-200** desde `EstadisticasPanel.tsx`, `estadoDelCatalogo.ts`,
+`analytics-eventos.ts`, `tests/estado-del-catalogo.test.ts`, `09-analitica.md`,
+D-270, D-271 y dos secciones de
+[`16-analitica-del-sitio.md`](16-analitica-del-sitio.md), pero D-200 es otra
+decisión —la de los nombres de los meses, B-215— y el enlace resolvía a ella. No
+es una decisión nueva: es la que el § 8 de `16-analitica-del-sitio.md` ya tenía
+redactada, puesta bajo un número propio.*
+
+**Decisión: el primer tramo de la analítica es «Estado del catálogo»** (B-370),
+una vista del panel que cuenta lo que ya está cargado en `/actividades` —qué se
+publica, qué falta, qué avisos hay— **sin medir a ningún visitante**.
+
+**Por qué éste y no el tablero de visitas, aunque GA4 ya esté decidido (D-201):**
+
+- **Sirve desde el primer día.** GA4 no mide retroactivamente: su tablero muestra
+  cero el día que se abre y poco el primer mes. El catálogo tiene todo su dato
+  desde el momento en que existe la pantalla.
+- **Es el único tramo claramente seguro.** No mide a nadie, no toca el sitio
+  público —ni un byte, ni un `<script>`, ni una cookie—, no manda nada a un
+  tercero y no cuesta una lectura de Firestore de más: es la misma lectura de
+  `/actividades` que el listado ya hace, agrupada de otra manera.
+- **Contesta lo que se convierte en trabajo del día siguiente**: las preguntas 8,
+  9 y 10 del § 3 de `16-analitica-del-sitio.md` y las fricciones que no necesitan
+  medir a alguien (inscripción cerrada, sin flyer, sin etiquetas…).
+
+**Lo que no decide:** la forma de la pantalla. Las pestañas son D-271, la mitad
+«El sitio público» es D-272, y el aviso «ya pasó» es D-270 y D-273.
 ---
 
 ## D-175 · La Function que optimiza las imágenes propias: la salida va **encima del original**
@@ -7090,7 +7128,7 @@ modelo distingue «ciclo recurrente» de «actividad única», se puede reponer
 
 **El dueño lo marcó textual: «los eventos siguen publicados como archivos, no
 entiendo el aviso».** Tenía razón. El tablero «Estado del catálogo» (B-370,
-D-200) traía un aviso, «Publicadas a las que no les queda ningún encuentro»,
+D-860) traía un aviso, «Publicadas a las que no les queda ningún encuentro»,
 con el texto «Ya pasaron y siguen figurando como publicadas» — al lado de
 avisos que sí son fricciones reales a arreglar (la inscripción cerrada con
 gente que todavía puede escribir, sin flyer, sin etiquetas). Pero que una
@@ -7130,7 +7168,7 @@ mutación probada — revertir el cambio los pone en rojo).
 ## D-271 · El tablero pasa a pestañas internas, con el patrón de teclado que a `CentroAyuda` le faltaba
 
 **Por qué.** El dueño pidió que el tablero «Estado del catálogo» (B-370,
-D-200) deje de ser una página larga, y con la mitad nueva de B-502 sumándose
+D-860) deje de ser una página larga, y con la mitad nueva de B-502 sumándose
 abajo, apilar una tercera sección la volvía un scroll interminable de verdad.
 `EstadisticasPanel.tsx` es un island `client:only`: sobra JavaScript para
 pestañas reales, así que no hace falta ninguna navegación ni un cambio de
@@ -7181,6 +7219,22 @@ eso.
 ---
 
 ## D-272 · La pestaña «El sitio público»: andamiaje honesto, ni un número inventado
+
+> **Superada en parte (2026-09-07): la franja fija del punto 1 ya no existe.**
+> El dueño sacó, mirando la pantalla publicada, los cuatro párrafos de arriba de
+> la pestaña —el que explicaba de qué es, el «hay datos desde el…», el de
+> «GA4, 28 días contra los 28 anteriores» y el «resumen calculado el…»—. El
+> argumento para conservarlos y por qué perdió están en el comentario de
+> `PanelSitioPublico` (`src/components/admin/EstadisticasPanel.tsx`).
+>
+> **La decisión no cambió**: ni un número inventado, y un vacío que dice por qué
+> está vacío. Lo que caducó es la forma. Lo que hacía la franja lo siguen
+> haciendo otras piezas: los cuatro estados de `QueFalta` (nunca corrió, falta un
+> paso de consola, la API falló, o hay cero de verdad), la `variacion` en `null`
+> cuando no hay ventana anterior contra la cual comparar, y `ga4.desdeCuando`,
+> que sigue en el dato aunque no se pinte. B-1086.
+>
+> Lo de abajo queda como estaba escrito, igual que D-270 frente a D-273.
 
 **El problema que esta decisión resuelve.** El pedido quería vistas, páginas
 más vistas, secciones, clics y fricciones **en el panel**. Esa lectura —la

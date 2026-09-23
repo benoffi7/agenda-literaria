@@ -45,7 +45,7 @@ import {
 import type { ActividadConId, CampoTaxonomia, Estado, Modalidad } from '@/types/actividad';
 
 /**
- * «Estado del catálogo» — el tablero del panel (B-370, D-200).
+ * «Estado del catálogo» — el tablero del panel (B-370, D-860).
  *
  * Es el primer tramo de [`docs/16-analitica-del-sitio.md`](../../../docs/16-analitica-del-sitio.md):
  * el pedido era un tablero de estadísticas del sitio, y el sitio público **no

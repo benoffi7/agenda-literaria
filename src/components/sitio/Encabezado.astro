@@ -319,7 +319,10 @@ const activaEstaAdentro = SECUNDARIAS.some((e) => e.seccion === activa);
           exactamente lo que el elemento hace —con teclado, con `Esc` y anunciado
           como desplegable—, así que una isla de React acá sería bajar un runtime
           al sitio público para reimplementar peor lo que el navegador ya trae. Es
-          el mismo criterio de D-239 sobre la home.
+          el mismo criterio de D-380 —el buscador del `/404` es un formulario GET a
+          la home, no la isla— y de D-145 —el CTA fijo del detalle sin
+          JavaScript—. (Acá se citaba un número de decisión que nunca se escribió, y no
+          hay decisión perdida detrás; el criterio es el de esas dos. B-1150.)
 
           Los cinco enlaces aparecen **dos veces en el marcado** —acá y en la fila
           de escritorio de abajo— y las dos salen del mismo `SECUNDARIAS.map`, así

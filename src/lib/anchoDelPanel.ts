@@ -33,9 +33,12 @@ import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
  * B-621 nombraba las dos, y el ítem dice por qué van por separado: «ensanchar
  * cada una es un cambio visual propio —qué crece, qué se reparte en columnas,
  * qué queda con su ancho—, no el mismo cambio aplicado dos veces más». El
- * tablero pasó a tener repartos con torta, dos vistas de tiempo y un mapa de
- * calor de ocho semanas, así que el reparto de columnas existe y está escrito
- * (D-400). La grilla del mes sigue esperando el suyo: ensancharla sin decidirlo
+ * tablero pasó a tener repartos con torta y avisos que se acomodan en dos
+ * columnas, así que el reparto de columnas existe y está escrito (D-400).
+ * (Las dos vistas de tiempo y el mapa de calor de ocho semanas están calculados
+ * en `ritmoDelCatalogo.ts` pero **no se dibujan** —B-1081—; cuando se dibujen,
+ * son un argumento más para el ancho, no uno que haga falta hoy.)
+ * La grilla del mes sigue esperando el suyo: ensancharla sin decidirlo
  * daría siete columnas de 220px con el mismo contenido de 120 — más aire, no
  * más información.
  *

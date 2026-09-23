@@ -8,7 +8,7 @@ import { ESTADOS, MODALIDADES } from '@/types/actividad';
 import type { ActividadConId, Estado, Modalidad } from '@/types/actividad';
 
 /**
- * El estado del catálogo: lo que se sabe **sin medir a nadie** — B-370, D-200.
+ * El estado del catálogo: lo que se sabe **sin medir a nadie** — B-370, D-860.
  *
  * Es el primer tramo de [`docs/16-analitica-del-sitio.md`](../../docs/16-analitica-del-sitio.md),
  * y el único que se podía construir sin una decisión del dueño. El pedido era un

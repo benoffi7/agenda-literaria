@@ -184,8 +184,9 @@ sigue sin listar mails ni uids: los publica el repo y esta sección es pública.
 | Clave de sitio | `PUBLIC_RECAPTCHA_SITE_KEY`, versionada en `.env.production`. **Pública por diseño**, como la API key web: el navegador la necesita para pedir el desafío. Con App Check **no hay clave privada de reCAPTCHA de este lado** — el *assessment* lo hace Firebase con las credenciales del proyecto—, así que no hay secreto que se pueda filtrar por acá |
 | Dónde se activa | `src/lib/appcheck.ts`, llamado desde `app()` de `src/lib/firebase-client.ts`. Ahí y no en cada consumidor: `app()` es el borde por el que pasan todos (auth, Firestore, Storage) antes de su primera petición, y es lo que garantiza el orden sin que cada módulo nuevo se acuerde |
 | Para qué hace falta | los cuatro formularios públicos de [`prd/`](prd/README.md) abren la primera escritura anónima del proyecto. Un formulario público sin login **es un endpoint de escritura a Firestore**: sin App Check, un script llena la bandeja y la factura (el plan es Blaze) |
-| Qué va a proteger | Firestore y Cloud Storage. El bucket entra por DEC-11: el formulario acepta subir la imagen |
-| Qué **no** protege | el build con el Admin SDK ni las Functions: no pasan por App Check |
+| Qué protege | Firestore (exigido en la consola) y la callable `subirFlyerDePropuesta` (exigido por función, fila siguiente). **Cloud Storage no**, y ya no está previsto: esta fila decía «Firestore y Cloud Storage», porque DEC-11 deja subir la imagen, pero desde B-896 el flyer no se sube a Storage desde el navegador —`storage.rules` tiene `create: if false` en `propuestas/`— y exigir App Check en `firebasestorage` rompería las lecturas públicas de las imágenes (B-872) |
+| Cloud Functions (`cloudfunctions`) | 🟢 **exigido en `subirFlyerDePropuesta`** con `enforceAppCheck: true` (`functions/flyer-de-propuesta-trigger.js`, B-896 paso 1). **No hace falta ponerlo en `ENFORCED` en la consola**, y es el punto: la opción es **por función** y la Function rechaza sola la llamada sin token válido, así que exigir acá no toca ningún otro servicio ni ninguna lectura de imagen. Es lo que hace que el flyer quede atestado sin pagar el costo de exigir en Storage |
+| Qué **no** protege | el build con el Admin SDK, ni las Functions que no son callables (los triggers de Firestore y Storage y las programadas): no reciben pedidos de un navegador, así que no hay token que mirar |
 | Costo | Enterprise tiene **su propia cuota facturable** arriba del free tier, aparte de Firebase. Entra en el budget alert del §2.3 — y el volumen esperado de un formulario público es chico, pero el de un script que lo abusa no |
 | Que el **artefacto publicado** lo lleve | `scripts/verificar-bundle.sh`, gate bloqueante de los dos workflows y paso 5 de `verificar-todo.sh` (**B-868**). Verifica sobre `dist/` que la clave de `.env.production` esté en un chunk, que viaje a `activarAppCheck` con `usarEmuladores` en falso, y que el proveedor sea el de Enterprise. Antes nada lo sostenía: `tests/appcheck.test.ts` mira el **fuente** y el gate solo buscaba el Admin SDK, así que un bundle sin clave —o con el proveedor cambiado— pasaba verde de punta a punta |
 | **Dominios permitidos** | ⬜ **sin verificar.** Es la configuración de la que depende que App Check sirva para algo, y no está en el repo — ver abajo |
@@ -346,8 +347,10 @@ costo, no un botón de reinicio.
 Eso **ya es el presente para Firestore**. Hasta el 2026-09-10 un fallo de
 reCAPTCHA no rompía nada —`activarAppCheck` no propaga la excepción y la
 autorización la seguían dando las reglas (§5.3)—; con el paso 4 hecho, una
-escritura sin token se rechaza. Para Storage sigue valiendo lo anterior, porque
-`firebasestorage` todavía no se exige.
+escritura sin token se rechaza. **Y lo mismo la subida del flyer de `/proponer`**:
+la callable exige el token, así que sin reCAPTCHA no entra ninguna imagen.
+Para Storage sigue valiendo lo anterior, porque `firebasestorage` no se exige —
+y hoy no hay ninguna escritura de cliente a Storage que no sea del panel.
 
 Es la razón por la que App Check **no reemplaza** a las otras cuatro capas de
 B-836 (validación en la regla, topes de tamaño y forma, honeypot, barrido
