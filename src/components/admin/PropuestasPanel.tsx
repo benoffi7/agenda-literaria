@@ -14,7 +14,7 @@ import {
   observarPropuestas,
   revisarPropuesta,
 } from '@/lib/bandejaDePropuestas';
-import { propuestaAFormulario } from '@/lib/propuestas';
+import { avisoDeImagenNoPromovida, propuestaAFormulario } from '@/lib/propuestas';
 import type { ActividadForm, ValorOpcion } from '@/types/actividad';
 import type { EstadoPropuesta, PropuestaConId } from '@/types/propuesta';
 import { TOPE_MOTIVO_PROPUESTA } from '@/types/propuesta';
@@ -57,6 +57,17 @@ export interface Conversion {
   tituloOrigen: string;
   /** Lo que no se pudo prellenar y hay que completar a mano. */
   avisos: readonly string[];
+  /**
+   * B-1235 — **la foto que pidieron usar no entró**, con la causa y qué hacer.
+   * `null` cuando no había foto, cuando se decidió no usarla o cuando entró.
+   *
+   * Va aparte de `avisos` y no como una línea más de esa lista, que es donde
+   * estaba y es el bug: entre «el canal de inscripción no viaja» y «revisá el
+   * slug», la frase que decía que la foto no se trajo se leía como un detalle, y
+   * la persona se iba con la idea de que había apretado «Sí, usarla» y el panel
+   * la había ignorado. El formulario la pinta como alerta, arriba de todo.
+   */
+  imagenNoPromovida: string | null;
   /**
    * El segundo movimiento de D-600, que corre **después** de que la actividad se
    * guardó. Devuelve la promesa para que el chasis pueda avisar si falla: una
@@ -237,8 +248,17 @@ function FlyerDeLaPropuesta({
  * abrió algo» se parece bastante a que funcionó.
  *
  * Lo que sí funciona es traer los bytes y armar un `blob:` del **propio**
- * origen, que es donde `download` sí manda. La URL de descarga de Storage
- * responde CORS para el `GET` con su token, así que el `fetch` alcanza.
+ * origen, que es donde `download` sí manda.
+ *
+ * ⚠️ **B-1235: en producción esto hoy NO anda, y el párrafo que estaba acá
+ * afirmaba lo contrario** («la URL de descarga responde CORS para el `GET` con
+ * su token»). Es falso mientras el bucket no tenga CORS configurado: se miró el
+ * 2026-09-23 y la respuesta con los bytes (`alt=media`) no trae
+ * `Access-Control-Allow-Origin` para ningún origen —la metadata sí, y por eso
+ * confunde—. El emulador no aplica CORS de bucket, así que ahí anda. Es la misma
+ * causa que la promoción de la imagen; el arreglo es el `cors.json` del repo
+ * aplicado al bucket. Mientras tanto, el fallo de abajo manda a abrirla en otra
+ * pestaña, que sí funciona (navegar no pide CORS).
  *
  * `URL.revokeObjectURL` en el mismo tick: el blob queda retenido en memoria
  * hasta que se revoque, y una bandeja con veinte propuestas abiertas se las
@@ -446,7 +466,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       incluyeConocido.elegibles.map((v) => v.slug),
     );
     const imagenes = [...form.imagenes];
-    const avisosDeLaImagen = [...avisos];
+    let imagenNoPromovida: string | null = null;
 
     if (usarLaFoto && p.imagen && 'storagePath' in p.imagen) {
       setPromoviendo(p.id);
@@ -483,23 +503,19 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
          * mano desde el formulario mientras la propuesta siga en la bandeja.
          */
         /*
-         * ⚠️ **Acá NO va `textoDeFallo`, y es la excepción del cambio de B-929.**
-         * Ese helper devuelve una frase completa —«Se cortó la conexión. No se
-         * guardó nada y no se perdió nada…»— pensada para el cartel rojo, donde
-         * es todo lo que se lee. Metida entre paréntesis adentro de **otra**
-         * frase queda una oración dentro de otra y se lee peor que el original.
+         * **B-1235 — ya no es una línea más de `avisos`.** Era «La imagen que
+         * mandaron no se pudo traer (Failed to fetch). La actividad se abre sin
+         * ella», metida en la lista de lo que la conversión no prellenó, y así el
+         * fallo se leía como «apreté usarla y no la tomó». Ahora viaja en su
+         * propio campo y el formulario la pinta como alerta.
          *
-         * Lo que corresponde acá es la causa en dos palabras, y por ahora eso es
-         * el mensaje crudo. Que siga en inglés es un resto conocido de B-929 y no
-         * un olvido: lo que el ítem venía a arreglar es el cartel, que es donde
-         * la persona se queda sin saber qué hacer. Acá la frase de alrededor ya
-         * lo dice («la actividad se abre sin ella»).
+         * `avisoDeImagenNoPromovida` y no `textoDeFallo` (B-929): aquél habla de
+         * guardar («no se guardó nada»), y acá no se estaba guardando nada — lo
+         * que la persona necesita es saber que la foto **no está** y cómo
+         * ponerla. Y reconoce el caso que de verdad pasa en producción: el
+         * `TypeError` del `fetch` que corta el CORS del bucket.
          */
-        avisosDeLaImagen.push(
-          `La imagen que mandaron no se pudo traer (${
-            e instanceof Error ? e.message : 'error desconocido'
-          }). La actividad se abre sin ella.`,
-        );
+        imagenNoPromovida = avisoDeImagenNoPromovida(e);
       } finally {
         setPromoviendo(null);
       }
@@ -508,7 +524,8 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
     onConvertir({
       copia: { ...form, imagenes },
       tituloOrigen: p.titulo,
-      avisos: avisosDeLaImagen,
+      avisos,
+      imagenNoPromovida,
       alGuardar: async (actividadId) => {
         /*
          * Se mide acá arriba **y no después del `await`**, y no es un descuido:

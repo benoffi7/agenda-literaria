@@ -127,6 +127,13 @@ interface Props {
    */
   avisos?: readonly string[];
   /**
+   * B-1235 — la foto de la propuesta que pidieron usar y **no entró**, con la
+   * causa y qué hacer (`avisoDeImagenNoPromovida`). Se pinta como alerta arriba
+   * de todo y no adentro del aviso de conversión: ahí era una línea más y se
+   * leía como «apreté usarla y no la tomó».
+   */
+  imagenNoPromovida?: string | null;
+  /**
    * B-177 — el segundo argumento son las etiquetas nuevas que **no** llegaron a
    * la taxonomía. Va acá y no queda en el formulario porque al guardar el
    * formulario se desmonta: el aviso lo pinta el chasis del panel, que es lo
@@ -166,6 +173,7 @@ export function ActividadFormulario({
   tituloOrigen,
   origenDeLaCopia = 'duplicado',
   avisos,
+  imagenNoPromovida = null,
   onGuardado,
   onCancelar,
   soloLectura = false,
@@ -633,6 +641,25 @@ export function ActividadFormulario({
         exista, D-600) y lo que hay que revisar no es un slug heredado sino lo que
         la propuesta **no** traía.
       */}
+      {/*
+        B-1235 — **la foto no entró, y tiene que ser imposible no verlo.** Va
+        antes del aviso de conversión y con `role="alert"`: es lo único de esta
+        pantalla que, si se pasa por alto, termina en una actividad sin flyer y en
+        la foto de un tercero que se queda en la propuesta (la aceptación borra el
+        original solo si la actividad tiene una copia propia, B-863).
+      */}
+      {copia && origenDeLaCopia === 'propuesta' && imagenNoPromovida && (
+        <div
+          role="alert"
+          className="rounded-md border-2 border-acento bg-acento/10 px-3 py-2.5 text-sm"
+        >
+          <p className="font-semibold text-acento">
+            La foto de la propuesta NO se agregó a esta actividad.
+          </p>
+          <p className="mt-1 text-tinta/80">{imagenNoPromovida}</p>
+        </div>
+      )}
+
       {copia && origenDeLaCopia === 'propuesta' && (
         <div className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2.5 text-xs">
           <p className="font-medium text-acento">

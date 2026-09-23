@@ -294,3 +294,54 @@ export const propuestaAFormulario = (
     avisos: avisosDeConversion(p, sinReconocer),
   };
 };
+
+/**
+ * **Por qué la imagen de una propuesta no llegó a la actividad, dicho para quien
+ * tiene que arreglarlo** — B-1235.
+ *
+ * `promoverImagenDePropuesta` baja el objeto de `propuestas/` con un `fetch` a
+ * la URL de descarga. Ese `fetch` es **cross-origin** (el panel vive en el
+ * dominio del sitio; los bytes, en `firebasestorage.googleapis.com`), y la
+ * respuesta con los bytes (`alt=media`) solo trae `Access-Control-Allow-Origin`
+ * si el bucket tiene CORS configurado. Se miró contra el bucket de producción el
+ * 2026-09-23: la metadata sí lo trae, la descarga **no**. O sea que en producción
+ * el navegador corta la respuesta y el `fetch` rechaza con un `TypeError`
+ * («Failed to fetch»; «Load failed» en Safari) — y en los emuladores **no pasa**,
+ * porque el emulador de Storage no aplica el CORS del bucket. Por eso la cadena
+ * entera daba verde contra el emulador y en el panel de verdad «no la tomaba».
+ *
+ * La foto **sí se ve en la bandeja** porque un `<img>` no necesita CORS: lo que
+ * lo necesita es leer los bytes desde JavaScript, que es lo que hace la
+ * promoción para sacarles los metadatos.
+ *
+ * Devuelve una frase **entera**, con la causa y qué hacer, porque va sola en un
+ * cartel y no adentro de otra oración. No importa `ImagenRechazada` de
+ * `subir-imagen.ts` —ese módulo es el dueño de `firebase/storage` y traerlo acá
+ * deshace el corte del bundle (B-09/D-51)—: se la reconoce por `name`.
+ */
+export const avisoDeImagenNoPromovida = (e: unknown): string =>
+  `${causaDeImagenNoPromovida(e)} ` +
+  'Para no perderla: volvé a «Lo que propusieron», abrí la foto de esta propuesta ' +
+  '(hacé clic en ella), guardala en tu compu y subila en la pestaña «Flyer e imágenes» ' +
+  'antes de guardar la actividad.';
+
+const causaDeImagenNoPromovida = (e: unknown): string => {
+  if (e instanceof TypeError) {
+    return (
+      'El navegador no pudo bajar la foto del depósito de imágenes: el depósito no ' +
+      'tiene habilitada la descarga desde el panel (CORS). No es tu conexión ni la foto.'
+    );
+  }
+  const code = (e as { code?: unknown } | null)?.code;
+  if (code === 'storage/object-not-found') {
+    return 'La foto ya no está en el depósito de imágenes: se borró antes de poder copiarla.';
+  }
+  if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
+    return 'La sesión no tiene permiso para leer la foto (puede haber vencido): salí y volvé a entrar.';
+  }
+  const mensaje = e instanceof Error && e.message ? e.message : 'error desconocido';
+  if (e instanceof Error && e.name === 'ImagenRechazada') {
+    return `La foto no pasó los controles de imagen: ${mensaje}`;
+  }
+  return `No se pudo copiar la foto a la actividad (${mensaje}).`;
+};
