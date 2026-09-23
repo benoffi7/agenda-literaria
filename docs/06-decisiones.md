@@ -11938,6 +11938,8 @@ para escribir esto, y por eso esta entrada existe.
 
 ## D-763 · El Instagram del evento de Calendar se normaliza al mostrar, y eso no reescribe nada
 
+> **Superada en parte por B-1160 (2026-09-23).** La puerta local de `functions/calendario.js` (`cortaAlDerivar`) se sacó: el saneador ya no corta por `?`/`#` un valor pelado, así que no queda nada que la puerta tenga que frenar. El resto de la decisión —normalizar al mostrar, sin reescribir el documento— sigue igual.
+
 **B-1145, 2026-09-22. Decisión del dueño**, tomada sobre las tres opciones que el
 ítem dejó escritas y **contra la recomendación**, que era la (b).
 
@@ -12036,6 +12038,8 @@ y `arrobaPublicable` arriba), `functions/handle-instagram.js`,
 `tests/calendario.test.ts`.
 
 ## D-767 · El Instagram de una actividad se corrige al cargarlo, y no se frena al publicarlo
+
+> **Nota de B-1160 (2026-09-23):** el caso `casa#brandon` que esta decisión dejaba a la vista en el campo ya no se recorta — el saneador corta solo detrás de `instagram.com/`. El criterio de corregir al cargar y no frenar al publicar no cambia.
 
 **B-1144, 2026-09-22. Decisión del dueño, contra la recomendación y con el costo
 a la vista.**

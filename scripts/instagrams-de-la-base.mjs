@@ -34,8 +34,8 @@
  * publicar la actividad.
  *
  * ── El handle: una sola implementación ────────────────────────────────────
- * La normalización es `handleInstagram`, de `src/lib/handle-instagram.mjs`: la
- * misma que usa el sitio. Resuelve `@casabrandon`, `casabrandon`,
+ * La normalización es `handleInstagram`, que vive en `functions/handle-instagram.js`
+ * y `src/lib/handle-instagram.mjs` reexporta desde B-1180: la misma que usa el sitio. Resuelve `@casabrandon`, `casabrandon`,
  * `instagram.com/casabrandon` y el `?igsh=…` que pega el botón «Compartir», y
  * **valida contra el alfabeto real de Instagram** —lo que no lo cumple no se
  * convierte en link, porque un handle con una barra adentro armaría una URL a
