@@ -181,6 +181,18 @@ export const diaDeSemana = (clave: string): number => anclaDeDia(clave).getUTCDa
 export const fechaCortaDeDia = (clave: string): string => fechaCorta(anclaDeDia(clave));
 
 /**
+ * `viernes 15 de septiembre` — la misma forma que `fechaLarga`, a partir de la
+ * clave del día.
+ *
+ * Nace con el boletín semanal (B-1230), que agrupa por día y encabeza cada grupo
+ * con su fecha entera. Va acá al lado de `fechaCortaDeDia` y no en aquel módulo
+ * por el motivo de siempre: `anclaDeDia` es privada, y resolver el mediodía por
+ * afuera sería la quinta copia de la trampa 1 — una que además se manda por
+ * correo y no se despublica.
+ */
+export const fechaLargaDeDia = (clave: string): string => fechaLarga(anclaDeDia(clave));
+
+/**
  * `{ mes: 'Septiembre', anio: '2026' }` — el marcador de mes del listado, **en
  * dos piezas** — B-260.
  *

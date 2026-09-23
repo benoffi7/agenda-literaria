@@ -174,28 +174,49 @@ export interface ListaDeCorreo {
 }
 
 /**
- * La lista donde se anota quien quiere el correo — **todavía no existe**.
+ * La lista donde se anota quien quiere el correo — **existe desde el 2026-09-23**
+ * (B-1231).
  *
- * ── Por qué sale `null` y no con valores de ejemplo ───────────────────────
- * Es el orden que dejó escrito **B-780**, y acá el costo de saltearlo es peor
+ * Los cuatro valores salen del formulario embebido que publica Mailchimp
+ * (Audience → Signup forms → Embedded form), copiados de su `action` y de su
+ * campo trampa. **Del embebido no se copió nada más**: su `<script>` de
+ * `chimpstatic.com` es justo lo que este diseño evita (D-254), y el `f_id` que
+ * Mailchimp pega como tercer parámetro es de ese validador en JavaScript — sin
+ * él el `post` funciona igual.
+ *
+ * Son **públicos**: viajan escritos en el HTML del formulario de `/suscribirse`,
+ * como los ve cualquiera que mire el fuente de la página. No son una credencial
+ * y no hay ninguna en este repo — el alta la postea el navegador de quien se
+ * anota, directo a Mailchimp (`docs/02-infraestructura.md` § Mailchimp).
+ *
+ * ── Por qué esto estuvo en `null` dos semanas, y no fue un olvido ─────────
+ * Es el orden que dejó escrito **B-780**, y acá el costo de saltearlo era peor
  * que el de allá. Con `u` e `id` inventados el formulario no se rompe: **postea
  * igual**, contra un endpoint que o no existe —y quien se anotó ve un error de
  * Mailchimp con nuestra promesa recién leída— o **existe y es de otra cuenta**,
  * y entonces la dirección de mail de una persona termina en la lista de un
  * desconocido. Eso no se deshace, y ningún test lo puede ver: que la lista sea
- * la nuestra no se sabe sin salir a la red.
+ * la nuestra no se sabe sin salir a la red. Mientras esto fue `null` la sección
+ * **no se dibujaba** y la página no hacía ninguna promesa
+ * (`formularioDelBoletin`, `src/lib/boletinDelSitio.ts`).
  *
- * Así que mientras esto sea `null` la sección **no se dibuja** y la página no
- * hace ninguna promesa (`formularioDelBoletin`, `src/lib/boletinDelSitio.ts`).
- * Lo que sí se verifica de este lado es la **forma** de los cuatro valores el
- * día que se llenen: `tests/boletin-del-sitio.test.ts`.
+ * Lo que sí se verifica de este lado es la **forma** de los cuatro valores, y
+ * ese caso ya cambió de rama: `tests/boletin-del-sitio.test.ts`.
  *
- * Qué falta para que exista, y es trabajo de consola y no de código: crear la
- * lista (la «audience») en Mailchimp, **prender el doble opt-in**, poner
- * `CONTACTO` como remitente y copiar de su formulario embebido los cuatro
- * valores de acá. Está anotado entero en `docs/08-operacion.md`.
+ * ── Los dos supuestos que ningún test sostiene ───────────────────────────
+ * **El doble opt-in** es una casilla de la configuración de la audience, no una
+ * línea de código, y es lo que la página promete —«hasta que no lo confirmes no
+ * quedás anotado»—. Si se apaga, la página miente en silencio. Lo mismo el
+ * remitente: la página dice que el correo llega desde `CONTACTO`. Los dos están
+ * en el checklist de `docs/08-operacion.md` § «El correo semanal», que
+ * es donde viven los ajustes de consola de este proyecto (la clase de B-480).
  */
-export const LISTA_DE_CORREO: ListaDeCorreo | null = null;
+export const LISTA_DE_CORREO: ListaDeCorreo | null = {
+  cuenta: 'agendaleh',
+  centro: 'us14',
+  u: 'aaab96376cad1ba391e27dade',
+  id: '366db8600c',
+};
 
 /**
  * El destino del `<form>`: el alta a la lista, por POST.

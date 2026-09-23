@@ -12264,3 +12264,53 @@ con el número adentro (**B-1221**), no como chequeo.
   de reconocerlo y **compararía menos, en silencio**. Un caso del test lee los
   encabezados del archivo y exige que el mapa los cubra. Unificarlos de verdad es
   **B-1222**.
+
+## D-800 · El borrador del correo se copia y se pega: no hay API de Mailchimp, ni key, ni Function
+
+**B-1230, 2026-09-23.** El panel arma el borrador del correo semanal; **mandarlo
+es un gesto humano en la consola de Mailchimp**. La alternativa —llamar a su API
+de campañas para crear el borrador del otro lado— pediría una API key en Secret
+Manager y una Function más, y compraría con eso que no haya que apretar «pegar».
+
+Es la continuación exacta de la decisión de **B-847**, que ya había elegido el
+`<form>` pelado por sobre el embebido con JavaScript y por sobre una Function que
+llamara a la API: **este repo no tiene una credencial de Mailchimp y no la va a
+tener**. El precio de copiar es un gesto por semana. El de la key es una
+superficie nueva, permanente, sobre el único tercero que recibe un dato de una
+persona.
+
+> **Y hay una segunda razón, que es la que la hace no revisable a la ligera:** la
+> curaduría es el valor del correo. Lo que se automatiza es el bloque de datos
+> —horarios, lugares, links—, que es lo aburrido y lo que se equivoca; lo que se
+> escribe arriba es de quien lo manda. Un correo que sale solo es un correo que
+> nadie lee. Es el mismo reparto que `textoRedes.ts` (B-95) eligió para Instagram.
+
+## D-801 · El correo semanal se arma desde el `events.json` publicado, no desde Firestore
+
+**B-1230, 2026-09-23.** La pantalla del panel podría leer `/actividades` —ya tiene
+la sesión y las reglas— y sería peor por dos motivos, en este orden:
+
+1. **Un correo no se despublica.** Armado desde el documento, el borrador podría
+   llevar una actividad en `borrador`, el link de la reunión o las notas de
+   difusión: cada campo del §5.1 volvería a estar a un `a.campo` de distancia, en
+   la salida más irreversible que tiene el proyecto. Desde el índice eso es
+   **imposible y no cuidadoso**: la entrada es `EntradaDeIndice`, o sea la
+   frontera de D-140 que `toPublic` ya dejó pasar y que tiene auditoría propia. Lo
+   que no está ahí no se puede filtrar porque no está en la mano.
+2. **El correo no puede anunciar lo que el sitio no muestra.** Cada fila linkea a
+   su página de detalle; desde Firestore, el borrador anunciaría lo guardado hace
+   un minuto y el link daría 404 hasta el próximo build (§8). Desde el índice
+   publicado, lo que se anuncia y lo que se puede abrir son por construcción la
+   misma lista.
+
+> **Es el patrón de la salida 7 en otra salida.** La cartelera deriva de la página
+> de detalle en vez de derivar del documento, y por eso solo puede **sacar**
+> campos. Acá pasa lo mismo un escalón más arriba, y con la consecuencia práctica
+> que se ve en `tests/barrido-de-salidas-publicas.test.ts`: la lista de centinelas
+> permitidos del correo es **idéntica** a la del tríptico, porque las dos salidas
+> salen del mismo índice y dicen la misma fila.
+>
+> **El costo aceptado:** el borrador está tan fresco como el último build, de dos a
+> siete minutos (§8). La pantalla lo dice con la fecha de generación en vez de
+> dejarlo implícito — una actividad guardada recién no está ahí, y quien arma el
+> correo tiene que saberlo antes de extrañarla.

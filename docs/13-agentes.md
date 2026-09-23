@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las veintiocho salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las veintinueve salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -114,7 +114,7 @@ el caso de B-88 para los alias a `functions/`.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **veintiocho salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **veintinueve salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
 para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
@@ -197,7 +197,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las veintiocho salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las veintinueve salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -349,7 +349,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las veintiocho salidas **antes** de escribir código, que
+arranca obligando a decidir las veintinueve salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 

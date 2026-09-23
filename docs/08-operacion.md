@@ -2383,17 +2383,26 @@ gcloud functions logs read dispararRebuild --project agenda-literaria \
 Mensaje esperado sin cambios pendientes: nada (el schedule sale en silencio).
 Con un cambio pendiente: `rebuild disparado`.
 
-## Activar el correo semanal (B-847)
+## El correo semanal (B-847, B-1231)
 
-**Está construido y apagado**, y eso es a propósito. `LISTA_DE_CORREO`
-(`src/lib/enlaces.ts`) es `null` hasta que la lista de Mailchimp exista, y con
-`null` la sección de `/suscribirse` **no se dibuja**: no hay formulario que
-postee a ningún lado y no hay ninguna promesa publicada. Es el orden de B-780
-con el perfil de Cafecito, y acá el costo de saltearlo es peor — con un `u`/`id`
-inventados el formulario **postea igual**, contra un endpoint que o no existe o
-es de otra cuenta, y la dirección de una persona termina en la lista de un
-desconocido. Ningún test lo puede ver: que la lista sea la nuestra no se sabe
-sin salir a la red.
+**Activado el 2026-09-23.** La audience existe (`agendaleh`, centro `us14`),
+`LISTA_DE_CORREO` (`src/lib/enlaces.ts`) tiene los cuatro valores y la sección de
+`/suscribirse` se dibuja.
+
+**Dos de los ajustes de abajo son de consola y ningún test los sostiene**, así
+que esta sección sigue siendo el único lugar donde están escritos: si alguien los
+cambia, el sitio pasa a mentir y nada se pone en rojo. Son el **doble opt-in** y
+el interruptor de GA4 del tercer punto.
+
+> **Estuvo construido y apagado dos semanas, y eso fue a propósito.** Con
+> `LISTA_DE_CORREO` en `null` la sección no se dibujaba: no había formulario que
+> posteara a ningún lado y no había ninguna promesa publicada. Es el orden de
+> B-780 con el perfil de Cafecito, y acá el costo de saltearlo era peor — con un
+> `u`/`id` inventados el formulario **postea igual**, contra un endpoint que o no
+> existe o es de otra cuenta, y la dirección de una persona termina en la lista
+> de un desconocido. Ningún test lo puede ver: que la lista sea la nuestra no se
+> sabe sin salir a la red. Queda escrito porque es el orden que hay que repetir
+> el día que la cuenta cambie.
 
 Los pasos de la consola de Mailchimp, uno por uno, están en
 [`02-infraestructura.md`](02-infraestructura.md) § «Mailchimp». Lo que hay que
@@ -2425,13 +2434,14 @@ tener presente al hacerlos:
   vuelve falso, en HTML indexado.
 - Después de cargar los cuatro valores hace falta **un rebuild** para que la
   sección aparezca; un cambio a `src/` no dispara el rebuild automático del §8,
-  que mira Firestore. Sale con el push a `main`.
-- **El `<title>` y la `meta description` de `/suscribirse` no se tocaron**, y es
-  a propósito: hoy hablan solo del calendario y eso es cierto mientras la
-  sección esté apagada. El día que la lista exista conviene revisarlos —la
-  página pasa a ofrecer dos cosas— y en ese momento hay que actualizar también
-  la fila de `/suscribirse` de la tabla de títulos de
-  [`12-sitio-publico.md`](12-sitio-publico.md).
+  que mira Firestore. Sale con el push a `main` — que es como salió el
+  2026-09-23.
+- **El `<title>` y la `meta description` de `/suscribirse` se cambiaron con la
+  lista** (B-1231), y hasta ese día hablaban solo del calendario a propósito:
+  prometer un correo en HTML indexado mientras la sección no se dibujaba habría
+  sido prometer algo que la página no ofrecía. Hoy nombran las dos cosas, y la
+  fila de `/suscribirse` de la tabla de títulos de
+  [`12-sitio-publico.md`](12-sitio-publico.md) dice el título nuevo.
 
 Para verificar que quedó bien, sin mandar un alta de prueba a la lista real:
 
@@ -2443,6 +2453,13 @@ npm run build && grep -o 'list-manage.com[^"]*' dist/suscribirse/index.html
 El `grep` tiene que devolver el host de **nuestra** cuenta y el `u`/`id` que
 figuran en la consola. Si devuelve otra cosa, el formulario está apuntando a una
 lista ajena.
+
+**Y una vez que la lista exista, el correo se arma en el panel.** La vista
+«Correo» (B-1230) produce el borrador de los siete días que vienen —asunto, vista
+previa, cuerpo en HTML y cuerpo en texto plano— desde el `events.json` publicado.
+Se copia y se pega en la campaña: no hay integración con la API de Mailchimp y no
+la va a haber (**D-800**). Está descripto en
+[`04-funcionalidades.md`](04-funcionalidades.md) § «El correo semanal».
 
 ## El aviso por mail de que el sitio no se publica (B-1140)
 

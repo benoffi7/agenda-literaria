@@ -73,6 +73,15 @@ export const PANTALLAS_DEL_PANEL = [
    */
   'bibliotecas',
   'biblioteca',
+  /*
+   * B-1230 — el borrador del correo semanal. Es la única pantalla del panel que
+   * **no lee Firestore** (se arma con el `/events.json` publicado, D-801), así
+   * que no hay regla que le haga de espejo: acá se decide sola. Y se decide como
+   * `estadisticas` —solo el admin—, por la misma clase de motivo que aquélla: el
+   * correo es la voz del proyecto, mandarlo es decidir qué se le anuncia a la
+   * lista entera, y esa autoridad es justamente la que el publicador no tiene.
+   */
+  'boletin',
 ] as const;
 export type PantallaDelPanel = (typeof PANTALLAS_DEL_PANEL)[number];
 

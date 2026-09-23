@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **El correo semanal ya tiene correo: el borrador se arma solo** — **B-1230**,
+  **D-800**, **D-801**. B-847 dejó el formulario de alta de `/suscribirse` y con él la
+  promesa de un correo semanal «con encuentros de la agenda para todos los gustos y
+  modalidades». Armarlo era abrir el sitio en otra pestaña y copiar títulos, horarios y
+  links a mano, que es la forma en que un correo semanal muere: cuarenta minutos hasta
+  que una semana no sale.
+
+  La vista **«Correo»** del panel arma el borrador de los **siete días corridos desde
+  hoy** —no la semana calendario: un correo del miércoles que abarca de lunes a domingo
+  habla de dos días que ya pasaron—, agrupado por día, con el asunto, la vista previa
+  de las filas y las dos cajas para copiar: HTML con los estilos adentro de cada
+  etiqueta (Gmail borra las hojas de estilo) y texto plano. **No manda nada** (D-800):
+  se pega en Mailchimp, que es la continuación exacta de B-847 — este repo no tiene
+  credencial de Mailchimp y no la va a tener. Y la curaduría sigue siendo de quien
+  escribe: lo que se automatiza es el bloque de datos, que es lo aburrido y lo que se
+  equivoca.
+
+  **Se arma desde el `events.json` publicado y no desde Firestore** (D-801), y es lo
+  que lo hace barato de auditar: la entrada es `EntradaDeIndice`, la frontera que
+  `toPublic` ya dejó pasar, así que el link de la reunión, la dirección, las notas de
+  difusión y los uids no están en la mano del módulo. Es la **salida 29** —la primera
+  que no se publica sino que **se manda**, o sea la única que no se corrige con un
+  rebuild— con su barrido de centinelas y su control negativo; su lista de permitidos
+  es idéntica a la del tríptico porque las dos salen del mismo índice.
+
+  **Lo que no desbloquea:** la lista de Mailchimp sigue sin existir, así que la sección
+  de alta de `/suscribirse` no se dibuja y no hay a quién mandarle esto. La pantalla lo
+  dice con un aviso, y los pasos de consola están en `08-operacion.md` § «Activar el
+  correo semanal».
+
 - **El archivador del backlog se comía 186 ítems del rastro, y su propia guarda
   decía que estaba todo bien** — **B-1219**. Cerrar la tanda del 2026-09-22 dejó 13
   ítems marcados y sin archivar, que es lo que ponía en rojo a `tests/tablero.test.ts`

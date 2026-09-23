@@ -159,7 +159,13 @@ type Vista =
    * colección sigue viva mientras el formulario está abierto.
    */
   | { tipo: 'bibliotecas' }
-  | { tipo: 'biblioteca'; ficha?: BibliotecaConId };
+  | { tipo: 'biblioteca'; ficha?: BibliotecaConId }
+  /*
+   * B-1230 — el borrador del correo semanal. No lleva estado y **no lee
+   * Firestore**: se arma con el `/events.json` publicado (D-801), así que es la
+   * única vista del panel que no depende de la sesión más que para llegar.
+   */
+  | { tipo: 'boletin' };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -288,6 +294,17 @@ const LugaresPanel = diferido<Parameters<typeof TipoLugares>[0]>(() =>
 // además `firebase/storage`.
 const BibliotecasPanel = diferido<Parameters<typeof TipoBibliotecas>[0]>(() =>
   import('@/components/admin/BibliotecasPanel').then((m) => ({ default: m.BibliotecasPanel })),
+);
+
+/*
+ * B-1230 — diferida como las otras vistas, aunque el motivo de siempre no
+ * aplique: esta pantalla **no** arrastra Firestore (lee el `events.json` con un
+ * `fetch`). Lo que sí arrastra es el armador del correo con sus dos renders, y
+ * es la vista que se abre una vez por semana: no tiene por qué viajar en el
+ * chunk que se baja para mostrar «Entrar con Google» (B-09, D-51, B-117).
+ */
+const BoletinPanel = diferido<object>(() =>
+  import('@/components/admin/BoletinPanel').then((m) => ({ default: m.BoletinPanel })),
 );
 
 const PropuestasBadge = diferido<object>(() =>
@@ -704,6 +721,8 @@ export function AdminApp() {
                           ? 'Opciones de los desplegables'
                           : vista.tipo === 'estadisticas'
                             ? 'Estado del catálogo'
+                            : vista.tipo === 'boletin'
+                              ? 'Correo semanal'
                             : vista.tipo === 'propuestas'
                               ? 'Propuestas'
                             : vista.tipo === 'librerias'
@@ -779,6 +798,20 @@ export function AdminApp() {
             className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
           >
             Estadísticas
+          </button>
+        )}
+        {/*
+          B-1230 — la entrada al borrador del correo semanal. Solo desde el
+          listado, como «Opciones» y «Estadísticas»: ahí no hay nada que perder,
+          así que no va envuelta en `salirDe` (B-35).
+        */}
+        {vista.tipo === 'lista' && puedeVer(rol, 'boletin') && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'boletin' })}
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Correo
           </button>
         )}
         {/*
@@ -1001,6 +1034,8 @@ export function AdminApp() {
           }}
         />
       )}
+
+      {vista.tipo === 'boletin' && <BoletinPanel />}
 
       {vista.tipo === 'reportes' && (
         <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />

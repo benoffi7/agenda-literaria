@@ -894,6 +894,48 @@ cargó quedan en Firestore.
 **Limitación:** las respuestas del dueño se leen en GitHub. El panel todavía no
 las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
 
+### El correo semanal — «Correo» (B-1230)
+
+Botón **«Correo»** en el encabezado del listado, al lado de «Opciones» y
+«Estadísticas», y **solo para el admin** (`PERMISOS` de
+[`src/lib/rolDelPanel.ts`](../src/lib/rolDelPanel.ts)): mandar el correo es decidir
+qué se le anuncia a la lista entera, y esa autoridad es la que el publicador no
+tiene. La vista se titula **«Correo semanal»**.
+
+**Qué hace.** Arma el borrador del correo de los **siete días corridos desde hoy** y
+lo deja listo para pegar en Mailchimp: el asunto (que dice el número de encuentros,
+porque es lo que hace que se abra), el texto de vista previa de la bandeja, la lista
+de lo que va a decir —agrupada por día, con el horario, la categoría, el lugar y el
+arancel de cada encuentro— y **dos cajas para copiar**: el cuerpo en HTML y el
+cuerpo en texto plano.
+
+**Siete días corridos y no la semana calendario.** Un correo que sale el miércoles y
+abarca de lunes a domingo habla de dos días que ya pasaron y calla los dos
+siguientes. Es la misma decisión que el tríptico de la home tomó con sus ventanas
+(B-600).
+
+**No manda nada** (**D-800**). Se copia y se pega: este repo no tiene una credencial
+de Mailchimp y no la va a tener, que es la continuación exacta de la decisión de
+B-847 sobre el formulario de alta. Y la curaduría sigue siendo de quien escribe —
+lo que se automatiza es el bloque de datos, que es lo aburrido y lo que se equivoca.
+
+**Es la única pantalla del panel que no lee Firestore.** El borrador se arma con el
+`/events.json` publicado (**D-801**), o sea lo que el sitio ya muestra: lo que se
+anuncia y lo que se puede abrir son por construcción la misma lista, y ningún campo
+del §5.1 está en la mano del módulo. El costo es que el borrador está tan fresco
+como el último build, de dos a siete minutos (§8), y la pantalla **lo dice** con la
+fecha de generación: una actividad guardada recién todavía no está ahí.
+
+**Cuando no hay nada, no hay borrador.** Si en los siete días no hay un solo
+encuentro publicado, la pantalla lo dice en vez de mostrar un correo vacío — que es
+lo que [`/suscribirse`](../src/lib/boletinDelSitio.ts) promete en HTML indexado: la
+semana que no hay nada que valga la pena, no sale.
+
+**Y avisa que todavía no hay a quién mandárselo** mientras `LISTA_DE_CORREO` sea
+`null`: la sección de alta de `/suscribirse` no se dibuja y la lista de Mailchimp no
+existe. Los pasos son de consola y están en
+[`08-operacion.md`](08-operacion.md) § «El correo semanal».
+
 ### El tablero — «Estado del catálogo» (B-370)
 
 Botón **«Estadísticas»** en el encabezado del listado, al lado de «Opciones» y
@@ -2326,13 +2368,18 @@ nada— para quien no vive en el calendario pero abre el mail.
 | Dónde queda la dirección | en Mailchimp, y la página lo dice con todas las letras. Es lo único que el sitio público le manda a un tercero |
 | Cómo se sale | el enlace de baja de cada envío, más el mail de confirmación del alta (doble opt-in) |
 
-**Está construido y apagado.** `LISTA_DE_CORREO` (`src/lib/enlaces.ts`) es `null`
-hasta que el dueño cree la lista en Mailchimp, y con `null` la sección **no se
-dibuja**: no hay formulario y no hay ninguna promesa publicada. Es el orden de
-B-780 —no publicar apuntando a un destino de tercero que todavía no existe— y acá
-el costo de saltearlo es peor, porque un `u`/`id` inventado postea igual contra
-una lista que puede ser de otro. Los pasos de la consola están en
-[`08-operacion.md`](08-operacion.md) § «Activar el correo semanal».
+**Publicado el 2026-09-23** (B-1231): la audience existe, `LISTA_DE_CORREO`
+(`src/lib/enlaces.ts`) tiene los cuatro valores y la sección se dibuja. Con ella
+el `<title>` y la `meta description` de la página pasaron a nombrar **las dos**
+cosas que ofrece —hasta ese día hablaban solo del calendario, y era cierto—.
+
+**Estuvo construido y apagado dos semanas, y eso fue a propósito.** Con
+`LISTA_DE_CORREO` en `null` la sección **no se dibujaba**: no había formulario y
+no había ninguna promesa publicada. Es el orden de B-780 —no publicar apuntando a
+un destino de tercero que todavía no existe— y acá el costo de saltearlo era
+peor, porque un `u`/`id` inventado postea igual contra una lista que puede ser de
+otro. Los pasos de la consola quedaron escritos en
+[`08-operacion.md`](08-operacion.md) § «El correo semanal».
 
 Cierra con dónde seguir el proyecto: Instagram.
 

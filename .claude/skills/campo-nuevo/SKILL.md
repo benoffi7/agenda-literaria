@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **veintiocho** salidas, una por una:
+1. **¿Es público?** Resolvé las **veintinueve** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -50,6 +50,7 @@ no se pueden deshacer después.
    | 26 | el directorio de bibliotecas `/bibliotecas.json` + `/guia/bibliotecas` | `src/lib/bibliotecaPublica.ts`, `src/lib/contenidoDelSitio.ts` |
    | 27 | la ficha `/guia/bibliotecas/{slug}` y su JSON-LD `Library`, sin `openingHours` y sin `Offer` | `src/lib/bibliotecaPublica.ts` |
    | 28 | el formulario público `/guia/bibliotecas/sumar` — no proyecta, pero es HTML indexado que escribe | `src/components/publico/SumarBiblioteca.tsx`, `src/lib/enviar-ficha.ts` |
+   | 29 | el **correo semanal** que se pega en Mailchimp | `src/lib/boletinSemanal.ts` (B-1230). **Deriva del `events.json`, no del documento** (D-801): un campo que no entre a la salida 1 no puede llegar acá — y uno que sí entre llega solo si `boletinSemanal` lo pone en una fila |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
