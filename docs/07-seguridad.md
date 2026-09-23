@@ -1385,7 +1385,7 @@ mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atravie
 | ¿Y si no tiene ciudad en el claim? | **Ve lo suyo y nada más** | Es el rol de B-888 tal cual. Y hay una cláusula propia —`token.ciudad != ''`— para que una lista `ciudades: ['']` escrita a mano en la consola no le abra nada: `ciudadesDe()` filtra los vacíos, pero la regla no se confía de eso |
 | ¿Y los documentos anteriores a `ciudades`? | **No los ve** | `.get('ciudades', [])` — el default que preserva lo anterior, puesto en una regla. Es por eso que el backfill (`npm run ciudades:sembrar:prod`) es un **paso del despliegue**: hasta que corra, no ve nada de su ciudad |
 | ¿Y las subcolecciones `versiones/`? | **No, ni la suya** | La regla del padre no cascadea: `versiones` decide aparte y se queda en `esAdmin()`. El historial es una de las pantallas que su panel no tiene |
-| ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe; crea por la callable** | Las reglas no pueden inspeccionar qué elemento del array cambió, así que el `write` sigue en `esAdmin()`. Desde B-893 (D-810) el publicador crea etiquetas por `crearOpcionDelPanel` (Admin SDK, `enforceAppCheck: true`), que verifica que lo único que cambia es un elemento nuevo con `aprobada: false` y `usos: 1`, o el `usos+1` de uno existente. **Ese reuso aprueba** (B-29): si otra cuenta tipea la misma etiqueta, pasa a `aprobada: true` con `aprobadaPorReuso`, y desde ahí sale al `events.json`, a los chips y —en `tipo`, `barrio` y `ciudad`— a un hub indexado y al sitemap, sin que la vea un admin |
+| ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe; crea por la callable** | Las reglas no pueden inspeccionar qué elemento del array cambió, así que el `write` sigue en `esAdmin()`. Desde B-893 (D-810) el publicador crea etiquetas por `crearOpcionDelPanel` (Admin SDK, `enforceAppCheck: true`), que verifica que lo único que cambia es un elemento nuevo con `aprobada: false` y `usos: 1`, o el `usos+1` de uno existente. **Ese reuso aprueba solo si quien reusa es admin** (B-29 acotado por D-811, DEC-15): si otro publicador tipea la misma etiqueta, suma un uso y sigue pendiente. Aprobada, sale al `events.json`, a los chips y —en `tipo`, `barrio` y `ciudad`— a un hub indexado y al sitemap, así que ese paso siempre lo da un admin |
 | ¿Puede subir la imagen de su actividad? | **Sí, y solo crear** (B-888 tajada 2, D-660) | `create` abierto a los dos roles; para el acotado, además `resource == null`. El uuid del flyer de una actividad publicada **es conocible** —viaja adentro de la URL de descarga, que es pública—, así que sin esa guarda podría reemplazar el flyer de cualquiera. `delete` y `list` siguen en `esAdmin()` |
 | ¿Y el índice `/slugs`? | **Lee por id, reserva lo suyo, suelta lo suyo** | Es lo que le permite verificar que una dirección web no esté tomada sin barrer el catálogo (que la regla le rechaza entero). `list` está en `false`: enumerarlo sería la lista de direcciones de **todos** los borradores |
 | ¿Y las bandejas (`/reportes`, `/propuestas`)? | **No** | Llevan el mail de otra cuenta y el contacto de un tercero. Y revisar propuestas es decidir qué entra al catálogo, que es la autoridad que este rol no tiene |
@@ -1824,9 +1824,9 @@ sin depender de cuál sea la regla viva.
 claim `admin`. Aprobar una opción (`aprobada: true`) es una escritura más de ese
 documento, así que **cualquiera de las cuentas con el claim puede aprobar**
 (D-28). **Y desde B-893 hay un segundo camino**: el publicador crea por la
-callable `crearOpcionDelPanel` (D-810), siempre sin aprobar, pero **dos cuentas
-distintas que tipean la misma etiqueta la aprueban por reuso** (B-29) — sin admin
-de por medio. No hay una regla más fina porque las reglas no pueden comparar el array
+callable `crearOpcionDelPanel` (D-810), siempre sin aprobar. El reuso de B-29 la aprueba **solo si quien la
+reusa es admin** (D-811): dos publicadores que tipean la misma etiqueta no
+alcanzan para publicarla. No hay una regla más fina porque las reglas no pueden comparar el array
 `valores` elemento por elemento contra el anterior: no hay forma de verificar
 "esta escritura solo cambió `aprobada`". Está anotado en las propias reglas.
 

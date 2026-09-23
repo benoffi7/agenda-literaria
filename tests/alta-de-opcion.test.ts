@@ -90,11 +90,37 @@ describe('valoresConLaEtiqueta — la transformación compartida', () => {
     );
   });
 
-  it('B-29: reusar una pendiente de OTRA cuenta la aprueba y la marca', () => {
+  it('DEC-15: un publicador que reusa la pendiente de OTRA cuenta no la aprueba', () => {
+    /*
+     * B-29 aprobaba con cualquier segunda cuenta; desde D-811 solo con la del
+     * admin. Dos publicadores —o una persona con dos cuentas— no alcanzan para
+     * publicar vocabulario al `events.json`, a los hubs y al sitemap.
+     *
+     * MUTACIÓN PROBADA: volver a `elReusoLaAprueba(v, alta.huella)` en
+     * `valoresConLaEtiqueta` deja este caso en rojo.
+     */
     const antes = [...base(), { ...opcionNueva({ ...altaDelPublicador('Slam'), huella: HUELLA_OTRA }) }];
     const { valores } = valoresConLaEtiqueta(antes, altaDelPublicador('slam'));
+    expect(valores.at(-1)).toMatchObject({ aprobada: false, usos: 2 });
+    expect(valores.at(-1)).not.toHaveProperty('aprobadaPorReuso');
+  });
+
+  it('B-29, con D-811: el admin que reusa la pendiente de otra cuenta la aprueba y la marca', () => {
+    const antes = [...base(), { ...opcionNueva({ ...altaDelPublicador('Slam'), huella: HUELLA_OTRA }) }];
+    const delAdmin = { ...altaDelPublicador('slam'), aprobada: true };
+    const { valores } = valoresConLaEtiqueta(antes, delAdmin);
     expect(valores.at(-1)).toMatchObject({ aprobada: true, aprobadaPorReuso: true, usos: 2 });
     expect(valores.at(-1)?.huellaCreador).toBe(HUELLA_OTRA);
+    // Y la verificación lo deja pasar: es un cambio permitido, no uno inesperado.
+    expect(cambioInesperado(antes, valores, delAdmin)).toBeNull();
+  });
+
+  it('…y la verificación rechaza un array que aprueba por reuso desde el alta del publicador', () => {
+    const antes = [...base(), { ...opcionNueva({ ...altaDelPublicador('Slam'), huella: HUELLA_OTRA }) }];
+    const forzado = antes.map((v) =>
+      v.slug === 'slam' ? { ...v, usos: 2, aprobada: true, aprobadaPorReuso: true } : v,
+    );
+    expect(cambioInesperado(antes, forzado, altaDelPublicador('slam'))).toMatch(/aprobación/);
   });
 
   it('…y reusar una pendiente PROPIA no la aprueba: la señal es dos personas, no dos veces', () => {

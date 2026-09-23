@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **Dos publicadores no alcanzan para publicar una etiqueta** — DEC-15 resuelta
+  (**D-811**). La etiqueta que crea un publicador se aprobaba sola si la tipeaba
+  otra cuenta (B-29), y con eso salía al sitio, a los hubs y al sitemap. Ahora el
+  reuso aprueba solo si quien reusa es el admin; entre publicadores suma un uso y
+  sigue pendiente.
+
 - **La foto de una propuesta no llegaba a la actividad, y ahora se sabe por qué**
   (B-1235). El bucket no tiene CORS: la descarga de los bytes (`alt=media`) no
   manda `Access-Control-Allow-Origin`, así que el `fetch` con el que el panel copia

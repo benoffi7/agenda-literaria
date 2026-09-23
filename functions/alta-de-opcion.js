@@ -135,6 +135,29 @@ export const elReusoLaAprueba = (v, huellaDeQuienLaUsa) =>
   Boolean(huellaDeQuienLaUsa) &&
   v.huellaCreador !== huellaDeQuienLaUsa;
 
+/**
+ * **El reuso aprueba solo si quien reusa es admin — DEC-15, D-811.**
+ *
+ * `elReusoLaAprueba` dice si el reuso *podría* aprobar (otra cuenta, pendiente);
+ * esto dice si **esta** alta lo hace. Hasta D-811 alcanzaba con que fuera otra
+ * cuenta, y desde B-893 eso dejaba que dos publicadores —o una persona con dos
+ * cuentas— publicaran vocabulario al `events.json`, a los hubs y al sitemap sin
+ * que lo viera nadie. B-29 se había decidido con «dos cuentas de confianza», que
+ * es justo lo que el publicador no es.
+ *
+ * `alta.aprobada` es la señal de admin y no hace falta otra: es la única
+ * diferencia entre los dos caminos (`true` desde `upsertOpcion`, B-131; `false`
+ * desde la callable, B-893). Y como lo que crea el admin ya nace aprobado, una
+ * pendiente siempre la creó un publicador: «una de las dos cuentas es admin» y
+ * «quien reusa es admin» son la misma condición.
+ *
+ * @param {Valor} v
+ * @param {Alta} alta
+ * @returns {boolean}
+ */
+export const elAltaLaAprueba = (v, alta) =>
+  alta.aprobada === true && elReusoLaAprueba(v, alta.huella);
+
 // ─────────────────────────────────────────────────────────────────────
 // La transformación: reusar o agregar
 // ─────────────────────────────────────────────────────────────────────
@@ -198,7 +221,7 @@ export const valoresConLaEtiqueta = (valores, alta) => {
   /** @param {Valor} v @returns {Valor} */
   const conElUso = (v) => {
     const sumado = { ...v, usos: (v.usos ?? 0) + 1 };
-    return elReusoLaAprueba(v, alta.huella)
+    return elAltaLaAprueba(v, alta)
       ? { ...sumado, aprobada: true, aprobadaPorReuso: true }
       : sumado;
   };
@@ -328,7 +351,7 @@ export const cambioInesperado = (antes, despues, alta) => {
     }
     const mismaAprobacion = d.aprobada === a.aprobada && d.aprobadaPorReuso === a.aprobadaPorReuso;
     const aprobadaPorReuso =
-      elReusoLaAprueba(a, alta.huella) && d.aprobada === true && d.aprobadaPorReuso === true;
+      elAltaLaAprueba(a, alta) && d.aprobada === true && d.aprobadaPorReuso === true;
     if (!mismaAprobacion && !aprobadaPorReuso) {
       return `reusar «${a.slug}» le cambió la aprobación sin que B-29 lo permita`;
     }

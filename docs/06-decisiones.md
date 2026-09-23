@@ -12529,6 +12529,30 @@ la transacción corre contra el emulador de Firestore con el Admin SDK
 orden de los portones, el nombre y la región que usa el panel— se afirma sobre el
 fuente (`tests/alta-de-opcion-callable.test.ts`).
 
+
+## D-811 · El reuso aprueba una etiqueta solo si quien la reusa es admin
+
+**DEC-15, 2026-09-23.** Decisión del dueño: la recomendada. B-29 aprobaba una
+etiqueta pendiente cuando la tipeaba **otra** cuenta, y se decidió con «dos
+cuentas de confianza». Desde B-893 el publicador crea etiquetas (D-810), y con
+esa regla dos publicadores —o una persona con dos cuentas— publicaban
+vocabulario al `events.json`, a los chips y, en `tipo`, `barrio` y `ciudad`, a un
+hub indexado y al sitemap, sin que lo viera nadie.
+
+**La regla nueva:** el reuso aprueba solo si quien reusa es admin
+(`elAltaLaAprueba`). La señal es `alta.aprobada`, que ya era la única diferencia
+entre los dos caminos (`true` desde `upsertOpcion`, B-131; `false` desde la
+callable). No hace falta guardar el rol del creador: lo que crea el admin ya nace
+aprobado, así que una pendiente siempre la creó un publicador, y «una de las dos
+cuentas es admin» es lo mismo que «quien reusa es admin».
+
+**El costo aceptado:** un barrio real que tipean dos publicadores espera la
+aprobación del admin. El contador de pendientes de Opciones ya lo muestra.
+
+**Dónde vive:** en la transformación (`valoresConLaEtiqueta`) **y** en la
+verificación (`cambioInesperado`): si la callable intentara escribir una
+aprobación por reuso desde el alta del publicador, la verificación la rechaza.
+
 ## D-820 · La verificación de App Check es un estado del panel, con umbral, y el fallo de guardado la usa para clasificar
 
 **B-930, 2026-09-23.** Con App Check exigido en Firestore, un navegador que no

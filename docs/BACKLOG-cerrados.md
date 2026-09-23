@@ -20256,3 +20256,36 @@ Se dejan para que quede el rastro de qué se rompió.
 | **B-13** · Un `repository_dispatch` fallido reintentaba cada 5 minutos para siempre, sin límite ni registro | el fallo no dejaba rastro fuera de un log: ni contador, ni error persistido, ni forma de saber que el sitio estaba viejo | `functions/rebuild.js`, D-23 |
 
 | Riesgo: `arancel` preseleccionado en "Gratis" podía publicar un taller pago como gratuito | la preselección se aplicó a todos los campos con opciones base, sin distinguir el costo de equivocarse | D-16 |
+
+## Decisiones pendientes del usuario
+
+### DEC-15 · ¿Dos cuentas de publicador que tipean la misma etiqueta alcanzan para publicarla? — ✅ resuelta (2026-09-23, D-811) · P2 — del `auditor-privacidad` sobre B-893 (2026-09-23)
+
+> **✅ Resuelta el 2026-09-23 — opción 2, D-811.** El dueño: «la recomendada». El
+> reuso aprueba solo si quien reusa es admin (`elAltaLaAprueba`,
+> `functions/alta-de-opcion.js`), en la transformación **y** en la verificación de
+> la callable. Tests en `alta-de-opcion.test.ts` (mutación probada) y en
+> `alta-de-opcion.integracion.test.ts`. El texto original queda abajo.
+
+**Hoy sí, y es lo que B-29 decidió cuando había solo dos cuentas de confianza.**
+Desde B-893 el publicador crea etiquetas «sin aprobar», pero si **otra** cuenta
+tipea la misma, se aprueba sola (`elReusoLaAprueba`, `functions/alta-de-opcion.js`).
+Aprobada, sale al `events.json` y a los chips del sitio, y en `tipo`, `barrio` y
+`ciudad` hace nacer una página indexada y entra al sitemap. O sea que dos
+publicadores —o una persona con dos cuentas— publican vocabulario sin que lo vea
+un admin.
+
+**Las dos salidas:**
+
+1. **Dejarlo así.** Es lo que B-29 decidió y lo que hace que un barrio real que
+   tipean dos personas no espere a nadie. La doc ya lo dice (`07-seguridad.md`,
+   fila de `/opciones` y § «Aprobar taxonomías»).
+2. **Que el reuso apruebe solo si una de las dos cuentas es admin.** Es una línea
+   en `elReusoLaAprueba` y su test. Lo que dos publicadores tipean igual queda
+   pendiente hasta que lo apruebes.
+
+**Recomiendo la 2**: B-29 se decidió con la premisa «dos cuentas de confianza», y
+el publicador es justamente la cuenta que no lo es (es lo que reabrió B-28 como
+B-893). El costo es que un barrio real espera tu aprobación.
+
+---

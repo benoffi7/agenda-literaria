@@ -91,17 +91,14 @@ describe.skipIf(!vivo)('el alta de la callable contra el emulador — B-893', ()
     expect(opcionesVisibles(todos).map((v) => v.slug)).not.toContain('slam');
   });
 
-  it('otra cuenta que la tipea la aprueba y la marca (B-29)', async () => {
+  it('otro publicador que la tipea suma un uso y NO la aprueba (DEC-15, D-811)', async () => {
     await alta('Slam');
     const r = await alta('SLAM', UID_OTRO_PUBLICADOR);
     expect(r).toEqual({ slug: 'slam', creada: false });
     const slam = (await valores('arancel')).find((v) => v.slug === 'slam');
-    expect(slam).toMatchObject({
-      usos: 2,
-      aprobada: true,
-      aprobadaPorReuso: true,
-      huellaCreador: huellaCreador(UID_PUBLICADOR),
-    });
+    expect(slam).toMatchObject({ usos: 2, aprobada: false, huellaCreador: huellaCreador(UID_PUBLICADOR) });
+    expect(slam).not.toHaveProperty('aprobadaPorReuso');
+    expect(opcionesVisibles(await valores('arancel')).map((v) => v.slug)).not.toContain('slam');
   });
 
   it('dos altas simultáneas no se pisan: la transacción relee el array', async () => {
