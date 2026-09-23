@@ -175,7 +175,7 @@ no crece con esta página.
 ## El correo del sitio: la primera vez que un dato de una persona sale de acá
 
 La decisión entera —las cinco que se tomaron al construirlo— está en
-**[D-640](06-decisiones.md#d-640)**. Acá va lo que hay que saber para auditar.
+**[D-640](06-decisiones.md#d-640--el-correo-del-sitio-es-un-form-a-mailchimp-no-una-salida-nueva-y-su-promesa-dice-la-excepción)**. Acá va lo que hay que saber para auditar.
 
 **Hasta B-847 el sitio público no le mandaba ni un dato de nadie a ningún
 tercero, y conviene decir con precisión qué cambió, porque no es «ahora sí».**
