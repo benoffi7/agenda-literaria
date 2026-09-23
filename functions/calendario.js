@@ -11,29 +11,20 @@ import { geografiaNormalizada } from './geografia.js';
 // las cuatro guías y la bandeja de propuestas. Vive en `functions/` por lo mismo
 // que la geografía: este archivo lo tiene que poder importar y `functions/` no
 // puede importar `src/` (D-20).
-import { arrobaInstagram, cortaAlDerivar } from './handle-instagram.js';
+import { arrobaInstagram } from './handle-instagram.js';
 
 /**
- * **El handle tal como lo publica el calendario** — B-1145, y la guarda es por
- * B-1160.
+ * **El handle tal como lo publica el calendario** — B-1145.
  *
- * Es `arrobaInstagram` con una puerta: **si derivar descartaría texto que no
- * viene de una URL de Instagram, no se deriva y sale el crudo.** `casa#brandon`
- * deriva a `casa` y `taller?2026` a `taller`, que son cuentas de otra gente
- * (`cortaAlDerivar`, con la tabla completa).
- *
- * **La puerta está acá y no adentro del saneador a propósito**, por dos motivos:
- *
- *  - el saneador es compartido —la ficha pública, las cuatro guías, la bandeja de
- *    propuestas— y acotarle el corte es B-1160, un cambio de las seis salidas a la
- *    vez que no le toca decidir a este archivo;
- *  - y lo que justifica ser más conservador acá es **esta** salida, no el
- *    saneador: el evento ya está copiado en el calendario de quien se suscribió,
- *    así que una arroba equivocada no se saca editando. Una URL cruda es fea; una
- *    arroba equivocada señala a un tercero, y es peor.
- *
- * Con B-1160 resuelto la puerta deja de tener trabajo y se saca **con** ese ítem,
- * no antes.
+ * Es `arrobaInstagram` con una sola guarda, la de tipo (abajo). Hasta B-1160
+ * tenía además una puerta —«si derivar descartaría texto que no viene de una URL
+ * de Instagram, sale el crudo»— porque el saneador cortaba en el primer `?` o `#`
+ * de **cualquier** valor, y `casa#brandon` derivaba a `@casa`, la cuenta de otra
+ * persona (D-763). Desde B-1160 el corte va solo detrás del prefijo
+ * `instagram.com/`, adentro del saneador, así que la puerta dejó de tener trabajo
+ * y se sacó con ese ítem: `casa#brandon` falla el alfabeto y sale crudo por el
+ * camino de siempre. `tests/calendario.test.ts` sigue fijando ese caso, y no hubo
+ * que reescribirlo.
  */
 const arrobaPublicable = (crudo) => {
   /*
@@ -51,7 +42,7 @@ const arrobaPublicable = (crudo) => {
    * cuenta. Lo encontró el `auditor-privacidad`.
    */
   if (typeof crudo !== 'string') return crudo;
-  return cortaAlDerivar(crudo) ? crudo.trim() : arrobaInstagram(crudo);
+  return arrobaInstagram(crudo);
 };
 
 export const TIMEZONE = 'America/Argentina/Buenos_Aires';
@@ -777,10 +768,11 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    * `?igsh=…` que pega el botón «Compartir» y el criterio de que lo que no se
    * reconoce sale como se escribió. Ver `./handle-instagram.js`.
    *
-   * Entra por `arrobaPublicable` (arriba) y no por `arrobaInstagram` pelado: ese
-   * corte del `?`/`#` se aplica hoy a **cualquier** valor, así que `casa#brandon`
-   * derivaría a `@casa`, que es la cuenta de otra persona (B-1160). En esta
-   * salida eso no se puede deshacer, así que ante la duda sale el crudo.
+   * Entra por `arrobaPublicable` (arriba) y no por `arrobaInstagram` pelado por
+   * la guarda de tipo: un `instagram` que no es string haría tirar al saneador y
+   * se caería el sync entero de la actividad. El corte del `?`/`#` ya no es un
+   * riesgo acá: desde B-1160 va solo detrás de `instagram.com/`, así que
+   * `casa#brandon` sale crudo y no deriva a `@casa`, la cuenta de otra persona.
    *
    * ── Por qué esto NO reescribe los eventos ya publicados ───────────────────
    * **Y esto es lo que hay que entender antes de tocar la línea de abajo**, porque
