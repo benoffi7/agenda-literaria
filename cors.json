@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://agendaleh.ar",
+      "https://www.agendaleh.ar",
+      "https://agenda-literaria.web.app",
+      "https://agenda-literaria.firebaseapp.com"
+    ],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600
+  }
+]
