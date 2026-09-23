@@ -555,13 +555,28 @@ service cloud.firestore {
        * `registrarUsos` es mudo a propósito, o sea que fallarían en silencio en
        * cada guardado.
        *
-       * **Resuelto en la tajada 2, en los dos lados**: el panel no le ofrece
-       * «Otro…» (`campos-del-panel.tsx`, con el store de `lib/rolActivo.ts`) y el
-       * guardado saltea las dos escrituras (`formulario/guardar.ts`, con el rol
-       * por parámetro). Si algún día el dueño quiere que los `usos` de este rol
-       * **sí** cuenten, el camino sigue siendo mover el incremento a una Function:
-       * es el único lugar donde se puede verificar que lo único que cambió del
-       * array fue un contador.
+       * Se resolvió en la tajada 2 no ofreciéndole «Otro…» y salteando las dos
+       * escrituras en el guardado.
+       *
+       * **Desde B-893 (D-810) el publicador sí crea etiquetas, y esta regla no
+       * cambió: no pasa por acá.** Pasa por la callable `crearOpcionDelPanel`
+       * (`functions/alta-de-opcion-trigger.js`), que corre con el Admin SDK —o
+       * sea, sin evaluar estas reglas— y por eso **puede** hacer lo que este
+       * bloque dice que una regla no puede: leer el array anterior y verificar
+       * (`cambioInesperado`, en `functions/alta-de-opcion.js`) que lo único que
+       * cambió es **un** elemento agregado con `aprobada: false`, `usos: 1` y la
+       * huella de quien llama — o el `usos + 1` de uno que ya existía. Es el
+       * camino que este comentario anticipaba desde la tajada 1.
+       *
+       * Así que el `allow write` sigue en `esAdmin()` **a propósito**: abrirlo
+       * ahora para el publicador sería volver a darle «reescribir la taxonomía
+       * entera» por una puerta que no verifica nada, al lado de una que sí.
+       * `tests/rol-publicador.integracion.test.ts` sigue exigiendo el rechazo.
+       *
+       * Lo que queda afuera: los `usos` de las opciones que el publicador
+       * **elige** del desplegable siguen sin contar (`registrarUsos` se saltea
+       * para su rol). El camino es el mismo —la callable, con otra verificación:
+       * que lo único que cambió son contadores—, y no se hizo en B-893.
        */
       allow write: if esAdmin();
     }
