@@ -147,7 +147,7 @@ describe('el camino de vuelta', () => {
 
 describe('la verificación que corre antes de escribir', () => {
   it('no encuentra nada perdido en un movimiento sano', () => {
-    expect(verificar(VIVO, archivar(VIVO, ''))).toEqual([]);
+    expect(verificar(VIVO, '', archivar(VIVO, ''))).toEqual([]);
   });
 
   it('**detecta** un movimiento que se comió texto', () => {
@@ -163,7 +163,7 @@ describe('la verificación que corre antes de escribir', () => {
       ...sano,
       archivo: sano.archivo.replace('El cuerpo del descartado, con el motivo.', ''),
     };
-    expect(verificar(VIVO, roto)).toEqual(['B-903']);
+    expect(verificar(VIVO, '', roto)).toEqual(['B-903']);
   });
 });
 
@@ -198,7 +198,7 @@ describe('contra el archivo real', () => {
     const antes = parsearBacklog(original).items;
     const despues = [...parsearBacklog(s.vivo).items, ...parsearBacklog(s.archivo).items];
     expect(despues.length).toBe(antes.length);
-    expect(verificar(original, s)).toEqual([]);
+    expect(verificar(original, '', s)).toEqual([]);
 
     const porId = new Map(despues.map((i) => [i.id, i]));
     for (const antesIt of antes) {
@@ -388,5 +388,118 @@ describe('el formato del backlog se define una sola vez', () => {
       s.items.map((i) => lineas[i.desde]),
     );
     expect(enBloques).toEqual(lineas.filter((l) => ENCABEZADO.test(l)));
+  });
+});
+
+describe('el archivo de cerrados NO es un `\'\'` — B-1219', () => {
+  /*
+   * **Todo lo de arriba archiva contra un archivo de cerrados vacío**, y ése era
+   * el agujero: el corpus no ejercitaba nunca la entrada que en producción tiene
+   * cuatrocientos ítems, así que ninguna de las dos mitades del bug del
+   * 2026-09-23 podía salir.
+   *
+   *  - `archivar` colapsaba dos secciones del mismo título con un `find`, y se
+   *    comía la segunda: **186 ítems** en una corrida.
+   *  - `verificar` solo despiezaba el vivo, así que los ~400 ya archivados no los
+   *    miraba nadie y la guarda contestó `[]` sobre esa misma corrida.
+   *
+   * Las dos son la misma forma: el chequeo pasaba por el archivo chico, que es
+   * el que casi nunca se rompe. Es D-771 del lado de una guarda de datos.
+   */
+  const CERRADOS_CON_TITULO_REPETIDO = [
+    '# Cerrados',
+    '',
+    '## P0 — rompe algo o pierde datos',
+    '',
+    '### B-500 · Uno viejo · ✅ hecho (2026-01-01) · P0',
+    '',
+    'Cuerpo del primero.',
+    '',
+    '## P3 — cuando sobre tiempo',
+    '',
+    '### B-501 · Otro · ✅ hecho (2026-01-02) · P3',
+    '',
+    'Cuerpo del segundo.',
+    '',
+    '## P0 — rompe algo o pierde datos',
+    '',
+    '### B-502 · El de la sección repetida · ✅ hecho (2026-01-03) · P0',
+    '',
+    'Cuerpo del tercero, que es el que se perdía.',
+    '',
+  ].join('\n');
+
+  it('dos secciones con el mismo título no se comen una a la otra', () => {
+    const s = archivar(VIVO, CERRADOS_CON_TITULO_REPETIDO);
+    const ids = parsearBacklog(s.archivo).items.map((i) => i.id);
+    expect(ids, 'B-502 vive en la SEGUNDA sección con ese título').toContain('B-502');
+    expect(ids).toContain('B-500');
+    expect(ids).toContain('B-501');
+  });
+
+  it('y el título repetido se emite una sola vez, fundido', () => {
+    // Sin el `Set` sobre el orden, el bloque fundido sale una vez por aparición
+    // y los ítems quedan duplicados — el otro lado del mismo bug.
+    const s = archivar(VIVO, CERRADOS_CON_TITULO_REPETIDO);
+    const veces = s.archivo.split('\n').filter((l) => l === '## P0 — rompe algo o pierde datos');
+    expect(veces).toHaveLength(1);
+    const ids = parsearBacklog(s.archivo).items.map((i) => i.id);
+    expect(ids.filter((id) => id === 'B-500')).toHaveLength(1);
+  });
+
+  it('**la guarda lo detecta**, que es lo que tiene que sostenerlo cuando el arreglo no alcance', () => {
+    /*
+     * El control negativo del control negativo: se le saca a la salida un ítem
+     * que venía **del archivo de cerrados** —no del vivo— y se exige que
+     * `verificar` lo nombre. Con la firma vieja, `verificar(vivo, salida)`, esto
+     * daba `[]`: era imposible de escribir.
+     */
+    const sano = archivar(VIVO, CERRADOS_CON_TITULO_REPETIDO);
+    const roto = {
+      ...sano,
+      archivo: sano.archivo.replace('Cuerpo del tercero, que es el que se perdía.', ''),
+    };
+    expect(verificar(VIVO, CERRADOS_CON_TITULO_REPETIDO, roto)).toEqual(['B-502']);
+  });
+
+  it('contra los DOS archivos reales: ni un ítem menos, ni uno repetido', async () => {
+    /*
+     * El control positivo que faltaba. El de más arriba corre con `''` y por eso
+     * seguía verde el 2026-09-23 mientras el script se comía 186 ítems del
+     * archivo real.
+     */
+    const { readFile } = await import('node:fs/promises');
+    const vivo = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
+    const cerrados = await readFile(`${process.cwd()}/docs/BACKLOG-cerrados.md`, 'utf8').catch(
+      () => '',
+    );
+    if (!cerrados.trim()) return;
+
+    const antes = new Set(
+      [...parsearBacklog(vivo).items, ...parsearBacklog(cerrados).items].map((i) => i.id),
+    );
+    expect(antes.size).toBeGreaterThan(300);
+
+    const s = archivar(vivo, cerrados);
+    const despues = [...parsearBacklog(s.vivo).items, ...parsearBacklog(s.archivo).items];
+    const ids = despues.map((i) => i.id);
+
+    expect([...antes].filter((id) => !ids.includes(id)), 'ítems perdidos').toEqual([]);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i), 'ítems duplicados').toEqual([]);
+    expect(verificar(vivo, cerrados, s)).toEqual([]);
+  });
+
+  it('y correrlo dos veces sobre los archivos reales no cambia nada', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const vivo = await readFile(`${process.cwd()}/docs/BACKLOG.md`, 'utf8');
+    const cerrados = await readFile(`${process.cwd()}/docs/BACKLOG-cerrados.md`, 'utf8').catch(
+      () => '',
+    );
+    if (!cerrados.trim()) return;
+
+    const una = archivar(vivo, cerrados);
+    const dos = archivar(una.vivo, una.archivo);
+    expect(dos.vivo).toBe(una.vivo);
+    expect(dos.archivo).toBe(una.archivo);
   });
 });

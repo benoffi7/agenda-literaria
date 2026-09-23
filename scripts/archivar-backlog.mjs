@@ -232,18 +232,37 @@ export const archivar = (textoVivo, textoArchivo = '') => {
   }
 
   const cabecera = yaArchivado.preambulo.trim() || CABECERA;
-  const titulosViejos = yaArchivado.secciones.map((s) => s.titulo);
-  const orden = [...aArchivar.keys(), ...titulosViejos.filter((t) => !aArchivar.has(t))];
+
+  /*
+   * **Título → TODAS las secciones del archivo que se llaman así — B-1219.**
+   *
+   * Esto era un `secciones.find((s) => s.titulo === titulo)`, y `find` devuelve
+   * la primera. `BACKLOG-cerrados.md` tiene **dos** `## P0 — rompe algo o pierde
+   * datos` (líneas 16 y 3792, de dos corridas viejas), así que la segunda —186
+   * ítems— no se emitía nunca y la primera se emitía dos veces. El archivo pasaba
+   * de 402 ítems a 229 en una corrida, con un diff de 16.938 líneas borradas, o
+   * sea ilegible.
+   *
+   * Se **funden** en la primera aparición, en orden de archivo: son el mismo
+   * cubo de prioridad, y dejar dos secciones con el mismo nombre es volver a
+   * armar la trampa para la próxima.
+   */
+  const viejasPorTitulo = new Map();
+  for (const vieja of yaArchivado.secciones) {
+    if (!viejasPorTitulo.has(vieja.titulo)) viejasPorTitulo.set(vieja.titulo, []);
+    viejasPorTitulo.get(vieja.titulo).push(vieja);
+  }
+
+  // El `Set` es lo que evita emitir dos veces un título repetido: sin él, el
+  // mismo bloque fundido saldría una vez por aparición.
+  const orden = [...new Set([...aArchivar.keys(), ...yaArchivado.secciones.map((s) => s.titulo)])];
 
   const salida = [cabecera];
   for (const titulo of orden) {
-    const vieja = yaArchivado.secciones.find((s) => s.titulo === titulo);
-    const previos = vieja
-      ? [
-          vieja.prosa.join('\n').trim(),
-          ...vieja.items.filter((i) => CERRADOS.has(i.estado)).map((i) => i.texto),
-        ]
-      : [];
+    const previos = (viejasPorTitulo.get(titulo) ?? []).flatMap((vieja) => [
+      vieja.prosa.join('\n').trim(),
+      ...vieja.items.filter((i) => CERRADOS.has(i.estado)).map((i) => i.texto),
+    ]);
     const bloques = [...previos, ...(aArchivar.get(titulo) ?? [])].filter((b) => b.trim());
     if (bloques.length === 0) continue;
     salida.push(`## ${titulo}`);
@@ -263,22 +282,41 @@ export const archivar = (textoVivo, textoArchivo = '') => {
 };
 
 /**
- * La verificación que corre **antes** de escribir: cada bloque que se mueve
- * tiene que estar, carácter por carácter, en una de las dos salidas.
+ * La verificación que corre **antes** de escribir: cada bloque de **las dos
+ * entradas** tiene que estar, carácter por carácter, en una de las dos salidas.
  *
  * No es paranoia decorativa. Lo que se mueve es prosa que costó escribir y que
  * nadie va a poder reconstruir, y el modo de fallar de un script como este es
  * silencioso: un `slice` corrido por uno se come una línea y el diff tiene mil.
+ *
+ * **`textoArchivo` es obligatorio desde B-1219, y ésa era la falla.** Hasta el
+ * 2026-09-23 la firma era `verificar(textoVivo, salida)`: despiezaba **solo el
+ * vivo**, así que verificaba los ~13 ítems que se mueven y **nunca** los ~400
+ * que ya estaban archivados. Una corrida que perdiera media sección del archivo
+ * de cerrados pasaba con `[]` y escribía igual — que es exactamente lo que
+ * pasó: 186 ítems, y la guarda dijo que estaba todo bien.
+ *
+ * O sea que lo que sostenía esta guarda no era su lógica sino su corpus: miraba
+ * el archivo chico, que es el que casi nunca se rompe. Es la misma clase que
+ * D-771 —el sujeto del chequeo mal elegido— del lado de una guarda de datos.
+ *
+ * Por eso el parámetro es **posicional y requerido** en vez de opcional con
+ * `''` por default: un default habría dejado que el próximo llamador reprodujera
+ * la ceguera sin escribir nada raro.
  */
-export const verificar = (textoVivo, salida) => {
-  const { secciones } = despiezar(textoVivo);
+export const verificar = (textoVivo, textoArchivo, salida) => {
   const juntas = `${salida.vivo}\n${salida.archivo}`;
   const perdidos = [];
-  for (const sec of secciones) {
-    for (const it of sec.items) {
-      if (!juntas.includes(it.texto.trim())) perdidos.push(it.id);
+  const mirar = (texto) => {
+    if (!texto || !texto.trim()) return;
+    for (const sec of despiezar(texto).secciones) {
+      for (const it of sec.items) {
+        if (!juntas.includes(it.texto.trim())) perdidos.push(it.id);
+      }
     }
-  }
+  };
+  mirar(textoVivo);
+  mirar(textoArchivo);
   return perdidos;
 };
 
@@ -295,7 +333,7 @@ const principal = async () => {
   const textoArchivo = await readFile(ARCHIVO, 'utf8').catch(() => '');
 
   const salida = archivar(textoVivo, textoArchivo);
-  const perdidos = verificar(textoVivo, salida);
+  const perdidos = verificar(textoVivo, textoArchivo, salida);
   if (perdidos.length > 0) {
     process.stderr.write(
       `\n  ✗ No se escribió nada: ${perdidos.length} ítems no aparecen enteros en la salida.\n` +
