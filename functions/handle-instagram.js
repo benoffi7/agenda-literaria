@@ -8,30 +8,31 @@
  * cuando la Function necesita la misma derivación que el sitio, la
  * implementación baja acá y `src/` la reexporta. Una implementación, N runtimes.
  *
- * ── Por qué no se escribió un regex propio ────────────────────────────────
+ * ── Una implementación, y no dos copias con red — B-1180 ──────────────────
+ * `src/lib/handle-instagram.mjs` es una fachada de una línea que reexporta
+ * esto, y `scripts/handle-instagram.mjs` reexporta a su vez de allá. **Así que
+ * el arreglo se escribe una vez, acá, y llega a los tres runtimes.**
+ *
+ * Hasta B-1180 el del sitio tenía su propio cuerpo, letra por letra el de
+ * abajo, atado por un test de equivalencia (`tests/calendario.test.ts`). Esa red
+ * funcionaba —es la que B-928 corrió entre el script y el sitio—, pero avisa
+ * **después** de que alguien tocó una sola de las dos, y el arreglo había que
+ * escribirlo dos veces. Hoy el test lee la fachada del fuente y exige que no
+ * tenga implementación propia, que es la afirmación que tiene contenido.
+ *
+ * ── Por qué no se escribe un regex propio en cada salida ──────────────────
  * Porque la regla no es «sacar el `https://`»: es el alfabeto real de Instagram,
- * el corte en el primer `?` o `#` que pega el botón «Compartir», el orden entre
- * ese corte y la barra final, y el criterio de que lo que no se reconoce sale
- * como se escribió. Cinco decisiones que ya están tomadas y probadas en
- * `src/lib/handle-instagram.mjs`; una sexta versión de ellas sería la clase de
- * B-88 con la peor salida posible, porque de este lado el resultado va al
- * calendario **público**.
+ * el corte del `?` o `#` que pega el botón «Compartir», el orden entre ese
+ * corte y la barra final, y el criterio de que lo que no se reconoce sale como
+ * se escribió. Una versión más de esas
+ * decisiones sería la clase de B-88 con la peor salida posible, porque de este
+ * lado el resultado va al calendario **público**.
  *
- * ── El estado de hoy: dos cuerpos, con red ────────────────────────────────
- * **Esto es, a la vez, el destino y una parada intermedia.** El cuerpo de abajo
- * es letra por letra el de `src/lib/handle-instagram.mjs`, que todavía tiene el
- * suyo. Lo que falta para cerrar el patrón es **una** línea allá —convertirlo en
- * la fachada `export { handleInstagram, arrobaInstagram } from
- * '../../functions/handle-instagram.js';`, igual que `src/lib/slugify.mjs` y
- * `src/lib/geografia.mjs`—, y está anotado como **B-1180**.
- *
- * Mientras tanto las dos están atadas por un test que importa las dos y las
- * corre contra la misma batería exigiendo que contesten igual
- * (`tests/calendario.test.ts`, «el saneador de la Function es el mismo del
- * sitio»). Es la red que B-928 ya demostró que funciona —se puso en rojo apenas
- * alguien tocó una sola de las dos copias de entonces— y también la que ese
- * mismo ítem demostró que no alcanza sola: avisa **después**, y el arreglo hay
- * que escribirlo dos veces. De ahí que B-1180 exista y no sea opcional.
+ * ── De dónde salió (B-928) ────────────────────────────────────────────────
+ * De que hay una segunda persona cargando, con la forma real de hacerlo: copiar
+ * la URL del perfil es más fácil que acordarse del handle. El criterio del dueño
+ * vale más allá de este campo: «no podemos obligarlos a hacerlo como queremos,
+ * sino ajustarnos nosotros».
  */
 
 /**

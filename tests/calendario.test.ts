@@ -14,9 +14,9 @@ import {
   TIMEZONE,
 } from '../functions/calendario.js';
 import { ts } from './fixtures/tiempo';
-// B-1145 — las dos puntas del saneador del handle, para atarlas. La de la
-// Function es la que se despliega; la de `@/lib/enlaceSeguro` es la que usan la
-// ficha pública, las cuatro guías y la bandeja de propuestas.
+// B-1145, B-1180 — las dos puntas del saneador del handle, para verificar que
+// son la misma función. La de la Function es la que se despliega; la de
+// `@/lib/enlaceSeguro` es la que usan la ficha pública, las guías y la bandeja.
 import { arrobaInstagram as deLaFunction, handleInstagram as handleDeLaFunction } from '../functions/handle-instagram.js';
 import { arrobaInstagram as delSitio, handleInstagram as handleDelSitio } from '@/lib/enlaceSeguro';
 
@@ -1302,89 +1302,56 @@ describe('construirDescripcion — «existe» es tener el nombre con contenido, 
  * `mismoEvento` a un `true` constante deja en rojo los del caso 3.
  */
 /**
- * **B-1145 — el saneador de la Function es el mismo del sitio, y esto lo ata.**
+ * **B-1145, B-1180 — el saneador del Instagram es uno solo, y esto lo vigila.**
  *
  * `functions/` se despliega con su propio `package.json` y no puede importar
  * `src/` (D-20), así que la implementación **baja** a `functions/`: es el reparto
- * que B-968 ya hizo con `slugify.js` y `geografia.js`, y que este ítem repite con
- * `functions/handle-instagram.js`.
+ * que B-968 ya hizo con `slugify.js` y `geografia.js`, y que B-1145 repitió con
+ * `functions/handle-instagram.js`. Desde B-1180 `src/lib/handle-instagram.mjs` es
+ * la fachada de una línea que lo reexporta.
  *
- * **Falta el último tramo**: `src/lib/handle-instagram.mjs` todavía tiene su
- * propio cuerpo en vez de reexportar el de abajo, así que hoy hay dos. Eso es
- * B-1180, y el archivo que hay que tocar pertenece a otro frente de esta tanda.
+ * Hasta entonces había dos cuerpos atados por un test que los corría contra la
+ * misma batería exigiendo que contestaran igual. Con la fachada, ese test pasaba
+ * a comparar la función consigo misma y dejaba de probar nada: lo que se
+ * verifica ahora es **que siga sin haber copia**, leyendo el fuente, igual que
+ * `tests/instagrams-de-la-base.test.ts` con el script (B-928).
  *
- * Mientras tanto, esto es la red. Es exactamente la que B-928 corrió entre
- * `scripts/handle-instagram.mjs` y el módulo del sitio, y funcionó —se puso en
- * rojo apenas alguien tocó una sola de las dos—; y es también la que ese mismo
- * ítem dejó escrito que **no alcanza sola**, porque avisa después y el arreglo
- * hay que escribirlo dos veces. De ahí que B-1180 no sea opcional.
- *
- * **El daño que cubre no es cosmético.** Si las dos se separan, el handle que la
- * ficha pública muestra y el que sale al calendario **público** dejan de ser el
- * mismo, y nada falla: son dos salidas distintas que nadie compara a ojo.
- *
- * MUTACIÓN PROBADA: tocar una sola de las dos implementaciones —sacarle el corte
- * del `?igsh=…`, o ampliar el alfabeto con `-`— deja el primer caso en rojo
- * nombrando la entrada exacta que las separó.
+ * **El daño que cubre no es cosmético.** Si vuelve a haber dos, el handle que la
+ * ficha pública muestra y el que sale al calendario **público** pueden dejar de
+ * ser el mismo, y nada falla: son dos salidas distintas que nadie compara a ojo.
  */
 describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)', () => {
 
-  /**
-   * Las formas en que un Instagram llega cargado, más las que tienen que ser
-   * rechazadas. Es la batería de `tests/instagrams-de-la-base.test.ts`, que salió
-   * de correr el script contra la base: las dos últimas son la **forma** de dos
-   * datos reales que aparecieron el 2026-09-07 —alguien cargó un nombre y alguien
-   * un mail en el campo de Instagram—, con el mail inventado a propósito (la
-   * casilla de un tercero en un repo público es la fuga de B-246).
-   */
-  const ENTRADAS = [
-    '@casabrandon',
-    'casabrandon',
-    'https://instagram.com/casabrandon',
-    'https://www.instagram.com/casabrandon/',
-    'https://www.instagram.com/casabrandon/?igsh=MWx0eXo4a2Rr',
-    'https://www.instagram.com/casabrandon#tag',
-    'HTTP://INSTAGRAM.COM/CasaBrandon',
-    'instagram.com/casabrandon',
-    '  @casabrandon  ',
-    'casa.brandon',
-    'casa_brandon',
-    'casabrandon/',
-    'casabrandon//',
-    '@',
-    '',
-    '   ',
-    'casabrandon/otracuenta',
-    'instagram.com/casabrandon/otracuenta',
-    'instagram.com/p/ABC/',
-    'miinstagram.com/otra',
-    'instagram.com.ar/casabrandon',
-    '@casa brandon',
-    'casa-brandon',
-    'ñoño',
-    'a'.repeat(30),
-    'a'.repeat(31),
-    'Festival Argentino de Historieta',
-    'unclubdelectura@example.com',
-  ];
-
-  it('las dos implementaciones contestan exactamente lo mismo, entrada por entrada', () => {
-    const distintas = ENTRADAS.filter(
-      (e) => handleDeLaFunction(e) !== handleDelSitio(e) || deLaFunction(e) !== delSitio(e),
-    ).map((e) => ({
-      entrada: e,
-      function: [handleDeLaFunction(e), deLaFunction(e)],
-      sitio: [handleDelSitio(e), delSitio(e)],
-    }));
-    expect(distintas, 'la copia de `functions/` se separó de la del sitio').toEqual([]);
+  it('la fachada del sitio solo reexporta: no tiene implementación propia', () => {
+    const fachada = readFileSync(
+      fileURLToPath(new URL('../src/lib/handle-instagram.mjs', import.meta.url)),
+      'utf8',
+    );
+    expect(fachada).toContain(
+      "export { handleInstagram, arrobaInstagram } from '../../functions/handle-instagram.js';",
+    );
+    /*
+     * MUTACIÓN PROBADA: volver a pegar el cuerpo en la fachada deja este caso en
+     * rojo. Las señales son las partes de la regla que una copia repetiría, y se
+     * buscan sin comentarios para que el docblock pueda nombrarlas.
+     */
+    const codigo = sinComentarios(fachada);
+    for (const señal of ['.replace(', '.trim()', 'A-Za-z0-9._', '=>']) {
+      expect(codigo, `la fachada volvió a tener implementación propia: ${señal}`).not.toContain(
+        señal,
+      );
+    }
   });
 
-  /** Y los dos bordes que no son strings, que es donde una copia suele quedarse corta. */
-  it('y también con `null` y `undefined`', () => {
-    for (const vacio of [null, undefined]) {
-      expect(handleDeLaFunction(vacio)).toBe(handleDelSitio(vacio));
-      expect(deLaFunction(vacio)).toBe(delSitio(vacio));
-    }
+  /**
+   * Y que lo que llega por `@/lib/enlaceSeguro` —el camino de la ficha, las
+   * guías y la bandeja— sea **la misma función**, no una igual: identidad, no
+   * equivalencia. Si alguien rompe la cadena de reexports con un envoltorio,
+   * esto lo ve aunque el envoltorio conteste lo mismo.
+   */
+  it('y el sitio usa exactamente la función de `functions/`, por identidad', () => {
+    expect(handleDelSitio).toBe(handleDeLaFunction);
+    expect(delSitio).toBe(deLaFunction);
   });
 
   /**
