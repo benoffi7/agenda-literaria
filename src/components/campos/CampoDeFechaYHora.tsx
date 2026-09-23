@@ -33,6 +33,12 @@
  * fecha entera sin decir nada**, con la cajita mostrando `20` como si estuviera
  * cargada. La regla es de `horaTipeadaEn12`; acá se llama y nada más.
  *
+ * ── Lo que no tiene lectura se dice ───────────────────────────────────────
+ * Un `25` en la hora o un `75` en los minutos no se convierten —son typos—, pero
+ * tampoco se callan (B-1236): con los dos dígitos puestos, el campo muestra el
+ * error por el mismo canal que los del schema y marca la cajita con
+ * `aria-invalid`. Qué pieza y qué mensaje decide `piezaFueraDeRango`, pura.
+ *
  * ── El eco ────────────────────────────────────────────────────────────────
  * Debajo del control, lo que quedó cargado escrito en palabras. Era la opción
  * que se recomendó y el dueño no eligió; entra adentro de ésta porque un control
@@ -48,6 +54,7 @@ import {
   ecoDeFechaYHora,
   horaTipeadaEn12,
   MERIDIANOS,
+  piezaFueraDeRango,
   usaControlDeHoraPropio,
   type FormatoDeHora,
   type Meridiano,
@@ -138,6 +145,15 @@ export function CampoDeFechaYHora({
   const eco = ecoDeFechaYHora(value);
 
   /*
+   * B-1236: una pieza imposible le gana al error de afuera, porque es más
+   * precisa — el schema solo sabe decir «falta la fecha», y la causa es que la
+   * cajita de los minutos dice `75`. Va por `Campo` y no por un `<p>` propio para
+   * que sea el mismo `role="alert"` y el mismo `data-campo-con-error` que usa el
+   * scroll al primer error (B-184).
+   */
+  const fueraDeRango = piezaFueraDeRango(estado.piezas, formato);
+
+  /*
    * El rótulo del grupo necesita **su propio** id: `Campo comoGrupo` lo pone en
    * un `<span>` y lo referencia con `aria-labelledby`, así que reusar el `id`
    * del campo lo duplicaría con el `<input>` de la fecha. Dos elementos con el
@@ -151,7 +167,7 @@ export function CampoDeFechaYHora({
       label={label}
       htmlFor={idDelRotulo}
       comoGrupo
-      error={error}
+      error={fueraDeRango?.mensaje ?? error}
       ayuda={ayuda}
       requerido={requerido}
     >
@@ -172,6 +188,7 @@ export function CampoDeFechaYHora({
           placeholder="7"
           value={estado.piezas.hora}
           onChange={(e) => editarHora(e.target.value)}
+          aria-invalid={fueraDeRango?.pieza === 'hora' || undefined}
           aria-label={`${label} — hora, de 1 a 12`}
           className={`${claseInput} w-14 text-center`}
         />
@@ -186,6 +203,7 @@ export function CampoDeFechaYHora({
           placeholder="30"
           value={estado.piezas.minutos}
           onChange={(e) => editar({ minutos: soloDosDigitos(e.target.value) })}
+          aria-invalid={fueraDeRango?.pieza === 'minutos' || undefined}
           aria-label={`${label} — minutos`}
           className={`${claseInput} w-14 text-center`}
         />

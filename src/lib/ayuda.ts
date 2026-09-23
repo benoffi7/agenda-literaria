@@ -445,7 +445,9 @@ export const CAPITULOS: CapituloAyuda[] = [
           'vistazo. Si tipeás la hora como venís de cargarla, en 24, también te entiende: ' +
           'ponés 20 y queda 8 con PM. El AM/PM que elegiste solo se cambia cuando la hora no ' +
           'deja lugar a dudas: 20 es de tarde sí o sí, pero si pusiste PM y escribís 10, se ' +
-          'queda en las diez de la noche. ' +
+          'queda en las diez de la noche. Lo que no es ninguna hora —un 25 en la hora, un 75 ' +
+          'en los minutos— no se adivina: el campo te lo marca en rojo y el encuentro queda sin ' +
+          'fecha hasta que lo corrijas. ' +
           'Lo que se guarda es lo mismo en los dos casos: cambia cómo se escribe, no ' +
           'qué queda. Como el de arriba, queda guardado en ese navegador y desde otro aparato ' +
           'se elige de nuevo. Con el interruptor de la izquierda en «Celular» este queda ' +
