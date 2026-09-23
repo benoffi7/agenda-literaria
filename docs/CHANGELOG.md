@@ -2,6 +2,22 @@
 
 ## Sin publicar
 
+- **El publicador puede crear etiquetas con «Otro…», y nacen sin aprobar** (B-893,
+  D-810). Van por una callable nueva, `crearOpcionDelPanel` (Functions v2,
+  `enforceAppCheck: true`), que corre con el Admin SDK y verifica lo que las reglas
+  no pueden: que lo único que cambia de `/opciones/{campo}.valores` es un elemento
+  nuevo con `aprobada: false`, `usos: 1` y la huella de quien llama, o el `usos+1`
+  de uno existente. La regla sigue en `allow write: if esAdmin()`. La
+  transformación del alta se mudó a `functions/alta-de-opcion.js` y la comparten
+  `upsertOpcion` y la callable; `huellaCreador` y `etiquetaPresentable` bajaron a
+  `functions/` con fachadas en `src/`. El guardado del publicador llama etiqueta
+  por etiqueta y lo que no se confirma sale en el aviso de B-177, sin «Ir a
+  Opciones» para ese rol. `PERMISOS` gana `creaEtiquetas`. El workflow despliega
+  Functions y Hosting juntos.
+- **La provincia volvía a ofrecer «Otro…» al admin** (B-1240):
+  `campos-del-panel.tsx` pisaba el `permitirOtro={false}` de B-972 con el permiso
+  del rol. Ahora las props cierran y el rol no abre.
+
 - **En AM/PM ya se puede escribir la hora en 24, y antes eso vaciaba la fecha** —
   B-1234, **D-803**. El dueño lo reportó así: «escribo 20 y sigue saliendo 2».
   Pasaba algo peor que no aceptarlo: el segundo dígito sacaba la hora de 1..12,

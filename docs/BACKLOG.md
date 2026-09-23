@@ -48,6 +48,14 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > documenta. **Lo que sobre al cerrar se anota como hueco acá**, con esta misma
 > nota reescrita — si no, es exactamente el agujero que B-1051 describe.
 
+> **Tanda del 2026-09-23 — treinta números de bug a partir del 1240 y veinte
+> decisiones a partir de la 810, de a diez por frente.** Se usaron el 1240 y el
+> 1241 (etiquetas del publicador), el 1250 (App Check en el panel) y las
+> decisiones 810 y 820. **Todo el resto de esos rangos queda como hueco**: no son
+> entradas perdidas, y el tablero ya no los ofrece porque el próximo libre se
+> calcula por encima del mayor usado. En paralelo, otra sesión tomó el 1234, el
+> 1235 y la decisión 803, fuera de los rangos.
+
 > **Hueco de numeración: `B-297`, `B-298` y `B-299` no existen y no se borró nada.**
 > El último ítem abierto era B-296 y la tanda del 2026-09-02 arrancó a numerar en
 > **B-300** por reserva de números entre frentes en paralelo. Queda escrito acá para
@@ -394,60 +402,6 @@ se diagnostica solo.
 Firestore en `Unenforced` en la consola destraba el panel en el acto — pero abre
 también las escrituras anónimas de `/proponer` y de las tres guías, que es la capa
 que las sostiene. Es una decisión con costo, no un botón de reinicio.
-
-### B-893 · El publicador tiene que poder crear etiquetas, y eso es exactamente lo que B-28 dejó para cuando entrara una tercera cuenta · P1
-
-> **Pedido del dueño el 2026-09-11, en dos mitades:** «La cuenta acotada NO puede
-> cargar bugs y las etiquetas nuevas entran sin aprobar derechos.»
->
-> **La primera mitad ya está construida así** y no hay nada que hacer: `/reportes`
-> tiene `allow read/create/update: if esAdmin()` en las reglas y el botón no se le
-> dibuja al publicador (`ReporteFormulario.tsx` lo dice explícito). El rol no puede
-> cargar bugs ni ver los de nadie.
->
-> **La segunda contradice lo que se construyó**, y no por olvido. Hoy el publicador
-> **no puede crear etiquetas en absoluto**: el panel no le ofrece «Otro…»
-> (`campos-del-panel.tsx`) y el guardado saltea `upsertOpcion()` y `registrarUsos()`
-> (`formulario/guardar.ts`). Eso salió de la tajada 1: `/opciones/{campo}` es un
-> documento **compartido por todo el sitio** —los chips de filtro salen de ahí
-> (§4.4)— y **las reglas no pueden inspeccionar qué elemento del array `valores`
-> cambió**. A nivel de regla, «agrega una opción con Otro» y «reescribe la taxonomía
-> del sitio entero» son **el mismo permiso**: `allow write` sobre ese documento
-> también deja borrar valores, dar vuelta `fijo` y aprobar lo que quiera, sin una
-> sola cláusula que lo verifique.
->
-> **O sea que `aprobada: false` no alcanza como salvaguarda.** Marcar la etiqueta
-> como no aprobada resuelve que no aparezca en el desplegable de los demás, que es
-> lo que pide el dueño; no resuelve que la misma escritura pueda pisar el resto del
-> array. Las dos cosas van juntas o la segunda anula a la primera.
-
-**Los dos caminos que sí son verificables**, en orden de costo:
-
-1. **Una Function que hace el upsert** (`onCall`), y el rol sigue sin `write` sobre
-   `/opciones/*`. La Function corre con el Admin SDK, así que puede leer el array
-   anterior, verificar que lo único que cambió es **un elemento agregado** con
-   `aprobada: false` y `usos: 1`, y escribir. Es el único lugar donde eso se puede
-   verificar — ya estaba escrito así en el comentario de `firestore.rules` desde la
-   tajada 1, y es el mismo camino que haría falta para que los `usos` del rol
-   cuenten. Cuesta: una Function nueva, el camino de error en el guardado (hoy
-   `registrarUsos` falla en silencio a propósito, y por acá no puede), y volver a
-   mostrarle «Otro…» al panel del rol.
-2. **Una colección aparte de etiquetas pendientes** (`/opciones-propuestas/{id}`,
-   un documento por etiqueta). Ahí sí la regla verifica todo —conjunto exacto de
-   campos, `creadoPor == request.auth.uid`, `aprobada` ausente— porque es un
-   documento propio y no un elemento de un array. Cuesta más de panel: la pantalla
-   de taxonomías gana una bandeja, y el admin aprueba moviendo el valor al array.
-
-**Esto es B-28 volviendo.** Se cerró con «no, queda como está… vuelve cuando entre
-una tercera cuenta que no sea de confianza». El publicador **es** esa cuenta: el
-`aprobada: boolean` del §4.3 —que se había dejado explícitamente para «si en el
-futuro carga gente además del dueño»— pasó de hipotético a pedido. Y **B-29**
-(auto-aprobar la etiqueta que una segunda cuenta reusa) queda del otro lado del
-mismo camino: cualquiera de los dos mecanismos de arriba es dónde vive.
-
-**No arrancar sin que el dueño elija entre 1 y 2.** Lo que cambia entre los dos no
-es el esfuerzo sino quién aprueba y dónde se ve: en (1) la etiqueta ya está en el
-array, marcada; en (2) está afuera hasta que alguien la mueva.
 
 ### B-871 · Si el borrado del flyer aceptado falla, no reintenta nadie — 🟠 empezado (2026-09-11) · P2
 
@@ -1013,6 +967,19 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
+
+### B-1241 · `que-deployar.sh` no despliega Hosting cuando cambia solo un archivo compartido de `functions/` · P2 — lo encontró `opciones-publicador` (2026-09-23)
+
+El `awk` de `scripts/que-deployar.sh` solo trata como relevantes para Hosting los
+cuatro archivos con alias (`calendario`, `historial`, `png-chunks-seguros`,
+`jpeg-appn-seguros`). Pero `src/` importa por ruta relativa `functions/slugify.js`,
+`geografia.js`, `handle-instagram.js` y, desde B-893, `alta-de-opcion.js`,
+`huella.js` y `etiqueta-presentable.js`. Si un cambio toca solo uno de ellos, se
+despliega la Function y no el panel, y los dos caminos del alta de una etiqueta
+quedan con versiones distintas en producción sin que nada lo avise.
+`tests/que-deployar.test.ts` solo ata los alias. El arreglo es derivar la lista de
+los imports relativos de `src/` hacia `functions/`, o invertir el `awk` a lista
+negra (solo `*-trigger.js`, `index.js` y `package*.json` no afectan Hosting).
 
 ### B-1236 · Los minutos del control de 12 vacían la fecha en silencio igual que la hora antes de B-1234 · P2 — del auditor sobre B-1234 (2026-09-23)
 

@@ -14872,6 +14872,72 @@ Tests: cinco casos puros en `tests/formato-de-hora.test.ts` y dos montados en
 tipear» de ese archivo usaba `13` de ejemplo y ahora usa `25`: el cambio de
 ejemplo es la prueba de que este ítem hizo lo que dice.
 
+### B-893 · El publicador tiene que poder crear etiquetas, y eso es exactamente lo que B-28 dejó para cuando entrara una tercera cuenta — ✅ hecho (2026-09-23) · P1
+
+> **✅ Hecho el 2026-09-23 por el camino 1 (D-810).** Callable
+> `crearOpcionDelPanel` con `enforceAppCheck: true`: exige claim publicador o
+> admin, lista blanca de los 7 campos del formulario de actividad (sin provincia),
+> slug derivado con el `slugify` compartido, y una transacción del Admin SDK que
+> corre la misma transformación que `upsertOpcion` y verifica el array resultante
+> (`cambioInesperado`) antes de escribir. El publicador crea con `aprobada: false`;
+> B-29 aprueba por reuso. La regla de `/opciones` sigue en `esAdmin()`. El guardado
+> ya no falla en silencio: lo que la callable no confirma sale en el aviso. Queda
+> afuera: los `usos` de lo que el publicador elige del desplegable. Tests:
+> `alta-de-opcion.test.ts`, `alta-de-opcion.integracion.test.ts`,
+> `alta-de-opcion-callable.test.ts`.
+
+> **Pedido del dueño el 2026-09-11, en dos mitades:** «La cuenta acotada NO puede
+> cargar bugs y las etiquetas nuevas entran sin aprobar derechos.»
+>
+> **La primera mitad ya está construida así** y no hay nada que hacer: `/reportes`
+> tiene `allow read/create/update: if esAdmin()` en las reglas y el botón no se le
+> dibuja al publicador (`ReporteFormulario.tsx` lo dice explícito). El rol no puede
+> cargar bugs ni ver los de nadie.
+>
+> **La segunda contradice lo que se construyó**, y no por olvido. Hoy el publicador
+> **no puede crear etiquetas en absoluto**: el panel no le ofrece «Otro…»
+> (`campos-del-panel.tsx`) y el guardado saltea `upsertOpcion()` y `registrarUsos()`
+> (`formulario/guardar.ts`). Eso salió de la tajada 1: `/opciones/{campo}` es un
+> documento **compartido por todo el sitio** —los chips de filtro salen de ahí
+> (§4.4)— y **las reglas no pueden inspeccionar qué elemento del array `valores`
+> cambió**. A nivel de regla, «agrega una opción con Otro» y «reescribe la taxonomía
+> del sitio entero» son **el mismo permiso**: `allow write` sobre ese documento
+> también deja borrar valores, dar vuelta `fijo` y aprobar lo que quiera, sin una
+> sola cláusula que lo verifique.
+>
+> **O sea que `aprobada: false` no alcanza como salvaguarda.** Marcar la etiqueta
+> como no aprobada resuelve que no aparezca en el desplegable de los demás, que es
+> lo que pide el dueño; no resuelve que la misma escritura pueda pisar el resto del
+> array. Las dos cosas van juntas o la segunda anula a la primera.
+
+**Los dos caminos que sí son verificables**, en orden de costo:
+
+1. **Una Function que hace el upsert** (`onCall`), y el rol sigue sin `write` sobre
+   `/opciones/*`. La Function corre con el Admin SDK, así que puede leer el array
+   anterior, verificar que lo único que cambió es **un elemento agregado** con
+   `aprobada: false` y `usos: 1`, y escribir. Es el único lugar donde eso se puede
+   verificar — ya estaba escrito así en el comentario de `firestore.rules` desde la
+   tajada 1, y es el mismo camino que haría falta para que los `usos` del rol
+   cuenten. Cuesta: una Function nueva, el camino de error en el guardado (hoy
+   `registrarUsos` falla en silencio a propósito, y por acá no puede), y volver a
+   mostrarle «Otro…» al panel del rol.
+2. **Una colección aparte de etiquetas pendientes** (`/opciones-propuestas/{id}`,
+   un documento por etiqueta). Ahí sí la regla verifica todo —conjunto exacto de
+   campos, `creadoPor == request.auth.uid`, `aprobada` ausente— porque es un
+   documento propio y no un elemento de un array. Cuesta más de panel: la pantalla
+   de taxonomías gana una bandeja, y el admin aprueba moviendo el valor al array.
+
+**Esto es B-28 volviendo.** Se cerró con «no, queda como está… vuelve cuando entre
+una tercera cuenta que no sea de confianza». El publicador **es** esa cuenta: el
+`aprobada: boolean` del §4.3 —que se había dejado explícitamente para «si en el
+futuro carga gente además del dueño»— pasó de hipotético a pedido. Y **B-29**
+(auto-aprobar la etiqueta que una segunda cuenta reusa) queda del otro lado del
+mismo camino: cualquiera de los dos mecanismos de arriba es dónde vive.
+
+**No arrancar sin que el dueño elija entre 1 y 2.** Lo que cambia entre los dos no
+es el esfuerzo sino quién aprueba y dónde se ve: en (1) la etiqueta ya está en el
+array, marcada; en (2) está afuera hasta que alguien la mueva.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -15729,6 +15795,15 @@ juntos, en una sola pasada por las tres tablas.
 `tests/agentes-y-skills.test.ts` para que exija **todos** los archivos nombrados
 en la celda dentro del `description`, no solo el primero. Así el índice no se
 puede volver a desfasar.
+
+### B-1240 · Con el permiso del rol, la provincia volvía a ofrecer «Otro…» al admin — ✅ hecho (2026-09-23) · P2 — lo encontró `opciones-publicador`
+
+B-888 puso `permitirOtro={puedeCrearEtiquetas()}` después del spread en
+`campos-del-panel.tsx`, y eso pisaba el `permitirOtro={false}` que B-972 le pone a
+la provincia (vocabulario cerrado de 24): el admin volvía a ver «Otro…» y el
+schema rechazaba lo que escribiera. Arreglado con B-893:
+`(props.permitirOtro ?? true) && puedeCrearEtiquetas()`, con su caso en
+`tests/campos-del-panel.render.test.tsx`.
 
 ## P3 — cuando sobre tiempo
 
@@ -19747,6 +19822,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **Una regex del barrido de productores se leía como comentario, y `sin-comentarios` se puso rojo en `main`** | la regex nueva de B-1182 terminaba en `\//`, y el saneador de `tests/sin-comentarios.test.ts` tomó ese `//` por un comentario de línea y se comió `test` y `c`. Lo encontró otra sesión (la de B-1234) al correr la suite completa, verificando con `git stash` que no era suyo | `tests/agentes-y-skills.test.ts` — se escribe `[/]` (432f57c, 2026-09-23) |
 | **B-1021** · Cuatro tests de `rol-publicador.integracion.test.ts` fallan desde cualquier worktree y pasan en el árbol principal — ⚠️ sin bug en el código | **no es contención, y ésa fue la primera respuesta equivocada.** Tres frentes de la tanda del 2026-09-17 reportaron los mismos 4 rojos y se los atribuyó a seis worktrees corriendo integración contra un solo emulador. Es **determinista**: tres corridas seguidas, solas, desde un worktree limpio en `main`, dan los mismos 4. Y no es del código: **CI pasa** sobre ese mismo commit (corrida 35236221395) y el árbol principal pasa 55/55. Lo que está establecido es el borde —falla fuera del directorio donde se levantó el emulador, y solo ese archivo: `storage-reglas`, `librerias` y `propuestas` pasan enteros desde el mismo worktree—. **La hipótesis, sin confirmar:** el emulador se levanta con `--project` del árbol principal, y los claims que llegan **por el registro** (`setCustomUserClaims`, la vía que usa `admin:claim` y la que este archivo usa desde siempre) no alcanzan al token cuando el `projectId` no es el del arranque; los que viajan embebidos en el custom token sí. Eso ataría este caso con **B-1030**, que es el mismo síntoma desde el otro lado. Sería la segunda vuelta de B-894. **Para cerrarlo:** levantar el emulador desde el worktree y ver si los 4 se ponen verdes | `tests/rol-publicador.integracion.test.ts`, `tests/emulador.ts` (2026-09-17) |
 | **B-984** · El tablero listaba **46 ítems cerrados entre lo que falta hacer**, ocho de ellos descartados que ni siquiera eran trabajo pendiente | el archivo marca el estado con cinco emojis (`✅ ❌ ⚠️ 🟡 🟠`) y el parser reconocía dos, **solo detrás de una raya larga**: todo `· ✅ hecho (fecha)` se leía como abierto, y todo lo que no fuera `✅` o `🟠` también. De 105 «abiertos» quedaron 59. Cerrado **sin tocar una línea del backlog** —el vocabulario se lee del archivo, no se le impone; reescribir 46 encabezados a mano habría aguantado hasta el próximo escrito en el estilo de siempre— y con red de clase: un barrido sobre este archivo que falla si un encabezado con emoji de estado se lee como abierto, o si sacarle el marcador deja el título vacío. De paso, la fecha de la tarjeta pasó a ser la del **cierre** y no la última de la línea | `scripts/tablero/parseo.mjs`, `scripts/tablero/tablero.html`, `tests/tablero.test.ts` (2026-09-17) |
 | **El mismo saneador se comía el 83% de `Buscador.tsx`, y ningún consumidor lo estaba sufriendo** | la segunda cara de la fila de B-830, encontrada **midiendo** desde otro frente. El disparador no era un regex ni un string con `/*`: era el `\s*` del patrón de JSX, que deja que `interface Props {` más el docblock de su primera propiedad sean una apertura de comentario; como el cierre exige el `*/` pegado a un `}`, la búsqueda seguía hasta el primer `*/}` del archivo, **464 líneas más abajo**. Lo notable no es el caso sino que **el agujero estaba latente**: los cinco consumidores actuales daban salida idéntica antes y después, y el bug esperaba a que alguien apuntara el saneador compartido a cualquiera de los **23** archivos que destrozaba (`VisorDeGaleria.tsx` al 91%, `PropuestasPanel.tsx` al 84%, `ActividadFormulario.tsx` al 78%, y `sin-comentarios.mjs` a sí mismo al 96%). Cerrado reemplazando las cuatro pasadas de `replace` por **un solo recorrido de izquierda a derecha**, que cierra la familia entera en vez del caso, y con red de clase: un barrido que compara contra el **parser de TypeScript** sobre los 418 `.ts/.tsx/.mjs/.js` del repo y falla si desaparece un identificador de código | B-853, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |

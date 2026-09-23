@@ -61,6 +61,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'publicador-crea-etiquetas',
+    fecha: '2026-09-23',
+    version: '1.11.0',
+    titulo: 'Las cuentas que cargan solo lo suyo ya pueden crear opciones con «Otro…»',
+    detalle:
+      'Si te falta un barrio, un arancel o una etiqueta, escribila en «Otro…». Queda «sin aprobar»: ' +
+      'tu actividad la usa y a vos te aparece, pero nadie más la ve hasta que la aprueben desde Opciones.',
+    donde: 'Formulario de la actividad, cualquier desplegable con «Otro…»',
+  },
+  {
     id: 'el-panel-avisa-si-no-pudo-verificar-tu-navegador',
     fecha: '2026-09-23',
     version: '1.11.0',
