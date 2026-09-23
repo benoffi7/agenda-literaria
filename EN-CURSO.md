@@ -4,39 +4,30 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
-## Tanda del 2026-09-22 — integrada entera, **sin pushear y con la suite en rojo**
+## Tanda del 2026-09-22 — integrada, verde y pusheada (cerrada el 2026-09-23)
 
-> # ⚠️ AL RETOMAR: la suite está en rojo, y nada de hoy está pusheado
+> # ✅ Cerrada el 2026-09-23: suite en verde y pusheada
 >
-> **Se intentó pushear y lo rechazó el gate, no la autenticación.** La cuenta se
-> cambió a `benoffi7`, el hook de `pre-push` corrió, `npm test` salió en 1 —«la
-> suite no pasa con los emuladores arriba»— y la cuenta se devolvió a
-> `gonza-benoffi-modo`, verificado. **`origin/main` quedó en `1acad60`.**
+> **La suite pasa entera: 236 archivos, 6.090 casos, cero fallas, con los tres
+> emuladores arriba.** 118 segundos.
 >
-> **Eso invierte el orden que este archivo decía hace una hora.** El push ya no
-> está bloqueado por la cuenta de `gh`: está bloqueado por la suite. **Lo primero
-> al retomar es identificar el rojo**, no pushear.
+> **El rojo que frenó el push del 2026-09-22 era transitorio y ya estaba
+> arreglado cuando se intentó publicar.** Fueron dos chequeos de documentación
+> —`estados-referenciados` e `items-referenciados`— que se pusieron rojos por la
+> prosa que se estaba escribiendo **en ese mismo momento**: el ejemplo de fila de
+> D-775 con un id real adentro, y la nota de rangos reservados. Los dos se
+> corrigieron en `c9464ec`, minutos después del intento de push. O sea que el
+> gate frenó un árbol que ya no existía.
 >
-> **No sabemos en qué está roja**, y el dueño decidió cerrar sin averiguarlo — una
-> corrida cortada por el horario no dice nada y deja el emulador colgado.
-> Candidatos, por probabilidad: el **B-853** que se arregló hoy sobre
-> `tests/calendario.test.ts` (verificado en verde acá, pero la suite completa no
-> se corrió después), o algo que entró con alguno de los siete merges.
+> **La lección es del método, no del bug:** se cerró la jornada diciendo «la suite
+> está en rojo y no sabemos en qué» cuando alcanzaba con correr los dos archivos
+> que se acababan de tocar. **Un rojo sin diagnosticar se lee más grave de lo que
+> es**, y este costó una noche de incertidumbre sobre trabajo que estaba sano.
 >
-> **Los 61 commits de hoy existen solo en el disco de esta máquina.** Siete ramas
-> mergeadas, tres decisiones del dueño, catorce ítems cerrados. Nada de eso está
-> en `origin`.
->
-> **Y una trampa del propio repo que costó la mitad de este párrafo:** `ls
-> .git/hooks/` da un **falso negativo** — los hooks versionados viven en
-> `githooks/`, enchufados por `core.hooksPath`, justamente porque `.git/hooks/` no
-> se versiona. Quien planifique «pushear rápido» tiene que saber que **el push
-> corre la suite entera**.
->
-> **Dato medido hoy, y es el argumento de por qué esto importa:** producción sirve
-> `1.10.0+1acad60` con `main` **49 commits por encima**. Lo encontró el chequeo que
-> nació hoy (B-1121) — la red nueva destapó, en su primera corrida, exactamente lo
-> que B-205 describía.
+> **Y el gate hizo exactamente lo que tenía que hacer.** Vale dejarlo escrito
+> porque la conclusión fácil sería la opuesta: frenó un push mientras el árbol
+> estaba roto, aunque se arreglara dos minutos después. Sin él se habrían
+> publicado dos chequeos en rojo.
 
 ### Qué entró
 
@@ -59,11 +50,11 @@ medias: 22 casos, ocho mutaciones probadas, puramente aditivo, y su documentaci�
 entró en el mismo empujón. **Lo que falta —sus dos auditores y tres mutaciones
 declaradas— está anotado como pendiente explícito en el cierre de B-1170.**
 
-**La suite completa no se corrió por decisión, y después el gate la corrió igual y
-salió en rojo.** No arrancarla a mitad de la jornada era lo correcto —una corrida
-cortada no dice nada y deja el emulador colgado, el arrastre que costó B-1112—,
-pero el `pre-push` no pregunta: la corrió al intentar publicar. **Así que el rojo
-se conoce y su causa no.** Es lo primero de mañana.
+**La suite se corrió entera el 2026-09-23 y pasa: 6.090 casos en verde.** No
+arrancarla a mitad de la jornada anterior era lo correcto —una corrida cortada no
+dice nada y deja el emulador colgado, el arrastre que costó B-1112—, pero el
+`pre-push` no pregunta y la corrió al intentar publicar, sobre un árbol que estaba
+roto por dos minutos.
 
 ### Para correr la suite, dos cosas que cuestan una tarde si no se saben
 
