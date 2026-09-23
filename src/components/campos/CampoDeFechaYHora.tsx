@@ -27,6 +27,12 @@
  * el nombre del grupo y no el de la cajita de los minutos. Las cuatro heredan
  * el `min-h-touch` de `claseInput` (punto 3 de D-720).
  *
+ * ── Lo que se tipea en la cajita de la hora ───────────────────────────────
+ * `20` vale y queda `8 PM` (B-1234). Interpretar la hora de 24 no es una
+ * comodidad: sin eso, el segundo dígito sacaba el valor de rango y **vaciaba la
+ * fecha entera sin decir nada**, con la cajita mostrando `20` como si estuviera
+ * cargada. La regla es de `horaTipeadaEn12`; acá se llama y nada más.
+ *
  * ── El eco ────────────────────────────────────────────────────────────────
  * Debajo del control, lo que quedó cargado escrito en palabras. Era la opción
  * que se recomendó y el dueño no eligió; entra adentro de ésta porque un control
@@ -40,6 +46,7 @@ import {
   aPiezas,
   dePiezas,
   ecoDeFechaYHora,
+  horaTipeadaEn12,
   MERIDIANOS,
   usaControlDeHoraPropio,
   type FormatoDeHora,
@@ -115,6 +122,19 @@ export function CampoDeFechaYHora({
     onChange(dePiezas(piezas, formato));
   };
 
+  /**
+   * La cajita de la hora, que es la única que interpreta lo tipeado — B-1234.
+   *
+   * `20` se guarda como `8` + PM en vez de vaciar la fecha en silencio. La
+   * decisión —cuándo convertir y cuándo no tocar el meridiano— vive entera en
+   * `horaTipeadaEn12`, pura y con test: acá solo se cablea, porque el JSX es
+   * justamente donde una regla así deja de poder probarse.
+   */
+  const editarHora = (texto: string) => {
+    const { hora, meridiano } = horaTipeadaEn12(soloDosDigitos(texto), estado.piezas.meridiano);
+    editar({ hora, meridiano });
+  };
+
   const eco = ecoDeFechaYHora(value);
 
   /*
@@ -151,7 +171,7 @@ export function CampoDeFechaYHora({
           maxLength={2}
           placeholder="7"
           value={estado.piezas.hora}
-          onChange={(e) => editar({ hora: soloDosDigitos(e.target.value) })}
+          onChange={(e) => editarHora(e.target.value)}
           aria-label={`${label} — hora, de 1 a 12`}
           className={`${claseInput} w-14 text-center`}
         />

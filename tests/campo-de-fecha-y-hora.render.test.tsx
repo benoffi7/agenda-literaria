@@ -109,6 +109,46 @@ describe('tipear', () => {
     expect(onChange).toHaveBeenLastCalledWith('2026-10-07T19:30');
   });
 
+  /**
+   * **B-1234 — «escribo 20 y sigue saliendo 2», el reporte del dueño.**
+   *
+   * El control de 12 lo usa alguien que viene de cargar en 24. Hasta este ítem,
+   * el segundo dígito sacaba la hora de rango y `dePiezas` devolvía `''`: la
+   * cajita seguía mostrando `20`, pero **hacia afuera la fecha entera se
+   * vaciaba**, sin un error y sin el eco. Lo que se guardaba era un encuentro
+   * sin fecha.
+   *
+   * Acá va montado y no en `formato-de-hora.test.ts` porque lo que se afirma es
+   * el **cableado**: que la cajita y el desplegable muestren lo convertido, que
+   * es lo que le dice a quien carga que se entendió lo que tipeó.
+   */
+  it('escribir 20 en la hora queda 8 PM, no vacía la fecha', async () => {
+    const onChange = vi.fn();
+    dibujar({ value: '2026-10-07T07:30', onChange });
+    const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;
+
+    await userEvent.clear(hora);
+    await userEvent.type(hora, '20');
+
+    expect(hora.value).toBe('8');
+    expect((screen.getByLabelText('Inicio — AM o PM') as HTMLSelectElement).value).toBe('PM');
+    expect(onChange).toHaveBeenLastCalledWith('2026-10-07T20:30');
+  });
+
+  it('y una hora que el reloj de 12 sí dice no se lleva puesto el AM/PM', async () => {
+    // La otra mitad: con PM elegido, retipear `10` es las diez de la noche.
+    const onChange = vi.fn();
+    dibujar({ value: '2026-10-07T19:30', onChange });
+    const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;
+
+    await userEvent.clear(hora);
+    await userEvent.type(hora, '10');
+
+    expect(hora.value).toBe('10');
+    expect((screen.getByLabelText('Inicio — AM o PM') as HTMLSelectElement).value).toBe('PM');
+    expect(onChange).toHaveBeenLastCalledWith('2026-10-07T22:30');
+  });
+
   it('no deja tipear letras ni un tercer dígito en la hora', async () => {
     dibujar();
     const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;
@@ -164,15 +204,19 @@ describe('lo que llega de afuera', () => {
 describe('lo que se pierde al cambiar el interruptor, dicho', () => {
   it('con una hora inválida a medio tipear, cambiar el formato borra lo tipeado', async () => {
     // Lo marcó el `auditor-trampas` como «sin red», y no es una pérdida de datos
-    // —hacia afuera el valor ya era `''`, porque un `13` en un reloj de 12 no
-    // compone nada— pero **sí se ve**: la cajita se vacía. Queda afirmado para
-    // que sea una decisión y no una sorpresa; es consistente con el resto del
-    // diseño, donde un campo incompleto no es un error sino un campo que todavía
-    // no vale.
+    // —hacia afuera el valor ya era `''`, porque un `25` no compone nada— pero
+    // **sí se ve**: la cajita se vacía. Queda afirmado para que sea una decisión
+    // y no una sorpresa; es consistente con el resto del diseño, donde un campo
+    // incompleto no es un error sino un campo que todavía no vale.
+    //
+    // **El caso era `13` hasta B-1234**, y el cambio de ejemplo es la prueba de
+    // que ese ítem hizo lo que dice: un `13` ya no es una hora inválida, es la
+    // una de la tarde. Lo que queda inválido es el typo que no tiene ninguna
+    // lectura.
     const { rerender } = dibujar({ value: '' });
     const hora = screen.getByLabelText('Inicio — hora, de 1 a 12') as HTMLInputElement;
-    await userEvent.type(hora, '13');
-    expect(hora.value).toBe('13');
+    await userEvent.type(hora, '25');
+    expect(hora.value).toBe('25');
 
     rerender(
       <CampoDeFechaYHora

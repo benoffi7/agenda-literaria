@@ -87,6 +87,17 @@ export const NOVEDADES: Novedad[] = [
     donde: 'En el encabezado del listado, al lado de «Opciones» y «Estadísticas».',
   },
   {
+    id: 'la-hora-en-am-pm-entiende-las-24',
+    fecha: '2026-09-23',
+    version: '1.11.0',
+    titulo: 'En AM/PM ya podés escribir la hora como venís de cargarla',
+    detalle:
+      'Con el interruptor en «AM/PM», escribir 20 en la hora deja 8 con PM, en ' +
+      'vez de quedarse sin fecha sin avisarte. Si ya elegiste AM o PM, se ' +
+      'respeta: solo cambia cuando la hora no deja lugar a dudas, como 20 o 13.',
+    donde: 'En «Encuentros», en el inicio y el fin de cada encuentro.',
+  },
+  {
     id: 'ya-se-pueden-anotar-al-correo',
     fecha: '2026-09-23',
     version: '1.11.0',

@@ -442,7 +442,11 @@ export const CAPITULOS: CapituloAyuda[] = [
           'que es como sale en Argentina. En «AM/PM» el campo se parte en cuatro: la fecha, la ' +
           'hora de 1 a 12, los minutos y un desplegable AM o PM; abajo queda escrito lo que ' +
           'entendió («miércoles, 7 de octubre, 7:30 PM»), así que se puede verificar de un ' +
-          'vistazo. Lo que se guarda es lo mismo en los dos casos: cambia cómo se escribe, no ' +
+          'vistazo. Si tipeás la hora como venís de cargarla, en 24, también te entiende: ' +
+          'ponés 20 y queda 8 con PM. El AM/PM que elegiste solo se cambia cuando la hora no ' +
+          'deja lugar a dudas: 20 es de tarde sí o sí, pero si pusiste PM y escribís 10, se ' +
+          'queda en las diez de la noche. ' +
+          'Lo que se guarda es lo mismo en los dos casos: cambia cómo se escribe, no ' +
           'qué queda. Como el de arriba, queda guardado en ese navegador y desde otro aparato ' +
           'se elige de nuevo. Con el interruptor de la izquierda en «Celular» este queda ' +
           'apagado: ahí gana el selector de hora del teléfono, que es mejor que cuatro cajitas ' +

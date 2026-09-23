@@ -12357,6 +12357,53 @@ tres promesas nombren las aperturas y los clics.
 los `utm_*` no llegan a GA4, porque `ubicacionSinQuery` recorta la query del
 `page_location` y del `page_referrer` (salida 12).
 
+---
+
+## D-803 · Una hora de 24 tipeada en el control de 12 se interpreta, no se descarta
+
+**B-1234.** El dueño, sobre el control de AM/PM que él mismo pidió: «escribo 20
+y sigue saliendo 2». Es el desvío explícito de lo que **D-720 dejó escrito** —y
+está acá, y no como un retoque silencioso, porque el criterio anterior estaba
+argumentado y hay que poder leer las dos versiones seguidas.
+
+**Lo que decía el criterio anterior**, en el docblock de `dePiezas`: «una hora
+fuera de rango no se recorta ni se ajusta, porque un `23` que se convierte solo
+en `11 PM` mientras alguien tipea es peor que un campo que todavía no vale». El
+razonamiento era defendible —no cambiarle a nadie lo que puso— y resultó falso
+por una razón que solo se ve usando el control: **el «campo que todavía no vale»
+no se veía**. La cajita seguía mostrando `20`, el eco desaparecía y hacia afuera
+el valor pasaba a `''`, así que lo que la persona tenía delante era un encuentro
+cargado y lo que el formulario tenía era un encuentro **sin fecha**. De los tres
+finales posibles —rechazar, convertir, avisar— elegía un cuarto: ninguno.
+
+**Lo que se decide.** La cajita de la hora interpreta lo tipeado cuando los dos
+dígitos están puestos: `0` y `13..23` se leen como hora de 24 y se convierten al
+reloj de 12 con su meridiano (`20` → `8` + PM). La regla vive en
+`horaTipeadaEn12` (`src/lib/formatoDeHora.ts`), pura y con test.
+
+Tres bordes, y cada uno es una mitad de la decisión:
+
+- **Espera al segundo dígito.** Con uno solo no hay nada que interpretar todavía:
+  convertir el `0` de `05` en `12 AM` le comería el lugar al `5` siguiente, porque
+  la cajita admite dos dígitos y nada más.
+- **El meridiano solo se pisa cuando el número no es una hora de reloj.** `20` es
+  PM y no tiene otra lectura; `10` sí la tiene, y quien tenía PM elegido y retipea
+  la hora quiere las diez de la noche. Mudarlo a la mañana sería la misma clase de
+  cambio silencioso que este ítem viene a cerrar.
+- **`24..99` queda como está.** No es una hora en otro formato, es un typo, y no
+  hay a qué convertirlo: el campo no compone y el schema lo cobra como fecha
+  faltante, que es el comportamiento de siempre.
+
+**`dePiezas` sigue siendo estricta**, y eso no contradice lo anterior: la
+interpretación ocurre **en la entrada**, una sola vez y con el texto completo. Si
+además compusiera adivinando, habría dos lugares leyendo la misma tecla y cuál
+gana dependería del orden.
+
+**Lo que no cambia:** el dato. Las cuatro piezas siguen recomponiendo el mismo
+string de `datetime-local` y de ahí sale el mismo `Timestamp` (trampa 1).
+
+---
+
 ## D-820 · La verificación de App Check es un estado del panel, con umbral, y el fallo de guardado la usa para clasificar
 
 **B-930, 2026-09-23.** Con App Check exigido en Firestore, un navegador que no

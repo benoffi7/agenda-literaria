@@ -219,6 +219,47 @@ export const aReloj12 = (hora24: number): { hora: number; meridiano: Meridiano }
   meridiano: hora24 < 12 ? 'AM' : 'PM',
 });
 
+/**
+ * **La hora recién tipeada, entendida como la tipeó una persona** — B-1234.
+ *
+ * El control de 12 horas lo usa alguien que viene de cargar en 24 y **tipea
+ * `20`**, que es el reporte del dueño. Hasta acá eso no entraba: `dePiezas`
+ * devuelve `''` para cualquier hora fuera de 1..12, así que el segundo dígito
+ * **vaciaba la fecha entera en silencio** —la cajita seguía mostrando `20`, el
+ * eco desaparecía, y lo que quedaba guardado era un encuentro sin fecha—. El
+ * modo de falla era el peor de los tres posibles: ni rechaza, ni convierte, ni
+ * avisa.
+ *
+ * ── Por qué la conversión espera al segundo dígito ────────────────────────
+ * Es lo que la hace posible sin arruinar el tipeo normal. Convertir apenas el
+ * número sale de rango obligaría a decidir sobre un valor a medio escribir: el
+ * `0` de `05` se volvería `12 AM` y el `5` siguiente caería en un campo que ya
+ * no tiene lugar (`maxLength=2`). Con dos dígitos el texto ya no puede crecer,
+ * así que interpretarlo no le saca nada a nadie.
+ *
+ * ── Y por qué el meridiano solo se toca cuando hay que tocarlo ────────────
+ * `20` **tiene** meridiano —es PM y no hay otra lectura—, así que lo pisa. `10`
+ * no: es una hora de reloj legítima, y quien tenía PM elegido y retipea la hora
+ * quiere las 10 de la noche, no mudarse a la mañana. Por eso la conversión corre
+ * solo sobre lo que un reloj de 12 no puede decir: el `0` y el 13..23.
+ *
+ * Lo que queda afuera (24..99) se devuelve tal cual: es un typo, no una hora en
+ * otro formato, y no hay a qué convertirlo. El campo no compone —igual que
+ * antes— y el schema lo cobra como fecha faltante al guardar.
+ */
+export const horaTipeadaEn12 = (
+  texto: string,
+  meridiano: Meridiano,
+): { hora: string; meridiano: Meridiano } => {
+  if (!/^\d{2}$/.test(texto)) return { hora: texto, meridiano };
+  const n = Number(texto);
+  // 1..12 ya es una hora de reloj: se respeta el AM/PM que haya elegido quien
+  // carga. 24..99 no es ninguna hora: se deja para que el campo no valga.
+  if ((n >= 1 && n <= 12) || n > 23) return { hora: texto, meridiano };
+  const reloj = aReloj12(n);
+  return { hora: String(reloj.hora), meridiano: reloj.meridiano };
+};
+
 /** La vuelta: la hora de reloj y su meridiano → `0..23`. */
 export const de12A24 = (hora12: number, meridiano: Meridiano): number => {
   const base = hora12 % 12;
@@ -280,9 +321,14 @@ export const aPiezas = (valor: string, formato: FormatoDeHora): PiezasDeFechaYHo
  * **`''` es la respuesta correcta a un campo incompleto**, no un error: es lo
  * que el schema ya sabe leer como «falta la fecha» (`lib/schema.ts`), y es lo
  * que evita que media fecha tipeada se guarde como una fecha entera. Una hora
- * fuera de rango también da `''`: no se recorta ni se ajusta, porque un `23` que
- * se convierte solo en `11 PM` mientras alguien tipea es peor que un campo que
- * todavía no vale.
+ * fuera de rango también da `''`: acá no se recorta ni se ajusta nada.
+ *
+ * **Que siga siendo estricta no contradice a `horaTipeadaEn12`, la necesita.**
+ * El `23` sí se convierte en `11 PM`, pero **en la entrada y con los dos dígitos
+ * puestos** (B-1234, el reporte del dueño: «escribo 20 y sigue saliendo 2»), no
+ * acá adentro. Esta función compone lo que ya está decidido; si además adivinara,
+ * habría dos lugares interpretando la misma tecla y el que gana dependería del
+ * orden — y un `''` de más acá se ve, mientras que una hora corrida no.
  */
 export const dePiezas = (piezas: PiezasDeFechaYHora, formato: FormatoDeHora): string => {
   const { fecha, hora, minutos, meridiano } = piezas;

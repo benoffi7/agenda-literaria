@@ -2,6 +2,28 @@
 
 ## Sin publicar
 
+- **En AM/PM ya se puede escribir la hora en 24, y antes eso vaciaba la fecha** —
+  B-1234, **D-803**. El dueño lo reportó así: «escribo 20 y sigue saliendo 2».
+  Pasaba algo peor que no aceptarlo: el segundo dígito sacaba la hora de 1..12,
+  `dePiezas` componía `''`, y **el encuentro se quedaba sin fecha en silencio** —la
+  cajita seguía mostrando `20` y el eco desaparecía—. Ahora `horaTipeadaEn12` lee
+  `0` y `13..23` como hora de 24 y los convierte con su meridiano (`20` → `8` PM),
+  sin tocar el AM/PM elegido cuando el número ya es una hora de reloj (con PM
+  puesto, `10` son las diez de la noche), y dejando el typo sin lectura (`25`) tal
+  cual. Es un desvío de lo que D-720 había dejado escrito, y por eso va con
+  decisión propia. Siete casos nuevos entre el test puro y el montado; el caso
+  «hora inválida a medio tipear» pasó de usar `13` a usar `25`, que es la prueba
+  de que el cambio hizo lo que dice.
+
+- **Abierto: la imagen de una propuesta no queda en la actividad** — B-1235, P1,
+  reportado por el dueño y **sin arreglar**. Se corrió la cadena entera de punta a
+  punta y está en verde (el panel manda la imagen en la copia, el formulario la
+  lleva al guardado, `formADocumento` la escribe, `imagenesDe` la lee, y ninguna
+  Function la toca), así que lo que falta es evidencia de runtime: si la promoción
+  a `imagenes/` falló, el motivo va a un aviso arriba del formulario que hoy es un
+  párrafo entre otros. El ítem tiene lo descartado escrito para que la próxima
+  sesión no lo repita.
+
 - **El panel avisa cuando no pudo verificar el navegador, y el fallo de guardado
   deja de llamarlo «corte de conexión»** — B-930 pasos 1 y 2, que cierra la otra
   mitad de B-929 (**D-820**). Con App Check exigido en Firestore, un navegador sin

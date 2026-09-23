@@ -254,6 +254,44 @@ seguir es que nadie sepa cuál de las dos es.
 
 ## P1 — bloquean el objetivo del proyecto
 
+### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — reportado por el dueño (2026-09-23)
+
+**El reporte:** «cuando una propuesta con imagen se promueve a actividad, el
+usuario pulsó usar imagen pero no la tomó». Apretó «Sí, usarla», la imagen se veía
+en el formulario, y al reabrir la actividad **el campo «Flyer e imágenes» está
+vacío**.
+
+**Lo que se descartó en la sesión del 2026-09-23, con la cadena corrida de punta a
+punta y todo en verde.** Queda escrito porque es la mitad del trabajo y sin esto
+la próxima sesión lo repite:
+
+- `PropuestasPanel.convertir` promueve y manda la imagen en `copia.imagenes`, con
+  `portada: true` — ya cubierto por `tests/propuestas-panel.render.test.tsx`;
+- `ActividadFormulario` montado con esa `copia` llega a `guardarActividad` con la
+  imagen puesta (montado de verdad, no leyendo el fuente);
+- `guardarActividad` la pasa a `crearActividad` y el schema no la rechaza;
+- `formADocumento` la escribe, con y sin `ancho`/`alto`;
+- `documentoAForm`/`imagenesDe` la leen de vuelta;
+- ninguna Function escribe `imagenes` de `/actividades`: el trigger de aceptación
+  borra el **original** en `propuestas/` y verifica antes la copia (B-863), y el
+  barrido de huérfanas tiene 72 horas de gracia.
+
+**O sea que falta evidencia de runtime**, que es lo único que la sesión no pudo
+conseguir: si `promoverImagenDePropuesta` falló de verdad —`getDownloadURL`, el
+`fetch` del objeto, el re-saneado del cliente sobre un archivo que el servidor ya
+saneó— la conversión **sigue igual** y el motivo va a un aviso arriba del
+formulario («La imagen que mandaron no se pudo traer (…). La actividad se abre sin
+ella»). Ese aviso es hoy un párrafo entre otros y puede pasar desapercibido, que
+es justo lo que haría que el modo de falla se lea como «no la tomó».
+
+**Próximo paso:** reproducir contra los emuladores con la consola abierta y mirar
+(a) si el aviso aparece y con qué causa, y (b) qué tiene `imagenes` en el
+documento recién creado. Según qué conteste, el arreglo es el fallo de Storage o
+—si el documento sí la tiene— la lectura al reabrir. **Y en cualquiera de los dos
+casos entra además hacer el fallo imposible de ignorar:** hoy, si la promoción no
+sale, lo que queda es una actividad sin flyer y un original huérfano que nadie
+barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
+
 ### B-930 · Con App Check exigiendo, un token que no llega se lee como «no hay internet» — y nadie se entera de cuál de las dos es · P1 — reportado por el dueño (2026-09-15)
 
 > 🟡 **Pasos 1 y 2 hechos (2026-09-23), queda el 3.** El panel pide el token de

@@ -22,6 +22,7 @@ import {
   aPiezas,
   aReloj12,
   de12A24,
+  horaTipeadaEn12,
   dePiezas,
   ecoDeFechaYHora,
   partesDeDatetimeLocal,
@@ -46,6 +47,57 @@ const almacenFalso = (inicial: Record<string, string> = {}) => {
     },
   };
 };
+
+describe('lo que se tipea en la cajita de la hora — B-1234', () => {
+  /**
+   * El reporte del dueño: «escribo 20 y sigue saliendo 2». Lo que pasaba era
+   * peor que no aceptar el 20: `dePiezas` devolvía `''` y **la fecha entera se
+   * vaciaba en silencio**, con la cajita mostrando `20` como si estuviera
+   * cargada. Ni rechazaba, ni convertía, ni avisaba.
+   *
+   * MUTACIÓN PROBADA: devolviendo siempre `{ hora: texto, meridiano }`, los dos
+   * primeros casos se ponen rojos.
+   */
+  it('una hora de 24 se entiende: 20 es 8 PM', () => {
+    expect(horaTipeadaEn12('20', 'AM')).toEqual({ hora: '8', meridiano: 'PM' });
+    expect(horaTipeadaEn12('13', 'AM')).toEqual({ hora: '1', meridiano: 'PM' });
+    expect(horaTipeadaEn12('23', 'AM')).toEqual({ hora: '11', meridiano: 'PM' });
+  });
+
+  it('y la medianoche también, que es el borde que se escribe mal', () => {
+    // `00` es 12 AM, no «0 AM»: el mismo borde que `aReloj12` ya cuida.
+    expect(horaTipeadaEn12('00', 'PM')).toEqual({ hora: '12', meridiano: 'AM' });
+  });
+
+  it('una hora que el reloj de 12 sí sabe decir no toca el AM/PM elegido', () => {
+    /*
+     * La mitad que evita que el arreglo moleste: quien tenía PM y retipea `10`
+     * quiere las diez de la noche. Convertir acá lo mudaría a la mañana en
+     * silencio, que es la misma clase de bug que este ítem vino a cerrar.
+     */
+    expect(horaTipeadaEn12('10', 'PM')).toEqual({ hora: '10', meridiano: 'PM' });
+    expect(horaTipeadaEn12('05', 'PM')).toEqual({ hora: '05', meridiano: 'PM' });
+    expect(horaTipeadaEn12('12', 'AM')).toEqual({ hora: '12', meridiano: 'AM' });
+  });
+
+  it('con un solo dígito no se decide nada todavía', () => {
+    /*
+     * Es lo que deja tipear `12` sin que el `1` se vuelva otra cosa a mitad de
+     * camino, y lo que evita que el `0` de `05` se convierta en `12 AM` y le
+     * coma el lugar al `5` (la cajita admite dos dígitos).
+     */
+    expect(horaTipeadaEn12('1', 'AM')).toEqual({ hora: '1', meridiano: 'AM' });
+    expect(horaTipeadaEn12('0', 'AM')).toEqual({ hora: '0', meridiano: 'AM' });
+    expect(horaTipeadaEn12('', 'PM')).toEqual({ hora: '', meridiano: 'PM' });
+  });
+
+  it('un typo no se inventa: 25 no es ninguna hora y queda como está', () => {
+    // El campo no compone y el schema lo cobra como fecha faltante. Convertirlo
+    // sería adivinar sobre algo que no tiene lectura.
+    expect(horaTipeadaEn12('25', 'AM')).toEqual({ hora: '25', meridiano: 'AM' });
+    expect(horaTipeadaEn12('99', 'PM')).toEqual({ hora: '99', meridiano: 'PM' });
+  });
+});
 
 describe('el reloj de 12 y sus dos bordes', () => {
   it('la medianoche es 12 AM y el mediodía es 12 PM, no «0»', () => {

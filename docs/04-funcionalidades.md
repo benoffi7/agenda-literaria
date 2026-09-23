@@ -1590,10 +1590,17 @@ mismo `Timestamp` de siempre (trampa 1). Esa composición vive en
 `src/lib/formatoDeHora.ts`, pura y con test, y no adentro del JSX: con un control
 propio, escribir texto donde va un `Timestamp` deja de ser difícil.
 
-Y **una hora fuera de rango no se recorta**: si se tipea `13` en AM/PM el campo
-queda sin valor, que es lo que el schema ya lee como «falta». Un `13` que se
-convierte solo en `1 PM` mientras alguien escribe cambia lo que la persona puso
-sin avisarle.
+Y **una hora de 24 tipeada acá se entiende**: `20` queda `8` con el desplegable
+en PM (B-1234, **D-803**). Quien usa el panel viene de cargar en 24 horas, así
+que lo tipea de memoria. Hasta ese ítem el segundo dígito sacaba la hora de rango
+y el campo **se vaciaba entero en silencio** —la cajita seguía mostrando `20`, el
+eco desaparecía, y lo que se guardaba era un encuentro sin fecha—, que es el
+reporte con el que el dueño lo encontró: «escribo 20 y sigue saliendo 2». La
+conversión espera a que estén los dos dígitos, y el AM/PM elegido **solo se pisa
+cuando el número no es una hora de reloj**: `20` es PM y no tiene otra lectura,
+pero `10` con PM puesto son las diez de la noche y se queda así. Lo que no es
+ninguna hora —un `25`— queda tal cual y el campo sigue sin valer, que es lo que
+el schema lee como «falta».
 
 La elección se recuerda en el navegador (`agenda:formato-de-hora`), con la misma
 consecuencia que la de arriba: es por navegador y no por persona, y eso se dice

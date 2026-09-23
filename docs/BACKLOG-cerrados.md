@@ -14843,6 +14843,35 @@ documento», o el párrafo que diga por qué no. Lo que no puede quedar es sin
 decidir: cuando `/guia` tenga párrafos de verdad va a ser la página que presenta
 tres directorios cargados con datos de terceros.
 
+### B-1234 · «Escribo 20 y sigue saliendo 2»: el campo de hora en AM/PM se vaciaba en silencio · P1 — reportado por el dueño (2026-09-23) — ✅ hecho (2026-09-23)
+
+**El reporte, tal cual:** «y con el selector am/pm paso esto: "Escribo 20 y sigue
+saliendo 2"». Quien carga viene de tipear en 24 horas, así que escribe `20` de
+memoria en el control de 12 que el propio dueño pidió (B-889, D-720).
+
+**Lo que pasaba era peor que no aceptarlo.** `dePiezas` devuelve `''` para
+cualquier hora fuera de 1..12, así que el segundo dígito **vaciaba la fecha
+entera**: la cajita seguía mostrando `20`, el eco de abajo desaparecía y hacia
+afuera el encuentro se quedaba sin fecha. Ni rechazaba, ni convertía, ni avisaba.
+Reproducido montado antes de tocar nada.
+
+**El arreglo:** `horaTipeadaEn12` (`src/lib/formatoDeHora.ts`), pura y con test,
+cableada en la cajita de la hora de `CampoDeFechaYHora`. Con los dos dígitos
+puestos, `0` y `13..23` se leen como hora de 24 y se convierten al reloj de 12 con
+su meridiano (`20` → `8` + PM); una hora que el reloj de 12 sí sabe decir **no
+toca el AM/PM elegido** (con PM puesto, `10` son las diez de la noche); `24..99`
+queda tal cual, porque es un typo y no una hora en otro formato.
+
+**Es un desvío de lo que D-720 dejó escrito, y por eso hay decisión nueva:
+D-803.** El criterio anterior —«una hora fuera de rango no se recorta»— estaba
+argumentado y resultó falso por lo que no se veía: el «campo que todavía no vale»
+se veía cargado.
+
+Tests: cinco casos puros en `tests/formato-de-hora.test.ts` y dos montados en
+`tests/campo-de-fecha-y-hora.render.test.tsx`. El caso «hora inválida a medio
+tipear» de ese archivo usaba `13` de ejemplo y ahora usa `25`: el cambio de
+ejemplo es la prueba de que este ítem hizo lo que dice.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
