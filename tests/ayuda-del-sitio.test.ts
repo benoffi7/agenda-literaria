@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import opcionesBase from '@/lib/opciones-base.json';
+import { hayBoletin } from '@/lib/boletinDelSitio';
 import * as RUTAS from '@/lib/rutasPublicas';
 import {
   CIERRE_DE_AYUDA,
@@ -412,5 +413,26 @@ describe('la ayuda del sitio público — B-232', () => {
       (p) => p.id,
     );
     expect(incrustados, 'estas preguntas están pegadas en el marcado').toEqual([]);
+  });
+});
+
+describe('la respuesta del correo dice lo que Mailchimp registra — D-802', () => {
+  it('si hay correo, nombra las aperturas y los clics', () => {
+    /*
+     * DEC-14: el seguimiento de la campaña queda prendido, y la promesa que solo
+     * nombra la dirección es más angosta que la realidad (la clase de B-781). La
+     * de `/suscribirse` la fija `tests/boletin-del-sitio.test.ts`; ésta es la
+     * misma promesa en otra salida, y sin su propio caso volvía a angostarse sin
+     * que nada se pusiera rojo — lo señaló el `auditor-privacidad`.
+     *
+     * MUTACIÓN PROBADA: sacar la frase de la respuesta `suscribirme` deja este
+     * caso en rojo.
+     */
+    expect(hayBoletin(), 'la lista está encendida (B-1231)').toBe(true);
+    const texto = PREGUNTAS_DE_AYUDA.find((p) => p.id === 'suscribirme')!
+      .respuesta.join(' ')
+      .toLowerCase();
+    expect(texto).toMatch(/abr[íi]s cada correo/);
+    expect(texto).toMatch(/clic/);
   });
 });

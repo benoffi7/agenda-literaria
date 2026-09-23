@@ -12324,3 +12324,35 @@ la sesión y las reglas— y sería peor por dos motivos, en este orden:
 > siete minutos (§8). La pantalla lo dice con la fecha de generación en vez de
 > dejarlo implícito — una actividad guardada recién no está ahí, y quien arma el
 > correo tiene que saberlo antes de extrañarla.
+
+## D-802 · El correo registra aperturas y clics, y la promesa lo dice
+
+**DEC-14, 2026-09-23.** Decisión del dueño: «sí, necesitamos saber qué links
+abre». Mailchimp trae prendidos por defecto el **píxel de apertura** y la
+**reescritura de cada enlace** atada al suscriptor, y se quedan prendidos
+(*Track opens* y *Track clicks* en la configuración de cada campaña).
+
+**Lo que eso obliga a cambiar es la promesa, no el código.** Con el seguimiento
+prendido, Mailchimp registra conducta de una persona identificada por su
+dirección: qué correos abre y en qué actividades hace clic. La promesa
+`donde-queda` de `/suscribirse` decía solo que Mailchimp recibe **la dirección**,
+que es más angosta que la realidad —la clase de B-781, falsa por lo que omite—.
+Ahora lo dice, y también la respuesta del correo en `/ayuda` y «Quién hace
+esto» de `/apoyar`, que ponía el correo pegado a «lo único que se mide» (lo
+encontró el `auditor-privacidad`). Y dice que **nosotros lo vemos**: el informe
+de campaña muestra la actividad por suscriptor, no un conteo.
+
+**Por qué no apagarlo:** es la única forma de saber si el correo le sirve a
+alguien, y un canal sin esa señal no se puede mejorar. El proyecto ya eligió dos
+veces decir la incomodidad en vez de esconderla —el banner de cookies (D-252) y
+«tu dirección la recibe Mailchimp»—, y ésta es la tercera.
+
+**Lo que ningún test sostiene:** que las dos casillas estén como la página dice.
+Es configuración de Mailchimp, la clase del doble opt-in y de B-480. Lo que sí
+queda atado es el texto: `tests/boletin-del-sitio.test.ts`,
+`tests/ayuda-del-sitio.test.ts` y `tests/apoyo-del-sitio.test.ts` exigen que las
+tres promesas nombren las aperturas y los clics.
+
+**Lo que no cambia:** si se prende además el «Google Analytics link tracking»,
+los `utm_*` no llegan a GA4, porque `ubicacionSinQuery` recorta la query del
+`page_location` y del `page_referrer` (salida 12).

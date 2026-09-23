@@ -149,7 +149,7 @@ export const QUIEN_LA_HACE: BloqueDeApoyo = {
       'entra — con Google Analytics, y solo si lo aceptás.' +
       (hayBoletin()
         ? ' Hay un correo semanal, y anotarse es decisión tuya: esa lista la maneja Mailchimp, ' +
-          'que es quien lo manda.'
+          'que es quien lo manda y registra si abrís cada correo y en qué enlaces hacés clic.'
         : ''),
     'Empezó porque me perdí un taller que quería hacer. Estaba anunciado en una historia de ' +
       'Instagram que duró un día y me enteré tres semanas después, cuando ya había empezado. Eso ' +

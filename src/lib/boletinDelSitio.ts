@@ -143,7 +143,9 @@ export const EL_TRATO: Record<IdDelTrato, TratoDelBoletin> = {
       'La lista vive en Mailchimp, una empresa de Estados Unidos: tu dirección se la das a ella ' +
       'al anotarte, y es ella la que la tiene. Acá no queda: este sitio no tiene dónde guardar ' +
       'la dirección de nadie. Es lo único tuyo que sale de acá, además de lo que se mide con tu ' +
-      'permiso y que te cuenta el aviso de abajo.',
+      'permiso y que te cuenta el aviso de abajo. Y Mailchimp, además, registra si abrís cada ' +
+      'correo y en qué enlaces hacés clic, y nosotros lo vemos: es lo que nos dice si el ' +
+      'correo le sirve a alguien.',
   },
   'como-te-vas': {
     id: 'como-te-vas',

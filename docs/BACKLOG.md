@@ -111,51 +111,8 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Decisiones pendientes del usuario
 
-### DEC-14 · ¿El correo registra quién lo abrió y qué clickeó? · P1 — del `auditor-privacidad` sobre B-1231 (2026-09-23)
-
-**Sale de encender la lista, y es una decisión y no un bug.** Mailchimp trae
-prendidos por defecto dos registros en cada campaña: el **píxel de apertura** y
-la **reescritura de cada link** —cada `urlDeDetalle` del correo pasa a ser una
-URL de Mailchimp atada al suscriptor—. Con eso, el primer envío empieza a
-registrar **conducta de una persona identificada por su dirección de mail**: qué
-correos abre y en qué actividades hace clic.
-
-**Lo que lo hace una decisión y no un arreglo:** es exactamente para lo que sirve
-una lista de correo, es lo que hace posible saber si el correo le sirve a alguien,
-y es el default de la herramienta. Nadie lo hizo mal.
-
-**Y lo que lo hace P1:** la promesa `donde-queda` de `/suscribirse`
-(`src/lib/boletinDelSitio.ts`) dice que Mailchimp recibe **la dirección**. No dice
-que además registre qué abrió y qué clickeó. Es más angosta que la realidad, en
-HTML indexado, y es la clase exacta de B-781 — la promesa que nace falsa por lo
-que omite, no por lo que afirma. El sitio hoy es explícito hasta la incomodidad
-sobre qué se mide y con qué permiso (el banner, D-252); esto quedaría afuera de
-esa cuenta.
-
-**Las dos salidas, y las dos son legítimas:**
-
-1. **Dejarlo prendido y decirlo.** Una frase más en `donde-queda`: «Mailchimp
-   también registra si abrís el correo y en qué hacés clic». Cuesta un renglón y
-   deja la promesa cierta.
-2. **Apagarlo** (Campaign → Settings → destildar *Track opens* y *Track clicks*).
-   Se pierde saber si el correo sirve, que es lo único con lo que se lo puede
-   mejorar.
-
-**Recomiendo la 1.** Este proyecto ya eligió dos veces decir la incomodidad en vez
-de esconderla —el banner de cookies y la frase «tu dirección la recibe
-Mailchimp»—, y apagar la medición del único canal que tiene lector deja al correo
-sin forma de saber si vale la pena mandarlo.
-
-**Configuración y no código: ningún test lo puede sostener**, igual que el doble
-opt-in y que los interruptores de B-480. Lo que sí queda atado es la promesa: si
-se elige la 1, la frase nueva entra en `EL_TRATO` y `tests/boletin-del-sitio.test.ts`
-la exige como exige las otras cinco.
-
-> **Lo que sí está cerrado por código**, y conviene que quede dicho para que nadie
-> lo vuelva a mirar: si se prende además el «Google Analytics link tracking» de la
-> campaña, los `utm_*` que Mailchimp pega en la URL **no** llegan a GA4 —
-> `ubicacionSinQuery` recorta la query del `page_location` **y** del
-> `page_referrer` (salida 12). Ese lado no depende de ninguna casilla.
+**No queda ninguna decisión del dueño pendiente.** DEC-14 se resolvió el
+2026-09-23 (D-802) y pasó a [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md).
 
 Nada de esto se puede avanzar sin respuesta. Están primero porque bloquean
 trabajo.
@@ -210,45 +167,27 @@ Resueltas el 2026-08-21:
 | DEC-5 | Eventos de prueba en el calendario | los borra el usuario |
 | DEC-2 | `arancel` preseleccionaba "Gratis" | **obliga a elegir** → implementado (D-16) |
 
+
 ---
 
 ## Pendiente de acción manual del dueño
 
-### ✅ hecho (verificado el 2026-09-23) — Sembrar `tipo-biblioteca` en producción
+### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3
 
-**Ya estaba sembrado cuando se corrió, y el ítem había quedado viejo.** El dueño
-corrió `npm run opciones:sembrar:prod` el 2026-09-23 y las 18 taxonomías
-—`tipo-biblioteca` incluida— respondieron «ya existía, no se toca»: alguien lo
-había sembrado antes sin cerrar esto. Lo confirman los dos deploys por `push` del
-mismo día (`Deploy desde main`, corridas 35877022796 y 35898746211), los dos
-verdes. Lo que sigue es el texto original.
-
-**Un comando, y es de quien tiene las credenciales de producción** (§5.4: un
-agente no las toca):
-
-```bash
-npm run opciones:sembrar:prod
-```
-
-Crea **solo los documentos que faltan** y no pisa lo que alguien haya creado con
-«Otro». El rebuild del sitio se dispara solo al escribir en `/opciones/*`
-(trampa 8), así que los chips aparecen en la corrida siguiente.
-
-**Qué está pasando mientras tanto:** `/opciones/tipo-biblioteca` no existe en la
-base, así que el desplegable «tipo de biblioteca» sale vacío en el formulario
-público de `/guia/bibliotecas/sumar` y en los chips del sitio. En el **panel** se
-ve bien —`leerOpciones` cae de vuelta a `opciones-base.json`—, que es justamente
-lo que hizo que nadie lo notara con las otras doce taxonomías (B-973).
-
-Y **el deploy por `push` a `main` viene fallando por esto desde que entró
-bibliotecas**; el sitio se publicó igual porque el otro camino no corre el
-chequeo, que es **B-1139**.
-
-
-Código terminado, no se puede avanzar sin credenciales que un agente no debe
-crear ni ver (§5.4).
-
-### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? · P3 — solo se ve en el panel
+> **Mirado el 2026-09-23 contra el `events.json` publicado** (generado 17:58 UTC,
+> 335 actividades), que trae la sede proyectada y se lee sin credenciales:
+>
+> | Actividad | Hoy dice (barrio · ciudad · provincia) | Estado |
+> |---|---|---|
+> | [Club de lectura - «Basura»](https://agendaleh.ar/actividad/club-de-lectura-basura) | `provincia-de-buenos-aires` · `caba` · `caba` | ❌ el barrio sigue siendo una provincia |
+> | [FINDE - Feria de editores independientes](https://agendaleh.ar/actividad/finde-feria-de-editores-independientes) | `palermo` · `avellaneda` · `buenos-aires` | ❌ Palermo es CABA, Avellaneda no |
+> | [ESCRITURAS DEL MUNDO -Presencial](https://agendaleh.ar/actividad/club-de-lectura-escrituras-del-mundo-presencial) | — · `caba` · `caba` | 🟡 ya tiene ciudad; en CABA falta el barrio, que es lo único que se muestra |
+> | [Lectura y análisis de Mariana Pineda](https://agendaleh.ar/actividad/lectura-y-analisis-de-mariana-pineda) | `rosario` · `rosario` · `santa-fe` | 🟡 ciudad y provincia bien; queda `barrio=rosario`, un sobrante que fuera de CABA no se muestra |
+> | Club de lectura La Fonseca | `caballito` · `caba` · `caba` | ✅ corregida |
+>
+> Las dos ❌ son ediciones en el panel: elegir el barrio de CABA que corresponda
+> en «Basura», y en FINDE decidir si la feria es en Palermo o en Avellaneda. El
+> texto original queda abajo.
 
 **Sobrante declarado adentro de B-976** (la migración de `/opciones/barrio`, ✅
 2026-09-17): su propio título dice «quedan 5 a mano», y lista cinco actividades
@@ -268,116 +207,6 @@ posterior (`sembrar-geografia.mjs`). No son las mismas cinco.
 **Qué hacer:** mirar en el panel si esas cinco fichas siguen cruzadas. Si ya
 están, esto se cierra con una línea; si no, son cinco ediciones. Lo que no puede
 seguir es que nadie sepa cuál de las dos es.
-
-### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** · P1
-
-**Los dos primeros pasos están hechos el 2026-09-09**, y el que faltaba lo hizo
-el dueño: creó la clave de sitio de **reCAPTCHA Enterprise** y registró la app
-web en App Check. Con la clave en mano se cableó el cliente en el mismo día
-(`src/lib/appcheck.ts`, llamado desde `app()`). La forma completa —proveedor,
-costo, modo de falla y lo que **no** va— está en
-[`02-infraestructura.md`](02-infraestructura.md) → «App Check».
-
-**Y era Enterprise, no v3 clásico.** La primera versión de este ítem decía
-«reCAPTCHA v3» porque era lo que se asumió. No son intercambiables: cada
-proveedor valida contra un servicio distinto, así que con `ReCaptchaV3Provider`
-el token se rechazaría — y ese error **no se ve hasta que el enforcement está
-activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
-
-**Lo que sí está hecho, y en qué orden se hizo:**
-
-1. ✅ **Consola** — clave de sitio de reCAPTCHA Enterprise (score-based) + app web
-   registrada en App Check. Queda en «no exigido»: se mide, no se rechaza.
-2. ✅ **Código** — `src/lib/appcheck.ts` con `ReCaptchaEnterpriseProvider`,
-   activado desde `app()` de `firebase-client.ts` para que esté inicializado
-   **antes de la primera llamada a Firestore**. La clave va en
-   `PUBLIC_RECAPTCHA_SITE_KEY` (`.env.production`), pública por diseño.
-
-**Lo que falta, y los tres son del dueño:**
-
-3. ✅ **Verificar los dominios permitidos de la clave** — hecho el 2026-09-10, **y
-   estaba mal**: la lista tenía los dos nombres propios (`agendaleh.ar`,
-   `agendaleh.com.ar`) y **le faltaban los dos de Firebase Hosting**. Con el
-   enforcement puesto, entrar al panel por `agenda-literaria.web.app` —que según
-   `02-infraestructura.md` «no se apaga nunca»— habría dejado de poder escribir, y
-   habría fallado como «el panel no guarda» y no como «App Check te rechazó».
-   Corregido a los cuatro, con `allowAllDomains: false` e `integrationType: SCORE`
-   confirmados. El detalle —por qué van con el nombre completo del sitio y nunca
-   `web.app` pelado, y por qué el comando necesita `--web`— está en
-   `02-infraestructura.md` → «App Check». Era el paso del que
-   depende que todo esto sirva. La clave de sitio es pública y viaja en el bundle,
-   así que lo único que impide que un script la use desde su propia página es esa
-   lista. Sin ella, App Check deja de frenar «al script que no pasa por la
-   página» —lo único que hace— y encima le consume la cuota facturable de
-   Enterprise. Lo señaló el `auditor-privacidad`, y es la clase de B-773: es
-   configuración, así que **ningún test lo sostiene**.
-
-   ```sh
-   gcloud recaptcha keys describe <clave> --project agenda-literaria
-   ```
-
-   `webSettings.allowedDomains` tiene que listar los **cuatro** nombres que sirven
-   el sitio —`agendaleh.ar`, `agendaleh.com.ar` y los dos de Firebase Hosting— y
-   nada más. Que sean cuatro y no tres es lo que la primera versión de este paso
-   no había previsto: el alias `.com.ar` también sirve el mismo HTML.
-4. ✅ **Publicar** — hecho el 2026-09-10. Eran **44 commits** desde el 2026-09-08:
-   producción venía de antes de todo el cableado, así que publicar App Check fue
-   publicar también la bandeja, la retención, `/proponer` y las dos tandas enteras.
-   El gate de pre-push y los seis jobs del workflow pasaron.
-5. 🔸 **Verificar que llegan peticiones verificadas.** La mitad mecánica está
-   hecha el 2026-09-10, contra el bundle de producción, y descarta los tres modos
-   de falla silenciosa: el chunk publicado tiene la clave inlineada, la pasa
-   `app()` a `activarAppCheck` con `usarEmuladores: false`, y el script que
-   referencia es `recaptcha/enterprise.js` y no el `api.js` del v3 clásico. O sea
-   que no es `sin-clave`, no es `emuladores` y no es el proveedor equivocado.
-
-   **La otra mitad es del dueño y no se puede saltear**: la consola de Firebase es
-   lo único que dice si los tokens **llegan y se aceptan**, y necesita tráfico real
-   —entrar al panel y guardar algo—. Lo que hay que ver antes del paso 6 es que las
-   peticiones propias figuren como **verificadas**; exigir con la consola en cero
-   deja el panel sin poder escribir y el diagnóstico cuesta arriba.
-
-   De verificar esto a mano salió **B-868**: nada en el repo sostiene que el
-   artefacto construido lleve App Check.
-6. 🔸 **Exigir — Firestore hecho el 2026-09-10, Storage pendiente y a propósito.**
-   `firestore.googleapis.com` quedó en `ENFORCED` a las 17:42 UTC, con el panel
-   verificado inmediatamente después: entra, lee y guarda. `identitytoolkit`
-   (Auth) **no se exige** —está en versión preliminar y si algo sale mal el que no
-   puede entrar al panel es el dueño— y `firebasestorage` **tampoco todavía**: su
-   métrica marcaba **1% verificado**, y hay que entender qué es ese 99% antes de
-   tocarlo. La sospecha es que son las lecturas públicas de imágenes por URL de
-   descarga —un GET anónimo del navegador, que no lleva token—, y si el
-   enforcement las bloqueara **se caen todas las fotos del sitio**. Eso se
-   averigua antes y no después: es **B-872**.
-
-   El paso 1 se cerró con la prueba directa y no con la métrica: el registro de
-   `firebase-app-check-database` en el navegador tenía un token para la app
-   `…5b52810e`, emitido 17:32 y vencido 18:32 — exactamente el `tokenTtl: 3600s`
-   configurado. Un token no existe si Firebase rechazó el desafío, así que eso es
-   la verificación entera. La métrica de la consola, en cambio, **nunca va a
-   llegar a 100%**: el build y las Functions leen con el Admin SDK, que no pasa
-   por App Check y que el enforcement tampoco bloquea.
-
-   Al revés del orden, **el panel deja de poder escribir**: sus
-   peticiones tampoco traen token y las reglas ni se evalúan.
-
-**Dos cosas que cambiaron respecto de cómo estaba escrito este ítem:**
-
-- **El token de debug para los emuladores no hace falta**, y es mejor así. Los
-  emuladores **no verifican** App Check, así que `appcheck.ts` no lo activa
-  cuando `PUBLIC_USE_EMULATORS=true`. Con eso la suite de integración no depende
-  de un tercero para correr, que es lo que un token de debug hubiera dejado a
-  medias.
-- **Enterprise tiene su propia cuota facturable** arriba del free tier, aparte de
-  Firebase. Entra en el budget alert del §2.3, y el volumen de un formulario
-  público es chico — el de un script que lo abusa, no.
-
-**Y no reemplaza a las otras cuatro capas de B-836** (validación en la regla,
-topes de tamaño y forma, honeypot, barrido programado): App Check frena al script
-que no pasa por la página, y es la única de las cinco que depende de un tercero
-—si reCAPTCHA no responde y el enforcement está activo, no se puede escribir—.
-Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
-`activarAppCheck` no propaga la excepción.
 
 ---
 

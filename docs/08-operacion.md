@@ -2417,6 +2417,13 @@ tener presente al hacerlos:
   el 2026-09-23. Cuando se confirme, la casilla de acá pasa a `✅ verificado en la
   consola el AAAA-MM-DD`, que es el formato que usó B-480 y lo único que este
   repo puede registrar de un ajuste que no puede leer.
+- **El seguimiento de aperturas y clics va prendido** (*Track opens* y *Track
+  clicks* en cada campaña) — **D-802**. Es el default de Mailchimp y es lo que
+  la promesa dice desde el 2026-09-23 en **tres** lugares: `donde-queda` de
+  `/suscribirse` (`boletinDelSitio.ts`), la pregunta `suscribirme` de `/ayuda`
+  (`ayudaDelSitio.ts`) y «Quién hace esto» de `/apoyar` (`apoyoDelSitio.ts`).
+  Si algún día se apaga, hay que sacar la frase de los tres en el mismo cambio:
+  una promesa que dice de más también es falsa.
 - **Y hay un segundo ajuste de consola, que no es de Mailchimp sino de GA4:
   apagar «Interacciones con formularios».** Es el **cuarto** interruptor del
   Enhanced Measurement y el único que B-480 no apagó, porque hasta ahora el

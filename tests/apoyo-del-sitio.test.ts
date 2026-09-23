@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { hayBoletin } from '@/lib/boletinDelSitio';
 import { CAFECITO, urlDeCafecito } from '@/lib/enlaces';
 import { RUTA_APOYAR } from '@/lib/rutasPublicas';
 import { RUTAS_FIJAS } from '@/lib/sitemap';
@@ -500,5 +501,24 @@ describe('es texto libre en una salida pública (§5.1)', () => {
     // comparando dos listas vacías.
     expect(/[\w.+-]+@[\w-]+\.[\w.]+/.test('escribinos a hola@ejemplo.com')).toBe(true);
     expect(/zoom\.us/i.test('https://zoom.us/j/123')).toBe(true);
+  });
+});
+
+describe('si nombra el correo, dice lo que Mailchimp registra — D-802', () => {
+  it('«Quién hace esto» nombra las aperturas y los clics del correo', () => {
+    /*
+     * La frase del correo va pegada a «lo único que se mide es cuánta gente
+     * entra — solo si lo aceptás». Con el seguimiento de la campaña prendido
+     * (DEC-14), a quien se anota también se le mide si abre cada correo y en qué
+     * enlaces hace clic, y eso no pasa por el banner. Lo encontró el
+     * `auditor-privacidad`: ningún test nombraba esta exclusividad.
+     *
+     * MUTACIÓN PROBADA: volver a «…que es quien lo manda.» deja este caso en rojo.
+     */
+    expect(hayBoletin(), 'la lista está encendida (B-1231)').toBe(true);
+    const texto = QUIEN_LA_HACE.parrafos.join(' ').toLowerCase();
+    expect(texto).toContain('mailchimp');
+    expect(texto).toMatch(/abr[íi]s cada correo/);
+    expect(texto).toMatch(/clic/);
   });
 });

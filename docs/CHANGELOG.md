@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **La promesa del correo dice que Mailchimp registra aperturas y clics** —
+  DEC-14 resuelta (**D-802**). El dueño eligió dejar prendido el seguimiento de
+  la campaña para saber qué enlaces se abren; `/suscribirse`, `/ayuda` y
+  `/apoyar` ahora lo dicen, en vez de nombrar solo la dirección. `/apoyar` lo
+  encontró el `auditor-privacidad`: ponía el correo pegado a «lo único que se
+  mide». Tres tests exigen la frase.
+
 - **`tipo-biblioteca` ya estaba en producción** — el pendiente manual que decía que
   bloqueaba el deploy por `push` desde el 2026-09-17 había quedado viejo. Correr el
   sembrado dio «ya existía» en las 18 taxonomías, y los deploys por `push` del

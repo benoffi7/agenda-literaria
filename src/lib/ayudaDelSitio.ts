@@ -437,7 +437,8 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
                   'un mail para confirmar antes de que quedes anotado, y cada envío trae el ' +
                   'enlace para darte de baja. Una aclaración que corresponde: la lista la maneja ' +
                   'Mailchimp, una empresa de Estados Unidos, así que tu dirección la recibe ella ' +
-                  'y no este sitio.',
+                  'y no este sitio, y ella registra si abrís cada correo y en qué enlaces hacés ' +
+                  'clic.',
               ]
             : []),
         ],

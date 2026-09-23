@@ -207,6 +207,10 @@ Las tres cosas que hacen que eso sea sostenible, y ninguna es opcional:
    recibe Mailchimp** y cómo se sale. `tests/boletin-del-sitio.test.ts` exige
    las cinco, y exige además que el texto **no** diga «tu dirección no sale de
    acá», que es la mentira cómoda de esta pantalla y la clase exacta de B-781.
+   Desde **D-802** (DEC-14) la de Mailchimp dice además que **registra si abrís
+   cada correo y en qué enlaces hacés clic**: el seguimiento de aperturas y
+   clics de la campaña queda prendido a propósito, y la promesa no puede ser más
+   angosta que eso. El test exige también esa frase.
 
 **La cadencia dice el ritmo y nombra la excepción, y eso es una decisión de
 redacción.** El dueño pidió «al menos una vez por semana»; un **piso** se

@@ -307,6 +307,24 @@ describe('las cinco promesas del trato están, y dicen lo que existen para decir
     );
   });
 
+  it('dice que Mailchimp registra las aperturas y los clics — DEC-14', () => {
+    /*
+     * **Decisión del dueño, 2026-09-23: el seguimiento queda prendido**
+     * («necesitamos saber qué links abre»). Mailchimp registra por defecto el
+     * píxel de apertura y reescribe cada enlace atado al suscriptor, así que la
+     * promesa que solo nombra «la dirección» es más angosta que la realidad —
+     * la clase de B-781, falsa por lo que omite—. La casilla vive en la consola
+     * de Mailchimp y ningún test la sostiene; lo que sí queda atado es que la
+     * promesa lo diga.
+     *
+     * MUTACIÓN PROBADA: sacar la última frase de `donde-queda` deja este caso
+     * en rojo.
+     */
+    const texto = EL_TRATO['donde-queda'].texto.toLowerCase();
+    expect(texto, 'no dice que registra si abrís el correo').toMatch(/abr[íi]s/);
+    expect(texto, 'no dice que registra en qué enlaces hacés clic').toMatch(/clic/);
+  });
+
   it('si dice «lo único», nombra también lo que el sitio mide con permiso', () => {
     /*
      * **Lo encontró el `auditor-privacidad` sobre este mismo cambio**, y es la
