@@ -13,6 +13,7 @@ import {
   enlaceDeImagen,
   esPendiente,
   estadoAlConvertir,
+  estadoAlVolverASinMirar,
   fraseDeFechaPropuesta,
   observarPropuestas,
   revisarPropuesta,
@@ -345,6 +346,15 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   const [fallo, setFallo] = useState<string | null>(null);
   /** Id de la que se está moviendo de estado, para no tocar el botón dos veces. */
   const [moviendo, setMoviendo] = useState<string | null>(null);
+  /*
+   * **B-1490 — el mismo corte que B-1461, para los movimientos de la ficha.** El
+   * `disabled={moviendo === p.id}` llega recién cuando React pinta, y dos clics en
+   * el mismo tick pasaban los dos: «Volver a sin mirar» escribía `nueva`, el
+   * segundo intentaba `nueva → nueva`, la regla lo rechazaba —bien— y la bandeja
+   * mostraba un fallo falso sobre un movimiento que sí había salido. Lo mismo con
+   * «La estoy mirando» y «Reabrir». El ref corta el segundo antes de escribir.
+   */
+  const moviendoAhora = useRef<string | null>(null);
   /** Id de la propuesta cuya imagen se está trayendo a la galería (paso 8). */
   const [promoviendo, setPromoviendo] = useState<string | null>(null);
   /*
@@ -431,6 +441,10 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
     estado: EstadoPropuesta,
     extras = {},
   ): Promise<boolean> => {
+    // El segundo clic no escribe ni avisa nada: el primero sigue en vuelo y es
+    // el que va a decir si salió.
+    if (moviendoAhora.current === p.id) return false;
+    moviendoAhora.current = p.id;
     setMoviendo(p.id);
     try {
       await revisarPropuesta(p.id, usuario.uid, estado, extras);
@@ -440,6 +454,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       setFallo(textoDeFallo(e, { respaldo: 'No se pudo actualizar la propuesta' }));
       return false;
     } finally {
+      moviendoAhora.current = null;
       setMoviendo(null);
     }
   };
@@ -1013,6 +1028,24 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                       className={`${claseBotonSecundario} disabled:opacity-50`}
                     >
                       {moviendo === p.id ? 'Guardando…' : 'La estoy mirando'}
+                    </button>
+                  )}
+                  {estadoAlVolverASinMirar(p.estado) !== null && (
+                    /*
+                     * **B-1490 — el deshacer de «La estoy mirando».** Hasta acá
+                     * la `en-revision` tenía un solo movimiento, «Rechazar», que
+                     * decide algo y borra la foto. Éste no decide nada ni toca la
+                     * foto; como todo movimiento firma `revision.en`, así que es
+                     * también la forma de renovarle el plazo a una que se está
+                     * por ir (lo que ofrece el aviso de B-1460).
+                     */
+                    <button
+                      type="button"
+                      onClick={() => void mover(p, estadoAlVolverASinMirar(p.estado)!)}
+                      disabled={moviendo === p.id}
+                      className={`${claseBotonSecundario} disabled:opacity-50`}
+                    >
+                      {moviendo === p.id ? 'Guardando…' : 'Volver a sin mirar'}
                     </button>
                   )}
                   {esPendiente(p) && (
