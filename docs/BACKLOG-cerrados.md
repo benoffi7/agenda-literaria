@@ -16050,6 +16050,49 @@ bucket. Sumar el paso a `08-operacion.md` y, a futuro, un chequeo de humo que ha
 `mail-de-aviso.sh`, tests…). Viene del commit `5888106 fix(D-88)` del 2026-09-17.
 Hay que reconstruirla desde ese commit o corregir las citas.
 
+### B-1237 · Un test de integración se pone rojo si el emulador de Functions está vivo, y es una carrera · P2 — medido (2026-09-24) — ✅ hecho (2026-09-24)
+
+**`tests/limpieza-versiones.test.ts`**, el caso «encuentra la referencia fantasma
+que deja borrar una actividad con versiones», afirma `quedaron.size === 1` después
+de borrar la actividad. Con el emulador de **Functions** levantado, el
+`onDocumentDeleted` de `historial-trigger.js` escribe la versión del `before`
+sobre la misma subcolección, así que hay **2**.
+
+**Y es una carrera, no un rojo estable**: el trigger es asíncrono, así que el
+resultado depende de si llegó a escribir antes del `get()`. Medido el 2026-09-24,
+tres corridas seguidas contra el mismo emulador: **verde, rojo, rojo**. Eso es
+peor que un rojo fijo — se lee como «algo raro pasó», se vuelve a correr y pasa.
+
+**Nada de esto es un bug de producción.** El trigger hace lo que debe (guardar el
+estado previo antes de que se pierda) y el barrido de B-89 encuentra igual la
+huérfana — el otro `expect` del mismo `it`, el que de verdad prueba la promesa de
+`listDocuments()`, pasa siempre. Lo que está mal escrito es la afirmación de al
+lado: cuenta documentos de una subcolección que tiene **dos** escritores y asume
+uno solo.
+
+**Por qué no se notaba:** `npm test` sin emuladores saltea el archivo entero, y con
+emuladores parciales (sin `functions`) no hay quién escriba la segunda. Apareció
+corriendo la suite con `EXIGIR_EMULADOR=1` y los cinco emuladores arriba, que es lo
+que hace el pre-push.
+
+**El arreglo** es del test, no del código: o afirmar sobre la versión que el test
+escribió (`v1` sigue ahí) en vez de sobre el tamaño, o esperar a que el trigger
+asiente. La primera es la que no vuelve a envejecer.
+
+**✅ Hecho (2026-09-24).** Se tomó la primera: el caso lee
+`versiones/v1` y afirma que existe, en vez de contar la subcolección. **Cinco
+corridas seguidas con Functions vivo dan verde**, contra el verde/rojo/rojo de la
+medición. Y la afirmación no quedó laxa: borrando `v1` antes de leerlo el caso se
+pone rojo (mutación probada, anotada en el propio test) — lo que se sacó no es
+rigor, es la parte que afirmaba de más.
+
+Se arregló además **la otra punta de la misma clase, que era nuestra**:
+`tests/propuesta-a-actividad.integracion.test.ts` borraba su actividad con un
+`delete()` pelado, y con Functions vivo eso dejaba la versión del historial como
+subcolección huérfana — basura que sobrevive al test y que **este mismo archivo**
+podría levantar como propia en la corrida siguiente. Ahora limpia con
+`recursiveDelete`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

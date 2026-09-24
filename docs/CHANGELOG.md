@@ -2,6 +2,19 @@
 
 ## Sin publicar
 
+- **El test que se ponía rojo según quién llegaba primero** — B-1237, ✅ hecho. El
+  caso de `limpieza-versiones` que verifica el fantasma de B-89 contaba los
+  documentos de `actividades/{id}/versiones` después de borrar la actividad, pero
+  esa subcolección tiene **dos** escritores: el test y el `onDocumentDeleted` del
+  historial. Con Functions vivo —o sea en el pre-push— eran dos, y como el trigger
+  es asíncrono el resultado dependía de la carrera: verde, rojo, rojo en tres
+  corridas. Ahora afirma que la versión que el test escribió sigue estando, que es
+  lo que B-89 promete de verdad; cinco corridas seguidas en verde, y con la
+  mutación probada anotada al lado para que no se lea como haber aflojado el test.
+  De paso, el test de conversión de propuestas pasó a limpiar con `recursiveDelete`:
+  con un `delete()` pelado dejaba una subcolección huérfana, que es exactamente la
+  clase que el otro archivo sale a buscar.
+
 - **La conversión de una propuesta con foto ya tiene red, y se probó entera**
   (B-1235). Faltaba la prueba, y faltaba porque no se podía escribir: ningún test
   ejecutaba `promoverImagenDePropuesta` —el panel la mockea, el borrado del

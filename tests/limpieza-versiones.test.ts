@@ -278,9 +278,31 @@ describe.skipIf(!vivo)('subcoleccionesHuerfanas contra el emulador (B-89)', () =
     const huerfanas: { id: string }[] = await subcoleccionesHuerfanas(db);
     expect(huerfanas.map((r) => r.id)).toEqual(['act_borrada']);
 
-    // Y la subcolección sigue ahí, que es exactamente lo que B-89 reporta.
-    const quedaron = await borrada.collection('versiones').get();
-    expect(quedaron.size).toBe(1);
+    /*
+     * Y la subcolección sigue ahí, que es exactamente lo que B-89 reporta.
+     *
+     * **Se afirma sobre el documento que este test escribió, no sobre cuántos
+     * hay** — B-1237. La versión anterior contaba (`quedaron.size === 1`) y eso
+     * convertía el caso en una carrera: `actividades/{id}/versiones` tiene **dos**
+     * escritores, y el segundo es el `onDocumentDeleted` de
+     * `historial-trigger.js`, que guarda el `before` justo cuando este test borra
+     * la actividad. Con el emulador de Functions levantado —o sea en el pre-push,
+     * y no en un `npm test` pelado— son dos, y como el trigger es asíncrono el
+     * resultado dependía de quién llegaba primero: medido el 2026-09-24, tres
+     * corridas seguidas dieron verde, rojo, rojo.
+     *
+     * Contar era además afirmar de más: lo que B-89 promete no es que haya
+     * exactamente un documento, es que **lo que estaba sigue estando** después de
+     * borrar el padre. Eso es lo que dice esta línea, y no envejece si mañana
+     * aparece un tercer escritor.
+     *
+     * MUTACIÓN PROBADA: borrando `v1` antes de leerlo, este caso se pone rojo —
+     * o sea que la afirmación nueva no es más laxa, es más precisa. Y cinco
+     * corridas seguidas con Functions vivo dan verde, contra el verde/rojo/rojo
+     * de antes.
+     */
+    const sobrevivio = await borrada.collection('versiones').doc('v1').get();
+    expect(sobrevivio.exists).toBe(true);
   });
 
   it('una actividad viva nunca es candidata, tenga versiones o no', async () => {

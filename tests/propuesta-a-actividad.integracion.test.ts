@@ -149,7 +149,15 @@ describe.skipIf(!vivo)('convertir una propuesta con foto — B-1235', () => {
     // dependen del id que la promoción generó: sin la copia a mano, el barrido
     // de huérfanas no la tocaría hasta 72 horas después (B-221).
     await adminBucket().file(imagen.storagePath!).delete({ ignoreNotFound: true });
-    await adminDb().doc(`actividades/${actividadId}`).delete();
+    /*
+     * **`recursiveDelete` y no `delete`** — la clase de B-89, y acá la
+     * introduciríamos nosotros: con el emulador de Functions vivo, guardar y
+     * borrar esta actividad deja una versión en `actividades/{id}/versiones`, y
+     * un `delete()` del padre la dejaría como **subcolección huérfana**. Eso es
+     * basura que sobrevive a este test y que otro archivo —el de B-89, que
+     * justamente busca huérfanas— puede levantar como suya.
+     */
+    await adminDb().recursiveDelete(adminDb().doc(`actividades/${actividadId}`));
     await adminDb().doc(`propuestas/${PROPUESTA}`).delete();
   }, 60000);
 });
