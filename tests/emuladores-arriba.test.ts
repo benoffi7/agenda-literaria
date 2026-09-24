@@ -55,11 +55,26 @@ const detectar = async (
   );
 };
 
+/**
+ * Lo que lista el `/emulators` de un hub, con la forma del de verdad: una clave
+ * por emulador y su `name` adentro. El de la tanda entera es el default.
+ */
+const listaDelHub = (...nombres: string[]): string =>
+  JSON.stringify(
+    Object.fromEntries(['hub', 'logging', ...nombres].map((n) => [n, { name: n, host: '127.0.0.1' }])),
+    null,
+    2,
+  );
+const TANDA_ENTERA = listaDelHub('auth', 'firestore', 'storage');
+
 /** Un servidor que contesta `status` en `/emulators`, en un puerto que da el SO. */
-const servidor = async (status: number): Promise<{ host: string; cerrar: () => void }> => {
+const servidor = async (
+  status: number,
+  cuerpo: string = TANDA_ENTERA,
+): Promise<{ host: string; cerrar: () => void }> => {
   const s: Server = createServer((_req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json' });
-    res.end('{"firestore":{}}');
+    res.end(cuerpo);
   });
   await new Promise<void>((listo) => s.listen(0, '127.0.0.1', listo));
   const dir = s.address();
@@ -213,6 +228,34 @@ const SIN_EMULADORES = {
     expect(hastaElExec, 'el paso 4 volvió a decidir con la respuesta del paso 3').not.toContain(
       '$EMU_ARRIBA',
     );
+  });
+
+  it('un hub que lista solo Firestore NO es "arriba" — el `exec --only firestore` de otro gate, B-1661', async () => {
+    /*
+     * Medido el 2026-09-24: `emulators:exec --only firestore` —el paso 4 del gate
+     * de otro checkout— deja un hub en el 4400 que contesta 200 y lista `hub`,
+     * `logging` y `firestore`. Con «contesta 200 = arriba» el paso 3 corría la
+     * suite sin Auth ni Storage y moría adentro de vitest. MUTACIÓN PROBADA:
+     * volver al `curl -sf` pelado deja este caso en rojo.
+     */
+    const hub = await servidor(200, listaDelHub('firestore'));
+    const firestore = await servidor(200);
+    try {
+      const r = await detectar({
+        ...SIN_EMULADORES,
+        FIREBASE_EMULATOR_HUB: hub.host,
+        FIRESTORE_EMULATOR_HOST: firestore.host,
+      });
+      expect(r).toMatchObject({ arriba: 'false', firestore_vivo: 'true', a_medias: 'firestore' });
+    } finally {
+      await Promise.all([hub.cerrar(), firestore.cerrar()]);
+    }
+  });
+
+  it('el hub se lee sin depender de los espacios del JSON', async () => {
+    const { host, cerrar } = await servidor(200, JSON.stringify(JSON.parse(TANDA_ENTERA)));
+    abiertos.push(cerrar);
+    expect((await detectar({ FIREBASE_EMULATOR_HUB: host, ...SIN_EMULADORES })).arriba).toBe('true');
   });
 
   it('un Firestore solo sale en `a_medias`: el paso 3 falla nombrándolo — B-1661', async () => {

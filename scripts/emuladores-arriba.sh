@@ -69,7 +69,30 @@ puerto_vivo() {
 
 # El hub primero, que es una sola pregunta y la respuesta más completa; los tres
 # puertos como respaldo, que es lo que el gate de verdad usa.
-if curl -sf --max-time 2 "http://${HUB}/emulators" >/dev/null 2>&1; then
+#
+# ── Que el hub conteste no alcanza: tiene que listar los tres — B-1661 ──
+# Hasta el 2026-09-24 bastaba con que `/emulators` contestara 200. **Medido ese
+# día:** un `emulators:exec --only firestore` —el paso 4 del gate de otro
+# checkout— y un `emulators:start --only firestore` dejan **los dos** un hub en
+# el 4400, y su `/emulators` lista `hub`, `logging` y `firestore`, nada más. Con
+# la pregunta vieja eso era `arriba=true`: el paso 3 corría la suite «contra los
+# que están», sin Auth ni Storage, y moría adentro de vitest. Así que el hub
+# cuenta solo si nombra a los tres; si no, se cae al respaldo por puertos, que
+# ahí da `false` y deja a `a_medias` decir qué hay.
+#
+# (El párrafo de 2026-09-03 de arriba dice que un `exec` «no deja hub en
+# 4400». Con la versión de firebase-tools de hoy no es así; lo que ese caso
+# necesitaba —reusar la tanda entera sin hub— sigue funcionando por el
+# respaldo.)
+hub_con_los_tres() {
+  local lista
+  lista=$(curl -sf --max-time 2 "http://${HUB}/emulators" 2>/dev/null) || return 1
+  for e in firestore auth storage; do
+    printf '%s' "$lista" | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"$e\"" || return 1
+  done
+}
+
+if hub_con_los_tres; then
   ARRIBA=true
 elif puerto_vivo "$FIRESTORE" && puerto_vivo "$AUTH" && puerto_vivo "$STORAGE"; then
   ARRIBA=true
