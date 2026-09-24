@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { correrGate, pagina404 } from './fixtures/artefacto';
+import { RUTA_MEDIDA_404, correrGate, pagina404 } from './fixtures/artefacto';
 
 import {
   ACCION_NO_ENCONTRADO,
@@ -399,6 +399,54 @@ describe('el gate exige que Firebase tenga qué servir como 404 — B-310, B-880
     });
     expect(estado).not.toBe(0);
     expect(salida).toContain('noindex');
+  });
+
+  /*
+   * ── Las dos mitades de D-1090, sobre el artefacto — B-1801 ────────────────
+   * B-1793 las fijó en `tests/analyticsSitio.test.ts` leyendo el fuente: que
+   * `Base.astro` escriba la línea. Eso no dice que el build la emita —una prop
+   * `direccionAjena` que dejó de pasarse, un `conChrome` en falso—, y la página
+   * se ve idéntica sin ninguna de las dos. Lo único que cambia es lo que se le
+   * manda a Google.
+   */
+  it('sin el `meta referrer`, rojo: la página siguiente mandaría la dirección pedida (D-1090)', () => {
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(/<meta name="referrer"[^>]*>/, ''),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('name="referrer"');
+    expect(salida, 'el error no nombra la decisión que lo trajo').toContain('D-1090');
+  });
+
+  it('con otra política de referrer, también — `origin` es la que D-1090 eligió', () => {
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(
+        '<meta name="referrer" content="origin">',
+        '<meta name="referrer" content="unsafe-url">',
+      ),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('content="origin"');
+  });
+
+  it('sin `data-ruta-medida`, rojo: la medición mandaría la dirección pedida (D-1090)', () => {
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(/ data-ruta-medida="[^"]*"/, ''),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain(`data-ruta-medida="${RUTA_MEDIDA_404}"`);
+  });
+
+  it('y con otra ruta medida, también: tiene que ser la canónica, con la barra', () => {
+    // `/404` y `/404/` son dos `page_location` distintos para GA4 (B-330).
+    const { estado, salida } = correrGate({
+      '404.html': pagina404().replace(
+        `data-ruta-medida="${RUTA_MEDIDA_404}"`,
+        'data-ruta-medida="/404"',
+      ),
+    });
+    expect(estado).not.toBe(0);
+    expect(salida).toContain('data-ruta-medida');
   });
 
   it('sin el parámetro que la home lee, rojo — la trampa 2 del encabezado', () => {
