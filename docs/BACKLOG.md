@@ -495,30 +495,6 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
-### B-879 · La «red» de un barrido no es un `fetch`: es la corrida entera · P3
-
-**Salió de B-867**, y es el ítem que ese cierre deja anticipado. El chequeo de la
-clase de B-85 define `red` como «habla con un servicio de afuera» y la reconoce por
-`fetch(`, `cal.events.` y `google.\w+(`. Con esa definición **los tres barridos
-quedan afuera de la clase por no tener red** — y ése es un motivo más débil de lo
-que parece.
-
-Entre la query que decide qué borrar y el `delete`, esos barridos hacen
-round-trips: `bucket.file().delete()` por propuesta en retención, N borrados por
-corrida en imágenes. Son latencia real, y durante toda esa ventana el estado que
-se leyó al principio puede cambiar — que es **exactamente el daño que la clase de
-B-85 nombra**. B-864 existió por eso.
-
-**Si `red` se ensanchara a contar esos round-trips, `limpiarImagenesHuerfanas` y
-`borrarPropuestasVencidas` se ponen rojos en el chequeo principal**, y la respuesta
-correcta sería la guarda declarada de cada uno (`GUARDAS_DE_BARRIDO`, B-867). O sea
-que la infraestructura para contestarlo ya está; lo que falta es la decisión de si
-el chequeo tiene que exigir esa guarda en vez de aceptarla declarada.
-
-Es una decisión y no un renglón: ensancharlo pone en rojo dos funciones que hoy
-pasan, y la salida no es relajarlo sino decidir qué guarda le exigimos a un barrido
-que borra.
-
 ### B-874 · «Interacciones con formularios» sigue prendido en GA4, y desde el 2026-09-23 ya está filtrando · P1 — **era P2 mientras era hipotético**
 
 **Sale del `auditor-privacidad` sobre B-847.** El Enhanced Measurement de GA4
@@ -588,6 +564,17 @@ un directorio vacío ignorado. Lo que no es cero es el costo de descubrirlo de
 nuevo, y eso es lo que este ítem compra.
 
 ## P2 — mejoras reales
+
+### B-1790 · El paso 4 del gate nunca ejercita la confirmación de miniaturas de D-210 · P2 — de `procesos` (2026-09-24, era el ítem 682 del rescate de D-210, que nunca entró)
+
+`leído`. `scripts/verificar-todo.sh` corre el paso 4 con Firestore solo. Sin
+`FIREBASE_STORAGE_EMULATOR_HOST`, `leerMiniaturas()` (`contenidoDelSitio.ts`) corta
+en la rama «Firestore emulado sin Storage emulado» y devuelve un set vacío: el gate
+que existe para correr el build de verdad corre justo la mitad que no confirma
+nada. **Lo mediría:** el aviso `[sitio] build contra el emulador de Firestore sin
+FIREBASE_STORAGE_EMULATOR_HOST` en la salida del paso 4. **Arreglo:** levantar
+Storage en el paso 4 y sembrar un objeto en `miniaturas/` para afirmar sobre el
+`srcset` del HTML.
 
 ### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25) · P2 — vuelto de los cerrados (2026-09-24, B-1580)
 
@@ -884,96 +871,58 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-1570 · El campo «Motivo» de un encuentro cancelado se tipea con la fila al 60 % de opacidad · P3 — de `b98` (2026-09-24)
+### B-1750 · Un `opacity-NN` en un contenedor del panel multiplica la atenuación de su texto, y el barrido no lo ve · P3 — de `contraste-panel` (2026-09-24)
 
-`claseFila` de `SesionesEditor.tsx` baja la fila cancelada a `opacity-60`, y desde
-B-98 esa fila tiene un input que se escribe y que es público. Arreglo: atenuar solo
-el bloque de fecha y tema, no la fila entera.
+Las filas «apagadas» del panel (encuentro cancelado, reporte resuelto, ficha
+rechazada, propuesta no pendiente, día pasado del calendario) llevan `opacity-60` o
+`-70` en el contenedor: adentro, un `text-tinta/65` pinta de hecho ~`/39` (≈2,5:1).
+El barrido lee clase por clase y no compone el árbol. Arreglo: apagar esas filas con
+una tinta y no con `opacity`, o que el test sume el `opacity-NN` de las líneas con
+un ternario de estado.
 
-### B-1572 · El gate del artefacto no siembra el centinela del motivo de cancelación · P3 — de `b98` (2026-09-24)
+### B-1751 · El contraste del panel no se mide sobre sus tintes · P3 — de `contraste-panel` (2026-09-24)
 
-`scripts/build-contra-emulador.mjs` barre `dist/` sin ningún encuentro cancelado con
-motivo, así que no verifica sobre el artefacto real que el motivo no llegue a
-`events.json` ni al JSON-LD (los barridos unitarios sí lo fijan). Sumarlo al
-centinela del detalle con su porqué.
+El barrido mide contra el blanco, el papel y los tokens neutros. El panel también
+apoya texto sobre `bg-acento/5` y `/10`, `bg-black/5`, `bg-amber-50`/`-100` y
+`bg-emerald-100`. Falta derivarlos del markup, como hace
+`contraste-de-superficies.test.ts` en el sitio, más los colores de Tailwind que no
+están en `global.css`.
 
-### B-1630 · El texto atenuado del panel no llega a AA sobre blanco, y no hay test que lo mida · P3 — de `ritmo` (2026-09-24)
+### B-1760 · Partir `build-contra-emulador.mjs` en los tres cortes de D-1070 · P3 — de `gate-build` (2026-09-24)
 
-Los tests de contraste barren **solo el sitio público**. Y el panel usa
-`text-tinta/50` y `/55` de forma habitual —el tablero entero, las notas de los
-repartos, «sin datos aún» en `/40`— sobre tarjetas blancas. Medido con
-`lib/contraste.ts` el 2026-09-24: `tinta/55` sobre blanco da ≈3,8:1 y `/60` ≈4,4:1;
-el piso AA es 4,5 y con esta paleta se alcanza en `/65`. Es texto chico y justo el
-que califica los números. Falta decidir si el panel entra al barrido con un piso
-propio, y subir las atenuaciones que queden abajo.
+Lo tiene que hacer un frente con emuladores: (1) `scripts/gate-build/semilla.mjs`
+con `CENTINELA`, las canastas y los fixtures, sin efectos e importable desde vitest;
+(2) un `verificarDirectorio({...})` parametrizado para los pasos 8i-8l; (3) el paso
+9 como función pura sobre `{relativa, contenido}[]`. Se verifica con la misma
+corrida contra el emulador antes y después, y una fuga inyectada a mano por canasta
+que tiene que ponerse roja. Un corte por commit.
 
-### B-1720 · El filtro «Fechas» del panel quedó medio redundante con las pestañas · P3 — de `pasadas-panel` (2026-09-24)
+### B-1761 · Las canastas del gate y las del barrido de vitest se sincronizan de memoria · P3 — de `gate-build` (2026-09-24)
 
-Desde B-101, «Con algo por venir» parado en «Pasadas» siempre da cero, y su opuesto
-parado en «Vigentes» devuelve solo las que no tienen ninguna fecha cargada. No
-rompe nada y la ayuda lo explica, pero el eje ofrece una opción vacía según la
-pestaña. Recomendado: que «Sin fechas por venir» pase a llamarse «Sin fechas
-cargadas» y se ofrezca solo en «Vigentes».
+`CENTINELA_DEL_DETALLE` y `PERMITIDO_EN_EL_DETALLE` de
+`tests/barrido-de-salidas-publicas.test.ts` tienen que coincidir y nada lo verifica:
+falló con B-99, `comisionId`, `incluyeSlug` y el monto. Depende del corte 1 de
+B-1760. Después, un test que compare las dos listas. Clase de B-99/B-180.
 
-### B-1730 · `.estado/` tiene 33 pendientes abiertos de tandas del 2026-09-02 al 09-17 · P3 — de `estado-frentes` (2026-09-24)
+### B-1780 · El registro de campos de Instagram solo lo recorre la guarda de Calendar · P3 — de `registros` (2026-09-24)
 
-`node scripts/cerrar-tanda.mjs --todo-el-estado` los lista. Son de antes de que las
-tandas pasaran a reportar por informe, y la mayoría probablemente ya esté cerrada en
-el BACKLOG. Revisarlos uno por uno contra el BACKLOG y archivar esos archivos.
+`CAMPOS_DE_INSTAGRAM` vive en `tests/calendario.test.ts` y vigila solo
+`calendario.js`. `accionDeInscripcion`, `destinoLegible` y la ficha pública tienen
+tests de comportamiento pero ninguna guarda de clase. Opción: mover el registro a un
+fixture compartido y que cada salida lo recorra. Clase de B-88 / D-750.
 
-### B-1700 · La fila de Google cambia de texto mientras se escribe la web del organizador · P3 — de `avisos-google` (2026-09-24)
+### B-1800 · «Más talleres» de una pasada puede llevar a un hub vacío · P3 — de `404-pasadas` (2026-09-24)
 
-`webEnlazable` se evalúa en cada tecla: mientras alguien escribe `https://…`, la
-fila pasa de «la web del organizador» a «(lo cargado no es una dirección)» y
-vuelve. Contradice lo que D-900 dice de no avisar a medio escribir. Arreglo: que la
-variante «no es una dirección» aparezca recién al salir del campo.
+`tipoTieneHub` dice que el hub se emitió, no que tenga algo vigente: un `/tipo/x` sin
+vigentes sale con `noindex`, y desde la pasada se enlaza igual. Arreglo: que
+`contenidoDelSitio.ts` pase los tipos ofrecidos (`hubsOfrecidos`) y que `masDelTipo`
+use ese dato.
 
-### B-1640 · El build no frena dos fichas publicadas de la Guía con el mismo slug · P3 — de `slugs-librerias` (2026-09-24)
+### B-1801 · Lo de B-1793 solo está fijado sobre la fuente · P3 — de `404-pasadas` (2026-09-24)
 
-D-1010 verifica al publicar, pero dos admins publicando en el mismo segundo, o datos
-anteriores al 2026-09-24, pueden dejar dos publicadas con la misma dirección, y los
-`caminosDe*` de `contenidoDelSitio.ts` emiten un camino por ficha sin mirar si se
-repite: una página queda pisada en silencio. Arreglo: que tiren con el slug
-repetido, como el centinela de `/slugs/_indice`.
-
-### B-1661 · El paso 3 del pre-push sigue chocando si lo único vivo es el Firestore de otro gate · P3 — de `emu` (2026-09-24)
-
-Si otro checkout está en su paso 4 (un Firestore solo), el paso 3 ve `arriba=false`,
-intenta levantar los tres emuladores y choca en el 8080. Salida barata: fallar
-nombrando la causa («hay un Firestore solo en el 8080, probablemente el paso 4 de
-otro gate: reintentá en un minuto») en vez del «port taken» pelado.
-
-### B-1662 · Con D-1020 los checkouts comparten el namespace de Auth, y dos corridas a la vez pueden pisarse los claims · P3 — de `emu` (2026-09-24)
-
-`tokenDe()` usa uids fijos por archivo y reescribe los claims en cada llamada. Dos
-corridas concurrentes con el mismo uid pueden quedar con los claims de la otra, y el
-síntoma es un `PERMISSION_DENIED` intermitente. Salida: que `tokenDe()` agregue la
-huella del checkout a los uids. No medido: se deduce del diseño.
-
-### B-1710 · `/audit` junta los hallazgos en una tabla sin la columna medido/leído · P3 — de `salud` (2026-09-24)
-
-Desde D-1045 cada hallazgo dice si es `medido` o `leído`, pero el skill `/audit` los
-junta sin esa columna. Sumarla, y que un `leído` no pueda frenar.
-
-### B-1590 · La guarda «todo campo de Instagram del evento pasa por el saneador» no ve un campo que no se llame `instagram` · P3 — de `inscripcion-dm` (2026-09-24)
-
-`tests/calendario.test.ts` barre `calendario.js` buscando `\.instagram\b`. B-1540
-es justo el caso que no ve: `insc.destino` es un campo de Instagram con otro
-nombre y otra condición. El arreglo lo cubre con un test de comportamiento, pero
-el próximo campo así nace sin red. Opción: un registro explícito de campos de
-Instagram del modelo, que la guarda recorra y cuya fuente sea la tabla de B-1191
-en docs/03, en vez de la regex por nombre. Clase de B-88 / D-750.
-
-### B-1072 · `build-contra-emulador.mjs` creció 1.366 líneas en ocho días · P3 — de remedir B-1010 (2026-09-17)
-
-Pasó a ser **el archivo más grande del repo** (2.977 LOC), y es la primera vez
-que la cima no es código del producto sino un script de verificación. No es una
-frontera de privacidad deliberada como `detallePublico.ts`, así que el argumento
-de «no partir» que protege a los dos primeros de la lista no le aplica.
-
-**Queda sin diagnóstico a propósito: medirlo no alcanza.** Hay que decidir si es
-un barrido que se ganó el tamaño —cada paso que agrega es un gate real— o un
-archivo que hay que partir. Mismo criterio que el § 1.3 con el formulario.
+`verificar-bundle.sh` podría exigirle a `dist/404.html` el
+`<meta name="referrer" content="origin">` y el `data-ruta-medida="/404/"`, como ya
+le exige el `noindex`.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

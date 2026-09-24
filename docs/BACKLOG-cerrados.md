@@ -15293,6 +15293,32 @@ todos los consumidores que ya tenían esa disciplina, en el mismo cambio.
 
 > Pegado el 2026-09-24 desde el `.estado/` del rescate de D-210, donde había quedado sin versionar (B-1792).
 
+### B-879 · La «red» de un barrido no es un `fetch`: es la corrida entera · P3 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `14e0a80` (D-1081), la opción recomendada: el chequeo de B-85 exige la guarda declarada (`cubreLaVentana`) y la falta de red dejó de ser motivo para pasar.
+
+**Salió de B-867**, y es el ítem que ese cierre deja anticipado. El chequeo de la
+clase de B-85 define `red` como «habla con un servicio de afuera» y la reconoce por
+`fetch(`, `cal.events.` y `google.\w+(`. Con esa definición **los tres barridos
+quedan afuera de la clase por no tener red** — y ése es un motivo más débil de lo
+que parece.
+
+Entre la query que decide qué borrar y el `delete`, esos barridos hacen
+round-trips: `bucket.file().delete()` por propuesta en retención, N borrados por
+corrida en imágenes. Son latencia real, y durante toda esa ventana el estado que
+se leyó al principio puede cambiar — que es **exactamente el daño que la clase de
+B-85 nombra**. B-864 existió por eso.
+
+**Si `red` se ensanchara a contar esos round-trips, `limpiarImagenesHuerfanas` y
+`borrarPropuestasVencidas` se ponen rojos en el chequeo principal**, y la respuesta
+correcta sería la guarda declarada de cada uno (`GUARDAS_DE_BARRIDO`, B-867). O sea
+que la infraestructura para contestarlo ya está; lo que falta es la decisión de si
+el chequeo tiene que exigir esa guarda en vez de aceptarla declarada.
+
+Es una decisión y no un renglón: ensancharlo pone en rojo dos funciones que hoy
+pasan, y la salida no es relajarlo sino decidir qué guarda le exigimos a un barrido
+que borra.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -17278,6 +17304,15 @@ o queda como registro (recomendado: queda).
 > dejó de figurar en cualquier lista de trabajo. Lo encontró el relevamiento del
 > roadmap (`17-roadmap.md`). Toca el sync con Calendar: se trabaja solo con
 > emuladores (§10 del CLAUDE.md).
+
+### B-1793 · El `/404` podía mandar a GA4 la dirección que el visitante pidió · P2 — de `procesos` (2026-09-24, era el ítem 651 del frente del sitio, que nunca entró) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `57263cf`, `204f53a`: `direccionAjena` en `Base.astro` hace que se mida `/404/` (`ubicacionAMedir`) y recorta el `Referer` al origen. Un test frena cualquier rewrite de Hosting nueva hacia una página del sitio. D-1090. Siguió en B-1801.
+
+`/404.html` se sirve como cuerpo de cualquier dirección que no existe y monta la
+medición: `page_location` recortaba la query pero conservaba el pathname de la URL
+pedida —un slug renombrado, uno nunca publicado o texto arbitrario—. Rompe la
+garantía de la fila 12 de `07-seguridad.md`. Solo con consentimiento.
 
 ## P3 — cuando sobre tiempo
 
@@ -21044,6 +21079,154 @@ evento. No hay nada que revisar.
 
 **✅ Hecho (2026-09-24):** el §7.3 lleva el bloque ⚠️ que apunta a D-975, como D-125,
 D-128, D-130 y D-710, y el texto original queda como estaba.
+
+### B-1794 · La página de una actividad que ya pasó terminaba con un solo enlace · P3 — de `procesos` (2026-09-24, era el ítem 652 del frente del sitio) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `dc967d5`, `d9cf2b4`: `DetallePublico.masDelTipo` («Más talleres»), solo con `tipoTieneHub`. Sin equivalente por barrio, que ya lo cubre «Dónde» (B-951). D-1091. Siguió en B-1800.
+
+En una pasada, `detalle.mes` viene en `null` a propósito, así que el «Seguir
+mirando» de `[slug].astro` tiene solo «Ver toda la agenda». El §7.1 del diseño pide
+«Ver otros talleres» en su lugar, y es la página que Google conserva.
+
+### B-1791 · `04-funcionalidades.md` afirmaba lo que D-210 declaró falso · P2 — de `procesos` (2026-09-24, era el ítem 683 del rescate de D-210) · ✅ hecho (2026-09-24)
+
+Decía que un `srcset` cuyo candidato no existe degrada al `src`; D-210 lo desmiente:
+un 404 **rompe** la imagen. **✅ Hecho (2026-09-24):** el párrafo de la cartelera dice
+que la miniatura entra solo si el build la confirmó contra Storage.
+
+### B-1792 · El rastro del rescate de D-210 nunca entró al CHANGELOG ni al BACKLOG · P3 — de `procesos` (2026-09-24) · ✅ hecho (2026-09-24)
+
+D-210 estaba escrita y su código mergeado, pero la entrada del CHANGELOG del
+2026-09-03 y los cerrados B-680, B-681, B-684 y B-685 solo vivían en
+`.estado/rescate.md`, que no se versiona. **✅ Hecho (2026-09-24):** pegados con sus
+ids originales; los ítems 682 y 683 entraron como B-1790 y B-1791.
+
+### B-1795 · La entrada del CHANGELOG de B-600 afirmaba la regla del tríptico que D-320 dio vuelta · P3 — de `procesos` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** la frase quedó tachada con la nota de D-320, como en
+`12-sitio-publico.md`.
+
+### B-1770 · El hub de un `emulators:exec --only firestore` contaba como la tanda entera · P3 — de `emu-2` (2026-09-24) · ✅ hecho (2026-09-24)
+
+`emuladores-arriba.sh` daba `arriba=true` con que `/emulators` contestara 200, y el
+hub de un `exec --only firestore` lista solo `hub`, `logging` y `firestore`. Era la
+causa real de B-1661. **✅ Hecho (2026-09-24)** en `59a246f`: el hub cuenta solo si
+nombra los tres.
+
+### B-1570 · El campo «Motivo» de un encuentro cancelado se tipea con la fila al 60 % de opacidad · P3 — de `b98` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `75c6787`: `claseFila` ya no lleva `opacity-60`; se atenúa un bloque adentro de la fila, y la casilla «Cancelado» y el «Motivo» quedan afuera. Lo fija `tests/encuentro-cancelado.render.test.tsx`.
+
+`claseFila` de `SesionesEditor.tsx` baja la fila cancelada a `opacity-60`, y desde
+B-98 esa fila tiene un input que se escribe y que es público. Arreglo: atenuar solo
+el bloque de fecha y tema, no la fila entera.
+
+### B-1572 · El gate del artefacto no siembra el centinela del motivo de cancelación · P3 — de `b98` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `5087879`: `CENTINELA.motivoCancelacion` declarado en `CENTINELA_DEL_DETALLE`, un encuentro cancelado con motivo en la galería del gate, y el paso 8m nuevo que exige el motivo en la página y en ningún bloque JSON-LD.
+
+`scripts/build-contra-emulador.mjs` barre `dist/` sin ningún encuentro cancelado con
+motivo, así que no verifica sobre el artefacto real que el motivo no llegue a
+`events.json` ni al JSON-LD (los barridos unitarios sí lo fijan). Sumarlo al
+centinela del detalle con su porqué.
+
+### B-1630 · El texto atenuado del panel no llega a AA sobre blanco, y no hay test que lo mida · P3 — de `ritmo` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `1a65f7d`, `187cec2`, `020557d`: el panel entra al barrido con un piso propio, `text-tinta/65`, medido contra su superficie clara más oscura (hoy `crema`: `/60` da 4,35 y `/65` da 5,10), en `tests/contraste-del-panel.test.ts`. Subieron 193 clases en 40 archivos de `components/admin/` y `components/campos/`, más los tres de `panel-ux` al integrar (D-1065). Lo que el test no ve quedó en B-1750 y B-1751.
+
+Los tests de contraste barren **solo el sitio público**. Y el panel usa
+`text-tinta/50` y `/55` de forma habitual —el tablero entero, las notas de los
+repartos, «sin datos aún» en `/40`— sobre tarjetas blancas. Medido con
+`lib/contraste.ts` el 2026-09-24: `tinta/55` sobre blanco da ≈3,8:1 y `/60` ≈4,4:1;
+el piso AA es 4,5 y con esta paleta se alcanza en `/65`. Es texto chico y justo el
+que califica los números. Falta decidir si el panel entra al barrido con un piso
+propio, y subir las atenuaciones que queden abajo.
+
+### B-1720 · El filtro «Fechas» del panel quedó medio redundante con las pestañas · P3 — de `pasadas-panel` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `f7a7415` (D-1060), la opción recomendada: «Sin fechas por venir» pasa a «Sin fechas cargadas» y el eje entero se ofrece solo en «Vigentes», salvo que venga puesto desde allá.
+
+Desde B-101, «Con algo por venir» parado en «Pasadas» siempre da cero, y su opuesto
+parado en «Vigentes» devuelve solo las que no tienen ninguna fecha cargada. No
+rompe nada y la ayuda lo explica, pero el eje ofrece una opción vacía según la
+pestaña. Recomendado: que «Sin fechas por venir» pase a llamarse «Sin fechas
+cargadas» y se ofrezca solo en «Vigentes».
+
+### B-1730 · `.estado/` tiene 33 pendientes abiertos de tandas del 2026-09-02 al 09-17 · P3 — de `estado-frentes` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** El script lista 31 (los otros dos ya salían derivados). 19 líneas estaban resueltas y se cerraron con `✅ cerrado 2026-09-24 (B-1730): <dónde>`. Las 12 restantes son seis pendientes reales, cada uno en dos archivos, y entran como B-1790 a B-1795.
+
+`node scripts/cerrar-tanda.mjs --todo-el-estado` los lista. Son de antes de que las
+tandas pasaran a reportar por informe, y la mayoría probablemente ya esté cerrada en
+el BACKLOG. Revisarlos uno por uno contra el BACKLOG y archivar esos archivos.
+
+### B-1700 · La fila de Google cambia de texto mientras se escribe la web del organizador · P3 — de `avisos-google` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `8f3b0b8` (D-1061): la pérdida `web` con algo cargado trae `mientrasSeEscribe`, y `BarraAcciones` la usa entre la primera tecla y la salida del campo `org-web`.
+
+`webEnlazable` se evalúa en cada tecla: mientras alguien escribe `https://…`, la
+fila pasa de «la web del organizador» a «(lo cargado no es una dirección)» y
+vuelve. Contradice lo que D-900 dice de no avisar a medio escribir. Arreglo: que la
+variante «no es una dirección» aparezca recién al salir del campo.
+
+### B-1640 · El build no frena dos fichas publicadas de la Guía con el mismo slug · P3 — de `slugs-librerias` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `360655b`: `caminosDeFichas` tira `SlugDeFichaRepetido` con el slug y el directorio, y los cuatro `caminosDe*` pasan por él; test en `tests/caminos-de-fichas.test.ts`.
+
+D-1010 verifica al publicar, pero dos admins publicando en el mismo segundo, o datos
+anteriores al 2026-09-24, pueden dejar dos publicadas con la misma dirección, y los
+`caminosDe*` de `contenidoDelSitio.ts` emiten un camino por ficha sin mirar si se
+repite: una página queda pisada en silencio. Arreglo: que tiren con el slug
+repetido, como el centinela de `/slugs/_indice`.
+
+### B-1661 · El paso 3 del pre-push sigue chocando si lo único vivo es el Firestore de otro gate · P3 — de `emu` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `3eb30a6`, `59a246f`: arreglado en su forma real —el `exec --only firestore` deja hub, así que el paso 3 no chocaba en el 8080 sino que tomaba el hub por la tanda entera (B-1770)—. `emuladores-arriba.sh` exige que el hub liste los tres y escribe `a_medias`, y el paso 3 falla nombrando el Firestore solo. Corrido de punta a punta contra un `exec` real. D-1076.
+
+Si otro checkout está en su paso 4 (un Firestore solo), el paso 3 ve `arriba=false`,
+intenta levantar los tres emuladores y choca en el 8080. Salida barata: fallar
+nombrando la causa («hay un Firestore solo en el 8080, probablemente el paso 4 de
+otro gate: reintentá en un minuto») en vez del «port taken» pelado.
+
+### B-1662 · Con D-1020 los checkouts comparten el namespace de Auth, y dos corridas a la vez pueden pisarse los claims · P3 — de `emu` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `238c0e2`: medido forzando el orden contra el emulador del árbol principal: con el mismo uid el token sale sin `admin`, y con uno por checkout sale con él. `uidDe`/`mailDe` y la guarda de `tokenDe()`. D-1075.
+
+`tokenDe()` usa uids fijos por archivo y reescribe los claims en cada llamada. Dos
+corridas concurrentes con el mismo uid pueden quedar con los claims de la otra, y el
+síntoma es un `PERMISSION_DENIED` intermitente. Salida: que `tokenDe()` agregue la
+huella del checkout a los uids. No medido: se deduce del diseño.
+
+### B-1710 · `/audit` junta los hallazgos en una tabla sin la columna medido/leído · P3 — de `salud` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `4ea7f8e`: columna `Base` en la tabla del §4 del skill; el §5 dice que un `leído` no frena por sí solo: se mide, o se anota con la prioridad de riesgo. Test en `tests/agentes-y-skills.test.ts`.
+
+Desde D-1045 cada hallazgo dice si es `medido` o `leído`, pero el skill `/audit` los
+junta sin esa columna. Sumarla, y que un `leído` no pueda frenar.
+
+### B-1590 · La guarda «todo campo de Instagram del evento pasa por el saneador» no ve un campo que no se llame `instagram` · P3 — de `inscripcion-dm` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `5622e3a` (D-1080): `CAMPOS_DE_INSTAGRAM` en `tests/calendario.test.ts`, cruzado contra la tabla de `docs/03`; la regex por nombre quedó como red de los atributos sin registrar. Siguió en B-1780.
+
+`tests/calendario.test.ts` barre `calendario.js` buscando `\.instagram\b`. B-1540
+es justo el caso que no ve: `insc.destino` es un campo de Instagram con otro
+nombre y otra condición. El arreglo lo cubre con un test de comportamiento, pero
+el próximo campo así nace sin red. Opción: un registro explícito de campos de
+Instagram del modelo, que la guarda recorra y cuya fuente sea la tabla de B-1191
+en docs/03, en vez de la regex por nombre. Clase de B-88 / D-750.
+
+### B-1072 · `build-contra-emulador.mjs` creció 1.366 líneas en ocho días · P3 — de remedir B-1010 (2026-09-17) · ✅ decidido (2026-09-24)
+
+**✅ Decidido (2026-09-24).** D-1070 (`f1abbb2`): se parte en tres cortes, pero corriendo el gate contra el emulador. La partición es B-1760.
+
+Pasó a ser **el archivo más grande del repo** (2.977 LOC), y es la primera vez
+que la cima no es código del producto sino un script de verificación. No es una
+frontera de privacidad deliberada como `detallePublico.ts`, así que el argumento
+de «no partir» que protege a los dos primeros de la lista no le aplica.
+
+**Queda sin diagnóstico a propósito: medirlo no alcanza.** Hay que decidir si es
+un barrido que se ganó el tamaño —cada paso que agrega es un gate real— o un
+archivo que hay que partir. Mismo criterio que el § 1.3 con el formulario.
 
 ## Pendiente de acción manual del dueño
 

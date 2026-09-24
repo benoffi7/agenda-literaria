@@ -308,6 +308,10 @@ convención y ya lo anunciaba.
   anónima de sonda que se borra al toque) y escribe los claims ahí. Cualquier
   checkout puede correr contra el emulador que esté arriba: ya no hace falta
   levantarlo desde el checkout donde se corre.
+- Por eso **los uids y los correos de test llevan la huella del checkout**
+  (B-1662, D-1075): se arman con `uidDe()` y `mailDe()` de
+  `tests/fixtures/credenciales-del-emulador.ts`, y `tokenDe()` rechaza un literal.
+  Sin eso, dos checkouts corriendo a la vez se pisan los claims.
 
 ### Dar permiso a una cuenta (producción)
 

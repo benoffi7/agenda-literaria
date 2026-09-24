@@ -13235,6 +13235,11 @@ así que un token del proyecto A autoriza escrituras en la base B. Si la sonda f
 cae al comportamiento anterior. El precio: todos los checkouts comparten el
 namespace de Auth (B-1662).
 
+**Medido el 2026-09-24** (B-1662): con el emulador levantado desde el árbol
+principal, la sonda corrida desde un worktree devolvió el `aud` del árbol principal,
+y la integración entera pasó 507/507 desde el worktree. Forzando `PROJECT_ID`, salta
+la guarda de B-1112.
+
 ## D-1025 · El aviso de imágenes perdidas del historial comprueba con un `<img>`, al click, y solo las propias que hoy no están
 
 **B-852, 2026-09-24.**
@@ -13335,3 +13340,110 @@ una pasada** —es un borrador a medio cargar, y archivarlo lo escondería justo
 mientras se lo carga—. Nada cambia de estado. La pestaña vive en `Filtros.pestana`
 para sobrevivir a ir y volver de una actividad (B-955), pero **no es un filtro**:
 `filtrar` no la mira y «Limpiar filtros» no la toca.
+
+## D-1060 · «Sin fechas cargadas», y el eje «Fechas» del panel solo en «Vigentes»
+
+**B-1720, 2026-09-24. El dueño tomó la opción recomendada.** Desde las pestañas de
+D-1050, el eje «Fechas» ofrecía opciones vacías según la pestaña. La opción pasa a
+llamarse «Sin fechas cargadas» (`'sin-fechas'`) y filtra por `tieneFechas`: en
+«Vigentes» el resultado no cambia. El eje entero se ofrece solo en «Vigentes»,
+porque en «Pasadas» ninguna de sus opciones recorta nada. Si el filtro viene puesto
+desde «Vigentes», en «Pasadas» el desplegable aparece igual, para poder sacarlo: un
+filtro que recorta sin que se lo vea es lo que el número del botón existe para
+evitar.
+
+## D-1061 · La barra de guardar se entera de qué campo se está tipeando escuchando el documento
+
+**B-1700, 2026-09-24.** La variante «(lo cargado no es una dirección)» tiene que
+esperar a que se salga del campo, como el cartel del Instagram (D-900), pero la
+barra no es dueña del campo. La pérdida lleva su etiqueta de mientras se tipea, y la
+barra escucha en `document` el `input` y el `focusout` de ese `id`. Descartado:
+subir el estado a `ActividadFormulario`, que toca tres componentes y el formulario
+ya está cerca de la alarma de fan-out. El costo aceptado es el acoplamiento por
+`id` (`org-web`), que cobra el test de render que tipea en el formulario montado.
+
+## D-1065 · El panel sí atenúa con opacidades, pero su piso es AA medido contra su superficie más oscura
+
+**B-1630, 2026-09-24.** El sitio no atenúa (D-146); el panel sí puede, pero no por
+debajo de 4,5:1. El piso se mide contra **la superficie clara más oscura del
+panel**: el blanco de las tarjetas, el papel del `html` y cada token que el panel
+use como fondo pleno, derivados del markup y no enumerados. Por qué no solo contra
+el blanco: `/60` da 4,51 sobre la tarjeta y 4,43 sobre el papel de al lado. Con esta
+paleta la peor es `crema` y el piso queda en `/65` (5,10). El barrido incluye
+`components/campos/`. Lo que tiene que quedar abajo a propósito va en `EXCEPCIONES`,
+con su porqué, y falla si queda huérfano o si en realidad pasa. `disabled:` está
+exento por WCAG 1.4.3. Descartado: un número fijo escrito a mano, que mentiría con
+la primera paleta nueva.
+
+## D-1070 · `build-contra-emulador.mjs` se parte en tres cortes, y no antes de poder correrlo
+
+**B-1072, 2026-09-24.** Medido con significativas (B-856): 3.419 líneas, 1.962 de
+código y 1.306 de prosa. No se ganó el tamaño: los pasos 8i-8l son cuatro copias
+del mismo esqueleto por directorio (572 líneas de código, el 29 %), y `CENTINELA` y
+las canastas viven en un módulo con efectos al cargarse, así que ningún test puede
+compararlas con las del barrido de vitest —«se declara en los dos» ya falló cuatro
+veces—. Los cortes: la semilla como datos puros, un verificador de directorio
+parametrizado, y el barrido del paso 9 como función pura (B-1760). Descartado:
+partirlo sin correrlo, porque es el paso 4 del pre-push y ya estuvo rojo por su
+plomería (B-217) y verde sin mirar nada (B-960).
+
+## D-1075 · Las cuentas de test llevan la huella del checkout en el uid y en el correo, y `tokenDe()` se niega sin ella
+
+**B-1662, 2026-09-24.** El precio que D-1020 dejó anotado: todos los checkouts
+comparten el namespace de Auth. `uidDe(base)` agrega `_<huella>` y `mailDe(base)`
+agrega `+<huella>` antes de la arroba, con la misma huella que la base de Firestore
+(B-219). También el correo, porque el emulador no admite dos cuentas con el mismo
+(medido: `auth/email-already-exists`). Falla ruidoso en vez de agregarla solo: si
+`tokenDe()` la agregara, un test que compara `createdBy` contra el literal pasaría
+por el motivo equivocado. Un barrido frena un literal pasado a `entrarComo` o
+`tokenDe`. Queda afuera: dos corridas del **mismo** checkout siguen compartiendo
+uids, como ya compartían la base.
+
+## D-1076 · El paso 3 del gate falla nombrando lo que hay a medias; no reusa ni levanta
+
+**B-1661 y B-1770, 2026-09-24.** `emuladores-arriba.sh` da `arriba` solo si el hub
+**lista** firestore, auth y storage (medido: el hub de un `exec --only firestore`
+contesta 200 con solo firestore), y escribe `a_medias` con lo que escucha cuando no
+está la tanda entera. El paso 3 no puede reusar esa parte ni levantar la suya, así
+que falla diciendo qué hay. Descartado: esperar a que el puerto se libere dentro
+del gate, una espera sin plazo en un hook de git.
+
+## D-1080 · Los campos de Instagram que la guarda de Calendar vigila salen de un registro atado a la tabla de docs/03
+
+**B-1590, 2026-09-24.** La guarda buscaba `\.instagram\b` y B-1540 mostró el caso
+que eso no ve. `CAMPOS_DE_INSTAGRAM` es la lista explícita, una entrada por fila de
+la tabla, con la primera celda idéntica; cada entrada dice si sale al evento o por
+qué no. El test cruza registro y tabla en las dos direcciones, y la guarda acepta
+solo las formas saneadas. Vive en el test porque hoy solo lo consume esta guarda.
+El costo: con vía, el ternario es la única forma aceptada.
+
+## D-1081 · El chequeo de B-85 exige la guarda declarada del barrido, y la red solo cuenta contra un margen
+
+**B-879, 2026-09-24. Opción recomendada.** Una función programada que escribe lo
+que leyó sin transacción pasaba el chequeo por no tener `fetch`. La red de un
+barrido es la corrida entera: ahora pasa solo con transacción o con la guarda
+declarada y sus marcas en el fuente. Una guarda `margen` con red da rojo; una
+`precondicion` pasa aunque haya red, porque cubre la ventana del documento sea cual
+sea el largo de la corrida. Lo que se relaja, dicho entero: la mitad de Storage de
+`borrarPropuestasVencidas` sigue sin cubrir, y un `fetch` la ensancharía sin
+ponerse en rojo; la forma de cerrarlo es una guarda de `generacion`.
+
+## D-1090 · La página de error mide su canónica, no la barra
+
+**B-1793, 2026-09-24.** `/404.html` es la única página del sitio que se sirve para
+direcciones que no son suyas. La página se declara con una prop de `Base.astro`
+(`direccionAjena`) y no con una detección por pathname. La prop hace dos cosas: la
+medición manda `rutaCanonica(Astro.url.pathname)`, fija en el build (`/404/`), y se
+emite `<meta name="referrer" content="origin">`, porque sin eso la página siguiente
+recibía la dirección como `Referer` y la mandaba como `page_referrer` (la forma de
+D-253). Descartado: no medir en el 404, que pierde cuántos 404 hay; y `no-referrer`,
+cuando `origin` alcanza. Un test falla si aparece otra rewrite de Hosting hacia una
+página del sitio.
+
+## D-1091 · La salida de una pasada es su tipo, y dice «Más …»
+
+**B-1794, 2026-09-24.** Sale del view-model (`masDelTipo`), con el mismo criterio que
+el segundo nivel de la miga: solo si `tipoTieneHub`. Solo en pasadas: con fechas por
+venir la salida sigue siendo el mes. Dice «Más talleres» y no «Ver otros talleres»
+porque el plural no trae género («otros presentaciones»). Sin equivalente por
+barrio: «Dónde» ya enlaza ese hub.

@@ -2,6 +2,59 @@
 
 ## Sin publicar
 
+- **El texto atenuado del panel llega a AA** (B-1630, D-1065). Las notas del
+  tablero, la ayuda de cada campo, «sin datos aún», las fechas de las tarjetas: el
+  panel atenuaba con `text-tinta/35` a `/60`, que daba entre 2,2:1 y 4,4:1 contra
+  un piso de 4,5. Suben a `/65` en todo el panel, y lo mide un test nuevo,
+  `contraste-del-panel.test.ts`, que barre el panel como ya se barría el sitio.
+- **El build se pone rojo si dos fichas publicadas de la Guía comparten dirección**
+  (B-1640). Los cuatro `caminosDe*` de `contenidoDelSitio.ts` pasan por
+  `caminosDeFichas`, que tira con el slug y el directorio: mejor un build que se
+  niega que una página pisada en silencio.
+- **El gate del build siembra un encuentro cancelado con motivo** (B-1572). El paso
+  8m nuevo exige sobre el `dist/` real que `motivoCancelacion` salga en la página de
+  detalle y no en el `events.json` ni en el JSON-LD.
+- **`build-contra-emulador.mjs` se decidió partir** (B-1072, D-1070): 3.419 líneas,
+  y los cuatro directorios de la Guía son el mismo esqueleto copiado. La partición
+  queda en B-1760, para hacerla corriendo el gate contra el emulador.
+- **`/audit` junta los hallazgos con la columna medido/leído, y un `leído` no frena
+  solo** (B-1710): quien corre el skill mide lo que el auditor nombró; si se
+  reproduce, frena.
+- **Los pendientes viejos de `.estado/` quedaron revisados** (B-1730): de 31, 19
+  estaban resueltos y se marcaron citando dónde; los otros seis pendientes reales,
+  que nunca habían entrado, entran como B-1790 a B-1795.
+- **Tres detalles del formulario y del listado del panel** (B-1570, B-1700, B-1720,
+  D-1060, D-1061). En un encuentro cancelado se atenúan la fecha y el tema, pero ya
+  no el «Motivo», que se escribe y es público. La fila «en Google sale sin…» de la
+  barra ya no cambia de texto mientras se escribe la web del organizador. Y el
+  filtro «Fechas» dice «Sin fechas cargadas» y en «Pasadas» ya no se ofrece.
+- **La guarda del Instagram del evento de Calendar mira un registro y no un nombre**
+  (B-1590, D-1080): `CAMPOS_DE_INSTAGRAM`, cruzado contra la tabla de `docs/03` en
+  las dos direcciones, así una fila nueva pone el test en rojo hasta que alguien
+  decida si ese campo sale al evento.
+- **El chequeo de B-85 exige la guarda declarada de cada barrido** (B-879, D-1081):
+  una función programada que escribe lo que leyó ya no pasa por no hablar con la
+  red, sino solo si declara su guarda en `GUARDAS_DE_BARRIDO`.
+- **El `/404` ya no le manda a GA4 la dirección que se pidió** (B-1793, D-1090).
+  `/404.html` se sirve como cuerpo de cualquier ruta que no existe, y el
+  `page_location` salía de la barra: un slug renombrado o texto arbitrario viajaban a
+  Analytics. Ahora la página declara `direccionAjena` en `Base.astro` y se mide la
+  canónica `/404/`: se sigue contando cuántos 404 hay, sin saber cuáles. Además emite
+  `<meta name="referrer" content="origin">`, porque si no la página siguiente
+  mandaba la misma dirección como `page_referrer`.
+- **La página de una actividad que ya pasó ofrece su tipo** (B-1794, D-1091): en
+  «Seguir mirando» va «Más talleres» (o el tipo que sea), solo si el hub existe.
+- **El pre-push nombra el Firestore solo de otro gate en vez de morir adentro de la
+  suite** (B-1661, B-1770, D-1076). Medido: el `emulators:exec --only firestore` del
+  paso 4 de otro checkout deja un hub que el gate tomaba por la tanda entera, y la
+  suite corría sin Auth ni Storage. Ahora el hub cuenta solo si lista los tres, y el
+  paso 3 corta con «hay un Firestore solo en 127.0.0.1:8080, probablemente el paso 4
+  del gate de otro checkout: reintentá en un minuto».
+- **Dos corridas de tests a la vez ya no se pisan los permisos de las cuentas**
+  (B-1662, D-1075). Los uids y los correos de test llevan la huella del checkout, y
+  `tokenDe()` se niega a armar una cuenta sin ella. La integración entera pasó
+  507/507 desde un worktree contra el emulador del árbol principal, que es la parte
+  de D-1020 que faltaba medir.
 - **Cancelar un encuentro lo anuncia en vez de borrarlo** (B-98, D-975, D-976,
   D-977). Lo aprobó el dueño el 2026-08-26. El evento de Calendar se queda en el
   calendario de quien lo tenía agendado, titulado «CANCELADO — …» y con el motivo
