@@ -122,6 +122,16 @@ export const estuvoPublicada = (documento) =>
  * escritura costaría **una versión de historial y un rebuild del sitio** por cada
  * actividad que se publica.
  */
+/*
+ * **B-905 — y es la misma decisión para los cuatro directorios de la Guía.**
+ * Una ficha de librería, suscripción, lugar o biblioteca se publica con el mismo
+ * `estado: 'publicado'` (`ESTADO_PUBLICO`, `src/lib/directorios.ts`) y guarda la
+ * marca en el mismo campo, así que `directorios-trigger.js` importa esta función
+ * en vez de escribir la suya: dos predicados de «hay que marcar» se separan sin
+ * que nada falle (la clase de B-88). Allá la segunda mitad de la guarda no es
+ * `CAMPOS_DE_MAQUINA` sino `CAMPOS_PUBLICOS_POR_DIRECTORIO`, que no incluye la
+ * marca: el write-back no dispara un segundo rebuild.
+ */
 export const faltaMarcarPublicada = (documento) =>
   documento?.estado === ESTADO_PUBLICADO && !marcadaComoPublicada(documento);
 

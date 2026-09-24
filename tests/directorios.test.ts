@@ -238,17 +238,31 @@ describe('la dirección web se congela al publicar — trampa 10', () => {
      *
      * Y el default de lectura es el que preserva lo anterior (§«Un campo nuevo se
      * lee con el default que preserva lo anterior»): ausente ⇒ se contesta con el
-     * estado. Hoy ningún documento de directorio trae la marca.
+     * estado. Es el caso de toda ficha publicada antes de B-905 que nadie volvió
+     * a guardar.
      *
-     * MUTACIÓN PROBADA: cambiar el `??` por `||` en `slugBloqueado` pone en rojo
-     * el segundo aserto —una ficha publicada con la marca en `false` volvería a
-     * quedar bloqueada por el estado, tapando lo que la marca afirma— y cambiar
-     * `publicadaAlgunaVez ?? …` por `publicadaAlgunaVez === true` pone en rojo el
-     * tercero, que es el caso de todos los documentos que existen hoy.
+     * MUTACIÓN PROBADA: `slugBloqueado = (f) => f.estado === 'publicado'` (el
+     * candado sin memoria, o sea B-905 abierto) pone en rojo el primero, y
+     * `(f) => f.publicadaAlgunaVez === true` pone en rojo el tercero.
      */
     expect(slugBloqueado({ estado: 'pendiente', publicadaAlgunaVez: true })).toBe(true);
-    expect(slugBloqueado({ estado: 'publicado', publicadaAlgunaVez: false })).toBe(false);
+    expect(slugBloqueado({ estado: 'pendiente', publicadaAlgunaVez: false })).toBe(false);
     expect(slugBloqueado({ estado: 'publicado' })).toBe(true);
+  });
+
+  it('y contesta lo mismo que la regla: publicada con la marca en `false` queda fija — D-911', () => {
+    /*
+     * La regla (`slugDe*Congelado`) suma la marca y el estado con un `||`. Hasta
+     * B-905 este helper los combinaba con un `??` y la diferencia se describía
+     * como «un documento imposible»; con el trigger escrito existe: el `create`
+     * acepta la marca en `false`, y entre la publicación y el write-back la ficha
+     * es `publicado` con `false`. Con el `??` el formulario le dejaba editar el
+     * slug y la regla rechazaba el guardado entero.
+     *
+     * MUTACIÓN PROBADA: volver al `publicadaAlgunaVez ?? estado === 'publicado'`
+     * pone este caso en rojo.
+     */
+    expect(slugBloqueado({ estado: 'publicado', publicadaAlgunaVez: false })).toBe(true);
   });
 
   it('el slug sale de `slugify` y no de un normalizador propio', () => {

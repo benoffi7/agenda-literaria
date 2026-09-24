@@ -604,7 +604,7 @@ de B-364):
 | `horarios` | ⚠️ **texto libre y opcional** (B-982): «Lun a vie de 10 a 20, sábados de 10 a 14». Es el dato que más se busca después de la dirección. **Y por eso no se emite `openingHours` en el JSON-LD**: `schema.org` lo quiere en formato fijo (`Mo-Fr 10:00-20:00`) y un texto libre no valida — emitirlo mal formado haría que Google muestre un horario equivocado al costado del resultado, que es peor que no mostrar ninguno. Entra el día que el campo se estructure, y **migrarlo va a ser caro**: va a estar cargado en todas las fichas y hay que releerlo a mano |
 | `contactoDeQuienCargo` | ⚠️ **interno**. Es el **segundo dato personal de un tercero** que guarda el proyecto, después del `contacto` de una propuesta. No sale a ninguna salida pública, y lo sostienen la whitelist de `src/lib/libreriaPublica.ts` y el centinela de `tests/libreria-publica.test.ts` **Y tiene plazo desde B-904/B-912/B-917**: una ficha `rechazado` se borra a los 30 días del rechazo y una `pendiente` a los 30 días sin que nadie la toque, con `borrarFichasVencidas` (`functions/retencion-trigger.js`). La `publicado` no vence, y eso es una decisión: su contacto es lo que deja avisarle a la ficha que existe o darla de baja cuando cierra. |
 | `estado`, `origen`, `revision`, `creadoEn` | el ciclo de vida. `origen` dice si la cargó el panel o un formulario público, `revision` lleva el uid de quien decidió y el motivo del descarte |
-| `publicadaAlgunaVez` | declarado y **sin trigger que lo escriba todavía** (B-905): hoy el candado del slug cae al estado actual |
+| `publicadaAlgunaVez` | lo prende **el servidor** la primera vez que la ficha está `publicado` y no lo apaga nunca (B-905, `rebuildPorLibrerias`); el cliente no lo puede mover. Es lo que congela el slug después de despublicar — ver § «`publicadaAlgunaVez`» más abajo |
 
 **Lo que esta colección no tiene y `/propuestas` sí: retención.** Una ficha
 `rechazado` conserva el contacto del tercero para siempre, y por eso el `delete`
@@ -845,6 +845,36 @@ después de publicar» se preguntaba en dos lugares como `estado === 'publicado'
 —`slugBloqueado` en el formulario y `slugRestaurable` en el historial—, o sea que
 bastaba despublicar para volver a editar la dirección de una URL ya indexada. Los
 dos preguntan ahora `estuvoPublicada`, la misma función del trigger.
+
+### En los cuatro directorios de la Guía (B-905)
+
+`/librerias`, `/suscripciones`, `/lugares` y `/bibliotecas` tienen **el mismo
+campo con la misma semántica**, y hasta B-905 solo tenían la mitad: el tipo lo
+declaraba y la regla lo respetaba (`slugDe*Congelado` lo lee primero, y el cliente
+no lo puede crear en `true` ni cambiarlo), pero **no lo escribía nadie**. O sea que
+publicar → despublicar → renombrar → volver a publicar reabría la URL.
+
+**Lo escriben los cuatro triggers de rebuild** (`functions/directorios-trigger.js`),
+no cuatro Functions nuevas (D-910), y con **la misma decisión y el mismo efecto**
+que `syncCalendar`: `faltaMarcarPublicada` (`functions/historial.js`) y
+`marcarPublicada(db, id, coleccion)` (`functions/marca-de-publicada.js`). Una sola
+implementación para las cinco colecciones.
+
+- **La guarda anti-loop** (trampa 3) es la misma que en las actividades: el
+  `update` vuelve a disparar el handler, y en esa segunda pasada la marca ya está.
+  La otra mitad acá no es `CAMPOS_DE_MAQUINA` sino que el campo **no está** en
+  `CAMPOS_PUBLICOS_POR_DIRECTORIO`: el write-back no dispara un segundo rebuild.
+- **Va antes del rebuild y afuera de su `if`**: corresponde porque la ficha pasó a
+  publicada, no porque el sitio tenga algo que rehacer (la clase de B-83).
+- **Solo vale hacia adelante.** Una ficha publicada antes del deploy de B-905
+  recibe la marca en su próxima escritura mientras siga publicada —la decisión se
+  toma sobre el documento, no sobre la transición—; una que ya se despublicó antes
+  del deploy no la recupera, porque los directorios no tienen historial del que
+  inferirla (B-1420).
+- **`slugBloqueado` pasó de `??` a `||`** (D-911), y ahora contesta lo mismo que la
+  regla: entre la publicación y el write-back existe una ficha `publicado` con la
+  marca en `false` —el `create` la acepta—, y con el `??` el formulario le dejaba
+  editar el slug que la regla después rechazaba.
 
 ## `imagenes` — la galería, y el campo que reemplaza (B-167)
 

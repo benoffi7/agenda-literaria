@@ -255,20 +255,30 @@ export const slugDeFicha = (nombre: string): string => slugify(nombre);
  * La pregunta de verdad es «¿estuvo publicada **alguna vez**?» (B-285): una
  * ficha que se publicó y se despublicó volvió a `pendiente`, y mirar solo el
  * estado actual le devolvería el slug editable — o sea la puerta de atrás del
- * mismo candado. Por eso se acepta la marca `publicadaAlgunaVez`, con el default
- * que preserva lo anterior (§«Un campo nuevo se lee con el default que preserva
- * lo anterior»): ausente ⇒ se contesta con el estado, que es exactamente el
- * comportamiento de siempre.
+ * mismo candado. Por eso se mira la marca `publicadaAlgunaVez`, y ausente ⇒ se
+ * contesta con el estado, que es el default que preserva lo anterior (§«Un campo
+ * nuevo se lee con el default que preserva lo anterior»).
  *
- * **Hoy nadie escribe esa marca en un directorio** —la escribe un trigger, y el
- * de estas colecciones no existe todavía—, así que el parámetro está para que el
- * día que exista no haya que tocar ni un llamador. Es el mismo trato que la
- * marca tiene en las actividades, donde la escribe la Function y no el panel.
+ * **La marca la escribe el servidor desde B-905**: los triggers de
+ * `functions/directorios-trigger.js` la prenden la primera vez que la ficha pasa
+ * a publicada, y nunca la apagan. Es el mismo trato que tiene en las
+ * actividades, donde la escribe `syncCalendar` y no el panel.
+ *
+ * ── `||` y no `??`, igual que la regla — D-911 ────────────────────────────
+ * Hasta B-905 esto era `publicadaAlgunaVez ?? estado === 'publicado'`: la marca
+ * **ganaba** sobre el estado, y la regla (`slugDe*Congelado`, `firestore.rules`)
+ * los suma. La diferencia estaba documentada como «un documento imposible», y con
+ * el trigger escrito dejó de serlo: el `create` acepta la marca en `false`, y
+ * entre la publicación y el write-back —o si el write-back falla— una ficha
+ * `publicado` con la marca en `false` existe. Con el `??` el formulario le dejaba
+ * el slug editable y la regla rechazaba el guardado entero: el candado de verdad
+ * aguantaba, pero el panel prometía algo que no podía cumplir. Con el `||` las
+ * dos mitades contestan lo mismo, y la que decide sigue siendo la del servidor.
  */
 export const slugBloqueado = (ficha: {
   estado: EstadoDirectorio;
   publicadaAlgunaVez?: boolean;
-}): boolean => ficha.publicadaAlgunaVez ?? ficha.estado === ESTADO_PUBLICO;
+}): boolean => ficha.publicadaAlgunaVez === true || ficha.estado === ESTADO_PUBLICO;
 
 // ─────────────────────────────────────────────────────────────────
 // Cuáles son los tres directorios — el registro de `/guia`
