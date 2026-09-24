@@ -36,7 +36,7 @@ import { tmpdir } from 'node:os';
 
 import { CLASES_DE_PARED, CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
 import { CLAVE_BUSQUEDA, TITULO_NO_ENCONTRADO } from '@/lib/noEncontrado';
-import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
+import { RUTA_AGENDA, RUTA_PASADAS, rutaCanonica } from '@/lib/rutasPublicas';
 
 /** La raíz del repo, que es desde donde hay que invocar el gate. */
 export const RAIZ = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -72,16 +72,22 @@ export const paginaLimpia = (titulo: string): string =>
 /**
  * La página de error tal como el gate la espera — B-310, B-880.
  *
- * Las cinco señales que la sección 4.1 exige, y las cinco salen de la constante
- * que las declara: el título, el `noindex`, el formulario por GET, el nombre del
- * campo de búsqueda y el enlace al archivo.
+ * Las siete señales que la sección 4.1 exige, y salen de la constante que las
+ * declara: el título, el `noindex`, el `meta referrer` y la ruta medida de
+ * D-1090 (B-1801), el formulario por GET, el nombre del campo de búsqueda y el
+ * enlace al archivo. La ruta medida sale de `rutaCanonica('/404')`, que es lo
+ * que `Base.astro` le pasa al aviso de cookies en el build.
  */
+export const RUTA_MEDIDA_404 = rutaCanonica('/404');
+
 export const pagina404 = (): string =>
   `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">` +
   `<title>${TITULO_NO_ENCONTRADO}</title>` +
   `<meta name="robots" content="noindex, nofollow">` +
+  `<meta name="referrer" content="origin">` +
   `<link rel="stylesheet" href="/_astro/Base.css">` +
   `</head><body><h1>${TITULO_NO_ENCONTRADO}</h1>` +
+  `<div id="aviso-cookies" role="region" data-ruta-medida="${RUTA_MEDIDA_404}" hidden></div>` +
   `<form action="${RUTA_AGENDA}" method="get">` +
   `<label for="q-404">Buscar</label>` +
   `<input id="q-404" type="search" name="${CLAVE_BUSQUEDA}">` +

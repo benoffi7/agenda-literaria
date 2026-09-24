@@ -569,6 +569,31 @@ if (!html404.includes(TITULO_404)) {
 if (!/<meta[^>]*name="robots"[^>]*content="[^"]*noindex/i.test(html404)) {
   falta404.push('no lleva `noindex` — §5.1 la deja fuera del índice');
 }
+/*
+ * **Las dos mitades de D-1090, sobre el artefacto — B-1801.** La prop
+ * `direccionAjena` de `Base.astro` hace dos cosas, y B-1793 las fijó solo sobre
+ * el fuente: que la línea esté escrita no dice que el build la emita (una prop
+ * que dejó de pasarse, un `conChrome` en falso, otro layout).
+ *
+ *  · sin el `meta referrer`, la página siguiente recibe como `Referer` la
+ *    dirección pedida y la manda como `page_referrer`;
+ *  · sin `data-ruta-medida`, la medición toma la ruta de la barra —la dirección
+ *    ajena— en vez de la canónica de la página.
+ *
+ * La ruta no se extrae del fuente porque ya está fija acá: el archivo que se lee
+ * es `404.html`, su pathname es `/404` y `rutaCanonica` le pone la barra (B-330).
+ */
+const RUTA_MEDIDA_404 = '/404/';
+if (!/<meta\b[^>]*name="referrer"[^>]*content="origin"/i.test(html404)) {
+  falta404.push(
+    'no lleva `<meta name="referrer" content="origin">` — la página siguiente mandaría la dirección pedida como `page_referrer` (D-1090)',
+  );
+}
+if (!html404.includes(`data-ruta-medida="${RUTA_MEDIDA_404}"`)) {
+  falta404.push(
+    `no lleva \`data-ruta-medida="${RUTA_MEDIDA_404}"\` — la medición mandaría la dirección pedida en vez de la canónica (D-1090)`,
+  );
+}
 if (!/<form\b[^>]*method="get"/i.test(html404)) {
   falta404.push('no tiene el formulario de búsqueda por GET — §4.5');
 }
@@ -667,7 +692,7 @@ if (!enLaHoja(MARCADOR)) {
 }
 
 console.log(
-  `${DIR}/ con lo que tiene que estar: 404.html es la página de error (B-310) y las ` +
+  `${DIR}/ con lo que tiene que estar: 404.html es la página de error (B-310) y mide su canónica (D-1090), y las ` +
     `${utilidades.length} utilidades de la grilla están en la hoja, con el marcador ` +
     `${MARCADOR} que prueba el scan de Tailwind (B-600)`,
 );
