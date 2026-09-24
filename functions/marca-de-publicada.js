@@ -39,6 +39,19 @@ import { MARCA_DE_PUBLICADA } from './historial.js';
  * Nunca escribe `false`: el campo es pegajoso y no hay rama que lo apague.
  * Despublicar no des-indexa la URL que estuvo tres semanas en Instagram, así que
  * la pregunta que este campo contesta no tiene vuelta atrás.
+ *
+ * ── B-905: la colección es un parámetro, y la función sigue siendo una ─────
+ * Los cuatro directorios de la Guía (`librerias`, `suscripciones`, `lugares`,
+ * `bibliotecas`) tienen el mismo campo, la misma regla que lo respeta
+ * (`slugDe*Congelado`) y el mismo hueco: nadie lo escribía. Los cierra **esta
+ * misma función**, llamada desde sus triggers de `directorios-trigger.js`, y no
+ * una copia por colección: la marca se escribe de una sola manera en todo el
+ * proyecto, y el chequeo de «nunca `false`» de `publicada-alguna-vez.test.ts`
+ * mira un solo archivo porque hay uno solo.
+ *
+ * El default es `actividades` para que el llamador original —`syncCalendar`—
+ * no cambie. Una colección mal escrita no crea nada: `update` sobre un
+ * documento que no existe falla, y quien llama lo loguea.
  */
-export const marcarPublicada = (db, id) =>
-  db.doc(`actividades/${id}`).update({ [MARCA_DE_PUBLICADA]: true });
+export const marcarPublicada = (db, id, coleccion = 'actividades') =>
+  db.doc(`${coleccion}/${id}`).update({ [MARCA_DE_PUBLICADA]: true });
