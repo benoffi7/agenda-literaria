@@ -54,6 +54,7 @@ import {
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { formALugar, lugarVacio } from '@/lib/lugar-schema';
+import { confirmarPrecioDeLugar } from '@/lib/lugares';
 import type { Lugar, LugarForm } from '@/types/lugar';
 import {
   PROJECT_ID,
@@ -617,6 +618,18 @@ describe.skipIf(!vivo)('lugares para eventos contra el emulador — B-833', () =
       await updateDoc(doc(db(), 'lugares', 'l_precio'), {
         precio: { valor: { monto: 30000, porUnidad: 'hora' }, cargadoEn: serverTimestamp() },
       });
+
+      // (6) Y el botón del panel entra por esa misma puerta (B-913): la función
+      // que llama —una sola ruta, `precio.cargadoEn`— pasa la regla y deja el
+      // valor intacto. MUTACIÓN A PROBAR: escribir `{ precio: { cargadoEn } }`
+      // sin la ruta con punto se queda sin `valor` y da rojo.
+      const antes = (await getDoc(doc(db(), 'lugares', 'l_precio'))).data() as Lugar;
+      await confirmarPrecioDeLugar('l_precio', antes);
+      const despues = (await getDoc(doc(db(), 'lugares', 'l_precio'))).data() as Lugar;
+      expect(despues.precio!.valor).toEqual(antes.precio!.valor);
+      expect((despues.precio!.cargadoEn as Timestamp).toMillis()).toBeGreaterThanOrEqual(
+        (antes.precio!.cargadoEn as Timestamp).toMillis(),
+      );
     });
   });
 
