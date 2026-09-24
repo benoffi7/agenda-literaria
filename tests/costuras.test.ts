@@ -492,7 +492,8 @@ describe('B-84 · cancelar un encuentro de un ciclo (§7.2, §2.2)', () => {
   it('cancelar uno solo toca un solo evento', () => {
     const ops = planificar(antes, despues, {});
     expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_2' });
+    // B-98 — lo reescribe como cancelado, no lo borra.
+    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_2' });
   });
 
   it('no renumera a los otros siete: el sexto sigue siendo "6 de 8"', () => {

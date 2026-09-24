@@ -179,14 +179,23 @@ describe('estado de publicación: ¿esto ya lo ve la gente?', () => {
       estadoPublicacion({ estado: 'borrador' }, { cancelada: false, calendarEventId: 'evt1' }),
     ).toBe('sobra-en-calendario');
     expect(
-      estadoPublicacion({ estado: 'publicado' }, { cancelada: true, calendarEventId: 'evt1' }),
+      estadoPublicacion({ estado: 'cancelado' }, { cancelada: true, calendarEventId: 'evt1' }),
     ).toBe('sobra-en-calendario');
   });
 
-  it('encuentro cancelado de una actividad publicada (§7.3)', () => {
+  /**
+   * B-98 — el cancelado de una publicada **tiene** evento («CANCELADO — …»): con
+   * id es `encuentro-cancelado` y se cuenta entre lo que la gente ve; sin id es
+   * un evento que falta, igual que cualquier otro encuentro publicado.
+   */
+  it('encuentro cancelado de una actividad publicada: sigue en el calendario, anunciado (B-98)', () => {
+    expect(
+      estadoPublicacion({ estado: 'publicado' }, { cancelada: true, calendarEventId: 'evt1' }),
+    ).toBe('encuentro-cancelado');
+    expect(INFO_PUBLICACION['encuentro-cancelado'].grupo).toBe('visible');
     expect(
       estadoPublicacion({ estado: 'publicado' }, { cancelada: true, calendarEventId: null }),
-    ).toBe('encuentro-cancelado');
+    ).toBe('falta-en-calendario');
   });
 
   it('los tres estados que no publican nada se distinguen entre sí (§7.3)', () => {
@@ -242,7 +251,13 @@ describe('del eje de actividades al eje de encuentros (§2.2, D-70)', () => {
     const conCancelado = actividad({
       sesiones: [
         sesion({ id: 'ses_1', inicio: '2026-09-03T22:00:00Z' }),
-        sesion({ id: 'ses_2', inicio: '2026-09-10T22:00:00Z', cancelada: true }),
+        sesion({
+          id: 'ses_2',
+          inicio: '2026-09-10T22:00:00Z',
+          cancelada: true,
+          // B-98 — el cancelado conserva su evento.
+          calendarEventId: 'evt_2',
+        }),
         sesion({ id: 'ses_3', inicio: '2026-09-17T22:00:00Z' }),
       ],
     });

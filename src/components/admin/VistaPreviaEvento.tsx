@@ -102,9 +102,10 @@ export function VistaPreviaEvento({ form, labelsPendientes }: Props) {
           )}
           {!resultado.evento.saleAlCalendario && (
             <p className={`${claseAviso} border border-amber-300 bg-amber-50 text-amber-900`}>
-              {form.sesiones.find((s) => s.id === idEfectivo)?.cancelada
-                ? 'Este encuentro está cancelado: su evento se borra del calendario (§7.3). Abajo está cómo quedaría si lo reactivás.'
-                : 'La actividad todavía no está publicada, así que este evento no existe en el calendario. Abajo está cómo va a quedar al publicarla.'}
+              {/* B-98 — un cancelado de una publicada sí sale (anunciado), así
+                  que este aviso ya solo puede ser por el estado de la actividad. */}
+              La actividad todavía no está publicada, así que este evento no existe en el
+              calendario. Abajo está cómo va a quedar al publicarla.
             </p>
           )}
 

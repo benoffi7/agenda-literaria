@@ -69,6 +69,7 @@ export const sesionVacia = (
       tema: '',
       lectura: '',
       cancelada: false,
+      motivoCancelacion: '',
       calendarEventId: null,
       comisionId,
     };
@@ -81,6 +82,7 @@ export const sesionVacia = (
     tema: '',
     lectura: '',
     cancelada: false,
+    motivoCancelacion: '',
     calendarEventId: null,
     comisionId,
   };
@@ -97,6 +99,8 @@ export const duplicarSesion = (s: SesionForm, cadaDias = 7): SesionForm => {
     inicio: inicio ? aDatetimeLocal(new Date(inicio.getTime() + salto)) : s.inicio,
     fin: fin ? aDatetimeLocal(new Date(fin.getTime() + salto)) : s.fin,
     cancelada: false,
+    // B-98 — el motivo es de la cancelación, y la copia no está cancelada.
+    motivoCancelacion: '',
     // El id de Calendar es de la sesión original: la copia todavía no existe allá.
     calendarEventId: null,
   };
@@ -208,6 +212,8 @@ export const generarSesiones = (opts: {
       tema: previa?.tema ?? '',
       lectura: previa?.lectura ?? '',
       cancelada: previa?.cancelada ?? false,
+      // B-98 — el motivo va con la cancelación: es el anuncio de ese encuentro.
+      motivoCancelacion: previa?.motivoCancelacion ?? '',
       // Va con el id: sin él, el diff vería una sesión conocida sin evento y
       // crearía un segundo evento para el mismo encuentro.
       calendarEventId: previa?.calendarEventId ?? null,

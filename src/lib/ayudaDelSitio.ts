@@ -330,8 +330,9 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
         id: 'encuentro-cancelado',
         pregunta: '¿Y si se cancela un encuentro, o la actividad entera?',
         respuesta: [
-          'Un encuentro cancelado queda marcado como cancelado y sale del calendario, pero el ' +
-            'resto del ciclo sigue igual.',
+          'Un encuentro cancelado queda tachado en la página, con el motivo si quien organiza lo ' +
+            'contó. En el calendario no desaparece: su evento pasa a decir «CANCELADO», así quien ' +
+            'lo tenía agendado se entera. El resto del ciclo sigue igual.',
           'Si se cancela la actividad entera, la página no desaparece: queda con el aviso de que ' +
             'se canceló. Un link que ya circuló por Instagram y por WhatsApp tiene que llevar a ' +
             'algún lado que explique qué pasó, y no a una página de error.',

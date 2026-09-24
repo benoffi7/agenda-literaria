@@ -251,11 +251,16 @@ export const ADVERTENCIAS: Record<IdAdvertencia, Advertencia> = {
     texto:
       'Los encuentros virtuales dicen en qué plataforma son, no el link para entrar. Este calendario lo puede leer cualquiera, y un link de reunión a la vista termina con gente que nadie invitó adentro del encuentro: te lo pasa quien organiza cuando te inscribís. Alguna actividad abierta lo publica igual, a propósito, y en ese caso lo vas a ver en el evento.',
   },
+  /*
+   * B-98 — decía lo contrario («Si algo se cancela, desaparece»): un encuentro
+   * cancelado se borraba del calendario de la gente. Desde B-98 el evento se
+   * queda y avisa; lo que sigue borrándose es la actividad entera.
+   */
   cancelada: {
     id: 'cancelada',
-    titulo: 'Si algo se cancela, desaparece',
+    titulo: 'Si un encuentro se cancela, te avisa',
     texto:
-      'Un encuentro cancelado no queda tachado ni con un cartel: se borra de tu calendario. La primera vez sorprende. Es a propósito: el calendario muestra siempre lo que sigue en pie, y una actividad cancelada que queda a la vista hace que alguien se presente igual.',
+      'Un encuentro cancelado no se borra de tu calendario: queda con «CANCELADO» adelante del nombre y, si quien organiza contó por qué, el motivo arriba de todo. Así te enterás sin entrar al sitio, y no te presentás a algo que no se hace. Si lo que se cancela es la actividad entera, en cambio, sus encuentros se borran de tu calendario: ya no queda nada que seguir.',
   },
 };
 

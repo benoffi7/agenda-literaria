@@ -290,8 +290,25 @@ describe('vistaPreviaEvento — adaptación del formulario', () => {
     expect(previa(form()).saleAlCalendario).toBe(true);
   });
 
-  it('avisa que un encuentro cancelado no tiene evento (§7.3)', () => {
-    expect(previa(form({ sesiones: [sesion({ cancelada: true })] })).saleAlCalendario).toBe(false);
+  /**
+   * B-98 — el cancelado **sí** sale al calendario, anunciado. La vista previa lo
+   * muestra sin una línea propia: importa `construirEvento` (D-20).
+   */
+  it('muestra el evento de un encuentro cancelado tal como lo ve la gente (B-98)', () => {
+    const e = previa(
+      form({ sesiones: [sesion({ cancelada: true, motivoCancelacion: 'Falta de inscriptos' })] }),
+    );
+    expect(e.saleAlCalendario).toBe(true);
+    expect(e.titulo.startsWith('CANCELADO — ')).toBe(true);
+    expect(e.descripcion.startsWith('Este encuentro se canceló.\nMotivo: Falta de inscriptos')).toBe(
+      true,
+    );
+  });
+
+  it('un motivo que quedó cargado en un encuentro descancelado no sale (B-98)', () => {
+    const e = previa(form({ sesiones: [sesion({ cancelada: false, motivoCancelacion: 'Feriado' })] }));
+    expect(e.titulo).not.toContain('CANCELADO');
+    expect(e.descripcion).not.toContain('Feriado');
   });
 });
 

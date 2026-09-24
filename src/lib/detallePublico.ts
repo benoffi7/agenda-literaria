@@ -134,6 +134,12 @@ export interface EncuentroDeDetalle {
   tema: string | null;
   lectura: string | null;
   cancelada: boolean;
+  /**
+   * B-98 — por qué se canceló, `null` si no se dijo (o si no está cancelado).
+   * Es el mismo texto que abre el evento de Calendar: quien llega a la página
+   * desde el calendario tiene que leer lo mismo.
+   */
+  motivoCancelacion: string | null;
   /** Ya terminó, según el reloj del build. */
   paso: boolean;
   /**
@@ -1204,6 +1210,10 @@ export const detalleDeActividad = (
       tema: s.tema,
       lectura: s.lectura,
       cancelada: s.cancelada,
+      // B-98 — ya viene saneado por `toPublic` (`motivoDeCancelacion`); la
+      // condición es por si un día la proyección se arma por otro camino, y el
+      // `?? null` por una proyección vieja (un fixture) que no traiga el campo.
+      motivoCancelacion: s.cancelada ? s.motivoCancelacion ?? null : null,
       paso: Boolean(fin && fin.getTime() < ahora.getTime()),
       // Se resuelve en la segunda pasada: «el próximo» depende de todos.
       esProximo: false,

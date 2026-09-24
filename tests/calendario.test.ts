@@ -102,39 +102,32 @@ const actividadSinModalidades = (over: Record<string, unknown> = {}) => {
  * B-84.
  */
 /**
- * B-352 — una sesión cancelada no conserva su `calendarEventId`: al borrar el
- * evento, `syncCalendar` repone `null` en esa sesión. Un fixture con
- * `cancelada: true` y un id de evento vivo describe un estado que el sistema
- * no puede tener asentado, y le hace emitir un `borrar` de más a `planificar`
- * en cada escritura posterior — la misma advertencia que `tests/fixtures/ciclo.ts`
- * dejó escrita para el fixture compartido (B-135).
+ * Ocho encuentros semanales, todos con su evento ya creado (`evt_<i>`).
  *
- * Por default, entonces, una fila que `over(i)` marca `cancelada: true` nace
- * con `calendarEventId: null` — el estado ya asentado. La única excepción real
- * es la **transición**: el instante en que se acaba de cancelar y el diff
- * todavía tiene que ver el id viejo para poder emitir el `borrar` que lo saca
- * ("cancelar el tercero de ocho borra solo el suyo", más abajo). Para ese caso
- * se pasa `{ enTransicion: true }`, y solo para ese caso: el default sigue
- * siendo el estado asentado, así que un test nuevo que cancele una fila sin
- * pensarlo no puede pisar la misma trampa. Un `over(i)` que fije
- * `calendarEventId` a mano sigue ganando siempre, como antes.
+ * **B-98 — un encuentro cancelado conserva su `calendarEventId`**: el evento no
+ * se borra, se reescribe como «CANCELADO — …». Así que el estado asentado de
+ * una fila cancelada es con el id vivo, igual que cualquier otra, y el helper ya
+ * no distingue.
+ *
+ * Hasta B-98 era al revés (B-352): una cancelada asentada nacía con
+ * `calendarEventId: null`, porque el sync le había borrado el evento, y un
+ * `{ enTransicion: true }` pedía el id vivo para el instante de la cancelación.
+ * Esa opción se fue con el borrado. Un `over(i)` que fije `calendarEventId` a
+ * mano sigue ganando siempre.
  */
 const sesionesSemanales = (
   cuantas: number,
   over: (i: number) => Record<string, unknown> = () => ({}),
-  { enTransicion = false }: { enTransicion?: boolean } = {},
 ) =>
-  Array.from({ length: cuantas }, (_, i) => {
-    const cambios = over(i);
-    const canceladaSinPedirTransicion = cambios.cancelada === true && !enTransicion;
-    return sesion({
+  Array.from({ length: cuantas }, (_, i) =>
+    sesion({
       id: `ses_${i}`,
       inicio: ts(new Date(Date.UTC(2026, 8, 3, 22) + i * 7 * 86_400_000).toISOString()),
       fin: ts(new Date(Date.UTC(2026, 8, 4, 0) + i * 7 * 86_400_000).toISOString()),
-      calendarEventId: canceladaSinPedirTransicion ? null : `evt_${i}`,
-      ...cambios,
-    });
-  });
+      calendarEventId: `evt_${i}`,
+      ...over(i),
+    }),
+  );
 
 const ciclo = (over: Record<string, unknown> = {}) =>
   actividad({ esCiclo: true, sesiones: sesionesSemanales(8), ...over });
@@ -151,9 +144,17 @@ describe('planificar — creación', () => {
     expect(planificar(null, actividad({ estado: 'borrador' }))).toEqual([]);
   });
 
-  it('no crea nada para una sesión cancelada (§7.3)', () => {
-    const a = actividad({ sesiones: [sesion({ cancelada: true })] });
-    expect(planificar(null, a)).toEqual([]);
+  /**
+   * B-98 — un encuentro cancelado **tiene** evento, y nace anunciado. Es el caso
+   * de cancelar con la actividad en borrador y publicar después: el calendario
+   * muestra lo mismo que la página, el encuentro tachado (ver `debeExistir`).
+   */
+  it('crea el evento de un encuentro cancelado, ya anunciado como cancelado (B-98)', () => {
+    const a = actividad({ sesiones: [sesion({ cancelada: true, motivoCancelacion: 'Feriado' })] });
+    const ops = planificar(null, a) as { tipo: string; evento: { summary: string; description: string } }[];
+    expect(tipos(ops)).toEqual(['crear']);
+    expect(ops[0]!.evento.summary.startsWith('CANCELADO — ')).toBe(true);
+    expect(ops[0]!.evento.description.startsWith('Este encuentro se canceló.\nMotivo: Feriado')).toBe(true);
   });
 
   it('crea un evento por cada encuentro del ciclo, no uno recurrente (§2.2)', () => {
@@ -371,20 +372,84 @@ describe('planificar — despublicar y cancelar (§7.3)', () => {
    * sesiones y sin `esCiclo` este test pasaba mientras el invariante estaba
    * roto, porque la numeración del evento no entraba en juego (§2.2).
    */
-  it('cancelar el tercero de ocho borra solo el suyo (B-84)', () => {
-    // B-352 — este SÍ es el caso de la transición: recién se cancela, el id
-    // todavía está vivo, y es justo lo que el diff tiene que ver para emitir
-    // el `borrar`.
+  /**
+   * B-98 — cancelar **actualiza** el evento en vez de borrarlo: quien tenía ese
+   * jueves agendado, con su recordatorio, ve el mismo evento decir «CANCELADO» y
+   * por qué. Y sigue siendo **uno solo** (B-84): los otros siete no se tocan.
+   */
+  it('cancelar el tercero de ocho actualiza solo el suyo, y no lo borra (B-98, B-84)', () => {
     const despues = ciclo({
-      sesiones: sesionesSemanales(
-        8,
-        (i) => (i === 2 ? { cancelada: true } : {}),
-        { enTransicion: true },
+      sesiones: sesionesSemanales(8, (i) =>
+        i === 2 ? { cancelada: true, motivoCancelacion: 'Se pasa al jueves que viene' } : {},
       ),
     });
-    const ops = planificar(ciclo(), despues);
+    const ops = planificar(ciclo(), despues) as {
+      tipo: string;
+      eventId: string;
+      evento: { summary: string; description: string };
+    }[];
     expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_2' });
+    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_2' });
+    expect(ops[0]!.evento.summary).toBe(`CANCELADO — ${despues.titulo}`);
+    expect(ops[0]!.evento.description.split('\n\n')[0]).toBe(
+      'Este encuentro se canceló.\nMotivo: Se pasa al jueves que viene',
+    );
+  });
+
+  it('descancelar vuelve a poner el evento como estaba, con el mismo id (B-98)', () => {
+    const cancelado = ciclo({
+      sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
+    });
+    const ops = planificar(cancelado, ciclo()) as {
+      tipo: string;
+      eventId: string;
+      evento: unknown;
+    }[];
+    expect(ops).toHaveLength(1);
+    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_2' });
+    // Byte por byte el evento de antes de cancelar: nada queda del anuncio.
+    const original = ciclo();
+    expect(ops[0]!.evento).toEqual(construirEvento(original, original.sesiones[2]!));
+  });
+
+  it('cambiar solo el motivo reescribe ese evento y ninguno más (B-98)', () => {
+    const con = (motivo: string) =>
+      ciclo({
+        sesiones: sesionesSemanales(8, (i) =>
+          i === 2 ? { cancelada: true, motivoCancelacion: motivo } : {},
+        ),
+      });
+    const ops = planificar(con('Feriado'), con('Feriado nacional')) as {
+      tipo: string;
+      eventId: string;
+      evento: { description: string };
+    }[];
+    expect(ops).toHaveLength(1);
+    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_2' });
+    expect(ops[0]!.evento.description).toContain('Motivo: Feriado nacional');
+  });
+
+  it('borrar la fila de un encuentro sigue borrando su evento: borrar es una corrección (B-98)', () => {
+    const sinElTercero = ciclo({ sesiones: sesionesSemanales(8).filter((s) => s.id !== 'ses_2') });
+    const ops = planificar(ciclo(), sinElTercero) as { tipo: string; id: string }[];
+    // Los otros siete se renumeran («de 7»), que es lo que pasaba siempre al
+    // borrar una fila; lo que importa acá es que el del tercero se **borra**.
+    expect(ops.filter((o) => o.tipo === 'borrar')).toEqual([
+      { tipo: 'borrar', id: 'ses_2', eventId: 'evt_2' },
+    ]);
+  });
+
+  it('despublicar una actividad con un encuentro cancelado borra también el del cancelado (B-98)', () => {
+    const conCancelado = (estado: string) =>
+      ciclo({
+        estado,
+        sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
+      });
+    for (const estado of ['borrador', 'pendiente', 'cancelado']) {
+      expect(tipos(planificar(conCancelado('publicado'), conCancelado(estado)))).toEqual(
+        Array(8).fill('borrar'),
+      );
+    }
   });
 
   it('borrar la actividad entera borra los ocho eventos', () => {
@@ -421,8 +486,8 @@ describe('numeración del ciclo — cancelar no renumera (B-84, D-95)', () => {
     ).toContain('Encuentro 6 de 8');
   });
 
-  it('el cancelado conserva su número, aunque no tenga evento', () => {
-    // La vista previa del panel sí lo muestra: ahí se ve cómo quedaría.
+  it('el cancelado conserva su número, y su evento lo dice (B-98)', () => {
+    // Desde B-98 el cancelado tiene evento: «Encuentro 3 de 8», cancelado.
     expect(
       construirDescripcion(conTercerCancelado, conTercerCancelado.sesiones[2]!, LABELS),
     ).toContain('Encuentro 3 de 8');
@@ -434,8 +499,9 @@ describe('numeración del ciclo — cancelar no renumera (B-84, D-95)', () => {
   });
 
   it('el total no cambia por cancelar, así que ningún otro evento se toca', () => {
-    const ops = planificar(ciclo(), conTercerCancelado);
-    expect(ops.filter((o: { tipo: string }) => o.tipo === 'actualizar')).toHaveLength(0);
+    // El único que se reescribe es el cancelado, para anunciarlo (B-98).
+    const ops = planificar(ciclo(), conTercerCancelado) as { tipo: string; id: string }[];
+    expect(ops.map((o) => [o.tipo, o.id])).toEqual([['actualizar', 'ses_2']]);
   });
 });
 
@@ -583,18 +649,9 @@ describe('la guarda compara payloads recalculados, no lo que Calendar tiene (B-1
   const NUMERO_VIEJO = 'Encuentro 5 de 7';
 
   /**
-   * El ciclo **ya asentado** con el tercero cancelado, que no es lo mismo que el
-   * ciclo en el que se acaba de cancelar: una sesión cancelada no conserva su
-   * `calendarEventId`, porque al borrar el evento `syncCalendar` repone `null`
-   * en esa sesión. Un fixture con `cancelada: true` y un id de evento vivo
-   * describe un estado que el sistema no puede tener asentado, y le hace emitir
-   * un borrado de más a `planificar` en cada escritura posterior — es la misma
-   * advertencia que `tests/fixtures/ciclo.ts` dejó escrita (B-135). El caso de
-   * la transición ya tiene su test en «cancelar el tercero de ocho borra solo el
-   * suyo». Desde B-352 esto ya no hace falta pedirlo a mano —`sesionesSemanales`
-   * pone `null` por default en cuanto `cancelada` es `true`—, así que no queda
-   * ningún `calendarEventId: null` explícito acá: el helper no deja pisar la
-   * trampa aunque alguien se olvide.
+   * El ciclo **ya asentado** con el tercero cancelado. Desde B-98 el cancelado
+   * conserva su evento (titulado «CANCELADO — …»), así que el asentado tiene los
+   * ocho ids vivos — es lo que `sesionesSemanales` arma por default.
    */
   const conTercerCancelado = () =>
     ciclo({
@@ -640,8 +697,8 @@ describe('la guarda compara payloads recalculados, no lo que Calendar tiene (B-1
       evento: { description: string };
     }[];
 
-    // Los siete que tienen evento: el cancelado no (§7.3).
-    expect(ops).toHaveLength(7);
+    // Los ocho: desde B-98 el cancelado también tiene evento.
+    expect(ops).toHaveLength(8);
     expect(ops.every((o) => o.tipo === 'actualizar')).toBe(true);
     for (const op of ops) {
       expect(op.evento.description).toContain('de 8');
@@ -1917,10 +1974,11 @@ describe('planificar — cuántos eventos reescribe cada edición (B-161)', () =
       esperado: uno,
     },
     {
-      nombre: 'cancelar el tercero (B-84, D-95)',
+      // B-98 — un anuncio, no un borrado: se reescribe el suyo y nada más.
+      nombre: 'cancelar el tercero (B-84, D-95, B-98)',
       antes: cicloCompleto(),
-      despues: editando('ses_2', { cancelada: true }),
-      esperado: { crear: 0, actualizar: 0, borrar: 1 },
+      despues: editando('ses_2', { cancelada: true, motivoCancelacion: 'Feriado' }),
+      esperado: uno,
     },
 
     // ── nada que hacer ────────────────────────────────────────────────

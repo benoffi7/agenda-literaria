@@ -517,6 +517,88 @@ describe('barrido de la proyección con dos formas de cursar (B-224)', () => {
   });
 });
 
+/**
+ * B-98 — el motivo de un encuentro cancelado es **público a propósito**, y solo
+ * con el encuentro cancelado: es el anuncio que reemplaza al borrado del evento
+ * (§7.3). En el fixture base los encuentros están vivos y el motivo cargado no
+ * sale a ningún lado; esta excepción se suma solo en los casos cancelados.
+ */
+const MOTIVO_DE_CANCELACION: Excepcion = {
+  nombre: 'el motivo de la cancelación',
+  centinelas: ['sesiones.motivoCancelacion'],
+  porque:
+    'B-98 — decisión del dueño (2026-08-26): cancelar un encuentro lo anuncia en vez de ' +
+    'borrarlo, «con el motivo de cancelación incluido». Es lo que distingue «se pasa al jueves» ' +
+    'de «se cancela por falta de inscriptos». Solo con `cancelada: true` (`motivoDeCancelacion`).',
+};
+
+/** El fixture con **todos** los encuentros cancelados, conservando su motivo. */
+const todoCancelado = () =>
+  actividadCentinela({
+    sesiones: actividadCentinela().sesiones.map((s) => ({ ...s, cancelada: true })),
+  });
+
+describe('el motivo de la cancelación sale solo con el encuentro cancelado — B-98', () => {
+  it('en el fixture base (encuentros vivos) el motivo cargado no sale por ninguna puerta', () => {
+    const actividad = actividadCentinela();
+    // Control positivo: el motivo está cargado, así que el `not` mide algo.
+    expect(actividad.sesiones[0]!.motivoCancelacion).toBe(CENTINELA['sesiones.motivoCancelacion']);
+    const motivo = CENTINELA['sesiones.motivoCancelacion'];
+    expect(JSON.stringify(toPublic(actividad, 'act_centinela'))).not.toContain(motivo);
+    for (const sesion of actividad.sesiones) {
+      expect(JSON.stringify(construirEvento(actividad, sesion, LABELS_CENTINELA))).not.toContain(
+        motivo,
+      );
+    }
+  });
+
+  it('cancelados: la proyección lo lleva y nada más cambia', () => {
+    barrer(
+      'proyección de la actividad (toPublic, encuentros cancelados)',
+      JSON.stringify(toPublic(todoCancelado(), 'act_centinela')),
+      [...PERMITIDO_EN_LA_PROYECCION, MOTIVO_DE_CANCELACION],
+    );
+  });
+
+  it('cancelados: el evento de cada encuentro lo lleva, y nada más cambia', () => {
+    const actividad = todoCancelado();
+    for (const sesion of actividad.sesiones) {
+      const evento = construirEvento(actividad, sesion, LABELS_CENTINELA);
+      expect(evento.summary.startsWith('CANCELADO — ')).toBe(true);
+      barrer(
+        `evento de Calendar cancelado (${sesion.id})`,
+        JSON.stringify(evento),
+        [...PERMITIDO_EN_EVENTO_DE_CALENDAR, MOTIVO_DE_CANCELACION],
+      );
+    }
+  });
+
+  it('cancelados: el índice del listado (`events.json`) no lo lleva', () => {
+    const indice = construirIndice({
+      actividades: [toPublic(todoCancelado(), 'act_centinela')],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    expect(JSON.stringify(indice)).not.toContain(CENTINELA['sesiones.motivoCancelacion']);
+  });
+
+  it('cancelados: el texto para redes no lo lleva', () => {
+    // Uno solo cancelado: con todos, no hay nada que anunciar y no hay texto.
+    const unoCancelado = actividadCentinela({
+      sesiones: actividadCentinela().sesiones.map((s, i) => ({ ...s, cancelada: i === 0 })),
+    });
+    const r = construirTextoRedes(
+      unoCancelado as never,
+      'anuncio',
+      new Date('2020-01-01T00:00:00Z'),
+      LABELS_CENTINELA,
+    );
+    expect(r.ok, 'el fixture cancelado dejó de producir texto para redes').toBe(true);
+    if (r.ok) expect(r.texto).not.toContain(CENTINELA['sesiones.motivoCancelacion']);
+  });
+});
+
 describe('barrido del evento de Calendar (§5.1, §7.4)', () => {
   const actividad = actividadCentinela();
 
@@ -2235,6 +2317,24 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     expect(porTexto.has(CENTINELA['sede.ciudad'])).toBe(false);
   });
 
+  /**
+   * B-98 — con los encuentros cancelados, el JSON-LD marca cada sub-evento
+   * `EventCancelled` y **no** lleva el motivo: se decidió así (D-976). La rama
+   * cancelada es el lugar natural para meterlo mañana como `description` del
+   * sub-evento, y sin este caso ningún rojo lo diría. Lo pidió el
+   * `auditor-privacidad`.
+   */
+  it('JSON-LD con los encuentros cancelados: el motivo no sale (B-98)', () => {
+    const d = detalleDe({
+      sesiones: actividadCentinela().sesiones.map((s) => ({ ...s, cancelada: true })),
+    });
+    // Control positivo: el view-model sí lo trae, así que la ausencia mide algo.
+    expect(JSON.stringify(d)).toContain(CENTINELA['sesiones.motivoCancelacion']);
+    expect(JSON.stringify(datosEstructurados(d))).not.toContain(
+      CENTINELA['sesiones.motivoCancelacion'],
+    );
+  });
+
   it('los CUATRO avisos barren igual: ninguno compone con un centinela prohibido', () => {
     /*
      * **Lo pidió el `auditor-privacidad` sobre B-253, y el hueco es de forma.**
@@ -2283,9 +2383,15 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     for (const [nombre, armar] of casos) {
       const d = armar();
       tonos.add(d.aviso?.tono ?? 'ninguno');
-      barrer(`página de detalle (${nombre})`, JSON.stringify(d), PERMITIDO_EN_EL_DETALLE, {
-        insensible: true,
-      });
+      barrer(
+        `página de detalle (${nombre})`,
+        JSON.stringify(d),
+        // B-98 — con los encuentros cancelados, el motivo es parte de la fila.
+        nombre === 'cancelado'
+          ? [...PERMITIDO_EN_EL_DETALLE, MOTIVO_DE_CANCELACION]
+          : PERMITIDO_EN_EL_DETALLE,
+        { insensible: true },
+      );
     }
 
     /*

@@ -656,6 +656,20 @@ const gruposDeEncuentros =
                             </p>
                           )
                         }
+
+                        {
+                          /*
+                            B-98 — por qué se canceló. Es el mismo texto que abre el
+                            evento del calendario, así que quien llega desde ahí lee
+                            lo mismo. Sin tachar: el tema es lo que ya no pasa, el
+                            motivo es lo que hay que leer.
+                          */
+                          e.cancelada && e.motivoCancelacion && (
+                            <p class="text-sm leading-6 text-tinta">
+                              <span class="text-acento">Motivo:</span> {e.motivoCancelacion}
+                            </p>
+                          )
+                        }
                       </div>
                     </li>
                   ))}

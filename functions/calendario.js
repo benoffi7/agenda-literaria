@@ -360,9 +360,10 @@ const paraOrdenar = (t) => milisDe(t) ?? 0;
  * otros siete eventos y a quien lo tenía agendado se le renombraba sin que nada
  * hubiera cambiado para él (B-84).
  *
- * El cancelado no tiene evento (§7.3), así que en el calendario queda un hueco
- * en la secuencia. Eso es información —hubo un encuentro y se canceló—, no un
- * error de conteo.
+ * Desde B-98 el cancelado **conserva su evento**, titulado «CANCELADO — …»
+ * (ver `construirEvento`), así que en el calendario la secuencia no tiene
+ * huecos: el tercero de ocho sigue diciendo «Encuentro 3 de 8», y dice que no se
+ * hace. Antes de B-98 el evento se borraba y quedaba un hueco.
  *
  * Se numera **por fecha y no por posición en el array**: el array puede estar
  * desordenado (el formulario deja mover las filas) y "Encuentro 5" tiene que
@@ -862,20 +863,78 @@ export const tituloDeEvento = (titulo, etiquetaComision, tema) =>
     : titulo + (tema ? ` — ${tema}` : '');
 
 /**
+ * **El motivo de la cancelación, saneado: `null` si no dice nada** — B-98.
+ *
+ * Solo cuenta con `cancelada: true`. `formADocumento` ya escribe `null` en un
+ * encuentro que no está cancelado, pero un documento escrito por fuera del panel
+ * (la consola, un script, `restaurarCampo`) puede traer las dos cosas, y este
+ * texto va al calendario **público**: un motivo viejo colgando de un encuentro
+ * que sí se hace no se puede corregir en el dispositivo de nadie. Es el mismo
+ * argumento con el que el arancel emite el monto solo si el tipo lo admite.
+ *
+ * Exportada porque la página de detalle la usa para el mismo texto (D-20): el
+ * sitio y el evento no pueden estar en desacuerdo sobre si hay motivo.
+ */
+export const motivoDeCancelacion = (sesion) =>
+  sesion?.cancelada === true && typeof sesion.motivoCancelacion === 'string'
+    ? sesion.motivoCancelacion.trim() || null
+    : null;
+
+/**
+ * El prefijo del título de un encuentro cancelado — B-98. En mayúsculas porque
+ * es lo único que se lee en la vista de mes de un calendario, donde el título
+ * se corta a las pocas letras.
+ */
+export const PREFIJO_CANCELADO = 'CANCELADO — ';
+
+/**
+ * El bloque que abre la descripción de un encuentro cancelado — B-98.
+ *
+ * Va **arriba de todo**: el recordatorio que manda Google Calendar por mail
+ * muestra el principio del cuerpo, y lo que quien lo tenía agendado necesita
+ * leer primero es que no vaya.
+ */
+const avisoDeCancelacion = (sesion) => {
+  const motivo = motivoDeCancelacion(sesion);
+  return motivo ? `Este encuentro se canceló.\nMotivo: ${motivo}` : 'Este encuentro se canceló.';
+};
+
+/**
  * §7.4 — Cuerpo completo del evento.
  *
  * `timeZone` explícito y siempre: es el bug clásico de eventos corridos tres
  * horas (trampa 1).
+ *
+ * ── El encuentro cancelado (B-98, desvío del §7.3) ─────────────────────────
+ * Un encuentro cancelado **conserva su evento** y lo anuncia: `CANCELADO — ` en
+ * el título y el motivo arriba de la descripción. Hasta B-98 el evento se
+ * borraba, y quien tenía ese jueves agendado lo veía desaparecer sin aviso — la
+ * única vez que el dato cambia *después* de que la gente lo guardó. Cancelar es
+ * un anuncio; **borrar** el encuentro sigue siendo una corrección y sigue
+ * borrando su evento, igual que despublicar la actividad.
+ *
+ * Todo vive **acá adentro** y no armado en `planificar`: así entra al payload
+ * que compara la guarda anti-loop, cancelar y descancelar son un `actualizar`
+ * sin ningún caso especial (§7.1, D-07), y la vista previa del panel —que
+ * importa esta función— lo muestra sin reimplementarlo (D-20).
+ *
+ * El resto de la descripción queda igual debajo del aviso: fecha, lugar y
+ * contexto siguen siendo lo que identifica al encuentro que se canceló.
  */
 export const construirEvento = (actividad, sesion, labels = {}) => {
   const aIso = (t) =>
     (typeof t?.toDate === 'function' ? t.toDate() : new Date(t)).toISOString();
 
   const comision = comisionDe(actividad, sesion);
+  const titulo = tituloDeEvento(actividad.titulo, etiquetaDeComision(comision), sesion.tema);
+  const descripcion = construirDescripcion(actividad, sesion, labels);
+  const cancelada = sesion.cancelada === true;
 
   return {
-    summary: tituloDeEvento(actividad.titulo, etiquetaDeComision(comision), sesion.tema),
-    description: construirDescripcion(actividad, sesion, labels),
+    summary: cancelada ? `${PREFIJO_CANCELADO}${titulo}` : titulo,
+    description: cancelada
+      ? [avisoDeCancelacion(sesion), descripcion].filter(Boolean).join('\n\n')
+      : descripcion,
     location: construirUbicacion(actividad, labels),
     start: { dateTime: aIso(sesion.inicio), timeZone: TIMEZONE },
     end: { dateTime: aIso(sesion.fin), timeZone: TIMEZONE },
@@ -885,15 +944,32 @@ export const construirEvento = (actividad, sesion, labels = {}) => {
 const porId = (sesiones = []) => new Map(sesiones.map((s) => [s.id, s]));
 
 /**
- * §7.3 — Una sesión tiene evento en el calendario solo si la actividad está
- * publicada y la sesión no está cancelada.
+ * §7.3 — Una sesión tiene evento en el calendario si la actividad está
+ * publicada. **Desde B-98, cancelada o no** (desvío del §7.3, ver
+ * `docs/06-decisiones.md`): el cancelado conserva su evento, titulado
+ * «CANCELADO — …» (ver `construirEvento`).
+ *
+ * Lo que sigue borrando: despublicar la actividad (borrador, pendiente,
+ * cancelada) borra todos sus eventos, y **borrar** la fila del encuentro borra el
+ * suyo (eso lo resuelve `planificar`, no esta función).
+ *
+ * **Un cancelado sin evento también lo recibe**, y es decisión (B-98): cancelar
+ * con la actividad en borrador y publicar después crea el evento ya cancelado. La
+ * alternativa —«solo si ya tenía evento»— hacía que esta respuesta dependiera de
+ * la historia del documento (`calendarEventId`) y no de lo que el documento
+ * dice, y la usan cinco consumidores (el panel, el historial, la reconciliación,
+ * el resincronizado de etiquetas y `verificar-calendario`) que tendrían que
+ * saberlo. Con esto el calendario muestra lo mismo que la página: el encuentro,
+ * tachado.
+ *
+ * `sesion` se sigue recibiendo aunque hoy no se lea: es la pregunta «¿este
+ * encuentro tiene evento?», y los cinco consumidores la hacen por encuentro.
  *
  * Se exporta para que la vista previa del panel avise "esto todavía no existe
  * en el calendario" con el mismo criterio que aplica el sync, en lugar de
  * reimplementarlo y arriesgarse a que las dos versiones se separen.
  */
-export const debeExistir = (actividad, sesion) =>
-  actividad?.estado === 'publicado' && !sesion.cancelada;
+export const debeExistir = (actividad, sesion) => actividad?.estado === 'publicado';
 
 /**
  * §7.1 — Guarda anti-loop.
@@ -946,7 +1022,8 @@ export const planificar = (antes, despues, labels = {}) => {
     const eventId = previa?.calendarEventId ?? sesion.calendarEventId ?? null;
 
     if (!debeExistir(despues, sesion)) {
-      // Pasó a borrador/cancelado, o se canceló el encuentro.
+      // La actividad pasó a borrador, pendiente o cancelada. Cancelar **un
+      // encuentro** ya no llega acá (B-98): es un `actualizar` más abajo.
       if (eventId) ops.push({ tipo: 'borrar', id, eventId });
       continue;
     }

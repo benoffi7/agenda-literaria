@@ -173,6 +173,9 @@ export const MENSAJES_DE_PRIVACIDAD = {
   // B-817 — el esquema de la URL de una imagen. El mensaje no cambió al mudarse
   // de nivel: es el mismo que ve quien publica desde el 2026-08-31.
   urlDeImagenSinHttps: 'La dirección tiene que empezar con https://',
+  // B-98 — el motivo de un encuentro cancelado sale arriba del evento público.
+  motivoConLink:
+    'Acá va solo el motivo («se pasa al jueves 12»): el link de la reunión se envía a quienes se inscriban',
 } as const;
 
 /** Los mensajes de arriba, para preguntar si un rechazo es de esta clase. */
@@ -241,6 +244,12 @@ const sesionSchema = z
     tema: opcional,
     lectura: opcional,
     cancelada: z.boolean().default(false),
+    /*
+     * B-98 — por qué se canceló. Libre y opcional: «cancelado» sin motivo sigue
+     * siendo un anuncio válido. El tope es el de una línea que se lee arriba de
+     * la descripción de un evento, no el de un texto.
+     */
+    motivoCancelacion: texto.max(200, 'El motivo va en una línea: hasta 200 caracteres').default(''),
     calendarEventId: z.string().nullable().default(null),
     /*
      * B-181 — de qué comisión es este encuentro. `null` es «el ciclo no tiene
@@ -658,6 +667,25 @@ export const actividadFormSchema = z
       v.comisiones.forEach((o, i) => {
         if (llevaLinkDeReunion(o.etiqueta)) {
           faltaSiempre(['comisiones', i, 'etiqueta'], MENSAJES_DE_PRIVACIDAD.etiquetaConLink);
+        }
+      });
+
+      /*
+       * B-98 — **el motivo de la cancelación no puede llevar la dirección de una
+       * reunión**, por el mismo argumento de probabilidad que la etiqueta de
+       * arriba: su contenido natural es «qué pasa en su lugar», y «seguimos por
+       * Zoom» es una de las respuestas más comunes. Su destino es la primera
+       * línea del evento del calendario **público** —la que el recordatorio por
+       * mail muestra— y la página indexada: trampa 5, sin flag que lo habilite.
+       *
+       * Solo se mira el motivo de un encuentro **cancelado**, que es el único que
+       * sale (`motivoDeCancelacion` de `@calendario`, y `formADocumento` guarda
+       * `null` en el resto). Un motivo que quedó en el formulario de una fila
+       * descancelada no sale a ningún lado y no tiene por qué trabar el guardado.
+       */
+      v.sesiones.forEach((ses, i) => {
+        if (ses.cancelada && llevaLinkDeReunion(ses.motivoCancelacion)) {
+          faltaSiempre(['sesiones', i, 'motivoCancelacion'], MENSAJES_DE_PRIVACIDAD.motivoConLink);
         }
       });
 

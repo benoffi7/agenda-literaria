@@ -209,26 +209,41 @@ export const AVISOS: AvisoAyuda[] = [
   {
     id: 'cancelar-encuentro',
     /*
-     * El título decía «Cancelar un encuentro lo saca del calendario, pero no lo
-     * borra», y ese «lo» tenía dos lecturas: la que el texto explica —el
-     * encuentro sigue acá— y una falsa, «el evento se queda en el calendario
-     * marcado como cancelado», que es justo lo que hoy NO pasa. En un aviso que
-     * se lee de un pantallazo, el título tiene que ser cierto solo.
+     * B-98 — este aviso decía lo contrario hasta que entró B-98: «Cancelar un
+     * encuentro saca su evento del calendario y conserva el encuentro acá», y
+     * era verdad. Desde B-98 el evento **se queda** y avisa, que es justo la
+     * lectura que el título viejo cuidaba de no sugerir. Estaba atado a los `it`
+     * que fijaban el borrado, así que el cambio lo puso en rojo en el mismo
+     * commit (B-63), que es para lo que existe el vínculo.
      */
-    titulo: 'Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá',
+    titulo: 'Cancelar un encuentro lo anuncia en el calendario: el evento dice «CANCELADO» y por qué',
     texto:
-      'Al marcar un encuentro como cancelado, su evento desaparece del calendario público. El ' +
-      'encuentro sigue acá, con su fecha y su tema, así que queda el registro de que ese día estaba ' +
-      'previsto y no se hizo. Si destildás la cancelación, el evento vuelve. Borrar el encuentro, en ' +
-      'cambio, lo saca del calendario y también del registro. ' +
-      'Los demás encuentros no se tocan: el que era «Encuentro 6 de 8» sigue diciendo eso en el ' +
-      'calendario de quien lo tenga agendado. En la serie queda un hueco, que es justamente la ' +
-      'forma de ver que ese día se canceló.',
+      'Al marcar un encuentro como cancelado, su evento no desaparece: se queda en el calendario ' +
+      'de quien lo tenía agendado, con «CANCELADO» adelante del título y el motivo que escribas ' +
+      'arriba de la descripción. Así la gente se entera, en vez de ver un hueco. El motivo es ' +
+      'público y opcional: «se pasa al jueves 12» o «por falta de inscriptos» dicen cosas muy ' +
+      'distintas. En la página del sitio el encuentro se ve tachado, con el mismo motivo. Si ' +
+      'destildás la cancelación, el evento vuelve a estar como antes. Borrar el encuentro, en ' +
+      'cambio, sí saca su evento del calendario: cancelar es un aviso, borrar es una corrección. ' +
+      'Los demás encuentros no se tocan: el que era «Encuentro 6 de 8» sigue diciendo eso.',
     atadoA: [
-      // Cancelar saca del calendario el evento de ESE encuentro, y solo el suyo.
-      { archivo: 'tests/calendario.test.ts', it: 'cancelar el tercero de ocho borra solo el suyo (B-84)' },
-      // El encuentro sigue acá, con su número: el hueco en la serie se ve.
-      { archivo: 'tests/calendario.test.ts', it: 'el cancelado conserva su número, aunque no tenga evento' },
+      // Cancelar reescribe el evento de ESE encuentro, y solo el suyo: no lo borra.
+      {
+        archivo: 'tests/calendario.test.ts',
+        it: 'cancelar el tercero de ocho actualiza solo el suyo, y no lo borra (B-98, B-84)',
+      },
+      // El cancelado conserva su número, y su evento lo dice.
+      { archivo: 'tests/calendario.test.ts', it: 'el cancelado conserva su número, y su evento lo dice (B-98)' },
+      // Destildar la cancelación deja el evento como estaba.
+      {
+        archivo: 'tests/calendario.test.ts',
+        it: 'descancelar vuelve a poner el evento como estaba, con el mismo id (B-98)',
+      },
+      // Borrar la fila sí borra el evento.
+      {
+        archivo: 'tests/calendario.test.ts',
+        it: 'borrar la fila de un encuentro sigue borrando su evento: borrar es una corrección (B-98)',
+      },
       // Y los demás no se tocan: el 6 de 8 sigue diciendo eso.
       { archivo: 'tests/calendario.test.ts', it: 'el sexto sigue siendo "Encuentro 6 de 8" después de cancelar el tercero' },
       { archivo: 'tests/calendario.test.ts', it: 'el total no cambia por cancelar, así que ningún otro evento se toca' },
@@ -623,8 +638,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'El caso opuesto también avisa: un encuentro que ya no debería estar publicado y cuyo ' +
-          'evento todavía figura. Ahí la gente puede seguir viendo un encuentro que pasó a ' +
-          'borrador o que se canceló. Si acabás de guardar, esperá unos segundos y refrescá: ' +
+          'evento todavía figura. Ahí la gente puede seguir viendo un encuentro cuya actividad ' +
+          'pasó a borrador o se canceló. Si acabás de guardar, esperá unos segundos y refrescá: ' +
           'la publicación tarda un momento.',
         cuidado: true,
       },
@@ -635,10 +650,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Los encuentros cancelados de una actividad publicada se siguen viendo, en gris: el ' +
-          'encuentro queda como registro de que ese día estaba previsto, aunque su evento ya no ' +
-          'esté en el calendario. Lo mismo con las actividades canceladas cuyos encuentros ya ' +
-          'pasaron.',
+          'Los encuentros cancelados de una actividad publicada se ven como «Encuentro cancelado»: ' +
+          'siguen en el calendario público, con «CANCELADO» adelante del título y el motivo arriba, ' +
+          'para que quien los tenía agendados se entere. Las actividades canceladas enteras, en ' +
+          'cambio, ya no tienen eventos, y sus encuentros se ven en gris como registro.',
       },
       {
         texto:
@@ -1893,8 +1908,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Marcar un encuentro como cancelado saca ese día del calendario y lo conserva acá. ' +
-          'Borrarlo lo saca de los dos lados.',
+          'Marcar un encuentro como cancelado no lo saca del calendario: su evento pasa a decir ' +
+          '«CANCELADO» y, si lo escribís, el motivo, que es público. Borrarlo, en cambio, lo saca ' +
+          'del calendario y de acá.',
         cuidado: true,
       },
     ],
@@ -2347,8 +2363,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Si la actividad está en borrador o el encuentro está cancelado, te muestra cómo quedaría ' +
-          'y aclara que hoy ese evento no existe en el calendario.',
+          'Si la actividad está en borrador, te muestra cómo quedaría y aclara que hoy ese evento ' +
+          'no existe en el calendario. Si el encuentro está cancelado, te muestra el evento tal ' +
+          'como lo ve la gente: con «CANCELADO» y el motivo.',
       },
       {
         texto:

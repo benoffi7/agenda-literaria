@@ -586,6 +586,8 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'sesiones.N.id',
   'sesiones.N.inicio',
   'sesiones.N.lectura',
+  // B-98 — la ruta, no el texto: el motivo nunca sale a la analítica.
+  'sesiones.N.motivoCancelacion',
   'sesiones.N.tema',
   'slug',
   'incluye',

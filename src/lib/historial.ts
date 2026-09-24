@@ -59,8 +59,8 @@ import { linkDeReunionQueSale, urlDeMaterialQueSale } from '@/lib/toPublic';
 // `flagsDePublicacionRestaurables`, en vez de una lista de dos nombres acá.
 import { CAMPOS_CON_PAR_DE } from '@/lib/paresFlagDato';
 import { fechaHoraCorta } from '@/lib/sesiones';
-// §7.3 — «una sesión tiene evento si la actividad está publicada y la sesión no
-// está cancelada». Importada y no reescrita: su propio docblock dice que se
+// §7.3 — «una sesión tiene evento si la actividad está publicada» (desde B-98,
+// cancelada o no). Importada y no reescrita: su propio docblock dice que se
 // exporta para eso (D-20).
 import { debeExistir } from '@calendario';
 import { camposCambiados, estuvoPublicada } from '@historial';
@@ -718,8 +718,11 @@ const esDePrivacidad = (i: IssueDeSchema): boolean =>
  * **toda** restauración bloqueada: la pantalla tapiada que la resta existe para
  * evitar, y encima sobre el documento que hay que arreglar. El segundo preguntaba
  * solo si **cambiaba el estado**, y ésa era la mitad del §7.3: la condición del
- * sync es `estado === 'publicado' && !sesion.cancelada`, o sea que **descancelar
- * un encuentro crea un evento que no existía** sin que el estado se mueva. El
+ * sync **era** `estado === 'publicado' && !sesion.cancelada`, o sea que
+ * **descancelar un encuentro creaba un evento que no existía** sin que el estado
+ * se moviera. (Desde B-98 el cancelado conserva su evento y la condición es solo
+ * el estado; la pregunta se sigue haciendo por sesión con `debeExistir`, así que
+ * si el criterio vuelve a mirar la sesión, esto lo sigue sin cambiar una línea.) El
  * camino, que lo midió el `auditor-privacidad`: una publicada con el link en la
  * etiqueta y todos los encuentros cancelados no tiene hoy ningún evento —el link
  * está solo en la página— y «Restaurar → Encuentros» sobre una versión que los
@@ -746,7 +749,19 @@ const cambiaElDestino = (actual: Actividad, resultante: Actividad): boolean => {
   const conEvento = (a: Actividad): Set<string> =>
     new Set((a.sesiones ?? []).filter((s) => debeExistir(a, s)).map((s) => s.id));
 
-  const antes = conEvento(actual);
+  /*
+   * B-98 — la línea de base es lo que **existe hoy**, no lo que debería existir:
+   * un encuentro cancelado antes de B-98 tiene `debeExistir` en `true` y **no
+   * tiene evento** (el sync de entonces se lo borró), así que la próxima
+   * escritura se lo crea. Contarlo como destino ya abierto enmascaraba justo el
+   * caso que esta función existe para ver: la etiqueta con un link llegando al
+   * `summary` del calendario público. Lo cobró el `auditor-privacidad`.
+   */
+  const antes = new Set(
+    (actual.sesiones ?? [])
+      .filter((s) => debeExistir(actual, s) && s.calendarEventId)
+      .map((s) => s.id),
+  );
   return [...conEvento(resultante)].some((id) => !antes.has(id));
 };
 

@@ -129,7 +129,8 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
         tipo: string;
         eventId?: string;
       }[];
-      const esperado = [{ tipo: 'borrar', eventId: objetivo.calendarEventId }];
+      // B-98 — la única operación es reescribir el suyo como cancelado.
+      const esperado = [{ tipo: 'actualizar', eventId: objetivo.calendarEventId }];
       const obtenido = ops.map((o) => ({ tipo: o.tipo, eventId: o.eventId }));
       if (JSON.stringify(obtenido) !== JSON.stringify(esperado)) {
         sobrantes.push(`${caso.nombre}: ${ops.length} ops en vez de 1`);
@@ -189,19 +190,27 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
     expect(mal).toEqual([]);
   });
 
-  it('un encuentro cancelado no tiene evento en ningún ciclo (§7.3)', () => {
-    // Esta mitad del invariante ya valía con el bug vivo: lo que B-84 rompía
-    // era el daño colateral, no el borrado. Se queda igual justamente por eso
-    // — es el control que no se movió cuando se movió todo lo demás.
+  /**
+   * B-98 — el cancelado **conserva** su evento en todos los ciclos, y lo anuncia.
+   *
+   * Hasta B-98 este `it` afirmaba lo contrario («un encuentro cancelado no tiene
+   * evento en ningún ciclo», §7.3) y era el control que no se había movido con
+   * B-84. Ahora el control es este: el mismo `eventId`, titulado «CANCELADO — »,
+   * en el ciclo de dos y en el de ocho, con y sin comisiones.
+   */
+  it('un encuentro cancelado conserva su evento y lo anuncia, en cualquier ciclo (B-98)', () => {
     for (const caso of CICLOS_QUE_NUMERAN) {
       const objetivo = delMedio(caso);
       const ops = planificar(caso.actividad, conCancelada(caso.actividad, objetivo.id)) as {
         tipo: string;
         eventId?: string;
+        evento?: { summary: string };
       }[];
+      expect(ops.some((o) => o.tipo === 'borrar')).toBe(false);
       expect(ops).toContainEqual(
-        expect.objectContaining({ tipo: 'borrar', eventId: objetivo.calendarEventId }),
+        expect.objectContaining({ tipo: 'actualizar', eventId: objetivo.calendarEventId }),
       );
+      expect(ops[0]!.evento!.summary.startsWith('CANCELADO — ')).toBe(true);
     }
   });
 });
