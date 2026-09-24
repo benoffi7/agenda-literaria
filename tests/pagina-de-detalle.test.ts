@@ -305,6 +305,26 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(codigo).not.toMatch(/proxima[^\s]*\.slice\(/);
     expect(codigo).not.toContain('claveDeMes');
   });
+
+  it('la salida de una pasada hacia su tipo sale de `detalle.masDelTipo` — B-1794', () => {
+    /*
+     * El §7.1 pide «Ver otros talleres» en una pasada, que es donde `detalle.mes`
+     * viene en `null`. Qué hub existe lo decide el lector (`tipoTieneHub`), y la
+     * plantilla tiene `detalle.tipo` a mano: armar `rutaDeTipo(detalle.tipo)` acá
+     * compila y enlaza bien mientras el hub exista, y es un 404 el día que no.
+     *
+     * MUTACIÓN PROBADA: reemplazar `detalle.masDelTipo.ruta` por
+     * `rutaDeTipo(detalle.tipo)` pone este caso en rojo.
+     */
+    const codigo = sinComentarios(src);
+    expect(codigo).toContain('href={detalle.masDelTipo.ruta}');
+    expect(codigo).toContain('{detalle.masDelTipo.texto}');
+    expect(codigo).not.toContain('rutaDeTipo(');
+    // Dentro del `<nav>` «Seguir mirando», y antes de «Ver toda la agenda».
+    const nav = /aria-label="Seguir mirando"[\s\S]*?<\/nav>/.exec(codigo)?.[0] ?? '';
+    expect(nav.indexOf('detalle.masDelTipo')).toBeGreaterThan(-1);
+    expect(nav.indexOf('detalle.masDelTipo')).toBeLessThan(nav.indexOf('Ver toda la agenda'));
+  });
 });
 
 describe('la ficha dice el precio y no solo la categoría del arancel (B-114)', () => {
