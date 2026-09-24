@@ -302,7 +302,7 @@ describe('el corpus — B-1147', () => {
 
   it('el barrido no se cuenta a sí mismo entre los citantes de su propio ejemplo', () => {
     /*
-     * **La cabecera del script nombra `D-88`, que está huérfana** — es el caso
+     * **La cabecera del script nombra `D-88`, que estuvo huérfana hasta B-1330** — es el caso
      * que midió B-1147 y sin nombrarlo la explicación no explica nada. Con el
      * corpus abierto eso hizo que el script apareciera como un archivo más
      * «citando D-88 desde el código», que es justo lo que el informe mide para
@@ -311,16 +311,28 @@ describe('el corpus — B-1147', () => {
      * ya tenía documentada en `expandir()` («se reportó a sí mismo al
      * escribirlo»).
      *
+     * Desde B-1330 D-88 está escrita, así que el caso ya no se puede medir
+     * sobre el repo real —la huérfana no existe y el aserto pasaba vacío
+     * (B-1350)—: se mide sobre un corpus armado, con una huérfana de mentira
+     * citada desde el script y desde un módulo.
+     *
      * MUTACIÓN PROBADA: sacar el script de `AFUERA` deja este caso en rojo.
      */
     expect(seBarre('scripts/decisiones-referenciadas.mjs')).toBe(false);
 
-    const { sueltas } = relevar();
-    const d88 = sueltas.find((s) => s.decision === 'D-88');
+    const contenido = {
+      'docs/06-decisiones.md': '## D-01 · La primera\n',
+      'scripts/decisiones-referenciadas.mjs': '/** el caso medido es D-77777 */\n',
+      'src/lib/otro.ts': '/** ver D-77777 */\n',
+    };
+    const { sueltas } = relevar({
+      archivos: Object.keys(contenido),
+      leer: (a) => contenido[a as keyof typeof contenido],
+    });
     expect(
-      d88?.archivos ?? [],
+      sueltas.find((s) => s.decision === 'D-77777')?.archivos,
       'el barrido se cuenta a sí mismo entre los citantes',
-    ).not.toContain('scripts/decisiones-referenciadas.mjs');
+    ).toEqual(['src/lib/otro.ts']);
   });
 
   it('la lista de extensiones es la misma del gemelo, no una copia — clase D-88', () => {

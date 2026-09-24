@@ -30,7 +30,7 @@
  * barrido persigue no es el link roto: es la decisión que alguien va a buscar y
  * no está. Y una decisión es, sobre todo, lo que el **código** cita — el mismo
  * argumento que D-740 escribió del lado de los duplicados. El caso que lo midió
- * es **D-88**: huérfana, citada desde **diecisiete** archivos —tres `.mjs` de
+ * es **D-88**: huérfana hasta B-1330, citada desde **diecisiete** archivos —tres `.mjs` de
  * `scripts/`, un `.sh`, un módulo de `src/`, nueve de `tests/` y los tres `.md`—
  * y el informe nombraba solo esos tres `.md`. Quien lo leía subestimaba el
  * alcance por un factor de casi seis. (El ítem estimaba «cuatro» y se quedó
@@ -235,7 +235,7 @@ export const otraGrafia = (textos, escritas) => {
  * - **Este archivo.** La primera versión de B-1147 lo dejó adentro razonando que
  *   sus ejemplos usan números que existen (`D-9`, `D-100`) o la grafía en
  *   minúscula del ancla. El razonamiento se cayó en el mismo cambio: la cabecera
- *   necesita nombrar **D-88** —el caso medido, que está huérfano— y con eso el
+ *   necesita nombrar **D-88** —el caso medido, huérfano hasta B-1330— y con eso el
  *   script pasó a figurar entre los citantes de su propio ejemplo. Lo encontró
  *   el `auditor-trampas`. La explicación de por qué existe un barrido **tiene**
  *   que poder nombrar la huérfana que lo motivó sin contarse como un lugar donde
