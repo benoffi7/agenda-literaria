@@ -104,8 +104,10 @@ export const borrarImagenAlCerrar = onDocumentWritten(
          * **No se borró, y eso es lo correcto**: sin copia verificada, borrar el
          * original pierde la foto para siempre (ver `borrarOriginalAlAceptar`).
          * Pero tampoco es un no-evento: la `aceptada` no vence, así que ese
-         * original **no lo borra nadie más nunca** —la retención no llega y
-         * `limpiarImagenesHuerfanas` no recorre este prefijo—. Sale como `warn`
+         * original **no lo borra nadie más** mientras la actividad no tenga su
+         * foto —la retención no llega y `limpiarImagenesHuerfanas` no recorre
+         * este prefijo—. Si después alguien la sube desde el panel, el barrido
+         * diario lo borra solo (B-1370, `borrarPropuestasVencidas`). Sale como `warn`
          * con `alerta` para que se pueda filtrar, igual que `rebuild-agotado`
          * (B-21). Es el agujero de **B-871**, medido en vez de supuesto — y
          * desde ese ítem el objeto que queda vivo aparece además en el

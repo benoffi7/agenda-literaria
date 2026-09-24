@@ -22,14 +22,18 @@
  * Este entra por el otro lado: las propuestas `aceptada` que tenían foto, la
  * actividad que nombra su `revision.actividadId`, y el bucket. La clasificación
  * es pura (`clasificarAceptadas`) y está testeada sin red en
- * `tests/flyeres-de-propuestas-aceptadas.test.ts`.
+ * `tests/flyeres-de-propuestas-aceptadas.test.ts`. Desde B-1370 vive en
+ * `functions/propuestas.js`, porque el barrido diario la usa para decidir el
+ * único caso que borra solo.
  *
  * ── Qué NO hace, y el test lo ata ─────────────────────────────────────────
  * **No escribe nada**: ni Firestore ni Storage. No acepta `--aplicar` —así que
  * `tests/guardas-de-los-scripts.test.ts` no lo cuenta entre los que escriben— y
  * el fuente no llama a `set`, `update`, `delete`, `save` ni `upload`. El remedio
  * es manual y va impreso al lado de cada caso: subir la foto desde el panel es
- * una decisión sobre una actividad publicada, no un backfill.
+ * una decisión sobre una actividad publicada, no un backfill. La excepción es
+ * `con-copia-con-original`, que desde B-1370 lo resuelve solo
+ * `borrarPropuestasVencidas` — no este script.
  *
  * ── Qué lee, y qué no ─────────────────────────────────────────────────────
  * De la propuesta, **solo** `estado`, `revision.actividadId`,
@@ -43,8 +47,13 @@ import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
-import { copiasEnLaGaleria } from '../functions/propuestas.js';
-import { PREFIJO_PROPUESTAS, objetoDePropuesta } from '../functions/retencion.js';
+import {
+  CASO_QUE_SE_BORRA_SOLO,
+  EN_ORDEN,
+  clasificarAceptadas,
+  copiasVivasDe,
+} from '../functions/propuestas.js';
+import { PREFIJO_PROPUESTAS } from '../functions/retencion.js';
 
 /**
  * Los casos, con el qué hacer al lado. El orden es el de la impresión: primero
@@ -55,13 +64,14 @@ export const CASOS = {
     titulo: 'Actividad SIN foto, y el original de la propuesta todavía está',
     accion:
       'Es el caso de B-1322. Bajar el original del bucket, subirlo como flyer desde el ' +
-      'panel y guardar; después borrar el original a mano. Si la foto no se quiere, borrarlo.',
+      'panel y guardar. El original lo borra solo el barrido diario (B-1370) una vez que la ' +
+      'actividad tiene su copia. Si la foto no se quiere, borrarlo a mano.',
   },
   'copia-rota-con-original': {
     titulo: 'La actividad nombra una foto propia que ya no existe, y el original está',
     accion:
       'La galería apunta a un objeto borrado (se ve rota). Subir el original de nuevo desde ' +
-      'el panel, sacar la fila rota, y después borrar el original a mano.',
+      'el panel y sacar la fila rota. El original lo borra solo el barrido diario (B-1370).',
   },
   'solo-externas-con-original': {
     titulo: 'La actividad tiene solo imágenes de afuera (link), y el original está',
@@ -78,10 +88,11 @@ export const CASOS = {
     titulo: 'Se eligió «No usarla» y el original no se borró',
     accion: 'No hay nada que decidir: la foto se descartó a propósito. Borrar el original a mano.',
   },
-  'con-copia-con-original': {
+  [CASO_QUE_SE_BORRA_SOLO]: {
     titulo: 'La actividad tiene su copia, y el original quedó de más',
     accion:
-      'La actividad está bien. El original es un duplicado de la foto de un tercero: borrarlo a mano.',
+      'Nada: el barrido diario (`borrarPropuestasVencidas`, B-1370) lo borra solo en su próxima ' +
+      'corrida, después de volver a verificar la copia. Si sigue acá dos días seguidos, mirar el log.',
   },
   'sin-foto-sin-original': {
     titulo: 'Actividad SIN foto, y el original ya no está',
@@ -94,69 +105,15 @@ export const CASOS = {
   },
 };
 
-/** Lo que no pide a nadie: la actividad tiene su foto, o se descartó y se borró. */
-export const EN_ORDEN = 'en-orden';
-
-/**
- * **La clasificación, pura.** Una fila por propuesta `aceptada` que tuvo foto.
- *
- * @param {{
- *   propuestas: { id: string, estado?: string, revision?: { actividadId?: unknown, fotoDescartada?: unknown }, imagen?: unknown }[],
- *   originalesVivos: Set<string>,
- *   actividades: Map<string, { titulo?: string, estado?: string, imagenes?: unknown[] }>,
- *   copiasVivas: Set<string>,
- * }} _
- * @returns {{ propuesta: string, original: string, actividadId: string | null, titulo: string | null, estadoActividad: string | null, imagenes: number, caso: string }[]}
+/*
+ * **La clasificación no vive acá desde B-1370**: el barrido diario
+ * (`borrarPropuestasVencidas`) borra uno de sus casos —`con-copia-con-original`—
+ * y la definición de ese caso no puede estar escrita dos veces (D-88). Vive en
+ * `functions/propuestas.js`, que este script puede importar y la Function
+ * también; al revés no se puede (D-20). Se re-exporta para que el test y quien
+ * lea este archivo la encuentren donde siempre.
  */
-export const clasificarAceptadas = ({ propuestas, originalesVivos, actividades, copiasVivas }) => {
-  const filas = [];
-  for (const p of propuestas) {
-    if (p?.estado !== 'aceptada') continue;
-    // La misma guarda que el trigger y la retención: un `storagePath` fuera de
-    // `propuestas/<un segmento>` no es «el original» de nadie (B-88).
-    const original = objetoDePropuesta(p.imagen);
-    if (!original) continue;
-
-    const vivo = originalesVivos.has(original);
-    const id = p.revision?.actividadId;
-    const actividadId = typeof id === 'string' && id.length > 0 ? id : null;
-    const actividad = actividadId ? actividades.get(actividadId) : undefined;
-    const imagenes = Array.isArray(actividad?.imagenes) ? actividad.imagenes : [];
-
-    const fila = {
-      propuesta: p.id,
-      original,
-      actividadId,
-      titulo: actividad ? (actividad.titulo ?? null) : null,
-      estadoActividad: actividad ? (actividad.estado ?? null) : null,
-      imagenes: imagenes.length,
-    };
-
-    let caso;
-    // `=== true`, igual que `decidirBorradoDeImagen`: un truthy raro no cuenta
-    // como que una persona miró la foto y la descartó.
-    if (p.revision?.fotoDescartada === true) {
-      caso = vivo ? 'descartada-con-original' : EN_ORDEN;
-    } else if (!actividad) {
-      caso = vivo ? 'sin-actividad-con-original' : 'sin-actividad-sin-original';
-    } else if (imagenes.length === 0) {
-      caso = vivo ? 'sin-foto-con-original' : 'sin-foto-sin-original';
-    } else {
-      const copias = copiasEnLaGaleria(imagenes);
-      const algunaViva = copias.some((c) => copiasVivas.has(c));
-      if (algunaViva) caso = vivo ? 'con-copia-con-original' : EN_ORDEN;
-      else if (copias.length > 0) caso = vivo ? 'copia-rota-con-original' : 'sin-foto-sin-original';
-      /*
-       * Solo externas y sin original: la actividad **tiene** una imagen, y no
-       * hay nada nuestro que rescatar. No se sabe si es el mismo flyer, pero
-       * tampoco hay con qué compararlo.
-       */
-      else caso = vivo ? 'solo-externas-con-original' : EN_ORDEN;
-    }
-    filas.push({ ...fila, caso });
-  }
-  return filas;
-};
+export { CASO_QUE_SE_BORRA_SOLO, EN_ORDEN, clasificarAceptadas };
 
 /** Las filas agrupadas por caso, en el orden de `CASOS`, sin los vacíos. */
 export const agruparPorCaso = (filas) =>
@@ -236,14 +193,7 @@ const main = async () => {
       : [];
   const actividades = new Map(docs.filter((d) => d.exists).map((d) => [d.id, d.data()]));
 
-  const vivas = [];
-  for (const a of actividades.values()) {
-    for (const copia of copiasEnLaGaleria(a.imagenes)) {
-      const [existe] = await bucket.file(copia).exists();
-      if (existe) vivas.push(copia);
-    }
-  }
-  const copiasVivas = new Set(vivas);
+  const copiasVivas = await copiasVivasDe(bucket, actividades.values());
 
   const filas = clasificarAceptadas({ propuestas, originalesVivos, actividades, copiasVivas });
   const enOrden = filas.filter((f) => f.caso === EN_ORDEN).length;

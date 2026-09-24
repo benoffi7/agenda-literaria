@@ -24,7 +24,14 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminBucket, adminDb } from '@/lib/firebase-admin';
-import { borrarOriginalAlAceptar, decidirBorradoDeImagen } from '../functions/propuestas.js';
+import {
+  CASO_QUE_SE_BORRA_SOLO,
+  aceptadasConOriginalVivo,
+  borrarOriginalAlAceptar,
+  borrarOriginalSiSigueConCopia,
+  clasificarAceptadas,
+  decidirBorradoDeImagen,
+} from '../functions/propuestas.js';
 import { PROJECT_ID, emuladorStorageVivo, emuladorVivo } from './emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorStorageVivo());
@@ -254,5 +261,114 @@ describe.skipIf(!vivo)('aceptar una propuesta y su flyer original — B-863', ()
       }),
     ).toBe('borrado');
     expect((await adminBucket().file(COPIA).exists())[0]).toBe(true);
+  }, 30_000);
+});
+
+/**
+ * **B-1370 — la foto se sube a mano después de aceptar, y el barrido se lleva el
+ * original.** El caso de B-1322 tal como pasó en producción: la actividad se
+ * guardó sin foto, la transición devolvió `sin-copia` y conservó el original, y
+ * la foto se subió desde el panel minutos más tarde.
+ *
+ * Lo que se verifica contra los emuladores es lo que un doble no puede decir:
+ * que la query por `imagen.storagePath` con `in` encuentra el documento, que el
+ * `select` y las máscaras traen lo que la clasificación necesita, y que el
+ * borrado final es el de B-863 sobre el bucket de verdad.
+ *
+ * **No se llama a `borrarOriginalesConCopia` entero, y es a propósito:** barre
+ * todo `propuestas/` del bucket del emulador, que **no** está particionado por
+ * proyecto (B-219), y podría llevarse el original de otro archivo de tests que
+ * corre en paralelo. Se ejercitan sus tres piezas —la lectura, la clasificación
+ * y el borrado de una fila— sobre la fila de este caso y ninguna otra.
+ */
+describe.skipIf(!vivo)('el original que sobra cuando la foto se sube después — B-1370', () => {
+  const PROPUESTA_TARDE = `p_foto_tarde-${PROJECT_ID}`;
+  const ACTIVIDAD_TARDE = `a_foto_tarde-${PROJECT_ID}`;
+  const ORIGINAL_TARDE = `propuestas/prop_foto_tarde_${PROJECT_ID}.jpg`;
+  const SUBIDA_A_MANO = `imagenes/img_foto_tarde_${PROJECT_ID}.jpg`;
+
+  beforeAll(async () => {
+    // La misma guarda que el bloque de arriba, y por lo mismo: este caso borra.
+    expect(process.env.FIREBASE_STORAGE_EMULATOR_HOST).toBeTruthy();
+    expect(process.env.FIRESTORE_EMULATOR_HOST).toBeTruthy();
+
+    await adminDb()
+      .collection('propuestas')
+      .doc(PROPUESTA_TARDE)
+      .set({
+        ...propuestaAceptada(),
+        imagen: { storagePath: ORIGINAL_TARDE },
+        revision: { ...propuestaAceptada().revision, actividadId: ACTIVIDAD_TARDE },
+      });
+    // La actividad se guardó **sin** foto: la promoción falló (CORS, B-1235).
+    await adminDb()
+      .collection('actividades')
+      .doc(ACTIVIDAD_TARDE)
+      .set({ ...actividadConLaCopia(), slug: `foto-tarde-${PROJECT_ID}`, imagenes: [] });
+    await adminBucket().file(ORIGINAL_TARDE).save(jpegDeMentira(), { contentType: 'image/jpeg' });
+  }, 30_000);
+
+  afterAll(async () => {
+    if (!process.env.FIREBASE_STORAGE_EMULATOR_HOST) return;
+    for (const objeto of [ORIGINAL_TARDE, SUBIDA_A_MANO]) {
+      await adminBucket().file(objeto).delete({ ignoreNotFound: true });
+    }
+    await adminDb().collection('propuestas').doc(PROPUESTA_TARDE).delete();
+    await adminDb().collection('actividades').doc(ACTIVIDAD_TARDE).delete();
+  });
+
+  const filaDeEsteCaso = async () => {
+    const leido = await aceptadasConOriginalVivo(adminDb(), adminBucket());
+    return clasificarAceptadas({
+      ...leido,
+      propuestas: leido.propuestas.filter((p) => p.id === PROPUESTA_TARDE),
+    })[0];
+  };
+
+  it('sin copia: la transición conserva el original y el barrido tampoco lo toca', async () => {
+    expect(
+      await borrarOriginalAlAceptar(adminDb(), adminBucket(), {
+        objeto: ORIGINAL_TARDE,
+        actividadId: ACTIVIDAD_TARDE,
+      }),
+    ).toBe('sin-copia');
+
+    const fila = await filaDeEsteCaso();
+    // Control positivo de la query: la encontró por su `storagePath`.
+    expect(fila, 'la lectura por `imagen.storagePath` no encontró la propuesta').toBeTruthy();
+    expect(fila!.caso).toBe('sin-foto-con-original');
+    expect((await adminBucket().file(ORIGINAL_TARDE).exists())[0]).toBe(true);
+  }, 30_000);
+
+  it('con la foto subida a mano, el barrido borra el original y deja todo lo demás', async () => {
+    // Lo que hace el panel: sube a `imagenes/` y guarda la fila en la galería.
+    await adminBucket().file(SUBIDA_A_MANO).save(jpegDeMentira(), { contentType: 'image/jpeg' });
+    await adminDb()
+      .collection('actividades')
+      .doc(ACTIVIDAD_TARDE)
+      .update({
+        imagenes: actividadConLaCopia().imagenes.map((i) => ({ ...i, storagePath: SUBIDA_A_MANO })),
+      });
+
+    const fila = await filaDeEsteCaso();
+    expect(fila!.caso).toBe(CASO_QUE_SE_BORRA_SOLO);
+
+    expect(
+      await borrarOriginalSiSigueConCopia(adminDb(), adminBucket(), {
+        propuesta: fila!.propuesta,
+        original: fila!.original,
+        actividadId: fila!.actividadId!,
+      }),
+    ).toBe('borrado');
+
+    expect((await adminBucket().file(ORIGINAL_TARDE).exists())[0], 'el original tenía que irse').toBe(false);
+    expect((await adminBucket().file(SUBIDA_A_MANO).exists())[0], 'la foto de la actividad no se toca').toBe(true);
+    // La aceptada no vence y conserva el contacto (B-844): esto borra la foto, nada más.
+    const doc = await adminDb().collection('propuestas').doc(PROPUESTA_TARDE).get();
+    expect(doc.get('estado')).toBe('aceptada');
+    expect(doc.get('contacto')).toEqual({ via: 'whatsapp', valor: '+54 9 11 2222-3333' });
+
+    // Y la corrida siguiente ya no la ve: sin original vivo, no hay fila.
+    expect(await filaDeEsteCaso()).toBeUndefined();
   }, 30_000);
 });
