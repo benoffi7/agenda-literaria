@@ -143,7 +143,9 @@ trabajo.
 |---|---|---|
 | **DEC-12** | ✅ **Resuelta el 2026-09-11** (B-837, D-570, D-670): las promos **no**; el precio **sí**, con la fecha de carga visible, fuera de todo filtro y orden, y fuera del `Offer` del JSON-LD. El texto original: | Recomendación: **las promos no** (un dato viejo acá no es viejo, es equivocado, y lo paga la librería); **el precio sí**, con **la fecha de carga visible**, fuera de todo filtro y fuera del `Offer` del JSON-LD. El mecanismo compartido es **B-837**. Razonado en [`prd/02-librerias.md`](prd/02-librerias.md) § 6 y [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 |
 | DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
-| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. (El texto original decía que faltaba el handle (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
+| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto de antes de la resolución está abajo de la tabla (B-840). |
+
+> **DEC-6, el texto de antes de la resolución** (conservado por B-840, que sacó la cicatriz de merge de la fila): Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar.
 
 Resueltas el 2026-09-08 (los cuatro formularios, **B-830 a B-839**):
 
@@ -2155,38 +2157,6 @@ actividades?». El motivo es de contabilidad, no de criterio: el conteo de pregu
 está atado a `04-funcionalidades.md`, `06-decisiones.md` y a este archivo, y la 22ª
 obliga a corregir los tres números. Cuando la Guía tenga sus tres secciones cargadas
 la pregunta propia se justifica sola.
-
-### B-840 · La fila DEC-6 de este archivo tiene una cicatriz de merge · P3
-
-**Lo encontró el `auditor-documentacion`** el 2026-09-08, auditando otra cosa (los
-PRDs de B-830). La fila **DEC-6** de «Decisiones pendientes del usuario» tiene
-prosa **duplicada y cortada a mitad de oración**, con un `|` suelto en el medio:
-arranca con la resolución del 2026-09-03, abre un paréntesis que dice «El texto
-original decía que faltaba el handle (#2)…», y ese paréntesis nunca cierra — sigue
-con el texto viejo entero, que contradice al nuevo (dice que falta el dominio, y
-el dominio está desde el 2026-09-02).
-
-**No es de esta tanda.** `git blame` la fecha el **2026-08-26**, o sea que estuvo
-así casi dos semanas. Queda anotada porque es el rastro que pide la regla de
-proceso, y porque es **la misma clase que B-294 y B-367**: texto pegado de un
-merge sin resolver, que no rompe nada y nadie ve. La diferencia con esas dos es
-que acá el daño no es de renderizado —la tabla se dibuja bien— sino de contenido:
-**la fila afirma dos cosas incompatibles y hay que leerla dos veces para saber
-cuál vale**.
-
-**El arreglo** es reescribir la fila con la resolución sola, y mover el texto
-original a una cita `>` abajo si se lo quiere conservar — que es lo que este
-archivo ya hace en otras entradas. Es P3 porque DEC-6 **está cerrada**: nadie
-depende de leerla bien.
-
-**Y no hay red que lo agarre**, ni la va a haber baratamente:
-`tests/bloques-de-codigo-en-la-doc.test.ts` cuenta fences, `red-de-contencion.test.ts`
-cuenta filas de **una** tabla puntual, y el `auditor-documentacion` lo encontró
-leyendo. Una tercera cicatriz de la misma clase justificaría preguntarse por un
-barrido de «paréntesis que no cierra en una celda de tabla», pero con dos y una de
-ellas cerrada, todavía no.
-
----
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

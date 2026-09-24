@@ -19185,6 +19185,40 @@ importar la del sitio. Desde B-928 las dos funciones que compara son la misma, a
 que el test pasa siempre sin probar nada. Reescribirlo como prueba de que la
 reexportación apunta al módulo único, o borrarlo.
 
+### B-840 · La fila DEC-6 de este archivo tiene una cicatriz de merge · P3 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** La fila dice solo la resolución, y el texto viejo quedó en una cita `>` debajo de la tabla, sin el paréntesis sin cerrar ni el `|` suelto.
+
+**Lo encontró el `auditor-documentacion`** el 2026-09-08, auditando otra cosa (los
+PRDs de B-830). La fila **DEC-6** de «Decisiones pendientes del usuario» tiene
+prosa **duplicada y cortada a mitad de oración**, con un `|` suelto en el medio:
+arranca con la resolución del 2026-09-03, abre un paréntesis que dice «El texto
+original decía que faltaba el handle (#2)…», y ese paréntesis nunca cierra — sigue
+con el texto viejo entero, que contradice al nuevo (dice que falta el dominio, y
+el dominio está desde el 2026-09-02).
+
+**No es de esta tanda.** `git blame` la fecha el **2026-08-26**, o sea que estuvo
+así casi dos semanas. Queda anotada porque es el rastro que pide la regla de
+proceso, y porque es **la misma clase que B-294 y B-367**: texto pegado de un
+merge sin resolver, que no rompe nada y nadie ve. La diferencia con esas dos es
+que acá el daño no es de renderizado —la tabla se dibuja bien— sino de contenido:
+**la fila afirma dos cosas incompatibles y hay que leerla dos veces para saber
+cuál vale**.
+
+**El arreglo** es reescribir la fila con la resolución sola, y mover el texto
+original a una cita `>` abajo si se lo quiere conservar — que es lo que este
+archivo ya hace en otras entradas. Es P3 porque DEC-6 **está cerrada**: nadie
+depende de leerla bien.
+
+**Y no hay red que lo agarre**, ni la va a haber baratamente:
+`tests/bloques-de-codigo-en-la-doc.test.ts` cuenta fences, `red-de-contencion.test.ts`
+cuenta filas de **una** tabla puntual, y el `auditor-documentacion` lo encontró
+leyendo. Una tercera cicatriz de la misma clase justificaría preguntarse por un
+barrido de «paréntesis que no cierra en una celda de tabla», pero con dos y una de
+ellas cerrada, todavía no.
+
+---
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
