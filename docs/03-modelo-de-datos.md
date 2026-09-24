@@ -1286,6 +1286,42 @@ tres lados, y cada uno cubre lo que el anterior no:
 
 ---
 
+## Los campos de Instagram, campo por campo (B-1191)
+
+El mismo dato —una cuenta de Instagram— se carga en una docena de lugares del
+modelo y se resuelve con **tres criterios** —corregir sin frenar, frenar, no
+normalizar—, más dos campos que no tienen ninguno. Los tres criterios son
+decisiones y ninguno es un resto: esta tabla existe para que el próximo campo de Instagram —una guía
+nueva, un formulario público nuevo— sea una **elección** entre ellos y no una
+copia del vecino que se miró primero (la clase de B-88, aplicada a un criterio).
+
+**El saneador es uno solo**: `handleInstagram` / `arrobaInstagram`, en
+`functions/handle-instagram.js`, con `src/lib/handle-instagram.mjs` y
+`scripts/handle-instagram.mjs` como fachadas (B-1145, B-1180). Lo que cambia de
+fila en fila no es cómo se reconoce un handle sino **qué se hace con lo que no
+se reconoce**. Verificado contra el código el 2026-09-24.
+
+| Campo | Criterio | Alfabeto | Un valor que no se reconoce… | Por qué |
+|---|---|---|---|---|
+| `organizador.instagram`, `tallerista.instagram` (actividad, panel) | **Corrige y no frena.** `SeccionQuien.tsx` aplica `handleInstagram(crudo) ?? crudo.trim()` en el `onBlur`; `formADocumento` (`conHandle`, `src/lib/actividades.ts`) guarda con la misma expresión. Ninguna regla del schema ni de `firestore.rules` mira el campo | el de Instagram (`[A-Za-z0-9._]{1,30}`), vía `handleInstagram` | **se guarda crudo** (recortado) y **se avisa** con un cartel debajo del campo, que no frena. Sale a la ficha pública y al evento de Calendar como se escribió, **sin arroba y sin link** (`arrobaInstagram`, `enlaceInstagram`), y al `events.json` tal como está guardado | [D-767](06-decisiones.md#d-767--el-instagram-de-una-actividad-se-corrige-al-cargarlo-y-no-se-frena-al-publicarlo): publicar una actividad no puede depender de cómo se tipeó una cuenta, y borrar lo tipeado pierde la única copia del dato. El cartel es [D-900](06-decisiones.md#d-900--el-instagram-que-no-se-reconoce-se-avisa-con-un-cartel-y-el-cartel-no-frena). Que Calendar derive al mostrar y no reescriba el documento es [D-763](06-decisiones.md#d-763--el-instagram-del-evento-de-calendar-se-normaliza-al-mostrar-y-eso-no-reescribe-nada) |
+| `instagram` de las cuatro guías (`/librerias`, `/bibliotecas`, `/lugares`, `/suscripciones`) y `ofrecidaPor.instagram` de una suscripción | **Frena.** Una regla en el `superRefine` del schema de cada una (`if (v.instagram && !handleInstagram(v.instagram))`) y **la misma forma en `firestore.rules`** (`matches('^[A-Za-z0-9._]{1,30}$')`). Frena **el guardado entero** —el `safeParse` del panel corre igual para guardar que para publicar, y el formulario público no envía—, no solo el publicado | el de Instagram, en el schema **y** en la regla | **no se guarda**: «Poné el usuario de Instagram o pegá el link de su perfil». Lo que sí pasa se guarda ya normalizado (`handleInstagram(f.instagram)`), así que el documento solo tiene un handle o `null` | el valor termina en un `href` y en el `sameAs` del JSON-LD de una **página indexada**; un handle roto es un link roto, y la regla existe para el `curl` que no pasa por el schema. Es el criterio con el que nacieron las guías (B-901 en adelante); **no tiene entrada propia en `06-decisiones.md`** — D-767 lo nombra como el costo aceptado del otro |
+| `organizador.instagram` de una propuesta (`/proponer`, tercero sin login) | **Corrige al guardar y no frena**, sin pantalla: `formAPropuesta` guarda `handleInstagram(crudo) ?? crudo` (`src/lib/propuesta-schema.ts`). La regla solo pide `string` de hasta 200 | el de Instagram, vía `handleInstagram` | **se guarda crudo** (recortado), sin aviso a quien propone. La bandeja lo muestra como texto; al convertir la propuesta pasa al formulario de la actividad, y ahí vale la primera fila | B-928: quien propone **no vuelve a entrar**, así que no hay a quién explicarle el formato, y borrar el dato le saca al admin justo lo que tiene que mirar |
+| `difusion.arrobar[]` (actividad, interno) | **No es un campo de Instagram**, y por eso no se normaliza: texto libre de chips (`ChipsInput`, `agregarChips`), deduplicado ignorando mayúsculas y la arroba de adelante | **otro, a propósito**: `conArroba` (`src/lib/textoRedes.ts`) admite además `-`, porque la cuenta puede ser de otra red | **se guarda crudo** y sale así al pie del posteo; `conArroba` solo le agrega la `@` si parece un handle. Nunca va al sitio ni al calendario | el campo es trabajo interno del §3.2 y existe para el texto para redes. Forzar el criterio de Instagram rompería los handles de otras redes (`chips.ts`, B-133); por eso B-1142 aplicó `arrobaInstagram` **solo** a los dos campos que dicen Instagram en el nombre |
+| `inscripcion.destino` con `via: 'dm'` (actividad) | **Ninguno al cargar**: se guarda recortado (`limpiar`) y el schema solo exige que no esté vacío al publicar | el de Instagram, pero **solo en una salida**: `accionDeInscripcion` (`src/lib/detallePublico.ts`) | la ficha no arma botón y muestra el canal como texto. **El evento de Calendar y el texto para redes lo publican crudo**, sin arroba y con el `?igsh=…` si lo pegaron | **ninguna decisión lo cubre**: es la cuarta instancia que esta tabla existía para evitar, y está anotada como bug en el BACKLOG (salió de cerrar B-1191) |
+| `contactoDeQuienCargo` (guías) y `contacto` (propuesta) con `via: 'instagram'` — **internos** | **Ninguno**: texto libre con un mínimo de largo | — | se guarda como se escribió. La bandeja de propuestas arma el link con `handleInstagram` (`enlaceDeContacto`) y, si no lo reconoce, no hay link | no es público y no es una cuenta a mostrar: es cómo escribirle a una persona. Validarlo frenaría el alta de quien no vuelve a entrar |
+
+**La pregunta que separa las filas** es a dónde va el valor si nadie lo mira:
+si termina en un `href` indexado sin que un admin lo revise, frena (las guías);
+si hay alguien que lo va a leer antes —el admin que carga, la bandeja—, corrige
+lo que puede y guarda el resto; si puede no ser de Instagram, no se normaliza.
+
+Fuera de la tabla, porque no son campos del modelo: el Instagram **del sitio**
+(`src/lib/contactoDelSitio.ts`, una constante) y el tapado de `@handle` de los
+reportes (`HANDLE` en `functions/reportes.js`), que es un redactor con su
+propio alfabeto —exige letra o `_` adelante— y no un saneador.
+
+---
+
 ## Historial de versiones (§12)
 
 Cada edición que pisa contenido cargado por una persona deja el documento
