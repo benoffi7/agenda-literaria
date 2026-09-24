@@ -823,13 +823,53 @@ tests de integración se saltearían en silencio y "verde" no distinguiría entr
 |---|---|
 | Reglas e índices | cambió `firestore.rules` o `firestore.indexes.json` |
 | Functions | cambió algo en `functions/` o `firebase.json` |
-| Hosting | **lista negra**: se deploya salvo que todo lo que cambió sea provablemente incapaz de afectar el bundle |
+| Hosting | **lista negra**: se deploya salvo que todo lo que cambió sea provablemente incapaz de afectar el bundle. De `functions/`, cuenta lo que el build importa, derivado del árbol (B-1241) |
 
 La lista negra del hosting es a propósito. El bundle del panel depende de cosas
 fuera de `src/` —hoy `functions/calendario.js` por el alias `@calendario`— y una
 lista blanca de rutas se pierde ese caso **en silencio**: el build queda verde y
 producción se queda con el panel viejo. Con lista negra, un archivo nuevo y
 desconocido cae del lado de deployar, que es el error barato.
+
+**Qué de `functions/` arrastra Hosting no se enumera: se deriva del árbol
+(B-1241).** Hasta B-1241 el script tenía escritos a mano los cuatro archivos con
+alias y se perdía los seis que `src/` importa por ruta relativa: un cambio que
+tocara solo `functions/alta-de-opcion.js` deployaba la Function y no el panel, y
+los dos caminos del alta de una etiqueta quedaban con versiones distintas en
+producción. Ahora, en cada corrida:
+
+1. junta todo literal de ruta relativa que termine en `functions/<archivo>` en
+   `src/` y en `astro.config.mjs` —así entran los alias (`new URL('./functions/…')`,
+   aunque esté partido en dos líneas) y los imports de `src/lib/*`
+   (`'../../functions/slugify.js'`), con cualquiera de las tres comillas;
+2. le suma lo que esos archivos importan adentro de `functions/` (`'./geografia.js'`),
+   hasta que no aparezca nada nuevo;
+3. si alguno importa un paquete (no relativo ni `node:`), suma
+   `functions/package.json` y su lock, porque Vite lo resolvería desde
+   `functions/node_modules`. Hoy ninguno lo hace.
+
+Si no encuentra `src/`, todo `functions/` cuenta para Hosting. Un comentario que
+cite una ruta así entre comillas también entra: sobrar es un deploy de más.
+`index.js`, los `*-trigger.js` y el resto de lo que solo usa la Function siguen
+sin arrastrar Hosting.
+
+Para ver qué cree el script que es compartido:
+
+```bash
+$ ./scripts/que-deployar.sh --compartidos
+functions/alta-de-opcion.js
+functions/calendario.js
+…                                  # diez a la fecha de B-1241
+```
+
+`tests/que-deployar.test.ts` compara esa lista contra un recorrido
+**independiente** de los imports de `src/` (especificadores de `import`/`from`/
+`new URL(` resueltos con `path`, no el `grep` del script): si aparece un import
+hacia `functions/` que el script no ve, se pone rojo antes de que un cambio a
+ese archivo deploye solo la Function. Los casos de clausura, alias partido,
+comillas invertidas y paquete corren sobre árboles sintéticos, con
+`QUE_DEPLOYAR_RAIZ` apuntando a un directorio temporal. El script lee el árbol
+de la carpeta donde vive, no del directorio desde el que se lo llama.
 
 **Orden:** reglas → hosting → functions. Las reglas primero porque si el panel
 nuevo escribe campos que las reglas viejas rechazan, el orden inverso deja una

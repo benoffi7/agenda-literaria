@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
@@ -14,10 +16,14 @@ import { archivosDelRepo } from './fixtures/archivos-del-repo';
  * `functions/` pero el panel lo importa por el alias `@calendario`, así que
  * afecta al bundle. Una lista blanca de rutas se lo pierde.
  */
-const decidir = (archivos: string[]): Record<string, boolean> => {
-  const salida = execFileSync('./scripts/que-deployar.sh', {
+const SCRIPT = path.resolve('scripts/que-deployar.sh');
+
+/** `raiz` corre el script sobre otro árbol (`QUE_DEPLOYAR_RAIZ`, B-1241). */
+const decidir = (archivos: string[], raiz?: string): Record<string, boolean> => {
+  const salida = execFileSync(SCRIPT, {
     input: archivos.join('\n'),
     encoding: 'utf8',
+    env: raiz ? { ...process.env, QUE_DEPLOYAR_RAIZ: raiz } : process.env,
   });
   return Object.fromEntries(
     salida
@@ -280,39 +286,211 @@ describe('qué deployar — combinaciones', () => {
   });
 });
 
-describe('qué deployar — el exento de functions/ no puede quedar corto (B-88)', () => {
-  it('todo alias del panel a un archivo de functions/ está en la lista exenta del script', () => {
-    /*
-     * La atadura que evita que este agujero se vuelva a abrir en silencio: si
-     * mañana se agrega un alias nuevo (`@algo-mas`) apuntando a
-     * `functions/<archivo>.js` en `astro.config.mjs` y no se lo suma al `awk`
-     * de `que-deployar.sh`, este test se pone rojo ANTES de que el próximo
-     * cambio a ese archivo deploye Functions sin deployar Hosting.
-     *
-     * Mutación: agregar un alias nuevo a `astro.config.mjs` sin tocar
-     * `que-deployar.sh` — este `it` lo atrapa. Sacar `historial.js` o
-     * `png-chunks-seguros.js` del `awk` — también.
-     */
-    const astroConfig = readFileSync('astro.config.mjs', 'utf8');
-    const alias = [
-      ...astroConfig.matchAll(/new URL\('\.\/functions\/([\w-]+)\.js',/g),
-    ].map((m) => m[1]);
-    // Control: que el propio regex encuentre algo, para que un cambio de forma
-    // en astro.config.mjs no vacíe la lista y haga pasar el test por nada que
-    // comparar.
-    expect(alias.length).toBeGreaterThan(0);
+/**
+ * Lo que el script cree que es compartido entre `functions/` y el build.
+ * `raiz` lo corre sobre otro árbol (los casos sintéticos de más abajo).
+ */
+const compartidos = (raiz?: string): string[] =>
+  execFileSync(SCRIPT, ['--compartidos'], {
+    encoding: 'utf8',
+    env: raiz ? { ...process.env, QUE_DEPLOYAR_RAIZ: raiz } : process.env,
+  })
+    .split('\n')
+    .filter(Boolean);
 
-    const script = readFileSync('scripts/que-deployar.sh', 'utf8');
-    const awk = /awk '!\/\^functions\\\/\/ \|\| \/\^functions\\\/\(([\w|-]+)\)\\\.js\$\/'/.exec(
-      script,
-    );
-    expect(awk, 'no se encontró el patrón awk esperado en que-deployar.sh').not.toBeNull();
-    const exentos = awk![1]!.split('|');
+/**
+ * El recorrido independiente de los imports del build hacia `functions/`.
+ *
+ * Es a propósito OTRA implementación que la del script: allá son literales
+ * entre comillas buscados con `grep`; acá son especificadores de import
+ * (`from`, `import(`, `import '…'`, `export … from`, `require(`, `new URL(`)
+ * resueltos con `path` contra la carpeta del archivo que los escribe. Si las
+ * dos coinciden es porque las dos ven lo mismo, no porque una copie a la otra.
+ */
+const ESPECIFICADOR =
+  /(?:\bfrom|\bimport\s*\(|\bimport|\brequire\s*\(|\bnew\s+URL\s*\()\s*['"`]([^'"`\n]+)['"`]/g;
+const CODIGO = /\.(?:[cm]?[jt]sx?|astro)$/;
 
-    for (const nombre of alias) {
-      expect(exentos, `functions/${nombre}.js tiene alias de panel pero no está en el awk`).toContain(
-        nombre,
-      );
+const especificadores = (texto: string): string[] =>
+  [...texto.matchAll(ESPECIFICADOR)].map((m) => m[1]!);
+
+const conExtension = (ruta: string): string =>
+  /\.[cm]?js$/.test(ruta) ? ruta : `${ruta}.js`;
+
+const importadosPorElBuild = (): string[] => {
+  const alcanzados = new Set<string>();
+  const pendientes: string[] = [];
+  for (const archivo of archivosDelRepo('src', 'astro.config.mjs').filter((f) => CODIGO.test(f))) {
+    for (const spec of especificadores(readFileSync(archivo, 'utf8'))) {
+      if (!spec.startsWith('.')) continue;
+      const ruta = path.posix.normalize(path.posix.join(path.posix.dirname(archivo), spec));
+      if (ruta.startsWith('functions/')) pendientes.push(conExtension(ruta));
     }
+  }
+  // La clausura: lo que importan los compartidos, adentro de `functions/`.
+  while (pendientes.length > 0) {
+    const ruta = pendientes.pop()!;
+    if (alcanzados.has(ruta)) continue;
+    alcanzados.add(ruta);
+    if (!existsSync(ruta)) continue;
+    for (const spec of especificadores(readFileSync(ruta, 'utf8'))) {
+      if (!spec.startsWith('./')) continue;
+      pendientes.push(conExtension(path.posix.join('functions', spec)));
+    }
+  }
+  return [...alcanzados].sort();
+};
+
+describe('qué deployar — lo compartido con functions/ se deriva, no se enumera (B-1241)', () => {
+  /**
+   * B-1241 — hasta acá el script tenía una lista de cuatro archivos (los de
+   * alias) y `src/` importaba seis más por ruta relativa. Un cambio que tocara
+   * solo `functions/alta-de-opcion.js` deployaba la Function y no el panel.
+   *
+   * Esta es la atadura: el día que aparezca un import de `src/` hacia
+   * `functions/` que el script no ve —por una forma nueva de escribirlo, o
+   * porque alguien vuelve a cablear la lista—, este caso se pone rojo.
+   *
+   * MUTACIÓN PROBADA: volver al `awk` con los cuatro alias hace fallar los
+   * casos de los seis archivos de más abajo; cambiar `LITERAL_A_FUNCTIONS` para
+   * que exija `../` deja afuera a los de `astro.config.mjs` y este `it` falla.
+   */
+  it('todo lo que el build importa de functions/ lo ve el script', () => {
+    const esperados = importadosPorElBuild();
+    // Control positivo: a la fecha de B-1241 son diez. Si el recorrido sale
+    // vacío, el `toContain` de abajo no compara nada.
+    expect(esperados.length).toBeGreaterThanOrEqual(10);
+    expect(esperados).toContain('functions/alta-de-opcion.js');
+    expect(esperados).toContain('functions/calendario.js');
+
+    const vistos = compartidos();
+    for (const archivo of esperados) {
+      expect(
+        vistos,
+        `${archivo} lo importa el build pero scripts/que-deployar.sh no lo ve: ` +
+          'un cambio que toque solo ese archivo deployaría Functions y no Hosting',
+      ).toContain(archivo);
+    }
+  });
+
+  it('todo alias del panel a un archivo de functions/ está entre los compartidos (B-88)', () => {
+    // La atadura de B-88, que antes leía el `awk` del script. Se queda como
+    // segundo control porque los alias son la otra mitad de la entrada.
+    const alias = [
+      ...readFileSync('astro.config.mjs', 'utf8').matchAll(/new URL\(\s*'\.\/(functions\/[\w-]+\.js)'/g),
+    ].map((m) => m[1]!);
+    expect(alias.length).toBeGreaterThan(0);
+    expect(compartidos()).toEqual(expect.arrayContaining(alias));
+  });
+
+  it('ni `index.js` ni un `-trigger.js` son compartidos', () => {
+    // Si alguno apareciera, o el build importa el entrypoint de las Functions
+    // —trampa 4: firebase-admin en el bundle— o la derivación se volvió tan
+    // ancha que ya no distingue nada.
+    const vistos = compartidos();
+    expect(vistos).not.toContain('functions/index.js');
+    expect(vistos.filter((f) => f.endsWith('-trigger.js'))).toEqual([]);
+  });
+
+  it.each([
+    'functions/slugify.js',
+    'functions/geografia.js',
+    'functions/handle-instagram.js',
+    'functions/alta-de-opcion.js',
+    'functions/huella.js',
+    'functions/etiqueta-presentable.js',
+  ])('%s deploya functions Y hosting — lo importa src/ por ruta relativa', (archivo) => {
+    expect(decidir([archivo])).toEqual({
+      hosting: true, functions: true, firestore: false, storage: false,
+    });
+  });
+
+  it('el package.json de functions/ no arrastra hosting mientras lo compartido no importe paquetes', () => {
+    expect(decidir(['functions/package.json', 'functions/package-lock.json']).hosting).toBe(false);
+  });
+});
+
+describe('qué deployar — la derivación sobre un árbol sintético (B-1241)', () => {
+  /** Arma un árbol con estos archivos y devuelve su raíz. */
+  const arbol = (archivos: Record<string, string>): string => {
+    const raiz = mkdtempSync(path.join(tmpdir(), 'que-deployar-'));
+    for (const [ruta, contenido] of Object.entries(archivos)) {
+      mkdirSync(path.dirname(path.join(raiz, ruta)), { recursive: true });
+      writeFileSync(path.join(raiz, ruta), contenido);
+    }
+    return raiz;
+  };
+
+  it('un archivo compartido nuevo queda cubierto sin que nadie lo sume', () => {
+    const raiz = arbol({
+      'src/lib/nuevo.ts': "import { algo } from '../../functions/compartido-nuevo.js';\n",
+      'functions/compartido-nuevo.js': 'export const algo = 1;\n',
+      'functions/solo-de-la-function.js': 'export const otro = 2;\n',
+    });
+    expect(decidir(['functions/compartido-nuevo.js'], raiz).hosting).toBe(true);
+    // Control negativo: lo que nadie del build importa sigue sin arrastrarlo.
+    expect(decidir(['functions/solo-de-la-function.js'], raiz).hosting).toBe(false);
+  });
+
+  it('sigue los imports adentro de functions/', () => {
+    const raiz = arbol({
+      'src/lib/a.mjs': "export * from '../../functions/a.js';\n",
+      'functions/a.js': "import { b } from './b.js';\nexport const a = b;\n",
+      'functions/b.js': "import { c } from './c';\nexport const b = c;\n",
+      'functions/c.js': 'export const c = 1;\n',
+    });
+    expect(compartidos(raiz)).toEqual(['functions/a.js', 'functions/b.js', 'functions/c.js']);
+    expect(decidir(['functions/c.js'], raiz).hosting).toBe(true);
+  });
+
+  it('ve el alias de astro.config.mjs aunque el `new URL(` esté partido en dos líneas', () => {
+    const raiz = arbol({
+      'src/pages/index.astro': '---\n---\n',
+      'astro.config.mjs':
+        "export default { alias: { '@x': fileURLToPath(\n  new URL(\n    './functions/x.js',\n    import.meta.url)) } };\n",
+      'functions/x.js': 'export const x = 1;\n',
+    });
+    expect(compartidos(raiz)).toEqual(['functions/x.js']);
+  });
+
+  it('ve un import dinámico con comillas invertidas', () => {
+    const raiz = arbol({
+      'src/lib/a.ts': 'export const cargar = () => import(`../../functions/perezoso.js`);\n',
+      'functions/perezoso.js': 'export const p = 1;\n',
+    });
+    expect(compartidos(raiz)).toEqual(['functions/perezoso.js']);
+  });
+
+  it('si lo compartido importa un paquete, el package.json de functions/ arrastra hosting', () => {
+    const conPaquete = arbol({
+      'src/lib/a.ts': "import { a } from '../../functions/a.js';\n",
+      'functions/a.js': "import { chunk } from 'lodash-es';\nexport const a = chunk;\n",
+    });
+    expect(decidir(['functions/package.json'], conPaquete).hosting).toBe(true);
+    expect(decidir(['functions/package-lock.json'], conPaquete).hosting).toBe(true);
+
+    // `node:` no es un paquete de `functions/node_modules`.
+    const conNode = arbol({
+      'src/lib/a.ts': "import { a } from '../../functions/a.js';\n",
+      'functions/a.js': "import { join } from 'node:path';\nexport const a = join;\n",
+    });
+    expect(decidir(['functions/package.json'], conNode).hosting).toBe(false);
+  });
+
+  it('sin `src/` no hay de dónde derivar, y todo functions/ cuenta para hosting', () => {
+    const raiz = arbol({ 'functions/cualquiera.js': 'export const x = 1;\n' });
+    expect(decidir(['functions/cualquiera.js'], raiz).hosting).toBe(true);
+  });
+
+  it('no depende del directorio desde el que se lo llama', () => {
+    // El workflow lo llama desde la raíz, pero `verificar-todo.sh` o una
+    // persona pueden no hacerlo. Sin esto, desde otra carpeta no encontraría
+    // `src/` y caería en «todo functions/ cuenta».
+    const salida = execFileSync(SCRIPT, {
+      input: 'functions/index.js\n',
+      encoding: 'utf8',
+      cwd: tmpdir(),
+    });
+    expect(salida).toContain('hosting=false');
   });
 });
