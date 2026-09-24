@@ -1963,15 +1963,11 @@ auditores, cada uno por su lado.
 > precondición; lo que se puede es medirla, y por eso el trigger la loguea como
 > `warn` y el script la dice.
 
-> ⚠️ **Lo que B-864 NO arregla, y es la variante peor del ítem: convertir.**
-> `PropuestasPanel.convertir` **no escribe nada** hasta que la actividad se guarda
-> (**D-600**), así que abrir el formulario de conversión sobre una propuesta vieja
-> **no le renueva el plazo** y no hay versión nueva contra la cual la precondición
-> pueda proteger: el barrido se la lleva con el formulario abierto y el
-> `revisarPropuesta` de `alGuardar` falla con NOT_FOUND (la actividad queda
-> creada, la propuesta no). La precondición cumple la promesa de B-844 —«moverla
-> de estado le renueva el plazo»— y ésta no es un movimiento de estado. Arreglarlo
-> es tocar D-600, o sea una decisión de producto, y queda anotado.
+> ✅ **Convertir era la variante peor de este ítem, y la cerró B-866 (2026-09-24).**
+> Abrir la conversión de una `nueva` la pasa a `en-revision`, que renueva
+> `revision.en`: la precondición tiene una versión nueva contra la cual proteger y
+> el barrido no se la lleva con el formulario abierto. Queda descubierta la
+> `en-revision` o `rechazada` vieja que se convierte sin marca (**B-1460**).
 
 **Y lo que borra está acotado al prefijo `propuestas/`.** No es higiene: esta
 Function corre con el Admin SDK y **no pasa por `firestore.rules`**, así que el

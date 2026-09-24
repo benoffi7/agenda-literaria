@@ -10111,6 +10111,8 @@ ayuda a quien está completando el formulario.
 
 ## D-600 · Aceptar una propuesta es **una** escritura, y la actividad se crea primero
 
+> ⚠️ **Cambió de alcance el 2026-09-24 — ver D-930.** «Convertir no escribe nada» pasó a ser «convertir no escribe **la actividad**»: desde B-866, abrir la conversión de una `nueva` la mueve a `en-revision`. El orden de las dos escrituras de aceptar —actividad primero, después `estado` + `revision` en una sola— **no cambió**, y el argumento de la asimetría de fallos sigue entero. El bloque de abajo queda como estaba escrito.
+
 **Decisión del dueño el 2026-09-09**, sobre el punto 2 de B-843. Lo destapó el
 `auditor-privacidad` antes de que el panel existiera, que es el único momento en
 que era barato.
@@ -12770,4 +12772,41 @@ cite sin repetirlo. Nada más, y cada descarte tiene motivo:
 Vive en `contactoDelSitio.ts` y no en `identidad.ts`: aquél ya importa
 `enlaces.ts`/`rutasPublicas.ts`, y meterlos en `identidad.ts` los arrastraría al
 bundle del panel (B-841).
+
+## D-930 · Convertir no escribe la actividad, pero sí marca la propuesta `en-revision`
+
+**B-866, 2026-09-24. El dueño tomó la opción que el ítem recomendaba.**
+
+**El problema.** D-600 decía que «Convertir» no escribe nada hasta que la
+actividad se guarda. Abrir el formulario sobre una propuesta vieja no movía su
+`revision.en`, y la precondición de B-864 no tenía versión nueva contra la cual
+proteger: el barrido de retención (B-844) se la podía llevar con el formulario
+abierto. La actividad se guardaba y la propuesta —la prueba de qué se pidió, §4.3
+del PRD— desaparecía. La ventana no eran los segundos de una corrida sino todo el
+tiempo que el formulario quedara abierto.
+
+**Lo elegido: abrir la conversión de una `nueva` la pasa a `en-revision`**, que es
+literalmente lo que está pasando.
+
+| | Convertir no escribe nada (D-600 original) | **Convertir marca `en-revision`** |
+|---|---|---|
+| El plazo de retención | no se renueva | se renueva (`revision.en`) |
+| Carrera con el barrido | la propuesta se pierde | la precondición de B-864 la salva |
+| El riesgo que D-600 argumenta (una `aceptada` que apunta a una actividad inexistente) | no existe | **tampoco existe**: `en-revision` no dice que se aceptó nada |
+| Conversión abandonada | nada | la propuesta queda «la estoy mirando», se ve en la bandeja y es reversible |
+
+**Lo que D-600 protegía nunca fue «no escribir»**, sino no escribir una
+**aceptación** sin la actividad detrás. La marca no toca eso, así que D-600 se
+corrige de alcance y no se revierte.
+
+**Lo que esto obliga:**
+
+- **Solo la `nueva`.** La `en-revision` ya está ahí y `revisionValida()` exige
+  mover el estado; la `rechazada` se convierte sin reabrirla, porque reabrirla
+  sería una decisión que nadie tomó. Lo que queda descubierto es **B-1460**.
+- **La marca no bloquea.** Si falla, la conversión sigue y el formulario lo avisa:
+  cortar el trabajo del admin por una protección contra un caso raro cambia un
+  riesgo chico por uno seguro.
+- **La regla no cambió**: no tiene grafo de transiciones y ya aceptaba
+  `nueva → en-revision → aceptada`.
 

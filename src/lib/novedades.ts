@@ -61,6 +61,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'convertir-marca-en-revision',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Convertir una propuesta la marca como que la estás mirando',
+    detalle:
+      'Al abrir la conversión de una propuesta sin mirar, pasa sola a «la estoy mirando» y su plazo ' +
+      'en la bandeja vuelve a contar desde cero, así no se borra mientras cargás la actividad.',
+    donde: 'En Propuestas, al tocar «Convertir en actividad».',
+  },
+  {
     id: 'precio-revisado',
     fecha: '2026-09-24',
     version: '1.11.0',
