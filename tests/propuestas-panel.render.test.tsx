@@ -686,6 +686,72 @@ describe('convertir marca la propuesta en revisión — B-866', () => {
   });
 });
 
+/**
+ * **B-1460 — la que la marca no salva, avisada arriba del formulario.** La
+ * regla pura y su cruce con el barrido están en `bandeja-de-propuestas.test.ts`;
+ * acá, que la conversión la lleve en `avisos`, primera, y que no la invente.
+ *
+ * MUTACIÓN PROBADA: sacando `vence` de `primeros` en `convertirUnaVez`, los dos
+ * primeros se ponen rojos y el tercero sigue verde.
+ */
+describe('convertir una que se va esta noche lo avisa — B-1460', () => {
+  const DIA = 24 * 60 * 60 * 1000;
+  // Hace 29 días y medio: le quedan unas doce horas, lejos de cualquier borde.
+  const casiVencida = () => tsDe(new Date(Date.now() - 29.5 * DIA)) as never;
+
+  it('una en-revision a punto de vencer abre el formulario con el aviso primero', async () => {
+    const onConvertir = montar([
+      propuesta({
+        estado: 'en-revision',
+        // El reloj de la en-revision es la más nueva de las dos fechas, así que
+        // `creadoEn` también tiene que ser vieja.
+        creadoEn: tsDe(new Date(Date.now() - 60 * DIA)) as never,
+        revision: { porUid: 'uid_admin', en: casiVencida(), actividadId: null, motivo: null },
+      }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    const { avisos } = onConvertir.mock.calls[0]![0];
+    expect(avisos[0]).toMatch(/^La propuesta se borra hoy de la bandeja/);
+    expect(avisos[0]).toMatch(/Guardá la actividad pronto/);
+    // No se marca: la regla no deja renovar sin mover el estado.
+    expect(revisarPropuesta).not.toHaveBeenCalled();
+  });
+
+  it('una rechazada a punto de vencer ofrece reabrirla', async () => {
+    const onConvertir = montar([
+      propuesta({
+        estado: 'rechazada',
+        revision: { porUid: 'uid_admin', en: casiVencida(), actividadId: null, motivo: 'repetida' },
+      }),
+    ]);
+    await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(onConvertir.mock.calls[0]![0].avisos[0]).toMatch(/reabrila desde la bandeja/);
+  });
+
+  it('y una en-revision mirada ayer no dice nada de vencer', async () => {
+    const onConvertir = montar([
+      propuesta({
+        estado: 'en-revision',
+        revision: {
+          porUid: 'uid_admin',
+          en: tsDe(new Date(Date.now() - DIA)) as never,
+          actividadId: null,
+          motivo: null,
+        },
+      }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(onConvertir.mock.calls[0]![0].avisos.some((a) => /se borra/i.test(a))).toBe(false);
+  });
+});
+
 describe('doble clic en «Convertir» mientras la marca está en vuelo — B-1461', () => {
   it('abre una sola conversión, marca una sola vez y no avisa un fallo falso', async () => {
     let soltar: () => void = () => {};
