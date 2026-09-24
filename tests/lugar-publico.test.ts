@@ -50,6 +50,13 @@ import {
   lugarCentinelaSinDireccion,
   type RutaDeLugar,
 } from './fixtures/centinelas-lugar';
+import {
+  PERMITIDO_EN_LA_PROYECCION_DE_LUGARES as PERMITIDO_EN_LA_PROYECCION,
+  PERMITIDO_SIN_DIRECCION_DE_LUGARES as PERMITIDO_SIN_DIRECCION,
+  PERMITIDO_EN_LA_FICHA_DE_LUGARES as PERMITIDO_EN_LA_FICHA,
+  PERMITIDO_EN_EL_MARCADO_DE_LUGARES as PERMITIDO_EN_EL_MARCADO,
+  type Excepcion as ExcepcionDeLaGuia,
+} from './fixtures/canastas-de-la-guia';
 import { ts } from './fixtures/tiempo';
 import { NOMBRE } from '@/lib/identidad';
 import { UNIDADES_DE_PRECIO_LUGAR, type Lugar } from '@/types/lugar';
@@ -62,153 +69,14 @@ const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url
 // aprobada por cansancio.
 // ───────────────────────────────────────────────────────────────────────────
 
-type Excepcion = { nombre: string; centinelas: readonly RutaDeLugar[]; porque: string };
+type Excepcion = ExcepcionDeLaGuia<RutaDeLugar>;
 
-/**
- * Lo que sale cuando **la dirección se publica** (un local comercial).
- *
- * `direccion` está en su propio grupo y no mezclada con el resto de «dónde
- * queda»: es el único campo del proyecto cuya presencia en esta lista depende de
- * otro campo del mismo documento, y separarlo es lo que deja que el caso de la
- * casa sea una resta de un grupo entero y no una edición de un array.
+/*
+ * Las listas viven en `tests/fixtures/canastas-de-la-guia.ts` desde B-1812: el
+ * barrido de salidas públicas las compara con la canasta del gate del build, y
+ * para eso tienen que poder importarse. El criterio sigue siendo el mismo y se
+ * sigue escribiendo a mano, allá.
  */
-const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
-  {
-    nombre: 'cuándo se puede usar',
-    // B-982 — el horario, y **no** depende de `direccionPublica`.
-    centinelas: ['horarios'],
-    porque:
-      'cuándo se puede usar un lugar no identifica una casa — lo que la identifica es la calle y ' +
-      'el número, y de eso se ocupa `direccionPublica` (§ 6 del PRD). Por eso sale **siempre**, ' +
-      'incluso en una casa con la dirección reservada: es justamente lo que esa persona sí quiere ' +
-      'decir. No entra al JSON-LD, por lo mismo que en una librería.',
-  },
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      'son la ficha: el nombre que se busca, la dirección web permanente (trampa 10) y qué tiene ' +
-      'el lugar. La descripción es opcional acá, como en una librería: un café con su capacidad ' +
-      'ya dice lo que hay que saber.',
-  },
-  {
-    nombre: 'qué es y dónde, sin la calle',
-    centinelas: ['tipo', 'provincia', 'barrio', 'ciudad'],
-    porque:
-      'los tres de la geografía salen **siempre**, también para una casa: son el «más o menos por ' +
-      'Villa Crespo» que el § 6 del PRD sí deja publicar, y sin ellos la ficha de una casa no ' +
-      'diría nada y el filtro de barrio la dejaría fuera de su propio chip. El tipo es el eje de ' +
-      'filtro 5 y lo que decide el default del flag.',
-  },
-  {
-    nombre: '⚠️ la calle, y SOLO con el flag prendido',
-    centinelas: ['direccion'],
-    porque:
-      '§ 6 del PRD 4. La dirección de un local comercial es pública por definición; la de una ' +
-      'casa es el dato con el que se llega a la puerta de alguien. Lo decide `direccionPublica` y ' +
-      'lo aplica `dondeQueSale`, una sola función para la dirección y la `geo`.',
-  },
-  {
-    nombre: 'para cuántos y qué incluye',
-    centinelas: ['capacidadNotas', 'incluye', 'incluyeOtro'],
-    porque:
-      'es lo que el dueño pidió: «Capacidad» y «Qué incluye el lugar». Las notas existen por el ' +
-      '§ 9 —la capacidad tiene respuestas distintas si están sentados o de pie— y `incluye` es el ' +
-      'eje de filtro 4, el que más ayuda con proyector y accesibilidad.',
-  },
-  {
-    nombre: 'la condición, que no es un precio',
-    centinelas: ['condicion', 'condicionNotas'],
-    porque:
-      '§ 5 del PRD, el hallazgo del pedido: «no sé si todos cobran, o le dicen que tienen que ' +
-      'consumir». La condición se muestra **siempre** (criterio 7) y las notas son donde entra ' +
-      '«mínimo de consumición $8000 por persona».',
-  },
-  {
-    nombre: 'los cuatro contactos',
-    centinelas: ['instagram', 'whatsapp', 'mail', 'web'],
-    porque:
-      'salen a propósito y **ése es el punto de la ficha**: existe para que alguien pueda pedir ' +
-      'el salón. Para una casa son además el único camino, porque la dirección la pide quien ' +
-      'escribe.',
-  },
-  {
-    nombre: 'la galería',
-    centinelas: ['imagenes.url', 'imagenes.epigrafe'],
-    porque:
-      'la ficha muestra **todas** las imágenes (criterio de B-296) y el epígrafe es el texto que ' +
-      'alguien escribió para que se lea debajo. La URL sale **saneada**, no cruda.',
-  },
-];
-
-/**
- * Lo que sale cuando **la dirección NO se publica** (una casa).
- *
- * Es la lista de arriba **menos un grupo entero**. Que sea una resta declarada y
- * no una lista aparte es deliberado: así el día que alguien agregue un campo a la
- * proyección tiene que decidir en cuál de los dos grupos va, y no puede agregarlo
- * «al de la casa» sin que se note.
- */
-const PERMITIDO_SIN_DIRECCION: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION.filter(
-  (g) => !g.nombre.startsWith('⚠️'),
-);
-
-/**
- * Lo que sale a la **ficha** (`FichaDeLugar`, el view-model de la página).
- *
- * Es **la misma lista que la proyección**, y eso no siempre fue así: en los otros
- * dos directorios la ficha es la proyección menos `searchText`. Acá ese campo no
- * tiene centinela porque **la proyección lo deriva en vez de copiarlo**, así que
- * no hay nada que restar. Que sea un alias y no una copia es lo que hace que
- * agregar un campo a la proyección obligue a pensar si va también a la ficha.
- */
-const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION;
-
-/**
- * Lo que sale al **marcado estructurado** (`Place` + migas + `CollectionPage`).
- *
- * La lista más corta de las tres, y con motivo: esto lo lee una máquina y es lo
- * que Google puede mostrar **fuera** del sitio.
- */
-const PERMITIDO_EN_EL_MARCADO: readonly Excepcion[] = [
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      '`name`, `description` y el `url` canónico. Es lo que hace que la ficha se entienda como un ' +
-      'lugar y no como una página suelta.',
-  },
-  {
-    nombre: '⚠️ la dirección, y SOLO con el flag prendido',
-    centinelas: ['direccion', 'ciudad', 'provincia'],
-    porque:
-      '`address.streetAddress` y `addressLocality`. **Es el criterio 5 del PRD y el camino que ' +
-      'más fácil se filtra**: nadie lee el JSON-LD al revisar una ficha. Sin dirección publicada ' +
-      'no hay clave `address` **en absoluto**, ni con la localidad sola.',
-  },
-  {
-    nombre: 'qué incluye',
-    centinelas: ['incluye'],
-    porque:
-      '`amenityFeature` como `LocationFeatureSpecification`. Es un dato del lugar, y es el que ' +
-      'hace que el marcado diga algo más que el nombre.',
-  },
-  {
-    nombre: 'los perfiles',
-    centinelas: ['instagram', 'web'],
-    porque:
-      '`sameAs` es «las otras direcciones de esta misma entidad». El **WhatsApp y el mail no ' +
-      'entran**: son canales de contacto, no perfiles, y publicarlos en el marcado los deja ' +
-      'cosechables por cualquier parser sin que nadie abra la página.',
-  },
-  {
-    nombre: 'la imagen',
-    centinelas: ['imagenes.url'],
-    porque:
-      '`image` es una lista de URLs. El **epígrafe no entra**: es texto para leer debajo de la ' +
-      'foto, no un dato de la entidad.',
-  },
-];
 
 /**
  * El barrido, en las dos direcciones.

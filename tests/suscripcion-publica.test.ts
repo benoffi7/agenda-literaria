@@ -40,6 +40,12 @@ import {
   suscripcionCentinela,
   type RutaDeSuscripcion,
 } from './fixtures/centinelas-suscripcion';
+import {
+  PERMITIDO_EN_LA_PROYECCION_DE_SUSCRIPCIONES as PERMITIDO_EN_LA_PROYECCION,
+  PERMITIDO_EN_LA_FICHA_DE_SUSCRIPCIONES as PERMITIDO_EN_LA_FICHA,
+  PERMITIDO_EN_EL_MARCADO_DE_SUSCRIPCIONES as PERMITIDO_EN_EL_MARCADO,
+  type Excepcion as ExcepcionDeLaGuia,
+} from './fixtures/canastas-de-la-guia';
 import { ts } from './fixtures/tiempo';
 import { NOMBRE } from '@/lib/identidad';
 import type { SuscripcionLiteraria } from '@/types/suscripcion-literaria';
@@ -52,136 +58,14 @@ const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url
 // aprobada por cansancio.
 // ───────────────────────────────────────────────────────────────────────────
 
-type Excepcion = { nombre: string; centinelas: readonly RutaDeSuscripcion[]; porque: string };
+type Excepcion = ExcepcionDeLaGuia<RutaDeSuscripcion>;
 
-const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      'son la ficha: el nombre que se busca, la dirección web permanente (trampa 10) y qué es y ' +
-      'para quién. La descripción es **obligatoria** acá, al revés que en una librería: una ' +
-      'suscripción es una promesa a futuro y sin eso la ficha no dice nada (§ 3.1 del PRD).',
-  },
-  {
-    nombre: 'quién la ofrece',
-    centinelas: ['ofrecidaPor.nombre', 'ofrecidaPor.tipo', 'ofrecidaPor.instagram', 'ofrecidaPor.libreriaSlug'],
-    porque:
-      'es el sujeto de la oferta y lo que la acción de la ficha nombra («Suscribite en la página ' +
-      'de …», criterio 9). El `libreriaSlug` sale porque de él cuelga el enlace a la ficha de esa ' +
-      'librería (§ 5 del PRD), y sale **solo si es un slug**.',
-  },
-  {
-    nombre: 'las condiciones',
-    centinelas: [
-      'periodicidad',
-      'compromisoMinimo',
-      'incluye',
-      'incluyeOtro',
-      'envio.tematica',
-      'envio.editoriales',
-      'extras',
-      'extrasOtro',
-      'alcance',
-    ],
-    porque:
-      'es literalmente lo que el dueño pidió que se pudiera contestar: «Qué incluye? Si envían ' +
-      'libros: tiene temática? Son de editoriales independientes? Extras?». Tres de estos son ' +
-      'además los ejes de filtro del § 5.',
-  },
-  {
-    nombre: 'los cuatro destinos públicos',
-    centinelas: ['linkDeSuscripcion', 'instagram', 'whatsapp', 'mail'],
-    porque:
-      'salen a propósito y **ése es el punto de la ficha**: existe para que la gente se pueda ' +
-      'suscribir. El link es el riesgo propio de este PRD (§ 7) y por eso sale saneado, solo con ' +
-      '`https:`, y en la página con `rel="noopener noreferrer"`.',
-  },
-  {
-    nombre: 'la galería',
-    centinelas: ['imagenes.url', 'imagenes.epigrafe'],
-    porque:
-      'la ficha muestra **todas** las imágenes (criterio de B-296) y el epígrafe es el texto que ' +
-      'alguien escribió para que se lea debajo. La URL sale **saneada**, no cruda.',
-  },
-  /*
-   * **`searchText` ya NO es una excepción** — 2026-09-15, hallazgo del
-   * `auditor-privacidad`. El argumento entero está en
-   * `tests/libreria-publica.test.ts`, y acá tenía una mitad más: el `porque`
-   * afirmaba «no lleva el precio» mientras la proyección copiaba el campo del
-   * documento, así que un `curl` metía el monto ahí y quedaba **filtrable** —la
-   * segunda regla de DEC-12 dada vuelta—.
-   *
-   * Ahora la proyección lo deriva con `searchTextDeSuscripcion` de los valores ya
-   * proyectados, entre los cuales el precio no está. Los casos propios están al
-   * final de este archivo.
-   */
-];
-
-/**
- * Lo que sale a la **ficha** (`FichaDeSuscripcion`, el view-model de la página).
- *
- * Es la proyección **menos `searchText`** (el índice existe para que el listado
- * filtre, y la página de una suscripción no filtra nada) y **menos
- * `ofrecidaPor.libreriaSlug`**: en la ficha ese slug no viaja como dato, viaja
- * resuelto adentro de una ruta, y solo si esa librería está publicada.
- */
-const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION.map((g) =>
-  g.nombre === 'quién la ofrece'
-    ? { ...g, centinelas: g.centinelas.filter((c) => c !== 'ofrecidaPor.libreriaSlug') }
-    : g,
-);
 /*
- * **El `.filter()` del índice de búsqueda se fue el 2026-09-15**, con la
- * excepción: `searchText` dejó de ser una, así que filtraba un grupo que ya no
- * existe. La propiedad que la ficha sigue teniendo —no publica el índice— la
- * afirman sus propios casos.
+ * Las listas viven en `tests/fixtures/canastas-de-la-guia.ts` desde B-1812: el
+ * barrido de salidas públicas las compara con la canasta del gate del build, y
+ * para eso tienen que poder importarse. El criterio sigue siendo el mismo y se
+ * sigue escribiendo a mano, allá.
  */
-
-/**
- * Lo que sale al **marcado estructurado** (`Product` + migas + `CollectionPage`).
- *
- * La lista más corta de las tres, y con motivo: esto lo lee una máquina y es lo
- * que Google puede mostrar **fuera** del sitio.
- */
-const PERMITIDO_EN_EL_MARCADO: readonly Excepcion[] = [
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      '`name`, `description` y el `url` canónico. Es lo que hace que la ficha se entienda como un ' +
-      'producto con una oferta, que es el SEO de esta sección (§ 5 del PRD).',
-  },
-  {
-    nombre: 'quién la ofrece',
-    centinelas: ['ofrecidaPor.nombre'],
-    porque:
-      '`brand` y `offers.seller`: quién vende esto. El **tipo no entra** —es un slug de nuestra ' +
-      'taxonomía, no un dato de schema.org— y el `libreriaSlug` tampoco.',
-  },
-  {
-    nombre: 'los perfiles',
-    centinelas: ['instagram', 'ofrecidaPor.instagram'],
-    porque:
-      '`sameAs` es «las otras direcciones de esta misma entidad». El **WhatsApp y el mail no ' +
-      'entran**: son canales de contacto, no perfiles, y publicarlos en el marcado los deja ' +
-      'cosechables por cualquier parser sin que nadie abra la página.',
-  },
-  {
-    nombre: 'el destino de la oferta',
-    centinelas: ['linkDeSuscripcion'],
-    porque:
-      '`offers.url` es a dónde se compra, que es lo que un `Offer` significa. Va **sin `price`**: ' +
-      'ver el caso que lo fija y el § 5 del PRD.',
-  },
-  {
-    nombre: 'la imagen',
-    centinelas: ['imagenes.url'],
-    porque:
-      '`image` es una lista de URLs. El **epígrafe no entra**: es texto para leer debajo de la ' +
-      'foto, no un dato de la entidad.',
-  },
-];
 
 /**
  * El barrido, en las dos direcciones.
