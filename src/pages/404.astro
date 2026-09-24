@@ -33,6 +33,11 @@
  * `noindex` y no se enlazan, y sin los meses vencidos—, así que este 404 no puede
  * mandar a una página que el build no generó.
  *
+ * **Y desde B-900, las secciones de la Guía.** El § 2.1 del inventario lo
+ * pedía («el 404 sugiere secciones; hay tres más»), y entran con el mismo
+ * recorte que la tira: `grupoDeLaGuia` deja solo las que existen y tienen fichas
+ * publicadas, así que tampoco por ahí se puede mandar a un listado vacío.
+ *
  * ── `noIndex`, y es la única página del sitio público que lo lleva ────────
  * §5.1: el 404 va con `noindex` y **fuera del `sitemap.xml`**. Las dos mitades de
  * la misma señal, como en los hubs vacíos: la lista de excepciones de
@@ -56,14 +61,22 @@
 import Base from '@/layouts/Base.astro';
 import ExploraPor from '@/components/sitio/ExploraPor.astro';
 import { claseBotonPrimario, claseCampo, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
-import { exploracionDeLaHome } from '@/lib/contenidoDelSitio';
+import { exploracionDeLaHome, fichasPorDirectorio } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
-import { CLAVE_BUSQUEDA, frasesDeNoEncontrado } from '@/lib/noEncontrado';
+import { CLAVE_BUSQUEDA, frasesDeNoEncontrado, grupoDeLaGuia } from '@/lib/noEncontrado';
 import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
 
 export const prerender = true;
 
-const exploracion = await exploracionDeLaHome();
+/*
+ * **La tira de la home, más las secciones de la Guía que tienen algo** — B-900.
+ * El grupo de la Guía va **al final** y no mezclado: la tira es la de la home, y
+ * quien tipeó mal una dirección buscaba casi siempre una actividad. Una sección
+ * entra solo si existe (`disponible`) y si su listado no está vacío — ver
+ * `grupoDeLaGuia`. Lo que la página recibe del lector son números, no fichas.
+ */
+const [tira, fichas] = await Promise.all([exploracionDeLaHome(), fichasPorDirectorio()]);
+const exploracion = [...tira, ...grupoDeLaGuia(fichas)];
 /*
  * Las frases **reciben los grupos**, que es lo único que esta página ve de los
  * datos: es lo que hace que el barrido de centinelas de esta salida signifique

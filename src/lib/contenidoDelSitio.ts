@@ -105,7 +105,7 @@ import {
   type IndiceDeLugares,
   type LugarPublico,
 } from '@/lib/lugarPublico';
-import { ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA } from '@/lib/directorios';
+import { ESTADO_PUBLICO as ESTADO_PUBLICO_DE_FICHA, type IdDirectorio } from '@/lib/directorios';
 import { esSlugDeFicha } from '@/lib/rutasPublicas';
 import type { Libreria } from '@/types/libreria';
 import {
@@ -2068,4 +2068,42 @@ export const vistaDeHubTematico = async (
 export const exploracionDeLaHome = async (ahora?: unknown): Promise<GrupoDeExploracion[]> => {
   const ctx = await hubsConContexto(ahora);
   return exploracionDelSitio(ctx.enlazables, ctx.meses, rutaDeMes);
+};
+
+/**
+ * **Cuántas fichas publicadas tiene cada directorio de la Guía** — B-900.
+ *
+ * Es lo que el `/404` necesita para sugerir una sección de la Guía **solo si
+ * tiene algo adentro**, y nada más: números, no fichas. Es la misma frontera
+ * que `exploracionDeLaHome` le pone a esa página (D-140): la plantilla recibe lo
+ * que dibuja, y un contador no puede publicar un campo de una librería porque no
+ * lo tiene.
+ *
+ * **Cuenta lo que cuenta el listado, y no la colección**: sale de las mismas
+ * `vistaDe*` que pintan `/guia/<x>/`, así que «tiene contenido» quiere decir
+ * exactamente «su listado no está vacío». Contar `contenidoDelSitio().librerias`
+ * sería una segunda derivación del mismo predicado, y las vistas ya descartan la
+ * ficha que no tiene slug de ficha válido.
+ *
+ * El tipo es un `Record` por `IdDirectorio` y no un array a propósito: el día que
+ * nazca un quinto directorio, esto no compila hasta que alguien diga de dónde se
+ * cuentan sus fichas. Qué secciones son «de verdad» —el `disponible`— no se
+ * decide acá: lo filtra `grupoDeLaGuia` (`lib/noEncontrado.ts`), que es puro y se
+ * prueba sin Firestore.
+ *
+ * Cero lecturas nuevas: todo sale del `contenidoDelSitio()` memoizado.
+ */
+export const fichasPorDirectorio = async (): Promise<Record<IdDirectorio, number>> => {
+  const [librerias, suscripciones, lugares, bibliotecas] = await Promise.all([
+    vistaDeLibrerias(),
+    vistaDeSuscripciones(),
+    vistaDeLugares(),
+    vistaDeBibliotecas(),
+  ]);
+  return {
+    librerias: librerias.fichas.length,
+    suscripciones: suscripciones.fichas.length,
+    lugares: lugares.fichas.length,
+    bibliotecas: bibliotecas.fichas.length,
+  };
 };
