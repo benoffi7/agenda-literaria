@@ -47,6 +47,7 @@ import { type FormatoDeHora, type PreferenciaDeHora } from '@/lib/formatoDeHora'
 import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
 import { cambiarArancel, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import { esCharla, esClub, esTaller, nombrePersona } from '@/lib/formulario/condicionales';
+import { loQuePierdeEnGoogle } from '@/lib/formulario/enGoogle';
 import { formVacio } from '@/lib/formulario/estadoInicial';
 import {
   labelsPendientesDe,
@@ -329,6 +330,13 @@ export function ActividadFormulario({
    * poder publicar», y sin decir nada el campo se quedaba vacío (2 de 42).
    */
   const recomendaciones = useMemo(() => recomendacionesDelFormulario(form), [form]);
+
+  /**
+   * B-813 — lo que Google no va a mostrar de esta actividad si se publica así:
+   * foto, quién la da, web del organizador, precio. Aviso y no bloqueo (D-440);
+   * las condiciones son las del tablero y el JSON-LD, no una copia (D-88).
+   */
+  const enGoogle = useMemo(() => loQuePierdeEnGoogle(form), [form]);
 
   /**
    * Llevar a una sección: **cambiar de pestaña y abrir el acordeón**, en ese
@@ -883,6 +891,7 @@ export function ActividadFormulario({
         faltantes={faltantes}
         pendientesParaPublicar={pendientesParaPublicar}
         recomendaciones={recomendaciones}
+        enGoogle={enGoogle}
         esEdicion={Boolean(inicial)}
         soloLectura={soloLectura}
         onCancelar={onCancelar}
