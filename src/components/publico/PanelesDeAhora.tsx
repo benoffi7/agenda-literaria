@@ -35,6 +35,7 @@
  */
 import { CLASES_DEL_TRIPTICO, foco } from '@/components/sitio/estilos';
 import type { ClaveDePanel, ProgramacionInmediata } from '@/lib/ahoraPublico';
+import { alAbrirEnlace } from '@/lib/clicQueAbre';
 import { estiloDeTipo, type TonosDeTipo } from '@/lib/listadoPublico';
 
 interface Props {
@@ -54,6 +55,12 @@ interface Props {
    * para que no se descubra como bug: **se mide el clic del tríptico de la
    * island, no el del HTML del build** —el de antes de que hidrate—, que es una
    * ventana de milisegundos en la home.
+   *
+   * **Cuenta también el clic del medio — B-1501.** Se llama con el clic
+   * principal y con la rueda del mouse (`auxclick`, el que abre en pestaña
+   * nueva), nunca con el botón derecho ni dos veces por el mismo gesto: el
+   * criterio es `alAbrirEnlace` de `lib/clicQueAbre.ts`, el mismo del banner de
+   * ciudad y del botón de inscripción.
    */
   onEncuentro?: (panel: ClaveDePanel) => void;
 }
@@ -159,7 +166,7 @@ export function PanelesDeAhora({ programacion, tonos, id = 'ahora', onEncuentro 
                   <a
                     href={e.ruta}
                     className={`group flex min-w-0 flex-col gap-1 px-2 py-3 transition-colors hover:bg-crema lg:px-4 ${foco}`}
-                    onClick={onEncuentro && (() => onEncuentro(panel.clave))}
+                    {...(onEncuentro && alAbrirEnlace(() => onEncuentro(panel.clave)))}
                   >
                     {/*
                       La hora, y el día solo cuando el panel abarca dos (el

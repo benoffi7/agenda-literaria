@@ -1,5 +1,6 @@
 import { foco } from '@/components/sitio/estilos';
 import { CORTE_DE_BANNER, type BannerDeCiudad as Banner } from '@/lib/bannerDeCiudad';
+import { alAbrirEnlace } from '@/lib/clicQueAbre';
 import { medirSitio } from '@/lib/medicionSitio';
 
 /**
@@ -70,9 +71,11 @@ import { medirSitio } from '@/lib/medicionSitio';
  * island (`Buscador`, detrás de `indice`, que recién existe en el navegador), así
  * que el `onClick` corre en su único uso, y `medicionSitio` ya viene en ese chunk.
  *
- * **Mide el clic, no la rueda del mouse**: un clic del medio abre la pestaña con
- * `auxclick` y no se cuenta. Se aceptó así — el tríptico tiene el mismo borde, y
- * dos criterios distintos entre eventos hermanos serían peores que el faltante.
+ * **Mide el clic y también la rueda del mouse — B-1501.** Un clic del medio
+ * abre la pestaña con `auxclick`, no con `click`, y hasta B-1501 no se contaba.
+ * El criterio (botón principal en `click`, botón del medio en `auxclick`, nunca
+ * el derecho, nunca dos veces) vive en `lib/clicQueAbre.ts` y es el mismo del
+ * tríptico y del botón de inscripción: dos eventos hermanos no miden distinto.
  */
 
 interface Props {
@@ -86,7 +89,7 @@ export const BannerDeCiudad = ({ banner }: Props) => (
       target="_blank"
       rel="noopener"
       className={`block ${foco}`}
-      onClick={() => medirSitio('clic_banner_ciudad', { ciudad: banner.ciudad })}
+      {...alAbrirEnlace(() => medirSitio('clic_banner_ciudad', { ciudad: banner.ciudad }))}
     >
       <picture>
         <source

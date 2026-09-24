@@ -100,6 +100,32 @@ describe('el banner de una ciudad', () => {
     expect(medirSitio).toHaveBeenCalledWith('clic_banner_ciudad', { ciudad: 'mar-del-plata' });
   });
 
+  it('el clic del medio también cuenta, una vez — B-1501', () => {
+    /*
+     * La rueda del mouse abre el banner en una pestaña nueva con `auxclick`, no
+     * con `click`. El criterio es `alAbrirEnlace` (`lib/clicQueAbre.ts`), el
+     * mismo del tríptico: un gesto, un evento.
+     *
+     * MUTACIÓN PROBADA: volver al `onClick` solo deja este caso en rojo.
+     */
+    render(<BannerDeCiudad banner={banner} />);
+    fireEvent(screen.getByRole('link'), new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+    expect(medirSitio).toHaveBeenCalledTimes(1);
+    expect(medirSitio).toHaveBeenCalledWith('clic_banner_ciudad', { ciudad: 'mar-del-plata' });
+  });
+
+  it('el botón derecho no cuenta: abre un menú, no el enlace — B-1501', () => {
+    /*
+     * MUTACIÓN PROBADA: con `onAuxClick` sin mirar el botón, el derecho mide y
+     * este caso queda en rojo.
+     */
+    render(<BannerDeCiudad banner={banner} />);
+    const enlace = screen.getByRole('link');
+    fireEvent(enlace, new MouseEvent('auxclick', { bubbles: true, button: 2 }));
+    fireEvent.contextMenu(enlace);
+    expect(medirSitio).not.toHaveBeenCalled();
+  });
+
   it('dibujarlo no mide nada: solo el clic', () => {
     render(<BannerDeCiudad banner={banner} />);
     expect(medirSitio).not.toHaveBeenCalled();
