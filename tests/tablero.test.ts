@@ -410,10 +410,13 @@ describe('contra el archivo real', () => {
  * que haga falta uno se decide agregándolo acá con su motivo.
  */
 describe('los encabezados del backlog usan emojis que el parseo conoce (B-1510)', () => {
-  it('ningún `### ` de los dos archivos lleva un emoji fuera de ESTADO_DE_EMOJI', async () => {
+  it('ningún `### ` de los dos archivos lleva un emoji que el parseo no conozca', async () => {
     const { readFileSync } = await import('node:fs');
-    const { ESTADO_DE_EMOJI } = await import('../scripts/tablero/parseo.mjs');
-    const conocidos = Object.keys(ESTADO_DE_EMOJI);
+    // El vocabulario de las tablas y no solo el de encabezados: B-780 lleva un
+    // `⛔` como marca de gravedad al lado de su `✅`, y eso no es un estado nuevo.
+    // Lo que se frena es un emoji que ningún mapa del repo conoce.
+    const { ESTADO_DE_EMOJI_EN_TABLA } = await import('../scripts/tablero/parseo.mjs');
+    const conocidos = Object.keys(ESTADO_DE_EMOJI_EN_TABLA);
     const sueltos = new Set<string>();
     for (const archivo of ['docs/BACKLOG.md', 'docs/BACKLOG-cerrados.md']) {
       for (const linea of readFileSync(archivo, 'utf8').split('\n')) {
