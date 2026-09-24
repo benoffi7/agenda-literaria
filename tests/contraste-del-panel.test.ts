@@ -1,13 +1,29 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { claseFilaApagada } from '@/components/campos/Campo';
-import { AA_TEXTO, contraste, mezclar, oklchASrgb, type Srgb } from '@/lib/contraste';
-import { archivosDelRepo } from './fixtures/archivos-del-repo';
+import { AA_TEXTO, contraste, mezclar, type Srgb } from '@/lib/contraste';
+import {
+  alfa,
+  archivosDelPanel,
+  BLANCO,
+  colorDe,
+  esOscura,
+  type Fondo,
+  fuentes,
+  laMasOscura,
+  peorBase,
+  RE_FONDO,
+  RE_TINTA,
+  ratio,
+  resolverFondo,
+  superficies,
+  token,
+  VARIANTES_EXENTAS,
+} from './fixtures/contraste-del-panel';
 
 /**
- * El contraste del texto atenuado **del panel** — B-1630, B-1750, B-1751.
+ * El contraste del texto atenuado **del panel** — B-1630, B-1750, B-1751, B-1830.
  *
  * ── Por qué existe ────────────────────────────────────────────────────────
  * `contraste-del-sitio.test.ts` y `contraste-de-superficies.test.ts` barren solo
@@ -56,81 +72,26 @@ import { archivosDelRepo } from './fixtures/archivos-del-repo';
  * `OPACIDADES_CON_MOTIVO`. `disabled:` sigue exento (WCAG 1.4.3), igual que
  * `opacity-0` y `-100`, que no atenúan: esconden o muestran.
  *
+ * ── El tinte heredado — B-1830 ───────────────────────────────────────────
+ * El caso de los pares mide fondo y tinta **del mismo grupo de clases**. Una
+ * tinta con nombre (`text-amber-900/85`) sobre un tinte que puso un **ancestro**
+ * quedaba afuera: pasó con `AvisoVersionNueva`, que se encontró a mano. Para eso
+ * este archivo lee además el árbol JSX de cada archivo (con el parser de
+ * TypeScript): cada elemento sin fondo propio que tenga tinta con nombre se mide
+ * contra el fondo en reposo del ancestro más cercano del mismo archivo que tenga
+ * uno. Un `className` con ramas junta las clases de todas, así que el cruce
+ * es conservador: puede medir combinaciones que nunca se dan juntas.
+ *
  * ── Lo que NO puede ver ───────────────────────────────────────────────────
- * - Un texto con tinta de nombre (`text-acento`) sobre un tinte **heredado** de
- *   un ancestro: el par se mide solo si las dos clases van en el mismo grupo.
+ * - Un tinte que pone **otro componente**: un `AvisoDePrecioViejo` adentro de la
+ *   fila de `DirectorioPanel`, o el `{children}` de un contenedor tintado.
+ * - Una clase que llega por identificador (`claseFilaApagada`, `claseBotonFila`)
+ *   y no como literal en el `className`.
+ *
+ * Las dos las mide `tests/contraste-del-arbol.render.test.tsx`, que monta los
+ * avisos de color del panel y compone sobre el DOM de verdad, con esta misma
+ * mecánica (`tests/fixtures/contraste-del-panel.ts`).
  */
-const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
-
-/**
- * Lo que se lee del disco se lee una vez: cada fondo translúcido se compone
- * sobre la peor base, y recalcularla por fondo relee el panel entero cientos de
- * veces.
- */
-const unaVez = <T>(f: () => T): (() => T) => {
-  let hecho: { valor: T } | null = null;
-  return () => (hecho ??= { valor: f() }).valor;
-};
-
-const css = unaVez((): string => readFileSync(raiz('src/styles/global.css'), 'utf8'));
-
-/**
- * La paleta de Tailwind **instalada**, no la de la documentación: es la que
- * compila el build. En la 4 los colores vienen en OKLCH con la luminosidad en
- * porcentaje (`oklch(96.2% 0.059 95.617)`).
- */
-const paletaTailwind = unaVez((): string =>
-  readFileSync(raiz('node_modules/tailwindcss/theme.css'), 'utf8'),
-);
-
-const BLANCO: Srgb = [1, 1, 1];
-const NEGRO: Srgb = [0, 0, 0];
-
-/** Un token de color de la paleta, leído de la hoja de estilos y no copiado. */
-const token = (nombre: string): Srgb => {
-  const m = css().match(
-    new RegExp(`--color-${nombre}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`),
-  );
-  expect(m, `no se encontró --color-${nombre} en global.css`).not.toBeNull();
-  return oklchASrgb(Number(m![1]), Number(m![2]), Number(m![3]));
-};
-
-/**
- * El color de un nombre de Tailwind: primero los tokens del proyecto, después la
- * paleta instalada. `null` si no es un color (`bg-cover`, `text-xs`).
- */
-const colorDe = (nombre: string): Srgb | null => {
-  if (nombre === 'white') return BLANCO;
-  if (nombre === 'black') return NEGRO;
-  const propio = css().match(
-    new RegExp(`--color-${nombre}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`),
-  );
-  if (propio) return oklchASrgb(Number(propio[1]), Number(propio[2]), Number(propio[3]));
-  const deTailwind = paletaTailwind().match(
-    new RegExp(`--color-${nombre}:\\s*oklch\\(([\\d.]+)%\\s+([\\d.]+)\\s+([\\d.]+)\\)`),
-  );
-  if (deTailwind) {
-    return oklchASrgb(Number(deTailwind[1]) / 100, Number(deTailwind[2]), Number(deTailwind[3]));
-  }
-  return null;
-};
-
-/** `/10` → 0,1; `/[0.03]` → 0,03; sin fracción → 1. */
-const alfa = (corchete: string | undefined, entero: string | undefined): number =>
-  corchete ? Number(corchete) : entero ? Number(entero) / 100 : 1;
-
-/**
- * El markup del panel. `campos/` salió de `components/admin/` en B-827 pero son
- * los campos del panel (`docs/05-patrones.md`), así que entra.
- */
-const archivosDelPanel = (): string[] =>
-  archivosDelRepo('src/components/admin', 'src/components/campos').filter(
-    (f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f),
-  );
-
-const fuentes = unaVez((): { donde: string; src: string }[] =>
-  archivosDelPanel().map((f) => ({ donde: f, src: readFileSync(raiz(f), 'utf8') })),
-);
 
 /**
  * Las excepciones al piso, **cada una con su porqué**. La clave es
@@ -138,13 +99,6 @@ const fuentes = unaVez((): { donde: string; src: string }[] =>
  * sobrevive a su motivo.
  */
 const EXCEPCIONES: Record<string, string> = {};
-
-/**
- * Las variantes que no se miden, con su motivo. WCAG 1.4.3 exime el texto de un
- * **componente inactivo**: un botón deshabilitado puede quedar por debajo del
- * piso, y es la señal de que no se puede usar.
- */
-const VARIANTES_EXENTAS = /^(?:disabled|group-disabled|peer-disabled|aria-disabled):/;
 
 /** Cada `text-tinta/NN` del panel, con su variante, su línea y su opacidad. */
 const atenuaciones = (): { archivo: string; donde: string; clase: string; opacidad: number }[] => {
@@ -165,53 +119,6 @@ const atenuaciones = (): { archivo: string; donde: string; clase: string; opacid
   return out;
 };
 
-/**
- * Las superficies opacas del panel: el blanco y los tokens que usa como fondo
- * pleno. El papel entra siempre: es el `background` del `html` en `global.css`,
- * o sea el fondo de todo lo que no está dentro de una tarjeta.
- */
-const superficies = (): { nombre: string; color: Srgb }[] => {
-  const todo = fuentes()
-    .map((f) => f.src)
-    .join('\n');
-  return [
-    { nombre: 'blanco', color: BLANCO },
-    ...['papel', 'crema', 'hondo']
-      .filter((t) => new RegExp(`\\bbg-${t}(?![\\w/-])`).test(todo) || t === 'papel')
-      .map((t) => ({ nombre: t, color: token(t) })),
-  ];
-};
-
-/** La más oscura de un grupo: la que más contrasta contra el blanco. */
-const laMasOscura = <T extends { color: Srgb }>(grupo: T[]): T =>
-  [...grupo].sort((a, b) => contraste(b.color, BLANCO) - contraste(a.color, BLANCO))[0]!;
-
-/** La base opaca más oscura: lo peor que puede haber abajo de un tinte. */
-const peorBase = unaVez((): { nombre: string; color: Srgb } => laMasOscura(superficies()));
-
-/** Una clase de fondo, en el grupo de clases donde aparece. */
-const RE_FONDO = /((?:[a-z-]+:)*)bg-([a-z]+(?:-\d{2,3})?)(?:\/(?:\[(0?\.\d+)\]|(\d{1,3})))?(?![\w[-])/g;
-const RE_TINTA = /((?:[a-z-]+:)*)text-([a-z]+(?:-\d{2,3})?)(?:\/(?:\[(0?\.\d+)\]|(\d{1,3})))?(?![\w[-])/g;
-
-interface Fondo {
-  archivo: string;
-  donde: string;
-  /** Sin la variante: `bg-acento/10`. Es la clave de `FONDOS_SIN_TEXTO_ATENUADO`. */
-  clase: string;
-  /** Ya compuesto sobre la peor base si es translúcido. */
-  color: Srgb;
-}
-
-/** Un fondo leído del markup, resuelto a color. `null` si no es un color. */
-const resolverFondo = (m: RegExpMatchArray, archivo: string, donde: string): Fondo | null => {
-  if (VARIANTES_EXENTAS.test(m[1]!)) return null;
-  const base = colorDe(m[2]!);
-  if (!base) return null;
-  const a = alfa(m[3], m[4]);
-  const clase = `bg-${m[2]}${m[3] ? `/[${m[3]}]` : m[4] ? `/${m[4]}` : ''}`;
-  return { archivo, donde, clase, color: a < 1 ? mezclar(base, peorBase().color, a) : base };
-};
-
 /** Cada fondo del panel que resuelve a un color. */
 const fondos = (): Fondo[] => {
   const out: Fondo[] = [];
@@ -225,13 +132,6 @@ const fondos = (): Fondo[] => {
   }
   return out;
 };
-
-/**
- * Oscura quiere decir que el blanco contrasta más que la tinta: encima va
- * `text-white` o `text-papel`, no texto atenuado. Son `bg-tinta`, `bg-acento` y
- * sus `hover:`; los mide el caso de los pares.
- */
-const esOscura = (c: Srgb): boolean => contraste(c, BLANCO) > contraste(c, token('tinta'));
 
 /**
  * Los fondos claros **que no llevan texto atenuado encima**, con su porqué. La
@@ -272,9 +172,6 @@ const superficiesConTexto = (): { nombre: string; color: Srgb }[] => [
 
 /** La más oscura: si una atenuación pasa acá, pasa en cualquiera. */
 const peorSuperficie = (): { nombre: string; color: Srgb } => laMasOscura(superficiesConTexto());
-
-const ratio = (opacidad: number, fondo: Srgb): number =>
-  contraste(mezclar(token('tinta'), fondo, opacidad), fondo);
 
 /**
  * Cada par fondo + tinta **del mismo grupo de clases**. Un grupo es lo que va
@@ -441,6 +338,119 @@ describe('el contraste del panel sobre sus tintes — B-1751', () => {
     expect(
       flojos,
       `estos pares no llegan a ${AA_TEXTO}:1. Oscurecé la tinta o aclarale el fondo.`,
+    ).toEqual([]);
+  });
+});
+
+/**
+ * Las cadenas de clases de un `className`: los literales y los tramos fijos de
+ * un template, de todas las ramas. `${claseBotonFila} text-acento` aporta
+ * `text-acento`; el identificador no se resuelve (lo mide el render).
+ */
+const literalesDe = (n: ts.Node): string[] => {
+  const out: string[] = [];
+  const visitar = (x: ts.Node): void => {
+    if (ts.isStringLiteral(x) || ts.isNoSubstitutionTemplateLiteral(x)) {
+      out.push(x.text);
+      return;
+    }
+    if (ts.isTemplateExpression(x)) {
+      out.push(x.head.text);
+      for (const tramo of x.templateSpans) {
+        visitar(tramo.expression);
+        out.push(tramo.literal.text);
+      }
+      return;
+    }
+    ts.forEachChild(x, visitar);
+  };
+  visitar(n);
+  return out;
+};
+
+/**
+ * Cada tinta con nombre **en reposo** de un elemento sin fondo propio, medida
+ * contra el fondo en reposo del ancestro más cercano del mismo archivo que tenga
+ * uno. Si el elemento tiene fondo propio, el par es del caso de los pares, que lo
+ * mide por grupo: acá se cruzarían las dos ramas de un ternario (`activo ?
+ * 'bg-acento text-white' : 'bg-acento/5 text-acento'`) y darían un par que no
+ * existe. Las tintas con variante (`hover:text-x`) van en el grupo de su fondo
+ * con variante, y también las mide ese caso. Los fondos oscuros se saltean por lo
+ * mismo que en el piso: encima va texto claro, en el mismo grupo.
+ */
+const tintasHeredadas = (): { donde: string; par: string; r: number }[] => {
+  const out: { donde: string; par: string; r: number }[] = [];
+  for (const { donde, src } of fuentes()) {
+    const sf = ts.createSourceFile(donde, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const linea = (n: ts.Node): number => sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+    const clasesDe = (el: ts.JsxOpeningLikeElement): string => {
+      const attr = el.attributes.properties.find(
+        (p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText() === 'className',
+      );
+      return attr?.initializer ? literalesDe(attr.initializer).join(' ') : '';
+    };
+    const recorrer = (n: ts.Node, fondosArriba: Fondo[]): void => {
+      const el = ts.isJsxElement(n) ? n.openingElement : ts.isJsxSelfClosingElement(n) ? n : null;
+      let fondosAca = fondosArriba;
+      if (el) {
+        const clases = clasesDe(el);
+        const propios = [...clases.matchAll(RE_FONDO)]
+          .filter((m) => m[1] === '')
+          .map((m) => resolverFondo(m, donde, `${donde}:${linea(el)}`))
+          .filter((f): f is Fondo => f !== null);
+        if (propios.length) fondosAca = propios;
+        for (const t of propios.length ? [] : clases.matchAll(RE_TINTA)) {
+          if (t[1] !== '') continue;
+          const color = colorDe(t[2]!);
+          if (!color) continue;
+          for (const bg of fondosAca) {
+            if (esOscura(bg.color)) continue;
+            out.push({
+              donde: `${donde}:${linea(el)}`,
+              par: `${t[0]} sobre ${bg.clase} (${bg.donde})`,
+              r: contraste(mezclar(color, bg.color, alfa(t[3], t[4])), bg.color),
+            });
+          }
+        }
+      }
+      ts.forEachChild(n, (hijo) => recorrer(hijo, fondosAca));
+    };
+    recorrer(sf, []);
+  }
+  return out;
+};
+
+describe('la tinta con nombre sobre un tinte heredado — B-1830', () => {
+  it('control positivo: mide el aviso de versión nueva, con tinta y tinte en elementos distintos', () => {
+    // Es el caso que se encontró a mano. Si el recorrido del árbol se rompiera,
+    // no lo vería y el aserto de abajo daría verde sin mirar nada.
+    const todas = tintasHeredadas();
+    expect(todas.length).toBeGreaterThan(50);
+    expect(
+      todas.some(
+        (p) =>
+          p.donde.startsWith('src/components/admin/AvisoVersionNueva.tsx') &&
+          /^text-amber-900\/\d+ sobre bg-amber-100\/95 /.test(p.par),
+      ),
+    ).toBe(true);
+  });
+
+  it('control negativo: la tinta que el aviso tenía antes de B-1751 no llega sobre su tinte', () => {
+    // `text-amber-900/70` sobre `bg-amber-100/95` compuesto sobre la peor base:
+    // la regresión que este caso existe para frenar.
+    const tinte = resolverFondo([...'bg-amber-100/95'.matchAll(RE_FONDO)][0]!, 'x', 'x')!;
+    const texto = mezclar(colorDe('amber-900')!, tinte.color, 0.7);
+    expect(contraste(texto, tinte.color)).toBeLessThan(AA_TEXTO);
+  });
+
+  it('cada tinta con nombre llega a AA sobre el fondo que hereda de su ancestro', () => {
+    const flojas = tintasHeredadas()
+      .filter((p) => p.r < AA_TEXTO)
+      .map((p) => `${p.donde} — ${p.par} da ${p.r.toFixed(2)}:1`);
+    expect(
+      flojas,
+      `estas tintas no llegan a ${AA_TEXTO}:1 sobre el fondo del elemento más cercano ` +
+        'que tiene uno. Oscurecé la tinta o aclarale el fondo.',
     ).toEqual([]);
   });
 });
