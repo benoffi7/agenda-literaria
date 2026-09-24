@@ -678,9 +678,20 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
     if (completo) {
       lineas.push('Cupo completo (se puede escribir igual: puede liberarse un lugar)');
     }
+    /*
+     * B-1540 — con `via: 'dm'` el destino es una cuenta de Instagram (la ficha
+     * pública lo lee así, `accionDeInscripcion`), pero se guarda solo recortado:
+     * un handle pelado salía sin arroba y un link de «Compartir» con su
+     * `?igsh=…`. Pasa por `arrobaPublicable`, como los dos de «Quién» (D-763), y
+     * **solo** con esa vía: un teléfono pasa el alfabeto de Instagram y no es una
+     * cuenta. Lo que no se reconoce sale como se escribió. No hay pulso de
+     * updates por el mismo motivo mecánico que en B-1145: `mismoEvento` compara
+     * dos recálculos con este mismo código.
+     */
+    const destino = insc.via === 'dm' ? arrobaPublicable(insc.destino) : insc.destino;
     lineas.push(
       `Inscripción ${ETIQUETA_VIA[insc.via] ?? ''}`.trim() +
-        (insc.destino ? `: ${insc.destino}` : ''),
+        (destino ? `: ${destino}` : ''),
     );
     if (insc.cupo) lineas.push(`Cupo: ${insc.cupo}`);
     if (insc.cierra) {

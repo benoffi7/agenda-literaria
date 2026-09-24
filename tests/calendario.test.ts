@@ -1747,6 +1747,88 @@ describe('construirDescripcion — el Instagram se muestra como handle (B-1145, 
   });
 });
 
+/**
+ * **B-1540 — el destino de una inscripción por DM es el cuarto campo de Instagram.**
+ *
+ * Se guarda solo recortado (`limpiar`), sin el `conHandle` del organizador, y el
+ * bloque «Inscripción» lo concatenaba crudo: un handle pelado salía sin arroba y
+ * un link de «Compartir» publicaba la URL con su `?igsh=…` en el calendario
+ * **público**. Pasa por el mismo `arrobaPublicable` que «Quién», y solo con
+ * `via: 'dm'`.
+ */
+describe('construirDescripcion — el destino por DM se muestra como handle (B-1540)', () => {
+  const porDm = (destino: unknown, via = 'dm') =>
+    completa({
+      inscripcion: { requiere: true, via, destino, cupo: null, cierra: null },
+    });
+
+  it('un handle pelado sale arrobado', () => {
+    expect(construirDescripcion(porDm('casabrandon'), sesion(), LABELS)).toContain(
+      'Inscripción por DM al Instagram: @casabrandon',
+    );
+  });
+
+  it('el link del perfil sale como handle, y la URL no viaja en el payload', () => {
+    const a = porDm('https://www.instagram.com/casabrandon/?igsh=MWx0eXo4a2Rr');
+    expect(construirDescripcion(a, sesion(), LABELS)).toContain(
+      'Inscripción por DM al Instagram: @casabrandon',
+    );
+    const evento = JSON.stringify(construirEvento(a, sesion(), LABELS));
+    expect(evento).not.toContain('instagram.com');
+    expect(evento).not.toContain('igsh');
+  });
+
+  it('lo que no se reconoce sale tal cual, sin arroba inventada', () => {
+    expect(construirDescripcion(porDm('Casa Brandon / IG'), sesion(), LABELS)).toContain(
+      'Inscripción por DM al Instagram: Casa Brandon / IG',
+    );
+  });
+
+  it('las otras vías no pasan por el saneador: un teléfono no se vuelve una cuenta', () => {
+    expect(construirDescripcion(porDm('1155556666', 'whatsapp'), sesion(), LABELS)).toContain(
+      'Inscripción por WhatsApp: 1155556666',
+    );
+    expect(construirDescripcion(porDm('casa.brandon', 'formulario'), sesion(), LABELS)).toContain(
+      'Inscripción por formulario: casa.brandon',
+    );
+  });
+
+  it('un destino que no es texto no rompe el sync (la guarda de tipo de `arrobaPublicable`)', () => {
+    const a = porDm(123);
+    expect(() => construirEvento(a, sesion(), LABELS)).not.toThrow();
+    expect(construirDescripcion(a, sesion(), LABELS)).toContain('Inscripción por DM al Instagram: 123');
+  });
+
+  it('la misma cuenta, por el mismo saneador que la ficha pública (D-20)', () => {
+    for (const crudo of ['casabrandon', '@casabrandon', 'instagram.com/casabrandon', 'Casa Brandon / IG']) {
+      expect(construirDescripcion(porDm(crudo), sesion(), LABELS), crudo).toContain(
+        `Inscripción por DM al Instagram: ${delSitio(crudo)}`,
+      );
+    }
+  });
+
+  /**
+   * El caso 3 de B-1145, repetido para este campo: normalizar al mostrar toca los
+   * dos lados del diff por igual, así que el deploy no reescribe los eventos ya
+   * publicados. Y un cambio real del destino sigue propagando.
+   */
+  it('no hay pulso de updates, y corregir el destino sí propaga (trampa 3 del §13)', () => {
+    const vieja = (destino: string) =>
+      completa({
+        inscripcion: { requiere: true, via: 'dm', destino, cupo: null, cierra: null },
+        sesiones: [sesion({ calendarEventId: 'evt_1' })],
+      });
+    const doc = vieja('casabrandon');
+    expect(planificar(doc, doc, LABELS)).toEqual([]);
+
+    const ops = planificar(doc, vieja('otracuenta'), LABELS);
+    expect(ops.map((o: { tipo: string }) => o.tipo)).toEqual(['actualizar']);
+    expect((ops[0] as { evento: { description: string } }).evento.description).toContain(
+      'Inscripción por DM al Instagram: @otracuenta',
+    );
+  });
+});
+
 describe('planificar — el payload propaga los campos nuevos', () => {
   const s = sesion({ calendarEventId: 'evt_1' });
 
