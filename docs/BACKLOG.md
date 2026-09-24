@@ -643,60 +643,6 @@ Si alguna vez se atiende, el camino es el 3 del ítem original —que restaurar 
 cuando la imagen ya no está— y vive en `src/lib/historial.ts` +
 `HistorialActividad.tsx`, no en el barrido.
 
-### B-846 · La URL de descarga de un flyer privado es una capability, y eso no es «nadie puede leerlo» · P3
-
-**Lo descubrió `tests/storage-reglas.integracion.test.ts` fallando**, escribiendo
-el paso 8 de B-830: el caso afirmaba que sin sesión no se podía leer el objeto de
-`propuestas/` «ni con la URL en la mano», y era falso.
-
-`allow get: if esAdmin()` cierra el acceso **por ruta**: sin sesión, pedir la URL
-de descarga es un permission-denied aunque se sepa el path exacto. Pero la URL que
-`getDownloadURL()` **ya acuñó** sirve el objeto sin volver a evaluar las reglas —
-es el mismo mecanismo que hace pública una imagen de `imagenes/`, donde es
-deliberado (B-206 #1). O sea que el flyer de una propuesta es privado **mientras
-su URL no salga del panel**.
-
-**Por qué es P3 y no más:** la URL solo se acuña adentro del panel, con una sesión
-de admin; el objeto se borra al rechazar o a los 30 días; y para que el token se
-filtre tiene que salir del navegador del admin (una captura de devtools, un link
-pegado en un chat). No hay ningún camino automático.
-
-**Qué costaría cerrarlo:** no acuñar tokens nunca — bajar los bytes con `getBlob`,
-que manda el `Authorization` en el header y no deja una URL portadora. Cuesta
-**configurar CORS en el bucket** para el origen del panel (un `gsutil cors set`,
-que es un paso de consola que hoy no existe en `08-operacion.md`) y cambiar el
-visor y la promoción. Vale la pena el día que la bandeja tenga volumen, o antes si
-aparece un segundo lugar que muestre objetos privados.
-
-Está afirmado en las **dos** direcciones en el test, así que el día que se cierre,
-el caso se pone rojo y hay que venir a decidirlo en vez de descubrirlo con una
-imagen rota.
-
-> **2026-09-16 — este ítem dejó de ser solo una fuga chica: es el primer escalón
-> de otra cosa** (**D-722**, al cerrar **B-872**). Mientras las imágenes públicas
-> se sirvan por URL de descarga, `firebasestorage` no se puede poner en
-> `ENFORCED` sin apagar el sitio, así que **B-846 + B-222 son la precondición de
-> exigir App Check en Storage**, no un arreglo paralelo. Eso no lo sube de P3 —no
-> hay nada urgente colgando— pero sí cambia con qué se agenda: el día que se toque
-> uno, se tocan los tres juntos, y recién ahí la medición de B-872 vale la pena.
-
-### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
-
-**El motivo NO es privacidad** — eso quedó resuelto en B-206 #1 con el path opaco y la
-lectura pública (D-131 §1). Lo que compra este cambio es otra cosa, y por eso bajó a P3:
-
-- **Costo de egreso.** Hoy cada imagen se sirve desde `firebasestorage.googleapis.com`
-  y paga egreso de GCS por descarga. Detrás del CDN de Hosting, la mayoría de las
-  descargas las contesta el borde.
-- **Portabilidad.** La `url` que se guarda en el documento **incluye el bucket y un
-  token**: mudar de bucket, o revocar un token, invalida todas las URLs ya guardadas y
-  hay que reescribir documentos. Con una URL propia (`/img/<id>.jpg`) el documento
-  guarda algo estable y el mapeo vive en un solo lugar.
-
-Firebase Hosting **no** tiene rewrite directo a un bucket de GCS: hay que poner una
-Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al camino de
-una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
-
 ## P2 — mejoras reales
 
 ### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25) · P2 — vuelto de los cerrados (2026-09-24, B-1580)
@@ -1444,6 +1390,64 @@ probablemente lo correcto?). Cuadra con B-96 y con B-01.
 llevan escrita la condición que las reabriría. Los juntó acá el triage del
 2026-09-24 para que no se lean como trabajo en la lista de prioridades: si la
 condición se cumple, el ítem vuelve a su P.
+
+### B-846 · La URL de descarga de un flyer privado es una capability, y eso no es «nadie puede leerlo» · P3
+
+**Lo descubrió `tests/storage-reglas.integracion.test.ts` fallando**, escribiendo
+el paso 8 de B-830: el caso afirmaba que sin sesión no se podía leer el objeto de
+`propuestas/` «ni con la URL en la mano», y era falso.
+
+`allow get: if esAdmin()` cierra el acceso **por ruta**: sin sesión, pedir la URL
+de descarga es un permission-denied aunque se sepa el path exacto. Pero la URL que
+`getDownloadURL()` **ya acuñó** sirve el objeto sin volver a evaluar las reglas —
+es el mismo mecanismo que hace pública una imagen de `imagenes/`, donde es
+deliberado (B-206 #1). O sea que el flyer de una propuesta es privado **mientras
+su URL no salga del panel**.
+
+**Por qué es P3 y no más:** la URL solo se acuña adentro del panel, con una sesión
+de admin; el objeto se borra al rechazar o a los 30 días; y para que el token se
+filtre tiene que salir del navegador del admin (una captura de devtools, un link
+pegado en un chat). No hay ningún camino automático.
+
+**Qué costaría cerrarlo:** no acuñar tokens nunca — bajar los bytes con `getBlob`,
+que manda el `Authorization` en el header y no deja una URL portadora. Cuesta
+**configurar CORS en el bucket** para el origen del panel (un `gsutil cors set`,
+que es un paso de consola que hoy no existe en `08-operacion.md`) y cambiar el
+visor y la promoción. Vale la pena el día que la bandeja tenga volumen, o antes si
+aparece un segundo lugar que muestre objetos privados.
+
+Está afirmado en las **dos** direcciones en el test, así que el día que se cierre,
+el caso se pone rojo y hay que venir a decidirlo en vez de descubrirlo con una
+imagen rota.
+
+> **2026-09-16 — este ítem dejó de ser solo una fuga chica: es el primer escalón
+> de otra cosa** (**D-722**, al cerrar **B-872**). Mientras las imágenes públicas
+> se sirvan por URL de descarga, `firebasestorage` no se puede poner en
+> `ENFORCED` sin apagar el sitio, así que **B-846 + B-222 son la precondición de
+> exigir App Check en Storage**, no un arreglo paralelo. Eso no lo sube de P3 —no
+> hay nada urgente colgando— pero sí cambia con qué se agenda: el día que se toque
+> uno, se tocan los tres juntos, y recién ahí la medición de B-872 vale la pena.
+
+> **A «Vigilado» el 2026-09-24 (triage):** diferido a propósito por el propio ítem, que dice cuándo vuelve.
+
+### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
+
+**El motivo NO es privacidad** — eso quedó resuelto en B-206 #1 con el path opaco y la
+lectura pública (D-131 §1). Lo que compra este cambio es otra cosa, y por eso bajó a P3:
+
+- **Costo de egreso.** Hoy cada imagen se sirve desde `firebasestorage.googleapis.com`
+  y paga egreso de GCS por descarga. Detrás del CDN de Hosting, la mayoría de las
+  descargas las contesta el borde.
+- **Portabilidad.** La `url` que se guarda en el documento **incluye el bucket y un
+  token**: mudar de bucket, o revocar un token, invalida todas las URLs ya guardadas y
+  hay que reescribir documentos. Con una URL propia (`/img/<id>.jpg`) el documento
+  guarda algo estable y el mapeo vive en un solo lugar.
+
+Firebase Hosting **no** tiene rewrite directo a un bucket de GCS: hay que poner una
+Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al camino de
+una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
+
+> **A «Vigilado» el 2026-09-24 (triage):** diferido a propósito por el propio ítem, que dice cuándo vuelve.
 
 ### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2
 
