@@ -62,7 +62,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run slugs:sembrar:prod` | informa qué sembraría en producción. `-- --aplicar --produccion` lo escribe; `--reparar` además borra las reservas huérfanas |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
-| `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
+| `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano y, desde B-631, los que existen pero dicen otra cosa que el código de hoy. `-- --reparar` recrea los borrados; `-- --reescribir` actualiza los desactualizados. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
 | `npm run cors:verificar` | B-1321 — le pregunta **al bucket**, no a `cors.json`, si tiene aplicado el CORS: un `GET` con `Origin` por cada origen del archivo contra una imagen de `events.json`, más un control negativo. Solo lee. Ver «El CORS del bucket» más abajo |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
 | `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json`, sobre el HTML de las páginas de detalle (B-110) y —desde B-121— sobre **todos** los archivos publicables del `dist/`, barriéndoles los centinelas |
@@ -3017,9 +3017,13 @@ account desde tus propias credenciales, sin bajar ninguna key:
 **Correrlo:**
 
 ```bash
-npm run calendario:verificar              # reporta, no escribe nada
-npm run calendario:verificar -- --reparar # además recrea los borrados a mano
+npm run calendario:verificar                 # reporta, no escribe nada
+npm run calendario:verificar -- --reparar    # además recrea los borrados a mano
+npm run calendario:verificar -- --reescribir # además actualiza los desactualizados (B-631)
 ```
+
+Los dos flags son independientes y se pueden combinar. **Correr primero sin
+ninguno** y leer el reporte: es el que dice qué haría cada uno.
 
 Lee las actividades **publicadas** de Firestore (producción, con las ADC —
 nunca hace falta bajar una key para esto) y le pregunta a Calendar, uno por
@@ -3033,7 +3037,9 @@ Qué hace con lo que encuentra:
 
 | Resultado de Calendar | Qué significa | Qué hace el script |
 |---|---|---|
-| el evento existe | todo en orden | nada |
+| el evento existe y dice lo mismo que el código de hoy | todo en orden | nada |
+| el evento existe y dice otra cosa (B-631) | quedó atrás: cambió *cómo se arma* el evento (B-162, D-95), o alguien lo editó a mano en Calendar | sin `--reescribir`: lo reporta como **desactualizado**, con los campos que difieren. Con `--reescribir`: lo **actualiza** (`events.update`) con lo que produce `construirEvento`. Sin write-back: el `calendarEventId` no cambia |
+| 200 con `status: 'cancelled'` | borrado, todavía no purgado | igual que un 404 |
 | 404 / 410 | lo borraron a mano | sin `--reparar`: lo reporta. Con `--reparar`: lo **recrea** (mismo criterio que `decidirAnteFallo`, D-191) y repone el `calendarEventId` nuevo en Firestore |
 | cualquier otro código (403, timeout, cuota) | ambiguo — no dice nada del evento puntual | lo reporta aparte como "no se pudo verificar" y **no lo toca**, con `--reparar` o sin él |
 
@@ -3052,6 +3058,46 @@ id de documento (`FieldPath.documentId()`) y arranca después de ese cursor
 (`startAfter`). Sin esto, correr el script de nuevo sin `--desde` repetía
 siempre las mismas primeras 200 candidatas — una sesión borrada a mano más
 allá del tope no se detectaba nunca, sin que nada lo dijera.
+
+#### Desactualizados: qué se compara (B-631)
+
+La guarda anti-loop del §7.1 no puede ver un evento que quedó atrás: compara
+`construirEvento(antes)` contra `construirEvento(después)`, los dos con el código
+desplegado hoy (D-07), así que un cambio en cómo se arma la descripción no emite
+ninguna operación. Desde afuera sí se ve, y este script es el único que mira desde
+afuera. No cuesta una llamada más: `events.get` ya devuelve el evento entero.
+
+- **El evento esperado es el de la Function.** `construirEvento` de
+  `functions/calendario.js` y las etiquetas de `cargarLabels`
+  (`functions/etiquetas.js`), importados y no copiados. Hasta B-1520 el script
+  tenía su propia lista de taxonomías y le faltaban `provincia` y `ciudad`.
+- **Se compara solo lo que escribimos.** Las claves salen de lo que produce
+  `construirEvento` —hoy `summary`, `description`, `location`, `start` y `end`—,
+  no de una lista a mano: un campo nuevo del evento entra solo al chequeo. Lo que
+  Calendar agrega por su cuenta (`etag`, `sequence`, `reminders`, `organizer`…) no
+  cuenta.
+- **Fechas por instante, zona tal cual (trampa 1).** Calendar devuelve
+  `…T19:00:00-03:00` donde mandamos `…T22:00:00.000Z`: es el mismo momento y no
+  sale como distinto. El `timeZone` sí tiene que decir
+  `America/Argentina/Buenos_Aires`, y un evento corrido tres horas sale como
+  desactualizado en `start` y `end`.
+- **Vacío es vacío.** Calendar omite un campo vacío; `null`, `''` y ausente valen
+  lo mismo, si no toda actividad sin sede saldría desactualizada.
+- **Solo sobre lo que existe.** Un 403 o un timeout no se compara ni se reescribe:
+  sería un `update` sobre una sospecha.
+
+**Por qué `--reescribir` es un flag aparte de `--reparar`.** Recrear un evento
+que no está repone algo que falta. Reescribir uno que está le cambia el título o
+la descripción **a quien ya lo tiene agendado**, y es justo lo que D-95 evita
+hacer en silencio: por eso lo decide el dueño viendo el reporte. Un `update`
+también pisa lo que alguien haya editado a mano en Calendar, que es lo esperado
+(§2.1: Calendar es un espejo). Con los dos flags, las reescrituras van después
+de las recreaciones.
+
+**Nada de esto se probó contra el calendario real.** Los tests
+(`tests/verificar-calendario.test.ts`) usan un Calendar de mentira con cuerpos
+como los devuelve `events.get` —offset `-03:00` incluido—; la primera corrida de
+verdad es la del dueño, y conviene que sea sin flags.
 
 ### Inspeccionar Firestore en producción
 
