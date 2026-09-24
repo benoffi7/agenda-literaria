@@ -26,7 +26,7 @@ const aceptada = (extra: Record<string, unknown> = {}) => ({
 });
 
 const caso = (args: {
-  propuesta?: Record<string, unknown>;
+  propuesta?: ReturnType<typeof aceptada>;
   vivo?: boolean;
   actividad?: Record<string, unknown> | null;
   copiaViva?: boolean;
