@@ -102,8 +102,9 @@ elif [ -n "$EMU_A_MEDIAS" ]; then
   # se puede (la suite necesita los tres), así que se falla nombrando la causa.
   # El caso de todos los días es el Firestore solo del paso 4 de otro gate, que
   # se va en un minuto; el otro es la tanda a medias de B-365, que no se va sola.
-  if [ "$EMU_A_MEDIAS" = firestore ]; then
-    fallo "hay un Firestore solo en $HOST_FIRESTORE, probablemente el paso 4 del gate de otro checkout: reintentá en un minuto (B-1661)"
+  # Desde B-1790 ese paso 4 levanta también Storage, así que viene de a dos.
+  if [ "$EMU_A_MEDIAS" = firestore ] || [ "$EMU_A_MEDIAS" = firestore,storage ]; then
+    fallo "hay un Firestore solo en $HOST_FIRESTORE (con $EMU_A_MEDIAS), probablemente el paso 4 del gate de otro checkout: reintentá en un minuto (B-1661)"
   fi
   fallo "hay emuladores a medias escuchando ($EMU_A_MEDIAS) y la suite necesita los tres: si no es otro gate a mitad de camino, es un hijo huérfano de una tanda cuyo padre murió (B-365) — mirá con \`lsof -i :8080 -i :9099 -i :9199\` (B-1661)"
 else
@@ -169,17 +170,40 @@ paso 'Build del sitio y del panel, leyendo Firestore de verdad'
 # único que este paso necesita. Por eso pregunta `firestore_vivo` y no `arriba`.
 # Reusar el de otro checkout es seguro por lo mismo que en el paso 3: el build
 # siembra y lee en la base de ESTE checkout (B-219).
+#
+# **B-1790 — y Storage también.** Sin `FIREBASE_STORAGE_EMULATOR_HOST` el build no
+# lista `miniaturas/` (listaría el bucket de producción, D-210) y sirve todo sin
+# `srcset`, así que el paso que existe para correr el build de verdad corría justo
+# la mitad que no confirma nada. Ahora levanta los dos, y el script sube una
+# miniatura y exige verla en el HTML. Reusar sirve si están **los dos**: la tanda
+# entera (`arriba`) o el paso 4 de otro gate (`a_medias=firestore,storage`).
 EMU=$(./scripts/emuladores-arriba.sh)
+EMU4_ARRIBA=$(printf '%s\n' "$EMU" | sed -n 's/^arriba=//p')
+EMU4_A_MEDIAS=$(printf '%s\n' "$EMU" | sed -n 's/^a_medias=//p')
 if [ "$(printf '%s\n' "$EMU" | sed -n 's/^firestore_vivo=//p')" = true ]; then
-  printf '  (Firestore ya arriba en %s: se usa ése)\n' "$HOST_FIRESTORE"
+  if [ "$EMU4_ARRIBA" != true ] && [ "$EMU4_A_MEDIAS" != firestore,storage ]; then
+    # Un Firestore sin su Storage al lado: el paso 4 de un gate anterior a B-1790,
+    # o un `emulators:start --only firestore` a mano. Levantar Storage suelto al
+    # lado choca con el hub de ése, así que se falla nombrando lo que hay.
+    fallo "hay un Firestore sin Storage en $HOST_FIRESTORE ($EMU4_A_MEDIAS) y el paso 4 necesita los dos (B-1790): reintentá en un minuto, o bajalo"
+  fi
+  printf '  (Firestore y Storage ya arriba en %s y %s: se usan ésos)\n' "$HOST_FIRESTORE" "$HOST_STORAGE"
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
+    FIREBASE_STORAGE_EMULATOR_HOST="$HOST_STORAGE" \
     ./scripts/build-contra-emulador.mjs || fallo 'el build no pasa o no leyó Firestore'
+elif [ -n "$EMU4_A_MEDIAS" ]; then
+  # Storage (o Auth) solo, sin Firestore: el `exec` de abajo chocaría en ese
+  # puerto con un «port taken» que no dice de quién es (B-1661, mismo criterio).
+  fallo "hay emuladores a medias escuchando ($EMU4_A_MEDIAS) sin Firestore: el exec del paso 4 va a chocar — mirá con \`lsof -i :8080 -i :9199\` (B-1790)"
 else
   # Acá el desajuste de B-894 no rompía nada —el build lee con el Admin SDK, que
   # no pasa por las reglas, y siembra en el proyecto de `PUBLIC_FIREBASE_PROJECT_ID`,
   # el mismo que después lee— pero queda igual que los otros dos: un solo
   # literal suelto al lado de dos que sí eran el bug es cómo vuelve.
-  npx firebase emulators:exec --only firestore --project "$PROJECT_ID_EMU" \
+  #
+  # `emulators:exec` le exporta al script los hosts de los dos, y el script aborta
+  # si falta el de Storage.
+  npx firebase emulators:exec --only firestore,storage --project "$PROJECT_ID_EMU" \
     './scripts/build-contra-emulador.mjs' || fallo 'el build no pasa o no leyó Firestore'
 fi
 

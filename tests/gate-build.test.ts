@@ -8,7 +8,10 @@
  * contra el emulador sigue siendo la que prueba que las plantillas no publican
  * de más; ésta prueba que el barrido lo vería.
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+
+import { urlDeMiniaturaSiExiste } from '@/lib/imagenes';
 
 import { barrerArtefacto, canastaDe } from '../scripts/gate-build/barrido.mjs';
 import { datoConFecha, verificarDirectorio } from '../scripts/gate-build/directorio.mjs';
@@ -24,6 +27,7 @@ import {
   MONTO_EN_EL_ARTEFACTO,
   PREFIJO,
   documentosDeLaSemilla,
+  rutaDeLaMiniaturaDelGate,
 } from '../scripts/gate-build/semilla.mjs';
 
 type Archivo = { relativa: string; contenido: string };
@@ -136,6 +140,31 @@ describe('el barrido del paso 9, sin build', () => {
     // Un archivo que se llama parecido no hereda el permiso.
     expect(canastaDe('guia/lugares-otro.json')).toEqual([]);
     expect(canastaDe('index.html')).toEqual([]);
+  });
+});
+
+describe('el paso 4 levanta Storage y el gate siembra una miniatura que el sitio reconoce — B-1790', () => {
+  it('la portada de la de afuera deriva exactamente la ruta que el script sube', () => {
+    /*
+     * El gate sube `rutaDeLaMiniaturaDelGate` y el sitio busca la que deriva
+     * `urlDeMiniaturaSiExiste` de la URL de la portada: dos derivaciones del
+     * mismo nombre, la clase de B-88. Si se separan, el `srcset` no sale.
+     */
+    const huella = 'huella-de-prueba';
+    const afuera = documentosDeLaSemilla({ huella }).find(([r]) => r.endsWith('-afuera'))![1] as {
+      imagenes: { url: string }[];
+    };
+    const url = afuera.imagenes[0]!.url;
+    const ruta = rutaDeLaMiniaturaDelGate(huella);
+    expect(urlDeMiniaturaSiExiste(url, new Set([ruta]))).toContain(encodeURIComponent(ruta));
+    expect(urlDeMiniaturaSiExiste(url, new Set())).toBeNull();
+  });
+
+  it('verificar-todo.sh le pasa el host de Storage al paso 4 en sus dos ramas', () => {
+    const gate = readFileSync('scripts/verificar-todo.sh', 'utf8');
+    const paso4 = gate.slice(gate.indexOf("paso 'Build del sitio"), gate.indexOf('# ── 5 ·'));
+    expect(paso4).toContain('emulators:exec --only firestore,storage');
+    expect(paso4).toMatch(/FIREBASE_STORAGE_EMULATOR_HOST="\$HOST_STORAGE"[\s\\]*\.\/scripts\/build-contra-emulador\.mjs/);
   });
 });
 

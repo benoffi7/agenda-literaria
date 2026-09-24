@@ -1148,6 +1148,53 @@ export const bibliotecaDePrueba = (slug, estado, descripcion, sobre = {}) => ({
 });
 
 /**
+ * **La miniatura del gate** — B-1790, sobre D-210.
+ *
+ * `leerMiniaturas()` (`src/lib/contenidoDelSitio.ts`) lista `miniaturas/` en
+ * Storage **una vez por build** y el sitio pone la miniatura en el `srcset` solo
+ * si está confirmada ahí. Hasta B-1790 el paso 4 corría sin el emulador de
+ * Storage, así que esa lectura cortaba en la rama «Firestore emulado sin Storage
+ * emulado» y el gate que existe para correr el build de verdad corría justo la
+ * mitad que no confirma nada.
+ *
+ * Así que la de afuera de CABA lleva una portada con URL de Storage, y el script
+ * sube el objeto de su miniatura: el HTML tiene que salir con el `srcset`. Va en
+ * la de afuera porque es la publicada que ningún aserto de imágenes mira (los de
+ * la galería y el «control de la mayoría» son de la galería y la publicada).
+ *
+ * **La huella va en el nombre** porque el emulador de Storage es de la máquina y
+ * no del checkout: dos gates a la vez comparten el bucket, y sin ella uno borraría
+ * la miniatura del otro a mitad de su build. Es el nombre que `rutaDeMiniatura`
+ * reconoce (`imagenes/img_<id>.jpg` → `miniaturas/img_<id>.jpg`).
+ */
+export const idDeLaImagenConMiniatura = (huella) => `img_${PREFIJO}${huella}`;
+
+/** La ruta del objeto que el script sube, la misma que deriva `rutaDeMiniatura`. */
+export const rutaDeLaMiniaturaDelGate = (huella) =>
+  `miniaturas/${idDeLaImagenConMiniatura(huella)}.jpg`;
+
+/**
+ * El bucket que el build lista si nadie dice otro. **Es el mismo default que
+ * `adminBucket()`** (`src/lib/firebase-admin.ts`), que un `.mjs` no puede
+ * importar; si se separan, el `srcset` no sale y el aserto del gate se pone rojo
+ * nombrando esta constante, así que la copia no puede mentir en silencio.
+ */
+export const BUCKET_POR_DEFECTO = 'agenda-literaria.firebasestorage.app';
+
+const imagenConMiniatura = (bucket, huella) => ({
+  id: 'img_gate_miniatura',
+  url:
+    `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/` +
+    `imagenes%2F${idDeLaImagenConMiniatura(huella)}.jpg?alt=media`,
+  epigrafe: '',
+  origen: 'propia',
+  portada: true,
+  storagePath: CENTINELA.storagePath,
+  ancho: 1200,
+  alto: 800,
+});
+
+/**
  * **Qué documento va a qué ruta** — todo lo que el gate siembra, como datos.
  *
  * Es la lista que el script recorre con `db.doc(ruta).set(datos)`, y lo único
@@ -1157,8 +1204,19 @@ export const bibliotecaDePrueba = (slug, estado, descripcion, sobre = {}) => ({
  *
  * Es una función y no una constante porque las fechas de los encuentros son
  * relativas a ahora (`enUnaHora`): cargar este módulo no calcula nada.
+ *
+ * `bucket` y `huella` son los de la miniatura del gate (B-1790): el script los
+ * saca del entorno, y acá solo se arman con ellos la URL de la portada de la de
+ * afuera. Con los defaults sale igual de válida, para quien la importe sin
+ * emulador.
+ *
+ * @param {{ bucket?: string, huella?: string }} [opciones]
+ * @returns {[string, Record<string, unknown>][]} pares `[ruta, datos]`
  */
-export const documentosDeLaSemilla = () => {
+export const documentosDeLaSemilla = ({
+  bucket = BUCKET_POR_DEFECTO,
+  huella = 'local',
+} = {}) => {
   /*
    * B-804 — la publicada es la que lleva el monto, y con un tipo de arancel que
    * lo admite: `SIN_COSTO` lo rechaza, así que sembrarlo sobre `gratis` habría
@@ -1201,6 +1259,9 @@ export const documentosDeLaSemilla = () => {
   );
   afuera.sede = { ...afuera.sede, ...geografiaDeAfuera };
   afuera.ciudades = [CIUDAD_DEL_GATE];
+  // B-1790 — y la única portada **propia** del gate, cuya miniatura el script
+  // sube al emulador de Storage. Ver `imagenConMiniatura`.
+  afuera.imagenes = [imagenConMiniatura(bucket, huella)];
 
   // B-296 — la publicada con tres imágenes de proporciones distintas.
   const galeria = actividadDePrueba(SLUG_GALERIA, 'publicado');

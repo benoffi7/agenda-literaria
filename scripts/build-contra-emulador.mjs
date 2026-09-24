@@ -128,13 +128,16 @@ import {
   SLUG_PUBLICADA,
   SLUG_SUSCRIPCION,
   SLUG_SUSCRIPCION_PENDIENTE,
+  BUCKET_POR_DEFECTO,
   documentosDeLaSemilla,
+  rutaDeLaMiniaturaDelGate,
 } from './gate-build/semilla.mjs';
 import { barrerArtefacto } from './gate-build/barrido.mjs';
 import { datoConFecha, etiquetaCon, verificarDirectorio } from './gate-build/directorio.mjs';
 
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 const host = process.env.FIRESTORE_EMULATOR_HOST;
 
@@ -146,15 +149,43 @@ if (!host) {
   process.exit(1);
 }
 
+const LOCAL = /^(127\.0\.0\.1|localhost|\[::1\])/;
+
 // Misma guarda que `seed-emulador.mjs`: escribe sin credenciales, así que solo
 // tiene sentido contra el emulador. Nunca contra producción.
-if (!/^(127\.0\.0\.1|localhost|\[::1\])/.test(host)) {
+if (!LOCAL.test(host)) {
   console.error(`FIRESTORE_EMULATOR_HOST apunta a "${host}", que no es local. Abortando.`);
   process.exit(1);
 }
 
-initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria' });
+/*
+ * B-1790 — **y Storage también, o no hay paso 4.** Sin esta variable el build
+ * no lista `miniaturas/` (listaría el bucket de producción, D-210) y sirve todo
+ * sin `srcset`: el gate daba verde corriendo justo la mitad que no confirma
+ * nada. Y este script **sube** un objeto, así que la guarda es la misma que la de
+ * Firestore: sin la variable, el Admin SDK escribiría en el bucket de verdad.
+ */
+const hostStorage = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
+if (!hostStorage || !LOCAL.test(hostStorage)) {
+  console.error(
+    `build-contra-emulador: FIREBASE_STORAGE_EMULATOR_HOST ${hostStorage ? `apunta a "${hostStorage}", que no es local` : 'falta'}.\n` +
+      'El paso 4 levanta Storage además de Firestore (B-1790): sin él, el build no\n' +
+      'confirma ninguna miniatura y el gate no mira el `srcset`. Abortando.',
+  );
+  process.exit(1);
+}
+
+const proyecto = process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria';
+initializeApp({ projectId: proyecto });
 const db = getFirestore();
+/*
+ * El bucket que el build va a listar: el mismo `PUBLIC_FIREBASE_STORAGE_BUCKET ??
+ * default` que `adminBucket()`. La huella es la base de este checkout (B-219),
+ * que es lo que separa la miniatura de este gate de la del gate de al lado.
+ */
+const bucket = getStorage().bucket(process.env.PUBLIC_FIREBASE_STORAGE_BUCKET ?? BUCKET_POR_DEFECTO);
+const huella = proyecto;
+const RUTA_DE_LA_MINIATURA = rutaDeLaMiniaturaDelGate(huella);
 
 /**
  * **`/opciones/ciudad`: la ciudad del gate, sacada por prefijo** — B-969.
@@ -277,8 +308,32 @@ const limpiar = async () => {
       borrar('lugares'),
       borrar('bibliotecas'),
     ]);
+  /*
+   * B-1790 — la miniatura del gate, **solo la de este checkout** (la huella va
+   * en el nombre): el bucket del emulador es de la máquina, y borrar por el
+   * prefijo del gate sin la huella le sacaría la suya al gate de al lado a
+   * mitad de su build. Con su propio `try` por lo mismo que la ciudad.
+   */
+  let miniatura = 0;
+  try {
+    const [deEste] = await bucket.getFiles({ prefix: RUTA_DE_LA_MINIATURA });
+    await Promise.all(deEste.map((o) => o.delete({ ignoreNotFound: true })));
+    miniatura = deEste.length;
+  } catch (e) {
+    console.error(
+      `  ⚠ no se pudo borrar la miniatura del gate (${RUTA_DE_LA_MINIATURA}) del emulador de ` +
+        `Storage: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
   return (
-    actividades + usuarios + librerias + suscripciones + lugares + bibliotecas + ciudadDelGate
+    actividades +
+    usuarios +
+    librerias +
+    suscripciones +
+    lugares +
+    bibliotecas +
+    ciudadDelGate +
+    miniatura
   );
 };
 
@@ -300,10 +355,18 @@ try {
    * del gate a lo que ya tenga el emulador de quien trabaja.
    */
   await sembrarCiudadDelGate();
-  for (const [ruta, datos] of documentosDeLaSemilla()) await db.doc(ruta).set(datos);
+  for (const [ruta, datos] of documentosDeLaSemilla({ bucket: bucket.name, huella })) {
+    await db.doc(ruta).set(datos);
+  }
+  // B-1790 — el objeto de la miniatura de la portada de la de afuera. El
+  // contenido no importa: el build **lista** `miniaturas/` y no baja un byte
+  // (DEC-7d), así que lo que se prueba es que el listado la confirme.
+  await bucket.file(RUTA_DE_LA_MINIATURA).save(Buffer.from('gate'), { contentType: 'image/jpeg' });
 
   console.log(
-    `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
+    `  (sembradas 6 actividades de prueba en ${host}: publicada, borrador, dos canceladas, ` +
+      'la de afuera de CABA con su miniatura en Storage (' +
+      `${hostStorage}) y ` +
       'una con tres imágenes y un encuentro cancelado con motivo; 2 librerías, 2 suscripciones y 2 bibliotecas, cada ' +
       'par con una publicada y una esperando decisión; y 3 lugares: uno ' +
       'publicado, uno esperando decisión y una casa publicada SIN dirección ' +
@@ -653,6 +716,40 @@ try {
         );
         salida = 1;
       }
+    }
+
+    /*
+     * 4c · **B-1790 — la miniatura confirmada llega al `srcset`, sobre el HTML de
+     * verdad.**
+     *
+     * Es la mitad de D-210 que ningún unitario ve: `urlDeMiniaturaSiExiste` está
+     * probada contra un set, y `tests/miniaturas-storage.integracion.test.ts`
+     * contra el listado real, pero que el **build** liste Storage, le pase el
+     * resultado a la ficha y a la cartelera y la plantilla lo pinte solo se ve
+     * acá. Se pide el objeto **codificado** (`miniaturas%2F…`) adentro de un
+     * `srcset`: es la forma en que sale en la URL de descarga, y buscarlo suelto
+     * en el archivo pasaría por el `src` del original, que comparte el id.
+     *
+     * Si esto falla con el emulador de Storage arriba, lo primero es que
+     * `BUCKET_POR_DEFECTO` (`scripts/gate-build/semilla.mjs`) siga siendo el
+     * default de `adminBucket()`: el gate sube a un bucket y el build lista otro.
+     */
+    const miniaturaEnElSrcset = new RegExp(
+      `srcset="[^"]*${RUTA_DE_LA_MINIATURA.replace('/', '%2F').replace(/[.]/g, '[.]')}`,
+    );
+    const sinMiniatura = [
+      [`actividad/${SLUG_AFUERA}/index.html`, htmlAfuera],
+      ['cartelera/index.html', await leerDist('cartelera/index.html')],
+    ].filter(([, html]) => !html || !miniaturaEnElSrcset.test(html));
+    if (sinMiniatura.length > 0) {
+      fallo(
+        `la miniatura sembrada en Storage (${RUTA_DE_LA_MINIATURA}) no salió en el srcset de:\n` +
+          sinMiniatura.map(([r]) => `    dist/${r}`).join('\n') +
+          '\n  El build lista miniaturas/ una vez (D-210) y la ficha y la cartelera ponen la\n' +
+          '  confirmada como candidato chico. Sin ella se sirve el original, que es más\n' +
+          '  pesado: no rompe nada, y por eso nadie lo ve si no lo mira el gate (B-1790).',
+      );
+      salida = 1;
     }
 
     const robots = await leerDist('robots.txt');
@@ -1680,6 +1777,8 @@ try {
           '  ✓ la de afuera de CABA salió con su provincia en el índice, su ficha diciendo ' +
           'la ciudad y la provincia con etiqueta, y su hub /ciudad/* emitido y enlazado ' +
           '(B-950, B-951, B-969).\n' +
+          '  ✓ la miniatura sembrada en el emulador de Storage sale en el srcset de la ficha ' +
+          'y de la cartelera: el build listó miniaturas/ de verdad (D-210, B-1790).\n' +
           '  ✓ la actividad con tres imágenes pinta las tres, con la portada marcada arriba, ' +
           'un solo `eager`, un solo texto alternativo y tres cajas de proporción distinta; y ' +
           'la de una sola imagen sigue pintando una, sin sección de galería (B-296).\n' +
