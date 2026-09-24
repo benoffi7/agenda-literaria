@@ -63,14 +63,14 @@ import {
  * `PROJECT_ID` en el primer login del proceso y falla nombrando los dos
  * proyectos, en vez de dejar un `PERMISSION_DENIED` que se diagnostica de cero.
  */
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { denegada } from './fixtures/rechazos-del-emulador';
 
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID = 'uid_bibliotecas_admin';
-const UID_PELADO = 'uid_bibliotecas_sin_claim';
+const UID = uidDe('uid_bibliotecas_admin');
+const UID_PELADO = uidDe('uid_bibliotecas_sin_claim');
 
 /** El Admin SDK, para sembrar lo que ningún cliente puede escribir. */
 const conAdminSdk = async (fn: (db: FirestoreAdmin) => Promise<void>) => {

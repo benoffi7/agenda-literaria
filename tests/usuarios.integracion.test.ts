@@ -22,7 +22,7 @@
  * service account, y quien la tiene no necesita esta colección para nada.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo, type Claims } from './fixtures/credenciales-del-emulador';
+import { entrarComo, type Claims, uidDe, mailDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { signOut } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -34,11 +34,11 @@ import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulado
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const RUTA_REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID_ADMIN = 'uid_u888_admin';
-const UID_PUB = 'uid_u888_publicador';
-const UID_OTRO = 'uid_u888_otro';
-const UID_SIN_VERIFICAR = 'uid_u888_sin_verificar';
-const UID_SIN_MAIL = 'uid_u888_sin_mail';
+const UID_ADMIN = uidDe('uid_u888_admin');
+const UID_PUB = uidDe('uid_u888_publicador');
+const UID_OTRO = uidDe('uid_u888_otro');
+const UID_SIN_VERIFICAR = uidDe('uid_u888_sin_verificar');
+const UID_SIN_MAIL = uidDe('uid_u888_sin_mail');
 
 // `ejemplo.test` (TLD reservado) y no un proveedor gratuito: ver el comentario
 // de `tests/rol-publicador.integracion.test.ts` y `sin-datos-personales.test.ts`.
@@ -46,9 +46,9 @@ const UID_SIN_MAIL = 'uid_u888_sin_mail';
 // archivos (`limpiarFirestore()` borra documentos, no cuentas) y una dirección
 // ya tomada por otro uid hace fallar el alta con `EMAIL_EXISTS`. Es el emulador
 // como estado compartido, la misma clase que B-219 con otra cara.
-const MAIL_ADMIN = 'admin.u888@ejemplo.test';
-const MAIL_PUB = 'publicador.u888@ejemplo.test';
-const MAIL_OTRO = 'otro.u888@ejemplo.test';
+const MAIL_ADMIN = mailDe('admin.u888@ejemplo.test');
+const MAIL_PUB = mailDe('publicador.u888@ejemplo.test');
+const MAIL_OTRO = mailDe('otro.u888@ejemplo.test');
 
 /**
  * Una cuenta **sin dirección de correo** y con `emailVerified: true`, que es el
@@ -281,10 +281,10 @@ describe.skipIf(!vivo)('/usuarios — el directorio de las cuentas del panel (B-
       await entrarComo(
         UID_SIN_VERIFICAR,
         { publicador: true },
-        { email: 'sin-verificar.u888@ejemplo.test', emailVerificado: false },
+        { email: mailDe('sin-verificar.u888@ejemplo.test'), emailVerificado: false },
       );
       await denegada(
-        setDoc(doc(db(), 'usuarios', UID_SIN_VERIFICAR), registro('sin-verificar.u888@ejemplo.test')),
+        setDoc(doc(db(), 'usuarios', UID_SIN_VERIFICAR), registro(mailDe('sin-verificar.u888@ejemplo.test'))),
         'registrarse con un mail sin verificar',
       );
     });

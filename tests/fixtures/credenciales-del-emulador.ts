@@ -39,6 +39,72 @@ import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
 import { faltaVerificarProyectoDeAuth, proyectoDeAuth, verificarProyectoDeAuth } from '../emulador';
+import { RAIZ_DEL_CHECKOUT, huellaDeRaiz } from '../../scripts/project-id-emulador.mjs';
+
+/**
+ * La huella de este checkout en las **cuentas** de Auth — B-1662.
+ *
+ * Desde D-1020 todos los checkouts escriben en el mismo namespace de Auth: el del
+ * emulador vivo, que es de un solo proyecto. Y `tokenDe()` reescribe los claims
+ * en cada llamada. Con uids fijos por archivo, dos corridas a la vez sobre el
+ * mismo uid se pisan: la corrida A escribe `{ admin: true }` y mintea su token,
+ * la B escribe `{}` en el medio, y A entra **sin** `admin`. El síntoma es un
+ * `PERMISSION_DENIED` intermitente sobre un documento válido.
+ *
+ * **Medido el 2026-09-24** contra el emulador levantado desde el árbol principal,
+ * con esa intercalación forzada: con el mismo uid el token de A salió sin
+ * `admin`; con un uid por checkout, con `admin: true`.
+ *
+ * Es la misma huella que separa las bases de Firestore (B-219), así que un
+ * checkout tiene un nombre y no dos.
+ */
+export const HUELLA_DE_CUENTAS: string = huellaDeRaiz(RAIZ_DEL_CHECKOUT);
+
+/**
+ * El uid de una cuenta de test, con la huella de este checkout — B-1662.
+ *
+ * **Todo uid que entre por `tokenDe()` tiene que salir de acá**, y `tokenDe()` lo
+ * exige: un literal suelto vuelve a compartirse con los otros checkouts. Los
+ * tests que comparan uids —`createdBy`, `/usuarios/{uid}`, `porUid`— comparan
+ * contra la misma constante, así que la huella no se nota.
+ */
+export const uidDe = (base: string): string => `${base}_${HUELLA_DE_CUENTAS}`;
+
+/**
+ * El correo de una cuenta de test, con la huella de este checkout — B-1662.
+ *
+ * Hace falta por lo mismo que `uidDe`, con un motivo más: **el emulador de Auth
+ * no deja dos cuentas con el mismo correo** (medido: `auth/email-already-exists`).
+ * Con la huella solo en el uid, el segundo checkout que corriera
+ * `rol-publicador` o `usuarios` fallaría en el alta en vez de pisarse. Va como
+ * subdirección (`nombre+huella@dominio`), que sigue siendo un correo válido.
+ */
+export const mailDe = (base: string): string => {
+  const arroba = base.lastIndexOf('@');
+  if (arroba <= 0) throw new Error(`mailDe: "${base}" no es un correo`);
+  return `${base.slice(0, arroba)}+${HUELLA_DE_CUENTAS}${base.slice(arroba)}`;
+};
+
+/**
+ * ¿Lleva la huella de este checkout? Si no, `tokenDe()` se niega — B-1662.
+ *
+ * Es pura para que la guarda tenga test sin emulador. Falla ruidoso y no
+ * agrega la huella por su cuenta a propósito: si la agregara, el test seguiría
+ * comparando `createdBy` contra el literal sin huella, y un caso que **niega**
+ * pasaría por el motivo equivocado (el uid no coincide) en vez de por la regla.
+ */
+export const faltaHuella = (uid: string, email?: string): string | null => {
+  if (!uid.endsWith(`_${HUELLA_DE_CUENTAS}`)) {
+    return `el uid "${uid}" no lleva la huella de este checkout: armalo con uidDe()`;
+  }
+  // Al correo se le pide la huella en cualquier lado, no la forma de `mailDe`:
+  // `opciones.integracion` lo arma como `${uid}@test.local` con un uid que ya la
+  // trae, y eso es tan único por checkout como la subdirección.
+  if (email !== undefined && !email.includes(HUELLA_DE_CUENTAS)) {
+    return `el correo "${email}" no lleva la huella de este checkout: armalo con mailDe()`;
+  }
+  return null;
+};
 
 /**
  * Los claims de la cuenta. `unknown` y no `boolean` porque el valor no siempre
@@ -91,6 +157,16 @@ export const tokenDe = async (
   opciones: OpcionesDeCuenta = {},
 ): Promise<string> => {
   const { email, emailVerificado, etiqueta = 'cred' } = opciones;
+
+  // B-1662: la cuenta es de este checkout y de nadie más, o no se arma.
+  const sinHuella = faltaHuella(uid, email);
+  if (sinHuella !== null) {
+    throw new Error(
+      `tokenDe: ${sinHuella} (B-1662). Todos los checkouts comparten el namespace ` +
+        'de Auth del emulador vivo (D-1020), y un uid fijo deja que dos corridas a la ' +
+        'vez se pisen los claims.',
+    );
+  }
 
   // El proyecto del emulador de **Auth**, no la base de Firestore de este
   // checkout — B-1201, D-1020. Auth es de un solo proyecto, el de su

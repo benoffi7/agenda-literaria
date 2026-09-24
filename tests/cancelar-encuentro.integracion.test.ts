@@ -28,7 +28,7 @@ import { reponerIds } from '../functions/sincronizacion.js';
 import { actualizarActividad, crearActividad } from '@/lib/actividades';
 import { sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { formDeCiclo } from './fixtures/formulario-de-ciclo';
 import {
   PROJECT_ID,
@@ -42,7 +42,7 @@ import {
 // B-365 — los dos: este archivo hace login.
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
-const UID = 'uid_b98_admin';
+const UID = uidDe('uid_b98_admin');
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 type Op = {

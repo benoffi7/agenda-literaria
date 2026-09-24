@@ -21,7 +21,7 @@
  * API del emulador en el `beforeAll` (B-174).
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { signOut } from 'firebase/auth';
@@ -41,9 +41,9 @@ import { denegada } from './fixtures/rechazos-del-emulador';
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID = 'uid_propuestas_admin';
-const UID_OTRO = 'uid_propuestas_admin_2';
-const UID_PELADO = 'uid_propuestas_sin_claim';
+const UID = uidDe('uid_propuestas_admin');
+const UID_OTRO = uidDe('uid_propuestas_admin_2');
+const UID_PELADO = uidDe('uid_propuestas_sin_claim');
 
 const form = (over: Partial<PropuestaForm> = {}): PropuestaForm => ({
   ...propuestaVacia(),

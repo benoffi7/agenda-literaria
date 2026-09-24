@@ -31,7 +31,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { signInWithCustomToken } from 'firebase/auth';
-import { tokenDe } from './fixtures/credenciales-del-emulador';
+import { tokenDe, uidDe } from './fixtures/credenciales-del-emulador';
 import { auth } from '@/lib/firebase-client';
 import { adminBucket, adminDb } from '@/lib/firebase-admin';
 import { promoverImagenDePropuesta } from '@/lib/subir-imagen';
@@ -48,7 +48,7 @@ import {
 
 const vivo = (await emuladorVivo()) && (await emuladorStorageVivo());
 
-const UID = 'uid_admin_conversion';
+const UID = uidDe('uid_admin_conversion');
 const ORIGINAL = `propuestas/prop_conversion_${PROJECT_ID}.jpg`;
 const PROPUESTA = `p_conversion_${PROJECT_ID}`;
 

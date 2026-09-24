@@ -13,7 +13,7 @@
  * el flag que decide qué se sigue mostrando en la pantalla de reportes.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { signOut } from 'firebase/auth';
@@ -35,7 +35,7 @@ import { denegada } from './fixtures/rechazos-del-emulador';
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
-const UID = 'uid_resuelto_admin';
+const UID = uidDe('uid_resuelto_admin');
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 /** Cliente Admin: escribe saltándose las reglas, como hace la Function. */
@@ -150,7 +150,7 @@ describe.skipIf(!vivo)('marcar/reabrir un reporte resuelto — B-580', () => {
 
   it('MUTACIÓN — un admin sin el claim no puede marcar resuelto', async () => {
     await sembrarReporte('sinClaim');
-    await entrarComo('uid_pelado_resuelto');
+    await entrarComo(uidDe('uid_pelado_resuelto'));
     await denegada(marcarResuelto('sinClaim', true));
     // Vuelve a loguearse como admin para no romper los `it` que siguen.
     await entrarComo(UID, { admin: true });

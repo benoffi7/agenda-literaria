@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 // `db` sale de firestore-client desde el corte del bundle (B-09).
@@ -37,9 +37,9 @@ import {
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 /** El uid que crea las opciones en estos tests (el usuario logueado más abajo). */
-const UID = 'uid_test_admin';
+const UID = uidDe('uid_test_admin');
 /** La otra cuenta con claim admin (§4.3): no debería ver lo pendiente de UID. */
-const UID_OTRO = 'uid_test_admin_2';
+const UID_OTRO = uidDe('uid_test_admin_2');
 
 // B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».

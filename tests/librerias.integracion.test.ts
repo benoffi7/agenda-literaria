@@ -28,7 +28,7 @@
  * API del emulador en el `beforeAll` (B-174).
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
@@ -62,10 +62,10 @@ import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulado
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID = 'uid_librerias_admin';
-const UID_OTRO = 'uid_librerias_admin_2';
-const UID_PELADO = 'uid_librerias_sin_claim';
-const UID_PUBLICADOR = 'uid_librerias_publicador';
+const UID = uidDe('uid_librerias_admin');
+const UID_OTRO = uidDe('uid_librerias_admin_2');
+const UID_PELADO = uidDe('uid_librerias_sin_claim');
+const UID_PUBLICADOR = uidDe('uid_librerias_publicador');
 
 /** El Admin SDK, para sembrar lo que ningún cliente puede escribir. */
 const conAdminSdk = async (fn: (db: FirestoreAdmin) => Promise<void>) => {

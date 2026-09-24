@@ -32,7 +32,7 @@
  * empujan por la API del emulador en el `beforeAll`.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -54,8 +54,8 @@ const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID_ADMIN = 'uid_sistema_admin';
-const UID_PELADO = 'uid_sistema_sin_claim';
+const UID_ADMIN = uidDe('uid_sistema_admin');
+const UID_PELADO = uidDe('uid_sistema_sin_claim');
 
 /** El path del resumen, armado con la constante que usa el panel de verdad. */
 const RUTA = RUTA_RESUMEN.join('/');
