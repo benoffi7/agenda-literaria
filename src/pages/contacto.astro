@@ -1,6 +1,6 @@
 ---
 /**
- * `/contacto` — B-232, B-253.
+ * `/contacto` — B-232, B-253, y su `Organization` (B-1122).
  *
  * Sin backend: el sitio es estático y no hay nada que reciba un formulario. Son
  * dos `mailto:` con el asunto ya puesto, y **el asunto es la funcionalidad** —
@@ -34,6 +34,7 @@ import Base from '@/layouts/Base.astro';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
+  ORGANIZACION_DEL_SITIO,
   PROPONER_EN_VEZ_DE_ESCRIBIR,
   POR_INSTAGRAM,
   QUE_PASA_DESPUES,
@@ -144,5 +145,17 @@ import {
       </h2>
       {QUE_PASA_DESPUES.map((parrafo) => <p class="body-lectura mt-3 max-w-[65ch] text-super">{parrafo}</p>)}
     </section>
+
+    {/*
+      §5.5 — el `Organization` del sitio, B-1122. El escape de `<` es la misma
+      guarda que el resto del JSON-LD del sitio: `JSON.stringify` no escapa un
+      `</script>` adentro de un string. Hoy no hay texto libre en el nodo, y
+      justamente por eso va igual: el día que entre uno, la guarda ya está.
+    */}
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(ORGANIZACION_DEL_SITIO).replace(/</g, '\\u003c')}
+    />
   </main>
 </Base>
