@@ -424,6 +424,12 @@ const principal = async () => {
   process.stdout.write(
     `\n  Se mueven ${salida.movidos.length} ítems ` +
       `(${Object.entries(porEstado).map(([k, v]) => `${v} ${k}`).join(', ')})\n` +
+      // Los que vuelven se nombran uno por uno — B-1550: son la mitad del
+      // movimiento que nadie espera, y la cuenta de «se mueven» no los incluye.
+      (salida.devueltos.length > 0
+        ? `  Vuelven al vivo ${salida.devueltos.length}: ` +
+          `${salida.devueltos.map((d) => `${d.id} (${d.estado})`).join(', ')}\n`
+        : '') +
       `  docs/BACKLOG.md          ${lineas(textoVivo)} → ${lineas(salida.vivo)} líneas\n` +
       `  docs/BACKLOG-cerrados.md ${textoArchivo ? lineas(textoArchivo) : 0} → ${lineas(salida.archivo)} líneas\n` +
       (seco ? '\n  --dry-run: no se tocó nada.\n\n' : '\n'),

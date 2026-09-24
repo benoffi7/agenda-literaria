@@ -145,6 +145,56 @@ describe('el camino de vuelta', () => {
   });
 });
 
+describe('el archivador contesta lo mismo que el tablero (B-1550)', () => {
+  /*
+   * Los dos casos reales, y el del archivo de cerrados que el cambio destapó:
+   * B-98 se fue por su «✅ aprobado» sin estar construido; B-785 no se iba
+   * porque su `🟡` viejo iba adelante del `✅` nuevo; y un «✅ parcial» que ya
+   * estaba archivado tiene que volver, porque queda trabajo.
+   */
+  const vivo = [
+    '# Backlog',
+    '',
+    '## P2 — mejoras reales',
+    '',
+    '### B-98 · Cancelar un encuentro sin que desaparezca en silencio — ✅ aprobado (2026-08-26), pendiente de implementar',
+    '',
+    'Aprobado no es construido.',
+    '',
+    '### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5 · ✅ hecho (2026-09-24)',
+    '',
+    'Cerrado después de estar a medias.',
+    '',
+  ].join('\n');
+  const archivo = [
+    '# Backlog — cerrados',
+    '',
+    '## P2 — mejoras reales',
+    '',
+    '### B-920 · Algo a medias con tilde verde — ✅ parcial (2026-08-26): falta la otra mitad',
+    '',
+    'Queda trabajo.',
+    '',
+  ].join('\n');
+  const s = archivar(vivo, archivo);
+
+  it('un aprobado se queda, y el que se cerró después de estar a medias se va', () => {
+    expect(s.movidos.map((m) => m.id)).toEqual(['B-785']);
+    expect(de(s.vivo, 'B-98')).toBeDefined();
+    expect(de(s.archivo, 'B-785')!.estado).toBe('hecho');
+  });
+
+  it('un «✅ parcial» archivado vuelve a lo que falta', () => {
+    expect(s.devueltos.map((d) => d.id)).toEqual(['B-920']);
+    expect(de(s.vivo, 'B-920')!.estado).toBe('empezado');
+  });
+
+  it('el estado que decide el archivador es el que muestra el tablero', () => {
+    const tablero = new Map(parsearBacklog(`${vivo}\n${archivo}`).items.map((i) => [i.id, i.estado]));
+    for (const m of [...s.movidos, ...s.devueltos]) expect(m.estado).toBe(tablero.get(m.id));
+  });
+});
+
 describe('la verificación que corre antes de escribir', () => {
   it('no encuentra nada perdido en un movimiento sano', () => {
     expect(verificar(VIVO, '', archivar(VIVO, ''))).toEqual([]);

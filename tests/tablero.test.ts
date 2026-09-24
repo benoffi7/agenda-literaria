@@ -340,6 +340,68 @@ describe('las formas de encabezado que el archivo real tiene', () => {
   });
 });
 
+/**
+ * **B-1550 — qué es «hecho», y cuál gana cuando hay dos.** Los dos encabezados
+ * son los reales, tal como estaban el día que se vio: B-98 con su tilde de
+ * «aprobado», que el archivador mandó a los cerrados sin construir, y B-785 con
+ * el `🟡` viejo adelante y el `✅` nuevo al final, que el archivador no movía.
+ */
+const DOS_CASOS = [
+  '## P2 — mejoras reales',
+  '',
+  '### B-98 · Cancelar un encuentro sin que desaparezca en silencio — ✅ aprobado (2026-08-26), pendiente de implementar',
+  '',
+  'Aprobado no es construido.',
+  '',
+  '### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem · ✅ hecho (2026-09-24)',
+  '',
+  'Cerrado después de estar a medias.',
+  '',
+  '### B-920 · Algo con dos marcadores al revés — ✅ hecho (2026-09-10) · 🟠 empezado (2026-09-20)',
+  '',
+  'Se reabrió agregando al final.',
+  '',
+  '### B-921 · Una decisión que se cerró sin hacer nada — ✅ decidido: no se hace (2026-09-03)',
+  '',
+  'Cierra aunque la palabra no sea «hecho».',
+  '',
+].join('\n');
+
+describe('qué es hecho y cuál marcador gana (B-1550)', () => {
+  const items = parsearBacklog(DOS_CASOS).items;
+  const de = (id: string) => items.find((i) => i.id === id)!;
+
+  it('un ✅ que dice «aprobado» no es hecho: es trabajo que queda', () => {
+    expect(de('B-98').estado).toBe('empezado');
+    expect(de('B-98').titulo).toBe('Cancelar un encuentro sin que desaparezca en silencio');
+  });
+
+  it('con dos marcadores gana el último, que es la actualización', () => {
+    expect(de('B-785').estado).toBe('hecho');
+    expect(de('B-785').fecha).toBe('2026-09-24');
+    // Los dos salen del título, no solo el que manda.
+    expect(de('B-785').titulo).toBe(
+      'falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem',
+    );
+    // Y en el otro sentido: reabrir agregando al final también manda.
+    expect(de('B-920').estado).toBe('empezado');
+    expect(de('B-920').fecha).toBe('2026-09-20');
+  });
+
+  it('las otras palabras que el archivo usa para cerrar siguen cerrando', () => {
+    expect(de('B-921').estado).toBe('hecho');
+  });
+
+  it('cambiar el estado saca los dos marcadores, no solo el que manda', () => {
+    const r = conEstado(DOS_CASOS, de('B-785').encabezado, 'abierto', '2026-09-24') as {
+      texto: string;
+    };
+    const nuevo = parsearBacklog(r.texto).items.find((i) => i.id === 'B-785')!;
+    expect(nuevo.estado).toBe('abierto');
+    expect(nuevo.encabezado).not.toMatch(/✅|🟡/u);
+  });
+});
+
 describe('contra el archivo real', () => {
   it('parsea docs/BACKLOG.md entero y no pierde ítems', async () => {
     /*
@@ -394,6 +456,16 @@ describe('contra el archivo real', () => {
       const abiertos = parsearBacklog(vivo).items;
       expect(abiertos.filter((i) => i.estado === 'hecho' || i.estado === 'descartado')).toEqual([]);
       expect(parsearBacklog(cerrados).items.length).toBeGreaterThan(abiertos.length);
+      /*
+       * Y el espejo, que es la forma de B-1550: **nada sin cerrar vive en los
+       * cerrados**. Si se pone rojo, el archivador lo devuelve en la próxima
+       * corrida; lo que este caso cuida es que alguien se entere antes.
+       */
+      expect(
+        parsearBacklog(cerrados)
+          .items.filter((i) => i.estado !== 'hecho' && i.estado !== 'descartado')
+          .map((i) => i.id),
+      ).toEqual([]);
     }
   });
 });

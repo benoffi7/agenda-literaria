@@ -194,7 +194,37 @@ export const ESTADOS_EN_TABLA = Object.keys(ESTADO_DE_EMOJI_EN_TABLA).join('|');
  * el lookahead deja el espacio de antes afuera: sin eso, sacarle el marcador a
  * `… retención — ✅ hecho (fecha) · P1` devolvía `… retención· P1`, pegado.
  */
-const MARCADOR_DETRAS = new RegExp(String.raw`\s*[—·]\s*(${ESTADOS})[^·]*?(?=\s*·|\s*$)`, 'u');
+const MARCADOR_DETRAS = String.raw`\s*[—·]\s*(${ESTADOS})[^·]*?(?=\s*·|\s*$)`;
+
+/**
+ * **Un `✅` es «hecho» solo si dice que se cerró — B-1550.**
+ *
+ * El emoji solo no alcanza, y costó una decisión aprobada: el encabezado de B-98
+ * decía «✅ aprobado (2026-08-26), pendiente de implementar», el parseo lo leyó
+ * como hecho y el archivador lo mandó a los cerrados sin construir. La tilde
+ * verde es también la de «aprobado», «parcial», «las 58 migradas · quedan 5».
+ *
+ * Por eso la lista es de **lo que cierra**, y no de lo que no: sacada de los dos
+ * archivos el 2026-09-24 —`hecho` y sus flexiones, `cerrado`, `resuelto`,
+ * `decidido` (incluido «decidido: no se hace»), `contestado`, `sin efecto`—.
+ * El sentido importa por cómo falla cada una. Una lista de lo que *no* cierra
+ * falla en silencio: la palabra nueva se lee como hecha y el ítem desaparece de
+ * la lista viva, que es exactamente lo que le pasó a B-98. Una lista de lo que
+ * cierra falla a la vista: el ítem se queda (o vuelve) entre lo que falta, y
+ * alguien lo mira.
+ *
+ * El `✅` que no dice nada de eso se lee como **empezado**, no como abierto:
+ * algo se aprobó, se hizo una parte o se decidió, y queda trabajo. Es el mismo
+ * criterio que junta `🟠` y `🟡`, y mantiene la red de `tests/tablero.test.ts`
+ * —«un encabezado con emoji de estado no se lee como abierto»—.
+ */
+const CIERRA = /(?<!\p{L})(?:hech[oa]s?|cerrad[oa]s?|resuelt[oa]s?|decidid[oa]s?|contestad[oa]s?|sin efecto)(?!\p{L})/iu;
+
+/** El estado que dice un marcador, mirando el emoji y —si es `✅`— lo que dice. */
+const estadoDelMarcador = (emoji, texto) => {
+  if (emoji !== '✅') return ESTADO_DE_EMOJI[emoji];
+  return CIERRA.test(texto) ? 'hecho' : 'empezado';
+};
 
 /**
  * El marcador **cuando va adelante del título**, que es la otra mitad.
@@ -243,41 +273,70 @@ const prioridadDeSeccion = (seccion) => {
 };
 
 /**
- * El marcador de estado del encabezado: dónde empieza, dónde termina y con qué
- * emoji. `null` si el encabezado no tiene ninguno.
+ * **Todos** los marcadores de estado del encabezado, en orden: dónde empieza
+ * cada uno, dónde termina y con qué emoji. `[]` si no tiene ninguno.
  *
  * Se prueba primero la forma «adelante» porque es la más acotada: si el
  * marcador abre el encabezado, comerse hasta el próximo `·` se llevaría el
  * título. Devolver los índices y no el texto es lo que permite sacarlo con un
  * `slice` — reemplazar por texto podría pegarle a una aparición anterior.
  *
- * @returns {{emoji: string, desde: number, hasta: number} | null}
+ * **Son todos y no el primero desde B-1550.** Un encabezado puede llevar dos:
+ * B-785 decía «🟡 la mitad hecha (2026-09-09) — … · ✅ hecho (2026-09-24)»,
+ * porque quien lo cerró agregó el marcador nuevo al final sin borrar el viejo.
+ * Leer solo el primero lo dejaba empezado para siempre, y el archivador no lo
+ * movía nunca.
+ *
+ * @returns {{emoji: string, estado: string, desde: number, hasta: number}[]}
  */
-const marcadorDe = (encabezado) => {
+const marcadoresDe = (encabezado) => {
+  const todos = [];
+  let desde = 0;
   const adelante = MARCADOR_ADELANTE.exec(encabezado);
   if (adelante) {
-    return {
-      emoji: adelante[2],
-      desde: adelante[1].length,
-      hasta: adelante[0].length,
-    };
+    todos.push({ emoji: adelante[2], desde: adelante[1].length, hasta: adelante[0].length });
+    desde = adelante[0].length;
   }
-  const detras = MARCADOR_DETRAS.exec(encabezado);
-  if (!detras) return null;
-  return { emoji: detras[1], desde: detras.index, hasta: detras.index + detras[0].length };
+  // Global y en función, no compartido: un regex `g` lleva `lastIndex`.
+  const detras = new RegExp(MARCADOR_DETRAS, 'gu');
+  detras.lastIndex = desde;
+  for (let m = detras.exec(encabezado); m; m = detras.exec(encabezado)) {
+    if (m[0].length === 0) detras.lastIndex += 1;
+    todos.push({ emoji: m[1], desde: m.index, hasta: m.index + m[0].length });
+  }
+  return todos.map((m) => ({
+    ...m,
+    estado: estadoDelMarcador(m.emoji, encabezado.slice(m.desde, m.hasta)),
+  }));
 };
 
-/** El encabezado sin su marcador de estado, si lo tenía. */
-const sinMarcador = (encabezado) => {
-  const m = marcadorDe(encabezado);
-  return m ? encabezado.slice(0, m.desde) + encabezado.slice(m.hasta) : encabezado;
-};
+/**
+ * **El marcador que manda es el último — B-1550.**
+ *
+ * Cuando hay dos, el de más a la derecha es la actualización: el archivo se
+ * escribe agregando al final (es lo que hace `conEstado`, y lo que hizo quien
+ * cerró B-785), no reescribiendo lo anterior. Leer el primero sería leer la foto
+ * vieja. Como el archivador clasifica con este mismo parseo, el tablero y el
+ * archivador contestan lo mismo por construcción, no por coincidencia.
+ *
+ * @returns {{emoji: string, estado: string, desde: number, hasta: number} | null}
+ */
+const marcadorDe = (encabezado) => marcadoresDe(encabezado).at(-1) ?? null;
+
+/**
+ * El encabezado sin **ninguno** de sus marcadores de estado.
+ *
+ * Todos, no solo el que manda: si `conEstado` sacara uno y dejara el otro, marcar
+ * B-785 como abierto lo dejaría con su `🟡` viejo, y el ítem seguiría leyéndose
+ * empezado. Se sacan de derecha a izquierda para que los índices sigan valiendo.
+ */
+const sinMarcador = (encabezado) =>
+  marcadoresDe(encabezado)
+    .reverse()
+    .reduce((texto, m) => texto.slice(0, m.desde) + texto.slice(m.hasta), encabezado);
 
 /** El estado de un ítem, leído del encabezado. `abierto` es no tener marcador. */
-const estadoDe = (encabezado) => {
-  const m = marcadorDe(encabezado);
-  return m ? ESTADO_DE_EMOJI[m.emoji] : 'abierto';
-};
+const estadoDe = (encabezado) => marcadorDe(encabezado)?.estado ?? 'abierto';
 
 /**
  * La fecha del estado: la del **marcador** cuando lo hay, y la última del
