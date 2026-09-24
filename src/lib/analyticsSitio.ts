@@ -256,6 +256,30 @@ const PANELES_MEDIBLES = ['hoy', 'finde', 'semana'] as const;
  * tríptico, para no escribir las claves a mano dos veces. */
 export type PanelMedible = (typeof PANELES_MEDIBLES)[number];
 
+/**
+ * Las ciudades que tienen banner — el vocabulario de `clic_banner_ciudad`,
+ * **B-963**.
+ *
+ * **Copiado y no importado**, por el mismo motivo que `PANELES_MEDIBLES`: la
+ * fuente es `BANNERS_DE_CIUDAD` de `@/lib/bannerDeCiudad`, y este archivo entra
+ * por el aviso de cookies de `Base.astro`, o sea **en todas las páginas**.
+ * Importarlo arrastraría a cada una la lista de banners entera —el destino, el
+ * nombre del emprendimiento, el alternativo— y `slugDeCiudad`, para contestar
+ * una pregunta que solo se hace en la home.
+ *
+ * **Vocabulario cerrado, y no `lista-slugs`**, aunque el valor ya sea un slug:
+ * `FORMATO_SLUG` dejaría pasar cualquier ciudad, y la ciudad que llega acá
+ * tiene que ser una **de las que tienen banner** — si no, no hubo banner que
+ * tocar. Una ciudad que se agrega a `BANNERS_DE_CIUDAD` sin agregarse acá llega
+ * a GA4 como `ciudad=otro`: el clic se cuenta y el desfase se ve. Lo que lo
+ * frena antes es `tests/analyticsSitio.test.ts`, que compara las dos listas en
+ * las dos direcciones.
+ */
+export const CIUDADES_CON_BANNER = ['mar-del-plata'] as const;
+
+/** Una ciudad que este módulo sabe medir en `clic_banner_ciudad`. */
+export type CiudadConBanner = (typeof CIUDADES_CON_BANNER)[number];
+
 /** Formato de un slug de taxonomía — el que produce `slugify()`. Rechaza
  * cualquier cosa con mayúsculas, acentos o espacios, que es exactamente lo que
  * el texto de un buscador tendría y un slug nunca tiene. */
@@ -292,7 +316,7 @@ const sanitizarSitio = (san: SanitizadorSitio, valor: unknown): string | undefin
 type EspecificacionSitio = Record<string, SanitizadorSitio>;
 
 /**
- * Los dos eventos propios de la mitad **b** (§4, §9 del diseño). Ninguno lleva
+ * Los eventos propios de la mitad **b** (§4, §9 del diseño). Ninguno lleva
  * contenido: el clic de inscripción manda la **vía**, nunca el destino (un
  * mail o un teléfono); el filtro sin resultados manda el **eje** y el
  * **slug**, nunca el texto del buscador.
@@ -347,6 +371,29 @@ export const EVENTOS_SITIO = {
    */
   clic_triptico: {
     panel: { tipo: 'enum', valores: PANELES_MEDIBLES },
+  },
+  /**
+   * ¿Se toca el banner de una ciudad, y de cuál? — **B-963**, sobre el B-961 que
+   * lo puso.
+   *
+   * Es la pregunta que va a hacer primero quien lo puso —«¿sirve?»— y la misma
+   * que `clic_triptico` contesta para el tríptico.
+   *
+   * **Un solo parámetro, `ciudad`, en slug y de vocabulario cerrado**
+   * (`CIUDADES_CON_BANNER`). **Nunca el destino ni el nombre del
+   * emprendimiento**, y no por prudencia genérica: los dos son función de la
+   * ciudad —hay un banner por ciudad—, así que no contestan nada que la ciudad
+   * no conteste, y el destino es justamente lo que el «Clics salientes» apagado
+   * en la consola (B-480, §7.4 del diseño) existe para no mandar. Mandarlo acá
+   * sería reabrir esa puerta con un evento propio.
+   *
+   * **No mide «se vio el banner», mide «se tocó».** Mismo criterio que el
+   * tríptico: una impresión pediría un observador de intersección, y el
+   * denominador ya se puede aproximar sin él —el banner aparece cuando el
+   * filtro de su ciudad está puesto—.
+   */
+  clic_banner_ciudad: {
+    ciudad: { tipo: 'enum', valores: CIUDADES_CON_BANNER },
   },
 } satisfies Record<string, EspecificacionSitio>;
 

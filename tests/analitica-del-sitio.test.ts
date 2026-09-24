@@ -670,6 +670,7 @@ describe('resumenGa4', () => {
       clic_inscripcion: 37,
       filtro_sin_resultados: 12,
       clic_triptico: 0,
+      clic_banner_ciudad: 0,
     });
     // Las tres claves están, siempre, sin importar qué devolvió la API.
     expect(Object.keys(r.eventos).sort()).toEqual([...EVENTOS_PROPIOS].sort());
@@ -696,6 +697,7 @@ describe('resumenGa4', () => {
       clic_inscripcion: 0,
       filtro_sin_resultados: 0,
       clic_triptico: 0,
+      clic_banner_ciudad: 0,
     });
   });
 

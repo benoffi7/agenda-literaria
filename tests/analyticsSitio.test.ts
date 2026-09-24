@@ -20,7 +20,9 @@ import {
   type Eje,
   type EstadoConsentimiento,
   type PanelMedible,
+  CIUDADES_CON_BANNER,
 } from '@/lib/analyticsSitio';
+import { BANNERS_DE_CIUDAD } from '@/lib/bannerDeCiudad';
 import { EJES, desdeQuery } from '@/lib/listadoPublico';
 import type { ClaveDePanel } from '@/lib/ahoraPublico';
 
@@ -462,6 +464,70 @@ describe('construirEventoSitio — whitelist en las dos direcciones', () => {
       // tríptico?», que es la mitad más importante de la pregunta.
       expect(construirEventoSitio('clic_triptico', {})?.params).toEqual({});
     });
+  });
+});
+
+describe('clic_banner_ciudad — B-963', () => {
+  it('CIUDADES_CON_BANNER es exactamente la lista de ciudades de BANNERS_DE_CIUDAD', () => {
+    /*
+     * **La red de la copia**, en las dos direcciones. El vocabulario está copiado
+     * y no importado porque este módulo carga en todas las páginas (ver el
+     * docblock de `CIUDADES_CON_BANNER`), y una copia sin test es la clase de
+     * B-88: dos listas de lo mismo, derivadas por separado.
+     *
+     * - Una ciudad nueva en `BANNERS_DE_CIUDAD` que no se suma acá llegaría a
+     *   GA4 como `ciudad=otro`.
+     * - Una ciudad que se saca de los banners y queda acá es vocabulario de un
+     *   banner que ya no existe: inofensivo, pero es la copia desactualizada.
+     *
+     * MUTACIÓN PROBADA: con `CIUDADES_CON_BANNER = ['mar-del-plata', 'necochea']`
+     * este caso falla.
+     */
+    expect([...CIUDADES_CON_BANNER].sort()).toEqual(
+      [...new Set(BANNERS_DE_CIUDAD.map((b) => b.ciudad))].sort(),
+    );
+  });
+
+  it('cada ciudad con banner pasa tal cual', () => {
+    for (const ciudad of CIUDADES_CON_BANNER) {
+      expect(construirEventoSitio('clic_banner_ciudad', { ciudad })?.params).toEqual({ ciudad });
+    }
+  });
+
+  it('una ciudad sin banner cae en "otro", aunque tenga forma de slug', () => {
+    /*
+     * Es un `enum` y no `lista-slugs` a propósito: `FORMATO_SLUG` dejaría pasar
+     * `necochea` —o cualquier palabra en minúscula— y la ciudad que llega acá
+     * tiene que ser una de las que tienen banner.
+     */
+    expect(construirEventoSitio('clic_banner_ciudad', { ciudad: 'necochea' })?.params.ciudad).toBe(
+      FUERA_DE_VOCABULARIO_SITIO,
+    );
+    expect(
+      construirEventoSitio('clic_banner_ciudad', { ciudad: 'Mar del Plata' })?.params.ciudad,
+    ).toBe(FUERA_DE_VOCABULARIO_SITIO);
+  });
+
+  it('NO manda el destino ni el nombre del emprendimiento', () => {
+    /*
+     * La decisión de diseño del evento: los dos son función de la ciudad, y el
+     * destino es lo que «Clics salientes» apagado en GA4 (B-480) existe para no
+     * mandar. La whitelist lo cumple sin una regla nueva; este caso impide que
+     * alguien «enriquezca» el evento sin que nada falle.
+     */
+    const banner = BANNERS_DE_CIUDAD[0]!;
+    const evento = construirEventoSitio('clic_banner_ciudad', {
+      ciudad: banner.ciudad,
+      href: banner.href,
+      nombre: banner.nombre,
+      destino: 'https://CENTINELA.example/',
+      textoAlternativo: banner.textoAlternativo,
+    });
+    expect(evento?.params).toEqual({ ciudad: banner.ciudad });
+  });
+
+  it('sin `ciudad`, el evento se manda igual y sin ese parámetro', () => {
+    expect(construirEventoSitio('clic_banner_ciudad', {})?.params).toEqual({});
   });
 });
 
