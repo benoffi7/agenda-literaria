@@ -21324,6 +21324,50 @@ use ese dato.
 `<meta name="referrer" content="origin">` y el `data-ruta-medida="/404/"`, como ya
 le exige el `noindex`.
 
+### B-1890 · Las plantillas de mes y de `/pasadas` rearmaban el reloj con `new Date(generadoEn)` pelado · P3 — de `reloj-detalle` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Con un `generadoEn` ilegible daba `Invalid Date` (B-602) y otro instante que el de
+su view-model. **✅ Hecho (2026-09-24):** las dos usan `relojDelBuild(undefined, …)`.
+
+### B-1850 · El detalle y los hubs o meses que enlaza miran relojes distintos · P3 — de `hub-vacio` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `60aa9a1` (D-1135): `relojDelBuild(ahora, generadoEn)` en `contenidoDelSitio.ts`, y los seis relojes del archivo pasan por ahí; los que usaban `new Date(indice.generadoEn)` pelado dejan de poder dar `Invalid Date` (B-602). Red en `tests/reloj-del-build.test.ts`, tres mutaciones. Las dos plantillas que rearmaban el reloj eran B-1890.
+
+`caminosDeDetalle` usa `new Date()` para `yaPaso`, `mesesConPagina` y
+`tiposOfrecidos`, y las páginas de hub y de mes usan el reloj del índice
+(`generadoEn`). Si un build cae justo en el borde de la última vigente de un tipo o
+de un mes, el detalle puede enlazar un hub que su propia página decidió vacío. La
+ventana es de segundos. Arreglo: que `caminosDeDetalle` tome por defecto
+`new Date(indice.generadoEn)`, como `hubsConContexto`.
+
+### B-1840 · Las filas que «no salen» a una salida no se verifican ausentes · P3 — de `registro-ig` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `c31c6f6`, `0deaf97` (D-1130): cada `{ porque }` lleva `ausente` o `sinAusente`. Se vigilan `arrobar`/`difusion` en Calendar y ficha, `ofrecidaPor` y `contactoDeQuienCargo` en las tres salidas; sin chequeo y con motivo, los atributos compartidos con la primera fila y `contacto`. Mutación verificada en calendario.js y detallePublico.ts.
+
+En `CAMPOS_DE_INSTAGRAM`, un `{ porque }` es una afirmación sin chequeo propio: que
+`difusion.arrobar` no llegue a Calendar ni a la ficha lo cubren hoy los centinelas
+del barrido de salidas públicas, no este registro. Opción: un `ausente: 'arrobar'`
+para los atributos con nombre propio.
+
+### B-1830 · El par fondo + tinta del panel se mide solo si las dos clases van en el mismo grupo · P3 — de `contraste-2` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `8f0d99f`, `bfe0802`, `fa53918` (D-1125): dos redes con una sola mecánica en `tests/fixtures/contraste-del-panel.ts`: el barrido del fuente recorre el árbol JSX de cada archivo, y el render monta cada `Aviso*.tsx` y compone sobre el DOM. No había nada abajo del piso. Siguió en B-1870 y B-1871.
+
+Una tinta con nombre (`text-acento`, `text-amber-900/85`) sobre un tinte **heredado**
+de un ancestro no se mide: el barrido lee por línea y no por árbol. Pasó con
+`AvisoVersionNueva`, que se encontró a mano. Opción: un render que componga, por
+cada nodo con texto, su tinta sobre el primer fondo de sus ancestros; o declarar en
+cada aviso de color su par tinta/fondo en un solo lugar.
+
+### B-1812 · Las canastas de los cuatro directorios de la Guía no se comparan con sus barridos de vitest · P3 — de `gate` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `539f92f`, `676fe1c` (D-1120): las listas de los cuatro barridos pasan a `tests/fixtures/canastas-de-la-guia.ts` y `RUTA_EN_LA_GUIA` compara cada canasta con la proyección de su colección. No hay diferencias a propósito; los `*Pendiente` quedan sin par, con su motivo.
+
+B-1761 ata detalle, índice y cartelera. Las canastas de librerías, suscripciones,
+lugares y bibliotecas tienen su barrido en otros archivos, con listas locales.
+Arreglo: exportar esas listas a un fixture y agregar las cuatro comparaciones con
+`canastaDelGateCoincide`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

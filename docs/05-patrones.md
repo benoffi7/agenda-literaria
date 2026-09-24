@@ -771,8 +771,10 @@ mide también sobre los **tintes** del panel (`bg-acento/5`, `bg-amber-100`,
 leídos de la paleta instalada; hoy el peor es `bg-acento/15`. Y **una fila que ya no
 rige no se apaga con `opacity`** —se multiplica con la tinta de adentro—: va con
 `claseFilaApagada` de `campos/Campo.tsx`, y el test frena un `opacity-NN` suelto
-(D-1105). Lo que no ve: una tinta con nombre sobre un tinte heredado de un ancestro
-(B-1830).
+(D-1105). Desde B-1830 mide también la tinta con nombre sobre el tinte de un ancestro: el
+barrido recorre el árbol JSX de cada archivo, y `contraste-del-arbol.render.test.tsx`
+monta los avisos de color y compone sobre el DOM (D-1125). Lo que no ve: el tinte
+que pone otro componente fuera de los avisos (B-1870).
 
 > Los dos comparten **una sola hoja de fuentes** (`Base.astro`), así que bajar una
 > familia solo para el panel se lo cobra a las cinco páginas públicas. Es el motivo

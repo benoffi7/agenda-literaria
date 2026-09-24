@@ -13501,3 +13501,43 @@ dónde está la página** en la jerarquía del sitio, y un hub con `noindex` sig
 su padre. Con el corte de ofrecidos, la miga de una misma pasada cambiaría de dos a
 tres niveles entre builds, sobre una página que no cambió. `masDelTipo` pide además
 `tipoTieneHub`, para que un llamador que cruce los flags no pueda publicar un 404.
+
+## D-1120 · Una canasta de la Guía se compara con la proyección de su colección, no con la ficha ni con el marcado
+
+**B-1812, 2026-09-24.** La canasta del gate es de todo el archivo, y los tres
+archivos de cada colección juntos publican lo que publica la proyección. La casa de
+lugares es la excepción: su par es `PERMITIDO_SIN_DIRECCION`. Los `*Pendiente` no
+tienen par en vitest porque los filtra la lectura del build, no la proyección.
+
+## D-1125 · El tinte heredado se mide con dos redes: el árbol JSX para todo el panel, el DOM para los avisos
+
+**B-1830, 2026-09-24.** Un render de todo el panel es frágil (Firestore, sesión,
+decenas de ramas), y declarar el par en cada aviso se desincroniza del markup. Por
+eso: el barrido del fuente lee el árbol JSX de cada archivo con el parser de
+TypeScript —cubre todo el panel sin registro, pero solo dentro de un archivo y con
+clases literales—, y el render de `contraste-del-arbol.render.test.tsx` monta cada
+`Aviso*.tsx` y compone sobre el DOM, que ve el tinte de otro componente; un aviso
+nuevo sin montar falla. Las dos redes usan una sola mecánica, porque dos copias de
+la mezcla serían dos respuestas.
+
+## D-1130 · Un «no sale» del registro de Instagram se verifica ausente por nombre propio, o dice por qué no
+
+**B-1840, 2026-09-24.** Un `{ porque }` era una afirmación sin chequeo propio. Ahora
+elige: `ausente`, nombres que el código sin comentarios de esa salida no contiene
+como palabra entera (un acceso, una clave de `pick` y una desestructuración lo
+nombran igual), o `sinAusente` con el motivo. Cada nombre de `ausente` tiene que
+estar en la fila, para que un renombre no deje el chequeo mirando un nombre muerto.
+Lo que no se puede verificar: un atributo compartido con la primera fila, y
+`contacto`, que un rótulo puede decir. Descartado: buscar solo accesos `x.nombre`,
+que no ve el `pick(a, ['arrobar'])`.
+
+## D-1135 · Un solo reloj por build, y es el `generadoEn` del índice
+
+**B-1850, 2026-09-24.** Toda salida que decide por fecha (qué ya pasó, qué mes tiene
+página, qué hub se ofrece, qué entra al sitemap) lo decide con `relojDelBuild`, no
+con `new Date()`. Es el `generadoEn` del índice porque ya viaja en el `events.json` y
+es el que la home usa. Tres reglas: un `Date` explícito gana; el string se lee con
+`instanteDeIso`, nunca con `new Date(iso)` pelado (B-602); y si no se puede leer, el
+respaldo `new Date()` se toma **una vez** y se reusa. Un reloj nuevo en
+`contenidoDelSitio.ts` lo frena un chequeo de fuente, y las plantillas de mes y de
+`/pasadas` usan el mismo (B-1890).

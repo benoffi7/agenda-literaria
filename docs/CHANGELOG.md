@@ -2,6 +2,27 @@
 
 ## Sin publicar
 
+- **Lo que una fila del registro de Instagram dice que no sale, ahora se verifica
+  ausente** (B-1840, D-1130). Cada `{ porque }` de `CAMPOS_DE_INSTAGRAM` elige
+  `ausente` —los nombres propios de la fila que el código de esa salida no puede
+  nombrar— o `sinAusente`, el motivo por el que no se puede leer en el texto. Leer
+  `difusion.arrobar` en el calendario o en la ficha pone su test en rojo.
+- **La página de una actividad y los hubs o meses que enlaza miran el mismo reloj**
+  (B-1850, B-1890, D-1135). El detalle y la cartelera decidían «ya pasó», «Más en
+  septiembre» y «Más talleres» con la hora de la máquina, y los hubs, los meses,
+  `/pasadas` y el sitemap con el `generadoEn` del índice: en el borde, el detalle podía
+  enlazar un hub que su propia página decidió vacío. Ahora todos pasan por
+  `relojDelBuild`, que además lee el `generadoEn` con `instanteDeIso` (la clase de
+  B-602); las plantillas de mes y de `/pasadas` también.
+- **Las canastas de la Guía del gate también se comparan con las del barrido de
+  vitest** (B-1812, D-1120): librerías, suscripciones, lugares y bibliotecas permiten
+  lo mismo en los dos lados. Las listas viven en `tests/fixtures/canastas-de-la-guia.ts`.
+- **El contraste del panel se mide también sobre el tinte que pone un ancestro**
+  (B-1830, D-1125). Ahora `contraste-del-panel.test.ts` recorre el árbol JSX de cada
+  archivo, y `contraste-del-arbol.render.test.tsx` monta los avisos de color del panel
+  y compone cada texto sobre el primer fondo de sus ancestros en el DOM, con la misma
+  mecánica, que se mudó a `tests/fixtures/contraste-del-panel.ts`. Todo pasa; volver
+  el aviso de versión nueva a `/70` lo pone en rojo.
 - **El gate del artefacto le exige a la 404 las dos mitades de D-1090** (B-1801).
   `scripts/verificar-bundle.sh` pide ahora en `dist/404.html`, igual que el
   `noindex`, el `<meta name="referrer" content="origin">` y el
