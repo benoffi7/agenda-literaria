@@ -6,9 +6,11 @@
  * `propuestas-conversion.test.ts`— sino **el cableado**, que es donde esta
  * pantalla puede fallar en silencio y de las formas más caras:
  *
- *  - **el orden de D-600**: «Convertir» **no escribe nada**. Si escribiera antes
- *    de que la actividad exista, una conversión abandonada dejaría la propuesta
- *    marcada `aceptada` apuntando a una actividad que no está;
+ *  - **el orden de D-600**: «Convertir» **no escribe la actividad ni la marca
+ *    `aceptada`**. Si lo hiciera antes de que la actividad exista, una
+ *    conversión abandonada dejaría la propuesta marcada `aceptada` apuntando a
+ *    una actividad que no está. Lo único que escribe al abrir es la marca
+ *    `en-revision` de B-866, sobre una `nueva`;
  *  - **el contacto ajeno en un `href`**: la defensa es pura y está probada, pero
  *    que la pantalla **la use** —y no interpole el valor a mano— no lo prueba
  *    ningún test de la función;
@@ -289,11 +291,19 @@ describe('cuándo se borra sola, dicho en la ficha (B-844)', () => {
 });
 
 describe('convertir en actividad — el orden de D-600', () => {
-  it('arma el formulario prellenado y NO escribe nada', async () => {
+  it('arma el formulario prellenado y NO la marca aceptada', async () => {
     const onConvertir = montar([propuesta()]);
     await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
 
-    expect(revisarPropuesta).not.toHaveBeenCalled();
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    // La única escritura al abrir es la marca de B-866; `aceptada` espera al
+    // guardado de la actividad.
+    expect(revisarPropuesta).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'aceptada',
+      expect.anything(),
+    );
     const c = onConvertir.mock.calls[0]![0];
     expect(c.tituloOrigen).toBe('Taller de crónica urbana');
     expect(c.copia.titulo).toBe('Taller de crónica urbana');
@@ -607,6 +617,72 @@ describe('convertir en actividad — el orden de D-600', () => {
       actividadId: 'act_nueva',
     });
     expect(medirFuncion).toHaveBeenCalledWith('propuesta-convertida');
+  });
+});
+
+/**
+ * **B-866 — abrir la conversión renueva el plazo.** Hasta acá «Convertir» no
+ * escribía nada y el barrido de retención se podía llevar una propuesta vieja
+ * con el formulario abierto. Ahora una `nueva` pasa a `en-revision` al abrir,
+ * que escribe `revision.en` y reinicia el reloj de B-844.
+ *
+ * MUTACIONES PROBADAS: sacar la marca pone rojos el primero y el cuarto; marcar sin mirar el
+ * estado pone rojos el segundo y el tercero; dejar que el fallo corte la
+ * conversión pone rojo el cuarto.
+ */
+describe('convertir marca la propuesta en revisión — B-866', () => {
+  it('una nueva pasa a en-revision al abrir, antes de que exista el formulario', async () => {
+    const onConvertir = montar([propuesta()]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(revisarPropuesta).toHaveBeenCalledTimes(1);
+    expect(revisarPropuesta).toHaveBeenCalledWith('p1', 'uid_admin', 'en-revision');
+    // La marca se escribió antes de abrir el formulario, no después.
+    expect(vi.mocked(revisarPropuesta).mock.invocationCallOrder[0]!).toBeLessThan(
+      onConvertir.mock.invocationCallOrder[0]!,
+    );
+    expect(onConvertir.mock.calls[0]![0].avisos.some((a) => /estoy mirando/.test(a))).toBe(false);
+  });
+
+  it('una que ya estaba en revisión no se toca', async () => {
+    const onConvertir = montar([propuesta({ estado: 'en-revision' })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(revisarPropuesta).not.toHaveBeenCalled();
+  });
+
+  it('una rechazada se convierte sin reabrirla', async () => {
+    const onConvertir = montar([propuesta({ estado: 'rechazada' })]);
+    await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(revisarPropuesta).not.toHaveBeenCalled();
+  });
+
+  it('si la marca falla, la conversión sigue y el formulario lo avisa arriba', async () => {
+    vi.mocked(revisarPropuesta).mockRejectedValueOnce(
+      Object.assign(new Error('Missing or insufficient permissions.'), {
+        code: 'permission-denied',
+      }),
+    );
+    const onConvertir = montar([propuesta()]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    const c = onConvertir.mock.calls[0]![0];
+    expect(c.copia.titulo).toBe('Taller de crónica urbana');
+    expect(c.avisos[0]).toMatch(/No se pudo marcar la propuesta como «la estoy mirando» \(permission-denied\)/);
+    // El mensaje del SDK, en inglés, no llega a la pantalla.
+    expect(c.avisos.join(' ')).not.toMatch(/insufficient/);
+
+    // Y el segundo movimiento sigue disponible.
+    await c.alGuardar('act_igual');
+    expect(revisarPropuesta).toHaveBeenLastCalledWith('p1', 'uid_admin', 'aceptada', {
+      actividadId: 'act_igual',
+    });
   });
 });
 

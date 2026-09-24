@@ -566,6 +566,44 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
     });
 
     /**
+     * **La secuencia de convertir desde B-866**, con el constructor y el
+     * `estadoAlConvertir` del panel y no con literales: abrir la conversión pasa
+     * la `nueva` a `en-revision`, y guardar la actividad la pasa de ahí a
+     * `aceptada`. La regla no tiene grafo de transiciones, así que esto pasaba ya
+     * antes del ítem; lo que el caso fija es que **siga** pasando, y que la marca
+     * al abrir renueve `revision.en` —que es todo lo que B-866 compra—.
+     *
+     * Y la otra mitad: una segunda apertura sobre la misma propuesta no escribe,
+     * porque `en-revision → en-revision` no mueve el estado y la regla lo rechaza.
+     * Es el motivo por el que `estadoAlConvertir('en-revision')` es `null`.
+     */
+    it('B-866: abrir la conversión la marca en revisión, y guardar la acepta', async () => {
+      const { cambioDeRevision, estadoAlConvertir } = await import('@/lib/bandejaDePropuestas');
+      const ref = doc(db(), 'propuestas', 'p_convertir');
+      await setDoc(ref, documento());
+
+      const alAbrir = estadoAlConvertir('nueva');
+      expect(alAbrir).toBe('en-revision');
+      await updateDoc(ref, cambioDeRevision(UID, alAbrir!, serverTimestamp()));
+      const marcada = (await getDoc(ref)).data() as Propuesta;
+      expect(marcada.estado).toBe('en-revision');
+      expect(marcada.revision.en).not.toBeNull();
+      expect(marcada.revision.porUid).toBe(UID);
+
+      // Una segunda apertura no tendría qué escribir, y si lo intentara rebota.
+      expect(estadoAlConvertir('en-revision')).toBeNull();
+      await denegada(updateDoc(ref, cambioDeRevision(UID, 'en-revision', serverTimestamp())));
+
+      await updateDoc(
+        ref,
+        cambioDeRevision(UID, 'aceptada', serverTimestamp(), { actividadId: 'act_convertida' }),
+      );
+      const aceptada = (await getDoc(ref)).data() as Propuesta;
+      expect(aceptada.estado).toBe('aceptada');
+      expect(aceptada.revision.actividadId).toBe('act_convertida');
+    });
+
+    /**
      * **`fotoDescartada`, las tres cosas que la regla tiene que sostener** —
      * B-926. Es el flag que autoriza al trigger a borrar el original **sin
      * verificar ninguna copia**, así que lo que pase acá es irreversible.
