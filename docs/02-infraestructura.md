@@ -309,6 +309,23 @@ vos**, en la misma versión del panel.
   un adorno: con el script de reCAPTCHA bloqueado, `getToken` **no rechaza
   nunca** — el SDK espera a un widget que no se inicializa. Si el token llega
   tarde, el cartel se va.
+- **Y sigue mirando después del primero (B-1250).** El token se renueva solo
+  toda la tarde (`isTokenAutoRefreshEnabled`), y una renovación que fallaba a
+  media sesión —cambió la red, una VPN, una extensión que se activó— dejaba el
+  estado en `verificado`: el guardado volvía a decir «se cortó la conexión».
+  Ahora `activarAppCheck` se suscribe con `onTokenChanged(appCheck, siguiente,
+  error)` y cada aviso va al mismo store (`registrarEventoDeToken`): un error con
+  el navegador `verificado` lo pasa a `sin-verificar` y aparece el cartel; un
+  token bueno después lo vuelve a `verificado` y el cartel se va. **No parpadea
+  con las renovaciones normales**: un token nuevo con el estado ya en
+  `verificado` no avisa a nadie, y el SDK no manda `error` mientras quede un
+  token válido —si la renovación falla con el anterior vigente, el oyente recibe
+  ese token y el SDK reintenta con backoff—; el error llega recién cuando no hay
+  ninguno válido, que es cuando Firestore empieza a fallar de verdad. En el
+  sitio público, que también activa App Check pero nunca pide verificar, el
+  store está en `no-aplica` y los avisos no lo mueven. La suscripción no pide
+  nada a la red (el SDK ya tiene su oyente interno y el refresco andando), y el
+  import de `firebase/app-check` sigue siendo estático y el mismo.
 - **El fallo de guardado lo distingue.** `clasificarFalloGuardado` manda
   `unavailable`/`deadline-exceeded` con el navegador sin verificar al motivo
   `verificacion` en vez de `red`, y el cartel rojo dice «no es la conexión:
