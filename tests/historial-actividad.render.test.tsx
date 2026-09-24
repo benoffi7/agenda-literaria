@@ -55,6 +55,7 @@ afterEach(() => {
   vi.mocked(listarVersiones).mockReset();
   vi.mocked(leerActividad).mockReset();
   vi.mocked(restaurarCampo).mockReset();
+  vi.unstubAllGlobals();
 });
 
 const actividad = (over: Partial<ActividadConId> = {}): ActividadConId =>
@@ -191,6 +192,103 @@ describe('HistorialActividad — trampa 10, la dirección web sobre una activida
     // el `queryByText` de abajo pasaría por la razón equivocada.
     await screen.findByText('Descripción');
     expect(screen.queryByText('Dirección web')).toBeNull();
+  });
+});
+
+describe('HistorialActividad — avisa si las imágenes de la versión ya no están (B-852)', () => {
+  /**
+   * La comprobación es un `Image` del navegador (ver `cargaLaImagen`), y jsdom no
+   * carga recursos: sin este doble no dispara ni `onload` ni `onerror`. El doble
+   * contesta según la `url` y anota cuáles se pidieron, que es lo que prueba que
+   * la red se paga **solo** por las que pueden estar rotas.
+   */
+  const pedidas: string[] = [];
+  const rotas = new Set<string>();
+  class ImagenFalsa {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    set src(url: string) {
+      pedidas.push(url);
+      queueMicrotask(() => (rotas.has(url) ? this.onerror?.() : this.onload?.()));
+    }
+  }
+
+  const propia = (n: number) => ({
+    id: `img_${n}`,
+    url: `https://deposito/imagenes/${n}.jpg`,
+    epigrafe: '',
+    origen: 'propia',
+    portada: n === 1,
+    storagePath: `imagenes/${n}.jpg`,
+  });
+
+  const montarGaleria = async (rotasAhora: string[]) => {
+    pedidas.length = 0;
+    rotas.clear();
+    for (const u of rotasAhora) rotas.add(u);
+    vi.stubGlobal('Image', ImagenFalsa);
+
+    const hoy = actividad({ imagenes: [propia(1)] } as unknown as Partial<ActividadConId>);
+    const vieja = {
+      ...version(),
+      camposCambiados: ['imagenes'],
+      documento: { ...hoy, imagenes: [propia(1), propia(2), propia(3)] },
+    } as unknown as VersionConId;
+    vi.mocked(listarVersiones).mockResolvedValue([vieja]);
+    vi.mocked(leerActividad).mockResolvedValue(hoy);
+    vi.mocked(restaurarCampo).mockResolvedValue(undefined);
+    render(<HistorialActividad actividad={hoy} uid="uid-b" onRestaurado={vi.fn()} />);
+    await screen.findByText(/24 de agosto/);
+    const boton = await abrirYBuscarBoton();
+    // Control positivo: el botón es el de la galería y no el de otro campo.
+    await screen.findByText('Imágenes');
+    return boton;
+  };
+
+  it('con una imagen borrada, la confirmación lo dice y restaurar sigue adelante', async () => {
+    const boton = await montarGaleria(['https://deposito/imagenes/2.jpg']);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    await userEvent.click(boton);
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+    const texto = confirmSpy.mock.calls[0]![0] as string;
+    expect(texto).toMatch(/^¿Restaurar imágenes como estaba el /);
+    expect(texto).toContain('Una de las 3 imágenes de esa versión ya no está');
+    expect(texto).toContain('se restaura igual');
+    // Deja seguir: el aviso no frena ni recorta la restauración.
+    await waitFor(() => expect(restaurarCampo).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(restaurarCampo).mock.calls[0]![1]).toBe('imagenes');
+  });
+
+  it('solo comprueba las que hoy no están en la galería, y si cargan no avisa', async () => {
+    const boton = await montarGaleria([]);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    await userEvent.click(boton);
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+    // La 1 sigue en uso hoy: el barrido no la borró y no se paga por ella.
+    expect(pedidas.sort()).toEqual([
+      'https://deposito/imagenes/2.jpg',
+      'https://deposito/imagenes/3.jpg',
+    ]);
+    expect(confirmSpy.mock.calls[0]![0]).not.toContain('ya no está');
+    // Y cancelar sigue frenando la escritura, con o sin comprobación en el medio.
+    expect(restaurarCampo).not.toHaveBeenCalled();
+  });
+
+  it('restaurar otro campo no pide nada a la red — control negativo', async () => {
+    pedidas.length = 0;
+    vi.stubGlobal('Image', ImagenFalsa);
+    await montar();
+    const boton = await abrirYBuscarBoton();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    await userEvent.click(boton);
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+    expect(pedidas).toEqual([]);
   });
 });
 
