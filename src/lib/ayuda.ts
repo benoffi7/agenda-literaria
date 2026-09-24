@@ -1398,7 +1398,9 @@ export const CAPITULOS: CapituloAyuda[] = [
           'Y una propuesta que queda ahí sin que la toques se borra sola a los 30 días, con su ' +
           'imagen — el mismo plazo que la rechazada, contado distinto: desde la última vez que ' +
           'alguien la movió de estado. Marcarla «la estoy mirando» le renueva el plazo, y ' +
-          'reabrir una rechazada también; abrirla para leerla, no. La última semana la ficha ' +
+          'también devolverla con «Volver a sin mirar» o reabrir una rechazada; abrirla para ' +
+          'leerla, no. «Volver a sin mirar» no decide nada ni toca la foto: es la forma de ' +
+          'ganar tiempo sin rechazarla. La última semana la ficha ' +
           'dice cuántos días quedan. Ojo con eso: si la bandeja pasa un mes sin mirarse, una ' +
           'propuesta se puede borrar sin que nadie la haya abierto nunca. Las que aceptaste no ' +
           'se borran: ahí el contacto sirve, porque la actividad existe y puede haber que ' +

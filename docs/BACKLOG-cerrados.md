@@ -5055,7 +5055,7 @@ estáticos. El único import del SDK de analytics del proyecto es el `import()`
 dinámico de `src/lib/analytics.ts`.
 
 Un test vale más que el `npm run build` de una vez que pedía el ítem: la
-pregunta vuelve a hacerse sola en cada corrida. Ver B-117 y D-100.
+pregunta vuelve a hacerse sola en cada corrida. Ver B-117 y D-106.
 
 ### B-35 · Salir del panel con cambios sin guardar no avisa — ✅ hecho (2026-08-24)
 
@@ -5075,7 +5075,7 @@ necesita porque solo se ofrece desde el listado.
 La regla de cuándo preguntar salió a `src/lib/salida-del-panel.ts` (pura, con
 test) y en `AdminApp` quedó un solo `salirDe(accion)` que envuelve a las cuatro:
 una salida nueva se escribe con esa forma, así que no puede olvidarse del aviso.
-Ver **D-100**.
+Ver **D-109**.
 
 ### B-36 · La versión no distingue dos builds sucios del mismo commit — ❌ descartado (2026-08-24)
 

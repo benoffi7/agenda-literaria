@@ -22,8 +22,9 @@
  * convierte en enlace sola, sin tocar esta página.
  *
  * **Y ya pasó una vez**: desde B-901 la fila de librerías linkea a
- * `/guia/librerias` y las otras dos siguen diciendo «en camino», que es
- * exactamente el estado mixto para el que esta página se escribió.
+ * `/guia/librerias` y las otras siguieron diciendo «en camino» un tiempo, que
+ * es exactamente el estado mixto para el que esta página se escribió. Hoy las
+ * cuatro linkean.
  *
  * Lo que hace que ese flag no se quede viejo —que es el modo de falla evidente
  * de un booleano escrito a mano— es `tests/directorios.test.ts`, que lo cruza
@@ -48,7 +49,7 @@
  */
 import Base from '@/layouts/Base.astro';
 import { NOMBRE } from '@/lib/identidad';
-import { DIRECTORIOS, enumeracionDeLaGuia } from '@/lib/directorios';
+import { DIRECTORIOS, directoriosDisponibles, enumeracionDeLaGuia } from '@/lib/directorios';
 import { RUTA_CONTACTO } from '@/lib/rutasPublicas';
 import {
   claseBloque,
@@ -112,9 +113,23 @@ const DESCRIPCION =
       }
     </ul>
 
+    {/*
+      B-1600 — el cierre manda a cada formulario público (`rutaSumar`), derivado de
+      las secciones disponibles: antes decía «escribinos y lo cargamos», nombraba
+      tres y el sitio ya dejaba cargar cada ficha. El contacto queda para lo que
+      no entra en ninguna sección.
+    */}
     <p class="body-md mt-12 max-w-[65ch] text-super sm:mt-16">
-      ¿Tenés una librería, una suscripción o un espacio y querés que esté acá?{' '}
-      <a class={claseEnlace} href={RUTA_CONTACTO}>Escribinos</a> y lo cargamos.
+      ¿Conocés algo que falta? Sumalo desde su sección:{' '}
+      {directoriosDisponibles().map((d, i, lista) => (
+        <>
+          <a class={claseEnlace} href={d.rutaSumar}>
+            {d.titulo.charAt(0).toLowerCase() + d.titulo.slice(1)}
+          </a>
+          {i < lista.length - 2 ? ', ' : i === lista.length - 2 ? ' o ' : '.'}
+        </>
+      ))}{' '}
+      Si no entra en ninguna, <a class={claseEnlace} href={RUTA_CONTACTO}>escribinos</a>.
     </p>
   </main>
 </Base>

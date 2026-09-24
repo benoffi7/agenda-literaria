@@ -731,6 +731,13 @@ silenciosa: un panel nuevo llega a GA4 como `panel=otro`.
 
 ---
 
+
+**Cuenta también el clic del medio (B-1501).** Abrir un encuentro del tríptico en
+pestaña nueva con la rueda del mouse es un uso real y dispara `auxclick`, no
+`click`. `PanelesDeAhora` llama a `onEncuentro` con los dos gestos, con el
+criterio de `lib/clicQueAbre.ts` (D-995): el derecho no cuenta y un gesto no suma
+dos. El HTML del build sigue sin handler; mide la island, como decidió B-601.
+
 ### 7.6 · `filtro_sin_resultados` dice **cuál** filtro, no solo que hubo uno (B-798)
 
 **Lo preguntó el dueño el 2026-09-07 mirando la pantalla del panel:** «¿no hay
@@ -890,9 +897,11 @@ consentimiento: el banner y sus imágenes se sirven desde `public/`, y el clic
 abre el destino en una pestaña nueva, así que la página que mide sigue viva
 cuando el evento sale.
 
-**Los bordes, dichos:** se mide el clic y no la rueda del mouse —un clic del
-medio abre la pestaña con `auxclick` y no se cuenta—, igual que en el tríptico.
-Y en el tablero del panel la fila aparece sola (se deriva de
+**Los bordes, dichos:** desde B-1501 se mide también la rueda del mouse —un clic
+del medio abre la pestaña con `auxclick`, no con `click`—, con el mismo criterio
+que el tríptico y el botón de inscripción: `click` con el botón principal o
+`auxclick` con el del medio, nunca el derecho y nunca dos veces por el mismo gesto.
+El criterio vive en `src/lib/clicQueAbre.ts` (D-995). Y en el tablero del panel la fila aparece sola (se deriva de
 `NOMBRES_EVENTOS_SITIO`), pero con su nombre técnico hasta que
 `NOMBRE_DE_EVENTO` de `EstadisticasPanel.tsx` le escriba el castellano.
 

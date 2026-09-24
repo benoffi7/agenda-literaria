@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'volver-a-sin-mirar',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Una propuesta que estabas mirando puede volver a «sin mirar»',
+    detalle:
+      'Si marcaste una propuesta como «la estoy mirando» y todavía no la decidiste, «Volver a sin ' +
+      'mirar» la devuelve a la bandeja y le reinicia el plazo, sin rechazarla ni tocar su foto. ' +
+      'Es también lo que te sugiere el aviso cuando convertís una que se borra esta noche.',
+    donde: 'En Propuestas, en la ficha de una que estás mirando.',
+  },
+  {
     id: 'precios-para-revisar',
     fecha: '2026-09-24',
     version: '1.11.0',

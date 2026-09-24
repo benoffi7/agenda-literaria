@@ -512,3 +512,13 @@ describe('la descripción de `/guia` nombra las secciones que hay — B-1430', (
     }
   });
 });
+
+describe('el cierre de `/guia` manda a los formularios de cada sección — B-1600', () => {
+  it('recorre las secciones disponibles con su `rutaSumar`, y no manda solo a escribir', async () => {
+    const { readFileSync } = await import('node:fs');
+    const pagina = readFileSync('src/pages/guia/index.astro', 'utf8');
+    expect(pagina).toContain('directoriosDisponibles().map(');
+    expect(pagina).toContain('d.rutaSumar');
+    expect(pagina).not.toContain('Escribinos</a> y lo cargamos');
+  });
+});

@@ -12116,6 +12116,8 @@ y `arrobaPublicable` arriba), `functions/handle-instagram.js`,
 
 ## D-767 · El Instagram de una actividad se corrige al cargarlo, y no se frena al publicarlo
 
+> **Nota de B-1541 (2026-09-24):** donde esta entrada dice que las cuatro guías «frenan el publicado», es más: frenan **todo guardado**. Su `superRefine` corre igual para guardar y para publicar, y `firestore.rules` rechaza la misma forma en cualquier escritura, así que allá ni un borrador se guarda. El costo aceptado es más grande de lo que se escribió, y la decisión no cambia. La tabla de los criterios está en `03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo».
+
 > **Nota de B-1190 (2026-09-24):** el aviso explícito que esta decisión dejaba pendiente ya existe — [D-900](#d-900--el-instagram-que-no-se-reconoce-se-avisa-con-un-cartel-y-el-cartel-no-frena). Sigue sin frenar nada.
 
 > **Nota de B-1160 (2026-09-23):** el caso `casa#brandon` que esta decisión dejaba a la vista en el campo ya no se recorta — el saneador corta solo detrás de `instagram.com/`. El criterio de corregir al cargar y no frenar al publicar no cambia.
@@ -12735,6 +12737,8 @@ mantener: es un segundo recorrido de los imports, escrito de otra manera en
 
 ## D-900 · El Instagram que no se reconoce se avisa con un cartel, y el cartel no frena
 
+> **Nota de B-1541 (2026-09-24):** «las cuatro guías, que sí frenan el publicado» se lee «que frenan todo guardado»: el schema y `firestore.rules` rechazan la forma en cualquier escritura, no solo al publicar.
+
 **B-1190, 2026-09-24. El dueño tomó la opción recomendada.**
 
 D-767 decidió «no frenar», no «no avisar». Hasta acá, lo único que delataba un
@@ -12944,7 +12948,8 @@ aviso repetiría la ficha y se volvería cartel (D-273).
   cruza contra `decidirRetencion`.
 - La salida depende del estado. Las dos se salvan guardando; la `rechazada`
   además puede reabrirse. La `en-revision` no: «Rechazar» sería decidir algo para
-  ganar tiempo, y borra la foto. El aviso no lo aconseja (B-1490).
+  ganar tiempo, y borra la foto. El aviso no lo aconseja (B-1490). Desde B-1490
+  la `en-revision` tiene «Volver a sin mirar» y el aviso lo ofrece: D-1000.
 
 ## D-950 · El clic del banner de ciudad: vocabulario cerrado copiado, y el handler en el componente
 
@@ -12988,4 +12993,109 @@ texto sale tal cual (B-885), y solo cambia la respuesta a «¿hay autor?», que 
 consumidor ya sabía no pintar con `''`. Descartado: recortar el texto al emitir;
 el sitio y el evento de Calendar dirían cosas distintas, y la raíz —escribir
 `parsed.data`— sigue siendo la decisión abierta de B-891.
+
+## D-985 · El destino de una inscripción por DM se deriva al mostrar, y solo con esa vía
+
+**B-1540, 2026-09-24. Opción (a) del ítem.** `inscripcion.destino` con `via: 'dm'`
+es una cuenta de Instagram —la ficha pública ya lo leía así
+(`accionDeInscripcion`)— pero se guardaba sin criterio y el texto para redes y el
+evento de Calendar lo concatenaban crudo.
+
+**La decisión:** las salidas lo derivan con `arrobaInstagram` al mostrar, como
+D-763 hizo con el organizador en Calendar y B-1142 en el posteo. No se reescribe
+el documento ni se sanea al cargar (la opción (b)).
+
+**Por qué solo con `dm`:** el destino es polimórfico. Con WhatsApp es un teléfono,
+y `1155556666` pasa el alfabeto de Instagram; con formulario puede ser
+`casa.brandon`. Derivar sin mirar la vía publicaría una arroba que nadie escribió,
+y en un posteo la arroba menciona y notifica a esa cuenta.
+
+**Por qué no la (b):** sanear al cargar deja el dato limpio solo en las fichas que
+se editen después, así que las salidas igual tendrían que derivar para las viejas;
+y como la vía se puede cambiar después de cargar el destino, `formADocumento`
+tendría que decidir sobre un par de campos.
+
+**Costo:** ninguno en Calendar: `mismoEvento` compara dos recálculos con el mismo
+código, así que el deploy no reescribe los eventos ya publicados.
+
+## D-990 · `/guia` entró al sitemap con filas en camino, y `/proponer` no: el criterio es si la página rebota
+
+**B-835, tajada 2 paso 13 (2026-09-11). Escrita en B-899, 2026-09-24.** `/guia`
+entró al sitemap el día que nació, cuando ninguno de sus directorios existía y sus
+filas decían «en camino». En esa misma tanda, `/proponer` estaba **afuera**.
+
+**La decisión:** una página entra al sitemap si no promete nada que no cumpla, y no
+depende de si su contenido ya está completo. Una fila que dice «en camino» y no
+linkea no promete ningún camino. Un formulario que no puede recibir nada, sí:
+`/proponer` rebotaba hasta que las reglas aceptaron escrituras anónimas, y entró el
+2026-09-11 (B-896), cuando dejó de rebotar.
+
+**Por qué no es una página vacía.** El criterio de los hubs (B-108) y de
+`/mis-favoritos` (B-848) deja afuera la página que no tiene nada que decir y
+compite con las que sí. `/guia` contesta una pregunta —«¿esta agenda tiene algo más
+que actividades?»— y la contesta igual con cero secciones que con cuatro.
+
+**Descartado:** esconder las filas que todavía no existían: una página con una sola
+fila no se lee como un índice sino como una sección a medio hacer.
+
+**Hoy** las cuatro filas linkean. El criterio sigue valiendo para lo que venga: las
+rutas de cada directorio entran al sitemap **derivadas** de
+`directoriosDisponibles()`, y no escritas a mano.
+
+## D-991 · La bandeja de los directorios recibe las fichas: no las lee
+
+**B-834, tajada 2 paso 12. Escrita en B-899, 2026-09-24.** `DirectorioPanel` es una
+sola pantalla para los cuatro directorios. **Recibe** las fichas por props, ya
+mapeadas a `FichaDeDirectorio`, y no llama a ninguna lectura de Firestore: el
+`onSnapshot` y las escrituras son de la capa de cada entidad y de su panel.
+
+**Por qué.** Es § «Un control compartido recibe, no importa» de `05-patrones.md`.
+Si la bandeja llamara a `observarLibrerias()`, dejaría de ser la de los cuatro
+directorios y pasaría a ser la de librerías con un `if`. Lo que cambia entre
+entidades entra como función (`detalle`) y no como lista de campos. Y recibiendo,
+la pantalla se monta en los tests con fichas literales, sin Firestore ni sesión.
+
+**Lo que se desprende:** D-936 (`pideRevision` llega calculado) es este mismo
+criterio aplicado a un campo. Y los botones salen de recorrer `TRANSICIONES`
+(`lib/directorios.ts`), no de un `if` en el JSX.
+
+## D-995 · «Abrir el enlace» es `click` con el botón principal o `auxclick` con el del medio, y un solo módulo lo decide
+
+**B-1501, 2026-09-24.** Los tres eventos propios que miden un enlace
+(`clic_triptico`, `clic_banner_ciudad`, `clic_inscripcion`) usan `abreElEnlace` /
+`alAbrirEnlace` de `src/lib/clicQueAbre.ts`.
+
+- **El del medio sí, el derecho no.** El derecho también dispara `auxclick`
+  (`button === 2`), pero abre un menú y no el enlace. Atrás y adelante (3, 4)
+  tampoco cuentan.
+- **`click` exige `button === 0`**: si un navegador viejo manda `click` y
+  `auxclick` por la rueda, solo pasa el segundo. Un gesto, un evento. Enter y
+  ctrl/cmd-clic llegan como `click` con botón 0 y cuentan.
+- **Un módulo y no tres copias**, porque dos eventos hermanos que miden con
+  criterios distintos son peores que el faltante. Es puro para que lo importen el
+  script liso del detalle y los dos componentes sin traer nada más.
+- **No cambia dónde vive cada handler** (D-950, B-601): el tríptico sigue con la
+  prop, así que el HTML del build no lleva handler, y el banner lo tiene en el
+  componente.
+
+**Cuándo revisarlo.** Si se mide un cuarto enlace, usa este módulo;
+`tests/clic-que-abre.test.ts` ata a los tres de hoy.
+
+## D-1000 · «Volver a sin mirar» es un botón aparte, y la conversión no lo hace sola
+
+**B-1490, 2026-09-24. El dueño tomó la salida recomendada.** La `en-revision` tenía
+en la bandeja un solo movimiento, «Rechazar», que decide algo y borra la foto.
+Ahora tiene también «Volver a sin mirar»: `en-revision → nueva`, que firma
+`revision.en` y reinicia el plazo de retención.
+
+- **La regla no cambió**, igual que en D-930 y D-945: no tiene grafo, y la
+  transición mueve el estado.
+- **Es un botón, no parte de convertir.** Devolver a `nueva` al abrir la
+  conversión diría lo contrario de lo que pasa; D-930 sigue marcando `en-revision`.
+- **Solo la `en-revision`** (`estadoAlVolverASinMirar`): la `rechazada` ya tiene
+  «Reabrir».
+- **El aviso de B-1460 y el botón leen la misma función**, para que el aviso no
+  ofrezca una salida que la ficha no muestra.
+- Descartado: aceptar el hueco (guardar en borrador lo cierra para convertir, pero
+  no para la propuesta que se mira sin convertir).
 

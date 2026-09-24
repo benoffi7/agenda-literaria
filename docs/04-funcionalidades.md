@@ -1303,6 +1303,26 @@ personal sin fecha de vencimiento (decisión del dueño, B-843 punto 1); una
 propuesta cargada a mano nace `nueva`, y `nueva` ahora caduca. Lo que falta es
 solo la pantalla: nadie la construyó.
 
+### La Guía: la pestaña, `/guia` y la bandeja de los directorios (B-834, B-835)
+
+**En el sitio**, la barra tiene **una** pestaña «Guía», la tercera, después de
+«Agenda» y «Cartelera»: las tres primeras son las formas de buscar algo. Hay una
+pestaña y no cuatro porque los directorios viven bajo `/guia/*` (decisión del
+dueño, 2026-09-08). Desde B-900 también se llega por una fila del pie.
+
+`/guia` es el índice: una fila por directorio, que sale de `DIRECTORIOS`
+(`src/lib/directorios.ts`). Una fila con `disponible: false` muestra el título sin
+enlace y el rótulo «En camino». Hoy las cuatro linkean. Sumar un directorio es una
+entrada en `DIRECTORIOS`, y con ella aparecen solas la fila, el título del panel y
+la URL del sitemap (D-990).
+
+**En el panel**, cada directorio tiene su botón en el listado, solo para el admin,
+y todos abren la **misma bandeja** (`DirectorioPanel`): la lista de fichas, un
+filtro que arranca mostrando lo que espera decisión, el contador de precios para
+revisar (B-1411) y los botones que mueven el estado, sacados de recorrer
+`TRANSICIONES`. La bandeja **no edita** el contenido y **recibe** las fichas en vez
+de leerlas (D-991). Los estados son tres: `pendiente`, `publicado` y `rechazado`.
+
 ### Librerías — el primer directorio de la Guía (B-901)
 
 Botón «Librerías» en el listado, **solo para el admin**: el publicador no la ve, y
