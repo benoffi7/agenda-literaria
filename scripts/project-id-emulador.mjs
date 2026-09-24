@@ -36,7 +36,9 @@
  * no aísla y tampoco avisa: las reglas de Storage son globales (B-366) y el
  * emulador de Auth es de un solo proyecto, el de su `--project` de arranque
  * (B-1112). No invalida la elección; es su precio, y está escrito porque no
- * estarlo costó cerrar B-1021 y B-1030 con la causa equivocada.
+ * estarlo costó cerrar B-1021 y B-1030 con la causa equivocada. **Desde B-1201
+ * el de Auth no sale de acá**: lo lee `proyectoDelEmuladorDeAuth()`, más abajo,
+ * del emulador vivo (D-1020).
  *
  * **Verificado contra el emulador el 2026-09-02**, porque B-219 anotaba como
  * objeción que «choca con `singleProjectMode: true` de `firebase.json`»: no
@@ -103,6 +105,86 @@ export const RAIZ_DEL_CHECKOUT = fileURLToPath(new URL('..', import.meta.url));
  */
 export const PROJECT_ID_EMULADOR =
   process.env.PUBLIC_FIREBASE_PROJECT_ID || projectIdDeEmulador(RAIZ_DEL_CHECKOUT);
+
+/**
+ * El payload de un JWT, sin verificar la firma: son tokens del emulador.
+ *
+ * Degrada a `{}` con cualquier entrada rara. Es la única decodificación de este
+ * caso en el repo: `tests/emulador.ts` la re-exporta como `cargaDelToken` en vez
+ * de tener la suya (la clase de B-88).
+ *
+ * @param {string} jwt
+ * @returns {Record<string, unknown>}
+ */
+export const cargaDelJwt = (jwt) => {
+  const payload = String(jwt ?? '').split('.')[1];
+  if (!payload) return {};
+  try {
+    const carga = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return carga !== null && typeof carga === 'object' && !Array.isArray(carga) ? carga : {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * El proyecto que sirve **el emulador de Auth vivo** en `hostAuth` — B-1201, D-1020.
+ *
+ * ── Por qué Auth no usa `PROJECT_ID_EMULADOR` ──────────────────────────────
+ * El emulador de Auth es de **un solo proyecto**: el de su `--project` de
+ * arranque (D-730, B-1112). La huella de la ruta sirve para Firestore, que es
+ * multi-proyecto y es donde está el borrado que hay que aislar (B-219); para
+ * Auth solo coincide si el emulador se levantó desde el mismo checkout donde
+ * corre la suite. Desde cualquier otro, el Admin SDK escribía los claims en un
+ * namespace, el cliente entraba en otro, y la corrida no se podía hacer.
+ *
+ * Así que el `projectId` tiene **dos** dueños, uno por emulador: el de
+ * Firestore lo manda el checkout y el de Auth lo manda el emulador vivo. Se lee
+ * **solo al loguear** —que por definición necesita el emulador arriba—, así que
+ * no queda ninguna «corrida sin emulador» que resolver: la objeción que B-1201
+ * le hacía a esta salida desaparece cuando la lectura es perezosa y acotada a
+ * Auth.
+ *
+ * ── Cómo se lee ────────────────────────────────────────────────────────────
+ * El emulador no lo dice por ninguna vía consultable (medido para B-1112:
+ * `/emulator/v1/projects/{p}/config` contesta 200 para cualquier `p`, y el
+ * `projects` de identitytoolkit devuelve un número de proyecto, no el id). Lo
+ * que sí lo dice es el `aud` de un ID token, que lo emite el emulador: se abre
+ * una cuenta **anónima** por la API REST, se lee el `aud` y se la borra con su
+ * propio token. No toca Firestore ni ninguna cuenta con nombre.
+ *
+ * Devuelve `null` ante cualquier cosa rara —emulador caído, anónimas apagadas,
+ * token ilegible— y quien llama cae a `PROJECT_ID_EMULADOR`: es el
+ * comportamiento de antes, con la guarda de B-1112 detrás para nombrarlo.
+ *
+ * @param {string} hostAuth `host:puerto` del emulador de Auth.
+ * @param {typeof fetch} [pedir] inyectable para los tests, que no levantan nada.
+ * @returns {Promise<string | null>}
+ */
+export const proyectoDelEmuladorDeAuth = async (hostAuth, pedir = fetch) => {
+  const base = `http://${hostAuth}/identitytoolkit.googleapis.com/v1`;
+  /** @param {string} ruta @param {unknown} cuerpo */
+  const post = (ruta, cuerpo) =>
+    // El emulador no valida la API key, pero la exige presente.
+    pedir(`${base}/${ruta}?key=clave-del-emulador`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+      signal: AbortSignal.timeout(2000),
+    });
+  try {
+    const r = await post('accounts:signUp', { returnSecureToken: true });
+    if (!r.ok) return null;
+    const { idToken } = await r.json();
+    if (typeof idToken !== 'string') return null;
+    // La sonda no se queda: el store de Auth no se limpia entre corridas.
+    await post('accounts:delete', { idToken }).catch(() => undefined);
+    const aud = cargaDelJwt(idToken).aud;
+    return typeof aud === 'string' && aud !== '' ? aud : null;
+  } catch {
+    return null;
+  }
+};
 
 // CLI: `node scripts/project-id-emulador.mjs` lo escribe y nada más. Lo usa
 // `scripts/verificar-todo.sh`, que es bash y no puede importar un módulo.

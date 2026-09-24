@@ -1,6 +1,10 @@
 /** Helpers para los tests que necesitan los emuladores corriendo. */
 
-import { PROJECT_ID_EMULADOR } from '../scripts/project-id-emulador.mjs';
+import {
+  PROJECT_ID_EMULADOR,
+  cargaDelJwt,
+  proyectoDelEmuladorDeAuth,
+} from '../scripts/project-id-emulador.mjs';
 
 export const HOST_FIRESTORE = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080';
 
@@ -175,9 +179,8 @@ export const cargarReglas = async (
 /**
  * ¿El emulador de Auth sirve el proyecto contra el que creemos estar corriendo?
  *
- * **D-730, B-1112.** Ésta es la única de los tres bordes que se puede detectar, y
- * hubo que medirla para saber cómo: el emulador de Auth es de **un solo proyecto**
- * —el de su `--project` de arranque— y no lo dice por ninguna vía consultable.
+ * **D-730, B-1112.** El emulador de Auth es de **un solo proyecto** —el de su
+ * `--project` de arranque— y no lo dice por ninguna vía consultable.
  *
  * Lo que **no** sirve, medido el 2026-09-17 contra un emulador efímero para que
  * nadie lo vuelva a intentar:
@@ -185,20 +188,27 @@ export const cargarReglas = async (
  *  - **`/emulator/v1/projects/{p}/config` responde `200` para cualquier proyecto**,
  *    propio o ajeno, con el body idéntico. Por eso `emuladorAuthVivo()` no puede
  *    afinarse a `status === 200` y quedar de detector: daría verde con aire de red.
- *  - **`"singleProjectMode": false` tampoco particiona.** Está puesto en
- *    `firebase.json` y solo controla el aviso por stderr; con el flag en los dos
- *    estados el `aud` del ID token es el del emulador y el claim llega `undefined`.
- *    El emulador de Auth sirve un proyecto y punto.
+ *  - **`"singleProjectMode": false` tampoco particiona.** Solo controla el aviso
+ *    por stderr; con el flag en los dos estados el `aud` del ID token es el del
+ *    emulador y el claim llega `undefined`. El emulador de Auth sirve un proyecto
+ *    y punto.
  *
- * Lo que sí sirve es el `aud` del ID token después del primer login: lo emite el
- * emulador, así que dice **su** proyecto y no el que pedimos. Si no coinciden, el
- * Admin SDK escribió el claim en un namespace de Auth y el cliente entró en otro —
- * el uid con claims no existe del lado donde el cliente entra y `esAdmin()` da
- * `false`.
+ * Lo que sí sirve es el `aud` de un ID token: lo emite el emulador, así que dice
+ * **su** proyecto y no el que pedimos.
  *
- * **Por qué vale la pena:** sin esto el síntoma es un `PERMISSION_DENIED` sobre un
- * documento perfectamente válido, y encima **asimétrico** — un uid que ya existe en
- * el store del emulador pasa, y uno nuevo no, con el mismo código. Eso ya costó
+ * **Desde B-1201 (D-1020) ese `aud` se lee ANTES de escribir los claims, y no
+ * solo después para quejarse.** `proyectoDeAuth()` le pregunta al emulador vivo
+ * con una cuenta anónima de sonda (`proyectoDelEmuladorDeAuth()`, en
+ * `scripts/project-id-emulador.mjs`) y `tokenDe()` abre el Admin SDK de Auth en
+ * **ese** proyecto. Firestore sigue en `PROJECT_ID`, la base de este checkout: es
+ * multi-proyecto y es donde está el borrado que B-219 aísla. O sea que la regla
+ * «levantá el emulador desde el checkout donde corrés» ya no existe: cualquier
+ * checkout puede correr contra el emulador que haya arriba.
+ *
+ * La guarda de abajo queda, y ahora solo puede disparar si la sonda falló —cayó
+ * al `PROJECT_ID` de siempre— y el emulador resultó servir otro. Sin ella, el
+ * síntoma sería un `PERMISSION_DENIED` sobre un documento válido, y **asimétrico**:
+ * un uid que ya existe en el store del emulador pasa, y uno nuevo no. Eso ya costó
  * cerrar B-1021 y B-1030 con la causa equivocada.
  *
  * Corre **una sola vez** por proceso (no por archivo) y **no se saltea**: si se
@@ -214,16 +224,21 @@ let proyectoDeAuthVerificado = false;
  * de este chequeo es no disparar** — corre en el login de todos los tests de
  * integración, así que un falso positivo acá se parecería demasiado al bug que
  * viene a nombrar.
+ *
+ * Es la misma función que usa la sonda de B-1201: una sola decodificación.
  */
-export const cargaDelToken = (jwt: string): Record<string, unknown> => {
-  const payload = jwt.split('.')[1];
-  if (!payload) return {};
-  try {
-    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-};
+export const cargaDelToken: (jwt: string) => Record<string, unknown> = cargaDelJwt;
+
+let proyectoDeAuthResuelto: Promise<string> | null = null;
+
+/**
+ * El proyecto del emulador de Auth vivo, o `PROJECT_ID` si no se pudo leer — B-1201.
+ *
+ * Se resuelve una vez por proceso, en el primer login: el emulador no cambia de
+ * proyecto a mitad de una corrida, y la sonda abre y borra una cuenta.
+ */
+export const proyectoDeAuth = (): Promise<string> =>
+  (proyectoDeAuthResuelto ??= proyectoDelEmuladorDeAuth(HOST_AUTH).then((p) => p ?? PROJECT_ID));
 
 /** ¿Hace falta verificar, o ya se hizo en este proceso? */
 export const faltaVerificarProyectoDeAuth = (): boolean => !proyectoDeAuthVerificado;
@@ -241,27 +256,27 @@ export const desajusteDeProyecto = (idToken: string, nuestro: string): string | 
 };
 
 /**
- * Falla nombrando los dos proyectos si el emulador de Auth no es el nuestro.
+ * Falla nombrando los dos proyectos si el emulador de Auth no es el esperado.
  *
- * Se le pasa el ID token del primer login. Idempotente: la segunda llamada no
- * hace nada.
+ * Se le pasa el ID token del primer login y el proyecto donde se escribieron los
+ * claims —el de `proyectoDeAuth()`—. Idempotente: la segunda llamada no hace nada.
  */
-export const verificarProyectoDeAuth = (idToken: string): void => {
+export const verificarProyectoDeAuth = (idToken: string, esperado: string = PROJECT_ID): void => {
   if (proyectoDeAuthVerificado) return;
   proyectoDeAuthVerificado = true;
 
-  const aud = desajusteDeProyecto(idToken, PROJECT_ID);
+  const aud = desajusteDeProyecto(idToken, esperado);
   if (aud === null) return;
 
   throw new Error(
-    `El emulador de Auth sirve el proyecto "${aud}" y este checkout corre contra ` +
-      `"${PROJECT_ID}" (D-730, B-1112).\n` +
+    `El emulador de Auth sirve el proyecto "${aud}" y los claims se escribieron en ` +
+      `"${esperado}" (D-730, B-1112, B-1201).\n` +
       'El Admin SDK escribe los claims en un namespace de Auth y el cliente entra ' +
       'en otro, así que `esAdmin()` va a dar `false` sobre documentos válidos — y ' +
       'de forma asimétrica: un uid que ya exista en el emulador va a pasar igual.\n' +
-      'El emulador de Auth es de un solo proyecto: el de su `--project` de arranque. ' +
-      'Levantalo desde este checkout, o corré con ' +
-      `PUBLIC_FIREBASE_PROJECT_ID="${aud}".`,
+      'Desde B-1201 el proyecto de Auth se le pregunta al emulador con una cuenta ' +
+      `anónima en ${HOST_AUTH}; si llegaste acá, esa sonda no contestó. ` +
+      '¿Tiene el emulador las cuentas anónimas apagadas, o es otro proceso?',
   );
 };
 
