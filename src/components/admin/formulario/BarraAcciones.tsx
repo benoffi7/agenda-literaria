@@ -36,7 +36,17 @@
  * lleva a su sección. Y no aparece en solo lectura: quien no puede guardar
  * tampoco puede cargar lo que falta, y un aviso sin acción es ruido. El qué y el
  * texto viven en `lib/formulario/enGoogle.ts`.
+ *
+ * ── B-1700 · la fila no cambia de texto a medio escribir ──────────────────
+ * «(lo cargado no es una dirección)» depende de cómo quedó escrita la web, y
+ * `https://…` a medio tipear no enlaza: la fila lo decía en cada tecla y lo
+ * retiraba al final. Ahora, entre la primera tecla y la salida del campo, va la
+ * etiqueta neutra (`mientrasSeEscribe`), y la variante aparece al salir — o
+ * desde el vamos si la actividad ya la traía guardada. Es el `editando` de
+ * `AvisoInstagram` (D-900), escuchado desde acá porque la barra no es dueña del
+ * campo: el `input` y el `focusout` burbujean hasta el documento.
  */
+import { useEffect, useState } from 'react';
 import { claseBotonPrimario, claseBotonSecundario } from '@/components/campos/Campo';
 import {
   nombraSecciones,
@@ -45,6 +55,7 @@ import {
 } from '@/lib/formulario/camposFaltantes';
 import {
   ENCABEZADO_EN_GOOGLE,
+  etiquetaEnGoogle,
   separadorEnGoogle,
   type PerdidaEnGoogle,
 } from '@/lib/formulario/enGoogle';
@@ -128,6 +139,36 @@ function Nombres({
   );
 }
 
+/**
+ * B-1700 — cuál de `campos` (ids del DOM) se está tipeando: se prende con la
+ * primera tecla (`input`) y se apaga al salir (`focusout`), como el `editando` de
+ * `SeccionQuien`. Enfocar sin tipear no lo prende: el valor sigue asentado.
+ */
+function useCampoEnEdicion(campos: readonly string[]): string | null {
+  const [editando, setEditando] = useState<string | null>(null);
+  const clave = campos.join(' ');
+  useEffect(() => {
+    const mirados = new Set(clave.split(' ').filter(Boolean));
+    const alTipear = (e: Event) => {
+      const id = (e.target as HTMLElement | null)?.id;
+      if (id && mirados.has(id)) setEditando(id);
+    };
+    // Sin mirar `mirados`: si la web se volvió válida mientras se tipeaba, la
+    // pérdida se fue de la lista, y salir del campo igual tiene que apagarlo.
+    const alSalir = (e: Event) => {
+      const id = (e.target as HTMLElement | null)?.id;
+      if (id) setEditando((actual) => (actual === id ? null : actual));
+    };
+    document.addEventListener('input', alTipear);
+    document.addEventListener('focusout', alSalir);
+    return () => {
+      document.removeEventListener('input', alTipear);
+      document.removeEventListener('focusout', alSalir);
+    };
+  }, [clave]);
+  return editando;
+}
+
 export function BarraAcciones({
   guardando,
   fallo,
@@ -147,6 +188,9 @@ export function BarraAcciones({
   // B-813 — el mismo momento que el consejo: cuando ya no queda nada que frene.
   const avisoEnGoogle =
     !soloLectura && !fallo && !hayFaltantes && !hayPendientes && enGoogle.length > 0;
+  const editando = useCampoEnEdicion(
+    enGoogle.flatMap((p) => (p.mientrasSeEscribe ? [p.mientrasSeEscribe.campo] : [])),
+  );
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-papel/95 px-segura pt-3 pb-segura backdrop-blur">
@@ -202,7 +246,7 @@ export function BarraAcciones({
                     onClick={() => onIrASeccion(p.seccion)}
                     className="underline decoration-dotted underline-offset-2"
                   >
-                    {p.etiqueta}
+                    {etiquetaEnGoogle(p, editando)}
                   </button>
                 </span>
               ))}

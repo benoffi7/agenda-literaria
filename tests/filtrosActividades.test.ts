@@ -5,6 +5,7 @@ import {
   ETIQUETA_DESTACADO,
   chipsDeTags,
   conTagAlternada,
+  cuandosDeLaPestana,
   ETIQUETA_CUANDO,
   ETIQUETA_ESTADO,
   ETIQUETA_MODALIDAD,
@@ -270,9 +271,44 @@ describe('filtrar sobre lo que ya está en memoria', () => {
     expect(ids(filtrar(sinArancel, FILTROS_VACIOS, ahora))).toContain('viejo');
   });
 
-  it('«con algo por venir» y su complemento parten el listado en dos', () => {
+  it('«con algo por venir» deja las que tienen un encuentro por pasar', () => {
     expect(ids(filtrar(datos, con({ cuando: 'por-venir' }), ahora))).toEqual(['club', 'charla']);
-    expect(ids(filtrar(datos, con({ cuando: 'sin-futuro' }), ahora))).toEqual(['taller']);
+  });
+
+  /*
+   * B-1720 — antes era `'sin-futuro'`, el complemento de «con algo por venir», y
+   * devolvía también `taller`, que ya pasó. Desde las pestañas (D-1050) eso vive
+   * en «Pasadas», y lo único que el filtro encontraba en «Vigentes» eran las que
+   * no tienen ninguna fecha: ahora filtra eso, y dice eso.
+   */
+  it('«sin fechas cargadas» deja solo las que no tienen ninguna, ni pasada', () => {
+    const conBorrador = [
+      ...datos,
+      acto({ id: 'borrador' }),
+      // Una fecha cancelada es una fecha cargada, como en `esPasada`.
+      acto({ id: 'cancelada', sesiones: [sesion('2026-09-20T22:00:00Z', { cancelada: true })] }),
+    ];
+    expect(ETIQUETA_CUANDO['sin-fechas']).toBe('Sin fechas cargadas');
+    expect(ids(filtrar(conBorrador, con({ cuando: 'sin-fechas' }), ahora))).toEqual(['borrador']);
+  });
+
+  it('el eje «Fechas» se ofrece entero solo en «Vigentes» (B-1720)', () => {
+    expect(cuandosDeLaPestana('vigentes', 'cualquiera')).toEqual(CUANDOS);
+    // En «Pasadas» las otras dos darían cero siempre.
+    expect(cuandosDeLaPestana('pasadas', 'cualquiera')).toEqual(['cualquiera']);
+    // Salvo el que venga puesto de «Vigentes»: hay que poder verlo y sacarlo.
+    expect(cuandosDeLaPestana('pasadas', 'sin-fechas')).toEqual(['cualquiera', 'sin-fechas']);
+  });
+
+  it('en «Pasadas», las dos opciones del eje dan cero siempre (por eso no se ofrecen)', () => {
+    const pasadas = (cuando: 'por-venir' | 'sin-fechas') =>
+      listaVisible(datos, con({ cuando, pestana: 'pasadas' }), ORDEN_POR_DEFECTO, ahora);
+    // Control: hay una pasada en los datos.
+    expect(ids(listaVisible(datos, con({ pestana: 'pasadas' }), ORDEN_POR_DEFECTO, ahora))).toEqual([
+      'taller',
+    ]);
+    expect(pasadas('por-venir')).toEqual([]);
+    expect(pasadas('sin-fechas')).toEqual([]);
   });
 
   it('los filtros se cruzan entre sí', () => {

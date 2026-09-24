@@ -1,7 +1,6 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import { Campo, claseBotonChip, claseBotonChipActivo, claseInput } from '@/components/campos/Campo';
 import {
-  CUANDOS,
   DESTACADOS,
   ETIQUETA_CUANDO,
   ETIQUETA_DESTACADO,
@@ -12,6 +11,7 @@ import {
   cantidadDeFiltros,
   chipsDeTags,
   conTagAlternada,
+  cuandosDeLaPestana,
   etiquetaDeOrden,
   legible,
   type Filtros,
@@ -98,6 +98,7 @@ export function FiltrosActividades({
 
   const cambiar = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) =>
     onFiltros({ ...filtros, [campo]: valor });
+  const cuandos = cuandosDeLaPestana(filtros.pestana ?? 'vigentes', filtros.cuando);
 
   /**
    * B-888 — las cuentas que aparecen en los datos **y** tienen mail en el
@@ -354,24 +355,31 @@ export function FiltrosActividades({
               </Campo>
             )}
 
-            <Campo
-              label="Fechas"
-              htmlFor={`${id}-cuando`}
-              ayuda="«Con algo por venir» mira los encuentros no cancelados que todavía no pasaron."
-            >
-              <select
-                id={`${id}-cuando`}
-                className={claseInput}
-                value={filtros.cuando}
-                onChange={(e) => cambiar('cuando', e.target.value as Filtros['cuando'])}
+            {/*
+              B-1720 — solo en «Vigentes»: en «Pasadas» ninguna opción recorta
+              nada, salvo que el filtro venga puesto de la otra pestaña y haya
+              que poder sacarlo (`cuandosDeLaPestana`).
+            */}
+            {cuandos.length > 1 && (
+              <Campo
+                label="Fechas"
+                htmlFor={`${id}-cuando`}
+                ayuda="«Con algo por venir» mira los encuentros no cancelados que todavía no pasaron; «Sin fechas cargadas», las que todavía no tienen ninguno."
               >
-                {CUANDOS.map((c) => (
-                  <option key={c} value={c}>
-                    {ETIQUETA_CUANDO[c]}
-                  </option>
-                ))}
-              </select>
-            </Campo>
+                <select
+                  id={`${id}-cuando`}
+                  className={claseInput}
+                  value={filtros.cuando}
+                  onChange={(e) => cambiar('cuando', e.target.value as Filtros['cuando'])}
+                >
+                  {cuandos.map((c) => (
+                    <option key={c} value={c}>
+                      {ETIQUETA_CUANDO[c]}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
 
             {/*
               B-888 — «Quién la cargó», el tercer descarte de D-74 que se da

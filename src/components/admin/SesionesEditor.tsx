@@ -312,9 +312,13 @@ export function SesionesEditor({
       }
       error={errorDe('sesiones')}
       etiquetaBorrar={(s) => `Borrar encuentro ${s.inicio || ''}`}
-      claseFila={(s) =>
-        s.cancelada ? 'border-borde bg-black/[0.03] opacity-60' : 'border-borde bg-white'
-      }
+      /*
+        B-1570 — la fila cancelada cambia de fondo pero **no se atenúa entera**.
+        Con `opacity-60` en el `<li>`, el «Motivo» de B-98 —que se tipea y que es
+        público— quedaba al 60 % como el resto. Lo que se atenúa es el bloque de
+        fecha y tema, más abajo, que es lo que ya no rige.
+      */
+      claseFila={(s) => (s.cancelada ? 'border-borde bg-black/[0.03]' : 'border-borde bg-white')}
       insignias={(s) =>
         s.calendarEventId ? (
           <span
@@ -441,125 +445,133 @@ export function SesionesEditor({
         const resumen = resumirSesion(s);
         return (
           <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <CampoDeFechaYHora
-                label="Inicio"
-                id={`sesion-inicio-${s.id}`}
-                requerido
-                error={errorDe(ruta('inicio'))}
-                value={s.inicio}
-                onChange={(v) => reemplazar(s.id, (x) => conInicioNuevo(x, v))}
-                formato={hora.formato}
-                vista={hora.vista}
-              />
-              <CampoDeFechaYHora
-                label="Fin"
-                id={`sesion-fin-${s.id}`}
-                requerido
-                error={errorDe(ruta('fin'))}
-                value={s.fin}
-                onChange={(v) => editar({ fin: v })}
-                formato={hora.formato}
-                vista={hora.vista}
-              />
-              <label className="flex flex-col gap-1 text-xs">
-                Tema
-                <input
-                  value={s.tema}
-                  onChange={(e) => editar({ tema: e.target.value })}
-                  placeholder="Ejercicio de voz"
-                  className={claseInput}
-                />
-              </label>
-              {/*
-                B-181 — de qué opción es este encuentro. Aparece **solo si hay
-                opciones**, que es la mitad del diseño: una actividad normal no
-                ve ni una casilla nueva.
-
-                Sin «— elegí una —» no habría forma de representar el estado en
-                que nace un encuentro de un ciclo que ya tiene opciones y que se
-                agregó desde otro lado (un duplicado, un borrador viejo): el
-                `select` mostraría la primera opción como si alguien la hubiera
-                elegido, y el schema no tendría nada que rechazar.
-              */}
-              {comisiones.length > 0 && (
-                <Campo
-                  label="Opción"
-                  htmlFor={`sesion-comision-${s.id}`}
+            {/*
+              B-1570 — lo que se atenúa de un encuentro cancelado: fechas, tema,
+              opción, lectura, los saltos y el día de la semana. La casilla
+              «Cancelado» y el «Motivo» quedan afuera, a opacidad plena: una se
+              destilda y el otro se escribe.
+            */}
+            <div data-bloque="fecha-y-tema" className={s.cancelada ? 'opacity-60' : undefined}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <CampoDeFechaYHora
+                  label="Inicio"
+                  id={`sesion-inicio-${s.id}`}
                   requerido
-                  error={errorDe(ruta('comisionId'))}
-                >
-                  <select
-                    id={`sesion-comision-${s.id}`}
-                    value={s.comisionId ?? ''}
-                    onChange={(e) => editar({ comisionId: e.target.value || null })}
-                    className={claseInput}
-                  >
-                    <option value="">— elegí una —</option>
-                    {comisiones.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.etiqueta || 'Sin nombre'}
-                      </option>
-                    ))}
-                  </select>
-                </Campo>
-              )}
-              {mostrarLectura !== false && (
+                  error={errorDe(ruta('inicio'))}
+                  value={s.inicio}
+                  onChange={(v) => reemplazar(s.id, (x) => conInicioNuevo(x, v))}
+                  formato={hora.formato}
+                  vista={hora.vista}
+                />
+                <CampoDeFechaYHora
+                  label="Fin"
+                  id={`sesion-fin-${s.id}`}
+                  requerido
+                  error={errorDe(ruta('fin'))}
+                  value={s.fin}
+                  onChange={(v) => editar({ fin: v })}
+                  formato={hora.formato}
+                  vista={hora.vista}
+                />
                 <label className="flex flex-col gap-1 text-xs">
-                  Lectura asignada
+                  Tema
                   <input
-                    value={s.lectura}
-                    onChange={(e) => editar({ lectura: e.target.value })}
-                    placeholder="Cap. 1-4"
+                    value={s.tema}
+                    onChange={(e) => editar({ tema: e.target.value })}
+                    placeholder="Ejercicio de voz"
                     className={claseInput}
                   />
                 </label>
+                {/*
+                  B-181 — de qué opción es este encuentro. Aparece **solo si hay
+                  opciones**, que es la mitad del diseño: una actividad normal no
+                  ve ni una casilla nueva.
+
+                  Sin «— elegí una —» no habría forma de representar el estado en
+                  que nace un encuentro de un ciclo que ya tiene opciones y que se
+                  agregó desde otro lado (un duplicado, un borrador viejo): el
+                  `select` mostraría la primera opción como si alguien la hubiera
+                  elegido, y el schema no tendría nada que rechazar.
+                */}
+                {comisiones.length > 0 && (
+                  <Campo
+                    label="Opción"
+                    htmlFor={`sesion-comision-${s.id}`}
+                    requerido
+                    error={errorDe(ruta('comisionId'))}
+                  >
+                    <select
+                      id={`sesion-comision-${s.id}`}
+                      value={s.comisionId ?? ''}
+                      onChange={(e) => editar({ comisionId: e.target.value || null })}
+                      className={claseInput}
+                    >
+                      <option value="">— elegí una —</option>
+                      {comisiones.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.etiqueta || 'Sin nombre'}
+                        </option>
+                      ))}
+                    </select>
+                  </Campo>
+                )}
+                {mostrarLectura !== false && (
+                  <label className="flex flex-col gap-1 text-xs">
+                    Lectura asignada
+                    <input
+                      value={s.lectura}
+                      onChange={(e) => editar({ lectura: e.target.value })}
+                      placeholder="Cap. 1-4"
+                      className={claseInput}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/*
+                B-186 — la operación que el reporte llama «correr la fecha», sin
+                almanaque. Mueve inicio y fin juntos, así que un encuentro que se
+                corre una semana es un toque y no dos recorridos de calendario.
+              */}
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-tinta/55">Correr</span>
+                {SALTOS_DE_FECHA.map(({ dias, etiqueta }) => (
+                  <button
+                    key={dias}
+                    type="button"
+                    disabled={resumen.dia === null}
+                    onClick={() => {
+                      // B-186 — toda la hipótesis del arreglo es que esto reemplaza
+                      // al almanaque nativo, que se cierra solo y no es nuestro para
+                      // arreglar. Sin medirlo, el ítem queda cerrado por fe.
+                      medirFuncion('encuentro-correr', undefined, dias);
+                      reemplazar(s.id, (x) => correrSesion(x, dias));
+                    }}
+                    aria-label={`Correr el encuentro ${i + 1} ${nombreDelSalto(dias)}`}
+                    className={`${claseBotonFila} border border-borde bg-white text-tinta/70 hover:bg-black/[0.03] disabled:opacity-40`}
+                  >
+                    {etiqueta}
+                  </button>
+                ))}
+              </div>
+
+              {/*
+                En qué día de la semana cae, que es lo único que el almanaque da y
+                el tipeo no: con esto, escribir la fecha a mano se puede verificar
+                de un vistazo.
+              */}
+              {resumen.dia && (
+                <p
+                  className={`mt-2 text-xs ${
+                    resumen.finAntesDelInicio ? 'font-medium text-acento' : 'text-tinta/55'
+                  }`}
+                >
+                  {resumen.finAntesDelInicio
+                    ? `Cae ${resumen.dia}, pero el fin no es posterior al inicio.`
+                    : `Cae ${resumen.dia}${resumen.duracion ? `, dura ${resumen.duracion}` : ''}.`}
+                </p>
               )}
             </div>
-
-            {/*
-              B-186 — la operación que el reporte llama «correr la fecha», sin
-              almanaque. Mueve inicio y fin juntos, así que un encuentro que se
-              corre una semana es un toque y no dos recorridos de calendario.
-            */}
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-tinta/55">Correr</span>
-              {SALTOS_DE_FECHA.map(({ dias, etiqueta }) => (
-                <button
-                  key={dias}
-                  type="button"
-                  disabled={resumen.dia === null}
-                  onClick={() => {
-                    // B-186 — toda la hipótesis del arreglo es que esto reemplaza
-                    // al almanaque nativo, que se cierra solo y no es nuestro para
-                    // arreglar. Sin medirlo, el ítem queda cerrado por fe.
-                    medirFuncion('encuentro-correr', undefined, dias);
-                    reemplazar(s.id, (x) => correrSesion(x, dias));
-                  }}
-                  aria-label={`Correr el encuentro ${i + 1} ${nombreDelSalto(dias)}`}
-                  className={`${claseBotonFila} border border-borde bg-white text-tinta/70 hover:bg-black/[0.03] disabled:opacity-40`}
-                >
-                  {etiqueta}
-                </button>
-              ))}
-            </div>
-
-            {/*
-              En qué día de la semana cae, que es lo único que el almanaque da y
-              el tipeo no: con esto, escribir la fecha a mano se puede verificar
-              de un vistazo.
-            */}
-            {resumen.dia && (
-              <p
-                className={`mt-2 text-xs ${
-                  resumen.finAntesDelInicio ? 'font-medium text-acento' : 'text-tinta/55'
-                }`}
-              >
-                {resumen.finAntesDelInicio
-                  ? `Cae ${resumen.dia}, pero el fin no es posterior al inicio.`
-                  : `Cae ${resumen.dia}${resumen.duracion ? `, dura ${resumen.duracion}` : ''}.`}
-              </p>
-            )}
 
             <label className="mt-2 flex items-center gap-2 text-xs text-tinta/70">
               <input

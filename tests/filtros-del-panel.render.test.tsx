@@ -295,3 +295,49 @@ describe('el filtro por autor muestra mails, nunca uids — B-888', () => {
     expect(screen.queryByLabelText('Quién la cargó')).toBeNull();
   });
 });
+
+/**
+ * B-1720 — el eje «Fechas» según la pestaña. La condición es una rama del JSX y
+ * se ve igual en el fuente se cumpla o no: por eso va montado.
+ */
+describe('«Fechas» se ofrece solo en «Vigentes» — B-1720', () => {
+  const opcionesDe = () =>
+    within(screen.getByLabelText('Fechas'))
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+
+  it('en «Vigentes» ofrece las tres, con «Sin fechas cargadas»', async () => {
+    await pintar([acto({ id: 'a' })]);
+    expect(opcionesDe()).toEqual(['Cualquier fecha', 'Con algo por venir', 'Sin fechas cargadas']);
+  });
+
+  it('en «Pasadas» no se dibuja: ninguna opción recortaría nada', async () => {
+    /*
+     * La pestaña no cuenta como filtro (D-1050), así que el panel arranca
+     * cerrado y se abre con un click, como en `pintar`.
+     *
+     * MUTACIÓN PROBADA: sacando el `cuandos.length > 1 &&` del componente, este
+     * caso queda en rojo con el desplegable a la vista.
+     */
+    await pintar([acto({ id: 'a' })], { ...FILTROS_VACIOS, pestana: 'pasadas' });
+    await userEvent.click(screen.getByRole('button', { name: /^Filtros/ }));
+    // Control: el panel está abierto.
+    expect(screen.getByLabelText('Estado')).toBeTruthy();
+    expect(screen.queryByLabelText('Fechas')).toBeNull();
+  });
+
+  it('en «Pasadas» con el filtro puesto desde «Vigentes», aparece para poder sacarlo', async () => {
+    const onFiltros = await pintar([acto({ id: 'a' })], {
+      ...FILTROS_VACIOS,
+      pestana: 'pasadas',
+      cuando: 'sin-fechas',
+    });
+    expect(opcionesDe()).toEqual(['Cualquier fecha', 'Sin fechas cargadas']);
+    await userEvent.selectOptions(screen.getByLabelText('Fechas'), 'cualquiera');
+    expect(onFiltros).toHaveBeenCalledWith({
+      ...FILTROS_VACIOS,
+      pestana: 'pasadas',
+      cuando: 'cualquiera',
+    });
+  });
+});
