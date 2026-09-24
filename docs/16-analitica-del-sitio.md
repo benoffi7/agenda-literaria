@@ -825,6 +825,71 @@ es la que el §6 cuida: el vocabulario nuevo y el armador del payload. La
 detección —los cuatro pasajes de `filtrarPublico`— vive en `Buscador.tsx`, o sea
 **solo donde hay filtros**, y solo corre cuando la lista quedó vacía.
 
+### 7.7 · El cuarto evento propio: el banner de una ciudad (B-963)
+
+**B-961** puso un banner arriba del listado cuando el filtro de ciudad elige una
+ciudad que tiene uno —hoy, Mar del Plata— y **no emitía nada**. La primera
+pregunta de quien lo puso va a ser «¿sirve?», y es la misma que `clic_triptico`
+contesta para el tríptico: **¿alguien lo toca?**
+
+| | |
+|---|---|
+| Nombre | `clic_banner_ciudad` |
+| Parámetro | **`ciudad`**, y nada más: el **slug** de la ciudad del banner, de un vocabulario cerrado —`CIUDADES_CON_BANNER`, hoy `mar-del-plata`— |
+| Dónde vive la especificación | `EVENTOS_SITIO` en `src/lib/analyticsSitio.ts`, con saneador `enum`; `EVENTOS_PROPIOS` de `functions/analitica.js` lo suma para que el resumen del panel lo lea |
+| Dónde se emite | el `onClick` del enlace de `src/components/publico/BannerDeCiudad.tsx` |
+| Qué contesta | «¿se toca el banner, y el de qué ciudad?» |
+
+**Lo que no manda, y el motivo escrito para que nadie lo agregue después:**
+
+- **Ni el destino ni el nombre del emprendimiento.** Hay un banner por ciudad,
+  así que los dos son función de la ciudad y no contestan nada que ella no
+  conteste. Y el destino es **justo lo que «Clics salientes» apagado en la
+  consola existe para no mandar** ([§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)):
+  ponerlo en un evento propio sería reabrir por código la puerta que se cerró en
+  la configuración. Un test de render fija por valor que el handler pide
+  `{ ciudad }` y nada más, y otro de `analyticsSitio.test.ts` que el saneador
+  descarta `href`, `nombre` y `textoAlternativo` si alguien se los pasa.
+- **No mide impresiones**, por el mismo motivo que el tríptico. El denominador
+  se puede aproximar sin un observador: el banner aparece cuando el filtro de su
+  ciudad está puesto.
+
+**Es `enum` y no `lista-slugs`, aunque el valor ya sea un slug.** `FORMATO_SLUG`
+dejaría pasar cualquier palabra en minúscula, y la ciudad que llega acá tiene
+que ser **una de las que tienen banner** — si no, no hubo banner que tocar. Una
+ciudad fuera del vocabulario llega como `ciudad=otro`: el clic se cuenta y el
+desfase se ve.
+
+**El vocabulario está copiado de `BANNERS_DE_CIUDAD`, no importado**, por el
+motivo de siempre: `analyticsSitio.ts` carga en **todas** las páginas, e
+importar la lista de banners arrastraría a cada una los destinos, los nombres y
+`slugDeCiudad` para una pregunta que solo se hace en la home. La red de la copia
+es `tests/analyticsSitio.test.ts`, que compara las dos listas **en las dos
+direcciones**: **una ciudad nueva en `BANNERS_DE_CIUDAD` pone el test en rojo
+hasta que se suma a `CIUDADES_CON_BANNER`.**
+
+**El handler va en el componente y no en `Buscador`**, al revés que el
+tríptico, y es consistente con el motivo de aquel caso y no una excepción:
+`PanelesDeAhora` lo pintan el build **y** la island, y el del build no se
+hidrata; `BannerDeCiudad` lo monta **solo** la island (detrás de `indice`, que
+recién existe en el navegador), así que el `onClick` corre en su único uso. El
+día que el banner se pinte también desde el build, el handler tiene que mudarse a
+una prop, como el del tríptico.
+
+**El consentimiento no lo resuelve este evento, y no hace falta.** `medirSitio`
+no manda nada si `gtag.js` no está cargado, y solo se carga con «aceptar»
+([§7.3](#73--lo-que-rechazar-significa-de-verdad-y-por-qué-no-es-consent-mode-v2)).
+El evento no agrega ninguna conexión a un tercero ni antes ni después del
+consentimiento: el banner y sus imágenes se sirven desde `public/`, y el clic
+abre el destino en una pestaña nueva, así que la página que mide sigue viva
+cuando el evento sale.
+
+**Los bordes, dichos:** se mide el clic y no la rueda del mouse —un clic del
+medio abre la pestaña con `auxclick` y no se cuenta—, igual que en el tríptico.
+Y en el tablero del panel la fila aparece sola (se deriva de
+`NOMBRES_EVENTOS_SITIO`), pero con su nombre técnico hasta que
+`NOMBRE_DE_EVENTO` de `EstadisticasPanel.tsx` le escriba el castellano.
+
 ---
 
 ## 8 · El primer tramo, el que se implementó
@@ -1406,7 +1471,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | 2 | **Search Console** (**B-373**) | no necesita ninguna decisión, no pone cookies, no agrega JS, y contesta la pregunta que justifica el proyecto. **Diferido a propósito, no descartado**: el dueño lo deja para el final de todo. El motivo por el que igual conviene no demorarlo mucho es de calendario y sigue vigente — Search Console no muestra histórico anterior a la conexión, así que cada día sin conectarlo es un día que no se recupera |
 | 3 | **El banner y el consentimiento** (**B-376**, camino C3) | ✅ construido — es la pieza que hace que el tag esté informado desde el primer día en que mide de verdad |
 | 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53--el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **B-480 se resolvió el 2026-09-03** — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)— y desde ahí el tag mide en producción |
-| 5 | **Los eventos propios** (**B-375**) | ✅ construidos **y midiendo** desde el 2026-09-03, con B-372 y B-480 cerrados: el clic en el botón de inscripción y el filtro que deja cero. El tercero, el del tríptico (**B-601**), se enganchó el 2026-09-07 |
+| 5 | **Los eventos propios** (**B-375**) | ✅ construidos **y midiendo** desde el 2026-09-03, con B-372 y B-480 cerrados: el clic en el botón de inscripción y el filtro que deja cero. El tercero, el del tríptico (**B-601**), se enganchó el 2026-09-07, y el cuarto, el del banner de ciudad (**B-963**), el 2026-09-24 |
 | 6 | **El resumen vendible en el panel** (**B-374**) | ✅ construido (2026-09-03) — y con un desvío del criterio que decía «recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre». **El criterio era correcto para el orden y se cumplió por el otro lado:** lo que se construyó no muestra un cero ni un número inventado, sino cuál de las cuatro situaciones está pasando ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)), así que sirve **antes** de que haya datos — dice si los pasos de consola están bien. Lo que sigue esperando el mes de datos son los números, no la pantalla. Ver [§9.4](#94--los-pasos-de-consola-del-dueño) para lo que falta del lado del dueño |
 
 ---
@@ -1415,7 +1480,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Los cinco pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño) se hicieron el 2026-09-07 (B-790) y el evento del tríptico se enganchó el mismo día (B-601). Lo que falta: el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **paso 7** del §9.4 con su mitad de código (B-798). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
+| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los cuatro eventos propios —el cuarto, el del banner de ciudad, desde B-963—, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Los cinco pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño) se hicieron el 2026-09-07 (B-790) y el evento del tríptico se enganchó el mismo día (B-601). Lo que falta: el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **paso 7** del §9.4 con su mitad de código (B-798). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
 | **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
 | **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | ✅ **hecho (2026-09-03)** — código, enganche en `Base.astro` y B-480 resuelto en la consola. En el camino salió D-254, el `preconnect` a `googletagmanager.com` sin condicionar al consentimiento |
 | **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Los dos pasos que faltaban —el permiso **Restringido** para `calendar-sync@` y `SEARCH_CONSOLE_SITE=sc-domain:agendaleh.ar`— se hicieron el 2026-09-07 (B-790). Falta el volumen, no un paso |
@@ -1432,6 +1497,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
 | **B-798** | `filtro_sin_resultados` decía **cuántas** veces, no **cuál** filtro dejó la lista vacía ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) | 🟡 **la emisión está** (2026-09-09): `eje` cubre los **once** filtros del listado y no siete (eran diez y seis hasta que B-950 sumó el eje `provincia`, que **parte la serie histórica** de esta dimensión — el corte está escrito en D-710 con su fecha), así que un cero por el buscador ya no se confunde con «ningún filtro solo lo explica». **`busqueda` es un eje, nunca el texto tipeado** — el payload lo arma `crudosDeFiltroSinResultados`, que solo saca `slug` del mapa de taxonomía. Faltan los otros dos tercios: el **paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)** (registrar las dimensiones en la consola — es lo que corre el reloj, GA4 no es retroactivo) y `customEvent:eje`/`customEvent:slug` en `DIMENSIONES_PERMITIDAS` de `functions/analitica.js`, que es una decisión de privacidad y no un cambio mecánico |
 | **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | ✅ **enganchado el 2026-09-07**. El handler va en `Buscador.tsx` y no adentro del componente, y el motivo es que **el mismo componente lo pintan el build y la island**: el del build no se hidrata, así que un `medirSitio` adentro entraría en los dos usos y mediría en uno solo. Con la prop, el único que la pasa es el que puede medir, y el HTML del build sigue sin una línea de JavaScript por esta sección. Consecuencia escrita: **se mide el clic de la island**, no el del HTML previo a hidratar. **Lo que sigue sin decidir es el clic del pie** «+N más» de B-791: si cuenta como clic del panel o como evento propio (D-470) |
+| **B-963** | El banner de ciudad (B-961) no emitía ningún evento: `clic_banner_ciudad`, con la ciudad en slug y nada más ([§7.7](#77--el-cuarto-evento-propio-el-banner-de-una-ciudad-b-963)) | ✅ **hecho (2026-09-24)**. Vocabulario cerrado —las ciudades con banner, copiadas de `BANNERS_DE_CIUDAD` con un test que ata las dos listas—, nunca el destino ni el nombre del emprendimiento. El handler va en el componente porque, a diferencia del tríptico, lo monta solo la island. Falta el castellano de la fila en el tablero del panel |
 
 ---
 
