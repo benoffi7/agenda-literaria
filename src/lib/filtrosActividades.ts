@@ -152,6 +152,14 @@ export interface Filtros {
    * marca de cada tarjeta (`marcaDeAutoria`), y es un dato que cambia solo.
    */
   autor: string;
+  /**
+   * B-101 — la pestaña, **que no es un filtro**: `filtrar` no la mira,
+   * `cantidadDeFiltros` no la cuenta y «Limpiar filtros» no la toca. Vive acá
+   * solo para heredar lo de B-955: `Filtros` es el estado que `AdminApp`
+   * conserva al ir y volver de una actividad, y abrir una pasada para mirarla no
+   * tiene que devolver a quien la abrió a «Vigentes».
+   */
+  pestana: Pestana;
 }
 
 export const FILTROS_VACIOS: Filtros = {
@@ -167,6 +175,7 @@ export const FILTROS_VACIOS: Filtros = {
   destacado: '',
   tags: [],
   autor: '',
+  pestana: 'vigentes',
 };
 
 /**
@@ -244,6 +253,82 @@ export const proximoEncuentro = (actividad: ActividadConId, ahora: Date): Date |
 /** ¿Le queda algo por pasar? Es el filtro "con algo por venir". */
 export const tieneFuturo = (actividad: ActividadConId, ahora: Date): boolean =>
   proximoEncuentro(actividad, ahora) !== null;
+
+// ─────────────────────────────────────────────────────────────────
+// Pestañas: vigentes y pasadas — B-101, D-1050
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * B-101 — el listado se parte en dos pestañas: lo que se está cargando o está
+ * por pasar, y el archivo. **Nada se borra ni cambia de estado**: una pasada
+ * sigue `publicado`, con su página y su lugar en `/pasadas`. Es solo dónde se
+ * muestra en el panel, para que el taller de marzo no ensucie la carga del día
+ * a día.
+ */
+export const PESTANAS = ['vigentes', 'pasadas'] as const;
+export type Pestana = (typeof PESTANAS)[number];
+
+export const ETIQUETA_PESTANA: Record<Pestana, string> = {
+  vigentes: 'Vigentes',
+  pasadas: 'Pasadas',
+};
+
+/**
+ * La última fecha no cancelada, o `null` si no hay ninguna. Es el `hasta` de
+ * `estadoDe` en el sitio: el dato que dice **cuándo terminó**, y por el que
+ * `/pasadas` ordena su archivo.
+ */
+export const ultimaFecha = (actividad: ActividadConId): Date | null => {
+  let ultima: Date | null = null;
+  for (const s of actividad.sesiones ?? []) {
+    if (s.cancelada) continue;
+    const inicio = instante(s.inicio);
+    if (inicio && (!ultima || inicio.getTime() > ultima.getTime())) ultima = inicio;
+  }
+  return ultima;
+};
+
+/**
+ * **¿Ya pasó?** — D-1050. El criterio es el de `/pasadas` y no se reescribe
+ * (D-88): «ninguna sesión no cancelada por venir», que en el sitio es
+ * `estadoDe(e).paso` y acá es `tieneFuturo` negado. Los dos terminan en la
+ * misma `proximaVentana` de `lib/sesiones.ts` (B-227), así que el panel y el
+ * sitio no pueden contestar distinto sobre la misma actividad; lo ata además
+ * `tests/pasadas-del-panel.test.ts`, contra el módulo del sitio.
+ *
+ * **Lo único que se agrega es «y tuvo alguna fecha».** Sin esa mitad, un
+ * borrador recién creado, sin ningún encuentro cargado todavía, no tiene nada
+ * por venir y se iría al archivo en el momento exacto en que se lo está
+ * cargando. En el sitio ese caso no existe —lo que llega a `/pasadas` ya está
+ * publicado—; en el panel es lo más común del mundo. Cualquier sesión con fecha
+ * alcanza, cancelada o no: una actividad con todos sus encuentros cancelados ya
+ * no va a pasar, y `/pasadas` también la lista.
+ */
+export const esPasada = (actividad: ActividadConId, ahora: Date): boolean =>
+  !tieneFuturo(actividad, ahora) &&
+  (actividad.sesiones ?? []).some((s) => instante(s.inicio) !== null);
+
+/** Las de una pestaña. No mira `filtros`: se aplica **después** de `filtrar`. */
+export const dePestana = (
+  actividades: ActividadConId[],
+  pestana: Pestana,
+  ahora: Date,
+): ActividadConId[] =>
+  actividades.filter((a) => esPasada(a, ahora) === (pestana === 'pasadas'));
+
+/**
+ * Cuántas hay en cada pestaña, **con los filtros y el texto puestos**. Es el
+ * número que va al lado de cada una, y el motivo de que vaya: quien busca
+ * «Saer» parado en «Vigentes» y no encuentra nada tiene que ver que en
+ * «Pasadas» hay una.
+ */
+export const cantidadesPorPestana = (
+  filtradas: ActividadConId[],
+  ahora: Date,
+): Record<Pestana, number> => {
+  const pasadas = filtradas.filter((a) => esPasada(a, ahora)).length;
+  return { vigentes: filtradas.length - pasadas, pasadas };
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Filtrar
@@ -378,13 +463,38 @@ export const ordenar = (
   });
 };
 
-/** Filtrar y ordenar de una vez: es lo único que necesita el componente. */
+/**
+ * B-101 — en «Pasadas», el orden por defecto es **lo último que pasó
+ * primero**, que es el de `/pasadas`: en un archivo nada «se viene», y la
+ * pregunta es «¿qué hubo hace poco?». Sin fecha —no pasa en esta pestaña, por
+ * `esPasada`, pero el orden no lo asume— va al fondo, como en el sitio.
+ */
+const porUltimaFecha = (a: ActividadConId, b: ActividadConId): number =>
+  (ultimaFecha(b)?.getTime() ?? -Infinity) - (ultimaFecha(a)?.getTime() ?? -Infinity) ||
+  porTitulo(a, b);
+
+/**
+ * Lo que dice el desplegable de orden, según la pestaña: en «Pasadas»,
+ * «lo que se viene primero» no significaría nada.
+ */
+export const etiquetaDeOrden = (orden: Orden, pestana: Pestana): string =>
+  pestana === 'pasadas' && orden === 'proxima' ? 'Lo último que pasó primero' : ETIQUETA_ORDEN[orden];
+
+/**
+ * Filtrar, quedarse con la pestaña y ordenar, de una vez: es lo único que
+ * necesita el componente.
+ */
 export const listaVisible = (
   actividades: ActividadConId[],
   filtros: Filtros,
   orden: Orden,
   ahora: Date,
-): ActividadConId[] => ordenar(filtrar(actividades, filtros, ahora), orden, ahora);
+): ActividadConId[] => {
+  const pestana = filtros.pestana ?? 'vigentes';
+  const deLaPestana = dePestana(filtrar(actividades, filtros, ahora), pestana, ahora);
+  if (pestana === 'pasadas' && orden === 'proxima') return [...deLaPestana].sort(porUltimaFecha);
+  return ordenar(deLaPestana, orden, ahora);
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Qué ofrecer en cada desplegable

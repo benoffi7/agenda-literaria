@@ -7,12 +7,12 @@ import {
   ETIQUETA_DESTACADO,
   ETIQUETA_ESTADO,
   ETIQUETA_MODALIDAD,
-  ETIQUETA_ORDEN,
   FILTROS_VACIOS,
   ORDENES,
   cantidadDeFiltros,
   chipsDeTags,
   conTagAlternada,
+  etiquetaDeOrden,
   legible,
   type Filtros,
   type FiltroDestacado,
@@ -188,7 +188,8 @@ export function FiltrosActividades({
           >
             {ORDENES.map((o) => (
               <option key={o} value={o}>
-                {ETIQUETA_ORDEN[o]}
+                {/* B-101 — en «Pasadas», «lo que se viene» no se viene. */}
+                {etiquetaDeOrden(o, filtros.pestana ?? 'vigentes')}
               </option>
             ))}
           </select>
@@ -506,8 +507,12 @@ export function FiltrosActividades({
             <button
               type="button"
               // El texto se conserva: limpiar los filtros no debería borrar lo
-              // que se está buscando, que está en otro control y a la vista.
-              onClick={() => onFiltros({ ...FILTROS_VACIOS, texto: filtros.texto })}
+              // que se está buscando, que está en otro control y a la vista. La
+              // pestaña tampoco (B-101): no es un filtro, y limpiar parado en
+              // «Pasadas» no tiene que mandar a «Vigentes».
+              onClick={() =>
+                onFiltros({ ...FILTROS_VACIOS, texto: filtros.texto, pestana: filtros.pestana })
+              }
               className={`${claseBotonChip} self-start`}
             >
               Limpiar filtros
