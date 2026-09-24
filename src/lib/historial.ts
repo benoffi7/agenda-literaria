@@ -59,8 +59,8 @@ import { linkDeReunionQueSale, urlDeMaterialQueSale } from '@/lib/toPublic';
 // `flagsDePublicacionRestaurables`, en vez de una lista de dos nombres acá.
 import { CAMPOS_CON_PAR_DE } from '@/lib/paresFlagDato';
 import { fechaHoraCorta } from '@/lib/sesiones';
-// §7.3 — «una sesión tiene evento si la actividad está publicada y la sesión no
-// está cancelada». Importada y no reescrita: su propio docblock dice que se
+// §7.3 — «una sesión tiene evento si la actividad está publicada» (desde B-98,
+// cancelada o no). Importada y no reescrita: su propio docblock dice que se
 // exporta para eso (D-20).
 import { debeExistir } from '@calendario';
 import { camposCambiados, estuvoPublicada } from '@historial';
@@ -717,8 +717,11 @@ const esDePrivacidad = (i: IssueDeSchema): boolean =>
  * **toda** restauración bloqueada: la pantalla tapiada que la resta existe para
  * evitar, y encima sobre el documento que hay que arreglar. El segundo preguntaba
  * solo si **cambiaba el estado**, y ésa era la mitad del §7.3: la condición del
- * sync es `estado === 'publicado' && !sesion.cancelada`, o sea que **descancelar
- * un encuentro crea un evento que no existía** sin que el estado se mueva. El
+ * sync **era** `estado === 'publicado' && !sesion.cancelada`, o sea que
+ * **descancelar un encuentro creaba un evento que no existía** sin que el estado
+ * se moviera. (Desde B-98 el cancelado conserva su evento y la condición es solo
+ * el estado; la pregunta se sigue haciendo por sesión con `debeExistir`, así que
+ * si el criterio vuelve a mirar la sesión, esto lo sigue sin cambiar una línea.) El
  * camino, que lo midió el `auditor-privacidad`: una publicada con el link en la
  * etiqueta y todos los encuentros cancelados no tiene hoy ningún evento —el link
  * está solo en la página— y «Restaurar → Encuentros» sobre una versión que los

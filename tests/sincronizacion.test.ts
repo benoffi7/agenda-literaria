@@ -292,12 +292,18 @@ describe('replanificarPorEtiquetas — qué eventos se reescriben (B-04)', () =>
     );
   });
 
-  it('una sesión cancelada tampoco: su evento no debería existir', () => {
+  /**
+   * B-98 — al revés que hasta acá: el cancelado **tiene** evento («CANCELADO —
+   * …», con el resto de la descripción debajo), así que renombrar una etiqueta
+   * que su descripción muestra también lo pone al día.
+   */
+  it('una sesión cancelada también: su evento existe y muestra la etiqueta (B-98)', () => {
     const cancelada = publicada();
     cancelada.sesiones[0]!.cancelada = true;
-    expect(replanificarPorEtiquetas(cancelada, etiquetas('A la gorra'), etiquetas('Otra'))).toEqual(
-      [],
-    );
+    const ops = replanificarPorEtiquetas(cancelada, etiquetas('A la gorra'), etiquetas('Otra'));
+    const suyo = ops.find((o) => o.id === cancelada.sesiones[0]!.id);
+    expect(suyo).toBeDefined();
+    expect(suyo!.evento.summary.startsWith('CANCELADO — ')).toBe(true);
   });
 
   it('una actividad que no está publicada tampoco', () => {
@@ -494,22 +500,52 @@ describe('B-125 · el encuentro vuelve al calendario en la próxima edición', (
 
   it('no recrea el evento de un encuentro que no debería estar (§7.3)', () => {
     const { actividad, calendario, documento, sesiones } = armar();
-    const cancelada = sesiones[3]!;
-    calendario.delete(cancelada.calendarEventId!);
+    const borrada = sesiones[3]!;
+    calendario.delete(borrada.calendarEventId!);
 
-    // Se cancela el encuentro cuyo evento ya no está: la op es `borrar`, y un
-    // borrado que no encuentra su evento no se recrea, se limpia.
+    // Se borra la fila del encuentro cuyo evento ya no está: la op es `borrar`,
+    // y un borrado que no encuentra su evento no se recrea, se limpia. (Hasta
+    // B-98 este caso era cancelar; desde B-98 cancelar es un `actualizar` y
+    // tiene su propio `it`, abajo.)
     correrConCalendarioQueFalla(
       actividad(),
-      actividad({
-        sesiones: sesiones.map((s) => (s.id === cancelada.id ? { ...s, cancelada: true } : s)),
-      }),
+      actividad({ sesiones: sesiones.filter((s) => s.id !== borrada.id) }),
       documento,
       calendario,
     );
 
     expect(calendario.size).toBe(7);
-    expect(documento.sesiones.find((s) => s.id === cancelada.id)!.calendarEventId).toBeNull();
+    expect(calendario.has(idDeEvento(borrada.id)!)).toBe(false);
+  });
+
+  /**
+   * B-98 × B-125 — cancelar un encuentro cuyo evento alguien borró a mano: la
+   * op es `actualizar`, Calendar contesta 404 y se **recrea**, ya como
+   * cancelado. Es lo que dice el espejo: el encuentro publicado tiene evento, y
+   * el evento dice lo que el documento dice.
+   */
+  it('cancelar un encuentro cuyo evento se borró a mano lo repone, ya cancelado (B-98)', () => {
+    const { actividad, calendario, documento, sesiones } = armar();
+    const cancelada = sesiones[3]!;
+    calendario.delete(cancelada.calendarEventId!);
+
+    correrConCalendarioQueFalla(
+      actividad(),
+      actividad({
+        sesiones: sesiones.map((s) =>
+          s.id === cancelada.id ? { ...s, cancelada: true, motivoCancelacion: 'Feriado' } : s,
+        ),
+      }),
+      documento,
+      calendario,
+    );
+
+    expect(calendario.size).toBe(8);
+    const nuevo = documento.sesiones.find((s) => s.id === cancelada.id)!.calendarEventId!;
+    expect(nuevo).toBe(idDeEvento(cancelada.id));
+    expect((calendario.get(nuevo) as { summary: string }).summary.startsWith('CANCELADO — ')).toBe(
+      true,
+    );
   });
 
   /**

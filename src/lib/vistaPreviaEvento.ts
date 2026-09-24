@@ -73,8 +73,10 @@ export interface EventoPrevisualizado {
   descripcion: string;
   /**
    * §7.3 — el evento existe en el calendario solo si la actividad está
-   * publicada y el encuentro no está cancelado. Si es `false`, la vista previa
-   * muestra cómo quedaría, no algo que hoy esté publicado.
+   * publicada. Desde B-98 un encuentro cancelado **sí** tiene evento, titulado
+   * «CANCELADO — …»: la vista previa lo muestra tal cual, porque es lo que ve
+   * quien lo tenía agendado. Si es `false`, la vista previa muestra cómo
+   * quedaría, no algo que hoy esté publicado.
    */
   saleAlCalendario: boolean;
   /** D-15 — el link de la reunión sale en la descripción de este evento. */

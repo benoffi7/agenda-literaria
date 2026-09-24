@@ -22,14 +22,19 @@ describe('sesionesAVerificar — qué sesiones dependen de un id que nadie compa
     expect(candidatas.every((c) => c.actividadId === 'act1')).toBe(true);
   });
 
-  it('un encuentro cancelado no es candidato: no debería existir, así que no hay nada que verificar', () => {
+  /**
+   * B-98 — al revés que antes: el cancelado **tiene** evento («CANCELADO — …»),
+   * así que alguien puede borrarlo a mano igual que cualquier otro, y hay que
+   * verificarlo.
+   */
+  it('un encuentro cancelado también es candidato: su evento existe y lo anuncia (B-98)', () => {
     const actividad = {
       id: 'act1',
       ...cicloDeOcho({ sesiones: sesionesDeCiclo({ canceladas: [2] }) }),
     };
     const { candidatas } = sesionesAVerificar([actividad]);
-    expect(candidatas).toHaveLength(7);
-    expect(candidatas.some((c) => c.sesion.id === actividad.sesiones[2].id)).toBe(false);
+    expect(candidatas).toHaveLength(8);
+    expect(candidatas.some((c) => c.sesion.id === actividad.sesiones[2].id)).toBe(true);
   });
 
   it('una actividad en borrador no aporta candidatas, aunque sus sesiones tengan un id colgado', () => {

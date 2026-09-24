@@ -243,8 +243,11 @@ describe('las advertencias', () => {
     expect(ADVERTENCIAS.reunion.texto, 'tiene que decir que el calendario es público').toMatch(
       /cualquiera|p[uú]blico/i,
     );
-    expect(ADVERTENCIAS.cancelada.texto, 'tiene que decir que se borra').toMatch(
-      /se borra|desaparece/i,
+    // B-98 — antes tenía que decir que se borra; desde B-98 tiene que decir que
+    // el encuentro se queda y avisa, y que la actividad entera sí se borra.
+    expect(ADVERTENCIAS.cancelada.texto, 'tiene que decir que avisa').toMatch(/CANCELADO/);
+    expect(ADVERTENCIAS.cancelada.texto, 'y que la actividad entera se borra').toMatch(
+      /actividad entera[^.]*se borran/i,
     );
   });
 });
@@ -305,15 +308,32 @@ describe('lo que la página promete del calendario es lo que el calendario hace'
     expect(JSON.stringify(evento)).toContain(LINK_DE_LA_REUNION);
   });
 
-  it('«si algo se cancela, desaparece»: en un ciclo, se borra ese encuentro y ninguno más', () => {
+  it('«si un encuentro se cancela, te avisa»: se reescribe ese encuentro, con el motivo, y ninguno más', () => {
     const antes = cicloVirtual(false);
     const despues = cicloVirtual(false, {
-      sesiones: sesionesDeCiclo().map((s, i) => (i === 2 ? { ...s, cancelada: true } : s)),
+      sesiones: sesionesDeCiclo().map((s, i) =>
+        i === 2 ? { ...s, cancelada: true, motivoCancelacion: 'Feriado' } : s,
+      ),
     });
 
-    expect(planificar(antes, despues)).toEqual([
-      { tipo: 'borrar', id: 'ses_0003', eventId: 'evt_0003' },
+    const ops = planificar(antes, despues) as {
+      tipo: string;
+      id: string;
+      eventId: string;
+      evento: { summary: string; description: string };
+    }[];
+    expect(ops.map((o) => [o.tipo, o.id, o.eventId])).toEqual([
+      ['actualizar', 'ses_0003', 'evt_0003'],
     ]);
+    expect(ops[0]!.evento.summary.startsWith('CANCELADO')).toBe(true);
+    expect(ops[0]!.evento.description).toContain('Feriado');
+  });
+
+  it('«si lo que se cancela es la actividad entera, sus encuentros se borran»', () => {
+    const ops = planificar(cicloVirtual(false), cicloVirtual(false, { estado: 'cancelado' }));
+    expect(ops.map((o: { tipo: string }) => o.tipo)).toEqual(
+      Array(ENCUENTROS_DEL_CICLO).fill('borrar'),
+    );
   });
 
   it('«cada encuentro entra por separado, con el tema de ese día»', () => {

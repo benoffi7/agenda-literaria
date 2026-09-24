@@ -210,12 +210,18 @@ export const INFO_PUBLICACION: Record<EstadoPublicacion, InfoPublicacion> = {
       'calendario público. Si acabás de guardar, esperá unos segundos y refrescá.',
     grupo: 'problema',
   },
+  /*
+   * B-98 — el cancelado **sigue en el calendario**, anunciado: su evento se
+   * titula «CANCELADO — …» y lleva el motivo arriba. Por eso es `visible` y no
+   * `oculto`: quien lo tenía agendado lo ve, y ve que no se hace.
+   */
   'encuentro-cancelado': {
     etiqueta: 'Encuentro cancelado',
     significa:
-      'La actividad está publicada pero este encuentro se canceló, así que su evento se borró ' +
-      'del calendario. El encuentro queda acá como registro.',
-    grupo: 'oculto',
+      'La actividad está publicada y este encuentro se canceló: su evento sigue en el ' +
+      'calendario, titulado «CANCELADO» y con el motivo arriba, para que quien lo tenía ' +
+      'agendado se entere.',
+    grupo: 'visible',
   },
   borrador: {
     etiqueta: 'Borrador',
@@ -264,13 +270,19 @@ export const estadoPublicacion = (
   const deberiaExistir = debeExistir(actividad, sesion);
   const existe = Boolean(sesion.calendarEventId);
 
-  if (deberiaExistir) return existe ? 'en-calendario' : 'falta-en-calendario';
+  if (deberiaExistir) {
+    if (!existe) return 'falta-en-calendario';
+    // B-98 — el cancelado tiene evento, así que existir no alcanza para decir
+    // «la gente lo ve como siempre»: lo ve anunciado como cancelado.
+    return sesion.cancelada ? 'encuentro-cancelado' : 'en-calendario';
+  }
   if (existe) return 'sobra-en-calendario';
 
-  // Sin evento y no debería tenerlo: queda decir por qué. Si la actividad está
-  // publicada, `debeExistir` solo pudo dar `false` por la cancelación del
-  // encuentro; si no, el motivo es el estado de la actividad.
-  if (actividad.estado === 'publicado') return 'encuentro-cancelado';
+  // Sin evento y no debería tenerlo: el motivo es el estado de la actividad.
+  // Desde B-98 `debeExistir` solo da `false` fuera de `publicado` (antes también
+  // lo daba por un encuentro cancelado), así que el `publicado` de acá no llega;
+  // si llegara, es un evento que debería estar y no está.
+  if (actividad.estado === 'publicado') return 'falta-en-calendario';
   return actividad.estado;
 };
 
