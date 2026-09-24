@@ -436,3 +436,18 @@ export const directorioPorId = (id: string): Directorio | undefined =>
 /** Los que ya existen, que son los que `/guia` linkea y el sitemap ofrece. */
 export const directoriosDisponibles = (): Directorio[] =>
   DIRECTORIOS.filter((d) => d.disponible);
+
+/**
+ * «librerías, suscripciones literarias, lugares para hacer eventos y bibliotecas»
+ * — las secciones disponibles de la Guía dichas en una frase, derivadas y no
+ * escritas a mano. Nació en la ayuda (B-902) y bajó acá cuando la descripción de
+ * `/guia` resultó ser la misma enumeración vieja (B-1430, clase de B-662).
+ */
+export const enumeracionDeLaGuia = (): string => {
+  const items = directoriosDisponibles().map(
+    (d) => d.titulo.charAt(0).toLowerCase() + d.titulo.slice(1),
+  );
+  return items.length <= 1
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
+};

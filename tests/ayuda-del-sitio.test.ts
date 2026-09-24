@@ -474,10 +474,13 @@ describe('la Guía tiene su propia pregunta — B-902', () => {
 
   it('no nombra una sección que no está disponible', () => {
     // Hoy las cuatro lo están, así que se afirma sobre el código: la lista sale
-    // de `directoriosDisponibles()` y no de `DIRECTORIOS` a secas.
+    // de `enumeracionDeLaGuia()`, que filtra por `directoriosDisponibles()`
+    // (B-1430), y no de `DIRECTORIOS` a secas.
     const src = readFileSync(raiz('src/lib/ayudaDelSitio.ts'), 'utf8');
-    expect(src).toContain('directoriosDisponibles().map(');
+    expect(src).toContain('enumeracionDeLaGuia()');
     expect(src).not.toMatch(/\bDIRECTORIOS\b/);
+    const directorios = readFileSync(raiz('src/lib/directorios.ts'), 'utf8');
+    expect(directorios).toMatch(/enumeracionDeLaGuia = \(\): string => \{\s*const items = directoriosDisponibles\(\)\.map\(/);
     // Y el caso real, para que el día que haya una en camino quede cubierto solo.
     const texto = pregunta()!.respuesta.join(' ').toLowerCase();
     for (const d of DIRECTORIOS.filter((x) => !x.disponible)) {

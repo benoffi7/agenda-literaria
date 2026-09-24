@@ -31,7 +31,7 @@
  */
 import opcionesBase from '@/lib/opciones-base.json';
 import { hayBoletin } from '@/lib/boletinDelSitio';
-import { directoriosDisponibles } from '@/lib/directorios';
+import { enumeracionDeLaGuia } from '@/lib/directorios';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
@@ -154,18 +154,6 @@ export const FORMAS_DE_ARANCEL: TerminoExplicado[] = explicar(
 );
 
 /**
- * «a, b, c y d» — la enumeración en castellano, para nombrar las secciones de la
- * Guía sin escribirlas a mano (B-902).
- */
-const enumerar = (items: readonly string[]): string =>
-  items.length <= 1
-    ? (items[0] ?? '')
-    : `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
-
-/** «Librerías» → «librerías»: el título de una sección, dicho en el medio de una frase. */
-const enMinuscula = (titulo: string): string => titulo.charAt(0).toLowerCase() + titulo.slice(1);
-
-/**
  * Las preguntas, agrupadas. El orden de los grupos es el del recorrido de quien
  * llega: primero qué es esto, después cómo se lee una actividad, después cómo
  * se entra, y al final cómo seguirnos y cómo escribirnos.
@@ -205,7 +193,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
          * no las enumeraba a propósito —«sería un cuarto lugar donde llevar la
          * cuenta, y el que se queda viejo es siempre el texto» (B-662)— y tenía
          * razón: cuando nació bibliotecas (B-960) ya nombraba tres de cuatro.
-         * Derivadas de `directoriosDisponibles()` son las mismas que linkea
+         * Derivadas de `directoriosDisponibles()` (vía `enumeracionDeLaGuia`) son las mismas que linkea
          * `/guia` y en el mismo orden, así que no hay cuenta que llevar. Lo que
          * no se afirma es que cada una tenga fichas: eso lo dice el listado de
          * cada sección, y la ayuda no lee datos.
@@ -217,7 +205,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
         pregunta: '¿Esto solo tiene actividades?',
         respuesta: [
           'No. Además de la agenda está la Guía, con el resto del circuito alrededor de las ' +
-            `actividades: ${enumerar(directoriosDisponibles().map((d) => enMinuscula(d.titulo)))}.`,
+            `actividades: ${enumeracionDeLaGuia()}.`,
           'Cada sección es un listado con su propio buscador, y cada ficha tiene su página.',
           'Si tenés una de esas cosas y no está, cada sección tiene un formulario para sumarla. ' +
             'Lo leemos antes de publicarlo, igual que una actividad.',

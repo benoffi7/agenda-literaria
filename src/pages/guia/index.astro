@@ -1,6 +1,6 @@
 ---
 /**
- * `/guia` — el índice de los tres directorios (B-835, tajada 2 paso 13).
+ * `/guia` — el índice de los directorios de la Guía (B-835, tajada 2 paso 13).
  *
  * ── Por qué existe esta página ────────────────────────────────────────────
  * Porque el dueño decidió el 2026-09-08 que los tres directorios viven bajo
@@ -48,7 +48,7 @@
  */
 import Base from '@/layouts/Base.astro';
 import { NOMBRE } from '@/lib/identidad';
-import { DIRECTORIOS } from '@/lib/directorios';
+import { DIRECTORIOS, enumeracionDeLaGuia } from '@/lib/directorios';
 import { RUTA_CONTACTO } from '@/lib/rutasPublicas';
 import {
   claseBloque,
@@ -58,8 +58,11 @@ import {
 } from '@/components/sitio/estilos';
 
 const TITULO = 'Guía';
+// Derivada de las secciones disponibles y no escrita a mano: la versión a mano
+// nombraba tres y se había quedado sin bibliotecas (B-1430).
+const secciones = enumeracionDeLaGuia();
 const DESCRIPCION =
-  'Librerías, suscripciones literarias y lugares para hacer eventos: el circuito alrededor ' +
+  `${secciones.charAt(0).toUpperCase()}${secciones.slice(1)}: el circuito alrededor ` +
   'de las actividades de la agenda.';
 ---
 
@@ -69,8 +72,8 @@ const DESCRIPCION =
 
     <p class="body-lectura mt-6 max-w-[65ch] text-super">
       La agenda dice qué pasa y cuándo. Acá está el resto del circuito: dónde se compran los
-      libros, qué te llega por correo si te suscribís, y qué lugares prestan o alquilan su
-      espacio para hacer una actividad.
+      libros, dónde sacarlos prestados, qué te llega por correo si te suscribís, y qué lugares
+      prestan o alquilan su espacio para hacer una actividad.
     </p>
 
     <ul class="mt-12 flex flex-col gap-4 sm:mt-16">

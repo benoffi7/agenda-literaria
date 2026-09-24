@@ -497,3 +497,18 @@ describe('la Guía y sus tres filas — B-835', () => {
     ).toContain(RUTA_GUIA);
   });
 });
+
+describe('la descripción de `/guia` nombra las secciones que hay — B-1430', () => {
+  it('sale de `enumeracionDeLaGuia()` y no de una lista escrita a mano', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { enumeracionDeLaGuia, directoriosDisponibles } = await import('@/lib/directorios');
+    const pagina = readFileSync('src/pages/guia/index.astro', 'utf8');
+    expect(pagina).toContain('enumeracionDeLaGuia()');
+    // La versión a mano nombraba tres y se había olvidado de bibliotecas.
+    expect(pagina).not.toMatch(/'Librerías, suscripciones literarias y lugares/);
+    const frase = enumeracionDeLaGuia();
+    for (const d of directoriosDisponibles()) {
+      expect(frase).toContain(d.titulo.charAt(0).toLowerCase() + d.titulo.slice(1));
+    }
+  });
+});
