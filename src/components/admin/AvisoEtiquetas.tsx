@@ -94,7 +94,7 @@ export function AvisoEtiquetas({ etiquetas, onIrAOpciones, onCerrar }: Props) {
         <button
           type="button"
           onClick={onCerrar}
-          className={`${claseBotonFila} text-amber-900/70 hover:bg-amber-100`}
+          className={`${claseBotonFila} text-amber-900/85 hover:bg-amber-100`}
         >
           Entendido
         </button>

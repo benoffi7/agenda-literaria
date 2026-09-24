@@ -84,7 +84,7 @@ export function AvisoVersionNueva({ decision, versionActual, versionPublicada }:
               : 'Recargar no alcanzó para traerla. Cerrá la pestaña y volvé a abrirla, o recargá forzando (⇧ + recargar).'}
           </p>
           {/* Las dos versiones a la vista: es lo que hay que copiar en un reporte. */}
-          <p className="mt-0.5 truncate font-mono text-xs text-amber-900/70">
+          <p className="mt-0.5 truncate font-mono text-xs text-amber-900/85">
             {versionActual} → {versionPublicada}
           </p>
         </div>
