@@ -285,6 +285,45 @@ si eso es un barrido que se ganó el tamaño o un archivo que hay que partir.
 Queda anotado como **B-1072**, sin diagnóstico: medirlo no alcanza, igual que
 no alcanzaba con el formulario del §1.3.
 
+> ⚖️ **B-1072 se decidió el 2026-09-24 (D-1070): se parte, y no se ganó el
+> tamaño.** Medido sobre `5087879` con el mismo criterio de B-856 —significativas
+> y no `wc -l`—, que es lo primero que había que descartar: el formulario resultó
+> ser prosa, y este archivo **no**.
+>
+> | Tramo | `wc -l` | Código | Prosa |
+> |---|---:|---:|---:|
+> | Todo el archivo | 3.419 | **1.962** | 1.306 |
+> | Constantes, `CENTINELA`, canastas y fixtures | 871 | 283 | 560 |
+> | Emulador (init, limpieza) y siembra | 517 | 335 | 161 |
+> | Build y pasos 1-7 (el `events.json`, la cancelada, el sitemap) | 539 | 378 | 132 |
+> | Paso 8, la galería | 223 | 149 | 65 |
+> | **Pasos 8i-8l, los cuatro directorios de la Guía** | **794** | **572** | 185 |
+> | Paso 8m (B-1572), 9 (el barrido del `dist/`), 10 (SEO) y cierre | 354 | 226 | 106 |
+>
+> La serie es 989 → 1.611 → 2.977 → 3.419. Con 1.962 líneas de código está 3,5
+> veces por encima de la alarma que el §1.3 usa para el formulario, así que el
+> argumento de B-856 no le aplica. Y hay dos motivos que pesan más que el tamaño:
+>
+> 1. **El mismo esqueleto se repite por colección.** Los pasos 8i-8l son cuatro
+>    copias de «leer el índice, está la publicada, no está la pendiente, existe la
+>    ficha, lleva su JSON-LD, la pendiente no tiene página, el sitemap la ofrece y
+>    a la otra no» con una particularidad cada una. Son el 29 % del código, y el
+>    quinto directorio vendría con la quinta copia.
+> 2. **Los datos del gate no se pueden importar.** `CENTINELA` y las canastas
+>    viven en un módulo con efectos al cargarse (`initializeApp`, `process.exit`),
+>    así que ningún test puede compararlas con las de
+>    `tests/barrido-de-salidas-publicas.test.ts`. La regla «un campo nuevo se
+>    declara en los dos barridos» se sostiene de memoria: falló con B-99, con
+>    `comisionId`, con `incluyeSlug` y con el monto, y B-1572 volvió a agregar un
+>    campo a mano en los dos.
+>
+> **La partición no se hizo en este cambio.** Es el paso 4 del pre-push, y este
+> gate solo se verifica corriéndolo contra el emulador. Una partición que no
+> se corrió es la forma en que este archivo ya estuvo rojo por su propia
+> plomería (B-217) o verde sin mirar nada (B-960). La forma de los tres cortes
+> y cómo verificarlos quedaron en **B-1760**, y la simetría que el primer corte
+> hace posible, en **B-1761**.
+
 > **La medición anterior — 2026-09-09, `410a924`.** Los quince eran el **26,6 %**
 > del código y el mayor el **2,9 %**:
 >

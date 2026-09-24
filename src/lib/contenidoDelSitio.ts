@@ -1124,9 +1124,44 @@ export const vistaDeLibrerias = async (): Promise<VistaDeLibrerias> => {
  */
 export const caminosDeLibreria = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeLibreria } }[]
-> => {
-  const fichas = await fichasDeLibreria();
-  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
+> => caminosDeFichas('librerias', await fichasDeLibreria());
+
+/** Dos fichas publicadas del mismo directorio con la misma dirección (B-1640). */
+export class SlugDeFichaRepetido extends Error {
+  constructor(
+    readonly directorio: IdDirectorio,
+    readonly slug: string,
+  ) {
+    super(
+      `Dos fichas publicadas de «${directorio}» tienen la dirección «${slug}»: ` +
+        'una de las dos páginas quedaría pisada (B-1640). Cambiale el slug a una ' +
+        'desde el panel antes de volver a construir.',
+    );
+    this.name = 'SlugDeFichaRepetido';
+  }
+}
+
+/**
+ * Un camino por ficha, y **el build rojo si dos repiten el slug** (B-1640).
+ *
+ * D-1010 lo verifica al publicar, pero no lo garantiza: dos admins publicando en
+ * el mismo segundo, o fichas anteriores a esa verificación, pueden dejar dos
+ * publicadas con la misma dirección. Astro emitiría las dos rutas a la misma
+ * página y la segunda pisaría a la primera **en silencio**. Es el criterio del
+ * centinela de `/slugs/_indice` (`slugLibre` tira antes de contestar a ciegas):
+ * mejor un build que se niega con el slug y el directorio en el mensaje que un
+ * sitio publicado al que le falta una ficha sin que nada lo diga.
+ */
+export const caminosDeFichas = <F extends { slug: string }>(
+  directorio: IdDirectorio,
+  fichas: readonly F[],
+): { params: { slug: string }; props: { ficha: F } }[] => {
+  const vistos = new Set<string>();
+  return fichas.map((ficha) => {
+    if (vistos.has(ficha.slug)) throw new SlugDeFichaRepetido(directorio, ficha.slug);
+    vistos.add(ficha.slug);
+    return { params: { slug: ficha.slug }, props: { ficha } };
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -1255,10 +1290,7 @@ export const vistaDeBibliotecas = async (): Promise<VistaDeBibliotecas> => {
  */
 export const caminosDeBiblioteca = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeBiblioteca } }[]
-> => {
-  const fichas = await fichasDeBiblioteca();
-  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
-};
+> => caminosDeFichas('bibliotecas', await fichasDeBiblioteca());
 
 // ─────────────────────────────────────────────────────────────────
 // Las suscripciones literarias — B-832, tajada 3
@@ -1362,10 +1394,7 @@ export const vistaDeSuscripciones = async (): Promise<VistaDeSuscripciones> => {
  */
 export const caminosDeSuscripcion = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeSuscripcion } }[]
-> => {
-  const fichas = await fichasDeSuscripcion();
-  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
-};
+> => caminosDeFichas('suscripciones', await fichasDeSuscripcion());
 
 // ─────────────────────────────────────────────────────────────────
 // Los lugares para eventos — B-833, tajada 4
@@ -1467,10 +1496,7 @@ export const vistaDeLugares = async (): Promise<VistaDeLugares> => {
  */
 export const caminosDeLugar = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeLugar } }[]
-> => {
-  const fichas = await fichasDeLugar();
-  return fichas.map((ficha) => ({ params: { slug: ficha.slug }, props: { ficha } }));
-};
+> => caminosDeFichas('lugares', await fichasDeLugar());
 
 /**
  * Los caminos de `/actividad/[slug]`, uno por actividad publicada.
