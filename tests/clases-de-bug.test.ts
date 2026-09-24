@@ -31,6 +31,7 @@ import { describe, expect, it } from 'vitest';
 import { documentoAForm, formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue } from '../functions/reportes.js';
+import { COLECCIONES_DE_DIRECTORIO } from '../functions/directorios.js';
 import { versionesPosibles } from '../scripts/version.mjs';
 import type { Actividad } from '@/types/actividad';
 import { CAMPOS_TAXONOMIA } from '@/types/actividad';
@@ -526,6 +527,14 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        *    forma positiva que `syncCalendar` y `rebuildPorOpciones`. La forma al
        *    revés es lógicamente idéntica y deja este archivo en rojo — lo
        *    encontraron los dos auditores sobre la primera versión del trigger.
+       *
+       * **B-905 — y desde ahí los cuatro rebuild de directorio escriben en el
+       * documento que los dispara**: prenden `publicadaAlgunaVez` con
+       * `marcarPublicada`, el mismo efecto que `syncCalendar`. Ninguno cambia de
+       * respuesta en B-82 (el efecto es un `update`, que direcciona una identidad
+       * que ya existe) y los dos registros que sí los miran por eso crecieron:
+       * `EFECTOS_INCONDICIONALES` (B-83) ya tenía la marca, y
+       * `WRITE_BACKS_CON_GUARDA` (trampa 3) es nuevo.
        */
       'rebuildPorLibrerias',
       /*
@@ -1754,6 +1763,9 @@ const EFECTOS_INCONDICIONALES = [
    * `GOOGLE_CALENDAR_ID`, así que detrás de cualquiera de los dos la marca no se
    * escribiría nunca — y sin ella una cancelada pierde su página pública (B-110,
    * D-159), que es un 404 en una URL que estuvo en Google.
+   *
+   * B-905 — y lo mismo en los cuatro rebuild de directorio: la marca corresponde
+   * porque la ficha pasó a publicada, no porque el sitio tenga algo que rehacer.
    */
   'marcarPublicada',
 ];
@@ -1791,6 +1803,70 @@ describe('clase de B-83 · un efecto incondicional no puede quedar debajo de una
       }
     }
     expect(tapados).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Trampa 3 · un write-back al documento que dispara el trigger va
+// detrás de su guarda — B-905
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Un trigger que escribe en el documento que lo disparó se dispara a sí mismo
+ * (trampa 3). Para el `calendarEventId` la guarda es el diff del §7.1; para las
+ * marcas que se escriben **una sola vez** es un predicado que dice «todavía
+ * falta», y el `update` tiene que estar **adentro** de su `if`.
+ *
+ * Hasta B-905 había un solo llamador (`syncCalendar`) y el caso con nombre de
+ * `publicada-alguna-vez.test.ts` alcanzaba. Con B-905 son cinco —los cuatro
+ * rebuild de directorio prenden la misma marca— y el bloque está copiado a
+ * propósito en cada cuerpo (el chequeo de B-83 es textual), así que la copia que
+ * pierda su `if` es exactamente el error que una lista de casos no ve venir.
+ *
+ * El registro es **efecto → guarda**. Un write-back nuevo de este tipo se suma
+ * acá y queda cubierto en todos los triggers que lo llamen.
+ */
+const WRITE_BACKS_CON_GUARDA: Record<string, string> = {
+  marcarPublicada: 'faltaMarcarPublicada',
+};
+
+describe('trampa 3 · el write-back al propio documento va detrás de su guarda — B-905', () => {
+  const llamadas = TRIGGERS.flatMap((t) =>
+    Object.entries(WRITE_BACKS_CON_GUARDA)
+      .filter(([efecto]) => new RegExp(`\\b${efecto}\\(`).test(sinComentarios(t.cuerpo)))
+      .map(([efecto, guarda]) => ({ trigger: t, efecto, guarda })),
+  );
+
+  it('los llamadores son `syncCalendar` y el rebuild de cada directorio', () => {
+    // Si esto se achica, un directorio dejó de escribir la marca (B-905 otra
+    // vez); si crece, hay un trigger nuevo que la escribe y hay que mirarlo.
+    expect(llamadas.map((l) => l.trigger.nombre).sort()).toEqual(
+      [
+        'syncCalendar',
+        ...COLECCIONES_DE_DIRECTORIO.map((c) => `rebuildPor${c[0]!.toUpperCase()}${c.slice(1)}`),
+      ].sort(),
+    );
+  });
+
+  /**
+   * **Qué lo pondría rojo:** sacar el `if (faltaMarcarPublicada(despues))` de
+   * cualquiera de los cinco triggers, o poner otro `if` entre la guarda y la
+   * llamada (la llamada quedaría gobernada por una condición que no es la
+   * guarda). El `try` del medio no cuenta: no decide nada.
+   */
+  it('el `if` más cercano que precede a cada llamada es el de su guarda', () => {
+    const desguarnecidos: string[] = [];
+    for (const { trigger, efecto, guarda } of llamadas) {
+      const cuerpo = sinComentarios(trigger.cuerpo);
+      for (const m of cuerpo.matchAll(new RegExp(`\\b${efecto}\\(`, 'g'))) {
+        const antes = cuerpo.slice(0, m.index);
+        const ultimoIf = [...antes.matchAll(/\bif\s*\(\s*(!?\s*\w+)/g)].pop();
+        if (ultimoIf?.[1] !== guarda) {
+          desguarnecidos.push(`${trigger.archivo} · ${trigger.nombre} → ${efecto}() sin ${guarda}()`);
+        }
+      }
+    }
+    expect(desguarnecidos).toEqual([]);
   });
 });
 
