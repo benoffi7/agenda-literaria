@@ -1889,9 +1889,11 @@ nuevas en una página indexada**, y ese diff tiene que disparar la auditoría.
 formulario; lo que sostiene esa premisa es el chequeo de `https:` del test. El día
 que un banner se cargue desde el panel, tiene que pasar por el saneador.
 
-**Todavía no se mide el clic** (B-963): sumar un cuarto evento propio toca el
-vocabulario de `analyticsSitio.ts`, `EVENTOS_PROPIOS` de `functions/analitica.js`
-y este documento, y es un cambio con su propia decisión de privacidad.
+**El clic se mide** (B-963): `clic_banner_ciudad`, con la ciudad en slug y nada
+más, desde el `onClick` del componente. Una ciudad nueva en `BANNERS_DE_CIUDAD`
+tiene que sumarse también a `CIUDADES_CON_BANNER` de `analyticsSitio.ts`;
+`tests/analyticsSitio.test.ts` lo exige. Detalle en
+[`16-analitica-del-sitio.md` § 7.7](16-analitica-del-sitio.md#77--el-cuarto-evento-propio-el-banner-de-una-ciudad-b-963) (D-950).
 
 ---
 

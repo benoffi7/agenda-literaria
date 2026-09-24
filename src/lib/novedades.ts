@@ -61,6 +61,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'convertir-una-que-vence-avisa',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Convertir una propuesta que se borra esta noche te avisa',
+    detalle:
+      'Si convertís una propuesta que ya estabas mirando, o una rechazada, y se borra esta noche ' +
+      'de la bandeja, el formulario te avisa arriba: guardala pronto, aunque sea como borrador.',
+    donde: 'En Propuestas, al tocar «Convertir en actividad».',
+  },
+  {
     id: 'convertir-marca-en-revision',
     fecha: '2026-09-24',
     version: '1.11.0',

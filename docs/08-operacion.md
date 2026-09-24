@@ -2007,7 +2007,9 @@ auditores, cada uno por su lado.
 > Abrir la conversión de una `nueva` la pasa a `en-revision`, que renueva
 > `revision.en`: la precondición tiene una versión nueva contra la cual proteger y
 > el barrido no se la lleva con el formulario abierto. Queda descubierta la
-> `en-revision` o `rechazada` vieja que se convierte sin marca (**B-1460**).
+> `en-revision` o `rechazada` vieja que se convierte sin marca (**B-1460**): desde el
+> mismo día el formulario lo avisa cuando le queda menos de un día (D-945), pero no
+> se renueva.
 
 **Y lo que borra está acotado al prefijo `propuestas/`.** No es higiene: esta
 Function corre con el Admin SDK y **no pasa por `firestore.rules`**, así que el

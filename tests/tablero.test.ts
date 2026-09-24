@@ -397,3 +397,37 @@ describe('contra el archivo real', () => {
     }
   });
 });
+
+/**
+ * **B-1510 — los encabezados de los dos backlogs usan solo emojis que el
+ * parseo conoce.** Era un caso de `estados-referenciados.test.ts` que B-1222
+ * sacó al unificar el mapa; de rebote cuidaba algo más que la copia: si un
+ * encabezado estrena un emoji de estado que `ESTADO_DE_EMOJI` no conoce,
+ * `parsearBacklog` lo lee como `abierto` y nada se pone rojo (los «46 ítems
+ * cerrados como si estuvieran abiertos» del 2026-09-17). Se busca por rango
+ * Unicode y no por la lista, que es lo que haría el chequeo circular. Cualquier
+ * emoji cuenta, sea de estado o no: hoy no hay ninguno de otro tipo, y el día
+ * que haga falta uno se decide agregándolo acá con su motivo.
+ */
+describe('los encabezados del backlog usan emojis que el parseo conoce (B-1510)', () => {
+  it('ningún `### ` de los dos archivos lleva un emoji fuera de ESTADO_DE_EMOJI', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { ESTADO_DE_EMOJI } = await import('../scripts/tablero/parseo.mjs');
+    const conocidos = Object.keys(ESTADO_DE_EMOJI);
+    const sueltos = new Set<string>();
+    for (const archivo of ['docs/BACKLOG.md', 'docs/BACKLOG-cerrados.md']) {
+      for (const linea of readFileSync(archivo, 'utf8').split('\n')) {
+        if (!linea.startsWith('### ')) continue;
+        for (const e of linea.match(/\p{Extended_Pictographic}/gu) ?? []) {
+          if (!conocidos.some((c) => c.startsWith(e))) sueltos.add(e);
+        }
+      }
+    }
+    expect(conocidos.length).toBeGreaterThan(0);
+    expect(
+      [...sueltos],
+      'Un encabezado usa un emoji que parseo.mjs no conoce: sin agregarlo a ' +
+        'ESTADO_DE_EMOJI, el tablero lee ese ítem como abierto.',
+    ).toEqual([]);
+  });
+});

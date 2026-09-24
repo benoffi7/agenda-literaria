@@ -517,6 +517,12 @@ const METRICAS_PARA_VENDER: { titulo: string; detalle: string }[] = [
  * la línea que el §9.3 pide que el tablero diga siempre.
  */
 const NOMBRE_DE_EVENTO: Record<string, { titulo: string; detalle: string }> = {
+  clic_banner_ciudad: {
+    titulo: 'Clics en el banner de ciudad',
+    detalle:
+      'Si la gente toca el banner que aparece al filtrar por una ciudad que tiene uno. ' +
+      'Mide qué ciudad, nunca a dónde lleva ni de quién es.',
+  },
   clic_inscripcion: {
     titulo: 'Clics en inscripción',
     detalle:

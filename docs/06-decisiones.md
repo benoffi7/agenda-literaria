@@ -12893,9 +12893,70 @@ corrige de alcance y no se revierte.
 
 - **Solo la `nueva`.** La `en-revision` ya está ahí y `revisionValida()` exige
   mover el estado; la `rechazada` se convierte sin reabrirla, porque reabrirla
-  sería una decisión que nadie tomó. Lo que queda descubierto es **B-1460**.
+  sería una decisión que nadie tomó. Lo que queda descubierto es **B-1460**, que
+  desde el mismo día se avisa en el formulario: D-945.
 - **La marca no bloquea.** Si falla, la conversión sigue y el formulario lo avisa:
   cortar el trabajo del admin por una protección contra un caso raro cambia un
   riesgo chico por uno seguro.
 - **La regla no cambió**: no tiene grafo de transiciones y ya aceptaba
   `nueva → en-revision → aceptada`.
+
+## D-945 · Convertir una propuesta a punto de vencer sin marca se avisa, no se renueva
+
+**B-1460, 2026-09-24. El dueño tomó la salida que no afloja la regla.** D-930
+marca solo la `nueva`. La `en-revision` y la `rechazada` se convierten sin
+moverse, así que una vieja se la puede llevar el barrido con el formulario
+abierto.
+
+| | Un «toque» que renueve `revision.en` sin mover el estado | **Avisar en el formulario** |
+|---|---|---|
+| La regla | se afloja el `hasAny(['estado'])` que D-600 defendió | **queda como está** |
+| La ventana | se cierra | queda, pero dicha, y la cierra guardar (aunque sea en borrador) |
+
+**Lo elegido:** si a la propuesta le queda menos de un día (`caducaEn` < 1), la
+conversión suma un aviso primero en la lista.
+
+**Por qué un día y no la semana de la ficha:** el barrido corre cada 24 horas.
+Con un día entero de margen la próxima corrida no la toca, así que antes de eso el
+aviso repetiría la ficha y se volvería cartel (D-273).
+
+**Lo que esto obliga:**
+
+- Un solo cálculo: el aviso sale de `caducaEn` y `avisoDeCaducidad`, y el test lo
+  cruza contra `decidirRetencion`.
+- La salida depende del estado. Las dos se salvan guardando; la `rechazada`
+  además puede reabrirse. La `en-revision` no: «Rechazar» sería decidir algo para
+  ganar tiempo, y borra la foto. El aviso no lo aconseja (B-1490).
+
+## D-950 · El clic del banner de ciudad: vocabulario cerrado copiado, y el handler en el componente
+
+**B-963, 2026-09-24.** `clic_banner_ciudad` lleva un solo parámetro, `ciudad`, con
+saneador `enum` sobre `CIUDADES_CON_BANNER` (`analyticsSitio.ts`), una copia de
+las ciudades de `BANNERS_DE_CIUDAD`. El `onClick` vive en `BannerDeCiudad.tsx`.
+
+- **`enum` y no `lista-slugs`:** `FORMATO_SLUG` aceptaría cualquier palabra en
+  minúscula, y la ciudad válida es solo una que tenga banner. Fuera de vocabulario
+  llega como `ciudad=otro`.
+- **Ni destino ni nombre:** los dos son función de la ciudad (un banner por
+  ciudad), y el destino es lo que «Clics salientes» apagado en GA4 (B-480) existe
+  para no mandar.
+- **Copia y no import:** `analyticsSitio.ts` carga en todas las páginas, e
+  importarlo traería los banners y `slugDeCiudad` a cada una. La red es un test de
+  igualdad en las dos direcciones.
+- **Handler en el componente, al revés que el tríptico (B-601):** aquel lo pintan
+  el build y la island; este lo monta solo la island, detrás de `indice`.
+
+**Cuándo revisarlo.** Si el banner pasa a pintarse también desde el build, el
+handler se muda a una prop, como el del tríptico. Si se agrega una segunda
+ciudad, va también a `CIUDADES_CON_BANNER` (el test lo exige).
+
+## D-965 · El campo secundario de una cáscara se colapsa a `''` en la salida, sin trimear el texto
+
+**B-891, 2026-09-24.** En `libroPublico` y en el view-model del detalle, un
+`autor` de solo espacios sale `''` y no como estaba escrito —y desde B-1530 el
+evento de Calendar hace la misma pregunta—. No es trimear: el valor que tiene
+texto sale tal cual (B-885), y solo cambia la respuesta a «¿hay autor?», que el
+consumidor ya sabía no pintar con `''`. Descartado: recortar el texto al emitir;
+el sitio y el evento de Calendar dirían cosas distintas, y la raíz —escribir
+`parsed.data`— sigue siendo la decisión abierta de B-891.
+
