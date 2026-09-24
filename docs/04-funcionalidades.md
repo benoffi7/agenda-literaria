@@ -2223,13 +2223,15 @@ lugar— y el epígrafe si lo hay. El bloque entero es el enlace.
 Los detalles y las alternativas descartadas están en **D-148**; el peso medido, en
 **D-149** y **B-266**.
 
-**Desde B-320, cada afiche pide la miniatura de 480px (B-220) y no el original.**
-El `<img>` lleva `srcset` con la miniatura como candidato chico y el original
-como grande, y el original queda siempre en `src` —una imagen subida antes de
-que la Function estuviera desplegada no tiene miniatura todavía, y un `srcset`
-cuyo candidato no existe degrada solo al `src`—. Recorrer la pared entera pasa
-de 3518,5 KB a 1032,4 KB (−71 %) con las 30 imágenes de producción, y con eso
-**B-266 queda resuelto del todo**: lo único que faltaba era este `srcset`.
+**Desde B-320, cada afiche pide la miniatura de 480px (B-220) y no el original**,
+y **desde D-210 solo si el build la confirmó contra Storage**
+(`urlDeMiniaturaSiExiste` + `miniaturasConocidas()`), nunca derivada a ciegas. El
+`<img>` lleva `srcset` con la miniatura como candidato chico y el original como
+grande, y el original queda siempre en `src`. Si la miniatura todavía no está
+confirmada, el `srcset` sale **sin ese candidato**: un candidato que da 404
+**rompe** la imagen, no degrada al `src` (B-1791 corrigió este párrafo, que decía
+lo contrario). Recorrer la pared entera pasa de 3518,5 KB a 1032,4 KB (−71 %) con
+las 30 imágenes de producción, y con eso **B-266 queda resuelto del todo**.
 
 ### `/agenda/{aaaa-mm}` — qué hay en un mes (B-113)
 

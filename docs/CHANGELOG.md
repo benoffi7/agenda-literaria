@@ -7911,6 +7911,31 @@ B-291). La cuenta completa está en el §5.3bis de `docs/12-sitio-publico.md`.
 
 ---
 
+## 2026-09-03 · la miniatura del `srcset` se confirma contra Storage (B-320/B-321, D-210)
+
+`/cartelera` y la portada de la página de detalle ponían la miniatura de 480px
+como candidato chico de un `srcset` **derivándola a ciegas** (`urlDeMiniatura`),
+apoyadas en una afirmación escrita en `src/lib/cartelera.ts` que es falsa: «un
+`srcset` cuyo candidato no existe hace que el navegador caiga al `src`». El
+candidato elegido **reemplaza** al `src`, así que un 404 deja la imagen rota, no
+degradada. Ahora la miniatura entra sólo si el build la confirmó contra Storage:
+`urlDeMiniaturaSiExiste` + `miniaturasConocidas()`, **una sola lectura por
+build** (`getFiles({ prefix: 'miniaturas/' })`, sin bajar un byte — DEC-7d
+intacto). Sin confirmar, el atributo sale ausente y el afiche es el original:
+más pesado y entero. La lectura **nunca tira** —sin credenciales, sin permiso o
+con Storage caído se degrada a «ninguna confirmada» con un aviso—, que es la
+asimetría deliberada contra el `throw` de B-189. Se suma la guarda de emulador
+que faltaba (`FIREBASE_STORAGE_EMULATOR_HOST` en `vitest.config.ts` y en el
+build), y dos redes nuevas: un test por **regla** —ninguna salida fuera de
+`src/lib/imagenes.ts` puede llamar a `urlDeMiniatura`— y uno de integración que
+ata que la clave del listado de Storage sea la misma que derivamos, porque si
+divergieran los `srcset` del sitio desaparecerían en silencio. La página de
+detalle recibe la URL **ya resuelta** y no la enumeración del bucket: esa
+enumeración incluye las miniaturas de los borradores y, siendo un `Set`, era
+invisible para los barridos de props, que serializan con `JSON.stringify`.
+
+> Pegado el 2026-09-24 desde el `.estado/` del rescate de D-210, donde había quedado sin versionar (B-1792).
+
 ## 2026-09-03 · el corte puro/trigger llega a `functions/index.js` (B-77)
 Era el único archivo de `functions/` sin el corte que
 [`05-patrones.md`](05-patrones.md) prescribe: 542 LOC con seis responsabilidades
@@ -8135,9 +8160,9 @@ que se note. El sello («Actualizado: vie 3 sep, 14:30», del `generadoEn`) expl
 por qué algo cargado hace diez minutos todavía no está.
 
 **No responde a los filtros**, a propósito: contesta una pregunta fija. Tope de
-cuatro filas por panel. Un panel vacío se dibuja y dice que no hay nada («el
+cuatro filas por panel. ~~Un panel vacío se dibuja y dice que no hay nada («el
 sábado está libre» es información); la sección entera no se dibuja solo si las
-tres ventanas están vacías, y esa condición vive en el módulo y no en cada
+tres ventanas están vacías~~ —**dado vuelta el 2026-09-03 por el dueño, ver D-320: un panel vacío no se dibuja, y la sección sale con uno, dos o tres** (B-1795)—, y esa condición vive en el módulo y no en cada
 llamador —el build y la island— porque dos condiciones escritas por separado son
 dos maneras de que una se quede vieja (la clase de B-88).
 

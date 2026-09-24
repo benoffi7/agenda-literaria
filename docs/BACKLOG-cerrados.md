@@ -15210,6 +15210,89 @@ Si alguna vez se atiende, el camino es el 3 del ítem original —que restaurar 
 cuando la imagen ya no está— y vive en `src/lib/historial.ts` +
 `HistorialActividad.tsx`, no en el barrido.
 
+### B-680 · El `srcset` de la cartelera y de la portada apuntaba a un objeto sin confirmar — ✅ hecho (2026-09-03) · P1
+
+`src/lib/cartelera.ts` derivaba `urlMiniatura` con `urlDeMiniatura` —una función
+pura de la URL del original, que no sabe si el objeto existe— y las dos salidas
+la servían como candidato chico de un `srcset`. El comentario que lo justificaba
+decía que «un `srcset` cuyo candidato no existe hace que el navegador caiga al
+`src`». **Es falso**: una vez elegido, el candidato reemplaza al `src` en el
+algoritmo de selección de imagen; el `src` es el respaldo para un navegador sin
+soporte de `srcset`, no para un 404. O sea que el modo de falla no era «se ve
+más pesada», era **la imagen rota** en las dos salidas públicas indexables.
+
+Con `optimizarImagen` desplegada y el barrido corrido (2026-09-03, 49 de 49) la
+ventana se achicó pero no se cerró: quedan los segundos entre la subida y el
+trigger, y cualquier corrida que falle. Cada imagen nueva la atraviesa, y un
+build ahí adentro publica el afiche roto hasta el rebuild siguiente.
+
+**Arreglado en D-210:** `urlDeMiniaturaSiExiste(url, conocidas)` +
+`miniaturasConocidas()` (una lectura de Storage por build) + `adminBucket()`.
+El comentario falso se reescribió en los cuatro lugares donde estaba copiado, y
+D-175 —que lo afirmaba en su propio texto— quedó con el aviso de rectificación.
+
+> Pegado el 2026-09-24 desde el `.estado/` del rescate de D-210, donde había quedado sin versionar (B-1792).
+
+### B-681 · Nada impedía que una salida nueva volviera a derivar la miniatura a ciegas — ✅ hecho (2026-09-03) · P2
+
+Encontrado al cerrar B-680: `urlDeMiniatura` sigue exportada (hace falta la
+derivación pura, y es lo que los tests comparan contra `functions/imagenes.js`),
+tiene la firma más cómoda de las dos, y llamarla produce una URL que se ve
+perfecta. Los tests de B-680 fijan las **dos salidas que existen hoy** —el valor
+de `Afiche.urlMiniatura` y el markup de `[slug].astro`—, no la regla, así que la
+tercera salida que alguien agregue nace con el bug de vuelta y en verde.
+
+**Arreglado:** `tests/imagenes.test.ts` recorre `src/**`, saca los comentarios y
+falla si algún archivo que no sea `src/lib/imagenes.ts` invoca `urlDeMiniatura`.
+Mutación probada (una llamada agregada a `cartelera.astro` lo pone en rojo).
+
+> Pegado el 2026-09-24 desde el `.estado/` del rescate de D-210, donde había quedado sin versionar (B-1792).
+
+### B-684 · La enumeración del bucket viajaba a la página de detalle, y ninguna red podía verla — ✅ hecho (2026-09-03) · P1
+
+Lo encontró el `auditor-privacidad` sobre la primera versión de B-680. El `Set`
+de miniaturas confirmadas se pasaba como **prop de cada página de detalle** y la
+plantilla hacía el `.has()`. Dos cosas mal:
+
+`getFiles({ prefix: 'miniaturas/' })` devuelve el prefijo **entero**, y
+`miniaturas/` es plano y compartido: adentro están también las miniaturas de las
+actividades en **borrador**. O sea que la enumeración que
+`allow list: if esAdmin()` existe para negarle a un anónimo —la **trampa 13**—
+entraba al scope de render de una página HTML indexada. No filtraba nada todavía
+porque solo se consultaba con `.has()`; el próximo `map`, `size` o
+`<link rel=preload>` sí.
+
+Y lo que lo vuelve P1: **las dos redes que custodian esas props estaban ciegas**.
+`tests/sitio-publico.integracion.test.ts` serializa las props con
+`JSON.stringify` y busca centinelas, y `JSON.stringify(new Set([...]))` es `{}`.
+Ningún centinela lo habría encontrado, ni el que se agregue mañana. Es el modo de
+falla de **B-580** con otra causa: allá faltaban claves, acá el tipo se come el
+contenido.
+
+**Arreglado:** `caminosDeDetalle` resuelve por página y la prop es
+`urlMiniaturaPortada: string | null` — una URL que ya era pública, que los dos
+barridos sí ven. Es el patrón que `/cartelera` ya usaba bien. Y
+`tests/pagina-de-detalle.test.ts` sostiene ahora una regla más fuerte: ninguna
+prop de esa página puede ser de un tipo que `JSON.stringify` no pueda mirar.
+
+> Pegado el 2026-09-24 desde el `.estado/` del rescate de D-210, donde había quedado sin versionar (B-1792).
+
+### B-685 · Dos cachés de módulo y un solo `olvidar` en el consumidor que ya tenía la disciplina — ✅ hecho (2026-09-03) · P2
+
+Lo encontró el `auditor-trampas`. `miniaturasConocidas()` memoiza el listado de
+Storage igual que `contenidoDelSitio()` memoiza los documentos, pero los tres
+bloques de `tests/sitio-publico.integracion.test.ts` que siembran estados
+distintos solo llamaban `olvidarContenido()`. El segundo bloque sembraba un
+estado nuevo y seguía leyendo el `Set` del primero. No rompía nada todavía
+—ningún `it` de ahí afirma sobre `urlMiniatura`— y por eso mismo el primero que
+lo afirme mentiría en verde.
+
+**Arreglado:** `olvidarMiniaturas()` al lado de cada `olvidarContenido()`. La
+regla general queda escrita en D-210: una caché nueva se agrega al `olvidar` de
+todos los consumidores que ya tenían esa disciplina, en el mismo cambio.
+
+> Pegado el 2026-09-24 desde el `.estado/` del rescate de D-210, donde había quedado sin versionar (B-1792).
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
