@@ -47,9 +47,11 @@ import type { FirebaseApp } from 'firebase/app';
 import {
   getToken,
   initializeAppCheck,
+  onTokenChanged,
   ReCaptchaEnterpriseProvider,
   type AppCheck,
 } from 'firebase/app-check';
+import { registrarEventoDeToken } from '@/lib/verificacionDelNavegador';
 
 /**
  * Por qué App Check no se activó en esta carga. `null` = se activó.
@@ -84,6 +86,39 @@ export const motivoParaNoActivar = (entorno: {
   if (entorno.usarEmuladores) return 'emuladores';
   if (!entorno.claveDeSitio) return 'sin-clave';
   return null;
+};
+
+/**
+ * B-1250 — **cada token que llega o que no llega, no solo el primero**.
+ *
+ * El primer pedido lo hace el panel al arrancar (B-930). Pero el token se
+ * renueva solo durante toda la sesión, y una renovación que falla a media
+ * tarde dejaba el cartel sin aparecer. `onTokenChanged` avisa las dos cosas:
+ * el token nuevo (`siguiente`) y el SDK quedándose sin ninguno válido
+ * (`error`), y las dos van al mismo store que pinta el cartel. La regla de qué
+ * hace cada aviso —y por qué no parpadea con las renovaciones normales— es pura
+ * y vive en `verificacionDelNavegador.ts`.
+ *
+ * **Se suscribe acá, al activar**, y no desde el panel: es el único lugar que
+ * tiene la instancia, y suscribirse no pide nada a la red —con
+ * `isTokenAutoRefreshEnabled` el SDK ya tiene su propio oyente y el refresco
+ * andando—. En el sitio público el store está en `no-aplica` y los avisos no lo
+ * mueven. La desuscripción no se guarda a propósito: vive lo que vive la
+ * página, igual que la instancia.
+ *
+ * Un fallo al suscribirse no deshace la activación: App Check sigue andando, lo
+ * que se pierde es el aviso de las renovaciones.
+ */
+const suscribirseALasRenovaciones = (instancia: AppCheck): void => {
+  try {
+    onTokenChanged(
+      instancia,
+      () => registrarEventoDeToken('token'),
+      () => registrarEventoDeToken('error'),
+    );
+  } catch (e) {
+    console.warn('[app-check] no se pudo escuchar la renovación del token:', e);
+  }
 };
 
 let _appCheck: AppCheck | null = null;
@@ -136,6 +171,7 @@ export const activarAppCheck = (
       // horas, así que la segunda mitad de la tarde escribiría sin token.
       isTokenAutoRefreshEnabled: true,
     });
+    suscribirseALasRenovaciones(_appCheck);
     return _appCheck;
   } catch (e) {
     _motivo = 'fallo';
