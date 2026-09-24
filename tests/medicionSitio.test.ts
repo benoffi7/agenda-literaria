@@ -45,7 +45,9 @@ describe('el `page_location` y el `page_referrer` van siempre recortados (D-253)
      */
     const config = /gtag\('config',\s*measurementId,\s*\{([\s\S]*?)\}\)/.exec(sinComentarios);
     expect(config, 'no se encontró la llamada a gtag(\'config\', ...)').not.toBeNull();
-    expect(config![1]).toContain('page_location: ubicacionSinQuery(window.location.href)');
+    // Desde B-1793 la ubicación pasa por `ubicacionAMedir`, que con `rutaFija`
+    // (la página de error) mide la canónica y sin ella es `ubicacionSinQuery`.
+    expect(config![1]).toContain('page_location: ubicacionAMedir(window.location.href, rutaFija)');
     expect(config![1]).toContain('page_referrer:');
     expect(config![1]).toContain('ubicacionSinQuery(document.referrer)');
   });
