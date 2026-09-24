@@ -565,17 +565,6 @@ nuevo, y eso es lo que este ítem compra.
 
 ## P2 — mejoras reales
 
-### B-1790 · El paso 4 del gate nunca ejercita la confirmación de miniaturas de D-210 · P2 — de `procesos` (2026-09-24, era el ítem 682 del rescate de D-210, que nunca entró)
-
-`leído`. `scripts/verificar-todo.sh` corre el paso 4 con Firestore solo. Sin
-`FIREBASE_STORAGE_EMULATOR_HOST`, `leerMiniaturas()` (`contenidoDelSitio.ts`) corta
-en la rama «Firestore emulado sin Storage emulado» y devuelve un set vacío: el gate
-que existe para correr el build de verdad corre justo la mitad que no confirma
-nada. **Lo mediría:** el aviso `[sitio] build contra el emulador de Firestore sin
-FIREBASE_STORAGE_EMULATOR_HOST` en la salida del paso 4. **Arreglo:** levantar
-Storage en el paso 4 y sembrar un objeto en `miniaturas/` para afirmar sobre el
-`srcset` del HTML.
-
 ### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25) · P2 — vuelto de los cerrados (2026-09-24, B-1580)
 
 Reportado por el dueño (2026-08-24), cargando un club de lectura real: *"en
@@ -871,58 +860,36 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-1750 · Un `opacity-NN` en un contenedor del panel multiplica la atenuación de su texto, y el barrido no lo ve · P3 — de `contraste-panel` (2026-09-24)
+### B-1850 · El detalle y los hubs o meses que enlaza miran relojes distintos · P3 — de `hub-vacio` (2026-09-24)
 
-Las filas «apagadas» del panel (encuentro cancelado, reporte resuelto, ficha
-rechazada, propuesta no pendiente, día pasado del calendario) llevan `opacity-60` o
-`-70` en el contenedor: adentro, un `text-tinta/65` pinta de hecho ~`/39` (≈2,5:1).
-El barrido lee clase por clase y no compone el árbol. Arreglo: apagar esas filas con
-una tinta y no con `opacity`, o que el test sume el `opacity-NN` de las líneas con
-un ternario de estado.
+`caminosDeDetalle` usa `new Date()` para `yaPaso`, `mesesConPagina` y
+`tiposOfrecidos`, y las páginas de hub y de mes usan el reloj del índice
+(`generadoEn`). Si un build cae justo en el borde de la última vigente de un tipo o
+de un mes, el detalle puede enlazar un hub que su propia página decidió vacío. La
+ventana es de segundos. Arreglo: que `caminosDeDetalle` tome por defecto
+`new Date(indice.generadoEn)`, como `hubsConContexto`.
 
-### B-1751 · El contraste del panel no se mide sobre sus tintes · P3 — de `contraste-panel` (2026-09-24)
+### B-1840 · Las filas que «no salen» a una salida no se verifican ausentes · P3 — de `registro-ig` (2026-09-24)
 
-El barrido mide contra el blanco, el papel y los tokens neutros. El panel también
-apoya texto sobre `bg-acento/5` y `/10`, `bg-black/5`, `bg-amber-50`/`-100` y
-`bg-emerald-100`. Falta derivarlos del markup, como hace
-`contraste-de-superficies.test.ts` en el sitio, más los colores de Tailwind que no
-están en `global.css`.
+En `CAMPOS_DE_INSTAGRAM`, un `{ porque }` es una afirmación sin chequeo propio: que
+`difusion.arrobar` no llegue a Calendar ni a la ficha lo cubren hoy los centinelas
+del barrido de salidas públicas, no este registro. Opción: un `ausente: 'arrobar'`
+para los atributos con nombre propio.
 
-### B-1760 · Partir `build-contra-emulador.mjs` en los tres cortes de D-1070 · P3 — de `gate-build` (2026-09-24)
+### B-1830 · El par fondo + tinta del panel se mide solo si las dos clases van en el mismo grupo · P3 — de `contraste-2` (2026-09-24)
 
-Lo tiene que hacer un frente con emuladores: (1) `scripts/gate-build/semilla.mjs`
-con `CENTINELA`, las canastas y los fixtures, sin efectos e importable desde vitest;
-(2) un `verificarDirectorio({...})` parametrizado para los pasos 8i-8l; (3) el paso
-9 como función pura sobre `{relativa, contenido}[]`. Se verifica con la misma
-corrida contra el emulador antes y después, y una fuga inyectada a mano por canasta
-que tiene que ponerse roja. Un corte por commit.
+Una tinta con nombre (`text-acento`, `text-amber-900/85`) sobre un tinte **heredado**
+de un ancestro no se mide: el barrido lee por línea y no por árbol. Pasó con
+`AvisoVersionNueva`, que se encontró a mano. Opción: un render que componga, por
+cada nodo con texto, su tinta sobre el primer fondo de sus ancestros; o declarar en
+cada aviso de color su par tinta/fondo en un solo lugar.
 
-### B-1761 · Las canastas del gate y las del barrido de vitest se sincronizan de memoria · P3 — de `gate-build` (2026-09-24)
+### B-1812 · Las canastas de los cuatro directorios de la Guía no se comparan con sus barridos de vitest · P3 — de `gate` (2026-09-24)
 
-`CENTINELA_DEL_DETALLE` y `PERMITIDO_EN_EL_DETALLE` de
-`tests/barrido-de-salidas-publicas.test.ts` tienen que coincidir y nada lo verifica:
-falló con B-99, `comisionId`, `incluyeSlug` y el monto. Depende del corte 1 de
-B-1760. Después, un test que compare las dos listas. Clase de B-99/B-180.
-
-### B-1780 · El registro de campos de Instagram solo lo recorre la guarda de Calendar · P3 — de `registros` (2026-09-24)
-
-`CAMPOS_DE_INSTAGRAM` vive en `tests/calendario.test.ts` y vigila solo
-`calendario.js`. `accionDeInscripcion`, `destinoLegible` y la ficha pública tienen
-tests de comportamiento pero ninguna guarda de clase. Opción: mover el registro a un
-fixture compartido y que cada salida lo recorra. Clase de B-88 / D-750.
-
-### B-1800 · «Más talleres» de una pasada puede llevar a un hub vacío · P3 — de `404-pasadas` (2026-09-24)
-
-`tipoTieneHub` dice que el hub se emitió, no que tenga algo vigente: un `/tipo/x` sin
-vigentes sale con `noindex`, y desde la pasada se enlaza igual. Arreglo: que
-`contenidoDelSitio.ts` pase los tipos ofrecidos (`hubsOfrecidos`) y que `masDelTipo`
-use ese dato.
-
-### B-1801 · Lo de B-1793 solo está fijado sobre la fuente · P3 — de `404-pasadas` (2026-09-24)
-
-`verificar-bundle.sh` podría exigirle a `dist/404.html` el
-`<meta name="referrer" content="origin">` y el `data-ruta-medida="/404/"`, como ya
-le exige el `noindex`.
+B-1761 ata detalle, índice y cartelera. Las canastas de librerías, suscripciones,
+lugares y bibliotecas tienen su barrido en otros archivos, con listas locales.
+Arreglo: exportar esas listas a un fixture y agregar las cuatro comparaciones con
+`canastaDelGateCoincide`.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

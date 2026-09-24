@@ -17314,6 +17314,19 @@ medición: `page_location` recortaba la query pero conservaba el pathname de la 
 pedida —un slug renombrado, uno nunca publicado o texto arbitrario—. Rompe la
 garantía de la fila 12 de `07-seguridad.md`. Solo con consentimiento.
 
+### B-1790 · El paso 4 del gate nunca ejercita la confirmación de miniaturas de D-210 · P2 — de `procesos` (2026-09-24, era el ítem 682 del rescate de D-210, que nunca entró) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `e043631`: medido, el aviso `[sitio] … sin FIREBASE_STORAGE_EMULATOR_HOST` ya no sale, y sin el objeto el gate da ✗. D-1095, D-1096.
+
+`leído`. `scripts/verificar-todo.sh` corre el paso 4 con Firestore solo. Sin
+`FIREBASE_STORAGE_EMULATOR_HOST`, `leerMiniaturas()` (`contenidoDelSitio.ts`) corta
+en la rama «Firestore emulado sin Storage emulado» y devuelve un set vacío: el gate
+que existe para correr el build de verdad corre justo la mitad que no confirma
+nada. **Lo mediría:** el aviso `[sitio] build contra el emulador de Firestore sin
+FIREBASE_STORAGE_EMULATOR_HOST` en la salida del paso 4. **Arreglo:** levantar
+Storage en el paso 4 y sembrar un objeto en `miniaturas/` para afirmar sobre el
+`srcset` del HTML.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -21227,6 +21240,89 @@ de «no partir» que protege a los dos primeros de la lista no le aplica.
 **Queda sin diagnóstico a propósito: medirlo no alcanza.** Hay que decidir si es
 un barrido que se ganó el tamaño —cada paso que agrega es un gate real— o un
 archivo que hay que partir. Mismo criterio que el § 1.3 con el formulario.
+
+### B-1810 · La canasta del detalle del gate nombraba `sesionId`, que no es un centinela · P3 — de `gate` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Desde B-99 el id de sesión sale a propósito, pero `'sesionId'` siguió en
+`CENTINELA_DEL_DETALLE`: no permitía nada y nada avisaba. **✅ Hecho (2026-09-24):**
+salió, y `tests/gate-build.test.ts` frena una canasta que nombre una clave que no
+existe.
+
+### B-1811 · El aviso de siembra del gate decía «5 actividades» y eran 6 · P4 — de `gate` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24)** con B-1790.
+
+### B-1813 · La doc de operación decía que el paso 4 corre con solo Firestore · P3 — de `gate` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** la fila del paso 4 de `08-operacion.md` y el comando de
+`07-seguridad.md` piden Firestore y Storage.
+
+### B-1750 · Un `opacity-NN` en un contenedor del panel multiplica la atenuación de su texto, y el barrido no lo ve · P3 — de `contraste-panel` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `40299b7`, `91f1f17`: las ocho `opacity` de estado se fueron; las filas apagadas llevan `claseFilaApagada` (`bg-black/[0.03] text-tinta/70`) en vez del blanco. El test frena un `opacity-NN` fuera de `disabled:`, salvo lo declarado en `OPACIDADES_CON_MOTIVO` (hoy solo «Subir una imagen» mientras sube). Los render fijan que la fila apagada se sigue viendo distinta. D-1105.
+
+Las filas «apagadas» del panel (encuentro cancelado, reporte resuelto, ficha
+rechazada, propuesta no pendiente, día pasado del calendario) llevan `opacity-60` o
+`-70` en el contenedor: adentro, un `text-tinta/65` pinta de hecho ~`/39` (≈2,5:1).
+El barrido lee clase por clase y no compone el árbol. Arreglo: apagar esas filas con
+una tinta y no con `opacity`, o que el test sume el `opacity-NN` de las líneas con
+un ternario de estado.
+
+### B-1751 · El contraste del panel no se mide sobre sus tintes · P3 — de `contraste-panel` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `65742cf`, `91f1f17`: los fondos salen del markup; los colores que no son tokens, de `node_modules/tailwindcss/theme.css`. La peor superficie es `bg-acento/15` (4,62 con `/65`), así que el piso no se movió. El único par que no llegaba era `text-amber-900/70` sobre `bg-amber-100` (3,95), que sube a `/85`. Siguió en B-1830.
+
+El barrido mide contra el blanco, el papel y los tokens neutros. El panel también
+apoya texto sobre `bg-acento/5` y `/10`, `bg-black/5`, `bg-amber-50`/`-100` y
+`bg-emerald-100`. Falta derivarlos del markup, como hace
+`contraste-de-superficies.test.ts` en el sitio, más los colores de Tailwind que no
+están en `global.css`.
+
+### B-1760 · Partir `build-contra-emulador.mjs` en los tres cortes de D-1070 · P3 — de `gate-build` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** Tres commits, uno por corte (`e6f76c9`, `95d98a7`, `50eb821`), más `tests/gate-build.test.ts`. Paso 4 idéntico antes y después, y ocho fugas inyectadas a mano, rojas.
+
+Lo tiene que hacer un frente con emuladores: (1) `scripts/gate-build/semilla.mjs`
+con `CENTINELA`, las canastas y los fixtures, sin efectos e importable desde vitest;
+(2) un `verificarDirectorio({...})` parametrizado para los pasos 8i-8l; (3) el paso
+9 como función pura sobre `{relativa, contenido}[]`. Se verifica con la misma
+corrida contra el emulador antes y después, y una fuga inyectada a mano por canasta
+que tiene que ponerse roja. Un corte por commit.
+
+### B-1761 · Las canastas del gate y las del barrido de vitest se sincronizan de memoria · P3 — de `gate-build` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `079899a`, `5a1678a`: cubre detalle, índice y cartelera; los directorios de la Guía quedan en B-1812.
+
+`CENTINELA_DEL_DETALLE` y `PERMITIDO_EN_EL_DETALLE` de
+`tests/barrido-de-salidas-publicas.test.ts` tienen que coincidir y nada lo verifica:
+falló con B-99, `comisionId`, `incluyeSlug` y el monto. Depende del corte 1 de
+B-1760. Después, un test que compare las dos listas. Clase de B-99/B-180.
+
+### B-1780 · El registro de campos de Instagram solo lo recorre la guarda de Calendar · P3 — de `registros` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `5aff04d`, `f4db0fb`, `d5e20bb` (D-1110): el registro vive en `tests/fixtures/campos-de-instagram.ts` con una decisión por salida, cada salida lo recorre en su test y el cruce con la tabla de `docs/03` está en `tests/campos-de-instagram.test.ts`. Las dos lecturas crudas a propósito llevan su motivo escrito. Siguió en B-1840.
+
+`CAMPOS_DE_INSTAGRAM` vive en `tests/calendario.test.ts` y vigila solo
+`calendario.js`. `accionDeInscripcion`, `destinoLegible` y la ficha pública tienen
+tests de comportamiento pero ninguna guarda de clase. Opción: mover el registro a un
+fixture compartido y que cada salida lo recorra. Clase de B-88 / D-750.
+
+### B-1800 · «Más talleres» de una pasada puede llevar a un hub vacío · P3 — de `404-pasadas` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `7b8df47`, `01d8cd3`, `d58ff0b`: `slugsOfrecidos` (`hubsPublicos.ts`) sale de `hubsOfrecidos`; el lector pasa `tiposOfrecidos` a `detalleDeActividad` y `masDelTipo` pide `tipoTieneHub && tipoOfrecido`. La miga no cambió (D-1115). Siguió en B-1850.
+
+`tipoTieneHub` dice que el hub se emitió, no que tenga algo vigente: un `/tipo/x` sin
+vigentes sale con `noindex`, y desde la pasada se enlaza igual. Arreglo: que
+`contenidoDelSitio.ts` pase los tipos ofrecidos (`hubsOfrecidos`) y que `masDelTipo`
+use ese dato.
+
+### B-1801 · Lo de B-1793 solo está fijado sobre la fuente · P3 — de `404-pasadas` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `860f52f`, `397662f`: `verificar-bundle.sh` (§4.1) le exige a `dist/404.html` el meta referrer y el `data-ruta-medida="/404/"`, como al `noindex`; cuatro casos en rojo sobre el `dist/` sintético.
+
+`verificar-bundle.sh` podría exigirle a `dist/404.html` el
+`<meta name="referrer" content="origin">` y el `data-ruta-medida="/404/"`, como ya
+le exige el `noindex`.
 
 ## Pendiente de acción manual del dueño
 

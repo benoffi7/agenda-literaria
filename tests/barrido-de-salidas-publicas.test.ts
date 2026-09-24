@@ -2147,6 +2147,10 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
       false,
       {},
       true,
+      undefined,
+      // B-1800: ofrecido además de emitido, para que el barrido siga viendo
+      // `masDelTipo` distinto de `null` en una pasada.
+      true,
     );
 
   const PERMITIDO_EN_EL_DETALLE: readonly Excepcion[] = [

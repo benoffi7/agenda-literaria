@@ -13449,3 +13449,53 @@ el segundo nivel de la miga: solo si `tipoTieneHub`. Solo en pasadas: con fechas
 venir la salida sigue siendo el mes. Dice «Más talleres» y no «Ver otros talleres»
 porque el plural no trae género («otros presentaciones»). Sin equivalente por
 barrio: «Dónde» ya enlaza ese hub.
+
+## D-1095 · La miniatura del gate va en la actividad de afuera, con la huella del checkout en el nombre
+
+**B-1790, 2026-09-24.** El gate sube `miniaturas/img_zz-gate-verificar-todo-<huella>.jpg`
+y la portada de la actividad de afuera de CABA apunta a su original: es la publicada
+que ningún aserto de imágenes mira. La huella es la base del checkout (B-219), porque
+el bucket del emulador es de la máquina: sin ella, un gate borraría la miniatura del
+otro a mitad de su build. Descartado: pasarle un bucket propio al build por el
+entorno, porque una variable `PUBLIC_` llega al bundle del panel.
+
+## D-1096 · El paso 4 reusa emuladores solo si están Firestore y Storage; un Firestore solo falla nombrándolo
+
+**B-1790, 2026-09-24.** Reusa con `arriba` o con `a_medias=firestore,storage` (el paso
+4 de otro gate). Un Firestore sin Storage, o Storage sin Firestore, falla diciendo qué
+hay: levantar el que falta al lado choca con el hub del otro, que es el criterio de
+D-1076.
+
+## D-1105 · Una fila del panel que ya no rige se apaga con fondo y tinta, nunca con `opacity`; y el piso se mide también sobre los tintes
+
+**B-1750 y B-1751, 2026-09-24.** La `opacity` de un contenedor se multiplica con la
+tinta de lo de adentro (`opacity-60` × `text-tinta/65` ≈ `/39`, 2,5:1), y un barrido
+por línea no puede componer el árbol: por eso no se intenta componerlo, se frena la
+clase. Una fila apagada lleva `claseFilaApagada` (fondo `bg-black/[0.03]` y tinta al
+70), que no se multiplica. Quedan exentos `disabled:` (WCAG 1.4.3), `opacity-0`/`-100`
+y lo declarado con motivo, que falla si queda huérfano. Los tintes salen del markup y
+los colores de Tailwind se leen de la paleta instalada, no se copian; cada tinte
+translúcido se compone sobre la base opaca más oscura. Descartado: sumar el
+`opacity-NN` de las líneas con ternario al cálculo, que adivina el árbol.
+
+## D-1110 · El registro de campos de Instagram contesta salida por salida, y el crudo a propósito se declara
+
+**B-1780, 2026-09-24.** D-1080 dejó el registro en el test de Calendar porque era su
+único consumidor, y no lo era. Ahora vive en `tests/fixtures/campos-de-instagram.ts`
+y cada fila contesta las tres salidas: sale, con qué forma saneada, o por qué no.
+Una salida nueva agrega una clave y obliga a contestar todas las filas. Una lectura
+sin sanear pasa solo si está declarada con su motivo, como el canal en texto de la
+ficha (solo sin botón) o `difusion.arrobar` en el posteo. El costo: las formas son
+regex sobre el fuente, así que una reescritura equivalente da rojo hasta que se
+agregue al registro.
+
+## D-1115 · La miga del detalle apunta al hub emitido, y «Más talleres» al ofrecido
+
+**B-1800, 2026-09-24.** Son dos enlaces al mismo `/tipo/x` y cada uno con su corte, a
+propósito. «Más talleres» es una **invitación** a ver qué más hay, y mandar a alguien
+a una lista vacía es mentirle: pide que el hub se ofrezca (`hubsOfrecidos`, vía
+`slugsOfrecidos`, D-88). El segundo nivel del `BreadcrumbList` no invita: **describe
+dónde está la página** en la jerarquía del sitio, y un hub con `noindex` sigue siendo
+su padre. Con el corte de ofrecidos, la miga de una misma pasada cambiaría de dos a
+tres niveles entre builds, sobre una página que no cambió. `masDelTipo` pide además
+`tipoTieneHub`, para que un llamador que cruce los flags no pueda publicar un 404.

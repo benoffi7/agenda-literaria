@@ -2,6 +2,43 @@
 
 ## Sin publicar
 
+- **El gate del artefacto le exige a la 404 las dos mitades de D-1090** (B-1801).
+  `scripts/verificar-bundle.sh` pide ahora en `dist/404.html`, igual que el
+  `noindex`, el `<meta name="referrer" content="origin">` y el
+  `data-ruta-medida="/404/"`: B-1793 los fijaba solo sobre el fuente. Cuatro casos
+  nuevos en `tests/no-encontrado.test.ts`, con mutación probada.
+- **«Más talleres» ya no lleva a un hub vacío** (B-1800, D-1115). En la página de una
+  actividad pasada, la salida hacia su tipo pedía que el hub existiera, y un
+  `/tipo/x` se emite siempre, también sin nada vigente. Ahora pide que el hub se
+  ofrezca, con el mismo corte que la tira «Explorá por» de la home y del `/404`. La
+  miga de pan sigue apuntando al hub emitido, a propósito.
+- **El registro de campos de Instagram lo recorren las tres salidas que los
+  muestran** (B-1780, D-1110). `CAMPOS_DE_INSTAGRAM` se mudó a
+  `tests/fixtures/campos-de-instagram.ts`, y cada entrada dice, para el evento de
+  Calendar, el texto para redes y la ficha pública, si el campo sale ahí y con qué
+  forma saneada, o por qué no. Un campo crudo, un saneador vaciado o un atributo
+  nuevo que diga «instagram» ponen la salida en rojo.
+- **Las filas apagadas del panel ya no bajan el contraste de su texto, y el panel se
+  mide también sobre sus tintes** (B-1750, B-1751, D-1105). Un reporte resuelto, una
+  ficha descartada, una propuesta cerrada o un día que ya pasó se apagaban con
+  `opacity-60`, que dejaba la fecha en 2,5:1. Ahora se apagan con un fondo gris
+  apenas y la tinta al 70, y se siguen viendo distintas de las vivas. El test frena
+  un `opacity-NN` suelto y mide cada tinta también sobre los tintes, con los colores
+  leídos de la paleta de Tailwind instalada. El ámbar atenuado de dos avisos subió a
+  `/85`.
+- **El gate de build, partido en tres cortes** (B-1760, D-1070).
+  `scripts/build-contra-emulador.mjs` pasa de 3.418 a 1.810 líneas: la semilla es
+  `scripts/gate-build/semilla.mjs` (datos puros, importable desde vitest), los pasos
+  8i-8l son un solo `verificarDirectorio`, y el barrido del paso 9 es `barrerArtefacto`,
+  función pura. Verificado con el paso 4 antes y después de cada corte (las mismas
+  trece líneas ✓) y con una fuga inyectada en cada una de las ocho canastas;
+  `tests/gate-build.test.ts` repite eso sin build.
+- **Las canastas del gate y las del barrido de vitest se comparan** (B-1761): el
+  detalle, el índice y la cartelera permiten lo mismo en los dos lados, y la única
+  diferencia a propósito está declarada.
+- **El paso 4 del gate levanta Storage** (B-1790, D-1095, D-1096): sube una miniatura
+  y exige verla en el `srcset` de la ficha y de la cartelera. Hasta hoy el build del
+  gate no confirmaba ninguna miniatura (D-210).
 - **El texto atenuado del panel llega a AA** (B-1630, D-1065). Las notas del
   tablero, la ayuda de cada campo, «sin datos aún», las fechas de las tarjetas: el
   panel atenuaba con `text-tinta/35` a `/60`, que daba entre 2,2:1 y 4,4:1 contra

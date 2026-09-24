@@ -2002,7 +2002,7 @@ leer.
 
 ```bash
 npm run emu                              # en otra terminal
-./scripts/build-contra-emulador.mjs      # o el paso 4 de verificar-todo.sh
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 ./scripts/build-contra-emulador.mjs  # o el paso 4 de verificar-todo.sh (B-1790)
 ```
 
 Siembra dos actividades de centinelas —una publicada y una en borrador—, corre
