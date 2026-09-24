@@ -616,7 +616,13 @@ export const CENTINELA_DEL_DETALLE = [
   'indicaciones',
   'tema',
   'lectura',
-  'sesionId',
+  /*
+   * B-1810 — acá estaba `'sesionId'`, que **no es una clave de `CENTINELA`**
+   * desde B-99: el id de sesión sale a propósito y se afirma en la dirección
+   * contraria (`ID_DE_SESION_QUE_SALE`). La entrada no permitía nada y no
+   * avisaba; ahora `tests/gate-build.test.ts` frena una canasta que nombre algo
+   * que no existe.
+   */
   'bio',
   'talleristaInstagram',
   'organizadorInstagram',
