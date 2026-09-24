@@ -13119,3 +13119,182 @@ acordarse, y un rango escrito en prosa versionada lo lee `items-referenciados.mj
 como citas. Si el archivo no se entiende, no se inventa: un archivo viejo que quedó
 solo hace saltear números —hueco, no choque—.
 
+## D-1005 · El mapa mira ocho semanas; el día y la franja miran todo lo que queda por venir
+
+**B-1081, 2026-09-24.** Las tres vistas del ritmo no miran la misma ventana, a
+propósito. El mapa de calor es la ventana de ocho semanas desde el lunes en curso:
+contesta «qué semanas de las próximas están vacías». El día de la semana y la franja
+horaria se calculan sobre **todos los encuentros por venir**: «los martes están
+saturados» es una afirmación sobre la oferta y no sobre dos meses. La pantalla dice
+sobre qué es cada una.
+
+«Por venir» usa `yaPaso` de `calendarioPanel.ts` —el mismo criterio de la grilla del
+mes y del «Encuentros por venir» del encabezado—, y el test ata las dos sumas a ese
+número. Los días de esta semana que ya pasaron entran al mapa apagados, pero **no**
+salvan a la semana de estar vacía. La sección va al final de «El catálogo» y no
+arriba: los avisos siguen siendo lo accionable (B-501). Sin evento de analítica
+propio (D-271).
+
+## D-1006 · El mapa de calor es una tabla, el número va en cada celda, y el contraste se mide de las clases
+
+**B-1081, 2026-09-24.**
+
+1. **Una `<table>` y no una grilla de `<div>`**, con `<caption>`, `<th scope="row">`
+   por semana y `<th scope="col">` por día (nombre largo para lector). Es el
+   equivalente accesible sin escribir una segunda vista.
+2. **El color nunca informa solo** (WCAG 1.4.1): cada celda con encuentros lleva su
+   número, y la leyenda dice qué cantidades pinta cada nivel.
+3. **El contraste se mide de las mismas clases que pinta la celda**, no de una lista
+   copiada en el test: el acento pleno va con texto blanco (la tinta ahí da 2,57:1).
+   Todo el texto atenuado de la sección es `/70`: el panel usa `/50` y `/55` en otros
+   lados y sobre blanco no llegan a AA (B-1630).
+
+## D-1010 · La dirección web de una ficha de la Guía se verifica al publicar, no se reserva al crear
+
+**B-909, 2026-09-24.** `moverX(…, 'publicado')` relee la ficha por id y rechaza si
+otra ficha con el mismo slug está o estuvo publicada (`slugBloqueado`). Por qué no
+`/slugs` como D-660: una ficha de la Guía no tiene URL hasta que la publica un
+admin, que sí puede consultar; el alta pública no puede participar de una reserva
+—el anónimo no lee la colección (D-128), así que el choque le llegaría como un
+`permission-denied` que no puede corregir—; y un índice escribible por anónimos
+permite acaparar nombres. Se decide contra el documento, no contra la bandeja (la
+lección de D-660). Lo que acepta: dos publicaciones simultáneas del mismo slug
+pasarían (B-1640).
+
+## D-1011 · La galería de una ficha de la Guía sale por una sola función, que controla cada fila
+
+**B-907, 2026-09-24.** Una regla no itera `imagenes`, así que la forma de cada fila
+la decide la proyección: `imagenesDeFichaPublica` (`lib/imagenesDeFicha.ts`) para
+las cuatro. La URL sigue con `imagenesPublicables` + `urlSegura`; `epigrafe` sale
+como texto o `''`, y `ancho`/`alto` como enteros positivos o `null`. Eran cuatro
+copias idénticas; la quinta se separa sin que nada falle (la clase de B-88). No
+depende de que el alta pública venga sin fotos.
+
+## D-1015 · El índice viejo se mide desde el despacho, no desde la marca
+
+**B-886, 2026-09-24.** El reloj de la divergencia entre el `generadoEn` del
+`events.json` y `despacho.cubreHasta` corre desde `disparado` (el máximo entre
+`disparado` y `cubreHasta`), con la ventana de siempre y un minuto de margen entre
+el reloj del runner y el de Firestore. Si se midiera desde la marca, un dispatch
+retrasado por el backoff de B-21 llegaría al build con la ventana gastada y el
+chequeo avisaría durante el camino normal. Lo de antes del dispatch ya tiene su
+alarma (`rebuild-agotado`). Y una edición que cancela el build en curso despacha de
+nuevo: mientras el dueño edita seguido, el sitio está en camino, no roto.
+Descartado: comparar el contenido de cada entrada (sería rederivar `toPublic` en una
+Function, la clase de B-88) y meter `cubreHasta` en la firma del issue. El aviso no
+puede nombrar qué cambio falta, solo que hay uno.
+
+## D-1020 · El projectId del emulador tiene dos dueños: Firestore lo manda el checkout, Auth lo manda el emulador vivo
+
+**B-1201, 2026-09-24.** B-219 deriva un `projectId` por working-tree para que un
+checkout no vacíe la base de otro, y funciona porque el emulador de Firestore es
+multi-proyecto. El de Auth no lo es: sirve el proyecto de su `--project` de
+arranque. Los dos coincidían solo si el emulador se había levantado desde el mismo
+checkout. Se decide leer el proyecto del emulador vivo, pero **solo para Auth y
+solo al loguear**: `proyectoDelEmuladorDeAuth()` abre una cuenta anónima por la API
+REST, lee el `aud` de su token y la borra. Firestore sigue con la base del
+checkout. El emulador de Firestore no compara el `aud` con el proyecto de la base,
+así que un token del proyecto A autoriza escrituras en la base B. Si la sonda falla,
+cae al comportamiento anterior. El precio: todos los checkouts comparten el
+namespace de Auth (B-1662).
+
+## D-1025 · El aviso de imágenes perdidas del historial comprueba con un `<img>`, al click, y solo las propias que hoy no están
+
+**B-852, 2026-09-24.**
+
+- **Con un `Image` del navegador y no con `getMetadata` de Storage.** La pregunta
+  es exactamente la que va a ver la persona —¿esa `url` se dibuja o da 404?— y un
+  `<img>` la contesta sin meter `firebase/storage` fuera de su dueño
+  `subir-imagen.ts` (B-09/D-51) y sin regla nueva. Precio aceptado: una red caída
+  se lee como «no está» y da un aviso de más; como el aviso no frena nada, cuesta
+  una frase. Una espera de más de 8 s se lee como «está».
+- **Al elegir restaurar, no al listar.** El historial puede tener 20 versiones
+  (D-42) y casi nadie restaura la galería.
+- **Solo las propias (con `storagePath`) que el documento de hoy no nombra.** Las
+  que están en uso no las borró el barrido, y los links de afuera no los borra.
+- **Avisa y deja seguir.** Sacar las filas rotas en silencio sería restaurar algo
+  distinto de lo elegido.
+
+## D-1030 · El cierre de una tanda mira lo que la tanda agregó, no el repo entero
+
+**B-1090 y B-1125, 2026-09-24.** `scripts/cerrar-tanda.mjs` busca ids sin entrada
+solo en los commits de `base..HEAD` y en las líneas que agrega el diff, y descarta
+los que ya se citaban sin entrada en la base. El repo entero ya lo barren
+`items-referenciados.mjs` y `decisiones-referenciadas.mjs`; mirarlo de nuevo haría
+que el cierre saliera con 1 siempre, y un chequeo que siempre falla se aprende a
+saltear (B-180). `.estado/` sigue en el `.gitignore` y el cierre lo lee solo, con la
+regla del último marcador (D-980). Descartado: versionar `.estado/`, y un test
+bloqueante, que estaría rojo mientras la tanda está abierta.
+
+## D-1035 · El autolink de la descripción devuelve trozos, no HTML
+
+**B-980, 2026-09-24.** El ítem pedía «escapar primero, linkear después» y un test
+del orden. Lo más seguro es no tener orden: `enlazarDescripcion` devuelve
+`{tipo:'texto'|'enlace', texto, href?}[]` y la plantilla pinta `{t.texto}` y
+`<a href={t.href}>`, que Astro escapa. No hay `set:html`, así que un `<script>` en la
+descripción termina como texto sin que nadie tenga que acordarse. El `rel` es
+`nofollow noopener noreferrer`. La puntuación final (`.,;:!?…»` y comillas) queda
+afuera del link, y un `)` o `]` final también, salvo que la URL tenga su apertura
+adentro (Wikipedia).
+
+## D-1036 · El link de la reunión pegado en la descripción se reemplaza por un aviso en la página de detalle
+
+**B-980, 2026-09-24.** D-139 dice que el detalle nunca publica `online.url`, y la
+descripción era la puerta de atrás: quien carga pega el Zoom «para que lo tengan»,
+y con el autolink quedaría a un clic. `sinLinksDeReunion` cambia cada token con un
+host de reunión (la lista de `HOSTS_DE_REUNION` de `schema.ts`, con esquema o sin
+él) o que coincida con un `online.url` de la actividad por «[el link de la reunión
+lo manda quien organiza cuando te anotás]», la frase de la ayuda del sitio. Se
+aplica una vez en `detalleDeActividad`, antes de `resumenDe`, así que cubre el
+cuerpo, la `meta` y el JSON-LD. La lista de hosts está copiada porque `schema.ts`
+no la exporta, y un test compara las dos.
+
+## D-1040 · Lo que se pierde en Google se avisa en una fila propia de la barra, y no frena
+
+**B-813, 2026-09-24.** Cuando la barra ya no tiene nada que frene, aparece una fila
+gris —«Se publica igual, pero en Google sale sin …»— con la foto, quién la da, la
+web del organizador y el precio, cada uno como botón a su sección.
+
+- **Fila propia y no un consejo más de `recomendaciones`.** La barra muestra un
+  solo consejo; adentro de esa lista quedaba escondido detrás del flyer justo
+  cuando falta la foto.
+- **Aviso, no validación** (D-440, D-900): los botones de guardar siguen
+  habilitados. El monto sigue opcional (B-114).
+- **Solo lo que el formulario pide** (D-273): nada de tallerista en club o
+  encuentro, y nada de monto donde `admiteMonto` dice que no.
+- **Las condiciones son las del tablero** (D-88), y un test ata la barra al tablero
+  caso por caso.
+
+La foto aparece a la vez en esta fila y en el consejo del flyer; se aceptó porque
+cada uno nombra una pérdida distinta: el consejo, la cartelera; esta fila, Google.
+
+## D-1045 · Un hallazgo dice si es medido o leído, y uno leído no lleva la prioridad del efecto
+
+**B-1162, 2026-09-24.** Cada hallazgo de los tres auditores dice si es `medido`
+(existe una reproducción que se nombra) o `leído` (deducido del código). Uno
+`leído` no sale con la prioridad que afirma el efecto: va con la de riesgo y dice
+qué medición lo subiría. Medir incluye seguir la cadena desde quién **escribe** el
+dato. La red recorre las fichas en disco. Descartado: que los auditores corran
+tests, que rompería su contrato de solo lectura.
+
+## D-1046 · El fan-out del formulario tiene alarma en 45, y las dos alarmas del §1.3 tienen test
+
+**B-1073, 2026-09-24.** El 45 es uno más que el fan-out de `AdminApp.tsx` (44), el
+router del panel, y deja un 32 % de aire sobre los 34 de hoy. Cuando suene se mira
+qué grupo creció; si fue lo de afuera, se muda. Tienen test las dos alarmas
+(fan-out y 550 significativas): no choca con B-180 porque son cifras de **un
+archivo**, y solo las mueve quien lo edita.
+
+## D-1050 · El panel separa las pasadas en una pestaña, con el criterio de `/pasadas` y una sola diferencia
+
+**B-101, 2026-09-24. El dueño tomó la opción recomendada.** El listado del panel se
+parte en «Vigentes» y «Pasadas». Descartado un filtro más detrás del botón
+«Filtros»: el punto es que lo terminado no ensucie la carga del día a día sin que
+nadie tenga que acordarse de prender nada, y un filtro arranca apagado. «Ya pasó»
+no se reescribe (D-88): es `tieneFuturo` negado, que termina en la misma
+`proximaVentana` que decide `/pasadas`, y un test lo ata contra `pasadasDelSitio`.
+La única diferencia es a propósito: **sin ninguna fecha cargada, en el panel no es
+una pasada** —es un borrador a medio cargar, y archivarlo lo escondería justo
+mientras se lo carga—. Nada cambia de estado. La pestaña vive en `Filtros.pestana`
+para sobrevivir a ir y volver de una actividad (B-955), pero **no es un filtro**:
+`filtrar` no la mira y «Limpiar filtros» no la toca.

@@ -15148,6 +15148,68 @@ ataca eso directo.
    la Function de miniaturas, la 13 es por qué `imagenes/` tiene `get` y `list`
    separados.
 
+### B-886 · El chequeo de frescura no ve la edición de una actividad ya listada · P3 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `79e928f`, `8803e23`: `compararMarcas` (`functions/frescura.js`) compara el `generadoEn` del índice vivo contra `despacho.cubreHasta` de `sistema/rebuild`: dos marcas del pipeline, ninguna derivación. La edad se mide desde `disparado` (D-1015), con la ventana de siempre y un minuto de margen de reloj. Sin ancla no avisa. Requiere deploy de Functions, que hace el push.
+
+Sale de B-882. El conjunto de slugs no cambia cuando se edita el título de una
+actividad que el sitio ya muestra —el slug es inmutable después de publicar,
+trampa 10—, así que un build que deja de correr después de una **edición** pasa
+inadvertido hasta la próxima alta o baja.
+
+**Lo que no se hace, y el motivo importa:** comparar el contenido de cada entrada
+es rederivar `toPublic`/`entradaDeIndice` dentro de una Cloud Function, y
+terminaría avisando de **sus propias diferencias** — la clase de B-88. El conjunto
+de slugs es la comparación más grande que no duplica ninguna derivación.
+
+Lo que sí puede servir ahora que B-884 cerró: comparar el `generadoEn` del índice
+contra `despacho.cubreHasta` de `sistema/rebuild`, que es una comparación de **dos
+marcas del pipeline** y no de dos derivaciones del documento.
+
+### B-1200 · `npm run emu` no arranca en la máquina del dueño, y el motivo no es del repo · P4 — de levantar el emulador para B-1112 (2026-09-22) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `393f7b6`: el puerto de Hosting pasó del 5000 al 5002, la salida que la entrada recomendaba. Lo sostiene `tests/puertos-del-emulador.test.ts`.
+
+`npm run emu` levanta `auth, functions, firestore, hosting, storage, extensions` y
+muere entero con «Could not start Hosting Emulator, port taken». **El 5000 lo tiene
+`ControlCenter`** —el receptor de AirPlay de macOS, verificado con
+`lsof -nP -iTCP:5000 -sTCP:LISTEN`—, no otro emulador ni una corrida colgada.
+
+Lo que lo hace anotable y no una anécdota: **el emulador de Hosting no se usa para
+nada en esta suite** —los tests de integración hablan con Firestore, Auth y
+Storage— pero su puerto tomado se lleva puesta la tanda entera, así que el síntoma
+es «no puedo correr ningún test de integración» y la causa es un servicio del
+sistema operativo que no tiene nada que ver.
+
+**La salida de hoy es `--only auth,firestore` (o `auth,firestore,storage`)**, que
+arranca sin chistar. Las dos formas de cerrarlo de verdad, ninguna urgente: mover
+el puerto de Hosting en `firebase.json` —`emulators.hosting.port`, que es
+exactamente lo que sugiere el propio mensaje de error— o sacar `hosting` del
+arranque por default. **Lo primero es preferible**: cambia una línea y no le saca
+una capacidad al comando.
+
+Va **P4** porque el costo actual es cero para quien ya sabe el atajo. Lo que este
+ítem compra es que el próximo no pierda la tarde buscándolo en el repo, que es
+donde no está.
+
+### B-852 · Las versiones que quedaron rotas antes de B-560 siguen restaurando un 404 · P4 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `e5f9384`, `6096a53`: el camino 3 que el ítem pedía, restaurar avisa. `HistorialActividad.tsx` comprueba al click las imágenes propias de la versión que hoy no están en la galería y, si alguna no carga, lo suma a la confirmación; no frena la restauración (D-1025).
+
+**Lo dejó anotado el frente que cerró B-560**, y es la mitad que aquel arreglo no
+puede alcanzar: las imágenes que el barrido **ya borró** antes de que
+`referenciasEnUso` mirara el historial no vuelven. Restaurar una de esas versiones
+sigue devolviendo una fila con una `url` que da 404, y nadie avisa.
+
+Es **P4 y no P3** porque la ventana es finita y **se cierra sola**: esas versiones
+caducan con la retención de D-42 (20 por actividad) y con el barrido de B-89 (30
+días para las huérfanas). Lo que queda es el caso de una actividad muy poco editada
+cuya versión vieja sobreviva meses.
+
+Si alguna vez se atiende, el camino es el 3 del ítem original —que restaurar avise
+cuando la imagen ya no está— y vive en `src/lib/historial.ts` +
+`HistorialActividad.tsx`, no en el barrido.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -16875,6 +16937,187 @@ para el `MenuAcciones` del listado (cierre por click afuera y por `Escape`) y
 para `VistaPreviaEvento`: su adaptador está testeado, pero que el aviso del
 link público se muestre —y que la descripción tenga su propio scroll— se
 verificó a mano.
+
+### B-1081 · El ritmo del catálogo está calculado, testeado, y nadie lo dibuja · P2 — de documentar el tablero (2026-09-17) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `93e244c`, `fb545bc`, `3b5f8b9`: se dibujó, como bloque al final de «El catálogo» (`estadisticas/Ritmo.tsx`). La sección de `04-funcionalidades.md` que decía «todavía no se dibuja» quedó reescrita (B-1631). D-1005, D-1006.
+
+`src/lib/ritmoDelCatalogo.ts` (B-704, B-705, B-706) calcula el mapa de calor de
+ocho semanas, el reparto por día de la semana y el de franja horaria. Son **260
+líneas con su test, y el único import del repo es ese test**: ninguna pantalla lo
+usa. El commit que lo trajo lo dice —«solo el módulo puro y sus tests, falta la
+pantalla»— pero eso quedó en el mensaje de commit y en ningún otro lado.
+
+**Por qué importa aunque no rompa nada.** Código vivo que nadie ejecuta envejece
+sin que se note: el día que se dibuje, el módulo va a tener meses de deriva
+contra `calendarioPanel.ts`, del que depende. Y la ausencia **ya empezó a
+contradecir a la doc** — ver B-1084.
+
+Dos salidas, y la decisión es del dueño: dibujarlo (es la pregunta que un listado
+no contesta nunca: qué semanas están vacías, qué día está saturado), o borrarlo y
+dejar el rastro. Lo que no conviene es el estado de hoy.
+
+### B-1090 · El número de una decisión se acuña en un commit y su texto queda en un pizarrón sin versionar · P2 — de cerrar B-910 (2026-09-17) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `3b4116d`, `8a92eb3`: la primera mitad la cerró B-1082; la segunda es `scripts/cerrar-tanda.mjs`, que lista los ids citados en los commits o en el diff de la tanda sin entrada, y sale con 1 (D-1030). Sobre las tandas del 2026-09-15 al 09-24: ningún huérfano nuevo.
+
+**Sale de la sorpresa de B-910**, y es más grande que las seis entradas que ese
+ítem pedía: a cinco de las seis **no hubo que reconstruirlas**. Estaban redactadas
+enteras en `.estado/sitio.md` y `.estado/galeria.md`, y el commit que las acuñó lo
+decía con todas las letras. Lo que faltó no fue redactar: fue **pegar**.
+
+O sea que el mecanismo es éste: un frente decide algo, le pone `D-nnn` en un
+comentario del código o en un commit, escribe el texto en su archivo de estado
+—que está en el `.gitignore`— y el paso que lo mueve a `06-decisiones.md` depende
+de que alguien se acuerde al integrar. **Seis veces no se acordó nadie.**
+
+`scripts/decisiones-referenciadas.mjs` detecta el resultado, no la causa: avisa
+cuando la huérfana ya nació. Y **tiene un punto ciego que B-1082 midió**: barre
+solo `docs/`, así que D-400 y D-401 —citadas doce veces desde `src/` y `tests/`—
+no aparecen. Las dos mitades de este ítem: que el barrido mire también el código,
+y que el cierre de una tanda no dependa de la memoria de quien integra. Es la
+misma forma que **B-1125** y que **B-1051**.
+
+### B-1125 · `.estado/` está en el `.gitignore`, así que los pendientes de los frentes no sobreviven al disco · P2 — de la tanda de ítems no visibles (2026-09-17) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `3b4116d`, `8a92eb3`: `.estado/` sigue ignorado, y `scripts/cerrar-tanda.mjs` lista al cerrar los ⏸/❓ abiertos de `.estado/` y del archivo de la tanda (el último marcador manda, D-980). Con `--todo-el-estado` hoy muestra 33, todos de tandas del 2026-09-02 al 09-17 (B-1730).
+
+**Es el caso más puro de «ítem no visible» que produjo este repo, y lo produce
+solo.** El protocolo de las tandas en paralelo pide que cada frente anote su
+avance en `.estado/<frente>.md`, con un formato que distingue lo hecho (`✅`) de
+lo que **quedó abierto** (`⏸`) y de las preguntas al orquestador (`❓`).
+`.gitignore:50` tiene `.estado/`, y `git ls-files .estado` devuelve **cero**.
+
+O sea: **el lugar donde el protocolo manda anotar lo que falta es el único
+directorio del repo que no se versiona.** Hoy hay ⏸ y ❓ en once archivos de ahí.
+Dos ejemplos de lo que eso costó, los dos verificados:
+
+- El `npm audit fix` de `uuid` quedó anotado en `.estado/salud.md` el
+  2026-09-03 y **nunca se hizo**; se cerró de casualidad catorce días después,
+  cuando el salto a `astro@7.3.1` se llevó puesta esa rama de dependencias.
+- El helper compartido de credenciales del emulador —quince archivos copiando
+  `tokenAdmin`/`tokenPara`— quedó como `❓` en `.estado/falsos-verdes.md` el
+  2026-09-17 y no llegó a ningún backlog. Se rescató a mano.
+
+**No es que `.estado/` deba versionarse**: son archivos de coordinación, ruidosos
+y de una sola tanda, y el `.gitignore` está bien. Lo que falta es que el cierre
+de una tanda **no dependa de que alguien se acuerde de leerlos**. Lo más barato
+que se ve: que integrar incluya un barrido de `⏸`/`❓` sobre `.estado/*.md` y que
+cada uno salga como ítem o como línea del informe. Es la misma forma de B-1051 y
+de B-1120 — lo que no deja rastro derivado, se pierde.
+
+### B-980 · La descripción autolinkea las URLs, y nada más · P2 — de la decisión 6 del §11.1 (2026-09-16) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `86db7b4`, `cbeb997`, `188d530`: `src/lib/descripcionEnlazada.ts` + `descripcionEnlazada` en `detallePublico.ts` + el bloque de `[slug].astro`. Sin HTML en ningún paso (trozos que Astro escapa, D-1035), `rel="nofollow noopener noreferrer"`, solo `http(s)://` explícito con el `href` por `urlSegura`. Además, el link de reunión pegado en la descripción se saca (D-1036); en Calendar es B-1690.
+
+**Sale de D-723.** Hoy `descripcion` es texto plano en todas sus salidas: quien
+pega `https://instagram.com/casabrandon` en la descripción de su taller publica
+un texto muerto que hay que seleccionar y copiar a mano. La decisión fue la opción
+del medio de las tres que ofrecía el §11.1: **autolinkear las URLs** — sin
+negritas, sin listas, sin markdown.
+
+**Dónde vale y dónde no**, que es la parte que hay que respetar:
+
+| Salida | Autolinkea | Por qué |
+|---|---|---|
+| Página de detalle (`/actividad/[slug]`) | **sí** | es la única donde alguien puede hacer clic |
+| `events.json` | — | **no lleva `descripcion`** (§11.3), así que no hay nada que decidir |
+| Evento de Calendar | **no** | Google ya linkea solo en su propio cliente, y el texto que se manda es el crudo. Tocar `build()` es tocar el §7, que pide no tocarlo sin motivo |
+| JSON-LD (`description`) | **no** | ahí va texto, no HTML: una etiqueta `<a>` adentro de un campo de Schema.org es basura para el parser |
+| `meta description` | **no** | mismo motivo, y ya se recorta a 160 |
+
+**Las tres cosas que pueden salir mal, y ninguna es el regex:**
+
+1. **Escapar primero, linkear después.** Si se linkea sobre el texto crudo y
+   después se escapa, se escapan las etiquetas recién creadas; si se escapa
+   después de insertar HTML, se abre XSS en una salida pública con texto que hoy
+   **carga gente de afuera** (`/proponer`, y las tres guías). El orden es
+   innegociable y es lo que tiene que afirmar el test, con un centinela que
+   contenga `<script>` **y** una URL en la misma línea.
+2. **`rel="nofollow noopener"` y `target="_blank"`.** Es contenido de terceros
+   apuntando afuera: sin `nofollow` el sitio reparte autoridad de SEO a cualquiera
+   que pegue un link, que es exactamente el incentivo que no se quiere crear.
+3. **Qué se considera URL.** Solo `http://` y `https://` explícitos. Nada de
+   detectar `casabrandon.com.ar` a ojo: un dominio adivinado dentro de una frase
+   es la clase de falso positivo que rompe el texto de alguien («el taller es de
+   10 a 12.com no existe»), y el que quiere un link lo pega entero.
+
+**Y una de privacidad que no es obvia:** esto convierte texto en una salida
+pública clickeable, así que entra por la puerta del `auditor-privacidad` — el
+mismo criterio de las filas 13 a 18. `descripcion` ya es pública, así que no
+cambia qué se publica; cambia **la forma**, y es la primera vez que el sitio
+emite HTML derivado de texto que escribió un desconocido.
+
+### B-813 · Cuatro de los nueve avisos de Google son datos que faltan, y el panel no los pide · P2 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `5077c65`, `705a86c`: la fila en la barra de guardar (`lib/formulario/enGoogle.ts` + `BarraAcciones.tsx`), aviso gris con un botón por dato. Las condiciones son las del tablero, exportadas desde `estadoDelCatalogo.ts` (D-88), y un test ata las dos salidas. D-1040.
+
+> ✅ **La mitad del catálogo, hecha (2026-09-09). La del formulario sigue abierta.**
+>
+> El ítem pedía dos cosas que resultaron ser distintas, y la mejor planteada no era
+> la que el texto de abajo propone.
+>
+> 1. **El catálogo entero — hecho.** «Estado del catálogo» gana el bloque «Lo que
+>    Google puede mostrar»: tres proporciones (dice quién la da, web del
+>    organizador, aranceladas con el monto cargado). **Como proporciones y no como
+>    cuatro avisos, y el motivo estaba escrito en el mismo archivo: D-273.** Una
+>    lista de 65 sobre 68 publicadas no es trabajo pendiente, es el catálogo con
+>    otro nombre, y para casi ninguna de sus entradas hay algo que hacer. La cuarta,
+>    `image`, no se agregó: ya es la cobertura «Con imagen» y el aviso `sin-flyer`,
+>    y repetirla era la segunda derivación que el propio ítem pedía evitar.
+>    **No se volvió obligatorio ningún campo** (D-440, por segunda vez) y **una
+>    arancelada sin monto no se marca como error**: B-114 dejó el monto opcional a
+>    propósito y que Google avise no lo convierte en un defecto nuestro.
+>
+>    De ahí salió además **un aviso que el ítem no había visto**: `web-que-no-enlaza`,
+>    para la web del organizador que **está cargada y no es una dirección**. Ése sí
+>    es un defecto nuestro, y hoy es silencioso en las tres salidas.
+>
+> 2. **La fila en la barra de guardar — abierta.** Es la mitad por-actividad y vive
+>    en `src/lib/formulario/` + `ActividadFormulario.tsx`. Sigue valiendo lo que el
+>    ítem dice: **aviso y no validación de publicado** (D-440).
+>
+> **Y dos hallazgos de leer `datosEstructurados`, que no son de este ítem:**
+> `faltaElFlyer` y el `image` del JSON-LD **no son el mismo predicado** —aquél mira
+> «url no vacía», éste `urlSegura`, y divergen en los dos sentidos, así que una
+> portada con url inválida se anuncia como flyer y no llega a Google— y
+> `datosEstructurados` decide `performer` por el objeto y no por el nombre, así que
+> un documento anterior a `formADocumento` publicaría `performer.name: ''`.
+
+Sale del informe «Eventos» del 2026-09-08 (la lectura entera está en **B-731**).
+Cuatro avisos no son un bug del markup: el código emite el campo **cuando el dato
+está cargado**, y no está.
+
+| Aviso | Elementos | El dato que falta |
+|---|---|---|
+| `performer` | 65 | la actividad no tiene tallerista/invitado cargado |
+| `image` | 49 | no tiene ninguna imagen |
+| `url` (en `organizer`) | 24 | el organizador no tiene web |
+| `price` + `priceCurrency` | 20 | es arancelada y no tiene `arancel.monto` |
+
+**Por qué vale la pena.** El objetivo del proyecto es que la gente encuentre las
+actividades en Google (P1 del archivo), y el resultado enriquecido con foto y
+precio es lo que hace que un resultado de eventos se vea como un evento y no como
+un link. 49 de 68 páginas sin `image` es la mitad del catálogo publicándose sin
+foto — y no porque el código no la publique, sino porque nadie la cargó.
+
+**Inventar el dato está prohibido** (§7, y la regla 5 de `armarJsonLd`: «no se
+inventa el organizador como performer»). Lo que sí se puede es **pedirlo donde se
+carga**: el formulario ya sabe qué campos están vacíos —tiene el schema en dos
+niveles (B-183) y la lista de faltantes por pestaña (D-490)— así que el aviso
+sería una fila más en la barra de guardar, con la forma «esto se publica igual,
+pero en Google va a salir sin foto ni precio».
+
+**Va como aviso y NO como validación de publicado.** Ese es el punto fino: D-440
+hizo obligatoria la portada al publicar y el dueño sacó ese bloqueo a propósito
+(ver el docblock de `imagenes` en `src/lib/schema.ts`). Una actividad sin flyer
+tiene que poder publicarse; lo que no tiene que pasar es que se publique **sin
+que nadie se haya enterado** de lo que pierde.
+
+Dónde: `src/lib/formulario/` (el resumen de faltantes) y la barra de guardar de
+`ActividadFormulario.tsx`. El criterio de qué campos mirar sale de las cuatro
+filas de arriba, y conviene derivarlo de `armarJsonLd` en vez de escribir una
+segunda lista (la clase de B-88).
 
 ## P3 — cuando sobre tiempo
 
@@ -20452,6 +20695,182 @@ cancelación de un encuentro no se mide en ninguna parte.
 Tampoco está el **embudo fino** del formulario (qué campo se tocó último antes de
 abandonar): eso pide instrumentar 30+ inputs o un `onFocus` a nivel del `<form>`,
 y hoy `formulario_abandonado.faltantes` da la ubicación gruesa sin tocar nada.
+
+### B-1631 · `04-funcionalidades.md` decía que el ritmo «todavía no se dibuja» · P3 — de `ritmo` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** la sección se reescribió como «Cuándo pasan las cosas».
+
+### B-1691 · La fila «Descripción con un link pegado» de `12-sitio-publico.md` quedó vieja · P3 — de `autolink` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Decía «Hoy queda como texto plano». **✅ Hecho (2026-09-24):** la fila dice qué es
+clickeable desde B-980 y qué sigue en texto plano.
+
+### B-1650 · El trigger de frescura decía que no vuelve a pedir el build, y lo pide · P3 — de `frescura` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Un bloque de antes de `remarcarPorFrescura`, justo arriba del código que la llama.
+**✅ Hecho (2026-09-24)** en `5f81f88`: se borró.
+
+### B-1641 · Tres comentarios de los formularios de la Guía describían la guarda de slug de antes de B-909 · P3 — de `slugs-librerias` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** los tres dicen que la garantía es `asegurarSlugPublicable`, al publicar.
+
+### B-1660 · El paso 4 del pre-push decidía con la detección del paso 3, que ya era vieja · P2 — de `emu` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Si en el medio otra sesión levantaba su Firestore, el gate iba a su `exec` y moría
+con «port taken». **✅ Hecho (2026-09-24)** en `f68378c`: `emuladores-arriba.sh`
+contesta `firestore_vivo`, y el paso 4 vuelve a preguntar justo antes de decidir.
+
+### B-1663 · `08-operacion.md` decía que `npm run emu` arranca solo `auth,firestore,storage` · P4 — de `emu` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** dice que arranca todo lo del `firebase.json`.
+
+### B-1711 · Dos documentos decían que ninguna cifra de `10-salud-del-codigo.md` se chequea · P4 — de `salud` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** `08-operacion.md` y `13-agentes.md` nombran la excepción de las dos alarmas del formulario.
+
+### B-1601 · Los docblocks del motor de la Guía citan `useDirectorio.ts`, que no existe, y cuentan «tres» directorios · P4 — de `textos` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `713ba9f`: los docblocks nombran la capa por entidad, dejan de contar directorios, y el aviso de `PANELES_MEDIBLES` pasa a pasado.
+
+`src/lib/directorios.ts` y `DirectorioPanel.tsx` dicen que la lectura en vivo y las
+escrituras son «de `useDirectorio.ts`»; ese archivo no existe (el `onSnapshot` está
+en el panel de cada entidad). Los dos siguen diciendo «los tres directorios». Y el
+docblock de `PANELES_MEDIBLES` en `analyticsSitio.ts` abre con «La fuente todavía
+no existe en esta rama», y `ahoraPublico.ts` existe desde B-791. Es solo texto.
+
+### B-1162 · Un hallazgo que afirma «esto se ve» no dice si se reprodujo o si se dedujo leyendo · P3 — de cerrar B-1142 (2026-09-22) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `fde947f`: las tres fichas tienen «Medido o leído (B-1162)» y `tests/agentes-y-skills.test.ts` exige la sección en toda ficha `auditor-*`. La red ve que la regla esté escrita, no que un reporte la cumpla. D-1045. Siguió en B-1710.
+
+**El caso concreto es B-1142.** Se cerró B-1141 con un barrido de qué otras
+salidas leen el campo crudo y quedaron dos anotadas, las dos como «sale la URL
+pelada». Al arreglar una se midió y era falso: `formADocumento` ya normalizaba y
+el panel ya decía `@casabrandon`. El barrido miró **quién lee el campo**
+(`handlesDe`, cierto) y no **por qué puerta se entra** (`textoRedesDeForm` →
+`formADocumento`). Correcto sobre el módulo, falso sobre el producto.
+
+**El costo no fue el arreglo** —vale igual, y está escrito por qué—, **fue la
+prioridad**: B-1142 y B-1145 salieron en la misma lista con la misma etiqueta de
+visibilidad, y solo uno la merecía. Quien prioriza no tenía cómo distinguirlas.
+
+**Y la misma tanda dio el caso simétrico, que es lo que lo confirma como clase:**
+B-1145 afirmaba en su título que arreglarlo «reescribe todo lo publicado», y al
+medirlo resultó que no reescribe nada. Las dos afirmaciones se habían hecho
+leyendo el código correcto y sacando la conclusión equivocada sobre el sistema.
+
+**D-750 ya dice esto para los chequeos** («una red que no se probó mutando no se
+sabe si verifica algo»). Falta el gemelo para el reporte: un hallazgo que afirma
+que algo **se ve** tendría que decir si se reprodujo o si se concluyó leyendo.
+
+**Ruta:** que los tres auditores marquen cada hallazgo como «medido» o «leído», y
+que uno «leído» no pueda salir con una prioridad que afirme visibilidad. Vive en
+`.claude/agents/*.md` y en `docs/13-agentes.md`.
+
+**Sin red, y probablemente no la haya:** es una regla de redacción, no un
+invariante de código. Por eso es P3 — pero el costo de no hacerlo ya está medido:
+dos ítems de una misma lista con la prioridad puesta sobre una premisa falsa.
+
+### B-1201 · De dónde sale el `projectId` del emulador: de la ruta del checkout o del emulador vivo · P3 — de cerrar B-1112 (2026-09-22) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `6f337a9`: la segunda salida, acotada a Auth y leída recién al loguear (D-1020). Siguió en B-1662.
+
+**Es la salida (c) de B-1112, y es una decisión, no un renglón.** Hoy hay **una
+sola** derivación —B-1111 sacó la segunda— y sale de la **ruta del working-tree**
+(`scripts/project-id-emulador.mjs`, sha256 de la ruta, B-219). El emulador de
+Auth, en cambio, es de **un solo proyecto**: el de su `--project` de arranque. O
+sea que los dos valores coinciden solo cuando el emulador se levantó desde el
+mismo checkout donde corre la suite, y cuando no coinciden lo que hay es el error
+de B-1112 — que ahora se nombra, pero sigue siendo una corrida que no se puede
+hacer.
+
+Las dos salidas siguen siendo las que B-1112 dejó escritas, y ninguna es gratis:
+
+- **Un emulador por worktree.** Es volver a la tanda de emuladores por checkout
+  que B-219 evaluó y descartó (cuatro puertos por checkout más el
+  `firebase.json`), y esta máquina ya no aguanta dos tandas a la vez.
+- **Que los tests lean el `projectId` del emulador vivo** en vez de derivarlo. Se
+  parece a lo que ya hace `scripts/emuladores-arriba.sh` y es la que B-1111 dejó
+  a mitad de camino: hoy hay una derivación sola, pero sigue siendo de la ruta.
+  Lo que cuesta es que el valor pasa a depender de un proceso externo, así que una
+  corrida sin emulador arriba no puede resolverlo y hay que decidir qué hace ahí.
+
+**Mientras tanto no muerde**, y conviene decir por qué para no sobreestimarlo: la
+detección de B-1112 convierte el caso en un error que se lee en un renglón, y la
+receta está en el propio mensaje (`levantá el emulador desde este checkout, o
+corré con PUBLIC_FIREBASE_PROJECT_ID=…`). Lo que este ítem compra es no tener que
+aplicarla a mano cada vez.
+
+**Lo que hay que decidir, y por eso no se toma sin el dueño:** si el `projectId`
+lo sigue mandando el checkout —y entonces la regla es «levantá el emulador donde
+corrés»— o lo manda el emulador vivo, y el checkout se adapta.
+
+### B-1073 · El fan-in del formulario viene subiendo desde el saneamiento y es el único sin umbral escrito · P3 — de remedir B-1010 (2026-09-17) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `68b3c5b`: medido el 2026-09-24, fan-out 34 y 424 significativas. Alarma en el §1.3 (45) con red en `tests/salud-del-codigo.test.ts`, que también ata la de B-856. El título decía «fan-in»: lo que subía era el fan-out. D-1046.
+
+12 → 19 → 25 → 26 → 24 → 27 → **32**, sin pausa. La fila de LOC tiene su alarma
+calibrada (B-856 la recalibró mirando el archivo, y lo que estaba mal era el
+umbral); ésta no tiene ninguna, y es la que mide **de cuántas piezas depende el
+formulario** — o sea la que dice cuándo tocarlo empieza a ser caro.
+
+### B-909 · Dos altas simultáneas de librería pueden quedarse con el mismo slug · P2 — **era P3 mientras el alta pública estaba cerrada** · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `be24784`: no con `/slugs` (D-1010): el slug se verifica **al publicar** (`asegurarSlugPublicable`, `lib/slugDeGuia.ts`, en los cuatro `moverX`), que es cuando pasa a ser una URL. Lo que queda sin garantía está en B-1640.
+
+> **Sube a P2 el 2026-09-24 (triage).** La prioridad estaba calculada sobre «lo que la subiría es abrir el alta pública (B-872/B-896)», y **ya está abierta**: `firestore.rules` tiene `allow create: if libreriaValida()` sin `esAdmin()`, y B-896 está cerrado. Mismo precedente que B-874.
+
+`slugDeLibreriaDisponible` (`src/lib/librerias.ts`) es una guarda **de aviso**, no
+una garantía: consulta antes de escribir y no hay reserva atómica. `/actividades`
+la tiene (`/slugs`, D-660) porque el slug se acuña en un `writeBatch`; montar lo
+mismo acá es abrir `/slugs` a una colección más —o sea tocar la regla del índice—
+por un catálogo de cuarenta fichas que carga una persona por vez.
+
+El daño es acotado y visible: dos fichas con el mismo slug, las dos en `pendiente`
+—nada sale al sitio sin que un admin lo publique— y la segunda se corrige en la
+bandeja, que es justo el momento en que el slug todavía se puede tocar. **Lo que
+haría subir la prioridad es abrir el alta pública** (B-872/B-896).
+
+### B-907 · La regla de `/librerias` no puede iterar `imagenes` — B-842 con otra cara · P2 — **era P3 mientras el alta pública estaba cerrada** · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `01442d9`, `62c008f`: verificado, las cuatro proyecciones ya pasaban la URL por `imagenesPublicables`/`urlSegura`. Lo que no estaba controlado era el resto de la fila; ahora lo controla `imagenesDeFichaPublica` (`lib/imagenesDeFicha.ts`), una sola función para las cuatro (D-1011).
+
+> **Sube a P2 el 2026-09-24 (triage).** La prioridad estaba calculada sobre «lo que la subiría es abrir el alta pública (B-872/B-896)», y **ya está abierta**: `firestore.rules` tiene `allow create: if libreriaValida()` sin `esAdmin()`, y B-896 está cerrado. Mismo precedente que B-874.
+
+De `imagenes` se acota la cantidad (4) y el tipo, no la forma de cada fila: una
+regla de Firestore no itera una lista. Con el `create` cerrado a admin el daño es
+«el admin ve una ficha rara»; el día que B-872/B-896 lo abran, un `curl` puede
+mandar cuatro mapas arbitrarios, y **la URL de cada imagen termina en un `src` de
+una página indexada**.
+
+La defensa que corresponde es que la proyección pública las pase por `urlSegura` /
+`imagenesPublicables`, que es donde el proyecto ya decidió que se sanea — y hay que
+**verificarlo** cuando se escriba el `toPublic` de la entidad, no suponerlo. La otra
+mitad, si aparece abuso, es una Function (es B-842).
+
+### B-101 · Las actividades que ya pasaron no se archivan en ninguna parte — 🟡 **la mitad del sitio, hecha** (2026-09-02) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `f38fe70`, `eabc3bf`: la mitad del panel. El listado tiene «Vigentes» y «Pasadas», con el criterio de `/pasadas` reusado (D-88) y la única diferencia escrita en D-1050: sin ninguna fecha cargada, en el panel no es una pasada. Atado contra el del sitio en `tests/pasadas-del-panel.test.ts`.
+
+**La mitad del sitio la cerró B-109.** «¿No las lista pero conserva la página por
+SEO?» — sí, y con las tres cosas escritas: salen del listado y de los hubs,
+conservan la página **indefinidamente** (§7.1), aparecen en **`/pasadas`** para
+siempre, y su entrada del sitemap vence a los 90 días. No hizo falta un estado
+nuevo: se deriva de la última sesión, como decía este ítem.
+
+**Sigue abierto lo del panel**: el listado del panel las mezcla igual (está
+ordenado por última modificación) y qué hace con ellas —una pestaña, un filtro—
+no se decidió. Eso es lo que queda de este ítem, y cuadra con B-96.
+
+El texto original:
+
+No hay estado para "terminó". Un taller de marzo sigue `publicado` con todas sus
+sesiones en el pasado: se mezcla en el listado del panel (ordenado por última
+modificación) y, cuando exista el sitio, hay que decidir si aparece.
+
+No hace falta un estado nuevo: se deriva de la última sesión. Lo que hace falta es
+decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
+filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
+probablemente lo correcto?). Cuadra con B-96 y con B-01.
 
 ## Pendiente de acción manual del dueño
 

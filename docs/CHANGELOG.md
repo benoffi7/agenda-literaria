@@ -2,6 +2,70 @@
 
 ## Sin publicar
 
+- **El tablero dibuja cuándo pasan las cosas** (B-1081, D-1005, D-1006). «El
+  catálogo» gana al final «Cuándo pasan las cosas»: el mapa de las próximas ocho
+  semanas —cada casillero con su número de encuentros, y arriba qué semanas quedan
+  vacías— y los repartos por día de la semana y por franja horaria de todo lo que
+  queda por venir. Lo calculaba `ritmoDelCatalogo.ts` desde hacía semanas sin que
+  ninguna pantalla lo mostrara. Sin librería de gráficos: el mapa es una tabla, que es
+  también su equivalente para un lector de pantalla. Ningún número inventado (D-272).
+- **Restaurar la galería desde el historial avisa si alguna imagen ya no existe**
+  (B-852, D-1025). Las versiones rotas antes de B-560 traían filas cuya imagen el
+  barrido ya había borrado, y restaurarlas devolvía un 404 sin aviso. Ahora, al
+  tocar «Restaurar» en «Imágenes», el panel comprueba solo las imágenes propias de
+  esa versión que hoy no están en la galería y, si alguna no carga, la confirmación
+  dice cuántas faltan y dónde se arreglan. Se puede seguir igual. Se comprueba al
+  elegir restaurar, con un `Image` del navegador: sin lecturas nuevas ni SDK de
+  Storage en el bundle.
+- **La descripción de una actividad enlaza sus URLs, y el link de la reunión pegado
+  deja de salir** (B-980, D-1035, D-1036, B-1691). En la página de detalle, lo que
+  empieza con `http://` o `https://` sale clickeable, con `nofollow`; la puntuación
+  del final o el paréntesis que envuelve la URL no entran en el link. El módulo
+  (`src/lib/descripcionEnlazada.ts`) devuelve trozos de texto o enlace, no HTML: no
+  hay forma de inyectar etiquetas. Y un link de Zoom o Meet pegado en la
+  descripción se cambia por «[el link de la reunión lo manda quien organiza cuando
+  te anotás]» en el cuerpo, la `meta description` y el JSON-LD.
+- **El listado del panel separa las actividades que ya pasaron** (B-101, D-1050).
+  Arriba de la grilla hay dos pestañas, «Vigentes» y «Pasadas», cada una con
+  cuántas tiene contadas con la búsqueda puesta. «Ya pasó» es el criterio de
+  `/pasadas`, más «y tuvo alguna fecha», para que un borrador a medio cargar no se
+  archive. Nada se borra ni cambia de estado. Para el publicador, las pestañas
+  parten lo que su consulta ya le traía.
+- **El chequeo de frescura ve la edición de una actividad ya listada** (B-886,
+  D-1015, B-1650). El conjunto de slugs no cambia cuando se edita una actividad que
+  el sitio ya muestra, así que un build que dejaba de correr después de una edición
+  pasaba inadvertido. Ahora `verificarFrescuraDelSitio` compara además el
+  `generadoEn` del `events.json` vivo contra `despacho.cubreHasta` de
+  `sistema/rebuild`. El reloj corre desde el despacho, para que un dispatch tardío
+  no acuse al build en su ventana normal, y sin ancla es «no sé», no «al día».
+- **El cierre de una tanda lee lo que no se versiona** (B-1090, B-1125, D-1030).
+  `node scripts/cerrar-tanda.mjs` toma la base de la tanda y lista los `B-`/`D-`
+  citados en sus commits o en su diff que no tienen entrada, y los `⏸`/`❓` que
+  siguen abiertos en `.estado/`. Sale con 1 si falta algo.
+- **La barra de guardar avisa qué se pierde en Google** (B-813, D-1040). Cuando no
+  queda nada que frene, la barra suma una fila gris: «Se publica igual, pero en
+  Google sale sin foto, quién la da, la web del organizador ni precio», con cada
+  dato como botón a su sección. No frena nada. Solo lo accionable: «quién la da»
+  en los tipos que tienen el campo, el precio solo si el arancel admite monto. Las
+  condiciones son las del tablero, exportadas desde `estadoDelCatalogo.ts`, y un
+  test ata las dos salidas.
+- **El emulador vuelve a arrancar en macOS, y cualquier checkout corre contra el que
+  esté arriba** (B-1200, B-1201, B-1660, D-1020). Hosting pasa del puerto 5000 (el
+  de AirPlay) al 5002, y un test frena que vuelva. Auth usa el proyecto del
+  emulador vivo, que averigua con una cuenta anónima de sonda; Firestore sigue con
+  la base del checkout. Y el paso 4 del pre-push vuelve a preguntar si hay un
+  Firestore vivo antes de levantar el suyo, en vez de chocar con «port taken».
+- **Los auditores dicen si un hallazgo se reprodujo o se dedujo leyendo, y el
+  formulario tiene alarma de tamaño** (B-1162, B-1073, B-1601, D-1045, D-1046). Cada
+  hallazgo lleva `medido` o `leído`, y uno `leído` no sale con la prioridad que
+  afirma el efecto. El fan-out de `ActividadFormulario.tsx` tiene alarma en 45 (hoy
+  34), y las dos alarmas del §1.3 de `10-salud-del-codigo.md` tienen test.
+- **Dos fichas publicadas de la Guía ya no pueden compartir dirección web, y la
+  galería sale controlada fila por fila** (B-909, B-907, D-1010, D-1011, B-1641).
+  Publicar desde la bandeja relee la ficha y se niega si su slug ya es de otra que
+  está o estuvo publicada (`lib/slugDeGuia.ts`, una sola implementación para las
+  cuatro guías). Y la galería de las cuatro sale por `lib/imagenesDeFicha.ts`:
+  URL por `urlSegura`, epígrafe como texto, medidas como enteros o nada.
 - **El clic del medio se mide en el tríptico, el banner de ciudad y la inscripción**
   (B-1501, D-995). Los tres eventos se emitían solo en `click`, y abrir el enlace
   con la rueda del mouse —en pestaña nueva, un uso real en el tríptico de la home—

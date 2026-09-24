@@ -65,7 +65,7 @@ import {
   referenciasDe as referenciasD,
   seBarre as seBarreD,
 } from './decisiones-referenciadas.mjs';
-import { rangosReservados } from './tablero/parseo.mjs';
+import { DIGITOS, SUFIJO, rangosReservados } from './tablero/parseo.mjs';
 
 /** El archivo de coordinación de la tanda, el mismo default que el tablero (D-981). */
 export const ARCHIVO_DE_TANDA = process.env.FRENTES ?? '/tmp/agenda-literaria-frentes.md';
@@ -118,7 +118,7 @@ export const lineasAgregadas = (diff) => {
  * @returns {string}
  */
 export const sinRangos = (texto) =>
-  (texto ?? '').replace(/\b([BD])-\d+[a-z]?\s+a\s+\1-\d+[a-z]?/gu, '');
+  (texto ?? '').replace(new RegExp(String.raw`\b([BD])-${DIGITOS}${SUFIJO}\s+a\s+\1-${DIGITOS}${SUFIJO}`, 'gu'), '');
 
 /** El número de una decisión sin el cero a la izquierda: `D-09` y `D-9` son la misma. */
 const numeroD = (d) => Number(d.slice(2));
@@ -200,7 +200,7 @@ const MARCADOR = /[✅⏸❓]/gu;
  * Un pendiente que dice adónde fue: «Anotado como B-nnn», «anotada en B-nnn».
  * Si ese ítem está escrito, el pendiente ya tiene rastro versionado.
  */
-const DESTINO = /anotad[oa]s?\s+(?:como|en)\s+(?:el\s+)?(B-\d+[a-z]?)/iu;
+const DESTINO = new RegExp(String.raw`anotad[oa]s?\s+(?:como|en)\s+(?:el\s+)?(B-${DIGITOS}${SUFIJO})`, 'iu');
 
 /**
  * La línea de ejemplo del formato, que el brief de cada tanda copia tal cual
