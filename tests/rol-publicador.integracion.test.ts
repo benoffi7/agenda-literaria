@@ -27,7 +27,7 @@
  * **quién** puede tocarlos, no qué campos tienen.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe, mailDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -67,10 +67,10 @@ const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 // B-174 / B-219 — las reglas de ESTE checkout, sobre la base de este working-tree.
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID_ADMIN = 'uid_b888_admin';
-const UID_PUB = 'uid_b888_publicador';
-const UID_AMBOS = 'uid_b888_los_dos_claims';
-const UID_PELADO = 'uid_b888_sin_claim';
+const UID_ADMIN = uidDe('uid_b888_admin');
+const UID_PUB = uidDe('uid_b888_publicador');
+const UID_AMBOS = uidDe('uid_b888_los_dos_claims');
+const UID_PELADO = uidDe('uid_b888_sin_claim');
 
 /*
  * Los mails son de `ejemplo.test`, un TLD reservado, y no de un proveedor
@@ -78,9 +78,9 @@ const UID_PELADO = 'uid_b888_sin_claim';
  * buscando casillas en los dieciséis proveedores personales, y un
  * `@gmail.com` de mentira acá lo pondría rojo sin que nadie entienda por qué.
  */
-const MAIL_ADMIN = 'admin.b888@ejemplo.test';
-const MAIL_PUB = 'publicador.b888@ejemplo.test';
-const MAIL_PUB_2 = 'otro.publicador.b888@ejemplo.test';
+const MAIL_ADMIN = mailDe('admin.b888@ejemplo.test');
+const MAIL_PUB = mailDe('publicador.b888@ejemplo.test');
+const MAIL_PUB_2 = mailDe('otro.publicador.b888@ejemplo.test');
 
 /** Una sola app del Admin SDK para sembrar, creada en el `beforeAll`. */
 let appSiembra: ReturnType<typeof initAdmin> | null = null;
@@ -656,7 +656,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * impide que `/usuarios` se vuelva un endpoint de escritura abierto al
        * mundo, que es lo que sería si cualquiera con sesión pudiera registrarse.
        */
-      await entrarComo(UID_PELADO, {}, { email: 'pelado.b888@ejemplo.test' });
+      await entrarComo(UID_PELADO, {}, { email: mailDe('pelado.b888@ejemplo.test') });
       await denegada(getDoc(doc(db(), 'actividades', MIA)), 'leer sin claim');
       await denegada(
         setDoc(doc(db(), 'actividades', 'act_b888_pelada'), actividadDe(UID_PELADO)),
@@ -668,7 +668,7 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
         // y no del claim, así que sacar el `esDelPanel()` dejaba este aserto
         // verde. Lo delató la mutación.
         setDoc(doc(db(), 'usuarios', UID_PELADO), {
-          email: 'pelado.b888@ejemplo.test',
+          email: mailDe('pelado.b888@ejemplo.test'),
           actualizadoEn: serverTimestamp(),
         }),
         'registrarse en /usuarios sin claim',

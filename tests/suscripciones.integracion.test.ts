@@ -30,7 +30,7 @@
  * Lo bloquea **B-872** (App Check sin exigir en Storage), no la falta de código.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -68,9 +68,9 @@ import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulado
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID = 'uid_suscripciones_admin';
-const UID_PELADO = 'uid_suscripciones_sin_claim';
-const UID_PUBLICADOR = 'uid_suscripciones_publicador';
+const UID = uidDe('uid_suscripciones_admin');
+const UID_PELADO = uidDe('uid_suscripciones_sin_claim');
+const UID_PUBLICADOR = uidDe('uid_suscripciones_publicador');
 
 /** El Admin SDK, para sembrar lo que ningún cliente puede escribir. */
 const conAdminSdk = async (fn: (db: FirestoreAdmin) => Promise<void>) => {

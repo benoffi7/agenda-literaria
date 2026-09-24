@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { formDeCiclo } from './fixtures/formulario-de-ciclo';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { signOut } from 'firebase/auth';
@@ -44,7 +44,7 @@ import { denegada, denegadaOReglaQueTira } from './fixtures/rechazos-del-emulado
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
-const UID = 'uid_test_admin';
+const UID = uidDe('uid_test_admin');
 
 /*
  * El emulador sirve el `firestore.rules` del directorio desde el que se lo
@@ -478,7 +478,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
   }, 30_000);
 
   it('sin el claim admin no se puede escribir', async () => {
-    await entrarComo('uid_pelado');
+    await entrarComo(uidDe('uid_pelado'));
     await denegada(
       setDoc(doc(db(), 'actividades', 'intento'), { titulo: 'No', estado: 'borrador' }),
     );

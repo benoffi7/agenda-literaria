@@ -25,6 +25,8 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
+import { HUELLA_DE_CUENTAS, faltaHuella, mailDe, uidDe } from './fixtures/credenciales-del-emulador';
+import { PROJECT_ID } from './emulador';
 
 const raiz = new URL('..', import.meta.url);
 const ruta = (relativo: string) => fileURLToPath(new URL(relativo, raiz));
@@ -128,5 +130,62 @@ describe('nadie arma credenciales del emulador fuera del helper — B-1060', () 
     );
 
     expect(infractores()).not.toContain(COPIA_TMP);
+  });
+});
+
+/**
+ * Las cuentas de test llevan la huella del checkout — B-1662.
+ *
+ * Desde D-1020 todos los checkouts comparten el namespace de Auth del emulador
+ * vivo, y `tokenDe()` reescribe los claims en cada llamada: con uids fijos, dos
+ * corridas a la vez se pisan los claims. Medido el 2026-09-24 con la
+ * intercalación forzada (A escribe `{ admin: true }` y mintea, B escribe `{}`,
+ * A entra): con el mismo uid, el token de A salió sin `admin`.
+ *
+ * Lo de abajo es la mitad sin emulador: los helpers, la guarda pura y un
+ * barrido que no deja pasar un literal a `entrarComo`/`tokenDe`. La otra mitad
+ * es la suite de integración, que con la guarda puesta no arranca si un uid
+ * quedó sin huella.
+ */
+describe('las cuentas de test llevan la huella del checkout — B-1662', () => {
+  it('la huella es la misma que separa las bases de Firestore (B-219)', () => {
+    // Un checkout, un nombre. Si el PROJECT_ID viene forzado por el entorno no
+    // termina en una huella, y entonces no hay nada que comparar.
+    expect(HUELLA_DE_CUENTAS).toMatch(/^[0-9a-f]{8}$/);
+    if (/-[0-9a-f]{8}$/.test(PROJECT_ID)) {
+      expect(PROJECT_ID.endsWith(`-${HUELLA_DE_CUENTAS}`)).toBe(true);
+    }
+  });
+
+  it('uidDe y mailDe agregan la huella, y el correo sigue siendo un correo', () => {
+    expect(uidDe('uid_x')).toBe(`uid_x_${HUELLA_DE_CUENTAS}`);
+    expect(mailDe('ana.b888@ejemplo.test')).toBe(`ana.b888+${HUELLA_DE_CUENTAS}@ejemplo.test`);
+    expect(() => mailDe('sin-arroba')).toThrow(/no es un correo/);
+  });
+
+  it('la guarda deja pasar lo armado con los helpers', () => {
+    expect(faltaHuella(uidDe('uid_x'))).toBeNull();
+    expect(faltaHuella(uidDe('uid_x'), mailDe('x@ejemplo.test'))).toBeNull();
+    // La forma de opciones.integracion: el correo sale del uid, que ya la trae.
+    expect(faltaHuella(uidDe('uid_x'), `${uidDe('uid_x')}@test.local`)).toBeNull();
+  });
+
+  it('y frena un uid o un correo literales, nombrando el helper', () => {
+    expect(faltaHuella('uid_x')).toMatch(/uidDe\(\)/);
+    expect(faltaHuella(uidDe('uid_x'), 'x@ejemplo.test')).toMatch(/mailDe\(\)/);
+    // La huella de OTRO checkout tampoco sirve: es justamente la cuenta del vecino.
+    const ajena = HUELLA_DE_CUENTAS === '00000000' ? '11111111' : '00000000';
+    expect(faltaHuella(`uid_x_${ajena}`)).toMatch(/uidDe\(\)/);
+  });
+
+  it('ningún archivo de `tests/` le pasa un literal a entrarComo o tokenDe', () => {
+    // La guarda de `tokenDe` solo se entera con el emulador arriba; esto lo ve
+    // en cualquier corrida. MUTACIÓN PROBADA: `entrarComo('uid_pelado')` en
+    // actividades.integracion lo pone en rojo.
+    const LITERAL = /\b(entrarComo|tokenDe)\(\s*['"`]/;
+    const conLiteral = candidatos().filter(
+      (f) => !(f in EXCEPCIONES) && LITERAL.test(readFileSync(ruta(f), 'utf8')),
+    );
+    expect(conLiteral, 'armá el uid con uidDe()').toEqual([]);
   });
 });

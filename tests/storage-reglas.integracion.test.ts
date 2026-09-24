@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { tokenDe } from './fixtures/credenciales-del-emulador';
+import { tokenDe, uidDe } from './fixtures/credenciales-del-emulador';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import {
   connectStorageEmulator,
@@ -34,7 +34,7 @@ import { HOST_STORAGE, cargarReglasStorage, emuladorStorageVivo } from './emulad
  */
 const vivo = await emuladorStorageVivo();
 
-const UID = 'uid_test_storage';
+const UID = uidDe('uid_test_storage');
 const BUCKET = 'agenda-literaria.firebasestorage.app';
 
 /**
@@ -322,7 +322,7 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
         'el anónimo de /proponer: ahora sube por la callable',
       ).toBe(true);
 
-      await signInWithCustomToken(auth(), await tokenPublicador('uid_test_pub_propuestas'));
+      await signInWithCustomToken(auth(), await tokenPublicador(uidDe('uid_test_pub_propuestas')));
       expect(
         await rechaza(subir(conNombre(), bytes(512), 'image/jpeg')),
         'el rol publicador de B-888 no tiene nada que hacer en este prefijo',
@@ -431,7 +431,7 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
     });
 
     it('una sesión sin el claim no puede subir', async () => {
-      await signInWithCustomToken(auth(), await tokenPara('uid_test_storage_pelado', false));
+      await signInWithCustomToken(auth(), await tokenPara(uidDe('uid_test_storage_pelado'), false));
       const ruta = rutaDeImagen(idNuevo(), 'image/jpeg');
       expect(await rechaza(subir(ruta, bytes(512), 'image/jpeg'))).toBe(true);
     });
@@ -473,7 +473,7 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
      * Ninguna mueve los otros casos del archivo.
      */
     it('el rol publicador de B-888 sube su imagen, y solo eso', async () => {
-      await signInWithCustomToken(auth(), await tokenPublicador('uid_test_storage_publicador'));
+      await signInWithCustomToken(auth(), await tokenPublicador(uidDe('uid_test_storage_publicador')));
       const ruta = rutaDeImagen(idNuevo(), 'image/jpeg');
 
       // 1. Sube. Un archivo **válido** —tipo, tamaño y nombre correctos—, para que
@@ -515,7 +515,7 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
      * `escritura-anonima`: un aserto que se lee como load-bearing y no puede fallar.
      */
     it('y al publicador le aplican las mismas cláusulas de forma que al admin', async () => {
-      await signInWithCustomToken(auth(), await tokenPublicador('uid_test_storage_publicador'));
+      await signInWithCustomToken(auth(), await tokenPublicador(uidDe('uid_test_storage_publicador')));
       expect(
         await rechaza(subir(rutaDeImagen(idNuevo(), 'image/jpeg'), bytes(MAXIMO_BYTES + 1), 'image/jpeg')),
         'el tope de tamaño no le aplica al publicador',

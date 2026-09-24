@@ -13,7 +13,7 @@
  * hacer daño que la regla tiene que tapar.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -34,7 +34,7 @@ import { denegada } from './fixtures/rechazos-del-emulador';
 // abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
 const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
-const UID = 'uid_reintento_admin';
+const UID = uidDe('uid_reintento_admin');
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 /** Cliente Admin: escribe saltándose las reglas, como hace la Function. */

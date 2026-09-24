@@ -55,7 +55,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { sinComentarios } from '../scripts/sin-comentarios.mjs';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { signOut } from 'firebase/auth';
@@ -170,8 +170,8 @@ const COLECCIONES_ABIERTAS: readonly string[] = [
   'bibliotecas',
 ];
 
-const UID_ADMIN = 'uid_anon_admin';
-const UID_PELADO = 'uid_anon_sin_claim';
+const UID_ADMIN = uidDe('uid_anon_admin');
+const UID_PELADO = uidDe('uid_anon_sin_claim');
 
 /*
  * El helper que afirma «la regla corrió y denegó» —y no «la regla explotó»—

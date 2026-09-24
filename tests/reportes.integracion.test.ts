@@ -6,7 +6,7 @@
  * (B-174), así que da igual desde qué directorio se lo arrancó.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { entrarComo } from './fixtures/credenciales-del-emulador';
+import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
 import { fileURLToPath } from 'node:url';
 import { signOut } from 'firebase/auth';
 import { Timestamp, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
@@ -34,7 +34,7 @@ const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
  */
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
-const UID = 'uid_reportes_admin';
+const UID = uidDe('uid_reportes_admin');
 
 const contexto = (): ContextoReporte => ({
   versionPanel: '0.1.0 (test)',
@@ -197,9 +197,9 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
 
   it('sin el claim admin no se puede crear ni leer un reporte', async () => {
     const id = await crearReporte(form(), contexto(), { uid: UID, email: 'admin@test.com' });
-    await entrarComo('uid_pelado_reportes');
+    await entrarComo(uidDe('uid_pelado_reportes'));
     await denegada(
-      setDoc(doc(db(), 'reportes', 'trucho8'), documento('uid_pelado_reportes')),
+      setDoc(doc(db(), 'reportes', 'trucho8'), documento(uidDe('uid_pelado_reportes'))),
     );
     await denegada(getDoc(doc(db(), 'reportes', id)), 'sin el claim, leer un reporte');
   });
