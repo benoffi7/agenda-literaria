@@ -215,6 +215,21 @@ veinte tests que corren en milisegundos y sin emuladores.
 
 **Al agregar lógica, preguntarse si necesita red.** Si no, va en un módulo puro.
 
+**Y si la decisión vive en un lugar imposible de probar** —un `onClick`, un
+script de shell, el cableado de un componente—, se saca: la regla va a un módulo
+puro y el lugar original queda con **una sola puerta** que la llama. Es
+[D-109](06-decisiones.md#d-109--toda-salida-del-formulario-pasa-por-una-sola-puerta):
+`salida-del-panel.ts` decide cuándo preguntar antes de salir del formulario y
+`AdminApp` tiene un único `salirDe(accion)`, así que una salida nueva no puede
+olvidarse del aviso. Del lado de los scripts es
+[D-196](06-decisiones.md#d-196--la-decisión-de-plomería-del-gate-sale-del-gate):
+`que-deployar.sh` y `emuladores-arriba.sh` salieron del YAML y del gate porque
+una decisión que no se puede probar se prueba al pushear. La mitad que chequea que esa forma no se rompa —recorrer el
+grafo de imports real en vez de comparar una lista de nombres— es
+[D-106](06-decisiones.md#d-106--un-chequeo-estructural-pregunta-por-el-grafo-no-por-un-archivo).
+Las dos se citaron durante un tiempo como «D-100», que es otra cosa (la mitad
+cliente del §4.2); ver B-1123.
+
 ### El reloj también es infraestructura
 
 `functions/rebuild.js` decide cuándo reintentar un rebuild fallido (backoff

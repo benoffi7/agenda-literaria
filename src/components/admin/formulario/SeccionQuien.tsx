@@ -121,10 +121,14 @@ function AvisoInstagram({ id, valor, editando }: { id: string; valor: string; ed
  *
  * ── El costo aceptado, escrito acá para que no se lea como un descuido ─────
  * D-767 — este campo queda con un criterio **distinto** del de las cuatro guías
- * (librerías, bibliotecas, lugares, suscripciones), que sí frenan el publicado
- * con una regla en su `superRefine` cuando el Instagram no es un handle. Son
- * dos criterios para el mismo dato en el mismo panel: acá se corrige, allá se
- * frena. El dueño eligió esto el 2026-09-22, con el costo a la vista y contra
+ * (librerías, bibliotecas, lugares, suscripciones), que sí frenan cuando el
+ * Instagram no es un handle — y frenan **todo guardado**, no solo el publicado:
+ * la regla de su `superRefine` corre igual para guardar y para publicar, y
+ * `firestore.rules` rechaza la misma forma en cualquier escritura, así que allá
+ * ni un borrador se guarda (B-1541). Son dos criterios para el mismo dato en el
+ * mismo panel: acá se corrige, allá se frena. La tabla de los criterios es
+ * `docs/03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo».
+ * El dueño eligió esto el 2026-09-22, con el costo a la vista y contra
  * la recomendación, porque publicar una actividad no puede depender de cómo se
  * tipeó una cuenta de Instagram. No es una inconsistencia que quedó: es la
  * decisión.

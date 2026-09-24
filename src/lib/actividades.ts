@@ -187,12 +187,17 @@ export const formADocumento = (
    * **Y nada lo rechaza al publicar** — B-1141. El comentario que estaba acá
    * decía que sí («el `superRefine` del schema ya lo rechaza»), y era falso: el
    * campo es `instagram: opcional` en `actividadFormSchema` y **ninguna** regla
-   * lo mira, ni al guardar ni al publicar. Las tres guías —librerías,
-   * suscripciones, lugares— sí validan el suyo contra el alfabeto del handle;
-   * este campo no, y el documento sale publicado igual. Lo que avisa es la
-   * ficha: `arrobaInstagram` muestra lo tipeado **sin arroba y sin link**, que
-   * es visible pero llega tarde. Si hay que cerrarlo de verdad, va una regla en
-   * el `superRefine` del nivel «publicar», como la de las guías.
+   * lo mira, ni al guardar ni al publicar. Las cuatro guías —librerías,
+   * bibliotecas, lugares, suscripciones— sí validan el suyo contra el alfabeto
+   * del handle, y frenan **todo guardado** (schema y `firestore.rules`), no
+   * solo el publicado; este campo no, y el documento sale publicado igual.
+   * **Y no se va a cerrar con una regla** como la de las guías: eso es lo que
+   * D-767 decidió no hacer —publicar una actividad no puede depender de cómo se
+   * tipeó una cuenta—. Lo que avisa, antes de guardar, es el cartel de D-900
+   * debajo del campo; y en la ficha, `arrobaInstagram` muestra lo tipeado
+   * **sin arroba y sin link**. La tabla de los criterios de Instagram del repo
+   * es `docs/03-modelo-de-datos.md` § «Los campos de Instagram, campo por
+   * campo» (B-1541).
    */
   const conHandle = (crudo: string): string => handleInstagram(crudo) ?? crudo.trim();
 
