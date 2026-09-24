@@ -1482,7 +1482,8 @@ service cloud.firestore {
          * hace que esta puerta sea chica y verificable. Con imágenes, abrir el
          * `create` anónimo arrastra cuatro cosas más —un `imagenValida()` por
          * entidad (hoy `formaDe{X}` solo acota `is list` y el **tope**, no la
-         * forma de cada elemento, que es B-907), un prefijo propio en
+         * forma de cada elemento: lo que llega al sitio lo acota la proyección,
+         * `lib/imagenesDeFicha.ts`, desde B-907), un prefijo propio en
          * `storage.rules`, generalizar la callable de B-896 a tres destinos, y la
          * limpieza del objeto que se sube y nunca llega a un documento—. Cada una
          * es una superficie nueva contra la que hay que escribir mutaciones.
