@@ -21,11 +21,13 @@
 import {
   INSTAGRAM,
   MOTIVOS_DE_CONTACTO,
+  urlDeCafecito,
   urlDeContacto,
   urlDeInstagram,
   type MotivoDeContacto,
 } from '@/lib/enlaces';
-import { RUTA_AYUDA, RUTA_PROPONER } from '@/lib/rutasPublicas';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_AYUDA, RUTA_PROPONER, urlAbsoluta } from '@/lib/rutasPublicas';
 
 export interface BloqueDeContacto {
   motivo: MotivoDeContacto;
@@ -182,3 +184,53 @@ export const PROPONER_EN_VEZ_DE_ESCRIBIR: {
   texto: 'Cargar la actividad en el formulario',
   pie: 'Llega ordenada y podés adjuntar el flyer. Si preferís escribirnos, el mail sigue acá abajo.',
 };
+
+/**
+ * **El `Organization` del sitio** — B-1122, y con él la mitad pendiente de B-785.
+ *
+ * ── Qué describe, y por qué en `/contacto` ────────────────────────────────
+ * Es el único nodo que dice **quién es el sitio** —no el organizador de una
+ * actividad (`detallePublico.ts`) ni el `brand`/`seller` de una suscripción
+ * (`suscripcionPublica.ts`), que son otros `Organization` y describen a
+ * terceros—. Va en `/contacto` y no en la home por lo que ya decidió el §5.5 del
+ * diseño (`docs/12-sitio-publico.md`): `/acerca` no existe, y de las dos que se
+ * repartieron su rol, `/contacto` es «la que dice con quién estás tratando».
+ * Tampoco en `/apoyar`: sería un nodo suelto en una página secundaria (B-785).
+ *
+ * ── Las cuatro propiedades del diseño, y ninguna más ──────────────────────
+ * `name`, `url`, `logo`, `sameAs`. Todo sale de donde ya vive — el nombre de
+ * `identidad.ts`, el origen de `rutasPublicas.ts`, los perfiles de `enlaces.ts`—
+ * y nada se escribe acá: una URL copiada es la que queda vieja el día que la
+ * cuenta cambie (ya pasó con Instagram, el 2026-09-07).
+ *
+ * - **`logo`** es `marca-512.png`, no `compartir.png`: el `og:image` es un
+ *   rectángulo con fondo pensado para la previsualización de un chat, y un logo
+ *   es lo contrario —cuadrado, la marca sola—. Google pide al menos 112×112.
+ * - **`sameAs`** son los dos perfiles públicos que el sitio enlaza como propios:
+ *   Instagram (en el pie, con `rel="me"`) y **Cafecito** (en `/apoyar`). Es
+ *   identidad —«una página que indica sin ambigüedad quién es el ítem»—, así que
+ *   no entra ninguna página del propio sitio: `/apoyar` llega por su perfil de
+ *   Cafecito y no por su URL, que es lo que B-785 verificó contra schema.org.
+ *   Tampoco el calendario público, que es un producto del sitio y no un perfil.
+ * - **Sin `funder` ni `potentialAction: DonateAction`** (B-785): el primero va al
+ *   revés —es quién nos financia— y el segundo afirmaría en marcado indexable lo
+ *   contrario de lo que `/apoyar` dice en prosa («no recibe donaciones formales»).
+ * - **Sin `email` ni `contactPoint`**: la casilla ya está en los `mailto:` de la
+ *   página, y el diseño no la pide; duplicarla en el marcado no agrega nada que
+ *   un buscador use y sí una copia más que cosechar.
+ *
+ * El `@id` es el ancla para que otro nodo pueda citar al sitio el día que lo
+ * necesite (`publisher`, por ejemplo) sin repetir el objeto.
+ *
+ * El `sameAs` a Cafecito **no manda ningún `Referer`** (B-786): es un dato del
+ * marcado, no un enlace que el navegador siga.
+ */
+export const ORGANIZACION_DEL_SITIO = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': `${urlAbsoluta('/')}#organizacion`,
+  name: NOMBRE,
+  url: urlAbsoluta('/'),
+  logo: urlAbsoluta('/marca-512.png'),
+  sameAs: [urlDeInstagram(), urlDeCafecito()],
+} as const;

@@ -1,12 +1,21 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { CONTACTO, INSTAGRAM, MOTIVOS_DE_CONTACTO, urlDeContacto, urlDeInstagram } from '@/lib/enlaces';
-import { RUTA_AYUDA } from '@/lib/rutasPublicas';
+import {
+  CONTACTO,
+  INSTAGRAM,
+  MOTIVOS_DE_CONTACTO,
+  urlDeCafecito,
+  urlDeContacto,
+  urlDeInstagram,
+} from '@/lib/enlaces';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_APOYAR, RUTA_AYUDA, SITIO } from '@/lib/rutasPublicas';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
+  ORGANIZACION_DEL_SITIO,
   POR_INSTAGRAM,
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
@@ -202,5 +211,91 @@ describe('la página de contacto — B-232', () => {
         expect(texto, `«${texto.slice(0, 60)}…» contiene ${aguja}`).not.toContain(aguja);
       }
     }
+  });
+});
+
+/**
+ * **El `Organization` del sitio** — B-1122, y la mitad pendiente de B-785.
+ *
+ * Lo que se fija es la **forma** del nodo, porque cada propiedad tiene una
+ * manera conocida de salir mal sin que nada falle: una URL relativa que Google
+ * ignora en silencio, un `sameAs` que apunta a una página propia (identidad
+ * circular), una propiedad que afirma lo que la prosa niega (`DonateAction`), o
+ * un perfil copiado a mano que se queda viejo cuando la cuenta cambia.
+ */
+describe('el Organization de /contacto — B-1122', () => {
+  const nodo = ORGANIZACION_DEL_SITIO as Record<string, unknown>;
+
+  it('es un Organization de schema.org con las cuatro propiedades del §5.5', () => {
+    expect(nodo['@context']).toBe('https://schema.org');
+    expect(nodo['@type']).toBe('Organization');
+    expect(nodo.name).toBe(NOMBRE);
+    expect(nodo.url).toBe(`${SITIO}/`);
+    // Ninguna propiedad fuera de las del diseño más el `@id`: `email`,
+    // `contactPoint`, `funder` y `potentialAction` están descartadas con motivo.
+    expect(Object.keys(nodo).sort()).toEqual(
+      ['@context', '@id', '@type', 'logo', 'name', 'sameAs', 'url'].sort(),
+    );
+  });
+
+  it('el @id es un fragmento del origen, para que otro nodo lo pueda citar', () => {
+    expect(nodo['@id']).toBe(`${SITIO}/#organizacion`);
+  });
+
+  it('el logo es absoluto, es la marca cuadrada y el archivo existe', () => {
+    /*
+     * Relativo, Google lo ignora sin avisar. Y es `marca-512.png` y no
+     * `compartir.png`: el `og:image` es un rectángulo para un chat, no un logo.
+     * MUTACIÓN PROBADA: con `/marca-999.png` este caso se pone rojo por el
+     * `existsSync`, que es lo que nada más miraría hasta el primer rastreo.
+     */
+    expect(nodo.logo).toBe(`${SITIO}/marca-512.png`);
+    const ruta = String(nodo.logo).slice(SITIO.length);
+    expect(existsSync(raiz(`public${ruta}`)), `falta public${ruta}`).toBe(true);
+  });
+
+  it('el sameAs son los perfiles de Instagram y de Cafecito, salidos del contrato', () => {
+    expect(nodo.sameAs).toEqual([urlDeInstagram(), urlDeCafecito()]);
+  });
+
+  it('ningún sameAs es una página del propio sitio (B-785)', () => {
+    /*
+     * `sameAs` es identidad: «una página que indica sin ambigüedad quién es el
+     * ítem». `/apoyar` es nuestra y entra por el perfil de Cafecito, no por su URL.
+     */
+    const perfiles = nodo.sameAs as string[];
+    expect(perfiles.length).toBeGreaterThanOrEqual(2);
+    for (const url of perfiles) {
+      expect(url).toMatch(/^https:\/{2}/);
+      expect(url.startsWith(SITIO), `${url} es del propio sitio`).toBe(false);
+      expect(url).not.toContain(RUTA_APOYAR);
+    }
+  });
+
+  it('los perfiles no están escritos a mano en el módulo', () => {
+    const src = readFileSync(raiz('src/lib/contactoDelSitio.ts'), 'utf8');
+    expect(src).not.toContain('cafecito.app/');
+    expect(src).not.toContain('instagram.com/');
+  });
+
+  it('la página lo emite como ld+json, con el escape de <', () => {
+    /*
+     * MUTACIÓN PROBADA: borrar el `.replace(...)` de `contacto.astro` deja este
+     * caso en rojo. Se mira el `<script>` y no el comentario que lo explica.
+     */
+    const src = readFileSync(raiz('src/pages/contacto.astro'), 'utf8').replace(
+      /\{\/\*[\s\S]*?\*\/\}/g,
+      '',
+    );
+    const bloque = src.match(/<script\s+type="application\/ld\+json"[\s\S]*?\/>/);
+    expect(bloque, 'contacto.astro no emite ningún ld+json').not.toBeNull();
+    expect(bloque![0]).toContain('ORGANIZACION_DEL_SITIO');
+    expect(bloque![0]).toContain("replace(/</g, '\\\\u003c')");
+  });
+
+  it('serializado, no deja un < suelto adentro del <script>', () => {
+    const json = JSON.stringify(ORGANIZACION_DEL_SITIO).replace(/</g, '\\u003c');
+    expect(json).not.toContain('<');
+    expect(JSON.parse(json)).toEqual(ORGANIZACION_DEL_SITIO);
   });
 });
