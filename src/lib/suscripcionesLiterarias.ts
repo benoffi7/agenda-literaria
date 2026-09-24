@@ -242,6 +242,36 @@ export const guardarSuscripcion = async (
 };
 
 /**
+ * **«Lo revisé hoy y sigue siendo éste»** — B-913, la respuesta al aviso de los
+ * sesenta días (`pideRevision`, B-837).
+ *
+ * Refecha el precio con **el reloj del servidor** y no toca el monto ni el
+ * período. Es la puerta que `suscripcionActualizable()` deja abierta a propósito:
+ * con el valor igual, `cargadoEn` puede quedarse donde estaba **o** volver a ser
+ * `request.time`. Sin este gesto, la única forma de bajar el aviso era cambiarle
+ * el número —mentir— o dejarlo puesto para siempre, que enseña a ignorarlo.
+ *
+ * Dos decisiones que se ven en la forma de la escritura:
+ *
+ * - **Escribe una sola ruta, `precio.cargadoEn`**, y no el `precio` entero. Así
+ *   el valor que queda es el que está en el documento en el momento de escribir
+ *   y no el que la pantalla tenía en memoria: si otro admin acaba de cambiar el
+ *   monto, este gesto no se lo pisa con el viejo. Y no hay `Timestamp` previo que
+ *   reenviar, que es la trampa que `guardarSuscripcion` tiene que cuidar.
+ * - **Sin precio no hay nada que confirmar**, y la guarda es acá y no solo en el
+ *   botón: el `update` con ruta sobre un `precio: null` crearía
+ *   `{ cargadoEn }` sin `valor`, que la regla rechaza con un «permiso denegado»
+ *   que no le dice nada a nadie.
+ */
+export const confirmarPrecioDeSuscripcion = async (
+  id: string,
+  actual: Pick<SuscripcionLiteraria, 'precio'>,
+): Promise<void> => {
+  if (!actual.precio) throw new Error('Esta suscripción no tiene precio cargado.');
+  await updateDoc(doc(db(), COL, id), { 'precio.cargadoEn': serverTimestamp() });
+};
+
+/**
  * Mueve el estado y **firma la revisión**.
  *
  * `serverTimestamp()` y no la hora del navegador: la regla exige

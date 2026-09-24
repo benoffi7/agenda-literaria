@@ -224,6 +224,21 @@ export const guardarLugar = async (
 };
 
 /**
+ * **«Lo revisé hoy y sigue siendo éste»** — B-913, igual que
+ * `confirmarPrecioDeSuscripcion` (`lib/suscripcionesLiterarias.ts`) y por lo
+ * mismo: refecha el precio con el reloj del servidor sin tocar el valor, por la
+ * puerta que `lugarDeGuiaActualizable()` deja abierta a propósito. El porqué de
+ * escribir una sola ruta y de la guarda sin precio está allá.
+ */
+export const confirmarPrecioDeLugar = async (
+  id: string,
+  actual: Pick<Lugar, 'precio'>,
+): Promise<void> => {
+  if (!actual.precio) throw new Error('Este lugar no tiene precio cargado.');
+  await updateDoc(doc(db(), COL, id), { 'precio.cargadoEn': serverTimestamp() });
+};
+
+/**
  * Mueve el estado y **firma la revisión**.
  *
  * `serverTimestamp()` y no la hora del navegador: la regla exige
