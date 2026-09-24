@@ -1,6 +1,8 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
 import {
+  claseBotonChip,
+  claseBotonChipActivo,
   claseBotonPrimario,
   claseBotonSecundario,
   claseInput,
@@ -27,11 +29,17 @@ import {
 } from '@/lib/duplicar';
 import {
   ETIQUETA_ESTADO,
+  ETIQUETA_PESTANA,
+  PESTANAS,
+  cantidadesPorPestana,
+  dePestana,
+  filtrar,
   hayFiltros,
   listaVisible,
   opcionesPresentes,
   type Filtros,
   type Orden,
+  type Pestana,
 } from '@/lib/filtrosActividades';
 // B-620 — qué dice cada tarjeta se decide afuera del JSX, en un módulo puro con
 // sus tests: acá quedan la maquetación y el cableado.
@@ -132,6 +140,18 @@ const CLASE_GRILLA = 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:g
 const CLASE_MARCA =
   'whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70';
 
+/**
+ * B-101 — lo que se agrega al «nada coincide» cuando en la otra pestaña sí hay:
+ * la búsqueda de un taller de marzo parada en «Vigentes» no puede terminar en
+ * un listado vacío sin decir dónde está.
+ */
+const enLaOtra = (pestana: Pestana, porPestana: Record<Pestana, number>): string => {
+  const otra: Pestana = pestana === 'vigentes' ? 'pasadas' : 'vigentes';
+  const n = porPestana[otra];
+  if (n === 0) return '';
+  return ` En «${ETIQUETA_PESTANA[otra]}» ${n === 1 ? 'hay una' : `hay ${n}`}.`;
+};
+
 export function ListaActividades({
   filtros,
   setFiltros,
@@ -198,6 +218,27 @@ export function ListaActividades({
   );
 
   const opciones = useMemo(() => opcionesPresentes(actividades), [actividades]);
+
+  /*
+   * B-101 — las pestañas «Vigentes» y «Pasadas». La pestaña no es un filtro
+   * (ver `Filtros.pestana`): se aplica **después** de los filtros, y el número
+   * de cada una se cuenta con los filtros y el texto puestos, para que una
+   * búsqueda que no encuentra nada en «Vigentes» avise que en «Pasadas» sí.
+   *
+   * Para un publicador no cambia nada de la forma: `useActividades` ya le trae
+   * solo lo suyo (B-888) —o lo suyo y lo de su ciudad (B-919)—, y las pestañas
+   * parten eso mismo en dos. No hay una query nueva ni una por pestaña.
+   */
+  const pestana = filtros.pestana ?? 'vigentes';
+  const porPestana = useMemo(
+    () => cantidadesPorPestana(filtrar(actividades, filtros, ahora), ahora),
+    [actividades, filtros, ahora],
+  );
+  // Lo que ve el contador y el eje de etiquetas: las de esta pestaña, sin filtrar.
+  const deLaPestana = useMemo(
+    () => dePestana(actividades, pestana, ahora),
+    [actividades, pestana, ahora],
+  );
 
   /**
    * B-620 — lo que dice cada tarjeta, resuelto de una vez para toda la lista.
@@ -332,6 +373,29 @@ export function ListaActividades({
         </button>
       </div>
 
+      {/*
+        B-101 — dos botones con `aria-pressed` y no un `tablist`: es el mismo
+        control que el modo del calendario, y no hay un panel por pestaña —la
+        grilla es una sola y cambia lo que tiene adentro—.
+      */}
+      <div role="group" aria-label="Qué actividades ver" className="flex flex-wrap gap-2">
+        {PESTANAS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={pestana === p}
+            onClick={() => setFiltros((f) => ({ ...f, pestana: p }))}
+            className={pestana === p ? claseBotonChipActivo : claseBotonChip}
+          >
+            {ETIQUETA_PESTANA[p]}
+            <span aria-hidden="true" className="ml-1.5 tabular-nums opacity-70">
+              {porPestana[p]}
+            </span>
+            <span className="sr-only">{`, ${porPestana[p]}`}</span>
+          </button>
+        ))}
+      </div>
+
       <FiltrosActividades
         filtros={filtros}
         onFiltros={setFiltros}
@@ -339,11 +403,13 @@ export function ListaActividades({
         onOrden={setOrden}
         opciones={opciones}
         labels={labels}
-        total={actividades.length}
+        total={deLaPestana.length}
         mostradas={filtradas.length}
         // B-274 — sin filtrar y con el mismo reloj que el listado: es lo que
-        // necesita el eje de etiquetas para contar cada faceta.
-        actividades={actividades}
+        // necesita el eje de etiquetas para contar cada faceta. B-101 — y de
+        // la pestaña que se está mirando, para que el número de cada chip diga
+        // cuántas va a mostrar la grilla al tocarlo.
+        actividades={deLaPestana}
         ahora={ahora}
         mailes={mailes}
       />
@@ -359,9 +425,15 @@ export function ListaActividades({
         <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/50">
           {actividades.length === 0
             ? 'Todavía no hay actividades.'
-            : hayFiltros(filtros)
-              ? 'Nada coincide con la búsqueda ni con los filtros puestos.'
-              : 'Nada coincide con la búsqueda.'}
+            : deLaPestana.length === 0
+              ? pestana === 'pasadas'
+                ? 'Todavía no pasó ninguna.'
+                : 'No hay nada vigente: todo lo cargado ya pasó y está en «Pasadas».'
+              : `${
+                  hayFiltros(filtros)
+                    ? 'Nada coincide con la búsqueda ni con los filtros puestos.'
+                    : 'Nada coincide con la búsqueda.'
+                }${enLaOtra(pestana, porPestana)}`}
         </p>
       )}
 
