@@ -11,5 +11,10 @@
  * `scripts/` haya tenido que cambiar de ruta: `enlaceSeguro.ts` y
  * `scripts/handle-instagram.mjs` siguen importando de acá. **No le vuelvas a
  * poner cuerpo**: `tests/calendario.test.ts` lo lee del fuente y da rojo.
+ *
+ * Qué hace cada campo de Instagram del modelo con lo que este saneador no
+ * reconoce —corregir sin frenar, frenar, no normalizar— está en una sola tabla:
+ * `docs/03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo»
+ * (B-1191).
  */
 export { handleInstagram, arrobaInstagram } from '../../functions/handle-instagram.js';
