@@ -20,7 +20,7 @@ import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
  * | `historial` | lectura | dos versiones enfrentadas, o sea texto: es el caso donde el renglón largo cansa |
  * | `reportes` | lectura | un formulario y una lista corta |
  * | `taxonomias` | lectura | filas de dos campos: el ancho extra queda vacío |
- * | `calendario` | lectura | la grilla del mes **sí** ganaría, y queda anotado; ensancharla es un cambio visual propio y no entra en este frente |
+ * | `calendario` | todo (desde el 2026-09-07) | cuando se escribió esta tabla quedaba en lectura: «la grilla del mes **sí** ganaría, pero ensancharla es un cambio visual propio». Entró después — ver la nota sobre `VISTAS_A_TODO_ANCHO` |
  * | `estadisticas` | todo | B-621, D-400: un tablero de gráficos es el caso puro de «se recorre de un barrido» |
  * | `propuestas` | lectura | fichas de texto que se leen una por una, como `reportes` |
  *
@@ -29,7 +29,7 @@ import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
  * `VISTAS_DE_FORMULARIO`, y no reemplaza el argumento de esta tabla — lo acota a
  * la vista donde sigue siendo cierto.
  *
- * ── Por qué `estadisticas` entró y `calendario` no (B-621) ────────────────
+ * ── Por qué `estadisticas` entró primero y `calendario` después (B-621) ────
  * B-621 nombraba las dos, y el ítem dice por qué van por separado: «ensanchar
  * cada una es un cambio visual propio —qué crece, qué se reparte en columnas,
  * qué queda con su ancho—, no el mismo cambio aplicado dos veces más». El
@@ -38,9 +38,11 @@ import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
  * (Las dos vistas de tiempo y el mapa de calor de ocho semanas están calculados
  * en `ritmoDelCatalogo.ts` pero **no se dibujan** —B-1081—; cuando se dibujen,
  * son un argumento más para el ancho, no uno que haga falta hoy.)
- * La grilla del mes sigue esperando el suyo: ensancharla sin decidirlo
- * daría siete columnas de 220px con el mismo contenido de 120 — más aire, no
- * más información.
+ * La grilla del mes no tenía el suyo, y por eso esperó: ensancharla sin decidirlo
+ * daba siete columnas de 220px con el mismo contenido de 120 — más aire, no más
+ * información. **Entró igual el 2026-09-07**, por pedido del dueño (la nota sobre
+ * `VISTAS_A_TODO_ANCHO`, abajo): la vista va a todo ancho y el reparto de la
+ * grilla por dentro sigue sin hacer.
  *
  * ── Por qué es un módulo y no un `vista.tipo === 'lista'` en `AdminApp` ───
  * Por el mismo motivo que `salida-del-panel.ts`, que es el precedente exacto: la
