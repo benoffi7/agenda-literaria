@@ -33,6 +33,7 @@ import {
   parsearBacklog,
   parsearIdeas,
   proximoNumero,
+  rangosReservados,
 } from '../scripts/tablero/parseo.mjs';
 
 /** Un backlog de juguete con las formas de encabezado que el real usa. */
@@ -98,6 +99,57 @@ describe('el parser del backlog', () => {
     // aunque no tenga sección propia (es lo que evita el choque de B-930).
     expect(proximoNumero(`${BACKLOG}\nVer B-999 para el contexto.`)).toBe(1000);
     expect(idsUsados(BACKLOG).has('B-903a')).toBe(true);
+  });
+});
+
+/**
+ * **B-1051 — un número reservado por una tanda no se ofrece como libre.** Los
+ * tres textos son las tres formas en que las tandas escribieron sus rangos en el
+ * archivo de coordinación, copiadas de los archivos reales del 2026-09-23 y el
+ * 2026-09-24.
+ */
+describe('los rangos que reservó la tanda (B-1051)', () => {
+  const HOY = [
+    '# Tanda',
+    '',
+    '## Rangos',
+    'Bugs (diez c/u): triage 1560, b98 1570, archivador 1580.',
+    'Decisiones (cinco c/u): b98 975, archivador 980.',
+    '',
+    '## Commits por frente',
+    'Nada de acá es un rango: 9999.',
+  ].join('\n');
+
+  it('lee los arranques y el ancho de cada tipo, y solo de la sección de rangos', () => {
+    const r = rangosReservados(HOY);
+    expect(r.bugs).toHaveLength(30);
+    expect(Math.min(...r.bugs)).toBe(1560);
+    expect(Math.max(...r.bugs)).toBe(1589);
+    expect(r.decisiones).toEqual([975, 976, 977, 978, 979, 980, 981, 982, 983, 984]);
+    expect(r.bugs).not.toContain(9999);
+  });
+
+  it('entiende las otras dos formas que usaron las tandas', () => {
+    const enUnaLinea = rangosReservados(
+      '## Rangos\nBugs: cors 1340, d-88 1350 (diez cada uno). Decisiones: cors 870, d-88 875.\n',
+    );
+    expect(Math.max(...enUnaLinea.bugs)).toBe(1359);
+    expect(enUnaLinea.bugs).not.toContain(88);
+    const porFrente = rangosReservados(
+      '## Rangos de ids reservados\n\n- `uno`: bugs desde el 1240 (diez), decisiones desde la 810 (diez).\n',
+    );
+    expect(Math.max(...porFrente.bugs)).toBe(1249);
+    expect(Math.max(...porFrente.decisiones)).toBe(819);
+  });
+
+  it('sin archivo o sin sección no reserva nada, y el próximo es el de siempre', () => {
+    expect(rangosReservados('')).toEqual({ bugs: [], decisiones: [] });
+    expect(rangosReservados('# Tanda\n\nsin rangos 1234\n')).toEqual({ bugs: [], decisiones: [] });
+    expect(proximoNumero(BACKLOG, rangosReservados('').bugs)).toBe(proximoNumero(BACKLOG));
+  });
+
+  it('el próximo libre queda por encima de lo reservado', () => {
+    expect(proximoNumero(BACKLOG, rangosReservados(HOY).bugs)).toBe(1590);
   });
 });
 
@@ -340,6 +392,68 @@ describe('las formas de encabezado que el archivo real tiene', () => {
   });
 });
 
+/**
+ * **B-1550 — qué es «hecho», y cuál gana cuando hay dos.** Los dos encabezados
+ * son los reales, tal como estaban el día que se vio: B-98 con su tilde de
+ * «aprobado», que el archivador mandó a los cerrados sin construir, y B-785 con
+ * el `🟡` viejo adelante y el `✅` nuevo al final, que el archivador no movía.
+ */
+const DOS_CASOS = [
+  '## P2 — mejoras reales',
+  '',
+  '### B-98 · Cancelar un encuentro sin que desaparezca en silencio — ✅ aprobado (2026-08-26), pendiente de implementar',
+  '',
+  'Aprobado no es construido.',
+  '',
+  '### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem · ✅ hecho (2026-09-24)',
+  '',
+  'Cerrado después de estar a medias.',
+  '',
+  '### B-920 · Algo con dos marcadores al revés — ✅ hecho (2026-09-10) · 🟠 empezado (2026-09-20)',
+  '',
+  'Se reabrió agregando al final.',
+  '',
+  '### B-921 · Una decisión que se cerró sin hacer nada — ✅ decidido: no se hace (2026-09-03)',
+  '',
+  'Cierra aunque la palabra no sea «hecho».',
+  '',
+].join('\n');
+
+describe('qué es hecho y cuál marcador gana (B-1550)', () => {
+  const items = parsearBacklog(DOS_CASOS).items;
+  const de = (id: string) => items.find((i) => i.id === id)!;
+
+  it('un ✅ que dice «aprobado» no es hecho: es trabajo que queda', () => {
+    expect(de('B-98').estado).toBe('empezado');
+    expect(de('B-98').titulo).toBe('Cancelar un encuentro sin que desaparezca en silencio');
+  });
+
+  it('con dos marcadores gana el último, que es la actualización', () => {
+    expect(de('B-785').estado).toBe('hecho');
+    expect(de('B-785').fecha).toBe('2026-09-24');
+    // Los dos salen del título, no solo el que manda.
+    expect(de('B-785').titulo).toBe(
+      'falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem',
+    );
+    // Y en el otro sentido: reabrir agregando al final también manda.
+    expect(de('B-920').estado).toBe('empezado');
+    expect(de('B-920').fecha).toBe('2026-09-20');
+  });
+
+  it('las otras palabras que el archivo usa para cerrar siguen cerrando', () => {
+    expect(de('B-921').estado).toBe('hecho');
+  });
+
+  it('cambiar el estado saca los dos marcadores, no solo el que manda', () => {
+    const r = conEstado(DOS_CASOS, de('B-785').encabezado, 'abierto', '2026-09-24') as {
+      texto: string;
+    };
+    const nuevo = parsearBacklog(r.texto).items.find((i) => i.id === 'B-785')!;
+    expect(nuevo.estado).toBe('abierto');
+    expect(nuevo.encabezado).not.toMatch(/✅|🟡/u);
+  });
+});
+
 describe('contra el archivo real', () => {
   it('parsea docs/BACKLOG.md entero y no pierde ítems', async () => {
     /*
@@ -394,6 +508,16 @@ describe('contra el archivo real', () => {
       const abiertos = parsearBacklog(vivo).items;
       expect(abiertos.filter((i) => i.estado === 'hecho' || i.estado === 'descartado')).toEqual([]);
       expect(parsearBacklog(cerrados).items.length).toBeGreaterThan(abiertos.length);
+      /*
+       * Y el espejo, que es la forma de B-1550: **nada sin cerrar vive en los
+       * cerrados**. Si se pone rojo, el archivador lo devuelve en la próxima
+       * corrida; lo que este caso cuida es que alguien se entere antes.
+       */
+      expect(
+        parsearBacklog(cerrados)
+          .items.filter((i) => i.estado !== 'hecho' && i.estado !== 'descartado')
+          .map((i) => i.id),
+      ).toEqual([]);
     }
   });
 });

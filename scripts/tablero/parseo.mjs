@@ -194,7 +194,37 @@ export const ESTADOS_EN_TABLA = Object.keys(ESTADO_DE_EMOJI_EN_TABLA).join('|');
  * el lookahead deja el espacio de antes afuera: sin eso, sacarle el marcador a
  * `… retención — ✅ hecho (fecha) · P1` devolvía `… retención· P1`, pegado.
  */
-const MARCADOR_DETRAS = new RegExp(String.raw`\s*[—·]\s*(${ESTADOS})[^·]*?(?=\s*·|\s*$)`, 'u');
+const MARCADOR_DETRAS = String.raw`\s*[—·]\s*(${ESTADOS})[^·]*?(?=\s*·|\s*$)`;
+
+/**
+ * **Un `✅` es «hecho» solo si dice que se cerró — B-1550.**
+ *
+ * El emoji solo no alcanza, y costó una decisión aprobada: el encabezado de B-98
+ * decía «✅ aprobado (2026-08-26), pendiente de implementar», el parseo lo leyó
+ * como hecho y el archivador lo mandó a los cerrados sin construir. La tilde
+ * verde es también la de «aprobado», «parcial», «las 58 migradas · quedan 5».
+ *
+ * Por eso la lista es de **lo que cierra**, y no de lo que no: sacada de los dos
+ * archivos el 2026-09-24 —`hecho` y sus flexiones, `cerrado`, `resuelto`,
+ * `decidido` (incluido «decidido: no se hace»), `contestado`, `sin efecto`—.
+ * El sentido importa por cómo falla cada una. Una lista de lo que *no* cierra
+ * falla en silencio: la palabra nueva se lee como hecha y el ítem desaparece de
+ * la lista viva, que es exactamente lo que le pasó a B-98. Una lista de lo que
+ * cierra falla a la vista: el ítem se queda (o vuelve) entre lo que falta, y
+ * alguien lo mira.
+ *
+ * El `✅` que no dice nada de eso se lee como **empezado**, no como abierto:
+ * algo se aprobó, se hizo una parte o se decidió, y queda trabajo. Es el mismo
+ * criterio que junta `🟠` y `🟡`, y mantiene la red de `tests/tablero.test.ts`
+ * —«un encabezado con emoji de estado no se lee como abierto»—.
+ */
+const CIERRA = /(?<!\p{L})(?:hech[oa]s?|cerrad[oa]s?|resuelt[oa]s?|decidid[oa]s?|contestad[oa]s?|sin efecto)(?!\p{L})/iu;
+
+/** El estado que dice un marcador, mirando el emoji y —si es `✅`— lo que dice. */
+const estadoDelMarcador = (emoji, texto) => {
+  if (emoji !== '✅') return ESTADO_DE_EMOJI[emoji];
+  return CIERRA.test(texto) ? 'hecho' : 'empezado';
+};
 
 /**
  * El marcador **cuando va adelante del título**, que es la otra mitad.
@@ -243,41 +273,70 @@ const prioridadDeSeccion = (seccion) => {
 };
 
 /**
- * El marcador de estado del encabezado: dónde empieza, dónde termina y con qué
- * emoji. `null` si el encabezado no tiene ninguno.
+ * **Todos** los marcadores de estado del encabezado, en orden: dónde empieza
+ * cada uno, dónde termina y con qué emoji. `[]` si no tiene ninguno.
  *
  * Se prueba primero la forma «adelante» porque es la más acotada: si el
  * marcador abre el encabezado, comerse hasta el próximo `·` se llevaría el
  * título. Devolver los índices y no el texto es lo que permite sacarlo con un
  * `slice` — reemplazar por texto podría pegarle a una aparición anterior.
  *
- * @returns {{emoji: string, desde: number, hasta: number} | null}
+ * **Son todos y no el primero desde B-1550.** Un encabezado puede llevar dos:
+ * B-785 decía «🟡 la mitad hecha (2026-09-09) — … · ✅ hecho (2026-09-24)»,
+ * porque quien lo cerró agregó el marcador nuevo al final sin borrar el viejo.
+ * Leer solo el primero lo dejaba empezado para siempre, y el archivador no lo
+ * movía nunca.
+ *
+ * @returns {{emoji: string, estado: string, desde: number, hasta: number}[]}
  */
-const marcadorDe = (encabezado) => {
+const marcadoresDe = (encabezado) => {
+  const todos = [];
+  let desde = 0;
   const adelante = MARCADOR_ADELANTE.exec(encabezado);
   if (adelante) {
-    return {
-      emoji: adelante[2],
-      desde: adelante[1].length,
-      hasta: adelante[0].length,
-    };
+    todos.push({ emoji: adelante[2], desde: adelante[1].length, hasta: adelante[0].length });
+    desde = adelante[0].length;
   }
-  const detras = MARCADOR_DETRAS.exec(encabezado);
-  if (!detras) return null;
-  return { emoji: detras[1], desde: detras.index, hasta: detras.index + detras[0].length };
+  // Global y en función, no compartido: un regex `g` lleva `lastIndex`.
+  const detras = new RegExp(MARCADOR_DETRAS, 'gu');
+  detras.lastIndex = desde;
+  for (let m = detras.exec(encabezado); m; m = detras.exec(encabezado)) {
+    if (m[0].length === 0) detras.lastIndex += 1;
+    todos.push({ emoji: m[1], desde: m.index, hasta: m.index + m[0].length });
+  }
+  return todos.map((m) => ({
+    ...m,
+    estado: estadoDelMarcador(m.emoji, encabezado.slice(m.desde, m.hasta)),
+  }));
 };
 
-/** El encabezado sin su marcador de estado, si lo tenía. */
-const sinMarcador = (encabezado) => {
-  const m = marcadorDe(encabezado);
-  return m ? encabezado.slice(0, m.desde) + encabezado.slice(m.hasta) : encabezado;
-};
+/**
+ * **El marcador que manda es el último — B-1550.**
+ *
+ * Cuando hay dos, el de más a la derecha es la actualización: el archivo se
+ * escribe agregando al final (es lo que hace `conEstado`, y lo que hizo quien
+ * cerró B-785), no reescribiendo lo anterior. Leer el primero sería leer la foto
+ * vieja. Como el archivador clasifica con este mismo parseo, el tablero y el
+ * archivador contestan lo mismo por construcción, no por coincidencia.
+ *
+ * @returns {{emoji: string, estado: string, desde: number, hasta: number} | null}
+ */
+const marcadorDe = (encabezado) => marcadoresDe(encabezado).at(-1) ?? null;
+
+/**
+ * El encabezado sin **ninguno** de sus marcadores de estado.
+ *
+ * Todos, no solo el que manda: si `conEstado` sacara uno y dejara el otro, marcar
+ * B-785 como abierto lo dejaría con su `🟡` viejo, y el ítem seguiría leyéndose
+ * empezado. Se sacan de derecha a izquierda para que los índices sigan valiendo.
+ */
+const sinMarcador = (encabezado) =>
+  marcadoresDe(encabezado)
+    .reverse()
+    .reduce((texto, m) => texto.slice(0, m.desde) + texto.slice(m.hasta), encabezado);
 
 /** El estado de un ítem, leído del encabezado. `abierto` es no tener marcador. */
-const estadoDe = (encabezado) => {
-  const m = marcadorDe(encabezado);
-  return m ? ESTADO_DE_EMOJI[m.emoji] : 'abierto';
-};
+const estadoDe = (encabezado) => marcadorDe(encabezado)?.estado ?? 'abierto';
 
 /**
  * La fecha del estado: la del **marcador** cuando lo hay, y la última del
@@ -434,12 +493,69 @@ export const parsearIdeas = (texto) => {
  * Desde que lo cerrado se archiva aparte, el servidor le pasa **los dos
  * archivos concatenados**: el vivo solo tiene los ids de lo pendiente.
  *
+ * **Y por encima de lo reservado — B-1051.** Un rango que una tanda reservó y
+ * todavía no escribió no está en ningún backlog, así que sin `reservados` el
+ * tablero lo ofrecía como libre. Los trae `rangosReservados`, leídos del archivo
+ * de coordinación de la tanda.
+ *
  * @param {string} texto
+ * @param {Iterable<number>} [reservados]
  * @returns {number}
  */
-export const proximoNumero = (texto) => {
-  const usados = [...numerosEnTexto(texto)];
+export const proximoNumero = (texto, reservados = []) => {
+  const usados = [...numerosEnTexto(texto), ...reservados];
   return usados.length === 0 ? 1 : Math.max(...usados) + 1;
+};
+
+/**
+ * **Los números que una tanda reservó, leídos de donde la tanda los escribe —
+ * B-1051.**
+ *
+ * El ítem ofrecía dos salidas: anotar el rango en la cabecera del backlog al
+ * abrir la tanda, o que el tablero lo lea del archivo de coordinación. Se tomó
+ * la segunda porque es la única que no depende de acordarse: anotar al reservar
+ * «depende de que alguien se acuerde, que es exactamente lo que falló», y la
+ * reserva ya está escrita en un solo lugar — la sección `## Rangos` del archivo
+ * de frentes. Leerla ahí es derivar, no mantener a mano.
+ *
+ * El costo que el ítem nombraba —acoplarse a un formato que nadie prometió—
+ * se paga con dos decisiones:
+ *
+ * - **Se lee la prosa, no una tabla.** Las tandas lo escribieron de tres formas
+ *   («Bugs (diez c/u): triage 1560, b98 1570…», «Bugs: instagram 1270… (diez
+ *   cada uno)», «`frente`: bugs desde el 1240 (diez), decisiones desde la 810
+ *   (diez)»), y las tres dicen lo mismo: la palabra `bugs` o `decisiones`, un
+ *   ancho y los números de arranque. Eso es lo que se busca, cada tramo hasta
+ *   la próxima de esas dos palabras.
+ * - **Si no entiende, no inventa.** Sin sección `## Rangos`, o sin números, no
+ *   reserva nada y el tablero vuelve a ofrecer lo de antes. Nunca rompe.
+ *
+ * Y no escribe nada en el repo, que es la trampa de la cabecera del backlog: un
+ * rango escrito en prosa versionada lo lee `items-referenciados.mjs` como citas.
+ *
+ * @param {string} texto el archivo de coordinación de la tanda
+ * @returns {{bugs: number[], decisiones: number[]}}
+ */
+export const rangosReservados = (texto) => {
+  const reservados = { bugs: [], decisiones: [] };
+  const lineas = (texto ?? '').split('\n');
+  const desde = lineas.findIndex((l) => /^## +Rangos\b/iu.test(l));
+  if (desde === -1) return reservados;
+  const hasta = lineas.findIndex((l, i) => i > desde && /^## /u.test(l));
+  const seccion = lineas.slice(desde + 1, hasta === -1 ? lineas.length : hasta).join('\n');
+
+  const ANCHOS = { cinco: 5, diez: 10, veinte: 20 };
+  for (const tramo of seccion.split(/(?=\b(?:bugs|decisiones)\b)/iu)) {
+    const tipo = /^(bugs|decisiones)\b/iu.exec(tramo)?.[1].toLowerCase();
+    if (!tipo) continue;
+    const palabra = /\((cinco|diez|veinte)\b/iu.exec(tramo)?.[1].toLowerCase();
+    const ancho = palabra ? ANCHOS[palabra] : 10;
+    const arranques = [...tramo.matchAll(/(?<![\d-])\d{3,}(?!\d)/gu)].map((m) => Number(m[0]));
+    for (const inicio of arranques) {
+      for (let n = inicio; n < inicio + ancho; n += 1) reservados[tipo].push(n);
+    }
+  }
+  return reservados;
 };
 
 /**

@@ -39,6 +39,7 @@ import {
   parsearBacklog,
   parsearIdeas,
   proximoNumero,
+  rangosReservados,
 } from './parseo.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -56,6 +57,18 @@ const BACKLOG = join(RAIZ, 'docs', 'BACKLOG.md');
  */
 const CERRADOS = join(RAIZ, 'docs', 'BACKLOG-cerrados.md');
 const IDEAS = join(RAIZ, 'docs', '11-ideas-de-producto.md');
+
+/**
+ * **El archivo de coordinación de la tanda en curso — B-1051.** Ahí se reservan
+ * los rangos de ids de cada frente, y es lo único que sabe de un número
+ * reservado y todavía no escrito. Vive fuera del repo a propósito (no es
+ * rastro, es andamio de una tarde), así que puede no estar: sin él, el tablero
+ * ofrece lo mismo que antes. `FRENTES=otra/ruta` lo cambia.
+ *
+ * Un archivo viejo que quedó de una tanda cerrada solo hace saltear números, que
+ * es un hueco y no un choque: el lado prudente.
+ */
+const FRENTES = process.env.FRENTES ?? '/tmp/agenda-literaria-frentes.md';
 
 const PUERTO = Number(process.argv[2] ?? process.env.PUERTO ?? 4173);
 
@@ -108,10 +121,11 @@ const marcaDeTiempo = async () => {
  * sitio público y por el mismo motivo.
  */
 const estado = async () => {
-  const [textoBacklog, textoCerrados, textoIdeas] = await Promise.all([
+  const [textoBacklog, textoCerrados, textoIdeas, reservados] = await Promise.all([
     leer(BACKLOG),
     leerSiEsta(CERRADOS),
     leer(IDEAS),
+    reservadosDeLaTanda(),
   ]);
   const vivo = parsearBacklog(textoBacklog);
   const cerrados = parsearBacklog(textoCerrados);
@@ -154,7 +168,7 @@ const estado = async () => {
         .filter((it) => it.cuerpo.includes(`idea ${idea.numero}`) || it.cuerpo.includes(idea.titulo))
         .map((it) => it.id),
     })),
-    proximoId: `B-${proximoNumero(losDos(textoBacklog, textoCerrados))}`,
+    proximoId: `B-${proximoNumero(losDos(textoBacklog, textoCerrados), reservados)}`,
     cantidadDeIds: usados.size,
   };
 };
@@ -167,6 +181,9 @@ const estado = async () => {
  * tenga sección propia—, así que concatenar es exactamente lo que hace falta.
  */
 const losDos = (vivo, cerrados) => `${vivo}\n${cerrados}`;
+
+/** Los `B-` que la tanda en curso reservó, o ninguno si no hay tanda. */
+const reservadosDeLaTanda = async () => rangosReservados(await leerSiEsta(FRENTES)).bugs;
 
 const json = (res, codigo, cuerpo) => {
   const texto = JSON.stringify(cuerpo);
@@ -216,7 +233,11 @@ const aplicar = async (res, transformar, encabezado) => {
   const enCerrados =
     Boolean(encabezado) && !textoVivo.includes(encabezado) && textoCerrados.includes(encabezado);
 
-  const salida = transformar(enCerrados ? textoCerrados : textoVivo, losDos(textoVivo, textoCerrados));
+  const salida = transformar(
+    enCerrados ? textoCerrados : textoVivo,
+    losDos(textoVivo, textoCerrados),
+    await reservadosDeLaTanda(),
+  );
   if (salida.error) return json(res, 409, { error: salida.error });
   await escribirAtomico(enCerrados ? CERRADOS : BACKLOG, salida.texto);
   return json(res, 200, { ok: true, ...(await estado()) });
@@ -231,7 +252,7 @@ const RUTAS = {
 
   'POST /api/nota': (datos) => (texto) => conNota(texto, datos.encabezado, datos.nota, hoy()),
 
-  'POST /api/nuevo': (datos) => (texto, ambos) =>
+  'POST /api/nuevo': (datos) => (texto, ambos, reservados) =>
     conItemNuevo(texto, {
       // El id se vuelve a calcular **acá**, contra el disco, y no se usa el que
       // la pantalla mostró hace diez minutos: entre medio pudo entrar otro
@@ -240,7 +261,9 @@ const RUTAS = {
       //
       // Y se calcula sobre **los dos** archivos: un ítem nuevo nace en el vivo,
       // pero el número que le toca depende también de los que ya se archivaron.
-      id: datos.id ?? `B-${proximoNumero(ambos)}`,
+      // Y por encima de lo que la tanda reservó (B-1051). Un id mandado a mano
+      // no se frena por estar reservado: es el propio frente usando su rango.
+      id: datos.id ?? `B-${proximoNumero(ambos, reservados)}`,
       idsTomados: idsUsados(ambos),
       titulo: datos.titulo ?? '',
       prioridad: /^P[0-4]$/u.test(datos.prioridad ?? '') ? datos.prioridad : 'P2',
