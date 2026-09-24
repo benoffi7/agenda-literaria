@@ -1459,7 +1459,21 @@ export const detalleDeActividad = (
           instagramUrl: enlaceInstagram(a.tallerista.instagram),
         }
       : null,
-    libro: a.libro ? { titulo: a.libro.titulo, autor: a.libro.autor } : null,
+    /*
+     * **La condición es el título y no el objeto** — B-891, la misma forma que el
+     * tallerista de acá arriba. `libroPublico` ya descarta la cáscara antes de
+     * llegar acá, pero este view-model es el punto de paso obligado de la página
+     * (D-140) y no puede depender de que su entrada venga limpia: con el objeto
+     * como condición, `{ titulo: '   ', autor: 'Bolaño' }` renderizaba «Se
+     * presenta    , de Bolaño» en el HTML que Google indexa. Mismo predicado que
+     * `formADocumento`, `bloqueLibro`, `construirDescripcion` y `libroPublico`.
+     *
+     * El autor de solo espacios es `''` por la misma pregunta, para que la
+     * plantilla no cuelgue «, de    ». El texto no se trimea (B-885).
+     */
+    libro: a.libro?.titulo?.trim()
+      ? { titulo: a.libro.titulo, autor: a.libro.autor?.trim() ? a.libro.autor : '' }
+      : null,
     material: {
       tiene: a.material.tiene,
       items: a.material.items.map(itemDeDetalle),

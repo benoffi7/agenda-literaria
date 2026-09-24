@@ -182,6 +182,29 @@ describe('toPublic — el libro presentado (DEC-1, §5.1, trampa 5)', () => {
     expect(toPublic(actividad({ libro: null }), 'id1').libro).toBeNull();
     expect(toPublic(actividad({ libro: { titulo: '', autor: 'Rulfo' } }), 'id1').libro).toBeNull();
   });
+
+  it('un título de solo espacios cuenta como sin título — B-891', () => {
+    /*
+     * La cáscara que llega de un escritor de afuera del panel o de una
+     * restauración del historial: ninguno de los dos pasa por `formADocumento`,
+     * que ya la descarta. Con `l?.titulo` sin trim salía al `events.json` como
+     * un libro que existe y no se llama nada — y el detalle, que se deriva de
+     * esta proyección, pintaba «Se presenta    , de Bolaño».
+     *
+     * MUTACIÓN PROBADA: volver a `l?.titulo ? …` en `libroPublico`.
+     */
+    const p = toPublic(actividad({ libro: { titulo: '   ', autor: 'Bolaño' } }), 'id1');
+    expect(p.libro).toBeNull();
+    expect(JSON.stringify(p)).not.toContain('Bolaño');
+  });
+
+  it('un autor de solo espacios es «sin autor», y el título no se trimea (B-885)', () => {
+    // Lo que converge es la pregunta, no el texto: el título sale como está
+    // escrito, y el autor en blanco sale `''` para que nadie cuelgue «, de    ».
+    expect(
+      toPublic(actividad({ libro: { titulo: ' Pedro Páramo ', autor: '   ' } }), 'id1').libro,
+    ).toEqual({ titulo: ' Pedro Páramo ', autor: '' });
+  });
 });
 
 describe('toPublic — el tallerista, y «hay tallerista» es que tenga nombre (B-861)', () => {
