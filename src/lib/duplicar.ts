@@ -224,6 +224,8 @@ export const duplicarSesionParaCopia = (s: SesionForm, dias: number): SesionForm
   // Una cancelación es una excepción del ciclo original ("ese martes no hubo"),
   // no una propiedad del ciclo nuevo. El encuentro se conserva, la cancelación no.
   cancelada: false,
+  // B-98 — y el motivo se va con ella: «se pasa al jueves» era de ese martes.
+  motivoCancelacion: '',
   calendarEventId: null,
 });
 

@@ -112,6 +112,17 @@ export interface Sesion {
   tema: string | null;
   lectura: string | null;
   cancelada: boolean;
+  /**
+   * **Por qué se canceló** — B-98. Texto libre y **público**: sale arriba de la
+   * descripción del evento de Calendar (que pasa a titularse «CANCELADO — …») y
+   * al lado del encuentro en la página de detalle.
+   *
+   * Solo significa algo con `cancelada: true`: `formADocumento` escribe `null`
+   * en un encuentro que no está cancelado, así que descancelar descarta el
+   * motivo. Opcional en el tipo porque los documentos anteriores a B-98 no lo
+   * tienen, y se leen como «cancelado sin motivo» (D-26).
+   */
+  motivoCancelacion?: string | null;
   calendarEventId: string | null;
   /**
    * **De qué comisión es este encuentro** — B-181. `null` o ausente es «el ciclo
@@ -607,6 +618,15 @@ export interface SesionForm {
   tema: string;
   lectura: string;
   cancelada: boolean;
+  /**
+   * B-98 — el motivo de la cancelación, `''` si no hay. El formulario lo
+   * conserva aunque se destilde «Cancelado» (para no perder lo tipeado en un
+   * click); lo que se guarda lo decide `formADocumento`.
+   *
+   * Opcional en el tipo para que un form armado a mano (un fixture, la
+   * conversión de una propuesta) no tenga que nombrarlo: ausente es `''`.
+   */
+  motivoCancelacion?: string;
   calendarEventId: string | null;
   /** B-181 — de qué comisión es. `null` es «este ciclo no tiene comisiones». */
   comisionId: string | null;

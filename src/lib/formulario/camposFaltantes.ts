@@ -131,6 +131,7 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'sesiones.N.tema': { etiqueta: 'Tema del encuentro', seccion: 'encuentros' },
   'sesiones.N.lectura': { etiqueta: 'Lectura del encuentro', seccion: 'encuentros' },
   'sesiones.N.cancelada': { etiqueta: 'Encuentro cancelado', seccion: 'encuentros' },
+  'sesiones.N.motivoCancelacion': { etiqueta: 'Motivo de la cancelación', seccion: 'encuentros' },
   'sesiones.N.calendarEventId': { etiqueta: 'Encuentro', seccion: 'encuentros' },
   // B-181 — las opciones para sumarse. La etiqueta es la de la pantalla
   // («Opción») y no la del modelo («comisión»): es el texto que la barra de abajo

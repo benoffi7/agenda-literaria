@@ -282,6 +282,13 @@ export const formADocumento = (
       tema: nuloSiVacio(s.tema),
       lectura: nuloSiVacio(s.lectura),
       cancelada: s.cancelada,
+      /*
+       * B-98 — el motivo solo existe con la cancelación. Un encuentro
+       * descancelado guarda `null` aunque el formulario conserve lo tipeado: si
+       * no, el día que se lo vuelva a cancelar saldría al calendario público un
+       * motivo viejo que nadie releyó. Se escribe siempre, como `comisionId`.
+       */
+      motivoCancelacion: s.cancelada ? nuloSiVacio(s.motivoCancelacion ?? '') : null,
       calendarEventId: s.calendarEventId ?? null,
       // B-181 — de qué comisión es. Se escribe **siempre**, aunque no haya
       // comisiones: `null` es un valor del modelo («este ciclo no las usa»), no
@@ -399,6 +406,8 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
       tema: s.tema ?? '',
       lectura: s.lectura ?? '',
       cancelada: s.cancelada,
+      // B-98 — `?? ''`: un documento anterior al campo es «cancelado sin motivo».
+      motivoCancelacion: s.motivoCancelacion ?? '',
       calendarEventId: s.calendarEventId ?? null,
       // B-181 — `?? null` para los documentos anteriores al campo (D-26): se
       // leen como «este ciclo no tiene comisiones», que es lo que son.

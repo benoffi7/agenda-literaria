@@ -101,6 +101,13 @@ const RUTAS = [
   'sesiones.id',
   'sesiones.tema',
   'sesiones.lectura',
+  /*
+   * B-98 — el motivo de la cancelación. Público **solo con `cancelada: true`**:
+   * en el fixture base los encuentros están vivos, así que el motivo cargado no
+   * tiene que salir a ningún lado (un motivo que quedó en un encuentro
+   * descancelado). El caso cancelado es su propio barrido.
+   */
+  'sesiones.motivoCancelacion',
   'sesiones.calendarEventId',
   /*
    * Las opciones para sumarse (B-181). Las dos rutas son públicas a propósito y
@@ -510,6 +517,7 @@ const sesionesCentinela = (): Actividad['sesiones'] =>
       tema: CENTINELA['sesiones.tema'],
       lectura: CENTINELA['sesiones.lectura'],
       cancelada: false,
+      motivoCancelacion: CENTINELA['sesiones.motivoCancelacion'],
       calendarEventId: `${CENTINELA['sesiones.calendarEventId']}.${i + 1}`,
       /*
        * B-181 — **todos** los encuentros del fixture van en la misma comisión, y
