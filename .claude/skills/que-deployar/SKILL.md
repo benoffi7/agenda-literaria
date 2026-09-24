@@ -32,7 +32,9 @@ Los criterios, para poder explicar la salida:
   depende de cosas fuera de `src/` — hoy `functions/calendario.js` por el alias
   `@calendario` — y una lista blanca se pierde ese caso **en silencio**: el build
   queda verde y producción se queda con el panel viejo. Un archivo nuevo y
-  desconocido cae del lado de deployar, que es el error barato.
+  desconocido cae del lado de deployar, que es el error barato. De `functions/`,
+  arrastra Hosting solo lo que el build importa, y eso lo deriva el script del
+  árbol (B-1241): `./scripts/que-deployar.sh --compartidos` lo lista.
 
 ## 2 · El camino normal: un push a `main`
 

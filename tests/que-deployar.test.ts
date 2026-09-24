@@ -383,6 +383,21 @@ describe('qué deployar — lo compartido con functions/ se deriva, no se enumer
     expect(compartidos()).toEqual(expect.arrayContaining(alias));
   });
 
+  it('todo literal de astro.config.mjs que nombra functions/ es relativo con `./` (B-1390)', () => {
+    // La derivación y el recorrido de arriba reconocen rutas relativas. Un alias
+    // escrito `path.resolve('functions/x.js')` —sin `./`— no lo vería ninguno de
+    // los dos, así que ninguno avisaría: esta línea es la que sí.
+    const literales = [
+      // Sin comentarios: la prosa cita `functions/` entre backticks y no es un literal.
+      ...readFileSync('astro.config.mjs', 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '')
+        .matchAll(/['"`]([^'"`\n]*functions\/[^'"`\n]*)['"`]/g),
+    ].map((m) => m[1]!);
+    expect(literales.length).toBeGreaterThan(0);
+    expect(literales.filter((l) => !l.startsWith('./'))).toEqual([]);
+  });
+
   it('ni `index.js` ni un `-trigger.js` son compartidos', () => {
     // Si alguno apareciera, o el build importa el entrypoint de las Functions
     // —trampa 4: firebase-admin en el bundle— o la derivación se volvió tan

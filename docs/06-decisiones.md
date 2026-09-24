@@ -12715,6 +12715,24 @@ siempre en ese orden: dos copias de la misma foto hasta la corrida siguiente.
 
 ---
 
+## D-895 · Qué de `functions/` arrastra Hosting se deriva del árbol, no se enumera ni se invierte
+
+**B-1241, 2026-09-24.** El `awk` de `que-deployar.sh` era una lista blanca dentro
+de la lista negra del hosting, y se quedó corta en silencio: veía 4 de 10
+archivos. Había dos salidas: derivarla de los imports, o invertirla (solo
+`*-trigger.js`, `index.js` y `package*.json` no afectan).
+
+**Se eligió derivar.** Invertir haría que `imagenes.js`, `reportes.js` y los demás
+que solo usa la Function volvieran a republicar el sitio en cada cambio: un
+deploy de más, inofensivo pero mentiroso, el mismo argumento de B-215.
+
+La derivación busca **literales** de ruta relativa con `grep` y no parsea
+imports: sobrar (un comentario que cite `'../../functions/x.js'`) es el error
+barato, y así el `new URL(` de los alias entra aunque esté partido en líneas. Sin
+`src/` a la vista, todo `functions/` cuenta. La red no es una lista que haya que
+mantener: es un segundo recorrido de los imports, escrito de otra manera en
+`tests/que-deployar.test.ts`, que tiene que quedar contenido en lo que el script ve.
+
 ## D-900 · El Instagram que no se reconoce se avisa con un cartel, y el cartel no frena
 
 **B-1190, 2026-09-24. El dueño tomó la opción recomendada.**
@@ -12809,4 +12827,3 @@ corrige de alcance y no se revierte.
   riesgo chico por uno seguro.
 - **La regla no cambió**: no tiene grafo de transiciones y ya aceptaba
   `nueva → en-revision → aceptada`.
-
