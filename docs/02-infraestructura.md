@@ -869,6 +869,15 @@ trae Android Studio, y los emuladores fallan con
 `openjdk@21` de Homebrew sin tocar el `JAVA_HOME` global, para no romper
 Android Studio.
 
+**Ojo con el puerto 5000.** En macOS lo escucha `ControlCenter` —el receptor de
+AirPlay—, y `npm run emu` levanta **todos** los emuladores de `firebase.json`:
+si uno no consigue su puerto, se cae la tanda entera y con ella todos los tests
+de integración, aunque el que falló sea Hosting, que ningún test usa. Por eso el
+emulador de Hosting escucha en el **5002** (B-1200), y
+`tests/puertos-del-emulador.test.ts` frena que un emulador vuelva al 5000 o al
+7000, los dos de AirPlay. Si el síntoma vuelve con otro puerto,
+`lsof -nP -iTCP:<puerto> -sTCP:LISTEN` dice quién lo tiene.
+
 Los scripts contra producción usan las **Application Default Credentials** de
 gcloud, así que no hay ninguna service account key en disco.
 
