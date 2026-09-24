@@ -142,6 +142,8 @@ el primero o en el último ítem, se recorre con las flechas dando la vuelta, co
 `Home`/`End` va a los extremos, y al cerrarse con `Escape` **devuelve el foco al
 "⋯"** — sin eso había que re-tabular el listado entero para volver a la fila.
 
+Arriba de la grilla, las pestañas **Vigentes** y **Pasadas** separan lo que ya
+terminó (B-101, D-1050): no son un filtro y no cuentan en el número del botón.
 **Ordenar y filtrar** viven detrás del botón «Filtros», con el número de puestos al
 lado. Son **siete desplegables más el eje de etiquetas**: estado, tipo, **arancel**,
 modalidad, barrio, fechas y **destacada**, más los **chips de etiquetas** debajo de

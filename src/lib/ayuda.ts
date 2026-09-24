@@ -720,6 +720,15 @@ export const CAPITULOS: CapituloAyuda[] = [
     puntos: [
       {
         texto:
+          'Arriba de la grilla hay dos pestañas: «Vigentes» y «Pasadas». Las que ya pasaron —las ' +
+          'que no tienen ningún encuentro por venir— se van a «Pasadas», para que no se mezclen con ' +
+          'lo que estás cargando. No se borran ni cambian de estado: siguen publicadas, con su ' +
+          'página y en el archivo del sitio. Un borrador sin fechas se queda en «Vigentes». Cada ' +
+          'pestaña dice cuántas tiene con tu búsqueda puesta, y en «Pasadas» lo último que pasó va ' +
+          'primero.',
+      },
+      {
+        texto:
           'Por defecto el listado ordena por lo que se viene primero: arriba está el encuentro ' +
           'más próximo. Antes ordenaba por lo último modificado, y así un borrador con el primer ' +
           'encuentro en cuatro días quedaba al fondo y no lo veía nadie.',
@@ -750,8 +759,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           '«Con algo por venir» deja las actividades que todavía tienen un encuentro por pasar, y ' +
-          'su opuesto deja las que ya terminaron o nunca tuvieron fecha. Es la forma de encontrar ' +
-          'lo que quedó sin cerrar.',
+          'su opuesto, parado en «Vigentes», deja las que todavía no tienen ninguna fecha cargada. ' +
+          'Es la forma de encontrar lo que quedó sin cerrar. Las que ya terminaron están en ' +
+          '«Pasadas».',
       },
       {
         texto:

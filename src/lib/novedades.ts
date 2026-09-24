@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'pestana-pasadas',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Las actividades que ya pasaron tienen su pestaña',
+    detalle:
+      'El listado se parte en «Vigentes» y «Pasadas»: lo que ya terminó deja de mezclarse con lo ' +
+      'que estás cargando. No se borra ni cambia de estado; sigue publicado y en el archivo del ' +
+      'sitio. Cada pestaña dice cuántas tiene, y si buscás algo que está en la otra, te avisa.',
+    donde: 'En Actividades, arriba de la grilla.',
+  },
+  {
     id: 'historial-avisa-imagenes-borradas',
     fecha: '2026-09-24',
     version: '1.11.0',
