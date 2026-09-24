@@ -14938,6 +14938,15 @@ mismo camino: cualquiera de los dos mecanismos de arriba es dónde vive.
 es el esfuerzo sino quién aprueba y dónde se ve: en (1) la etiqueta ya está en el
 array, marcada; en (2) está afuera hasta que alguien la mueva.
 
+### B-1320 · «Bajar la imagen» de la bandeja tampoco anda en producción · P1 — de `propuesta-imagen` (2026-09-23) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24)** con B-1235a: el bucket responde `access-control-allow-origin` al origen del sitio (verificado con `curl -H Origin`). No se probó el botón en un navegador; si vuelve a fallar, la causa ya no es el CORS.
+
+Misma causa que B-1235: hace un `fetch` a la URL de descarga, y el bucket no
+tiene CORS. Su docblock afirmaba que andaba (corregido en `de19dc2`). Hoy el botón
+falla y manda a «abrila en otra pestaña», que sí funciona. Importa porque es el
+resguardo antes del descarte irreversible de B-926. Se arregla solo con B-1235a.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -19000,7 +19009,7 @@ semanas**». Los repartos con torta sí; las dos vistas de tiempo y el mapa de c
 bueno por los repartos y los avisos en dos columnas; lo que hay que sacar es la
 mitad que afirma pantalla que no hay. Se cierra solo si B-1081 se dibuja.
 
-### B-1086 · `D-272` y el § 8.1bis describen la franja fija que B-798 sacó · P3 — de documentar el tablero (2026-09-17) · ✅ hecho (2026-09-23)
+### B-1086 · `D-272` y el § 8.1bis describen la franja fija que se sacó el 2026-09-07 · P3 — de documentar el tablero (2026-09-17) · ✅ hecho (2026-09-23)
 
 **✅ Hecho (2026-09-23).** `a2b1bd5`: nota de superada-en-parte en D-272 y una línea en el § 8.1bis. **Ojo:** el título dice B-798 y no es el ítem que sacó la franja — ver B-1332.
 
@@ -19042,6 +19051,21 @@ era de otro frente.
 **Actualizado el 2026-09-11:** B-832 no lo hizo, así que ya son **tres** copias
 (`schema.ts`, `libreria-schema.ts`, `suscripcion-literaria-schema.ts`). Con la
 tajada 4 serían cuatro. Vale subirlo a P2.
+
+### B-1332 · B-1086 atribuye la saca de la franja fija a B-798, y no es ese ítem · P3 — de `docblocks` (2026-09-23) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** El título de B-1086 en `BACKLOG-cerrados.md` dice ahora «que se sacó el 2026-09-07», sin número: ningún ítem la nombra.
+
+B-798 es «Filtros que no encuentran nada». El comentario de `PanelSitioPublico`
+fecha la saca el 2026-09-07 sin nombrar ítem, así que la nota de D-272 va sin
+número. Corregir el id en el texto de B-1086 en `BACKLOG-cerrados.md`.
+
+### B-1333 · El docblock de `anchoDelPanel.ts` dice que la grilla del mes «sigue esperando» el ancho · P3 — de `docblocks` (2026-09-23) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24)** en `7d73409`: la fila de la tabla y el párrafo de B-621 dicen que `calendario` entró el 2026-09-07 y que falta repartir la grilla por dentro.
+
+El comentario de más abajo, en el mismo archivo, dice que `calendario` entró a
+todo ancho el 2026-09-07.
 
 ## Pendiente de acción manual del dueño
 

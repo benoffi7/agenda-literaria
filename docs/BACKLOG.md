@@ -259,13 +259,6 @@ seguir es que nadie sepa cuál de las dos es.
 
 ## P1 — bloquean el objetivo del proyecto
 
-### B-1320 · «Bajar la imagen» de la bandeja tampoco anda en producción · P1 — de `propuesta-imagen` (2026-09-23)
-
-Misma causa que B-1235: hace un `fetch` a la URL de descarga, y el bucket no
-tiene CORS. Su docblock afirmaba que andaba (corregido en `de19dc2`). Hoy el botón
-falla y manda a «abrila en otra pestaña», que sí funciona. Importa porque es el
-resguardo antes del descarte irreversible de B-926. Se arregla solo con B-1235a.
-
 ### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 causa encontrada, falta B-1235a (2026-09-23)
 
 > 🟡 **Causa encontrada y verificada contra el bucket de producción (2026-09-23).** No era la cadena de guardado: era el **CORS**. La respuesta con los bytes (`alt=media`) no manda `Access-Control-Allow-Origin` para ningún origen, así que el `fetch` de `promoverImagenDePropuesta` falla en el navegador («Failed to fetch»); en el emulador anda porque no aplica el CORS del bucket, y en la bandeja la foto «se ve» porque un `<img>` no lo necesita. **Hecho** (`de19dc2`, `d245919`): `cors.json` en la raíz (solo GET/HEAD desde los cuatro orígenes del sitio), y una alerta visible arriba del formulario cuando la foto no entra, con la causa y qué hacer (`avisoDeImagenNoPromovida`, `Conversion.imagenNoPromovida`). **Falta:** B-1235a, y probar una conversión real. Se cierra cuando una propuesta con foto se convierta y la actividad reabra con el flyer.
@@ -1974,17 +1967,6 @@ Misma clase que B-1143: afirma dos implementaciones y que el script no puede
 importar la del sitio. Desde B-928 las dos funciones que compara son la misma, así
 que el test pasa siempre sin probar nada. Reescribirlo como prueba de que la
 reexportación apunta al módulo único, o borrarlo.
-
-### B-1332 · B-1086 atribuye la saca de la franja fija a B-798, y no es ese ítem · P3 — de `docblocks` (2026-09-23)
-
-B-798 es «Filtros que no encuentran nada». El comentario de `PanelSitioPublico`
-fecha la saca el 2026-09-07 sin nombrar ítem, así que la nota de D-272 va sin
-número. Corregir el id en el texto de B-1086 en `BACKLOG-cerrados.md`.
-
-### B-1333 · El docblock de `anchoDelPanel.ts` dice que la grilla del mes «sigue esperando» el ancho · P3 — de `docblocks` (2026-09-23)
-
-El comentario de más abajo, en el mismo archivo, dice que `calendario` entró a
-todo ancho el 2026-09-07.
 
 ### B-1250 · La verificación del navegador mira solo el primer token: si la renovación automática falla más tarde, el cartel no aparece · P3 — lo encontró `appcheck-panel` (2026-09-23)
 
