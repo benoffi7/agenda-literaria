@@ -73,6 +73,13 @@ export interface FichaDeDirectorio {
    * comportamiento de siempre. Ver su docblock en `lib/directorios.ts`.
    */
   publicadaAlgunaVez?: boolean;
+  /**
+   * ¿El dato con fecha de esta ficha pide revisión? Lo calcula quien arma la
+   * lista con `pideRevision` (`lib/datoConFecha.ts`): la bandeja no sabe qué
+   * dato es ni lee fechas. Ausente es «no», así que un directorio sin dato con
+   * fecha no tiene que declarar nada. B-1411.
+   */
+  pideRevision?: boolean;
 }
 
 interface Props {
@@ -91,6 +98,11 @@ interface Props {
   onEditar?: (ficha: FichaDeDirectorio) => void;
   /** Lo propio de la entidad: la dirección de una librería, el precio de una suscripción. */
   detalle?: (ficha: FichaDeDirectorio) => ReactNode;
+  /**
+   * Cómo se llama el dato que envejece, para el contador de B-1411: «3 precios
+   * para revisar», «1 costo de asociarse para revisar». Por defecto, precio.
+   */
+  queRevisar?: { singular: string; plural: string };
 }
 
 /**
@@ -110,9 +122,21 @@ const TEXTO_ORIGEN: Record<FichaDeDirectorio['origen'], string> = {
   panel: 'la cargamos nosotros',
 };
 
-export function DirectorioPanel({ directorio, fichas, fallo, onMover, onEditar, detalle }: Props) {
+const QUE_REVISAR_POR_DEFECTO = { singular: 'precio', plural: 'precios' };
+
+export function DirectorioPanel({
+  directorio,
+  fichas,
+  fallo,
+  onMover,
+  onEditar,
+  detalle,
+  queRevisar = QUE_REVISAR_POR_DEFECTO,
+}: Props) {
   /** Apagado por defecto: la bandeja arranca mostrando lo que espera decisión. */
   const [verCerradas, setVerCerradas] = useState(false);
+  /** El contador de B-1411 apretado: solo las que piden revisión, de cualquier estado. */
+  const [soloRevisar, setSoloRevisar] = useState(false);
   /** Id de la que se está moviendo, para no tocar el botón dos veces. */
   const [moviendo, setMoviendo] = useState<string | null>(null);
 
@@ -125,10 +149,24 @@ export function DirectorioPanel({ directorio, fichas, fallo, onMover, onEditar, 
   const titulo = ficha?.titulo ?? directorio;
   const singular = ficha?.singular ?? 'ficha';
 
-  const visibles = useMemo(
-    () => (verCerradas ? fichas : fichas.filter(esPendienteDeRevision)),
-    [fichas, verCerradas],
-  );
+  /*
+   * **B-1411 — el aviso de los sesenta días no puede quedar escondido.** El
+   * precio viejo que importa es el de una ficha **publicada**, que es justo la
+   * que el filtro por defecto esconde. El contador cuenta sobre **todas** las
+   * fichas, y apretarlo muestra esas aunque la casilla esté apagada: si
+   * dependiera del filtro, contaría cero en el caso que existe para atrapar.
+   *
+   * Si las confirman todas mientras está apretado, se suelta solo (`revisando`
+   * mira también el largo): una lista vacía con el filtro prendido y ningún
+   * contador que apagar dejaría la bandeja sin salida.
+   */
+  const aRevisar = useMemo(() => fichas.filter((f) => f.pideRevision === true), [fichas]);
+  const revisando = soloRevisar && aRevisar.length > 0;
+
+  const visibles = useMemo(() => {
+    if (revisando) return aRevisar;
+    return verCerradas ? fichas : fichas.filter(esPendienteDeRevision);
+  }, [fichas, verCerradas, revisando, aRevisar]);
 
   const mover = async (f: FichaDeDirectorio, estado: EstadoDirectorio) => {
     setMoviendo(f.id);
@@ -163,6 +201,31 @@ export function DirectorioPanel({ directorio, fichas, fallo, onMover, onEditar, 
         ni en el buscador, ni en el mapa del sitio. Publicar la deja visible para cualquiera en
         el próximo rebuild.
       </p>
+
+      {aRevisar.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <button
+            type="button"
+            aria-pressed={revisando}
+            onClick={() => setSoloRevisar(!revisando)}
+            className={`rounded-full border px-2.5 py-0.5 font-medium ${
+              revisando
+                ? 'border-acento bg-acento text-white'
+                : 'border-acento/40 bg-acento/5 text-acento hover:bg-acento/10'
+            }`}
+          >
+            {`${aRevisar.length} ${
+              aRevisar.length === 1 ? queRevisar.singular : queRevisar.plural
+            } para revisar`}
+          </button>
+          {revisando && (
+            <span className="text-tinta/55">
+              Ves solo las que piden revisión, publicadas incluidas. Tocalo de nuevo para volver
+              a la bandeja.
+            </span>
+          )}
+        </div>
+      )}
 
       {fallo && (
         <p className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">

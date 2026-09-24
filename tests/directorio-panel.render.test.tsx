@@ -206,3 +206,73 @@ describe('lo que la ficha dice de sí misma', () => {
     expect(screen.getByRole('button', { name: 'Abrir' })).toBeTruthy();
   });
 });
+
+describe('el contador de precios para revisar — B-1411', () => {
+  /*
+   * El precio viejo que importa es el de una ficha **publicada**, y el filtro por
+   * defecto la esconde. Las tres fichas de abajo cubren el caso: dos piden
+   * revisión y una de ellas está en el sitio.
+   */
+  const CON_AVISO: FichaDeDirectorio[] = [
+    ficha({ id: 'esperando', nombre: 'La Libre', estado: 'pendiente', pideRevision: true }),
+    ficha({ id: 'en-el-sitio', nombre: 'Eterna Cadencia', estado: 'publicado', pideRevision: true }),
+    ficha({ id: 'al-dia', nombre: 'Otra Publicada', estado: 'publicado' }),
+    ficha({ id: 'descartada', nombre: 'Kiosco de Diarios', estado: 'rechazado' }),
+  ];
+
+  const contador = (nombre: string | RegExp) => screen.getByRole('button', { name: nombre });
+
+  it('cuenta sobre todas las fichas, no solo las visibles', () => {
+    // MUTACIÓN A PROBAR: contar sobre `visibles` da «1», porque la publicada no está.
+    montar({ fichas: CON_AVISO });
+    expect(enPantalla()).toEqual(['La Libre']);
+    expect(contador('2 precios para revisar')).toBeTruthy();
+  });
+
+  it('tocarlo muestra las que piden revisión aunque el filtro esté apagado', async () => {
+    montar({ fichas: CON_AVISO });
+    await userEvent.click(contador('2 precios para revisar'));
+    expect(enPantalla()).toEqual(['La Libre', 'Eterna Cadencia']);
+    expect(contador('2 precios para revisar').getAttribute('aria-pressed')).toBe('true');
+    expect((screen.getByLabelText('Ver publicadas y descartadas') as HTMLInputElement).checked).toBe(
+      false,
+    );
+  });
+
+  it('tocarlo de nuevo vuelve a la bandeja', async () => {
+    montar({ fichas: CON_AVISO });
+    await userEvent.click(contador('2 precios para revisar'));
+    await userEvent.click(contador('2 precios para revisar'));
+    expect(enPantalla()).toEqual(['La Libre']);
+    expect(contador('2 precios para revisar').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('sin fichas que pidan revisión no hay contador', () => {
+    montar();
+    expect(screen.queryByRole('button', { name: /para revisar/ })).toBeNull();
+  });
+
+  it('el singular y el nombre del dato son de quien lo usa', () => {
+    montar({
+      fichas: [ficha({ pideRevision: true })],
+      queRevisar: { singular: 'costo de asociarse', plural: 'costos de asociarse' },
+    });
+    expect(contador('1 costo de asociarse para revisar')).toBeTruthy();
+  });
+
+  it('si las confirman todas mientras está apretado, se suelta solo', async () => {
+    /*
+     * El snapshot trae la fecha nueva y la ficha deja de pedir revisión. Sin la
+     * guarda, la lista quedaría vacía con el filtro prendido y sin contador para
+     * apagarlo.
+     */
+    const { rerender } = montar({ fichas: CON_AVISO });
+    await userEvent.click(contador('2 precios para revisar'));
+    const confirmadas = CON_AVISO.map((f) => ({ ...f, pideRevision: false }));
+    rerender(
+      <DirectorioPanel directorio="librerias" fichas={confirmadas} onMover={vi.fn(async () => {})} />,
+    );
+    expect(screen.queryByRole('button', { name: /para revisar/ })).toBeNull();
+    expect(enPantalla()).toEqual(['La Libre']);
+  });
+});
