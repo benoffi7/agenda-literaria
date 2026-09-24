@@ -38,19 +38,24 @@
  * esquive la cache**. Si el CDN devuelve una copia vieja, eso *es* la
  * divergencia y no un artefacto de la medición. Ver `frescura-trigger.js`.
  *
- * ── Lo que este chequeo NO ve, dicho de frente ────────────────────────────
+ * ── La edición de una actividad ya listada: dos marcas, no dos derivaciones
  *
- * Una **edición** de una actividad que ya está listada: si cambia el título y el
- * slug no (el slug es inmutable después de publicar — trampa 10), los dos
- * conjuntos siguen siendo idénticos. Verlo pediría comparar el *contenido* de
- * cada entrada, o sea rederivar `toPublic`/`entradaDeIndice` adentro de una
- * Cloud Function: una segunda derivación de la proyección, que es la forma de
- * bug que `05-patrones.md` nombra («dos derivaciones de la misma idea se separan
- * sin que nada falle») y que terminaría avisando de sus propias diferencias.
+ * El conjunto de slugs no ve una **edición**: si cambia el título y el slug no
+ * (el slug es inmutable después de publicar — trampa 10), los dos conjuntos
+ * siguen siendo idénticos. Verlo comparando el *contenido* de cada entrada
+ * pediría rederivar `toPublic`/`entradaDeIndice` adentro de una Cloud Function:
+ * una segunda derivación de la proyección, que es la forma de bug que
+ * `05-patrones.md` nombra («dos derivaciones de la misma idea se separan sin que
+ * nada falle») y que terminaría avisando de sus propias diferencias. Eso sigue
+ * sin hacerse.
  *
- * El conjunto de slugs es **la comparación más grande que no duplica ninguna
- * derivación**: de un lado `slug` y `estado` salen crudos del documento, del
- * otro `slug` sale crudo del JSON. Queda anotado como **B-886**.
+ * Lo que sí se hace desde **B-886** es comparar **dos marcas del pipeline**: el
+ * `generadoEn` del índice que sirve el sitio contra `despacho.cubreHasta` de
+ * `sistema/rebuild` (B-884), que es el piso de lo que el último despacho tiene
+ * que haber llevado al sitio. Si el índice es más viejo que ese piso, hay un
+ * cambio despachado —una edición, un cambio de etiqueta en `/opciones/*`,
+ * cualquiera— que el sitio no tiene. No nombra **cuál**: no sabe, y no lo
+ * inventa. Ver `compararMarcas`.
  *
  * ── Y no reemplaza a B-883, ni al revés ───────────────────────────────────
  * B-883 hace que un workflow roto abra un issue: vigila **un** eslabón, y lo
@@ -60,6 +65,11 @@
  * que no pase por un workflow rojo —el dispatch que GitHub aceptó y no corrió,
  * el deploy que subió sin el índice, el CDN cacheado— no lo ve nadie.
  */
+
+// Los dos son puros: `rebuild.js` no toca Firebase ni la red, y `milisDe` es la
+// normalización de fechas que ya comparten las Functions. Ver `compararMarcas`.
+import { milisDe } from './calendario.js';
+import { cubiertoPorElUltimoDespacho } from './rebuild.js';
 
 /* ──────────────────────────────────────────────────────────────────────────
  * La ventana: cuánta divergencia es normal
@@ -141,6 +151,19 @@ export const TOPE_DE_SLUGS_EN_EL_AVISO = 20;
  * `updatedAt` como todas las demás.
  */
 export const TOPE_DE_VISTAS = 200;
+
+/**
+ * B-886 — cuánto puede estar adelantado el reloj del runner de Actions respecto
+ * del de Firestore sin que el chequeo confunda «cubierto» con «viejo».
+ *
+ * `generadoEn` lo estampa el runner y `cubreHasta` es un `serverTimestamp()`:
+ * son dos relojes. Un minuto sobra —los dos van por NTP— y no le quita nada a la
+ * medición, porque entre la marca y el `generadoEn` del build que la cubre hay
+ * **siempre** varios minutos: el tick del debounce, la cola del runner y el paso
+ * `Tests`, que corre antes del build. El margen solo puede hacer que se escape un
+ * caso de un minuto que no existe; nunca que avise de más.
+ */
+export const MARGEN_DE_RELOJ_MS = 60 * 1000;
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Leer el índice
@@ -343,6 +366,70 @@ export const fechar = (slugs, fechas = {}, vistas = [], ahora = Date.now()) => {
 };
 
 /**
+ * B-886 — ¿el índice que sirve el sitio es anterior al último despacho?
+ *
+ * Es la comparación que ve **la edición de una actividad ya listada**, que el
+ * conjunto de slugs no puede ver. Compara dos marcas del pipeline y ninguna
+ * derivación del documento:
+ *
+ *  - `generadoEn` del `events.json` vivo, que el build estampa **al arrancar**
+ *    (`astro.config.mjs` → `scripts/version.mjs`), o sea **antes** de leer
+ *    Firestore. Por eso `generadoEn >= cubreHasta` alcanza para afirmar que el
+ *    build leyó después de la marca y la contiene.
+ *  - `despacho.cubreHasta` de `sistema/rebuild`: la marca que el tick leyó antes
+ *    del `repository_dispatch` (B-884). Se lee con `cubiertoPorElUltimoDespacho`,
+ *    que es la lectura que `rebuild.js` dejó escrita para esto.
+ *
+ * ── Desde cuándo corre el reloj: `disparado`, no `cubreHasta` ─────────────
+ * La edad se mide desde el **despacho**, no desde la marca. Con la marca, un
+ * dispatch que salió tarde —GitHub caído, el backoff de B-21 esperando hasta
+ * 75 minutos— llegaría al build ya con la ventana gastada y el chequeo avisaría
+ * **durante el camino normal** de ese build. Lo que pasa antes del dispatch ya
+ * tiene su alarma (`rebuild-agotado`); esto mide lo que pasa **después**: build,
+ * reintento y propagación. La ventana entera (`TOLERANCIA_MS`) incluye además el
+ * debounce, así que desde el dispatch sobra.
+ *
+ * Y una edición que llega con el build a medias (el `cancel-in-progress`) hace un
+ * despacho nuevo con un `disparado` nuevo: el reloj vuelve a cero en vez de
+ * acusar al build que se canceló a propósito. Mientras el dueño está editando
+ * seguido, el sitio está legítimamente en camino y el chequeo lo dice así.
+ *
+ * ── `sin-ancla` es «no sé», no «al día» ───────────────────────────────────
+ * Sin `cubreHasta` (un `sistema/rebuild` anterior a B-884, o que nunca despachó)
+ * o sin un `generadoEn` que se pueda leer (un build de dev lo deja vacío), no hay
+ * comparación posible. No se avisa **y no se afirma** nada: el estado lo dice.
+ *
+ * @param {{ generadoEn?: string | null, rebuild?: Record<string, any> | null,
+ *           ahora?: number, toleranciaMs?: number }} args
+ * @returns {{ estado: 'al-dia' | 'en-vuelo' | 'atrasado' | 'sin-ancla',
+ *             edadMs: number, generadoMs: number | null, cubreHastaMs: number | null,
+ *             disparadoMs: number | null }}
+ */
+export const compararMarcas = ({
+  generadoEn = null,
+  rebuild = null,
+  ahora = Date.now(),
+  toleranciaMs = TOLERANCIA_MS,
+}) => {
+  const cubreHastaMs = cubiertoPorElUltimoDespacho(rebuild);
+  const disparadoMs = milisDe(rebuild?.disparado);
+  const generado = typeof generadoEn === 'string' && generadoEn ? Date.parse(generadoEn) : NaN;
+  const generadoMs = Number.isFinite(generado) ? generado : null;
+  const base = { generadoMs, cubreHastaMs, disparadoMs };
+
+  if (cubreHastaMs == null || generadoMs == null) return { estado: 'sin-ancla', edadMs: 0, ...base };
+  if (generadoMs + MARGEN_DE_RELOJ_MS >= cubreHastaMs) return { estado: 'al-dia', edadMs: 0, ...base };
+
+  // `disparado` y `cubreHasta` los escribe la misma llamada a `registrarExito`,
+  // así que describen el mismo despacho. El `max` es la red si alguno quedó
+  // escrito a mano: el reloj arranca en el más tardío, que es el lado que espera
+  // de más y no el que avisa de más.
+  const desdeMs = Math.max(cubreHastaMs, disparadoMs ?? cubreHastaMs);
+  const edadMs = Math.max(0, ahora - desdeMs);
+  return { estado: edadMs > toleranciaMs ? 'atrasado' : 'en-vuelo', edadMs, ...base };
+};
+
+/**
  * El veredicto.
  *
  * `enVuelo` son las divergencias **más jóvenes que la ventana**: el sitio está
@@ -357,7 +444,13 @@ export const fechar = (slugs, fechas = {}, vistas = [], ahora = Date.now()) => {
  * @param {{ faltan?: {slug: string, desdeMs: number, reloj?: string}[],
  *           sobran?: {slug: string, desdeMs: number, reloj?: string}[],
  *           publicadas?: number, enElIndice?: number,
- *           generadoEn?: string | null, ahora?: number, toleranciaMs?: number }} args
+ *           generadoEn?: string | null, marcas?: ReturnType<typeof compararMarcas> | null,
+ *           ahora?: number, toleranciaMs?: number }} args
+ *
+ * `marcas` es el resultado de `compararMarcas` (B-886), o nada. Cuenta como una
+ * divergencia más: `en-vuelo` suma a `enVuelo` y `atrasado` pone el veredicto en
+ * `atrasado` aunque los conjuntos de slugs coincidan, que es justamente el caso
+ * de una edición.
  */
 export const compararFrescura = ({
   faltan = [],
@@ -365,6 +458,7 @@ export const compararFrescura = ({
   publicadas = 0,
   enElIndice = 0,
   generadoEn = null,
+  marcas = null,
   ahora = Date.now(),
   toleranciaMs = TOLERANCIA_MS,
 }) => {
@@ -374,6 +468,8 @@ export const compararFrescura = ({
   const todas = [...conEdad(faltan, 'falta'), ...conEdad(sobran, 'sobra')];
   const vencidas = todas.filter((d) => d.edadMs > toleranciaMs);
   const enVuelo = todas.filter((d) => d.edadMs <= toleranciaMs);
+  const indiceViejo = marcas?.estado === 'atrasado';
+  const indiceEnVuelo = marcas?.estado === 'en-vuelo';
 
   // El reloj de cada divergencia se persiste para la próxima corrida, y **solo
   // el de las que siguen divergiendo**: así el registro se limpia solo y no se
@@ -384,12 +480,22 @@ export const compararFrescura = ({
     .slice(0, TOPE_DE_VISTAS)
     .map((i) => ({ slug: i.slug, desdeMs: i.desdeMs }));
 
+  const hayVencidas = vencidas.length > 0 || indiceViejo;
+  const cuantasEnVuelo = enVuelo.length + (indiceEnVuelo ? 1 : 0);
   return {
-    estado: vencidas.length ? 'atrasado' : enVuelo.length ? 'en-vuelo' : 'fresco',
+    estado: hayVencidas ? 'atrasado' : cuantasEnVuelo ? 'en-vuelo' : 'fresco',
     faltan: vencidas.filter((d) => d.lado === 'falta'),
     sobran: vencidas.filter((d) => d.lado === 'sobra'),
-    enVuelo: enVuelo.length,
-    peorEdadMs: vencidas.reduce((m, d) => Math.max(m, d.edadMs), 0),
+    // B-886 — el índice es anterior al último despacho y ya pasó la ventana.
+    indiceViejo,
+    // Lo que se persiste de la comparación de marcas: solo el veredicto y la
+    // edad, como el resto de este objeto. Las marcas crudas van al log.
+    marcas: marcas ? { estado: marcas.estado, edadMs: marcas.edadMs } : null,
+    enVuelo: cuantasEnVuelo,
+    peorEdadMs: Math.max(
+      vencidas.reduce((m, d) => Math.max(m, d.edadMs), 0),
+      indiceViejo ? marcas.edadMs : 0,
+    ),
     publicadas,
     enElIndice,
     generadoEn,
@@ -410,6 +516,10 @@ export const firmaDe = (veredicto) =>
     veredicto.estado,
     ...veredicto.faltan.map((d) => `-${d.slug}`),
     ...veredicto.sobran.map((d) => `+${d.slug}`),
+    // B-886 — sin marca de tiempo, por lo mismo que el resto: si llevara
+    // `cubreHasta`, cada edición hecha con el build roto abriría otro issue y
+    // pediría otro build, en vez de uno por día.
+    ...(veredicto.indiceViejo ? ['~indice'] : []),
   ].join('|');
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -570,9 +680,10 @@ const lista = (divergencias) => {
  */
 export const issueDeAtraso = (veredicto) => {
   const total = veredicto.faltan.length + veredicto.sobran.length;
-  const title =
-    `[frescura] El sitio quedó atrasado: ${total} ` +
-    `${total === 1 ? 'actividad no coincide' : 'actividades no coinciden'} con lo publicado`;
+  const title = total
+    ? `[frescura] El sitio quedó atrasado: ${total} ` +
+      `${total === 1 ? 'actividad no coincide' : 'actividades no coinciden'} con lo publicado`
+    : '[frescura] El sitio quedó atrasado: el índice es anterior al último cambio despachado';
 
   const cuerpo = [
     `> Abierto automáticamente por \`verificarFrescuraDelSitio\` (B-882).`,
@@ -588,6 +699,15 @@ export const issueDeAtraso = (veredicto) => {
       : '',
     veredicto.sobran.length
       ? `### El sitio muestra y ya no está publicado (${veredicto.sobran.length})\n\n${lista(veredicto.sobran)}\n`
+      : '',
+    // B-886 — sin nombres ni fechas: el chequeo no sabe **qué** cambio falta, y
+    // la marca exacta es un `updatedAt` con otro nombre (ver `edadGruesa`).
+    veredicto.indiceViejo
+      ? '### Un cambio despachado que el sitio no tiene\n\n' +
+        'El `events.json` que sirve el sitio se generó **antes** del último cambio que se ' +
+        'despachó al build (`despacho.cubreHasta` en `sistema/rebuild`, B-886). Es una ' +
+        'edición, un cambio de etiqueta o cualquier otro cambio que no altera la lista ' +
+        'de slugs, así que no se puede nombrar: se ve comparando las dos marcas.\n'
       : '',
     '### Dónde mirar',
     '',

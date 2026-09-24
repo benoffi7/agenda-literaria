@@ -566,7 +566,7 @@ falló; éste vigila la promesa entera y no sabe por qué.
 
 | | |
 |---|---|
-| **Qué compara** | el **conjunto de slugs** de las actividades `publicado` en Firestore contra el de `events.json`, en las dos direcciones. **No el conteo**: dos diferencias que se cancelan dan el mismo número |
+| **Qué compara** | el **conjunto de slugs** de las actividades `publicado` en Firestore contra el de `events.json`, en las dos direcciones. **No el conteo**: dos diferencias que se cancelan dan el mismo número. Y, desde **B-886**, el `generadoEn` del índice contra `despacho.cubreHasta` de `sistema/rebuild` — ver abajo |
 | **Contra qué URL** | `https://agendaleh.ar/events.json`, **la misma que pide el público y sin parámetro que esquive la cache**: si el CDN devuelve una copia vieja, eso *es* la divergencia |
 | **Ventana** | 40 minutos = 5 (debounce del §8) + 15 (`timeout-minutes` del workflow) + 15 (otro build, porque `cancel-in-progress: true`) + 5 (propagación de Hosting). Cada sumando está anclado a un número que vive en otro archivo, y `tests/frescura.test.ts` se pone rojo si alguno deja de coincidir |
 | **Cómo avisa** | issue en el repo con la etiqueta `frescura` + `logger.error` con `alerta: 'sitio-atrasado'`. Uno por divergencia distinta, con reaviso a las 24 h. **No cierra issues** |
@@ -575,11 +575,23 @@ falló; éste vigila la promesa entera y no sabe por qué.
 | **Qué escribe** | `sistema/frescura` — un solo documento que dice, ahora mismo, si el sitio está al día y desde cuándo no |
 | **Costo** | una lectura de Firestore por actividad publicada, 48 veces por día (~4.800 con 100 actividades), dentro de la cuota gratuita |
 
-Lo que **no** ve, dicho de frente: la **edición** de una actividad que ya está
-listada. El slug es inmutable después de publicar (trampa 10), así que cambiar el
-título deja los dos conjuntos idénticos. Verlo pediría rederivar `toPublic` dentro
-de una Cloud Function, que es la duplicación de derivaciones que
-`05-patrones.md` prohíbe. Queda como **B-886**.
+**La edición de una actividad ya listada — B-886.** El conjunto de slugs no la
+ve: el slug es inmutable después de publicar (trampa 10), así que cambiar el
+título deja los dos conjuntos idénticos. Compararla por contenido pediría
+rederivar `toPublic` dentro de una Cloud Function, que es la duplicación de
+derivaciones que `05-patrones.md` prohíbe, y eso **sigue sin hacerse**. Lo que se
+compara son **dos marcas del pipeline** (`compararMarcas` en
+`functions/frescura.js`):
+
+| | |
+|---|---|
+| **La comparación** | `generadoEn` del `events.json` vivo contra `despacho.cubreHasta` de `sistema/rebuild` (B-884). `generadoEn` lo estampa el build **al arrancar**, antes de leer Firestore, así que `generadoEn >= cubreHasta` alcanza para afirmar que el build contiene el último cambio despachado. Si no, hay un cambio —una edición, una etiqueta de `/opciones/*`, cualquiera que no mueva la lista de slugs— que el sitio no tiene |
+| **Desde cuándo corre el reloj** | desde `disparado`, **no** desde la marca. Un dispatch que salió tarde (GitHub caído, el backoff de B-21) llegaría al build con la ventana ya gastada y avisaría durante su camino normal; lo de antes del dispatch ya tiene su alarma (`rebuild-agotado`). Y una edición que cancela el build en curso (`cancel-in-progress`) despacha de nuevo y el reloj vuelve a cero |
+| **Ventana** | la misma de 40 minutos. Desde el dispatch sobra: incluye el debounce, que a esa altura ya pasó |
+| **Dos relojes** | `generadoEn` es del runner y `cubreHasta` de Firestore: un minuto de margen (`MARGEN_DE_RELOJ_MS`). Solo puede dejar escapar un caso de un minuto que no existe —entre la marca y el build que la cubre están siempre el tick, la cola del runner y el paso `Tests`—; nunca avisar de más |
+| **Sin ancla** | sin `despacho` (un `sistema/rebuild` anterior a B-884) o sin `generadoEn` legible (un build de dev lo deja vacío) el estado es `sin-ancla`: **«no sé», no «al día»**. No avisa |
+| **Qué avisa** | entra al mismo veredicto y al mismo issue, con la firma `~indice` —sin marca de tiempo: si la llevara, cada edición hecha con el build roto abriría otro issue y pediría otro build—. **No nombra la actividad**, porque no sabe cuál es, y no publica ninguna de las dos marcas: `cubreHasta` es un `updatedAt` con otro nombre (D-138) |
+| **Qué escribe** | `sistema/frescura.marcas` = `{ estado, edadMs, cubreHastaMs, disparadoMs }`. De `sistema/rebuild` lee solo `despacho` y `disparado` (`fieldMask`), y lo lee **después** del índice, como el resto de Firestore |
 
 `sistema/frescura` lo pueden leer los admins (`match /sistema/{doc}` con
 `read: if esAdmin()`), así que el panel podría mostrarlo sin reglas nuevas. Todavía
