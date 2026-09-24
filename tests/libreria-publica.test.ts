@@ -35,6 +35,12 @@ import {
   libreriaCentinela,
   type RutaDeLibreria,
 } from './fixtures/centinelas-libreria';
+import {
+  PERMITIDO_EN_LA_PROYECCION_DE_LIBRERIAS as PERMITIDO_EN_LA_PROYECCION,
+  PERMITIDO_EN_LA_FICHA_DE_LIBRERIAS as PERMITIDO_EN_LA_FICHA,
+  PERMITIDO_EN_EL_MARCADO_DE_LIBRERIAS as PERMITIDO_EN_EL_MARCADO,
+  type Excepcion as ExcepcionDeLaGuia,
+} from './fixtures/canastas-de-la-guia';
 import { NOMBRE } from '@/lib/identidad';
 import type { Libreria } from '@/types/libreria';
 
@@ -46,127 +52,14 @@ const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url
 // aprobada por cansancio.
 // ───────────────────────────────────────────────────────────────────────────
 
-type Excepcion = { nombre: string; centinelas: readonly RutaDeLibreria[]; porque: string };
+type Excepcion = ExcepcionDeLaGuia<RutaDeLibreria>;
 
-const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
-  {
-    nombre: 'cuándo abre',
-    // B-982 — pedido del dueño: «no tiene horario de atención».
-    centinelas: ['horarios'],
-    porque:
-      'es el dato que más se busca después de la dirección: un directorio que dice dónde queda y ' +
-      'no cuándo abre manda a la gente a la puerta cerrada. Es un **local comercial** (§ 8 del ' +
-      'PRD), así que su horario no dice nada de nadie. **No entra al JSON-LD**: es texto libre y ' +
-      '`schema.org/openingHours` quiere un formato fijo — publicarlo mal formado haría que Google ' +
-      'muestre un horario equivocado, que es peor que no mostrarlo.',
-  },
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      'son la ficha: el nombre que se busca, la dirección web permanente (trampa 10) y qué tiene ' +
-      'la librería. Sin esto no hay página.',
-  },
-  {
-    nombre: 'dónde queda',
-    // B-967 — los tres de la geografía. La provincia sale por lo mismo que la
-    // ciudad: es una etiqueta geográfica de un local comercial, no dice nada de
-    // nadie, y es lo que distingue dos ciudades homónimas.
-    centinelas: ['direccion', 'provincia', 'barrio', 'ciudad'],
-    porque:
-      'es un **local comercial**, no la casa de nadie (§ 8 del PRD). La dirección es el dato por ' +
-      'el que alguien entra a la ficha, y el barrio es el mismo slug que usan las actividades — ' +
-      'lo que deja cruzarlas en el hub.',
-  },
-  {
-    nombre: 'los cuatro contactos públicos',
-    centinelas: ['instagram', 'whatsapp', 'web', 'mail'],
-    porque:
-      'salen a propósito y **ése es el punto de la ficha**: existe para que la gente le escriba a ' +
-      'la librería. El §5.1 del `CLAUDE.md` advierte por el WhatsApp personal y acá el número es ' +
-      'de trabajo, con el cartel «este número se publica en el sitio» arriba del input (§ 9.4).',
-  },
-  {
-    nombre: 'la galería',
-    centinelas: ['imagenes.url', 'imagenes.epigrafe'],
-    porque:
-      'la ficha muestra **todas** las imágenes (criterio de B-296) y el epígrafe es el texto que ' +
-      'alguien escribió para que se lea debajo. La URL sale **saneada**, no cruda.',
-  },
-  /*
-   * **`searchText` ya NO es una excepción** — 2026-09-15, hallazgo del
-   * `auditor-privacidad` al abrir el `create` anónimo.
-   *
-   * Estuvo acá mientras la proyección **copiaba** `l.searchText` del documento,
-   * con el `porque` diciendo «se deriva de los cinco campos de esta misma
-   * lista». Eso describía a `formALibreria`, no a la proyección: el campo del
-   * documento lo escribe el cliente, y desde que ese cliente puede ser un
-   * anónimo, dos mil caracteres elegidos por cualquiera salían al JSON —por el
-   * único campo publicado que la bandeja **no muestra**—.
-   *
-   * Ahora la proyección lo **deriva** con `searchTextDeLibreria` de los valores
-   * ya proyectados, así que el centinela del documento no sobrevive y la
-   * excepción sobra. Lo que sí hay son los tres casos del final de este archivo,
-   * que es el mismo reparto que `tests/lugar-publico.test.ts` ya tenía.
-   */
-];
-
-/**
- * Lo que sale a la **ficha** (`FichaDeLibreria`, el view-model de la página).
- *
- * Es la proyección **menos `searchText`**: el índice de búsqueda existe para que
- * el listado filtre en memoria, y la página de una librería no filtra nada.
- * Publicarlo ahí sería repetir el nombre, la descripción y la dirección
- * normalizados, sin ningún consumidor.
- */
 /*
- * **Desde el 2026-09-15 es la proyección entera, y el filtro se fue con la
- * excepción.** `searchText` dejó de ser una excepción del barrido —la proyección
- * lo deriva en vez de copiarlo—, así que este `filter` no sacaba nada y quedaba
- * nombrando un grupo que ya no existe. La propiedad que la ficha sigue teniendo
- * —no publica el índice de búsqueda— la afirman sus propios casos.
+ * Las listas viven en `tests/fixtures/canastas-de-la-guia.ts` desde B-1812: el
+ * barrido de salidas públicas las compara con la canasta del gate del build, y
+ * para eso tienen que poder importarse. El criterio sigue siendo el mismo y se
+ * sigue escribiendo a mano, allá.
  */
-const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION;
-
-/**
- * Lo que sale al **marcado estructurado** (`BookStore` + migas + `CollectionPage`).
- *
- * La lista más corta de las tres, y con motivo: esto lo lee una máquina y es lo
- * que Google puede mostrar **fuera** del sitio.
- */
-const PERMITIDO_EN_EL_MARCADO: readonly Excepcion[] = [
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      '`name`, `description` y el `url` canónico. Es lo que hace que la ficha entre al panel local ' +
-      'de Google, que es todo el SEO de esta sección (§ 4 del PRD).',
-  },
-  {
-    nombre: 'la dirección postal',
-    centinelas: ['direccion', 'ciudad', 'provincia'],
-    porque:
-      '`PostalAddress` de un local comercial: `streetAddress`, `addressLocality` y —desde ' +
-      'B-967— `addressRegion`, que es lo que distingue dos ciudades homónimas. El **barrio no ' +
-      'entra**: no es un componente de `PostalAddress` y meterlo en `streetAddress` ensuciaría ' +
-      'el dato que Google geocodifica.',
-  },
-  {
-    nombre: 'los perfiles',
-    centinelas: ['instagram', 'web'],
-    porque:
-      '`sameAs` es «las otras direcciones de esta misma entidad». El **WhatsApp y el mail no ' +
-      'entran**: son canales de contacto, no perfiles, y publicarlos en el marcado los deja ' +
-      'cosechables por cualquier parser sin que nadie abra la página.',
-  },
-  {
-    nombre: 'la imagen',
-    centinelas: ['imagenes.url'],
-    porque:
-      '`image` es una lista de URLs. El **epígrafe no entra**: es texto para leer debajo de la ' +
-      'foto, no un dato de la entidad.',
-  },
-];
 
 /**
  * El barrido, en las dos direcciones.

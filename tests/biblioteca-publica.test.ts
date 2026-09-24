@@ -35,6 +35,12 @@ import {
   bibliotecaCentinela,
   type RutaDeBiblioteca,
 } from './fixtures/centinelas-biblioteca';
+import {
+  PERMITIDO_EN_LA_PROYECCION_DE_BIBLIOTECAS as PERMITIDO_EN_LA_PROYECCION,
+  PERMITIDO_EN_LA_FICHA_DE_BIBLIOTECAS as PERMITIDO_EN_LA_FICHA,
+  PERMITIDO_EN_EL_MARCADO_DE_BIBLIOTECAS as PERMITIDO_EN_EL_MARCADO,
+  type Excepcion as ExcepcionDeLaGuia,
+} from './fixtures/canastas-de-la-guia';
 import { NOMBRE } from '@/lib/identidad';
 import type { Biblioteca } from '@/types/biblioteca';
 
@@ -46,137 +52,14 @@ const raiz = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url
 // aprobada por cansancio.
 // ───────────────────────────────────────────────────────────────────────────
 
-type Excepcion = { nombre: string; centinelas: readonly RutaDeBiblioteca[]; porque: string };
+type Excepcion = ExcepcionDeLaGuia<RutaDeBiblioteca>;
 
-const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion', 'tipo'],
-    porque:
-      'son la ficha: el nombre que se busca, la dirección web permanente (trampa 10), qué tiene ' +
-      'la biblioteca y de qué tipo es. El `tipo` además es el eje de filtro propio de esta ' +
-      'sección, así que sin él no hay chips.',
-  },
-  {
-    nombre: 'dónde queda',
-    centinelas: ['direccion', 'provincia', 'barrio', 'ciudad'],
-    porque:
-      'es una **institución**, no la casa de nadie — la diferencia con `/lugares`, que tiene ' +
-      '`direccionPublica` justamente porque ahí puede serlo. La dirección es el dato por el que ' +
-      'alguien entra a la ficha, y el barrio es el mismo slug que usan las actividades, que es ' +
-      'lo que deja cruzarlas en el hub.',
-  },
-  {
-    nombre: 'cuándo abre',
-    centinelas: ['horarios', 'horarioDeSala'],
-    porque:
-      'son lo que el directorio existe para contestar después de la dirección, y en una ' +
-      'biblioteca **son dos**: el mostrador y la sala de lectura pueden tener horarios ' +
-      'distintos. Ninguno identifica a nadie. **No entran al JSON-LD**: son texto libre y ' +
-      '`schema.org/openingHours` quiere un formato fijo — publicarlo mal formado haría que ' +
-      'Google muestre un horario equivocado, que es peor que no mostrarlo.',
-  },
-  {
-    nombre: 'cómo se saca un libro',
-    centinelas: ['asociarse.costo.valor', 'catalogo'],
-    porque:
-      'es la razón de ser de esta sección. El catálogo es el dato que más le sirve a quien lee ' +
-      '—mirar desde casa si el libro está— y el costo de asociarse sale **adentro de la frase ' +
-      'con su fecha de carga pegada** (`fraseConFecha`, B-837/DEC-12), nunca como número suelto: ' +
-      'la forma es la que impide que se pueda filtrar u ordenar por él.',
-  },
-  {
-    nombre: 'los cuatro contactos públicos',
-    centinelas: ['instagram', 'whatsapp', 'web', 'mail'],
-    porque:
-      'salen a propósito y **ése es el punto de la ficha**: existe para que la gente le escriba ' +
-      'a la biblioteca. El §5.1 del `CLAUDE.md` advierte por el WhatsApp personal y acá el ' +
-      'número es institucional, con el cartel «este número se publica en el sitio» arriba del ' +
-      'input.',
-  },
-  {
-    nombre: 'la galería',
-    centinelas: ['imagenes.url', 'imagenes.epigrafe'],
-    porque:
-      'la ficha muestra **todas** las imágenes (criterio de B-296) y el epígrafe es el texto que ' +
-      'alguien escribió para que se lea debajo. La URL sale **saneada**, no cruda.',
-  },
-  /*
-   * **`searchText` NO es una excepción, y esta colección nace así.**
-   *
-   * En librerías y suscripciones estuvo acá mientras la proyección **copiaba**
-   * el campo del documento, y el `auditor-privacidad` lo cobró el 2026-09-15 al
-   * abrir el `create` anónimo: el campo lo escribe el cliente, y dos mil
-   * caracteres elegidos por cualquiera salían al JSON por el único campo
-   * publicado que la bandeja **no muestra**.
-   *
-   * Acá la proyección lo **deriva** con `searchTextDeBiblioteca` de los valores
-   * ya proyectados desde el primer commit, así que el centinela del documento no
-   * sobrevive y la excepción no existe. Los casos del final lo afirman.
-   */
-];
-
-/**
- * Lo que sale a la **ficha** (`FichaDeBiblioteca`, el view-model de la página).
- *
- * Es la proyección entera: `searchText` no está en el barrido porque no
- * sobrevive, así que no hay nada que filtrar. La propiedad que la ficha sigue
- * teniendo —no publica el índice de búsqueda— la afirman sus propios casos.
+/*
+ * Las listas viven en `tests/fixtures/canastas-de-la-guia.ts` desde B-1812: el
+ * barrido de salidas públicas las compara con la canasta del gate del build, y
+ * para eso tienen que poder importarse. El criterio sigue siendo el mismo y se
+ * sigue escribiendo a mano, allá.
  */
-const PERMITIDO_EN_LA_FICHA: readonly Excepcion[] = PERMITIDO_EN_LA_PROYECCION;
-
-/**
- * Lo que sale al **marcado estructurado** (`Library` + migas + `CollectionPage`).
- *
- * La lista más corta de las tres, y con motivo: esto lo lee una máquina y es lo
- * que Google puede mostrar **fuera** del sitio.
- */
-const PERMITIDO_EN_EL_MARCADO: readonly Excepcion[] = [
-  {
-    nombre: 'identidad',
-    centinelas: ['nombre', 'slug', 'descripcion'],
-    porque:
-      '`name`, `description` y el `url` canónico. Es lo que hace que la ficha entre al panel ' +
-      'local de Google, que es todo el SEO de esta sección. **El `tipo` no entra**: `Library` ya ' +
-      'dice qué es la entidad, y «popular» o «universitaria» no tienen propiedad donde caer sin ' +
-      'inventarla.',
-  },
-  {
-    nombre: 'la dirección postal',
-    centinelas: ['direccion', 'ciudad', 'provincia'],
-    porque:
-      '`PostalAddress` de una institución: `streetAddress`, `addressLocality` y `addressRegion`, ' +
-      'que es lo que distingue dos ciudades homónimas. El **barrio no entra**: no es un ' +
-      'componente de `PostalAddress` y meterlo en `streetAddress` ensuciaría el dato que Google ' +
-      'geocodifica.',
-  },
-  {
-    nombre: 'los perfiles',
-    centinelas: ['instagram', 'web', 'catalogo'],
-    porque:
-      '`sameAs` es «las otras direcciones de esta misma entidad», y el catálogo lo es: es la ' +
-      'biblioteca en otro dominio. El **WhatsApp y el mail no entran**: son canales de contacto, ' +
-      'no perfiles, y publicarlos en el marcado los deja cosechables por cualquier parser sin ' +
-      'que nadie abra la página.',
-  },
-  {
-    nombre: 'la imagen',
-    centinelas: ['imagenes.url'],
-    porque:
-      '`image` es una lista de URLs. El **epígrafe no entra**: es texto para leer debajo de la ' +
-      'foto, no un dato de la entidad.',
-  },
-  /*
-   * **Ni los horarios ni el costo de asociarse entran al marcado**, y las dos
-   * ausencias son decisiones:
-   *
-   * - los horarios, porque `openingHours` quiere un formato fijo (B-982);
-   * - el costo, porque un `priceRange` o un `Offer` con esa frase adentro
-   *   deshace la regla 2 de `datoConFecha.ts` (D-570) en la salida que más la
-   *   amplifica: Google lo mostraría como un precio comparable, que es
-   *   exactamente lo que la frase con fecha existe para impedir.
-   */
-];
 
 /**
  * El barrido, en las dos direcciones.
