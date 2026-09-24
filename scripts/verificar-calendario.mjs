@@ -37,10 +37,22 @@
  * Calendar. Por eso el default es de solo lectura (reporta, no repara) y la
  * reparación pide `--reparar` explícito: nunca toca un evento que Calendar
  * confirma que existe, solo recrea los que confirma 404/410 (ver
- * `functions/reconciliacion.js`).
+ * `functions/reconciliacion.js`). El único camino que escribe sobre un evento
+ * que existe es `--reescribir` (B-631), y solo sobre los que el reporte ya
+ * listó como desactualizados.
  *
  *   node scripts/verificar-calendario.mjs              # reporta, no escribe nada
  *   node scripts/verificar-calendario.mjs --reparar     # además recrea los borrados a mano
+ *   node scripts/verificar-calendario.mjs --reescribir  # además reescribe los desactualizados
+ *
+ * B-631 — además de si el evento existe, mira si **dice lo mismo** que el
+ * código de hoy produciría (`construirEvento`, el mismo que usa la Function).
+ * Los que difieren salen como «desactualizados», con los campos que cambian.
+ * Reescribirlos es un flag **aparte** de `--reparar` a propósito: recrear un
+ * evento que no está es reponer algo que falta; reescribir uno que está le
+ * cambia el título o la descripción a quien ya lo tiene agendado (D-95), y
+ * eso lo decide el dueño viendo el reporte, no un flag que ya usaba para otra
+ * cosa.
  *
  * La lógica de qué verificar y qué decide cada respuesta es pura y está en
  * `functions/reconciliacion.js`, testeada sin red en
@@ -51,7 +63,7 @@
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldPath } from 'firebase-admin/firestore';
 import { GoogleAuth, Impersonated } from 'google-auth-library';
-import { construirEvento } from '../functions/calendario.js';
+import { construirEvento, milisDe } from '../functions/calendario.js';
 import { idDeEvento, mapaDeEtiquetas, reponerIds } from '../functions/sincronizacion.js';
 import {
   interpretarExistencia,
@@ -74,6 +86,72 @@ const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'];
  * uno y se pierde la idempotencia para esa sesión, no la reparación.
  */
 export const cuerpoDeCreacion = (eventId, evento) => (eventId ? { ...evento, id: eventId } : evento);
+
+/**
+ * B-631 — Calendar devuelve un campo vacío **omitiéndolo**, y `construirEvento`
+ * puede producir `null` (una actividad sin sede no tiene `location`) o `''`.
+ * Los tres son «no hay»: sin esto, toda actividad virtual saldría
+ * desactualizada.
+ */
+const vacio = (v) => (v == null || v === '' ? null : v);
+
+/**
+ * B-631 — ¿el evento que Calendar tiene dice lo mismo que el código de hoy
+ * produciría? Devuelve las claves que difieren (vacío = al día).
+ *
+ * Es la divergencia que la guarda del §7.1 no puede ver: los dos lados de esa
+ * comparación se calculan con el código de hoy (D-07), así que un cambio en
+ * *cómo se arma* la descripción deja los eventos publicados atrás sin emitir
+ * ninguna operación (B-162). Desde afuera sí se ve, y este script es el único
+ * que mira desde afuera.
+ *
+ * Se comparan **solo las claves que `construirEvento` produce**, derivadas de
+ * `esperado` y no listadas a mano: Calendar devuelve además `etag`, `created`,
+ * `updated`, `iCalUID`, `sequence`, `reminders`, `organizer`… y compararlo
+ * entero daría «distinto» en el 100 % de los eventos. Derivarlas es lo que hace
+ * que un campo nuevo del evento entre solo a este chequeo (el criterio de D-07).
+ *
+ * `start`/`end` se comparan por **instante y zona**, no por texto: Calendar
+ * devuelve `dateTime` con el offset local (`…T19:00:00-03:00`) y nosotros
+ * mandamos ISO en UTC (`…T22:00:00.000Z`). Son el mismo momento; comparar los
+ * strings daría distinto siempre. El `timeZone` sí se compara tal cual — es la
+ * trampa 1 del §13, y tiene que decir `America/Argentina/Buenos_Aires`.
+ */
+export const camposDivergentes = (esperado, enCalendar) => {
+  const distintos = [];
+  for (const clave of Object.keys(esperado)) {
+    const a = esperado[clave];
+    const b = enCalendar?.[clave];
+    const esFecha = a != null && typeof a === 'object' && 'dateTime' in a;
+    const iguales = esFecha
+      ? milisDe(a.dateTime) !== null &&
+        milisDe(a.dateTime) === milisDe(b?.dateTime) &&
+        a.timeZone === b?.timeZone
+      : vacio(a) === vacio(b);
+    if (!iguales) distintos.push(clave);
+  }
+  return distintos;
+};
+
+/**
+ * B-631 — las sesiones cuyo evento existe pero dice otra cosa. `eventos` es un
+ * `Map` de `sesion.id` → el cuerpo que devolvió `events.get`.
+ *
+ * Solo mira las que `interpretarExistencia` dio por `'existe'`: sobre una que no
+ * está, o una que no se pudo verificar, no hay contenido que comparar — y
+ * afirmar divergencia sobre un `'desconocido'` produciría un `update` sobre una
+ * sospecha, que es lo mismo que `interpretarExistencia` ya evita.
+ */
+export const planificarReescritura = (candidatas, resultados, eventos, construir) => {
+  const desactualizados = [];
+  for (const c of candidatas) {
+    if ((resultados.get(c.sesion.id) ?? 'desconocido') !== 'existe') continue;
+    const evento = construir(c.actividad, c.sesion);
+    const campos = camposDivergentes(evento, eventos.get(c.sesion.id));
+    if (campos.length > 0) desactualizados.push({ ...c, campos, evento });
+  }
+  return desactualizados;
+};
 
 /**
  * Un cliente REST mínimo sobre `fetch`, autenticado como `calendar-sync@…`
@@ -113,6 +191,10 @@ const clienteCalendar = async () => {
   return {
     obtener: (eventId) => pedir('GET', eventId),
     crear: (eventId, evento) => pedir('POST', undefined, cuerpoDeCreacion(eventId, evento)),
+    // `PUT` = `events.update`, el mismo verbo que usa la Function para una
+    // operación `actualizar` (`calendario-trigger.js`): reemplaza el recurso
+    // con lo que produce `construirEvento`, sin sumar nada.
+    actualizar: (eventId, evento) => pedir('PUT', eventId, evento),
   };
 };
 
@@ -146,7 +228,14 @@ const cargarLabels = async (db) => {
  * sesión más allá del tope no se verificaba jamás (hallazgo del
  * `auditor-trampas`, P1).
  */
-export const ejecutarVerificacion = async ({ db, cal, labels, reparar: repararFlag, desde = undefined }) => {
+export const ejecutarVerificacion = async ({
+  db,
+  cal,
+  labels,
+  reparar: repararFlag,
+  reescribir: reescribirFlag = false,
+  desde = undefined,
+}) => {
   let query = db
     .collection('actividades')
     .where('estado', '==', 'publicado')
@@ -157,8 +246,12 @@ export const ejecutarVerificacion = async ({ db, cal, labels, reparar: repararFl
   const { candidatas, truncado, siguienteCursor } = sesionesAVerificar(actividades);
 
   const resultados = new Map();
+  // B-631 — el cuerpo que ya devuelve `events.get`: antes se usaba solo
+  // `status` y se descartaba el resto, sin una llamada más.
+  const eventos = new Map();
   for (const c of candidatas) {
     const respuesta = await cal.obtener(c.sesion.calendarEventId);
+    if (respuesta.ok) eventos.set(c.sesion.id, respuesta.data);
     resultados.set(
       c.sesion.id,
       interpretarExistencia(
@@ -168,6 +261,9 @@ export const ejecutarVerificacion = async ({ db, cal, labels, reparar: repararFl
   }
 
   const { reparar: aReparar, desconocidos } = planificarReparacion(candidatas, resultados);
+  const desactualizados = planificarReescritura(candidatas, resultados, eventos, (a, s) =>
+    construirEvento(a, s, labels),
+  );
 
   const reparados = [];
   const fallidos = [];
@@ -199,6 +295,25 @@ export const ejecutarVerificacion = async ({ db, cal, labels, reparar: repararFl
     }
   }
 
+  // B-631 — **después** de las recreaciones, y con su propio flag. Sin
+  // write-back: el `calendarEventId` no cambia. Las dos listas no se pisan
+  // (una reescritura es de un evento que existe, una recreación de uno que no),
+  // pero el orden queda igual por si algún día se tocan.
+  const reescritos = [];
+  const fallidosReescritura = [];
+  if (reescribirFlag) {
+    for (const c of desactualizados) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const r = await cal.actualizar(c.sesion.calendarEventId, c.evento);
+        if (r && r.ok === false) throw new Error(`HTTP ${r.code}${r.cuerpo ? `: ${r.cuerpo}` : ''}`);
+        reescritos.push(c);
+      } catch (e) {
+        fallidosReescritura.push({ ...c, error: e?.message ?? String(e) });
+      }
+    }
+  }
+
   return {
     verificados: candidatas.length,
     truncado,
@@ -207,6 +322,9 @@ export const ejecutarVerificacion = async ({ db, cal, labels, reparar: repararFl
     desconocidos,
     reparados,
     fallidos,
+    desactualizados,
+    reescritos,
+    fallidosReescritura,
   };
 };
 
@@ -218,6 +336,7 @@ const leerDesde = (argv) => {
 
 const main = async () => {
   const reparar = process.argv.includes('--reparar');
+  const reescribir = process.argv.includes('--reescribir');
   const desde = leerDesde(process.argv);
   const enEmulador = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
   const projectId = process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria';
@@ -231,12 +350,15 @@ const main = async () => {
       : `Firestore: PRODUCCIÓN (${projectId})`,
   );
   console.log('Calendar: SIEMPRE el real — no hay emulador para esta API.');
-  console.log(reparar ? 'Modo: VERIFICAR Y REPARAR' : 'Modo: solo verificar (sin --reparar)');
+  const acciones = [reparar && 'REPARAR (recrea los borrados)', reescribir && 'REESCRIBIR (actualiza los desactualizados)']
+    .filter(Boolean)
+    .join(' + ');
+  console.log(acciones ? `Modo: VERIFICAR + ${acciones}` : 'Modo: solo verificar (sin --reparar ni --reescribir)');
   if (desde) console.log(`Retomando después de: ${desde}`);
   console.log('');
 
   const [cal, labels] = await Promise.all([clienteCalendar(), cargarLabels(db)]);
-  const resumen = await ejecutarVerificacion({ db, cal, labels, reparar, desde });
+  const resumen = await ejecutarVerificacion({ db, cal, labels, reparar, reescribir, desde });
 
   console.log(
     `Verificados: ${resumen.verificados}` +
@@ -271,7 +393,28 @@ const main = async () => {
     }
   }
 
-  process.exit(resumen.fallidos.length > 0 ? 1 : 0);
+  if (resumen.desactualizados.length === 0) {
+    console.log('\nNingún evento desactualizado: los que existen dicen lo que el código de hoy produciría.');
+  } else {
+    console.log(
+      `\nDesactualizados (${resumen.desactualizados.length}) — existen, pero dicen otra cosa que el código de hoy:`,
+    );
+    for (const c of resumen.desactualizados) {
+      console.log(
+        `  - ${c.actividad.titulo} (${c.actividadId}) · sesión ${c.sesion.id} · difiere: ${c.campos.join(', ')}`,
+      );
+    }
+    console.log(
+      reescribir
+        ? `\nReescritos: ${resumen.reescritos.length}${resumen.fallidosReescritura.length ? `, fallaron: ${resumen.fallidosReescritura.length}` : ''}`
+        : '\nCorré con --reescribir para actualizarlos (les cambia el texto a quien ya los tiene agendados).',
+    );
+    for (const f of resumen.fallidosReescritura) {
+      console.error(`  ! falló ${f.actividadId}/${f.sesion.id}: ${f.error}`);
+    }
+  }
+
+  process.exit(resumen.fallidos.length + resumen.fallidosReescritura.length > 0 ? 1 : 0);
 };
 
 // `import.meta.url` se compara contra `process.argv[1]` para que el módulo se
