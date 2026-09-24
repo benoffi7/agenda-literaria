@@ -48,13 +48,21 @@ export const ORDEN_POR_DEFECTO: Orden = 'proxima';
 // Filtros
 // ─────────────────────────────────────────────────────────────────
 
-export const CUANDOS = ['cualquiera', 'por-venir', 'sin-futuro'] as const;
+/**
+ * B-1720 — el tercero era `'sin-futuro'`, «Sin fechas por venir». Desde las
+ * pestañas de B-101 (D-1050) quedó medio redundante: parado en «Vigentes» solo
+ * devolvía las que no tienen ninguna fecha cargada —las otras sin futuro ya
+ * están en «Pasadas»—, y parado en «Pasadas» las devolvía todas. Ahora dice lo
+ * que de verdad filtra, y el eje entero se ofrece solo en «Vigentes»
+ * (`cuandosDeLaPestana`).
+ */
+export const CUANDOS = ['cualquiera', 'por-venir', 'sin-fechas'] as const;
 export type Cuando = (typeof CUANDOS)[number];
 
 export const ETIQUETA_CUANDO: Record<Cuando, string> = {
   cualquiera: 'Cualquier fecha',
   'por-venir': 'Con algo por venir',
-  'sin-futuro': 'Sin fechas por venir',
+  'sin-fechas': 'Sin fechas cargadas',
 };
 
 export const DESTACADOS = ['', 'si', 'no'] as const;
@@ -305,8 +313,33 @@ export const ultimaFecha = (actividad: ActividadConId): Date | null => {
  * no va a pasar, y `/pasadas` también la lista.
  */
 export const esPasada = (actividad: ActividadConId, ahora: Date): boolean =>
-  !tieneFuturo(actividad, ahora) &&
+  !tieneFuturo(actividad, ahora) && tieneFechas(actividad);
+
+/**
+ * ¿Tiene alguna fecha cargada, cancelada o no? — la mitad que `esPasada` le
+ * agrega a `/pasadas`, y desde B-1720 el filtro «Sin fechas cargadas» negado.
+ */
+export const tieneFechas = (actividad: ActividadConId): boolean =>
   (actividad.sesiones ?? []).some((s) => instante(s.inicio) !== null);
+
+/**
+ * B-1720 — qué ofrece el eje «Fechas» según la pestaña. En «Vigentes», los tres.
+ * En «Pasadas» ninguno recorta nada: todas tienen fechas y a ninguna le queda
+ * algo por venir (`esPasada`), así que «Con algo por venir» y «Sin fechas
+ * cargadas» darían cero siempre. Queda solo «Cualquier fecha», y con una sola
+ * opción el eje no se dibuja.
+ *
+ * **Salvo que venga puesto de «Vigentes».** La pestaña no es un filtro (D-1050):
+ * cambiarla no toca `cuando`, y un filtro que recorta sin que se lo vea es lo que
+ * el número del botón «Filtros» existe para evitar. Por eso el valor actual se
+ * sigue ofreciendo, y se puede sacar desde ahí o con «Limpiar filtros».
+ */
+export const cuandosDeLaPestana = (pestana: Pestana, actual: Cuando): readonly Cuando[] =>
+  pestana === 'vigentes'
+    ? CUANDOS
+    : actual === 'cualquiera'
+      ? ['cualquiera']
+      : ['cualquiera', actual];
 
 /** Las de una pestaña. No mira `filtros`: se aplica **después** de `filtrar`. */
 export const dePestana = (
@@ -418,7 +451,7 @@ export const filtrar = (
      */
     if (filtros.autor && (a.createdBy ?? '') !== filtros.autor) return false;
     if (filtros.cuando === 'por-venir' && !tieneFuturo(a, ahora)) return false;
-    if (filtros.cuando === 'sin-futuro' && tieneFuturo(a, ahora)) return false;
+    if (filtros.cuando === 'sin-fechas' && tieneFechas(a)) return false;
     return true;
   });
 };
