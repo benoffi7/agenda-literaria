@@ -219,15 +219,14 @@ const EJES_MEDIBLES = [...EJES_DE_TAXONOMIA, ...EJES_SIN_SLUG] as const;
  * Los tres paneles del tríptico «¿Qué hay ahora?» — **B-601**, sobre el B-600
  * que construyó la sección.
  *
- * ⚠️ **La fuente todavía no existe en esta rama.** `ClaveDePanel` vive en
- * `@/lib/ahoraPublico`, que llega con B-600 desde otra rama, así que estas tres
- * claves salen de leer **ese** módulo y no de importarlo — y hasta que se
- * junten, el test de `tests/analyticsSitio.test.ts` compara esta lista contra
- * una copia literal de sí misma, o sea que no la ata a nada. Lo señalaron los
- * dos auditores. El caso límite que eso deja abierto: si las tres claves
- * difirieran **desde el día uno**, el 100 % de los clics llegaría a GA4 como
- * `panel=otro` con toda la suite en verde. El test que lo cierra va junto con
- * el enganche (ver `.estado/analitica-sitio.md`).
+ * La fuente es `ClaveDePanel` de `src/lib/ahoraPublico.ts`. **Cuando se escribió
+ * esta lista, ese módulo todavía no existía en esta rama** —llegaba con B-600
+ * desde otra—, así que las tres claves salieron de leerlo y no de importarlo, y
+ * el test comparaba la lista contra una copia literal de sí misma: no la ataba a
+ * nada, y si las claves hubieran diferido desde el día uno, el 100 % de los
+ * clics habría llegado a GA4 como `panel=otro` con la suite en verde. Eso quedó
+ * cerrado con B-791 (el `Record` del párrafo de abajo); lo que sigue vigente es
+ * por qué la lista se **copia** en vez de importarse.
  *
  * **Copiado y no importado, por el mismo motivo que `EJES_MEDIBLES`**: la
  * fuente es `ClaveDePanel` de `@/lib/ahoraPublico`, y ese módulo trae el motor

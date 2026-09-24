@@ -12,28 +12,31 @@ import {
 } from '@/lib/directorios';
 
 /**
- * **La bandeja de un directorio, una sola para los tres** — B-834, tajada 2
+ * **La bandeja de un directorio, una sola para todos** — B-834, tajada 2
  * paso 12.
  *
- * Librerías, suscripciones y lugares tienen campos distintos y la misma
- * pantalla: una lista de fichas, un filtro que arranca mostrando lo que espera
- * decisión, y los botones que mueven el estado. Eso es lo que hay acá. Lo que
- * cambia entre las tres —qué dice cada ficha— entra por `detalle`, que es una
+ * Librerías, suscripciones, lugares y bibliotecas tienen campos distintos y la
+ * misma pantalla: una lista de fichas, un filtro que arranca mostrando lo que
+ * espera decisión, y los botones que mueven el estado. Eso es lo que hay acá. Lo
+ * que cambia entre ellos —qué dice cada ficha— entra por `detalle`, que es una
  * función y no una lista de campos, justamente para que agregar «qué incluye» a
  * los lugares no toque este archivo.
  *
  * ── Por qué **recibe** los datos en vez de leerlos ────────────────────────
  * Es la regla del § «Un control compartido recibe, no importa» de
  * `05-patrones.md`, aplicada al caso que la hizo nacer: un componente que van a
- * usar tres pantallas distintas **no puede importar lo que solo una de las tres
+ * usar varias pantallas distintas **no puede importar lo que solo una de ellas
  * tiene**. Si este archivo llamara a `observarLibrerias()`, dejaría de ser la
- * bandeja de los tres directorios y pasaría a ser la de librerías con un `if`.
+ * bandeja de todos los directorios y pasaría a ser la de librerías con un `if`.
  *
  * Y hay una segunda mitad, que es la que se cobra en los tests: recibiendo, esta
  * pantalla se puede montar con tres fichas literales y sin Firestore, sin
  * emulador y sin sesión. La lectura en vivo (`onSnapshot`) y las escrituras son
- * de `useDirectorio.ts` y de la capa por entidad — el mismo reparto que
- * `bandejaDePropuestas.ts` tiene con `PropuestasPanel`.
+ * de la capa por entidad —`observarLibrerias` y `moverLibreria` en
+ * `src/lib/librerias.ts`, y sus pares en `lugares.ts`,
+ * `suscripcionesLiterarias.ts` y `bibliotecas.ts`—, y las llama el panel de cada
+ * una (`LibreriasPanel.tsx` y los suyos), que le pasa las fichas a éste: el
+ * mismo reparto que `bandejaDePropuestas.ts` tiene con `PropuestasPanel`.
  *
  * ── Los botones salen del grafo, no de un `if` ────────────────────────────
  * Qué se le puede hacer a una ficha lo dice `TRANSICIONES` (`lib/directorios.ts`)
@@ -83,7 +86,7 @@ export interface FichaDeDirectorio {
 }
 
 interface Props {
-  /** Cuál de los tres. De acá salen el título y el nombre en singular de una ficha. */
+  /** Cuál de los directorios. De acá salen el título y el nombre en singular de una ficha. */
   directorio: IdDirectorio;
   fichas: readonly FichaDeDirectorio[];
   /** El error de la lectura o de la última escritura, ya en castellano. */

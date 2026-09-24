@@ -1,8 +1,9 @@
 /**
- * **El motor de los tres directorios** — B-834, tajada 2 paso 12.
+ * **El motor de los directorios de la Guía** — B-834, tajada 2 paso 12.
  *
- * Librerías (B-831), suscripciones literarias (B-832) y lugares para eventos
- * (B-833) tienen campos distintos y **el mismo ciclo de vida**: alguien de
+ * Librerías (B-831), suscripciones literarias (B-832), lugares para eventos
+ * (B-833) y bibliotecas (B-960) tienen campos distintos y **el mismo ciclo de
+ * vida**: alguien de
  * afuera —o un admin— carga una ficha, la ficha espera en la bandeja, un admin
  * la publica o la descarta, y recién publicada existe para el sitio
  * (`prd/README.md` § 1). Lo que no depende de los campos vive acá y se escribe
@@ -17,16 +18,18 @@
  * Así que este módulo tiene un límite escrito: **no proyecta, no lee Firestore y
  * no sabe qué campos tiene una librería.** Sabe en qué estados puede estar una
  * ficha, cómo se mueve entre ellos, cuál de esos estados la hace visible, qué
- * campos escribe la máquina y cuáles son los tres directorios que existen.
+ * campos escribe la máquina y cuáles son los directorios que existen.
  *
  * ── Es puro, y no por prolijidad ──────────────────────────────────────────
  * Lo importan **las dos aplicaciones**: el panel (`DirectorioPanel.tsx`) y el
  * sitio público (`/guia`). Vale entonces la regla del § «Un control compartido
  * recibe, no importa» de `05-patrones.md`: lo que este archivo importe **viaja a
  * una página pública**, con su cadena entera detrás. Por eso sus únicos imports
- * son `slugify` y `rutasPublicas`, los dos puros; la lectura en vivo, el
- * `onSnapshot` y las escrituras son de `useDirectorio.ts` y de la capa por
- * entidad, que solo existen del lado del panel.
+ * son `slugify` y `rutasPublicas`, los dos puros; la lectura en vivo (el
+ * `onSnapshot`) y las escrituras son de la capa por entidad —`observarLibrerias`
+ * y `moverLibreria` en `src/lib/librerias.ts`, y sus pares en `lugares.ts`,
+ * `suscripcionesLiterarias.ts` y `bibliotecas.ts`—, que llama el panel de cada
+ * una (`LibreriasPanel.tsx` y los suyos) y que solo existe del lado del panel.
  */
 import { slugify } from '@/lib/slugify';
 import {
@@ -281,7 +284,7 @@ export const slugBloqueado = (ficha: {
 }): boolean => ficha.publicadaAlgunaVez === true || ficha.estado === ESTADO_PUBLICO;
 
 // ─────────────────────────────────────────────────────────────────
-// Cuáles son los tres directorios — el registro de `/guia`
+// Cuáles son los directorios — el registro de `/guia`
 // ─────────────────────────────────────────────────────────────────
 
 /** El identificador de un directorio. Es también el segmento de su URL bajo `/guia/`. */
@@ -322,11 +325,12 @@ export interface Directorio {
 }
 
 /**
- * **Los tres directorios de la Guía, en el orden en que se construyen.**
+ * **Los directorios de la Guía, en el orden en que se construyeron.**
  *
  * El orden es el de `prd/README.md` § 6 y no es alfabético ni caprichoso:
  * librerías es el más chico y el que valida el motor, suscripciones el del
- * modelo más raro, lugares el que más taxonomía nueva pide. Es también el orden
+ * modelo más raro, lugares el que más taxonomía nueva pide, y bibliotecas llegó
+ * después, como el cuarto que puso a prueba el motor (B-960). Es también el orden
  * en que las filas van a ir dejando de decir «en camino», así que la página se
  * lee de arriba hacia abajo como la construcción va avanzando.
  *
