@@ -38,7 +38,7 @@ import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebas
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
-import { PROJECT_ID, faltaVerificarProyectoDeAuth, verificarProyectoDeAuth } from '../emulador';
+import { faltaVerificarProyectoDeAuth, proyectoDeAuth, verificarProyectoDeAuth } from '../emulador';
 
 /**
  * Los claims de la cuenta. `unknown` y no `boolean` porque el valor no siempre
@@ -92,8 +92,13 @@ export const tokenDe = async (
 ): Promise<string> => {
   const { email, emailVerificado, etiqueta = 'cred' } = opciones;
 
+  // El proyecto del emulador de **Auth**, no la base de Firestore de este
+  // checkout — B-1201, D-1020. Auth es de un solo proyecto, el de su
+  // `--project` de arranque; con `PROJECT_ID` los claims quedaban en un
+  // namespace donde el cliente nunca entra, salvo que el emulador se hubiera
+  // levantado desde este mismo checkout.
   const app = initAdmin(
-    { projectId: PROJECT_ID },
+    { projectId: await proyectoDeAuth() },
     `${etiqueta}-${uid}-${Date.now()}-${Math.random()}`,
   );
   const a = getAdminAuth(app);
@@ -137,6 +142,6 @@ export const entrarComo = async (
 ): Promise<void> => {
   const credencial = await signInWithCustomToken(auth(), await tokenDe(uid, claims, opciones));
   if (faltaVerificarProyectoDeAuth()) {
-    verificarProyectoDeAuth(await credencial.user.getIdToken());
+    verificarProyectoDeAuth(await credencial.user.getIdToken(), await proyectoDeAuth());
   }
 };

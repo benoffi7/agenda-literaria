@@ -2,9 +2,10 @@
 #
 # ¿Hay emuladores de Firebase ya escuchando, y en qué hosts?
 #
-# Escribe cinco líneas `clave=valor`:
+# Escribe seis líneas `clave=valor`:
 #
 #   arriba=true|false
+#   firestore_vivo=true|false
 #   hub=127.0.0.1:4400
 #   firestore=127.0.0.1:8080
 #   auth=127.0.0.1:9099
@@ -75,7 +76,22 @@ else
   ARRIBA=false
 fi
 
+# ── `firestore_vivo`: la pregunta del paso 4, que es más chica ─────────
+# El paso 4 del gate (el build contra el emulador) **solo necesita Firestore**, y
+# `arriba` pregunta por la tanda entera. Con la pregunta grande, un Firestore
+# solo —el de un `emulators:exec --only firestore`, que es justamente el paso 4
+# del gate de **otro** checkout corriendo a la vez— daba `arriba=false`, el
+# gate intentaba su propio `exec`, chocaba en el 8080 y moría con "port taken".
+# Es el mismo modo de falla de arriba, con otra cara: si el `exec` va a fallar,
+# lo que no hay que hacer es el `exec`.
+if [ "$ARRIBA" = true ] || puerto_vivo "$FIRESTORE"; then
+  FIRESTORE_VIVO=true
+else
+  FIRESTORE_VIVO=false
+fi
+
 printf 'arriba=%s\n' "$ARRIBA"
+printf 'firestore_vivo=%s\n' "$FIRESTORE_VIVO"
 printf 'hub=%s\n' "$HUB"
 printf 'firestore=%s\n' "$FIRESTORE"
 printf 'auth=%s\n' "$AUTH"

@@ -68,9 +68,10 @@ fi
 # no se puede probar se prueba en producción, y acá "producción" es el momento de
 # pushear. El motivo por el que la decisión existe está en el script.
 #
-# Se hace UNA vez y la contestan los pasos 3 y 4: los dos necesitan lo mismo, y
+# La decisión está escrita UNA vez, en el script, y la consultan los pasos 3 y 4:
 # tenerla escrita dos veces fue justamente lo que dejó al paso 4 apuntando a un
-# puerto que el paso 3 había apagado.
+# puerto que el paso 3 había apagado. Lo que sí se hace dos veces es
+# **preguntar**, porque la respuesta cambia en el medio (ver el paso 4).
 EMU=$(./scripts/emuladores-arriba.sh)
 EMU_ARRIBA=$(printf '%s\n' "$EMU" | sed -n 's/^arriba=//p')
 EMU_HUB=$(printf '%s\n' "$EMU" | sed -n 's/^hub=//p')
@@ -149,7 +150,17 @@ else
 fi
 
 paso 'Build del sitio y del panel, leyendo Firestore de verdad'
-if [ "$EMU_ARRIBA" = true ]; then
+# **La detección se repite acá, y no se reusa la del paso 3.** Entre los dos
+# pasos corre la suite dos veces (el 3 y el 3b): son minutos, y en ese rato otra
+# sesión puede haber levantado su tanda —o su propio paso 4, un `exec` de
+# Firestore solo—. Con la respuesta vieja el gate iba a su `exec`, chocaba en el
+# 8080 y moría con "port taken" teniendo al lado un Firestore vivo, que es lo
+# único que este paso necesita. Por eso pregunta `firestore_vivo` y no `arriba`.
+# Reusar el de otro checkout es seguro por lo mismo que en el paso 3: el build
+# siembra y lee en la base de ESTE checkout (B-219).
+EMU=$(./scripts/emuladores-arriba.sh)
+if [ "$(printf '%s\n' "$EMU" | sed -n 's/^firestore_vivo=//p')" = true ]; then
+  printf '  (Firestore ya arriba en %s: se usa ése)\n' "$HOST_FIRESTORE"
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
     ./scripts/build-contra-emulador.mjs || fallo 'el build no pasa o no leyó Firestore'
 else
