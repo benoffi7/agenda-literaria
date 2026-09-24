@@ -75,12 +75,6 @@ const fuentes = (): { donde: string; src: string }[] =>
  * subirlas, estas líneas fallan por huérfanas y se borran.
  */
 const EXCEPCIONES: Record<string, string> = {
-  'src/components/admin/SesionesEditor.tsx|text-tinta/55': 'B-1630: lo sube panel-ux',
-  'src/components/admin/SesionesEditor.tsx|text-tinta/60': 'B-1630: lo sube panel-ux',
-  'src/components/admin/FiltrosActividades.tsx|text-tinta/50': 'B-1630: lo sube panel-ux',
-  'src/components/admin/FiltrosActividades.tsx|text-tinta/55': 'B-1630: lo sube panel-ux',
-  'src/components/admin/FiltrosActividades.tsx|text-tinta/60': 'B-1630: lo sube panel-ux',
-  'src/components/admin/formulario/BarraAcciones.tsx|text-tinta/60': 'B-1630: lo sube panel-ux',
 };
 
 /**

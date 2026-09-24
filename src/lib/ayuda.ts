@@ -774,9 +774,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           '«Con algo por venir» deja las actividades que todavía tienen un encuentro por pasar, y ' +
-          'su opuesto, parado en «Vigentes», deja las que todavía no tienen ninguna fecha cargada. ' +
-          'Es la forma de encontrar lo que quedó sin cerrar. Las que ya terminaron están en ' +
-          '«Pasadas».',
+          '«Sin fechas cargadas», las que todavía no tienen ninguna fecha. Es la forma de encontrar ' +
+          'lo que quedó sin cerrar. El filtro está solo en «Vigentes»: las que ya terminaron están en ' +
+          '«Pasadas», y ahí todas tienen fechas y a ninguna le queda nada por venir.',
       },
       {
         texto:

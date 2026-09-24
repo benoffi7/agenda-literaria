@@ -208,7 +208,7 @@ export function BarraAcciones({
           ) : hayPendientes ? (
             // Gris y no rojo: se puede guardar igual, es lo que va a faltar el
             // día que se publique.
-            <span className="text-tinta/60">
+            <span className="text-tinta/65">
               Para publicar falta:{' '}
               <Nombres resumen={pendientesParaPublicar} onIrASeccion={onIrASeccion} />
             </span>
@@ -223,7 +223,7 @@ export function BarraAcciones({
               «falta el flyer» —que no mueve a nadie— y «no entra en la
               cartelera».
             */
-            <span className="text-tinta/60">
+            <span className="text-tinta/65">
               Conviene cargar{' '}
               <button
                 type="button"
@@ -236,7 +236,7 @@ export function BarraAcciones({
             </span>
           ) : null}
           {avisoEnGoogle && (
-            <span data-aviso="en-google" className="block text-tinta/60">
+            <span data-aviso="en-google" className="block text-tinta/65">
               {ENCABEZADO_EN_GOOGLE}{' '}
               {enGoogle.map((p, i) => (
                 <span key={p.id}>

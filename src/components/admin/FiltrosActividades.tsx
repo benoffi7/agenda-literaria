@@ -180,7 +180,7 @@ export function FiltrosActividades({
           Filtros{puestos > 0 && ` (${puestos})`}
         </button>
 
-        <label className="flex min-w-0 items-center gap-2 text-xs text-tinta/60">
+        <label className="flex min-w-0 items-center gap-2 text-xs text-tinta/65">
           Ordenar por
           <select
             className={`${claseInput} sm:max-w-52`}
@@ -196,7 +196,7 @@ export function FiltrosActividades({
           </select>
         </label>
 
-        <p className="text-xs text-tinta/55 sm:ml-auto">
+        <p className="text-xs text-tinta/65 sm:ml-auto">
           {mostradas === total
             ? `${total} ${total === 1 ? 'actividad' : 'actividades'}`
             : `${mostradas} de ${total}`}
@@ -465,7 +465,7 @@ export function FiltrosActividades({
           */}
           {chips.length > 0 && (
             <fieldset className="min-w-0 border-0 p-0">
-              <legend className="mb-1 text-xs text-tinta/60">
+              <legend className="mb-1 text-xs text-tinta/65">
                 Etiquetas
                 {filtros.tags.length > 0 && ` (${filtros.tags.length})`}
               </legend>
@@ -501,7 +501,7 @@ export function FiltrosActividades({
                       se leería como una poesía número 12. `tabular-nums` para que
                       la columna no baile.
                     */}
-                    <span aria-hidden="true" className="ml-1.5 tabular-nums text-tinta/50">
+                    <span aria-hidden="true" className="ml-1.5 tabular-nums text-tinta/65">
                       {chip.cantidad}
                     </span>
                     <span className="sr-only">{`, ${chip.cantidad} ${chip.cantidad === 1 ? 'actividad' : 'actividades'}`}</span>

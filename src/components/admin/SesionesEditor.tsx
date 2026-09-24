@@ -322,7 +322,7 @@ export function SesionesEditor({
       insignias={(s) =>
         s.calendarEventId ? (
           <span
-            className="rounded-full bg-tinta/10 px-2 py-0.5 text-[11px] text-tinta/60"
+            className="rounded-full bg-tinta/10 px-2 py-0.5 text-[11px] text-tinta/65"
             title={`Evento de Calendar: ${s.calendarEventId}`}
           >
             en Calendar
@@ -412,7 +412,7 @@ export function SesionesEditor({
                 Generar
               </button>
             </div>
-            <p className="mt-2 text-xs text-tinta/60">
+            <p className="mt-2 text-xs text-tinta/65">
               <strong>7 es una vez por semana</strong>; para días seguidos —una feria
               de tres jornadas— va 1. Recalcula <strong>solo las fechas</strong>: los
               temas, las lecturas y las cancelaciones que ya cargaste se conservan.
@@ -534,7 +534,7 @@ export function SesionesEditor({
                 corre una semana es un toque y no dos recorridos de calendario.
               */}
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-tinta/55">Correr</span>
+                <span className="text-xs text-tinta/65">Correr</span>
                 {SALTOS_DE_FECHA.map(({ dias, etiqueta }) => (
                   <button
                     key={dias}
@@ -563,7 +563,7 @@ export function SesionesEditor({
               {resumen.dia && (
                 <p
                   className={`mt-2 text-xs ${
-                    resumen.finAntesDelInicio ? 'font-medium text-acento' : 'text-tinta/55'
+                    resumen.finAntesDelInicio ? 'font-medium text-acento' : 'text-tinta/65'
                   }`}
                 >
                   {resumen.finAntesDelInicio
