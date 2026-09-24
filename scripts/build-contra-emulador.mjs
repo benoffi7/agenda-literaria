@@ -279,6 +279,13 @@ const CENTINELA = {
   indicaciones: 'gate.sede.indicaciones',
   tema: 'gate.sesiones.tema',
   lectura: 'gate.sesiones.lectura',
+  /*
+   * B-1572 — el motivo de un encuentro cancelado (D-976). Sale a la página de
+   * detalle y **a nada más**: ni al `events.json`, ni al JSON-LD, ni a la
+   * tarjeta. Lo siembra solo el encuentro cancelado de la galería
+   * (`ENCUENTRO_CANCELADO_DEL_GATE`); ver el paso 8m.
+   */
+  motivoCancelacion: 'gate.sesiones.motivoCancelacion',
   bio: 'gate.tallerista.bio',
   talleristaInstagram: 'gate.tallerista.instagram',
   organizadorInstagram: 'gate.organizador.instagram',
@@ -714,6 +721,17 @@ const CENTINELA_DEL_DETALLE = [
   'materialUrl',
   // B-296 — el epígrafe de una imagen se muestra debajo de esa imagen (D-125).
   'epigrafeImagen',
+  /*
+   * B-1572 — el motivo de un encuentro cancelado, debajo de ese encuentro
+   * (D-976): es el anuncio que reemplaza al borrado del evento (§7.3), y lo que
+   * distingue «se pasa al jueves» de «se suspende». Es el mismo permiso que
+   * `MOTIVO_DE_CANCELACION` en `tests/barrido-de-salidas-publicas.test.ts`.
+   *
+   * El permiso es **del archivo** y el JSON-LD vive adentro del mismo HTML, así
+   * que esta canasta sola lo dejaría pasar ahí también: por eso el paso 8m mira
+   * los bloques `application/ld+json` por separado.
+   */
+  'motivoCancelacion',
 ];
 
 /**
@@ -940,6 +958,38 @@ const TRES_IMAGENES = [
   },
 ];
 
+/**
+ * **El encuentro cancelado con motivo** — B-1572, sobre D-976.
+ *
+ * Hasta acá ningún encuentro sembrado estaba cancelado —la cancelada de B-110 es
+ * la **actividad** entera, con sus encuentros vivos—, así que `motivoCancelacion`
+ * no existía en el `dist/` y el gate afirmaba sobre un campo que nunca tuvo: los
+ * barridos de vitest lo fijan sobre las funciones puras y el artefacto quedaba
+ * sin testigo. Es la clase de B-804 (sembrar el dato para que el barrido tenga
+ * qué encontrar).
+ *
+ * Va en la **galería** y no en la publicada porque la publicada es la que cargan
+ * el sitemap, la canónica, el Open Graph y el agrupado por opción: un segundo
+ * encuentro ahí movería asertos que no son de este ítem. La galería es publicada
+ * igual, tiene página y JSON-LD, y sus asertos son de imágenes.
+ *
+ * Con la **misma comisión** que el vivo, para no abrir una segunda opción para
+ * sumarse; sin tema ni lectura, para que el único texto nuevo de la fila sea el
+ * motivo; y en el futuro, para que la fila se pinte como cancelada y no como
+ * «ya pasó».
+ */
+const ENCUENTRO_CANCELADO_DEL_GATE = {
+  id: 'ses_gate.sesiones.cancelada',
+  inicio: enUnaHora(48),
+  fin: enUnaHora(50),
+  tema: null,
+  lectura: null,
+  cancelada: true,
+  motivoCancelacion: CENTINELA.motivoCancelacion,
+  calendarEventId: null,
+  comisionId: CENTINELA.comisionId,
+};
+
 initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria' });
 const db = getFirestore();
 
@@ -1135,6 +1185,8 @@ try {
   const galeria = actividadDePrueba(SLUG_GALERIA, 'publicado');
   galeria.titulo = 'Gate mecanico — galeria de tres';
   galeria.imagenes = TRES_IMAGENES;
+  // B-1572 — y el único encuentro cancelado del gate, con su motivo.
+  galeria.sesiones = [...galeria.sesiones, ENCUENTRO_CANCELADO_DEL_GATE];
   await db.doc(`actividades/${ID_GALERIA}`).set(galeria);
 
   /*
@@ -1449,7 +1501,7 @@ try {
 
   console.log(
     `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
-      'una con tres imágenes; 2 librerías, 2 suscripciones y 2 bibliotecas, cada ' +
+      'una con tres imágenes y un encuentro cancelado con motivo; 2 librerías, 2 suscripciones y 2 bibliotecas, cada ' +
       'par con una publicada y una esperando decisión; y 3 lugares: uno ' +
       'publicado, uno esperando decisión y una casa publicada SIN dirección ' +
       'publicada)',
@@ -3005,6 +3057,70 @@ try {
             '  ✓ el directorio de bibliotecas salió con la publicada y sin la que espera ' +
               'decisión, con su ficha, su Library sin el costo en el marcado, el costo con ' +
               'su fecha en la página y su entrada de sitemap.',
+          );
+        }
+      }
+    }
+
+    /*
+     * 8m · **B-1572 — el motivo de la cancelación, en las tres direcciones de
+     * D-976.**
+     *
+     * 1. **Sí** en la página de detalle, debajo del encuentro. Es el control
+     *    positivo, y sin él las dos ausencias de abajo pasan en verde el día que
+     *    la semilla o la plantilla dejen de producirlo.
+     * 2. **No** en el `events.json`: lo frena el paso 3, que barre `CENTINELA`
+     *    entero sobre el índice, y el paso 9 en todo el resto del `dist/`.
+     * 3. **No** en el JSON-LD. Es la mitad que necesita un chequeo propio: el
+     *    permiso del paso 9 es **por archivo**, `CENTINELA_DEL_DETALLE` lo deja
+     *    pasar en `actividad/**` y el marcado vive adentro de ese mismo HTML. Así
+     *    que un `description` del `subEvent` armado con el motivo pasaría el
+     *    barrido entero. Google muestra ese texto en el resultado de búsqueda, y
+     *    el motivo es texto libre sobre un encuentro puntual (D-976).
+     */
+    {
+      const htmlConCancelado = await htmlDe(SLUG_GALERIA);
+      if (htmlConCancelado === null) {
+        fallo(
+          `no se generó dist/actividad/${SLUG_GALERIA}/index.html, que es la que lleva el ` +
+            'encuentro cancelado con motivo (B-1572).',
+        );
+        salida = 1;
+      } else {
+        const motivo = CENTINELA.motivoCancelacion;
+        if (!htmlConCancelado.includes(motivo)) {
+          fallo(
+            'la página de detalle no muestra el motivo del encuentro cancelado (D-976).\n' +
+              '  Es el anuncio que reemplaza al borrado del evento (§7.3, B-98): sin él,\n' +
+              '  quien llega desde el calendario lee el motivo y la página no lo dice. Y\n' +
+              '  las dos ausencias de este paso quedan sin nada que mirar.',
+          );
+          salida = 1;
+        }
+        const bloquesLd = [
+          ...htmlConCancelado.matchAll(
+            /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g,
+          ),
+        ].map((m) => m[1]);
+        if (bloquesLd.length === 0) {
+          fallo(
+            `dist/actividad/${SLUG_GALERIA}/index.html no lleva JSON-LD: la ausencia del ` +
+              'motivo en el marcado no prueba nada sin marcado (B-1572).',
+          );
+          salida = 1;
+        } else if (bloquesLd.some((ld) => ld.includes(motivo))) {
+          fallo(
+            'EL JSON-LD PUBLICA EL MOTIVO DE UN ENCUENTRO CANCELADO.\n' +
+              '  D-976 lo deja afuera a propósito: Google muestra ese texto en el resultado\n' +
+              '  de búsqueda, y el motivo es texto libre sobre un encuentro puntual. En la\n' +
+              '  página va, debajo de su encuentro; en el marcado, el `eventStatus` alcanza.',
+          );
+          salida = 1;
+        }
+        if (salida === 0) {
+          console.log(
+            '  ✓ el motivo del encuentro cancelado sale en la página, y no en el JSON-LD ' +
+              `(${bloquesLd.length} bloque(s)) ni en el events.json (D-976, B-1572).`,
           );
         }
       }
