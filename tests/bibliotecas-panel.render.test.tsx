@@ -31,12 +31,11 @@ import { BibliotecasPanel } from '@/components/admin/BibliotecasPanel';
 import { confirmarCostoDeBiblioteca, observarBibliotecas } from '@/lib/bibliotecas';
 import { DIAS_PARA_REVISAR } from '@/lib/datoConFecha';
 import type { BibliotecaConId } from '@/types/biblioteca';
+import { tsDe } from './fixtures/tiempo';
 
 const UN_DIA = 24 * 60 * 60 * 1000;
-const haceDias = (n: number) => {
-  const d = new Date(Date.now() - n * UN_DIA);
-  return { toDate: () => d, toMillis: () => d.getTime() };
-};
+// El doble de `Timestamp` del repo, uno y solo uno (B-211).
+const haceDias = (n: number) => tsDe(new Date(Date.now() - n * UN_DIA));
 
 const biblioteca = (over: Partial<BibliotecaConId> & { id: string }): BibliotecaConId =>
   ({

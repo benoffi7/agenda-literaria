@@ -69,7 +69,8 @@ const PATRON_DE_FICHA = new RegExp(
 export const fichaDeRuta = (rutaOUrl) => {
   let ruta = String(rutaOUrl ?? '');
   try {
-    if (/^https?:\/\//.test(ruta)) ruta = new URL(ruta).pathname;
+    // Sin regex con `//` adentro: el saneador de comentarios la lee como uno (B-853).
+    if (ruta.startsWith('http://') || ruta.startsWith('https://')) ruta = new URL(ruta).pathname;
   } catch {
     return null;
   }
