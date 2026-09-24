@@ -26,6 +26,7 @@
     "admin:claim": "FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099} node scripts/set-admin-claim.mjs",
     "admin:claim:prod": "node scripts/set-admin-claim.mjs",
     "calendario:verificar": "node scripts/verificar-calendario.mjs",
+    "cors:verificar": "node scripts/cors-del-bucket.mjs",
     "instagrams": "node scripts/instagrams-de-la-base.mjs",
     "slugs:sembrar": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/sembrar-slugs.mjs",
     "slugs:sembrar:prod": "node scripts/sembrar-slugs.mjs",
