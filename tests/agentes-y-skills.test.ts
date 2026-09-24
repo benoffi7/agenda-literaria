@@ -927,3 +927,39 @@ describe('cada auditor dice si un hallazgo es medido o leído — B-1162', () =>
     ).toEqual([]);
   });
 });
+
+/**
+ * `/audit` junta los hallazgos con la columna medido/leído, y uno `leído` no
+ * frena por sí solo — B-1710, sobre D-1045.
+ *
+ * Los auditores etiquetan cada hallazgo (el `describe` de arriba), pero quien
+ * decide qué frena es el skill: si la tabla que arma no tiene la columna, la
+ * etiqueta se pierde justo en el paso donde se usa, y un P0 deducido leyendo
+ * frena igual que uno reproducido. Se pide lo que hace a la regla: la columna en
+ * el encabezado de la tabla, y la frase que dice que un `leído` no frena.
+ *
+ * MUTACIÓN PROBADA: sacar `| Base ` del encabezado de la tabla del §4 del skill,
+ * o la frase «no frena por sí solo» del §5, pone este caso en rojo.
+ */
+describe('/audit junta con la columna medido/leído y un leído no frena solo — B-1710', () => {
+  const SKILL = '.claude/skills/audit/SKILL.md';
+
+  it('la tabla de hallazgos tiene la columna `Base`', () => {
+    const src = fuente(SKILL);
+    const encabezados = src.split('\n').filter((l) => /^\|\s*Severidad\s*\|/.test(l));
+    expect(encabezados.length, 'el skill ya no tiene la tabla del §4').toBeGreaterThan(0);
+    expect(
+      encabezados.every((l) => /\|\s*Base\s*\|/.test(l)),
+      'la tabla del §4 de /audit perdió la columna medido/leído de D-1045',
+    ).toBe(true);
+  });
+
+  it('dice que un hallazgo `leído` no frena por sí solo, y cómo se sube a `medido`', () => {
+    const src = fuente(SKILL);
+    const desde = src.indexOf('## 5 · Decidir');
+    expect(desde, 'el skill ya no tiene el §5').toBeGreaterThan(-1);
+    const decidir = src.slice(desde);
+    expect(decidir).toMatch(/hallazgo\s+`leído`\s+no\s+frena\s+por\s+sí\s+solo/);
+    expect(decidir).toMatch(/pasa\s+a\s+`medido`/);
+  });
+});
