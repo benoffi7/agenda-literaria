@@ -748,7 +748,19 @@ const cambiaElDestino = (actual: Actividad, resultante: Actividad): boolean => {
   const conEvento = (a: Actividad): Set<string> =>
     new Set((a.sesiones ?? []).filter((s) => debeExistir(a, s)).map((s) => s.id));
 
-  const antes = conEvento(actual);
+  /*
+   * B-98 — la línea de base es lo que **existe hoy**, no lo que debería existir:
+   * un encuentro cancelado antes de B-98 tiene `debeExistir` en `true` y **no
+   * tiene evento** (el sync de entonces se lo borró), así que la próxima
+   * escritura se lo crea. Contarlo como destino ya abierto enmascaraba justo el
+   * caso que esta función existe para ver: la etiqueta con un link llegando al
+   * `summary` del calendario público. Lo cobró el `auditor-privacidad`.
+   */
+  const antes = new Set(
+    (actual.sesiones ?? [])
+      .filter((s) => debeExistir(actual, s) && s.calendarEventId)
+      .map((s) => s.id),
+  );
   return [...conEvento(resultante)].some((id) => !antes.has(id));
 };
 

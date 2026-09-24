@@ -2317,6 +2317,24 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     expect(porTexto.has(CENTINELA['sede.ciudad'])).toBe(false);
   });
 
+  /**
+   * B-98 — con los encuentros cancelados, el JSON-LD marca cada sub-evento
+   * `EventCancelled` y **no** lleva el motivo: se decidió así (D-976). La rama
+   * cancelada es el lugar natural para meterlo mañana como `description` del
+   * sub-evento, y sin este caso ningún rojo lo diría. Lo pidió el
+   * `auditor-privacidad`.
+   */
+  it('JSON-LD con los encuentros cancelados: el motivo no sale (B-98)', () => {
+    const d = detalleDe({
+      sesiones: actividadCentinela().sesiones.map((s) => ({ ...s, cancelada: true })),
+    });
+    // Control positivo: el view-model sí lo trae, así que la ausencia mide algo.
+    expect(JSON.stringify(d)).toContain(CENTINELA['sesiones.motivoCancelacion']);
+    expect(JSON.stringify(datosEstructurados(d))).not.toContain(
+      CENTINELA['sesiones.motivoCancelacion'],
+    );
+  });
+
   it('los CUATRO avisos barren igual: ninguno compone con un centinela prohibido', () => {
     /*
      * **Lo pidió el `auditor-privacidad` sobre B-253, y el hueco es de forma.**

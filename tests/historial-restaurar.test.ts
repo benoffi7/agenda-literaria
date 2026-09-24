@@ -794,18 +794,18 @@ describe('la restauración pasa por el schema (B-818)', () => {
     expect(issues.map((i) => i.path.join('.'))).toContain('comisiones.0.etiqueta');
   });
 
-  it('descancelar ya no abre un destino: el cancelado tenía su evento (B-98)', () => {
+  it('descancelar un encuentro que ya tiene su evento no abre un destino (B-98)', () => {
     /*
-     * El caso que hasta B-98 era el de arriba. El link de la etiqueta ya está en
-     * el `summary` del evento cancelado —«CANCELADO — Club — Martes 19 h — https…»—,
-     * así que restaurar el encuentro activo no lo lleva a ningún lado nuevo, y el
-     * rechazo que ya estaba en la línea de base se enmascara como cualquier otro
-     * (B-818). Lo que frena que el link llegue ahí en primer lugar es la regla de
-     * la etiqueta al guardar, que corre en `publicado` y en `cancelado`.
+     * Desde B-98 el cancelado conserva su evento: el link de la etiqueta ya está
+     * en el `summary` «CANCELADO — Club — Martes 19 h — https…», así que
+     * restaurar el encuentro activo no lo lleva a ningún lado nuevo y el rechazo
+     * que ya estaba en la línea de base se enmascara como cualquier otro (B-818).
+     * Lo que frena que el link llegue ahí en primer lugar es la regla de la
+     * etiqueta al guardar, que corre en `publicado` y en `cancelado`.
      */
     const conLink = { id: 'com_1111', etiqueta: 'Martes 19 h — https://meet.google.com/abc' };
     const canceladas = (cancelada: boolean) => [
-      { ...sesionDePrueba('ses_1'), comisionId: 'com_1111', cancelada },
+      { ...sesionDePrueba('ses_1'), comisionId: 'com_1111', cancelada, calendarEventId: 'evt_1' },
     ];
 
     const publicadaConCancelados = {
@@ -823,6 +823,39 @@ describe('la restauración pasa por el schema (B-818)', () => {
       ),
     );
     expect(issues.map((i) => i.path.join('.'))).not.toContain('comisiones.0.etiqueta');
+  });
+
+  it('un cancelado anterior a B-98, sin evento, sí abre un destino: el sync se lo va a crear (§7.3, trampa 5, B-98)', () => {
+    /*
+     * El caso que cobró el `auditor-privacidad`: antes de B-98 cancelar borraba el
+     * evento, así que el documento tiene `cancelada: true` y `calendarEventId:
+     * null`. Hoy `debeExistir` dice que sí, y la próxima escritura lo **crea**, con
+     * la etiqueta en el `summary` público. Restaurar sobre eso tiene que volver a
+     * mirar la privacidad aunque el rechazo ya estuviera.
+     *
+     * MUTACIÓN PROBADA: con la línea de base en `debeExistir` a secas (sin el
+     * `calendarEventId`), este caso queda en verde y el link llega al calendario.
+     */
+    const conLink = { id: 'com_1111', etiqueta: 'Martes 19 h — https://meet.google.com/abc' };
+    const canceladas = (cancelada: boolean) => [
+      { ...sesionDePrueba('ses_1'), comisionId: 'com_1111', cancelada, calendarEventId: null },
+    ];
+
+    const publicadaSinEventos = {
+      ...docDe({ estado: 'publicado', comisiones: [conLink] }),
+      sesiones: canceladas(true),
+    } as unknown as Actividad;
+
+    const issues = issuesDeRestauracion(
+      publicadaSinEventos,
+      payloadDeRestauracion(
+        'sesiones',
+        versionQueDecia({ sesiones: canceladas(false) }),
+        publicadaSinEventos,
+        'uid_1',
+      ),
+    );
+    expect(issues.map((i) => i.path.join('.'))).toContain('comisiones.0.etiqueta');
   });
 
   it('el mensaje nombra qué rompería, y corta en tres', () => {
