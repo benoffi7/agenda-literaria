@@ -2,6 +2,21 @@
 
 ## Sin publicar
 
+- **Cancelar un encuentro lo anuncia en vez de borrarlo** (B-98, D-975, D-976,
+  D-977). Lo aprobó el dueño el 2026-08-26. El evento de Calendar se queda en el
+  calendario de quien lo tenía agendado, titulado «CANCELADO — …» y con el motivo
+  arriba de la descripción; descancelar lo deja como estaba, con el mismo evento y
+  sus recordatorios. Borrar la fila y despublicar la actividad siguen borrando.
+  Cada encuentro gana `motivoCancelacion` (público, opcional, hasta 200 caracteres,
+  sin links de reunión): sale al evento y a la página de detalle, no al
+  `events.json`, ni a redes, ni al JSON-LD. Se reescribieron el aviso del panel, la
+  vista calendario, `/suscribirse` y la ayuda pública, que pasaban a mentir.
+  Antes del deploy se midió que en producción no hay cancelados viejos sin evento
+  (B-1571). El §7.3 del `CLAUDE.md` lleva el aviso (B-1573).
+- **El link de la reunión pegado en la descripción tampoco sale en el evento de
+  Calendar** (B-1690). El reemplazo de B-980 bajó a `functions/links-de-reunion.js`
+  y lo usan la página de detalle y el calendario público: una implementación para
+  las dos salidas.
 - **El tablero dibuja cuándo pasan las cosas** (B-1081, D-1005, D-1006). «El
   catálogo» gana al final «Cuándo pasan las cosas»: el mapa de las próximas ocho
   semanas —cada casillero con su número de encuentros, y arriba qué semanas quedan

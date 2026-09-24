@@ -515,6 +515,15 @@ cambio de sede tiene que actualizar las 8 sesiones.
 
 ### 7.3 Estados que borran del calendario
 
+> ⚠️ **La segunda línea de este bloque se cambió — ver D-975 en
+> [`docs/06-decisiones.md`](docs/06-decisiones.md).** Desde B-98 (aprobado por el
+> dueño el 2026-08-26, construido el 2026-09-24), `sesion.cancelada === true`
+> **ya no borra** el evento: lo **actualiza** a «CANCELADO — …» con el motivo arriba
+> de la descripción (`motivoCancelacion`, D-976), así quien lo tenía agendado se
+> entera. Borrar la fila del encuentro sí borra su evento, y la primera línea
+> (despublicar la actividad borra todos) no cambió. **No lo restaures.** El bloque
+> de abajo queda como estaba escrito.
+
 - `estado !== 'publicado'` (borrador, pendiente, cancelado) → borrar todos los eventos
 - `sesion.cancelada === true` → borrar ese evento
 

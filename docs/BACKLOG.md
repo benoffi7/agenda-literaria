@@ -589,17 +589,6 @@ nuevo, y eso es lo que este ítem compra.
 
 ## P2 — mejoras reales
 
-### B-1690 · El link de la reunión pegado en la descripción sale en el evento de Calendar público · P2 — de `autolink` (2026-09-24)
-
-`functions/calendario.js` pone la descripción entera en el `description` del evento,
-y el calendario es público: un `https://zoom.us/j/…?pwd=…` pegado en la descripción
-es la trampa 5 por la puerta de al lado. La página de detalle ya lo saca (D-1036).
-Falta: (a) pasar la descripción del evento por el mismo reemplazo (`sinLinksDeReunion`
-a un módulo compartido con `functions/`, como `handle-instagram`); (b) evaluar
-hacerlo en `toPublic`, que cubriría toda salida futura; (c) opcional: un aviso en el
-formulario cuando la descripción tiene un host de reunión.
-
-
 ### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25) · P2 — vuelto de los cerrados (2026-09-24, B-1580)
 
 Reportado por el dueño (2026-08-24), cargando un club de lectura real: *"en
@@ -660,69 +649,6 @@ desactualizados.
 > los cerrados por el «✅ parcial»; la mitad que falta es una decisión del dueño —si
 > `material.items[].tipo` pasa a ser taxonomía abierta (§4)— que ningún otro ítem
 > seguía.
-
-### B-98 · Cancelar un encuentro sin que desaparezca en silencio · P2 — aprobado por el dueño (2026-08-26), **sin construir**
-
-**Contradice el §7.3 del `CLAUDE.md` y la guía del panel**, y por eso necesitaba
-decisión del dueño. **La dio el 2026-08-26: sí, y con el motivo de cancelación
-incluido.**
-
-Así que el §7.3 cambia, y eso hay que escribirlo como desvío explícito en
-`docs/06-decisiones.md` cuando se implemente: el `CLAUDE.md` es la decisión cerrada
-y no se edita desde acá, pero el desvío se anota con su motivo, como ya se hizo con
-D-15.
-
-**Y hay dos textos que van a quedar mintiendo el día que esto entre**, los dos hay
-que corregir en el mismo cambio:
-
-1. El aviso `cancelar-encuentro` de `src/lib/ayuda.ts` — que desde B-63 se llama
-   «Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá»
-   y **dice la verdad hoy**. Con B-98 pasa a ser al revés. **Y no hace falta
-   acordarse:** ese aviso está atado por `atadoA` a los `it` que fijan el
-   comportamiento actual, así que implementar B-98 **pone el test de la guía en
-   rojo** y obliga a reescribir el aviso en el mismo commit — que es literalmente lo
-   que este ítem pedía.
-2. El §7.3 del `CLAUDE.md`, que es la fuente.
-
-**Por qué no entró a la tanda del 2026-08-26:** necesita `SesionesEditor.tsx` para el
-campo del motivo (que otro frente estaba tocando) y cambia lo que sale al evento, así
-que el barrido de centinelas de B-196 tiene que conocerlo. Va después de esos dos.
-
-Hoy `sesion.cancelada === true` **borra** el evento. Quien tenía ese jueves
-agendado, con su recordatorio, ve el evento desaparecer sin ningún aviso. Es
-justo el momento en que un calendario público vale más —es la única vez que el
-dato cambió *después* de que la gente lo guardó— y el sistema elige no decirlo. Y
-no hay dónde escribir por qué: "se pasa al jueves que viene" y "se cancela por
-falta de inscriptos" se ven igual, como un hueco.
-
-Propuesta: `sesion.motivoCancelacion: string | null`, y que un encuentro
-cancelado **actualice** su evento en vez de borrarlo (`CANCELADO — ` en el título,
-el motivo arriba de la descripción). Lo que no cambia: pasar la actividad a
-borrador/pendiente/cancelada sigue borrando todo, y **borrar** el encuentro sigue
-borrando su evento. La distinción es esa: cancelar es un anuncio, borrar es una
-corrección.
-
-Más barato de lo que parece: todo vive en `debeExistir` y `construirEvento`, dos
-funciones puras ya exportadas y con tests, y la vista previa del panel las
-importa (D-20), así que el panel lo muestra sin una línea de UI.
-
-**No es solo código:** el aviso `cancelar-encuentro` de `src/lib/ayuda.ts` pasa a
-mentir, y es uno de los seis avisos de lo que no se puede deshacer. Es
-exactamente el escenario de **B-63** — se actualiza en el mismo commit o no se
-hace.
-
-Va después de B-01 (toca la parte más frágil, §7 y §10 avisan), pero **decidirlo
-antes**: si el sitio nace sabiendo que una sesión cancelada tiene motivo, la
-página de detalle lo muestra de entrada.
-
-Segunda decisión, menor: si un evento cancelado se borra cuando su fecha ya pasó
-o queda como registro (recomendado: queda).
-
-> **Vuelto al BACKLOG el 2026-09-24 (B-1550).** El archivador lo había mandado a
-> los cerrados porque el título llevaba el emoji de hecho junto a «aprobado», y así la decisión aprobada
-> dejó de figurar en cualquier lista de trabajo. Lo encontró el relevamiento del
-> roadmap (`17-roadmap.md`). Toca el sync con Calendar: se trabaja solo con
-> emuladores (§10 del CLAUDE.md).
 
 ### B-959 · Efemérides: cargarlas en el panel, mostrarlas en el sitio, y que no lleguen al calendario · P2 — pedido del dueño (2026-09-15)
 
@@ -957,6 +883,19 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
 ## P3 — cuando sobre tiempo
+
+### B-1570 · El campo «Motivo» de un encuentro cancelado se tipea con la fila al 60 % de opacidad · P3 — de `b98` (2026-09-24)
+
+`claseFila` de `SesionesEditor.tsx` baja la fila cancelada a `opacity-60`, y desde
+B-98 esa fila tiene un input que se escribe y que es público. Arreglo: atenuar solo
+el bloque de fecha y tema, no la fila entera.
+
+### B-1572 · El gate del artefacto no siembra el centinela del motivo de cancelación · P3 — de `b98` (2026-09-24)
+
+`scripts/build-contra-emulador.mjs` barre `dist/` sin ningún encuentro cancelado con
+motivo, así que no verifica sobre el artefacto real que el motivo no llegue a
+`events.json` ni al JSON-LD (los barridos unitarios sí lo fijan). Sumarlo al
+centinela del detalle con su porqué.
 
 ### B-1630 · El texto atenuado del panel no llega a AA sobre blanco, y no hay test que lo mida · P3 — de `ritmo` (2026-09-24)
 

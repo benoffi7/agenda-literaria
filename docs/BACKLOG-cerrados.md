@@ -17119,6 +17119,83 @@ Dónde: `src/lib/formulario/` (el resumen de faltantes) y la barra de guardar de
 filas de arriba, y conviene derivarlo de `armarJsonLd` en vez de escribir una
 segunda lista (la clase de B-88).
 
+### B-1690 · El link de la reunión pegado en la descripción sale en el evento de Calendar público · P2 — de `autolink` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** El reemplazo bajó a `functions/links-de-reunion.js` (D-88, D-20) y lo usan la página de detalle y el `description` del evento de Calendar; tests en `tests/calendario.test.ts`. La salida (b), hacerlo en `toPublic`, no se tomó: `events.json` no lleva la descripción entera sino `searchText`, y cada salida que la muestra ya pasa por acá.
+
+`functions/calendario.js` pone la descripción entera en el `description` del evento,
+y el calendario es público: un `https://zoom.us/j/…?pwd=…` pegado en la descripción
+es la trampa 5 por la puerta de al lado. La página de detalle ya lo saca (D-1036).
+Falta: (a) pasar la descripción del evento por el mismo reemplazo (`sinLinksDeReunion`
+a un módulo compartido con `functions/`, como `handle-instagram`); (b) evaluar
+hacerlo en `toPublic`, que cubriría toda salida futura; (c) opcional: un aviso en el
+formulario cuando la descripción tiene un host de reunión.
+
+### B-98 · Cancelar un encuentro sin que desaparezca en silencio · P2 — aprobado por el dueño (2026-08-26), **sin construir** · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** Tal como lo aprobó el dueño, con el motivo (D-975, D-976, D-977): cancelar actualiza el evento («CANCELADO — …», motivo arriba de la descripción) en vez de borrarlo, la página muestra el motivo y el panel lo pide. La segunda decisión del ítem —¿se borra un evento cancelado cuando su fecha pasó?— quedó en lo recomendado: queda como registro. Integración contra el emulador: cancelar, descancelar, borrar la fila y despublicar. El §7.3 del `CLAUDE.md` lleva el aviso (B-1573).
+
+**Contradice el §7.3 del `CLAUDE.md` y la guía del panel**, y por eso necesitaba
+decisión del dueño. **La dio el 2026-08-26: sí, y con el motivo de cancelación
+incluido.**
+
+Así que el §7.3 cambia, y eso hay que escribirlo como desvío explícito en
+`docs/06-decisiones.md` cuando se implemente: el `CLAUDE.md` es la decisión cerrada
+y no se edita desde acá, pero el desvío se anota con su motivo, como ya se hizo con
+D-15.
+
+**Y hay dos textos que van a quedar mintiendo el día que esto entre**, los dos hay
+que corregir en el mismo cambio:
+
+1. El aviso `cancelar-encuentro` de `src/lib/ayuda.ts` — que desde B-63 se llama
+   «Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá»
+   y **dice la verdad hoy**. Con B-98 pasa a ser al revés. **Y no hace falta
+   acordarse:** ese aviso está atado por `atadoA` a los `it` que fijan el
+   comportamiento actual, así que implementar B-98 **pone el test de la guía en
+   rojo** y obliga a reescribir el aviso en el mismo commit — que es literalmente lo
+   que este ítem pedía.
+2. El §7.3 del `CLAUDE.md`, que es la fuente.
+
+**Por qué no entró a la tanda del 2026-08-26:** necesita `SesionesEditor.tsx` para el
+campo del motivo (que otro frente estaba tocando) y cambia lo que sale al evento, así
+que el barrido de centinelas de B-196 tiene que conocerlo. Va después de esos dos.
+
+Hoy `sesion.cancelada === true` **borra** el evento. Quien tenía ese jueves
+agendado, con su recordatorio, ve el evento desaparecer sin ningún aviso. Es
+justo el momento en que un calendario público vale más —es la única vez que el
+dato cambió *después* de que la gente lo guardó— y el sistema elige no decirlo. Y
+no hay dónde escribir por qué: "se pasa al jueves que viene" y "se cancela por
+falta de inscriptos" se ven igual, como un hueco.
+
+Propuesta: `sesion.motivoCancelacion: string | null`, y que un encuentro
+cancelado **actualice** su evento en vez de borrarlo (`CANCELADO — ` en el título,
+el motivo arriba de la descripción). Lo que no cambia: pasar la actividad a
+borrador/pendiente/cancelada sigue borrando todo, y **borrar** el encuentro sigue
+borrando su evento. La distinción es esa: cancelar es un anuncio, borrar es una
+corrección.
+
+Más barato de lo que parece: todo vive en `debeExistir` y `construirEvento`, dos
+funciones puras ya exportadas y con tests, y la vista previa del panel las
+importa (D-20), así que el panel lo muestra sin una línea de UI.
+
+**No es solo código:** el aviso `cancelar-encuentro` de `src/lib/ayuda.ts` pasa a
+mentir, y es uno de los seis avisos de lo que no se puede deshacer. Es
+exactamente el escenario de **B-63** — se actualiza en el mismo commit o no se
+hace.
+
+Va después de B-01 (toca la parte más frágil, §7 y §10 avisan), pero **decidirlo
+antes**: si el sitio nace sabiendo que una sesión cancelada tiene motivo, la
+página de detalle lo muestra de entrada.
+
+Segunda decisión, menor: si un evento cancelado se borra cuando su fecha ya pasó
+o queda como registro (recomendado: queda).
+
+> **Vuelto al BACKLOG el 2026-09-24 (B-1550).** El archivador lo había mandado a
+> los cerrados porque el título llevaba el emoji de hecho junto a «aprobado», y así la decisión aprobada
+> dejó de figurar en cualquier lista de trabajo. Lo encontró el relevamiento del
+> roadmap (`17-roadmap.md`). Toca el sync con Calendar: se trabaja solo con
+> emuladores (§10 del CLAUDE.md).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -20871,6 +20948,19 @@ No hace falta un estado nuevo: se deriva de la última sesión. Lo que hace falt
 decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
 filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
 probablemente lo correcto?). Cuadra con B-96 y con B-01.
+
+### B-1571 · Los cancelados anteriores a B-98 crearían su evento con un `tema` escrito cuando no salía al calendario · P2 — del `auditor-privacidad` sobre B-98 (2026-09-24) · ✅ hecho (2026-09-24)
+
+Con D-977, un cancelado viejo sin evento lo recibe en la próxima edición de su
+actividad publicada, con `tema` y `lectura`, que no tienen regla contra links.
+**✅ Hecho (2026-09-24), medido antes del deploy:** relevamiento de solo lectura
+contra producción — 373 actividades publicadas, **cero** encuentros cancelados sin
+evento. No hay nada que revisar.
+
+### B-1573 · El §7.3 del CLAUDE.md quedaba contradicho sin su aviso · P3 — de `b98` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24):** el §7.3 lleva el bloque ⚠️ que apunta a D-975, como D-125,
+D-128, D-130 y D-710, y el texto original queda como estaba.
 
 ## Pendiente de acción manual del dueño
 

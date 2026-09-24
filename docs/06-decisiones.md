@@ -13099,6 +13099,43 @@ Ahora tiene también «Volver a sin mirar»: `en-revision → nueva`, que firma
 - Descartado: aceptar el hueco (guardar en borrador lo cierra para convertir, pero
   no para la propuesta que se mira sin convertir).
 
+## D-975 · Un encuentro cancelado conserva su evento de Calendar: cancelar es un anuncio, borrar es una corrección
+
+**B-98, 2026-09-24. Desvío explícito del §7.3 del `CLAUDE.md`**, aprobado por el
+dueño el 2026-08-26 («sí, y con el motivo de cancelación incluido»). El §7.3 decía
+«`sesion.cancelada === true` → borrar ese evento»; quien tenía ese jueves agendado
+lo veía desaparecer sin aviso, en el único momento en que el dato cambia después de
+que la gente lo guardó. Ahora el evento se **actualiza**: `CANCELADO — ` adelante
+del `summary` y «Este encuentro se canceló. / Motivo: …» como primer bloque de la
+descripción, con el resto igual debajo. Vive en `construirEvento`, así que entra al
+payload de la guarda anti-loop (§7.1, D-07): cancelar, descancelar o cambiar el
+motivo son un `actualizar` del mismo `eventId`. Sin cambios: despublicar borra todos
+los eventos, y borrar la fila borra el suyo. Un evento cancelado **no** se borra
+cuando su fecha pasa: queda como registro. Descartado: `status: 'cancelled'` de la
+API de Calendar, que para quien se suscribió es lo mismo que borrarlo.
+
+## D-976 · `motivoCancelacion`: público, solo con la cancelación, sin links y fuera del índice y del JSON-LD
+
+**B-98, 2026-09-24.** Texto libre de hasta 200 caracteres en cada sesión.
+`formADocumento` escribe `null` si el encuentro no está cancelado (el formulario
+conserva lo tipeado para no perderlo en un click), así un motivo viejo no reaparece
+al volver a cancelar. La regla de «hay motivo» es una sola, `motivoDeCancelacion`
+(`functions/calendario.js`), importada por `toPublic` (D-20). Sale al evento y a la
+página de detalle; no al `events.json`, ni a redes, ni al JSON-LD, ni a la
+analítica. Con página, el schema rechaza un motivo con URL o host de videollamada:
+«seguimos por Zoom» es su contenido natural y va a la primera línea del evento
+público (trampa 5).
+
+## D-977 · `debeExistir` es solo «la actividad está publicada»: un cancelado sin evento también lo recibe
+
+**B-98, 2026-09-24.** Si se cancela con la actividad en borrador y después se
+publica, o si un documento anterior a B-98 tiene un cancelado sin evento, el diff le
+**crea** el evento, ya anunciado como cancelado. Descartado: «solo si ya tenía
+evento», que hacía depender la respuesta de la historia del documento y no de lo que
+dice, y la usan cinco consumidores. `cambiaElDestino` (historial) toma como línea de
+base los eventos que **existen**, no los que deberían, para no enmascarar esas
+creaciones. Antes del deploy se midió que en producción no hay ningún caso (B-1571).
+
 ## D-980 · Un ✅ cierra solo si lo dice, y con dos marcadores gana el último
 
 **B-1550, 2026-09-24.** El estado de un encabezado del BACKLOG sale de su

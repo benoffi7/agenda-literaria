@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cancelar-encuentro-avisa',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Cancelar un encuentro ahora avisa en el calendario, con el motivo',
+    detalle:
+      'Al tildar «Cancelado», el evento ya no desaparece del calendario de quien lo tenía ' +
+      'agendado: pasa a decir «CANCELADO» y, si escribís el motivo, lo muestra arriba. En la ' +
+      'página el encuentro se ve tachado con el mismo motivo. Borrar el encuentro sí lo saca.',
+    donde: 'En el formulario, sección Encuentros: la casilla «Cancelado» de cada encuentro.',
+  },
+  {
     id: 'que-se-pierde-en-google',
     fecha: '2026-09-24',
     version: '1.11.0',
