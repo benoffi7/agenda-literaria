@@ -57,3 +57,49 @@ describe('el aviso de los sesenta días con su salida — B-913', () => {
     expect(screen.getByText(/conviene revisar el precio/)).toBeTruthy();
   });
 });
+
+describe('qué dato es y por qué pide revisión — B-1410 y B-1412', () => {
+  it('el nombre del dato es un parámetro: una biblioteca no tiene precio', () => {
+    render(<AvisoDePrecioViejo que="el costo de asociarse" onConfirmar={vi.fn(async () => {})} />);
+    expect(
+      screen.getByText(
+        `· conviene revisar el costo de asociarse (más de ${DIAS_PARA_REVISAR} días)`,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/el precio/)).toBeNull();
+  });
+
+  it('sin fecha no dice «más de 60 días»: dice que no se está publicando', () => {
+    /*
+     * MUTACIÓN A PROBAR: ignorar `sinFecha` deja la frase de los sesenta días,
+     * que es falsa justo en el caso más grave — el sitio ni publica el dato.
+     */
+    render(<AvisoDePrecioViejo sinFecha onConfirmar={vi.fn(async () => {})} />);
+    expect(screen.getByText('· el precio no se está publicando: falta su fecha')).toBeTruthy();
+    expect(screen.queryByText(/más de/)).toBeNull();
+    // El gesto es el mismo: refechar con el servidor lo arregla.
+    expect(screen.getByRole('button', { name: 'Lo revisé: sigue siendo éste' })).toBeTruthy();
+  });
+
+  it('los dos parámetros juntos', () => {
+    render(
+      <AvisoDePrecioViejo
+        que="el costo de asociarse"
+        sinFecha
+        onConfirmar={vi.fn(async () => {})}
+      />,
+    );
+    expect(
+      screen.getByText('· el costo de asociarse no se está publicando: falta su fecha'),
+    ).toBeTruthy();
+  });
+
+  it('el rebote nombra el dato', async () => {
+    const onConfirmar = vi.fn(async () => {
+      throw 'algo que no es un Error';
+    });
+    render(<AvisoDePrecioViejo que="el costo de asociarse" onConfirmar={onConfirmar} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Lo revisé: sigue siendo éste' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/costo de asociarse/);
+  });
+});
