@@ -126,6 +126,31 @@ export const ubicacionSinQuery = (href: string): string => {
   return `${url.origin}${url.pathname}`;
 };
 
+/**
+ * El `page_location` que se manda de verdad — B-1793 (D-1090).
+ *
+ * `ubicacionSinQuery` recorta la query, pero **conserva la ruta**, y eso solo
+ * es seguro en una página que el build generó para esa ruta. `/404.html` no es
+ * esa página: Firebase la sirve como cuerpo de **cualquier** dirección que no
+ * existe, así que su ruta es lo que el visitante pidió —un slug renombrado, uno
+ * que nunca se publicó, texto arbitrario pegado en la barra— y no algo que el
+ * sitio haya decidido publicar. Es la garantía de la fila 12 de
+ * `docs/07-seguridad.md`: la analítica solo saca lo que otra salida ya publicó.
+ *
+ * Con `rutaFija`, la ruta sale de ahí y **no** de `href`: la página de error
+ * pasa su canónica (`/404/`), así se sigue contando cuántos 404 hay sin saber
+ * cuáles. De `href` queda solo el origen, que es el host que la sirvió y que
+ * cualquier otra página ya manda igual; de `rutaFija`, solo el `pathname`, así
+que da lo mismo pasarla relativa o absoluta. Sin `rutaFija`, es
+`ubicacionSinQuery`.
+ */
+export const ubicacionAMedir = (href: string, rutaFija: string | null = null): string => {
+  if (rutaFija === null) return ubicacionSinQuery(href);
+  const { origin } = new URL(href);
+  const { pathname } = new URL(rutaFija, origin);
+  return `${origin}${pathname}`;
+};
+
 // ── Vocabulario de los eventos propios (B-375) ──────────────────────
 //
 // La misma regla que el panel (§5.4 del diseño): vocabulario cerrado, sin
