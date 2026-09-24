@@ -501,10 +501,15 @@ filas cada X días. Reemplaza la lista actual y las fechas quedan **editables un
 por una**: los ciclos siempre tienen excepciones (un feriado, una semana que se
 corre).
 
-Marcar un encuentro como cancelado lo borra del calendario público (§7.3) pero
-lo conserva en el documento. **No renumera a los demás:** el número del evento
-cuenta también los cancelados (D-95), así que el que decía "Encuentro 6 de 8"
-sigue diciéndolo y su evento no se toca.
+Marcar un encuentro como cancelado **no lo borra del calendario** (B-98, desvío
+del §7.3): su evento queda en el calendario de quien lo tenía agendado, titulado
+«CANCELADO — …» y con el motivo arriba de la descripción. Al tildar «Cancelado»
+aparece el campo **Motivo (opcional)**, que es público —sale en el calendario y
+en la página— y no acepta links de la reunión. Destildar la cancelación deja el
+evento como estaba, con el mismo id; **borrar** la fila, en cambio, sí borra su
+evento: cancelar es un aviso, borrar es una corrección. **No renumera a los
+demás:** el número del evento cuenta también los cancelados (D-95), así que el
+que decía "Encuentro 6 de 8" sigue diciéndolo y su evento no se toca.
 
 ### Editor de modalidades (B-224)
 
@@ -554,8 +559,10 @@ Tres avisos, porque son las cosas que se pasan por alto:
 - **El link de la reunión va a salir** (`urlPublica` tildado): aviso destacado,
   porque el calendario es público (D-15, trampa 5).
 - **El link no sale:** nota al pie de que se envía a quienes se inscriban.
-- **La actividad no está publicada, o el encuentro está cancelado:** ese evento
-  hoy no existe en el calendario (§7.3); la vista previa muestra cómo quedaría.
+- **La actividad no está publicada:** ese evento hoy no existe en el calendario
+  (§7.3); la vista previa muestra cómo quedaría. Un encuentro **cancelado** de una
+  publicada no avisa nada: su evento existe, y la vista previa lo muestra tal como
+  lo ve la gente, con «CANCELADO» y el motivo (B-98).
 
 Las etiquetas de taxonomía se resuelven con las opciones que el panel ya tiene
 cargadas, incluidas las que se acaban de crear con "Otro" y todavía no están en
@@ -1673,11 +1680,12 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 
 | Qué pasa en el panel | Qué pasa en el calendario |
 |---|---|
-| Se publica una actividad | un evento por sesión no cancelada |
+| Se publica una actividad | un evento por sesión; las canceladas nacen anunciadas como «CANCELADO — …» (B-98) |
 | Se corre la fecha de un encuentro | se actualiza **solo** ese evento |
 | Se cambia la sede o el título | se actualizan **todos** los eventos del ciclo |
 | Se borra un encuentro | se borra su evento, y los demás se **actualizan**: el ciclo cambió de largo, así que el "de 8" de los otros pasó a ser falso (B-160) |
-| Se cancela un encuentro | se borra su evento, y **ningún otro se toca** (B-84, D-95) |
+| Se cancela un encuentro | se **actualiza** su evento —«CANCELADO — » en el título, el motivo arriba de la descripción— y **ningún otro se toca** (B-98, B-84, D-95). Antes de B-98 se borraba, y quien lo tenía agendado lo veía desaparecer sin aviso |
+| Se descancela, o se cambia el motivo | se actualiza **solo** ese evento, con el mismo id |
 | Pasa a borrador, pendiente o cancelado | se borran todos sus eventos |
 | Se borra la actividad | se borran todos sus eventos |
 | Se vuelve a publicar | se crean de nuevo |
@@ -2071,7 +2079,8 @@ B-238). Uno y solo uno por pantalla: dos enlaces al mismo lugar hacen que quien
 escucha la página oiga el mismo botón dos veces.
 
 Después: la descripción completa respetando los saltos de línea, la lista de
-encuentros con su tema y su lectura —los pasados atenuados, los cancelados tachados,
+encuentros con su tema y su lectura —los pasados atenuados, los cancelados tachados
+y con su motivo al lado (B-98),
 el próximo marcado, y el título **sin repetir la cuenta** que la ficha ya dio
 (**B-258**)—, quién lo da con su bio, el material, cada forma de cursar con su sede y
 su link al mapa, y quién organiza.
@@ -2409,7 +2418,9 @@ Cuatro caminos, cada uno con su botón y sus pasos:
 Y una sección de **lo que el calendario no hace**, que son las tres sorpresas que
 se descubren tarde: no inscribe (cada actividad se anota por su canal), casi nunca
 trae el link de la reunión —salvo que quien organiza haya elegido publicarlo, D-15—,
-y una actividad cancelada **desaparece** del calendario en vez de quedar tachada.
+y lo que pasa al cancelar: desde B-98 un **encuentro** cancelado se queda en el
+calendario con «CANCELADO» y el motivo, y lo que se borra es una **actividad**
+cancelada entera.
 Las tres se verifican contra `functions/calendario.js`, no solo contra el texto: si
 el comportamiento cambia, el test de la página se pone en rojo (ver D-133).
 

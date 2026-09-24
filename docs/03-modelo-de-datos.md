@@ -129,10 +129,43 @@ sesiones: [{
   tema: string | null,
   lectura: string | null,
   cancelada: boolean,
+  motivoCancelacion: string | null, // B-98 — por qué se canceló; null si no está cancelado
   calendarEventId: string | null,
   comisionId: string | null   // B-181 — de qué comisión es, o null
 }]
 ```
+
+### Un encuentro cancelado (B-98)
+
+**Cancelar un encuentro es un anuncio, no un borrado.** Desde B-98 —desvío del
+§7.3 del `CLAUDE.md`, aprobado por el dueño el 2026-08-26— el encuentro cancelado
+**conserva su evento** de Calendar y su `calendarEventId`: el evento pasa a
+titularse `CANCELADO — …` y lleva el motivo arriba de la descripción. Borrar la
+fila del encuentro, o despublicar la actividad, siguen borrando eventos.
+
+| Campo | Regla |
+|---|---|
+| `cancelada` | el encuentro no se hace. Se sigue contando para el número «Encuentro 3 de 8» (D-95) |
+| `motivoCancelacion` | texto libre, público, hasta 200 caracteres. **Solo se guarda con `cancelada: true`**: `formADocumento` escribe `null` en un encuentro vivo aunque el formulario conserve lo tipeado, así un motivo viejo no reaparece al volver a cancelar. La clave se escribe siempre, como `comisionId` |
+
+- **Qué es público.** El motivo sale al evento de Calendar y a la página de
+  detalle; **no** al `events.json` (el índice proyecta de cada sesión solo
+  `inicio`, `fin` y `cancelada`), ni al texto para redes, ni a la analítica (que
+  conoce la ruta `sesiones.N.motivoCancelacion`, nunca el texto). La regla de
+  «hay motivo» es una sola, `motivoDeCancelacion` de `functions/calendario.js`, y
+  la importan el evento y `toPublic` (D-20): con el encuentro vivo, o en blanco,
+  es `null`.
+- **Sin links de la reunión.** Con página (`publicado` o `cancelado`) el schema
+  rechaza un motivo con una URL o el host de una videollamada — es la primera
+  línea del evento público (trampa 5), el mismo criterio que la etiqueta de una
+  comisión. En borrador, o en un encuentro descancelado, no traba.
+- **Documentos anteriores a B-98** no tienen el campo y se leen como «cancelado
+  sin motivo» (`?? ''` en el formulario, D-26). Los cancelados que ya tenían el
+  evento borrado quedan con `calendarEventId: null`: en la próxima edición de la
+  actividad el diff les **crea** el evento, ya anunciado como cancelado
+  (`debeExistir` es solo «la actividad está publicada»).
+- **Las copias** —duplicar la fila, duplicar la actividad— no heredan ni la
+  cancelación ni el motivo.
 
 **El `id` es la llave de todo el sync a Calendar.** Se genera con
 `nuevaSesionId()` de [`src/lib/sesiones.ts`](../src/lib/sesiones.ts) al crear la
