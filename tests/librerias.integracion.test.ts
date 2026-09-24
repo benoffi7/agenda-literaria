@@ -48,6 +48,7 @@ import {
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { formALibreria, libreriaVacia } from '@/lib/libreria-schema';
+import { moverLibreria } from '@/lib/librerias';
 import type { Libreria, LibreriaForm } from '@/types/libreria';
 import {
   PROJECT_ID,
@@ -699,6 +700,42 @@ describe.skipIf(!vivo)('librerías contra el emulador — B-831', () => {
       await setDoc(doc(db(), 'librerias', 'l_borrar'), documento());
       await deleteDoc(doc(db(), 'librerias', 'l_borrar'));
       expect((await getDoc(doc(db(), 'librerias', 'l_borrar'))).exists()).toBe(false);
+    });
+  });
+
+  /**
+   * **B-909 — el slug se verifica al publicar, con las reglas de verdad.**
+   *
+   * `asegurarSlugPublicable` (`lib/slugDeGuia.ts`) hace un `get` por id y una
+   * query por `slug`. El test unitario (`tests/slug-de-guia.test.ts`) fija la
+   * decisión con un doble; éste fija que las dos lecturas **las autoriza** la
+   * regla para un admin —sin el control positivo, una regla que las cortara se
+   * leería como «había un choque»—.
+   */
+  describe('dos fichas publicadas no comparten dirección web — B-909', () => {
+    const SLUG = 'la-misma-direccion-b909';
+
+    it('con otra pendiente del mismo slug, publicar funciona: gana la primera que sale', async () => {
+      await setDoc(doc(db(), 'librerias', 'l_b909_a'), documento({ slug: SLUG }));
+      await setDoc(doc(db(), 'librerias', 'l_b909_b'), documento({ slug: SLUG }));
+      await moverLibreria('l_b909_a', UID, 'publicado');
+      const d = (await getDoc(doc(db(), 'librerias', 'l_b909_a'))).data() as Libreria;
+      expect(d.estado).toBe('publicado');
+    });
+
+    it('con la otra ya publicada, la segunda no sale y el panel dice por qué', async () => {
+      await expect(moverLibreria('l_b909_b', UID, 'publicado')).rejects.toThrow(
+        /ya es de otra ficha publicada/,
+      );
+      const d = (await getDoc(doc(db(), 'librerias', 'l_b909_b'))).data() as Libreria;
+      expect(d.estado).toBe('pendiente');
+    });
+
+    it('y cambiándole la dirección, sale', async () => {
+      await updateDoc(doc(db(), 'librerias', 'l_b909_b'), { slug: `${SLUG}-2` });
+      await moverLibreria('l_b909_b', UID, 'publicado');
+      const d = (await getDoc(doc(db(), 'librerias', 'l_b909_b'))).data() as Libreria;
+      expect(d.estado).toBe('publicado');
     });
   });
 

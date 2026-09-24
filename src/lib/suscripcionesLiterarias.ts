@@ -25,7 +25,6 @@
 import {
   collection,
   doc,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -33,16 +32,16 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firestore-client';
+import { asegurarSlugPublicable, slugDeGuiaDisponible } from '@/lib/slugDeGuia';
 import {
   formASuscripcion,
   precioCambio,
   precioDelForm,
 } from '@/lib/suscripcion-literaria-schema';
 import { PERIODICIDAD_POR_DEFECTO } from '@/types/suscripcion-literaria';
-import { ESTADO_INICIAL, ESTADO_PUBLICO, type EstadoDirectorio } from '@/lib/directorios';
+import { ESTADO_INICIAL, ESTADO_PUBLICO, type EstadoDirectorio, type IdDirectorio } from '@/lib/directorios';
 import type { TimestampLike } from '@/types/actividad';
 import type {
   SuscripcionLiteraria,
@@ -50,7 +49,7 @@ import type {
   SuscripcionLiterariaForm,
 } from '@/types/suscripcion-literaria';
 
-const COL = 'suscripciones';
+const COL = 'suscripciones' satisfies IdDirectorio;
 
 /**
  * Cuántas trae la bandeja.
@@ -96,23 +95,14 @@ export const observarSuscripciones = (
   );
 
 /**
- * ¿Esta dirección web está libre? — trampa 10.
+ * ¿Esta dirección web está libre? — la guarda **de aviso** del formulario.
  *
- * Misma guarda **de aviso** que en librerías, con el mismo alcance escrito: no
- * hay reserva atómica en `/slugs` para esta colección, así que dos altas
- * simultáneas con el mismo nombre pasarían las dos. El daño es acotado y visible
- * —dos fichas en `pendiente`, y nada sale al sitio sin que un admin lo publique—
- * y se corrige en la bandeja, que es justo el momento en que el slug todavía se
- * puede tocar.
+ * La implementación es una sola para los cuatro directorios
+ * (`lib/slugDeGuia.ts`, B-909). La **garantía** no es ésta: es
+ * `asegurarSlugPublicable`, que corre al publicar desde la bandeja.
  */
-export const slugDeSuscripcionDisponible = async (
-  slug: string,
-  idActual?: string,
-): Promise<boolean> => {
-  if (!slug) return false;
-  const snap = await getDocs(query(collection(db(), COL), where('slug', '==', slug), limit(2)));
-  return snap.docs.every((d) => d.id === idActual);
-};
+export const slugDeSuscripcionDisponible = (slug: string, idActual?: string): Promise<boolean> =>
+  slugDeGuiaDisponible(COL, slug, idActual);
 
 /**
  * Documento → formulario. La inversa de `formASuscripcion`.
@@ -285,6 +275,9 @@ export const moverSuscripcion = async (
   estado: EstadoDirectorio,
   motivo: string | null = null,
 ): Promise<void> => {
+  // B-909 — publicar es el momento en que el slug pasa a ser una URL: acá se
+  // verifica que no sea de otra ficha publicada (`lib/slugDeGuia.ts`).
+  if (estado === ESTADO_PUBLICO) await asegurarSlugPublicable(COL, id);
   await updateDoc(doc(db(), COL, id), {
     estado,
     revision: { porUid: uid, en: serverTimestamp(), motivo },
