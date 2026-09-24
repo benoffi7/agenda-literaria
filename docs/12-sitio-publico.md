@@ -2105,7 +2105,7 @@ imagen pesada y es lo que costó D-210.
 | Sin `cupo` | No se dice nada. No se inventa "cupos limitados" |
 | Descripción de 4000 caracteres | Completa en el detalle, con ancho de lectura (~70 caracteres por línea). En la tarjeta, el `resumen` |
 | Descripción de 20 caracteres | La `meta description` cae al formato armado (`{Tipo} · {fecha} · {lugar} · {arancel}`), que es más útil que una frase trunca |
-| Descripción con un link pegado | Hoy queda como texto plano, no clickeable. Ver [§11.1](#111-decisiones-del-dueño) |
+| Descripción con un link pegado | Clickeable en la página de detalle desde B-980 (solo `http(s)://` explícito, `nofollow`); en Calendar, JSON-LD y `meta` sigue en texto plano, a propósito. Un link de reunión pegado se reemplaza por un aviso (D-1036). Ver D-1035 y [§11.1](#111-decisiones-del-dueño) |
 | Sesiones desordenadas en el array | El build ordena por `inicio`. Nadie más lo asume |
 | Actividad publicada **sin** sesiones | No se genera nada y el build lo avisa por consola con el slug: es un dato incompleto, no un caso de diseño |
 | `sede: null` en una presencial | Se muestra "Lugar a confirmar" y **no se emite `Event`**: Google pide `location` obligatorio, y un `Place` inventado es peor que no tener datos estructurados |
