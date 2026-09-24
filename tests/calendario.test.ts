@@ -940,6 +940,15 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
     expect(texto).not.toContain('Los siete locos —');
   });
 
+  it('un autor de solo espacios tampoco deja el guion colgado (B-1530)', () => {
+    // La misma pregunta que `bloqueLibro`, `libroPublico` y el detalle desde
+    // B-891: «¿hay autor?» se contesta con trim; el texto sale como estaba.
+    const a = completa({ libro: { titulo: 'Los detectives salvajes', autor: '   ' } });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain('Libro: Los detectives salvajes');
+    expect(texto).not.toContain('Los detectives salvajes —');
+  });
+
   it('sin libro cargado no aparece el rótulo (DEC-1)', () => {
     // Es el caso de todo documento anterior a DEC-1 y de todo taller: el campo
     // ausente no puede pintar «Libro: » vacío en el calendario público.

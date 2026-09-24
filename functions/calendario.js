@@ -538,7 +538,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    */
   const libro = actividad.libro;
   if (libro?.titulo?.trim()) {
-    bloques.push(`Libro: ${libro.titulo}${libro.autor ? ` — ${libro.autor}` : ''}`);
+    bloques.push(`Libro: ${libro.titulo}${libro.autor?.trim() ? ` — ${libro.autor}` : ''}`);
   }
 
   // ── De este encuentro ─────────────────────────────────────────
