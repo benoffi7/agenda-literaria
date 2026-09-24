@@ -22,9 +22,11 @@ import {
   debeAvisar,
   estadoDeVerificacion,
   estadoSegunActivacion,
+  estadoTrasEventoDeToken,
   navegadorSinVerificar,
   observarVerificacion,
   PASOS_SIN_VERIFICAR,
+  registrarEventoDeToken,
   UMBRAL_VERIFICACION_MS,
   verificarNavegador,
 } from '@/lib/verificacionDelNavegador';
@@ -166,6 +168,115 @@ describe('pedir el token al entrar', () => {
       }),
     ).resolves.toBeUndefined();
     expect(estadoDeVerificacion()).toBe('sin-verificar');
+  });
+});
+
+/**
+ * **B-1250 — las renovaciones, no solo el primer token.** El token se renueva
+ * solo durante la sesión (`isTokenAutoRefreshEnabled`), y `appcheck.ts` le pasa
+ * al store cada aviso de `onTokenChanged`. Lo que se afirma es lo que el cartel
+ * necesita: que aparezca cuando una renovación falla con el panel ya
+ * verificado, que se vaya cuando vuelve un token bueno, y que las renovaciones
+ * normales no lo hagan parpadear.
+ */
+describe('las renovaciones del token — B-1250', () => {
+  /** Arranca el panel con el primer token bueno, como en una carga normal. */
+  const verificado = async (): Promise<string[]> => {
+    await verificarNavegador({ motivo: null, pedirToken: () => Promise.resolve({ token: 'x' }) });
+    expect(estadoDeVerificacion()).toBe('verificado');
+    const vistos: string[] = [];
+    observarVerificacion(() => vistos.push(estadoDeVerificacion()));
+    return vistos;
+  };
+
+  /**
+   * **El caso del ítem.** Una renovación que falla a media tarde —cambió la
+   * red, una VPN, una extensión— dejaba el estado en `verificado`, y el
+   * guardado fallido volvía a decir «se cortó la conexión».
+   *
+   * MUTACIÓN PROBADA (2026-09-24): con `registrarEventoDeToken` sin hacer nada
+   * —que es el comportamiento de antes de B-1250— este caso y el de la vuelta
+   * se ponen rojos.
+   */
+  it('un error después de `verificado` lleva a `sin-verificar`, y el cartel aparece', async () => {
+    const vistos = await verificado();
+
+    registrarEventoDeToken('error');
+
+    expect(estadoDeVerificacion()).toBe('sin-verificar');
+    expect(navegadorSinVerificar()).toBe(true);
+    expect(vistos).toEqual(['sin-verificar']);
+  });
+
+  it('un token bueno después del error vuelve a `verificado`, y el cartel se va', async () => {
+    const vistos = await verificado();
+    registrarEventoDeToken('error');
+
+    registrarEventoDeToken('token');
+
+    expect(estadoDeVerificacion()).toBe('verificado');
+    expect(navegadorSinVerificar()).toBe(false);
+    expect(vistos).toEqual(['sin-verificar', 'verificado']);
+  });
+
+  /**
+   * **Que no parpadee.** Una renovación normal es otro token con el estado ya
+   * en `verificado`: no tiene que avisar a nadie. Y un error repetido con el
+   * cartel ya puesto tampoco: el SDK reintenta con backoff, y cada intento que
+   * termina sin token válido vuelve a avisar.
+   */
+  it('las renovaciones normales y los errores repetidos no avisan a nadie', async () => {
+    const vistos = await verificado();
+    for (let i = 0; i < 5; i++) registrarEventoDeToken('token');
+    expect(vistos).toEqual([]);
+
+    registrarEventoDeToken('error');
+    registrarEventoDeToken('error');
+    registrarEventoDeToken('error');
+    expect(vistos).toEqual(['sin-verificar']);
+  });
+
+  /**
+   * Donde nunca se pidió verificar —el sitio público, que también activa App
+   * Check para sus formularios, o antes de que el panel arranque— el cartel no
+   * existe, y un aviso de la suscripción no lo tiene que inventar.
+   */
+  it('en `no-aplica` ningún aviso mueve el estado', () => {
+    registrarEventoDeToken('error');
+    expect(estadoDeVerificacion()).toBe('no-aplica');
+    registrarEventoDeToken('token');
+    expect(estadoDeVerificacion()).toBe('no-aplica');
+  });
+
+  it('mientras verifica, el error lo decide el primer pedido y el token verifica', () => {
+    expect(estadoTrasEventoDeToken('verificando', 'error')).toBe('verificando');
+    expect(estadoTrasEventoDeToken('verificando', 'token')).toBe('verificado');
+    expect(estadoTrasEventoDeToken('sin-verificar', 'error')).toBe('sin-verificar');
+  });
+
+  /**
+   * Un token que llega por la suscripción antes que la respuesta de `getToken`
+   * ya verificó el navegador: el umbral del primer pedido no tiene que pisarlo
+   * con un `sin-verificar` que el cartel mostraría sin motivo.
+   */
+  it('un token por la suscripción antes del umbral: el umbral no lo pisa', async () => {
+    const vistos: string[] = [];
+    observarVerificacion(() => vistos.push(estadoDeVerificacion()));
+    void verificarNavegador({ motivo: null, pedirToken: () => new Promise(() => {}) });
+
+    registrarEventoDeToken('token');
+    await vi.advanceTimersByTimeAsync(UMBRAL_VERIFICACION_MS * 2);
+
+    expect(estadoDeVerificacion()).toBe('verificado');
+    expect(vistos).not.toContain('sin-verificar');
+  });
+
+  it('nunca tira, aunque un oyente del cartel tire', async () => {
+    await verificado();
+    observarVerificacion(() => {
+      throw new Error('oyente roto');
+    });
+    expect(() => registrarEventoDeToken('error')).not.toThrow();
   });
 });
 

@@ -149,7 +149,10 @@ export const verificarNavegador = async ({
 
   let respondio = false;
   void esperar(umbralMs).then(() => {
-    if (!respondio) fijar('sin-verificar');
+    // `estado === 'verificando'` y no solo `!respondio`: un token que llegó por
+    // la suscripción (B-1250) antes que la respuesta de `getToken` ya verificó
+    // el navegador, y el umbral no tiene por qué pisarlo.
+    if (!respondio && estado === 'verificando') fijar('sin-verificar');
   });
 
   try {
@@ -159,6 +162,66 @@ export const verificarNavegador = async ({
   } catch {
     respondio = true;
     fijar('sin-verificar');
+  }
+};
+
+// ── Las renovaciones — B-1250 ─────────────────────────────────────────────
+
+/**
+ * Lo que avisa la suscripción al token (`onTokenChanged`, en `appcheck.ts`):
+ * llegó uno bueno, o el SDK se quedó sin ninguno válido.
+ */
+export type EventoDeToken = 'token' | 'error';
+
+/**
+ * Qué estado corresponde después de un aviso de la suscripción. Puro.
+ *
+ * **Por qué hace falta**: `verificarNavegador` mira solo el primer token.
+ * `isTokenAutoRefreshEnabled` lo renueva solo a lo largo de la tarde, y si una
+ * renovación falla —la persona cambió de red, prendió una VPN, se activó una
+ * extensión— el estado seguía en `verificado` y el guardado fallido volvía a
+ * decir «se cortó la conexión», que es lo que B-930 vino a sacar.
+ *
+ * Las reglas, en orden:
+ *
+ * - **`no-aplica` no se mueve.** Es el estado de quien nunca pidió verificar
+ *   —el sitio público, que también activa App Check para sus formularios—, y
+ *   ahí el cartel no existe. Tampoco lo mueve un aviso que llegue antes de que
+ *   el panel arranque la verificación: de ese caso se encarga el primer
+ *   `getToken`.
+ * - **Un token bueno verifica**, venga de donde venga: es la vuelta de un
+ *   `sin-verificar` (volvió la red, se apagó la VPN) y es también un
+ *   `verificando` que se resolvió por este lado antes que por `getToken`.
+ * - **Un error solo baja a quien estaba `verificado`.** En `verificando` quien
+ *   decide es el primer pedido con su umbral —el error le llega igual, porque
+ *   el SDK comparte el intercambio—, y en `sin-verificar` ya está avisado.
+ *
+ * **Por qué esto no parpadea**: una renovación normal manda otro token con el
+ * estado ya en `verificado`, y `fijar` no avisa a nadie si el estado no cambió.
+ * Y el SDK **no manda error mientras quede un token válido**: si una renovación
+ * falla con el anterior todavía vigente, el oyente recibe ese token (con un
+ * `internalError` que acá no se mira) y reintenta con backoff. El error llega
+ * recién cuando no hay ninguno válido, que es cuando Firestore empieza a fallar
+ * de verdad.
+ */
+export const estadoTrasEventoDeToken = (
+  actual: EstadoVerificacion,
+  evento: EventoDeToken,
+): EstadoVerificacion => {
+  if (actual === 'no-aplica') return actual;
+  if (evento === 'token') return 'verificado';
+  return actual === 'verificado' ? 'sin-verificar' : actual;
+};
+
+/**
+ * Lo que llama la suscripción al token. **Nunca tira**: el SDK se traga las
+ * excepciones de los oyentes, pero este módulo no depende de eso.
+ */
+export const registrarEventoDeToken = (evento: EventoDeToken): void => {
+  try {
+    fijar(estadoTrasEventoDeToken(estado, evento));
+  } catch {
+    // Un oyente del cartel que tira no puede cortar el aviso a los demás.
   }
 };
 
