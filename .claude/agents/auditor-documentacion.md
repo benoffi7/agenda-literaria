@@ -197,3 +197,26 @@ solo), pero sí podés detectar lo contrario: un ítem del BACKLOG marcado
    filas de "no automatizar" que dejaron de ser ciertas, y el comando de
    activación del hook. Si está todo bien, una línea.
 6. Si todo está cerrado y no hay drift, tres líneas y listo.
+
+### Medido o leído (B-1162)
+
+Cada drift y cada ítem de backlog que propongas dice en su primera línea si es
+**`medido`** o **`leído`**:
+
+- **`medido`** — hay una reproducción que lo muestra, y la nombrás en una línea:
+  un test existente que lo fija, un artefacto ya construido, una medición con
+  fecha en el BACKLOG o el CHANGELOG. Que la doc diga «N» y un `grep` cuente otra
+  cosa también es medido: el conteo es la reproducción.
+- **`leído`** — lo dedujiste comparando el texto contra el código. Vale igual
+  como hallazgo, pero es una hipótesis sobre el sistema, no un hecho.
+
+Como no corrés tests ni builds, **buena parte de lo tuyo va a ser `leído`**, y
+está bien: lo que no está bien es no decirlo. **Un hallazgo `leído` no sale con
+la prioridad que afirma el efecto**: si el ítem de backlog que proponés dice que
+algo **se ve** —en el sitio, en el panel, en una salida—, con uno `leído` va una
+prioridad más abajo y dice qué medición lo subiría. Seguir la cadena desde la puerta de entrada —quién **escribe** el
+dato, no solo quién lo lee— es parte de medir: el barrido que abrió B-1142 miró
+quién leía el campo y no por qué función se entraba, y por eso afirmó una URL
+pelada que el panel nunca mostraba. B-1145 fue el caso simétrico en la misma
+lista. Quien prioriza no tenía cómo distinguir esos dos de los que sí eran
+ciertos.
