@@ -187,6 +187,9 @@ Resueltas el 2026-08-21:
 Después, `node scripts/flyeres-de-propuestas-aceptadas.mjs` tiene que dar cero
 fuera de `en-orden`.
 
+**Desde B-1370 esto también lo hace solo el barrido diario**, una vez desplegada
+la Function: si nadie los borra a mano, la primera corrida se los lleva.
+
 ### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3
 
 > **Mirado el 2026-09-23 contra el `events.json` publicado** (generado 17:58 UTC,
@@ -1003,20 +1006,6 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
-
-### B-1370 · Si la foto se sube a mano después de aceptar, el original de la propuesta no se borra nunca · P2 — de `huerfanas` (2026-09-24)
-
-`borrarImagenAlCerrar` decide una sola vez, en la transición a `aceptada`. Si en
-ese momento la actividad no tiene copia —la promoción falló, o se va a subir el
-flyer a mano— devuelve `sin-copia` y conserva el original, que es lo correcto.
-Pero cuando después alguien sube la foto desde el panel, **nadie vuelve a
-mirar**: la aceptada no vence y `limpiarImagenesHuerfanas` no recorre
-`propuestas/`. Pasó en los dos casos de B-1322. El script
-`flyeres-de-propuestas-aceptadas.mjs` ya distingue el caso
-(`con-copia-con-original`). Falta que algo lo borre: reintentar
-`borrarOriginalAlAceptar` cuando la galería gana su primera imagen propia, o sumar
-ese caso —y solo ese— a un barrido. Es la salida 3 de B-871 acotada al caso que no
-necesita la decisión del dueño, porque la copia ya está verificada.
 
 ### B-1322 · Las propuestas aceptadas antes de B-1235 pueden tener el original huérfano · P2 — 🟡 relevado, falta B-1322a (2026-09-24)
 

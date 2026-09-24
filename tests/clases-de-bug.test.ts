@@ -1370,7 +1370,11 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
         'documento con `delete({ lastUpdateTime: visto })`, así que la propuesta que un admin ' +
         'tocó entre la query y el borrado sobrevive y la corrida la cuenta como `rescatadas`. ' +
         'La mitad de Storage no está cubierta —es el final `la-tocaron-tarde`— y eso es lo que ' +
-        'una guarda de `generacion` cerraría.',
+        'una guarda de `generacion` cerraría. Y desde B-1370 el `finally` del mismo trigger ' +
+        'corre una segunda mitad, `barrerOriginalesConCopia` (functions/propuestas.js), que borra ' +
+        'el original de una aceptada cuya actividad ya tiene copia: esa no se protege con una ' +
+        'precondición sino releyendo la propuesta y re-verificando la copia en el documento y ' +
+        'en el bucket (`borrarOriginalAlAceptar`, B-863) justo antes del `delete()`.',
     },
     borrarFichasVencidas: {
       guarda: 'precondicion',

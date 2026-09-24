@@ -2,6 +2,19 @@
 
 ## Sin publicar
 
+- **El original de una propuesta aceptada ya no queda para siempre cuando la foto
+  se sube después** (B-1370, D-890). Si al aceptar la actividad todavía no tenía
+  copia, `borrarImagenAlCerrar` conserva el original (`sin-copia`), que es lo
+  correcto; pero cuando después alguien subía la foto desde el panel, nadie volvía
+  a mirar y la foto de un tercero quedaba en `propuestas/` — pasó en los dos casos
+  de B-1322. Ahora `borrarPropuestasVencidas`, en el `finally` de la retención,
+  borra ese caso y solo ese (`con-copia-con-original`): entra por el bucket,
+  clasifica con `clasificarAceptadas` —mudada del script de B-1322 a
+  `functions/propuestas.js` para que el informe y la Function digan lo mismo—,
+  relee la propuesta y borra con `borrarOriginalAlAceptar`, que vuelve a verificar
+  la copia. Sin trigger nuevo sobre `/actividades` y sin IAM nuevo; entra en vigor
+  con el deploy de Functions. Tests: `tests/originales-con-copia.test.ts` y un caso
+  nuevo en `tests/propuestas-imagen.integracion.test.ts`.
 - **El test que se ponía rojo según quién llegaba primero** — B-1237, ✅ hecho. El
   caso de `limpieza-versiones` que verifica el fantasma de B-89 contaba los
   documentos de `actividades/{id}/versiones` después de borrar la actividad, pero

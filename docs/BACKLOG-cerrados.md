@@ -16093,6 +16093,22 @@ subcolección huérfana — basura que sobrevive al test y que **este mismo arch
 podría levantar como propia en la corrida siguiente. Ahora limpia con
 `recursiveDelete`.
 
+### B-1370 · Si la foto se sube a mano después de aceptar, el original de la propuesta no se borra nunca · P2 — de `huerfanas` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24)** (`051e97c`, doc en `f68d090`, **D-890**). Salida (b): `borrarPropuestasVencidas` suma, en el `finally` de la retención, un barrido que borra el original **solo** en el caso `con-copia-con-original` —aceptada, actividad con imagen propia viva, original vivo—, releyendo la propuesta y borrando con `borrarOriginalAlAceptar`, que re-verifica la copia (B-863). La clasificación es la del script (`clasificarAceptadas`, mudada a `functions/propuestas.js`). Se descartó el trigger sobre `/actividades`: la actividad no sabe de qué propuesta salió, y sería el tercer `onDocumentWritten` sobre esa colección. Integración corrida contra el emulador: verde. Entra en vigor con el deploy de Functions; los dos casos de B-1322a deberían irse en la primera corrida.
+
+`borrarImagenAlCerrar` decide una sola vez, en la transición a `aceptada`. Si en
+ese momento la actividad no tiene copia —la promoción falló, o se va a subir el
+flyer a mano— devuelve `sin-copia` y conserva el original, que es lo correcto.
+Pero cuando después alguien sube la foto desde el panel, **nadie vuelve a
+mirar**: la aceptada no vence y `limpiarImagenesHuerfanas` no recorre
+`propuestas/`. Pasó en los dos casos de B-1322. El script
+`flyeres-de-propuestas-aceptadas.mjs` ya distingue el caso
+(`con-copia-con-original`). Falta que algo lo borre: reintentar
+`borrarOriginalAlAceptar` cuando la galería gana su primera imagen propia, o sumar
+ese caso —y solo ese— a un barrido. Es la salida 3 de B-871 acotada al caso que no
+necesita la decisión del dueño, porque la copia ya está verificada.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
