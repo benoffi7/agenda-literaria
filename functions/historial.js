@@ -132,8 +132,19 @@ export const estuvoPublicada = (documento) =>
  * `CAMPOS_DE_MAQUINA` sino `CAMPOS_PUBLICOS_POR_DIRECTORIO`, que no incluye la
  * marca: el write-back no dispara un segundo rebuild.
  */
-export const faltaMarcarPublicada = (documento) =>
-  documento?.estado === ESTADO_PUBLICADO && !marcadaComoPublicada(documento);
+/*
+ * **B-1480 — y también la escritura que la despublica.** Hasta acá la decisión
+ * miraba solo el documento de después, así que despublicar una ficha que todavía
+ * no tenía la marca (las publicadas antes de B-905, que la reciben en su próxima
+ * escritura) la dejaba en `pendiente` sin marca para siempre: la regla ya no la
+ * cubría por el estado y el slug volvía a ser editable (trampa 10). Con `antes`
+ * publicado alcanza: estuvo publicada, y eso es lo que el campo afirma. El
+ * documento borrado (`despues` nulo) no se marca: no hay dónde.
+ */
+export const faltaMarcarPublicada = (despues, antes = null) =>
+  !!despues &&
+  !marcadaComoPublicada(despues) &&
+  (despues.estado === ESTADO_PUBLICADO || antes?.estado === ESTADO_PUBLICADO);
 
 /**
  * Ídem dentro de cada sesión. `calendarEventId` es EL caso que rompe todo.

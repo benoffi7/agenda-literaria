@@ -90,7 +90,7 @@ export const rebuildPorLibrerias = onDocumentWritten(
      * publicada la vuelve a intentar, porque la decisión se toma sobre el
      * documento y no sobre la transición.
      */
-    if (faltaMarcarPublicada(despues)) {
+    if (faltaMarcarPublicada(despues, antes)) {
       try {
         await marcarPublicada(getFirestore(), id, 'librerias');
         logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'librerias' });
@@ -152,7 +152,7 @@ export const rebuildPorSuscripciones = onDocumentWritten(
 
     // B-905 — la marca, con la misma guarda y en el mismo lugar que en
     // `rebuildPorLibrerias` (ver ahí el detalle).
-    if (faltaMarcarPublicada(despues)) {
+    if (faltaMarcarPublicada(despues, antes)) {
       try {
         await marcarPublicada(getFirestore(), id, 'suscripciones');
         logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'suscripciones' });
@@ -200,7 +200,7 @@ export const rebuildPorLugares = onDocumentWritten(
 
     // B-905 — la marca, con la misma guarda y en el mismo lugar que en
     // `rebuildPorLibrerias` (ver ahí el detalle).
-    if (faltaMarcarPublicada(despues)) {
+    if (faltaMarcarPublicada(despues, antes)) {
       try {
         await marcarPublicada(getFirestore(), id, 'lugares');
         logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'lugares' });
@@ -249,7 +249,7 @@ export const rebuildPorBibliotecas = onDocumentWritten(
 
     // B-905 — la marca, con la misma guarda y en el mismo lugar que en
     // `rebuildPorLibrerias` (ver ahí el detalle).
-    if (faltaMarcarPublicada(despues)) {
+    if (faltaMarcarPublicada(despues, antes)) {
       try {
         await marcarPublicada(getFirestore(), id, 'bibliotecas');
         logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'bibliotecas' });

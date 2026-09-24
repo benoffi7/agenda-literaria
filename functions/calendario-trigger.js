@@ -97,7 +97,7 @@ export const syncCalendar = onDocumentWritten(
      * Si falla, se loguea y **no se corta el sync**: la marca es para el build de
      * mañana, los eventos del calendario son de ahora.
      */
-    if (faltaMarcarPublicada(despues)) {
+    if (faltaMarcarPublicada(despues, antes)) {
       try {
         await marcarPublicada(db, id);
         logger.info('marcada como publicada alguna vez', { id });

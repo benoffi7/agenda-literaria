@@ -1856,7 +1856,7 @@ describe('trampa 3 · el write-back al propio documento va detrás de su guarda 
   });
 
   /**
-   * **Qué lo pondría rojo:** sacar el `if (faltaMarcarPublicada(despues))` de
+   * **Qué lo pondría rojo:** sacar el `if (faltaMarcarPublicada(despues, antes))` de
    * cualquiera de los cinco triggers, o poner otro `if` entre la guarda y la
    * llamada (la llamada quedaría gobernada por una condición que no es la
    * guarda). El `try` del medio no cuenta: no decide nada.

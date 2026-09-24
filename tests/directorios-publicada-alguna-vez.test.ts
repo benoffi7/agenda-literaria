@@ -157,6 +157,31 @@ describe('la guarda anti-loop (trampa 3)', () => {
   });
 });
 
+describe('despublicar una ficha sin marca la marca — B-1480', () => {
+  it('la escritura que la saca de publicado prende la marca si todavía no la tenía', () => {
+    // Las publicadas antes de B-905 no tienen la marca hasta su próxima
+    // escritura; si esa escritura es la que las despublica, antes quedaban en
+    // `pendiente` sin marca y el slug volvía a ser editable (trampa 10).
+    for (const { coleccion, documento } of DIRECTORIOS) {
+      const antes = { ...documento(), estado: 'publicado' };
+      const despues = { ...documento(), estado: 'pendiente' };
+      expect(faltaMarcarPublicada(despues, antes), coleccion).toBe(true);
+      // Sin `antes` publicado, una pendiente nunca publicada no se marca.
+      expect(faltaMarcarPublicada(despues, { ...antes, estado: 'pendiente' }), coleccion).toBe(false);
+      expect(faltaMarcarPublicada(despues), coleccion).toBe(false);
+      // Y si ya estaba marcada, no se reescribe (la guarda anti-loop sigue entera).
+      expect(
+        faltaMarcarPublicada({ ...despues, publicadaAlgunaVez: true }, antes),
+        coleccion,
+      ).toBe(false);
+    }
+  });
+
+  it('un documento borrado no se marca: no hay dónde', () => {
+    expect(faltaMarcarPublicada(null, { estado: 'publicado' })).toBe(false);
+  });
+});
+
 describe('el efecto', () => {
   it('escribe `true` en el documento de su colección, con `update`', async () => {
     for (const { coleccion } of DIRECTORIOS) {
@@ -190,7 +215,7 @@ describe('el cableado de los triggers', () => {
     /*
      * MUTACIÓN PROBADA: dejar `'librerias'` en la llamada del trigger de
      * `lugares` (el error de copiar el bloque) pone este caso en rojo nombrando
-     * la colección; sacar el `if (faltaMarcarPublicada(despues))` de cualquiera
+     * la colección; sacar el `if (faltaMarcarPublicada(despues, antes))` de cualquiera
      * de los cuatro, también.
      */
     for (const { coleccion } of DIRECTORIOS) {
@@ -201,7 +226,7 @@ describe('el cableado de los triggers', () => {
         llamadas.map((m) => m[1]),
         coleccion,
       ).toEqual([coleccion]);
-      const guarda = cuerpo.indexOf('if (faltaMarcarPublicada(despues))');
+      const guarda = cuerpo.indexOf('if (faltaMarcarPublicada(despues, antes))');
       expect(guarda, `${coleccion}: sin guarda`).toBeGreaterThanOrEqual(0);
       expect(guarda, coleccion).toBeLessThan(llamadas[0]!.index!);
     }
