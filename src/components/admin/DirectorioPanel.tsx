@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { claseBotonSecundario } from '@/components/campos/Campo';
+import { claseBotonSecundario, claseFilaApagada } from '@/components/campos/Campo';
 import {
   TEXTO_ESTADO,
   TRANSICIONES,
@@ -248,8 +248,8 @@ export function DirectorioPanel({
         {visibles.map((f) => (
           <li
             key={f.id}
-            className={`rounded-md border border-borde bg-white px-3 py-2.5 ${
-              f.estado === 'rechazado' ? 'opacity-60' : ''
+            className={`rounded-md border border-borde px-3 py-2.5 ${
+              f.estado === 'rechazado' ? claseFilaApagada : 'bg-white'
             }`}
           >
             <div className="sm:flex sm:items-start sm:gap-3">

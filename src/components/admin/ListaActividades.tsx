@@ -388,7 +388,11 @@ export function ListaActividades({
             className={pestana === p ? claseBotonChipActivo : claseBotonChip}
           >
             {ETIQUETA_PESTANA[p]}
-            <span aria-hidden="true" className="ml-1.5 tabular-nums opacity-70">
+            {/* B-1750 — la tinta del número se dice, no se multiplica con `opacity`. */}
+            <span
+              aria-hidden="true"
+              className={`ml-1.5 tabular-nums ${pestana === p ? 'text-white/70' : 'text-tinta/70'}`}
+            >
               {porPestana[p]}
             </span>
             <span className="sr-only">{`, ${porPestana[p]}`}</span>

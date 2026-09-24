@@ -6,6 +6,7 @@ import {
   DirectorioPanel,
   type FichaDeDirectorio,
 } from '@/components/admin/DirectorioPanel';
+import { claseFilaApagada } from '@/components/campos/Campo';
 import type { EstadoDirectorio } from '@/lib/directorios';
 
 /**
@@ -274,5 +275,31 @@ describe('el contador de precios para revisar — B-1411', () => {
     );
     expect(screen.queryByRole('button', { name: /para revisar/ })).toBeNull();
     expect(enPantalla()).toEqual(['La Libre']);
+  });
+});
+
+/*
+ * B-1750 — la ficha descartada se apaga con fondo y tinta, no con `opacity-60`,
+ * que se multiplicaba con el `text-tinta/65` de adentro (≈2,5:1). La publicada
+ * y la pendiente siguen en blanco: tiene que verse cuál quedó afuera.
+ * MUTACIÓN PROBADA: devolviendo `opacity-60` a la fila, queda en rojo.
+ */
+describe('la ficha descartada se apaga sin opacity (B-1750)', () => {
+  it('la descartada lleva la clase apagada; las otras dos, el blanco', async () => {
+    montar();
+    await verTodas();
+    const fila = (nombre: string): HTMLElement => screen.getByText(nombre).closest('li')!;
+    const apagada = (li: HTMLElement): boolean =>
+      claseFilaApagada.split(' ').every((c) => li.classList.contains(c));
+
+    const descartada = fila('Kiosco de Diarios');
+    expect(apagada(descartada)).toBe(true);
+    expect(descartada.classList.contains('bg-white')).toBe(false);
+    expect([...descartada.classList].some((c) => /^opacity-\d+$/.test(c))).toBe(false);
+
+    for (const viva of ['La Libre', 'Eterna Cadencia']) {
+      expect(apagada(fila(viva))).toBe(false);
+      expect(fila(viva).classList.contains('bg-white')).toBe(true);
+    }
   });
 });

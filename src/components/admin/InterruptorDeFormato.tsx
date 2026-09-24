@@ -13,6 +13,10 @@ interface Props {
    * que el interruptor no promete algo que no va a pasar: se muestra atenuado y
    * dice por qué. Esconderlo sería peor — quien lo usó ayer en la compu lo
    * buscaría hoy en el teléfono y concluiría que se rompió.
+   *
+   * Atenuado quiere decir borde punteado, fondo gris y la opción elegida en
+   * gris en vez de en tinta plena — B-1750. No `opacity-55`: se multiplicaba
+   * con el `text-tinta/65` de las opciones.
    */
   inerte?: boolean;
 }
@@ -47,8 +51,8 @@ export function InterruptorDeFormato({ formato, onCambiar, inerte = false }: Pro
         (inerte ? `${porQueInerte} ` : '') +
         'La preferencia es de este navegador: en otra computadora se elige de nuevo.'
       }
-      className={`flex shrink-0 items-center rounded-md border border-borde bg-white p-0.5 ${
-        inerte ? 'opacity-55' : ''
+      className={`flex shrink-0 items-center rounded-md border border-borde p-0.5 ${
+        inerte ? 'border-dashed bg-black/[0.03]' : 'bg-white'
       }`}
     >
       {FORMATOS_DE_HORA.map((f) => {
@@ -62,7 +66,11 @@ export function InterruptorDeFormato({ formato, onCambiar, inerte = false }: Pro
             title={QUE_HACE_EL_FORMATO[f]}
             onClick={() => onCambiar(f)}
             className={`min-h-touch rounded px-2.5 text-xs ${
-              activo ? 'bg-tinta font-medium text-papel' : 'text-tinta/65 hover:bg-black/5'
+              activo
+                ? inerte
+                  ? 'bg-black/10 font-medium text-tinta'
+                  : 'bg-tinta font-medium text-papel'
+                : 'text-tinta/65 hover:bg-black/5'
             }`}
           >
             {ETIQUETA_FORMATO_DE_HORA[f]}

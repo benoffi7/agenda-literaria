@@ -81,6 +81,7 @@ vi.mock('@/lib/bandejaDePropuestas', async (importOriginal) => ({
 }));
 
 import { PropuestasPanel, type Conversion } from '@/components/admin/PropuestasPanel';
+import { claseFilaApagada } from '@/components/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
 import { promoverImagenDePropuesta, urlDeImagenDePropuesta } from '@/lib/subir-imagen';
 import { observarPropuestas, revisarPropuesta } from '@/lib/bandejaDePropuestas';
@@ -994,5 +995,31 @@ describe('el segundo movimiento lo dispara el guardado, no el botón (D-600)', (
     // Sin este aviso, la próxima vez que alguien mire la bandeja la convierte de
     // nuevo y quedan dos actividades de la misma propuesta.
     expect(ADMIN_APP).toMatch(/\.catch\([\s\S]{0,120}setFalloAlAceptar/);
+  });
+});
+
+/*
+ * B-1750 — la propuesta que ya no espera decisión se apaga con fondo y tinta,
+ * no con `opacity-60`, que se multiplicaba con el `text-tinta/65` de adentro
+ * (≈2,5:1). La que espera sigue en blanco: es la que hay que atender.
+ * MUTACIÓN PROBADA: devolviendo `opacity-60` a la fila, queda en rojo.
+ */
+describe('la propuesta cerrada se apaga sin opacity (B-1750)', () => {
+  it('la aceptada lleva la clase apagada y la nueva el blanco', async () => {
+    montar([propuesta(), propuesta({ id: 'p2', titulo: 'Club ya aceptado', estado: 'aceptada' })]);
+    await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
+    const fila = (titulo: string): HTMLElement =>
+      screen.getByRole('heading', { name: titulo }).closest('li')!;
+    const apagada = (li: HTMLElement): boolean =>
+      claseFilaApagada.split(' ').every((c) => li.classList.contains(c));
+
+    const cerrada = fila('Club ya aceptado');
+    expect(apagada(cerrada)).toBe(true);
+    expect(cerrada.classList.contains('bg-white')).toBe(false);
+    expect([...cerrada.classList].some((c) => /^opacity-\d+$/.test(c))).toBe(false);
+
+    const viva = fila('Taller de crónica urbana');
+    expect(apagada(viva)).toBe(false);
+    expect(viva.classList.contains('bg-white')).toBe(true);
   });
 });
