@@ -95,12 +95,18 @@ Armá **una** tabla, no tres reportes pegados: quien lee quiere una decisión, n
 leer tres veces el mismo archivo.
 
 ```
-| Severidad | Auditor | archivo:línea | Qué pasa | Resolución |
+| Severidad | Base | Auditor | archivo:línea | Qué pasa | Resolución |
 ```
 
+- **La columna `Base` dice `medido` o `leído`**, y se copia de la primera línea
+  de cada hallazgo, que desde D-1045 la trae (B-1710). `medido` nombra la
+  reproducción en la misma celda —el test, el artefacto, la medición con
+  fecha—; `leído` nombra qué medición lo subiría. Si un auditor devolvió un
+  hallazgo sin la etiqueta, va como `leído`: lo que no dice cómo lo sabe no se
+  trata como un hecho.
 - **Un hallazgo que aparece en dos auditores es uno**, con los dos nombres. Los
   auditores derivan entre ellos a propósito (las trampas 4 y 5 son de
-  privacidad).
+  privacidad). Si uno lo midió y el otro lo leyó, es `medido`.
 - **Un hallazgo que un test ya frena no es un hallazgo.** Va a una línea aparte,
   «cubierto por `tests/x.test.ts`»: sirve para que nadie escriba un test que ya
   existe, y no es motivo de nada.
@@ -114,6 +120,21 @@ leer tres veces el mismo archivo.
 
 Los auditores no bloquean nada por sí solos —ya no hay gate que los espere—, así
 que la decisión es tuya y se dice explícita.
+
+**Un hallazgo `leído` no frena por sí solo** (D-1045, B-1710). Es una hipótesis:
+frenar un cambio por algo que nadie reprodujo es la forma de que B-1142 y B-1145
+—dos barridos que afirmaron efectos que no pasaban— vuelvan a costar una vuelta
+entera. Lo que se hace con uno que, de ser cierto, caería en la lista de abajo:
+
+- **Medilo vos.** Vos no sos de solo lectura: corré la medición que el auditor
+  nombró (el test puntual con `npx vitest run`, el `grep` sobre `dist/`, el caso
+  en el emulador si el frente puede levantarlo). Si se reproduce, pasa a
+  `medido` en la tabla, con la reproducción nombrada, y **ahí sí** frena.
+- **Si no se puede medir en este cambio**, se anota con la prioridad de riesgo
+  —no la del efecto— y con la medición pendiente escrita, y el cambio sigue.
+  Decilo en el reporte: «leído, sin medir, anotado como B-xxx».
+
+La lista de abajo es, entonces, de hallazgos **`medido`**.
 
 **Arreglalo antes de cerrar el cambio:**
 
