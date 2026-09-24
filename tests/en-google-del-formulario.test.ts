@@ -17,7 +17,9 @@ import { describe, expect, it } from 'vitest';
 import { formADocumento } from '@/lib/actividades';
 import { estadoDelCatalogo } from '@/lib/estadoDelCatalogo';
 import {
+  CAMPO_WEB_DEL_ORGANIZADOR,
   ENCABEZADO_EN_GOOGLE,
+  etiquetaEnGoogle,
   loQuePierdeEnGoogle,
   separadorEnGoogle,
   textoEnGoogle,
@@ -92,6 +94,26 @@ describe('los cuatro datos (B-813)', () => {
     expect(rota.id).toBe('web');
     expect(rota.etiqueta).not.toBe(vacia.etiqueta);
     expect(rota.etiqueta).toContain('no es una dirección');
+  });
+
+  /*
+   * B-1700 — la variante «no es una dirección» depende de cómo quedó escrito el
+   * valor, así que mientras se tipea en el campo va la neutra. La vacía no tiene
+   * variante que esconder: dice lo mismo tipeando o no.
+   */
+  it('mientras se tipea la web, la cargada que no enlaza se nombra como la vacía', () => {
+    const vacia = loQuePierdeEnGoogle(
+      formularioLleno({ organizador: { nombre: 'X', instagram: '', web: '' } }),
+    )[0]!;
+    const rota = loQuePierdeEnGoogle(
+      formularioLleno({ organizador: { nombre: 'X', instagram: '', web: 'https:/' } }),
+    )[0]!;
+    expect(etiquetaEnGoogle(rota, CAMPO_WEB_DEL_ORGANIZADOR)).toBe(vacia.etiqueta);
+    expect(textoEnGoogle([rota], CAMPO_WEB_DEL_ORGANIZADOR)).toBe(textoEnGoogle([vacia]));
+    // Fuera del campo —o tipeando en otro—, la variante de siempre.
+    expect(etiquetaEnGoogle(rota)).toBe(rota.etiqueta);
+    expect(etiquetaEnGoogle(rota, 'org-nombre')).toBe(rota.etiqueta);
+    expect(vacia.mientrasSeEscribe).toBeUndefined();
   });
 
   it('cada aviso lleva a una sección que existe', () => {

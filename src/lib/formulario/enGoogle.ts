@@ -51,7 +51,25 @@ export interface PerdidaEnGoogle {
   etiqueta: string;
   /** La sección que hay que abrir para cargarlo. */
   seccion: IdSeccion;
+  /**
+   * B-1700 — la etiqueta que va **mientras se tipea** en el campo `campo` (su
+   * `id` en el DOM). Solo la tiene la variante que depende de cómo quedó
+   * escrito el valor —«lo cargado no es una dirección»—, que a medio escribir
+   * todavía no es nada: el mismo argumento de D-900 para el cartel del
+   * Instagram. La barra la usa entre la primera tecla y la salida del campo.
+   */
+  mientrasSeEscribe?: { campo: string; etiqueta: string };
 }
+
+/**
+ * El `id` del input de la web del organizador en «Quién» (`SeccionQuien.tsx`).
+ * La barra lo mira para saber si alguien lo está tipeando (B-1700); si cambia
+ * allá, `tests/en-google-en-la-barra.render.test.tsx` lo cobra tipeando de
+ * verdad en el formulario montado.
+ */
+export const CAMPO_WEB_DEL_ORGANIZADOR = 'org-web';
+
+const ETIQUETA_WEB = 'la web del organizador';
 
 /**
  * Lo que esta actividad no le va a dar a Google, en el orden en que el
@@ -76,13 +94,18 @@ export const loQuePierdeEnGoogle = (form: ActividadForm): PerdidaEnGoogle[] => {
      * defecto: decir «sin la web» de un campo que tiene algo escrito haría pensar
      * que no se guardó.
      */
-    perdidas.push({
-      id: 'web',
-      etiqueta: webCargada(form)
-        ? 'la web del organizador (lo cargado no es una dirección)'
-        : 'la web del organizador',
-      seccion: 'quien',
-    });
+    perdidas.push(
+      webCargada(form)
+        ? {
+            id: 'web',
+            etiqueta: `${ETIQUETA_WEB} (lo cargado no es una dirección)`,
+            seccion: 'quien',
+            // B-1700 — `https://…` a medio tipear no enlaza, y sin esto la fila
+            // decía «no es una dirección» en cada tecla y lo retiraba al final.
+            mientrasSeEscribe: { campo: CAMPO_WEB_DEL_ORGANIZADOR, etiqueta: ETIQUETA_WEB },
+          }
+        : { id: 'web', etiqueta: ETIQUETA_WEB, seccion: 'quien' },
+    );
   }
 
   if (admiteMonto(form.arancel.tipo) && !publicaPrecio(form)) {
@@ -106,10 +129,22 @@ export const ENCABEZADO_EN_GOOGLE = 'Se publica igual, pero en Google sale sin';
 export const separadorEnGoogle = (i: number, n: number): string =>
   i === 0 ? '' : i === n - 1 ? ' ni ' : ', ';
 
+/**
+ * B-1700 — la etiqueta de una pérdida según qué campo se esté tipeando
+ * (`editando`, el `id` del input, o `null`). Fuera de ese campo, la de siempre.
+ */
+export const etiquetaEnGoogle = (p: PerdidaEnGoogle, editando: string | null = null): string =>
+  p.mientrasSeEscribe && p.mientrasSeEscribe.campo === editando
+    ? p.mientrasSeEscribe.etiqueta
+    : p.etiqueta;
+
 /** La frase entera, en texto plano: la barra la pinta con botones, un test la lee así. */
-export const textoEnGoogle = (perdidas: readonly PerdidaEnGoogle[]): string =>
+export const textoEnGoogle = (
+  perdidas: readonly PerdidaEnGoogle[],
+  editando: string | null = null,
+): string =>
   perdidas.length === 0
     ? ''
     : `${ENCABEZADO_EN_GOOGLE} ${perdidas
-        .map((p, i) => separadorEnGoogle(i, perdidas.length) + p.etiqueta)
+        .map((p, i) => separadorEnGoogle(i, perdidas.length) + etiquetaEnGoogle(p, editando))
         .join('')}.`;

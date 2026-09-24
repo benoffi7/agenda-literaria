@@ -13,6 +13,7 @@
  *    ni en solo lectura, donde no hay cómo cargar lo que falta.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/analytics', () => ({
@@ -94,6 +95,68 @@ describe('con el formulario montado', () => {
   it('una actividad completa no la muestra (control positivo)', () => {
     pintar(formularioLleno());
     expect(fila()).toBeNull();
+  });
+});
+
+/**
+ * B-1700 — la web del organizador, tipeada de verdad en el formulario montado.
+ *
+ * `https://…` a medio escribir no enlaza, y la fila pasaba de «la web del
+ * organizador» a «(lo cargado no es una dirección)» en cada tecla. La variante
+ * tiene que aparecer al salir del campo, como el cartel del Instagram (D-900).
+ *
+ * Es render y no puro porque la barra no es dueña del campo: escucha el `input`
+ * y el `focusout` del documento por el `id` del input de «Quién». Si ese `id`
+ * cambia allá, esto es lo que se pone rojo.
+ */
+describe('la fila no cambia de texto mientras se escribe la web (B-1700)', () => {
+  const sinWeb = (web: string): ActividadForm =>
+    formularioLleno({ organizador: { nombre: 'Casa Brandon', instagram: '', web } });
+
+  const pintar = (copia: ActividadForm) =>
+    render(
+      <ActividadFormulario
+        rol="publicador"
+        vistaDelPanel="pc"
+        formatoDeHora="24"
+        uid="uid-de-prueba"
+        copia={copia}
+        onGuardado={vi.fn()}
+        onCancelar={vi.fn()}
+      />,
+    );
+
+  const campoWeb = () => document.getElementById('org-web') as HTMLInputElement;
+  const NEUTRA = 'Se publica igual, pero en Google sale sin la web del organizador.';
+  const VARIANTE =
+    'Se publica igual, pero en Google sale sin la web del organizador (lo cargado no es una dirección).';
+
+  it('a medio escribir dice la neutra, y al salir del campo la variante', async () => {
+    pintar(sinWeb(''));
+    expect(fila()?.textContent).toBe(NEUTRA);
+
+    await userEvent.type(campoWeb(), 'https:/');
+    // Control: el valor quedó cargado y sigue sin enlazar.
+    expect(campoWeb().value).toBe('https:/');
+    /*
+     * MUTACIÓN PROBADA: pintando `p.etiqueta` en vez de `etiquetaEnGoogle(p,
+     * editando)` en la barra, este caso queda en rojo con la variante a la vista.
+     */
+    expect(fila()?.textContent).toBe(NEUTRA);
+
+    await userEvent.tab();
+    expect(fila()?.textContent).toBe(VARIANTE);
+  });
+
+  it('con la actividad guardada así, la variante está desde el vamos', () => {
+    pintar(sinWeb('Casa Brandon / IG'));
+    expect(fila()?.textContent).toBe(VARIANTE);
+  });
+
+  it('enfocar sin tipear no la esconde: el valor sigue asentado', () => {
+    pintar(sinWeb('Casa Brandon / IG'));
+    fireEvent.focusIn(campoWeb());
+    expect(fila()?.textContent).toBe(VARIANTE);
   });
 });
 
