@@ -45,7 +45,7 @@ import { fraseConFecha } from '@/lib/datoConFecha';
 import { urlSegura, handleInstagram } from '@/lib/enlaceSeguro';
 import { geografiaNormalizada, piezasDeLugar } from '@/lib/geografia.mjs';
 import { desSlug } from '@calendario';
-import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
+import { imagenesDeFichaPublica } from '@/lib/imagenesDeFicha';
 import { NOMBRE } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import {
@@ -174,18 +174,12 @@ const mailPublicable = (valor: string | null): string | null => {
  *
  * La portada se busca **después** de filtrar: una portada con la URL rota no
  * puede dejar la ficha sin imagen habiendo otras sanas.
+ *
+ * B-907 — **una sola implementación para las cuatro guías**
+ * (`lib/imagenesDeFicha.ts`), que además de la URL acota el tipo de `epigrafe`,
+ * `ancho` y `alto`: la regla no puede mirar adentro de cada fila.
  */
-const imagenesDeBiblioteca = (b: Biblioteca): ImagenDeBibliotecaPublica[] => {
-  const sanas = imagenesPublicables(b.imagenes ?? []);
-  const portada = portadaDe(sanas);
-  const ordenadas = portada ? [portada, ...sanas.filter((i) => i !== portada)] : sanas;
-  return ordenadas.map((i) => ({
-    url: urlSegura(i.url)!,
-    epigrafe: i.epigrafe ?? '',
-    ancho: i.ancho ?? null,
-    alto: i.alto ?? null,
-  }));
-};
+const imagenesDeBiblioteca = (b: Biblioteca): ImagenDeBibliotecaPublica[] => imagenesDeFichaPublica(b.imagenes);
 
 /**
  * **La frase del costo de asociarse, o vacío** — B-837, regla 1.
