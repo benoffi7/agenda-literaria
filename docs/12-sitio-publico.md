@@ -1932,6 +1932,18 @@ tiene que sumarse también a `CIUDADES_CON_BANNER` de `analyticsSitio.ts`;
   siendo la mejor respuesta a quien busca ese taller por nombre.
 - Aparece en `/pasadas` para siempre.
 
+> ✅ **«Ver otros talleres», construido el 2026-09-24 (B-1794, D-1091).** Va en el
+> `<nav>` «Seguir mirando» del pie de la página, en el lugar del enlace al mes
+> —que en una pasada viene en `null` a propósito—, y sale del view-model
+> (`DetallePublico.masDelTipo`), no de la plantilla. Tres desvíos del texto de
+> arriba, los tres a propósito: dice **«Más talleres»** y no «Ver otros», porque
+> el plural del hub no trae género y «otros presentaciones» está mal; aparece
+> **solo si el hub del tipo existe** (`tipoTieneHub`, el mismo criterio que el
+> segundo nivel del `BreadcrumbList`); y **no hay un equivalente por barrio**: el
+> §7.1 no lo pide y el renglón «Dónde» de la ficha ya enlaza el hub del barrio
+> (B-951). «Seguí a Casa Brandon» no se agregó al `<nav>`: el Instagram de quien
+> organiza ya está enlazado en la ficha.
+
 > ✅ **Las dos cosas, construidas el 2026-09-02 (B-109).** Y son una sola: la
 > entrada del sitemap vence a los 90 días, así que a partir de ese día `/pasadas`
 > es el **único** link interno que le queda a esa página. La ventana se mide desde
