@@ -35,6 +35,7 @@ import {
   enlaceDeImagen,
   esPendiente,
   estadoAlConvertir,
+  estadoAlVolverASinMirar,
   fraseDeFechaPropuesta,
 } from '@/lib/bandejaDePropuestas';
 import { ESTADOS_PROPUESTA } from '@/types/propuesta';
@@ -527,6 +528,68 @@ describe('el aviso de la ficha, y por qué está apagado casi siempre', () => {
 });
 
 /**
+ * **B-1490 — «Volver a sin mirar».** El deshacer de «La estoy mirando», y la
+ * salida que le faltaba a la `en-revision` para renovar su plazo sin rechazarla.
+ * El botón (que aparezca y que no escriba dos veces) está en
+ * `propuestas-panel.render.test.tsx`; que la regla lo acepte, en
+ * `propuestas.integracion.test.ts`.
+ *
+ * MUTACIONES PROBADAS: con `estadoAlVolverASinMirar` devolviendo siempre `null`,
+ * el primero y el tercero se ponen rojos; devolviendo `'nueva'` para cualquier
+ * estado, el primero.
+ */
+describe('volver a sin mirar — B-1490', () => {
+  it('solo la en-revision vuelve, y a nueva', () => {
+    expect(estadoAlVolverASinMirar('en-revision')).toBe('nueva');
+    // Ya está sin mirar.
+    expect(estadoAlVolverASinMirar('nueva')).toBeNull();
+    // Tiene su propio camino, «Reabrir», que dice que la foto no vuelve.
+    expect(estadoAlVolverASinMirar('rechazada')).toBeNull();
+    // No se reabre desde la bandeja.
+    expect(estadoAlVolverASinMirar('aceptada')).toBeNull();
+  });
+
+  it('todo estado tiene respuesta, así un estado nuevo obliga a decidir', () => {
+    for (const e of ESTADOS_PROPUESTA) {
+      const a = estadoAlVolverASinMirar(e);
+      expect(a === null || ESTADOS_PROPUESTA.includes(a)).toBe(true);
+    }
+  });
+
+  /**
+   * **El motivo del ítem, contra la Function que borra.** Una `en-revision`
+   * mirada hace 40 días —que el barrido de esta noche se lleva— devuelta a `nueva`
+   * con la forma exacta que arma el panel deja de estar vencida, y la bandeja
+   * vuelve a darle el plazo entero.
+   */
+  it('renueva el plazo del lado que borra y del lado que avisa', () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    const AHORA = Date.parse('2026-10-10T12:00:00Z');
+    const vieja = {
+      id: 'p1',
+      estado: 'en-revision',
+      creadoEn: tsDe(new Date(AHORA - 200 * DIA)),
+      revision: { porUid: 'uid_admin', en: tsDe(new Date(AHORA - 40 * DIA)), actividadId: null, motivo: null },
+    };
+    expect(decidirRetencion({ propuestas: [vieja], ahora: AHORA }).aBorrar).toHaveLength(1);
+
+    const destino = estadoAlVolverASinMirar('en-revision');
+    const cambio = destino && cambioDeRevision('uid_admin', destino, tsDe(new Date(AHORA)));
+    const devuelta = { ...vieja, ...(cambio || {}) };
+    expect(devuelta.estado).toBe('nueva');
+    expect(decidirRetencion({ propuestas: [devuelta], ahora: AHORA }).aBorrar).toHaveLength(0);
+    expect(caducaEn(devuelta as never, AHORA)).toBe(RETENCION_DIAS.nueva);
+  });
+
+  it('no escribe ninguna decisión: sin actividad, sin motivo, sin foto descartada', () => {
+    expect(cambioDeRevision('uid_admin', estadoAlVolverASinMirar('en-revision')!, 'AHORA')).toEqual({
+      estado: 'nueva',
+      revision: { porUid: 'uid_admin', en: 'AHORA', actividadId: null, motivo: null },
+    });
+  });
+});
+
+/**
  * **B-1460 — convertir una que no se marca y se va esta noche.** La marca de
  * B-866 solo mueve la `nueva`; la `en-revision` y la `rechazada` se convierten
  * sin renovar el plazo, así que el formulario tiene que decir que queda poco.
@@ -561,12 +624,19 @@ describe('el aviso de vencimiento al convertir — B-1460', () => {
     expect(avisoDeVencimientoAlConvertir(enRevision(1), AHORA)).toBeNull();
   });
 
-  it('la rechazada ofrece reabrirla; la en-revision no ofrece rechazarla', () => {
+  /**
+   * **Cada una ofrece el botón que su ficha muestra.** Desde B-1490 la
+   * `en-revision` tiene «Volver a sin mirar»; «Rechazar» sigue sin aconsejarse,
+   * porque es decidir algo solo para ganar tiempo y borra la foto.
+   */
+  it('la rechazada ofrece reabrirla; la en-revision, volverla a sin mirar', () => {
     const deRechazada = avisoDeVencimientoAlConvertir(rechazada(29.5), AHORA)!;
     expect(deRechazada).toMatch(/reabrila desde la bandeja \(«Reabrir»\)/);
+    expect(deRechazada).not.toMatch(/Volver a sin mirar/);
     const deRevision = avisoDeVencimientoAlConvertir(enRevision(29.5), AHORA)!;
     expect(deRevision).not.toMatch(/Reabrir/);
-    expect(deRevision).toMatch(/no hay cómo renovárselo sin rechazarla/);
+    expect(deRevision).toMatch(/volvela a «sin mirar» desde la bandeja \(«Volver a sin mirar»\)/);
+    expect(deRevision).not.toMatch(/rechaz/i);
   });
 
   it('la nueva no avisa: la marca de B-866 le renueva el plazo', () => {
