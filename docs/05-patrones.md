@@ -633,6 +633,10 @@ el resultado:
   el link de Zoom no está.
 - Después de deployar reglas, intentar la escritura anónima con `curl` y
   confirmar que la rechaza.
+- Después de aplicar el CORS del bucket (o de cambiar de dominio), pedir una
+  imagen de `events.json` con `Origin` y confirmar que vuelve
+  `Access-Control-Allow-Origin`: `npm run cors:verificar` (B-1321). El emulador
+  no aplica CORS, así que ningún test lo puede ver.
 
 Los comandos están en [`07-seguridad.md`](07-seguridad.md) y
 [`08-operacion.md`](08-operacion.md).

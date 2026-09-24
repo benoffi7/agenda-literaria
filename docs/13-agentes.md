@@ -681,6 +681,19 @@ veces se los invoca** ahora que nada los llama.
   lo que falta no siempre es sembrar —puede ser un slug mal escrito— y un job
   desatendido escribiendo en producción es otra decisión. Tests:
   `tests/taxonomias-en-produccion.test.ts`.
+- **Que el bucket tenga aplicado el CORS de `cors.json`** (**B-1321**). El CORS
+  es config del bucket y se aplica en la consola (B-1235a): no viaja con ningún
+  deploy, y **un test no lo puede ver por la misma asimetría de la viñeta de
+  arriba** — el emulador no aplica CORS, así que la suite y el gate andan igual
+  con o sin él, y el test de `cors.json` mira el archivo, no el bucket. Lo mira
+  `scripts/cors-del-bucket.mjs` (`npm run cors:verificar`): un `GET` con
+  `Origin` por cada origen del archivo contra una imagen de `events.json`, más
+  un control negativo desde un origen que el archivo no declara. Lo que decide
+  —los orígenes, la imagen elegida, el veredicto— tiene test sin red
+  (`tests/cors-del-bucket.test.ts`). **No entra a ningún gate ni workflow**, por
+  la razón de `verificar-produccion.mjs` y no por la de
+  `taxonomias-en-produccion.mjs`: pega contra el CDN de Storage sin credencial
+  del build, y el CORS se rompe en la consola, no en un deploy. Solo lee.
 - **Enterarse de que un deploy falló** — ✅ **resuelto el 2026-09-11, y no con un
   agente ni con un test: con el workflow mismo** (**B-883**). Es la viñeta que
   mejor muestra el criterio de este documento, porque los dos candidatos

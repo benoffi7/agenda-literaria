@@ -63,6 +63,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
+| `npm run cors:verificar` | B-1321 — le pregunta **al bucket**, no a `cors.json`, si tiene aplicado el CORS: un `GET` con `Origin` por cada origen del archivo contra una imagen de `events.json`, más un control negativo. Solo lee. Ver «El CORS del bucket» más abajo |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
 | `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json`, sobre el HTML de las páginas de detalle (B-110) y —desde B-121— sobre **todos** los archivos publicables del `dist/`, barriéndoles los centinelas |
 | `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
@@ -964,6 +965,89 @@ Storage, hay que inicializarlo una vez desde la consola de Firebase (elige la
 región; conviene `southamerica-east1`, al lado de Firestore y de las Functions).
 `firebase deploy --only storage` contra un proyecto sin bucket falla con un error
 que no dice eso.
+
+### El CORS del bucket (B-1235a, B-1321)
+
+**Es un paso de consola y no viaja con ningún deploy.** `cors.json`, en la raíz,
+declara que el bucket de imágenes deja **leer** sus bytes con JavaScript desde los
+cuatro orígenes del sitio (`GET` y `HEAD`, nada más). Pero un archivo en el repo
+no configura nada: lo que manda es la config aplicada al bucket, y esa se aplica
+a mano.
+
+**Qué hace, y por qué hace falta.** Sin CORS, la respuesta con los bytes
+(`alt=media`) no trae `Access-Control-Allow-Origin`, y el `fetch` con el que
+`promoverImagenDePropuesta` baja la foto de una propuesta para subirla a
+`imagenes/` falla en el navegador con «Failed to fetch»: la propuesta se
+convierte **sin su flyer** (B-1235). No abre nada nuevo: esos bytes ya los lee
+cualquiera con la URL — un `<img>` no necesita CORS, y por eso en la bandeja la
+foto se ve. Solo habilita que **el JavaScript del sitio** los lea.
+
+Desde la raíz del repo, con una cuenta que pueda editar el bucket:
+
+```bash
+gcloud storage buckets update gs://agenda-literaria.firebasestorage.app \
+  --cors-file=cors.json
+
+# lo que quedó aplicado
+gcloud storage buckets describe gs://agenda-literaria.firebasestorage.app \
+  --format="default(cors_config)"
+```
+
+**Se aplicó el 2026-09-23** (lo hizo el dueño: el modo automático no deja a un
+agente cambiar la config de un recurso compartido).
+
+**Cuándo hay que reaplicarlo:**
+
+- **cambió `cors.json`** — un origen nuevo no existe hasta que se aplica;
+- **cambió o se sumó un dominio** del sitio: primero va a `cors.json`, después
+  se aplica. Es la misma lista que los dominios autorizados de Auth
+  (§ «Los dominios autorizados de Auth»), y se desincroniza igual;
+- **hay un bucket nuevo** — otro proyecto, o uno recreado desde cero (§
+  «Preparar un proyecto desde cero»): el CORS es del bucket y no se hereda;
+- **alguien lo tocó desde la consola**, que es lo que el chequeo de abajo
+  detecta.
+
+**Cómo se verifica.** Nada de lo que corre solo lo puede ver: el emulador no
+aplica el CORS del bucket, así que la suite y el gate andan igual con o sin él, y
+el test de `cors.json` mira el archivo. Hay que preguntarle al bucket:
+
+```bash
+npm run cors:verificar
+
+# contra otro origen del sitio, para tomar la imagen de su events.json
+SITIO=https://agenda-literaria.web.app npm run cors:verificar
+```
+
+`scripts/cors-del-bucket.mjs` baja `events.json` del sitio publicado, toma la
+primera imagen servida por el bucket de `.env.production` y hace un `GET` con
+`Origin:` por **cada** origen de `cors.json` —se derivan del archivo, así que uno
+nuevo se verifica solo—, exigiendo que vuelva `Access-Control-Allow-Origin` con
+ese origen. Suma un **control negativo**: desde un origen `.invalid` que el
+archivo no declara, la cabecera **no** tiene que venir; si viene, el bucket tiene
+otra configuración (un `*`, o una escrita a mano) y `cors.json` dejó de
+describirlo. Solo lee, y sin credenciales: la imagen es pública. Sin red o sin
+imágenes del bucket en `events.json` informa `— saltado`, que no es verde.
+
+A mano es lo mismo con `curl`, con cualquier imagen de `events.json`:
+
+```bash
+curl -s -o /dev/null -D - -H 'Origin: https://agendaleh.ar' \
+  'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/imagenes%2F<id>.png?alt=media' \
+  | grep -i access-control-allow-origin
+# access-control-allow-origin: https://agendaleh.ar
+```
+
+**No está enganchado a ningún workflow, y es una decisión.** Pega contra
+producción y contra el CDN de Storage: en `deploy.yml` sería un paso que frena la
+publicación de todo lo cargado por algo que el build no cambia, y que se pone
+rojo cuando falla la red — el gate que enseña a saltear los gates (B-180). Es la
+misma razón que deja afuera a `verificar-produccion.mjs`, y la opuesta a la que
+mete a `taxonomias-en-produccion.mjs`, que usa la credencial del build y no puede
+fallar por algo que el build no necesite. Además el CORS no se rompe con un
+deploy: se rompe en la consola, y un chequeo por deploy tampoco lo vería a
+tiempo. Se corre **después de aplicarlo**, al cambiar de dominio, y cuando una
+conversión de propuesta con foto termine sin flyer. Tests del chequeo:
+`tests/cors-del-bucket.test.ts`, sin red.
 
 ### Functions
 
@@ -2139,6 +2223,11 @@ firebase deploy --only functions
 # Quién tiene el claim admin hoy (B-209 — la lista salió de la doc versionada,
 # porque el repo es público). Es solo consulta: no siembra ni escribe nada.
 node scripts/preparar-produccion.mjs --listar
+
+# 6bis. El CORS del bucket de imágenes (B-1235a): sin él, convertir una
+#       propuesta con foto la deja sin flyer. Ver "El CORS del bucket".
+gcloud storage buckets update gs://<BUCKET> --cors-file=cors.json
+npm run cors:verificar   # después del primer deploy, que publica events.json
 
 # 7. Rebuild automático: ver "Activar el rebuild automático" más abajo
 #    (PAT en Secret Manager, service account de CI, secret de GitHub, y recién
