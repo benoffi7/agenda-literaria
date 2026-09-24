@@ -598,9 +598,14 @@ export interface DetallePublico {
    * toda la agenda», y la página de una pasada es la que llega desde un link
    * viejo de Instagram: es donde más hace falta una salida específica.
    *
-   * **Solo en una pasada, y solo si el hub existe** (`tipoTieneHub`): con fechas
-   * por venir la salida específica es el mes, y un `/tipo/{slug}` que el build
-   * no generó sería un 404 desde una página indexada. El texto dice «Más …» y
+   * **Solo en una pasada, y solo si el hub se ofrece** (el `tipoOfrecido` de
+   * `detalleDeActividad`, B-1800): con fechas por venir la salida específica es
+   * el mes, y un `/tipo/{slug}` que el build no generó sería un 404 desde una
+   * página indexada. Y **ofrecido, no solo emitido**: un hub de tipo sin nada
+   * vigente se emite igual —con `noindex`— y es una lista vacía, que es lo peor
+   * para mandar a quien llegó a una pasada buscando qué más hay. El corte es el
+   * de la tira de la home y la del `/404` (`hubsOfrecidos`). La miga sigue con
+   * `tipoTieneHub`: ver `migasDeDetalle`. El texto dice «Más …» y
    * no «Ver otros …» porque el plural no trae género: «otros presentaciones»,
    * «otros charlas».
    *
@@ -1148,6 +1153,16 @@ export const detalleDeActividad = (
    * interno en vez de publicar un 404.
    */
   rutaDeZona: RutaDeZona = SIN_HUBS,
+  /**
+   * ¿El hub de este tipo **se ofrece**, o sea tiene algo vigente? — B-1800. Ver
+   * `DetallePublico.masDelTipo`.
+   *
+   * No es `tipoTieneHub`: aquél dice que la URL responde, éste que vale la pena
+   * mandar a alguien ahí. Lo decide el lector con `slugsOfrecidos`, el mismo
+   * corte que la tira de la home. El default es `false` por lo mismo que los
+   * demás: quien lo omita pierde un enlace, no manda a nadie a una lista vacía.
+   */
+  tipoOfrecido = false,
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -1534,7 +1549,10 @@ export const detalleDeActividad = (
 
     mes: mesEnlazable(siguiente, mesesConPagina),
     masDelTipo:
-      yaPaso && tipoTieneHub
+      // Los dos, y no solo el segundo: ofrecido implica emitido por construcción
+      // (`hubsOfrecidos` filtra `hubsDelSitio`), pero si un llamador los pasa
+      // incoherentes, el lado del error es no enlazar un 404.
+      yaPaso && tipoTieneHub && tipoOfrecido
         ? {
             ruta: rutaDeTipo(a.tipo),
             texto: `Más ${pluralDeTipo(a.tipo, tipoEtiqueta).toLowerCase()}`,
@@ -2008,6 +2026,16 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
 /**
  * La miga de pan del detalle: Agenda → {Tipo} → {título}, o Agenda → {título}
  * cuando el hub del tipo no existe (`tipoTieneHub`, ver el campo).
+ *
+ * **La miga mira si el hub existe, no si se ofrece — y es a propósito** (B-1800,
+ * D-1115). «Más talleres» usa el corte más fino porque es una invitación: manda a
+ * alguien a mirar, y mandarlo a una lista vacía es mentirle. La miga no invita,
+ * **describe dónde está la página** en la jerarquía del sitio, y un hub con
+ * `noindex` sigue siendo su padre: responde, dice honestamente que no hay nada
+ * vigente y enlaza al resto (§4.4). Con el corte de ofrecidos, además, la miga de
+ * una misma pasada cambiaría de dos a tres niveles según si algún otro taller está
+ * vigente ese día — una jerarquía que se mueve sola entre builds, sobre una página
+ * que no cambió.
  *
  * **Siempre se emite**, a diferencia de `datosEstructurados`: una actividad
  * presencial sin sede no tiene `Event` honesto que declarar, pero sigue
