@@ -16109,6 +16109,17 @@ mirar**: la aceptada no vence y `limpiarImagenesHuerfanas` no recorre
 ese caso —y solo ese— a un barrido. Es la salida 3 de B-871 acotada al caso que no
 necesita la decisión del dueño, porque la copia ya está verificada.
 
+### B-1322 · Las propuestas aceptadas antes de B-1235 pueden tener el original huérfano · P2 — relevado (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** Con B-1322a borrado a mano, `node scripts/flyeres-de-propuestas-aceptadas.mjs` da cero fuera de `en-orden`. Lo que falla hacia adelante lo cubre B-1370.
+
+> 🟡 **Relevado contra producción el 2026-09-24** con `scripts/flyeres-de-propuestas-aceptadas.mjs` (nuevo, solo lectura, `531ae6b`). **Ninguna actividad quedó sin su flyer.** Hay dos aceptadas con foto y las dos están en `con-copia-con-original`: la actividad tiene su imagen, pero el original sigue en `propuestas/`. En las dos, la actividad se creó sin foto (CORS), la propuesta pasó a `aceptada` cuatro segundos después (`sin-copia`, original conservado) y la foto se subió a mano uno o diez minutos más tarde; el trigger no vuelve a mirar (B-1370). Se cierra con B-1322a y con el script dando cero fuera de `en-orden`.
+
+Si se aceptaron sin copia, `borrarOriginalAlAceptar` devolvió `sin-copia` y la
+foto queda en `propuestas/` para siempre. `relevarFlyeresSinPlazo` (B-871) las
+lista. Con B-1235a aplicado, repasar esa lista y subir a mano el flyer a cada
+actividad, o descartarlo.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -19844,6 +19855,21 @@ Solo habilita que el JavaScript del sitio **lea** bytes que ya lee cualquiera co
 la URL con token. Hoy el bucket tiene `cors_config: null`. Arregla B-1235 y B-1320
 a la vez. Lo intentó el orquestador y el modo automático lo frenó por ser un
 recurso compartido: es del dueño.
+
+### B-1322a · Borrar los dos originales de propuesta que ya tienen copia en su actividad · P3 — la mitad de consola de B-1322 (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24)** por el dueño con `gcloud storage rm`. El relevamiento da después: 2 aceptadas con foto, **2 en orden**, 0 objetos bajo `propuestas/`.
+
+| Actividad | Original a borrar en Storage |
+|---|---|
+| Merienda literaria: taller de lectura y escritura (`LRYzjiIyrrPfI8s541em`) | `propuestas/prop_79eb7bfc-0c16-420a-b20c-2d4363c9441c.jpg` — se subió un PNG distinto, **comparado a ojo el 2026-09-24: es el mismo flyer** (misma pieza, recodificada) |
+| Pasando Revistas - Taller de lectura (`JWzOpWbpyJpUUfgOYQf6`) | `propuestas/prop_1e647a23-39de-4816-85c4-7f20a56ebce6.jpg` — mismo tamaño en bytes que la copia |
+
+Después, `node scripts/flyeres-de-propuestas-aceptadas.mjs` tiene que dar cero
+fuera de `en-orden`.
+
+**Desde B-1370 esto también lo hace solo el barrido diario**, una vez desplegada
+la Function: si nadie los borra a mano, la primera corrida se los lleva.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 
