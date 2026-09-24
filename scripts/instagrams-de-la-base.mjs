@@ -42,10 +42,9 @@
  * **otra cuenta**—.
  *
  * El import pasa por `scripts/handle-instagram.mjs`, que desde B-928 es una
- * **reexportación** de tres líneas y no una copia: el módulo es un `.mjs` que un
- * script de Node plano puede importar sin loader, así que no hay nada que
- * mantener dos veces. Un arreglo al handle se escribe una sola vez, en
- * `src/lib/handle-instagram.mjs`, y esta página lo recibe sola.
+ * **reexportación** y no una copia, igual que `src/lib/handle-instagram.mjs`:
+ * no hay nada que mantener dos veces. Un arreglo al handle se escribe una sola
+ * vez, en `functions/handle-instagram.js` (B-1180), y esta página lo recibe sola.
  *
  * Lo que no pasa el filtro **no se descarta en silencio**: va a una sección
  * aparte con el valor crudo, porque un handle mal cargado es justamente algo que
