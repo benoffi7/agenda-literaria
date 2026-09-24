@@ -60,6 +60,7 @@ import {
   RUTA_APOYAR,
   RUTA_AYUDA,
   RUTA_CONTACTO,
+  RUTA_GUIA,
   RUTA_MIS_FAVORITOS,
   RUTA_PASADAS,
   RUTA_PROPONER,
@@ -152,6 +153,30 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
         </li>
         <li class="break-inside-avoid">
           <a class={`${claseFila} sm:justify-end`} href={RUTA_SUSCRIBIRSE}>Suscribirse al calendario</a>
+        </li>
+        <li class="break-inside-avoid">
+          {/*
+            **La Guía entra al pie con una fila y no con cuatro** — B-900. Es lo
+            que el § 2.1 del inventario pide para este archivo («los mismos
+            destinos» que el encabezado), y el encabezado tiene **una** pestaña
+            «Guía», no una por directorio: las secciones se listan en `/guia`, que
+            es el único lugar donde se deriva cuáles existen (`DIRECTORIOS`).
+            Cuatro filas acá serían una segunda copia de esa lista, y la que se
+            queda vieja es siempre la escrita a mano.
+
+            `/guia` además **siempre tiene algo que decir** —sus filas dicen qué
+            hay en cada sección aunque una esté vacía, que es por lo que está en
+            el sitemap desde el día uno (`lib/sitemap.ts`)—, así que es el único
+            destino de la Guía que el pie puede ofrecer en todas las páginas sin
+            mirar los datos. Lo que sí mira los datos es el 404
+            (`grupoDeLaGuia`), que sugiere sección por sección y solo las que
+            tienen fichas.
+
+            Va **acá**, al final de las filas que sirven para buscar algo y antes
+            de las de quien viene a dar algo («Proponer», «Sugerir»): la Guía es
+            del primer lado.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_GUIA}>Guía</a>
         </li>
         <li class="break-inside-avoid">
           {/*
