@@ -18,6 +18,7 @@ import {
   pluralDeTipo,
   rutaDelHub,
   slugsConHub,
+  slugsOfrecidos,
   type Hub,
 } from '@/lib/hubsPublicos';
 import { filtrarPublico, mapaDeEtiquetas, ordenarPublico, ORDEN_PUBLICO_POR_DEFECTO } from '@/lib/listadoPublico';
@@ -374,6 +375,43 @@ describe('ofrecer, indexar y el sitemap son la misma decisión', () => {
     expect(rutas.filter((r) => r.startsWith('/tipo/') || r.startsWith('/barrio/'))).toEqual([]);
     // Y los temáticos siguen, porque son fijos.
     expect(rutas).toContain(RUTA_ONLINE);
+  });
+});
+
+describe('slugsOfrecidos — el corte de ofrecer, para quien enlaza desde afuera (B-1800)', () => {
+  const conVacio = () => [
+    entradaDePrueba({ id: 'a', slug: 'a', tipo: 'taller', fechas: [PROXIMA] }),
+    entradaDePrueba({ id: 'v', slug: 'v', tipo: 'charla', fechas: [PASADA] }),
+  ];
+
+  it('un tipo con solo pasadas tiene hub pero no se ofrece', () => {
+    /*
+     * Es el caso de B-1800: `/tipo/charla` responde —con `noindex` y la lista
+     * vacía— así que `slugsConHub` lo cuenta, y «Más charlas» lo enlazaba.
+     *
+     * MUTACIÓN PROBADA: devolver `slugsConHub('tipo', …)` desde `slugsOfrecidos`
+     * pone este caso en rojo.
+     */
+    expect(slugsConHub('tipo', conVacio(), OPCIONES)).toContain('charla');
+    expect(slugsOfrecidos('tipo', conVacio(), OPCIONES, AHORA)).toEqual(['taller']);
+  });
+
+  it('es exactamente el corte de `hubsOfrecidos`, para las tres clases', () => {
+    /*
+     * D-88: el detalle no puede ofrecer un hub que la tira de la home, la del
+     * `/404` y el sitemap no ofrecen. Se compara contra la función y no contra
+     * una lista escrita a mano, así que si el corte cambia, cambia en los dos.
+     */
+    const entradas = [
+      ...conVacio(),
+      entradaDePrueba({ id: 'b', slug: 'b', tipo: 'taller', barrio: 'boedo', fechas: [PASADA] }),
+    ];
+    const ofrecidos = hubsOfrecidos(entradas, OPCIONES, ETIQUETAS, AHORA);
+    for (const clase of CLASES_DE_TAXONOMIA) {
+      expect(slugsOfrecidos(clase, entradas, OPCIONES, AHORA)).toEqual(
+        ofrecidos.filter((h) => h.clase === clase).map((h) => h.slug),
+      );
+    }
   });
 });
 

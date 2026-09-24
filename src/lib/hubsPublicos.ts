@@ -661,6 +661,30 @@ export const hubsOfrecidos = (
 ): Hub[] => hubsDelSitio(entradas, opciones, etiquetas, ahora).filter(esIndexable);
 
 /**
+ * Los slugs de una taxonomía cuyo hub **se ofrece** — B-1800.
+ *
+ * Es `slugsConHub` con el otro corte: aquél contesta «¿esta URL responde?» y éste
+ * «¿se la enlaza?». Lo necesita quien enlaza un hub desde afuera de la tira
+ * —«Más talleres» en la página de una pasada— y no tiene la lista de `Hub`
+ * armada: sin él, esa salida enlazaba cualquier hub emitido, también el que ya no
+ * tiene nada vigente y sale con `noindex`, o sea una lista vacía.
+ *
+ * **Sale de `hubsOfrecidos` y no reescribe el corte** (D-88): es literalmente el
+ * mismo filtro que decide la tira de la home, la del `/404` y el sitemap, así que
+ * no puede ofrecer desde el detalle un hub que ellos no ofrecen. Las etiquetas no
+ * cambian qué se ofrece, por eso no se piden.
+ */
+export const slugsOfrecidos = (
+  clase: ClaseDeTaxonomia,
+  entradas: readonly EntradaDeIndice[],
+  opciones: Readonly<Record<string, readonly { slug: string }[]>>,
+  ahora: Date,
+): string[] =>
+  hubsOfrecidos(entradas, opciones, {}, ahora)
+    .filter((h) => h.clase === clase)
+    .map((h) => h.slug);
+
+/**
  * ¿Este hub se indexa? — y por lo tanto, ¿entra al sitemap?
  *
  * **Las dos preguntas tienen una sola respuesta, y eso es el invariante.** Un hub
