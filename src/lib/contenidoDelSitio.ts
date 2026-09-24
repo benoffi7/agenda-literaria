@@ -123,6 +123,9 @@ import type { Biblioteca } from '@/types/biblioteca';
 import type { SuscripcionLiteraria } from '@/types/suscripcion-literaria';
 import type { Lugar } from '@/types/lugar';
 import { INFO_VERSION } from '@/lib/version';
+// B-1850 — el reloj del build se parsea con el mismo conversor que el sello de la
+// home (B-602): un `generadoEn` ilegible no puede volverse un `Invalid Date`.
+import { instanteDeIso } from '@/lib/sesiones';
 // B-285 — la marca de «estuvo publicada alguna vez», y la pregunta escrita en un
 // solo lugar. `marcadaComoPublicada` es la versión ESTRICTA (`=== true`): acá
 // ausente significa «no lo sabemos» y lo que sigue es la inferencia de D-159, no
@@ -923,6 +926,46 @@ export const indiceDelSitio = async (): Promise<Indice> => {
 };
 
 /**
+ * **El reloj del build, uno solo** — B-1850.
+ *
+ * Todas las salidas que deciden algo por fecha —qué ya pasó, qué mes tiene
+ * página, qué hub se ofrece— lo deciden con **este** instante, que es el
+ * `generadoEn` del índice. Hasta B-1850 la página de detalle y la cartelera usaban
+ * `new Date()` y los hubs, los meses, `/pasadas` y el sitemap el `generadoEn`: son
+ * dos relojes separados por lo que tarda el build, y en el borde el detalle podía
+ * decidir que un hub ya no se ofrece mientras la página de ese hub se emitía
+ * indexable (o al revés). La ventana era de segundos y se veía una vez cada tanto,
+ * o sea nunca en un test.
+ *
+ * Tres casos, en orden:
+ *
+ * 1. **`ahora` es un `Date`**: gana, porque es lo que un test o un llamador
+ *    pasan a propósito. Si no lo es —el `{ paginate, rss }` que Astro le pasa a un
+ *    `getStaticPaths` aliasado (B-237)— se ignora.
+ * 2. **El `generadoEn` del índice**, parseado con `instanteDeIso` y no con un
+ *    `new Date()` pelado: con un string ilegible, eso da `Invalid Date` y el primer
+ *    `Intl` que lo toque tira `RangeError` y tumba el build. Es B-602, que se
+ *    arregló en la home con este mismo parser y seguía abierto en cuatro `caminos*`.
+ * 3. **El respaldo**, un `new Date()` que se toma **una vez por build** y se
+ *    reusa: si el `generadoEn` no sirve, todas las salidas siguen contestando con
+ *    el mismo instante, que es lo que esta función existe para garantizar.
+ */
+let respaldoDelReloj: Date | null = null;
+
+export const relojDelBuild = (ahora: unknown, generadoEn: string): Date => {
+  if (ahora instanceof Date) return ahora;
+  const delIndice = instanteDeIso(generadoEn);
+  if (delIndice) return delIndice;
+  respaldoDelReloj ??= new Date();
+  return respaldoDelReloj;
+};
+
+/** Para los tests, que prueban el respaldo con dos relojes distintos. */
+export const olvidarRespaldoDelReloj = (): void => {
+  respaldoDelReloj = null;
+};
+
+/**
  * `{ campo: { slug: etiqueta } }` para el **listado** — las mismas etiquetas que
  * tiene la island.
  *
@@ -1525,6 +1568,13 @@ export const caminosDeLugar = async (): Promise<
  * sistema real" en acción. La guarda de acá es la segunda mitad: si mañana
  * alguien vuelve al alias —que es lo que uno escribe— el sitio se construye
  * igual, con el reloj del build, que es lo correcto.
+ *
+ * ── Y el reloj es el del índice, no `new Date()` (B-1850) ──────────────────
+ * `yaPaso`, `mesesConPagina` y `tiposOfrecidos` se deciden con `relojDelBuild`,
+ * el mismo instante con el que `caminosDeTipo` y `caminosDeMes` deciden si su
+ * página está vacía. Con `new Date()`, en el borde, «Más talleres» o «Más en
+ * septiembre» apuntaban a un hub o un mes que su propia página había decidido
+ * con otro reloj.
  */
 const detallesDelSitio = async (
   instante: Date,
@@ -1690,7 +1740,8 @@ export const caminosDeDetalle = async (
     props: { detalle: DetallePublico; urlMiniaturaPortada: string | null };
   }[]
 > => {
-  const instante = ahora instanceof Date ? ahora : new Date();
+  // B-1850 — el reloj del índice, el mismo que decide qué hub y qué mes se emiten.
+  const instante = relojDelBuild(ahora, (await indiceDelSitio()).generadoEn);
   // B-110 — **el único consumidor que pide las canceladas**, y lo pide escrito:
   // una cancelada tiene página y no aparece en ninguna lista (§7.3).
   const [detalles, miniaturas] = await Promise.all([
@@ -1717,7 +1768,9 @@ export const caminosDeDetalle = async (
  *
  * `ahora` es tolerante por lo mismo que `caminosDeDetalle`: una plantilla que la
  * aliasee en vez de envolverla recibiría el `{ paginate, rss }` de Astro en el
- * primer parámetro (B-237).
+ * primer parámetro (B-237). Y el default es `relojDelBuild` (B-1850): la pared y
+ * las páginas de detalle salen del mismo `DetallePublico`, así que tienen que
+ * decidir con el mismo instante que los hubs y los meses que enlazan.
  *
  * **No pide las canceladas** (B-110): la pared es una lista y una cancelada no
  * entra a ninguna. No hace falta que lo diga —el default de `detallesDelSitio` ya
@@ -1728,7 +1781,7 @@ export const caminosDeDetalle = async (
  * `Afiche.urlMiniatura` nunca sale de una URL sin confirmar.
  */
 export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
-  const instante = ahora instanceof Date ? ahora : new Date();
+  const instante = relojDelBuild(ahora, (await indiceDelSitio()).generadoEn);
   const [detalles, miniaturas] = await Promise.all([
     detallesDelSitio(instante),
     miniaturasConocidas(),
@@ -1777,7 +1830,7 @@ export interface VistaDeMes {
  * no cambia el número.
  *
  * ── El reloj es el del índice, y eso importa acá más que en otras páginas ──
- * `new Date(indice.generadoEn)` y no `new Date()`: cuáles meses se emiten y qué
+ * `relojDelBuild` —el `generadoEn`— y no `new Date()`: cuáles meses se emiten y qué
  * entra en cada uno se decide con **el mismo instante** que decide qué muestra la
  * home y qué dice el `events.json`. Con dos relojes, un build que arranca a las
  * 23:59:58 del último día del mes puede emitir la página de septiembre como
@@ -1792,7 +1845,7 @@ export const caminosDeMes = async (
   ahora?: unknown,
 ): Promise<{ params: { mes: string }; props: { vista: VistaDeMes } }[]> => {
   const indice = await indiceDelSitio();
-  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+  const instante = relojDelBuild(ahora, indice.generadoEn);
 
   // Las mismas etiquetas y los mismos matices que la home: salen del índice, o
   // sea de las opciones ya filtradas por aprobación. Ver `etiquetasDelListado`.
@@ -1854,7 +1907,7 @@ export const sitemapDelSitio = async (
     lugares,
     bibliotecas,
   } = await contenidoDelSitio();
-  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+  const instante = relojDelBuild(ahora, indice.generadoEn);
 
   const rutas = rutasDelSitemap({
     entradas: indice.actividades,
@@ -1930,7 +1983,7 @@ export interface VistaDePasadas {
 
 export const vistaDePasadas = async (ahora?: unknown): Promise<VistaDePasadas> => {
   const indice = await indiceDelSitio();
-  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+  const instante = relojDelBuild(ahora, indice.generadoEn);
 
   return {
     entradas: pasadasDelSitio(indice.actividades, instante),
@@ -1998,7 +2051,7 @@ export interface VistaDeHub {
  */
 const hubsConContexto = async (ahora?: unknown) => {
   const indice = await indiceDelSitio();
-  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+  const instante = relojDelBuild(ahora, indice.generadoEn);
 
   // Las mismas etiquetas y los mismos matices que la home y las páginas de mes:
   // salen del índice, o sea de las opciones ya filtradas por aprobación. Ver
