@@ -123,15 +123,64 @@ export const ENCABEZADO = new RegExp(String.raw`^### +(${ID})\b(.*)$`, 'u');
 const PRIORIDAD = /·\s*(P[0-4])\b/u;
 
 /**
- * Los cinco emojis con los que el archivo marca el estado de un ítem.
+ * **El vocabulario de estado se escribe UNA vez, acá, y se exporta** — B-1222.
+ *
+ * Hasta el 2026-09-24 `ESTADOS` y `ESTADO_DE_EMOJI` eran privados, y
+ * `scripts/estados-referenciados.mjs` tenía su propio mapa con siete emojis.
+ * No era una copia exacta —era un superset, a propósito— pero tenía el modo de
+ * fallar de D-88: el día que un encabezado estrenara un emoji, el barrido de
+ * estados dejaba de reconocerlo y **comparaba menos, en silencio**. Ahora el
+ * que necesita otra forma la compone con esto, que es lo que B-1113 dejó dicho
+ * para los átomos del id: «el que necesite otra forma la compone con estos
+ * átomos, no la reescribe». La red está en `tests/estados-referenciados.test.ts`.
+ */
+
+/**
+ * A qué estado del tablero corresponde cada emoji **de un encabezado**.
  *
  * Son cinco y no dos porque el archivo real usa cinco, y el tablero mostraba
  * **46 ítems cerrados como si estuvieran abiertos** por reconocer solo `✅` y
  * `🟠` detrás de una raya larga (2026-09-17). El vocabulario se lee del
  * archivo, no se le impone: `✅` hecho, `❌` descartado, `⚠️` mirado y sin
  * nada que arreglar, `🟡` a medias, `🟠` empezado.
+ *
+ * Y son cuatro estados y no dos. `hecho` es lo que se hizo; `descartado` es la
+ * puerta que se cerró sin hacer nada —el `❌` explícito, y el `⚠️` de «se miró
+ * y no hay bug que arreglar», que es lo mismo con otro nombre—; `empezado` junta
+ * el `🟠` y el `🟡` de «a medias», que para quien mira el tablero son la misma
+ * cosa: hay trabajo empezado y queda trabajo. Separar `descartado` de `hecho` no
+ * es cosmética: son ocho ítems, y meterlos en «hecho» afirmaría un trabajo que
+ * nunca se hizo.
  */
-const ESTADOS = String.raw`✅|❌|⚠️|🟡|🟠`;
+export const ESTADO_DE_EMOJI = Object.freeze({
+  '✅': 'hecho',
+  '❌': 'descartado',
+  '⚠️': 'descartado',
+  '🟡': 'empezado',
+  '🟠': 'empezado',
+});
+
+/** Los emojis de un encabezado, en la forma en que se meten en un regex. */
+export const ESTADOS = Object.keys(ESTADO_DE_EMOJI).join('|');
+
+/**
+ * El mismo mapa **en una celda de tabla**, que es otra forma del archivo.
+ *
+ * Las tablas —las de los documentos y las de adentro de un encabezado de rango
+ * del propio backlog— usan además `⛔` (bloqueado) y `🔵` (futuro), que ningún
+ * encabezado lleva y que el tablero no sabe escribir. Por eso no entran en
+ * `ESTADO_DE_EMOJI`: meterlos ahí haría que el parser leyera como marcador un
+ * emoji que en un título es prosa. Se componen **encima** del de encabezado,
+ * así que un emoji nuevo de encabezado llega solo a las tablas.
+ */
+export const ESTADO_DE_EMOJI_EN_TABLA = Object.freeze({
+  ...ESTADO_DE_EMOJI,
+  '⛔': 'bloqueado',
+  '🔵': 'futuro',
+});
+
+/** Los emojis de una celda de tabla, en la forma en que se meten en un regex. */
+export const ESTADOS_EN_TABLA = Object.keys(ESTADO_DE_EMOJI_EN_TABLA).join('|');
 
 /**
  * El marcador **cuando va detrás del título**, que es la forma más común.
@@ -222,25 +271,6 @@ const marcadorDe = (encabezado) => {
 const sinMarcador = (encabezado) => {
   const m = marcadorDe(encabezado);
   return m ? encabezado.slice(0, m.desde) + encabezado.slice(m.hasta) : encabezado;
-};
-
-/**
- * A qué estado del tablero corresponde cada emoji.
- *
- * Cuatro y no dos. `hecho` es lo que se hizo; `descartado` es la puerta que se
- * cerró sin hacer nada —el `❌` explícito, y el `⚠️` de «se miró y no hay bug
- * que arreglar», que es lo mismo con otro nombre—; `empezado` junta el `🟠` y
- * el `🟡` de «a medias», que para quien mira el tablero son la misma cosa: hay
- * trabajo empezado y queda trabajo. Separar `descartado` de `hecho` no es
- * cosmética: son ocho ítems, y meterlos en «hecho» afirmaría un trabajo que
- * nunca se hizo.
- */
-const ESTADO_DE_EMOJI = {
-  '✅': 'hecho',
-  '❌': 'descartado',
-  '⚠️': 'descartado',
-  '🟡': 'empezado',
-  '🟠': 'empezado',
 };
 
 /** El estado de un ítem, leído del encabezado. `abierto` es no tener marcador. */

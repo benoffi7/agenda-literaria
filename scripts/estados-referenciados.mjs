@@ -135,42 +135,38 @@ import { fileURLToPath } from 'node:url';
 // El helper de B-964, y no un `git ls-files` propio: lo rastreado **más** lo
 // nuevo sin `git add`, que es justo el archivo que estrena una fila.
 import { archivosDelRepo } from '../tests/fixtures/archivos-del-repo.ts';
-import { DIGITOS, ID, SUFIJO, parsearBacklog } from './tablero/parseo.mjs';
+import {
+  DIGITOS,
+  ESTADO_DE_EMOJI_EN_TABLA,
+  ESTADOS_EN_TABLA,
+  ID,
+  SUFIJO,
+  parsearBacklog,
+} from './tablero/parseo.mjs';
 import { EXTENSIONES, REGISTROS, expandir, idCanonico } from './items-referenciados.mjs';
 
 /*
  * **Nada de lo de arriba se vuelve a escribir acá, y es deliberado** — D-88,
- * B-1113. `DIGITOS`/`SUFIJO`/`ID` son el formato del id, que vive una sola vez
- * en `parseo.mjs`; `expandir`/`idCanonico`/`REGISTROS`/`EXTENSIONES` son el
- * vocabulario del backlog y el corpus del repo, que viven una sola vez en el
- * gemelo. Un barrido que se escribe sus propias copias es exactamente la clase
+ * B-1113, B-1222. `DIGITOS`/`SUFIJO`/`ID` son el formato del id y
+ * `ESTADO_DE_EMOJI_EN_TABLA`/`ESTADOS_EN_TABLA` el vocabulario de estado, que
+ * viven una sola vez en `parseo.mjs`; `expandir`/`idCanonico`/`REGISTROS`/
+ * `EXTENSIONES` son el vocabulario del backlog y el corpus del repo, que viven
+ * una sola vez en el gemelo. Un barrido que se escribe sus propias copias es exactamente la clase
  * que este repo persigue, y `tests/archivar-backlog.test.ts` lo frena.
  */
 
-/**
- * A qué estado corresponde cada emoji **en una celda de tabla**.
+/*
+ * **El mapa de emoji → estado no se escribe acá** — B-1222.
  *
- * Son **siete** y no los cinco de `parseo.mjs`, y la diferencia no es un
- * descuido: `parseo.mjs` lee el **encabezado** de un ítem, donde el vocabulario
- * es el que el tablero sabe escribir (`✅ ❌ ⚠️ 🟡 🟠`). Las **tablas** —tanto
- * las de los documentos como las de adentro de un encabezado de rango del
- * propio backlog— usan además `⛔` (bloqueado) y `🔵` (futuro), que ningún
- * encabezado lleva y que el parser por lo tanto no necesita conocer. Son dos
- * formas distintas del archivo, no dos copias de la misma.
- *
- * La red contra que esto derive está en el test: un caso verifica que este mapa
- * **cubra todos los emojis que los encabezados del backlog usan hoy**, leídos
- * del archivo. Si mañana el registro estrena uno, acá se pone rojo.
+ * Hasta el 2026-09-24 este archivo tenía el suyo, con siete emojis contra los
+ * cinco de `parseo.mjs`: las **tablas** usan además `⛔` (bloqueado) y `🔵`
+ * (futuro), que ningún encabezado lleva. Eran dos formas distintas del archivo y
+ * no dos copias de la misma, pero fallaban como una copia: el día que un
+ * encabezado estrenara un emoji, este barrido dejaba de reconocerlo y comparaba
+ * menos, en silencio. Ahora el de las tablas se compone en `parseo.mjs` encima
+ * del de encabezado, y acá se importa. `tests/estados-referenciados.test.ts`
+ * lee este fuente y frena el día que vuelva a haber un mapa propio.
  */
-export const ESTADO_DE_EMOJI = {
-  '✅': 'hecho',
-  '❌': 'descartado',
-  '⚠️': 'descartado',
-  '🟡': 'empezado',
-  '🟠': 'empezado',
-  '⛔': 'bloqueado',
-  '🔵': 'futuro',
-};
 
 /**
  * Los dos estados que son una puerta cerrada, igual que en el archivador. El
@@ -181,11 +177,8 @@ export const ESTADO_DE_EMOJI = {
  */
 export const CERRADO = new Set(['hecho', 'descartado']);
 
-/** Los emojis reconocidos, en la forma en que se meten en un regex. */
-const EMOJIS = Object.keys(ESTADO_DE_EMOJI).join('|');
-
 /** El primer emoji de estado de un texto, o `null`. */
-const emojiDe = (texto) => new RegExp(`(${EMOJIS})`, 'u').exec(texto ?? '')?.[1] ?? null;
+const emojiDe = (texto) => new RegExp(`(${ESTADOS_EN_TABLA})`, 'u').exec(texto ?? '')?.[1] ?? null;
 
 /** `B-836a` con el número y la letra en grupos propios. */
 const B_CON_GRUPOS = String.raw`B-(${DIGITOS})(${SUFIJO})`;
@@ -223,7 +216,7 @@ const PREFIJO_DE_IDS = new RegExp(String.raw`^###\s+(${ID}(?:\s*(?:a|y|,|/)\s*${
  */
 const bloqueadoPor = () =>
   new RegExp(
-    String.raw`(${EMOJIS})[^|]{0,40}?bloquead[oa]s?\s+por\s+\**\s*${B_CON_GRUPOS}`,
+    String.raw`(${ESTADOS_EN_TABLA})[^|]{0,40}?bloquead[oa]s?\s+por\s+\**\s*${B_CON_GRUPOS}`,
     'giu',
   );
 
@@ -280,7 +273,7 @@ export const afirmacionDeFila = (linea) => {
   if (!item) return null;
   const ultima = [...celdas].reverse().find((c) => c.trim());
   const emoji = emojiDe(ultima);
-  return emoji ? { item, emoji, dice: ESTADO_DE_EMOJI[emoji], forma: 'fila' } : null;
+  return emoji ? { item, emoji, dice: ESTADO_DE_EMOJI_EN_TABLA[emoji], forma: 'fila' } : null;
 };
 
 /**
@@ -472,7 +465,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   );
 
   const linea = ({ archivo, linea: n, item, emoji, real }) =>
-    `  ${archivo}:${n} — ${item} dice ${emoji} ${ESTADO_DE_EMOJI[emoji] ?? 'bloqueado'}, ` +
+    `  ${archivo}:${n} — ${item} dice ${emoji} ${ESTADO_DE_EMOJI_EN_TABLA[emoji] ?? 'bloqueado'}, ` +
     `el registro dice ${real.estado} (${real.donde})\n`;
 
   if (atrasadas.length === 0 && adelantadas.length === 0) {
