@@ -30,6 +30,13 @@
  * documento sea el mismo que este script aplica — o sea, que la metodología y
  * la herramienta no se separen. Las cifras se avisan; no bloquean.
  *
+ * **La excepción son los dos umbrales del formulario** (`UMBRALES_DEL_FORMULARIO`,
+ * B-856 y B-1073), y no contradice lo anterior: las líneas significativas y el
+ * fan-out de **un archivo** solo los mueve quien edita ese archivo. Otro frente
+ * que agrega módulos no cambia cuántos importa `ActividadFormulario.tsx`, así que
+ * el rojo es siempre de quien acaba de escribir el import — el mismo argumento
+ * que deja atar los ciclos.
+ *
  * ── Metodología (la misma que declara el documento) ────────────────────────
  * - **Corpus:** `git ls-files` filtrado a `.ts`, `.tsx`, `.js`, `.mjs` y
  *   `.astro`. Nada de `node_modules`, nada sin versionar.
@@ -44,6 +51,8 @@
  *   `astro.config.mjs` y los relativos; incluye los `import()` diferidos.
  *   `node_modules` queda afuera del grafo, `react` incluido.
  * - **Fan-in:** consumidores **de producción** (no cuenta `tests/`).
+ * - **Fan-out:** módulos distintos **del proyecto** que el archivo importa (las
+ *   aristas que salen de él en el grafo completo).
  * - **Ciclos:** DFS sobre el grafo completo.
  *
  * Uso:
@@ -267,6 +276,45 @@ export const ciclos = (g) => {
   return encontrados;
 };
 
+/** El archivo que el §1.3 sigue, porque es el que ya se hipertrofió una vez. */
+export const FORMULARIO = 'src/components/admin/ActividadFormulario.tsx';
+
+/**
+ * Las dos alarmas del §1.3 de `docs/10-salud-del-codigo.md`, y el porqué de cada
+ * número está ahí, no acá.
+ *
+ * - `significativas` — B-856: 550 líneas **significativas**, no `wc -l`. Queda
+ *   entre el compositor de hoy y la hipertrofia medida (780).
+ * - `fanOut` — B-1073: 45 módulos del proyecto. Es **uno más** que lo que hoy
+ *   importa `AdminApp.tsx`, el router del panel entero: un formulario que
+ *   depende de más piezas que todo el panel ya no compone una pantalla.
+ *
+ * Los dos los afirma `tests/salud-del-codigo.test.ts`, y el documento tiene que
+ * escribir los mismos números.
+ */
+export const UMBRALES_DEL_FORMULARIO = { significativas: 550, fanOut: 45 };
+
+/**
+ * La fila del §1.3: tamaño, fan-out y puesto del formulario, más la razón que
+ * B-856 dejó como lectura — significativas por import.
+ */
+export const medirFormulario = (raiz = RAIZ, archivos = corpus(raiz), g = grafo(raiz, archivos)) => {
+  const lineas = contarLineas(readFileSync(join(raiz, FORMULARIO), 'utf8'));
+  const fanOut = (g.get(FORMULARIO) ?? []).length;
+  const produccion = archivos.filter((f) => AREAS_PRODUCCION.includes(area(f) ?? ''));
+  const locDe = (f) => contarLineas(readFileSync(join(raiz, f), 'utf8')).loc;
+  const puesto = produccion.filter((f) => locDe(f) > lineas.loc).length + 1;
+  return {
+    archivo: FORMULARIO,
+    loc: lineas.loc,
+    significativas: lineas.significativas,
+    fanOut,
+    porImport: fanOut ? lineas.significativas / fanOut : 0,
+    puesto,
+    deArchivos: produccion.length,
+  };
+};
+
 /** Todas las cifras, en un objeto. */
 export const medir = (raiz = RAIZ) => {
   const archivos = corpus(raiz);
@@ -347,6 +395,7 @@ export const medir = (raiz = RAIZ) => {
     },
     ranking: ranking.map((f) => ({ archivo: f, loc: porArchivo.get(f).loc })),
     acoplamiento,
+    formulario: medirFormulario(raiz, archivos, g),
     ciclos: ciclos(g),
     ratioTests: areas['tests/'].loc / locTesteable,
     prosa,
@@ -385,6 +434,22 @@ const imprimir = (m) => {
   for (const { archivo, loc } of m.concentracion.quince) {
     console.log(`| ${mil(loc)} | \`${archivo}\` |`);
   }
+
+  const f = m.formulario;
+  const u = UMBRALES_DEL_FORMULARIO;
+  console.log('\n### 1.3 El formulario\n');
+  console.log(`| \`${f.archivo}\` | Hoy | Alarma |`);
+  console.log('|---|---:|---:|');
+  console.log(`| LOC | ${mil(f.loc)} | — |`);
+  console.log(`| — de eso, significativas | ${mil(f.significativas)} | ${u.significativas} |`);
+  console.log(`| Su fan-out | ${f.fanOut} | ${u.fanOut} |`);
+  console.log(`| Significativas por import | ${f.porImport.toFixed(1).replace('.', ',')} | — |`);
+  console.log(`| Su puesto en la lista | ${f.puesto}º de ${f.deArchivos} | — |`);
+  const pasadas = [
+    f.significativas > u.significativas && 'las significativas',
+    f.fanOut > u.fanOut && 'el fan-out',
+  ].filter(Boolean);
+  if (pasadas.length) console.log(`\n🚨 **Pasó la alarma: ${pasadas.join(' y ')}.** Ver el §1.3.`);
 
   console.log('\n### 1.4 Acoplamiento\n');
   console.log('| Consumidores | Módulo | Fan-out |');

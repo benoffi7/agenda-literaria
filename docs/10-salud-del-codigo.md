@@ -381,12 +381,17 @@ Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 >   sobre el mismo corpus del §1.1 (`git ls-files` filtrado a `.ts`, `.tsx`,
 >   `.js`, `.mjs` y `.astro`, sin `tests/`) — hoy **156** archivos.
 
-| | Antes del saneamiento | `13b9baa` | 2026-08-27 | 2026-09-02 | 2026-09-03 | 2026-09-09 | Hoy (2026-09-17, `f80f935`) |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | 376 | 413 | 727 | **828** |
-| — de eso, significativas | 780 | — | — | — | — | 372 | **397** |
-| Su fan-out | 12 | 19 | 25 | 26 | 24 | 27 | **32** |
-| Su puesto en la lista | 1º | 15º | 14º | 28º | 28º | 18º | **20º** |
+| | Antes del saneamiento | `13b9baa` | 2026-08-27 | 2026-09-02 | 2026-09-03 | 2026-09-09 | 2026-09-17 (`f80f935`) | Hoy (2026-09-24, `dd0f2ae`) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | 376 | 413 | 727 | 828 | **894** |
+| — de eso, significativas | 780 | — | — | — | — | 372 | 397 | **424** |
+| Su fan-out | 12 | 19 | 25 | 26 | 24 | 27 | 32 | **34** |
+| Su puesto en la lista | 1º | 15º | 14º | 28º | 28º | 18º | 20º | **20º** (de 380) |
+
+> 📏 **La columna del 2026-09-24 la imprime el script**, no se contó a mano:
+> `node scripts/salud-del-codigo.mjs` tiene desde B-1073 una sección «1.3 El
+> formulario» con esta fila, la razón «significativas por import» y las dos
+> alarmas al lado. Si alguna está pasada, lo dice con un 🚨.
 
 **La columna del 2026-09-17 es la primera prueba del umbral que B-856
 recalibró, y lo pasa.** El archivo sumó 101 `wc -l` y solo 25 significativas: de
@@ -401,6 +406,61 @@ viene subiendo sin pausa desde el saneamiento (12 → 19 → 25 → 26 → 24 �
 32), y el único que no tiene umbral escrito. La fila de LOC tiene su alarma
 calibrada; ésta no, y es la que mide de cuántas piezas depende el formulario.
 Queda anotado como **B-1073**.
+
+> ⚖️ **B-1073 — el fan-out tiene alarma, y es 45.** Medido el **2026-09-24**
+> sobre `dd0f2ae` con `scripts/salud-del-codigo.mjs`: **34** módulos del
+> proyecto. (El ítem dice «fan-in» en el título; lo que la tabla mide y lo que
+> subió es el **fan-out**: de cuántos módulos depende el formulario. Su fan-in es
+> **1**, `AdminApp.tsx`.)
+>
+> **Primero: qué son esos 34.** Se reparten en cuatro grupos, y no pesan igual:
+>
+> | Grupo | Módulos | Qué los hace crecer |
+> |---|---:|---|
+> | Las piezas de la pantalla — `src/components/admin/formulario/`: diez secciones, la fila de solapas, la barra y el aviso del borrador | 13 | Una pestaña o una sección nueva, que es una decisión de producto (D-490) y no deriva |
+> | La lógica del formulario — `src/lib/formulario/` | 9 | Sacar lógica del compositor: es el saneamiento funcionando |
+> | Sus hooks — `useAutoguardado`, `useFormularioSucio`, `useMedicionFormulario` | 3 | Lo mismo, con estado de React |
+> | **Lo de afuera** — `actividades`, `schema`, `types/actividad`, `comisiones`, `formatoDeHora`, `fallosDelPanel`, `rolDelPanel`, `vistaDelPanel` y `@historial` | 9 | **Que el formulario sepa algo del panel o del modelo que no pasa por `lib/formulario/`** |
+>
+> Los tres primeros —25 de 34— son el formulario componiéndose a sí mismo, y
+> subieron porque el saneamiento hizo exactamente eso: el archivo hipertrofiado
+> de 2026-08-21 importaba **17** módulos y tenía **46** significativas por cada
+> uno; el de hoy importa 34 y tiene **12,5**. Un fan-out que sube mientras la
+> razón baja es lógica **saliendo** del compositor, no entrando. Por eso el
+> número solo no alarmaba nada, y por eso B-856 lo dejó como lectura.
+>
+> **Segundo: contra qué se ancla.** El otro archivo del panel con fan-out alto es
+> `AdminApp.tsx`, con **44**, y es alto por diseño: es el router, importa cada
+> pantalla del panel. **Un formulario que depende de más piezas que el panel
+> entero ya no compone una pantalla** — es el mismo síntoma que la hipertrofia,
+> por el otro lado: en vez de saberlo todo adentro, lo sabe todo importado.
+>
+> **La decisión:**
+>
+> - 🚨 **La alarma del fan-out es 45**, uno más que el router de hoy. Deja
+>   **11** de aire sobre 34 —el 32 %, el mismo orden que el 35 % que B-856 le dejó
+>   a las significativas—. Al ritmo del último mes (25 → 34 entre el 2026-08-27 y
+>   hoy, uno cada tres días) llega en unas cinco semanas, y eso es a propósito: el
+>   ítem existe porque sube sin pausa, y una alarma que no suena nunca no es
+>   alarma.
+> - 🔍 **Cuando suene, lo que se mira es qué grupo creció**, no el total. Si
+>   creció «lo de afuera», el formulario está aprendiendo del panel sin pasar por
+>   `lib/formulario/`, y el arreglo es mudar ese conocimiento a un módulo del
+>   formulario. Si crecieron los otros tres, es composición: se recalibra con el
+>   porqué escrito acá, como hizo B-856. **Lo que no se hace es subir el número
+>   para que pase.**
+> - 📖 **La razón «significativas por import» sigue siendo la lectura** de B-856:
+>   subiendo con el fan-out quieto es lógica entrando, y se mira aunque ninguna
+>   alarma suene. El script la imprime.
+>
+> **Y ahora tiene red, las dos alarmas.** `tests/salud-del-codigo.test.ts` afirma
+> que el formulario está en o debajo de las dos, y que este documento escribe los
+> mismos números que `UMBRALES_DEL_FORMULARIO` en el script. **No contradice la
+> regla de B-180** que deja las cifras de este documento sin test: esas se mueven
+> con el trabajo de cualquiera, y éstas son de **un archivo** — solo las mueve
+> quien edita `ActividadFormulario.tsx`, así que el rojo es de quien acaba de
+> escribir el import, como el de un ciclo. La alarma de B-856 no tenía red por
+> la misma omisión, y entra en el mismo chequeo.
 
 La fila «significativas» tiene huecos a propósito: las mediciones del 2026-08-27
 al 2026-09-03 se hicieron con el criterio viejo —`wc -l` y nada más— y estimarlas

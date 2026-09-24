@@ -6,8 +6,11 @@ import {
   ciclos,
   contarLineas,
   corpus,
+  FORMULARIO,
   grafo,
   grafoEstatico,
+  medirFormulario,
+  UMBRALES_DEL_FORMULARIO,
 } from '../scripts/salud-del-codigo.mjs';
 
 /**
@@ -36,6 +39,10 @@ import {
  *    hace que la metodología escrita sea la que se aplica, en vez de una
  *    descripción de al lado que envejece sola — que es exactamente cómo este
  *    documento llegó a declarar 111 archivos con 180 en el árbol.
+ * 4. **Los dos umbrales del formulario** (B-856, B-1073). Son cifras, pero de
+ *    **un archivo**: las significativas y el fan-out de `ActividadFormulario.tsx`
+ *    solo los mueve quien edita `ActividadFormulario.tsx`. El rojo tiene el mismo
+ *    dueño que el de un ciclo, así que no cae en la objeción de B-180.
  */
 const raiz = new URL('..', import.meta.url);
 const doc = readFileSync(fileURLToPath(new URL('docs/10-salud-del-codigo.md', raiz)), 'utf8');
@@ -184,6 +191,58 @@ describe('salud del código — ciclos de import (B-311)', () => {
       `${origen} → ${destino} es un import multilínea real: si no aparece acá, ` +
         'el regex IMPORTS volvió a angostarse',
     ).toContain(destino);
+  });
+});
+
+/**
+ * **El formulario no pasa sus dos alarmas — B-856 (tamaño) y B-1073 (fan-out).**
+ *
+ * Hasta B-1073 las dos vivían solo en el §1.3 y las miraba quien remidiera a
+ * mano, que es como el fan-out subió siete mediciones seguidas sin que nada lo
+ * dijera. El porqué de cada número está en el documento; acá se ata que el
+ * archivo esté debajo y que el documento escriba los mismos números que el
+ * script, porque dos lugares con el umbral son dos umbrales.
+ *
+ * **Qué hacer cuando se pone rojo no es subir el número.** Es mirar el archivo
+ * como hizo B-856 y escribir la decisión en el §1.3: partir, o recalibrar con el
+ * porqué. Un número que se sube para que pase es un umbral que no existe.
+ *
+ * MUTACIÓN PROBADA: bajar `UMBRALES_DEL_FORMULARIO.fanOut` a 33 pone en rojo el
+ * primer caso (y el tercero, porque el §1.3 sigue diciendo 45); cambiar el «45»
+ * del §1.3 por «46» pone en rojo solo el tercero.
+ */
+describe('el formulario no pasa sus umbrales (B-856, B-1073)', () => {
+  const hoy = medirFormulario();
+
+  it('el fan-out está en o debajo de la alarma del §1.3', () => {
+    // Control positivo: si el grafo dejara de ver los imports del formulario,
+    // el fan-out daría 0 y el caso pasaría sin haber medido nada.
+    expect(hoy.fanOut).toBeGreaterThan(20);
+    expect(
+      hoy.fanOut,
+      `${FORMULARIO} importa ${hoy.fanOut} módulos del proyecto y la alarma del ` +
+        `§1.3 es ${UMBRALES_DEL_FORMULARIO.fanOut}. No subas el número: mirá qué grupo ` +
+        'creció (docs/10-salud-del-codigo.md §1.3, B-1073) y escribí la decisión.',
+    ).toBeLessThanOrEqual(UMBRALES_DEL_FORMULARIO.fanOut);
+  });
+
+  it('las líneas significativas están en o debajo de la alarma del §1.3', () => {
+    expect(hoy.significativas).toBeGreaterThan(100);
+    expect(
+      hoy.significativas,
+      `${FORMULARIO} tiene ${hoy.significativas} líneas significativas y la alarma ` +
+        `del §1.3 es ${UMBRALES_DEL_FORMULARIO.significativas} (B-856). Mirá el archivo ` +
+        'antes de tocar el número.',
+    ).toBeLessThanOrEqual(UMBRALES_DEL_FORMULARIO.significativas);
+  });
+
+  it('el §1.3 escribe los mismos umbrales que el script', () => {
+    const fanOut = doc.match(/La alarma del fan-out es (\d+)/);
+    const significativas = doc.match(/La alarma es (\d+) líneas significativas/);
+    expect(fanOut, 'el §1.3 no escribe la alarma del fan-out (B-1073)').not.toBeNull();
+    expect(significativas, 'el §1.3 no escribe la alarma de B-856').not.toBeNull();
+    expect(Number(fanOut![1])).toBe(UMBRALES_DEL_FORMULARIO.fanOut);
+    expect(Number(significativas![1])).toBe(UMBRALES_DEL_FORMULARIO.significativas);
   });
 });
 
