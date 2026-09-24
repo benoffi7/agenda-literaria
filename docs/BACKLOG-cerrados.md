@@ -5420,63 +5420,6 @@ las tres con el mismo perfil.
 caían**. La lista de D-124 vive en un solo lugar a propósito, pero eso no alcanza —
 cada entrada necesita su propio clavo, y las cuatro que tiene ahora lo tienen.
 
-### B-98 · Cancelar un encuentro sin que desaparezca en silencio — ✅ aprobado (2026-08-26), pendiente de implementar
-
-**Contradice el §7.3 del `CLAUDE.md` y la guía del panel**, y por eso necesitaba
-decisión del dueño. **La dio el 2026-08-26: sí, y con el motivo de cancelación
-incluido.**
-
-Así que el §7.3 cambia, y eso hay que escribirlo como desvío explícito en
-`docs/06-decisiones.md` cuando se implemente: el `CLAUDE.md` es la decisión cerrada
-y no se edita desde acá, pero el desvío se anota con su motivo, como ya se hizo con
-D-15.
-
-**Y hay dos textos que van a quedar mintiendo el día que esto entre**, los dos hay
-que corregir en el mismo cambio:
-
-1. El aviso `cancelar-encuentro` de `src/lib/ayuda.ts` — que desde B-63 se llama
-   «Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá»
-   y **dice la verdad hoy**. Con B-98 pasa a ser al revés. **Y no hace falta
-   acordarse:** ese aviso está atado por `atadoA` a los `it` que fijan el
-   comportamiento actual, así que implementar B-98 **pone el test de la guía en
-   rojo** y obliga a reescribir el aviso en el mismo commit — que es literalmente lo
-   que este ítem pedía.
-2. El §7.3 del `CLAUDE.md`, que es la fuente.
-
-**Por qué no entró a la tanda del 2026-08-26:** necesita `SesionesEditor.tsx` para el
-campo del motivo (que otro frente estaba tocando) y cambia lo que sale al evento, así
-que el barrido de centinelas de B-196 tiene que conocerlo. Va después de esos dos.
-
-Hoy `sesion.cancelada === true` **borra** el evento. Quien tenía ese jueves
-agendado, con su recordatorio, ve el evento desaparecer sin ningún aviso. Es
-justo el momento en que un calendario público vale más —es la única vez que el
-dato cambió *después* de que la gente lo guardó— y el sistema elige no decirlo. Y
-no hay dónde escribir por qué: "se pasa al jueves que viene" y "se cancela por
-falta de inscriptos" se ven igual, como un hueco.
-
-Propuesta: `sesion.motivoCancelacion: string | null`, y que un encuentro
-cancelado **actualice** su evento en vez de borrarlo (`CANCELADO — ` en el título,
-el motivo arriba de la descripción). Lo que no cambia: pasar la actividad a
-borrador/pendiente/cancelada sigue borrando todo, y **borrar** el encuentro sigue
-borrando su evento. La distinción es esa: cancelar es un anuncio, borrar es una
-corrección.
-
-Más barato de lo que parece: todo vive en `debeExistir` y `construirEvento`, dos
-funciones puras ya exportadas y con tests, y la vista previa del panel las
-importa (D-20), así que el panel lo muestra sin una línea de UI.
-
-**No es solo código:** el aviso `cancelar-encuentro` de `src/lib/ayuda.ts` pasa a
-mentir, y es uno de los seis avisos de lo que no se puede deshacer. Es
-exactamente el escenario de **B-63** — se actualiza en el mismo commit o no se
-hace.
-
-Va después de B-01 (toca la parte más frágil, §7 y §10 avisan), pero **decidirlo
-antes**: si el sitio nace sabiendo que una sesión cancelada tiene motivo, la
-página de detalle lo muestra de entrada.
-
-Segunda decisión, menor: si un evento cancelado se borra cuando su fecha ya pasó
-o queda como registro (recomendado: queda).
-
 ### B-99 · El `events.json` necesita un eje de encuentros, no solo de actividades — ✅ hecho (2026-09-03)
 
 Parte de **B-01**, anotado para que no se pierda al escribir el generador.
