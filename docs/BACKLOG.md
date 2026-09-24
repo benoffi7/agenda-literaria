@@ -24,8 +24,8 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > **Los números no se reciclan, y los huecos están explicados abajo.** El próximo
 > `B-` libre se calcula sobre **los dos archivos** —la mitad de los ids usados
 > está en el de cerrados—, así que el tablero (`npm run tablero`) lo dice bien.
-> Lo que ningún archivo sabe es un id **reservado por una tanda y nunca
-> escrito**: esos hay que buscarlos a mano en los ítems que los reservaron.
+> Un id **reservado por una tanda y nunca escrito** lo lee el tablero de la
+> sección `## Rangos` del archivo de coordinación de la tanda (B-1051, D-981).
 
 > **Rangos reservados por la tanda del 2026-09-22 — cincuenta números, de diez en
 > diez por frente, a partir del 1150; y veinte de las decisiones a partir de la
@@ -242,6 +242,11 @@ seguir es que nadie sepa cuál de las dos es.
   código hace, porque los dos hacían exactamente lo que estaba escrito que
   hicieran — el problema estaba en lo que estaba escrito.
 
+> ✅ **Hecho — lo verificó el triage del 2026-09-24.** Los tres pasos de abajo
+> pasaron, aunque no exactamente como se escribieron: la subida del flyer no se
+> abrió en `storage.rules` sino que migró a una callable (B-896), y `/proponer`
+> está en el sitemap y enlazada desde el pie. El plan queda como estaba escrito.
+>
 > **Y desde el 2026-09-09 hay un paso más al final, que no estaba: anunciar
 > `/proponer`.** La página del formulario ya está escrita y publicada con el sitio,
 > pero **no** en el sitemap ni enlazada desde el chrome, porque hasta que App Check
@@ -675,253 +680,6 @@ imagen rota.
 > hay nada urgente colgando— pero sí cambia con qué se agenda: el día que se toque
 > uno, se tocan los tres juntos, y recién ahí la medición de B-872 vale la pena.
 
-### B-842 · La regla no puede validar la forma de cada fecha de una propuesta · P2
-
-**Sale de construir `/propuestas`** (B-830, paso 5), y es una limitación del
-runtime y no un olvido: **una regla de Firestore no itera una lista**. De `fechas`
-se puede acotar la cantidad (1–12) y el tipo, y no la forma de cada fila. Lo mismo
-con los elementos de `incluye`: se acota cuántos, no el largo de cada uno.
-
-O sea que el día que el `create` anónimo se abra, un `curl` va a poder mandar doce
-mapas arbitrarios ahí adentro, con strings tan largos como el tope de **1 MB** del
-documento permita. El schema de zod los rechaza y no cuenta: es lo primero que se
-saltea.
-
-**Por qué no bloquea nada, y por qué igual está anotado.** Nada de una propuesta
-llega a una salida pública sin que **un admin la convierta en actividad**. El daño
-posible es «el admin ve una fila rara en la bandeja» y una escritura facturada de
-hasta 1 MB — molesto, no peligroso.
-
-> ⚠️ **Corrección: lo que protege no es `actividadFormSchema`, es que un admin
-> mire.** Esta entrada decía que la conversión «pasa por `actividadFormSchema` con
-> su `superRefine` entero», y para **`incluye` eso no filtra nada**: ese schema lo
-> declara `z.array(texto)`, o sea texto libre sin lista blanca. Lo cobró el
-> `auditor-privacidad`, y el camino completo es: `toPublic` lo proyecta →
-> `detallePublico` lo resuelve con `etiquetaDe` → `listadoPublico` cae a
-> `desSlug(valor)` si el slug no está en la taxonomía. O sea que **un slug
-> inventado se publica verbatim, des-slugueado, como texto visible en la página de
-> detalle**, que es HTML indexado.
->
-> Y es el campo donde «el admin lo va a ver» es **más débil**, no más fuerte: doce
-> chips que parecen taxonomía se leen como taxonomía. `titulo` y `descripcion`
-> corren por el mismo camino y ahí el ojo humano sí alcanza, porque son texto que
-> se lee entero.
->
-> **El arreglo no es de la regla: es una línea de la conversión** (`propuestas.ts`,
-> paso siguiente del PRD): `incluye.filter((s) => slugsConocidos.has(s))`, y lo que
-> no esté en la taxonomía cae a `incluyeOtro` para que el admin decida — que es
-> exactamente el mecanismo que el § 4.2 del PRD ya definió para el «Otro». **Va con
-> `propuestas.ts`, no después**, y su test es
-> `it('la conversión descarta los `incluye` que no están en la taxonomía')`. Lo que sí importa es que esté **escrito como
-asimetría y no como garantía**: `tests/propuestas.test.ts` tiene un caso que
-afirma que las expresiones de fecha viven **solo** en el schema y que la regla
-**no** las tiene, así que si alguien las agrega ahí, el test se pone rojo y hay que
-venir a decidir qué quedó cubierto. La primera versión de ese caso afirmaba lo
-contrario —que la regla las repetía— y era falso.
-
-**Dónde y el molde, si aparece abuso.** No es del lado de la regla: es una
-Function `onDocumentCreated` sobre `/propuestas` que valide la forma fila por fila
-y marque —o borre— la que no pasa. Hay dos moldes: el barrido programado que B-836
-pide para la bandeja, y `functions/reportes.js`, que ya hace validación del lado
-del servidor sobre algo que entró por el cliente. **No hacerlo antes de tener el
-problema**: es una Function más para cubrir un caso que hoy nadie ejerce, y el
-techo de 1 MB ya lo acota.
-
-Y hay una defensa que llega antes y no es ésta: **App Check** (B-836a). El script
-que manda doce mapas de 80 KB es exactamente el que no pasa por la página.
-
-> ✅ **La parte accionable está hecha (2026-09-09), y el camino se verificó antes
-> de tocar nada.** El filtro que la corrección pedía **ya había entrado con
-> `propuestas.ts`** (B-830, paso 6): `incluyeDePropuesta` compara contra los slugs
-> de `/opciones/incluye-actividad` y manda el resto a `incluyeOtro` vía el aviso de
-> conversión, que es el mecanismo del § 4.2 del PRD. La taxonomía no se lee ahí —el
-> módulo es puro (§05)—: entra por parámetro y la pasa el `PropuestasPanel`, con
-> **default `[]`, no «dejar entrar»**, así que un llamador distraído no publica
-> nada.
->
-> El camino que la corrección afirma es **exacto**, eslabón por eslabón:
-> `toPublic.ts` → `detallePublico.ts` (`etiquetaDe`) → `listadoPublico.ts`
-> (`?? desSlug(valor)`) → `actividad/[slug].astro`, donde se pinta como `<li>` bajo
-> «Qué se llevan». HTML indexado, confirmado.
->
-> **Lo que faltaba era lo otro que este ítem pedía:** que estuviera escrito como
-> asimetría y no como garantía. `tests/propuestas.test.ts` todavía repetía la frase
-> retractada —«esa conversión pasa por `actividadFormSchema`… no un dato
-> publicado»— justo en el docblock que **justifica** el hueco de la regla. Se
-> corrigió y se le puso aserto, con la carga que la regla no puede rechazar (un
-> slug inventado y uno de 4000 caracteres), afirmando que ninguno queda en ningún
-> campo del formulario. Está en ese archivo y no en `propuestas-conversion.test.ts`
-> para que, si alguien borra el filtro, lo que se ponga rojo sea el párrafo que
-> dice que el hueco es aceptable.
->
-> **Lo que sigue abierto es lo que este ítem manda no hacer todavía:** la Function
-> `onDocumentCreated` que valide fila por fila, y App Check (B-836a). No antes de
-> tener el problema. Y salió **B-859**, que sí es un defecto y no una asimetría
-> aceptada.
-
-### B-843 · Cuatro cosas que la bandeja de propuestas necesita antes de existir · P1
-
-Las cuatro salen de la auditoría de `/propuestas` (el `auditor-privacidad` sobre
-B-830) y comparten una forma: **son decisiones que cuestan una línea ahora y un
-rediseño después**, porque cuando la bandeja esté escrita ya va a haber
-documentos guardados.
-
-> ✅ **Las dos primeras las contestó el dueño el 2026-09-09.** La 1 como estaba
-> recomendada; la 2 con la **primera opción**. Lo que cada una cambia está al
-> final de su punto.
-
-**1 · Hoy no hay ninguna forma de borrar el dato personal del tercero.** El
-camino de admin (`origen: 'panel'`) **está abierto desde el paso 5**, así que el
-proyecto ya puede guardar el mail o el WhatsApp de alguien. Y: `allow delete: if
-false`, `revisionValida()` acota el update a `estado` + `revision` —así que
-tampoco se puede vaciar el campo— y la Function de retención de **B-838 no
-existe**. La única forma de honrar un «borrame» es un script con el Admin SDK que
-nadie escribió. La decisión de que rechazar sea un estado y no una desaparición es
-buena; lo que falta es que **la excepción del borrado exista antes que el dato**.
-Lo más barato: no usar el camino de panel hasta que B-838 esté, y que la fila de
-`07-seguridad.md` lo diga en futuro (ya corregida).
-
-> ✅ **Decidido: el camino de panel no se usa hasta que B-838 exista.** Y eso
-> **cambia el orden del plan**: el paso 11 de la tajada 1 (la retención) pasa a ir
-> **antes** de que el `PropuestasPanel` (paso 7) tenga cualquier forma de cargar
-> una propuesta a mano. Hoy no hay UI que lo haga, así que la decisión no cuesta
-> nada — lo que no puede pasar es que esa pantalla llegue con un botón de «cargar
-> a mano» mientras la Function de retención todavía no existe.
->
-> ✅ **Cumplido — y el bloqueo NO se levanta solo con B-838 (2026-09-09).** El
-> `PropuestasPanel` (paso 7) salió **sin** ninguna forma de cargar a mano, y
-> `borrarPropuestasVencidas` ya existe. Pero el bloqueo era «no guardar el dato de
-> un tercero mientras no exista lo que lo borra», y lo que se escribió borra
-> **solo la rechazada**: una propuesta cargada a mano nace `nueva` —lo **fuerza la
-> regla**, `propuestaValida()` exige `d.estado == 'nueva'` para los dos orígenes—
-> y `nueva` es justo uno de los tres estados que **no caducan** (**B-844**). O sea
-> que el alta manual seguiría produciendo un dato personal sin fecha de
-> vencimiento, con la única salida de rechazarlo a mano para meterlo en la cola.
->
-> Lo señaló el `auditor-privacidad` sobre este mismo commit, corrigiendo lo que
-> esta nota decía al escribirse («el bloqueo se levantó»). **El alta manual queda
-> condicionada a B-844**, no a B-838.
-
-**2 · El `hasAny(['estado'])` va a bloquear el flujo de aceptar.** `affectedKeys`
-solo incluye lo que **cambió de valor**, y el flujo natural de aceptar son dos
-escrituras: mover a `aceptada` → crear la actividad → guardar su id. La segunda
-toca solo `revision.actividadId` y **la regla la rechaza**. Hay dos salidas y hay
-que elegir una **antes** de escribir el panel: crear la actividad primero y mover
-`estado` + `revision` en **una** escritura (preferible — deja la propuesta
-consistente en un solo paso), o aflojar el `hasAny`. Mejor decidirlo ahora que
-descubrirlo con la pantalla hecha.
-
-> ✅ **Decidido: una sola escritura** (**D-600**). El `hasAny(['estado'])` se
-> queda, y el flujo de aceptar es: crear la actividad → **después** mover `estado`
-> y `revision` juntos. La regla no se toca y es el panel el que se adapta, que es
-> el orden correcto: una regla que acepta una propuesta a medio revisar es más
-> difícil de arreglar que un `await` en el orden correcto. El razonamiento —y por
-> qué la asimetría de los fallos es lo que decide— está en D-600.
-
-**3 · La revisión se puede pisar sin rastro.** — ✅ **decidido (2026-09-16)**
-Un admin puede sobrescribir
-`revision` —firmándola a su nombre, que es lo que la regla exige— y el `motivo`
-anterior desaparece: `/propuestas` no tiene subcolección `versiones` y el trigger
-de historial solo mira `/actividades`. La propuesta queda como prueba de qué se
-pidió; **quién la revisó y por qué, no**. Con cuatro cuentas admin eso importa
-menos que con cuarenta, así que puede quedar así — pero escrito.
-
-> ✅ **Decidido por el dueño: queda sin rastro** (**D-721**). Es la opción que
-> este punto recomendaba, y lo que la hace defendible es **para qué existe
-> `/propuestas`**: es una cola de entrada, no un registro. Lo que hay que poder
-> reconstruir es *qué pidió el de afuera* —y eso no se pisa nunca, porque
-> `revisionValida()` acota el `update` a `estado` + `revision` y el cuerpo de la
-> propuesta es inmutable desde que entra—. El acto administrativo de revisarla es
-> interno, entre cuatro cuentas de confianza, y **la actividad que sale de ahí sí
-> tiene historial completo** (§12): el dato que sobrevive está versionado, el que
-> se pisa es el que se descarta.
->
-> **Lo que la decisión compra:** no entra una subcolección `versiones` en
-> `/propuestas` —que arrastraría su propio trigger, sus reglas, su retención (los
-> datos personales de B-838/B-844 se copiarían a un lugar que **no** caduca) y su
-> línea en las tres tablas de privacidad—. Poner un dato personal en un segundo
-> lugar para auditar quién lo revisó es un mal negocio de privacidad.
->
-> **La condición de reapertura, que es la misma que la de B-28:** el día que
-> revise una cuenta que no sea de confianza. Con el rol `publicador` ya existiendo
-> (B-888), eso dejó de ser hipotético — pero **hoy el publicador no ve la
-> bandeja**, así que la condición todavía no se cumple. Si la bandeja se le abre,
-> este punto se reabre **en el mismo cambio**, y lo barato entonces no es la
-> subcolección: es un campo `revisionesPrevias` acotado y con la misma retención
-> que la propuesta.
-
-**4 · El saneador de la salida 3 no reconoce dos de las tres vías de contacto.** — ✅ hecho (2026-09-09)
-`redactar()` (`functions/reportes.js`) tapa `LINK_REUNION` y `MAIL`, y
-`VIAS_CONTACTO_PROPUESTA` es `['mail', 'whatsapp', 'instagram']`: un teléfono y un
-`@handle` pasan enteros. Hoy no hay camino —nada lee `/propuestas` y el reporte lo
-arma el panel con su propio contexto— pero la bandeja va a vivir al lado del botón
-de reportar, y el `contexto` del reporte lleva la `url` de la pantalla. Cuando la
-bandeja entre: o dos patrones más en `redactar()`, o que el contexto del reporte
-no pueda incluir esa pantalla. Y el centinela de esa salida tiene que ser **no
-saneable** para esta clase (un `+54 9 11 …` y un `@casabrandon`), porque si no el
-test pasa por el motivo equivocado.
-
-> ✅ **Cerrado con la bandeja (paso 7), que es cuando el camino se abrió.** Los
-> dos patrones, y el del teléfono **con guarda**: se tapa desde diez dígitos y
-> nunca lo que contiene una fecha ISO. Sin eso el saneador se comía «el encuentro
-> del 2026-10-07 19:00 no aparece», que son diez dígitos y es justo el reporte que
-> este panel escribe todo el tiempo — tapar de más no filtra nada, pero deja el
-> reporte sin lo que hace falta para reproducirlo. La guarda está verificada por
-> mutación, y el `CENTINELA_CRUDO` de `clases-de-bug.test.ts` sigue siendo no
-> saneable (no tiene diez dígitos ni arroba), así que el barrido de esa salida no
-> pasó a pasar por el motivo equivocado.
-
-### B-830 a B-839 · Los cuatro formularios: propuestas de organizadores y los tres directorios · P1 — **para mañana (2026-09-09)**
-
-**Los PRDs están escritos y el inventario de archivos también.** Pedido del dueño
-el 2026-09-08; la especificación completa vive en [`prd/`](prd/README.md) y esto
-es solo la fila del backlog. La sesión de mañana **no tiene que explorar**: el
-inventario archivo por archivo, el orden por commit y las siete cosas que se
-rompen en silencio están en
-[`prd/05-inventario-de-archivos.md`](prd/05-inventario-de-archivos.md).
-
-| # | Qué | Dónde está especificado | Estado |
-|---|---|---|---|
-| **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🟠 **empezado (2026-09-09)** — están el control positivo (`tests/escritura-anonima.integracion.test.ts`: hoy nadie escribe sin el claim, ni en las cuatro colecciones futuras) y **App Check cableado** (`src/lib/appcheck.ts`, reCAPTCHA **Enterprise**, con la app ya registrada por el dueño). Falta publicar, verificar en la consola y **exigir** — **B-836a**, y el orden no se puede invertir: exigir antes de que el cliente mande tokens deja al panel sin poder escribir. Las otras cuatro capas (validación en la regla, topes, honeypot, barrido) van con la colección que las estrene |
-| **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
-| **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | ✅ **hecho (2026-09-09)** — `src/lib/datoConFecha.ts` + `tests/dato-con-fecha.test.ts`. Las tres reglas son propiedades del módulo: la proyección pública es **un solo string** («$18.000 por mes · cargado el 24 de septiembre de 2026»), así que no hay número que filtrar ni que meter en un `Offer`, y **el valor sin fecha usable no sale** — desaparece en vez de publicarse solo. La fecha es absoluta y con año porque el sitio es estático: un «hace tres meses» horneado en el HTML envejece solo (**D-570**). Todavía sin consumidor: lo estrenan las librerías y las suscripciones |
-| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — **la tajada 1 completa salvo el anuncio** (pasos 4 a 11): **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). **Dos decisiones del dueño del 2026-09-09 cambian el resto** (B-843): aceptar es **una sola escritura**, con la actividad creada primero (**D-600**), y **la retención (B-838) va antes** de que el panel tenga cualquier forma de cargar una propuesta a mano. **Los pasos 6 y 7 ya están**: la conversión pura (`propuestas.ts`, con sus `ses_<uuid>` y sin slug) y la **bandeja** —convertir, marcar en revisión, rechazar con motivo, reabrir— con D-600 cableado y **sin carga a mano**, que es esa decisión respetada. De paso cerró **B-843 punto 4**. Y el **paso 11 (la retención, B-838) también está**, adelantado por B-843 punto 1: `borrarPropuestasVencidas` borra la rechazada y su imagen a los 30 días, con script en seco y las dos mitades verificadas contra los emuladores; la despliega CI en el push. Con el **paso 10 (B-839)** la tajada queda **completa salvo el anuncio**. Y el **paso 9 (`/proponer`)**: la página, el `FormularioPublico` con honeypot y tiempo mínimo, la subida enganchada, y el guard de imports partido en **estático** (prohibido para toda página pública) y **diferido** (solo para las que escriben) — que es lo que hace que App Check entre en el submit y no al abrir. **Escrita y no anunciada**: sin sitemap y sin enlace hasta que App Check exija (último paso de B-836a). Y el **paso 8 (la imagen de DEC-11)**: el prefijo `propuestas/` en `storage.rules` (`get` solo para un admin —desvío del PRD decidido por el dueño—, `list` para nadie, `delete` para nadie), el flyer visible en la bandeja, la promoción a `imagenes/` al convertir (por el panel, no por una Function: la clase de B-80) y el borrado en el acto al rechazar (`borrarImagenAlRechazar`). De paso salió **B-846**. Quedan `/proponer` (paso 9) y `/contacto` con Instagram (paso 10) |
-| **B-831** | **Directorio de librerías** — `/guia/librerias`, `/guia/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | ✅ **hecho (2026-09-15)** — listado, ficha, panel y **formulario público**. Lo último fue `/guia/librerias/sumar`, y con él la decisión que desvía el § 5 del PRD: la ficha que llega de afuera **nace sin fotos** (**D-700**) |
-| **B-832** | **Directorio de suscripciones literarias** — `/guia/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. El choque de nombre que tenía —la barra ya dice «Suscribirse», el calendario— **se lo llevó `/guia/`**: las dos etiquetas nunca aparecen juntas | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | ✅ **hecho (2026-09-15)** — listado, ficha, panel y **formulario público**. El precio se pide y su fecha no: la estampa la regla con `request.time`, así que quien carga no elige qué fecha se publica al lado del número (DEC-12) |
-| **B-833** | **Directorio de lugares para eventos** — `/guia/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | ✅ **hecho (2026-09-15)** — listado, ficha, panel y **formulario público** (B-915). De los tres es el que abre sobre el problema serio del § 6: la ficha que llega de afuera **nunca** publica su dirección, mire lo que mire el `tipo` |
-| **B-835** | **La pestaña «Guía» y la página `/guia` que la recibe.** Era «la barra pasa de 7 a 10 pestañas y ya no entra en un teléfono»; con la decisión de `/guia/*` del 2026-09-08 **pasa de 7 a 8** y el ítem se desinfló a dos cosas concretas: la entrada en `ENLACES` y `src/pages/guia/index.astro`. Va **con** la primera sección y no después — `/guia/librerias` sin `/guia` es una URL cuyo padre no existe | [`prd/README.md`](prd/README.md) § «Las decisiones del dueño» y § 6 | 🟢 chico, y ya sin decisión pendiente |
-| **B-838** | **Retención: 30 días** (DEC-13) — reabre **B-102** («¿el sistema guarda algo de quien se inscribe?» → *no*), que dejó de ser cierto el día que existe una bandeja con el mail de quien propone. Function `onSchedule`, y borra **documento e imagen** (DEC-11) | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 7 | ✅ **hecho (2026-09-09)** — `borrarPropuestasVencidas`, con su decisión pura (`functions/retencion.js`), su script en seco (`scripts/borrar-propuestas-vencidas.mjs`) y las dos mitades del borrado verificadas contra los emuladores. **Adelantado al paso 11 → antes del 8**, por la decisión de B-843 punto 1. **El deploy lo hace CI**: el push a `main` ve el cambio en `functions/` y la despliega sola, sin IAM nuevo — el job `functions` va después de `hosting`, así que hay una ventana de minutos en la que el panel promete un borrado que todavía no corre (dicho en `07-seguridad.md`). A mano, si hiciera falta: `firebase deploy --only functions:borrarPropuestasVencidas` |
-| **B-839** ✅ **hecho (2026-09-09)** | **`/contacto` suma Instagram como canal** — pedido del dueño el 2026-09-08. Hoy `BLOQUES_DE_CONTACTO` son dos `mailto:` y el handle (`agenda.leh`) está en el chrome, no como forma de escribir. En este circuito el canal real es el DM. Chico y sin dependencias; el cuidado es que **un DM no tiene `asunto`** y `BLOQUES_DE_CONTACTO` hoy es homogéneo | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 2 | ✅ **hecho (2026-09-09)** — y el cuidado se resolvió no metiéndolo donde no entra: Instagram **no es un motivo**, es un canal, así que va en su propia sección y `MOTIVOS_DE_CONTACTO` queda homogéneo (mismo argumento que el asunto comercial de B-770). La sección dice además por qué el mail sigue siendo la primera opción — un DM se pierde entre las solicitudes de mensaje—, que es lo que evita que el canal cómodo se coma al que deja rastro. **Lo que NO entró y va con el anuncio de `/proponer`:** que el texto de `/contacto` mande ahí (DEC-10). Un enlace desde una página indexada **es** anunciarla, así que eso es el último paso de B-836a y no de acá |
-
-**Por qué esto es P1 y no P2.** Los tres directorios, solos, serían P2 —son
-información al costado de la agenda—. Lo que los pone acá es **B-830**: el
-proyecto existe para que la gente encuentre las actividades (§2.3 del
-`CLAUDE.md`), y hoy el cuello de botella no es el sitio sino **la carga**, que es
-una persona transcribiendo mails. Un formulario que le llega la actividad cargada
-ataca eso directo.
-
-**Lo que hay que aceptar al empezar, escrito para que no sorprenda:**
-
-1. **Se abre la primera escritura anónima del proyecto.** El §5.3 del `CLAUDE.md`
-   deja de ser cierto tal como está redactado, y hay que actualizarlo en el mismo
-   cambio.
-2. **Se guarda el primer dato personal de un tercero.** Es B-102 al revés, y con
-   los ojos abiertos: sin forma de repreguntar, la bandeja no sirve.
-3. **Son once vocabularios de taxonomía nuevos.** Vale revisar cuáles pueden
-   arrancar como texto libre; la única que yo dejaría libre es la temática de una
-   suscripción.
-4. **Un directorio vacío es peor que no tenerlo.** Con seis fichas la sección
-   parece abandonada. Antes de publicar cada una hay que cargarla, y eso es
-   trabajo del dueño, no del código.
-5. **Y desde el 2026-09-08, un anónimo escribe también en Storage** (DEC-11). Es
-   la parte que más creció con las respuestas del dueño: el bucket pasa a tener un
-   prefijo con contenido que subió alguien de afuera, y el borrado deja de ser una
-   limpieza para ser parte del ciclo de vida. Las dos trampas que entran con eso
-   —la 12, un trigger que se dispara a sí mismo al promover; la 13, `read` incluye
-   `list`— ya están en el §13 del `CLAUDE.md` y ninguna es teórica: la 12 se cobró
-   la Function de miniaturas, la 13 es por qué `imagenes/` tiene `get` y `list`
-   separados.
-
 ### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
 
 **El motivo NO es privacidad** — eso quedó resuelto en B-206 #1 con el path opaco y la
@@ -940,6 +698,67 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
+
+### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25) · P2 — vuelto de los cerrados (2026-09-24, B-1580)
+
+Reportado por el dueño (2026-08-24), cargando un club de lectura real: *"en
+material adicional son varias cosas: libro, newsletters, guía, playlist… y son al
+inscribirse pero otros durante el mes. Agregar «durante el mes» a la lista de
+opciones"*.
+
+Los dos campos son `z.enum` en `src/lib/schema.ts:62,65`, o sea **cerrados**, a
+diferencia del `tipo` de la actividad que es taxonomía abierta (§4):
+
+| Campo | Hoy | Falta |
+|---|---|---|
+| `TIPOS_MATERIAL` | `lectura`, `guia`, `contexto`, `autor`, `otro` | newsletter, playlist… y «libro», que hoy entra como `lectura` |
+| `ENTREGAS_MATERIAL` | `previo`, `al-inscribirse`, `en-el-encuentro` | **«durante el mes»**, que es el pedido concreto |
+
+**«Durante el mes» es lo interesante del reporte**, y no es solo una opción más:
+dice que la entrega del material no es un instante sino que puede ser progresiva
+a lo largo del ciclo. Encaja con el §2.2 —un club de lectura son ocho encuentros
+con su lectura cada uno— y es exactamente el caso de uso que el §4.1 llama de
+primera clase, como «a la gorra».
+
+**Hecho lo pedido, pendiente la decisión de fondo.** Agregados: `durante-el-mes`
+en las entregas —el pedido concreto—, más `newsletter` y `playlist` en los tipos.
+
+**No se agregó `libro`, y no es un olvido.** El reporte lo nombra, pero `lectura`
+ya es eso: el texto asignado. Tener los dos partiría los datos existentes en dos
+valores que después no se pueden volver a juntar, porque nadie va a saber cuál
+eligió cada uno. Se cambió la **etiqueta** a "Libro o lectura", que es reversible;
+agregar el valor no lo es. Si el dueño prefiere el valor aparte, se hace — pero
+esa es la decisión que hay que tomar a ojos abiertos.
+
+**Y apareció la tercera instancia de la clase de B-76/B-132**: el desplegable de
+tipo de material pintaba el valor crudo, así que decía "guia" y "autor" mientras
+el evento público decía "Guía" y "Sobre el autor". Arreglado importando el mapa de
+`@calendario` en lugar de copiarlo (D-20), y con un chequeo nuevo que afirma que
+**todo** valor de los dos enums tiene etiqueta en las dos pantallas — verificado
+contra un valor inventado para confirmar que lo detecta y que nombra cuál falta.
+`entrega` mantiene dos mapas a propósito: el panel capitaliza, el evento va en
+minúscula a mitad de frase.
+
+**La decisión que queda, y es del dueño:** ¿`material.items[].tipo` pasa a ser
+**taxonomía abierta** como el resto (§4)?
+Abrirlo sale casi gratis —la implementación de `opciones.ts` ya resuelve cinco
+campos con un solo patrón— y evita volver a tocar código la próxima vez que
+aparezca un formato que nadie previó, que en tres reportes ya pasó una vez.
+`entrega`, en cambio, conviene que siga cerrada: son momentos del ciclo de vida
+de la inscripción, no vocabulario libre, y el §5.1 los usa para decidir qué se
+publica.
+
+Ojo con dos cosas al implementarlo: los dos enums tienen mapas de etiquetas en el
+formulario **y** en `functions/calendario.js` —que son prosa para el público, y
+el diagnóstico de salud dijo explícitamente que no hay que unificarlos (§B-70)—
+así que un valor nuevo va en los dos lados, y si falta en uno se publica el valor
+crudo. Y `docs/03-modelo-de-datos.md` más el §3.1 del `CLAUDE.md` quedan
+desactualizados.
+
+> **Vuelto a la lista viva el 2026-09-24 (B-1580).** El archivador lo había mandado a
+> los cerrados por el «✅ parcial»; la mitad que falta es una decisión del dueño —si
+> `material.items[].tipo` pasa a ser taxonomía abierta (§4)— que ningún otro ítem
+> seguía.
 
 ### B-98 · Cancelar un encuentro sin que desaparezca en silencio · P2 — aprobado por el dueño (2026-08-26), **sin construir**
 
@@ -1004,66 +823,6 @@ o queda como registro (recomendado: queda).
 > roadmap (`17-roadmap.md`). Toca el sync con Calendar: se trabaja solo con
 > emuladores (§10 del CLAUDE.md).
 
-### B-1550 · El archivador trata un «aprobado» con tilde verde como cerrado, y una decisión aprobada sin construir desaparece de la lista · P2 — del roadmap (2026-09-24)
-
-`archivar-backlog.mjs` se lleva todo encabezado con el emoji de hecho, y el de
-B-98 decía «aprobado», no «hecho»: el ítem salió de la lista viva sin haberse
-construido. Hoy era el único caso (B-98, vuelto al BACKLOG). Arreglo: que el
-archivador y el parseo del tablero distingan «hecho» de cualquier otro uso del
-emoji, o que un ítem aprobado se escriba sin él; y un test que lo fije. **Ojo al
-escribirlo**: este mismo encabezado no puede llevar el emoji, porque el parseo lo
-leería como cerrado — es la prueba de la clase.
-
-### B-1540 · `inscripcion.destino` por DM sale crudo al evento de Calendar y al texto para redes · P3 — de `ig-criterios` (2026-09-24)
-
-Es el cuarto campo de Instagram del modelo, y el único sin criterio al cargar: se
-guarda con `limpiar` (trim) y el schema solo pide que no esté vacío al publicar.
-La ficha pública lo resuelve bien (`accionDeInscripcion` arma el botón solo si
-`handleInstagram` lo reconoce), pero `functions/calendario.js` y
-`src/lib/textoRedes.ts` lo concatenan tal cual: si se guardó pelado, las dos
-salidas lo publican **sin arroba**. Es la clase de B-1141/B-1142/D-763 en un campo
-que no dice «instagram» en el nombre. Opciones: (a) derivar con `arrobaInstagram`
-en las dos salidas cuando `via === 'dm'` (cambia el payload de Calendar, D-95); (b)
-sanear en el `onBlur`/`formADocumento` como el organizador (D-767). Sumarle la
-fila a la tabla de B-1191.
-
-### B-1221 · El backlog puede estar tres semanas atrás de `main` y nada lo mira — medido, y el chequeo obvio es inservible · P2 — de cerrar B-1170 (2026-09-22)
-
-**La segunda mitad de la clase de B-1170, la que no entró.** Un ítem puede estar
-listado como abierto mientras su trabajo ya está commiteado en `main`. Pasó con
-**B-1112**: su opción (a) estaba hecha en `b8a5068` y otra sesión casi la rehace. Es
-peor que el caso de B-480 porque ocurre en `docs/BACKLOG.md`, que es *la fuente de
-verdad*.
-
-**El chequeo obvio —cruzar los ítems abiertos contra los commits `feat(B-nnn)` /
-`fix(B-nnn)` de `main`— se midió el 2026-09-22 y es inservible tal cual:**
-
-| árbol | ítems abiertos | con commit en `main` | verdaderos positivos |
-|---|---|---|---|
-| tanda en vuelo | 64 | **8** | 1 o 2, discutible |
-| tanda integrada | 67 | **2** | **0** |
-
-Los ocho del árbol inestable: B-1144, B-1145, B-1142 y B-1147 **los estaba trabajando
-un frente en ese mismo momento**; B-1111 y B-1112 son multi-salida; B-813 y B-836a son
-ítems de los que se hizo **una** de varias salidas. Los dos que sobreviven a la
-integración son precisamente los dos falsos duros: **`B-836a` lo dice en su propio
-título** — «registrado y cableado, **falta** publicar, verificar y exigir».
-
-**O sea: cero verdaderos positivos en el estado estable, seis de ocho falsos en el
-inestable, y el número depende de si hay una tanda abierta.** Un chequeo rojo por
-razones que no son el cambio de quien lo corre es el modo de falla de **B-180**, y se
-aprende a saltear — la otra cara de D-750.
-
-**Qué habría que resolver antes de intentarlo de nuevo**, y ninguna es barata:
-
-1. **Distinguir «ítem con varias salidas, se hizo una» de «ítem hecho».** Es la mitad
-   de los falsos y no hay señal mecánica: hoy vive en la prosa del cuerpo.
-2. **Excluir lo que una tanda está trabajando ahora**, sin que el chequeo tenga que
-   leer `EN-CURSO.md`.
-3. **Decidir si informa o frena.** Si informa, el consumidor natural es el
-   `auditor-documentacion`, que sí puede dar el juicio que un test no puede — el mismo
-   reparto que B-124 eligió para las `D-` huérfanas.
-
 ### B-1081 · El ritmo del catálogo está calculado, testeado, y nadie lo dibuja · P2 — de documentar el tablero (2026-09-17)
 
 `src/lib/ritmoDelCatalogo.ts` (B-704, B-705, B-706) calcula el mapa de calor de
@@ -1125,44 +884,6 @@ de una tanda **no dependa de que alguien se acuerde de leerlos**. Lo más barato
 que se ve: que integrar incluya un barrido de `⏸`/`❓` sobre `.estado/*.md` y que
 cada uno salga como ítem o como línea del informe. Es la misma forma de B-1051 y
 de B-1120 — lo que no deja rastro derivado, se pierde.
-
-### B-1051 · Un id reservado por una tanda y nunca escrito se ofrece como libre · P2 — salió de la partición del backlog (2026-09-17)
-
-`proximoNumero` deriva el próximo `B-` del número más alto que **encuentre
-escrito**, y desde la partición lo busca en los dos archivos del backlog. Lo que
-no puede encontrar es un id que una tanda **reservó y no llegó a usar**: no queda
-escrito en ninguna parte, así que para el tablero está libre.
-
-**Pasó dos veces el mismo día.** `B-1000` y `B-1020` se reservaron para los
-frentes `barridos` y `saneador` de la tanda del 2026-09-17 y se cerraron al
-integrar, antes de llegar al archivo; el motivo de cada uno está escrito adentro
-de B-964 y de B-892. Hoy el tablero los ofrecería.
-
-**Es el choque de B-930 por la otra dirección**, y por eso vale la pena anotarlo:
-allá dos frentes numeraron a ciegas y eligieron el mismo; acá un frente numeró
-**bien** —reservó su rango, lo anunció en `EN-CURSO.md`— y los números quedaron
-libres igual. El mecanismo falla en los dos sentidos, así que reservar con
-cuidado no alcanza.
-
-**Y no lo causa la partición.** Cuando el backlog era un archivo solo pasaba lo
-mismo: un id reservado nunca estuvo escrito. Lo que cambió es que ahora el número
-se propone en una pantalla, con un botón al lado, y eso es cuando alguien lo
-aprieta sin pensarlo.
-
-**Lo que lo cerraría de verdad no es enseñarle a `proximoNumero` a leer más
-archivos.** Es que reservar deje rastro. Dos caminos, ninguno gratis:
-
-- **Una línea en la cabecera del backlog al abrir la tanda**, que es lo que ya se
-  hace para los huecos —hay seis anotados— pero **después**, cuando el hueco ya
-  existe. Anotarlo al reservar depende de que alguien se acuerde, que es
-  exactamente lo que falló.
-- **Que el tablero lea los rangos reservados de `EN-CURSO.md`**, donde ya están
-  escritos: la tanda del 2026-09-17 los declara en una tabla. Sale derivado y no
-  se olvida, pero es acoplar el tablero a un archivo de coordinación cuyo formato
-  nadie prometió mantener.
-
-Mientras tanto: **antes de tomar el número que ofrece el tablero, mirar los
-rangos reservados en `EN-CURSO.md`.** Es una lectura, no un chequeo.
 
 ### B-980 · La descripción autolinkea las URLs, y nada más · P2 — de la decisión 6 del §11.1 (2026-09-16)
 
@@ -1250,36 +971,6 @@ aporta al objetivo del proyecto —es contenido indexable de long tail que hoy n
 tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
 y el panel, pero no el sitio.
 
-### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2
-
-**Lo marcó el `auditor-privacidad` sobre B-919 y la decisión es del dueño.** Una
-regla de Firestore es **todo-o-nada por documento**: el alcance por ciudad no
-autoriza «la vista pública de las actividades de mi ciudad», autoriza **el
-documento crudo**. O sea que de una actividad ajena de su ciudad, esa cuenta lee
-también `online.url` con `urlPublica: false`, `difusion`, `inscripcion.destino`,
-la URL del material privado, los uids y `imagenes[].storagePath`. Y **sin cláusula
-de `estado`**, así que alcanza a los **borradores** ajenos, de los que no salió
-nunca nada a ninguna parte.
-
-**Se aceptó, con tres motivos**: el claim lo entrega el dueño de a una cuenta por
-vez con un script; el alcance es estrictamente menor que el del `admin`, que ya lee
-todo; y recortar por campo **no es expresable en una regla** (la alternativa es una
-Function que proyecte en el camino de lectura del panel, que es lo que D-660
-descartó). El panel además no se lo pone adelante: la ficha en solo lectura no
-muestra «Difusión».
-
-**Vuelve cuando entre la segunda publicadora**, que el propio pedido anticipa
-(«puede ser que no sea la única»): ahí deja de ser una cuenta mirando y pasa a ser
-N cuentas cruzadas.
-
-La ruta de recorte ya está escrita y medida a medias: sumarle
-`resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, más el
-`where('estado','==','publicado')` correspondiente en la segunda query de
-`listarActividades` — y **medirlo contra el emulador, no suponerlo** (trampa 7). El
-testigo que hay que dar vuelta ya existe y **enumera lo que lee**: `it('lee un
-BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro')`
-en `tests/rol-publicador.integracion.test.ts`.
-
 ### B-921 · Un publicador puede cargar una actividad fuera de su ciudad, y editar una la saca del alcance · P2
 
 Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
@@ -1297,14 +988,6 @@ Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
 
 Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
 puertas, no las abre.
-
-### B-899 · La doc de la tajada 2 (pasos 12 y 13) · P2
-
-Falta `04-funcionalidades.md` (la pestaña «Guía», la página `/guia`, la bandeja
-genérica del panel), `12-sitio-publico.md` (la sección nueva y su SEO), y **dos
-entradas en `06-decisiones.md`**: por qué `/guia` entra al sitemap con sus tres
-filas todavía en camino (y en qué se diferencia de `/proponer`), y por qué la
-bandeja **recibe** los datos en vez de leerlos.
 
 ### B-813 · Cuatro de los nueve avisos de Google son datos que faltan, y el panel no los pide · P2
 
@@ -1451,109 +1134,6 @@ pregunta que contesta es «qué etiqueta conviene cargar o retirar». Un `barrio
 se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta que
 sobra, y hoy eso no se puede saber.
 
-### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem · ✅ hecho (2026-09-24)
-
-**✅ Hecho (2026-09-24).** La otra mitad (B-1122): el nodo existe en `/contacto`, y `/apoyar` entra por `urlDeCafecito()` en el `sameAs`, al lado de Instagram. Sin `funder` y sin `DonateAction`.
-
-
-**La ayuda ya la menciona.** Entró la pregunta «¿Esto es gratis? ¿Quién lo paga?»
-en el grupo «Qué es esta agenda», con su enlace a `/apoyar`. La respuesta es
-**corta y manda**, no resume la página: si dijera lo mismo con otras palabras
-serían dos textos sobre plata que hay que mantener de acuerdo. Lo único que afirma
-es lo que no puede cambiar sin que cambie el proyecto —es gratis, no hay
-publicidad, lo hace una persona— y eso ya está atado por el test de `/apoyar`.
-
-Y de paso salió un hallazgo del propio chequeo que ata el conteo de preguntas:
-pedía corregir la línea del **CHANGELOG** donde la entrada de B-232 cuenta cuántas
-preguntas tenía la ayuda **el día que se publicó**, o sea **reescribir el registro
-de lo que pasó**. (Y el número no se cita acá por lo mismo: este archivo sí está
-atado.) El CHANGELOG salió de la lista de ese test con el motivo escrito; los
-cuatro documentos que describen el sitio de hoy siguen atados, `BACKLOG.md`
-incluido.
-
-> ⚠️ **La afirmación de arriba tenía un error, y era el hallazgo de esta mitad
-> (2026-09-09).** «Lo único que afirma es lo que no puede cambiar sin que cambie el
-> proyecto —es gratis, **no hay publicidad**, lo hace una persona— y eso ya está
-> atado por el test de `/apoyar`»: las dos mitades eran falsas. La respuesta decía
-> «no tiene publicidad y va a seguir así» mientras **`/anunciar` vende espacio del
-> sitio** —su propio botón dice «Escribirnos sobre publicidad», y está en el
-> encabezado dos ítems más allá de «Ayuda»—; y no estaba atada por ningún test:
-> borrar la pregunta entera dejaba la suite en verde.
->
-> Es la clase de **B-781** —una afirmación pública que el sitio desmiente, en HTML
-> indexado— corrida de los datos del visitante **a la plata**, que es justo el eje
-> que el barrido de `promesas-sobre-datos.test.ts` no mira (**B-851**).
->
-> Corregido: promete lo que sí es cierto y depende de nosotros —entrar es gratis,
-> publicar una actividad es gratis— y contesta la pregunta **entera**, que era la
-> otra mitad: un espacio sí puede pagar para que se lo vea, y eso no adelanta a
-> nadie en la fila ni compra un lugar en la agenda. No es una concesión: es lo
-> primero que `/anunciar` aclara de su lado. Y la pregunta pasó a estar sostenida —
-> obligatoria, con el enlace exigido, con un barrido que prohíbe repetir acá lo que
-> es de `/apoyar`, y con un caso cuya **premisa se deriva** de
-> `comercialDelSitio.ts`: el día que `/anunciar` deje de vender espacio se cae solo
-> y la promesa vuelve a ser escribible.
-
-**Lo que sigue abierto es la otra mitad**, y por el motivo de antes —el
-`Organization` del §5.5 no existe todavía, y no se agrega JSON-LD a `/apoyar` sola,
-sería un nodo suelto en una página secundaria compitiendo con el que algún día vaya
-en la home— **más uno nuevo: la propiedad que este ítem proponía es la
-incorrecta.** Verificado contra schema.org el 2026-09-09:
-
-- **`funder`** va al revés: es «quién **nos** financia», y su tipo esperado es
-  `Organization`/`Person`, no la URL de una página nuestra. Apuntarlo a `/apoyar`
-  afirma que esa página es una organización que nos financia.
-- **`sameAs`** es identidad —«*a reference Web page that unambiguously indicates the
-  item's identity*»— y `/apoyar` es una página del propio sitio. El `sameAs`
-  legítimo acá es el **perfil de Cafecito**, al lado del de Instagram: el instinto
-  del planteo era correcto, pero apunta al perfil y no a la página.
-- **No existe ninguna propiedad de `Organization` que signifique «la página donde
-  podés apoyarnos».** Lo único modelable es `potentialAction: DonateAction`, y se
-  descarta dos veces: el §5.5 ya decidió no emitir marcado inerte (`WebSite` +
-  `SearchAction`), y `/apoyar` dice «no es una organización ni recibe donaciones
-  formales» — un `DonateAction` sería, en marcado indexable, lo contrario de lo que
-  la página afirma en prosa, que es el bug que se acaba de arreglar del otro lado.
-
-Cuando se construya el nodo, `/apoyar` entra por el **`sameAs` del perfil de
-Cafecito**. Casa probable: `contactoDelSitio.ts` + `src/pages/contacto.astro` (el
-§5.5 dice que va en `/contacto`). **No** en `identidad.ts`: lo importa el panel, y
-meterle `enlaces.ts`/`rutasPublicas.ts` lo arrastra a su bundle (B-841).
-
-El planteo original queda abajo.
-
----
-
-
-Dos huecos chicos, los dos deliberados para no tocar archivos de otros frentes:
-
-- **`/ayuda` no la menciona.** Hay una pregunta natural que hoy no está contestada
-  en ningún lado: «¿esto es gratis? ¿quién lo paga?». La respuesta vive en
-  `/apoyar` y la ayuda es donde se busca. Es una entrada en
-  `src/lib/ayudaDelSitio.ts` con su enlace, en el grupo «Qué es esta agenda».
-- **El `Organization` del §5.5** —que sigue sin existir— es donde iría el
-  `funder`/`sameAs` del perfil. No se agrega JSON-LD a `/apoyar` sola: sería un
-  `Organization` suelto en una página secundaria, compitiendo con el que algún día
-  vaya en la home.
-
----
-
-### B-786 · P3 — el `Referer` a Cafecito, y cuándo habría que volver a decidirlo
-
-El enlace sale con el `Referer` por defecto
-(`strict-origin-when-cross-origin`), así que a Cafecito le llega
-`https://agendaleh.ar` — el origen, sin ruta ni query. No identifica a nadie, y no
-se puso `noreferrer` a propósito: borraría la única señal de que el aporte vino del
-sitio, y eso es información que nos interesa perder por nada.
-
-Queda anotado por dos motivos. Uno: es la primera vez que el sitio manda un
-`Referer` a un tercero **por una acción de la persona**, y el criterio con el que se
-decidió que está bien tiene que estar escrito antes de que haya un segundo caso.
-Dos: **si algún día el enlace sale desde otra página** —una tira en el pie de la
-página de detalle, por ejemplo— el `Referer` pasa a decir **qué actividad** estaba
-mirando, y ahí sí hay algo que decidir.
-
----
-
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
 > ⚠️ **Este bloque estaba dentro de un bloque de código, y con él B-780 a B-786.**
@@ -1646,287 +1226,24 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
-### B-239 · La home baja el runtime de React por la island de filtros · P2 — descartado (2026-09-03), con el motivo escrito
-
-Medido en el build del 2026-08-28: `client.BlZe1zq3.js` son **186 KB (58 KB
-gzip)**, más `Buscador` (16 KB / 5,8 KB gzip). El §8 del diseño fija el presupuesto
-de la home en «solo la island de filtros» y no dice cuánto pesa esa island.
-
-**La página de detalle no está afectada** —tiene cero JavaScript, y es la que
-recibe el tráfico— así que esto es P2 y no P1.
-
-Tres caminos, de menos a más trabajo:
-
-1. **`preact/compat`** como alias de `react`/`react-dom` **solo para el sitio
-   público**. Baja a ~10 KB gzip. El riesgo es el panel: comparte componentes con
-   el sitio (hoy ninguno, pero `Tarjeta` podría), y el panel usa React 19.
-2. **Reescribir la island sin framework.** La lógica ya es pura y está en
-   `src/lib/listadoPublico.ts` con sus tests; lo que se reescribe es solo el
-   render. Pero se pierde el «un solo markup de tarjeta», que es lo que el §6.3
-   pide y lo que este frente logró.
-3. **Dejarlo.** 58 KB gzip cacheados en CDN, en una página que no es la que recibe
-   el tráfico.
-
-Medir antes de elegir: con el sitio desplegado, cuánto tarda la home en un 3G
-simulado.
-
-> **Medido de nuevo el 2026-08-31, al cerrar B-247.** `client.BlZe1zq3.js` **no se
-> movió**: sigue en 186.619 B / 58.540 B gzip, que es el número del que habla este
-> ítem. La island `Buscador` pasó de 16.458 B / 5.925 B gzip a 20.272 B / 7.435 B
-> gzip —**+1,5 KB gzip**— por la portada generada y los controles nuevos; sin
-> dependencias nuevas (la lupa del buscador es un SVG inline).
->
-> Y el camino 1 se abarató: `Tarjeta` **sigue sin compartirse con el panel**, y ahora
-> además todo lo que decide qué dice vive en `src/lib/tarjetaPublica.ts`, que es puro
-> y no importa React. El camino 2 —reescribir la island sin framework— se encareció
-> por lo mismo que se ganó: la portada es un componente más que habría que rehacer a
-> mano y volvería a haber dos markups de tarjeta.
-
-> ❌ **Descartado el 2026-09-03, midiendo antes de decidir — como pedía este
-> ítem.** `client.BlZe1zq3.js` **sigue exactamente igual**: 186.619 B / 58.540 B
-> gzip, el mismo hash de contenido que en la medición de B-247. La home carga
-> ese chunk más `Buscador` (≈20 KB / 7 KB gzip) — nada más: un solo
-> `astro-island` en todo `dist/index.html`. En un 3G simulado (~400 kbps) son
-> ~1,3 s de descarga solo de JS, encima de ~17 KB de HTML — no es gratis, pero
-> tampoco es el cuadro completo.
->
-> **Las dos rutas de acción siguen sin mejorar, y una empeoró:**
->
-> - **Camino 1 (`preact/compat`)** — el riesgo que el ítem señalaba (compartir
->   `Tarjeta` con el panel) ya no aplica, pero apareció uno más caro al mirarlo
->   de cerca: Astro no tiene forma de aliasear `react`→`preact/compat` **por
->   ruta**. El `resolve.alias` de Vite es un único bloque para todo
->   `astro.config.mjs`, así que un alias global se lo llevaría puesto también a
->   `AdminApp` (`217,91 KB`), que corre en **React 19**. `preact/compat` no
->   garantiza paridad con las APIs más nuevas de React 19, y el panel es la
->   herramienta de carga diaria: romperlo en silencio para bajar 48 KB gzip de
->   una página que no es la que recibe tráfico es cambiar un riesgo chico por
->   uno grande. Acotarlo de verdad pediría un segundo build o un plugin de Vite
->   que resuelva por importer — trabajo real, no una línea.
-> - **Camino 2 (reescribir sin framework)** — sigue tan caro como en agosto: la
->   portada generada y los controles nuevos son componentes que habría que
->   rehacer a mano, y volvería a haber dos markups de tarjeta (lo que el §6.3
->   del diseño pedía evitar).
-> - **Camino 3 (dejarlo)** — la página que recibe el tráfico real
->   (`/actividad/{slug}`) sigue en cero JavaScript y no está afectada. 58 KB
->   gzip cacheados en CDN, en el recorrido menos frecuente de los tres del §1
->   del diseño (el propio documento lo dice: «el más importante no empieza en
->   la home»).
->
-> **Se elige el camino 3.** No porque el peso no importe, sino porque las dos
-> formas de bajarlo cambiaron de precio en la dirección equivocada desde la
-> última vez que se miró, y ninguna paga su costo hoy. Si el tráfico a la home
-> crece lo suficiente para que esto duela de verdad, la medición de arriba es
-> el punto de partida para retomarlo — no hay que volver a levantarla de cero.
-
-### B-08 · Sin tests de componentes — 🟡 hecho el alcance angosto que el dueño aprobó (2026-09-02)
-
-**El dueño aprobó el camino angosto de abajo, no el ítem entero.** Instalado
-`@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`
-y `jsdom`, y `environmentMatchGlobs` en `vitest.config.ts` — pero **solo** para
-`tests/**/*.render.test.tsx`; el resto de la suite sigue en `environment: 'node'`,
-como el argumento de abajo recomendaba.
-
-**Se hizo el único caso genuino que el relevamiento identificó**:
-`tests/menu-acciones.render.test.tsx`, contra `MenuAcciones` de verdad (no
-leyendo el fuente): cierre por clic afuera (con su control negativo — un clic
-**adentro** no cierra), cierre por `Escape` con el foco devuelto al "⋯", y
-abrir con ↓ enfocando el primer ítem. Los otros tres candidatos quedan **sin
-tocar**, tal como el relevamiento decía que correspondía: el placeholder de
-`TaxonomiaSelect` y el editor de sesiones son preguntas puras que no necesitan
-DOM, y el scroll de `VistaPreviaEvento` jsdom no lo puede medir (no hace
-layout).
-
-**Mutado, no solo verde — las cuatro aserciones, una por una:**
-
-| Se mutó | Qué tiraba rojo |
-|---|---|
-| Se sacó `disparador.current?.focus()` de `cerrarYVolverAlDisparador` | «Escape cierra el menú Y devuelve el foco al ⋯» |
-| Se comentó el `addEventListener('pointerdown', afuera)` | «un clic afuera cierra el menú abierto» |
-| Se invirtió la condición de "afuera" (`setAbierto(false)` sin el `if`) | el control negativo, «un clic ADENTRO... no lo cierra» |
-| `abrir(-1)` en vez de `abrir(e.key === 'ArrowDown' ? 0 : ...)` | «abrir con ↓ enfoca el primer ítem» |
-
-Las cuatro se restauraron después de confirmar el rojo. Un detalle que valió la
-pena corregir en el camino: la primera versión del test de Escape pasaba
-**con la mutación adentro**, porque el foco nunca se había movido del
-disparador (el `click` que abre el menú no mueve el foco a ningún ítem) — la
-aserción "volvió al disparador" era trivialmente cierta. Se agregó un paso
-que primero mueve el foco a un ítem con ↓, así la aserción de vuelta mide algo
-real.
-
-**Documentación actualizada**: `docs/05-patrones.md` (la fila "Qué no" ya no
-dice categóricamente que no hay testing-library), `docs/10-salud-del-codigo.md`
-(el Problema 1 tenía "confirmado que no hay forma de que existan", que dejó de
-ser cierto — con una nota que no reclama haber resuelto el problema entero) y
-`docs/06-decisiones.md` (D-100, una frase que decía "no está instalada").
-
-**Lo que sigue exactamente igual que en el camino propuesto:** el resto del
-ítem —`ActividadFormulario.tsx` y los demás componentes grandes— sigue sin
-tests de render, y sigue siendo la decisión correcta no perseguirlos: la
-lógica que importa ya salió a módulos puros (D-100, `foco.ts`,
-`salida-del-panel.ts`). Este ítem no se cierra del todo porque el dueño no
-aprobó "instalarlo para todo", aprobó este caso.
-
-El texto original queda abajo.
-
-> **No se agregó ninguna dependencia — hasta este cambio.** Una librería de
-> render es una decisión de arquitectura y el ítem se relevó para que se decida
-> con el costo a la vista. Abajo está el argumento; el ítem quedó **abierto**
-> hasta que el dueño eligiera, y el 2026-09-02 aprobó el camino angosto de
-> arriba.
-
-**Lo que costaría.** Cuatro dependencias de desarrollo
-(`@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`
-y `jsdom` o `happy-dom`), más `environmentMatchGlobs` en `vitest.config.ts`
-—hoy el entorno es `node` para toda la suite— y el tiempo de CI de arrancar un
-DOM por archivo.
-
-**Lo que hay que saber antes de decidir, y es lo que cambia la respuesta: de las
-cuatro cosas que este ítem pide, jsdom solo puede verificar dos.**
-
-| Lo que el ítem pide | ¿Lo cubre un test de render? |
-|---|---|
-| El placeholder de `TaxonomiaSelect` que se veía como opción elegida | **No hace falta**: es una pregunta pura —dado el valor actual y las opciones, qué valor y qué label le corresponden al `select`— y se testea hoy sin nada. Parte ya salió con D-116 |
-| El editor de sesiones (agregar / duplicar / borrar con id generado) | **No hace falta**: `src/lib/sesiones.ts` es puro y está cubierto |
-| `MenuAcciones`: cierre por clic afuera y por `Escape`, foco devuelto al disparador | **Sí, y es el caso genuino.** Es cableado de DOM: `addEventListener`, `document.activeElement`, el ciclo de Tab. Hoy lo único que lo vigila es `foco.test.ts` **leyendo el fuente**, y esa técnica ya produjo dos falsos verdes en el repo (B-202 es literalmente uno) |
-| `VistaPreviaEvento`: que el aviso del link público se muestre, y que la descripción tenga **su propio scroll** | **A medias.** El aviso es puro (su adaptador ya está testeado). El scroll **no se puede**: jsdom no hace layout, así que `scrollHeight`, `clientHeight` y `overflow` efectivo no existen. Un test de render que afirme eso estaría afirmando una constante |
-
-**La recomendación, entonces, es angosta y no la del ítem.** Vale la pena **si y
-solo si** el objetivo es el cableado de las capas modales y del menú, que es
-donde el repo ya se quemó dos veces: B-210 encontró ~40 líneas copiadas entre dos
-capas que **habían divergido en lo que importa**, y la red que quedó es un grep
-al fuente. Ahí un test de render compra algo que nada más compra.
-
-Para el resto, el camino que este repo viene usando es **más barato y más
-fuerte**: extraer la decisión a un módulo puro y testearla sin DOM
-(`foco.ts`, `salida-del-panel.ts`, `formulario-dominio.ts`, `sesiones.ts`). No es
-una preferencia estética — un test puro no necesita jsdom, no depende de la
-implementación del markup, y no se rompe con un refactor de JSX.
-
-**Lo que NO hay que esperar del cambio**, y conviene decirlo porque es la mitad
-del ítem: agregar la librería **no** cubre el placeholder que se veía como opción
-elegida (eso es apariencia, y jsdom no pinta) ni el scroll propio de la
-descripción. Los dos se seguirían verificando a mano, o con un navegador de
-verdad — que es otra decisión, más cara, y de otro ítem.
-
-**Prueba de concepto:** se dejó sin hacer a propósito, porque no se puede escribir
-sin instalar la dependencia primero, y eso es exactamente lo que hay que decidir
-antes. El día que se apruebe, el primer archivo es `MenuAcciones` con los tres
-casos de arriba (clic afuera, `Escape`, foco devuelto), que es el que mide si la
-inversión rinde: si esos tres salen limpios, el resto de las capas modales sigue
-el mismo molde.
-
----
-
-Texto original:
-
-No hay testing-library instalada. La lógica pura está muy cubierta (460 tests),
-pero el render y la interacción del formulario se verificaron a mano.
-
-Vale al menos para `TaxonomiaSelect` (el bug del placeholder que se veía como
-opción elegida habría salido en un test de render), para el editor de sesiones y
-para el `MenuAcciones` del listado (cierre por click afuera y por `Escape`) y
-para `VistaPreviaEvento`: su adaptador está testeado, pero que el aviso del
-link público se muestre —y que la descripción tenga su propio scroll— se
-verificó a mano.
-
-### B-225 · Partir la key de CI en dos el día que el secret tenga más de un lector · P2
-
-D-132 le dio a `deploy-ci@` los roles para desplegar reglas y Functions, y aceptó
-por escrito lo que eso significa: una key filtrada **hace legible todo Firestore** y
-puede desplegar código que corre como `calendar-sync@`. La decisión se apoya en un
-hecho del proyecto de hoy: **el secret tiene un solo lector**, el dueño del repo.
-
-**El disparador de este ítem es que eso deje de ser cierto.** Un colaborador con
-push a `main`, un fork con Actions habilitado, un runner de terceros: cualquiera de
-los tres multiplica los lugares desde donde esa key se puede usar, y ahí el balance
-de la tabla de D-132 se da vuelta.
-
-**Lo que hay que hacer cuando pase**, que es lo que B-194 ya proponía como forma
-menos mala y no se hizo:
-
-- **`build-ci@`** — `datastore.viewer` + `serviceusage.serviceUsageConsumer`. Es la
-  que usa el build de Astro para leer Firestore. Sin permiso de deploy de nada.
-- **`deploy-ci@`** — el resto de los roles, y su key **detrás de un `environment` de
-  GitHub con required reviewers**, para que desplegar reglas o Functions pida una
-  aprobación humana en vez de ser un efecto de cualquier push.
-
-El costo es un secret más y un `environment` que configurar; el beneficio es que el
-job que solo lee no cargue el alcance del que publica.
-
-**Mientras tanto, lo que sí está**: la rotación documentada en
-[`08-operacion.md`](08-operacion.md), con el paso de redesplegar las reglas desde el
-repo ordenado segundo, y `tests/roles-deploy-ci.test.ts`, que impide que el
-documento de seguridad vuelva a decir que el daño se limita a leer.
-
-> **2026-09-03 — verificado, el disparador todavía no ocurrió.** Contra la API
-> de GitHub, con la cuenta dueña del repo (`gh api repos/benoffi7/agenda-literaria/…`):
-> **un solo colaborador** (`benoffi7`, admin), **cero forks**, **cero
-> colaboradores externos** (`?affiliation=outside`), **un solo secret de
-> Actions** (`FIREBASE_SERVICE_ACCOUNT`) y **cero `environments`** configurados.
-> El secret sigue teniendo un solo lector, así que la condición que dispara
-> este ítem sigue sin cumplirse — no se implementó el split de `build-ci@` /
-> `deploy-ci@` porque hacerlo ahora sería resolver un problema que todavía no
-> existe, en contra de lo que el ítem mismo pide ("el día que pase"). Queda
-> escrito para que la próxima vez que se agregue un colaborador con push, se
-> habilite un fork con Actions, o se sume un runner de terceros, sea la señal
-> de volver a este ítem.
-
----
-
-### B-366 · Las reglas de Storage no se pueden particionar por proyecto · P3
-
-Residual conocido de B-219, anotado en el docblock de `cargarReglasStorage`.
-
-A diferencia de Firestore —que tiene
-`/emulator/v1/projects/{p}:securityRules`— el emulador de Storage expone
-`/internal/setRules`, que es **global**: la última carga gana para todos los
-proyectos. Así que el aislamiento por `projectId` no llega hasta ahí.
-
-**Hoy no muerde**, y vale decir por qué para no sobreestimarlo: los objetos van con
-nombre único por caso (`img_test-<base36>-<n>`), nadie barre el bucket, y dos
-checkouts empujando el mismo `storage.rules` cargan lo mismo. Muerde el día que dos
-worktrees corran a la vez **con `storage.rules` distinto** — o sea, cuando alguien
-esté cambiando esas reglas, que es justo cuando el test importa.
-
-No hay arreglo dentro del emulador: sería un puerto de Storage por checkout, que es
-la candidata que D-195 descartó. Si esto llega a molestar de verdad, el camino más
-corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
-—serializa un solo archivo, no la suite.
-
 ## P3 — cuando sobre tiempo
 
-### B-1490 · Una `en-revision` no tiene cómo renovar su plazo desde la bandeja sin rechazarla · P4 — de `convertir-vence` (2026-09-24)
+### B-1590 · La guarda «todo campo de Instagram del evento pasa por el saneador» no ve un campo que no se llame `instagram` · P3 — de `inscripcion-dm` (2026-09-24)
 
-La bandeja le ofrece a la `en-revision` un solo movimiento: «Rechazar», que es una
-decisión y, si trajo foto, la borra. Lo destapó el aviso de B-1460, que por eso
-dice «guardá pronto» y no «movela de estado». La regla ya acepta
-`en-revision → nueva`. Salida: un botón «Volver a sin mirar» que mueve el estado y
-renueva `revision.en`. Alternativa: aceptar el hueco, porque guardar la actividad
-en borrador ya lo cierra para el caso de convertir.
+`tests/calendario.test.ts` barre `calendario.js` buscando `\.instagram\b`. B-1540
+es justo el caso que no ve: `insc.destino` es un campo de Instagram con otro
+nombre y otra condición. El arreglo lo cubre con un test de comportamiento, pero
+el próximo campo así nace sin red. Opción: un registro explícito de campos de
+Instagram del modelo, que la guarda recorra y cuya fuente sea la tabla de B-1191
+en docs/03, en vez de la regex por nombre. Clase de B-88 / D-750.
 
-### B-1501 · Los clics del medio no se miden en el tríptico ni en el banner · P3 — de `banner-clic` (2026-09-24)
+### B-1601 · Los docblocks del motor de la Guía citan `useDirectorio.ts`, que no existe, y cuentan «tres» directorios · P4 — de `textos` (2026-09-24)
 
-`clic_triptico` y `clic_banner_ciudad` se emiten en `onClick`; abrir con la rueda
-del mouse dispara `auxclick` y no cuenta. Para el tríptico, abrir en pestaña nueva
-es un uso real. Si se arregla, en los dos a la vez, para que dos eventos hermanos
-no midan con criterios distintos.
-
-### B-1502 · El encabezado de `16-analitica-del-sitio.md` dice que el tríptico está «sin enganche todavía» · P3 — de `banner-clic` (2026-09-24)
-
-La fila «También construido, el 2026-09-03 a la tarde» sigue con eso, y «Construido»
-habla de «los dos eventos propios». Hoy son cuatro, y el tríptico está enganchado
-desde el 2026-09-07.
-
-### B-1541 · Cinco lugares dicen que las guías «frenan el publicado» y frenan todo guardado · P4 — de `ig-criterios` (2026-09-24)
-
-`libreriaFormSchema` y sus tres hermanos corren igual para guardar y para
-publicar, y `firestore.rules` rechaza la forma en cualquier escritura: un borrador
-con un Instagram no reconocido **tampoco se guarda**. Lo dicen mal D-767, D-900, el
-docblock de `SeccionQuien.tsx` (§ «El costo aceptado») y el propio B-1191. Además
-el comentario de `src/lib/actividades.ts:188-195` habla de «las tres guías» y
-propone lo que D-767 decidió no hacer. Solo es texto; la tabla de B-1191 ya lo
-dice bien.
+`src/lib/directorios.ts` y `DirectorioPanel.tsx` dicen que la lectura en vivo y las
+escrituras son «de `useDirectorio.ts`»; ese archivo no existe (el `onSnapshot` está
+en el panel de cada entidad). Los dos siguen diciendo «los tres directorios». Y el
+docblock de `PANELES_MEDIBLES` en `analyticsSitio.ts` abre con «La fuente todavía
+no existe en esta rama», y `ahoraPublico.ts` existe desde B-791. Es solo texto.
 
 ### B-1162 · Un hallazgo que afirma «esto se ve» no dice si se reprodujo o si se dedujo leyendo · P3 — de cerrar B-1142 (2026-09-22)
 
@@ -2008,23 +1325,9 @@ calibrada (B-856 la recalibró mirando el archivo, y lo que estaba mal era el
 umbral); ésta no tiene ninguna, y es la que mide **de cuántas piezas depende el
 formulario** — o sea la que dice cuándo tocarlo empieza a ser caro.
 
-### B-1123 · Un patrón citado tres veces como «D-100» y que no tiene ningún `D-` propio · P3
+### B-909 · Dos altas simultáneas de librería pueden quedarse con el mismo slug · P2 — **era P3 mientras el alta pública estaba cerrada**
 
-**Sobrante declarado adentro de B-345** (las citas a D-100 corregidas a D-111,
-✅ 2026-09-02). Quedaron dos citas más a D-100, en los cuerpos de B-50 y B-35
-(`docs/BACKLOG-cerrados.md:4301-4310` y `4312-4333`, verificadas hoy), que
-describen **un tercer patrón**: derivar un chequeo del grafo de imports, y sacar
-una decisión a un módulo puro para poder probarla. El propio B-345 lo dejó
-escrito: «quedan anotadas acá para quien quiera formalizar esa decisión con su
-propio número».
-
-Es exactamente la misma forma que B-910 —una decisión que el repo aplica en todos
-lados y que nunca se escribió— con la diferencia de que acá ni siquiera hay un
-número reservado. Y el patrón que nombra es de los más usados del proyecto: sacar
-la decisión del lugar imposible de probar es lo que hizo `que-deployar.sh`,
-`emuladores-arriba.sh` y media docena más.
-
-### B-909 · Dos altas simultáneas de librería pueden quedarse con el mismo slug · P3
+> **Sube a P2 el 2026-09-24 (triage).** La prioridad estaba calculada sobre «lo que la subiría es abrir el alta pública (B-872/B-896)», y **ya está abierta**: `firestore.rules` tiene `allow create: if libreriaValida()` sin `esAdmin()`, y B-896 está cerrado. Mismo precedente que B-874.
 
 `slugDeLibreriaDisponible` (`src/lib/librerias.ts`) es una guarda **de aviso**, no
 una garantía: consulta antes de escribir y no hay reserva atómica. `/actividades`
@@ -2037,7 +1340,9 @@ El daño es acotado y visible: dos fichas con el mismo slug, las dos en `pendien
 bandeja, que es justo el momento en que el slug todavía se puede tocar. **Lo que
 haría subir la prioridad es abrir el alta pública** (B-872/B-896).
 
-### B-907 · La regla de `/librerias` no puede iterar `imagenes` — B-842 con otra cara · P3
+### B-907 · La regla de `/librerias` no puede iterar `imagenes` — B-842 con otra cara · P2 — **era P3 mientras el alta pública estaba cerrada**
+
+> **Sube a P2 el 2026-09-24 (triage).** La prioridad estaba calculada sobre «lo que la subiría es abrir el alta pública (B-872/B-896)», y **ya está abierta**: `firestore.rules` tiene `allow create: if libreriaValida()` sin `esAdmin()`, y B-896 está cerrado. Mismo precedente que B-874.
 
 De `imagenes` se acota la cantidad (4) y el tipo, no la forma de cada fila: una
 regla de Firestore no itera una lista. Con el `create` cerrado a admin el daño es
@@ -2110,6 +1415,147 @@ tiene arreglo en el repo:
   va a perder — **B-813**.
 - **No se emite nunca**: `validFrom` en `offers`, 24 — **B-812**.
 
+### B-101 · Las actividades que ya pasaron no se archivan en ninguna parte — 🟡 **la mitad del sitio, hecha** (2026-09-02)
+
+**La mitad del sitio la cerró B-109.** «¿No las lista pero conserva la página por
+SEO?» — sí, y con las tres cosas escritas: salen del listado y de los hubs,
+conservan la página **indefinidamente** (§7.1), aparecen en **`/pasadas`** para
+siempre, y su entrada del sitemap vence a los 90 días. No hizo falta un estado
+nuevo: se deriva de la última sesión, como decía este ítem.
+
+**Sigue abierto lo del panel**: el listado del panel las mezcla igual (está
+ordenado por última modificación) y qué hace con ellas —una pestaña, un filtro—
+no se decidió. Eso es lo que queda de este ítem, y cuadra con B-96.
+
+El texto original:
+
+No hay estado para "terminó". Un taller de marzo sigue `publicado` con todas sus
+sesiones en el pasado: se mezcla en el listado del panel (ordenado por última
+modificación) y, cuando exista el sitio, hay que decidir si aparece.
+
+No hace falta un estado nuevo: se deriva de la última sesión. Lo que hace falta es
+decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
+filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
+probablemente lo correcto?). Cuadra con B-96 y con B-01.
+
+## Vigilado — sin trabajo hasta que se cumpla su condición
+
+**Estos no son pendientes.** Son decisiones ya tomadas o limitaciones aceptadas que
+llevan escrita la condición que las reabriría. Los juntó acá el triage del
+2026-09-24 para que no se lean como trabajo en la lista de prioridades: si la
+condición se cumple, el ítem vuelve a su P.
+
+### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2
+
+**Lo marcó el `auditor-privacidad` sobre B-919 y la decisión es del dueño.** Una
+regla de Firestore es **todo-o-nada por documento**: el alcance por ciudad no
+autoriza «la vista pública de las actividades de mi ciudad», autoriza **el
+documento crudo**. O sea que de una actividad ajena de su ciudad, esa cuenta lee
+también `online.url` con `urlPublica: false`, `difusion`, `inscripcion.destino`,
+la URL del material privado, los uids y `imagenes[].storagePath`. Y **sin cláusula
+de `estado`**, así que alcanza a los **borradores** ajenos, de los que no salió
+nunca nada a ninguna parte.
+
+**Se aceptó, con tres motivos**: el claim lo entrega el dueño de a una cuenta por
+vez con un script; el alcance es estrictamente menor que el del `admin`, que ya lee
+todo; y recortar por campo **no es expresable en una regla** (la alternativa es una
+Function que proyecte en el camino de lectura del panel, que es lo que D-660
+descartó). El panel además no se lo pone adelante: la ficha en solo lectura no
+muestra «Difusión».
+
+**Vuelve cuando entre la segunda publicadora**, que el propio pedido anticipa
+(«puede ser que no sea la única»): ahí deja de ser una cuenta mirando y pasa a ser
+N cuentas cruzadas.
+
+La ruta de recorte ya está escrita y medida a medias: sumarle
+`resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, más el
+`where('estado','==','publicado')` correspondiente en la segunda query de
+`listarActividades` — y **medirlo contra el emulador, no suponerlo** (trampa 7). El
+testigo que hay que dar vuelta ya existe y **enumera lo que lee**: `it('lee un
+BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro')`
+en `tests/rol-publicador.integracion.test.ts`.
+
+### B-786 · P3 — el `Referer` a Cafecito, y cuándo habría que volver a decidirlo
+
+El enlace sale con el `Referer` por defecto
+(`strict-origin-when-cross-origin`), así que a Cafecito le llega
+`https://agendaleh.ar` — el origen, sin ruta ni query. No identifica a nadie, y no
+se puso `noreferrer` a propósito: borraría la única señal de que el aporte vino del
+sitio, y eso es información que nos interesa perder por nada.
+
+Queda anotado por dos motivos. Uno: es la primera vez que el sitio manda un
+`Referer` a un tercero **por una acción de la persona**, y el criterio con el que se
+decidió que está bien tiene que estar escrito antes de que haya un segundo caso.
+Dos: **si algún día el enlace sale desde otra página** —una tira en el pie de la
+página de detalle, por ejemplo— el `Referer` pasa a decir **qué actividad** estaba
+mirando, y ahí sí hay algo que decidir.
+
+---
+
+### B-225 · Partir la key de CI en dos el día que el secret tenga más de un lector · P2
+
+D-132 le dio a `deploy-ci@` los roles para desplegar reglas y Functions, y aceptó
+por escrito lo que eso significa: una key filtrada **hace legible todo Firestore** y
+puede desplegar código que corre como `calendar-sync@`. La decisión se apoya en un
+hecho del proyecto de hoy: **el secret tiene un solo lector**, el dueño del repo.
+
+**El disparador de este ítem es que eso deje de ser cierto.** Un colaborador con
+push a `main`, un fork con Actions habilitado, un runner de terceros: cualquiera de
+los tres multiplica los lugares desde donde esa key se puede usar, y ahí el balance
+de la tabla de D-132 se da vuelta.
+
+**Lo que hay que hacer cuando pase**, que es lo que B-194 ya proponía como forma
+menos mala y no se hizo:
+
+- **`build-ci@`** — `datastore.viewer` + `serviceusage.serviceUsageConsumer`. Es la
+  que usa el build de Astro para leer Firestore. Sin permiso de deploy de nada.
+- **`deploy-ci@`** — el resto de los roles, y su key **detrás de un `environment` de
+  GitHub con required reviewers**, para que desplegar reglas o Functions pida una
+  aprobación humana en vez de ser un efecto de cualquier push.
+
+El costo es un secret más y un `environment` que configurar; el beneficio es que el
+job que solo lee no cargue el alcance del que publica.
+
+**Mientras tanto, lo que sí está**: la rotación documentada en
+[`08-operacion.md`](08-operacion.md), con el paso de redesplegar las reglas desde el
+repo ordenado segundo, y `tests/roles-deploy-ci.test.ts`, que impide que el
+documento de seguridad vuelva a decir que el daño se limita a leer.
+
+> **2026-09-03 — verificado, el disparador todavía no ocurrió.** Contra la API
+> de GitHub, con la cuenta dueña del repo (`gh api repos/benoffi7/agenda-literaria/…`):
+> **un solo colaborador** (`benoffi7`, admin), **cero forks**, **cero
+> colaboradores externos** (`?affiliation=outside`), **un solo secret de
+> Actions** (`FIREBASE_SERVICE_ACCOUNT`) y **cero `environments`** configurados.
+> El secret sigue teniendo un solo lector, así que la condición que dispara
+> este ítem sigue sin cumplirse — no se implementó el split de `build-ci@` /
+> `deploy-ci@` porque hacerlo ahora sería resolver un problema que todavía no
+> existe, en contra de lo que el ítem mismo pide ("el día que pase"). Queda
+> escrito para que la próxima vez que se agregue un colaborador con push, se
+> habilite un fork con Actions, o se sume un runner de terceros, sea la señal
+> de volver a este ítem.
+
+---
+
+### B-366 · Las reglas de Storage no se pueden particionar por proyecto · P3
+
+Residual conocido de B-219, anotado en el docblock de `cargarReglasStorage`.
+
+A diferencia de Firestore —que tiene
+`/emulator/v1/projects/{p}:securityRules`— el emulador de Storage expone
+`/internal/setRules`, que es **global**: la última carga gana para todos los
+proyectos. Así que el aislamiento por `projectId` no llega hasta ahí.
+
+**Hoy no muerde**, y vale decir por qué para no sobreestimarlo: los objetos van con
+nombre único por caso (`img_test-<base36>-<n>`), nadie barre el bucket, y dos
+checkouts empujando el mismo `storage.rules` cargan lo mismo. Muerde el día que dos
+worktrees corran a la vez **con `storage.rules` distinto** — o sea, cuando alguien
+esté cambiando esas reglas, que es justo cuando el test importa.
+
+No hay arreglo dentro del emulador: sería un puerto de Storage por checkout, que es
+la candidata que D-195 descartó. Si esto llega a molestar de verdad, el camino más
+corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
+—serializa un solo archivo, no la suite.
+
 ### B-734 · Con más de una fila de modalidad, el `location` de cada `subEvent` afirma más de lo que sabe — 🟡 hecho a medias (2026-09-09) · P3
 
 > ✅ **Hecho con la primera de las dos salidas: el `subEvent` deja de heredar
@@ -2162,96 +1608,6 @@ arregló—, o llevar las fechas de la fila al view-model y repartir los lugares
 verdad. La segunda es la buena y es más grande que este ítem.
 
 ---
-
-### B-57 · El abandono por cierre de pestaña se pierde si el SDK no cargó
-
-`formulario_abandonado` se dispara también en `pagehide`, pero el SDK de
-analítica se carga diferido (D-58): si alguien abre el panel y cierra la pestaña
-antes de que arranque, ese evento se encola y muere con la página.
-
-El camino que importa —"Cancelar" / "← Volver"— no sale de la página y se mide
-bien. Si el número de abandonos parece bajo, esta es la primera sospecha.
-Arreglarlo bien pide `sendBeacon` contra el Measurement Protocol, que es bastante
-más máquina de la que amerita.
-
-### B-58 · 🟡 la mitad hecha (2026-09-07) — Dos interacciones sin medir, por no tocar el JSX
-
-**Hecha la que faltaba de verdad: `encuentro-cancelar`.** El motivo por el que
-estaba afuera —«medirlas exigía reacomodar el markup de componentes que otros
-cambios están tocando»— caducó: no hay frentes en paralelo.
-
-Y no entró por completitud. **Es el dato que falta para decidir B-162**, trabado
-desde agosto: si el rótulo de un encuentro cancelado de un ciclo publicado hay que
-actualizarlo en el calendario depende de **cuántas veces pasa**, y hoy nadie lo
-sabe. Un ciclo que se cancela una vez al año no justifica reescribir N eventos de
-Calendar; uno que se cancela cada dos semanas sí. La cancelación es además el único
-de los estados de una sesión que **borra un evento del calendario público** (§7.3),
-o sea el que más se nota afuera.
-
-Se emite con **1 al prender y 0 al apagar**, como `actividad-cupo-completo`: medir
-solo el prendido contaría cancelaciones y arrepentimientos como lo mismo, y el
-número que B-162 necesita es cuántos encuentros quedan cancelados de verdad. Los
-dos casos están en `tests/sesiones.test.ts` con su mutación.
-
-**Y al agregarla apareció un drift de tres:** la tabla del §«funcion» de
-`docs/09-analitica.md` —lo único que dice **qué mide el panel y con qué `valor`**—
-no nombraba `duplicar-desmarcar` (B-199), `encuentro-correr` (B-186) ni
-`actividad-cupo-completo` (B-97). O sea que tres funciones se habían agregado al
-enum sin pasar por la tabla: no es un olvido de una vez, es un patrón. Importa más
-que un índice viejo, porque **esa tabla es la que se consulta para saber si un
-evento puede llevar texto libre**: una función que no está es una que se mide sin
-que nadie haya escrito qué manda.
-
-Completada, y con red en las dos direcciones (`tests/analytics-privacidad.test.ts`):
-la tabla no puede quedarse corta, y tampoco nombrar una función que el enum no
-tiene —eso haría creer que se mide algo que no—. La lista sale del enum. De paso
-quedó escrita la excepción del `valor`: `encuentro-correr` lleva **signo**, porque
-correr un encuentro dos días para atrás y dos para adelante no son el mismo dato.
-
-**Lo que sigue afuera, y sigue estando bien:** `url_publica` se mide igual en
-`guardado_ok`, que es el dato que importa, así que un evento propio no agrega nada.
-Y el **embudo fino** del formulario sigue costando 30+ inputs o un `onFocus` a
-nivel del `<form>` para lo que `formulario_abandonado.faltantes` ya da grueso.
-
-El planteo original queda abajo.
-
----
-
-
-Marcar un encuentro como **cancelado** y tildar **"publicar el link de la
-reunión"** están en `onChange` inline dentro del JSX, y medirlas exigía
-reacomodar el markup de componentes que otros cambios están tocando. Se dejaron
-afuera a propósito.
-
-`url_publica` se mide igual en `guardado_ok`, que es el dato que importa. La
-cancelación de un encuentro no se mide en ninguna parte.
-
-Tampoco está el **embudo fino** del formulario (qué campo se tocó último antes de
-abandonar): eso pide instrumentar 30+ inputs o un `onFocus` a nivel del `<form>`,
-y hoy `formulario_abandonado.faltantes` da la ubicación gruesa sin tocar nada.
-
-### B-101 · Las actividades que ya pasaron no se archivan en ninguna parte — 🟡 **la mitad del sitio, hecha** (2026-09-02)
-
-**La mitad del sitio la cerró B-109.** «¿No las lista pero conserva la página por
-SEO?» — sí, y con las tres cosas escritas: salen del listado y de los hubs,
-conservan la página **indefinidamente** (§7.1), aparecen en **`/pasadas`** para
-siempre, y su entrada del sitemap vence a los 90 días. No hizo falta un estado
-nuevo: se deriva de la última sesión, como decía este ítem.
-
-**Sigue abierto lo del panel**: el listado del panel las mezcla igual (está
-ordenado por última modificación) y qué hace con ellas —una pestaña, un filtro—
-no se decidió. Eso es lo que queda de este ítem, y cuadra con B-96.
-
-El texto original:
-
-No hay estado para "terminó". Un taller de marzo sigue `publicado` con todas sus
-sesiones en el pasado: se mezcla en el listado del panel (ordenado por última
-modificación) y, cuando exista el sitio, hay que decidir si aparece.
-
-No hace falta un estado nuevo: se deriva de la última sesión. Lo que hace falta es
-decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
-filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
-probablemente lo correcto?). Cuadra con B-96 y con B-01.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 

@@ -13099,3 +13099,23 @@ Ahora tiene también «Volver a sin mirar»: `en-revision → nueva`, que firma
 - Descartado: aceptar el hueco (guardar en borrador lo cierra para convertir, pero
   no para la propuesta que se mira sin convertir).
 
+## D-980 · Un ✅ cierra solo si lo dice, y con dos marcadores gana el último
+
+**B-1550, 2026-09-24.** El estado de un encabezado del BACKLOG sale de su
+**último** marcador: el archivo se actualiza agregando al final, y leer el primero
+es leer la foto vieja. Y un `✅` es «hecho» solo con una palabra de cierre —hecho,
+cerrado, resuelto, decidido, contestado, sin efecto—; sin ella es «empezado». La
+lista es de lo que cierra y no de lo que no: una palabra nueva falla a la vista (el
+ítem se queda entre lo que falta), en vez de hacerlo desaparecer como pasó con el
+«✅ aprobado» de B-98. Descartado: prohibir el ✅ fuera de «hecho» (depende de
+acordarse) y una lista de palabras que no cierran (falla en silencio).
+
+## D-981 · Los ids reservados se leen del archivo de coordinación de la tanda
+
+**B-1051, 2026-09-24.** El tablero lee la sección `## Rangos` de
+`/tmp/agenda-literaria-frentes.md` (o `FRENTES=ruta`) y el próximo `B-` queda por
+encima de lo reservado. Anotar la reserva en la cabecera del backlog dependía de
+acordarse, y un rango escrito en prosa versionada lo lee `items-referenciados.mjs`
+como citas. Si el archivo no se entiende, no se inventa: un archivo viejo que quedó
+solo hace saltear números —hueco, no choque—.
+

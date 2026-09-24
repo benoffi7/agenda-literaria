@@ -2,6 +2,49 @@
 
 ## Sin publicar
 
+- **El clic del medio se mide en el tríptico, el banner de ciudad y la inscripción**
+  (B-1501, D-995). Los tres eventos se emitían solo en `click`, y abrir el enlace
+  con la rueda del mouse —en pestaña nueva, un uso real en el tríptico de la home—
+  dispara `auxclick` y no contaba. El criterio es uno solo y vive en
+  `src/lib/clicQueAbre.ts`: `click` con el botón principal o `auxclick` con el del
+  medio; nunca el derecho, y nunca dos veces por el mismo gesto. El tríptico sigue
+  recibiendo el enganche por prop (B-601).
+- **El destino de una inscripción por DM sale arrobado en el texto para redes y en
+  el evento de Calendar** (B-1540, D-985). Se guarda solo recortado, y las dos
+  salidas lo concatenaban crudo: un handle pelado salía sin la arroba que lo vuelve
+  mención, y uno pegado desde «Compartir» publicaba la URL con su `?igsh=…`. Ahora
+  se deriva al mostrar con `arrobaInstagram`, igual que el organizador, y **solo
+  con esa vía**: un teléfono o un `casa.brandon` pasan el alfabeto de Instagram y
+  no son cuentas. Lo que no se reconoce sale como se escribió. No reescribe
+  documentos ni genera un pulso de updates en Calendar.
+- **Una propuesta `en-revision` puede volver a «sin mirar»** (B-1490, D-1000,
+  B-1620). Botón nuevo en la bandeja: la mueve a `nueva` y firma `revision.en`, así
+  que el plazo de retención vuelve a contar desde ahí, sin decidir nada ni tocar la
+  foto. La regla no cambió. El aviso de B-1460 ofrece ahora esta salida. Y los
+  movimientos de la ficha («La estoy mirando», «Reabrir», «Volver a sin mirar»)
+  ganan el corte por ref de B-1461: un doble clic ya no escribe dos veces.
+- **El cierre de `/guia` manda a los formularios de cada sección** (B-1600). Decía
+  «escribinos y lo cargamos» y nombraba tres secciones, cuando cada una ya tiene su
+  `/guia/*/sumar`. Ahora recorre las secciones disponibles.
+- **Textos que habían dejado de ser ciertos** (B-1541, B-1502, B-1123, B-899): las
+  guías frenan **todo guardado** y no solo el publicado (notas en D-767 y D-900);
+  `16-analitica-del-sitio.md` cuenta cuatro eventos propios y el tríptico
+  enganchado; el patrón citado como «D-100» eran D-109 y D-106; y la tajada 2 de
+  la Guía queda documentada en `04-funcionalidades.md`, con D-990 y D-991.
+- **El archivador y el tablero ya no leen cualquier ✅ como cerrado** (B-1550,
+  D-980, B-1580). Un `✅` es «hecho» solo si dice que se cerró; si no, es trabajo
+  empezado, y con dos marcadores gana el último. Destapó tres ítems mal archivados:
+  dos terminados sin marca y uno (B-134) con una decisión pendiente escondida en los
+  cerrados, que vuelve a la lista viva.
+- **El tablero no ofrece como libre un id que la tanda reservó** (B-1051, D-981):
+  lee la sección `## Rangos` del archivo de coordinación de la tanda.
+- **El BACKLOG, limpio** (triage del 2026-09-24). El `auditor-documentacion`
+  recorrió los 54 ítems vivos contra el código. Se cerraron seis que ya estaban
+  hechos (B-842, B-843, B-830 a B-839, B-08, B-58, más B-785) y dos descartados
+  (B-239, que ya lo decía, y B-57); B-1221 queda decidido sin automatizar; B-909 y
+  B-907 suben a P2 porque la condición que los mantenía en P3 —el alta pública de
+  librerías— ya se cumplió; y cinco notas que no son trabajo (B-920, B-786, B-225,
+  B-366, B-734) pasan a una sección «Vigilado».
 - **`/guia` se describe con las cuatro secciones, no con tres** (B-1430). La
   `meta description` —indexada— y el párrafo de entrada se habían quedado sin
   bibliotecas. Ahora la descripción sale de `enumeracionDeLaGuia()`
