@@ -226,7 +226,11 @@ export const avisoDeCaducidad = (
  *
  *  - la `en-revision` **ya está** donde tiene que estar, y la regla no deja
  *    escribir sin mover el estado (`revisionValida()` pide `hasAny(['estado'])`),
- *    así que no hay forma de renovarle el plazo sin inventar un movimiento;
+ *    así que abrir la conversión no tiene nada que marcarle. Desde B-1490 el
+ *    movimiento que le renueva el plazo existe, pero es un botón aparte de la
+ *    bandeja («Volver a sin mirar», `estadoAlVolverASinMirar`) y no algo que la
+ *    conversión haga sola: devolverla a `nueva` al abrirla diría lo contrario de
+ *    lo que está pasando;
  *  - la `rechazada` se convierte sin reabrirla: pasarla a `en-revision` sería
  *    tomar en su nombre una decisión que el admin no tomó (reabrir), y la foto ya
  *    se borró al rechazar;
@@ -238,6 +242,30 @@ export const avisoDeCaducidad = (
  */
 export const estadoAlConvertir = (estado: EstadoPropuesta): EstadoPropuesta | null =>
   estado === 'nueva' ? 'en-revision' : null;
+
+/**
+ * **A qué estado vuelve una `en-revision` con «Volver a sin mirar»** — B-1490, o
+ * `null` si la propuesta no ofrece ese botón.
+ *
+ * Es el deshacer de «La estoy mirando», y existe por el hueco que destapó
+ * B-1460: la bandeja le ofrecía a la `en-revision` un solo movimiento,
+ * «Rechazar», que es una decisión y —si trajo foto— la borra. Volver a `nueva`
+ * no decide nada, deja la foto donde está (el trigger de B-863 solo actúa sobre
+ * los estados que cierran) y, como todo movimiento, firma `revision.en`: el reloj
+ * de retención vuelve a contar desde ahí. **La regla no cambió**: no tiene grafo
+ * de transiciones y `en-revision → nueva` mueve el estado, que es lo único que
+ * `revisionValida()` exige para dejar pasar la firma nueva.
+ *
+ * Solo la `en-revision`: la `nueva` ya está sin mirar, la `rechazada` tiene su
+ * propio camino a `nueva` («Reabrir», que dice que la foto no vuelve) y la
+ * `aceptada` no se reabre desde la bandeja.
+ *
+ * Lo leen los dos lados que tienen que coincidir —el botón de la ficha y el aviso
+ * de `avisoDeVencimientoAlConvertir`—, para que el aviso no ofrezca una salida
+ * que la pantalla no muestra.
+ */
+export const estadoAlVolverASinMirar = (estado: EstadoPropuesta): EstadoPropuesta | null =>
+  estado === 'en-revision' ? 'nueva' : null;
 
 /**
  * **Lo que dice el formulario cuando se convierte una propuesta que se va esta
@@ -268,9 +296,11 @@ export const estadoAlConvertir = (estado: EstadoPropuesta): EstadoPropuesta | nu
  *    segundo movimiento de D-600, la propuesta pasa a `aceptada` y deja de vencer;
  *  - la `rechazada`, si la conversión va a llevar tiempo, se puede **reabrir**
  *    desde la bandeja, que la mueve a `nueva` y reinicia el plazo;
- *  - la `en-revision` no tiene un movimiento así: el único que la bandeja ofrece
- *    es «Rechazar», que es tomar una decisión —y borra la foto— solo para ganar
- *    tiempo. El aviso no lo recomienda; lo que falta está en el BACKLOG.
+ *  - la `en-revision`, desde B-1490, se puede **volver a «sin mirar»**
+ *    (`estadoAlVolverASinMirar`), que la mueve a `nueva` y reinicia el plazo sin
+ *    decidir nada. Hasta entonces el único movimiento que la bandeja le ofrecía
+ *    era «Rechazar» —decidir algo solo para ganar tiempo, y borrar la foto—, y el
+ *    aviso decía que no había salida. «Rechazar» sigue sin aconsejarse.
  */
 export const avisoDeVencimientoAlConvertir = (
   p: Pick<Propuesta, 'estado' | 'creadoEn' | 'revision'>,
@@ -293,11 +323,15 @@ export const avisoDeVencimientoAlConvertir = (
       'que eso le reinicia el plazo.'
     );
   }
-  return (
+  if (estadoAlVolverASinMirar(p.estado) !== null) {
     // «Rechazar» no se ofrece como salida: es decidir algo solo para ganar tiempo,
-    // y si la propuesta trajo foto, la borra. Por eso se nombra y no se aconseja.
-    `${inicio} ${guardar} Desde la bandeja no hay cómo renovárselo sin rechazarla.`
-  );
+    // y si la propuesta trajo foto, la borra. «Volver a sin mirar» no decide nada.
+    return (
+      `${inicio} ${guardar} Si te vas a demorar, volvela a «sin mirar» desde la bandeja ` +
+      '(«Volver a sin mirar»), que eso le reinicia el plazo sin decidir nada.'
+    );
+  }
+  return `${inicio} ${guardar}`;
 };
 
 /**

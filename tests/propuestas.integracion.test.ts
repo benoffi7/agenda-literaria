@@ -604,6 +604,43 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
     });
 
     /**
+     * **B-1490 — «Volver a sin mirar», contra la regla de verdad.** La regla no
+     * cambió para esto: no tiene grafo de transiciones, y `en-revision → nueva`
+     * mueve el estado, que es lo que `revisionValida()` exige para dejar pasar una
+     * firma nueva. Lo que el caso fija es que **siga** pasando con la forma que
+     * arma el panel (`estadoAlVolverASinMirar` + `cambioDeRevision`, no un
+     * literal), y que la firma se renueve —que es todo lo que el botón compra: el
+     * reloj de retención cuenta desde `revision.en`—.
+     *
+     * Y la otra mitad, la que justifica el ref del panel: un segundo clic que
+     * llegara a escribir (`nueva → nueva`) no mueve el estado y rebota.
+     */
+    it('B-1490: una en-revision vuelve a nueva y la firma se renueva', async () => {
+      const { cambioDeRevision, estadoAlVolverASinMirar } = await import('@/lib/bandejaDePropuestas');
+      const ref = doc(db(), 'propuestas', 'p_volver');
+      await setDoc(ref, documento());
+      await updateDoc(ref, cambioDeRevision(UID, 'en-revision', serverTimestamp()));
+      const mirada = (await getDoc(ref)).data() as Propuesta;
+      expect(mirada.estado).toBe('en-revision');
+      const firmaAnterior = (mirada.revision.en as unknown as { toMillis(): number }).toMillis();
+
+      const destino = estadoAlVolverASinMirar('en-revision');
+      expect(destino).toBe('nueva');
+      await updateDoc(ref, cambioDeRevision(UID, destino!, serverTimestamp()));
+      const devuelta = (await getDoc(ref)).data() as Propuesta;
+      expect(devuelta.estado).toBe('nueva');
+      expect(devuelta.revision.porUid).toBe(UID);
+      expect(devuelta.revision.actividadId).toBeNull();
+      expect(devuelta.revision.motivo).toBeNull();
+      expect(
+        (devuelta.revision.en as unknown as { toMillis(): number }).toMillis(),
+      ).toBeGreaterThan(firmaAnterior);
+
+      // El doble clic que el panel corta: sin mover el estado, la regla lo rechaza.
+      await denegada(updateDoc(ref, cambioDeRevision(UID, 'nueva', serverTimestamp())));
+    });
+
+    /**
      * **`fotoDescartada`, las tres cosas que la regla tiene que sostener** —
      * B-926. Es el flag que autoriza al trigger a borrar el original **sin
      * verificar ninguna copia**, así que lo que pase acá es irreversible.

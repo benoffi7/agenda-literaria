@@ -24,7 +24,7 @@
  * resto del módulo es el de verdad, incluida `enlaceDeContacto`.
  */
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PropuestaConId } from '@/types/propuesta';
@@ -719,6 +719,22 @@ describe('convertir una que se va esta noche lo avisa — B-1460', () => {
     expect(revisarPropuesta).not.toHaveBeenCalled();
   });
 
+  it('y ofrece volverla a sin mirar, que es un botón que su ficha tiene (B-1490)', async () => {
+    const onConvertir = montar([
+      propuesta({
+        estado: 'en-revision',
+        creadoEn: tsDe(new Date(Date.now() - 60 * DIA)) as never,
+        revision: { porUid: 'uid_admin', en: casiVencida(), actividadId: null, motivo: null },
+      }),
+    ]);
+    // La salida que el aviso nombra está en la pantalla.
+    expect(screen.getByRole('button', { name: 'Volver a sin mirar' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(onConvertir.mock.calls[0]![0].avisos[0]).toMatch(/«Volver a sin mirar»/);
+  });
+
   it('una rechazada a punto de vencer ofrece reabrirla', async () => {
     const onConvertir = montar([
       propuesta({
@@ -770,6 +786,84 @@ describe('doble clic en «Convertir» mientras la marca está en vuelo — B-146
     await waitFor(() => expect(onConvertir).toHaveBeenCalledTimes(1));
     expect(onConvertir.mock.calls[0]![0].avisos.some((a: string) => /No se pudo marcar/.test(a))).toBe(false);
     expect(revisarPropuesta).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * **B-1490 — «Volver a sin mirar».** El deshacer de «La estoy mirando», que le
+ * renueva el plazo a una `en-revision` sin rechazarla.
+ *
+ * MUTACIONES PROBADAS: sacando el ref de `mover`, el caso del doble clic se pone
+ * rojo (dos escrituras); mostrando el botón en toda pendiente, el segundo.
+ */
+describe('volver a sin mirar — B-1490', () => {
+  const enRevision = () =>
+    propuesta({
+      estado: 'en-revision',
+      revision: {
+        porUid: 'uid_admin',
+        en: tsDe(new Date(Date.now() - 24 * 60 * 60 * 1000)) as never,
+        actividadId: null,
+        motivo: null,
+      },
+    });
+
+  it('una en-revision vuelve a nueva, sin motivo ni actividad', async () => {
+    montar([enRevision()]);
+    await userEvent.click(screen.getByRole('button', { name: 'Volver a sin mirar' }));
+    expect(revisarPropuesta).toHaveBeenCalledWith('p1', 'uid_admin', 'nueva', {});
+  });
+
+  it('solo la en-revision lo ofrece', async () => {
+    montar([
+      propuesta({ id: 'p_nueva' }),
+      propuesta({ id: 'p_rechazada', estado: 'rechazada' }),
+      propuesta({ id: 'p_aceptada', estado: 'aceptada' }),
+    ]);
+    await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
+    expect(screen.queryByRole('button', { name: 'Volver a sin mirar' })).toBeNull();
+  });
+
+  it('y la en-revision sigue pudiendo rechazarse: el botón no reemplaza la decisión', () => {
+    montar([enRevision()]);
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeTruthy();
+    // Y no ofrece «la estoy mirando», que es donde ya está.
+    expect(screen.queryByRole('button', { name: 'La estoy mirando' })).toBeNull();
+  });
+
+  /**
+   * **El doble clic no escribe dos veces** — el mismo corte que B-1461. Sin el
+   * ref, el segundo clic llega antes de que React pinte el botón deshabilitado,
+   * intenta `nueva → nueva`, la regla lo rechaza y la bandeja muestra un fallo
+   * falso sobre un movimiento que sí salió.
+   */
+  it('dos clics en el mismo tick escriben una sola vez y no muestran un fallo falso', async () => {
+    let soltar: () => void = () => {};
+    vi.mocked(revisarPropuesta)
+      .mockImplementationOnce(() => new Promise<void>((r) => { soltar = r; }))
+      // Si llegara un segundo, rebota como rebotaría en la regla.
+      .mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+    montar([enRevision()]);
+    const boton = screen.getByRole('button', { name: 'Volver a sin mirar' });
+    /*
+     * Los dos clics **adentro de un solo `act`**, y no dos `fireEvent.click`: cada
+     * `fireEvent` cierra su propio `act`, React pinta el `disabled` en el medio y
+     * el segundo clic ni llega al handler — el caso pasaría también sin el ref.
+     * Adentro de un `act` el render queda para el final, que es lo que pasa con
+     * un doble clic real antes de que el navegador pinte.
+     */
+    act(() => {
+      boton.click();
+      boton.click();
+    });
+    await waitFor(() => expect(revisarPropuesta).toHaveBeenCalledTimes(1));
+
+    soltar();
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Volver a sin mirar' }) as HTMLButtonElement).disabled).toBe(false),
+    );
+    expect(revisarPropuesta).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/no tiene permiso para hacer esto/i)).toBeNull();
   });
 });
 
