@@ -735,6 +735,82 @@ describe('el pie de handles (B-95: el campo que no se usaba para nada)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────
+// El destino por DM es una cuenta de Instagram (B-1540)
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * B-1540 — `inscripcion.destino` con `via: 'dm'` es el cuarto campo de Instagram
+ * del modelo y el único que se guarda sin criterio (`limpiar`, no `conHandle`).
+ * La ficha pública ya lo leía como cuenta (`accionDeInscripcion`); el posteo lo
+ * concatenaba crudo, así que un destino cargado pelado salía sin la arroba que lo
+ * convierte en mención. Se deriva al mostrar con `arrobaInstagram`, como el
+ * organizador y la tallerista (B-1142), y **solo** con `dm`.
+ */
+describe('inscripción por DM — el destino sale como cuenta (B-1540)', () => {
+  const lineaDeInscripcion = (a: ActividadParaRedes): string =>
+    texto(a)
+      .split('\n')
+      .find((l) => l.startsWith('Inscripción'))!;
+
+  const conDestino = (via: ActividadParaRedes['inscripcion']['via'], destino: string) =>
+    act({
+      inscripcion: { requiere: true, via, destino, cupo: null, cierra: null, completo: false },
+    });
+
+  it('un handle guardado pelado sale con arroba', () => {
+    expect(lineaDeInscripcion(conDestino('dm', 'casabrandon'))).toBe('Inscripción por DM: @casabrandon');
+  });
+
+  it('el link del perfil pegado desde «Compartir» sale como handle, sin el `?igsh=…`', () => {
+    const a = conDestino('dm', 'https://www.instagram.com/casabrandon/?igsh=MWx');
+    expect(lineaDeInscripcion(a)).toBe('Inscripción por DM: @casabrandon');
+    expect(texto(a)).not.toContain('instagram.com');
+    expect(texto(a)).not.toContain('igsh');
+  });
+
+  it('lo que no se reconoce sale como se escribió, recortado y sin arroba (D-767)', () => {
+    expect(lineaDeInscripcion(conDestino('dm', '  Casa Brandon / IG '))).toBe(
+      'Inscripción por DM: Casa Brandon / IG',
+    );
+    // Un handle de otra red con `-` falla el alfabeto de Instagram: no se le
+    // inventa una arroba, que en un posteo menciona y notifica a otra cuenta.
+    expect(lineaDeInscripcion(conDestino('dm', 'la-mona'))).toBe('Inscripción por DM: la-mona');
+  });
+
+  it('las otras vías no pasan por el saneador de Instagram', () => {
+    // Un teléfono o un `casa.brandon` pasan el alfabeto de Instagram: si la
+    // derivación no mirara la vía, el WhatsApp saldría como una cuenta.
+    expect(lineaDeInscripcion(conDestino('whatsapp', '1155556666'))).toBe(
+      'Inscripción por WhatsApp: 1155556666',
+    );
+    expect(lineaDeInscripcion(conDestino('formulario', ' casa.brandon '))).toBe(
+      'Inscripción por formulario: casa.brandon',
+    );
+    expect(lineaDeInscripcion(conDestino('mail', 'hola@casabrandon.com'))).toBe(
+      'Inscripción por mail: hola@casabrandon.com',
+    );
+  });
+
+  it('cómo se escribe la cuenta lo decide `arrobaInstagram`, no una copia de acá (D-20)', () => {
+    for (const crudo of ['casabrandon', '@casabrandon', 'instagram.com/casabrandon', 'Casa Brandon / IG']) {
+      expect(lineaDeInscripcion(conDestino('dm', crudo))).toBe(`Inscripción por DM: ${arrobaInstagram(crudo)}`);
+    }
+  });
+
+  it('por el formulario también: `formADocumento` no normaliza el destino, así que la derivación es la única', () => {
+    const base = formularioLleno();
+    const f = formularioLleno({
+      inscripcion: { ...base.inscripcion, via: 'dm', destino: 'https://www.instagram.com/casabrandon/?igsh=MWx' },
+    });
+    const r = textoRedesDeForm(f, 'anuncio', ANTES, LABELS);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.texto).toContain('Inscripción por DM: @casabrandon');
+    expect(r.texto).not.toContain('igsh');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
 // Privacidad (§5.1) — con centinelas
 // ─────────────────────────────────────────────────────────────────
 
