@@ -75,7 +75,14 @@
  * La contracara es que las excepciones se declaran **en los dos**, y eso ya falló
  * una vez: B-99 declaró el id de sesión en el barrido de vitest y no acá, así que
  * este gate quedó **rojo por un campo que se publica a propósito** — el modo de
- * falla de B-180 en vivo. Ver `CENTINELA_DEL_INDICE`.
+ * falla de B-180 en vivo. Ver `CENTINELA_DEL_INDICE` en
+ * `scripts/gate-build/semilla.mjs`.
+ *
+ * ── Cómo está partido (D-1070, B-1760) ────────────────────────────────────
+ * `scripts/gate-build/semilla.mjs` son los datos (qué se siembra, los centinelas
+ * y las canastas), `directorio.mjs` el verificador de los cuatro directorios de
+ * la Guía (pasos 8i-8l) y `barrido.mjs` el barrido del paso 9 como función pura.
+ * Este archivo siembra, buildea y afirma.
  *
  * Los dos documentos se borran al final, pase lo que pase (`finally`): el
  * emulador de quien está trabajando puede tener datos persistidos
@@ -97,12 +104,6 @@ import { problemasDeJerarquia, tituloDe } from './seo-del-artefacto.mjs';
 import {
   CENTINELA,
   CENTINELA_DEL_DETALLE,
-  CENTINELA_DEL_INDICE,
-  CENTINELA_DE_LA_CARTELERA,
-  CENTINELA_DEL_DIRECTORIO,
-  CENTINELA_DE_SUSCRIPCIONES,
-  CENTINELA_DE_LUGARES,
-  CENTINELA_DE_BIBLIOTECAS,
   CIUDAD_DEL_GATE,
   ETIQUETA_CIUDAD_DEL_GATE,
   ETIQUETA_PROVINCIA_DEL_GATE,
@@ -110,8 +111,6 @@ import {
   ETIQUETA_DE_INCLUYE,
   ID_DE_SESION_QUE_SALE,
   LAT_DE_LA_CASA,
-  MONTO_EN_EL_ARTEFACTO,
-  PAGINAS_CON_TARJETA,
   PREFIJO,
   PROVINCIA_DEL_GATE,
   SLUG_AFUERA,
@@ -130,8 +129,8 @@ import {
   SLUG_SUSCRIPCION,
   SLUG_SUSCRIPCION_PENDIENTE,
   documentosDeLaSemilla,
-  pintaLaTarjeta,
 } from './gate-build/semilla.mjs';
+import { barrerArtefacto } from './gate-build/barrido.mjs';
 import { datoConFecha, etiquetaCon, verificarDirectorio } from './gate-build/directorio.mjs';
 
 import { initializeApp } from 'firebase-admin/app';
@@ -1563,163 +1562,25 @@ try {
      * elegidas a mano.**
      *
      * Es lo que el ítem pedía desde el principio: «el `grep` sobre `dist/`
-     * buscando `difusion`, la URL de la reunión y los uids». Hasta acá el gate
-     * barría el `events.json` (paso 3) y **tres** páginas de detalle nombradas
-     * una por una: la cancelada (paso 4), la de la galería y la publicada (8g).
+     * buscando `difusion`, la URL de la reunión y los uids». Hasta B-121 el gate
+     * barría el `events.json` (paso 3) y **tres** páginas de detalle nombradas una
+     * por una, y el listado, la cartelera, las páginas de mes, `/pasadas`, los
+     * hubs y el sitemap quedaban afuera — cada página nueva, hasta que alguien se
+     * acordara de agregarla (B-212, B-227). Así que la lista **se deriva del
+     * `dist/`**: una página nueva entra sola.
      *
-     * **Lo que esa forma no ve, y es la mitad del sitio.** El listado, la
-     * cartelera, las páginas de mes, `/pasadas`, los hubs y el sitemap también
-     * son HTML indexable que interpola datos de actividades, y ninguno estaba
-     * barrido. Peor: cada página nueva que nace queda afuera hasta que alguien
-     * se acuerde de agregarla acá — que es exactamente cómo la salida 5 y la 6
-     * llegaron tarde al mapa (B-212, B-227).
-     *
-     * Así que la lista **se deriva del `dist/`**: se recorre lo que el build
-     * escribió y se barre todo lo que es texto publicable. Una página nueva
-     * entra sola. No hay nada que mantener.
-     *
-     * **Por qué esto no reemplaza a `tests/barrido-de-salidas-publicas.test.ts`
-     * ni al revés.** Aquél mira las **funciones puras** —qué decide publicar la
-     * proyección— y corre en milisegundos sin build. Éste mira **lo que quedó
-     * escrito en el artefacto**, que es lo único que prueba que ninguna
-     * plantilla interpoló algo por su cuenta: un `title={imagen.storagePath}`
-     * agregado en un `.astro` pasa el barrido del view-model y muere acá. Son
-     * complementarios y los dos hacen falta.
+     * Desde B-1760 (corte 3 de D-1070) el barrido es una función pura sobre
+     * `{relativa, contenido}[]` —`barrerArtefacto`, en
+     * `scripts/gate-build/barrido.mjs`, con las canastas por salida y los
+     * controles positivos del monto—, y acá solo se le pasa lo que el build
+     * escribió.
      *
      * **Por qué vive en el gate y no en la suite:** necesita un `dist/`
      * construido, y `npm test` no puede depender de eso. Es el criterio de
-     * B-217, y es el mismo por el que dos archivos de test se saltean sin build.
+     * B-217. Lo que sí corre en la suite es la función, contra un `dist/` de
+     * mentira con una fuga por canasta.
      */
-    {
-      const RAIZ_DIST = new URL('../dist/', import.meta.url);
-      const BARRIBLES = /\.(html|json|xml|txt)$/;
-
-      /** Todo lo publicable que el build escribió, relativo a `dist/`. */
-      const publicables = (await readdir(RAIZ_DIST, { recursive: true })).filter((r) =>
-        BARRIBLES.test(r),
-      );
-
-      /*
-       * Control positivo, y no es una formalidad: si el glob dejara de encontrar
-       * archivos —porque cambió el `outDir`, porque el build falló antes— este
-       * paso saldría en verde **sin haber mirado nada**, que es la forma exacta
-       * en que el paso 4 original pasaba leyendo cero documentos (B-217).
-       */
-      if (publicables.length < 5) {
-        fallo(
-          `el barrido del artefacto encontró ${publicables.length} archivo(s) publicables en dist/.\n` +
-            '  Son demasiado pocos: o el build no escribió nada, o cambió dónde escribe.\n' +
-            '  Un barrido sobre cero archivos pasa en verde sin haber mirado nada.',
-        );
-        salida = 1;
-      }
-
-      const hallazgos = [];
-      /** Dónde apareció cada forma del monto — B-804. Es el control positivo. */
-      const vistos = new Map(MONTO_EN_EL_ARTEFACTO.map((f) => [f.campo, []]));
-      for (const relativa of publicables) {
-        const contenido = await readFile(new URL(relativa, RAIZ_DIST), 'utf8');
-
-        /*
-         * Las excepciones son **por salida**, cortas y justificadas, igual que en
-         * `tests/barrido-de-salidas-publicas.test.ts`: la página de detalle
-         * publica la descripción entera, la dirección y el tema (D-139); el
-         * índice publica el id de sesión desde B-99; la cartelera publica el
-         * epígrafe (D-125). **Todo lo demás se barre en todos los archivos**, que
-         * es lo que hace que una plantilla nueva no pueda publicar de más.
-         */
-        const permitido = relativa.startsWith('actividad/')
-          ? CENTINELA_DEL_DETALLE
-          : relativa === 'events.json'
-            ? CENTINELA_DEL_INDICE
-            : relativa.startsWith('cartelera/')
-              ? CENTINELA_DE_LA_CARTELERA
-              : relativa === 'librerias.json' || relativa.startsWith('guia/librerias/')
-                ? CENTINELA_DEL_DIRECTORIO
-                : relativa === 'suscripciones.json' ||
-                    relativa.startsWith('guia/suscripciones/')
-                  ? CENTINELA_DE_SUSCRIPCIONES
-                : relativa === 'lugares.json' || relativa.startsWith('guia/lugares/')
-                  ? CENTINELA_DE_LUGARES
-                  : relativa === 'bibliotecas.json' ||
-                      relativa.startsWith('guia/bibliotecas/')
-                    ? CENTINELA_DE_BIBLIOTECAS
-                    : [];
-        const prohibidos = Object.entries(CENTINELA).filter(
-          ([campo]) => !permitido.includes(campo),
-        );
-
-        for (const [campo, valor] of prohibidos) {
-          if (contenido.includes(valor)) hallazgos.push(`    ${relativa} → ${campo} (${valor})`);
-        }
-
-        /*
-         * B-804 — y el centinela **numérico**, que no entra en el modelo de
-         * canastas de arriba porque sus dos formas no comparten permiso: el
-         * número crudo sale al índice y al JSON-LD, la forma legible a todo lo
-         * que pinte la tarjeta compartida.
-         */
-        for (const forma of MONTO_EN_EL_ARTEFACTO) {
-          if (!contenido.includes(forma.valor)) continue;
-          vistos.get(forma.campo).push(relativa);
-          if (!forma.permitido(relativa)) {
-            hallazgos.push(`    ${relativa} → ${forma.campo} (${forma.valor})`);
-          }
-        }
-      }
-
-      /*
-       * **Los tres controles positivos del monto** — B-804, y son la mitad del
-       * ítem. Un barrido que solo afirma ausencias pasa en verde el día que la
-       * semilla deja de sembrar el campo, que es exactamente el estado del que
-       * este ítem viene: el gate afirmaba sobre una salida que nunca tuvo el
-       * dato.
-       */
-      for (const forma of MONTO_EN_EL_ARTEFACTO) {
-        if (vistos.get(forma.campo).length > 0) continue;
-        fallo(
-          `el monto del arancel no aparece en NINGÚN archivo del dist/ en su forma ` +
-            `${forma.campo} (${forma.valor}).\n` +
-            `  Tendría que salir en ${forma.donde}.\n` +
-            '  O la semilla dejó de cargar `arancel.monto` con un tipo que lo admita, o la\n' +
-            '  salida dejó de publicarlo: en los dos casos el barrido de abajo estaría\n' +
-            '  afirmando sobre un dato que no existe (B-804).',
-        );
-        salida = 1;
-      }
-
-      const enLaTarjeta = vistos.get('montoLegible').filter((r) => pintaLaTarjeta(r));
-      if (enLaTarjeta.length === 0) {
-        fallo(
-          'el monto no aparece en ninguna de las páginas que pintan la tarjeta compartida.\n' +
-            `  Esperaba alguna de: ${PAGINAS_CON_TARJETA.join(', ')}.\n` +
-            '  Es la cuarta canasta de B-804: si dejó de imprimirse ahí, el permiso que le\n' +
-            '  dimos a esas páginas quedó sin nada que permitir.',
-        );
-        salida = 1;
-      }
-
-      if (!vistos.get('montoCrudo').includes('events.json')) {
-        fallo(
-          'el events.json no lleva el monto del arancel.\n' +
-            '  Lo lleva desde B-114 porque la tarjeta del listado arma la frase del precio\n' +
-            '  en el cliente: sin el número, el listado dice la etiqueta sola.',
-        );
-        salida = 1;
-      }
-
-      if (hallazgos.length > 0) {
-        fallo(
-          `hay campos privados en el artefacto construido (${hallazgos.length} hallazgo(s)):\n` +
-            hallazgos.join('\n') +
-            '\n  Es B-121: el barrido sobre `dist/`. Lo que se sube tiene un campo que\n' +
-            '  ninguna salida pública debería llevar — y si el barrido de\n' +
-            '  `tests/barrido-de-salidas-publicas.test.ts` está en verde, entonces la\n' +
-            '  proyección recorta bien y lo publicó una **plantilla** por su cuenta.',
-        );
-        salida = 1;
-      }
-    }
+    for (const mensaje of barrerArtefacto(await publicables())) ctx.fallo(mensaje);
 
     /*
      * 10 · **B-122 — las dos propiedades del HTML indexable que quedaban sin
