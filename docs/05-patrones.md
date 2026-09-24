@@ -755,6 +755,20 @@ sigue el sistema visual del sitio**: tiene su propio criterio y su propio
 centralizador. Sus títulos usan `font-serif`, que es **su** token —Georgia, una
 face del sistema— y no el de ninguna de las tres familias del sitio.
 
+**El piso del panel: `text-tinta/65`** (B-1630). A diferencia del sitio, el panel
+**sí** atenúa con opacidades, pero no por debajo de WCAG AA (4,5:1). Se mide
+contra su superficie clara más oscura —el blanco de las tarjetas, el papel del
+fondo y los tokens que use como fondo pleno; hoy es `crema`—, y ahí `/60` da 4,35
+y `/65` da 5,10. Ojo con medir solo contra el blanco: `/60` pasa sobre la tarjeta
+(4,51) y no sobre el papel de al lado (4,43). Lo verifica
+`tests/contraste-del-panel.test.ts`, que barre `components/admin/` y
+`components/campos/` con `lib/contraste.ts`, igual que
+`contraste-de-superficies.test.ts` barre el sitio. Si algo tiene que quedar más
+bajo a propósito, va en la lista `EXCEPCIONES` del test **con su porqué**; el
+texto de un control deshabilitado (`disabled:`) está exento por WCAG 1.4.3. Lo que
+el test no ve: el texto sobre un tinte (`bg-acento/5`, `bg-amber-50`) y un
+`opacity-NN` en un contenedor, que multiplica la atenuación de lo de adentro.
+
 > Los dos comparten **una sola hoja de fuentes** (`Base.astro`), así que bajar una
 > familia solo para el panel se lo cobra a las cinco páginas públicas. Es el motivo
 > por el que el serif del panel es una face del sistema y no una webfont.
