@@ -95,10 +95,25 @@ import {
 import type { RutaCentinela } from './fixtures/centinelas';
 import { barrer, type Excepcion } from './fixtures/barrido';
 import {
+  PERMITIDO_EN_LA_PROYECCION_DE_BIBLIOTECAS,
+  PERMITIDO_EN_LA_PROYECCION_DE_LIBRERIAS,
+  PERMITIDO_EN_LA_PROYECCION_DE_LUGARES,
+  PERMITIDO_EN_LA_PROYECCION_DE_SUSCRIPCIONES,
+  PERMITIDO_SIN_DIRECCION_DE_LUGARES,
+} from './fixtures/canastas-de-la-guia';
+import type { RutaDeBiblioteca } from './fixtures/centinelas-biblioteca';
+import type { RutaDeLibreria } from './fixtures/centinelas-libreria';
+import type { RutaDeLugar } from './fixtures/centinelas-lugar';
+import type { RutaDeSuscripcion } from './fixtures/centinelas-suscripcion';
+import {
   CENTINELA as CENTINELA_DEL_GATE,
   CENTINELA_DEL_DETALLE,
+  CENTINELA_DEL_DIRECTORIO,
   CENTINELA_DEL_INDICE,
+  CENTINELA_DE_BIBLIOTECAS,
   CENTINELA_DE_LA_CARTELERA,
+  CENTINELA_DE_LUGARES,
+  CENTINELA_DE_SUSCRIPCIONES,
 } from '../scripts/gate-build/semilla.mjs';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -116,11 +131,13 @@ import {
  * propósito o ciego a uno nuevo. Desde B-1760 la semilla del gate es un módulo
  * sin efectos, así que se puede importar y comparar.
  *
- * `null` es **otra salida**: las cuatro colecciones de la Guía tienen su barrido
- * de vitest en su propio archivo, y el mail de una cuenta del panel no tiene
- * ruta en este fixture porque no es parte de una actividad. Que la tabla tenga
- * **todas** las claves lo exige el primer `it` de abajo: un centinela nuevo en el
- * gate obliga a decidir acá con qué se compara.
+ * Las cuatro colecciones de la Guía tienen su propia tabla —`RUTA_EN_LA_GUIA`,
+ * abajo—, porque sus rutas son las de otro fixture. Hasta B-1812 estaban acá
+ * mapeadas a `null` y no se comparaban. El único `null` que queda es el mail de
+ * una cuenta del panel: no es parte de ningún documento que un barrido de vitest
+ * recorra. Que entre esta tabla y las de la Guía estén **todas** las claves lo
+ * exige el primer `it` de abajo: un centinela nuevo en el gate obliga a decidir
+ * acá con qué se compara.
  */
 const RUTA_DEL_CENTINELA_DEL_GATE: Record<string, RutaCentinela | null> = {
   descripcion: 'descripcion',
@@ -147,28 +164,105 @@ const RUTA_DEL_CENTINELA_DEL_GATE: Record<string, RutaCentinela | null> = {
   comisionId: 'comisiones.id',
   incluyeSlug: 'incluye',
   mailDePanel: null,
-  libreriaDescripcion: null,
-  libreriaDireccion: null,
-  libreriaContacto: null,
-  libreriaMotivo: null,
-  libreriaPendiente: null,
-  suscripcionDescripcion: null,
-  suscripcionTematica: null,
-  suscripcionContacto: null,
-  suscripcionMotivo: null,
-  suscripcionPendiente: null,
-  lugarDescripcion: null,
-  lugarDireccion: null,
-  lugarContacto: null,
-  lugarMotivo: null,
-  lugarPendiente: null,
-  lugarDireccionDeCasa: null,
-  bibliotecaDescripcion: null,
-  bibliotecaDireccion: null,
-  bibliotecaContacto: null,
-  bibliotecaMotivo: null,
-  bibliotecaPendiente: null,
 };
+
+/**
+ * **Lo mismo para las cuatro colecciones de la Guía** — B-1812.
+ *
+ * Cada una se compara con la lista de su proyección
+ * (`tests/fixtures/canastas-de-la-guia.ts`) y no con la de su ficha o su marcado:
+ * la canasta del gate es **del archivo**, y los tres archivos de cada colección
+ * —el JSON, el listado y la ficha, con su JSON-LD adentro— publican entre todos
+ * lo que publica la proyección. Las otras dos listas son subconjuntos de ésa.
+ *
+ * `storagePath` y `createdBy` también están: el gate los siembra en las fichas de
+ * la Guía (la imagen y el `revision.porUid`), así que la canasta de cada
+ * directorio los tiene que seguir prohibiendo, como el barrido de acá.
+ *
+ * El `null` de cada `*Pendiente` es de otra naturaleza: es la descripción de una
+ * ficha que **espera decisión**, y lo que la deja afuera es el
+ * `where('estado','==','publicado')` de la lectura del build, no la proyección.
+ * Ningún barrido de vitest recorre esa lectura, así que no hay con qué
+ * compararlo; el gate lo prohíbe en todo el `dist/` y esa es su única red.
+ *
+ * La casa de los lugares es la única clave que se compara contra **otra** lista
+ * de la misma colección: `lugarDireccionDeCasa` es la `direccion` de un lugar
+ * publicado con `direccionPublica: false`, así que su par es
+ * `PERMITIDO_SIN_DIRECCION`, no la proyección del local comercial.
+ */
+type ComparacionDeLaGuia = {
+  salida: string;
+  canasta: readonly string[];
+  grupos: readonly { centinelas: readonly string[] }[];
+  rutas: Record<string, string | null>;
+};
+
+const RUTA_EN_LA_GUIA = {
+  librerias: {
+    salida: 'librerías',
+    canasta: CENTINELA_DEL_DIRECTORIO,
+    grupos: PERMITIDO_EN_LA_PROYECCION_DE_LIBRERIAS,
+    rutas: {
+      libreriaDescripcion: 'descripcion',
+      libreriaDireccion: 'direccion',
+      libreriaContacto: 'contactoDeQuienCargo.valor',
+      libreriaMotivo: 'revision.motivo',
+      libreriaPendiente: null,
+      storagePath: 'imagenes.storagePath',
+      createdBy: 'revision.porUid',
+    } satisfies Record<string, RutaDeLibreria | null>,
+  },
+  suscripciones: {
+    salida: 'suscripciones',
+    canasta: CENTINELA_DE_SUSCRIPCIONES,
+    grupos: PERMITIDO_EN_LA_PROYECCION_DE_SUSCRIPCIONES,
+    rutas: {
+      suscripcionDescripcion: 'descripcion',
+      suscripcionTematica: 'envio.tematica',
+      suscripcionContacto: 'contactoDeQuienCargo.valor',
+      suscripcionMotivo: 'revision.motivo',
+      suscripcionPendiente: null,
+      storagePath: 'imagenes.storagePath',
+      createdBy: 'revision.porUid',
+    } satisfies Record<string, RutaDeSuscripcion | null>,
+  },
+  lugares: {
+    salida: 'lugares (local comercial)',
+    canasta: CENTINELA_DE_LUGARES,
+    grupos: PERMITIDO_EN_LA_PROYECCION_DE_LUGARES,
+    rutas: {
+      lugarDescripcion: 'descripcion',
+      lugarDireccion: 'direccion',
+      lugarContacto: 'contactoDeQuienCargo.valor',
+      lugarMotivo: 'revision.motivo',
+      lugarPendiente: null,
+      storagePath: 'imagenes.storagePath',
+      createdBy: 'revision.porUid',
+    } satisfies Record<string, RutaDeLugar | null>,
+  },
+  casa: {
+    salida: 'lugares (casa, sin la dirección)',
+    canasta: CENTINELA_DE_LUGARES,
+    grupos: PERMITIDO_SIN_DIRECCION_DE_LUGARES,
+    rutas: {
+      lugarDireccionDeCasa: 'direccion',
+    } satisfies Record<string, RutaDeLugar | null>,
+  },
+  bibliotecas: {
+    salida: 'bibliotecas',
+    canasta: CENTINELA_DE_BIBLIOTECAS,
+    grupos: PERMITIDO_EN_LA_PROYECCION_DE_BIBLIOTECAS,
+    rutas: {
+      bibliotecaDescripcion: 'descripcion',
+      bibliotecaDireccion: 'direccion',
+      bibliotecaContacto: 'contactoDeQuienCargo.valor',
+      bibliotecaMotivo: 'revision.motivo',
+      bibliotecaPendiente: null,
+      storagePath: 'imagenes.storagePath',
+      createdBy: 'revision.porUid',
+    } satisfies Record<string, RutaDeBiblioteca | null>,
+  },
+} satisfies Record<string, ComparacionDeLaGuia>;
 
 /**
  * Las diferencias entre una canasta del gate y la de acá que **son a propósito**,
@@ -177,18 +271,22 @@ const RUTA_DEL_CENTINELA_DEL_GATE: Record<string, RutaCentinela | null> = {
  *
  * MUTACIÓN PROBADA: sacar `'bio'` de la canasta del detalle del gate, o vaciar
  * la de la cartelera, pone en rojo el `it` de esa salida nombrando el campo.
+ *
+ * `rutas` es la traducción de nombres: la de una actividad por defecto, o la de
+ * una colección de la Guía (`RUTA_EN_LA_GUIA`, B-1812).
  */
 type Diferencia = { clave: string; porque: string };
 
 const canastaDelGateCoincide = (
   canastaDelGate: readonly string[],
-  grupos: readonly Excepcion[],
+  grupos: readonly { centinelas: readonly string[] }[],
   diferencias: readonly Diferencia[] = [],
+  rutas: Record<string, string | null> = RUTA_DEL_CENTINELA_DEL_GATE,
 ): void => {
   const permitidas = new Set(grupos.flatMap((g) => g.centinelas));
   const aProposito = new Set(diferencias.map((d) => d.clave));
   const distintas: string[] = [];
-  for (const [clave, ruta] of Object.entries(RUTA_DEL_CENTINELA_DEL_GATE)) {
+  for (const [clave, ruta] of Object.entries(rutas)) {
     if (ruta === null) continue;
     const enElGate = canastaDelGate.includes(clave);
     const aca = permitidas.has(ruta);
@@ -208,7 +306,7 @@ const canastaDelGateCoincide = (
   const colgadas = diferencias
     .map((d) => d.clave)
     .filter((clave) => {
-      const ruta = RUTA_DEL_CENTINELA_DEL_GATE[clave];
+      const ruta = rutas[clave];
       return !ruta || canastaDelGate.includes(clave) === permitidas.has(ruta);
     });
   expect(colgadas, 'diferencias declaradas que ya no difieren').toEqual([]);
@@ -216,12 +314,31 @@ const canastaDelGateCoincide = (
 
 describe('las canastas del gate del build y las de este barrido — B-1761', () => {
   it('cada centinela del gate dice con qué ruta de acá se compara', () => {
-    expect(Object.keys(RUTA_DEL_CENTINELA_DEL_GATE).sort()).toEqual(
-      Object.keys(CENTINELA_DEL_GATE).sort(),
-    );
+    const tablas = [
+      RUTA_DEL_CENTINELA_DEL_GATE,
+      ...Object.values(RUTA_EN_LA_GUIA).map((c) => c.rutas),
+    ];
+    const claves = new Set(tablas.flatMap((t) => Object.keys(t)));
+    expect([...claves].sort()).toEqual(Object.keys(CENTINELA_DEL_GATE).sort());
     // Control positivo: sin rutas, la comparación de abajo no compara nada.
     expect(Object.values(RUTA_DEL_CENTINELA_DEL_GATE).filter(Boolean).length).toBeGreaterThan(15);
   });
+
+  /*
+   * B-1812 — las cuatro canastas de la Guía, contra la lista de la proyección de
+   * su colección. Ninguna difiere a propósito: la canasta del gate nombra lo que
+   * la proyección publica y nada más.
+   *
+   * MUTACIÓN PROBADA: sacar `'suscripcionTematica'` de `CENTINELA_DE_SUSCRIPCIONES`,
+   * `'direccion'` del grupo «dónde queda» de las bibliotecas, agregar
+   * `'libreriaContacto'` a `CENTINELA_DEL_DIRECTORIO` o `'lugarDireccionDeCasa'` a
+   * `CENTINELA_DE_LUGARES` pone en rojo el `it` de esa colección nombrando la clave.
+   */
+  for (const { salida, canasta, grupos, rutas } of Object.values(RUTA_EN_LA_GUIA)) {
+    it(`la canasta de ${salida} del gate dice lo mismo que su barrido (B-1812)`, () => {
+      canastaDelGateCoincide(canasta, grupos, [], rutas);
+    });
+  }
 });
 
 // ───────────────────────────────────────────────────────────────────────────
