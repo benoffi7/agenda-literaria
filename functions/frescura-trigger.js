@@ -7,7 +7,9 @@
  * ── Las cuatro decisiones, y dónde está cada una ──────────────────────────
  *
  * 1. **Qué se compara:** el *conjunto* de slugs, no el conteo →
- *    `diferenciaDeSlugs` en `frescura.js`.
+ *    `diferenciaDeSlugs` en `frescura.js`. Y, para lo que el conjunto no ve
+ *    —una edición—, el `generadoEn` del índice contra el último despacho →
+ *    `compararMarcas` (B-886).
  * 2. **Cuánta divergencia es normal:** la ventana, con el criterio escrito
  *    sumando por sumando → `TOLERANCIA_MS` en `frescura.js`.
  * 3. **Cómo avisa:** issue en el repo + `logger.error` con `alerta` → acá abajo.
@@ -56,6 +58,7 @@ import { crearIssue } from './github-issues.js';
 import { remarcarPorFrescura } from './marca-de-rebuild.js';
 import {
   compararFrescura,
+  compararMarcas,
   decidirAviso,
   decidirAvisoDeLectura,
   diferenciaDeSlugs,
@@ -198,6 +201,24 @@ const TOPE_DE_SOBRANTES_A_FECHAR = 50;
  * publica. Si el documento no existe (se borró de verdad) no hay fecha, y
  * `fechar` cae al reloj de la primera vez que lo vimos.
  */
+/**
+ * B-886 — lo que el último despacho dice que cubre, para `compararMarcas`.
+ *
+ * Con `fieldMask` por el mismo criterio que las actividades: de `sistema/rebuild`
+ * alcanza con el despacho y su hora; `ultimoError` puede traer un cuerpo de
+ * GitHub entero y no tiene nada que hacer acá.
+ *
+ * Se lee **después** del índice, como Firestore entero (ver la cabecera): un
+ * despacho que sale entre las dos lecturas se ve como un índice anterior a él,
+ * pero con edad cero, o sea `en-vuelo` y no `atrasado`.
+ */
+const leerDespacho = async (db) => {
+  const [snap] = await db.getAll(db.doc('sistema/rebuild'), {
+    fieldMask: ['despacho', 'disparado'],
+  });
+  return snap.exists ? snap.data() : null;
+};
+
 const fechasDeSobrantes = async (db, sobran, idPorSlug) => {
   const fechas = {};
   for (const slug of sobran.slice(0, TOPE_DE_SOBRANTES_A_FECHAR)) {
@@ -296,6 +317,9 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
   // Después del índice, nunca antes. Ver la cabecera.
   const { slugs: publicados, fechas } = await leerPublicadas(db);
 
+  const despacho = await leerDespacho(db);
+  const marcas = compararMarcas({ generadoEn: indice.generadoEn, rebuild: despacho, ahora });
+
   const { faltan, sobran } = diferenciaDeSlugs(publicados, indice.slugs);
   const fechasSobrantes = sobran.length
     ? await fechasDeSobrantes(db, sobran, indice.idPorSlug)
@@ -307,6 +331,7 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
     publicadas: publicados.length,
     enElIndice: indice.slugs.length,
     generadoEn: indice.generadoEn,
+    marcas,
     ahora,
   });
 
@@ -340,6 +365,14 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
         publicadas: veredicto.publicadas,
         enElIndice: veredicto.enElIndice,
         generadoEn: veredicto.generadoEn,
+        // B-886 — `set` con merge es profundo sobre los mapas, pero este tiene
+        // siempre las mismas claves: se pisa entero en cada corrida.
+        marcas: {
+          estado: marcas.estado,
+          edadMs: marcas.edadMs,
+          cubreHastaMs: marcas.cubreHastaMs,
+          disparadoMs: marcas.disparadoMs,
+        },
         vistas: veredicto.vistas,
         lectura: { ok: true, motivo: null, detalle: null, fallas: 0 },
         // Se reserva el aviso acá, adentro de la transacción: dos corridas
@@ -359,15 +392,17 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
       publicadas: veredicto.publicadas,
       enElIndice: veredicto.enElIndice,
       enVuelo: veredicto.enVuelo,
+      marcas: marcas.estado,
     });
     return;
   }
 
   // El log va SIEMPRE, y antes del issue: es el canal que queda si el otro falla.
-  logger.error('el sitio quedó atrasado: hay publicadas que no aparecen', {
+  logger.error('el sitio quedó atrasado: lo publicado no aparece o el índice es viejo', {
     alerta: 'sitio-atrasado',
     faltan: veredicto.faltan.length,
     sobran: veredicto.sobran.length,
+    indiceViejo: veredicto.indiceViejo,
     peorEdadMin: Math.round(veredicto.peorEdadMs / 60000),
     toleranciaMin: Math.round(veredicto.toleranciaMs / 60000),
     motivo: decision.motivo,

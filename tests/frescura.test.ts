@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 // El módulo es JS plano; TS le infiere los tipos con allowJs. Y es el **puro**:
 // el trigger no se importa nunca (`tests/tests-no-importan-triggers.test.ts`),
 // se lee como fuente más abajo.
+import { ts } from './fixtures/tiempo';
 import {
   DEBOUNCE_MS,
   FALLAS_PARA_ESCALAR,
+  MARGEN_DE_RELOJ_MS,
+  compararMarcas,
   PROPAGACION_MS,
   REAVISO_MS,
   REINTENTO_DEL_BUILD_MS,
@@ -777,5 +780,221 @@ describe('el trigger mide el efecto, y lo mide bien', () => {
     expect(trigger).toContain('process.env.SITIO_PUBLICO');
     expect(trigger).not.toContain('agendaleh');
     expect(fuente('functions/.env')).toContain('SITIO_PUBLICO=');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-886 — la edición de una actividad ya listada: dos marcas del pipeline
+// ─────────────────────────────────────────────────────────────────────
+
+describe('B-886 — el índice contra el último despacho ve la edición', () => {
+  const iso = (ms: number) => new Date(ms).toISOString();
+  /** `sistema/rebuild` como lo deja `registrarExito`: `cubreHasta` es un Timestamp, `disparado` un Date. */
+  const rebuild = (cubreHastaMs: number, disparadoMs = cubreHastaMs + 2 * MINUTO) => ({
+    pendiente: false,
+    disparado: new Date(disparadoMs),
+    despacho: { cubreHasta: ts(iso(cubreHastaMs)), motivo: 'actividad' },
+  });
+
+  /**
+   * **El caso del ítem.** Los slugs coinciden —se editó el título de una que ya
+   * estaba listada—, el build de esa edición murió y el sitio sirve el índice de
+   * ayer. El conjunto no lo ve; las marcas sí.
+   *
+   * MUTACIÓN PROBADA: sacar `|| indiceViejo` de `hayVencidas` en
+   * `compararFrescura` pone este caso en rojo con `estado: 'fresco'`.
+   */
+  it('con los slugs idénticos y el índice anterior al despacho, el sitio está atrasado', () => {
+    const edicion = T0 - 3 * 60 * MINUTO;
+    const marcas = compararMarcas({
+      generadoEn: iso(T0 - 26 * 60 * MINUTO),
+      rebuild: rebuild(edicion),
+      ahora: T0,
+    });
+    expect(marcas.estado).toBe('atrasado');
+
+    const { faltan, sobran } = diferenciaDeSlugs(['a', 'b'], ['a', 'b']);
+    const v = compararFrescura({ faltan, sobran, marcas, ahora: T0 });
+    expect(v.estado).toBe('atrasado');
+    expect(v.indiceViejo).toBe(true);
+    expect(v.faltan).toEqual([]);
+    expect(v.peorEdadMs).toBe(marcas.edadMs);
+    expect(decidirAviso({ previo: null, veredicto: v, ahora: T0 })).toMatchObject({
+      avisar: true,
+      motivo: 'divergencia nueva',
+    });
+  });
+
+  it('un índice generado después de la marca está al día', () => {
+    const edicion = T0 - 3 * 60 * MINUTO;
+    expect(
+      compararMarcas({ generadoEn: iso(edicion + 8 * MINUTO), rebuild: rebuild(edicion), ahora: T0 })
+        .estado,
+    ).toBe('al-dia');
+  });
+
+  /**
+   * **La ventana normal del §8 no es un atraso.** Recién despachado, el build
+   * todavía corre: el índice es viejo y eso es lo esperado.
+   */
+  it('recién despachado, el índice viejo está en vuelo y no avisa', () => {
+    const edicion = T0 - 6 * MINUTO;
+    const marcas = compararMarcas({
+      generadoEn: iso(T0 - 26 * 60 * MINUTO),
+      rebuild: rebuild(edicion, T0 - 4 * MINUTO),
+      ahora: T0,
+    });
+    expect(marcas.estado).toBe('en-vuelo');
+    const v = compararFrescura({ marcas, ahora: T0 });
+    expect(v.estado).toBe('en-vuelo');
+    expect(v.enVuelo).toBe(1);
+    expect(v.indiceViejo).toBe(false);
+    expect(decidirAviso({ previo: null, veredicto: v, ahora: T0 }).avisar).toBe(false);
+  });
+
+  /**
+   * **El falso positivo que el reloj equivocado fabricaría.** GitHub estuvo caído
+   * y el backoff de B-21 despachó una hora después de la edición: medida desde la
+   * marca, la ventana ya se gastó antes de que el build arranque. Medida desde el
+   * despacho, está en camino — que es la verdad.
+   *
+   * MUTACIÓN PROBADA: medir la edad desde `cubreHastaMs` en vez del `max` con
+   * `disparadoMs` pone este caso en rojo con `atrasado`.
+   */
+  it('el reloj corre desde el despacho, no desde la marca: un dispatch tardío no acusa al build', () => {
+    const edicion = T0 - 70 * MINUTO;
+    const marcas = compararMarcas({
+      generadoEn: iso(T0 - 26 * 60 * MINUTO),
+      rebuild: rebuild(edicion, T0 - 5 * MINUTO),
+      ahora: T0,
+    });
+    expect(marcas.estado).toBe('en-vuelo');
+    expect(marcas.edadMs).toBe(5 * MINUTO);
+  });
+
+  it('justo en el borde de la ventana todavía está en vuelo, y un minuto después ya no', () => {
+    const viejo = iso(T0 - 26 * 60 * MINUTO);
+    const enElBorde = compararMarcas({
+      generadoEn: viejo,
+      rebuild: rebuild(T0 - TOLERANCIA_MS - MINUTO, T0 - TOLERANCIA_MS),
+      ahora: T0,
+    });
+    expect(enElBorde.estado).toBe('en-vuelo');
+    const pasado = compararMarcas({
+      generadoEn: viejo,
+      rebuild: rebuild(T0 - TOLERANCIA_MS - 2 * MINUTO, T0 - TOLERANCIA_MS - MINUTO),
+      ahora: T0,
+    });
+    expect(pasado.estado).toBe('atrasado');
+  });
+
+  /**
+   * Dos relojes: el runner estampa `generadoEn` y Firestore la marca. Un runner
+   * atrasado unos segundos no convierte un build que sí cubrió en uno viejo.
+   *
+   * MUTACIÓN PROBADA: sacar `+ MARGEN_DE_RELOJ_MS` pone este caso en rojo.
+   */
+  it('unos segundos de diferencia entre relojes no son un índice viejo', () => {
+    const edicion = T0 - 3 * 60 * MINUTO;
+    expect(
+      compararMarcas({
+        generadoEn: iso(edicion - 20_000),
+        rebuild: rebuild(edicion),
+        ahora: T0,
+      }).estado,
+    ).toBe('al-dia');
+    expect(MARGEN_DE_RELOJ_MS).toBeLessThanOrEqual(DEBOUNCE_MS);
+  });
+
+  /** `null` es «no sé», no «al día» (B-884): ni avisa ni afirma. */
+  it('sin ancla no hay comparación: ni un `sistema/rebuild` viejo ni un índice sin fecha', () => {
+    const viejo = iso(T0 - 26 * 60 * MINUTO);
+    expect(compararMarcas({ generadoEn: viejo, rebuild: null, ahora: T0 }).estado).toBe(
+      'sin-ancla',
+    );
+    // Un `sistema/rebuild` anterior a B-884: tiene `disparado` y no `despacho`.
+    expect(
+      compararMarcas({ generadoEn: viejo, rebuild: { disparado: new Date(T0) }, ahora: T0 }).estado,
+    ).toBe('sin-ancla');
+    // Un build de dev deja `generadoEn` vacío.
+    expect(compararMarcas({ generadoEn: '', rebuild: rebuild(T0 - MINUTO), ahora: T0 }).estado).toBe(
+      'sin-ancla',
+    );
+    expect(
+      compararMarcas({ generadoEn: 'no es fecha', rebuild: rebuild(T0 - MINUTO), ahora: T0 }).estado,
+    ).toBe('sin-ancla');
+
+    const v = compararFrescura({
+      marcas: compararMarcas({ generadoEn: viejo, rebuild: null, ahora: T0 }),
+      ahora: T0,
+    });
+    expect(v.estado).toBe('fresco');
+  });
+
+  it('leerIndice entrega el `generadoEn` que la comparación necesita', () => {
+    const r = leerIndice(indice(['a']));
+    expect(r.ok && r.generadoEn).toBe('2026-09-11T14:00:00.000Z');
+  });
+
+  /**
+   * La firma no lleva la marca: si la llevara, cada edición hecha con el build
+   * roto abriría otro issue y pediría otro build.
+   */
+  it('la firma del índice viejo no depende de cuándo fue el despacho', () => {
+    const viejo = iso(T0 - 26 * 60 * MINUTO);
+    const firma = (cubre: number) =>
+      firmaDe(
+        compararFrescura({
+          marcas: compararMarcas({ generadoEn: viejo, rebuild: rebuild(cubre), ahora: T0 }),
+          ahora: T0,
+        }),
+      );
+    expect(firma(T0 - 3 * 60 * MINUTO)).toBe(firma(T0 - 5 * 60 * MINUTO));
+    expect(firma(T0 - 3 * 60 * MINUTO)).toContain('~indice');
+    // Y es distinta de la de un atraso por slugs, que es otra divergencia.
+    const porSlug = firmaDe(
+      compararFrescura({ faltan: [{ slug: 'a', desdeMs: T0 - 2 * TOLERANCIA_MS }], ahora: T0 }),
+    );
+    expect(porSlug).not.toContain('~indice');
+  });
+
+  /**
+   * §5.1 — el issue es público. No sale la marca (es un `updatedAt` con otro
+   * nombre, D-138) ni el `generadoEn`, y la edad va en tramos gruesos.
+   */
+  it('el issue dice qué pasó sin publicar ninguna de las dos marcas', () => {
+    const cubre = T0 - 137 * MINUTO;
+    const generado = T0 - 26 * 60 * MINUTO;
+    const v = compararFrescura({
+      marcas: compararMarcas({ generadoEn: iso(generado), rebuild: rebuild(cubre), ahora: T0 }),
+      ahora: T0,
+    });
+    const { title, body } = issueDeAtraso(v);
+    expect(title).toContain('el índice es anterior al último cambio despachado');
+    expect(body).toContain('Un cambio despachado que el sitio no tiene');
+    expect(body).not.toContain(iso(cubre));
+    expect(body).not.toContain(iso(generado));
+    expect(body).not.toContain('135');
+    expect(body).toContain('más que la ventana');
+  });
+
+  describe('el trigger', () => {
+    const trigger = codigo('functions/frescura-trigger.js');
+
+    it('lee el despacho después del índice, como el resto de Firestore', () => {
+      const indiceEn = trigger.indexOf('await leerElIndice(');
+      const despachoEn = trigger.indexOf('await leerDespacho(');
+      expect(despachoEn).toBeGreaterThan(indiceEn);
+      expect(indiceEn).toBeGreaterThan(0);
+    });
+
+    it('de `sistema/rebuild` pide el despacho y su hora, no el documento entero', () => {
+      expect(trigger).toContain("fieldMask: ['despacho', 'disparado']");
+    });
+
+    it('le pasa las marcas al veredicto', () => {
+      expect(trigger).toMatch(/compararMarcas\(\{ generadoEn: indice\.generadoEn/);
+      expect(trigger).toMatch(/compararFrescura\(\{[\s\S]*?\bmarcas,/);
+    });
   });
 });
