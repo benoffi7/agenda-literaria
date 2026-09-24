@@ -36,7 +36,7 @@
  * | `online.url` | **NUNCA**, ni con `urlPublica: true` | trampa 5. El desvío de D-15 vale para el `events.json` y para el evento —donde el dueño tildó una casilla que dice qué hace— y **no** se extiende a un posteo: el link de la reunión se manda al inscribirse |
  * | `difusion.notas` | **no** | notas internas, §3.2 |
  * | `difusion.arrobar` | **sí** | es su lugar y su razón de existir: el campo existe para este texto |
- * | `inscripcion.destino` | **sí**, tal cual | es el canal de inscripción y ya sale al `events.json` y al evento (§5.2, D-127). La advertencia del §5.1 sobre el WhatsApp personal la da la ayuda del campo, no este módulo |
+ * | `inscripcion.destino` | **sí**, tal cual salvo por DM | es el canal de inscripción y ya sale al `events.json` y al evento (§5.2, D-127). Con `via: 'dm'` pasa por `arrobaInstagram` (B-1540, ver `destinoLegible`); lo que no se reconoce sale como se escribió. La advertencia del §5.1 sobre el WhatsApp personal la da la ayuda del campo, no este módulo |
  * | `inscripcion.completo` | **sí** | D-127: cambia lo que hay que anunciar, y el canal **no** se esconde al lado del cartel |
  * | `libro` | **sí** | D-126: en una presentación es el dato central, del orden del título |
  * | `imagenes` | **no** | D-125: un texto no lleva imágenes. El epígrafe es de la foto y el `storagePath` no sale nunca |
@@ -414,6 +414,28 @@ const bloqueArancel = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): 
 };
 
 /**
+ * **El canal de inscripción tal como se lee en el posteo** — B-1540.
+ *
+ * Con `via: 'dm'` el destino es una cuenta de Instagram —la ficha pública ya lo
+ * lee así: `accionDeInscripcion` arma el link al perfil con `handleInstagram`—,
+ * pero el campo se guarda solo recortado (`limpiar`), sin el `conHandle` que
+ * tienen el organizador y la tallerista. Concatenado tal cual, un destino cargado
+ * pelado salía «Inscripción por DM: casabrandon», sin la arroba que es lo único
+ * que hace que la red lo reconozca como mención, y uno pegado desde «Compartir»
+ * salía con su `?igsh=…`. Es B-1142 en el campo que no dice «instagram» en el
+ * nombre.
+ *
+ * Se deriva **al mostrar**, igual que los otros dos (B-1141, D-763): no toca el
+ * documento y vale para las fichas viejas y las nuevas. **Solo con `dm`**: con
+ * `mail`, `whatsapp` o `formulario` el destino no es una cuenta, y `casa.brandon`
+ * pasaría el alfabeto de Instagram y saldría con una arroba que nadie escribió.
+ * Lo que `arrobaInstagram` no reconoce —«Casa Brandon / IG», un handle con `-` de
+ * otra red— sale como se escribió, recortado: el mismo criterio de D-767.
+ */
+const destinoLegible = (via: ViaInscripcion | null | undefined, destino: string | null | undefined): string =>
+  via === 'dm' ? arrobaInstagram(destino) : (destino ?? '').trim();
+
+/**
  * Cómo se inscribe. Sigue el criterio de D-127: «se llenó» va **arriba** y el
  * canal queda igual, abajo y con el paréntesis que explica por qué sigue ahí.
  * Esconder el canal convierte una baja en un lugar que se pierde.
@@ -434,7 +456,7 @@ const bloqueInscripcion = (actividad: ActividadParaRedes, ahora: Date): string =
     lineas.push('Cupo completo (se puede escribir igual: puede liberarse un lugar)');
   }
   const via = insc.via ? ETIQUETA_VIA[insc.via] : '';
-  const destino = insc.destino?.trim();
+  const destino = destinoLegible(insc.via, insc.destino);
   lineas.push(`Inscripción${via ? ` ${via}` : ''}${destino ? `: ${destino}` : ''}`);
   if (insc.cupo) lineas.push(`Cupo: ${insc.cupo}`);
   /**
