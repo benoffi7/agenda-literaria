@@ -54,11 +54,15 @@ con `firebase deploy --only firestore:rules,firestore:indexes`.
 | Bucket | `agenda-literaria.firebasestorage.app` (el default del proyecto) |
 | Declarado en | `PUBLIC_FIREBASE_STORAGE_BUCKET`, en los tres `.env.*` |
 | Reglas | `storage.rules` — **desplegadas y funcionando** (ver abajo) |
-| Prefijos en uso | `imagenes/img_<uuid>.{jpg,png}` (la galería de B-167) y `miniaturas/img_<uuid>.jpg` (B-220, D-175) |
+| Prefijos en uso | `imagenes/img_<uuid>.{jpg,png}` (la galería de B-167), `miniaturas/img_<uuid>.jpg` (B-220, D-175) y `propuestas/prop_<uuid>.jpg` (el flyer de una propuesta, DEC-11 / B-830) |
+| CORS | `cors.json` — `GET`/`HEAD` desde los cuatro orígenes del sitio. **Aplicado a mano el 2026-09-23** (B-1235a): es config del bucket, no viaja con ningún deploy. Se verifica con `npm run cors:verificar` (B-1321); ver `08-operacion.md` § «El CORS del bucket» |
 
-**Lo único que hay ahí son las imágenes propias de la galería** (B-167, DEC-7c):
+**Lo que hay ahí son las imágenes propias de la galería** (B-167, DEC-7c):
 las que se suben desde el panel, en oposición a las externas, que son una URL de
-otro sitio y no pasan por acá.
+otro sitio y no pasan por acá. **Y, en `propuestas/`, el flyer que manda un
+tercero con su propuesta**, que vive hasta que la propuesta se cierra (DEC-11;
+`08-operacion.md` § «La imagen de una propuesta»). Es la que necesita el CORS:
+al convertirla, el panel la baja con `fetch` para subirla a `imagenes/`.
 
 **El bucket estaba en la config del SDK desde el primer día y nunca se usó.** Antes
 de desplegar las reglas hay que confirmar que exista de verdad: si el proyecto
