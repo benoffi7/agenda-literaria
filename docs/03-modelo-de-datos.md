@@ -1348,6 +1348,11 @@ si termina en un `href` indexado sin que un admin lo revise, frena (las guías);
 si hay alguien que lo va a leer antes —el admin que carga, la bandeja—, corrige
 lo que puede y guarda el resto; si puede no ser de Instagram, no se normaliza.
 
+**La tabla es la fuente de un registro** (B-1590, D-1080): `CAMPOS_DE_INSTAGRAM`, en
+`tests/calendario.test.ts`, tiene una entrada por fila con la primera celda
+idéntica, y el test cruza las dos. Una fila nueva pone el test en rojo hasta que se
+decida si ese campo sale al evento de Calendar.
+
 Fuera de la tabla, porque no son campos del modelo: el Instagram **del sitio**
 (`src/lib/contactoDelSitio.ts`, una constante) y el tapado de `@handle` de los
 reportes (`HANDLE` en `functions/reportes.js`), que es un redactor con su
