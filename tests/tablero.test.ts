@@ -33,6 +33,7 @@ import {
   parsearBacklog,
   parsearIdeas,
   proximoNumero,
+  rangosReservados,
 } from '../scripts/tablero/parseo.mjs';
 
 /** Un backlog de juguete con las formas de encabezado que el real usa. */
@@ -98,6 +99,57 @@ describe('el parser del backlog', () => {
     // aunque no tenga sección propia (es lo que evita el choque de B-930).
     expect(proximoNumero(`${BACKLOG}\nVer B-999 para el contexto.`)).toBe(1000);
     expect(idsUsados(BACKLOG).has('B-903a')).toBe(true);
+  });
+});
+
+/**
+ * **B-1051 — un número reservado por una tanda no se ofrece como libre.** Los
+ * tres textos son las tres formas en que las tandas escribieron sus rangos en el
+ * archivo de coordinación, copiadas de los archivos reales del 2026-09-23 y el
+ * 2026-09-24.
+ */
+describe('los rangos que reservó la tanda (B-1051)', () => {
+  const HOY = [
+    '# Tanda',
+    '',
+    '## Rangos',
+    'Bugs (diez c/u): triage 1560, b98 1570, archivador 1580.',
+    'Decisiones (cinco c/u): b98 975, archivador 980.',
+    '',
+    '## Commits por frente',
+    'Nada de acá es un rango: 9999.',
+  ].join('\n');
+
+  it('lee los arranques y el ancho de cada tipo, y solo de la sección de rangos', () => {
+    const r = rangosReservados(HOY);
+    expect(r.bugs).toHaveLength(30);
+    expect(Math.min(...r.bugs)).toBe(1560);
+    expect(Math.max(...r.bugs)).toBe(1589);
+    expect(r.decisiones).toEqual([975, 976, 977, 978, 979, 980, 981, 982, 983, 984]);
+    expect(r.bugs).not.toContain(9999);
+  });
+
+  it('entiende las otras dos formas que usaron las tandas', () => {
+    const enUnaLinea = rangosReservados(
+      '## Rangos\nBugs: cors 1340, d-88 1350 (diez cada uno). Decisiones: cors 870, d-88 875.\n',
+    );
+    expect(Math.max(...enUnaLinea.bugs)).toBe(1359);
+    expect(enUnaLinea.bugs).not.toContain(88);
+    const porFrente = rangosReservados(
+      '## Rangos de ids reservados\n\n- `uno`: bugs desde el 1240 (diez), decisiones desde la 810 (diez).\n',
+    );
+    expect(Math.max(...porFrente.bugs)).toBe(1249);
+    expect(Math.max(...porFrente.decisiones)).toBe(819);
+  });
+
+  it('sin archivo o sin sección no reserva nada, y el próximo es el de siempre', () => {
+    expect(rangosReservados('')).toEqual({ bugs: [], decisiones: [] });
+    expect(rangosReservados('# Tanda\n\nsin rangos 1234\n')).toEqual({ bugs: [], decisiones: [] });
+    expect(proximoNumero(BACKLOG, rangosReservados('').bugs)).toBe(proximoNumero(BACKLOG));
+  });
+
+  it('el próximo libre queda por encima de lo reservado', () => {
+    expect(proximoNumero(BACKLOG, rangosReservados(HOY).bugs)).toBe(1590);
   });
 });
 

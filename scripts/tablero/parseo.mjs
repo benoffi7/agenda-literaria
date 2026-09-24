@@ -493,12 +493,69 @@ export const parsearIdeas = (texto) => {
  * Desde que lo cerrado se archiva aparte, el servidor le pasa **los dos
  * archivos concatenados**: el vivo solo tiene los ids de lo pendiente.
  *
+ * **Y por encima de lo reservado — B-1051.** Un rango que una tanda reservó y
+ * todavía no escribió no está en ningún backlog, así que sin `reservados` el
+ * tablero lo ofrecía como libre. Los trae `rangosReservados`, leídos del archivo
+ * de coordinación de la tanda.
+ *
  * @param {string} texto
+ * @param {Iterable<number>} [reservados]
  * @returns {number}
  */
-export const proximoNumero = (texto) => {
-  const usados = [...numerosEnTexto(texto)];
+export const proximoNumero = (texto, reservados = []) => {
+  const usados = [...numerosEnTexto(texto), ...reservados];
   return usados.length === 0 ? 1 : Math.max(...usados) + 1;
+};
+
+/**
+ * **Los números que una tanda reservó, leídos de donde la tanda los escribe —
+ * B-1051.**
+ *
+ * El ítem ofrecía dos salidas: anotar el rango en la cabecera del backlog al
+ * abrir la tanda, o que el tablero lo lea del archivo de coordinación. Se tomó
+ * la segunda porque es la única que no depende de acordarse: anotar al reservar
+ * «depende de que alguien se acuerde, que es exactamente lo que falló», y la
+ * reserva ya está escrita en un solo lugar — la sección `## Rangos` del archivo
+ * de frentes. Leerla ahí es derivar, no mantener a mano.
+ *
+ * El costo que el ítem nombraba —acoplarse a un formato que nadie prometió—
+ * se paga con dos decisiones:
+ *
+ * - **Se lee la prosa, no una tabla.** Las tandas lo escribieron de tres formas
+ *   («Bugs (diez c/u): triage 1560, b98 1570…», «Bugs: instagram 1270… (diez
+ *   cada uno)», «`frente`: bugs desde el 1240 (diez), decisiones desde la 810
+ *   (diez)»), y las tres dicen lo mismo: la palabra `bugs` o `decisiones`, un
+ *   ancho y los números de arranque. Eso es lo que se busca, cada tramo hasta
+ *   la próxima de esas dos palabras.
+ * - **Si no entiende, no inventa.** Sin sección `## Rangos`, o sin números, no
+ *   reserva nada y el tablero vuelve a ofrecer lo de antes. Nunca rompe.
+ *
+ * Y no escribe nada en el repo, que es la trampa de la cabecera del backlog: un
+ * rango escrito en prosa versionada lo lee `items-referenciados.mjs` como citas.
+ *
+ * @param {string} texto el archivo de coordinación de la tanda
+ * @returns {{bugs: number[], decisiones: number[]}}
+ */
+export const rangosReservados = (texto) => {
+  const reservados = { bugs: [], decisiones: [] };
+  const lineas = (texto ?? '').split('\n');
+  const desde = lineas.findIndex((l) => /^## +Rangos\b/iu.test(l));
+  if (desde === -1) return reservados;
+  const hasta = lineas.findIndex((l, i) => i > desde && /^## /u.test(l));
+  const seccion = lineas.slice(desde + 1, hasta === -1 ? lineas.length : hasta).join('\n');
+
+  const ANCHOS = { cinco: 5, diez: 10, veinte: 20 };
+  for (const tramo of seccion.split(/(?=\b(?:bugs|decisiones)\b)/iu)) {
+    const tipo = /^(bugs|decisiones)\b/iu.exec(tramo)?.[1].toLowerCase();
+    if (!tipo) continue;
+    const palabra = /\((cinco|diez|veinte)\b/iu.exec(tramo)?.[1].toLowerCase();
+    const ancho = palabra ? ANCHOS[palabra] : 10;
+    const arranques = [...tramo.matchAll(/(?<![\d-])\d{3,}(?!\d)/gu)].map((m) => Number(m[0]));
+    for (const inicio of arranques) {
+      for (let n = inicio; n < inicio + ancho; n += 1) reservados[tipo].push(n);
+    }
+  }
+  return reservados;
 };
 
 /**
