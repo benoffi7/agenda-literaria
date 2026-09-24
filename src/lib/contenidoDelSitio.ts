@@ -59,6 +59,7 @@ import {
   exploracionDelSitio,
   hubsDelSitio,
   slugsConHub,
+  slugsOfrecidos,
   type GrupoDeExploracion,
   type Hub,
 } from '@/lib/hubsPublicos';
@@ -1579,6 +1580,20 @@ const detallesDelSitio = async (
   const tiposConHub = new Set(slugsConHub('tipo', indice.actividades, indice.opciones));
 
   /*
+   * **Y cuáles de esos se ofrecen, para «Más talleres»** — B-1800.
+   *
+   * No alcanza con `tiposConHub`: un hub de tipo se emite para siempre, también
+   * cuando ya no le queda nada vigente, y en ese caso sale con `noindex` y es una
+   * lista vacía. La miga puede apuntarle (ver `migasDeDetalle`); la invitación de
+   * una pasada a «ver qué más hay», no. El corte es **el mismo** de la tira de la
+   * home y del `/404` (`hubsOfrecidos`, D-88), con el mismo reloj que decide
+   * `yaPaso` y `mesesConPagina` en esta función.
+   */
+  const tiposOfrecidos = new Set(
+    slugsOfrecidos('tipo', indice.actividades, indice.opciones, instante),
+  );
+
+  /*
    * **Qué barrios y qué ciudades tienen hub, para el renglón «Dónde»** — B-951.
    *
    * Mismo motivo y mismo patrón que `tiposConHub`: `/barrio/{slug}` y
@@ -1627,6 +1642,7 @@ const detallesDelSitio = async (
           mesesConPagina,
           tiposConHub.has(a.tipo),
           rutaDeZona,
+          tiposOfrecidos.has(a.tipo),
         ),
       )
   );

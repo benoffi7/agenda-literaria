@@ -413,6 +413,20 @@ describe('slugsOfrecidos — el corte de ofrecer, para quien enlaza desde afuera
       );
     }
   });
+
+  it('el lector le pasa al detalle los tipos ofrecidos, no solo los emitidos', () => {
+    /*
+     * `contenidoDelSitio.ts` lee Firestore y no se importa desde un test
+     * unitario, así que la conexión se fija sobre la fuente — el mismo recurso
+     * que `tests/mesPublico.test.ts` usa para la tira de meses.
+     *
+     * MUTACIÓN PROBADA: pasar `tiposConHub.has(a.tipo)` como último argumento de
+     * `detalleDeActividad` pone este caso en rojo.
+     */
+    const src = sinComentarios(fuente('src/lib/contenidoDelSitio.ts'));
+    expect(src).toMatch(/slugsOfrecidos\(\s*'tipo'/);
+    expect(src).toMatch(/rutaDeZona,\s*tiposOfrecidos\.has\(a\.tipo\),?\s*\)/);
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────
