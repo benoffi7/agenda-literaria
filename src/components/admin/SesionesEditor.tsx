@@ -577,8 +577,37 @@ export function SesionesEditor({
                   editar({ cancelada: e.target.checked });
                 }}
               />
-              Cancelado — se borra del calendario público (§7.3)
+              Cancelado — el evento queda en el calendario, avisando que no se hace
             </label>
+
+            {/*
+              B-98 — el motivo, solo con el encuentro cancelado. Es **público**:
+              va arriba de la descripción del evento y al lado del encuentro en la
+              página, y por eso la ayuda lo dice. Destildar «Cancelado» esconde el
+              campo pero conserva lo tipeado en el formulario; al guardar, un
+              encuentro que no está cancelado guarda el motivo vacío
+              (`formADocumento`).
+            */}
+            {s.cancelada && (
+              <div className="mt-2">
+                <Campo
+                  label="Motivo (opcional)"
+                  htmlFor={`sesion-motivo-${s.id}`}
+                  ayuda="Sale en el calendario y en la página: «se pasa al jueves 12», «por falta de inscriptos». Sin links de la reunión."
+                  error={errorDe(ruta('motivoCancelacion'))}
+                >
+                  <input
+                    id={`sesion-motivo-${s.id}`}
+                    value={s.motivoCancelacion ?? ''}
+                    onChange={(e) => editar({ motivoCancelacion: e.target.value })}
+                    maxLength={200}
+                    autoCapitalize="sentences"
+                    placeholder="Se pasa al jueves 12"
+                    className={claseInput}
+                  />
+                </Campo>
+              </div>
+            )}
           </>
         );
       }}
