@@ -2,6 +2,7 @@
  * Organizador siempre; tallerista o autor invitado según el tipo (§11), y el
  * libro presentado en presentación y charla (DEC-1).
  */
+import { useState } from 'react';
 import { Seccion } from '@/components/admin/campos-del-panel';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { handleInstagram } from '@/lib/enlaceSeguro';
@@ -33,7 +34,48 @@ type Props = Omit<PropsSeccion, 'uid'> & {
  */
 const AYUDA_INSTAGRAM =
   'Podés pegar el link del perfil: al salir del campo queda «casabrandon». ' +
-  'Si el campo no cambia es que no lo reconocimos — revisalo, se publica tal cual.';
+  'Si no lo reconocemos, te lo avisamos acá abajo — revisalo, se publica tal cual.';
+
+/**
+ * **El cartel de lo que el saneador no reconoce** — B-1190, D-900.
+ *
+ * D-767 decidió «no frenar», no «no avisar». Hasta B-1190 la única señal de un
+ * valor que `handleInstagram` no entiende era que el campo **no cambiaba**, y
+ * desde B-1144 eso se lee al revés: con un campo que se corrige solo, «quedó
+ * como lo pegué» parece «ya estaba bien». Y ese valor sale crudo al pie del
+ * posteo para redes (B-1142). El cartel pone la evidencia donde pasa el caso.
+ *
+ * **No bloquea nada**: no es un `error` de `Campo` —ése marca
+ * `data-campo-con-error` y el scroll de B-184 lo trataría como un rechazo— sino
+ * un hijo más, con el estilo de la advertencia de `CoordenadasSede`. Va con
+ * `role="status"` y no `alert` porque aparece también al abrir una actividad
+ * que ya lo tenía guardado, y un `alert` al montar interrumpe al lector de
+ * pantalla por algo que nadie acaba de hacer.
+ *
+ * La condición es la de `conHandle` dada vuelta: hay texto y el saneador
+ * devuelve `null`, o sea que se va a guardar —y publicar— tal cual.
+ */
+const AVISO_INSTAGRAM_NO_RECONOCIDO =
+  'No lo reconocimos como una cuenta de Instagram: se va a publicar tal cual.';
+
+const instagramNoReconocido = (valor: string): boolean =>
+  valor.trim() !== '' && handleInstagram(valor) === null;
+
+/**
+ * El cartel de abajo del campo. **No aparece mientras se tipea**: a medio
+ * escribir, `instagram.com/ca` todavía no es nada, y un aviso que se prende y
+ * se apaga tecla por tecla es ruido — el mismo argumento por el que el saneo va
+ * en el `onBlur`. Se muestra con el valor asentado: después de salir del campo,
+ * o desde el vamos si la actividad ya lo traía guardado.
+ */
+function AvisoInstagram({ id, valor, editando }: { id: string; valor: string; editando: boolean }) {
+  if (editando || !instagramNoReconocido(valor)) return null;
+  return (
+    <p id={id} role="status" className="text-xs font-medium text-tinta/70">
+      <span aria-hidden>⚠</span> {AVISO_INSTAGRAM_NO_RECONOCIDO}
+    </p>
+  );
+}
 
 /**
  * **El Instagram se corrige al salir del campo** — B-1144, D-767.
@@ -65,7 +107,9 @@ const AYUDA_INSTAGRAM =
  * para castigar un formato, y dejaría a quien edita sin saber qué corregir; es
  * el mismo criterio que `conHandle` al guardar y que `arrobaInstagram` al
  * mostrar. Si aparece un valor así, se publica igual: la actividad sale, y en
- * la ficha ese texto se muestra sin arroba y sin link, que es el aviso.
+ * la ficha ese texto se muestra sin arroba y sin link. Lo que sí pasa desde
+ * B-1190 es un cartel debajo del campo —`AvisoInstagram`, arriba—: no frenar
+ * no es lo mismo que no avisar.
  *
  * ── El caso en que el saneador entendía de más — B-1160, ya cerrado ───────
  * Hasta B-1160, `handleInstagram` cortaba por `?`/`#` cualquier valor, y
@@ -108,6 +152,10 @@ const alSalirDelInstagram = (crudo: string, guardar: (saneado: string) => void):
 };
 
 export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePersona }: Props) {
+  // B-1190 — qué campo de Instagram se está tipeando ahora, para no avisar a
+  // medio escribir. Uno solo alcanza: el foco está en un campo por vez.
+  const [editando, setEditando] = useState<'org' | 'persona' | null>(null);
+  const instagramPersona = form.tallerista?.instagram ?? '';
   return (
     <Seccion ancla="quien" titulo="Quién" conAyuda>
       <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
@@ -127,16 +175,28 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             autoCorrect="off"
             spellCheck={false}
             value={form.organizador.instagram}
-            onChange={(e) => set('organizador', { ...form.organizador, instagram: e.target.value })}
+            aria-describedby={
+              instagramNoReconocido(form.organizador.instagram) ? 'org-instagram-aviso' : undefined
+            }
+            onChange={(e) => {
+              setEditando('org');
+              set('organizador', { ...form.organizador, instagram: e.target.value });
+            }}
             // B-1144 — el saneado va al salir del campo y no en cada tecla: a
             // medio tipear, `instagram.com/ca` todavía no es nada, y recortarlo
             // mientras alguien escribe le mueve el cursor de abajo de los dedos.
-            onBlur={(e) =>
+            onBlur={(e) => {
+              setEditando(null);
               alSalirDelInstagram(e.target.value, (handle) =>
                 set('organizador', { ...form.organizador, instagram: handle }),
-              )
-            }
+              );
+            }}
             placeholder="@casabrandon o el link del perfil"
+          />
+          <AvisoInstagram
+            id="org-instagram-aviso"
+            valor={form.organizador.instagram}
+            editando={editando === 'org'}
           />
         </Campo>
         <Campo label="Web del organizador" htmlFor="org-web" className="sm:col-span-full">
@@ -174,27 +234,37 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
-                value={form.tallerista?.instagram ?? ''}
-                onChange={(e) =>
+                value={instagramPersona}
+                aria-describedby={
+                  instagramNoReconocido(instagramPersona) ? 'persona-instagram-aviso' : undefined
+                }
+                onChange={(e) => {
+                  setEditando('persona');
                   set('tallerista', {
                     nombre: form.tallerista?.nombre ?? '',
                     bio: form.tallerista?.bio ?? '',
                     instagram: e.target.value,
-                  })
-                }
+                  });
+                }}
                 // El mismo saneo que el del organizador, y por eso pasa por la
                 // misma función: son dos campos del mismo dato, y una copia acá
                 // es la que se olvida de corregir el día que cambie la regla.
-                onBlur={(e) =>
+                onBlur={(e) => {
+                  setEditando(null);
                   alSalirDelInstagram(e.target.value, (handle) =>
                     set('tallerista', {
                       nombre: form.tallerista?.nombre ?? '',
                       bio: form.tallerista?.bio ?? '',
                       instagram: handle,
                     }),
-                  )
-                }
+                  );
+                }}
                 placeholder="@casabrandon o el link del perfil"
+              />
+              <AvisoInstagram
+                id="persona-instagram-aviso"
+                valor={instagramPersona}
+                editando={editando === 'persona'}
               />
             </Campo>
             <Campo label="Bio" htmlFor="persona-bio" className="sm:col-span-full">
