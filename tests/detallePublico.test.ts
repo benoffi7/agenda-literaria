@@ -26,6 +26,7 @@ import { formularioLleno } from './fixtures/formulario';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
 import { ts } from './fixtures/tiempo';
+import { barrerSalida, codigoDeSalida } from './fixtures/campos-de-instagram';
 
 const AHORA = new Date('2026-09-10T15:00:00Z');
 
@@ -251,6 +252,30 @@ describe('arrobaInstagram', () => {
     expect(arrobaInstagram('  casa brandon!!  ')).toBe('casa brandon!!');
     expect(arrobaInstagram('')).toBe('');
     expect(arrobaInstagram(null)).toBe('');
+  });
+});
+
+/**
+ * **La clase, no los casos de este archivo** — B-1780.
+ *
+ * `accionDeInscripcion`, el organizador y la tallerista tienen tests de
+ * comportamiento, y ninguno ve el campo de Instagram que venga. El barrido
+ * recorre el registro de `tests/fixtures/campos-de-instagram.ts`, atado a la
+ * tabla de docs/03, y para la ficha cada entrada dice cómo sale: los dos que
+ * dicen Instagram en el nombre por `arrobaInstagram` (el texto) y
+ * `enlaceInstagram` (el link), y el destino solo junto con su vía por
+ * `accionDeInscripcion`, que con `dm` tiene que pasarlo por `handleInstagram`.
+ * El `destino` en texto sale crudo **a propósito**: la página lo pinta solo con
+ * `mostrarCanal`, cuando no hubo botón, y el barrido exige que esa condición siga.
+ *
+ * MUTACIÓN PROBADA: `instagram: a.organizador.instagram` sin `arrobaInstagram`,
+ * `instagramUrl` sin `enlaceInstagram`, un `a.inscripcion.destino` crudo en otro
+ * campo del view-model, la rama de `dm` sin `handleInstagram`, o `mostrarCanal`
+ * sin mirar `canal.accion`, dejan esto en rojo nombrando la fila.
+ */
+describe('los campos de Instagram de la ficha, contra el registro — B-1780', () => {
+  it('cada campo de Instagram que sale a la ficha pública pasa por su saneador', () => {
+    expect(barrerSalida(codigoDeSalida('ficha'), 'ficha')).toEqual([]);
   });
 });
 
