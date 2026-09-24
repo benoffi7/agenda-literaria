@@ -30,7 +30,6 @@
 import {
   collection,
   doc,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -38,21 +37,21 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore';
 import {
   costoDeAsociarseCambio,
   costoDeAsociarseDelForm,
   formABiblioteca,
 } from '@/lib/biblioteca-schema';
-import { ESTADO_INICIAL, ESTADO_PUBLICO, type EstadoDirectorio } from '@/lib/directorios';
+import { ESTADO_INICIAL, ESTADO_PUBLICO, type EstadoDirectorio, type IdDirectorio } from '@/lib/directorios';
 import { db } from '@/lib/firestore-client';
+import { asegurarSlugPublicable, slugDeGuiaDisponible } from '@/lib/slugDeGuia';
 import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { CIUDAD_POR_DEFECTO } from '@/types/biblioteca';
 import type { Biblioteca, BibliotecaConId, BibliotecaForm } from '@/types/biblioteca';
 import type { TimestampLike } from '@/types/actividad';
 
-const COL = 'bibliotecas';
+const COL = 'bibliotecas' satisfies IdDirectorio;
 
 /**
  * Cuántas trae la bandeja.
@@ -93,30 +92,14 @@ export const observarBibliotecas = (
   );
 
 /**
- * ¿Esta dirección web está libre? — trampa 10.
+ * ¿Esta dirección web está libre? — la guarda **de aviso** del formulario.
  *
- * **No hay reserva en `/slugs` para esta colección**, al revés que en
- * `/actividades` (D-660), y por el mismo argumento que en librerías: aquella
- * reserva existe porque el slug de una actividad se acuña en un `writeBatch`
- * junto con el documento, y montar el mismo mecanismo acá sería abrir `/slugs` a
- * una colección más por un catálogo que carga una persona por vez.
- *
- * Es una guarda **de aviso**, no una garantía: dos altas simultáneas con el
- * mismo nombre pasarían las dos. El daño es acotado y visible —dos fichas con el
- * mismo slug, las dos en `pendiente`, nada sale al sitio sin que un admin lo
- * publique— y es exactamente **B-909**, que ya está abierto por librerías: si se
- * cierra, se cierra para las cuatro colecciones a la vez.
- *
- * `idActual` es para editar: una ficha no colisiona consigo misma.
+ * La implementación es una sola para los cuatro directorios
+ * (`lib/slugDeGuia.ts`, B-909). La **garantía** no es ésta: es
+ * `asegurarSlugPublicable`, que corre al publicar desde la bandeja.
  */
-export const slugDeBibliotecaDisponible = async (
-  slug: string,
-  idActual?: string,
-): Promise<boolean> => {
-  if (!slug) return false;
-  const snap = await getDocs(query(collection(db(), COL), where('slug', '==', slug), limit(2)));
-  return snap.docs.every((d) => d.id === idActual);
-};
+export const slugDeBibliotecaDisponible = (slug: string, idActual?: string): Promise<boolean> =>
+  slugDeGuiaDisponible(COL, slug, idActual);
 
 /**
  * Documento → formulario. La inversa de `formABiblioteca`.
@@ -291,6 +274,9 @@ export const moverBiblioteca = async (
   estado: EstadoDirectorio,
   motivo: string | null = null,
 ): Promise<void> => {
+  // B-909 — publicar es el momento en que el slug pasa a ser una URL: acá se
+  // verifica que no sea de otra ficha publicada (`lib/slugDeGuia.ts`).
+  if (estado === ESTADO_PUBLICO) await asegurarSlugPublicable(COL, id);
   await updateDoc(doc(db(), COL, id), {
     estado,
     revision: { porUid: uid, en: serverTimestamp(), motivo },
