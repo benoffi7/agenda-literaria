@@ -4,6 +4,7 @@ import {
   debeMostrarBanner,
   guardarConsentimiento,
   leerConsentimiento,
+  ubicacionAMedir,
   ubicacionSinQuery,
   type EstadoConsentimiento,
   type NombreEventoSitio,
@@ -52,7 +53,7 @@ const claveDisable = (): string | undefined =>
  * ya es `'aceptado'`** (lo garantiza `habilitado`, no quien llama). Una vez
  * por carga de página: una segunda llamada es no-op.
  */
-const cargarGtag = (): void => {
+const cargarGtag = (rutaFija: string | null): void => {
   if (cargado || !measurementId) return;
   cargado = true;
   try {
@@ -89,9 +90,13 @@ const cargarGtag = (): void => {
      * entera si no se la pisa acá. Sin este segundo recorte, el recorte del
      * `page_location` no alcanzaba: el texto del buscador viajaba igual, un
      * campo al lado.
+     *
+     * Y con `rutaFija` la ruta tampoco es la de la barra — B-1793: la página
+     * de error se sirve para cualquier dirección que no existe y pasa su
+     * canónica. Ver `ubicacionAMedir`.
      */
     window.gtag('config', measurementId, {
-      page_location: ubicacionSinQuery(window.location.href),
+      page_location: ubicacionAMedir(window.location.href, rutaFija),
       page_referrer: document.referrer ? ubicacionSinQuery(document.referrer) : undefined,
     });
 
@@ -131,19 +136,19 @@ export const mostrarBannerAlArrancar = (): boolean => debeMostrarBanner(estadoAc
 /** Se llama una vez, al cargar cualquier página pública: si ya había una
  * aceptación guardada de una visita anterior, esto es lo que hace que el tag
  * se cargue sin volver a preguntar. */
-export const iniciarSegunConsentimiento = (): void => {
+export const iniciarSegunConsentimiento = (rutaFija: string | null = null): void => {
   const estado = estadoActual();
-  if (habilitado(estado)) cargarGtag();
+  if (habilitado(estado)) cargarGtag(rutaFija);
 };
 
-export const aceptar = (): void => {
+export const aceptar = (rutaFija: string | null = null): void => {
   try {
     guardarConsentimiento(window.localStorage, 'aceptado');
   } catch {
     // Sin persistencia la decisión no sobrevive a esta carga, pero esta
     // carga igual la respeta: se sigue pudiendo cargar el tag ahora mismo.
   }
-  if (habilitado('aceptado')) cargarGtag();
+  if (habilitado('aceptado')) cargarGtag(rutaFija);
 };
 
 /**

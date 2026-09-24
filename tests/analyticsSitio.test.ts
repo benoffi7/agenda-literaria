@@ -14,6 +14,7 @@ import {
   debeMostrarBanner,
   guardarConsentimiento,
   leerConsentimiento,
+  ubicacionAMedir,
   ubicacionSinQuery,
   VIAS_INSCRIPCION,
   type AlmacenConsentimiento,
@@ -663,5 +664,105 @@ describe('centinelas — ningún payload de analítica del sitio lleva texto lib
         expect(typeof valor === 'string' || typeof valor === 'number').toBe(true);
       }
     }
+  });
+});
+
+describe('la página de error no manda la dirección que se pidió — B-1793', () => {
+  /*
+   * `/404.html` se sirve como cuerpo de **cualquier** dirección que no existe,
+   * así que su `window.location` es lo que el visitante pidió: un slug
+   * renombrado, uno que nunca se publicó, texto arbitrario. `ubicacionSinQuery`
+   * recorta la query pero conserva la ruta, y la ruta acá no la publicó nadie.
+   * La fila 12 de `docs/07-seguridad.md` dice que la analítica solo saca lo que
+   * otra salida ya publicó; esto es lo que la vuelve cierta en el 404.
+   */
+  const CENTINELA = 'taller-CENTINELA-nunca-publicado';
+
+  it('con ruta fija, el `page_location` no depende de la dirección pedida', () => {
+    const pedidas = [
+      `https://agendaleh.com.ar/actividad/${CENTINELA}/`,
+      `https://agendaleh.com.ar/${CENTINELA}?q=otro-CENTINELA#x`,
+      'https://agendaleh.com.ar/cualquier/cosa/que/alguien/pego',
+    ];
+    const medidas = pedidas.map((href) => ubicacionAMedir(href, '/404/'));
+    expect(new Set(medidas)).toEqual(new Set(['https://agendaleh.com.ar/404/']));
+    for (const medida of medidas) expect(medida).not.toContain('CENTINELA');
+  });
+
+  it('del `href` conserva solo el origen: el espejo sigue siendo el espejo', () => {
+    expect(ubicacionAMedir(`https://agenda-literaria.web.app/${CENTINELA}`, '/404/')).toBe(
+      'https://agenda-literaria.web.app/404/',
+    );
+  });
+
+  it('de la ruta fija toma solo el path, venga relativa o absoluta', () => {
+    expect(
+      ubicacionAMedir(`https://agendaleh.com.ar/${CENTINELA}`, 'https://otro.host/404/?q=x'),
+    ).toBe('https://agendaleh.com.ar/404/');
+  });
+
+  it('sin ruta fija es `ubicacionSinQuery`: las demás páginas no cambian', () => {
+    const href = 'https://agendaleh.com.ar/actividad/taller-de-cuento/?q=algo#arriba';
+    expect(ubicacionAMedir(href)).toBe(ubicacionSinQuery(href));
+    expect(ubicacionAMedir(href, null)).toBe(
+      'https://agendaleh.com.ar/actividad/taller-de-cuento/',
+    );
+  });
+
+  const leer = (rel: string): string =>
+    readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('el transporte mide con `ubicacionAMedir` y no con la barra cruda', () => {
+    /*
+     * MUTACIÓN PROBADA: volver a `page_location: ubicacionSinQuery(window.location.href)`
+     * en `medicionSitio.ts` pone este caso en rojo; los cuatro de arriba siguen
+     * verdes porque la función pura sigue existiendo — nadie la usaría.
+     */
+    const codigo = leer('src/lib/medicionSitio.ts');
+    expect(codigo).toMatch(
+      /page_location:\s*ubicacionAMedir\(window\.location\.href,\s*rutaFija\)/,
+    );
+    expect(codigo).not.toMatch(/page_location:\s*ubicacionSinQuery\(/);
+  });
+
+  it('el banner pasa la ruta medida a las dos puertas que cargan `gtag.js`', () => {
+    const codigo = leer('src/components/sitio/AvisoDeCookies.astro');
+    expect(codigo).toContain('data-ruta-medida={rutaMedida');
+    expect(codigo).toMatch(/iniciarSegunConsentimiento\(rutaMedida\)/);
+    expect(codigo).toMatch(/aceptar\(rutaMedida\)/);
+  });
+
+  it('`Base.astro` la cablea desde la canónica, con el `Referer` recortado al origen', () => {
+    /*
+     * El `meta referrer` es la otra mitad: sin él, quien sale del 404 llega a
+     * una página cuyo `page_referrer` —recortado de query, no de ruta— es la
+     * dirección que había pedido. La forma de D-253, un salto más tarde.
+     */
+    const codigo = leer('src/layouts/Base.astro');
+    expect(codigo).toContain(
+      '<AvisoDeCookies rutaMedida={direccionAjena ? rutaCanonica(Astro.url.pathname) : null} />',
+    );
+    expect(codigo).toContain('{direccionAjena && <meta name="referrer" content="origin" />}');
+  });
+
+  it('`/404` es la página que la pide', () => {
+    expect(leer('src/pages/404.astro')).toMatch(/<Base\b[^>]*\bdireccionAjena\b/);
+  });
+
+  it('y no hay otra página del sitio servida para direcciones ajenas', () => {
+    /*
+     * La otra forma de que una página se sirva para rutas que no son suyas es
+     * una `rewrite` de Hosting. Hoy la única es la del panel, que no monta el
+     * banner (`seccion` cae a `'ninguna'`) y no carga esta medición. Una
+     * rewrite nueva hacia una página del sitio es otro 404 a estos efectos:
+     * este caso la frena hasta que alguien decida si lleva `direccionAjena`.
+     */
+    const firebase = JSON.parse(
+      readFileSync(fileURLToPath(new URL('../firebase.json', import.meta.url)), 'utf8'),
+    ) as { hosting: { rewrites?: { destination?: string }[] } };
+    const destinos = (firebase.hosting.rewrites ?? []).map((r) => r.destination);
+    expect(destinos).toEqual(['/admin/index.html']);
   });
 });

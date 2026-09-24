@@ -247,6 +247,20 @@ Las tres consecuencias, en orden de probabilidad:
    `Base.astro`. Es el mismo dato que la salida 6 ya publica, así que no agrega
    nada — pero cuando aparezca una página nueva, el `<head>` es parte de lo que
    se le manda a Google Analytics y no solo de lo que se le muestra a la gente.
+4. **La ruta tiene que ser la de una página que el build generó** — B-1793
+   (D-1090). La consecuencia 1 habla de las rutas del sitio, y `/404.html` no
+   tiene una: Firebase la sirve como cuerpo de **cualquier** dirección que no
+   existe, así que en el 404 la barra dice lo que el visitante pidió —un slug
+   renombrado, uno que nunca se publicó, texto arbitrario pegado— y
+   `ubicacionSinQuery` recorta la query pero conserva esa ruta. La página lo
+   declara con la prop `direccionAjena` de `Base.astro`, y eso hace dos cosas:
+   la medición manda la canónica (`/404/`, vía `ubicacionAMedir`) y no
+   `window.location` —se sigue contando cuántos 404 hay, sin saber cuáles—, y
+   la página emite `<meta name="referrer" content="origin">`, porque si no el
+   `page_referrer` de la página siguiente sería esa misma dirección, un salto
+   más tarde (la forma de D-253). Una `rewrite` de Hosting hacia una página
+   del sitio sería otro caso igual: `tests/analyticsSitio.test.ts` falla si
+   aparece una además de la del panel.
 
 Eso es un chequeo, no un párrafo: forma parte de **B-372**, y se verifica del
 mismo modo que el resto de las salidas — con un barrido de centinelas sobre lo

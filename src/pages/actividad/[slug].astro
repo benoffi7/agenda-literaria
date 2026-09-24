@@ -984,6 +984,12 @@ const gruposDeEncuentros =
 
           Va **primero** cuando está: es la salida más específica —«qué más hay
           cuando voy a esto»— y «toda la agenda» es la general.
+
+          **En una pasada, el tipo ocupa ese lugar** — B-1794, el §7.1. El mes
+          viene en `null` y el `<nav>` quedaba con un solo enlace; ahora va «Más
+          talleres» (o el tipo que sea). Los dos no conviven: `masDelTipo` solo
+          existe cuando ya no queda ninguna fecha, que es cuando `mes` no existe.
+          Ver `DetallePublico.masDelTipo`.
         */}
         <nav class="regla-gruesa-arriba mt-12 pt-4" aria-label="Seguir mirando">
           <ul class="flex flex-wrap gap-x-6 gap-y-3">
@@ -992,6 +998,15 @@ const gruposDeEncuentros =
                 <li>
                   <a href={rutaDeMes(detalle.mes.clave)} class={`label-caps ${claseEnlace}`}>
                     Más en {detalle.mes.nombre.toLowerCase()}
+                  </a>
+                </li>
+              )
+            }
+            {
+              detalle.masDelTipo && (
+                <li>
+                  <a href={detalle.masDelTipo.ruta} class={`label-caps ${claseEnlace}`}>
+                    {detalle.masDelTipo.texto}
                   </a>
                 </li>
               )

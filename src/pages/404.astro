@@ -57,6 +57,12 @@
  * entradas del encabezado, y cuelgan de la agenda. Lo que importa es que el
  * chrome esté —quien cae acá tiene que poder salir— y eso lo exige
  * `tests/chrome-del-sitio.test.ts`.
+ *
+ * ── `direccionAjena` — B-1793 ─────────────────────────────────────────────
+ * Esta es la única página que se sirve para direcciones que no son suyas, y la
+ * barra dice lo que el visitante pidió. Con la prop, la medición manda la
+ * canónica (`/404/`) y la página siguiente no recibe esta dirección como
+ * `Referer`. Ver el docblock de la prop en `Base.astro`.
  */
 import Base from '@/layouts/Base.astro';
 import ExploraPor from '@/components/sitio/ExploraPor.astro';
@@ -85,7 +91,7 @@ const exploracion = [...tira, ...grupoDeLaGuia(fichas)];
 const frases = frasesDeNoEncontrado(exploracion);
 ---
 
-<Base seccion="agenda" titulo={`${frases.titulo} · ${NOMBRE}`} noIndex>
+<Base seccion="agenda" titulo={`${frases.titulo} · ${NOMBRE}`} noIndex direccionAjena>
   <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
     <div class="max-w-3xl">
       <h1 class="headline-md text-balance text-tinta">{frases.titulo}</h1>

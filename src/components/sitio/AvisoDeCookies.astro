@@ -43,13 +43,25 @@ import { foco } from '@/components/sitio/estilos';
  * el mismo peso de fuente — uno macizo en acento, el otro con el borde de la
  * tinta. Ninguno es un link de texto ni está más chico que el otro: es la
  * garantía explícita del pedido, «que se pueda rechazar sin dark patterns».
+ *
+ * ── `rutaMedida`: la ruta que se mide cuando la de la barra no es nuestra ──
+ * B-1793. `Base.astro` la pasa solo en la página de error —la canónica, `/404/`—
+ * y viaja al script por `data-ruta-medida`. Sin ella, el `page_location` sale de
+ * `window.location`, que en `/404.html` es lo que el visitante pidió. Ver
+ * `ubicacionAMedir` (`lib/analyticsSitio.ts`).
  */
+interface Props {
+  rutaMedida?: string | null;
+}
+
+const { rutaMedida = null } = Astro.props;
 ---
 
 <div
   id="aviso-cookies"
   role="region"
   aria-label="Preferencias de cookies"
+  data-ruta-medida={rutaMedida ?? undefined}
   hidden
   class="fixed inset-x-0 bottom-0 z-30 border-t-2 border-tinta bg-papel px-4 pt-4 pb-segura sm:px-6"
 >
@@ -97,6 +109,7 @@ import { foco } from '@/components/sitio/estilos';
 
   const banner = document.getElementById('aviso-cookies');
   const abrir = document.getElementById('abrir-preferencias-cookies') as HTMLButtonElement | null;
+  const rutaMedida = banner?.dataset.rutaMedida ?? null;
 
   /** Refleja el estado guardado en los dos elementos: nunca los dos visibles
    * a la vez, y el de reabrir solo aparece una vez que hay una decisión. */
@@ -108,13 +121,13 @@ import { foco } from '@/components/sitio/estilos';
 
   // Si ya había una aceptación de una visita anterior, esto es lo que carga
   // el tag sin volver a preguntar.
-  iniciarSegunConsentimiento();
+  iniciarSegunConsentimiento(rutaMedida);
   actualizarUI();
 
   banner
     ?.querySelector('[data-consentimiento="aceptar"]')
     ?.addEventListener('click', () => {
-      aceptar();
+      aceptar(rutaMedida);
       actualizarUI();
     });
 

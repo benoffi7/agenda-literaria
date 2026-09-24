@@ -2712,3 +2712,53 @@ describe('B-1141 · el texto del Instagram en la ficha', () => {
     expect(d.organizador.instagramUrl).toBeNull();
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// N · La salida de una pasada hacia su tipo — B-1794
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('masDelTipo — «Ver otros talleres» en una pasada (§7.1)', () => {
+  const PASADA = ['2026-09-01T22:00:00Z'];
+  const VIGENTE = ['2026-09-24T22:00:00Z'];
+
+  it('una pasada con hub enlaza su tipo, con el plural del hub', () => {
+    const d = detalleConHub({ tipo: 'taller', fechas: PASADA });
+    expect(d.yaPaso).toBe(true);
+    expect(d.mes).toBeNull();
+    expect(d.masDelTipo).toEqual({ ruta: rutaDeTipo('taller'), texto: 'Más talleres' });
+  });
+
+  it('la ruta es la del segundo nivel de la miga: un solo destino para el tipo', () => {
+    /*
+     * La miga y este enlace nombran la misma página. Si se derivaran distinto,
+     * uno de los dos terminaría en un 404 el día que cambie `rutaDeTipo` — la
+     * clase de B-88.
+     */
+    const d = detalleConHub({ tipo: 'club-lectura', fechas: PASADA });
+    const migas = migasDeDetalle(d) as { itemListElement: { item: string }[] };
+    expect(urlAbsoluta(d.masDelTipo!.ruta)).toBe(migas.itemListElement[1]!.item);
+  });
+
+  it('sin hub del tipo no enlaza nada: el lado que no publica un 404', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar `tipoTieneHub` de la condición pone este caso en
+     * rojo — el `/tipo/{slug}` de un tipo sin hub no lo generó el build.
+     */
+    expect(detalleDe({ tipo: 'taller', fechas: PASADA }).masDelTipo).toBeNull();
+  });
+
+  it('con fechas por venir no aparece: la salida específica ahí es el mes', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar `yaPaso` de la condición pone este caso en rojo.
+     */
+    const d = detalleConHub({ tipo: 'taller', fechas: VIGENTE });
+    expect(d.yaPaso).toBe(false);
+    expect(d.masDelTipo).toBeNull();
+  });
+
+  it('el texto no trae género: «Más presentaciones», no «otros presentaciones»', () => {
+    const d = detalleConHub({ tipo: 'presentacion', fechas: PASADA });
+    expect(d.masDelTipo?.texto).toBe('Más presentaciones');
+    expect(d.masDelTipo?.texto).not.toMatch(/\botr[oa]s\b/i);
+  });
+});

@@ -590,6 +590,24 @@ export interface DetallePublico {
    * `nombreDeMes`.
    */
   mes: { clave: string; nombre: string } | null;
+  /**
+   * **La salida de una pasada hacia su tipo** — B-1794 (D-1091), el §7.1 del
+   * diseño: en una actividad que ya pasó, «Ver otros talleres» va en lugar del
+   * enlace al mes, que viene en `null` a propósito (ver `mes`). Sin esto el
+   * `<nav>` «Seguir mirando» de una pasada terminaba con un solo enlace, «Ver
+   * toda la agenda», y la página de una pasada es la que llega desde un link
+   * viejo de Instagram: es donde más hace falta una salida específica.
+   *
+   * **Solo en una pasada, y solo si el hub existe** (`tipoTieneHub`): con fechas
+   * por venir la salida específica es el mes, y un `/tipo/{slug}` que el build
+   * no generó sería un 404 desde una página indexada. El texto dice «Más …» y
+   * no «Ver otros …» porque el plural no trae género: «otros presentaciones»,
+   * «otros charlas».
+   *
+   * **No publica nada nuevo**: la ruta es la del segundo nivel del
+   * `BreadcrumbList` (`migasDeDetalle`) y el plural es el `<h1>` de ese hub.
+   */
+  masDelTipo: { ruta: string; texto: string } | null;
 
   /** `<title>` y `meta description` (§5.1 del diseño). */
   meta: { titulo: string; descripcion: string };
@@ -1515,6 +1533,13 @@ export const detalleDeActividad = (
     aviso: avisoDeEstado(cancelada, todoCancelado, yaPaso, encuentros.length > 0, inscripcion),
 
     mes: mesEnlazable(siguiente, mesesConPagina),
+    masDelTipo:
+      yaPaso && tipoTieneHub
+        ? {
+            ruta: rutaDeTipo(a.tipo),
+            texto: `Más ${pluralDeTipo(a.tipo, tipoEtiqueta).toLowerCase()}`,
+          }
+        : null,
 
     meta: {
       // §5.1 del diseño — el título de la actividad **primero**: Google recorta a
