@@ -438,9 +438,26 @@ const imagenPublica = (i: Imagen): ImagenPublica => ({
  * El libro, o `null`. Sin título no se inventa el campo (D-15): un objeto con
  * dos cadenas vacías en el `events.json` haría que el sitio pinte el rótulo
  * «Libro:» vacío en toda actividad que no lo tenga.
+ *
+ * **«Hay libro» es `?.titulo?.trim()`** — B-891. Es el predicado de
+ * `formADocumento` (`lib/actividades.ts`), de `bloqueLibro` (`lib/textoRedes.ts`),
+ * de `construirDescripcion` (`functions/calendario.js`) y del view-model del
+ * detalle: la misma pregunta con la misma respuesta en las cinco, como el
+ * tallerista con `?.nombre?.trim()` (B-854, B-861, B-885). Hasta B-891 acá se
+ * preguntaba `l?.titulo` sin trim, así que la cáscara `{ titulo: '   ', autor:
+ * 'Bolaño' }` —un escritor de afuera del panel, o una restauración del historial,
+ * que no pasan por `formADocumento`— salía al `events.json` como un libro que
+ * existe y no se llama nada.
+ *
+ * El autor lleva la misma pregunta: uno de solo espacios es «sin autor», o sea
+ * `''`, que es lo que el consumidor ya sabe no pintar.
+ *
+ * **El valor emitido no se trimea**: lo que converge es la pregunta, no el texto
+ * (B-885). Normalizar el texto de raíz —que los escritores guarden `parsed.data`—
+ * es la decisión abierta que B-891 dejó anotada, no un arreglo de salida.
  */
 const libroPublico = (l: Libro | null | undefined): LibroPublico | null =>
-  l?.titulo ? { titulo: l.titulo, autor: l.autor ?? '' } : null;
+  l?.titulo?.trim() ? { titulo: l.titulo, autor: l.autor?.trim() ? l.autor : '' } : null;
 
 /**
  * La plataforma siempre; la URL **solo** si `urlPublica` está en true.

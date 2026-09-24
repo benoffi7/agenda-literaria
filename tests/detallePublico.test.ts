@@ -1367,6 +1367,44 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     }
   });
 
+  it('y «hay libro» es que tenga título, no que el objeto exista — B-891', () => {
+    /*
+     * La misma forma que el tallerista de arriba, con el libro. `libroPublico` ya
+     * descarta la cáscara, así que para probar **esta** línea el view-model se
+     * alimenta con una `ActividadPublica` que la trae igual: el view-model es el
+     * punto de paso obligado de la página (D-140) y no puede depender de que su
+     * entrada venga limpia. Con el objeto como condición, la plantilla pintaba
+     * «Se presenta    , de Bolaño» en el HTML indexado.
+     *
+     * MUTACIÓN PROBADA: volver a `libro: a.libro ? {…}` en `detallePublico.ts`.
+     * Con `libroPublico` intacto solo se pone rojo este caso; con los dos
+     * mutados, además, el `toBeNull` del camino completo.
+     */
+    const publica = toPublic(actividadDePrueba({}), 'act_1');
+    for (const titulo of ['', '   ']) {
+      const d = detalleDeActividad(
+        { ...publica, libro: { titulo, autor: 'Bolaño' } },
+        ETIQUETAS,
+        AHORA,
+        TONOS,
+      );
+      expect(d.libro, JSON.stringify(titulo)).toBeNull();
+    }
+    // Y por el camino completo, desde el documento.
+    expect(detalleDe({}, { libro: { titulo: '   ', autor: 'Bolaño' } }).libro).toBeNull();
+  });
+
+  it('el autor de solo espacios sale vacío, para que la página no cuelgue «, de» — B-891', () => {
+    const publica = toPublic(actividadDePrueba({}), 'act_1');
+    const d = detalleDeActividad(
+      { ...publica, libro: { titulo: 'Los detectives salvajes', autor: '   ' } },
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+    );
+    expect(d.libro).toEqual({ titulo: 'Los detectives salvajes', autor: '' });
+  });
+
   it('nada de aggregateRating ni review (regla 6)', () => {
     const texto = JSON.stringify(datosEstructurados(detalleDe())!);
     expect(texto).not.toContain('aggregateRating');
