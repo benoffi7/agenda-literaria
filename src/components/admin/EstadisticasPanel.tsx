@@ -1,7 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseEnlaceCelda } from '@/components/campos/Campo';
+import { Barra } from '@/components/admin/estadisticas/Barra';
 import { Reparto } from '@/components/admin/estadisticas/Reparto';
+import { Ritmo } from '@/components/admin/estadisticas/Ritmo';
+import { encuentrosDe } from '@/lib/calendarioPanel';
+import { ritmoDelCatalogo, type RitmoDelCatalogo } from '@/lib/ritmoDelCatalogo';
 import { useLabelsTaxonomia, useOpciones } from '@/components/admin/useOpciones';
 import { listarActividades } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
@@ -71,7 +75,10 @@ import type { ActividadConId, CampoTaxonomia, Estado, Modalidad } from '@/types/
  *    cálculo es puro y vive en `lib/estadoDelCatalogo.ts`; acá solo se acomoda.
  * 3. **Los gráficos son barras de CSS**, sin ninguna dependencia nueva —y cada
  *    barra lleva su número escrito al lado: la barra ayuda a comparar, no
- *    informa sola. Va `aria-hidden` justamente por eso.
+ *    informa sola. Va `aria-hidden` justamente por eso. El mapa de calor del
+ *    ritmo (B-1081, `estadisticas/Ritmo.tsx`) sigue la misma regla con otra
+ *    forma: es una `<table>` con el número escrito en cada celda, y el color
+ *    solo ayuda a encontrar la semana cargada.
  * 4. **Los avisos van primero.** Es lo accionable, y lo demás es contexto. Un
  *    tablero que abre con gráficos y esconde «hay tres publicadas a las que no
  *    se puede entrar» tiene el orden al revés.
@@ -96,21 +103,6 @@ const PESTANIAS: { id: Pestania; etiqueta: string }[] = [
   { id: 'catalogo', etiqueta: 'El catálogo' },
   { id: 'sitio-publico', etiqueta: 'El sitio público' },
 ];
-
-/** Barra de comparación. Decorativa: el número siempre está escrito al lado. */
-function Barra({ parte, total }: { parte: number; total: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="block h-1.5 w-full overflow-hidden rounded-sm bg-tinta/8"
-    >
-      <span
-        className="block h-full bg-acento"
-        style={{ width: `${porcentaje(parte, total)}%` }}
-      />
-    </span>
-  );
-}
 
 /**
  * Una proporción sin «falta»: `N de M (x %)` y nada más — B-703.
@@ -177,12 +169,15 @@ function Cobertura({
  */
 function PanelCatalogo({
   estado,
+  ritmo,
   porId,
   onEditar,
   deTaxonomia,
   tonosDeTipo,
 }: {
   estado: EstadoDelCatalogo;
+  /** B-1081 — cuándo pasan las cosas: el mapa de ocho semanas, el día y la franja. */
+  ritmo: RitmoDelCatalogo;
   porId: Map<string, ActividadConId>;
   onEditar: (a: ActividadConId) => void;
   deTaxonomia: (campo: CampoTaxonomia) => (valor: string) => string;
@@ -474,6 +469,14 @@ function PanelCatalogo({
           </div>
         </section>
       </div>
+
+      {/*
+        B-1081 — el ritmo va **al final** y no arriba: los avisos siguen siendo
+        lo accionable, y «qué semanas están vacías» es contexto para decidir qué
+        salir a buscar, no algo que haya que arreglar hoy. Contesta lo que los
+        repartos de arriba no contestan nunca, que es *cuándo*.
+      */}
+      <Ritmo ritmo={ritmo} />
     </div>
   );
 }
@@ -1119,6 +1122,17 @@ export function EstadisticasPanel({ onEditar }: Props) {
 
   const estado = useMemo(() => estadoDelCatalogo(actividades, ahora), [actividades, ahora]);
 
+  /*
+   * B-1081 — sobre `encuentrosDe`, el mismo aplanado que alimenta la grilla del
+   * mes: un segundo aplanado acá podría pintar en el mapa un encuentro que el
+   * calendario no muestra. Es cálculo en memoria sobre la misma lectura; no
+   * cuesta un solo documento de Firestore más.
+   */
+  const ritmo = useMemo(
+    () => ritmoDelCatalogo(encuentrosDe(actividades), ahora),
+    [actividades, ahora],
+  );
+
   const porId = useMemo(
     () => new Map(actividades.map((a) => [a.id, a])),
     [actividades],
@@ -1211,6 +1225,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
         {pestania === 'catalogo' ? (
           <PanelCatalogo
             estado={estado}
+            ritmo={ritmo}
             porId={porId}
             onEditar={onEditar}
             deTaxonomia={deTaxonomia}
