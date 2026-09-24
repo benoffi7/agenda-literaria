@@ -58,6 +58,24 @@ export default defineConfig({
       PUBLIC_FIREBASE_API_KEY: 'fake-api-key',
       PUBLIC_FIREBASE_AUTH_DOMAIN: 'agenda-literaria.firebaseapp.com',
       PUBLIC_FIREBASE_APP_ID: '1:1038157194972:web:fake',
+      /*
+       * **El bucket del SDK de cliente** — B-1235, y faltaba.
+       *
+       * `subir-imagen.ts` pide el almacén con `getStorage(app())`, sin bucket
+       * explícito, así que lo saca de esta clave de la config. Sin ella, todo
+       * lo que suba o traiga una imagen por el camino del panel muere con
+       * `storage/no-default-bucket` **antes** de tocar el emulador. Eso es lo
+       * que dejaba a `promoverImagenDePropuesta` —la función que B-1235
+       * encontró rota en producción— sin una sola prueba que la ejecutara de
+       * verdad: los tests que había la mockeaban o iban por el Admin SDK, que
+       * resuelve el bucket por otro lado.
+       *
+       * Es el mismo bucket que `tests/emulador.ts` expone como
+       * `BUCKET_EMULADOR`; se escribe acá con el literal por la misma razón que
+       * las otras cuatro claves de arriba — este bloque es lo que el SDK lee, y
+       * un import desde `tests/` invertiría la dependencia.
+       */
+      PUBLIC_FIREBASE_STORAGE_BUCKET: 'agenda-literaria.firebasestorage.app',
       PUBLIC_USE_EMULATORS: 'true',
       // Se respeta el valor del entorno si viene: permite apuntar los tests a
       // otro emulador, y sin esto no se puede verificar el guard de

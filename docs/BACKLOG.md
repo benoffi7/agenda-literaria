@@ -269,9 +269,36 @@ seguir es que nadie sepa cuál de las dos es.
 
 ## P1 — bloquean el objetivo del proyecto
 
-### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 causa encontrada, falta B-1235a (2026-09-23)
+### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 arreglado y verificado por partes, falta una conversión real (2026-09-24)
 
 > 🟡 **Causa encontrada y verificada contra el bucket de producción (2026-09-23).** No era la cadena de guardado: era el **CORS**. La respuesta con los bytes (`alt=media`) no manda `Access-Control-Allow-Origin` para ningún origen, así que el `fetch` de `promoverImagenDePropuesta` falla en el navegador («Failed to fetch»); en el emulador anda porque no aplica el CORS del bucket, y en la bandeja la foto «se ve» porque un `<img>` no lo necesita. **Hecho** (`de19dc2`, `d245919`): `cors.json` en la raíz (solo GET/HEAD desde los cuatro orígenes del sitio), y una alerta visible arriba del formulario cuando la foto no entra, con la causa y qué hacer (`avisoDeImagenNoPromovida`, `Conversion.imagenNoPromovida`). **Falta:** B-1235a, y probar una conversión real. Se cierra cuando una propuesta con foto se convierta y la actividad reabra con el flyer.
+
+> 🟡 **Las dos mitades verificadas por separado (2026-09-24), y por qué eso
+> todavía no es el cierre.** B-1235a quedó hecho, así que ahora se puede medir:
+>
+> - **El permiso del navegador, contra producción.** `curl -H 'Origin:
+>   https://agendaleh.ar'` sobre una imagen del `events.json` responde
+>   `access-control-allow-origin: https://agendaleh.ar`; con un origen ajeno **no
+>   manda el header**. O sea que el `fetch` que fallaba ahora está autorizado, y
+>   el bucket no quedó abierto a cualquiera.
+> - **La cadena, contra los emuladores.** `tests/propuesta-a-actividad.integracion.test.ts`
+>   escribe un flyer en `propuestas/` como lo deja la callable, lo promueve con el
+>   **SDK de cliente**, guarda la actividad, la **relee** —el gesto con el que
+>   apareció el bug— y acepta la propuesta: la galería vuelve con la imagen y su
+>   `portada`, el original se borra y la copia queda.
+>
+> **Falta la conversión real en el panel de producción**, que es la única que
+> junta las dos mitades: navegador de verdad, bucket de verdad y una propuesta con
+> foto de verdad. Se cierra ahí.
+
+**Por qué la suite podía estar verde con esto roto, que es lo que hay que no
+repetir.** Ningún test ejecutaba `promoverImagenDePropuesta`: el del panel la
+mockea, el del borrado del original va por el Admin SDK, y el resto de la cadena
+es puro. Entre el mock y el Admin SDK quedaba justo la función que fallaba. Y no
+era por falta de ganas: `vitest.config.ts` no definía
+`PUBLIC_FIREBASE_STORAGE_BUCKET`, así que cualquier test que intentara ese camino
+moría con `storage/no-default-bucket` **antes** de tocar el emulador. Esa clave ya
+está, y con ella el archivo de integración nuevo.
 
 **El reporte:** «cuando una propuesta con imagen se promueve a actividad, el
 usuario pulsó usar imagen pero no la tomó». Apretó «Sí, usarla», la imagen se veía
@@ -976,6 +1003,35 @@ Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al cami
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
+
+### B-1237 · Un test de integración se pone rojo si el emulador de Functions está vivo, y es una carrera · P2 — medido (2026-09-24)
+
+**`tests/limpieza-versiones.test.ts`**, el caso «encuentra la referencia fantasma
+que deja borrar una actividad con versiones», afirma `quedaron.size === 1` después
+de borrar la actividad. Con el emulador de **Functions** levantado, el
+`onDocumentDeleted` de `historial-trigger.js` escribe la versión del `before`
+sobre la misma subcolección, así que hay **2**.
+
+**Y es una carrera, no un rojo estable**: el trigger es asíncrono, así que el
+resultado depende de si llegó a escribir antes del `get()`. Medido el 2026-09-24,
+tres corridas seguidas contra el mismo emulador: **verde, rojo, rojo**. Eso es
+peor que un rojo fijo — se lee como «algo raro pasó», se vuelve a correr y pasa.
+
+**Nada de esto es un bug de producción.** El trigger hace lo que debe (guardar el
+estado previo antes de que se pierda) y el barrido de B-89 encuentra igual la
+huérfana — el otro `expect` del mismo `it`, el que de verdad prueba la promesa de
+`listDocuments()`, pasa siempre. Lo que está mal escrito es la afirmación de al
+lado: cuenta documentos de una subcolección que tiene **dos** escritores y asume
+uno solo.
+
+**Por qué no se notaba:** `npm test` sin emuladores saltea el archivo entero, y con
+emuladores parciales (sin `functions`) no hay quién escriba la segunda. Apareció
+corriendo la suite con `EXIGIR_EMULADOR=1` y los cinco emuladores arriba, que es lo
+que hace el pre-push.
+
+**El arreglo** es del test, no del código: o afirmar sobre la versión que el test
+escribió (`v1` sigue ahí) en vez de sobre el tamaño, o esperar a que el trigger
+asiente. La primera es la que no vuelve a envejecer.
 
 ### B-1370 · Si la foto se sube a mano después de aceptar, el original de la propuesta no se borra nunca · P2 — de `huerfanas` (2026-09-24)
 

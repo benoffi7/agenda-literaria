@@ -2,6 +2,26 @@
 
 ## Sin publicar
 
+- **La conversión de una propuesta con foto ya tiene red, y se probó entera**
+  (B-1235). Faltaba la prueba, y faltaba porque no se podía escribir: ningún test
+  ejecutaba `promoverImagenDePropuesta` —el panel la mockea, el borrado del
+  original va por el Admin SDK— y `vitest.config.ts` no definía
+  `PUBLIC_FIREBASE_STORAGE_BUCKET`, así que ese camino moría con
+  `storage/no-default-bucket` antes de tocar el emulador. Con esa clave puesta,
+  `tests/propuesta-a-actividad.integracion.test.ts` hace el recorrido completo:
+  escribe el flyer en `propuestas/`, lo promueve con el SDK de cliente, guarda la
+  actividad, **la relee** —el gesto con el que apareció el bug— y acepta la
+  propuesta; la galería vuelve con la imagen, el original se borra y la copia
+  queda. El CORS, que era la causa, no lo puede cubrir ese archivo (el emulador no
+  lo aplica): eso se verificó contra producción con `curl`, y responde el header
+  para el origen del sitio y no para uno ajeno.
+
+  De correr la suite así —con los cinco emuladores arriba y `EXIGIR_EMULADOR=1`,
+  que es lo que hace el pre-push— salió además **B-1237**: un caso de
+  `limpieza-versiones` cuenta documentos de una subcolección que tiene dos
+  escritores y asume uno, así que se pone rojo cuando el trigger de historial
+  llega a escribir antes que él. Tres corridas: verde, rojo, rojo.
+
 - **El CORS del bucket queda escrito y con chequeo de humo** (B-1321, B-1340). Es
   config del bucket y se aplica en la consola: no viaja con ningún deploy y el
   emulador no lo aplica, así que si alguien lo borra, la conversión de una
