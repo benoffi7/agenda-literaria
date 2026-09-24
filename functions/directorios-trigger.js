@@ -29,12 +29,34 @@
  * clase de falso verde que este repo persigue. Quince líneas repetidas a cambio de
  * que la red siga puesta es un buen precio; lo que sí está compartido es la
  * decisión, que es lo que importa que no se duplique (`cambioAmeritaRebuild`).
+ *
+ * ── B-905: estos triggers también prenden `publicadaAlgunaVez` ───────────
+ * La marca de «estuvo publicada alguna vez» la declaraban los cuatro tipos y la
+ * respetaban las cuatro reglas (`slugDe*Congelado`), pero no la escribía nadie:
+ * publicar → despublicar → renombrar → volver a publicar reabría la URL
+ * (trampa 10). La escriben estos cuatro handlers, **y no cuatro Functions
+ * nuevas** (D-910):
+ *
+ *  - es el patrón de B-285, que la puso adentro de `syncCalendar` —el trigger
+ *    que ya existía sobre `actividades/{id}`— y no en uno propio;
+ *  - dos `onDocumentWritten` sobre el mismo path son dos handlers del mismo
+ *    evento (B-89), y cada escritura de una ficha costaría dos invocaciones;
+ *  - y la guarda del rebuild ya sabe que este write-back no cuenta:
+ *    `publicadaAlgunaVez` no está en `CAMPOS_PUBLICOS_POR_DIRECTORIO`.
+ *
+ * La decisión es `faltaMarcarPublicada` y el efecto `marcarPublicada`, **los
+ * mismos** que usa `syncCalendar`: una sola implementación para las cinco
+ * colecciones. Y el bloque se repite en los cuatro cuerpos por el mismo motivo
+ * que el rebuild: `marcarPublicada` está en `EFECTOS_INCONDICIONALES`, y el
+ * chequeo de B-83 es textual sobre cada cuerpo.
  */
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore } from 'firebase-admin/firestore';
 import { OPCIONES_BASE } from './despliegue.js';
 import { cambioAmeritaRebuild } from './directorios.js';
+import { faltaMarcarPublicada } from './historial.js';
+import { marcarPublicada } from './marca-de-publicada.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
 
 export const rebuildPorLibrerias = onDocumentWritten(
@@ -48,6 +70,38 @@ export const rebuildPorLibrerias = onDocumentWritten(
     const antes = event.data?.before?.data() ?? null;
     const despues = event.data?.after?.data() ?? null;
     const { id } = event.params;
+
+    /*
+     * ── B-905 · la marca de «estuvo publicada alguna vez» ────────────────
+     * Va primero y afuera de todo condicional del rebuild, por el mismo motivo
+     * que en `syncCalendar`: corresponde porque la ficha **pasó a publicada**, no
+     * porque el sitio tenga algo que rehacer. `marcarPublicada` está en
+     * `EFECTOS_INCONDICIONALES` y ningún corte puede precederla.
+     *
+     * **La guarda anti-loop es `faltaMarcarPublicada`** (trampa 3): el `update`
+     * vuelve a disparar este mismo handler, y en esa segunda pasada la marca ya
+     * está en `true`, así que no se escribe de nuevo. La otra mitad es que la
+     * marca no está en `CAMPOS_PUBLICOS_POR_DIRECTORIO`: esa segunda pasada
+     * tampoco rebuildea.
+     *
+     * Si falla —la ficha se borró entre el evento y el `update`, por ejemplo—
+     * se loguea y el rebuild sigue: la marca es para el próximo intento de
+     * renombrar, el sitio es de ahora. Y la próxima escritura de una ficha
+     * publicada la vuelve a intentar, porque la decisión se toma sobre el
+     * documento y no sobre la transición.
+     */
+    if (faltaMarcarPublicada(despues)) {
+      try {
+        await marcarPublicada(getFirestore(), id, 'librerias');
+        logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'librerias' });
+      } catch (e) {
+        logger.warn('no se pudo marcar la ficha como publicada', {
+          id,
+          coleccion: 'librerias',
+          error: e?.message,
+        });
+      }
+    }
 
     /*
      * ── La guarda va en forma POSITIVA, y no es estilo ───────────────────
@@ -67,9 +121,10 @@ export const rebuildPorLibrerias = onDocumentWritten(
      * `rebuildPorOpciones`. Que las tres se lean igual es lo que hace que la
      * tajada 4 copie la forma correcta.
      *
-     * La guarda no puede faltar: el trigger que escriba `publicadaAlgunaVez`
-     * —que todavía no existe, B-905— hace un write-back sobre este mismo
-     * documento, y sin ella cada publicación costaría **dos** builds; además
+     * La guarda no puede faltar: la marca `publicadaAlgunaVez` (el bloque de
+     * arriba, B-905) es un write-back sobre este mismo documento que vuelve a
+     * disparar este handler, y sin ella cada publicación costaría **dos**
+     * builds; además
      * rearma el contador de reintentos (`CAMPOS_REARME`, D-23). Corregir el
      * contacto interno, que no sale al sitio, tampoco tiene por qué costar uno.
      *
@@ -94,6 +149,21 @@ export const rebuildPorSuscripciones = onDocumentWritten(
     const antes = event.data?.before?.data() ?? null;
     const despues = event.data?.after?.data() ?? null;
     const { id } = event.params;
+
+    // B-905 — la marca, con la misma guarda y en el mismo lugar que en
+    // `rebuildPorLibrerias` (ver ahí el detalle).
+    if (faltaMarcarPublicada(despues)) {
+      try {
+        await marcarPublicada(getFirestore(), id, 'suscripciones');
+        logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'suscripciones' });
+      } catch (e) {
+        logger.warn('no se pudo marcar la ficha como publicada', {
+          id,
+          coleccion: 'suscripciones',
+          error: e?.message,
+        });
+      }
+    }
 
     /*
      * La misma guarda, en la misma forma positiva y por el mismo motivo que la
@@ -128,6 +198,21 @@ export const rebuildPorLugares = onDocumentWritten(
     const despues = event.data?.after?.data() ?? null;
     const { id } = event.params;
 
+    // B-905 — la marca, con la misma guarda y en el mismo lugar que en
+    // `rebuildPorLibrerias` (ver ahí el detalle).
+    if (faltaMarcarPublicada(despues)) {
+      try {
+        await marcarPublicada(getFirestore(), id, 'lugares');
+        logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'lugares' });
+      } catch (e) {
+        logger.warn('no se pudo marcar la ficha como publicada', {
+          id,
+          coleccion: 'lugares',
+          error: e?.message,
+        });
+      }
+    }
+
     /*
      * La misma guarda, en la misma forma positiva y por el mismo motivo que las
      * dos de arriba (ver el detalle de la clase de B-83 en la primera).
@@ -161,6 +246,21 @@ export const rebuildPorBibliotecas = onDocumentWritten(
     const antes = event.data?.before?.data() ?? null;
     const despues = event.data?.after?.data() ?? null;
     const { id } = event.params;
+
+    // B-905 — la marca, con la misma guarda y en el mismo lugar que en
+    // `rebuildPorLibrerias` (ver ahí el detalle).
+    if (faltaMarcarPublicada(despues)) {
+      try {
+        await marcarPublicada(getFirestore(), id, 'bibliotecas');
+        logger.info('ficha marcada como publicada alguna vez', { id, coleccion: 'bibliotecas' });
+      } catch (e) {
+        logger.warn('no se pudo marcar la ficha como publicada', {
+          id,
+          coleccion: 'bibliotecas',
+          error: e?.message,
+        });
+      }
+    }
 
     /*
      * La misma guarda, en la misma forma positiva y por el mismo motivo que las

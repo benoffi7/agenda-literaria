@@ -16,11 +16,11 @@
  *
  * ── Y la trampa 3, que es la razón por la que esto es una función y no un
  * `return true` ─────────────────────────────────────────────────────────────
- * Un trigger que escribe donde lo dispararon se dispara a sí mismo. Éste **no
- * escribe en `/librerias`** —escribe en `sistema/rebuild`— así que el loop
- * directo no existe. Lo que sí existe es el desperdicio: el trigger de la marca
- * de «estuvo publicada» (el que la tajada que venga escriba) va a hacer un
- * write-back sobre el mismo documento, y sin esta guarda cada publicación
+ * Un trigger que escribe donde lo dispararon se dispara a sí mismo. El rebuild
+ * escribe en `sistema/rebuild` y no en la ficha, pero **desde B-905 el mismo
+ * handler sí escribe en la ficha**: prende `publicadaAlgunaVez`. Ese write-back
+ * lo corta su propia guarda (`faltaMarcarPublicada`), y esta es la que impide
+ * que además cueste un build: sin ella cada publicación
  * costaría **dos** rebuilds. La guarda es la misma forma que `relevantChanged`
  * del §7.1: comparar solo los campos que cambian lo que el sitio muestra.
  *
