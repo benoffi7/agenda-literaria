@@ -35,6 +35,7 @@ import { labelsDeOpciones } from '@/lib/vistaPreviaEvento';
 // cierto el día que cambie `rutaCanonica`.
 import { PREFIJO_ACTIVIDAD, SITIO, urlDeDetalle } from '@/lib/rutasPublicas';
 import { CENTINELAS, VALORES_CENTINELA, formularioLleno } from './fixtures/formulario';
+import { barrerSalida, codigoDeSalida } from './fixtures/campos-de-instagram';
 import type { ActividadForm, Sesion, ValorOpcion } from '@/types/actividad';
 import { ts, tsDe } from './fixtures/tiempo';
 
@@ -807,6 +808,29 @@ describe('inscripción por DM — el destino sale como cuenta (B-1540)', () => {
     if (!r.ok) return;
     expect(r.texto).toContain('Inscripción por DM: @casabrandon');
     expect(r.texto).not.toContain('igsh');
+  });
+});
+
+/**
+ * **La clase, no los casos de arriba** — B-1780.
+ *
+ * Los tests de este archivo prueban el comportamiento con los campos de hoy, y
+ * eso no ve el campo de Instagram que venga: uno que no se llame así, como el
+ * destino por DM de B-1540, nacía sin red. El barrido recorre el registro de
+ * `tests/fixtures/campos-de-instagram.ts`, atado a la tabla de docs/03, y para
+ * esta salida cada entrada dice cómo sale: los dos que dicen Instagram en el
+ * nombre por `arrobaInstagram`, el destino solo junto con su vía por
+ * `destinoLegible` —que con `dm` lo pasa por `arrobaInstagram`— y
+ * `difusion.arrobar` crudo a propósito, con su motivo.
+ *
+ * MUTACIÓN PROBADA: `destinoLegible(insc.via, insc.destino)` → `insc.destino`,
+ * sacarle el `arrobaInstagram` a `actividad.organizador?.instagram` o a
+ * `tallerista.instagram`, o vaciar la rama de `dm` de `destinoLegible`, deja esto
+ * en rojo nombrando la fila.
+ */
+describe('los campos de Instagram del posteo, contra el registro — B-1780', () => {
+  it('cada campo de Instagram que sale al texto para redes pasa por su saneador', () => {
+    expect(barrerSalida(codigoDeSalida('redes'), 'redes')).toEqual([]);
   });
 });
 
