@@ -429,9 +429,10 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        * es un borrado» como si eso lo sacara de la clase, que es precisamente lo
        * que el detector no veía —B-864 tenía la forma de B-85 con el verbo
        * cambiado—. Hoy borrar cuenta como escribir, este barrido entra con los
-       * dos síntomas prendidos, y lo que lo deja afuera es no hablar con la red;
-       * lo que lo protege de verdad en su ventana propia es la precondición de
-       * B-864, declarada abajo en `GUARDAS_DE_BARRIDO`.
+       * dos síntomas prendidos, y desde **B-879** lo único que lo deja afuera es
+       * la precondición de B-864, declarada abajo en `GUARDAS_DE_BARRIDO`: no
+       * hablar con la red dejó de contar, porque la red de un barrido es la
+       * corrida entera.
        */
       /*
        * B-830 paso 8 / DEC-11 y **B-863** — cerrar una propuesta borra su
@@ -466,8 +467,8 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        * Cae exactamente donde su vecino `borrarPropuestasVencidas`: **B-82** no
        * lo mira (es un schedule, y borrar dos veces el mismo documento deja el
        * mismo estado), **B-85** sí lo mira con los dos síntomas prendidos y lo
-       * deja afuera porque no habla con la red. Su guarda propia —la precondición
-       * de B-864— está declarada abajo en `GUARDAS_DE_BARRIDO`, y acá hay una
+       * deja afuera por su guarda declarada —la precondición de B-864, abajo en
+       * `GUARDAS_DE_BARRIDO`— y no por no hablar con la red (B-879). Y acá hay una
        * diferencia que conviene tener escrita: este barrido **no borra nada de
        * Storage**, así que no tiene la mitad sin precondición que allá obligó a
        * elegir cuál perder.
@@ -1207,6 +1208,18 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
    * los tres dan `escritura: true` y lo que los deja afuera es la red que no
    * tienen, que es un motivo más débil; la ventana propia de un barrido la cubre
    * (o no) su guarda declarada, abajo.
+   *
+   * **Y B-879 le sacó también ese segundo motivo.** La red de un barrido no es
+   * un `fetch`: es la corrida entera —la query del principio, N borrados de
+   * Storage, cada uno con su round-trip— y en esa ventana el estado leído
+   * envejece igual que del otro lado de una llamada HTTP. Contar solo el
+   * `fetch` era aceptar la guarda **implícita**: la función pasaba por lo que
+   * no tenía. Desde B-879 el chequeo principal no mira la red para dejar pasar
+   * a nadie; lo que saca a una función programada que escribe lo que leyó es la
+   * transacción o su guarda **declarada** en `GUARDAS_DE_BARRIDO`, con las
+   * marcas presentes en el fuente. El detector de red sigue, y ahora dice otra
+   * cosa: una guarda que **acepta** la ventana intra-corrida la aceptó para una
+   * corrida sin llamadas largas, así que con red deja de alcanzar.
    */
   const textoTrazado = (t: Trigger): string => trazaDe(t).cuerpos.join('\n');
 
@@ -1241,7 +1254,12 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
     transaccion: /runTransaction\(/.test(texto),
   });
 
-  /** ¿Se come el cambio que llegó mientras la llamada a la red estaba en vuelo? */
+  /**
+   * ¿Se come el cambio que llegó mientras la llamada a la red estaba en vuelo?
+   * Es la forma de B-85 con la red explícita, y la usan los cuerpos sintéticos
+   * de `el detector de B-85 sigue la llamada al módulo`. El chequeo sobre el
+   * repo es más estricto desde B-879 y no pide la red (`cubreLaVentana`, abajo).
+   */
   const pierdeElCambio = (s: Sintomas): boolean =>
     s.lectura && s.red && s.escritura && !s.transaccion;
 
@@ -1249,9 +1267,13 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
 
   const programadas = TRIGGERS.filter((x) => x.clase === 'onSchedule');
 
-  it('B-85: ninguna función programada escribe el estado que leyó sin compararlo', () => {
+  /*
+   * B-879 — el registro contra el que se decide vive abajo, con la otra mitad
+   * de B-867; `cubreLaVentana` se lee recién cuando corre el caso.
+   */
+  it('B-85: ninguna función programada escribe lo que leyó sin transacción ni guarda declarada — B-879', () => {
     const pierden = programadas
-      .filter((t) => pierdeElCambio(sintomasDe(t)))
+      .filter((t) => !cubreLaVentana(t))
       .map((t) => `${t.archivo} · ${t.nombre}`);
     expect(pierden).toEqual([]);
   });
@@ -1299,13 +1321,13 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
    * el contraejemplo exacto —`borrarPropuestasVencidas` tenía la forma de B-85
    * en su versión `delete`— y este caso la daba por buena.
    *
-   * Ahora los tres dan `escritura: true` —el borrado se ve— y pasan por la
-   * única mitad que les queda: **no hablan con la red**, así que no hay una
-   * llamada larga del otro lado de la cual el estado leído pueda envejecer. Es
-   * un motivo más débil que el anterior y hay que decirlo entero: la ventana de
-   * un barrido no es un `fetch`, es la corrida —hasta 50 documentos, cada uno
-   * con su borrado de Storage en el medio—. Por eso este caso solo no alcanza, y
-   * abajo cada barrido declara cuál es su guarda.
+   * Ahora los tres dan `escritura: true` —el borrado se ve—. Hasta B-879
+   * pasaban por la única mitad que les quedaba, **no hablar con la red**, y eso
+   * era un motivo más débil que el anterior: la ventana de un barrido no es un
+   * `fetch`, es la corrida —hasta 50 documentos, cada uno con su borrado de
+   * Storage en el medio—. **Desde B-879 ese motivo no cuenta**: sin su guarda
+   * declarada abajo, cada uno de los tres cae en el chequeo principal, y el
+   * caso siguiente lo afirma para que el registro no se pueda vaciar en verde.
    *
    * Se enumeran a propósito, contra la doctrina de este archivo de afirmar la
    * propiedad y no la lista: son los tres casos que el chequeo no veía. Un
@@ -1324,8 +1346,22 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
       const s = sintomasDe(t);
       expect(s.lectura, `${nombre}: el chequeo no ve su lectura`).toBe(true);
       expect(s.escritura, `${nombre}: el chequeo no ve su borrado`).toBe(true);
-      expect(s.red, `${nombre}: habla con la red, así que su guarda ya no alcanza`).toBe(false);
     }
+  });
+
+  /**
+   * **B-879 — el positivo del chequeo principal.** Que los barridos pasen hoy
+   * no dice nada si pasarían igual sin declarar nada, que era exactamente el
+   * estado de antes: la guarda aceptada por falta de `fetch`. Con el registro
+   * vacío, los tres —y todo lo que el registro declara— tienen que caer.
+   */
+  it('sin su guarda declarada, cada barrido cae en el chequeo principal — B-879', () => {
+    for (const nombre of Object.keys(GUARDAS_DE_BARRIDO)) {
+      const t = programadas.find((x) => x.nombre === nombre)!;
+      expect(cubreLaVentana(t), `${nombre}: no cubre su ventana`).toBe(true);
+      expect(cubreLaVentana(t, {}), `${nombre}: pasa sin declarar su guarda`).toBe(false);
+    }
+    for (const nombre of BARRIDOS) expect(Object.keys(GUARDAS_DE_BARRIDO)).toContain(nombre);
   });
 
   /**
@@ -1443,6 +1479,30 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
   const escribeLoQueLeyoSinTransaccion = (t: Trigger): boolean => {
     const s = sintomasDe(t);
     return s.lectura && s.escritura && !s.transaccion;
+  };
+
+  /**
+   * **B-879 — la guarda se exige, no se acepta implícita.** Una función
+   * programada que escribe lo que leyó sin transacción cubre su ventana solo si
+   * declara la guarda **y** la guarda está en el fuente (las dos marcas). Que no
+   * hable con la red ya no la saca: la red de un barrido es la corrida.
+   *
+   * La red vuelve a importar en un solo lugar, y a propósito: una guarda que
+   * **acepta** la ventana intra-corrida (`margen`) la aceptó con un motivo
+   * escrito para una corrida **sin** llamadas largas. Si le aparece un `fetch`,
+   * la ventana que se aceptó dejó de ser ésa, y hay que volver a decidir. Una
+   * que la **cubre** (`precondicion`) no depende de cuánto dure la corrida.
+   */
+  const cubreLaVentana = (
+    t: Trigger,
+    guardas: Record<string, GuardaDeBarrido> = GUARDAS_DE_BARRIDO,
+  ): boolean => {
+    if (!escribeLoQueLeyoSinTransaccion(t)) return true;
+    const g = guardas[t.nombre];
+    if (!g) return false;
+    const src = sinComentarios(fuente(g.donde));
+    if (!g.marcas.every((m) => m.test(src))) return false;
+    return g.ventana === 'cubierta' || !sintomasDe(t).red;
   };
 
   it('B-867: todo barrido que borra lo que leyó declara cuál es su guarda', () => {
