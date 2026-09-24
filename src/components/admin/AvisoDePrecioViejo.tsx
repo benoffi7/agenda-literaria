@@ -21,13 +21,30 @@ import { textoDeFallo } from '@/lib/fallosDelPanel';
  * cómo se ve y qué pasa al tocar el botón. El aviso desaparece solo cuando el
  * snapshot trae la fecha nueva — no hay estado local que lo esconda antes, así
  * que si la escritura rebota el aviso sigue ahí, que es lo cierto.
+ *
+ * ── Qué dato es, y por qué falla — B-1410 y B-1412 ─────────────────────────
+ * **`que` nombra el dato** («el precio», «el costo de asociarse»): la bandeja de
+ * bibliotecas no tiene un precio sino un costo, y un aviso que dice «el precio»
+ * sobre una biblioteca se lee como un error del panel.
+ *
+ * **`sinFecha` cambia la frase, no el botón.** `pideRevision` es verdadero
+ * también cuando el `cargadoEn` falta o está roto, y en ese caso el sitio **no
+ * publica el dato** (`fraseConFecha` lo devuelve vacío): «más de 60 días» sería
+ * falso y escondería lo más grave. El gesto es el mismo —refechar con el reloj
+ * del servidor lo arregla—, así que lo único que cambia es qué se dice.
+ * Quien llama lo calcula con `diasDesdeLaCarga(...) === null`, igual que
+ * `pideRevision`: este componente no sabe leer fechas, y así no lo aprende.
  */
 interface Props {
-  /** Refecha el precio con el reloj del servidor, sin tocar el valor. */
+  /** Refecha el dato con el reloj del servidor, sin tocar el valor. */
   onConfirmar: () => Promise<void>;
+  /** Cómo se llama el dato, con artículo. Por defecto, «el precio». */
+  que?: string;
+  /** El dato no tiene fecha usable, así que el sitio no lo está publicando. */
+  sinFecha?: boolean;
 }
 
-export function AvisoDePrecioViejo({ onConfirmar }: Props) {
+export function AvisoDePrecioViejo({ onConfirmar, que = 'el precio', sinFecha = false }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
 
@@ -37,7 +54,7 @@ export function AvisoDePrecioViejo({ onConfirmar }: Props) {
     try {
       await onConfirmar();
     } catch (e: unknown) {
-      setFallo(textoDeFallo(e, { respaldo: 'No se pudo confirmar el precio' }));
+      setFallo(textoDeFallo(e, { respaldo: `No se pudo confirmar ${que}` }));
     } finally {
       setEnviando(false);
     }
@@ -46,14 +63,16 @@ export function AvisoDePrecioViejo({ onConfirmar }: Props) {
   return (
     <>
       <span className="ml-1 text-acento">
-        · conviene revisar el precio (más de {DIAS_PARA_REVISAR} días)
+        {sinFecha
+          ? `· ${que} no se está publicando: falta su fecha`
+          : `· conviene revisar ${que} (más de ${DIAS_PARA_REVISAR} días)`}
       </span>{' '}
       <button
         type="button"
         onClick={confirmar}
         disabled={enviando}
         className={`${claseBotonFila} ml-1 border border-borde bg-white hover:bg-black/[0.03]`}
-        title="Deja el mismo precio y le pone la fecha de hoy"
+        title={`Deja ${que} como está y le pone la fecha de hoy`}
       >
         {enviando ? 'Confirmando…' : 'Lo revisé: sigue siendo éste'}
       </button>

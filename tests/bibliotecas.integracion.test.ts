@@ -46,6 +46,7 @@ import {
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { bibliotecaVacia, formABiblioteca } from '@/lib/biblioteca-schema';
+import { confirmarCostoDeBiblioteca } from '@/lib/bibliotecas';
 import type { BibliotecaForm } from '@/types/biblioteca';
 import {
   PROJECT_ID,
@@ -286,6 +287,25 @@ describe.skipIf(!vivo)('bibliotecas contra el emulador — B-960', () => {
         asociarse: { haceFalta: true, costo: { valor: '$9.000 por año', cargadoEn: serverTimestamp() } },
       });
       expect((await getDoc(ref)).data()!.asociarse.costo.valor).toBe('$9.000 por año');
+    });
+
+    it('«lo revisé: sigue siendo éste» refecha el costo sin tocar el valor — B-1410', async () => {
+      /*
+       * El botón de la bandeja entra por la puerta que la cláusula de DEC-12 ya
+       * dejaba abierta: `cargadoEn == request.time` con el mismo valor. La regla
+       * no se tocó; esto prueba que la función que llama el panel pasa por ahí.
+       * MUTACIÓN A PROBAR: escribir `{ 'asociarse.costo': { cargadoEn } }` se
+       * queda sin `valor` y da rojo.
+       */
+      const ref = nuevaRef();
+      await setDoc(ref, documento());
+      const antes = (await getDoc(ref)).data()!;
+      await confirmarCostoDeBiblioteca(ref.id, antes as never);
+      const despues = (await getDoc(ref)).data()!;
+      expect(despues.asociarse.costo.valor).toBe(antes.asociarse.costo.valor);
+      expect((despues.asociarse.costo.cargadoEn as Timestamp).toMillis()).toBeGreaterThanOrEqual(
+        (antes.asociarse.costo.cargadoEn as Timestamp).toMillis(),
+      );
     });
 
     it('el costo es texto: un número se rechaza', async () => {
