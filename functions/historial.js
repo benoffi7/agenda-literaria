@@ -141,6 +141,10 @@ export const estuvoPublicada = (documento) =>
  * publicado alcanza: estuvo publicada, y eso es lo que el campo afirma. El
  * documento borrado (`despues` nulo) no se marca: no hay dónde.
  */
+/**
+ * @param {Record<string, any> | null | undefined} despues
+ * @param {Record<string, any> | null | undefined} [antes]
+ */
 export const faltaMarcarPublicada = (despues, antes = null) =>
   !!despues &&
   !marcadaComoPublicada(despues) &&

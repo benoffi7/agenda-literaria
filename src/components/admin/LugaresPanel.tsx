@@ -5,7 +5,7 @@ import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/Dire
 import { LugarFormulario } from '@/components/admin/LugarFormulario';
 import { medirFuncion } from '@/lib/analytics';
 import { AvisoDePrecioViejo } from '@/components/admin/AvisoDePrecioViejo';
-import { pideRevision } from '@/lib/datoConFecha';
+import { diasDesdeLaCarga, pideRevision } from '@/lib/datoConFecha';
 import { esPendienteDeRevision, type EstadoDirectorio } from '@/lib/directorios';
 import { fraseDePrecioDeLugar } from '@/lib/lugarPublico';
 import { confirmarPrecioDeLugar, moverLugar, observarLugares } from '@/lib/lugares';
@@ -99,6 +99,13 @@ export function LugaresPanel({
    * El mapeo a `FichaDeDirectorio`: los cinco campos del ciclo de vida, con
    * `nombre` en el nombre genérico que la bandeja pide.
    */
+  /*
+   * El reloj se lee **una vez por render** y no adentro del `detalle`: con una
+   * llamada por fila, dos fichas cargadas el mismo día podrían caer a distinto
+   * lado del corte si el render cruza la medianoche.
+   */
+  const ahora = new Date();
+
   const fichas: FichaDeDirectorio[] = lugares.map((l) => ({
     id: l.id,
     nombre: l.nombre,
@@ -106,6 +113,8 @@ export function LugaresPanel({
     estado: l.estado,
     origen: l.origen,
     publicadaAlgunaVez: l.publicadaAlgunaVez,
+    // B-1411/B-1470 — la bandeja cuenta y filtra con esto, sin leer fechas (D-936).
+    pideRevision: pideRevision(l.precio, ahora),
   }));
 
   const porId = new Map(lugares.map((l) => [l.id, l]));
@@ -119,12 +128,6 @@ export function LugaresPanel({
     }
   };
 
-  /*
-   * El reloj se lee **una vez por render** y no adentro del `detalle`: con una
-   * llamada por fila, dos fichas cargadas el mismo día podrían caer a distinto
-   * lado del corte si el render cruza la medianoche.
-   */
-  const ahora = new Date();
 
   return (
     <div className="flex flex-col gap-4">
@@ -172,8 +175,11 @@ export function LugaresPanel({
                 B-913 — el aviso con su salida: «lo revisé y sigue siendo éste»
                 refecha el precio con el reloj del servidor sin tocar el valor.
               */}
-              {pideRevision(l.precio, ahora) && (
-                <AvisoDePrecioViejo onConfirmar={() => confirmarPrecioDeLugar(l.id, l)} />
+              {f.pideRevision && (
+                <AvisoDePrecioViejo
+                  sinFecha={diasDesdeLaCarga(l.precio, ahora) === null}
+                  onConfirmar={() => confirmarPrecioDeLugar(l.id, l)}
+                />
               )}
             </>
           );

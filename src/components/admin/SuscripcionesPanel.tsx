@@ -5,7 +5,7 @@ import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/Dire
 import { SuscripcionFormulario } from '@/components/admin/SuscripcionFormulario';
 import { medirFuncion } from '@/lib/analytics';
 import { AvisoDePrecioViejo } from '@/components/admin/AvisoDePrecioViejo';
-import { pideRevision } from '@/lib/datoConFecha';
+import { diasDesdeLaCarga, pideRevision } from '@/lib/datoConFecha';
 import { esPendienteDeRevision, type EstadoDirectorio } from '@/lib/directorios';
 import { fraseDePrecio } from '@/lib/suscripcionPublica';
 import {
@@ -112,6 +112,14 @@ export function SuscripcionesPanel({
    * El mapeo a `FichaDeDirectorio`: los cinco campos del ciclo de vida, con
    * `nombre` en el nombre genérico que la bandeja pide.
    */
+  /*
+   * El reloj se lee **una vez por render** y no adentro del `detalle`: con una
+   * llamada por fila, dos fichas cargadas el mismo día podrían caer a distinto
+   * lado del corte si el render cruza la medianoche. Es el mismo criterio con el
+   * que el build usa un solo instante para todo el sitio.
+   */
+  const ahora = new Date();
+
   const fichas: FichaDeDirectorio[] = suscripciones.map((s) => ({
     id: s.id,
     nombre: s.nombre,
@@ -119,6 +127,8 @@ export function SuscripcionesPanel({
     estado: s.estado,
     origen: s.origen,
     publicadaAlgunaVez: s.publicadaAlgunaVez,
+    // B-1411/B-1470 — la bandeja cuenta y filtra con esto, sin leer fechas (D-936).
+    pideRevision: pideRevision(s.precio, ahora),
   }));
 
   const porId = new Map(suscripciones.map((s) => [s.id, s]));
@@ -132,13 +142,6 @@ export function SuscripcionesPanel({
     }
   };
 
-  /*
-   * El reloj se lee **una vez por render** y no adentro del `detalle`: con una
-   * llamada por fila, dos fichas cargadas el mismo día podrían caer a distinto
-   * lado del corte si el render cruza la medianoche. Es el mismo criterio con el
-   * que el build usa un solo instante para todo el sitio.
-   */
-  const ahora = new Date();
 
   return (
     <div className="flex flex-col gap-4">
@@ -176,8 +179,11 @@ export function SuscripcionesPanel({
                 B-913 — el aviso con su salida: «lo revisé y sigue siendo éste»
                 refecha el precio con el reloj del servidor sin tocar el valor.
               */}
-              {pideRevision(s.precio, ahora) && (
-                <AvisoDePrecioViejo onConfirmar={() => confirmarPrecioDeSuscripcion(s.id, s)} />
+              {f.pideRevision && (
+                <AvisoDePrecioViejo
+                  sinFecha={diasDesdeLaCarga(s.precio, ahora) === null}
+                  onConfirmar={() => confirmarPrecioDeSuscripcion(s.id, s)}
+                />
               )}
             </>
           );
