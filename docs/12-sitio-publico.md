@@ -1938,8 +1938,10 @@ tiene que sumarse también a `CIUDADES_CON_BANNER` de `analyticsSitio.ts`;
 > (`DetallePublico.masDelTipo`), no de la plantilla. Tres desvíos del texto de
 > arriba, los tres a propósito: dice **«Más talleres»** y no «Ver otros», porque
 > el plural del hub no trae género y «otros presentaciones» está mal; aparece
-> **solo si el hub del tipo existe** (`tipoTieneHub`, el mismo criterio que el
-> segundo nivel del `BreadcrumbList`); y **no hay un equivalente por barrio**: el
+> **solo si el hub del tipo se ofrece** —tiene algo vigente, el corte de
+> `hubsOfrecidos` que usan la tira de la home y la del `/404` (B-1800)—, mientras
+> el segundo nivel del `BreadcrumbList` sigue con `tipoTieneHub`, el hub emitido
+> (D-1115); y **no hay un equivalente por barrio**: el
 > §7.1 no lo pide y el renglón «Dónde» de la ficha ya enlaza el hub del barrio
 > (B-951). «Seguí a Casa Brandon» no se agregó al `<nav>`: el Instagram de quien
 > organiza ya está enlazado en la ficha.
