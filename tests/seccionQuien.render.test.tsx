@@ -213,6 +213,106 @@ describe('el Instagram del formulario se corrige al salir del campo — B-1144',
 });
 
 /**
+ * **El cartel de lo que el saneador no entiende** — B-1190, D-900.
+ *
+ * D-767 decidió no frenar; esto es el aviso que esa decisión dejaba afuera. Se
+ * fijan las tres mitades que lo hacen útil y no molesto: aparece cuando el valor
+ * se va a publicar tal cual, no aparece con un valor bien reconocido (ni con el
+ * campo vacío), y no aparece **mientras se tipea**. Y la cuarta, la que no se ve
+ * probando a mano: una actividad que ya lo traía guardado lo muestra al abrir,
+ * sin que nadie pase por el campo — que es el camino más común de todos.
+ */
+const AVISO = /no lo reconocimos como una cuenta de instagram/i;
+
+function ArnesConValor({ instagram }: { instagram: string }) {
+  const [form, setForm] = useState<ActividadForm>(() => ({
+    ...formVacio(),
+    tipo: 'taller',
+    organizador: { nombre: '', instagram, web: '' },
+    tallerista: { nombre: '', bio: '', instagram },
+  }));
+  return (
+    <SeccionQuien
+      form={form}
+      set={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
+      errorDe={() => undefined}
+      esTaller
+      esCharla={false}
+      nombrePersona="Tallerista"
+    />
+  );
+}
+
+describe('el campo avisa lo que no reconoce, sin frenar nada — B-1190', () => {
+  describe.each(CAMPOS)('campo del %s', (_quien, etiqueta) => {
+    it('si el saneador no entiende el valor, el campo lo dice en pantalla', () => {
+      render(<Arnes escrituras={{ n: 0 }} />);
+      const input = tipearYSalir(etiqueta, 'Casa Brandon / IG');
+      const aviso = screen.getByText(AVISO);
+      expect(aviso.textContent).toMatch(/se va a publicar tal cual/);
+      expect(
+        input.getAttribute('aria-describedby'),
+        'el aviso tiene que estar atado al campo, o un lector de pantalla no lo asocia',
+      ).toBe(aviso.id);
+      expect(input.value, 'avisar no es tocar: D-767').toBe('Casa Brandon / IG');
+    });
+
+    it('con un valor bien reconocido no aparece', () => {
+      render(<Arnes escrituras={{ n: 0 }} />);
+      const input = tipearYSalir(etiqueta, 'https://www.instagram.com/casabrandon/?igsh=MWx4bGs');
+      expect(input.value).toBe('casabrandon');
+      expect(screen.queryByText(AVISO)).toBeNull();
+      expect(input.getAttribute('aria-describedby')).toBeNull();
+    });
+
+    it('con el campo vacío tampoco', () => {
+      render(<Arnes escrituras={{ n: 0 }} />);
+      fireEvent.blur(screen.getByLabelText(etiqueta));
+      expect(screen.queryByText(AVISO)).toBeNull();
+    });
+
+    it('no aparece mientras se tipea: recién al salir del campo', () => {
+      render(<Arnes escrituras={{ n: 0 }} />);
+      const input = screen.getByLabelText(etiqueta) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'Casa Brandon /' } });
+      expect(screen.queryByText(AVISO), 'a medio escribir todavía no es nada').toBeNull();
+      fireEvent.blur(input);
+      expect(screen.getByText(AVISO)).toBeTruthy();
+    });
+
+    it('volver a tipear lo esconde, y corregirlo lo apaga', () => {
+      render(<Arnes escrituras={{ n: 0 }} />);
+      const input = tipearYSalir(etiqueta, 'casa#brandon');
+      expect(screen.getByText(AVISO)).toBeTruthy();
+      fireEvent.change(input, { target: { value: 'casabran' } });
+      expect(screen.queryByText(AVISO)).toBeNull();
+      fireEvent.change(input, { target: { value: 'casabrandon' } });
+      fireEvent.blur(input);
+      expect(screen.queryByText(AVISO)).toBeNull();
+    });
+  });
+
+  it('una actividad que ya lo traía guardado lo muestra al abrir, en los dos campos', () => {
+    render(<ArnesConValor instagram="Casa Brandon / IG" />);
+    expect(screen.getAllByText(AVISO)).toHaveLength(2);
+  });
+
+  it('y una que trae un handle limpio no muestra ninguno', () => {
+    render(<ArnesConValor instagram="casabrandon" />);
+    expect(screen.queryByText(AVISO)).toBeNull();
+  });
+
+  it('no es un error: el campo no queda marcado como rechazado', () => {
+    // `data-campo-con-error` es lo que el scroll de B-184 busca después de un
+    // guardado que falló. Si el cartel se colgara de `error`, el formulario
+    // trataría un aviso como un rechazo — y D-767 dice que acá no se frena.
+    const { container } = render(<ArnesConValor instagram="Casa Brandon / IG" />);
+    expect(container.querySelector('[data-campo-con-error]')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+/**
  * **La red del original, que este archivo no puede no tener** — lo pidió el
  * `auditor-privacidad` sobre B-1144, y la cuenta que da es la que importa: los
  * dieciocho casos de arriba prueban el **eco** y cero probaban la **regla**.
