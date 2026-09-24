@@ -686,6 +686,27 @@ describe('convertir marca la propuesta en revisión — B-866', () => {
   });
 });
 
+describe('doble clic en «Convertir» mientras la marca está en vuelo — B-1461', () => {
+  it('abre una sola conversión, marca una sola vez y no avisa un fallo falso', async () => {
+    let soltar: () => void = () => {};
+    vi.mocked(revisarPropuesta).mockImplementationOnce(
+      () => new Promise<void>((r) => { soltar = r; }),
+    );
+    const onConvertir = montar([propuesta()]);
+    const boton = screen.getByRole('button', { name: 'Convertir en actividad' });
+    // Dos clics en el mismo tick, antes de que React pinte nada.
+    fireEvent.click(boton);
+    fireEvent.click(boton);
+    await waitFor(() => expect(revisarPropuesta).toHaveBeenCalledTimes(1));
+    expect((screen.getByRole('button', { name: 'Convertir en actividad' }) as HTMLButtonElement).disabled).toBe(true);
+
+    soltar();
+    await waitFor(() => expect(onConvertir).toHaveBeenCalledTimes(1));
+    expect(onConvertir.mock.calls[0]![0].avisos.some((a: string) => /No se pudo marcar/.test(a))).toBe(false);
+    expect(revisarPropuesta).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('los otros dos movimientos', () => {
   it('«la estoy mirando» la saca de las que nadie tocó', async () => {
     montar([propuesta()]);

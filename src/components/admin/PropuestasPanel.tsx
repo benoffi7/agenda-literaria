@@ -346,6 +346,16 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   const [moviendo, setMoviendo] = useState<string | null>(null);
   /** Id de la propuesta cuya imagen se está trayendo a la galería (paso 8). */
   const [promoviendo, setPromoviendo] = useState<string | null>(null);
+  /*
+   * **B-1461 — la marca de B-866 en vuelo también bloquea el botón.** Sin foto no
+   * hay `promoviendo`, y un doble clic abría dos conversiones: la segunda volvía a
+   * ver `nueva`, intentaba `en-revision → en-revision`, la regla lo rechazaba
+   * —bien— y el formulario abría con un «No se pudo marcar…» falso, porque la
+   * primera marca sí se había escrito. El ref corta el segundo clic aunque llegue
+   * antes de que React pinte el botón deshabilitado.
+   */
+  const [marcando, setMarcando] = useState<string | null>(null);
+  const convirtiendo = useRef<string | null>(null);
   /** Id de la que se está rechazando: mientras tanto se pide el motivo. */
   /**
    * **La propuesta cuyo flyer está esperando decisión** — B-926.
@@ -459,6 +469,18 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    * (B-221). No hace falta nada nuevo, y la propuesta conserva su foto.
    */
   const convertir = async (p: PropuestaConId, usarLaFoto = true) => {
+    if (convirtiendo.current === p.id) return;
+    convirtiendo.current = p.id;
+    setMarcando(p.id);
+    try {
+      await convertirUnaVez(p, usarLaFoto);
+    } finally {
+      convirtiendo.current = null;
+      setMarcando(null);
+    }
+  };
+
+  const convertirUnaVez = async (p: PropuestaConId, usarLaFoto: boolean) => {
     /*
      * **`elegibles` y no `valores`** — B-859. Las dos funcionan y se ven igual,
      * y por eso nadie lo agarró: `valores` son **todas** las opciones y existen
@@ -962,7 +984,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                           setDecidiendoFoto(p.id);
                         } else void convertir(p);
                       }}
-                      disabled={promoviendo === p.id}
+                      disabled={promoviendo === p.id || marcando === p.id}
                       className={`${claseBotonPrimario} disabled:opacity-50`}
                     >
                       {promoviendo === p.id
