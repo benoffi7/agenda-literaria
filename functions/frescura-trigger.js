@@ -409,29 +409,6 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
   });
 
   /*
-   * ── Lo que este chequeo NO hace todavía: volver a pedir el build ───────
-   *
-   * B-884 nombra a B-882 como su cierre: al detectar la divergencia, que vuelva
-   * a levantar el flag llamando a la marca de rebuild con el motivo `frescura`.
-   * Estuvo escrito y probado, y **se sacó**, porque el chequeo de clase de B-83
-   * lo rechaza con razón: esa marca está declarada en `EFECTOS_INCONDICIONALES`
-   * como un efecto que corresponde **porque la actividad cambió** y que por eso
-   * no puede quedar debajo de ningún `return`. Acá el uso es el contrario —un
-   * reintento **condicionado** a que haya divergencia confirmada—, y llamarla
-   * igual convierte un uso legítimo en una violación de la invariante del otro.
-   *
-   * (Y el nombre de esa función no se escribe en esta prosa a propósito: el
-   * chequeo de B-83 busca la palabra clave en el **texto** del trigger,
-   * comentarios incluidos. Es la misma rugosidad que `calendario-trigger.js` ya
-   * documenta.)
-   *
-   * O sea que la reparación automática necesita **su propio efecto con nombre**
-   * (`remarcarPorFrescura`, que escriba lo mismo más `CAMPOS_REARME`), y eso es
-   * una decisión de diseño de B-884, que es el frente que está tocando ese
-   * módulo. El diff está en el reporte de este ítem.
-   */
-
-  /*
    * **Y volver a pedir el build** — B-884, que nombraba a este chequeo como su
    * cierre. Cuelga de la misma `decision.avisar` que el issue, así que está
    * acotado por la firma de la divergencia y por el reaviso de 24 h: a lo sumo
