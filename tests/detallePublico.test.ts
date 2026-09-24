@@ -2721,8 +2721,26 @@ describe('masDelTipo — «Ver otros talleres» en una pasada (§7.1)', () => {
   const PASADA = ['2026-09-01T22:00:00Z'];
   const VIGENTE = ['2026-09-24T22:00:00Z'];
 
-  it('una pasada con hub enlaza su tipo, con el plural del hub', () => {
-    const d = detalleConHub({ tipo: 'taller', fechas: PASADA });
+  /**
+   * El detalle **con el hub de su tipo ofrecido** — B-1800: emitido (séptimo
+   * argumento) y con algo vigente (noveno). Es lo que el lector pasa cuando otro
+   * taller está por venir; `detalleConHub` es el hub que existe pero está vacío.
+   */
+  const detalleOfrecido = (o: OpcionesDeEntrada = {}) =>
+    detalleDeActividad(
+      toPublic(actividadDePrueba(o), o.id ?? 'act_1'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+      false,
+      {},
+      true,
+      undefined,
+      true,
+    );
+
+  it('una pasada con hub ofrecido enlaza su tipo, con el plural del hub', () => {
+    const d = detalleOfrecido({ tipo: 'taller', fechas: PASADA });
     expect(d.yaPaso).toBe(true);
     expect(d.mes).toBeNull();
     expect(d.masDelTipo).toEqual({ ruta: rutaDeTipo('taller'), texto: 'Más talleres' });
@@ -2734,7 +2752,7 @@ describe('masDelTipo — «Ver otros talleres» en una pasada (§7.1)', () => {
      * uno de los dos terminaría en un 404 el día que cambie `rutaDeTipo` — la
      * clase de B-88.
      */
-    const d = detalleConHub({ tipo: 'club-lectura', fechas: PASADA });
+    const d = detalleOfrecido({ tipo: 'club-lectura', fechas: PASADA });
     const migas = migasDeDetalle(d) as { itemListElement: { item: string }[] };
     expect(urlAbsoluta(d.masDelTipo!.ruta)).toBe(migas.itemListElement[1]!.item);
   });
@@ -2747,17 +2765,65 @@ describe('masDelTipo — «Ver otros talleres» en una pasada (§7.1)', () => {
     expect(detalleDe({ tipo: 'taller', fechas: PASADA }).masDelTipo).toBeNull();
   });
 
+  it('con el hub emitido pero sin nada vigente no enlaza: sería una lista vacía (B-1800)', () => {
+    /*
+     * `/tipo/taller` responde —con `noindex`— pero no tiene nada que mostrar, y
+     * la tira de la home y la del `/404` ya no lo ofrecen. La pasada tampoco.
+     *
+     * MUTACIÓN PROBADA: sacar `tipoOfrecido` de la condición de `masDelTipo` pone
+     * este caso en rojo.
+     */
+    const d = detalleConHub({ tipo: 'taller', fechas: PASADA });
+    expect(d.yaPaso).toBe(true);
+    expect(d.masDelTipo).toBeNull();
+  });
+
+  it('pero la miga conserva el nivel del tipo: describe la jerarquía, no invita (D-1115)', () => {
+    /*
+     * La decisión de B-1800 sobre el `BreadcrumbList`: el hub con `noindex` sigue
+     * siendo el padre de la página, y la miga no se mueve entre builds según si
+     * otro taller está vigente.
+     *
+     * MUTACIÓN PROBADA: condicionar `conTipo` de `migasDeDetalle` a algo más que
+     * `tipoTieneHub` pone este caso en rojo.
+     */
+    const d = detalleConHub({ tipo: 'taller', fechas: PASADA });
+    const migas = migasDeDetalle(d) as { itemListElement: { item: string }[] };
+    expect(migas.itemListElement).toHaveLength(3);
+    expect(migas.itemListElement[1]!.item).toBe(urlAbsoluta(rutaDeTipo('taller')));
+  });
+
+  it('ofrecido sin emitido no enlaza: el lado del error es no publicar un 404', () => {
+    /*
+     * No pasa en el build —`hubsOfrecidos` filtra `hubsDelSitio`— pero los dos
+     * flags llegan por separado, y un llamador que los cruce no puede terminar en
+     * un `/tipo/{slug}` que no se generó.
+     */
+    const d = detalleDeActividad(
+      toPublic(actividadDePrueba({ tipo: 'taller', fechas: PASADA }), 'act_1'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+      false,
+      {},
+      false,
+      undefined,
+      true,
+    );
+    expect(d.masDelTipo).toBeNull();
+  });
+
   it('con fechas por venir no aparece: la salida específica ahí es el mes', () => {
     /*
      * MUTACIÓN PROBADA: sacar `yaPaso` de la condición pone este caso en rojo.
      */
-    const d = detalleConHub({ tipo: 'taller', fechas: VIGENTE });
+    const d = detalleOfrecido({ tipo: 'taller', fechas: VIGENTE });
     expect(d.yaPaso).toBe(false);
     expect(d.masDelTipo).toBeNull();
   });
 
   it('el texto no trae género: «Más presentaciones», no «otros presentaciones»', () => {
-    const d = detalleConHub({ tipo: 'presentacion', fechas: PASADA });
+    const d = detalleOfrecido({ tipo: 'presentacion', fechas: PASADA });
     expect(d.masDelTipo?.texto).toBe('Más presentaciones');
     expect(d.masDelTipo?.texto).not.toMatch(/\botr[oa]s\b/i);
   });
