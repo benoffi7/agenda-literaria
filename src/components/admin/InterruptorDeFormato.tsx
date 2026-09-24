@@ -62,7 +62,7 @@ export function InterruptorDeFormato({ formato, onCambiar, inerte = false }: Pro
             title={QUE_HACE_EL_FORMATO[f]}
             onClick={() => onCambiar(f)}
             className={`min-h-touch rounded px-2.5 text-xs ${
-              activo ? 'bg-tinta font-medium text-papel' : 'text-tinta/55 hover:bg-black/5'
+              activo ? 'bg-tinta font-medium text-papel' : 'text-tinta/65 hover:bg-black/5'
             }`}
           >
             {ETIQUETA_FORMATO_DE_HORA[f]}

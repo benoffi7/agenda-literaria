@@ -206,7 +206,7 @@ export function TaxonomiasPanel() {
               {v.label}
               {v.fijo && (
                 <span
-                  className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/60"
+                  className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/65"
                   title="Opción base: puede estar cableada en la lógica del panel o del sitio"
                 >
                   base
@@ -226,7 +226,7 @@ export function TaxonomiasPanel() {
               */}
               {v.aprobadaPorReuso === true && (
                 <span
-                  className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/60"
+                  className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/65"
                   /*
                     **«dos cuentas distintas» y no «las dos»** — B-811. El rótulo se
                     escribió cuando había exactamente dos admins; desde el
@@ -240,7 +240,7 @@ export function TaxonomiasPanel() {
                 </span>
               )}
             </p>
-            <p className="text-xs text-tinta/55">
+            <p className="text-xs text-tinta/65">
               <code>{v.slug}</code> · {v.usos === 1 ? '1 uso' : `${v.usos} usos`}
               {sospechosa && ' · casi sin usar, puede ser un typo'}
               {pintable &&
@@ -358,7 +358,7 @@ export function TaxonomiasPanel() {
         )}
 
         {editando === clave && (
-          <p className="mt-1 text-xs text-tinta/55">
+          <p className="mt-1 text-xs text-tinta/65">
             Cambia solo cómo se ve. Las actividades que ya la usan la siguen usando, y su
             dirección en el sitio no se mueve.
           </p>
@@ -378,7 +378,7 @@ export function TaxonomiasPanel() {
             `pintarOpcion`, por si algún día la banda se afloja.
           */
           <div className="mt-2 rounded-md border border-borde bg-tinta/3 px-3 py-2">
-            <p className="text-xs text-tinta/55">
+            <p className="text-xs text-tinta/65">
               Con qué color escribe el sitio esta categoría. Todos se leen bien sobre el
               fondo del sitio; el automático sale del nombre de la categoría.
             </p>
@@ -464,7 +464,7 @@ export function TaxonomiasPanel() {
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
         <h2 className="font-serif text-base font-semibold">Etiquetas y desplegables</h2>
-        <p className="text-xs text-tinta/55">
+        <p className="text-xs text-tinta/65">
           Todo lo que se elige de una lista al cargar una actividad se administra acá: se puede
           corregir cómo se escribe una etiqueta y borrar las que sobran. Las marcadas
           «base» son parte del panel y no se tocan.
@@ -492,11 +492,11 @@ export function TaxonomiasPanel() {
           <section key={campo} className="flex flex-col gap-2">
             <div>
               <h3 className="font-serif text-base font-semibold">{TITULO[campo]}</h3>
-              <p className="text-xs text-tinta/55">{DONDE[campo]}</p>
+              <p className="text-xs text-tinta/65">{DONDE[campo]}</p>
             </div>
 
             {valores.length === 0 ? (
-              <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/50">
+              <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/65">
                 {cargando
                   ? 'Cargando…'
                   : 'Todavía no hay ninguna. Se crean solas al escribirlas en el formulario.'}

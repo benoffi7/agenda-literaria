@@ -414,7 +414,7 @@ export function ListaActividades({
         mailes={mailes}
       />
 
-      {cargando && <p className="text-sm text-tinta/50">Cargando…</p>}
+      {cargando && <p className="text-sm text-tinta/65">Cargando…</p>}
       {fallo && (
         <p className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           {fallo}
@@ -422,7 +422,7 @@ export function ListaActividades({
       )}
 
       {!cargando && filtradas.length === 0 && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/50">
+        <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/65">
           {actividades.length === 0
             ? 'Todavía no hay actividades.'
             : deLaPestana.length === 0
@@ -488,7 +488,7 @@ export function ListaActividades({
             */}
             <p className="line-clamp-2 font-serif font-semibold">{a.titulo}</p>
 
-            <div className="flex min-w-0 flex-col gap-0.5 text-xs text-tinta/55">
+            <div className="flex min-w-0 flex-col gap-0.5 text-xs text-tinta/65">
               {/* §4.1 — las etiquetas, nunca el valor guardado: en el panel
                   "club-lectura" se lee "Club de lectura". */}
               <p>{t.identidad.join(' · ')}</p>
@@ -508,7 +508,7 @@ export function ListaActividades({
               grilla las fechas quedan alineadas entre sí aunque los títulos midan
               distinto — que es lo que permite compararlas de un barrido.
             */}
-            <p className={`mt-auto text-xs ${t.hayProximo ? 'text-tinta/45' : 'text-tinta/35'}`}>
+            <p className={`mt-auto text-xs ${t.hayProximo ? 'text-tinta/80' : 'text-tinta/65'}`}>
               {t.cuando}
             </p>
 
@@ -518,7 +518,7 @@ export function ListaActividades({
               en la tinta más apagada de la tarjeta: dice de quién es, no algo que
               haya que atender.
             */}
-            {t.autoria && <p className="text-xs text-tinta/40">{t.autoria}</p>}
+            {t.autoria && <p className="text-xs text-tinta/65">{t.autoria}</p>}
 
             {/*
               Duplicar y borrar van en un menú y no en la tarjeta: tres botones en

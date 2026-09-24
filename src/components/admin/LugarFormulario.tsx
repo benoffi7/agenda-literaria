@@ -362,7 +362,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
         que ver la decisión al lado del dato.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">Dónde queda</legend>
+        <legend className="px-1 text-xs text-tinta/65">Dónde queda</legend>
 
         <label className="flex min-h-touch items-start gap-2 text-sm">
           <input
@@ -373,7 +373,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
           />
           <span>
             Publicar la dirección en el sitio
-            <span className="block text-xs text-tinta/55">
+            <span className="block text-xs text-tinta/65">
               {admiteDireccionPublica
                 ? 'Si la destildás, en el sitio sale solo el barrio y quien quiera ir la pide escribiendo.'
                 : 'Es un domicilio particular: la dirección no se publica. Para publicarla hace falta que quien vive ahí lo pida.'}
@@ -642,7 +642,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
         eso lo obligatorio es el tipo de arreglo y el número es opcional.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">
+        <legend className="px-1 text-xs text-tinta/65">
           Cómo se usa — el precio es opcional y se publica con su fecha al lado
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -722,7 +722,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
             </select>
           </Campo>
         </div>
-        <p className="mt-3 text-xs text-tinta/55">
+        <p className="mt-3 text-xs text-tinta/65">
           La fecha se actualiza sola cuando cambiás el número o la unidad, y no se mueve si
           corregís cualquier otra cosa. En el sitio no se puede filtrar ni ordenar por precio: se
           filtra por sin costo, consumiendo o pagando.
@@ -800,7 +800,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
         casa.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">
+        <legend className="px-1 text-xs text-tinta/65">
           Interno — no se publica. Es por dónde repreguntarle a quien pidió el alta.
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -875,7 +875,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
         </button>
       </div>
 
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         {inicial
           ? 'Editar no cambia si está publicado o no. Eso se mueve desde la lista de lugares.'
           : 'Sin publicar quedo esperando en la lista de lugares, y no se ve en el sitio.'}

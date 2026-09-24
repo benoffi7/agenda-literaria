@@ -82,7 +82,7 @@ function ParaCopiar({
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-serif text-base font-semibold">{etiqueta}</h2>
-      <p className="text-xs text-tinta/55">{ayuda}</p>
+      <p className="text-xs text-tinta/65">{ayuda}</p>
       <textarea
         ref={area}
         readOnly
@@ -96,7 +96,7 @@ function ParaCopiar({
         <button type="button" className={claseBotonSecundario} onClick={copiar}>
           Copiar
         </button>
-        <p aria-live="polite" className="text-xs text-tinta/60">
+        <p aria-live="polite" className="text-xs text-tinta/65">
           {copia === 'copiado' && 'Copiado.'}
           {copia === 'manual' &&
             'No pude usar el portapapeles: quedó seleccionado, copialo con Ctrl+C (⌘+C en Mac).'}
@@ -129,7 +129,7 @@ function VistaPrevia({ boletin }: { boletin: Boletin }) {
                   que imprimir exactamente la que sale. Copiada, el día que la fila
                   del correo cambie se aprobaría una que no es (D-20).
                 */}
-                <p className="text-xs text-tinta/60">{metadatosDe(e)}</p>
+                <p className="text-xs text-tinta/65">{metadatosDe(e)}</p>
               </li>
             ))}
           </ul>
@@ -173,7 +173,7 @@ export function BoletinPanel() {
   );
 
   if (carga.estado === 'cargando') {
-    return <p className="p-8 text-sm text-tinta/50">Leyendo lo que hay publicado…</p>;
+    return <p className="p-8 text-sm text-tinta/65">Leyendo lo que hay publicado…</p>;
   }
 
   if (carga.estado === 'error') {
@@ -240,7 +240,7 @@ export function BoletinPanel() {
             filas={16}
           />
 
-          <p className={`${claseCaja} text-tinta/60`}>
+          <p className={`${claseCaja} text-tinta/65`}>
             Esto es un borrador: la curaduría es tuya. Sacá lo que no quieras, cambiá el orden,
             escribí arriba de todo lo que quieras contar. Lo que se arma solo es la parte aburrida —
             los horarios, los lugares y los links, que es donde se cuelan los errores.

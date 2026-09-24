@@ -316,7 +316,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
       </div>
 
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">Quién la ofrece</legend>
+        <legend className="px-1 text-xs text-tinta/65">Quién la ofrece</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo
             label="Nombre"
@@ -445,7 +445,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
         de un lado. La condición es `pideDatosDeEnvio`, la misma del schema.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">Si manda libros</legend>
+        <legend className="px-1 text-xs text-tinta/65">Si manda libros</legend>
         <label className="flex min-h-touch items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -574,7 +574,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
         cualquier otra cosa de la ficha no la mueve.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">
+        <legend className="px-1 text-xs text-tinta/65">
           Precio — se publica con la fecha en que lo cargaste al lado
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -607,7 +607,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
             />
           </Campo>
         </div>
-        <p className="mt-3 text-xs text-tinta/55">
+        <p className="mt-3 text-xs text-tinta/65">
           La fecha se actualiza sola cuando cambiás el número o el período, y no se mueve si
           corregís cualquier otra cosa. En el sitio no se puede filtrar ni ordenar por precio.
         </p>
@@ -696,7 +696,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
         carga tiene que saber qué pasa con cada dato que escribe.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">
+        <legend className="px-1 text-xs text-tinta/65">
           Interno — no se publica. Es por dónde repreguntarle a quien pidió el alta.
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -771,7 +771,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
         </button>
       </div>
 
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         {inicial
           ? 'Editar no cambia si está publicada o no. Eso se mueve desde la lista de suscripciones.'
           : 'Sin publicar queda esperando en la lista de suscripciones, y no se ve en el sitio.'}

@@ -117,7 +117,7 @@ interface Props {
 const ESTILO_ESTADO: Record<EstadoDirectorio, string> = {
   pendiente: 'bg-amber-100 text-amber-800',
   publicado: 'bg-emerald-100 text-emerald-800',
-  rechazado: 'bg-tinta/10 text-tinta/60',
+  rechazado: 'bg-tinta/10 text-tinta/65',
 };
 
 const TEXTO_ORIGEN: Record<FichaDeDirectorio['origen'], string> = {
@@ -199,7 +199,7 @@ export function DirectorioPanel({
         no es guardar. Es la misma advertencia que la bandeja de propuestas pone
         arriba, y por el mismo motivo — acá se decide qué sale al sitio.
       */}
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         Hasta que no la publiques, esta {singular} no está en el sitio: no aparece en la Guía,
         ni en el buscador, ni en el mapa del sitio. Publicar la deja visible para cualquiera en
         el próximo rebuild.
@@ -222,7 +222,7 @@ export function DirectorioPanel({
             } para revisar`}
           </button>
           {revisando && (
-            <span className="text-tinta/55">
+            <span className="text-tinta/65">
               Ves solo las que piden revisión, publicadas incluidas. Tocalo de nuevo para volver
               a la bandeja.
             </span>
@@ -237,7 +237,7 @@ export function DirectorioPanel({
       )}
 
       {visibles.length === 0 && !fallo && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/50">
+        <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/65">
           {fichas.length === 0
             ? 'Todavía no hay nada cargado acá.'
             : 'No hay nada esperando decisión. Activá «Ver publicadas y descartadas» para ver el resto.'}
@@ -255,7 +255,7 @@ export function DirectorioPanel({
             <div className="sm:flex sm:items-start sm:gap-3">
               <div className="min-w-0 sm:flex-1">
                 <p className="truncate font-serif font-semibold">{f.nombre}</p>
-                <p className="text-xs text-tinta/55">
+                <p className="text-xs text-tinta/65">
                   {TEXTO_ORIGEN[f.origen]}
                   {/*
                     **La dirección web se muestra siempre, y se dice cuándo se

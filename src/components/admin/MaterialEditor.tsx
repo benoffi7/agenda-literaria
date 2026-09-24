@@ -189,7 +189,7 @@ export function MaterialEditor({ items, onChange, errorDe }: Props) {
             )}
 
             {!it.publico && it.url && (
-              <p className="mt-1 text-[11px] text-tinta/50">
+              <p className="mt-1 text-[11px] text-tinta/65">
                 En el sitio público van solo el tipo y el título; la URL no sale (§5.1).
               </p>
             )}

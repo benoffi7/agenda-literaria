@@ -156,7 +156,7 @@ export function TagsInput({
             >
               {label(slug)}
               {pendiente(slug) && (
-                <span className="text-tinta/45" title="Sin aprobar: todavía no la ven las otras cuentas">
+                <span className="text-tinta/65" title="Sin aprobar: todavía no la ven las otras cuentas">
                   · sin aprobar
                 </span>
               )}
@@ -164,7 +164,7 @@ export function TagsInput({
                 type="button"
                 aria-label={`Quitar ${label(slug)}`}
                 onClick={() => onChange(value.filter((s) => s !== slug), nuevos)}
-                className="text-tinta/45 hover:text-acento"
+                className="text-tinta/65 hover:text-acento"
               >
                 ×
               </button>
@@ -209,7 +209,7 @@ export function TagsInput({
                 }}
               >
                 <span>{v.label}</span>
-                <span className="shrink-0 text-xs text-tinta/40">{pistaDeOpcion(v)}</span>
+                <span className="shrink-0 text-xs text-tinta/65">{pistaDeOpcion(v)}</span>
               </button>
             </li>
           ))}

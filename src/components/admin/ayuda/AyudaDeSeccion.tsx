@@ -70,7 +70,7 @@ export function AyudaDeSeccion({ seccion }: Props) {
         // acordeón —que es otro control— así que un blanco chico se erra hacia el
         // vecino. La única excepción escrita a esa regla es `claseEnlaceCelda`, y
         // no hace falta una segunda.
-        className="flex min-h-touch min-w-touch shrink-0 items-center justify-center rounded-full border border-borde bg-white text-sm text-tinta/60 hover:bg-black/[0.03]"
+        className="flex min-h-touch min-w-touch shrink-0 items-center justify-center rounded-full border border-borde bg-white text-sm text-tinta/65 hover:bg-black/[0.03]"
       >
         <span aria-hidden>?</span>
       </button>

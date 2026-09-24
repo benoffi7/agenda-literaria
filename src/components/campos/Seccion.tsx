@@ -169,14 +169,14 @@ export function Seccion({
       {colapsable && (
         <span
           aria-hidden
-          className={`shrink-0 text-tinta/40 transition-transform ${abierta ? 'rotate-90' : ''}`}
+          className={`shrink-0 text-tinta/65 transition-transform ${abierta ? 'rotate-90' : ''}`}
         >
           ▶
         </span>
       )}
       <div className="min-w-0 flex-1">
         <h2 className="font-serif text-base font-semibold">{titulo}</h2>
-        {descripcion && <p className="text-xs text-tinta/55">{descripcion}</p>}
+        {descripcion && <p className="text-xs text-tinta/65">{descripcion}</p>}
       </div>
       {insignia && (
         <span className="shrink-0 rounded-full bg-acento/10 px-2 py-0.5 text-xs text-acento">

@@ -60,7 +60,7 @@ interface Props {
  */
 const base =
   'flex min-h-touch shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm transition-colors';
-const apagada = `${base} border-transparent text-tinta/60 hover:border-borde hover:text-tinta`;
+const apagada = `${base} border-transparent text-tinta/65 hover:border-borde hover:text-tinta`;
 const encendida = `${base} border-acento font-medium text-tinta`;
 
 export function PestaniasFormulario({ activa, onCambiar, pendientes }: Props) {

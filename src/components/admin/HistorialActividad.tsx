@@ -224,12 +224,12 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-tinta/60">
+      <p className="text-sm text-tinta/65">
         Cada vez que alguien edita esta actividad se guarda cómo estaba antes. Acá podés
         traer de vuelta un dato suelto sin tocar el resto de lo que se cargó después.
       </p>
 
-      {cargando && <p className="text-sm text-tinta/50">Cargando…</p>}
+      {cargando && <p className="text-sm text-tinta/65">Cargando…</p>}
 
       {fallo && (
         <p className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
@@ -238,13 +238,13 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
       )}
 
       {!cargando && versiones.length === 0 && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/50">
+        <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/65">
           Todavía no hay versiones guardadas: esta actividad no se editó desde que se creó.
         </p>
       )}
 
       {!cargando && !slugRestaurable(actual) && (
-        <p className="rounded-md border border-borde bg-white px-3 py-2 text-xs text-tinta/60">
+        <p className="rounded-md border border-borde bg-white px-3 py-2 text-xs text-tinta/65">
           La dirección web no se puede restaurar: la actividad está publicada y cambiarla
           rompería el link que ya está dando vueltas.
         </p>
@@ -265,7 +265,7 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
             abiertaPorDefecto={false}
           >
             {restaurables.length === 0 ? (
-              <p className="text-sm text-tinta/55">
+              <p className="text-sm text-tinta/65">
                 Todo lo de esta versión está igual hoy. No hay nada que traer de vuelta.
               </p>
             ) : (
@@ -277,7 +277,7 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
                   >
                     <div className="min-w-0 sm:flex-1">
                       <p className="text-sm font-medium">{legibleCampo(campo)}</p>
-                      <p className="truncate text-xs text-tinta/55">
+                      <p className="truncate text-xs text-tinta/65">
                         Decía: {resumenDeCampo(valorARestaurar(campo, v, actual))}
                       </p>
                     </div>

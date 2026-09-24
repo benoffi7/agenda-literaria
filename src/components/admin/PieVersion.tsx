@@ -58,8 +58,8 @@ export function PieVersion({
     <Envoltorio
       className={
         enLinea
-          ? 'text-xs text-tinta/45'
-          : 'mt-8 border-t border-borde pt-3 pb-2 text-xs text-tinta/45'
+          ? 'text-xs text-tinta/65'
+          : 'mt-8 border-t border-borde pt-3 pb-2 text-xs text-tinta/65'
       }
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -96,7 +96,7 @@ export function PieVersion({
           build sin `/version.json`. Decirlo es mejor que insinuar que está al
           día, porque justamente el caso en que importa es cuando algo falla.
         */}
-        {!versionPublicada && <span className="text-tinta/35">· no se pudo verificar</span>}
+        {!versionPublicada && <span className="text-tinta/65">· no se pudo verificar</span>}
       </div>
     </Envoltorio>
   );

@@ -118,7 +118,7 @@ function Proporcion({ que, cuantas, total }: { que: string; cuantas: number; tot
         <span className="truncate text-sm">{que}</span>
         <span className="shrink-0 text-sm font-medium tabular-nums">
           {cuantas} de {total}
-          <span className="ml-1 font-normal text-tinta/50">
+          <span className="ml-1 font-normal text-tinta/65">
             ({porcentajeLegible(cuantas, total)})
           </span>
         </span>
@@ -146,13 +146,13 @@ function Cobertura({
         <span className="truncate text-sm">{que}</span>
         <span className="shrink-0 text-sm font-medium tabular-nums">
           {cuantas} de {total}
-          <span className="ml-1 font-normal text-tinta/50">
+          <span className="ml-1 font-normal text-tinta/65">
             ({porcentaje(cuantas, total)} %)
           </span>
         </span>
       </div>
       <Barra parte={cuantas} total={total} />
-      {cuantas < total && <p className="mt-0.5 text-xs text-tinta/50">{falta}</p>}
+      {cuantas < total && <p className="mt-0.5 text-xs text-tinta/65">{falta}</p>}
     </li>
   );
 }
@@ -186,7 +186,7 @@ function PanelCatalogo({
 }) {
   if (estado.total === 0) {
     return (
-      <p className="text-sm text-tinta/60">
+      <p className="text-sm text-tinta/65">
         Todavía no hay actividades cargadas. Cuando haya, acá aparece qué se está
         ofreciendo y qué le falta.
       </p>
@@ -195,7 +195,7 @@ function PanelCatalogo({
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-tinta/60">
+      <p className="text-sm text-tinta/65">
         Esto es lo que se sabe del catálogo cargado: nada de acá sale del navegador
         de nadie que visite el sitio.
       </p>
@@ -209,7 +209,7 @@ function PanelCatalogo({
           { que: `En los próximos ${DIAS_PROXIMOS} días`, valor: estado.encuentros.enLosProximosDias },
         ].map((n) => (
           <div key={n.que} className="rounded-md border border-borde bg-white px-3 py-2">
-            <dt className="text-xs text-tinta/55">{n.que}</dt>
+            <dt className="text-xs text-tinta/65">{n.que}</dt>
             <dd className="font-serif text-2xl font-semibold tabular-nums">{n.valor}</dd>
           </div>
         ))}
@@ -219,7 +219,7 @@ function PanelCatalogo({
       <section>
         <h2 className="font-serif text-lg font-semibold">Qué conviene mirar</h2>
         {estado.avisos.length === 0 ? (
-          <p className="mt-2 text-sm text-tinta/60">
+          <p className="mt-2 text-sm text-tinta/65">
             Nada pendiente: todo lo publicado tiene imagen, etiquetas, descripción,
             encuentros por venir, y la web del organizador —donde hay una— enlaza.
           </p>
@@ -241,7 +241,7 @@ function PanelCatalogo({
                     {aviso.actividades.length}
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs text-tinta/55">{aviso.porque}</p>
+                <p className="mt-0.5 text-xs text-tinta/65">{aviso.porque}</p>
                 <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
                   {aviso.actividades.map((a) => {
                     const completa = porId.get(a.id);
@@ -256,7 +256,7 @@ function PanelCatalogo({
                             {a.titulo}
                           </button>
                         ) : (
-                          <span className="text-xs text-tinta/60">{a.titulo}</span>
+                          <span className="text-xs text-tinta/65">{a.titulo}</span>
                         )}
                       </li>
                     );
@@ -274,7 +274,7 @@ function PanelCatalogo({
         {estado.publicadas.total > 0 && (
           <section>
             <h2 className="font-serif text-lg font-semibold">Lo que se publica, completo o no</h2>
-            <p className="mt-0.5 text-xs text-tinta/50">
+            <p className="mt-0.5 text-xs text-tinta/65">
               Sobre las {estado.publicadas.total} publicadas.
             </p>
             <ul className="mt-3 space-y-3">
@@ -325,7 +325,7 @@ function PanelCatalogo({
             */}
             <div className="mt-3 border-t border-borde pt-3">
               <p className="text-sm font-medium">Lo que Google puede mostrar</p>
-              <p className="mt-0.5 text-xs text-tinta/50">
+              <p className="mt-0.5 text-xs text-tinta/65">
                 Con foto, con quién la da y con precio, un resultado de Google se ve
                 como un evento y no como un link. La foto es «Con imagen», acá
                 arriba; éstas son las otras tres. Ninguna es obligatoria: hay
@@ -455,7 +455,7 @@ function PanelCatalogo({
               tajadas={estado.porModalidad}
               etiqueta={(v) => ETIQUETA_MODALIDAD[v as Modalidad] ?? legible(v)}
             />
-            <p className="self-end text-sm text-tinta/60">
+            <p className="self-end text-sm text-tinta/65">
               {estado.ciclos} {estado.ciclos === 1 ? 'ciclo' : 'ciclos'} y {estado.sueltas}{' '}
               {estado.sueltas === 1 ? 'actividad suelta' : 'actividades sueltas'}, con{' '}
               {estado.encuentros.total}{' '}
@@ -593,16 +593,16 @@ function GrupoDeMetricas({
 }) {
   return (
     <section>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</h3>
-      <p className="mt-0.5 text-xs text-tinta/45">{nota}</p>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">{titulo}</h3>
+      <p className="mt-0.5 text-xs text-tinta/65">{nota}</p>
       <ul className="mt-2 divide-y divide-borde border border-borde">
         {items.map((it) => (
           <li key={it.titulo} className="flex items-start justify-between gap-4 px-3 py-2.5">
             <div className="min-w-0">
               <p className="text-sm font-medium">{it.titulo}</p>
-              <p className="mt-0.5 text-xs text-tinta/60">{it.detalle}</p>
+              <p className="mt-0.5 text-xs text-tinta/65">{it.detalle}</p>
             </div>
-            <span className="shrink-0 whitespace-nowrap text-xs text-tinta/40">
+            <span className="shrink-0 whitespace-nowrap text-xs text-tinta/65">
               sin datos aún
             </span>
           </li>
@@ -632,7 +632,7 @@ function NumeroGrande({
   const variacion = variacionLegible(metrica.variacion);
   return (
     <div className="min-w-0 border border-borde px-3 py-2.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-tinta/65">{titulo}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{formato(metrica.valor)}</p>
       {/*
         «Sin comparación» y no «0 %»: son dos cosas distintas y las dos pasan.
@@ -640,7 +640,7 @@ function NumeroGrande({
         del primer mes entero de medición; afirmar «0 %» ahí sería afirmar una
         comparación que no se hizo.
       */}
-      <p className="mt-0.5 text-xs text-tinta/50">
+      <p className="mt-0.5 text-xs text-tinta/65">
         {variacion ? `${variacion} vs. los 28 días anteriores` : 'sin comparación todavía'}
       </p>
     </div>
@@ -662,10 +662,10 @@ function RankingDelSitio({
   const tope = filas[0]?.valor ?? 0;
   return (
     <section className="min-w-0">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</h3>
-      <p className="mt-0.5 text-xs text-tinta/45">{nota}</p>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">{titulo}</h3>
+      <p className="mt-0.5 text-xs text-tinta/65">{nota}</p>
       {filas.length === 0 ? (
-        <p className="mt-2 text-sm text-tinta/50">{vacio}</p>
+        <p className="mt-2 text-sm text-tinta/65">{vacio}</p>
       ) : (
         <ul className="mt-2 space-y-2">
           {filas.map((f) => (
@@ -717,7 +717,7 @@ function QueFalta({
   }[situacion];
   return (
     <p
-      className={`text-xs ${situacion === 'falla' ? 'text-acento' : 'text-tinta/55'}`}
+      className={`text-xs ${situacion === 'falla' ? 'text-acento' : 'text-tinta/65'}`}
     >
       {texto}
     </p>
@@ -802,7 +802,7 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
           />
         </div>
         {resumen.generadoEn && (
-          <p className="mt-2 text-xs text-tinta/40">
+          <p className="mt-2 text-xs text-tinta/65">
             Resumen calculado el{' '}
             {new Date(resumen.generadoEn).toLocaleString('es-AR', {
               timeZone: 'America/Argentina/Buenos_Aires',
@@ -818,10 +818,10 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
       {hayNumerosDeGa4 && ga4.sesiones && ga4.personas && ga4.vistas ? (
         <section className="space-y-4">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">
               Para ofrecer a un anunciante
             </h3>
-            <p className="mt-0.5 text-xs text-tinta/45">
+            <p className="mt-0.5 text-xs text-tinta/65">
               De Google Analytics, sin ningún evento propio.
             </p>
           </div>
@@ -888,10 +888,10 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
       {/* ── Para mejorar el sitio — la mitad b, los eventos propios ─────── */}
       {hayNumerosDeGa4 && Object.keys(ga4.eventos).length > 0 ? (
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">
             Para mejorar el sitio
           </h3>
-          <p className="mt-0.5 text-xs text-tinta/45">
+          <p className="mt-0.5 text-xs text-tinta/65">
             Fricciones concretas, de los eventos propios del sitio.
           </p>
           <ul className="mt-2 divide-y divide-borde border border-borde">
@@ -905,7 +905,7 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{etiqueta?.titulo ?? nombre}</p>
                     {etiqueta && (
-                      <p className="mt-0.5 text-xs text-tinta/60">{etiqueta.detalle}</p>
+                      <p className="mt-0.5 text-xs text-tinta/65">{etiqueta.detalle}</p>
                     )}
                   </div>
                   {/*
@@ -931,10 +931,10 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
       {/* ── ¿Google nos encuentra? — B-373, la pregunta 7 del §3 ────────── */}
       <section className="space-y-4">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">
             ¿Google nos encuentra?
           </h3>
-          <p className="mt-0.5 text-xs text-tinta/45">
+          <p className="mt-0.5 text-xs text-tinta/65">
             De Search Console, que no usa cookies ni JavaScript.{' '}
             {searchConsole.situacion === 'ok' && periodoLegible(searchConsole.ventana)
               ? `${periodoLegible(searchConsole.ventana)} — sus datos tardan de 2 a 3 días.`
@@ -970,7 +970,7 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
             </div>
           </>
         ) : (
-          <p className="text-sm text-tinta/50">
+          <p className="text-sm text-tinta/65">
             Cuando haya datos, esto va a decir con qué búsquedas nos encuentra la gente y
             qué páginas rankean — la pregunta que justifica todo el trabajo de SEO del
             sitio.
@@ -995,10 +995,10 @@ function TablaDeBusquedas({
 }) {
   return (
     <section className="min-w-0">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</h4>
-      <p className="mt-0.5 text-xs text-tinta/45">{nota}</p>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">{titulo}</h4>
+      <p className="mt-0.5 text-xs text-tinta/65">{nota}</p>
       {filas.length === 0 ? (
-        <p className="mt-2 text-sm text-tinta/50">Todavía ninguna.</p>
+        <p className="mt-2 text-sm text-tinta/65">Todavía ninguna.</p>
       ) : (
         /*
           Scroll propio y no del `<body>`: una consulta larga o una URL entera
@@ -1008,7 +1008,7 @@ function TablaDeBusquedas({
         <div className="mt-2 overflow-x-auto">
           <table className="w-full min-w-[24rem] border border-borde text-sm">
             <thead>
-              <tr className="border-b border-borde text-xs uppercase tracking-wide text-tinta/50">
+              <tr className="border-b border-borde text-xs uppercase tracking-wide text-tinta/65">
                 <th className="px-2 py-1.5 text-left font-semibold">{columna}</th>
                 <th className="px-2 py-1.5 text-right font-semibold">Clics</th>
                 <th className="px-2 py-1.5 text-right font-semibold">Aparece</th>
@@ -1155,7 +1155,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
     [opcionesDeTipo.valores],
   );
 
-  if (cargando) return <p className="text-sm text-tinta/50">Cargando…</p>;
+  if (cargando) return <p className="text-sm text-tinta/65">Cargando…</p>;
 
   if (fallo) {
     return (
@@ -1212,7 +1212,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
               className={`-mb-px min-h-touch border-b-2 px-4 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-acento/40 ${
                 activa
                   ? 'border-acento text-tinta'
-                  : 'border-transparent text-tinta/55 hover:border-borde hover:text-tinta'
+                  : 'border-transparent text-tinta/65 hover:border-borde hover:text-tinta'
               }`}
             >
               {p.etiqueta}
@@ -1234,7 +1234,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
         ) : resumenDelSitio ? (
           <PanelSitioPublico resumen={resumenDelSitio} />
         ) : (
-          <p className="text-sm text-tinta/50">Cargando…</p>
+          <p className="text-sm text-tinta/65">Cargando…</p>
         )}
       </div>
     </div>

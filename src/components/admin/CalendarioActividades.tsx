@@ -212,10 +212,10 @@ function FilaCierre({
       onClick={onAbrir}
       className={`flex min-h-touch w-full items-center gap-3 rounded-md border border-dashed px-3 py-2 text-left transition-colors hover:bg-black/[0.03] ${BORDE_CIERRE[estado]}`}
     >
-      <span className="w-11 shrink-0 font-mono text-xs text-tinta/60">{cierre.hora}</span>
+      <span className="w-11 shrink-0 font-mono text-xs text-tinta/65">{cierre.hora}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{cierre.titulo}</span>
-        <span className="block truncate text-xs text-tinta/55">
+        <span className="block truncate text-xs text-tinta/65">
           Inscripción{cierre.cupo ? ` · cupo ${cierre.cupo}` : ''}
         </span>
       </span>
@@ -245,10 +245,10 @@ function FilaEncuentro({
         pasado ? 'opacity-70' : ''
       }`}
     >
-      <span className="w-11 shrink-0 font-mono text-xs text-tinta/60">{encuentro.hora}</span>
+      <span className="w-11 shrink-0 font-mono text-xs text-tinta/65">{encuentro.hora}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{encuentro.titulo}</span>
-        <span className="block truncate text-xs text-tinta/55">
+        <span className="block truncate text-xs text-tinta/65">
           {/* §2.2 — el "2 de 8" es lo que impide leer un ciclo como ocho
               actividades distintas. Se muestra con la misma puerta que el
               evento público (B-163, D-292, `numeraElCiclo`): no un número que
@@ -387,7 +387,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
         <div key={dia} className="flex flex-col gap-1.5">
           <h3
             className={`text-sm font-medium ${
-              dia === hoy ? 'text-acento' : dia < hoy ? 'text-tinta/45' : 'text-tinta/70'
+              dia === hoy ? 'text-acento' : dia < hoy ? 'text-tinta/65' : 'text-tinta/70'
             }`}
           >
             {diaLegible(dia)}
@@ -443,7 +443,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
                 <li key={estado} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
                   <span className="flex shrink-0 items-center gap-1">
                     <ChipEstado estado={estado} />
-                    <span className="text-tinta/60">× {cuantos}</span>
+                    <span className="text-tinta/65">× {cuantos}</span>
                   </span>
                   <span>{INFO_PUBLICACION[estado].significa}</span>
                 </li>
@@ -475,7 +475,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
         "ya no tiene arreglo" empuja a no tocar algo que la gente todavía ve.
       */}
       {problemas.pasados.length > 0 && (
-        <div className="flex flex-col gap-1 text-xs text-tinta/55">
+        <div className="flex flex-col gap-1 text-xs text-tinta/65">
           {(() => {
             const faltaron = problemas.pasados.filter((e) => e.estado === 'falta-en-calendario');
             const sobran = problemas.pasados.filter((e) => e.estado === 'sobra-en-calendario');
@@ -608,7 +608,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
       {/* ── Resumen y filtro por estado de publicación ─────────────── */}
       {!cargando && delMes.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-tinta/60">
+          <p className="text-xs text-tinta/65">
             {/* Encuentros Y actividades: "8 encuentros de 1 actividad" es lo que
                 evita leer un ciclo como ocho cosas distintas (§2.2). */}
             {resumen.total} {resumen.total === 1 ? 'encuentro' : 'encuentros'} de{' '}
@@ -633,7 +633,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
         </div>
       )}
 
-      {cargando && <p className="text-sm text-tinta/50">Cargando…</p>}
+      {cargando && <p className="text-sm text-tinta/65">Cargando…</p>}
       {fallo && (
         <p className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           {fallo}
@@ -645,7 +645,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
              pero con una inscripción que cierra tiene algo que mostrar, y decirle
              "no hay nada" sería justo esconder el marcador nuevo. ───────── */}
       {!cargando && delMes.length === 0 && cierresVisibles.length === 0 && (
-        <div className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/55">
+        <div className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/65">
           {encuentros.length === 0 && cierres.length === 0 ? (
             <p>Todavía no hay encuentros cargados en ninguna actividad.</p>
           ) : (
@@ -666,7 +666,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
       )}
 
       {!cargando && delMes.length > 0 && !hayAlgoEnElMes && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/55">
+        <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/65">
           En {nombreMes(mes)} no hay encuentros que coincidan con ese filtro.
         </p>
       )}
@@ -674,7 +674,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
       {/* ── Grilla de mes: solo desde sm (D-72) ─────────────────────── */}
       {hayAlgoEnElMes && modo === 'mes' && (
         <div className="hidden sm:block">
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-tinta/50">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs text-tinta/65">
             {INICIALES_SEMANA.map((inicial, i) => (
               <div key={i} className="py-1">
                 {inicial}
@@ -700,7 +700,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
                         dia === hoy ? 'border-acento bg-acento/[0.04]' : 'border-borde bg-white'
                       } ${dia < hoy ? 'opacity-75' : ''}`}
                     >
-                      <span className="text-xs text-tinta/45">{Number(dia.slice(-2))}</span>
+                      <span className="text-xs text-tinta/65">{Number(dia.slice(-2))}</span>
                       {delDia.slice(0, 3).map((e) => (
                         <button
                           key={e.sesionId}
@@ -714,7 +714,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
                             className={`size-1.5 shrink-0 rounded-full ${PUNTO_PUBLICACION[e.estado]}`}
                           />
                           <span className="truncate">
-                            <span className="text-tinta/55">{e.hora}</span> {e.titulo}
+                            <span className="text-tinta/65">{e.hora}</span> {e.titulo}
                           </span>
                           <span className="sr-only">
                             {' '}
@@ -737,7 +737,7 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
                               className={`size-1.5 shrink-0 rounded-full ${PUNTO_CIERRE[estado]}`}
                             />
                             <span className="truncate italic">
-                              <span className="text-tinta/55">{c.hora}</span> {c.titulo}
+                              <span className="text-tinta/65">{c.hora}</span> {c.titulo}
                             </span>
                             <span className="sr-only"> — {INFO_CIERRE[estado].etiqueta}</span>
                           </button>

@@ -228,7 +228,7 @@ function Guia({ capituloAbierto }: { capituloAbierto: string }) {
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2">
         <h3 className="font-serif text-base font-semibold">Lo que no se puede deshacer</h3>
-        <p className="text-xs text-tinta/60">
+        <p className="text-xs text-tinta/65">
           Seis cosas que conviene saber antes de publicar la primera actividad.
         </p>
         {AVISOS.map((a) => (
@@ -290,13 +290,13 @@ function CabezaDeCapitulo({ capitulo }: { capitulo: CapituloAyuda }) {
     <div className="mb-3 flex flex-col gap-2">
       {capitulo.impacto && (
         <div className="rounded-md border border-borde bg-white px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-tinta/50">Qué sale</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-tinta/65">Qué sale</p>
           <p className="mt-0.5 text-sm text-tinta/80">{capitulo.impacto}</p>
         </div>
       )}
       {capitulo.ejemplo && (
         <div className="rounded-md border border-borde bg-white px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-tinta/50">Un ejemplo</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-tinta/65">Un ejemplo</p>
           <p className="mt-0.5 text-sm text-tinta/80">{capitulo.ejemplo}</p>
         </div>
       )}
@@ -316,7 +316,7 @@ function Punto({ punto }: { punto: PuntoAyuda }) {
 function Novedades({ nuevos }: { nuevos: Set<string> }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-tinta/60">
+      <p className="text-xs text-tinta/65">
         Lo que se fue agregando al panel, de lo más nuevo a lo más viejo.
       </p>
       {NOVEDADES.map((n) => (
@@ -329,13 +329,13 @@ function Novedades({ nuevos }: { nuevos: Set<string> }) {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-tinta/50">
+          <p className="mt-0.5 text-xs text-tinta/65">
             {fechaLegible(n.fecha)}
             {n.version && ` · versión ${n.version}`}
           </p>
           <p className="mt-1.5 text-sm text-tinta/80">{n.detalle}</p>
           {n.donde && (
-            <p className="mt-1.5 text-xs text-tinta/60">
+            <p className="mt-1.5 text-xs text-tinta/65">
               <span className="font-medium text-tinta/75">Dónde:</span> {n.donde}
             </p>
           )}

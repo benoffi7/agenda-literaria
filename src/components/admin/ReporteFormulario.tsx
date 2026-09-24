@@ -259,7 +259,7 @@ export function ReporteFormulario({ usuario, onEnviado }: Props) {
             </Campo>
           </div>
 
-          <p className="text-xs text-tinta/55">
+          <p className="text-xs text-tinta/65">
             Se manda también el navegador, el tamaño de la pantalla, la versión del panel y
             tu zona horaria: es lo que evita el ida y vuelta de «¿desde qué teléfono?».
           </p>

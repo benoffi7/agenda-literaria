@@ -145,7 +145,7 @@ export function ModalidadesEditor({
               />
               <p
                 className={`sm:col-span-2 text-xs ${
-                  invertida ? 'font-medium text-acento' : 'text-tinta/55'
+                  invertida ? 'font-medium text-acento' : 'text-tinta/65'
                 }`}
               >
                 {invertida

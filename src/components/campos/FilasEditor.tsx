@@ -101,7 +101,7 @@ export function FilasEditor<T extends FilaConId>({
           + Agregar {singular}
         </button>
         {acciones}
-        <span className="text-xs text-tinta/50 sm:ml-auto">
+        <span className="text-xs text-tinta/65 sm:ml-auto">
           {filas.length} {filas.length === 1 ? singular : plural}
         </span>
       </div>
@@ -115,7 +115,7 @@ export function FilasEditor<T extends FilaConId>({
       )}
 
       {filas.length === 0 && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/50">
+        <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/65">
           Todavía no hay {plural}.
         </p>
       )}
@@ -136,7 +136,7 @@ export function FilasEditor<T extends FilaConId>({
                   <button
                     type="button"
                     onClick={() => duplicarFila(fila.id)}
-                    className={`${claseBotonFila} text-tinta/60 hover:bg-black/5`}
+                    className={`${claseBotonFila} text-tinta/65 hover:bg-black/5`}
                   >
                     Duplicar
                   </button>

@@ -478,7 +478,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         quien carga tiene que saber qué pasa con cada dato que escribe.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">
+        <legend className="px-1 text-xs text-tinta/65">
           Interno — no se publica. Es por dónde repreguntarle a quien pidió el alta.
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -566,7 +566,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
         </button>
       </div>
 
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         {inicial
           ? 'Editar no cambia si está publicada o no. Eso se mueve desde la lista de librerías.'
           : 'Sin publicar queda esperando en la lista de librerías, y no se ve en el sitio.'}

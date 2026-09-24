@@ -102,13 +102,13 @@ export function Reparto({
     <section className="min-w-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">{titulo}</h3>
           {/*
             D-401 — sobre qué todo se reparte, **siempre**. Sin esta línea, un
             reparto que cuenta doble (B-224) se lee como si fuera sobre las
             actividades y los porcentajes mienten sin que nada se vea roto.
           */}
-          <p className="mt-0.5 text-xs text-tinta/45">
+          <p className="mt-0.5 text-xs text-tinta/65">
             Sobre {total} {unidad}.{nota ? ` ${nota}` : ''}
           </p>
         </div>
@@ -121,7 +121,7 @@ export function Reparto({
                 aria-pressed={vista === v}
                 onClick={() => elegir(v)}
                 className={`px-2 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-acento/40 ${
-                  vista === v ? 'bg-tinta text-papel' : 'text-tinta/55 hover:text-tinta'
+                  vista === v ? 'bg-tinta text-papel' : 'text-tinta/65 hover:text-tinta'
                 }`}
               >
                 {ETIQUETA_VISTA[v]}
@@ -132,7 +132,7 @@ export function Reparto({
       </div>
 
       {total === 0 ? (
-        <p className="mt-2 text-sm text-tinta/50">Todavía nada acá.</p>
+        <p className="mt-2 text-sm text-tinta/65">Todavía nada acá.</p>
       ) : vista === 'torta' ? (
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <svg
@@ -175,7 +175,7 @@ export function Reparto({
                   {nombre(a.valor, a.agrupa)}
                 </span>
                 <span className="shrink-0 text-sm font-medium tabular-nums">{a.cantidad}</span>
-                <span className="w-12 shrink-0 text-right text-xs tabular-nums text-tinta/50">
+                <span className="w-12 shrink-0 text-right text-xs tabular-nums text-tinta/65">
                   {porcentajeLegible(a.cantidad, total)}
                 </span>
               </li>
@@ -195,7 +195,7 @@ export function Reparto({
                 <span className="truncate text-sm">{etiqueta(t.valor)}</span>
                 <span className="shrink-0 text-sm font-medium tabular-nums">
                   {t.cantidad}
-                  <span className="ml-2 font-normal text-tinta/50">
+                  <span className="ml-2 font-normal text-tinta/65">
                     {porcentajeLegible(t.cantidad, total)}
                   </span>
                 </span>

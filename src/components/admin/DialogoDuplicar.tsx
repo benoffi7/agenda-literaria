@@ -110,7 +110,7 @@ export function DialogoDuplicar({ titulo, casillas, onCancelar, onConfirmar }: P
                   />
                   <span className="min-w-0">
                     <span className="block text-base text-tinta sm:text-sm">{c.label}</span>
-                    <span className="mt-0.5 block text-sm text-tinta/55 sm:text-xs">
+                    <span className="mt-0.5 block text-sm text-tinta/65 sm:text-xs">
                       {c.ayuda}
                     </span>
                   </span>
@@ -125,7 +125,7 @@ export function DialogoDuplicar({ titulo, casillas, onCancelar, onConfirmar }: P
             </p>
             <ul className="mt-1 flex flex-col gap-1">
               {SIEMPRE_AL_DUPLICAR.map((linea) => (
-                <li key={linea} className="text-sm text-tinta/60 sm:text-xs">
+                <li key={linea} className="text-sm text-tinta/65 sm:text-xs">
                   {linea}
                 </li>
               ))}

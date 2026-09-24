@@ -525,7 +525,7 @@ export function BibliotecaFormulario({ uid, inicial, onGuardado, onCancelar }: P
         no diría nada.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">Para llevarse libros</legend>
+        <legend className="px-1 text-xs text-tinta/65">Para llevarse libros</legend>
         <div className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -586,7 +586,7 @@ export function BibliotecaFormulario({ uid, inicial, onGuardado, onCancelar }: P
         carga tiene que saber qué pasa con cada dato que escribe.
       */}
       <fieldset className="rounded-md border border-borde p-4">
-        <legend className="px-1 text-xs text-tinta/55">
+        <legend className="px-1 text-xs text-tinta/65">
           Interno — no se publica. Es por dónde repreguntarle a quien pidió el alta.
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -668,7 +668,7 @@ export function BibliotecaFormulario({ uid, inicial, onGuardado, onCancelar }: P
         </button>
       </div>
 
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         {inicial
           ? 'Editar no cambia si está publicada o no. Eso se mueve desde la lista de bibliotecas.'
           : 'Sin publicar queda esperando en la lista de bibliotecas, y no se ve en el sitio.'}

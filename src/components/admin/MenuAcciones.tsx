@@ -128,7 +128,7 @@ export function MenuAcciones({ acciones, etiqueta }: Props) {
         aria-haspopup="menu"
         aria-expanded={abierto}
         aria-controls={abierto ? id : undefined}
-        className={`${claseBotonFila} text-tinta/60 hover:bg-black/5 ${abierto ? 'bg-black/5' : ''}`}
+        className={`${claseBotonFila} text-tinta/65 hover:bg-black/5 ${abierto ? 'bg-black/5' : ''}`}
       >
         <span aria-hidden="true">⋯</span>
       </button>

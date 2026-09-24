@@ -292,7 +292,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
               */}
               <div className="flex h-20 w-full shrink-0 items-center justify-center overflow-hidden rounded bg-tinta/[0.04] sm:w-28">
                 {estado === 'rota' ? (
-                  <span className="px-2 text-center text-[11px] text-tinta/50">
+                  <span className="px-2 text-center text-[11px] text-tinta/65">
                     No se pudo cargar
                   </span>
                 ) : (
@@ -359,7 +359,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
                     de nuevo.
                   */
                   readOnly={img.origen === 'propia'}
-                  className={`${claseInput} ${img.origen === 'propia' ? 'text-tinta/55' : ''}`}
+                  className={`${claseInput} ${img.origen === 'propia' ? 'text-tinta/65' : ''}`}
                   value={img.url}
                   onChange={(e) => {
                     marcarPrevia(img.id, 'cargando');
@@ -422,7 +422,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
                       mover a hacerlo ahora que nada obliga — y es lo mismo que ya
                       dice la novedad `describir-la-portada-ya-no-frena`.
                     */}
-                    <p className="text-xs text-tinta/55">
+                    <p className="text-xs text-tinta/65">
                       {img.textoAlternativo?.trim()
                         ? 'No frena la publicación, y conviene tenerlo: no se muestra en pantalla, lo lee quien usa un lector de pantalla y lo usa Google cuando la imagen no carga.'
                         : `No frena la publicación, pero vale la pena: lo lee quien usa un lector de pantalla y lo usa Google cuando la imagen no carga. Vacío se publica ${
@@ -442,7 +442,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
                     Portada
                   </label>
                   {img.origen === 'propia' && (
-                    <span className="text-[11px] text-tinta/50">Subida a la agenda</span>
+                    <span className="text-[11px] text-tinta/65">Subida a la agenda</span>
                   )}
                   <button
                     type="button"
@@ -501,7 +501,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
       )}
 
       {lleno ? (
-        <p className="text-xs text-tinta/55">
+        <p className="text-xs text-tinta/65">
           Llegaste a {MAXIMO_IMAGENES} imágenes, que es el máximo. Para agregar otra, quitá
           una.
         </p>
@@ -561,7 +561,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
             />
           </label>
 
-          <p className="text-xs text-tinta/55">
+          <p className="text-xs text-tinta/65">
             JPG o PNG, hasta {enBytesLegibles(MAXIMO_BYTES)} por imagen. Una foto de celular
             sin recortar casi siempre pasa ese tamaño. Al subirla se le quitan los datos que
             traen las fotos —entre ellos, el lugar exacto donde se sacó—.
@@ -586,7 +586,7 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
         secundarias siguen decorativas (D-168), y decirlo acá es lo que evita que
         alguien busque el campo que no está en esas filas.
       */}
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         {imagenes.length === 0
           ? 'Sin imagen la actividad se publica igual, pero no aparece en la cartelera del ' +
             'sitio y el link se comparte sin nada que mirar.'

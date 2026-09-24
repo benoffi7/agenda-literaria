@@ -41,7 +41,7 @@ export function ChipsInput({ value, onChange, placeholder, etiquetaQuitar, id }:
                 type="button"
                 onClick={() => onChange(quitarChip(value, i))}
                 aria-label={etiquetaQuitar?.(chip) ?? `Quitar ${chip}`}
-                className="text-tinta/45 hover:text-tinta"
+                className="text-tinta/65 hover:text-tinta"
               >
                 ×
               </button>

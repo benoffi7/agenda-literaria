@@ -83,7 +83,7 @@ export function Campo({
       ) : (
         children
       )}
-      {ayuda && !error && <p className="text-xs text-tinta/55">{ayuda}</p>}
+      {ayuda && !error && <p className="text-xs text-tinta/65">{ayuda}</p>}
       {error && (
         <p role="alert" className="text-xs font-medium text-acento">
           {error}
@@ -103,7 +103,7 @@ export function Campo({
  */
 export const claseInput =
   'w-full min-w-0 min-h-touch rounded-md border border-borde bg-white px-3 py-2 ' +
-  'text-base sm:text-sm placeholder:text-tinta/35 focus:border-acento ' +
+  'text-base sm:text-sm placeholder:text-tinta/65 focus:border-acento ' +
   'focus:outline-none focus:ring-2 focus:ring-acento/15 disabled:bg-black/[0.03]';
 
 /** Botón principal de una acción. */

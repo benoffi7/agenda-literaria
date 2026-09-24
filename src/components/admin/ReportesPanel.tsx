@@ -141,7 +141,7 @@ export function ReportesPanel({ usuario }: Props) {
             Ver resueltos
           </label>
         </div>
-        <p className="text-xs text-tinta/55">
+        <p className="text-xs text-tinta/65">
           Las respuestas se escriben en GitHub y no se traen acá: cada reporte publicado tiene
           su link «Ver respuestas» para ir a leerlas.
         </p>
@@ -153,7 +153,7 @@ export function ReportesPanel({ usuario }: Props) {
         )}
 
         {visibles.length === 0 && !fallo && (
-          <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/50">
+          <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/65">
             {reportes.length === 0
               ? 'Todavía no hay reportes.'
               : 'No hay reportes abiertos. Activá «Ver resueltos» para ver los que ya se cerraron.'}
@@ -170,7 +170,7 @@ export function ReportesPanel({ usuario }: Props) {
             >
               <div className="min-w-0 sm:flex-1">
                 <p className="truncate font-serif font-semibold">{r.titulo}</p>
-                <p className="text-xs text-tinta/55">
+                <p className="text-xs text-tinta/65">
                   {r.tipo} · {cuando(r)}
                   {r.error ? ` · ${r.error}` : ''}
                 </p>

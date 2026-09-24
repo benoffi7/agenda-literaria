@@ -65,7 +65,7 @@ export function SeccionVistaPrevia({ form, labelsPendientes }: Props) {
           >
             Ver la página publicada
           </a>{' '}
-          <span className="text-tinta/60">
+          <span className="text-tinta/65">
             — si la acabás de publicar, aparece unos minutos después.
           </span>
         </p>

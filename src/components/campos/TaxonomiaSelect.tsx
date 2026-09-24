@@ -242,7 +242,7 @@ export function TaxonomiaSelect({
                   }}
                 >
                   <span>{v.label}</span>
-                  <span className="shrink-0 text-xs text-tinta/40">{pistaDeOpcion(v)}</span>
+                  <span className="shrink-0 text-xs text-tinta/65">{pistaDeOpcion(v)}</span>
                 </button>
               </li>
             ))}

@@ -168,7 +168,7 @@ export function LugaresPanel({
                 publicada» no es un error, es lo que corresponde para una casa, y
                 «publica la dirección» es lo que hay que mirar dos veces.
               */}
-              <span className={l.direccionPublica ? 'ml-1 text-tinta/55' : 'ml-1 text-azul'}>
+              <span className={l.direccionPublica ? 'ml-1 text-tinta/65' : 'ml-1 text-azul'}>
                 · {l.direccionPublica ? 'publica la dirección' : 'sin dirección publicada'}
               </span>
               {/*

@@ -96,7 +96,7 @@ const ESTILO_ESTADO: Record<EstadoPropuesta, string> = {
   nueva: 'bg-amber-100 text-amber-800',
   'en-revision': 'bg-amber-100 text-amber-800',
   aceptada: 'bg-emerald-100 text-emerald-800',
-  rechazada: 'bg-tinta/10 text-tinta/60',
+  rechazada: 'bg-tinta/10 text-tinta/65',
 };
 
 const TEXTO_ESTADO: Record<EstadoPropuesta, string> = {
@@ -196,19 +196,19 @@ function FlyerDeLaPropuesta({
 
   if (fallo === 'chunk') {
     return (
-      <span className="text-tinta/55">
+      <span className="text-tinta/65">
         No se pudo cargar esa parte del panel. Recargá la página para ver la imagen.
       </span>
     );
   }
   if (fallo === 'objeto') {
     return (
-      <span className="text-tinta/55">
+      <span className="text-tinta/65">
         La imagen que subieron ya no está (se borra al rechazar la propuesta).
       </span>
     );
   }
-  if (!url) return <span className="text-tinta/55">Trayendo la imagen…</span>;
+  if (!url) return <span className="text-tinta/65">Trayendo la imagen…</span>;
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -672,7 +672,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
           Ver aceptadas y rechazadas
         </label>
       </div>
-      <p className="text-xs text-tinta/55">
+      <p className="text-xs text-tinta/65">
         Nada de esto está en el sitio: una propuesta no se publica, se convierte en actividad y
         la actividad se publica como cualquier otra. El contacto de quien propuso es para
         repreguntar y no sale a ninguna parte. Rechazar borra la imagen <strong>en el acto</strong>
@@ -693,7 +693,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       )}
 
       {visibles.length === 0 && !fallo && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/50">
+        <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/65">
           {propuestas.length === 0
             ? 'Todavía no llegó ninguna propuesta.'
             : 'No hay propuestas esperando. Activá «Ver aceptadas y rechazadas» para ver las cerradas.'}
@@ -727,7 +727,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="font-serif font-semibold">{p.titulo}</h3>
-                  <p className="text-xs text-tinta/55">
+                  <p className="text-xs text-tinta/65">
                     {p.organizador.nombre}
                     {p.organizador.instagram ? ` (${p.organizador.instagram})` : ''} · {cuando(p)}
                     {p.origen === 'panel' ? ' · cargada a mano' : ''}
@@ -752,7 +752,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                 tercero que el proyecto guarda, así que la pantalla lo dice.
               */}
               <p className="mt-2 text-sm">
-                <span className="text-tinta/55">{TEXTO_VIA[p.contacto.via]}: </span>
+                <span className="text-tinta/65">{TEXTO_VIA[p.contacto.via]}: </span>
                 {contacto ? (
                   <a href={contacto} target="_blank" rel="noreferrer" className="text-acento underline">
                     {p.contacto.valor}
@@ -819,7 +819,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
               )}
 
               {p.imagen && (
-                <p className="mt-1 text-xs text-tinta/55">
+                <p className="mt-1 text-xs text-tinta/65">
                   {'url' in p.imagen ? (
                     /*
                      * Por `enlaceDeImagen` y no con la URL cruda: es el otro
@@ -848,7 +848,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
               )}
 
               {p.revision.motivo && (
-                <p className="mt-2 text-xs text-tinta/55">Motivo del rechazo: {p.revision.motivo}</p>
+                <p className="mt-2 text-xs text-tinta/65">Motivo del rechazo: {p.revision.motivo}</p>
               )}
 
               {decidiendoFoto === p.id ? (
@@ -879,7 +879,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                     que se vio.
                   */}
                   {fotoVisible[p.id] ? (
-                    <p className="text-xs text-tinta/55">
+                    <p className="text-xs text-tinta/65">
                       Si no la usás se borra y no se puede recuperar. Si la querés guardar, bajala
                       antes con el botón de arriba.
                     </p>

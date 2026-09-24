@@ -56,7 +56,7 @@ export function ComisionesEditor({ comisiones, onChange, onBorrar, encuentrosDe,
         </button>
       </div>
 
-      <p className="mt-1 text-xs text-tinta/60">
+      <p className="mt-1 text-xs text-tinta/65">
         Para cuando el mismo ciclo se da en <strong>varios horarios</strong> y cada
         persona va a uno solo: «Martes 19 h», «Sábados 11 h». Después, cada encuentro
         dice de qué opción es.{' '}
@@ -100,7 +100,7 @@ export function ComisionesEditor({ comisiones, onChange, onBorrar, encuentrosDe,
                     />
                   </Campo>
                 </div>
-                <span className="pb-2 text-xs text-tinta/55">
+                <span className="pb-2 text-xs text-tinta/65">
                   {cantidad === 1 ? '1 encuentro' : `${cantidad} encuentros`}
                 </span>
                 <button
@@ -126,7 +126,7 @@ export function ComisionesEditor({ comisiones, onChange, onBorrar, encuentrosDe,
         mano—, quedan sin opción y el guardado los va a pedir.
       */}
       {comisiones.some((c) => encuentrosDe(c.id) > 0) && (
-        <p className="mt-2 text-xs text-tinta/55">
+        <p className="mt-2 text-xs text-tinta/65">
           Al borrar una opción, sus encuentros <strong>no se borran</strong>: quedan
           sin opción, y antes de publicar hay que asignarles otra.
         </p>

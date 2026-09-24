@@ -164,7 +164,7 @@ export function SeccionArancelInscripcion({
         Cupo completo
       </label>
       {form.inscripcion.completo && (
-        <p className="mt-2 text-xs text-tinta/60">
+        <p className="mt-2 text-xs text-tinta/65">
           Se muestra en el sitio y en el evento del calendario, al lado del contacto de
           inscripción — que sigue a la vista por si se libera un lugar. También se puede
           marcar y desmarcar desde el «⋯» del listado.

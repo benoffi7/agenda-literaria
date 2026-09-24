@@ -55,7 +55,7 @@ export function InterruptorDeVista({ vista, onCambiar }: Props) {
             title={QUE_HACE_LA_VISTA[v]}
             onClick={() => onCambiar(v)}
             className={`min-h-touch rounded px-2.5 text-xs ${
-              activa ? 'bg-tinta font-medium text-papel' : 'text-tinta/55 hover:bg-black/5'
+              activa ? 'bg-tinta font-medium text-papel' : 'text-tinta/65 hover:bg-black/5'
             }`}
           >
             {ETIQUETA_VISTA_DEL_PANEL[v]}

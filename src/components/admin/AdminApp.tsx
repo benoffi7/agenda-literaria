@@ -207,7 +207,7 @@ const diferido = <P extends object>(
      * que los auditores la encontraron, y hoy lo verifica un chequeo de clase.
      */
     <SiNoCarga>
-      <Suspense fallback={<p className="p-8 text-sm text-tinta/50">Cargando…</p>}>
+      <Suspense fallback={<p className="p-8 text-sm text-tinta/65">Cargando…</p>}>
         <Cargado {...props} />
       </Suspense>
     </SiNoCarga>
@@ -633,7 +633,7 @@ export function AdminApp() {
   };
 
   if (cargando) {
-    return <p className="p-8 text-sm text-tinta/50">Cargando…</p>;
+    return <p className="p-8 text-sm text-tinta/65">Cargando…</p>;
   }
 
   if (!usuario) {
@@ -641,7 +641,7 @@ export function AdminApp() {
       <div className="mx-auto max-w-sm px-segura py-24 text-center">
         <AvisoVerificacion estado={verificacion} />
         <h1 className="font-serif text-2xl font-semibold">Panel de carga</h1>
-        <p className="mt-2 text-sm text-tinta/60">
+        <p className="mt-2 text-sm text-tinta/65">
           Agenda de actividades literarias
         </p>
         <button
@@ -663,7 +663,7 @@ export function AdminApp() {
           </p>
         )}
         {usarEmuladores && (
-          <p className="mt-4 text-xs text-tinta/45">
+          <p className="mt-4 text-xs text-tinta/65">
             Emuladores activos — la cuenta que uses es de mentira.
           </p>
         )}
@@ -683,7 +683,7 @@ export function AdminApp() {
       <div className="mx-auto max-w-md px-segura py-24 text-center">
         <AvisoVerificacion estado={verificacion} />
         <h1 className="font-serif text-xl font-semibold">Sin permisos</h1>
-        <p className="mt-2 text-sm text-tinta/60">
+        <p className="mt-2 text-sm text-tinta/65">
           {usuario.email} no tiene el claim <code>admin</code> ni{' '}
           <code>publicador</code>. Correlo con{' '}
           <code className="rounded bg-tinta/8 px-1">
@@ -776,7 +776,7 @@ export function AdminApp() {
                                 ? `Propuesta de ${vista.tituloOrigen}`
                                 : vista.actividad.titulo}
           </h1>
-          <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
+          <p className="truncate text-xs text-tinta/65">{usuario.email}</p>
           {/*
             **Debajo del mail** — pedido del dueño (2026-09-07). Antes vivía al
             pie del contenido, y para leerla había que scrollear el formulario
@@ -799,7 +799,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'calendario' })}
-            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Calendario
           </button>
@@ -808,7 +808,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'taxonomias' })}
-            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Opciones
             <PendientesBadge />
@@ -818,7 +818,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'estadisticas' })}
-            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Estadísticas
           </button>
@@ -832,7 +832,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'boletin' })}
-            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Correo
           </button>
@@ -846,7 +846,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'propuestas' })}
-            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Propuestas
             <PropuestasBadge />
@@ -861,7 +861,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'librerias' })}
-            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Librerías
           </button>
@@ -871,7 +871,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'suscripciones' })}
-            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Suscripciones
           </button>
@@ -881,7 +881,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'bibliotecas' })}
-            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Bibliotecas
           </button>
@@ -891,7 +891,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => setVista({ tipo: 'lugares' })}
-            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Lugares
           </button>
@@ -900,7 +900,7 @@ export function AdminApp() {
           <button
             type="button"
             onClick={() => salirDe(() => setVista({ tipo: 'reportes' }))}
-            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
           >
             Reportar algo
           </button>
@@ -949,7 +949,7 @@ export function AdminApp() {
         <button
           type="button"
           onClick={() => salirDe(() => void cerrarSesion())}
-          className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
         >
           Salir
         </button>

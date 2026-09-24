@@ -192,7 +192,7 @@ export function CampoDeFechaYHora({
           aria-label={`${label} — hora, de 1 a 12`}
           className={`${claseInput} w-14 text-center`}
         />
-        <span aria-hidden="true" className="text-sm text-tinta/55">
+        <span aria-hidden="true" className="text-sm text-tinta/65">
           :
         </span>
         <input
@@ -225,7 +225,7 @@ export function CampoDeFechaYHora({
         // `aria-live` no: el eco cambia con cada tecla y anunciarlo sería
         // interrumpir a quien está tipeando. Se lee al salir del grupo, que es
         // cuando sirve.
-        <p className="text-xs text-tinta/55">{eco}</p>
+        <p className="text-xs text-tinta/65">{eco}</p>
       )}
     </Campo>
   );

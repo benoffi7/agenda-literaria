@@ -78,7 +78,7 @@ export function VistaPreviaEvento({ form, labelsPendientes }: Props) {
       )}
 
       {!resultado.ok ? (
-        <p className="rounded-md border border-borde bg-white px-3 py-2 text-sm text-tinta/60">
+        <p className="rounded-md border border-borde bg-white px-3 py-2 text-sm text-tinta/65">
           {resultado.motivo}
         </p>
       ) : (
@@ -95,7 +95,7 @@ export function VistaPreviaEvento({ form, labelsPendientes }: Props) {
             </p>
           )}
           {resultado.evento.linkReservado && (
-            <p className={`${claseAviso} border border-borde bg-white text-tinta/60`}>
+            <p className={`${claseAviso} border border-borde bg-white text-tinta/65`}>
               El link de la reunión no sale: la descripción avisa que se envía a quienes se
               inscriban.
             </p>
@@ -111,21 +111,21 @@ export function VistaPreviaEvento({ form, labelsPendientes }: Props) {
 
           <article className="overflow-hidden rounded-md border border-borde bg-white">
             <div className="border-b border-borde px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-tinta/45">Título</p>
+              <p className="text-[11px] uppercase tracking-wide text-tinta/65">Título</p>
               <p className="font-serif text-base font-semibold break-words">
                 {resultado.evento.titulo || '—'}
               </p>
             </div>
             <div className="border-b border-borde px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-tinta/45">Ubicación</p>
+              <p className="text-[11px] uppercase tracking-wide text-tinta/65">Ubicación</p>
               <p className="text-sm break-words">
                 {resultado.evento.ubicacion ?? (
-                  <span className="text-tinta/45">El evento sale sin ubicación.</span>
+                  <span className="text-tinta/65">El evento sale sin ubicación.</span>
                 )}
               </p>
             </div>
             <div className="px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-tinta/45">Descripción</p>
+              <p className="text-[11px] uppercase tracking-wide text-tinta/65">Descripción</p>
               {/*
                 Texto plano largo: `whitespace-pre-wrap` conserva los saltos de
                 línea que la Function manda, `overflow-y-auto` le da su propio

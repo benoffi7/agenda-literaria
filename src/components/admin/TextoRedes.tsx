@@ -97,10 +97,10 @@ export function TextoRedes({ form, labelsPendientes }: Props) {
           </button>
         ))}
       </div>
-      <p className="text-xs text-tinta/55">{AYUDA_VARIANTE[variante]}</p>
+      <p className="text-xs text-tinta/65">{AYUDA_VARIANTE[variante]}</p>
 
       {!resultado.ok ? (
-        <p className="rounded-md border border-borde bg-white px-3 py-2 text-sm text-tinta/60">
+        <p className="rounded-md border border-borde bg-white px-3 py-2 text-sm text-tinta/65">
           {resultado.motivo}
         </p>
       ) : (
@@ -124,7 +124,7 @@ export function TextoRedes({ form, labelsPendientes }: Props) {
             <button type="button" className={claseBotonSecundario} onClick={copiar}>
               Copiar el texto
             </button>
-            <p aria-live="polite" className="text-xs text-tinta/60">
+            <p aria-live="polite" className="text-xs text-tinta/65">
               {copia === 'copiado' && 'Copiado.'}
               {copia === 'manual' &&
                 'No pude usar el portapapeles: el texto quedó seleccionado, copialo con Ctrl+C (⌘+C en Mac).'}
@@ -146,7 +146,7 @@ export function TextoRedes({ form, labelsPendientes }: Props) {
             no se despublica— y además explica de dónde salen los handles, que es
             la parte que nadie adivina.
           */}
-          <p className={`${claseAviso} border border-borde bg-white text-tinta/60`}>
+          <p className={`${claseAviso} border border-borde bg-white text-tinta/65`}>
             El link de la reunión no sale nunca, ni con «Publicar el link» tildado: un posteo se
             copia y no se despublica. Las notas internas de Difusión tampoco. Los handles del final
             salen de «Arrobar al publicar», más los Instagram del organizador y de quien está al
