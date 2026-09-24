@@ -163,6 +163,58 @@ const SIN_EMULADORES = {
     }
   });
 
+  it('un Firestore solo es "firestore_vivo" sin ser "arriba": el paso 4 lo reusa y el 3 no', async () => {
+    /*
+     * El caso del pre-push que chocaba con «port taken»: otro checkout está en su
+     * paso 4 —un `emulators:exec --only firestore`— y en la máquina hay un
+     * Firestore y nada más. La suite (paso 3) necesita los tres y no puede usarlo;
+     * el build (paso 4) necesita solo ése, y levantar el suyo choca en el 8080.
+     * MUTACIÓN PROBADA: dejar `firestore_vivo` igual a `arriba` pone este caso
+     * en rojo.
+     */
+    const firestore = await servidor(200);
+    try {
+      const r = await detectar({
+        ...SIN_EMULADORES,
+        FIREBASE_EMULATOR_HUB: '127.0.0.1:1',
+        FIRESTORE_EMULATOR_HOST: firestore.host,
+      });
+      expect(r).toMatchObject({ arriba: 'false', firestore_vivo: 'true' });
+    } finally {
+      firestore.cerrar();
+    }
+  });
+
+  it('sin nada escuchando, tampoco hay Firestore vivo: el paso 4 levanta el suyo', async () => {
+    const r = await detectar({ FIREBASE_EMULATOR_HUB: '127.0.0.1:1', ...SIN_EMULADORES });
+    expect(r).toMatchObject({ arriba: 'false', firestore_vivo: 'false' });
+  });
+
+  it('con la tanda entera arriba, Firestore también cuenta como vivo', async () => {
+    const { host, cerrar } = await servidor(200);
+    abiertos.push(cerrar);
+    const r = await detectar({ FIREBASE_EMULATOR_HUB: host, ...SIN_EMULADORES });
+    expect(r).toMatchObject({ arriba: 'true', firestore_vivo: 'true' });
+  });
+
+  it('el paso 4 vuelve a preguntar, y pregunta por Firestore: la respuesta del paso 3 ya es vieja', () => {
+    /*
+     * Entre el paso 3 y el 4 corre la suite dos veces (3 y 3b), y en esos minutos
+     * otra sesión puede levantar emuladores. Reusar `$EMU_ARRIBA` hacía que el
+     * paso 4 fuera a su `exec` con un Firestore vivo al lado.
+     */
+    const gate = readFileSync(new URL('../scripts/verificar-todo.sh', import.meta.url), 'utf8');
+    const inicio = gate.indexOf("paso 'Build del sitio");
+    expect(inicio, 'no se encontró el paso 4').toBeGreaterThan(0);
+    const paso4 = gate.slice(inicio);
+    const hastaElExec = paso4.slice(0, paso4.indexOf('emulators:exec'));
+    expect(hastaElExec).toContain('./scripts/emuladores-arriba.sh');
+    expect(hastaElExec).toContain('firestore_vivo=');
+    expect(hastaElExec, 'el paso 4 volvió a decidir con la respuesta del paso 3').not.toContain(
+      '$EMU_ARRIBA',
+    );
+  });
+
   it('los cuatro hosts salen con el default del proyecto si no vienen del entorno', async () => {
     const r = await detectar({ FIREBASE_EMULATOR_HUB: '127.0.0.1:1' });
     expect(r).toMatchObject({
