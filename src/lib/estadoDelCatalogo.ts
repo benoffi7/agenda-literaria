@@ -5,7 +5,7 @@ import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { instanteDeTimestamp } from '@/lib/sesiones';
 import { ESTADOS, MODALIDADES } from '@/types/actividad';
-import type { ActividadConId, Estado, Modalidad } from '@/types/actividad';
+import type { Actividad, ActividadConId, Estado, Modalidad } from '@/types/actividad';
 
 /**
  * El estado del catálogo: lo que se sabe **sin medir a nadie** — B-370, D-860.
@@ -366,12 +366,18 @@ const inscripcionCerrada = (a: ActividadConId, ahora: Date): boolean => {
  * número estaba bien y la salida estaba mal: un documento con la cáscara vacía no
  * se contaba acá y publicaba `performer: { name: '' }` igual. Hoy
  * `detalleDeActividad` mira el nombre, así que las dos dicen lo mismo.
+ *
+ * **Exportadas desde B-813, las cuatro de acá abajo** (ésta, `webCargada`,
+ * `webEnlazable` y `publicaPrecio`): la barra de guardar del formulario hace la
+ * misma pregunta por una sola actividad (`lib/formulario/enGoogle.ts`) y la
+ * contesta con estas funciones, no con una copia (D-88). Por eso reciben solo el
+ * campo que miran y no la actividad entera: el formulario no es un documento.
  */
-const diceQuienLaDa = (a: ActividadConId): boolean =>
+export const diceQuienLaDa = (a: Pick<Actividad, 'tallerista'>): boolean =>
   (a.tallerista?.nombre ?? '').trim() !== '';
 
 /** Hay algo escrito en la web del organizador, sirva o no. */
-const webCargada = (a: ActividadConId): boolean =>
+export const webCargada = (a: Pick<Actividad, 'organizador'>): boolean =>
   (a.organizador?.web ?? '').trim() !== '';
 
 /**
@@ -380,7 +386,8 @@ const webCargada = (a: ActividadConId): boolean =>
  * Un tercer criterio acá y el tablero diría «tiene web» de algo que el sitio
  * muestra como texto plano.
  */
-const webEnlazable = (a: ActividadConId): boolean => urlSegura(a.organizador?.web) !== null;
+export const webEnlazable = (a: Pick<Actividad, 'organizador'>): boolean =>
+  urlSegura(a.organizador?.web) !== null;
 
 /**
  * ¿Esta actividad publica un precio? — la regla del `Offer`, entera.
@@ -388,7 +395,7 @@ const webEnlazable = (a: ActividadConId): boolean => urlSegura(a.organizador?.we
  * `gratis` emite `price: '0'` sin monto cargado; el resto necesita el número. Es
  * la condición de `datosEstructurados` dicha con los mismos dos datos.
  */
-const publicaPrecio = (a: ActividadConId): boolean =>
+export const publicaPrecio = (a: Pick<Actividad, 'arancel'>): boolean =>
   a.arancel?.tipo === 'gratis' || a.arancel?.monto != null;
 
 /**

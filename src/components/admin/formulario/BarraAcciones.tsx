@@ -24,6 +24,18 @@
  * Entonces entra un nivel más abajo del gris y con otra forma de decirlo: no
  * nombra lo que falta, nombra **lo que se pierde**. El texto vive en
  * `lib/formulario/recomendaciones.ts`, que es donde se testea.
+ *
+ * ── B-813 · lo que se pierde en Google, en una fila propia ───────────────
+ * Debajo del consejo, y en el mismo momento —cuando no queda nada que frene—,
+ * una fila más: «Se publica igual, pero en Google sale sin foto, quién la da ni
+ * precio». Es propia y no un consejo más de la lista porque la barra muestra un
+ * solo consejo, y este aviso junta cuatro datos: meterlo ahí lo habría escondido
+ * detrás del flyer justo en la mitad de los casos.
+ *
+ * No frena y no es rojo, por D-440 y D-900: gris, con cada dato como botón que
+ * lleva a su sección. Y no aparece en solo lectura: quien no puede guardar
+ * tampoco puede cargar lo que falta, y un aviso sin acción es ruido. El qué y el
+ * texto viven en `lib/formulario/enGoogle.ts`.
  */
 import { claseBotonPrimario, claseBotonSecundario } from '@/components/campos/Campo';
 import {
@@ -31,6 +43,11 @@ import {
   type IdSeccion,
   type ResumenFaltantes,
 } from '@/lib/formulario/camposFaltantes';
+import {
+  ENCABEZADO_EN_GOOGLE,
+  separadorEnGoogle,
+  type PerdidaEnGoogle,
+} from '@/lib/formulario/enGoogle';
 import type { Recomendacion } from '@/lib/formulario/recomendaciones';
 
 interface Props {
@@ -52,6 +69,12 @@ interface Props {
    * publicar.
    */
   recomendaciones: Recomendacion[];
+  /**
+   * Lo que esta actividad no le va a dar a Google si se publica así (B-813).
+   * Opcional para que las pantallas que montan la barra sin formulario no
+   * tengan que inventarlo.
+   */
+  enGoogle?: PerdidaEnGoogle[];
   /** El formulario edita una actividad que ya existe. */
   esEdicion: boolean;
   /**
@@ -111,6 +134,7 @@ export function BarraAcciones({
   faltantes,
   pendientesParaPublicar,
   recomendaciones,
+  enGoogle = [],
   esEdicion,
   soloLectura = false,
   onCancelar,
@@ -120,6 +144,9 @@ export function BarraAcciones({
   const hayFaltantes = faltantes.total > 0;
   const hayPendientes = pendientesParaPublicar.total > 0;
   const consejo = recomendaciones[0];
+  // B-813 — el mismo momento que el consejo: cuando ya no queda nada que frene.
+  const avisoEnGoogle =
+    !soloLectura && !fallo && !hayFaltantes && !hayPendientes && enGoogle.length > 0;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-papel/95 px-segura pt-3 pb-segura backdrop-blur">
@@ -164,6 +191,24 @@ export function BarraAcciones({
               : {consejo.porQue}.
             </span>
           ) : null}
+          {avisoEnGoogle && (
+            <span data-aviso="en-google" className="block text-tinta/60">
+              {ENCABEZADO_EN_GOOGLE}{' '}
+              {enGoogle.map((p, i) => (
+                <span key={p.id}>
+                  {separadorEnGoogle(i, enGoogle.length)}
+                  <button
+                    type="button"
+                    onClick={() => onIrASeccion(p.seccion)}
+                    className="underline decoration-dotted underline-offset-2"
+                  >
+                    {p.etiqueta}
+                  </button>
+                </span>
+              ))}
+              .
+            </span>
+          )}
         </div>
 
         <button
