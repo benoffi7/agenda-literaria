@@ -692,6 +692,13 @@ Y el que se lee al revés de lo que uno espera: **`difusion.arrobar` sí sale**,
 es su razón de existir — el campo se creó para este texto. Lo interno de
 `difusion` es `notas`, que no sale.
 
+Y sale con **otro criterio** que los dos Instagram de la actividad: no se
+normaliza, porque puede ser una cuenta de otra red. Qué campo de Instagram usa
+qué criterio —corregir, frenar o no normalizar—, con qué alfabeto y qué pasa
+con lo que no se reconoce está en una sola tabla:
+[`03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo»](03-modelo-de-datos.md#los-campos-de-instagram-campo-por-campo-b-1191)
+(B-1191).
+
 ## El bucket de Storage es una salida pública más (B-167, DEC-7)
 
 Hasta acá el §5 tenía **siete** salidas: el `events.json`, el evento de Calendar,

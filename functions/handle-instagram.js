@@ -28,6 +28,15 @@
  * decisiones sería la clase de B-88 con la peor salida posible, porque de este
  * lado el resultado va al calendario **público**.
  *
+ * ── Un saneador, tres criterios — B-1191 ──────────────────────────────────
+ * Este archivo decide **qué es un handle**. Qué hace cada campo con lo que
+ * no lo es —la actividad lo guarda crudo y avisa (D-767, D-900), las cuatro
+ * guías frenan el guardado, la propuesta lo guarda crudo sin aviso,
+ * `difusion.arrobar` ni siquiera pasa por acá— no se decide acá. Está en una
+ * sola tabla, campo por campo: `docs/03-modelo-de-datos.md` § «Los campos de
+ * Instagram, campo por campo». **Un campo de Instagram nuevo se elige de esa
+ * tabla**, no copiando al vecino.
+ *
  * ── De dónde salió (B-928) ────────────────────────────────────────────────
  * De que hay una segunda persona cargando, con la forma real de hacerlo: copiar
  * la URL del perfil es más fácil que acordarse del handle. El criterio del dueño
