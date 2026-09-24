@@ -79,3 +79,39 @@ describe('el pie del sitio — B-1135', () => {
     expect((lista.match(/<li\b/g) ?? []).length).toBe((lista.match(/<a\b/g) ?? []).length);
   });
 });
+
+describe('la Guía en el pie — B-900', () => {
+  it('el pie enlaza `/guia` desde `rutasPublicas.ts`, en una fila propia', () => {
+    /*
+     * El § 2.1 del inventario («los mismos destinos» que el encabezado). Por
+     * constante y no a mano: un `href="/guia"` sin barra es un 301 por click
+     * (B-330).
+     *
+     * MUTACIÓN PROBADA: borrar la fila pone este caso en rojo.
+     */
+    const c = codigo();
+    expect(c).toMatch(/import \{[^}]*\bRUTA_GUIA\b[^}]*\} from '@\/lib\/rutasPublicas'/);
+    expect(c).toMatch(/<li class="break-inside-avoid">\s*<a [^>]*href=\{RUTA_GUIA\}>Guía<\/a>\s*<\/li>/);
+  });
+
+  it('y no las secciones una por una: ésas las lista `/guia`', () => {
+    /*
+     * Una fila por directorio sería una segunda copia de `DIRECTORIOS`, escrita a
+     * mano en un archivo que el día que nazca el quinto nadie va a mirar — y el
+     * pie no puede saber si una sección tiene fichas sin leer los datos en cada
+     * página. El 404 sí lo sabe, y es el que sugiere sección por sección.
+     */
+    const c = codigo();
+    for (const nombre of [
+      'RUTA_LIBRERIAS',
+      'RUTA_SUSCRIPCIONES',
+      'RUTA_LUGARES',
+      'RUTA_BIBLIOTECAS',
+      'DIRECTORIOS',
+      'directoriosDisponibles',
+    ]) {
+      expect(c, `el pie nombra ${nombre}`).not.toContain(nombre);
+    }
+    expect(c).not.toMatch(/href="\/guia/);
+  });
+});

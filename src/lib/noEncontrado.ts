@@ -21,7 +21,10 @@
  * dato de ninguna actividad. Ni un título, ni una cuenta, ni una fecha. Los
  * enlaces de la página —la tira «Explorá por» y el archivo— salen de productores
  * que ya están auditados: `exploracionDelSitio` (salida 11) y `RUTA_PASADAS`
- * (`rutasPublicas.ts`).
+ * (`rutasPublicas.ts`). Desde B-900 la tira gana un grupo más, el de la Guía
+ * (`grupoDeLaGuia`, al final de este archivo), cuyos enlaces son la `ruta` y el
+ * `titulo` de `DIRECTORIOS` — texto escrito a mano en `directorios.ts`, no un
+ * dato de ninguna ficha.
  *
  * ── Por qué `frasesDeNoEncontrado` recibe los grupos si ninguna frase los usa ─
  * Por lo mismo que `frasesDePasadas` recibe las entradas: **para que el barrido
@@ -37,6 +40,7 @@
  * por un parámetro nuevo y el barrido no vería nada: seguiría llamando a
  * constantes.
  */
+import { directoriosDisponibles, type IdDirectorio } from '@/lib/directorios';
 import type { GrupoDeExploracion } from '@/lib/hubsPublicos';
 
 /**
@@ -128,3 +132,56 @@ export const frasesDeNoEncontrado = (
   accion: ACCION_NO_ENCONTRADO,
   enlace: ENLACE_NO_ENCONTRADO,
 });
+
+// ─────────────────────────────────────────────────────────────────
+// La Guía en el 404 — B-900
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * El rótulo del grupo de la Guía en la tira «Explorá por» del 404.
+ *
+ * «En la Guía» y no «Por guía»: los otros rótulos de la tira son ejes de la
+ * agenda («Por tipo», «Por barrio»), y éste no es un eje, es **otra sección**.
+ * Leído en la columna del rótulo —«Explorá por · En la Guía · Librerías»— dice
+ * de dónde salen los enlaces sin tener que explicarlo.
+ */
+export const ROTULO_GUIA_NO_ENCONTRADO = 'En la Guía';
+
+/**
+ * **Las secciones de la Guía que el 404 sugiere** — B-900, § 2.1 del inventario
+ * («el 404 sugiere secciones; hay tres más»).
+ *
+ * Una sección entra si cumple **las dos** condiciones, y cada una la decide
+ * quien ya la decidía:
+ *
+ * 1. **Existe de verdad**: `disponible` en `DIRECTORIOS`, que es el mismo flag
+ *    que convierte su fila de `/guia` en enlace y la mete en el sitemap, y que
+ *    `tests/directorios.test.ts` cruza contra el disco. Sin él, sugerir una
+ *    sección le ofrecería un 404 a quien ya cayó en uno.
+ * 2. **Tiene algo publicado**: su listado no está vacío (`fichasPorDirectorio`,
+ *    que cuenta lo mismo que pinta `/guia/<x>/`). Es el criterio con el que la
+ *    tira de la home ya se recorta —«sin los hubs vacíos»—: un enlace desde una
+ *    página de error tiene que llevar a algo, y un directorio vacío «es peor que
+ *    no tenerlo» (§ 10 del PRD 2).
+ *
+ * Devuelve **una lista de cero o un grupo** y no `null`, para que la página lo
+ * concatene a la tira sin un `if`: con ninguna sección con fichas, el grupo no
+ * existe, que es lo mismo que hace `exploracionDelSitio` con un grupo sin
+ * enlaces («un rótulo sin enlaces se lee como algo que falta»).
+ *
+ * El texto de cada enlace es el `titulo` de la fila, el mismo de `/guia` y del
+ * `<h1>` de la sección: tres textos de la misma sección que no pueden
+ * separarse. El orden es el de `DIRECTORIOS`, que es el de la página índice.
+ *
+ * **Ninguna cifra sale de acá**, y es a propósito: los conteos entran para
+ * decidir y no para decir («hay 12 librerías»), por lo mismo que las frases de
+ * esta página no interpolan los grupos (ver el docblock del archivo).
+ */
+export const grupoDeLaGuia = (
+  fichas: Readonly<Record<IdDirectorio, number>>,
+): GrupoDeExploracion[] => {
+  const enlaces = directoriosDisponibles()
+    .filter((d) => (fichas[d.id] ?? 0) > 0)
+    .map((d) => ({ ruta: d.ruta, texto: d.titulo }));
+  return enlaces.length > 0 ? [{ rotulo: ROTULO_GUIA_NO_ENCONTRADO, enlaces }] : [];
+};

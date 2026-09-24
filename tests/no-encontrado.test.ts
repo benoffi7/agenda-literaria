@@ -11,9 +11,12 @@ import {
   BUSCAR_NO_ENCONTRADO,
   CLAVE_BUSQUEDA,
   ENLACE_NO_ENCONTRADO,
+  ROTULO_GUIA_NO_ENCONTRADO,
   TITULO_NO_ENCONTRADO,
   frasesDeNoEncontrado,
+  grupoDeLaGuia,
 } from '@/lib/noEncontrado';
+import { DIRECTORIOS, directoriosDisponibles, type IdDirectorio } from '@/lib/directorios';
 import { aQuery, desdeQuery, filtrosVacios, ORDEN_PUBLICO_POR_DEFECTO } from '@/lib/listadoPublico';
 import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
 import type { GrupoDeExploracion } from '@/lib/hubsPublicos';
@@ -219,7 +222,14 @@ describe('`/404` no ve más de lo que necesita — B-310', () => {
         .map((x) => x.trim())
         .filter(Boolean)
         .sort(),
-    ).toEqual(['exploracionDeLaHome']);
+    ).toEqual(['exploracionDeLaHome', 'fichasPorDirectorio']);
+    /*
+     * El segundo es de B-900, y entrega **números**: `Record<IdDirectorio,
+     * number>`. Es lo mínimo para decidir si una sección de la Guía se sugiere,
+     * y no alcanza para publicar nada de una ficha — no hay una ficha adentro.
+     * Con `vistaDeLibrerias` y sus tres hermanas la página habría decidido lo
+     * mismo recibiendo las fichas enteras.
+     */
   });
 
   it('y le pasa a las frases los grupos de verdad, no una lista vacía', () => {
@@ -229,6 +239,20 @@ describe('`/404` no ve más de lo que necesita — B-310', () => {
      * daría nada que filtrar y el barrido volvería a ser una tautología.
      */
     expect(fuente(PAGINA)).toContain('frasesDeNoEncontrado(exploracion)');
+  });
+
+  it('los grupos que reciben las frases incluyen el de la Guía — B-900', () => {
+    /*
+     * La misma premisa, del lado de B-900: si la página armara la tira de la
+     * Guía **después** de llamar a las frases, el barrido de la salida 13 no
+     * vería ese grupo nunca.
+     */
+    const src = fuente(PAGINA);
+    expect(src).toMatch(/const exploracion = \[\.\.\.tira, \.\.\.grupoDeLaGuia\(fichas\)\]/);
+    expect(src.indexOf('grupoDeLaGuia(fichas)')).toBeLessThan(
+      src.indexOf('frasesDeNoEncontrado(exploracion)'),
+    );
+    expect(src).toContain('<ExploraPor grupos={exploracion} />');
   });
 
   it('tampoco ve el documento crudo', () => {
@@ -242,6 +266,69 @@ describe('`/404` no ve más de lo que necesita — B-310', () => {
     // Las dos mitades de la misma señal. La otra —que no esté en `RUTAS_FIJAS`—
     // la fija `tests/sitemap.test.ts` con su excepción y su motivo.
     expect(fuente(PAGINA)).toMatch(/<Base[^>]*\bnoIndex\b/s);
+  });
+});
+
+/** Todas las secciones con la misma cantidad de fichas. */
+const todas = (n: number): Record<IdDirectorio, number> =>
+  Object.fromEntries(DIRECTORIOS.map((d) => [d.id, n])) as Record<IdDirectorio, number>;
+
+describe('el 404 sugiere las secciones de la Guía que tienen algo — B-900', () => {
+  it('control positivo: con fichas en todas, sugiere todas las disponibles, en el orden de `/guia`', () => {
+    const disponibles = directoriosDisponibles();
+    // Sin disponibles, los casos de abajo pasarían sin haber tenido nada que filtrar.
+    expect(disponibles.length).toBeGreaterThan(0);
+
+    const grupos = grupoDeLaGuia(todas(3));
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0]!.rotulo).toBe(ROTULO_GUIA_NO_ENCONTRADO);
+    expect(grupos[0]!.enlaces).toEqual(disponibles.map((d) => ({ ruta: d.ruta, texto: d.titulo })));
+  });
+
+  it('una sección sin fichas publicadas no se sugiere', () => {
+    /*
+     * La mitad que pidió el encargo: un enlace desde una página de error tiene
+     * que llevar a algo. `/guia/<x>/` con cero fichas existe y no miente —dice
+     * qué va a haber—, pero no es una respuesta para quien ya cayó en un 404.
+     *
+     * MUTACIÓN PROBADA: sacar el `.filter` por fichas de `grupoDeLaGuia` pone
+     * este caso en rojo nombrando la sección vacía.
+     */
+    const [vacia, ...resto] = directoriosDisponibles();
+    const fichas = { ...todas(2), [vacia!.id]: 0 };
+    const rutas = grupoDeLaGuia(fichas).flatMap((g) => g.enlaces.map((e) => e.ruta));
+    expect(rutas).not.toContain(vacia!.ruta);
+    expect(rutas).toEqual(resto.map((d) => d.ruta));
+  });
+
+  it('sin ninguna sección con fichas, el grupo no existe — no un rótulo vacío', () => {
+    // Lo mismo que `exploracionDelSitio` hace con un grupo sin enlaces.
+    expect(grupoDeLaGuia(todas(0))).toEqual([]);
+  });
+
+  it('una sección que no está `disponible` no se sugiere aunque el conteo diga que tiene', () => {
+    /*
+     * La otra condición. Hoy las cuatro están disponibles, así que este caso no
+     * se puede escribir con la lista real: se afirma sobre el código que la
+     * única fuente de secciones es `directoriosDisponibles()` —el mismo filtro
+     * que hace linkeable la fila de `/guia` y la mete en el sitemap— y no
+     * `DIRECTORIOS` a secas.
+     */
+    const src = fuente('src/lib/noEncontrado.ts');
+    const cuerpo = src.slice(src.indexOf('export const grupoDeLaGuia'));
+    expect(cuerpo).toContain('directoriosDisponibles()');
+    expect(cuerpo).not.toMatch(/\bDIRECTORIOS\b/);
+  });
+
+  it('los conteos deciden y no se dicen: ninguna cifra llega a los enlaces', () => {
+    const texto = JSON.stringify(grupoDeLaGuia(todas(4817)));
+    expect(texto).not.toContain('4817');
+  });
+
+  it('cada enlace es a una ruta canónica de `/guia/`', () => {
+    for (const enlace of grupoDeLaGuia(todas(1)).flatMap((g) => g.enlaces)) {
+      expect(enlace.ruta).toMatch(/^\/guia\/[a-z-]+\/$/);
+    }
   });
 });
 

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import opcionesBase from '@/lib/opciones-base.json';
 import { hayBoletin } from '@/lib/boletinDelSitio';
 import * as RUTAS from '@/lib/rutasPublicas';
+import { DIRECTORIOS, directoriosDisponibles } from '@/lib/directorios';
 import {
   CIERRE_DE_AYUDA,
   ENTRADA_DE_AYUDA,
@@ -61,6 +62,9 @@ const TEXTOS = (): string[] => [
  */
 const OBLIGATORIAS: Record<string, string> = {
   'que-es': 'sin esto la página no dice qué es el sitio',
+  'la-guia':
+    '«¿esto solo tiene actividades?» — la barra muestra «Guía» y quien la ve se lo pregunta ' +
+    '(B-902; el precedente de olvidar una sección en la ayuda es B-785)',
   'es-gratis':
     '«¿es gratis? ¿quién lo paga?» — la pregunta que no estaba contestada en ningún lado ' +
     '(B-785), y la que decide si a este sitio se le confía una fecha',
@@ -434,5 +438,68 @@ describe('la respuesta del correo dice lo que Mailchimp registra — D-802', () 
       .toLowerCase();
     expect(texto).toMatch(/abr[íi]s cada correo/);
     expect(texto).toMatch(/clic/);
+  });
+});
+
+describe('la Guía tiene su propia pregunta — B-902', () => {
+  const pregunta = () => PREGUNTAS_DE_AYUDA.find((p) => p.id === 'la-guia');
+
+  it('existe, va en el primer grupo y justo después de «¿Qué es esto?»', () => {
+    // Es la segunda cosa que se pregunta quien llega: qué es esto, y si es solo eso.
+    const primero = GRUPOS_DE_AYUDA[0]!.preguntas.map((p) => p.id);
+    expect(primero.indexOf('la-guia')).toBe(primero.indexOf('que-es') + 1);
+  });
+
+  it('nombra cada sección disponible de la Guía, en el orden de `/guia`', () => {
+    /*
+     * La razón de derivarlas: el párrafo que esta pregunta reemplaza nombraba
+     * «librerías, suscripciones literarias y lugares» y ya eran cuatro — B-960
+     * sumó bibliotecas y la ayuda no se enteró.
+     *
+     * MUTACIÓN PROBADA: volver a escribir la lista a mano sin «bibliotecas» pone
+     * este caso en rojo nombrando la sección que falta.
+     */
+    const texto = pregunta()!.respuesta.join(' ').toLowerCase();
+    const disponibles = directoriosDisponibles();
+    expect(disponibles.length, 'sin secciones disponibles no hay nada que nombrar').toBeGreaterThan(0);
+
+    let desde = -1;
+    for (const d of disponibles) {
+      const donde = texto.indexOf(d.titulo.toLowerCase());
+      expect(donde, `la respuesta no nombra «${d.titulo}»`).toBeGreaterThan(-1);
+      expect(donde, `«${d.titulo}» no va en el orden de /guia`).toBeGreaterThan(desde);
+      desde = donde;
+    }
+  });
+
+  it('no nombra una sección que no está disponible', () => {
+    // Hoy las cuatro lo están, así que se afirma sobre el código: la lista sale
+    // de `directoriosDisponibles()` y no de `DIRECTORIOS` a secas.
+    const src = readFileSync(raiz('src/lib/ayudaDelSitio.ts'), 'utf8');
+    expect(src).toContain('directoriosDisponibles().map(');
+    expect(src).not.toMatch(/\bDIRECTORIOS\b/);
+    // Y el caso real, para que el día que haya una en camino quede cubierto solo.
+    const texto = pregunta()!.respuesta.join(' ').toLowerCase();
+    for (const d of DIRECTORIOS.filter((x) => !x.disponible)) {
+      expect(texto).not.toContain(d.titulo.toLowerCase());
+    }
+  });
+
+  it('la enumeración es castellana: comas y una «y» al final', () => {
+    const primer = pregunta()!.respuesta[0]!;
+    expect(primer).toMatch(/: [^:]+, [^,]+ y [^,]+\.$/);
+    expect(primer).not.toContain(', y ');
+  });
+
+  it('enlaza `/guia` y no las secciones una por una', () => {
+    expect(pregunta()!.enlaces).toEqual([{ href: RUTAS.RUTA_GUIA, texto: 'La Guía' }]);
+  });
+
+  it('«¿Qué es esto?» ya no carga la Guía como tercer párrafo', () => {
+    // Dos lugares que dicen lo mismo con otras palabras son dos textos que hay
+    // que mantener de acuerdo.
+    const queEs = PREGUNTAS_DE_AYUDA.find((p) => p.id === 'que-es')!;
+    expect(queEs.respuesta.join(' ')).not.toContain('Guía');
+    expect(queEs.enlaces ?? []).toEqual([]);
   });
 });

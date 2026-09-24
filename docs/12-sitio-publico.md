@@ -172,7 +172,7 @@ de los datos.
 | `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
 | `/anunciar` | La sección comercial: qué se le ofrece a un café, una librería o un espacio cultural, y el mail para preguntar. **No estaba en este diseño** — B-770, **D-450** | Estático (`src/lib/comercialDelSitio.ts`) |
 | `/apoyar` | Quién hace la agenda, qué cuesta sostenerla, el enlace a Cafecito y tres formas de ayudar que no son plata. **No estaba en este diseño** — B-780 | Estático (`src/lib/apoyoDelSitio.ts`; el perfil sale de `src/lib/enlaces.ts`) |
-| `/guia` | El índice de los cuatro directorios (eran tres hasta B-960). **No estaba en este diseño** — B-835, decisión del dueño del 2026-09-08. Las filas salen de `DIRECTORIOS` (`src/lib/directorios.ts`); una sin página diría «en camino» y no linkearía, pero **las cuatro existen: tres desde el 2026-09-11 y la de bibliotecas desde B-960** | Build |
+| `/guia` | El índice de los cuatro directorios (eran tres hasta B-960). **No estaba en este diseño** — B-835, decisión del dueño del 2026-09-08. Las filas salen de `DIRECTORIOS` (`src/lib/directorios.ts`); una sin página diría «en camino» y no linkearía, pero **las cuatro existen: tres desde el 2026-09-11 y la de bibliotecas desde B-960**. Se llega por la pestaña «Guía» y, desde B-900, también por una fila del pie | Build |
 | `/guia/librerias` | El directorio de librerías: todas las fichas publicadas en el HTML, más una island que filtra por **dónde queda** —la cascada provincia → barrio o ciudad, desde B-970— y por texto. **No estaba en este diseño** — B-901 | Build. La island baja `/librerias.json` |
 | `/guia/librerias/{slug}` | La ficha de una librería: dirección, provincia y barrio o ciudad (B-967), los cuatro contactos, la galería completa y el `BookStore`. **Cero JavaScript**, como el detalle — B-901 | Build (`caminosDeLibreria`) |
 | `/guia/librerias/sumar` | **El formulario público**: cualquiera suma una librería sin tener cuenta. Es una de las cinco páginas del sitio que **escriben** en Firestore desde el navegador, y la ficha entra en `pendiente` — nada se publica sin que un admin lo mire. La ficha que llega de afuera **nace sin fotos** (D-700) — B-831 | Build + island (`SumarLibreria`, `client:load`) |
@@ -191,7 +191,7 @@ de los datos.
 | `/bibliotecas.json` | El índice del directorio, aparte del `events.json` por lo mismo que los otros tres (B-960) | Build (ver [§3](#3-los-datos)) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
-| `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310) | Build. La tira sale de `exploracionDeLaHome`; las frases, de `src/lib/noEncontrado.ts` |
+| `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310). Desde B-900 la tira termina con las secciones de la Guía **que tienen fichas publicadas** | Build. La tira sale de `exploracionDeLaHome` más `grupoDeLaGuia` (con los conteos de `fichasPorDirectorio`); las frases, de `src/lib/noEncontrado.ts` |
 
 Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
 
@@ -1097,6 +1097,15 @@ el subconjunto ya filtrado.
   > `/pasadas`, la función que las arma **recibe** los únicos datos que la página
   > ve —los grupos de la tira— y no los usa, así que el barrido de centinelas
   > corre con la lista de permitidos **vacía**.
+  >
+  > **Desde B-900 sugiere también las secciones de la Guía** —el § 2.1 del
+  > inventario lo pedía: «el 404 sugiere secciones; hay tres más»—, como un último
+  > grupo de la tira, «En la Guía». Entra cada sección que **existe**
+  > (`disponible`) y cuyo **listado no está vacío**, el mismo recorte con el que
+  > la tira deja afuera los hubs vacíos. Lo que la página recibe para decidirlo
+  > son cuatro números (`fichasPorDirectorio`), no las fichas, y ninguno se
+  > publica. El grupo entra a los que reciben las frases, así que el barrido de
+  > centinelas lo ve.
 - **`/apoyar`** — *(no estaba en este diseño)*. Quién hace la agenda, qué cuesta
   sostenerla, el enlace al perfil de Cafecito y tres formas de ayudar que no son
   plata. Construida el 2026-09-04 — **B-780**.
