@@ -140,7 +140,12 @@ export const ventanas = (ahora, retraso) => {
  * el mismo patrón con el que este repo ata `functions/` a `src/` en todos
  * lados.
  */
-export const EVENTOS_PROPIOS = ['clic_inscripcion', 'filtro_sin_resultados', 'clic_triptico'];
+export const EVENTOS_PROPIOS = [
+  'clic_inscripcion',
+  'filtro_sin_resultados',
+  'clic_triptico',
+  'clic_banner_ciudad',
+];
 
 /** Cuántas filas se piden de un ranking. Diez es lo que el §9.3 decide mostrar. */
 export const TOPE_DE_RANKING = 10;
@@ -456,7 +461,7 @@ export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
     canales: ranking(actual?.canales),
     dispositivos: ranking(actual?.dispositivos),
     /*
-     * Los eventos propios salen como un mapa `nombre → cuenta` y **con las tres
+     * Los eventos propios salen como un mapa `nombre → cuenta` y **con todas las
      * claves siempre**, incluso en cero. Sin eso, un evento que todavía no
      * ocurrió desaparece de la respuesta de GA4 y la pantalla no puede
      * distinguir «cero clics de inscripción» de «este evento no existe»: la

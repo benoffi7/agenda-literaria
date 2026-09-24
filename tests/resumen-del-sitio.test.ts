@@ -11,6 +11,7 @@ import {
   variacionLegible,
 } from '@/lib/resumenDelSitio';
 import {
+  EVENTOS_PROPIOS,
   MARCA_SIN_CONFIGURAR as MARCA_SIN_CONFIGURAR_FUNCTION,
   MAX_MOTIVO as MAX_MOTIVO_FUNCTION,
   MOTIVOS_SIN_CONFIGURAR,
@@ -263,7 +264,10 @@ describe('las cuatro situaciones se distinguen — D-272', () => {
     expect(r.generadoEn).toBe('2026-10-15T10:00:00.000Z');
     expect(r.ga4.canales.length).toBeGreaterThan(0);
     expect(r.ga4.dispositivos.length).toBeGreaterThan(0);
-    expect(Object.keys(r.ga4.eventos).length).toBe(3);
+    // Contra la lista de la Function y no contra un número: el `3` que había
+    // acá se puso rojo al sumar `clic_banner_ciudad` (B-963), sin que nada se
+    // hubiera separado.
+    expect(Object.keys(r.ga4.eventos).sort()).toEqual([...EVENTOS_PROPIOS].sort());
   });
 });
 

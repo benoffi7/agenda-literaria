@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BannerDeCiudad } from '@/components/publico/BannerDeCiudad';
 import { MEDIDA_ANCHA, MEDIDA_COMPACTA, type BannerDeCiudad as Banner } from '@/lib/bannerDeCiudad';
@@ -22,7 +22,18 @@ import { MEDIDA_ANCHA, MEDIDA_COMPACTA, type BannerDeCiudad as Banner } from '@/
  *    mientras alguien lo está leyendo.
  */
 
-afterEach(cleanup);
+/*
+ * El transporte de la analítica, reemplazado: acá se mira **qué** se le pide
+ * medir, no si `gtag` lo manda. La guarda del consentimiento vive en
+ * `medirSitio` y no es de este componente (B-963).
+ */
+const medirSitio = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/medicionSitio', () => ({ medirSitio }));
+
+afterEach(() => {
+  cleanup();
+  medirSitio.mockClear();
+});
 
 const banner: Banner = {
   ciudad: 'mar-del-plata',
@@ -71,5 +82,26 @@ describe('el banner de una ciudad', () => {
     expect(source!.getAttribute('srcset')).toBe(banner.ancha.src);
     expect(source!.getAttribute('width')).toBe(String(MEDIDA_ANCHA.ancho));
     expect(source!.getAttribute('height')).toBe(String(MEDIDA_ANCHA.alto));
+  });
+
+  it('el clic se mide con la ciudad en slug y nada más — B-963', () => {
+    /*
+     * La decisión de privacidad del evento, fijada por valor: **ni el destino ni
+     * el nombre del emprendimiento** viajan, solo `banner.ciudad`. `medirSitio`
+     * recibe `Record<string, unknown>`, así que agregarle `href` compilaría y el
+     * saneador lo descartaría en silencio: este caso lo pone en rojo antes.
+     *
+     * MUTACIÓN PROBADA: con `{ ciudad: banner.ciudad, href: banner.href }` en el
+     * handler, el `toHaveBeenCalledWith` falla.
+     */
+    render(<BannerDeCiudad banner={banner} />);
+    fireEvent.click(screen.getByRole('link'));
+    expect(medirSitio).toHaveBeenCalledTimes(1);
+    expect(medirSitio).toHaveBeenCalledWith('clic_banner_ciudad', { ciudad: 'mar-del-plata' });
+  });
+
+  it('dibujarlo no mide nada: solo el clic', () => {
+    render(<BannerDeCiudad banner={banner} />);
+    expect(medirSitio).not.toHaveBeenCalled();
   });
 });
