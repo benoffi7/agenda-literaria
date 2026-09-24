@@ -3,9 +3,15 @@ import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { claseBotonPrimario } from '@/components/campos/Campo';
 import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/DirectorioPanel';
 import { BibliotecaFormulario } from '@/components/admin/BibliotecaFormulario';
+import { AvisoDePrecioViejo } from '@/components/admin/AvisoDePrecioViejo';
 import { medirFuncion } from '@/lib/analytics';
+import { diasDesdeLaCarga, pideRevision } from '@/lib/datoConFecha';
 import { esPendienteDeRevision, type EstadoDirectorio } from '@/lib/directorios';
-import { moverBiblioteca, observarBibliotecas } from '@/lib/bibliotecas';
+import {
+  confirmarCostoDeBiblioteca,
+  moverBiblioteca,
+  observarBibliotecas,
+} from '@/lib/bibliotecas';
 import type { BibliotecaConId } from '@/types/biblioteca';
 
 /**
@@ -106,6 +112,12 @@ export function BibliotecasPanel({
    * `nombre` en el nombre genérico que la bandeja pide. Es literalmente lo que
    * su docblock dice que hay que hacer una vez por entidad.
    */
+  /*
+   * El reloj se lee **una vez por render** y no por fila, como en suscripciones:
+   * dos fichas cargadas el mismo día no pueden caer a distinto lado del corte.
+   */
+  const ahora = new Date();
+
   const fichas: FichaDeDirectorio[] = bibliotecas.map((b) => ({
     id: b.id,
     nombre: b.nombre,
@@ -113,6 +125,7 @@ export function BibliotecasPanel({
     estado: b.estado,
     origen: b.origen,
     publicadaAlgunaVez: b.publicadaAlgunaVez,
+    pideRevision: pideRevision(b.asociarse?.costo, ahora),
   }));
 
   const porId = new Map(bibliotecas.map((b) => [b.id, b]));
@@ -139,6 +152,7 @@ export function BibliotecasPanel({
         fichas={fichas}
         fallo={fallo}
         onMover={mover}
+        queRevisar={{ singular: 'costo de asociarse', plural: 'costos de asociarse' }}
         onEditar={(f) => {
           const b = porId.get(f.id);
           if (b) onAbrirFormulario(b);
@@ -147,15 +161,28 @@ export function BibliotecasPanel({
           const b = porId.get(f.id);
           if (!b) return null;
           /*
-           * La dirección y el barrio, como en librerías. **El costo de asociarse
-           * no va acá**: la bandeja es una lista de decisiones, y un número sin
-           * su fecha al lado es exactamente lo que `datoConFecha.ts` existe para
-           * impedir. Quien quiera verlo abre la ficha, donde va con su fecha.
+           * La dirección y el barrio, como en librerías. **El número del costo
+           * de asociarse no va acá**: la bandeja es una lista de decisiones, y un
+           * número sin su fecha al lado es exactamente lo que `datoConFecha.ts`
+           * existe para impedir. Quien quiera verlo abre la ficha.
+           *
+           * **El aviso de los sesenta días sí va** (B-1410): el formulario promete
+           * «el panel te avisa», y sin el aviso un costo de hace un año seguía
+           * publicado sin que nadie lo supiera. Va sin el número, con el botón
+           * que refecha sin tocar el valor, y diciendo que el sitio no lo
+           * publica cuando lo que falta es la fecha (B-1412).
            */
           return (
             <>
               {b.direccion}
               {b.barrio ? ` · ${b.barrio}` : ''}
+              {f.pideRevision && (
+                <AvisoDePrecioViejo
+                  que="el costo de asociarse"
+                  sinFecha={diasDesdeLaCarga(b.asociarse?.costo, ahora) === null}
+                  onConfirmar={() => confirmarCostoDeBiblioteca(b.id, b)}
+                />
+              )}
             </>
           );
         }}
