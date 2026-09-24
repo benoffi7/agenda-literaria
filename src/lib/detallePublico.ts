@@ -41,6 +41,7 @@ import { NOMBRE, colorDeTipo } from '@/lib/identidad';
 import { piezasDeLugar, provinciaDeSede } from '@/lib/geografia.mjs';
 import { admiteMonto, montoLegible } from '@/lib/arancel';
 import { resumenDe } from '@/lib/eventsJson';
+import { enlazarDescripcion, sinLinksDeReunion, type TrozoDeDescripcion } from '@/lib/descripcionEnlazada';
 import {
   claveDeMes,
   fechaCompleta,
@@ -306,7 +307,13 @@ export interface DetallePublico {
    * página— y del matiz, que ya viaja en el `events.json` (`OpcionPublica.tono`).
    */
   tipoColor: string;
+  /** Sin ningún link de reunión pegado (B-980, D-139): ver `sinLinksDeReunion`. */
   descripcion: string;
+  /**
+   * La misma descripción en trozos de texto y enlace, para que la plantilla
+   * enlace las URLs **sin `set:html`** — B-980. Ver `descripcionEnlazada.ts`.
+   */
+  descripcionEnlazada: TrozoDeDescripcion[];
   resumen: string;
 
   imagenes: { url: string; epigrafe: string; ancho: number | null; alto: number | null }[];
@@ -1340,6 +1347,16 @@ export const detalleDeActividad = (
   const todoCancelado = encuentros.length > 0 && vivos.length === 0;
   const yaPaso = proximos.length === 0;
 
+  /*
+   * B-980 — el link de la reunión pegado en la descripción sale de las tres
+   * salidas del detalle que la leen: el cuerpo, la `meta description` y el
+   * JSON-LD, que salen de `resumen`.
+   */
+  const linksDeReunion = [a.online, ...a.modalidades.map((m) => m.online)].flatMap((o) =>
+    o?.url ? [o.url] : [],
+  );
+  const descripcion = sinLinksDeReunion(a.descripcion, linksDeReunion);
+
   const inscripcion = {
     ...canal,
     // B-110 — una actividad cancelada **no invita a anotarse**, ni con el botón
@@ -1357,8 +1374,9 @@ export const detalleDeActividad = (
     tipoEtiqueta,
     tipoTieneHub,
     tipoColor: colorDeTipo(a.tipo, tonos[a.tipo]),
-    descripcion: a.descripcion,
-    resumen: resumenDe(a.descripcion),
+    descripcion,
+    descripcionEnlazada: enlazarDescripcion(descripcion),
+    resumen: resumenDe(descripcion),
 
     imagenes: imagenesDeDetalle(a.imagenes),
 
@@ -1497,7 +1515,7 @@ export const detalleDeActividad = (
       // Con la descripción vacía cae al formato armado, que es más útil que una
       // frase trunca (§7.7).
       descripcion:
-        resumenDe(a.descripcion) ||
+        resumenDe(descripcion) ||
         [tipoEtiqueta, siguiente?.fecha, dondeTexto, etiquetaDe(etiquetas, 'arancel', a.arancel.tipo)]
           .filter(Boolean)
           .join(' · '),

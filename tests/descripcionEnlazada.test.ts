@@ -10,10 +10,16 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   AVISO_DE_REUNION,
+  REL_DE_DESCRIPCION,
   enlazarDescripcion,
   sinLinksDeReunion,
   type TrozoDeDescripcion,
 } from '@/lib/descripcionEnlazada';
+import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
+import { mapaDeEtiquetas } from '@/lib/listadoPublico';
+import { toPublic } from '@/lib/toPublic';
+import type { Actividad } from '@/types/actividad';
+import { actividadDePrueba } from './fixtures/indice';
 
 const enlaces = (trozos: TrozoDeDescripcion[]) =>
   trozos.filter((t) => t.tipo === 'enlace').map((t) => (t.tipo === 'enlace' ? t.href : ''));
@@ -100,7 +106,7 @@ describe('enlazarDescripcion', () => {
 
   it('`https://javascript:…` no sirve de disfraz', () => {
     const trozos = enlazarDescripcion('https://javascript:alert(1)');
-    for (const href of enlaces(trozos)) expect(href).toMatch(/^https?:\/\//);
+    for (const href of enlaces(trozos)) expect(href).toMatch(/^https?:\/{2}/);
     expect(enlaces(trozos).some((h) => /javascript:/i.test(h) && !h.startsWith('https://'))).toBe(false);
   });
 
@@ -209,5 +215,70 @@ describe('el link de la reunión no sale', () => {
     const deSchema = literal('src/lib/schema.ts');
     expect(deSchema).toBeTruthy();
     expect(literal('src/lib/descripcionEnlazada.ts')).toBe(deSchema);
+  });
+});
+
+describe('el cableado en la página de detalle', () => {
+  const detalleCon = (over: Partial<Actividad>) =>
+    detalleDeActividad(
+      toPublic({ ...actividadDePrueba({ modalidades: ['virtual'] }), ...over }, 'act_1'),
+      mapaDeEtiquetas({}),
+      new Date('2026-09-10T15:00:00Z'),
+      {},
+    );
+
+  it('la descripción llega en trozos, con el enlace armado', () => {
+    const d = detalleCon({ descripcion: 'Más en https://instagram.com/casabrandon.' });
+    expect(d.descripcionEnlazada).toEqual([
+      { tipo: 'texto', texto: 'Más en ' },
+      { tipo: 'enlace', texto: 'https://instagram.com/casabrandon', href: 'https://instagram.com/casabrandon' },
+      { tipo: 'texto', texto: '.' },
+    ]);
+  });
+
+  it('el Zoom pegado no sale en el cuerpo, ni en la meta description, ni en el JSON-LD', () => {
+    const d = detalleCon({ descripcion: 'Nos vemos en https://zoom.us/j/8412345678?pwd=aB3 los martes.' });
+    const salidas = JSON.stringify([d.descripcion, d.descripcionEnlazada, d.resumen, d.meta, datosEstructurados(d)]);
+    expect(salidas).not.toContain('zoom.us');
+    expect(salidas).not.toContain('pwd=');
+    expect(d.descripcion).toContain(AVISO_DE_REUNION);
+  });
+
+  it('el `online.url` publicable de una plataforma desconocida tampoco sale de la descripción', () => {
+    const base = actividadDePrueba({ modalidades: ['virtual'] });
+    const link = 'https://bbb.miescuela.edu.ar/b/tal-ler';
+    const modalidades = base.modalidades.map((m) =>
+      m.online ? { ...m, online: { ...m.online, url: link, urlPublica: true } } : m,
+    );
+    const d = detalleCon({ modalidades, descripcion: `Entrá a ${link} el martes` });
+    expect(JSON.stringify([d.descripcion, d.descripcionEnlazada, d.resumen, d.meta])).not.toContain(
+      'bbb.miescuela',
+    );
+  });
+});
+
+/*
+ * La plantilla no se puede importar desde vitest, así que se lee el fuente: los
+ * trozos se pintan con `{t.texto}` y el `href` sale del trozo, con el `rel` del
+ * módulo y sin `set:html` en el bloque de la descripción.
+ */
+describe('la plantilla del detalle', () => {
+  const src = readFileSync('src/pages/actividad/[slug].astro', 'utf8');
+  const bloque = src.slice(src.indexOf('detalle.descripcionEnlazada.map'), src.indexOf('detalle.mostrarEncuentros &&'));
+
+  it('pinta los trozos, con el href del trozo, el rel del módulo y target _blank', () => {
+    expect(bloque).toContain('href={t.href}');
+    expect(bloque).toContain('rel={REL_DE_DESCRIPCION}');
+    expect(bloque).toContain('target="_blank"');
+    expect(bloque).toContain('{t.texto}');
+  });
+
+  it('no usa `set:html` para la descripción ni pinta la descripción cruda', () => {
+    expect(bloque).not.toContain('set:html');
+    expect(src).not.toContain('{detalle.descripcion}');
+  });
+
+  it('el rel lleva nofollow y noopener', () => {
+    expect(REL_DE_DESCRIPCION.split(' ')).toEqual(expect.arrayContaining(['nofollow', 'noopener']));
   });
 });

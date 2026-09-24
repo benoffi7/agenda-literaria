@@ -81,6 +81,7 @@
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, migasDeDetalle, type DetallePublico } from '@/lib/detallePublico';
+import { REL_DE_DESCRIPCION } from '@/lib/descripcionEnlazada';
 import {
   ROTULO_DE_GALERIA,
   columnasDeGaleria,
@@ -467,15 +468,25 @@ const gruposDeEncuentros =
         {
           /*
             La descripción se respeta como se cargó (`white-space: pre-line`): es
-            texto plano de un `<textarea>`, sin markdown y sin autolinkeo. **La
-            medida más generosa de todo el sitio** —`body-lectura`, 16/24, y 68
-            caracteres de ancho—: es el único bloque de prosa larga que hay, y la
-            densidad del sistema es para las fichas, no para cuatro mil caracteres
-            seguidos.
+            texto plano de un `<textarea>`, sin markdown. **La medida más generosa
+            de todo el sitio** —`body-lectura`, 16/24, y 68 caracteres de ancho—:
+            es el único bloque de prosa larga que hay, y la densidad del sistema es
+            para las fichas, no para cuatro mil caracteres seguidos.
+
+            B-980 — las URLs `http(s)://` salen clickeables, y nada más. Vienen en
+            trozos desde el view-model y se pintan con `{t.texto}`, que Astro
+            escapa: **no hay `set:html`**, y no tiene que haberlo. El `rel` lleva
+            `nofollow` porque es contenido de terceros apuntando afuera.
           */
           detalle.descripcion && (
             <div class="body-lectura mt-8 max-w-[68ch] whitespace-pre-line text-tinta">
-              {detalle.descripcion}
+              {detalle.descripcionEnlazada.map((t) =>
+                t.tipo === 'enlace' ? (
+                  <a href={t.href} rel={REL_DE_DESCRIPCION} target="_blank" class={`break-words ${claseEnlace}`}>{t.texto}</a>
+                ) : (
+                  t.texto
+                ),
+              )}
             </div>
           )
         }
