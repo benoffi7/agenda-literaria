@@ -36,6 +36,7 @@ vi.mock('@/lib/firestore-client', () => ({ db: () => ({}) }));
 
 import { confirmarPrecioDeSuscripcion } from '@/lib/suscripcionesLiterarias';
 import { confirmarPrecioDeLugar } from '@/lib/lugares';
+import { confirmarCostoDeBiblioteca } from '@/lib/bibliotecas';
 
 type Confirmar = (id: string, actual: { precio: unknown }) => Promise<void>;
 
@@ -77,6 +78,37 @@ describe.each(CASOS)('confirmar el precio de $nombre — B-913', ({ col, confirm
 
   it('sin precio no escribe nada, y lo dice', async () => {
     await expect(confirmar('f1', { precio: null })).rejects.toThrow(/no tiene precio/);
+    expect(updateDocEspia).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * B-1410 — la biblioteca tiene el mismo gesto con otra ruta: el dato es
+ * `asociarse.costo` y no `precio`, así que va aparte del `each`.
+ */
+describe('confirmar el costo de asociarse de una biblioteca — B-1410', () => {
+  // `as never`: el `cargadoEn` de mentira no es un `TimestampLike` entero.
+  const costo = { valor: '$3.000 por año', cargadoEn } as never;
+
+  it('escribe solo `asociarse.costo.cargadoEn`, con el reloj del servidor', async () => {
+    await confirmarCostoDeBiblioteca('b1', { asociarse: { haceFalta: true, costo } });
+    expect(updateDocEspia).toHaveBeenCalledTimes(1);
+    const [ref, datos] = updateDocEspia.mock.calls[0];
+    expect(ref).toEqual({ ruta: 'bibliotecas/b1' });
+    expect(datos).toEqual({ 'asociarse.costo.cargadoEn': 'RELOJ_DEL_SERVIDOR' });
+  });
+
+  it('no reenvía el valor ni la fecha previa', async () => {
+    await confirmarCostoDeBiblioteca('b1', { asociarse: { haceFalta: true, costo } });
+    const datos = updateDocEspia.mock.calls[0][1] as Record<string, unknown>;
+    expect(Object.values(datos)).not.toContain(cargadoEn);
+    expect(JSON.stringify(datos)).not.toContain('3.000');
+  });
+
+  it('sin costo no escribe nada, y lo dice', async () => {
+    await expect(
+      confirmarCostoDeBiblioteca('b1', { asociarse: { haceFalta: true, costo: null } }),
+    ).rejects.toThrow(/no tiene cargado el costo/);
     expect(updateDocEspia).not.toHaveBeenCalled();
   });
 });

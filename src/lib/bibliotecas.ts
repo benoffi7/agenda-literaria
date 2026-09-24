@@ -247,6 +247,35 @@ export const guardarBiblioteca = async (
 };
 
 /**
+ * **«Lo revisé hoy y sigue siendo éste»**, para el costo de asociarse — B-1410,
+ * el mismo gesto que `confirmarPrecioDeSuscripcion` y `confirmarPrecioDeLugar`
+ * (B-913), y por lo mismo: refecha el dato con el reloj del servidor sin tocar
+ * el valor.
+ *
+ * **La puerta ya estaba abierta**: `bibliotecaActualizable()` acepta un
+ * `asociarse.costo.cargadoEn == request.time` con cualquier valor, así que un
+ * valor igual con la fecha de hoy pasa sin tocar `firestore.rules`.
+ *
+ * Las dos decisiones de las hermanas, con la ruta de esta colección:
+ *
+ * - **Una sola ruta, `asociarse.costo.cargadoEn`**: el valor que queda es el
+ *   del documento al escribir, no el que la pantalla tenía en memoria, y no hay
+ *   `Timestamp` previo que reenviar.
+ * - **Sin costo no hay nada que confirmar**, y la guarda es acá: la ruta con
+ *   punto sobre un `costo: null` crearía `{ cargadoEn }` sin `valor`, que la
+ *   regla rechaza con un «permiso denegado» que no le dice nada a nadie.
+ */
+export const confirmarCostoDeBiblioteca = async (
+  id: string,
+  actual: Pick<Biblioteca, 'asociarse'>,
+): Promise<void> => {
+  if (!actual.asociarse?.costo) {
+    throw new Error('Esta biblioteca no tiene cargado el costo de asociarse.');
+  }
+  await updateDoc(doc(db(), COL, id), { 'asociarse.costo.cargadoEn': serverTimestamp() });
+};
+
+/**
  * Mueve el estado y **firma la revisión**.
  *
  * `serverTimestamp()` y no la hora del navegador: la regla exige
