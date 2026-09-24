@@ -5,6 +5,7 @@ import {
   claseBotonPrimario,
   claseBotonSecundario,
   claseInput,
+  claseTintaApagada,
 } from '@/components/campos/Campo';
 import { FilasEditor } from '@/components/campos/FilasEditor';
 import { medirFuncion } from '@/lib/analytics';
@@ -316,7 +317,8 @@ export function SesionesEditor({
         B-1570 — la fila cancelada cambia de fondo pero **no se atenúa entera**.
         Con `opacity-60` en el `<li>`, el «Motivo» de B-98 —que se tipea y que es
         público— quedaba al 60 % como el resto. Lo que se atenúa es el bloque de
-        fecha y tema, más abajo, que es lo que ya no rige.
+        fecha y tema, más abajo, que es lo que ya no rige. Y desde B-1750 se
+        atenúa con tinta y no con `opacity`, que se multiplicaba con la de adentro.
       */
       claseFila={(s) => (s.cancelada ? 'border-borde bg-black/[0.03]' : 'border-borde bg-white')}
       insignias={(s) =>
@@ -451,7 +453,7 @@ export function SesionesEditor({
               «Cancelado» y el «Motivo» quedan afuera, a opacidad plena: una se
               destilda y el otro se escribe.
             */}
-            <div data-bloque="fecha-y-tema" className={s.cancelada ? 'opacity-60' : undefined}>
+            <div data-bloque="fecha-y-tema" className={s.cancelada ? claseTintaApagada : undefined}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <CampoDeFechaYHora
                   label="Inicio"

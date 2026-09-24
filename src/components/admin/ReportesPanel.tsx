@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
-import { claseBotonSecundario } from '@/components/campos/Campo';
+import { claseBotonSecundario, claseFilaApagada } from '@/components/campos/Campo';
 import { ReporteFormulario } from '@/components/admin/ReporteFormulario';
 import { marcarResuelto, observarReportes, reintentarReporte } from '@/lib/reportes';
 import type { EstadoReporte, ReporteConId } from '@/types/reporte';
@@ -164,8 +164,8 @@ export function ReportesPanel({ usuario }: Props) {
           {visibles.map((r) => (
             <li
               key={r.id}
-              className={`rounded-md border border-borde bg-white px-3 py-2.5 sm:flex sm:items-center sm:gap-3 ${
-                r.resuelto ? 'opacity-60' : ''
+              className={`rounded-md border border-borde px-3 py-2.5 sm:flex sm:items-center sm:gap-3 ${
+                r.resuelto ? claseFilaApagada : 'bg-white'
               }`}
             >
               <div className="min-w-0 sm:flex-1">

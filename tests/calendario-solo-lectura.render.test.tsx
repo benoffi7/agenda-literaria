@@ -31,6 +31,7 @@ vi.mock('@/components/admin/useOpciones', () => ({
 
 import { listarActividades } from '@/lib/actividades';
 import { CalendarioActividades } from '@/components/admin/CalendarioActividades';
+import { claseFilaApagada } from '@/components/campos/Campo';
 
 const UID_PROPIO = 'uid_propio';
 const UID_OTRA = 'uid_otra_cuenta';
@@ -157,5 +158,64 @@ describe('el calendario dice cuál de las dos no se puede tocar — B-919', () =
       UID_PROPIO,
       'mar-del-plata',
     );
+  });
+});
+
+/*
+ * B-1750 — lo que ya pasó se apaga con fondo y tinta, no con `opacity-70` (la
+ * fila de la agenda) ni `opacity-75` (el día de la grilla), que se multiplicaban
+ * con el `text-tinta/65` de la hora y del número del día. Tiene que seguir
+ * viéndose distinto de lo que viene: es lo que ordena el mes de un vistazo.
+ * MUTACIÓN PROBADA: devolviendo cualquiera de las dos `opacity`, queda en rojo.
+ */
+describe('lo que ya pasó se apaga sin opacity — B-1750', () => {
+  const apagada = (el: Element): boolean =>
+    claseFilaApagada.split(' ').every((c) => el.classList.contains(c));
+  const conOpacidad = (el: Element): boolean =>
+    [...el.classList].some((c) => /^opacity-\d+$/.test(c));
+
+  /** Un encuentro antes del «hoy» fijado (15/9) y uno después. */
+  const montarConUnoPasado = async () => {
+    const [primero, despues] = acto().sesiones;
+    vi.mocked(listarActividades).mockResolvedValue([
+      acto({
+        sesiones: [
+          {
+            ...primero!,
+            id: 'ses_antes',
+            inicio: tsDe(new Date('2026-09-10T22:00:00Z')),
+            fin: tsDe(new Date('2026-09-11T00:00:00Z')),
+          },
+          despues!,
+        ],
+      }),
+    ]);
+    render(<CalendarioActividades onEditar={vi.fn()} version={0} rol="admin" uid={UID_PROPIO} />);
+    await screen.findAllByText('Taller propio');
+  };
+
+  it('en la agenda, la fila del encuentro pasado va apagada y la que viene en blanco', async () => {
+    await montarConUnoPasado();
+    // Las filas de la agenda son los botones con el blanco táctil entero; los de
+    // la grilla no lo tienen.
+    const filas = screen
+      .getAllByText('Taller propio')
+      .map((t) => t.closest('button')!)
+      .filter((b) => b.classList.contains('min-h-touch'));
+    expect(filas).toHaveLength(2);
+    expect(filas.filter(apagada)).toHaveLength(1);
+    expect(filas.filter((b) => b.classList.contains('bg-white'))).toHaveLength(1);
+    expect(filas.some(conOpacidad)).toBe(false);
+  });
+
+  it('en la grilla, el día pasado va apagado y el que viene en blanco', async () => {
+    await montarConUnoPasado();
+    const celdas = [...document.querySelectorAll('div.min-h-24')];
+    const celda = (dia: number): Element =>
+      celdas.find((d) => d.firstElementChild?.textContent === String(dia))!;
+    expect(apagada(celda(14))).toBe(true);
+    expect(apagada(celda(16))).toBe(false);
+    expect(celda(16).classList.contains('bg-white')).toBe(true);
+    expect(celdas.some(conOpacidad)).toBe(false);
   });
 });

@@ -6,6 +6,10 @@
  * que ese input —y la casilla que deshace la cancelación— quedaban atenuados
  * como si ya no rigieran. Lo que se atenúa ahora es el bloque de fecha y tema.
  *
+ * Y desde B-1750 se atenúa con **tinta** (`claseTintaApagada`) y no con
+ * `opacity`, que se multiplicaba con la tinta de adentro. El test busca la
+ * clase por ancestros igual que antes: la tinta también se hereda.
+ *
  * Por qué necesita DOM: la opacidad se hereda por ancestros, y la pregunta es
  * **quién queda adentro de qué**. Un `grep` sobre el JSX dice que existe la
  * clase, no de qué nodos es ancestro.
@@ -23,6 +27,7 @@ vi.mock('@/lib/analytics', () => ({
 }));
 
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
+import { claseTintaApagada } from '@/components/campos/Campo';
 import { sesionVacia } from '@/lib/sesiones';
 import type { SesionForm } from '@/types/actividad';
 
@@ -48,8 +53,24 @@ const dibujar = (cancelada: boolean) => {
   );
 };
 
-/** ¿Algún ancestro del nodo —él incluido— lleva `opacity-60`? */
-const atenuado = (el: HTMLElement): boolean => el.closest('.opacity-60') !== null;
+/**
+ * ¿El nodo está adentro del bloque de fecha y tema, y ese bloque lleva la tinta
+ * apagada de B-1750? Se busca el bloque y no «cualquier ancestro con
+ * `text-tinta/70`»: la casilla «Cancelado» tiene esa tinta propia desde antes, y
+ * la pregunta es si la apaga el estado.
+ */
+const atenuado = (el: HTMLElement): boolean => {
+  const bloque = el.closest<HTMLElement>('[data-bloque="fecha-y-tema"]');
+  return bloque !== null && claseTintaApagada.split(' ').every((c) => bloque.classList.contains(c));
+};
+
+/** ¿Algún ancestro lleva un `opacity-NN`? Es lo que B-1750 sacó. */
+const conOpacidad = (el: HTMLElement): boolean => {
+  for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+    if ([...n.classList].some((c) => /^opacity-\d+$/.test(c))) return true;
+  }
+  return false;
+};
 
 describe('la fila de un encuentro cancelado (B-1570)', () => {
   it('atenúa el tema y la fecha', () => {
@@ -59,8 +80,18 @@ describe('la fila de un encuentro cancelado (B-1570)', () => {
   });
 
   /*
-   * MUTACIÓN PROBADA: devolviendo `opacity-60` a `claseFila`, los dos casos de
-   * abajo quedan en rojo.
+   * B-1750 — MUTACIÓN PROBADA: devolviendo `opacity-60` al bloque de fecha y
+   * tema, este caso queda en rojo.
+   */
+  it('no lo atenúa con opacity, que se multiplicaría con la tinta de adentro', () => {
+    dibujar(true);
+    expect(conOpacidad(screen.getByDisplayValue('Cap. 1-4'))).toBe(false);
+    expect(conOpacidad(screen.getByText(/^Cae /))).toBe(false);
+  });
+
+  /*
+   * MUTACIÓN PROBADA: devolviendo la tinta apagada a `claseFila`, los dos casos
+   * de abajo quedan en rojo.
    */
   it('no atenúa el motivo, que se tipea y es público', () => {
     dibujar(true);

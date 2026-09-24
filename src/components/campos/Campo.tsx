@@ -140,6 +140,26 @@ export const claseBotonChip = `${claseChipBase} border-borde bg-white hover:bg-b
 export const claseBotonChipActivo = `${claseChipBase} border-tinta bg-tinta text-white`;
 
 /**
+ * La tinta de lo que «ya no rige» — B-1750, D-1105.
+ *
+ * El panel apagaba las filas con `opacity-60` en el contenedor, y la opacidad
+ * **se multiplica** con la del texto de adentro: un `text-tinta/65` en una fila
+ * al 60 % pintaba ~`/39` (≈2,5:1). Un color no se multiplica: el hijo que dice
+ * su propia tinta la conserva, y el que no dice nada hereda ésta. Por eso se
+ * apaga con tinta y fondo, nunca con `opacity`, y `contraste-del-panel.test.ts`
+ * frena un `opacity-NN` suelto.
+ */
+export const claseTintaApagada = 'text-tinta/70';
+
+/**
+ * Una fila apagada: reporte resuelto, ficha descartada, propuesta que ya no
+ * espera, encuentro o día que ya pasó. Fondo gris apenas y tinta al 70, en
+ * lugar del blanco y la tinta plena de una fila viva. Va **en lugar del**
+ * `bg-white` de la fila, no encima.
+ */
+export const claseFilaApagada = `bg-black/[0.03] ${claseTintaApagada}`;
+
+/**
  * Enlace-acción dentro de una celda apretada — la grilla del calendario, donde
  * no entra un botón con su blanco táctil completo. Es la única variante que se
  * salta el `min-h-touch` a propósito, y por eso está acá y no suelta en el

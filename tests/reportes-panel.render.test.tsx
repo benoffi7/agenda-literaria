@@ -48,6 +48,7 @@ vi.mock('@/lib/reportes', () => ({
 
 import { listarActividades } from '@/lib/actividades';
 import { ReportesPanel } from '@/components/admin/ReportesPanel';
+import { claseFilaApagada } from '@/components/campos/Campo';
 import { marcarResuelto, observarReportes } from '@/lib/reportes';
 
 beforeEach(() => {
@@ -188,5 +189,36 @@ describe('ReportesPanel — marcar resuelto saca la fila de la lista (B-580)', (
     // fila sigue ahí: el filtro depende del snapshot, no de un estado local
     // optimista que la pantalla no tiene.
     expect(screen.getByText('Un bug cualquiera')).not.toBeNull();
+  });
+});
+
+/*
+ * B-1750 — la fila resuelta se apaga con fondo y tinta, no con `opacity-60`, que
+ * se multiplicaba con el `text-tinta/65` de adentro (≈2,5:1). Y tiene que seguir
+ * viéndose distinta de una abierta: es lo que dice, de un vistazo, cuál ya se
+ * cerró. MUTACIÓN PROBADA: devolviendo `opacity-60` a la fila, queda en rojo.
+ */
+describe('ReportesPanel — la fila resuelta se apaga sin opacity (B-1750)', () => {
+  const apagada = (li: HTMLElement): boolean =>
+    claseFilaApagada.split(' ').every((c) => li.classList.contains(c));
+  const conOpacidad = (li: HTMLElement): boolean =>
+    [...li.classList].some((c) => /^opacity-\d+$/.test(c));
+
+  it('la resuelta lleva la clase apagada y la abierta el blanco', async () => {
+    montar([
+      reporte({ id: 'abierto', titulo: 'Abierto de verdad' }),
+      reporte({ id: 'cerrado', titulo: 'Ya arreglado', resuelto: true }),
+    ]);
+    await userEvent.click(screen.getByRole('checkbox', { name: /ver resueltos/i }));
+
+    const cerrada = (await screen.findByText('Ya arreglado')).closest('li')!;
+    const abierta = screen.getByText('Abierto de verdad').closest('li')!;
+
+    expect(apagada(cerrada)).toBe(true);
+    expect(cerrada.classList.contains('bg-white')).toBe(false);
+    expect(conOpacidad(cerrada)).toBe(false);
+
+    expect(apagada(abierta)).toBe(false);
+    expect(abierta.classList.contains('bg-white')).toBe(true);
   });
 });

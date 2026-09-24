@@ -4,6 +4,7 @@ import {
   claseBotonChipActivo,
   claseBotonSecundario,
   claseEnlaceCelda,
+  claseFilaApagada,
 } from '@/components/campos/Campo';
 import { useActividades } from '@/components/admin/useActividades';
 import {
@@ -241,8 +242,8 @@ function FilaEncuentro({
     <button
       type="button"
       onClick={onAbrir}
-      className={`flex min-h-touch w-full items-center gap-3 rounded-md border border-borde bg-white px-3 py-2 text-left transition-colors hover:bg-black/[0.03] ${
-        pasado ? 'opacity-70' : ''
+      className={`flex min-h-touch w-full items-center gap-3 rounded-md border border-borde px-3 py-2 text-left transition-colors ${
+        pasado ? `${claseFilaApagada} hover:bg-black/5` : 'bg-white hover:bg-black/[0.03]'
       }`}
     >
       <span className="w-11 shrink-0 font-mono text-xs text-tinta/65">{encuentro.hora}</span>
@@ -697,8 +698,12 @@ export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = ''
                     <div
                       key={dia}
                       className={`flex min-h-24 min-w-0 flex-col gap-0.5 rounded-md border p-1 ${
-                        dia === hoy ? 'border-acento bg-acento/[0.04]' : 'border-borde bg-white'
-                      } ${dia < hoy ? 'opacity-75' : ''}`}
+                        dia === hoy
+                          ? 'border-acento bg-acento/[0.04]'
+                          : dia < hoy
+                            ? `border-borde ${claseFilaApagada}`
+                            : 'border-borde bg-white'
+                      }`}
                     >
                       <span className="text-xs text-tinta/65">{Number(dia.slice(-2))}</span>
                       {delDia.slice(0, 3).map((e) => (

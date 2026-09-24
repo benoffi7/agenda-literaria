@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
-import { claseBotonPrimario, claseBotonSecundario, claseInput } from '@/components/campos/Campo';
+import {
+  claseBotonPrimario,
+  claseBotonSecundario,
+  claseFilaApagada,
+  claseInput,
+} from '@/components/campos/Campo';
 import { useOpciones } from '@/components/admin/useOpciones';
 import { esFalloDeCarga } from '@/lib/carga-diferida';
 import { medirFuncion } from '@/lib/analytics';
@@ -720,8 +725,8 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
           return (
             <li
               key={p.id}
-              className={`rounded-md border border-borde bg-white px-3 py-2.5 ${
-                esPendiente(p) ? '' : 'opacity-60'
+              className={`rounded-md border border-borde px-3 py-2.5 ${
+                esPendiente(p) ? 'bg-white' : claseFilaApagada
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
