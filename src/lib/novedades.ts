@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'historial-avisa-imagenes-borradas',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Restaurar imágenes desde el historial te avisa si alguna ya no está',
+    detalle:
+      'Si una versión vieja trae imágenes que se borraron después de sacarlas de la galería, ' +
+      'al tocar «Restaurar» la confirmación te dice cuántas faltan antes de seguir. Podés ' +
+      'restaurar igual: esas vuelven como imagen rota y las sacás o volvés a subir desde ' +
+      '«Flyer e imágenes».',
+    donde: 'En el historial de una actividad, al restaurar «Imágenes».',
+  },
+  {
     id: 'ritmo-del-catalogo',
     fecha: '2026-09-24',
     version: '1.11.0',
