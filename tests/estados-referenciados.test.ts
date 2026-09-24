@@ -29,15 +29,15 @@
  * Porque un chequeo puede estar verde **por mirar el lugar equivocado**, y este
  * repo ya lo pagó tres veces (B-1113, B-1129, B-1111). Así que los controles
  * positivos de abajo **plantan una contradicción sintética y exigen que el
- * barrido la nombre, con archivo y línea**; y uno de ellos verifica que el
- * vocabulario de emojis de este barrido cubra el que el backlog usa de verdad,
- * leído del archivo, para que el día que el registro estrene un emoji nuevo
- * esto se ponga rojo en vez de dejar de comparar en silencio. Es D-750.
+ * barrido la nombre, con archivo y línea**. Es D-750. Y desde B-1222 el
+ * vocabulario de emojis no es de este barrido: lo compone `parseo.mjs`, y lo
+ * que se vigila acá es que siga sin haber un mapa propio.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import * as barrido from '../scripts/estados-referenciados.mjs';
 import {
-  ESTADO_DE_EMOJI,
   afirmacionDeFila,
   afirmacionesDe,
   celdasDe,
@@ -48,6 +48,8 @@ import {
   seBarre,
 } from '../scripts/estados-referenciados.mjs';
 import { REGISTROS } from '../scripts/items-referenciados.mjs';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
+import { ESTADO_DE_EMOJI, ESTADO_DE_EMOJI_EN_TABLA } from '../scripts/tablero/parseo.mjs';
 
 /** La huella estable de una contradicción: dónde vive y de qué ítem habla. */
 const huella = (c: { archivo: string; item: string }): string => `${c.archivo} · ${c.item}`;
@@ -316,36 +318,69 @@ describe('las piezas sueltas', () => {
     expect(celdasDe('> | a | b |')).toEqual([' a ', ' b ']);
     expect(celdasDe('texto | con pipe')).toBeNull();
   });
+});
+
+/**
+ * **B-1222 — el mapa de emoji → estado es uno solo, y esto lo vigila.**
+ *
+ * Hasta el 2026-09-24 el barrido tenía su propio mapa, con siete emojis contra
+ * los cinco de `scripts/tablero/parseo.mjs`, y la red era un caso que leía los
+ * encabezados del backlog y exigía que el mapa los cubriera. Esa red tapaba el
+ * síntoma: el día que un encabezado estrenara un emoji, el barrido dejaba de
+ * reconocerlo y comparaba menos, en silencio. Ahora `parseo.mjs` exporta el de
+ * encabezado y compone encima el de las tablas (`⛔`, `🔵`), y el barrido lo
+ * importa.
+ *
+ * Lo que se verifica es **que siga sin haber copia**, leyendo el fuente, que es
+ * el modelo de las fachadas (B-1180 en `tests/calendario.test.ts`): un mapa
+ * propio que hoy dé el mismo resultado no rompe ningún test de comportamiento, y
+ * justamente por eso es la clase de D-88.
+ */
+describe('el vocabulario de estado es uno solo (D-88, B-1222)', () => {
+  const RUTA = fileURLToPath(new URL('../scripts/estados-referenciados.mjs', import.meta.url));
+
+  it('el barrido importa el mapa de `parseo.mjs` y no escribe el suyo', () => {
+    const fuente = readFileSync(RUTA, 'utf8');
+    expect(fuente).toMatch(
+      /import \{[^}]*\bESTADO_DE_EMOJI_EN_TABLA\b[^}]*\bESTADOS_EN_TABLA\b[^}]*\} from '\.\/tablero\/parseo\.mjs'/u,
+    );
+    /*
+     * MUTACIÓN PROBADA: volver a pegar el mapa de siete —o agregarle un emoji
+     * suelto— deja este caso en rojo. La señal es cualquier emoji en el código:
+     * un mapa de emoji → estado no se puede escribir sin escribir un emoji, y el
+     * barrido no necesita ninguno fuera de los comentarios. Se busca sin
+     * comentarios para que el docblock pueda seguir nombrándolos.
+     */
+    const emojis = sinComentarios(fuente).match(/\p{Extended_Pictographic}/gu) ?? [];
+    expect(
+      emojis,
+      'estados-referenciados.mjs volvió a escribir emojis de estado. El vocabulario ' +
+        'vive en scripts/tablero/parseo.mjs: si las tablas necesitan uno más, ' +
+        'componelo ahí, en ESTADO_DE_EMOJI_EN_TABLA.',
+    ).toEqual([]);
+  });
+
+  it('y ya no exporta un mapa propio que alguien pueda importar por error', () => {
+    expect(Object.keys(barrido)).not.toContain('ESTADO_DE_EMOJI');
+  });
 
   /**
-   * **La red contra que este vocabulario derive del que usa el registro.**
-   *
-   * `scripts/tablero/parseo.mjs` conoce cinco emojis porque es lo que un
-   * **encabezado** puede llevar; este barrido conoce siete porque las **tablas**
-   * usan además `⛔` y `🔵`. Son dos formas distintas del archivo, no dos
-   * copias — pero el día que el registro estrene un emoji nuevo en un
-   * encabezado, este barrido dejaría de reconocerlo y **compararía menos, en
-   * silencio**. Esto se pone rojo antes.
+   * La composición: el de tablas es el de encabezado **más** `⛔` y `🔵`, con
+   * los mismos valores. Si `parseo.mjs` gana un emoji de encabezado, las tablas
+   * lo reconocen solas, que es la mitad de B-1222 que ningún chequeo de fuente
+   * ve.
    */
-  it('reconoce todos los emojis que los encabezados del backlog usan hoy', () => {
-    const conocidos = Object.keys(ESTADO_DE_EMOJI);
-    const usados = new Set<string>();
-    for (const registro of REGISTROS) {
-      for (const linea of readFileSync(registro, 'utf8').split('\n')) {
-        if (!linea.startsWith('### ')) continue;
-        for (const emoji of conocidos) if (linea.includes(emoji)) usados.add(emoji);
-        // Cualquier emoji de estado que NO esté en el mapa: se busca por su
-        // rango, no por la lista, que es lo que haría el chequeo circular.
-        for (const suelto of linea.match(/\p{Extended_Pictographic}/gu) ?? []) {
-          if (!conocidos.some((c) => c.startsWith(suelto))) usados.add(suelto);
-        }
-      }
+  it('el mapa de las tablas es el de los encabezados más ⛔ y 🔵', () => {
+    expect(ESTADO_DE_EMOJI_EN_TABLA).toEqual({
+      ...ESTADO_DE_EMOJI,
+      '⛔': 'bloqueado',
+      '🔵': 'futuro',
+    });
+  });
+
+  it('una fila con cualquiera de esos emojis se lee con el estado del mapa', () => {
+    for (const [emoji, estado] of Object.entries(ESTADO_DE_EMOJI_EN_TABLA)) {
+      expect(afirmacionDeFila(`| **B-7** | algo | ${emoji} lo que sea |`)?.dice, emoji).toBe(estado);
     }
-    expect(
-      [...usados].filter((e) => !conocidos.includes(e)),
-      'El backlog usa un emoji que este barrido no conoce. Agregalo a ' +
-        'ESTADO_DE_EMOJI con el estado que le corresponde: sin eso el barrido deja ' +
-        'de comparar esas filas y queda verde por no mirar.',
-    ).toEqual([]);
   });
 });
