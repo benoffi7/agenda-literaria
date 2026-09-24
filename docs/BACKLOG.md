@@ -181,7 +181,7 @@ Resueltas el 2026-08-21:
 
 | Actividad | Original a borrar en Storage |
 |---|---|
-| Merienda literaria: taller de lectura y escritura (`LRYzjiIyrrPfI8s541em`) | `propuestas/prop_79eb7bfc-0c16-420a-b20c-2d4363c9441c.jpg` — se subió un PNG distinto: **confirmar a ojo que es el mismo flyer** antes de borrar |
+| Merienda literaria: taller de lectura y escritura (`LRYzjiIyrrPfI8s541em`) | `propuestas/prop_79eb7bfc-0c16-420a-b20c-2d4363c9441c.jpg` — se subió un PNG distinto, **comparado a ojo el 2026-09-24: es el mismo flyer** (misma pieza, recodificada) |
 | Pasando Revistas - Taller de lectura (`JWzOpWbpyJpUUfgOYQf6`) | `propuestas/prop_1e647a23-39de-4816-85c4-7f20a56ebce6.jpg` — mismo tamaño en bytes que la copia |
 
 Después, `node scripts/flyeres-de-propuestas-aceptadas.mjs` tiene que dar cero
@@ -1004,7 +1004,7 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
-### B-1237 · Un test de integración se pone rojo si el emulador de Functions está vivo, y es una carrera · P2 — medido (2026-09-24)
+### B-1237 · Un test de integración se pone rojo si el emulador de Functions está vivo, y es una carrera · P2 — medido (2026-09-24) — ✅ hecho (2026-09-24)
 
 **`tests/limpieza-versiones.test.ts`**, el caso «encuentra la referencia fantasma
 que deja borrar una actividad con versiones», afirma `quedaron.size === 1` después
@@ -1032,6 +1032,20 @@ que hace el pre-push.
 **El arreglo** es del test, no del código: o afirmar sobre la versión que el test
 escribió (`v1` sigue ahí) en vez de sobre el tamaño, o esperar a que el trigger
 asiente. La primera es la que no vuelve a envejecer.
+
+**✅ Hecho (2026-09-24).** Se tomó la primera: el caso lee
+`versiones/v1` y afirma que existe, en vez de contar la subcolección. **Cinco
+corridas seguidas con Functions vivo dan verde**, contra el verde/rojo/rojo de la
+medición. Y la afirmación no quedó laxa: borrando `v1` antes de leerlo el caso se
+pone rojo (mutación probada, anotada en el propio test) — lo que se sacó no es
+rigor, es la parte que afirmaba de más.
+
+Se arregló además **la otra punta de la misma clase, que era nuestra**:
+`tests/propuesta-a-actividad.integracion.test.ts` borraba su actividad con un
+`delete()` pelado, y con Functions vivo eso dejaba la versión del historial como
+subcolección huérfana — basura que sobrevive al test y que **este mismo archivo**
+podría levantar como propia en la corrida siguiente. Ahora limpia con
+`recursiveDelete`.
 
 ### B-1370 · Si la foto se sube a mano después de aceptar, el original de la propuesta no se borra nunca · P2 — de `huerfanas` (2026-09-24)
 
