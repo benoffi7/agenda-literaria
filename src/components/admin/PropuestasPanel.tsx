@@ -8,6 +8,7 @@ import {
   RETENCION_DIAS,
   avisoDeCaducidad,
   avisoDeMarcaFallida,
+  avisoDeVencimientoAlConvertir,
   enlaceDeContacto,
   enlaceDeImagen,
   esPendiente,
@@ -453,6 +454,8 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
    * retención. Arranca antes que la promoción de la imagen para achicar la
    * ventana, se espera antes de abrir el formulario para poder avisar, y si falla
    * **no corta**: la conversión sigue y el aviso lo dice (`avisoDeMarcaFallida`).
+   * La `en-revision` y la `rechazada` no se marcan; si les queda menos de un día,
+   * el formulario lo avisa arriba (`avisoDeVencimientoAlConvertir`, B-1460).
    *
    * **Lo único que sí toca el mundo es la imagen** (B-830 paso 8, DEC-11): si la
    * propuesta trajo una foto subida, se promueve a `imagenes/` acá, antes de
@@ -575,11 +578,21 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
     }
 
     const marcaFallida = await marca;
+    /*
+     * **B-1460 — la que la marca no salva.** Una `en-revision` o una `rechazada`
+     * se convierten sin moverse, así que si les queda menos de un día el barrido
+     * se las puede llevar con el formulario abierto. Va primero, con la marca
+     * fallida: las dos dicen lo mismo —«guardá pronto»— por motivos distintos, y
+     * nunca salen juntas (la marca solo se intenta sobre la `nueva`, y ésta
+     * nunca avisa).
+     */
+    const vence = avisoDeVencimientoAlConvertir(p);
+    const primeros = [marcaFallida, vence].filter((a): a is string => a !== null);
 
     onConvertir({
       copia: { ...form, imagenes },
       tituloOrigen: p.titulo,
-      avisos: marcaFallida ? [marcaFallida, ...avisos] : avisos,
+      avisos: primeros.length > 0 ? [...primeros, ...avisos] : avisos,
       imagenNoPromovida,
       alGuardar: async (actividadId) => {
         /*
