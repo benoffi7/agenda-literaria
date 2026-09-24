@@ -7,6 +7,8 @@
  * emulador de Calendar, así que esto es lo más cerca que se puede probar sin
  * red (CLAUDE.md §10).
  */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   camposDivergentes,
@@ -493,5 +495,30 @@ describe('ejecutarVerificacion — reporta los desactualizados; reescribirlos es
     expect(resumen.reescritos).toEqual([]);
     expect(resumen.fallidosReescritura.map((f: any) => f.sesion.id)).toEqual([s1.id]);
     expect(resumen.fallidosReescritura[0].error).toContain('403');
+  });
+});
+
+/**
+ * B-1520 — las etiquetas del evento que este script recrea o compara tienen que
+ * ser las mismas que resuelve la Function. El script tenía su propia lista de
+ * cinco taxonomías y quedó atrás cuando B-950 sumó `provincia` y `ciudad`: un
+ * evento recreado decía el slug, y con B-631 cada evento de afuera de CABA habría
+ * salido «desactualizado» por culpa del script. `main` no es testeable sin red,
+ * así que esto mira la fuente: la carga es la de `functions/etiquetas.js`, y el
+ * script no declara una lista propia.
+ */
+describe('las etiquetas son las de la Function, no una lista propia (B-1520)', () => {
+  const fuente = readFileSync(
+    fileURLToPath(new URL('../scripts/verificar-calendario.mjs', import.meta.url)),
+    'utf8',
+  );
+
+  it("importa `cargarLabels` de `functions/etiquetas.js`", () => {
+    expect(fuente).toMatch(/import\s*\{[^}]*\bcargarLabels\b[^}]*\}\s*from\s*'\.\.\/functions\/etiquetas\.js'/);
+  });
+
+  it('no declara su propia lista de taxonomías ni su propio `cargarLabels`', () => {
+    expect(fuente).not.toMatch(/const\s+CAMPOS_TAXONOMIA\s*=/);
+    expect(fuente).not.toMatch(/const\s+cargarLabels\s*=/);
   });
 });

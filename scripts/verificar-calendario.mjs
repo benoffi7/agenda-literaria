@@ -64,7 +64,17 @@ import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldPath } from 'firebase-admin/firestore';
 import { GoogleAuth, Impersonated } from 'google-auth-library';
 import { construirEvento, milisDe } from '../functions/calendario.js';
-import { idDeEvento, mapaDeEtiquetas, reponerIds } from '../functions/sincronizacion.js';
+/*
+ * B-1520 — las etiquetas salen de `cargarLabels` de la Function, importada y no
+ * copiada. Este script tenía su propia lista de taxonomías, de cinco, y quedó
+ * atrás cuando B-950 sumó `provincia` y `ciudad` al evento: un evento recreado
+ * con `--reparar` decía `mar-del-plata` donde la Function pone «Mar del Plata»,
+ * y con B-631 cada evento de afuera de CABA habría salido «desactualizado» por
+ * una diferencia que era del script. Es la clase de B-88: el productor y el
+ * consumidor derivando por separado.
+ */
+import { cargarLabels } from '../functions/etiquetas.js';
+import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import {
   interpretarExistencia,
   planificarReparacion,
@@ -73,7 +83,6 @@ import {
 
 const CALENDAR_SA = 'calendar-sync@agenda-literaria.iam.gserviceaccount.com';
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? 'primary';
-const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'];
 
 /**
  * El cuerpo de un `events.insert`, pura y exportada para poder testearla sin
@@ -196,23 +205,6 @@ const clienteCalendar = async () => {
     // con lo que produce `construirEvento`, sin sumar nada.
     actualizar: (eventId, evento) => pedir('PUT', eventId, evento),
   };
-};
-
-const cargarLabels = async (db) => {
-  const labels = {};
-  const snaps = await db.getAll(...CAMPOS_TAXONOMIA.map((c) => db.doc(`opciones/${c}`)));
-  // `mapaDeEtiquetas` (de `functions/sincronizacion.js`) ya hace exactamente
-  // esta proyección de `ValorOpcion.valores` a `{ slug: label }` — la misma
-  // que usa `cargarLabels` de `functions/index.js`. Se reusa en vez de
-  // reimplementar el `.map` a mano: una tercera copia de una proyección que
-  // toca qué campos de una opción son públicos (la clase de bug de B-212) es
-  // exactamente lo que hay que evitar, y con esto no hay ningún "camino"
-  // nuevo que registrar — es el mismo código, no un duplicado que hoy da lo
-  // mismo.
-  snaps.forEach((snap, i) => {
-    labels[CAMPOS_TAXONOMIA[i]] = mapaDeEtiquetas(snap.data()?.valores);
-  });
-  return labels;
 };
 
 /**
