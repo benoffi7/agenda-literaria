@@ -84,7 +84,7 @@ const recortar = (token: string): { antes: string; nucleo: string; despues: stri
 
 /** Un link comparable: sin esquema, sin barra final y en minúsculas. */
 const clave = (url: string): string =>
-  url.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+  url.trim().replace(/^https?:\/{2}/i, '').replace(/\/+$/, '').toLowerCase();
 
 /**
  * La descripción sin ningún link de reunión: cada token que lo sea se cambia por
@@ -103,7 +103,7 @@ export const sinLinksDeReunion = (texto: string, conocidos: readonly string[] = 
 };
 
 /** Dónde empieza una URL: `http(s)://` explícito, no pegado a una palabra. */
-const URL_EXPLICITA = /(?<![\p{L}\p{N}_/])https?:\/\/[^\s<>"]+/giu;
+const URL_EXPLICITA = /(?<![\p{L}\p{N}_/])https?:\/{2}[^\s<>"]+/giu;
 
 /**
  * La descripción en trozos, con las URLs enlazadas. Una URL que `urlSegura`
