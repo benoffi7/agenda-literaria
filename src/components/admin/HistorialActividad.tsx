@@ -5,7 +5,10 @@ import { claseBotonSecundario } from '@/components/campos/Campo';
 import { leerActividad } from '@/lib/actividades';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
 import {
+  avisoDeImagenesQueYaNoEstan,
   camposRestaurables,
+  imagenesAComprobar,
+  imagenesQueYaNoEstan,
   listarVersiones,
   resumenDeCampo,
   restaurarCampo,
@@ -85,6 +88,42 @@ const cuando = (v: VersionConId): string => {
 };
 
 /**
+ * Cuánto se espera a que una imagen conteste antes de darla por buena — B-852.
+ * Pasado esto no se sabe nada, y no saber no es motivo para avisar de una pérdida.
+ */
+const ESPERA_DE_COMPROBACION_MS = 8000;
+
+/**
+ * ¿La `url` carga como imagen? — B-852.
+ *
+ * **Con un `<img>` y no con el SDK de Storage.** Lo que hay que saber es
+ * exactamente lo que va a ver la persona después de restaurar —si esa `url` se
+ * dibuja o da 404—, y un `Image` contesta eso sin nada más: no pide CORS (el
+ * `fetch` a una URL de descarga sí, y el bucket no lo tiene, B-1235), no mete
+ * `firebase/storage` en este chunk (su dueño es `subir-imagen.ts`, B-09/D-51) y
+ * no necesita una regla nueva, porque es la misma lectura pública con la que el
+ * sitio muestra la imagen.
+ *
+ * Un `onerror` por la red caída se lee como «no está», y está bien que así sea:
+ * el aviso no frena nada, así que un falso positivo cuesta una frase de más en la
+ * confirmación. La espera cortada, en cambio, se lee como «está».
+ */
+const cargaLaImagen = (url: string): Promise<boolean> =>
+  new Promise((resolver) => {
+    const img = new Image();
+    const terminar = (carga: boolean) => {
+      clearTimeout(espera);
+      img.onload = null;
+      img.onerror = null;
+      resolver(carga);
+    };
+    const espera = setTimeout(() => terminar(true), ESPERA_DE_COMPROBACION_MS);
+    img.onload = () => terminar(true);
+    img.onerror = () => terminar(false);
+    img.src = url;
+  });
+
+/**
  * B-40 — pantalla del historial de versiones (§12).
  *
  * El historial se guardaba desde B-03 y no había forma de mirarlo: recuperar un
@@ -110,6 +149,7 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState<string | null>(null);
   const [restaurando, setRestaurando] = useState<string | null>(null);
+  const [comprobando, setComprobando] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -134,11 +174,41 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
     void cargar();
   }, [cargar]);
 
-  const restaurar = async (version: VersionConId, campo: string) => {
-    const nombre = legibleCampo(campo).toLowerCase();
-    if (!confirm(`¿Restaurar ${nombre} como estaba el ${cuando(version)}?`)) return;
+  /**
+   * B-852 — el aviso de las imágenes que ya no están, o `null`.
+   *
+   * Se comprueba **acá**, al elegir restaurar, y no al listar: es la única vez
+   * que la respuesta sirve para algo. Para cualquier campo que no sea la galería
+   * `imagenesAComprobar` devuelve vacío y no se pide nada a la red.
+   */
+  const avisoAntesDeRestaurar = async (
+    version: VersionConId,
+    campo: string,
+  ): Promise<string | null> => {
+    const aComprobar = imagenesAComprobar(campo, version, actual);
+    if (aComprobar.length === 0) return null;
+    const perdidas = await imagenesQueYaNoEstan(aComprobar, cargaLaImagen);
+    const galeria = valorARestaurar(campo, version, actual);
+    const total = Array.isArray(galeria) ? galeria.length : aComprobar.length;
+    return avisoDeImagenesQueYaNoEstan(perdidas.length, total);
+  };
 
-    setRestaurando(`${version.id}:${campo}`);
+  const restaurar = async (version: VersionConId, campo: string) => {
+    const clave = `${version.id}:${campo}`;
+    const nombre = legibleCampo(campo).toLowerCase();
+
+    setComprobando(clave);
+    let aviso: string | null;
+    try {
+      aviso = await avisoAntesDeRestaurar(version, campo);
+    } finally {
+      setComprobando(null);
+    }
+
+    const pregunta = `¿Restaurar ${nombre} como estaba el ${cuando(version)}?`;
+    if (!confirm(aviso ? `${pregunta}\n\n${aviso}` : pregunta)) return;
+
+    setRestaurando(clave);
     try {
       await restaurarCampo(actual, campo, version, uid);
       onRestaurado();
@@ -214,10 +284,17 @@ export function HistorialActividad({ actividad, uid, onRestaurado }: Props) {
                     <button
                       type="button"
                       onClick={() => void restaurar(v, campo)}
-                      disabled={restaurando === `${v.id}:${campo}`}
+                      disabled={
+                        restaurando === `${v.id}:${campo}` ||
+                        comprobando === `${v.id}:${campo}`
+                      }
                       className={`${claseBotonSecundario} shrink-0 disabled:opacity-50`}
                     >
-                      {restaurando === `${v.id}:${campo}` ? 'Restaurando…' : 'Restaurar'}
+                      {comprobando === `${v.id}:${campo}`
+                        ? 'Comprobando…'
+                        : restaurando === `${v.id}:${campo}`
+                          ? 'Restaurando…'
+                          : 'Restaurar'}
                     </button>
                   </li>
                 ))}
