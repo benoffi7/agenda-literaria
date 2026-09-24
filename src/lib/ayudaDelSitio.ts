@@ -31,6 +31,7 @@
  */
 import opcionesBase from '@/lib/opciones-base.json';
 import { hayBoletin } from '@/lib/boletinDelSitio';
+import { directoriosDisponibles } from '@/lib/directorios';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
@@ -153,6 +154,18 @@ export const FORMAS_DE_ARANCEL: TerminoExplicado[] = explicar(
 );
 
 /**
+ * «a, b, c y d» — la enumeración en castellano, para nombrar las secciones de la
+ * Guía sin escribirlas a mano (B-902).
+ */
+const enumerar = (items: readonly string[]): string =>
+  items.length <= 1
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
+
+/** «Librerías» → «librerías»: el título de una sección, dicho en el medio de una frase. */
+const enMinuscula = (titulo: string): string => titulo.charAt(0).toLowerCase() + titulo.slice(1);
+
+/**
  * Las preguntas, agrupadas. El orden de los grupos es el del recorrido de quien
  * llega: primero qué es esto, después cómo se lee una actividad, después cómo
  * se entra, y al final cómo seguirnos y cómo escribirnos.
@@ -170,34 +183,44 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
             'lectura, encuentros, presentaciones de libros y charlas con autores, en un solo lugar.',
           'Existe porque hoy todo eso se anuncia en historias que duran un día y en grupos a los ' +
             'que hay que estar adentro. Acá queda escrito, con fecha, lugar y cómo entrar.',
-          /*
-           * **La Guía se cuenta acá y no en una pregunta propia** — B-835, tajada
-           * 2 paso 13. El sitio deja de ser solo la agenda el día que la barra
-           * muestra «Guía», y quien la vea se va a preguntar qué es eso: la ayuda
-           * es donde se busca, y el precedente es B-785, donde `/apoyar` existió
-           * un tiempo sin que la ayuda la nombrara.
-           *
-           * Va como tercer párrafo de «¿Qué es esto?» —que es la primera
-           * respuesta de la página— y no como una pregunta más, por una razón
-           * mecánica que conviene dejar escrita: **el conteo de preguntas está
-           * atado a `docs/04-funcionalidades.md`, `docs/06-decisiones.md` y
-           * `docs/BACKLOG.md`** (el caso «ningún documento afirma una cantidad de
-           * preguntas que no es la que hay»), así que sumar la vigesimosegunda es
-           * un cambio de tres documentos más este archivo. Con la sección recién
-           * nacida y sus tres directorios todavía en camino, el párrafo dice lo
-           * mismo y en el lugar donde igual se lee primero. Cuando la Guía tenga
-           * las tres, la pregunta propia se justifica sola y va con sus números.
-           *
-           * **Está redactada para ser cierta hoy y seguir siéndolo después**: no
-           * enumera qué secciones ya se pueden mirar —sería un cuarto lugar donde
-           * llevar la cuenta, y el que se queda viejo es siempre el texto
-           * (B-662)—, dice que la Guía misma lo dice, que es el único lugar donde
-           * eso se deriva de `DIRECTORIOS` en vez de escribirse.
-           */
-          'Y hay una sección más, la Guía, con el resto del circuito: librerías, suscripciones ' +
-            'literarias y lugares que prestan o alquilan su espacio para una actividad. Se va ' +
-            'armando de a una parte por vez, así que esa página es la que dice cuáles ya se ' +
-            'pueden mirar y cuáles están en camino.',
+        ],
+      },
+      {
+        /*
+         * **La Guía tiene su propia pregunta** — B-902. Hasta acá era el tercer
+         * párrafo de «¿Qué es esto?», y el motivo era de contabilidad y no de
+         * criterio: el conteo de preguntas está atado a
+         * `docs/04-funcionalidades.md` y `docs/06-decisiones.md` (el caso
+         * «ningún documento afirma una cantidad de preguntas que no es la que
+         * hay»), así que la vigesimosegunda obligaba a corregir los números. Con
+         * las cuatro secciones publicadas la pregunta se justifica sola, que es
+         * lo que el párrafo viejo decía que iba a pasar.
+         *
+         * **La pregunta es la de quien la ve en la barra**: «¿esto solo tiene
+         * actividades?», y no «¿qué es la Guía?», que presupone que ya sabés
+         * que existe. Es la misma pregunta que `/guia` contesta en su
+         * `sitemap.ts` («¿esta agenda tiene algo más que actividades?»).
+         *
+         * **Las secciones se nombran derivadas, no escritas.** El párrafo viejo
+         * no las enumeraba a propósito —«sería un cuarto lugar donde llevar la
+         * cuenta, y el que se queda viejo es siempre el texto» (B-662)— y tenía
+         * razón: cuando nació bibliotecas (B-960) ya nombraba tres de cuatro.
+         * Derivadas de `directoriosDisponibles()` son las mismas que linkea
+         * `/guia` y en el mismo orden, así que no hay cuenta que llevar. Lo que
+         * no se afirma es que cada una tenga fichas: eso lo dice el listado de
+         * cada sección, y la ayuda no lee datos.
+         *
+         * El enlace es uno, a `/guia`, y no uno por sección: `/guia` es el índice
+         * y ahí está qué hay en cada una.
+         */
+        id: 'la-guia',
+        pregunta: '¿Esto solo tiene actividades?',
+        respuesta: [
+          'No. Además de la agenda está la Guía, con el resto del circuito alrededor de las ' +
+            `actividades: ${enumerar(directoriosDisponibles().map((d) => enMinuscula(d.titulo)))}.`,
+          'Cada sección es un listado con su propio buscador, y cada ficha tiene su página.',
+          'Si tenés una de esas cosas y no está, cada sección tiene un formulario para sumarla. ' +
+            'Lo leemos antes de publicarlo, igual que una actividad.',
         ],
         enlaces: [{ href: RUTA_GUIA, texto: 'La Guía' }],
       },
