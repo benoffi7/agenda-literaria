@@ -1475,33 +1475,145 @@ describe('el saneador del Instagram es uno solo de los dos lados (D-20, B-1180)'
   });
 
   /**
-   * **La clase, y no las dos instancias de hoy** — lo pidió el `auditor-privacidad`
-   * (clase de B-81).
+   * **La clase, y no las instancias de hoy** — lo pidió el `auditor-privacidad`
+   * (clase de B-81), y desde **B-1590** el barrido sale de un registro y no de
+   * un nombre.
    *
-   * Los dos casos de arriba nombran `organizador.instagram` y
-   * `tallerista.instagram`, que son los dos únicos campos de Instagram del
-   * documento (`src/types/actividad.ts`). El hueco es **el tercero**: un
-   * `libro.autorInstagram`, el handle de una comisión, un `sede.instagram`. Nace
-   * sin saneador y ningún test de comportamiento se entera, porque el barrido de
-   * centinelas compara por substring y un centinela arrobado lo contiene igual.
+   * La versión anterior buscaba `\.instagram\b` en `calendario.js`, y B-1540 es
+   * justo lo que no veía: `inscripcion.destino` con `via: 'dm'` es un campo de
+   * Instagram que no se llama así, y que lo es **solo con esa vía**. El arreglo
+   * lo cubrió con un test de comportamiento, pero el próximo campo así —un
+   * `contacto` de una comisión, un `destino` de otra vía— nacía sin red, porque
+   * la regex decide por el nombre y el modelo no nombra así a todas sus cuentas.
    *
-   * MUTACIÓN PROBADA: agregarle al bloque «Quién» un tercer campo sin envolver
-   * deja este caso en rojo nombrándolo; y renombrar el campo que el barrido busca
-   * lo deja en rojo por el aserto de que encontró al menos dos.
+   * `CAMPOS_DE_INSTAGRAM` es la lista **explícita**, y su fuente es la tabla de
+   * `docs/03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo»
+   * (B-1191): una entrada por fila, con los mismos campos en la primera celda.
+   * El registro vive acá y no en un módulo porque solo lo consume esta guarda;
+   * lo que lo ata a la doc es el cruce de abajo, en las dos direcciones — una
+   * fila nueva en la tabla pone esto en rojo hasta que alguien decida si ese
+   * campo sale al evento, y una entrada que sobra también (clase de B-88: la
+   * elección, no la copia del vecino).
+   *
+   * Cada entrada dice **si sale al evento de Calendar** y, si sale, con qué
+   * atributo lo lee `calendario.js` y bajo qué vía. Lo que no sale lleva el
+   * motivo escrito, como las guardas de barrido de `tests/clases-de-bug.test.ts`.
+   *
+   * MUTACIÓN PROBADA: dejar `insc.destino` sin `arrobaPublicable` en la rama de
+   * `'dm'`, o sacarle el envoltorio a `org.instagram`, deja el segundo caso en
+   * rojo nombrando la fila; un `libro.autorInstagram` crudo lo deja en rojo por
+   * el campo sin registrar; y una fila de más en la tabla (o una entrada de
+   * menos acá) deja en rojo el primero.
    */
-  it('TODO campo de Instagram del evento pasa por el saneador, no solo los dos de hoy', () => {
-    const codigo = sinComentarios(
+  type AlEvento =
+    | { atributo: string; minimo: number; soloConVia?: string }
+    | { porque: string };
+
+  const CAMPOS_DE_INSTAGRAM: { fila: string[]; alEvento: AlEvento }[] = [
+    {
+      fila: ['organizador.instagram', 'tallerista.instagram'],
+      // `org.instagram` y `persona.instagram` (tallerista o autor invitado).
+      alEvento: { atributo: 'instagram', minimo: 2 },
+    },
+    {
+      fila: ['instagram', 'ofrecidaPor.instagram'],
+      alEvento: { porque: 'es de las guías, que no tienen evento de Calendar' },
+    },
+    {
+      fila: ['organizador.instagram'],
+      alEvento: {
+        porque: 'es de una propuesta, que no sale al calendario hasta convertirse en actividad',
+      },
+    },
+    {
+      fila: ['difusion.arrobar[]'],
+      alEvento: { porque: 'es trabajo interno del §3.2 y nunca sale del panel' },
+    },
+    {
+      fila: ['inscripcion.destino', "via: 'dm'"],
+      alEvento: { atributo: 'destino', minimo: 1, soloConVia: 'dm' },
+    },
+    {
+      fila: ['contactoDeQuienCargo', 'contacto', "via: 'instagram'"],
+      alEvento: { porque: 'es interno: cómo escribirle a quien cargó, no una cuenta a mostrar' },
+    },
+  ];
+
+  const escaparRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  it('el registro de campos de Instagram es la tabla de docs/03, fila por fila — B-1590', () => {
+    const doc = readFileSync(
+      fileURLToPath(new URL('../docs/03-modelo-de-datos.md', import.meta.url)),
+      'utf8',
+    );
+    const desde = doc.indexOf('## Los campos de Instagram, campo por campo');
+    expect(desde, 'la sección de la tabla cambió de título').toBeGreaterThan(-1);
+    const seccion = doc.slice(desde, doc.indexOf('\n---', desde));
+    const filas = seccion
+      .split('\n')
+      .filter((l) => l.startsWith('| `'))
+      .map((l) =>
+        [...l.split('|')[1].matchAll(/`([^`]+)`/g)]
+          .map((m) => m[1])
+          .filter((campo) => !campo.startsWith('/')),
+      );
+    // Sin esto el cruce pasaría vacío el día que la tabla cambie de formato.
+    expect(filas.length, 'el cruce dejó de encontrar las filas de la tabla').toBeGreaterThanOrEqual(
+      6,
+    );
+    expect(
+      CAMPOS_DE_INSTAGRAM.map((c) => c.fila),
+      'el registro y la tabla de docs/03 no tienen las mismas filas: la nueva decide si sale al evento',
+    ).toEqual(filas);
+  });
+
+  it('TODO campo de Instagram del evento pasa por el saneador, lo diga o no su nombre — B-1590', () => {
+    let codigo = sinComentarios(
       readFileSync(fileURLToPath(new URL('../functions/calendario.js', import.meta.url)), 'utf8'),
     );
-    const usos = [...codigo.matchAll(/[A-Za-z_$][\w$]*\.instagram\b/g)].map((m) => m[0]);
-
-    // Sin esto la guarda pasaría vacía el día que alguien renombre el campo, que
-    // es la firma de un chequeo que no verifica nada (D-750).
-    expect(usos.length, 'el barrido dejó de encontrar los campos que vigila').toBeGreaterThanOrEqual(
-      2,
+    const vigilados = CAMPOS_DE_INSTAGRAM.flatMap(({ fila, alEvento }) =>
+      'atributo' in alEvento ? [{ fila, ...alEvento }] : [],
     );
-    const crudos = usos.filter((u) => !codigo.includes(`arrobaPublicable(${u})`));
-    expect(crudos, 'un campo de Instagram entra crudo a la descripción del evento').toEqual([]);
+    /*
+     * Un acceso es `x.campo` o `x?.campo`: sin el `?.`, un `insc?.destino` crudo
+     * pasaba de largo por el mismo agujero que la regex vieja tenía con el nombre.
+     */
+    const ID = '[A-Za-z_$][\\w$]*';
+    for (const { fila, atributo, minimo, soloConVia } of vigilados) {
+      const a = escaparRegex(atributo);
+      /*
+       * Con vía, la única forma aceptada es el ternario que sanea con esa vía y
+       * deja el resto como se escribió:
+       * `x.via === 'dm' ? arrobaPublicable(x.destino) : x.destino`. Sin vía,
+       * cualquier `arrobaPublicable(x.atributo)`. Lo que queda del atributo
+       * después de sacar las formas saneadas entró crudo.
+       */
+      const saneado = soloConVia
+        ? new RegExp(
+            `(${ID})\\??\\.via === '${escaparRegex(soloConVia)}' \\? ` +
+              `arrobaPublicable\\(\\1\\??\\.${a}\\) : \\1\\??\\.${a}\\b`,
+            'g',
+          )
+        : new RegExp(`arrobaPublicable\\(${ID}\\??\\.${a}\\)`, 'g');
+      const usos = codigo.match(saneado)?.length ?? 0;
+      codigo = codigo.replace(saneado, '');
+      const crudos = codigo.match(new RegExp(`${ID}\\??\\.${a}\\b`, 'g')) ?? [];
+      expect(crudos, `${fila.join(', ')}: entra crudo a la descripción del evento`).toEqual([]);
+      // Sin esto la guarda pasaría vacía el día que alguien renombre el campo,
+      // que es la firma de un chequeo que no verifica nada (D-750).
+      expect(usos, `${fila.join(', ')}: el barrido dejó de encontrar el campo`).toBeGreaterThanOrEqual(
+        minimo,
+      );
+    }
+    /*
+     * Y la mitad que la regex vieja sí cubría: un atributo nuevo que diga
+     * «instagram» en el nombre (`libro.autorInstagram`) y no esté en el registro
+     * es un campo que la tabla todavía no eligió.
+     */
+    const sinRegistrar = [...codigo.matchAll(new RegExp(`${ID}\\??\\.(\\w*instagram\\w*)\\b`, 'gi'))]
+      .filter((m) => !vigilados.some((v) => v.atributo === m[1]))
+      .map((m) => m[0]);
+    expect(sinRegistrar, 'un campo de Instagram que el registro no conoce').toEqual([]);
   });
 });
 
