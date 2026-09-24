@@ -4,10 +4,15 @@ import { claseBotonPrimario } from '@/components/campos/Campo';
 import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/DirectorioPanel';
 import { SuscripcionFormulario } from '@/components/admin/SuscripcionFormulario';
 import { medirFuncion } from '@/lib/analytics';
-import { DIAS_PARA_REVISAR, pideRevision } from '@/lib/datoConFecha';
+import { AvisoDePrecioViejo } from '@/components/admin/AvisoDePrecioViejo';
+import { pideRevision } from '@/lib/datoConFecha';
 import { esPendienteDeRevision, type EstadoDirectorio } from '@/lib/directorios';
 import { fraseDePrecio } from '@/lib/suscripcionPublica';
-import { moverSuscripcion, observarSuscripciones } from '@/lib/suscripcionesLiterarias';
+import {
+  confirmarPrecioDeSuscripcion,
+  moverSuscripcion,
+  observarSuscripciones,
+} from '@/lib/suscripcionesLiterarias';
 import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
 
 /**
@@ -32,6 +37,12 @@ import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
  * detalle y no lo es: ahí el sitio no está publicando el precio (`fraseDePrecio`
  * devuelve vacío), o sea que sin este aviso el número quedaría cargado, invisible
  * y sin que nadie se enterara.
+ *
+ * **Y el aviso trae su salida** (B-913): al lado va «Lo revisé: sigue siendo
+ * éste», que refecha el precio con el reloj del servidor sin tocar el monto
+ * (`confirmarPrecioDeSuscripcion`). Sin ese botón la única forma de bajarlo era
+ * cambiarle el número, o sea mentir. El componente es `AvisoDePrecioViejo`, el
+ * mismo que usa la bandeja de lugares.
  */
 interface Props {
   usuario: { uid: string };
@@ -161,10 +172,12 @@ export function SuscripcionesPanel({
             <>
               {s.ofrecidaPor?.nombre}
               {precio ? ` · ${precio}` : ''}
+              {/*
+                B-913 — el aviso con su salida: «lo revisé y sigue siendo éste»
+                refecha el precio con el reloj del servidor sin tocar el valor.
+              */}
               {pideRevision(s.precio, ahora) && (
-                <span className="ml-1 text-acento">
-                  · conviene revisar el precio (más de {DIAS_PARA_REVISAR} días)
-                </span>
+                <AvisoDePrecioViejo onConfirmar={() => confirmarPrecioDeSuscripcion(s.id, s)} />
               )}
             </>
           );
