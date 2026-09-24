@@ -1295,16 +1295,27 @@ const gruposDeEncuentros =
      * (B-376): este script corre siempre —es solo un `addEventListener`,
      * cuesta nada mientras nadie hace clic—, pero el evento en sí queda mudo
      * hasta que la persona aceptó el banner.
+     *
+     * **B-1501: también el clic del medio.** El botón es un enlace, y abrirlo
+     * con la rueda del mouse dispara `auxclick` y no `click`. Los dos
+     * listeners comparten el criterio de `abreElEnlace` (`lib/clicQueAbre.ts`,
+     * el mismo del tríptico y del banner de ciudad): botón principal en
+     * `click`, botón del medio en `auxclick`, nunca el derecho y nunca dos
+     * veces por el mismo gesto.
      */
+    import { abreElEnlace } from '@/lib/clicQueAbre';
     import { medirSitio } from '@/lib/medicionSitio';
 
-    document.addEventListener('click', (evento) => {
+    const medirInscripcion = (evento: MouseEvent) => {
+      if (!abreElEnlace(evento)) return;
       const objetivo = evento.target;
       if (!(objetivo instanceof Element)) return;
       const boton = objetivo.closest<HTMLElement>('[data-via]');
       if (!boton) return;
       medirSitio('clic_inscripcion', { via: boton.dataset.via });
-    });
+    };
+    document.addEventListener('click', medirInscripcion);
+    document.addEventListener('auxclick', medirInscripcion);
   </script>
 
   <script>
