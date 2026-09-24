@@ -228,8 +228,8 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
     setGuardando(true);
     try {
       /*
-       * La guarda **de aviso** del slug: no es una garantía —no hay reserva
-       * atómica en esta colección (B-909)— pero convierte un choque en un mensaje
+       * La guarda **de aviso** del slug: no es una garantía —la de B-909 es
+       * `asegurarSlugPublicable`, al publicar desde la bandeja— pero convierte un choque en un mensaje
        * con arreglo de una línea. Se saltea cuando el slug está congelado.
        */
       if (!congelado && !(await slugDeLugarDisponible(slugResultante, inicial?.id))) {

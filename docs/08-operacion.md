@@ -265,6 +265,9 @@ Tres cosas que conviene tener claras antes de correrlo:
 - **Lo que sí está atado** vive en `tests/salud-del-codigo.test.ts`: cero ciclos
   de import, que los archivos que las tablas nombran existan, y que el criterio
   escrito en el documento sea el mismo que el script aplica.
+  La excepción son las dos alarmas del §1.3 —550 significativas y fan-out 45 de
+  `ActividadFormulario.tsx`, B-856 y B-1073—: son de un archivo, y solo las mueve
+  quien lo edita, así que el rojo nunca es ajeno.
 
 ### Cada checkout tiene su propia base en el emulador (B-219)
 
@@ -299,6 +302,12 @@ aparte para que nadie le dé admin a una cuenta real creyendo estar en local, y
 hasta entonces era el único de los siete que deciden entre los dos entornos que no
 lo hacía, justo el que reparte permisos—. `opciones:aprobar` sigue la misma
 convención y ya lo anunciaba.
+
+- **Auth no usa esa base (B-1201, D-1020).** El emulador de Auth es de un solo
+  proyecto, así que `tokenDe()` le pregunta al emulador vivo cuál sirve (una cuenta
+  anónima de sonda que se borra al toque) y escribe los claims ahí. Cualquier
+  checkout puede correr contra el emulador que esté arriba: ya no hace falta
+  levantarlo desde el checkout donde se corre.
 
 ### Dar permiso a una cuenta (producción)
 
@@ -1344,8 +1353,9 @@ parar — eso sería el lazo, y no hay tope de plataforma que lo pare (D-175).
 
 #### Probar el trigger con los emuladores
 
-El `npm run emu` de siempre arranca `--only auth,firestore,storage`: **sin el
-emulador de Functions no hay trigger que probar.** Y hacen falta dos cosas más:
+El `npm run emu` de siempre arranca **todo lo del `firebase.json`**, Functions y
+Hosting incluidos (B-1663: esto decía `--only auth,firestore,storage`, y no es
+así). Para probar el trigger hace falta que Functions esté entre los que arrancan. Y hacen falta dos cosas más:
 
 ```bash
 # 1 · `functions/` necesita su propio node_modules: `sharp` no se hereda del

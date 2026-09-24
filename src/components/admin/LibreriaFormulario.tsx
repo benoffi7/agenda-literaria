@@ -143,7 +143,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
     try {
       /*
        * La guarda **de aviso** del slug (ver `slugDeLibreriaDisponible`): no es
-       * una garantía —no hay reserva atómica en esta colección— pero convierte un
+       * una garantía —la de B-909 es `asegurarSlugPublicable`, al publicar— pero convierte un
        * choque en un mensaje con arreglo de una línea en vez de dos fichas con la
        * misma URL descubiertas tres semanas después.
        *

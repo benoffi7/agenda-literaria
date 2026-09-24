@@ -125,7 +125,7 @@ export function BibliotecaFormulario({ uid, inicial, onGuardado, onCancelar }: P
     try {
       /*
        * La guarda **de aviso** del slug (ver `slugDeBibliotecaDisponible`): no es
-       * una garantía —no hay reserva atómica en esta colección, que es B-909—
+       * una garantía —la de B-909 es `asegurarSlugPublicable`, al publicar desde la bandeja—
        * pero convierte un choque en un mensaje con arreglo de una línea en vez de
        * dos fichas con la misma URL descubiertas tres semanas después.
        *
