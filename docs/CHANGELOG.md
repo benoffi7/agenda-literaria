@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **El CORS del bucket queda escrito y con chequeo de humo** (B-1321, B-1340). Es
+  config del bucket y se aplica en la consola: no viaja con ningún deploy y el
+  emulador no lo aplica, así que si alguien lo borra, la conversión de una
+  propuesta con foto vuelve a quedar sin flyer sin que nada se ponga rojo.
+  `08-operacion.md` § «El CORS del bucket» dice qué hace, el comando, cuándo
+  reaplicarlo y cómo verificarlo. `npm run cors:verificar`
+  (`scripts/cors-del-bucket.mjs`) hace un `GET` con `Origin` por cada origen de
+  `cors.json` contra una imagen de `events.json`, más un control negativo; solo
+  lee y es manual a propósito. Corrido el 2026-09-24: 5 de 5. `02-infraestructura.md`
+  suma la fila CORS y el prefijo `propuestas/`, que faltaba.
+- **Ninguna actividad quedó sin su flyer por el CORS; quedan dos originales de
+  más** (B-1322). `scripts/flyeres-de-propuestas-aceptadas.mjs` (nuevo, solo
+  lectura) cruza las aceptadas con foto, su actividad y el bucket. Corrido el
+  2026-09-24: dos aceptadas, las dos actividades con su flyer subido a mano, y los
+  dos originales todavía en `propuestas/` (B-1322a, a borrar a mano). La causa de
+  que queden es B-1370.
+- **`D-88` tiene entrada** (B-1330, B-1350). Era la huérfana más citada del repo,
+  veintiún archivos desde `5888106`. Se reconstruyó del commit y de sus citas, sin
+  criterio nuevo: un formato o un valor se escribe una sola vez, y el otro lado lo
+  importa o queda atado por un test. El caso de `decisiones-referenciadas.test.ts`
+  que se apoyaba en que fuera huérfana ahora mide sobre un corpus armado.
+- **El test del script de Instagram vuelve a probar algo** (B-1331, B-1360): el
+  caso de equivalencia comparaba `handleInstagram` consigo misma. Ahora verifica
+  por identidad que la fachada del script es la función de `functions/`, y que su
+  fuente no tiene cuerpo propio. Los docblocks de `scripts/` ubican la
+  implementación donde está.
+- **Tres correcciones chicas** (B-1320, B-1332, B-1333): «Bajar la imagen» de la
+  bandeja queda cubierto por el CORS; el título de B-1086 ya no atribuye la saca de
+  la franja a B-798; y `anchoDelPanel.ts` dice que el calendario va a todo ancho
+  desde el 2026-09-07.
 - **Dos publicadores no alcanzan para publicar una etiqueta** — DEC-15 resuelta
   (**D-811**). La etiqueta que crea un publicador se aprobaba sola si la tipeaba
   otra cuenta (B-29), y con eso salía al sitio, a los hubs y al sitemap. Ahora el

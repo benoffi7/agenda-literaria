@@ -16030,6 +16030,26 @@ cosa: el slug sin reserva atómica. El ítem correcto es **B-906**.
 Con la cuarta derivación (`imagenDeLugarSchema`) vale corregirlo antes de que la
 cita mal se copie una quinta vez — la de lugares ya cita B-906.
 
+### B-1321 · El CORS del bucket no está en `08-operacion.md` ni en ningún chequeo · P2 — de `propuesta-imagen` (2026-09-23) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `1f0d114`, `a189300`, `982ea91`. El paso de consola está en `08-operacion.md` § «El CORS del bucket» (qué hace, comando, cuándo reaplicarlo, cómo verificarlo) y en la fila CORS de `02-infraestructura.md`. El chequeo es `npm run cors:verificar` (`scripts/cors-del-bucket.mjs`): un `GET` con `Origin` por cada origen de `cors.json` contra una imagen de `events.json`, más un control negativo; tests sin red en `tests/cors-del-bucket.test.ts`. **Manual a propósito**: pega contra el CDN de Storage, y el CORS se rompe en la consola, no en un deploy. Corrido el 2026-09-24: los cuatro orígenes reciben la cabecera y el no declarado no.
+
+
+Es un paso de consola: si alguien lo borra o cambia el dominio, la promoción
+vuelve a fallar sin que nada se ponga rojo — el test mira `cors.json`, no el
+bucket. Sumar el paso a `08-operacion.md` y, a futuro, un chequeo de humo que haga
+`curl -H Origin` a una imagen de `events.json` y exija `Access-Control-Allow-Origin`.
+
+### B-1330 · `D-88` se cita desde el código y no tiene entrada · P2 — de `docblocks` (2026-09-23) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `12e230c`: reconstruida en `docs/06-decisiones.md` entre D-74 y D-98 con lo que dicen `5888106` y las citas, sin criterio nuevo — un formato o un valor se escribe una vez; el otro lado lo importa o queda atado por un test. Las 21 citas describían una sola decisión y no se tocaron. El aviso de D-775 enlaza a la entrada.
+
+
+`decisiones-referenciadas.mjs` la lista en 21 archivos (`src/lib/formatoDeHora.ts`,
+`scripts/tablero/parseo.mjs`, `archivar-backlog.mjs`, `version.mjs`,
+`mail-de-aviso.sh`, tests…). Viene del commit `5888106 fix(D-88)` del 2026-09-17.
+Hay que reconstruirla desde ese commit o corregir las citas.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -19066,6 +19086,34 @@ número. Corregir el id en el texto de B-1086 en `BACKLOG-cerrados.md`.
 
 El comentario de más abajo, en el mismo archivo, dice que `calendario` entró a
 todo ancho el 2026-09-07.
+
+### B-1340 · `02-infraestructura.md` no listaba el prefijo `propuestas/` del bucket · P3 — de `cors-operacion` (2026-09-24) · ✅ hecho (2026-09-24)
+
+La tabla de Cloud Storage decía `imagenes/` y `miniaturas/`, y desde DEC-11 /
+B-830 vive también `propuestas/`, que es justo la imagen que necesita el CORS.
+**✅ Hecho (2026-09-24)** en `a189300`.
+
+### B-1350 · Un caso de `decisiones-referenciadas.test.ts` pasaba vacío desde que D-88 se escribió · P4 — de `d-88` (2026-09-24) · ✅ hecho (2026-09-24)
+
+El caso «el barrido no se cuenta a sí mismo» buscaba D-88 en las huérfanas del
+repo real, y con B-1330 ya no hay tal huérfana: el aserto pasaba vacío.
+**✅ Hecho (2026-09-24)** en `792a974`: mide sobre un corpus armado con una
+huérfana de mentira; los comentarios del script y del test pasan a pasado.
+
+### B-1360 · Dos docblocks de `scripts/` ubicaban la implementación del handle en `src/lib/` · P3 — de `instagram-test` (2026-09-24) · ✅ hecho (2026-09-24)
+
+`scripts/handle-instagram.mjs` y `scripts/instagrams-de-la-base.mjs`, misma clase
+que B-1143 y B-1331. **✅ Hecho (2026-09-24)** en `4eb4b3d`.
+
+### B-1331 · El docblock de `tests/instagrams-de-la-base.test.ts` sigue describiendo la copia · P3 — de `docblocks` (2026-09-23) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `fa79ad1`: el caso de equivalencia, que comparaba la función consigo misma, pasó a identidad (`toBe`) contra `functions/handle-instagram.js`, más el chequeo de fuente de la fachada del script. El eslabón `src/lib/` → `functions/` queda en `tests/calendario.test.ts` sin duplicar. Mutación con un cuerpo propio que delega: rojo con el test nuevo, verde con el viejo. Siguió en B-1360.
+
+
+Misma clase que B-1143: afirma dos implementaciones y que el script no puede
+importar la del sitio. Desde B-928 las dos funciones que compara son la misma, así
+que el test pasa siempre sin probar nada. Reescribirlo como prueba de que la
+reexportación apunta al módulo único, o borrarlo.
 
 ## Pendiente de acción manual del dueño
 

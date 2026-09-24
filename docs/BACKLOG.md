@@ -177,6 +177,16 @@ Resueltas el 2026-08-21:
 
 ## Pendiente de acción manual del dueño
 
+### B-1322a · Borrar los dos originales de propuesta que ya tienen copia en su actividad · P3 — la mitad de consola de B-1322 (2026-09-24)
+
+| Actividad | Original a borrar en Storage |
+|---|---|
+| Merienda literaria: taller de lectura y escritura (`LRYzjiIyrrPfI8s541em`) | `propuestas/prop_79eb7bfc-0c16-420a-b20c-2d4363c9441c.jpg` — se subió un PNG distinto: **confirmar a ojo que es el mismo flyer** antes de borrar |
+| Pasando Revistas - Taller de lectura (`JWzOpWbpyJpUUfgOYQf6`) | `propuestas/prop_1e647a23-39de-4816-85c4-7f20a56ebce6.jpg` — mismo tamaño en bytes que la copia |
+
+Después, `node scripts/flyeres-de-propuestas-aceptadas.mjs` tiene que dar cero
+fuera de `en-orden`.
+
 ### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3
 
 > **Mirado el 2026-09-23 contra el `events.json` publicado** (generado 17:58 UTC,
@@ -967,26 +977,28 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
-### B-1321 · El CORS del bucket no está en `08-operacion.md` ni en ningún chequeo · P2 — de `propuesta-imagen` (2026-09-23)
+### B-1370 · Si la foto se sube a mano después de aceptar, el original de la propuesta no se borra nunca · P2 — de `huerfanas` (2026-09-24)
 
-Es un paso de consola: si alguien lo borra o cambia el dominio, la promoción
-vuelve a fallar sin que nada se ponga rojo — el test mira `cors.json`, no el
-bucket. Sumar el paso a `08-operacion.md` y, a futuro, un chequeo de humo que haga
-`curl -H Origin` a una imagen de `events.json` y exija `Access-Control-Allow-Origin`.
+`borrarImagenAlCerrar` decide una sola vez, en la transición a `aceptada`. Si en
+ese momento la actividad no tiene copia —la promoción falló, o se va a subir el
+flyer a mano— devuelve `sin-copia` y conserva el original, que es lo correcto.
+Pero cuando después alguien sube la foto desde el panel, **nadie vuelve a
+mirar**: la aceptada no vence y `limpiarImagenesHuerfanas` no recorre
+`propuestas/`. Pasó en los dos casos de B-1322. El script
+`flyeres-de-propuestas-aceptadas.mjs` ya distingue el caso
+(`con-copia-con-original`). Falta que algo lo borre: reintentar
+`borrarOriginalAlAceptar` cuando la galería gana su primera imagen propia, o sumar
+ese caso —y solo ese— a un barrido. Es la salida 3 de B-871 acotada al caso que no
+necesita la decisión del dueño, porque la copia ya está verificada.
 
-### B-1322 · Las propuestas aceptadas antes de B-1235 pueden tener el original huérfano · P2 — de `propuesta-imagen` (2026-09-23)
+### B-1322 · Las propuestas aceptadas antes de B-1235 pueden tener el original huérfano · P2 — 🟡 relevado, falta B-1322a (2026-09-24)
+
+> 🟡 **Relevado contra producción el 2026-09-24** con `scripts/flyeres-de-propuestas-aceptadas.mjs` (nuevo, solo lectura, `531ae6b`). **Ninguna actividad quedó sin su flyer.** Hay dos aceptadas con foto y las dos están en `con-copia-con-original`: la actividad tiene su imagen, pero el original sigue en `propuestas/`. En las dos, la actividad se creó sin foto (CORS), la propuesta pasó a `aceptada` cuatro segundos después (`sin-copia`, original conservado) y la foto se subió a mano uno o diez minutos más tarde; el trigger no vuelve a mirar (B-1370). Se cierra con B-1322a y con el script dando cero fuera de `en-orden`.
 
 Si se aceptaron sin copia, `borrarOriginalAlAceptar` devolvió `sin-copia` y la
 foto queda en `propuestas/` para siempre. `relevarFlyeresSinPlazo` (B-871) las
 lista. Con B-1235a aplicado, repasar esa lista y subir a mano el flyer a cada
 actividad, o descartarlo.
-
-### B-1330 · `D-88` se cita desde el código y no tiene entrada · P2 — de `docblocks` (2026-09-23)
-
-`decisiones-referenciadas.mjs` la lista en 21 archivos (`src/lib/formatoDeHora.ts`,
-`scripts/tablero/parseo.mjs`, `archivar-backlog.mjs`, `version.mjs`,
-`mail-de-aviso.sh`, tests…). Viene del commit `5888106 fix(D-88)` del 2026-09-17.
-Hay que reconstruirla desde ese commit o corregir las citas.
 
 ### B-1241 · `que-deployar.sh` no despliega Hosting cuando cambia solo un archivo compartido de `functions/` · P2 — lo encontró `opciones-publicador` (2026-09-23)
 
@@ -1960,13 +1972,6 @@ corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
 —serializa un solo archivo, no la suite.
 
 ## P3 — cuando sobre tiempo
-
-### B-1331 · El docblock de `tests/instagrams-de-la-base.test.ts` sigue describiendo la copia · P3 — de `docblocks` (2026-09-23)
-
-Misma clase que B-1143: afirma dos implementaciones y que el script no puede
-importar la del sitio. Desde B-928 las dos funciones que compara son la misma, así
-que el test pasa siempre sin probar nada. Reescribirlo como prueba de que la
-reexportación apunta al módulo único, o borrarlo.
 
 ### B-1250 · La verificación del navegador mira solo el primer token: si la renovación automática falla más tarde, el cartel no aparece · P3 — lo encontró `appcheck-panel` (2026-09-23)
 
