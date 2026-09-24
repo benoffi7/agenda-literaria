@@ -1348,10 +1348,12 @@ si termina en un `href` indexado sin que un admin lo revise, frena (las guías);
 si hay alguien que lo va a leer antes —el admin que carga, la bandeja—, corrige
 lo que puede y guarda el resto; si puede no ser de Instagram, no se normaliza.
 
-**La tabla es la fuente de un registro** (B-1590, D-1080): `CAMPOS_DE_INSTAGRAM`, en
-`tests/calendario.test.ts`, tiene una entrada por fila con la primera celda
-idéntica, y el test cruza las dos. Una fila nueva pone el test en rojo hasta que se
-decida si ese campo sale al evento de Calendar.
+**La tabla es la fuente de un registro** (B-1590, D-1080, D-1110):
+`CAMPOS_DE_INSTAGRAM`, en `tests/fixtures/campos-de-instagram.ts`, tiene una entrada
+por fila con la primera celda idéntica, y `tests/campos-de-instagram.test.ts` cruza
+las dos. Cada entrada dice, para el evento de Calendar, el texto para redes y la
+ficha pública, si el campo sale ahí y con qué forma saneada, o por qué no. Una fila
+nueva pone el test en rojo hasta que se decida para cada salida.
 
 Fuera de la tabla, porque no son campos del modelo: el Instagram **del sitio**
 (`src/lib/contactoDelSitio.ts`, una constante) y el tapado de `@handle` de los

@@ -13410,6 +13410,8 @@ del gate, una espera sin plazo en un hook de git.
 
 ## D-1080 · Los campos de Instagram que la guarda de Calendar vigila salen de un registro atado a la tabla de docs/03
 
+> **Nota de B-1780 (2026-09-24):** el registro se mudó a un fixture y lo recorren las tres salidas; ver D-1110.
+
 **B-1590, 2026-09-24.** La guarda buscaba `\.instagram\b` y B-1540 mostró el caso
 que eso no ve. `CAMPOS_DE_INSTAGRAM` es la lista explícita, una entrada por fila de
 la tabla, con la primera celda idéntica; cada entrada dice si sale al evento o por
