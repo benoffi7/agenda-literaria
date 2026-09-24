@@ -51,7 +51,7 @@
 import Base from '@/layouts/Base.astro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseBloque, claseEnlace } from '@/components/sitio/estilos';
-import { caminosDeMes, type VistaDeMes } from '@/lib/contenidoDelSitio';
+import { caminosDeMes, relojDelBuild, type VistaDeMes } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
 import {
   AVISO_DEL_MES_VENCIDO,
@@ -83,7 +83,8 @@ const { pagina, etiquetas, tonos, otros } = vista;
 // El reloj del índice, el mismo con el que `caminosDeMes` decidió qué páginas
 // emitir: con dos relojes distintos, un build a caballo de la medianoche del
 // último día del mes emite una página que la propia página considera vencida.
-const ahora = new Date(vista.generadoEn);
+// El mismo reloj que decidió la vista (B-1890, D-1135).
+const ahora = relojDelBuild(undefined, vista.generadoEn);
 ---
 
 <Base

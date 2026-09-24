@@ -626,9 +626,10 @@ describe('la página `/agenda/[mes]`', () => {
     expect(importados.length, 'la plantilla dejó de importar el lector').toBeGreaterThan(0);
     expect(
       importados.sort(),
-      'la plantilla solo puede traer del lector su `getStaticPaths` y el tipo de su ' +
-        'view-model: cualquier otra cosa le pone el índice entero al alcance.',
-    ).toEqual(['VistaDeMes', 'caminosDeMes']);
+      'la plantilla solo puede traer del lector su `getStaticPaths`, el tipo de su ' +
+        'view-model y el reloj del build (B-1890, una función pura sobre el string que ' +
+        'ya trae la vista): cualquier otra cosa le pone el índice entero al alcance.',
+    ).toEqual(['VistaDeMes', 'caminosDeMes', 'relojDelBuild']);
   });
 
   it('y no le abre los campos a la entrada del índice: la lista blanca es cerrada', () => {

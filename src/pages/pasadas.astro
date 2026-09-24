@@ -57,7 +57,7 @@ import Base from '@/layouts/Base.astro';
 import { BuscadorDePasadas } from '@/components/publico/BuscadorDePasadas';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseEnlace } from '@/components/sitio/estilos';
-import { vistaDePasadas } from '@/lib/contenidoDelSitio';
+import { relojDelBuild, vistaDePasadas } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
 import { frasesDePasadas } from '@/lib/pasadasPublicas';
 import { INFO_VERSION } from '@/lib/version';
@@ -68,7 +68,9 @@ const { entradas, etiquetas, tonos, generadoEn } = await vistaDePasadas();
 // El reloj del índice, el mismo con el que se decidió qué actividad ya pasó: con
 // dos relojes, una que termina mientras corre el build puede no aparecer ni acá
 // ni en la home.
-const ahora = new Date(generadoEn);
+// El mismo reloj que decidió la vista (B-1890, D-1135): con un `generadoEn`
+// ilegible, `new Date(iso)` pelado daba `Invalid Date` y otro instante.
+const ahora = relojDelBuild(undefined, generadoEn);
 const cuantas = entradas.length;
 /*
  * Las frases salen de una sola función, que **recibe las entradas**: es lo que

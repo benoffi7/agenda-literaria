@@ -609,7 +609,7 @@ export const actividadDePrueba = (slug, estado) => ({
  * `tests/barrido-de-salidas-publicas.test.ts`, con los nombres de acá. Allá la
  * afirmación es sobre el view-model; acá, sobre el HTML que se sube. Desde
  * B-1761 un test de aquel archivo compara las dos —y las del índice y la
- * cartelera— con `RUTA_DEL_CENTINELA_DEL_GATE` como traducción de nombres.
+ * cartelera— con `RUTA_DEL_CENTINELA_DEL_GATE` como traducción de nombres. Las cuatro de la Guía se comparan desde B-1812 con `RUTA_EN_LA_GUIA`, contra las listas de `tests/fixtures/canastas-de-la-guia.ts`.
  */
 export const CENTINELA_DEL_DETALLE = [
   'descripcion',

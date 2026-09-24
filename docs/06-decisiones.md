@@ -13480,6 +13480,8 @@ translúcido se compone sobre la base opaca más oscura. Descartado: sumar el
 
 ## D-1110 · El registro de campos de Instagram contesta salida por salida, y el crudo a propósito se declara
 
+> **Nota de B-1840 (2026-09-24):** los «no sale» también se verifican; ver D-1130.
+
 **B-1780, 2026-09-24.** D-1080 dejó el registro en el test de Calendar porque era su
 único consumidor, y no lo era. Ahora vive en `tests/fixtures/campos-de-instagram.ts`
 y cada fila contesta las tres salidas: sale, con qué forma saneada, o por qué no.

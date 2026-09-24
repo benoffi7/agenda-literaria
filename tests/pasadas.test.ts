@@ -617,7 +617,7 @@ describe('la página', () => {
   it('usa el reloj del índice y no `new Date()`', () => {
     // Con dos relojes, una actividad que termina mientras corre el build puede
     // quedar afuera de la home y de acá: la huérfana que esta página evita.
-    expect(src()).toContain('new Date(generadoEn)');
+    expect(src()).toContain('relojDelBuild(undefined, generadoEn)');
     expect(src()).not.toContain('new Date()');
   });
 
