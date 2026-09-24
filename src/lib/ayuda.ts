@@ -2446,6 +2446,13 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Cuando ya no falta nada para publicar, la barra puede avisarte en gris lo que Google ' +
+          'no va a mostrar de la actividad: la foto, quién la da, la web del organizador o el ' +
+          'precio. Se publica igual; es para que sepas qué se pierde. Tocando cada dato te ' +
+          'lleva a donde se carga.',
+      },
+      {
+        texto:
           'Las secciones «Material», «Opcional» y «Difusión» arrancan cerradas para que el ' +
           'formulario no sea infinito. Se abren tocando el título, y la que abras o cierres ' +
           'queda así para la próxima.',

@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'que-se-pierde-en-google',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'La barra de guardar te dice qué no va a mostrar Google',
+    detalle:
+      'Cuando una actividad ya está para publicarse, la barra de abajo te avisa si en Google va ' +
+      'a salir sin foto, sin quién la da, sin la web del organizador o sin precio. No frena nada: ' +
+      'se publica igual. Tocando cada dato vas directo al campo.',
+    donde: 'En el formulario de una actividad, en la barra de guardar.',
+  },
+  {
     id: 'pestana-pasadas',
     fecha: '2026-09-24',
     version: '1.11.0',
