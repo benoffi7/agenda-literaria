@@ -817,3 +817,63 @@ asumida están en
 
 Lo que queda abierto de este bloque está en el [`BACKLOG.md`](BACKLOG.md),
 B-115 a B-124.
+
+## El cierre de una tanda en paralelo
+
+Una tanda en paralelo —frentes en worktrees, coordinados desde
+`/tmp/agenda-literaria-frentes.md`— no se da por cerrada hasta que
+`node scripts/cerrar-tanda.mjs` sale con 0. Se corre **en el árbol principal,
+con todo integrado y antes de pushear**:
+
+```
+node scripts/cerrar-tanda.mjs                     # la tanda en curso
+node scripts/cerrar-tanda.mjs /tmp/otra-tanda.md  # otra
+node scripts/cerrar-tanda.mjs --desde <commit>    # otra base: varias tandas juntas
+```
+
+**Por qué existe.** Lo que se perdía al cerrar una tanda estaba escrito, pero
+fuera del repo, y pasarlo dependía de que quien integra se acordara:
+
+- **B-1090.** Un frente acuña `D-nnn` o `B-nnn` en un commit o en un comentario,
+  y el texto de la entrada queda en su informe. Seis decisiones se quedaron así
+  hasta B-910, y dos más hasta B-1082.
+- **B-1125.** El protocolo de `.estado/<frente>.md` distingue lo hecho (`✅`) de
+  lo que quedó abierto (`⏸`) y de las preguntas al orquestador (`❓`), y
+  `.estado/` está en el `.gitignore`. Un `npm audit fix` y un helper compartido
+  de credenciales se perdieron ahí.
+
+`.estado/` **se queda ignorado**: son archivos de coordinación de una sola tanda,
+y versionarlos ensuciaría el repo sin arreglar nada. Lo que cambió es que el
+cierre los lee solo.
+
+**Qué mira.** La base sale de la línea ``Base: `main` @ `…` `` del archivo de la
+tanda (si no está, pide `--desde`; no inventa una), y de ahí:
+
+1. **Ids sin entrada.** Los `B-` y `D-` citados en los mensajes de commit de
+   `base..HEAD` y en las líneas que agrega el diff, contra `BACKLOG.md`,
+   `BACKLOG-cerrados.md` y `06-decisiones.md`. Lo escrito se lee con las mismas
+   funciones que `items-referenciados.mjs` y `decisiones-referenciadas.mjs`. Uno
+   del rango que la tanda reservó (sección `## Rangos`, D-981) sale marcado: casi
+   seguro es el texto de un informe que no se pegó.
+2. **Pendientes.** Las líneas de `.estado/*.md` —el del árbol principal, que desde
+   un worktree se encuentra al lado del `.git` común— y del propio archivo de la
+   tanda cuyo **último** marcador es `⏸` o `❓` (la regla de D-980). Por defecto,
+   solo los archivos de `.estado/` tocados desde la base; `--todo-el-estado` los
+   mira todos.
+
+**Lo que no frena, y por qué.** Un id que **ya se citaba sin entrada en la base**
+es deuda vieja: la congelan los tests de los barridos gemelos, y aparece acá
+cuando la tanda mueve texto —el archivador pasa ítems de un backlog al otro y cada
+línea movida es una línea agregada—. Se informa aparte. Una declaración de rango
+(«del 1200 al 1219», escrita con ids y una `a`) es una reserva y no se cuenta. Y
+un pendiente que dice «anotado como B-nnn», con ese ítem escrito, ya tiene rastro
+versionado.
+
+**Por qué no es un test.** Por el mismo motivo que los barridos gemelos: mientras
+la tanda está abierta sus ids se citan antes de escribirse, y un aserto así
+estaría rojo por razones ajenas a quien corre la suite (B-180). Lo que tiene tests
+es la mitad que decide: `tests/cerrar-tanda.test.ts`.
+
+**Qué se hace con lo que encuentra.** Cada huérfano va a su archivo antes de
+cerrar —el texto está en el informe del frente—. Cada pendiente sale como ítem
+del backlog o como una línea del cierre. Ninguno se deja en `.estado/`.

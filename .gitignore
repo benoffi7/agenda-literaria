@@ -51,6 +51,9 @@ functions/.env.*.local
 
 # Estado compartido entre los worktrees de los frentes en paralelo.
 # Un archivo por frente: seis agentes escribiendo el mismo archivo se pisan.
+# Se queda ignorado a propósito, y por eso lo que queda abierto acá (⏸, ❓) no
+# sobrevive al disco: `node scripts/cerrar-tanda.mjs` lo lista al cerrar la
+# tanda y sale con 1 mientras quede algo (B-1125, docs/13-agentes.md).
 .estado/
 
 # `.mdd/` es de un plugin ajeno y este repo NO usa MDD (el proceso es el del
