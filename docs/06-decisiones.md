@@ -12746,3 +12746,28 @@ Instagram del repo no estén en una misma tabla sigue siendo B-1191.
 **Dónde:** `src/components/admin/formulario/SeccionQuien.tsx` (`AvisoInstagram`),
 `tests/seccionQuien.render.test.tsx`.
 
+## D-925 · La forma del `Organization` del sitio
+
+**B-1122, 2026-09-24.** Va en `/contacto` (§5.5 de `12-sitio-publico.md`) y lleva
+las cuatro propiedades del diseño —`name`, `url`, `logo`, `sameAs`— más un `@id`
+(`{SITIO}/#organizacion`) para que un nodo futuro (`publisher`, por ejemplo) lo
+cite sin repetirlo. Nada más, y cada descarte tiene motivo:
+
+- **`logo` es `marca-512.png`, no `compartir.png`**: el `og:image` es un
+  rectángulo con fondo para el preview de un chat; un logo es cuadrado y la marca
+  sola. Google pide ≥112×112.
+- **`sameAs` son solo perfiles externos que el sitio enlaza como propios**
+  (Instagram con `rel="me"` en el pie, Cafecito en `/apoyar`). Ninguna página del
+  propio sitio —es identidad, y sería circular— y tampoco el calendario público,
+  que es un producto del sitio y no un perfil. Salen de `enlaces.ts`: una URL
+  copiada es la que queda vieja cuando la cuenta cambia (ya pasó con Instagram).
+- **Sin `funder` ni `potentialAction: DonateAction`** (B-785): el primero va al
+  revés y el segundo contradiría la prosa de `/apoyar`.
+- **Sin `email` ni `contactPoint`**: la casilla ya está en los `mailto:` de la
+  página y el diseño no la pide; en el marcado sería una copia más para cosechar
+  sin nada que un buscador use.
+
+Vive en `contactoDelSitio.ts` y no en `identidad.ts`: aquél ya importa
+`enlaces.ts`/`rutasPublicas.ts`, y meterlos en `identidad.ts` los arrastraría al
+bundle del panel (B-841).
+
