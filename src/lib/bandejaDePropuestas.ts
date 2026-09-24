@@ -210,6 +210,58 @@ export const avisoDeCaducidad = (
 };
 
 /**
+ * **A qué estado pasa una propuesta cuando se abre su conversión** — B-866, o
+ * `null` si no se toca.
+ *
+ * Abrir «Convertir en actividad» es literalmente empezar a mirarla, y hasta
+ * B-866 no escribía nada (D-600 en su primera redacción): una propuesta vieja
+ * abierta en el formulario no renovaba su plazo, y el barrido de retención se la
+ * podía llevar con el formulario abierto — la actividad se guardaba y la prueba de
+ * qué se pidió desaparecía. Pasarla a `en-revision` es un movimiento de estado,
+ * así que escribe `revision.en` y el reloj de B-844 vuelve a contar desde ahí; y
+ * la precondición de B-864 convierte cualquier carrera con una corrida en curso
+ * en un borrado que no ocurre.
+ *
+ * **Solo la `nueva`**, decisión del dueño (2026-09-24):
+ *
+ *  - la `en-revision` **ya está** donde tiene que estar, y la regla no deja
+ *    escribir sin mover el estado (`revisionValida()` pide `hasAny(['estado'])`),
+ *    así que no hay forma de renovarle el plazo sin inventar un movimiento;
+ *  - la `rechazada` se convierte sin reabrirla: pasarla a `en-revision` sería
+ *    tomar en su nombre una decisión que el admin no tomó (reabrir), y la foto ya
+ *    se borró al rechazar;
+ *  - la `aceptada` no ofrece el botón.
+ *
+ * Lo que queda descubierto por esas dos primeras ramas está en el BACKLOG
+ * (B-1460). Es puro para que la regla de cuándo se escribe se pueda fijar sin
+ * DOM.
+ */
+export const estadoAlConvertir = (estado: EstadoPropuesta): EstadoPropuesta | null =>
+  estado === 'nueva' ? 'en-revision' : null;
+
+/**
+ * Lo que dice el formulario cuando la marca de B-866 no se pudo escribir.
+ *
+ * **No bloquea**: la conversión es trabajo que el admin ya empezó, y la marca es
+ * una protección contra un caso raro (una propuesta a punto de vencer y un
+ * formulario abierto por horas). Cortar la conversión por eso sería cambiar un
+ * riesgo chico por uno seguro. Lo que sí hace falta es decir **qué** quedó sin
+ * proteger, para que quien lee sepa que guardar pronto es la mitigación.
+ *
+ * Solo el código de Firebase y nunca el `message` del SDK, por lo mismo que
+ * `textoDeFallo`: está en inglés y puede traer el path del documento.
+ */
+export const avisoDeMarcaFallida = (e: unknown): string => {
+  const code = (e as { code?: unknown } | null)?.code;
+  const codigo = typeof code === 'string' && /^[a-z/-]{1,40}$/.test(code) ? ` (${code})` : '';
+  return (
+    `No se pudo marcar la propuesta como «la estoy mirando»${codigo}. La conversión sigue ` +
+    'igual, pero su plazo en la bandeja no se renovó: guardá la actividad pronto, así la ' +
+    'limpieza diaria no se lleva la propuesta mientras el formulario está abierto.'
+  );
+};
+
+/**
  * **El único cambio que el panel escribe**, armado aparte del `updateDoc` para
  * que se pueda verificar sin Firestore y —sobre todo— para que el test de
  * integración escriba **este** objeto contra el emulador en vez de un literal

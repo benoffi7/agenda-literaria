@@ -27,11 +27,13 @@ import {
   ESTADOS_PENDIENTES,
   RETENCION_DIAS,
   avisoDeCaducidad,
+  avisoDeMarcaFallida,
   caducaEn,
   cambioDeRevision,
   enlaceDeContacto,
   enlaceDeImagen,
   esPendiente,
+  estadoAlConvertir,
   fraseDeFechaPropuesta,
 } from '@/lib/bandejaDePropuestas';
 import { ESTADOS_PROPUESTA } from '@/types/propuesta';
@@ -182,6 +184,70 @@ describe('la única escritura del panel sobre una propuesta', () => {
     }
     expect(esPendiente({ estado: 'aceptada' })).toBe(false);
     expect(esPendiente({ estado: 'rechazada' })).toBe(false);
+  });
+});
+
+/**
+ * **B-866 — qué escribe abrir la conversión.** El cableado (que se llame, antes
+ * de abrir el formulario, y que un fallo no corte) está en
+ * `propuestas-panel.render.test.tsx`; acá, la regla de cuándo, y que la marca
+ * haga lo que se escribió para hacer: renovar el plazo del barrido.
+ */
+describe('abrir la conversión marca la propuesta — B-866', () => {
+  it('solo la nueva se mueve, y a en-revision', () => {
+    expect(estadoAlConvertir('nueva')).toBe('en-revision');
+    // Ya está donde tiene que estar, y la regla no deja escribir sin mover el
+    // estado: no hay marca posible.
+    expect(estadoAlConvertir('en-revision')).toBeNull();
+    // Reabrirla sería una decisión que nadie tomó.
+    expect(estadoAlConvertir('rechazada')).toBeNull();
+    expect(estadoAlConvertir('aceptada')).toBeNull();
+  });
+
+  it('todo estado tiene respuesta, así un estado nuevo obliga a decidir', () => {
+    for (const e of ESTADOS_PROPUESTA) {
+      const a = estadoAlConvertir(e);
+      expect(a === null || ESTADOS_PROPUESTA.includes(a)).toBe(true);
+    }
+  });
+
+  /**
+   * **El motivo del ítem, contra la Function que borra y no contra un calco.** Una
+   * `nueva` de 40 días —que el barrido de esta noche se lleva— marcada con la
+   * forma exacta que arma el panel deja de estar vencida.
+   *
+   * MUTACIÓN PROBADA: con `estadoAlConvertir` devolviendo siempre `null`, el
+   * `cambio` no se arma y el segundo aserto se pone rojo.
+   */
+  it('la marca renueva el plazo del lado que borra', () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    const AHORA = Date.parse('2026-10-10T12:00:00Z');
+    const vieja = {
+      id: 'p1',
+      estado: 'nueva',
+      creadoEn: tsDe(new Date(AHORA - 40 * DIA)),
+      revision: { porUid: null, en: null, actividadId: null, motivo: null },
+    };
+    expect(decidirRetencion({ propuestas: [vieja], ahora: AHORA }).aBorrar).toHaveLength(1);
+
+    const destino = estadoAlConvertir('nueva');
+    const cambio = destino && cambioDeRevision('uid_admin', destino, tsDe(new Date(AHORA)));
+    const marcada = { ...vieja, ...(cambio || {}) };
+    expect(decidirRetencion({ propuestas: [marcada], ahora: AHORA }).aBorrar).toHaveLength(0);
+  });
+
+  it('el aviso de fallo dice qué quedó sin proteger, con el código y sin el mensaje del SDK', () => {
+    const e = Object.assign(new Error('Missing or insufficient permissions for propuestas/p1'), {
+      code: 'permission-denied',
+    });
+    const aviso = avisoDeMarcaFallida(e);
+    expect(aviso).toMatch(/\(permission-denied\)/);
+    expect(aviso).toMatch(/La conversión sigue igual/);
+    expect(aviso).toMatch(/guardá la actividad pronto/);
+    expect(aviso).not.toMatch(/insufficient|propuestas\/p1/);
+    // Sin código, o con uno que no es vocabulario de Firebase, no se inventa nada.
+    expect(avisoDeMarcaFallida(new TypeError('Failed to fetch'))).not.toMatch(/\(/);
+    expect(avisoDeMarcaFallida({ code: '<script>' })).not.toMatch(/script/);
   });
 });
 

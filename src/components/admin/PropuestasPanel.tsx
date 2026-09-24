@@ -7,9 +7,11 @@ import { medirFuncion } from '@/lib/analytics';
 import {
   RETENCION_DIAS,
   avisoDeCaducidad,
+  avisoDeMarcaFallida,
   enlaceDeContacto,
   enlaceDeImagen,
   esPendiente,
+  estadoAlConvertir,
   fraseDeFechaPropuesta,
   observarPropuestas,
   revisarPropuesta,
@@ -47,8 +49,14 @@ import { TOPE_MOTIVO_PROPUESTA } from '@/types/propuesta';
  * ── Y una que es del chasis, no de esta pantalla ──────────────────────────
  * **El orden de las dos escrituras al aceptar es D-600**: primero se crea la
  * actividad, después se mueve la propuesta a `aceptada` con su `actividadId`. Por
- * eso «Convertir» no escribe nada: arma el formulario y le pasa a `AdminApp` el
- * `alGuardar` que hace el segundo movimiento cuando —y solo si— el primero salió.
+ * eso «Convertir» no escribe **la actividad**: arma el formulario y le pasa a
+ * `AdminApp` el `alGuardar` que hace el segundo movimiento cuando —y solo si— el
+ * primero salió.
+ *
+ * **Lo que sí escribe al abrir, desde B-866, es la marca `en-revision`** sobre
+ * una `nueva` —lo que está pasando—, para que el plazo de retención se renueve y
+ * el barrido no se la lleve con el formulario abierto. No choca con el riesgo que
+ * D-600 argumenta: `en-revision` es reversible y no dice que se aceptó nada.
  */
 export interface Conversion {
   /** El formulario prellenado, listo para `ActividadFormulario`. */
@@ -426,9 +434,15 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   };
 
   /**
-   * D-600, primer movimiento: se arma el formulario y **no se escribe nada en
-   * Firestore**. La propuesta se marca aceptada recién cuando la actividad
+   * D-600, primer movimiento: se arma el formulario y **no se escribe la
+   * actividad**. La propuesta se marca aceptada recién cuando la actividad
    * existe, y eso lo dispara el chasis con `alGuardar`.
+   *
+   * **Lo único que se escribe en Firestore es la marca de B-866**: una `nueva`
+   * pasa a `en-revision` (`estadoAlConvertir`), que renueva su plazo de
+   * retención. Arranca antes que la promoción de la imagen para achicar la
+   * ventana, se espera antes de abrir el formulario para poder avisar, y si falla
+   * **no corta**: la conversión sigue y el aviso lo dice (`avisoDeMarcaFallida`).
    *
    * **Lo único que sí toca el mundo es la imagen** (B-830 paso 8, DEC-11): si la
    * propuesta trajo una foto subida, se promueve a `imagenes/` acá, antes de
@@ -467,6 +481,23 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
     );
     const imagenes = [...form.imagenes];
     let imagenNoPromovida: string | null = null;
+
+    /*
+     * **La marca de B-866 va primero y en paralelo con la foto.** Una promesa que
+     * nunca rechaza: devuelve el aviso si falló, o `null`. Así el `await` de abajo
+     * no puede cortar la conversión, que es la mitad de la decisión.
+     */
+    const aMarcar = estadoAlConvertir(p.estado);
+    const marca: Promise<string | null> = aMarcar
+      ? (async () => {
+          try {
+            await revisarPropuesta(p.id, usuario.uid, aMarcar);
+            return null;
+          } catch (e: unknown) {
+            return avisoDeMarcaFallida(e);
+          }
+        })()
+      : Promise.resolve(null);
 
     if (usarLaFoto && p.imagen && 'storagePath' in p.imagen) {
       setPromoviendo(p.id);
@@ -521,10 +552,12 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       }
     }
 
+    const marcaFallida = await marca;
+
     onConvertir({
       copia: { ...form, imagenes },
       tituloOrigen: p.titulo,
-      avisos,
+      avisos: marcaFallida ? [marcaFallida, ...avisos] : avisos,
       imagenNoPromovida,
       alGuardar: async (actividadId) => {
         /*
