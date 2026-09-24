@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { claseFilaApagada } from '@/components/campos/Campo';
@@ -22,7 +23,7 @@ import {
 } from './fixtures/contraste-del-panel';
 
 /**
- * El contraste del texto atenuado **del panel** — B-1630, B-1750, B-1751.
+ * El contraste del texto atenuado **del panel** — B-1630, B-1750, B-1751, B-1830.
  *
  * ── Por qué existe ────────────────────────────────────────────────────────
  * `contraste-del-sitio.test.ts` y `contraste-de-superficies.test.ts` barren solo
@@ -71,9 +72,25 @@ import {
  * `OPACIDADES_CON_MOTIVO`. `disabled:` sigue exento (WCAG 1.4.3), igual que
  * `opacity-0` y `-100`, que no atenúan: esconden o muestran.
  *
+ * ── El tinte heredado — B-1830 ───────────────────────────────────────────
+ * El caso de los pares mide fondo y tinta **del mismo grupo de clases**. Una
+ * tinta con nombre (`text-amber-900/85`) sobre un tinte que puso un **ancestro**
+ * quedaba afuera: pasó con `AvisoVersionNueva`, que se encontró a mano. Para eso
+ * este archivo lee además el árbol JSX de cada archivo (con el parser de
+ * TypeScript): cada elemento sin fondo propio que tenga tinta con nombre se mide
+ * contra el fondo en reposo del ancestro más cercano del mismo archivo que tenga
+ * uno. Un `className` con ramas junta las clases de todas, así que el cruce
+ * es conservador: puede medir combinaciones que nunca se dan juntas.
+ *
  * ── Lo que NO puede ver ───────────────────────────────────────────────────
- * - Un texto con tinta de nombre (`text-acento`) sobre un tinte **heredado** de
- *   un ancestro: el par se mide solo si las dos clases van en el mismo grupo.
+ * - Un tinte que pone **otro componente**: un `AvisoDePrecioViejo` adentro de la
+ *   fila de `DirectorioPanel`, o el `{children}` de un contenedor tintado.
+ * - Una clase que llega por identificador (`claseFilaApagada`, `claseBotonFila`)
+ *   y no como literal en el `className`.
+ *
+ * Las dos las mide `tests/contraste-del-arbol.render.test.tsx`, que monta los
+ * avisos de color del panel y compone sobre el DOM de verdad, con esta misma
+ * mecánica (`tests/fixtures/contraste-del-panel.ts`).
  */
 
 /**
@@ -321,6 +338,119 @@ describe('el contraste del panel sobre sus tintes — B-1751', () => {
     expect(
       flojos,
       `estos pares no llegan a ${AA_TEXTO}:1. Oscurecé la tinta o aclarale el fondo.`,
+    ).toEqual([]);
+  });
+});
+
+/**
+ * Las cadenas de clases de un `className`: los literales y los tramos fijos de
+ * un template, de todas las ramas. `${claseBotonFila} text-acento` aporta
+ * `text-acento`; el identificador no se resuelve (lo mide el render).
+ */
+const literalesDe = (n: ts.Node): string[] => {
+  const out: string[] = [];
+  const visitar = (x: ts.Node): void => {
+    if (ts.isStringLiteral(x) || ts.isNoSubstitutionTemplateLiteral(x)) {
+      out.push(x.text);
+      return;
+    }
+    if (ts.isTemplateExpression(x)) {
+      out.push(x.head.text);
+      for (const tramo of x.templateSpans) {
+        visitar(tramo.expression);
+        out.push(tramo.literal.text);
+      }
+      return;
+    }
+    ts.forEachChild(x, visitar);
+  };
+  visitar(n);
+  return out;
+};
+
+/**
+ * Cada tinta con nombre **en reposo** de un elemento sin fondo propio, medida
+ * contra el fondo en reposo del ancestro más cercano del mismo archivo que tenga
+ * uno. Si el elemento tiene fondo propio, el par es del caso de los pares, que lo
+ * mide por grupo: acá se cruzarían las dos ramas de un ternario (`activo ?
+ * 'bg-acento text-white' : 'bg-acento/5 text-acento'`) y darían un par que no
+ * existe. Las tintas con variante (`hover:text-x`) van en el grupo de su fondo
+ * con variante, y también las mide ese caso. Los fondos oscuros se saltean por lo
+ * mismo que en el piso: encima va texto claro, en el mismo grupo.
+ */
+const tintasHeredadas = (): { donde: string; par: string; r: number }[] => {
+  const out: { donde: string; par: string; r: number }[] = [];
+  for (const { donde, src } of fuentes()) {
+    const sf = ts.createSourceFile(donde, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const linea = (n: ts.Node): number => sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+    const clasesDe = (el: ts.JsxOpeningLikeElement): string => {
+      const attr = el.attributes.properties.find(
+        (p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText() === 'className',
+      );
+      return attr?.initializer ? literalesDe(attr.initializer).join(' ') : '';
+    };
+    const recorrer = (n: ts.Node, fondosArriba: Fondo[]): void => {
+      const el = ts.isJsxElement(n) ? n.openingElement : ts.isJsxSelfClosingElement(n) ? n : null;
+      let fondosAca = fondosArriba;
+      if (el) {
+        const clases = clasesDe(el);
+        const propios = [...clases.matchAll(RE_FONDO)]
+          .filter((m) => m[1] === '')
+          .map((m) => resolverFondo(m, donde, `${donde}:${linea(el)}`))
+          .filter((f): f is Fondo => f !== null);
+        if (propios.length) fondosAca = propios;
+        for (const t of propios.length ? [] : clases.matchAll(RE_TINTA)) {
+          if (t[1] !== '') continue;
+          const color = colorDe(t[2]!);
+          if (!color) continue;
+          for (const bg of fondosAca) {
+            if (esOscura(bg.color)) continue;
+            out.push({
+              donde: `${donde}:${linea(el)}`,
+              par: `${t[0]} sobre ${bg.clase} (${bg.donde})`,
+              r: contraste(mezclar(color, bg.color, alfa(t[3], t[4])), bg.color),
+            });
+          }
+        }
+      }
+      ts.forEachChild(n, (hijo) => recorrer(hijo, fondosAca));
+    };
+    recorrer(sf, []);
+  }
+  return out;
+};
+
+describe('la tinta con nombre sobre un tinte heredado — B-1830', () => {
+  it('control positivo: mide el aviso de versión nueva, con tinta y tinte en elementos distintos', () => {
+    // Es el caso que se encontró a mano. Si el recorrido del árbol se rompiera,
+    // no lo vería y el aserto de abajo daría verde sin mirar nada.
+    const todas = tintasHeredadas();
+    expect(todas.length).toBeGreaterThan(50);
+    expect(
+      todas.some(
+        (p) =>
+          p.donde.startsWith('src/components/admin/AvisoVersionNueva.tsx') &&
+          /^text-amber-900\/\d+ sobre bg-amber-100\/95 /.test(p.par),
+      ),
+    ).toBe(true);
+  });
+
+  it('control negativo: la tinta que el aviso tenía antes de B-1751 no llega sobre su tinte', () => {
+    // `text-amber-900/70` sobre `bg-amber-100/95` compuesto sobre la peor base:
+    // la regresión que este caso existe para frenar.
+    const tinte = resolverFondo([...'bg-amber-100/95'.matchAll(RE_FONDO)][0]!, 'x', 'x')!;
+    const texto = mezclar(colorDe('amber-900')!, tinte.color, 0.7);
+    expect(contraste(texto, tinte.color)).toBeLessThan(AA_TEXTO);
+  });
+
+  it('cada tinta con nombre llega a AA sobre el fondo que hereda de su ancestro', () => {
+    const flojas = tintasHeredadas()
+      .filter((p) => p.r < AA_TEXTO)
+      .map((p) => `${p.donde} — ${p.par} da ${p.r.toFixed(2)}:1`);
+    expect(
+      flojas,
+      `estas tintas no llegan a ${AA_TEXTO}:1 sobre el fondo del elemento más cercano ` +
+        'que tiene uno. Oscurecé la tinta o aclarale el fondo.',
     ).toEqual([]);
   });
 });
