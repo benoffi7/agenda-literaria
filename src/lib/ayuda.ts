@@ -2015,7 +2015,11 @@ export const CAPITULOS: CapituloAyuda[] = [
           'autor salen en el sitio y en el evento del calendario.',
       },
       {
-        texto: 'Los usuarios de Instagram van con arroba y sin link: «@casabrandon».',
+        texto:
+          'En Instagram podés escribir la cuenta con o sin arroba, o pegar el link del perfil: al ' +
+          'salir del campo queda «casabrandon». Si lo que pusiste no parece una cuenta —un link a ' +
+          'un posteo, «Casa Brandon / IG»—, abajo del campo aparece un aviso: la actividad se ' +
+          'publica igual, pero ese texto sale tal cual, sin link. Revisalo antes de publicar.',
       },
     ],
   },
