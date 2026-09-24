@@ -2,6 +2,9 @@ import { geografiaNormalizada } from '@/lib/geografia.mjs';
 import { esTonoElegible } from '@/lib/identidad';
 import { admiteMonto } from '@/lib/arancel';
 import { imagenesDe } from '@/lib/imagenes';
+// B-98 — la regla de «hay motivo» es la del evento de Calendar, importada (D-20):
+// el sitio y el calendario no pueden estar en desacuerdo sobre si se publica.
+import { motivoDeCancelacion } from '@calendario';
 /*
  * De `taxonomia` y no de `opciones`: las dos exportan `opcionesVisibles` —la
  * segunda la re-exporta— pero `opciones.ts` importa `firestore-client`, y esto
@@ -42,6 +45,18 @@ export interface SesionPublica {
   tema: string | null;
   lectura: string | null;
   cancelada: boolean;
+  /**
+   * **Por qué se canceló** — B-98. Público a propósito: es el mismo texto que
+   * abre la descripción del evento de Calendar, y la página de detalle lo pinta
+   * al lado del encuentro tachado.
+   *
+   * `null` salvo que el encuentro **esté cancelado** y el motivo diga algo
+   * (`motivoDeCancelacion`): un motivo que quedó en un encuentro descancelado
+   * —un documento escrito por fuera del panel— no sale. No llega al
+   * `events.json`: el índice del listado proyecta de cada sesión solo `inicio`,
+   * `fin` y `cancelada` (`sesionesDeIndice`).
+   */
+  motivoCancelacion: string | null;
   /**
    * **De qué comisión es** — B-181. `null` cuando el ciclo no tiene comisiones.
    *
@@ -571,6 +586,7 @@ const sesionPublica = (s: Sesion): SesionPublica => ({
   tema: s.tema ?? null,
   lectura: s.lectura ?? null,
   cancelada: s.cancelada ?? false,
+  motivoCancelacion: motivoDeCancelacion(s),
   // B-181 — `?? null` para los documentos anteriores al campo (D-26).
   comisionId: s.comisionId ?? null,
 });
