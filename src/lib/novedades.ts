@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'ritmo-del-catalogo',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'El tablero muestra qué semanas están vacías',
+    detalle:
+      'Al final de «El catálogo» hay un mapa de las próximas ocho semanas: cada casillero dice ' +
+      'cuántos encuentros hay ese día, y arriba se lee qué semanas no tienen nada. Al lado, qué ' +
+      'días de la semana y qué franjas —mañana, tarde o noche— están más cargados.',
+    donde: 'Estadísticas → El catálogo, abajo de todo.',
+  },
+  {
     id: 'volver-a-sin-mirar',
     fecha: '2026-09-24',
     version: '1.11.0',

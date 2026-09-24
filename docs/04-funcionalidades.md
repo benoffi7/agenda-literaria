@@ -1188,24 +1188,26 @@ después de la primera ya sabe. Nada de lo que calificaba esos números se perdi
 comparación que no se puede hacer sigue diciendo «sin comparación todavía», los
 cuatro estados vacíos siguen abajo, y el «desde cuándo» sigue en el dato.
 
-#### Lo que está calculado y todavía no se dibuja
+#### Cuándo pasan las cosas
 
-[`src/lib/ritmoDelCatalogo.ts`](../src/lib/ritmoDelCatalogo.ts) (B-704, B-705,
-B-706) contesta **cuándo** pasan las cosas, que es la pregunta que un listado no
-contesta nunca: un mapa de calor de ocho semanas desde el lunes de la semana en
-curso, el reparto por día de la semana y el reparto por franja horaria —mañana,
-tarde y noche, con los cortes del circuito y no los del reloj: un taller de las 19
-en Buenos Aires es de noche—. Está entero y con sus tests, y **ninguna pantalla lo
-importa todavía**: el commit que lo trajo dejó escrito que faltaba la pantalla y el
-tablero se ve igual que antes de él.
+Al final de «El catálogo» (B-1081, sobre B-704, B-705 y B-706,
+[`src/lib/ritmoDelCatalogo.ts`](../src/lib/ritmoDelCatalogo.ts) y
+`src/components/admin/estadisticas/Ritmo.tsx`), la pregunta que un listado no
+contesta nunca: **cuándo**. Un mapa de calor de las ocho semanas que arrancan el
+lunes en curso —una tabla de siete columnas, porque **los huecos son el dato**—, con
+el número escrito en cada casillero, los días de esta semana que ya pasaron apagados
+y hoy recuadrado; arriba, en texto, cuántos días no tienen nada y qué semanas quedan
+sin nada por venir. Al lado, el reparto por día de la semana y por franja horaria
+—mañana, tarde y noche, con los cortes del circuito: un taller de las 19 es de
+noche— sobre **todos** los encuentros por venir, que suman exactamente el número del
+encabezado.
 
-Lo que ya quedó decidido para cuando se dibuje: trabaja sobre los mismos
-`Encuentro[]` que alimentan la grilla del mes —no hay un segundo aplanado de
-sesiones que pueda divergir—, cuenta los mismos encuentros que el encabezado del
-tablero, la grilla es rectangular de siete columnas porque **los huecos son el
-dato**, y con un máximo de uno o dos encuentros por día no hay escala de tres
-niveles sino «hay o no hay»: un mapa de calor sobre datos ralos no dice poco, dice
-mal.
+Cuentan los mismos encuentros que la grilla del mes: ni cancelados ni de una
+actividad cancelada, y los borradores sí, porque ocupan una fecha. Con un máximo de
+uno o dos por día no hay escala —el color dice solo si hay o no hay, y la pantalla lo
+aclara—, y sin encuentros en la ventana no se dibuja una grilla de ceros. La tabla es
+también el equivalente para un lector de pantalla: encabezados de fila y de columna,
+y cada celda dicha en palabras (D-1005, D-1006).
 
 ### La bandeja de propuestas
 
