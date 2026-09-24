@@ -961,7 +961,10 @@ export const CAPITULOS: CapituloAyuda[] = [
           'revisarlo. No es un error: es que el número ya tiene edad suficiente como para ' +
           'mirarlo antes de dejarlo publicado. Si lo revisaste y sigue siendo el mismo, tocá ' +
           '«Lo revisé: sigue siendo éste»: queda el mismo precio con la fecha de hoy. No le ' +
-          'cambies el número para sacar el aviso — el sitio publicaría un precio que nadie cobró.',
+          'cambies el número para sacar el aviso — el sitio publicaría un precio que nadie cobró. ' +
+          'Arriba de la bandeja, «N precios para revisar» cuenta todos los que piden revisión ' +
+          '—también los publicados, que la bandeja no muestra de entrada— y al tocarlo te deja ' +
+          'solo esos.',
       },
       {
         texto:
@@ -1080,6 +1083,13 @@ export const CAPITULOS: CapituloAyuda[] = [
           'esa fecha la pone el servidor: no se tipea. Se mueve sola cuando cambiás el número, ' +
           'y no se mueve cuando corregís cualquier otra cosa de la ficha — si se moviera, el ' +
           'sitio estaría diciendo que el monto es más fresco de lo que es.',
+      },
+      {
+        texto:
+          'A los sesenta días de cargado el costo, la bandeja te avisa al lado de la ficha que ' +
+          'conviene revisarlo, sin mostrar el número. Si sigue siendo el mismo, tocá «Lo revisé: ' +
+          'sigue siendo éste» y queda con la fecha de hoy. Si el aviso dice que el costo no se está ' +
+          'publicando, es que le falta la fecha: el mismo botón lo arregla.',
       },
       {
         texto:

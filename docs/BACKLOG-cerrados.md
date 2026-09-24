@@ -14974,6 +14974,40 @@ conversión abandonada dejando una `aceptada` que apunta a una actividad que no
 existe). Marcarla `en-revision` al abrir no tiene ese problema: `en-revision` es
 reversible, se ve en la bandeja y ya renueva el plazo por el reloj de B-844.
 
+### B-891 · El `libro` de DEC-1 está hoy como estaba el tallerista antes de B-861 · P2 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `c7ba8cb`, `57adda1`: `libroPublico` y `detalleDeActividad` preguntan `?.titulo?.trim()`, el mismo predicado de `formADocumento`, `bloqueLibro` y `construirDescripcion` —eran cinco derivaciones, y la de Calendar ya estaba bien—. El autor de solo espacios sale `''` (D-965). La clase ganó red en `clases-de-bug.test.ts`, también para el tallerista, que no la tenía. La raíz —que los escritores guarden `parsed.data`— sigue siendo una decisión abierta. Siguió en B-1530.
+
+
+**Lo encontró el frente de B-885** cerrando la convergencia del tallerista, y es la
+misma clase con otro campo. Cuatro derivaciones de «¿hay libro?», y **dos están
+mal**:
+
+| Dónde | Predicado | |
+|---|---|---|
+| `formADocumento` | `?.titulo?.trim()` | ✅ |
+| `libroDelPosteo` (`textoRedes.ts`) | `?.titulo?.trim()` | ✅ |
+| `libroPublico` (`toPublic.ts`) | `l?.titulo` sin trim | ❌ |
+| `detalleDeActividad` (`detallePublico.ts`) | **gatea por el objeto** | ❌ |
+
+**La consecuencia es medible y está en la salida con SEO:** con
+`{ titulo: '   ', autor: 'Bolaño' }` la página de detalle renderiza **«Se presenta
+    , de Bolaño»** —el rótulo colgado en HTML indexado— y el `events.json` lleva el
+objeto con el título vacío.
+
+El camino de entrada es el mismo que el de B-885 y B-861: un escritor de afuera del
+panel, o una restauración del historial. Y el arreglo es el mismo predicado que ya
+usan las otras dos — no una quinta variante.
+
+**Y la raíz de la clase, que vale más que este ítem:** `texto = z.string().trim()`
+produce un `parsed.data` limpio que **ningún escritor usa**. `guardar.ts` valida con
+`safeParse` y escribe `candidato`; `issuesDeRestauracion` valida y `restaurarCampo`
+escribe el payload crudo. Por eso «un campo con espacios» reaparece salida por
+salida en vez de resolverse una vez. Arreglarlo de raíz —escribir `parsed.data`— es
+barato de decir y caro de verificar: cambia el valor almacenado de **todo** campo de
+texto, o sea el payload del §7.2 para los documentos con espacios, o sea que le
+reescribe el evento a quien lo tiene agendado. **Es una decisión, no un arreglo.**
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -16235,6 +16269,72 @@ El §2.1 del inventario lista `PieDePagina.astro` («los mismos destinos») y
 `noEncontrado.ts` («el 404 sugiere secciones; hay tres más»). Los dos quedaron
 afuera de la tajada 2 por propiedad de archivos. Es circuito del §2.1, o sea de los
 que no perdonan el olvido.
+
+### B-1410 · Bibliotecas promete el aviso de los 60 días y la bandeja no lo pinta · P2 — de `precio-revisado` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `ee20302`, `f019441`, `c41a32d`: la bandeja de bibliotecas pinta `AvisoDePrecioViejo` con `que="el costo de asociarse"` y sin el número, y el botón llama a `confirmarCostoDeBiblioteca` (solo `asociarse.costo.cargadoEn`, con `serverTimestamp()`). La regla no se tocó.
+
+
+La ayuda del campo «Cuánto sale asociarse» dice «el panel te avisa a los
+${DIAS_PARA_REVISAR} días para que lo revises» (`BibliotecaFormulario.tsx`), pero
+`BibliotecasPanel.tsx` no llama a `pideRevision`: ahí se decidió no mostrar el
+costo en la bandeja. Un costo de hace un año sigue publicado sin que nadie lo
+sepa, que es el daño que B-837 evita. La regla (`bibliotecaActualizable()`) ya
+deja refechar `asociarse.costo.cargadoEn` con `request.time`. Arreglo: pintar el
+aviso sin el número con `AvisoDePrecioViejo` y un `confirmarCostoDeBiblioteca`,
+con el texto del componente como parámetro (hoy dice «el precio»).
+
+### B-1411 · El aviso de los 60 días queda escondido justo en las fichas publicadas · P2 — de `precio-revisado` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `e21d232` y `04246f3`: contador «N precios para revisar» arriba de `DirectorioPanel`, contado sobre todas las fichas; al tocarlo muestra solo esas, de cualquier estado, sin prender la casilla (D-935). La señal es `FichaDeDirectorio.pideRevision` (D-936), que alimentan las tres bandejas (B-1470).
+
+
+`DirectorioPanel` arranca con «Ver publicadas y descartadas» apagado y muestra
+solo las pendientes. El precio viejo que importa es el de una ficha
+**publicada**, y esa no aparece hasta que alguien prende la casilla. No hay número
+que cuente cuántas piden revisión. Propuesta: un contador arriba de la bandeja
+(«N precios para revisar») que prenda el filtro, o que las fichas con aviso se
+muestren aunque el filtro esté apagado. Toca `DirectorioPanel.tsx`, que comparten
+los tres directorios.
+
+### B-1222 · El mapa de emoji→estado está escrito dos veces, y las dos copias son distintas a propósito · P3 — de cerrar B-1170 (2026-09-22) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `9b65519`, `f4fd262`: `parseo.mjs` exporta `ESTADOS`/`ESTADO_DE_EMOJI` y compone ahí `ESTADO_DE_EMOJI_EN_TABLA`/`ESTADOS_EN_TABLA`; `estados-referenciados.mjs` los importa. La red mínima pasó a chequeo de fuente (modelo B-1180). Lo que cuidaba de rebote volvió en B-1510.
+
+
+`scripts/tablero/parseo.mjs` tiene `ESTADOS`/`ESTADO_DE_EMOJI` **privados**, con cinco
+emojis: los que un **encabezado** de ítem puede llevar. `scripts/estados-referenciados.mjs`
+tiene el suyo con **siete**, porque las **tablas** usan además `⛔` y `🔵`, que ningún
+encabezado lleva.
+
+**No es una copia de D-88 en sentido estricto** —son dos formas distintas del archivo,
+y una es superset de la otra— pero tiene su mismo modo de fallar: el día que un
+encabezado estrene un emoji nuevo, el barrido de estados deja de reconocerlo y
+**compara menos, en silencio**. Hoy lo tapa un caso de `tests/estados-referenciados.test.ts`
+que lee los encabezados del archivo y exige que el mapa los cubra, que es la red
+mínima.
+
+**El arreglo de verdad es exportar `ESTADOS` y `ESTADO_DE_EMOJI` desde `parseo.mjs` y
+componer los dos de más ahí**, que es literalmente lo que B-1113 dejó escrito para los
+átomos del id: «el que necesite otra forma la compone con estos átomos, no la
+reescribe». No se hizo en B-1170 porque `parseo.mjs` no era un archivo de ese frente y
+tocarlo mueve `archivar-backlog.test.ts`.
+
+### B-963 · No se mide el clic del banner · P2 — abierto con B-961 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `81cb531`, `9b7cc1c`, `9e5d934`: `clic_banner_ciudad`, con `ciudad` en slug de un vocabulario cerrado (`CIUDADES_CON_BANNER`) y nada más (D-950). En `EVENTOS_SITIO` y `EVENTOS_PROPIOS`, documentado en `16-analitica-del-sitio.md` §7.7, con su castellano en `EstadisticasPanel`.
+
+
+El banner de B-961 no emite ningún evento, así que no hay forma de saber si sirve
+—que es lo primero que va a preguntar quien lo puso, y la misma pregunta que
+`clic_triptico` contesta para el tríptico (B-601).
+
+No entró en B-961 porque un cuarto evento propio toca tres lugares más: el
+vocabulario de `EVENTOS_SITIO` (`src/lib/analyticsSitio.ts`), `EVENTOS_PROPIOS`
+de `functions/analitica.js` —`tests/analitica-del-sitio.test.ts` exige que las dos
+listas sean idénticas— y `docs/16-analitica-del-sitio.md`. El parámetro sería la
+**ciudad en slug**, vocabulario cerrado con las ciudades que tienen banner, y
+nunca el destino ni el nombre del emprendimiento.
 
 ## P3 — cuando sobre tiempo
 
@@ -19408,6 +19508,270 @@ actividades?». El motivo es de contabilidad, no de criterio: el conteo de pregu
 está atado a `04-funcionalidades.md`, `06-decisiones.md` y a este archivo, y la 22ª
 obliga a corregir los tres números. Cuando la Guía tenga sus tres secciones cargadas
 la pregunta propia se justifica sola.
+
+### B-1470 · Suscripciones y lugares no alimentaban el contador ni el «falta su fecha» · P2 — de `precio-directorios` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Quedaron fuera de la tabla del frente. **✅ Hecho (2026-09-24)** en `04246f3`: los
+dos paneles pasan `pideRevision` en `FichaDeDirectorio` y `sinFecha` al aviso.
+
+### B-1480 · Despublicar una ficha que todavía no tiene la marca la dejaba sin marca para siempre · P2 — de `backfill-marca` (2026-09-24) · ✅ hecho (2026-09-24)
+
+`faltaMarcarPublicada(despues)` pedía `despues.estado === 'publicado'`, así que la
+escritura que despublica una ficha sin marca no la marcaba y el slug volvía a ser
+editable (trampa 10). Hoy estaban expuestas las 17 fichas de la Guía, todas
+publicadas y sin marca. **✅ Hecho (2026-09-24)** en `9d91cc7`: la decisión mira
+también el `antes`, en los cuatro directorios y en `syncCalendar`; test en
+`tests/directorios-publicada-alguna-vez.test.ts`. Entra con el deploy de Functions.
+
+### B-1500 · `resumen-del-sitio.test.ts` fijaba la cantidad de eventos propios con un número · P3 — de `banner-clic` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Un `.toBe(3)` que se puso rojo al sumar el cuarto evento sin que nada se hubiera
+separado. **✅ Hecho (2026-09-24):** compara contra `EVENTOS_PROPIOS`.
+
+### B-1510 · Ningún test verificaba que los encabezados del backlog usen solo emojis que `parseo.mjs` conoce · P3 — de `emoji-tablero` (2026-09-24) · ✅ hecho (2026-09-24)
+
+La red que B-1222 sacó cuidaba de rebote que un emoji de estado nuevo no se leyera
+como `abierto`. **✅ Hecho (2026-09-24)** en `63a9ebe`: vuelve en
+`tests/tablero.test.ts`, contra el vocabulario de tablas, porque B-780 lleva un
+`⛔` como marca al lado de su `✅`.
+
+### B-1520 · El script de verificación de Calendar resolvía las etiquetas con una lista propia, vieja desde B-950 · P2 — de `calendar-verif` (2026-09-24) · ✅ hecho (2026-09-24)
+
+Le faltaban `provincia` y `ciudad`: un evento recreado con `--reparar` decía el
+slug, y con B-631 cada evento de afuera de CABA habría salido «desactualizado».
+Clase de B-88. **✅ Hecho (2026-09-24)** en `309e919`: importa `cargarLabels` de
+`functions/etiquetas.js`, y el test mira la fuente.
+
+### B-1530 · El evento de Calendar colgaba «—    » con un autor de libro de solo espacios · P3 — de `libro` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24)** en `59657fd`: `construirDescripcion` pregunta
+`libro.autor?.trim()`, como las otras salidas desde B-891; caso en
+`tests/calendario.test.ts`.
+
+### B-1412 · El aviso dice «más de 60 días» también cuando la fecha no es usable · P3 — de `precio-revisado` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `ee20302` y `04246f3`: `AvisoDePrecioViejo` gana `sinFecha` y dice «{el dato} no se está publicando: falta su fecha», en las tres bandejas.
+
+
+`pideRevision` es verdadero también cuando `cargadoEn` falta o está roto, y en ese
+caso el sitio ni publica el precio: «más de 60 días» es falso y esconde lo más
+grave. Con B-913 el botón ya lo arregla (refecha con el servidor), pero el texto
+tendría que decir «el precio no se está publicando: falta su fecha». Se resuelve
+en `AvisoDePrecioViejo` con un prop `sinFecha`, calculado con
+`diasDesdeLaCarga(...) === null`.
+
+### B-1460 · Convertir una `en-revision` o una `rechazada` vieja sigue sin renovar el plazo · P3 — de `convertir` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `f48159c`, `df49468`: el formulario avisa (D-945). `avisoDeVencimientoAlConvertir` devuelve el aviso cuando la propuesta no se marca al convertir y `caducaEn` da menos de un día; `PropuestasPanel` lo pone primero en `avisos`. Un solo cálculo, cruzado contra `decidirRetencion`. La regla no se tocó. A la `rechazada` le ofrece «Reabrir»; la `en-revision` no tiene un movimiento equivalente (B-1490).
+
+
+B-866 marca solo la `nueva`. Una `en-revision` a punto de vencer no se puede
+renovar: la regla exige mover el estado y ya está donde tiene que estar. Una
+`rechazada` tampoco se marca, porque reabrirla sería una decisión que nadie tomó.
+En las dos, el barrido se la puede llevar con el formulario abierto. Salidas: un
+«toque» en la regla que solo renueve `revision.en` sin mover el estado (afloja el
+`hasAny(['estado'])` que D-600 defendió), o que el formulario avise cuando la
+propuesta vence en menos de un día. La bandeja ya avisa la última semana
+(`avisoDeCaducidad`), lo que acota el caso.
+
+### B-1420 · Las fichas de la Guía despublicadas antes de B-905 no recuperan la marca · P3 — de `slug-libreria` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** Sin backfill: el relevamiento dio cero. `scripts/relevar-marca-de-la-guia.mjs` (`de13be7`) cruzó las 17 fichas contra el sitemap y los `.json` en vivo y contra las 671 versiones de Hosting desde el 2026-08-21: ninguna se despublicó y no hay URLs huérfanas. El hueco hermano era B-1480.
+
+
+La marca de B-905 solo vale hacia adelante. Una ficha que hoy está `publicado` sin
+la marca la recibe en su próxima escritura, y mientras tanto la cubre el
+`|| estado` de la regla. Pero una que se publicó y **ya se despublicó antes del
+deploy** no la va a recibir nunca: los directorios no tienen historial del que
+inferirla (a diferencia de las actividades, D-159), así que su slug sigue
+editable. Salidas: un script de backfill, de solo lectura primero (clase de
+B-209), que liste las fichas `pendiente`/`rechazado` cuyo slug aparece en el
+sitemap publicado, y marque esas; o aceptar el hueco si el relevamiento da cero.
+Primero medir cuántas hay.
+
+### B-1430 · `/guia` todavía se describe con tres secciones, y son cuatro · P3 — de `guia` (2026-09-24) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `042ed83`: la descripción de `/guia` y la de `/ayuda#la-guia` salen de `enumeracionDeLaGuia()`; test en `tests/directorios.test.ts`.
+
+
+La `DESCRIPCION` de `src/pages/guia/index.astro` —su `meta description`,
+indexada— dice «Librerías, suscripciones literarias y lugares para hacer
+eventos», y el párrafo de entrada enumera las mismas tres: falta bibliotecas, que
+existe desde B-960. Es la clase de B-662, una enumeración escrita a mano que se
+queda vieja. Arreglo: derivarla de `directoriosDisponibles()`, como
+`/ayuda#la-guia`.
+
+### B-1191 · Los campos de Instagram del repo tienen tres criterios distintos y no hay ningún lugar donde esté escrito cuál va con cuál · P3 — salió de cerrar B-1144 (2026-09-22) · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `4daf2b0`, `51975bc`: la tabla vive en `docs/03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo», con campo, criterio, alfabeto, qué pasa con lo no reconocido y su porqué. Tres criterios, más un campo que no tenía ninguno (B-1540). Punteros desde los dos `handle-instagram` y desde `07-seguridad.md`. La premisa estaba mal: las guías frenan todo guardado (B-1541).
+
+
+**D-767 escribe el porqué de uno de los tres. La tabla no existe.**
+
+Hoy el mismo dato se resuelve de tres maneras según dónde se cargue:
+
+- **Frenan el publicado** con una regla en su `superRefine`: las cuatro guías
+  (`libreria-schema.ts:234`, `biblioteca-schema.ts:268`, `lugar-schema.ts:377`,
+  `suscripcion-literaria-schema.ts:327` y `:330`).
+- **Corrige al vuelo y no frena**: la actividad, desde B-1144 / D-767.
+- **Corrige al convertir**, sin campo que mostrar: la bandeja de propuestas
+  (`propuesta-schema.ts:255`, con su `?? f.organizador.instagram`).
+
+Los tres son defendibles por separado y el del medio tiene su decisión escrita. Lo
+que no hay es un lugar donde los tres estén juntos, así que **el próximo campo de
+Instagram —una guía nueva, un formulario público nuevo— se va a resolver a ojo**,
+copiando el vecino que quien lo escriba haya mirado primero. Es la clase de B-88
+aplicada a un criterio en vez de a un formato.
+
+**No es «unificar los tres».** Puede que la respuesta correcta siga siendo tres.
+Es escribir la tabla —qué campo, qué criterio, por qué— para que la cuarta
+instancia sea una elección y no una copia.
+
+**Y hay una cuarta columna que la tabla tiene que tener:** con qué **alfabeto**.
+`conArroba` en `textoRedes.ts` admite `-` y `handleInstagram` no, a propósito,
+porque el primero también arma `difusion.arrobar`, que puede ser de otra red. Eso
+hoy solo está en un comentario. Ver **B-1180**.
+
+**Dónde:** candidato natural, `docs/07-seguridad.md` al lado del mapa de salidas,
+o `docs/06-decisiones.md` colgado de D-767.
+
+### B-631 · La verificación contra Calendar mira si el evento existe, no si dice lo mismo · P3 · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** `9d979f7`, `309e919`, `8ef6d2c`: el script compara el contenido y reporta «desactualizados»; `--reescribir`, aparte de `--reparar` (D-960), los actualiza. La mitad pura quedó exportada en el script y no en `functions/reconciliacion.js`. Deja medible B-162: la primera corrida sin flags del dueño dice cuántos eventos quedaron atrás.
+
+
+`scripts/verificar-calendario.mjs` (B-125, D-293) le pregunta a Calendar por cada
+`calendarEventId` publicado y actúa sobre una sola respuesta: **existe o no
+existe**. Con `--reparar` recrea los que dan 404/410.
+
+Lo que no mira es la otra divergencia posible, que es la de **B-162**: el evento
+existe, y su texto no es el que el código de hoy produciría. Pasa cada vez que
+cambia *cómo se arma* la descripción —D-95 cambió la numeración de los ciclos con
+un encuentro cancelado y los eventos ya publicados se quedaron diciendo «de 7»—
+porque la guarda del §7.1 calcula los dos lados con el código de hoy y no ve
+diferencia (D-07). La divergencia solo se ve desde afuera, y este script es el
+único que mira desde afuera.
+
+**Y sale casi gratis:** `events.get` ya devuelve el evento entero. Hoy se usa
+`respuesta.data.status` y se descarta el resto; `summary`, `description`,
+`location`, `start` y `end` están ahí, sin una llamada más.
+
+El corte es el de siempre: la comparación pura en `functions/reconciliacion.js`
+—al lado de `interpretarExistencia` y `planificarReparacion`, que ya tienen su
+tabla testeada sin red— y el efecto en el script.
+
+Dos cuidados que no son obvios:
+
+- **Comparar el subconjunto que nosotros escribimos, no el evento entero.**
+  Calendar devuelve `etag`, `created`, `updated`, `iCalUID`, `sequence`,
+  `reminders`, `organizer`… nada de eso lo manda `construirEvento`, y compararlo
+  daría «distinto» en el 100 % de los eventos. Las claves a comparar salen de
+  `Object.keys(construirEvento(...))`, **derivadas y no listadas a mano**: un
+  campo nuevo en el evento entra solo al chequeo, que es el criterio de D-07 otra
+  vez.
+- **`start`/`end` vuelven normalizados.** Calendar devuelve `dateTime` con el
+  offset local (`2026-09-03T19:00:00-03:00`) y nosotros mandamos ISO en UTC
+  (`2026-09-03T22:00:00.000Z`): son el mismo instante y comparar los strings daría
+  distinto siempre. Se comparan por `Date.parse` (o `milisDe`), no por texto. El
+  `timeZone` sí se compara tal cual — es la trampa 1 y tiene que decir
+  `America/Argentina/Buenos_Aires`.
+
+Lo que compra: cierra **B-162** sin depender de la decisión de producto de
+**B-160** —que hasta ahora eran los dos juntos o ninguno— y deja medida la
+suposición que sostiene la guarda anti-loop para el próximo cambio de texto.
+
+#### El parche de B-631, listo para el frente dueño de `scripts/`
+
+**En `functions/reconciliacion.js`** (mitad pura, con sus tests en
+`tests/reconciliacion.test.ts`):
+
+```js
+/**
+ * B-631 — ¿el evento que Calendar tiene dice lo mismo que el código de hoy
+ * produciría?
+ *
+ * Es la otra divergencia posible, la que la guarda del §7.1 no puede ver: los
+ * dos lados de esa comparación se calculan con el código de hoy (D-07), así que
+ * un cambio en *cómo se arma* la descripción deja los eventos publicados atrás
+ * y no emite ninguna operación (B-162). Desde afuera sí se ve, y este script es
+ * el único que mira desde afuera.
+ *
+ * Se comparan **solo las claves que `construirEvento` produce**, derivadas y no
+ * listadas a mano: Calendar devuelve además `etag`, `created`, `updated`,
+ * `iCalUID`, `sequence`, `reminders`, `organizer`… y compararlo entero daría
+ * "distinto" en el 100 % de los eventos. Derivarlas es lo que hace que un campo
+ * nuevo del evento entre solo a este chequeo, que es el criterio de D-07.
+ *
+ * `start`/`end` se comparan por **instante y zona**, no por texto: Calendar
+ * devuelve `dateTime` con el offset local (`…T19:00:00-03:00`) y nosotros
+ * mandamos ISO en UTC (`…T22:00:00.000Z`). Son el mismo momento; comparar los
+ * strings daría distinto siempre. El `timeZone` sí se compara tal cual — es la
+ * trampa 1, y tiene que decir `America/Argentina/Buenos_Aires`.
+ */
+export const camposDivergentes = (esperado, enCalendar) => {
+  const distintos = [];
+  for (const clave of Object.keys(esperado)) {
+    const a = esperado[clave];
+    const b = enCalendar?.[clave];
+    const iguales =
+      clave === 'start' || clave === 'end'
+        ? milisDe(a?.dateTime) === milisDe(b?.dateTime) && a?.timeZone === b?.timeZone
+        : (a ?? null) === (b ?? null);
+    if (!iguales) distintos.push(clave);
+  }
+  return distintos;
+};
+
+/**
+ * Las sesiones cuyo evento existe pero dice otra cosa. `eventos` es un `Map` de
+ * `sesion.id` → el cuerpo que devolvió `events.get`.
+ *
+ * Solo mira las que `interpretarExistencia` dio por `'existe'`: sobre una que no
+ * está, o una que no se pudo verificar, no hay contenido que comparar — y
+ * afirmar divergencia sobre un `'desconocido'` produciría un `update` sobre una
+ * sospecha, que es lo mismo que `interpretarExistencia` ya evita.
+ */
+export const planificarReescritura = (candidatas, resultados, eventos, construir) => {
+  const reescribir = [];
+  for (const c of candidatas) {
+    if ((resultados.get(c.sesion.id) ?? 'desconocido') !== 'existe') continue;
+    const esperado = construir(c.actividad, c.sesion);
+    const campos = camposDivergentes(esperado, eventos.get(c.sesion.id));
+    if (campos.length > 0) reescribir.push({ ...c, campos, evento: esperado });
+  }
+  return reescribir;
+};
+```
+
+(`milisDe` se importa de `./calendario.js`, como ya hace `rebuild.js` — D-20.)
+
+**En `scripts/verificar-calendario.mjs`**, dentro de `ejecutarVerificacion`: al
+guardar el resultado del `events.get`, guardar también el cuerpo (hoy se
+descarta), y después de `planificarReparacion` calcular la reescritura:
+
+```js
+  const resultados = new Map();
+  const eventos = new Map();                                   // ← nuevo
+  for (const c of candidatas) {
+    const respuesta = await cal.obtener(c.sesion.calendarEventId);
+    if (respuesta.ok) eventos.set(c.sesion.id, respuesta.data); // ← nuevo
+    resultados.set(/* … igual que hoy … */);
+  }
+
+  const { reparar: aReparar, desconocidos } = planificarReparacion(candidatas, resultados);
+  const aReescribir = planificarReescritura(candidatas, resultados, eventos, (a, s) =>
+    construirEvento(a, s, labels),
+  );
+```
+
+y en el bloque de `--reparar`, un `cal.actualizar(c.sesion.calendarEventId,
+c.evento)` por cada uno (no hace falta write-back: el `calendarEventId` no
+cambia). `aReescribir` sale en el `return` para que el reporte de solo lectura lo
+liste con sus `campos`, que es la mitad que vale aunque nadie repare nada.
+
+**Ojo con el orden:** la reescritura va **después** de las recreaciones, o se
+emitiría un `update` contra un evento que se acaba de recrear con ese mismo
+contenido.
 
 ## Pendiente de acción manual del dueño
 

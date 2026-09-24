@@ -12901,6 +12901,24 @@ corrige de alcance y no se revierte.
 - **La regla no cambió**: no tiene grafo de transiciones y ya aceptaba
   `nueva → en-revision → aceptada`.
 
+## D-935 · El contador de precios para revisar muestra solo esas fichas, y no prende «Ver publicadas y descartadas»
+
+**B-1411, 2026-09-24.** Tocar el contador cambia la lista a exactamente las fichas
+con `pideRevision`, de cualquier estado. Descartado: prender la casilla, que deja
+las fichas con aviso mezcladas entre todas las publicadas; y sumarlas siempre a
+las pendientes, que cambia qué muestra la bandeja por defecto. El contador cuenta
+sobre **todas** las fichas y no sobre las visibles: si no, contaría cero justo en
+el caso de la ficha publicada, que es el que existe para atrapar. Si todas se
+confirman mientras está apretado, se apaga solo, para que no quede una lista
+vacía sin salida.
+
+## D-936 · La bandeja no lee fechas: `pideRevision` llega como campo de `FichaDeDirectorio`
+
+**B-1411, 2026-09-24.** Lo calcula cada panel al armar la lista, con el mismo
+`ahora` del render. Es la regla «un control compartido recibe, no importa»:
+`DirectorioPanel` sigue sin saber qué dato es cada uno (precio o costo de
+asociarse). Lo mismo con `AvisoDePrecioViejo.sinFecha`: lo calcula quien llama.
+
 ## D-945 · Convertir una propuesta a punto de vencer sin marca se avisa, no se renueva
 
 **B-1460, 2026-09-24. El dueño tomó la salida que no afloja la regla.** D-930
@@ -12949,6 +12967,17 @@ las ciudades de `BANNERS_DE_CIUDAD`. El `onClick` vive en `BannerDeCiudad.tsx`.
 **Cuándo revisarlo.** Si el banner pasa a pintarse también desde el build, el
 handler se muda a una prop, como el del tríptico. Si se agrega una segunda
 ciudad, va también a `CIUDADES_CON_BANNER` (el test lo exige).
+
+## D-960 · La reescritura de eventos desactualizados es un flag aparte, `--reescribir`
+
+**B-631, 2026-09-24.** Recrear con `--reparar` un evento que Calendar dice que no
+está repone algo que falta. Reescribir uno que está le cambia el título o la
+descripción a quien ya lo tiene agendado, que es justo lo que D-95 evita hacer en
+silencio. Colgarlo de `--reparar` haría que quien ya usaba ese flag para los
+borrados empiece a reescribir eventos sin haberlo pedido. Por eso es un flag
+explícito, que se decide viendo el reporte de solo lectura; con los dos flags, las
+reescrituras van después de las recreaciones. Descartado: reescribir siempre que
+se pase `--reparar` (el parche original del BACKLOG).
 
 ## D-965 · El campo secundario de una cáscara se colapsa a `''` en la salida, sin trimear el texto
 

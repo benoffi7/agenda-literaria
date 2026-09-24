@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'precios-para-revisar',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Los precios para revisar ya no se esconden',
+    detalle:
+      'Arriba de la bandeja aparece cuántos precios conviene revisar, contando también las fichas ' +
+      'publicadas; al tocarlo te muestra solo esas. Las bibliotecas ahora también avisan cuando el ' +
+      'costo de asociarse tiene más de sesenta días, con el botón para confirmarlo, y si a un precio ' +
+      'le falta la fecha el aviso lo dice: no se está publicando.',
+    donde: 'Guía → Bibliotecas, Suscripciones y Lugares, arriba de la lista y al lado de cada ficha.',
+  },
+  {
     id: 'convertir-una-que-vence-avisa',
     fecha: '2026-09-24',
     version: '1.11.0',

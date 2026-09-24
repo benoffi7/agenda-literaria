@@ -2,6 +2,64 @@
 
 ## Sin publicar
 
+- **`/guia` se describe con las cuatro secciones, no con tres** (B-1430). La
+  `meta description` —indexada— y el párrafo de entrada se habían quedado sin
+  bibliotecas. Ahora la descripción sale de `enumeracionDeLaGuia()`
+  (`src/lib/directorios.ts`), la misma que usa `/ayuda#la-guia`, que se mudó ahí
+  desde la ayuda para no tener dos.
+- **«¿Hay libro?» se contesta igual en las cinco salidas** (B-891, B-1530, D-965).
+  `libroPublico` (`toPublic.ts`) preguntaba `l?.titulo` sin `trim()` y
+  `detalleDeActividad` gateaba por el objeto, así que un libro
+  `{ titulo: '   ', autor: 'Bolaño' }` salía al `events.json` y la página de detalle
+  renderizaba «Se presenta    , de Bolaño» en el HTML indexado. Las dos pasan a
+  `?.titulo?.trim()`, como `formADocumento`, `bloqueLibro` y `construirDescripcion`;
+  un autor de solo espacios sale `''`, y desde B-1530 el evento de Calendar tampoco
+  cuelga «—    ». La clase de B-854 gana red en `tests/clases-de-bug.test.ts`: la
+  misma cáscara de tallerista y de libro a las cinco salidas.
+- **El mapa de emoji → estado se escribe una sola vez** (B-1222, B-1510).
+  `scripts/tablero/parseo.mjs` exporta `ESTADOS`/`ESTADO_DE_EMOJI` y compone ahí el
+  vocabulario de las tablas (`⛔`, `🔵`); `estados-referenciados.mjs` lo importa y
+  ya no tiene mapa propio. El barrido da el mismo resultado byte a byte. La red
+  que vigilaba los emojis de los encabezados vuelve, en `tests/tablero.test.ts`.
+- **Convertir una propuesta que se va esta noche lo avisa arriba del formulario**
+  (B-1460, D-945). Una `en-revision` o una `rechazada` se convierten sin la marca de
+  B-866; si les queda menos de un día, la conversión suma un aviso primero en la
+  lista y pide guardar pronto, aunque sea como borrador. La regla no se tocó; el
+  cálculo es el de la ficha (`caducaEn`/`avisoDeCaducidad`), cruzado contra
+  `decidirRetencion`.
+- **El clic del banner de ciudad se mide** (B-963, D-950, B-1500). Evento propio
+  `clic_banner_ciudad`, con un solo parámetro: la ciudad en slug, de un vocabulario
+  cerrado (`CIUDADES_CON_BANNER`). Nunca viajan el destino ni el nombre del
+  emprendimiento, y solo con consentimiento aceptado. Suma a `EVENTOS_PROPIOS`, así
+  que el tablero del panel lo muestra («Clics en el banner de ciudad»). Doc:
+  `16-analitica-del-sitio.md` §7.7.
+- **La verificación contra Calendar mira también qué dice el evento** (B-631,
+  D-960, B-1520). `npm run calendario:verificar` compara `summary`, `description`,
+  `location`, `start` y `end` con lo que `construirEvento` produciría hoy, y lista
+  los «desactualizados» con los campos que difieren; las fechas por instante y la
+  zona tal cual (trampa 1). Actualizarlos pide `--reescribir`, aparte de
+  `--reparar`. Y el script resolvía las etiquetas con una lista propia sin
+  `provincia` ni `ciudad`: ahora usa `cargarLabels` de la Function.
+- **Medido: ninguna ficha de la Guía se quedó sin la marca de «publicada alguna
+  vez», y el hueco hermano quedó cerrado** (B-1420, B-1480).
+  `scripts/relevar-marca-de-la-guia.mjs` (solo lectura) cruzó las 17 fichas contra
+  el sitemap, los `.json` en vivo y las 671 versiones de Hosting: cero
+  despublicadas sin marca. Pero despublicar una ficha que todavía no tenía la marca
+  la dejaba sin marca para siempre; ahora `faltaMarcarPublicada` mira también el
+  `antes`, en los cuatro directorios y en las actividades.
+- **El aviso de los sesenta días llega a bibliotecas y deja de esconderse**
+  (B-1410, B-1411, B-1412, B-1470, D-935, D-936). La bandeja de bibliotecas pinta el
+  aviso del costo de asociarse viejo con «Lo revisé: sigue siendo éste»
+  (`confirmarCostoDeBiblioteca`). Las tres bandejas ganan arriba «N precios para
+  revisar», contado sobre todas las fichas, que al tocarlo muestra solo esas aunque
+  estén publicadas. Y cuando al precio le falta la fecha, el aviso dice «no se está
+  publicando: falta su fecha».
+- **Los campos de Instagram, en una sola tabla** (B-1191).
+  `docs/03-modelo-de-datos.md` § «Los campos de Instagram, campo por campo» dice
+  qué criterio usa cada uno, con qué alfabeto y qué pasa con un valor no
+  reconocido, verificado contra el código: las guías frenan **todo guardado**, no
+  solo el publicado (B-1541).
+
 - **El campo de Instagram avisa cuando no reconoce la cuenta** (B-1190, D-900,
   B-1400). Debajo de los dos campos de Instagram de «Quién» aparece «No lo
   reconocimos como una cuenta de Instagram: se va a publicar tal cual» cuando
