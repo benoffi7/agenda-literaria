@@ -35,9 +35,12 @@ import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
  * qué queda con su ancho—, no el mismo cambio aplicado dos veces más». El
  * tablero pasó a tener repartos con torta y avisos que se acomodan en dos
  * columnas, así que el reparto de columnas existe y está escrito (D-400).
- * (Las dos vistas de tiempo y el mapa de calor de ocho semanas están calculados
- * en `ritmoDelCatalogo.ts` pero **no se dibujan** —B-1081—; cuando se dibujen,
- * son un argumento más para el ancho, no uno que haga falta hoy.)
+ * Desde B-1081 el tablero dibuja además el ritmo del catálogo —el mapa de calor
+ * de ocho semanas y las dos vistas de tiempo de `ritmoDelCatalogo.ts`, en
+ * `estadisticas/Ritmo.tsx`— y su reparto también está escrito: el mapa y las
+ * vistas van lado a lado desde `xl`, porque ocho filas de siete celdas se leen
+ * igual a 700px que a 1000, y por debajo van apiladas. Es un argumento más para
+ * el ancho, pero no el que lo decidió: `estadisticas` ya estaba a todo ancho.
  * La grilla del mes no tenía el suyo, y por eso esperó: ensancharla sin decidirlo
  * daba siete columnas de 220px con el mismo contenido de 120 — más aire, no más
  * información. **Entró igual el 2026-09-07**, por pedido del dueño (la nota sobre

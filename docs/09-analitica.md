@@ -374,6 +374,12 @@ tablero se retira en vez de crecer. `valor` es cuántas actividades tenía el
 catálogo al abrirlo — un entero, y nunca el nombre de un aviso ni el título de
 ninguna actividad señalada.
 
+**Dibujar el ritmo del catálogo no sumó ningún evento** (B-1081, 2026-09-24). El
+mapa de calor de ocho semanas y los repartos por día y por franja son una sección
+más de la pestaña «El catálogo», calculada en memoria sobre la misma lectura de
+`/actividades`: ni un evento nuevo, ni un parámetro nuevo en `estadisticas-abrir`,
+ni una lectura de Firestore de más. Ver la fila correspondiente en «Qué NO se mide».
+
 > **B-374 se construyó igual, el 2026-09-03, antes de que este termómetro
 > tuviera lecturas.** No es que la pregunta dejara de importar: la respuesta se
 > volvió menos decisiva cuando la pantalla pasó a servir **también sin datos**
@@ -438,6 +444,7 @@ pero con nombre propio y con un mensaje que dice qué corregir.
 | Cancelar un encuentro (la casilla "Cancelado") | Está en un `onChange` inline del JSX y medirlo exigía tocar el markup. Ver [B-58](BACKLOG.md) |
 | Tildar "publicar el link de la reunión" en el momento | Ídem. Se mide igual en `guardado_ok.url_publica`, que es el dato que importa |
 | El foco campo por campo (el embudo fino del formulario) | Exigiría instrumentar 30+ inputs, o refactorizar el formulario. `faltantes` da la ubicación gruesa sin tocar nada |
+| Si alguien mira el ritmo del tablero (el mapa de calor, el día o la franja) | Es una sección más de «El catálogo» y no un paso con decisión detrás: se ve al bajar, sin clic que medir. `estadisticas-abrir` ya dice si alguien abre el tablero, y qué parte mira no cambia si vale construir lo que sigue — la misma disciplina que dejó sin medir el cambio de pestaña (D-271). B-1081 |
 | El sitio público, **por este módulo** | La proyección de acá (`analytics-eventos.ts`) no se hereda: si el sitio público mide, tiene la suya propia. **Y desde B-372/B-375 la tiene** — ver [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). El clic en el CTA de inscripción, que era «la única métrica que valdría la pena», es uno de los eventos propios que ya existen — hoy son **tres** declarados: `clic_inscripcion`, `filtro_sin_resultados` y, desde B-601, `clic_triptico` |
 
 ---
