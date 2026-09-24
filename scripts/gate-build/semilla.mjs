@@ -607,7 +607,9 @@ export const actividadDePrueba = (slug, estado) => ({
  *
  * Es la misma lista que `PERMITIDO_EN_EL_DETALLE` de
  * `tests/barrido-de-salidas-publicas.test.ts`, con los nombres de acá. Allá la
- * afirmación es sobre el view-model; acá, sobre el HTML que se sube.
+ * afirmación es sobre el view-model; acá, sobre el HTML que se sube. Desde
+ * B-1761 un test de aquel archivo compara las dos —y las del índice y la
+ * cartelera— con `RUTA_DEL_CENTINELA_DEL_GATE` como traducción de nombres.
  */
 export const CENTINELA_DEL_DETALLE = [
   'descripcion',
