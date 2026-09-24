@@ -24,6 +24,16 @@
  * `actividad.organizador?.instagram` y `org.instagram` son la misma lectura.
  * `crudo` es la lectura sin sanear que la salida hace **a propósito**, con su
  * motivo escrito; no hay otra manera de que un acceso crudo pase.
+ *
+ * ── Lo que no sale también se verifica (B-1840) ──────────────────────────
+ * Un `{ porque }` solo era una afirmación: que `difusion.arrobar` no llegara a
+ * Calendar lo cubrían los centinelas del barrido de salidas públicas, no este
+ * registro. Ahora cada `{ porque }` elige: `ausente`, los nombres con nombre
+ * propio que el código de esa salida **no puede nombrar** —ni como acceso, ni
+ * como clave de un `pick`, ni desestructurado—, o `sinAusente`, el motivo por el
+ * que la ausencia no se puede leer en el texto del código. El caso es un
+ * atributo compartido: `organizador.instagram` de una propuesta es, letra por
+ * letra, el acceso que la primera fila exige encontrar.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -87,7 +97,17 @@ export type EnSalida =
        */
       minimo: number;
     }
-  | { porque: string };
+  | {
+      porque: string;
+      /**
+       * Los nombres propios de la fila que el código de la salida no nombra
+       * nunca, como palabra entera. Cada uno tiene que estar en la fila: si el
+       * campo se renombra, el chequeo no puede quedar mirando un nombre muerto.
+       */
+      ausente?: string[];
+      /** Por qué la ausencia de lo que queda de la fila no se puede verificar. */
+      sinAusente?: string;
+    };
 
 export type CampoDeInstagram = { fila: string[]; salidas: Record<Salida, EnSalida> };
 
@@ -95,6 +115,13 @@ const DE_LAS_GUIAS = 'es de las guías, que no tienen actividad ni evento: sus s
 const DE_UNA_PROPUESTA =
   'es de una propuesta, que no sale a ninguna salida hasta convertirse en actividad, y entonces vale la primera fila';
 const INTERNO = 'es interno: cómo escribirle a quien cargó, no una cuenta a mostrar';
+
+const INSTAGRAM_COMPARTIDO =
+  '`instagram` es el atributo de la primera fila, que en esta salida sí aparece: su ausencia no se lee en el texto';
+const PROPUESTA_SIN_NOMBRE_PROPIO =
+  'el acceso es `organizador.instagram`, idéntico al de la primera fila, que esta salida tiene que leer: lo que lo deja afuera es que la salida recibe una actividad y no una propuesta, y eso no está en el texto del código';
+const CONTACTO_ES_PALABRA =
+  '`contacto` es una palabra del castellano que un texto de la salida puede decir sin leer el campo («medio de contacto»): buscarla como ausente daría rojo por un rótulo';
 
 export const CAMPOS_DE_INSTAGRAM: CampoDeInstagram[] = [
   {
@@ -122,20 +149,27 @@ export const CAMPOS_DE_INSTAGRAM: CampoDeInstagram[] = [
   },
   {
     fila: ['instagram', 'ofrecidaPor.instagram'],
-    salidas: { calendario: { porque: DE_LAS_GUIAS }, redes: { porque: DE_LAS_GUIAS }, ficha: { porque: DE_LAS_GUIAS } },
+    salidas: {
+      calendario: { porque: DE_LAS_GUIAS, ausente: ['ofrecidaPor'], sinAusente: INSTAGRAM_COMPARTIDO },
+      redes: { porque: DE_LAS_GUIAS, ausente: ['ofrecidaPor'], sinAusente: INSTAGRAM_COMPARTIDO },
+      ficha: { porque: DE_LAS_GUIAS, ausente: ['ofrecidaPor'], sinAusente: INSTAGRAM_COMPARTIDO },
+    },
   },
   {
     fila: ['organizador.instagram'],
     salidas: {
-      calendario: { porque: DE_UNA_PROPUESTA },
-      redes: { porque: DE_UNA_PROPUESTA },
-      ficha: { porque: DE_UNA_PROPUESTA },
+      calendario: { porque: DE_UNA_PROPUESTA, sinAusente: PROPUESTA_SIN_NOMBRE_PROPIO },
+      redes: { porque: DE_UNA_PROPUESTA, sinAusente: PROPUESTA_SIN_NOMBRE_PROPIO },
+      ficha: { porque: DE_UNA_PROPUESTA, sinAusente: PROPUESTA_SIN_NOMBRE_PROPIO },
     },
   },
   {
     fila: ['difusion.arrobar[]'],
     salidas: {
-      calendario: { porque: 'es trabajo interno del §3.2: su única salida es el texto para redes' },
+      calendario: {
+        porque: 'es trabajo interno del §3.2: su única salida es el texto para redes',
+        ausente: ['arrobar', 'difusion'],
+      },
       redes: {
         atributo: 'arrobar',
         formas: [],
@@ -148,7 +182,10 @@ export const CAMPOS_DE_INSTAGRAM: CampoDeInstagram[] = [
         ],
         minimo: 1,
       },
-      ficha: { porque: 'es trabajo interno del §3.2 y nunca sale al sitio (§5.1)' },
+      ficha: {
+        porque: 'es trabajo interno del §3.2 y nunca sale al sitio (§5.1)',
+        ausente: ['arrobar', 'difusion'],
+      },
     },
   },
   {
@@ -185,7 +222,11 @@ export const CAMPOS_DE_INSTAGRAM: CampoDeInstagram[] = [
   },
   {
     fila: ['contactoDeQuienCargo', 'contacto', "via: 'instagram'"],
-    salidas: { calendario: { porque: INTERNO }, redes: { porque: INTERNO }, ficha: { porque: INTERNO } },
+    salidas: {
+      calendario: { porque: INTERNO, ausente: ['contactoDeQuienCargo'], sinAusente: CONTACTO_ES_PALABRA },
+      redes: { porque: INTERNO, ausente: ['contactoDeQuienCargo'], sinAusente: CONTACTO_ES_PALABRA },
+      ficha: { porque: INTERNO, ausente: ['contactoDeQuienCargo'], sinAusente: CONTACTO_ES_PALABRA },
+    },
   },
 ];
 
@@ -228,6 +269,9 @@ export const filasDeLaTabla = (): string[][] => {
  * 4. Un atributo que diga «instagram» en el nombre y no esté en el registro es
  *    un campo que la tabla todavía no eligió (la mitad que la regex vieja de
  *    Calendar sí cubría).
+ * 5. Lo que la fila declara `ausente` en esta salida no aparece como palabra
+ *    entera en el código (B-1840): un acceso, una clave de `pick` o una
+ *    desestructuración lo nombran igual.
  */
 export const barrerSalida = (codigoOriginal: string, salida: Salida): string[] => {
   let codigo = codigoOriginal;
@@ -251,6 +295,17 @@ export const barrerSalida = (codigoOriginal: string, salida: Salida): string[] =
     for (const requisito of v.adentro ?? []) {
       if (!new RegExp(requisito).test(codigoOriginal)) {
         problemas.push(`${v.fila}: en ${salida} falta lo que sanea la forma aceptada: /${requisito}/`);
+      }
+    }
+  }
+  for (const { fila, salidas } of CAMPOS_DE_INSTAGRAM) {
+    const en = salidas[salida];
+    if (!('porque' in en)) continue;
+    for (const nombre of en.ausente ?? []) {
+      const re = new RegExp(`(?<![\\w$])${escaparRegex(nombre)}(?![\\w$])`, 'g');
+      const veces = codigoOriginal.match(re)?.length ?? 0;
+      if (veces > 0) {
+        problemas.push(`${fila.join(', ')}: \`${nombre}\` aparece en ${salida} (${veces}), y la fila dice que no sale ahí`);
       }
     }
   }
