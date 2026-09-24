@@ -55,11 +55,12 @@
  * exactamente el caso que lo hizo falta.
  *
  * ── Qué NO hay acá ────────────────────────────────────────────────────────
- * - **No se mide el clic.** Hoy el sitio emite tres eventos propios y sumar uno
- *   toca el vocabulario de `analyticsSitio.ts`, `EVENTOS_PROPIOS` de
- *   `functions/analitica.js` y la doc de analítica. Está anotado en el BACKLOG
- *   como ítem propio: el banner sirve sin eso, y el que quiere saber si sirve es
- *   un cambio con su propia decisión de privacidad.
+ * - **El clic se mide, pero no desde acá** (B-963): `clic_banner_ciudad`, con
+ *   la ciudad en slug y nada más, lo emite el componente. **Una ciudad nueva en
+ *   `BANNERS_DE_CIUDAD` tiene que sumarse también a `CIUDADES_CON_BANNER`** de
+ *   `analyticsSitio.ts` —una copia, no un import, por el peso de todas las
+ *   páginas—; si no, su clic llega a GA4 como `ciudad=otro`.
+ *   `tests/analyticsSitio.test.ts` compara las dos listas y lo frena antes.
  * - **No sale al `events.json` ni a ninguna proyección.** Es contenido del
  *   sitio, del lado del build, y no toca ningún documento de Firestore.
  */

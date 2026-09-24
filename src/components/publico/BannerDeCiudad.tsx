@@ -1,5 +1,6 @@
 import { foco } from '@/components/sitio/estilos';
 import { CORTE_DE_BANNER, type BannerDeCiudad as Banner } from '@/lib/bannerDeCiudad';
+import { medirSitio } from '@/lib/medicionSitio';
 
 /**
  * El banner de la ciudad filtrada, arriba del listado.
@@ -54,6 +55,24 @@ import { CORTE_DE_BANNER, type BannerDeCiudad as Banner } from '@/lib/bannerDeCi
  * mantenía vivo cuando estaba vacía. **El día que un banner venga de un documento** —cargarlo
  * desde el panel es la continuación natural de esto— **este `href` tiene que
  * pasar por `urlSegura` antes de entrar al marcado.**
+ *
+ * ── El clic se mide, con la ciudad y nada más — B-963 ─────────────────────
+ * `clic_banner_ciudad` lleva **`banner.ciudad`**, que es el slug de la fila de
+ * `BANNERS_DE_CIUDAD`, y ningún otro campo: ni `href` ni `nombre`, que son
+ * función de la ciudad y el primero es justo lo que «Clics salientes» apagado
+ * en GA4 existe para no mandar (el porqué entero está en `EVENTOS_SITIO`).
+ * `medirSitio` no manda nada si no hubo «aceptar» — la guarda del
+ * consentimiento es suya, no de este componente.
+ *
+ * **El handler va acá y no en `Buscador`**, a diferencia del tríptico, y el
+ * motivo de aquel caso no aplica: `PanelesDeAhora` lo pintan el build **y** la
+ * island, y el del build no se hidrata. Este componente lo monta **solo** la
+ * island (`Buscador`, detrás de `indice`, que recién existe en el navegador), así
+ * que el `onClick` corre en su único uso, y `medicionSitio` ya viene en ese chunk.
+ *
+ * **Mide el clic, no la rueda del mouse**: un clic del medio abre la pestaña con
+ * `auxclick` y no se cuenta. Se aceptó así — el tríptico tiene el mismo borde, y
+ * dos criterios distintos entre eventos hermanos serían peores que el faltante.
  */
 
 interface Props {
@@ -62,7 +81,13 @@ interface Props {
 
 export const BannerDeCiudad = ({ banner }: Props) => (
   <aside className="mt-6" aria-label={banner.nombre}>
-    <a href={banner.href} target="_blank" rel="noopener" className={`block ${foco}`}>
+    <a
+      href={banner.href}
+      target="_blank"
+      rel="noopener"
+      className={`block ${foco}`}
+      onClick={() => medirSitio('clic_banner_ciudad', { ciudad: banner.ciudad })}
+    >
       <picture>
         <source
           media={CORTE_DE_BANNER}
