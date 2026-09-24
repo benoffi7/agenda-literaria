@@ -4,10 +4,11 @@ import { claseBotonPrimario } from '@/components/campos/Campo';
 import { DirectorioPanel, type FichaDeDirectorio } from '@/components/admin/DirectorioPanel';
 import { LugarFormulario } from '@/components/admin/LugarFormulario';
 import { medirFuncion } from '@/lib/analytics';
-import { DIAS_PARA_REVISAR, pideRevision } from '@/lib/datoConFecha';
+import { AvisoDePrecioViejo } from '@/components/admin/AvisoDePrecioViejo';
+import { pideRevision } from '@/lib/datoConFecha';
 import { esPendienteDeRevision, type EstadoDirectorio } from '@/lib/directorios';
 import { fraseDePrecioDeLugar } from '@/lib/lugarPublico';
-import { moverLugar, observarLugares } from '@/lib/lugares';
+import { confirmarPrecioDeLugar, moverLugar, observarLugares } from '@/lib/lugares';
 import type { LugarConId } from '@/types/lugar';
 
 /**
@@ -31,7 +32,9 @@ import type { LugarConId } from '@/types/lugar';
  * El segundo agregado es el aviso de los sesenta días del precio, igual que en
  * suscripciones y con el mismo predicado compartido (`pideRevision`,
  * `lib/datoConFecha.ts`), así que «viejo» quiere decir lo mismo en las dos
- * pantallas.
+ * pantallas. Y con la misma salida (B-913): el botón «Lo revisé: sigue siendo
+ * éste» de `AvisoDePrecioViejo`, que refecha sin tocar el valor
+ * (`confirmarPrecioDeLugar`).
  */
 interface Props {
   usuario: { uid: string };
@@ -165,10 +168,12 @@ export function LugaresPanel({
               <span className={l.direccionPublica ? 'ml-1 text-tinta/55' : 'ml-1 text-azul'}>
                 · {l.direccionPublica ? 'publica la dirección' : 'sin dirección publicada'}
               </span>
+              {/*
+                B-913 — el aviso con su salida: «lo revisé y sigue siendo éste»
+                refecha el precio con el reloj del servidor sin tocar el valor.
+              */}
               {pideRevision(l.precio, ahora) && (
-                <span className="ml-1 text-acento">
-                  · conviene revisar el precio (más de {DIAS_PARA_REVISAR} días)
-                </span>
+                <AvisoDePrecioViejo onConfirmar={() => confirmarPrecioDeLugar(l.id, l)} />
               )}
             </>
           );

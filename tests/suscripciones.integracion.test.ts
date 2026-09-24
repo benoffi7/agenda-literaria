@@ -50,6 +50,7 @@ import {
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { formASuscripcion, suscripcionVacia } from '@/lib/suscripcion-literaria-schema';
+import { confirmarPrecioDeSuscripcion } from '@/lib/suscripcionesLiterarias';
 import type {
   SuscripcionLiteraria,
   SuscripcionLiterariaForm,
@@ -470,9 +471,9 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
          * dejar de pedir revisión **cambiándole el número**, o sea mintiendo.
          *
          * Lo que sigue sin poder hacerse es elegir la fecha: es la hora del
-         * servidor o nada (los otros tres casos de este bloque). Y el panel no
-         * ofrece hoy este gesto —solo refecha cuando el monto cambia—, así que
-         * hoy la puerta existe en la regla y no en la pantalla. Está anotado.
+         * servidor o nada (los otros tres casos de este bloque). Desde B-913 el
+         * panel ofrece el gesto —el botón «Lo revisé: sigue siendo éste» al lado
+         * del aviso— y el caso que lo prueba con la función del panel está abajo.
          */
         const previo = (await getDoc(doc(db(), 'suscripciones', CON_PRECIO)))
           .data() as SuscripcionLiteraria;
@@ -543,6 +544,28 @@ describe.skipIf(!vivo)('suscripciones literarias contra el emulador — B-832', 
           .data() as SuscripcionLiteraria;
         expect(d.precio!.valor.monto).toBe(25000);
         expect((d.precio!.cargadoEn as Timestamp).toMillis()).toBeGreaterThan(
+          (previo.precio!.cargadoEn as Timestamp).toMillis(),
+        );
+      });
+
+      it('el botón del panel —«lo revisé: sigue siendo éste»— entra por esa puerta (B-913)', async () => {
+        /*
+         * La misma función que llama el botón, y no una escritura a mano: lo que
+         * este caso fija es que **la forma que escribe el panel** —una sola ruta,
+         * `precio.cargadoEn`, con el sentinel— pase la regla, y que el valor
+         * quede intacto.
+         *
+         * MUTACIÓN A PROBAR: cambiar la escritura por
+         * `{ precio: { cargadoEn: serverTimestamp() } }` (sin la ruta con punto)
+         * reemplaza el mapa entero, se queda sin `valor`, y este caso da rojo.
+         */
+        const previo = (await getDoc(doc(db(), 'suscripciones', CON_PRECIO)))
+          .data() as SuscripcionLiteraria;
+        await confirmarPrecioDeSuscripcion(CON_PRECIO, previo);
+        const d = (await getDoc(doc(db(), 'suscripciones', CON_PRECIO)))
+          .data() as SuscripcionLiteraria;
+        expect(d.precio!.valor).toEqual(previo.precio!.valor);
+        expect((d.precio!.cargadoEn as Timestamp).toMillis()).toBeGreaterThanOrEqual(
           (previo.precio!.cargadoEn as Timestamp).toMillis(),
         );
       });
