@@ -765,9 +765,14 @@ y `/65` da 5,10. Ojo con medir solo contra el blanco: `/60` pasa sobre la tarjet
 `components/campos/` con `lib/contraste.ts`, igual que
 `contraste-de-superficies.test.ts` barre el sitio. Si algo tiene que quedar más
 bajo a propósito, va en la lista `EXCEPCIONES` del test **con su porqué**; el
-texto de un control deshabilitado (`disabled:`) está exento por WCAG 1.4.3. Lo que
-el test no ve: el texto sobre un tinte (`bg-acento/5`, `bg-amber-50`) y un
-`opacity-NN` en un contenedor, que multiplica la atenuación de lo de adentro.
+texto de un control deshabilitado (`disabled:`) está exento por WCAG 1.4.3. El test
+mide también sobre los **tintes** del panel (`bg-acento/5`, `bg-amber-100`,
+`bg-black/5`…), compuestos sobre la base más oscura, con los colores de Tailwind
+leídos de la paleta instalada; hoy el peor es `bg-acento/15`. Y **una fila que ya no
+rige no se apaga con `opacity`** —se multiplica con la tinta de adentro—: va con
+`claseFilaApagada` de `campos/Campo.tsx`, y el test frena un `opacity-NN` suelto
+(D-1105). Lo que no ve: una tinta con nombre sobre un tinte heredado de un ancestro
+(B-1830).
 
 > Los dos comparten **una sola hoja de fuentes** (`Base.astro`), así que bajar una
 > familia solo para el panel se lo cobra a las cinco páginas públicas. Es el motivo
