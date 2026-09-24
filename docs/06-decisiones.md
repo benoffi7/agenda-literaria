@@ -12114,6 +12114,8 @@ y `arrobaPublicable` arriba), `functions/handle-instagram.js`,
 
 ## D-767 · El Instagram de una actividad se corrige al cargarlo, y no se frena al publicarlo
 
+> **Nota de B-1190 (2026-09-24):** el aviso explícito que esta decisión dejaba pendiente ya existe — [D-900](#d-900--el-instagram-que-no-se-reconoce-se-avisa-con-un-cartel-y-el-cartel-no-frena). Sigue sin frenar nada.
+
 > **Nota de B-1160 (2026-09-23):** el caso `casa#brandon` que esta decisión dejaba a la vista en el campo ya no se recorta — el saneador corta solo detrás de `instagram.com/`. El criterio de corregir al cargar y no frenar al publicar no cambia.
 
 **B-1144, 2026-09-22. Decisión del dueño, contra la recomendación y con el costo
@@ -12710,3 +12712,37 @@ viaje de ida y vuelta, y Storage no tiene precondición. El peor caso es el de
 siempre en ese orden: dos copias de la misma foto hasta la corrida siguiente.
 
 ---
+
+## D-900 · El Instagram que no se reconoce se avisa con un cartel, y el cartel no frena
+
+**B-1190, 2026-09-24. El dueño tomó la opción recomendada.**
+
+D-767 decidió «no frenar», no «no avisar». Hasta acá, lo único que delataba un
+valor que `handleInstagram` no reconoce era que el campo no cambiaba, y desde
+B-1144 eso se lee al revés: con un campo que se corrige solo, «quedó como lo
+pegué» parece «ya estaba bien». Y ese valor sale crudo al pie del posteo para
+redes (B-1142).
+
+**La decisión:** debajo de los dos campos de Instagram de «Quién» aparece «No lo
+reconocimos como una cuenta de Instagram: se va a publicar tal cual» cuando el
+valor no está vacío y `handleInstagram` devuelve `null` — la condición de
+`conHandle` dada vuelta: lo que se va a guardar y publicar tal cual.
+
+**Tres detalles que son parte de la decisión, no del estilo:**
+
+- **No es un `error` de `Campo`.** Si lo fuera, marcaría `data-campo-con-error` y
+  el scroll de B-184 lo trataría como rechazo del guardado: sería frenar por la
+  puerta de atrás, que es lo que D-767 no quiere.
+- **`role="status"`, no `alert`.** El cartel aparece también al abrir una
+  actividad que ya lo tenía guardado, y un `alert` al montar interrumpe al lector
+  de pantalla por algo que nadie acaba de hacer.
+- **No aparece mientras se tipea**, por el mismo argumento por el que el saneo va
+  en el `onBlur`: a medio escribir el valor todavía no es nada.
+
+**Lo que no cambia:** el criterio distinto del de las cuatro guías, que sí frenan
+el publicado, sigue siendo el costo aceptado de D-767. Que los criterios de
+Instagram del repo no estén en una misma tabla sigue siendo B-1191.
+
+**Dónde:** `src/components/admin/formulario/SeccionQuien.tsx` (`AvisoInstagram`),
+`tests/seccionQuien.render.test.tsx`.
+

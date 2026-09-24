@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'instagram-que-no-reconocemos-se-avisa',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'El campo de Instagram avisa cuando no reconoce la cuenta',
+    detalle:
+      'Si en el Instagram del organizador o de quien está adelante ponés algo que no parece una ' +
+      'cuenta —un link a un posteo, «Casa Brandon / IG»—, al salir del campo aparece un aviso ' +
+      'abajo. No frena nada: la actividad se publica igual, pero ese texto sale tal cual.',
+    donde: 'Formulario de la actividad, sección «Quién».',
+  },
+  {
     id: 'publicador-crea-etiquetas',
     fecha: '2026-09-23',
     version: '1.11.0',
