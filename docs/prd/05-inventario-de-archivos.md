@@ -315,6 +315,21 @@ exclusiva de archivos**.
 14. `/guia/librerias` de punta a punta: tipo, schema, reglas, panel, listado, ficha,
     JSON, sitemap, `BookStore`, rebuild.
 
+> **Dónde quedó escrita la tajada 2 (B-899, 2026-09-24).** El paso 14 tiene su
+> doc desde B-901 (`04-funcionalidades.md` § «Librerías…» y § «`/guia/librerias`…»,
+> `12-sitio-publico.md` en la tabla de rutas y en la de JSON-LD). Los pasos 12 y 13
+> la tenían solo en los docblocks —`src/lib/directorios.ts`,
+> `src/components/admin/DirectorioPanel.tsx`, `src/pages/guia/index.astro`, el
+> comentario de `RUTA_GUIA` en `src/lib/sitemap.ts`— y la fila de `/guia` en
+> `12-sitio-publico.md`. Les faltaba una sección propia en `04-funcionalidades.md`
+> (la pestaña «Guía», la página `/guia` y la bandeja genérica, descrita una vez y no
+> dentro de librerías), el porqué de `/guia` en el sitemap en `12-sitio-publico.md`,
+> y dos decisiones en [`06-decisiones.md`](../06-decisiones.md): **D-990**
+> (`/guia` al sitemap desde el día uno, y en qué se diferencia de `/proponer`) y
+> **D-991**
+> (la bandeja **recibe** los datos en vez de leerlos). Las cuatro cosas entran con
+> B-899.
+
 **Tajada 3 — suscripciones (B-832)** · **Tajada 4 — lugares (B-833)**
 Las dos calcadas de la 2, sin el paso 13 (la Guía ya existe) y **sumando una fila a
 `/guia`** cada una. En lugares, `direccionPublica` y su par en el historial (B-819)
