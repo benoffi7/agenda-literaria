@@ -6,9 +6,9 @@
 | Alcance | el **sitio público** (`agendaleh.ar`). La analítica del **panel** ya existe y está en [`09-analitica.md`](09-analitica.md) |
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
-| Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
+| Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los **cuatro** eventos propios —`clic_inscripcion` y `filtro_sin_resultados` en [§7](#7--el-consentimiento-implementado-b-376), `clic_triptico` en [§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), `clic_banner_ciudad` en [§7.7](#77--el-cuarto-evento-propio-el-banner-de-una-ciudad-b-963)—, definidos en `EVENTOS_SITIO` (`src/lib/analyticsSitio.ts`) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
 | **Qué falta hoy** | **Ya mide en producción**: B-480 se resolvió el 2026-09-03 (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)) y los **cinco pasos de consola** del [§9.4](#94--los-pasos-de-consola-del-dueño) están hechos y verificados de punta a punta (B-790, 2026-09-07). Quedan **el mes de datos** —que ninguna de las dos APIs mide para atrás— y el **paso 7**, registrar `eje` y `slug` como dimensiones, que tampoco es retroactivo |
-| También construido, el 2026-09-03 a la tarde | las **tipografías autoalojadas** ([§7.4ter](#74ter--las-tipografías-autoalojadas-b-481), B-481: cero terceros en el load), el **evento del tríptico** ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), B-601, sin enganche todavía) y la **lectura de GA4 + Search Console al panel** ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373), B-374/B-373) |
+| También construido, el 2026-09-03 a la tarde | las **tipografías autoalojadas** ([§7.4ter](#74ter--las-tipografías-autoalojadas-b-481), B-481: cero terceros en el load), el **evento del tríptico** ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), B-601; se enganchó el 2026-09-07) y la **lectura de GA4 + Search Console al panel** ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373), B-374/B-373) |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
 ---
@@ -714,6 +714,12 @@ un panel y el evento no— va junto con el enganche, y el parche está escrito e
 `.estado/analitica-sitio.md`. Mientras tanto la degradación es visible y no
 silenciosa: un panel nuevo llega a GA4 como `panel=otro`.
 
+> ✅ **Superado el 2026-09-07 (B-601):** el enganche está puesto —el handler va
+> en `Buscador.tsx`, `onEncuentro={(panel) => medirSitio('clic_triptico', { panel })}`—
+> y desde B-791 la red que el párrafo de arriba daba por faltante también existe:
+> el `Record<ClaveDePanel, PanelMedible>` de `tests/analyticsSitio.test.ts`. El
+> aviso de abajo queda como se escribió, para que se lea contra su original.
+>
 > ⚠️ **Estado real al 2026-09-03: el evento está declarado y testeado, y el
 > enganche no está puesto.** Este frente trabajó sobre una rama que todavía no
 > tiene B-600 —`PanelesDeAhora.tsx` y `ahoraPublico.ts` viven en la rama de ese
