@@ -6,15 +6,23 @@ import {
   MINIMO_PARA_ESCALA,
   NIVELES,
   SEMANAS_DEL_MAPA,
+  cuantosEncuentros,
   cuentaEnElRitmo,
   encuentrosPorDia,
+  encuentrosPorVenir,
+  fechaCorta,
   franjaDe,
+  hayEscala,
   horaEnZona,
   indiceDeSemana,
   mapaDeCalor,
   nivelDeIntensidad,
   porDiaDeSemana,
   porFranja,
+  rangosDeLaEscala,
+  ritmoDelCatalogo,
+  semanasVacias,
+  textoDeCelda,
 } from '@/lib/ritmoDelCatalogo';
 // Se importan a propósito: lo que estos tests atan es que el ritmo **no** tenga
 // su propio aplanado de sesiones ni su propia regla de «qué encuentro cuenta».
@@ -357,5 +365,102 @@ describe('la franja horaria (B-706)', () => {
     const reparto = porFranja(encuentros);
     expect(reparto).toEqual({ manana: 1, tarde: 0, noche: 2 });
     expect(Object.values(reparto).reduce((s, n) => s + n, 0)).toBe(3);
+  });
+});
+
+describe('lo que la pantalla dibuja (B-1081)', () => {
+  it('las dos vistas de tiempo suman exactamente «Encuentros por venir» del encabezado', () => {
+    /*
+     * La atadura que B-1081 agrega. El día y la franja se calculan sobre
+     * `encuentrosPorVenir`, y el encabezado del tablero cuenta sus «por venir»
+     * con su propio filtro: si divergen, la misma pantalla dice «40 por venir»
+     * arriba y reparte 38 abajo. El fixture tiene uno que ya pasó, uno que está
+     * pasando ahora (termina después de `ahora`: sigue por venir), un cancelado
+     * y una actividad cancelada, así que la igualdad no es trivial.
+     */
+    const miercoles = new Date('2026-09-09T22:30:00Z'); // 19:30 del 9 en BA
+    const actividades = [
+      acto('viva', [
+        '2026-09-08T22:00:00Z', // ya pasó
+        '2026-09-09T22:00:00Z', // está pasando: termina a las 21
+        '2026-09-15T13:00:00Z',
+        '2026-10-20T22:00:00Z',
+      ]),
+      acto('cancelada', ['2026-09-16T22:00:00Z'], { estado: 'cancelado' }),
+      acto('con-sesion-cancelada', [], {
+        sesiones: [sesion('2026-09-17T22:00:00Z', { cancelada: true })],
+      } as Partial<ActividadConId>),
+    ];
+    const ritmo = ritmoDelCatalogo(encuentrosDe(actividades), miercoles);
+    const encabezado = estadoDelCatalogo(actividades, miercoles).encuentros.porVenir;
+
+    expect(ritmo.porVenir).toBe(encabezado);
+    expect(ritmo.porVenir).toBe(3);
+    expect(ritmo.porDia.reduce((s, n) => s + n, 0)).toBe(encabezado);
+    expect(Object.values(ritmo.porFranja).reduce((s, n) => s + n, 0)).toBe(encabezado);
+  });
+
+  it('`encuentrosPorVenir` deja afuera lo que ya terminó, no lo que ya empezó', () => {
+    const ahora = new Date('2026-09-09T22:30:00Z');
+    const encuentros = encuentrosDe([acto('a', ['2026-09-08T22:00:00Z', '2026-09-09T22:00:00Z'])]);
+    expect(encuentrosPorVenir(encuentros, ahora).map((e) => e.dia)).toEqual(['2026-09-09']);
+  });
+
+  it('la leyenda dice exactamente lo que pintan las celdas, para todo máximo', () => {
+    /*
+     * `rangosDeLaEscala` es la inversa de `nivelDeIntensidad`, y una leyenda
+     * que dice «3 a 4» sobre celdas que pintan 3 a 5 es un mapa que miente. Se
+     * recorren todos los máximos hasta 40 y todas las cantidades: cada una cae
+     * en exactamente un rango, y ese rango es el de su nivel.
+     */
+    for (let maximo = 1; maximo <= 40; maximo++) {
+      const rangos = rangosDeLaEscala(maximo);
+      for (let n = 1; n <= maximo; n++) {
+        const donde = rangos.filter((r) => n >= r.desde && n <= r.hasta);
+        expect(donde, `${n} de ${maximo}`).toHaveLength(1);
+        expect(donde[0]!.nivel, `${n} de ${maximo}`).toBe(nivelDeIntensidad(n, maximo));
+      }
+    }
+    expect(rangosDeLaEscala(0)).toEqual([]);
+  });
+
+  it('sin escala hay un solo rango, y `hayEscala` cambia justo en el piso', () => {
+    expect(rangosDeLaEscala(2)).toEqual([{ nivel: 1, desde: 1, hasta: 2 }]);
+    expect(rangosDeLaEscala(MINIMO_PARA_ESCALA)).toHaveLength(NIVELES);
+    const conMaximo = (maximo: number) => ({ ...mapaDeCalor([], LUNES), maximo });
+    expect(hayEscala(conMaximo(MINIMO_PARA_ESCALA - 1))).toBe(false);
+    expect(hayEscala(conMaximo(MINIMO_PARA_ESCALA))).toBe(true);
+  });
+
+  it('una semana sin nada por venir es vacía aunque su lunes, que ya pasó, tuviera algo', () => {
+    const jueves = new Date('2026-09-10T15:00:00Z');
+    const mapa = mapaDeCalor(
+      encuentrosDe([acto('a', ['2026-09-07T22:00:00Z', '2026-09-22T22:00:00Z'])]),
+      jueves,
+    );
+    const vacias = semanasVacias(mapa);
+    // La del 7 tuvo un encuentro el lunes y nada de hoy en adelante: vacía.
+    expect(vacias).toContain('2026-09-07');
+    // La del 21 tiene el martes 22: no.
+    expect(vacias).not.toContain('2026-09-21');
+    // Control: todas las demás están vacías.
+    expect(vacias).toHaveLength(SEMANAS_DEL_MAPA - 1);
+  });
+
+  it('las celdas se dicen en palabras, con la fecha entera', () => {
+    const jueves = new Date('2026-09-10T15:00:00Z');
+    const [lunes, , , hoy, viernes] = mapaDeCalor(
+      encuentrosDe([acto('a', ['2026-09-11T22:00:00Z', '2026-09-11T23:00:00Z'])]),
+      jueves,
+    ).semanas[0]!;
+    expect(textoDeCelda(lunes!)).toBe('lunes 7 de septiembre: ningún encuentro (ya pasó)');
+    expect(textoDeCelda(hoy!)).toBe('jueves 10 de septiembre: ningún encuentro (hoy)');
+    expect(textoDeCelda(viernes!)).toBe('viernes 11 de septiembre: 2 encuentros');
+    expect(cuantosEncuentros(1)).toBe('1 encuentro');
+  });
+
+  it('la fecha corta es día/mes sin ceros', () => {
+    expect(fechaCorta('2026-09-07')).toBe('7/9');
+    expect(fechaCorta('2026-10-28')).toBe('28/10');
   });
 });

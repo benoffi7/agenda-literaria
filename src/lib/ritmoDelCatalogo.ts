@@ -1,5 +1,5 @@
 import { ZONA, claveDeDia, diaDeSemana, diaDesplazado } from '@/lib/fechasPublicas';
-import type { Encuentro } from '@/lib/calendarioPanel';
+import { diaLegible, yaPaso, type Encuentro } from '@/lib/calendarioPanel';
 
 /**
  * El **ritmo** del catálogo: cuándo pasan las cosas — B-704, B-705, B-706.
@@ -257,4 +257,121 @@ export const porFranja = (encuentros: Encuentro[]): Record<Franja, number> => {
     cuenta[franjaDe(e.inicio)] += 1;
   }
   return cuenta;
+};
+
+// ── Lo que la pantalla necesita para dibujarlo — B-1081 ────────────
+
+/**
+ * Los encuentros que todavía no terminaron, con la **misma** regla que el
+ * número «Encuentros por venir» del encabezado del tablero.
+ *
+ * `yaPaso` de `calendarioPanel.ts` y no un `fin < ahora` escrito acá: es el
+ * criterio de «ya pasó» de la grilla del mes, y el encabezado cuenta con el
+ * mismo (`fin >= ahora`). `tests/ritmo-del-catalogo.test.ts` ata la suma de las
+ * dos vistas de tiempo a ese número: si divergen, el tablero diría «40 por
+ * venir» arriba y repartiría 38 abajo, en la misma pantalla.
+ */
+export const encuentrosPorVenir = (encuentros: Encuentro[], ahora: Date): Encuentro[] =>
+  encuentros.filter((e) => cuentaEnElRitmo(e) && !yaPaso(e, ahora));
+
+/**
+ * ¿El mapa tiene escala de tres niveles, o solo «hay o no hay»?
+ *
+ * Es la misma frontera que `nivelDeIntensidad` usa por dentro, dicha con nombre
+ * para que la pantalla no la vuelva a escribir: la leyenda y el aviso de «con
+ * tan pocos no hay escala» tienen que cambiar exactamente cuando cambian los
+ * colores de las celdas.
+ */
+export const hayEscala = (mapa: MapaDeCalor): boolean => mapa.maximo >= MINIMO_PARA_ESCALA;
+
+/**
+ * Qué cantidades pinta cada nivel, para la leyenda: `{ nivel, desde, hasta }`.
+ *
+ * Es la inversa de `nivelDeIntensidad` y el test la recorre entera contra ella:
+ * una leyenda que dice «3 a 4» sobre celdas que pintan de 3 a 5 es un mapa que
+ * miente con la mejor intención. Sin escala devuelve un solo rango —de 1 al
+ * máximo—, que es el «hay» de «hay o no hay».
+ */
+export const rangosDeLaEscala = (
+  maximo: number,
+): { nivel: number; desde: number; hasta: number }[] => {
+  if (maximo <= 0) return [];
+  if (maximo < MINIMO_PARA_ESCALA) return [{ nivel: 1, desde: 1, hasta: maximo }];
+  return Array.from({ length: NIVELES }, (_, i) => ({
+    nivel: i + 1,
+    desde: Math.floor((i * maximo) / NIVELES) + 1,
+    hasta: Math.floor(((i + 1) * maximo) / NIVELES),
+  }));
+};
+
+/**
+ * Las semanas **sin nada por venir**: la clave de su lunes.
+ *
+ * Es la pregunta de B-704 dicha en texto —«qué semanas están vacías»—, y es
+ * también el equivalente del mapa para quien no lo ve: un lector de pantalla
+ * recorre la tabla celda por celda, pero la conclusión la tiene que poder leer
+ * de un golpe, igual que quien mira los colores.
+ *
+ * Los días de esta semana que ya pasaron **no** la salvan: si el lunes hubo un
+ * encuentro y de hoy al domingo no hay nada, la semana está vacía para lo que
+ * importa, que es qué salir a buscar.
+ */
+export const semanasVacias = (mapa: MapaDeCalor): string[] =>
+  mapa.semanas
+    .filter((semana) => semana.every((d) => d.yaPaso || d.cantidad === 0))
+    .map((semana) => semana[0]!.clave);
+
+/** `'28/9'`: el encabezado de una fila del mapa, que en un teléfono tiene 48px. */
+export const fechaCorta = (clave: string): string => {
+  const [, mes, dia] = clave.split('-');
+  return `${Number(dia)}/${Number(mes)}`;
+};
+
+/** «2 encuentros», «1 encuentro», «ningún encuentro». */
+export const cuantosEncuentros = (n: number): string =>
+  n === 0 ? 'ningún encuentro' : `${n} ${n === 1 ? 'encuentro' : 'encuentros'}`;
+
+/**
+ * Lo que dice una celda en palabras: el `title` al pasar el mouse y el texto
+ * que lee un lector de pantalla.
+ *
+ * Con la fecha entera y no solo el número: la celda muestra «2» porque la fila y
+ * la columna ya dicen qué día es, pero quien recorre la tabla de a una celda no
+ * siempre escucha los encabezados.
+ */
+export const textoDeCelda = (d: DiaDelMapa): string =>
+  `${diaLegible(d.clave)}: ${cuantosEncuentros(d.cantidad)}` +
+  (d.esHoy ? ' (hoy)' : d.yaPaso ? ' (ya pasó)' : '');
+
+/** Todo lo que el tablero dibuja del ritmo, calculado de una vez. */
+export interface RitmoDelCatalogo {
+  mapa: MapaDeCalor;
+  /** Cuántos encuentros por venir hay: el denominador de las dos vistas de tiempo. */
+  porVenir: number;
+  /** De lunes a domingo, sobre los encuentros por venir. */
+  porDia: number[];
+  /** Sobre los encuentros por venir. */
+  porFranja: Record<Franja, number>;
+  semanasVacias: string[];
+}
+
+/**
+ * El ritmo entero, para la pantalla.
+ *
+ * **El mapa y las dos vistas de tiempo no miran lo mismo, y es a propósito.** El
+ * mapa es una ventana de ocho semanas —contesta «qué semanas de las próximas
+ * están vacías»—; el día y la franja miran **todo lo que queda por venir**,
+ * porque «los martes están saturados» es una afirmación sobre la oferta y no
+ * sobre dos meses. Por eso la pantalla dice sobre qué es cada una.
+ */
+export const ritmoDelCatalogo = (encuentros: Encuentro[], ahora: Date): RitmoDelCatalogo => {
+  const mapa = mapaDeCalor(encuentros, ahora);
+  const futuros = encuentrosPorVenir(encuentros, ahora);
+  return {
+    mapa,
+    porVenir: futuros.length,
+    porDia: porDiaDeSemana(futuros),
+    porFranja: porFranja(futuros),
+    semanasVacias: semanasVacias(mapa),
+  };
 };
