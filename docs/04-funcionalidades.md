@@ -2338,12 +2338,21 @@ Las primeras dos páginas del sitio público terminadas. No leen `events.json` n
 Firestore: son texto, y por eso pudieron escribirse antes que el listado.
 
 **`/ayuda`** le habla a **quien busca una actividad**, no a quien la carga — la guía
-del panel es otra cosa y vive adentro del panel. 21 preguntas en cinco
+del panel es otra cosa y vive adentro del panel. 22 preguntas en cinco
 grupos, todas abiertas, con un ancla estable cada una (`/ayuda#a-la-gorra`) para
 poder mandar el link de una respuesta suelta. Contesta, entre otras: que esto **no
 es una plataforma de inscripción**, qué es cada tipo de actividad, qué quiere decir
 «a la gorra», por qué un ciclo es una tarjeta y no ocho, y **por qué el link de la
 reunión no está publicado** (§5.1, trampa 5).
+
+**Desde B-902 la Guía tiene su propia pregunta**, «¿Esto solo tiene actividades?»,
+justo después de «¿Qué es esto?» (ancla `/ayuda#la-guia`). Antes era el tercer
+párrafo de esa primera respuesta, y por contabilidad: la vigesimosegunda pregunta
+obligaba a corregir los conteos de la doc. Las secciones que nombra **no están
+escritas**: salen de `directoriosDisponibles()`, las mismas que linkea `/guia` y en
+el mismo orden. El párrafo viejo no las enumeraba para no llevar una cuenta más, y
+aun así había quedado corto: decía tres cuando B-960 ya había sumado bibliotecas.
+Enlaza `/guia` y no cada sección.
 
 **`/contacto`** son dos `mailto:` con el asunto ya puesto, que es lo que permite
 separar una sugerencia de un error en la bandeja sin abrirlos. Cada motivo dice qué
@@ -2488,6 +2497,28 @@ Dos cosas que no se ven mirando la página:
 búsqueda que las actividades) y **su entrada es el pie, no el encabezado**: la
 barra de arriba es para quien vino por una actividad. Ofrecer espacio y *servir*
 un anuncio siguen siendo dos cosas distintas — la segunda es **B-377**.
+
+### La Guía en el pie y en el `/404` (B-900)
+
+Las dos salidas del circuito que el § 2.1 del inventario
+(`docs/prd/05-inventario-de-archivos.md`) listaba y la tajada 2 dejó afuera por
+propiedad de archivos.
+
+- **El pie gana una fila, «Guía», y no cuatro.** El inventario le pide al pie «los
+  mismos destinos» que al encabezado, y el encabezado tiene una sola pestaña. Las
+  secciones las lista `/guia`, que es donde se deriva cuáles existen, y `/guia`
+  siempre tiene algo que decir —por eso está en el sitemap desde el día uno—, así
+  que es el único destino de la Guía que el pie puede ofrecer en todas las páginas
+  sin mirar los datos.
+- **El `/404` sugiere sección por sección, y solo las que tienen algo.** La tira
+  «Explorá por» gana un último grupo, «En la Guía», con cada sección que cumple las
+  dos condiciones: existe (`disponible` en `DIRECTORIOS`, el flag que también la
+  hace linkeable en `/guia` y la mete en el sitemap) y **su listado no está vacío**.
+  Es el mismo recorte con el que la tira ya deja afuera los hubs vacíos: un enlace
+  desde una página de error tiene que llevar a algo. La página recibe del lector
+  **cuántas** fichas tiene cada sección (`fichasPorDirectorio`), no las fichas, y
+  el grupo lo arma `grupoDeLaGuia` en `src/lib/noEncontrado.ts`, que es puro y se
+  prueba sin Firestore. Ninguna cifra se publica: los conteos deciden, no se dicen.
 
 ### `/guia/librerias` y `/guia/librerias/{slug}` — el directorio de librerías (B-901)
 
