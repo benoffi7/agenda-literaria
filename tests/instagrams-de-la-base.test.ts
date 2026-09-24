@@ -1,131 +1,111 @@
 /**
- * **La copia del normalizador de handles no puede divergir del original.**
+ * **El script de los Instagram de la base usa el normalizador único** — B-928,
+ * B-1180, B-1331.
  *
  * `scripts/instagrams-de-la-base.mjs` arma una página local con todas las
- * cuentas de Instagram de la base. Necesita la misma normalización que el sitio
- * —`handleInstagram`, en `src/lib/enlaceSeguro.ts` (vivía en `detallePublico.ts`
- * hasta B-830, que lo mudó para que la bandeja de propuestas no arrastrara el
- * view-model público entero)— y **no la puede importar**:
- * un `.mjs` que corre con `node` a secas no resuelve los alias `@/` de
- * TypeScript, y arrastrar un loader para un script de una página no vale.
+ * cuentas de Instagram de la base, y lo que decide qué cuenta es cada una es
+ * `handleInstagram`. **Hay una sola implementación**: vive en
+ * `functions/handle-instagram.js` (B-1145), porque la Function de Calendar
+ * publica el mismo `@casabrandon` que la ficha y `functions/` no puede importar
+ * `src/` (D-20). Todo lo demás es reexportación:
  *
- * Es la misma restricción que **D-20** ya había resuelto para las Functions, y se
- * resuelve igual: hay una copia, y este archivo la ata.
+ * ```
+ * scripts/instagrams-de-la-base.mjs
+ *   → scripts/handle-instagram.mjs        (fachada, B-928)
+ *     → src/lib/handle-instagram.mjs      (fachada, B-1180)
+ *       → functions/handle-instagram.js   (la implementación)
+ * ```
  *
- * ── Por qué esta copia importa más que la mayoría ─────────────────────────
- * Porque lo que las dos funciones deciden es **a qué cuenta apunta un link**. El
- * docblock del original lo dice: «un handle con una barra adentro armaría una URL
- * a otra cuenta». Si la copia se afloja —por ejemplo dejando pasar una barra— la
- * página local mandaría a un perfil que no es el de esa actividad, y quien la usa
- * la usa **para seguir cuentas**: seguiría la equivocada.
+ * ── Qué decía esto antes, y por qué dejó de probar nada ───────────────────
+ * Hasta B-928 el script tenía una **copia** del normalizador, y este archivo la
+ * ataba al original corriendo las dos contra una batería de entradas y
+ * exigiendo que contestaran lo mismo. La red funcionó —se puso en rojo cuando
+ * B-928 agregó al original la tolerancia al `?igsh=…` y la copia se quedó
+ * atrás— y la respuesta fue borrar la copia. Pero el caso de equivalencia
+ * sobrevivió, y desde entonces comparaba **la función consigo misma**: pasaba
+ * siempre, con copia o sin ella. B-1331 lo cambió por lo que hoy tiene
+ * contenido, que es **que la cadena termine en el módulo único**.
  *
- * ── Se comparan las dos, no una contra una tabla ──────────────────────────
- * La batería de abajo es de entradas, no de resultados esperados: lo que se exige
- * es que **contesten lo mismo**. Una tabla de resultados escritos a mano se puede
- * actualizar de un lado y quedar de acuerdo con la copia y en desacuerdo con el
- * sitio, que es exactamente el bug que este archivo previene.
+ * ── Qué cubre esto y qué cubre `tests/calendario.test.ts` ─────────────────
+ * Allá (B-1180) está vigilado el eslabón `src/lib/handle-instagram.mjs` →
+ * `functions/`: el fuente de esa fachada, y la identidad de lo que llega por
+ * `@/lib/enlaceSeguro` —el camino de la ficha—. **No se repite acá.** Lo que
+ * ese test no mira es el camino **del script**, que entra por otra fachada, y
+ * eso es lo único que se verifica abajo: el fuente de
+ * `scripts/handle-instagram.mjs`, la identidad de lo que exporta, y que la
+ * página lo importe de ahí.
+ *
+ * ── Por qué esto importa más que la mayoría ───────────────────────────────
+ * Porque lo que el normalizador decide es **a qué cuenta apunta un link**: un
+ * handle con una barra adentro armaría una URL a otra cuenta. Quien usa esta
+ * página la usa **para seguir cuentas**: con un normalizador propio y flojo,
+ * seguiría la equivocada.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { handleInstagram as delScript } from '../scripts/handle-instagram.mjs';
-import { handleInstagram as delSitio } from '@/lib/detallePublico';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
+import { handleInstagram as elUnico } from '../functions/handle-instagram.js';
 
-/**
- * Las formas en que un Instagram llega cargado, más las que tienen que ser
- * rechazadas.
- *
- * Las dos últimas son **la forma** de dos datos reales que el script encontró al
- * correrlo el 2026-09-07: alguien había cargado un nombre y alguien un mail en el
- * campo de Instagram. Son justo lo que el filtro tiene que rechazar sin romperse.
- *
- * **El mail va inventado y no el real, y eso lo cobró un test.** El primer intento
- * pegó acá la casilla de producción tal cual, y
- * `tests/sin-datos-personales.test.ts` lo puso en rojo: es **la casilla de un
- * tercero en un repo público**, o sea exactamente la fuga de B-246 (una casilla
- * ajena versionada, tres días). Lo que este caso necesita es la **forma** —algo
- * con arroba y un punto, que el alfabeto de Instagram rechaza—, no el valor. Un
- * dato real vale más que uno inventado **salvo cuando el dato real es de otra
- * persona**.
- */
-const ENTRADAS = [
-  '@casabrandon',
-  'casabrandon',
-  'https://instagram.com/casabrandon',
-  'https://www.instagram.com/casabrandon/',
-  'HTTP://INSTAGRAM.COM/CasaBrandon',
-  'instagram.com/casabrandon',
-  '  @casabrandon  ',
-  'casa.brandon',
-  'casa_brandon',
-  'agenda.leh',
-  'casabrandon/',
-  'casabrandon//',
-  '@',
-  '',
-  '   ',
-  // Lo que tiene que quedar afuera: una barra adentro armaría otra URL.
-  'casabrandon/otracuenta',
-  'instagram.com/casabrandon/otracuenta',
-  '@casa brandon',
-  'casa-brandon',
-  'ñoño',
-  'a'.repeat(31),
-  'a'.repeat(30),
-  // La forma de dos datos reales que el script encontró (2026-09-07). El nombre va
-  // tal cual —es el nombre público de un festival— y el mail va inventado: ver
-  // arriba.
-  'Festival Argentino de Historieta',
-  'unclubdelectura@example.com',
-];
-
-/**
- * **Ya no hay dos normalizadores** — B-928.
- *
- * Hasta acá `scripts/handle-instagram.mjs` era una **copia**, y estos casos
- * corrían las dos contra la misma batería exigiendo que contestaran igual. La red
- * funcionó: se puso en rojo apenas B-928 agregó al módulo la tolerancia al
- * `?igsh=…` que pega el botón «Compartir» y el script se quedó atrás.
- *
- * **Y eso mismo mostró su límite**: un test de equivalencia avisa *después* de
- * que alguien arregló una sola de las dos, y el arreglo hay que escribirlo dos
- * veces igual. La implementación pasó a `src/lib/handle-instagram.mjs` —un `.mjs`
- * que un script de Node plano sí puede importar, como `slugify` y `geografia`— y
- * el archivo del script quedó como fachada.
- *
- * Lo que se verifica ahora es **que siga sin haber copia**, que es la afirmación
- * que hoy tiene contenido. Comparar la función consigo misma no prueba nada.
- */
-describe('el normalizador es uno solo — B-928', () => {
-  it('el archivo del script solo reexporta: no tiene implementación propia', () => {
+describe('el script usa el normalizador único — B-928, B-1180, B-1331', () => {
+  it('la fachada del script solo reexporta: no tiene implementación propia', () => {
     const fachada = readFileSync('scripts/handle-instagram.mjs', 'utf8');
     expect(fachada).toContain("export { handleInstagram } from '../src/lib/handle-instagram.mjs'");
     /*
-     * MUTACIÓN PROBADA: volver a pegar el cuerpo en el script deja este caso en
-     * rojo. Las tres señales son las partes de la regla que una copia repetiría.
+     * Las señales son las partes de la regla que una copia repetiría, más la
+     * flecha o el `function` de un envoltorio. Se buscan **sin comentarios**,
+     * como en el caso hermano de `calendario.test.ts`, para que el docblock
+     * pueda nombrarlas.
+     *
+     * El caso de identidad de abajo es el que decide; este está para que el
+     * rojo diga **dónde** se reabrió la copia.
      */
-    for (const señal of ['.replace(', '.trim()', 'A-Za-z0-9._']) {
-      expect(fachada, `el script volvió a tener implementación propia: ${señal}`).not.toContain(
+    const codigo = sinComentarios(fachada);
+    for (const señal of ['.replace(', '.trim()', 'A-Za-z0-9._', '=>', 'function']) {
+      expect(codigo, `el script volvió a tener implementación propia: ${señal}`).not.toContain(
         señal,
       );
     }
   });
 
-  it('y lo que importa el script es exactamente lo que usa el sitio', () => {
-    const distintas = ENTRADAS.filter(
-      (entrada) => delScript(entrada) !== delSitio(entrada),
-    ).map((entrada) => `«${entrada}» → script: ${delScript(entrada)} / sitio: ${delSitio(entrada)}`);
-
-    expect(distintas, 'la fachada dejó de apuntar al módulo del sitio').toEqual([]);
+  /**
+   * **Identidad, no equivalencia.** Es lo que reemplaza a la batería de B-928:
+   * aquella exigía que el script contestara lo mismo que el sitio, y con la
+   * fachada contestaba lo mismo por ser la misma función. `toBe` exige
+   * justamente eso —que sea **el mismo objeto** que exporta `functions/`—, así
+   * que un cuerpo propio o un envoltorio lo ponen en rojo aunque contesten
+   * igual para toda entrada.
+   *
+   * MUTACIÓN PROBADA (B-1331): reemplazar la reexportación de
+   * `scripts/handle-instagram.mjs` por un cuerpo propio que delega en el módulo
+   * único —contesta igual para toda entrada— deja en rojo este caso y el de
+   * arriba. El viejo caso de equivalencia seguía en verde con esa mutación.
+   */
+  it('y lo que exporta es exactamente la función de `functions/`, por identidad', () => {
+    expect(delScript, 'la fachada del script dejó de apuntar al módulo único').toBe(elUnico);
   });
 
-  it('y las dos rechazan lo que armaría una URL a otra cuenta', () => {
-    /*
-     * El control positivo de la batería: si las dos funciones se rompieran igual
-     * —devolviendo siempre `null`, por ejemplo— el caso de arriba pasaría igual.
-     * Acá se afirma que el filtro **hace algo**: acepta lo que es un handle y
-     * rechaza lo que no.
-     */
+  it('y la página importa el normalizador por la fachada, no se arma uno', () => {
+    const codigo = sinComentarios(readFileSync('scripts/instagrams-de-la-base.mjs', 'utf8'));
+    expect(codigo).toContain("import { handleInstagram } from './handle-instagram.mjs';");
+    // Lo que una regla propia repetiría: el alfabeto de Instagram.
+    expect(codigo, 'la página se armó su propio normalizador').not.toContain('A-Za-z0-9._');
+  });
+
+  /**
+   * **Los casos de la regla — el control positivo.** Los de identidad prueban que
+   * hay una sola función; estos, que esa función **hace algo**: acepta lo que es
+   * un handle y rechaza lo que armaría una URL a otra cuenta.
+   *
+   * Los dos rechazos del medio son **la forma** de dos datos reales que el script
+   * encontró al correrlo el 2026-09-07: alguien había cargado un nombre y alguien
+   * un mail en el campo de Instagram. **El mail va inventado**, y eso lo cobró un
+   * test: el primer intento pegó la casilla de producción tal cual y
+   * `tests/sin-datos-personales.test.ts` lo puso en rojo —la casilla de un tercero
+   * en un repo público, la fuga de B-246—. Lo que el caso necesita es la forma.
+   */
+  it('y el normalizador rechaza lo que armaría una URL a otra cuenta', () => {
     expect(delScript('@casabrandon')).toBe('casabrandon');
     expect(delScript('casabrandon/otracuenta')).toBeNull();
     expect(delScript('Festival Argentino de Historieta')).toBeNull();
