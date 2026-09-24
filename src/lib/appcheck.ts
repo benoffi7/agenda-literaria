@@ -60,7 +60,8 @@ import { registrarEventoDeToken } from '@/lib/verificacionDelNavegador';
  * distintas y solo una es un problema: `sin-navegador` y `emuladores` son
  * caminos deliberados, `sin-clave` es una configuración incompleta.
  */
-export type MotivoSinAppCheck = 'sin-navegador' | 'emuladores' | 'sin-clave' | 'fallo';
+import type { MotivoSinAppCheck } from '@/lib/verificacionDelNavegador';
+export type { MotivoSinAppCheck };
 
 /**
  * ¿Corresponde activar App Check en este entorno? — puro, y por eso testeable.

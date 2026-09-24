@@ -23,13 +23,18 @@
  * fallos lo consulta desde diecisiete pantallas y ninguna tiene por qué saber
  * de App Check. Un contexto obligaría a cablear el dato por todas.
  *
- * **Este archivo no importa el SDK** (solo un tipo): lo importa
+ * **Este archivo no importa el SDK** (ni nada de App Check): lo importa
  * `analytics-eventos.ts`, que también usa el sitio público. El `getToken` real
  * lo pone `firebase-client.ts` por parámetro.
  *
  * Puro salvo el store: se testea sin DOM, sin Firebase y con relojes falsos.
  */
-import type { MotivoSinAppCheck } from '@/lib/appcheck';
+/**
+ * Por qué App Check no se activó. Vive acá y no en `appcheck.ts` desde B-1250:
+ * `appcheck.ts` importa `registrarEventoDeToken` de este archivo, y si el tipo
+ * viniera de allá el grafo tendría un ciclo (B-311). `appcheck.ts` lo reexporta.
+ */
+export type MotivoSinAppCheck = 'sin-navegador' | 'emuladores' | 'sin-clave' | 'fallo';
 
 /**
  * - **`no-aplica`**: no hay nada que verificar — emuladores (no verifican App
