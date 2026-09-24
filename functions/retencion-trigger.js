@@ -31,6 +31,82 @@ import {
   fichasVencibles,
   propuestasVencibles,
 } from './retencion.js';
+import { MAX_ORIGINALES_POR_CORRIDA, borrarOriginalesConCopia } from './propuestas.js';
+
+/**
+ * **B-1370 — el original de una aceptada que sobra porque la foto se subió
+ * después.**
+ *
+ * `borrarImagenAlCerrar` decide una sola vez, en la transición a `aceptada`. Si
+ * en ese momento la actividad no tenía copia, conserva el original (`sin-copia`),
+ * que es lo correcto. Pero cuando después alguien sube la foto desde el panel,
+ * nadie volvía a mirar: la aceptada no vence y `limpiarImagenesHuerfanas` no
+ * recorre `propuestas/`. Pasó en los dos casos de B-1322.
+ *
+ * ── Por qué un barrido y no un trigger sobre `/actividades` ───────────────
+ * La otra salida era reintentar el borrado cuando la galería de la actividad
+ * gana su primera imagen propia: un tercer `onDocumentWritten` sobre
+ * `/actividades` —ya lo escuchan el sync de Calendar y el historial— que tendría
+ * que decidir sobre un diff de `imagenes[]` y buscar **qué** propuesta originó
+ * la actividad, que la actividad no guarda: una query inversa por
+ * `revision.actividadId` en cada escritura de cada actividad, para un caso que
+ * pasa dos veces. Y es una pieza más a un write-back de distancia de la trampa 3.
+ * Acá la corrida diaria ya existe, ya corre con el permiso de borrar en Storage,
+ * ya lee `/propuestas` con `select`, y un día de demora sobre una foto que ya
+ * estaba duplicada no cambia nada. Es la salida (b) del ítem (D-890).
+ *
+ * **No es la trampa 3 ni la 12**, por el mismo argumento que la retención: lo
+ * único que escribe es un `delete()` de un objeto bajo `propuestas/`, que emite
+ * `onObjectDeleted` —nada del proyecto lo escucha— y no toca ningún documento.
+ *
+ * **Nunca tira.** Va en el `finally` de la retención y un error suyo no puede
+ * tapar el de ella.
+ */
+const barrerOriginalesConCopia = async (db, bucket) => {
+  try {
+    const { resultados, errores, pendientes, objetos, porTope } = await borrarOriginalesConCopia(
+      db,
+      bucket,
+    );
+
+    let borrados = 0;
+    for (const [propuesta, resultado] of Object.entries(resultados)) {
+      if (resultado === 'borrado') {
+        borrados += 1;
+        logger.info('original de una aceptada borrado: la actividad ya tiene su copia', {
+          propuesta,
+          objeto: objetos[propuesta],
+        });
+        continue;
+      }
+      /*
+       * **No se borró, y no es un fallo**: entre la clasificación y el borrado
+       * la propuesta cambió, o la verificación de B-863 ya no encontró la copia.
+       * El original sigue ahí y la corrida de mañana lo vuelve a mirar, así que
+       * no lleva `alerta`: eso queda para los caminos que nadie más va a revisar.
+       */
+      logger.info('original de una aceptada no borrado: cambió en el medio de la corrida', {
+        propuesta,
+        resultado,
+      });
+    }
+    for (const [propuesta, error] of Object.entries(errores)) {
+      // Sin `alerta` por lo mismo: mañana se reintenta sola.
+      logger.error('no se pudo borrar el original de una aceptada con copia', { propuesta, error });
+    }
+
+    // Ids y vocabulario cerrado (`clasificarAceptadas`), nunca contenido.
+    logger.info('originales de aceptadas: barrido terminado', {
+      borrados,
+      fallidos: Object.keys(errores).length,
+      porTope,
+      tope: MAX_ORIGINALES_POR_CORRIDA,
+      pendientes,
+    });
+  } catch (e) {
+    logger.error('falló el barrido de originales de aceptadas', { error: e?.message });
+  }
+};
 
 export const borrarPropuestasVencidas = onSchedule(
   {
@@ -58,152 +134,165 @@ export const borrarPropuestasVencidas = onSchedule(
     const bucket = getStorage().bucket();
 
     /*
-     * **Un solo reloj para las dos llamadas** (B-865). La lectura ya no trae la
-     * bandeja entera: pide páginas hasta que las candidatas llenan el tope de
-     * borrados, y para saber cuándo parar le pregunta a esta misma decisión
-     * pura. Con dos `Date.now()` distintos podría cortar de leer con un juicio y
-     * borrar con otro.
+     * **Dos barridos en la misma corrida, y el segundo va en el `finally`** —
+     * B-1370. El de arriba es la retención de siempre; el de abajo borra el
+     * original que una aceptada conservó porque la actividad todavía no tenía
+     * copia, cuando la copia **ya existe** (`barrerOriginalesConCopia`). Va en
+     * el `finally` para que corra también cuando la retención no tiene nada que
+     * borrar (sale por `return`) y cuando falla (el error se sigue propagando,
+     * pero la otra mitad no se queda sin barrer). Él mismo no tira nunca.
      */
-    const ahora = Date.now();
-    const propuestas = await propuestasVencibles(db, { ahora });
-    const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora });
+    try {
+      /*
+       * **Un solo reloj para las dos llamadas** (B-865). La lectura ya no trae la
+       * bandeja entera: pide páginas hasta que las candidatas llenan el tope de
+       * borrados, y para saber cuándo parar le pregunta a esta misma decisión
+       * pura. Con dos `Date.now()` distintos podría cortar de leer con un juicio y
+       * borrar con otro.
+       */
+      const ahora = Date.now();
+      const propuestas = await propuestasVencibles(db, { ahora });
+      const { aBorrar, motivos } = decidirRetencion({ propuestas, ahora });
 
-    if (aBorrar.length === 0) {
-      // `motivos` lleva ids y el motivo, nunca contenido: el contacto de quien
-      // propuso ni siquiera se leyó (`propuestasVencibles` usa `select`).
-      logger.debug('retención de propuestas: nada que borrar', {
-        // `candidatas` y no `rechazadas` desde B-844: la query trae los tres
-        // estados que caducan, y llamarlas «rechazadas» en el log haría leer
-        // mal la única salida que este barrido deja. **En esta rama son la
-        // colección entera** (B-865): sin nada que borrar, la lectura no tuvo
-        // dónde cortar. En la otra son las leídas hasta llenar el tope.
-        candidatas: propuestas.length,
-        motivos,
-      });
-      return;
-    }
+      if (aBorrar.length === 0) {
+        // `motivos` lleva ids y el motivo, nunca contenido: el contacto de quien
+        // propuso ni siquiera se leyó (`propuestasVencibles` usa `select`).
+        logger.debug('retención de propuestas: nada que borrar', {
+          // `candidatas` y no `rechazadas` desde B-844: la query trae los tres
+          // estados que caducan, y llamarlas «rechazadas» en el log haría leer
+          // mal la única salida que este barrido deja. **En esta rama son la
+          // colección entera** (B-865): sin nada que borrar, la lectura no tuvo
+          // dónde cortar. En la otra son las leídas hasta llenar el tope.
+          candidatas: propuestas.length,
+          motivos,
+        });
+        return;
+      }
 
-    let borradas = 0;
-    let objetos = 0;
-    let rescatadas = 0;
-    /*
-     * **Aparte de `rescatadas`, y no es prolijidad** (`auditor-privacidad`).
-     * `la-tocaron-tarde` no es una propuesta intacta: el documento se salvó y su
-     * foto **ya se borró**. Sumarla a `rescatadas` diría que se salvó entera, y
-     * no sumarla a nada —que es lo que hacía— dejaba a la corrida sin contar la
-     * única foto de un tercero que destruyó de forma sorprendente. Es el mismo
-     * corte que hace el informe del script, a propósito: son dos
-     * implementaciones del mismo resumen y no pueden divergir.
-     */
-    let sinImagen = 0;
-    for (const caducada of aBorrar) {
-      try {
-        const final = await borrarPropuesta(db, bucket, caducada);
+      let borradas = 0;
+      let objetos = 0;
+      let rescatadas = 0;
+      /*
+       * **Aparte de `rescatadas`, y no es prolijidad** (`auditor-privacidad`).
+       * `la-tocaron-tarde` no es una propuesta intacta: el documento se salvó y su
+       * foto **ya se borró**. Sumarla a `rescatadas` diría que se salvó entera, y
+       * no sumarla a nada —que es lo que hacía— dejaba a la corrida sin contar la
+       * única foto de un tercero que destruyó de forma sorprendente. Es el mismo
+       * corte que hace el informe del script, a propósito: son dos
+       * implementaciones del mismo resumen y no pueden divergir.
+       */
+      let sinImagen = 0;
+      for (const caducada of aBorrar) {
+        try {
+          const final = await borrarPropuesta(db, bucket, caducada);
 
-        if (final === 'la-tocaron') {
-          /*
-           * **La propuesta se salvó, y el log lo dice sin drama** (B-864): un
-           * admin la tocó entre la query y el borrado, así que el plazo se le
-           * renovó y no se tocó nada —ni el documento ni la foto—. Es el
-           * resultado correcto, no un fallo, y por eso va `info`: si algún día
-           * aparece seguido en los logs, lo que dice es que la bandeja se está
-           * mirando justo cuando corre el barrido.
-           */
-          rescatadas += 1;
-          logger.info('propuesta no borrada: la tocaron durante la corrida', {
-            propuesta: caducada.id,
-            causa: motivos[caducada.id],
-          });
-          continue;
-        }
+          if (final === 'la-tocaron') {
+            /*
+             * **La propuesta se salvó, y el log lo dice sin drama** (B-864): un
+             * admin la tocó entre la query y el borrado, así que el plazo se le
+             * renovó y no se tocó nada —ni el documento ni la foto—. Es el
+             * resultado correcto, no un fallo, y por eso va `info`: si algún día
+             * aparece seguido en los logs, lo que dice es que la bandeja se está
+             * mirando justo cuando corre el barrido.
+             */
+            rescatadas += 1;
+            logger.info('propuesta no borrada: la tocaron durante la corrida', {
+              propuesta: caducada.id,
+              causa: motivos[caducada.id],
+            });
+            continue;
+          }
 
-        if (final === 'la-tocaron-tarde') {
-          /*
-           * **`warn` y no `info`, y la diferencia importa.** Acá la tocaron en
-           * la ventana que queda entre la relectura y el borrado del documento:
-           * la precondición salvó el documento, pero el objeto ya se había ido.
-           * O sea que una propuesta que un admin acaba de rescatar se queda con
-           * el flyer roto — es la cuarta forma de perder la mitad del borrado y
-           * la única que este cambio agrega. Cae del lado tolerado por B-838
-           * (se ve en la bandeja, no es una foto que nadie puede encontrar) y no
-           * se puede arreglar sola, así que se avisa.
-           */
-          sinImagen += 1;
-          // La foto **sí** se fue: entra al conteo de objetos como cualquier
-          // otra, que es el único registro de cuánto borró esta corrida.
+          if (final === 'la-tocaron-tarde') {
+            /*
+             * **`warn` y no `info`, y la diferencia importa.** Acá la tocaron en
+             * la ventana que queda entre la relectura y el borrado del documento:
+             * la precondición salvó el documento, pero el objeto ya se había ido.
+             * O sea que una propuesta que un admin acaba de rescatar se queda con
+             * el flyer roto — es la cuarta forma de perder la mitad del borrado y
+             * la única que este cambio agrega. Cae del lado tolerado por B-838
+             * (se ve en la bandeja, no es una foto que nadie puede encontrar) y no
+             * se puede arreglar sola, así que se avisa.
+             */
+            sinImagen += 1;
+            // La foto **sí** se fue: entra al conteo de objetos como cualquier
+            // otra, que es el único registro de cuánto borró esta corrida.
+            if (caducada.objeto) objetos += 1;
+            logger.warn('propuesta rescatada en el último segundo: quedó sin su imagen', {
+              propuesta: caducada.id,
+              conImagen: Boolean(caducada.objeto),
+              causa: motivos[caducada.id],
+            });
+            continue;
+          }
+
+          borradas += 1;
           if (caducada.objeto) objetos += 1;
-          logger.warn('propuesta rescatada en el último segundo: quedó sin su imagen', {
+          logger.info('propuesta borrada por retención', {
             propuesta: caducada.id,
             conImagen: Boolean(caducada.objeto),
+            // `causa` y no `motivo`: en este dominio «motivo» es el del rechazo,
+            // que es una nota interna sobre el trabajo de otra persona y no tiene
+            // por qué acercarse a un log (`auditor-privacidad`).
             causa: motivos[caducada.id],
+            // `ya-no-esta` es un documento que otra corrida ya se llevó; se cuenta
+            // como borrada porque el estado final es el que se quería.
+            final,
           });
-          continue;
+        } catch (e) {
+          // Una que falla no puede cortar el barrido de las demás, y el orden de
+          // `borrarPropuesta` (relectura, objeto, documento) hace que un fallo deje
+          // las dos mitades en pie para la corrida siguiente.
+          logger.error('no se pudo borrar una propuesta vencida', {
+            propuesta: caducada.id,
+            error: e?.message,
+          });
         }
+      }
 
-        borradas += 1;
-        if (caducada.objeto) objetos += 1;
-        logger.info('propuesta borrada por retención', {
-          propuesta: caducada.id,
-          conImagen: Boolean(caducada.objeto),
-          // `causa` y no `motivo`: en este dominio «motivo» es el del rechazo,
-          // que es una nota interna sobre el trabajo de otra persona y no tiene
-          // por qué acercarse a un log (`auditor-privacidad`).
-          causa: motivos[caducada.id],
-          // `ya-no-esta` es un documento que otra corrida ya se llevó; se cuenta
-          // como borrada porque el estado final es el que se quería.
-          final,
+      /*
+       * **Es un piso y no un total** (B-865): son las vencidas que esta corrida
+       * **vio** y no va a borrar. Desde que la lectura corta apenas junta el tope,
+       * lo que queda después del cursor ni siquiera se leyó, así que puede haber
+       * más. Sirve igual para lo que este `warn` existe —«hoy no alcanzó»— y
+       * decirlo evita leerlo como «faltan exactamente tres».
+       */
+      const pendientesPorTope = Object.values(motivos).filter((m) =>
+        m.endsWith('-pendiente-por-tope'),
+      ).length;
+      if (pendientesPorTope > 0) {
+        logger.warn('la retención de propuestas se cortó por el tope de la corrida', {
+          borradas,
+          objetos,
+          rescatadas,
+          sinImagen,
+          pendientesPorTope,
+          tope: MAX_PROPUESTAS_POR_CORRIDA,
         });
-      } catch (e) {
-        // Una que falla no puede cortar el barrido de las demás, y el orden de
-        // `borrarPropuesta` (relectura, objeto, documento) hace que un fallo deje
-        // las dos mitades en pie para la corrida siguiente.
-        logger.error('no se pudo borrar una propuesta vencida', {
-          propuesta: caducada.id,
-          error: e?.message,
+      } else {
+        logger.info('retención de propuestas terminada', {
+          borradas,
+          objetos,
+          /*
+           * B-864 — las que se salvaron porque las tocaron mientras el barrido
+           * corría (`rescatadas`) y las que se salvaron **sin su imagen**
+           * (`sinImagen`, el cuarto final). `borradas + rescatadas + sinImagen`
+           * no tiene por qué dar `aBorrar.length`: lo que falta son las que
+           * fallaron, y ésas tienen su `error`. La primera versión de este
+           * comentario decía eso mismo sin nombrar a `sinImagen`, que también
+           * falta de la suma y **no** tiene `error` sino `warn`
+           * (`auditor-privacidad`).
+           */
+          rescatadas,
+          sinImagen,
+          // **Las leídas, no las que hay** (B-865): con trabajo por delante la
+          // lectura corta apenas llena el tope, así que esto es «hasta acá miré» y
+          // no el tamaño de la bandeja.
+          candidatas: propuestas.length,
         });
       }
-    }
-
-    /*
-     * **Es un piso y no un total** (B-865): son las vencidas que esta corrida
-     * **vio** y no va a borrar. Desde que la lectura corta apenas junta el tope,
-     * lo que queda después del cursor ni siquiera se leyó, así que puede haber
-     * más. Sirve igual para lo que este `warn` existe —«hoy no alcanzó»— y
-     * decirlo evita leerlo como «faltan exactamente tres».
-     */
-    const pendientesPorTope = Object.values(motivos).filter((m) =>
-      m.endsWith('-pendiente-por-tope'),
-    ).length;
-    if (pendientesPorTope > 0) {
-      logger.warn('la retención de propuestas se cortó por el tope de la corrida', {
-        borradas,
-        objetos,
-        rescatadas,
-        sinImagen,
-        pendientesPorTope,
-        tope: MAX_PROPUESTAS_POR_CORRIDA,
-      });
-    } else {
-      logger.info('retención de propuestas terminada', {
-        borradas,
-        objetos,
-        /*
-         * B-864 — las que se salvaron porque las tocaron mientras el barrido
-         * corría (`rescatadas`) y las que se salvaron **sin su imagen**
-         * (`sinImagen`, el cuarto final). `borradas + rescatadas + sinImagen`
-         * no tiene por qué dar `aBorrar.length`: lo que falta son las que
-         * fallaron, y ésas tienen su `error`. La primera versión de este
-         * comentario decía eso mismo sin nombrar a `sinImagen`, que también
-         * falta de la suma y **no** tiene `error` sino `warn`
-         * (`auditor-privacidad`).
-         */
-        rescatadas,
-        sinImagen,
-        // **Las leídas, no las que hay** (B-865): con trabajo por delante la
-        // lectura corta apenas llena el tope, así que esto es «hasta acá miré» y
-        // no el tamaño de la bandeja.
-        candidatas: propuestas.length,
-      });
+    } finally {
+      await barrerOriginalesConCopia(db, bucket);
     }
   },
 );

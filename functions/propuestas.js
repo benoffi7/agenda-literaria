@@ -40,8 +40,9 @@
  * `propuestas/` para todo cliente, incluido un admin, justamente para que el
  * borrado sea consecuencia del estado y no de un botón.
  *
- * **Todo lo de acá es puro** salvo `borrarOriginalAlAceptar`, que recibe el `db`
- * y el `bucket` y no importa `firebase-admin` — mismo criterio que
+ * **Todo lo de acá es puro** salvo `borrarOriginalAlAceptar` y el barrido de
+ * B-1370 del final del archivo, que reciben el `db` y el `bucket` y no importan
+ * `firebase-admin` — mismo criterio que
  * `borrarPropuesta` en `retencion.js` y por el mismo motivo práctico: así el
  * test lo importa de acá y no del trigger. El pegamento vive en
  * `propuestas-trigger.js`.
@@ -66,7 +67,7 @@
  * `tests/propuestas-imagen.integracion.test.ts`.
  */
 import { PREFIJO_ORIGINALES } from './imagenes.js';
-import { objetoDePropuesta } from './retencion.js';
+import { PREFIJO_PROPUESTAS, objetoDePropuesta } from './retencion.js';
 
 /**
  * Los dos estados que **cierran** una propuesta, que es el vocabulario que la
@@ -273,7 +274,10 @@ export const copiasEnLaGaleria = (imagenes) => {
  *    menos **quien pase**: `relevarFlyeresSinPlazo` (`retencion.js`) los lista
  *    entrando por el bucket, así que aparecen aunque este `warn` se haya
  *    perdido y aunque la transición nunca haya ocurrido. Lista, no borra: eso
- *    último sigue esperando una decisión del dueño.
+ *    último sigue esperando una decisión del dueño. **Salvo un caso** (B-1370):
+ *    si después alguien sube la foto a la actividad a mano, el barrido diario
+ *    vuelve a llamar a esta misma función y el original se va
+ *    (`borrarOriginalesConCopia`, al final del archivo).
  *
  * `db` y `bucket` van sin tipo a propósito, igual que en `borrarPropuesta`: es
  * lo que deja que el test los reemplace por dobles y mida el **orden** de las
@@ -333,4 +337,312 @@ export const borrarOriginalAlAceptar = async (db, bucket, { objeto, actividadId 
    */
   await bucket.file(objeto).delete({ ignoreNotFound: true });
   return 'borrado';
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// B-1370 — el original que quedó de más porque la foto se subió después
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Lo que no le pide nada a nadie: la actividad tiene su foto, o se descartó y
+ * se borró. Es el vocabulario del informe de `flyeres-de-propuestas-aceptadas.mjs`.
+ */
+export const EN_ORDEN = 'en-orden';
+
+/**
+ * **El único caso que se borra solo** — B-1370.
+ *
+ * La propuesta está `aceptada`, su `revision.actividadId` apunta a una actividad
+ * que **tiene una imagen propia y viva** en `imagenes/`, y el original sigue en
+ * `propuestas/`. Es exactamente la condición con la que `borrarOriginalAlAceptar`
+ * borra en la transición, vista **después**: la transición llegó cuando la
+ * actividad todavía no tenía la copia (`sin-copia` o `copia-sin-objeto`) y la
+ * foto se subió a mano más tarde. Hasta B-1370 nadie volvía a mirar.
+ *
+ * Los otros casos de `clasificarAceptadas` **no** se tocan: en todos ellos
+ * borrar el original puede ser perder la foto —la actividad no tiene ninguna, o
+ * tiene solo un link de afuera que puede no ser el mismo flyer— y eso sigue
+ * siendo la salida 3 de B-871, que espera una decisión del dueño. Tampoco
+ * `descartada-con-original`, aunque ahí borrar sea seguro: es otro camino (el
+ * fallo del borrado crudo de B-926) y tiene su fila en el runbook.
+ */
+export const CASO_QUE_SE_BORRA_SOLO = 'con-copia-con-original';
+
+/**
+ * **La clasificación de las aceptadas con foto, pura** — B-1322, movida acá por
+ * B-1370 para que el informe y el barrido la compartan (D-88: se escribe una
+ * vez). Una fila por propuesta `aceptada` que tuvo foto.
+ *
+ * Vivía en `scripts/flyeres-de-propuestas-aceptadas.mjs`. Desde que el barrido
+ * diario **borra** uno de sus casos, la definición de ese caso no puede estar
+ * escrita dos veces: si el informe dijera `con-copia-con-original` sobre una
+ * fila que la Function no borra —o al revés—, el operador leería una promesa
+ * que el código no cumple. `functions/` no puede importar de `scripts/` ni de
+ * `src/` (D-20: lo que se despliega es `functions/`), así que vive del lado que
+ * el otro puede importar.
+ *
+ * @param {{
+ *   propuestas: { id: string, estado?: string, revision?: { actividadId?: unknown, fotoDescartada?: unknown }, imagen?: unknown }[],
+ *   originalesVivos: Set<string>,
+ *   actividades: Map<string, { titulo?: string, estado?: string, imagenes?: unknown[] }>,
+ *   copiasVivas: Set<string>,
+ * }} _
+ * @returns {{ propuesta: string, original: string, actividadId: string | null, titulo: string | null, estadoActividad: string | null, imagenes: number, caso: string }[]}
+ */
+export const clasificarAceptadas = ({ propuestas, originalesVivos, actividades, copiasVivas }) => {
+  const filas = [];
+  for (const p of propuestas) {
+    if (p?.estado !== 'aceptada') continue;
+    // La misma guarda que el trigger y la retención: un `storagePath` fuera de
+    // `propuestas/<un segmento>` no es «el original» de nadie (B-88).
+    const original = objetoDePropuesta(p.imagen);
+    if (!original) continue;
+
+    const vivo = originalesVivos.has(original);
+    const id = p.revision?.actividadId;
+    const actividadId = typeof id === 'string' && id.length > 0 ? id : null;
+    const actividad = actividadId ? actividades.get(actividadId) : undefined;
+    const imagenes = Array.isArray(actividad?.imagenes) ? actividad.imagenes : [];
+
+    const fila = {
+      propuesta: p.id,
+      original,
+      actividadId,
+      titulo: actividad ? (actividad.titulo ?? null) : null,
+      estadoActividad: actividad ? (actividad.estado ?? null) : null,
+      imagenes: imagenes.length,
+    };
+
+    let caso;
+    // `=== true`, igual que `decidirBorradoDeImagen`: un truthy raro no cuenta
+    // como que una persona miró la foto y la descartó.
+    if (p.revision?.fotoDescartada === true) {
+      caso = vivo ? 'descartada-con-original' : EN_ORDEN;
+    } else if (!actividad) {
+      caso = vivo ? 'sin-actividad-con-original' : 'sin-actividad-sin-original';
+    } else if (imagenes.length === 0) {
+      caso = vivo ? 'sin-foto-con-original' : 'sin-foto-sin-original';
+    } else {
+      // La misma definición de «copia» que la verificación de B-863: una fila
+      // cuyo path apunte a `propuestas/` no cuenta, así que el original nunca se
+      // verifica contra sí mismo.
+      const copias = copiasEnLaGaleria(imagenes);
+      const algunaViva = copias.some((c) => copiasVivas.has(c));
+      if (algunaViva) caso = vivo ? CASO_QUE_SE_BORRA_SOLO : EN_ORDEN;
+      else if (copias.length > 0) caso = vivo ? 'copia-rota-con-original' : 'sin-foto-sin-original';
+      /*
+       * Solo externas y sin original: la actividad **tiene** una imagen, y no
+       * hay nada nuestro que rescatar. No se sabe si es el mismo flyer, pero
+       * tampoco hay con qué compararlo.
+       */
+      else caso = vivo ? 'solo-externas-con-original' : EN_ORDEN;
+    }
+    filas.push({ ...fila, caso });
+  }
+  return filas;
+};
+
+/**
+ * Las copias de la galería de estas actividades que **existen** en el bucket.
+ *
+ * Compartida por el informe y el barrido, por lo mismo que la clasificación:
+ * «viva» tiene que querer decir lo mismo de los dos lados.
+ *
+ * @param {Iterable<{ imagenes?: unknown[] }>} actividades
+ * @returns {Promise<Set<string>>}
+ */
+export const copiasVivasDe = async (bucket, actividades) => {
+  const vivas = new Set();
+  for (const a of actividades) {
+    for (const copia of copiasEnLaGaleria(a?.imagenes)) {
+      if (vivas.has(copia)) continue;
+      const [existe] = await bucket.file(copia).exists();
+      if (existe) vivas.add(copia);
+    }
+  }
+  return vivas;
+};
+
+/**
+ * Tope de originales que el barrido borra por corrida. Misma salvaguarda que
+ * `MAX_PROPUESTAS_POR_CORRIDA`: un bug en la lectura no puede llevarse todo el
+ * prefijo en una pasada. Lo que sobra queda para mañana y lo dice el log.
+ */
+export const MAX_ORIGINALES_POR_CORRIDA = 50;
+
+/** El techo de valores de un `where(…, 'in', …)` de Firestore. */
+const MAXIMO_DEL_IN = 30;
+
+/**
+ * **Las aceptadas cuyo original sigue vivo**, con lo mínimo para clasificarlas —
+ * B-1370.
+ *
+ * ── Se entra por el bucket, y es lo que deja correrlo todos los días ──────
+ * El informe del script lee **todas** las aceptadas porque quiere encontrar
+ * también las que ya perdieron la foto. Eso crece con el archivo histórico, y
+ * es la clase de lectura que B-865 sacó del camino diario (`08-operacion.md` §
+ * «Flyers que no borra nadie»). Acá la pregunta es más angosta —¿qué original
+ * **vivo** sobra?—, así que se lista primero `propuestas/`, que es chico (los
+ * flyers de la bandeja abierta más lo que quedó colgado), y se buscan solo los
+ * documentos que nombran esos objetos, de a 30 por `in`. El costo crece con el
+ * problema y no con la historia.
+ *
+ * El `select` es el del script y por el mismo motivo: ni el contacto de quien
+ * propuso ni `revision.motivo` entran a la memoria. De la actividad, **solo**
+ * `imagenes` —ni el título, que el barrido no imprime—.
+ *
+ * El estado se filtra en memoria y no en la query: un `==` más un `in` sobre
+ * otro campo es la combinación que puede pedir índice compuesto, y los
+ * documentos que nombran un objeto vivo son pocos.
+ *
+ * @returns {Promise<{
+ *   propuestas: { id: string, estado: string, revision: { actividadId: unknown, fotoDescartada: unknown }, imagen: unknown }[],
+ *   originalesVivos: Set<string>,
+ *   actividades: Map<string, { imagenes?: unknown[] }>,
+ *   copiasVivas: Set<string>,
+ * }>}
+ */
+export const aceptadasConOriginalVivo = async (db, bucket) => {
+  const [objetos] = await bucket.getFiles({ prefix: PREFIJO_PROPUESTAS });
+  // La guarda de siempre, del lado del objeto: un anidado o el prefijo pelado no
+  // es el original de nadie.
+  const nombres = objetos
+    .map((o) => o.name)
+    .filter((n) => objetoDePropuesta({ storagePath: n }) === n);
+  const originalesVivos = new Set(nombres);
+
+  const propuestas = [];
+  for (let i = 0; i < nombres.length; i += MAXIMO_DEL_IN) {
+    const snap = await db
+      .collection('propuestas')
+      .where('imagen.storagePath', 'in', nombres.slice(i, i + MAXIMO_DEL_IN))
+      .select('estado', 'revision.actividadId', 'revision.fotoDescartada', 'imagen.storagePath')
+      .get();
+    for (const d of snap.docs) {
+      if (d.get('estado') !== 'aceptada') continue;
+      propuestas.push({
+        id: d.id,
+        estado: d.get('estado'),
+        revision: {
+          actividadId: d.get('revision.actividadId'),
+          fotoDescartada: d.get('revision.fotoDescartada'),
+        },
+        imagen: d.get('imagen'),
+      });
+    }
+  }
+
+  const ids = [
+    ...new Set(
+      propuestas
+        .map((p) => p.revision.actividadId)
+        .filter((id) => typeof id === 'string' && id.length > 0),
+    ),
+  ];
+  const docs =
+    ids.length > 0
+      ? await db.getAll(...ids.map((id) => db.collection('actividades').doc(id)), {
+          fieldMask: ['imagenes'],
+        })
+      : [];
+  const actividades = new Map(docs.filter((d) => d.exists).map((d) => [d.id, d.data()]));
+  const copiasVivas = await copiasVivasDe(bucket, actividades.values());
+
+  return { propuestas, originalesVivos, actividades, copiasVivas };
+};
+
+/**
+ * Borra el original de **una** fila `con-copia-con-original`, si la propuesta
+ * sigue siendo la que se clasificó — B-1370.
+ *
+ * ── Dos relecturas, y ninguna es una verificación nueva ───────────────────
+ * Entre la clasificación y el borrado pasa la corrida entera. En ese tiempo:
+ *
+ *  - **la propuesta puede cambiar** — un admin la reabre, o le cambia el
+ *    `actividadId` a mano. Por eso se relee con máscara (el contacto no entra) y
+ *    se exige que siga `aceptada`, con el **mismo** original, la **misma**
+ *    actividad y sin `fotoDescartada`.
+ *  - **la actividad puede perder su copia** — el admin sacó la foto, o el objeto
+ *    se fue. Eso lo cubre `borrarOriginalAlAceptar`, que **vuelve a verificar**
+ *    la copia en el documento y en el bucket justo antes de borrar. Es la
+ *    verificación de B-863 y no una segunda: si no pasa, no borra.
+ *
+ * La ventana que queda es de un viaje de ida y vuelta, como en
+ * `borrarPropuesta`, y Storage no tiene precondición que la cierre. El peor caso
+ * es el de siempre en este orden —verificar y después borrar—: dos copias de la
+ * misma foto hasta la corrida de mañana.
+ *
+ * @param {{ propuesta: string, original: string, actividadId: string }} fila
+ */
+export const borrarOriginalSiSigueConCopia = async (db, bucket, { propuesta, original, actividadId }) => {
+  const [snap] = await db.getAll(db.collection('propuestas').doc(propuesta), {
+    fieldMask: ['estado', 'revision.actividadId', 'revision.fotoDescartada', 'imagen.storagePath'],
+  });
+  if (!snap.exists) return 'ya-no-esta';
+  if (
+    snap.get('estado') !== 'aceptada' ||
+    snap.get('revision.actividadId') !== actividadId ||
+    snap.get('revision.fotoDescartada') === true ||
+    objetoDePropuesta(snap.get('imagen')) !== original
+  ) {
+    return 'cambio-la-propuesta';
+  }
+  return borrarOriginalAlAceptar(db, bucket, { objeto: original, actividadId });
+};
+
+/**
+ * **El barrido de B-1370, entero**: leer, clasificar con la misma función que el
+ * informe, y borrar solo `con-copia-con-original`. Lo llama
+ * `borrarPropuestasVencidas` (`retencion-trigger.js`) después de la retención.
+ *
+ * No loguea: devuelve qué pasó con cada una y el pegamento elige el nivel. Un
+ * fallo en una fila no corta las demás.
+ *
+ * @returns {Promise<{
+ *   resultados: Record<string, string>,
+ *   errores: Record<string, string>,
+ *   pendientes: Record<string, string>,
+ *   objetos: Record<string, string>,
+ *   porTope: number,
+ * }>}
+ */
+export const borrarOriginalesConCopia = async (
+  db,
+  bucket,
+  { tope = MAX_ORIGINALES_POR_CORRIDA } = {},
+) => {
+  const filas = clasificarAceptadas(await aceptadasConOriginalVivo(db, bucket));
+  const candidatas = filas.filter((f) => f.caso === CASO_QUE_SE_BORRA_SOLO);
+
+  /*
+   * Los casos que **no** se borran solos, con su caso al lado: ids y
+   * vocabulario cerrado, nunca contenido. Son los que siguen esperando una mano
+   * (o la decisión de B-871), y así aparecen todos los días en el log sin que
+   * nadie corra el script.
+   */
+  const pendientes = Object.fromEntries(
+    filas
+      .filter((f) => f.caso !== CASO_QUE_SE_BORRA_SOLO && f.caso !== EN_ORDEN)
+      .map((f) => [f.propuesta, f.caso]),
+  );
+
+  const resultados = {};
+  const errores = {};
+  const objetos = {};
+  for (const fila of candidatas.slice(0, tope)) {
+    objetos[fila.propuesta] = fila.original;
+    try {
+      resultados[fila.propuesta] = await borrarOriginalSiSigueConCopia(db, bucket, fila);
+    } catch (e) {
+      errores[fila.propuesta] = e?.message ?? String(e);
+    }
+  }
+
+  return {
+    resultados,
+    errores,
+    pendientes,
+    objetos,
+    porTope: Math.max(0, candidatas.length - tope),
+  };
 };
