@@ -959,7 +959,9 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'A los sesenta días de cargado, el panel te avisa al lado de la ficha que conviene ' +
           'revisarlo. No es un error: es que el número ya tiene edad suficiente como para ' +
-          'mirarlo antes de dejarlo publicado.',
+          'mirarlo antes de dejarlo publicado. Si lo revisaste y sigue siendo el mismo, tocá ' +
+          '«Lo revisé: sigue siendo éste»: queda el mismo precio con la fecha de hoy. No le ' +
+          'cambies el número para sacar el aviso — el sitio publicaría un precio que nadie cobró.',
       },
       {
         texto:

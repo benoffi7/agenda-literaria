@@ -61,6 +61,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'precio-revisado',
+    fecha: '2026-09-24',
+    version: '1.11.0',
+    titulo: 'Podés decir que un precio sigue vigente',
+    detalle:
+      'Cuando el panel te avisa que conviene revisar el precio de una suscripción o de un lugar, ' +
+      'ahora hay un botón al lado: si sigue siendo el mismo, lo tocás y queda con la fecha de hoy, ' +
+      'sin cambiarle el número.',
+    donde: 'Guía → Suscripciones y Lugares, al lado del aviso de los sesenta días.',
+  },
+  {
     id: 'instagram-que-no-reconocemos-se-avisa',
     fecha: '2026-09-24',
     version: '1.11.0',
