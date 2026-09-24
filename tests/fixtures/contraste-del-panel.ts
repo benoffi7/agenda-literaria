@@ -11,13 +11,20 @@
  * misma pregunta.
  */
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from 'vitest';
 
 import { contraste, mezclar, oklchASrgb, type Srgb } from '@/lib/contraste';
 import { archivosDelRepo } from './archivos-del-repo';
 
-export const raiz = (rel: string): string => fileURLToPath(new URL(`../../${rel}`, import.meta.url));
+/**
+ * Una ruta relativa a la raíz del repo. Se arma con `node:path` y no con
+ * `new URL(rel, import.meta.url)`: bajo jsdom (los `*.render.test.tsx`) el `URL`
+ * global es el de jsdom, y `fileURLToPath` de Node no lo reconoce.
+ */
+export const raiz = (rel: string): string =>
+  resolve(dirname(fileURLToPath(import.meta.url)), '../..', rel);
 
 /**
  * Lo que se lee del disco se lee una vez: cada fondo translúcido se compone
