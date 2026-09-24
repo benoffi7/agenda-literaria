@@ -13,7 +13,98 @@
 # decisión. Un `if` en YAML no se puede probar hasta que ya deployó mal.
 #
 #   git diff --name-only A B | ./scripts/que-deployar.sh
+#
+# Con `--compartidos` no lee stdin: lista los archivos de `functions/` que el
+# build alcanza (ver «Hosting» más abajo), uno por línea. Es lo que ata el test
+# y lo que sirve para mirar a mano qué cree el script que es compartido.
+#
+# Lee el árbol del repo en el que vive (la carpeta padre de `scripts/`), no el
+# directorio desde el que se lo llama. `QUE_DEPLOYAR_RAIZ` lo cambia: lo usan
+# los tests para correrlo sobre un árbol sintético.
 set -euo pipefail
+
+RAIZ=${QUE_DEPLOYAR_RAIZ:-$(cd "$(dirname "$0")/.." && pwd)}
+
+# ── Los archivos de functions/ que el build alcanza (B-1241) ──────
+# El bundle y el sitio importan código de `functions/` de dos maneras: por los
+# alias de `astro.config.mjs` (`@calendario` → `new URL('./functions/…')`) y
+# por ruta relativa desde `src/` (`'../../functions/slugify.js'`). Hasta B-1241
+# el script tenía cableados los cuatro de alias y se perdía los seis de ruta
+# relativa: un cambio que tocara solo `functions/alta-de-opcion.js` deployaba
+# la Function y no el panel, y los dos caminos del alta de una etiqueta
+# quedaban con versiones distintas en producción sin que nada lo avisara.
+#
+# Así que la lista ya no se escribe: se DERIVA del árbol en cada corrida.
+#
+#   1. Semillas: todo literal de ruta relativa que termine en
+#      `functions/<nombre>[.js|.mjs|.cjs]` en `src/` o en `astro.config.mjs`.
+#      Se buscan literales entre comillas con `./` o `../` adelante, no
+#      `import`s: así entran igual el `new URL(` partido en dos líneas del
+#      alias y el `export * from`. Un comentario que cite una ruta así entre
+#      comillas también entra — sobra, y sobrar es el error barato.
+#   2. Clausura: todo `'./<nombre>.js'` que importen esos archivos, hasta que
+#      no aparezca ninguno nuevo. `calendario.js` importa `geografia.js`, que
+#      importa `slugify.js`: un cambio a `slugify.js` cambia el panel aunque
+#      `src/` también lo importe directo, y mañana puede no hacerlo.
+#   3. Si alguno importa un paquete (`from 'algo'`, no relativo ni `node:`),
+#      `functions/package.json` y su lock también alcanzan al build: Vite lo
+#      resuelve desde `functions/node_modules`. Hoy ninguno lo hace.
+#
+# Si `src/` no existe no hay de dónde derivar, y entonces TODO `functions/`
+# cuenta para Hosting: falla hacia deployar, como el resto del script.
+# Comilla simple, doble o invertida: un `import(\`../../functions/x.js\`)` es
+# tan import como los otros.
+COMILLA="['\"\`]"
+LITERAL_A_FUNCTIONS="$COMILLA(\./|(\.\./)+)functions/[A-Za-z0-9_-]+(\.[cm]?js)?$COMILLA"
+LITERAL_HERMANO="$COMILLA\./[A-Za-z0-9_-]+(\.[cm]?js)?$COMILLA"
+# `import x from 'pkg'`, `} from 'pkg'`, `export … from 'pkg'` o `import 'pkg'`.
+# El `from` es obligatorio salvo en el último: sin él, `export const A = 'caba'`
+# pasaría por el import de un paquete llamado `caba`.
+IMPORT_DE_PAQUETE="^[[:space:]]*((import|export|\})[^'\"=]*[[:space:]]from|import)[[:space:]]*['\"][^./'\"][^'\"]*['\"]"
+
+# El archivo de functions/ que corresponde a un nombre sin extensión, o nada.
+archivo_de() {
+  local ext
+  for ext in js mjs cjs; do
+    if [ -f "$RAIZ/functions/$1.$ext" ]; then printf '%s\n' "functions/$1.$ext"; return 0; fi
+  done
+  return 0
+}
+
+compartidos() {
+  local actual siguiente hermanos nombre archivo
+  actual=$(
+    {
+      grep -rhoE "$LITERAL_A_FUNCTIONS" "$RAIZ/src" 2>/dev/null || true
+      grep -hoE "$LITERAL_A_FUNCTIONS" "$RAIZ/astro.config.mjs" 2>/dev/null || true
+    } | sed -E "s/^$COMILLA(\.\/|(\.\.\/)+)functions\///; s/$COMILLA\$//; s/\.[cm]?js\$//" | sort -u
+  )
+  while :; do
+    hermanos=$(
+      printf '%s\n' "$actual" | while IFS= read -r nombre; do
+        [ -n "$nombre" ] || continue
+        archivo=$(archivo_de "$nombre")
+        [ -n "$archivo" ] || continue
+        grep -hoE "$LITERAL_HERMANO" "$RAIZ/$archivo" 2>/dev/null || true
+      done | sed -E "s/^$COMILLA\.\///; s/$COMILLA\$//; s/\.[cm]?js\$//"
+    )
+    siguiente=$(printf '%s\n%s\n' "$actual" "$hermanos" | grep -v '^$' | sort -u || true)
+    [ "$siguiente" = "$actual" ] && break
+    actual=$siguiente
+  done
+  printf '%s\n' "$actual" | while IFS= read -r nombre; do
+    [ -n "$nombre" ] || continue
+    archivo=$(archivo_de "$nombre")
+    # Uno citado que no existe se lista igual con `.js`: si alguien lo crea
+    # en este mismo cambio, tiene que contar.
+    printf '%s\n' "${archivo:-functions/$nombre.js}"
+  done
+}
+
+if [ "${1:-}" = "--compartidos" ]; then
+  compartidos
+  exit 0
+fi
 
 CAMBIOS=$(cat)
 
@@ -52,6 +143,13 @@ printf '%s\n' "$CAMBIOS" | grep -qE '^storage\.rules$|^firebase\.json$' && STORA
 # dejó escrita: agregar un alias nuevo a un archivo de `functions/` sin sumarlo
 # acá abajo dispara Functions pero no Hosting.
 #
+# B-1241 — y ese agujero tenía una segunda boca: el `awk` de acá abajo seguía
+# siendo una lista BLANCA de los cuatro archivos con alias, y `src/` importa
+# otros seis por ruta relativa. Desde B-1241 esa lista la da `compartidos()`
+# (arriba), derivada del árbol: un archivo compartido nuevo queda cubierto sin
+# que nadie se acuerde de sumarlo, y `tests/que-deployar.test.ts` compara la
+# derivación contra un recorrido independiente de los imports de `src/`.
+#
 # Así que se invierte: hosting se deploya SIEMPRE salvo que todo lo que cambió
 # sea provablemente incapaz de afectarlo. Un archivo nuevo y desconocido cae del
 # lado de deployar, que es el error barato.
@@ -77,11 +175,36 @@ printf '%s\n' "$CAMBIOS" | grep -qE '^storage\.rules$|^firebase\.json$' && STORA
 # «porque toca código»; esto es ese cambio.
 NO_AFECTAN='^docs/|^tests/|^\.github/|^\.claude/|^githooks/|\.md$|^\.gitignore$|^firestore\.(rules|indexes\.json)$|^storage\.rules$|^\.firebaserc$|^scripts/(seed-emulador|preparar-produccion|set-admin-claim|aprobar-opciones|optimizar-imagenes|que-deployar|verificar-bundle|verificar-calendario)\.(mjs|sh)$'
 
+# Qué de `functions/` cuenta para Hosting: lo compartido (derivado), y si lo
+# compartido importa paquetes, el `package.json` de `functions/` y su lock.
+if [ -d "$RAIZ/src" ]; then
+  COMPARTIDOS=$(compartidos)
+  PAQUETES=$(
+    printf '%s\n' "$COMPARTIDOS" | while IFS= read -r archivo; do
+      [ -n "$archivo" ] && [ -f "$RAIZ/$archivo" ] || continue
+      { grep -hE "$IMPORT_DE_PAQUETE" "$RAIZ/$archivo" 2>/dev/null || true; } | { grep -vE "['\"]node:" || true; }
+    done
+  )
+  FUNCTIONS_DEL_BUILD=$(
+    printf '%s\n' "$COMPARTIDOS"
+    if [ -n "$PAQUETES" ]; then printf 'functions/package.json\nfunctions/package-lock.json\n'; fi
+  )
+else
+  FUNCTIONS_DEL_BUILD=$(printf '%s\n' "$CAMBIOS" | { grep '^functions/' || true; })
+fi
+
+# Sin `case` a propósito: el bash 3.2 de macOS no parsea un `patrón)` adentro
+# de un `$( … )`.
 RELEVANTES=$(
   printf '%s\n' "$CAMBIOS" \
-    | grep -vE "$NO_AFECTAN" \
-    | awk '!/^functions\// || /^functions\/(calendario|historial|png-chunks-seguros|jpeg-appn-seguros)\.js$/' \
-    | grep -v '^$' || true
+    | { grep -vE "$NO_AFECTAN" || true; } \
+    | while IFS= read -r ruta; do
+        [ -n "$ruta" ] || continue
+        if [ "${ruta#functions/}" = "$ruta" ] \
+           || printf '%s\n' "$FUNCTIONS_DEL_BUILD" | grep -qxF -- "$ruta"; then
+          printf '%s\n' "$ruta"
+        fi
+      done
 )
 
 HOSTING=false
