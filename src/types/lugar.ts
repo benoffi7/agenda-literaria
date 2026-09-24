@@ -403,8 +403,8 @@ export interface Lugar {
   /**
    * ¿Estuvo publicado **alguna vez**? — la marca que cierra la puerta de atrás
    * de la trampa 10. Opcional, con el default de lectura que preserva lo
-   * anterior. Misma forma y mismo motivo que en `types/libreria.ts`; hoy no la
-   * escribe nadie (la escribe un trigger con el Admin SDK, B-905).
+   * anterior. Misma forma y mismo motivo que en `types/libreria.ts`: la escribe
+   * el servidor desde B-905, la primera vez que la ficha está `publicado`.
    */
   publicadaAlgunaVez?: boolean;
 }

@@ -1377,7 +1377,9 @@ con el reloj del servidor, y se mueve **solo si el número o el período cambiar
 muestra el precio como se va a publicar («$18.000 por mes · cargado el 24 de
 septiembre») y, a los **60 días**, un aviso de que conviene revisarlo. Es la
 tercera regla de DEC-12, con el patrón del badge de pendientes: un número al lado
-de la ficha, no un mail.
+de la ficha, no un mail. Al lado del aviso va el botón **«Lo revisé: sigue siendo
+éste»** (B-913), que refecha el precio con el reloj del servidor sin tocar el
+número; la bandeja de lugares tiene el mismo.
 
 El resto del formulario es el modelo más largo de los tres directorios: quién la
 ofrece —con la dirección web de su librería, si es una de la Guía—, cada cuánto

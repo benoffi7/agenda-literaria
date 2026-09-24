@@ -294,8 +294,9 @@ export interface Libreria {
    * que el campo exista las fichas anteriores quedarían con el slug editable — o
    * sea el candado abierto justo para las que ya están en Google.
    *
-   * **Hoy no la escribe nadie**: la escribe un trigger con el Admin SDK, y el de
-   * esta colección todavía no existe. Por eso `firestore.rules` no la exige
+   * **La escribe el servidor desde B-905** (los triggers de
+   * `functions/directorios-trigger.js`), la primera vez que la ficha está
+   * `publicado`, y nunca la apaga. Por eso `firestore.rules` no la exige
    * (`hasAll`) pero sí **impide que un cliente la toque**: si un admin pudiera
    * bajarla a `false`, tendría de vuelta el slug de una ficha ya indexada.
    */

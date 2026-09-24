@@ -2,6 +2,78 @@
 
 ## Sin publicar
 
+- **El campo de Instagram avisa cuando no reconoce la cuenta** (B-1190, D-900,
+  B-1400). Debajo de los dos campos de Instagram de «Quién» aparece «No lo
+  reconocimos como una cuenta de Instagram: se va a publicar tal cual» cuando
+  `handleInstagram` devuelve `null` sobre un valor no vacío. No bloquea nada
+  (D-767 sigue igual): no es el `error` de `Campo`, va con `role="status"` y sale
+  después del blur o al abrir una actividad que ya lo tenía. La guía de «Quién»
+  deja además de pedir «con arroba y sin link», que desde B-1144 ya no hacía falta.
+- **El sitio dice quién es en su marcado: el `Organization` de `/contacto`**
+  (B-1122, B-785, D-925, B-1450). Es el nodo del §5.5 que nunca se había escrito:
+  `name`, `url`, `logo` (`marca-512.png`), `@id` y `sameAs` con los dos perfiles
+  que el sitio enlaza como propios, Instagram y **Cafecito** —la mitad pendiente
+  de B-785—. Todo sale de `identidad.ts`, `rutasPublicas.ts` y `enlaces.ts`. Ocho
+  casos nuevos en `tests/contacto-del-sitio.test.ts`, incluido el escape de `<`.
+  El `auditor-privacidad` suma `src/pages/contacto.astro` a lo que lo dispara.
+- **La verificación del navegador sigue mirando después del primer token**
+  (B-1250). Si una renovación automática de App Check falla a media tarde
+  (cambio de red, VPN, una extensión), el panel pasa a «sin verificar» y aparece
+  el cartel; con un token bueno vuelve y el cartel se va. `activarAppCheck` se
+  suscribe con `onTokenChanged` y alimenta el mismo store
+  (`registrarEventoDeToken`, regla pura). Las renovaciones normales no hacen
+  parpadear nada, y el umbral del primer pedido ya no pisa un token que llegó por
+  la suscripción. Tests: `verificacion-del-navegador` y `appcheck-renovaciones`.
+- **El aviso de los sesenta días ya tiene salida: «Lo revisé: sigue siendo éste»**
+  (B-913). Las bandejas de suscripciones y de lugares avisaban que convenía revisar
+  el precio, pero la única forma de bajar el aviso era cambiarle el número —mentir—
+  o dejarlo puesto para siempre. Ahora al lado va un botón que refecha el precio con
+  el reloj del servidor sin tocar el monto (`confirmarPrecioDeSuscripcion`,
+  `confirmarPrecioDeLugar`), por la puerta que `firestore.rules` ya dejaba abierta:
+  la regla no cambió. Escribe una sola ruta, `precio.cargadoEn`. Un componente para
+  las dos bandejas (`AvisoDePrecioViejo`). Tests: `confirmar-precio`,
+  `aviso-de-precio-viejo.render` y un caso nuevo en cada integración de
+  suscripciones y lugares. Bibliotecas queda afuera: su bandeja no pinta el aviso
+  (B-1410).
+- **Abrir la conversión de una propuesta la marca «la estoy mirando»** (B-866,
+  D-930, B-1461). Abrir «Convertir en actividad» sobre una `nueva` la pasa a
+  `en-revision`, que renueva su plazo de retención (B-844). Antes la conversión no
+  escribía nada hasta guardar, así que el barrido nocturno podía llevarse una
+  propuesta vieja con el formulario abierto: la actividad se creaba y la
+  propuesta —la prueba de qué se pidió— desaparecía. La `en-revision` y la
+  `rechazada` no se tocan (B-1460). Si la marca falla, la conversión sigue y el
+  formulario lo avisa. La regla de `/propuestas` no cambió; un test de integración
+  nuevo la fija. D-600 se corrige de alcance. Y un doble clic en «Convertir» ya no
+  abre dos conversiones con un aviso de fallo falso.
+- **`que-deployar.sh` ya no se pierde los archivos compartidos de `functions/`
+  que `src/` importa por ruta relativa** (B-1241, D-895, B-1390). El `awk` tenía
+  escritos a mano los cuatro archivos con alias y no veía `slugify`, `geografia`,
+  `handle-instagram`, `alta-de-opcion`, `huella` ni `etiqueta-presentable`: un
+  cambio a uno solo deployaba la Function y no el panel. Ahora la lista se deriva
+  del árbol en cada corrida (literales relativos a `functions/` en `src/` y
+  `astro.config.mjs`, más su clausura dentro de `functions/`), `--compartidos` la
+  imprime, y `tests/que-deployar.test.ts` la compara contra un recorrido
+  independiente de los imports: un archivo compartido nuevo queda cubierto sin
+  que nadie se acuerde. Un alias de `astro.config.mjs` escrito sin `./` pone el
+  test en rojo.
+- **La Guía entra al pie, al 404 y a la ayuda** (B-900, B-902, D-915). El pie gana
+  una fila, «Guía». El `/404` suma a «Explorá por» un grupo «En la Guía» con solo
+  las secciones disponibles que tienen fichas publicadas (`grupoDeLaGuia`,
+  `fichasPorDirectorio`: la página recibe cuatro números, no las fichas). Y
+  `/ayuda` tiene «¿Esto solo tiene actividades?» (`#la-guia`), con las secciones
+  derivadas de `directoriosDisponibles()` — el párrafo que reemplaza se había
+  olvidado de bibliotecas. Son 22 preguntas.
+- **El slug de una ficha de la Guía queda fijo aunque se despublique** (B-905,
+  D-910, D-911). `publicadaAlgunaVez` estaba declarado en librerías,
+  suscripciones, lugares y bibliotecas, y la regla lo respetaba, pero nadie lo
+  escribía: publicar → despublicar → renombrar → volver a publicar reabría la URL
+  (trampa 10). Ahora lo prenden los cuatro triggers de rebuild de directorio la
+  primera vez que la ficha está publicada, con la misma decisión y el mismo efecto
+  que `syncCalendar` usa para las actividades. Guarda anti-loop doble. `slugBloqueado`
+  suma marca y estado con `||`, como la regla. Registro nuevo
+  `WRITE_BACKS_CON_GUARDA` en `tests/clases-de-bug.test.ts`. Solo vale hacia
+  adelante (B-1420).
+- **La fila DEC-6 del BACKLOG ya no tiene la cicatriz de merge** (B-840).
 - **El original de una propuesta aceptada ya no queda para siempre cuando la foto
   se sube después** (B-1370, D-890). Si al aceptar la actividad todavía no tenía
   copia, `borrarImagenAlCerrar` conserva el original (`sin-copia`), que es lo

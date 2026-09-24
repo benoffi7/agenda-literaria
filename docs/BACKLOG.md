@@ -599,30 +599,6 @@ correo existiera.
 > minutos: Administrar → Flujos de datos → el flujo → Enhanced measurement. Es de
 > quien tiene la consola (§5.4), y ningún test lo puede sostener ni verificar.
 
-### B-866 · Convertir no renueva el plazo, así que el barrido se lleva la propuesta con el formulario abierto · P3
-
-**Es la mitad de B-864 que la precondición no puede cubrir**, y sale de la misma
-lectura. `PropuestasPanel.convertir` **no escribe nada** en Firestore hasta que la
-actividad se guarda (**D-600**: «convertir es prellenar, no importar»), así que
-abrir el formulario sobre una propuesta vieja no mueve su `updateTime` y B-864 no
-tiene contra qué proteger: el barrido de esa noche se la lleva con el formulario
-abierto, y el `revisarPropuesta` de `alGuardar` falla con NOT_FOUND. Lo que queda
-es la actividad creada y la propuesta desaparecida — el catálogo bien y **la prueba
-de qué se pidió perdida** (§4.3 del PRD).
-
-**La ventana es más ancha que la de B-864**, y es lo que lo hace un ítem y no una
-nota: allá eran los segundos de una corrida, acá es todo el tiempo que el
-formulario quede abierto.
-
-Lo único que lo arregla es que abrir la conversión **sea** un movimiento de estado
-—pasar la propuesta a `en-revision`, que es literalmente lo que está pasando— y eso
-contradice D-600 tal como está escrita. Por eso es una decisión del dueño y no un
-renglón: la pregunta es si «convertir no escribe nada» es la decisión, o si lo era
-«convertir no escribe **la actividad**», que es el riesgo que D-600 argumenta (una
-conversión abandonada dejando una `aceptada` que apunta a una actividad que no
-existe). Marcarla `en-revision` al abrir no tiene ese problema: `en-revision` es
-reversible, se ve en la bandeja y ya renueva el plazo por el reloj de B-844.
-
 ### B-1200 · `npm run emu` no arranca en la máquina del dueño, y el motivo no es del repo · P4 — de levantar el emulador para B-1112 (2026-09-22)
 
 `npm run emu` levanta `auth, functions, firestore, hosting, storage, extensions` y
@@ -996,18 +972,26 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 ## P2 — mejoras reales
 
-### B-1241 · `que-deployar.sh` no despliega Hosting cuando cambia solo un archivo compartido de `functions/` · P2 — lo encontró `opciones-publicador` (2026-09-23)
+### B-1410 · Bibliotecas promete el aviso de los 60 días y la bandeja no lo pinta · P2 — de `precio-revisado` (2026-09-24)
 
-El `awk` de `scripts/que-deployar.sh` solo trata como relevantes para Hosting los
-cuatro archivos con alias (`calendario`, `historial`, `png-chunks-seguros`,
-`jpeg-appn-seguros`). Pero `src/` importa por ruta relativa `functions/slugify.js`,
-`geografia.js`, `handle-instagram.js` y, desde B-893, `alta-de-opcion.js`,
-`huella.js` y `etiqueta-presentable.js`. Si un cambio toca solo uno de ellos, se
-despliega la Function y no el panel, y los dos caminos del alta de una etiqueta
-quedan con versiones distintas en producción sin que nada lo avise.
-`tests/que-deployar.test.ts` solo ata los alias. El arreglo es derivar la lista de
-los imports relativos de `src/` hacia `functions/`, o invertir el `awk` a lista
-negra (solo `*-trigger.js`, `index.js` y `package*.json` no afectan Hosting).
+La ayuda del campo «Cuánto sale asociarse» dice «el panel te avisa a los
+${DIAS_PARA_REVISAR} días para que lo revises» (`BibliotecaFormulario.tsx`), pero
+`BibliotecasPanel.tsx` no llama a `pideRevision`: ahí se decidió no mostrar el
+costo en la bandeja. Un costo de hace un año sigue publicado sin que nadie lo
+sepa, que es el daño que B-837 evita. La regla (`bibliotecaActualizable()`) ya
+deja refechar `asociarse.costo.cargadoEn` con `request.time`. Arreglo: pintar el
+aviso sin el número con `AvisoDePrecioViejo` y un `confirmarCostoDeBiblioteca`,
+con el texto del componente como parámetro (hoy dice «el precio»).
+
+### B-1411 · El aviso de los 60 días queda escondido justo en las fichas publicadas · P2 — de `precio-revisado` (2026-09-24)
+
+`DirectorioPanel` arranca con «Ver publicadas y descartadas» apagado y muestra
+solo las pendientes. El precio viejo que importa es el de una ficha
+**publicada**, y esa no aparece hasta que alguien prende la casilla. No hay número
+que cuente cuántas piden revisión. Propuesta: un contador arriba de la bandeja
+(«N precios para revisar») que prenda el filtro, o que las fichas con aviso se
+muestren aunque el filtro esté apagado. Toca `DirectorioPanel.tsx`, que comparten
+los tres directorios.
 
 ### B-1221 · El backlog puede estar tres semanas atrás de `main` y nada lo mira — medido, y el chequeo obvio es inservible · P2 — de cerrar B-1170 (2026-09-22)
 
@@ -1065,35 +1049,6 @@ componer los dos de más ahí**, que es literalmente lo que B-1113 dejó escrito
 átomos del id: «el que necesite otra forma la compone con estos átomos, no la
 reescribe». No se hizo en B-1170 porque `parseo.mjs` no era un archivo de ese frente y
 tocarlo mueve `archivar-backlog.test.ts`.
-
-### B-1190 · El campo de Instagram avisa por omisión: si no reconoce el valor, lo único que pasa es que no pasa nada · P2 — del `auditor-privacidad` sobre el cierre de B-1144 (2026-09-22)
-
-**Es la consecuencia deliberada de D-767, no un olvido — pero merece un ítem
-porque la decisión del dueño fue «no frenar», no «no avisar».** Las dos cosas se
-pueden tener a la vez y hoy solo está la primera.
-
-**El hecho:** cuando `handleInstagram` devuelve `null` —«Casa Brandon / IG», un
-handle con una barra, un link a un posteo—, el `onBlur` deja el campo como está.
-La ayuda del campo lo dice desde B-1144 («si el campo no cambia es que no lo
-reconocimos»), pero eso es una instrucción que se lee antes, no una señal que
-aparezca cuando el caso ocurre.
-
-**Por qué importa, y por qué es más ahora que antes.** Ese valor sale **crudo** al
-pie del posteo para redes (B-1142). Y el propio B-1144 debilitó la única señal que
-quedaba: antes, ver el link pegado tal cual en el campo no significaba nada;
-ahora, con un campo que se corrige solo, «quedó como lo pegué» se lee como «ya
-estaba bien». La ayuda nueva compensa, pero por instrucción y no por evidencia.
-
-**Lo que hay que decidir es de UI, y no lo tomó el dueño:** un aviso bajo el campo
-cuando `handleInstagram(valor) === null` y el valor no está vacío, del tipo «no lo
-reconocimos como una cuenta: se va a publicar tal cual». **No bloquea nada**
-—D-767 ya decidió eso y esto no lo toca—, es un cartel. La alternativa es dejarlo
-como está y aceptar que el aviso vive en la ayuda.
-
-**Test que lo fijaría:** `it('si el saneador no entiende el valor, el campo lo
-dice en pantalla')` en `tests/seccionQuien.render.test.tsx`.
-
-**Dónde:** `src/components/admin/formulario/SeccionQuien.tsx`.
 
 ### B-1081 · El ritmo del catálogo está calculado, testeado, y nadie lo dibuja · P2 — de documentar el tablero (2026-09-17)
 
@@ -1342,38 +1297,6 @@ Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
 Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
 puertas, no las abre.
 
-### B-913 · El panel avisa a los 60 días que revises el precio, y no ofrece decir «sigue siendo éste» · P2
-
-`pideRevision` (B-837) pinta el aviso en la bandeja a los `DIAS_PARA_REVISAR` días.
-`firestore.rules` **ya deja** refechar un precio que no cambió con el reloj del
-servidor —es «lo revisé hoy y sigue siendo éste», y la puerta está abierta a
-propósito y probada— pero la pantalla no ofrece el gesto: `guardarSuscripcion` solo
-refecha cuando el monto o el período cambian.
-
-O sea que hoy la única forma de bajar el aviso es **cambiarle el número**, que es
-mentir, o dejarlo puesto para siempre, que es enseñar a ignorar el aviso. Es un
-botón y una llamada.
-
-### B-905 · El candado del slug de una librería se apoya en el estado actual, no en la historia · P2
-
-`publicadaAlgunaVez` está declarado en `src/types/libreria.ts` y la regla ya lo
-respeta —e impide que un cliente lo mueva—, pero **nadie lo escribe**: falta el
-trigger. Mientras tanto `slugDeLibreriaCongelado` contesta con el estado, así que
-publicar → despublicar → renombrar → volver a publicar **reabre la URL**. Es la
-puerta de atrás que `slugBloqueado` (`lib/directorios.ts`) ya tiene nombrada para
-las tres entidades, y la misma que B-285 resolvió para una actividad.
-
-Falla en la dirección cara: una URL indexada que cambia es un 404 sin aviso
-(trampa 10). El arreglo es el trigger, y el día que exista este ítem se cierra solo
-— la regla no hay que tocarla.
-
-### B-900 · El circuito de `/guia` no está completo: falta el pie y el 404 · P2
-
-El §2.1 del inventario lista `PieDePagina.astro` («los mismos destinos») y
-`noEncontrado.ts` («el 404 sugiere secciones; hay tres más»). Los dos quedaron
-afuera de la tajada 2 por propiedad de archivos. Es circuito del §2.1, o sea de los
-que no perdonan el olvido.
-
 ### B-899 · La doc de la tajada 2 (pasos 12 y 13) · P2
 
 Falta `04-funcionalidades.md` (la pestaña «Guía», la página `/guia`, la bandeja
@@ -1527,7 +1450,10 @@ pregunta que contesta es «qué etiqueta conviene cargar o retirar». Un `barrio
 se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta que
 sobra, y hoy eso no se puede saber.
 
-### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem
+### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem · ✅ hecho (2026-09-24)
+
+**✅ Hecho (2026-09-24).** La otra mitad (B-1122): el nodo existe en `/contacto`, y `/apoyar` entra por `urlDeCafecito()` en el `sameAs`, al lado de Instagram. Sin `funder` y sin `DonateAction`.
+
 
 **La ayuda ya la menciona.** Entró la pregunta «¿Esto es gratis? ¿Quién lo paga?»
 en el grupo «Qué es esta agenda», con su enlace a `/apoyar`. La respuesta es
@@ -1969,18 +1895,46 @@ corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
 
 ## P3 — cuando sobre tiempo
 
-### B-1250 · La verificación del navegador mira solo el primer token: si la renovación automática falla más tarde, el cartel no aparece · P3 — lo encontró `appcheck-panel` (2026-09-23)
+### B-1412 · El aviso dice «más de 60 días» también cuando la fecha no es usable · P3 — de `precio-revisado` (2026-09-24)
 
-B-930 pide el token de App Check al arrancar el panel y avisa si no llega. Pero
-`isTokenAutoRefreshEnabled` renueva el token cada tanto, y si una renovación
-falla a mitad de la tarde —la persona cambió de red, prendió una VPN, una
-extensión se activó—, el estado sigue en `verificado`. Un guardado que falle en
-ese momento va a decir «se cortó la conexión», que es justo la confusión que
-B-930 vino a sacar. Es P3 porque el token dura una hora y el caso típico, una
-extensión, se ve desde el primer intento. El arreglo probable es
-`onTokenChanged(appCheck, siguiente, error)` alimentando el mismo store
-(`verificacionDelNavegador.ts`), con un test de que un error después de
-`verificado` lleva a `sin-verificar`.
+`pideRevision` es verdadero también cuando `cargadoEn` falta o está roto, y en ese
+caso el sitio ni publica el precio: «más de 60 días» es falso y esconde lo más
+grave. Con B-913 el botón ya lo arregla (refecha con el servidor), pero el texto
+tendría que decir «el precio no se está publicando: falta su fecha». Se resuelve
+en `AvisoDePrecioViejo` con un prop `sinFecha`, calculado con
+`diasDesdeLaCarga(...) === null`.
+
+### B-1460 · Convertir una `en-revision` o una `rechazada` vieja sigue sin renovar el plazo · P3 — de `convertir` (2026-09-24)
+
+B-866 marca solo la `nueva`. Una `en-revision` a punto de vencer no se puede
+renovar: la regla exige mover el estado y ya está donde tiene que estar. Una
+`rechazada` tampoco se marca, porque reabrirla sería una decisión que nadie tomó.
+En las dos, el barrido se la puede llevar con el formulario abierto. Salidas: un
+«toque» en la regla que solo renueve `revision.en` sin mover el estado (afloja el
+`hasAny(['estado'])` que D-600 defendió), o que el formulario avise cuando la
+propuesta vence en menos de un día. La bandeja ya avisa la última semana
+(`avisoDeCaducidad`), lo que acota el caso.
+
+### B-1420 · Las fichas de la Guía despublicadas antes de B-905 no recuperan la marca · P3 — de `slug-libreria` (2026-09-24)
+
+La marca de B-905 solo vale hacia adelante. Una ficha que hoy está `publicado` sin
+la marca la recibe en su próxima escritura, y mientras tanto la cubre el
+`|| estado` de la regla. Pero una que se publicó y **ya se despublicó antes del
+deploy** no la va a recibir nunca: los directorios no tienen historial del que
+inferirla (a diferencia de las actividades, D-159), así que su slug sigue
+editable. Salidas: un script de backfill, de solo lectura primero (clase de
+B-209), que liste las fichas `pendiente`/`rechazado` cuyo slug aparece en el
+sitemap publicado, y marque esas; o aceptar el hueco si el relevamiento da cero.
+Primero medir cuántas hay.
+
+### B-1430 · `/guia` todavía se describe con tres secciones, y son cuatro · P3 — de `guia` (2026-09-24)
+
+La `DESCRIPCION` de `src/pages/guia/index.astro` —su `meta description`,
+indexada— dice «Librerías, suscripciones literarias y lugares para hacer
+eventos», y el párrafo de entrada enumera las mismas tres: falta bibliotecas, que
+existe desde B-960. Es la clase de B-662, una enumeración escrita a mano que se
+queda vieja. Arreglo: derivarla de `directoriosDisponibles()`, como
+`/ayuda#la-guia`.
 
 ### B-1162 · Un hallazgo que afirma «esto se ve» no dice si se reprodujo o si se dedujo leyendo · P3 — de cerrar B-1142 (2026-09-22)
 
@@ -2093,21 +2047,6 @@ calibrada (B-856 la recalibró mirando el archivo, y lo que estaba mal era el
 umbral); ésta no tiene ninguna, y es la que mide **de cuántas piezas depende el
 formulario** — o sea la que dice cuándo tocarlo empieza a ser caro.
 
-### B-1122 · El nodo `Organization` del sitio, con el `sameAs` a Cafecito, nunca se escribió · P3
-
-**Sobrante declarado adentro de B-107** (Meta/OpenGraph/JSON-LD, ✅ 2026-09-02):
-«`Organization` en `/contacto` sigue afuera: nadie la pidió, y no tiene ítem
-propio (§4.5 del diseño)». Verificado hoy, sigue siendo cierto — y conviene
-decir por qué no alcanza con lo que hay: los tres `Organization` que existen en
-el código son **otra cosa**. `src/lib/detallePublico.ts:1670` es el organizador
-de cada actividad; `src/lib/suscripcionPublica.ts:717,739` son el `brand` y el
-`seller` de una oferta. Ninguno describe al sitio. En `src/pages/contacto.astro`
-y `src/lib/contactoDelSitio.ts` no hay `Organization` ni `sameAs`.
-
-Es el nodo que ata la identidad del sitio con sus perfiles, y **B-785 está
-bloqueado esperándolo**: su mitad pendiente es agregarle el `sameAs` al perfil de
-Cafecito, que no se puede hasta que el nodo exista.
-
 ### B-1123 · Un patrón citado tres veces como «D-100» y que no tiene ningún `D-` propio · P3
 
 **Sobrante declarado adentro de B-345** (las citas a D-100 corregidas a D-111,
@@ -2149,14 +2088,6 @@ La defensa que corresponde es que la proyección pública las pase por `urlSegur
 `imagenesPublicables`, que es donde el proyecto ya decidió que se sanea — y hay que
 **verificarlo** cuando se escriba el `toPublic` de la entidad, no suponerlo. La otra
 mitad, si aparece abuso, es una Function (es B-842).
-
-### B-902 · La Guía merece su propia pregunta en la ayuda del sitio · P3
-
-Hoy entra como tercer párrafo de «¿Qué es esto?» y no como «¿Esto solo tiene
-actividades?». El motivo es de contabilidad, no de criterio: el conteo de preguntas
-está atado a `04-funcionalidades.md`, `06-decisiones.md` y a este archivo, y la 22ª
-obliga a corregir los tres números. Cuando la Guía tenga sus tres secciones cargadas
-la pregunta propia se justifica sola.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

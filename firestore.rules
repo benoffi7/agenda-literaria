@@ -1266,15 +1266,13 @@ service cloud.firestore {
      * ficha que se publicó y se despublicó volvió a `pendiente`, y mirar solo el
      * estado actual le devolvería el slug editable — o sea la puerta de atrás del
      * mismo candado. Por eso se mira primero la marca `publicadaAlgunaVez`, que
-     * **hoy no escribe nadie** (la va a escribir un trigger con el Admin SDK) y
-     * cuya ausencia se contesta con el estado, que es el comportamiento actual.
+     * **escribe el servidor desde B-905** (los triggers de rebuild de
+     * directorio) y cuya ausencia se contesta con el estado.
      *
-     * Una diferencia con `slugBloqueado` (`lib/directorios.ts`) que conviene
-     * tener escrita: allá la marca **gana** sobre el estado (`?? `), acá se
-     * suman con un `||`. O sea que un documento imposible —`publicado` con la
-     * marca en `false`— acá **queda congelado** y allá no. Falla cerrada, que es
-     * la dirección que corresponde cuando lo que está en juego es una URL
-     * indexada.
+     * `slugBloqueado` (`lib/directorios.ts`) suma la marca y el estado con el
+     * mismo `||` desde D-911, así que las dos mitades contestan lo mismo: una
+     * ficha `publicado` con la marca todavía en `false` —la ventana entre la
+     * publicación y el write-back— queda congelada acá y allá. Falla cerrada.
      */
     function slugDeLibreriaCongelado(previo) {
       return previo.get('publicadaAlgunaVez', false) == true
@@ -1824,11 +1822,9 @@ service cloud.firestore {
      *
      * Idéntica a `slugDeLibreriaCongelado` y con el mismo razonamiento: se
      * congela **al publicar**, la pregunta de verdad es «¿estuvo publicada alguna
-     * vez?» (B-285), y la marca ausente se contesta con el estado. La asimetría
-     * con `slugBloqueado` (`lib/directorios.ts`) también es la misma: allá la
-     * marca gana sobre el estado, acá se suman con un `||`, así que un documento
-     * imposible queda **congelado**. Falla cerrada, que es la dirección que
-     * corresponde cuando lo que está en juego es una URL indexada.
+     * vez?» (B-285), y la marca ausente se contesta con el estado. Y como
+     * allá, `slugBloqueado` (`lib/directorios.ts`) suma la marca y el estado con
+     * el mismo `||` desde D-911: las dos mitades contestan lo mismo.
      */
     function slugDeSuscripcionCongelado(previo) {
       return previo.get('publicadaAlgunaVez', false) == true
@@ -2272,9 +2268,8 @@ service cloud.firestore {
      * Idéntica a `slugDeLibreriaCongelado` y a `slugDeSuscripcionCongelado`, con
      * el mismo razonamiento: se congela **al publicar**, la pregunta de verdad es
      * «¿estuvo publicado alguna vez?» (B-285), y la marca ausente se contesta con
-     * el estado. La asimetría con `slugBloqueado` (`lib/directorios.ts`) también
-     * es la misma: allá la marca gana sobre el estado, acá se suman con un `||`,
-     * así que un documento imposible queda **congelado**. Falla cerrada.
+     * el estado. `slugBloqueado` (`lib/directorios.ts`) suma la marca y el
+     * estado con el mismo `||` desde D-911: las dos mitades contestan lo mismo.
      */
     function slugDeLugarCongelado(previo) {
       return previo.get('publicadaAlgunaVez', false) == true
@@ -2764,12 +2759,9 @@ service cloud.firestore {
     /**
      * ¿El slug de esta biblioteca ya no se puede tocar? — trampa 10.
      *
-     * Misma forma que `slugDeLibreriaCongelado`, incluida la diferencia con
-     * `slugBloqueado` (`lib/directorios.ts`): allá la marca **gana** sobre el
-     * estado, acá se suman con un `||`, así que un documento imposible
-     * —`publicado` con la marca en `false`— acá queda congelado y allá no. Falla
-     * cerrada, que es la dirección que corresponde cuando lo que está en juego es
-     * una URL indexada.
+     * Misma forma que `slugDeLibreriaCongelado`: la marca y el estado se suman
+     * con un `||`, igual que en `slugBloqueado` (`lib/directorios.ts`) desde
+     * D-911, así que las dos mitades contestan lo mismo. Falla cerrada.
      */
     function slugDeBibliotecaCongelado(previo) {
       return previo.get('publicadaAlgunaVez', false) == true

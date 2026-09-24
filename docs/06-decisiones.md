@@ -3896,7 +3896,7 @@ desde Google. Unificarlos obligaría a que un cambio de tono en uno pase por el 
 
 ## D-136 · La ayuda se muestra entera, no en un acordeón
 
-**Contexto.** 21 preguntas en una página. El reflejo es un acordeón: se ve
+**Contexto.** 22 preguntas en una página. El reflejo es un acordeón: se ve
 corto, prolijo y moderno.
 
 **Decisión.** Todo abierto, con encabezados jerárquicos, un índice arriba y un ancla
@@ -12765,6 +12765,78 @@ Instagram del repo no estén en una misma tabla sigue siendo B-1191.
 
 **Dónde:** `src/components/admin/formulario/SeccionQuien.tsx` (`AvisoInstagram`),
 `tests/seccionQuien.render.test.tsx`.
+
+## D-910 · La marca de «publicada alguna vez» de los directorios va en el trigger de rebuild, no en una Function propia
+
+**B-905, 2026-09-24.** B-905 pedía el trigger que prende `publicadaAlgunaVez` en
+`/librerias`, y las otras tres colecciones de la Guía (`/suscripciones`,
+`/lugares`, `/bibliotecas`) tenían el mismo hueco. Cada una ya tiene un
+`onDocumentWritten` sobre su path: el rebuild de B-901/B-832/B-833/B-960.
+
+**Decisión.** La marca se escribe adentro de esos cuatro handlers, antes del `if`
+del rebuild y afuera de él, con `faltaMarcarPublicada` (`functions/historial.js`)
+y `marcarPublicada(db, id, coleccion)` (`functions/marca-de-publicada.js`), las
+mismas que usa `syncCalendar`.
+
+**Por qué.**
+
+- Es el patrón de B-285, que la puso en `syncCalendar`, el trigger que ya existía
+  sobre `actividades/{id}`.
+- Dos `onDocumentWritten` sobre el mismo path son dos handlers del mismo evento
+  (B-89) y costarían dos invocaciones por escritura.
+- La guarda del rebuild ya excluía el campo, así que el write-back no cuesta un
+  build, y en la segunda pasada la marca ya está en `true` y no se reescribe
+  (trampa 3).
+
+**Descartado.** Cuatro Functions `marcarPublicada*` nuevas: el doble de
+invocaciones y cuatro exports más en `index.js` para el mismo efecto. Y extraer el
+bloque a un helper compartido: el chequeo de B-83 es textual sobre cada cuerpo y
+dejaría de verlo. Por eso el bloque se repite, y el cableado por colección lo ata
+`tests/directorios-publicada-alguna-vez.test.ts`.
+
+## D-911 · `slugBloqueado` suma la marca y el estado con `||`, como la regla
+
+**B-905, 2026-09-24.** `slugBloqueado` (`src/lib/directorios.ts`) contestaba
+`publicadaAlgunaVez ?? estado === 'publicado'`, y `slugDe*Congelado`
+(`firestore.rules`) contesta `marca == true || estado == 'publicado'`. La
+diferencia estaba documentada como «un documento imposible» (`publicado` con la
+marca en `false`). Con el trigger escrito dejó de serlo: el `create` acepta la
+marca en `false`, y entre la publicación y el write-back —o si el write-back
+falla— esa ficha existe.
+
+**Decisión.** `slugBloqueado = publicadaAlgunaVez === true || estado === 'publicado'`.
+
+**Por qué.** Con el `??` el formulario ofrecía editar el slug y la regla
+rechazaba el guardado entero: el candado de verdad aguantaba, pero el panel
+prometía algo que no podía cumplir. Con el `||` las dos mitades contestan lo
+mismo, y falla cerrado, que es la dirección correcta cuando está en juego una URL
+indexada.
+
+## D-915 · La Guía entra al pie con una fila y al 404 sección por sección, y solo las que tienen fichas
+
+**B-900, 2026-09-24.** El § 2.1 del inventario pedía la Guía en el pie («los
+mismos destinos») y en el 404 («el 404 sugiere secciones; hay tres más»). Son
+cuatro secciones, y cualquiera puede existir con cero fichas publicadas: su
+listado lo dice sin mentir, pero no es una respuesta para quien acaba de caer en
+un 404.
+
+**Decisión.** El pie gana **una** fila, «Guía», a `/guia`. El 404 gana un grupo
+«En la Guía» con cada sección que cumple **las dos** condiciones: `disponible` en
+`DIRECTORIOS` y listado no vacío. La página recibe `fichasPorDirectorio()`, un
+`Record<IdDirectorio, number>`, y no las `vistaDe*`.
+
+**Por qué.** El pie se dibuja en todas las páginas y no puede saber si una sección
+tiene fichas sin leer los datos en cada una; `/guia` siempre tiene algo que decir,
+así que es el único destino de la Guía que el pie puede ofrecer sin mirar datos.
+Cuatro filas serían además una segunda copia de `DIRECTORIOS`, escrita a mano. El
+404 sí lee datos y aplica el mismo recorte que su tira ya aplica a los hubs
+vacíos: un enlace desde una página de error tiene que llevar a algo. Los conteos
+deciden y no se dicen, y un contador no puede publicar un campo de una ficha
+porque no lo tiene: la lista blanca de la página crece en un símbolo que no
+amplía lo que ve.
+
+**Descartado.** Una fila por sección en el pie. Importar las cuatro `vistaDe*` en
+el 404, que decide lo mismo recibiendo las fichas enteras.
 
 ## D-925 · La forma del `Organization` del sitio
 

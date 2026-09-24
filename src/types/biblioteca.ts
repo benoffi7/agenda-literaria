@@ -327,9 +327,10 @@ export interface Biblioteca {
    * de la trampa 10, con el mismo default de lectura que en librerías: ausente ⇒
    * se contesta con el estado actual.
    *
-   * **Hoy no la escribe nadie** — la escribiría un trigger con el Admin SDK, y
-   * el de esta colección tampoco existe (es B-905 con otra cara, y por eso este
-   * campo nace ya declarado en vez de agregarse después).
+   * **La escribe el servidor desde B-905** (los triggers de
+   * `functions/directorios-trigger.js`), la primera vez que la ficha está
+   * `publicado`, y nunca la apaga. El cliente no puede crearla en `true` ni
+   * cambiarla.
    */
   publicadaAlgunaVez?: boolean;
 }

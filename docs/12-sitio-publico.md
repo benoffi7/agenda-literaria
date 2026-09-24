@@ -1058,9 +1058,10 @@ el subconjunto ya filtrado.
   > `mailto:` crudo que se salteaba esa lista (B-233).
   >
   > El canal de contacto que este bullet pedía **se decidió**: es el que
-  > `/contacto` publica. Lo que sigue afuera es la página de identidad
-  > institucional —quién lo mantiene, el `Organization` del §5.5— que no tiene
-  > ítem propio porque nadie la pidió.
+  > `/contacto` publica. El `Organization` del §5.5 ya está, en
+  > `/contacto` (B-1122); lo que sigue afuera es la página de identidad
+  > institucional —quién lo mantiene—, que no tiene ítem propio porque nadie la
+  > pidió.
 - **`/404`** — buscador, los hubs, y "quizá la actividad que buscás ya pasó:
   mirá el archivo".
 
@@ -1636,7 +1637,7 @@ virtual ya da `hibrido`, o sea `Mixed`, que es lo correcto.
 | `/guia/suscripciones` | `CollectionPage` + `ItemList`, la misma forma. No reusa el de librerías por el mismo motivo por el que aquél no reusa `coleccionSchema`: los `item` se arman con la ruta de **su** entidad |
 | `/guia/lugares/{slug}` | `Place` + `BreadcrumbList`, con `maximumAttendeeCapacity` y `amenityFeature`. **No es un `LocalBusiness`/`BookStore`**: ese tipo exige `address`, y la mitad de este directorio es una casa cuya dirección no se publica — un `LocalBusiness` sin `address` es un local que no existe, y además declararía como comercio a un lugar que presta el salón sin cobrar. **Y no es `EventVenue`**, que se evaluó: suena más preciso y por eso mismo afirma de más —dice que el lugar *es* un salón de eventos, y un café que presta la mesa del fondo los martes no lo es—, que es el contra del § 9 escrito para una máquina; tampoco tiene propiedades propias ni resultado enriquecido que ganar. **`address` y `geo` salen solo si la dirección salió** (criterio 5 del PRD: «`direccion` ausente de la ficha implica ausente del JSON-LD»), y **no hay `priceRange`**: la condición no es un rango de precios (§ 7) (B-833) |
 | `/guia/lugares` | `CollectionPage` + `ItemList`, la misma forma. No reusa el de los otros dos por el mismo motivo: los `item` se arman con la ruta de **su** entidad |
-| ~~`/acerca`~~ | `Organization` con `name`, `url`, `logo`, `sameAs` (Instagram). **`/acerca` no existe** (B-234): el rol se repartió entre `/ayuda` y `/contacto`, y ninguna de las dos emite `Organization` todavía. Si se agrega, va en `/contacto`, que es la que dice con quién estás tratando |
+| ~~`/acerca`~~ | `Organization` con `name`, `url`, `logo`, `sameAs` (Instagram). **`/acerca` no existe** (B-234): el rol se repartió entre `/ayuda` y `/contacto`, y el `Organization` se emite en `/contacto` desde B-1122 (2026-09-24): `ORGANIZACION_DEL_SITIO`, con `sameAs` a Instagram y Cafecito y un `@id`; la forma y los descartes en D-925 |
 
 No se usa `WebSite` + `SearchAction`: Google retiró el sitelinks searchbox y hoy
 no hace nada.
