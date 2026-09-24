@@ -1512,6 +1512,7 @@ persona sino el estado de su documento. Las cuatro piezas:
 | **Se acepta (1/2)** | el panel la baja y la vuelve a subir a `imagenes/` por `subirImagen`, y **no borra nada** | `src/lib/subir-imagen.ts` |
 | **Se acepta (2/2)** | al guardarse la actividad, se verifica que la copia esté y recién ahí se borra el original (**B-863**) | `borrarImagenAlCerrar` |
 | **Se rechaza** | se borra en el acto | `borrarImagenAlCerrar` |
+| **Se aceptó sin copia y la foto llegó después** | al día siguiente, verificada la copia, se borra el original (**B-1370**) | `borrarPropuestasVencidas` |
 | **Nadie decide** | a los 30 días se va con el documento | `borrarPropuestasVencidas` |
 
 **Aceptar son dos filas y no una, y ése es todo el contenido de B-863.**
@@ -1550,8 +1551,8 @@ ni siquiera llegó a intentarlo):
 
 | `resultado` / `motivo` | Qué pasó | Qué hacer |
 |---|---|---|
-| `sin-copia` | la actividad se guardó sin ninguna imagen propia (la promoción falló y el panel avisó, o el admin sacó la fila) | decidir si la foto se usa. Si no, borrar el objeto a mano |
-| `copia-sin-objeto` | el documento nombra una copia que ya no está en el bucket (el formulario quedó abierto más de 72 horas y `limpiarImagenesHuerfanas` se la llevó) | volver a subir la foto a la actividad desde el panel; después borrar el original a mano |
+| `sin-copia` | la actividad se guardó sin ninguna imagen propia (la promoción falló y el panel avisó, o el admin sacó la fila) | decidir si la foto se usa. Si se usa, subirla a la actividad desde el panel: el original lo borra solo la corrida siguiente de `borrarPropuestasVencidas` (**B-1370**). Si no, borrar el objeto a mano |
+| `copia-sin-objeto` | el documento nombra una copia que ya no está en el bucket (el formulario quedó abierto más de 72 horas y `limpiarImagenesHuerfanas` se la llevó) | volver a subir la foto a la actividad desde el panel; el original lo borra solo la corrida siguiente (**B-1370**) |
 | `sin-actividad` | el `revision.actividadId` apunta a una actividad que no existe (se borró, o se marcó a mano con un id equivocado) | buscar la actividad que salió de la propuesta; si no hay, borrar el objeto a mano |
 | `objeto-ajeno` | el `storagePath` no está bajo `propuestas/<un segmento>`. **No es un caso de operación: es un bug o un documento escrito a mano** | **no borrar nada** hasta saber a quién apunta ese path. La guarda existe justamente porque puede ser el flyer de una actividad publicada |
 | `aceptada-sin-actividad` | la propuesta quedó `aceptada` sin `revision.actividadId` (se la marcó a mano) | ídem `sin-actividad` |
@@ -1619,8 +1620,13 @@ propuesta ya estaba aceptada antes del deploy.
 | `recien-subido` | el **objeto** tiene menos de 72 h, o su fecha de creación no se pudo leer (nada que ver con `sin-fecha-legible`, que habla de la fecha del **documento**) | **nada**: `/proponer` sube el archivo al elegirlo y escribe el documento al enviar, así que lo normal es que todavía no tenga dueño. Falla cerrado, como los otros dos barridos |
 | `fuera-del-alcance` | no está bajo `propuestas/<un segmento>` | **no tocar**. Es la misma guarda de `objeto-ajeno`: puede ser el flyer de una actividad publicada |
 
-**La lista informa y no borra, tampoco con `--aplicar`.** Lo que falta para
-automatizarlo es una decisión de producto: qué pasa con la aceptada que conservó
+**La lista informa y no borra, tampoco con `--aplicar`.** Hay **un** caso que
+desde B-1370 sí se borra solo, y no desde acá: la aceptada cuya actividad **ya
+tiene** su copia viva (`con-copia-con-original` en
+`scripts/flyeres-de-propuestas-aceptadas.mjs`) lo resuelve
+`borrarPropuestasVencidas`, ver § «El original que sobra cuando la foto llega
+después». Para el resto, lo que falta para automatizarlo es una decisión de
+producto: qué pasa con la aceptada que conservó
 su original **a propósito** (el caso `sin-copia`, donde no borrar es lo correcto
 porque perder la foto no se deshace). Mientras esa respuesta no exista, un
 barrido automático o borraría justo esa foto o tendría una excepción que no
@@ -1640,7 +1646,50 @@ Dos detalles de operación:
 - **No está en el barrido diario, y es a propósito.** La lectura que necesita es
   la colección `/propuestas` entera —hay que saber si *alguien* nombra cada
   objeto—, que es justo lo que B-865 acaba de sacar del camino diario. Va a
-  pedido, y pasa a ser automático el día que la decisión de arriba exista.
+  pedido, y pasa a ser automático el día que la decisión de arriba exista. (El
+  barrido de B-1370 **sí** es diario porque entra al revés: lista `propuestas/`
+  y busca solo los documentos que nombran esos objetos, así que su costo crece
+  con los flyers vivos y no con el archivo histórico.)
+
+### El original que sobra cuando la foto llega después (B-1370)
+
+El caso de B-1322 tal como pasó dos veces en producción: la actividad se guardó
+sin foto, la propuesta pasó a `aceptada` segundos después (`sin-copia`, original
+conservado) y la foto se subió a mano minutos más tarde. El trigger decide una
+sola vez, así que no volvía a mirar.
+
+Desde B-1370 lo mira `borrarPropuestasVencidas` todos los días, después de la
+retención y en su `finally` (corre aunque la retención no tenga nada que borrar,
+y aunque falle). Hace cuatro cosas, en este orden:
+
+1. lista los objetos de `propuestas/` y busca, de a 30 por `in`, los documentos
+   que los nombran; se queda con los `aceptada`;
+2. los clasifica con `clasificarAceptadas` —**la misma** función que imprime el
+   script de B-1322, que ahora vive en `functions/propuestas.js`—;
+3. para cada fila `con-copia-con-original` (y **solo** ésas), relee la propuesta
+   y exige que siga `aceptada` con el mismo original, la misma actividad y sin
+   `fotoDescartada`;
+4. borra con `borrarOriginalAlAceptar`, que vuelve a verificar la copia en el
+   documento y en el bucket (B-863) antes de tocar nada.
+
+| Log | Qué es | Qué hacer |
+|---|---|---|
+| `original de una aceptada borrado: la actividad ya tiene su copia` | el caso feliz, con `propuesta` y `objeto` | nada |
+| `original de una aceptada no borrado: cambió en el medio de la corrida` | entre la clasificación y el borrado la propuesta cambió (`cambio-la-propuesta`, `ya-no-esta`) o la verificación ya no encontró la copia (`sin-copia`, `copia-sin-objeto`) | nada: el original sigue vivo y la corrida de mañana lo vuelve a mirar |
+| `no se pudo borrar el original de una aceptada con copia` | falló la lectura o el `delete` | nada si es aislado (mañana reintenta); si se repite, mirar el IAM de `calendar-sync@` |
+| `originales de aceptadas: barrido terminado` | el resumen, con `borrados`, `fallidos`, `porTope` y `pendientes` (id → caso de los que **no** se borran solos) | si `pendientes` no está vacío, seguir la fila de su caso en el script de B-1322 |
+
+**Sin `alerta`**, a diferencia de `flyer-de-propuesta-sin-borrar`: ese campo es
+para los caminos que nadie más va a revisar, y éste se revisa solo cada 24 horas.
+Tope de 50 borrados por corrida (`MAX_ORIGINALES_POR_CORRIDA`). Sin IAM nuevo:
+es la misma Function, con el mismo `storage.objects.delete`. **Entra en vigor
+con el deploy de Functions.**
+
+**Por qué un barrido y no un trigger sobre `/actividades`** está en D-890: un
+tercer `onDocumentWritten` sobre esa colección tendría que buscar en cada
+escritura de cada actividad qué propuesta la originó —la actividad no lo
+guarda—, y sería una pieza más a un write-back de distancia de la trampa 3. Un
+día de demora sobre una foto que ya estaba duplicada no le cambia nada a nadie.
 
 **Por qué se re-sube en vez de copiar del lado del servidor.** Copiar entre
 prefijos solo lo puede hacer el Admin SDK, o sea una Function, y esa Function

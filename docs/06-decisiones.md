@@ -12661,3 +12661,52 @@ del panel, y cerrarlo por reflejo deja a la persona frente a errores que no
 entiende).
 
 ---
+
+## D-890 · El original de una aceptada que sobra se borra en el barrido diario, no en un trigger sobre `/actividades`
+
+**B-1370, 2026-09-24.** Cuando una propuesta con foto pasa a `aceptada` y la
+actividad todavía no tiene copia, `borrarImagenAlCerrar` conserva el original
+(`sin-copia`), y eso sigue siendo lo correcto. Lo que faltaba era volver a mirar
+cuando la foto se sube a mano después: la aceptada no vence y ningún barrido
+recorría `propuestas/`, así que la foto de un tercero quedaba para siempre. Pasó
+en los dos casos de B-1322.
+
+**Qué se borra, y qué no.** Solo el caso `con-copia-con-original`: la propuesta
+está `aceptada`, su `revision.actividadId` apunta a una actividad con una imagen
+propia **viva** en `imagenes/`, y el original sigue en el bucket. Es la condición
+exacta con la que la transición ya borraba, evaluada después. Los demás casos
+—actividad sin foto, copia rota, solo links de afuera, sin actividad— **no** se
+tocan: ahí borrar puede ser perder la única copia, y eso sigue siendo la salida 3
+de B-871, que espera una decisión del dueño.
+
+**Dónde.** En `borrarPropuestasVencidas`, después de la retención y en su
+`finally`. Se descartó reintentar `borrarOriginalAlAceptar` desde un trigger
+sobre `/actividades` cuando la galería gana su primera imagen propia:
+
+1. **La actividad no sabe de qué propuesta salió.** El trigger tendría que hacer
+   una query inversa por `revision.actividadId` en cada escritura de cada
+   actividad, para un caso que pasó dos veces.
+2. **Sería el tercer `onDocumentWritten` sobre `/actividades`** (ya están el sync
+   de Calendar y el historial) y otra pieza a un write-back de distancia de la
+   trampa 3 (§7.1). El barrido solo borra un objeto bajo `propuestas/`: emite
+   `onObjectDeleted`, que nada escucha, y no escribe ningún documento.
+3. **La corrida diaria ya existe**, ya corre con `storage.objects.delete` y ya lee
+   `/propuestas` con `select` acotado. Un día de demora sobre una foto que ya
+   estaba duplicada no le cambia nada a nadie.
+
+**Cómo, con lo que ya existía.** Se entra por el bucket (lista `propuestas/`,
+busca de a 30 por `in` los documentos que nombran esos objetos), así que el costo
+crece con los flyers vivos y no con el archivo histórico, que es lo que dejó a
+`relevarFlyeresSinPlazo` fuera del camino diario (B-865). La clasificación es
+`clasificarAceptadas`, **movida** del script de B-1322 a `functions/propuestas.js`
+para que el informe y la Function digan lo mismo (D-88; al revés no se podía,
+porque `functions/` no importa ni `scripts/` ni `src/`, D-20). El borrado es
+`borrarOriginalAlAceptar`, que vuelve a verificar la copia en el documento y en
+el bucket: no hay una segunda verificación. Antes, una relectura de la propuesta
+con máscara exige que siga `aceptada`, con el mismo original y la misma actividad.
+
+**Lo que no cubre.** La ventana entre esa verificación y el `delete` es de un
+viaje de ida y vuelta, y Storage no tiene precondición. El peor caso es el de
+siempre en ese orden: dos copias de la misma foto hasta la corrida siguiente.
+
+---

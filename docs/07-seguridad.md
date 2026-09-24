@@ -1651,6 +1651,16 @@ decidiera**, el original sobrevive **para siempre** —la retención no llega a 
 aceptada y ningún barrido recorre `propuestas/`—. Sale un `warn`/`error` con
 `alerta: "flyer-de-propuesta-sin-borrar"` y es **B-871**.
 
+**Salvo cuando la foto llega después (B-1370, D-890).** Si la actividad se guardó
+sin foto y alguien la sube a mano más tarde, el original deja de ser la única
+copia, y desde B-1370 `borrarPropuestasVencidas` lo borra en su corrida diaria:
+entra por el bucket, lee de cada propuesta solo `estado`, `revision.actividadId`,
+`revision.fotoDescartada` e `imagen.storagePath` (ni el contacto ni
+`revision.motivo`), de la actividad solo `imagenes`, y borra **únicamente** con
+`borrarOriginalAlAceptar`, o sea después de volver a verificar la copia en el
+documento y en el bucket. Los otros casos —sin ninguna foto, copia rota, solo
+links de afuera, sin actividad— siguen conservando el original.
+
 **Y desde la bandeja (B-830, paso 7) el panel muestra texto escrito por un
 tercero sin login, que es una superficie que este proyecto no tenía.** Tres cosas
 salen de ahí —eran dos hasta que el `auditor-privacidad` encontró la tercera, que
