@@ -94,6 +94,135 @@ import {
 } from './fixtures/centinelas';
 import type { RutaCentinela } from './fixtures/centinelas';
 import { barrer, type Excepcion } from './fixtures/barrido';
+import {
+  CENTINELA as CENTINELA_DEL_GATE,
+  CENTINELA_DEL_DETALLE,
+  CENTINELA_DEL_INDICE,
+  CENTINELA_DE_LA_CARTELERA,
+} from '../scripts/gate-build/semilla.mjs';
+
+// ───────────────────────────────────────────────────────────────────────────
+// B-1761 — las canastas del gate del build, atadas a las de acá.
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * **Cada centinela del gate, con la ruta de este fixture que mide lo mismo** —
+ * B-1761.
+ *
+ * El paso 9 de `scripts/build-contra-emulador.mjs` barre el `dist/` con sus
+ * propias canastas, y una excepción nueva se declaraba «en los dos» de memoria.
+ * Falló cuatro veces (B-99, `comisionId`, `incluyeSlug`, el monto): una lista se
+ * actualizaba y la otra no, y el gate quedaba rojo por un campo que se publica a
+ * propósito o ciego a uno nuevo. Desde B-1760 la semilla del gate es un módulo
+ * sin efectos, así que se puede importar y comparar.
+ *
+ * `null` es **otra salida**: las cuatro colecciones de la Guía tienen su barrido
+ * de vitest en su propio archivo, y el mail de una cuenta del panel no tiene
+ * ruta en este fixture porque no es parte de una actividad. Que la tabla tenga
+ * **todas** las claves lo exige el primer `it` de abajo: un centinela nuevo en el
+ * gate obliga a decidir acá con qué se compara.
+ */
+const RUTA_DEL_CENTINELA_DEL_GATE: Record<string, RutaCentinela | null> = {
+  descripcion: 'descripcion',
+  destino: 'inscripcion.destino',
+  direccion: 'sede.direccion',
+  indicaciones: 'sede.indicaciones',
+  tema: 'sesiones.tema',
+  lectura: 'sesiones.lectura',
+  motivoCancelacion: 'sesiones.motivoCancelacion',
+  bio: 'tallerista.bio',
+  talleristaInstagram: 'tallerista.instagram',
+  organizadorInstagram: 'organizador.instagram',
+  organizadorWeb: 'organizador.web',
+  arancelNotas: 'arancel.notas',
+  // El item del gate es `publico: true`: su título y su URL son los del público.
+  materialTitulo: 'material.titulo.publico',
+  materialUrl: 'material.url.publico',
+  difusionNotas: 'difusion.notas',
+  difusionArrobar: 'difusion.arrobar',
+  onlineUrl: 'online.url',
+  storagePath: 'imagenes.storagePath',
+  createdBy: 'createdBy',
+  epigrafeImagen: 'imagenes.epigrafe',
+  comisionId: 'comisiones.id',
+  incluyeSlug: 'incluye',
+  mailDePanel: null,
+  libreriaDescripcion: null,
+  libreriaDireccion: null,
+  libreriaContacto: null,
+  libreriaMotivo: null,
+  libreriaPendiente: null,
+  suscripcionDescripcion: null,
+  suscripcionTematica: null,
+  suscripcionContacto: null,
+  suscripcionMotivo: null,
+  suscripcionPendiente: null,
+  lugarDescripcion: null,
+  lugarDireccion: null,
+  lugarContacto: null,
+  lugarMotivo: null,
+  lugarPendiente: null,
+  lugarDireccionDeCasa: null,
+  bibliotecaDescripcion: null,
+  bibliotecaDireccion: null,
+  bibliotecaContacto: null,
+  bibliotecaMotivo: null,
+  bibliotecaPendiente: null,
+};
+
+/**
+ * Las diferencias entre una canasta del gate y la de acá que **son a propósito**,
+ * con su motivo. Una diferencia sin motivo es la desincronización que B-1761
+ * vino a frenar; una declarada que ya no difiere, un permiso colgado.
+ *
+ * MUTACIÓN PROBADA: sacar `'bio'` de la canasta del detalle del gate, o vaciar
+ * la de la cartelera, pone en rojo el `it` de esa salida nombrando el campo.
+ */
+type Diferencia = { clave: string; porque: string };
+
+const canastaDelGateCoincide = (
+  canastaDelGate: readonly string[],
+  grupos: readonly Excepcion[],
+  diferencias: readonly Diferencia[] = [],
+): void => {
+  const permitidas = new Set(grupos.flatMap((g) => g.centinelas));
+  const aProposito = new Set(diferencias.map((d) => d.clave));
+  const distintas: string[] = [];
+  for (const [clave, ruta] of Object.entries(RUTA_DEL_CENTINELA_DEL_GATE)) {
+    if (ruta === null) continue;
+    const enElGate = canastaDelGate.includes(clave);
+    const aca = permitidas.has(ruta);
+    if (enElGate === aca) continue;
+    if (!aProposito.has(clave)) {
+      distintas.push(
+        `${clave} (${ruta}): el gate ${enElGate ? 'lo permite' : 'lo prohíbe'} y este barrido ` +
+          `${aca ? 'lo permite' : 'lo prohíbe'}`,
+      );
+    }
+  }
+  expect(
+    distintas,
+    'la canasta del gate (scripts/gate-build/semilla.mjs) y la de este barrido no dicen lo ' +
+      'mismo: declaralo en las dos, o anotá la diferencia con su motivo',
+  ).toEqual([]);
+  const colgadas = diferencias
+    .map((d) => d.clave)
+    .filter((clave) => {
+      const ruta = RUTA_DEL_CENTINELA_DEL_GATE[clave];
+      return !ruta || canastaDelGate.includes(clave) === permitidas.has(ruta);
+    });
+  expect(colgadas, 'diferencias declaradas que ya no difieren').toEqual([]);
+};
+
+describe('las canastas del gate del build y las de este barrido — B-1761', () => {
+  it('cada centinela del gate dice con qué ruta de acá se compara', () => {
+    expect(Object.keys(RUTA_DEL_CENTINELA_DEL_GATE).sort()).toEqual(
+      Object.keys(CENTINELA_DEL_GATE).sort(),
+    );
+    // Control positivo: sin rutas, la comparación de abajo no compara nada.
+    expect(Object.values(RUTA_DEL_CENTINELA_DEL_GATE).filter(Boolean).length).toBeGreaterThan(15);
+  });
+});
 
 // ───────────────────────────────────────────────────────────────────────────
 // Las excepciones: lo que SÍ debe salir, agrupado y con su motivo.
@@ -1581,6 +1710,18 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
      */
   ];
 
+  it('la canasta del índice del gate dice lo mismo que ésta (B-1761)', () => {
+    canastaDelGateCoincide(CENTINELA_DEL_INDICE, PERMITIDO_EN_EL_INDICE, [
+      {
+        clave: 'descripcion',
+        porque:
+          'el índice lleva el resumen, que es la descripción cortada. En este fixture el ' +
+          'centinela entra entero en el resumen; en el gate va **pasado el corte** ' +
+          '(`descripcionLarga`) a propósito, para que su ausencia pruebe que el resumen recorta.',
+      },
+    ]);
+  });
+
   it('sobreviven exactamente los centinelas que el listado necesita', () => {
     const indice = construirIndice({
       actividades: [toPublic(actividadCentinela(), 'act_centinela')],
@@ -2128,6 +2269,16 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     },
   ];
 
+  it('la canasta del detalle del gate dice lo mismo que ésta (B-1761)', () => {
+    // El motivo de un encuentro cancelado entra acá solo en los casos
+    // cancelados (`MOTIVO_DE_CANCELACION`); el gate siembra uno, así que su
+    // canasta lo permite siempre.
+    canastaDelGateCoincide(CENTINELA_DEL_DETALLE, [
+      ...PERMITIDO_EN_EL_DETALLE,
+      MOTIVO_DE_CANCELACION,
+    ]);
+  });
+
   const PERMITIDO_EN_EL_JSON_LD: readonly Excepcion[] = [
     {
       nombre: 'lo que Google necesita para el resultado enriquecido',
@@ -2642,6 +2793,10 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
         'las indicaciones tampoco.',
     },
   ];
+
+  it('la canasta de la cartelera del gate dice lo mismo que ésta (B-1761)', () => {
+    canastaDelGateCoincide(CENTINELA_DE_LA_CARTELERA, PERMITIDO_EN_LA_CARTELERA);
+  });
 
   it('sobreviven exactamente los centinelas que la pared necesita', () => {
     barrer('cartelera', JSON.stringify(pared()), PERMITIDO_EN_LA_CARTELERA, {

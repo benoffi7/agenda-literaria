@@ -324,6 +324,27 @@ no alcanzaba con el formulario del §1.3.
 > y cómo verificarlos quedaron en **B-1760**, y la simetría que el primer corte
 > hace posible, en **B-1761**.
 
+> ✂️ **B-1760 lo partió el 2026-09-24, en los tres cortes de D-1070.** Medido sobre
+> `e043631` con `contarLineas` (significativas, el criterio de B-856):
+>
+> | Archivo | `wc -l` | Código | Prosa |
+> |---|---:|---:|---:|
+> | `scripts/build-contra-emulador.mjs` — siembra, buildea y afirma | 1.810 | **1.145** | 594 |
+> | `scripts/gate-build/semilla.mjs` — datos puros: centinelas, canastas, fixtures | 1.356 | 568 | 742 |
+> | `scripts/gate-build/directorio.mjs` — el verificador de los pasos 8i-8l | 156 | 74 | 70 |
+> | `scripts/gate-build/barrido.mjs` — el paso 9 como función pura | 153 | 89 | 54 |
+> | **Los cuatro** | 3.475 | **1.876** | 1.460 |
+>
+> El código total bajó de 1.962 a 1.876 **habiendo sumado** la miniatura de
+> B-1790; lo que se fue son las cuatro copias del esqueleto de los directorios
+> (572 líneas → un verificador de 74 más lo propio de cada colección). La prosa
+> subió porque se movió con su código. El script sigue siendo el cuarto del
+> repo, pero ya no es un solo módulo con efectos: la semilla la importan
+> `tests/gate-build.test.ts` y el barrido de vitest, que desde B-1761 compara sus
+> canastas en vez de recordarlas. Cada corte se verificó con el paso 4 contra el
+> emulador —las mismas trece líneas ✓ antes y después— y con una fuga inyectada
+> a mano en cada una de las ocho canastas, que el paso 9 nombró una por una.
+
 > **La medición anterior — 2026-09-09, `410a924`.** Los quince eran el **26,6 %**
 > del código y el mayor el **2,9 %**:
 >

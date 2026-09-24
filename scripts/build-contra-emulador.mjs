@@ -75,7 +75,14 @@
  * La contracara es que las excepciones se declaran **en los dos**, y eso ya falló
  * una vez: B-99 declaró el id de sesión en el barrido de vitest y no acá, así que
  * este gate quedó **rojo por un campo que se publica a propósito** — el modo de
- * falla de B-180 en vivo. Ver `CENTINELA_DEL_INDICE`.
+ * falla de B-180 en vivo. Ver `CENTINELA_DEL_INDICE` en
+ * `scripts/gate-build/semilla.mjs`.
+ *
+ * ── Cómo está partido (D-1070, B-1760) ────────────────────────────────────
+ * `scripts/gate-build/semilla.mjs` son los datos (qué se siembra, los centinelas
+ * y las canastas), `directorio.mjs` el verificador de los cuatro directorios de
+ * la Guía (pasos 8i-8l) y `barrido.mjs` el barrido del paso 9 como función pura.
+ * Este archivo siembra, buildea y afirma.
  *
  * Los dos documentos se borran al final, pase lo que pase (`finally`): el
  * emulador de quien está trabajando puede tener datos persistidos
@@ -88,13 +95,49 @@
 import { spawnSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { problemasDeJerarquia, tituloDe } from './seo-del-artefacto.mjs';
-// B-804 — el número lo escribe el mismo código que lo publica. Escribir
-// `'$7.654.321'` a mano acá sería una segunda derivación de la misma idea, que
-// es cómo se separan los formatos (§ «si hay un skill, se usa», mismo motivo).
-import { montoLegible } from '../functions/calendario.js';
+/*
+ * La semilla —los documentos, los centinelas y las canastas— vive aparte desde
+ * B-1760 (corte 1 de D-1070): es datos puros, sin efectos al cargarse, así que
+ * vitest la puede importar para comparar las canastas con las de su barrido
+ * (B-1761). Este archivo es el que siembra, buildea y afirma.
+ */
+import {
+  CENTINELA,
+  CENTINELA_DEL_DETALLE,
+  CIUDAD_DEL_GATE,
+  ETIQUETA_CIUDAD_DEL_GATE,
+  ETIQUETA_PROVINCIA_DEL_GATE,
+  ETIQUETA_DE_COMISION,
+  ETIQUETA_DE_INCLUYE,
+  ID_DE_SESION_QUE_SALE,
+  LAT_DE_LA_CASA,
+  PREFIJO,
+  PROVINCIA_DEL_GATE,
+  SLUG_AFUERA,
+  SLUG_BIBLIOTECA,
+  SLUG_BIBLIOTECA_PENDIENTE,
+  SLUG_BORRADOR,
+  SLUG_CANCELADA,
+  SLUG_CANCELADA_NUNCA,
+  SLUG_GALERIA,
+  SLUG_LIBRERIA,
+  SLUG_LIBRERIA_PENDIENTE,
+  SLUG_LUGAR,
+  SLUG_LUGAR_CASA,
+  SLUG_LUGAR_PENDIENTE,
+  SLUG_PUBLICADA,
+  SLUG_SUSCRIPCION,
+  SLUG_SUSCRIPCION_PENDIENTE,
+  BUCKET_POR_DEFECTO,
+  documentosDeLaSemilla,
+  rutaDeLaMiniaturaDelGate,
+} from './gate-build/semilla.mjs';
+import { barrerArtefacto } from './gate-build/barrido.mjs';
+import { datoConFecha, etiquetaCon, verificarDirectorio } from './gate-build/directorio.mjs';
 
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 const host = process.env.FIRESTORE_EMULATOR_HOST;
 
@@ -106,892 +149,43 @@ if (!host) {
   process.exit(1);
 }
 
+const LOCAL = /^(127\.0\.0\.1|localhost|\[::1\])/;
+
 // Misma guarda que `seed-emulador.mjs`: escribe sin credenciales, así que solo
 // tiene sentido contra el emulador. Nunca contra producción.
-if (!/^(127\.0\.0\.1|localhost|\[::1\])/.test(host)) {
+if (!LOCAL.test(host)) {
   console.error(`FIRESTORE_EMULATOR_HOST apunta a "${host}", que no es local. Abortando.`);
   process.exit(1);
 }
 
-/**
- * El prefijo de los ids sembrados.
- *
- * Con prefijo y no con ids sueltos para que la limpieza pueda barrer también lo
- * que haya quedado de una corrida anterior que murió a mitad de camino.
- */
-const PREFIJO = 'zz-gate-verificar-todo-';
-const ID_PUBLICADA = `${PREFIJO}publicada`;
 /*
- * **La publicada de afuera de CABA** — B-969, abierto por el `auditor-privacidad`
- * sobre B-950.
- *
- * Hasta acá el gate sembraba una sola geografía —`ciudad: 'CABA'`, sin
- * `provincia`—, así que el paso 9 (el único chequeo que mira el HTML realmente
- * emitido) **nunca ejercitaba** la mitad no-CABA de la cascada ni ninguna página
- * `/ciudad/*`. Y esa mitad es la mitad del pedido de B-950.
- *
- * No es hipotético: el bug que se escapó a los unitarios fue exactamente de esa
- * forma —`SedeDeIndice` sin `provincia`, o sea el eje muerto para todo lo que no
- * fuera CABA— y ningún test lo vio porque todos le pasaban la otra forma del
- * mismo dato. Un build real con una sede de afuera lo habría mostrado.
+ * B-1790 — **y Storage también, o no hay paso 4.** Sin esta variable el build
+ * no lista `miniaturas/` (listaría el bucket de producción, D-210) y sirve todo
+ * sin `srcset`: el gate daba verde corriendo justo la mitad que no confirma
+ * nada. Y este script **sube** un objeto, así que la guarda es la misma que la de
+ * Firestore: sin la variable, el Admin SDK escribiría en el bucket de verdad.
  */
-const ID_AFUERA = `${PREFIJO}afuera`;
-const SLUG_AFUERA = `${PREFIJO}afuera`;
-/**
- * El slug de ciudad del gate, y **por qué no es `mar-del-plata`**.
- *
- * Tiene que ser un valor que no pueda existir en el emulador de quien corre
- * esto: el gate siembra este slug en `/opciones/ciudad` para que el hub se emita,
- * y si coincidiera con una ciudad real, la restauración de abajo —que devuelve
- * `valores` a como estaba— sería indistinguible de borrarle un dato suyo.
- */
-const CIUDAD_DEL_GATE = `${PREFIJO}ciudad`;
-const ETIQUETA_CIUDAD_DEL_GATE = 'Ciudad del gate';
-/**
- * La provincia **no se siembra** en `/opciones/provincia`, y es a propósito: sin
- * el documento, `etiquetaDe` cae a `desSlug`, que sobre `buenos-aires` devuelve
- * «Buenos Aires» — o sea la etiqueta correcta sin tocar una taxonomía que el
- * emulador de quien trabaja sí tiene poblada de verdad. Es el mismo criterio con
- * el que el gate no siembra `/opciones/incluye-actividad`.
- */
-const PROVINCIA_DEL_GATE = 'buenos-aires';
-const ETIQUETA_PROVINCIA_DEL_GATE = 'Buenos Aires';
-const ID_BORRADOR = `${PREFIJO}borrador`;
-/*
- * B-110 — las dos canceladas. La primera **estuvo publicada** (conserva el
- * `calendarEventId` de una de sus sesiones, que es la heurística del §7.3) y
- * tiene que tener su HTML; la segunda nació y murió en `cancelado`, así que no
- * tiene que existir. Son la mitad de este gate que mira la **página** y no el
- * `events.json`: el modo de falla de B-110 es un archivo HTML que se genera o no
- * se genera, y eso no se ve en el índice.
- */
-const ID_CANCELADA = `${PREFIJO}cancelada`;
-const ID_CANCELADA_NUNCA = `${PREFIJO}cancelada-nunca`;
-/*
- * B-296 — la actividad con **tres imágenes de proporciones distintas**, que es
- * el caso que rompe: una vertical, una apaisada y una cuadrada. Ninguna salida
- * del sitio recorta (D-147), así que las tres tienen que salir enteras y con su
- * propia caja reservada, y eso solo se ve en el HTML construido: los unitarios
- * afirman sobre el fuente de la plantilla, que no sabe nada de estas tres
- * medidas.
- *
- * Y la portada va **segunda** en el array a propósito: así el artefacto prueba
- * de punta a punta lo de B-268 —arriba va la marcada, no la primera cargada— y
- * la consecuencia nueva que trae la tira, que es que el flyer no puede terminar
- * de miniatura decorativa con `alt=""`.
- */
-const ID_GALERIA = `${PREFIJO}galeria`;
+const hostStorage = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
+if (!hostStorage || !LOCAL.test(hostStorage)) {
+  console.error(
+    `build-contra-emulador: FIREBASE_STORAGE_EMULATOR_HOST ${hostStorage ? `apunta a "${hostStorage}", que no es local` : 'falta'}.\n` +
+      'El paso 4 levanta Storage además de Firestore (B-1790): sin él, el build no\n' +
+      'confirma ninguna miniatura y el gate no mira el `srcset`. Abortando.',
+  );
+  process.exit(1);
+}
 
-const SLUG_PUBLICADA = `${PREFIJO}publicada`;
-const SLUG_BORRADOR = `${PREFIJO}borrador`;
-const SLUG_CANCELADA = `${PREFIJO}cancelada`;
-const SLUG_CANCELADA_NUNCA = `${PREFIJO}cancelada-nunca`;
-const SLUG_GALERIA = `${PREFIJO}galeria`;
-
-/**
- * **Las dos librerías del gate** — B-901.
- *
- * Una publicada y una esperando decisión, que es el par mínimo que prueba lo
- * único que no se puede probar sin emulador: que la lectura del build **pidió
- * solo las publicadas** (`where('estado','==','publicado')`, B-903). Con una sola
- * ficha, un build que leyera la colección entera daría exactamente el mismo
- * `dist/`.
- *
- * El slug lleva el prefijo del gate, así que es un slug válido (`esSlugDeFicha`) y
- * a la vez imposible de confundir con una librería de verdad.
- */
-/**
- * **Las dos suscripciones del gate** — B-832. Mismo par y mismo motivo que el de
- * librerías, más una cosa que ninguna otra colección tiene: la publicada lleva un
- * **precio**, así que el `dist/` es donde se puede verificar que salió con su
- * fecha pegada y no como número suelto (DEC-12). Eso ningún unitario lo ve: el
- * barrido mira la función pura, y acá se mira lo que quedó escrito en el archivo.
- */
-const ID_SUSCRIPCION = `${PREFIJO}suscripcion`;
-const ID_SUSCRIPCION_PENDIENTE = `${PREFIJO}suscripcion-pendiente`;
-const SLUG_SUSCRIPCION = `${PREFIJO}suscripcion`;
-const SLUG_SUSCRIPCION_PENDIENTE = `${PREFIJO}suscripcion-pendiente`;
-
-/**
- * **Los tres lugares del gate** — B-833. Son **tres y no dos**, y el tercero es
- * el que hace útil a este paso: además del par publicado/pendiente que las otras
- * dos colecciones tienen, va **una casa publicada con la dirección apagada**.
- *
- * Ese documento es el único del gate que existe para probar una **ausencia
- * condicional**: su dirección está en Firestore, la ficha se genera, la página se
- * indexa — y la dirección no puede aparecer en ningún archivo del `dist/`. Es el
- * § 6 del PRD 4 verificado contra el artefacto y no contra la intención, que es
- * lo que ningún unitario puede hacer: el barrido mira la función pura, y una
- * plantilla que interpole `ficha.donde.direccion` en un `title=` pasa aquél y
- * muere acá.
- */
-const ID_LUGAR = `${PREFIJO}lugar`;
-const ID_LUGAR_PENDIENTE = `${PREFIJO}lugar-pendiente`;
-const ID_LUGAR_CASA = `${PREFIJO}lugar-casa`;
-const SLUG_LUGAR = `${PREFIJO}lugar`;
-const SLUG_LUGAR_PENDIENTE = `${PREFIJO}lugar-pendiente`;
-const SLUG_LUGAR_CASA = `${PREFIJO}lugar-casa`;
-
-/**
- * **Las dos bibliotecas del gate** — B-960. El par publicada/pendiente, como
- * librerías y suscripciones; no hace falta un tercer documento como la casa de
- * lugares, porque bibliotecas no tiene ninguna ausencia condicional: su dirección
- * sale siempre.
- *
- * **Entraron en el pase de auditores y no con el frente**, que es el hallazgo que
- * las trajo: el paso de esta colección no existía, así que el barrido del paso 9
- * recorría `dist/bibliotecas.json` y `dist/guia/bibliotecas/**` **sin un solo
- * centinela que pudiera encontrar** y pasaba trivialmente. Un barrido sin nada
- * que buscar es verde por vacuidad, que es la clase de B-873 en su forma más
- * pura.
- */
-const ID_BIBLIOTECA = `${PREFIJO}biblioteca`;
-const ID_BIBLIOTECA_PENDIENTE = `${PREFIJO}biblioteca-pendiente`;
-const SLUG_BIBLIOTECA = `${PREFIJO}biblioteca`;
-const SLUG_BIBLIOTECA_PENDIENTE = `${PREFIJO}biblioteca-pendiente`;
-/**
- * La latitud de la casa del gate — **un número que no aparece en ningún otro
- * lado**, ni del gate ni del sitio.
- *
- * Es lo que hace verificable la mitad numérica del § 6: el barrido del paso 9
- * busca strings centinela y una coordenada no lo es, así que la `geo` de la casa
- * necesita su propia ancla por valor. Ver el paso 8k.7.
- */
-const LAT_DE_LA_CASA = -33.000123;
-
-const ID_LIBRERIA = `${PREFIJO}libreria`;
-const ID_LIBRERIA_PENDIENTE = `${PREFIJO}libreria-pendiente`;
-const SLUG_LIBRERIA = `${PREFIJO}libreria`;
-const SLUG_LIBRERIA_PENDIENTE = `${PREFIJO}libreria-pendiente`;
-
-/**
- * Los centinelas de los campos que el índice recorta (§3.1 del diseño de B-106).
- *
- * Igual que en `tests/fixtures/centinelas.ts`, **el valor dice la ruta**: si uno
- * se escapa, el mensaje de falla nombra el campo sin que haya que traducir nada.
- * Y son URL-safe, para que una fuga por un camino que escape la cadena no quede
- * invisible.
- */
-const CENTINELA = {
-  descripcion: 'gate.descripcion.centinela',
-  destino: 'gate.inscripcion.destino',
-  direccion: 'gate.sede.direccion',
-  indicaciones: 'gate.sede.indicaciones',
-  tema: 'gate.sesiones.tema',
-  lectura: 'gate.sesiones.lectura',
-  /*
-   * B-1572 — el motivo de un encuentro cancelado (D-976). Sale a la página de
-   * detalle y **a nada más**: ni al `events.json`, ni al JSON-LD, ni a la
-   * tarjeta. Lo siembra solo el encuentro cancelado de la galería
-   * (`ENCUENTRO_CANCELADO_DEL_GATE`); ver el paso 8m.
-   */
-  motivoCancelacion: 'gate.sesiones.motivoCancelacion',
-  bio: 'gate.tallerista.bio',
-  talleristaInstagram: 'gate.tallerista.instagram',
-  organizadorInstagram: 'gate.organizador.instagram',
-  organizadorWeb: 'gate.organizador.web',
-  arancelNotas: 'gate.arancel.notas',
-  materialTitulo: 'gate.material.titulo',
-  materialUrl: 'gate.material.url',
-  difusionNotas: 'gate.difusion.notas',
-  difusionArrobar: 'gate.difusion.arrobar',
-  onlineUrl: 'gate.online.url',
-  storagePath: 'gate.imagenes.storagePath',
-  createdBy: 'gate.createdBy',
-  /*
-   * ── B-901 · las librerías de la Guía ────────────────────────────────────
-   *
-   * Los dos primeros **salen a propósito** (la descripción y la dirección de un
-   * local comercial), y por eso tienen su canasta abajo. Los dos últimos **no
-   * salen a ninguna parte**, y son la razón por la que esta colección se siembra
-   * acá además de tener su barrido de unitarios:
-   *
-   *  - `libreriaContacto` es el `contactoDeQuienCargo`, el **segundo dato
-   *    personal de un tercero** que guarda el proyecto. Su barrido de vitest
-   *    mira la función pura; éste mira lo que quedó escrito en el artefacto, que
-   *    es lo único que prueba que ninguna plantilla lo interpoló por su cuenta.
-   *  - `libreriaMotivo` es por qué un admin descartó una ficha: texto interno
-   *    sobre un tercero.
-   *
-   * Y `libreriaPendiente` es el control del `where('estado','==','publicado')`
-   * de la lectura del build (**B-903**): es la descripción de una ficha que
-   * **espera decisión**, así que no puede aparecer en un solo archivo del
-   * `dist/`. Sin canasta: prohibido en todos.
-   */
-  libreriaDescripcion: 'gate.libreria.descripcion',
-  libreriaDireccion: 'gate.libreria.direccion',
-  libreriaContacto: 'gate.libreria.contactoDeQuienCargo',
-  libreriaMotivo: 'gate.libreria.revision.motivo',
-  libreriaPendiente: 'gate.libreria.pendiente.descripcion',
-  /*
-   * ── B-832 · las suscripciones literarias ────────────────────────────────
-   *
-   * Los dos primeros **salen a propósito** (la descripción y la temática de lo
-   * que manda) y tienen su canasta abajo. Los otros tres **no salen a ninguna
-   * parte**:
-   *
-   *  - `suscripcionContacto` es el `contactoDeQuienCargo`;
-   *  - `suscripcionMotivo` es por qué un admin descartó una ficha;
-   *  - `suscripcionPendiente` es la descripción de una que **espera decisión**, o
-   *    sea el control del `where('estado','==','publicado')` de la lectura.
-   *
-   * Y `suscripcionPrecioSolo` es el centinela propio de esta colección: **el
-   * monto formateado sin su fecha**. No se siembra como texto —es lo que produce
-   * `fraseDePrecio` con el número del gate— y el paso 8j lo usa para afirmar que
-   * en el `dist/` el precio aparece **siempre** pegado a «cargado el». Es DEC-12
-   * verificada contra el archivo y no contra la intención.
-   */
-  suscripcionDescripcion: 'gate.suscripcion.descripcion',
-  suscripcionTematica: 'gate.suscripcion.tematica',
-  suscripcionContacto: 'gate.suscripcion.contactoDeQuienCargo',
-  suscripcionMotivo: 'gate.suscripcion.revision.motivo',
-  suscripcionPendiente: 'gate.suscripcion.pendiente.descripcion',
-  /*
-   * ── B-833 · los lugares para eventos ────────────────────────────────────
-   *
-   * Los dos primeros **salen a propósito** y tienen su canasta abajo: la
-   * descripción, y la dirección **de un local comercial** cuyo flag está
-   * prendido.
-   *
-   * Los otros cuatro **no salen a ninguna parte**, y el tercero es el que hace
-   * que este paso valga:
-   *
-   *  - `lugarContacto` es el `contactoDeQuienCargo`;
-   *  - `lugarMotivo` es por qué un admin descartó una ficha;
-   *  - `lugarPendiente` es la descripción de uno que **espera decisión**, o sea
-   *    el control del `where('estado','==','publicado')` de la lectura;
-   *  - ⚠️ **`lugarDireccionDeCasa` es la dirección de un lugar PUBLICADO cuyo
-   *    `direccionPublica` está en `false`** (§ 6 del PRD 4). Su ficha se genera,
-   *    su página se indexa, su JSON viaja — y esta cadena no puede aparecer en
-   *    **ningún** archivo del `dist/`. No hace falta ninguna cláusula especial
-   *    para vigilarlo: al no estar en la canasta de abajo, el barrido del paso 9
-   *    lo prohíbe en todos lados, que es exactamente lo que corresponde.
-   */
-  lugarDescripcion: 'gate.lugar.descripcion',
-  lugarDireccion: 'gate.lugar.direccion',
-  lugarContacto: 'gate.lugar.contactoDeQuienCargo',
-  lugarMotivo: 'gate.lugar.revision.motivo',
-  lugarPendiente: 'gate.lugar.pendiente.descripcion',
-  lugarDireccionDeCasa: 'gate.lugar.casa.direccion',
-  /*
-   * B-960 — la cuarta colección de la Guía. `bibliotecaDescripcion` y
-   * `bibliotecaDireccion` salen a propósito (son los datos de una institución con
-   * puerta, y son el punto de la ficha); los otros tres quedan prohibidos en todo
-   * el `dist/`, igual que sus hermanos de las otras tres colecciones.
-   */
-  bibliotecaDescripcion: 'gate.biblioteca.descripcion',
-  bibliotecaDireccion: 'gate.biblioteca.direccion',
-  bibliotecaContacto: 'gate.biblioteca.contactoDeQuienCargo',
-  bibliotecaMotivo: 'gate.biblioteca.revision.motivo',
-  bibliotecaPendiente: 'gate.biblioteca.pendiente.descripcion',
-  // B-296 — el epígrafe **sí** sale a la página de detalle (es el `figcaption` de
-  // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
-  // O sea que este centinela se afirma en las dos direcciones a la vez.
-  epigrafeImagen: 'gate.imagenes.epigrafe',
-  /*
-   * B-181 — el **id** de la comisión no sale a ninguna parte, y por eso está acá
-   * y no en la familia de los que sí salen.
-   *
-   * Lo cobró el `auditor-privacidad`: estaba declarado como *permitido* en el
-   * barrido de vitest y como *nada* en el del artefacto, que es la asimetría que
-   * el docblock de `CENTINELA_DEL_INDICE` prohíbe («cuando un campo nuevo entre a
-   * una salida, se declara en las dos»). No dejaba el gate rojo: dejaba el campo
-   * invisible. Con el centinela acá, el paso 9 —el que recorre todo el `dist/`—
-   * lo verifica solo.
-   *
-   * La página agrupa con la **etiqueta**, no con el id: el agrupado se resuelve
-   * dentro de `detalleDeActividad`.
-   */
-  comisionId: 'com_gate.comisiones.id',
-  /*
-   * B-830 — el **slug** de «qué se llevan», que no sale a ninguna parte: la
-   * página muestra la etiqueta (`ETIQUETA_DE_INCLUYE`, abajo) y el índice no
-   * lleva ni el campo ni su vocabulario (D-580).
-   *
-   * **Lo cobró el `auditor-privacidad` sobre B-830**, y por la misma asimetría
-   * que `comisionId`: el campo quedó anclado en el barrido de vitest —en las dos
-   * direcciones— y en **nada** acá, así que el paso 9 era ciego al campo nuevo.
-   * No dejaba el gate rojo: dejaba el campo invisible, que es peor.
-   *
-   * Va con guiones a propósito. `desSlug` los convierte en espacios y capitaliza,
-   * así que la etiqueta derivada (`Gate Incluye Slug`) **no contiene** esta
-   * cadena: si el slug crudo apareciera en el HTML o en el archivo, sería porque
-   * alguien lo publicó sin resolver, que es exactamente lo que hay que agarrar.
-   */
-  incluyeSlug: 'gate-incluye-slug',
-  /*
-   * B-888 — el mail de una cuenta del panel, que vive en `/usuarios/{uid}` y
-   * **no sale a ninguna parte**. §5.1 y D-57: uid y mail de una cuenta del panel
-   * no salen «ni crudos ni hasheados».
-   *
-   * **Lo pidió el `auditor-privacidad`, y es el de la salida 5 con otra cara: el
-   * agujero no es de cobertura, es de índice.** Hoy el build no lee `/usuarios`
-   * —`contenidoDelSitio.ts` lee `actividades` y sus `versiones`, nada más—, así
-   * que este centinela **no puede ponerse rojo todavía**, y eso está dicho a
-   * propósito. Está acá porque la tajada 2 es, literalmente, el cambio que va a
-   * conectar `mailesPorUid()` a un view-model dentro de `src/lib/` — el mismo
-   * directorio donde viven `toPublic.ts`, `detallePublico.ts` y
-   * `hubsPublicos.ts`—, y el momento de escribir el testigo es **antes** de ese
-   * cambio, no después: un barrido que se agrega junto con la funcionalidad se
-   * escribe contra el código que quedó.
-   *
-   * Es la misma forma que `tests/escritura-anonima.integracion.test.ts`, que
-   * también fija un estado de partida y también declara su propio límite.
-   *
-   * Cómo comprobar que sirve, el día que haga falta: interpolarlo a mano en
-   * cualquier `.astro` del sitio deja el paso 9 rojo nombrando el archivo — el
-   * mismo mecanismo que ya cobra los otros veinte, que no tiene nada de
-   * particular acá.
-   */
-  mailDePanel: 'gate.usuarios.email@ejemplo.test',
-};
-
-/**
- * El id de sesión, que **sí sale** al `events.json` desde B-99 y por eso no está
- * en `CENTINELA`.
- *
- * Estuvo en esa lista —la de los campos que el índice recorta— hasta hoy, y
- * quedó vieja el día que B-99 metió el **eje plano de encuentros**
- * (`{slug, sesionId, inicio}`) al archivo: ese eje es la razón de ser del
- * tríptico «¿Qué hay ahora?» de la home. B-99 actualizó el barrido de
- * `tests/barrido-de-salidas-publicas.test.ts` —donde `sesiones.id` figura
- * permitido, con su motivo escrito— y **no** esta lista, así que este gate viene
- * fallando desde `1.8.0` para cualquiera que lo corra. Lo encontró el propio
- * gate al ir a pushear la tanda siguiente, que es exactamente lo que tiene que
- * hacer.
- *
- * Se afirma **en la otra dirección**: el id tiene que aparecer. Sacarlo de
- * `CENTINELA` sin poner nada en su lugar habría dejado el archivo sin nadie que
- * mire ese campo, que es cómo un recorte se pierde en silencio. Es el mismo
- * patrón de dos direcciones que ya usa `epigrafeImagen`.
- *
- * Que sea publicable no es una opinión de este script: es un uuid opaco generado
- * en el cliente (trampa 2), sin PII, y ya público en la página de detalle.
- */
-const ID_DE_SESION_QUE_SALE = 'ses_gate.sesiones.id';
-
-/**
- * La etiqueta de la comisión (B-181), que **también sale** — y por eso está acá y
- * no en `CENTINELA`.
- *
- * Se afirma **en una sola dirección y sobre un solo artefacto**: el HTML de la
- * página, donde es el encabezado del grupo de encuentros y donde hace que el
- * título de la sección pase a «Elegí tu opción».
- *
- * Es la razón de que esto exista: el agrupado por comisión vive en
- * `src/pages/actividad/[slug].astro` y **ningún test unitario puede mirarlo** —un
- * `.astro` no se importa desde vitest (D-140), así que `detallePublico.ts` afirma
- * qué se decide mostrar y este gate es el único que ve si la plantilla lo muestra.
- * Es el mismo motivo por el que B-804 pide que el gate siembre el monto.
- *
- * **Y NO se afirma sobre el `events.json`, que es lo primero que se intentó.**
- * Ese archivo no es la proyección: es el **índice recortado** de B-106
- * (`entradaDeIndice`, una whitelist propia con lo que el listado necesita), y las
- * comisiones no están ahí porque el listado no agrupa — muestra una tarjeta por
- * actividad. La página de detalle no lo lee: se genera en el build desde
- * `toPublic` directo (§2.4). El barrido de centinelas llama «events.json» a la
- * proyección, y esa diferencia de nombre es justo la que hizo escribir el aserto
- * equivocado.
- */
-const ETIQUETA_DE_COMISION = 'gate.comisiones.etiqueta';
-
-/**
- * La etiqueta de «qué se llevan» (B-830), que **sí sale** al HTML de la página —
- * y por eso se afirma en la dirección contraria, como `ID_DE_SESION_QUE_SALE`.
- *
- * **No se siembra `/opciones/incluye-actividad`**, y no hace falta: sin el
- * documento, `etiquetaDe` cae a `desSlug` y la página imprime la etiqueta
- * derivada del slug del fixture. Eso alcanza para lo único que este gate puede
- * ver y ningún unitario puede: **que la plantilla pinte la sección**. El
- * `.astro` no se importa desde vitest (D-140), así que `detallePublico.ts` afirma
- * qué se decide mostrar y esto ve si se muestra. Es el mismo motivo por el que
- * existe `ETIQUETA_DE_COMISION`.
- *
- * Si algún día el gate siembra `/opciones/*` —lo pide B-804 para el monto—, este
- * valor pasa a ser la etiqueta sembrada y el aserto no cambia de forma.
- */
-const ETIQUETA_DE_INCLUYE = 'Gate Incluye Slug';
-
-/**
- * **El monto del arancel: el único centinela numérico del gate** — B-804.
- *
- * El paso 9 barre todo `dist/` buscando los centinelas de `CENTINELA`, que son
- * strings, y la semilla cargaba `arancel: { tipo: 'gratis', notas }`: sin monto,
- * y con un tipo que además **no lo admite**. O sea que el barrido sobre el
- * artefacto de verdad no sembraba ni buscaba el campo nuevo, y la afirmación de
- * esa salida pasaba sin haber tenido el dato. La decisión de B-114 quedó
- * declarada en el barrido de vitest —que la cubre bien, en las dos formas— y en
- * nada acá: es la asimetría de B-99/B-180 al revés, la misma que ya cobraron
- * `comisionId` y `incluyeSlug`.
- *
- * Va **por valor y no por texto**, como en `tests/fixtures/centinelas.ts`: el
- * schema declara el monto entero, así que `gate.arancel.monto` no podría
- * guardarse. `7654321` no aparece en ningún otro lado del repo ni sale de ningún
- * cálculo del sitio, así que encontrarlo en un archivo del `dist/` es porque
- * salió de este campo.
- *
- * **Y hay dos formas, no una.** El número crudo viaja a las salidas JSON (el
- * índice, el `Offer` del JSON-LD) y la forma legible a las de texto (la línea
- * del precio, la tarjeta). Buscar una sola daría verde en la mitad de las
- * salidas por el motivo equivocado — es la trampa que B-114 ya había pisado del
- * lado de vitest.
- */
-const MONTO_DEL_GATE = 7654321;
-
-/** El slug de arancel que **admite** monto (`SIN_COSTO` no lo admite). */
-const ARANCEL_CON_MONTO = 'arancelado';
-
-/**
- * La descripción del fixture: larga a propósito, para que `resumenDe` tenga que
- * cortarla de verdad (`LARGO_RESUMEN` = 160) en vez de devolverla entera.
- *
- * El centinela va **al final**, pasado el corte: así el aserto de que no aparece
- * en el archivo prueba que el resumen recorta, y no que el índice no lleva
- * descripción.
- */
-const descripcionLarga = `${'Taller de prueba del gate mecanico, con una descripcion deliberadamente larga para que el resumen tenga que cortarla en limite de palabra. '.repeat(
-  2,
-)}${CENTINELA.descripcion}`;
-
-const enUnaHora = (horas) => new Date(Date.now() + horas * 3_600_000);
-
-/** Un documento de `/actividades` válido para `toPublic`, todo centinelas. */
-const actividadDePrueba = (slug, estado) => ({
-  tipo: 'taller',
-  titulo: `Gate mecanico — ${estado}`,
-  slug,
-  descripcion: descripcionLarga,
-  imagenes: [
-    {
-      id: 'img_gate',
-      url: 'https://example.invalid/gate.jpg',
-      /*
-       * El centinela va en la **portada** y no en una secundaria, y eso lo
-       * encontró el `auditor-privacidad`: el `events.json` solo lleva la URL de
-       * la portada, así que un centinela puesto en otra fila hace pasar el paso 3
-       * sin haber probado nada. Con el epígrafe acá, el paso 3 prueba de verdad
-       * que el índice no lo publica, y el barrido de HTML del paso 4 prueba la
-       * otra dirección: que el `figcaption` de la página sí lo muestra.
-       */
-      epigrafe: CENTINELA.epigrafeImagen,
-      origen: 'externa',
-      portada: true,
-      storagePath: CENTINELA.storagePath,
-    },
-  ],
-  organizador: {
-    nombre: 'Organizador del gate',
-    instagram: CENTINELA.organizadorInstagram,
-    web: CENTINELA.organizadorWeb,
-  },
-  tallerista: {
-    nombre: 'Tallerista del gate',
-    bio: CENTINELA.bio,
-    instagram: CENTINELA.talleristaInstagram,
-  },
-  libro: null,
-  esCiclo: false,
-  /*
-   * B-181 — una comisión, con su único encuentro adentro. Alcanza una: lo que el
-   * gate mira es que la plantilla **agrupe** —que aparezca el encabezado y que el
-   * título de la sección cambie—, y eso ya pasa con un grupo. Con dos, el mismo
-   * aserto costaría dos sesiones más y no probaría nada nuevo.
-   */
-  comisiones: [{ id: CENTINELA.comisionId, etiqueta: ETIQUETA_DE_COMISION }],
-  // B-830 — un solo slug: lo que se prueba es el par slug-oculto/etiqueta-visible,
-  // y con dos el mensaje de falla no diría cuál se escapó.
-  incluye: [CENTINELA.incluyeSlug],
-  sesiones: [
-    {
-      id: ID_DE_SESION_QUE_SALE,
-      inicio: enUnaHora(24),
-      fin: enUnaHora(26),
-      tema: CENTINELA.tema,
-      lectura: CENTINELA.lectura,
-      cancelada: false,
-      calendarEventId: null,
-      comisionId: CENTINELA.comisionId,
-    },
-  ],
-  /*
-   * **B-241 — la lista de formas de cursar, que es la forma del modelo desde
-   * B-224.** Este fixture se escribió antes y traía solo `modalidad`/`sede`/
-   * `online` de primer nivel, que son los **derivados**: con eso, la página de
-   * detalle que genera este gate no pintaba el bloque «Cómo se cursa» ni la sede,
-   * y `datosEstructurados` devolvía `null` porque no había ningún `location`.
-   *
-   * Se arregla acá y no en su propio cambio porque **B-110 lo necesita**: el
-   * aserto nuevo es que la página cancelada lleva `eventStatus: EventCancelled`,
-   * y sin `location` no hay JSON-LD sobre el cual afirmarlo. Un gate que existe
-   * para mirar el artefacto de verdad tiene que mirarlo entero.
-   *
-   * Los centinelas son **los mismos** de la sede derivada: el barrido cuenta
-   * presencia y no ocurrencias, así que el mismo dato en dos lugares no cambia
-   * ninguna de las dos direcciones del chequeo.
-   */
-  modalidades: [
-    {
-      id: 'mod_gate',
-      modalidad: 'hibrido',
-      inicio: null,
-      fin: null,
-      sede: {
-        nombre: 'Sede del gate',
-        direccion: CENTINELA.direccion,
-        barrio: 'boedo',
-        ciudad: 'CABA',
-        indicaciones: CENTINELA.indicaciones,
-        geo: null,
-      },
-      online: { plataforma: 'meet', url: CENTINELA.onlineUrl, urlPublica: true },
-    },
-  ],
-  modalidad: 'hibrido',
-  sede: {
-    nombre: 'Sede del gate',
-    direccion: CENTINELA.direccion,
-    barrio: 'boedo',
-    ciudad: 'CABA',
-    indicaciones: CENTINELA.indicaciones,
-    geo: null,
-  },
-  // `urlPublica: true` a propósito: es el caso en el que `toPublic` **sí** deja
-  // pasar el link (D-15), así que es el único que prueba que el recorte del
-  // índice lo saca por decisión propia y no de rebote.
-  online: { plataforma: 'meet', url: CENTINELA.onlineUrl, urlPublica: true },
-  inscripcion: {
-    requiere: true,
-    via: 'mail',
-    destino: CENTINELA.destino,
-    cupo: 12,
-    cierra: enUnaHora(12),
-    completo: false,
-  },
-  arancel: { tipo: 'gratis', notas: CENTINELA.arancelNotas },
-  material: {
-    tiene: true,
-    items: [
-      {
-        tipo: 'lectura',
-        titulo: CENTINELA.materialTitulo,
-        url: CENTINELA.materialUrl,
-        entrega: 'previo',
-        publico: true,
-      },
-    ],
-  },
-  difusion: { arrobar: [CENTINELA.difusionArrobar], notas: CENTINELA.difusionNotas },
-  estado,
-  tags: ['gate'],
-  destacado: false,
-  searchText: 'gate mecanico',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  createdBy: CENTINELA.createdBy,
-  updatedBy: CENTINELA.createdBy,
-});
-
-/**
- * Los centinelas que la **página de detalle** sí publica, y el índice no.
- *
- * El detalle muestra más que el índice (§4.3 del diseño): la descripción entera,
- * la dirección con el cómo llegar, el canal de inscripción, la bio, las notas del
- * arancel y el material público. Lo que **no** está en esta lista tiene que
- * seguir sin aparecer en el HTML — y el que importa es `onlineUrl`, que el
- * fixture publica con `urlPublica: true` (D-139).
- *
- * Es la misma lista que `PERMITIDO_EN_EL_DETALLE` de
- * `tests/barrido-de-salidas-publicas.test.ts`, con los nombres de acá. Allá la
- * afirmación es sobre el view-model; acá, sobre el HTML que se sube.
- */
-const CENTINELA_DEL_DETALLE = [
-  'descripcion',
-  'destino',
-  'direccion',
-  'indicaciones',
-  'tema',
-  'lectura',
-  'sesionId',
-  'bio',
-  'talleristaInstagram',
-  'organizadorInstagram',
-  'organizadorWeb',
-  'arancelNotas',
-  'materialTitulo',
-  'materialUrl',
-  // B-296 — el epígrafe de una imagen se muestra debajo de esa imagen (D-125).
-  'epigrafeImagen',
-  /*
-   * B-1572 — el motivo de un encuentro cancelado, debajo de ese encuentro
-   * (D-976): es el anuncio que reemplaza al borrado del evento (§7.3), y lo que
-   * distingue «se pasa al jueves» de «se suspende». Es el mismo permiso que
-   * `MOTIVO_DE_CANCELACION` en `tests/barrido-de-salidas-publicas.test.ts`.
-   *
-   * El permiso es **del archivo** y el JSON-LD vive adentro del mismo HTML, así
-   * que esta canasta sola lo dejaría pasar ahí también: por eso el paso 8m mira
-   * los bloques `application/ld+json` por separado.
-   */
-  'motivoCancelacion',
-];
-
-/**
- * Lo que el **`events.json`** publica a propósito y este gate creía privado.
- *
- * `sesionId` es el **id de sesión**, y desde **B-99** el índice lleva un eje plano
- * de encuentros (`{slug, sesionId, inicio}`). Es un uuid opaco generado en el
- * cliente (trampa 2), sin PII, y ya era público en la página de detalle — está en
- * `CENTINELA_DEL_DETALLE` de arriba. `tests/barrido-de-salidas-publicas.test.ts`
- * lo declaró en su `PERMITIDO_EN_EL_INDICE` («el eje plano de encuentros (B-99)»)
- * cuando la salida nació; **este archivo no se actualizó en el mismo cambio**, así
- * que el paso 3 quedó fallando por un campo que se publica a propósito.
- *
- * Eso es el modo de falla de B-180 en vivo —un gate que falla por su propia
- * plomería enseña a saltearlo— y explica por qué se descubrió recién al escribir
- * el paso 9: hay que correr el gate para verlo, y el gate estaba rojo.
- *
- * **La lista de al lado es la autoritativa.** Cuando un campo nuevo entre a una
- * salida, se declara **en las dos**: allá sobre el view-model, acá sobre el
- * artefacto. Ver la nota de `docs/13-agentes.md` sobre por qué los dos barridos
- * existen y no se reemplazan.
- */
-const CENTINELA_DEL_INDICE = [];
-
-/*
- * **Está vacía a propósito, y no le falta el id de sesión.** Cuando este barrido
- * del artefacto se escribió, `sesionId` era un centinela de `CENTINELA` —la lista
- * de lo que el índice recorta— y había que declararlo como excepción acá. Al
- * integrar se resolvió del otro lado y mejor: el id **salió de `CENTINELA`** y se
- * afirma en la dirección contraria, o sea que el gate exige que **aparezca**
- * (`ID_DE_SESION_QUE_SALE`). Una excepción es un permiso que hay que recordar;
- * un aserto positivo se rompe solo el día que el campo deje de salir.
- */
-
-/**
- * Lo que la **cartelera** publica a propósito.
- *
- * `/cartelera` muestra los flyers con su epígrafe debajo, que es exactamente para
- * lo que D-125 agregó el campo — el mismo criterio con el que está permitido en la
- * página de detalle. No publica nada más de la actividad que el índice no lleve:
- * eso es lo que el paso 9 verifica barriéndole todo el resto de la lista.
- */
-const CENTINELA_DE_LA_CARTELERA = ['epigrafeImagen'];
-
-/**
- * **La quinta canasta: el directorio de librerías** — B-901.
- *
- * `/librerias.json`, `/guia/librerias/` y cada `/guia/librerias/{slug}/` publican
- * a propósito la descripción y la dirección de la librería: son los datos de un
- * **local comercial** y son el punto de la ficha (§ 8 del PRD 2).
- *
- * **Lo que no está acá es la mitad que importa**, y por eso la lista es corta:
- * `libreriaContacto`, `libreriaMotivo` y `libreriaPendiente` quedan prohibidos en
- * los tres archivos igual que en todo el resto del `dist/`. Y `storagePath`
- * tampoco está: la ficha publica la URL de cada imagen, nunca su handle interno
- * en el bucket (trampa 13).
- */
-const CENTINELA_DEL_DIRECTORIO = ['libreriaDescripcion', 'libreriaDireccion'];
-
-/**
- * **La sexta canasta: el directorio de suscripciones literarias** — B-832.
- *
- * `/suscripciones.json`, `/guia/suscripciones/` y cada
- * `/guia/suscripciones/{slug}/` publican a propósito la descripción y la temática
- * de lo que manda: es el punto de la ficha (§ 5 del PRD 3).
- *
- * **Lo que no está acá es la mitad que importa**: `suscripcionContacto`,
- * `suscripcionMotivo` y `suscripcionPendiente` quedan prohibidos en los tres
- * archivos igual que en todo el resto del `dist/`. Y `storagePath` tampoco está.
- */
-const CENTINELA_DE_SUSCRIPCIONES = ['suscripcionDescripcion', 'suscripcionTematica'];
-
-/**
- * **La séptima canasta: el directorio de lugares para eventos** — B-833.
- *
- * `/lugares.json`, `/guia/lugares/` y cada `/guia/lugares/{slug}/` publican a
- * propósito la descripción y **la dirección de un local comercial**: son los
- * datos de un lugar con puerta y son el punto de la ficha (§ 6 del PRD 4).
- *
- * **Lo que no está acá es la mitad que importa**, y esta canasta es la única del
- * gate donde eso incluye una **ausencia condicional**: `lugarDireccionDeCasa` es
- * la dirección de un lugar **publicado** cuyo flag está apagado, y queda
- * prohibida en los tres archivos igual que en todo el resto del `dist/`.
- * `lugarContacto`, `lugarMotivo` y `lugarPendiente`, lo mismo. Y `storagePath`
- * tampoco está.
- */
-const CENTINELA_DE_LUGARES = ['lugarDescripcion', 'lugarDireccion'];
-
-/**
- * **La octava canasta: el directorio de bibliotecas** — B-960.
- *
- * `/bibliotecas.json`, `/guia/bibliotecas/` y cada `/guia/bibliotecas/{slug}/`
- * publican a propósito la descripción y la dirección: son los datos de una
- * institución con puerta y son el punto de la ficha.
- *
- * **Lo que no está acá es la mitad que importa**: `bibliotecaContacto`,
- * `bibliotecaMotivo` y `bibliotecaPendiente` quedan prohibidos en los tres
- * archivos igual que en todo el resto del `dist/`. Y `storagePath` tampoco está.
- *
- * ⚠️ **Sin esta canasta el barrido no era laxo: era vacío.** Hasta el pase de
- * auditores de B-960 el gate no sembraba ninguna biblioteca, así que los archivos
- * de esta sección se recorrían sin que existiera un solo valor que pudiera
- * aparecer en ellos. Verde por vacuidad.
- */
-const CENTINELA_DE_BIBLIOTECAS = ['bibliotecaDescripcion', 'bibliotecaDireccion'];
-
-/**
- * **La cuarta canasta** — B-804.
- *
- * Las tres de arriba (`actividad/`, `events.json`, `cartelera/`) alcanzaban
- * mientras lo que se barría era el contenido que **solo** la página de detalle
- * publica. El monto rompe esa forma y por eso el ítem no era copiar y pegar:
- * lo imprime la **tarjeta compartida**, así que sale en la home, en las páginas
- * de mes, en `/pasadas` y en los hubs. Con el modelo de tres canastas y `[]`
- * para todo lo demás, sembrar el monto los pone a todos en rojo — y ese rojo no
- * es un bug, es esta lista pidiendo que se escriba (incluida la celda de
- * `/pasadas` que D-500 dejó anotada).
- *
- * Es una lista y no un `else`: una página nueva que pinte la tarjeta entra en
- * rojo hasta que alguien la agregue, que es la decisión que hay que tomar una
- * vez por salida. Lo que no puede pasar es que entre sola. Y no inventa alcance:
- * es el párrafo de **D-500** —«las páginas que pintan la tarjeta del listado: la
- * de mes, los hubs y `/pasadas`»— hecho mecánico.
- *
- * **De esta lista, la semilla de este gate produce tres:** `index.html`,
- * `online/` y —desde B-969— `ciudad/`. Las otras están por adelantado y no por
- * las dudas — la tarjeta es la misma productora en todas—, y no aparecen por
- * motivos que son del fixture y no del sitio: las páginas de mes piden tres
- * actividades (`MINIMO_DE_ACTIVIDADES`), los hubs de `tipo` y `barrio` piden que
- * el slug esté en `/opciones/*` y el gate **solo siembra el de ciudad**, y
- * `/pasadas` pide una actividad que ya pasó. Un build de verdad las tiene todas,
- * y ahí es donde una omisión saldría en rojo por el motivo equivocado.
- *
- * **Por qué `ciudad` sí y las otras dos no** (B-969): sembrar `/opciones/*` es
- * tocar un documento de id fijo en el emulador de quien trabaja, así que hay que
- * sacarlo después por prefijo (`sembrarCiudadDelGate`/`limpiarCiudadDelGate`), que
- * es lo que hace que una corrida interrumpida la repare la siguiente. Se
- * paga ese costo una vez, por la clase que no tenía **ninguna** cobertura sobre
- * el artefacto real: la geografía de afuera de CABA. Para `tipo` y `barrio` no
- * hace falta — la clase de hub ya está barrida por la de ciudad, que comparte
- * productora.
- */
-const PAGINAS_CON_TARJETA = [
-  'index.html', // la home
-  'agenda/', // las páginas de mes (B-107)
-  'pasadas/', // D-500
-  'tipo/', // los hubs de taxonomía
-  'barrio/',
-  'ciudad/', // B-951 — la quinta clase
-  'online/',
-  'gratis/',
-];
-
-const pintaLaTarjeta = (relativa) =>
-  PAGINAS_CON_TARJETA.some((p) => (p.endsWith('/') ? relativa.startsWith(p) : relativa === p));
-
-/**
- * Las dos formas del monto, cada una con los archivos donde **sí** puede
- * aparecer — B-804.
- *
- * `permitido` es una función y no una lista de nombres porque las dos formas no
- * comparten canasta: el número crudo sale al índice y al JSON-LD, y la forma
- * legible a todo lo que pinte la tarjeta. Un campo cuyo permiso depende de la
- * forma en que se escribe es el primero que hay, y meterlo a la fuerza en el
- * modelo de canastas habría pedido declararlo mal en una de las dos.
- */
-const MONTO_EN_EL_ARTEFACTO = [
-  {
-    campo: 'montoCrudo',
-    valor: String(MONTO_DEL_GATE),
-    permitido: (r) => r === 'events.json' || r.startsWith('actividad/'),
-    donde: 'el `events.json` (el índice lleva el número, B-114) y el `Offer` del JSON-LD',
-  },
-  {
-    campo: 'montoLegible',
-    valor: montoLegible(MONTO_DEL_GATE),
-    permitido: (r) => r.startsWith('actividad/') || pintaLaTarjeta(r),
-    donde: 'la página de detalle y las páginas que pintan la tarjeta compartida',
-  },
-];
-
-/**
- * Las tres imágenes del caso de B-296: **una vertical, una apaisada y una
- * cuadrada**, con la portada en el medio del array.
- *
- * Las medidas no son inventadas: 1080 × 1350 es un flyer de Instagram, y
- * 1408 × 768 y 1024 × 1024 son dos de las tres imágenes reales de «Usted está
- * aquí», la única actividad de producción con tres cargadas (medido el
- * 2026-09-02).
- *
- * El `storagePath` va en las tres: el barrido de abajo tiene que cubrir la salida
- * **nueva**, no solo la portada que ya estaba.
- */
-const TRES_IMAGENES = [
-  {
-    id: 'img_gate_apaisada',
-    url: 'https://example.invalid/gate-apaisada.jpg',
-    epigrafe: CENTINELA.epigrafeImagen,
-    origen: 'externa',
-    portada: false,
-    storagePath: CENTINELA.storagePath,
-    ancho: 1408,
-    alto: 768,
-  },
-  {
-    id: 'img_gate_vertical',
-    url: 'https://example.invalid/gate-vertical.jpg',
-    epigrafe: '',
-    origen: 'externa',
-    portada: true,
-    storagePath: CENTINELA.storagePath,
-    ancho: 1080,
-    alto: 1350,
-  },
-  {
-    id: 'img_gate_cuadrada',
-    url: 'https://example.invalid/gate-cuadrada.jpg',
-    epigrafe: '',
-    origen: 'externa',
-    portada: false,
-    storagePath: CENTINELA.storagePath,
-    ancho: 1024,
-    alto: 1024,
-  },
-];
-
-/**
- * **El encuentro cancelado con motivo** — B-1572, sobre D-976.
- *
- * Hasta acá ningún encuentro sembrado estaba cancelado —la cancelada de B-110 es
- * la **actividad** entera, con sus encuentros vivos—, así que `motivoCancelacion`
- * no existía en el `dist/` y el gate afirmaba sobre un campo que nunca tuvo: los
- * barridos de vitest lo fijan sobre las funciones puras y el artefacto quedaba
- * sin testigo. Es la clase de B-804 (sembrar el dato para que el barrido tenga
- * qué encontrar).
- *
- * Va en la **galería** y no en la publicada porque la publicada es la que cargan
- * el sitemap, la canónica, el Open Graph y el agrupado por opción: un segundo
- * encuentro ahí movería asertos que no son de este ítem. La galería es publicada
- * igual, tiene página y JSON-LD, y sus asertos son de imágenes.
- *
- * Con la **misma comisión** que el vivo, para no abrir una segunda opción para
- * sumarse; sin tema ni lectura, para que el único texto nuevo de la fila sea el
- * motivo; y en el futuro, para que la fila se pinte como cancelada y no como
- * «ya pasó».
- */
-const ENCUENTRO_CANCELADO_DEL_GATE = {
-  id: 'ses_gate.sesiones.cancelada',
-  inicio: enUnaHora(48),
-  fin: enUnaHora(50),
-  tema: null,
-  lectura: null,
-  cancelada: true,
-  motivoCancelacion: CENTINELA.motivoCancelacion,
-  calendarEventId: null,
-  comisionId: CENTINELA.comisionId,
-};
-
-initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria' });
+const proyecto = process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria';
+initializeApp({ projectId: proyecto });
 const db = getFirestore();
+/*
+ * El bucket que el build va a listar: el mismo `PUBLIC_FIREBASE_STORAGE_BUCKET ??
+ * default` que `adminBucket()`. La huella es la base de este checkout (B-219),
+ * que es lo que separa la miniatura de este gate de la del gate de al lado.
+ */
+const bucket = getStorage().bucket(process.env.PUBLIC_FIREBASE_STORAGE_BUCKET ?? BUCKET_POR_DEFECTO);
+const huella = proyecto;
+const RUTA_DE_LA_MINIATURA = rutaDeLaMiniaturaDelGate(huella);
 
 /**
  * **`/opciones/ciudad`: la ciudad del gate, sacada por prefijo** — B-969.
@@ -1114,8 +308,32 @@ const limpiar = async () => {
       borrar('lugares'),
       borrar('bibliotecas'),
     ]);
+  /*
+   * B-1790 — la miniatura del gate, **solo la de este checkout** (la huella va
+   * en el nombre): el bucket del emulador es de la máquina, y borrar por el
+   * prefijo del gate sin la huella le sacaría la suya al gate de al lado a
+   * mitad de su build. Con su propio `try` por lo mismo que la ciudad.
+   */
+  let miniatura = 0;
+  try {
+    const [deEste] = await bucket.getFiles({ prefix: RUTA_DE_LA_MINIATURA });
+    await Promise.all(deEste.map((o) => o.delete({ ignoreNotFound: true })));
+    miniatura = deEste.length;
+  } catch (e) {
+    console.error(
+      `  ⚠ no se pudo borrar la miniatura del gate (${RUTA_DE_LA_MINIATURA}) del emulador de ` +
+        `Storage: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
   return (
-    actividades + usuarios + librerias + suscripciones + lugares + bibliotecas + ciudadDelGate
+    actividades +
+    usuarios +
+    librerias +
+    suscripciones +
+    lugares +
+    bibliotecas +
+    ciudadDelGate +
+    miniatura
   );
 };
 
@@ -1130,377 +348,25 @@ try {
   await limpiar();
 
   /*
-   * B-804 — la publicada es la que lleva el monto, y con un tipo de arancel que
-   * lo admite: `SIN_COSTO` lo rechaza, así que sembrarlo sobre `gratis` habría
-   * dejado el campo en el documento y fuera de todas las salidas (`admiteMonto`
-   * lo descarta en el view-model), o sea un barrido verde sin haber tenido el
-   * dato — el mismo agujero con otra forma.
+   * Qué se siembra y por qué vive en `scripts/gate-build/semilla.mjs`, que es
+   * datos puros (corte 1 de D-1070). Acá solo se escribe.
    *
-   * Las otras cuatro se quedan en `gratis`, que es lo que mantiene con contenido
-   * al hub `/gratis` y deja las **dos** ramas de `admiteMonto` sembradas.
-   */
-  const publicada = actividadDePrueba(SLUG_PUBLICADA, 'publicado');
-  publicada.arancel = {
-    tipo: ARANCEL_CON_MONTO,
-    notas: CENTINELA.arancelNotas,
-    monto: MONTO_DEL_GATE,
-  };
-  await db.doc(`actividades/${ID_PUBLICADA}`).set(publicada);
-  await db.doc(`actividades/${ID_BORRADOR}`).set(actividadDePrueba(SLUG_BORRADOR, 'borrador'));
-
-  // B-110 — la cancelada que estuvo publicada: se le deja el `calendarEventId`
-  // de su sesión, que es lo que prueba que el sync le creó el evento.
-  const cancelada = actividadDePrueba(SLUG_CANCELADA, 'cancelado');
-  cancelada.sesiones[0].calendarEventId = 'evt_gate_cancelada';
-  await db.doc(`actividades/${ID_CANCELADA}`).set(cancelada);
-  // Y la que nunca lo estuvo: sin id de evento y sin historial.
-  await db
-    .doc(`actividades/${ID_CANCELADA_NUNCA}`)
-    .set(actividadDePrueba(SLUG_CANCELADA_NUNCA, 'cancelado'));
-
-  /*
-   * B-969 — **la publicada de afuera de CABA**, y con ella la única página
-   * `/ciudad/*` del artefacto.
-   *
-   * Se le limpia el barrio a propósito: fuera de CABA no se pide, y dejarlo
-   * sembrado haría que `piezasDeLugar` emitiera tres piezas en vez de dos y que
-   * los asertos de abajo pasaran por el motivo equivocado.
+   * B-969 — `/opciones/ciudad` va aparte: no se reemplaza, se le agrega el valor
+   * del gate a lo que ya tenga el emulador de quien trabaja.
    */
   await sembrarCiudadDelGate();
-  const afuera = actividadDePrueba(SLUG_AFUERA, 'publicado');
-  afuera.titulo = 'Gate mecanico — afuera de CABA';
-  const geografiaDeAfuera = {
-    provincia: PROVINCIA_DEL_GATE,
-    barrio: '',
-    ciudad: CIUDAD_DEL_GATE,
-  };
-  afuera.modalidades = afuera.modalidades.map((m) =>
-    m.sede ? { ...m, sede: { ...m.sede, ...geografiaDeAfuera } } : m,
-  );
-  afuera.sede = { ...afuera.sede, ...geografiaDeAfuera };
-  afuera.ciudades = [CIUDAD_DEL_GATE];
-  await db.doc(`actividades/${ID_AFUERA}`).set(afuera);
-
-  // B-296 — la publicada con tres imágenes de proporciones distintas.
-  const galeria = actividadDePrueba(SLUG_GALERIA, 'publicado');
-  galeria.titulo = 'Gate mecanico — galeria de tres';
-  galeria.imagenes = TRES_IMAGENES;
-  // B-1572 — y el único encuentro cancelado del gate, con su motivo.
-  galeria.sesiones = [...galeria.sesiones, ENCUENTRO_CANCELADO_DEL_GATE];
-  await db.doc(`actividades/${ID_GALERIA}`).set(galeria);
-
-  /*
-   * B-901 — el directorio de librerías, con el par que hace al gate útil.
-   *
-   * La publicada lleva los dos centinelas que **sí** salen (descripción y
-   * dirección) y los dos que **no** (el contacto de quien la cargó y el motivo de
-   * la revisión), más el `storagePath` de su imagen. La pendiente lleva un
-   * centinela propio que no puede aparecer en un solo archivo del `dist/`: es el
-   * control del `where` de la lectura.
-   *
-   * El `origen` es `'formulario-publico'` en las dos a propósito: es la rama en la
-   * que el `contactoDeQuienCargo` existe de verdad, que es lo que se está
-   * barriendo.
-   */
-  const libreria = (slug, estado, descripcion) => ({
-    nombre: `Gate libreria ${estado}`,
-    slug,
-    descripcion,
-    imagenes: [
-      {
-        id: 'img_gate_libreria',
-        url: 'https://example.invalid/gate-libreria.jpg',
-        epigrafe: '',
-        origen: 'propia',
-        storagePath: CENTINELA.storagePath,
-        ancho: 1200,
-        alto: 800,
-        portada: true,
-      },
-    ],
-    direccion: CENTINELA.libreriaDireccion,
-    barrio: 'gate-barrio',
-    ciudad: 'Ciudad de Buenos Aires',
-    geo: { lat: -34.6, lng: -58.43 },
-    instagram: 'gatelibreria',
-    whatsapp: '5491100000001',
-    web: 'https://example.invalid/gate-libreria',
-    mail: 'gate@example.invalid',
-    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.libreriaContacto },
-    estado,
-    origen: 'formulario-publico',
-    searchText: descripcion,
-    creadoEn: new Date('2026-09-01T12:00:00Z'),
-    revision: {
-      porUid: CENTINELA.createdBy,
-      en: new Date('2026-09-02T12:00:00Z'),
-      motivo: CENTINELA.libreriaMotivo,
-    },
-    publicadaAlgunaVez: estado === 'publicado',
-  });
-
-  await db
-    .doc(`librerias/${ID_LIBRERIA}`)
-    .set(libreria(SLUG_LIBRERIA, 'publicado', CENTINELA.libreriaDescripcion));
-  await db
-    .doc(`librerias/${ID_LIBRERIA_PENDIENTE}`)
-    .set(libreria(SLUG_LIBRERIA_PENDIENTE, 'pendiente', CENTINELA.libreriaPendiente));
-
-  /*
-   * B-832 — el directorio de suscripciones, con el mismo par que hace útil al
-   * gate y con **un precio**: el monto del gate (`18246813`) formateado es
-   * `$18.246.813`, que no aparece por casualidad en ningún otro archivo, así que
-   * el paso 8j lo puede buscar y exigir que **nunca** esté sin su «cargado el»
-   * al lado (DEC-12).
-   *
-   * El `origen` es `'formulario-publico'` en las dos a propósito: es la rama en
-   * la que el `contactoDeQuienCargo` existe de verdad.
-   */
-  const suscripcion = (slug, estado, descripcion) => ({
-    nombre: `Gate suscripcion ${estado}`,
-    slug,
-    descripcion,
-    imagenes: [
-      {
-        id: 'img_gate_suscripcion',
-        url: 'https://example.invalid/gate-suscripcion.jpg',
-        epigrafe: '',
-        origen: 'propia',
-        storagePath: CENTINELA.storagePath,
-        ancho: 1200,
-        alto: 800,
-        portada: true,
-      },
-    ],
-    ofrecidaPor: {
-      nombre: 'Gate oferente',
-      tipo: 'libreria',
-      instagram: 'gatesuscripcion',
-      // A propósito apunta a la librería **publicada** del gate: así el paso 8j
-      // puede exigir que la ficha la enlace, que es la mitad que confirma que el
-      // build resolvió la lista de librerías y no linkeó a ciegas.
-      libreriaSlug: SLUG_LIBRERIA,
-    },
-    periodicidad: 'mensual',
-    compromisoMinimo: 'Sin compromiso',
-    incluye: ['libros'],
-    incluyeOtro: null,
-    envio: {
-      manda: true,
-      cuantos: 2,
-      tematica: CENTINELA.suscripcionTematica,
-      editoriales: 'independientes',
-      sorpresa: true,
-    },
-    extras: [],
-    extrasOtro: null,
-    precio: {
-      valor: { monto: 18246813, porPeriodo: 'mensual' },
-      cargadoEn: new Date('2026-09-01T12:00:00Z'),
-    },
-    alcance: ['caba'],
-    linkDeSuscripcion: 'https://example.invalid/gate-cobro',
-    instagram: 'gatesuscripcion',
-    whatsapp: '5491100000002',
-    mail: 'gate-sus@example.invalid',
-    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.suscripcionContacto },
-    estado,
-    origen: 'formulario-publico',
-    searchText: descripcion,
-    creadoEn: new Date('2026-09-01T12:00:00Z'),
-    revision: {
-      porUid: CENTINELA.createdBy,
-      en: new Date('2026-09-02T12:00:00Z'),
-      motivo: CENTINELA.suscripcionMotivo,
-    },
-    publicadaAlgunaVez: estado === 'publicado',
-  });
-
-  await db
-    .doc(`suscripciones/${ID_SUSCRIPCION}`)
-    .set(suscripcion(SLUG_SUSCRIPCION, 'publicado', CENTINELA.suscripcionDescripcion));
-  await db
-    .doc(`suscripciones/${ID_SUSCRIPCION_PENDIENTE}`)
-    .set(suscripcion(SLUG_SUSCRIPCION_PENDIENTE, 'pendiente', CENTINELA.suscripcionPendiente));
-
-  /*
-   * B-833 — el directorio de lugares, con **tres** documentos y no dos.
-   *
-   * El par publicado/pendiente es el de siempre. El tercero —una casa publicada
-   * con `direccionPublica: false`— es lo propio de esta colección: existe para
-   * que el paso 8k pueda afirmar una **ausencia condicional** sobre el `dist/`,
-   * que es lo único que ningún unitario puede ver.
-   */
-  const lugar = (slug, estado, descripcion, sobre = {}) => ({
-    nombre: `Gate lugar ${estado}`,
-    slug,
-    descripcion,
-    imagenes: [
-      {
-        id: 'img_gate_lugar',
-        url: 'https://example.invalid/gate-lugar.jpg',
-        epigrafe: '',
-        origen: 'propia',
-        storagePath: CENTINELA.storagePath,
-        ancho: 1200,
-        alto: 800,
-        portada: true,
-      },
-    ],
-    tipo: 'cafe',
-    direccion: CENTINELA.lugarDireccion,
-    // El barrio del gate: el mismo vocabulario que las actividades. Sale
-    // **siempre**, también para la casa (§ 6: es el «más o menos por Villa
-    // Crespo» que sí se publica).
-    barrio: 'gate-barrio',
-    ciudad: 'Ciudad de Buenos Aires',
-    geo: { lat: -34.5875, lng: -58.4306 },
-    direccionPublica: true,
-    capacidad: 30,
-    capacidadNotas: 'Sentados 20, de pie 35',
-    incluye: ['mesa-larga'],
-    incluyeOtro: null,
-    condicion: 'con-consumicion',
-    precio: {
-      valor: { monto: 24681357, porUnidad: 'hora' },
-      cargadoEn: new Date('2026-09-01T12:00:00Z'),
-    },
-    condicionNotas: 'Minimo de consumicion',
-    instagram: 'gatelugar',
-    whatsapp: '5491100000003',
-    mail: 'gate-lugar@example.invalid',
-    web: 'https://example.invalid/gate-lugar',
-    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.lugarContacto },
-    estado,
-    origen: 'formulario-publico',
-    // ⚠️ El `searchText` del gate **no lleva la dirección**, igual que el que
-    // produce `formALugar`: sembrarlo con la dirección adentro haría que el
-    // barrido del paso 9 fallara por el fixture y no por el sitio.
-    searchText: descripcion,
-    creadoEn: new Date('2026-09-01T12:00:00Z'),
-    revision: {
-      porUid: CENTINELA.createdBy,
-      en: new Date('2026-09-02T12:00:00Z'),
-      motivo: CENTINELA.lugarMotivo,
-    },
-    publicadaAlgunaVez: estado === 'publicado',
-    ...sobre,
-  });
-
-  await db.doc(`lugares/${ID_LUGAR}`).set(lugar(SLUG_LUGAR, 'publicado', CENTINELA.lugarDescripcion));
-  await db
-    .doc(`lugares/${ID_LUGAR_PENDIENTE}`)
-    .set(lugar(SLUG_LUGAR_PENDIENTE, 'pendiente', CENTINELA.lugarPendiente));
-  /*
-   * ⚠️ **La casa** — § 6 del PRD 4, y el documento que hace útil al paso 8k.
-   *
-   * Está **publicada**: su ficha se genera, su página se indexa y su entrada
-   * viaja en `/lugares.json`. Lo único apagado es el flag, así que su dirección
-   * —`lugarDireccionDeCasa`, que no está en ninguna canasta— no puede aparecer en
-   * ningún archivo del `dist/`.
-   *
-   * ⚠️ **Su `geo` lleva coordenadas propias e inconfundibles**, y no las del
-   * local: lo pidió el `auditor-privacidad`. La primera versión las compartía «a
-   * propósito», con un comentario que afirmaba que el paso 8k encontraría una
-   * fuga por su valor — y era falso por partida doble: el barrido del paso 9 mira
-   * **strings centinela** y no números, y el 8k solo miraba el JSON-LD de la
-   * ficha. Con las coordenadas compartidas, además, una fuga de la `geo` de la
-   * casa al índice no se podría distinguir de la del local, que sí viaja. Con
-   * éstas, el paso 8k.7 la busca en `dist/lugares.json` y la encuentra.
-   */
-  await db.doc(`lugares/${ID_LUGAR_CASA}`).set(
-    lugar(SLUG_LUGAR_CASA, 'publicado', 'Gate lugar casa', {
-      // El nombre va aparte del molde: los dos están publicados, y con el nombre
-      // derivado del estado las dos fichas compartirían el `<title>` — que es
-      // justo lo que el paso de títulos duplicados frena (y lo frenó).
-      nombre: 'Gate lugar casa',
-      tipo: 'casa',
-      direccion: CENTINELA.lugarDireccionDeCasa,
-      // Coordenadas **propias**: ver el comentario de arriba. La latitud es la que
-      // el paso 8k.7 busca en `dist/lugares.json`, y no aparece en ningún otro
-      // documento del gate.
-      geo: { lat: LAT_DE_LA_CASA, lng: -59.000123 },
-      direccionPublica: false,
-    }),
-  );
-
-  /*
-   * **Las dos bibliotecas** — B-960. El par publicada/pendiente, con el mismo
-   * molde que librerías y suscripciones.
-   *
-   * `asociarse` va con `haceFalta: true` y su costo **como frase con fecha**
-   * (D-570, B-837): es la forma que la proyección publica, y sembrarla acá es lo
-   * que permite que el `dist/` sea testigo de que salió como frase y nunca como
-   * número suelto.
-   */
-  const biblioteca = (slug, estado, descripcion, sobre = {}) => ({
-    nombre: `Gate biblioteca ${estado}`,
-    slug,
-    descripcion,
-    imagenes: [
-      {
-        id: 'img_gate_biblioteca',
-        url: 'https://example.invalid/gate-biblioteca.jpg',
-        epigrafe: '',
-        textoAlternativo: '',
-        origen: 'propia',
-        storagePath: CENTINELA.storagePath,
-        ancho: 1200,
-        alto: 800,
-        portada: true,
-      },
-    ],
-    tipo: 'popular',
-    direccion: CENTINELA.bibliotecaDireccion,
-    horarios: 'Lunes a viernes de 10 a 20',
-    horarioDeSala: 'Lunes a viernes de 10 a 18',
-    asociarse: {
-      haceFalta: true,
-      costo: { valor: '$3.000 por año', cargadoEn: new Date('2026-09-01T12:00:00Z') },
-    },
-    catalogo: 'https://example.invalid/gate-catalogo',
-    provincia: 'ciudad-autonoma-de-buenos-aires',
-    barrio: 'gate-barrio',
-    ciudad: 'Ciudad de Buenos Aires',
-    geo: { lat: -34.60009, lng: -58.43009 },
-    instagram: 'gatebiblioteca',
-    whatsapp: null,
-    web: null,
-    mail: null,
-    contactoDeQuienCargo: { via: 'mail', valor: CENTINELA.bibliotecaContacto },
-    estado,
-    origen: 'formulario-publico',
-    // Mismo criterio que las otras tres: el `searchText` del gate **no lleva la
-    // dirección**, así que si aparece en el `dist/` es porque la publicó la
-    // proyección y no porque viajó de contrabando en el índice de búsqueda.
-    searchText: descripcion,
-    creadoEn: new Date('2026-09-01T12:00:00Z'),
-    revision: {
-      porUid: CENTINELA.createdBy,
-      en: new Date('2026-09-02T12:00:00Z'),
-      motivo: CENTINELA.bibliotecaMotivo,
-    },
-    publicadaAlgunaVez: estado === 'publicado',
-    ...sobre,
-  });
-
-  await db
-    .doc(`bibliotecas/${ID_BIBLIOTECA}`)
-    .set(biblioteca(SLUG_BIBLIOTECA, 'publicado', CENTINELA.bibliotecaDescripcion));
-  await db
-    .doc(`bibliotecas/${ID_BIBLIOTECA_PENDIENTE}`)
-    .set(biblioteca(SLUG_BIBLIOTECA_PENDIENTE, 'pendiente', CENTINELA.bibliotecaPendiente));
-
-  // B-888 — la cuenta del panel con su mail. No la lee ninguna parte del build;
-  // se siembra para que el barrido del paso 9 tenga qué encontrar el día que
-  // alguien la conecte a una salida. Ver `CENTINELA.mailDePanel`.
-  await db.doc(`usuarios/${PREFIJO}cuenta`).set({
-    email: CENTINELA.mailDePanel,
-    actualizadoEn: new Date('2026-09-11T12:00:00Z'),
-  });
+  for (const [ruta, datos] of documentosDeLaSemilla({ bucket: bucket.name, huella })) {
+    await db.doc(ruta).set(datos);
+  }
+  // B-1790 — el objeto de la miniatura de la portada de la de afuera. El
+  // contenido no importa: el build **lista** `miniaturas/` y no baja un byte
+  // (DEC-7d), así que lo que se prueba es que el listado la confirme.
+  await bucket.file(RUTA_DE_LA_MINIATURA).save(Buffer.from('gate'), { contentType: 'image/jpeg' });
 
   console.log(
-    `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
+    `  (sembradas 6 actividades de prueba en ${host}: publicada, borrador, dos canceladas, ` +
+      'la de afuera de CABA con su miniatura en Storage (' +
+      `${hostStorage}) y ` +
       'una con tres imágenes y un encuentro cancelado con motivo; 2 librerías, 2 suscripciones y 2 bibliotecas, cada ' +
       'par con una publicada y una esperando decisión; y 3 lugares: uno ' +
       'publicado, uno esperando decisión y una casa publicada SIN dirección ' +
@@ -1850,6 +716,40 @@ try {
         );
         salida = 1;
       }
+    }
+
+    /*
+     * 4c · **B-1790 — la miniatura confirmada llega al `srcset`, sobre el HTML de
+     * verdad.**
+     *
+     * Es la mitad de D-210 que ningún unitario ve: `urlDeMiniaturaSiExiste` está
+     * probada contra un set, y `tests/miniaturas-storage.integracion.test.ts`
+     * contra el listado real, pero que el **build** liste Storage, le pase el
+     * resultado a la ficha y a la cartelera y la plantilla lo pinte solo se ve
+     * acá. Se pide el objeto **codificado** (`miniaturas%2F…`) adentro de un
+     * `srcset`: es la forma en que sale en la URL de descarga, y buscarlo suelto
+     * en el archivo pasaría por el `src` del original, que comparte el id.
+     *
+     * Si esto falla con el emulador de Storage arriba, lo primero es que
+     * `BUCKET_POR_DEFECTO` (`scripts/gate-build/semilla.mjs`) siga siendo el
+     * default de `adminBucket()`: el gate sube a un bucket y el build lista otro.
+     */
+    const miniaturaEnElSrcset = new RegExp(
+      `srcset="[^"]*${RUTA_DE_LA_MINIATURA.replace('/', '%2F').replace(/[.]/g, '[.]')}`,
+    );
+    const sinMiniatura = [
+      [`actividad/${SLUG_AFUERA}/index.html`, htmlAfuera],
+      ['cartelera/index.html', await leerDist('cartelera/index.html')],
+    ].filter(([, html]) => !html || !miniaturaEnElSrcset.test(html));
+    if (sinMiniatura.length > 0) {
+      fallo(
+        `la miniatura sembrada en Storage (${RUTA_DE_LA_MINIATURA}) no salió en el srcset de:\n` +
+          sinMiniatura.map(([r]) => `    dist/${r}`).join('\n') +
+          '\n  El build lista miniaturas/ una vez (D-210) y la ficha y la cartelera ponen la\n' +
+          '  confirmada como candidato chico. Sin ella se sirve el original, que es más\n' +
+          '  pesado: no rompe nada, y por eso nadie lo ve si no lo mira el gate (B-1790).',
+      );
+      salida = 1;
     }
 
     const robots = await leerDist('robots.txt');
@@ -2269,461 +1169,252 @@ try {
     }
 
     /*
-     * 8i · **B-901 — el directorio de librerías, sobre los archivos construidos.**
+     * 8i-8l · **Los cuatro directorios de la Guía, sobre los archivos
+     * construidos** — B-901, B-832, B-833, B-960.
      *
-     * (Se llama **8i** y no 8h porque el rótulo estaba tomado: el «control de la
-     * mayoría» de la galería es el 8h, y `docs/13-agentes.md` cita «los pasos
-     * 8a-8h» contando aquél. Dos pasos con el mismo nombre no rompen el gate
-     * —son comentarios— pero mandan a leer el que no es.)
+     * (El primero se llama **8i** y no 8h porque el rótulo estaba tomado: el
+     * «control de la mayoría» de la galería es el 8h, y `docs/13-agentes.md` cita
+     * «los pasos 8a-8h» contando aquél.)
      *
-     * Lo que este bloque puede ver y ningún unitario puede: que la **lectura**
+     * Lo que estos pasos pueden ver y ningún unitario puede: que la **lectura**
      * trajo solo lo publicado y que el **build** escribió la ficha. El barrido de
      * vitest mira la proyección pura —qué se decide publicar— y no puede saber si
-     * `getStaticPaths` generó la página ni si la query pidió de más.
+     * `getStaticPaths` generó la página ni si la query pidió de más. La pendiente
+     * es el control: con una sola ficha sembrada, un build que leyera la colección
+     * entera daría exactamente el mismo `dist/`.
      *
-     * La pendiente es el control: con una sola librería sembrada, un build que
-     * leyera la colección entera daría exactamente el mismo `dist/`.
+     * Desde B-1760 (corte 2 de D-1070) el esqueleto común vive una sola vez, en
+     * `scripts/gate-build/directorio.mjs`; acá queda lo que cada colección tiene
+     * de propio, que es lo que vale la pena leer.
      */
-    {
-      const crudoLibrerias = await readFile(
-        new URL('../dist/librerias.json', import.meta.url),
-        'utf8',
-      ).catch(() => null);
-
-      if (crudoLibrerias === null) {
-        fallo(
-          'no se escribió dist/librerias.json.\n' +
-            '  Es el índice que baja el listado de /guia/librerias: sin él, la sección\n' +
-            '  carga el HTML del build y los filtros quedan apagados para siempre.',
-        );
+    /** Todo lo publicable del `dist/`, leído una vez: los pasos 8j-8l y 9 lo recorren. */
+    let cachePublicables = null;
+    const publicables = async () => {
+      if (cachePublicables) return cachePublicables;
+      const raiz = new URL('../dist/', import.meta.url);
+      const rutas = (await readdir(raiz, { recursive: true })).filter((r) =>
+        /\.(html|json|txt|xml)$/.test(r),
+      );
+      cachePublicables = await Promise.all(
+        rutas.map(async (relativa) => ({
+          relativa,
+          contenido: await readFile(new URL(relativa, raiz), 'utf8').catch(() => ''),
+        })),
+      );
+      return cachePublicables;
+    };
+    const ctx = {
+      leer: leerDist,
+      publicables,
+      fallo: (mensaje) => {
+        fallo(mensaje);
         salida = 1;
-      } else {
-        const indiceLibrerias = JSON.parse(crudoLibrerias);
-        const slugsLibrerias = (indiceLibrerias.librerias ?? []).map((l) => l.slug);
+      },
+      sinFallos: () => salida === 0,
+      ok: (mensaje) => console.log(`  ✓ ${mensaje}`),
+    };
+    /** Los cuatro mensajes que las cuatro colecciones dicen igual. */
+    const mensajesDeFicha = (coleccion, laPendiente) => ({
+      sinFicha: (slug) =>
+        `no se generó la página /guia/${coleccion}/${slug}/.\n` +
+        '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
+      fichaPendiente: (slug) =>
+        `se generó la página de ${laPendiente} que ESPERA DECISIÓN\n` +
+        `  (/guia/${coleccion}/${slug}/). Es HTML indexable con el\n` +
+        '  contenido de una ficha que nadie aprobó.',
+      sinSitemap: (slug) =>
+        `la ficha /guia/${coleccion}/${slug}/ no está en el sitemap.xml.\n` +
+        '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
+      pendienteEnElSitemap:
+        `el sitemap.xml ofrece la ficha de ${laPendiente} que espera decisión: es una URL\n` +
+        '  que contesta 404 y que además no tendría que existir.',
+    });
 
-        // 8i.1 · El build tiene que haber LEÍDO algo. Sin esto, los dos asertos de
-        // abajo pasan en verde sobre una lista vacía.
-        if (!slugsLibrerias.includes(SLUG_LIBRERIA)) {
-          fallo(
-            `dist/librerias.json salió con ${slugsLibrerias.length} librerías y ninguna es la\n` +
-              '  sembrada. El build no leyó /librerias, así que todo lo que sigue no prueba nada.',
-          );
-          salida = 1;
-        }
-
-        // 8i.2 · **B-903** — el control del `where`. La pendiente no puede estar.
-        if (slugsLibrerias.includes(SLUG_LIBRERIA_PENDIENTE)) {
-          fallo(
-            'dist/librerias.json trae la librería que ESPERA DECISIÓN.\n' +
-              "  Falta o está mal el where('estado','==','publicado') de libreriasPublicadas\n" +
-              '  (src/lib/contenidoDelSitio.ts). Y lo que se publica con ella es el\n' +
-              '  contactoDeQuienCargo de quien pidió el alta (B-903).',
-          );
-          salida = 1;
-        }
-
-        // 8i.3 · La ficha existe en disco, y la de la pendiente no.
-        const fichaPublicada = await readFile(
-          new URL(`../dist/guia/librerias/${SLUG_LIBRERIA}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaPublicada === null) {
-          fallo(
-            `no se generó la página /guia/librerias/${SLUG_LIBRERIA}/.\n` +
-              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
-          );
-          salida = 1;
-        } else if (!fichaPublicada.includes('"@type":"BookStore"')) {
-          fallo(
-            'la ficha de la librería no emite el JSON-LD `BookStore`.\n' +
-              '  Es el SEO de esta sección entera (§ 4 del PRD 2): sin el marcado, la ficha\n' +
-              '  es una página más y no entra al panel local de Google.',
-          );
-          salida = 1;
-        }
-
-        const fichaPendiente = await readFile(
-          new URL(`../dist/guia/librerias/${SLUG_LIBRERIA_PENDIENTE}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaPendiente !== null) {
-          fallo(
-            `se generó la página de la librería que ESPERA DECISIÓN\n` +
-              `  (/guia/librerias/${SLUG_LIBRERIA_PENDIENTE}/). Es HTML indexable con el\n` +
-              '  contenido de una ficha que nadie aprobó.',
-          );
-          salida = 1;
-        }
-
-        // 8i.4 · Y la URL de la ficha está en el sitemap — §6 #7 del inventario:
-        // la página existe y Google no la ve. No falla nada y no se ve.
-        const sitemapLibrerias = await readFile(
-          new URL('../dist/sitemap.xml', import.meta.url),
-          'utf8',
-        );
-        if (!sitemapLibrerias.includes(`/guia/librerias/${SLUG_LIBRERIA}/`)) {
-          fallo(
-            'la ficha de la librería no está en el sitemap.xml.\n' +
-              '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
-          );
-          salida = 1;
-        }
-        if (sitemapLibrerias.includes(`/guia/librerias/${SLUG_LIBRERIA_PENDIENTE}/`)) {
-          fallo(
-            'el sitemap.xml ofrece la ficha de la librería que espera decisión: es una URL\n' +
-              '  que contesta 404 y que además no tendría que existir.',
-          );
-          salida = 1;
-        }
-
-        if (salida === 0) {
-          console.log(
-            '  ✓ el directorio de librerías salió con la publicada y sin la que espera decisión ' +
-              '(B-903), con su ficha, su BookStore y su entrada de sitemap.',
-          );
-        }
-      }
-    }
+    // 8i · B-901 — las librerías. Lo propio es poco: el `BookStore`.
+    await verificarDirectorio(ctx, {
+      coleccion: 'librerias',
+      indice: 'librerias.json',
+      publicadas: [SLUG_LIBRERIA],
+      pendiente: SLUG_LIBRERIA_PENDIENTE,
+      tipoLd: '"@type":"BookStore"',
+      mensajes: {
+        ...mensajesDeFicha('librerias', 'la librería'),
+        sinLeer: (n) =>
+          `dist/librerias.json salió con ${n} librerías y ninguna es la\n` +
+          '  sembrada. El build no leyó /librerias, así que todo lo que sigue no prueba nada.',
+        pendienteEnElIndice:
+          'dist/librerias.json trae la librería que ESPERA DECISIÓN.\n' +
+          "  Falta o está mal el where('estado','==','publicado') de libreriasPublicadas\n" +
+          '  (src/lib/contenidoDelSitio.ts). Y lo que se publica con ella es el\n' +
+          '  contactoDeQuienCargo de quien pidió el alta (B-903).',
+        sinLd:
+          'la ficha de la librería no emite el JSON-LD `BookStore`.\n' +
+          '  Es el SEO de esta sección entera (§ 4 del PRD 2): sin el marcado, la ficha\n' +
+          '  es una página más y no entra al panel local de Google.',
+      },
+      exito: () =>
+        'el directorio de librerías salió con la publicada y sin la que espera decisión ' +
+        '(B-903), con su ficha, su BookStore y su entrada de sitemap.',
+    });
 
     /*
-     * 8j · **B-832 — el directorio de suscripciones, sobre los archivos
-     * construidos.**
-     *
-     * Lo mismo que el 8i una colección más abajo, y **una cosa que ninguna otra
-     * tiene: el precio**. DEC-12 dice que el monto no se muestra nunca sin su
-     * fecha de carga, y esa garantía la da la forma —`fraseDePrecio` devuelve un
-     * solo string— pero eso lo verifica un unitario sobre la función pura. Acá se
-     * verifica sobre **lo que quedó escrito en el `dist/`**: que el monto
-     * formateado del gate no aparezca en ningún archivo sin «cargado el» pegado.
-     * Es la diferencia entre «la función lo hace bien» y «la página lo dice bien».
+     * 8j · B-832 — las suscripciones, y **una cosa que ninguna otra tiene: el
+     * precio**. DEC-12 dice que el monto no se muestra nunca sin su fecha de
+     * carga, y esa garantía la da la forma —`fraseDePrecio` devuelve un solo
+     * string— pero eso lo verifica un unitario sobre la función pura. Acá se
+     * verifica sobre **lo que quedó escrito en el `dist/`**.
      */
-    {
-      const crudoSuscripciones = await readFile(
-        new URL('../dist/suscripciones.json', import.meta.url),
-        'utf8',
-      ).catch(() => null);
-
-      if (crudoSuscripciones === null) {
-        fallo(
-          'no se escribió dist/suscripciones.json.\n' +
-            '  Es el índice que baja el listado de /guia/suscripciones: sin él, la sección\n' +
-            '  carga el HTML del build y los filtros quedan apagados para siempre.',
-        );
-        salida = 1;
-      } else {
-        const indiceSus = JSON.parse(crudoSuscripciones);
-        const slugsSus = (indiceSus.suscripciones ?? []).map((s) => s.slug);
-
-        // 8j.1 · El build tiene que haber LEÍDO algo.
-        if (!slugsSus.includes(SLUG_SUSCRIPCION)) {
-          fallo(
-            `dist/suscripciones.json salió con ${slugsSus.length} suscripciones y ninguna es la\n` +
-              '  sembrada. El build no leyó /suscripciones, así que nada de lo que sigue prueba nada.',
-          );
-          salida = 1;
-        }
-
-        // 8j.2 · El control del `where`: la pendiente no puede estar.
-        if (slugsSus.includes(SLUG_SUSCRIPCION_PENDIENTE)) {
-          fallo(
-            'dist/suscripciones.json trae la suscripción que ESPERA DECISIÓN.\n' +
-              "  Falta o está mal el where('estado','==','publicado') de suscripcionesPublicadas\n" +
-              '  (src/lib/contenidoDelSitio.ts). Y con ella se publica el contactoDeQuienCargo\n' +
-              '  de quien pidió el alta, y el precio crudo.',
-          );
-          salida = 1;
-        }
-
-        // 8j.3 · La ficha existe en disco, y la de la pendiente no.
-        const fichaSus = await readFile(
-          new URL(`../dist/guia/suscripciones/${SLUG_SUSCRIPCION}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaSus === null) {
-          fallo(
-            `no se generó la página /guia/suscripciones/${SLUG_SUSCRIPCION}/.\n` +
-              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
-          );
-          salida = 1;
-        } else {
-          if (!fichaSus.includes('"@type":"Product"')) {
-            fallo(
-              'la ficha de la suscripción no emite el JSON-LD `Product`.\n' +
-                '  Es el SEO de esta sección entera (§ 5 del PRD 3).',
-            );
-            salida = 1;
-          }
-          /*
-           * 8j.4 · **DEC-12 — el precio en el marcado.** El § 5 del PRD lo deja
-           * afuera a propósito: Google **muestra** el precio del `Offer` en el
-           * resultado, y uno de tres meses se publica equivocado en el lugar de
-           * más visibilidad y con la credibilidad de un dato estructurado.
-           */
-          const ld = fichaSus.slice(fichaSus.indexOf('"@type":"Product"'));
-          const finLd = ld.indexOf('</script>');
-          if (/"price"|"priceCurrency"|"priceSpecification"/.test(ld.slice(0, finLd))) {
-            fallo(
-              'el JSON-LD de la suscripción publica el precio.\n' +
-                '  El § 5 del PRD 3 lo deja afuera a propósito (DEC-12): Google lo muestra en\n' +
-                '  el resultado de búsqueda, y un precio de tres meses se publica equivocado\n' +
-                '  en el lugar de más visibilidad. En la página va, con su fecha al lado.',
-            );
-            salida = 1;
-          }
-          /*
-           * 8j.4b · **El `rel` del link de cobro, y las dos mitades de B-786.**
-           *
-           * Lo pidió el `auditor-privacidad`: el criterio 8 del PRD 3 y el § 7.2
-           * —que es una decisión **discriminada**— vivían solo en un comentario
-           * del `.astro`, así que nada se ponía rojo si alguien sacaba el
-           * `noreferrer` del link de cobro **ni** si lo aplicaba parejo a todo
-           * link externo, que **revierte B-786 sin decirlo**.
-           *
-           * Va sobre el HTML construido y no sobre el fuente por lo mismo que el
-           * resto de este paso: el atributo lo escribe Astro, y el orden de los
-           * atributos es suyo — por eso se recorta la etiqueta `<a>` y se
-           * pregunta por su contenido, en vez de casar una cadena entera.
-           */
-          const etiquetaCon = (html, aguja) => {
-            const i = html.indexOf(aguja);
-            if (i === -1) return null;
-            const abre = html.lastIndexOf('<a', i);
-            const cierra = html.indexOf('>', i);
-            return abre === -1 || cierra === -1 ? null : html.slice(abre, cierra + 1);
-          };
-          const accion = etiquetaCon(fichaSus, 'https://example.invalid/gate-cobro');
-          if (!accion || !accion.includes('noopener') || !accion.includes('noreferrer')) {
-            fallo(
-              'el link de cobro de la suscripción no sale con `rel="noopener noreferrer"`.\n' +
-                '  Sin `noopener`, la página de destino puede tocar la nuestra; sin `noreferrer`\n' +
-                '  le mandamos nuestro dominio de referencia a la página de cobro de un tercero\n' +
-                '  (§ 7.2 del PRD 3, criterio 8).',
-            );
-            salida = 1;
-          }
-          const mail = etiquetaCon(fichaSus, 'mailto:gate-sus@example.invalid');
-          if (mail && mail.includes('noreferrer')) {
-            fallo(
-              'un contacto de la ficha salió con `noreferrer`, y eso revierte B-786 sin decirlo.\n' +
-                '  El `noreferrer` es **del link de cobro y de ninguno más**: aplicarlo parejo a\n' +
-                '  todo link externo borraría la señal de que un aporte vino del sitio, que es\n' +
-                '  justo lo que B-786 decidió conservar.',
-            );
-            salida = 1;
-          }
-
-          // Y la ficha enlaza la librería que la ofrece, que es lo que confirma
-          // que el build resolvió la lista y no linkeó a ciegas.
-          if (!fichaSus.includes(`/guia/librerias/${SLUG_LIBRERIA}/`)) {
-            fallo(
-              'la ficha de la suscripción no enlaza la librería publicada que la ofrece.\n' +
-                '  O el build no resolvió la lista de librerías, o la está linkeando a ciegas.',
-            );
-            salida = 1;
-          }
-        }
-
-        const fichaSusPendiente = await readFile(
-          new URL(
-            `../dist/guia/suscripciones/${SLUG_SUSCRIPCION_PENDIENTE}/index.html`,
-            import.meta.url,
-          ),
-          'utf8',
-        ).catch(() => null);
-        if (fichaSusPendiente !== null) {
-          fallo(
-            `se generó la página de la suscripción que ESPERA DECISIÓN\n` +
-              `  (/guia/suscripciones/${SLUG_SUSCRIPCION_PENDIENTE}/). Es HTML indexable con el\n` +
-              '  contenido de una ficha que nadie aprobó.',
-          );
-          salida = 1;
-        }
-
-        // 8j.5 · La URL en el sitemap, y la pendiente afuera.
-        const sitemapSus = await readFile(new URL('../dist/sitemap.xml', import.meta.url), 'utf8');
-        if (!sitemapSus.includes(`/guia/suscripciones/${SLUG_SUSCRIPCION}/`)) {
-          fallo(
-            'la ficha de la suscripción no está en el sitemap.xml.\n' +
-              '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
-          );
-          salida = 1;
-        }
-        if (sitemapSus.includes(`/guia/suscripciones/${SLUG_SUSCRIPCION_PENDIENTE}/`)) {
-          fallo(
-            'el sitemap.xml ofrece la ficha de la suscripción que espera decisión: es una URL\n' +
-              '  que contesta 404 y que además no tendría que existir.',
-          );
-          salida = 1;
-        }
-
+    await verificarDirectorio(ctx, {
+      coleccion: 'suscripciones',
+      indice: 'suscripciones.json',
+      publicadas: [SLUG_SUSCRIPCION],
+      pendiente: SLUG_SUSCRIPCION_PENDIENTE,
+      tipoLd: '"@type":"Product"',
+      /*
+       * 8j.4 · **DEC-12 — el precio en el marcado.** El § 5 del PRD lo deja
+       * afuera a propósito: Google **muestra** el precio del `Offer` en el
+       * resultado, y uno de tres meses se publica equivocado en el lugar de más
+       * visibilidad y con la credibilidad de un dato estructurado.
+       */
+      ldSinPrecio: {
+        patron: /"price"|"priceCurrency"|"priceSpecification"/,
+        mensaje:
+          'el JSON-LD de la suscripción publica el precio.\n' +
+          '  El § 5 del PRD 3 lo deja afuera a propósito (DEC-12): Google lo muestra en\n' +
+          '  el resultado de búsqueda, y un precio de tres meses se publica equivocado\n' +
+          '  en el lugar de más visibilidad. En la página va, con su fecha al lado.',
+      },
+      verificarFicha: async (c, { html }) => {
         /*
-         * 8j.6 · **DEC-12 sobre el `dist/` entero: el monto no aparece nunca solo.**
+         * 8j.4b · **El `rel` del link de cobro, y las dos mitades de B-786.**
          *
-         * Es el ítem de este paso que no tiene equivalente en ningún unitario. La
-         * garantía la da la forma —`fraseDePrecio` devuelve **un** string con las
-         * dos cosas— y los unitarios la verifican sobre la función pura; acá se
-         * verifica sobre **lo que quedó escrito**: cada aparición del monto del
-         * gate en cualquier archivo publicado tiene que traer «cargado el» pegado.
-         *
-         * Es el modo de falla que D-570 anticipa y que una función pura no puede
-         * impedir: que alguien, en una plantilla o en una island, arme la frase por
-         * su cuenta y pinte el número solo «porque en la tarjeta angosta no entra
-         * la fecha».
+         * Lo pidió el `auditor-privacidad`: el criterio 8 del PRD 3 y el § 7.2
+         * —que es una decisión **discriminada**— vivían solo en un comentario del
+         * `.astro`, así que nada se ponía rojo si alguien sacaba el `noreferrer`
+         * del link de cobro **ni** si lo aplicaba parejo a todo link externo, que
+         * **revierte B-786 sin decirlo**.
          */
-        const MONTO_DEL_GATE = (18246813).toLocaleString('es-AR');
-        const DIST = new URL('../dist/', import.meta.url);
-        const huerfanos = [];
-        for (const relativa of await readdir(DIST, { recursive: true })) {
-          if (!/\.(html|json|txt|xml)$/.test(relativa)) continue;
-          const contenido = await readFile(new URL(relativa, DIST), 'utf8').catch(() => '');
-          let desde = contenido.indexOf(MONTO_DEL_GATE);
-          while (desde !== -1) {
-            // La ventana es generosa a propósito: entre el número y la fecha puede
-            // haber el período, el separador y el escape de una entidad HTML.
-            const ventana = contenido.slice(desde, desde + 160);
-            if (!ventana.includes('cargado el')) huerfanos.push(`    ${relativa}`);
-            desde = contenido.indexOf(MONTO_DEL_GATE, desde + 1);
-          }
+        const accion = etiquetaCon(html, 'https://example.invalid/gate-cobro');
+        if (!accion || !accion.includes('noopener') || !accion.includes('noreferrer')) {
+          c.fallo(
+            'el link de cobro de la suscripción no sale con `rel="noopener noreferrer"`.\n' +
+              '  Sin `noopener`, la página de destino puede tocar la nuestra; sin `noreferrer`\n' +
+              '  le mandamos nuestro dominio de referencia a la página de cobro de un tercero\n' +
+              '  (§ 7.2 del PRD 3, criterio 8).',
+          );
         }
+        const mail = etiquetaCon(html, 'mailto:gate-sus@example.invalid');
+        if (mail && mail.includes('noreferrer')) {
+          c.fallo(
+            'un contacto de la ficha salió con `noreferrer`, y eso revierte B-786 sin decirlo.\n' +
+              '  El `noreferrer` es **del link de cobro y de ninguno más**: aplicarlo parejo a\n' +
+              '  todo link externo borraría la señal de que un aporte vino del sitio, que es\n' +
+              '  justo lo que B-786 decidió conservar.',
+          );
+        }
+        // Y la ficha enlaza la librería que la ofrece, que es lo que confirma
+        // que el build resolvió la lista y no linkeó a ciegas.
+        if (!html.includes(`/guia/librerias/${SLUG_LIBRERIA}/`)) {
+          c.fallo(
+            'la ficha de la suscripción no enlaza la librería publicada que la ofrece.\n' +
+              '  O el build no resolvió la lista de librerías, o la está linkeando a ciegas.',
+          );
+        }
+      },
+      /*
+       * 8j.6 · **DEC-12 sobre el `dist/` entero: el monto no aparece nunca solo.**
+       *
+       * Es el ítem de este paso que no tiene equivalente en ningún unitario: cada
+       * aparición del monto del gate en cualquier archivo publicado tiene que
+       * traer «cargado el» pegado. Es el modo de falla que D-570 anticipa y que
+       * una función pura no puede impedir: que alguien, en una plantilla o en una
+       * island, arme la frase por su cuenta y pinte el número solo «porque en la
+       * tarjeta angosta no entra la fecha».
+       */
+      extras: async (c) => {
+        const monto = (18246813).toLocaleString('es-AR');
+        const { huerfanos, con } = datoConFecha(await c.publicables(), monto);
         if (huerfanos.length > 0) {
-          fallo(
+          c.fallo(
             'el precio de una suscripción salió publicado SIN su fecha de carga al lado.\n' +
               '  Es DEC-12: un precio de hace tres meses en este país ya no es cierto, y la\n' +
               '  fecha es lo único que deja que quien lee decida si le cree. La proyección\n' +
               '  devuelve UNA frase con las dos cosas; si acá aparece el número solo, alguien\n' +
               '  la rearmó en una plantilla o en una island.\n' +
-              `  Archivos:\n${[...new Set(huerfanos)].join('\n')}`,
+              `  Archivos:\n${huerfanos.join('\n')}`,
           );
-          salida = 1;
         }
         // Y el control positivo: el monto **tiene** que aparecer en alguna parte.
         // Sin esto, el barrido de arriba pasa en verde si el precio dejó de
         // publicarse — que es el otro error, y también en silencio.
-        const conPrecio = (await readdir(DIST, { recursive: true })).filter((r) =>
-          /\.(html|json)$/.test(r),
-        );
-        let apariciones = 0;
-        for (const relativa of conPrecio) {
-          const contenido = await readFile(new URL(relativa, DIST), 'utf8').catch(() => '');
-          if (contenido.includes(MONTO_DEL_GATE)) apariciones += 1;
-        }
+        const apariciones = con.filter((r) => /\.(html|json)$/.test(r)).length;
         if (apariciones === 0) {
-          fallo(
+          c.fallo(
             'el precio de la suscripción sembrada no aparece en ningún archivo del dist/.\n' +
               '  O dejó de publicarse, o el barrido de arriba no estaba mirando nada.',
           );
-          salida = 1;
         }
-
-        if (salida === 0) {
-          console.log(
-            '  ✓ el directorio de suscripciones salió con la publicada y sin la que espera ' +
-              `decisión, con su ficha, su Product sin precio, su entrada de sitemap y el ` +
-              `monto siempre con su fecha (${apariciones} archivos).`,
-          );
-        }
-      }
-    }
+        return { apariciones };
+      },
+      mensajes: {
+        ...mensajesDeFicha('suscripciones', 'la suscripción'),
+        sinLeer: (n) =>
+          `dist/suscripciones.json salió con ${n} suscripciones y ninguna es la\n` +
+          '  sembrada. El build no leyó /suscripciones, así que nada de lo que sigue prueba nada.',
+        pendienteEnElIndice:
+          'dist/suscripciones.json trae la suscripción que ESPERA DECISIÓN.\n' +
+          "  Falta o está mal el where('estado','==','publicado') de suscripcionesPublicadas\n" +
+          '  (src/lib/contenidoDelSitio.ts). Y con ella se publica el contactoDeQuienCargo\n' +
+          '  de quien pidió el alta, y el precio crudo.',
+        sinLd:
+          'la ficha de la suscripción no emite el JSON-LD `Product`.\n' +
+          '  Es el SEO de esta sección entera (§ 5 del PRD 3).',
+      },
+      exito: ({ apariciones }) =>
+        'el directorio de suscripciones salió con la publicada y sin la que espera ' +
+        `decisión, con su ficha, su Product sin precio, su entrada de sitemap y el ` +
+        `monto siempre con su fecha (${apariciones} archivos).`,
+    });
 
     /*
-     * 8k · **B-833 — el directorio de lugares, sobre los archivos construidos.**
-     *
-     * Lo mismo que el 8i y el 8j una colección más abajo, y **una cosa que
-     * ninguna otra tiene: una ausencia condicional**. La casa del gate está
-     * publicada —su ficha se genera, su página se indexa— y su dirección no puede
-     * estar en ningún archivo. Eso lo verifica el barrido del paso 9 sin cláusula
-     * especial (el centinela no está en ninguna canasta); acá se verifica la otra
-     * mitad, que es la que un barrido de ausencias no puede dar: **que la ficha de
-     * la casa exista de verdad**. Sin ella, el paso 9 pasaría en verde por no
-     * haber mirado nada.
+     * 8k · B-833 — los lugares, y **una cosa que ninguna otra colección tiene:
+     * una ausencia condicional**. La casa del gate está publicada —su ficha se
+     * genera, su página se indexa— y su dirección no puede estar en ningún
+     * archivo. Eso lo verifica el barrido del paso 9 sin cláusula especial (el
+     * centinela no está en ninguna canasta); acá se verifica la otra mitad, que es
+     * la que un barrido de ausencias no puede dar: **que la ficha de la casa
+     * exista de verdad**. Sin ella, el paso 9 pasaría en verde por no haber
+     * mirado nada.
      */
-    {
-      const crudoLugares = await readFile(
-        new URL('../dist/lugares.json', import.meta.url),
-        'utf8',
-      ).catch(() => null);
-
-      if (crudoLugares === null) {
-        fallo(
-          'no se escribió dist/lugares.json.\n' +
-            '  Es el índice que baja el listado de /guia/lugares: sin él, la sección\n' +
-            '  carga el HTML del build y los filtros quedan apagados para siempre.',
-        );
-        salida = 1;
-      } else {
-        const indiceLug = JSON.parse(crudoLugares);
-        const slugsLug = (indiceLug.lugares ?? []).map((l) => l.slug);
-
-        // 8k.1 · El build tiene que haber LEÍDO algo, y **las dos publicadas**.
-        for (const slug of [SLUG_LUGAR, SLUG_LUGAR_CASA]) {
-          if (!slugsLug.includes(slug)) {
-            fallo(
-              `dist/lugares.json salió con ${slugsLug.length} lugares y no está «${slug}».\n` +
-                '  El build no leyó /lugares (o dejó una publicada afuera), así que nada de lo\n' +
-                '  que sigue prueba nada — incluida la ausencia de la dirección de la casa.',
-            );
-            salida = 1;
-          }
-        }
-
-        // 8k.2 · El control del `where`: el pendiente no puede estar.
-        if (slugsLug.includes(SLUG_LUGAR_PENDIENTE)) {
-          fallo(
-            'dist/lugares.json trae el lugar que ESPERA DECISIÓN.\n' +
-              "  Falta o está mal el where('estado','==','publicado') de lugaresPublicados\n" +
-              '  (src/lib/contenidoDelSitio.ts). Y con él se publica el contactoDeQuienCargo\n' +
-              '  de quien pidió el alta, y la dirección de un lugar que nadie aprobó.',
+    await verificarDirectorio(ctx, {
+      coleccion: 'lugares',
+      indice: 'lugares.json',
+      publicadas: [SLUG_LUGAR, SLUG_LUGAR_CASA],
+      pendiente: SLUG_LUGAR_PENDIENTE,
+      tipoLd: '"@type":"Place"',
+      /*
+       * 8k.4 · **§ 7 — la condición no es un rango de precios.** El precio queda
+       * afuera del marcado por lo mismo que el `Offer` de una suscripción: un
+       * número que envejece publicado como dato estructurado es información
+       * equivocada en el lugar de más visibilidad.
+       */
+      ldSinPrecio: {
+        patron: /"priceRange"|"price"|"offers"/,
+        mensaje:
+          'el JSON-LD del lugar publica un precio o un rango de precios.\n' +
+          '  El § 7 del PRD 4 lo deja afuera a propósito: la condición no es un rango\n' +
+          '  de precios, y un número que envejece publicado como dato estructurado es\n' +
+          '  información equivocada donde más se ve.',
+      },
+      verificarFicha: async (c, { slug, html, ld }) => {
+        // Y el control positivo del marcado: la capacidad sí está.
+        if (!ld.includes('"maximumAttendeeCapacity"')) {
+          c.fallo(
+            'el JSON-LD del lugar no publica la capacidad.\n' +
+              '  Es el dato que hace que el marcado diga algo más que el nombre (§ 7).',
           );
-          salida = 1;
         }
-
-        // 8k.3 · Las dos fichas existen en disco, y la del pendiente no.
-        const fichaLug = await readFile(
-          new URL(`../dist/guia/lugares/${SLUG_LUGAR}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaLug === null) {
-          fallo(
-            `no se generó la página /guia/lugares/${SLUG_LUGAR}/.\n` +
-              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
-          );
-          salida = 1;
-        } else {
-          if (!fichaLug.includes('"@type":"Place"')) {
-            fallo(
-              'la ficha del lugar no emite el JSON-LD `Place`.\n' +
-                '  Es el SEO de esta sección entera (§ 7 del PRD 4).',
-            );
-            salida = 1;
-          }
-          /*
-           * 8k.4 · **§ 7 — la condición no es un rango de precios.** El PRD lo
-           * dice con todas las letras, y el precio además queda afuera del marcado
-           * por lo mismo que el `Offer` de una suscripción: un número que envejece
-           * publicado como dato estructurado es información equivocada en el lugar
-           * de más visibilidad.
-           */
-          const ld = fichaLug.slice(fichaLug.indexOf('"@type":"Place"'));
-          const finLd = ld.indexOf('</script>');
-          if (/"priceRange"|"price"|"offers"/.test(ld.slice(0, finLd))) {
-            fallo(
-              'el JSON-LD del lugar publica un precio o un rango de precios.\n' +
-                '  El § 7 del PRD 4 lo deja afuera a propósito: la condición no es un rango\n' +
-                '  de precios, y un número que envejece publicado como dato estructurado es\n' +
-                '  información equivocada donde más se ve.',
-            );
-            salida = 1;
-          }
-          // Y el control positivo del marcado: la capacidad sí está.
-          if (!ld.slice(0, finLd).includes('"maximumAttendeeCapacity"')) {
-            fallo(
-              'el JSON-LD del lugar no publica la capacidad.\n' +
-                '  Es el dato que hace que el marcado diga algo más que el nombre (§ 7).',
-            );
-            salida = 1;
-          }
-        }
-
+        if (slug !== SLUG_LUGAR_CASA) return;
         /*
          * 8k.5 · ⚠️ **La casa: su ficha EXISTE y su dirección NO está.**
          *
@@ -2732,335 +1423,172 @@ try {
          * si eso pasó porque la proyección la frenó o porque la página nunca se
          * generó. Esta mitad es la que distingue las dos cosas.
          */
-        const fichaCasa = await readFile(
-          new URL(`../dist/guia/lugares/${SLUG_LUGAR_CASA}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaCasa === null) {
-          fallo(
-            `no se generó la página /guia/lugares/${SLUG_LUGAR_CASA}/ (la casa publicada).\n` +
-              '  Sin ella, el barrido del paso 9 no prueba nada sobre la dirección de una casa:\n' +
-              '  no hay página donde pudiera haberse filtrado (§ 6 del PRD 4).',
+        if (html.includes(CENTINELA.lugarDireccionDeCasa)) {
+          c.fallo(
+            'LA FICHA DE LA CASA PUBLICA SU DIRECCIÓN.\n' +
+              '  Es el § 6 del PRD 4: `direccionPublica` está en `false` y la dirección salió\n' +
+              '  igual. Lo que se publicó es el dato con el que se llega a la puerta de\n' +
+              '  alguien, cargado por alguien que puede no vivir ahí.',
           );
-          salida = 1;
-        } else {
-          if (fichaCasa.includes(CENTINELA.lugarDireccionDeCasa)) {
-            fallo(
-              'LA FICHA DE LA CASA PUBLICA SU DIRECCIÓN.\n' +
-                '  Es el § 6 del PRD 4: `direccionPublica` está en `false` y la dirección salió\n' +
-                '  igual. Lo que se publicó es el dato con el que se llega a la puerta de\n' +
-                '  alguien, cargado por alguien que puede no vivir ahí.',
-            );
-            salida = 1;
-          }
-          // Y su JSON-LD no puede llevar `address` ni `geo` — criterio 5 del PRD,
-          // el camino que se filtra sin que nadie lo vea.
-          const ldCasa = fichaCasa.slice(fichaCasa.indexOf('"@type":"Place"'));
-          const finLdCasa = ldCasa.indexOf('</script>');
-          if (/"address"|"geo"/.test(ldCasa.slice(0, finLdCasa))) {
-            fallo(
-              'el JSON-LD de la casa publica `address` o `geo`.\n' +
-                '  Criterio 5 del PRD 4: «`direccion` ausente de la ficha implica ausente del\n' +
-                '  JSON-LD». Es el camino que se filtra sin que nadie lo note, porque nadie lee\n' +
-                '  el JSON-LD al revisar una ficha. Y unas coordenadas son la dirección con otro\n' +
-                '  formato.',
-            );
-            salida = 1;
-          }
-          // Control positivo: el barrio **sí** está. Es el «más o menos por Villa
-          // Crespo» que el § 6 deja publicar, y sin él este bloque estaría
-          // afirmando ausencias sobre una página vacía.
-          if (!fichaCasa.includes('gate-barrio') && !fichaCasa.includes('Gate lugar casa')) {
-            fallo(
-              'la ficha de la casa salió sin barrio y sin nombre: está vacía, así que las\n' +
-                '  ausencias de arriba no prueban nada.',
-            );
-            salida = 1;
-          }
         }
-
-        const fichaLugPendiente = await readFile(
-          new URL(`../dist/guia/lugares/${SLUG_LUGAR_PENDIENTE}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaLugPendiente !== null) {
-          fallo(
-            `se generó la página del lugar que ESPERA DECISIÓN\n` +
-              `  (/guia/lugares/${SLUG_LUGAR_PENDIENTE}/). Es HTML indexable con el contenido\n` +
-              '  de una ficha que nadie aprobó.',
+        // Y su JSON-LD no puede llevar `address` ni `geo` — criterio 5 del PRD,
+        // el camino que se filtra sin que nadie lo vea.
+        if (/"address"|"geo"/.test(ld)) {
+          c.fallo(
+            'el JSON-LD de la casa publica `address` o `geo`.\n' +
+              '  Criterio 5 del PRD 4: «`direccion` ausente de la ficha implica ausente del\n' +
+              '  JSON-LD». Es el camino que se filtra sin que nadie lo note, porque nadie lee\n' +
+              '  el JSON-LD al revisar una ficha. Y unas coordenadas son la dirección con otro\n' +
+              '  formato.',
           );
-          salida = 1;
         }
-
-        /*
-         * 8k.7 · ⚠️ **La `geo` de la casa tampoco está, y se busca por valor.**
-         *
-         * Lo pidió el `auditor-privacidad`: el barrido del paso 9 mira strings
-         * centinela, y una coordenada es un número. Sin este chequeo, una fuga de
-         * la `geo` de una casa al índice —el archivo que baja todo el mundo—
-         * pasaría el gate entero, y es la mitad del § 6 que más silenciosa se
-         * publica: unas coordenadas son la dirección con otro formato.
-         *
-         * Se barre **todo** el `dist/` y no solo el índice, por lo mismo que el
-         * barrido del monto: una plantilla puede escribirla en cualquier parte.
-         */
-        const DIST_LUG = new URL('../dist/', import.meta.url);
-        const conLaGeo = [];
-        for (const relativa of await readdir(DIST_LUG, { recursive: true })) {
-          if (!/\.(html|json|txt|xml)$/.test(relativa)) continue;
-          const contenido = await readFile(new URL(relativa, DIST_LUG), 'utf8').catch(() => '');
-          if (contenido.includes(String(LAT_DE_LA_CASA))) conLaGeo.push(`    ${relativa}`);
+        // Control positivo: el barrio **sí** está. Es el «más o menos por Villa
+        // Crespo» que el § 6 deja publicar, y sin él este bloque estaría
+        // afirmando ausencias sobre una página vacía.
+        if (!html.includes('gate-barrio') && !html.includes('Gate lugar casa')) {
+          c.fallo(
+            'la ficha de la casa salió sin barrio y sin nombre: está vacía, así que las\n' +
+              '  ausencias de arriba no prueban nada.',
+          );
         }
+      },
+      /*
+       * 8k.7 · ⚠️ **La `geo` de la casa tampoco está, y se busca por valor.**
+       *
+       * Lo pidió el `auditor-privacidad`: el barrido del paso 9 mira strings
+       * centinela, y una coordenada es un número. Sin este chequeo, una fuga de la
+       * `geo` de una casa al índice —el archivo que baja todo el mundo— pasaría el
+       * gate entero. Se barre **todo** el `dist/` y no solo el índice, por lo
+       * mismo que el barrido del monto: una plantilla puede escribirla en
+       * cualquier parte.
+       */
+      extras: async (c, { crudo }) => {
+        const conLaGeo = (await c.publicables())
+          .filter(({ contenido }) => contenido.includes(String(LAT_DE_LA_CASA)))
+          .map(({ relativa }) => `    ${relativa}`);
         if (conLaGeo.length > 0) {
-          fallo(
+          c.fallo(
             'LAS COORDENADAS DE LA CASA SE PUBLICARON.\n' +
               '  Es el § 6 del PRD 4: `direccionPublica` está en `false` y la `geo` salió igual.\n' +
               '  Unas coordenadas son la dirección con otro formato, y con un mapa al lado el\n' +
               '  «más o menos por Villa Crespo» deja de ser más o menos.\n' +
-              `  Archivos:\n${[...new Set(conLaGeo)].join('\n')}`,
+              `  Archivos:\n${conLaGeo.join('\n')}`,
           );
-          salida = 1;
         }
         // Control positivo: la `geo` del local publicado **sí** aparece. Sin esto,
         // el barrido de arriba pasaría en verde el día que la proyección dejara de
         // publicar toda `geo` — que es el otro error, y también en silencio.
-        if (!crudoLugares.includes('-34.5875')) {
-          fallo(
+        if (!crudo.includes('-34.5875')) {
+          c.fallo(
             'la `geo` del lugar publicado no aparece en dist/lugares.json.\n' +
               '  O dejó de publicarse, o el barrido de arriba no estaba mirando nada.',
           );
-          salida = 1;
         }
-
-        // 8k.6 · Las URLs en el sitemap, y el pendiente afuera.
-        const sitemapLug = await readFile(new URL('../dist/sitemap.xml', import.meta.url), 'utf8');
-        for (const slug of [SLUG_LUGAR, SLUG_LUGAR_CASA]) {
-          if (!sitemapLug.includes(`/guia/lugares/${slug}/`)) {
-            fallo(
-              `la ficha /guia/lugares/${slug}/ no está en el sitemap.xml.\n` +
-                '  Existe, se navega, y el buscador no la conoce (§6 #7 del inventario de PRDs).',
-            );
-            salida = 1;
-          }
-        }
-        if (sitemapLug.includes(`/guia/lugares/${SLUG_LUGAR_PENDIENTE}/`)) {
-          fallo(
-            'el sitemap.xml ofrece la ficha del lugar que espera decisión: es una URL\n' +
-              '  que contesta 404 y que además no tendría que existir.',
-          );
-          salida = 1;
-        }
-
-        if (salida === 0) {
-          console.log(
-            '  ✓ el directorio de lugares salió con los dos publicados y sin el que espera ' +
-              'decisión, con sus fichas, su Place sin precio, sus entradas de sitemap — y la ' +
-              'casa publicada sin su dirección y sin sus coordenadas en ningún archivo (§ 6).',
-          );
-        }
-      }
-    }
+        return {};
+      },
+      mensajes: {
+        ...mensajesDeFicha('lugares', 'el lugar'),
+        sinFicha: (slug) =>
+          slug === SLUG_LUGAR_CASA
+            ? `no se generó la página /guia/lugares/${slug}/ (la casa publicada).\n` +
+              '  Sin ella, el barrido del paso 9 no prueba nada sobre la dirección de una casa:\n' +
+              '  no hay página donde pudiera haberse filtrado (§ 6 del PRD 4).'
+            : `no se generó la página /guia/lugares/${slug}/.\n` +
+              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
+        sinLeer: (n, slug) =>
+          `dist/lugares.json salió con ${n} lugares y no está «${slug}».\n` +
+          '  El build no leyó /lugares (o dejó una publicada afuera), así que nada de lo\n' +
+          '  que sigue prueba nada — incluida la ausencia de la dirección de la casa.',
+        pendienteEnElIndice:
+          'dist/lugares.json trae el lugar que ESPERA DECISIÓN.\n' +
+          "  Falta o está mal el where('estado','==','publicado') de lugaresPublicados\n" +
+          '  (src/lib/contenidoDelSitio.ts). Y con él se publica el contactoDeQuienCargo\n' +
+          '  de quien pidió el alta, y la dirección de un lugar que nadie aprobó.',
+        sinLd:
+          'la ficha del lugar no emite el JSON-LD `Place`.\n' +
+          '  Es el SEO de esta sección entera (§ 7 del PRD 4).',
+      },
+      exito: () =>
+        'el directorio de lugares salió con los dos publicados y sin el que espera ' +
+        'decisión, con sus fichas, su Place sin precio, sus entradas de sitemap — y la ' +
+        'casa publicada sin su dirección y sin sus coordenadas en ningún archivo (§ 6).',
+    });
 
     /*
-     * 8l · **B-960 — el directorio de bibliotecas, sobre los archivos
-     * construidos.**
+     * 8l · B-960 — las bibliotecas, que **entraron tarde**: el frente construyó la
+     * sección entera y no tocó este archivo, así que hasta el pase de auditores
+     * el gate no sembraba ninguna biblioteca y el paso 9 recorría sus archivos sin
+     * un solo centinela que pudiera aparecer ahí. Verde por vacuidad.
      *
-     * Lo mismo que el 8i/8j/8k una colección más abajo, y **entró tarde**: el
-     * frente construyó la sección entera y no tocó este archivo, así que hasta el
-     * pase de auditores el gate no sembraba ninguna biblioteca. Eso no dejaba el
-     * barrido laxo: lo dejaba **vacío** — el paso 9 recorría
-     * `dist/bibliotecas.json` y `dist/guia/bibliotecas/**` sin que existiera un
-     * solo centinela de esta colección que pudiera aparecer ahí, y pasaba
-     * trivialmente. Un barrido sin nada que encontrar es verde por vacuidad.
-     *
-     * Lo propio de esta colección es **el costo de asociarse**: es un dato con
-     * fecha (D-570, B-837) y la garantía es que salga como **frase con su fecha
-     * pegada** y nunca como número suelto ni como `Offer` del JSON-LD, por el
-     * mismo motivo que el precio de una suscripción (DEC-12).
+     * Lo propio es **el costo de asociarse**: un dato con fecha (D-570, B-837) que
+     * tiene que salir como frase con su fecha pegada y nunca como número suelto
+     * ni como `Offer` del JSON-LD, por el mismo motivo que el precio de una
+     * suscripción (DEC-12).
      */
-    {
-      const crudoBib = await readFile(
-        new URL('../dist/bibliotecas.json', import.meta.url),
-        'utf8',
-      ).catch(() => null);
-
-      if (crudoBib === null) {
-        fallo(
-          'no se escribió dist/bibliotecas.json.\n' +
-            '  Es el índice que baja el listado de /guia/bibliotecas: sin él, la sección\n' +
-            '  carga el HTML del build y los filtros quedan apagados para siempre.',
-        );
-        salida = 1;
-      } else {
-        const indiceBib = JSON.parse(crudoBib);
-        const slugsBib = (indiceBib.bibliotecas ?? []).map((b) => b.slug);
-
-        // 8l.1 · El build tiene que haber LEÍDO algo.
-        if (!slugsBib.includes(SLUG_BIBLIOTECA)) {
-          fallo(
-            `dist/bibliotecas.json salió con ${slugsBib.length} bibliotecas y ninguna es la\n` +
-              '  sembrada. El build no leyó /bibliotecas, así que nada de lo que sigue prueba nada.',
-          );
-          salida = 1;
-        }
-
-        // 8l.2 · El control del `where`: la pendiente no puede estar.
-        if (slugsBib.includes(SLUG_BIBLIOTECA_PENDIENTE)) {
-          fallo(
-            'dist/bibliotecas.json trae la biblioteca que ESPERA DECISIÓN.\n' +
-              "  Falta o está mal el where('estado','==','publicado') de bibliotecasPublicadas\n" +
-              '  (src/lib/contenidoDelSitio.ts). Y con ella se publica el contactoDeQuienCargo\n' +
-              '  de quien la cargó, que es un dato de una persona y no de la institución.',
-          );
-          salida = 1;
-        }
-
-        // 8l.3 · La ficha existe en disco, y la de la pendiente no.
-        const fichaBib = await readFile(
-          new URL(`../dist/guia/bibliotecas/${SLUG_BIBLIOTECA}/index.html`, import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (fichaBib === null) {
-          fallo(
-            `no se generó la página /guia/bibliotecas/${SLUG_BIBLIOTECA}/.\n` +
-              '  El listado la linkea igual: sin la página, cada fila del directorio es un 404.',
-          );
-          salida = 1;
-        } else {
-          if (!fichaBib.includes('"@type":"Library"')) {
-            fallo(
-              'la ficha de la biblioteca no emite el JSON-LD `Library`.\n' +
-                '  Es el SEO de esta sección entera.',
-            );
-            salida = 1;
-          }
-          /*
-           * 8l.4 · **El costo de asociarse no va al marcado.** Mismo argumento
-           * que DEC-12 para el precio de una suscripción: Google **muestra** el
-           * precio de un `Offer` en el resultado, y un carnet de hace tres meses
-           * se publica equivocado en el lugar de más visibilidad y con la
-           * credibilidad de un dato estructurado. En la página va, con su fecha
-           * al lado.
-           */
-          const ldBib = fichaBib.slice(fichaBib.indexOf('"@type":"Library"'));
-          const finLdBib = ldBib.indexOf('</script>');
-          if (/"price"|"priceCurrency"|"priceRange"|"offers"/i.test(ldBib.slice(0, finLdBib))) {
-            fallo(
-              'el JSON-LD de la biblioteca publica el costo de asociarse.\n' +
-                '  Queda afuera a propósito, por el mismo motivo que el precio de una\n' +
-                '  suscripción (DEC-12). En la página va, como frase y con su fecha.',
-            );
-            salida = 1;
-          }
-        }
-
-        /*
-         * 8l.5 · **El costo sale como frase con su fecha, nunca como número
-         * suelto** — B-837, D-570, y el mismo modo de falla que el 8j persigue
-         * con el precio de una suscripción: que alguien rearme la frase en una
-         * plantilla o en una island y pinte el número solo «porque en la tarjeta
-         * angosta no entra la fecha».
-         *
-         * Va con **ventana alrededor de cada aparición** y sobre **todo** el
-         * `dist/`, y no con un `includes` sobre la ficha: preguntar si la página
-         * tiene «cargado el» en alguna parte da verde aunque el monto esté suelto
-         * en otro lado de esa misma página, y no mira el listado ni el JSON. La
-         * primera versión de este paso hacía justamente eso — un chequeo laxo con
-         * forma de red, que es lo que este gate existe para no tener.
-         */
-        const COSTO_DEL_GATE = '$3.000';
-        const DIST_BIB = new URL('../dist/', import.meta.url);
-        const costosHuerfanos = [];
-        let vistoElCosto = false;
-        for (const relativa of await readdir(DIST_BIB, { recursive: true })) {
-          if (!/\.(html|json|txt|xml)$/.test(relativa)) continue;
-          const contenido = await readFile(new URL(relativa, DIST_BIB), 'utf8').catch(() => '');
-          let desde = contenido.indexOf(COSTO_DEL_GATE);
-          while (desde !== -1) {
-            vistoElCosto = true;
-            // Misma ventana generosa que el 8j: entre el número y la fecha puede
-            // haber el período, el separador y el escape de una entidad HTML.
-            const ventana = contenido.slice(desde, desde + 160);
-            if (!ventana.includes('cargado el')) costosHuerfanos.push(`    ${relativa}`);
-            desde = contenido.indexOf(COSTO_DEL_GATE, desde + 1);
-          }
-        }
-        if (costosHuerfanos.length > 0) {
-          fallo(
+    await verificarDirectorio(ctx, {
+      coleccion: 'bibliotecas',
+      indice: 'bibliotecas.json',
+      publicadas: [SLUG_BIBLIOTECA],
+      pendiente: SLUG_BIBLIOTECA_PENDIENTE,
+      tipoLd: '"@type":"Library"',
+      // 8l.4 · El costo de asociarse no va al marcado (DEC-12, mismo argumento).
+      ldSinPrecio: {
+        patron: /"price"|"priceCurrency"|"priceRange"|"offers"/i,
+        mensaje:
+          'el JSON-LD de la biblioteca publica el costo de asociarse.\n' +
+          '  Queda afuera a propósito, por el mismo motivo que el precio de una\n' +
+          '  suscripción (DEC-12). En la página va, como frase y con su fecha.',
+      },
+      /*
+       * 8l.5 · **El costo sale como frase con su fecha, nunca como número
+       * suelto** — con ventana alrededor de **cada** aparición y sobre **todo** el
+       * `dist/`. Preguntar si la ficha tiene «cargado el» en alguna parte da verde
+       * aunque el monto esté suelto en otro lado de esa misma página: la primera
+       * versión de este paso hacía justamente eso, un chequeo laxo con forma de
+       * red.
+       */
+      extras: async (c) => {
+        const { huerfanos, con } = datoConFecha(await c.publicables(), '$3.000');
+        if (huerfanos.length > 0) {
+          c.fallo(
             'el costo de asociarse a una biblioteca salió publicado SIN su fecha de carga.\n' +
               '  D-570 y B-837: un carnet de hace tres meses en este país ya no cuesta lo\n' +
               '  mismo, y la fecha es lo único que deja que quien lee decida si le cree. La\n' +
               '  proyección devuelve UNA frase con las dos cosas; si acá aparece el número\n' +
               '  solo, alguien la rearmó en una plantilla o en una island.\n' +
-              `  Archivos:\n${[...new Set(costosHuerfanos)].join('\n')}`,
+              `  Archivos:\n${huerfanos.join('\n')}`,
           );
-          salida = 1;
         }
-        /*
-         * Y el control positivo, por lo mismo que lo tiene el 8j: sin esto el
-         * barrido de arriba pasa en verde el día que el costo deje de publicarse,
-         * que es la otra mitad del error.
-         */
-        if (!vistoElCosto) {
-          fallo(
+        // Y el control positivo: sin esto, el barrido de arriba pasa en verde el
+        // día que el costo deje de publicarse, que es la otra mitad del error.
+        if (con.length === 0) {
+          c.fallo(
             'el costo de asociarse del gate no aparece en ningún archivo del dist/.\n' +
               '  O la ficha dejó de publicarlo, o cambió de forma: en los dos casos el\n' +
               '  chequeo de la fecha de arriba quedó sin nada que mirar.',
           );
-          salida = 1;
         }
-
-        const fichaBibPendiente = await readFile(
-          new URL(
-            `../dist/guia/bibliotecas/${SLUG_BIBLIOTECA_PENDIENTE}/index.html`,
-            import.meta.url,
-          ),
-          'utf8',
-        ).catch(() => null);
-        if (fichaBibPendiente !== null) {
-          fallo(
-            `se generó la página /guia/bibliotecas/${SLUG_BIBLIOTECA_PENDIENTE}/.\n` +
-              '  Es la ficha de una biblioteca que NADIE revisó: la cargó un desconocido y\n' +
-              '  está publicada en HTML indexable, con el nombre y la dirección que tipeó.',
-          );
-          salida = 1;
-        }
-
-        /*
-         * 8l.6 · **La ficha entra al sitemap, y la pendiente no.** Es la mitad
-         * que faltaba del hallazgo: `sitemap.ts` no tenía a bibliotecas, así que
-         * el listado entraba y las fichas no.
-         */
-        const sitemapBib = await readFile(
-          new URL('../dist/sitemap.xml', import.meta.url),
-          'utf8',
-        ).catch(() => null);
-        if (sitemapBib !== null) {
-          if (!sitemapBib.includes(`/guia/bibliotecas/${SLUG_BIBLIOTECA}/`)) {
-            fallo(
-              'la ficha de la biblioteca publicada no está en el sitemap.\n' +
-                '  La página existe, se navega, y el buscador no la conoce.',
-            );
-            salida = 1;
-          }
-          if (sitemapBib.includes(`/guia/bibliotecas/${SLUG_BIBLIOTECA_PENDIENTE}/`)) {
-            fallo(
-              'el sitemap ofrece la ficha de la biblioteca que ESPERA DECISIÓN.\n' +
-                '  Se le está pidiendo al buscador que indexe contenido sin revisar.',
-            );
-            salida = 1;
-          }
-        }
-
-        if (salida === 0) {
-          console.log(
-            '  ✓ el directorio de bibliotecas salió con la publicada y sin la que espera ' +
-              'decisión, con su ficha, su Library sin el costo en el marcado, el costo con ' +
-              'su fecha en la página y su entrada de sitemap.',
-          );
-        }
-      }
-    }
+        return {};
+      },
+      mensajes: {
+        ...mensajesDeFicha('bibliotecas', 'la biblioteca'),
+        sinLeer: (n) =>
+          `dist/bibliotecas.json salió con ${n} bibliotecas y ninguna es la\n` +
+          '  sembrada. El build no leyó /bibliotecas, así que nada de lo que sigue prueba nada.',
+        pendienteEnElIndice:
+          'dist/bibliotecas.json trae la biblioteca que ESPERA DECISIÓN.\n' +
+          "  Falta o está mal el where('estado','==','publicado') de bibliotecasPublicadas\n" +
+          '  (src/lib/contenidoDelSitio.ts). Y con ella se publica el contactoDeQuienCargo\n' +
+          '  de quien la cargó, que es un dato de una persona y no de la institución.',
+        sinLd:
+          'la ficha de la biblioteca no emite el JSON-LD `Library`.\n' +
+          '  Es el SEO de esta sección entera.',
+      },
+      exito: () =>
+        'el directorio de bibliotecas salió con la publicada y sin la que espera ' +
+        'decisión, con su ficha, su Library sin el costo en el marcado, el costo con ' +
+        'su fecha en la página y su entrada de sitemap.',
+    });
 
     /*
      * 8m · **B-1572 — el motivo de la cancelación, en las tres direcciones de
@@ -3131,163 +1659,25 @@ try {
      * elegidas a mano.**
      *
      * Es lo que el ítem pedía desde el principio: «el `grep` sobre `dist/`
-     * buscando `difusion`, la URL de la reunión y los uids». Hasta acá el gate
-     * barría el `events.json` (paso 3) y **tres** páginas de detalle nombradas
-     * una por una: la cancelada (paso 4), la de la galería y la publicada (8g).
+     * buscando `difusion`, la URL de la reunión y los uids». Hasta B-121 el gate
+     * barría el `events.json` (paso 3) y **tres** páginas de detalle nombradas una
+     * por una, y el listado, la cartelera, las páginas de mes, `/pasadas`, los
+     * hubs y el sitemap quedaban afuera — cada página nueva, hasta que alguien se
+     * acordara de agregarla (B-212, B-227). Así que la lista **se deriva del
+     * `dist/`**: una página nueva entra sola.
      *
-     * **Lo que esa forma no ve, y es la mitad del sitio.** El listado, la
-     * cartelera, las páginas de mes, `/pasadas`, los hubs y el sitemap también
-     * son HTML indexable que interpola datos de actividades, y ninguno estaba
-     * barrido. Peor: cada página nueva que nace queda afuera hasta que alguien
-     * se acuerde de agregarla acá — que es exactamente cómo la salida 5 y la 6
-     * llegaron tarde al mapa (B-212, B-227).
-     *
-     * Así que la lista **se deriva del `dist/`**: se recorre lo que el build
-     * escribió y se barre todo lo que es texto publicable. Una página nueva
-     * entra sola. No hay nada que mantener.
-     *
-     * **Por qué esto no reemplaza a `tests/barrido-de-salidas-publicas.test.ts`
-     * ni al revés.** Aquél mira las **funciones puras** —qué decide publicar la
-     * proyección— y corre en milisegundos sin build. Éste mira **lo que quedó
-     * escrito en el artefacto**, que es lo único que prueba que ninguna
-     * plantilla interpoló algo por su cuenta: un `title={imagen.storagePath}`
-     * agregado en un `.astro` pasa el barrido del view-model y muere acá. Son
-     * complementarios y los dos hacen falta.
+     * Desde B-1760 (corte 3 de D-1070) el barrido es una función pura sobre
+     * `{relativa, contenido}[]` —`barrerArtefacto`, en
+     * `scripts/gate-build/barrido.mjs`, con las canastas por salida y los
+     * controles positivos del monto—, y acá solo se le pasa lo que el build
+     * escribió.
      *
      * **Por qué vive en el gate y no en la suite:** necesita un `dist/`
      * construido, y `npm test` no puede depender de eso. Es el criterio de
-     * B-217, y es el mismo por el que dos archivos de test se saltean sin build.
+     * B-217. Lo que sí corre en la suite es la función, contra un `dist/` de
+     * mentira con una fuga por canasta.
      */
-    {
-      const RAIZ_DIST = new URL('../dist/', import.meta.url);
-      const BARRIBLES = /\.(html|json|xml|txt)$/;
-
-      /** Todo lo publicable que el build escribió, relativo a `dist/`. */
-      const publicables = (await readdir(RAIZ_DIST, { recursive: true })).filter((r) =>
-        BARRIBLES.test(r),
-      );
-
-      /*
-       * Control positivo, y no es una formalidad: si el glob dejara de encontrar
-       * archivos —porque cambió el `outDir`, porque el build falló antes— este
-       * paso saldría en verde **sin haber mirado nada**, que es la forma exacta
-       * en que el paso 4 original pasaba leyendo cero documentos (B-217).
-       */
-      if (publicables.length < 5) {
-        fallo(
-          `el barrido del artefacto encontró ${publicables.length} archivo(s) publicables en dist/.\n` +
-            '  Son demasiado pocos: o el build no escribió nada, o cambió dónde escribe.\n' +
-            '  Un barrido sobre cero archivos pasa en verde sin haber mirado nada.',
-        );
-        salida = 1;
-      }
-
-      const hallazgos = [];
-      /** Dónde apareció cada forma del monto — B-804. Es el control positivo. */
-      const vistos = new Map(MONTO_EN_EL_ARTEFACTO.map((f) => [f.campo, []]));
-      for (const relativa of publicables) {
-        const contenido = await readFile(new URL(relativa, RAIZ_DIST), 'utf8');
-
-        /*
-         * Las excepciones son **por salida**, cortas y justificadas, igual que en
-         * `tests/barrido-de-salidas-publicas.test.ts`: la página de detalle
-         * publica la descripción entera, la dirección y el tema (D-139); el
-         * índice publica el id de sesión desde B-99; la cartelera publica el
-         * epígrafe (D-125). **Todo lo demás se barre en todos los archivos**, que
-         * es lo que hace que una plantilla nueva no pueda publicar de más.
-         */
-        const permitido = relativa.startsWith('actividad/')
-          ? CENTINELA_DEL_DETALLE
-          : relativa === 'events.json'
-            ? CENTINELA_DEL_INDICE
-            : relativa.startsWith('cartelera/')
-              ? CENTINELA_DE_LA_CARTELERA
-              : relativa === 'librerias.json' || relativa.startsWith('guia/librerias/')
-                ? CENTINELA_DEL_DIRECTORIO
-                : relativa === 'suscripciones.json' ||
-                    relativa.startsWith('guia/suscripciones/')
-                  ? CENTINELA_DE_SUSCRIPCIONES
-                : relativa === 'lugares.json' || relativa.startsWith('guia/lugares/')
-                  ? CENTINELA_DE_LUGARES
-                  : relativa === 'bibliotecas.json' ||
-                      relativa.startsWith('guia/bibliotecas/')
-                    ? CENTINELA_DE_BIBLIOTECAS
-                    : [];
-        const prohibidos = Object.entries(CENTINELA).filter(
-          ([campo]) => !permitido.includes(campo),
-        );
-
-        for (const [campo, valor] of prohibidos) {
-          if (contenido.includes(valor)) hallazgos.push(`    ${relativa} → ${campo} (${valor})`);
-        }
-
-        /*
-         * B-804 — y el centinela **numérico**, que no entra en el modelo de
-         * canastas de arriba porque sus dos formas no comparten permiso: el
-         * número crudo sale al índice y al JSON-LD, la forma legible a todo lo
-         * que pinte la tarjeta compartida.
-         */
-        for (const forma of MONTO_EN_EL_ARTEFACTO) {
-          if (!contenido.includes(forma.valor)) continue;
-          vistos.get(forma.campo).push(relativa);
-          if (!forma.permitido(relativa)) {
-            hallazgos.push(`    ${relativa} → ${forma.campo} (${forma.valor})`);
-          }
-        }
-      }
-
-      /*
-       * **Los tres controles positivos del monto** — B-804, y son la mitad del
-       * ítem. Un barrido que solo afirma ausencias pasa en verde el día que la
-       * semilla deja de sembrar el campo, que es exactamente el estado del que
-       * este ítem viene: el gate afirmaba sobre una salida que nunca tuvo el
-       * dato.
-       */
-      for (const forma of MONTO_EN_EL_ARTEFACTO) {
-        if (vistos.get(forma.campo).length > 0) continue;
-        fallo(
-          `el monto del arancel no aparece en NINGÚN archivo del dist/ en su forma ` +
-            `${forma.campo} (${forma.valor}).\n` +
-            `  Tendría que salir en ${forma.donde}.\n` +
-            '  O la semilla dejó de cargar `arancel.monto` con un tipo que lo admita, o la\n' +
-            '  salida dejó de publicarlo: en los dos casos el barrido de abajo estaría\n' +
-            '  afirmando sobre un dato que no existe (B-804).',
-        );
-        salida = 1;
-      }
-
-      const enLaTarjeta = vistos.get('montoLegible').filter((r) => pintaLaTarjeta(r));
-      if (enLaTarjeta.length === 0) {
-        fallo(
-          'el monto no aparece en ninguna de las páginas que pintan la tarjeta compartida.\n' +
-            `  Esperaba alguna de: ${PAGINAS_CON_TARJETA.join(', ')}.\n` +
-            '  Es la cuarta canasta de B-804: si dejó de imprimirse ahí, el permiso que le\n' +
-            '  dimos a esas páginas quedó sin nada que permitir.',
-        );
-        salida = 1;
-      }
-
-      if (!vistos.get('montoCrudo').includes('events.json')) {
-        fallo(
-          'el events.json no lleva el monto del arancel.\n' +
-            '  Lo lleva desde B-114 porque la tarjeta del listado arma la frase del precio\n' +
-            '  en el cliente: sin el número, el listado dice la etiqueta sola.',
-        );
-        salida = 1;
-      }
-
-      if (hallazgos.length > 0) {
-        fallo(
-          `hay campos privados en el artefacto construido (${hallazgos.length} hallazgo(s)):\n` +
-            hallazgos.join('\n') +
-            '\n  Es B-121: el barrido sobre `dist/`. Lo que se sube tiene un campo que\n' +
-            '  ninguna salida pública debería llevar — y si el barrido de\n' +
-            '  `tests/barrido-de-salidas-publicas.test.ts` está en verde, entonces la\n' +
-            '  proyección recorta bien y lo publicó una **plantilla** por su cuenta.',
-        );
-        salida = 1;
-      }
-    }
+    for (const mensaje of barrerArtefacto(await publicables())) ctx.fallo(mensaje);
 
     /*
      * 10 · **B-122 — las dos propiedades del HTML indexable que quedaban sin
@@ -3387,6 +1777,8 @@ try {
           '  ✓ la de afuera de CABA salió con su provincia en el índice, su ficha diciendo ' +
           'la ciudad y la provincia con etiqueta, y su hub /ciudad/* emitido y enlazado ' +
           '(B-950, B-951, B-969).\n' +
+          '  ✓ la miniatura sembrada en el emulador de Storage sale en el srcset de la ficha ' +
+          'y de la cartelera: el build listó miniaturas/ de verdad (D-210, B-1790).\n' +
           '  ✓ la actividad con tres imágenes pinta las tres, con la portada marcada arriba, ' +
           'un solo `eager`, un solo texto alternativo y tres cajas de proporción distinta; y ' +
           'la de una sola imagen sigue pintando una, sin sección de galería (B-296).\n' +
