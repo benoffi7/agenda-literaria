@@ -154,3 +154,24 @@ el test se defiende solo; cuando hay que nombrarla, es tu trabajo.**
    exacto a agregar (`EFECTOS_INCONDICIONALES` ← `'notificarSuscriptores'`). Es
    la sección que hace que la red crezca con el código en vez de quedarse en las
    siete clases de hoy; si no hay ninguna, decilo en una línea.
+
+### Medido o leído (B-1162)
+
+Cada hallazgo dice en su primera línea si es **`medido`** o **`leído`**:
+
+- **`medido`** — hay una reproducción que lo muestra, y la nombrás en una línea:
+  un test existente que lo fija, un artefacto ya construido que lo contiene, una
+  medición con fecha en el BACKLOG o el CHANGELOG.
+- **`leído`** — lo dedujiste leyendo el código. Vale igual como hallazgo, pero
+  es una hipótesis sobre el sistema, no un hecho.
+
+Como no corrés la suite ni el build, **la mayoría de lo tuyo va a ser `leído`**,
+y está bien: lo que no está bien es no decirlo. **Un hallazgo `leído` no sale
+con la severidad que afirma el efecto** —P0 «pierde o corrompe datos», P1
+«rompe algo visible»—: va con **P2** y dice qué medición lo subiría (el test a
+correr, el caso a reproducir en el emulador). Seguir la cadena desde la puerta de entrada —quién
+**escribe** el dato, no solo quién lo lee— es parte de medir: el barrido que
+abrió B-1142 miró quién leía el campo y no por qué función se entraba, y por eso
+afirmó una URL pelada que el panel nunca mostraba. B-1145 fue el caso simétrico
+en la misma lista. Quien prioriza no tenía cómo distinguir esos dos de los que
+sí eran ciertos.

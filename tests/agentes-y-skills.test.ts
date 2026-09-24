@@ -881,3 +881,49 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * Cada auditor etiqueta sus hallazgos como `medido` o `leído` — B-1162.
+ *
+ * **La regla es de redacción y la red solo ve que esté escrita.** Lo que no se
+ * puede verificar acá es que un reporte la cumpla: eso lo lee quien prioriza.
+ * Lo que sí se puede, y es lo que se rompe callado, es que un auditor **no la
+ * tenga**: un cuarto `auditor-*.md` que nace copiando una ficha vieja, o una
+ * reescritura de «Qué devolvés» que se come la sección. Por eso se recorren las
+ * fichas que hay en disco y no una lista a mano — la lista a mano es la que se
+ * queda con tres el día que haya cuatro.
+ *
+ * Se pide lo que hace a la regla: las dos etiquetas con nombre, y la
+ * consecuencia —que un `leído` no sale con la prioridad del efecto—, porque sin
+ * ella la etiqueta sería decorativa.
+ *
+ * MUTACIÓN PROBADA: borrar la sección `### Medido o leído` de
+ * `auditor-trampas.md`, o sacarle la frase «no sale con la», pone este caso en
+ * rojo nombrando esa ficha.
+ */
+describe('cada auditor dice si un hallazgo es medido o leído — B-1162', () => {
+  const AUDITORES_EN_DISCO = AGENTES.filter((f) => /\/auditor-[^/]+\.md$/.test(f));
+
+  it('hay auditores que mirar (si esto da 0, cambió dónde viven)', () => {
+    expect(AUDITORES_EN_DISCO.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('las fichas tienen la sección, las dos etiquetas y la consecuencia', () => {
+    const sinRegla = AUDITORES_EN_DISCO.filter((f) => {
+      const src = fuente(f);
+      const desde = src.indexOf('### Medido o leído (B-1162)');
+      if (desde === -1) return true;
+      const seccion = src.slice(desde);
+      const etiquetas = seccion.includes('**`medido`**') && seccion.includes('**`leído`**');
+      const consecuencia = /no\s+sale\s+con\s+la\s+(severidad|prioridad)\s+que\s+afirma\s+el\s+efecto/.test(
+        seccion,
+      );
+      return !(etiquetas && consecuencia);
+    });
+    expect(
+      sinRegla,
+      'estas fichas no tienen la regla de B-1162: un hallazgo que afirma que algo ' +
+        'se ve tiene que decir si se reprodujo o si se dedujo leyendo',
+    ).toEqual([]);
+  });
+});
