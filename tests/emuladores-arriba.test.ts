@@ -215,6 +215,67 @@ const SIN_EMULADORES = {
     );
   });
 
+  it('un Firestore solo sale en `a_medias`: el paso 3 falla nombrándolo — B-1661', async () => {
+    /*
+     * El paso 3 no puede reusar un Firestore solo (la suite necesita los tres) ni
+     * levantar los suyos (el `exec` choca en el 8080). Lo único que le queda es
+     * fallar diciendo por qué, y para eso tiene que saber **qué** está vivo.
+     * MUTACIÓN PROBADA: sacar el `for` del script deja este caso en rojo.
+     */
+    const firestore = await servidor(200);
+    try {
+      const r = await detectar({
+        ...SIN_EMULADORES,
+        FIREBASE_EMULATOR_HUB: '127.0.0.1:1',
+        FIRESTORE_EMULATOR_HOST: firestore.host,
+      });
+      expect(r).toMatchObject({ arriba: 'false', a_medias: 'firestore' });
+    } finally {
+      firestore.cerrar();
+    }
+  });
+
+  it('dos de tres salen los dos, en orden fijo — la tanda a medias de B-365', async () => {
+    const firestore = await servidor(200);
+    const storage = await servidor(501);
+    try {
+      const r = await detectar({
+        FIREBASE_EMULATOR_HUB: '127.0.0.1:1',
+        FIRESTORE_EMULATOR_HOST: firestore.host,
+        FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:1',
+        FIREBASE_STORAGE_EMULATOR_HOST: storage.host,
+      });
+      expect(r).toMatchObject({ arriba: 'false', a_medias: 'firestore,storage' });
+    } finally {
+      await Promise.all([firestore.cerrar(), storage.cerrar()]);
+    }
+  });
+
+  it('sin nada escuchando, o con la tanda entera, `a_medias` sale vacío', async () => {
+    expect(
+      (await detectar({ FIREBASE_EMULATOR_HUB: '127.0.0.1:1', ...SIN_EMULADORES })).a_medias,
+    ).toBe('');
+    const { host, cerrar } = await servidor(200);
+    abiertos.push(cerrar);
+    // Con el hub vivo no se pregunta por los puertos: los de SIN_EMULADORES
+    // están muertos y aun así no hay nada «a medias», porque la tanda está.
+    expect((await detectar({ FIREBASE_EMULATOR_HUB: host, ...SIN_EMULADORES })).a_medias).toBe('');
+  });
+
+  it('el paso 3 mira `a_medias` antes de su `exec`, y nombra el Firestore solo — B-1661', () => {
+    const gate = readFileSync(new URL('../scripts/verificar-todo.sh', import.meta.url), 'utf8');
+    const paso3 = gate.slice(
+      gate.indexOf("paso 'Tests con emuladores"),
+      gate.indexOf("paso 'Build del sitio"),
+    );
+    expect(paso3).toContain('a_medias=');
+    const antesDelExec = paso3.slice(0, paso3.indexOf('emulators:exec'));
+    expect(antesDelExec, 'el paso 3 va a su exec sin mirar si hay algo a medias').toContain(
+      '$EMU_A_MEDIAS',
+    );
+    expect(antesDelExec).toMatch(/Firestore solo[^\n]*reintentá/);
+  });
+
   it('los cuatro hosts salen con el default del proyecto si no vienen del entorno', async () => {
     const r = await detectar({ FIREBASE_EMULATOR_HUB: '127.0.0.1:1' });
     expect(r).toMatchObject({

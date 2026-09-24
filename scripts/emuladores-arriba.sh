@@ -2,10 +2,11 @@
 #
 # ¿Hay emuladores de Firebase ya escuchando, y en qué hosts?
 #
-# Escribe seis líneas `clave=valor`:
+# Escribe siete líneas `clave=valor`:
 #
 #   arriba=true|false
 #   firestore_vivo=true|false
+#   a_medias=firestore,auth        (vacío si está la tanda entera o nada)
 #   hub=127.0.0.1:4400
 #   firestore=127.0.0.1:8080
 #   auth=127.0.0.1:9099
@@ -90,8 +91,27 @@ else
   FIRESTORE_VIVO=false
 fi
 
+# ── `a_medias`: qué hay escuchando cuando no está la tanda entera — B-1661 ──
+# `arriba=false` quiere decir dos cosas muy distintas: que no hay nada —y el
+# `emulators:exec` del paso 3 levanta los suyos sin problema— o que hay **una
+# parte** —y el `exec` choca en ese puerto y muere con «port taken», sin decir
+# de quién es—. El caso de todos los días es un Firestore solo, el paso 4 del
+# gate de otro checkout; el otro es la tanda a medias de B-365, un hijo huérfano
+# cuyo padre murió. En los dos el paso 3 no puede pasar, así que lo que queda es
+# que falle **nombrando** la causa en vez de con el mensaje pelado de Firebase.
+# Con `arriba=true` sale vacío: ahí no hay nada que nombrar.
+A_MEDIAS=''
+if [ "$ARRIBA" = false ]; then
+  for par in "firestore:$FIRESTORE" "auth:$AUTH" "storage:$STORAGE"; do
+    if puerto_vivo "${par#*:}"; then
+      A_MEDIAS="${A_MEDIAS:+$A_MEDIAS,}${par%%:*}"
+    fi
+  done
+fi
+
 printf 'arriba=%s\n' "$ARRIBA"
 printf 'firestore_vivo=%s\n' "$FIRESTORE_VIVO"
+printf 'a_medias=%s\n' "$A_MEDIAS"
 printf 'hub=%s\n' "$HUB"
 printf 'firestore=%s\n' "$FIRESTORE"
 printf 'auth=%s\n' "$AUTH"

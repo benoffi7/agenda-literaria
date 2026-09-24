@@ -78,6 +78,7 @@ EMU_HUB=$(printf '%s\n' "$EMU" | sed -n 's/^hub=//p')
 HOST_FIRESTORE=$(printf '%s\n' "$EMU" | sed -n 's/^firestore=//p')
 HOST_AUTH=$(printf '%s\n' "$EMU" | sed -n 's/^auth=//p')
 HOST_STORAGE=$(printf '%s\n' "$EMU" | sed -n 's/^storage=//p')
+EMU_A_MEDIAS=$(printf '%s\n' "$EMU" | sed -n 's/^a_medias=//p')
 
 # B-219 — la base del emulador de ESTE checkout. El emulador es de la máquina,
 # no del working-tree: sin esto, el gate de un worktree vacía la base del vecino
@@ -95,6 +96,16 @@ if [ "$EMU_ARRIBA" = true ]; then
     FIREBASE_STORAGE_EMULATOR_HOST="$HOST_STORAGE" \
     EXIGIR_EMULADOR=1 npm test \
     || fallo 'la suite no pasa con los emuladores arriba'
+elif [ -n "$EMU_A_MEDIAS" ]; then
+  # B-1661 — hay una parte de la tanda escuchando, y el `exec` de abajo va a
+  # chocar en ese puerto con un «port taken» que no dice de quién es. Reusarla no
+  # se puede (la suite necesita los tres), así que se falla nombrando la causa.
+  # El caso de todos los días es el Firestore solo del paso 4 de otro gate, que
+  # se va en un minuto; el otro es la tanda a medias de B-365, que no se va sola.
+  if [ "$EMU_A_MEDIAS" = firestore ]; then
+    fallo "hay un Firestore solo en $HOST_FIRESTORE, probablemente el paso 4 del gate de otro checkout: reintentá en un minuto (B-1661)"
+  fi
+  fallo "hay emuladores a medias escuchando ($EMU_A_MEDIAS) y la suite necesita los tres: si no es otro gate a mitad de camino, es un hijo huérfano de una tanda cuyo padre murió (B-365) — mirá con \`lsof -i :8080 -i :9099 -i :9199\` (B-1661)"
 else
   # **`$PROJECT_ID_EMU` y no `agenda-literaria`** (B-894): el emulador tiene que
   # correr en el mismo proyecto que usan los tests, que es el que se acaba de
