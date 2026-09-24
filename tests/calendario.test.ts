@@ -929,6 +929,33 @@ const completa = (over: Record<string, unknown> = {}) =>
     ...over,
   });
 
+describe('el link de la reunión pegado en la descripción no llega al evento — B-1690', () => {
+  it('un host conocido se cambia por el aviso, con y sin esquema, y conserva la puntuación', () => {
+    const texto = construirDescripcion(
+      completa({
+        descripcion: 'Nos vemos acá: https://zoom.us/j/123?pwd=abc. O por meet.google.com/xyz-abcd, dale.',
+      }),
+      sesion(),
+      LABELS,
+    );
+    expect(texto).not.toMatch(/zoom\.us|meet\.google|pwd=/);
+    expect(texto).toContain('[el link de la reunión lo manda quien organiza cuando te anotás].');
+  });
+
+  it('un `online.url` de una plataforma que la lista no conoce también se saca', () => {
+    const url = 'https://salas.miplataforma.com.ar/abc123';
+    const a = completa({ descripcion: `Entrá por ${url} el martes.` });
+    const conOnline = { ...a, modalidades: [...(a.modalidades ?? []), { online: { plataforma: 'otra', url } }] };
+    const texto = construirDescripcion(conOnline, sesion(), LABELS);
+    expect(texto).not.toContain('miplataforma');
+  });
+
+  it('una descripción sin links de reunión sale igual que antes', () => {
+    const descripcion = 'Un club de lectura con https://casabrandon.com.ar como sede.';
+    expect(construirDescripcion(completa({ descripcion }), sesion(), LABELS)).toContain(descripcion);
+  });
+});
+
 describe('construirDescripcion — lo que SÍ va al evento', () => {
   const d = () => construirDescripcion(completa(), sesion({ tema: 'Cap. 1-4', lectura: 'Pedro Páramo' }), LABELS);
 

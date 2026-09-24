@@ -33,6 +33,7 @@
  * exactos que la actividad tenga cargados en `online.url`.
  */
 import { urlSegura } from '@/lib/enlaceSeguro';
+import { recortar, sinLinksDeReunion } from '../../functions/links-de-reunion.js';
 
 export type TrozoDeDescripcion =
   | { tipo: 'texto'; texto: string }
@@ -46,61 +47,12 @@ export type TrozoDeDescripcion =
  */
 export const REL_DE_DESCRIPCION = 'nofollow noopener noreferrer';
 
-/**
- * Los mismos hosts que `HOSTS_DE_REUNION` de `schema.ts`, que no se exporta. Un
- * test compara las dos listas leyendo el fuente, así que agregar una plataforma
- * allá sin agregarla acá lo pone en rojo.
+/*
+ * **Desde B-1690, el reemplazo del link de reunión vive en `functions/`**, porque
+ * el evento de Calendar publica la misma descripción y `functions/` no puede
+ * importar `src/` (D-20). Acá se importa y se reexporta; no se reescribe (D-88).
  */
-const HOSTS_DE_REUNION =
-  /(meet\.google|zoom\.us|teams\.microsoft|teams\.live|meet\.jit\.si|whereby\.com|discord\.gg|gotomeet)/i;
-
-/** El texto que ocupa el lugar del link de la reunión. */
-export const AVISO_DE_REUNION = '[el link de la reunión lo manda quien organiza cuando te anotás]';
-
-const PUNTUACION_FINAL = /[.,;:!?…»«"'”’“‘]$/;
-
-const cuenta = (texto: string, caracter: string): number => texto.split(caracter).length - 1;
-
-/**
- * Separa la puntuación que rodea a un token del token mismo. El cierre solo se
- * saca si no tiene su apertura adentro.
- */
-const recortar = (token: string): { antes: string; nucleo: string; despues: string } => {
-  const apertura = /^[(\[«"'“‘]+/.exec(token)?.[0] ?? '';
-  let nucleo = token.slice(apertura.length);
-  let despues = '';
-  for (;;) {
-    const ultimo = nucleo.slice(-1);
-    const sobra =
-      PUNTUACION_FINAL.test(ultimo) ||
-      (ultimo === ')' && cuenta(nucleo, '(') < cuenta(nucleo, ')')) ||
-      (ultimo === ']' && cuenta(nucleo, '[') < cuenta(nucleo, ']'));
-    if (!sobra || !nucleo) break;
-    despues = ultimo + despues;
-    nucleo = nucleo.slice(0, -1);
-  }
-  return { antes: apertura, nucleo, despues };
-};
-
-/** Un link comparable: sin esquema, sin barra final y en minúsculas. */
-const clave = (url: string): string =>
-  url.trim().replace(/^https?:\/{2}/i, '').replace(/\/+$/, '').toLowerCase();
-
-/**
- * La descripción sin ningún link de reunión: cada token que lo sea se cambia por
- * `AVISO_DE_REUNION`, conservando la puntuación que lo rodeaba.
- *
- * `conocidos` son los `online.url` de la actividad, para las plataformas que la
- * lista de hosts no reconoce.
- */
-export const sinLinksDeReunion = (texto: string, conocidos: readonly string[] = []): string => {
-  const exactos = new Set(conocidos.map(clave).filter(Boolean));
-  return texto.replace(/\S+/g, (token) => {
-    const { antes, nucleo, despues } = recortar(token);
-    const esReunion = HOSTS_DE_REUNION.test(nucleo) || exactos.has(clave(nucleo));
-    return esReunion ? `${antes}${AVISO_DE_REUNION}${despues}` : token;
-  });
-};
+export { AVISO_DE_REUNION, sinLinksDeReunion } from '../../functions/links-de-reunion.js';
 
 /** Dónde empieza una URL: `http(s)://` explícito, no pegado a una palabra. */
 const URL_EXPLICITA = /(?<![\p{L}\p{N}_/])https?:\/{2}[^\s<>"]+/giu;

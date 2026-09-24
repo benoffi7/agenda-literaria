@@ -214,7 +214,7 @@ describe('el link de la reunión no sale', () => {
       /const HOSTS_DE_REUNION =\s*(\/[^\n]+\/i);/.exec(readFileSync(archivo, 'utf8'))?.[1];
     const deSchema = literal('src/lib/schema.ts');
     expect(deSchema).toBeTruthy();
-    expect(literal('src/lib/descripcionEnlazada.ts')).toBe(deSchema);
+    expect(literal('functions/links-de-reunion.js')).toBe(deSchema);
   });
 });
 

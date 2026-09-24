@@ -12,6 +12,7 @@ import { geografiaNormalizada } from './geografia.js';
 // que la geografía: este archivo lo tiene que poder importar y `functions/` no
 // puede importar `src/` (D-20).
 import { arrobaInstagram } from './handle-instagram.js';
+import { linksDeReunionDe, sinLinksDeReunion } from './links-de-reunion.js';
 
 /**
  * **El handle tal como lo publica el calendario** — B-1145.
@@ -514,7 +515,13 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   const encabezado = [tipo, etiquetaDeComision(comision), posicion].filter(Boolean).join(' · ');
   if (encabezado) bloques.push(encabezado);
 
-  if (actividad.descripcion) bloques.push(actividad.descripcion.trim());
+  /*
+   * B-1690 — el calendario es público (§7.4, trampa 5): un link de Zoom o Meet
+   * pegado en la descripción se cambia por el aviso, igual que en la página de
+   * detalle (D-1036). Un solo reemplazo para las dos salidas (`links-de-reunion.js`).
+   */
+  if (actividad.descripcion)
+    bloques.push(sinLinksDeReunion(actividad.descripcion.trim(), linksDeReunionDe(actividad)));
 
   // ── La obra (DEC-1) ───────────────────────────────────────────
   /**
