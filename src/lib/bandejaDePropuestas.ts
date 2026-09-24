@@ -232,12 +232,73 @@ export const avisoDeCaducidad = (
  *    se borró al rechazar;
  *  - la `aceptada` no ofrece el botón.
  *
- * Lo que queda descubierto por esas dos primeras ramas está en el BACKLOG
- * (B-1460). Es puro para que la regla de cuándo se escribe se pueda fijar sin
- * DOM.
+ * Lo que queda descubierto por esas dos primeras ramas no se tapa acá sino que
+ * se avisa: `avisoDeVencimientoAlConvertir`, abajo (B-1460). Es puro para que la
+ * regla de cuándo se escribe se pueda fijar sin DOM.
  */
 export const estadoAlConvertir = (estado: EstadoPropuesta): EstadoPropuesta | null =>
   estado === 'nueva' ? 'en-revision' : null;
+
+/**
+ * **Lo que dice el formulario cuando se convierte una propuesta que se va esta
+ * noche y la marca no la salva** — B-1460, o `null` si no hace falta.
+ *
+ * Es la otra mitad de B-866. La marca renueva el plazo de la `nueva`, pero la
+ * `en-revision` y la `rechazada` se convierten sin moverse (`estadoAlConvertir`
+ * devuelve `null`), así que a una de ésas vieja el barrido se la puede llevar con
+ * el formulario abierto. El dueño eligió **avisar y no aflojar la regla**: la
+ * salida alternativa era un «toque» que renovara `revision.en` sin mover el
+ * estado, y eso es abrir el `hasAny(['estado'])` que D-600 defendió.
+ *
+ * **Por qué el corte es «menos de un día» y no la semana de la ficha.** El
+ * barrido corre una vez cada 24 horas, así que una propuesta con un día entero
+ * por delante no puede caer en la próxima corrida: el riesgo real del formulario
+ * abierto empieza cuando `caducaEn` da 0 (o menos, la vencida que todavía está).
+ * Avisar desde los siete días repetiría lo que la bandeja ya dijo en la ficha
+ * (`avisoDeCaducidad`) y volvería cartel un aviso que tiene que leerse.
+ *
+ * **No hay un segundo cálculo del plazo acá**: el número sale de `caducaEn` y la
+ * frase de `avisoDeCaducidad`, que son los que el test de
+ * `bandeja-de-propuestas.test.ts` cruza contra `decidirRetencion`.
+ *
+ * **La salida que ofrece depende del estado**, porque la bandeja no ofrece lo
+ * mismo:
+ *
+ *  - las dos se salvan **guardando**, aunque sea en borrador: guardar dispara el
+ *    segundo movimiento de D-600, la propuesta pasa a `aceptada` y deja de vencer;
+ *  - la `rechazada`, si la conversión va a llevar tiempo, se puede **reabrir**
+ *    desde la bandeja, que la mueve a `nueva` y reinicia el plazo;
+ *  - la `en-revision` no tiene un movimiento así: el único que la bandeja ofrece
+ *    es «Rechazar», que es tomar una decisión —y borra la foto— solo para ganar
+ *    tiempo. El aviso no lo recomienda; lo que falta está en el BACKLOG.
+ */
+export const avisoDeVencimientoAlConvertir = (
+  p: Pick<Propuesta, 'estado' | 'creadoEn' | 'revision'>,
+  ahora: number = Date.now(),
+): string | null => {
+  if (estadoAlConvertir(p.estado) !== null) return null;
+  const dias = caducaEn(p, ahora);
+  if (dias === null || dias >= 1) return null;
+  const cuando = avisoDeCaducidad(p, ahora);
+  if (cuando === null) return null;
+  const guardar =
+    'Guardá la actividad pronto, aunque sea como borrador: al guardarla la propuesta ' +
+    'queda aceptada y ya no vence.';
+  const inicio =
+    `La propuesta ${cuando.charAt(0).toLowerCase()}${cuando.slice(1)} de la bandeja: le ` +
+    'queda menos de un día de plazo y convertirla no se lo renueva.';
+  if (p.estado === 'rechazada') {
+    return (
+      `${inicio} ${guardar} Si te vas a demorar, reabrila desde la bandeja («Reabrir»), ` +
+      'que eso le reinicia el plazo.'
+    );
+  }
+  return (
+    // «Rechazar» no se ofrece como salida: es decidir algo solo para ganar tiempo,
+    // y si la propuesta trajo foto, la borra. Por eso se nombra y no se aconseja.
+    `${inicio} ${guardar} Desde la bandeja no hay cómo renovárselo sin rechazarla.`
+  );
+};
 
 /**
  * Lo que dice el formulario cuando la marca de B-866 no se pudo escribir.

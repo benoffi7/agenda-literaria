@@ -28,6 +28,7 @@ import {
   RETENCION_DIAS,
   avisoDeCaducidad,
   avisoDeMarcaFallida,
+  avisoDeVencimientoAlConvertir,
   caducaEn,
   cambioDeRevision,
   enlaceDeContacto,
@@ -522,6 +523,90 @@ describe('el aviso de la ficha, y por qué está apagado casi siempre', () => {
         AHORA,
       ),
     ).toBeNull();
+  });
+});
+
+/**
+ * **B-1460 — convertir una que no se marca y se va esta noche.** La marca de
+ * B-866 solo mueve la `nueva`; la `en-revision` y la `rechazada` se convierten
+ * sin renovar el plazo, así que el formulario tiene que decir que queda poco.
+ *
+ * MUTACIONES PROBADAS: cambiando el corte `dias >= 1` por
+ * `dias > AVISO_DE_CADUCIDAD_DIAS` se ponen rojos el segundo y el cruce con el
+ * barrido; sacando la guarda de `estadoAlConvertir` se pone rojo el cuarto; y
+ * dando la misma salida a los dos estados, el tercero.
+ */
+describe('el aviso de vencimiento al convertir — B-1460', () => {
+  const DIA = 24 * 60 * 60 * 1000;
+  const AHORA = Date.parse('2026-10-10T12:00:00Z');
+  const hace = (dias: number) => tsDe(new Date(AHORA - dias * DIA));
+  // Media jornada adentro del último día: le quedan doce horas.
+  const enRevision = (diasDesdeMirada: number) =>
+    ({ estado: 'en-revision', creadoEn: hace(200), revision: { en: hace(diasDesdeMirada) } }) as never;
+  const rechazada = (diasDesdeRechazo: number) =>
+    ({ estado: 'rechazada', creadoEn: hace(200), revision: { en: hace(diasDesdeRechazo) } }) as never;
+
+  it('a menos de un día avisa, con cuánto le queda y que conviene guardar pronto', () => {
+    const aviso = avisoDeVencimientoAlConvertir(enRevision(29.5), AHORA);
+    expect(aviso).toMatch(/^La propuesta se borra hoy de la bandeja/);
+    expect(aviso).toMatch(/menos de un día/);
+    expect(aviso).toMatch(/Guardá la actividad pronto, aunque sea como borrador/);
+  });
+
+  it('con un día entero por delante no dice nada, aunque la ficha ya avise', () => {
+    // La ficha avisa desde los siete días; el formulario solo cuando la corrida
+    // de esta noche se la puede llevar. Repetir la semana volvería cartel el aviso.
+    expect(avisoDeCaducidad(enRevision(28.5), AHORA)).toBe('Se borra mañana');
+    expect(avisoDeVencimientoAlConvertir(enRevision(28.5), AHORA)).toBeNull();
+    expect(avisoDeVencimientoAlConvertir(enRevision(1), AHORA)).toBeNull();
+  });
+
+  it('la rechazada ofrece reabrirla; la en-revision no ofrece rechazarla', () => {
+    const deRechazada = avisoDeVencimientoAlConvertir(rechazada(29.5), AHORA)!;
+    expect(deRechazada).toMatch(/reabrila desde la bandeja \(«Reabrir»\)/);
+    const deRevision = avisoDeVencimientoAlConvertir(enRevision(29.5), AHORA)!;
+    expect(deRevision).not.toMatch(/Reabrir/);
+    expect(deRevision).toMatch(/no hay cómo renovárselo sin rechazarla/);
+  });
+
+  it('la nueva no avisa: la marca de B-866 le renueva el plazo', () => {
+    const vieja = { estado: 'nueva', creadoEn: hace(29.5), revision: { en: null } } as never;
+    expect(avisoDeCaducidad(vieja, AHORA)).toBe('Se borra hoy');
+    expect(avisoDeVencimientoAlConvertir(vieja, AHORA)).toBeNull();
+  });
+
+  it('la vencida que todavía está lo dice como la ficha, y la sin fecha no inventa', () => {
+    expect(avisoDeVencimientoAlConvertir(rechazada(31), AHORA)).toMatch(
+      /^La propuesta se borra en la próxima limpieza de la bandeja/,
+    );
+    expect(
+      avisoDeVencimientoAlConvertir(
+        { estado: 'rechazada', creadoEn: hace(200), revision: { en: null } } as never,
+        AHORA,
+      ),
+    ).toBeNull();
+  });
+
+  /**
+   * **El corte, contra el que borra.** Avisa exactamente cuando la próxima
+   * corrida —como mucho dentro de 24 horas— se la puede llevar, y calla cuando
+   * no. Es la misma atadura del `describe` de abajo, un día más adelante.
+   *
+   * **Un milisegundo antes de las 24 horas, y no a las 24 justas**: con un día
+   * exacto de margen `caducaEn` da 1 y el barrido de dentro de 24 horas justas la
+   * borra (su corte es `>=`). Es el filo de medida cero de una corrida que cae
+   * exactamente en el vencimiento; el caso de 29 días lo ejercita del lado de
+   * adentro.
+   */
+  it('avisa si y solo si el barrido de las próximas 24 horas se la lleva', () => {
+    for (const d of [0, 1, 20, 28, 28.5, 29, 29.2, 29.5, 29.99, 30, 31, 90]) {
+      for (const doc of [enRevision(d), rechazada(d)]) {
+        const avisa = avisoDeVencimientoAlConvertir(doc, AHORA) !== null;
+        const seVa = decidirRetencion({ propuestas: [{ id: 'p1', ...(doc as object) }], ahora: AHORA + DIA - 1 })
+          .aBorrar.length === 1;
+        expect(avisa, `${(doc as { estado: string }).estado} a ${d} días`).toBe(seVa);
+      }
+    }
   });
 });
 
