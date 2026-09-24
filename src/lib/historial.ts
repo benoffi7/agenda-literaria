@@ -74,6 +74,7 @@ import {
 import type {
   Actividad,
   ActividadConId,
+  Imagen,
   ModalidadFila,
   Sesion,
   TimestampLike,
@@ -854,6 +855,112 @@ export const mensajeDeRestauracionInvalida = (issues: readonly IssueDeSchema[]):
     muestra.join(' · ') +
     (resto > 0 ? ` (y ${resto} más)` : '') +
     '.'
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Imágenes que ya no están — B-852
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Las imágenes de la versión que **vale la pena comprobar** antes de restaurar la
+ * galería — B-852.
+ *
+ * ── Por qué hace falta ────────────────────────────────────────────────
+ * B-560 hizo que el barrido de huérfanas (B-221) mire también el historial, así
+ * que desde entonces una imagen que nombra alguna versión no se borra. Pero las
+ * que el barrido **ya había borrado** antes de ese arreglo no vuelven: restaurar
+ * una de esas versiones escribe filas cuya `url` da 404, y nada lo decía.
+ *
+ * ── Por qué este filtro y no «todas» ──────────────────────────────────
+ * Es lo que hace barata la comprobación, y cada condición saca un caso que no
+ * puede estar roto por esta causa:
+ *
+ * - **Solo `campo === 'imagenes'`.** `imagenUrl` es de antes de B-167, cuando no
+ *   había imágenes propias: era siempre un link de afuera, que el barrido no toca.
+ * - **Solo las que tienen `storagePath`**, o sea las propias. El barrido borra
+ *   objetos del depósito; un link de afuera que se cayó es otro problema, y
+ *   comprobarlo le pediría al panel una descarga a un servidor ajeno.
+ * - **Solo las que hoy no están en la galería.** Si el documento en vivo la
+ *   nombra, el barrido la considera en uso y no la borró: comprobarla es pagar
+ *   por una respuesta que ya se sabe.
+ *
+ * Y se llama **al elegir restaurar, no al listar**: el historial puede tener 20
+ * versiones (D-42) y casi nadie restaura la galería, así que comprobar cada
+ * versión listada sería pagar la red por todas para usar, con suerte, una.
+ */
+export const imagenesAComprobar = (
+  campo: string,
+  version: Version,
+  actual: Actividad,
+): Imagen[] => {
+  if (campo !== 'imagenes') return [];
+  const deLaVersion = (version.documento as { imagenes?: Imagen[] | null }).imagenes ?? [];
+  const enUsoHoy = new Set(
+    ((actual as { imagenes?: Imagen[] | null }).imagenes ?? [])
+      .map((i) => i?.storagePath)
+      .filter((p): p is string => typeof p === 'string' && p !== ''),
+  );
+  return deLaVersion.filter(
+    (i): i is Imagen =>
+      typeof i?.storagePath === 'string' &&
+      i.storagePath !== '' &&
+      typeof i.url === 'string' &&
+      !enUsoHoy.has(i.storagePath),
+  );
+};
+
+/**
+ * De las imágenes a comprobar, las que **no cargan**.
+ *
+ * La pregunta de verdad la contesta `cargaLaUrl`, que la pone la pantalla: acá
+ * solo queda el recorrido, en paralelo, para que sea puro y se pruebe sin red.
+ * Un `cargaLaUrl` que rechaza cuenta como «carga»: si la comprobación misma falla
+ * no se sabe nada, y avisar de una pérdida que no se comprobó es peor que no avisar.
+ */
+export const imagenesQueYaNoEstan = async (
+  imagenes: readonly Imagen[],
+  cargaLaUrl: (url: string) => Promise<boolean>,
+): Promise<Imagen[]> => {
+  const cargan = await Promise.all(
+    imagenes.map((i) => cargaLaUrl(i.url).catch(() => true)),
+  );
+  return imagenes.filter((_, n) => !cargan[n]);
+};
+
+/**
+ * El aviso que se suma a la confirmación de restaurar, o `null` si no hay nada
+ * que avisar.
+ *
+ * **Dice qué va a pasar y deja seguir**: la restauración no se frena ni se
+ * recorta. Sacar las filas rotas en silencio sería restaurar algo distinto de lo
+ * que la persona eligió, y una galería de cinco con una rota sigue valiendo más
+ * que ninguna. Lo que cambia es que ahora lo sabe antes de confirmar, y sabe
+ * dónde se arregla.
+ *
+ * `total` es el tamaño de la galería de la versión, no el de las comprobadas: a
+ * quien lee le importa «una de tres», no «una de las que no están hoy».
+ */
+export const avisoDeImagenesQueYaNoEstan = (perdidas: number, total: number): string | null => {
+  if (perdidas <= 0) return null;
+  const cuantas =
+    perdidas >= total
+      ? total === 1
+        ? 'La imagen de esa versión ya no está'
+        : `Ninguna de las ${total} imágenes de esa versión está más`
+      : perdidas === 1
+        ? `Una de las ${total} imágenes de esa versión ya no está`
+        : `${perdidas} de las ${total} imágenes de esa versión ya no están`;
+  const una = perdidas === 1;
+  const porQue = una
+    ? 'se borró del depósito después de que la sacaron de la galería'
+    : 'se borraron del depósito después de que las sacaron de la galería';
+  const vuelven = una
+    ? 'esa vuelve como una imagen rota: la podés sacar o volver a subir'
+    : 'esas vuelven como imágenes rotas: las podés sacar o volver a subir';
+  return (
+    `${cuantas}: ${porQue}. ` +
+    `Si seguís, se restaura igual y ${vuelven} desde «Flyer e imágenes», en el formulario.`
   );
 };
 
