@@ -1583,6 +1583,81 @@ listado vacío.
 
 ---
 
+## D-88 · Un formato o un valor se escribe una sola vez: el otro lado lo importa, y si no puede, queda atado por un test
+
+> **Esta entrada se escribió el 2026-09-24 (B-1330), una semana después de que el
+> número empezara a citarse.** Nació en el commit `5888106 fix(D-88)` del
+> 2026-09-17 (B-1110), que la nombró sin escribirla, y para cuando se escribió ya
+> la citaban veintiún archivos, la mayoría de código. Lo de abajo está
+> **reconstruido de ese commit y de esas citas**, y no agrega criterio que no
+> estuviera escrito en alguna de ellas. El número coincide con el de **B-88**, el
+> bug de la versión de build que los auditores registran como el primer caso de
+> la clase, y cuya decisión es **D-98**: D-98 dice qué guardia elegir para una
+> lista duplicada; esta dice que la copia es el bug, sea del formato o del valor
+> que sea.
+
+**Contexto (B-1110):** `scripts/archivar-backlog.mjs` tenía su propia copia de
+`ENCABEZADO` y de `SECCION`, idéntica por casualidad a la de
+`scripts/tablero/parseo.mjs`, que no los exportaba. Hoy coincidían y nada rompía;
+el día que el parser reconociera un prefijo de id nuevo, el archivador dejaba de
+ver esos ítems y **no los archivaba nunca más, con la suite en verde**.
+
+**La clase:** un formato cuyo consumidor deriva por separado — o, como lo dicen
+otras citas, **dos lados derivando el mismo valor, uno de los dos
+desactualizado**. El modo de fallar es el peor que hay porque es silencioso: la
+copia que se olvida de actualizar es la que falla el día que hace falta, y nada se
+pone rojo.
+
+**Decisión:**
+
+1. **La definición vive en un solo lugar y se exporta; el otro lado la importa**,
+   aunque la copia sea idéntica hoy: idéntica por casualidad es exactamente el
+   caso de B-1110. Cuando el consumidor necesita una forma distinta —por ejemplo,
+   grupos de captura propios, que `ID` no tiene—, se exportan **los átomos**
+   (`DIGITOS`, `SUFIJO`) para que componga su matcher sin volver a escribir el
+   formato (B-1113).
+2. **Si importar no se puede, los dos lados se atan con un test que los hace
+   hablar**, no se dejan sueltos. Es el caso del `sed` de
+   `commit-base-deploy.sh`, que es bash y no puede importar `shaDeVersion`
+   (B-1121): unificarlo era tocar el camino del deploy para arreglar un reporte,
+   así que en vez de unificarlos se los ata — para toda versión que el build
+   puede estampar, los dos tienen que contestar lo mismo. Cómo verificar que esa
+   red de verdad ata los dos lados es **D-775**; cómo elegir la guardia de una
+   lista duplicada es **D-98**.
+3. **Las redes son dos, porque una sola no alcanza** (del commit de origen):
+   - **de texto**, que prohíbe que otro archivo vuelva a escribir la definición y
+     frena la copia **antes** de que diverja;
+   - **de comportamiento**, que arma el caso a partir de la definición —los
+     prefijos del test salen de `ID`—, así que agregarle algo a la fuente exige
+     que el consumidor lo reconozca, aunque alguien igual haya escrito la copia.
+4. **La firma de la red de texto persigue la forma de la copia, no el literal**
+   (B-1113). Por eso descarta comentarios antes de mirar —una cita en prosa no es
+   una copia—, y por eso no se construye una lista de excepciones escrita a mano.
+
+**Probado con la mutación** (en `5888106`): con la copia de vuelta en el
+archivador caen las dos redes de texto; con la copia **y** un prefijo `INC-`
+nuevo en `parseo.mjs`, la de comportamiento dice
+`expected ['B-700','DEC-701'] to deeply equal ['B-700','DEC-701','INC-702']`,
+que es exactamente el ítem que no se archivaría nunca.
+
+**Dónde se aplicó**, según las citas. La tabla no es la fuente de verdad de
+nada: es para quien llega desde una de ellas.
+
+| Qué se escribe una sola vez | Dónde vive | Ítem |
+|---|---|---|
+| el formato del backlog (id, encabezado, sección) | `scripts/tablero/parseo.mjs` | B-1110, B-1113 |
+| el formato de la versión y su parser inverso | `scripts/version.mjs` (`componerVersion`, `shaDeVersion`); el `sed` del deploy queda atado por test | B-1121 |
+| el `projectId` del emulador, sin el proyecto real como fallback | `PROJECT_ID_EMULADOR`, importado desde `tests/emulador.ts` | B-1111 |
+| los sufijos de archivo de test | el `include` de `vitest.config.ts` | B-1131 |
+| las extensiones que barren los chequeos de citas | `scripts/items-referenciados.mjs`, reexportadas | B-1147 |
+| «capturo el error y miro el `code`» de los tests de reglas | `tests/fixtures/rechazos-del-emulador.ts` | B-1130 |
+| el parser del string de `datetime-local` | `src/lib/formatoDeHora.ts` | B-889 |
+| el envío del mail de aviso, en vez de dos bloques de `curl` en el YAML | `scripts/mail-de-aviso.sh` | B-1140 |
+| el ancla de resultados de la home, y el alto del encabezado pegado | `ANCLA_RESULTADOS` y el token `--spacing-encabezado` | B-1136, B-1232 |
+| el estilo de una pestaña del encabezado | `clasePestania` | — |
+
+---
+
 ## D-98 · Toda lista duplicada lleva guardia, y la guardia más barata que alcance
 
 **Contexto:** la analítica tenía cuatro vocabularios que se mantenían por
@@ -12212,12 +12287,11 @@ Es pariente de **D-88** —dos lados derivando el mismo valor— pero no es lo m
 D-88 dice qué evitar, y esto dice cómo verificar la red que se escribe cuando
 evitarlo no se puede.
 
-> **Y hay que decirlo acá porque si no la cita miente: `D-88` todavía no tiene
-> entrada escrita.** Es la huérfana más citada del repo —dieciocho archivos, y
-> catorce de ellos código—, y recién se ve con su alcance real desde que B-1147 le
-> abrió el corpus al barrido. Escribirla es decisión del dueño y sigue pendiente.
-> Mientras tanto, lo que «D-88» significa se reconstruye de sus dieciocho citas,
-> que es exactamente el costo que el barrido existe para hacer visible.
+> **`D-88` no tenía entrada cuando esto se escribió**, y este párrafo lo decía
+> para que la cita no mintiera: era la huérfana más citada del repo —dieciocho
+> archivos, y catorce de ellos código—, visible con su alcance real recién desde
+> que B-1147 le abrió el corpus al barrido. **Se escribió el 2026-09-24 (B-1330)**,
+> reconstruida de su commit de origen y de sus citas: ver [D-88](#d-88--un-formato-o-un-valor-se-escribe-una-sola-vez-el-otro-lado-lo-importa-y-si-no-puede-queda-atado-por-un-test).
 
 ### Lo que no dice
 
