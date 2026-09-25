@@ -162,7 +162,7 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
       guardar={guardar}
       onCancelar={onCancelar}
       pie={{
-        alCrear: 'Sin publicar quedo esperando en la lista de lugares, y no se ve en el sitio.',
+        alCrear: 'Sin publicar queda esperando en la lista de lugares, y no se ve en el sitio.',
         alEditar: 'Editar no cambia si está publicado o no. Eso se mueve desde la lista de lugares.',
       }}
     >
