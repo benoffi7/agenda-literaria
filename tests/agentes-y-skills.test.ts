@@ -585,16 +585,23 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * del productor por contenido, no por posición, y una fila corta se lee
      * igual. Markdown tampoco se queja — la celda que falta se pinta vacía.
      *
-     * Se mide en la ficha y en el skill, que tienen una forma sola. En
-     * `07-seguridad.md` el encabezado declara tres columnas y la mayoría de las
-     * filas trae cuatro, así que ahí este caso estaría en rojo por una deuda
-     * distinta, que queda anotada aparte.
+     * Se mide en las tres tablas. `07-seguridad.md` entró con **B-1950**: su
+     * encabezado declaraba tres columnas y veintidós filas traían cuatro —la de
+     * tests, sin título—, y las filas 1 a 10 no la tenían. Ahora las treinta y
+     * dos tienen «Test que la fija».
+     *
+     * **Las celdas se cortan en el `|` sin escapar**, que es como las corta
+     * GitHub: un `|` adentro de backticks corta la celda igual, así que el que
+     * va en el texto se escribe `\|` (la fila 6 de `07-seguridad.md` tenía un
+     * `string | null` que partía la celda en dos).
      *
      * MUTACIÓN PROBADA: sacarle a la fila 30 de la ficha su última celda pone
-     * este caso en rojo nombrando la fila.
+     * este caso en rojo nombrando la fila; sacarle a la fila 3 de
+     * `07-seguridad.md` su celda de tests, también.
      */
-    const celdas = (linea: string): number => linea.trim().replace(/^\||\|$/g, '').split('|').length;
-    for (const archivo of [FICHA, SKILL_CAMPO_NUEVO]) {
+    const celdas = (linea: string): number =>
+      linea.trim().replace(/^\||(?<!\\)\|$/g, '').split(/(?<!\\)\|/).length;
+    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       const lineas = fuente(archivo).split('\n');
       const encabezado = lineas.findIndex((l) => /^\s*\|\s*#\s*\|/.test(l));
       expect(encabezado, `${archivo} no tiene el encabezado «| # |» de la tabla`).toBeGreaterThan(-1);
