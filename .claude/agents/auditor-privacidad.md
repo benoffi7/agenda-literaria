@@ -408,6 +408,8 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/lib/cartelera.ts`
 - `src/lib/imagenes.ts`
 - `src/lib/contenidoDelSitio.ts`
+- `src/lib/contenidoDeLaGuia.ts`
+- `src/components/sitio/FichaDeGuia.astro`
 - `src/pages/actividad/[slug].astro`
 - `src/pages/cartelera.astro`
 - `src/lib/listadoPublico.ts`

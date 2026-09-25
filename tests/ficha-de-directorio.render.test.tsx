@@ -173,7 +173,7 @@ const CASOS: Caso[] = [
     respaldo: 'No se pudo guardar el lugar',
     pasaLaFicha: true,
     avisoDeEtiqueta: /Se guardó, pero estas opciones nuevas no quedaron en la lista: Nuevo [\w-]+\./,
-    pieAlCrear: 'Sin publicar quedo esperando en la lista de lugares, y no se ve en el sitio.',
+    pieAlCrear: 'Sin publicar queda esperando en la lista de lugares, y no se ve en el sitio.',
     pieAlEditar: 'Editar no cambia si está publicado o no. Eso se mueve desde la lista de lugares.',
   },
 ];
