@@ -13,6 +13,11 @@
  * existe. Pasando por las dos proyecciones reales, el fixture no puede
  * desactualizarse sin que el compilador lo diga.
  */
+import {
+  modalidadResultante,
+  onlinePrincipal,
+  sedePrincipal,
+} from '../../functions/derivados.js';
 import { entradaDeIndice, type EntradaDeIndice } from '@/lib/eventsJson';
 import { buildSearchText } from '@/lib/normalize';
 import { toPublic } from '@/lib/toPublic';
@@ -88,13 +93,16 @@ export const actividadDePrueba = (o: OpcionesDeEntrada = {}): Actividad => {
     online: m === 'presencial' ? null : { plataforma: 'meet', url: 'https://meet/x', urlPublica: false },
   })) satisfies ModalidadFila[];
 
-  const conSede = modalidades.find((m) => m.sede)?.sede ?? null;
-  const conOnline = modalidades.find((m) => m.online)?.online ?? null;
-  const distintas = new Set(modalidades.map((m) => m.modalidad));
-  const derivada =
-    distintas.size > 1 || distintas.has('hibrido')
-      ? 'hibrido'
-      : ([...distintas][0] ?? 'presencial');
+  /*
+   * Los tres derivados salen de **las mismas funciones** que usan el panel al
+   * guardar y `syncCalendar` al verificar (B-2140). Con una copia acá, un cambio
+   * en la regla dejaría a los fixtures armando documentos «alineados» con la
+   * regla vieja, y los tests del sitio seguirían pasando sobre una forma que el
+   * panel ya no produce — la clase de B-88 dentro de los tests.
+   */
+  const conSede = sedePrincipal(modalidades);
+  const conOnline = onlinePrincipal(modalidades);
+  const derivada = modalidadResultante(modalidades);
 
   const base: Actividad = {
     tipo: o.tipo ?? 'taller',

@@ -20,6 +20,7 @@ import {
   ciudadesDesalineadas,
   ciudadesParaElLog,
 } from '../functions/ciudades.js';
+import { sedePrincipal } from '../functions/derivados.js';
 import { camposCambiados, huboCambioDeContenido } from '../functions/historial.js';
 import { formADocumento } from '@/lib/actividades';
 import { modalidadVacia } from '@/lib/formulario/estadoInicial';
@@ -52,7 +53,7 @@ const alineado = (ciudades: (string | null)[]) => {
     titulo: 'Club del puerto',
     estado: 'publicado',
     modalidades,
-    sede: modalidades.find((m) => m.sede)?.sede ?? null,
+    sede: sedePrincipal(modalidades),
     ciudades: ciudadesDe(modalidades),
   };
 };
