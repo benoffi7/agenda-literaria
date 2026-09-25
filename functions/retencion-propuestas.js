@@ -3,7 +3,7 @@
  *
  * Los plazos por estado, los dos relojes y `decidirRetencion`. No recibe `db` ni
  * `bucket`: la lectura y el borrado viven en `retencion-propuestas-firestore.js`,
- * y el porqué de todo el ciclo en el docblock de `retencion.js` (B-1960, M-13 del
+ * y el porqué de todo el ciclo en el docblock de `retencion.js` (M-13 del
  * PRD 6).
  */
 import { milisDe } from './calendario.js';

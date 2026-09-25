@@ -24,7 +24,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
 import { COLECCIONES_DE_DIRECTORIO } from './directorios.js';
 /*
- * Directo de cada módulo y no de la fachada `retencion.js` (B-1960): el
+ * Directo de cada módulo y no de la fachada `retencion.js` (M-13 del PRD 6): el
  * detector de `tests/clases-de-bug.test.ts` sigue los `import { … } from` para
  * armar la traza de cada trigger, y un `export * from` no lo sigue.
  */

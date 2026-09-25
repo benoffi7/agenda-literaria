@@ -3,7 +3,7 @@
  *
  * La lectura del prefijo, las propuestas que nombran cada objeto y el borrado con
  * su relectura, con el `db` y el `bucket` inyectados. Sin `firebase-functions`,
- * por B-561 (B-1960, M-13 del PRD 6).
+ * por B-561 (M-13 del PRD 6).
  */
 import {
   PREFIJO_PROPUESTAS,

@@ -1975,8 +1975,11 @@ borrado: los 30 días son el margen para el «lo rechacé sin querer» —la ban
 ofrece **Reabrir**— y para que quien propuso pueda repreguntar. Es el mismo
 argumento del margen de rescate de `limpiarVersionesHuerfanas`, con otro número.
 
-**La decisión es pura y vive en `functions/retencion.js`** (`decidirRetencion`),
-con tres salvaguardas:
+**La decisión es pura y vive en `functions/retencion-propuestas.js`**
+(`decidirRetencion`; `functions/retencion.js` es desde M-13 del PRD 6 la fachada que
+reexporta los tres ciclos —propuestas, flyers y fichas—, cada uno con su decisión
+pura y un `-firestore.js` al lado con lo que recibe el `db` o el `bucket`), con
+tres salvaguardas:
 
 - **El plazo de la rechazada se cuenta desde `revision.en`**, o sea desde el
   rechazo y no desde que llegó: una propuesta que estuvo dos meses en la bandeja y

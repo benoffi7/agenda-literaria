@@ -4,7 +4,7 @@
  *
  * Los plazos por estado y `decidirRetencionDeFichas`, que es `decidirRetencion`
  * con la tabla de la Guía y no una segunda decisión. La lectura y el borrado viven
- * en `retencion-fichas-firestore.js` (B-1960, M-13 del PRD 6).
+ * en `retencion-fichas-firestore.js` (M-13 del PRD 6).
  */
 import {
   decidirRetencion,

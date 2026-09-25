@@ -6,7 +6,7 @@
  * y el `bucket` inyectados. No importa `firebase-admin` ni `firebase-functions`:
  * así `tests/retencion.integracion.test.ts` los importa sin arrastrar el
  * scheduler (B-561). El pegamento con el reloj vive en `retencion-trigger.js`
- * (B-1960, M-13 del PRD 6).
+ * (M-13 del PRD 6).
  */
 import {
   ESTADOS_QUE_CADUCAN,

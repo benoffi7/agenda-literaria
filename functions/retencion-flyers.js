@@ -4,7 +4,7 @@
  *
  * Qué original de una aceptada vence y qué objeto no nombra nadie. No recibe `db`
  * ni `bucket`: la lectura del bucket y el borrado viven en
- * `retencion-flyers-firestore.js` (B-1960, M-13 del PRD 6).
+ * `retencion-flyers-firestore.js` (M-13 del PRD 6).
  */
 import { milisDe } from './calendario.js';
 import {

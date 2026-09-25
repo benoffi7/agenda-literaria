@@ -42,7 +42,7 @@
  * `propuestas/` y se llevan también el que ningún documento nombra (D-1160,
  * D-1161). Corre en la misma Function, después de esta retención.
  *
- * ── Cómo está partido (B-1960, M-13 del PRD 6) ────────────────────────────
+ * ── Cómo está partido (M-13 del PRD 6) ────────────────────────────
  * Este archivo es **la fachada y el porqué**: no tiene código, reexporta. Cada
  * ciclo de vida tiene su decisión pura y, al lado, lo que recibe el `db` o el
  * `bucket`:

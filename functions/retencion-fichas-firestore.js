@@ -3,7 +3,7 @@
  * B-917.
  *
  * La lectura paginada de las vencibles y el borrado con precondición, con el `db`
- * inyectado. Sin `firebase-functions`, por B-561 (B-1960, M-13 del PRD 6).
+ * inyectado. Sin `firebase-functions`, por B-561 (M-13 del PRD 6).
  */
 import {
   FALLO_DE_PRECONDICION,
