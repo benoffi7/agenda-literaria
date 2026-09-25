@@ -767,7 +767,10 @@ páginas descubiertas. Ese día el dueño pidió la indexación, pidió la valid
 `location` y envió también la versión `https://`, que es la canónica.
 Los avisos de `organizer.url` (182), `performer` (157), `price`/`priceCurrency`
 (87), `image` (76) y `offers` (56) son datos no cargados (B-813), no código. Se
-cierra cuando la validación de `location` termine en «Superada».
+cierra cuando la validación de `location` termine en «Superada». **Validación
+iniciada el 2026-09-25**, con las 31 pendientes. Se comprobó en el sitio publicado
+que los dos ejemplos que da Google (`taller-sillas-tres-sillas`, rastreada el 7/9,
+y `libros-encontrados`, el 4/9) ya traen `location` en todos sus `subEvent`.
 
 #### La lectura del 2026-09-08 (informe actualizado al 6/9) — el rastreo todavía no llegó
 
