@@ -753,6 +753,20 @@ próximo deploy y del rastreo siguiente:
 **Cargar el `sitemap.xml` en Search Console si todavía no está** (lo pide B-373):
 es lo que hace que las 50 páginas que Google no había visto entren rápido.
 
+#### La lectura del 2026-09-25 (informe actualizado al 23/9) — el arreglo está en vivo, falta que Google relea
+
+**Válidas 209, no válidas 31**, y las 31 son las mismas que ya se esperaba: `location`,
+`description` y `organizer` valen **31 las tres**, o sea el markup anterior a B-730
+en páginas que Google todavía no volvió a leer. La **prueba en tiempo real** de
+`/actividad/feria-del-libro-malvinas-argentinas/` da **11 eventos válidos**, que
+son los 11 `subEvent` de la feria: el punto 1 de arriba está cumplido. Esa URL no
+estaba indexada («Google no reconoce esta URL») y el **sitemap no estaba enviado**
+en Search Console («No se ha detectado ningún sitemap de referencia»). Ese día el
+dueño pidió la indexación, pidió la validación de `location` y envió `sitemap.xml`.
+Los avisos de `organizer.url` (182), `performer` (157), `price`/`priceCurrency`
+(87), `image` (76) y `offers` (56) son datos no cargados (B-813), no código. Se
+cierra cuando la validación de `location` termine en «Superada».
+
 #### La lectura del 2026-09-08 (informe actualizado al 6/9) — el rastreo todavía no llegó
 
 El dueño pasó la pantalla del informe «Eventos». Así está:
