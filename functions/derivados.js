@@ -253,8 +253,9 @@ export const conDerivados = (documento) =>
  * **Solo las nuevas**, comparando por el `id` de la fila (trampa 2): el
  * write-back del `calendarEventId` y la corrección de los derivados conservan el
  * `updatedBy` de la cuenta, y sin esto cada uno volvería a avisar lo mismo. Una
- * fila sin `id` (escrita a mano) se identifica por su posición, que es lo único
- * que tiene.
+ * fila sin `id` (escrita a mano) se identifica por **el contenido de su sede** y
+ * no por su posición: reordenar las filas no la vuelve «nueva» (trampa 2, lo
+ * cobró el `auditor-trampas`).
  *
  * @param {Record<string, any> | null | undefined} despues
  * @param {Record<string, any> | null | undefined} antes
@@ -264,7 +265,7 @@ export const sedesSinCiudadNuevas = (despues, antes) => {
   const sinCiudad = (documento) =>
     new Set(
       filasDe(documento)
-        .map((f, i) => (f?.sede && !slugDeCiudad(f.sede.ciudad) ? `${f?.id ?? `#${i}`}` : null))
+        .map((f) => (f?.sede && !slugDeCiudad(f.sede.ciudad) ? `${f?.id ?? `sin-id:${canonico(f.sede)}`}` : null))
         .filter(Boolean),
     );
   const previas = sinCiudad(antes);

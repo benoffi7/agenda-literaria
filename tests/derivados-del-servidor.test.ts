@@ -415,6 +415,16 @@ describe('B-2052 — `sedesSinCiudadNuevas`', () => {
     expect(sedesSinCiudadNuevas({ modalidades: [conCiudad, fila('v', null, zoom('https://z'))] }, null)).toBe(0);
   });
 
+  it('una fila sin id que cambia de posición no vuelve a contar como nueva (trampa 2)', () => {
+    const sinId = { modalidad: 'presencial', sede: { nombre: 'X', ciudad: '' } };
+    const antes = { modalidades: [sinId, conCiudad] };
+    const despues = { modalidades: [conCiudad, sinId] };
+    expect(sedesSinCiudadNuevas(despues, antes)).toBe(0);
+    // Control: con otra sede, sí es nueva.
+    const otra = { modalidad: 'presencial', sede: { nombre: 'Y', ciudad: '' } };
+    expect(sedesSinCiudadNuevas({ modalidades: [conCiudad, otra] }, antes)).toBe(1);
+  });
+
   it('una ciudad que no es un texto (escrita a mano) cuenta como vacía', () => {
     const rara = { id: 'mod_x', modalidad: 'presencial', sede: { ciudad: 42 } };
     expect(sedesSinCiudadNuevas({ modalidades: [rara] }, null)).toBe(1);
