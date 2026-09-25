@@ -635,7 +635,7 @@ if (utilidades.length < 3) {
 /*
  * **El marcador, que es la mitad que hace que lo de arriba signifique algo.**
  * Las utilidades del tríptico las escriben también otros archivos
- * —`lg:grid-cols-2` está en `EstadisticasPanel.tsx` y `lg:grid-cols-3` en
+ * —`lg:grid-cols-2` está en `estadisticas/PanelCatalogo.tsx` y `lg:grid-cols-3` en
  * `FiltrosActividades.tsx`—, así que el bucle de abajo pasaría verde aunque
  * `components/sitio/estilos.ts` quedara FUERA del scan de Tailwind, que es justo
  * el modo de falla que esto cubre. Lo que prueba que el archivo se escanea es
