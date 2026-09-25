@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **GA4 ya no se entera de quién manda un formulario del sitio** (B-874). El dueño
+  apagó «Interacciones con formularios» en la Medición mejorada. Desde el 2026-09-23
+  cada alta al correo y cada propuesta mandaban `form_start`/`form_submit` con su
+  destino; los valores de los campos nunca viajaron.
 - **Un publicador con ciudad solo carga en su ciudad, y puede haber publicadores
   generales** (B-921, B-1921, D-1150 a D-1154). Decisión del dueño: «un publicador que
   tiene una ciudad asignada debería no poder publicar fuera de esa». La regla de

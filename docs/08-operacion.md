@@ -2660,10 +2660,10 @@ tener presente al hacerlos:
   encontró el `auditor-privacidad` sobre este mismo cambio; el detalle está en
   [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) §7.4. Como el doble
   opt-in: **configuración y no código, sin test que lo sostenga**.
-  ⬜ **Sin apagar, y VENCIDO desde el 2026-09-23**: la lista ya está cargada y el
-  formulario ya se dibuja, así que cada alta manda el evento **ahora**. Es
-  **B-874**, subido a P1 por eso mismo. Cuando se apague, esta casilla pasa a
-  `✅ apagado el AAAA-MM-DD`.
+  ✅ **Apagado el 2026-09-25** (B-874), con captura del dueño: el interruptor
+  está apagado y en «Vistas de página» la casilla de los cambios del historial
+  sigue destildada (B-480). Entre el 2026-09-23 y ese día cada alta mandó el
+  evento; no se puede borrar lo ya enviado.
 - **El remitente es `agendaleh@gmail.com`** — ⬜ **sin verificar en la consola**,
   misma clase que el doble opt-in —, la casilla que el sitio ya usa
   (`CONTACTO`). La página lo dice con esa constante interpolada, no escrita a

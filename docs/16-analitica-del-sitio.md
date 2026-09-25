@@ -537,6 +537,13 @@ measurement), la misma clase de paso manual que `docs/09-analitica.md` ya pide
 para el panel. Acá es **bloqueante**: instalar el tag sin apagar «Búsquedas en el
 sitio» y «Clics salientes» filtra aunque todo el código esté bien.
 
+> ✅ **Apagado el 2026-09-25** (B-874), con captura del dueño de la pantalla de
+> Medición mejorada: «Interacciones con formularios», «Clics de salida» y
+> «Búsquedas en el sitio» apagados, y en «Vistas de página» la casilla de los
+> cambios del historial destildada. Quedan prendidos desplazamientos, vídeos y
+> descargas, que no dicen nada de la persona. El párrafo de abajo queda como
+> estaba escrito.
+
 **Y el cuarto está pendiente, y desde el 2026-09-23 está VENCIDO.**
 «Interacciones con formularios» sigue **prendido**: nunca hizo falta apagarlo
 porque no había formularios que mirar. Con el alta al correo de B-847 pasa a ser

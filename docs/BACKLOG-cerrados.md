@@ -15319,6 +15319,46 @@ Es una decisión y no un renglón: ensancharlo pone en rojo dos funciones que ho
 pasan, y la salida no es relajarlo sino decidir qué guarda le exigimos a un barrido
 que borra.
 
+### B-874 · «Interacciones con formularios» sigue prendido en GA4, y desde el 2026-09-23 ya está filtrando · P1 — **era P2 mientras era hipotético** · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** El dueño lo apagó en Medición mejorada y mandó la captura: formularios, clics de salida y búsquedas apagados, y la casilla del historial en «Vistas de página» destildada. Anotado en `08-operacion.md` § «El correo semanal» y en `16-analitica-del-sitio.md` §7.4.
+
+**Sale del `auditor-privacidad` sobre B-847.** El Enhanced Measurement de GA4
+tiene **cuatro** interruptores prendidos por default y B-480 apagó tres:
+búsquedas en el sitio, `page_view` por historial y clics salientes. El cuarto
+—`form_start` / `form_submit`, con `form_id`, `form_name`, `form_destination` y
+`form_submit_text`— **no estaba en esa lista, ni en la tabla del §7.4, ni en
+ningún checklist**, y el motivo estaba escrito con todas las letras en el §7.1:
+«el sitio no tiene formularios».
+
+**Esa premisa se cayó dos veces y nadie volvió a mirar el interruptor.** La
+primera con `/proponer` (B-830), que es un formulario público de verdad y donde
+lo que se manda **es texto que un tercero escribió**. La segunda con B-847. Lo
+que se escapa con el consentimiento aceptado: que este `client_id` interactuó con
+el formulario y lo envió, y a qué destino. **No se escapa el contenido de los
+campos** —GA4 no manda valores— y por eso es P2 y no P1.
+
+**Es configuración y no código: ningún test lo puede sostener**, igual que los
+tres de B-480 y que los settings de propiedad de B-773. Lo que sí quedó atado es
+que el checklist lo nombre. El paso está en `08-operacion.md` como bloqueante
+junto al doble opt-in.
+
+**Y hay que mirar `/proponer` aparte**, que es lo que este ítem no resuelve: ahí
+el `form_submit` salía **ya** cuando este ítem se escribió, sin que la lista del
+correo existiera.
+
+> ⚠️ **Subido a P1 el 2026-09-23: dejó de ser hipotético.** Este ítem nació
+> diciendo «el día que la lista exista, esto va a filtrar». **La lista existe**
+> (**B-1231**), el formulario de `/suscribirse` se dibuja, y cada alta manda
+> `form_start`/`form_submit` con su `form_destination` a GA4 **ahora**. No cambió
+> nada del análisis —lo que se escapa sigue siendo que este `client_id` interactuó
+> con el formulario y a qué destino, y **no** el contenido de los campos—; lo que
+> cambió es que el costo se está pagando en vez de estar por pagarse.
+>
+> **Sigue siendo un solo interruptor de consola**, y por eso el arreglo es de
+> minutos: Administrar → Flujos de datos → el flujo → Enhanced measurement. Es de
+> quien tiene la consola (§5.4), y ningún test lo puede sostener ni verificar.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
