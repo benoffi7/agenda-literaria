@@ -27,9 +27,9 @@
  * que quien la escriba se acuerde. Lo que llega es un string o un string vacío,
  * y con vacío no se muestra el bloque.
  *
- * ── Todas las imágenes, no solo la portada ───────────────────────────────
- * El criterio de B-296. La portada va arriba y las demás abajo, y sin imagen
- * **no hay hueco** — igual que en el detalle de una actividad (§7.6).
+ * ── El esqueleto es `FichaDeGuia.astro` (M-10) ───────────────────────────
+ * Las migas, la portada, la galería entera (B-296), los contactos y los dos
+ * bloques de JSON-LD los pinta el componente; esta página le pasa lo suyo.
  *
  * ── El marcado estructurado es el SEO de esta sección ─────────────────────
  * `Library` (subtipo de `LocalBusiness`) más las migas. Sin `openingHours`
@@ -41,6 +41,7 @@
  * que sale el `url` del JSON-LD: tres salidas, un solo origen.
  */
 import Base from '@/layouts/Base.astro';
+import FichaDeGuia from '@/components/sitio/FichaDeGuia.astro';
 import { caminosDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import {
   datosEstructuradosDeBiblioteca,
@@ -49,8 +50,8 @@ import {
   type FichaDeBiblioteca,
 } from '@/lib/bibliotecaPublica';
 import { NOMBRE } from '@/lib/identidad';
-import { RUTA_BIBLIOTECAS, RUTA_GUIA } from '@/lib/rutasPublicas';
-import { claseAfiche, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+import { RUTA_BIBLIOTECAS } from '@/lib/rutasPublicas';
+import { claseEnlace, claseRotulo } from '@/components/sitio/estilos';
 
 export const prerender = true;
 
@@ -66,12 +67,6 @@ interface Props {
 }
 
 const { ficha } = Astro.props as Props;
-
-const jsonLd = datosEstructuradosDeBiblioteca(ficha);
-const migas = migasDeBiblioteca(ficha);
-
-const portada = ficha.imagenes[0] ?? null;
-const resto = ficha.imagenes.slice(1);
 
 /*
  * La frase sale del módulo puro y **no se arma acá** — el criterio que el
@@ -99,83 +94,65 @@ const contactos = [
   { texto: 'Catálogo online', href: ficha.enlaces.catalogo },
   { texto: 'Sitio web', href: ficha.enlaces.web },
   { texto: 'Mail', href: ficha.enlaces.mail },
-].filter((c): c is { texto: string; href: string } => c.href !== null);
+];
 ---
 
 <Base
   seccion="guia"
   titulo={`${ficha.nombre} — Bibliotecas — ${NOMBRE}`}
   descripcion={descripcion}
-  imagen={portada?.url ?? null}
+  imagen={ficha.imagenes[0]?.url ?? null}
 >
-  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-    <p class="label-caps text-azul">
-      <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
-      {' · '}
-      <a class={claseEnlace} href={RUTA_BIBLIOTECAS}>Bibliotecas</a>
-    </p>
+  <FichaDeGuia
+    nombre={ficha.nombre}
+    descripcion={ficha.descripcion}
+    imagenes={ficha.imagenes}
+    seccion={{ texto: 'Bibliotecas', href: RUTA_BIBLIOTECAS }}
+    volver={{ texto: '← Todas las bibliotecas', href: RUTA_BIBLIOTECAS }}
+    contactos={contactos}
+    tituloDeContactos="Cómo contactarla"
+    jsonLd={datosEstructuradosDeBiblioteca(ficha)}
+    migas={migasDeBiblioteca(ficha)}
+  >
+    <Fragment slot="cabecera">
+      {/*
+        El renglón sale de `ficha.zona`, que trae la regla de CABA aplicada
+        (adentro, el barrio; afuera, la ciudad y la provincia) y el enlace de cada
+        pieza ya resuelto. Es la misma forma que el «Dónde» de una actividad.
 
-    <h1 class="display-md mt-2 text-balance text-acento">{ficha.nombre}</h1>
+        El tipo va al final y sin enlace: no hay hub de tipo de biblioteca.
+      */}
+      <p class={`${claseRotulo} mt-4`}>
+        {ficha.zona.map((pieza, i) => (
+          <>
+            {i > 0 && ' · '}
+            {pieza.href ? (
+              <a class={claseEnlace} href={pieza.href}>{pieza.texto}</a>
+            ) : (
+              pieza.texto
+            )}
+          </>
+        ))}
+        {ficha.tipo && ` · ${ficha.tipo}`}
+      </p>
 
-    {/*
-      El renglón sale de `ficha.zona`, que trae la regla de CABA aplicada
-      (adentro, el barrio; afuera, la ciudad y la provincia) y el enlace de cada
-      pieza ya resuelto. Es la misma forma que el «Dónde» de una actividad.
+      <p class="body-md mt-1 text-super">{ficha.direccion}</p>
 
-      El tipo va al final y sin enlace: no hay hub de tipo de biblioteca.
-    */}
-    <p class={`${claseRotulo} mt-4`}>
-      {ficha.zona.map((pieza, i) => (
-        <>
-          {i > 0 && ' · '}
-          {pieza.href ? (
-            <a class={claseEnlace} href={pieza.href}>{pieza.texto}</a>
-          ) : (
-            pieza.texto
-          )}
-        </>
-      ))}
-      {ficha.tipo && ` · ${ficha.tipo}`}
-    </p>
+      {/*
+        Los dos horarios, si se cargaron. Pegados a la dirección porque contestan
+        la misma pregunta: «¿voy o no voy ahora?». Y son dos renglones y no uno
+        porque en una biblioteca no son lo mismo — el mostrador puede abrir de 9 a
+        20 y la sala de 14 a 19.
 
-    <p class="body-md mt-1 text-super">{ficha.direccion}</p>
-
-    {/*
-      Los dos horarios, si se cargaron. Pegados a la dirección porque contestan
-      la misma pregunta: «¿voy o no voy ahora?». Y son dos renglones y no uno
-      porque en una biblioteca no son lo mismo — el mostrador puede abrir de 9 a
-      20 y la sala de 14 a 19.
-
-      **No entran al JSON-LD**: `schema.org/openingHours` quiere un formato fijo
-      y esto es texto libre, así que emitirlo sería publicar un horario que
-      Google puede mostrar mal al costado del resultado (B-982).
-    */}
-    {ficha.horarios && <p class="body-sm mt-1 text-super">{ficha.horarios}</p>}
-    {ficha.horarioDeSala && (
-      <p class="body-sm mt-1 text-super">Sala de lectura: {ficha.horarioDeSala}</p>
-    )}
-
-    {
-      portada && (
-        <img
-          src={portada.url}
-          alt={`Foto de ${ficha.nombre}`}
-          width={portada.ancho ?? undefined}
-          height={portada.alto ?? undefined}
-          loading="eager"
-          fetchpriority="high"
-          decoding="async"
-          referrerpolicy="no-referrer"
-          class={`mt-8 ${claseAfiche}`}
-        />
-      )
-    }
-
-    {portada?.epigrafe && <p class="body-sm mt-2 text-suave">{portada.epigrafe}</p>}
-
-    {ficha.descripcion && (
-      <p class="body-lectura mt-8 max-w-[65ch] text-super">{ficha.descripcion}</p>
-    )}
+        **No entran al JSON-LD**: `schema.org/openingHours` quiere un formato fijo
+        y esto es texto libre, así que emitirlo sería publicar un horario que
+        Google puede mostrar mal al costado del resultado (B-982).
+      */}
+      {ficha.horarios && <p class="body-sm mt-1 text-super">{ficha.horarios}</p>}
+      {ficha.horarioDeSala && (
+        <p class="body-sm mt-1 text-super">Sala de lectura: {ficha.horarioDeSala}</p>
+      )}
+    </Fragment>
 
     {/*
       **Cómo se saca un libro** — la sección que esta ficha tiene y ninguna otra
@@ -195,78 +172,5 @@ const contactos = [
         <p class="body-sm mt-1 text-suave">{ficha.asociarse.costo}</p>
       )}
     </section>
-
-    {
-      contactos.length > 0 && (
-        <section class="mt-10">
-          <h2 class="headline-sm text-tinta">Cómo contactarla</h2>
-          <ul class="mt-3 flex flex-col gap-2">
-            {contactos.map((c) => (
-              <li>
-                {/*
-                  `rel="noopener"` y `target="_blank"`: son destinos de afuera, y
-                  el `mailto:` no abre pestaña pero tampoco molesta. El `href` ya
-                  vino saneado del view-model.
-                */}
-                <a class={claseEnlace} href={c.href} rel="noopener" target="_blank">
-                  {c.texto}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
-    }
-
-    {
-      /*
-        El resto de la galería — B-296: **todas** las imágenes, no solo la
-        portada. Van al final del contenido, como en el detalle de una actividad.
-      */
-      resto.length > 0 && (
-        <section class="mt-10">
-          <h2 class="headline-sm text-tinta">Fotos</h2>
-          <div class="mt-4 flex flex-col gap-6">
-            {resto.map((i) => (
-              <figure>
-                <img
-                  src={i.url}
-                  alt={`Foto de ${ficha.nombre}`}
-                  width={i.ancho ?? undefined}
-                  height={i.alto ?? undefined}
-                  loading="lazy"
-                  decoding="async"
-                  referrerpolicy="no-referrer"
-                  class={claseAfiche}
-                />
-                {i.epigrafe && (
-                  <figcaption class="body-sm mt-2 text-suave">{i.epigrafe}</figcaption>
-                )}
-              </figure>
-            ))}
-          </div>
-        </section>
-      )
-    }
-
-    <p class="body-sm mt-12 text-super">
-      <a class={claseEnlace} href={RUTA_BIBLIOTECAS}>← Todas las bibliotecas</a>
-    </p>
-
-    {/*
-      `Library` y las migas. El `replace` de `<` es la misma guarda que la página
-      de detalle: `JSON.stringify` escapa comillas y barras invertidas, **no** un
-      `</script>` adentro de un string.
-    */}
-    <script
-      type="application/ld+json"
-      is:inline
-      set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')}
-    />
-    <script
-      type="application/ld+json"
-      is:inline
-      set:html={JSON.stringify(migas).replace(/</g, '\\u003c')}
-    />
-  </main>
+  </FichaDeGuia>
 </Base>
