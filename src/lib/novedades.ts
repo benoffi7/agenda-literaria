@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'efemerides',
+    fecha: '2026-09-25',
+    version: '1.11.0',
+    titulo: 'Podés cargar efemérides, y la de hoy aparece arriba de la agenda',
+    detalle:
+      'El dato del día —«nació Cortázar», «se publicó Rayuela»—, sin lugar ni horario y sin ir ' +
+      'al calendario. Cargás el día, el mes y, si querés, el año y la fuente. «Guardar borrador» ' +
+      'la deja fuera del sitio; «Guardar y publicar» le da su página en la sección Efemérides y, ' +
+      'cada año ese día, un renglón arriba de la agenda. El link queda fijo desde que se publica.',
+    donde: 'El botón «Efemérides» del listado. En el sitio, la sección Efemérides (enlace en el pie).',
+  },
+  {
     id: 'publicador-carga-en-su-ciudad',
     fecha: '2026-09-25',
     version: '1.11.0',

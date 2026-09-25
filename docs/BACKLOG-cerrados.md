@@ -17519,6 +17519,58 @@ Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
 Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
 puertas, no las abre.
 
+### B-959 · Efemérides: cargarlas en el panel, mostrarlas en el sitio, y que no lleguen al calendario · P2 — pedido del dueño (2026-09-15) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `cc6e198` … `02a6849` (cinco commits). El dueño decidió la sección propia `/efemerides` con una página por efeméride, más un renglón en la home con la de hoy; la página del mes quedó afuera por ahora. Colección `/efemerides/{id}` con `dia` y `mes` enteros, `anio` y `fuente` opcionales, y estado `borrador`/`publicado` (D-1170), con su proyección whitelist en `efemeridePublica.ts`. `/efemerides.json` lleva todas las publicadas con lo mínimo y el navegador elige la del día en Buenos Aires (D-1173); el 29 de febrero se muestra el 28 en los años que no son bisiestos (D-1172). `rebuildPorEfemerides` marca el rebuild solo si el cambio toca algo publicado (D-1174) y escribe `publicadaAlgunaVez`, que congela el slug. Reglas solo de admin (D-1171). Salidas públicas 31 y 32. Suite 7189 en verde, build contra el emulador con el paso 8n del gate, `auditor-trampas` limpio y los cinco hallazgos del `auditor-privacidad` arreglados.
+
+> 📌 **Orden fijado por el dueño el 2026-09-16: va después de los P1.** Vale igual
+> para **B-960**. Los dos son entidades nuevas —el trabajo más caro que hay
+> pendiente— y los P1 que tienen adelante son cosas que hoy **publican mal o
+> confunden a quien carga** (B-926, B-928, B-930). Poner una entidad nueva arriba
+> de eso sería agrandar la superficie antes de arreglar la que ya está en uso.
+
+> 📌 **Dónde se ven, decidido por el dueño el 2026-09-25:** «la sección propia más
+> el renglón en la home. Tiene que haber una sección para cargarla también en el
+> admin». La página del mes queda afuera por ahora. En construcción desde ese día.
+
+*«En el panel y web, efemérides poder cargar. No van al calendario público.»*
+Definido por el dueño el 2026-09-15: **es el dato del día, sin lugar ni horario** —
+«hoy nació Cortázar», «se publicó *Rayuela*». No es una actividad a la que se vaya.
+
+**Por qué no entra como un `tipo` más de actividad**, que era la salida barata:
+
+1. **Una actividad publicada va al calendario.** La guarda de eso no es un flag:
+   son `estado` y `sesiones` (§ 7.3). Meter efemérides como tipo obliga a un `if`
+   por tipo adentro de `syncCalendar` — una excepción en la parte más frágil del
+   sistema, que es lo que el § 7 pide no hacer.
+2. **No tiene nada del formulario**: ni sede, ni modalidades, ni inscripción, ni
+   arancel, ni material, ni sesiones. El § 11 tendría que esconder casi los 30
+   campos para mostrar dos.
+3. **Y sobre todo, no es una fecha: es un día y un mes.** Una efeméride se repite
+   todos los años. Guardarla como `Timestamp` es pedir la trampa 1; lo que se
+   guarda es `dia` y `mes` (números) y, aparte, el año del hecho. Esto **no**
+   contradice el § 2.2 («no usar RRULE»): esa decisión es sobre encuentros de un
+   ciclo, y acá justamente no hay evento que recurrir.
+
+O sea: **colección propia `/efemerides/{id}`**, con su pantalla en el panel, su
+proyección whitelist (`toPublic` por entidad, nunca genérico — la cita está en el
+docblock de `src/lib/directorios.ts`) y su JSON estático, como los tres
+directorios.
+
+**La parte que hay que resolver bien, y es la única interesante:** el contenido
+cambia **todos los días sin que nadie edite nada**, y el sitio es estático. Un
+build diario para mostrar la efeméride del día es un rebuild por día para siempre.
+La salida es la del § 2.5: **el JSON las lleva todas y el cliente elige la del
+día** — cero builds extra, cero lecturas de Firestore, y la página de la
+efeméride sigue siendo SSG e indexable.
+
+**Lo que falta decidir (del dueño):** dónde se ven. Tres candidatas, y no son
+excluyentes: un renglón en la home, la página de mes (`/agenda/{aaaa-mm}`), y una
+sección propia `/efemerides` con página por efeméride. La tercera es la que
+aporta al objetivo del proyecto —es contenido indexable de long tail que hoy no
+tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
+y el panel, pero no el sitio.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -21594,6 +21646,14 @@ dispara también en el `delete` de la retención. No encadena nada porque su
 decisión empieza por `if (!after) return nada('propuesta-borrada')`, pero la razón
 escrita era otra, y la diferencia importa el día que alguien le agregue algo a ese
 trigger. **✅ Hecho (2026-09-25)** en `f8e2164`.
+
+### B-1940 · El gate del build no sembraba efemérides: el barrido del `dist/` las recorría vacías · P1 — del `auditor-privacidad` sobre B-959 (2026-09-25) · ✅ hecho (2026-09-25)
+
+El paso 9 barre todo `dist/`, pero sin ninguna efeméride sembrada no había
+centinelas que pudieran aparecer ahí, y el `where` y el `.select()` de
+`efemeridesPublicadas` solo se verificaban por el texto del fuente. **✅ Hecho
+(2026-09-25)** en `02a6849`, con el paso 8n de `scripts/build-contra-emulador.mjs`:
+una publicada con uids centinela y un borrador con título centinela.
 
 ## Pendiente de acción manual del dueño
 

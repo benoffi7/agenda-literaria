@@ -433,56 +433,6 @@ nuevo, y eso es lo que este ítem compra.
 
 ## P2 — mejoras reales
 
-### B-959 · Efemérides: cargarlas en el panel, mostrarlas en el sitio, y que no lleguen al calendario · P2 — pedido del dueño (2026-09-15)
-
-> 📌 **Orden fijado por el dueño el 2026-09-16: va después de los P1.** Vale igual
-> para **B-960**. Los dos son entidades nuevas —el trabajo más caro que hay
-> pendiente— y los P1 que tienen adelante son cosas que hoy **publican mal o
-> confunden a quien carga** (B-926, B-928, B-930). Poner una entidad nueva arriba
-> de eso sería agrandar la superficie antes de arreglar la que ya está en uso.
-
-> 📌 **Dónde se ven, decidido por el dueño el 2026-09-25:** «la sección propia más
-> el renglón en la home. Tiene que haber una sección para cargarla también en el
-> admin». La página del mes queda afuera por ahora. En construcción desde ese día.
-
-*«En el panel y web, efemérides poder cargar. No van al calendario público.»*
-Definido por el dueño el 2026-09-15: **es el dato del día, sin lugar ni horario** —
-«hoy nació Cortázar», «se publicó *Rayuela*». No es una actividad a la que se vaya.
-
-**Por qué no entra como un `tipo` más de actividad**, que era la salida barata:
-
-1. **Una actividad publicada va al calendario.** La guarda de eso no es un flag:
-   son `estado` y `sesiones` (§ 7.3). Meter efemérides como tipo obliga a un `if`
-   por tipo adentro de `syncCalendar` — una excepción en la parte más frágil del
-   sistema, que es lo que el § 7 pide no hacer.
-2. **No tiene nada del formulario**: ni sede, ni modalidades, ni inscripción, ni
-   arancel, ni material, ni sesiones. El § 11 tendría que esconder casi los 30
-   campos para mostrar dos.
-3. **Y sobre todo, no es una fecha: es un día y un mes.** Una efeméride se repite
-   todos los años. Guardarla como `Timestamp` es pedir la trampa 1; lo que se
-   guarda es `dia` y `mes` (números) y, aparte, el año del hecho. Esto **no**
-   contradice el § 2.2 («no usar RRULE»): esa decisión es sobre encuentros de un
-   ciclo, y acá justamente no hay evento que recurrir.
-
-O sea: **colección propia `/efemerides/{id}`**, con su pantalla en el panel, su
-proyección whitelist (`toPublic` por entidad, nunca genérico — la cita está en el
-docblock de `src/lib/directorios.ts`) y su JSON estático, como los tres
-directorios.
-
-**La parte que hay que resolver bien, y es la única interesante:** el contenido
-cambia **todos los días sin que nadie edite nada**, y el sitio es estático. Un
-build diario para mostrar la efeméride del día es un rebuild por día para siempre.
-La salida es la del § 2.5: **el JSON las lleva todas y el cliente elige la del
-día** — cero builds extra, cero lecturas de Firestore, y la página de la
-efeméride sigue siendo SSG e indexable.
-
-**Lo que falta decidir (del dueño):** dónde se ven. Tres candidatas, y no son
-excluyentes: un renglón en la home, la página de mes (`/agenda/{aaaa-mm}`), y una
-sección propia `/efemerides` con página por efeméride. La tercera es la que
-aporta al objetivo del proyecto —es contenido indexable de long tail que hoy no
-tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
-y el panel, pero no el sitio.
-
 ### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
 
 > ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
@@ -660,6 +610,27 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
 ## P3 — cuando sobre tiempo
+
+### B-1941 · El test de la prosa de salidas no ve «**treinta**» con negritas ni barre el skill `campo-nuevo` · P3 — del frente de B-959 (2026-09-25)
+
+El caso de `tests/agentes-y-skills.test.ts` busca exactamente `N salidas`. Tres
+frases con la cuenta vieja no las veía: «Las treinta de arriba», «son **treinta**
+hoy» y «Resolvé las **treinta** salidas». Se corrigieron a mano en B-959, pero la red
+sigue floja. Arreglo: que el regex acepte `(?:\*\*)?` alrededor del número y que
+barra también `.claude/skills/campo-nuevo/SKILL.md`.
+
+### B-1942 · La fila 30 de la ficha del `auditor-privacidad` no tiene la columna de tests · P3 — del `auditor-privacidad` (2026-09-25)
+
+Las otras filas de la tabla tienen cuatro columnas y la 30 (`/guia`), tres. Es
+anterior a B-959. Hay que copiarle la columna de tests de `docs/07-seguridad.md`.
+
+### B-1943 · La guarda del slug repetido no es transaccional (efemérides y Guía) · P3 — del `auditor-trampas` sobre B-959 (2026-09-25)
+
+Sospecha, no bug confirmado. `slugDeEfemerideDisponible` y `slugPublicable` leen sin
+transacción: dos admins que publican a la vez con el mismo slug pasarían los dos. Es
+el mismo patrón aceptado de los directorios. En el build no rompe nada, porque
+`sinSlugsRepetidos` deja una sola página por slug, pero una de las dos quedaría sin
+página y sin aviso.
 
 ### B-1931 · Dos tests leen `node_modules/tailwindcss/theme.css` por path, y en un worktree sin `node_modules` propio dan 34 rojos · P4 — del frente de B-871 (2026-09-25)
 

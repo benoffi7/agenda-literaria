@@ -13679,3 +13679,54 @@ del panel y las acciones de `flyeres-de-propuestas-aceptadas.mjs` dicen el plazo
 en vez de «borrarlo a mano». Lo manual queda para no esperar los 30 días y para
 los dos caminos donde lo correcto es no borrar (`objeto-ajeno`,
 `imagen-fuera-del-prefijo`).
+
+## D-1170 · Una efeméride es una colección propia y guarda día y mes, no una fecha
+
+**B-959, 2026-09-25.** No es un `tipo` de `/actividades`, por tres motivos: una
+actividad publicada va al calendario, y separarla obligaría a meter un `if` por tipo
+en `syncCalendar`; no usa nada del formulario de una actividad; y no es una fecha
+sino un día del año que se repite. Guarda `dia` y `mes` como enteros y el año del
+hecho aparte, opcional (`anio: number | null`): un `Timestamp` a la medianoche de
+Buenos Aires es el día anterior en UTC, que es la trampa 1. No contradice el §2.2,
+que habla de los encuentros de un ciclo. El ciclo es `borrador`/`publicado`, y no el
+de la Guía, porque nadie de afuera propone efemérides: no hay bandeja, y la
+colección no entra a `COLECCIONES_DE_DIRECTORIO` ni a su retención. La fuente es una
+sola, `{ texto, url } | null`, con la URL saneada y exigida `http(s)` en la regla. No
+hay sync a Calendar sobre la colección, y un test lo afirma.
+
+## D-1171 · Las efemérides son solo del admin: el publicador no las ve
+
+**B-959, 2026-09-25.** `get`, `list`, `create`, `update` y `delete` van todos por
+`esAdmin()`. No hay lectura anónima: el sitio lee `efemerides.json`, igual que D-128
+y la trampa 13. El publicador tampoco las ve: no hay «lo suyo» que gestionar, y qué
+efemérides publica el sitio es una decisión editorial del dueño. Si mañana hace
+falta que un publicador cargue, se abre la rama con `createdBy == uid`, como en
+`/actividades`.
+
+## D-1172 · El 29 de febrero se muestra el 28 en los años que no lo tienen
+
+**B-959, 2026-09-25.** Sin esto, la efeméride de ese día se vería una vez cada
+cuatro años. Es un pliegue de cuándo se muestra y no del dato: la página sigue
+diciendo «29 de febrero», y en un año bisiesto se muestra en su día. Vive en
+`efemeridesDelDia`.
+
+## D-1173 · La efeméride de hoy la elige el navegador, con la hora de Buenos Aires
+
+**B-959, 2026-09-25.** El contenido cambia todos los días sin que nadie edite nada, y
+elegirlo en el build sería un rebuild diario para siempre. El build publica
+`/efemerides.json` con todas —solo slug, título, día, mes y año— y el navegador elige
+con `claveDeDia`, que usa la zona del proyecto y no el reloj del teléfono. El renglón
+es un `<script>` chico y no una island, así que la home sigue sin sumar React; sale
+oculto del build y solo se muestra con contenido. Sin JavaScript, si el fetch falla o
+si hoy no hay ninguna, no aparece nada. Si hay varias el mismo día, muestra la del
+hecho más viejo y un «N más hoy» que lleva al ancla del día en `/efemerides`.
+
+## D-1174 · Un borrador de efeméride no cuesta un build
+
+**B-959, 2026-09-25.** `efemerideAmeritaRebuild` devuelve `false` si el documento no
+está publicado ni antes ni después del cambio: una efeméride se guarda muchas veces
+mientras se escribe, y ninguna de esas escrituras toca el sitio. Publicar,
+despublicar, editar una publicada y borrarla sí disparan el build. La comparación es
+por los campos de la proyección más `estado`, y un test la ata a
+`CAMPOS_DE_LA_PROYECCION_EFEMERIDE`. El write-back de `publicadaAlgunaVez` no cuenta
+(trampa 3).

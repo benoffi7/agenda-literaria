@@ -2,6 +2,20 @@
 
 ## Sin publicar
 
+- **Hay efemérides: se cargan en el panel, tienen su sección en el sitio y la de hoy
+  aparece en la home** (B-959, D-1170 a D-1174). Pedido del dueño: «efemérides poder
+  cargar. No van al calendario público». Es una colección propia, `/efemerides/{id}`,
+  y no un tipo de actividad: guarda día y mes como números, con el año del hecho
+  aparte y opcional, porque una efeméride se repite todos los años. En el sitio,
+  `/efemerides` por mes y una página indexable por efeméride, las dos al sitemap y
+  con enlace en el pie. La home suma un renglón con la efeméride de hoy, que elige el
+  navegador con la hora de Buenos Aires a partir de `/efemerides.json`, así que no
+  hace falta un build por día; si hoy no hay ninguna, no se ve nada. En el panel, la
+  pantalla «Efemérides», solo para el admin, con alta, edición, publicar,
+  despublicar y borrar. El link se congela al publicar (trampa 10), un borrador no
+  dispara rebuild, las reglas son solo de admin y no hay trigger de Calendar sobre la
+  colección. El `auditor-privacidad` encontró que el gate del build no sembraba
+  ninguna efeméride, y se cerró en el mismo cambio (B-1940).
 - **La foto original de una propuesta aceptada ya no se queda para siempre**
   (B-871, D-1160 a D-1164). Si al aceptar no se pudo borrar —porque la actividad se
   guardó sin su copia, porque el borrado falló, o porque ya estaba aceptada antes
