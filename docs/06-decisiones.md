@@ -1114,10 +1114,13 @@ Con el contenido como data se puede verificar:
   archivo, ni nombres de campo (`slug`, `urlPublica`, `searchText`). Sin eso, la
   jerga del resto de la documentación se filtra sola.
 
-**Costo:** el texto entra al bundle del panel — unos 19 KB de contenido entre
-la guía y las novedades, bastante menos comprimido. Queda aislado en `/admin`,
-que ya carga el SDK de Firebase, así que no afecta al sitio público ni al SEO
-(ver B-09).
+**Costo:** el texto entra al bundle del panel, pero no al chunk inicial: la guía
+(`ayuda.ts`) y el texto de las novedades (`novedades.ts`) se cargan con
+`CentroAyuda`, que es diferido. La estimación original («unos 19 KB entre la guía y
+las novedades») quedó corta: al 2026-09-25 las novedades solas eran 69 KB (21 KB
+gzip) y viajaban en el chunk inicial porque el contador las importaba. Desde B-1961
+el contador cuenta sobre `novedadesIds.ts` (solo los ids). Queda aislado en
+`/admin`, así que no afecta al sitio público ni al SEO (ver B-09).
 
 ---
 
