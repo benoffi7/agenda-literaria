@@ -79,7 +79,8 @@ export const ciudadesDe = (filas = []) => [
  * no es el de sus filas —o sumar una segunda sede de otra ciudad sin sumarla acá—
  * y la regla le cree. Esto es la mitad pura de la red de abajo: `syncCalendar` lo
  * pregunta en cada escritura, y si hay diferencia corrige el campo y avisa
- * (`corregirCiudades`, `ciudades-firestore.js`).
+ * (desde B-2050, junto con los otros cuatro derivados: `derivadosDesalineados` en
+ * `derivados.js` y `corregirDerivados` en `derivados-firestore.js`).
  *
  * La comparación es la del backfill (`sembrar-ciudades.mjs`): el JSON de la lista
  * **en orden**, con `ausente` distinto de `[]`. Un documento sin el campo es uno

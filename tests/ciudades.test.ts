@@ -293,7 +293,8 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
      *
      * Los dos permitidos son distintos a propósito y no una excepción de más:
      * `functions/slugify.js` produce un **identificador** (`[a-z0-9-]`, es lo que
-     * compara la regla) y `normalize.ts` produce el **índice de búsqueda** del §6,
+     * compara la regla) y `functions/busqueda.js` (fachada: `normalize.ts`, B-2050)
+     * produce el **índice de búsqueda** del §6,
      * que conserva los espacios porque se busca por palabras. Son dos preguntas
      * distintas, no dos respuestas a la misma.
      *
@@ -303,7 +304,9 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
      * `src/lib/slugify.ts` es su fachada y no cuenta acá porque **reexporta** en
      * vez de reimplementar, que es justo la diferencia que este barrido mide.
      */
-    const PERMITIDOS = ['functions/slugify.js', 'src/lib/normalize.ts'];
+    // B-2050 — la del índice se mudó a `functions/busqueda.js` y `normalize.ts`
+    // quedó como su fachada, igual que `slugify.ts`.
+    const PERMITIDOS = ['functions/slugify.js', 'functions/busqueda.js'];
 
     const archivos = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -321,7 +324,7 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
       culpables,
       `estos archivos se escribieron su propia normalización: ${culpables.join(', ')}. ` +
         'Importala de `@/lib/slugify` (identificadores; desde node, de `functions/slugify.js`) ' +
-        'o de `src/lib/normalize.ts` ' +
+        'o de `@/lib/normalize` (desde node, de `functions/busqueda.js`) ' +
         '(búsqueda): dos normalizaciones distintas de la misma ciudad son un permiso que no ' +
         'matchea y nadie entiende por qué (B-919).',
     ).toEqual([]);

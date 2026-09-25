@@ -725,6 +725,21 @@ roles/run.invoker              ser invocada como servicio de Cloud Run
 roles/artifactregistry.reader  leer su propia imagen al arrancar
 ```
 
+**Falta uno más desde B-2052, y lo necesita `syncCalendar`:**
+`roles/firebaseauth.viewer`, para leer el custom claim de quien escribió una fila
+con sede y sin ciudad (`getAuth().getUser(uid)`, `functions/claims-de-cuenta.js`).
+Es de solo lectura sobre las cuentas; lo otorga el dueño (D-119):
+
+```bash
+gcloud projects add-iam-policy-binding agenda-literaria \
+  --member="serviceAccount:calendar-sync@agenda-literaria.iam.gserviceaccount.com" \
+  --role="roles/firebaseauth.viewer"
+```
+
+Sin él el aviso no se apaga: suena `sede-sin-ciudad` con el código del error cada
+vez que aparece una fila así (docs/08-operacion.md § «Cuando suena
+`sede-sin-ciudad`»).
+
 **Falta uno, y lo necesita `optimizarImagen`** (B-220, D-175): ningún rol de
 Storage está en esa lista, así que hoy la Function no podría ni bajar la imagen
 que la disparó. Hace falta `roles/storage.objectUser` **sobre el bucket** (no

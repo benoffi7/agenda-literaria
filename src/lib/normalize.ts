@@ -1,15 +1,19 @@
 /**
- * §6 — normalización para búsqueda: baja a minúsculas y saca acentos, para que
- * "Boedo" matchee "boedo" y "crónica" matchee "cronica".
- * El input de búsqueda del cliente aplica exactamente esta misma función.
+ * §6 — normalización para búsqueda y el `searchText`, **reexportados** — B-2050.
+ *
+ * La implementación vive en `functions/busqueda.js` desde B-2050: `syncCalendar`
+ * recalcula el `searchText` del lado del servidor para corregir un documento
+ * escrito a mano, y `functions/` no puede importar `src/` (D-20). Tiene que ser
+ * **la misma** `buildSearchText` que usa el panel al guardar: con dos, el servidor
+ * «corregiría» un documento bien guardado. Ver el docblock de allá.
+ *
+ * Este archivo queda como fachada, con los tipos, para que ningún import de `src/`
+ * ni de `tests/` haya tenido que cambiar de ruta. Es el reparto de `ciudades.mjs`
+ * (D-1233). Un test ata las dos por identidad (`tests/derivados-del-servidor.test.ts`).
  */
-export const normalize = (s: string): string =>
-  s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+import * as busqueda from '../../functions/busqueda.js';
 
-interface FuenteSearchText {
+export interface FuenteSearchText {
   titulo?: string;
   descripcion?: string;
   /**
@@ -38,51 +42,24 @@ interface FuenteSearchText {
 }
 
 /**
- * Los campos de primer nivel de los que sale el `searchText`.
- *
- * **Es la lista, y hay una sola.** `historial.ts` la usa para decidir si una
- * restauración tiene que recalcular el `searchText`, y tenía su propia copia con
- * cinco de estos seis: al agregar el libro (DEC-1), restaurar un libro viejo
- * escribía el campo y dejaba el `searchText` con el título descartado — que sale al
- * `events.json`, o sea el documento diciendo una cosa y el índice público otra.
- *
- * Es la clase de B-88 y la de B-72 a la vez: el productor y el consumidor de la
- * misma regla derivando por separado. La respuesta no es un test que compare dos
- * listas, es que haya una.
+ * §6 — baja a minúsculas y saca acentos. El input de búsqueda del cliente aplica
+ * exactamente esta misma función.
  */
-export const CAMPOS_DE_SEARCH_TEXT = [
-  'titulo',
-  'descripcion',
-  'modalidades',
-  'sede',
-  'organizador',
-  'tallerista',
-  'libro',
-] as const;
+export const normalize: (s: string) => string = busqueda.normalize;
+
+/**
+ * Los campos de primer nivel de los que sale el `searchText`. **Es la lista, y hay
+ * una sola** — ver `functions/busqueda.js`.
+ */
+export const CAMPOS_DE_SEARCH_TEXT: readonly (
+  | 'titulo'
+  | 'descripcion'
+  | 'modalidades'
+  | 'sede'
+  | 'organizador'
+  | 'tallerista'
+  | 'libro'
+)[] = busqueda.CAMPOS_DE_SEARCH_TEXT;
 
 /** Construye el `searchText` que se guarda en el documento (§6). */
-export const buildSearchText = (a: FuenteSearchText): string =>
-  normalize(
-    [
-      a.titulo ?? '',
-      a.descripcion ?? '',
-      // Las sedes de todas las formas de cursar, sin repetir: la derivada es una
-      // de ellas y saldría dos veces.
-      ...[
-        ...new Set(
-          (a.modalidades ?? [])
-            .flatMap((m) => [m.sede?.nombre ?? '', m.sede?.barrio ?? ''])
-            .filter(Boolean),
-        ),
-      ],
-      a.sede?.nombre ?? '',
-      a.sede?.barrio ?? '',
-      a.organizador?.nombre ?? '',
-      a.tallerista?.nombre ?? '',
-      a.libro?.titulo ?? '',
-      a.libro?.autor ?? '',
-    ]
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim(),
-  );
+export const buildSearchText: (a: FuenteSearchText) => string = busqueda.buildSearchText;

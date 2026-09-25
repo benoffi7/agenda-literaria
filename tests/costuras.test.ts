@@ -25,6 +25,7 @@ import {
 import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
 import { huboCambioDeContenido } from '../functions/historial.js';
+import { pideRebuild } from '../functions/derivados.js';
 import { fuenteDeLaFunction, fuenteDeLaFunctionYSusModulos } from './fixtures/functions';
 import { encuentrosDe } from '@/lib/calendarioPanel';
 import { generarSesiones } from '@/lib/sesiones';
@@ -304,7 +305,8 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
     const src = fuenteDeLaFunctionYSusModulos('syncCalendar');
     // Si esto deja de matchear, la réplica de arriba dejó de valer.
     expect(src).toContain('const antes = event.data?.before?.data() ?? null;');
-    expect(src).toContain('const ops = planificar(antes, despues, labels);');
+    // B-2050 — sobre la vista derivada, que sale del mismo payload: sin relectura.
+    expect(src).toContain('const ops = planificar(conDerivados(antes), conDerivados(despues), labels);');
     // Sigue sin haber guarda por id de evento ni relectura previa al plan: la
     // idempotencia no está en la Function, está en el id que elige el cliente.
     expect(src).not.toMatch(/event\.id/);
@@ -331,8 +333,10 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
  * que el write-back de `calendarEventId` de la propia Function no pida un build
  * por cada sync.
  */
+// B-2050 — `pideRebuild` es `huboCambioDeContenido` más los derivados que salen
+// al sitio, que desde B-2050 son de máquina para el historial.
 const marcaRebuild = (antes: unknown, despues: unknown) =>
-  huboCambioDeContenido(antes, despues);
+  pideRebuild(antes as Record<string, unknown>, despues as Record<string, unknown>);
 
 /**
  * El `motivo` del rebuild viaja a un lugar público — B-195.
@@ -394,7 +398,7 @@ describe('B-83 · el rebuild ya no cuelga del sync a Calendar', () => {
     expect(sinCalendario).toBeGreaterThan(corte);
     // Y la marca va con guarda: sin ella, el write-back de la propia Function
     // pediría un build por cada sincronización.
-    expect(src).toContain('if (huboCambioDeContenido(antes, despues)) {');
+    expect(src).toContain('if (pideRebuild(antes, despues)) {');
   });
 
   it('destacar una actividad publicada no genera ninguna operación de Calendar', () => {

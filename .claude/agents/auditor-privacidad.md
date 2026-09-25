@@ -192,6 +192,7 @@ también allá, así que sacarla de la lista pone un test en rojo.
 | `src/lib/suscripcionesLiterarias.ts` | la **única escritura** del panel sobre `/suscripciones`, y la que decide **cuándo la fecha del precio se mueve**: `guardarSuscripcion` refecha `cargadoEn` solo si el valor cambió, y `moverSuscripcion` es la que pasa la ficha a pública (B-832). La mitad que no se puede saltear está en `firestore.rules`; ésta es la que decide qué se manda |
 | `src/lib/suscripcion-literaria-schema.ts` | `formASuscripcion` decide el **valor** de cada campo de una suscripción, incluido el saneo del link de cobro (`https:` y nada más) y el **vaciado de `envio` cuando no manda libros** — el par flag + dato de la clase que `clases-de-bug.test.ts` vigila. `precioDelForm` y `precioCambio` son las dos piezas de DEC-12 del lado del cliente |
 | `src/lib/libreria-schema.ts` | `formALibreria` decide el **valor** de cada campo de una librería, incluido el saneo de los cuatro contactos que **sí** se publican —el handle sin arroba, el teléfono solo con dígitos, la web con esquema—: lo que se guarda es lo que la ficha va a publicar. Misma clase que `formADocumento` en `src/lib/actividades.ts` |
+| `functions/derivados.js` + `functions/derivados-firestore.js` + `functions/busqueda.js` + `functions/calendario-trigger.js` | los derivados de `modalidades` **del lado del servidor** (B-2050): `derivadosDe` decide qué `sede`, `online` —con su `url` y su `urlPublica`—, `modalidad` y `searchText` tiene que tener el documento, `corregirDerivados` los **escribe con el Admin SDK** (`firestore.rules` no la alcanza), `busqueda.js` arma el `searchText` que sale a la salida 1 y `syncCalendar` decide con `conDerivados` qué vista recibe el evento de Calendar. Hoy el `online` corregido es el de una fila y el índice no lleva la dirección; un cambio que toque solo estas Functions tiene que despertarte |
 | `src/lib/imagen-schema.ts` | El schema de la imagen compartido por la actividad y las cuatro fichas de la Guía (B-906). Entra al bundle público por los `Sumar*.tsx`, así que tiene que seguir dependiendo solo de `zod`: si importara `schema.ts`, el sitio cargaría el schema entero de la actividad |
 | `src/lib/efemerides.ts` | la **única escritura** del panel sobre `/efemerides` (B-959): `crearEfemeride`, `guardarEfemeride` y `moverEfemeride` —la que publica— firman con el uid propio, que la proyección no publica. `slugPublicable` es la guarda de que dos efemérides no compartan URL |
 | `src/lib/efemeride-schema.ts` | `formAEfemeride` decide el **valor** de cada campo de una efeméride, y `fuenteDelForm` sanea el link de la fuente con `urlSegura` antes de guardarlo: es el único `href` de las salidas 31 y 32 que sale de un dato tipeado |
@@ -437,6 +438,10 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/pages/robots.txt.ts`
 - `src/pages/pasadas.astro`
 - `functions/calendario.js`
+- `functions/derivados.js`
+- `functions/derivados-firestore.js`
+- `functions/busqueda.js`
+- `functions/calendario-trigger.js`
 - `functions/reportes.js`
 - `functions/frescura.js`
 - `functions/github-issues.js`

@@ -646,19 +646,102 @@ corrección arregla el campo; lo que el aviso pide es mirar **quién** y **por q
      publicada** —el trigger no toca `estado`, a propósito—. Decidir con la persona:
      despublicarla desde el panel, o pasarla a publicador general (`--publicador`
      sin `--ciudad`, D-1152) si en realidad carga en varias ciudades.
-4. Si el mensaje es **`no se pudo corregir ciudades`** (lleva `error` en vez de
-   `derivadas`): el campo quedó como estaba. Mirar el `error` —casi siempre IAM de
-   `calendar-sync@`, o el documento borrado en el medio— y correr
-   `npm run ciudades:sembrar:prod` para ver si sigue desalineado.
+4. Si el fallo llega como **`no se pudieron corregir los derivados`** (desde B-2050
+   es un solo mensaje para los cinco, con `alerta: 'derivados-no-coinciden'` y
+   `error` en vez de `derivadas`): ver el paso 3 de la sección siguiente.
 
-**Lo que no corrige:** `sede`, la otra mitad que mira la regla. Una `sede` escrita a
-mano que no es la primera de las filas no dispara este aviso (B-2050), y tampoco una
-fila con sede y la ciudad vacía, que `ciudadesDe` descarta (B-2052).
+**La otra mitad que mira la regla, la primera `sede`, desde B-2050 se corrige en la
+misma escritura** y suena como `derivados-no-coinciden` (sección siguiente): si
+llegan los dos mails para el mismo `id`, es un solo documento escrito a mano. Una
+fila con sede y la ciudad vacía, que `ciudadesDe` descarta, no suena acá: suena como
+`sede-sin-ciudad` si la cargó una publicadora con ciudad (B-2052, más abajo).
 
 **Y lo que la corrección mueve sin que se note:** quién lee el documento. La lectura
 del publicador por ciudad mira `ciudades`, así que el documento corregido pasa a
 leerlo **entero** —link de la reunión, `difusion`— la ciudad de `derivadas`, y deja
 de leerlo la de `guardadas` (docs/03-modelo-de-datos.md § los derivados).
+
+### Cuando suena `derivados-no-coinciden` (B-2050)
+
+**Qué dice el mail:** una actividad se escribió con una `sede`, una `modalidad`, un
+`online` o un `searchText` que no son los que salen de sus filas
+(`modalidades[]`) y de sus campos, y `syncCalendar` **ya los corrigió**, en la misma
+escritura que `ciudades`. El log trae `id`, `estado` y `campos`: **los nombres** de
+los que difirieron, nunca los valores —una sede es una dirección, el `searchText`
+trae nombres de personas y `online` el link de la reunión—.
+
+**Qué movió la corrección, sin que nadie lo pida:**
+
+- **Un rebuild del sitio.** Los cuatro salen al `events.json` (`pideRebuild`); el
+  debounce del §8 lo colapsa con el de la escritura que lo disparó.
+- **El calendario, nada.** El diff de eventos se planifica sobre los derivados
+  recalculados (`conDerivados`), así que la sede inventada no llegó nunca al
+  `location` del evento y la corrección no mandó un `update`.
+- **Ni una versión del historial.** Los cinco están en `CAMPOS_DE_MAQUINA`. La
+  versión que sí quedó es la de la escritura a mano, que es la que hay que mirar.
+- **Un link de reunión, solo hacia menos.** Si la raíz declaraba público un link que
+  ninguna fila tenía, ya no sale; uno que no salía, sigue sin salir.
+
+**Qué hacer:**
+
+1. Abrir `actividades/<id>` en la consola y mirar `updatedBy`, como en
+   `ciudades-no-coinciden`. **El panel no produce este aviso**: salió de la consola,
+   de un script o del SDK con la sesión de alguien.
+2. Leer `campos`:
+   - **`["searchText"]` solo**, en una actividad que nadie tocó a mano: casi seguro
+     es un documento guardado **antes del último cambio de la fórmula** del índice
+     (el libro de DEC-1, las sedes de todas las filas de B-224) que acaba de recibir
+     una escritura que no pasa por el formulario —el `calendarEventId`, el cupo
+     completo, una imagen—. Llega una vez por documento y no vuelve. Nada que hacer.
+   - **`sede`, `modalidad` u `online`**: alguien escribió los derivados a mano. Si
+     es una cuenta publicadora, mirar además si llegó `ciudades-no-coinciden` para
+     el mismo `id` —ahí está la pregunta de permisos— y seguir ese runbook.
+3. Si el mensaje es **`no se pudieron corregir los derivados`** (lleva `error` y los
+   `campos` que el evento vio desalineados): el documento quedó como estaba. Mirar
+   el `error` —casi siempre IAM de `calendar-sync@` (`datastore.user`), o el
+   documento borrado en el medio— y guardar la actividad una vez desde el panel, que
+   reescribe los cinco bien.
+
+**Lo que no corrige:** `estado` (D-1231), y nada que no sea un derivado de las filas.
+
+### Cuando suena `sede-sin-ciudad` (B-2052)
+
+**Qué dice el mail:** una cuenta publicadora **con ciudad** guardó una actividad con
+una fila que tiene sede y la ciudad vacía. El log trae `id`, `estado` y `filas`
+(cuántas filas nuevas así trajo la escritura). **No trae quién**: ni uid ni mail. Se
+llega a la cuenta por `updatedBy` del documento, en la consola.
+
+**Por qué importa.** `ciudadesDe` descarta las ciudades vacías (D-690), así que esa
+fila no suma nada a `ciudades` y `dentroDeSuCiudad()` deja pasar una dirección de
+otra ciudad (D-1234). El panel de una publicadora con ciudad **exige** la ciudad en
+todas las filas (D-1154): como con los otros dos avisos, esto salió de una escritura
+a mano. **No se corrige**, porque la ciudad que falta no se deriva de nada.
+
+**Qué hacer:**
+
+1. Abrir `actividades/<id>` y mirar la dirección de la fila sin ciudad.
+2. Si es de **su** ciudad: la carga era legítima y le faltó el dato. Completar la
+   ciudad desde el panel.
+3. Si es de **otra** ciudad: la cuenta esquivó la regla, y eso solo se hace a
+   propósito. La actividad sigue publicada. Decidir con la persona, igual que en el
+   paso 3 de `ciudades-no-coinciden`.
+
+**Si el mensaje es `no se pudo leer el rol de quien cargó una sede sin ciudad`**
+(lleva `error` con un código de Auth): el aviso no pudo decidir si la cuenta es
+publicadora, y avisa igual —un aviso que no puede sonar es peor que uno de más—.
+Por código:
+
+- `auth/insufficient-permission` o un 403: a `calendar-sync@` le falta
+  `roles/firebaseauth.viewer` (docs/02-infraestructura.md § «Roles de
+  `calendar-sync@`»). **Otorgarlo** —lo hace el dueño, D-119— y, mientras tanto,
+  tratar el mail como el caso de arriba.
+- `auth/user-not-found`: `updatedBy` es de una cuenta que ya no existe. Mirar el
+  documento: si no lo escribió nadie reconocible, es un documento escrito a mano con
+  un `updatedBy` inventado, y eso solo lo puede hacer el Admin SDK (la regla exige
+  el propio uid).
+
+Un admin o una publicadora **general** que cargue una sede sin ciudad no hacen sonar
+nada: para ellos es una carga legítima (D-1154, D-1152).
 
 ## Sembrar una taxonomía NUEVA en producción (B-973 — ✅ con red)
 

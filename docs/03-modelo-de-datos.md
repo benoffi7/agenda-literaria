@@ -1162,8 +1162,35 @@ ventana entre la escritura y la corrección existe, y lo que cierra es que el
 derivado mentido **no dure**. Por eso `ciudades` está en `CAMPOS_DE_MAQUINA`
 (`functions/historial.js`): ese write-back no deja versión ni pide rebuild, y como
 cuando cambia de verdad cambian las filas en la misma escritura, el historial no
-pierde nada. La otra mitad que mira la regla, la primera `sede`, **no** se
-recalcula (B-2050).
+pierde nada.
+
+**Desde B-2050 el servidor verifica también los otros cuatro derivados** —`sede`,
+`modalidad`, `online` y `searchText`—, con la misma forma. La derivación vive en
+`functions/derivados.js` (y la del índice en `functions/busqueda.js`), y
+`src/lib/modalidades.ts` y `src/lib/normalize.ts` son sus fachadas: tiene que ser
+la misma función que la del guardado, o el servidor corregiría cada documento bien
+guardado. `derivadosDesalineados` compara los cinco a la vez y `corregirDerivados`
+los reescribe en **una** transacción y con **una** escritura (`ciudades`
+incluido), y avisa con `alerta: 'derivados-no-coinciden'` además de la de
+`ciudades` si corresponde. Tres diferencias con `ciudades`, las tres a propósito:
+
+- **Corregir pide rebuild, y no deja versión.** `sede`, `modalidad`, `searchText`
+  y el `online` (sin el link privado) salen al `events.json`. Los cinco están en
+  `CAMPOS_DE_MAQUINA` para que el write-back no deje una versión de historial —la
+  del documento escrito a mano, idéntico al corregido salvo por los derivados—, y
+  por eso el rebuild de `syncCalendar` dejó de preguntar solo
+  `huboCambioDeContenido`: pregunta `pideRebuild`, que le suma los cuatro. El
+  historial pregunta si hay algo que recuperar; el sitio, si cambió lo que se ve.
+- **El calendario nunca ve el derivado mentido.** El diff del §7.2 se planifica
+  sobre `conDerivados(antes)` y `conDerivados(despues)`, o sea sobre la verdad de
+  las filas: la `sede` inventada no llega al `location` del evento, y la corrección
+  —que vuelve a disparar el trigger— no manda un `update` en falso a las N
+  sesiones.
+- **`online` no puede abrir el link de la reunión.** El corregido es el bloque de
+  una fila, el mismo objeto, y el link de cada fila ya lo publica o lo calla la
+  proyección (`modalidades[].online`). Lo único que la corrección puede hacer con
+  el link es **sacar** uno que la raíz declaraba público sin que ninguna fila lo
+  tuviera.
 
 Dos consecuencias de corregir, dichas para que nadie se sorprenda:
 
@@ -1175,11 +1202,16 @@ Dos consecuencias de corregir, dichas para que nadie se sorprenda:
   escritura que nadie hizo desde el panel. Lo mismo con un documento anterior a
   B-919 sin el campo: ya no espera al backfill, lo completa la primera escritura
   que pase por `syncCalendar`.
-- **Una sede sin ciudad no se detecta.** `ciudadesDe` descarta las vacías, así que
-  una segunda fila con una dirección de Rosario y `ciudad: ''` da la misma lista y
-  no suena nada. No se avisa a propósito: fuera de CABA el admin puede cargar una
-  sede sin ciudad (D-1154 la exige solo en el panel del publicador), y avisar por
-  eso sería un mail por cada carga legítima. Queda anotado (B-2052).
+- **Una sede sin ciudad no se corrige: se avisa, y solo de quien no podía.**
+  `ciudadesDe` descarta las vacías, así que una segunda fila con una dirección de
+  Rosario y `ciudad: ''` da la misma lista y la regla pasa. Fuera de CABA el admin
+  puede cargar una sede sin ciudad (D-1154 la exige solo en el panel del
+  publicador), así que avisar siempre sería un mail por cada carga legítima. Desde
+  B-2052, cuando una escritura trae una fila **nueva** así (`sedesSinCiudadNuevas`),
+  `syncCalendar` lee el claim de `updatedBy` con el Admin SDK y, si es una cuenta
+  publicadora **con ciudad** —la única cuyo panel no la deja—, avisa con
+  `alerta: 'sede-sin-ciudad'`. No hay qué corregir: la ciudad que falta no se
+  deriva de nada.
 
 **Opcional a propósito, y con un paso de producción atrás.** Los documentos
 anteriores a B-919 no lo tienen, y el default de lectura —`?? []` en el código,

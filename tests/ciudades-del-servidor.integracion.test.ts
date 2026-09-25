@@ -1,7 +1,8 @@
 /**
  * **La corrección de `ciudades`, contra el emulador** — B-1920.
  *
- * `corregirCiudades` es lo que corre `syncCalendar` con el `db` del Admin SDK
+ * `corregirDerivados` (era `corregirCiudades` hasta B-2050, que le sumó los otros
+ * cuatro derivados: `derivados-del-servidor.integracion.test.ts`) es lo que corre `syncCalendar` con el `db` del Admin SDK
  * cuando `ciudadesDesalineadas` dice que el documento se escribió con un
  * `ciudades` que no es el de sus filas. El CI no levanta el emulador de Functions
  * (D-660), así que se prueba la mitad que sí se puede —la transacción de verdad,
@@ -19,12 +20,20 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
-import { corregirCiudades } from '../functions/ciudades-firestore.js';
+import { buildSearchText } from '../functions/busqueda.js';
 import { ciudadesDesalineadas } from '../functions/ciudades.js';
+import { derivadosDesalineados } from '../functions/derivados.js';
+import { corregirDerivados } from '../functions/derivados-firestore.js';
 import { camposCambiados } from '../functions/historial.js';
 import { PROJECT_ID, emuladorVivo, limpiarFirestore } from './emulador';
 
 const vivo = await emuladorVivo();
+
+/** El `searchText` que el panel escribe para este documento (§6). */
+const conIndice = <T extends Record<string, unknown>>(doc: T): T & { searchText: string } => ({
+  ...doc,
+  searchText: buildSearchText(doc as Parameters<typeof buildSearchText>[0]),
+});
 
 const sede = (ciudad: string) => ({
   nombre: 'Biblioteca popular',
@@ -36,8 +45,11 @@ const sede = (ciudad: string) => ({
   geo: null,
 });
 
-/** Un documento que un publicador de Mar del Plata armó a mano con el SDK. */
-const mentido = () => ({
+/**
+ * Un documento que un publicador de Mar del Plata armó a mano con el SDK. Los
+ * otros cuatro derivados están bien (B-2050): acá se mide solo `ciudades`.
+ */
+const mentido = () => conIndice({
   titulo: 'Club de lectura',
   estado: 'publicado',
   createdBy: 'uid_pub_mdp',
@@ -47,7 +59,9 @@ const mentido = () => ({
     { id: 'mod_1', modalidad: 'presencial', sede: sede('mar-del-plata'), online: null },
     { id: 'mod_2', modalidad: 'presencial', sede: sede('rosario'), online: null },
   ],
+  modalidad: 'presencial',
   sede: sede('mar-del-plata'),
+  online: null,
   // La segunda sede no se sumó: la regla lee «solo Mar del Plata».
   ciudades: ['mar-del-plata'],
 });
@@ -73,12 +87,11 @@ describe.skipIf(!vivo)('la corrección de `ciudades` contra el emulador — B-19
     const ref = db.doc('actividades/act_mentida');
     await ref.set(mentido());
 
-    const r = await corregirCiudades(db, 'act_mentida');
-    expect(r).toEqual({
-      guardadas: ['mar-del-plata'],
-      derivadas: ['mar-del-plata', 'rosario'],
-      estado: 'publicado',
-    });
+    const r = await corregirDerivados(db, 'act_mentida');
+    expect(r?.campos).toEqual(['ciudades']);
+    expect(r?.ciudadesGuardadas).toEqual(['mar-del-plata']);
+    expect(r?.derivados.ciudades).toEqual(['mar-del-plata', 'rosario']);
+    expect(r?.estado).toBe('publicado');
 
     const despues = (await ref.get()).data()!;
     expect(despues.ciudades).toEqual(['mar-del-plata', 'rosario']);
@@ -101,11 +114,12 @@ describe.skipIf(!vivo)('la corrección de `ciudades` contra el emulador — B-19
     const ref = db.doc('actividades/act_mentida');
     await ref.set(mentido());
     const antes = (await ref.get()).data()!;
-    await corregirCiudades(db, 'act_mentida');
+    await corregirDerivados(db, 'act_mentida');
     const corregido = await ref.get();
 
     expect(ciudadesDesalineadas(corregido.data())).toBeNull();
-    expect(await corregirCiudades(db, 'act_mentida')).toBeNull();
+    expect(derivadosDesalineados(corregido.data())).toBeNull();
+    expect(await corregirDerivados(db, 'act_mentida')).toBeNull();
     expect((await ref.get()).updateTime?.isEqual(corregido.updateTime!)).toBe(true);
 
     // Lo que ve `guardarVersion` en la pasada del write-back: nada que guardar.
@@ -117,12 +131,12 @@ describe.skipIf(!vivo)('la corrección de `ciudades` contra el emulador — B-19
     await ref.set(mentido());
     // El panel guarda filas nuevas y su `ciudades`, juntos, antes de que corra
     // la corrección del evento anterior.
-    await ref.update({
-      modalidades: [{ id: 'mod_3', modalidad: 'presencial', sede: sede('cordoba'), online: null }],
-      ciudades: ['cordoba'],
-    });
+    const filas = [{ id: 'mod_3', modalidad: 'presencial', sede: sede('cordoba'), online: null }];
+    await ref.update(
+      conIndice({ ...mentido(), modalidades: filas, sede: sede('cordoba'), ciudades: ['cordoba'] }),
+    );
 
-    expect(await corregirCiudades(db, 'act_mentida')).toBeNull();
+    expect(await corregirDerivados(db, 'act_mentida')).toBeNull();
     expect((await ref.get()).data()!.ciudades).toEqual(['cordoba']);
   });
 
@@ -131,12 +145,12 @@ describe.skipIf(!vivo)('la corrección de `ciudades` contra el emulador — B-19
     const { ciudades: _, ...sinCampo } = mentido();
     await ref.set(sinCampo);
 
-    expect((await corregirCiudades(db, 'act_sin_campo'))?.guardadas).toBeNull();
+    expect((await corregirDerivados(db, 'act_sin_campo'))?.ciudadesGuardadas).toBeNull();
     expect((await ref.get()).data()!.ciudades).toEqual(['mar-del-plata', 'rosario']);
   });
 
   it('un documento que se borró en el medio no se resucita', async () => {
-    expect(await corregirCiudades(db, 'act_que_no_existe')).toBeNull();
+    expect(await corregirDerivados(db, 'act_que_no_existe')).toBeNull();
     expect((await db.doc('actividades/act_que_no_existe').get()).exists).toBe(false);
   });
 });
