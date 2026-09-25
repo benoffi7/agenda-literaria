@@ -347,6 +347,21 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     31: 'treinta y una', 32: 'treinta y dos', 33: 'treinta y tres', 34: 'treinta y cuatro',
   };
 
+  /**
+   * ¿El texto dice «N salidas» con esta palabra? Una sola implementación para
+   * los dos casos que miden la prosa, y con **negritas opcionales alrededor del
+   * número** — B-1941. El skill `campo-nuevo` escribía «Resolvé las **treinta**
+   * salidas», y el regex exacto `palabra salidas` no la veía: los `**` quedan
+   * entre el número y la palabra, así que la cuenta vieja sobrevivió en negrita
+   * hasta que alguien la leyó a mano.
+   *
+   * Los asteriscos de adelante no necesitan nada: entre un `*` y una letra hay
+   * frontera de palabra, así que la `\\b` de B-772 —«dieciocho» no contiene un
+   * «ocho» suelto— sigue en su lugar y acepta las dos formas.
+   */
+  const diceNSalidas = (texto: string, palabra: string): boolean =>
+    new RegExp(`\\b${palabra}(?:\\*\\*)? salidas`, 'i').test(texto);
+
   it('el parseo no se come ninguna fila de la tabla', () => {
     /*
      * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
@@ -391,6 +406,11 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      *
      * MUTACIÓN PROBADA: volver a poner «las ocho salidas» en cualquiera de los dos
      * archivos pone este caso en rojo nombrando la frase.
+     *
+     * **Y barre también el skill `campo-nuevo`** — B-1941. Tiene tabla propia (el
+     * caso de arriba ya la contaba) pero su prosa quedaba afuera, y ahí vivía
+     * «Resolvé las **treinta** salidas» con la tabla en treinta y dos. MUTACIÓN
+     * PROBADA: volver a poner esa frase, en negrita, pone este caso en rojo.
      */
     /*
      * **Se miran los números de cinco para arriba**, y esa es la única concesión
@@ -401,7 +421,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * cambio, no hay subconjunto del que se hable: un número así solo puede estar
      * hablando del total.
      */
-    for (const archivo of [FICHA, SEGURIDAD]) {
+    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       const cuantas = salidas(archivo).length;
       const correcta = PALABRAS[cuantas];
       expect(correcta, `no hay palabra para ${cuantas} salidas`).toBeDefined();
@@ -420,7 +440,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
          * «dieci-», o sea que estuvo latente desde el primer día y lo despertó el
          * crecimiento. Lo mismo le pasaría a «nueve» dentro de «diecinueve».
          */
-        .filter((palabra) => new RegExp(`\\b${palabra} salidas`, 'i').test(texto));
+        .filter((palabra) => diceNSalidas(texto, palabra));
 
       expect(
         equivocadas,
@@ -529,7 +549,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // Control positivo: si el documento dejara de hablar de «N salidas», este
     // caso pasaría sin mirar nada. Tiene que decirlo con el número correcto.
     expect(
-      new RegExp(`${PALABRAS[cuantas]} salidas`, 'i').test(texto),
+      diceNSalidas(texto, PALABRAS[cuantas]!),
       `${AGENTES_DOC} no dice «${PALABRAS[cuantas]} salidas» en ninguna parte: o cambió la ` +
         'redacción, o quedó sin declarar la cuenta y este chequeo dejó de medir algo',
     ).toBe(true);
@@ -547,7 +567,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
          * «dieci-», o sea que estuvo latente desde el primer día y lo despertó el
          * crecimiento. Lo mismo le pasaría a «nueve» dentro de «diecinueve».
          */
-        .filter((palabra) => new RegExp(`\\b${palabra} salidas`, 'i').test(texto));
+        .filter((palabra) => diceNSalidas(texto, palabra));
 
     expect(
       equivocadas,
@@ -555,6 +575,40 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
         `${cuantas} filas: quien lea el documento para saber qué auditar va a resolver menos ` +
         'celdas de las que hay',
     ).toEqual([]);
+  });
+
+  it('cada fila de la tabla tiene las columnas de su encabezado — B-1942', () => {
+    /*
+     * **La fila 30 de la ficha tenía tres columnas y las demás cuatro.** Le
+     * faltaba la de «Test que la fija», así que el agente no tenía dónde mirar
+     * qué red cubre `/guia`. Nada lo decía: el parseo de arriba toma la celda
+     * del productor por contenido, no por posición, y una fila corta se lee
+     * igual. Markdown tampoco se queja — la celda que falta se pinta vacía.
+     *
+     * Se mide en la ficha y en el skill, que tienen una forma sola. En
+     * `07-seguridad.md` el encabezado declara tres columnas y la mayoría de las
+     * filas trae cuatro, así que ahí este caso estaría en rojo por una deuda
+     * distinta, que queda anotada aparte.
+     *
+     * MUTACIÓN PROBADA: sacarle a la fila 30 de la ficha su última celda pone
+     * este caso en rojo nombrando la fila.
+     */
+    const celdas = (linea: string): number => linea.trim().replace(/^\||\|$/g, '').split('|').length;
+    for (const archivo of [FICHA, SKILL_CAMPO_NUEVO]) {
+      const lineas = fuente(archivo).split('\n');
+      const encabezado = lineas.findIndex((l) => /^\s*\|\s*#\s*\|/.test(l));
+      expect(encabezado, `${archivo} no tiene el encabezado «| # |» de la tabla`).toBeGreaterThan(-1);
+      const esperadas = celdas(lineas[encabezado]!);
+      const cortas: string[] = [];
+      for (let i = encabezado + 2; i < lineas.length && /^\s*\|/.test(lineas[i] ?? ''); i++) {
+        const n = celdas(lineas[i]!);
+        if (n !== esperadas) cortas.push(`fila «${/^\s*\|\s*(\d+)/.exec(lineas[i]!)?.[1] ?? i}» con ${n}`);
+      }
+      expect(
+        cortas,
+        `${archivo}: el encabezado tiene ${esperadas} columnas y estas filas no`,
+      ).toEqual([]);
+    }
   });
 
   it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {

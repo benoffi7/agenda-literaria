@@ -11,6 +11,7 @@
  * misma pregunta.
  */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -43,9 +44,15 @@ export const css = unaVez((): string => readFileSync(raiz('src/styles/global.css
  * La paleta de Tailwind **instalada**, no la de la documentación: es la que
  * compila el build. En la 4 los colores vienen en OKLCH con la luminosidad en
  * porcentaje (`oklch(96.2% 0.059 95.617)`).
+ *
+ * **Se resuelve como paquete, no como ruta del checkout** — B-1931. Con
+ * `raiz('node_modules/…')`, un worktree sin `node_modules` propio (los módulos
+ * se resuelven desde el repo padre) daba ENOENT y 34 rojos en los dos tests de
+ * contraste, aunque Tailwind se encontrara bien para todo lo demás. Es la misma
+ * resolución que usa el build, así que lee el archivo que el build compila.
  */
 export const paletaTailwind = unaVez((): string =>
-  readFileSync(raiz('node_modules/tailwindcss/theme.css'), 'utf8'),
+  readFileSync(createRequire(import.meta.url).resolve('tailwindcss/theme.css'), 'utf8'),
 );
 
 export const BLANCO: Srgb = [1, 1, 1];
