@@ -77,6 +77,18 @@ const informesGa4 = (opciones: { vacio?: boolean } = {}) =>
         canales: conFilas([['Organic Search', '210']]),
         dispositivos: conFilas([['mobile', '330']]),
         eventos: conFilas([['clic_inscripcion', '37']]),
+        sinResultados: {
+          rows: [
+            {
+              dimensionValues: [
+                { value: 'filtro_sin_resultados' },
+                { value: 'arancel' },
+                { value: 'a-la-gorra' },
+              ],
+              metricValues: [{ value: '3' }],
+            },
+          ],
+        },
       };
 
 /** El documento tal cual lo escribe la Function, con las dos mitades en ok. */
@@ -247,6 +259,8 @@ describe('las cuatro situaciones se distinguen — D-272', () => {
     // El evento que todavía no ocurrió llega en cero explícito desde la
     // Function, no ausente.
     expect(r.ga4.eventos.clic_triptico).toBe(0);
+    // B-798: el desglose cruza el documento con su forma.
+    expect(r.ga4.sinResultados).toEqual([{ eje: 'arancel', slug: ['a-la-gorra'], valor: 3 }]);
     expect(r.searchConsole.situacion).toBe('ok');
     expect(r.searchConsole.busquedas[0]!.clave).toBe('taller de escritura');
     expect(r.searchConsole.clicsEnElTope).toBe(14);
@@ -291,6 +305,8 @@ describe('un documento de otra versión no dibuja huecos', () => {
     expect(r.ga4.personas).toEqual({ valor: 0, variacion: null });
     expect(r.ga4.paginas).toEqual([]);
     expect(r.ga4.eventos).toEqual({});
+    // Un documento de antes de B-798: sin desglose, y la fila no se despliega.
+    expect(r.ga4.sinResultados).toEqual([]);
     expect(r.searchConsole.busquedas).toEqual([]);
     expect(r.searchConsole.clicsEnElTope).toBe(0);
   });

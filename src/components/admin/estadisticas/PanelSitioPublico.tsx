@@ -5,7 +5,7 @@ import { Barra } from '@/components/admin/estadisticas/Barra';
  * transporte (`medicionSitio.ts`), que es lo único que no puede aparecer del
  * lado del panel.
  */
-import { NOMBRES_EVENTOS_SITIO } from '@/lib/analyticsSitio';
+import { NOMBRES_EVENTOS_SITIO, type EjeMedible } from '@/lib/analyticsSitio';
 import {
   ctrLegible,
   periodoLegible,
@@ -14,6 +14,7 @@ import {
   variacionLegible,
   type FilaDeBusqueda,
   type FilaDeRanking,
+  type FilaSinResultados,
   type MetricaConVariacion,
   type ResumenDelSitio,
   type SituacionDeFuente,
@@ -79,24 +80,15 @@ const NOMBRE_DE_EVENTO: Record<string, { titulo: string; detalle: string }> = {
   filtro_sin_resultados: {
     titulo: 'Filtros que no encuentran nada',
     /*
-     * **Decía «qué combinación de filtros deja la lista vacía» y esta fila no
-     * puede decir cuál** — lo preguntó el dueño el 2026-09-07, mirando la
-     * pantalla: «no hay que expandir eso para saber qué filtros?».
-     *
-     * Tenía razón. El evento **sí** lleva el eje y el slug elegidos
-     * (`analyticsSitio.ts`), pero la Function pide a GA4 `eventName` +
-     * `eventCount` y nada más, así que lo que llega al panel es **el número de
-     * veces**, no el desglose. La frase prometía el desglose.
-     *
-     * Ahora dice lo que la fila muestra. Traer el desglose es **B-798**, y no es
-     * solo código: pide registrar `eje` y `slug` como dimensiones
-     * personalizadas en la consola de GA4 —que **no es retroactivo**— y sumar
-     * una dimensión a `DIMENSIONES_PERMITIDAS`, que es una lista blanca que
-     * existe justamente para que no entre `pageLocation` ni la demografía.
+     * **El desglose llegó con B-798.** Lo preguntó el dueño el 2026-09-07,
+     * mirando esta fila: «no hay que expandir eso para saber qué filtros?». La
+     * fila se despliega (`DesgloseSinResultados`) cuando la Function trae filas,
+     * y las trae desde que `eje` y `slug` quedaron registradas como dimensiones
+     * de GA4, el 2026-09-25.
      */
     detalle:
-      'Cuántas veces alguien filtró y no quedó nada. Todavía no dice cuál filtro fue ' +
-      '(B-798). Mide el filtro elegido, nunca lo que alguien escribió en el buscador.',
+      'Cuántas veces alguien filtró y no quedó nada, y con qué filtro. Mide el filtro ' +
+      'elegido, nunca lo que alguien escribió en el buscador.',
   },
   clic_triptico: {
     titulo: 'Clics en «¿Qué hay ahora?»',
@@ -105,6 +97,77 @@ const NOMBRE_DE_EVENTO: Record<string, { titulo: string; detalle: string }> = {
       'directo al listado. Mide qué panel, nunca qué actividad se abrió.',
   },
 };
+
+/**
+ * El nombre en castellano de cada filtro del listado, para el desglose de
+ * `filtro_sin_resultados` — B-798.
+ *
+ * `Record<EjeMedible, …>` y no un mapa suelto: un eje nuevo en
+ * `analyticsSitio.ts` no compila hasta que alguien le escriba el nombre.
+ */
+const NOMBRE_DE_EJE: Record<EjeMedible, string> = {
+  tipo: 'Tipo',
+  arancel: 'Arancel',
+  modalidad: 'Modalidad',
+  provincia: 'Provincia',
+  barrio: 'Barrio',
+  ciudad: 'Ciudad',
+  tag: 'Etiqueta',
+  busqueda: 'Texto del buscador',
+  cuando: 'Cuándo',
+  abierta: 'Inscripción abierta',
+  cursada: 'Cursada',
+};
+
+/*
+ * Lo que no está en el mapa es `otro` —el eje que el saneador del sitio pone
+ * cuando no reconoce el valor—, porque la Function descarta cualquier otro. Igual
+ * no se pinta crudo: un valor inesperado no llega a la pantalla con su texto.
+ */
+const nombreDeEje = (eje: string | null): string =>
+  eje === null ? 'Sin filtro identificado' : (NOMBRE_DE_EJE[eje as EjeMedible] ?? 'Otro filtro');
+
+/**
+ * Qué filtro dejó el listado vacío — B-798. Cerrado por defecto: la fila sigue
+ * diciendo el total, y el detalle se abre a pedido.
+ */
+function DesgloseSinResultados({ filas }: { filas: FilaSinResultados[] }) {
+  const tope = filas[0]?.valor ?? 0;
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-xs font-medium text-tinta/80">
+        Ver qué filtro fue
+      </summary>
+      <ul className="mt-2 space-y-2">
+        {filas.map((f) => {
+          const clave = `${f.eje ?? '-'}:${f.slug.join(',')}`;
+          return (
+            <li key={clave} className="min-w-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-sm" title={f.slug.join(', ')}>
+                  {nombreDeEje(f.eje)}
+                  {f.slug.length > 0 && (
+                    <span className="text-tinta/65"> · {f.slug.join(', ')}</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-sm font-medium tabular-nums">{f.valor}</span>
+              </div>
+              <Barra parte={f.valor} total={tope} />
+            </li>
+          );
+        })}
+      </ul>
+      {/*
+        El `(not set)` de GA4 junta dos cosas que la API no separa, y sin esta
+        línea la fila más alta del primer mes se lee como un bug.
+      */}
+      <p className="mt-2 text-xs text-tinta/65">
+        «Sin filtro identificado» es un cero que ningún filtro solo explica, o una búsqueda
+        de antes del 25 de septiembre de 2026, cuando se empezó a registrar el filtro.
+      </p>
+    </details>
+  );
+}
 
 /**
  * Las filas de la mitad **b** cuando todavía no hay datos — y **derivadas del
@@ -450,6 +513,9 @@ export function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
                     <p className="text-sm font-medium">{etiqueta?.titulo ?? nombre}</p>
                     {etiqueta && (
                       <p className="mt-0.5 text-xs text-tinta/65">{etiqueta.detalle}</p>
+                    )}
+                    {nombre === 'filtro_sin_resultados' && ga4.sinResultados.length > 0 && (
+                      <DesgloseSinResultados filas={ga4.sinResultados} />
                     )}
                   </div>
                   {/*

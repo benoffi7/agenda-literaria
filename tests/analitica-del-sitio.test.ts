@@ -5,6 +5,8 @@ import {
   DIAS_DE_VENTANA,
   DIMENSIONES_PERMITIDAS,
   DIMENSIONES_SC_PERMITIDAS,
+  EJES_DEL_SITIO,
+  EJES_SIN_SLUG,
   EVENTOS_PROPIOS,
   MAX_MOTIVO,
   RETRASO,
@@ -12,6 +14,7 @@ import {
   VERSION_DEL_RESUMEN,
   ZONA,
   claveDeDia,
+  desgloseSinResultados,
   dimension,
   dimensionSc,
   documentoDeAnalitica,
@@ -28,7 +31,15 @@ import {
   variacion,
   ventanas,
 } from '../functions/analitica.js';
-import { NOMBRES_EVENTOS_SITIO } from '@/lib/analyticsSitio';
+import {
+  construirEventoSitio,
+  crudosDeFiltroSinResultados,
+  EJES_MEDIBLES,
+  EJES_SIN_SLUG as EJES_SIN_SLUG_DEL_SITIO,
+  FUERA_DE_VOCABULARIO_SITIO,
+  NOMBRES_EVENTOS_SITIO,
+} from '@/lib/analyticsSitio';
+import { EJES, type Eje } from '@/lib/listadoPublico';
 
 /**
  * La lectura de la analítica del sitio — **B-374** (GA4) y **B-373** (Search
@@ -120,6 +131,22 @@ const conDimension = (dimension: string, metrica: string, filas: [string, string
   kind: 'analyticsData#runReport',
 });
 
+/** El informe de `filtro_sin_resultados`: `eventName` × `eje` × `slug` (B-798). */
+const sinResultados = (filas: [string, string, string][]) => ({
+  dimensionHeaders: [
+    { name: 'eventName' },
+    { name: 'customEvent:eje' },
+    { name: 'customEvent:slug' },
+  ],
+  metricHeaders: [{ name: 'eventCount', type: 'TYPE_INTEGER' }],
+  rows: filas.map(([eje, slug, valor]) => ({
+    dimensionValues: [{ value: 'filtro_sin_resultados' }, { value: eje }, { value: slug }],
+    metricValues: [{ value: valor }],
+  })),
+  rowCount: filas.length,
+  kind: 'analyticsData#runReport',
+});
+
 /** Un informe vacío: GA4 **omite `rows` por completo**, no manda `rows: []`. */
 const vacio = () => ({
   dimensionHeaders: [{ name: 'pagePath' }],
@@ -155,6 +182,11 @@ const informesLlenos = () => ({
     ['clic_inscripcion', '37'],
     ['filtro_sin_resultados', '12'],
   ]),
+  sinResultados: sinResultados([
+    ['(not set)', '(not set)', '7'],
+    ['arancel', 'a-la-gorra', '3'],
+    ['busqueda', '(not set)', '2'],
+  ]),
 });
 
 const informesVacios = () => ({
@@ -163,6 +195,7 @@ const informesVacios = () => ({
   canales: vacio(),
   dispositivos: vacio(),
   eventos: vacio(),
+  sinResultados: vacio(),
 });
 
 const primerDia = (valor: string) => ({
@@ -232,24 +265,43 @@ describe('las ventanas de 28 días — §9.3', () => {
 describe('los pedidos a la Data API', () => {
   const v = { desde: '2026-09-17', hasta: '2026-10-14' };
 
-  it('cada informe pide una sola ventana y una sola dimensión', () => {
+  it('cada informe pide una sola ventana y una sola dimensión — salvo el desglose de B-798', () => {
     /*
      * La decisión del docblock, fijada: un informe por pregunta. Un
      * `pagePath` × `deviceCategory` devuelve el producto de los dos y hay que
      * volver a agregarlo de este lado, que es donde los números se rompen.
+     *
+     * **La excepción es `sinResultados`, y está nombrada acá para que no sea la
+     * puerta de la próxima.** Ahí el producto `eje` × `slug` es la respuesta y
+     * no se re-agrega, y `eventName` va porque la Data API solo filtra por una
+     * dimensión pedida.
      */
     const p = pedidosGa4(v);
     for (const [nombre, pedido] of Object.entries(p)) {
       expect(pedido.dateRanges, nombre).toEqual([{ startDate: v.desde, endDate: v.hasta }]);
+      if (nombre === 'sinResultados') continue;
       expect((pedido as { dimensions?: unknown[] }).dimensions?.length ?? 0, nombre).toBeLessThan(
         2,
       );
     }
+    expect(p.sinResultados.dimensions).toEqual([
+      { name: 'eventName' },
+      { name: 'customEvent:eje' },
+      { name: 'customEvent:slug' },
+    ]);
+    expect(p.sinResultados.dimensionFilter).toEqual({
+      filter: {
+        fieldName: 'eventName',
+        stringFilter: { matchType: 'EXACT', value: 'filtro_sin_resultados' },
+      },
+    });
+    expect(p.sinResultados.limit).toBe(TOPE_DE_RANKING);
     expect(Object.keys(p).sort()).toEqual([
       'canales',
       'dispositivos',
       'eventos',
       'paginas',
+      'sinResultados',
       'totales',
     ]);
   });
@@ -470,6 +522,125 @@ describe('ranking', () => {
     expect(ranking(vacio())).toEqual([]);
     expect(ranking(undefined)).toEqual([]);
     expect(ranking({})).toEqual([]);
+  });
+});
+
+describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)', () => {
+  it('cada fila es un eje con sus slugs, y el `(not set)` es `null` y no un eje', () => {
+    expect(desgloseSinResultados(informesLlenos().sinResultados)).toEqual([
+      { eje: null, slug: [], valor: 7 },
+      { eje: 'arancel', slug: ['a-la-gorra'], valor: 3 },
+      { eje: 'busqueda', slug: [], valor: 2 },
+    ]);
+  });
+
+  it('una lista de slugs llega unida por coma y se parte', () => {
+    expect(
+      desgloseSinResultados(sinResultados([['tag', 'poesia,narrativa', '4']])),
+    ).toEqual([{ eje: 'tag', slug: ['poesia', 'narrativa'], valor: 4 }]);
+  });
+
+  it('lo que no tiene forma de slug no llega al panel, fila entera', () => {
+    /*
+     * Cualquiera puede mandarle un evento a la propiedad con el id de medición,
+     * así que lo que GA4 devuelve no es necesariamente lo que mandó el sitio.
+     * El sitio nunca manda mayúsculas, espacios ni arrobas.
+     *
+     * MUTACIÓN PROBADA: se sacó la guarda de `valido` en
+     * `desgloseSinResultados` y este caso pasó a rojo con las tres filas malas
+     * adentro.
+     */
+    const r = desgloseSinResultados(
+      sinResultados([
+        ['arancel', 'Juan Pérez', '1'],
+        ['<script>', 'x', '1'],
+        ['tag', 'poesia,@alguien', '1'],
+        ['tipo', 'taller', '2'],
+      ]),
+    );
+    expect(r).toEqual([{ eje: 'tipo', slug: ['taller'], valor: 2 }]);
+  });
+
+  it('un eje fuera del vocabulario, o un eje sin slug que trae slug, no llega al documento', () => {
+    /*
+     * Lo encontró el `auditor-privacidad`: con validar solo la forma, un
+     * `busqueda · juan-perez` mandado a mano a la propiedad pasaba, y el panel lo
+     * mostraba como «Texto del buscador · juan-perez» — o sea, como algo que
+     * alguien tipeó. El sitio nunca manda `slug` con esos ejes, ni sin eje.
+     */
+    const r = desgloseSinResultados(
+      sinResultados([
+        ['busqueda', 'juan-perez', '1'],
+        ['(not set)', 'juan-perez', '1'],
+        ['juan-perez-1155554444', '(not set)', '1'],
+        ['barrio', 'villa-crespo', '2'],
+      ]),
+    );
+    expect(r).toEqual([{ eje: 'barrio', slug: ['villa-crespo'], valor: 2 }]);
+  });
+
+  it('la copia de los ejes en la Function es la del sitio, más `otro`', () => {
+    /*
+     * La red que ata `functions/` a `src/` (clase B-88). Sin ella, un eje nuevo
+     * en el sitio se mide en GA4 y el lector lo descarta: la fila del panel se
+     * queda sin él y nada falla.
+     */
+    expect([...EJES_DEL_SITIO].sort()).toEqual(
+      [...EJES_MEDIBLES, FUERA_DE_VOCABULARIO_SITIO].sort(),
+    );
+    expect([...EJES_SIN_SLUG].sort()).toEqual(
+      [...EJES_SIN_SLUG_DEL_SITIO, FUERA_DE_VOCABULARIO_SITIO].sort(),
+    );
+  });
+
+  it('lo que emite el sitio pasa el lector sin perder filas — ida y vuelta', () => {
+    /*
+     * El productor y el consumidor de este formato están en dos paquetes y
+     * derivan sus reglas por separado. Se arma el evento con el emisor real y se
+     * lo pasa por el lector como lo devolvería GA4, incluido el caso de muchos
+     * slugs cortos, que el emisor corta por largo y no por cantidad.
+     */
+    const sin = () =>
+      Object.fromEntries(EJES.map((e) => [e, [] as string[]])) as unknown as Record<
+        Eje,
+        string[]
+      >;
+    const muchos = ['poesia', 'cuento', 'novela', 'ensayo', 'teatro', 'cronica', 'humor',
+      'terror', 'fantasia', 'policial', 'infantil', 'juvenil'];
+    const casos: [Parameters<typeof crudosDeFiltroSinResultados>[0], Record<Eje, string[]>][] = [
+      ['barrio', { ...sin(), barrio: ['villa-crespo'] }],
+      ['tag', { ...sin(), tag: muchos }],
+      ['busqueda', sin()],
+      ['cuando', sin()],
+      [null, sin()],
+    ];
+    for (const [eje, valores] of casos) {
+      const params = construirEventoSitio(
+        'filtro_sin_resultados',
+        crudosDeFiltroSinResultados(eje, valores),
+      )?.params as { eje?: string; slug?: string };
+      const r = desgloseSinResultados(
+        sinResultados([[params.eje ?? '(not set)', params.slug ?? '(not set)', '1']]),
+      );
+      expect(r, String(eje)).toHaveLength(1);
+      expect(r[0]!.eje).toBe(params.eje ?? null);
+    }
+  });
+
+  it('un informe vacío da `[]`', () => {
+    expect(desgloseSinResultados(vacio())).toEqual([]);
+    expect(desgloseSinResultados(undefined)).toEqual([]);
+  });
+
+  it('el resumen lo lleva, de la ventana actual', () => {
+    const r = resumenGa4({
+      actual: informesLlenos(),
+      anterior: informesVacios(),
+      primerDia: primerDia('20260903'),
+      ventana: { desde: '2026-09-17', hasta: '2026-10-14' },
+    });
+    expect(r.sinResultados).toHaveLength(3);
+    expect(r.sinResultados[1]).toEqual({ eje: 'arancel', slug: ['a-la-gorra'], valor: 3 });
   });
 });
 

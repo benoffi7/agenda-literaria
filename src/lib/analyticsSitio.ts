@@ -237,8 +237,13 @@ export type EjeSinSlug = (typeof EJES_SIN_SLUG)[number];
 /** Cualquier filtro del listado que puede explicar un cero. */
 export type EjeMedible = Eje | EjeSinSlug;
 
-/** El vocabulario completo del parámetro `eje` de `filtro_sin_resultados`. */
-const EJES_MEDIBLES = [...EJES_DE_TAXONOMIA, ...EJES_SIN_SLUG] as const;
+/**
+ * El vocabulario completo del parámetro `eje` de `filtro_sin_resultados`.
+ *
+ * Exportado desde B-798 para que el panel le ponga nombre a cada eje del
+ * desglose: son strings sueltos, así que importarlo no arrastra el transporte.
+ */
+export const EJES_MEDIBLES = [...EJES_DE_TAXONOMIA, ...EJES_SIN_SLUG] as const;
 
 /**
  * Los tres paneles del tríptico «¿Qué hay ahora?» — **B-601**, sobre el B-600

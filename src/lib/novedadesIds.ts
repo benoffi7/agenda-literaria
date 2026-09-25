@@ -11,6 +11,7 @@
 
 /** Lo más nuevo arriba, igual que `NOVEDADES`. */
 export const NOVEDADES_IDS: readonly string[] = [
+  'filtros-sin-resultados-cual',
   'efemerides',
   'publicador-carga-en-su-ciudad',
   'cancelar-encuentro-avisa',

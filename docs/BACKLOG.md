@@ -123,82 +123,6 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
 
-### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
-
-> ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
->
-> El ítem daba por sentado que el evento ya emitía el desglose y que el corte era
-> solo de la Function. **No era así:** el `eje` salía de `ejeQueSobra`, que mira los
-> **seis** rieles de chips, y el listado tiene **diez** filtros. Un cero causado por
-> el texto del buscador, por el «Cuándo», por «abierta» o por «cursada» llegaba
-> **sin ningún parámetro** — indistinguible de «ningún filtro solo explica el cero».
-> O sea que hacer los pasos 1 y 2 y no éste habría dejado la pregunta sin contestar
-> igual, con las dimensiones registradas y todo.
->
-> Ahora `eje` cubre los diez, **sin reimplementar `ejeQueSobra`**: su respuesta
-> manda —es la que pinta «Probá sin el filtro de…»— y los otros cuatro son la cola,
-> así que la serie histórica de los seis no cambia ni un evento.
->
-> **La mitad de privacidad es lo que hacía interesante al ítem, y quedó escrita:**
-> `busqueda` es un eje —enum cerrado— y el texto tipeado no viaja. La garantía es
-> **estructural**: `crudosDeFiltroSinResultados` saca el `slug` del mapa de los
-> rieles y de ningún otro lado, y el buscador no escribe ahí. Y **el saneador solo
-> no alcanzaba**: `FORMATO_SLUG` acepta `poesia` igual que `club-lectura`, y los
-> cinco centinelas del barrido tienen todos mayúsculas, espacios, acentos o
-> arrobas, así que pasar el texto tipeado **habría pasado, en verde**.
->
-> **El frente corrió el `auditor-privacidad` sobre su propio diff y se cobró dos
-> hallazgos.** El que importa: al mudar la garantía del saneador al llamador, la
-> dejó **sin red en el lugar nuevo** —`medirSitio` recibe `Record<string, unknown>`,
-> así que un payload escrito a mano compilaba, pasaba `tsc` y pasaba la suite
-> entera—. Es la clase de B-81, y ahora hay un chequeo que lee el fuente del único
-> emisor. El otro: «sale del mapa» **no es** «sale de la taxonomía» —`desdeQuery` no
-> contrasta contra las opciones conocidas—, así que la frase se corrigió y la
-> garantía quedó apoyada en el motivo correcto.
->
-> Costo medido: **+88 B gzip** en todas las páginas y **+156 B** en el listado.
->
-> **Siguen abiertos los otros dos tercios**, en el orden del ítem: registrar `eje` y
-> `slug` como dimensiones en la consola de GA4 —**es lo que corre el reloj**, el
-> registro no es retroactivo—, sumarlas a `DIMENSIONES_PERMITIDAS` de
-> `functions/analitica.js` (decisión de privacidad, no cambio mecánico) y el
-> desglose en la fila del panel.
-
-**Lo preguntó el dueño el 2026-09-07 mirando la pantalla:** «no hay que expandir
-eso para saber qué filtros?». Tenía razón, y la fila **prometía** lo que no podía
-dar: decía «qué combinación de filtros deja la lista vacía, para saber qué etiqueta
-conviene completar o retirar» y lo que muestra es **un número**.
-
-**Dónde se corta el dato.** El evento sí lleva el eje y el slug elegidos
-(`filtro_sin_resultados`, `analyticsSitio.ts`), pero la Function le pide a GA4
-`eventName` + `eventCount` y nada más (`functions/analitica.js`), así que al panel
-llega la cuenta y no el desglose. La promesa ya se corrigió: la fila dice ahora lo
-que muestra.
-
-**Traer el desglose son tres cosas, y la primera es la que corre el reloj:**
-
-1. **Registrar `eje` y `slug` como dimensiones personalizadas de evento en la
-   consola de GA4.** Un parámetro de evento **no se puede consultar** por la Data
-   API hasta que está registrado como dimensión personalizada, y **el registro no
-   es retroactivo**: los datos empiezan a acumularse desde que se registra. O sea
-   que **registrarlo hoy es lo único que hace posible verlo el mes que viene** —
-   y por eso conviene hacerlo aunque el resto quede para después.
-2. **Sumar la dimensión a `DIMENSIONES_PERMITIDAS`** (`functions/analitica.js`), y
-   eso es **una decisión de privacidad, no un cambio mecánico**: esa lista blanca
-   existe con su docblock escrito para que no entren `pageLocation` —que llevaría
-   `?q=<lo que alguien tipeó>`— ni `city`, `region`, `userAgeBracket` o
-   `userGender`. `customEvent:eje` y `customEvent:slug` son agregados sin persona
-   y el slug ya es público, así que el caso es defendible; lo que no se puede es
-   agregarlo sin pasar por ahí. `tests/analitica-del-sitio.test.ts` compara el
-   conjunto exacto de dimensiones contra esa lista, así que el test lo va a pedir.
-3. **El desglose en el panel**: la fila pasa a poder expandirse y mostrar los
-   ejes con más ceros. Es lo más chico de los tres.
-
-**Y lo que se gana es concreto**, que es el motivo por el que el ítem no es P3: la
-pregunta que contesta es «qué etiqueta conviene cargar o retirar». Un `barrio` que
-se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta que
-sobra, y hoy eso no se puede saber.
-
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
 > ⚠️ **Este bloque estaba dentro de un bloque de código, y con él B-780 a B-786.**
@@ -300,6 +224,28 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
 ## P3 — cuando sobre tiempo
+
+### B-2161 · Lo que el `auditor-privacidad` dejó abierto de B-798 · P3
+
+Lo encontró el `auditor-privacidad` sobre el cambio de B-798 (2026-09-25). Son dos
+cosas chicas, y ninguna filtra hoy.
+
+1. **`functions/analitica.js` y `functions/analitica-trigger.js` no despiertan a
+   ningún auditor.** Ahí vive `DIMENSIONES_PERMITIDAS`, que el propio §9.3 de
+   `16-analitica-del-sitio.md` llama «una decisión de privacidad, no un cambio
+   mecánico», y el trigger vuelca a un documento las consultas de Search Console,
+   que son texto tipeado. Esta auditoría la pidió alguien a mano: un cambio que
+   sumara `pageLocation` no dispararía nada por nombre de archivo. El arreglo es
+   sumar los dos archivos a la tabla de puertas y a «Los archivos que te
+   despiertan» de `.claude/agents/auditor-privacidad.md`
+   (`tests/agentes-y-skills.test.ts` ata las dos listas). **No se tocó sin el dueño**
+   porque es la configuración de un agente, y lo propuso otro agente.
+2. **El `slug` del desglose se valida por forma, no contra la taxonomía** (D-1271). Un
+   `?barrio=lo-que-sea` escrito a mano en la URL llega al panel. Cerrarlo es que el
+   trigger lea `/opciones/{campo}` con el Admin SDK y descarte los slugs que no
+   existen para su eje: una lectura por corrida diaria. Vale la pena si el desglose
+   empieza a mostrar basura; hoy es un valor que la misma persona puso en su propia
+   URL, y solo lo ve el admin.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

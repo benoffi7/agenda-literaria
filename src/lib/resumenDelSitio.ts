@@ -55,6 +55,20 @@ export interface FilaDeRanking {
   valor: number;
 }
 
+/**
+ * Una fila del desglose de `filtro_sin_resultados` — B-798.
+ *
+ * `eje: null` es el `(not set)` de GA4: un cero que ningún filtro solo explica,
+ * o un evento de antes del 2026-09-25, cuando se registró la dimensión.
+ * `slug` va vacío en los ejes que no son de taxonomía (`busqueda`, `cuando`,
+ * `abierta`, `cursada`).
+ */
+export interface FilaSinResultados {
+  eje: string | null;
+  slug: string[];
+  valor: number;
+}
+
 export interface FilaDeBusqueda {
   clave: string;
   clics: number;
@@ -105,6 +119,8 @@ export interface ResumenGa4 {
   dispositivos: FilaDeRanking[];
   /** `nombre → cuenta`, con las tres claves siempre (la Function las rellena). */
   eventos: Record<string, number>;
+  /** Qué filtro dejó el listado vacío, de más a menos veces — B-798. */
+  sinResultados: FilaSinResultados[];
 }
 
 export interface ResumenSearchConsole {
@@ -186,6 +202,21 @@ const rankingDe = (v: unknown): FilaDeRanking[] =>
         .map((f) => ({ clave: texto(f.clave) ?? '(sin dato)', valor: num(f.valor) }))
     : [];
 
+/*
+ * Un documento de antes de B-798 no trae `sinResultados`, y da `[]`: la fila
+ * del panel queda como estaba, sin desplegable.
+ */
+const sinResultadosDe = (v: unknown): FilaSinResultados[] =>
+  Array.isArray(v)
+    ? v.filter(esObjeto).map((f) => ({
+        eje: texto(f.eje),
+        slug: Array.isArray(f.slug)
+          ? f.slug.filter((s): s is string => typeof s === 'string')
+          : [],
+        valor: num(f.valor),
+      }))
+    : [];
+
 const busquedasDe = (v: unknown): FilaDeBusqueda[] =>
   Array.isArray(v)
     ? v.filter(esObjeto).map((f) => ({
@@ -244,6 +275,7 @@ const SIN_DOCUMENTO: ResumenDelSitio = {
     canales: [],
     dispositivos: [],
     eventos: {},
+    sinResultados: [],
   },
   searchConsole: {
     situacion: 'sin-documento',
@@ -297,6 +329,7 @@ export const leerResumenDelSitio = (doc: unknown): ResumenDelSitio => {
       canales: rankingDe(ga4Crudo?.canales),
       dispositivos: rankingDe(ga4Crudo?.dispositivos),
       eventos: eventosDe(ga4Crudo?.eventos),
+      sinResultados: sinResultadosDe(ga4Crudo?.sinResultados),
     },
     searchConsole: {
       situacion: situacionDe(scCrudo, scCrudo?.hayDatos === true, motivoSc),

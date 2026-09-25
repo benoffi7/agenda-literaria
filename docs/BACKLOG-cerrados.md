@@ -17769,6 +17769,91 @@ es el primer caso del archivo que carga ese módulo; con carga, transformar el c
 más. Ensucia el gate de forma intermitente. Arreglo: precargar el módulo en un
 `beforeAll`, o un `timeout` explícito en ese `waitFor`.
 
+### B-798 · «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2 · ✅ hecho (2026-09-25)
+
+> ✅ **Hecho (2026-09-25), los tres pasos.** (1) El dueño registró `eje` y `slug`
+> como dimensiones personalizadas de evento en GA4. (2) `customEvent:eje` y
+> `customEvent:slug` entraron a `DIMENSIONES_PERMITIDAS`, con la decisión escrita en
+> **D-1271**, y la Function pide el informe `sinResultados` (`eventName` × `eje` ×
+> `slug`); `desgloseSinResultados` descarta lo que no tiene forma de slug. (3) La fila
+> del panel se despliega con «Ver qué filtro fue». **Lo que queda es esperar**: los
+> datos se acumulan desde el registro, así que hasta fines de octubre la fila más alta
+> es «Sin filtro identificado», y la pantalla lo dice.
+
+> ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
+>
+> El ítem daba por sentado que el evento ya emitía el desglose y que el corte era
+> solo de la Function. **No era así:** el `eje` salía de `ejeQueSobra`, que mira los
+> **seis** rieles de chips, y el listado tiene **diez** filtros. Un cero causado por
+> el texto del buscador, por el «Cuándo», por «abierta» o por «cursada» llegaba
+> **sin ningún parámetro** — indistinguible de «ningún filtro solo explica el cero».
+> O sea que hacer los pasos 1 y 2 y no éste habría dejado la pregunta sin contestar
+> igual, con las dimensiones registradas y todo.
+>
+> Ahora `eje` cubre los diez, **sin reimplementar `ejeQueSobra`**: su respuesta
+> manda —es la que pinta «Probá sin el filtro de…»— y los otros cuatro son la cola,
+> así que la serie histórica de los seis no cambia ni un evento.
+>
+> **La mitad de privacidad es lo que hacía interesante al ítem, y quedó escrita:**
+> `busqueda` es un eje —enum cerrado— y el texto tipeado no viaja. La garantía es
+> **estructural**: `crudosDeFiltroSinResultados` saca el `slug` del mapa de los
+> rieles y de ningún otro lado, y el buscador no escribe ahí. Y **el saneador solo
+> no alcanzaba**: `FORMATO_SLUG` acepta `poesia` igual que `club-lectura`, y los
+> cinco centinelas del barrido tienen todos mayúsculas, espacios, acentos o
+> arrobas, así que pasar el texto tipeado **habría pasado, en verde**.
+>
+> **El frente corrió el `auditor-privacidad` sobre su propio diff y se cobró dos
+> hallazgos.** El que importa: al mudar la garantía del saneador al llamador, la
+> dejó **sin red en el lugar nuevo** —`medirSitio` recibe `Record<string, unknown>`,
+> así que un payload escrito a mano compilaba, pasaba `tsc` y pasaba la suite
+> entera—. Es la clase de B-81, y ahora hay un chequeo que lee el fuente del único
+> emisor. El otro: «sale del mapa» **no es** «sale de la taxonomía» —`desdeQuery` no
+> contrasta contra las opciones conocidas—, así que la frase se corrigió y la
+> garantía quedó apoyada en el motivo correcto.
+>
+> Costo medido: **+88 B gzip** en todas las páginas y **+156 B** en el listado.
+>
+> **Siguen abiertos los otros dos tercios**, en el orden del ítem: registrar `eje` y
+> `slug` como dimensiones en la consola de GA4 —**es lo que corre el reloj**, el
+> registro no es retroactivo—, sumarlas a `DIMENSIONES_PERMITIDAS` de
+> `functions/analitica.js` (decisión de privacidad, no cambio mecánico) y el
+> desglose en la fila del panel.
+
+**Lo preguntó el dueño el 2026-09-07 mirando la pantalla:** «no hay que expandir
+eso para saber qué filtros?». Tenía razón, y la fila **prometía** lo que no podía
+dar: decía «qué combinación de filtros deja la lista vacía, para saber qué etiqueta
+conviene completar o retirar» y lo que muestra es **un número**.
+
+**Dónde se corta el dato.** El evento sí lleva el eje y el slug elegidos
+(`filtro_sin_resultados`, `analyticsSitio.ts`), pero la Function le pide a GA4
+`eventName` + `eventCount` y nada más (`functions/analitica.js`), así que al panel
+llega la cuenta y no el desglose. La promesa ya se corrigió: la fila dice ahora lo
+que muestra.
+
+**Traer el desglose son tres cosas, y la primera es la que corre el reloj:**
+
+1. **Registrar `eje` y `slug` como dimensiones personalizadas de evento en la
+   consola de GA4.** Un parámetro de evento **no se puede consultar** por la Data
+   API hasta que está registrado como dimensión personalizada, y **el registro no
+   es retroactivo**: los datos empiezan a acumularse desde que se registra. O sea
+   que **registrarlo hoy es lo único que hace posible verlo el mes que viene** —
+   y por eso conviene hacerlo aunque el resto quede para después.
+2. **Sumar la dimensión a `DIMENSIONES_PERMITIDAS`** (`functions/analitica.js`), y
+   eso es **una decisión de privacidad, no un cambio mecánico**: esa lista blanca
+   existe con su docblock escrito para que no entren `pageLocation` —que llevaría
+   `?q=<lo que alguien tipeó>`— ni `city`, `region`, `userAgeBracket` o
+   `userGender`. `customEvent:eje` y `customEvent:slug` son agregados sin persona
+   y el slug ya es público, así que el caso es defendible; lo que no se puede es
+   agregarlo sin pasar por ahí. `tests/analitica-del-sitio.test.ts` compara el
+   conjunto exacto de dimensiones contra esa lista, así que el test lo va a pedir.
+3. **El desglose en el panel**: la fila pasa a poder expandirse y mostrar los
+   ejes con más ceros. Es lo más chico de los tres.
+
+**Y lo que se gana es concreto**, que es el motivo por el que el ítem no es P3: la
+pregunta que contesta es «qué etiqueta conviene cargar o retirar». Un `barrio` que
+se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta que
+sobra, y hoy eso no se puede saber.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -22115,6 +22200,20 @@ Function pasaría; hoy no hay ninguna. Además la expresión reconoce solo
 `.find((m) => m.sede)` y `m?.online`, no `.find(({ sede }) => sede)`, `filas[0]?.sede`
 ni `.filter(...)[0]`. Arreglo: ampliar el barrido a `src/` y `functions/`, excluyendo
 `functions/derivados.js`, y sumar esas variantes.
+
+### B-2160 · El desglose de B-798 validaba solo la forma del `eje` y del `slug` · P2 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25), antes de commitear B-798.** Lo encontró el
+`auditor-privacidad`. `desgloseSinResultados` aceptaba cualquier `eje` con forma de
+slug, así que un evento mandado a mano a la propiedad (`eje=busqueda,
+slug=juan-perez`) pasaba y el panel lo mostraba como «Texto del buscador ·
+juan-perez», lo que parece un término tipeado. Además, el lector copiaba otra vez la
+regex de slug y topeaba en 10 slugs, cuando el emisor corta por largo (100 caracteres
+unidos): once tags cortos habrían descartado la fila entera sin ningún error. **Ahora**
+el lector exige el vocabulario de `eje` (`EJES_DEL_SITIO`, atado a `EJES_MEDIBLES` por
+test), que un eje sin slug no traiga slug, el mismo tope que el emisor, y usa
+`FORMA_DE_SLUG` de `functions/frescura.js`. El test de ida y vuelta arma el evento con
+el emisor real y lo pasa por el lector. D-1271.
 
 ## Pendiente de acción manual del dueño
 

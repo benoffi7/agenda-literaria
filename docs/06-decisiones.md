@@ -14022,3 +14022,37 @@ lleva su límite en el `it` con el porqué al lado; el primero es `sin-comentari
 «ningún identificador…», con 30 s. Costo: el próximo barrido legítimamente caro va a
 fallar una vez antes de que alguien le ponga su límite, que es el momento de mirar si es
 caro por lo que hace o por un bug. Queda escrito en `vitest.config.ts`.
+
+## D-1271 · El panel le pide a GA4 `eje` y `slug`, y el desglose es el único informe con tres dimensiones
+
+**B-798, 2026-09-25.** El dueño registró `eje` y `slug` como dimensiones personalizadas de
+evento en GA4 ese día, y `customEvent:eje` y `customEvent:slug` entraron a
+`DIMENSIONES_PERMITIDAS` de `functions/analitica.js`. Es una decisión de privacidad, y no
+un cambio mecánico, porque esa lista blanca existe para que no entren `pageLocation` (con el
+`?q=` de lo que alguien tipeó) ni la demografía. Se acepta porque `eje` es un vocabulario
+cerrado del sitio y `slug` son valores con forma de slug que el sitio saca de los chips. Que
+ninguno lleve el texto del buscador lo garantiza el emisor (`crudosDeFiltroSinResultados`, §7.6 de
+`16-analitica-del-sitio.md`). Del lado que lee, `desgloseSinResultados`
+descarta la fila cuyo eje o slugs no tienen forma de slug, porque cualquiera puede mandarle
+eventos a la propiedad con el id de medición.
+
+El informe nuevo, `sinResultados`, pide `eventName` × `eje` × `slug`, y es la excepción
+nombrada al criterio de «un informe, una dimensión». El producto `eje` × `slug` **es** la
+respuesta y no se re-agrega de este lado: `a-la-gorra` solo no dice qué riel lo filtró. Y
+`eventName` va porque la Data API solo filtra por una dimensión pedida. Se lee solo la
+ventana actual: comparar por eje con volúmenes de a decenas sería ruido.
+
+**Forma de slug no es slug de la taxonomía**, y lo corrigió el `auditor-privacidad` sobre la
+primera redacción de esta decisión: el mapa de los chips se llena desde la URL
+(`desdeQuery`) sin contrastarlo contra las opciones, así que un `?barrio=lo-que-sea`
+escrito a mano llega al panel. Se acepta porque es un valor que la misma persona puso en
+su propia URL y el panel es solo del admin, que ya lo ve en la consola de GA4. Contrastar
+contra `/opciones` en la Function queda como B-2161. El lector también exige el
+vocabulario de `eje` (`EJES_DEL_SITIO`, copiado de `EJES_MEDIBLES` con un test que ata
+las dos) y que un eje sin slug no traiga slug (B-2160).
+
+Costo aceptado: hasta que la ventana de 28 días quede entera después del 2026-09-25, la
+fila más alta del desglose es «Sin filtro identificado», que junta los eventos anteriores al
+registro (GA4 no es retroactivo) con los ceros que ningún filtro solo explica. La pantalla
+lo dice debajo de la lista.
+

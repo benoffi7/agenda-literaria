@@ -1198,12 +1198,13 @@ Con números, la pestaña muestra tres bloques:
   rankean. Cada tabla scrollea sola, porque una consulta larga o una URL entera
   empujarían el ancho del panel entero en el teléfono.
 
-**La fila de «filtros que no encuentran nada» dice cuántas veces, no cuál filtro**,
-y lo aclara. El evento sí lleva el eje y el slug elegidos, pero la Function le pide
-a GA4 el nombre y la cuenta y nada más, así que lo que llega al panel es el número.
-Traer el desglose es **B-798**, y no es solo código: pide registrar dos dimensiones
-personalizadas en la consola de GA4 —que **no es retroactivo**— y sumarlas a la
-lista blanca que existe justamente para que no entre la ubicación ni la demografía.
+**La fila de «filtros que no encuentran nada» dice cuántas veces y, desplegada, cuál
+filtro fue** (B-798, D-1271). «Ver qué filtro fue» lista hasta diez combinaciones de
+filtro y opción, de más a menos veces, con el nombre del filtro en castellano («Arancel
+· a-la-gorra», «Texto del buscador») y nunca lo que alguien tipeó. «Sin filtro
+identificado» junta los ceros que ningún filtro solo explica con los eventos de antes
+del 2026-09-25, cuando se registraron las dimensiones en GA4, y la pantalla lo aclara.
+Un documento del resumen sin desglose deja la fila como antes, sin desplegable.
 
 **Arriba de los números ya no hay ningún párrafo explicativo**, y también es de
 B-798: la pestaña llegó a tener cuatro —de qué es, desde cuándo hay datos, de dónde

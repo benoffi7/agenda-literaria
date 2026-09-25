@@ -2,6 +2,15 @@
 
 ## Sin publicar
 
+- **«Filtros que no encuentran nada» dice cuál filtro fue** (B-798, D-1271). La fila de
+  la pestaña «El sitio público» se despliega y muestra, de más a menos veces, qué filtro
+  dejó el listado vacío y con qué opción (por ejemplo «Arancel · a-la-gorra»). El dueño
+  registró `eje` y `slug` como dimensiones de GA4 el 2026-09-25; la Function
+  `traerAnaliticaDelSitio` las pide en un informe nuevo, `sinResultados`, y las suma a
+  `DIMENSIONES_PERMITIDAS`. Una fila que el sitio no pudo haber mandado —un filtro
+  fuera del vocabulario, una opción sin forma de slug o una opción en un filtro que no
+  la lleva— se descarta antes de llegar al panel (B-2160, del `auditor-privacidad`). Hasta que pasen 28 días desde el registro, la fila
+  más alta va a ser «Sin filtro identificado»: GA4 no guarda estos datos para atrás.
 - **El barrido de derivaciones propias mira también el panel, el sitio y las Functions**
   (B-2150). Recorre `src/` (con los `.astro`) y `functions/` además de `scripts/` y
   `tests/`, y reconoce más formas de escribirse la «sede principal» a mano. De paso, el

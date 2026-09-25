@@ -32,6 +32,8 @@
  * mostrar un cero (§8.1bis, D-272).
  */
 
+import { FORMA_DE_SLUG } from './frescura.js';
+
 /**
  * La zona del proyecto (§14 del `CLAUDE.md`).
  *
@@ -182,8 +184,28 @@ export const RUTA_DEL_PANEL = '/admin';
  * exacto que sale de los seis informes contra esta lista. Agregar una dimensión
  * es agregarla acá **y** al test — que es donde alguien la va a mirar dos veces.
  *
- * Las cinco son **agregados sin persona**: una ruta pública, un nombre de canal,
- * una categoría de aparato, el nombre de un evento propio y una fecha.
+ * Las siete son **agregados sin persona**: una ruta pública, un nombre de canal,
+ * una categoría de aparato, el nombre de un evento propio, una fecha, y los dos
+ * parámetros de `filtro_sin_resultados`.
+ *
+ * **`customEvent:eje` y `customEvent:slug` — B-798, registradas en la consola de
+ * GA4 el 2026-09-25.** Entraron a esta lista como una decisión y no como un
+ * detalle, y el argumento es éste: `eje` es un vocabulario cerrado del sitio
+ * (`EJES_MEDIBLES` de `src/lib/analyticsSitio.ts`, copiado abajo como
+ * `EJES_DEL_SITIO`) y `slug` son valores con forma de slug que el sitio saca del
+ * mapa de los rieles de chips. **Ninguno puede llevar el texto que alguien tipeó
+ * en el buscador**, y eso es una garantía del emisor —`crudosDeFiltroSinResultados`
+ * saca el `slug` del mapa de los rieles y de ningún otro lado—, no de esta lista.
+ *
+ * ⚠️ **«Forma de slug» no es «slug de la taxonomía».** El mapa de los rieles se
+ * llena desde la URL (`desdeQuery` de `listadoPublico.ts`) sin contrastarlo contra
+ * las opciones, así que un `?barrio=lo-que-sea` escrito a mano llega a GA4 y de ahí
+ * al panel. Es un valor que la misma persona puso en su propia URL, y el panel es
+ * solo del admin, que ya lo ve en la consola de GA4. Lo encontró el
+ * `auditor-privacidad` (D-1271).
+ *
+ * Lo que esta lista agrega es que se piden **solo** esas dos: un `customEvent:`
+ * cualquiera sigue cortando.
  */
 export const DIMENSIONES_PERMITIDAS = [
   'pagePath',
@@ -191,6 +213,8 @@ export const DIMENSIONES_PERMITIDAS = [
   'deviceCategory',
   'eventName',
   'date',
+  'customEvent:eje',
+  'customEvent:slug',
 ];
 
 /**
@@ -214,10 +238,10 @@ export const dimension = (nombre) => {
 };
 
 /**
- * Los cinco `runReport` de una ventana, en la forma que documenta la Data API
+ * Los seis `runReport` de una ventana, en la forma que documenta la Data API
  * v1beta (`properties/{id}:runReport`).
  *
- * **Cinco pedidos chicos y no uno grande con todas las dimensiones cruzadas**:
+ * **Seis pedidos chicos y no uno grande con todas las dimensiones cruzadas**:
  * un informe con `pagePath` × `deviceCategory` × canal devuelve el producto de
  * las tres y hay que volver a agregarlo de este lado, que es exactamente el
  * lugar donde se equivocan los números. Cada pedido contesta una fila del
@@ -329,6 +353,38 @@ export const pedidosGa4 = (ventana) => {
         },
       },
     },
+    /*
+     * **Qué filtro dejó el listado vacío** — B-798. La fila «Filtros que no
+     * encuentran nada» decía cuántas veces y no cuál.
+     *
+     * **Es el único informe con más de una dimensión, y es a propósito.** El
+     * criterio de «una pregunta, una dimensión» existe para no tener que
+     * re-agregar un producto de este lado; acá el producto **es** la respuesta:
+     * `a-la-gorra` solo no dice nada sin saber que fue el riel de arancel. Y
+     * `eventName` va como dimensión aunque tenga un solo valor porque la Data API
+     * exige que una dimensión esté pedida para poder filtrar por ella.
+     *
+     * Solo se lee el de la ventana actual. El de la anterior se pide igual,
+     * porque sale de la misma tanda de `pedidosGa4`, y no se usa: una
+     * comparación por eje con volúmenes de a decenas sería ruido.
+     */
+    sinResultados: {
+      dateRanges,
+      dimensions: [
+        dimension('eventName'),
+        dimension('customEvent:eje'),
+        dimension('customEvent:slug'),
+      ],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'filtro_sin_resultados' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: TOPE_DE_RANKING,
+    },
   };
 };
 
@@ -407,6 +463,75 @@ export const variacion = (actual, anterior) => {
   return Math.round(((actual - anterior) / anterior) * 100);
 };
 
+/** Lo que GA4 pone en una dimensión personalizada que el evento no trajo. */
+const SIN_VALOR = '(not set)';
+
+/**
+ * Los valores que `eje` puede traer: `EJES_MEDIBLES` de `src/lib/analyticsSitio.ts`
+ * más `otro`, su `FUERA_DE_VOCABULARIO_SITIO`.
+ *
+ * **Copiada y no importada**, porque `functions/` no importa de `src/`; la red es
+ * `tests/analitica-del-sitio.test.ts`, que compara las dos listas. Los cuatro de
+ * `EJES_SIN_SLUG` son los que nunca llevan `slug`.
+ */
+export const EJES_DEL_SITIO = [
+  'tipo',
+  'arancel',
+  'modalidad',
+  'provincia',
+  'barrio',
+  'ciudad',
+  'tag',
+  'busqueda',
+  'cuando',
+  'abierta',
+  'cursada',
+  'otro',
+];
+export const EJES_SIN_SLUG = ['busqueda', 'cuando', 'abierta', 'cursada', 'otro'];
+
+/**
+ * El tope de la lista de slugs unida, el mismo `MAX_TEXTO_SITIO` con el que el
+ * emisor la corta. Un tope distinto acá descartaría filas que el sitio mandó bien.
+ */
+export const TOPE_DE_SLUGS_UNIDOS = 100;
+
+/**
+ * El desglose de `filtro_sin_resultados`: `[{ eje, slug, valor }]` — B-798.
+ *
+ * `eje: null` es la fila `(not set)` de GA4, y junta dos cosas que la Data API no
+ * separa: los ceros que **ningún filtro solo** explica (el sitio manda el evento
+ * sin `eje`) y **todos los eventos de antes del 2026-09-25**, el día que se
+ * registró la dimensión, porque el registro no es retroactivo. La pantalla lo
+ * tiene que decir así.
+ *
+ * **Lo que el sitio no puede haber mandado se descarta, fila entera**, porque
+ * llegó a GA4 por otro lado —cualquiera puede mandarle un evento a una propiedad
+ * conociendo su id de medición— y no tiene por qué llegar al panel. Son cuatro
+ * reglas, las del emisor vistas del lado que lee:
+ *
+ * 1. el `eje` es uno de `EJES_DEL_SITIO`;
+ * 2. cada slug tiene la forma de `slugify()` (`FORMA_DE_SLUG`, la de `frescura.js`);
+ * 3. la lista unida no pasa el tope del emisor;
+ * 4. **un eje sin slug no trae slug**, ni la fila sin eje: si no, un
+ *    `busqueda · juan-perez` se leería en el panel como algo que alguien tipeó.
+ */
+export const desgloseSinResultados = (respuesta) =>
+  (respuesta?.rows ?? []).flatMap((fila) => {
+    const [, ejeCrudo, slugCrudo] = (fila?.dimensionValues ?? []).map((d) => d?.value ?? '');
+    const eje = !ejeCrudo || ejeCrudo === SIN_VALOR ? null : ejeCrudo;
+    const unidos = !slugCrudo || slugCrudo === SIN_VALOR ? '' : slugCrudo;
+    const slug = unidos === '' ? [] : unidos.split(',');
+    const ejeValido = eje === null || EJES_DEL_SITIO.includes(eje);
+    const llevaSlug = eje !== null && !EJES_SIN_SLUG.includes(eje);
+    const slugValido =
+      unidos.length <= TOPE_DE_SLUGS_UNIDOS &&
+      slug.every((s) => FORMA_DE_SLUG.test(s)) &&
+      (llevaSlug || slug.length === 0);
+    if (!ejeValido || !slugValido) return [];
+    return [{ eje, slug, valor: numero(fila?.metricValues?.[0]?.value) }];
+  });
+
 /** `20260903` (la dimensión `date` de GA4) → `2026-09-03`. */
 export const fechaDeGa4 = (valor) =>
   /^\d{8}$/.test(valor ?? '') ? `${valor.slice(0, 4)}-${valor.slice(4, 6)}-${valor.slice(6)}` : null;
@@ -416,7 +541,7 @@ export const fechaDeGa4 = (valor) =>
  * de la mitad **b**, con la variación contra la ventana anterior.
  *
  * `actual` y `anterior` son los objetos que devuelve `pedidosGa4` ejecutados,
- * o sea `{ totales, paginas, canales, dispositivos, eventos }` con la respuesta
+ * o sea `{ totales, paginas, canales, dispositivos, eventos, sinResultados }` con la respuesta
  * cruda de cada uno. `primerDia` es la respuesta de `pedidoPrimerDia`.
  */
 export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
@@ -473,6 +598,7 @@ export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
         ranking(actual?.eventos).find((f) => f.clave === nombre)?.valor ?? 0,
       ]),
     ),
+    sinResultados: desgloseSinResultados(actual?.sinResultados),
   };
 };
 
@@ -662,6 +788,8 @@ export const CLAVES_DEL_RESUMEN = {
     'canales',
     'dispositivos',
     'eventos',
+    // B-798 — el desglose de `filtro_sin_resultados`, con `eje` y `slug`.
+    'sinResultados',
   ],
   searchConsoleOk: [
     'estado',

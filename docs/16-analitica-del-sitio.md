@@ -1225,11 +1225,11 @@ número— pero es un desvío del pedido y conviene tenerlo escrito.
    agregarlo de este lado, que es exactamente donde los números se rompen. Y sin
    usar los dos `dateRanges` que la API acepta, porque entonces GA4 agrega por su
    cuenta una dimensión `dateRange` y las filas se duplican con un valor extra.
-   **Las tres tandas van en serie**, y eso sí es obligatorio: son once informes
+   **Las tres tandas van en serie**, y eso sí es obligatorio: son trece informes
    y la cuota de la Data API es de **10 pedidos concurrentes por propiedad**, así
-   que un `Promise.all` sobre los once devuelve `RESOURCE_EXHAUSTED` — y no
+   que un `Promise.all` sobre los trece devuelve `RESOURCE_EXHAUSTED` — y no
    siempre, sino según cuáles terminen primero, que es la peor forma de fallar.
-   En serie el pico es de cinco, y el costo son tres round trips en una Function
+   En serie el pico es de seis, y el costo son tres round trips en una Function
    que corre una vez por día.
 2. **La variación es `null`, no `0 %`, cuando la ventana anterior fue cero.**
    Dividir da infinito, y «+100 %» sobre una base de cero es el número que un
@@ -1434,9 +1434,12 @@ dimensión personalizada*, alcance **Evento**, dos veces:
 | `eje` | `eje` | `tipo` · `arancel` · `modalidad` · `provincia` · `barrio` · `ciudad` · `tag` · `busqueda` · `cuando` · `abierta` · `cursada` · `otro` |
 | `slug` | `slug` | slugs de taxonomía, unidos por coma — **solo** de los siete primeros ejes ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) |
 
-Los dos son vocabulario cerrado o slugs de una taxonomía que ya es pública:
-**ninguno puede llevar el texto que alguien tipeó**, y eso es una garantía del
-código, no de la consola. Van con `panel` y `via`, que son los parámetros de los
+`eje` es vocabulario cerrado y `slug` son valores con forma de slug que el sitio saca
+de los chips: **ninguno puede llevar el texto que alguien tipeó**, y eso es una
+garantía del código, no de la consola. Ojo con una media verdad: «forma de slug» no es
+«slug de la taxonomía». El mapa de los chips se llena desde la URL sin contrastarlo
+contra las opciones, así que un `?barrio=lo-que-sea` escrito a mano llega igual
+(D-1271, B-2161). Van con `panel` y `via`, que son los parámetros de los
 otros dos eventos propios y siguen la misma regla.
 
 El límite del plan gratuito es 50 dimensiones de evento por propiedad, y esta es
@@ -1447,13 +1450,11 @@ como dimensión y se puede desglosar `filtro_sin_resultados` por ella. Sin el
 registro, la Data API devuelve la cuenta y nada más — que es exactamente el
 síntoma con el que nació B-798.
 
-> ⛔ **Falta además el paso 2 de B-798, que sí es código y no es de acá:** sumar
-> `customEvent:eje` y `customEvent:slug` a `DIMENSIONES_PERMITIDAS`
-> (`functions/analitica.js`) para que la Function los pida. Es **una decisión de
-> privacidad, no un cambio mecánico** — esa lista blanca existe para que no
-> entren `pageLocation` (que llevaría `?q=<lo que alguien tipeó>`), `city`,
-> `region`, `userAgeBracket` ni `userGender`. El caso de estos dos es defendible
-> —son agregados sin persona, y el slug ya es público— pero se decide ahí, no acá.
+> ✅ **Hecho el 2026-09-25**, con los nombres visibles «Eje del filtro sin
+> resultados» y «Opción del filtro sin resultados» (el nombre visible no importa: la
+> Data API consulta por el parámetro). El mismo día entraron `customEvent:eje` y
+> `customEvent:slug` a `DIMENSIONES_PERMITIDAS`, que era una decisión de privacidad y
+> quedó escrita en **D-1271**. Los datos se acumulan desde esa fecha, no antes.
 
 **Cómo verificar que todo quedó bien, de punta a punta**
 
@@ -1541,7 +1542,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
-| **B-798** | `filtro_sin_resultados` decía **cuántas** veces, no **cuál** filtro dejó la lista vacía ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) | 🟡 **la emisión está** (2026-09-09): `eje` cubre los **once** filtros del listado y no siete (eran diez y seis hasta que B-950 sumó el eje `provincia`, que **parte la serie histórica** de esta dimensión — el corte está escrito en D-710 con su fecha), así que un cero por el buscador ya no se confunde con «ningún filtro solo lo explica». **`busqueda` es un eje, nunca el texto tipeado** — el payload lo arma `crudosDeFiltroSinResultados`, que solo saca `slug` del mapa de taxonomía. Faltan los otros dos tercios: el **paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)** (registrar las dimensiones en la consola — es lo que corre el reloj, GA4 no es retroactivo) y `customEvent:eje`/`customEvent:slug` en `DIMENSIONES_PERMITIDAS` de `functions/analitica.js`, que es una decisión de privacidad y no un cambio mecánico |
+| **B-798** | `filtro_sin_resultados` decía **cuántas** veces, no **cuál** filtro dejó la lista vacía ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) | ✅ **hecho (2026-09-25)** — la emisión desde el 2026-09-09 (`eje` cubre los once filtros; **`busqueda` es un eje, nunca el texto tipeado**), las dos dimensiones registradas en la consola y pedidas por la Function en el informe `sinResultados` (D-1271), y el desglose en la fila del panel. Los datos se acumulan desde el registro: GA4 no es retroactivo |
 | **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | ✅ **enganchado el 2026-09-07**. El handler va en `Buscador.tsx` y no adentro del componente, y el motivo es que **el mismo componente lo pintan el build y la island**: el del build no se hidrata, así que un `medirSitio` adentro entraría en los dos usos y mediría en uno solo. Con la prop, el único que la pasa es el que puede medir, y el HTML del build sigue sin una línea de JavaScript por esta sección. Consecuencia escrita: **se mide el clic de la island**, no el del HTML previo a hidratar. **Lo que sigue sin decidir es el clic del pie** «+N más» de B-791: si cuenta como clic del panel o como evento propio (D-470) |
 | **B-963** | El banner de ciudad (B-961) no emitía ningún evento: `clic_banner_ciudad`, con la ciudad en slug y nada más ([§7.7](#77--el-cuarto-evento-propio-el-banner-de-una-ciudad-b-963)) | ✅ **hecho (2026-09-24)**. Vocabulario cerrado —las ciudades con banner, copiadas de `BANNERS_DE_CIUDAD` con un test que ata las dos listas—, nunca el destino ni el nombre del emprendimiento. El handler va en el componente porque, a diferencia del tríptico, lo monta solo la island. Falta el castellano de la fila en el tablero del panel |
 

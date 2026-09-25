@@ -306,7 +306,11 @@ respuestas.
 - **Riesgo / costo:** cero datos personales: son conteos. Guardar desde ya; la foto
   que no se sacó no se recupera.
 
-### 3.6 · Qué filtro deja la lista vacía, con nombre (B-798) — **Próximo** · S · 🟨 Decisión
+### 3.6 · Qué filtro deja la lista vacía, con nombre (B-798) — ✅ Hecho (2026-09-25) · S
+
+> **Hecho.** El dueño registró las dos dimensiones en GA4 el 2026-09-25 y contestó la
+> decisión que sigue con un sí (D-1271). La fila del panel se despliega con el filtro y
+> la opción.
 
 - **Qué gana quien carga:** saber que la gente busca «talleres gratis en Caballito»
   y no hay, que es exactamente lo que conviene salir a buscar.
@@ -609,7 +613,7 @@ las novedades del panel ya existen como mecanismo.
 | 3.2 | Vistas contra mensajes por actividad | Analítica | M | Próximo (3/10) | — |
 | 3.3 | Número real en `/anunciar` (B-771) | Analítica | S | Próximo (3/10) | — |
 | 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | Próximo | — |
-| 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | Próximo | 🟨 ¿Sumar las dos dimensiones? → sí |
+| 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | ✅ Hecho (2026-09-25) | — |
 | 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | Próximo | — |
 | 3.8 | Etiquetas de campaña | Analítica | S | Próximo | 🟨 ¿Dejarlas pasar con lista cerrada? → sí |
 | 1.4 | Efemérides (B-959) | Sitio | L | Próximo | 🟨 ¿Dónde se ven? → sección propia + home |

@@ -65,6 +65,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'filtros-sin-resultados-cual',
+    fecha: '2026-09-25',
+    version: '1.11.0',
+    titulo: 'Ya podés ver qué filtro deja la agenda vacía',
+    detalle:
+      'En «Filtros que no encuentran nada», «Ver qué filtro fue» lista qué filtros y qué ' +
+      'opciones buscó la gente sin encontrar nada: es lo que conviene salir a cargar. Empezó ' +
+      'a medirse el 25 de septiembre, así que al principio casi todo va a figurar como «Sin ' +
+      'filtro identificado».',
+    donde: 'Estadísticas → El sitio público → Para mejorar el sitio.',
+  },
+  {
     id: 'efemerides',
     fecha: '2026-09-25',
     version: '1.11.0',
