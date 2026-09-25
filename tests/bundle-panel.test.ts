@@ -367,6 +367,24 @@ describe('corte del bundle del panel — B-09, B-117, B-50', () => {
 });
 
 /**
+ * B-1961 — el texto de las novedades no va antes del login. El contador del
+ * botón «Ayuda» es estático y cuenta sobre `novedadesIds.ts`; `novedades.ts`
+ * (~21 KB gzip) entra solo con la capa diferida. Un import de conveniencia a
+ * `@/lib/novedades` en cualquier módulo del grafo inicial lo devuelve al chunk.
+ */
+describe('las novedades no están en el chunk inicial — B-1961', () => {
+  it('novedades.ts no se alcanza sin seguir un import()', () => {
+    expect(INICIAL.archivos.has('src/lib/novedades.ts')).toBe(false);
+  });
+
+  it('CONTROL POSITIVO: sí se alcanza por la capa, y el contador sí es inicial', () => {
+    expect(COMPLETO.archivos.has('src/lib/novedades.ts')).toBe(true);
+    expect(INICIAL.archivos.has('src/lib/novedadesIds.ts')).toBe(true);
+    expect(INICIAL.archivos.has('src/components/admin/ayuda/BotonAyuda.tsx')).toBe(true);
+  });
+});
+
+/**
  * Trampa 4 del §13 — `firebase-admin` en el bundle cliente.
  *
  * Es la trampa más caras del §13 (si se cuela, la key de la service account
