@@ -2,16 +2,17 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { SiNoCarga } from '@/components/admin/SiNoCarga';
 
 /**
- * La capa se carga al abrirla, no al montar el panel: `ayuda.ts` son ~25 kB de
- * texto de la guía que no hacen falta hasta que alguien la consulta. El botón
- * y el contador de novedades sí son estáticos, porque el número tiene que
- * aparecer solo (`novedades.ts` es la lista, mucho más chica).
+ * La capa se carga al abrirla, no al montar el panel: la guía (`ayuda.ts`) y el
+ * texto de las novedades (`novedades.ts`) no hacen falta hasta que alguien la
+ * consulta. El botón y el contador sí son estáticos, porque el número tiene que
+ * aparecer solo, y por eso cuentan sobre `novedadesIds.ts`, que son solo los ids
+ * (B-1961).
  */
 const CentroAyuda = lazy(() =>
   import('@/components/admin/ayuda/CentroAyuda').then((m) => ({ default: m.CentroAyuda })),
 );
 import type { ContextoAyuda } from '@/lib/ayuda';
-import { NOVEDADES, leerVisto, novedadesNoLeidas } from '@/lib/novedades';
+import { NOVEDADES_IDS, idsSinLeer, leerVisto } from '@/lib/novedadesIds';
 
 interface Props {
   /** Pantalla desde la que se abre: decide qué capítulo de la guía aparece abierto. */
@@ -37,7 +38,7 @@ export function BotonAyuda({ contexto }: Props) {
   // En un efecto porque lee del navegador: en el primer render no hay nada
   // guardado que consultar y el número no debe parpadear.
   useEffect(() => {
-    setSinLeer(novedadesNoLeidas(NOVEDADES, leerVisto()).map((n) => n.id));
+    setSinLeer(idsSinLeer(NOVEDADES_IDS, leerVisto()));
   }, []);
 
   const apagarNumero = useCallback(() => setSinLeer([]), []);

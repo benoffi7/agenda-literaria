@@ -432,22 +432,6 @@ diferido (PRD 6, M-4). Hay que corregir la cifra de D-63.
 con `--fileParallelism`). En serie no pasa, pero bloquea la suite en paralelo (PRD 6,
 M-1). Arreglo: escribir en `os.tmpdir()` o pasarle la lista de archivos al barrido.
 
-### B-1951 · «dos altas simultáneas no se pisan» se pasa de los 5 s con la máquina cargada · P3 — del pre-push del 2026-09-25
-
-`tests/alta-de-opcion.integracion.test.ts:104` dio `Test timed out in 5000ms` en el
-gate mientras otro agente corría la suite en paralelo; pasó sola en el reintento. Es
-una transacción que se reintenta contra el emulador, así que bajo carga tarda. Arreglo
-probable: darle un timeout propio a ese caso, como los otros de integración que
-compiten por la misma transacción.
-
-### B-1950 · La tabla de salidas de `docs/07-seguridad.md` declara tres columnas y la mayoría de las filas trae cuatro · P4 — del frente de B-1942 (2026-09-25)
-
-El encabezado es `| # | Salida | Quién decide qué sale |`. Las filas 1 a 5 y 7 a 10
-tienen tres celdas y las otras veintitrés tienen cuatro: la última es la de tests, sin
-título, y Markdown la pinta sin encabezado. Por eso el caso nuevo de
-`agentes-y-skills.test.ts` cubre solo la ficha y el skill. Arreglo: agregar «Test que
-la fija» al encabezado, completar las filas 1 a 10 y sumar `SEGURIDAD` al caso.
-
 ### B-1920 · La regla de dónde carga el publicador confía en el derivado `ciudades` · P3 — del `auditor-privacidad` sobre B-921 (2026-09-25)
 
 `dentroDeSuCiudad()` mira `ciudades` y la primera `sede`, no todas las

@@ -1,6 +1,6 @@
 ---
 name: auditor-privacidad
-description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/cartelera.ts, src/lib/imagenes.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/pages/cartelera.astro, src/lib/listadoPublico.ts, src/lib/mesPublico.ts, src/lib/tarjetaPublica.ts, src/lib/ahoraPublico.ts, src/lib/fechasPublicas.ts, src/lib/identidad.ts, src/pages/agenda/[mes].astro, src/lib/sitemap.ts, src/lib/hubsPublicos.ts, src/pages/ciudad/[ciudad].astro, src/lib/geografia.mjs, src/lib/pasadasPublicas.ts, src/lib/enlaces.ts, src/lib/boletinDelSitio.ts, src/lib/boletinSemanal.ts, src/components/sitio/SuscribirseBoletin.astro, src/lib/rutasPublicas.ts, src/layouts/Base.astro, src/pages/sitemap.xml.ts, src/pages/robots.txt.ts, src/pages/pasadas.astro, functions/calendario.js, functions/reportes.js, functions/frescura.js, functions/github-issues.js, src/lib/analytics-eventos.ts, src/lib/analyticsSitio.ts, src/lib/medicionSitio.ts, src/components/sitio/AvisoDeCookies.astro, src/components/publico/Buscador.tsx, src/lib/bannerDeCiudad.ts, src/components/publico/BannerDeCiudad.tsx, src/lib/textoRedes.ts, src/lib/handle-instagram.mjs, functions/handle-instagram.js, functions/geografia.js, src/lib/comercialDelSitio.ts, src/lib/ayudaDelSitio.ts, src/lib/contactoDelSitio.ts, src/pages/contacto.astro, src/lib/apoyoDelSitio.ts, src/lib/noEncontrado.ts, src/types/actividad.ts, src/lib/schema.ts, src/lib/historial.ts, src/lib/actividades.ts, src/lib/opciones.ts, src/lib/reportes.ts, src/lib/propuestas.ts, src/lib/bandejaDePropuestas.ts, src/lib/guardadosDelSitio.ts, src/lib/guardadoDelNavegador.ts, src/lib/libreriaPublica.ts, src/lib/librerias.ts, src/lib/libreria-schema.ts, src/lib/descripcionEnlazada.ts, functions/links-de-reunion.js, src/lib/imagenesDeFicha.ts, src/lib/imagen-schema.ts, src/lib/directorios.ts, src/pages/guia/index.astro, functions/alta-de-opcion.js, functions/alta-de-opcion-firestore.js, functions/alta-de-opcion-trigger.js, functions/huella.js, src/lib/enlaceSeguro.ts, src/lib/afiche.ts, src/pages/tipo/[tipo].astro, src/pages/barrio/[barrio].astro, src/pages/gratis.astro, src/pages/online.astro, src/pages/suscribirse.astro, src/components/publico/MisGuardados.tsx, src/components/publico/GuardarBusqueda.tsx, src/lib/enviar-ficha.ts, src/components/admin/BoletinPanel.tsx, src/pages/librerias.json.ts, src/pages/guia/librerias/index.astro, src/pages/guia/librerias/[slug].astro, src/components/publico/FichaDeLibreriaFila.tsx, src/components/publico/BuscadorDeLibrerias.tsx, src/lib/suscripcionPublica.ts, src/lib/suscripcionesLiterarias.ts, src/lib/suscripcion-literaria-schema.ts, src/lib/datoConFecha.ts, src/pages/suscripciones.json.ts, src/pages/guia/suscripciones/index.astro, src/pages/guia/suscripciones/[slug].astro, src/components/publico/FichaDeSuscripcionFila.tsx, src/components/publico/BuscadorDeSuscripciones.tsx, src/lib/bibliotecaPublica.ts, src/components/publico/SumarBiblioteca.tsx, src/components/publico/BuscadorDeBibliotecas.tsx, src/components/publico/FichaDeBibliotecaFila.tsx, src/pages/bibliotecas.json.ts, src/pages/guia/bibliotecas/index.astro, src/pages/guia/bibliotecas/[slug].astro, src/pages/guia/bibliotecas/sumar.astro, src/lib/lugarPublico.ts, src/lib/lugares.ts, src/lib/lugar-schema.ts, src/lib/paresFlagDato.ts, src/pages/lugares.json.ts, src/pages/guia/lugares/index.astro, src/pages/guia/lugares/[slug].astro, src/components/publico/FichaDeLugarFila.tsx, src/components/publico/BuscadorDeLugares.tsx, functions/directorios.js, functions/retencion.js, functions/propuestas.js, functions/propuestas-trigger.js, functions/flyer-de-propuesta.js, functions/flyer-de-propuesta-trigger.js, src/lib/efemeridePublica.ts, src/pages/efemerides.json.ts, src/components/sitio/EfemerideDeHoy.astro, src/pages/efemerides/index.astro, src/pages/efemerides/[slug].astro, src/types/efemeride.ts, src/lib/efemeride-schema.ts, src/lib/efemerides.ts, functions/efemerides.js, functions/efemerides-trigger.js, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
+description: Audita que nada privado se escape a una salida pública en este repo — el events.json, las páginas indexadas, el evento de Calendar, el issue de GitHub, el texto para redes, la analítica, el correo semanal y la Guía. Usalo ANTES de dar por cerrado cualquier cambio a una salida pública o a lo que la alimenta — las proyecciones, las plantillas públicas, las Functions que publican o deciden sobre el dato de un tercero, las reglas de Firestore y Storage, el build de Astro o el bundle del panel —; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -14,44 +14,20 @@ filtración de credenciales. Los dos son irreversibles: publicar y borrar no es
 lo mismo que no haber publicado.
 
 Trabajás con `CLAUDE.md` §5 y §13 (trampas 4 y 5) y con `docs/07-seguridad.md`.
-Leelos antes de dictaminar: son la fuente, esto es el índice.
+Leelos antes de dictaminar: son la fuente. La tabla de salidas es la de
+`07-seguridad.md`; esta ficha dice cómo auditarlas.
 
 ## Las treinta y dos salidas, y de qué archivo sale cada una
 
-| # | Salida | Quién la produce | Test que la fija |
-|---|---|---|---|
-| 1 | `events.json` y el HTML del listado — la actividad **y** las opciones de taxonomía (§4.4) | **Tres en serie:** `src/lib/toPublic.ts` — `toPublic`, `opcionesPublicas`; `src/lib/eventsJson.ts` — `entradaDeIndice`, `construirIndice`, `resumenDe`, y `encuentrosDelIndice` (el eje plano de encuentros de B-99: `{slug, sesionId, inicio}`, dato ya público re-indexado); `src/lib/contenidoDelSitio.ts` — la query (`where` del §5.3, mudada ahí en B-227) y `etiquetasDelListado`; `src/pages/events.json.ts` solo serializa. **La mitad HTML** suma `src/lib/tarjetaPublica.ts` — `lugarDeTarjeta`, `avisoDeTarjeta`, `cicloDeTarjeta`, `arancelDeTarjeta`, `bloqueDeFecha`, `formasDeCursar` (B-247, B-260); los componentes de `src/components/publico/` solo acomodan. **Y el color de la categoría** (B-270, D-150): `src/lib/identidad.ts` — `colorDeTipo`, `tonoDeTipo`; `src/lib/listadoPublico.ts` — `tonosDeTipo`, `estiloDeTipo`. **Y el `CollectionPage`/`ItemList` del JSON-LD** (B-107): `src/lib/hubsPublicos.ts` — `coleccionSchema`, que vive en el archivo de la salida 11 porque la comparten cinco páginas. **Y un séptimo desde B-600**, también solo de la mitad HTML de la home: `src/lib/ahoraPublico.ts` (`ventanasDeAhora`, `panelesDeAhora`) decide **qué encuentros** de los próximos entran al tríptico «¿Qué hay ahora?» y **qué dice** cada fila —hora, título, lugar, categoría y arancel— con los campos que el índice ya trae. Recibe la `EntradaDeIndice` entera y emite strings ya resueltos, así que es una frontera propia y tiene su `describe` en el barrido de centinelas. **Desde B-791 emite además una URL del sitio** —`rutaDelResto`, el destino del pie «+N más»—, armada por interpolación, y la gramática de ese `?cuando=` la deciden `diasDelCuando`, `cuandoDeDias` y `etiquetaDeDias` de `src/lib/listadoPublico.ts`, que además producen **el texto del `<option>`** del select de «Cuándo» (`src/components/publico/Buscador.tsx`). O sea que ese archivo está en esta fila por dos motivos ahora, y tocar la gramática del día es tocar texto y una URL de una salida pública. La defensa de lo que entra por ahí es `esClaveDeDia` (`src/lib/fechasPublicas.ts`), que existe porque B-791 abrió el primer camino desde la URL hasta la aritmética de días. **No es una salida nueva y eso es deliberado:** no agrega ninguna URL indexable, es una sección del HTML de la home, y numerarla aparte le sumaría a las tres tablas atadas una celda cuya respuesta sería siempre la misma que la de esta salida (D-320). **Y un octavo desde B-961**, también solo de la mitad HTML de la home: `src/lib/bannerDeCiudad.ts` (`BANNERS_DE_CIUDAD`, `bannerParaCiudades`) y `src/components/publico/BannerDeCiudad.tsx` producen el **banner de la ciudad filtrada**: texto cableado en el repo —el nombre del emprendimiento, que va al `aria-label` de la región, y el alternativo de la imagen— y **la primera URL saliente del HTML de la home**. **No reciben ningún campo de ningún documento**, y por eso no tienen `describe` en el barrido de centinelas: lo único que les llega del filtro es el valor del eje `ciudad`, que sirve para **elegir** una fila de una lista cableada y nunca para construir una. Están en esta fila porque el día que se agregue una fila —una URL de un tercero y una frase nuevas, en una página indexada— el diff tiene que disparar esta auditoría; lo encontró el `auditor-privacidad` sobre B-961. **Tampoco es una salida nueva** y por el mismo motivo que el tríptico: no agrega ninguna URL indexable propia (D-320) | `tests/toPublic.test.ts`, `tests/barrido-de-salidas-publicas.test.ts`, `tests/eventsJson.test.ts`, `tests/events-json-endpoint.integracion.test.ts`, `tests/listadoPublico.test.ts`, `tests/tarjetaPublica.test.ts`, `tests/listado-del-sitio.test.ts`, `tests/color-de-tipo.test.ts`, `tests/ahoraPublico.test.ts`, `tests/fechasPublicas.test.ts` |
-| 2 | El evento de Google Calendar | `functions/calendario.js` — `construirEvento`, `construirDescripcion`, `construirUbicacion`, `construirLinkMapa`; **desde B-1145** `functions/handle-instagram.js` — `arrobaInstagram`, `handleInstagram`, que deciden el `@casabrandon` del bloque «Organiza:»/«Tallerista:», o sea texto que viaja a un calendario público y queda copiado en dispositivos ajenos; y `functions/geografia.js` — `geografiaNormalizada`, `piezasDeDireccion`, que producen la dirección del bloque «Dónde». Viven en `functions/` porque ese paquete no puede importar `src/` (D-20, B-968). **Un cambio que toque solo uno de esos archivos tiene que despertar esta auditoría** (B-1182) | `tests/calendario.test.ts` |
-| 3 | El issue de GitHub (el repo `benoffi7/agenda-literaria` es **público**) | `functions/reportes.js` — `redactar`, `construirIssue`, `actividadParaIssue`; `functions/frescura.js` — `issueDeAtraso`, `issueDeSinLectura`, `slugImprimible`/`FORMA_DE_SLUG`; `functions/github-issues.js` (transporte) | `tests/reportes.test.ts`, `tests/frescura.test.ts` |
-| 4 | GA4 (la más estricta: acá **no sale contenido nunca**, ni con permiso del dueño) | `src/lib/analytics-eventos.ts` — `construirEvento` y sus vocabularios | `tests/analytics-privacidad.test.ts` |
-| 5 | El texto para copiar a redes (**la más irreversible**: un posteo pegado en Instagram ya está copiado) | `src/lib/textoRedes.ts` — `construirTextoRedes` y el `Pick` de `ActividadParaRedes`; `src/lib/rutasPublicas.ts` — `urlDeDetalle`, que desde B-312 produce el link del posteo; **desde B-1142** `src/lib/handle-instagram.mjs` — `arrobaInstagram`, reexportada por `src/lib/enlaceSeguro.ts`, que decide el texto literal del pie: en un posteo la arroba no es texto, **menciona** —linkea y notifica a la cuenta etiquetada—, así que tocar solo ese archivo tiene que despertar esta auditoría (B-1161) | `tests/textoRedes.test.ts` |
-| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` — `detalleDeActividad` (el view-model), `datosEstructurados` (el JSON-LD), `urlSegura`, `handleInstagram` y `arrobaInstagram` (**`urlSegura` se define en `src/lib/enlaceSeguro.ts`** desde B-830; **los dos de Instagram viven en `src/lib/handle-instagram.mjs`** desde B-928, porque los scripts de Node plano no resuelven los alias `@/`, y `enlaceSeguro.ts` solo los reexporta. Los tres se reexportan desde acá — los usa también la bandeja del panel. **Los dos primeros sanean un `href`; `arrobaInstagram` no: decide el `@casabrandon` que se lee en la página**, o sea texto visible de HTML indexado, y por eso `handle-instagram.mjs` es un productor de esta salida y un cambio que toque solo ese archivo tiene que despertar esta auditoría — B-1141); `src/lib/contenidoDelSitio.ts` — `caminosDeDetalle`, `etiquetasDelDetalle`, `tonosDelSitio`, y desde B-110 **dos** cláusulas de estado (publicado y cancelado, dos queries y no un `in`) más `estuvoPublicada`, que decide si una cancelada tiene página consultando la existencia de una versión publicada en `/versiones` — la única lectura del build fuera de `/actividades`, y con `.select()` para no traer ningún campo (D-159); y desde B-273 (D-153) `src/lib/identidad.ts` — `colorDeTipo`, que resuelve el color de la categoría antes de que la plantilla lo vea; y desde B-296 (D-168) `src/lib/afiche.ts` — `rotuloDeGaleria` (el `<h2>` de la tira de imágenes secundarias), `columnasDeGaleria`, `estiloDeAfiche`: **es un productor de texto de esta salida**, hoy solo con la cuenta de imágenes y ningún dato de la actividad. Y desde **B-280** `src/lib/mesPublico.ts` — `mesesEnlazables`, que decide **cuál página de mes se puede enlazar** desde acá: el mes viaja en el view-model (`DetallePublico.mes`) y no lo deriva la plantilla, porque depende del índice entero y no de esta actividad. Y desde **B-107** `src/lib/detallePublico.ts` — `migasDeDetalle` (el `BreadcrumbList`), y `src/lib/hubsPublicos.ts` — `slugsConHub`, que decide **cuál hub de tipo se puede enlazar** desde acá con el mismo patrón que `mesesEnlazables`: `DetallePublico.tipoTieneHub` viaja resuelto (default `false`, el lado que no publica un link a un `/tipo/{slug}` que puede no existir para una cancelada cuyo tipo nadie más usa) y no se deriva en la plantilla. Y desde **B-321** `src/lib/imagenes.ts` — `urlDeMiniaturaSiExiste`/`srcsetDeMiniatura` (mismo productor que la salida 7 desde B-220, ver esa fila). Desde **D-210** la miniatura llega resuelta en las props: `caminosDeDetalle` la confirma contra `miniaturasConocidas` y la plantilla no deriva nada. La plantilla `src/pages/actividad/[slug].astro` **solo acomoda**: recibe el view-model, llama a esos productores y nada más (D-140) | `tests/detallePublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (dos `describe`: la página y el JSON-LD), `tests/pagina-de-detalle.test.ts`, `tests/sitio-publico.integracion.test.ts`, `tests/color-de-tipo.test.ts`, `tests/detalle-visual.test.ts`, `tests/galeria-del-detalle.test.ts` |
-| 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` — `carteleraDeDetalles`. **Su entrada es la salida 6 y no el documento**: proyecta `DetallePublico`, así que solo puede sacar campos. `src/lib/contenidoDelSitio.ts` — `carteleraDelSitio` y el `where`. **`src/lib/imagenes.ts` — `urlDeMiniaturaSiExiste`/`rutaDeMiniatura`** (B-220, D-210): derivan la URL de la miniatura de la del original ya publicada y solo la emiten con el objeto confirmado en `miniaturasConocidas`, así que producen un string del HTML sin pasar por `DetallePublico`. **Y desde B-320, `srcsetDeMiniatura` (mismo archivo)** compone la lista de candidatos del `srcset` — antes se armaba con un template en la plantilla, que exponía `afiche.url` (texto libre del documento) a romper la lista con una coma; ahora es la única implementación, compartida con la salida 6, probada por valor. La plantilla `src/pages/cartelera.astro` solo acomoda | `tests/cartelera.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la cartelera), `tests/afiche.test.ts`, `tests/imagenes.test.ts` |
-| 8 | La **página de mes** `/agenda/{aaaa-mm}` — HTML indexado, una por mes con 3 o más actividades (B-113) | `src/lib/mesPublico.ts` — `mesesDelSitio` (qué meses se emiten), `entradasDelMes` (qué entra en cada uno), `recorteDelMes` (la entrada recortada al mes) y las tres frases: `tituloDelMes`, `descripcionDelMes`, `bajadaDelMes`. `src/lib/tarjetaPublica.ts` — `cicloDelMes`. `src/lib/contenidoDelSitio.ts` — `caminosDeMes`, que arma el view-model. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. La plantilla `src/pages/agenda/[mes].astro` recibe el view-model y nada más (D-140) | `tests/mesPublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la página de mes), `tests/listado-del-sitio.test.ts` (la lista blanca de la fila) |
-| 9 | El **`sitemap.xml`** y el **`robots.txt`** — qué páginas se le ofrecen al buscador (B-109). Publica **solo rutas**: ni un título, ni una descripción, ni una fecha | `src/lib/sitemap.ts` — `rutasDelSitemap` (qué URLs entran: `RUTAS_FIJAS`, los meses enlazables, las publicadas hasta 90 días después de su última fecha y las canceladas hasta 30 después de su última edición), `xmlDelSitemap` (serializa, y escapa el XML), `textoDeRobots` (con `RUTA_BLOQUEADA` = `/admin`); `src/lib/rutasPublicas.ts` — `SITIO`, `rutaCanonica`, `urlAbsoluta`, `urlDeDetalle`, `urlDeMes`: el origen y la forma de **toda** URL absoluta del sitio, o sea también el `canonical` y el `og:url` que pone `src/layouts/Base.astro` y el `url` del JSON-LD de la salida 6; `src/lib/contenidoDelSitio.ts` — `sitemapDelSitio`, que aporta el reloj del índice y el `updatedAt` de cada cancelada leído del documento crudo. **Y los TRES que deciden qué página se ofrece y no viven en `sitemap.ts`:** `src/lib/mesPublico.ts` — `mesesEnlazables` (qué meses se le ofrecen al buscador: todos los que pasan el corte de tres **menos el vencido**, que sale con `noindex`); `src/lib/listadoPublico.ts` — `estadoDe`, de donde salen `paso` y `hasta`, o sea la ventana de 90 días; y `src/lib/directorios.ts` — `directoriosDisponibles`, un **booleano escrito a mano** por sección de la Guía del que `RUTAS_FIJAS` deriva qué listados entran (**B-898**): marcarlo sin la página le ofrece a Google un 404, y escribir la página sin marcarlo la deja invisible. Con dos directorios publicados ya no es hipotético. En esta salida *lo que se puede colar es una página*, así que los dueños de esa decisión van nombrados. **`lastmod` no se emite** (necesita B-112), así que `updatedAt` sigue sin salir a ninguna salida: acá es un predicado —decide si la URL entra— y no un dato. Los endpoints `src/pages/sitemap.xml.ts` y `src/pages/robots.txt.ts` solo serializan | `tests/sitemap.test.ts`, `tests/canonico.test.ts` |
-| 10 | El **archivo** `/pasadas` — HTML indexado, y el **único link interno permanente** de cada actividad que ya pasó una vez que su entrada del sitemap vence a los 90 días (B-109) | `src/lib/pasadasPublicas.ts` — `pasadasDelSitio` (qué entra y en qué orden) y sus frases: `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS`, `descripcionDePasadas`; `src/lib/contenidoDelSitio.ts` — `vistaDePasadas`, que arma el view-model. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar, y las canceladas no le llegan ni queriendo porque nunca entran al índice (B-110). **Ninguna de sus frases interpola datos de una actividad**, a diferencia de `descripcionDelMes` de la salida 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (D-140) | `tests/pasadas.test.ts`, `tests/listado-del-sitio.test.ts` (la lista blanca de la fila) |
-| 11 | Los **hubs de búsqueda** `/tipo/{slug}`, `/barrio/{slug}`, `/ciudad/{slug}`, `/gratis` y `/online` — HTML indexado: **cinco clases de ruta y una sola productora** (B-108, y `/ciudad/*` desde B-951) | `src/lib/hubsPublicos.ts` — `hubDelSitio` (el view-model), `hubsDelSitio`, `slugsConHub`, `hubsOfrecidos` y `esIndexable` (qué hubs existen y cuál se le ofrece al buscador), `exploracionDelSitio` (la tira «Explorá por»), y las frases: `titulo`, `descripcion` —que **interpola hasta tres títulos de actividades** (`CUANTOS_TITULOS_EN_LA_DESCRIPCION`), o sea que es un productor de texto y necesita barrido—, `bajada`, `avisoVacio`, `rotuloDelFiltro`, más `pluralDeTipo`/`TIPO_EN_PLURAL`. **Y desde B-107**, `coleccionSchema` — el `CollectionPage`/`ItemList` del JSON-LD, que usan **también** la home (salida 1) y no solo los cinco hubs de acá. `src/lib/contenidoDelSitio.ts` — `caminosDeTipo`, `caminosDeBarrio`, `caminosDeCiudad`, `vistaDeHubTematico`, `exploracionDeLaHome`. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. Y la etiqueta viaja **resuelta** mientras la URL lleva el **slug** (§4.1, trampa 10): son dos afirmaciones distintas y el barrido las corre por separado. Las plantillas `src/pages/tipo/[tipo].astro`, `src/pages/barrio/[barrio].astro`, `src/pages/ciudad/[ciudad].astro`, `src/pages/gratis.astro` y `src/pages/online.astro` solo acomodan (D-140). **La clase de ciudad solo pudo existir porque B-950 convirtió `ciudad` en taxonomía** (D-710): un hub se emite únicamente para las opciones *aprobadas* con actividad publicada, y sobre texto libre habría sido una URL indexada por cada string tipeado | `tests/hubsPublicos.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de los hubs: las frases y la URL, con listas de permitidos por hub) |
-| 12 | La **analítica del sitio público** (GA4, B-372/B-375) — el `page_view` automático más dos eventos propios, `clic_inscripcion` y `filtro_sin_resultados` | `src/lib/analyticsSitio.ts` — puro: `EVENTOS_SITIO`, `construirEventoSitio` (el saneador, whitelist en las dos direcciones), `crudosDeFiltroSinResultados` (el armador del payload de `filtro_sin_resultados`: saca el `slug` del mapa de los rieles y de ningún otro lado — desde B-798 **la garantía vive acá y no en el saneador**, porque `lista-slugs` verifica la forma de un slug y una búsqueda de una palabra en minúscula la tiene), `ubicacionSinQuery` (recorta la query del `page_location` **y** del `page_referrer`), y el estado de consentimiento: `leerConsentimiento`, `guardarConsentimiento`, `debeCargarGA`, `debeMostrarBanner`, `debeMedirSitio`. `src/lib/medicionSitio.ts` — el transporte: `cargarGtag` solo dispara con consentimiento `'aceptado'`, `medirSitio` es la única puerta de salida de los eventos propios, `aceptar`/`rechazar` escriben en `localStorage` (nunca en Firestore). `src/components/sitio/AvisoDeCookies.astro` — el banner. **Deriva de dos salidas y no del documento**: `via` es un campo de la salida 6 (`AccionDeInscripcion`, `detallePublico.ts`) y `eje`/`slug` derivan de la salida 1 (`filtros.valores`, `listadoPublico.ts`), así que estructuralmente no puede alcanzar nada que esas dos no hayan decidido publicar ya. **Y tiene un productor que este repo no controla**: una vez que `gtag.js` carga, el «Enhanced Measurement» de GA4 manda eventos automáticos —búsquedas en el sitio, clics salientes, `page_view` por cambio de historial— que no pasan por `construirEventoSitio` ni por `ubicacionSinQuery`. Esa puerta la cerró **B-480** el 2026-09-03 en la consola de GA4 —búsquedas en el sitio, clics salientes, `page_view` por cambio de historial, y el borrado de la clave `q`—: es **configuración y no código**, así que **no hay ningún test que la sostenga**. Si alguien la reactiva, ningún rojo lo dice, y hay afirmaciones de páginas públicas que dependen de que siga cerrada (que un clic a Cafecito no se mide, en `/apoyar`). Lo que sigue **sin verificar** son los settings de propiedad —personalización de anuncios, Google Signals—, anotado como **B-773** **Y desde B-1793 (D-1090)** `ubicacionAMedir` (`analyticsSitio.ts`) decide el `page_location`: con la ruta fija que pasa una página con `direccionAjena` (`Base.astro`, hoy solo el `/404`) mide la canónica y no la barra, porque esa página se sirve para direcciones que escribió el visitante | `tests/analyticsSitio.test.ts`, `tests/detallePublico.test.ts`, `tests/detalle-visual.test.ts` |
-| 13 | La página **`/suscribirse`** (B-230) — el `.ics` público del calendario, el mail de contacto y, desde **B-847**, el **alta al correo semanal**: la primera vez que el sitio público le manda a un tercero **un dato de una persona** | `src/lib/enlaces.ts` (`CALENDARIO_ID`, `CONTACTO`, `LISTA_DE_CORREO` y sus constructores —`urlDelIcs`, `urlDeAltaAlBoletin`, `campoTrampaDelBoletin`—: es el **único** lugar donde se escribe un destino externo del sitio), `src/lib/boletinDelSitio.ts` (las cinco promesas del correo y el texto del formulario; `formularioDelBoletin` decide si la sección existe, `tratoEnOrden` es lo que se muestra y `textoDelBoletin` el corpus del barrido de tono), `src/components/sitio/SuscribirseBoletin.astro` (el `<form method="post">`, **sin un solo script de tercero** — D-254) y `src/pages/suscribirse.astro`, que arma el texto. **No proyecta ningún documento**: no hay campo del modelo que se pueda colar por un spread, y por eso esta fila y las seis de abajo se numeran **por la promesa, no por la proyección** — ver el párrafo de la clase. **El **alta** no abre una fila propia (el correo que se manda es la 29, B-1230), y eso**, y es una decisión: ver «El correo no es una salida nueva» más abajo | `tests/suscribirse.test.ts`, `tests/boletin-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/terceros-antes-del-consentimiento.test.ts` |
-| 14 | La **ayuda** `/ayuda` (B-232) — veintiuna preguntas escritas a mano, en HTML indexado | `src/lib/ayudaDelSitio.ts`. Texto libre que **afirma cosas sobre tratamiento de datos** («no te pedimos ni guardamos datos para anotarte»), y ése es el riesgo propio de esta clase: una afirmación así puede **nacer falsa** | `tests/ayuda-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
-| 15 | El **contacto** `/contacto` (B-232) — la casilla del proyecto y qué pasa después de escribir | `src/lib/contactoDelSitio.ts` y `src/lib/enlaces.ts` (`CONTACTO`). Afirma «no usamos tu dirección para nada más que responderte», que es una promesa **acotada a la casilla** y verificable: nada del repo guarda esa dirección **Y desde B-1122 su JSON-LD `Organization`**: `ORGANIZACION_DEL_SITIO` (`src/lib/contactoDelSitio.ts`), emitido por `src/pages/contacto.astro` con el escape de `<`. Es HTML indexado, pero solo lleva constantes del repo (nombre, origen, logo, perfiles de Instagram y Cafecito de `enlaces.ts`) y ningún campo de documento. Un `sameAs` nuevo es una afirmación de identidad pública: tiene que ser un perfil propio, nunca una página del sitio (D-925) | `tests/contacto-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
-| 16 | El **`/404`** (B-310) — la única página del sitio con `noindex` | `src/lib/noEncontrado.ts`. Lleva el buscador, la tira de hubs —la misma de la home, ya recortada— y el enlace al archivo. **No entra al `sitemap.xml`** y está en la lista de excepciones de ese test con su motivo | `tests/no-encontrado.test.ts`, `tests/sitemap.test.ts` |
-| 17 | La página de **apoyo** `/apoyar` (B-780) — y la primera arista propia de esta clase: un destino de cobro | `src/lib/apoyoDelSitio.ts` y `src/lib/enlaces.ts` (`CAFECITO`, `urlDeCafecito()`: el **único** lugar donde ese destino se escribe). Es la página donde la promesa ya nació falsa una vez —decía «no se guarda quién entró» con el banner de GA4 en la misma pantalla— y de ahí salió el barrido de la salida 12 cruzado con esta clase Desde B-1122 `urlDeCafecito()` tiene un segundo consumidor, el `sameAs` de `/contacto`: sigue siendo el único lugar donde se escribe ese destino, y un `sameAs` no manda `Referer` (B-786) | `tests/apoyo-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/terceros-antes-del-consentimiento.test.ts` |
-| 18 | La página **comercial** `/anunciar` (B-770) — ofrece espacio y la única acción es un mail | `src/lib/comercialDelSitio.ts` y `src/lib/enlaces.ts` (`CONTACTO`). **No inventa un número de audiencia** y el test lo prohíbe: la medición arrancó el 2026-08-21, así que cualquier cifra sería inventada hasta que haya historia (B-771). Y su texto está redactado **evitando** afirmar ajustes de consola que este repo no controla (B-773) | `tests/comercial-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
-| 19 | La página **`/mis-favoritos`** (B-848) — lo que cada persona guardó, sin login: todo vive en el `localStorage` de su navegador | `src/lib/guardadosDelSitio.ts` (puro: la forma `{ v, tipo, slug, guardadoEn }`, la validación de lo que se lee, el acceso al almacén por puerto), `src/lib/guardadoDelNavegador.ts` (el `try`/`catch` sobre `window.localStorage`), `src/components/publico/MisGuardados.tsx` y `src/components/publico/GuardarBusqueda.tsx`. **Deriva de la salida 1** —resuelve los slugs guardados contra el `events.json`— así que solo puede sacar campos que aquélla ya publicó, y **no manda nada afuera**: ni fetch a un tercero, ni Firestore, ni analítica. Lo propio de esta fila, que ninguna otra tiene: **lo guardado se lee del `localStorage` y termina en un `href`**, así que un `javascript:` o un `//otro.sitio` escrito a mano en la consola es el ataque de esta salida, y lo cierran `esRutaGuardable` y `esSlugGuardable` | `tests/guardados-del-sitio.test.ts`, `tests/sitemap.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/clases-de-bug.test.ts` |
-| 20 | El **directorio de librerías** `/librerias.json` + `/guia/librerias` (B-901) — la primera salida que proyecta un documento que **no es una actividad** | `src/lib/libreriaPublica.ts` — `libreriaPublica` (la whitelist, catorce campos a mano y ningún spread — **`provincia` entró con B-967**, y con ella la cascada geográfica: los tres campos son el mismo vocabulario que usan las actividades), `construirIndiceDeLibrerias`, `descripcionDelDirectorio`; `src/lib/contenidoDelSitio.ts` — `libreriasPublicadas` (el `where` de B-903 **y** el `.select()` de D-159), `indiceDeLibrerias`, `vistaDeLibrerias`. `src/pages/librerias.json.ts` solo serializa; `src/components/publico/FichaDeLibreriaFila.tsx` y `src/components/publico/BuscadorDeLibrerias.tsx` solo acomodan. **Lo propio de esta fila:** el documento tiene el **segundo dato personal de un tercero** del proyecto (`contactoDeQuienCargo`, después del `contacto` de una propuesta) conviviendo con los cuatro que **sí** son públicos y son el punto de la ficha —`instagram`, `whatsapp`, `web`, `mail`—, que es la condición exacta donde un spread filtra un campo | `tests/libreria-publica.test.ts`, `tests/librerias.test.ts`, `scripts/build-contra-emulador.mjs` (paso 8i) |
-| 21 | La **ficha** `/guia/librerias/{slug}` y su **JSON-LD** (B-901) — HTML indexado con `BookStore` + `BreadcrumbList`, cero JavaScript | `src/lib/libreriaPublica.ts` — `fichaDeLibreria` (**proyecta desde la salida 20, no desde el documento**, así que solo puede sacar), `datosEstructuradosDeLibreria` (sin `openingHours` a propósito), `migasDeLibreria`, `coleccionDeLibrerias` y `descripcionDeLibreria` — la `meta description`, que vive en el módulo puro y no en la plantilla por la lección de `descripcionDelMes` (salida 8): una frase interpolada adentro de un `.astro` es un productor de texto público que vitest no puede importar; `src/lib/contenidoDelSitio.ts` — `caminosDeLibreria`. La plantilla `src/pages/guia/librerias/[slug].astro` **solo acomoda** (D-140): recibe los cuatro `href` ya saneados con `urlSegura` y `handleInstagram` (`src/lib/enlaceSeguro.ts`, los mismos de la salida 6) y no concatena un solo texto ajeno adentro de un atributo. **El `sameAs` lleva Instagram y web y no el WhatsApp ni el mail**: son canales de contacto y no perfiles, y en el marcado quedan cosechables sin que nadie abra la página | `tests/libreria-publica.test.ts`, `scripts/build-contra-emulador.mjs` (paso 8i) |
-| 22 | El **directorio de suscripciones literarias** `/suscripciones.json` + `/guia/suscripciones` (B-832) — y la primera salida que publica un **dato que envejece solo** | `src/lib/suscripcionPublica.ts` — `suscripcionPublica` (la whitelist, diecinueve campos a mano y ningún spread), `fraseDePrecio` + `TEXTO_POR_PERIODO` (el formato del valor) y **`src/lib/datoConFecha.ts` — `fraseConFecha`**, que termina de armar la frase y es donde vive la garantía de DEC-12 (sin fecha usable no sale el dato), `construirIndiceDeSuscripciones`, `descripcionDelDirectorioDeSuscripciones`; `src/lib/contenidoDelSitio.ts` — `suscripcionesPublicadas` (el `where` y el `.select()` de D-159), `indiceDeSuscripciones`, `vistaDeSuscripciones`. `src/pages/suscripciones.json.ts` solo serializa; `FichaDeSuscripcionFila.tsx` y `BuscadorDeSuscripciones.tsx` solo acomodan. **Lo propio de esta fila:** el precio se proyecta como **un string con su fecha adentro** (DEC-12, D-570), así que no hay número que filtrar ni pantalla que pueda mostrarlo sin fechar. Si ves un campo `precioMonto`, `precioCargadoEn` o cualquier par que separe el valor de su fecha, **eso es el hallazgo**. Y el documento mezcla el `contactoDeQuienCargo` con cuatro destinos públicos, uno de ellos un link de cobro de un tercero | `tests/suscripcion-publica.test.ts`, `tests/suscripciones.test.ts`, `scripts/build-contra-emulador.mjs` (paso 8j) |
-| 23 | La **ficha** `/guia/suscripciones/{slug}` y su **JSON-LD** (B-832) — HTML indexado con `Product` + `Offer` + `BreadcrumbList`, cero JavaScript | `src/lib/suscripcionPublica.ts` — `fichaDeSuscripcion` (**proyecta desde la salida 22, no desde el documento**, así que solo puede sacar), `datosEstructuradosDeSuscripcion` (`Product` y **no** `BookStore`: no hay `address` que declarar, y **sin `price` a propósito** — el § 5 del PRD 3), `migasDeSuscripcion`, `coleccionDeSuscripciones` y `descripcionDeSuscripcion` — la `meta description`, en el módulo puro por la lección de `descripcionDelMes`; `src/lib/contenidoDelSitio.ts` — `caminosDeSuscripcion`. La plantilla **solo acomoda** (D-140). **El `linkDeSuscripcion` sale con `rel="noopener noreferrer"`, y ese `noreferrer` es de este link y de ninguno más** (B-786) | `tests/suscripcion-publica.test.ts`, `scripts/build-contra-emulador.mjs` (paso 8j) |
-| 24 | El **directorio de lugares para eventos** `/lugares.json` + `/guia/lugares` (B-833) — y **la primera salida en la que un campo sale o no sale según otro campo del mismo documento** | `src/lib/lugarPublico.ts` — `lugarPublico` (la whitelist, diecinueve campos a mano y ningún spread — **`donde` ganó `provincia` con B-967**, adentro del mismo sub-objeto), **`dondeQueSale`** (el par flag + dato: decide si salen `direccion` y `geo`, y es UNA función para los dos porque unas coordenadas son la dirección con otro formato), `fraseDePrecioDeLugar` + `TEXTO_POR_UNIDAD` y **`src/lib/datoConFecha.ts` — `fraseConFecha`** (la garantía de B-837: sin fecha usable no sale el dato), `claseDeCosto` + `CLASE_DE_COSTO`, `RANGOS_DE_CAPACIDAD`, `construirIndiceDeLugares`, `descripcionDelDirectorioDeLugares`; `src/lib/contenidoDelSitio.ts` — `lugaresPublicados` (el `where` y el `.select()`, cuya lista **no** son las claves de la proyección), `indiceDeLugares`, `vistaDeLugares` — la asimetría del `.select()` es que `donde` son cinco campos del documento (`direccion`, `barrio`, `ciudad`, `geo`, `direccionPublica`) y `costo` es derivado de `condicion`. `src/pages/lugares.json.ts` solo serializa; `FichaDeLugarFila.tsx` y `BuscadorDeLugares.tsx` solo acomodan. **Lo propio de esta fila:** puede publicar **la dirección de la casa de una persona**, cargada por alguien que puede no vivir ahí (§ 6 del PRD 4). Si ves `direccion` o `geo` emitidos sin pasar por `dondeQueSale`, o la dirección adentro del `searchText` —que se publica y se deriva al escribir—, **eso es el hallazgo** | `tests/lugar-publico.test.ts` (el barrido corrido **dos veces**, con el flag prendido y apagado, fixture `tests/fixtures/centinelas-lugar.ts`), `tests/lugares.test.ts`, `tests/lugares.integracion.test.ts`, `scripts/build-contra-emulador.mjs` (paso 8k) |
-| 25 | La **ficha** `/guia/lugares/{slug}` y su **JSON-LD** (B-833) — HTML indexado con `Place` + `BreadcrumbList`, cero JavaScript | `src/lib/lugarPublico.ts` — `fichaDeLugar` (**proyecta desde la salida 24, no desde el documento**, así que solo puede sacar), `datosEstructuradosDeLugar` (`Place` y **no** un `LocalBusiness` —exige `address`, y la mitad del directorio es una casa que no la publica— ni un `EventVenue`; **`address` y `geo` solo si la dirección salió**, criterio 5 del PRD; **sin `priceRange` y sin el precio**, § 7), `migasDeLugar`, `coleccionDeLugares` y `descripcionDeLugar` — la `meta description`, en el módulo puro por la lección de `descripcionDelMes`, y **sin la dirección ni con el flag prendido**; `src/lib/contenidoDelSitio.ts` — `caminosDeLugar`. La plantilla **solo acomoda** (D-140) | `tests/lugar-publico.test.ts` (tres listas de permitidos separadas, cada una con el flag prendido y apagado), `scripts/build-contra-emulador.mjs` (paso 8k) |
-| 26 | El **directorio de bibliotecas** `/bibliotecas.json` + `/guia/bibliotecas` (B-960) — y **la primera salida que publica un dato con fecha que NO es un precio comparable** | `src/lib/bibliotecaPublica.ts` — `bibliotecaPublica` (la whitelist, dieciocho campos a mano y ningún spread), **`costoDeAsociarse`** + `src/lib/datoConFecha.ts` — `fraseConFecha` (el costo sale como **frase con su fecha pegada**, nunca como número: no hay nada con lo que filtrar ni ordenar, D-570), `searchTextDeBiblioteca` (**derivado de los valores ya proyectados, no copiado del documento** — nace con la versión que las otras tres corrigieron), `construirIndiceDeBibliotecas`, `descripcionDelDirectorio`; `src/lib/contenidoDelSitio.ts` — `bibliotecasPublicadas` (el `where` **y** el `.select()`, que acá **no pide `searchText`**), `indiceDeBibliotecas`, `vistaDeBibliotecas`. **Lo que hay que mirar acá:** la proyección **descarta** el costo cuando `asociarse.haceFalta` es `false`, aunque el documento lo traiga — publicar «no hace falta asociarse · $3.000 por año» sería publicar una contradicción, y la regla lo prohíbe pero un script puede escribirlo. El documento lleva además el `contactoDeQuienCargo` de quien pidió el alta conviviendo con los cuatro contactos públicos, que es la condición donde un spread filtra un campo | `tests/biblioteca-publica.test.ts` (el barrido de la proyección contra la whitelist del §5.2, con el fixture de centinelas que no puede envejecer), `tests/bibliotecas.test.ts` |
-| 27 | La **ficha** `/guia/bibliotecas/{slug}` y su **JSON-LD** (B-960) — HTML indexado con `Library` + `BreadcrumbList`, cero JavaScript | `src/lib/bibliotecaPublica.ts` — `fichaDeBiblioteca` (**proyecta desde la salida 26, no desde el documento**), `datosEstructuradosDeBiblioteca` (`Library`, **sin `openingHours`** —texto libre, B-982— y **sin `Offer` ni `priceRange`**: un precio comparable en el marcado deshace D-570), `migasDeBiblioteca`, `coleccionDeBibliotecas`, `descripcionDeBiblioteca` (la `meta description`, en el módulo puro y no en la plantilla, por la lección de `descripcionDelMes`); `src/lib/contenidoDelSitio.ts` — `caminosDeBiblioteca`. La plantilla recibe **el costo ya como frase** —así que no puede imprimir el monto sin su fecha— y los `href` ya saneados, sin concatenar texto ajeno adentro de un atributo. El `sameAs` lleva Instagram, web y el catálogo, y **no** el WhatsApp ni el mail | `tests/biblioteca-publica.test.ts` (el barrido de la ficha y del marcado, más «lo que se publica sale saneado, no crudo» y la regla 2 de `datoConFecha.ts` impuesta por la forma) |
-| 28 | El **formulario público** `/guia/bibliotecas/sumar` (B-960) — HTML indexado con una island que **escribe**; la quinta página del sitio que alcanza Firebase | `src/components/publico/SumarBiblioteca.tsx` y `src/lib/enviar-ficha.ts` — `enviarBiblioteca`, cargado con `import()` en el submit. La página lee los cuatro vocabularios en el build con `opcionesPublicas` (solo las aprobadas) y los pasa como prop. **No proyecta ningún documento**: es salida pública por el HTML que indexa | `tests/bibliotecas.integracion.test.ts` (37 casos contra el emulador: lo que la regla **rechaza**), `tests/bibliotecas.test.ts` |
-| 29 | El **correo semanal** (B-1230) — el borrador que se pega en Mailchimp y se manda a quien se anotó por la salida 13. **No se publica: se manda**, así que es la única que no se corrige con un rebuild | `src/lib/boletinSemanal.ts` — `boletinSemanal`, `textoPlanoDelBoletin`, `htmlDelBoletin`, `metadatosDe` (exportada: la vista previa del panel imprime **la misma** fila que sale) y `AVISO_DE_CAMBIOS`. **Y cuatro productores de texto más, los cuatro compartidos con la salida 1 y ninguno exclusivo de acá —un cambio que toque solo uno de ellos tiene que despertar esta auditoría (es la clase de B-1161 y B-1182):** `src/lib/tarjetaPublica.ts` — `lugarDeTarjeta`, `arancelDeTarjeta`; `src/lib/listadoPublico.ts` — `etiquetaDe`; `src/lib/fechasPublicas.ts` — **`fechaLargaDeDia`**, que nació con este cambio y **existe solo para el correo** (una línea que decide el encabezado de cada día de algo ya mandado), más `hora`; y `src/lib/rutasPublicas.ts` — `urlDeDetalle`/`urlAbsoluta`.  **Su entrada es el `events.json`, no el documento** (D-801): hereda la frontera de la salida 1 igual que la 7 hereda la de la 6, y por eso su lista de permitidos es la del tríptico. Lo que hay que mirar acá es **el escape del HTML** —el cuerpo se arma concatenando strings— y que no aparezca un `entrada.campo` nuevo en una fila. `src/components/admin/BoletinPanel.tsx` solo acomoda | `tests/boletin-semanal.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` |
-| 30 | La **Guía** `/guia` (B-835, numerada por B-897) — el índice de los directorios, HTML indexado enlazado desde la barra. **No proyecta ningún documento**: se cuenta por la promesa, como las 13 a 18 | `src/pages/guia/index.astro` —las frases viven en la plantilla— y `src/lib/directorios.ts` — `DIRECTORIOS`. Si la página gana párrafos, se mudan a un `guiaDelSitio.ts` y esta fila cambia de productor en el mismo cambio | `tests/directorios.test.ts` (el flag de disponible cruzado contra las páginas en disco), `tests/promesas-sobre-datos.test.ts` (recorre todas las páginas) |
-| 31 | El **índice de efemérides** `/efemerides.json` y el **renglón de la home** (B-959) — el navegador elige la de hoy, así que el índice sale **entero** a toda persona que abre la home | `src/lib/efemeridePublica.ts` — `efemeridePublica` (whitelist de siete campos; devuelve `null` ante un documento raro, y ni `createdBy` ni `updatedBy` salen), `construirIndiceDeEfemerides` y `entradaDeEfemeride` (cinco campos: sin descripción ni fuente), `entradasDelIndice`, `renglonDeHoy`, `efemeridesDeHoy` (con `claveDeDia`, la zona del proyecto); `src/lib/contenidoDelSitio.ts` — `efemeridesPublicadas` (el `where` y el `.select()`), `indiceDeEfemerides`; `src/pages/efemerides.json.ts` serializa y `src/components/sitio/EfemerideDeHoy.astro` pinta con `textContent`, nunca con `innerHTML` | `tests/efemeride-publica.test.ts`, `tests/efemerides.test.ts`, `tests/efemerides.integracion.test.ts`, paso 8n de `scripts/build-contra-emulador.mjs` |
-| 32 | La sección **`/efemerides`** y la **página de cada efeméride** `/efemerides/{slug}` (B-959) — HTML indexado con `BreadcrumbList`, cero JavaScript propio; el listado vacío va con `noindex` | `src/lib/efemeridePublica.ts` — `efemeridesPorMes`, `fechaDeEfemeride`, `descripcionDeEfemeride`, `descripcionDeLasEfemerides`, `migasDeEfemeride`, `vecinasDelMes`; `src/lib/contenidoDelSitio.ts` — `efemeridesDelSitio`, `caminosDeEfemeride`; `src/pages/efemerides/index.astro` y `src/pages/efemerides/[slug].astro` solo acomodan. El `href` de la fuente es el único que sale de un dato tipeado: `urlSegura` en la proyección y `http(s)` en la regla | `tests/efemeride-publica.test.ts`, `tests/sitemap.test.ts` |
+La tabla vive en **[`docs/07-seguridad.md`](../../docs/07-seguridad.md)**, la
+numerada del principio: una fila por salida, con qué es, quién la produce
+—archivo y función— y qué test la fija. **Leela entera antes de dictaminar**: es
+tu índice, y no está copiada acá a propósito, porque dos copias de una tabla de
+privacidad divergen y la que envejece es la que nadie mira (M-8 del PRD 6).
+`tests/agentes-y-skills.test.ts` exige que cada productor de esa tabla esté en la
+lista de **«Los archivos que te despiertan»**, al final de esta ficha.
+
+Lo que sigue son las aristas de cada salida que la tabla no alcanza a decir.
 
 **La 7 hereda la garantía de la 6, y ahí está lo que hay que mirar.**
 `carteleraDeDetalles` recibe `DetallePublico`, o sea que **no puede publicar un
@@ -68,14 +44,14 @@ o `firebase/storage`.
 
 **La 6 nació con la tabla ya escrita, y eso es a propósito.** La 5 faltó acá hasta
 el 2026-08-27 y el diagnóstico de entonces fue que el agujero no era de cobertura
-sino de índice: si esta tabla no la nombra, un cambio al archivo no dispara la
+sino de índice: si la tabla no la nombra, un cambio al archivo no dispara la
 auditoría. La 6 se agregó en el mismo cambio que la creó (B-227), que es la lección
 aplicada. Lo que sí conviene mirar con lupa en la 6: **es una página**, así que la
 proyección (`detallePublico.ts`) y la plantilla son dos archivos, y la garantía es
 que la segunda no recibe nada más que la primera — si aparece una prop nueva o un
 import nuevo del lector en el `.astro`, eso es un hallazgo.
 
-**La 5 faltaba en esta tabla hasta el 2026-08-27**, y el agujero era del tipo
+**La 5 faltaba en la tabla de esta ficha hasta el 2026-08-27**, y el agujero era del tipo
 peor: no es que estuviera mal cubierta —`textoRedes.ts` tiene barrido de
 centinelas y un `Pick` explícito—, es que **este índice no la nombraba**, así que
 un cambio que interpolara un campo nuevo en el posteo no disparaba esta auditoría
@@ -138,7 +114,7 @@ sobre las tres frases y en sus dos ramas (mes vigente y mes vencido).
 >
 > **Lo que el argumento no veía:** el índice de salidas no es solo un mapa de
 > proyecciones, es **la lista de lo que hay que mirar** —lo que decide si el
-> `auditor-privacidad` abre un archivo es que una de las tres tablas lo nombre—. Y
+> `auditor-privacidad` abre un archivo es que una de las tablas lo nombre—. Y
 > estas páginas tienen un riesgo propio que ninguna otra fila tiene: **la
 > promesa**. Texto libre, escrito a mano, en HTML indexado, que afirma cosas sobre
 > tratamiento de datos — y que puede **nacer falso**, como nació el de `/apoyar`.
@@ -158,7 +134,7 @@ su contenido está escrito a mano en `src/lib/ayudaDelSitio.ts`,
 `src/lib/contactoDelSitio.ts`, `src/lib/enlaces.ts`, `src/lib/noEncontrado.ts`,
 `src/lib/apoyoDelSitio.ts` y `src/lib/comercialDelSitio.ts`. No hay campo que se
 cuele por un spread, así que no hay proyección que auditar, y una fila más en las
-tres tablas atadas agregaría —por cada campo nuevo del modelo— una celda cuya
+dos tablas atadas agregaría —por cada campo nuevo del modelo— una celda cuya
 respuesta es siempre «no sale» (el criterio de D-320). Si alguna nota vieja habla
 de «la salida pública 13», es esta clase mal contada.
 
@@ -182,17 +158,17 @@ detecta la forma; que la afirmación sea cierta es criterio.
 
 ## Las puertas: archivos que no producen ninguna salida y aun así publican
 
-Las treinta y dos de arriba son **productoras**: proyectan o emiten. Estas otras son
+Las treinta y dos de la tabla son **productoras**: proyectan o emiten. Estas otras son
 **puertas** — deciden qué valor termina en el documento, o lo escriben, y de ahí
 sale por una productora que ya está bien. Ninguna aparecería en la tabla de
 salidas, y por eso hay que nombrarlas aparte.
 
 El motivo de que esta sección exista: **los dos últimos P1 de privacidad vivieron
 en una puerta** (B-818 y B-819, los dos en `src/lib/historial.ts`), y el disparo
-por nombre de archivo nunca se despertaba por ella. La lista se agregó al
-`description` y este bloque es lo que la sostiene: `tests/agentes-y-skills.test.ts`
-exige que cada ruta de acá esté también allá, así que sacarla del `description`
-pone un test en rojo.
+por nombre de archivo nunca se despertaba por ella. La lista se agregó a los
+disparadores —hoy «Los archivos que te despiertan», al final— y esta tabla es lo
+que la sostiene: `tests/agentes-y-skills.test.ts` exige que cada ruta de acá esté
+también allá, así que sacarla de la lista pone un test en rojo.
 
 | Puerta | Qué decide o escribe |
 |---|---|
@@ -345,14 +321,14 @@ propiedad del día en que se escribió.
    tests cubren los campos que ya conocen.
 7. Si el cambio agrega una **salida nueva** (un endpoint, un webhook, un log
    con contenido, un mail, un JSON más, **una página**), decilo fuerte: son **treinta y dos**
-   hoy y una trigésima tercera cambia el mapa y la doc — esta tabla, la de
-   `docs/07-seguridad.md` y la del skill `campo-nuevo`, que es el que se ejecuta
-   cuando alguien agrega un campo (B-244). Las tres las ata
-   `tests/agentes-y-skills.test.ts`, que compara los números y las funciones
-   productoras de las tres, exige que el parseo no se coma ninguna fila y —desde
-   B-109— que **la prosa de este archivo no nombre otro número que su propia
-   tabla**: fue el hallazgo del propio auditor sobre B-109, que dejó la tabla en
-   diez y estos párrafos en ocho.
+   hoy y una trigésima tercera cambia el mapa y la doc — la tabla de
+   `docs/07-seguridad.md`, la del skill `campo-nuevo`, que es el que se ejecuta
+   cuando alguien agrega un campo (B-244), y la lista de «Los archivos que te
+   despiertan» de acá. Las ata `tests/agentes-y-skills.test.ts`, que compara los
+   números de las dos tablas, exige que el parseo no se coma ninguna fila, que
+   cada productor esté en la lista y —desde B-109— que **la prosa de este archivo
+   no nombre otro número que la tabla**: fue el hallazgo del propio auditor sobre
+   B-109, que dejó la tabla en diez y estos párrafos en ocho.
 
 ## Qué NO hacés
 
@@ -412,3 +388,150 @@ abrió B-1142 miró quién leía el campo y no por qué función se entraba, y p
 afirmó una URL pelada que ninguna salida mostraba. B-1145 fue el caso simétrico
 en la misma lista. Quien prioriza no tenía cómo distinguir esos dos de los que
 sí eran ciertos.
+
+## Los archivos que te despiertan
+
+Los productores de la tabla de `docs/07-seguridad.md` y las puertas de arriba.
+`scripts/auditores-que-corresponden.mjs` lee esta lista —lo que está entre los
+dos marcadores— para decidir si un alcance te corresponde, así que **una salida
+nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
+`description` y salió de ahí porque el `description` va al prompt de cada sesión
+(decisión B del PRD 6); el disparo lo decide `/audit`, no el nombre del archivo
+(D-560).
+
+<!-- disparadores:inicio -->
+- `src/lib/toPublic.ts`
+- `src/lib/eventsJson.ts`
+- `src/pages/events.json.ts`
+- `src/pages/index.astro`
+- `src/lib/detallePublico.ts`
+- `src/lib/cartelera.ts`
+- `src/lib/imagenes.ts`
+- `src/lib/contenidoDelSitio.ts`
+- `src/pages/actividad/[slug].astro`
+- `src/pages/cartelera.astro`
+- `src/lib/listadoPublico.ts`
+- `src/lib/mesPublico.ts`
+- `src/lib/tarjetaPublica.ts`
+- `src/lib/ahoraPublico.ts`
+- `src/lib/fechasPublicas.ts`
+- `src/lib/identidad.ts`
+- `src/pages/agenda/[mes].astro`
+- `src/lib/sitemap.ts`
+- `src/lib/hubsPublicos.ts`
+- `src/pages/ciudad/[ciudad].astro`
+- `src/lib/geografia.mjs`
+- `src/lib/pasadasPublicas.ts`
+- `src/lib/enlaces.ts`
+- `src/lib/boletinDelSitio.ts`
+- `src/lib/boletinSemanal.ts`
+- `src/components/sitio/SuscribirseBoletin.astro`
+- `src/lib/rutasPublicas.ts`
+- `src/layouts/Base.astro`
+- `src/pages/sitemap.xml.ts`
+- `src/pages/robots.txt.ts`
+- `src/pages/pasadas.astro`
+- `functions/calendario.js`
+- `functions/reportes.js`
+- `functions/frescura.js`
+- `functions/github-issues.js`
+- `src/lib/analytics-eventos.ts`
+- `src/lib/analyticsSitio.ts`
+- `src/lib/medicionSitio.ts`
+- `src/components/sitio/AvisoDeCookies.astro`
+- `src/components/publico/Buscador.tsx`
+- `src/lib/bannerDeCiudad.ts`
+- `src/components/publico/BannerDeCiudad.tsx`
+- `src/lib/textoRedes.ts`
+- `src/lib/handle-instagram.mjs`
+- `functions/handle-instagram.js`
+- `functions/geografia.js`
+- `src/lib/comercialDelSitio.ts`
+- `src/lib/ayudaDelSitio.ts`
+- `src/lib/contactoDelSitio.ts`
+- `src/pages/contacto.astro`
+- `src/lib/apoyoDelSitio.ts`
+- `src/lib/noEncontrado.ts`
+- `src/types/actividad.ts`
+- `src/lib/schema.ts`
+- `src/lib/historial.ts`
+- `src/lib/actividades.ts`
+- `src/lib/opciones.ts`
+- `src/lib/reportes.ts`
+- `src/lib/propuestas.ts`
+- `src/lib/bandejaDePropuestas.ts`
+- `src/lib/guardadosDelSitio.ts`
+- `src/lib/guardadoDelNavegador.ts`
+- `src/lib/libreriaPublica.ts`
+- `src/lib/librerias.ts`
+- `src/lib/libreria-schema.ts`
+- `src/lib/descripcionEnlazada.ts`
+- `functions/links-de-reunion.js`
+- `src/lib/imagenesDeFicha.ts`
+- `src/lib/imagen-schema.ts`
+- `src/lib/directorios.ts`
+- `src/pages/guia/index.astro`
+- `functions/alta-de-opcion.js`
+- `functions/alta-de-opcion-firestore.js`
+- `functions/alta-de-opcion-trigger.js`
+- `functions/huella.js`
+- `src/lib/enlaceSeguro.ts`
+- `src/lib/afiche.ts`
+- `src/pages/tipo/[tipo].astro`
+- `src/pages/barrio/[barrio].astro`
+- `src/pages/gratis.astro`
+- `src/pages/online.astro`
+- `src/pages/suscribirse.astro`
+- `src/components/publico/MisGuardados.tsx`
+- `src/components/publico/GuardarBusqueda.tsx`
+- `src/lib/enviar-ficha.ts`
+- `src/components/admin/BoletinPanel.tsx`
+- `src/pages/librerias.json.ts`
+- `src/pages/guia/librerias/index.astro`
+- `src/pages/guia/librerias/[slug].astro`
+- `src/components/publico/FichaDeLibreriaFila.tsx`
+- `src/components/publico/BuscadorDeLibrerias.tsx`
+- `src/lib/suscripcionPublica.ts`
+- `src/lib/suscripcionesLiterarias.ts`
+- `src/lib/suscripcion-literaria-schema.ts`
+- `src/lib/datoConFecha.ts`
+- `src/pages/suscripciones.json.ts`
+- `src/pages/guia/suscripciones/index.astro`
+- `src/pages/guia/suscripciones/[slug].astro`
+- `src/components/publico/FichaDeSuscripcionFila.tsx`
+- `src/components/publico/BuscadorDeSuscripciones.tsx`
+- `src/lib/bibliotecaPublica.ts`
+- `src/components/publico/SumarBiblioteca.tsx`
+- `src/components/publico/BuscadorDeBibliotecas.tsx`
+- `src/components/publico/FichaDeBibliotecaFila.tsx`
+- `src/pages/bibliotecas.json.ts`
+- `src/pages/guia/bibliotecas/index.astro`
+- `src/pages/guia/bibliotecas/[slug].astro`
+- `src/pages/guia/bibliotecas/sumar.astro`
+- `src/lib/lugarPublico.ts`
+- `src/lib/lugares.ts`
+- `src/lib/lugar-schema.ts`
+- `src/lib/paresFlagDato.ts`
+- `src/pages/lugares.json.ts`
+- `src/pages/guia/lugares/index.astro`
+- `src/pages/guia/lugares/[slug].astro`
+- `src/components/publico/FichaDeLugarFila.tsx`
+- `src/components/publico/BuscadorDeLugares.tsx`
+- `functions/directorios.js`
+- `functions/retencion.js`
+- `functions/propuestas.js`
+- `functions/propuestas-trigger.js`
+- `functions/flyer-de-propuesta.js`
+- `functions/flyer-de-propuesta-trigger.js`
+- `src/lib/efemeridePublica.ts`
+- `src/pages/efemerides.json.ts`
+- `src/components/sitio/EfemerideDeHoy.astro`
+- `src/pages/efemerides/index.astro`
+- `src/pages/efemerides/[slug].astro`
+- `src/types/efemeride.ts`
+- `src/lib/efemeride-schema.ts`
+- `src/lib/efemerides.ts`
+- `functions/efemerides.js`
+- `functions/efemerides-trigger.js`
+- `firestore.rules`
+<!-- disparadores:fin -->

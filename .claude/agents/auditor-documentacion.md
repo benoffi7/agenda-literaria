@@ -87,10 +87,10 @@ Buscá, con `grep` y leyendo:
    | Ya cubierto | Por |
    |---|---|
    | Los marcadores de git (`<<<<<<<`, `=======`, `>>>>>>>`) en cualquier archivo versionado | `tests/sin-marcadores-de-conflicto.test.ts` |
-   | En **`docs/13-agentes.md`** y solo ahí: filas de la tabla «no automatizar» fusionadas con dos barras verticales, filas que dejaron de empezar con una, primeras celdas repetidas, nombres de test que ya no existen, y líneas de prosa de más de 100 caracteres (la señal de dos oraciones pegadas) | `tests/red-de-contencion.test.ts` (B-367, B-294, B-660) |
+   | En **`docs/13-agentes-no-automatizado.md`** (la tabla) y **`docs/13-agentes.md`**, y solo ahí: filas de la tabla «no automatizar» fusionadas con dos barras verticales, filas que dejaron de empezar con una, primeras celdas repetidas, nombres de test que ya no existen, y líneas de prosa de más de 100 caracteres (la señal de dos oraciones pegadas) | `tests/red-de-contencion.test.ts` (B-367, B-294, B-660) |
 
    **Lo que sigue siendo tuyo, y es la mayor parte:** el mismo drift en
-   *cualquier otro* documento, y en `13-agentes.md` la variante que ninguna de
+   *cualquier otro* documento, y en la tabla «no automatizar» la variante que ninguna de
    esas seis reglas ve — dos filas distintas que dicen cosas contradictorias
    sobre el mismo test, o un texto que quedó describiendo un test que cambió de
    trabajo. La forma se automatizó; el **criterio** de cuál versión de un texto
@@ -134,7 +134,7 @@ Buscá, con `grep` y leyendo:
 El repo tiene tests, scripts, un hook, skills y auditores, y la regla es que
 **ninguno duplique a otro**: un auditor que repite lo que un test ya frena da
 falsa sensación de cobertura, que es peor que no tenerlo. Eso se sostiene con
-una sola cosa —que `docs/13-agentes.md` diga la verdad— y nadie más la mira.
+una sola cosa —que `docs/13-agentes.md` y su registro `docs/13-agentes-no-automatizado.md` digan la verdad— y nadie más la mira.
 
 Cuatro cosas concretas, todas verificables con `grep`:
 
@@ -150,7 +150,7 @@ Cuatro cosas concretas, todas verificables con `grep`:
    test nuevo acaba de cerrar: si sigue ahí como "hallazgo posible", es drift, y
    del caro. El patrón correcto es dejar la fila diciendo "cubierto por
    `tests/x.test.ts`, no lo reportes".
-3. **La tabla "Qué se decidió no automatizar"** de `13-agentes.md` afirma, fila
+3. **La tabla "Qué se decidió no automatizar"** de `13-agentes-no-automatizado.md` afirma, fila
    por fila, que *ya hay un test*. Que el archivo **exista** ya lo verifica
    `tests/red-de-contencion.test.ts` (B-660), así que eso no lo reportes. Lo que
    sigue sin red es lo de arriba: que ese test siga verificando **eso** y no

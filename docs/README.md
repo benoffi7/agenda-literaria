@@ -12,14 +12,14 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 3 | [`03-modelo-de-datos.md`](03-modelo-de-datos.md) | Colecciones, campos, taxonomías. |
 | 4 | [`04-funcionalidades.md`](04-funcionalidades.md) | Qué hace el sistema hoy, pantalla por pantalla. |
 | 5 | [`05-patrones.md`](05-patrones.md) | Convenciones a respetar al escribir código acá. |
-| 6 | [`06-decisiones.md`](06-decisiones.md) | Decisiones tomadas durante la implementación, y los desvíos del `CLAUDE.md` con su motivo. |
+| 6 | [`06-decisiones.md`](06-decisiones.md) — índice en [`06-decisiones-indice.md`](06-decisiones-indice.md), generado | Decisiones tomadas durante la implementación, y los desvíos del `CLAUDE.md` con su motivo. |
 | 7 | [`07-seguridad.md`](07-seguridad.md) | Qué es público y qué no. Cómo se verifica. |
 | 8 | [`08-operacion.md`](08-operacion.md) | Correr local, deployar, diagnosticar. |
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
 | 10 | [`10-salud-del-codigo.md`](10-salud-del-codigo.md) | Diagnóstico medido: tamaño, acoplamiento, duplicación. Qué conviene arreglar, qué está bien y qué no hay que tocar. |
 | 11 | [`11-ideas-de-producto.md`](11-ideas-de-producto.md) | Propuestas de funcionalidad con su argumento en contra, y lo que se descartó a propósito. Se lee antes de decidir qué sigue. |
 | 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01, cerrado): URLs, pantallas, SEO, filtros y casos borde, cada sección con su estado y sus desvíos. Los hubs (B-108) y el marcado de navegación (B-107) ya se construyeron; lo que queda son detalles menores. |
-| 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan, cuándo invocarlos, y qué se decidió **no** automatizar porque ya hay un test. |
+| 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan y cuándo invocarlos. Lo que se decidió **no** automatizar porque ya hay un test es un registro aparte: [`13-agentes-no-automatizado.md`](13-agentes-no-automatizado.md). |
 | 14 | [`14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) | Cómo se ataca el backlog acumulado sin que los frentes se pisen. Se reparte por archivo, no por tema. |
 | 15 | [`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) | Las trampas del `CLAUDE.md` §13, con qué test fija cada una — y cuál quedó sin red. Se verifica solo. |
 | 16 | [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) | Arquitectura de la analítica del **sitio público**, que hoy no mide nada: qué preguntas contestaría un tablero, de dónde saldría cada dato, las fricciones traducidas a algo medible, y las **dos decisiones del dueño** que lo bloquean. Lo único construido de acá es el tablero del catálogo. |

@@ -21763,6 +21763,28 @@ ENOENT —13 + 21 casos— aunque el paquete se resuelva bien para todo lo demá
 agente en worktree ve la suite en rojo por el entorno. Arreglo probable:
 `createRequire(import.meta.url).resolve('tailwindcss/theme.css')`.
 
+### B-1950 · La tabla de salidas de `docs/07-seguridad.md` declara tres columnas y la mayoría de las filas trae cuatro · P4 — del frente de B-1942 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `8ae31ef`. El encabezado de la tabla de `docs/07-seguridad.md` suma «Test que la fija» y las filas 1 a 10 la tienen, copiada de la ficha del `auditor-privacidad`. El `string | null` de la fila 6 se escribe `\|`: partía la celda en GitHub. El caso de columnas de `tests/agentes-y-skills.test.ts` barre `07-seguridad.md` y corta en el `|` sin escapar. Mutación probada: sacarle a la fila 3 su celda de tests lo pone en rojo nombrando la fila.
+
+El encabezado es `| # | Salida | Quién decide qué sale |`. Las filas 1 a 5 y 7 a 10
+tienen tres celdas y las otras veintitrés tienen cuatro: la última es la de tests, sin
+título, y Markdown la pinta sin encabezado. Por eso el caso nuevo de
+`agentes-y-skills.test.ts` cubre solo la ficha y el skill. Arreglo: agregar «Test que
+la fija» al encabezado, completar las filas 1 a 10 y sumar `SEGURIDAD` al caso.
+
+
+### B-1951 · «dos altas simultáneas no se pisan» se pasa de los 5 s con la máquina cargada · P3 — del pre-push del 2026-09-25 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `393af0e`. El caso tiene timeout propio de 30 s, como los demás de integración que esperan al emulador.
+
+`tests/alta-de-opcion.integracion.test.ts:104` dio `Test timed out in 5000ms` en el
+gate mientras otro agente corría la suite en paralelo; pasó sola en el reintento. Es
+una transacción que se reintenta contra el emulador, así que bajo carga tarda. Arreglo
+probable: darle un timeout propio a ese caso, como los otros de integración que
+compiten por la misma transacción.
+
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

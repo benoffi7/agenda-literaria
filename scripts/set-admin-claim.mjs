@@ -44,10 +44,11 @@ import { getAuth } from 'firebase-admin/auth';
  * permiso», diría «no hay actividades de tu ciudad». Es la clase de B-88 (la
  * misma pregunta contestada por dos funciones) con el peor síntoma posible.
  *
- * Por eso la implementación vive en `src/lib/slugify.mjs` y no en un `.ts`: node
- * no corre TypeScript, y una copia acá es exactamente lo que no puede existir.
+ * Por eso se importa la implementación de `functions/slugify.js` y no la fachada
+ * `.ts`: node no corre TypeScript, y una copia acá es exactamente lo que no puede
+ * existir.
  */
-import { slugify } from '../src/lib/slugify.mjs';
+import { slugify } from '../functions/slugify.js';
 
 const argumentos = process.argv.slice(2);
 
