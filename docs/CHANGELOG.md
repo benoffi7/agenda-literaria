@@ -2,6 +2,75 @@
 
 ## Sin publicar
 
+- **PRD 6, mejoras de código: la tanda entera** (2026-09-25, seis frentes en paralelo;
+  D-1195, D-1196 y D-1205 a D-1212). Ninguna cambia lo que ven quien visita ni quien
+  carga. Medido antes → después:
+
+  | Qué | Antes | Después |
+  |---|---:|---:|
+  | Suite sin emuladores | 154 s | 30–34 s |
+  | Suite con emuladores | 162 s | ~50 s |
+  | Pre-push entero | ≈ 5 min | 96–110 s |
+  | Chunk inicial de `/admin` | 137,8 KB gzip | 117,9 KB gzip |
+  | Lectura de un encargo típico | ~56.300 tokens | ~29.000 tokens |
+  | `docs/13-agentes.md` | 148,7 KB | 38,2 KB |
+  | `contenidoDelSitio.ts` | 2.292 líneas | 1.716 |
+  | `build-contra-emulador.mjs` | 1.890 líneas | ~480 |
+
+- **La suite corre en paralelo y el pre-push baja a menos de 2 minutos** (M-1, M-2,
+  M-3, M-12; B-1962, B-1951). `vitest.config.ts` reparte la suite en tres proyectos:
+  `unidad` y `render` en paralelo, e `integracion` —todo lo que usa el emulador— en
+  fila y al final. `tests/proyectos-de-la-suite.test.ts` frena el archivo que no cae en
+  ningún proyecto o que usa el emulador fuera de la fila. El paso de zona horaria del
+  gate corre solo `unidad` y `render` (decisión E). `que-deployar.test.ts` decide sobre
+  un árbol chico. Las mutaciones temporales de tres tests salen a `os.tmpdir()`. Los
+  dos registros grandes pasan a un archivo por entrada (`tests/clases/`,
+  `tests/salidas/`), con un índice verificado en las rutas viejas y los mismos 132 + 108
+  casos.
+- **El gate de build ya no puede salir en verde con un rojo impreso** (B-1960, M-11,
+  D-1211). `fallo()` marca el código de salida él mismo; antes 70 llamadas dependían de
+  un `salida = 1` a mano que `process.exit(salida)` pisaba si faltaba. El `try` de 1.500
+  líneas de `scripts/build-contra-emulador.mjs` pasó a ser 12 chequeos nombrados en
+  `scripts/gate-build/chequeos/`, que leen el `dist/` una sola vez; uno que tira una
+  excepción se reporta con su nombre y no corta a los demás. `tests/gate-build-resultado.test.ts`
+  trae la mutación adentro.
+- **La retención queda partida en tres** (M-13, D-1210): cada ciclo (propuestas,
+  flyers, fichas) tiene su decisión pura y un `-firestore.js` con el `db` o el
+  `bucket`, y `functions/retencion.js` es la fachada con los mismos 33 nombres.
+- **El deploy por contenido no repite la suite si el commit ya la pasó** (M-14,
+  decisión D, D-1212). `scripts/suite-verde-del-commit.sh` lo confirma por la API de
+  Actions y, si no puede, la suite corre. Ahorra ~2,5 minutos de Actions por edición.
+- **La Guía se arma con una sola pieza en vez de cuatro** (M-9, M-10, D-1195, D-1196).
+  La derivación salió a `src/lib/contenidoDeLaGuia.ts` con un solo `indiceDeDirectorio`,
+  `vistaDeDirectorio` y `caminosDeDirectorio`; la lectura y la whitelist por entidad
+  siguen en `contenidoDelSitio.ts`. Las cuatro fichas públicas montan
+  `FichaDeGuia.astro` y los cuatro formularios del panel `useFichaDeDirectorio`. El
+  `dist/` sale idéntico salvo espacios entre bloques, y un test nuevo fija el guardado de
+  los cuatro formularios.
+- **Las tres pantallas más grandes del panel, partidas** (M-17). `AdminApp.tsx` (1.263
+  → 726 líneas) queda como chasis y el router pasa a `src/components/admin/pantallas/`;
+  el tablero (1.242 → 288) deja cada pestaña en su archivo, y la bandeja de propuestas
+  (1.102 → 679) separa el flyer y la conversión. `carga-diferida` barre también los
+  `.ts` del panel.
+- **El texto de las novedades sale del chunk inicial del panel** (B-1961, M-4). El
+  contador cuenta sobre `src/lib/novedadesIds.ts` y el texto llega con `CentroAyuda`,
+  que ya era diferido; `novedades.ts` reexporta la marca de ahí. `tests/novedadesIds.test.ts`
+  ata la lista y nombra el id que falta. Una novedad nueva suma su id en dos lugares.
+- **`slugify` con una sola fachada** (M-18): `src/lib/slugify.ts` reexporta
+  `functions/slugify.js` y se borró `src/lib/slugify.mjs`.
+- **Lo que un agente lee para trabajar acá bajó a la mitad** (M-5, M-7, M-8, M-15, M-16;
+  B-1950). «Qué se decidió no automatizar» pasó a `docs/13-agentes-no-automatizado.md`.
+  Hay un índice generado de las decisiones (`docs/06-decisiones-indice.md`, `npm run
+  decisiones:indice`, atado por un test). La tabla de salidas públicas vive solo en
+  `docs/07-seguridad.md`, y las rutas que despiertan al `auditor-privacidad` salieron de
+  su `description` a un bloque del cuerpo. El `CLAUDE.md` dice lo vigente, citando la D
+  que cambió cada bloque; el original queda en git (`55c9578`). `05-patrones.md` suma la
+  regla para los comentarios nuevos. Y un test nuevo cruza cada función que nombra la
+  tabla de 07 contra su archivo (B-2030), que dejó pasar doce nombres viejos después de
+  partir la Guía. De paso, el pie del alta de un lugar dice «queda esperando» (B-1980).
+- **El MDD dejó de cargarse en este repo** (M-6, B-857): `.claude/settings.local.json`
+  excluye `~/.claude/CLAUDE.md` con `claudeMdExcludes`. Son ~12.500 tokens menos por
+  sesión, desde la próxima.
 - **Dos arreglos chicos de la red de tests** (B-1950, B-1951). La tabla de salidas
   públicas de `docs/07-seguridad.md` tiene título en su columna de tests y las diez
   primeras filas la completan; el test que exige que cada fila tenga las columnas de

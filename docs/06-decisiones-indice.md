@@ -308,6 +308,16 @@ cambio.
 - [D-1173](06-decisiones.md#d-1173--la-efeméride-de-hoy-la-elige-el-navegador-con-la-hora-de-buenos-aires) · La efeméride de hoy la elige el navegador, con la hora de Buenos Aires
 - [D-1174](06-decisiones.md#d-1174--un-borrador-de-efeméride-no-cuesta-un-build) · Un borrador de efeméride no cuesta un build
 - [D-1180](06-decisiones.md#d-1180--el-slug-repetido-de-una-efeméride-se-avisa-en-el-panel-no-se-reserva-en-una-transacción) · El slug repetido de una efeméride se avisa en el panel, no se reserva en una transacción
+- [D-1195](06-decisiones.md#d-1195--la-guía-se-deriva-en-un-archivo-aparte-y-la-lectura-se-queda-en-el-lector) · La Guía se deriva en un archivo aparte, y la lectura se queda en el lector
+- [D-1196](06-decisiones.md#d-1196--el-esqueleto-de-la-guía-son-un-componente-y-un-hook-los-campos-siguen-por-entidad) · El esqueleto de la Guía son un componente y un hook; los campos siguen por entidad
+- [D-1205](06-decisiones.md#d-1205--el-claudemd-dice-lo-vigente-el-original-queda-en-git) · El `CLAUDE.md` dice lo vigente; el original queda en git
+- [D-1206](06-decisiones.md#d-1206--la-tabla-de-salidas-públicas-vive-una-sola-vez-en-07-seguridadmd) · La tabla de salidas públicas vive una sola vez, en 07-seguridad.md
+- [D-1207](06-decisiones.md#d-1207--los-disparadores-del-auditor-privacidad-van-en-el-cuerpo-de-la-ficha) · Los disparadores del auditor-privacidad van en el cuerpo de la ficha
+- [D-1208](06-decisiones.md#d-1208--el-índice-de-06-decisionesmd-se-genera-y-el-test-exige-que-esté-al-día) · El índice de 06-decisiones.md se genera, y el test exige que esté al día
+- [D-1209](06-decisiones.md#d-1209--un-comentario-nuevo-dice-el-porqué-vigente-la-historia-va-a-la-d) · Un comentario nuevo dice el porqué vigente; la historia va a la D
+- [D-1210](06-decisiones.md#d-1210--el-io-de-la-retención-va-a--firestorejs-no-al--trigger) · El I/O de la retención va a `-firestore.js`, no al `-trigger`
+- [D-1211](06-decisiones.md#d-1211--los-chequeos-del-gate-son-independientes-y-leen-un-dist-en-memoria) · Los chequeos del gate son independientes y leen un `dist/` en memoria
+- [D-1212](06-decisiones.md#d-1212--cómo-se-confirma-que-el-commit-ya-pasó-la-suite) · Cómo se confirma que el commit ya pasó la suite
 
 ## Otras secciones del registro
 

@@ -17640,6 +17640,17 @@ aporta al objetivo del proyecto —es contenido indexable de long tail que hoy n
 tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
 y el panel, pero no el sitio.
 
+### B-1960 · El gate del build sale con 0 si un `fallo()` nuevo olvida su `salida = 1` · P2 — de la auditoría del PRD 6 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `f2d220e`, `c38ae3b`, `485ca98`. `fallo()` marca el rojo él mismo (`scripts/gate-build/resultado.mjs`) y ya no queda ningún `salida = 1` a mano. Los pasos 1 a 10 son 12 chequeos nombrados en `scripts/gate-build/chequeos/`. La red es `tests/gate-build-resultado.test.ts`, con la mutación adentro. El gate contra el emulador dio verde, y rojo con una mutación en el paso 10.
+
+`scripts/build-contra-emulador.mjs` define `fallo()` con `process.exitCode = 1`, pero
+termina con `process.exit(salida)`, que la pisa. Por eso 70 de las 87 llamadas llevan un
+`salida = 1` escrito a mano en la línea siguiente (las otras 17 pasan por `ctx.fallo`, que
+lo hace solo). Hoy están todas bien; un chequeo nuevo que llame a `fallo()` sin la segunda
+línea imprime el rojo y deja pasar el paso 5 del pre-push. Ningún test lo mira. Arreglo:
+que `fallo()` marque `salida = 1` él mismo y borrar las 70 copias (PRD 6, M-11).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -21773,7 +21784,6 @@ título, y Markdown la pinta sin encabezado. Por eso el caso nuevo de
 `agentes-y-skills.test.ts` cubre solo la ficha y el skill. Arreglo: agregar «Test que
 la fija» al encabezado, completar las filas 1 a 10 y sumar `SEGURIDAD` al caso.
 
-
 ### B-1951 · «dos altas simultáneas no se pisan» se pasa de los 5 s con la máquina cargada · P3 — del pre-push del 2026-09-25 · ✅ hecho (2026-09-25)
 
 **✅ Hecho (2026-09-25).** `393af0e`. El caso tiene timeout propio de 30 s, como los demás de integración que esperan al emulador.
@@ -21784,6 +21794,40 @@ una transacción que se reintenta contra el emulador, así que bajo carga tarda.
 probable: darle un timeout propio a ese caso, como los otros de integración que
 compiten por la misma transacción.
 
+### B-1980 · El pie del alta de un lugar dice «quedo» · P3 — del frente `guia` del PRD 6 (2026-09-25) · ✅ hecho (2026-09-25)
+
+En `LugarFormulario`, el pie del alta decía «Sin publicar **quedo** esperando en la
+lista de lugares…». **✅ Hecho (2026-09-25)** en `45ce4d8`: «queda», en
+`pie.alCrear` y en su espejo de `tests/ficha-de-directorio.render.test.tsx`.
+
+### B-2030 · La tabla de salidas de `07-seguridad.md` nombraba funciones que su archivo ya no define · P2 — del frente `guia-doc` del PRD 6 (2026-09-25) · ✅ hecho (2026-09-25)
+
+Después de M-9, las filas 20 a 27 citaban doce funciones viejas de
+`contenidoDelSitio.ts` y ningún test lo notaba, porque solo se verificaba que el
+archivo existiera. **✅ Hecho (2026-09-25)** en `4fa9c07` y `ef4aea1`: la tabla nombra
+lo vigente, y `tests/agentes-y-skills.test.ts` cruza cada par `archivo — función` de
+una celda de productor contra el archivo. La mutación con `indiceDeLibrerias` lo pone
+en rojo.
+
+### B-1961 · El panel descarga el texto entero de las novedades antes del login · P3 — de la auditoría del PRD 6 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `3c47684`, `75047ec`, `c78129b`. `BotonAyuda` cuenta las no leídas sobre `src/lib/novedadesIds.ts` y el texto se carga con `CentroAyuda`, que es diferido. Chunk inicial de `/admin`: 137,8 → 117,9 KB gzip (−19,9), medido con `vite build` de la isla. Redes: `tests/novedadesIds.test.ts` y un `describe` nuevo en `tests/bundle-panel.test.ts`, probado con una mutación. La cifra del costo de D-62 se corrigió.
+
+`BotonAyuda.tsx` importa `NOVEDADES` estático para contar las no leídas, así que
+`novedades.ts` (69 KB, 21 KB gzip) va en el chunk inicial de `/admin`, de 144 KB gzip.
+D-63 estimaba «unos 19 KB entre la guía y las novedades». Arreglo: una lista chica de ids
+y fechas para el conteo, atada por un test, y el texto con `CentroAyuda`, que ya es
+diferido (PRD 6, M-4). Hay que corregir la cifra de D-63.
+
+### B-1962 · Tres tests escriben mutaciones adentro de `tests/fixtures/` mientras otros recorren el árbol · P3 — de la auditoría del PRD 6 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `7891fa6`. `archivos-del-repo` prueba el helper en un repo de juguete en `os.tmpdir()`, y `credenciales-del-emulador` y `rechazos-sin-copia` escriben su copia sintética en un `mkdtemp`. Ningún test escribe dentro de `tests/`, y la suite en paralelo pasó cinco veces seguidas sin `ENOENT`.
+
+`archivos-del-repo`, `credenciales-del-emulador` y `rechazos-sin-copia` crean y borran
+`tests/fixtures/.mutacion-*-tmp`. Con los archivos en paralelo, `mapa-de-trampas` y
+`estados-referenciados` los encuentran a medio borrar y fallan con `ENOENT` (reproducido
+con `--fileParallelism`). En serie no pasa, pero bloquea la suite en paralelo (PRD 6,
+M-1). Arreglo: escribir en `os.tmpdir()` o pasarle la lista de archivos al barrido.
 
 ## Pendiente de acción manual del dueño
 

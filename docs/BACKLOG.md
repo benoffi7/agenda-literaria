@@ -229,15 +229,6 @@ que las sostiene. Es una decisión con costo, no un botón de reinicio.
 
 ## P2 — mejoras reales
 
-### B-1960 · El gate del build sale con 0 si un `fallo()` nuevo olvida su `salida = 1` · P2 — de la auditoría del PRD 6 (2026-09-25)
-
-`scripts/build-contra-emulador.mjs` define `fallo()` con `process.exitCode = 1`, pero
-termina con `process.exit(salida)`, que la pisa. Por eso 70 de las 87 llamadas llevan un
-`salida = 1` escrito a mano en la línea siguiente (las otras 17 pasan por `ctx.fallo`, que
-lo hace solo). Hoy están todas bien; un chequeo nuevo que llame a `fallo()` sin la segunda
-línea imprime el rojo y deja pasar el paso 5 del pre-push. Ningún test lo mira. Arreglo:
-que `fallo()` marque `salida = 1` él mismo y borrar las 70 copias (PRD 6, M-11).
-
 ### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
 
 > ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
@@ -416,21 +407,28 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-1961 · El panel descarga el texto entero de las novedades antes del login · P3 — de la auditoría del PRD 6 (2026-09-25)
+### B-1970 · `scripts/que-deployar.sh` tarda 0,2–0,35 s por llamada por los subprocesos que lanza · P4 — del frente `suite` del PRD 6 (2026-09-25)
 
-`BotonAyuda.tsx` importa `NOVEDADES` estático para contar las no leídas, así que
-`novedades.ts` (69 KB, 21 KB gzip) va en el chunk inicial de `/admin`, de 144 KB gzip.
-D-63 estimaba «unos 19 KB entre la guía y las novedades». Arreglo: una lista chica de ids
-y fechas para el conteo, atada por un test, y el texto con `CentroAyuda`, que ya es
-diferido (PRD 6, M-4). Hay que corregir la cifra de D-63.
+La derivación de lo compartido abre un `grep` y un pipe por cada archivo compartido
+en cada vuelta, y después otra vez para buscar paquetes. En macOS son ~0,1 s por
+llamada aunque corran en paralelo, y eso deja a `tests/que-deployar.test.ts` en ~5 s en
+vez de los 3 del PRD. Arreglo probable: derivar lo compartido con un solo `awk` o
+`grep -o` sobre todos los archivos a la vez.
 
-### B-1962 · Tres tests escriben mutaciones adentro de `tests/fixtures/` mientras otros recorren el árbol · P3 — de la auditoría del PRD 6 (2026-09-25)
+### B-2000 · Un comentario de `tests/limpieza-imagenes.test.ts` cita «el aviso del §3.1» del CLAUDE.md, que ya no existe · P4 — del frente `docs-tokens` del PRD 6 (2026-09-25)
 
-`archivos-del-repo`, `credenciales-del-emulador` y `rechazos-sin-copia` crean y borran
-`tests/fixtures/.mutacion-*-tmp`. Con los archivos en paralelo, `mapa-de-trampas` y
-`estados-referenciados` los encuentran a medio borrar y fallan con `ENOENT` (reproducido
-con `--fileParallelism`). En serie no pasa, pero bloquea la suite en paralelo (PRD 6,
-M-1). Arreglo: escribir en `os.tmpdir()` o pasarle la lista de archivos al barrido.
+Con M-16 los avisos se fundieron con su bloque: ahora es el bloque del §3.1 y la nota
+del §3.2. Es un comentario, no rompe nada.
+
+### B-2001 · Quedan menciones de «estas tablas» y «los tres lugares» de la tabla de salidas · P4 — del frente `docs-tokens` del PRD 6 (2026-09-25)
+
+Después de M-8 los lugares son la tabla de `07-seguridad.md`, la del skill
+`campo-nuevo` y la lista de disparadores de la ficha. Se corrigieron las menciones de
+«tres tablas»; quedan notas históricas en `13-agentes.md` que conviene que mire el
+`auditor-documentacion`. Y `13-agentes.md` cita «paso N de
+`scripts/build-contra-emulador.mjs`» (4b, 7, 8i, 8j, 9, 10), que desde M-11 viven en
+`scripts/gate-build/chequeos/NN-*.mjs`: sigue siendo cierto, pero conviene nombrar el
+archivo del chequeo.
 
 ### B-1920 · La regla de dónde carga el publicador confía en el derivado `ciudades` · P3 — del `auditor-privacidad` sobre B-921 (2026-09-25)
 

@@ -6,6 +6,9 @@ Decisiones tomadas **durante la implementación**, que no están en el
 Las decisiones de arquitectura ya cerradas están en el §2 del
 [`CLAUDE.md`](../CLAUDE.md) y no se revisitan sin pedido explícito.
 
+**Índice:** [`06-decisiones-indice.md`](06-decisiones-indice.md), una línea por
+decisión, generado con `npm run decisiones:indice`.
+
 ---
 
 ## D-01 · Sin librería de formularios
@@ -13749,3 +13752,112 @@ la pantalla de Efemérides ya escucha la colección entera, y `partirPorSlug` es
 como perdida a la que el sitio publica. La carrera sigue siendo posible pero ya no es
 silenciosa; el arreglo es despublicar una. Es el criterio de D-660 para la Guía, donde
 además el build falla con `SlugDeFichaRepetido`.
+
+## D-1195 · La Guía se deriva en un archivo aparte, y la lectura se queda en el lector
+
+**PRD 6 M-9, 2026-09-25.** Se partió `contenidoDelSitio.ts`, pero lo que pasó a
+`contenidoDeLaGuia.ts` es la **derivación** (índice, vista, caminos,
+`caminosDeFichas`, `fichasPorDirectorio`), no la **lectura**: `libreriasPublicadas` y
+sus tres hermanas, con su `where`, su `.select()` y su proyección, siguen en
+`contenidoDelSitio.ts`. B-227 hace de ese archivo el único lector de Firestore del
+sitio, y lo vigila un test; mover las lecturas era abrir una segunda puerta. El
+archivo nuevo importa del lector y no al revés, así que no hay ciclo. La derivación es
+una sola función por paso, que recibe el `IdDirectorio`; lo que cambia por entidad vive
+en un registro tipado. **La whitelist no se generaliza**: el registro solo enchufa
+`fichaDe*` y `construirIndiceDe*` de cada `lib/<entidad>Publica.ts`. Las efemérides se
+quedan en el lector porque no son un directorio. No quedó fachada.
+
+## D-1196 · El esqueleto de la Guía son un componente y un hook; los campos siguen por entidad
+
+**PRD 6 M-10, 2026-09-25.** Las cuatro fichas públicas montan `FichaDeGuia.astro`, con
+dos slots para lo propio de cada entidad, y cada página conserva su `<Base>`. El
+componente no ve una entidad: recibe textos, `href` ya saneados e imágenes ya
+proyectadas. Costo aceptado: Astro no emite el espacio entre dos expresiones dentro de
+un slot, así que entre algunos bloques desaparece un espacio que no se ve. Los cuatro
+formularios del panel montan `useFichaDeDirectorio` (el ciclo de guardado, con las
+funciones de cada entidad por configuración), `useEtiquetasNuevas` (las dos políticas
+de alta que ya existían) y `MarcoDeFicha` (carteles, botones y pie). La galería y los
+campos quedan en cada formulario.
+
+## D-1205 · El `CLAUDE.md` dice lo vigente; el original queda en git
+
+**PRD 6 M-16, decisión C, 2026-09-25.** Cada aviso «el bloque de abajo queda como
+estaba escrito» se fundió con su bloque, y el bloque pasó a decir lo que rige hoy, con
+la D que lo cambió al lado del campo o de la regla. Las decisiones cerradas del §2 no
+cambian: cambia la redacción. El texto original **no** se copió a las D —D-125, D-130,
+D-530 y D-710 no lo citan—, así que la fuente es `git show 55c9578:CLAUDE.md`. Contra:
+quien quiera ver «qué decía antes» tiene que ir a git o a la D; a favor, un agente deja
+de leer el bloque viejo y su corrección y de tener que reconciliarlos.
+
+## D-1206 · La tabla de salidas públicas vive una sola vez, en 07-seguridad.md
+
+**PRD 6 M-8, 2026-09-25.** La ficha del `auditor-privacidad` tenía su copia (43 KB) y
+ya divergía de la de 07: faltaba la columna de tests en nueve filas (B-1950) y había
+nombres de productores que solo estaban en un lado. Ahora 07 es la única tabla
+—absorbió lo que tenía de más la copia— y la ficha la lee. `agentes-y-skills.test.ts`
+ata 07 con el skill `campo-nuevo` y con los disparadores de la ficha, y falla si la
+ficha vuelve a tener una tabla numerada.
+
+## D-1207 · Los disparadores del auditor-privacidad van en el cuerpo de la ficha
+
+**PRD 6, decisión B, 2026-09-25.** Las ~130 rutas iban en el `description`, que Claude
+Code carga en el prompt de cada sesión (~1.170 tokens), y ya no son el mecanismo de
+disparo: lo decide `/audit` (D-560). Pasan a «Los archivos que te despiertan», entre
+`<!-- disparadores:inicio -->` y `<!-- disparadores:fin -->`, una ruta por línea (se
+mergean mejor que una sola línea larga). `auditores-que-corresponden.mjs` lee
+`description` + bloque (`declaracionDeLaFicha`); una ficha sin frontmatter válido no
+declara nada. Un test exige que el `description` no vuelva a nombrar rutas. Contra:
+Claude ya no despierta al auditor solo por nombre de archivo.
+
+## D-1208 · El índice de 06-decisiones.md se genera, y el test exige que esté al día
+
+**PRD 6 M-7, 2026-09-25.** `docs/06-decisiones-indice.md` lo escribe `npm run
+decisiones:indice`, y `tests/indice-de-decisiones.test.ts` compara el archivo con lo
+que produce el script. Quien agrega o renombra una D regenera el índice en el mismo
+cambio. El ancla sale de `encabezadosDe` —el mismo barrido de
+`anclas-referenciadas.mjs`— para que los dos no puedan derivarla distinto. Contra: en
+una tanda en paralelo, el índice choca igual que 06 al integrar; se resuelve corriendo
+el script después del merge, en vez de a mano.
+
+## D-1209 · Un comentario nuevo dice el porqué vigente; la historia va a la D
+
+**PRD 6 M-15, decisión F, 2026-09-25.** Escrita en `05-patrones.md` § Comentarios.
+Rige para lo que se escribe desde el 2026-09-25 y para el comentario que se toca
+porque cambió lo que explica; no se reescribe lo existente (B-78 sigue). Se mide con
+el porcentaje de prosa de `10-salud-del-codigo.md` §1.6 en la próxima remedición, sin
+test (B-180).
+
+## D-1210 · El I/O de la retención va a `-firestore.js`, no al `-trigger`
+
+**PRD 6 M-13, 2026-09-25.** El PRD decía mover al `-trigger` las funciones que reciben
+`db` o `bucket`. No se hizo así porque `retencion-trigger.js` importa
+`firebase-functions/v2/scheduler`, y los tests de integración importan
+`borrarPropuesta`, `borrarFicha` y el resto: un test que importa un módulo con
+`firebase-functions` rompe en CI (B-561, lo vigila `tests-no-importan-triggers`). Cada
+ciclo queda con su decisión pura (`retencion-{propuestas,flyers,fichas}.js`) y un
+`-firestore.js` al lado con el `db` inyectado y sin `firebase-admin` ni
+`firebase-functions`, el precedente de `alta-de-opcion-firestore.js`. El `-trigger`
+sigue siendo solo el pegamento con el reloj. `retencion.js` queda como fachada con
+`export *`, y `retencion-trigger.js` importa directo de cada módulo porque el detector
+de B-85 sigue los `import { … } from` y no los `export * from`.
+
+## D-1211 · Los chequeos del gate son independientes y leen un `dist/` en memoria
+
+**B-1960, PRD 6 M-11, 2026-09-25.** Al partir el `try` cambian dos cosas a propósito:
+una excepción dentro de un chequeo es un rojo que nombra al chequeo, y los que siguen
+corren igual (antes cortaba el `try` entero sin decir qué paso se había caído); y todos
+los chequeos leen de la misma lista, que el script arma una sola vez con los `.html`,
+`.json`, `.txt` y `.xml` de `dist/`. Los chequeos no tocan el disco, y eso permite
+probar sin build que cada uno se pone rojo sobre un `dist/` vacío. El tipo del contexto
+vive en `contexto.mjs` y no en el registro, porque el `import()` de un JSDoc cuenta
+como arista en `salud-del-codigo.mjs` y apuntarlo al registro armaba doce ciclos.
+
+## D-1212 · Cómo se confirma que el commit ya pasó la suite
+
+**PRD 6 M-14, decisión D, 2026-09-25.** La verificación falla cerrada: hay que
+encontrar una corrida de `push-main.yml` con `head_sha` igual a `github.sha` y, en ella,
+el job «Tests y typecheck» en `success` (se mira el último intento de cada corrida, y
+alcanza con una). Cualquier otra cosa es `saltear=false`. El script sale siempre con 0,
+el paso lleva `continue-on-error`, y el `if` de «Tests» es `!= 'true'`: si la salida
+queda vacía, la suite corre. El nombre del job está atado a `push-main.yml` por test,
+porque renombrarlo fallaría cerrado pero pagaría la suite en cada rebuild.
