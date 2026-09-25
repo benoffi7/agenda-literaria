@@ -14009,3 +14009,16 @@ por escritura y en un caso raro. Solo cuentan las filas nuevas respecto del docu
 anterior, identificadas por `id` o, sin id, por el contenido de la sede (trampa 2). El
 log no lleva uid ni mail. Si `getUser` falla se avisa igual con `e.code`: un aviso que no
 puede sonar es peor que uno de más.
+
+## D-1270 · El proyecto `unidad` no sube su `testTimeout`; un barrido caro lleva su límite en el `it`
+
+**B-2121, 2026-09-25.** Se evaluó subir a 15 s el `testTimeout` de `unidad` como red
+general para los barridos del repo bajo la carga del paralelo (M-1), y se decidió que no.
+De los tres casos de esta familia que pasaron los 5 s, dos eran bugs de verdad (B-2041 y
+el `readdirSync` de `ciudades.test.ts`, que bajaban a `node_modules`), y el timeout fue lo
+único que los mostró: con 15 s habrían quedado verdes y lentos. Además, un test colgado de
+verdad tardaría el triple en fallar. El barrido caro por lo que hace, y no por un error,
+lleva su límite en el `it` con el porqué al lado; el primero es `sin-comentarios` ›
+«ningún identificador…», con 30 s. Costo: el próximo barrido legítimamente caro va a
+fallar una vez antes de que alguien le ponga su límite, que es el momento de mirar si es
+caro por lo que hace o por un bug. Queda escrito en `vitest.config.ts`.

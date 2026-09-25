@@ -310,18 +310,6 @@ su docblock dice que «`searchText` y `ciudades[]` se reescriben» cuando solo e
 `barrio`, `syncCalendar` lo corregiría con un `derivados-no-coinciden` por actividad.
 Arreglo: importar `sedePrincipal` y corregir el docblock.
 
-### B-2120 · `costo-por-tecla` › «el costo no escala» sigue fallando a veces después de B-2060 · P3 — del frente `barridos` (2026-09-25)
-
-Falló en la suite completa y otra vez con solo dos archivos en paralelo
-(`sin-comentarios` y él): `expected 14.127 to be less than 10`. Pasó 3 de 3 solo. La
-proporción `< 10×` con pares intercalados todavía no aguanta la carga.
-
-### B-2121 · `sin-comentarios` › «ningún identificador que el parser de TypeScript ve como código desaparece» se pasa de los 5 s en la suite · P3 — del frente `barridos` (2026-09-25)
-
-5079 ms en la suite completa y 2,6 s solo. Es la familia de B-2041, un barrido del repo
-entero que con carga se acerca al límite, pero acá el costo es el parser de TypeScript,
-no `node_modules`.
-
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 
 **Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del

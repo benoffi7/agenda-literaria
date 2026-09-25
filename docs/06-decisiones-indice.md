@@ -332,6 +332,7 @@ cambio.
 - [D-1252](06-decisiones.md#d-1252--el-rebuild-pregunta-piderebuild-no-solo-hubocambiodecontenido) · El rebuild pregunta `pideRebuild`, no solo `huboCambioDeContenido`
 - [D-1253](06-decisiones.md#d-1253--el-diff-de-calendar-se-planifica-sobre-la-vista-derivada) · El diff de Calendar se planifica sobre la vista derivada
 - [D-1254](06-decisiones.md#d-1254--sede-sin-ciudad-avisa-solo-de-publicadoras-con-ciudad-y-solo-por-filas-nuevas) · `sede-sin-ciudad` avisa solo de publicadoras con ciudad, y solo por filas nuevas
+- [D-1270](06-decisiones.md#d-1270--el-proyecto-unidad-no-sube-su-testtimeout-un-barrido-caro-lleva-su-límite-en-el-it) · El proyecto `unidad` no sube su `testTimeout`; un barrido caro lleva su límite en el `it`
 
 ## Otras secciones del registro
 

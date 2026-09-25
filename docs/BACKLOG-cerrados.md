@@ -22068,6 +22068,22 @@ decidió no avisar siempre (D-1234) porque un admin puede cargar una sede sin ci
 legítimamente. Si hace falta: avisar solo cuando `updatedBy` sea un publicador, lo que
 exige leer su claim desde la Function.
 
+### B-2120 · `costo-por-tecla` › «el costo no escala» sigue fallando a veces después de B-2060 · P3 — del frente `barridos` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `fa618e7`. `proporcion()` toma el mínimo de 101 tandas intercaladas de 3 llamadas por lado, no la mediana de los cocientes: la carga solo puede sumar tiempo, así que la tanda más rápida es la más limpia. Con 24 procesos quemando CPU la mediana llegó a 13,6×; el mínimo no se movió de 5,4–5,65×. El techo sigue en `< 10×`, y la mutación O(n²) de B-2060 da 48–52× → rojo. 10/10 corridas unidad+render verdes.
+
+Falló en la suite completa y otra vez con solo dos archivos en paralelo
+(`sin-comentarios` y él): `expected 14.127 to be less than 10`. Pasó 3 de 3 solo. La
+proporción `< 10×` con pares intercalados todavía no aguanta la carga.
+
+### B-2121 · `sin-comentarios` › «ningún identificador que el parser de TypeScript ve como código desaparece» se pasa de los 5 s en la suite · P3 — del frente `barridos` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `4fa6372`, `a954f04`. El parse del barrido va con `jsDocParsingMode: ParseNone` y sin `parent`; sobre los 758 archivos da los mismos identificadores con la misma posición, y el parse baja de ~450 a ~280 ms. El caso tiene 30 s propios, porque su costo crece con el repo y es CPU pura sobre una lista finita. La mutación `\/\/` en `schema.ts` sigue en rojo. El `testTimeout` de `unidad` no se sube (D-1270).
+
+5079 ms en la suite completa y 2,6 s solo. Es la familia de B-2041, un barrido del repo
+entero que con carga se acerca al límite, pero acá el costo es el parser de TypeScript,
+no `node_modules`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

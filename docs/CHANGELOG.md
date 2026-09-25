@@ -2,6 +2,15 @@
 
 ## Sin publicar
 
+- **Dos tests que se ponían rojos con la suite en paralelo ya no dependen de la carga**
+  (B-2120, B-2121, D-1270). `costo-por-tecla` › «el costo no escala» compara el mínimo de
+  101 tandas cortas de cada lado en vez de la mediana de los cocientes: la tanda larga se
+  comía más cambios de contexto, y con la CPU ocupada la mediana llegaba a 13,6× sobre un
+  techo de 10×; el mínimo se queda en 5,4–5,7× con cualquier carga, y la regla O(n²) de
+  B-2060 sigue dando ~50×. El barrido de `sin-comentarios` que parsea el repo con
+  TypeScript ya no parsea JSDoc ni arma los `parent` (de ~450 a ~280 ms, con los mismos
+  identificadores) y tiene un timeout propio de 30 s. El proyecto `unidad` sigue con los
+  5 s por defecto, a propósito.
 - **El servidor verifica todos los datos que salen de las sedes, no solo las
   ciudades** (B-2050, D-1250 a D-1253). `syncCalendar` recalcula `sede`, `modalidad`,
   `online` y `searchText` junto con `ciudades`; si no coinciden con lo guardado (un
