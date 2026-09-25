@@ -686,7 +686,11 @@ trae nombres de personas y `online` el link de la reunión—.
 
 1. Abrir `actividades/<id>` en la consola y mirar `updatedBy`, como en
    `ciudades-no-coinciden`. **El panel no produce este aviso**: salió de la consola,
-   de un script o del SDK con la sesión de alguien.
+   de un script o del SDK con la sesión de alguien. **Los backfills de `scripts/`
+   que reescriben `modalidades` tampoco** (`sembrar-geografia.mjs`,
+   `reubicar-barrios.mjs`): escriben los cinco derivados con
+   `escrituraDeModalidades`, que llama a las mismas funciones que el panel (B-2090).
+   Un script nuevo que toque las filas tiene que escribir por ahí.
 2. Leer `campos`:
    - **`["searchText"]` solo**, en una actividad que nadie tocó a mano: casi seguro
      es un documento guardado **antes del último cambio de la fórmula** del índice
