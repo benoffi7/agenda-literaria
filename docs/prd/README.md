@@ -13,6 +13,7 @@ faltan.
 | 3 | [`03-suscripciones-literarias.md`](03-suscripciones-literarias.md) | Directorio de **suscripciones literarias** | `/guia/suscripciones` + `/guia/suscripciones/sumar` |
 | 4 | [`04-lugares-para-eventos.md`](04-lugares-para-eventos.md) | Directorio de **lugares para hacer eventos** | `/guia/lugares` + `/guia/lugares/sumar` |
 | — | [`05-inventario-de-archivos.md`](05-inventario-de-archivos.md) | **El inventario archivo por archivo**: qué se crea, qué se toca, de dónde se copia cada patrón, en qué orden, y las siete cosas que se rompen en silencio | — |
+| 6 | [`06-mejoras-de-codigo.md`](06-mejoras-de-codigo.md) | **No es de producto.** Del 2026-09-25: auditoría medida de monolitos, modularización, velocidad (suite, pre-push, bundle) y tokens que lee un agente, con 18 propuestas priorizadas y seis decisiones del dueño. No cambia nada que se vea en el sitio | — |
 
 **Los tres directorios son, además, una sección nueva de la barra de navegación** —
 eso lo pidió el dueño con esas palabras: «cada uno de estos formularios también es
