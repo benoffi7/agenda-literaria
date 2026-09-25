@@ -1368,7 +1368,9 @@ dos; y el `updatedBy` del documento nuevo es mío.)*
 
 `admin` ve y toca todo. `publicador` **gestiona solo las actividades que él
 creó** —incluido su `estado`, o sea que publica sin que nadie revise— y, desde
-B-919, además **ve en solo lectura las de su ciudad**. Cruza el umbral que B-28
+B-919, además **ve en solo lectura las de su ciudad**; desde B-921, **si tiene
+ciudad, carga solo ahí** y si no la tiene es un publicador **general**, que carga
+en cualquiera (D-1150). Cruza el umbral que B-28
 dejó escrito: «la confianza, no la cantidad;
 vuelve cuando entre una tercera cuenta que no sea de confianza».
 
@@ -1390,6 +1392,11 @@ mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atravie
 | **¿Qué incluye ese `read`?** | **El documento entero, no la vista de `toPublic`** | Una regla es **todo-o-nada por documento**: no proyecta (es el argumento de D-128, acá aplicado a un principal nuevo). O sea que de una actividad ajena de su ciudad lee también `online.url` con `urlPublica:false`, `difusion.arrobar` y `difusion.notas`, `inscripcion.destino`, la URL del material con `publico:false`, los uids y `imagenes[].storagePath`. Ver el párrafo de abajo: es una decisión, no un descuido |
 | ¿Alcanza a los **borradores** ajenos de su ciudad? | **Sí** | No hay cláusula de `estado` en el disyunto. De una publicada, casi todo eso ya salió por el `events.json` y la página de detalle; de un borrador ajeno **no salió nada nunca**, y ése es el subconjunto que hay que tener presente |
 | ¿Y si no tiene ciudad en el claim? | **Ve lo suyo y nada más** | Es el rol de B-888 tal cual. Y hay una cláusula propia —`token.ciudad != ''`— para que una lista `ciudades: ['']` escrita a mano en la consola no le abra nada: `ciudadesDe()` filtra los vacíos, pero la regla no se confía de eso |
+| ¿Puede **cargar** fuera de su ciudad? (B-921) | **No, si tiene ciudad** | `dentroDeSuCiudad()` en el `create` y el `update`: `ciudades.hasOnly([token.ciudad])`. Una sede en su ciudad no «tapa» otra afuera. Una solo virtual (`[]`) pasa (D-1151). Una `ciudades` que no sea lista hace tirar a `hasOnly` y la regla deniega |
+| ¿Y una presencial **sin ciudad**, que daría `ciudades: []` como una virtual? | **No** (D-1154) | La regla exige además que la primera sede (el derivado `sede`) tenga ciudad; el panel lo exige en **todas** las filas. Lo encontró el `auditor-privacidad`: fuera de CABA la ciudad no es obligatoria para publicar, y sin esto una presencial en Santa Fe sin ciudad pasaba como virtual |
+| ¿Puede mudar una suya a otra ciudad editándole la sede? | **No** | `formADocumento` reescribe `ciudades` en cada guardado, así que la sede nueva cambia la lista y cae en la cláusula de arriba. Lo que ya estaba afuera **se mantiene** —una edición que no cambia `ciudades` pasa—, pero no se muda a una tercera (D-1153) |
+| ¿Y el publicador **general** (sin ciudad)? | **Carga donde sea, ve lo suyo** | `token.ciudad == ''` es la primera salida de `dentroDeSuCiudad()`. «General» es dónde carga y no qué ve: la lectura no cambió (D-1152) |
+| ¿Puede engañar a la regla con el derivado? | **Sí, escribiendo a mano** | La regla mira `ciudades` y la primera sede, no todas las `modalidades` (no puede recorrer un array de maps). Con el SDK a mano se puede escribir una sede de Rosario con `ciudades: ['mar-del-plata']`, o una segunda sede sin ciudad. No es una fuga —es contenido propio, de una cuenta que ya publica sin revisión— y está anotado como B-1920 |
 | ¿Y los documentos anteriores a `ciudades`? | **No los ve** | `.get('ciudades', [])` — el default que preserva lo anterior, puesto en una regla. Es por eso que el backfill (`npm run ciudades:sembrar:prod`) es un **paso del despliegue**: hasta que corra, no ve nada de su ciudad |
 | ¿Y las subcolecciones `versiones/`? | **No, ni la suya** | La regla del padre no cascadea: `versiones` decide aparte y se queda en `esAdmin()`. El historial es una de las pantallas que su panel no tiene |
 | ¿Y `/opciones/*`, que es compartido? | **Lee, no escribe; crea por la callable** | Las reglas no pueden inspeccionar qué elemento del array cambió, así que el `write` sigue en `esAdmin()`. Desde B-893 (D-810) el publicador crea etiquetas por `crearOpcionDelPanel` (Admin SDK, `enforceAppCheck: true`), que verifica que lo único que cambia es un elemento nuevo con `aprobada: false` y `usos: 1`, o el `usos+1` de uno existente. **Ese reuso aprueba solo si quien reusa es admin** (B-29 acotado por D-811, DEC-15): si otro publicador tipea la misma etiqueta, suma un uso y sigue pendiente. Aprobada, sale al `events.json`, a los chips y —en `tipo`, `barrio` y `ciudad`— a un hub indexado y al sitemap, así que ese paso siempre lo da un admin |
@@ -1473,6 +1480,15 @@ delete`; borrar la cláusula `token.ciudad != ''`; cambiar el default de
 —que es el control positivo, el que muestra que sin él las cuatro negaciones
 pasarían con el rol de B-888 intacto (la lección de B-894: lo que se apaga primero
 es lo que OTORGA).
+
+**B-921 agregó ocho, también en rojo:** sacar `dentroDeSuCiudad()` del
+`create`; sacar la mitad «sin cambio» del `update`; volverla `true`; cambiar
+`hasOnly` por `in` y por `hasAll`; sacar la rama del publicador general;
+reemplazar `dentroDeSuCiudad()` por `false` en el `update`; y sacar la mitad que
+exige ciudad en la primera sede (D-1154). Los casos están en el
+bloque 10 de `rol-publicador.integracion.test.ts`, y el aviso del panel —que es el
+espejo, no la frontera— en `tests/alcance-de-ciudad.test.ts` y
+`tests/aviso-fuera-de-su-ciudad.render.test.tsx`.
 
 **Todo esto se verifica por mutación**, que es lo único que hace que una regla de
 seguridad valga: `tests/rol-publicador.integracion.test.ts`,

@@ -51,8 +51,8 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run seed` | siembra `/opciones/*` y el centinela `/slugs/_indice` en el emulador |
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
-| `npm run admin:claim:prod -- --publicador <uid\|email>` | claim `publicador` (solo lo que él carga — B-888) |
-| `npm run admin:claim:prod -- --publicador --ciudad "<ciudad>" <uid\|email>` | ídem, y además **ve en solo lectura** lo de esa ciudad (B-919) |
+| `npm run admin:claim:prod -- --publicador <uid\|email>` | claim `publicador` **general**: carga en cualquier ciudad y ve solo lo suyo (B-888, B-921) |
+| `npm run admin:claim:prod -- --publicador --ciudad "<ciudad>" <uid\|email>` | publicador **de esa ciudad**: carga solo ahí (B-921) y además **ve en solo lectura** lo de esa ciudad (B-919) |
 | `npm run ciudades:sembrar` | informa qué `ciudades` escribiría en el emulador (B-919, D-690) |
 | `npm run ciudades:sembrar:prod` | informa qué escribiría en producción. `-- --aplicar --produccion` lo escribe |
 | `npm run geografia:sembrar` | informa qué `provincia`/`barrio`/`ciudad` normalizaría en el emulador (B-950, D-710) |
@@ -341,9 +341,11 @@ Google el usuario **nace en el primer login**, no antes.
 
 ```bash
 npm run admin:claim:prod -- <email>                  # admin: ve y toca todo
-npm run admin:claim:prod -- --publicador <email>     # publicador: solo lo que él carga
+npm run admin:claim:prod -- --publicador <email>     # publicador general: carga en cualquier
+                                                     # ciudad, ve solo lo suyo
 npm run admin:claim:prod -- --publicador --ciudad "Mar del Plata" <email>
-                                                     # ídem + ve (solo lee) lo de esa ciudad
+                                                     # publicador de esa ciudad: carga solo
+                                                     # ahí, y ve (solo lee) lo de ahí
 npm run admin:claim:prod -- --quitar <email>         # le saca el rol
 ```
 
@@ -353,6 +355,16 @@ actividad—, así que se escribe como se escribe: `"Mar del Plata"`, `"mar del
 plata"` y `"MAR DEL PLATA"` producen el mismo claim. Solo tiene sentido con
 `--publicador` (un admin ve todo el catálogo) y el script rechaza el comando si
 se pasa con otro rol, en vez de ignorarla.
+
+**Desde B-921 la ciudad es también dónde puede cargar** (D-1150). Con `--ciudad`,
+la cuenta no puede guardar una actividad con una sede en otra ciudad —el panel se
+lo avisa antes y la regla lo rechaza—; una solo virtual sí. **Sin `--ciudad` es un
+publicador general**: carga en cualquier ciudad y ve solo lo suyo, igual que
+antes. O sea que **olvidarse el `--ciudad` le abre el país entero**, y por eso el
+script anuncia «publicador general» antes de escribir. Para pasar una cuenta de
+una ciudad a general (o al revés) se vuelve a correr el comando: el claim se
+reemplaza entero. Lo que la cuenta ya había cargado fuera de su ciudad no se toca
+(D-1153).
 
 > ⚠️ **Antes de dar un claim con `--ciudad`, correr el backfill de `ciudades`**
 > (más abajo). Sin él, la cuenta ve **solo lo suyo**: los documentos que ya están

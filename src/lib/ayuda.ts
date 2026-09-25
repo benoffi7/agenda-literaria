@@ -1952,6 +1952,40 @@ export const CAPITULOS: CapituloAyuda[] = [
           'del plata» no terminan siendo dos lugares distintos que se filtran por separado.',
       },
       {
+        /*
+         * B-921 — dónde puede cargar una cuenta de una ciudad (D-1150). Le habla
+         * a quien carga, que es la que ve el aviso: el admin no tiene ciudad.
+         */
+        texto:
+          'Si tu cuenta es de una ciudad, las actividades que cargás tienen que ser de esa ciudad, ' +
+          'con la ciudad elegida en cada sede: apenas elegís una sede en otra —o dejás una sin ' +
+          'ciudad—, arriba del formulario aparece un aviso y no se puede guardar. Una actividad solo virtual sí se puede cargar, porque no pasa en ninguna ' +
+          'ciudad. Lo que ya habías cargado en otra ciudad no se toca: lo seguís pudiendo editar, ' +
+          'pero no mudar a otra ciudad más. Si tu cuenta no tiene ciudad, cargás en cualquiera.',
+        atadoA: [
+          {
+            archivo: 'tests/alcance-de-ciudad.test.ts',
+            it: 'crear fuera de su ciudad devuelve `fuera-de-ciudad` y no toca ningún puerto',
+          },
+          {
+            archivo: 'tests/alcance-de-ciudad.test.ts',
+            it: 'una actividad solo virtual no queda fuera de ninguna ciudad (D-1151)',
+          },
+          {
+            archivo: 'tests/alcance-de-ciudad.test.ts',
+            it: 'una presencial sin ciudad, de una cuenta con ciudad, no se guarda como si fuera virtual (D-1154)',
+          },
+          {
+            archivo: 'tests/alcance-de-ciudad.test.ts',
+            it: 'lo ya cargado en otra ciudad se mantiene si no se mueve, y no se muda (D-1153)',
+          },
+          {
+            archivo: 'tests/aviso-fuera-de-su-ciudad.render.test.tsx',
+            it: 'aparece apenas la sede es de otra ciudad, con las dos ciudades nombradas',
+          },
+        ],
+      },
+      {
         texto:
           'Si cambiás la provincia, el barrio se borra. Es a propósito: los barrios son de CABA, y ' +
           'uno de CABA en un lugar de otra provincia haría que la actividad apareciera filtrada en ' +

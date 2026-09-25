@@ -239,12 +239,17 @@ documento. Hoy un valor nuevo del modelo se mide solo.
 |---|---|
 | `modo` | `nueva` · `editar` · `duplicar` · `propuesta` |
 | `accion` | `borrador` · `submit` |
-| `motivo` | `slug-tomado` · `permisos` · `sin-sesion` · `red` · `verificacion` · `fecha-invalida` · `desconocido` |
+| `motivo` | `slug-tomado` · `permisos` · `sin-sesion` · `red` · `verificacion` · `fecha-invalida` · `fuera-de-ciudad` · `desconocido` |
 | `codigo` | código del SDK de Firebase, de una lista cerrada |
 
 **El mensaje del error nunca viaja.** `formADocumento` tira
 `Fecha inválida: "<lo que se escribió>"`: el texto de ese error *es* contenido
 del formulario. Lo que sale es la etiqueta `fecha-invalida`.
+
+`fuera-de-ciudad` (B-921) es un publicador con ciudad que intentó guardar una sede
+en otra: lo frena el panel antes de escribir. La etiqueta **no dice qué ciudad**
+—sería el segundo dato de la cuenta que viaja a GA4— y cuenta cuántas veces el
+aviso no alcanzó.
 
 `verificacion` (B-930) es el mismo `unavailable` que `red`, con el navegador sin
 token de App Check: sin él, una extensión que bloquea reCAPTCHA se contaba como
