@@ -114,7 +114,7 @@ export function BuscadorDeSuscripciones({ version, idListadoEstatico }: Props) {
    *
    * Las etiquetas salen del propio índice, y **el enlace a la librería que la
    * ofrece no se arma acá**: cuál librería está publicada lo sabe el build
-   * (`fichasDeSuscripcion`), no el navegador. Antes que publicar un enlace a
+   * (`lib/contenidoDeLaGuia.ts`), no el navegador. Antes que publicar un enlace a
    * ciegas —que sería un 404 en cada suscripción cuya librería espera decisión—
    * la fila re-renderizada muestra el nombre como texto, igual que la del build
    * cuando la librería no está.

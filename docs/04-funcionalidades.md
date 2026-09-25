@@ -1361,6 +1361,13 @@ mirarla. «Bajar del sitio» sí es un paso solo.
 coordenadas, la galería (el mismo editor, con su subida y su optimización) y los
 cuatro contactos públicos.
 
+**Los cuatro formularios de la Guía comparten el esqueleto** (M-10): el estado,
+el aviso de cambios sin guardar, la validación, la guarda del slug, crear o
+guardar, la medición y el alta de etiquetas nuevas viven en
+`useFichaDeDirectorio` y `useEtiquetasNuevas`, y los carteles y los botones en
+`MarcoDeFicha` (`src/components/admin/useFichaDeDirectorio.tsx`). Cada formulario
+pone sus campos y le pasa sus funciones de `lib/<entidad>.ts`.
+
 **La cascada es la misma que la de una actividad desde B-967** (D-710): primero la
 provincia y después el barrio —el mismo desplegable que usan las actividades— o la
 ciudad, según cuál sea. Vale para los **cuatro** formularios de las guías: los dos

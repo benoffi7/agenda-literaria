@@ -11,7 +11,7 @@
  * **mismo** componente de fila. Si el fetch falla, la lista del build se queda.
  *
  * ── La plantilla no ve el documento (D-140) ───────────────────────────────
- * Recibe `vistaDeLugares()`, que es el view-model: fichas ya proyectadas y chips
+ * Recibe `vistaDeDirectorio('lugares')`, que es el view-model: fichas ya proyectadas y chips
  * de los tres ejes con vocabulario. Acá no hay un `Lugar` ni nada de Firestore,
  * así que **no se puede interpolar el `contactoDeQuienCargo` ni la dirección de
  * una casa**: la primera no está en el objeto, y la segunda llegó vacía porque la
@@ -41,7 +41,7 @@
 import Base from '@/layouts/Base.astro';
 import { BuscadorDeLugares } from '@/components/publico/BuscadorDeLugares';
 import { FichaDeLugarFila } from '@/components/publico/FichaDeLugarFila';
-import { vistaDeLugares } from '@/lib/contenidoDelSitio';
+import { vistaDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import { coleccionDeLugares, descripcionDelDirectorioDeLugares } from '@/lib/lugarPublico';
 import { NOMBRE } from '@/lib/identidad';
 import { RUTA_ANUNCIAR, RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_LUGAR } from '@/lib/rutasPublicas';
@@ -49,7 +49,7 @@ import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
 
-const { fichas, version } = await vistaDeLugares();
+const { fichas, version } = await vistaDeDirectorio('lugares');
 const cuantos = fichas.length;
 
 /** El `id` que la island usa para sacar la lista del build. */

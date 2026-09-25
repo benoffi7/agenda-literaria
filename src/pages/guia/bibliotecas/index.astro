@@ -12,7 +12,7 @@
  * queda.
  *
  * ── La plantilla no ve el documento (D-140) ───────────────────────────────
- * Recibe `vistaDeBibliotecas()`, que es el view-model: fichas ya proyectadas y
+ * Recibe `vistaDeDirectorio('bibliotecas')`, que es el view-model: fichas ya proyectadas y
  * chips. Acá no hay una `Biblioteca` ni nada de Firestore, así que **no se puede
  * interpolar el `contactoDeQuienCargo`**: no está en el objeto. La frontera de
  * privacidad es un tipo, no la disciplina de quien escribe la plantilla (§5 del
@@ -30,7 +30,7 @@
 import Base from '@/layouts/Base.astro';
 import { BuscadorDeBibliotecas } from '@/components/publico/BuscadorDeBibliotecas';
 import { FichaDeBibliotecaFila } from '@/components/publico/FichaDeBibliotecaFila';
-import { vistaDeBibliotecas } from '@/lib/contenidoDelSitio';
+import { vistaDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import { coleccionDeBibliotecas, descripcionDelDirectorio } from '@/lib/bibliotecaPublica';
 import { NOMBRE } from '@/lib/identidad';
 import { RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_BIBLIOTECA } from '@/lib/rutasPublicas';
@@ -38,7 +38,7 @@ import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
 
-const { fichas, version } = await vistaDeBibliotecas();
+const { fichas, version } = await vistaDeDirectorio('bibliotecas');
 const cuantas = fichas.length;
 
 /** El `id` que la island usa para sacar la lista del build. */

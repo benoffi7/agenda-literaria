@@ -132,7 +132,7 @@ export function BuscadorDeLugares({ version, idListadoEstatico }: Props) {
    * Las fichas filtradas.
    *
    * Las etiquetas salen del propio índice, y **el enlace al hub de barrio no se
-   * arma acá**: qué barrios tienen hub lo sabe el build (`fichasDeLugar`), no el
+   * arma acá**: qué barrios tienen hub lo sabe el build (`lib/contenidoDeLaGuia.ts`), no el
    * navegador. Antes que publicar un enlace a ciegas —que sería un 404 en cada
    * lugar de un barrio sin actividades— la fila re-renderizada muestra el barrio
    * como texto, igual que la del build cuando el hub no está.

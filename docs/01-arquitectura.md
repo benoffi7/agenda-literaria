@@ -161,6 +161,10 @@ src/
     contenidoDelSitio.ts    SOLO build time — el ÚNICO lector de Firestore del
                             sitio: el where del §5.3, y una lectura para los
                             tres artefactos (B-227)
+    contenidoDeLaGuia.ts    SOLO build time — lo que el build deriva de la Guía:
+                            un índice, una vista y unos caminos que reciben el
+                            IdDirectorio, en vez de cuatro copias. No lee
+                            Firestore: sale de contenidoDelSitio (M-9, D-1195)
     listadoPublico.ts       filtros, orden y búsqueda del listado — puro
     detallePublico.ts       qué muestra la página de detalle, y su JSON-LD —
                             puro, y es la frontera de privacidad de esa salida

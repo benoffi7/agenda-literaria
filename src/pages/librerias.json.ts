@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { indiceDeLibrerias } from '@/lib/contenidoDelSitio';
+import { indiceDeDirectorio } from '@/lib/contenidoDeLaGuia';
 
 /**
  * `/librerias.json` — el índice que el listado de `/guia/librerias` filtra en
@@ -33,7 +33,7 @@ import { indiceDeLibrerias } from '@/lib/contenidoDelSitio';
 export const prerender = true;
 
 export const GET: APIRoute = async () => {
-  const indice = await indiceDeLibrerias();
+  const indice = await indiceDeDirectorio('librerias');
 
   return new Response(`${JSON.stringify(indice, null, 2)}\n`, {
     headers: {
