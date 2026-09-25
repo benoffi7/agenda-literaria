@@ -323,13 +323,57 @@ service cloud.firestore {
        * El admin queda como estaba —puede todo, incluido reasignar un
        * `createdBy`—: no es una omisión, es el rol que ya existía.
        */
+      /*
+       * ══ B-921 — el publicador con ciudad carga **solo en su ciudad** ═════
+       *
+       * La decisión del dueño, textual: «un publicador que tiene una ciudad
+       * asignada debería no poder publicar fuera de esa. Puede haber
+       * publicadores generales» (D-1150).
+       *
+       * `dentroDeSuCiudad()` mira el documento que **se va a escribir**, y tiene
+       * tres salidas:
+       *
+       *  1. **Claim sin ciudad → pasa.** Es el publicador **general**
+       *     (`--publicador` sin `--ciudad`): carga donde sea. Su lectura no
+       *     cambió —ve lo suyo y nada más—, así que «general» es dónde carga, no
+       *     qué ve (D-1152).
+       *  2. **`ciudades.hasOnly([su ciudad])` → pasa.** `hasOnly` es «todo
+       *     elemento de la lista está en esta otra», así que una actividad con una
+       *     sede en su ciudad y otra en Rosario **no** pasa. Y **una lista vacía
+       *     pasa**, que es la decisión sobre lo virtual (D-1151): una reunión por
+       *     Meet no pasa en ninguna ciudad, así que no pasa fuera de la suya, y
+       *     negarla le sacaría a una publicadora de Mar del Plata el club que
+       *     hace por Zoom.
+       *  3. **Si no, no.** Una `ciudades` que no sea lista (escrita a mano) hace
+       *     tirar a `hasOnly`, y una regla que tira deniega: falla cerrado.
+       *
+       * **Mira `ciudades` y no `modalidades`, y ése es el límite.** Es el mismo
+       * derivado de D-690 —una regla no puede recorrer un array de maps—, así que
+       * la garantía es «nadie que guarde por el panel carga fuera de su ciudad».
+       * Quien arme el documento a mano con el SDK puede escribir una sede de
+       * Rosario con `ciudades: ['mar-del-plata']`: el derivado mentiría, y esta
+       * regla no tiene con qué verlo. No es una fuga —es contenido propio,
+       * publicado en otra ciudad por una cuenta que ya publica sin revisión— y
+       * está anotado como B-1920 con su arreglo.
+       *
+       * `request.auth.token.get('ciudad', '')`, con default, por el mismo motivo
+       * que `esPublicador()`: una clave ausente de un map es un evaluation error.
+       */
+      function dentroDeSuCiudad() {
+        return request.auth.token.get('ciudad', '') == ''
+          || request.resource.data.get('ciudades', []).hasOnly([request.auth.token.get('ciudad', '')]);
+      }
+
       allow create: if esAdmin()
         || (esPublicador()
              && request.resource.data.get('createdBy', '') == request.auth.uid
-             && request.resource.data.get('updatedBy', '') == request.auth.uid);
+             && request.resource.data.get('updatedBy', '') == request.auth.uid
+             && dentroDeSuCiudad());
 
       /*
        * **B-919 no tocó ni una letra de estas dos reglas, y eso es la decisión.**
+       * (B-921 le sumó al `update` la cláusula de la ciudad de abajo, que es
+       * sobre **dónde** se escribe lo propio y no sobre de quién es.)
        * El alcance por ciudad es de lectura: «era modo lectura los otros que no
        * son de ella» (el dueño). Así que lo de su ciudad que cargó otra cuenta se
        * ve y no se escribe, y no hay ninguna pregunta que contestar sobre borrar
@@ -337,11 +381,34 @@ service cloud.firestore {
        * que edite lo ajeno de su ciudad, el disyunto de `read` se copia acá — y
        * recién ahí hay que decidir qué pasa con `delete` y con `createdBy`.
        */
+      /*
+       * **B-921 — y en el update, «lo ya cargado no se toca».** La segunda mitad
+       * del disyunto deja pasar una edición que **no cambia** `ciudades`: una
+       * actividad propia que ya estaba en otra ciudad antes de esta regla se
+       * sigue pudiendo mantener —despublicarla, marcar el cupo, corregir una
+       * fecha—, pero no mudarla a una tercera. Sin ella, la regla nueva le
+       * dejaría congeladas cosas que cargó cuando estaba permitido, y ni siquiera
+       * podría cancelarlas.
+       *
+       * Lo que cierra es el otro borde que B-921 anotaba: **editar la sede de una
+       * propia para mandarla a otra ciudad** cambia `ciudades` (lo reescribe
+       * `formADocumento` en cada guardado), así que cae en la primera mitad y
+       * rebota. El `==` de listas es **en orden**: reordenar dos ciudades ajenas
+       * cuenta como cambio, y falla cerrado.
+       *
+       * Un documento anterior a B-919 sin `ciudades` se compara como `[]`, y el
+       * panel le va a escribir el derivado: si es de su ciudad pasa por la
+       * primera mitad, y si es de otra no pasa por ninguna. Es otro motivo para
+       * que el backfill (`npm run ciudades:sembrar:prod`) sea un paso del
+       * despliegue.
+       */
       allow update: if esAdmin()
         || (esPublicador()
              && resource.data.get('createdBy', '') == request.auth.uid
              && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
-             && request.resource.data.get('updatedBy', '') == request.auth.uid);
+             && request.resource.data.get('updatedBy', '') == request.auth.uid
+             && (dentroDeSuCiudad()
+                  || request.resource.data.get('ciudades', []) == resource.data.get('ciudades', [])));
 
       /*
        * Borrar lo propio sí, y es una decisión y no un descuido: `estado:
