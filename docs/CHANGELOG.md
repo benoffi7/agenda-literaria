@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Llega un mail cuando una Function avisa que algo necesita atención** (B-871,
+  B-21). El dueño creó en GCP una sola alerta sobre `jsonPayload.alerta:*`, que toma
+  las siete `alerta` que hay hoy y cualquiera que se agregue. Hasta ahora no había
+  ninguna política: la de B-21 estaba escrita pero nunca se creó.
 - **La personalización de anuncios de GA4 quedó apagada en todas las regiones**
   (B-773). Estaba en las 307, que es el default. Google Signals y la recogida de datos
   de usuarios ya estaban apagados. Lo que `/anunciar` dice («no hay un anuncio, ni una

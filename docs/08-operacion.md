@@ -2787,6 +2787,28 @@ que mudarse de proveedor no toca ni el workflow ni el script.
 **El primer mail suele caer en spam.** Marcarlo como «no es spam» una vez y
 listo: si el aviso vive en spam, es como no tenerlo.
 
+## La alerta de todas las `alerta` (B-871, 2026-09-25)
+
+**Creada por el dueño el 2026-09-25**, y verificada por la API de Monitoring:
+política `Agenda LEH — algo necesita atención`, habilitada, con un canal de mail.
+Hasta ese día **no había ninguna política** en el proyecto, así que la de B-21 de
+abajo tampoco existía. Esta la cubre, junto con todas las demás:
+
+```
+jsonPayload.alerta:*
+severity>=WARNING
+```
+
+Toma cualquier log que traiga el campo `alerta`, sea cual sea su valor:
+`flyer-de-propuesta-sin-borrar`, `rebuild-agotado`, `sitio-atrasado`,
+`sitio-sin-indice`, `frescura-sin-canal` y las dos de la analítica. Por eso una
+`alerta` nueva en una Function **ya tiene aviso** sin tocar la consola. Manda como
+mucho un mail por hora. El valor de `alerta` que trae el mail dice qué sección de
+este documento leer.
+
+**No cubre lo que pasa en el navegador**, como el App Check que no entrega token
+(B-930): eso no llega a ningún log del servidor.
+
 ## Alerta de rebuild agotado (B-21)
 
 El único log del proyecto que amerita despertar a alguien. Cuando el

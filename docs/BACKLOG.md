@@ -309,7 +309,10 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 > «no es la conexión: esperar no lo arregla»; el clasificador lee el mismo store
 > por defecto, así que la métrica y el texto no se pueden separar (clase de B-88).
 > Con emuladores el cartel no puede aparecer. Decisión en **D-820**. Sigue abierto
-> el **paso 3**, la alerta de operación. Y la renovación del token a mitad de
+> el **paso 3**, la alerta de operación. **La alerta de GCP del 2026-09-25 no lo
+> cubre** (B-871): un token que no llega pasa en el navegador y no deja log en el
+> servidor. Para cubrirlo, el panel tendría que reportarlo a algún lado, y eso es
+> código. Y la renovación del token a mitad de
 > sesión no se mira todavía: **B-1250**.
 
 **Pasó de verdad, en el panel productivo:** «Failed to get document because the
@@ -421,6 +424,11 @@ que las sostiene. Es una decisión con costo, no un botón de reinicio.
 >
 > **Lo que falta para cerrarlo es la respuesta del dueño**, en dos preguntas
 > anotadas abajo.
+>
+> ✅ **La salida 1 está hecha (2026-09-25):** el dueño creó la alerta de GCP sobre
+> `jsonPayload.alerta:*`, con su mail como canal. Ver `08-operacion.md` § «La
+> alerta de todas las `alerta`». Los seis caminos que loguean ahora avisan; el
+> séptimo (el backfill) sigue sin log, y ese es el que necesita la salida 3.
 
 **Sale de B-863, y es el precio de que la `aceptada` no venza.** El borrado del
 original ocurre en el trigger `borrarImagenAlCerrar`, y **no hay red debajo**: la
