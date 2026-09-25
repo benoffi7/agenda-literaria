@@ -164,10 +164,9 @@ export const decidirBorradoDeImagen = ({ before = null, after = null } = {}) => 
    * la decisión fue no hacer ninguna.
    *
    * Sin esta rama, descartar caería en `borrarOriginalAlAceptar` → `sin-copia` →
-   * un `warn` y el original vivo **para siempre**: la `aceptada` no vence
-   * (B-844), la retención no la alcanza y `limpiarImagenesHuerfanas` no recorre
-   * este prefijo. O sea que ofrecer «descartar» sin esto agranda el agujero de
-   * B-871 en vez de resolver nada, que es justo lo que el ítem avisaba.
+   * un `warn` y el original vivo: cuando se escribió, **para siempre** (la
+   * `aceptada` no vence, B-844); desde B-871, 30 días que no tienen por qué
+   * existir sobre una foto que una persona ya descartó.
    *
    * **Va antes de la guarda de `actividadId`** y no después: descartar no
    * necesita una actividad donde mirar. Ponerlo abajo dejaría el caso
@@ -268,16 +267,14 @@ export const copiasEnLaGaleria = (imagenes) => {
  *    B-863 quiere;
  *  - si la actividad se guardó **sin ninguna** imagen propia (la promoción
  *    falló y el panel avisó, o el admin sacó la fila), el original **se
- *    conserva**. Eso es lo correcto para no perder la foto y es, a la vez, el
- *    agujero que B-863 no cierra: esa propuesta queda `aceptada` para siempre
- *    con la foto de un tercero adentro. Ver **B-871** — y desde ese ítem hay al
- *    menos **quien pase**: `relevarFlyeresSinPlazo` (`retencion.js`) los lista
- *    entrando por el bucket, así que aparecen aunque este `warn` se haya
- *    perdido y aunque la transición nunca haya ocurrido. Lista, no borra: eso
- *    último sigue esperando una decisión del dueño. **Salvo un caso** (B-1370):
- *    si después alguien sube la foto a la actividad a mano, el barrido diario
- *    vuelve a llamar a esta misma función y el original se va
- *    (`borrarOriginalesConCopia`, al final del archivo).
+ *    conserva**. Eso es lo correcto para no perder la foto **hoy**, y ya no es
+ *    para siempre: si después alguien sube la foto a la actividad a mano, el
+ *    barrido diario vuelve a llamar a esta misma función y el original se va
+ *    (B-1370, `borrarOriginalesConCopia`, al final del archivo); y si no, a los
+ *    **30 días de aceptada** lo borra igual el barrido de flyers de B-871
+ *    (`decidirFlyeresSinPlazo` + `borrarFlyer` en `retencion.js`, D-1160), que
+ *    entra por el bucket y por eso lo alcanza aunque este `warn` se haya perdido
+ *    y aunque la transición nunca haya ocurrido.
  *
  * `db` y `bucket` van sin tipo a propósito, igual que en `borrarPropuesta`: es
  * lo que deja que el test los reemplace por dobles y mida el **orden** de las
@@ -361,8 +358,9 @@ export const EN_ORDEN = 'en-orden';
  *
  * Los otros casos de `clasificarAceptadas` **no** se tocan: en todos ellos
  * borrar el original puede ser perder la foto —la actividad no tiene ninguna, o
- * tiene solo un link de afuera que puede no ser el mismo flyer— y eso sigue
- * siendo la salida 3 de B-871, que espera una decisión del dueño. Tampoco
+ * tiene solo un link de afuera que puede no ser el mismo flyer— y esos los
+ * borra la salida 3 de B-871 **a los 30 días de aceptada**, que es el plazo que
+ * el dueño eligió para decidir si la foto se usa (D-1160). Tampoco
  * `descartada-con-original`, aunque ahí borrar sea seguro: es otro camino (el
  * fallo del borrado crudo de B-926) y tiene su fila en el runbook.
  */
@@ -481,7 +479,7 @@ const MAXIMO_DEL_IN = 30;
  * El informe del script lee **todas** las aceptadas porque quiere encontrar
  * también las que ya perdieron la foto. Eso crece con el archivo histórico, y
  * es la clase de lectura que B-865 sacó del camino diario (`08-operacion.md` §
- * «Flyers que no borra nadie»). Acá la pregunta es más angosta —¿qué original
+ * «Flyers de propuestas: el barrido de B-871»). Acá la pregunta es más angosta —¿qué original
  * **vivo** sobra?—, así que se lista primero `propuestas/`, que es chico (los
  * flyers de la bandeja abierta más lo que quedó colgado), y se buscan solo los
  * documentos que nombran esos objetos, de a 30 por `in`. El costo crece con el
@@ -617,8 +615,8 @@ export const borrarOriginalesConCopia = async (
   /*
    * Los casos que **no** se borran solos, con su caso al lado: ids y
    * vocabulario cerrado, nunca contenido. Son los que siguen esperando una mano
-   * (o la decisión de B-871), y así aparecen todos los días en el log sin que
-   * nadie corra el script.
+   * —o los 30 días de B-871, que los borra igual—, y así aparecen todos los días
+   * en el log sin que nadie corra el script.
    */
   const pendientes = Object.fromEntries(
     filas

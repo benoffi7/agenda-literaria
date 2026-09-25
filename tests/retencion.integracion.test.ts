@@ -27,13 +27,15 @@ import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminBucket, adminDb } from '@/lib/firebase-admin';
 import {
+  borrarFlyer,
   borrarPropuesta,
   decidirRetencion,
   flyeresDelBucket,
-  propuestasConFlyer,
+  propuestasQueNombran,
   propuestasVencibles,
   relevarFlyeresSinPlazo,
 } from '../functions/retencion.js';
+import { uidDe } from './fixtures/credenciales-del-emulador';
 import {
   PROJECT_ID,
   emuladorStorageVivo,
@@ -622,60 +624,97 @@ describe.skipIf(!vivo)('propuestasVencibles pagina contra Firestore — B-865', 
 });
 
 /**
- * **El flyer que no borra nadie, contra los emuladores** — B-871.
+ * **Los flyers de `propuestas/` que no borraba nadie, contra los emuladores** —
+ * B-871, salida 3.
  *
  * Lo que acá no se puede razonar sin el emulador es el cruce en sí: que el
  * nombre con el que el bucket conoce al objeto sea el mismo `storagePath` que el
- * documento guarda. Es la misma pregunta que este archivo ya hace del lado del
- * borrado —«que el path que la Function arma sea el que el bucket conoce»— y la
- * que hace que este relevamiento sirva para algo: si los dos no empatan, todo
- * aparece como `sin-propuesta` y el informe inventa un problema.
+ * documento guarda, y que el `in` por ese campo lo encuentre. Si los dos no
+ * empataran, todo aparecería como `sin-propuesta` —que desde la salida 3 **se
+ * borra**—, así que acá el cruce no protege un informe: protege el flyer de cada
+ * propuesta abierta. Y la relectura de `borrarFlyer`, que es una propiedad del
+ * servidor (`updateTime`) y un doble a mano diría que sí sin haber comparado.
  *
  * ── El bucket del emulador no está particionado (B-366) ───────────────────
  * A diferencia de Firestore, es uno solo para todos los working-trees, así que
  * bajo `propuestas/` hay objetos de otras corridas. Por eso los asertos miran
- * **las claves propias** y nunca el conjunto entero: un `toEqual` sobre toda la
- * lista sería rojo intermitente con un diagnóstico equivocado.
+ * **las claves propias** y nunca el conjunto entero, y **ningún caso de acá
+ * ejecuta el barrido completo**: `aBorrar` puede traer huérfanos de otro
+ * checkout, y borrarlos sería el rojo intermitente con diagnóstico equivocado de
+ * B-219. Se borra de a uno, con `borrarFlyer`, y solo lo propio.
  */
-describe.skipIf(!vivo)('relevarFlyeresSinPlazo encuentra el flyer sin plazo — B-871', () => {
+describe.skipIf(!vivo)('el barrido de flyers de propuestas — B-871', () => {
   const ACEPTADA = `p_aceptada-${PROJECT_ID}`;
   const OBJETO_ACEPTADA = `propuestas/prop_aceptada_${PROJECT_ID}.jpg`;
+  const RECIEN_ACEPTADA = `p_recien_aceptada-${PROJECT_ID}`;
+  const OBJETO_RECIEN_ACEPTADA = `propuestas/prop_recien_aceptada_${PROJECT_ID}.jpg`;
+  const REABIERTA = `p_reabierta-${PROJECT_ID}`;
+  const OBJETO_REABIERTA = `propuestas/prop_reabierta_${PROJECT_ID}.jpg`;
   const PENDIENTE = `p_pendiente-${PROJECT_ID}`;
   const OBJETO_PENDIENTE = `propuestas/prop_pendiente_${PROJECT_ID}.jpg`;
   const OBJETO_SOLO = `propuestas/prop_solo_${PROJECT_ID}.jpg`;
+  const LLEGA_TARDE = `p_llega_tarde-${PROJECT_ID}`;
+  const OBJETO_LLEGA_TARDE = `propuestas/prop_llega_tarde_${PROJECT_ID}.jpg`;
+  const OBJETOS = [
+    OBJETO_ACEPTADA,
+    OBJETO_RECIEN_ACEPTADA,
+    OBJETO_REABIERTA,
+    OBJETO_PENDIENTE,
+    OBJETO_SOLO,
+    OBJETO_LLEGA_TARDE,
+  ];
+  const DOCUMENTOS = [ACEPTADA, RECIEN_ACEPTADA, REABIERTA, PENDIENTE, LLEGA_TARDE];
+  const ADMIN = uidDe('uid_admin_flyeres');
+  /**
+   * El `ahora` corrido cuatro días es lo que saca a los huérfanos del margen de
+   * «recién subido» sin tener que esperarlo: el emulador le pone la fecha de
+   * ahora al objeto y no hay forma de envejecerlo (`05-patrones.md` § «El reloj
+   * también es infraestructura»). A la recién aceptada no le alcanza: le quedan
+   * 24 días.
+   */
+  const enCuatroDias = () => Date.now() + 4 * DIA;
+
+  const aceptadaHace = (dias: number, objeto: string) =>
+    documento({
+      estado: 'aceptada',
+      revision: { porUid: ADMIN, en: hace(dias), actividadId: 'act_1', motivo: null },
+      imagen: { storagePath: objeto },
+    });
+
+  const existe = async (objeto: string) => (await adminBucket().file(objeto).exists())[0];
+
+  const decidido = async (objeto: string) => {
+    const { aBorrar } = await relevarFlyeresSinPlazo(adminDb(), adminBucket(), {
+      ahora: enCuatroDias(),
+    });
+    const flyer = aBorrar.find((f) => f.objeto === objeto);
+    expect(flyer, `${objeto} no llegó a la lista: el caso no probaría nada`).toBeTruthy();
+    return flyer!;
+  };
 
   beforeAll(async () => {
     expect(process.env.FIREBASE_STORAGE_EMULATOR_HOST).toBeTruthy();
     expect(process.env.FIRESTORE_EMULATOR_HOST).toBeTruthy();
 
     /*
-     * **La aceptada se escribe directamente en `aceptada`**, y eso es el caso
+     * **Las aceptadas se escriben directamente en `aceptada`**, y eso es el caso
      * que importa: sin transición, `borrarImagenAlCerrar` no se despierta nunca.
      * Es el séptimo camino de B-871 —la propuesta que ya estaba aceptada antes
      * del deploy— reproducido tal cual.
      */
-    await adminDb()
-      .collection('propuestas')
-      .doc(ACEPTADA)
-      .set(
-        documento({
-          estado: 'aceptada',
-          revision: { porUid: 'uid_admin', en: hace(200), actividadId: 'act_1', motivo: null },
-          imagen: { storagePath: OBJETO_ACEPTADA },
-        }),
-      );
-    await adminDb()
-      .collection('propuestas')
-      .doc(PENDIENTE)
-      .set(
-        documento({
-          estado: 'nueva',
-          creadoEn: hace(1),
-          revision: { porUid: null, en: null, actividadId: null, motivo: null },
-          imagen: { storagePath: OBJETO_PENDIENTE },
-        }),
-      );
-    for (const objeto of [OBJETO_ACEPTADA, OBJETO_PENDIENTE, OBJETO_SOLO]) {
+    const col = adminDb().collection('propuestas');
+    await col.doc(ACEPTADA).set(aceptadaHace(200, OBJETO_ACEPTADA));
+    await col.doc(RECIEN_ACEPTADA).set(aceptadaHace(2, OBJETO_RECIEN_ACEPTADA));
+    await col.doc(REABIERTA).set(aceptadaHace(200, OBJETO_REABIERTA));
+    await col.doc(PENDIENTE).set(
+      documento({
+        estado: 'nueva',
+        creadoEn: hace(1),
+        revision: { porUid: null, en: null, actividadId: null, motivo: null },
+        imagen: { storagePath: OBJETO_PENDIENTE },
+      }),
+    );
+    for (const objeto of OBJETOS) {
       await adminBucket().file(objeto).save(Buffer.from([0xff, 0xd8, 0xff]), {
         contentType: 'image/jpeg',
       });
@@ -684,75 +723,140 @@ describe.skipIf(!vivo)('relevarFlyeresSinPlazo encuentra el flyer sin plazo — 
 
   afterAll(async () => {
     if (!process.env.FIREBASE_STORAGE_EMULATOR_HOST) return;
-    for (const objeto of [OBJETO_ACEPTADA, OBJETO_PENDIENTE, OBJETO_SOLO]) {
+    for (const objeto of OBJETOS) {
       await adminBucket().file(objeto).delete({ ignoreNotFound: true });
     }
-    for (const id of [ACEPTADA, PENDIENTE]) {
+    for (const id of DOCUMENTOS) {
       await adminDb().collection('propuestas').doc(id).delete();
     }
   });
 
-  it('el de la aceptada queda para revisar y el de la pendiente no', async () => {
-    /*
-     * El `ahora` corrido cuatro días es lo que saca al objeto huérfano del margen
-     * de «recién subido» sin tener que esperarlo: el emulador le pone la fecha de
-     * ahora y no hay forma de envejecerlo. Es el mismo recurso que el `plazos`
-     * por parámetro de la decisión pura (`05-patrones.md` § «El reloj también es
-     * infraestructura»).
-     */
-    const ahora = Date.now() + 4 * DIA;
-    const { aRevisar, motivos } = await relevarFlyeresSinPlazo(adminDb(), adminBucket(), { ahora });
+  it('decide cada flyer propio como la decisión pura lo describe', async () => {
+    const { aBorrar, aRevisar, motivos } = await relevarFlyeresSinPlazo(adminDb(), adminBucket(), {
+      ahora: enCuatroDias(),
+    });
 
-    expect(motivos[OBJETO_ACEPTADA], 'el flyer de la aceptada no aparece como tal').toBe(
-      'aceptada-sin-plazo',
+    expect(motivos[OBJETO_ACEPTADA], 'aceptada hace 200 días').toBe('aceptada-vencida');
+    expect(motivos[OBJETO_RECIEN_ACEPTADA], 'aceptada hace 2 días').toBe(
+      'aceptada-dentro-del-plazo',
     );
-    expect(motivos[OBJETO_PENDIENTE], 'el de la pendiente tiene red: la retención lo borra').toBe(
+    // El control positivo del cruce: si el `in` no empatara, la pendiente
+    // saldría `sin-propuesta` y **se borraría**.
+    expect(motivos[OBJETO_PENDIENTE], 'el de la pendiente es de la retención').toBe(
       'de-una-que-caduca',
     );
     expect(motivos[OBJETO_SOLO], 'el que ningún documento nombra').toBe('sin-propuesta');
 
-    const nuestros = aRevisar.filter((f) => f.objeto.includes(PROJECT_ID)).map((f) => f.objeto);
-    expect(nuestros.sort()).toEqual([OBJETO_ACEPTADA, OBJETO_SOLO].sort());
-    expect(aRevisar.find((f) => f.objeto === OBJETO_ACEPTADA)?.propuesta).toBe(ACEPTADA);
+    const nuestros = aBorrar.filter((f) => f.objeto.includes(PROJECT_ID));
+    expect(nuestros.map((f) => f.objeto).sort()).toEqual(
+      [OBJETO_ACEPTADA, OBJETO_REABIERTA, OBJETO_SOLO, OBJETO_LLEGA_TARDE].sort(),
+    );
+    const aceptada = nuestros.find((f) => f.objeto === OBJETO_ACEPTADA);
+    expect(aceptada?.propuesta).toBe(ACEPTADA);
+    expect(aceptada?.visto, 'sin la versión vista no se protege a la que reabren').toBeTruthy();
+    expect(aRevisar.filter((f) => f.objeto.includes(PROJECT_ID))).toEqual([]);
   }, 30_000);
 
-  it('y el relevamiento tampoco lee el contacto de quien propuso', async () => {
+  it('borra el original vencido y deja el documento, que sigue sin vencer', async () => {
+    const flyer = await decidido(OBJETO_ACEPTADA);
+
+    expect(await borrarFlyer(adminDb(), adminBucket(), flyer)).toBe('borrado');
+    expect(await existe(OBJETO_ACEPTADA), 'el original sigue en el bucket').toBe(false);
+
+    // D-1160: se va la foto, no el contacto. El documento sigue ahí y sigue
+    // nombrando el path, igual que después del borrado de la transición.
+    const doc = await adminDb().collection('propuestas').doc(ACEPTADA).get();
+    expect(doc.exists).toBe(true);
+    expect(doc.get('imagen.storagePath')).toBe(OBJETO_ACEPTADA);
+    expect(doc.get('contacto.valor')).toBe('+54 9 11 2222-3333');
+
+    // Y la corrida de mañana no lo vuelve a ver: entra por el bucket.
+    const despues = await relevarFlyeresSinPlazo(adminDb(), adminBucket(), {
+      ahora: enCuatroDias(),
+    });
+    expect(despues.motivos[OBJETO_ACEPTADA]).toBeUndefined();
+  }, 30_000);
+
+  it('si la reabren en el medio de la corrida, su flyer se queda', async () => {
+    const flyer = await decidido(OBJETO_REABIERTA);
+
+    // «Reabrir» desde la bandeja: vuelve a `nueva` y renueva `revision.en`.
+    await adminDb()
+      .collection('propuestas')
+      .doc(REABIERTA)
+      .update({ estado: 'nueva', 'revision.en': new Date() });
+
+    expect(await borrarFlyer(adminDb(), adminBucket(), flyer)).toBe('la-tocaron');
+    expect(await existe(OBJETO_REABIERTA), 'se llevó el flyer de una propuesta reabierta').toBe(
+      true,
+    );
+  }, 30_000);
+
+  it('el huérfano cuyo documento llega en el medio de la corrida tampoco se borra', async () => {
+    const flyer = await decidido(OBJETO_LLEGA_TARDE);
+    expect(flyer.motivo).toBe('sin-propuesta');
+
+    // El envío de `/proponer` que subió esa foto, llegando justo ahora.
+    await adminDb()
+      .collection('propuestas')
+      .doc(LLEGA_TARDE)
+      .set(
+        documento({
+          estado: 'nueva',
+          creadoEn: new Date(),
+          revision: { porUid: null, en: null, actividadId: null, motivo: null },
+          imagen: { storagePath: OBJETO_LLEGA_TARDE },
+        }),
+      );
+
+    expect(await borrarFlyer(adminDb(), adminBucket(), flyer)).toBe('lo-nombran');
+    expect(await existe(OBJETO_LLEGA_TARDE)).toBe(true);
+  }, 30_000);
+
+  it('y el que nadie nombra se borra', async () => {
+    const flyer = await decidido(OBJETO_SOLO);
+    expect(await borrarFlyer(adminDb(), adminBucket(), flyer)).toBe('borrado');
+    expect(await existe(OBJETO_SOLO)).toBe(false);
+    // Y el de la pendiente, que es de la retención, sigue intacto.
+    expect(await existe(OBJETO_PENDIENTE)).toBe(true);
+  }, 30_000);
+
+  it('y la lectura tampoco trae el contacto de quien propuso', async () => {
     /*
      * El hermano del caso que `propuestasVencibles` ya tiene, y hace falta
      * porque es **otro `select`**: dos máscaras que hoy piden lo mismo y que
-     * pueden separarse. Lo pidió el `auditor-trampas` al revisar el ensanche que
-     * este relevamiento necesitó (`creadoEn` y `revision.en`, para poder
-     * distinguir «el barrido pasa por acá» de «no lo puede fechar»): el riesgo
-     * del ensanche no es el timestamp, es que la próxima vez se pida `revision`
-     * entera y con ella viaje `motivo` —una nota interna sobre el trabajo de
-     * otra persona— y `porUid`.
-     *
-     * El fixture los tiene puestos a propósito: es contra eso que se afirma.
+     * pueden separarse. El riesgo no es el timestamp, es que la próxima vez se
+     * pida `revision` entera y con ella viaje `motivo` —una nota interna sobre el
+     * trabajo de otra persona— y `porUid`. El fixture los tiene puestos a
+     * propósito: es contra eso que se afirma.
      */
-    const leidas = await propuestasConFlyer(adminDb());
-    const nuestra = leidas.find((p) => p.id === ACEPTADA);
+    const leidas = await propuestasQueNombran(adminDb(), [OBJETO_PENDIENTE, OBJETO_RECIEN_ACEPTADA]);
+    const nuestra = leidas.find((p) => p.id === RECIEN_ACEPTADA);
 
     // Control positivo: sin esto, «no trae el contacto» pasaría por no haber
     // traído nada.
-    expect(nuestra, 'la aceptada no vino en el relevamiento').toBeTruthy();
-    expect(Object.keys(nuestra!).sort()).toEqual(['creadoEn', 'estado', 'id', 'imagen', 'revision']);
+    expect(nuestra, 'la aceptada no vino en la lectura').toBeTruthy();
+    expect(leidas.map((p) => p.id).sort()).toEqual([PENDIENTE, RECIEN_ACEPTADA].sort());
+    expect(Object.keys(nuestra!).sort()).toEqual([
+      'creadoEn',
+      'estado',
+      'id',
+      'imagen',
+      'revision',
+      'updateTime',
+    ]);
     expect(Object.keys(nuestra!.revision as object)).toEqual(['en']);
   }, 30_000);
 
-  it('y el documento sigue nombrando el objeto con el nombre que el bucket usa', async () => {
+  it('y los objetos salen del bucket con el nombre y la fecha que la decisión necesita', async () => {
     /*
-     * El control positivo del cruce, y no es redundante con el caso de arriba:
-     * si `flyeresDelBucket` devolviera nombres con otra forma —con el bucket
-     * adelante, o URL-encodeados— **todo** saldría `sin-propuesta` y el caso de
-     * arriba pasaría igual en su tercer aserto, que es justamente el que dice
-     * «nadie lo nombra». Acá se afirma al revés: el objeto de la pendiente existe
-     * en el listado **y** empató con su documento.
+     * Si `flyeresDelBucket` devolviera nombres con otra forma —con el bucket
+     * adelante, o URL-encodeados— **todo** saldría `sin-propuesta`, y se
+     * borraría. Y sin fecha legible todo caería en «recién subido» y ningún
+     * huérfano se borraría nunca.
      */
     const objetos = await flyeresDelBucket(adminBucket());
     expect(objetos.map((o) => o.nombre)).toContain(OBJETO_PENDIENTE);
-    expect(
-      objetos.find((o) => o.nombre === OBJETO_PENDIENTE)?.creado,
-      'sin fecha legible todo caería en «recién subido» y nada se revisaría nunca',
-    ).toBeGreaterThan(0);
+    expect(objetos.find((o) => o.nombre === OBJETO_PENDIENTE)?.creado).toBeGreaterThan(0);
   }, 30_000);
 });

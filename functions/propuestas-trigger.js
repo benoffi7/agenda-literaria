@@ -49,15 +49,16 @@ export const borrarImagenAlCerrar = onDocumentWritten(
        * propia— y van a `debug`, que Cloud Logging no muestra por defecto. Pero
        * `dejaLaFoto` marca los que ocurren sobre una **aceptada** con un objeto
        * vivo en `propuestas/`: ahí el estado del mundo es el mismo que el del
-       * `warn` de más abajo —la aceptada no vence, ningún barrido recorre ese
-       * prefijo— y salir por `debug` los volvía invisibles. Mismo `alerta`, que
-       * es lo que hace que **el filtro los junte a los tres** (B-871).
+       * `warn` de más abajo —el original queda vivo hasta que el barrido de
+       * B-871 se lo lleve, a los 30 días de aceptada— y salir por `debug` los
+       * volvía invisibles. Mismo `alerta`, que es lo que hace que **el filtro
+       * los junte a los tres** (B-871).
        *
        * Ni el título ni el contacto: el log lleva el id y el motivo, que es
        * vocabulario cerrado (§9 y la fila de `07-seguridad.md`).
        */
       if (dejaLaFoto) {
-        logger.warn('una propuesta aceptada se queda con su foto original y nadie la va a borrar', {
+        logger.warn('una propuesta aceptada se queda con su foto original hasta el barrido de los 30 días', {
           propuesta: id,
           motivo,
           alerta: 'flyer-de-propuesta-sin-borrar',
@@ -103,16 +104,14 @@ export const borrarImagenAlCerrar = onDocumentWritten(
         /*
          * **No se borró, y eso es lo correcto**: sin copia verificada, borrar el
          * original pierde la foto para siempre (ver `borrarOriginalAlAceptar`).
-         * Pero tampoco es un no-evento: la `aceptada` no vence, así que ese
-         * original **no lo borra nadie más** mientras la actividad no tenga su
-         * foto —la retención no llega y `limpiarImagenesHuerfanas` no recorre
-         * este prefijo—. Si después alguien la sube desde el panel, el barrido
-         * diario lo borra solo (B-1370, `borrarPropuestasVencidas`). Sale como `warn`
-         * con `alerta` para que se pueda filtrar, igual que `rebuild-agotado`
-         * (B-21). Es el agujero de **B-871**, medido en vez de supuesto — y
-         * desde ese ítem el objeto que queda vivo aparece además en el
-         * relevamiento de `scripts/borrar-propuestas-vencidas.mjs`, que entra
-         * por el bucket y no depende de que este log se haya visto.
+         * Pero tampoco es un no-evento: hay **30 días** para decidir si la foto
+         * se usa. Si alguien la sube desde el panel, el barrido diario borra el
+         * original al día siguiente (B-1370); si no, lo borra igual a los 30
+         * días de aceptada (B-871, D-1160) — o sea que pasado ese plazo la foto
+         * se pierde. Sale como `warn` con `alerta` para que se pueda filtrar,
+         * igual que `rebuild-agotado` (B-21), y es lo que le avisa al dueño que
+         * el reloj empezó a correr. El barrido entra por el bucket, así que no
+         * depende de que este log se haya visto.
          */
         logger.warn('la aceptada se queda con la foto original: no hay copia que la reemplace', {
           propuesta: id,
@@ -123,18 +122,18 @@ export const borrarImagenAlCerrar = onDocumentWritten(
         });
       } catch (e) {
         /*
-         * **No se re-lanza, y acá el precio es más caro que en el rechazo, así
-         * que va dicho.** Allá el peor caso es «se borra un mes más tarde»,
-         * porque la retención de los 30 días es la red. Acá **no hay red**: la
-         * `aceptada` no vence (B-844), así que un fallo de Storage o de la
-         * lectura deja la foto de un tercero en el bucket **para siempre**, y
-         * ningún barrido va a pasar por ahí.
+         * **No se re-lanza, y desde B-871 el precio es el mismo que en el
+         * rechazo.** Hasta ese ítem acá no había red —la `aceptada` no vence
+         * (B-844)— y un fallo de Storage o de la lectura dejaba la foto de un
+         * tercero en el bucket **para siempre**. Ahora el peor caso es «se borra
+         * a los 30 días de aceptada»: el barrido de flyers de B-871 la alcanza
+         * entrando por el bucket.
          *
          * Se re-lanza igual el día que este trigger lleve `retry: true`; hoy
          * ninguna Function del proyecto lo usa y encenderlo solo para esta rama
          * reintentaría también cualquier bug del handler durante siete días. La
-         * salida elegida es la misma que arriba —`alerta` filtrable— y el ítem
-         * que la cierra de verdad es **B-871**.
+         * salida elegida es la misma que arriba —`alerta` filtrable— y la red
+         * de abajo es la de **B-871**.
          */
         logger.error('no se pudo borrar la imagen original de una propuesta aceptada', {
           propuesta: id,
@@ -163,10 +162,11 @@ export const borrarImagenAlCerrar = onDocumentWritten(
       } catch (e) {
         /*
          * **Con `alerta`, al revés que el rechazo y por el mismo motivo que la
-         * aceptación: acá no hay red.** La propuesta queda `aceptada`, que no
-         * vence (B-844), así que la retención no va a pasar por este documento
-         * nunca y `limpiarImagenesHuerfanas` no recorre este prefijo. Un fallo
-         * deja la foto de un tercero en el bucket para siempre.
+         * aceptación.** La propuesta queda `aceptada`, que no vence (B-844), así
+         * que la retención no va a pasar por este documento nunca. Hasta B-871
+         * un fallo dejaba la foto de un tercero en el bucket para siempre; desde
+         * ese ítem la borra el barrido de flyers a los 30 días de aceptada, que
+         * son 30 días de más sobre una foto que una persona ya descartó.
          *
          * Es el mismo estado del mundo que el `warn` de arriba, así que lleva el
          * mismo campo `alerta` — que es lo que hace que el filtro de
@@ -217,7 +217,7 @@ export const borrarImagenAlCerrar = onDocumentWritten(
        * Invertido, el default es no hacer nada y avisar. Es la misma dirección
        * que el resto del archivo elige siempre: cuando no se sabe, se conserva la
        * foto. Lleva `alerta` porque el estado del mundo es el de los otros tres —
-       * un objeto vivo que nadie más va a borrar.
+       * un objeto vivo que solo va a borrar, a los 30 días, el barrido de B-871.
        */
       logger.error('motivo de borrado desconocido: no se toca la imagen', {
         propuesta: id,

@@ -10,9 +10,9 @@
  *
  * ── Por qué no alcanzaba con `borrar-propuestas-vencidas.mjs` ─────────────
  * Su segunda lista (`relevarFlyeresSinPlazo`, B-871) entra por el bucket y dice
- * «este objeto de `propuestas/` no lo va a borrar nadie», con el id de la
- * propuesta. Eso contesta la pregunta de **privacidad** —la foto de un tercero
- * que se queda para siempre— y no la de **producto** que abrió B-1322: antes del
+ * qué objeto de `propuestas/` se borra y cuál no va a borrar nadie, con el id de
+ * la propuesta. Eso contesta la pregunta de **privacidad** —la foto de un
+ * tercero que no se quede de más— y no la de **producto** que abrió B-1322: antes del
  * arreglo del CORS (B-1235) la promoción de la foto fallaba en el navegador, la
  * actividad se guardaba **sin flyer**, y `borrarOriginalAlAceptar` devolvía
  * `sin-copia` y conservaba el original. Para arreglar cada una hace falta saber
@@ -33,13 +33,15 @@
  * es manual y va impreso al lado de cada caso: subir la foto desde el panel es
  * una decisión sobre una actividad publicada, no un backfill. La excepción es
  * `con-copia-con-original`, que desde B-1370 lo resuelve solo
- * `borrarPropuestasVencidas` — no este script.
+ * `borrarPropuestasVencidas` — no este script. Y desde B-871 el remedio tiene
+ * **plazo**: el mismo barrido borra todo original de una aceptada a los 30 días
+ * de aceptada, así que subir la foto a la actividad hay que hacerlo antes.
  *
  * ── Qué lee, y qué no ─────────────────────────────────────────────────────
  * De la propuesta, **solo** `estado`, `revision.actividadId`,
  * `revision.fotoDescartada` e `imagen.storagePath`: ni el contacto de quien
  * propuso ni `revision.motivo`, que es una nota interna (mismo `select` acotado
- * que `propuestasConFlyer`). De la actividad, con máscara, `titulo`, `estado` e
+ * que `propuestasQueNombran`). De la actividad, con máscara, `titulo`, `estado` e
  * `imagenes` — ni `online.url` ni `difusion` (§5.1). Lo que se imprime es el
  * título de la actividad, su id y el path del original; nada de la persona.
  */
@@ -65,28 +67,33 @@ export const CASOS = {
     accion:
       'Es el caso de B-1322. Bajar el original del bucket, subirlo como flyer desde el ' +
       'panel y guardar. El original lo borra solo el barrido diario (B-1370) una vez que la ' +
-      'actividad tiene su copia. Si la foto no se quiere, borrarlo a mano.',
+      'actividad tiene su copia. Hay que hacerlo antes de los 30 días de aceptada: pasado ese ' +
+      'plazo el original se borra solo (B-871). Si la foto no se quiere, no hace falta nada.',
   },
   'copia-rota-con-original': {
     titulo: 'La actividad nombra una foto propia que ya no existe, y el original está',
     accion:
       'La galería apunta a un objeto borrado (se ve rota). Subir el original de nuevo desde ' +
-      'el panel y sacar la fila rota. El original lo borra solo el barrido diario (B-1370).',
+      'el panel y sacar la fila rota, antes de los 30 días de aceptada. El original lo borra ' +
+      'solo el barrido diario (B-1370); si no se sube, se borra igual a los 30 días (B-871).',
   },
   'solo-externas-con-original': {
     titulo: 'La actividad tiene solo imágenes de afuera (link), y el original está',
     accion:
-      'Mirar si el link es el mismo flyer. Si sí, el original sobra y se borra a mano; si no, ' +
-      'subirlo desde el panel.',
+      'Mirar si el link es el mismo flyer. Si sí, el original sobra y se borra solo a los 30 ' +
+      'días de aceptada (B-871); si no, subirlo desde el panel antes de ese plazo.',
   },
   'sin-actividad-con-original': {
     titulo: 'La propuesta no apunta a ninguna actividad que exista, y el original está',
     accion:
-      'Buscar a mano la actividad que salió de esta propuesta. Si no hay ninguna, borrar el original.',
+      'Buscar a mano la actividad que salió de esta propuesta y, si la foto se usa, subirla ahí ' +
+      'antes de los 30 días de aceptada. Si no, el original se borra solo a los 30 días (B-871).',
   },
   'descartada-con-original': {
     titulo: 'Se eligió «No usarla» y el original no se borró',
-    accion: 'No hay nada que decidir: la foto se descartó a propósito. Borrar el original a mano.',
+    accion:
+      'No hay nada que decidir: la foto se descartó a propósito. Borrar el original a mano, o ' +
+      'dejar que el barrido lo borre a los 30 días de aceptada (B-871).',
   },
   [CASO_QUE_SE_BORRA_SOLO]: {
     titulo: 'La actividad tiene su copia, y el original quedó de más',
