@@ -505,6 +505,10 @@ nuevo, y eso es lo que este ítem compra.
 > confunden a quien carga** (B-926, B-928, B-930). Poner una entidad nueva arriba
 > de eso sería agrandar la superficie antes de arreglar la que ya está en uso.
 
+> 📌 **Dónde se ven, decidido por el dueño el 2026-09-25:** «la sección propia más
+> el renglón en la home. Tiene que haber una sección para cargarla también en el
+> admin». La página del mes queda afuera por ahora. En construcción desde ese día.
+
 *«En el panel y web, efemérides poder cargar. No van al calendario público.»*
 Definido por el dueño el 2026-09-15: **es el dato del día, sin lugar ni horario** —
 «hoy nació Cortázar», «se publicó *Rayuela*». No es una actividad a la que se vaya.
