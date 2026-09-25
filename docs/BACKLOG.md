@@ -331,13 +331,6 @@ propio. Arreglo: un `derivadosDesalineados` que compare los cuatro con `sedePrin
 `onlinePrincipal` y `modalidadResultante` (hoy en `src/lib/actividades.ts`, a mudar a
 `functions/` como `ciudadesDe`). Corregir `sede` cambia salidas públicas y pide rebuild.
 
-### B-2051 · El script de claims no tiene cómo leer el claim de una cuenta · P3 — de B-1920 (2026-09-25)
-
-El runbook de `ciudades-no-coinciden` pide comparar la ciudad de la cuenta con
-`derivadas`. La consola de Firebase no muestra custom claims, y `set-admin-claim.mjs`
-solo escribe. Un `--ver <email>` que imprima rol y ciudad (solo lectura) cierra el paso 3
-del runbook.
-
 ### B-2052 · Una fila con sede y la ciudad vacía no se detecta · P3 — del `auditor-privacidad` sobre B-1920 (2026-09-25)
 
 Primera fila en la ciudad de la cuenta, segunda con una dirección de otra ciudad y

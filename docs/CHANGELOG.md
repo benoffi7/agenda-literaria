@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **El script de claims ahora sabe leer** (B-2051). La consola de Firebase no muestra
+  los custom claims, y `set-admin-claim.mjs` solo los escribía. `npm run
+  admin:claim:prod -- --ver <uid|email>` imprime el rol (admin / publicador general /
+  publicador de `<ciudad>` / sin rol), la ciudad y los claims crudos, y avisa si la
+  cuenta tiene un estado que el script no produce. No escribe nada: se rechaza junto con
+  cualquier flag de rol y sale antes de la rama que escribe, y un test contra el emulador
+  lo comprueba comparando los claims antes y después.
 - **El costo por tecla y el barrido de «a-confirmar» dejan de fallar con la suite en
   paralelo** (B-2060, B-2041). El caso de B-198 comparaba dos tandas cronometradas por
   separado, y con carga de otro worker podía salir rojo sin que el código cambiara; ahora

@@ -22013,6 +22013,15 @@ es un barrido del repo que con carga se acerca al límite. En manos del frente `
 Pasó 3/3 solo. Es un test de tiempos (B-198) y parece inestable con la carga del
 paralelo de M-1. En manos del frente `tiempos`.
 
+### B-2051 · El script de claims no tiene cómo leer el claim de una cuenta · P3 — de B-1920 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `9ac60f6`, `9de0bbc`. `set-admin-claim.mjs --ver <uid|email>` lee sin escribir: rol, ciudad, claims crudos y avisos de estados raros. El entorno lo sigue eligiendo el comando (`admin:claim` / `admin:claim:prod`), porque el script nunca usó `--produccion`. La protección está del otro lado: `--ver` no se combina con flags de rol y sale antes de `setCustomUserClaims`. El rol sale de `rolDeLaSesion`, sin copia. Tests: `tests/describir-claims.test.ts` y `tests/claim-ver.integracion.test.ts`, con la mutación probada. Cierra el paso 3 del runbook de `ciudades-no-coinciden`.
+
+El runbook de `ciudades-no-coinciden` pide comparar la ciudad de la cuenta con
+`derivadas`. La consola de Firebase no muestra custom claims, y `set-admin-claim.mjs`
+solo escribe. Un `--ver <email>` que imprima rol y ciudad (solo lectura) cierra el paso 3
+del runbook.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
