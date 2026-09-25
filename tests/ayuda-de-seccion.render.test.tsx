@@ -27,10 +27,31 @@
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AyudaDeSeccion } from '@/components/admin/ayuda/AyudaDeSeccion';
 import { CAPITULOS, capituloDeSeccion } from '@/lib/ayuda';
+
+/*
+ * **La capa se precarga antes del primer caso — B-2080.** `AyudaDeSeccion` la
+ * trae por `lazy(() => import(...))`, y el primer caso que la abre pagaba
+ * adentro de su `waitFor` —1 s por defecto— lo que tarda Vite en transformar el
+ * chunk de `CentroAyuda` y todo lo que arrastra. Con la suite en paralelo eso
+ * pasaba del segundo: `Unable to find role="dialog"` a los 1100 ms, 2 de cada 10
+ * corridas, y siempre en «y la capa scrollea HASTA ese capítulo» por ser el
+ * primero en cargarlo.
+ *
+ * Se precarga en vez de estirar el `timeout` porque lo que el `waitFor` mide es
+ * que la capa **aparezca y scrollee**, no cuánto tarda el transformador: el
+ * `import()` de acá llena la caché de módulos, el `lazy` del componente resuelve
+ * contra ella en un tick, y el camino que se ejercita —clic, `Suspense`, capa,
+ * `scrollIntoView`— es el mismo de siempre. El costo de la transformación queda
+ * en el `beforeAll`, que tiene su propio timeout (10 s) y no se confunde con un
+ * rojo del caso.
+ */
+beforeAll(async () => {
+  await import('@/components/admin/ayuda/CentroAyuda');
+});
 
 /** Los elementos que recibieron `scrollIntoView`, en orden. */
 let scrolleados: Element[] = [];
