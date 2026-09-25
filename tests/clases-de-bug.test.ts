@@ -32,6 +32,7 @@
  * | `tests/clases/b-911-flag-antes-que-el-dato.test.ts` | clase de B-911 · un flag de publicación se lee antes que el dato que esconde |
  * | `tests/clases/b-914-label-de-otro.test.ts` | clase de B-914 · el label de «Otro…» no se tira en el `onChange` |
  * | `tests/clases/b-854-hay-x-igual-en-cada-salida.test.ts` | clase de B-854 · «¿hay X?» se contesta igual en cada salida |
+ * | `tests/clases/b-2081-barrido-sin-node-modules.test.ts` | clase de B-2081 · un barrido recursivo que alcanza `functions/` o la raíz saltea `node_modules` |
  */
 import { describe, expect, it } from 'vitest';
 import { archivosDe, describesDe, filasDelIndice } from './fixtures/indice-de-registro';
