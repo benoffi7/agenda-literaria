@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El test intermitente de la ayuda por sección, estabilizado** (B-2080). Fallaba 2 de
+  cada 10 corridas con la suite en paralelo: su `waitFor` de 1 s pagaba también la
+  transformación del chunk de `CentroAyuda`. Ahora el módulo se precarga en un
+  `beforeAll`. 10 de 10 corridas en verde.
 - **El script de claims ahora sabe leer** (B-2051). La consola de Firebase no muestra
   los custom claims, y `set-admin-claim.mjs` solo los escribía. `npm run
   admin:claim:prod -- --ver <uid|email>` imprime el rol (admin / publicador general /

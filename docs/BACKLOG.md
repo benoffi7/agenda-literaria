@@ -123,14 +123,6 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
 
-### B-2080 · `ayuda-de-seccion.render` › «y la capa scrollea HASTA ese capítulo» falla a veces con la suite en paralelo · P2 — del frente `tiempos` (2026-09-25)
-
-Falló 2 de 10 corridas: `Unable to find role="dialog"` a los 1100 ms.
-`abrirElInterrogante` espera la capa `lazy` con un `waitFor` de 1 s por defecto, y éste
-es el primer caso del archivo que carga ese módulo; con carga, transformar el chunk tarda
-más. Ensucia el gate de forma intermitente. Arreglo: precargar el módulo en un
-`beforeAll`, o un `timeout` explícito en ese `waitFor`.
-
 ### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
 
 > ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
