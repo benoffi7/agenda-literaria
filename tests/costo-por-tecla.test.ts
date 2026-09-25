@@ -54,8 +54,9 @@ import type { ActividadForm } from '@/types/actividad';
  * sobre un momento de CPU ocupada por otro worker y la otra no. Además armaba
  * el formulario **adentro** de lo cronometrado, así que medía también los
  * `crypto.randomUUID()` de `nuevaSesionId`. Ahora compara 8 contra 80 con
- * `proporcion` (abajo): pares intercalados, mediana de los cocientes, y ningún
- * milisegundo en el umbral.
+ * `proporcion` (abajo): tandas intercaladas y ningún milisegundo en el umbral.
+ * Hasta B-2120 tomaba la mediana de los cocientes por par; ahora toma el mínimo
+ * de cada lado, y el porqué está en `proporcion`.
  *
  * Remedido el 2026-09-25, y **la tabla de arriba envejeció**:
  *
@@ -120,44 +121,52 @@ const porLlamada = (f: () => unknown, vueltas = 200): number => {
   return (performance.now() - t0) / vueltas;
 };
 
-const mediana = (xs: number[]): number => {
-  const o = [...xs].sort((a, b) => a - b);
-  const m = o.length >> 1;
-  return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+/**
+ * Milisegundos por llamada de una sola tanda corta, **sin** vuelta previa: la
+ * usa `proporcion`, que calienta aparte y se queda con el mínimo.
+ */
+const unaTanda = (f: () => unknown, vueltas: number): number => {
+  const t0 = performance.now();
+  for (let i = 0; i < vueltas; i++) f();
+  return (performance.now() - t0) / vueltas;
 };
 
 /**
- * B-2060 — cuánto más cuesta `b` que `a`, medido de forma que la carga de la
- * máquina se cancele.
+ * B-2060, B-2120 — cuánto más cuesta `b` que `a`, medido de forma que la carga
+ * de la máquina no entre en la cuenta.
  *
- * La versión anterior medía `a` entera y después `b` entera, y comparaba contra
- * un piso fijo: con la suite en paralelo (M-1), si otro worker se comía la CPU
- * justo durante la segunda tanda, la proporción salía inflada y el test fallaba
- * sin que el código hubiera cambiado. Tres cosas lo arreglan:
+ * **Intercaladas**, como desde B-2060: una tanda de `a`, una de `b`, otra de
+ * `a`… La carga que llega en un momento cae sobre las dos casi por igual.
  *
- *  - **Intercaladas.** Una muestra de `a`, una de `b`, otra de `a`… La carga
- *    que llega en un momento cae sobre las dos casi por igual.
- *  - **Proporción por par, no por total.** Cada par da su propio cociente, y
- *    como las dos mitades del par corrieron juntas, el ruido se divide.
- *  - **Mediana de los cocientes.** Un par que cayó sobre una pausa de GC o un
- *    cambio de contexto es un valor extremo, y la mediana lo ignora: harían
- *    falta la mitad de los pares contaminados para moverla.
+ * **Y el mínimo de cada lado, no la mediana de los cocientes** — B-2120. La
+ * mediana de B-2060 suponía que el ruido cae parejo sobre las dos mitades de un
+ * par, y no: `b` corre cinco veces más que `a`, así que con la CPU ocupada es
+ * cinco veces más probable que un cambio de contexto le caiga adentro. El sesgo
+ * es **sistemático**, no un valor extremo que la mediana ignore: con 24
+ * procesos quemando CPU la mediana subió de ~6× a 13,6× (con el techo en 10×),
+ * mientras que el mínimo no se movió de 5,4-5,65× en quince repeticiones. La
+ * carga **solo puede sumar** tiempo —ningún ruido hace que el código corra más
+ * rápido de lo que corre—, así que la tanda más rápida de cada lado es la que
+ * tuvo menos interferencia, y esa es la que se compara. Para que haya muchas
+ * tandas limpias, cada una es corta (tres llamadas, ~0,5 ms la más larga, por
+ * debajo de un quantum del planificador) y hay 101 por lado.
  *
  * No hay ningún umbral en milisegundos: lo que se compara es una proporción, y
- * una máquina lenta o cargada escala las dos mitades a la vez.
+ * una máquina lenta escala las dos mitades a la vez.
  */
-const proporcion = (a: () => unknown, b: () => unknown, pares = 21, vueltas = 20): number => {
-  // Calentar los dos caminos antes de la primera muestra: sin esto, el primer
-  // par mide al JIT y no al código.
+const proporcion = (a: () => unknown, b: () => unknown, tandas = 101, vueltas = 3): number => {
+  // Calentar los dos caminos antes de la primera muestra: sin esto, la primera
+  // tanda mide al JIT y no al código (con el mínimo no cambiaría el resultado,
+  // pero así ninguna tanda de las que cuentan es de calentamiento).
   porLlamada(a, 100);
   porLlamada(b, 100);
-  const cocientes: number[] = [];
-  for (let i = 0; i < pares; i++) {
-    const ta = porLlamada(a, vueltas);
-    const tb = porLlamada(b, vueltas);
-    cocientes.push(tb / Math.max(ta, 1e-4));
+  let minA = Infinity;
+  let minB = Infinity;
+  for (let i = 0; i < tandas; i++) {
+    minA = Math.min(minA, unaTanda(a, vueltas));
+    minB = Math.min(minB, unaTanda(b, vueltas));
   }
-  return mediana(cocientes);
+  return minB / Math.max(minA, 1e-4);
 };
 
 /**
@@ -185,10 +194,11 @@ describe('el aviso de lo que falta para publicar no cuesta un frame (B-198)', ()
     // crezca más rápido que los datos —el O(n²) de «comparar cada encuentro con
     // todos los demás»—, que es exactamente lo que este test tiene que ver.
     //
-    // Medido (2026-09-25): ~6×, con y sin la suite en paralelo. El techo no
-    // tiene margen de máquina porque no lo necesita: una máquina lenta o
-    // cargada estira las dos mitades de cada par por igual, y la proporción no
-    // se mueve.
+    // Medido (2026-09-25, B-2120, con el mínimo): 5,4-5,7× solo, con la
+    // suite en paralelo y con 24 procesos quemando CPU al lado. La mutación
+    // O(n²) de B-2060 da ~50× en las tres condiciones. El techo no tiene margen
+    // de máquina porque no lo necesita: la carga solo suma tiempo, y el mínimo
+    // se queda con la tanda que no la sufrió.
     const form8 = conEncuentros(8);
     const form80 = conEncuentros(80);
     const veces = proporcion(
