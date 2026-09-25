@@ -299,7 +299,9 @@ const limpiar = async () => {
   // por lo mismo que las otras dos.
   // B-960 — `bibliotecas` entra a la limpieza en el **mismo** cambio que la
   // siembra, por lo mismo que las otras tres.
-  const [actividades, usuarios, librerias, suscripciones, lugares, bibliotecas] =
+  // B-959 — `efemerides` entra a la limpieza en el **mismo** cambio que la
+  // siembra (paso 8n), por lo mismo que los cuatro directorios.
+  const [actividades, usuarios, librerias, suscripciones, lugares, bibliotecas, efemerides] =
     await Promise.all([
       borrar('actividades'),
       borrar('usuarios'),
@@ -307,6 +309,7 @@ const limpiar = async () => {
       borrar('suscripciones'),
       borrar('lugares'),
       borrar('bibliotecas'),
+      borrar('efemerides'),
     ]);
   /*
    * B-1790 — la miniatura del gate, **solo la de este checkout** (la huella va
@@ -332,10 +335,37 @@ const limpiar = async () => {
     suscripciones +
     lugares +
     bibliotecas +
+    efemerides +
     ciudadDelGate +
     miniatura
   );
 };
+
+/*
+ * B-959 — las efemérides del gate (paso 8n). Viven acá y no en
+ * `gate-build/semilla.mjs` porque no entran a las canastas del barrido de
+ * actividades: se verifican aparte, con sus propios centinelas. La publicada
+ * lleva los uids centinela —lo que la proyección existe para no publicar— y el
+ * borrador lleva el título centinela.
+ */
+const SLUG_EFEMERIDE = `${PREFIJO}efemeride`;
+const SLUG_EFEMERIDE_BORRADOR = `${PREFIJO}efemeride-borrador`;
+const UID_CENTINELA_EFEMERIDE = 'gate.efemerides.createdBy';
+const TITULO_BORRADOR_EFEMERIDE = 'gate.efemerides.borrador.titulo';
+const efemerideDelGate = (slug, titulo, estado) => ({
+  titulo,
+  slug,
+  descripcion: 'Efeméride sembrada por el gate.',
+  dia: 1,
+  mes: 1,
+  anio: 1900,
+  fuente: null,
+  estado,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: UID_CENTINELA_EFEMERIDE,
+  updatedBy: UID_CENTINELA_EFEMERIDE,
+});
 
 const fallo = (mensaje) => {
   console.error(`\n\x1b[31m✗ ${mensaje}\x1b[0m`);
@@ -361,6 +391,12 @@ try {
   // B-1790 — el objeto de la miniatura de la portada de la de afuera. El
   // contenido no importa: el build **lista** `miniaturas/` y no baja un byte
   // (DEC-7d), así que lo que se prueba es que el listado la confirme.
+  await db
+    .doc(`efemerides/${SLUG_EFEMERIDE}`)
+    .set(efemerideDelGate(SLUG_EFEMERIDE, 'Efeméride del gate', 'publicado'));
+  await db
+    .doc(`efemerides/${SLUG_EFEMERIDE_BORRADOR}`)
+    .set(efemerideDelGate(SLUG_EFEMERIDE_BORRADOR, TITULO_BORRADOR_EFEMERIDE, 'borrador'));
   await bucket.file(RUTA_DE_LA_MINIATURA).save(Buffer.from('gate'), { contentType: 'image/jpeg' });
 
   console.log(
@@ -1589,6 +1625,50 @@ try {
         'decisión, con su ficha, su Library sin el costo en el marcado, el costo con ' +
         'su fecha en la página y su entrada de sitemap.',
     });
+
+    /*
+     * 8n · B-959 — **las efemérides, sobre los archivos de verdad.** El barrido de
+     * centinelas de `tests/efemeride-publica.test.ts` mira el valor de retorno de
+     * la proyección; esto mira lo que el build escribió: la publicada está en el
+     * índice y tiene su página, el borrador no aparece en **ningún** archivo, y
+     * los uids de la publicada no están en todo el `dist/`. Sin este paso el
+     * `where` y el `.select()` de `efemeridesPublicadas` solo se verificaban por
+     * el texto del fuente (lo cobró el `auditor-privacidad`).
+     */
+    {
+      const antes = salida;
+      const indice = JSON.parse((await leerDist('efemerides.json')) || '{}');
+      const slugs = (indice.efemerides ?? []).map((e) => e.slug);
+      if (!slugs.includes(SLUG_EFEMERIDE)) {
+        ctx.fallo(
+          `dist/efemerides.json no trae la efeméride publicada del gate (trae ${slugs.length}).\n` +
+            '  El build no leyó /efemerides, así que nada de lo que sigue prueba nada.',
+        );
+      }
+      if (!(await leerDist(`efemerides/${SLUG_EFEMERIDE}/index.html`))) {
+        ctx.fallo(`la efeméride publicada no tiene su página: falta dist/efemerides/${SLUG_EFEMERIDE}/.`);
+      }
+      const conFuga = (await publicables()).filter(
+        (a) =>
+          a.contenido.includes(SLUG_EFEMERIDE_BORRADOR) ||
+          a.contenido.includes(TITULO_BORRADOR_EFEMERIDE) ||
+          a.contenido.includes(UID_CENTINELA_EFEMERIDE),
+      );
+      if (conFuga.length > 0) {
+        ctx.fallo(
+          'un borrador de efeméride, o el uid de quien la cargó, llegó al dist/.\n' +
+            "  Falta o está mal el where('estado','==','publicado') o el .select() de\n" +
+            '  efemeridesPublicadas (src/lib/contenidoDelSitio.ts), o la proyección dejó\n' +
+            `  de ser una whitelist (§5.1). Archivos:\n${conFuga.map((a) => `    ${a.relativa}`).join('\n')}`,
+        );
+      }
+      if (salida === antes) {
+        ctx.ok(
+          'las efemérides salieron con la publicada en el índice y con su página, sin el ' +
+            'borrador en ningún archivo y sin los uids de quien las cargó (B-959).',
+        );
+      }
+    }
 
     /*
      * 8m · **B-1572 — el motivo de la cancelación, en las tres direcciones de

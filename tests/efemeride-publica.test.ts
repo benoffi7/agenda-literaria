@@ -95,11 +95,23 @@ describe('barrido de la proyección de una efeméride (§5.2, whitelist)', () =>
   });
 
   it('el fixture cubre todos los campos de `Efemeride`', () => {
+    /*
+     * La lista va contra el **tipo** y no contra el propio fixture: el
+     * `satisfies` exige una entrada por cada `keyof Efemeride`, opcionales
+     * incluidos, así que un campo nuevo no compila hasta que alguien decida acá
+     * si tiene centinela. Comparar el fixture consigo mismo dejaba pasar un
+     * opcional nuevo (lo señaló el `auditor-privacidad`).
+     */
+    const CAMPOS = {
+      titulo: 1, slug: 1, descripcion: 1, dia: 1, mes: 1, anio: 1, fuente: 1, estado: 1,
+      publicadaAlgunaVez: 1, createdAt: 1, updatedAt: 1, createdBy: 1, updatedBy: 1,
+    } satisfies Record<keyof Efemeride, 1>;
     const conCentinela = new Set([
       ...RUTAS_EFEMERIDE.map((r) => r.split('.')[0]!),
       ...Object.keys(VALORES_NO_TEXTO_EFEMERIDE),
     ]);
-    expect(Object.keys(efemerideCentinela()).filter((k) => !conCentinela.has(k))).toEqual([]);
+    expect(Object.keys(CAMPOS).filter((k) => !conCentinela.has(k))).toEqual([]);
+    expect(Object.keys(efemerideCentinela()).sort()).toEqual(Object.keys(CAMPOS).sort());
   });
 
   it('ningún centinela es subcadena de otro', () => {
@@ -122,6 +134,14 @@ describe('barrido de las otras salidas', () => {
     const r = renglonDeHoy(construirIndiceDeEfemerides([publica()]).efemerides, ahora);
     expect(r).not.toBeNull();
     expect(sobrevivientes(r).sort()).toEqual(['slug', 'titulo'].sort());
+  });
+
+  it('la meta description sin descripción interpola solo el título (la rama de respaldo)', () => {
+    // Lección de `descripcionDelMes`: una frase interpolada se barre en todas
+    // sus ramas, no solo en la que el fixture ejercita.
+    expect(sobrevivientes(descripcionDeEfemeride({ ...publica(), descripcion: '' }))).toEqual([
+      'titulo',
+    ]);
   });
 
   it('la descripción de la página y las migas: título, slug y descripción', () => {
