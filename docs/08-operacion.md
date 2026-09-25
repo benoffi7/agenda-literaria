@@ -2965,6 +2965,12 @@ Toma cualquier log que traiga el campo `alerta`, sea cual sea su valor:
 mucho un mail por hora. El valor de `alerta` que trae el mail dice qué sección de
 este documento leer.
 
+**Para que el mail diga qué `alerta` sonó** (si no, el asunto trae solo el servicio de
+Cloud Run): Monitoring → Alerting → la política → Edit → **Extract log labels** → dos
+etiquetas: Display name `alerta`, Log field name `jsonPayload.alerta`, expresión regular
+`(.*)`; y Display name `motivo`, Log field name `jsonPayload.motivo`, expresión regular
+`(.*)` (la consola exige un grupo de captura). Cargado por el dueño el 2026-09-25.
+
 **Lo que pasa en el navegador no lo ve, salvo lo que el panel reporta.** Desde
 el paso 3 de B-930, un navegador del panel que no consigue token de App Check
 llega como `alerta: 'verificacion-del-navegador'` (§ siguiente). El resto —un
