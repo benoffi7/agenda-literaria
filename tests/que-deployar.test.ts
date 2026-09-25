@@ -35,6 +35,10 @@ const SCRIPT = path.resolve('scripts/que-deployar.sh');
  *  - **Los casos corren a la vez** (`describe.concurrent`, con el script
  *    lanzado sin bloquear): son procesos independientes que no comparten nada.
  *
+ * Y después se atacó la causa (B-1970): el script ya no lanza un `grep` por
+ * archivo compartido sino uno por vuelta de la clausura, y resolver un nombre
+ * a su archivo no abre un subshell. De ~5 s a ~2,5 s este archivo solo.
+ *
  * Que el recorte no cambió la respuesta lo dice el primer caso del bloque de
  * B-1241 de abajo: `compartidos()` sobre el chico **es igual** a
  * `compartidos()` sobre el real. Y un caso de decisión sigue corriendo contra

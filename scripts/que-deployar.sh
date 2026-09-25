@@ -62,17 +62,72 @@ LITERAL_HERMANO="$COMILLA\./[A-Za-z0-9_-]+(\.[cm]?js)?$COMILLA"
 # pasaría por el import de un paquete llamado `caba`.
 IMPORT_DE_PAQUETE="^[[:space:]]*((import|export|\})[^'\"=]*[[:space:]]from|import)[[:space:]]*['\"][^./'\"][^'\"]*['\"]"
 
-# El archivo de functions/ que corresponde a un nombre sin extensión, o nada.
+# B-1970 — Pocos procesos, no uno por archivo. La primera versión abría un
+# `$(archivo_de …)` y un `grep` por cada archivo compartido en cada vuelta de la
+# clausura, y otro `grep` por archivo para los paquetes: con once compartidos,
+# decenas de procesos y 0,2–0,35 s por llamada en macOS. Ahora resolver un
+# nombre a su archivo no lanza nada —deja el resultado en `ARCHIVO` en vez de
+# imprimirlo, así no hace falta un `$( … )`— y cada vuelta es UN `grep` sobre
+# todos los archivos a la vez. Las decisiones no cambian: `grep -h` sobre N
+# archivos da las mismas líneas que N `grep -h`, y todo pasa por `sort -u`.
+
+# El archivo de functions/ que corresponde a un nombre sin extensión, o vacío,
+# en `ARCHIVO`.
+ARCHIVO=
 archivo_de() {
   local ext
+  ARCHIVO=
   for ext in js mjs cjs; do
-    if [ -f "$RAIZ/functions/$1.$ext" ]; then printf '%s\n' "functions/$1.$ext"; return 0; fi
+    if [ -f "$RAIZ/functions/$1.$ext" ]; then ARCHIVO="functions/$1.$ext"; return 0; fi
   done
   return 0
 }
 
+# Los archivos que existen de una lista de nombres sin extensión (uno por
+# línea), como rutas relativas a `RAIZ`, una por línea, en `ARCHIVOS`.
+ARCHIVOS=
+archivos_de() {
+  local nombre
+  ARCHIVOS=
+  while IFS= read -r nombre; do
+    [ -n "$nombre" ] || continue
+    archivo_de "$nombre"
+    [ -n "$ARCHIVO" ] || continue
+    ARCHIVOS="$ARCHIVOS$ARCHIVO
+"
+  done <<EOF
+$1
+EOF
+}
+
+# `grep -h <args…>` en UNA llamada sobre los archivos que existen de una lista
+# de rutas relativas a `RAIZ` (una por línea, en `$1`); nada si no existe
+# ninguno. Sin arrays —`"${a[@]}"` vacío revienta con `set -u` en el bash 3.2
+# de macOS—, así que las rutas se pasan partidas por salto de línea y sin
+# globbing: `RAIZ` puede tener espacios, y las rutas de functions/ no tienen
+# ni espacios ni saltos (`[A-Za-z0-9_-]+`).
+grep_en() {
+  local lista=$1 archivo rutas= ifs_de_antes=$IFS
+  shift
+  while IFS= read -r archivo; do
+    [ -n "$archivo" ] && [ -f "$RAIZ/$archivo" ] || continue
+    rutas="$rutas$RAIZ/$archivo
+"
+  done <<EOF
+$lista
+EOF
+  [ -n "$rutas" ] || return 0
+  set -f
+  IFS='
+'
+  # shellcheck disable=SC2086
+  grep -h "$@" $rutas 2>/dev/null || true
+  IFS=$ifs_de_antes
+  set +f
+}
+
 compartidos() {
-  local actual siguiente hermanos nombre archivo
+  local actual siguiente hermanos nombre
   actual=$(
     {
       grep -rhoE "$LITERAL_A_FUNCTIONS" "$RAIZ/src" 2>/dev/null || true
@@ -80,25 +135,21 @@ compartidos() {
     } | sed -E "s/^$COMILLA(\.\/|(\.\.\/)+)functions\///; s/$COMILLA\$//; s/\.[cm]?js\$//" | sort -u
   )
   while :; do
-    hermanos=$(
-      printf '%s\n' "$actual" | while IFS= read -r nombre; do
-        [ -n "$nombre" ] || continue
-        archivo=$(archivo_de "$nombre")
-        [ -n "$archivo" ] || continue
-        grep -hoE "$LITERAL_HERMANO" "$RAIZ/$archivo" 2>/dev/null || true
-      done | sed -E "s/^$COMILLA\.\///; s/$COMILLA\$//; s/\.[cm]?js\$//"
-    )
+    archivos_de "$actual"
+    hermanos=$(grep_en "$ARCHIVOS" -oE "$LITERAL_HERMANO" | sed -E "s/^$COMILLA\.\///; s/$COMILLA\$//; s/\.[cm]?js\$//")
     siguiente=$(printf '%s\n%s\n' "$actual" "$hermanos" | grep -v '^$' | sort -u || true)
     [ "$siguiente" = "$actual" ] && break
     actual=$siguiente
   done
-  printf '%s\n' "$actual" | while IFS= read -r nombre; do
+  while IFS= read -r nombre; do
     [ -n "$nombre" ] || continue
-    archivo=$(archivo_de "$nombre")
+    archivo_de "$nombre"
     # Uno citado que no existe se lista igual con `.js`: si alguien lo crea
     # en este mismo cambio, tiene que contar.
-    printf '%s\n' "${archivo:-functions/$nombre.js}"
-  done
+    printf '%s\n' "${ARCHIVO:-functions/$nombre.js}"
+  done <<EOF
+$actual
+EOF
 }
 
 if [ "${1:-}" = "--compartidos" ]; then
@@ -179,12 +230,8 @@ NO_AFECTAN='^docs/|^tests/|^\.github/|^\.claude/|^githooks/|\.md$|^\.gitignore$|
 # compartido importa paquetes, el `package.json` de `functions/` y su lock.
 if [ -d "$RAIZ/src" ]; then
   COMPARTIDOS=$(compartidos)
-  PAQUETES=$(
-    printf '%s\n' "$COMPARTIDOS" | while IFS= read -r archivo; do
-      [ -n "$archivo" ] && [ -f "$RAIZ/$archivo" ] || continue
-      { grep -hE "$IMPORT_DE_PAQUETE" "$RAIZ/$archivo" 2>/dev/null || true; } | { grep -vE "['\"]node:" || true; }
-    done
-  )
+  # Un solo `grep` sobre todos los compartidos (B-1970), no uno por archivo.
+  PAQUETES=$(grep_en "$COMPARTIDOS" -E "$IMPORT_DE_PAQUETE" | { grep -vE "['\"]node:" || true; })
   FUNCTIONS_DEL_BUILD=$(
     printf '%s\n' "$COMPARTIDOS"
     if [ -n "$PAQUETES" ]; then printf 'functions/package.json\nfunctions/package-lock.json\n'; fi
@@ -194,14 +241,19 @@ else
 fi
 
 # Sin `case` a propósito: el bash 3.2 de macOS no parsea un `patrón)` adentro
-# de un `$( … )`.
+# de un `$( … )`. Y sin un `grep -qxF` por ruta (B-1970): «¿es una línea
+# entera de la lista?» lo contesta el propio bash, con los dos lados entre
+# saltos de línea y la parte variable entre comillas, que la vuelve literal.
+NL='
+'
+
 RELEVANTES=$(
   printf '%s\n' "$CAMBIOS" \
     | { grep -vE "$NO_AFECTAN" || true; } \
     | while IFS= read -r ruta; do
         [ -n "$ruta" ] || continue
         if [ "${ruta#functions/}" = "$ruta" ] \
-           || printf '%s\n' "$FUNCTIONS_DEL_BUILD" | grep -qxF -- "$ruta"; then
+           || [[ "$NL$FUNCTIONS_DEL_BUILD$NL" == *"$NL$ruta$NL"* ]]; then
           printf '%s\n' "$ruta"
         fi
       done
