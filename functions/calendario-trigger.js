@@ -17,10 +17,16 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { planificar } from './calendario.js';
 import { CALENDAR_ID, calendario, crearEvento } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
-import { ciudadesDesalineadas, ciudadesParaElLog } from './ciudades.js';
-import { corregirCiudades } from './ciudades-firestore.js';
+import { ciudadesParaElLog } from './ciudades.js';
+import {
+  cambiaLoPublico,
+  conDerivados,
+  derivadosDesalineados,
+  pideRebuild,
+} from './derivados.js';
+import { corregirDerivados } from './derivados-firestore.js';
 import { cargarLabels } from './etiquetas.js';
-import { faltaMarcarPublicada, huboCambioDeContenido } from './historial.js';
+import { faltaMarcarPublicada } from './historial.js';
 import { marcarPublicada } from './marca-de-publicada.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
 import { decidirAnteFallo, reponerIds } from './sincronizacion.js';
@@ -58,7 +64,11 @@ export const syncCalendar = onDocumentWritten(
     // editable**, o sea el documento menos lo que escribe la máquina (D-41). El
     // write-back produce, por construcción, el mismo contenido editable. Es la
     // misma propiedad de D-07, y no un acuerdo entre dos listas de campos.
-    if (huboCambioDeContenido(antes, despues)) {
+    //
+    // B-2050 — `pideRebuild` es ese criterio más los cuatro derivados que salen al
+    // sitio (`sede`, `modalidad`, `online`, `searchText`): desde B-2050 son de
+    // máquina para el historial, y su corrección tiene que llegar al sitio igual.
+    if (pideRebuild(antes, despues)) {
       await marcarRebuild(db, `actividad ${id}`);
     }
 
@@ -109,51 +119,75 @@ export const syncCalendar = onDocumentWritten(
     }
 
     /*
-     * B-1920 — `ciudades` recalculado del lado del servidor.
+     * B-1920, B-2050 — los derivados de `modalidades` recalculados del lado del
+     * servidor: `modalidad`, `sede`, `online`, `searchText` y `ciudades`.
      *
-     * `dentroDeSuCiudad()` le cree a este derivado porque una regla no puede
-     * recorrer `modalidades[]` (D-1150). El panel lo escribe bien siempre; un
-     * documento armado a mano con el SDK puede traer uno que no es el de sus
-     * filas. Acá se corrige el campo y se avisa con `alerta`, que la política de
-     * GCP ya toma (docs/08-operacion.md, «Cuando suena `ciudades-no-coinciden`»).
+     * `dentroDeSuCiudad()` le cree a `ciudades` y a la primera `sede` porque una
+     * regla no puede recorrer `modalidades[]` (D-1150), y los otros tres salen al
+     * sitio, al `location` del evento y a la búsqueda. El panel los escribe bien
+     * siempre; un documento armado a mano con el SDK puede traer unos que no son
+     * los de sus filas. Acá se corrigen los cinco en una sola escritura y se avisa
+     * con `alerta`, que la política de GCP ya toma (docs/08-operacion.md, «Cuando
+     * suena `ciudades-no-coinciden`» y «Cuando suena `derivados-no-coinciden`»).
+     * Son dos alertas porque son dos preguntas: la primera es de permisos —¿una
+     * cuenta cargó fuera de su ciudad?— y la segunda de contenido.
      *
      * Va en este trigger por lo mismo que la marca de arriba: es el único que ve
      * el documento que **nace**, y el `create` es la escritura que la regla
-     * dejaría pasar con un `ciudades` inventado. Y va arriba de los dos cortes de
+     * dejaría pasar con un derivado inventado. Y va arriba de los dos cortes de
      * abajo porque corresponde por lo que cambió en el documento, no por lo que
      * le pase al calendario.
      *
-     * La guarda anti-loop (trampa 3) es la de la marca, con las dos mitades:
-     * `ciudadesDesalineadas` no entra en la segunda pasada porque el documento ya
-     * coincide, y `ciudades` está en `CAMPOS_DE_MAQUINA`, así que el write-back no
-     * deja versión ni pide rebuild. **No toca `estado`**: si corregido queda fuera
-     * de la ciudad de quien lo cargó, sigue publicado y lo decide una persona.
+     * La guarda anti-loop (trampa 3) tiene tres mitades: `derivadosDesalineados`
+     * no entra en la segunda pasada porque el documento ya coincide; los cinco
+     * están en `CAMPOS_DE_MAQUINA`, así que el write-back no deja versión; y el
+     * diff de Calendar de abajo se planifica sobre `conDerivados`, que es la misma
+     * antes y después de corregir, así que no hay `update` en falso. El rebuild
+     * que el historial ya no ve lo pide la segunda pasada, con `pideRebuild` de
+     * arriba: `sede`, `modalidad`, `online` y `searchText` salen al `events.json`.
+     *
+     * **No toca `estado`** (D-1231). Y el log lleva **nombres de campo**, nunca
+     * valores: `sede` es una dirección, `searchText` trae nombres de personas y
+     * `online` el link de la reunión. `ciudades` sí muestra sus slugs, como en
+     * B-1920, recortados.
      *
      * Un fallo se loguea y el sync sigue: los eventos del calendario son de ahora.
      */
-    if (ciudadesDesalineadas(despues)) {
+    if (derivadosDesalineados(despues)) {
       try {
-        const corregidas = await corregirCiudades(db, id);
-        if (corregidas) {
+        const corregidos = await corregirDerivados(db, id);
+        if (corregidos?.campos.includes('ciudades')) {
           logger.warn('ciudades no coincidía con las filas del documento: se corrigió', {
             alerta: 'ciudades-no-coinciden',
             id,
-            estado: corregidas.estado,
-            guardadas: ciudadesParaElLog(corregidas.guardadas),
-            derivadas: ciudadesParaElLog(corregidas.derivadas),
+            estado: corregidos.estado,
+            guardadas: ciudadesParaElLog(corregidos.ciudadesGuardadas),
+            derivadas: ciudadesParaElLog(corregidos.derivados.ciudades),
+          });
+        }
+        if (corregidos && cambiaLoPublico(corregidos.campos)) {
+          logger.warn('los derivados no coincidían con las filas del documento: se corrigieron', {
+            alerta: 'derivados-no-coinciden',
+            id,
+            estado: corregidos.estado,
+            campos: corregidos.campos.filter((c) => c !== 'ciudades'),
           });
         }
       } catch (e) {
-        logger.warn('no se pudo corregir ciudades', {
-          alerta: 'ciudades-no-coinciden',
+        logger.warn('no se pudieron corregir los derivados', {
+          alerta: 'derivados-no-coinciden',
           id,
+          campos: derivadosDesalineados(despues)?.campos ?? [],
           error: e?.message,
         });
       }
     }
 
     const labels = await cargarLabels(db);
-    const ops = planificar(antes, despues, labels);
+    // B-2050 — el diff se planifica sobre los derivados **recalculados**: una `sede`
+    // escrita a mano que no es la de las filas no llega al `location` del evento,
+    // y su corrección —que vuelve a disparar esto— no manda un `update` en falso.
+    const ops = planificar(conDerivados(antes), conDerivados(despues), labels);
 
     if (ops.length === 0) {
       // §7.1 — la guarda anti-loop vive acá: la escritura de `calendarEventId`

@@ -35,12 +35,12 @@ describe('trampa 3 · el write-back al propio documento va detrás de su guarda 
     );
   });
 
-  it('B-1920: `corregirCiudades` lo llama solo `syncCalendar`', () => {
+  it('B-1920, B-2050: `corregirDerivados` lo llama solo `syncCalendar`', () => {
     // El único `onDocumentWritten` sobre `actividades/{id}`: si se muda a
     // `guardarVersion` (un `onDocumentUpdated`) deja de ver el documento que
-    // nace con un `ciudades` inventado.
+    // nace con un derivado inventado.
     expect(
-      llamadas.filter((l) => l.efecto === 'corregirCiudades').map((l) => l.trigger.nombre),
+      llamadas.filter((l) => l.efecto === 'corregirDerivados').map((l) => l.trigger.nombre),
     ).toEqual(['syncCalendar']);
   });
 

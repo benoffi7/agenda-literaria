@@ -60,7 +60,7 @@ export const MARCA_DE_PUBLICADA = 'publicadaAlgunaVez';
 /*
  * **B-1920 — y `ciudades`.** Lo escribe el panel en cada guardado, pero no lo
  * tipea nadie: es `ciudadesDe(modalidades)`, y desde B-1920 también lo corrige
- * `syncCalendar` cuando no coincide con las filas (`corregirCiudades`). Esa
+ * `syncCalendar` cuando no coincide con las filas (`corregirDerivados`, B-2050). Esa
  * corrección es un write-back al documento que lo disparó (trampa 3): sin esta
  * entrada costaría una versión de historial y un rebuild. No se pierde nada que
  * alguien quiera recuperar: cuando `ciudades` cambia de verdad cambian las filas
@@ -68,7 +68,36 @@ export const MARCA_DE_PUBLICADA = 'publicadaAlgunaVez';
  * (`src/lib/historial.ts`). Tampoco sale al `events.json`, así que el rebuild que
  * se ahorra no mostraba nada nuevo.
  */
-const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy', MARCA_DE_PUBLICADA, 'ciudades'];
+/*
+ * **B-2050 — y los otros cuatro derivados: `modalidad`, `sede`, `online` y
+ * `searchText`.** Desde B-2050 `syncCalendar` los corrige junto con `ciudades`
+ * cuando no coinciden con las filas (`corregirDerivados`), y es el mismo
+ * write-back al documento que lo disparó: sin estas entradas cada corrección
+ * costaría una versión de historial —la del documento escrito a mano, idéntico al
+ * corregido salvo por los derivados—. No se pierde nada recuperable, por el mismo
+ * motivo que `ciudades`: los escribe `formADocumento` en la **misma** escritura
+ * que sus fuentes (`modalidades` para los tres primeros, los de
+ * `CAMPOS_DE_SEARCH_TEXT` para el cuarto), así que un cambio de verdad ya se ve en
+ * ellas, y la restauración los recalcula en vez de ofrecerlos
+ * (`CAMPOS_DERIVADOS`, `src/lib/historial.ts`).
+ *
+ * **A diferencia de `ciudades`, estos cuatro salen al sitio.** Que no cuenten como
+ * contenido le sacaría el rebuild al write-back, y por eso el rebuild de
+ * `syncCalendar` no pregunta solo esto: pregunta `pideRebuild` (`derivados.js`),
+ * que suma los cuatro. El historial y el sitio hacen dos preguntas distintas —¿hay
+ * algo que recuperar? ¿cambió lo que se ve?— y hasta B-2050 tenían la misma
+ * respuesta.
+ */
+const CAMPOS_DE_MAQUINA = [
+  'updatedAt',
+  'updatedBy',
+  MARCA_DE_PUBLICADA,
+  'ciudades',
+  'modalidad',
+  'sede',
+  'online',
+  'searchText',
+];
 
 /**
  * B-285 — ¿el **campo** afirma que estuvo publicada?

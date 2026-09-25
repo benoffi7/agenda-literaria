@@ -232,8 +232,21 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
      * panel trae filas viejas **y** su `ciudades`, juntos, así que no hay valor de
      * la máquina que pisar. Un campo que no sea un derivado de lo que el panel
      * escribe sigue sin poder entrar acá sin decidirlo.
+     *
+     * **B-2050 — y los otros cuatro derivados, con el mismo argumento.**
+     * `corregirDerivados` reescribe `modalidad`, `sede`, `online` y `searchText`
+     * junto con `ciudades`, releyendo en una transacción: son `formADocumento`
+     * releído del documento, y un snapshot viejo del panel trae las fuentes
+     * viejas **y** sus derivados, juntos.
      */
-    expect([...CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC].sort()).toEqual(['ciudades', 'sesiones']);
+    expect([...CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC].sort()).toEqual([
+      'ciudades',
+      'modalidad',
+      'online',
+      'searchText',
+      'sede',
+      'sesiones',
+    ]);
   });
 
   /**

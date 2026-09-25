@@ -117,10 +117,35 @@ describe('huboCambioDeContenido — lo que sí guarda versión (§12)', () => {
     expect(huboCambioDeContenido(antes, editado(antes, { descripcion: '' }))).toBe(true);
   });
 
+  /*
+   * B-2050 — la sede se edita en su **fila** (`modalidades[]`, D-130) y el panel
+   * escribe el derivado de primer nivel en la misma escritura. Desde B-2050 el
+   * derivado solo es de máquina (`corregirDerivados` lo reescribe), así que lo que
+   * guarda la versión es la fila.
+   */
+  const fila = (sede: Record<string, unknown> | null, online: Record<string, unknown> | null = null) => ({
+    id: 'mod_1',
+    modalidad: sede && online ? 'hibrido' : online ? 'virtual' : 'presencial',
+    inicio: null,
+    fin: null,
+    sede,
+    online,
+  });
+
   it('cambiar la sede guarda versión', () => {
-    const antes = actividad();
-    const despues = editado(antes, { sede: { nombre: 'Otra', direccion: 'Corrientes 1234' } });
+    const casa = { nombre: 'Casa Brandon', direccion: 'Drago 236', barrio: 'villa-crespo' };
+    const otra = { nombre: 'Otra', direccion: 'Corrientes 1234' };
+    const antes = actividad({ modalidades: [fila(casa)], sede: casa });
+    const despues = editado(antes, { modalidades: [fila(otra)], sede: otra });
     expect(huboCambioDeContenido(antes, despues)).toBe(true);
+    expect(camposCambiados(antes, despues)).toEqual(['modalidades']);
+  });
+
+  it('B-2050: cambiar solo el derivado `sede` NO guarda versión (lo corrige el sync)', () => {
+    const casa = { nombre: 'Casa Brandon', direccion: 'Drago 236', barrio: 'villa-crespo' };
+    const antes = actividad({ modalidades: [fila(casa)], sede: casa });
+    const mentido = editado(antes, { sede: { nombre: 'Otra', direccion: 'Corrientes 1234' } });
+    expect(huboCambioDeContenido(antes, mentido)).toBe(false);
   });
 
   it('correr la fecha de un encuentro guarda versión', () => {
@@ -156,8 +181,12 @@ describe('huboCambioDeContenido — lo que sí guarda versión (§12)', () => {
   });
 
   it('editar el link privado de la reunión guarda versión', () => {
-    const antes = actividad({ online: { plataforma: 'zoom', url: 'https://a', urlPublica: false } });
-    const despues = editado(antes, { online: { plataforma: 'zoom', url: 'https://b', urlPublica: false } });
+    // En la fila, que es donde se edita (D-130); el `online` de primer nivel es
+    // su derivado y desde B-2050 es de máquina.
+    const a = { plataforma: 'zoom', url: 'https://a', urlPublica: false };
+    const b = { plataforma: 'zoom', url: 'https://b', urlPublica: false };
+    const antes = actividad({ modalidades: [fila(null, a)], online: a });
+    const despues = editado(antes, { modalidades: [fila(null, b)], online: b });
     expect(huboCambioDeContenido(antes, despues)).toBe(true);
   });
 

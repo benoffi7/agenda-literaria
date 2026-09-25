@@ -471,7 +471,11 @@ export const EFECTOS_INCONDICIONALES = [
    * tenga operaciones: una actividad en borrador también define dónde carga un
    * publicador (D-1150).
    */
-  'corregirCiudades',
+  /*
+   * B-2050 — desde B-2050 es `corregirDerivados` y corrige los cinco derivados de
+   * `modalidades` en una sola escritura, `ciudades` incluido.
+   */
+  'corregirDerivados',
 ];
 
 
@@ -497,8 +501,8 @@ export const EFECTOS_INCONDICIONALES = [
  */
 export const WRITE_BACKS_CON_GUARDA: Record<string, string> = {
   marcarPublicada: 'faltaMarcarPublicada',
-  // B-1920 — la segunda pasada ve `ciudades` ya alineado y no entra.
-  corregirCiudades: 'ciudadesDesalineadas',
+  // B-1920, B-2050 — la segunda pasada ve los cinco derivados ya alineados y no entra.
+  corregirDerivados: 'derivadosDesalineados',
 };
 
 

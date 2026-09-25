@@ -207,6 +207,9 @@ describe('el cableado en `syncCalendar`', () => {
    * La lista cerrada de lo que lleva el log (clase de B-81): sumar `updatedBy`
    * «para saber quién» o el documento entero lo pone en rojo. Quién es lo busca
    * el runbook en la consola, no el mail.
+   *
+   * Desde B-2050 el fallo de la transacción es uno solo para los cinco derivados
+   * y lleva `alerta: 'derivados-no-coinciden'` (`derivados-del-servidor.test.ts`).
    */
   it('el log de la alerta lleva solo `alerta`, `id`, `estado`, `guardadas` y `derivadas`', () => {
     const bloques = [
@@ -214,26 +217,22 @@ describe('el cableado en `syncCalendar`', () => {
     ]
       .map((m) => m[1]!)
       .filter((b) => b.includes("alerta: 'ciudades-no-coinciden'"));
-    expect(bloques).toHaveLength(2);
-    const claves = bloques.map((b) =>
-      b
-        .split(',')
-        .map((c) => c.split(':')[0]!.trim())
-        .filter(Boolean)
-        .sort(),
-    );
-    expect(claves[0]).toEqual(['alerta', 'derivadas', 'estado', 'guardadas', 'id']);
-    // El del fallo: `error` es el mensaje de la transacción, sin datos del documento.
-    expect(claves[1]).toEqual(['alerta', 'error', 'id']);
+    expect(bloques).toHaveLength(1);
+    const claves = bloques[0]!
+      .split(',')
+      .map((c) => c.split(':')[0]!.trim())
+      .filter(Boolean)
+      .sort();
+    expect(claves).toEqual(['alerta', 'derivadas', 'estado', 'guardadas', 'id']);
   });
 
   it('no toca `estado`: corregir no despublica', () => {
-    const efecto = sinComentarios(readFileSync('functions/ciudades-firestore.js', 'utf8'));
-    expect(efecto).toContain('tx.update(ref, { ciudades: desalineadas.derivadas })');
-    // Una sola escritura, y con una sola clave: `estado` se lee para el mail,
-    // nunca se escribe.
+    const efecto = sinComentarios(readFileSync('functions/derivados-firestore.js', 'utf8'));
+    expect(efecto).toContain('ciudades: d.ciudades');
+    // Una sola escritura: `estado` se lee para el mail, nunca se escribe.
     expect([...efecto.matchAll(/tx\.(update|set)\(/g)]).toHaveLength(1);
     expect(efecto).not.toMatch(/estado\s*:\s*['"]/);
+    expect(efecto).not.toMatch(/\bestado\s*:\s*d\./);
   });
 
   it('el runbook tiene la sección que nombra la alerta', () => {
