@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **El BACKLOG vivo quedó en lo que falta hacer** (limpieza del 2026-09-25). Se
+  movieron a `BACKLOG-cerrados.md`, sin borrar nada, las tres cosas que eran rastro:
+  las notas de huecos de numeración del encabezado (ahora «Huecos de numeración», al
+  final), las tablas de decisiones ya resueltas y la prosa de «P0 — ya arreglados».
+  «Pendiente de acción manual del dueño» dejó de estar vacía y lista las tres esperas
+  del dueño. `items-referenciados` y `cerrar-tanda` leen los huecos declarados de los
+  dos archivos. De 966 líneas a 794.
 - **Hay efemérides: se cargan en el panel, tienen su sección en el sitio y la de hoy
   aparece en la home** (B-959, D-1170 a D-1174). Pedido del dueño: «efemérides poder
   cargar. No van al calendario público». Es una colección propia, `/efemerides/{id}`,

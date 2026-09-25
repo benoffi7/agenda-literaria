@@ -134,7 +134,7 @@ export const escritos = ({ backlog, cerrados, decisiones }) => ({
   items: new Set([
     ...[backlog, cerrados].flatMap(itemsEscritos),
     ...[backlog, cerrados].flatMap(itemsDeFilaEnNegrita),
-    ...huecosDeclarados(backlog),
+    ...[backlog, cerrados].flatMap(huecosDeclarados),
     ...Object.keys(RESERVADOS_SIN_ESCRIBIR),
   ]),
   decisiones: new Set(decisionesEscritas(decisiones).map(numeroD)),

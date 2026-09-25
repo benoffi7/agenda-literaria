@@ -236,7 +236,9 @@ export const itemsDeFilaEnNegrita = (contenido) =>
   ].map((m) => idCanonico(m[1], m[2]));
 
 /**
- * Los ids que la cabecera de `BACKLOG.md` declara **inexistentes a propósito**.
+ * Los ids que los registros declaran **inexistentes a propósito**. Desde la
+ * limpieza del 2026-09-25 las notas viven en «Huecos de numeración», al final de
+ * `BACKLOG-cerrados.md`, y se leen de los dos archivos.
  *
  * Se leen del archivo y no de una lista acá: la cabecera ya los explica uno por
  * uno —van seis— y duplicar esa lista garantiza que las dos copias se separen.
@@ -349,7 +351,7 @@ export const relevar = ({ archivos = archivosDelRepo(), leer = (a) => readFileSy
   const escritos = new Set([
     ...registros.flatMap(itemsEscritos),
     ...registros.flatMap(itemsDeFilaEnNegrita),
-    ...huecosDeclarados(registros[0]),
+    ...registros.flatMap(huecosDeclarados),
     ...Object.keys(RESERVADOS_SIN_ESCRIBIR),
   ]);
 

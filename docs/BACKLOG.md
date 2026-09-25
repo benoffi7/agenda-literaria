@@ -21,210 +21,38 @@ la tabla de [Cerrados](BACKLOG-cerrados.md#cerrados), que también está allá.
 Prioridades: **P0** rompe algo o pierde datos · **P1** bloquea el objetivo del
 proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
-> **Los números no se reciclan, y los huecos están explicados abajo.** El próximo
+> **Los números no se reciclan.** El próximo
 > `B-` libre se calcula sobre **los dos archivos** —la mitad de los ids usados
 > está en el de cerrados—, así que el tablero (`npm run tablero`) lo dice bien.
 > Un id **reservado por una tanda y nunca escrito** lo lee el tablero de la
 > sección `## Rangos` del archivo de coordinación de la tanda (B-1051, D-981).
 
-> **Rangos reservados por la tanda del 2026-09-22 — cincuenta números, de diez en
-> diez por frente, a partir del 1150; y veinte de las decisiones a partir de la
-> 751.** Esto es **B-1051 aplicado a sí mismo**: ese ítem
-> dice que un id reservado por una tanda y nunca escrito se ofrece como libre,
-> porque la reserva no queda escrita en ningún lado que el tablero pueda leer.
-> Acá queda, y **al abrir la tanda**, que es el momento en que el ítem señala que
-> nadie se acuerda de anotarlo. Cinco frentes, de diez en diez: `decisiones-2`
-> desde el 1150, `instagram` desde el 1160, `analitica-doc` desde el 1170,
-> `calendario-ig` desde el 1180 y `form-ig` desde el 1190. Del 1200 al 1219 los
-> tomó una sesión hermana que trabajó B-1112 y B-1121 en paralelo, con veinte
-> decisiones a partir de la 771. Los números 1148 y 1149 quedaron de margen.
->
-> **Los rangos se escriben así —sin la forma `B-nnnn` y sin «del X al Y»— y no es
-> capricho: costó dos correcciones el mismo día.** La primera versión escribía los
-> extremos con el prefijo y `items-referenciados.mjs` los leyó como **citas**; la
-> segunda los sacó pero dejó «del 1150 al 1199», y el barrido **expande rangos**,
-> así que volvió a inventar una huérfana. La nota que existe para no perder ids se
-> convirtió dos veces en huérfanas y puso el chequeo en rojo las dos. Es la misma clase que esa red persigue, producida por la nota que la
-> documenta. **Lo que sobre al cerrar se anota como hueco acá**, con esta misma
-> nota reescrita — si no, es exactamente el agujero que B-1051 describe.
-
-> **Tanda del 2026-09-23 — treinta números de bug a partir del 1240 y veinte
-> decisiones a partir de la 810, de a diez por frente.** Se usaron el 1240 y el
-> 1241 (etiquetas del publicador), el 1250 (App Check en el panel) y las
-> decisiones 810 y 820. **Todo el resto de esos rangos queda como hueco**: no son
-> entradas perdidas, y el tablero ya no los ofrece porque el próximo libre se
-> calcula por encima del mayor usado. En paralelo, otra sesión tomó el 1234, el
-> 1235 y la decisión 803, fuera de los rangos.
-
-> **Hueco de numeración: `B-297`, `B-298` y `B-299` no existen y no se borró nada.**
-> El último ítem abierto era B-296 y la tanda del 2026-09-02 arrancó a numerar en
-> **B-300** por reserva de números entre frentes en paralelo. Queda escrito acá para
-> que el salto no se lea como una entrada perdida. Ningún chequeo del repo exige
-> numeración contigua.
->
-> **Y un segundo hueco por el mismo motivo: `B-303` a `B-309`.** El frente del
-> barrido de backlog y drift tenía reservado el rango **B-310 a B-319** y usó los
-> tres primeros (**B-310**, **B-311**, **B-312**); los números del medio son de
-> otros frentes de la misma tanda.
->
-> **Y una convención nueva, que no es un hueco: el sufijo de letra.** **B-836a**
-> es el primer id con letra del archivo. Se usa cuando un ítem ya numerado se
-> parte y una de las mitades es **acción manual del dueño**: `B-836a` es el click
-> de consola que B-836 no puede hacer desde el repo, y va con letra en vez de un
-> número nuevo justamente para que se lea como una mitad de B-836 y no como un
-> ítem independiente que alguien pueda cerrar por separado.
->
-> **Y un cuarto hueco, chico y del mismo motivo: `B-828` y `B-829`.** El último
-> ítem era B-827 y la tanda de los cuatro formularios del 2026-09-08 arrancó a
-> numerar en **B-830** para dejarse un par de números de margen. Nada se borró.
->
-> **Y un tercer hueco, con una renumeración adentro: `B-603`.** La tanda del
-> 2026-09-03 tuvo tres frentes en paralelo y dos numeraron a ciegas. El frente del
-> sitio reservó **B-600 a B-603** y usó tres (**B-600**, el tríptico de la home;
-> **B-601**, medirlo; **B-602**, el `RangeError` del reloj del build que salió de
-> auditarlo). El frente de salud del repo había
-> propuesto cuatro ítems con esos mismos números, y **se renumeraron a B-604 a
-> B-607** al integrarlos: `B-600(salud)`→**B-604**, `B-601(salud)`→**B-605**,
-> `B-602(salud)`→**B-606**, `B-603(salud)`→**B-607**. **B-600 se quedó como el
-> tríptico** porque ya estaba escrito en el código y en los commits, que es lo que
-> no se puede renumerar. Si alguna nota de otro frente cita «B-601 · analítica»
-> o «B-603 · npm audit fix», está hablando de B-605 y B-607.
->
-> **Y un quinto hueco, el más grande hasta ahora: `B-941` a `B-949`.** La tanda de
-> pedidos del dueño del 2026-09-15 —geografía, panel, efemérides y bibliotecas—
-> se numeró primero en **B-930 a B-940** y chocó de frente: mientras se escribía,
-> otro frente de la misma tarde ocupó **B-930** (el token de App Check que se lee
-> como «no hay internet»). El lote entero se corrió veinte números, a **B-950 a
-> B-960**, en vez de meterlo entre los ocupados; los del medio quedaron de
-> margen para lo que salga de esos mismos frentes. Es la misma reserva de siempre
-> y el mismo motivo: dos frentes numerando a ciegas al mismo tiempo.
-
-> **Y un sexto hueco, el primero que se detectó en caliente: `B-975` a `B-979`.**
-> El ítem que salió de la decisión 6 del §11.1 (autolinkear las URLs de la
-> descripción) se escribió como **B-975** el 2026-09-16 y, a los minutos, se vio
-> que **otro frente de esa misma tarde ya tenía B-975 escrito en el código** —el
-> comentario de `elegidosDe` en `src/lib/formulario/etiquetas.ts`, que cuenta los
-> `usos` de las tres taxonomías de la geografía—. Se movió **el de la doc**, no el
-> del código, por el precedente de B-600: lo que ya está escrito en un archivo
-> fuente y en un commit es lo que no se puede renumerar. El ítem de autolinkear es
-> **B-980**, y del 975 al 979 quedan de margen para lo que salga de ese frente.
->
-> **Es el mismo motivo que los cinco huecos de arriba —dos frentes numerando a
-> ciegas— con una diferencia:** los otros se descubrieron al integrar, y éste se
-> descubrió por el `git status` del working tree, antes de que ninguno de los dos
-> commiteara. Es el argumento más concreto que hay a favor de mirar el árbol
-> completo y no solo los archivos propios antes de reservar un número.
+> **Los huecos de numeración y los rangos que reservaron las tandas** están
+> explicados al final de [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md), en «Huecos de
+> numeración». Se movieron ahí en la limpieza del 2026-09-25: son rastro, no trabajo.
 
 ---
 
 ## Decisiones pendientes del usuario
 
-DEC-14 se resolvió el 2026-09-23 (D-802) y pasó a
-[`BACKLOG-cerrados.md`](BACKLOG-cerrados.md), y DEC-15 el mismo día (D-811).
-
-Nada de esto se puede avanzar sin respuesta. Están primero porque bloquean
-trabajo.
-
-> **2026-09-16 — la tanda de decisiones abiertas se vació, y queda una sola.**
-> Se contestaron cinco de un saque: **B-889** (dónde vive la preferencia de
-> formato de hora → `localStorage`, **D-720**), **B-843 punto 3** (la revisión de
-> una propuesta queda sin rastro, **D-721**), **B-872** (delegada: no se exige App
-> Check en Storage, **D-722**), **B-959/B-960** (van después de los P1) y las
-> **cuatro** decisiones 5 a 8 del §11.1 de
-> [`12-sitio-publico.md`](12-sitio-publico.md) (**D-723**, con **B-980** como el
-> único trabajo que nace de ellas).
->
-> **Y el punto 3 de B-889 se contestó el mismo día: control propio** (la opción
-> cara, contra la recomendación y con el costo a la vista). Con eso **no queda
-> ninguna decisión del dueño pendiente en este archivo** — por primera vez desde
-> que existe la sección.
-
-| # | Tema | Contexto |
-|---|---|---|
-| **DEC-12** | ✅ **Resuelta el 2026-09-11** (B-837, D-570, D-670): las promos **no**; el precio **sí**, con la fecha de carga visible, fuera de todo filtro y orden, y fuera del `Offer` del JSON-LD. El texto original: | Recomendación: **las promos no** (un dato viejo acá no es viejo, es equivocado, y lo paga la librería); **el precio sí**, con **la fecha de carga visible**, fuera de todo filtro y fuera del `Offer` del JSON-LD. El mecanismo compartido es **B-837**. Razonado en [`prd/02-librerias.md`](prd/02-librerias.md) § 6 y [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 |
-| DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
-| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto de antes de la resolución está abajo de la tabla (B-840). |
-
-> **DEC-6, el texto de antes de la resolución** (conservado por B-840, que sacó la cicatriz de merge de la fila): Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar.
-
-Resueltas el 2026-09-08 (los cuatro formularios, **B-830 a B-839**):
-
-| # | Tema | Resolución |
-|---|---|---|
-| DEC-10 | ¿El formulario público de propuestas reemplaza el `mailto:` «Sugerir una actividad» de `/contacto`? | **No: `/contacto` queda también.** Al revés de lo que recomendaba el PRD, y con razón: un formulario de once campos es una puerta más angosta que una casilla de mail, y la propuesta que no entra por uno tiene que poder entrar por la otra. Los dos conviven, con el `mailto:` mandando primero a `/proponer` |
-| DEC-11 | ¿Un anónimo puede subir un archivo de imagen, o solo pegar una URL? | **Puede subir imagen**, y **si la propuesta se descarta la imagen se borra**. También al revés de la recomendación —el PRD pedía solo URL en la v1— y también con razón: pedirle a un organizador que hostee su flyer para poder pegar una URL es pedirle que resuelva un problema nuestro, y el que no pueda no manda la foto. **Lo que cuesta:** `storage.rules` entra a la tajada 1, con el prefijo `propuestas/` (`get`/`list` en `false`, trampa 13), la guarda del prefijo en el trigger de optimización (trampa 12), el borrado al rechazar y el borrado a los 30 días |
-| DEC-13 | ¿Cuántos días se guarda una propuesta rechazada? | **30 días**, y se borra **documento e imagen**. Function `onSchedule`, como las tres que ya hay |
-| — | ¿La URL de los directorios es `/librerias` o `/guia/librerias`? | **`/guia/librerias`**, y con eso los tres van bajo `/guia/`. **Es la decisión que más abarató el trabajo:** la barra gana **una** pestaña en vez de tres —pasa de 7 a 8, no a 10—, se lleva puesto el choque «Suscribirse»/«Suscripciones» de arriba, y lo que queda de B-835 es la pestaña más una página `/guia` que la reciba. Las colecciones **no** llevan `/guia/`: el documento es `/librerias/{id}`, la página es `/guia/librerias/{slug}` |
-
-Resueltas el 2026-08-26:
-
-| # | Tema | Resolución |
-|---|---|---|
-| DEC-7 | La galería de imágenes (B-167), cuatro decisiones — **implementado en dos tajadas, 2026-08-26 y 2026-08-28** (D-125 y D-131); lo único que falta de (d) es la Function, que es **B-220** | (a) **un solo campo opcional**, que es un epígrafe; el texto alternativo sale del título de la actividad — decisión de accesibilidad tomada a propósito, no un olvido. (b) **hasta 4 imágenes de 3 MB**, validado en el schema **y** en `storage.rules`, porque el cliente se puede saltear; el mensaje de rechazo tiene que decir el tamaño real y el máximo, que 3 MB es menos que una foto de celular sin recortar. (c) **conviven externas y propias** desde el día uno, así que entra Firebase Storage con todo lo que arrastra. (d) las **propias se optimizan** del lado de la Function (EXIF, recompresión, miniatura) y las **externas se sirven tal cual**, sin descargarlas al build. Ojo con la trampa que aparece acá y no está en el §13: una Function que escribe la miniatura en el mismo bucket **se dispara a sí misma** — es la trampa 3 con otra cara. |
-| DEC-8 | Las N opciones para sumarse a un mismo ciclo (B-181) | **Eje nuevo `opciones: [{ id, etiqueta, sesiones }]`** — el más fiel y el más caro, que es lo que el reporte describe literalmente. Toca el schema, el formulario, la proyección, el diff del §7.2 y la numeración de D-95; los ids van generados en el cliente (trampa 2). Va **después de B-167 y antes de descongelar el sitio**: hoy el daño es un calendario con eventos de más, y después es información equivocada indexada en Google. |
-| DEC-9 | Cómo se llama la librería que sale a la calle (B-192) — **implementado el 2026-08-26** | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
-| B-28 | ¿Claim `curador` para aprobar? — **volvió el 2026-09-11: ver B-893.** La condición que este ítem puso para reabrirse («cuando entre una tercera cuenta que no sea de confianza») se cumplió con el rol `publicador` de B-888. | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
-| B-29 | ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? | **Sí.** Y es más barato de lo que parecía: `ValorOpcion` ya tiene `huellaCreador`, así que comparar esa huella con la de quien guarda alcanza, dentro de la misma transacción del §4.2 que ya incrementa `usos`. Dos bordes: si `huellaCreador` está ausente (documentos viejos) **no** se auto-aprueba, porque no se puede saber de quién era; y queda por decidir si la etiqueta aprobada así **se marca** en la pantalla de taxonomías o desaparece de pendientes sin rastro — conviene marcarla, es lo que permite deshacer el typo que las dos personas escribieron igual. |
-| B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. La decisión sigue en pie para **quien se inscribe** — pero «hoy el sistema no guarda ni un dato personal de un tercero», que era el argumento de al lado, **dejó de ser cierto el 2026-09-09**: `/propuestas` guarda el contacto de quien propone (B-830), con retención de 30 días para la rechazada (DEC-13, B-838) y 30 días para la que nadie tocó (**B-844**, resuelto el 2026-09-09). La `aceptada` no vence, y conserva el contacto y la foto original — **B-863**. Ver el aviso arriba del ítem. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
-| B-124 | ¿Cuándo corren los auditores? | **A pedido**, como hoy. La mitigación es que `/antes-de-pushear` los lanza a los tres con un comando, así que "a pedido" no es "a mano". Y conviene usarlo: en el cierre de la `1.2.0` los tres auditores encontraron **dieciséis** bugs en tres pasadas, dos de ellos P1 de privacidad. |
-
-Resueltas el 2026-08-21:
-
-| # | Tema | Resolución |
-|---|---|---|
-| DEC-3 | Checkbox "publicar el link de la reunión" | **respetarlo** → implementado (D-15) |
-| DEC-4 | Home indexable con el placeholder | se deja así |
-| DEC-5 | Eventos de prueba en el calendario | los borra el usuario |
-| DEC-2 | `arancel` preseleccionaba "Gratis" | **obliga a elegir** → implementado (D-16) |
+**No hay ninguna decisión del dueño pendiente.** Las ya resueltas, con sus tablas
+(DEC-1 a DEC-15, B-28, B-29, B-102, B-124), están en
+[`BACKLOG-cerrados.md`](BACKLOG-cerrados.md) § «Decisiones pendientes del usuario».
 
 ## Pendiente de acción manual del dueño
 
+- **B-1235** — convertir en el panel de producción una propuesta con foto y
+  confirmar que la actividad reabre con el flyer. Está en manos de la socia del
+  dueño desde el 2026-09-25.
+- **B-731** — esperar el resultado de la validación de «location» que se pidió en
+  Search Console el 2026-09-25 (llega por mail). Nada que hacer hasta entonces.
+- **B-857** — desactivar el plugin MDD para este proyecto, en la configuración de
+  la máquina.
+
 ## P0 — rompe algo o pierde datos
 
-> **Tres abiertos desde el 2026-09-18, los tres del chrome del sitio público y
-> los tres con capturas del dueño.** No pierden datos: lo que rompen es la
-> **primera pantalla**, que es por donde entra todo el mundo. Van acá porque el
-> dueño los pidió con máxima urgencia y porque dos de los tres se ven **rotos**,
-> no mejorables. Se atacan de a uno.
->
-> **Los tres se cerraron** (el último, B-1134) y hoy la sección no tiene ningún
-> ítem abierto (2026-09-23).
-
-## P0 — ya arreglados
-
-**Los cuatro primeros, en dos tandas y de dos clases distintas:**
-
-- **B-80 y B-82** (2026-08-24) salieron de revisar las costuras del merge del
-  2026-08-21: cada feature estaba testeada por dentro, el par no. Los tests que
-  los demuestran están en [`tests/costuras.test.ts`](../tests/costuras.test.ts) y
-  ya no son `it.fails` — pasaron a `it` y ahora son la guarda de que no vuelvan.
-- **B-208 y B-209** (2026-08-27) salieron de la auditoría de privacidad, y son de
-  otra familia: no rompían nada visible ni perdían datos. **Publicaban.** Ninguno
-  de los dos tenía forma de aparecer en un test que estuviera mirando lo que el
-  código hace, porque los dos hacían exactamente lo que estaba escrito que
-  hicieran — el problema estaba en lo que estaba escrito.
-
-> ✅ **Hecho — lo verificó el triage del 2026-09-24.** Los tres pasos de abajo
-> pasaron, aunque no exactamente como se escribieron: la subida del flyer no se
-> abrió en `storage.rules` sino que migró a una callable (B-896), y `/proponer`
-> está en el sitemap y enlazada desde el pie. El plan queda como estaba escrito.
->
-> **Y desde el 2026-09-09 hay un paso más al final, que no estaba: anunciar
-> `/proponer`.** La página del formulario ya está escrita y publicada con el sitio,
-> pero **no** en el sitemap ni enlazada desde el chrome, porque hasta que App Check
-> exija su formulario no puede recibir nada de nadie sin el claim `admin`. Cuando
-> los pasos de arriba estén hechos, el último es un commit de tres líneas:
->
-> 1. borrar `esAdmin() &&` del `create` de `/propuestas` en `firestore.rules` **y**
->    del `create` de `propuestas/` en `storage.rules` — **juntos**: una subida que
->    no puede terminar en un documento es un objeto huérfano, y un documento que no
->    puede traer su imagen es DEC-11 a medias;
-> 2. `RUTA_PROPONER` a `RUTAS_FIJAS` (`src/lib/sitemap.ts`) y sacar la excepción de
->    `tests/sitemap.test.ts`, que está escrita con este motivo;
-> 3. el enlace en el chrome —y el texto de `/contacto` mandando ahí, que es DEC-10.
->
-> Los testigos que se ponen rojos al abrir la puerta están nombrados en las dos
-> reglas.
+Sin ítems abiertos desde el 2026-09-23. Los ya arreglados, con su prosa, están
+en [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md) § «P0 — rompe algo o pierde datos».
 
 ## P1 — bloquean el objetivo del proyecto
 
