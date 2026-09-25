@@ -451,6 +451,70 @@ describe('la tinta con nombre sobre un tinte heredado — B-1830', () => {
   });
 });
 
+describe('un template es un grupo: la tinta de un tramo fijo contra cada rama del fondo — B-1871', () => {
+  /** Código chico escrito a mano: el caso del ítem, y el ternario que no se cruza. */
+  const aMano = (tinta: string): { donde: string; src: string }[] => [
+    {
+      donde: 'a-mano.tsx',
+      src: [
+        'export const A = ({ x }: { x: boolean }) => (',
+        '  <div className="bg-amber-100">',
+        `    <span className={\`rounded \${x ? 'bg-amber-200' : ''} ${tinta}\`}>a</span>`,
+        "    <b className={x ? 'bg-acento text-white' : 'bg-acento/5 text-acento'}>b</b>",
+        '  </div>',
+        ');',
+      ].join('\n'),
+    },
+  ];
+
+  it('las combinaciones de un className: tramos fijos en todas, ramas sin cruzarse', () => {
+    const de = (codigo: string): string[] => {
+      const sf = ts.createSourceFile('x.tsx', `const c = ${codigo};`, ts.ScriptTarget.Latest, true);
+      const decl = (sf.statements[0] as ts.VariableStatement).declarationList.declarations[0]!;
+      return combinacionesDe(decl.initializer!).map((c) => c.replace(/\s+/g, ' ').trim());
+    };
+    expect(de("`${a ? 'bg-x' : ''} text-y`")).toEqual(['bg-x text-y', 'text-y']);
+    expect(de("`p ${a && 'bg-x'} q`")).toEqual(['p bg-x q', 'p q']);
+    expect(de("f() ?? 'bg-x'")).toEqual(['', 'bg-x']);
+    expect(de("a ? 'bg-x text-y' : 'text-z'")).toEqual(['bg-x text-y', 'text-z']);
+    expect(de('`${claseBotonFila} text-acento`')).toEqual(['text-acento']);
+  });
+
+  it('control positivo: mide la tinta fija contra la rama con fondo y contra la que hereda', () => {
+    const pares = tintasHeredadas(aMano('text-amber-900')).map((p) => p.par);
+    expect(pares).toContain('text-amber-900 sobre bg-amber-200 (a-mano.tsx:3)');
+    expect(pares).toContain('text-amber-900 sobre bg-amber-100 (a-mano.tsx:2)');
+    // Y en el panel: el botón de `MenuAcciones`, que es el patrón del ítem.
+    expect(
+      tintasHeredadas().some(
+        (p) =>
+          p.donde.startsWith('src/components/admin/MenuAcciones.tsx') &&
+          p.par.startsWith('text-tinta/65 sobre bg-black/5 (src/components/admin/MenuAcciones.tsx'),
+      ),
+    ).toBe(true);
+  });
+
+  it('control negativo: las dos ramas de un ternario no se cruzan', () => {
+    const pares = tintasHeredadas(aMano('text-amber-900')).map((p) => p.par);
+    expect(pares).toContain('text-white sobre bg-acento (a-mano.tsx:4)');
+    expect(pares).toContain('text-acento sobre bg-acento/5 (a-mano.tsx:4)');
+    expect(pares.some((p) => p.startsWith('text-white sobre bg-acento/5'))).toBe(false);
+    expect(pares.some((p) => p.startsWith('text-acento sobre bg-acento '))).toBe(false);
+  });
+
+  it('una tinta fija que no llega sobre una rama del fondo da rojo, en las dos ramas', () => {
+    // `text-amber-500` sobre `bg-amber-100` y sobre `bg-amber-200` no llega a AA:
+    // antes de B-1871 no lo veía ninguna de las dos redes.
+    const flojas = tintasHeredadas(aMano('text-amber-500'))
+      .filter((p) => p.r < AA_TEXTO)
+      .map((p) => p.par);
+    expect(flojas).toEqual([
+      'text-amber-500 sobre bg-amber-200 (a-mano.tsx:3)',
+      'text-amber-500 sobre bg-amber-100 (a-mano.tsx:2)',
+    ]);
+  });
+});
+
 describe('las filas apagadas no se apagan con opacity — B-1750', () => {
   it('control positivo: el barrido reconoce un opacity-NN, y deja pasar disabled: y la prosa', () => {
     // Las OPACIDADES_CON_MOTIVO existen, así que el barrido las tiene que ver; y
