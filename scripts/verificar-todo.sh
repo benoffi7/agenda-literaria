@@ -18,8 +18,9 @@
 #   SALTEAR_PRE_PUSH=1 git push        # deja el rastro en el shell
 #   git push --no-verify               # ídem, más corto
 #
-# Tarda unos minutos: los tests corren con los emuladores arriba, y eso es el
-# punto (ver el paso 3).
+# Tarda menos de dos minutos —medido el 2026-09-25: ~95 s con los emuladores ya
+# arriba, ~110 s levantándolos, contra ≈ 5 min antes de M-1 y M-2 (PRD 6)—, y
+# los tests corren con los emuladores arriba, que es el punto (ver el paso 3).
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"

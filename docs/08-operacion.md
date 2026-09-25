@@ -429,6 +429,10 @@ YAML.
 ./scripts/verificar-todo.sh
 ```
 
+Tarda **menos de dos minutos** desde M-1 y M-2 (PRD 6), medido el 2026-09-25:
+~95 s con los emuladores ya arriba y ~110 s levantándolos, contra ≈ 5 min antes.
+Casi todo es el paso 3 (~50 s) y el 3b (~30 s).
+
 | # | Paso | Por qué está |
 |---|---|---|
 | 1 | marcadores de conflicto (`sin-marcadores-de-conflicto.test.ts`) | es el más barato y ya se commitearon dos veces |
