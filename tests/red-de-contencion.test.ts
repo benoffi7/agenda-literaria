@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { AUDITORES } from '../scripts/auditores-que-corresponden.mjs';
 
 /**
- * La tabla «Qué se decidió no automatizar» de `docs/13-agentes.md` no se
- * rompe por merges — B-367 (duplicado de B-294, la misma cicatriz).
+ * La tabla «Qué se decidió no automatizar» no se rompe por merges — B-367
+ * (duplicado de B-294, la misma cicatriz). Vive en
+ * `docs/13-agentes-no-automatizado.md` (M-5 del PRD 6).
  *
  * **El daño que ya pasó dos veces, con el mismo mecanismo.** Varios frentes
  * tocan esta tabla en paralelo, y un merge sin criterio puede pegar dos filas
@@ -24,15 +25,20 @@ import { AUDITORES } from '../scripts/auditores-que-corresponden.mjs';
  * ninguna línea de la tabla tiene `||`, ninguna deja de empezar con `|`, y
  * ninguna celda de la primera columna se repite.
  */
-const doc = readFileSync(
-  fileURLToPath(new URL('../docs/13-agentes.md', import.meta.url)),
-  'utf8',
-);
+const leer = (ruta: string): string =>
+  readFileSync(fileURLToPath(new URL(`../${ruta}`, import.meta.url)), 'utf8');
+
+/** El registro «no automatizar», con la tabla que este archivo ata. */
+const REGISTRO = 'docs/13-agentes-no-automatizado.md';
+const doc = leer(REGISTRO);
+
+/** Los dos documentos de los agentes: las reglas de prosa y de tests nombrados valen para ambos. */
+const DOCUMENTOS = ['docs/13-agentes.md', REGISTRO] as const;
 
 /** Las líneas de la tabla, sin el título, sin la fila de encabezado ni la de separadores. */
 const filasDeLaTabla = (): string[] => {
-  const inicio = doc.indexOf('### Porque ya hay un test, y duplicarlo daría falsa cobertura');
-  const fin = doc.indexOf('### Porque un agente no es la herramienta');
+  const inicio = doc.indexOf('## Porque ya hay un test, y duplicarlo daría falsa cobertura');
+  const fin = doc.indexOf('## Porque un agente no es la herramienta');
   if (inicio === -1 || fin === -1 || fin <= inicio) {
     throw new Error('no se encontraron los encabezados que delimitan la sección de la tabla');
   }
@@ -41,7 +47,7 @@ const filasDeLaTabla = (): string[] => {
     .split('\n')
     .filter((l) => l.trim().length > 0)
     // El título de la sección y el encabezado/separador de la tabla no son filas de datos.
-    .filter((l) => !l.startsWith('###'))
+    .filter((l) => !l.startsWith('#'))
     .slice(2); // encabezado (`| Lo que...`) y separador (`|---|---|`)
 };
 
@@ -164,7 +170,7 @@ describe('a los auditores se puede llegar — D-560', () => {
 });
 
 /**
- * `docs/13-agentes.md` no nombra tests que ya no existen.
+ * `docs/13-agentes.md` y su registro no nombran tests que ya no existen.
  *
  * Vivía adentro del describe de los hooks por vecindad y no por tema; al
  * reemplazar aquél (D-560) se separó, que es lo que había que hacer desde el
@@ -177,7 +183,8 @@ describe('a los auditores se puede llegar — D-560', () => {
  */
 describe('la tabla de `13-agentes.md` apunta a tests que existen — B-260', () => {
   const nombrados = (): string[] => {
-    const crudos = [...doc.matchAll(/`(?:tests\/)?([A-Za-z0-9._-]+\.test\.tsx?)`/g)].map(
+    const texto = DOCUMENTOS.map(leer).join('\n');
+    const crudos = [...texto.matchAll(/`(?:tests\/)?([A-Za-z0-9._-]+\.test\.tsx?)`/g)].map(
       (m) => m[1]!,
     );
     return [...new Set(crudos)].filter((n) => n !== 'x.test.ts');
@@ -194,17 +201,17 @@ describe('la tabla de `13-agentes.md` apunta a tests que existen — B-260', () 
     );
     expect(
       inexistentes,
-      'docs/13-agentes.md nombra tests que no existen: la fila afirma que algo ya ' +
+      'docs/13-agentes.md o su registro nombran tests que no existen: la fila afirma que algo ya ' +
         'está verificado y apunta a un archivo borrado o renombrado.',
     ).toEqual([]);
   });
 
 
-  it('ninguna línea de prosa quedó pegada a otra por un merge', () => {
+  it.each(DOCUMENTOS)('ninguna línea de prosa de %s quedó pegada a otra por un merge', (ruta) => {
     const LIMITE = 100;
     let enCodigo = false;
     const largas: string[] = [];
-    for (const [i, linea] of doc.split('\n').entries()) {
+    for (const [i, linea] of leer(ruta).split('\n').entries()) {
       if (linea.trim().startsWith('```')) {
         enCodigo = !enCodigo;
         continue;

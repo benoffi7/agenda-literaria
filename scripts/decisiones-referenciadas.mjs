@@ -140,7 +140,7 @@ export const referenciasDe = (contenido) => [
  * grafías según quién la cite. Comparar cadenas hacía que `D-9` se reportara
  * como huérfana teniendo `D-09` escrita — que es exactamente lo que pasó con la
  * sexta huérfana de **B-910**, donde además la «cita» era un ejemplo de
- * ordenamiento en prosa (`13-agentes.md`: «que ordene `D-9` después de
+ * ordenamiento en prosa (`13-agentes-no-automatizado.md`: «que ordene `D-9` después de
  * `D-100`») y no un enlace a nada.
  *
  * @param {string} decision

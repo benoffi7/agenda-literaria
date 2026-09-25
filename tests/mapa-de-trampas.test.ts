@@ -165,7 +165,8 @@ describe('la prosa de 13-agentes.md no nombra otro número de trampas que el §1
     const correcta = PALABRAS[cuantas];
     expect(correcta, `no hay palabra para ${cuantas} trampas — agregala a PALABRAS`).toBeDefined();
 
-    const texto = fuente('docs/13-agentes.md');
+    // Con su registro «no automatizar», que salió de ahí (M-5) y es prosa sobre las mismas trampas.
+    const texto = fuente('docs/13-agentes.md') + fuente('docs/13-agentes-no-automatizado.md');
     const equivocadas = Object.entries(PALABRAS)
       .filter(([n]) => Number(n) !== cuantas)
       .map(([, palabra]) => palabra)

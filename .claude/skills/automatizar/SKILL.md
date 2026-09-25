@@ -69,7 +69,7 @@ Cuatro reglas que salieron de equivocarse acá:
   que dejó de ser cierta.
 - **Un auditor que repite lo que un test ya verifica es peor que nada**: da
   falsa sensación de cobertura. Si escribís el test, **sacá la línea del
-  auditor** y decilo en `docs/13-agentes.md`.
+  auditor** y decilo en `docs/13-agentes-no-automatizado.md`.
 - **La lógica no va dentro del hook ni dentro del YAML.** Va en un script que se
   puede correr a mano y testear; el hook y el workflow solo lo llaman.
 - **Preferí la verificación sobre la clase, no sobre la instancia.** Un test que
@@ -99,7 +99,7 @@ automatiza** cuando:
   backlog. B-116 y B-123 son eso.
 - **El código que verificaría todavía no existe.** No se puede escribir un
   auditor del sitio público antes del sitio público (B-122).
-- **Ya lo verifica otra cosa.** Buscá primero: `docs/13-agentes.md` tiene la
+- **Ya lo verifica otra cosa.** Buscá primero: `docs/13-agentes-no-automatizado.md` tiene la
   lista de lo que se decidió **no** automatizar y por qué.
 - **La automatización tardaría más que el trabajo que ahorra en un año.** Decilo
   con números, aunque sean gruesos.
