@@ -553,6 +553,15 @@ frena `tests/proyectos-de-la-suite.test.ts`), y **no escribe adentro de `tests/`
 una mutación temporal va a `os.tmpdir()`, porque los barridos de otros archivos
 recorren el árbol al mismo tiempo y la encuentran a medio borrar (B-1962).
 
+**Los dos registros grandes son un archivo por entrada** (M-12): las clases de
+bug en `tests/clases/` y los barridos de salidas públicas en `tests/salidas/`
+(`NN-` es el número de la salida de `07-seguridad.md` §5). Lo que usan dos o más
+va a `tests/fixtures/clases-de-bug.ts` y `tests/fixtures/barrido-de-salidas.ts`.
+En las rutas viejas, `tests/clases-de-bug.test.ts` y
+`tests/barrido-de-salidas-publicas.test.ts`, quedó el **índice**: una tabla
+archivo → título del `describe`, que un test compara con el directorio. Sumar
+una clase o una salida es un archivo nuevo y su fila en el índice.
+
 **Qué se testea:**
 
 - Cada trampa del §13 tiene al menos un test que la nombra.
