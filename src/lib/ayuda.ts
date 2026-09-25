@@ -1229,6 +1229,18 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Dos efemérides publicadas no pueden compartir link. Si dos personas publican a la vez ' +
+          'con el mismo, el sitio se queda con una sola página —la primera del año— y la lista ' +
+          'te avisa cuál quedó afuera. Despublicá una de las dos.',
+        atadoA: [
+          {
+            archivo: 'tests/efemerides-panel.render.test.tsx',
+            it: 'dos publicadas con el mismo link: nombra la que quedó sin página y la que se quedó el link',
+          },
+        ],
+      },
+      {
+        texto:
           'Borrar no se puede deshacer, y si estaba publicada su página deja de existir en el ' +
           'próximo rebuild. Para sacarla del sitio sin perderla, despublicala.',
         cuidado: true,

@@ -107,11 +107,40 @@ export const efemeridePublica = (
  * del mismo día el hecho más viejo primero (los sin año, al final). El título
  * desempata para que dos builds den el mismo orden.
  */
-export const ordenDelAnio = (a: EfemeridePublica, b: EfemeridePublica): number =>
+type ParaOrdenar = Pick<EfemeridePublica, 'mes' | 'dia' | 'anio' | 'titulo'>;
+
+export const ordenDelAnio = (a: ParaOrdenar, b: ParaOrdenar): number =>
   a.mes - b.mes ||
   a.dia - b.dia ||
   (a.anio ?? Number.MAX_SAFE_INTEGER) - (b.anio ?? Number.MAX_SAFE_INTEGER) ||
   a.titulo.localeCompare(b.titulo, 'es');
+
+/** Lo que hace falta para decidir cuál de dos con el mismo slug se queda la página. */
+type ConSlug = ParaOrdenar & Pick<EfemeridePublica, 'slug'>;
+
+/**
+ * El reparto de un slug repetido, en **una sola implementación** para el build
+ * y para el panel — B-1943. El build se queda con `quedan`; el panel avisa con
+ * `sinPagina`. Si cada lado ordenara por su cuenta, el aviso podría nombrar
+ * como perdedora a la que el build publica.
+ */
+const partirPorSlug = <T extends ConSlug>(
+  lista: readonly T[],
+): { quedan: T[]; sinPagina: { perdida: T; ganadora: T }[] } => {
+  const primera = new Map<string, T>();
+  const quedan: T[] = [];
+  const sinPagina: { perdida: T; ganadora: T }[] = [];
+  for (const e of [...lista].sort(ordenDelAnio)) {
+    const ganadora = primera.get(e.slug);
+    if (ganadora) {
+      sinPagina.push({ perdida: e, ganadora });
+      continue;
+    }
+    primera.set(e.slug, e);
+    quedan.push(e);
+  }
+  return { quedan, sinPagina };
+};
 
 /**
  * Una sola efeméride por slug, **la primera en el orden del año**.
@@ -121,14 +150,24 @@ export const ordenDelAnio = (a: EfemeridePublica, b: EfemeridePublica): number =
  * índice (el «N más hoy» contaría una de más). Se resuelve una vez, en la
  * lectura, para que todas las salidas digan lo mismo.
  */
-export const sinSlugsRepetidos = (lista: readonly EfemeridePublica[]): EfemeridePublica[] => {
-  const vistos = new Set<string>();
-  return [...lista].sort(ordenDelAnio).filter((e) => {
-    if (vistos.has(e.slug)) return false;
-    vistos.add(e.slug);
-    return true;
-  });
-};
+export const sinSlugsRepetidos = <T extends ConSlug>(lista: readonly T[]): T[] =>
+  partirPorSlug(lista).quedan;
+
+/**
+ * **Las publicadas que el build deja sin página**, cada una con la que se quedó
+ * el slug — B-1943.
+ *
+ * La guarda del panel (`slugPublicable`) lee y después escribe, sin
+ * transacción: dos admins que publican a la vez con el mismo slug pasan los dos.
+ * El build no se rompe —`sinSlugsRepetidos` deja una—, pero la otra quedaba sin
+ * página y sin que nadie lo supiera. El panel escucha la colección entera, así
+ * que con esta lista lo dice en cuanto pasa, en las pantallas de los dos.
+ *
+ * Recibe **solo las publicadas**: es lo que lee el build.
+ */
+export const publicadasSinPagina = <T extends ConSlug>(
+  publicadas: readonly T[],
+): { perdida: T; ganadora: T }[] => partirPorSlug(publicadas).sinPagina;
 
 // ─────────────────────────────────────────────────────────────────
 // Las fechas: día y mes, nunca un instante

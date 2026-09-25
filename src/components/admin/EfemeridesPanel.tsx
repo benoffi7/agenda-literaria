@@ -3,7 +3,7 @@ import { claseBotonPrimario, claseBotonSecundario } from '@/components/campos/Ca
 import { EfemerideFormulario } from '@/components/admin/EfemerideFormulario';
 import { medirFuncion } from '@/lib/analytics';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
-import { fechaDeEfemeride } from '@/lib/efemeridePublica';
+import { fechaDeEfemeride, ordenDelAnio, publicadasSinPagina } from '@/lib/efemeridePublica';
 import { slugDeEfemerideBloqueado } from '@/lib/efemeride-schema';
 import { moverEfemeride, observarEfemerides, slugPublicable } from '@/lib/efemerides';
 import { rutaDeEfemeride } from '@/lib/rutasPublicas';
@@ -79,15 +79,17 @@ export function EfemeridesPanel({
     [],
   );
 
-  const ordenadas = useMemo(
-    () =>
-      [...efemerides].sort(
-        (a, b) =>
-          a.mes - b.mes ||
-          a.dia - b.dia ||
-          (a.anio ?? Number.MAX_SAFE_INTEGER) - (b.anio ?? Number.MAX_SAFE_INTEGER) ||
-          a.titulo.localeCompare(b.titulo, 'es'),
-      ),
+  const ordenadas = useMemo(() => [...efemerides].sort(ordenDelAnio), [efemerides]);
+
+  /*
+   * B-1943 — la guarda de publicación lee sin transacción, así que dos admins
+   * que publican a la vez con el mismo link pasan los dos, y el build deja una
+   * sola página. Con el mismo criterio que el build, esto nombra la que se queda
+   * afuera. La lista está suscripta, así que el aviso aparece solo en las dos
+   * pantallas.
+   */
+  const sinPagina = useMemo(
+    () => publicadasSinPagina(efemerides.filter((e) => e.estado === 'publicado')),
     [efemerides],
   );
 
@@ -143,6 +145,21 @@ export function EfemeridesPanel({
           >
             {fallo}
           </p>
+        )}
+
+        {sinPagina.length > 0 && (
+          <div
+            role="status"
+            className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            {sinPagina.map(({ perdida, ganadora }) => (
+              <p key={perdida.id}>
+                «{perdida.titulo}» está publicada pero no tiene página: su link{' '}
+                {rutaDeEfemeride(perdida.slug)} también es de «{ganadora.titulo}», que es la que
+                queda en el sitio. Despublicá una de las dos.
+              </p>
+            ))}
+          </div>
         )}
 
         {ordenadas.length === 0 && !fallo && (

@@ -1613,6 +1613,16 @@ efemérides. El modelo está en [`03-modelo-de-datos.md`](03-modelo-de-datos.md)
 borrar una publicada—: un borrador se guarda muchas veces mientras se escribe, y
 ninguna de esas escrituras cambia el sitio (D-1174).
 
+**El link repetido** (B-1943): el formulario y el botón «Publicar» consultan antes
+de escribir que ninguna otra efeméride publicada use el mismo link, pero la
+consulta no es transaccional, así que dos admins que publican **en el mismo
+momento** con el mismo link pasan los dos. El build no se rompe —deja una sola
+página por link, la primera en el orden del año (`sinSlugsRepetidos`)— y la
+pantalla lo dice: un aviso arriba de la lista nombra la publicada que quedó sin
+página y la que se quedó el link, con el mismo reparto que usa el build
+(`publicadasSinPagina`). Como la lista está suscripta, aparece en las dos
+pantallas sin recargar. Se arregla despublicando una de las dos.
+
 ## Dos formas del formulario, y las elige quien carga
 
 El interruptor **«PC / Celular»** de la cabecera del panel (B-814, D-550) decide

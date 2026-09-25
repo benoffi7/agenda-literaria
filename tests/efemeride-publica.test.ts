@@ -27,6 +27,7 @@ import {
   fechaDeEfemeride,
   migasDeEfemeride,
   renglonDeHoy,
+  publicadasSinPagina,
   sinSlugsRepetidos,
   vecinasDelMes,
   type EfemeridePublica,
@@ -176,6 +177,32 @@ describe('lo que se publica sale saneado', () => {
       ['nace-cortazar', 'La de enero'],
       ['otra', 'Nace Julio Cortázar'],
     ]);
+  });
+
+  it('la que el build deja sin página se nombra con la que se quedó el slug — B-1943', () => {
+    /*
+     * La guarda del panel no es transaccional: dos publicaciones simultáneas con
+     * el mismo slug pasan las dos. Lo que cierra el caso es que el panel lo diga,
+     * y lo dice con **el mismo reparto** que el build: si la lista de la que se
+     * queda afuera se calculara por separado, el aviso podría nombrar como
+     * perdida a la que el sitio publica.
+     */
+    const lista = [
+      una({ titulo: 'La de agosto' }),
+      una({ titulo: 'La de enero', mes: 1 }),
+      una({ slug: 'otra' }),
+    ];
+    const afuera = publicadasSinPagina(lista);
+    expect(afuera.map(({ perdida, ganadora }) => [perdida.titulo, ganadora.titulo])).toEqual([
+      ['La de agosto', 'La de enero'],
+    ]);
+    // Las dos listas parten el conjunto: ninguna en las dos, ninguna en ninguna.
+    const quedan = sinSlugsRepetidos(lista);
+    expect(quedan.length + afuera.length).toBe(lista.length);
+    expect(quedan).not.toContain(afuera[0]!.perdida);
+    expect(quedan).toContain(afuera[0]!.ganadora);
+    // Y sin repetidos no hay nada que avisar.
+    expect(publicadasSinPagina([una(), una({ slug: 'otra' })])).toEqual([]);
   });
 
   it('el índice que baja el navegador se valida antes de usarlo', () => {
