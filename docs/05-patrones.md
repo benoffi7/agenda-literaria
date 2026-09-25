@@ -524,8 +524,9 @@ import { auth } from '@/lib/firebase-client';    // login, claim admin
 import { db } from '@/lib/firestore-client';      // todo lo que lee o escribe
 ```
 
-Por la misma razón, `AdminApp` carga `ListaActividades` y `ActividadFormulario`
-con `import()` y no con `import` estático. `tests/bundle-panel.test.ts` falla si
+Por la misma razón, el panel carga `ListaActividades` y `ActividadFormulario`
+con `import()` y no con `import` estático: las puertas diferidas están en
+`src/components/admin/pantallas/diferidas.tsx` (M-17). `tests/bundle-panel.test.ts` falla si
 alguna de las dos reglas se rompe.
 
 ## Idempotencia en los scripts
