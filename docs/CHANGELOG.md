@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El plugin MDD quedó apagado para este repo** (B-857). Va en
+  `.claude/settings.local.json`, que no se versiona, y toma efecto desde la próxima
+  sesión. Era el que recreaba `.mdd/` en la raíz aunque este proyecto no usa ese
+  proceso.
 - **El BACKLOG vivo quedó en lo que falta hacer** (limpieza del 2026-09-25). Se
   movieron a `BACKLOG-cerrados.md`, sin borrar nada, las tres cosas que eran rastro:
   las notas de huecos de numeración del encabezado (ahora «Huecos de numeración», al

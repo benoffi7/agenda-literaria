@@ -15462,6 +15462,38 @@ Tres salidas, de menos a más:
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
 
+### B-857 · Un plugin desactivado sigue escribiendo en la raíz del repo, y el `.gitignore` lo tapa · P4 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** El plugin `mdd@modo-ai-standards` quedó desactivado para este proyecto con `enabledPlugins` en `.claude/settings.local.json`, que es de la máquina y no se versiona (lo ignora el `~/.config/git/ignore` global). Toma efecto desde la próxima sesión de Claude Code. La línea `.mdd/` del `.gitignore` se queda hasta confirmar, en una sesión nueva, que el directorio no vuelve a aparecer.
+
+**Lo trajo el frente de B-849** como «la línea `.mdd/` nunca se sacó», y al ir a
+sacarla resultó ser otra cosa y más interesante.
+
+`861f0fd` («Higiene de la raíz… y el `.mdd/` ajeno») dice en su mensaje que **sacó
+la línea y borró el directorio**. Su diff **la mueve de sección**, y el directorio
+se había recreado tres minutos antes del commit — exactamente lo que ese mismo
+mensaje advertía que iba a pasar si la línea quedaba.
+
+**El 2026-09-09 se volvió a probar, con el mismo resultado y ahora con la causa a
+la vista:** se borró la línea y el directorio, y **a los tres minutos estaban los
+dos de vuelta**. Los escribe un hook del plugin `mdd@modo-ai-standards`, que está
+activo en la configuración global de la máquina aunque **este repo no use MDD**
+—el proceso es el del `CLAUDE.md` y el `docs/05-patrones.md`, y el propio dueño lo
+dijo explícitamente— y no tiene ni `.mdd/state.json` propio ni skills del plugin
+en sesión.
+
+**Por eso la línea se queda, y ahora con el motivo escrito al lado.** Mientras el
+hook exista, borrarla no limpia nada: solo cambia «un directorio ajeno ignorado»
+por «un directorio ajeno apareciendo en cada `git status`». Lo que se arregló acá
+es lo que sí se podía arreglar: que el `.gitignore` dejara de tener una línea sin
+explicación que ya engañó a dos lectores —el commit que creyó haberla sacado y el
+frente que la reportó como olvido—.
+
+**Lo que lo cierra de verdad es de la máquina y no del repo:** desactivar el plugin
+para este proyecto. Va como P4 porque el costo actual es cero y el riesgo también:
+un directorio vacío ignorado. Lo que no es cero es el costo de descubrirlo de
+nuevo, y eso es lo que este ítem compra.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
