@@ -101,13 +101,20 @@ describe.skipIf(!vivo)('el alta de la callable contra el emulador — B-893', ()
     expect(opcionesVisibles(await valores('arancel')).map((v) => v.slug)).not.toContain('slam');
   });
 
+  /*
+   * **Timeout propio — B-1951.** Las tres transacciones compiten por el mismo
+   * documento y dos se reintentan contra el emulador; con la máquina cargada (otro
+   * agente corriendo la suite a la vez) pasó de los 5 s por defecto y en el
+   * reintento dio verde. Es lentitud, no un bug: 30 s como los otros casos de
+   * integración que esperan al emulador.
+   */
   it('dos altas simultáneas no se pisan: la transacción relee el array', async () => {
     const r = await Promise.all([alta('Uno'), alta('Dos'), alta('Tres')]);
     expect(r.map((x) => ('slug' in x ? x.slug : null)).sort()).toEqual(['dos', 'tres', 'uno']);
     const slugs = (await valores('arancel')).map((v) => v.slug);
     expect(slugs).toEqual(expect.arrayContaining(['uno', 'dos', 'tres']));
     expect(slugs).toHaveLength(BASE.length + 3);
-  });
+  }, 30_000);
 
   it('sin documento no escribe nada, ni siquiera lo crea', async () => {
     const r = await alta('Algo', UID_PUBLICADOR, 'plataforma');
