@@ -6,6 +6,11 @@ Leí el `CLAUDE.md`, `docs/README.md`, las funcionalidades (04), el sitio públi
 producto (11), el BACKLOG vivo con sus decisiones pendientes y los ítems que
 cito del de cerrados.
 
+> **Actualizado el 2026-09-25**, cruzando cada ítem contra el código, el CHANGELOG y
+> `BACKLOG-cerrados.md`: trece ítems se hicieron después del relevamiento (1.2, 1.3,
+> 1.4, 2.2, 2.3, 2.4, 3.1, 3.4, 3.6, 3.7, 5.2, 5.6, 6.1) y 5.7 se descartó. Lo marcado
+> «Ahora» o «Próximo» que sigue abierto es lo que todavía no existe.
+
 **Cómo leer los tamaños.** **S** = medio día a un día. **M** = dos a cinco días.
 **L** = una semana o más, casi siempre porque suma una entidad nueva al modelo.
 
@@ -100,7 +105,7 @@ día pasa al primer lugar del eje de analítica.
   para no tener una tercera derivación. Pasa por el `auditor-privacidad`
   (salida pública nueva).
 
-### 1.2 · Los links pegados en la descripción se pueden tocar (B-980) — **Ahora** · S
+### 1.2 · Los links pegados en la descripción se pueden tocar (B-980) — ✅ Hecho (2026-09-24) · S
 
 - **Qué gana quien visita:** el Instagram o el formulario que el organizador pegó
   en la descripción deja de ser texto muerto que hay que copiar a mano.
@@ -111,13 +116,13 @@ día pasa al primer lugar del eje de analítica.
   linkear después» es innegociable y lleva `nofollow`. Solo en la página de
   detalle; ni al calendario ni al marcado para Google.
 
-### 1.3 · Encuentro cancelado visible en la página y en el calendario (B-98) — **Ahora** · M
+### 1.3 · Encuentro cancelado visible en la página y en el calendario (B-98) — ✅ Hecho (2026-09-24) · M
 
 Ver el eje 5 (control de datos) para el detalle: es a la vez una mejora del sitio
 y del espejo en Calendar. En el sitio, la página del ciclo muestra el encuentro
 tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 
-### 1.4 · Efemérides literarias (B-959) — **Próximo** · L · 🟨 Decisión
+### 1.4 · Efemérides literarias (B-959) — ✅ Hecho (2026-09-25) · L · 🟨 Decisión
 
 - **Qué gana quien visita:** una razón para volver aunque no esté buscando un
   taller («hoy nació Cortázar»), y el sitio gana contenido indexable que hoy no
@@ -191,7 +196,7 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 - **Nota técnica:** `functions/propuestas-trigger.js`, `functions/directorios-trigger.js`;
   el criterio de qué sale es el de `functions/reportes.js` (`redactar()`).
 
-### 2.2 · Las actividades que ya pasaron, fuera del medio (B-101) — **Ahora** · S
+### 2.2 · Las actividades que ya pasaron, fuera del medio (B-101) — ✅ Hecho (2026-09-24) · S
 
 - **Qué gana quien carga:** el listado deja de mezclar el taller de marzo con el de
   la semana que viene.
@@ -203,7 +208,7 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
   venir» por defecto: el listado ya tiene su barra de filtros y una pestaña más
   compite con «Calendario».
 
-### 2.3 · Pedir en el formulario lo que Google echa de menos (mitad abierta de B-813) — **Próximo** · S
+### 2.3 · Pedir en el formulario lo que Google echa de menos (mitad abierta de B-813) — ✅ Hecho (2026-09-24) · S
 
 - **Qué gana quien carga:** el formulario le avisa, sin obligarlo, «si tiene web el
   organizador, Google la muestra»; y el resultado de búsqueda sale más completo.
@@ -212,7 +217,7 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 - **Riesgo / costo:** tentación de volver obligatorios los campos: ya se decidió
   dos veces que no (D-440).
 
-### 2.4 · El aviso de «revisá el precio» en las cuatro bandejas de la Guía (B-1410, B-1411) — **Próximo** · S
+### 2.4 · El aviso de «revisá el precio» en las cuatro bandejas de la Guía (B-1410, B-1411) — ✅ Hecho (2026-09-24) · S
 
 - **Qué gana quien carga:** ver de un vistazo «3 precios para revisar» en vez de
   descubrirlo ficha por ficha; y que un precio de hace un año no siga publicado.
@@ -250,7 +255,7 @@ panel). Lo que falta es **historia**, y el primer mes completo se cumple el
 **3 de octubre**. Casi todo lo de acá es convertir datos que ya llegan en
 respuestas.
 
-### 3.1 · Cerrar los dos interruptores de consola (B-874, B-773) — **Ahora** · S
+### 3.1 · Cerrar los dos interruptores de consola (B-874, B-773) — ✅ Hecho (2026-09-25) · S
 
 - **Qué gana quien visita:** que el sitio haga lo que dice. Hoy el alta al correo
   y `/proponer` le avisan a Google que ese navegador usó el formulario y a dónde lo
@@ -285,7 +290,7 @@ respuestas.
 - **Riesgo / costo:** un número horneado en una página estática envejece; tiene
   que llevar su mes («en septiembre de 2026…») y revisarse.
 
-### 3.4 · Dibujar «el ritmo» del catálogo (B-1081) — **Ahora** · S · 🟨 Decisión
+### 3.4 · Dibujar «el ritmo» del catálogo (B-1081) — ✅ Hecho (2026-09-24) · S · 🟨 Decisión
 
 - **Qué gana quien carga:** ver qué semanas de las próximas ocho están vacías y qué
   noche está saturada — la pregunta que un listado no contesta nunca. Sirve para
@@ -321,7 +326,7 @@ respuestas.
   de lo que el panel le pide a GA4?* **Recomiendo sí**: son slugs de taxonomías
   públicas, nunca el texto tipeado, y el saneador ya lo garantiza.
 
-### 3.7 · Medir el banner de ciudad (B-963) — **Próximo** · S
+### 3.7 · Medir el banner de ciudad (B-963) — ✅ Hecho (2026-09-24) · S
 
 Lo primero que va a preguntar quien tiene su banner es si le sirve. Un cuarto
 evento propio con la ciudad como único dato.
@@ -480,7 +485,7 @@ que va marcado como decisión.
   los dos casos, paso de consola del dueño + una entrada en `02-infraestructura.md`
   y `07-seguridad.md`.
 
-### 5.2 · Cancelar un encuentro avisa en vez de borrar (B-98) — **Ahora** · M
+### 5.2 · Cancelar un encuentro avisa en vez de borrar (B-98) — ✅ Hecho (2026-09-24) · M
 
 - **Qué gana quien visita:** quien tenía el jueves agendado ve «CANCELADO — se pasa
   al jueves 3» en su calendario, en vez de que el evento desaparezca en silencio y
@@ -532,13 +537,13 @@ que va marcado como decisión.
   informe local, y recién si sirve hacerlo programado. Nunca revisa links
   privados de la reunión.
 
-### 5.6 · El chequeo de frescura también ve las ediciones (B-886) — **Más adelante** · S–M
+### 5.6 · El chequeo de frescura también ve las ediciones (B-886) — ✅ Hecho (2026-09-24) · S–M
 
 Hoy el chequeo diario detecta una actividad publicada que no aparece, pero no una
 edición (cambio de sede u horario) que no llegó al sitio. Es el mismo incidente
 del 2026-09-11 con otra cara, y el ítem ya lo dice.
 
-### 5.7 · Cerrar las dos fichas cruzadas de B-1124 — **Ahora** · S (dueño, en el panel)
+### 5.7 · Cerrar las dos fichas cruzadas de B-1124 — ❌ Descartado (2026-09-25) · S (dueño, en el panel)
 
 Son dos ediciones: elegir el barrio correcto de «Basura» y decidir si la feria
 FINDE es en Palermo o en Avellaneda. Se nombra acá porque es dato que hoy se
@@ -548,7 +553,7 @@ publica mal.
 
 ## Eje 6 · Lo que no entra en ninguno
 
-### 6.1 · Que el backlog no pierda decisiones aprobadas — **Ahora** · S
+### 6.1 · Que el backlog no pierda decisiones aprobadas — ✅ Hecho (2026-09-24) · S
 
 - **El problema:** el archivador manda a «cerrados» todo lo que dice «✅», y
   «✅ aprobado» también lleva ✅. Así se fue B-98. Puede haber otros.
@@ -597,29 +602,29 @@ las novedades del panel ya existen como mecanismo.
 
 | # | Propuesta | Eje | Tamaño | Prioridad | Decisión del dueño |
 |---|---|---|---|---|---|
-| 3.1 | Interruptores de GA4 (B-874, B-773) | Analítica | S | **Ahora** | — (es cumplir lo prometido) |
+| 3.1 | Interruptores de GA4 (B-874, B-773) | Analítica | S | ✅ Hecho (2026-09-25) | — (es cumplir lo prometido) |
 | 5.1 | Copia de seguridad de la base | Datos | M | **Ahora** | 🟨 ¿Respaldo diario a 30 días? → sí |
-| 5.2 | Encuentro cancelado avisa (B-98) | Datos / sitio | M | **Ahora** | ya aprobada |
+| 5.2 | Encuentro cancelado avisa (B-98) | Datos / sitio | M | ✅ Hecho (2026-09-24) | ya aprobada |
 | 1.1 | Compartir y agendar en el detalle | Sitio | S | **Ahora** | — |
 | 4.1 | El lunes de difusión | Redes | S–M | **Ahora** | — |
 | 4.2 | El correo arranca por las destacadas | Newsletter | S | **Ahora** | — |
-| 1.2 | Links tocables en la descripción (B-980) | Sitio | S | **Ahora** | ya decidida |
+| 1.2 | Links tocables en la descripción (B-980) | Sitio | S | ✅ Hecho (2026-09-24) | ya decidida |
 | 2.1 | Aviso por mail de propuestas nuevas | Panel | M | **Ahora** | 🟨 ¿Uno por uno o diario? → diario |
-| 2.2 | Pasadas fuera del listado (B-101) | Panel | S | **Ahora** | 🟨 ¿Pestaña o filtro? → filtro |
-| 3.4 | Dibujar el ritmo del catálogo (B-1081) | Analítica | S | **Ahora** | 🟨 ¿Dibujar o borrar? → dibujar |
+| 2.2 | Pasadas fuera del listado (B-101) | Panel | S | ✅ Hecho (2026-09-24) | 🟨 ¿Pestaña o filtro? → filtro |
+| 3.4 | Dibujar el ritmo del catálogo (B-1081) | Analítica | S | ✅ Hecho (2026-09-24) | 🟨 ¿Dibujar o borrar? → dibujar |
 | 5.3 | Aviso de geografía que no cierra | Datos | S | **Ahora** | — |
-| 5.7 | Las dos fichas cruzadas (B-1124) | Datos | S | **Ahora** | (edición del dueño) |
-| 6.1 | Que el backlog no pierda aprobadas | Otros | S | **Ahora** | — |
+| 5.7 | Las dos fichas cruzadas (B-1124) | Datos | S | ❌ Descartado (2026-09-25) | (edición del dueño) |
+| 6.1 | Que el backlog no pierda aprobadas | Otros | S | ✅ Hecho (2026-09-24) | — |
 | 3.2 | Vistas contra mensajes por actividad | Analítica | M | Próximo (3/10) | — |
 | 3.3 | Número real en `/anunciar` (B-771) | Analítica | S | Próximo (3/10) | — |
 | 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | Próximo | — |
 | 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | ✅ Hecho (2026-09-25) | — |
-| 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | Próximo | — |
+| 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | ✅ Hecho (2026-09-24) | — |
 | 3.8 | Etiquetas de campaña | Analítica | S | Próximo | 🟨 ¿Dejarlas pasar con lista cerrada? → sí |
-| 1.4 | Efemérides (B-959) | Sitio | L | Próximo | 🟨 ¿Dónde se ven? → sección propia + home |
+| 1.4 | Efemérides (B-959) | Sitio | L | ✅ Hecho (2026-09-25) | 🟨 ¿Dónde se ven? → sección propia + home |
 | 1.5 | Páginas por organizador | Sitio | L | Próximo | ya decidido el cómo |
-| 2.3 | El formulario pide lo que Google quiere (B-813) | Panel | S | Próximo | — |
-| 2.4 | Aviso de precio en las cuatro bandejas (B-1410/1411) | Panel | S | Próximo | — |
+| 2.3 | El formulario pide lo que Google quiere (B-813) | Panel | S | ✅ Hecho (2026-09-24) | — |
+| 2.4 | Aviso de precio en las cuatro bandejas (B-1410/1411) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 4.3 | Imagen semanal para redes | Redes | M | Próximo | 🟨 ¿Plantilla propia? → una sola, semanal |
 | 4.4 | Invitar al correo desde el detalle | Newsletter | S | Próximo | — |
 | 5.4 | Posibles duplicados | Datos | M | Próximo | — |
@@ -630,7 +635,7 @@ las novedades del panel ya existen como mecanismo.
 | 3.9 | Resumen para organizadores | Analítica | M | Más adelante | 🟨 ¿Ofrecer números? → a los 3 meses |
 | 4.5 | Correo automático desde un feed | Newsletter | M | Más adelante | 🟨 ¿Solo o a mano? → a mano |
 | 4.6 | Correo por ciudad | Newsletter | M | Más adelante | 🟨 ¿Segmentar? → todavía no |
-| 5.6 | Frescura ve ediciones (B-886) | Datos | S–M | Más adelante | — |
+| 5.6 | Frescura ve ediciones (B-886) | Datos | S–M | ✅ Hecho (2026-09-24) | — |
 | 6.3 | Publicidad propia (B-377) | Otros | M | Más adelante | 🟨 ¿Nosotros o una red? → nosotros |
 | 6.4 | Datos abiertos | Otros | S | Más adelante | — |
 
