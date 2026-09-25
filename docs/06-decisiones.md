@@ -13960,3 +13960,52 @@ suena nada. No se avisa a propósito: fuera de CABA un admin puede cargar una se
 ciudad (D-1154 la exige solo en el panel del publicador), y avisar por eso sería un mail
 por cada carga legítima. Queda anotado como B-2052.
 
+## D-1250 · Los cinco derivados se corrigen en una sola escritura, y cada pregunta tiene su alerta
+
+**B-2050, 2026-09-25.** `sede`, `modalidad`, `online` y `searchText` se verifican con la
+forma de `ciudades` (D-1230, D-1231): en `syncCalendar`, antes de los cortes, se corrigen
+y se avisa, y no se despublica. `corregirCiudades` se fusionó en `corregirDerivados`, una
+transacción que relee y escribe los cinco, porque dos write-backs se dispararían uno al
+otro y la segunda pasada vería el otro a medio corregir. Las alertas son dos porque son
+dos preguntas: `ciudades-no-coinciden` es de permisos y `derivados-no-coinciden` es de
+contenido. La segunda lleva solo nombres de campo: `sede` es una dirección, `searchText`
+trae nombres de personas y `online` trae el link. Costo aceptado: un documento anterior
+al último cambio de la fórmula del índice avisa una vez con `campos: ['searchText']` en
+su primera escritura que no pase por el formulario; el runbook lo nombra.
+
+## D-1251 · Los cuatro derivados son de máquina para el historial
+
+**B-2050, 2026-09-25.** Entran a `CAMPOS_DE_MAQUINA` junto con `ciudades` (D-1232). Sin
+eso, cada corrección dejaría una versión del documento escrito a mano. No se pierde nada
+recuperable: el panel y la restauración los escriben en la misma escritura que sus
+fuentes, y `camposRestaurables` ya los excluía. Efecto lateral: «Se editó:» en el
+historial deja de listar Sede o «Texto de búsqueda»; lista las fuentes.
+
+## D-1252 · El rebuild pregunta `pideRebuild`, no solo `huboCambioDeContenido`
+
+**B-2050, 2026-09-25.** Con D-1251, la corrección dejaba de pedir rebuild, y también un
+backfill que reescribiera solo un `searchText` viejo, pese a que los cuatro salen al
+`events.json`. `pideRebuild` es `huboCambioDeContenido` más un cambio en esos cuatro
+derivados: el historial pregunta si hay algo que recuperar, y el sitio si cambió lo que
+se ve. El write-back del `calendarEventId` no toca ninguno de los dos lados (B-83), y
+`ciudades` sigue sin pedir rebuild.
+
+## D-1253 · El diff de Calendar se planifica sobre la vista derivada
+
+**B-2050, 2026-09-25.** `planificar(conDerivados(antes), conDerivados(despues))`: el
+evento se arma con la sede, la modalidad y el online de las filas, no con lo guardado.
+Así la sede inventada no llega al `location` ni en la primera pasada, y la corrección no
+manda un `update` a las N sesiones, porque la vista es la misma antes y después.
+`conDerivados` no se escribe nunca al documento. `online` no puede abrir un link: el
+corregido es el objeto de una fila, cuyo link ya publica o calla la proyección.
+
+## D-1254 · `sede-sin-ciudad` avisa solo de publicadoras con ciudad, y solo por filas nuevas
+
+**B-2052, 2026-09-25.** Resuelve lo que D-1234 dejó abierto. Se avisa, no se corrige: la
+ciudad que falta no se deriva de nada. Solo si `updatedBy` es una cuenta con
+`publicador: true` y una `ciudad` no vacía, la única cuyo panel exige la ciudad (D-1154).
+El claim se lee del registro con el Admin SDK, sin caché: se consulta a lo sumo una vez
+por escritura y en un caso raro. Solo cuentan las filas nuevas respecto del documento
+anterior, identificadas por `id` o, sin id, por el contenido de la sede (trampa 2). El
+log no lleva uid ni mail. Si `getUser` falla se avisa igual con `e.code`: un aviso que no
+puede sonar es peor que uno de más.

@@ -301,6 +301,15 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
+### B-2090 · `sembrar-geografia.mjs` copia `sedePrincipal` a mano y su docblock promete un `searchText` que no escribe · P3 — del frente `derivados` (2026-09-25)
+
+`scripts/sembrar-geografia.mjs` deriva la sede con un `modalidades.find((m) => m.sede)`
+inline en vez de importar `sedePrincipal` de `functions/derivados.js` (clase de B-88), y
+su docblock dice que «`searchText` y `ciudades[]` se reescriben» cuando solo escribe
+`{ modalidades, sede, ciudades }`. Hoy no desfasa nada; si algún día cambiara `nombre` o
+`barrio`, `syncCalendar` lo corregiría con un `derivados-no-coinciden` por actividad.
+Arreglo: importar `sedePrincipal` y corregir el docblock.
+
 ### B-2120 · `costo-por-tecla` › «el costo no escala» sigue fallando a veces después de B-2060 · P3 — del frente `barridos` (2026-09-25)
 
 Falló en la suite completa y otra vez con solo dos archivos en paralelo
@@ -312,24 +321,6 @@ proporción `< 10×` con pares intercalados todavía no aguanta la carga.
 5079 ms en la suite completa y 2,6 s solo. Es la familia de B-2041, un barrido del repo
 entero que con carga se acerca al límite, pero acá el costo es el parser de TypeScript,
 no `node_modules`.
-
-### B-2050 · Los otros derivados de `modalidades` no se verifican en el servidor · P3 — de B-1920 (2026-09-25)
-
-`dentroDeSuCiudad()` mira `ciudades` y **la primera `sede`**, y B-1920 verifica solo
-`ciudades`. Un documento armado a mano puede traer una `sede` que no es la de la primera
-fila con sede; lo mismo vale para `modalidad`, `online` y `searchText`. `sede` además
-sale al sitio, al `location` de Calendar y a la búsqueda. No es una fuga: es contenido
-propio. Arreglo: un `derivadosDesalineados` que compare los cuatro con `sedePrincipal`,
-`onlinePrincipal` y `modalidadResultante` (hoy en `src/lib/actividades.ts`, a mudar a
-`functions/` como `ciudadesDe`). Corregir `sede` cambia salidas públicas y pide rebuild.
-
-### B-2052 · Una fila con sede y la ciudad vacía no se detecta · P3 — del `auditor-privacidad` sobre B-1920 (2026-09-25)
-
-Primera fila en la ciudad de la cuenta, segunda con una dirección de otra ciudad y
-`ciudad: ''`: `ciudadesDe` da la misma lista, la regla pasa y B-1920 no avisa. Se
-decidió no avisar siempre (D-1234) porque un admin puede cargar una sede sin ciudad
-legítimamente. Si hace falta: avisar solo cuando `updatedBy` sea un publicador, lo que
-exige leer su claim desde la Function.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

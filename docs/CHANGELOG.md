@@ -2,6 +2,20 @@
 
 ## Sin publicar
 
+- **El servidor verifica todos los datos que salen de las sedes, no solo las
+  ciudades** (B-2050, D-1250 a D-1253). `syncCalendar` recalcula `sede`, `modalidad`,
+  `online` y `searchText` junto con `ciudades`; si no coinciden con lo guardado (un
+  documento escrito a mano), los corrige en una sola transacción que relee y avisa con
+  `alerta: 'derivados-no-coinciden'`, con solo nombres de campo en el log. La derivación
+  vive en `functions/derivados.js` y `functions/busqueda.js`, con fachadas en
+  `src/lib/modalidades.ts` y `src/lib/normalize.ts`. La corrección no deja versión en el
+  historial pero sí pide rebuild (`pideRebuild`), y el diff de Calendar se planifica
+  sobre la vista derivada, así que una sede inventada no llega al evento. El `online`
+  corregido solo puede callar un link de reunión, nunca abrirlo.
+- **Una sede sin ciudad avisa si la cargó una publicadora con ciudad** (B-2052,
+  D-1254). `syncCalendar` lee el claim de `updatedBy` con el Admin SDK y, si es
+  publicadora con ciudad, avisa con `alerta: 'sede-sin-ciudad'` (sin uid ni mail). No
+  corrige nada. Necesita `roles/firebaseauth.viewer` para `calendar-sync@`.
 - **Un chequeo de clase para los barridos que bajan a `node_modules`** (B-2081).
   `tests/clases/b-2081-barrido-sin-node-modules.test.ts` lee el fuente de `tests/` y
   `scripts/` y falla si un `grep -r` o un recorrido recursivo con `readdirSync` alcanza

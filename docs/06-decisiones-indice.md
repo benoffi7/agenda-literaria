@@ -327,6 +327,11 @@ cambio.
 - [D-1232](06-decisiones.md#d-1232--ciudades-es-campo-de-máquina-para-el-historial) · `ciudades` es campo de máquina para el historial
 - [D-1233](06-decisiones.md#d-1233--ciudadesde-vive-en-functions-y-srclibciudadesmjs-es-su-fachada) · `ciudadesDe` vive en `functions/`, y `src/lib/ciudades.mjs` es su fachada
 - [D-1234](06-decisiones.md#d-1234--una-fila-con-sede-y-sin-ciudad-no-dispara-la-alerta) · Una fila con sede y sin ciudad no dispara la alerta
+- [D-1250](06-decisiones.md#d-1250--los-cinco-derivados-se-corrigen-en-una-sola-escritura-y-cada-pregunta-tiene-su-alerta) · Los cinco derivados se corrigen en una sola escritura, y cada pregunta tiene su alerta
+- [D-1251](06-decisiones.md#d-1251--los-cuatro-derivados-son-de-máquina-para-el-historial) · Los cuatro derivados son de máquina para el historial
+- [D-1252](06-decisiones.md#d-1252--el-rebuild-pregunta-piderebuild-no-solo-hubocambiodecontenido) · El rebuild pregunta `pideRebuild`, no solo `huboCambioDeContenido`
+- [D-1253](06-decisiones.md#d-1253--el-diff-de-calendar-se-planifica-sobre-la-vista-derivada) · El diff de Calendar se planifica sobre la vista derivada
+- [D-1254](06-decisiones.md#d-1254--sede-sin-ciudad-avisa-solo-de-publicadoras-con-ciudad-y-solo-por-filas-nuevas) · `sede-sin-ciudad` avisa solo de publicadoras con ciudad, y solo por filas nuevas
 
 ## Otras secciones del registro
 

@@ -22046,6 +22046,28 @@ La cuarta apareció al cerrar esta misma tanda: el barrido de `normalize('NFD')`
 recursivo y tardó 6,4 s en paralelo; ya saltea `node_modules`. El chequeo tiene que
 mirar también los `readdirSync` recursivos, no solo `grep -r`.
 
+### B-2050 · Los otros derivados de `modalidades` no se verifican en el servidor · P3 — de B-1920 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `a3b477e`, `f5c80e9`, `2265d76`, `4b5ac86`. `derivadosDesalineados` compara los cinco derivados con los de las filas, y `corregirDerivados` (reemplaza a `corregirCiudades`) los reescribe en una transacción que relee, con una sola escritura. Avisa con `derivados-no-coinciden` (solo nombres de campo), además de `ciudades-no-coinciden` cuando corresponde. No despublica. La guarda anti-loop tiene tres mitades: la segunda pasada ya coincide, `CAMPOS_DE_MAQUINA` evita la versión de más, y `conDerivados` evita el update en falso a Calendar. El rebuild va por `pideRebuild`.
+
+`dentroDeSuCiudad()` mira `ciudades` y **la primera `sede`**, y B-1920 verifica solo
+`ciudades`. Un documento armado a mano puede traer una `sede` que no es la de la primera
+fila con sede; lo mismo vale para `modalidad`, `online` y `searchText`. `sede` además
+sale al sitio, al `location` de Calendar y a la búsqueda. No es una fuga: es contenido
+propio. Arreglo: un `derivadosDesalineados` que compare los cuatro con `sedePrincipal`,
+`onlinePrincipal` y `modalidadResultante` (hoy en `src/lib/actividades.ts`, a mudar a
+`functions/` como `ciudadesDe`). Corregir `sede` cambia salidas públicas y pide rebuild.
+
+### B-2052 · Una fila con sede y la ciudad vacía no se detecta · P3 — del `auditor-privacidad` sobre B-1920 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `f5c80e9`, `b00ab57`, `86d214d`. `sedesSinCiudadNuevas` cuenta las filas nuevas con sede y sin ciudad, por id, y por el contenido de la sede cuando no hay id (trampa 2). Solo entonces `quienEscribioTieneCiudad` lee el claim con `getAuth().getUser`, sin caché. Si es publicadora con ciudad, suena `sede-sin-ciudad` sin uid ni mail; si el claim no se puede leer, avisa igual con `e.code`. Runbook en 08; el rol de IAM, en 02.
+
+Primera fila en la ciudad de la cuenta, segunda con una dirección de otra ciudad y
+`ciudad: ''`: `ciudadesDe` da la misma lista, la regla pasa y B-1920 no avisa. Se
+decidió no avisar siempre (D-1234) porque un admin puede cargar una sede sin ciudad
+legítimamente. Si hace falta: avisar solo cuando `updatedBy` sea un publicador, lo que
+exige leer su claim desde la Function.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
