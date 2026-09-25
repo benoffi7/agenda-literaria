@@ -3,9 +3,11 @@
  * **documento e imagen**: la rechazada a los 30 días del rechazo, y la que nadie
  * tocó a los 30 días de su última señal de vida — el mismo número, otro reloj.
  *
- * La decisión de qué caducó es pura y vive en `retencion.js`, incluido el porqué
- * esto no es un trigger sobre el rechazo y el porqué no es la trampa 3 ni la 12.
- * Acá solo se junta lo que hace falta para decidir y se ejecuta lo que la
+ * La decisión de qué caducó es pura y vive en `retencion-propuestas.js`,
+ * `retencion-flyers.js` y `retencion-fichas.js`; la lectura y el borrado, con el
+ * `db` inyectado, en sus `-firestore.js`. El porqué del ciclo entero —incluido
+ * por qué esto no es un trigger sobre el rechazo y por qué no es la trampa 3 ni
+ * la 12— sigue en el docblock de `retencion.js`. Acá solo se junta lo que hace falta para decidir y se ejecuta lo que la
  * decisión dice — mismo corte que `versiones-limpieza-trigger.js` y que
  * `imagenes-limpieza-trigger.js`.
  *
@@ -21,19 +23,17 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
 import { COLECCIONES_DE_DIRECTORIO } from './directorios.js';
-import {
-  MAX_FICHAS_POR_CORRIDA,
-  MAX_FLYERES_POR_CORRIDA,
-  MAX_PROPUESTAS_POR_CORRIDA,
-  borrarFicha,
-  borrarFlyer,
-  borrarPropuesta,
-  decidirRetencion,
-  decidirRetencionDeFichas,
-  fichasVencibles,
-  propuestasVencibles,
-  relevarFlyeresSinPlazo,
-} from './retencion.js';
+/*
+ * Directo de cada módulo y no de la fachada `retencion.js` (B-1960): el
+ * detector de `tests/clases-de-bug.test.ts` sigue los `import { … } from` para
+ * armar la traza de cada trigger, y un `export * from` no lo sigue.
+ */
+import { MAX_PROPUESTAS_POR_CORRIDA, decidirRetencion } from './retencion-propuestas.js';
+import { borrarPropuesta, propuestasVencibles } from './retencion-propuestas-firestore.js';
+import { MAX_FLYERES_POR_CORRIDA } from './retencion-flyers.js';
+import { borrarFlyer, relevarFlyeresSinPlazo } from './retencion-flyers-firestore.js';
+import { MAX_FICHAS_POR_CORRIDA, decidirRetencionDeFichas } from './retencion-fichas.js';
+import { borrarFicha, fichasVencibles } from './retencion-fichas-firestore.js';
 import { MAX_ORIGINALES_POR_CORRIDA, borrarOriginalesConCopia } from './propuestas.js';
 
 /**

@@ -211,7 +211,7 @@ describe.skipIf(!vivo)('la retención de propuestas borra las dos mitades — B-
   it('y tampoco viaja desde Firestore: la query lo recorta', () => {
     // La otra mitad, afirmada sobre el fuente porque desde el resultado no se
     // distingue (ver el docblock de arriba).
-    expect(fuente('functions/retencion.js')).toMatch(
+    expect(fuente('functions/retencion-propuestas-firestore.js')).toMatch(
       /\.select\('estado', 'creadoEn', 'revision\.en', 'imagen\.storagePath'\)/,
     );
   });
