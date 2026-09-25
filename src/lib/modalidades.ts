@@ -16,9 +16,12 @@
  * `modalidad`, `sede` y `online` siguen en el documento como campos derivados de
  * esta lista, porque hay salidas que solo pueden decir **una** cosa: el filtro
  * del panel, el `location` del evento —que dibuja el mapa—, el `searchText` del
- * §6 y la analítica. Se calculan acá, en un solo lugar, y las escribe
- * `formADocumento` en cada guardado, igual que `searchText`.
+ * §6 y la analítica. Se calculan en un solo lugar —`functions/derivados.js` desde
+ * B-2050, reexportado acá— y las escribe `formADocumento` en cada guardado, igual
+ * que `searchText`. `syncCalendar` las recalcula y corrige el documento que no
+ * coincide.
  */
+import * as derivados from '../../functions/derivados.js';
 import { deDatetimeLocal } from '@/lib/sesiones';
 import type { Modalidad, ModalidadFila, ModalidadFilaForm, Online, Sede } from '@/types/actividad';
 
@@ -70,37 +73,30 @@ export const nuevaModalidadId = (): string => {
   return `mod_${uuid}`;
 };
 
+/*
+ * **B-2050 — `filaPideSede`, `filaPideOnline`, `modalidadResultante`,
+ * `sedePrincipal` y `onlinePrincipal` viven en `functions/derivados.js`**, y acá
+ * quedan reexportadas con sus tipos. `syncCalendar` recalcula los derivados del
+ * documento para corregir uno escrito a mano, y tiene que hacerlo con **las
+ * mismas** funciones que usa `formADocumento`: con una copia, el servidor
+ * «corregiría» cada guardado bien hecho y cada guardado mandaría un mail.
+ * `functions/` no puede importar `src/` (D-20). Es el reparto de `ciudades.mjs`
+ * (D-1233); un test las ata por identidad (`tests/derivados-del-servidor.test.ts`).
+ * La documentación de cada una está allá.
+ */
+
 /** §11 — la sede aparece en presencial e híbrido. Por fila, no por actividad. */
-export const filaPideSede = (m: Modalidad): boolean => m === 'presencial' || m === 'hibrido';
+export const filaPideSede: (m: Modalidad) => boolean = derivados.filaPideSede;
 
 /** §11 — el bloque online aparece en virtual e híbrido. */
-export const filaPideOnline = (m: Modalidad): boolean => m === 'virtual' || m === 'hibrido';
+export const filaPideOnline: (m: Modalidad) => boolean = derivados.filaPideOnline;
 
 /**
- * La modalidad de la actividad entera, **derivada** de sus filas (B-224,
- * decisión 3): la unión de lo que las filas dicen.
- *
- * - todas presenciales → `presencial`
- * - todas virtuales → `virtual`
- * - una presencial y una virtual, o cualquier fila `hibrido` → `hibrido`
- *
- * Es la unión y no «la primera fila manda» a propósito: lo segundo depende del
- * orden del array, que es la trampa 2 en otra forma —reordenar las filas
- * cambiaría lo que publica el `events.json`—. Y es lo que hace que las salidas
- * que solo admiten un valor sigan diciendo algo cierto.
- *
- * **Una lista vacía devuelve `presencial`**, que es el default de `formVacio()`.
- * Solo pasa en un borrador: el schema exige al menos una fila para publicar.
+ * La modalidad de la actividad entera, **derivada** de sus filas (B-224): la
+ * unión de lo que las filas dicen. Una lista vacía devuelve `presencial`.
  */
-export const modalidadResultante = (
-  filas: readonly { modalidad: Modalidad }[] = [],
-): Modalidad => {
-  if (filas.length === 0) return 'presencial';
-  const hayPresencial = filas.some((f) => filaPideSede(f.modalidad));
-  const hayVirtual = filas.some((f) => filaPideOnline(f.modalidad));
-  if (hayPresencial && hayVirtual) return 'hibrido';
-  return hayVirtual ? 'virtual' : 'presencial';
-};
+export const modalidadResultante: (filas?: readonly { modalidad: Modalidad }[]) => Modalidad =
+  derivados.modalidadResultante;
 
 /**
  * Todas las modalidades que esta actividad ofrece, **sin repetir y en el orden de
@@ -116,23 +112,14 @@ export const modalidadesQueOfrece = (
   filas: readonly { modalidad: Modalidad }[] = [],
 ): Modalidad[] => [...new Set([...filas.map((f) => f.modalidad), modalidadResultante(filas)])];
 
-/**
- * La sede **principal**: la de la primera fila que tenga una.
- *
- * Existe porque el campo `location` del evento —el que dibuja el mapa—, el
- * `searchText` y el filtro por barrio solo admiten una dirección. «La primera que
- * tenga» y no un flag explícito estilo `portada` (D-125) porque el orden de las
- * filas lo elige quien carga y se ve en pantalla. Si alguna vez importa
- * distinguirla, la respuesta es el flag.
- */
-export const sedePrincipal = <T extends { sede: Sede | null }>(
-  filas: readonly T[] = [],
-): Sede | null => filas.find((f) => f.sede)?.sede ?? null;
+/** La sede **principal**: la de la primera fila que tenga una (B-224). */
+export const sedePrincipal: <T extends { sede: Sede | null }>(filas?: readonly T[]) => Sede | null =
+  derivados.sedePrincipal;
 
 /** El bloque online principal, con el mismo criterio que `sedePrincipal`. */
-export const onlinePrincipal = <T extends { online: Online | null }>(
-  filas: readonly T[] = [],
-): Online | null => filas.find((f) => f.online)?.online ?? null;
+export const onlinePrincipal: <T extends { online: Online | null }>(
+  filas?: readonly T[],
+) => Online | null = derivados.onlinePrincipal;
 
 /**
  * Duplica una fila conservando todo, con **id nuevo**.

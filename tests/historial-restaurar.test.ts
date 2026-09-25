@@ -434,7 +434,9 @@ describe('el searchText y la restauración no derivan por separado (B-88, B-72)'
   it('y toda fuente que la función lee está en la lista', () => {
     // La dirección que falló: `buildSearchText` creció y la lista no. Se lee la
     // función —ocho líneas— y se extraen los `a.<campo>` que consume.
-    const fuente = readFileSync('src/lib/normalize.ts', 'utf8');
+    // Desde B-2050 la implementación vive en `functions/busqueda.js` y
+    // `src/lib/normalize.ts` es su fachada.
+    const fuente = readFileSync('functions/busqueda.js', 'utf8');
     const cuerpo = fuente.slice(fuente.indexOf('export const buildSearchText'));
     const leidos = new Set([...cuerpo.matchAll(/\ba\.([a-zA-Z]+)/g)].map((m) => m[1]!));
     for (const campo of leidos) {
