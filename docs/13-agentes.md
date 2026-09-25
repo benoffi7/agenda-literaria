@@ -183,8 +183,11 @@ documento entero sin proyectar a propósito).
 > `tests/agentes-y-skills.test.ts`.)
 
 **Cuándo se invoca.** Antes de cerrar cualquier cambio que toque una salida, el
-modelo, el schema, las reglas o el bundle. Su `description` nombra los archivos
-para que Claude lo elija solo.
+modelo, el schema, las reglas o el bundle. Los archivos que lo despiertan están en
+el bloque «Los archivos que te despiertan» del cuerpo de su ficha y no en el
+`description` (decisión B del PRD 6): ahí iban al prompt de cada sesión, y el
+disparo ya lo decide `/audit` (D-560). **Su tabla de salidas no es suya:** la lee
+de `07-seguridad.md` (M-8), que es la única copia.
 
 **Qué agrega sobre los tests.** Los tests verifican los campos que conocen. Este
 agente verifica tres cosas que ningún test puede: que un **campo nuevo** tenga
@@ -481,8 +484,9 @@ stdin y contesta. Así que «a pedido» decide *si* se audita, y el script decid
 `opus`.
 
 **La lista de archivos que disparan a cada auditor no está escrita en el
-script.** Se **deriva del `description` de cada agente**, que es el lugar donde ya
-estaba y el que decide si Claude lo invoca por nombre de archivo. Copiarla habría
+script.** Se **deriva de la ficha de cada agente** —del `description`, y del bloque
+entre `<!-- disparadores:inicio -->` y `<!-- disparadores:fin -->` cuando la ficha
+lo tiene, que hoy es solo la del `auditor-privacidad`—. Copiarla habría
 creado un tercer lugar que envejece sin que nada falle — la clase de B-88, y lo
 mismo que B-216 vino a cerrar para la cuenta de salidas. Consecuencia buscada:
 **una salida nueva se suma a la ficha y entra sola al selector de auditores.**
