@@ -33,9 +33,10 @@
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { reubicacionDe } from '../src/lib/reubicacion-de-barrio.mjs';
-import { ciudadesDe } from '../src/lib/ciudades.mjs';
 import { esCaba } from '../src/lib/geografia.mjs';
 import { slugify } from '../functions/slugify.js';
+// B-2090 — los derivados de `modalidades`, con las funciones del panel.
+import { escrituraDeModalidades } from './escritura-de-modalidades.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
 const confirmaProduccion = process.argv.includes('--produccion');
@@ -91,13 +92,15 @@ for (const d of actividades.docs) {
   });
   if (!cambio) continue;
   /*
-   * `sede` y `ciudades` son derivados del array y se recalculan en la misma
-   * escritura, igual que en `sembrar-geografia.mjs`: si no, el documento queda
-   * con la lista migrada y la derivada con el barrio viejo, o sea que la
-   * actividad se filtra por una cosa y se muestra con otra.
+   * Los derivados del array —`modalidad`, `sede`, `online`, `searchText`,
+   * `ciudades`— se recalculan en la misma escritura, igual que en
+   * `sembrar-geografia.mjs`: si no, el documento queda con la lista migrada y la
+   * derivada con el barrio viejo, o sea que la actividad se filtra por una cosa y
+   * se muestra con otra. Y el `searchText` seguiría nombrando la provincia que
+   * era barrio: `syncCalendar` lo corregiría y avisaría por cada actividad
+   * (`derivados-no-coinciden`, B-2050, B-2090).
    */
-  const sede = nuevas.find((m) => m.sede)?.sede ?? null;
-  aEscribir.push([d.id, d.get('titulo'), { modalidades: nuevas, sede, ciudades: ciudadesDe(nuevas) }]);
+  aEscribir.push([d.id, d.get('titulo'), escrituraDeModalidades(d.data(), nuevas)]);
 }
 
 console.log(`Actividades: ${actividades.size}`);
