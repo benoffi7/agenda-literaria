@@ -301,14 +301,6 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-2150 · El barrido de derivaciones propias no mira `src/` ni `functions/`, y reconoce una sola forma · P3 — del frente `fixtures` (2026-09-25)
-
-Cubre `scripts/` y `tests/`, pero una copia en un componente del panel o en otra
-Function pasaría; hoy no hay ninguna. Además la expresión reconoce solo
-`.find((m) => m.sede)` y `m?.online`, no `.find(({ sede }) => sede)`, `filas[0]?.sede`
-ni `.filter(...)[0]`. Arreglo: ampliar el barrido a `src/` y `functions/`, excluyendo
-`functions/derivados.js`, y sumar esas variantes.
-
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 
 **Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del

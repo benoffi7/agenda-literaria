@@ -22106,6 +22106,16 @@ clase de B-88 dentro de los tests: si cambia `sedePrincipal`, `onlinePrincipal` 
 vieja. Arreglo: importar esas funciones de `functions/derivados.js` y ampliar el barrido
 de `tests/sembrar-geografia.test.ts` a `tests/`.
 
+### B-2150 · El barrido de derivaciones propias no mira `src/` ni `functions/`, y reconoce una sola forma · P3 — del frente `fixtures` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `4e7b448`, `b4e824f`. El barrido recorre `scripts/`, `tests/`, `src/` (con `.astro`) y `functions/` sin entrar a `node_modules`, deja afuera la implementación y las fachadas con un motivo que se verifica, y reconoce tres formas con nombre (`find`, incluida la desestructurada; `filter-cero`; `primera-fila`), cada una con su mutación sobre un árbol en `os.tmpdir()`. En `src/` y `functions/` no había copias con esas formas. La única que apareció fue el `eventAttendanceMode` de `src/lib/detallePublico.ts`, que se escribía `modalidadResultante` con un `every(...)`: ahora la importa, y un test compara las nueve combinaciones.
+
+Cubre `scripts/` y `tests/`, pero una copia en un componente del panel o en otra
+Function pasaría; hoy no hay ninguna. Además la expresión reconoce solo
+`.find((m) => m.sede)` y `m?.online`, no `.find(({ sede }) => sede)`, `filas[0]?.sede`
+ni `.filter(...)[0]`. Arreglo: ampliar el barrido a `src/` y `functions/`, excluyendo
+`functions/derivados.js`, y sumar esas variantes.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

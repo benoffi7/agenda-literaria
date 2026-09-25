@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El barrido de derivaciones propias mira también el panel, el sitio y las Functions**
+  (B-2150). Recorre `src/` (con los `.astro`) y `functions/` además de `scripts/` y
+  `tests/`, y reconoce más formas de escribirse la «sede principal» a mano. De paso, el
+  modo de asistencia del JSON-LD de la página de detalle deja de calcularse con su propia
+  regla y usa `modalidadResultante`: daba lo mismo, pero se habría quedado atrás el día
+  que la regla cambie.
 - **Los fixtures de test derivan la sede, el online y la modalidad con las funciones del
   servidor** (B-2140). Tres tests los armaban con su propio `.find` y su propia unión, así
   que si cambiaba la regla seguían armando documentos «alineados» con la vieja. El
