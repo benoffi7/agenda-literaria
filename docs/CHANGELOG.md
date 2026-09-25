@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- **Cuatro detalles de las revisiones del día** (B-1941, B-1942, B-1931, B-1943,
+  D-1180). El test que ata la prosa de las salidas públicas a su tabla ve la cuenta
+  vieja escrita en negrita y barre también el skill `campo-nuevo`. La fila 30 de la
+  ficha del `auditor-privacidad` ganó su columna de tests, y un caso nuevo exige que
+  cada fila tenga las columnas de su encabezado. La paleta de Tailwind de los tests de
+  contraste se resuelve como paquete, así que un worktree sin `node_modules` propio ya
+  no da 34 rojos. Y si dos admins publican a la vez dos efemérides con el mismo link,
+  la pantalla de Efemérides avisa cuál quedó sin página.
 - **El plugin MDD quedó apagado para este repo** (B-857). Va en
   `.claude/settings.local.json`, que no se versiona, y toma efecto desde la próxima
   sesión. Era el que recreaba `.mdd/` en la raíz aunque este proyecto no usa ese

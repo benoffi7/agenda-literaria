@@ -407,36 +407,13 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-1941 · El test de la prosa de salidas no ve «**treinta**» con negritas ni barre el skill `campo-nuevo` · P3 — del frente de B-959 (2026-09-25)
+### B-1950 · La tabla de salidas de `docs/07-seguridad.md` declara tres columnas y la mayoría de las filas trae cuatro · P4 — del frente de B-1942 (2026-09-25)
 
-El caso de `tests/agentes-y-skills.test.ts` busca exactamente `N salidas`. Tres
-frases con la cuenta vieja no las veía: «Las treinta de arriba», «son **treinta**
-hoy» y «Resolvé las **treinta** salidas». Se corrigieron a mano en B-959, pero la red
-sigue floja. Arreglo: que el regex acepte `(?:\*\*)?` alrededor del número y que
-barra también `.claude/skills/campo-nuevo/SKILL.md`.
-
-### B-1942 · La fila 30 de la ficha del `auditor-privacidad` no tiene la columna de tests · P3 — del `auditor-privacidad` (2026-09-25)
-
-Las otras filas de la tabla tienen cuatro columnas y la 30 (`/guia`), tres. Es
-anterior a B-959. Hay que copiarle la columna de tests de `docs/07-seguridad.md`.
-
-### B-1943 · La guarda del slug repetido no es transaccional (efemérides y Guía) · P3 — del `auditor-trampas` sobre B-959 (2026-09-25)
-
-Sospecha, no bug confirmado. `slugDeEfemerideDisponible` y `slugPublicable` leen sin
-transacción: dos admins que publican a la vez con el mismo slug pasarían los dos. Es
-el mismo patrón aceptado de los directorios. En el build no rompe nada, porque
-`sinSlugsRepetidos` deja una sola página por slug, pero una de las dos quedaría sin
-página y sin aviso.
-
-### B-1931 · Dos tests leen `node_modules/tailwindcss/theme.css` por path, y en un worktree sin `node_modules` propio dan 34 rojos · P4 — del frente de B-871 (2026-09-25)
-
-`tests/fixtures/contraste-del-panel.ts` (`paletaTailwind`) arma el path con
-`raiz('node_modules/tailwindcss/theme.css')`, relativo al checkout. En un worktree
-cuyo `node_modules` está vacío (los módulos se resuelven desde el repo padre),
-`contraste-del-panel.test.ts` y `contraste-del-arbol.render.test.tsx` fallan con
-ENOENT —13 + 21 casos— aunque el paquete se resuelva bien para todo lo demás. Un
-agente en worktree ve la suite en rojo por el entorno. Arreglo probable:
-`createRequire(import.meta.url).resolve('tailwindcss/theme.css')`.
+El encabezado es `| # | Salida | Quién decide qué sale |`. Las filas 1 a 5 y 7 a 10
+tienen tres celdas y las otras veintitrés tienen cuatro: la última es la de tests, sin
+título, y Markdown la pinta sin encabezado. Por eso el caso nuevo de
+`agentes-y-skills.test.ts` cubre solo la ficha y el skill. Arreglo: agregar «Test que
+la fija» al encabezado, completar las filas 1 a 10 y sumar `SEGURIDAD` al caso.
 
 ### B-1920 · La regla de dónde carga el publicador confía en el derivado `ciudades` · P3 — del `auditor-privacidad` sobre B-921 (2026-09-25)
 

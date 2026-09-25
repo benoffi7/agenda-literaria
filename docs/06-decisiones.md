@@ -13730,3 +13730,19 @@ despublicar, editar una publicada y borrarla sí disparan el build. La comparaci
 por los campos de la proyección más `estado`, y un test la ata a
 `CAMPOS_DE_LA_PROYECCION_EFEMERIDE`. El write-back de `publicadaAlgunaVez` no cuenta
 (trampa 3).
+
+## D-1180 · El slug repetido de una efeméride se avisa en el panel, no se reserva en una transacción
+
+**B-1943, 2026-09-25.** `slugDeEfemerideDisponible` consulta y después escribe, así
+que dos admins que publican en el mismo momento con el mismo slug pasan los dos. El
+build no se rompe, porque `sinSlugsRepetidos` deja una página por slug, pero la otra
+quedaba publicada, sin página y sin que nadie lo supiera. Hacer la guarda
+transaccional exige una colección de reservas por slug —el SDK cliente no admite
+queries dentro de una transacción—, con sus reglas y su liberación al borrar: es
+desproporcionado para una colección que carga un solo dueño. **Se avisa en el panel**:
+la pantalla de Efemérides ya escucha la colección entera, y `partirPorSlug` es la
+única implementación del reparto, que usan el build (`sinSlugsRepetidos`) y el panel
+(`publicadasSinPagina`). Si cada lado ordenara por su cuenta, el aviso podría nombrar
+como perdida a la que el sitio publica. La carrera sigue siendo posible pero ya no es
+silenciosa; el arreglo es despublicar una. Es el criterio de D-660 para la Guía, donde
+además el build falla con `SlugDeFichaRepetido`.

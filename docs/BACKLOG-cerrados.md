@@ -21724,6 +21724,45 @@ centinelas que pudieran aparecer ahí, y el `where` y el `.select()` de
 (2026-09-25)** en `02a6849`, con el paso 8n de `scripts/build-contra-emulador.mjs`:
 una publicada con uids centinela y un borrador con título centinela.
 
+### B-1941 · El test de la prosa de salidas no ve «**treinta**» con negritas ni barre el skill `campo-nuevo` · P3 — del frente de B-959 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `e9914f6`. El caso de la prosa de `tests/agentes-y-skills.test.ts` pasa por una sola función, `diceNSalidas`, que acepta la cuenta en negrita, y el barrido suma `.claude/skills/campo-nuevo/SKILL.md`. Mutación probada: «Resolvé las **treinta** salidas» en el skill lo pone en rojo, y con el regex viejo seguía verde. Dos frases legítimas en negrita de `07-seguridad.md` y `13-agentes.md` se reescribieron.
+
+El caso de `tests/agentes-y-skills.test.ts` busca exactamente `N salidas`. Tres
+frases con la cuenta vieja no las veía: «Las treinta de arriba», «son **treinta**
+hoy» y «Resolvé las **treinta** salidas». Se corrigieron a mano en B-959, pero la red
+sigue floja. Arreglo: que el regex acepte `(?:\*\*)?` alrededor del número y que
+barra también `.claude/skills/campo-nuevo/SKILL.md`.
+
+### B-1942 · La fila 30 de la ficha del `auditor-privacidad` no tiene la columna de tests · P3 — del `auditor-privacidad` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `6ec6b83`. La fila 30 de `.claude/agents/auditor-privacidad.md` tiene la columna de tests copiada de `docs/07-seguridad.md`, y un caso nuevo exige que cada fila de la tabla de la ficha y del skill `campo-nuevo` tenga las columnas de su encabezado; estaba en rojo nombrando la fila 30 antes del arreglo. `07-seguridad.md` queda afuera por una deuda propia, B-1950.
+
+Las otras filas de la tabla tienen cuatro columnas y la 30 (`/guia`), tres. Es
+anterior a B-959. Hay que copiarle la columna de tests de `docs/07-seguridad.md`.
+
+### B-1943 · La guarda del slug repetido no es transaccional (efemérides y Guía) · P3 — del `auditor-trampas` sobre B-959 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `408bdea`, por la vía del aviso y no de la transacción (D-1180). `partirPorSlug` en `src/lib/efemeridePublica.ts` reparte una sola vez: el build se queda con las que quedan y `publicadasSinPagina` devuelve las que quedaron afuera, cada una con la que se quedó el link. La pantalla de Efemérides pinta el aviso sin recargar. Mutación probada.
+
+Sospecha, no bug confirmado. `slugDeEfemerideDisponible` y `slugPublicable` leen sin
+transacción: dos admins que publican a la vez con el mismo slug pasarían los dos. Es
+el mismo patrón aceptado de los directorios. En el build no rompe nada, porque
+`sinSlugsRepetidos` deja una sola página por slug, pero una de las dos quedaría sin
+página y sin aviso.
+
+### B-1931 · Dos tests leen `node_modules/tailwindcss/theme.css` por path, y en un worktree sin `node_modules` propio dan 34 rojos · P4 — del frente de B-871 (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `cfd8cd1`. `tests/fixtures/contraste-del-panel.ts` lee la paleta con `createRequire(import.meta.url).resolve('tailwindcss/theme.css')`, la misma resolución que el build. En un worktree sin `node_modules` propio, los dos tests de contraste dan 41 verdes, y antes daban 34 rojos.
+
+`tests/fixtures/contraste-del-panel.ts` (`paletaTailwind`) arma el path con
+`raiz('node_modules/tailwindcss/theme.css')`, relativo al checkout. En un worktree
+cuyo `node_modules` está vacío (los módulos se resuelven desde el repo padre),
+`contraste-del-panel.test.ts` y `contraste-del-arbol.render.test.tsx` fallan con
+ENOENT —13 + 21 casos— aunque el paquete se resuelva bien para todo lo demás. Un
+agente en worktree ve la suite en rojo por el entorno. Arreglo probable:
+`createRequire(import.meta.url).resolve('tailwindcss/theme.css')`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
