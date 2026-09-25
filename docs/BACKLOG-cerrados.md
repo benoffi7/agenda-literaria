@@ -22084,6 +22084,17 @@ proporción `< 10×` con pares intercalados todavía no aguanta la carga.
 entero que con carga se acerca al límite, pero acá el costo es el parser de TypeScript,
 no `node_modules`.
 
+### B-2090 · `sembrar-geografia.mjs` copia `sedePrincipal` a mano y su docblock promete un `searchText` que no escribe · P3 — del frente `derivados` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `1c2556c`, `f1c2809`. Eran dos scripts, no uno: `reubicar-barrios.mjs` tenía la misma copia y era el que de verdad dejaba el `searchText` nombrando la provincia que se sacaba del barrio, así que habría hecho sonar `derivados-no-coinciden` por cada actividad tocada (hasta 54). Los dos escriben ahora con `escrituraDeModalidades` (`scripts/escritura-de-modalidades.mjs`): las filas más `derivadosDe` y `ciudadesDe` de `functions/`. `modalidadesMigradas` pasó a `scripts/geografia-a-sembrar.mjs` para testearla sin Firestore. `tests/sembrar-geografia.test.ts` comprueba que lo escrito da `derivadosDesalineados === null` (el payload viejo, como control, da `['searchText']`) y barre `scripts/` contra un `.find` propio de la sede o el online, con la mutación probada. Verificado también contra el emulador.
+
+`scripts/sembrar-geografia.mjs` deriva la sede con un `modalidades.find((m) => m.sede)`
+inline en vez de importar `sedePrincipal` de `functions/derivados.js` (clase de B-88), y
+su docblock dice que «`searchText` y `ciudades[]` se reescriben» cuando solo escribe
+`{ modalidades, sede, ciudades }`. Hoy no desfasa nada; si algún día cambiara `nombre` o
+`barrio`, `syncCalendar` lo corregiría con un `derivados-no-coinciden` por actividad.
+Arreglo: importar `sedePrincipal` y corregir el docblock.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

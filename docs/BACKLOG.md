@@ -301,14 +301,14 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-2090 · `sembrar-geografia.mjs` copia `sedePrincipal` a mano y su docblock promete un `searchText` que no escribe · P3 — del frente `derivados` (2026-09-25)
+### B-2140 · Fixtures de test que derivan la sede, el online y la modalidad por su cuenta · P3 — del frente `geografia` (2026-09-25)
 
-`scripts/sembrar-geografia.mjs` deriva la sede con un `modalidades.find((m) => m.sede)`
-inline en vez de importar `sedePrincipal` de `functions/derivados.js` (clase de B-88), y
-su docblock dice que «`searchText` y `ciudades[]` se reescriben» cuando solo escribe
-`{ modalidades, sede, ciudades }`. Hoy no desfasa nada; si algún día cambiara `nombre` o
-`barrio`, `syncCalendar` lo corregiría con un `derivados-no-coinciden` por actividad.
-Arreglo: importar `sedePrincipal` y corregir el docblock.
+`tests/fixtures/indice.ts` arma `sede`, `online` y `modalidad` con su propio `.find` y su
+propia unión, y `tests/ciudades-del-servidor.test.ts` hace lo mismo con la sede. Es la
+clase de B-88 dentro de los tests: si cambia `sedePrincipal`, `onlinePrincipal` o
+`modalidadResultante`, los fixtures siguen armando documentos «alineados» con la regla
+vieja. Arreglo: importar esas funciones de `functions/derivados.js` y ampliar el barrido
+de `tests/sembrar-geografia.test.ts` a `tests/`.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

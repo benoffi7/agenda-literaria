@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Los backfills de la geografía escriben los mismos derivados que el panel**
+  (B-2090). `scripts/sembrar-geografia.mjs` y `scripts/reubicar-barrios.mjs` derivaban la
+  sede con un `.find` propio y no reescribían `searchText`, `modalidad` ni `online`; en
+  `reubicar-barrios` eso dejaba el `searchText` nombrando la provincia que se sacaba del
+  barrio, y `syncCalendar` habría mandado `derivados-no-coinciden` por cada actividad
+  tocada. Ahora los dos escriben con `escrituraDeModalidades`, que llama a las mismas
+  funciones del panel y del servidor, y un test barre `scripts/` contra la próxima copia.
 - **Dos tests que se ponían rojos con la suite en paralelo ya no dependen de la carga**
   (B-2120, B-2121, D-1270). `costo-por-tecla` › «el costo no escala» compara el mínimo de
   101 tandas cortas de cada lado en vez de la mediana de los cocientes: la tanda larga se
