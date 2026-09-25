@@ -1,36 +1,23 @@
-import { useMemo, useState } from 'react';
-import { textoDeFallo } from '@/lib/fallosDelPanel';
-import { z } from 'zod';
-import {
-  Campo,
-  claseBotonPrimario,
-  claseBotonSecundario,
-  claseInput,
-} from '@/components/campos/Campo';
+import { Campo, claseInput } from '@/components/campos/Campo';
 import { TagsInput, TaxonomiaSelect } from '@/components/admin/campos-del-panel';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
-import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
-import { medirFuncion } from '@/lib/analytics';
-import { slugBloqueado } from '@/lib/directorios';
+import {
+  MarcoDeFicha,
+  useEtiquetasNuevas,
+  useFichaDeDirectorio,
+} from '@/components/admin/useFichaDeDirectorio';
 import {
   lugarFormSchema,
   lugarVacio,
   puedePublicarLaDireccion,
   slugDeLugar,
 } from '@/lib/lugar-schema';
-import {
-  crearLugar,
-  guardarLugar,
-  lugarAFormulario,
-  slugDeLugarDisponible,
-} from '@/lib/lugares';
+import { crearLugar, guardarLugar, lugarAFormulario, slugDeLugarDisponible } from '@/lib/lugares';
 import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
-import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import {
   MAX_CAPACIDAD_LUGAR,
   MIN_CAPACIDAD_LUGAR,
   TOPE_CAPACIDAD_NOTAS_LUGAR,
-  TOPE_CIUDAD_LUGAR,
   TOPE_CONDICION_NOTAS_LUGAR,
   TOPE_DESCRIPCION_LUGAR,
   TOPE_DIRECCION_LUGAR,
@@ -43,7 +30,6 @@ import {
   UNIDADES_DE_PRECIO_LUGAR,
   VIAS_CONTACTO_LUGAR,
 } from '@/types/lugar';
-import type { CampoMultivalor, CampoTaxonomia } from '@/types/actividad';
 import type { LugarConId, LugarForm, UnidadDePrecioLugar, ViaContactoLugar } from '@/types/lugar';
 
 /** Cómo se lee cada canal en el desplegable. El modelo guarda el slug. */
@@ -115,33 +101,29 @@ interface Props {
   onCancelar: () => void;
 }
 
-/** `{ 'geo.lat': 'mensaje' }` — la forma en que `Campo` pide su error. */
-const erroresDe = (issues: z.ZodIssue[]): Record<string, string> =>
-  Object.fromEntries(issues.map((i) => [i.path.join('.'), i.message]));
 
 export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props) {
-  const [form, setForm] = useState<LugarForm>(() =>
-    inicial ? lugarAFormulario(inicial) : lugarVacio(),
-  );
-  const [errores, setErrores] = useState<Record<string, string>>({});
-  const [fallo, setFallo] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
-
-  /**
-   * Las etiquetas tipeadas en «Otro» que todavía no están en `/opciones/*`
-   * (D-02): se recuerdan acá y se persisten en el submit. Si se persistieran al
-   * tipearlas, abandonar el formulario dejaría basura en la taxonomía (§4.3).
-   */
-  const [labelsNuevos, setLabelsNuevos] = useState<Partial<Record<CampoTaxonomia, string>>>({});
-  const [multivalorNuevos, setMultivalorNuevos] = useState<
-    Partial<Record<CampoMultivalor, Record<string, string>>>
-  >({});
-
-  useFormularioSucio(form);
-
-  const set = <K extends keyof LugarForm>(campo: K, valor: LugarForm[K]) =>
-    setForm((f) => ({ ...f, [campo]: valor }));
+  const { recordar: recordarLabel, recordarMultivalor, registrarTodas } = useEtiquetasNuevas();
+  const { form, setForm, set, errorDe, fallo, aviso, guardando, slugResultante, congelado, guardar } =
+    useFichaDeDirectorio<LugarForm, LugarConId>({
+      inicial,
+      vacia: lugarVacio,
+      aFormulario: lugarAFormulario,
+      schema: lugarFormSchema,
+      slugDe: slugDeLugar,
+      slugDisponible: slugDeLugarDisponible,
+      slugTomado: 'Ya hay otro lugar con esta dirección web.',
+      crear: crearLugar,
+      /*
+       * Con la ficha que se abrió: `guardarLugar` la necesita para decidir si el
+       * precio cambió, y solo entonces se refecha (B-837).
+       */
+      guardarExistente: guardarLugar,
+      medicion: 'lugar-guardar',
+      respaldo: 'No se pudo guardar el lugar',
+      registrarEtiquetas: () => registrarTodas(uid),
+      onGuardado,
+    });
 
   /**
    * **Cambiar el tipo mueve la casilla de la dirección** — § 6 del PRD.
@@ -168,114 +150,22 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
   const setGeo = (campo: 'lat' | 'lng', valor: string) =>
     setForm((f) => ({ ...f, geo: { ...f.geo, [campo]: valor } }));
 
-  const recordarLabel = (campo: CampoTaxonomia, label?: string) =>
-    setLabelsNuevos((prev) => (label ? { ...prev, [campo]: label } : prev));
-
-  const recordarMultivalor = (campo: CampoMultivalor, nuevos: Record<string, string>) =>
-    setMultivalorNuevos((prev) => ({ ...prev, [campo]: { ...prev[campo], ...nuevos } }));
-
-  const errorDe = (path: string) => errores[path];
-
-  /** La dirección web que va a quedar, con el derivado a la vista antes de guardar. */
-  const slugResultante = useMemo(() => slugDeLugar(form), [form]);
-
-  const congelado = inicial ? slugBloqueado(inicial) : false;
   /** ¿Este tipo de lugar admite publicar la dirección? Decide el cartel de la casilla. */
   const admiteDireccionPublica = puedePublicarLaDireccion(form.tipo);
 
-  /**
-   * Las etiquetas nuevas, después de guardar y en su propio `try`.
-   *
-   * El orden es el de `guardarActividad` y el de `SuscripcionFormulario`:
-   * primero se escribe la ficha, que es lo que no se puede perder, y después se
-   * siembran las opciones. Lo que falla acá se **avisa por su nombre** —no con
-   * un «algo salió mal»—, porque el arreglo es volver a tipear **esa** etiqueta
-   * (B-177).
-   */
-  const registrarEtiquetas = async (): Promise<string[]> => {
-    const sinRegistrar: string[] = [];
-    for (const [campo, label] of Object.entries(labelsNuevos) as [CampoTaxonomia, string][]) {
-      if (!label?.trim()) continue;
-      try {
-        await upsertOpcion(campo, label, uid);
-      } catch {
-        sinRegistrar.push(label);
-      }
-    }
-    for (const [campo, mapa] of Object.entries(multivalorNuevos) as [
-      CampoMultivalor,
-      Record<string, string>,
-    ][]) {
-      const labels = Object.values(mapa ?? {}).filter((l) => l.trim());
-      if (labels.length === 0) continue;
-      try {
-        await upsertOpciones(campo, labels, uid);
-      } catch {
-        sinRegistrar.push(...labels);
-      }
-    }
-    return [...new Set(sinRegistrar)];
-  };
-
-  const guardar = async (publicar = false) => {
-    const parsed = lugarFormSchema.safeParse(form);
-    if (!parsed.success) {
-      setErrores(erroresDe(parsed.error.issues));
-      setFallo('Faltan datos o hay algo mal cargado. Mirá los campos marcados.');
-      return;
-    }
-    setErrores({});
-    setGuardando(true);
-    try {
-      /*
-       * La guarda **de aviso** del slug: no es una garantía —la de B-909 es
-       * `asegurarSlugPublicable`, al publicar desde la bandeja— pero convierte un choque en un mensaje
-       * con arreglo de una línea. Se saltea cuando el slug está congelado.
-       */
-      if (!congelado && !(await slugDeLugarDisponible(slugResultante, inicial?.id))) {
-        setErrores({ slug: 'Ya hay otro lugar con esta dirección web.' });
-        setFallo('La dirección web está tomada. Cambiala y volvé a guardar.');
-        return;
-      }
-      if (inicial) {
-        await guardarLugar(inicial.id, parsed.data as LugarForm, inicial);
-      } else {
-        await crearLugar(parsed.data as LugarForm, publicar);
-      }
-      medirFuncion('lugar-guardar');
-      const sinRegistrar = await registrarEtiquetas();
-      setFallo(null);
-      if (sinRegistrar.length > 0) {
-        setAviso(
-          `Se guardó, pero estas opciones nuevas no quedaron en la lista: ${sinRegistrar.join(', ')}. ` +
-            'Volvé a tipearlas la próxima vez que edites la ficha.',
-        );
-        return;
-      }
-      onGuardado();
-    } catch (e: unknown) {
-      setFallo(textoDeFallo(e, { respaldo: 'No se pudo guardar el lugar' }));
-    } finally {
-      setGuardando(false);
-    }
-  };
-
   return (
-    <section className="flex flex-col gap-6">
-      {fallo && (
-        <p
-          role="alert"
-          className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento"
-        >
-          {fallo}
-        </p>
-      )}
-      {aviso && (
-        <p role="status" className="rounded-md border border-borde bg-black/[0.03] px-3 py-2 text-sm">
-          {aviso}
-        </p>
-      )}
-
+    <MarcoDeFicha
+      esAlta={!inicial}
+      fallo={fallo}
+      aviso={aviso}
+      guardando={guardando}
+      guardar={guardar}
+      onCancelar={onCancelar}
+      pie={{
+        alCrear: 'Sin publicar quedo esperando en la lista de lugares, y no se ve en el sitio.',
+        alEditar: 'Editar no cambia si está publicado o no. Eso se mueve desde la lista de lugares.',
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Nombre" htmlFor="lug-nombre" requerido error={errorDe('nombre')}>
           <input
@@ -843,43 +733,6 @@ export function LugarFormulario({ uid, inicial, onGuardado, onCancelar }: Props)
           </Campo>
         </div>
       </fieldset>
-
-      {/*
-        B-983 — **dos botones al crear, uno solo al editar.** El porqué completo
-        está en `LibreriaFormulario`, que es donde el dueño lo reportó: cargar
-        desde el panel dejaba la ficha en `pendiente` y había que ir a la bandeja,
-        y ahí quien carga **es** el revisor. «Guardar sin publicar» se queda
-        porque los estados del directorio no tienen `borrador`.
-      */}
-      <div className="flex flex-wrap gap-2">
-        {!inicial && (
-          <button
-            type="button"
-            onClick={() => void guardar(true)}
-            disabled={guardando}
-            className={`${claseBotonPrimario} disabled:opacity-50`}
-          >
-            {guardando ? 'Guardando…' : 'Guardar y publicar'}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => void guardar()}
-          disabled={guardando}
-          className={`${inicial ? claseBotonPrimario : claseBotonSecundario} disabled:opacity-50`}
-        >
-          {guardando ? 'Guardando…' : inicial ? 'Guardar' : 'Guardar sin publicar'}
-        </button>
-        <button type="button" onClick={onCancelar} className={claseBotonSecundario}>
-          Cancelar
-        </button>
-      </div>
-
-      <p className="text-xs text-tinta/65">
-        {inicial
-          ? 'Editar no cambia si está publicado o no. Eso se mueve desde la lista de lugares.'
-          : 'Sin publicar quedo esperando en la lista de lugares, y no se ve en el sitio.'}
-      </p>
-    </section>
+    </MarcoDeFicha>
   );
 }
