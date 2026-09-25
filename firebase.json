@@ -84,6 +84,15 @@
         ]
       },
       {
+        "source": "/efemerides.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "**/*.html",
         "headers": [
           {

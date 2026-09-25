@@ -109,7 +109,13 @@ export type Seccion =
    * barra le daría a una página que casi siempre está vacía el mismo peso que la
    * agenda y la cartelera.
    */
-  | 'mis-favoritos';
+  | 'mis-favoritos'
+  /**
+   * B-959 — `/efemerides` declara su sección para tener encabezado y pie, y
+   * **no entra a `ENLACES`**, por lo mismo que `/apoyar` y `/mis-favoritos`:
+   * la barra tiene techo, y el camino de ida es el renglón de la home y el pie.
+   */
+  | 'efemerides';
 
 interface Props {
   activa?: Seccion;

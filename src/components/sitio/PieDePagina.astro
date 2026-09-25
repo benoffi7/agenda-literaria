@@ -60,6 +60,7 @@ import {
   RUTA_APOYAR,
   RUTA_AYUDA,
   RUTA_CONTACTO,
+  RUTA_EFEMERIDES,
   RUTA_GUIA,
   RUTA_MIS_FAVORITOS,
   RUTA_PASADAS,
@@ -177,6 +178,15 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             del primer lado.
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_GUIA}>Guía</a>
+        </li>
+        <li class="break-inside-avoid">
+          {/*
+            B-959 — las efemérides. Van en el pie y no en la barra por lo mismo que
+            «Lo que ya pasó»: la barra tiene techo, y este es el enlace permanente
+            que hace que la sección exista para un buscador — el renglón de la home
+            lo pinta el navegador, y Google no lo sigue.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_EFEMERIDES}>Efemérides</a>
         </li>
         <li class="break-inside-avoid">
           {/*

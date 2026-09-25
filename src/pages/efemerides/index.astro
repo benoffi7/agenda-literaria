@@ -1,0 +1,94 @@
+---
+/**
+ * `/efemerides/` — B-959, pedido del dueño: la sección propia, con una página
+ * por efeméride. **Es la parte que aporta al objetivo del proyecto**: contenido
+ * indexable de long tail («qué pasó el 26 de agosto en la literatura») que el
+ * sitio no tenía.
+ *
+ * El listado sale entero del build (SSG), agrupado por mes y ordenado por día:
+ * es lo que ve el buscador y lo que ve alguien sin JavaScript. No hay island —no
+ * hay nada que filtrar en una lista del año—, así que la página no manda un byte
+ * de JavaScript propio.
+ *
+ * Cada día lleva su ancla (`#dia-09-25`): es el destino del «N más» del renglón
+ * de la home cuando hay más de una efeméride ese día.
+ *
+ * La plantilla recibe `EfemeridePublica` (la whitelist de `efemeridePublica.ts`)
+ * y nunca el documento: no puede publicar un uid aunque quiera.
+ */
+import Base from '@/layouts/Base.astro';
+import { efemeridesDelSitio } from '@/lib/contenidoDelSitio';
+import {
+  anclaDelDia,
+  descripcionDeLasEfemerides,
+  diaYMesDeEfemeride,
+  efemeridesPorMes,
+} from '@/lib/efemeridePublica';
+import { NOMBRE } from '@/lib/identidad';
+import { rutaDeEfemeride } from '@/lib/rutasPublicas';
+import { claseEnlace } from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const efemerides = await efemeridesDelSitio();
+const meses = efemeridesPorMes(efemerides);
+const cuantas = efemerides.length;
+const descripcion = descripcionDeLasEfemerides(cuantas);
+
+/*
+ * El ancla va en la **primera** efeméride de cada día y no en todas: dos
+ * elementos con el mismo `id` son HTML inválido, y el navegador salta al primero
+ * igual.
+ */
+const conAncla = new Set<string>();
+const anclaSiEsLaPrimera = (e: { dia: number; mes: number }): string | undefined => {
+  const ancla = anclaDelDia(e);
+  if (conAncla.has(ancla)) return undefined;
+  conAncla.add(ancla);
+  return ancla;
+};
+---
+
+<Base
+  seccion="efemerides"
+  titulo={`Efemérides literarias — ${NOMBRE}`}
+  descripcion={descripcion}
+  noIndex={cuantas === 0}
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <h1 class="display-md text-balance text-acento">Efemérides</h1>
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
+      Nacimientos, publicaciones y fechas del mundo de los libros, día por día. La de hoy aparece
+      también arriba de la agenda.
+    </p>
+
+    {
+      cuantas === 0 ? (
+        <div class="regla-gruesa-arriba mt-10 px-4 py-12 text-center">
+          <p class="body-md mx-auto max-w-[48ch] text-super">
+            Todavía no hay ninguna cargada. Volvé en unos días.
+          </p>
+        </div>
+      ) : (
+        meses.map((m) => (
+          <section class="regla-gruesa-arriba mt-10 pt-6">
+            <h2 class="headline-sm text-tinta first-letter:uppercase">{m.nombre}</h2>
+            <ul class="mt-4 flex flex-col gap-3">
+              {m.efemerides.map((e) => (
+                <li id={anclaSiEsLaPrimera(e)} class="min-w-0 scroll-mt-4 sm:scroll-mt-[calc(var(--spacing-encabezado)+1rem)]">
+                  <p class="label-caps text-azul">
+                    {diaYMesDeEfemeride(e)}
+                    {e.anio !== null && ` · ${e.anio}`}
+                  </p>
+                  <a class={`body-md ${claseEnlace}`} href={rutaDeEfemeride(e.slug)}>
+                    {e.titulo}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )
+    }
+  </main>
+</Base>

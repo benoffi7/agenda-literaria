@@ -19,6 +19,7 @@ import {
   rutaDeDetalle,
   rutaDeLibreria,
   rutaDeBiblioteca,
+  rutaDeEfemeride,
   rutaDeMes,
   urlAbsoluta,
 } from '@/lib/rutasPublicas';
@@ -70,12 +71,14 @@ const rutas = (o: {
   canceladas?: { slug: string; editadaEn: string | null }[];
   librerias?: { slug: string }[];
   bibliotecas?: { slug: string }[];
+  efemerides?: { slug: string }[];
 }) =>
   rutasDelSitemap({
     entradas: o.entradas ?? [],
     canceladas: o.canceladas ?? [],
     librerias: o.librerias ?? [],
     bibliotecas: o.bibliotecas ?? [],
+    efemerides: o.efemerides ?? [],
     ahora: AHORA,
   });
 
@@ -159,6 +162,30 @@ describe('las fichas de la Guía — B-901, §6 #7 del inventario', () => {
         .filter((r) => r.includes('/guia/bibliotecas/'))
         .sort(),
     ).toEqual(FIJAS_DE_BIBLIOTECAS);
+  });
+});
+
+describe('las efemérides — B-959', () => {
+  it('cada efeméride publicada tiene su URL, y el listado entra con ellas', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el `...efemerides.filter(...).map(rutaDeEfemeride)`
+     * de `rutasDelSitemap` deja este caso en rojo.
+     */
+    const todas = rutas({ efemerides: [{ slug: 'nace-cortazar' }, { slug: 'rayuela' }] });
+    expect(todas).toContain('/efemerides/');
+    expect(todas).toContain(rutaDeEfemeride('nace-cortazar'));
+    expect(todas).toContain('/efemerides/rayuela/');
+  });
+
+  it('sin ninguna publicada, ni el listado entra: una página vacía no se le ofrece a Google', () => {
+    expect(rutas({}).filter((r) => r.startsWith('/efemerides'))).toEqual([]);
+    expect(rutas({ efemerides: [{ slug: '' }] }).filter((r) => r.startsWith('/efemerides'))).toEqual(
+      [],
+    );
+  });
+
+  it('el listado vacío va con `noIndex`, que es la otra mitad de no ofrecerlo', () => {
+    expect(fuente('src/pages/efemerides/index.astro')).toContain('noIndex={cuantas === 0}');
   });
 });
 
@@ -278,6 +305,15 @@ describe('las páginas fijas', () => {
        * `textoDeRobots`), y acá la señal que queremos que Google lea es
        * justamente ésa.
        */
+      /*
+       * **B-959, y es condicional, no una exclusión**: `/efemerides/` entra al
+       * sitemap desde `rutasDelSitemap` —no desde `RUTAS_FIJAS`— y **solo si hay
+       * alguna efeméride publicada**. Con ninguna, la página dice «todavía no hay»
+       * y sale con `noindex`, que es el criterio de los hubs vacíos (B-108). Lo
+       * afirma el caso de las efemérides más abajo.
+       */
+      '/efemerides/':
+        'entra al sitemap solo con alguna efeméride publicada; vacía va con `noindex` (B-959)',
       '/mis-favoritos/':
         'lo que muestra sale del `localStorage` de quien la abre, así que para Google está ' +
         'siempre vacía: `noindex` y fuera del sitemap, sin `Disallow` (B-848)',

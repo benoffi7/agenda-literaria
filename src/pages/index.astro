@@ -44,6 +44,7 @@ import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { PanelesDeAhora } from '@/components/publico/PanelesDeAhora';
 import { panelesDeAhora } from '@/lib/ahoraPublico';
 import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
+import EfemerideDeHoy from '@/components/sitio/EfemerideDeHoy.astro';
 import ExploraPor from '@/components/sitio/ExploraPor.astro';
 import { claseSalto } from '@/components/sitio/estilos';
 import { exploracionDeLaHome, indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
@@ -201,6 +202,15 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
     <h1 class="py-4 text-center headline-md text-balance text-tinta sm:py-5">
       {TITULO_DE_LA_HOME}
     </h1>
+
+    {/*
+      **El renglón de la efeméride del día** — B-959, decisión del dueño
+      (2026-09-25). Sale oculto del build y lo llena el navegador con la de hoy
+      en Buenos Aires; si no hay ninguna, no se ve nada. Va entre el título y el
+      tríptico, **fuera** del contenedor que la island reemplaza: adentro, se
+      borraría al hidratar.
+    */}
+    <EfemerideDeHoy class="mb-4" />
 
     {/*
       **El `id="listado"` envuelve al tríptico, al buscador Y a la lista**, y no

@@ -1,0 +1,82 @@
+---
+/**
+ * **El renglón de la efeméride del día, arriba de la agenda** — B-959.
+ *
+ * El HTML sale del build **vacío y oculto**, y el script de abajo lo llena en el
+ * navegador. Es la única forma de mostrar «la de hoy» en un sitio estático sin
+ * un rebuild diario: el build no sabe qué día va a ser cuando alguien abra la
+ * página, el navegador sí (§2.5 y el docblock de `efemerides.json.ts`).
+ *
+ * Lo que eso cuesta y lo que no:
+ *
+ * - **No es una island de React.** Es un `<script>` chico que Astro bundlea como
+ *   módulo: no hidrata nada ni suma React a la home, y el `Buscador` sigue siendo
+ *   la única island de la página.
+ * - **Sin JavaScript, o si el fetch falla, no se ve nada** — ni un hueco ni un
+ *   «cargando»: el `<p>` sale con `hidden` y solo se destapa con contenido.
+ * - **Si hoy no hay efeméride, tampoco.**
+ * - **No es un enlace que Google vea**, y no hace falta que lo sea: el camino
+ *   indexable a las efemérides es el pie y el sitemap.
+ *
+ * El texto lo arma `renglonDeHoy` (`lib/efemeridePublica.ts`, puro y con test),
+ * no este script: acá solo se pinta. Los textos se asignan con `textContent`,
+ * nunca con `innerHTML` — el título es texto libre de un formulario.
+ */
+import { RUTA_EFEMERIDES } from '@/lib/rutasPublicas';
+import { INFO_VERSION } from '@/lib/version';
+import { claseEnlace } from '@/components/sitio/estilos';
+
+interface Props {
+  class?: string;
+}
+
+const { class: clase = '' } = Astro.props;
+
+// La versión en la URL, como los índices de la Guía: una pestaña abierta desde
+// antes de un deploy no mezcla el HTML nuevo con el JSON viejo.
+const indice = `/efemerides.json?v=${encodeURIComponent(INFO_VERSION.version)}`;
+---
+
+<p data-efemeride-de-hoy data-indice={indice} hidden class={`body-sm text-center text-super ${clase}`}>
+  <span class="label-caps text-azul">Efeméride del día</span>
+  <span aria-hidden="true"> · </span>
+  <span data-efemeride-cuando></span>{' '}
+  <a data-efemeride-titulo class={claseEnlace} href={RUTA_EFEMERIDES}></a>
+  <span data-efemeride-mas hidden>
+    <span aria-hidden="true"> · </span>
+    <a data-efemeride-mas-enlace class={claseEnlace} href={RUTA_EFEMERIDES}></a>
+  </span>
+</p>
+
+<script>
+  import { entradasDelIndice, renglonDeHoy } from '@/lib/efemeridePublica';
+
+  const renglon = document.querySelector<HTMLElement>('[data-efemeride-de-hoy]');
+
+  const pintar = async (): Promise<void> => {
+    if (!renglon) return;
+    const respuesta = await fetch(renglon.dataset.indice ?? '/efemerides.json');
+    if (!respuesta.ok) return;
+    const hoy = renglonDeHoy(entradasDelIndice(await respuesta.json()), new Date());
+    if (!hoy) return;
+
+    const cuando = renglon.querySelector('[data-efemeride-cuando]');
+    const titulo = renglon.querySelector<HTMLAnchorElement>('[data-efemeride-titulo]');
+    if (!cuando || !titulo) return;
+    cuando.textContent = `${hoy.cuando}:`;
+    titulo.textContent = hoy.titulo;
+    titulo.href = hoy.href;
+
+    const mas = renglon.querySelector<HTMLElement>('[data-efemeride-mas]');
+    const masEnlace = renglon.querySelector<HTMLAnchorElement>('[data-efemeride-mas-enlace]');
+    if (hoy.mas && mas && masEnlace) {
+      masEnlace.textContent = `${hoy.mas.cuantas} más hoy`;
+      masEnlace.href = hoy.mas.href;
+      mas.hidden = false;
+    }
+    renglon.hidden = false;
+  };
+
+  // Un fallo de red no es un error de la página: el renglón se queda oculto.
+  pintar().catch(() => undefined);
+</script>
