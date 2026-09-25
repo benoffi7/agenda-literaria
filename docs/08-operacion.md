@@ -588,14 +588,64 @@ solo informa**, y `--aplicar` fuera del emulador exige `--produccion` explícito
 segunda corrida no escribe nada. No borra: no hay caso de «ciudad huérfana»,
 porque el campo entero se deriva del documento en el que vive.
 
-**Lo que la corrida dispara, dicho antes:** una versión del §12 por actividad
-tocada (`ciudades` es un derivado del contenido, como `searchText`, así que entra
-a la foto), **ningún** cambio en Calendar (no entra al payload del evento) y un
-rebuild del sitio, que el debounce del §8 colapsa en uno solo.
+**Lo que la corrida dispara, dicho antes:** desde B-1920, **nada más que la
+escritura**. `ciudades` está en `CAMPOS_DE_MAQUINA` (`functions/historial.js`), así
+que cambiarlo solo no deja versión del §12 ni pide rebuild —no sale al
+`events.json`—, y tampoco entra al payload del evento de Calendar. Antes de B-1920
+costaba una versión por actividad tocada y un rebuild.
+
+**Y desde B-1920 `syncCalendar` hace lo mismo en cada escritura** (sección de
+abajo): un documento que se edita recibe el campo solo. El script sigue haciendo
+falta para los que **nadie vuelve a tocar**, que son la mayoría del catálogo.
 
 El informe marca aparte cuántas quedan con `[]` — las virtuales y las que tienen
 la ciudad sin cargar. **No es un error**: esas no son de ninguna ciudad y no las ve
 ningún publicador por ciudad. Es el caso que alguien va a venir a preguntar.
+
+### Cuando suena `ciudades-no-coinciden` (B-1920)
+
+**Qué dice el mail:** una actividad se escribió con un `ciudades` que no es el que
+sale de sus filas (`modalidades[].sede.ciudad`), y `syncCalendar` **ya lo
+corrigió**. El log trae `id`, `estado`, `guardadas` (lo que decía el documento,
+recortado) y `derivadas` (lo que dice ahora).
+
+**Por qué importa.** La regla que decide dónde carga una cuenta publicadora con
+ciudad (`dentroDeSuCiudad()`, D-1150) mira ese derivado y la primera `sede`, porque
+una regla no puede recorrer `modalidades[]`. **El panel siempre lo escribe bien**:
+este aviso no sale de un guardado normal. Sale de un documento escrito **a mano**
+—la consola de Firestore, un script, el SDK con la sesión de alguien—. La
+corrección arregla el campo; lo que el aviso pide es mirar **quién** y **por qué**.
+
+**Qué hacer:**
+
+1. Abrir `actividades/<id>` en la consola y mirar `updatedBy` y `createdBy`.
+2. **Si es un admin o un script del repo** (`guardadas: null` en un documento viejo
+   es el caso típico: anterior a B-919 y sin sembrar), **nada**: el campo ya está
+   bien. Si llegan varios seguidos, correr el backfill de arriba para que dejen de
+   llegar de a uno.
+3. **Si es una cuenta publicadora** (su mail está en `/usuarios/<uid>`), comparar
+   su ciudad —la que se le dio con `--ciudad`; la consola de Firebase no muestra
+   custom claims y el script todavía no los lee (B-2051)— con `derivadas`:
+   - `derivadas` está dentro de su ciudad (o es `[]`): el derivado estaba mal pero
+     la carga era legítima. Nada que hacer.
+   - `derivadas` nombra **otra** ciudad: la cuenta cargó fuera de su alcance
+     esquivando la regla, y eso solo se hace a propósito. **La actividad sigue
+     publicada** —el trigger no toca `estado`, a propósito—. Decidir con la persona:
+     despublicarla desde el panel, o pasarla a publicador general (`--publicador`
+     sin `--ciudad`, D-1152) si en realidad carga en varias ciudades.
+4. Si el mensaje es **`no se pudo corregir ciudades`** (lleva `error` en vez de
+   `derivadas`): el campo quedó como estaba. Mirar el `error` —casi siempre IAM de
+   `calendar-sync@`, o el documento borrado en el medio— y correr
+   `npm run ciudades:sembrar:prod` para ver si sigue desalineado.
+
+**Lo que no corrige:** `sede`, la otra mitad que mira la regla. Una `sede` escrita a
+mano que no es la primera de las filas no dispara este aviso (B-2050), y tampoco una
+fila con sede y la ciudad vacía, que `ciudadesDe` descarta (B-2052).
+
+**Y lo que la corrección mueve sin que se note:** quién lee el documento. La lectura
+del publicador por ciudad mira `ciudades`, así que el documento corregido pasa a
+leerlo **entero** —link de la reunión, `difusion`— la ciudad de `derivadas`, y deja
+de leerlo la de `guardadas` (docs/03-modelo-de-datos.md § los derivados).
 
 ## Sembrar una taxonomía NUEVA en producción (B-973 — ✅ con red)
 
