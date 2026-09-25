@@ -501,7 +501,8 @@ describe('referenciasEnUso — el historial cuenta como referencia (B-560)', () 
     //  - la de una edición que no tocó la galería: el `select` de un campo que
     //    el documento no tiene devuelve `{}` (comprobado contra el emulador);
     //  - la de una actividad anterior a B-167, que tenía `imagenUrl` y no
-    //    `imagenes` (el aviso del §3.1);
+    //    `imagenes` (el bloque del §3.1 y la nota del §3.2 del `CLAUDE.md`,
+    //    D-125);
     //  - una imagen externa (DEC-7c), que no tiene `storagePath` porque no hay
     //    ningún objeto de Storage que le corresponda.
     //
