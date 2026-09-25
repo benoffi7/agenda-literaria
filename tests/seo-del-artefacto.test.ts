@@ -139,17 +139,20 @@ describe('el gate consume estas decisiones y no tiene su propia copia', () => {
    *
    * MUTACIÓN PROBADA: pegar de vuelta las dos funciones adentro de
    * `build-contra-emulador.mjs` y sacar el import hace fallar este caso.
+   *
+   * Desde B-1960 el paso 10 vive en `scripts/gate-build/chequeos/12-seo.mjs`:
+   * el import se busca ahí, y la copia se busca en los dos archivos.
    */
-  const gate = readFileSync(
-    fileURLToPath(new URL('../scripts/build-contra-emulador.mjs', import.meta.url)),
-    'utf8',
-  );
+  const leer = (ruta: string) =>
+    readFileSync(fileURLToPath(new URL(ruta, import.meta.url)), 'utf8');
+  const chequeo = leer('../scripts/gate-build/chequeos/12-seo.mjs');
+  const gate = leer('../scripts/build-contra-emulador.mjs') + chequeo;
 
   it('el gate importa `tituloDe` y `problemasDeJerarquia` del módulo', () => {
-    expect(gate).toMatch(
-      /import \{[^}]*problemasDeJerarquia[^}]*\} from '\.\/seo-del-artefacto\.mjs'/,
+    expect(chequeo).toMatch(
+      /import \{[^}]*problemasDeJerarquia[^}]*\} from '(\.\.\/)+seo-del-artefacto\.mjs'/,
     );
-    expect(gate).toMatch(/import \{[^}]*tituloDe[^}]*\} from '\.\/seo-del-artefacto\.mjs'/);
+    expect(chequeo).toMatch(/import \{[^}]*tituloDe[^}]*\} from '(\.\.\/)+seo-del-artefacto\.mjs'/);
   });
 
   it('y no las define de nuevo', () => {

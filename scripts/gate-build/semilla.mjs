@@ -1354,3 +1354,30 @@ export const documentosDeLaSemilla = ({
     ],
   ];
 };
+
+/*
+ * B-959 — las efemérides del gate (paso 8n). No entran a las canastas del
+ * barrido de actividades: se verifican aparte, con sus propios centinelas, en
+ * `chequeos/09-efemerides.mjs`. La publicada lleva los uids centinela —lo que la
+ * proyección existe para no publicar— y el borrador lleva el título centinela.
+ * Viven acá desde B-1960 porque las usan dos archivos: el script que las siembra
+ * y el chequeo que las busca.
+ */
+export const SLUG_EFEMERIDE = `${PREFIJO}efemeride`;
+export const SLUG_EFEMERIDE_BORRADOR = `${PREFIJO}efemeride-borrador`;
+export const UID_CENTINELA_EFEMERIDE = 'gate.efemerides.createdBy';
+export const TITULO_BORRADOR_EFEMERIDE = 'gate.efemerides.borrador.titulo';
+export const efemerideDelGate = (slug, titulo, estado) => ({
+  titulo,
+  slug,
+  descripcion: 'Efeméride sembrada por el gate.',
+  dia: 1,
+  mes: 1,
+  anio: 1900,
+  fuente: null,
+  estado,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: UID_CENTINELA_EFEMERIDE,
+  updatedBy: UID_CENTINELA_EFEMERIDE,
+});
