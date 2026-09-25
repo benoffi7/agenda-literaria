@@ -10,7 +10,7 @@ import {
 
 export const nombre = "la galería de tres imágenes y el control de la de una";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe } = ctx;
   const htmlPublicada = await htmlDe(SLUG_PUBLICADA);

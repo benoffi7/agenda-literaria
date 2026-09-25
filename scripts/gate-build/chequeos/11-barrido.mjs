@@ -5,7 +5,7 @@ import { barrerArtefacto } from '../barrido.mjs';
 
 export const nombre = "el barrido de centinelas sobre todo el dist/";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { publicables } = ctx;
   /*

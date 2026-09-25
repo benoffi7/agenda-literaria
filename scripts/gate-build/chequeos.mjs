@@ -13,16 +13,9 @@
  * chequeo que no se pone rojo sobre un `dist/` vacío (el positivo que impide que
  * uno pase por no haber mirado nada).
  *
- * @typedef {{ relativa: string, contenido: string }} Archivo
- * @typedef {object} Contexto
- * @property {(ruta: string) => Promise<string | null>} leer  un archivo de `dist/`, o `null`
- * @property {(slug: string) => Promise<string | null>} htmlDe  la ficha de una actividad, o `null`
- * @property {() => Promise<Archivo[]>} publicables  todo lo publicable del `dist/`
- * @property {(mensaje: string) => void} fallo  marca el gate en rojo
- * @property {() => boolean} sinFallos  si el gate sigue en verde hasta acá
- * @property {() => number} cuenta  cuántos fallos van
- * @property {(mensaje: string) => void} ok  imprime una línea verde
- * @property {string} rutaDeLaMiniatura  el objeto de Storage que el gate sembró (B-1790)
+ * El contexto que reciben —y su tipo— vive en `contexto.mjs`.
+ *
+ * @typedef {import('./contexto.mjs').Contexto} Contexto
  */
 import * as indice from './chequeos/01-indice.mjs';
 import * as canceladas from './chequeos/02-canceladas-y-borrador.mjs';
@@ -52,30 +45,6 @@ export const CHEQUEOS = [
   barrido,
   seo,
 ];
-
-/**
- * El contexto sobre una lista de archivos ya leída: el `dist/` de verdad en el
- * script, uno de mentira en el test. Ningún chequeo toca el disco por su cuenta.
- *
- * @param {Archivo[]} archivos
- * @param {ReturnType<typeof import('./resultado.mjs').crearResultado>} resultado
- * @param {{ rutaDeLaMiniatura: string }} extras
- * @returns {Contexto}
- */
-export const contextoSobre = (archivos, resultado, { rutaDeLaMiniatura }) => {
-  const porRuta = new Map(archivos.map((a) => [a.relativa, a.contenido]));
-  const leer = async (ruta) => (porRuta.has(ruta) ? porRuta.get(ruta) : null);
-  return {
-    leer,
-    htmlDe: (slug) => leer(`actividad/${slug}/index.html`),
-    publicables: async () => archivos,
-    fallo: resultado.fallo,
-    ok: resultado.ok,
-    sinFallos: resultado.sinFallos,
-    cuenta: resultado.cuenta,
-    rutaDeLaMiniatura,
-  };
-};
 
 /**
  * Corre los chequeos en orden. **Una excepción adentro de uno es un rojo con su

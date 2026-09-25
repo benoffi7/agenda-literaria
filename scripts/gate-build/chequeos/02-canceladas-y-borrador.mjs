@@ -11,7 +11,7 @@ import {
 
 export const nombre = "las páginas de la cancelada, la que nunca se publicó y el borrador";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe } = ctx;
   /*

@@ -117,7 +117,8 @@ import {
   efemerideDelGate,
   rutaDeLaMiniaturaDelGate,
 } from './gate-build/semilla.mjs';
-import { CHEQUEOS, contextoSobre, correrChequeos } from './gate-build/chequeos.mjs';
+import { CHEQUEOS, correrChequeos } from './gate-build/chequeos.mjs';
+import { contextoSobre } from './gate-build/contexto.mjs';
 import { crearResultado } from './gate-build/resultado.mjs';
 
 import { initializeApp } from 'firebase-admin/app';

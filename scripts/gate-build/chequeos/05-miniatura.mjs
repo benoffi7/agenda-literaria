@@ -7,7 +7,7 @@ import {
 
 export const nombre = "la miniatura confirmada en el srcset";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe, leer: leerDist } = ctx;
   const RUTA_DE_LA_MINIATURA = ctx.rutaDeLaMiniatura;

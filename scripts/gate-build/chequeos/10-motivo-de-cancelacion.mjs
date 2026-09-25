@@ -9,7 +9,7 @@ import {
 
 export const nombre = "el motivo del encuentro cancelado";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe } = ctx;
   /*

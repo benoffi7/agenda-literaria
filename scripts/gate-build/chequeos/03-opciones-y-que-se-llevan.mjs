@@ -10,7 +10,7 @@ import {
 
 export const nombre = "el agrupado por opción y «Qué se llevan»";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe } = ctx;
   /*

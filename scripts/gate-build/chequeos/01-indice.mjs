@@ -16,7 +16,7 @@ import {
 
 export const nombre = "el índice de actividades (events.json)";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, leer: leerDist } = ctx;
   const crudo = await leerDist('events.json');

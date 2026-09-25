@@ -10,7 +10,7 @@ import {
 
 export const nombre = "el sitemap, el robots.txt, la canónica y /pasadas";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe, leer: leerDist } = ctx;
   /*

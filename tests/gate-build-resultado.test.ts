@@ -21,7 +21,8 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { CHEQUEOS, contextoSobre, correrChequeos } from '../scripts/gate-build/chequeos.mjs';
+import { CHEQUEOS, correrChequeos } from '../scripts/gate-build/chequeos.mjs';
+import { contextoSobre } from '../scripts/gate-build/contexto.mjs';
 import { crearResultado } from '../scripts/gate-build/resultado.mjs';
 
 const silencio = { error: () => {}, log: () => {} };

@@ -5,7 +5,7 @@ import { problemasDeJerarquia, tituloDe } from '../../seo-del-artefacto.mjs';
 
 export const nombre = "el <title> único y la jerarquía de encabezados";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, publicables } = ctx;
   /*

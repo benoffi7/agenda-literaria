@@ -10,7 +10,7 @@ import {
 
 export const nombre = "las efemérides";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { leer: leerDist, publicables } = ctx;
   /*

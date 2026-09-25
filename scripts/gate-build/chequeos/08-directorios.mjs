@@ -18,7 +18,7 @@ import { datoConFecha, etiquetaCon, verificarDirectorio } from '../directorio.mj
 
 export const nombre = "los cuatro directorios de la Guía";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   /*
    * 8i-8l · **Los cuatro directorios de la Guía, sobre los archivos

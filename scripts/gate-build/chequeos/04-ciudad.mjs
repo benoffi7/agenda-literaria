@@ -10,7 +10,7 @@ import {
 
 export const nombre = "el hub de ciudad y el renglón de afuera de CABA";
 
-/** @param {import('../chequeos.mjs').Contexto} ctx */
+/** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
   const { fallo, htmlDe, leer: leerDist } = ctx;
   /*
