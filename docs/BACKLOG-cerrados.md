@@ -22095,6 +22095,17 @@ su docblock dice que «`searchText` y `ciudades[]` se reescriben» cuando solo e
 `barrio`, `syncCalendar` lo corregiría con un `derivados-no-coinciden` por actividad.
 Arreglo: importar `sedePrincipal` y corregir el docblock.
 
+### B-2140 · Fixtures de test que derivan la sede, el online y la modalidad por su cuenta · P3 — del frente `geografia` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `4b73e9d`, `d54a118`. `tests/fixtures/indice.ts`, `tests/ciudades-del-servidor.test.ts` y el `documentoGuardado` de `tests/sembrar-geografia.test.ts` importan `sedePrincipal` / `onlinePrincipal` / `modalidadResultante` de `functions/derivados.js`. El barrido de `tests/sembrar-geografia.test.ts` cubre `tests/` además de `scripts/`, recursivo, y detecta también la unión de la modalidad con `Set`. `EXCEPCIONES_EN_TESTS` lleva motivo y se vacía sola; hoy solo tiene el `payloadViejo`, el control positivo de B-2090. Mutaciones probadas.
+
+`tests/fixtures/indice.ts` arma `sede`, `online` y `modalidad` con su propio `.find` y su
+propia unión, y `tests/ciudades-del-servidor.test.ts` hace lo mismo con la sede. Es la
+clase de B-88 dentro de los tests: si cambia `sedePrincipal`, `onlinePrincipal` o
+`modalidadResultante`, los fixtures siguen armando documentos «alineados» con la regla
+vieja. Arreglo: importar esas funciones de `functions/derivados.js` y ampliar el barrido
+de `tests/sembrar-geografia.test.ts` a `tests/`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

@@ -301,14 +301,13 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-2140 · Fixtures de test que derivan la sede, el online y la modalidad por su cuenta · P3 — del frente `geografia` (2026-09-25)
+### B-2150 · El barrido de derivaciones propias no mira `src/` ni `functions/`, y reconoce una sola forma · P3 — del frente `fixtures` (2026-09-25)
 
-`tests/fixtures/indice.ts` arma `sede`, `online` y `modalidad` con su propio `.find` y su
-propia unión, y `tests/ciudades-del-servidor.test.ts` hace lo mismo con la sede. Es la
-clase de B-88 dentro de los tests: si cambia `sedePrincipal`, `onlinePrincipal` o
-`modalidadResultante`, los fixtures siguen armando documentos «alineados» con la regla
-vieja. Arreglo: importar esas funciones de `functions/derivados.js` y ampliar el barrido
-de `tests/sembrar-geografia.test.ts` a `tests/`.
+Cubre `scripts/` y `tests/`, pero una copia en un componente del panel o en otra
+Function pasaría; hoy no hay ninguna. Además la expresión reconoce solo
+`.find((m) => m.sede)` y `m?.online`, no `.find(({ sede }) => sede)`, `filas[0]?.sede`
+ni `.filter(...)[0]`. Arreglo: ampliar el barrido a `src/` y `functions/`, excluyendo
+`functions/derivados.js`, y sumar esas variantes.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

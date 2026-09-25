@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Los fixtures de test derivan la sede, el online y la modalidad con las funciones del
+  servidor** (B-2140). Tres tests los armaban con su propio `.find` y su propia unión, así
+  que si cambiaba la regla seguían armando documentos «alineados» con la vieja. El
+  barrido de `tests/sembrar-geografia.test.ts` recorre ahora también `tests/`, recursivo,
+  con una lista de excepciones con motivo que falla si una queda sin copia.
 - **Los backfills de la geografía escriben los mismos derivados que el panel**
   (B-2090). `scripts/sembrar-geografia.mjs` y `scripts/reubicar-barrios.mjs` derivaban la
   sede con un `.find` propio y no reescribían `searchText`, `modalidad` ni `online`; en
