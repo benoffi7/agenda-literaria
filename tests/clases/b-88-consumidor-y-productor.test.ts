@@ -129,11 +129,27 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
    * quedado afuera — el productor no tenía dueño, así que la lista de
    * consumidores se enumeraba de memoria. Ahora `SLUG_PLATAFORMA_A_CONFIRMAR`
    * vive en `lib/modalidades.ts` y los tres importan de ahí.
+   *
+   * **`--exclude-dir=node_modules`, como las otras búsquedas de este archivo
+   * que bajan a `functions/`** (B-2041). Sin él, `grep -r functions` recorre
+   * `functions/node_modules` —182 MB en el árbol principal—, y este caso
+   * tardaba 2,3 s solo y pasaba los 5 s del timeout con la suite en paralelo.
+   * En un worktree de agente no se ve: ahí `node_modules` es un symlink, que
+   * `grep -r` no sigue, y el caso tarda 70 ms. Medido sobre el árbol
+   * principal: 0,40 s sin la exclusión, 0,015 s con ella.
    */
   it('B-190 — el slug «a confirmar» no se copia a mano en otro archivo de producción', () => {
     const declaraciones = execFileSync(
       'grep',
-      ['-rn', "'a-confirmar'", 'src/lib', 'src/components', 'src/pages', 'functions'],
+      [
+        '-rn',
+        '--exclude-dir=node_modules',
+        "'a-confirmar'",
+        'src/lib',
+        'src/components',
+        'src/pages',
+        'functions',
+      ],
       { cwd: fileURLToPath(raiz), encoding: 'utf8' },
     )
       .trim()

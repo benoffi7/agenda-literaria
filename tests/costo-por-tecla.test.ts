@@ -46,6 +46,49 @@ import type { ActividadForm } from '@/types/actividad';
  * `crypto`, una validación cuadrática en la cantidad de encuentros). Un techo
  * ajustado a lo medido sería un test que falla en una máquina cargada, y un test
  * que falla por su propia plomería enseña a saltearlo.
+ *
+ * ── B-2060 · la segunda medición, y por qué el test de escala cambió ────────
+ *
+ * El test de escala comparaba 1 contra 50 encuentros midiendo cada tanda por
+ * separado, y con la suite en paralelo (M-1) falló una vez: una tanda caía
+ * sobre un momento de CPU ocupada por otro worker y la otra no. Además armaba
+ * el formulario **adentro** de lo cronometrado, así que medía también los
+ * `crypto.randomUUID()` de `nuevaSesionId`. Ahora compara 8 contra 80 con
+ * `proporcion` (abajo): pares intercalados, mediana de los cocientes, y ningún
+ * milisegundo en el umbral.
+ *
+ * Remedido el 2026-09-25, y **la tabla de arriba envejeció**:
+ *
+ * | Encuentros | `faltaParaPublicar` |
+ * |---|---|
+ * | 1   | 0,028 ms |
+ * | 8   | 0,034 ms |
+ * | 20  | 0,052 ms |
+ * | 80  | 0,166 ms |
+ * | 200 | 0,366 ms |
+ *
+ * El costo fijo bajó a un cuarto y lo que queda es **lineal**: ~1,7 µs por
+ * encuentro, que pasa a dominar arriba de ~16. La conclusión de B-198 no se
+ * mueve —20 encuentros cuestan 0,05 ms, menos que antes—, pero «casi no depende
+ * de los encuentros» ya no es cierto, y por eso el test de escala no puede
+ * pedir «casi constante»: pide **no más que lineal**, que es lo que separa un
+ * ciclo largo tolerable del escenario que el ítem temía.
+ *
+ * **Por qué no se cuenta en vez de cronometrar**, que era lo preferible: lo
+ * que el test tiene que ver es código arbitrario en un `superRefine` —un doble
+ * `forEach` que compare encuentros—, y zod le pasa a los refinamientos los
+ * objetos **ya parseados**, copias nuevas. Un `Proxy` sobre la entrada que
+ * cuente lecturas no ve nada de lo que pasa ahí, y un espía sobre los `_parse`
+ * de zod cuenta nodos del schema, que siguen siendo lineales con una regla
+ * cuadrática adentro. El único instrumento que ve el costo de cualquier código
+ * es el reloj; lo que se hizo fue sacarle al reloj la carga de la máquina.
+ *
+ * La mutación se probó el 2026-09-25: una regla de superposición que compara
+ * cada encuentro con todos los demás parseando fechas lleva la proporción de
+ * ~6× a ~50× y el test se pone rojo. Una cuadrática **barata** —el
+ * `idsRepetidos` de B-816 con un `.some` en vez del `Set`— la deja en ~6,5× y
+ * pasa, y está bien que pase: son 3.200 comparaciones de strings, un centésimo
+ * de milisegundo, y no es el escenario que el ítem temía.
  */
 
 /** Un ciclo de `n` encuentros, todo cargado, como el peor caso del formulario. */
@@ -77,6 +120,46 @@ const porLlamada = (f: () => unknown, vueltas = 200): number => {
   return (performance.now() - t0) / vueltas;
 };
 
+const mediana = (xs: number[]): number => {
+  const o = [...xs].sort((a, b) => a - b);
+  const m = o.length >> 1;
+  return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+};
+
+/**
+ * B-2060 — cuánto más cuesta `b` que `a`, medido de forma que la carga de la
+ * máquina se cancele.
+ *
+ * La versión anterior medía `a` entera y después `b` entera, y comparaba contra
+ * un piso fijo: con la suite en paralelo (M-1), si otro worker se comía la CPU
+ * justo durante la segunda tanda, la proporción salía inflada y el test fallaba
+ * sin que el código hubiera cambiado. Tres cosas lo arreglan:
+ *
+ *  - **Intercaladas.** Una muestra de `a`, una de `b`, otra de `a`… La carga
+ *    que llega en un momento cae sobre las dos casi por igual.
+ *  - **Proporción por par, no por total.** Cada par da su propio cociente, y
+ *    como las dos mitades del par corrieron juntas, el ruido se divide.
+ *  - **Mediana de los cocientes.** Un par que cayó sobre una pausa de GC o un
+ *    cambio de contexto es un valor extremo, y la mediana lo ignora: harían
+ *    falta la mitad de los pares contaminados para moverla.
+ *
+ * No hay ningún umbral en milisegundos: lo que se compara es una proporción, y
+ * una máquina lenta o cargada escala las dos mitades a la vez.
+ */
+const proporcion = (a: () => unknown, b: () => unknown, pares = 21, vueltas = 20): number => {
+  // Calentar los dos caminos antes de la primera muestra: sin esto, el primer
+  // par mide al JIT y no al código.
+  porLlamada(a, 100);
+  porLlamada(b, 100);
+  const cocientes: number[] = [];
+  for (let i = 0; i < pares; i++) {
+    const ta = porLlamada(a, vueltas);
+    const tb = porLlamada(b, vueltas);
+    cocientes.push(tb / Math.max(ta, 1e-4));
+  }
+  return mediana(cocientes);
+};
+
 /**
  * Dos órdenes de magnitud arriba de los 0,2 ms medidos con 50 encuentros. No es
  * un objetivo de performance: es el piso de lo absurdo.
@@ -94,10 +177,25 @@ describe('el aviso de lo que falta para publicar no cuesta un frame (B-198)', ()
     // schema. Si un día pasara a escalar —una regla nueva que compare cada
     // encuentro con todos los demás—, el escenario que el ítem temía (un ciclo
     // largo en un teléfono viejo) volvería a ser real y esto lo diría.
-    const uno = porLlamada(() => faltaParaPublicar(conEncuentros(1)));
-    const cincuenta = porLlamada(() => faltaParaPublicar(conEncuentros(50)));
-    // Cincuenta veces los datos, y no más de diez veces el costo. Medido: ~2×.
-    expect(cincuenta).toBeLessThan(Math.max(uno, 0.02) * 10);
+    //
+    // Diez veces los datos, y la cuenta que decide el techo es de secundario:
+    // si el costo es un fijo más algo por encuentro (`a + b·n`, con los dos
+    // positivos), multiplicar los encuentros por diez **no puede** multiplicar
+    // el costo por más de diez. Pasarse de 10× solo lo logra un término que
+    // crezca más rápido que los datos —el O(n²) de «comparar cada encuentro con
+    // todos los demás»—, que es exactamente lo que este test tiene que ver.
+    //
+    // Medido (2026-09-25): ~6×, con y sin la suite en paralelo. El techo no
+    // tiene margen de máquina porque no lo necesita: una máquina lenta o
+    // cargada estira las dos mitades de cada par por igual, y la proporción no
+    // se mueve.
+    const form8 = conEncuentros(8);
+    const form80 = conEncuentros(80);
+    const veces = proporcion(
+      () => faltaParaPublicar(form8),
+      () => faltaParaPublicar(form80),
+    );
+    expect(veces).toBeLessThan(10);
   });
 
   it('control positivo: el que se mide es el camino real del aviso', () => {
