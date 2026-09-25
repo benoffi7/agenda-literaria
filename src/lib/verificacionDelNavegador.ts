@@ -80,22 +80,54 @@ export const estadoSegunActivacion = (motivo: MotivoSinAppCheck | null): EstadoV
   return 'no-aplica';
 };
 
+/**
+ * **Por qué** el navegador quedó `sin-verificar` — B-930 paso 3.
+ *
+ * El cartel no lo necesita (el triaje es el mismo para las cuatro), pero el
+ * reporte al servidor sí: es lo que dice el mail de la alerta, y es lo que
+ * separa «una extensión» (`sin-respuesta`) de «reCAPTCHA le puso score bajo»
+ * (`token-rechazado`). Es un vocabulario cerrado que también valida la Function
+ * (`MOTIVOS_DE_VERIFICACION` en `functions/verificacion-del-navegador.js`); los
+ * ata `tests/verificacion-del-navegador-reporte.test.ts` (clase de B-88).
+ *
+ * - `no-se-activo`: `initializeAppCheck` tiró, o no hubo quién pida el token.
+ * - `token-rechazado`: `getToken` rechazó.
+ * - `sin-respuesta`: `getToken` no volvió dentro del umbral.
+ * - `renovacion-fallida`: había token y la renovación se quedó sin ninguno
+ *   válido (B-1250).
+ */
+export type CausaSinVerificar =
+  | 'no-se-activo'
+  | 'token-rechazado'
+  | 'sin-respuesta'
+  | 'renovacion-fallida';
+
 /** ¿Va el cartel? Una línea, pero con nombre: la pregunta la hacen dos lugares. */
 export const debeAvisar = (estado: EstadoVerificacion): boolean => estado === 'sin-verificar';
 
 // ── El store ──────────────────────────────────────────────────────────────
 
 let estado: EstadoVerificacion = 'no-aplica';
+let causa: CausaSinVerificar | null = null;
 let iniciada = false;
 const oyentes = new Set<() => void>();
 
-const fijar = (nuevo: EstadoVerificacion): void => {
+/**
+ * La causa solo se guarda al **entrar** a `sin-verificar`, y se borra al salir:
+ * si el navegador ya estaba avisado, la primera causa es la que explica el
+ * cartel, y un aviso posterior no la pisa.
+ */
+const fijar = (nuevo: EstadoVerificacion, porQue: CausaSinVerificar | null = null): void => {
   if (nuevo === estado) return;
   estado = nuevo;
+  causa = nuevo === 'sin-verificar' ? porQue : null;
   for (const oyente of oyentes) oyente();
 };
 
 export const estadoDeVerificacion = (): EstadoVerificacion => estado;
+
+/** Por qué está `sin-verificar`, o `null` en cualquier otro estado. */
+export const causaSinVerificar = (): CausaSinVerificar | null => causa;
 
 /**
  * Lo que consulta el clasificador de fallos. Solo `sin-verificar` cuenta:
@@ -146,10 +178,11 @@ export const verificarNavegador = async ({
   // Activado pero sin quién pida el token: no debería pasar, y si pasa no hay
   // nada que verificar. Se trata como fallo, que es lo que es.
   if (inicial === 'verificando' && !pedirToken) {
-    fijar('sin-verificar');
+    fijar('sin-verificar', 'no-se-activo');
     return;
   }
-  fijar(inicial);
+  // `inicial` solo es `sin-verificar` con `motivo: 'fallo'`: no se activó.
+  fijar(inicial, 'no-se-activo');
   if (inicial !== 'verificando' || !pedirToken) return;
 
   let respondio = false;
@@ -157,7 +190,7 @@ export const verificarNavegador = async ({
     // `estado === 'verificando'` y no solo `!respondio`: un token que llegó por
     // la suscripción (B-1250) antes que la respuesta de `getToken` ya verificó
     // el navegador, y el umbral no tiene por qué pisarlo.
-    if (!respondio && estado === 'verificando') fijar('sin-verificar');
+    if (!respondio && estado === 'verificando') fijar('sin-verificar', 'sin-respuesta');
   });
 
   try {
@@ -166,7 +199,7 @@ export const verificarNavegador = async ({
     fijar('verificado');
   } catch {
     respondio = true;
-    fijar('sin-verificar');
+    fijar('sin-verificar', 'token-rechazado');
   }
 };
 
@@ -224,7 +257,9 @@ export const estadoTrasEventoDeToken = (
  */
 export const registrarEventoDeToken = (evento: EventoDeToken): void => {
   try {
-    fijar(estadoTrasEventoDeToken(estado, evento));
+    // La única forma de que esto baje a `sin-verificar` es un error con el
+    // estado en `verificado`: una renovación que se quedó sin token.
+    fijar(estadoTrasEventoDeToken(estado, evento), 'renovacion-fallida');
   } catch {
     // Un oyente del cartel que tira no puede cortar el aviso a los demás.
   }
@@ -233,12 +268,16 @@ export const registrarEventoDeToken = (evento: EventoDeToken): void => {
 /** Para los tests: vuelve al arranque. */
 export const _resetVerificacion = (): void => {
   estado = 'no-aplica';
+  causa = null;
   iniciada = false;
   oyentes.clear();
 };
 
 /** Para los tests: fija el estado sin pedir nada. */
-export const _fijarVerificacion = (nuevo: EstadoVerificacion): void => fijar(nuevo);
+export const _fijarVerificacion = (
+  nuevo: EstadoVerificacion,
+  porQue: CausaSinVerificar | null = null,
+): void => fijar(nuevo, porQue);
 
 // ── El texto del cartel ───────────────────────────────────────────────────
 

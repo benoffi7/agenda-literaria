@@ -11,6 +11,12 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { activarAppCheck, motivoSinAppCheck, pedidorDeToken } from '@/lib/appcheck';
 // B-930 — puro salvo un store de módulo; no arrastra ningún SDK.
 import { verificarNavegador } from '@/lib/verificacionDelNavegador';
+// B-930 paso 3 — tampoco: la sesión y el `fetch` entran por parámetro.
+import {
+  enviarReportePorFetch,
+  iniciarReporteDeVerificacion,
+  urlDelReporte,
+} from '@/lib/reporteDeVerificacion';
 // Puro: no arrastra Firestore, así que no toca el corte del bundle de B-09/D-51.
 import { ciudadDeClaims, rolDeClaims, type SesionDelPanel } from '@/lib/rolDelPanel';
 import {
@@ -76,6 +82,12 @@ export const app = (): FirebaseApp => {
  * **Nunca tira**, ni síncrono ni asíncrono: un fallo acá no puede dejar el
  * login en blanco. Con emuladores `activarAppCheck` no activa nada y el estado
  * queda en `no-aplica`, así que el cartel no puede aparecer.
+ *
+ * **Y desde el paso 3, el reporte** (`reporteDeVerificacion.ts`, D-1225): si el
+ * navegador sigue sin verificar con una sesión iniciada, se manda el motivo a la
+ * Function `reportarVerificacionDelNavegador` para que la alerta de GCP le
+ * llegue al dueño. Con emuladores ni se engancha: no hay nada que reportar y no
+ * hay Function desplegada a la que pegarle.
  */
 export const verificarNavegadorAlArrancar = (): void => {
   try {
@@ -84,6 +96,12 @@ export const verificarNavegadorAlArrancar = (): void => {
       motivo: motivoSinAppCheck(),
       pedirToken: pedidorDeToken(),
     }).catch(() => {});
+    if (!usarEmuladores && config.projectId) {
+      iniciarReporteDeVerificacion({
+        observarSesion: (oyente) => onAuthStateChanged(auth(), (u) => oyente(u !== null)),
+        enviar: enviarReportePorFetch(urlDelReporte(config.projectId)),
+      });
+    }
   } catch {
     // Nada: ver el docblock.
   }
