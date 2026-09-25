@@ -361,6 +361,15 @@ export const FUNCIONES = [
    */
   'bibliotecas-abrir',
   'biblioteca-guardar',
+  /*
+   * B-959 — las efemérides. El mismo par que las pantallas de la Guía, por el
+   * mismo riesgo: que la sección exista y nadie la cargue. `efemerides-abrir`
+   * lleva cuántas hay **publicadas** al abrir (acá no hay bandeja: el número que
+   * dice si la sección está viva es ése); `efemeride-guardar`, las que se
+   * guardan de verdad. Sin `detalle`: el título es contenido.
+   */
+  'efemerides-abrir',
+  'efemeride-guardar',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

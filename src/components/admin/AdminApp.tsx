@@ -83,11 +83,13 @@ import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/Libreri
 import type { SuscripcionesPanel as TipoSuscripciones } from '@/components/admin/SuscripcionesPanel';
 import type { LugaresPanel as TipoLugares } from '@/components/admin/LugaresPanel';
 import type { BibliotecasPanel as TipoBibliotecas } from '@/components/admin/BibliotecasPanel';
+import type { EfemeridesPanel as TipoEfemerides } from '@/components/admin/EfemeridesPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { LibreriaConId } from '@/types/libreria';
 import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
 import type { LugarConId } from '@/types/lugar';
 import type { BibliotecaConId } from '@/types/biblioteca';
+import type { EfemerideConId } from '@/types/efemeride';
 import type { User } from 'firebase/auth';
 
 type Vista =
@@ -169,6 +171,13 @@ type Vista =
    */
   | { tipo: 'bibliotecas' }
   | { tipo: 'biblioteca'; ficha?: BibliotecaConId }
+  /*
+   * B-959 — las efemérides. Dos vistas por el mismo motivo que las de la Guía
+   * (el aviso de salida, B-35), montando el mismo componente para que la
+   * suscripción a la colección siga viva con el formulario abierto.
+   */
+  | { tipo: 'efemerides' }
+  | { tipo: 'efemeride'; efemeride?: EfemerideConId }
   /*
    * B-1230 — el borrador del correo semanal. No lleva estado y **no lee
    * Firestore**: se arma con el `/events.json` publicado (D-801), así que es la
@@ -303,6 +312,12 @@ const LugaresPanel = diferido<Parameters<typeof TipoLugares>[0]>(() =>
 // además `firebase/storage`.
 const BibliotecasPanel = diferido<Parameters<typeof TipoBibliotecas>[0]>(() =>
   import('@/components/admin/BibliotecasPanel').then((m) => ({ default: m.BibliotecasPanel })),
+);
+
+// Diferida por lo mismo que las otras vistas: lee y escribe `/efemerides`, así
+// que arrastra Firestore (B-09, D-51).
+const EfemeridesPanel = diferido<Parameters<typeof TipoEfemerides>[0]>(() =>
+  import('@/components/admin/EfemeridesPanel').then((m) => ({ default: m.EfemeridesPanel })),
 );
 
 /*
@@ -469,6 +484,7 @@ export function AdminApp() {
     | 'suscripciones'
     | 'lugares'
     | 'bibliotecas'
+    | 'efemerides'
   >('lista');
 
   /**
@@ -772,6 +788,12 @@ export function AdminApp() {
                               ? vista.ficha
                                 ? vista.ficha.nombre
                                 : 'Biblioteca nueva'
+                            : vista.tipo === 'efemerides'
+                              ? 'Efemérides'
+                            : vista.tipo === 'efemeride'
+                              ? vista.efemeride
+                                ? vista.efemeride.titulo
+                                : 'Efeméride nueva'
                               : vista.tipo === 'convertir'
                                 ? `Propuesta de ${vista.tituloOrigen}`
                                 : vista.actividad.titulo}
@@ -886,6 +908,19 @@ export function AdminApp() {
             Bibliotecas
           </button>
         )}
+        {/*
+          B-959 — las efemérides. Solo desde el listado, como las de la Guía: ahí
+          no hay nada que perder, así que no va envuelta en `salirDe` (B-35).
+        */}
+        {vista.tipo === 'lista' && puedeVer(rol, 'efemerides') && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'efemerides' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/65 hover:bg-black/5"
+          >
+            Efemérides
+          </button>
+        )}
         {/* B-833 — la tercera sección de la Guía. */}
         {vista.tipo === 'lista' && puedeVer(rol, 'lugares') && (
           <button
@@ -941,6 +976,8 @@ export function AdminApp() {
                   ? 'lugares'
                 : vista.tipo === 'bibliotecas' || vista.tipo === 'biblioteca'
                   ? 'bibliotecas'
+                : vista.tipo === 'efemerides' || vista.tipo === 'efemeride'
+                  ? 'efemerides'
                   : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
                     ? 'lista'
                     : 'formulario'
@@ -1133,6 +1170,20 @@ export function AdminApp() {
             setVista({ tipo: 'biblioteca', ficha });
           }}
           onGuardado={() => setVista({ tipo: 'bibliotecas' })}
+          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
+        />
+      )}
+
+      {/* B-959 — las efemérides: la lista y su formulario, en el mismo componente. */}
+      {(vista.tipo === 'efemerides' || vista.tipo === 'efemeride') && (
+        <EfemeridesPanel
+          usuario={{ uid: usuario.uid }}
+          editando={vista.tipo === 'efemeride' ? (vista.efemeride ?? 'nueva') : null}
+          onAbrirFormulario={(efemeride) => {
+            setVolverA('efemerides');
+            setVista({ tipo: 'efemeride', efemeride });
+          }}
+          onGuardado={() => setVista({ tipo: 'efemerides' })}
           onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
         />
       )}

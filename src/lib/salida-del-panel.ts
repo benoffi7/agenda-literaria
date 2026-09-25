@@ -64,6 +64,11 @@ export const VISTAS_CON_FORMULARIO = [
    * es barato; lo que no vuelve es la fecha en que se había cargado.
    */
   'biblioteca',
+  /*
+   * `'efemeride'` entra con B-959. Es un formulario chico, pero la descripción
+   * es texto tipeado a mano y abandonarlo sin aviso es exactamente B-35.
+   */
+  'efemeride',
 ] as const;
 
 export type VistaConFormulario = (typeof VISTAS_CON_FORMULARIO)[number];
