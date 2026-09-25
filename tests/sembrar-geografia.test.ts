@@ -21,7 +21,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { derivadosDesalineados } from '../functions/derivados.js';
+import { derivadosDesalineados, sedePrincipal } from '../functions/derivados.js';
 import { buildSearchText } from '../functions/busqueda.js';
 import { ciudadesDe } from '../functions/ciudades.js';
 import { reubicacionDe } from '../src/lib/reubicacion-de-barrio.mjs';
@@ -49,7 +49,7 @@ const fila = (id: string, o: Record<string, unknown> = {}) => ({
 
 /** Un documento como lo dejaba el panel antes de la migración: alineado con sus filas. */
 const documentoGuardado = (modalidades: ReturnType<typeof fila>[]) => {
-  const s = modalidades.find((m) => m.sede)?.sede ?? null;
+  const s = sedePrincipal(modalidades);
   return {
     titulo: 'Taller de la llanura',
     descripcion: 'Escritura del paisaje',
@@ -148,22 +148,79 @@ describe('los scripts no se escriben la derivación — la clase de B-88', () =>
     }
   });
 
+  /*
+   * La forma de la copia: `filas.find((m) => m.sede)` / `m?.online`. La
+   * implementación es `sedePrincipal` y `onlinePrincipal` de
+   * `functions/derivados.js`; quien la necesite la importa.
+   */
+  const copia = /\.find\(\(?\w+\)?\s*=>\s*\w+\??\.(sede|online)\)/;
+
+  /** Los `.mjs`/`.js`/`.ts`/`.tsx` de un directorio, recursivo, sin `node_modules`. */
+  const archivosDe = (dir: string): string[] =>
+    readdirSync(dir, { recursive: true, encoding: 'utf8' })
+      .filter((f) => !f.split(/[\\/]/).includes('node_modules'))
+      .filter((f) => /\.(mjs|js|ts|tsx)$/.test(f))
+      .map((f) => `${dir}/${f.replaceAll('\\', '/')}`);
+
   it('ningún script de `scripts/` deriva la sede o el online con un `.find` propio', () => {
     /*
-     * La forma de la copia: `filas.find((m) => m.sede)` / `m?.online`. La
-     * implementación es `sedePrincipal` y `onlinePrincipal` de
-     * `functions/derivados.js`; un script que la necesite la importa.
-     *
      * MUTACIÓN PROBADA: devolver a `reubicar-barrios.mjs` su
      * `const sede = nuevas.find((m) => m.sede)?.sede ?? null;` deja este caso en
      * rojo nombrando el archivo.
      */
-    const copia = /\.find\(\(?\w+\)?\s*=>\s*\w+\??\.(sede|online)\)/;
-    const archivos = readdirSync('scripts').filter((f) => /\.(mjs|js)$/.test(f));
+    const archivos = archivosDe('scripts');
     expect(archivos.length).toBeGreaterThan(20);
-    const culpables = archivos.filter((f) => copia.test(fuente(`scripts/${f}`)));
+    const culpables = archivos.filter((f) => copia.test(fuente(f)));
     expect(culpables).toEqual([]);
     // Control positivo: el patrón reconoce la implementación de verdad.
     expect(copia.test(readFileSync('functions/derivados.js', 'utf8'))).toBe(true);
+  });
+
+  /**
+   * **Los tests tampoco — B-2140.** Un fixture que arma la sede, el online o la
+   * modalidad con su propia regla sigue armando documentos «alineados» con la
+   * regla vieja cuando la de verdad cambia, y los tests pasan sobre una forma que
+   * el panel ya no produce. `tests/fixtures/indice.ts` y
+   * `tests/ciudades-del-servidor.test.ts` lo hacían.
+   *
+   * Las excepciones son los tests que arman **a propósito** un documento con la
+   * derivación de otra regla, como control de que la comparación mide algo. Cada
+   * una lleva su motivo; una excepción que ya no tiene la copia se cae sola (el
+   * último `expect`), así la lista no junta entradas muertas.
+   *
+   * MUTACIÓN PROBADA: devolverle a `tests/fixtures/indice.ts` su
+   * `modalidades.find((m) => m.sede)?.sede ?? null` deja este caso en rojo
+   * nombrando el archivo.
+   */
+  const EXCEPCIONES_EN_TESTS: Readonly<Record<string, string>> = {
+    'tests/sembrar-geografia.test.ts':
+      'el `payloadViejo` de reubicar-barrios reproduce el payload de antes de B-2090 como control positivo, y este archivo nombra la forma de la copia',
+  };
+
+  it('ningún test de `tests/` deriva la sede o el online con un `.find` propio', () => {
+    const archivos = archivosDe('tests');
+    expect(archivos.length).toBeGreaterThan(100);
+    const culpables = archivos
+      .filter((f) => !(f in EXCEPCIONES_EN_TESTS))
+      .filter((f) => copia.test(fuente(f)));
+    expect(culpables).toEqual([]);
+    for (const [rel, motivo] of Object.entries(EXCEPCIONES_EN_TESTS)) {
+      expect(motivo.length, rel).toBeGreaterThan(20);
+      expect(copia.test(fuente(rel)), `${rel} ya no tiene la copia: sacala de las excepciones`).toBe(true);
+    }
+  });
+
+  it('ningún test de `tests/` arma la modalidad resultante con su propia unión', () => {
+    /*
+     * La otra mitad de la copia de `tests/fixtures/indice.ts`: un `Set` de las
+     * modalidades de las filas con su `has('hibrido')`. La regla es
+     * `modalidadResultante`.
+     *
+     * MUTACIÓN PROBADA: devolverle al fixture su
+     * `new Set(modalidades.map((m) => m.modalidad))` deja este caso en rojo.
+     */
+    const union = /new Set\(\s*\w+\??\.map\(\(?\w+\)?\s*=>\s*\w+\??\.modalidad\)/;
+    const culpables = archivosDe('tests').filter((f) => union.test(fuente(f)));
+    expect(culpables).toEqual([]);
   });
 });
