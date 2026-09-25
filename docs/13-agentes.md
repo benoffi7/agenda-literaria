@@ -304,6 +304,17 @@ barrido a mano que abrió el ítem lo borraba y «arregló» dos enlaces que
 funcionaban. Informa como los otros; lo que frena es
 `tests/anclas-referenciadas.test.ts`, con la deuda congelada en **cero**.
 
+**Y uno que no busca roturas sino que da por dónde entrar: el índice de
+`06-decisiones.md`** (M-7 del PRD 6). El registro pesa ~205 mil tokens y no se
+puede leer entero; `node scripts/indice-de-decisiones.mjs`
+(`npm run decisiones:indice`) escribe
+[`06-decisiones-indice.md`](06-decisiones-indice.md), una línea por decisión
+con su id, su título y su ancla. El ancla la saca del mismo `encabezadosDe` que
+usa el barrido de anclas, así que los dos no pueden derivarla distinto. Lo que
+frena es `tests/indice-de-decisiones.test.ts`: el archivo commiteado tiene que
+ser lo que el script produce hoy, así que quien agrega o renombra una decisión
+regenera el índice en el mismo cambio.
+
 **No es un test bloqueante, y el motivo es la forma de trabajo de este repo:**
 citar una decisión antes de escribirla es legítimo y frecuente, porque los
 frentes en paralelo documentan su cambio en una rama y la entrada de

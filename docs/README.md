@@ -12,7 +12,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 3 | [`03-modelo-de-datos.md`](03-modelo-de-datos.md) | Colecciones, campos, taxonomías. |
 | 4 | [`04-funcionalidades.md`](04-funcionalidades.md) | Qué hace el sistema hoy, pantalla por pantalla. |
 | 5 | [`05-patrones.md`](05-patrones.md) | Convenciones a respetar al escribir código acá. |
-| 6 | [`06-decisiones.md`](06-decisiones.md) | Decisiones tomadas durante la implementación, y los desvíos del `CLAUDE.md` con su motivo. |
+| 6 | [`06-decisiones.md`](06-decisiones.md) — índice en [`06-decisiones-indice.md`](06-decisiones-indice.md), generado | Decisiones tomadas durante la implementación, y los desvíos del `CLAUDE.md` con su motivo. |
 | 7 | [`07-seguridad.md`](07-seguridad.md) | Qué es público y qué no. Cómo se verifica. |
 | 8 | [`08-operacion.md`](08-operacion.md) | Correr local, deployar, diagnosticar. |
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
