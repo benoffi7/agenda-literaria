@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El desglose de «Filtros que no encuentran nada» solo muestra opciones que existen**
+  (B-2161). La Function `traerAnaliticaDelSitio` lee `/opciones/*` y descarta el slug que
+  no es una opción aprobada de su filtro: un `?barrio=lo-que-sea` escrito a mano en la URL
+  llega a GA4 pero no al panel. Y `functions/analitica.js` y `analitica-trigger.js` pasan
+  a despertar al `auditor-privacidad`, porque ahí se decide qué le pide el panel a GA4.
 - **«Filtros que no encuentran nada» dice cuál filtro fue** (B-798, D-1271). La fila de
   la pestaña «El sitio público» se despliega y muestra, de más a menos veces, qué filtro
   dejó el listado vacío y con qué opción (por ejemplo «Arancel · a-la-gorra»). El dueño

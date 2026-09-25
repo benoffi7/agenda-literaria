@@ -197,6 +197,7 @@ también allá, así que sacarla de la lista pone un test en rojo.
 | `src/lib/efemerides.ts` | la **única escritura** del panel sobre `/efemerides` (B-959): `crearEfemeride`, `guardarEfemeride` y `moverEfemeride` —la que publica— firman con el uid propio, que la proyección no publica. `slugPublicable` es la guarda de que dos efemérides no compartan URL |
 | `src/lib/efemeride-schema.ts` | `formAEfemeride` decide el **valor** de cada campo de una efeméride, y `fuenteDelForm` sanea el link de la fuente con `urlSegura` antes de guardarlo: es el único `href` de las salidas 31 y 32 que sale de un dato tipeado |
 | `functions/efemerides-trigger.js` | escribe `publicadaAlgunaVez` con el Admin SDK, que las reglas no alcanzan: es lo que mantiene congelado el slug de una efeméride despublicada (trampa 10) |
+| `functions/analitica.js` + `functions/analitica-trigger.js` | deciden **qué le pide el panel a GA4 y a Search Console** y lo escriben en `sistema/analitica-sitio` con el Admin SDK. `DIMENSIONES_PERMITIDAS` y `DIMENSIONES_SC_PERMITIDAS` son listas blancas de privacidad: una dimensión de más (`pageLocation` con el `?q=` de lo tipeado, `city`, la demografía) entra al documento sin que ninguna salida pública cambie. El trigger además vuelca las **consultas de Search Console**, que son texto tipeado por terceros, y el desglose de `filtro_sin_resultados` (B-798), que se contrasta contra `/opciones` (B-2161). Faltaban acá hasta el 2026-09-25: la auditoría de B-798 se pidió a mano |
 
 **`src/lib/formulario/autoguardado.ts` queda afuera, y es discutible.** Su
 `sinFlagsDePublicacion` es la otra mitad del par de flags que B-819 cerró, así que
@@ -438,6 +439,8 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/pages/robots.txt.ts`
 - `src/pages/pasadas.astro`
 - `functions/calendario.js`
+- `functions/analitica.js`
+- `functions/analitica-trigger.js`
 - `functions/derivados.js`
 - `functions/derivados-firestore.js`
 - `functions/busqueda.js`

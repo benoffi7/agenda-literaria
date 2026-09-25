@@ -48,6 +48,8 @@ import {
   pedidosGa4,
   pedidosSearchConsole,
   resumenGa4,
+  CAMPO_DE_EJE,
+  vocabularioDelDesglose,
   resumenSearchConsole,
   ventanas,
 } from './analitica.js';
@@ -169,9 +171,22 @@ const leerGa4 = async (ahora) => {
     const primerDia = await ga4.properties
       .runReport({ property, requestBody: pedidoPrimerDia(ahora) }, { timeout: TIMEOUT_MS })
       .then((r) => r.data);
+    /*
+     * Las taxonomías contra las que se contrasta el desglose de
+     * `filtro_sin_resultados` — B-2161. Seis documentos chicos en una sola
+     * lectura, una vez por día. Van dentro de este `try`: si Firestore no
+     * contesta, la mitad de GA4 queda en `falla` con el motivo, en vez de
+     * escribir un desglose sin contrastar.
+     */
+    const db = getFirestore();
+    const campos = [...new Set(Object.values(CAMPO_DE_EJE))];
+    const snaps = await db.getAll(...campos.map((c) => db.doc(`opciones/${c}`)));
+    const vocabulario = vocabularioDelDesglose(
+      Object.fromEntries(campos.map((c, i) => [c, snaps[i]?.data()])),
+    );
     return {
       ok: true,
-      resumen: resumenGa4({ actual, anterior, primerDia, ventana: v.actual }),
+      resumen: resumenGa4({ actual, anterior, primerDia, ventana: v.actual, vocabulario }),
     };
   } catch (e) {
     /*

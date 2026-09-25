@@ -32,6 +32,7 @@
  * mostrar un cero (§8.1bis, D-272).
  */
 
+import { estaAprobada } from './alta-de-opcion.js';
 import { FORMA_DE_SLUG } from './frescura.js';
 
 /**
@@ -199,9 +200,9 @@ export const RUTA_DEL_PANEL = '/admin';
  *
  * ⚠️ **«Forma de slug» no es «slug de la taxonomía».** El mapa de los rieles se
  * llena desde la URL (`desdeQuery` de `listadoPublico.ts`) sin contrastarlo contra
- * las opciones, así que un `?barrio=lo-que-sea` escrito a mano llega a GA4 y de ahí
- * al panel. Es un valor que la misma persona puso en su propia URL, y el panel es
- * solo del admin, que ya lo ve en la consola de GA4. Lo encontró el
+ * las opciones, así que un `?barrio=lo-que-sea` escrito a mano llega a GA4. **Al
+ * panel ya no** (B-2161): `desgloseSinResultados` contrasta cada slug contra las
+ * opciones aprobadas de su eje (`vocabularioDelDesglose`). Lo encontró el
  * `auditor-privacidad` (D-1271).
  *
  * Lo que esta lista agrega es que se piden **solo** esas dos: un `customEvent:`
@@ -491,6 +492,40 @@ export const EJES_DEL_SITIO = [
 export const EJES_SIN_SLUG = ['busqueda', 'cuando', 'abierta', 'cursada', 'otro'];
 
 /**
+ * La taxonomía de `/opciones/{campo}` de cada eje de chips — B-2161. `tag` en el
+ * filtro es `tags` en `/opciones`, como en `etiquetaDe` de `listadoPublico.ts`.
+ * `modalidad` no es taxonomía: sale del enum del modelo.
+ */
+export const CAMPO_DE_EJE = {
+  tipo: 'tipo',
+  arancel: 'arancel',
+  provincia: 'provincia',
+  barrio: 'barrio',
+  ciudad: 'ciudad',
+  tag: 'tags',
+};
+
+/** `MODALIDADES` de `src/types/actividad.ts`, copiado; lo ata un test. */
+export const MODALIDADES_DEL_SITIO = ['presencial', 'virtual', 'hibrido'];
+
+/**
+ * Qué slugs puede traer cada eje de chips: las opciones **aprobadas** de su
+ * taxonomía, que son las que el sitio ofrece como chip (`opcionesPublicas`), y el
+ * enum de `modalidad`. Recibe `campo → documento de /opciones` tal como lo lee el
+ * trigger; un documento que falta da una lista vacía, o sea que ese eje no muestra
+ * ningún slug.
+ */
+export const vocabularioDelDesglose = (docs) => ({
+  ...Object.fromEntries(
+    Object.entries(CAMPO_DE_EJE).map(([eje, campo]) => [
+      eje,
+      (docs?.[campo]?.valores ?? []).filter(estaAprobada).map((v) => v.slug),
+    ]),
+  ),
+  modalidad: MODALIDADES_DEL_SITIO,
+});
+
+/**
  * El tope de la lista de slugs unida, el mismo `MAX_TEXTO_SITIO` con el que el
  * emisor la corta. Un tope distinto acá descartaría filas que el sitio mandó bien.
  */
@@ -514,9 +549,15 @@ export const TOPE_DE_SLUGS_UNIDOS = 100;
  * 2. cada slug tiene la forma de `slugify()` (`FORMA_DE_SLUG`, la de `frescura.js`);
  * 3. la lista unida no pasa el tope del emisor;
  * 4. **un eje sin slug no trae slug**, ni la fila sin eje: si no, un
- *    `busqueda · juan-perez` se leería en el panel como algo que alguien tipeó.
+ *    `busqueda · juan-perez` se leería en el panel como algo que alguien tipeó;
+ * 5. **cada slug es una opción aprobada de su eje** (`vocabulario`, de
+ *    `vocabularioDelDesglose`) — B-2161. Sin esto, un `?barrio=juan-perez` escrito
+ *    a mano en la URL llegaba al panel con forma de slug válida.
+ *
+ * Una opción que se borró o se renombró después del evento también se descarta:
+ * es el costo de la regla 5, y es chico, porque el desglose mira 28 días.
  */
-export const desgloseSinResultados = (respuesta) =>
+export const desgloseSinResultados = (respuesta, vocabulario) =>
   (respuesta?.rows ?? []).flatMap((fila) => {
     const [, ejeCrudo, slugCrudo] = (fila?.dimensionValues ?? []).map((d) => d?.value ?? '');
     const eje = !ejeCrudo || ejeCrudo === SIN_VALOR ? null : ejeCrudo;
@@ -526,7 +567,7 @@ export const desgloseSinResultados = (respuesta) =>
     const llevaSlug = eje !== null && !EJES_SIN_SLUG.includes(eje);
     const slugValido =
       unidos.length <= TOPE_DE_SLUGS_UNIDOS &&
-      slug.every((s) => FORMA_DE_SLUG.test(s)) &&
+      slug.every((s) => FORMA_DE_SLUG.test(s) && (vocabulario?.[eje] ?? []).includes(s)) &&
       (llevaSlug || slug.length === 0);
     if (!ejeValido || !slugValido) return [];
     return [{ eje, slug, valor: numero(fila?.metricValues?.[0]?.value) }];
@@ -542,9 +583,10 @@ export const fechaDeGa4 = (valor) =>
  *
  * `actual` y `anterior` son los objetos que devuelve `pedidosGa4` ejecutados,
  * o sea `{ totales, paginas, canales, dispositivos, eventos, sinResultados }` con la respuesta
- * cruda de cada uno. `primerDia` es la respuesta de `pedidoPrimerDia`.
+ * cruda de cada uno. `primerDia` es la respuesta de `pedidoPrimerDia`, y
+ * `vocabulario` el de `vocabularioDelDesglose` (B-2161).
  */
-export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
+export const resumenGa4 = ({ actual, anterior, primerDia, ventana, vocabulario = {} }) => {
   const [sesiones, personas, vistas, nuevos, duracion, enganche] = metricasDeLaFila(
     actual?.totales,
     6,
@@ -598,7 +640,7 @@ export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
         ranking(actual?.eventos).find((f) => f.clave === nombre)?.valor ?? 0,
       ]),
     ),
-    sinResultados: desgloseSinResultados(actual?.sinResultados),
+    sinResultados: desgloseSinResultados(actual?.sinResultados, vocabulario),
   };
 };
 

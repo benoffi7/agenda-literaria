@@ -22215,6 +22215,25 @@ test), que un eje sin slug no traiga slug, el mismo tope que el emisor, y usa
 `FORMA_DE_SLUG` de `functions/frescura.js`. El test de ida y vuelta arma el evento con
 el emisor real y lo pasa por el lector. D-1271.
 
+### B-2161 · Lo que el `auditor-privacidad` dejó abierto de B-798 · P3 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25)**, con el sí del dueño a las dos. (1) `functions/analitica.js`
+y `functions/analitica-trigger.js` entraron a la tabla de puertas y a «Los archivos que
+te despiertan» de `.claude/agents/auditor-privacidad.md`. (2) La Function lee
+`/opciones/*` (`vocabularioDelDesglose`) y `desgloseSinResultados` descarta el slug que no
+es una opción aprobada de su eje; `modalidad` contra su enum. Si la lectura falla, la
+mitad de GA4 queda en `falla`. D-1271.
+
+Lo encontró el `auditor-privacidad` sobre el cambio de B-798 (2026-09-25). Eran dos
+cosas chicas, y ninguna filtraba:
+
+1. **`functions/analitica.js` y `functions/analitica-trigger.js` no despertaban a
+   ningún auditor**, y ahí vive `DIMENSIONES_PERMITIDAS`, que el §9.3 de
+   `16-analitica-del-sitio.md` llama «una decisión de privacidad». La auditoría de
+   B-798 se pidió a mano: un cambio que sumara `pageLocation` no habría disparado nada.
+2. **El `slug` del desglose se validaba por forma, no contra la taxonomía.** Un
+   `?barrio=lo-que-sea` escrito a mano en la URL llegaba al panel.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

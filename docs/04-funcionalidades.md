@@ -1201,7 +1201,8 @@ Con números, la pestaña muestra tres bloques:
 **La fila de «filtros que no encuentran nada» dice cuántas veces y, desplegada, cuál
 filtro fue** (B-798, D-1271). «Ver qué filtro fue» lista hasta diez combinaciones de
 filtro y opción, de más a menos veces, con el nombre del filtro en castellano («Arancel
-· a-la-gorra», «Texto del buscador») y nunca lo que alguien tipeó. «Sin filtro
+· a-la-gorra», «Texto del buscador») y nunca lo que alguien tipeó. Solo aparecen
+opciones que existen en el sitio: una escrita a mano en la URL no llega (B-2161). «Sin filtro
 identificado» junta los ceros que ningún filtro solo explica con los eventos de antes
 del 2026-09-25, cuando se registraron las dimensiones en GA4, y la pantalla lo aclara.
 Un documento del resumen sin desglose deja la fila como antes, sin desplegable.

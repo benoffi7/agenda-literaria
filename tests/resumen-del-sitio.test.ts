@@ -17,6 +17,7 @@ import {
   MOTIVOS_SIN_CONFIGURAR,
   documentoDeAnalitica,
   resumenGa4,
+  vocabularioDelDesglose,
   resumenSearchConsole,
 } from '../functions/analitica.js';
 
@@ -119,6 +120,9 @@ const documentoReal = (opciones: { vacio?: boolean } = {}) =>
               ? { rowCount: 0 }
               : { rows: [{ dimensionValues: [{ value: '20260903' }] }] },
             ventana: VENTANA,
+            vocabulario: vocabularioDelDesglose({
+              arancel: { valores: [{ slug: 'a-la-gorra', label: 'A la gorra', fijo: true }] },
+            }),
           }),
         },
         searchConsole: {

@@ -5,8 +5,10 @@ import {
   DIAS_DE_VENTANA,
   DIMENSIONES_PERMITIDAS,
   DIMENSIONES_SC_PERMITIDAS,
+  CAMPO_DE_EJE,
   EJES_DEL_SITIO,
   EJES_SIN_SLUG,
+  MODALIDADES_DEL_SITIO,
   EVENTOS_PROPIOS,
   MAX_MOTIVO,
   RETRASO,
@@ -30,6 +32,7 @@ import {
   sumarDias,
   variacion,
   ventanas,
+  vocabularioDelDesglose,
 } from '../functions/analitica.js';
 import {
   construirEventoSitio,
@@ -40,6 +43,7 @@ import {
   NOMBRES_EVENTOS_SITIO,
 } from '@/lib/analyticsSitio';
 import { EJES, type Eje } from '@/lib/listadoPublico';
+import { CAMPOS_TAXONOMIA, MODALIDADES } from '@/types/actividad';
 
 /**
  * La lectura de la analítica del sitio — **B-374** (GA4) y **B-373** (Search
@@ -145,6 +149,20 @@ const sinResultados = (filas: [string, string, string][]) => ({
   })),
   rowCount: filas.length,
   kind: 'analyticsData#runReport',
+});
+
+/**
+ * Las opciones de `/opciones/*` contra las que se contrasta el desglose
+ * (B-2161), en la forma en que las lee el trigger.
+ */
+const TAGS_CORTOS = ['poesia', 'cuento', 'novela', 'ensayo', 'teatro', 'cronica', 'humor',
+  'terror', 'fantasia', 'policial', 'infantil', 'juvenil'];
+const opcion = (slug: string, extra: Record<string, unknown> = {}) => ({ slug, label: slug, ...extra });
+const VOCABULARIO = vocabularioDelDesglose({
+  arancel: { valores: [opcion('gratis', { fijo: true }), opcion('a-la-gorra', { fijo: true })] },
+  tipo: { valores: [opcion('taller', { fijo: true })] },
+  barrio: { valores: [opcion('villa-crespo')] },
+  tags: { valores: [...TAGS_CORTOS, 'narrativa'].map((t) => opcion(t)) },
 });
 
 /** Un informe vacío: GA4 **omite `rows` por completo**, no manda `rows: []`. */
@@ -527,7 +545,7 @@ describe('ranking', () => {
 
 describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)', () => {
   it('cada fila es un eje con sus slugs, y el `(not set)` es `null` y no un eje', () => {
-    expect(desgloseSinResultados(informesLlenos().sinResultados)).toEqual([
+    expect(desgloseSinResultados(informesLlenos().sinResultados, VOCABULARIO)).toEqual([
       { eje: null, slug: [], valor: 7 },
       { eje: 'arancel', slug: ['a-la-gorra'], valor: 3 },
       { eje: 'busqueda', slug: [], valor: 2 },
@@ -536,7 +554,7 @@ describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)'
 
   it('una lista de slugs llega unida por coma y se parte', () => {
     expect(
-      desgloseSinResultados(sinResultados([['tag', 'poesia,narrativa', '4']])),
+      desgloseSinResultados(sinResultados([['tag', 'poesia,narrativa', '4']]), VOCABULARIO),
     ).toEqual([{ eje: 'tag', slug: ['poesia', 'narrativa'], valor: 4 }]);
   });
 
@@ -557,6 +575,7 @@ describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)'
         ['tag', 'poesia,@alguien', '1'],
         ['tipo', 'taller', '2'],
       ]),
+      VOCABULARIO,
     );
     expect(r).toEqual([{ eje: 'tipo', slug: ['taller'], valor: 2 }]);
   });
@@ -575,6 +594,7 @@ describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)'
         ['juan-perez-1155554444', '(not set)', '1'],
         ['barrio', 'villa-crespo', '2'],
       ]),
+      VOCABULARIO,
     );
     expect(r).toEqual([{ eje: 'barrio', slug: ['villa-crespo'], valor: 2 }]);
   });
@@ -605,8 +625,7 @@ describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)'
         Eje,
         string[]
       >;
-    const muchos = ['poesia', 'cuento', 'novela', 'ensayo', 'teatro', 'cronica', 'humor',
-      'terror', 'fantasia', 'policial', 'infantil', 'juvenil'];
+    const muchos = TAGS_CORTOS;
     const casos: [Parameters<typeof crudosDeFiltroSinResultados>[0], Record<Eje, string[]>][] = [
       ['barrio', { ...sin(), barrio: ['villa-crespo'] }],
       ['tag', { ...sin(), tag: muchos }],
@@ -621,10 +640,60 @@ describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)'
       )?.params as { eje?: string; slug?: string };
       const r = desgloseSinResultados(
         sinResultados([[params.eje ?? '(not set)', params.slug ?? '(not set)', '1']]),
+        VOCABULARIO,
       );
       expect(r, String(eje)).toHaveLength(1);
       expect(r[0]!.eje).toBe(params.eje ?? null);
     }
+  });
+
+  it('un slug que no es una opción aprobada de su eje no llega al panel — B-2161', () => {
+    /*
+     * El mapa de los chips se llena desde la URL sin contrastarlo contra las
+     * opciones, así que `?barrio=juan-perez` llega a GA4 con forma de slug
+     * válida. Tampoco pasa una opción pendiente de aprobación (el sitio no la
+     * ofrece como chip) ni un slug de otro eje: `a-la-gorra` es arancel.
+     *
+     * MUTACIÓN PROBADA: se sacó el `includes` del vocabulario en
+     * `desgloseSinResultados` y este caso pasó a rojo con las tres filas malas.
+     */
+    const vocabulario = vocabularioDelDesglose({
+      barrio: {
+        valores: [opcion('villa-crespo'), opcion('pendiente', { aprobada: false })],
+      },
+      arancel: { valores: [opcion('a-la-gorra', { fijo: true })] },
+    });
+    const r = desgloseSinResultados(
+      sinResultados([
+        ['barrio', 'juan-perez', '1'],
+        ['barrio', 'pendiente', '1'],
+        ['barrio', 'a-la-gorra', '1'],
+        ['barrio', 'villa-crespo', '2'],
+        ['modalidad', 'virtual', '3'],
+        ['busqueda', '(not set)', '4'],
+      ]),
+      vocabulario,
+    );
+    expect(r).toEqual([
+      { eje: 'barrio', slug: ['villa-crespo'], valor: 2 },
+      { eje: 'modalidad', slug: ['virtual'], valor: 3 },
+      { eje: 'busqueda', slug: [], valor: 4 },
+    ]);
+  });
+
+  it('sin vocabulario no pasa ningún slug: falla cerrado', () => {
+    expect(
+      desgloseSinResultados(sinResultados([['barrio', 'villa-crespo', '2']]), undefined),
+    ).toEqual([]);
+  });
+
+  it('el mapa de ejes a taxonomías y el enum de modalidad no se separan del sitio', () => {
+    // `modalidad` es el único eje de chips que no es taxonomía.
+    expect(Object.keys(CAMPO_DE_EJE).sort()).toEqual(EJES.filter((e) => e !== 'modalidad').sort());
+    for (const campo of Object.values(CAMPO_DE_EJE)) {
+      expect(CAMPOS_TAXONOMIA as readonly string[], campo).toContain(campo);
+    }
+    expect([...MODALIDADES_DEL_SITIO].sort()).toEqual([...MODALIDADES].sort());
   });
 
   it('un informe vacío da `[]`', () => {
@@ -638,6 +707,7 @@ describe('desgloseSinResultados — qué filtro dejó el listado vacío (B-798)'
       anterior: informesVacios(),
       primerDia: primerDia('20260903'),
       ventana: { desde: '2026-09-17', hasta: '2026-10-14' },
+      vocabulario: VOCABULARIO,
     });
     expect(r.sinResultados).toHaveLength(3);
     expect(r.sinResultados[1]).toEqual({ eje: 'arancel', slug: ['a-la-gorra'], valor: 3 });

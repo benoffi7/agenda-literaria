@@ -1438,8 +1438,9 @@ dimensión personalizada*, alcance **Evento**, dos veces:
 de los chips: **ninguno puede llevar el texto que alguien tipeó**, y eso es una
 garantía del código, no de la consola. Ojo con una media verdad: «forma de slug» no es
 «slug de la taxonomía». El mapa de los chips se llena desde la URL sin contrastarlo
-contra las opciones, así que un `?barrio=lo-que-sea` escrito a mano llega igual
-(D-1271, B-2161). Van con `panel` y `via`, que son los parámetros de los
+contra las opciones, así que un `?barrio=lo-que-sea` escrito a mano llega igual a
+GA4. **Al panel no**: la Function contrasta cada slug contra las opciones aprobadas de
+su eje antes de escribir el resumen (D-1271, B-2161). Van con `panel` y `via`, que son los parámetros de los
 otros dos eventos propios y siguen la misma regla.
 
 El límite del plan gratuito es 50 dimensiones de evento por propiedad, y esta es

@@ -14045,9 +14045,11 @@ ventana actual: comparar por eje con volúmenes de a decenas sería ruido.
 **Forma de slug no es slug de la taxonomía**, y lo corrigió el `auditor-privacidad` sobre la
 primera redacción de esta decisión: el mapa de los chips se llena desde la URL
 (`desdeQuery`) sin contrastarlo contra las opciones, así que un `?barrio=lo-que-sea`
-escrito a mano llega al panel. Se acepta porque es un valor que la misma persona puso en
-su propia URL y el panel es solo del admin, que ya lo ve en la consola de GA4. Contrastar
-contra `/opciones` en la Function queda como B-2161. El lector también exige el
+escrito a mano llega al panel. Se cerró el mismo día (B-2161): la Function lee `/opciones/*` y descarta
+el slug que no es una opción **aprobada** de su eje, que es lo que el sitio ofrece como
+chip (`modalidad`, que no es taxonomía, contra su enum). Si esa lectura falla, la mitad
+de GA4 queda en `falla` en vez de escribir un desglose sin contrastar. Costo: una opción
+borrada o renombrada después del evento se cae del desglose. El lector también exige el
 vocabulario de `eje` (`EJES_DEL_SITIO`, copiado de `EJES_MEDIBLES` con un test que ata
 las dos) y que un eje sin slug no traiga slug (B-2160).
 

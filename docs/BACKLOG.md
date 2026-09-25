@@ -225,28 +225,6 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-2161 · Lo que el `auditor-privacidad` dejó abierto de B-798 · P3
-
-Lo encontró el `auditor-privacidad` sobre el cambio de B-798 (2026-09-25). Son dos
-cosas chicas, y ninguna filtra hoy.
-
-1. **`functions/analitica.js` y `functions/analitica-trigger.js` no despiertan a
-   ningún auditor.** Ahí vive `DIMENSIONES_PERMITIDAS`, que el propio §9.3 de
-   `16-analitica-del-sitio.md` llama «una decisión de privacidad, no un cambio
-   mecánico», y el trigger vuelca a un documento las consultas de Search Console,
-   que son texto tipeado. Esta auditoría la pidió alguien a mano: un cambio que
-   sumara `pageLocation` no dispararía nada por nombre de archivo. El arreglo es
-   sumar los dos archivos a la tabla de puertas y a «Los archivos que te
-   despiertan» de `.claude/agents/auditor-privacidad.md`
-   (`tests/agentes-y-skills.test.ts` ata las dos listas). **No se tocó sin el dueño**
-   porque es la configuración de un agente, y lo propuso otro agente.
-2. **El `slug` del desglose se valida por forma, no contra la taxonomía** (D-1271). Un
-   `?barrio=lo-que-sea` escrito a mano en la URL llega al panel. Cerrarlo es que el
-   trigger lea `/opciones/{campo}` con el Admin SDK y descarte los slugs que no
-   existen para su eje: una lectura por corrida diaria. Vale la pena si el desglose
-   empieza a mostrar basura; hoy es un valor que la misma persona puso en su propia
-   URL, y solo lo ve el admin.
-
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 
 **Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del
