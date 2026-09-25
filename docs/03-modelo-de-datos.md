@@ -1333,6 +1333,73 @@ tres lados, y cada uno cubre lo que el anterior no:
 
 ---
 
+## `/efemerides/{id}` — el dato del día (B-959)
+
+«Hoy nació Cortázar», «se publicó *Rayuela*»: **sin lugar ni horario**. No es una
+actividad —no va al calendario ni tiene sesiones— y por eso es una colección
+propia y no un `tipo` más de `/actividades` (**D-1170**). La carga solo un admin
+desde el panel (pantalla «Efemérides»); el `publicador` no la ve (**D-1171**).
+
+```
+titulo: string                 // 3–120. Es el renglón de la home
+slug: string                   // único; inmutable desde que se publica (trampa 10)
+descripcion: string            // hasta 600: el dato, no un artículo
+dia: number                    // 1–31, validado contra el mes (el 29/2 existe)
+mes: number                    // 1–12
+anio: number | null            // el año del hecho, opcional (1–2999)
+fuente: { texto, url } | null  // url '' o http(s), ya saneada con urlSegura
+estado: 'borrador' | 'publicado'
+publicadaAlgunaVez?: boolean   // la escribe el trigger (B-285, D-910)
+createdAt, updatedAt: Timestamp   // request.time, los exige la regla
+createdBy, updatedBy: string      // uid propio, lo exige la regla
+```
+
+| Pieza | Dónde |
+|---|---|
+| tipo y topes | `src/types/efemeride.ts` |
+| validación y armado del documento | `src/lib/efemeride-schema.ts` |
+| leer y escribir (solo panel) | `src/lib/efemerides.ts` |
+| proyección pública (whitelist) | `src/lib/efemeridePublica.ts` |
+| reglas | `firestore.rules`, sección «EFEMÉRIDES — B-959» |
+| rebuild | `functions/efemerides.js` (la guarda) + `functions/efemerides-trigger.js` |
+
+### Día y mes, no un `Timestamp`
+
+Una efeméride **se repite todos los años**: lo que se guarda es un día del
+calendario, no un instante. Guardarla como `Timestamp` a la medianoche de Buenos
+Aires es el 24 a las 21:00 en UTC, y cualquier lector que se olvide de la zona la
+muestra el día anterior — la trampa 1. Con dos enteros no hay zona que olvidar.
+El año del hecho va aparte porque **no decide qué día se muestra**, y es opcional
+porque hay efemérides sin año cierto.
+
+Esto no contradice el §2.2 («no usar RRULE»): aquello es sobre los encuentros de
+un ciclo, y acá no hay ningún evento que recurrir.
+
+### El 29 de febrero
+
+Es un día válido (la tabla `DIAS_POR_MES` es la de un año bisiesto) y en los años
+que no lo tienen **se muestra el 28** (`efemeridesDelDia`, **D-1172**). La página
+sigue diciendo «29 de febrero»: es un pliegue de cuándo se muestra, no del dato.
+
+### Qué sale al sitio
+
+`efemeridePublica` publica siete campos —`slug`, `titulo`, `descripcion`, `dia`,
+`mes`, `anio`, `fuente`— y nada más; los uids, las fechas del documento, el
+estado y la marca no salen. `/efemerides.json` lleva todavía menos (sin
+descripción ni fuente): es lo que baja la home para el renglón. Las salidas son
+la **31** y la **32** de `07-seguridad.md`.
+
+### El ciclo, y por qué no es el de los directorios
+
+`borrador` → `publicado`, ida y vuelta, y borrar. Los directorios de la Guía
+tienen `pendiente`/`rechazado` porque cualquiera puede pedir un alta; acá no hay
+nadie de afuera. Por lo mismo **no entra a la retención de la Guía**
+(`borrarFichasVencidas`): un borrador de efeméride es trabajo del dueño, no el
+contacto de un tercero, y no vence. **No hay `/versiones`**: borrar no se
+recupera, y el panel lo pregunta antes.
+
+---
+
 ## Los campos de Instagram, campo por campo (B-1191)
 
 El mismo dato —una cuenta de Instagram— se carga en una docena de lugares del

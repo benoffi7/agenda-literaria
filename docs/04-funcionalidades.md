@@ -1583,6 +1583,36 @@ así a propósito— y sus 25 casos pasaron sin tocarlos. Lo que sí hubo que es
 a mano es el trigger de rebuild: `onDocumentWritten` no matchea un comodín en el
 segmento de colección.
 
+### Efemérides — el dato del día (B-959)
+
+«Hoy nació Cortázar»: sin lugar ni horario, y **no va al calendario público**.
+Pantalla propia en el panel («Efemérides» desde el listado, solo para el admin —
+D-1171), con la lista del año ordenada por mes y día, el estado de cada una a la
+vista y los botones «Abrir» y «Publicar»/«Despublicar». El formulario tiene siete
+campos: qué pasó, día, mes, año del hecho (opcional), el link, el dato en dos o
+tres oraciones y la fuente (opcional, con su link). «Guardar borrador» la deja
+fuera del sitio y «Guardar y publicar» la manda; «Borrar» pregunta antes, porque
+no hay historial.
+
+**En el sitio** (decisión del dueño del 2026-09-25): la sección `/efemerides` con
+una página por efeméride —contenido indexable de long tail que el sitio no
+tenía— y **un renglón en la home con la de hoy**, que elige el navegador con la
+hora de Buenos Aires a partir de `/efemerides.json` (D-1173). La página de mes
+(`/agenda/{aaaa-mm}`) quedó afuera por ahora.
+
+**Por qué no es un `tipo` de actividad**: una actividad publicada va al
+calendario, no tiene nada del formulario de una actividad, y sobre todo **no es
+una fecha sino un día y un mes** que se repite todos los años (D-1170). Por eso
+es una colección propia, con el patrón de los directorios —proyección whitelist
+propia, JSON estático, páginas SSG— pero sin su bandeja: nadie de afuera propone
+efemérides. El modelo está en [`03-modelo-de-datos.md`](03-modelo-de-datos.md)
+§ «`/efemerides/{id}`».
+
+**El rebuild** lo marca `rebuildPorEfemerides` (`functions/efemerides-trigger.js`)
+**solo cuando el cambio toca algo publicado** —publicar, despublicar, editar o
+borrar una publicada—: un borrador se guarda muchas veces mientras se escribe, y
+ninguna de esas escrituras cambia el sitio (D-1174).
+
 ## Dos formas del formulario, y las elige quien carga
 
 El interruptor **«PC / Celular»** de la cabecera del panel (B-814, D-550) decide

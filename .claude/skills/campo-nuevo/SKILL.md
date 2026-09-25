@@ -52,6 +52,8 @@ no se pueden deshacer después.
    | 28 | el formulario público `/guia/bibliotecas/sumar` — no proyecta, pero es HTML indexado que escribe | `src/components/publico/SumarBiblioteca.tsx`, `src/lib/enviar-ficha.ts` |
    | 29 | el **correo semanal** que se pega en Mailchimp | `src/lib/boletinSemanal.ts` (B-1230). **Deriva del `events.json`, no del documento** (D-801): un campo que no entre a la salida 1 no puede llegar acá — y uno que sí entre llega solo si `boletinSemanal` lo pone en una fila |
    | 30 | la **Guía** `/guia` — no proyecta ningún documento: un campo nuevo no llega acá salvo que se escriba en la página a mano | `src/pages/guia/index.astro`, `src/lib/directorios.ts` |
+   | 31 | el índice de efemérides `/efemerides.json` y el renglón de la home — no es de `/actividades`: un campo de una actividad no llega acá | `src/lib/efemeridePublica.ts`, `src/lib/contenidoDelSitio.ts`, `src/pages/efemerides.json.ts`, `src/components/sitio/EfemerideDeHoy.astro` |
+   | 32 | la sección `/efemerides` y la página de cada una — ídem: proyecta `/efemerides`, no una actividad | `src/lib/efemeridePublica.ts`, `src/pages/efemerides/index.astro`, `src/pages/efemerides/[slug].astro` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
