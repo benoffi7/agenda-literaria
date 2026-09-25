@@ -31,7 +31,7 @@ import {
 } from '../functions/derivados.js';
 import { esPublicadorConCiudad, quienEscribioTieneCiudad } from '../functions/claims-de-cuenta.js';
 import { camposCambiados, huboCambioDeContenido } from '../functions/historial.js';
-import { planificar } from '../functions/calendario.js';
+import { construirEvento, planificar } from '../functions/calendario.js';
 import { formADocumento } from '@/lib/actividades';
 import { payloadDeRestauracion, type Version } from '@/lib/historial';
 import { linkDeReunionQueSale } from '@/lib/toPublic';
@@ -368,6 +368,26 @@ describe('corregir `online` no puede abrir el link de la reunión (§5.1)', () =
     expect(linkDeReunionQueSale(doc.online)).toBe('https://zoom.us/j/inventado');
     const corregido = derivadosDesalineados(doc)!.derivados.online as Online;
     expect(linkDeReunionQueSale(corregido)).toBeNull();
+  });
+});
+
+describe('ni `conDerivados` ni la corrección sacan lo privado (§5.1, trampa 5, B-2050)', () => {
+  /** Lo pidió el `auditor-privacidad`: centinelas que ningún saneo puede «arreglar». */
+  it('un link con `urlPublica: false` y la dirección no llegan al índice, al link ni al evento', () => {
+    const LINK = 'https://zoom.us/j/CENTINELA-LINK';
+    const CALLE = 'CENTINELA-CALLE 123';
+    const filas = [
+      fila('a', null, zoom(LINK)),
+      fila('b', sede('Librería', 'mar-del-plata', { direccion: CALLE })),
+    ];
+    const doc = { ...alineado(filas), online: zoom(LINK, true), searchText: CALLE };
+    const vista = conDerivados(doc);
+    const corregido = { ...doc, ...derivadosDesalineados(doc)!.derivados };
+    for (const d of [vista, corregido]) {
+      expect(d.searchText.toLowerCase()).not.toContain('centinela');
+      expect(linkDeReunionQueSale(d.online as Online)).toBeNull();
+      expect(JSON.stringify(construirEvento(d, d.sesiones[0]!))).not.toContain(LINK);
+    }
   });
 });
 
