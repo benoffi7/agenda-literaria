@@ -3057,6 +3057,11 @@ Cloud Run): Monitoring → Alerting → la política → Edit → **Extract log 
 etiquetas: Display name `alerta`, Log field name `jsonPayload.alerta`, expresión regular
 `(.*)`; y Display name `motivo`, Log field name `jsonPayload.motivo`, expresión regular
 `(.*)` (la consola exige un grupo de captura). Cargado por el dueño el 2026-09-25.
+**Verificado el 2026-09-25** con el `curl` de § «Un navegador del panel sin verificar»:
+el cuerpo del mail trae `alerta : verificacion-del-navegador` y `motivo : sin-respuesta`
+como etiquetas, al lado de las del recurso. **El asunto sigue sin mostrarlas**: las
+pone al final, después de las cinco de Cloud Run, y Gmail lo corta antes. Hay que abrir
+el mail.
 
 **Lo que pasa en el navegador no lo ve, salvo lo que el panel reporta.** Desde
 el paso 3 de B-930, un navegador del panel que no consigue token de App Check
@@ -3140,10 +3145,12 @@ curl -si -X POST \
 con `access-control-allow-origin: https://agendaleh.ar`, y el log quedó escrito como
 `WARNING` con exactamente `{message, motivo: 'sin-respuesta', alerta:
 'verificacion-del-navegador'}`, sin más campos.
-El mail de la política llegó en menos de un minuto. **El asunto no dice qué `alerta`
-sonó**: nombra el servicio de Cloud Run (`reportarverificaciondelnavegador`), que es de
-donde se deduce. Para que diga la `alerta` hay que sumarle a la política un extractor
-de etiqueta (ver «La alerta de todas las `alerta`»).
+El mail de la política llegó en menos de un minuto. Una segunda corrida, el mismo día
+y ya con los extractores de etiqueta cargados (ver «La alerta de todas las `alerta`»),
+trajo en el cuerpo `alerta : verificacion-del-navegador` y `motivo : sin-respuesta`.
+**El asunto sigue sin decirlo**: lista primero las etiquetas del recurso de Cloud Run y
+se corta antes de llegar a esas dos. Lo que el asunto sí muestra es el servicio
+(`reportarverificaciondelnavegador`), y de ahí se deduce cuál sonó.
 
 Tiene que contestar `204`, el log tiene que aparecer con el `gcloud logging read`
 de arriba, y el mail en la hora siguiente. Un `403` con el HTML de Google (no el
