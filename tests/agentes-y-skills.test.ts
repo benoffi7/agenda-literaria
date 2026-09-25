@@ -889,6 +889,98 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     expect(inexistentes).toEqual([]);
   });
 
+  /**
+   * Los pares `archivo — función` de las celdas de productor — B-2030.
+   *
+   * El caso de arriba ata el **archivo** al disco; nada ataba la **función** al
+   * archivo. Cuando M-9 partió `contenidoDelSitio.ts` y los doce
+   * `indiceDeLibrerias`/`vistaDeLibrerias`/`caminosDeLibreria` y hermanas se
+   * volvieron `indiceDeDirectorio(id)` y compañía en `contenidoDeLaGuia.ts`, las
+   * filas 20 a 27 siguieron nombrando los viejos durante toda la tanda con todo en
+   * verde: el archivo existía, así que el barrido no tenía de qué quejarse. Y el
+   * `auditor-privacidad` lee esa celda para saber **qué** mirar.
+   *
+   * Solo se lee la forma de lista que la tabla usa para decir productores:
+   * `` `archivo` — `a` (…), `b` y `c` `` — con los paréntesis salteados y la
+   * lista cortada en el primer separador que no sea `,`, `y` o `+`. La prosa de
+   * la celda nombra campos (`contactoDeQuienCargo`, `openingHours`) que no son
+   * funciones, y un barrido de todos los backticks los exigiría como exports.
+   *
+   * «Definida» y no «exportada» a secas: `libreriasPublicadas` y hermanas son
+   * `const` internas de `contenidoDelSitio.ts` y la fila las nombra a propósito,
+   * porque ahí vive el `where` y el `.select()`. Un nombre que ya no existe en el
+   * archivo falla igual, que es el modo de falla.
+   *
+   * MUTACIÓN PROBADA: volver a escribir `indiceDeLibrerias` en la fila 20 pone
+   * este caso en rojo nombrando la salida, el archivo y la función.
+   */
+  const productoresNombrados = (): { n: string; archivo: string; funcion: string }[] => {
+    const pares: { n: string; archivo: string; funcion: string }[] = [];
+    let empezo = false;
+    for (const linea of fuente(SEGURIDAD).split('\n')) {
+      const m = /^\s*\|\s*(\d+)\s*\|(.+)$/.exec(linea);
+      if (!m) {
+        if (empezo) break;
+        continue;
+      }
+      empezo = true;
+      const celda = m[2]!.split(/(?<!\\)\|/).map((c) => c.trim()).find((c) => /`(?:src|functions)[/]/.test(c)) ?? '';
+      const cabeza = /\*{0,2}`((?:src|functions)\/[^`\s]+\.(?:m?[jt]sx?|astro))`\*{0,2}\s+—\s+/g;
+      for (const c of celda.matchAll(cabeza)) {
+        let resto = celda.slice(c.index! + c[0].length);
+        for (;;) {
+          resto = resto.replace(/^\*{2}/, '');
+          const item = /^`([A-Za-z_$][\w$]*)(?:\(\))?`/.exec(resto);
+          if (!item) break;
+          pares.push({ n: m[1]!, archivo: c[1]!, funcion: item[1]! });
+          resto = resto.slice(item[0].length).replace(/^\*{2}/, '');
+          // El paréntesis que sigue es comentario de la fila: se saltea entero,
+          // sin contar los paréntesis que van adentro de un backtick.
+          const abre = /^\s*\(/.exec(resto);
+          if (abre) {
+            let hondo = 0;
+            let enCodigo = false;
+            let i = abre[0].length - 1;
+            for (; i < resto.length; i++) {
+              const ch = resto[i];
+              if (ch === '`') enCodigo = !enCodigo;
+              else if (!enCodigo && ch === '(') hondo++;
+              else if (!enCodigo && ch === ')' && --hondo === 0) break;
+            }
+            resto = resto.slice(i + 1).replace(/^\*{2}/, '');
+          }
+          const sep = /^\s*(?:,|y|\+)\s+/.exec(resto);
+          if (!sep) break;
+          resto = resto.slice(sep[0].length);
+        }
+      }
+    }
+    return pares;
+  };
+
+  it('cada función de una celda de productor está definida en el archivo que la nombra', () => {
+    const pares = productoresNombrados();
+    // Control positivo: la fila 20 dice `libreriaPublica` de `libreriaPublica.ts`,
+    // y la 21, `caminosDeDirectorio` de `contenidoDeLaGuia.ts`.
+    expect(pares).toContainEqual({ n: '20', archivo: 'src/lib/libreriaPublica.ts', funcion: 'libreriaPublica' });
+    expect(pares.length).toBeGreaterThanOrEqual(40);
+    const definida = (archivo: string, nombre: string): boolean => {
+      const src = fuente(archivo);
+      return (
+        new RegExp(
+          String.raw`(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|interface|type|enum)\s+${nombre}\b`,
+        ).test(src) || new RegExp(String.raw`export\s*\{[^}]*\b${nombre}\b[^}]*\}`).test(src)
+      );
+    };
+    const huerfanas = pares
+      .filter((p) => !definida(p.archivo, p.funcion))
+      .map((p) => `salida ${p.n}: ${p.archivo} — ${p.funcion}`);
+    expect(
+      huerfanas,
+      'la tabla de 07-seguridad.md nombra funciones que su archivo no define: el auditor va a buscar lo que no existe',
+    ).toEqual([]);
+  });
+
   it('y también los tests que la tabla nombra — B-260', () => {
     /*
      * **La otra columna, que no se miraba.** El chequeo de arriba verifica los
