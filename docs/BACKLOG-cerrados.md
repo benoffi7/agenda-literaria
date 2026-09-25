@@ -21368,6 +21368,24 @@ lugares y bibliotecas tienen su barrido en otros archivos, con listas locales.
 Arreglo: exportar esas listas a un fixture y agregar las cuatro comparaciones con
 `canastaDelGateCoincide`.
 
+### B-1870 · El tinte que pone otro componente se mide solo en los avisos · P3 — de `contraste-arbol` (2026-09-24) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `77ed209` (D-1140): el render monta los contenedores con tinte que reciben hijos —`Seccion`, `FilasEditor`, `DirectorioPanel`, `CalendarioActividades`, `FiltrosActividades`, `PropuestasPanel`, `CentroAyuda`, `BarraAcciones`— con sus hijos de verdad. La lista se deriva del fuente (`contenedoresConTinte`) y uno nuevo sin montar falla. Todo llegó a AA: no hubo que tocar componentes.
+
+El render de B-1830 monta los `Aviso*.tsx` y la bandeja de directorios. El
+`{children}` de un contenedor tintado (`Seccion`, las cajas `bg-amber-50` de
+`ReporteFormulario`, `TextoRedes`, `VistaPreviaEvento`) con tinta propia adentro no
+se compone sobre ese tinte. Opción: sumar al render los contenedores con tinte que
+reciben hijos, con un registro que falle si aparece uno sin montar.
+
+### B-1871 · Una tinta en reposo con fondo propio en otro grupo no la mide ninguna red · P3 — de `contraste-arbol` (2026-09-24) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `5b2448f`, `34d7d00` (D-1145): el árbol de `contraste-del-panel.test.ts` enumera las combinaciones de ramas de cada `className` (`combinacionesDe`) y mide la tinta de un tramo fijo contra cada rama del fondo, incluida la que hereda del ancestro. Nada del panel quedó abajo del piso.
+
+Queda afuera `${cond ? 'bg-x' : ''} text-y`: el fondo y la tinta coexisten y no van
+en el mismo grupo. Hoy no hay ninguno abajo del piso. Opción: tratar un template
+como un grupo cuando la tinta está en un tramo fijo.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

@@ -860,20 +860,6 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-1870 · El tinte que pone otro componente se mide solo en los avisos · P3 — de `contraste-arbol` (2026-09-24)
-
-El render de B-1830 monta los `Aviso*.tsx` y la bandeja de directorios. El
-`{children}` de un contenedor tintado (`Seccion`, las cajas `bg-amber-50` de
-`ReporteFormulario`, `TextoRedes`, `VistaPreviaEvento`) con tinta propia adentro no
-se compone sobre ese tinte. Opción: sumar al render los contenedores con tinte que
-reciben hijos, con un registro que falle si aparece uno sin montar.
-
-### B-1871 · Una tinta en reposo con fondo propio en otro grupo no la mide ninguna red · P3 — de `contraste-arbol` (2026-09-24)
-
-Queda afuera `${cond ? 'bg-x' : ''} text-y`: el fondo y la tinta coexisten y no van
-en el mismo grupo. Hoy no hay ninguno abajo del piso. Opción: tratar un template
-como un grupo cuando la tinta está en un tramo fijo.
-
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 
 **Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del

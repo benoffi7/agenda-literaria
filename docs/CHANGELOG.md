@@ -2,6 +2,20 @@
 
 ## Sin publicar
 
+- **El contraste del panel mide la tinta de un tramo fijo contra cada rama del
+  fondo** (B-1871, D-1145). `${abierto ? 'bg-black/5' : ''} text-tinta/65` no lo medía
+  ninguna red. Ahora `contraste-del-panel.test.ts` enumera las combinaciones de ramas
+  de cada `className` (`combinacionesDe`) con los tramos fijos en todas, y compone la
+  tinta fija contra cada rama del fondo y contra el del ancestro cuando una rama no
+  pone ninguno. Nada del panel quedó abajo del piso.
+- **El tinte que pone otro componente se mide también en los contenedores, con sus
+  hijos de verdad** (B-1870, D-1140). La tinta de un campo adentro de una `Seccion`,
+  de la barra de acciones o de la fila apagada de una bandeja no se componía sobre
+  ese tinte. Ahora un registro derivado del fuente lista cada contenedor con tinte que
+  recibe hijos —once en ocho componentes— y el render los monta con los hijos reales
+  (el formulario de actividad entero, el de reportes, el texto para redes, la vista
+  previa, el calendario, los filtros, las propuestas y el centro de ayuda). Uno nuevo
+  sin montar pone el test en rojo. Todo llegó a AA.
 - **Lo que una fila del registro de Instagram dice que no sale, ahora se verifica
   ausente** (B-1840, D-1130). Cada `{ porque }` de `CAMPOS_DE_INSTAGRAM` elige
   `ausente` —los nombres propios de la fila que el código de esa salida no puede

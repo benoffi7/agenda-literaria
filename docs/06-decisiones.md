@@ -13541,3 +13541,25 @@ es el que la home usa. Tres reglas: un `Date` explícito gana; el string se lee 
 respaldo `new Date()` se toma **una vez** y se reusa. Un reloj nuevo en
 `contenidoDelSitio.ts` lo frena un chequeo de fuente, y las plantillas de mes y de
 `/pasadas` usan el mismo (B-1890).
+
+## D-1140 · Un contenedor con tinte que recibe hijos se deriva del fuente y se monta con sus hijos reales
+
+**B-1870, 2026-09-25.** Es el otro lado de D-1125: además del aviso que cae sobre el
+tinte de otro, el tinte que recibe lo de otro. Entra al registro un elemento con
+fondo en reposo que no es `bg-white` pleno, o cuyo `className` llama a una prop
+función (el fondo lo pone quien llama), y que tiene adentro un componente, el
+`children` o una prop tipada `ReactNode`. Cada caso declara qué contenedores monta y
+tiene que mostrarlos en su DOM con texto adentro. Los hijos son los de verdad y no
+un `<p>` de muestra: la pregunta es qué tinta traen. Descartado: una lista escrita a
+mano, que se desincroniza del markup.
+
+## D-1145 · Un `className` se mide por combinación de ramas, no juntando todas
+
+**B-1871, 2026-09-25.** El árbol de B-1830 juntaba las clases de todas las ramas y
+por eso salteaba el elemento con fondo propio: medirlo habría cruzado las ramas de un
+ternario. Ahora enumera lo que el `className` puede dar: un template es un grupo y
+sus tramos fijos van en todas las combinaciones; `c ? A : B` da A o B, `a && 'x'` da
+`x` o nada, y `??` y `||` dan lo de cada lado. En cada combinación, la tinta en
+reposo se mide contra el fondo propio o, si no hay, contra el del ancestro. Un
+identificador sigue sin resolverse (lo mide el render, D-1125), y con más de 64
+combinaciones vuelve a juntar todo: son límites aceptados.
