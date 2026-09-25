@@ -780,8 +780,15 @@ cuenta como un corte de conexión. El panel lo dice en dos lugares:
   reintentar) de «no pudimos verificar tu navegador» (esperar no sirve). Es el
   mismo error del SDK (`unavailable`); lo que los separa es si el token llegó.
 
-Con emuladores App Check no se activa, así que el cartel no puede aparecer. El
-mecanismo y el triaje completo están en
+**Y el dueño se entera** (paso 3). Si el cartel sigue puesto veinte segundos con
+una sesión iniciada, el panel manda una vez por carga el motivo —solo eso, sin
+nada de la persona— a la Function `reportarVerificacionDelNavegador`, y la alerta
+de GCP lo convierte en mail. La persona no ve nada distinto. Qué hacer con el
+mail: [`08-operacion.md`](08-operacion.md) § «Un navegador del panel sin
+verificar».
+
+Con emuladores App Check no se activa, así que el cartel no puede aparecer (ni el
+reporte salir). El mecanismo y el triaje completo están en
 [`02-infraestructura.md`](02-infraestructura.md) § «Qué pasa si se cae».
 
 ### Ayuda y novedades del panel

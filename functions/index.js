@@ -82,3 +82,8 @@ export { subirFlyerDePropuesta } from './flyer-de-propuesta-trigger.js';
 export { crearOpcionDelPanel } from './alta-de-opcion-trigger.js';
 export { traerAnaliticaDelSitio } from './analitica-trigger.js';
 export { verificarFrescuraDelSitio } from './frescura-trigger.js';
+// B-930 paso 3 — la primera `onRequest`: el panel avisa que un navegador no
+// consiguió token de App Check, y el `logger.warn` con `alerta` le llega al
+// dueño por la política de GCP de B-871. Sin `enforceAppCheck`, porque lo que
+// reporta es justamente que no hay token (D-1225).
+export { reportarVerificacionDelNavegador } from './verificacion-del-navegador-trigger.js';
