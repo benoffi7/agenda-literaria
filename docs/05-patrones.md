@@ -199,6 +199,40 @@ const slugBloqueado = inicial?.estado === 'publicado';
 Las referencias a secciones del `CLAUDE.md` (`§7.2`, `trampa 3`) se usan mucho a
 propósito: cualquiera que lea el código puede ir a la fuente de la decisión.
 
+### Un comentario nuevo dice el porqué vigente; la historia va a la D
+
+**Regla para lo que se escribe desde el 2026-09-25, no para lo que ya está**
+(M-15 y decisión F del PRD 6). Un docblock nuevo explica **por qué el código es
+así hoy** y cita la decisión que lo sostiene. Lo que pasó antes —«antes era así,
+después B-nnn lo cambió, y el motivo original ya no existe»— **no va en el
+código**: va a la entrada de [`06-decisiones.md`](06-decisiones.md), que es
+donde alguien busca la historia y donde no cuesta leerla cada vez que se abre el
+archivo.
+
+```ts
+// Sí: el porqué de hoy, con su fuente.
+// La sesión cancelada se actualiza a «CANCELADO — …» y no se borra: quien la
+// tenía agendada tiene que enterarse (D-975).
+
+// No: la historia, que ya está en la D.
+// Antes la cancelada se borraba del calendario, como decía el §7.3. B-98 lo
+// cambió el 2026-09-24 porque la gente no se enteraba, y el motivo original…
+```
+
+Dos precisiones:
+
+- **La trampa se sigue nombrando**, como en el ejemplo de arriba. Nombrar la
+  trampa o la D es el porqué; contar cómo se llegó es la historia.
+- **No se reescribe lo que hay.** B-78 decidió que la proporción de prosa del
+  repo es deliberada y no se baja en masa ([`10-salud-del-codigo.md`](10-salud-del-codigo.md)
+  §1.6), y eso sigue valiendo. La regla es para el comentario que se escribe
+  nuevo, y para el que se toca porque cambió lo que explica: ahí se deja el
+  porqué nuevo, y lo viejo pasa a la D si no estaba.
+
+Cómo se sabe si funciona: que el porcentaje de prosa de
+[`10-salud-del-codigo.md`](10-salud-del-codigo.md) §1.6 deje de subir en la
+próxima remedición. No se ata a un test: cualquier frente lo mueve (B-180).
+
 ## Lógica pura separada de la infraestructura
 
 `functions/calendario.js` no importa Firebase ni googleapis. El diff es la parte
