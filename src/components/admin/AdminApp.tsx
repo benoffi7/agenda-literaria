@@ -1168,6 +1168,8 @@ export function AdminApp() {
           soloLectura={
             vista.tipo === 'editar' && esSoloLectura(rol, vista.actividad, usuario.uid)
           }
+          // B-921 — dónde puede cargar: `''` para el admin y el publicador general.
+          ciudad={ciudad}
           vistaDelPanel={vistaDelPanel}
           formatoDeHora={formatoDeHora}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}

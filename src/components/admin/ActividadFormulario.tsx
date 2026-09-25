@@ -57,6 +57,9 @@ import {
   type MultivalorNuevos,
 } from '@/lib/formulario/etiquetas';
 import { guardarActividad } from '@/lib/formulario/guardar';
+import { ciudadesFueraDeSuCiudad, textoFueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
+import { ciudadesDe } from '@/lib/ciudades.mjs';
+import { useOpciones } from '@/components/admin/useOpciones';
 import { faltaParaPublicar } from '@/lib/schema';
 import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
 import type { RolDelPanel } from '@/lib/rolDelPanel';
@@ -162,6 +165,15 @@ interface Props {
    *     un campo de texto y eso no lo frena ningún `hidden`.
    */
   soloLectura?: boolean;
+  /**
+   * **B-921 — la ciudad del claim de quien guarda** (`ciudadDeClaims`), o `''`.
+   *
+   * Un publicador con ciudad no puede guardar una actividad con una sede fuera
+   * de la suya (`dentroDeSuCiudad()` en `firestore.rules`, D-1150). Con esto el
+   * formulario lo avisa **mientras se carga** y el guardado no lo intenta. `''`
+   * —el default— es el publicador general y el admin: no hay nada que avisar.
+   */
+  ciudad?: string;
 }
 
 export function ActividadFormulario({
@@ -178,6 +190,7 @@ export function ActividadFormulario({
   onGuardado,
   onCancelar,
   soloLectura = false,
+  ciudad = '',
 }: Props) {
   /**
    * B-814 — la única pregunta que este componente le hace a la vista elegida.
@@ -465,6 +478,34 @@ export function ActividadFormulario({
     [labelsNuevos, multivalorNuevos],
   );
 
+  /*
+   * B-921 — ¿alguna sede cae fuera de la ciudad de esta cuenta? Se recalcula con
+   * cada cambio del formulario, así que el aviso aparece en el momento en que se
+   * elige la ciudad y no después de apretar «Guardar». Es la misma función que
+   * usa `guardarActividad`, así que el aviso y el guardado no pueden contestar
+   * distinto. En solo lectura no se avisa nada: no hay guardado posible.
+   */
+  const ciudadesDeLaCiudad = useOpciones('ciudad');
+  const fueraDeSuCiudad = useMemo(
+    () =>
+      soloLectura
+        ? []
+        : ciudadesFueraDeSuCiudad({
+            ciudad,
+            ciudades: ciudadesDe(form.modalidades),
+            ciudadesAntes: inicial?.ciudades,
+            editando: Boolean(inicial),
+          }),
+    [soloLectura, ciudad, form.modalidades, inicial],
+  );
+  const etiquetaDeCiudad = (slug: string) =>
+    ciudadesDeLaCiudad.valores.find((v) => v.slug === slug)?.label ??
+    labelsPendientes.ciudad?.[slug];
+  const avisoFueraDeSuCiudad =
+    fueraDeSuCiudad.length > 0
+      ? textoFueraDeSuCiudad(fueraDeSuCiudad, ciudad, etiquetaDeCiudad)
+      : null;
+
   /**
    * El caso de uso vive en `lib/formulario/guardar.ts` (B-70): validar, chequear
    * el slug, escribir la actividad y registrar las etiquetas nuevas. Acá queda
@@ -511,6 +552,9 @@ export function ActividadFormulario({
         },
         labelsNuevos,
         multivalorNuevos,
+        // B-921 — la misma pregunta que el aviso de arriba, contestada otra vez
+        // al guardar: el aviso se puede no leer, el guardado no se saltea.
+        alcance: { ciudad, ciudadesAntes: inicial?.ciudades },
       });
 
       if (r.estado === 'invalido') {
@@ -527,6 +571,11 @@ export function ActividadFormulario({
         medicion.guardadoFallido('slug-tomado', accion);
         setErrores(r.errores);
         setFallo('El slug está tomado.');
+        return;
+      }
+      if (r.estado === 'fuera-de-ciudad') {
+        medicion.guardadoFallido('fuera-de-ciudad', accion);
+        setFallo(textoFueraDeSuCiudad(r.ciudades, ciudad, etiquetaDeCiudad));
         return;
       }
       if (r.estado === 'error') {
@@ -584,6 +633,23 @@ export function ActividadFormulario({
             pero los cambios los tiene que hacer quien la cargó. Lo interno de esa cuenta —a quién
             va a etiquetar y sus notas— no se muestra.
           </p>
+        </div>
+      )}
+
+      {/*
+        B-921 — una sede fuera de la ciudad de esta cuenta. Arriba de todo, igual
+        que «Solo lectura»: con pestañas, un aviso adentro de «Dónde» no se ve
+        desde la pestaña en la que se aprieta «Guardar». Borde de color y no
+        rojo de error: no se rompió nada, es una regla de la cuenta.
+      */}
+      {avisoFueraDeSuCiudad && (
+        <div
+          role="status"
+          data-aviso="fuera-de-su-ciudad"
+          className="rounded-md border border-acento/40 bg-acento/5 px-3 py-2.5 text-xs"
+        >
+          <p className="font-medium text-acento">Esta actividad queda fuera de tu ciudad</p>
+          <p className="mt-1 text-tinta/80">{avisoFueraDeSuCiudad}</p>
         </div>
       )}
 
