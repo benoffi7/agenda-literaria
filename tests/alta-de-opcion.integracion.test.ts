@@ -101,13 +101,22 @@ describe.skipIf(!vivo)('el alta de la callable contra el emulador — B-893', ()
     expect(opcionesVisibles(await valores('arancel')).map((v) => v.slug)).not.toContain('slam');
   });
 
+  /*
+   * B-1951 — **timeout propio, no el de 5 s de vitest.** Las tres altas compiten
+   * por el mismo documento, así que dos de las tres transacciones abortan y se
+   * reintentan contra el emulador, con espera entre intentos. Con la máquina
+   * cargada (otro checkout corriendo su suite al lado) se pasó de los 5 s en el
+   * gate y pasó sola al reintentar: no era un bug, era un reloj que no contaba
+   * los reintentos. 30 s es lo que usan los otros casos de integración que
+   * esperan más de una ida y vuelta al emulador.
+   */
   it('dos altas simultáneas no se pisan: la transacción relee el array', async () => {
     const r = await Promise.all([alta('Uno'), alta('Dos'), alta('Tres')]);
     expect(r.map((x) => ('slug' in x ? x.slug : null)).sort()).toEqual(['dos', 'tres', 'uno']);
     const slugs = (await valores('arancel')).map((v) => v.slug);
     expect(slugs).toEqual(expect.arrayContaining(['uno', 'dos', 'tres']));
     expect(slugs).toHaveLength(BASE.length + 3);
-  });
+  }, 30_000);
 
   it('sin documento no escribe nada, ni siquiera lo crea', async () => {
     const r = await alta('Algo', UID_PUBLICADOR, 'plataforma');
