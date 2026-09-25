@@ -4,10 +4,13 @@
  * reglas de Firestore rechazan toda escritura.
  *
  *   npm run admin:claim -- <uid|email>                 → admin (ve y toca todo)
- *   npm run admin:claim -- --publicador <uid|email>    → publicador (B-888)
+ *   npm run admin:claim -- --publicador <uid|email>    → publicador general (B-888):
+ *                                                        carga en cualquier ciudad
+ *                                                        y ve solo lo suyo (B-921)
  *   npm run admin:claim -- --publicador --ciudad "Mar del Plata" <uid|email>
- *                                                      → publicador con alcance
- *                                                        por ciudad (B-919)
+ *                                                      → publicador de una ciudad:
+ *                                                        carga solo ahí (B-921) y
+ *                                                        ve lo de ahí (B-919)
  *   npm run admin:claim -- --quitar <uid|email>        → sin claims
  *
  * Contra los emuladores exportá antes:
@@ -80,6 +83,10 @@ const rol = ROLES[flag] ?? { nombre: 'admin', claims: { admin: true } };
  *  - **Sin `--ciudad`, el publicador queda sin alcance**, o sea exactamente como
  *    antes de B-919: ve lo suyo y nada más. Es el default que preserva lo
  *    anterior (§«Un campo nuevo se lee con el default que preserva lo anterior»).
+ *    Desde B-921 es además el **publicador general**: la ciudad del claim es
+ *    también **dónde puede cargar** (`dentroDeSuCiudad()` en `firestore.rules`,
+ *    D-1150), y sin ciudad carga en cualquiera. «General» es dónde carga, no qué
+ *    ve: no lee lo ajeno de ninguna ciudad (D-1152).
  */
 const iCiudad = argumentos.indexOf('--ciudad');
 const ciudadCruda = iCiudad >= 0 ? argumentos[iCiudad + 1] : undefined;
@@ -98,16 +105,19 @@ if (iCiudad >= 0) {
     process.exit(1);
   }
   rol.claims.ciudad = slug;
-  rol.nombre = `publicador de ${slug}`;
+  rol.nombre = `publicador de ${slug} (carga solo ahí)`;
+} else if (flag === '--publicador') {
+  // B-921 — se anuncia, porque olvidarse el `--ciudad` ahora es darle todo el país.
+  rol.nombre = 'publicador general (carga en cualquier ciudad, ve solo lo suyo)';
 }
 
 const consumidos = new Set([flag, '--ciudad', ciudadCruda].filter(Boolean));
 const objetivo = argumentos.find((a) => !consumidos.has(a));
 if (!objetivo) {
   console.error('Uso: npm run admin:claim -- <uid|email>                 (admin)');
-  console.error('     npm run admin:claim -- --publicador <uid|email>    (solo lo suyo)');
+  console.error('     npm run admin:claim -- --publicador <uid|email>    (general: carga en cualquier ciudad, ve lo suyo)');
   console.error('     npm run admin:claim -- --publicador --ciudad "Mar del Plata" <uid|email>');
-  console.error('                                                       (lo suyo + su ciudad, en lectura)');
+  console.error('                                                       (carga solo en su ciudad; ve lo suyo + su ciudad, en lectura)');
   console.error('     npm run admin:claim -- --quitar <uid|email>        (le saca el rol)');
   console.error('     npm run admin:claim -- --todos                     (solo emulador)');
   process.exit(1);
