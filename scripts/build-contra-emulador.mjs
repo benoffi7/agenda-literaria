@@ -367,12 +367,19 @@ const efemerideDelGate = (slug, titulo, estado) => ({
   updatedBy: UID_CENTINELA_EFEMERIDE,
 });
 
+/*
+ * **`fallo()` marca el rojo él mismo** — B-1960 (M-11 del PRD 6).
+ *
+ * Antes ponía `process.exitCode = 1`, y el script termina con
+ * `process.exit(salida)`, que lo pisa: cada llamada necesitaba un `salida = 1`
+ * escrito a mano en la línea siguiente, y uno olvidado imprimía el rojo y salía
+ * con 0. Ahora el único `salida = 1` del archivo es éste.
+ */
+let salida = 0;
 const fallo = (mensaje) => {
   console.error(`\n\x1b[31m✗ ${mensaje}\x1b[0m`);
-  process.exitCode = 1;
+  salida = 1;
 };
-
-let salida = 0;
 
 try {
   await limpiar();
@@ -415,7 +422,6 @@ try {
   });
   if (build.status !== 0) {
     fallo('el build no pasa');
-    salida = 1;
   } else {
     const crudo = await readFile(new URL('../dist/events.json', import.meta.url), 'utf8');
     const indice = JSON.parse(crudo);
@@ -429,7 +435,6 @@ try {
           '  del otro lado no hay nadie o la base está vacía. Un events.json vacío se\n' +
           '  publicaría encima del sitio que tiene datos (D-123, B-189).',
       );
-      salida = 1;
     }
 
     // 2 · Control negativo del `where('estado','==','publicado')` (§5.3).
@@ -438,7 +443,6 @@ try {
         'el events.json trae la actividad en BORRADOR.\n' +
           "  Falta o está mal el where('estado','==','publicado') de src/pages/events.json.ts.",
       );
-      salida = 1;
     }
 
     /*
@@ -457,7 +461,6 @@ try {
         `el events.json no trae la actividad de afuera de CABA (${SLUG_AFUERA}).\n` +
           '  Es la que cubre la mitad no-CABA de la cascada de B-950.',
       );
-      salida = 1;
     } else if (entradaDeAfuera.sede?.provincia !== PROVINCIA_DEL_GATE) {
       fallo(
         'la entrada del índice salió SIN provincia: ' +
@@ -466,13 +469,11 @@ try {
           '  único chip posible pasa a ser `caba` y el eje `ciudad` del sitio queda\n' +
           '  inalcanzable. Es el bug que B-969 vino a cubrir (B-950, D-710).',
       );
-      salida = 1;
     } else if (entradaDeAfuera.sede?.ciudad !== CIUDAD_DEL_GATE) {
       fallo(
         'la entrada del índice salió sin la ciudad esperada: ' +
           `${JSON.stringify(entradaDeAfuera.sede?.ciudad)}.`,
       );
-      salida = 1;
     }
 
     // 2b · B-110 — una cancelada tiene página y **no** entra al índice (§7.3):
@@ -485,7 +486,6 @@ try {
         `el events.json trae actividades CANCELADAS: ${canceladasEnElIndice.join(', ')}.\n` +
           '  Una cancelada conserva su página y no entra al listado (§7.3, B-110).',
       );
-      salida = 1;
     }
 
     // 3b · El eje de encuentros de B-99 sí está, con su id de sesión. Es la
@@ -496,7 +496,6 @@ try {
         'el events.json NO trae el eje de encuentros de B-99: falta el id de sesión.\n' +
           '  Es lo que alimenta el tríptico «¿Qué hay ahora?» de la home (B-600).',
       );
-      salida = 1;
     }
 
     // 3 · Ningún centinela de los campos recortados sobrevivió al archivo.
@@ -506,7 +505,6 @@ try {
         'el events.json publica campos que el índice recorta:\n' +
           filtrados.map(([campo, valor]) => `    ${campo} → ${valor}`).join('\n'),
       );
-      salida = 1;
     }
 
     /*
@@ -532,23 +530,19 @@ try {
           '  Una actividad cancelada que estuvo publicada conserva su página (§7.3, B-110):\n' +
           '  un 404 le contesta «no existe» a quien pregunta si se hace.',
       );
-      salida = 1;
     } else {
       // La franja, el `eventStatus` y la ausencia de CTA: las tres cosas del §7.3.
       if (!htmlCancelada.includes('Esta actividad se canceló')) {
         fallo('la página de la cancelada no lleva la franja que dice que se canceló.');
-        salida = 1;
       }
       if (!htmlCancelada.includes('EventCancelled')) {
         fallo(
           'el JSON-LD de la cancelada no lleva `eventStatus: EventCancelled`.\n' +
             '  Es lo que Google pide para dejar de mostrarla como vigente (§5.3).',
         );
-        salida = 1;
       }
       if (htmlCancelada.includes('Mandar un mail')) {
         fallo('la página de la cancelada muestra el CTA de inscripción (§7.3: sin CTA).');
-        salida = 1;
       }
       // Y el barrido, sobre el artefacto: la cancelada no publica nada de más.
       // `urlPublica` está en `true` en el fixture, así que es el peor caso.
@@ -560,7 +554,6 @@ try {
           'la página de la actividad CANCELADA publica campos privados:\n' +
             enLaPagina.map(([campo, valor]) => `    ${campo} → ${valor}`).join('\n'),
         );
-        salida = 1;
       }
     }
 
@@ -574,7 +567,6 @@ try {
     const htmlPublicadaGrupos = await htmlDe(SLUG_PUBLICADA);
     if (htmlPublicadaGrupos === null) {
       fallo(`no se generó dist/actividad/${SLUG_PUBLICADA}/index.html.`);
-      salida = 1;
     } else {
       if (!htmlPublicadaGrupos.includes(ETIQUETA_DE_COMISION)) {
         fallo(
@@ -582,7 +574,6 @@ try {
             '  El view-model la agrupa y la plantilla no la pinta: la lista de encuentros\n' +
             '  se lee como un ciclo largo, que es el malentendido que B-181 arregló.',
         );
-        salida = 1;
       }
       /*
        * B-830 — «Qué se llevan», el mismo argumento: `detallePublico.ts` decide
@@ -596,11 +587,9 @@ try {
             '  El view-model trae las etiquetas y la plantilla no las pinta: es código\n' +
             '  muerto que ningún barrido detecta, la lección de B-341.',
         );
-        salida = 1;
       }
       if (!htmlPublicadaGrupos.includes('Qué se llevan')) {
         fallo('la página no lleva el encabezado de la sección «Qué se llevan» (B-830).');
-        salida = 1;
       }
 
       if (!htmlPublicadaGrupos.includes('Elegí tu opción')) {
@@ -609,7 +598,6 @@ try {
             '  Con opciones para sumarse tiene que decir «Elegí tu opción»: lo que sigue\n' +
             '  no es un programa, son programas paralelos y hay que elegir uno.',
         );
-        salida = 1;
       }
     }
 
@@ -620,13 +608,11 @@ try {
           '  Una actividad que nace y muere en `cancelado` nunca fue pública (§7.3):\n' +
           '  publicar su página ahora es publicar un borrador.',
       );
-      salida = 1;
     }
 
     // 6 · El borrador tampoco, que es el mismo aserto sobre el HTML.
     if ((await htmlDe(SLUG_BORRADOR)) !== null) {
       fallo(`se generó dist/actividad/${SLUG_BORRADOR}/index.html: es un borrador.`);
-      salida = 1;
     }
 
     /*
@@ -686,14 +672,12 @@ try {
           '  de /opciones/ciudad que tengan alguna actividad publicada: si falta, o el\n' +
           '  hub dejó de emitirse, o la siembra de la opción no quedó aprobada.',
       );
-      salida = 1;
     } else if (!encabezadoDe(htmlHubDeCiudad).includes(ETIQUETA_CIUDAD_DEL_GATE)) {
       fallo(
         `el hub /ciudad/${CIUDAD_DEL_GATE}/ no dice su etiqueta «${ETIQUETA_CIUDAD_DEL_GATE}» ` +
           'en el `<h1>`.\n' +
           '  El título de un hub lleva la etiqueta resuelta, nunca el slug (§4.1, trampa 10).',
       );
-      salida = 1;
     }
 
     /*
@@ -704,7 +688,6 @@ try {
     const htmlAfuera = await htmlDe(SLUG_AFUERA);
     if (htmlAfuera === null) {
       fallo(`no se generó dist/actividad/${SLUG_AFUERA}/index.html.`);
-      salida = 1;
     } else {
       /*
        * **La etiqueta pegada a su `href`, y no suelta en el archivo** — lo cobró
@@ -735,7 +718,6 @@ try {
             '  etiqueta y la enlaza al hub con su slug (B-951, D-710).\n' +
             '  Si el hub existe pero esto falla, mirá si `rutaDeZona` sigue resolviendo.',
         );
-        salida = 1;
       }
       /*
        * La provincia, que **no** lleva enlace: no hay hub de provincia
@@ -750,7 +732,6 @@ try {
           `la ficha de ${SLUG_AFUERA} no dice la provincia «${ETIQUETA_PROVINCIA_DEL_GATE}» ` +
             'al lado de la ciudad.',
         );
-        salida = 1;
       }
     }
 
@@ -785,7 +766,6 @@ try {
           '  confirmada como candidato chico. Sin ella se sirve el original, que es más\n' +
           '  pesado: no rompe nada, y por eso nadie lo ve si no lo mira el gate (B-1790).',
       );
-      salida = 1;
     }
 
     const robots = await leerDist('robots.txt');
@@ -797,10 +777,8 @@ try {
         'no se generó dist/robots.txt o dist/sitemap.xml.\n' +
           '  Son los dos endpoints de B-109: sin ellos el sitio no se le ofrece a ningún buscador.',
       );
-      salida = 1;
     } else if (htmlPublicada === null) {
       fallo(`no se generó dist/actividad/${SLUG_PUBLICADA}/index.html.`);
-      salida = 1;
     } else {
       const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
       const origenDe = (url) => {
@@ -820,7 +798,6 @@ try {
             `  Salió con ${locs.length} URL(s) y ninguna es la de la actividad sembrada:\n` +
             '  el sitemap no vio los datos, o la ruta de detalle dejó de entrar.',
         );
-        salida = 1;
       }
 
       const malFormadas = locs.filter((u) => !/^https:\/{2}[^/]+\/{1}/.test(u) || !u.endsWith('/'));
@@ -831,7 +808,6 @@ try {
             '\n  El protocolo las exige absolutas, y sin la barra Firebase contesta un 301:\n' +
             '  una entrada de sitemap que apunta a una redirección es una URL menos rastreada.',
         );
-        salida = 1;
       }
 
       // 7b · Los controles negativos: ni el borrador, ni la cancelada que nunca
@@ -845,11 +821,9 @@ try {
           'el sitemap.xml ofrece páginas que no existen:\n' +
             queNoVan.map(([slug, qué]) => `    ${slug} → ${qué}`).join('\n'),
         );
-        salida = 1;
       }
       if (sitemap.includes('/admin')) {
         fallo('el sitemap.xml lista /admin: el panel no se indexa.');
-        salida = 1;
       }
       // 7b-bis · Desde B-112, la publicada SÍ lleva `lastmod`, con la fecha de
       // su `updatedAt` recortada al día — el fixture la sembró con
@@ -866,7 +840,6 @@ try {
             'fixture\n' +
             '  la sembró con `updatedAt: new Date()`, o sea hoy.',
         );
-        salida = 1;
       }
 
       // Y la home —que no es una actividad— sigue sin uno: `lastmod` es por
@@ -892,11 +865,9 @@ try {
             '  Solo las actividades tienen una fecha de edición que valga la pena declarar ' +
             '(B-112); la home, los hubs y los meses siguen sin `lastmod`.',
         );
-        salida = 1;
       }
       if (sitemap.includes('changefreq') || sitemap.includes('priority')) {
         fallo('el sitemap.xml lleva `changefreq` o `priority`: Google los ignora desde hace años.');
-        salida = 1;
       }
 
       // 7c · La cancelada **reciente** sí está: el fixture tiene `updatedAt` de
@@ -907,18 +878,15 @@ try {
             '  Se canceló hoy (updatedAt del fixture), así que está dentro de los 30 días\n' +
             '  del §7.3: su URL se sigue ofreciendo para que Google la relea y la tache.',
         );
-        salida = 1;
       }
 
       // 7d · El robots.txt: bloquea el panel y anuncia el sitemap.
       if (!/^Disallow: \/admin$/m.test(robots)) {
         fallo('el robots.txt no bloquea /admin.');
-        salida = 1;
       }
       const anuncio = /^Sitemap: (\S+)$/m.exec(robots);
       if (!anuncio) {
         fallo('el robots.txt no anuncia el sitemap.');
-        salida = 1;
       }
 
       // 7e · **Las cuatro salidas, un solo origen.**
@@ -928,7 +896,6 @@ try {
           `dist/actividad/${SLUG_PUBLICADA}/index.html no lleva <link rel="canonical">.\n` +
             '  Es lo único que le dice a Google cuál de los tres nombres del sitio es el bueno.',
         );
-        salida = 1;
       }
       const origenes = new Set(
         [anuncio?.[1], canonical?.[1], suUrl].filter(Boolean).map(origenDe),
@@ -940,7 +907,6 @@ try {
             '  Las cuatro salidas absolutas salen de `SITIO`; si discrepan, alguna copió el ' +
             'dominio a mano.',
         );
-        salida = 1;
       }
 
       // 7f · Y la canónica de la página es **exactamente** su URL del sitemap:
@@ -950,7 +916,6 @@ try {
           `la canónica de la página (${canonical[1]}) no es la URL que el sitemap ofrece ` +
             `(${suUrl}).`,
         );
-        salida = 1;
       }
 
       // 7g · El Open Graph, que es la otra mitad de B-107: un link pegado en
@@ -958,7 +923,6 @@ try {
       for (const propiedad of ['og:title', 'og:url', 'og:site_name']) {
         if (!htmlPublicada.includes(`property="${propiedad}"`)) {
           fallo(`la página de la publicada no lleva ${propiedad}.`);
-          salida = 1;
         }
       }
 
@@ -971,13 +935,11 @@ try {
             '  Es la única página que enlaza una actividad que ya pasó una vez que su\n' +
             '  entrada del sitemap venció a los 90 días (§2.1).',
         );
-        salida = 1;
       } else if (htmlPasadas.includes(SLUG_BORRADOR) || htmlPasadas.includes(SLUG_CANCELADA)) {
         fallo(
           '/pasadas publica un borrador o una cancelada.\n' +
             '  Recibe `EntradaDeIndice[]`, así que ninguno de los dos debería poder llegar (§7.3).',
         );
-        salida = 1;
       }
     }
 
@@ -1002,7 +964,6 @@ try {
         `no se generó dist/actividad/${SLUG_GALERIA}/index.html.\n` +
           '  Es la actividad con tres imágenes de B-296.',
       );
-      salida = 1;
     } else {
       const imgs = htmlGaleria.match(/<img\b[^>]*>/g) ?? [];
       const delPanel = imgs.filter((i) => i.includes('example.invalid/gate-'));
@@ -1014,7 +975,6 @@ try {
             '  Es el bug de B-296: `imagenes[0]` mostraba una sola y las otras no aparecían\n' +
             '  en ninguna salida del sitio.',
         );
-        salida = 1;
       }
 
       // 8b · Arriba va la **marcada** como portada, que en el fixture es la
@@ -1025,7 +985,6 @@ try {
             '  El fixture la puso segunda en el array a propósito: si el orden del array\n' +
             '  decide, el flyer baja a la tira como miniatura decorativa (B-268).',
         );
-        salida = 1;
       }
 
       // 8c · Un solo `eager`, y es esa. Lo demás, diferido.
@@ -1038,7 +997,6 @@ try {
             '  la Function de recompresión (B-220), la actividad peor medida de producción\n' +
             '  suma 3,15 MB entre sus tres archivos y 2,1 MB de eso son secundarias.',
         );
-        salida = 1;
       }
 
       // 8d · Un solo texto alternativo con contenido, y es el de la portada. Las
@@ -1053,11 +1011,9 @@ try {
             '  Tiene que ser uno y dos: el título de la actividad describe la portada, y\n' +
             '  repetido en las tres no distingue ninguna para un lector de pantalla (D-168).',
         );
-        salida = 1;
       }
       if ((htmlGaleria.match(/alt="Imagen de /g) ?? []).length !== 1) {
         fallo('el «Imagen de …» del texto alternativo aparece más de una vez en la página.');
-        salida = 1;
       }
 
       // 8e · **Tres cajas distintas, ninguna recortada** (D-147). Es lo que no
@@ -1075,11 +1031,9 @@ try {
             '  (D-147): una sola para las tres es una caja fija, y una caja fija recorta o\n' +
             '  encoge según la forma del archivo.',
         );
-        salida = 1;
       }
       if (htmlGaleria.includes('object-cover')) {
         fallo('la página con tres imágenes recorta alguna: apareció `object-cover` (D-147).');
-        salida = 1;
       }
 
       // 8f · La sección: el rótulo que anuncia el grupo, el epígrafe como
@@ -1090,7 +1044,6 @@ try {
       )?.[0];
       if (!seccion) {
         fallo('la página con tres imágenes no lleva la sección de las secundarias.');
-        salida = 1;
       } else {
         if (!/imágenes/i.test(seccion)) {
           fallo(
@@ -1102,14 +1055,12 @@ try {
               '  Se afirma el plural y no el texto exacto: B-302 cambió «Dos imágenes más»\n' +
               '  por «Más imágenes» y esta comprobación no tenía por qué caerse con eso.',
           );
-          salida = 1;
         }
         if (!/<figcaption[^>]*>[^<]*gate\.imagenes\.epigrafe/.test(seccion)) {
           fallo(
             'el epígrafe de la secundaria no salió como `figcaption`.\n' +
               '  Tiene que ser el pie de **su** imagen y no texto suelto debajo de la fila.',
           );
-          salida = 1;
         }
         /*
          * **Este aserto decía lo contrario hasta B-720, y lo cambió el dueño.**
@@ -1143,7 +1094,6 @@ try {
                 .map((h) => `    ${h}`)
                 .join('\n'),
           );
-          salida = 1;
         }
         if (alArchivo.length > 0 && !/VisorDeGaleria|visor-de-galeria/i.test(htmlGaleria)) {
           fallo(
@@ -1151,7 +1101,6 @@ try {
               '  Sin la island, cada enlace lleva al JPEG y deja a quien navega con teclado\n' +
               '  afuera del sitio: el fallback quedó sin su enhancement (B-720).',
           );
-          salida = 1;
         }
       }
 
@@ -1183,7 +1132,6 @@ try {
             `la página ${nombre} publica campos privados:\n` +
               filtrados.map(([campo, valor]) => `    ${campo} → ${valor}`).join('\n'),
           );
-          salida = 1;
         }
       }
 
@@ -1200,7 +1148,6 @@ try {
             '  2026-09-02): ese caso no puede cambiar por una galería que casi nunca tiene\n' +
             '  qué mostrar. Un `slice(0)` en vez de `slice(1)` la pinta dos veces.',
         );
-        salida = 1;
       }
     }
 
@@ -1242,10 +1189,7 @@ try {
     const ctx = {
       leer: leerDist,
       publicables,
-      fallo: (mensaje) => {
-        fallo(mensaje);
-        salida = 1;
-      },
+      fallo,
       sinFallos: () => salida === 0,
       ok: (mensaje) => console.log(`  ✓ ${mensaje}`),
     };
@@ -1693,7 +1637,6 @@ try {
           `no se generó dist/actividad/${SLUG_GALERIA}/index.html, que es la que lleva el ` +
             'encuentro cancelado con motivo (B-1572).',
         );
-        salida = 1;
       } else {
         const motivo = CENTINELA.motivoCancelacion;
         if (!htmlConCancelado.includes(motivo)) {
@@ -1703,7 +1646,6 @@ try {
               '  quien llega desde el calendario lee el motivo y la página no lo dice. Y\n' +
               '  las dos ausencias de este paso quedan sin nada que mirar.',
           );
-          salida = 1;
         }
         const bloquesLd = [
           ...htmlConCancelado.matchAll(
@@ -1715,7 +1657,6 @@ try {
             `dist/actividad/${SLUG_GALERIA}/index.html no lleva JSON-LD: la ausencia del ` +
               'motivo en el marcado no prueba nada sin marcado (B-1572).',
           );
-          salida = 1;
         } else if (bloquesLd.some((ld) => ld.includes(motivo))) {
           fallo(
             'EL JSON-LD PUBLICA EL MOTIVO DE UN ENCUENTRO CANCELADO.\n' +
@@ -1723,7 +1664,6 @@ try {
               '  de búsqueda, y el motivo es texto libre sobre un encuentro puntual. En la\n' +
               '  página va, debajo de su encuentro; en el marcado, el `eventStatus` alcanza.',
           );
-          salida = 1;
         }
         if (salida === 0) {
           console.log(
@@ -1796,7 +1736,6 @@ try {
           `el chequeo de SEO encontró ${paginas.length} página(s) en dist/: son muy pocas ` +
             'para comparar títulos, así que un verde acá no diría nada.',
         );
-        salida = 1;
       }
 
       const titulos = new Map();
@@ -1809,7 +1748,6 @@ try {
         const t = tituloDe(html);
         if (!t) {
           fallo(`dist/${relativa} no tiene <title>.`);
-          salida = 1;
         } else {
           if (!titulos.has(t)) titulos.set(t, []);
           titulos.get(t).push(relativa);
@@ -1830,7 +1768,6 @@ try {
             '  para quien busca. Es el objetivo del proyecto (§2.3): que la gente\n' +
             '  encuentre los talleres.',
         );
-        salida = 1;
       }
 
       if (jerarquia.length > 0) {
@@ -1840,7 +1777,6 @@ try {
             '\n  Es el índice con el que un lector de pantalla recorre la página, y se\n' +
             '  rompe en silencio: un h3 con la clase del h2 se ve idéntico.',
         );
-        salida = 1;
       }
     }
 
@@ -1873,7 +1809,6 @@ try {
   }
 } catch (e) {
   fallo(`build-contra-emulador: ${e instanceof Error ? e.message : String(e)}`);
-  salida = 1;
 } finally {
   try {
     const borradas = await limpiar();
