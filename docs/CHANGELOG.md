@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Dos arreglos chicos de la red de tests** (B-1950, B-1951). La tabla de salidas
+  públicas de `docs/07-seguridad.md` tiene título en su columna de tests y las diez
+  primeras filas la completan; el test que exige que cada fila tenga las columnas de
+  su encabezado la barre también. Y el caso de dos altas de opción simultáneas tiene
+  30 s en vez de 5, porque con la máquina cargada se pasaba del tiempo sin estar roto.
 - **Hay un PRD de mejoras de código, velocidad y tokens** (`docs/prd/06-mejoras-de-codigo.md`,
   pedido del dueño el 2026-09-25). Es una auditoría medida —cada número dice si es medido o
   leído y con qué comando salió— de los monolitos, la modularización, el tiempo de la suite y
