@@ -1296,6 +1296,14 @@ puede distinguirlo de un enganche que no funciona. Las distingue
 
 ### 9.4 · Los pasos de consola del dueño
 
+> **Settings de propiedad, vistos el 2026-09-25** (B-773, con capturas del dueño):
+> Google Signals **desactivado**; recogida de datos proporcionados por los usuarios
+> **desactivada**; ubicación y dispositivo granulares **apagado**; personalización
+> de anuncios **0 de 307 regiones** (estaba en 307, el default, y se apagó ese
+> día). En la Medición mejorada, «Interacciones con formularios» quedó apagado el
+> mismo día (B-874). Ninguno de estos lo sostiene un test: si alguien los vuelve a
+> prender, nada lo va a marcar en rojo.
+
 **Un agente no puede hacer ninguno de estos, y no es una limitación técnica: es
 el §5.4 del `CLAUDE.md`.** Son credenciales y permisos sobre recursos del dueño.
 **Los cinco primeros están hechos** — el dueño los corrió el 2026-09-07 y se

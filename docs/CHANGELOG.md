@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **La personalización de anuncios de GA4 quedó apagada en todas las regiones**
+  (B-773). Estaba en las 307, que es el default. Google Signals y la recogida de datos
+  de usuarios ya estaban apagados. Lo que `/anunciar` dice («no hay un anuncio, ni una
+  red, ni un píxel») ahora también es cierto en la consola.
 - **GA4 ya no se entera de quién manda un formulario del sitio** (B-874). El dueño
   apagó «Interacciones con formularios» en la Medición mejorada. Desde el 2026-09-23
   cada alta al correo y cada propuesta mandaban `form_start`/`form_submit` con su

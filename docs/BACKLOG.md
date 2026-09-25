@@ -626,9 +626,17 @@ sobra, y hoy eso no se puede saber.
 | **B-770** | **La sección comercial `/anunciar`**: ofrecerle espacio a cafés, librerías y espacios culturales, con el mail como única acción. Sin planes, sin precios y sin un número de audiencia inventado | ✅ hecho (2026-09-04) — D-450, `src/lib/comercialDelSitio.ts` + `src/pages/anunciar.astro`. Entra al sitemap y al pie; **B-377 sigue intacto** |
 | **B-771** | **Revisar `/anunciar` cuando haya datos de audiencia.** Hoy la página dice que no los tenemos, que es lo correcto: la medición arrancó el 2026-09-03. Con un mes de historia (**B-374**) se puede agregar un número real, y ahí hay que revisar el chequeo de `tests/comercial-del-sitio.test.ts` que hoy prohíbe las cifras de audiencia — con los números en la mano, no sacándolo porque molesta | 🟡 depende de B-374 |
 | **B-772** | **La fila de `/anunciar` en el índice de salidas públicas** | ✅ **hecho (2026-09-07)** — el dueño decidió numerarlas. Son **seis** filas y no cinco (`/suscribirse`, `/ayuda`, `/contacto`, `/404`, `/apoyar` y `/anunciar` → **13 a 18**), en las tres tablas atadas, más el `PALABRAS` del test y la prosa de los tres documentos. Cerró **B-654** de paso. Ver el ítem propio abajo |
-| **B-773** | **Los settings de propiedad de GA4 que nadie verificó** — ver abajo, tiene cuerpo propio desde el 2026-09-07 | 🟡 pendiente, es de consola |
+| **B-773** | **Los settings de propiedad de GA4 que nadie verificó** — ver abajo, tiene cuerpo propio desde el 2026-09-07 | ✅ hecho (2026-09-25) — Signals y datos de usuarios apagados; la personalización de anuncios pasó de 307 a 0 regiones |
 
-#### B-773 · Los settings de propiedad de GA4 que nadie verificó · P2
+#### B-773 · Los settings de propiedad de GA4 que nadie verificó · P2 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25)**, con capturas del dueño de Administrar → Recogida de
+datos. **Google Signals** estaba desactivado, y también la recogida de datos
+proporcionados por los usuarios y la de ubicación y dispositivo granulares. Lo que
+estaba prendido era la **personalización de anuncios**, en las 307 regiones: el
+default de fábrica. No tenía efecto porque no hay cuenta de Ads vinculada y
+Signals está apagado, pero bastaba con que alguien la vinculara. El dueño la dejó
+en **0 de 307**. Anotado en `16-analitica-del-sitio.md` §9.4.
 
 **Estaba citado en tres lugares y no tenía cuerpo.** Lo nombran la ficha del
 `auditor-privacidad` (fila 12), `docs/13-agentes.md` y el texto de `/anunciar`, y
