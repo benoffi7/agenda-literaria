@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- **Hay un PRD de mejoras de código, velocidad y tokens** (`docs/prd/06-mejoras-de-codigo.md`,
+  pedido del dueño el 2026-09-25). Es una auditoría medida —cada número dice si es medido o
+  leído y con qué comando salió— de los monolitos, la modularización, el tiempo de la suite y
+  del pre-push, el peso del bundle y lo que lee un agente para arrancar. Lo más caro: la suite
+  tarda 138 s porque corre los 282 archivos de a uno, cuando solo 25 necesitan el emulador (en
+  paralelo tarda 32 s); el pre-push la corre dos veces; y cada sesión carga ~21.600 tokens
+  antes de la primera pregunta. Trae 18 propuestas y seis decisiones para el dueño, y abrió
+  B-1960 a B-1962. No cambia código.
 - **Cuatro detalles de las revisiones del día** (B-1941, B-1942, B-1931, B-1943,
   D-1180). El test que ata la prosa de las salidas públicas a su tabla ve la cuenta
   vieja escrita en negrita y barre también el skill `campo-nuevo`. La fila 30 de la
