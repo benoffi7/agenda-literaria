@@ -2,6 +2,16 @@
 
 ## Sin publicar
 
+- **La foto original de una propuesta aceptada ya no se queda para siempre**
+  (B-871, D-1160 a D-1164). Si al aceptar no se pudo borrar —porque la actividad se
+  guardó sin su copia, porque el borrado falló, o porque ya estaba aceptada antes
+  del deploy—, el barrido diario de `borrarPropuestasVencidas` la borra **a los 30
+  días de aceptada**. El documento, con el contacto, sigue sin vencer. El mismo
+  barrido borra también el flyer que ningún documento nombra (un `/proponer`
+  abandonado), pasadas 72 horas. Una aceptada sin fecha de aceptación legible no se
+  borra y avisa todos los días por la alerta de GCP. `scripts/borrar-propuestas-vencidas.mjs`
+  muestra lo mismo en seco y lo borra con `--aplicar`. Entra en vigor con el deploy
+  de Functions.
 - **Llega un mail cuando una Function avisa que algo necesita atención** (B-871,
   B-21). El dueño creó en GCP una sola alerta sobre `jsonPayload.alerta:*`, que toma
   las siete `alerta` que hay hoy y cualquiera que se agregue. Hasta ahora no había

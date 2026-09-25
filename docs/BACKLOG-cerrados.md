@@ -15359,6 +15359,72 @@ correo existiera.
 > minutos: Administrar → Flujos de datos → el flujo → Enhanced measurement. Es de
 > quien tiene la consola (§5.4), y ningún test lo puede sostener ni verificar.
 
+### B-871 · Si el borrado del flyer aceptado falla, no reintenta nadie — 🟠 empezado (2026-09-11) · P2 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `f8e2164`, `cc87d0f`. La salida 3, con la decisión del dueño: el barrido diario recorre los flyers de `propuestas/` y borra el original de una aceptada **a los 30 días de aceptada** (D-1160) y el objeto que ningún documento nombra pasadas **72 h** (D-1161). La retención de nueva/en-revision/rechazada no cambió. Sin fecha de aceptación legible no se borra y sale con `alerta: 'flyer-de-propuesta-sin-borrar'`, todos los días. La Function y el script usan la misma decisión (`decidirFlyeresSinPlazo`) y el mismo borrado (`borrarFlyer`, con relectura); la lectura entra por el bucket y ya no recorre la colección entera (D-1162). Los siete caminos, backfill incluido, quedan cubiertos; producción tenía 0 objetos bajo `propuestas/`, así que no hubo backfill que correr. Runbook en `08-operacion.md` § «Flyers de propuestas: el barrido de B-871».
+
+> 🟠 **La detección está; el borrado espera la decisión.** La salida 3 se
+> implementó **a medias a propósito**: `decidirFlyeresSinPlazo` +
+> `relevarFlyeresSinPlazo` cruzan los objetos vivos bajo `propuestas/` contra los
+> documentos que los nombran, y el script sin `--aplicar` los imprime con su
+> motivo. Entra **por el bucket**, así que ve los siete caminos —incluido el
+> séptimo, que no emite ningún log—. **No borra nada**, que es exactamente la parte
+> que necesita la decisión de producto.
+>
+> **Y el chequeo que este ítem daba por existente no existía:** el runbook decía
+> que el backfill se miraba buscando una línea `aceptada-no-vence` en el informe, y
+> ese motivo **no puede imprimirse nunca**. Verde sobre el caso que existía para
+> encontrar.
+>
+> **Un séptimo motivo apareció haciéndolo, y lo cobró el `auditor-trampas`:** una
+> propuesta en un estado que caduca pero **sin fecha legible** no la borra el
+> barrido, así que su flyer tampoco tiene quien lo borre — y mirando solo la tabla
+> de plazos salía marcado «tiene red». Era el agujero de este ítem reabierto un
+> renglón más abajo.
+>
+> **Lo que falta para cerrarlo es la respuesta del dueño**, en dos preguntas
+> anotadas abajo.
+>
+> ✅ **La salida 1 está hecha (2026-09-25):** el dueño creó la alerta de GCP sobre
+> `jsonPayload.alerta:*`, con su mail como canal. Ver `08-operacion.md` § «La
+> alerta de todas las `alerta`». Los seis caminos que loguean ahora avisan; el
+> séptimo (el backfill) sigue sin log, y ese es el que necesita la salida 3.
+
+**Sale de B-863, y es el precio de que la `aceptada` no venza.** El borrado del
+original ocurre en el trigger `borrarImagenAlCerrar`, y **no hay red debajo**: la
+retención no alcanza a la aceptada (`RETENCION_POR_ESTADO.aceptada === null`) y
+`limpiarImagenesHuerfanas` sólo recorre `imagenes/` y `miniaturas/`. Si el
+borrado no ocurre, la foto de un tercero se queda **para siempre** — que es
+exactamente el bug que B-863 vino a cerrar, entrando por otra puerta.
+
+Son **seis** caminos, todos con el mismo campo `alerta:
+"flyer-de-propuesta-sin-borrar"` y su fila en `08-operacion.md`. Los dos
+primeros no son fallas: **conservar el original cuando no hay copia verificada es
+lo correcto** (perderla no se deshace). Lo que falta no es la decisión, es que
+después **no pase nadie**.
+
+**Y hay un séptimo caso que no emite nada:** el trigger actúa sólo en la
+**transición**, así que toda propuesta que ya estuviera en `aceptada` antes del
+deploy no lo despierta nunca. Hoy la colección está vacía; el chequeo es
+`node scripts/borrar-propuestas-vencidas.mjs` sin `--aplicar`.
+
+Tres salidas, de menos a más:
+
+1. **Alerta de GCP sobre el campo `alerta`** — consola, no código, el mismo caso
+   que B-21. Convierte «está en el log» en «alguien se entera».
+2. **`retry: true` en el trigger.** Cubre el transitorio, que es el fallo más
+   probable, y **no** el permanente. Se evaluó en B-863 y se descartó: ninguna
+   Function del proyecto lo usa, y encenderlo reintentaría también cualquier bug
+   del handler durante siete días.
+3. **Que el barrido de huérfanas recorra `propuestas/`** — la única que cierra
+   los siete caminos, incluido el backfill. Es la más cara: hay que leer
+   `/propuestas` para saber qué objeto está referenciado y por una propuesta no
+   cerrada, y hay que decidir qué pasa con la aceptada que conservó su original a
+   propósito, que es una decisión de producto.
+
+Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
+los que lo correcto es **no** borrar.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -21518,6 +21584,16 @@ Fuera de CABA la ciudad no es obligatoria y `ciudadesDe()` descarta las vacías,
 que una sede en Santa Fe sin ciudad daba `ciudades: []`, que pasaba como virtual.
 **✅ Hecho (2026-09-25)** en `e910b7d` y `724d0e8` (D-1154): la regla exige ciudad en
 la primera sede y el panel en todas.
+
+### B-1930 · El docblock de la retención decía que ningún trigger escucha `/propuestas` · P4 — del frente de B-871 (2026-09-25) · ✅ hecho (2026-09-25)
+
+`functions/retencion.js` justificaba que el barrido no es la trampa 3 porque
+`/propuestas` es «una colección que ningún trigger escucha». Es falso desde B-863:
+`borrarImagenAlCerrar` es un `onDocumentWritten` sobre `propuestas/{id}` y se
+dispara también en el `delete` de la retención. No encadena nada porque su
+decisión empieza por `if (!after) return nada('propuesta-borrada')`, pero la razón
+escrita era otra, y la diferencia importa el día que alguien le agregue algo a ese
+trigger. **✅ Hecho (2026-09-25)** en `f8e2164`.
 
 ## Pendiente de acción manual del dueño
 

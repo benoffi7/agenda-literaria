@@ -1426,7 +1426,11 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
         'corre una segunda mitad, `barrerOriginalesConCopia` (functions/propuestas.js), que borra ' +
         'el original de una aceptada cuya actividad ya tiene copia: esa no se protege con una ' +
         'precondición sino releyendo la propuesta y re-verificando la copia en el documento y ' +
-        'en el bucket (`borrarOriginalAlAceptar`, B-863) justo antes del `delete()`.',
+        'en el bucket (`borrarOriginalAlAceptar`, B-863) justo antes del `delete()`. Y desde ' +
+        'B-871 corre una tercera, `barrerFlyeresDePropuestas`, que borra con `borrarFlyer` el ' +
+        'original de una aceptada vencida y el flyer huérfano: la aceptada se relee y se compara ' +
+        'su `updateTime` contra el visto (`la-tocaron`), y el huérfano vuelve a preguntar si ' +
+        'algún documento nombra el objeto (`lo-nombran`) antes del `delete()`.',
     },
     borrarFichasVencidas: {
       guarda: 'precondicion',

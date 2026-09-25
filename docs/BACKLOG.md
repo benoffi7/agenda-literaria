@@ -401,70 +401,6 @@ Firestore en `Unenforced` en la consola destraba el panel en el acto — pero ab
 también las escrituras anónimas de `/proponer` y de las tres guías, que es la capa
 que las sostiene. Es una decisión con costo, no un botón de reinicio.
 
-### B-871 · Si el borrado del flyer aceptado falla, no reintenta nadie — 🟠 empezado (2026-09-11) · P2
-
-> 🟠 **La detección está; el borrado espera la decisión.** La salida 3 se
-> implementó **a medias a propósito**: `decidirFlyeresSinPlazo` +
-> `relevarFlyeresSinPlazo` cruzan los objetos vivos bajo `propuestas/` contra los
-> documentos que los nombran, y el script sin `--aplicar` los imprime con su
-> motivo. Entra **por el bucket**, así que ve los siete caminos —incluido el
-> séptimo, que no emite ningún log—. **No borra nada**, que es exactamente la parte
-> que necesita la decisión de producto.
->
-> **Y el chequeo que este ítem daba por existente no existía:** el runbook decía
-> que el backfill se miraba buscando una línea `aceptada-no-vence` en el informe, y
-> ese motivo **no puede imprimirse nunca**. Verde sobre el caso que existía para
-> encontrar.
->
-> **Un séptimo motivo apareció haciéndolo, y lo cobró el `auditor-trampas`:** una
-> propuesta en un estado que caduca pero **sin fecha legible** no la borra el
-> barrido, así que su flyer tampoco tiene quien lo borre — y mirando solo la tabla
-> de plazos salía marcado «tiene red». Era el agujero de este ítem reabierto un
-> renglón más abajo.
->
-> **Lo que falta para cerrarlo es la respuesta del dueño**, en dos preguntas
-> anotadas abajo.
->
-> ✅ **La salida 1 está hecha (2026-09-25):** el dueño creó la alerta de GCP sobre
-> `jsonPayload.alerta:*`, con su mail como canal. Ver `08-operacion.md` § «La
-> alerta de todas las `alerta`». Los seis caminos que loguean ahora avisan; el
-> séptimo (el backfill) sigue sin log, y ese es el que necesita la salida 3.
-
-**Sale de B-863, y es el precio de que la `aceptada` no venza.** El borrado del
-original ocurre en el trigger `borrarImagenAlCerrar`, y **no hay red debajo**: la
-retención no alcanza a la aceptada (`RETENCION_POR_ESTADO.aceptada === null`) y
-`limpiarImagenesHuerfanas` sólo recorre `imagenes/` y `miniaturas/`. Si el
-borrado no ocurre, la foto de un tercero se queda **para siempre** — que es
-exactamente el bug que B-863 vino a cerrar, entrando por otra puerta.
-
-Son **seis** caminos, todos con el mismo campo `alerta:
-"flyer-de-propuesta-sin-borrar"` y su fila en `08-operacion.md`. Los dos
-primeros no son fallas: **conservar el original cuando no hay copia verificada es
-lo correcto** (perderla no se deshace). Lo que falta no es la decisión, es que
-después **no pase nadie**.
-
-**Y hay un séptimo caso que no emite nada:** el trigger actúa sólo en la
-**transición**, así que toda propuesta que ya estuviera en `aceptada` antes del
-deploy no lo despierta nunca. Hoy la colección está vacía; el chequeo es
-`node scripts/borrar-propuestas-vencidas.mjs` sin `--aplicar`.
-
-Tres salidas, de menos a más:
-
-1. **Alerta de GCP sobre el campo `alerta`** — consola, no código, el mismo caso
-   que B-21. Convierte «está en el log» en «alguien se entera».
-2. **`retry: true` en el trigger.** Cubre el transitorio, que es el fallo más
-   probable, y **no** el permanente. Se evaluó en B-863 y se descartó: ninguna
-   Function del proyecto lo usa, y encenderlo reintentaría también cualquier bug
-   del handler durante siete días.
-3. **Que el barrido de huérfanas recorra `propuestas/`** — la única que cierra
-   los siete caminos, incluido el backfill. Es la más cara: hay que leer
-   `/propuestas` para saber qué objeto está referenciado y por una propuesta no
-   cerrada, y hay que decidir qué pasa con la aceptada que conservó su original a
-   propósito, que es una decisión de producto.
-
-Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
-los que lo correcto es **no** borrar.
-
 ### B-857 · Un plugin desactivado sigue escribiendo en la raíz del repo, y el `.gitignore` lo tapa · P4
 
 **Lo trajo el frente de B-849** como «la línea `.mdd/` nunca se sacó», y al ir a
@@ -724,6 +660,16 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
 ## P3 — cuando sobre tiempo
+
+### B-1931 · Dos tests leen `node_modules/tailwindcss/theme.css` por path, y en un worktree sin `node_modules` propio dan 34 rojos · P4 — del frente de B-871 (2026-09-25)
+
+`tests/fixtures/contraste-del-panel.ts` (`paletaTailwind`) arma el path con
+`raiz('node_modules/tailwindcss/theme.css')`, relativo al checkout. En un worktree
+cuyo `node_modules` está vacío (los módulos se resuelven desde el repo padre),
+`contraste-del-panel.test.ts` y `contraste-del-arbol.render.test.tsx` fallan con
+ENOENT —13 + 21 casos— aunque el paquete se resuelva bien para todo lo demás. Un
+agente en worktree ve la suite en rojo por el entorno. Arreglo probable:
+`createRequire(import.meta.url).resolve('tailwindcss/theme.css')`.
 
 ### B-1920 · La regla de dónde carga el publicador confía en el derivado `ciudades` · P3 — del `auditor-privacidad` sobre B-921 (2026-09-25)
 

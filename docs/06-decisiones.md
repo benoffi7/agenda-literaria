@@ -13607,3 +13607,75 @@ La regla exige que la primera sede sea `null` o tenga ciudad, y el panel lo exig
 **todas** las filas, que es la dirección en la que el espejo puede ser más estricto
 sin que nadie se choque con un rechazo del servidor. En CABA no molesta: la ciudad se
 guarda igual aunque no se pregunte (D-710).
+
+## D-1160 · El original de una aceptada se borra a los 30 días de aceptada; el documento sigue sin vencer
+
+**B-871, 2026-09-25, contestada por el dueño.** El original que `borrarImagenAlCerrar`
+no borró en la transición —porque no había copia verificada (`sin-copia`,
+`copia-sin-objeto`, `sin-actividad`), porque el borrado falló, o porque la
+propuesta ya estaba aceptada antes del deploy— se queda **30 días desde
+`revision.en`** y después se borra, aunque la actividad siga sin imagen. Conservar
+a propósito no es conservar para siempre: el plazo es para decidir si la foto se
+usa (subirla a la actividad, y entonces B-1370 borra el original al día
+siguiente). Pasado el plazo **se acepta perder la foto**. El documento no se toca:
+`RETENCION_POR_ESTADO.aceptada` sigue en `null` porque el contacto sirve para
+repreguntar por una actividad publicada. El reloj es `revision.en` a secas, sin
+caer a `creadoEn`, y **sin fecha legible no se borra** (falla cerrado, como la
+rechazada): va a `aRevisar` como `aceptada-sin-fecha-legible`. Es «el mismo plazo
+que la rechazada» en número, pero es otra constante (`MARGEN_DEL_ORIGINAL_ACEPTADO_MS`),
+por el criterio de `MARGEN_SIN_TOCAR_MS`: una es cuánto se guarda el documento de
+una rechazada y la otra cuánto se guarda la foto de una propuesta bien cerrada.
+
+## D-1161 · El flyer que ningún documento nombra se borra pasadas 72 horas
+
+**B-871, 2026-09-25.** Un objeto bajo `propuestas/` sin ningún documento que lo
+nombre es un `/proponer` abandonado después de subir la foto, o la mitad que
+sobrevivió a un borrado cortado: la foto de una persona que nadie puede volver a
+encontrar. Se borra (`sin-propuesta`) con la gracia de `MARGEN_DEL_FLYER_EN_VUELO_MS`
+(72 h), que ya existía para el relevamiento y que ahora protege un borrado:
+`/proponer` sube el archivo al elegirlo y escribe el documento al enviar, y nadie
+deja el formulario abierto tres días. Sin fecha de creación legible se trata como
+recién subido. Antes de borrar, `borrarFlyer` vuelve a preguntar si algún
+documento lo nombra (`lo-nombran`), así que la carrera con un envío que llega justo
+queda en un round-trip.
+
+## D-1162 · Una sola decisión para la Function y el script, y la lectura entra por el bucket
+
+**B-871, 2026-09-25.** El barrido de flyers corre en el `finally` de
+`borrarPropuestasVencidas`, después de B-1370, y el script lo reproduce con la
+misma `relevarFlyeresSinPlazo` y el mismo `borrarFlyer`: el informe en seco dice
+exactamente lo que la corrida diaria va a hacer (un aserto sobre el fuente lo
+ata). Para poder correr todos los días, la lectura dejó de recorrer la colección
+`/propuestas` entera —la lectura que B-865 sacó del camino diario, y la razón por
+la que el relevamiento corría solo a pedido—: `propuestasQueNombran` lista primero
+los objetos vivos y busca, de a 30 por `in` sobre `imagen.storagePath`, solo los
+documentos que los nombran, como `aceptadasConOriginalVivo` (B-1370). La decisión
+es la misma porque un documento que no nombra ningún objeto vivo no cambiaba nada,
+y el costo crece con los flyers vivos y no con el archivo histórico. Reemplaza a
+`propuestasConFlyer`.
+
+## D-1163 · Lo que ningún barrido va a borrar se loguea con `alerta` todos los días, y dos dueños no se resuelven
+
+**B-871, 2026-09-25.** Cada ítem de `aRevisar` (`aceptada-sin-fecha-legible`,
+`sin-fecha-legible`, `varias-propuestas`, `<estado>-sin-plazo`) sale como `warn`
+con `alerta: 'flyer-de-propuesta-sin-borrar'` en cada corrida, hasta que alguien
+lo arregle. Es el mismo estado del mundo que el `warn` de la transición y la
+alerta de GCP ya lo toma; la diferencia es que aquél sale una vez y se pierde. La
+alerta manda como mucho un mail por hora, así que un caso persistente es un
+recordatorio diario y no una lluvia. `varias-propuestas` es nuevo porque el índice
+pasó de un dueño por objeto a una lista: con un solo valor ganaba el último, y si
+ése era una aceptada vencida se borraba el flyer que una `nueva` todavía muestra.
+`/proponer` genera un uuid por flyer, así que solo pasa con un documento escrito a
+mano, y por eso se pide a alguien en vez de elegir.
+
+## D-1164 · El `warn` de la transición deja de decir «nadie la va a borrar» y pasa a decir «corre el reloj»
+
+**B-871, 2026-09-25.** Las ocho filas de «Cuando suena
+`flyer-de-propuesta-sin-borrar`» conservan su `alerta` aunque ahora haya red: lo
+que la alerta avisa ya no es que la foto queda para siempre sino que **empezaron
+los 30 días** para decidir si se usa. Por eso no se bajó de nivel ni se sacó el
+campo. El texto del log (`…hasta el barrido de los 30 días`), el runbook, la ayuda
+del panel y las acciones de `flyeres-de-propuestas-aceptadas.mjs` dicen el plazo
+en vez de «borrarlo a mano». Lo manual queda para no esperar los 30 días y para
+los dos caminos donde lo correcto es no borrar (`objeto-ajeno`,
+`imagen-fuera-del-prefijo`).
