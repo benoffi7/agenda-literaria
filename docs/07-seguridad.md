@@ -13,15 +13,16 @@ otra salida** en vez de derivar del documento. La **8** nació con B-113 y no
 publica ni un campo que la 1 no publique ya —es el mismo índice reagrupado por
 mes— pero es una **página indexada más**, con tres frases propias, y una de ellas
 interpola títulos de actividades. Está contada por eso: lo que decide si el
-`auditor-privacidad` mira un archivo es que alguna de estas tablas lo nombre,
-no que hoy filtre algo.
+`auditor-privacidad` mira un archivo es que la tabla de acá abajo lo nombre —y,
+atada a ella por `tests/agentes-y-skills.test.ts`, la lista de disparadores de
+su ficha (D-1206, D-1207)—, no que hoy filtre algo.
 
 Las **9** y la **10** nacieron con B-109, el día que el sitio tuvo dominio. Son
 las dos primeras salidas que existen *para el buscador* y no para una persona: la
 9 publica **solo rutas** —ni un título, ni una fecha, ni un campo— y la 10 es una
 página que reagrupa el mismo índice de la 1, como la 8. Están contadas igual, y
 por el mismo criterio: lo que decide si el `auditor-privacidad` mira un archivo
-es que alguna de estas tablas lo nombre. En la 9 además el error caro es al revés
+es que la tabla lo nombre, y con ella la lista de disparadores de su ficha. En la 9 además el error caro es al revés
 del habitual —no filtrar de más, sino **ofrecerle al buscador la URL de algo que
 no tendría que estar en Google**: `/admin`, un borrador, la página de un mes
 vencido.
@@ -109,7 +110,8 @@ de dónde sale. Lo señaló el `auditor-privacidad`.
 >
 > **Lo que el argumento no veía:** el índice de salidas no es solo un mapa de
 > proyecciones, es **la lista de lo que hay que mirar** —lo que decide si el
-> `auditor-privacidad` abre un archivo es que una de las tablas lo nombre—. Y
+> `auditor-privacidad` abre un archivo es que lo nombre la tabla de acá abajo y,
+> por ella, la lista de disparadores de su ficha—. Y
 > estas páginas tienen un riesgo propio que ninguna otra fila tiene: **la
 > promesa**. Texto libre, escrito a mano, en HTML indexado, que afirma cosas sobre
 > tratamiento de datos — y que puede **nacer falso**, como nació el de `/apoyar`.
@@ -128,7 +130,7 @@ ningún documento: su contenido está escrito a mano en `src/lib/ayudaDelSitio.t
 `src/lib/contactoDelSitio.ts`, `src/lib/enlaces.ts`, `src/lib/noEncontrado.ts` y
 `src/lib/apoyoDelSitio.ts`. No hay campo que se pueda colar por un spread, así que
 no hay proyección que auditar — y por eso **ninguna se numera**: una fila más en las
-dos tablas atadas agregaría, por cada campo nuevo del modelo, una celda cuya
+dos tablas atadas (la de acá y la del skill `campo-nuevo`) agregaría, por cada campo nuevo del modelo, una celda cuya
 respuesta es siempre «no sale», que es el criterio de D-320.
 `docs/12-sitio-publico.md` llamaba a `/404` «la salida pública 13»: era esta clase
 mal contada, y se corrigió con B-780.
@@ -266,8 +268,8 @@ respuesta es siempre «no sale» — que es exactamente el costo que D-320 decid
 no pagar cuando el tríptico de la home se sumó como séptimo productor de la
 salida 1 en lugar de abrir la fila 20.
 
-Lo que sí hace falta es lo otro que las tablas deciden: **qué archivos mira el
-`auditor-privacidad`**. Por eso `src/lib/boletinDelSitio.ts` y
+Lo que sí hace falta es lo otro que decide la tabla de salidas: **qué archivos
+mira el `auditor-privacidad`**. Por eso `src/lib/boletinDelSitio.ts` y
 `src/components/sitio/SuscribirseBoletin.astro` están nombrados en la fila 13 y
 el módulo está en los disparadores de la ficha del agente —hoy la lista «Los
 archivos que te despiertan», antes el `description`—, que es lo que decide si

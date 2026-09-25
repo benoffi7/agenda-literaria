@@ -128,7 +128,8 @@ Desde **B-113** hay una octava, `mesPublico.ts` para la **página de mes**
 mismo índice reagrupado— pero es una página indexada más y una de sus tres frases
 **interpola títulos de actividades** en la `meta description`, que es justo la
 clase que este agente persigue. Está contada porque lo que decide si el agente
-mira un archivo es que la tabla lo nombre, no que hoy filtre algo.
+mira un archivo es que lo nombre la tabla de `07-seguridad.md` —y, atada a ella,
+la lista de disparadores de su ficha—, no que hoy filtre algo.
 
 La primera —el `events.json` y el HTML del listado— es la excepción: desde B-106
 son **tres archivos en serie**, y hay que auditar los tres. `toPublic.ts` decide
@@ -140,16 +141,18 @@ y `cancelado` solo para generar su página— más `estuvoPublicada`, que consul
 `/actividades/{id}/versiones`: es la única lectura del build que sale de la
 colección `/actividades`, y la única forma en que un documento no publicado
 produce HTML (**D-159**).
-La fila 1 de la tabla nombraba solo el primero hasta el 2026-08-27 (B-218), que es
+La fila 1 de la tabla de salidas —entonces la copia de la ficha, hoy la de
+`07-seguridad.md`— nombraba solo el primero hasta el 2026-08-27 (B-218), que es
 la forma de B-216 un archivo más adentro: con la tabla vieja, un cambio que tocara
 solo `eventsJson.ts` no despertaba a este agente por nombre de archivo.
 
-**Y hay una clase que NO se numera, con su propio riesgo** — B-782. `/ayuda`,
-`/contacto`, `/suscribirse`, `/404`, `/apoyar` y `/anunciar` no proyectan ningún
-documento: son texto escrito a mano, sin campo que se pueda colar por un spread,
-así que no hay proyección que auditar y una fila más agregaría, por cada campo
-nuevo del modelo, una celda cuya respuesta es siempre «no sale» (D-320). Si alguna
-nota vieja habla de «la salida pública 13», es esta clase mal contada.
+**Y hay una clase con su propio riesgo** — B-782. `/ayuda`, `/contacto`,
+`/suscribirse`, `/404`, `/apoyar` y `/anunciar` no proyectan ningún documento: son
+texto escrito a mano, sin campo que se pueda colar por un spread, así que no hay
+proyección que auditar. B-782 decidió no numerarlas —una fila más agregaría, por
+cada campo nuevo del modelo, una celda cuya respuesta es siempre «no sale»
+(D-320)—, y el dueño lo dio vuelta el 2026-09-07: **sí se numeran**, son las filas
+13 a 18 de `07-seguridad.md`, por la promesa y no por la proyección.
 
 Lo que sí tienen es **la promesa**: texto libre en HTML indexado que afirma cosas
 sobre tratamiento de datos, y que puede **nacer falso**. `/apoyar` salió diciendo
@@ -171,10 +174,14 @@ documento entero sin proyectar a propósito).
 > nombrara**, y su `description` no incluía el archivo, así que un cambio que
 > interpolara un campo nuevo en el posteo no lo invocaba. Lo encontró el
 > `auditor-documentacion` auditando el cambio que arregló en `07-seguridad.md`
-> las **cinco** que había entonces, y se olvidó de espejarlo acá. Moraleja para
-> la próxima salida nueva: son **tres** lugares (el documento de seguridad, el
-> cuerpo del agente y su `description`), y el tercero es el que decide si el
-> agente se entera.
+> las **cinco** que había entonces, y se olvidó de espejarlo acá. La moraleja de
+> entonces era que una salida nueva iba en **tres** lugares (el documento de
+> seguridad, el cuerpo del agente y su `description`), y que el tercero decidía si
+> el agente se enteraba. **Desde M-8 (D-1206, D-1207) los tres son otros:** la
+> tabla de `07-seguridad.md`, la del skill `campo-nuevo` y la lista «Los archivos
+> que te despiertan» del cuerpo de la ficha, que ya no tiene tabla propia; los ata
+> `tests/agentes-y-skills.test.ts`, y la lista es la que decide si `/audit` lo
+> llama.
 >
 > (Esa frase dice «las cinco que había entonces» y no pega el número a la
 > palabra «salidas» a propósito: hay un chequeo que compara **toda** mención de

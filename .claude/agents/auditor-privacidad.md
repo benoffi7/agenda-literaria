@@ -114,7 +114,8 @@ sobre las tres frases y en sus dos ramas (mes vigente y mes vencido).
 >
 > **Lo que el argumento no veía:** el índice de salidas no es solo un mapa de
 > proyecciones, es **la lista de lo que hay que mirar** —lo que decide si el
-> `auditor-privacidad` abre un archivo es que una de las tablas lo nombre—. Y
+> `auditor-privacidad` abre un archivo es que lo nombre la tabla de
+> `07-seguridad.md` y, por ella, la lista de «Los archivos que te despiertan»—. Y
 > estas páginas tienen un riesgo propio que ninguna otra fila tiene: **la
 > promesa**. Texto libre, escrito a mano, en HTML indexado, que afirma cosas sobre
 > tratamiento de datos — y que puede **nacer falso**, como nació el de `/apoyar`.
@@ -134,7 +135,8 @@ su contenido está escrito a mano en `src/lib/ayudaDelSitio.ts`,
 `src/lib/contactoDelSitio.ts`, `src/lib/enlaces.ts`, `src/lib/noEncontrado.ts`,
 `src/lib/apoyoDelSitio.ts` y `src/lib/comercialDelSitio.ts`. No hay campo que se
 cuele por un spread, así que no hay proyección que auditar, y una fila más en las
-dos tablas atadas agregaría —por cada campo nuevo del modelo— una celda cuya
+dos tablas atadas —la de `07-seguridad.md` y la del skill `campo-nuevo`—
+agregaría, por cada campo nuevo del modelo, una celda cuya
 respuesta es siempre «no sale» (el criterio de D-320). Si alguna nota vieja habla
 de «la salida pública 13», es esta clase mal contada.
 
@@ -290,7 +292,8 @@ propiedad del día en que se escribió.
    build sigue siendo P0 si el test no lo cubriera.
 4-bis. **El artefacto construido (`dist/`) ya se barre entero, y no lo reportes
    — B-121.** Era la parte del ítem que faltaba y se cerró el 2026-09-03: el
-   **paso 9** de `scripts/build-contra-emulador.mjs` recorre todo `.html`,
+   **paso 9** de `scripts/build-contra-emulador.mjs` —hoy el chequeo
+   `scripts/gate-build/chequeos/11-barrido.mjs` (M-11)— recorre todo `.html`,
    `.json`, `.xml` y `.txt` que el build escribió y busca los centinelas de
    `difusion`, la URL de la reunión, los uids, el `storagePath` y el resto, con
    las excepciones declaradas **por salida**. La lista de archivos se recorre, no
@@ -325,7 +328,7 @@ propiedad del día en que se escribió.
    `docs/07-seguridad.md`, la del skill `campo-nuevo`, que es el que se ejecuta
    cuando alguien agrega un campo (B-244), y la lista de «Los archivos que te
    despiertan» de acá. Las ata `tests/agentes-y-skills.test.ts`, que compara los
-   números de las dos tablas, exige que el parseo no se coma ninguna fila, que
+   números de las dos tablas (la de 07 y la del skill), exige que el parseo no se coma ninguna fila, que
    cada productor esté en la lista y —desde B-109— que **la prosa de este archivo
    no nombre otro número que la tabla**: fue el hallazgo del propio auditor sobre
    B-109, que dejó la tabla en diez y estos párrafos en ocho.
