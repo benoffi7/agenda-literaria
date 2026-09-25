@@ -23,13 +23,16 @@ import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
 import { COLECCIONES_DE_DIRECTORIO } from './directorios.js';
 import {
   MAX_FICHAS_POR_CORRIDA,
+  MAX_FLYERES_POR_CORRIDA,
   MAX_PROPUESTAS_POR_CORRIDA,
   borrarFicha,
+  borrarFlyer,
   borrarPropuesta,
   decidirRetencion,
   decidirRetencionDeFichas,
   fichasVencibles,
   propuestasVencibles,
+  relevarFlyeresSinPlazo,
 } from './retencion.js';
 import { MAX_ORIGINALES_POR_CORRIDA, borrarOriginalesConCopia } from './propuestas.js';
 
@@ -108,6 +111,123 @@ const barrerOriginalesConCopia = async (db, bucket) => {
   }
 };
 
+/**
+ * **B-871, salida 3 — los flyers de `propuestas/` que no borraba nadie.**
+ *
+ * Es la tercera mitad de la corrida, y la única que entra por el **bucket**
+ * entero del prefijo: lista los objetos vivos, busca los documentos que los
+ * nombran y le pregunta a `decidirFlyeresSinPlazo` —**la misma** decisión que
+ * imprime `scripts/borrar-propuestas-vencidas.mjs`— qué hacer con cada uno.
+ * Borra dos casos, con la decisión del dueño del 2026-09-25:
+ *
+ *  - **`aceptada-vencida`** — el original que una aceptada conservó (porque no
+ *    había copia verificada, o porque falló el borrado de la transición), a los
+ *    **30 días de aceptada** (D-1160);
+ *  - **`sin-propuesta`** — el objeto que ningún documento nombra, pasadas las
+ *    **72 horas** de gracia de `/proponer` (D-1161).
+ *
+ * El resto no lo toca: el flyer de una `nueva`, `en-revision` o `rechazada` es
+ * de la retención de arriba, que se lo lleva con su documento.
+ *
+ * ── Va después de `barrerOriginalesConCopia`, y el orden no es casual ─────
+ * B-1370 borra **hoy** el original de una aceptada cuya actividad ya tiene la
+ * copia; esto lo borraría recién al día 30. Como esto relista el bucket, lo que
+ * B-1370 ya se llevó no aparece acá — y si apareciera, `ignoreNotFound` lo
+ * vuelve inofensivo.
+ *
+ * ── Lo que necesita a alguien avisa, todos los días ───────────────────────
+ * `aRevisar` son flyers que **ningún** barrido va a borrar —el caso que el
+ * dueño pidió explícito es la aceptada sin fecha de aceptación legible— y salen
+ * con `alerta: 'flyer-de-propuesta-sin-borrar'`, el mismo campo que el trigger de
+ * la transición: es el mismo estado del mundo, y la alerta de GCP ya lo toma
+ * (`08-operacion.md` § «La alerta de todas las `alerta`»). Se repite cada día
+ * hasta que alguien lo arregle, que es la diferencia con el `warn` de la
+ * transición: aquél se emite una vez y se pierde.
+ *
+ * **No es la trampa 3 ni la 12**: lo único que escribe es un `delete()` de un
+ * objeto bajo `propuestas/` —`onObjectDeleted`, que nadie escucha— y no toca
+ * ningún documento (ver `borrarFlyer`).
+ *
+ * **Nunca tira**, por lo mismo que `barrerOriginalesConCopia`: va en el
+ * `finally` de la retención y un error suyo no puede tapar el de ella.
+ */
+const barrerFlyeresDePropuestas = async (db, bucket) => {
+  try {
+    const { aBorrar, aRevisar, motivos, objetos } = await relevarFlyeresSinPlazo(db, bucket);
+
+    for (const f of aRevisar) {
+      // El `objeto` sí va: salió del listado del bucket y pasó la guarda del
+      // prefijo, así que es un flyer de propuesta y no «un path que no sabemos
+      // de quién es» (el caso por el que el trigger no lo loguea).
+      logger.warn('flyer de propuesta que no va a borrar nadie', {
+        objeto: f.objeto,
+        propuesta: f.propuesta,
+        motivo: f.motivo,
+        alerta: 'flyer-de-propuesta-sin-borrar',
+      });
+    }
+
+    let borrados = 0;
+    let intactos = 0;
+    let fallidos = 0;
+    for (const flyer of aBorrar) {
+      try {
+        const final = await borrarFlyer(db, bucket, flyer);
+        if (final === 'borrado') {
+          borrados += 1;
+          logger.info('flyer de propuesta borrado', {
+            objeto: flyer.objeto,
+            propuesta: flyer.propuesta,
+            // `causa` y no `motivo`, como en la retención: en este dominio
+            // «motivo» es el del rechazo.
+            causa: flyer.motivo,
+          });
+          continue;
+        }
+        /*
+         * `la-tocaron` (reabrieron o re-aceptaron la propuesta en el medio de la
+         * corrida) o `lo-nombran` (llegó el documento del huérfano). No se tocó
+         * nada, y mañana se vuelve a decidir con datos frescos.
+         */
+        intactos += 1;
+        logger.info('flyer de propuesta no borrado: cambió en el medio de la corrida', {
+          objeto: flyer.objeto,
+          propuesta: flyer.propuesta,
+          final,
+        });
+      } catch (e) {
+        // Sin `alerta`: el objeto sigue vivo y la corrida de mañana lo reintenta.
+        fallidos += 1;
+        logger.error('no se pudo borrar un flyer de propuesta', {
+          objeto: flyer.objeto,
+          propuesta: flyer.propuesta,
+          error: e?.message,
+        });
+      }
+    }
+
+    const pendientesPorTope = Object.values(motivos).filter((m) =>
+      m.endsWith('-pendiente-por-tope'),
+    ).length;
+    const resumen = {
+      objetos,
+      borrados,
+      intactos,
+      fallidos,
+      aRevisar: aRevisar.length,
+      pendientesPorTope,
+      tope: MAX_FLYERES_POR_CORRIDA,
+    };
+    if (pendientesPorTope > 0) {
+      logger.warn('el barrido de flyers de propuestas se cortó por el tope de la corrida', resumen);
+    } else {
+      logger.info('flyers de propuestas: barrido terminado', resumen);
+    }
+  } catch (e) {
+    logger.error('falló el barrido de flyers de propuestas', { error: e?.message });
+  }
+};
+
 export const borrarPropuestasVencidas = onSchedule(
   {
     // Opciones explícitas y no heredadas del `setGlobalOptions` de `index.js`,
@@ -134,13 +254,16 @@ export const borrarPropuestasVencidas = onSchedule(
     const bucket = getStorage().bucket();
 
     /*
-     * **Dos barridos en la misma corrida, y el segundo va en el `finally`** —
-     * B-1370. El de arriba es la retención de siempre; el de abajo borra el
-     * original que una aceptada conservó porque la actividad todavía no tenía
-     * copia, cuando la copia **ya existe** (`barrerOriginalesConCopia`). Va en
-     * el `finally` para que corra también cuando la retención no tiene nada que
+     * **Tres barridos en la misma corrida, y los dos últimos van en el
+     * `finally`** — B-1370 y B-871. El de arriba es la retención de siempre; el
+     * segundo borra el original que una aceptada conservó porque la actividad
+     * todavía no tenía copia, cuando la copia **ya existe**
+     * (`barrerOriginalesConCopia`); el tercero borra los flyers de `propuestas/`
+     * que no tienen quien los borre —el original de una aceptada a los 30 días,
+     * el huérfano a las 72 horas— (`barrerFlyeresDePropuestas`). Van en el
+     * `finally` para que corran también cuando la retención no tiene nada que
      * borrar (sale por `return`) y cuando falla (el error se sigue propagando,
-     * pero la otra mitad no se queda sin barrer). Él mismo no tira nunca.
+     * pero las otras mitades no se quedan sin barrer). Ninguno de los dos tira.
      */
     try {
       /*
@@ -293,6 +416,8 @@ export const borrarPropuestasVencidas = onSchedule(
       }
     } finally {
       await barrerOriginalesConCopia(db, bucket);
+      // B-871 — después de B-1370, que borra antes lo que ya tiene copia.
+      await barrerFlyeresDePropuestas(db, bucket);
     }
   },
 );

@@ -32,18 +32,18 @@
  * qué son dos guardas y por qué el orden de B-838 se queda como está— en
  * `borrarPropuesta`.
  *
- * **Y hay un flyer que este barrido no alcanza** (B-871). El original de una
- * propuesta **aceptada** lo borra el trigger de `propuestas-trigger.js` en la
- * transición, y debajo no hay nada: la `aceptada` no vence y
- * `limpiarImagenesHuerfanas` no recorre `propuestas/`. Si ese borrado no ocurre
- * —o si la propuesta ya estaba aceptada antes del deploy, y entonces la
- * transición no existió— la foto de un tercero se queda para siempre. El final
- * de este archivo tiene el relevamiento que lo **encuentra**
- * (`decidirFlyeresSinPlazo`); borrarlo necesita una decisión del dueño que
- * todavía no está.
+ * **Y hay un flyer que este barrido no alcanza, y lo alcanza el de al lado**
+ * (B-871). El original de una propuesta **aceptada** lo borra el trigger de
+ * `propuestas-trigger.js` en la transición; si ese borrado no ocurre —no había
+ * copia verificada, falló, o la propuesta ya estaba aceptada antes del deploy y
+ * la transición no existió— el documento sigue sin vencer (el contacto sirve),
+ * pero **la foto sí**: a los 30 días de aceptada la borra
+ * `decidirFlyeresSinPlazo` + `borrarFlyer`, que recorren los objetos vivos de
+ * `propuestas/` y se llevan también el que ningún documento nombra (D-1160,
+ * D-1161). Corre en la misma Function, después de esta retención.
  *
  * **Todo lo de acá es puro** salvo `propuestasVencibles`, `borrarPropuesta` y los
- * tres lectores del relevamiento de B-871, que
+ * lectores y el borrado de los flyers de B-871, que
  * reciben el `db` y el `bucket` y no importan `firebase-admin` — mismo criterio
  * que `subcoleccionesHuerfanas` en `limpieza-versiones.js` y `referenciasEnUso`
  * en `limpieza-imagenes.js`, y por el mismo motivo práctico: así el test los
@@ -60,11 +60,18 @@
  *
  * ── Y por qué esto no es la trampa 3 ni la 12 ─────────────────────────────
  * Este barrido corre por reloj y solo **borra**: en Firestore, un documento de
- * `/propuestas`, colección que **ningún trigger escucha**; en Storage, un objeto
- * bajo `propuestas/`, y un `delete()` dispara `onObjectDeleted`, al que nada de
- * este proyecto está suscripto (`optimizarImagen` es `onObjectFinalized`). Sin un
- * trigger del otro lado, no hay con qué encadenarse. Mismo argumento que
- * `limpieza-imagenes.js`.
+ * `/propuestas`; en Storage, un objeto bajo `propuestas/`, y un `delete()`
+ * dispara `onObjectDeleted`, al que nada de este proyecto está suscripto
+ * (`optimizarImagen` es `onObjectFinalized`).
+ *
+ * **Del lado de Firestore sí hay un trigger, y esto decía que no** (corregido
+ * con B-871): desde B-863 `borrarImagenAlCerrar` es un
+ * `onDocumentWritten` sobre `propuestas/{id}`, que se dispara también en un
+ * `delete`. No encadena nada porque su decisión empieza por
+ * `if (!after) return nada('propuesta-borrada')`: no borra ni escribe. Pero la
+ * razón es ésa, no que la
+ * colección esté sola — y la diferencia importa el día que alguien le agregue
+ * algo a ese trigger. Mismo argumento que `limpieza-imagenes.js` para Storage.
  *
  * Está probado en `tests/retencion.test.ts` (la decisión) y en
  * `tests/retencion.integracion.test.ts` (las dos mitades del borrado, contra los
@@ -735,16 +742,72 @@ export const borrarPropuesta = async (db, bucket, { id, objeto, visto }) => {
 };
 
 /**
- * Los estados que **no** vencen, derivados de la tabla — B-871.
+ * Los estados cuyo **documento** no vence, derivados de la tabla — B-871.
  *
  * Es el complemento exacto de `ESTADOS_QUE_CADUCAN` y se deriva por el mismo
  * motivo: hoy es `['aceptada']` y el día que alguien le ponga un número, esta
- * lista queda vacía sola y el relevamiento de abajo deja de tener qué mirar. Una
- * segunda lista escrita a mano sería la que quedaría vieja.
+ * lista queda vacía sola. Una segunda lista escrita a mano sería la que quedaría
+ * vieja.
+ *
+ * **Habla del documento y no del flyer**, y desde la salida 3 de B-871 la
+ * diferencia importa: la `aceptada` sigue sin vencer —el contacto sirve para
+ * repreguntar por una actividad publicada—, pero su **foto original** sí tiene
+ * plazo (`MARGEN_DEL_ORIGINAL_ACEPTADO_MS`).
  */
 export const ESTADOS_SIN_PLAZO = Object.entries(RETENCION_POR_ESTADO)
   .filter(([, plazo]) => plazo === null)
   .map(([estado]) => estado);
+
+/**
+ * El estado cuyo flyer original tiene un plazo propio aunque el documento no lo
+ * tenga — B-871. Es el nombre que `decidirBorradoDeImagen` y
+ * `clasificarAceptadas` (`propuestas.js`) ya usan para el mismo estado.
+ */
+export const ESTADO_ACEPTADO = 'aceptada';
+
+/**
+ * **30 días desde que se aceptó**, y después el flyer original se va — B-871,
+ * contestado por el dueño el 2026-09-25 (**D-1160**).
+ *
+ * ── Qué original es éste ──────────────────────────────────────────────────
+ * El que `borrarImagenAlCerrar` **no** borró en la transición a `aceptada`: o
+ * porque no había copia verificada en la galería (`sin-copia`,
+ * `copia-sin-objeto`, `sin-actividad` — conservarlo fue lo correcto en ese
+ * momento), o porque el borrado falló, o porque la propuesta ya estaba aceptada
+ * antes del deploy y la transición no existió. Hasta B-871 esa foto de un
+ * tercero se quedaba **para siempre**, porque la `aceptada` no vence y ningún
+ * barrido recorría `propuestas/`.
+ *
+ * La respuesta del dueño es que **conservar a propósito no es conservar para
+ * siempre**: los 30 días son el margen para decidir si la foto se usa —subirla a
+ * la actividad desde el panel, y entonces la borra antes B-1370 con la copia
+ * verificada— y después el original se va aunque la actividad siga sin imagen.
+ * O sea que en el caso `sin-copia` **se acepta perder la foto** pasado el plazo.
+ * Es la mitad de la decisión que no era técnica.
+ *
+ * ── Da el mismo número que `MARGEN_DE_RETENCION_MS`, y son dos constantes ──
+ * El dueño lo dijo como «el mismo plazo que la rechazada», y va igual escrito
+ * aparte, por el criterio de `MARGEN_SIN_TOCAR_MS`: aquél es cuánto se guarda
+ * **el documento** de una rechazada —el margen de un «la rechacé sin querer»—;
+ * éste es cuánto se guarda **una foto** cuya propuesta ya se cerró bien. El día
+ * que el dueño alargue el margen de arrepentimiento, eso no dice nada sobre
+ * cuánto tiempo se queda la foto de un tercero después de aceptarla.
+ * `tests/retencion.test.ts` tiene el aserto sobre el fuente.
+ *
+ * **Se cuenta desde `revision.en`**, que es cuándo se aceptó: el panel lo
+ * escribe en todo movimiento de estado, así que para una `aceptada` es el
+ * momento de la última aceptación. Sin fecha legible **no se borra**: falla
+ * cerrado, como la rechazada (ver `relojDeAceptacion`).
+ */
+export const MARGEN_DEL_ORIGINAL_ACEPTADO_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Tope de flyers borrados por corrida — B-871. Misma salvaguarda que
+ * `MAX_PROPUESTAS_POR_CORRIDA` y `MAX_ORIGINALES_POR_CORRIDA`: una fecha mal
+ * leída o un cruce que empate mal no puede vaciar el prefijo en una pasada. Lo
+ * que sobra queda marcado `-pendiente-por-tope` y va mañana.
+ */
+export const MAX_FLYERES_POR_CORRIDA = 50;
 
 /**
  * Cuánto se le perdona a un objeto de `propuestas/` que todavía no tenga
@@ -760,58 +823,86 @@ export const ESTADOS_SIN_PLAZO = Object.entries(RETENCION_POR_ESTADO)
  * cosas hay todo el tiempo que la persona tarde en terminar el formulario. Un
  * objeto sin documento en esa ventana es el estado normal y no un huérfano.
  *
- * Como este relevamiento **no borra nada**, el margen acá no protege un borrado:
- * evita que el informe muestre como problema lo que dentro de diez minutos va a
- * tener su documento. El día que alguien lo conecte a un borrado —la salida 3 de
- * B-871— este margen pasa a ser la única red de ese caso, y entonces conviene
- * volver a mirarlo.
+ * **Desde la salida 3 de B-871 este margen protege un borrado** —el docblock
+ * anterior avisaba que ese día había que volver a mirarlo, y se miró—: es la
+ * única red del caso `sin-propuesta`, que ahora se borra. 72 horas siguen
+ * sobrando: nadie deja el formulario de `/proponer` abierto tres días, y si lo
+ * hiciera, lo peor es que su propuesta llegue sin flyer. La relectura de
+ * `borrarFlyer` achica además la carrera con un envío que llega justo en el
+ * medio de la corrida.
  */
 export const MARGEN_DEL_FLYER_EN_VUELO_MS = 72 * 60 * 60 * 1000;
 
 /**
- * **Qué flyer de `propuestas/` no va a borrar nadie** — B-871, la mitad que no
- * necesita la decisión del dueño.
+ * **Cuándo se aceptó esta propuesta**, en ms. `null` si no es una `aceptada` o
+ * si no hay fecha legible — B-871.
+ *
+ * Es `revision.en` y **nada más**, sin caer a `creadoEn`: el plazo es de la
+ * aceptación, y contar desde la llegada sería otro plazo decidido por
+ * accidente. Es el mismo corte que `relojDeRetencion` hace con la rechazada, y
+ * no se reusa esa función porque su vocabulario (`rechazo`, `ultimo-toque`,
+ * `llegada`) nombraría mal lo que se está contando.
+ */
+export const relojDeAceptacion = (p) =>
+  p?.estado === ESTADO_ACEPTADO ? milisDe(p?.revision?.en) : null;
+
+/**
+ * **Qué hacer con cada flyer de `propuestas/`**: borrarlo, pedir a alguien, o
+ * nada porque otro barrido lo cubre — B-871.
+ *
+ * El nombre es de cuando esto solo **relevaba** («qué flyer no tiene plazo»), y
+ * se conserva porque es la misma decisión, ampliada: desde la salida 3 los dos
+ * casos que antes iban a la lista para un humano tienen ahora quien los borre.
+ * La usan **la Function y el script**, que es lo que el ítem pedía: el informe
+ * en seco dice exactamente lo que la corrida diaria va a hacer.
  *
  * ── Qué agujero tapa ──────────────────────────────────────────────────────
  * El borrado del original de una propuesta **aceptada** ocurre una sola vez, en
- * la transición a `aceptada` (`borrarImagenAlCerrar`), y debajo no hay nada: la
- * `aceptada` no vence (`RETENCION_POR_ESTADO`) y `limpiarImagenesHuerfanas` solo
- * recorre `imagenes/` y `miniaturas/`. Si ese borrado no ocurre —falló, o la
- * decisión fue **no** borrar porque no había copia verificada— la foto de un
- * tercero se queda ahí para siempre y **no pasa nadie después**. Y hay un
- * séptimo camino que ni siquiera emite el `warn`: una propuesta que ya estaba en
- * `aceptada` antes del deploy nunca dispara la transición.
+ * la transición a `aceptada` (`borrarImagenAlCerrar`), y debajo no había nada:
+ * la `aceptada` no vence (`RETENCION_POR_ESTADO`) y `limpiarImagenesHuerfanas`
+ * solo recorre `imagenes/` y `miniaturas/`. Si ese borrado no ocurría —falló, o
+ * la decisión fue **no** borrar porque no había copia verificada— la foto de un
+ * tercero se quedaba ahí para siempre. Y hay un séptimo camino que ni siquiera
+ * emite el `warn`: una propuesta que ya estaba en `aceptada` antes del deploy
+ * nunca dispara la transición.
  *
- * Esta función es el «pasa alguien». Mira el mundo al revés que el trigger —los
- * **objetos que existen** en el bucket, no las transiciones— así que encuentra
- * los siete caminos por igual, incluido el que no emitió nada.
+ * Esta función mira el mundo al revés que el trigger —los **objetos que
+ * existen** en el bucket, no las transiciones— así que alcanza los siete
+ * caminos por igual, incluido el que no emitió nada.
  *
- * ── Lo que NO hace, y es a propósito ──────────────────────────────────────
- * **No borra.** Qué hacer con el flyer de una aceptada que conservó su original
- * *a propósito* —el caso `sin-copia`, donde no borrar es lo correcto porque
- * perder la foto no se deshace— es una decisión de producto que el dueño no
- * contestó, y es la misma que la salida 3 de B-871 necesita. Hasta que exista,
- * esto **informa** y el remedio sigue siendo manual y escrito (`08-operacion.md`
- * § «Cuando suena `flyer-de-propuesta-sin-borrar`»).
+ * ── Las tres salidas ──────────────────────────────────────────────────────
+ *  - **`aBorrar`** — `aceptada-vencida` (el original de una aceptada, a los 30
+ *    días de aceptada: **D-1160**) y `sin-propuesta` (un objeto que ningún
+ *    documento nombra, pasada la gracia de 72 horas: **D-1161**).
+ *  - **`aRevisar`** — lo que ningún barrido va a borrar y hay que mirar:
+ *    `aceptada-sin-fecha-legible`, `sin-fecha-legible` (un estado que caduca
+ *    pero que la retención no puede fechar), `<estado>-sin-plazo` (un estado que
+ *    la tabla no nombra) y `varias-propuestas`.
+ *  - **nada** — `de-una-que-caduca` (la retención se lo lleva con su
+ *    documento), `aceptada-dentro-del-plazo`, `recien-subido`,
+ *    `fuera-del-alcance`.
  *
- * ── Por qué se entra por el bucket y no por los documentos ────────────────
- * Se podría listar las `aceptada` y preguntarle al bucket por cada una, y sería
- * peor por dos motivos. Uno: el documento sigue nombrando su `storagePath`
- * **después** de que el objeto se borró bien —el trigger no escribe el documento
- * que lo disparó, y eso es deliberado (trampa 3)— así que casi todas las
- * aceptadas serían falsos candidatos, y el costo crecería con el archivo
- * histórico en vez de con el problema. Dos: entrando por el bucket aparece
- * además el caso que por documentos es invisible, el objeto que **ningún**
- * documento nombra.
+ * **La retención de `nueva`, `en-revision` y `rechazada` no cambia**, y eso es
+ * lo primero que se mira: si el estado tiene plazo de documento, el flyer se va
+ * con el documento y esta función no opina. Por eso el caso de la aceptada va
+ * **después** del chequeo de la tabla: el día que la `aceptada` tenga plazo de
+ * documento, su flyer pasa solo al camino de la retención.
+ *
+ * ── `visto` viaja, como en `decidirRetencion` ─────────────────────────────
+ * Cada `aBorrar` de una aceptada lleva el `updateTime` que la lectura vio, que
+ * es lo que `borrarFlyer` exige antes de tocar el objeto. Acá no se juzga.
  *
  * @param {{
  *   objetos?: { nombre: string, creado?: number }[],
- *   propuestas?: { id: string, estado?: string, creadoEn?: unknown, revision?: unknown, imagen?: unknown }[],
+ *   propuestas?: { id: string, estado?: string, creadoEn?: unknown, revision?: unknown, imagen?: unknown, updateTime?: unknown }[],
  *   ahora?: number,
  *   margen?: number,
  *   plazos?: Record<string, number | null>,
+ *   plazoDelAceptado?: number,
+ *   tope?: number,
  * }} _
  * @returns {{
+ *   aBorrar: { objeto: string, propuesta: string | null, visto: unknown, motivo: string }[],
  *   aRevisar: { objeto: string, propuesta: string | null, motivo: string }[],
  *   motivos: Record<string, string>,
  * }}
@@ -822,6 +913,8 @@ export const decidirFlyeresSinPlazo = ({
   ahora = Date.now(),
   margen = MARGEN_DEL_FLYER_EN_VUELO_MS,
   plazos = RETENCION_POR_ESTADO,
+  plazoDelAceptado = MARGEN_DEL_ORIGINAL_ACEPTADO_MS,
+  tope = MAX_FLYERES_POR_CORRIDA,
 } = {}) => {
   /*
    * El índice se arma con la **misma** guarda que usa el borrado
@@ -833,76 +926,116 @@ export const decidirFlyeresSinPlazo = ({
    * **Hoy no es alcanzable, y va igual** —mismo caso que el `Object.hasOwn` de
    * `decidirRetencion`—: una clave inválida no puede empatar con ningún objeto,
    * porque todo objeto que llega a consultarse ya pasó esta misma guarda unas
-   * líneas más abajo. Verificado por mutación: con el path crudo, ningún caso de
-   * `retencion.test.ts` se pone rojo. Lo que sostiene la propiedad es el corte
-   * del lado del objeto; esto es que las dos mitades digan lo mismo, que es lo
-   * que evita que la de acá quede laxa el día que la otra se mueva (B-88).
+   * líneas más abajo. Lo que sostiene la propiedad es el corte del lado del
+   * objeto; esto es que las dos mitades digan lo mismo (B-88).
+   *
+   * **Una lista por objeto y no un solo dueño**, desde que esto borra: con un
+   * `Map` de un valor, dos documentos que nombraran el mismo objeto se pisarían
+   * y ganaría el último — y si el último fuera una aceptada vencida, se borraría
+   * el flyer que una `nueva` todavía muestra en la bandeja. `/proponer` genera
+   * un uuid por flyer, así que solo pasa con un documento escrito a mano; por
+   * eso no se resuelve, se pide a alguien (`varias-propuestas`).
    */
-  const duenia = new Map();
+  const duenias = new Map();
   for (const p of propuestas) {
     const objeto = objetoDePropuesta(p?.imagen);
-    if (objeto) duenia.set(objeto, p);
+    if (!objeto) continue;
+    const lista = duenias.get(objeto) ?? [];
+    lista.push(p);
+    duenias.set(objeto, lista);
   }
 
+  const aBorrar = [];
   const aRevisar = [];
   const motivos = {};
+  const revisar = (objeto, propuesta, motivo) => {
+    motivos[objeto] = motivo;
+    aRevisar.push({ objeto, propuesta, motivo });
+  };
 
   for (const o of objetos) {
     const nombre = o?.nombre ?? '';
 
     if (objetoDePropuesta({ storagePath: nombre }) !== nombre) {
       // Un objeto anidado, o el prefijo pelado. Mismo criterio que
-      // `decidirLimpieza`: no se opina de lo que no se entiende.
+      // `decidirLimpieza`: no se opina de lo que no se entiende — y acá además
+      // es lo que impide que un objeto de la galería llegue a `aBorrar`.
       motivos[nombre] = 'fuera-del-alcance';
       continue;
     }
 
-    const propuesta = duenia.get(nombre);
+    const lista = duenias.get(nombre) ?? [];
+
+    if (lista.length > 1) {
+      revisar(nombre, null, 'varias-propuestas');
+      continue;
+    }
+
+    const [propuesta] = lista;
     if (propuesta) {
       const plazo = Object.hasOwn(plazos, propuesta.estado) ? plazos[propuesta.estado] : undefined;
       if (typeof plazo === 'number') {
         /*
          * **Tener plazo no alcanza: hace falta poder contarlo** — lo encontró el
-         * `auditor-trampas` sobre este mismo cambio, y es la clase de B-88 en su
-         * forma más cara: dos lugares que derivan por separado la misma
-         * pregunta —«¿el barrido va a pasar por este documento?»— y uno de los
-         * dos se queda corto.
+         * `auditor-trampas`, y es la clase de B-88 en su forma más cara: dos
+         * lugares que derivan por separado la misma pregunta —«¿el barrido va a
+         * pasar por este documento?»— y uno de los dos se queda corto.
+         * `decidirRetencion` pide un plazo numérico **y** un reloj legible; una
+         * propuesta sin fecha legible cae en `sin-fecha-legible` y no se borra
+         * nunca, así que su flyer tampoco. Se reusa el mismo motivo que el
+         * barrido porque es el mismo hecho visto desde el otro lado.
          *
-         * `decidirRetencion` pide **las dos** cosas: un plazo numérico y un
-         * reloj legible (`relojDeRetencion`). Una propuesta en un estado que
-         * caduca pero sin ninguna fecha legible cae en `sin-fecha-legible` y
-         * **no se borra nunca**, a propósito. Si acá se mirara solo la tabla de
-         * plazos, su flyer saldría marcado «tiene red» y quedaría fuera de la
-         * lista: ni la retención lo toca ni este relevamiento lo señala, que es
-         * exactamente el agujero que B-871 existe para tapar, abierto de nuevo
-         * un renglón más abajo.
-         *
-         * Se reusa el mismo motivo que el barrido —`sin-fecha-legible`— porque
-         * es el mismo hecho visto desde el otro lado, y porque el operador que
-         * lo lea en las dos listas tiene que poder atarlo.
+         * **Y este camino no borra**, a propósito: el flyer de una propuesta que
+         * caduca es de la retención, que se lo lleva junto con el documento y en
+         * el orden de B-838. Borrarlo acá sería un segundo borrado del mismo
+         * objeto en carrera con aquél, y cambiaría la retención de la `nueva`,
+         * la `en-revision` y la `rechazada`, que esto no vino a tocar.
          */
         if (relojDeRetencion(propuesta) === null) {
-          motivos[nombre] = 'sin-fecha-legible';
-          aRevisar.push({ objeto: nombre, propuesta: propuesta.id, motivo: 'sin-fecha-legible' });
+          revisar(nombre, propuesta.id, 'sin-fecha-legible');
           continue;
         }
-        /*
-         * Tiene red: el barrido de retención va a pasar por ese documento y se
-         * lleva las dos mitades. No hay nada que revisar acá aunque el objeto
-         * lleve meses — el plazo es del documento, no del objeto.
-         */
         motivos[nombre] = 'de-una-que-caduca';
         continue;
       }
+
+      if (propuesta.estado === ESTADO_ACEPTADO) {
+        const aceptadaEn = relojDeAceptacion(propuesta);
+        if (aceptadaEn === null) {
+          /*
+           * **Sin fecha de aceptación no se borra** — falla cerrado, como la
+           * rechazada sin `revision.en`. No se puede afirmar que pasaron los 30
+           * días, y la foto que se borra no vuelve. Va a la lista con su motivo
+           * propio (y no con `sin-fecha-legible`) porque el remedio es otro: acá
+           * lo que hay que arreglar es `revision.en`, no `creadoEn`, y el
+           * pegamento lo loguea con `alerta` para que no dependa de que alguien
+           * corra el script.
+           */
+          revisar(nombre, propuesta.id, 'aceptada-sin-fecha-legible');
+          continue;
+        }
+        if (ahora - aceptadaEn < plazoDelAceptado) {
+          // Tiene red: dentro del plazo, y la corrida del día 30 se lo lleva.
+          motivos[nombre] = 'aceptada-dentro-del-plazo';
+          continue;
+        }
+        motivos[nombre] = 'aceptada-vencida';
+        aBorrar.push({
+          objeto: nombre,
+          propuesta: propuesta.id,
+          visto: propuesta.updateTime,
+          motivo: 'aceptada-vencida',
+        });
+        continue;
+      }
+
       /*
-       * **El caso de B-871**, con el estado adentro del motivo porque
-       * `ESTADOS_SIN_PLAZO` es derivado: hoy solo la `aceptada`, y un estado
-       * nuevo sin plazo entra solo. `plazo === undefined` —un estado que la
-       * tabla no nombra— cae también acá, y es correcto: si nadie le puso plazo,
-       * nadie lo va a borrar.
+       * Un estado sin plazo que no es la `aceptada`: hoy no existe (la tabla
+       * tiene uno solo en `null`, y un estado que no nombra cae acá también). Si
+       * nadie le puso plazo, nadie lo va a borrar — y agregar un estado no puede
+       * empezar a borrar fotos de rebote.
        */
-      motivos[nombre] = `${propuesta.estado}-sin-plazo`;
-      aRevisar.push({ objeto: nombre, propuesta: propuesta.id, motivo: motivos[nombre] });
+      revisar(nombre, propuesta.id, `${propuesta.estado}-sin-plazo`);
       continue;
     }
 
@@ -918,25 +1051,30 @@ export const decidirFlyeresSinPlazo = ({
     }
 
     /*
-     * **Ningún documento lo nombra**, y tampoco es reciente. Son dos historias y
-     * las dos terminan igual: un `/proponer` que se abandonó después de subir la
-     * foto, o la mitad que sobrevivió a un borrado que se cortó por la mitad (la
-     * foto de una persona **sin nada que la referencie**, el punto 4 del
-     * inventario). Nadie la va a encontrar, porque no hay desde dónde.
+     * **Ningún documento lo nombra**, y tampoco es reciente: un `/proponer` que
+     * se abandonó después de subir la foto, o la mitad que sobrevivió a un
+     * borrado que se cortó (la foto de una persona **sin nada que la
+     * referencie**, el punto 4 del inventario). Nadie la va a encontrar desde
+     * otro lado, así que se borra (**D-1161**).
      */
     motivos[nombre] = 'sin-propuesta';
-    aRevisar.push({ objeto: nombre, propuesta: null, motivo: 'sin-propuesta' });
+    aBorrar.push({ objeto: nombre, propuesta: null, visto: null, motivo: 'sin-propuesta' });
   }
 
-  return { aRevisar, motivos };
+  if (aBorrar.length <= tope) return { aBorrar, aRevisar, motivos };
+
+  for (const { objeto } of aBorrar.slice(tope)) {
+    motivos[objeto] = `${motivos[objeto]}-pendiente-por-tope`;
+  }
+  return { aBorrar: aBorrar.slice(0, tope), aRevisar, motivos };
 };
 
 /**
  * Los objetos que hoy existen bajo `propuestas/`.
  *
- * `getFiles` con prefijo y no un listado del bucket entero: lo que este
- * relevamiento mira es un prefijo chico —los flyers de las propuestas abiertas
- * más lo que quedó colgado— y nunca la galería, que tiene su propio barrido.
+ * `getFiles` con prefijo y no un listado del bucket entero: lo que este barrido
+ * mira es un prefijo chico —los flyers de las propuestas abiertas más lo que
+ * quedó colgado— y nunca la galería, que tiene su propio barrido.
  *
  * @returns {Promise<{ nombre: string, creado: number }[]>}
  */
@@ -950,54 +1088,66 @@ export const flyeresDelBucket = async (bucket) => {
   }));
 };
 
+/** El techo de valores de un `where(…, 'in', …)` de Firestore. */
+const MAXIMO_DEL_IN = 30;
+
 /**
- * Las propuestas que nombran un objeto, con **lo mínimo** para cruzarlas.
+ * Las propuestas que nombran **alguno de estos objetos**, con **lo mínimo** para
+ * decidir — B-871.
  *
- * Se leen **todos** los estados y no solo los que no vencen: lo que hay que
- * poder distinguir es «este objeto lo va a borrar el barrido» de «este objeto no
- * lo borra nadie», y para eso hace falta saber si *alguien* lo nombra. Sin los
- * estados que caducan, todo flyer de una propuesta abierta aparecería como
- * huérfano.
+ * ── Se entra por el bucket, y es lo que deja correrlo todos los días ──────
+ * Hasta la salida 3 esto leía la colección `/propuestas` **entera** y por eso
+ * corría solo a pedido: es la lectura que B-865 sacó del camino diario. Pero lo
+ * que la decisión necesita no es la colección: es saber, **para cada objeto
+ * vivo**, qué documentos lo nombran. Así que se buscan esos y nada más, de a 30
+ * por `in` —el mismo camino que `aceptadasConOriginalVivo` (B-1370)—, y el costo
+ * crece con los flyers vivos y no con el archivo histórico. La decisión es la
+ * misma: un documento que no nombra ningún objeto vivo no cambiaba nada.
+ *
+ * Se leen **todos** los estados y no solo la aceptada: lo que hay que poder
+ * distinguir es «este objeto lo borra la retención» de «este objeto no lo borra
+ * nadie», y de «este objeto no lo nombra nadie», que ahora **se borra** — o sea
+ * que un documento que la query no trajera convertiría su flyer en huérfano.
  *
  * El `select` es el de siempre y por el mismo motivo: el contacto de quien
  * propuso **no entra a la memoria** — ni `revision.motivo`, que es una nota
- * interna sobre el trabajo de otra persona, ni `revision.porUid`.
+ * interna sobre el trabajo de otra persona, ni `revision.porUid`. **Las dos
+ * fechas están en el `select` y no son opcionales**: sin `revision.en` ninguna
+ * aceptada se podría fechar (y ninguna se borraría), y sin `creadoEn` la
+ * retención diría que ninguna `nueva` se puede fechar. `updateTime` es metadata
+ * y no afloja la máscara (B-864).
  *
- * **Las dos fechas están en el `select` y no son opcionales**: este relevamiento
- * no mide plazos, pero sí tiene que poder distinguir «el barrido va a pasar por
- * este documento» de «el barrido no lo va a tocar nunca porque no lo puede
- * fechar» (`sin-fecha-legible`). Un campo que la query no pide vuelve
- * `undefined`, así que sin ellas `relojDeRetencion` diría que **ninguna** se
- * puede fechar y el informe marcaría toda la bandeja abierta para revisar. Es la
- * misma clase de bug que el `select` acotado del barrido trae de regalo: lo que
- * se agrega a la lógica hay que agregarlo también acá.
- *
- * **No lleva `limit()` y es una lectura de toda la colección**, así que corre a
- * pedido (el script) y no en el barrido diario: ver `08-operacion.md`.
- *
- * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown }[]>}
+ * @param {string[]} nombres — ya pasados por la guarda del prefijo.
+ * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown, updateTime: unknown }[]>}
  */
-export const propuestasConFlyer = async (db) => {
-  const snap = await db
-    .collection('propuestas')
-    .select('estado', 'creadoEn', 'revision.en', 'imagen.storagePath')
-    .get();
-  return snap.docs
-    .map((d) => ({
-      id: d.id,
-      estado: d.get('estado'),
-      creadoEn: d.get('creadoEn'),
-      revision: d.get('revision'),
-      imagen: d.get('imagen'),
-    }))
-    .filter((p) => objetoDePropuesta(p.imagen) !== null);
+export const propuestasQueNombran = async (db, nombres) => {
+  const leidas = [];
+  for (let i = 0; i < nombres.length; i += MAXIMO_DEL_IN) {
+    const snap = await db
+      .collection('propuestas')
+      .where('imagen.storagePath', 'in', nombres.slice(i, i + MAXIMO_DEL_IN))
+      .select('estado', 'creadoEn', 'revision.en', 'imagen.storagePath')
+      .get();
+    for (const d of snap.docs) {
+      leidas.push({
+        id: d.id,
+        estado: d.get('estado'),
+        creadoEn: d.get('creadoEn'),
+        revision: d.get('revision'),
+        imagen: d.get('imagen'),
+        updateTime: d.updateTime,
+      });
+    }
+  }
+  return leidas;
 };
 
 /**
- * El relevamiento completo: el bucket, los documentos, y la decisión pura en el
- * medio. Es lo que el informe del script imprime — B-871.
+ * La lectura completa y la decisión pura en el medio. Es lo que el informe del
+ * script imprime **y** lo que la Function ejecuta — B-871.
  *
  * @returns {Promise<{
+ *   aBorrar: { objeto: string, propuesta: string | null, visto: unknown, motivo: string }[],
  *   aRevisar: { objeto: string, propuesta: string | null, motivo: string }[],
  *   motivos: Record<string, string>,
  *   objetos: number,
@@ -1005,8 +1155,91 @@ export const propuestasConFlyer = async (db) => {
  */
 export const relevarFlyeresSinPlazo = async (db, bucket, { ahora = Date.now() } = {}) => {
   const objetos = await flyeresDelBucket(bucket);
-  const propuestas = await propuestasConFlyer(db);
+  // Solo se preguntan los que la decisión va a mirar: los demás quedan
+  // `fuera-del-alcance` sin importar quién los nombre.
+  const nombres = objetos
+    .map((o) => o.nombre)
+    .filter((n) => objetoDePropuesta({ storagePath: n }) === n);
+  const propuestas = await propuestasQueNombran(db, nombres);
   return { ...decidirFlyeresSinPlazo({ objetos, propuestas, ahora }), objetos: objetos.length };
+};
+
+/**
+ * Borra **un** flyer que la decisión mandó a borrar, si sigue siendo el que se
+ * decidió — B-871.
+ *
+ * ── Dos relecturas distintas, una por cada motivo ─────────────────────────
+ * Entre la lectura y este `delete()` pasa la corrida entera, y cada caso tiene su
+ * forma de dejar de ser cierto:
+ *
+ *  - **`aceptada-vencida`** — un admin **reabre** la propuesta, o la vuelve a
+ *    aceptar (y le renueva el plazo). Se relee con `fieldMask: []` —`exists` y
+ *    `updateTime`, cero campos: el contacto no entra— y se exige la versión que
+ *    la lectura vio, como `borrarPropuesta` (B-864). Si el documento **ya no
+ *    está**, el objeto quedó sin nadie que lo nombre y se sigue por el camino del
+ *    huérfano.
+ *  - **`sin-propuesta`** — llega el envío de `/proponer` que subió esa foto hace
+ *    más de 72 horas. Se pregunta de nuevo si algún documento la nombra, con
+ *    `select()` vacío: solo los ids.
+ *
+ * Storage no tiene precondición que ponerle a un `delete()` sin generación, así
+ * que la ventana que queda es de un round-trip, igual que en la retención. El
+ * peor caso está acotado: una propuesta que se reabre **justo** en ese
+ * round-trip, pasados los 30 días de aceptada, se queda sin flyer.
+ *
+ * **La guarda del prefijo se vuelve a aplicar acá** aunque la decisión ya la
+ * aplicó: esta función es exportada, corre con el Admin SDK sin pasar por las
+ * reglas, y el próximo llamador puede no haber pasado por la decisión. Un path
+ * fuera de `propuestas/<un segmento>` es un error de programación y tira — no se
+ * clasifica, porque clasificarlo lo dejaría pasar como «uno que no se borró».
+ *
+ * ── Por qué no es la trampa 3 ni la 12 ────────────────────────────────────
+ * Lo único que escribe es un `delete()` en Storage, que emite
+ * `onObjectDeleted` —nada del proyecto lo escucha; `optimizarImagen` es
+ * `onObjectFinalized`— y no toca ningún documento: ni el de la aceptada, que
+ * sigue nombrando un `storagePath` que ya no existe, igual que después del
+ * borrado de la transición.
+ *
+ * @param {{ objeto: string, propuesta: string | null, visto: unknown }} flyer
+ * @returns {Promise<'borrado' | 'la-tocaron' | 'lo-nombran'>}
+ */
+export const borrarFlyer = async (db, bucket, { objeto, propuesta, visto }) => {
+  if (objetoDePropuesta({ storagePath: objeto }) !== objeto) {
+    throw new Error(
+      `borrarFlyer(${objeto}) fuera de ${PREFIJO_PROPUESTAS}<un segmento>: este barrido ` +
+        'no borra nada que no sea el flyer de una propuesta (B-871).',
+    );
+  }
+
+  let huerfano = propuesta === null;
+  if (!huerfano) {
+    if (!visto) {
+      // Falla ruidoso, como `borrarPropuesta`: sin la versión vista, esto se
+      // lleva el flyer de una propuesta que un admin acaba de reabrir.
+      throw new Error(
+        `borrarFlyer(${objeto}) sin la versión vista de ${propuesta}: sin eso este borrado ` +
+          'puede llevarse el flyer de una propuesta que un admin acaba de reabrir (B-871).',
+      );
+    }
+    const [ahora] = await db.getAll(db.collection('propuestas').doc(propuesta), {
+      fieldMask: [],
+    });
+    if (ahora.exists && !ahora.updateTime.isEqual(visto)) return 'la-tocaron';
+    huerfano = !ahora.exists;
+  }
+
+  if (huerfano) {
+    const nombrado = await db
+      .collection('propuestas')
+      .where('imagen.storagePath', '==', objeto)
+      .select()
+      .limit(1)
+      .get();
+    if (!nombrado.empty) return 'lo-nombran';
+  }
+
+  await bucket.file(objeto).delete({ ignoreNotFound: true });
+  return 'borrado';
 };
 
 // ─────────────────────────────────────────────────────────────────────────

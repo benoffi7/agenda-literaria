@@ -1579,6 +1579,8 @@ persona sino el estado de su documento. Las cuatro piezas:
 | **Se acepta (2/2)** | al guardarse la actividad, se verifica que la copia esté y recién ahí se borra el original (**B-863**) | `borrarImagenAlCerrar` |
 | **Se rechaza** | se borra en el acto | `borrarImagenAlCerrar` |
 | **Se aceptó sin copia y la foto llegó después** | al día siguiente, verificada la copia, se borra el original (**B-1370**) | `borrarPropuestasVencidas` |
+| **Se aceptó y el original quedó igual** (no había copia, falló el borrado, o ya estaba aceptada antes del deploy) | a los **30 días de aceptada** se borra el original; el documento sigue sin vencer (**B-871**, D-1160) | `borrarPropuestasVencidas` |
+| **Se subió y la propuesta nunca llegó** | pasadas **72 horas** sin ningún documento que lo nombre, se borra (**B-871**, D-1161) | `borrarPropuestasVencidas` |
 | **Nadie decide** | a los 30 días se va con el documento | `borrarPropuestasVencidas` |
 
 **Aceptar son dos filas y no una, y ése es todo el contenido de B-863.**
@@ -1595,8 +1597,12 @@ la copia exista —en el documento de la actividad y en el bucket— y recién d
 se borra el original**. Si el borrado falla queda un duplicado, que es inofensivo;
 al revés se pierde la foto de un tercero y no hay de dónde sacarla. Cuando la
 verificación no pasa —la actividad se guardó sin ninguna imagen propia— el
-original **se conserva** y sale un `warn` con `alerta: "flyer-de-propuesta-sin-borrar"`:
-eso es **B-871**, porque la `aceptada` no vence y nadie más va a pasar por ahí.
+original **se conserva** y sale un `warn` con `alerta: "flyer-de-propuesta-sin-borrar"`.
+Conservarlo ya no es para siempre (**B-871**): quedan **30 días desde la
+aceptación** para subir la foto a la actividad —y entonces B-1370 borra el
+original al día siguiente—; pasado ese plazo el barrido de flyers lo borra igual,
+aunque la actividad siga sin imagen. Es la decisión del dueño del 2026-09-25: se
+acepta perder la foto que nadie decidió usar en un mes.
 
 **La callable no necesita IAM nuevo, y conviene que esté dicho para que no se
 busque.** Corre como `calendar-sync@` (`CUENTA_DE_SERVICIO` de
@@ -1609,29 +1615,39 @@ ningún servicio (ver `02-infraestructura.md` § App Check). B-908.
 
 ### Cuando suena `flyer-de-propuesta-sin-borrar`
 
-Son **ocho** caminos, todos con el mismo estado del mundo —una propuesta
-`aceptada` con su flyer original vivo en `propuestas/`, y ningún barrido que vaya
-a pasar por ahí— y por eso comparten el campo `alerta`. Se distinguen por el
-`resultado` (cuando el borrado se intentó) o por el `motivo` (cuando la decisión
-ni siquiera llegó a intentarlo):
+Son **ocho** caminos en el trigger de la transición, todos con el mismo estado
+del mundo —una propuesta `aceptada` con su flyer original vivo en `propuestas/`—
+y por eso comparten el campo `alerta`. Se distinguen por el `resultado` (cuando
+el borrado se intentó) o por el `motivo` (cuando la decisión ni siquiera llegó a
+intentarlo).
+
+**Desde B-871 la alerta ya no quiere decir «para siempre»: quiere decir «corre el
+reloj».** El barrido de flyers de `borrarPropuestasVencidas` borra ese original a
+los **30 días de aceptada** (§ «Flyers de propuestas: el barrido de B-871», más
+abajo), así que lo que la alerta pide es decidir **antes**: si la foto se usa,
+subirla a la actividad; si no, no hace falta hacer nada. La misma `alerta` la
+emite además, **todos los días**, el barrido de flyers para lo que ningún barrido
+va a borrar — ésas tienen su propia tabla en esa sección.
 
 | `resultado` / `motivo` | Qué pasó | Qué hacer |
 |---|---|---|
-| `sin-copia` | la actividad se guardó sin ninguna imagen propia (la promoción falló y el panel avisó, o el admin sacó la fila) | decidir si la foto se usa. Si se usa, subirla a la actividad desde el panel: el original lo borra solo la corrida siguiente de `borrarPropuestasVencidas` (**B-1370**). Si no, borrar el objeto a mano |
-| `copia-sin-objeto` | el documento nombra una copia que ya no está en el bucket (el formulario quedó abierto más de 72 horas y `limpiarImagenesHuerfanas` se la llevó) | volver a subir la foto a la actividad desde el panel; el original lo borra solo la corrida siguiente (**B-1370**) |
-| `sin-actividad` | el `revision.actividadId` apunta a una actividad que no existe (se borró, o se marcó a mano con un id equivocado) | buscar la actividad que salió de la propuesta; si no hay, borrar el objeto a mano |
+| `sin-copia` | la actividad se guardó sin ninguna imagen propia (la promoción falló y el panel avisó, o el admin sacó la fila) | decidir si la foto se usa, **dentro de los 30 días**. Si se usa, subirla a la actividad desde el panel: el original lo borra solo la corrida siguiente de `borrarPropuestasVencidas` (**B-1370**). Si no, nada: a los 30 días de aceptada se borra solo (**B-871**) |
+| `copia-sin-objeto` | el documento nombra una copia que ya no está en el bucket (el formulario quedó abierto más de 72 horas y `limpiarImagenesHuerfanas` se la llevó) | volver a subir la foto a la actividad desde el panel, dentro de los 30 días; el original lo borra solo la corrida siguiente (**B-1370**). Si no, se borra solo a los 30 días (**B-871**) |
+| `sin-actividad` | el `revision.actividadId` apunta a una actividad que no existe (se borró, o se marcó a mano con un id equivocado) | buscar la actividad que salió de la propuesta y, si la foto se usa, subirla ahí antes de los 30 días. Si no hay actividad, nada: el original se borra solo a los 30 días de aceptada (**B-871**) |
 | `objeto-ajeno` | el `storagePath` no está bajo `propuestas/<un segmento>`. **No es un caso de operación: es un bug o un documento escrito a mano** | **no borrar nada** hasta saber a quién apunta ese path. La guarda existe justamente porque puede ser el flyer de una actividad publicada |
 | `aceptada-sin-actividad` | la propuesta quedó `aceptada` sin `revision.actividadId` (se la marcó a mano) | ídem `sin-actividad` |
 | `imagen-fuera-del-prefijo` | mismo desajuste que `objeto-ajeno`, detectado antes de intentar nada | **no borrar nada**, mismo motivo |
-| `descartada` con un `error` | **B-926** — quien revisó eligió «No usarla» al convertir y el borrado del original falló. Es el único camino donde el borrado se intentó **sin** verificar copia, porque no hay ninguna: la decisión ya la tomó una persona mirando la foto | reintentar el borrado a mano. Acá **no hay nada que decidir**: la foto ya se descartó a propósito, así que el objeto sobra |
+| `descartada` con un `error` | **B-926** — quien revisó eligió «No usarla» al convertir y el borrado del original falló. Es el único camino donde el borrado se intentó **sin** verificar copia, porque no hay ninguna: la decisión ya la tomó una persona mirando la foto | reintentar el borrado a mano, o dejar que lo haga el barrido a los 30 días (**B-871**). Acá **no hay nada que decidir**: la foto ya se descartó a propósito, así que el objeto sobra |
 | `motivo de borrado desconocido` | **B-926** — el vocabulario de `motivo` creció y el trigger no conoce el valor nuevo, así que **no borró nada**. Hoy es inalcanzable: `decidirBorradoDeImagen` solo devuelve los tres literales que la cadena reconoce. Existe para que agregar un cuarto motivo y olvidarse de su rama sea un aviso y no un borrado silencioso | mirar qué `motivo` devolvió `decidirBorradoDeImagen` y agregarle su rama. Mientras tanto el original está vivo, que es el lado seguro |
-| un `error` en vez de un `warn` | falló la lectura de la actividad o el `delete` | reintentar el borrado a mano; si se repite, mirar el IAM de `calendar-sync@` |
+| un `error` en vez de un `warn` | falló la lectura de la actividad o el `delete` | nada urgente: el barrido lo borra a los 30 días de aceptada (**B-871**). Si se repite, mirar el IAM de `calendar-sync@` |
 
 **Y «a mano» es literal, porque no hay botón**: `storage.rules` cierra el
-`delete` de `propuestas/` para todo cliente, y `borrarPropuestasVencidas` no
-alcanza a la aceptada. Se borra desde la consola de Storage, o con
-`gsutil rm gs://<bucket>/propuestas/prop_<uuid>.jpg`. Que esto sea manual es
-justamente **B-871**.
+`delete` de `propuestas/` para todo cliente. Se borra desde la consola de
+Storage, o con `gsutil rm gs://<bucket>/propuestas/prop_<uuid>.jpg`. Desde
+**B-871** casi nunca hace falta: el barrido de flyers de
+`borrarPropuestasVencidas` se lleva el original de toda aceptada a los 30 días de
+aceptada. Lo manual queda para no esperar ese plazo, y para los dos caminos de
+abajo donde lo correcto es **no** borrar.
 
 > **De dónde sacar el path, que no es el mismo lugar en los siete.** Los cuatro
 > primeros son `resultado`, y ahí el log trae el campo `objeto` con el path
@@ -1642,11 +1658,14 @@ justamente **B-871**.
 > abrir la propuesta por su id y mirar su `imagen.storagePath` antes de tocar
 > nada.
 
-**Para el backfill de lo que ya está aceptado antes de este deploy** —el trigger
-actúa solo en la **transición**, así que una propuesta que ya estaba en
-`aceptada` no lo despierta nunca—: `node scripts/borrar-propuestas-vencidas.mjs`
-**sin `--aplicar`**, y mirar la segunda lista del informe, la de
-§ «Flyers que no borra nadie» de más abajo.
+**El backfill de lo que ya estaba aceptado antes del deploy** —el trigger actúa
+solo en la **transición**, así que una propuesta que ya estaba en `aceptada` no lo
+despierta nunca— **ya no es un paso manual**: el barrido de flyers entra por el
+bucket y lo alcanza igual que a los demás. Para verlo antes de que corra,
+`node scripts/borrar-propuestas-vencidas.mjs` **sin `--aplicar`**, segunda lista
+del informe (§ «Flyers de propuestas: el barrido de B-871», más abajo). El
+2026-09-25 producción tenía **cero** objetos bajo `propuestas/`, así que no hubo
+backfill que correr.
 
 > ⚠️ **Esto decía otra cosa y era falso** (corregido con **B-871**). Decía que
 > el chequeo era mirar la primera lista del script y buscar «una línea
@@ -1664,58 +1683,88 @@ actúa solo en la **transición**, así que una propuesta que ya estaba en
 > rechazo, y solo la nueva actúa en la aceptación—, pero es una Function fantasma
 > cobrando invocaciones. Verificar con `firebase functions:list`.
 
-### Flyers que no borra nadie (B-871)
+### Flyers de propuestas: el barrido de B-871
 
-`node scripts/borrar-propuestas-vencidas.mjs` **sin `--aplicar`** imprime, al
-final, una segunda lista que no sale de la retención: **los objetos que hoy
-existen bajo `propuestas/`**, cruzados contra los documentos que los nombran.
+**La salida 3 de B-871, con la decisión del dueño del 2026-09-25.** La tercera
+mitad de `borrarPropuestasVencidas`, en su `finally` y después de la de B-1370:
+**lista los objetos que hoy existen bajo `propuestas/`**, busca de a 30 por `in`
+los documentos que los nombran y decide cada uno con `decidirFlyeresSinPlazo`
+(`functions/retencion.js`). Borra **dos** casos:
 
-Es el «pasa alguien» que a esta foto le faltaba. El borrado del original de una
-aceptada ocurre **una sola vez**, en la transición, y debajo no hay red: la
-`aceptada` no vence y `limpiarImagenesHuerfanas` no recorre este prefijo. La
-lista entra por el bucket y no por las transiciones, así que encuentra los siete
-caminos por igual — incluido el séptimo, el que no emite ningún log porque la
-propuesta ya estaba aceptada antes del deploy.
+- **el original de una aceptada, a los 30 días de aceptada** (D-1160) — el que
+  `borrarImagenAlCerrar` conservó porque no había copia verificada, el que no
+  pudo borrar porque falló, y el de una propuesta que ya estaba aceptada antes
+  del deploy. El reloj es `revision.en`, sin caer a `creadoEn`. **El documento no
+  se toca**: la `aceptada` sigue sin vencer, porque el contacto sirve para
+  repreguntar por una actividad publicada;
+- **el objeto que ningún documento nombra, pasadas 72 horas** (D-1161) — un
+  `/proponer` abandonado después de subir la foto, o la mitad que sobrevivió a un
+  borrado cortado.
 
-| Motivo | Qué es | Qué hacer |
+**La retención de `nueva`, `en-revision` y `rechazada` no cambió**: el flyer de
+una propuesta que caduca es de la retención, que se lo lleva con su documento.
+
+Entra por el bucket, así que alcanza los siete caminos por igual, incluido el que
+no emite ningún log. Y su costo crece con los flyers vivos y no con el archivo
+histórico: no lee la colección `/propuestas` entera, que es lo que B-865 sacó del
+camino diario (hasta la salida 3 este relevamiento sí la leía, y por eso corría
+solo a pedido).
+
+`node scripts/borrar-propuestas-vencidas.mjs` usa **la misma** decisión y **el
+mismo** borrado: sin `--aplicar` imprime, al final, una segunda lista con los
+`[BORRAR]` y los `[REVISAR]` de hoy; con `--aplicar` (y `--produccion` fuera del
+emulador) los borra.
+
+| Motivo | Qué es | Qué hace el barrido | Qué hacer |
+|---|---|---|---|
+| `aceptada-vencida` | el original de una aceptada, con más de 30 días desde la aceptación | **lo borra** | nada |
+| `aceptada-dentro-del-plazo` | el original de una aceptada de hace menos de 30 días | nada, todavía | si la foto se usa, subirla a la actividad antes del día 30 (B-1370 borra el original al día siguiente) |
+| `aceptada-sin-fecha-legible` | una aceptada sin `revision.en` legible: no se puede afirmar que pasaron los 30 días | **no lo borra** (falla cerrado) y loguea con `alerta` todos los días | arreglarle `revision.en` al documento —la fecha en que se aceptó— y dejar que el barrido haga el resto |
+| `sin-propuesta` | ningún documento nombra ese objeto, y tiene más de 72 horas | **lo borra** | nada |
+| `recien-subido` | el **objeto** tiene menos de 72 h, o su fecha de creación no se pudo leer (nada que ver con `sin-fecha-legible`, que habla de la fecha del **documento**) | nada: `/proponer` sube el archivo al elegirlo y escribe el documento al enviar | nada. Falla cerrado, como los otros dos barridos |
+| `de-una-que-caduca` | lo nombra una `nueva`, `en-revision` o `rechazada`, **y esa propuesta se puede fechar** | nada: la retención se lo lleva con su documento | nada |
+| `sin-fecha-legible` | lo nombra una propuesta de un estado que caduca, pero **sin ninguna fecha legible** con la que contar el plazo | **no lo borra** —la retención tampoco— y loguea con `alerta` | arreglarle la fecha al documento —`creadoEn`, o `revision.en` si está rechazada— y dejar que la retención haga el resto |
+| `varias-propuestas` | **dos o más** documentos nombran el mismo objeto. `/proponer` genera un uuid por flyer, así que es un documento escrito a mano | **no lo borra** y loguea con `alerta`: borrarlo podría llevarse el flyer que una propuesta abierta todavía muestra | buscar en `/propuestas` los documentos con ese `imagen.storagePath` y corregir el que está mal |
+| `<estado>-sin-plazo` | lo nombra una propuesta en un estado que `RETENCION_POR_ESTADO` no conoce. Hoy no existe | **no lo borra** y loguea con `alerta`: agregar un estado no puede empezar a borrar fotos de rebote | darle un plazo al estado nuevo, o sacarlo |
+| `fuera-del-alcance` | no está bajo `propuestas/<un segmento>` | nada, nunca | **no tocar**. Es la misma guarda de `objeto-ajeno`: puede ser el flyer de una actividad publicada |
+
+Un motivo con `-pendiente-por-tope` al final es uno que hoy no entró en el tope de
+**50 borrados por corrida** (`MAX_FLYERES_POR_CORRIDA`) y va mañana.
+
+**Antes de borrar, relee.** Entre la lectura y el `delete()` pasa la corrida
+entera, así que `borrarFlyer` vuelve a preguntar: para una aceptada, que el
+documento siga en la versión que la lectura vio (`getAll` con `fieldMask: []`,
+sin traer el contacto) — si la **reabrieron** o la volvieron a aceptar, no se
+toca (`la-tocaron`); para un huérfano, que ningún documento lo nombre todavía —
+si el envío de `/proponer` llegó justo, no se toca (`lo-nombran`). Storage no
+tiene precondición, así que queda un round-trip de ventana, como en la
+retención.
+
+| Log | Qué es | Qué hacer |
 |---|---|---|
-| `aceptada-sin-plazo` | el flyer de una propuesta aceptada sigue vivo: el borrado no ocurrió, o la decisión correcta fue no borrarlo (`sin-copia`) | mirar el `warn` de esa propuesta en la tabla de arriba, que dice cuál de los seis caminos fue, y seguir su fila. **El script no lo borra** |
-| `sin-propuesta` | ningún documento nombra ese objeto: un `/proponer` abandonado después de subir la foto, o la mitad que sobrevivió a un borrado cortado por la mitad | no hay a quién preguntarle ni desde dónde volver a encontrarlo. Borrarlo a mano es lo correcto una vez confirmado que no es reciente |
-| `de-una-que-caduca` | lo nombra una `nueva`, `en-revision` o `rechazada`, **y esa propuesta se puede fechar** | **nada**: el barrido de retención va a pasar por ese documento y se lleva las dos mitades |
-| `sin-fecha-legible` | lo nombra una propuesta de un estado que caduca, pero **sin ninguna fecha legible** con la que contar el plazo | el barrido **no la borra nunca** (falla cerrado, con el mismo motivo del otro lado), así que su flyer tampoco tiene quien lo borre. Hay que arreglarle la fecha al documento —`creadoEn`, o `revision.en` si está rechazada— y dejar que el barrido haga el resto |
-| `recien-subido` | el **objeto** tiene menos de 72 h, o su fecha de creación no se pudo leer (nada que ver con `sin-fecha-legible`, que habla de la fecha del **documento**) | **nada**: `/proponer` sube el archivo al elegirlo y escribe el documento al enviar, así que lo normal es que todavía no tenga dueño. Falla cerrado, como los otros dos barridos |
-| `fuera-del-alcance` | no está bajo `propuestas/<un segmento>` | **no tocar**. Es la misma guarda de `objeto-ajeno`: puede ser el flyer de una actividad publicada |
+| `flyer de propuesta borrado` | el caso feliz, con `objeto`, `propuesta` (o `null`) y `causa` | nada |
+| `flyer de propuesta no borrado: cambió en el medio de la corrida` | `la-tocaron` o `lo-nombran` | nada: mañana se vuelve a decidir con datos frescos |
+| `flyer de propuesta que no va a borrar nadie` | un `[REVISAR]` de la tabla de arriba, con `objeto`, `propuesta`, `motivo` y **`alerta: "flyer-de-propuesta-sin-borrar"`** | seguir la fila de su `motivo`. Sale **todos los días** hasta que se arregle, a diferencia del `warn` de la transición, que sale una vez |
+| `no se pudo borrar un flyer de propuesta` | falló la relectura o el `delete` | nada si es aislado (mañana reintenta); si se repite, mirar el IAM de `calendar-sync@` |
+| `flyers de propuestas: barrido terminado` | el resumen: `objetos`, `borrados`, `intactos`, `fallidos`, `aRevisar`, `pendientesPorTope` | nada. Si el tope cortó, sale como `warn` con el mismo cuerpo |
+| `falló el barrido de flyers de propuestas` | la lectura entera falló (el listado del bucket o una query) | mirar el `error`; la retención y B-1370 corrieron igual |
 
-**La lista informa y no borra, tampoco con `--aplicar`.** Hay **un** caso que
-desde B-1370 sí se borra solo, y no desde acá: la aceptada cuya actividad **ya
-tiene** su copia viva (`con-copia-con-original` en
-`scripts/flyeres-de-propuestas-aceptadas.mjs`) lo resuelve
-`borrarPropuestasVencidas`, ver § «El original que sobra cuando la foto llega
-después». Para el resto, lo que falta para automatizarlo es una decisión de
-producto: qué pasa con la aceptada que conservó
-su original **a propósito** (el caso `sin-copia`, donde no borrar es lo correcto
-porque perder la foto no se deshace). Mientras esa respuesta no exista, un
-barrido automático o borraría justo esa foto o tendría una excepción que no
-alcanzaría nunca a ninguna de las otras.
+**No es la trampa 3 ni la 12**: lo único que escribe es un `delete()` de un objeto
+bajo `propuestas/` —emite `onObjectDeleted`, que nadie escucha— y no toca ningún
+documento. Sin IAM nuevo: es la misma Function, con el mismo
+`storage.objects.delete`. **Entra en vigor con el deploy de Functions.**
 
 Dos detalles de operación:
 
-- **La lista de arriba puede venir recortada y ésta no.** La de la retención
-  corta apenas junta las 50 del tope (B-865); ésta lee la colección entera. Así
-  que un `sin-fecha-legible` puede aparecer acá sin su línea gemela arriba en la
-  misma corrida — el dato es correcto igual, pero conviene saberlo antes de
-  buscar el par que no está.
-- **Corre con Firestore y Storage apuntando al mismo lado.** Si uno está en el
-  emulador y el otro en producción, el script **no releva** y lo dice: cruzar los
-  documentos de un lado con los objetos del otro daría todo como `sin-propuesta`,
-  o sea un informe que inventa un problema enorme.
-- **No está en el barrido diario, y es a propósito.** La lectura que necesita es
-  la colección `/propuestas` entera —hay que saber si *alguien* nombra cada
-  objeto—, que es justo lo que B-865 acaba de sacar del camino diario. Va a
-  pedido, y pasa a ser automático el día que la decisión de arriba exista. (El
-  barrido de B-1370 **sí** es diario porque entra al revés: lista `propuestas/`
-  y busca solo los documentos que nombran esos objetos, así que su costo crece
-  con los flyers vivos y no con el archivo histórico.)
+- **La lista de la retención puede venir recortada y ésta no.** La de arriba del
+  script corta apenas junta las 50 del tope (B-865); ésta mira todos los objetos
+  vivos del prefijo. Así que un `sin-fecha-legible` puede aparecer acá sin su
+  línea gemela arriba en la misma corrida — el dato es correcto igual.
+- **El script corre con Firestore y Storage apuntando al mismo lado.** Si uno
+  está en el emulador y el otro en producción, **no releva** y lo dice: cruzar
+  los documentos de un lado con los objetos del otro daría todo como
+  `sin-propuesta`, que ahora es un motivo de borrado. Con `--aplicar`, la guarda
+  de coherencia del principio aborta antes de llegar acá.
 
 ### El original que sobra cuando la foto llega después (B-1370)
 
@@ -1864,7 +1913,7 @@ retención automática vino a no depender.
 | `rechazada` | 30 días (DEC-13) | `revision.en` — el rechazo |
 | `nueva` | 30 días | la última señal de vida |
 | `en-revision` | 30 días | la última señal de vida |
-| `aceptada` | **no vence** el documento; la **foto original** sí se va (B-863) | — |
+| `aceptada` | **no vence** el documento; la **foto original** sí se va: al aceptar si hay copia (B-863), y si no, a los 30 días (B-871) | `revision.en` — la aceptación, solo para la foto |
 
 **Los 30 días de «sin tocar» los contestó el dueño el 2026-09-09** (la pregunta se
 le hizo con una hipótesis de 90 escrita en el código). Lo que **no** contestó es
@@ -2120,6 +2169,9 @@ lo lleva el ciclo de la propuesta», dice el comentario del panel—, así que c
 `aceptada: null` ese ciclo no llega nunca y la imagen queda sin plazo bajo un
 prefijo que `limpiarImagenesHuerfanas` no barre. Anotado como **B-863**: lo
 barato es borrar el original cuando la promoción sale bien, y es una decisión.
+(Hoy está cerrado en tres capas: B-863 lo borra al aceptar si hay copia, B-1370
+cuando la copia llega después, y **B-871** a los 30 días de aceptada si no llega
+nunca — § «Flyers de propuestas: el barrido de B-871».)
 
 **Y la bandeja lo dice.** Desde B-844 la ficha muestra «Se borra en N días» / «Se
 borra mañana» / «Se borra hoy» cuando falta menos que `AVISO_DE_CADUCIDAD_DIAS`

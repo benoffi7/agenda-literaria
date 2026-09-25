@@ -21,18 +21,23 @@ import { describe, expect, it } from 'vitest';
 import {
   ESTADOS_QUE_CADUCAN,
   ESTADOS_SIN_PLAZO,
+  ESTADO_ACEPTADO,
   MARGEN_DEL_FLYER_EN_VUELO_MS,
+  MARGEN_DEL_ORIGINAL_ACEPTADO_MS,
   MARGEN_DE_RETENCION_MS,
   MARGEN_SIN_TOCAR_MS,
+  MAX_FLYERES_POR_CORRIDA,
   MAX_PROPUESTAS_POR_CORRIDA,
   PREFIJO_PROPUESTAS,
   PROPUESTAS_POR_PAGINA,
   RETENCION_POR_ESTADO,
+  borrarFlyer,
   borrarPropuesta,
   decidirFlyeresSinPlazo,
   decidirRetencion,
   objetoDePropuesta,
   propuestasVencibles,
+  relojDeAceptacion,
   relojDeRetencion,
 } from '../functions/retencion.js';
 import { ESTADOS_PROPUESTA } from '@/types/propuesta';
@@ -846,178 +851,261 @@ describe('propuestasVencibles — la lectura paginada (B-865)', () => {
 });
 
 /**
- * **El flyer que no va a borrar nadie** — B-871.
+ * **Los flyers de `propuestas/` que no borraba nadie** — B-871, salida 3.
  *
  * El borrado del original de una propuesta **aceptada** ocurre una sola vez, en
- * la transición (`borrarImagenAlCerrar`), y debajo no hay red: la `aceptada` no
+ * la transición (`borrarImagenAlCerrar`), y debajo no había red: la `aceptada` no
  * vence y `limpiarImagenesHuerfanas` solo recorre `imagenes/` y `miniaturas/`.
- * Si ese borrado no ocurre —falló, o la decisión correcta fue **no** borrar
+ * Si ese borrado no ocurría —falló, o la decisión correcta fue **no** borrar
  * porque no había copia verificada, o la propuesta ya estaba aceptada antes del
- * deploy y la transición nunca existió— la foto de un tercero se queda para
- * siempre y no pasa nadie después.
+ * deploy— la foto de un tercero se quedaba para siempre.
  *
- * Esto es el «pasa alguien», y **solo informa**: qué hacer con el original que se
- * conservó a propósito es una decisión de producto que el dueño todavía no tomó.
- * Los casos de abajo fijan la clasificación, que es lo que esa decisión va a
- * necesitar cuando llegue.
- *
- * La propiedad que los ordena es una sola: **un objeto necesita a alguien solo si
- * no hay un plazo que se lo lleve**. De ahí salen los dos motivos que van a la
- * lista (`<estado>-sin-plazo` y `sin-propuesta`) y los tres que no.
+ * Desde la decisión del dueño del 2026-09-25 esto **borra**: el original de una
+ * aceptada a los 30 días de aceptada (D-1160) y el objeto que ningún documento
+ * nombra, pasada la gracia de 72 horas (D-1161). La propiedad que ordena los
+ * casos: **un objeto se borra acá solo si ningún otro barrido lo va a borrar**;
+ * el de una propuesta que caduca sigue siendo de la retención, que no cambió.
  */
-describe('decidirFlyeresSinPlazo — qué flyer no borra nadie (B-871)', () => {
+describe('decidirFlyeresSinPlazo — qué flyer de `propuestas/` se borra (B-871)', () => {
   const VIEJO = AHORA - MARGEN_DEL_FLYER_EN_VUELO_MS - DIA;
+  /** Aceptada hace más de 30 días: su original ya venció. */
+  const ACEPTADA_HACE_MUCHO = AHORA - MARGEN_DEL_ORIGINAL_ACEPTADO_MS - DIA;
   const objeto = (nombre: string, creado = VIEJO) => ({ nombre, creado });
   /**
    * **Con las dos fechas, y eso no es relleno del fixture.** Una propuesta en un
    * estado que caduca pero que no se puede fechar **no la borra el barrido**
    * (`sin-fecha-legible`), así que su flyer tampoco tiene quien lo borre. Y van
-   * las dos porque el reloj no es el mismo: la `rechazada` cuenta desde
-   * `revision.en` **sin caer** a `creadoEn` (DEC-13), así que un fixture con
-   * `creadoEn` solo la dejaría sin fechar — lo comprobó este mismo caso, que dio
-   * rojo en la variante `rechazada` antes de completarlo.
+   * las dos porque el reloj no es el mismo: la `rechazada` y la `aceptada`
+   * cuentan desde `revision.en` **sin caer** a `creadoEn`.
    */
-  const conFlyer = (id: string, estado: string, nombre: string) => ({
+  const conFlyer = (id: string, estado: string, nombre: string, en = AHORA - DIA) => ({
     id,
     estado,
     creadoEn: ts(AHORA - DIA),
-    revision: { en: ts(AHORA - DIA) },
+    revision: { en: ts(en) },
     imagen: { storagePath: nombre },
   });
 
-  it('el flyer de una aceptada queda para revisar: no hay plazo que se lo lleve', () => {
-    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+  it('el original de una aceptada se borra a los 30 días de aceptada, contados desde la aceptación', () => {
+    /*
+     * **D-1160.** El `creadoEn` es de hace un día a propósito: el plazo es de la
+     * aceptación (`revision.en`), no de la llegada. Y la entrada lleva la
+     * versión que la lectura vio, que es lo que `borrarFlyer` exige antes de
+     * tocar el objeto (B-864).
+     */
+    const vista = ts(AHORA - 3 * DIA);
+    const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
       objetos: [objeto('propuestas/prop_a.jpg')],
-      propuestas: [conFlyer('p1', 'aceptada', 'propuestas/prop_a.jpg')],
+      propuestas: [
+        {
+          ...conFlyer('p1', 'aceptada', 'propuestas/prop_a.jpg', ACEPTADA_HACE_MUCHO),
+          updateTime: vista,
+        },
+      ],
       ahora: AHORA,
     });
-    expect(aRevisar).toEqual([
-      { objeto: 'propuestas/prop_a.jpg', propuesta: 'p1', motivo: 'aceptada-sin-plazo' },
+    expect(aBorrar).toEqual([
+      { objeto: 'propuestas/prop_a.jpg', propuesta: 'p1', visto: vista, motivo: 'aceptada-vencida' },
     ]);
-    expect(motivos['propuestas/prop_a.jpg']).toBe('aceptada-sin-plazo');
+    expect(aRevisar).toEqual([]);
+    expect(motivos['propuestas/prop_a.jpg']).toBe('aceptada-vencida');
   });
 
-  it('y el de una que sí caduca, no: el barrido de retención va a pasar por ahí', () => {
-    /*
-     * El control que hace que el caso de arriba no se lea como «todo flyer con
-     * documento hay que mirarlo». Los tres estados que caducan tienen red, y da
-     * igual cuán viejo sea el objeto: el plazo es del documento.
-     */
-    for (const estado of ESTADOS_QUE_CADUCAN) {
-      const { aRevisar, motivos } = decidirFlyeresSinPlazo({
-        objetos: [objeto('propuestas/prop_b.jpg')],
-        propuestas: [conFlyer('p2', estado, 'propuestas/prop_b.jpg')],
+  it('y un día antes no: son 30 días para decidir si la foto se usa', () => {
+    for (const en of [AHORA - DIA, AHORA - MARGEN_DEL_ORIGINAL_ACEPTADO_MS + DIA]) {
+      const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
+        objetos: [objeto('propuestas/prop_a.jpg')],
+        propuestas: [conFlyer('p1', 'aceptada', 'propuestas/prop_a.jpg', en)],
         ahora: AHORA,
       });
-      expect(aRevisar, estado).toEqual([]);
-      expect(motivos['propuestas/prop_b.jpg'], estado).toBe('de-una-que-caduca');
+      expect(aBorrar, String(en)).toEqual([]);
+      // Tampoco pide a nadie: tiene red, la corrida del día 30 se lo lleva.
+      expect(aRevisar, String(en)).toEqual([]);
+      expect(motivos['propuestas/prop_a.jpg']).toBe('aceptada-dentro-del-plazo');
     }
   });
 
-  it('un objeto que ningún documento nombra también queda para revisar', () => {
+  it('una aceptada sin fecha de aceptación legible no se borra: queda para revisar', () => {
     /*
-     * Son dos historias que terminan igual: un `/proponer` abandonado después de
-     * subir la foto (el formulario sube al elegir el archivo y escribe el
-     * documento al enviar), o la mitad que sobrevivió a un borrado cortado por la
-     * mitad. En los dos casos es una foto de una persona **sin nada que la
-     * referencie**, que es el punto 4 del inventario en su peor versión: no hay
-     * desde dónde volver a encontrarla.
+     * Falla cerrado, como la rechazada sin `revision.en`: no se puede afirmar que
+     * pasaron los 30 días, y la foto que se borra no vuelve. Con `creadoEn`
+     * viejísimo y legible a propósito — caer a la llegada sería otro plazo,
+     * decidido por accidente.
      */
-    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+    for (const en of [null, undefined, 'no-es-una-fecha', NaN]) {
+      const { aBorrar, aRevisar } = decidirFlyeresSinPlazo({
+        objetos: [objeto('propuestas/prop_a.jpg')],
+        propuestas: [
+          {
+            id: 'p1',
+            estado: 'aceptada',
+            creadoEn: ts(AHORA - 400 * DIA),
+            revision: { en },
+            imagen: { storagePath: 'propuestas/prop_a.jpg' },
+          },
+        ],
+        ahora: AHORA,
+      });
+      expect(aBorrar, String(en)).toEqual([]);
+      expect(aRevisar, String(en)).toEqual([
+        { objeto: 'propuestas/prop_a.jpg', propuesta: 'p1', motivo: 'aceptada-sin-fecha-legible' },
+      ]);
+    }
+  });
+
+  it('el reloj de la aceptación solo existe para la aceptada, y es `revision.en` a secas', () => {
+    expect(relojDeAceptacion({ estado: 'aceptada', revision: { en: ts(AHORA) } })).toBe(AHORA);
+    expect(relojDeAceptacion({ estado: 'aceptada', creadoEn: ts(AHORA) })).toBeNull();
+    expect(relojDeAceptacion({ estado: 'rechazada', revision: { en: ts(AHORA) } })).toBeNull();
+  });
+
+  it('el documento de la aceptada sigue sin vencer: lo que se va es la foto, no el contacto', () => {
+    // La otra mitad de D-1160, dicha donde se pone roja si alguien «simplifica»
+    // dándole a la aceptada un plazo de documento para que se lleve la foto.
+    expect(RETENCION_POR_ESTADO.aceptada).toBeNull();
+    expect(ESTADO_ACEPTADO).toBe('aceptada');
+  });
+
+  it('el flyer de una que caduca sigue siendo de la retención, aunque su documento ya venció', () => {
+    /*
+     * **La retención de `nueva`, `en-revision` y `rechazada` no cambia.** Ni con
+     * el objeto viejo ni con el documento vencido: ése lo borra
+     * `decidirRetencion` junto con su documento y en el orden de B-838. Borrarlo
+     * acá sería un segundo borrado del mismo objeto en carrera con aquél, y
+     * dejaría a la bandeja mostrando un flyer roto el mes que le queda.
+     */
+    for (const estado of ESTADOS_QUE_CADUCAN) {
+      for (const en of [AHORA - DIA, AHORA - 400 * DIA]) {
+        const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
+          objetos: [objeto('propuestas/prop_b.jpg', AHORA - 400 * DIA)],
+          propuestas: [conFlyer('p2', estado, 'propuestas/prop_b.jpg', en)],
+          ahora: AHORA,
+        });
+        expect(aBorrar, estado).toEqual([]);
+        expect(aRevisar, estado).toEqual([]);
+        expect(motivos['propuestas/prop_b.jpg'], estado).toBe('de-una-que-caduca');
+      }
+    }
+  });
+
+  it('un objeto que ningún documento nombra se borra, pasada la gracia', () => {
+    /*
+     * **D-1161.** Son dos historias que terminan igual: un `/proponer`
+     * abandonado después de subir la foto (el formulario sube al elegir el
+     * archivo y escribe el documento al enviar), o la mitad que sobrevivió a un
+     * borrado cortado por la mitad. En los dos casos es una foto de una persona
+     * **sin nada que la referencie**, y nadie la va a encontrar desde otro lado.
+     */
+    const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
       objetos: [objeto('propuestas/prop_c.jpg')],
       propuestas: [],
       ahora: AHORA,
     });
-    expect(aRevisar).toEqual([
-      { objeto: 'propuestas/prop_c.jpg', propuesta: null, motivo: 'sin-propuesta' },
+    expect(aBorrar).toEqual([
+      { objeto: 'propuestas/prop_c.jpg', propuesta: null, visto: null, motivo: 'sin-propuesta' },
     ]);
+    expect(aRevisar).toEqual([]);
     expect(motivos['propuestas/prop_c.jpg']).toBe('sin-propuesta');
   });
 
   it('salvo que sea reciente: alguien puede estar llenando el formulario', () => {
-    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
-      objetos: [objeto('propuestas/prop_d.jpg', AHORA - DIA)],
+    const { aBorrar, motivos } = decidirFlyeresSinPlazo({
+      objetos: [objeto('propuestas/prop_d.jpg', AHORA - MARGEN_DEL_FLYER_EN_VUELO_MS + 60_000)],
       propuestas: [],
       ahora: AHORA,
     });
-    expect(aRevisar).toEqual([]);
+    expect(aBorrar).toEqual([]);
     expect(motivos['propuestas/prop_d.jpg']).toBe('recien-subido');
   });
 
-  it('y una fecha ilegible falla cerrado, como en los otros dos barridos', () => {
+  it('y una fecha de objeto ilegible falla cerrado, como en los otros dos barridos', () => {
     for (const creado of [undefined, NaN, null, 'ayer']) {
-      const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
         objetos: [{ nombre: 'propuestas/prop_e.jpg', creado } as never],
         propuestas: [],
         ahora: AHORA,
       });
+      expect(aBorrar, String(creado)).toEqual([]);
       expect(aRevisar, String(creado)).toEqual([]);
       expect(motivos['propuestas/prop_e.jpg'], String(creado)).toBe('recien-subido');
     }
   });
 
-  it('lo que no está bajo `propuestas/<un segmento>` no se opina', () => {
+  it('lo que no está bajo `propuestas/<un segmento>` no se borra nunca', () => {
     // Mismo criterio que `decidirLimpieza`: no se toca lo que no se entiende. Y
-    // acá además es la guarda que impide que un objeto de la galería entre a una
-    // lista que alguien va a leer como «borrables».
+    // desde que esto borra, es la guarda que impide que un objeto de la galería
+    // —el flyer de una actividad publicada— llegue a `aBorrar`.
     for (const nombre of [
       'imagenes/img_a.jpg',
       'propuestas/sub/prop_a.jpg',
       'propuestas/',
       'miniaturas/img_a.jpg',
     ]) {
-      const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+      const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
         objetos: [objeto(nombre)],
         propuestas: [],
         ahora: AHORA,
       });
+      expect(aBorrar, nombre).toEqual([]);
       expect(aRevisar, nombre).toEqual([]);
       expect(motivos[nombre], nombre).toBe('fuera-del-alcance');
     }
   });
 
-  it('un documento que nombra un objeto de la galería no arrastra a nadie', () => {
+  it('un documento que nombra un objeto de la galería no la arrastra al borrado', () => {
     /*
-     * **Lo que este caso fija es el corte del lado del objeto, y hay que decir
-     * cuál de las dos guardas lo sostiene.** La del índice —armarlo con
-     * `objetoDePropuesta` y no con el `storagePath` crudo— es **defensa en
-     * profundidad y hoy no es alcanzable**: una clave inválida en el índice no
-     * puede empatar con ningún objeto, porque todo objeto que llega a
-     * consultarse ya pasó la misma guarda. Se verificó por mutación: armando el
-     * índice con el path crudo, **ningún caso se pone rojo**. Va escrita igual
-     * —el argumento está en el fuente— pero este caso no la afirma, para no
-     * declarar una cobertura que no existe.
-     *
-     * Lo que sí afirma: el objeto de la galería queda `fuera-del-alcance` (no
-     * entra a una lista que alguien va a leer como «borrables») y el flyer de la
-     * propuesta queda sin dueño porque **su** documento nombra otra cosa.
+     * Lo que este caso fija es el corte del lado del objeto: el de la galería
+     * queda `fuera-del-alcance` y el flyer de la propuesta queda sin dueño
+     * porque **su** documento nombra otra cosa. La guarda del índice —armarlo
+     * con `objetoDePropuesta` y no con el path crudo— es defensa en profundidad
+     * y hoy no es alcanzable (verificado por mutación cuando esto solo
+     * relevaba); este caso no la afirma, para no declarar una cobertura que no
+     * existe.
      */
-    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+    const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
       objetos: [objeto('propuestas/prop_f.jpg'), objeto('imagenes/img_x.jpg')],
-      propuestas: [conFlyer('p3', 'aceptada', 'imagenes/img_x.jpg')],
+      propuestas: [conFlyer('p3', 'aceptada', 'imagenes/img_x.jpg', ACEPTADA_HACE_MUCHO)],
       ahora: AHORA,
     });
     expect(motivos['imagenes/img_x.jpg']).toBe('fuera-del-alcance');
-    expect(aRevisar).toEqual([
-      { objeto: 'propuestas/prop_f.jpg', propuesta: null, motivo: 'sin-propuesta' },
-    ]);
+    expect(aBorrar.map((f) => f.objeto)).toEqual(['propuestas/prop_f.jpg']);
+    expect(aRevisar).toEqual([]);
   });
 
-  it('un estado que caduca pero con fecha ilegible también queda para revisar', () => {
+  it('dos documentos que nombran el mismo objeto no se resuelven: se pide a alguien', () => {
     /*
-     * **Lo encontró el `auditor-trampas` sobre este mismo cambio**, y es la clase
-     * de B-88 en su peor forma: dos lugares que derivan por separado la misma
-     * pregunta —«¿el barrido va a pasar por este documento?»— y uno se queda
-     * corto. `decidirRetencion` pide **dos** cosas, un plazo numérico y un reloj
-     * legible; mirar solo la tabla de plazos daba por cubierta una propuesta que
-     * el barrido no toca nunca, y su flyer desaparecía de las dos listas: ni
-     * borrado ni reportado. Es el agujero de B-871 reabierto un renglón más
-     * abajo del que lo tapa.
-     *
-     * El caso es el mismo fixture patológico que `decidirRetencion` clasifica
-     * como `sin-fecha-legible`, y los dos asertos van juntos a propósito: el
-     * primero afirma que el barrido **no** se lo lleva, el segundo que entonces
-     * esta lista sí lo nombra.
+     * Con un solo dueño por objeto ganaría el último, y si el último fuera una
+     * aceptada vencida se borraría el flyer que una `nueva` todavía muestra en
+     * la bandeja. `/proponer` genera un uuid por flyer, así que solo pasa con un
+     * documento escrito a mano — y el orden de los dos va probado para los dos
+     * lados.
+     */
+    const aceptada = conFlyer('p8', 'aceptada', 'propuestas/prop_n.jpg', ACEPTADA_HACE_MUCHO);
+    const nueva = conFlyer('p9', 'nueva', 'propuestas/prop_n.jpg');
+    for (const propuestas of [
+      [aceptada, nueva],
+      [nueva, aceptada],
+    ]) {
+      const { aBorrar, aRevisar } = decidirFlyeresSinPlazo({
+        objetos: [objeto('propuestas/prop_n.jpg')],
+        propuestas,
+        ahora: AHORA,
+      });
+      expect(aBorrar).toEqual([]);
+      expect(aRevisar).toEqual([
+        { objeto: 'propuestas/prop_n.jpg', propuesta: null, motivo: 'varias-propuestas' },
+      ]);
+    }
+  });
+
+  it('un estado que caduca pero con fecha ilegible queda para revisar y no se borra', () => {
+    /*
+     * **Lo encontró el `auditor-trampas`**, y es la clase de B-88: dos lugares
+     * que derivan por separado la misma pregunta —«¿el barrido va a pasar por
+     * este documento?»—. `decidirRetencion` pide un plazo numérico **y** un reloj
+     * legible; mirar solo la tabla daba por cubierta una propuesta que el
+     * barrido no toca nunca. Y **no** se borra acá: la retención de ese estado
+     * no se cambia, así que lo que corresponde es arreglarle la fecha.
      */
     const rota = {
       id: 'p7',
@@ -1030,57 +1118,59 @@ describe('decidirFlyeresSinPlazo — qué flyer no borra nadie (B-871)', () => {
       'sin-fecha-legible',
     );
 
-    const { aRevisar, motivos } = decidirFlyeresSinPlazo({
+    const { aBorrar, aRevisar, motivos } = decidirFlyeresSinPlazo({
       objetos: [objeto('propuestas/prop_m.jpg')],
       propuestas: [rota],
       ahora: AHORA,
     });
     expect(motivos['propuestas/prop_m.jpg']).toBe('sin-fecha-legible');
+    expect(aBorrar).toEqual([]);
     expect(aRevisar).toEqual([
       { objeto: 'propuestas/prop_m.jpg', propuesta: 'p7', motivo: 'sin-fecha-legible' },
     ]);
   });
 
-  it('un estado que la tabla no nombra tampoco tiene quien lo borre', () => {
+  it('un estado que la tabla no nombra tampoco tiene quien lo borre, y no se borra de rebote', () => {
     /*
-     * El hermano del caso `estado-<x>` de `decidirRetencion`, y la respuesta
-     * tiene que ser la contraria: allá un estado desconocido **no caduca** (falla
-     * cerrado, no borra), así que acá su flyer **sí** necesita a alguien. Si los
-     * dos fallaran para el mismo lado, un estado nuevo dejaría fotos de terceros
-     * sin plazo y sin aparecer en ninguna lista.
+     * El hermano del caso `estado-<x>` de `decidirRetencion`: allá un estado
+     * desconocido **no caduca**, así que acá su flyer **sí** necesita a alguien.
+     * Y no entra a `aBorrar`: agregar un estado no puede empezar a borrar fotos
+     * de terceros sin que nadie lo decida.
      */
-    const { aRevisar } = decidirFlyeresSinPlazo({
+    const { aBorrar, aRevisar } = decidirFlyeresSinPlazo({
       objetos: [objeto('propuestas/prop_g.jpg')],
-      propuestas: [conFlyer('p4', 'archivada', 'propuestas/prop_g.jpg')],
+      propuestas: [conFlyer('p4', 'archivada', 'propuestas/prop_g.jpg', ACEPTADA_HACE_MUCHO)],
       ahora: AHORA,
     });
+    expect(aBorrar).toEqual([]);
     expect(aRevisar).toEqual([
       { objeto: 'propuestas/prop_g.jpg', propuesta: 'p4', motivo: 'archivada-sin-plazo' },
     ]);
   });
 
-  it('los estados sin plazo salen de la tabla y son el complemento exacto', () => {
-    /*
-     * Misma atadura que `ESTADOS_QUE_CADUCAN`: hoy es `['aceptada']` y el día que
-     * alguien le ponga un número, esta lista queda vacía sola. Una segunda lista
-     * escrita a mano sería la que quedaría vieja, y el síntoma sería silencioso:
-     * un estado que dejó de caducar y que este relevamiento no mira.
-     */
+  it('el tope corta la lista y deja el motivo de lo que quedó para mañana', () => {
+    const objetos = Array.from({ length: MAX_FLYERES_POR_CORRIDA + 3 }, (_, i) =>
+      objeto(`propuestas/prop_t${String(i).padStart(3, '0')}.jpg`),
+    );
+    const { aBorrar, motivos } = decidirFlyeresSinPlazo({ objetos, propuestas: [], ahora: AHORA });
+    expect(aBorrar).toHaveLength(MAX_FLYERES_POR_CORRIDA);
+    const pendientes = Object.values(motivos).filter((m) => m === 'sin-propuesta-pendiente-por-tope');
+    expect(pendientes).toHaveLength(3);
+  });
+
+  it('los estados sin plazo de documento salen de la tabla y son el complemento exacto', () => {
     expect(ESTADOS_SIN_PLAZO).toEqual(['aceptada']);
     expect([...ESTADOS_SIN_PLAZO, ...ESTADOS_QUE_CADUCAN].sort()).toEqual(
       [...ESTADOS_PROPUESTA].sort(),
     );
   });
 
-  it('el margen no está escrito en términos del de la limpieza de imágenes', () => {
+  it('el margen del flyer en vuelo no está escrito en términos del de la limpieza de imágenes', () => {
     /*
      * MUTACIÓN PROBADA: con
      * `export const MARGEN_DEL_FLYER_EN_VUELO_MS = MARGEN_DE_GRACIA_MS;` —que deja
      * toda la suite en verde, porque el valor no cambia— este caso se pone rojo.
-     * Son dos decisiones que hoy coinciden: allá el margen cubre «el admin subió
-     * la imagen y todavía no guardó la actividad»; acá, el tiempo que una persona
-     * tarda en terminar el formulario público, que sube el archivo al elegirlo y
-     * escribe el documento al enviar. Mismo criterio que `MARGEN_SIN_TOCAR_MS`.
+     * Son dos decisiones que hoy coinciden.
      */
     const declaracion = /export const MARGEN_DEL_FLYER_EN_VUELO_MS = ([^;]+);/.exec(
       fuente('functions/retencion.js'),
@@ -1089,27 +1179,80 @@ describe('decidirFlyeresSinPlazo — qué flyer no borra nadie (B-871)', () => {
     expect(declaracion![1]).not.toContain('MARGEN_DE_GRACIA_MS');
   });
 
-  it('cada motivo que pide a un humano tiene su fila en el runbook', () => {
+  it('el plazo del original aceptado son 30 días, y no está escrito en términos del de la rechazada', () => {
     /*
-     * La misma atadura que el runbook de `flyer-de-propuesta-sin-borrar` ya tiene
-     * del lado de `propuestas.js`: un motivo que aparece en una lista que alguien
-     * va a leer a las tres de la mañana y no está en `08-operacion.md` es un
-     * hallazgo sin instrucción. Se derivan del código y no se enumeran a mano.
+     * El dueño lo dijo como «el mismo plazo que la rechazada», y son dos
+     * decisiones que hoy coinciden: aquél es cuánto se guarda el **documento**
+     * de una rechazada —el margen de un arrepentimiento—; éste, cuánto se guarda
+     * **la foto** de una propuesta que se cerró bien. Mismo criterio que
+     * `MARGEN_SIN_TOCAR_MS`.
+     */
+    expect(MARGEN_DEL_ORIGINAL_ACEPTADO_MS).toBe(30 * DIA);
+    const declaracion = /export const MARGEN_DEL_ORIGINAL_ACEPTADO_MS = ([^;]+);/.exec(
+      fuente('functions/retencion.js'),
+    );
+    expect(declaracion, 'no se encontró la declaración del plazo').not.toBeNull();
+    expect(declaracion![1]).not.toMatch(/MARGEN_/);
+  });
+
+  it('la Function y el script usan la misma decisión y el mismo borrado', () => {
+    /*
+     * Lo pedía el ítem: el informe en seco tiene que decir exactamente lo que la
+     * corrida diaria va a hacer. Dos implementaciones del mismo barrido son la
+     * clase de B-88.
+     */
+    const trigger = fuente('functions/retencion-trigger.js');
+    const script = fuente('scripts/borrar-propuestas-vencidas.mjs');
+    for (const [nombre, src] of [
+      ['retencion-trigger.js', trigger],
+      ['borrar-propuestas-vencidas.mjs', script],
+    ] as const) {
+      expect(src, nombre).toContain('await relevarFlyeresSinPlazo(db, bucket');
+      expect(src, nombre).toContain('await borrarFlyer(db, bucket, flyer)');
+      // Y ninguno borra un objeto de `propuestas/` por su cuenta en este camino.
+      expect(src, nombre).not.toMatch(/decidirFlyeresSinPlazo\(/);
+    }
+  });
+
+  it('lo que queda para revisar se loguea con la alerta de siempre', () => {
+    const trigger = fuente('functions/retencion-trigger.js');
+    const cuerpo = trigger.slice(
+      trigger.indexOf('const barrerFlyeresDePropuestas'),
+      trigger.indexOf('export const borrarPropuestasVencidas'),
+    );
+    expect(cuerpo, 'no se encontró el barrido de flyers').toContain('for (const f of aRevisar)');
+    expect(cuerpo).toContain("alerta: 'flyer-de-propuesta-sin-borrar'");
+    // Y va en el `finally`, después de B-1370.
+    const handler = trigger.slice(trigger.indexOf('export const borrarPropuestasVencidas'));
+    const fin = handler.indexOf('} finally {');
+    expect(handler.indexOf('barrerOriginalesConCopia(db, bucket)', fin)).toBeGreaterThan(fin);
+    expect(handler.indexOf('barrerFlyeresDePropuestas(db, bucket)', fin)).toBeGreaterThan(
+      handler.indexOf('barrerOriginalesConCopia(db, bucket)', fin),
+    );
+  });
+
+  it('cada motivo tiene su fila en el runbook', () => {
+    /*
+     * Un motivo que aparece en el informe o en el log a las tres de la mañana y
+     * no está en `08-operacion.md` es un hallazgo sin instrucción. Se derivan
+     * del código —corriendo la decisión— y no se enumeran a mano.
      */
     const { motivos } = decidirFlyeresSinPlazo({
-      // Uno por motivo: los dos que piden a un humano y los tres que no. Los
-      // tres tranquilos van igual, porque el informe los imprime y quien lo lea
-      // va a querer saber por qué ese objeto **no** está en la lista.
       objetos: [
         objeto('propuestas/prop_h.jpg'),
+        objeto('propuestas/prop_h2.jpg'),
+        objeto('propuestas/prop_h3.jpg'),
         objeto('propuestas/prop_i.jpg'),
         objeto('propuestas/prop_j.jpg'),
         objeto('propuestas/prop_k.jpg', AHORA - DIA),
         objeto('propuestas/sub/prop_l.jpg'),
         objeto('propuestas/prop_m.jpg'),
+        objeto('propuestas/prop_n.jpg'),
       ],
       propuestas: [
-        conFlyer('p5', 'aceptada', 'propuestas/prop_h.jpg'),
+        conFlyer('p5', 'aceptada', 'propuestas/prop_h.jpg', ACEPTADA_HACE_MUCHO),
+        conFlyer('p5b', 'aceptada', 'propuestas/prop_h2.jpg'),
+        { id: 'p5c', estado: 'aceptada', revision: {}, imagen: { storagePath: 'propuestas/prop_h3.jpg' } },
         conFlyer('p6', 'nueva', 'propuestas/prop_j.jpg'),
         {
           id: 'p7',
@@ -1118,14 +1261,129 @@ describe('decidirFlyeresSinPlazo — qué flyer no borra nadie (B-871)', () => {
           revision: { en: null },
           imagen: { storagePath: 'propuestas/prop_m.jpg' },
         },
+        conFlyer('p8', 'aceptada', 'propuestas/prop_n.jpg'),
+        conFlyer('p9', 'nueva', 'propuestas/prop_n.jpg'),
       ],
       ahora: AHORA,
     });
     const vocabulario = [...new Set(Object.values(motivos))];
-    expect(vocabulario, 'no se cubrieron los seis motivos').toHaveLength(6);
+    expect(vocabulario, 'no se cubrieron los nueve motivos').toHaveLength(9);
     const runbook = fuente('docs/08-operacion.md');
     for (const motivo of vocabulario) {
       expect(runbook, `«${motivo}» no tiene fila en el runbook`).toContain(`| \`${motivo}\` |`);
     }
+  });
+});
+
+/**
+ * **`borrarFlyer` — las guardas que no dependen del emulador.** Lo que sí
+ * depende —que la relectura vea de verdad la versión y que el `in` empate con el
+ * nombre del bucket— está en `retencion.integracion.test.ts`.
+ */
+describe('borrarFlyer — no borra lo que no le toca (B-871)', () => {
+  /** Un `db`/`bucket` que anotan qué se tocó y tiran si se toca lo que no. */
+  const dobles = ({
+    existe = true,
+    version = 'v1',
+    nombrado = false,
+  }: { existe?: boolean; version?: string; nombrado?: boolean } = {}) => {
+    const borrados: string[] = [];
+    const db = {
+      collection: () => ({
+        doc: (id: string) => ({ id }),
+        where: () => ({
+          select: () => ({ limit: () => ({ get: async () => ({ empty: !nombrado }) }) }),
+        }),
+      }),
+      getAll: async () => [
+        { exists: existe, updateTime: { isEqual: (otra: unknown) => otra === version } },
+      ],
+    };
+    const bucket = {
+      file: (nombre: string) => ({
+        delete: async () => {
+          borrados.push(nombre);
+        },
+      }),
+    };
+    return { db, bucket, borrados };
+  };
+
+  it('fuera de `propuestas/<un segmento>` tira antes de tocar nada', async () => {
+    for (const objeto of ['imagenes/img_a.jpg', 'propuestas/sub/x.jpg', 'propuestas/']) {
+      const { db, bucket, borrados } = dobles();
+      await expect(
+        borrarFlyer(db as never, bucket as never, { objeto, propuesta: null, visto: null }),
+        objeto,
+      ).rejects.toThrow(/B-871/);
+      expect(borrados, objeto).toEqual([]);
+    }
+  });
+
+  it('el de una aceptada sin la versión vista tira: es un error de quien llama', async () => {
+    const { db, bucket, borrados } = dobles();
+    await expect(
+      borrarFlyer(db as never, bucket as never, {
+        objeto: 'propuestas/prop_a.jpg',
+        propuesta: 'p1',
+        visto: null,
+      }),
+    ).rejects.toThrow(/versión vista/);
+    expect(borrados).toEqual([]);
+  });
+
+  it('si la reabrieron en el medio de la corrida, no la toca', async () => {
+    const { db, bucket, borrados } = dobles({ version: 'v2' });
+    const final = await borrarFlyer(db as never, bucket as never, {
+      objeto: 'propuestas/prop_a.jpg',
+      propuesta: 'p1',
+      visto: 'v1',
+    });
+    expect(final).toBe('la-tocaron');
+    expect(borrados).toEqual([]);
+  });
+
+  it('si sigue igual, borra el objeto y solo el objeto', async () => {
+    const { db, bucket, borrados } = dobles();
+    const final = await borrarFlyer(db as never, bucket as never, {
+      objeto: 'propuestas/prop_a.jpg',
+      propuesta: 'p1',
+      visto: 'v1',
+    });
+    expect(final).toBe('borrado');
+    expect(borrados).toEqual(['propuestas/prop_a.jpg']);
+  });
+
+  it('el huérfano que ganó su documento en el medio no se borra', async () => {
+    const { db, bucket, borrados } = dobles({ nombrado: true });
+    const final = await borrarFlyer(db as never, bucket as never, {
+      objeto: 'propuestas/prop_c.jpg',
+      propuesta: null,
+      visto: null,
+    });
+    expect(final).toBe('lo-nombran');
+    expect(borrados).toEqual([]);
+  });
+
+  it('una aceptada que ya no existe deja un huérfano, y se pregunta como tal', async () => {
+    // Sin documento, la versión vista no dice nada: lo que decide es si algún
+    // otro documento nombra el objeto.
+    const nombrado = dobles({ existe: false, nombrado: true });
+    expect(
+      await borrarFlyer(nombrado.db as never, nombrado.bucket as never, {
+        objeto: 'propuestas/prop_a.jpg',
+        propuesta: 'p1',
+        visto: 'v1',
+      }),
+    ).toBe('lo-nombran');
+    const solo = dobles({ existe: false });
+    expect(
+      await borrarFlyer(solo.db as never, solo.bucket as never, {
+        objeto: 'propuestas/prop_a.jpg',
+        propuesta: 'p1',
+        visto: 'v1',
+      }),
+    ).toBe('borrado');
+    expect(solo.borrados).toEqual(['propuestas/prop_a.jpg']);
   });
 });
