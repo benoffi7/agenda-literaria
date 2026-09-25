@@ -562,6 +562,15 @@ En las rutas viejas, `tests/clases-de-bug.test.ts` y
 archivo → título del `describe`, que un test compara con el directorio. Sumar
 una clase o una salida es un archivo nuevo y su fila en el índice.
 
+**Un barrido del disco que alcanza `functions/` o la raíz saltea `node_modules`**
+(B-2081). Un `grep -r` lleva `--exclude-dir=node_modules`; un recorrido con
+`readdirSync` corta en `node_modules`, y un `{ recursive: true }` sobre esos
+alcances no sirve, porque no se puede podar. Sin eso el caso baja a
+`functions/node_modules` (182 MB) y con la suite en paralelo pasa los 5 s. **En un
+worktree de agente no se ve**: ahí `node_modules` es un symlink y ni `grep -r` ni
+`readdirSync` lo siguen. Lo frena `tests/clases/b-2081-barrido-sin-node-modules.test.ts`,
+que lee el fuente de `tests/` y `scripts/` en vez de medir.
+
 **Qué se testea:**
 
 - Cada trampa del §13 tiene al menos un test que la nombra.
