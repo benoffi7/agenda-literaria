@@ -121,112 +121,6 @@ casos entra además hacer el fallo imposible de ignorar:** hoy, si la promoción
 sale, lo que queda es una actividad sin flyer y un original huérfano que nadie
 barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
-### B-930 · Con App Check exigiendo, un token que no llega se lee como «no hay internet» — y nadie se entera de cuál de las dos es · P1 — reportado por el dueño (2026-09-15)
-
-> 🟡 **Pasos 1 y 2 hechos (2026-09-23), queda el 3.** El panel pide el token de
-> App Check al arrancar (`src/lib/verificacionDelNavegador.ts`,
-> `verificarNavegadorAlArrancar` en `firebase-client.ts`) y, si `getToken` rechaza
-> o no vuelve en diez segundos, muestra arriba «No pudimos verificar tu
-> navegador» con los tres primeros pasos del triaje de abajo
-> (`AvisoVerificacion.tsx`) — en el login, en «Sin permisos» y en el panel. El
-> umbral es lo que hace que ande: con el script de reCAPTCHA bloqueado, `getToken`
-> **no rechaza nunca**, así que un `catch` solo no lo veía.
-> `clasificarFalloGuardado` gana el motivo `verificacion` y el cartel rojo dice
-> «no es la conexión: esperar no lo arregla»; el clasificador lee el mismo store
-> por defecto, así que la métrica y el texto no se pueden separar (clase de B-88).
-> Con emuladores el cartel no puede aparecer. Decisión en **D-820**. Sigue abierto
-> el **paso 3**, la alerta de operación. **La alerta de GCP del 2026-09-25 no lo
-> cubre** (B-871): un token que no llega pasa en el navegador y no deja log en el
-> servidor. Para cubrirlo, el panel tendría que reportarlo a algún lado, y eso es
-> código. Y la renovación del token a mitad de
-> sesión no se mira todavía: **B-1250**.
-
-**Pasó de verdad, en el panel productivo:** «Failed to get document because the
-client is offline». Con este ítem queda escrito el mecanismo, porque el mensaje
-no lo dice y lleva a mirar el lugar equivocado.
-
-Desde el 2026-09-10 App Check está **`ENFORCED` en Cloud Firestore** (B-836a paso
-6; lo afirman los comentarios de `firestore.rules` que sostienen las dos
-escrituras anónimas). O sea que **ninguna lectura ni escritura del panel llega a
-las reglas sin un token de reCAPTCHA Enterprise**. Si el token no se consigue —una
-extensión que bloquea `www.google.com/recaptcha/…`, la red de quien carga,
-reCAPTCHA que no responde (§ «Qué pasa si se cae» de
-[`02-infraestructura.md`](02-infraestructura.md))— el SDK de Firestore **no dice
-que lo rechazaron**: acumula fallos de canal, se declara offline, y el primer
-`getDoc` tira ese texto en inglés. `activarAppCheck` tampoco propaga nada: es
-deliberado —un fallo de App Check no puede dejar el login en blanco— pero deja el
-diagnóstico sin ninguna huella del lado de la persona.
-
-**Verificado el 2026-09-15, y conviene dejar el método escrito porque es de una
-línea:** una lectura anónima de `opciones/tipo` contra producción devuelve `403
-PERMISSION_DENIED`, y la regla desplegada de esa colección es literalmente `allow
-read: if true`. Una regla que dice `true` no puede denegar; lo que deniega está
-**arriba** de las reglas. Eso prueba el enforcement desde afuera, sin consola.
-
-```sh
-curl -s "https://firestore.googleapis.com/v1/projects/agenda-literaria/databases/(default)/documents/opciones/tipo?key=$PUBLIC_FIREBASE_API_KEY"
-```
-
-Lo que **no** era: el bundle publicado está bien —`appId`, `projectId`, la clave
-de sitio y `isTokenAutoRefreshEnabled: true` son los de `.env.production`—, las
-reglas se desplegaron ese mismo día, y los cuatro dominios de la clave están
-puestos desde el 2026-09-10 (§ «Los dominios permitidos»).
-
-Tres cosas para hacer, en orden. **La 1 y la 2 son una sola tajada y son lo que
-cierra el ítem** — decidido el 2026-09-15, después de que el diagnóstico costara
-un ida y vuelta entero por chat con alguien que no puede abrir devtools:
-
-1. **Pedir el token al entrar, y avisar si no vuelve.** `getToken()` del SDK de
-   App Check apenas el panel arranca —no en el primer guardado, que es tarde— y,
-   si falla o tarda, un cartel arriba que diga **«no pudimos verificar tu
-   navegador»** con las tres cosas del triaje de abajo: recargar, probar en
-   incógnito, probar con datos móviles. Es lo que convierte «el panel no anda» en
-   algo que la persona resuelve sola, sin que nadie le pida la consola. El estado
-   ya existe del lado del módulo: `activarAppCheck` guarda el motivo
-   (`MotivoSinAppCheck`) — lo que falta es que alguien lo mire y lo pinte.
-2. **Que el cartel de fallo lo distinga.** `clasificarFalloGuardado` manda
-   `unavailable` a `motivo: 'red'`, que hoy significa las dos cosas a la vez. Con
-   el estado de App Check del punto 1 a mano, «no hay internet» y «no conseguiste
-   token» pasan a ser dos textos distintos, que es la diferencia entre esperar y
-   apagar una extensión. Es la otra mitad de **B-929**, y conviene hacerlas juntas
-   porque las dos tocan el mismo cartel.
-3. **La alerta que la doc admite que no existe**: «el aviso llega por donde llegue
-   el reclamo, porque no hay alerta». Con dos personas cargando, el reclamo puede
-   tardar un día — y si la que no puede escribir no es la dueña, puede no llegar
-   nunca. Esta va aparte: es del lado de operación, no del panel.
-
-**Lo que este ítem NO es:** un bug del código ni del deploy. El 2026-09-15 se
-verificó que el bundle publicado, las reglas desplegadas y los cuatro dominios de
-la clave están todos bien. Lo que falta es que el panel **cuente** lo que le pasa.
-
-**Triaje cuando le pasa a otra persona y no a vos** (que es como apareció: el
-dueño no lo reprodujo en su máquina). En orden, de lo que más descarta por
-minuto:
-
-1. **Que recargue.** Si vuelve a andar, fue transitorio: red o un token que no
-   llegó una vez. No hay nada que arreglar del lado del repo.
-2. **Ventana de incógnito, sin extensiones.** Si ahí anda, es una extensión de
-   ese navegador bloqueando reCAPTCHA. Es el caso más común y el que el mensaje
-   del SDK esconde peor.
-3. **Otro navegador, o el celular con datos móviles.** Si con datos anda y con su
-   wifi no, es la red —oficina, VPN, portal cautivo—.
-4. **Si falla en las tres**, mirar la consola: la petición a
-   `firebaseappcheck.googleapis.com/…/exchangeRecaptchaEnterpriseToken`. 403 es
-   token rechazado; bloqueada o fallida es extensión o red.
-
-**Y un caso que no es «algo está roto» y conviene tener presente:** la clave es
-`integrationType: SCORE`, así que una sesión con score bajo —VPN, red compartida,
-navegador muy blindado— **puede quedarse sin token siendo una persona de verdad**.
-Le pasa a ella y no a vos, en la misma versión del panel, y no hay nada que
-desplegar: es el precio de la capa que frena a los scripts. Otra razón para el
-punto 1 de arriba — si el panel dijera «no pudimos verificar tu navegador», esto
-se diagnostica solo.
-
-**Y la salida de emergencia, que hay que saber antes de necesitarla:** poner Cloud
-Firestore en `Unenforced` en la consola destraba el panel en el acto — pero abre
-también las escrituras anónimas de `/proponer` y de las tres guías, que es la capa
-que las sostiene. Es una decisión con costo, no un botón de reinicio.
-
 ## P2 — mejoras reales
 
 ### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
@@ -407,38 +301,41 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-1970 · `scripts/que-deployar.sh` tarda 0,2–0,35 s por llamada por los subprocesos que lanza · P4 — del frente `suite` del PRD 6 (2026-09-25)
+### B-2041 · Un barrido de `clases/b-88` se pasa de los 5 s con la suite en paralelo · P4 — del cierre de la tanda del 2026-09-25
 
-La derivación de lo compartido abre un `grep` y un pipe por cada archivo compartido
-en cada vuelta, y después otra vez para buscar paquetes. En macOS son ~0,1 s por
-llamada aunque corran en paralelo, y eso deja a `tests/que-deployar.test.ts` en ~5 s en
-vez de los 3 del PRD. Arreglo probable: derivar lo compartido con un solo `awk` o
-`grep -o` sobre todos los archivos a la vez.
+`tests/clases/b-88-consumidor-y-productor.test.ts` › «B-190 — el slug «a confirmar» no
+se copia a mano» dio `5034ms` en `--project unidad`; solo tarda 2,3 s. No mide tiempo:
+es un barrido del repo que con carga se acerca al límite. En manos del frente `tiempos`.
 
-### B-2000 · Un comentario de `tests/limpieza-imagenes.test.ts` cita «el aviso del §3.1» del CLAUDE.md, que ya no existe · P4 — del frente `docs-tokens` del PRD 6 (2026-09-25)
+### B-2060 · `costo-por-tecla` › «el costo no escala con la cantidad de encuentros» falló una vez en paralelo · P4 — del frente `que-deployar` (2026-09-25)
 
-Con M-16 los avisos se fundieron con su bloque: ahora es el bloque del §3.1 y la nota
-del §3.2. Es un comentario, no rompe nada.
+Pasó 3/3 solo. Es un test de tiempos (B-198) y parece inestable con la carga del
+paralelo de M-1. En manos del frente `tiempos`.
 
-### B-2001 · Quedan menciones de «estas tablas» y «los tres lugares» de la tabla de salidas · P4 — del frente `docs-tokens` del PRD 6 (2026-09-25)
+### B-2050 · Los otros derivados de `modalidades` no se verifican en el servidor · P3 — de B-1920 (2026-09-25)
 
-Después de M-8 los lugares son la tabla de `07-seguridad.md`, la del skill
-`campo-nuevo` y la lista de disparadores de la ficha. Se corrigieron las menciones de
-«tres tablas»; quedan notas históricas en `13-agentes.md` que conviene que mire el
-`auditor-documentacion`. Y `13-agentes.md` cita «paso N de
-`scripts/build-contra-emulador.mjs`» (4b, 7, 8i, 8j, 9, 10), que desde M-11 viven en
-`scripts/gate-build/chequeos/NN-*.mjs`: sigue siendo cierto, pero conviene nombrar el
-archivo del chequeo.
+`dentroDeSuCiudad()` mira `ciudades` y **la primera `sede`**, y B-1920 verifica solo
+`ciudades`. Un documento armado a mano puede traer una `sede` que no es la de la primera
+fila con sede; lo mismo vale para `modalidad`, `online` y `searchText`. `sede` además
+sale al sitio, al `location` de Calendar y a la búsqueda. No es una fuga: es contenido
+propio. Arreglo: un `derivadosDesalineados` que compare los cuatro con `sedePrincipal`,
+`onlinePrincipal` y `modalidadResultante` (hoy en `src/lib/actividades.ts`, a mudar a
+`functions/` como `ciudadesDe`). Corregir `sede` cambia salidas públicas y pide rebuild.
 
-### B-1920 · La regla de dónde carga el publicador confía en el derivado `ciudades` · P3 — del `auditor-privacidad` sobre B-921 (2026-09-25)
+### B-2051 · El script de claims no tiene cómo leer el claim de una cuenta · P3 — de B-1920 (2026-09-25)
 
-`dentroDeSuCiudad()` mira `ciudades` y la primera `sede`, no todas las
-`modalidades[]`, porque una regla no puede recorrer un array de maps. Quien arme el
-documento a mano con el SDK puede declarar una ciudad falsa o sumar una segunda sede
-sin ciudad. Por el panel no se puede. **No es una fuga**: es contenido propio de una
-cuenta que ya publica sin revisión, y una actividad con `ciudades` mentido queda
-**menos** visible. Arreglo si hace falta: que el trigger del historial recalcule
-`ciudadesDe(modalidades)` y avise al admin si no coincide.
+El runbook de `ciudades-no-coinciden` pide comparar la ciudad de la cuenta con
+`derivadas`. La consola de Firebase no muestra custom claims, y `set-admin-claim.mjs`
+solo escribe. Un `--ver <email>` que imprima rol y ciudad (solo lectura) cierra el paso 3
+del runbook.
+
+### B-2052 · Una fila con sede y la ciudad vacía no se detecta · P3 — del `auditor-privacidad` sobre B-1920 (2026-09-25)
+
+Primera fila en la ciudad de la cuenta, segunda con una dirección de otra ciudad y
+`ciudad: ''`: `ciudadesDe` da la misma lista, la regla pasa y B-1920 no avisa. Se
+decidió no avisar siempre (D-1234) porque un admin puede cargar una sede sin ciudad
+legítimamente. Si hace falta: avisar solo cuando `updatedBy` sea un publicador, lo que
+exige leer su claim desde la Function.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

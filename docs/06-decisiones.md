@@ -13861,3 +13861,101 @@ alcanza con una). Cualquier otra cosa es `saltear=false`. El script sale siempre
 el paso lleva `continue-on-error`, y el `if` de «Tests» es `!= 'true'`: si la salida
 queda vacía, la suite corre. El nombre del job está atado a `push-main.yml` por test,
 porque renombrarlo fallaría cerrado pero pagaría la suite en cada rebuild.
+
+## D-1225 · El reporte de un navegador sin verificar es una `onRequest` sin App Check, y el panel la llama con un `fetch` plano
+
+**B-930 paso 3, 2026-09-25.** Lo que hay que reportar es que el navegador no consiguió
+token de App Check, así que el endpoint no puede exigirlo. Una callable no sirve ni sin
+`enforceAppCheck`: el SDK de Functions le pide el token a App Check antes de mandar, y
+con el script de reCAPTCHA bloqueado ese pedido no vuelve nunca (el motivo del umbral
+de D-820); el reporte se colgaría del mismo cuelgue que viene a contar. Un `fetch` con
+cuerpo `text/plain` no pasa por ningún SDK y es un pedido simple, sin preflight. La URL
+es la derivable de una v2 (`https://<región>-<proyecto>.cloudfunctions.net/<nombre>`),
+así que no vive en ningún `.env`, y un test la ata al nombre y la región del trigger.
+**Descartado:** un rewrite de Hosting a `/api/...`, porque un rewrite a una Function que
+todavía no existe hace fallar el job de hosting y traba el primer push; y reusar una
+Function existente, porque todas las HTTP son callables con `enforceAppCheck: true`.
+
+## D-1226 · El endpoint no pide sesión: loguea algo que no es de nadie, y los frenos acotan el ruido
+
+**B-930 paso 3, 2026-09-25.** El log lleva `alerta` y un `motivo` de una lista cerrada
+de cuatro valores, y nada de la persona: ni uid, ni mail, ni IP, ni user agent, ni
+`Origin`. Sin dato que proteger, un login del lado del servidor no protege nada, y
+además exigiría un ID token que puede depender de App Check. Lo único que puede hacer
+alguien que le pegue a mano es ruido, y lo acotan cinco frenos: `{motivo}` exacto (una
+clave de más es un 400); solo POST con un cuerpo de hasta 200 bytes; el `Origin` de los
+cuatro nombres del sitio (frena a otra página que dispare el pedido desde el navegador
+de sus visitas, no a un script); hasta 5 `warn` por minuto con `maxInstances: 1`; y la
+política manda como mucho un mail por hora. Aparte queda lo de la plataforma: Cloud Run
+loguea cada pedido con IP y user agent, y el `warn` lleva la traza que lleva a ese
+pedido; está dicho en 02-infraestructura y solo lo ve quien tiene acceso a Logging.
+
+## D-1227 · El panel reporta una vez por carga, con sesión iniciada y pasados 20 s sin verificar, y no guarda marca en el navegador
+
+**B-930 paso 3, 2026-09-25.** La gracia de 20 s (`GRACIA_DEL_REPORTE_MS`) es porque el
+cartel sale a los 10 s y se va si el token llega tarde: un token lento no es un mail.
+La sesión no es seguridad —el servidor no puede verificarla—: filtra el ruido legítimo,
+como un crawler que renderiza `/admin` con reCAPTCHA bloqueado, y se pasa como un
+booleano, así que el uid no llega al reporte. Sale un solo reporte por carga aunque el
+estado vaya y venga. **Descartado:** una marca en `sessionStorage` para que una recarga
+no vuelva a reportar; pedía una fila en el §5.1 de 07-seguridad (clase de B-821) para no
+ahorrar ningún mail, porque la política ya manda como mucho uno por hora. Un test afirma
+que el módulo no toca el storage.
+
+## D-1228 · El motivo del reporte es la causa de `sin-verificar`, no el `MotivoSinAppCheck`
+
+**B-930 paso 3, 2026-09-25.** De los motivos de `MotivoSinAppCheck`, el único que hace
+aparecer el cartel es `fallo`. Lo que le sirve al triaje es por dónde se llegó a
+`sin-verificar`: `no-se-activo` (falló la inicialización), `token-rechazado`
+(`getToken` rechazó), `sin-respuesta` (venció el umbral: la extensión que bloquea
+reCAPTCHA) y `renovacion-fallida` (una renovación a mitad de sesión, B-1250). El store
+guarda la causa al entrar a `sin-verificar` y la borra al salir. El vocabulario vive dos
+veces, `CausaSinVerificar` en TS y `MOTIVOS_DE_VERIFICACION` en la Function, porque son
+dos runtimes, y un test con `satisfies` y `toEqual` los ata (clase de B-88).
+
+## D-1230 · El servidor verifica `ciudades` en `syncCalendar`, no en el trigger del historial
+
+**B-1920, 2026-09-25.** `dentroDeSuCiudad()` le cree al derivado `ciudades` porque una
+regla no puede recorrer `modalidades[]` (D-1150). Un documento armado a mano con el SDK
+puede declarar uno que no es el de sus filas. La verificación va en `syncCalendar` y no
+en `guardarVersion`, que es un `onDocumentUpdated` y se perdería el documento que nace
+mentido, justo el `create` que la regla deja pasar; es el mismo motivo por el que
+`publicadaAlgunaVez` vive ahí (B-285). Va antes de los cortes tempranos del sync
+(`EFECTOS_INCONDICIONALES`). La regla no cambia: la ventana entre la escritura y la
+corrección existe, y lo que se cierra es que el derivado mentido dure.
+
+## D-1231 · Se corrige y se avisa; el estado no se toca
+
+**B-1920, 2026-09-25.** Solo avisar dejaba el derivado mentido decidiendo quién lee el
+documento hasta que alguien lo arreglara; solo corregir escondía que una cuenta esquivó
+la regla. Se hacen las dos cosas: `corregirCiudades` reescribe el campo en una
+transacción que relee, y el `warn` con `alerta: 'ciudades-no-coinciden'` llega por la
+política de GCP. **No despublica**: despublicar sería una decisión editorial tomada por
+un trigger. Costo aceptado: corregir cambia quién lee el documento entero, y un
+documento anterior a B-919 recibe el campo con su primera escritura.
+
+## D-1232 · `ciudades` es campo de máquina para el historial
+
+**B-1920, 2026-09-25.** El write-back vuelve a disparar `syncCalendar` y
+`guardarVersion`; sin esta entrada en `CAMPOS_DE_MAQUINA` costaría una versión y un
+rebuild por corrección (trampa 3). No se pierde nada recuperable: cuando `ciudades`
+cambia de verdad cambian las filas en la misma escritura, y el campo no sale al
+`events.json`. Efecto lateral: el backfill `ciudades:sembrar` deja de costar una versión
+y un rebuild por actividad. `ciudades` pasa a tener dos escritores, panel y Function, que
+escriben la misma derivación de las mismas filas.
+
+## D-1233 · `ciudadesDe` vive en `functions/`, y `src/lib/ciudades.mjs` es su fachada
+
+**B-1920, 2026-09-25.** Tres runtimes la usan —el panel, el backfill en node y la
+Function—, y el tercero decide el lugar porque `functions/` no puede importar `src/`
+(D-20). Tiene que ser la misma función que la del guardado: con dos, el servidor
+corregiría un documento bien guardado y cada guardado mandaría un mail. Un test lo ata
+por identidad. Es el reparto de `geografia.mjs` (B-968).
+
+## D-1234 · Una fila con sede y sin ciudad no dispara la alerta
+
+**B-1920, 2026-09-25.** `ciudadesDe` descarta las ciudades vacías (D-690), así que una
+segunda fila con una dirección de otra ciudad y `ciudad: ''` da la misma lista y no
+suena nada. No se avisa a propósito: fuera de CABA un admin puede cargar una sede sin
+ciudad (D-1154 la exige solo en el panel del publicador), y avisar por eso sería un mail
+por cada carga legítima. Queda anotado como B-2052.

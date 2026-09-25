@@ -318,6 +318,15 @@ cambio.
 - [D-1210](06-decisiones.md#d-1210--el-io-de-la-retención-va-a--firestorejs-no-al--trigger) · El I/O de la retención va a `-firestore.js`, no al `-trigger`
 - [D-1211](06-decisiones.md#d-1211--los-chequeos-del-gate-son-independientes-y-leen-un-dist-en-memoria) · Los chequeos del gate son independientes y leen un `dist/` en memoria
 - [D-1212](06-decisiones.md#d-1212--cómo-se-confirma-que-el-commit-ya-pasó-la-suite) · Cómo se confirma que el commit ya pasó la suite
+- [D-1225](06-decisiones.md#d-1225--el-reporte-de-un-navegador-sin-verificar-es-una-onrequest-sin-app-check-y-el-panel-la-llama-con-un-fetch-plano) · El reporte de un navegador sin verificar es una `onRequest` sin App Check, y el panel la llama con un `fetch` plano
+- [D-1226](06-decisiones.md#d-1226--el-endpoint-no-pide-sesión-loguea-algo-que-no-es-de-nadie-y-los-frenos-acotan-el-ruido) · El endpoint no pide sesión: loguea algo que no es de nadie, y los frenos acotan el ruido
+- [D-1227](06-decisiones.md#d-1227--el-panel-reporta-una-vez-por-carga-con-sesión-iniciada-y-pasados-20-s-sin-verificar-y-no-guarda-marca-en-el-navegador) · El panel reporta una vez por carga, con sesión iniciada y pasados 20 s sin verificar, y no guarda marca en el navegador
+- [D-1228](06-decisiones.md#d-1228--el-motivo-del-reporte-es-la-causa-de-sin-verificar-no-el-motivosinappcheck) · El motivo del reporte es la causa de `sin-verificar`, no el `MotivoSinAppCheck`
+- [D-1230](06-decisiones.md#d-1230--el-servidor-verifica-ciudades-en-synccalendar-no-en-el-trigger-del-historial) · El servidor verifica `ciudades` en `syncCalendar`, no en el trigger del historial
+- [D-1231](06-decisiones.md#d-1231--se-corrige-y-se-avisa-el-estado-no-se-toca) · Se corrige y se avisa; el estado no se toca
+- [D-1232](06-decisiones.md#d-1232--ciudades-es-campo-de-máquina-para-el-historial) · `ciudades` es campo de máquina para el historial
+- [D-1233](06-decisiones.md#d-1233--ciudadesde-vive-en-functions-y-srclibciudadesmjs-es-su-fachada) · `ciudadesDe` vive en `functions/`, y `src/lib/ciudades.mjs` es su fachada
+- [D-1234](06-decisiones.md#d-1234--una-fila-con-sede-y-sin-ciudad-no-dispara-la-alerta) · Una fila con sede y sin ciudad no dispara la alerta
 
 ## Otras secciones del registro
 
