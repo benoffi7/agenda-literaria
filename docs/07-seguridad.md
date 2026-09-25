@@ -703,7 +703,7 @@ con lo que no se reconoce está en una sola tabla:
 
 ## El bucket de Storage es una salida pública más (B-167, DEC-7)
 
-Hasta acá el §5 tenía **siete** salidas: el `events.json`, el evento de Calendar,
+Hasta acá las salidas del §5 eran **siete**: el `events.json`, el evento de Calendar,
 el issue de GitHub, GA4, el texto para redes, la página de detalle y la cartelera.
 El bucket es una **octava**, y es distinta de las otras siete en algo que conviene
 tener presente: no pasa por `toPublic` ni por ninguna proyección, porque **no son
