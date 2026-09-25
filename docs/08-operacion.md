@@ -59,6 +59,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run geografia:sembrar` | informa qué `provincia`/`barrio`/`ciudad` normalizaría en el emulador (B-950, D-710) |
 | `npm run geografia:sembrar:prod` | informa qué escribiría en producción. `-- --aplicar --produccion` lo escribe. **Ojo: esta corrida reescribe los eventos de Calendar** |
 | `npm run admin:claim:prod -- --quitar <uid\|email>` | le saca el rol a una cuenta |
+| `npm run admin:claim:prod -- --ver <uid\|email>` | **solo lee**: imprime el rol (admin / publicador general / publicador de `<ciudad>` / sin rol), la ciudad y el objeto de claims crudo, y avisa si tiene un estado que el script no produce (los dos roles, una ciudad vacía). No escribe nada, así que no pide ningún flag más. `admin:claim -- --ver` lo mismo en el emulador (B-2051) |
 | `npm run slugs:sembrar -- --aplicar` | siembra el índice de direcciones web en el emulador (B-888, D-660) |
 | `npm run slugs:sembrar:prod` | informa qué sembraría en producción. `-- --aplicar --produccion` lo escribe; `--reparar` además borra las reservas huérfanas |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
@@ -348,7 +349,18 @@ npm run admin:claim:prod -- --publicador --ciudad "Mar del Plata" <email>
                                                      # publicador de esa ciudad: carga solo
                                                      # ahí, y ve (solo lee) lo de ahí
 npm run admin:claim:prod -- --quitar <email>         # le saca el rol
+npm run admin:claim:prod -- --ver <email>            # SOLO LEE: qué rol y qué ciudad tiene
 ```
+
+**`--ver` es el único modo que no escribe** (B-2051): la consola de Firebase no
+muestra los custom claims, así que es la forma de saber qué tiene una cuenta sin
+acordarse del comando con que se le dio. El entorno lo elige el comando, igual
+que para escribir, y no pide nada más para mirar producción: leer la cuenta
+equivocada no cambia nada. No se combina con `--publicador`, `--quitar`,
+`--ciudad` ni `--todos` —el script rechaza el comando—, porque el default del
+script es dar admin y un `--ver` que cayera en esa rama escribiría. Lee el claim
+**guardado**: una sesión que ya estaba abierta puede tener el anterior hasta
+volver a entrar.
 
 **`--ciudad` es el alcance por ciudad de B-919.** El script la slugifica con el
 `slugify` del proyecto —el mismo con el que el panel escribe `ciudades` en cada
@@ -623,9 +635,10 @@ corrección arregla el campo; lo que el aviso pide es mirar **quién** y **por q
    es el caso típico: anterior a B-919 y sin sembrar), **nada**: el campo ya está
    bien. Si llegan varios seguidos, correr el backfill de arriba para que dejen de
    llegar de a uno.
-3. **Si es una cuenta publicadora** (su mail está en `/usuarios/<uid>`), comparar
-   su ciudad —la que se le dio con `--ciudad`; la consola de Firebase no muestra
-   custom claims y el script todavía no los lee (B-2051)— con `derivadas`:
+3. **Si es una cuenta publicadora** (su mail está en `/usuarios/<uid>`), leer su
+   ciudad —la consola de Firebase no muestra custom claims— con
+   `npm run admin:claim:prod -- --ver <uid>` (el `updatedBy` del paso 1 sirve tal
+   cual; solo lee, B-2051) y compararla con `derivadas`:
    - `derivadas` está dentro de su ciudad (o es `[]`): el derivado estaba mal pero
      la carga era legítima. Nada que hacer.
    - `derivadas` nombra **otra** ciudad: la cuenta cargó fuera de su alcance

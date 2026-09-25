@@ -133,6 +133,7 @@ npm run admin:claim:prod -- --publicador --ciudad "Mar del Plata" <email>
                                                      # publicador de esa ciudad: carga solo
                                                      # ahí (B-921), y ve (solo lee) lo de ahí
 npm run admin:claim:prod -- --quitar <email>         # sin rol
+npm run admin:claim:prod -- --ver <email>            # solo lee: rol y ciudad (B-2051)
 ```
 
 **`--ciudad` es el alcance por ciudad de B-919 (D-690)**, y es un tercer claim
