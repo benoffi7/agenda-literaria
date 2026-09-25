@@ -1,5 +1,5 @@
 /**
- * La mecánica del contraste del panel — B-1630, B-1750, B-1751, B-1830.
+ * La mecánica del contraste del panel — B-1630, B-1750, B-1751, B-1830, B-1871.
  *
  * Vive acá y no en `tests/contraste-del-panel.test.ts` para que la use también
  * `tests/contraste-del-arbol.render.test.tsx` sin importar un archivo de tests
@@ -13,6 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { expect } from 'vitest';
 
 import { contraste, mezclar, oklchASrgb, type Srgb } from '@/lib/contraste';
@@ -159,3 +160,80 @@ export const esOscura = (c: Srgb): boolean => contraste(c, BLANCO) > contraste(c
 
 export const ratio = (opacidad: number, fondo: Srgb): number =>
   contraste(mezclar(token('tinta'), fondo, opacidad), fondo);
+
+/**
+ * Las cadenas de clases de un `className`: los literales y los tramos fijos de
+ * un template, de todas las ramas, juntos. `${claseBotonFila} text-acento`
+ * aporta `text-acento`; el identificador no se resuelve (lo mide el render).
+ */
+export const literalesDe = (n: ts.Node): string[] => {
+  const out: string[] = [];
+  const visitar = (x: ts.Node): void => {
+    if (ts.isStringLiteral(x) || ts.isNoSubstitutionTemplateLiteral(x)) {
+      out.push(x.text);
+      return;
+    }
+    if (ts.isTemplateExpression(x)) {
+      out.push(x.head.text);
+      for (const tramo of x.templateSpans) {
+        visitar(tramo.expression);
+        out.push(tramo.literal.text);
+      }
+      return;
+    }
+    ts.forEachChild(x, visitar);
+  };
+  visitar(n);
+  return out;
+};
+
+/** Más combinaciones que esto y se vuelve a juntar todo, como antes de B-1871. */
+export const COMBINACIONES_MAX = 64;
+
+/**
+ * Las cadenas de clases que un `className` **puede dar**, una por combinación de
+ * ramas — B-1871. Un template es un grupo: sus tramos fijos van en todas las
+ * combinaciones, y cada `${…}` aporta sus ramas. `${abierto ? 'bg-black/5' : ''}
+ * text-tinta/65` da dos: `bg-black/5 text-tinta/65` y ` text-tinta/65`, que no
+ * tiene fondo propio y hereda el del ancestro. Así la tinta de un tramo fijo se
+ * compone contra cada rama del fondo, y las dos ramas de un ternario
+ * (`activo ? 'bg-acento text-white' : 'bg-acento/5 text-acento'`) siguen sin
+ * cruzarse.
+ *
+ * `a && 'x'` da `x` o nada; `a ?? 'x'` y `a || 'x'`, lo de cada lado. Lo que no
+ * es una de esas formas (un identificador, una llamada) aporta sus literales
+ * juntos, que para un identificador es nada: esa clase la mide el render.
+ */
+export const combinacionesDe = (n: ts.Node): string[] => {
+  const unicas = (xs: string[]): string[] => [...new Set(xs)];
+  const ramas = (x: ts.Node): string[] => {
+    if (ts.isStringLiteral(x) || ts.isNoSubstitutionTemplateLiteral(x)) return [x.text];
+    if (ts.isParenthesizedExpression(x) || ts.isJsxExpression(x)) {
+      return x.expression ? ramas(x.expression) : [''];
+    }
+    if (ts.isConditionalExpression(x)) return unicas([...ramas(x.whenTrue), ...ramas(x.whenFalse)]);
+    if (ts.isBinaryExpression(x)) {
+      const op = x.operatorToken.kind;
+      if (op === ts.SyntaxKind.AmpersandAmpersandToken) return unicas([...ramas(x.right), '']);
+      if (op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken) {
+        return unicas([...ramas(x.left), ...ramas(x.right)]);
+      }
+    }
+    if (ts.isTemplateExpression(x)) {
+      let parciales = [x.head.text];
+      for (const tramo of x.templateSpans) {
+        const deEste = ramas(tramo.expression);
+        parciales = parciales.flatMap((p) => deEste.map((r) => `${p}${r}${tramo.literal.text}`));
+        if (parciales.length > COMBINACIONES_MAX) throw new RangeError('demasiadas combinaciones');
+      }
+      return unicas(parciales);
+    }
+    return [literalesDe(x).join(' ')];
+  };
+  try {
+    return ramas(n);
+  } catch (e) {
+    if (e instanceof RangeError) return [literalesDe(n).join(' ')];
+    throw e;
+  }
+};

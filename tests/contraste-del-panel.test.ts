@@ -8,6 +8,7 @@ import {
   archivosDelPanel,
   BLANCO,
   colorDe,
+  combinacionesDe,
   esOscura,
   type Fondo,
   fuentes,
@@ -23,7 +24,8 @@ import {
 } from './fixtures/contraste-del-panel';
 
 /**
- * El contraste del texto atenuado **del panel** — B-1630, B-1750, B-1751, B-1830.
+ * El contraste del texto atenuado **del panel** — B-1630, B-1750, B-1751, B-1830,
+ * B-1871.
  *
  * ── Por qué existe ────────────────────────────────────────────────────────
  * `contraste-del-sitio.test.ts` y `contraste-de-superficies.test.ts` barren solo
@@ -79,8 +81,17 @@ import {
  * este archivo lee además el árbol JSX de cada archivo (con el parser de
  * TypeScript): cada elemento sin fondo propio que tenga tinta con nombre se mide
  * contra el fondo en reposo del ancestro más cercano del mismo archivo que tenga
- * uno. Un `className` con ramas junta las clases de todas, así que el cruce
- * es conservador: puede medir combinaciones que nunca se dan juntas.
+ * uno.
+ *
+ * ── Un template es un grupo — B-1871 ────────────────────────────────────
+ * `${abierto ? 'bg-black/5' : ''} text-tinta/65` quedaba afuera de los dos
+ * casos: los pares cortan el template en tramos y el fondo y la tinta caen en
+ * grupos distintos, y el árbol salteaba el elemento con fondo propio para no
+ * cruzar las ramas de un ternario. Ahora el árbol no junta las ramas de un
+ * `className`: las enumera (`combinacionesDe`), con los tramos fijos del
+ * template en todas. La tinta de un tramo fijo se mide contra cada rama del
+ * fondo, y contra el del ancestro en la rama que no pone ninguno; las ramas de
+ * un ternario siguen sin cruzarse.
  *
  * ── Lo que NO puede ver ───────────────────────────────────────────────────
  * - Un tinte que pone **otro componente**: un `AvisoDePrecioViejo` adentro de la
@@ -343,75 +354,60 @@ describe('el contraste del panel sobre sus tintes — B-1751', () => {
 });
 
 /**
- * Las cadenas de clases de un `className`: los literales y los tramos fijos de
- * un template, de todas las ramas. `${claseBotonFila} text-acento` aporta
- * `text-acento`; el identificador no se resuelve (lo mide el render).
+ * Cada tinta con nombre **en reposo**, medida contra el fondo en reposo que tiene
+ * debajo en cada combinación de ramas de su `className` (`combinacionesDe`): el
+ * propio de esa combinación si lo trae, o si no el del ancestro más cercano del
+ * mismo archivo que tenga uno. Una combinación no cruza las ramas de un ternario
+ * (`activo ? 'bg-acento text-white' : 'bg-acento/5 text-acento'` son dos, y no
+ * cuatro pares), y la tinta de un tramo fijo de un template se mide contra cada
+ * rama del fondo, incluida la que no pone ninguno y hereda (B-1871). Los hijos
+ * heredan todos los fondos que el elemento puede tener, también el del ancestro
+ * si alguna rama no pone fondo. Las tintas con variante (`hover:text-x`) van en
+ * el grupo de su fondo con variante, y las mide el caso de los pares. Un fondo
+ * oscuro **heredado** se saltea por lo mismo que en el piso: encima va texto
+ * claro, en el mismo grupo; uno propio de la combinación no, porque es el par.
  */
-const literalesDe = (n: ts.Node): string[] => {
-  const out: string[] = [];
-  const visitar = (x: ts.Node): void => {
-    if (ts.isStringLiteral(x) || ts.isNoSubstitutionTemplateLiteral(x)) {
-      out.push(x.text);
-      return;
-    }
-    if (ts.isTemplateExpression(x)) {
-      out.push(x.head.text);
-      for (const tramo of x.templateSpans) {
-        visitar(tramo.expression);
-        out.push(tramo.literal.text);
-      }
-      return;
-    }
-    ts.forEachChild(x, visitar);
-  };
-  visitar(n);
-  return out;
-};
-
-/**
- * Cada tinta con nombre **en reposo** de un elemento sin fondo propio, medida
- * contra el fondo en reposo del ancestro más cercano del mismo archivo que tenga
- * uno. Si el elemento tiene fondo propio, el par es del caso de los pares, que lo
- * mide por grupo: acá se cruzarían las dos ramas de un ternario (`activo ?
- * 'bg-acento text-white' : 'bg-acento/5 text-acento'`) y darían un par que no
- * existe. Las tintas con variante (`hover:text-x`) van en el grupo de su fondo
- * con variante, y también las mide ese caso. Los fondos oscuros se saltean por lo
- * mismo que en el piso: encima va texto claro, en el mismo grupo.
- */
-const tintasHeredadas = (): { donde: string; par: string; r: number }[] => {
+const tintasHeredadas = (
+  archivos: { donde: string; src: string }[] = fuentes(),
+): { donde: string; par: string; r: number }[] => {
   const out: { donde: string; par: string; r: number }[] = [];
-  for (const { donde, src } of fuentes()) {
+  for (const { donde, src } of archivos) {
     const sf = ts.createSourceFile(donde, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const linea = (n: ts.Node): number => sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
-    const clasesDe = (el: ts.JsxOpeningLikeElement): string => {
+    const combinaciones = (el: ts.JsxOpeningLikeElement): string[] => {
       const attr = el.attributes.properties.find(
         (p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText() === 'className',
       );
-      return attr?.initializer ? literalesDe(attr.initializer).join(' ') : '';
+      return attr?.initializer ? combinacionesDe(attr.initializer) : [''];
     };
     const recorrer = (n: ts.Node, fondosArriba: Fondo[]): void => {
       const el = ts.isJsxElement(n) ? n.openingElement : ts.isJsxSelfClosingElement(n) ? n : null;
       let fondosAca = fondosArriba;
       if (el) {
-        const clases = clasesDe(el);
-        const propios = [...clases.matchAll(RE_FONDO)]
-          .filter((m) => m[1] === '')
-          .map((m) => resolverFondo(m, donde, `${donde}:${linea(el)}`))
-          .filter((f): f is Fondo => f !== null);
-        if (propios.length) fondosAca = propios;
-        for (const t of propios.length ? [] : clases.matchAll(RE_TINTA)) {
-          if (t[1] !== '') continue;
-          const color = colorDe(t[2]!);
-          if (!color) continue;
-          for (const bg of fondosAca) {
-            if (esOscura(bg.color)) continue;
-            out.push({
-              donde: `${donde}:${linea(el)}`,
-              par: `${t[0]} sobre ${bg.clase} (${bg.donde})`,
-              r: contraste(mezclar(color, bg.color, alfa(t[3], t[4])), bg.color),
-            });
+        const aca = `${donde}:${linea(el)}`;
+        const debajoDeHijos = new Map<string, Fondo>();
+        for (const clases of combinaciones(el)) {
+          const propios = [...clases.matchAll(RE_FONDO)]
+            .filter((m) => m[1] === '')
+            .map((m) => resolverFondo(m, donde, aca))
+            .filter((f): f is Fondo => f !== null);
+          const debajo = propios.length ? propios : fondosArriba;
+          for (const f of debajo) debajoDeHijos.set(`${f.donde}|${f.clase}`, f);
+          for (const t of clases.matchAll(RE_TINTA)) {
+            if (t[1] !== '') continue;
+            const color = colorDe(t[2]!);
+            if (!color) continue;
+            for (const bg of debajo) {
+              if (!propios.length && esOscura(bg.color)) continue;
+              out.push({
+                donde: aca,
+                par: `${t[0]} sobre ${bg.clase} (${bg.donde})`,
+                r: contraste(mezclar(color, bg.color, alfa(t[3], t[4])), bg.color),
+              });
+            }
           }
         }
+        fondosAca = [...debajoDeHijos.values()];
       }
       ts.forEachChild(n, (hijo) => recorrer(hijo, fondosAca));
     };
