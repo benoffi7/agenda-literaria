@@ -407,6 +407,14 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
+### B-1951 · «dos altas simultáneas no se pisan» se pasa de los 5 s con la máquina cargada · P3 — del pre-push del 2026-09-25
+
+`tests/alta-de-opcion.integracion.test.ts:104` dio `Test timed out in 5000ms` en el
+gate mientras otro agente corría la suite en paralelo; pasó sola en el reintento. Es
+una transacción que se reintenta contra el emulador, así que bajo carga tarda. Arreglo
+probable: darle un timeout propio a ese caso, como los otros de integración que
+compiten por la misma transacción.
+
 ### B-1950 · La tabla de salidas de `docs/07-seguridad.md` declara tres columnas y la mayoría de las filas trae cuatro · P4 — del frente de B-1942 (2026-09-25)
 
 El encabezado es `| # | Salida | Quién decide qué sale |`. Las filas 1 a 5 y 7 a 10
