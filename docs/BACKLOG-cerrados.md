@@ -22072,6 +22072,53 @@ fuera de `en-orden`.
 **Desde B-1370 esto también lo hace solo el barrido diario**, una vez desplegada
 la Function: si nadie los borra a mano, la primera corrida se los lleva.
 
+### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25), revisado contra el `events.json` publicado** (generado
+2026-09-25 11:23 UTC, 385 actividades). Ya no queda ninguna cruzada que importe:
+FINDE —la única que seguía con Palermo contra Avellaneda— **ya pasó** (última fecha
+17/9), y el dueño decidió que las pasadas no importan. «Basura» dejó de tener una
+provincia como barrio: hoy dice `caba · caba` sin barrio. Quedan dos sin barrio en
+CABA —«Basura» (26/9) y «Escrituras del mundo» (10/10)—, que salen sin barrio en la
+ficha pero con la ciudad bien; completarlo es una edición opcional en el panel. La
+de Rosario tiene un `barrio=rosario` sobrante que fuera de CABA no se muestra.
+
+> **Mirado el 2026-09-23 contra el `events.json` publicado** (generado 17:58 UTC,
+> 335 actividades), que trae la sede proyectada y se lee sin credenciales:
+>
+> | Actividad | Hoy dice (barrio · ciudad · provincia) | Estado |
+> |---|---|---|
+> | [Club de lectura - «Basura»](https://agendaleh.ar/actividad/club-de-lectura-basura) | `provincia-de-buenos-aires` · `caba` · `caba` | ❌ el barrio sigue siendo una provincia |
+> | [FINDE - Feria de editores independientes](https://agendaleh.ar/actividad/finde-feria-de-editores-independientes) | `palermo` · `avellaneda` · `buenos-aires` | ❌ Palermo es CABA, Avellaneda no |
+> | [ESCRITURAS DEL MUNDO -Presencial](https://agendaleh.ar/actividad/club-de-lectura-escrituras-del-mundo-presencial) | — · `caba` · `caba` | 🟡 ya tiene ciudad; en CABA falta el barrio, que es lo único que se muestra |
+> | [Lectura y análisis de Mariana Pineda](https://agendaleh.ar/actividad/lectura-y-analisis-de-mariana-pineda) | `rosario` · `rosario` · `santa-fe` | 🟡 ciudad y provincia bien; queda `barrio=rosario`, un sobrante que fuera de CABA no se muestra |
+> | Club de lectura La Fonseca | `caballito` · `caba` · `caba` | ✅ corregida |
+>
+> Las dos ❌ son ediciones en el panel: elegir el barrio de CABA que corresponda
+> en «Basura», y en FINDE decidir si la feria es en Palermo o en Avellaneda. El
+> texto original queda abajo.
+
+**Sobrante declarado adentro de B-976** (la migración de `/opciones/barrio`, ✅
+2026-09-17): su propio título dice «quedan 5 a mano», y lista cinco actividades
+con `barrio` y `ciudad` incoherentes —CABA contra provincia de Buenos Aires,
+Núñez contra Neuquén— esperando que las corrija el dueño.
+
+**Nadie confirmó nunca que se hayan hecho, y no se puede confirmar desde el
+repo:** es dato de producción. Lo que sí está verificado es que el mecanismo de
+soporte sigue vigente y con tests (`src/lib/reubicacion-de-barrio.mjs`) y que
+**se niega a adivinar a propósito**: marca «ambiguo» y no reubica solo, que es lo
+correcto y también el motivo de que estas cinco queden a mano.
+
+**Y hay un segundo número, más nuevo y distinto, que conviene no confundir:**
+`docs/CHANGELOG.md:337-338` dice «quedan 9 sedes para el dueño», de un backfill
+posterior (`sembrar-geografia.mjs`). No son las mismas cinco.
+
+**Qué hacer:** mirar en el panel si esas cinco fichas siguen cruzadas. Si ya
+están, esto se cierra con una línea; si no, son cinco ediciones. Lo que no puede
+seguir es que nadie sepa cuál de las dos es.
+
+---
+
 ## Agentes y automatización del flujo (B-115 a B-124)
 
 ### B-115 · Nada invoca a los auditores solos — ✅ hecho (2026-08-24, por B-139)

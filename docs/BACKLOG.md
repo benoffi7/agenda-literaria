@@ -179,44 +179,6 @@ Resueltas el 2026-08-21:
 
 ## Pendiente de acción manual del dueño
 
-### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3
-
-> **Mirado el 2026-09-23 contra el `events.json` publicado** (generado 17:58 UTC,
-> 335 actividades), que trae la sede proyectada y se lee sin credenciales:
->
-> | Actividad | Hoy dice (barrio · ciudad · provincia) | Estado |
-> |---|---|---|
-> | [Club de lectura - «Basura»](https://agendaleh.ar/actividad/club-de-lectura-basura) | `provincia-de-buenos-aires` · `caba` · `caba` | ❌ el barrio sigue siendo una provincia |
-> | [FINDE - Feria de editores independientes](https://agendaleh.ar/actividad/finde-feria-de-editores-independientes) | `palermo` · `avellaneda` · `buenos-aires` | ❌ Palermo es CABA, Avellaneda no |
-> | [ESCRITURAS DEL MUNDO -Presencial](https://agendaleh.ar/actividad/club-de-lectura-escrituras-del-mundo-presencial) | — · `caba` · `caba` | 🟡 ya tiene ciudad; en CABA falta el barrio, que es lo único que se muestra |
-> | [Lectura y análisis de Mariana Pineda](https://agendaleh.ar/actividad/lectura-y-analisis-de-mariana-pineda) | `rosario` · `rosario` · `santa-fe` | 🟡 ciudad y provincia bien; queda `barrio=rosario`, un sobrante que fuera de CABA no se muestra |
-> | Club de lectura La Fonseca | `caballito` · `caba` · `caba` | ✅ corregida |
->
-> Las dos ❌ son ediciones en el panel: elegir el barrio de CABA que corresponda
-> en «Basura», y en FINDE decidir si la feria es en Palermo o en Avellaneda. El
-> texto original queda abajo.
-
-**Sobrante declarado adentro de B-976** (la migración de `/opciones/barrio`, ✅
-2026-09-17): su propio título dice «quedan 5 a mano», y lista cinco actividades
-con `barrio` y `ciudad` incoherentes —CABA contra provincia de Buenos Aires,
-Núñez contra Neuquén— esperando que las corrija el dueño.
-
-**Nadie confirmó nunca que se hayan hecho, y no se puede confirmar desde el
-repo:** es dato de producción. Lo que sí está verificado es que el mecanismo de
-soporte sigue vigente y con tests (`src/lib/reubicacion-de-barrio.mjs`) y que
-**se niega a adivinar a propósito**: marca «ambiguo» y no reubica solo, que es lo
-correcto y también el motivo de que estas cinco queden a mano.
-
-**Y hay un segundo número, más nuevo y distinto, que conviene no confundir:**
-`docs/CHANGELOG.md:337-338` dice «quedan 9 sedes para el dueño», de un backfill
-posterior (`sembrar-geografia.mjs`). No son las mismas cinco.
-
-**Qué hacer:** mirar en el panel si esas cinco fichas siguen cruzadas. Si ya
-están, esto se cierra con una línea; si no, son cinco ediciones. Lo que no puede
-seguir es que nadie sepa cuál de las dos es.
-
----
-
 ## P0 — rompe algo o pierde datos
 
 > **Tres abiertos desde el 2026-09-18, los tres del chrome del sitio público y
