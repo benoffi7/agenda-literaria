@@ -1112,7 +1112,7 @@ hay salidas —y una regla— que solo pueden decir **una** cosa.
 | `modalidad` | la **unión** de las filas: dos que difieren dan `hibrido` | el `events.json`, la analítica, el texto para redes |
 | `sede` | la de la **primera fila que tenga una** | el `location` del evento (el que dibuja el mapa), el `searchText` del §6, el filtro por barrio |
 | `online` | idem, con el bloque online | el texto para redes |
-| `ciudades: string[]` | los **slugs de todas** las ciudades de las filas, sin repetir y sin las vacías (`ciudadesDe`, `src/lib/ciudades.mjs`) | **una regla de Firestore**: el alcance por ciudad del rol `publicador` (B-919, D-690) — qué ve **y**, desde B-921, dónde carga (D-1150) |
+| `ciudades: string[]` | los **slugs de todas** las ciudades de las filas, sin repetir y sin las vacías (`ciudadesDe`, `functions/ciudades.js`; `src/lib/ciudades.mjs` es su fachada) | **una regla de Firestore**: el alcance por ciudad del rol `publicador` (B-919, D-690) — qué ve **y**, desde B-921, dónde carga (D-1150) |
 
 **`ciudades` es el único de los cuatro que no existe para una pantalla**, y eso
 explica su forma. La regla pregunta `token.ciudad in resource.data.ciudades`, y no
@@ -1149,7 +1149,37 @@ además que la primera sede (`sede`) tenga ciudad, y el panel que la tengan toda
 (D-1154). Como `ciudades` lo reescribe `formADocumento` en cada guardado, cambiar
 la sede **es** cambiar esta lista — que es lo que hace que «mandar una propia a
 otra ciudad» rebote. El límite es el de todo derivado: la regla confía en que la
-lista diga la verdad sobre `modalidades` (B-1920).
+lista diga la verdad sobre `modalidades`.
+
+**Desde B-1920 el servidor lo verifica después.** `syncCalendar` recalcula
+`ciudadesDe(modalidades)` en cada escritura (`ciudadesDesalineadas`) y, si no
+coincide con lo guardado —un documento armado a mano con el SDK, que la regla dejó
+pasar—, **corrige el campo** en una transacción que relee el documento y **avisa**
+con `alerta: 'ciudades-no-coinciden'` (`docs/08-operacion.md`). **No toca
+`estado`**: una actividad que corregida queda fuera de la ciudad de quien la cargó
+sigue publicada, y lo decide una persona con el aviso. La regla no cambia: la
+ventana entre la escritura y la corrección existe, y lo que cierra es que el
+derivado mentido **no dure**. Por eso `ciudades` está en `CAMPOS_DE_MAQUINA`
+(`functions/historial.js`): ese write-back no deja versión ni pide rebuild, y como
+cuando cambia de verdad cambian las filas en la misma escritura, el historial no
+pierde nada. La otra mitad que mira la regla, la primera `sede`, **no** se
+recalcula (B-2050).
+
+Dos consecuencias de corregir, dichas para que nadie se sorprenda:
+
+- **Corregir cambia quién lee el documento.** La lectura del publicador por ciudad
+  es `token.ciudad in resource.data.ciudades` (B-919): cuando el servidor pasa
+  `['mar-del-plata']` a `['rosario']`, las cuentas de Rosario pasan a leer el
+  documento **entero** y las de Mar del Plata dejan de hacerlo. Es la visibilidad
+  que B-919 diseñó para el documento verdadero, no una fuga, pero la dispara una
+  escritura que nadie hizo desde el panel. Lo mismo con un documento anterior a
+  B-919 sin el campo: ya no espera al backfill, lo completa la primera escritura
+  que pase por `syncCalendar`.
+- **Una sede sin ciudad no se detecta.** `ciudadesDe` descarta las vacías, así que
+  una segunda fila con una dirección de Rosario y `ciudad: ''` da la misma lista y
+  no suena nada. No se avisa a propósito: fuera de CABA el admin puede cargar una
+  sede sin ciudad (D-1154 la exige solo en el panel del publicador), y avisar por
+  eso sería un mail por cada carga legítima. Queda anotado (B-2052).
 
 **Opcional a propósito, y con un paso de producción atrás.** Los documentos
 anteriores a B-919 no lo tienen, y el default de lectura —`?? []` en el código,

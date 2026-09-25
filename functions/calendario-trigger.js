@@ -17,6 +17,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { planificar } from './calendario.js';
 import { CALENDAR_ID, calendario, crearEvento } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
+import { ciudadesDesalineadas, ciudadesParaElLog } from './ciudades.js';
+import { corregirCiudades } from './ciudades-firestore.js';
 import { cargarLabels } from './etiquetas.js';
 import { faltaMarcarPublicada, huboCambioDeContenido } from './historial.js';
 import { marcarPublicada } from './marca-de-publicada.js';
@@ -103,6 +105,50 @@ export const syncCalendar = onDocumentWritten(
         logger.info('marcada como publicada alguna vez', { id });
       } catch (e) {
         logger.warn('no se pudo marcar la actividad como publicada', { id, error: e?.message });
+      }
+    }
+
+    /*
+     * B-1920 — `ciudades` recalculado del lado del servidor.
+     *
+     * `dentroDeSuCiudad()` le cree a este derivado porque una regla no puede
+     * recorrer `modalidades[]` (D-1150). El panel lo escribe bien siempre; un
+     * documento armado a mano con el SDK puede traer uno que no es el de sus
+     * filas. Acá se corrige el campo y se avisa con `alerta`, que la política de
+     * GCP ya toma (docs/08-operacion.md, «Cuando suena `ciudades-no-coinciden`»).
+     *
+     * Va en este trigger por lo mismo que la marca de arriba: es el único que ve
+     * el documento que **nace**, y el `create` es la escritura que la regla
+     * dejaría pasar con un `ciudades` inventado. Y va arriba de los dos cortes de
+     * abajo porque corresponde por lo que cambió en el documento, no por lo que
+     * le pase al calendario.
+     *
+     * La guarda anti-loop (trampa 3) es la de la marca, con las dos mitades:
+     * `ciudadesDesalineadas` no entra en la segunda pasada porque el documento ya
+     * coincide, y `ciudades` está en `CAMPOS_DE_MAQUINA`, así que el write-back no
+     * deja versión ni pide rebuild. **No toca `estado`**: si corregido queda fuera
+     * de la ciudad de quien lo cargó, sigue publicado y lo decide una persona.
+     *
+     * Un fallo se loguea y el sync sigue: los eventos del calendario son de ahora.
+     */
+    if (ciudadesDesalineadas(despues)) {
+      try {
+        const corregidas = await corregirCiudades(db, id);
+        if (corregidas) {
+          logger.warn('ciudades no coincidía con las filas del documento: se corrigió', {
+            alerta: 'ciudades-no-coinciden',
+            id,
+            estado: corregidas.estado,
+            guardadas: ciudadesParaElLog(corregidas.guardadas),
+            derivadas: ciudadesParaElLog(corregidas.derivadas),
+          });
+        }
+      } catch (e) {
+        logger.warn('no se pudo corregir ciudades', {
+          alerta: 'ciudades-no-coinciden',
+          id,
+          error: e?.message,
+        });
       }
     }
 

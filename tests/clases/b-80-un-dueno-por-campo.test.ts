@@ -223,7 +223,17 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
     // Hoy escribe solo el contenedor `sesiones`. Un campo suelto acá —
     // `ultimoSync`, `calendarSyncedAt` — sería un dueño nuevo en disputa con el
     // formulario, y hay que decidirlo antes de escribirlo.
-    expect(CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC).toEqual(['sesiones']);
+    /*
+     * **B-1920 — y `ciudades`, decidido.** `corregirCiudades` lo reescribe cuando
+     * no coincide con `ciudadesDe(modalidades)`. Es un segundo escritor, pero no
+     * un dueño en disputa en el sentido de B-80: los dos escriben **la misma
+     * derivación de las mismas filas**, el panel en la misma escritura que las
+     * filas y la Function releyéndolas en una transacción. Un snapshot viejo del
+     * panel trae filas viejas **y** su `ciudades`, juntos, así que no hay valor de
+     * la máquina que pisar. Un campo que no sea un derivado de lo que el panel
+     * escribe sigue sin poder entrar acá sin decidirlo.
+     */
+    expect([...CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC].sort()).toEqual(['ciudades', 'sesiones']);
   });
 
   /**

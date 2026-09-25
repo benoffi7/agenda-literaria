@@ -19,7 +19,12 @@ describe('trampa 3 · el write-back al propio documento va detrás de su guarda 
   it('los llamadores son `syncCalendar`, el rebuild de cada directorio y el de las efemérides', () => {
     // Si esto se achica, un directorio dejó de escribir la marca (B-905 otra
     // vez); si crece, hay un trigger nuevo que la escribe y hay que mirarlo.
-    expect(llamadas.map((l) => l.trigger.nombre).sort()).toEqual(
+    expect(
+      llamadas
+        .filter((l) => l.efecto === 'marcarPublicada')
+        .map((l) => l.trigger.nombre)
+        .sort(),
+    ).toEqual(
       [
         'syncCalendar',
         // B-959 — no es un directorio (no entra a la retención de la Guía), pero
@@ -28,6 +33,15 @@ describe('trampa 3 · el write-back al propio documento va detrás de su guarda 
         ...COLECCIONES_DE_DIRECTORIO.map((c) => `rebuildPor${c[0]!.toUpperCase()}${c.slice(1)}`),
       ].sort(),
     );
+  });
+
+  it('B-1920: `corregirCiudades` lo llama solo `syncCalendar`', () => {
+    // El único `onDocumentWritten` sobre `actividades/{id}`: si se muda a
+    // `guardarVersion` (un `onDocumentUpdated`) deja de ver el documento que
+    // nace con un `ciudades` inventado.
+    expect(
+      llamadas.filter((l) => l.efecto === 'corregirCiudades').map((l) => l.trigger.nombre),
+    ).toEqual(['syncCalendar']);
   });
 
   /**
