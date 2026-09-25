@@ -83,6 +83,16 @@ describe('leerVisto', () => {
     expect(leerVisto()).toBe('ayuda-y-novedades');
   });
 
+  it.each([
+    ['con marca', 'ayuda-y-novedades'],
+    ['sin marca', null],
+  ])('%s, lee lo mismo que el leerVisto de novedades.ts', (_caso, marca) => {
+    vi.stubGlobal('window', {
+      localStorage: { getItem: (k: string) => (k === CLAVE_VISTO ? marca : null) },
+    });
+    expect(leerVisto()).toBe(completo.leerVisto());
+  });
+
   it('si el navegador no deja leer, null y sin romper', () => {
     vi.stubGlobal('window', {
       localStorage: {
@@ -92,5 +102,6 @@ describe('leerVisto', () => {
       },
     });
     expect(leerVisto()).toBeNull();
+    expect(completo.leerVisto()).toBeNull();
   });
 });
