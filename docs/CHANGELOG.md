@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Un chequeo de clase para los barridos que bajan a `node_modules`** (B-2081).
+  `tests/clases/b-2081-barrido-sin-node-modules.test.ts` lee el fuente de `tests/` y
+  `scripts/` y falla si un `grep -r` o un recorrido recursivo con `readdirSync` alcanza
+  `functions/`, `.` o la raíz sin saltear `node_modules`; un `{ recursive: true }` sobre
+  esos alcances es rojo siempre, porque no se puede podar. Lee el fuente en vez de medir
+  porque en un worktree de agente `node_modules` es un symlink que no se sigue. Hoy no
+  encuentra nada: las cuatro instancias ya estaban corregidas.
 - **El test intermitente de la ayuda por sección, estabilizado** (B-2080). Fallaba 2 de
   cada 10 corridas con la suite en paralelo: su `waitFor` de 1 s pagaba también la
   transformación del chunk de `CentroAyuda`. Ahora el módulo se precarga en un

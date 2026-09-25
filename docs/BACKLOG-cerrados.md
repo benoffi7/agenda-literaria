@@ -22032,6 +22032,20 @@ El runbook de `ciudades-no-coinciden` pide comparar la ciudad de la cuenta con
 solo escribe. Un `--ver <email>` que imprima rol y ciudad (solo lectura) cierra el paso 3
 del runbook.
 
+### B-2081 · Un chequeo de clase para el `grep -r` que baja a `functions/` sin excluir `node_modules` · P3 — del frente `tiempos` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `6c712dd`, `7d360a2`. Clase nueva en `tests/clases/b-2081-barrido-sin-node-modules.test.ts`, registrada en el índice de `tests/clases-de-bug.test.ts` y en `05-patrones.md`. Mira las tres formas —`grep` recursivo como comando, `execFileSync('grep', [...])` y `readdirSync` recursivo (autollamada o `{ recursive: true }`)— sin comentarios, cuando el alcance es `functions`, `.`, la raíz o ninguna ruta. No encontró instancias vivas. Mutación: sacar la exclusión de B-190 y el corte de `ciudades.test.ts` → rojo con los dos. No ve argumentos no literales que no se resuelvan en el mismo archivo.
+
+Es la tercera vez que aparece el patrón (B-2041 es la última), y en los worktrees queda
+escondido porque `node_modules` es un symlink que `grep -r` no sigue. Un caso en
+`tests/clases/` que barra los `grep -r` de `tests/` y `scripts/` y exija
+`--exclude-dir=node_modules` cuando el alcance incluye `functions/` o la raíz.
+
+La cuarta apareció al cerrar esta misma tanda: el barrido de `normalize('NFD')` de
+`tests/ciudades.test.ts` recorría `functions/node_modules` con un `readdirSync`
+recursivo y tardó 6,4 s en paralelo; ya saltea `node_modules`. El chequeo tiene que
+mirar también los `readdirSync` recursivos, no solo `grep -r`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

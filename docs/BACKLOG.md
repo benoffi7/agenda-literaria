@@ -301,17 +301,17 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-2081 · Un chequeo de clase para el `grep -r` que baja a `functions/` sin excluir `node_modules` · P3 — del frente `tiempos` (2026-09-25)
+### B-2120 · `costo-por-tecla` › «el costo no escala» sigue fallando a veces después de B-2060 · P3 — del frente `barridos` (2026-09-25)
 
-Es la tercera vez que aparece el patrón (B-2041 es la última), y en los worktrees queda
-escondido porque `node_modules` es un symlink que `grep -r` no sigue. Un caso en
-`tests/clases/` que barra los `grep -r` de `tests/` y `scripts/` y exija
-`--exclude-dir=node_modules` cuando el alcance incluye `functions/` o la raíz.
+Falló en la suite completa y otra vez con solo dos archivos en paralelo
+(`sin-comentarios` y él): `expected 14.127 to be less than 10`. Pasó 3 de 3 solo. La
+proporción `< 10×` con pares intercalados todavía no aguanta la carga.
 
-La cuarta apareció al cerrar esta misma tanda: el barrido de `normalize('NFD')` de
-`tests/ciudades.test.ts` recorría `functions/node_modules` con un `readdirSync`
-recursivo y tardó 6,4 s en paralelo; ya saltea `node_modules`. El chequeo tiene que
-mirar también los `readdirSync` recursivos, no solo `grep -r`.
+### B-2121 · `sin-comentarios` › «ningún identificador que el parser de TypeScript ve como código desaparece» se pasa de los 5 s en la suite · P3 — del frente `barridos` (2026-09-25)
+
+5079 ms en la suite completa y 2,6 s solo. Es la familia de B-2041, un barrido del repo
+entero que con carga se acerca al límite, pero acá el costo es el parser de TypeScript,
+no `node_modules`.
 
 ### B-2050 · Los otros derivados de `modalidades` no se verifican en el servidor · P3 — de B-1920 (2026-09-25)
 
