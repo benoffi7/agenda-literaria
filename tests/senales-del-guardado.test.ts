@@ -24,7 +24,14 @@ import { describe, expect, it } from 'vitest';
 
 const CASO_DE_USO = readFileSync('src/lib/formulario/guardar.ts', 'utf8');
 const FORMULARIO = readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8');
-const CHASIS = readFileSync('src/components/admin/AdminApp.tsx', 'utf8');
+// M-17 — el chasis son dos archivos: `AdminApp` pinta el aviso y el router monta
+// las pantallas. Van en ese orden, que es el que el caso de la posición afirma.
+const CHASIS = [
+  'src/components/admin/AdminApp.tsx',
+  'src/components/admin/pantallas/PantallaDelPanel.tsx',
+]
+  .map((f) => readFileSync(f, 'utf8'))
+  .join('\n');
 const AVISO = readFileSync('src/components/admin/AvisoEtiquetas.tsx', 'utf8');
 
 /**

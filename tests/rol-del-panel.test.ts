@@ -28,6 +28,9 @@ import {
 
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
 const ADMIN_APP = readFileSync(raiz('src/components/admin/AdminApp.tsx'), 'utf8');
+// M-17 — el tipo `Vista` salió del chasis a su propio módulo, que es el que
+// comparten `AdminApp` y el router de pantallas.
+const VISTA = readFileSync(raiz('src/components/admin/pantallas/vista.ts'), 'utf8');
 const REGLAS = readFileSync(raiz('firestore.rules'), 'utf8');
 
 describe('rolDeClaims — el desempate es el mismo que el de la regla (D-650)', () => {
@@ -76,7 +79,7 @@ describe('PERMISOS — ninguna pantalla se olvida de decidir quién la ve', () =
   it('la lista de pantallas es la de las vistas que `AdminApp` sabe montar', () => {
     /*
      * **Chequeo de clase, y la lista se deriva del fuente** (§"Verificar la clase,
-     * no la instancia"): los `tipo:` del tipo `Vista` de `AdminApp.tsx`. Una vista
+     * no la instancia"): los `tipo:` del tipo `Vista` de `pantallas/vista.ts`. Una vista
      * nueva que no esté en `PANTALLAS_DEL_PANEL` pone esto en rojo, así que no
      * puede nacer sin que alguien decida quién la ve — que es el momento en que
      * conviene decidirlo, no un mes después.
@@ -84,7 +87,7 @@ describe('PERMISOS — ninguna pantalla se olvida de decidir quién la ve', () =
      * MUTACIÓN PROBADA: agregar `| { tipo: 'inventada' }` al tipo `Vista` deja
      * este caso en rojo nombrando la vista.
      */
-    const tipoVista = ADMIN_APP.slice(ADMIN_APP.indexOf('type Vista ='));
+    const tipoVista = VISTA.slice(VISTA.indexOf('type Vista ='));
     const cuerpo = tipoVista.slice(0, tipoVista.indexOf('\n\n/**'));
     const vistas = [...cuerpo.matchAll(/tipo:\s*'([a-z]+)'/g)].map((m) => m[1]);
 
