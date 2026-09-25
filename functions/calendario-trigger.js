@@ -13,16 +13,19 @@
  */
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions/v2';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { planificar } from './calendario.js';
 import { CALENDAR_ID, calendario, crearEvento } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
 import { ciudadesParaElLog } from './ciudades.js';
+import { quienEscribioTieneCiudad } from './claims-de-cuenta.js';
 import {
   cambiaLoPublico,
   conDerivados,
   derivadosDesalineados,
   pideRebuild,
+  sedesSinCiudadNuevas,
 } from './derivados.js';
 import { corregirDerivados } from './derivados-firestore.js';
 import { cargarLabels } from './etiquetas.js';
@@ -179,6 +182,47 @@ export const syncCalendar = onDocumentWritten(
           id,
           campos: derivadosDesalineados(despues)?.campos ?? [],
           error: e?.message,
+        });
+      }
+    }
+
+    /*
+     * B-2052 — una fila con sede y la ciudad vacía, cargada por una cuenta
+     * publicadora con ciudad.
+     *
+     * `ciudadesDe` descarta las ciudades vacías, así que esa fila no suma nada a
+     * `ciudades` y la regla pasa aunque la dirección sea de otra ciudad (D-1234).
+     * **Solo se avisa, no se corrige**: no hay de qué derivar la ciudad que falta.
+     * Y solo si quien escribió es una publicadora con ciudad, cuyo panel exige la
+     * ciudad (D-1154): de un admin o de una publicadora general es una carga
+     * legítima. El claim se lee del registro de la cuenta
+     * (`quienEscribioTieneCiudad`), una vez, y solo cuando la escritura trae una
+     * fila así **nueva** (`sedesSinCiudadNuevas`): el write-back del
+     * `calendarEventId` conserva el `updatedBy` y sin eso volvería a avisar.
+     *
+     * El log **no lleva el uid ni el mail**: el `id` de la actividad alcanza para
+     * llegar a la cuenta desde la consola (docs/08-operacion.md, «Cuando suena
+     * `sede-sin-ciudad`»). Si el claim no se puede leer —el rol de IAM que falta
+     * es el caso típico— se avisa igual, con el código: un aviso que no puede
+     * sonar es peor que uno de más.
+     */
+    const filasSinCiudad = sedesSinCiudadNuevas(despues, antes);
+    if (filasSinCiudad > 0) {
+      try {
+        if (await quienEscribioTieneCiudad(getAuth(), despues?.updatedBy)) {
+          logger.warn('una publicadora con ciudad cargó una sede sin ciudad', {
+            alerta: 'sede-sin-ciudad',
+            id,
+            estado: despues?.estado ?? null,
+            filas: filasSinCiudad,
+          });
+        }
+      } catch (e) {
+        logger.warn('no se pudo leer el rol de quien cargó una sede sin ciudad', {
+          alerta: 'sede-sin-ciudad',
+          id,
+          filas: filasSinCiudad,
+          error: e?.code ?? 'desconocido',
         });
       }
     }

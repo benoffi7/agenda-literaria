@@ -27,7 +27,9 @@ import {
   derivadosDesalineados,
   onlinePrincipal,
   pideRebuild,
+  sedesSinCiudadNuevas,
 } from '../functions/derivados.js';
+import { esPublicadorConCiudad, quienEscribioTieneCiudad } from '../functions/claims-de-cuenta.js';
 import { camposCambiados, huboCambioDeContenido } from '../functions/historial.js';
 import { planificar } from '../functions/calendario.js';
 import { formADocumento } from '@/lib/actividades';
@@ -189,6 +191,7 @@ describe('`derivadosDesalineados` — cuándo el servidor corrige', () => {
     ]) {
       expect(() => derivadosDesalineados(basura)).not.toThrow();
       expect(() => conDerivados(basura)).not.toThrow();
+      expect(() => sedesSinCiudadNuevas(basura, null)).not.toThrow();
     }
   });
 });
@@ -368,6 +371,60 @@ describe('corregir `online` no puede abrir el link de la reunión (§5.1)', () =
   });
 });
 
+describe('B-2052 — `sedesSinCiudadNuevas`', () => {
+  const conCiudad = fila('mod_1', sede('Librería', 'mar-del-plata'));
+  const sinCiudad = fila('mod_2', sede('Otra dirección', ''));
+
+  it('una fila con sede y sin ciudad que llega en la escritura cuenta', () => {
+    expect(sedesSinCiudadNuevas({ modalidades: [conCiudad, sinCiudad] }, null)).toBe(1);
+    expect(
+      sedesSinCiudadNuevas({ modalidades: [conCiudad, sinCiudad] }, { modalidades: [conCiudad] }),
+    ).toBe(1);
+  });
+
+  /**
+   * El write-back del `calendarEventId` conserva el `updatedBy`: si contara la
+   * misma fila otra vez, cada sync repetiría el mail.
+   */
+  it('la misma fila en la escritura siguiente no vuelve a contar', () => {
+    const doc = { modalidades: [conCiudad, sinCiudad] };
+    expect(sedesSinCiudadNuevas(doc, doc)).toBe(0);
+  });
+
+  it('una virtual o una sede con ciudad no cuentan', () => {
+    expect(sedesSinCiudadNuevas({ modalidades: [conCiudad, fila('v', null, zoom('https://z'))] }, null)).toBe(0);
+  });
+
+  it('una ciudad que no es un texto (escrita a mano) cuenta como vacía', () => {
+    const rara = { id: 'mod_x', modalidad: 'presencial', sede: { ciudad: 42 } };
+    expect(sedesSinCiudadNuevas({ modalidades: [rara] }, null)).toBe(1);
+  });
+});
+
+describe('B-2052 — `esPublicadorConCiudad` y `quienEscribioTieneCiudad`', () => {
+  it.each([
+    [{ publicador: true, ciudad: 'mar-del-plata' }, true],
+    [{ publicador: true, ciudad: '' }, false],
+    [{ publicador: true }, false],
+    [{ admin: true }, false],
+    // Con los dos claims la regla la trata como publicadora (`esAdmin()` exige no
+    // serlo), así que acá también.
+    [{ admin: true, publicador: true, ciudad: 'rosario' }, true],
+    [{ publicador: 'true', ciudad: 'rosario' }, false],
+    [null, false],
+    [undefined, false],
+  ])('%j → %s', (claims, esperado) => {
+    expect(esPublicadorConCiudad(claims as Record<string, unknown> | null)).toBe(esperado);
+  });
+
+  it('sin `updatedBy` no consulta a nadie', async () => {
+    const auth = { getUser: () => Promise.reject(new Error('no debería llamarse')) };
+    expect(await quienEscribioTieneCiudad(auth, undefined)).toBe(false);
+    expect(await quienEscribioTieneCiudad(auth, '')).toBe(false);
+    expect(await quienEscribioTieneCiudad(auth, 42)).toBe(false);
+  });
+});
+
 describe('el cableado en `syncCalendar`', () => {
   const trigger = sinComentarios(readFileSync('functions/calendario-trigger.js', 'utf8'));
 
@@ -396,8 +453,18 @@ describe('el cableado en `syncCalendar`', () => {
     ]);
   });
 
-  it('en `warn`, que es la mitad del filtro de la política de GCP', () => {
-    for (const alerta of ['derivados-no-coinciden']) {
+  it('`sede-sin-ciudad` lleva solo el id, el estado y cuántas filas', () => {
+    expect(clavesDe('sede-sin-ciudad')).toEqual([
+      ['alerta', 'estado', 'filas', 'id'],
+      ['alerta', 'error', 'filas', 'id'],
+    ]);
+    // El fallo de `getUser` loguea el código, no el mensaje: el mensaje del Admin
+    // SDK puede nombrar el identificador que se buscó.
+    expect(trigger).toMatch(/error: e\?\.code \?\? 'desconocido'/);
+  });
+
+  it('las dos en `warn`, que es la mitad del filtro de la política de GCP', () => {
+    for (const alerta of ['derivados-no-coinciden', 'sede-sin-ciudad']) {
       expect(trigger).toMatch(new RegExp(`logger\\.warn\\([^)]*\\{\\s*alerta: '${alerta}'`));
     }
   });
@@ -411,8 +478,18 @@ describe('el cableado en `syncCalendar`', () => {
     expect(trigger).not.toMatch(/if \(huboCambioDeContenido\(/);
   });
 
-  it('el runbook tiene la sección que nombra la alerta', () => {
+  it('el claim se pide solo si hay una fila nueva sin ciudad', () => {
+    const i = trigger.indexOf('quienEscribioTieneCiudad(getAuth()');
+    const antes = trigger.slice(0, i);
+    // El `if (await quienEscribio…` de la llamada misma no cuenta: se busca el que
+    // la gobierna.
+    const ifs = [...antes.matchAll(/\bif\s*\(\s*(\w+)/g)].map((m) => m[1]).filter((g) => g !== 'await');
+    expect(ifs.pop()).toBe('filasSinCiudad');
+  });
+
+  it('el runbook tiene las dos secciones que nombran las alertas', () => {
     const runbook = readFileSync('docs/08-operacion.md', 'utf8');
     expect(runbook).toContain('### Cuando suena `derivados-no-coinciden`');
+    expect(runbook).toContain('### Cuando suena `sede-sin-ciudad`');
   });
 });

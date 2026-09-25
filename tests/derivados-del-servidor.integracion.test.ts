@@ -16,15 +16,25 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { buildSearchText } from '../functions/busqueda.js';
+import { quienEscribioTieneCiudad } from '../functions/claims-de-cuenta.js';
 import { derivadosDesalineados } from '../functions/derivados.js';
 import { corregirDerivados } from '../functions/derivados-firestore.js';
 import { camposCambiados } from '../functions/historial.js';
 import { linkDeReunionQueSale } from '@/lib/toPublic';
-import { PROJECT_ID, emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  PROJECT_ID,
+  emuladorAuthVivo,
+  emuladorVivo,
+  limpiarFirestore,
+  proyectoDeAuth,
+} from './emulador';
+import { tokenDe, uidDe } from './fixtures/credenciales-del-emulador';
 
 const vivo = await emuladorVivo();
+const authVivo = vivo && (await emuladorAuthVivo());
 
 const sede = (nombre: string, ciudad: string) => ({
   nombre,
@@ -138,5 +148,35 @@ describe.skipIf(!vivo)('la corrección de los derivados contra el emulador — B
   it('un documento que se borró en el medio no se resucita', async () => {
     expect(await corregirDerivados(db, 'act_que_no_existe')).toBeNull();
     expect((await db.doc('actividades/act_que_no_existe').get()).exists).toBe(false);
+  });
+});
+
+describe.skipIf(!authVivo)('el claim de quien escribió, contra el emulador de Auth — B-2052', () => {
+  let app: App;
+
+  beforeAll(async () => {
+    app = initializeApp({ projectId: await proyectoDeAuth() }, `claims-b2052-${Date.now()}-${Math.random()}`);
+  });
+
+  afterAll(async () => {
+    await deleteApp(app);
+  });
+
+  it.each([
+    ['la publicadora con ciudad', 'pub_mdp_b2052', { publicador: true, ciudad: 'mar-del-plata' }, true],
+    ['la publicadora general', 'pub_gral_b2052', { publicador: true }, false],
+    ['un admin', 'admin_b2052', { admin: true }, false],
+    ['una cuenta sin claims', 'nadie_b2052', {}, false],
+  ])('%s → %s', async (_, base, claims, esperado) => {
+    const uid = uidDe(base);
+    await tokenDe(uid, claims);
+    expect(await quienEscribioTieneCiudad(getAuth(app), uid)).toBe(esperado);
+  });
+
+  it('una cuenta que ya no existe tira, con un código y sin el uid en el código', async () => {
+    const uid = uidDe('borrada_b2052');
+    const err = await quienEscribioTieneCiudad(getAuth(app), uid).catch((e) => e);
+    expect(err?.code).toBe('auth/user-not-found');
+    expect(String(err.code)).not.toContain(uid);
   });
 });

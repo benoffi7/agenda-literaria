@@ -476,6 +476,14 @@ export const EFECTOS_INCONDICIONALES = [
    * `modalidades` en una sola escritura, `ciudades` incluido.
    */
   'corregirDerivados',
+  /*
+   * B-2052 — el aviso de una fila con sede y sin ciudad cargada por una
+   * publicadora con ciudad. No escribe nada, pero corresponde por lo que trae la
+   * escritura igual que los de arriba: detrás del corte «sin ops» no sonaría
+   * nunca para una actividad en borrador, que también define dónde carga la
+   * cuenta.
+   */
+  'quienEscribioTieneCiudad',
 ];
 
 

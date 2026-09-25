@@ -25,7 +25,7 @@
  * calendario.
  */
 import { buildSearchText } from './busqueda.js';
-import { ciudadesDe, ciudadesDesalineadas } from './ciudades.js';
+import { ciudadesDe, ciudadesDesalineadas, slugDeCiudad } from './ciudades.js';
 import { huboCambioDeContenido } from './historial.js';
 
 /**
@@ -239,3 +239,34 @@ export const pideRebuild = (antes, despues) =>
  */
 export const conDerivados = (documento) =>
   documento ? /** @type {T} */ ({ ...documento, ...derivadosDe(documento) }) : documento;
+
+/**
+ * Las filas con sede y **sin ciudad** que trae esta escritura y no traía la
+ * anterior — B-2052.
+ *
+ * `ciudadesDe` descarta las ciudades vacías (D-690), así que una segunda fila con
+ * una dirección de otra ciudad y `ciudad: ''` deja `ciudades` igual y la regla
+ * pasa (D-1234). Esto es la mitad pura del aviso: dice **qué filas** son, y el
+ * trigger pregunta si quien escribió es una cuenta publicadora con ciudad
+ * (`quienEscribioTieneCiudad`, `claims-de-cuenta.js`).
+ *
+ * **Solo las nuevas**, comparando por el `id` de la fila (trampa 2): el
+ * write-back del `calendarEventId` y la corrección de los derivados conservan el
+ * `updatedBy` de la cuenta, y sin esto cada uno volvería a avisar lo mismo. Una
+ * fila sin `id` (escrita a mano) se identifica por su posición, que es lo único
+ * que tiene.
+ *
+ * @param {Record<string, any> | null | undefined} despues
+ * @param {Record<string, any> | null | undefined} antes
+ * @returns {number} cuántas filas nuevas con sede y sin ciudad
+ */
+export const sedesSinCiudadNuevas = (despues, antes) => {
+  const sinCiudad = (documento) =>
+    new Set(
+      filasDe(documento)
+        .map((f, i) => (f?.sede && !slugDeCiudad(f.sede.ciudad) ? `${f?.id ?? `#${i}`}` : null))
+        .filter(Boolean),
+    );
+  const previas = sinCiudad(antes);
+  return [...sinCiudad(despues)].filter((id) => !previas.has(id)).length;
+};
