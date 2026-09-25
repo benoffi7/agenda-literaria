@@ -3043,6 +3043,11 @@ curl -si -X POST \
   https://southamerica-east1-agenda-literaria.cloudfunctions.net/reportarVerificacionDelNavegador
 ```
 
+**Corrido el 2026-09-25 por el dueño, después del primer deploy:** contestó `HTTP/2 204`
+con `access-control-allow-origin: https://agendaleh.ar`, y el log quedó escrito como
+`WARNING` con exactamente `{message, motivo: 'sin-respuesta', alerta:
+'verificacion-del-navegador'}`, sin más campos.
+
 Tiene que contestar `204`, el log tiene que aparecer con el `gcloud logging read`
 de arriba, y el mail en la hora siguiente. Un `403` con el HTML de Google (no el
 vacío de la Function) es que el `allUsers` como invocador no quedó puesto —una
