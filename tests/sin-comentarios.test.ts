@@ -495,7 +495,22 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
     offset: number,
     tramos: readonly (readonly number[])[],
   ): string[] => {
-    const sf = ts.createSourceFile(nombre, texto, ts.ScriptTarget.Latest, true);
+    /*
+     * B-2121 — el parse más barato que ve lo mismo. `recorrer` baja por
+     * `forEachChild`, que no visita los nodos de JSDoc, así que parsear los
+     * JSDoc (el default) era trabajo que nadie miraba, y en un repo tan
+     * comentado como este es mucho; y `getStart(sf)` recibe el `SourceFile`,
+     * así que no necesita los punteros a `parent` (el `true` de antes).
+     * Verificado el 2026-09-25 sobre los 758 archivos: la lista de
+     * identificadores, con posición y texto, es **idéntica** a la del parse
+     * completo, y el parse baja de ~450 a ~280 ms.
+     */
+    const sf = ts.createSourceFile(
+      nombre,
+      texto,
+      { languageVersion: ts.ScriptTarget.Latest, jsDocParsingMode: ts.JSDocParsingMode.ParseNone },
+      false,
+    );
     const perdidos = new Set<string>();
     const recorrer = (n: ts.Node): void => {
       if (ts.isIdentifier(n)) {
@@ -537,10 +552,28 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
       .filter((o) => o.faltan.length > 0)
       .map((o) => `${o.archivo}: ${o.faltan.slice(0, 5).join(', ')}`);
 
+  /** Ver el caso de abajo: por qué este barrido tiene un límite propio. */
+  const BARRIDO_DEL_REPO_MS = 30_000;
+
   const EXPLICACION =
     'el saneador borró código, no comentarios: cualquier test que lea estos ' +
     'archivos está afirmando sobre menos de lo que hay (B-853)';
 
+  /**
+   * B-2121 — el timeout propio de este caso, y por qué no es el del proyecto.
+   *
+   * Parsea con TypeScript **todo** el código versionado (758 archivos, 10,7 MB
+   * el 2026-09-25): ~0,8 s solo, 2,6 s en una máquina ocupada y 5,08 s con la
+   * suite en paralelo, sobre los 5 s por defecto. No es un bug como el de
+   * B-2041 —ahí el `grep` bajaba a `node_modules` sin que nadie lo pidiera—: el
+   * costo es el trabajo que el caso existe para hacer, y crece con el repo.
+   * Lo que se podía sacar ya se sacó (el parse de JSDoc y los `parent`, arriba).
+   *
+   * Treinta segundos son ~35 veces lo que tarda solo. Un límite más largo no
+   * esconde nada acá: el caso es CPU pura sobre una lista finita —ni red, ni
+   * promesas, ni `waitFor`—, así que no tiene cómo colgarse; lo único que
+   * puede hacer es tardar, y que tarde con carga no es una falla.
+   */
   it('ningún identificador que el parser de TypeScript ve como código desaparece', () => {
     const archivos = versionados(/\.(ts|tsx|mjs|js)$/);
 
@@ -560,7 +593,7 @@ describe('control de clase: el saneador no borra código, sobre todo el repo', (
       })),
       EXPLICACION,
     ).toEqual([]);
-  });
+  }, BARRIDO_DEL_REPO_MS);
 
   /**
    * **Lo mismo sobre los `.astro`, y hasta dónde llega — B-876.**
