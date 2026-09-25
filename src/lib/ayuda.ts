@@ -1467,8 +1467,9 @@ export const CAPITULOS: CapituloAyuda[] = [
           'rechazada—. Se borra recién al guardar, no al apretar «Convertir»: si abandonás el ' +
           'formulario a mitad de camino, la propuesta se queda con su foto y podés volver a ' +
           'intentarlo. Y si la actividad terminó sin ninguna imagen propia **sin que vos lo ' +
-          'decidieras**, el original tampoco se borra: preferimos quedarnos con una foto de más ' +
-          'que perderla.',
+          'decidieras**, el original no se borra en el momento: tenés **30 días desde que la ' +
+          'aceptaste** para subir la foto a la actividad. Pasado ese plazo el original se borra ' +
+          'igual, aunque la actividad siga sin foto.',
         cuidado: true,
         /*
          * Los tres casos son las tres mitades de lo que promete el punto: que
@@ -1491,6 +1492,15 @@ export const CAPITULOS: CapituloAyuda[] = [
           {
             archivo: 'tests/propuestas-imagen.test.ts',
             it: 'sin copia en la actividad no borra nada, que es el lado barato de equivocarse',
+          },
+          // B-871 — y lo que se conservó se borra igual a los 30 días.
+          {
+            archivo: 'tests/retencion.test.ts',
+            it: 'el original de una aceptada se borra a los 30 días de aceptada, contados desde la aceptación',
+          },
+          {
+            archivo: 'tests/retencion.test.ts',
+            it: 'y un día antes no: son 30 días para decidir si la foto se usa',
           },
         ],
       },

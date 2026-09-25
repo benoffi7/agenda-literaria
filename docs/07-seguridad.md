@@ -1658,8 +1658,8 @@ pregunta «¿quedó una copia?» y, ante la duda, conserva. En el descarte esa
 pregunta ya la contestó una persona **mirando la foto** —y el panel se asegura de
 que la haya podido mirar: si la miniatura no se pudo traer, el aviso lo dice y no
 manda a bajarla—. Sin esta rama, descartar caería en `sin-copia` y el original
-quedaría vivo para siempre, o sea que ofrecer «descartar» sin ella **agrandaba**
-el agujero de B-871 en vez de cerrar nada.
+quedaría vivo —cuando se escribió, para siempre; desde B-871, 30 días que no
+tienen por qué existir sobre una foto que una persona ya descartó—.
 
 El camino tiene su propia rama en el trigger —no reusa el `else` del rechazo,
 aunque el borrado sea idéntico— porque lo que cambia es qué pasa **si falla**: el
@@ -1668,11 +1668,20 @@ lleva el mismo `alerta` que la aceptación. Y desde el mismo pase, **el `else`
 final del trigger dejó de borrar**: era un catch-all cuyo default era el borrado
 crudo, y ahora el default es conservar y avisar.
 
-**Lo que queda abierto y está medido, no supuesto:** si el borrado del original
-falla, o si la actividad se guardó sin ninguna imagen propia **sin que nadie lo
-decidiera**, el original sobrevive **para siempre** —la retención no llega a la
-aceptada y ningún barrido recorre `propuestas/`—. Sale un `warn`/`error` con
-`alerta: "flyer-de-propuesta-sin-borrar"` y es **B-871**.
+**Lo que antes quedaba abierto, y desde B-871 tiene plazo:** si el borrado del
+original falla, o si la actividad se guardó sin ninguna imagen propia **sin que
+nadie lo decidiera**, el original sobrevive a la transición y sale un
+`warn`/`error` con `alerta: "flyer-de-propuesta-sin-borrar"`. Hasta B-871 eso era
+**para siempre** —la retención no llega a la aceptada y ningún barrido recorría
+`propuestas/`—. Desde la salida 3 (decisión del dueño del 2026-09-25, D-1160) el
+barrido diario de `borrarPropuestasVencidas` lista los objetos vivos de
+`propuestas/` y borra el original de toda aceptada **a los 30 días de aceptada**,
+contados desde `revision.en` — y sin fecha legible no borra y avisa. El documento
+sigue sin vencer: lo que se va es la foto, no el contacto. El mismo barrido borra
+el objeto que **ningún** documento nombra, pasadas 72 horas (D-1161): la foto de
+un `/proponer` abandonado, que antes tampoco tenía quien la borrara. Lee de cada
+propuesta que nombra un objeto vivo solo `estado`, `creadoEn`, `revision.en` e
+`imagen.storagePath`, y relee con `fieldMask: []` antes de borrar.
 
 **Salvo cuando la foto llega después (B-1370, D-890).** Si la actividad se guardó
 sin foto y alguien la sube a mano más tarde, el original deja de ser la única
