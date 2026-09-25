@@ -924,7 +924,7 @@ que el tríptico y el botón de inscripción: `click` con el botón principal o
 `auxclick` con el del medio, nunca el derecho y nunca dos veces por el mismo gesto.
 El criterio vive en `src/lib/clicQueAbre.ts` (D-995). Y en el tablero del panel la fila aparece sola (se deriva de
 `NOMBRES_EVENTOS_SITIO`), pero con su nombre técnico hasta que
-`NOMBRE_DE_EVENTO` de `EstadisticasPanel.tsx` le escriba el castellano.
+`NOMBRE_DE_EVENTO` de `estadisticas/PanelSitioPublico.tsx` le escriba el castellano.
 
 ---
 
@@ -1058,7 +1058,7 @@ Debajo, tres bloques, en el orden de lo que hay que hacer primero:
 > 2026-09-07: el dueño sacó los cuatro párrafos de arriba de la pestaña mirando
 > la pantalla publicada. Qué sigue cubriendo lo que decían está en la nota de
 > **D-272** y en el comentario de `PanelSitioPublico`
-> (`EstadisticasPanel.tsx`).
+> (`estadisticas/PanelSitioPublico.tsx`).
 
 El pedido original quería vistas, páginas más vistas, secciones, clics y
 fricciones **en el panel**. Esa lectura es **B-374**, y hasta que haya un mes de
@@ -1096,12 +1096,14 @@ retirado a propósito.
 | Pieza | Archivo | Qué es |
 |---|---|---|
 | El cálculo | `src/lib/estadoDelCatalogo.ts` | **puro**. Recibe `ActividadConId[]` y un reloj, devuelve el estado. No sabe de React, ni de Firestore, ni de pantallas |
-| La pantalla, las pestañas y el andamiaje de «El sitio público» | `src/components/admin/EstadisticasPanel.tsx` | lee `/actividades` en vivo, como las otras vistas del panel, y acomoda las dos pestañas |
-| Las barras de cobertura y proporción | el mismo componente | **barras de CSS**, sin ninguna dependencia. Cada barra lleva su número escrito al lado: el gráfico ayuda a comparar, no informa solo — de ahí que vaya `aria-hidden` |
+| La pantalla y las pestañas | `src/components/admin/EstadisticasPanel.tsx` | lee `/actividades` en vivo, como las otras vistas del panel, y acomoda las dos pestañas. Cada pestaña vive en su archivo (M-17) |
+| La pestaña «El catálogo» | `src/components/admin/estadisticas/PanelCatalogo.tsx` | los avisos, la cobertura, los repartos y el ritmo, con lo que el tablero le pasa |
+| El andamiaje de «El sitio público» | `src/components/admin/estadisticas/PanelSitioPublico.tsx` | las métricas de GA4 y Search Console, y el estado vacío que dice por qué está vacío |
+| Las barras de cobertura y proporción | `estadisticas/PanelCatalogo.tsx` | **barras de CSS**, sin ninguna dependencia. Cada barra lleva su número escrito al lado: el gráfico ayuda a comparar, no informa solo — de ahí que vaya `aria-hidden` |
 | Un reparto, con sus dos vistas | `src/components/admin/estadisticas/Reparto.tsx` | maquetación y cableado, y **acá no se decide nada**: los ángulos, la agrupación de la cola, el color y el porcentaje salen de los dos módulos puros de abajo. Lo único que sí decide son tres cosas de presentación — el `role="img"` con el reparto entero en palabras (un `<svg>` de cuñas no lo lee nada), el filete del color del papel entre cuña y cuña, y la nota de unidad, **obligatoria por firma** (D-401) |
 | La aritmética de la torta | `src/lib/tortaDelPanel.ts` | **puro, y dibujada a mano** (B-700): una cuña es un `path` con dos puntos y un arco, así que no entra ninguna librería de gráficos —son 50-200 KB para cinco cuñas, contra el corte de bundle de B-09— y a cambio la aritmética es testeable. `arcosDeTorta` **no recibe ningún total**: el todo es siempre la suma de sus tajadas (D-401), así que no hay forma de pasarle uno equivocado |
 | Con qué vista arranca un reparto, y que se recuerde | `src/lib/vistaDeGrafico.ts` | **puro**, con el almacén como puerto, así que se testea sin DOM. La lista no es un modo degradado de la torta sino su alternativa accesible (B-701), y la preferencia es de quien mira. Lo que se guarda es el nombre del reparto y la palabra `torta` o `lista` — una marca, no contenido ([§5.1](#51--el-page_view-automático-manda-la-url-y-la-url-lleva-el-título)) |
-| La entrada | `src/components/admin/AdminApp.tsx` | una vista más del router propio, **diferida** por `import()` como las otras once (el corte de bundle de B-09 / B-117) |
+| La entrada | `src/components/admin/pantallas/diferidas.tsx` | una vista más del router propio (`pantallas/PantallaDelPanel.tsx`, M-17), **diferida** por `import()` como las otras once (el corte de bundle de B-09 / B-117) |
 | Los tests del cálculo | `tests/estado-del-catalogo.test.ts` | el módulo puro caso por caso, con los bordes de cada umbral, más el barrido de que nada de lo que la pantalla ve llega a la analítica |
 | Los tests de los gráficos | `tests/torta-del-panel.test.ts`, `tests/vista-de-grafico.test.ts` | los dos módulos puros: que la torta cierre en 360° aun con la cola agrupada, y que la memoria de la vista no invente un valor que no existe |
 | Los tests de las pestañas | `tests/estadisticas-pestanias.render.test.tsx` | renderizado real (jsdom): qué panel se ve al hacer click y al navegar con las flechas, y el roving `tabIndex` — cableado que un test del fuente no puede verificar sin arriesgar un falso verde |

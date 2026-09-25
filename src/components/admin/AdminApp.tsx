@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 // Estático a propósito: el aviso de versión nueva tiene que poder aparecer
 // desde el primer render, incluso en la pantalla de login. No arrastra
 // Firestore, así que no rompe el corte del bundle de D-51.
@@ -11,7 +11,6 @@ import {
   useVerificacionDelNavegador,
 } from '@/components/admin/AvisoVerificacion';
 import { PieVersion } from '@/components/admin/PieVersion';
-import { SiNoCarga } from '@/components/admin/SiNoCarga';
 import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
@@ -66,280 +65,21 @@ import {
 // Puro: la tabla de qué ve cada rol. No toca Firestore, así que puede ser un
 // import estático del chunk del login (B-09, D-51).
 import { puedeVer, type RolDelPanel } from '@/lib/rolDelPanel';
-// B-919 — puro: la misma pregunta que decide los botones de la fila del listado.
-import { esSoloLectura } from '@/lib/formulario/autoria';
 // Store de módulo, sin Firestore ni React context (mismo patrón que
 // `formulario-sucio.ts`): es lo que le permite a `campos-del-panel.tsx` decidir
 // si ofrece «Otro…» sin cablear un booleano por seis componentes.
 import { fijarRolActivo } from '@/lib/rolActivo';
-import type { ActividadFormulario as TipoFormulario } from '@/components/admin/ActividadFormulario';
-import type { CalendarioActividades as TipoCalendario } from '@/components/admin/CalendarioActividades';
-import type { HistorialActividad as TipoHistorial } from '@/components/admin/HistorialActividad';
-import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
-import type { EstadisticasPanel as TipoEstadisticas } from '@/components/admin/EstadisticasPanel';
-import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
-import type { PropuestasPanel as TipoPropuestas, Conversion } from '@/components/admin/PropuestasPanel';
-import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/LibreriasPanel';
-import type { SuscripcionesPanel as TipoSuscripciones } from '@/components/admin/SuscripcionesPanel';
-import type { LugaresPanel as TipoLugares } from '@/components/admin/LugaresPanel';
-import type { BibliotecasPanel as TipoBibliotecas } from '@/components/admin/BibliotecasPanel';
-import type { EfemeridesPanel as TipoEfemerides } from '@/components/admin/EfemeridesPanel';
-import type { ActividadConId, ActividadForm } from '@/types/actividad';
-import type { LibreriaConId } from '@/types/libreria';
-import type { SuscripcionLiterariaConId } from '@/types/suscripcion-literaria';
-import type { LugarConId } from '@/types/lugar';
-import type { BibliotecaConId } from '@/types/biblioteca';
-import type { EfemerideConId } from '@/types/efemeride';
+// M-17 — el router de pantallas y sus puertas diferidas, cada uno en su módulo.
+// Los dos son estáticos y no rompen el corte de B-09: todo lo que toca
+// Firestore sigue entrando por `import()` desde `diferidas.tsx`.
+import { PantallaDelPanel } from '@/components/admin/pantallas/PantallaDelPanel';
+import { PendientesBadge, PropuestasBadge } from '@/components/admin/pantallas/diferidas';
+import {
+  tituloDeLaVista,
+  type DestinoDeVolver,
+  type Vista,
+} from '@/components/admin/pantallas/vista';
 import type { User } from 'firebase/auth';
-
-type Vista =
-  | { tipo: 'lista' }
-  | { tipo: 'nueva' }
-  | { tipo: 'editar'; actividad: ActividadConId }
-  // B-11 — la copia viaja como form, no como documento: se guarda por el camino
-  // de creación, así el id, el slug y `createdAt`/`createdBy` son de la copia.
-  | { tipo: 'duplicar'; copia: ActividadForm; tituloOrigen: string }
-  | { tipo: 'reportes' }
-  // La vista calendario es de solo lectura: enumera encuentros y, al tocar uno,
-  // abre la actividad. No necesita estado propio (D-70).
-  | { tipo: 'calendario' }
-  // B-40 — historial de versiones de UNA actividad. Lleva la actividad y no solo
-  // su id porque la comparación es contra el documento actual, y el listado ya
-  // lo tiene en memoria: entrar no cuesta una lectura.
-  | { tipo: 'historial'; actividad: ActividadConId }
-  // B-170 — administración de las taxonomías del §4. No lleva estado: la
-  // pantalla lee `/opciones/*` sola.
-  | { tipo: 'taxonomias' }
-  // B-370 — «Estado del catálogo», el tablero de docs/16-analitica-del-sitio.md.
-  // No lleva estado: la pantalla lee `/actividades` sola, como el listado.
-  | { tipo: 'estadisticas' }
-  // B-830 — la bandeja de propuestas. Como `reportes`: no lleva estado, la
-  // pantalla lee `/propuestas` sola.
-  | { tipo: 'propuestas' }
-  /*
-   * B-830 — una propuesta convertida en formulario. Es `duplicar` con dos
-   * diferencias, y las dos son de D-600:
-   *
-   *  - lleva los `avisos` de lo que la conversión **no** pudo prellenar, que se
-   *    leen mientras se corrige;
-   *  - y lleva `alGuardar`, el segundo movimiento: marcar la propuesta aceptada
-   *    con el id de la actividad **recién cuando la actividad existe**. La
-   *    función la arma la bandeja (es la que puede escribir en `/propuestas`) y
-   *    viaja acá adentro por el corte del bundle: `AdminApp` está en el chunk del
-   *    login y no puede importar nada que toque Firestore (B-09, D-51).
-   */
-  | {
-      tipo: 'convertir';
-      copia: ActividadForm;
-      tituloOrigen: string;
-      avisos: readonly string[];
-      /** B-1235 — la foto que pidieron usar y no entró: la alerta del formulario. */
-      imagenNoPromovida: string | null;
-      alGuardar: (actividadId: string) => Promise<void>;
-    }
-  /*
-   * B-901 — la Guía, primera entidad. Son **dos** vistas y no una, y el motivo es
-   * el aviso de salida con cambios sin guardar: `debeConfirmarSalida` pregunta
-   * por `vista.tipo`, así que un formulario montado adentro de la bandeja se
-   * abandonaría sin decir nada (B-35). `librerias` es la bandeja; `libreria`, su
-   * formulario, con la ficha que se edita o nada si es un alta.
-   *
-   * Las dos montan el **mismo** componente (`LibreriasPanel`), que es lo que
-   * mantiene viva la suscripción a la colección al abrir y cerrar el formulario:
-   * volver a la bandeja no cuesta una lectura nueva.
-   */
-  | { tipo: 'librerias' }
-  | { tipo: 'libreria'; ficha?: LibreriaConId }
-  /*
-   * B-832 — la Guía, segunda entidad. Dos vistas por el mismo motivo que las de
-   * librerías, y montando el mismo componente: así la suscripción a la colección
-   * sigue viva mientras el formulario está abierto.
-   */
-  | { tipo: 'suscripciones' }
-  | { tipo: 'suscripcion'; ficha?: SuscripcionLiterariaConId }
-  /*
-   * B-833 — la Guía, tercera entidad. Dos vistas por el mismo motivo que las de
-   * los otros dos directorios, y montando el mismo componente: así la suscripción
-   * a la colección sigue viva mientras el formulario está abierto.
-   */
-  | { tipo: 'lugares' }
-  | { tipo: 'lugar'; ficha?: LugarConId }
-  /*
-   * B-960 — la Guía, cuarta entidad. Dos vistas por el mismo motivo que las
-   * otras tres, y montando el mismo componente: así la suscripción a la
-   * colección sigue viva mientras el formulario está abierto.
-   */
-  | { tipo: 'bibliotecas' }
-  | { tipo: 'biblioteca'; ficha?: BibliotecaConId }
-  /*
-   * B-959 — las efemérides. Dos vistas por el mismo motivo que las de la Guía
-   * (el aviso de salida, B-35), montando el mismo componente para que la
-   * suscripción a la colección siga viva con el formulario abierto.
-   */
-  | { tipo: 'efemerides' }
-  | { tipo: 'efemeride'; efemeride?: EfemerideConId }
-  /*
-   * B-1230 — el borrador del correo semanal. No lleva estado y **no lee
-   * Firestore**: se arma con el `/events.json` publicado (D-801), así que es la
-   * única vista del panel que no depende de la sesión más que para llegar.
-   */
-  | { tipo: 'boletin' };
-
-/**
- * B-09 — carga diferida del panel autenticado.
- *
- * El listado y el formulario son los que arrastran el SDK de Firestore
- * (`@/lib/firestore-client`) y, con él, la mitad del bundle. Nadie los ve antes
- * de loguearse ni sin el claim `admin`, así que se cargan por `import()`: la
- * pantalla de login baja solo React + `firebase/auth`.
- *
- * El `Suspense` va acá adentro a propósito: así los puntos de uso del JSX no
- * cambian y el diff queda contenido en este bloque.
- */
-const diferido = <P extends object>(
-  cargar: () => Promise<{ default: (props: P) => ReactNode }>,
-): ComponentType<P> => {
-  const Cargado = lazy(cargar);
-  return (props: P) => (
-    /*
-     * `SiNoCarga` envuelve el `Suspense` y no al revés — reporte del 2026-09-07.
-     * Una pestaña abierta desde antes de un deploy apunta a chunks que Hosting ya
-     * borró, y un `import()` que falla adentro de `lazy` tira hacia arriba: sin
-     * este límite, React desmonta el árbol y **el panel queda en blanco**, sin
-     * mensaje y sin nada que tocar.
-     *
-     * Va acá, en el helper, y así cubre de una las ocho vistas que pasan por él.
-     * Las otras dos puertas de carga del panel llevan el suyo: la subida de
-     * imágenes con un `try` propio —ahí el error no pasa por el render— y el
-     * centro de ayuda, que se monta desde el encabezado y desde cada sección del
-     * formulario, o sea **fuera** de este helper. Esa última quedó sin límite hasta
-     * que los auditores la encontraron, y hoy lo verifica un chequeo de clase.
-     */
-    <SiNoCarga>
-      <Suspense fallback={<p className="p-8 text-sm text-tinta/65">Cargando…</p>}>
-        <Cargado {...props} />
-      </Suspense>
-    </SiNoCarga>
-  );
-};
-
-// Los props salen del componente real vía `import type` (se borra al compilar,
-// no genera import en runtime). Hay que anotarlos explícitamente: dentro de un
-// `.then()` TypeScript no puede inferir `P`.
-const ListaActividades = diferido<Parameters<typeof TipoLista>[0]>(() =>
-  import('@/components/admin/ListaActividades').then((m) => ({ default: m.ListaActividades })),
-);
-
-const ActividadFormulario = diferido<Parameters<typeof TipoFormulario>[0]>(() =>
-  import('@/components/admin/ActividadFormulario').then((m) => ({
-    default: m.ActividadFormulario,
-  })),
-);
-
-// Diferido igual que las otras dos vistas: ReportesPanel lee y escribe
-// /reportes, así que arrastra Firestore. Estático devolvería el SDK al chunk
-// del login y desharía el corte de B-09.
-const ReportesPanel = diferido<Parameters<typeof TipoReportes>[0]>(() =>
-  import('@/components/admin/ReportesPanel').then((m) => ({ default: m.ReportesPanel })),
-);
-
-// Diferida por la misma razón que las otras vistas: lee /actividades, así que
-// arrastra Firestore y no puede volver al chunk del login (B-09, D-51).
-const CalendarioActividades = diferido<Parameters<typeof TipoCalendario>[0]>(() =>
-  import('@/components/admin/CalendarioActividades').then((m) => ({
-    default: m.CalendarioActividades,
-  })),
-);
-
-// B-40 — ídem, y con una razón de más: es la vista menos usada del panel
-// (recuperar un campo pisado es una operación rara), así que es justo la que no
-// tiene por qué viajar en el chunk que se baja para mostrar "Entrar con Google".
-const HistorialActividad = diferido<Parameters<typeof TipoHistorial>[0]>(() =>
-  import('@/components/admin/HistorialActividad').then((m) => ({
-    default: m.HistorialActividad,
-  })),
-);
-
-// B-170 — ídem: la administración de taxonomías se abre poco y el contador de
-// pendientes que lleva al lado importa Firestore, así que ninguno de los dos
-// tiene por qué viajar en el chunk del login.
-const TaxonomiasPanel = diferido<object>(() =>
-  import('@/components/admin/taxonomias/TaxonomiasPanel').then((m) => ({
-    default: m.TaxonomiasPanel,
-  })),
-);
-
-// B-370 — ídem: el tablero lee /actividades, así que arrastra Firestore. Y es
-// además la pantalla que se abre de a ratos y no en cada carga, así que es justo
-// la que no tiene por qué viajar en el chunk del login (B-09, D-51, B-117).
-const EstadisticasPanel = diferido<Parameters<typeof TipoEstadisticas>[0]>(() =>
-  import('@/components/admin/EstadisticasPanel').then((m) => ({
-    default: m.EstadisticasPanel,
-  })),
-);
-
-// Diferida por lo mismo que las otras vistas: la bandeja lee y escribe
-// `/propuestas`, así que arrastra Firestore (B-09, D-51).
-const PropuestasPanel = diferido<Parameters<typeof TipoPropuestas>[0]>(() =>
-  import('@/components/admin/PropuestasPanel').then((m) => ({ default: m.PropuestasPanel })),
-);
-
-// Diferida por lo mismo que las otras vistas: la pantalla lee y escribe
-// `/librerias`, así que arrastra Firestore (B-09, D-51). Y arrastra además el
-// editor de galería, que trae `firebase/storage`.
-const LibreriasPanel = diferido<Parameters<typeof TipoLibrerias>[0]>(() =>
-  import('@/components/admin/LibreriasPanel').then((m) => ({ default: m.LibreriasPanel })),
-);
-
-// Diferida por lo mismo que las otras vistas: lee y escribe `/suscripciones`,
-// así que arrastra Firestore (B-09, D-51), y con el editor de galería arrastra
-// además `firebase/storage`.
-const SuscripcionesPanel = diferido<Parameters<typeof TipoSuscripciones>[0]>(() =>
-  import('@/components/admin/SuscripcionesPanel').then((m) => ({
-    default: m.SuscripcionesPanel,
-  })),
-);
-
-// Diferida por lo mismo que las otras vistas: lee y escribe `/lugares`, así que
-// arrastra Firestore (B-09, D-51), y con el editor de galería arrastra además
-// `firebase/storage`.
-const LugaresPanel = diferido<Parameters<typeof TipoLugares>[0]>(() =>
-  import('@/components/admin/LugaresPanel').then((m) => ({ default: m.LugaresPanel })),
-);
-
-// Diferida por lo mismo que las otras vistas: lee y escribe `/bibliotecas`, así
-// que arrastra Firestore (B-09, D-51), y con el editor de galería arrastra
-// además `firebase/storage`.
-const BibliotecasPanel = diferido<Parameters<typeof TipoBibliotecas>[0]>(() =>
-  import('@/components/admin/BibliotecasPanel').then((m) => ({ default: m.BibliotecasPanel })),
-);
-
-// Diferida por lo mismo que las otras vistas: lee y escribe `/efemerides`, así
-// que arrastra Firestore (B-09, D-51).
-const EfemeridesPanel = diferido<Parameters<typeof TipoEfemerides>[0]>(() =>
-  import('@/components/admin/EfemeridesPanel').then((m) => ({ default: m.EfemeridesPanel })),
-);
-
-/*
- * B-1230 — diferida como las otras vistas, aunque el motivo de siempre no
- * aplique: esta pantalla **no** arrastra Firestore (lee el `events.json` con un
- * `fetch`). Lo que sí arrastra es el armador del correo con sus dos renders, y
- * es la vista que se abre una vez por semana: no tiene por qué viajar en el
- * chunk que se baja para mostrar «Entrar con Google» (B-09, D-51, B-117).
- */
-const BoletinPanel = diferido<object>(() =>
-  import('@/components/admin/BoletinPanel').then((m) => ({ default: m.BoletinPanel })),
-);
-
-const PropuestasBadge = diferido<object>(() =>
-  import('@/components/admin/PropuestasBadge').then((m) => ({ default: m.PropuestasBadge })),
-);
-
-const PendientesBadge = diferido<object>(() =>
-  import('@/components/admin/taxonomias/PendientesBadge').then((m) => ({
-    default: m.PendientesBadge,
-  })),
-);
 
 /**
  * Cerrar sesión se lleva los borradores del navegador (B-191).
@@ -375,8 +115,9 @@ const ANCHO_COMPLETO = 'max-w-[100rem]';
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
- * El router es propio y mínimo: lista, nueva, editar, duplicar, reportes y
- * calendario.
+ * El router es propio y mínimo: este componente es el chasis —sesión, estado
+ * que sobrevive al cambio de vista, encabezado— y la pantalla de cada vista la
+ * monta `pantallas/PantallaDelPanel.tsx` (M-17).
  */
 export function AdminApp() {
   const [usuario, setUsuario] = useState<User | null>(null);
@@ -475,17 +216,7 @@ export function AdminApp() {
    * el calendario devolvía al listado y se perdía el mes que se estaba
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
-  const [volverA, setVolverA] = useState<
-    | 'lista'
-    | 'calendario'
-    | 'estadisticas'
-    | 'propuestas'
-    | 'librerias'
-    | 'suscripciones'
-    | 'lugares'
-    | 'bibliotecas'
-    | 'efemerides'
-  >('lista');
+  const [volverA, setVolverA] = useState<DestinoDeVolver>('lista');
 
   /**
    * B-177 — las etiquetas nuevas que el último guardado no llegó a registrar.
@@ -744,59 +475,7 @@ export function AdminApp() {
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-xl font-semibold">
-            {vista.tipo === 'lista'
-              ? 'Actividades'
-              : vista.tipo === 'nueva'
-                ? 'Nueva actividad'
-                : vista.tipo === 'duplicar'
-                  ? `Copia de ${vista.tituloOrigen}`
-                  : vista.tipo === 'reportes'
-                    ? 'Bugs y sugerencias'
-                    : vista.tipo === 'calendario'
-                      ? 'Calendario'
-                      : vista.tipo === 'historial'
-                        ? `Historial de ${vista.actividad.titulo}`
-                        : vista.tipo === 'taxonomias'
-                          ? 'Opciones de los desplegables'
-                          : vista.tipo === 'estadisticas'
-                            ? 'Estado del catálogo'
-                            : vista.tipo === 'boletin'
-                              ? 'Correo semanal'
-                            : vista.tipo === 'propuestas'
-                              ? 'Propuestas'
-                            : vista.tipo === 'librerias'
-                              ? 'Librerías'
-                            : vista.tipo === 'libreria'
-                              ? vista.ficha
-                                ? vista.ficha.nombre
-                                : 'Librería nueva'
-                            : vista.tipo === 'suscripciones'
-                              ? 'Suscripciones'
-                            : vista.tipo === 'suscripcion'
-                              ? vista.ficha
-                                ? vista.ficha.nombre
-                                : 'Suscripción nueva'
-                            : vista.tipo === 'lugares'
-                              ? 'Lugares'
-                            : vista.tipo === 'lugar'
-                              ? vista.ficha
-                                ? vista.ficha.nombre
-                                : 'Lugar nuevo'
-                            : vista.tipo === 'bibliotecas'
-                              ? 'Bibliotecas'
-                            : vista.tipo === 'biblioteca'
-                              ? vista.ficha
-                                ? vista.ficha.nombre
-                                : 'Biblioteca nueva'
-                            : vista.tipo === 'efemerides'
-                              ? 'Efemérides'
-                            : vista.tipo === 'efemeride'
-                              ? vista.efemeride
-                                ? vista.efemeride.titulo
-                                : 'Efeméride nueva'
-                              : vista.tipo === 'convertir'
-                                ? `Propuesta de ${vista.tituloOrigen}`
-                                : vista.actividad.titulo}
+            {tituloDeLaVista(vista)}
           </h1>
           <p className="truncate text-xs text-tinta/65">{usuario.email}</p>
           {/*
@@ -1021,243 +700,27 @@ export function AdminApp() {
         onCerrar={() => setEtiquetasSinRegistrar([])}
       />
 
-      {vista.tipo === 'lista' && (
-        <ListaActividades
-          filtros={filtros}
-          setFiltros={setFiltros}
-          orden={orden}
-          setOrden={setOrden}
-          version={version}
-          onNueva={() => {
-            setVolverA('lista');
-            setEtiquetasSinRegistrar([]);
-            setVista({ tipo: 'nueva' });
-          }}
-          onEditar={(a) => {
-            // Se resetea acá y no solo se setea en el calendario: si no, la
-            // preferencia queda pegada y una edición desde el listado
-            // devolvería al calendario.
-            setVolverA('lista');
-            setEtiquetasSinRegistrar([]);
-            setVista({ tipo: 'editar', actividad: a });
-          }}
-          onDuplicar={(copia, tituloOrigen) => {
-            setVolverA('lista');
-            setEtiquetasSinRegistrar([]);
-            setVista({ tipo: 'duplicar', copia, tituloOrigen });
-          }}
-          uid={usuario.uid}
-          rol={rol}
-          ciudad={ciudad}
-          onHistorial={(a) => {
-            setVolverA('lista');
-            setVista({ tipo: 'historial', actividad: a });
-          }}
-        />
-      )}
-
-      {vista.tipo === 'historial' && (
-        <HistorialActividad
-          actividad={vista.actividad}
-          uid={usuario.uid}
-          // Restaurar es una edición del documento: el listado tiene que
-          // releerlo, igual que después de guardar el formulario.
-          onRestaurado={() => setVersion((v) => v + 1)}
-        />
-      )}
-
-      {vista.tipo === 'calendario' && (
-        <CalendarioActividades
-          version={version}
-          rol={rol}
-          uid={usuario.uid}
-          ciudad={ciudad}
-          onEditar={(a) => {
-            setVolverA('calendario');
-            setEtiquetasSinRegistrar([]);
-            setVista({ tipo: 'editar', actividad: a });
-          }}
-        />
-      )}
-
-      {vista.tipo === 'taxonomias' && <TaxonomiasPanel />}
-
-      {vista.tipo === 'estadisticas' && (
-        <EstadisticasPanel
-          onEditar={(a) => {
-            // Vuelve al tablero y no al listado, con el mismo criterio que el
-            // calendario: se llegó acá desde un aviso, y lo más probable es que
-            // haya más de uno para atender en la misma sentada.
-            setVolverA('estadisticas');
-            setEtiquetasSinRegistrar([]);
-            setVista({ tipo: 'editar', actividad: a });
-          }}
-        />
-      )}
-
-      {vista.tipo === 'boletin' && <BoletinPanel />}
-
-      {vista.tipo === 'reportes' && (
-        <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />
-      )}
-
-      {vista.tipo === 'propuestas' && (
-        <PropuestasPanel
-          usuario={{ uid: usuario.uid }}
-          onConvertir={(c: Conversion) => {
-            // Vuelve a la bandeja y no al listado: se llegó acá desde ahí y lo
-            // más probable es que haya más de una para atender en la misma
-            // sentada (mismo criterio que el tablero).
-            setVolverA('propuestas');
-            setEtiquetasSinRegistrar([]);
-            setFalloAlAceptar(null);
-            setVista({
-              tipo: 'convertir',
-              copia: c.copia,
-              tituloOrigen: c.tituloOrigen,
-              avisos: c.avisos,
-              imagenNoPromovida: c.imagenNoPromovida,
-              alGuardar: c.alGuardar,
-            });
-          }}
-        />
-      )}
-
-      {/*
-        B-901 — las dos vistas montan el mismo componente a propósito: así la
-        suscripción a `/librerias` sigue viva mientras el formulario está abierto
-        y volver a la bandeja no cuesta una lectura nueva.
-      */}
-      {(vista.tipo === 'librerias' || vista.tipo === 'libreria') && (
-        <LibreriasPanel
-          usuario={{ uid: usuario.uid }}
-          editando={
-            vista.tipo === 'libreria' ? (vista.ficha ?? 'nueva') : null
-          }
-          onAbrirFormulario={(ficha) => {
-            // Vuelve a la bandeja y no al listado: se llegó acá desde ahí, y lo
-            // más probable es que haya más de una ficha que atender en la misma
-            // sentada (mismo criterio que la bandeja de propuestas).
-            setVolverA('librerias');
-            setVista({ tipo: 'libreria', ficha });
-          }}
-          onGuardado={() => setVista({ tipo: 'librerias' })}
-          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
-        />
-      )}
-
-      {/* B-833 — ídem para los lugares para eventos. */}
-      {(vista.tipo === 'lugares' || vista.tipo === 'lugar') && (
-        <LugaresPanel
-          usuario={{ uid: usuario.uid }}
-          editando={vista.tipo === 'lugar' ? (vista.ficha ?? 'nueva') : null}
-          onAbrirFormulario={(ficha) => {
-            setVolverA('lugares');
-            setVista({ tipo: 'lugar', ficha });
-          }}
-          onGuardado={() => setVista({ tipo: 'lugares' })}
-          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
-        />
-      )}
-
-      {/* B-960 — ídem para las bibliotecas, el cuarto directorio. */}
-      {(vista.tipo === 'bibliotecas' || vista.tipo === 'biblioteca') && (
-        <BibliotecasPanel
-          usuario={{ uid: usuario.uid }}
-          editando={vista.tipo === 'biblioteca' ? (vista.ficha ?? 'nueva') : null}
-          onAbrirFormulario={(ficha) => {
-            setVolverA('bibliotecas');
-            setVista({ tipo: 'biblioteca', ficha });
-          }}
-          onGuardado={() => setVista({ tipo: 'bibliotecas' })}
-          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
-        />
-      )}
-
-      {/* B-959 — las efemérides: la lista y su formulario, en el mismo componente. */}
-      {(vista.tipo === 'efemerides' || vista.tipo === 'efemeride') && (
-        <EfemeridesPanel
-          usuario={{ uid: usuario.uid }}
-          editando={vista.tipo === 'efemeride' ? (vista.efemeride ?? 'nueva') : null}
-          onAbrirFormulario={(efemeride) => {
-            setVolverA('efemerides');
-            setVista({ tipo: 'efemeride', efemeride });
-          }}
-          onGuardado={() => setVista({ tipo: 'efemerides' })}
-          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
-        />
-      )}
-
-      {/* B-832 — ídem para las suscripciones literarias. */}
-      {(vista.tipo === 'suscripciones' || vista.tipo === 'suscripcion') && (
-        <SuscripcionesPanel
-          usuario={{ uid: usuario.uid }}
-          editando={vista.tipo === 'suscripcion' ? (vista.ficha ?? 'nueva') : null}
-          onAbrirFormulario={(ficha) => {
-            setVolverA('suscripciones');
-            setVista({ tipo: 'suscripcion', ficha });
-          }}
-          onGuardado={() => setVista({ tipo: 'suscripciones' })}
-          onCancelar={() => salirDe(() => setVista(destinoDeVolver()))}
-        />
-      )}
-
-      {(vista.tipo === 'nueva' ||
-        vista.tipo === 'editar' ||
-        vista.tipo === 'duplicar' ||
-        vista.tipo === 'convertir') && (
-        <ActividadFormulario
-          uid={usuario.uid}
-          rol={rol}
-          /*
-           * B-919 — **solo al editar.** Crear y duplicar nacen con `createdBy`
-           * propio, así que son escrituras que la regla acepta; lo que puede ser
-           * de otro es lo que se abre desde el listado. La misma función que
-           * decide si la fila muestra «Ver» o «Editar», para que las dos
-           * pantallas no puedan contestar distinto (B-175).
-           */
-          soloLectura={
-            vista.tipo === 'editar' && esSoloLectura(rol, vista.actividad, usuario.uid)
-          }
-          // B-921 — dónde puede cargar: `''` para el admin y el publicador general.
-          ciudad={ciudad}
-          vistaDelPanel={vistaDelPanel}
-          formatoDeHora={formatoDeHora}
-          inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
-          copia={
-            vista.tipo === 'duplicar' || vista.tipo === 'convertir' ? vista.copia : undefined
-          }
-          tituloOrigen={
-            vista.tipo === 'duplicar' || vista.tipo === 'convertir'
-              ? vista.tituloOrigen
-              : undefined
-          }
-          origenDeLaCopia={vista.tipo === 'convertir' ? 'propuesta' : 'duplicado'}
-          avisos={vista.tipo === 'convertir' ? vista.avisos : undefined}
-          imagenNoPromovida={vista.tipo === 'convertir' ? vista.imagenNoPromovida : null}
-          onCancelar={() => salirDe(() => setVista({ tipo: volverA }))}
-          onGuardado={(id, sinRegistrar) => {
-            setVersion((v) => v + 1);
-            setEtiquetasSinRegistrar(sinRegistrar ?? []);
-            /*
-             * D-600, segundo movimiento: la actividad ya existe, así que ahora
-             * —y solo ahora— la propuesta pasa a `aceptada` con su id. No se
-             * espera para cambiar de vista: el guardado ya salió y dejar el
-             * formulario montado mientras viaja un `update` no aporta nada.
-             */
-            if (vista.tipo === 'convertir') {
-              void vista.alGuardar(id).catch((e: unknown) => {
-                setFalloAlAceptar(
-                  'La actividad se guardó, pero la propuesta quedó sin marcar como aceptada' +
-                    ` (${e instanceof Error ? e.message : 'error desconocido'}).` +
-                    ' Marcala a mano desde la bandeja: si no, se convierte dos veces.',
-                );
-              });
-            }
-            setVista({ tipo: volverA });
-          }}
-        />
-      )}
+      <PantallaDelPanel
+        vista={vista}
+        usuario={usuario}
+        rol={rol}
+        ciudad={ciudad}
+        vistaDelPanel={vistaDelPanel}
+        formatoDeHora={formatoDeHora}
+        filtros={filtros}
+        setFiltros={setFiltros}
+        orden={orden}
+        setOrden={setOrden}
+        version={version}
+        setVersion={setVersion}
+        volverA={volverA}
+        setVolverA={setVolverA}
+        setVista={setVista}
+        setEtiquetasSinRegistrar={setEtiquetasSinRegistrar}
+        setFalloAlAceptar={setFalloAlAceptar}
+        salirDe={salirDe}
+        destinoDeVolver={destinoDeVolver}
+      />
     </div>
   );
 }

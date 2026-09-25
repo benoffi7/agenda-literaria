@@ -138,8 +138,10 @@ describe('el chasis del panel respeta la decisión (B-620)', () => {
   it('las vistas a todo ancho existen en el router', () => {
     // Un typo en la lista la volvería inerte sin que nada falle: la vista no
     // matchearía nunca y el panel seguiría angosto.
+    // M-17 — el router es su propio módulo; el contenedor del ancho sigue acá.
+    const ROUTER = fuente('components/admin/pantallas/PantallaDelPanel.tsx');
     for (const vista of VISTAS_A_TODO_ANCHO) {
-      expect(ADMIN_APP, `el router no tiene la vista «${vista}»`).toContain(
+      expect(ROUTER, `el router no tiene la vista «${vista}»`).toContain(
         `vista.tipo === '${vista}'`,
       );
     }

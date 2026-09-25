@@ -56,7 +56,12 @@ describe('cuándo preguntar antes de salir (B-35)', () => {
 });
 
 describe('todas las salidas del panel pasan por el aviso (B-35)', () => {
-  const ADMIN_APP = fuente('components/admin/AdminApp.tsx');
+  // M-17 — las salidas del encabezado viven en el chasis y los «Cancelar» de
+  // cada formulario en el router de pantallas: se cuentan las de los dos.
+  const ADMIN_APP = [
+    fuente('components/admin/AdminApp.tsx'),
+    fuente('components/admin/pantallas/PantallaDelPanel.tsx'),
+  ].join('\n');
 
   it('los nueve caminos que abandonan un formulario están envueltos en salirDe', () => {
     /*

@@ -57,7 +57,8 @@ Leelos: esto es el mapa de dónde vive cada una y **dónde los tests no miran**.
   **Punto ciego real:** el tercer chunk diferido, `ReportesPanel`, no está en
   esa lista, y ningún test frena un `import` estático nuevo en `AdminApp` de un
   módulo que a su vez arrastre `firebase/firestore` (B-117). Si el diff agrega
-  un import estático en `AdminApp.tsx`, `firebase-client.ts`, `PieVersion`,
+  un import estático en `AdminApp.tsx`, `pantallas/` (el router y sus puertas
+  diferidas, M-17), `firebase-client.ts`, `PieVersion`,
   `AvisoVersionNueva` o `ayuda/`, seguí la cadena de imports a mano hasta
   `firebase/firestore` y reportá.
 - **Idempotencia y guardas de entorno en los scripts.** Un script nuevo contra

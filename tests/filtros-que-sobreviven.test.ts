@@ -31,6 +31,9 @@ const fuente = (relativo: string): string =>
 
 const LISTA = 'src/components/admin/ListaActividades.tsx';
 const APP = 'src/components/admin/AdminApp.tsx';
+// M-17 — el listado lo monta el router de pantallas, que recibe los filtros del
+// chasis y se los pasa. La cadena es de dos saltos y se afirman los dos.
+const ROUTER = 'src/components/admin/pantallas/PantallaDelPanel.tsx';
 
 describe('el estado de los filtros no vive donde se desmonta — B-955', () => {
   it('el control positivo: los dos archivos se leen y no están vacíos', () => {
@@ -38,6 +41,7 @@ describe('el estado de los filtros no vive donde se desmonta — B-955', () => {
     // string vacío (B-873).
     expect(fuente(LISTA).length).toBeGreaterThan(1000);
     expect(fuente(APP).length).toBeGreaterThan(1000);
+    expect(fuente(ROUTER).length).toBeGreaterThan(1000);
   });
 
   it('`AdminApp` declara los filtros y el orden', () => {
@@ -60,8 +64,10 @@ describe('el estado de los filtros no vive donde se desmonta — B-955', () => {
 
   it('y `AdminApp` se los pasa: declararlos sin pasarlos sería lo mismo que antes', () => {
     const app = fuente(APP);
+    const router = fuente(ROUTER);
     for (const prop of ['filtros={filtros}', 'setFiltros={setFiltros}', 'orden={orden}', 'setOrden={setOrden}']) {
-      expect(app, `falta ${prop} en el montaje del listado`).toContain(prop);
+      expect(app, `falta ${prop} en el montaje del router`).toContain(prop);
+      expect(router, `falta ${prop} en el montaje del listado`).toContain(prop);
     }
   });
 
@@ -73,7 +79,7 @@ describe('el estado de los filtros no vive donde se desmonta — B-955', () => {
      * algo que dejó de ser un problema. Que se ponga rojo ahí es correcto: hay
      * que venir a releer la decisión.
      */
-    const app = fuente(APP);
-    expect(app).toMatch(/vista\.tipo === 'lista'/);
+    const router = fuente(ROUTER);
+    expect(router).toMatch(/\{vista\.tipo === 'lista' && \(\s*<ListaActividades/);
   });
 });

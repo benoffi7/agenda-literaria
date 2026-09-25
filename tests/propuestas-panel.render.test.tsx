@@ -977,7 +977,14 @@ describe('los otros dos movimientos', () => {
 describe('el segundo movimiento lo dispara el guardado, no el botón (D-600)', () => {
   // `process.cwd()` y no `import.meta.url`: este archivo corre en jsdom, donde
   // `import.meta.url` es una URL `http` y `fileURLToPath` no la puede resolver.
-  const ADMIN_APP = readFileSync(`${process.cwd()}/src/components/admin/AdminApp.tsx`, 'utf8');
+  // M-17 — el chasis son dos archivos: `AdminApp` y el router que monta el
+  // formulario. `alGuardar` tiene que aparecer una sola vez entre los dos.
+  const ADMIN_APP = [
+    'src/components/admin/AdminApp.tsx',
+    'src/components/admin/pantallas/PantallaDelPanel.tsx',
+  ]
+    .map((f) => readFileSync(`${process.cwd()}/${f}`, 'utf8'))
+    .join('\n');
 
   it('`alGuardar` se llama una sola vez, y desde `onGuardado`', () => {
     /*

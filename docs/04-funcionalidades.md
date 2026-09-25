@@ -31,7 +31,9 @@ no ofrecer lo que va a ser rechazado:
 Quién ve qué está en una tabla pura, `PERMISOS` de
 [`src/lib/rolDelPanel.ts`](../src/lib/rolDelPanel.ts), y una pantalla nueva
 **arranca cerrada**: `tests/rol-del-panel.test.ts` deriva la lista de vistas del
-propio `AdminApp` y se pone en rojo si alguna no decidió quién la ve.
+tipo `Vista` del panel (`src/components/admin/pantallas/vista.ts`, el que
+comparten `AdminApp` y el router de pantallas) y se pone en rojo si alguna no
+decidió quién la ve.
 
 **Cada cuenta se registra al entrar** (`/usuarios`, D-650), con el mail de su
 propio ID token. Es lo que le da nombre a las dos cosas de abajo.
