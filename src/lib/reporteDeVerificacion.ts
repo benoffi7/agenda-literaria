@@ -42,6 +42,7 @@
  */
 import {
   causaSinVerificar,
+  debeAvisar,
   estadoDeVerificacion,
   observarVerificacion,
   type CausaSinVerificar,
@@ -74,7 +75,10 @@ export const debeReportar = ({
   estado: EstadoVerificacion;
   haySesion: boolean;
   yaReportado: boolean;
-}): boolean => estado === 'sin-verificar' && haySesion && !yaReportado;
+}): boolean =>
+  // `debeAvisar` y no `=== 'sin-verificar'` a mano: el reporte es del cartel, y
+  // si cambia cuándo va el cartel tiene que cambiar cuándo se reporta.
+  debeAvisar(estado) && haySesion && !yaReportado;
 
 /** Lo que manda el panel: el motivo, y nada más (la Function rechaza cualquier otra clave). */
 export const cuerpoDelReporte = (motivo: CausaSinVerificar): string => JSON.stringify({ motivo });
