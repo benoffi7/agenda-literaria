@@ -429,7 +429,7 @@ describe('los dos plazos coinciden hoy, y son dos decisiones', () => {
      * rojo. Es el único que lo agarra, y por eso existe.
      */
     const declaracion = /export const MARGEN_SIN_TOCAR_MS = ([^;]+);/.exec(
-      fuente('functions/retencion.js'),
+      fuente('functions/retencion-propuestas.js'),
     );
     expect(declaracion, 'no se encontró la declaración de MARGEN_SIN_TOCAR_MS').not.toBeNull();
     expect(declaracion![1]).not.toContain('MARGEN_DE_RETENCION_MS');
@@ -458,7 +458,7 @@ describe('los estados que la query trae salen de la tabla', () => {
      * en el `where`, este caso se pone rojo — que es lo que hace que «poner un
      * número en `aceptada`» alcance para que empiece a caducar.
      */
-    expect(fuente('functions/retencion.js')).toContain(
+    expect(fuente('functions/retencion-propuestas-firestore.js')).toContain(
       ".where('estado', 'in', ESTADOS_QUE_CADUCAN)",
     );
   });
@@ -543,7 +543,7 @@ describe('relojDeRetencion — desde cuándo se cuenta', () => {
  */
 describe('borrarPropuesta — la relectura, después el objeto, después el documento', () => {
   it('el orden está en el fuente y no depende de que nadie lo toque', () => {
-    const src = fuente('functions/retencion.js');
+    const src = fuente('functions/retencion-propuestas-firestore.js');
     const relectura = src.indexOf('db.getAll(ref, { fieldMask: [] })');
     const guarda = src.indexOf("if (!ahora.updateTime.isEqual(visto)) return 'la-tocaron';");
     /*
@@ -586,7 +586,7 @@ describe('borrarPropuesta — la relectura, después el objeto, después el docu
    * todos los de integración siguen verdes.
    */
   it('y la relectura no trae ni un campo del documento', () => {
-    const src = fuente('functions/retencion.js');
+    const src = fuente('functions/retencion-propuestas-firestore.js');
     expect(src).toContain('db.getAll(ref, { fieldMask: [] })');
     expect(src, 'un `ref.get()` traería el contacto del tercero a la memoria').not.toMatch(
       /await ref\.get\(\)/,
@@ -1173,7 +1173,7 @@ describe('decidirFlyeresSinPlazo — qué flyer de `propuestas/` se borra (B-871
      * Son dos decisiones que hoy coinciden.
      */
     const declaracion = /export const MARGEN_DEL_FLYER_EN_VUELO_MS = ([^;]+);/.exec(
-      fuente('functions/retencion.js'),
+      fuente('functions/retencion-flyers.js'),
     );
     expect(declaracion, 'no se encontró la declaración del margen').not.toBeNull();
     expect(declaracion![1]).not.toContain('MARGEN_DE_GRACIA_MS');
@@ -1189,7 +1189,7 @@ describe('decidirFlyeresSinPlazo — qué flyer de `propuestas/` se borra (B-871
      */
     expect(MARGEN_DEL_ORIGINAL_ACEPTADO_MS).toBe(30 * DIA);
     const declaracion = /export const MARGEN_DEL_ORIGINAL_ACEPTADO_MS = ([^;]+);/.exec(
-      fuente('functions/retencion.js'),
+      fuente('functions/retencion-flyers.js'),
     );
     expect(declaracion, 'no se encontró la declaración del plazo').not.toBeNull();
     expect(declaracion![1]).not.toMatch(/MARGEN_/);

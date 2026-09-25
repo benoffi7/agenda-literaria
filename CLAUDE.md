@@ -56,24 +56,21 @@ pierde en el próximo sync. Es el comportamiento esperado.
 
 ### 2.2 Actividad ≠ Encuentro
 
-> ⚠️ **Esta decisión no cambió, y desde B-181 tiene un eje más al lado — ver
-> D-530 en [`docs/06-decisiones.md`](docs/06-decisiones.md).** Un ciclo sigue
-> siendo **una** actividad con N sesiones y sigue sin usar RRULE. Lo que faltaba
-> era poder decir que esas N filas pueden ser **grupos paralelos** en vez de una
-> secuencia: un club que abre cuatro horarios del mismo ciclo tiene cuatro
-> alternativas excluyentes y cada persona va a una sola («un club de lectura puede
-> darte 4 opciones para sumarte. Pero no son 4 encuentros, sino opciones», el
-> dueño). El documento gana `comisiones: [{id, etiqueta}]` y cada sesión un
-> `comisionId`; **la lista de sesiones sigue siendo plana**, que es lo que deja
-> intacto el diff del §7.2. En el panel y en el sitio se llaman «opciones para
-> sumarse»; en el código, `comisiones`, porque `opciones` ya es la taxonomía del
-> §4. El bloque de abajo queda como estaba escrito.
-
 Un club de lectura de 8 encuentros es **una** actividad con **ocho** sesiones en
 un array embebido. No son 8 documentos.
 
 Motivo: en el listado tiene que aparecer una sola tarjeta, y editar "cambió la
 sede" tiene que ser una sola escritura.
+
+**Esas sesiones pueden ser grupos paralelos y no solo una secuencia** (D-530,
+B-181). Un club que abre cuatro horarios del mismo ciclo tiene cuatro
+alternativas excluyentes y cada persona va a una sola («un club de lectura puede
+darte 4 opciones para sumarte. Pero no son 4 encuentros, sino opciones», el
+dueño). El documento lleva `comisiones: [{id, etiqueta}]` y cada sesión un
+`comisionId`; **la lista de sesiones sigue siendo plana**, que es lo que deja
+intacto el diff del §7.2. En el panel y en el sitio se llaman «opciones para
+sumarse»; en el código, `comisiones`, porque `opciones` ya es la taxonomía del
+§4.
 
 **NO usar RRULE / eventos recurrentes de Google Calendar.** Los ciclos literarios
 tienen fechas irregulares (se saltea un feriado, se corre una semana) y cada
@@ -127,40 +124,22 @@ consentimiento, sin tokens que expiran.
 
 ### 3.1 `/actividades/{id}`
 
-> ⚠️ **`sede` ganó un campo y `ciudad` cambió de naturaleza — ver D-710 en
-> [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
-> `{ nombre, direccion, provincia, barrio, ciudad, indicaciones, geo }`, y las
-> **tres** de la geografía son slugs de taxonomía: `ciudad` **dejó de ser texto
-> libre** y `provincia` es nueva, sembrada con las 24 jurisdicciones. La cascada
-> es de **dos** niveles —«provincia → barrio *o* ciudad», porque CABA es ciudad y
-> provincia a la vez y lo que la subdivide es el barrio— y vive entera en
-> `src/lib/geografia.mjs`, que es también donde está la regla de qué se muestra
-> («si es CABA, solo barrio»). En CABA la ciudad **se guarda igual** aunque el
-> formulario no la pregunte: sin ella, `ciudades[]` dejaría a todo CABA fuera del
-> alcance de cualquier publicador. El bloque de abajo queda como estaba escrito.
-
-> ⚠️ **El `imagenUrl` de este bloque ya no es el campo del modelo — ver D-125 en
-> [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
-> `imagenes: Imagen[]`, una **lista** con un flag `portada`, un epígrafe opcional
-> por imagen y —cuando la imagen es propia y no un link de afuera— su
-> `storagePath`, `ancho` y `alto`. **No lo restaures.** El campo único no
-> alcanzaba: una actividad tiene el flyer más las fotos de la edición anterior, y
-> Open Graph necesita **una** de ellas señalada (de ahí `portada`). `imagenUrl`
-> sigue en el tipo marcado `@deprecated` porque los documentos anteriores a
-> B-167 lo tienen y se leen con un default; nada nuevo lo escribe. La forma
-> completa está en [`docs/03-modelo-de-datos.md`](docs/03-modelo-de-datos.md) §
-> «La galería», y las salidas que la consumen son la página de detalle —desde
-> B-296 muestra **todas** las imágenes, no solo la portada— y `/cartelera`.
->
-> El bloque de abajo queda como estaba escrito, para que la entrada de D-125 se
-> lea contra su original.
+Los campos que definen el modelo, con la D que cambió cada uno respecto del
+diseño original; el diseño original queda en esa D y en git. No es la lista
+completa: la forma entera está en
+[`docs/03-modelo-de-datos.md`](docs/03-modelo-de-datos.md).
 
 ```
 tipo: 'taller' | 'club-lectura' | 'encuentro' | 'presentacion' | 'charla'
 titulo: string
 slug: string                    // único, inmutable — ver §7
 descripcion: string
-imagenUrl: string | null        // ← D-125: hoy es `imagenes: Imagen[]`
+imagenes: [{                    // D-125: una lista, no un campo único
+  id, url, epigrafe, textoAlternativo,
+  origen: 'externa' | 'propia',
+  storagePath, ancho, alto,     // solo las propias
+  portada: boolean              // la que usa Open Graph
+}]
 organizador: { nombre, instagram, web }
 tallerista: { nombre, bio, instagram } | null    // o autor invitado
 
@@ -173,13 +152,21 @@ sesiones: [{
   tema: string | null,          // "Cap. 1-4" / "Ejercicio de voz"
   lectura: string | null,
   cancelada: boolean,
-  calendarEventId: string | null
+  motivoCancelacion: string | null,   // D-976
+  calendarEventId: string | null,
+  comisionId: string | null     // D-530
 }]
+comisiones: [{ id, etiqueta }]  // D-530: «opciones para sumarse»
 
 // ── MODALIDAD ────────────────────────────────────
-modalidad: 'presencial' | 'virtual' | 'hibrido'
-sede: { nombre, direccion, barrio, ciudad, indicaciones, geo } | null   // ← D-710: ganó `provincia`, y `ciudad` ya no es texto libre
-online: { plataforma, url, urlPublica: boolean } | null
+modalidades: [{                 // D-130: una fila por lugar
+  id, modalidad: 'presencial' | 'virtual' | 'hibrido',
+  inicio, fin,
+  sede: Sede | null,
+  online: { plataforma, url, urlPublica: boolean } | null
+}]
+// Sede = { nombre, direccion, provincia, barrio, ciudad, indicaciones, geo } — D-710
+modalidad, sede, online, ciudades   // derivados de `modalidades`, los escribe el guardado
 
 // ── INSCRIPCIÓN ──────────────────────────────────
 inscripcion: {
@@ -224,6 +211,27 @@ createdBy, updatedBy: string    // uid
 ```
 
 ### 3.2 Notas del modelo
+
+**`imagenes` es una lista porque un campo único no alcanzaba** (D-125): una
+actividad tiene el flyer más las fotos de la edición anterior, y Open Graph
+necesita **una** de ellas señalada, que es la `portada`. La página de detalle
+muestra todas (B-296) y `/cartelera` usa la portada. El `imagenUrl` de antes de
+B-167 sigue en el tipo marcado `@deprecated` porque los documentos viejos lo
+tienen y se leen con un default; nada nuevo lo escribe.
+
+**Una actividad puede cursarse en más de un lugar** (D-130, B-224): presencial
+los martes y por Meet los jueves son dos filas de `modalidades`. `modalidad`,
+`sede`, `online` y `ciudades` siguen en el documento como **derivados** —la unión
+de las filas, la primera sede, el primer bloque online, las ciudades de todas—,
+porque hay salidas y una regla que solo pueden decir una cosa.
+
+**La geografía es «provincia → barrio *o* ciudad», y las tres son slugs de
+taxonomía** (D-710). CABA es ciudad y provincia a la vez y lo que la subdivide es
+el barrio; `provincia` viene sembrada con las 24 jurisdicciones. La cascada y la
+regla de qué se muestra («si es CABA, solo barrio») viven enteras en
+`src/lib/geografia.mjs`. En CABA la ciudad **se guarda igual** aunque el
+formulario no la pregunte: sin ella, `ciudades[]` dejaría a todo CABA fuera del
+alcance de cualquier publicador.
 
 **`categoria`/`tipo` único + `tags` array no es redundante.** Firestore permite
 un solo `array-contains-any` por query. Si todo va en `tags`, no se pueden cruzar
@@ -361,20 +369,17 @@ de trabajo o publicar un `wa.me` con mensaje precargado.
 
 ### 5.2 Proyección
 
-> ⚠️ **Dos campos de este bloque ya no son lo que dice, y el criterio sí.**
-> `imagenUrl` es hoy `imagenes` (D-125, ver el aviso del §3.1). Y `sede` sigue
-> existiendo pero pasó a ser un **derivado** —«la primera fila que tenga sede»—:
-> la lista real es `modalidades[]`, una fila por lugar, porque una actividad
-> puede ser presencial los martes y por Meet los jueves (**D-130**, B-224). La
-> proyección de verdad está en `src/lib/toPublic.ts` y sigue siendo una
-> **whitelist**, que es lo que este bloque decide y lo que no se toca: si un
-> campo nuevo no se agrega a mano, no sale. El bloque queda como estaba escrito.
+La proyección es una **whitelist**: si un campo nuevo no se agrega a mano, no
+sale. Vive en `src/lib/toPublic.ts`, y su forma es ésta (recortada; los nombres
+son los de hoy, con `imagenes` por D-125 y `modalidades` por D-130):
 
 ```js
 const toPublic = (a) => ({
-  ...pick(a, ['titulo','slug','tipo','descripcion','imagenUrl','modalidad',
-              'sede','tags','destacado','searchText','arancel','organizador',
-              'tallerista','esCiclo']),
+  ...pick(a, ['titulo','slug','tipo','descripcion','modalidad','sede','tags',
+              'destacado','searchText','arancel','organizador','tallerista',
+              'esCiclo']),
+  imagenes: a.imagenes.map(imagenPublica),        // sin storagePath
+  modalidades: a.modalidades.map(modalidadPublica), // la sede de cada fila; el link, nunca
   sesiones: a.sesiones.map(s =>
     pick(s, ['id','inicio','fin','tema','lectura','cancelada'])),
   inscripcion: {
@@ -395,18 +400,10 @@ const toPublic = (a) => ({
 
 ### 5.3 Reglas de Firestore
 
-> ⚠️ **La regla de lectura de `/actividades` de este bloque se cambió — ver D-128
-> en [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
-> `allow read: if esAdmin();`. **No la restaures.** El `allow read` condicionado a
-> `estado == 'publicado'` filtraba: una regla de Firestore es todo-o-nada por
-> documento, así que autorizaba entregar el documento **entero** —link de la
-> reunión, `difusion`, uids, `storagePath`— y no la vista de `toPublic`. Se
-> reprodujo contra el emulador el 2026-08-27. El bloque de abajo queda como
-> estaba escrito, para que la entrada de D-128 se lea contra su original.
-
 ```js
 match /actividades/{id} {
-  allow read:  if resource.data.estado == 'publicado';   // ← D-128: hoy es esAdmin()
+  allow read:  if esAdmin()                        // D-128
+              || (esPublicador() && /* lo suyo o de su ciudad */ …);   // D-690
   allow write: if request.auth.token.admin == true;
 }
 match /opciones/{campo} {
@@ -415,16 +412,23 @@ match /opciones/{campo} {
 }
 ```
 
+**Ningún anónimo lee `/actividades`** (D-128): lo lee el admin, y el
+publicador dentro de su alcance —lo que cargó él, o lo de su ciudad (D-690)—.
+El diseño original permitía la lectura anónima de lo publicado, y eso filtraba:
+una regla de Firestore es todo-o-nada por documento, así que entregaba el
+documento **entero** —link de la reunión, `difusion`, uids, `storagePath`— y no
+la vista de `toPublic`. Se reprodujo contra el emulador el 2026-08-27. **No la
+restaures:** lo público sale por el build (§2.4), nunca por una lectura directa.
+
 El custom claim se setea una vez con el Admin SDK desde un script local:
 `setCustomUserClaims(uid, { admin: true })`.
 
-**Ojo:** `allow read` con condición sobre `resource.data` obliga a que toda query
-pública incluya `where('estado','==','publicado')`, si no Firestore rechaza la
-query entera. Con el enfoque de JSON estático casi no afecta, pero tenerlo
-presente si se agrega alguna lectura en vivo. (Es la trampa 7 del §13, y con
-D-128 dejó de aplicar a `/actividades`: sin lectura anónima, no hay query pública
-que se rechace. `/opciones/*` sigue con `allow read: if true` y no tiene
-condición, así que tampoco.)
+**Ojo:** un `allow read` con condición sobre `resource.data` obliga a que toda
+query incluya esa condición en su `where`, si no Firestore rechaza la query
+entera (la trampa 7 del §13). Con D-128 dejó de aplicar a `/actividades`: sin
+lectura anónima, no hay query pública que se rechace. `/opciones/*` tiene
+`allow read: if true`, sin condición, así que tampoco. Vuelve a importar el día
+que una colección abra la lectura con una condición.
 
 ### 5.4 `firebase-admin` nunca al cliente
 
@@ -494,10 +498,11 @@ for (const [id, s] of antes)
 
 // nuevas y modificadas
 for (const [id, s] of ahora) {
-  if (s.cancelada || after.estado !== 'publicado') {
+  if (after.estado !== 'publicado') {
     if (s.calendarEventId) await del(s.calendarEventId);
     continue;
   }
+  // una sesión cancelada NO se borra: se actualiza a «CANCELADO — …» (§7.3, D-975)
   const prev = antes.get(id);
   if (!prev?.calendarEventId) s.calendarEventId = await insert(build(after, s));
   else if (cambio(prev, s, before, after)) await update(prev.calendarEventId, build(after, s));
@@ -513,19 +518,14 @@ encuentros en vez de uno.
 salen de ambos: fecha y tema de la sesión, título y sede de la actividad. Un
 cambio de sede tiene que actualizar las 8 sesiones.
 
-### 7.3 Estados que borran del calendario
+### 7.3 Qué borra del calendario y qué no
 
-> ⚠️ **La segunda línea de este bloque se cambió — ver D-975 en
-> [`docs/06-decisiones.md`](docs/06-decisiones.md).** Desde B-98 (aprobado por el
-> dueño el 2026-08-26, construido el 2026-09-24), `sesion.cancelada === true`
-> **ya no borra** el evento: lo **actualiza** a «CANCELADO — …» con el motivo arriba
-> de la descripción (`motivoCancelacion`, D-976), así quien lo tenía agendado se
-> entera. Borrar la fila del encuentro sí borra su evento, y la primera línea
-> (despublicar la actividad borra todos) no cambió. **No lo restaures.** El bloque
-> de abajo queda como estaba escrito.
-
-- `estado !== 'publicado'` (borrador, pendiente, cancelado) → borrar todos los eventos
-- `sesion.cancelada === true` → borrar ese evento
+- `estado !== 'publicado'` (borrador, pendiente, cancelado) → borrar todos los eventos.
+- Borrar la fila de un encuentro → borrar ese evento.
+- `sesion.cancelada === true` → **no se borra**: el evento se **actualiza** a
+  «CANCELADO — …» con el motivo (`motivoCancelacion`, D-976) arriba de la
+  descripción, así quien lo tenía agendado se entera (D-975, B-98). Cancelar es
+  un anuncio; borrar es una corrección. **No lo restaures.**
 
 ### 7.4 Construcción del evento
 

@@ -20,16 +20,19 @@
  * YAML.
  *
  * ── La lista NO se mantiene acá ───────────────────────────────────
- * Los archivos que disparan cada auditor se **derivan del `description` de su
- * propia definición** en `.claude/agents/<name>.md`, que es el lugar donde ya
- * estaban escritos y el que decide si Claude lo invoca solo. Copiarlos acá
- * habría creado un tercer lugar que se queda viejo sin que nada falle — la
- * clase de B-88, y exactamente el modo de falla que B-216 vino a cerrar para la
- * cuenta de salidas públicas.
+ * Los archivos que disparan cada auditor se **derivan de su propia ficha** en
+ * `.claude/agents/<name>.md`: del `description` y, si la ficha lo tiene, del
+ * bloque del cuerpo entre `<!-- disparadores:inicio -->` y
+ * `<!-- disparadores:fin -->`. Copiarlos acá habría creado un tercer lugar que
+ * se queda viejo sin que nada falle — la clase de B-88, y exactamente el modo
+ * de falla que B-216 vino a cerrar para la cuenta de salidas públicas.
  *
- * Consecuencia buscada: una salida nueva se suma al `description` (que es lo
- * que ya pide `docs/07-seguridad.md`) y **entra sola** a este disparador.
- * `tests/auditores-que-corresponden.test.ts` ata las dos puntas.
+ * El bloque existe por el `auditor-privacidad` (decisión B del PRD 6): sus
+ * ~130 rutas vivían en el `description`, que va al prompt de **cada** sesión,
+ * y el disparo ya no depende de que Claude lo despierte por nombre de archivo
+ * sino de `/audit` (D-560). Una salida nueva se suma al bloque y **entra sola**
+ * a este disparador; `tests/auditores-que-corresponden.test.ts` ata las dos
+ * puntas.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -119,6 +122,36 @@ export const rutasQueNombra = (descripcion) => {
   return { archivos: [...archivos].sort(), prefijos: [...prefijos].sort() };
 };
 
+/** Los marcadores del bloque de disparadores en el cuerpo de una ficha. */
+export const INICIO_DEL_BLOQUE = '<!-- disparadores:inicio -->';
+export const FIN_DEL_BLOQUE = '<!-- disparadores:fin -->';
+
+/**
+ * El texto de una ficha que declara sus disparadores: el `description` más el
+ * bloque del cuerpo, si hay. Una ficha sin frontmatter válido devuelve `''`: un
+ * agente con el YAML roto no carga (B-139), así que no hay a quién despertar,
+ * aunque el cuerpo nombre rutas.
+ *
+ * @param {string} ficha el contenido entero del `.md`
+ * @returns {string}
+ */
+export const declaracionDeLaFicha = (ficha) => {
+  const claves = frontmatter(ficha);
+  if (!claves.name && !claves.description) return '';
+  const desde = ficha.indexOf(INICIO_DEL_BLOQUE);
+  const hasta = desde === -1 ? -1 : ficha.indexOf(FIN_DEL_BLOQUE, desde);
+  const bloque = hasta === -1 ? '' : ficha.slice(desde + INICIO_DEL_BLOQUE.length, hasta);
+  return `${claves.description ?? ''}\n${bloque}`;
+};
+
+/**
+ * Las rutas que una ficha declara mirar, del `description` y del bloque.
+ *
+ * @param {string} ficha
+ * @returns {{ archivos: string[], prefijos: string[] }}
+ */
+export const rutasDeLaFicha = (ficha) => rutasQueNombra(declaracionDeLaFicha(ficha));
+
 /**
  * ¿La ruta cae en lo que ese agente declaró mirar?
  *
@@ -142,7 +175,7 @@ export const auditoresQueCorresponden = (rutas, fichas) => {
   const salida = {};
   for (const auditor of Object.keys(AUDITORES)) {
     const ficha = fichas[auditor];
-    const nombradas = ficha ? rutasQueNombra(frontmatter(ficha).description ?? '') : { archivos: [], prefijos: [] };
+    const nombradas = ficha ? rutasDeLaFicha(ficha) : { archivos: [], prefijos: [] };
     const disparadores = rutas.filter((r) => cae(r, nombradas)).sort();
     salida[auditor] = {
       corresponde: SIEMPRE.includes(auditor) || disparadores.length > 0,

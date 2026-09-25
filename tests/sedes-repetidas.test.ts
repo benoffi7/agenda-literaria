@@ -106,7 +106,14 @@ describe('resumenDeSedes — el numerador no dice nada sin el denominador', () =
  * lectura.
  */
 describe('el tablero muestra el número (B-100)', () => {
-  const TABLERO = readFileSync('src/components/admin/EstadisticasPanel.tsx', 'utf8');
+  // M-17 — el tablero son tres archivos: la carga y cada pestaña en el suyo.
+  const TABLERO = [
+    'src/components/admin/EstadisticasPanel.tsx',
+    'src/components/admin/estadisticas/PanelCatalogo.tsx',
+    'src/components/admin/estadisticas/PanelSitioPublico.tsx',
+  ]
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
 
   /*
    * **Las dos aserciones que había acá se retiraron al integrar, el 2026-09-07,

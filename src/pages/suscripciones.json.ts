@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { indiceDeSuscripciones } from '@/lib/contenidoDelSitio';
+import { indiceDeDirectorio } from '@/lib/contenidoDeLaGuia';
 
 /**
  * `/suscripciones.json` — el índice que el listado de `/guia/suscripciones`
@@ -35,7 +35,7 @@ import { indiceDeSuscripciones } from '@/lib/contenidoDelSitio';
 export const prerender = true;
 
 export const GET: APIRoute = async () => {
-  const indice = await indiceDeSuscripciones();
+  const indice = await indiceDeDirectorio('suscripciones');
 
   return new Response(`${JSON.stringify(indice, null, 2)}\n`, {
     headers: {

@@ -1,0 +1,315 @@
+# Índice de decisiones
+
+Una línea por entrada de [`06-decisiones.md`](06-decisiones.md): id, título y
+enlace a su ancla. Sirve para encontrar una decisión sin cargar el registro
+entero.
+
+**No se edita a mano.** Lo escribe `npm run decisiones:indice`, y
+`tests/indice-de-decisiones.test.ts` falla si no coincide con los títulos de
+hoy. Al agregar o renombrar una decisión, se corre el script en el mismo
+cambio.
+
+---
+
+## Decisiones
+
+- [D-01](06-decisiones.md#d-01--sin-librería-de-formularios) · Sin librería de formularios
+- [D-02](06-decisiones.md#d-02--las-etiquetas-nuevas-se-persisten-en-el-submit) · Las etiquetas nuevas se persisten en el submit
+- [D-03](06-decisiones.md#d-03--las-opciones-base-viven-en-un-json) · Las opciones base viven en un JSON
+- [D-04](06-decisiones.md#d-04--la-regla-de-lectura-suma--esadmin) · La regla de lectura suma `|| esAdmin()`
+- [D-05](06-decisiones.md#d-05--tokengetadmin-false-en-vez-de-tokenadmin) · `token.get('admin', false)` en vez de `token.admin`
+- [D-06](06-decisiones.md#d-06--la-function-corre-como-la-service-account-sin-key) · La Function corre como la service account, sin key
+- [D-07](06-decisiones.md#d-07--la-guarda-anti-loop-compara-payloads-no-una-lista-de-campos) · La guarda anti-loop compara payloads, no una lista de campos
+- [D-08](06-decisiones.md#d-08--la-config-del-sdk-web-va-versionada) · La config del SDK web va versionada
+- [D-09](06-decisiones.md#d-09--la-descripción-del-evento-lleva-todo-lo-publicable) · La descripción del evento lleva todo lo publicable
+- [D-10](06-decisiones.md#d-10--la-ubicación-se-arma-completa-con-link-a-maps) · La ubicación se arma completa, con link a Maps
+- [D-11](06-decisiones.md#d-11--los-slugs-se-resuelven-a-etiqueta-con-des-slug-de-respaldo) · Los slugs se resuelven a etiqueta, con des-slug de respaldo
+- [D-12](06-decisiones.md#d-12--los-desplegables-preseleccionan-la-primera-opción) · Los desplegables preseleccionan la primera opción
+- [D-13](06-decisiones.md#d-13--dispararrebuild-escrita-pero-sin-desplegar--desplegada-desde-el-2026-08-25) · `dispararRebuild` escrita pero sin desplegar — desplegada desde el 2026-08-25
+- [D-14](06-decisiones.md#d-14--la-documentación-se-actualiza-con-cada-cambio) · La documentación se actualiza con cada cambio
+- [D-16](06-decisiones.md#d-16--arancel-no-se-preselecciona) · `arancel` no se preselecciona
+- [D-15](06-decisiones.md#d-15--urlpublica-se-respeta) · `urlPublica` se respeta
+- [D-41](06-decisiones.md#d-41--el-historial-guarda-por-contenido-editable-no-por-escritura) · El historial guarda por contenido editable, no por escritura
+- [D-42](06-decisiones.md#d-42--retención-por-cantidad-no-por-antigüedad) · Retención por cantidad, no por antigüedad
+- [D-43](06-decisiones.md#d-43--el-id-de-la-versión-no-es-solo-el-timestamp) · El id de la versión no es solo el timestamp
+- [D-31](06-decisiones.md#d-31--los-reportes-van-por-trigger-de-firestore-no-por-oncall) · Los reportes van por trigger de Firestore, no por `onCall`
+- [D-32](06-decisiones.md#d-32--el-issue-no-dice-quién-reportó) · El issue no dice quién reportó
+- [D-33](06-decisiones.md#d-33--el-texto-libre-se-filtra-antes-de-publicarlo) · El texto libre se filtra antes de publicarlo
+- [D-34](06-decisiones.md#d-34--los-reintentos-se-cuentan-en-el-documento-no-en-la-plataforma) · Los reintentos se cuentan en el documento, no en la plataforma
+- [D-35](06-decisiones.md#d-35--el-trigger-de-reportes-lleva-sus-opciones-explícitas) · El trigger de reportes lleva sus opciones explícitas
+- [D-26](06-decisiones.md#d-26--aprobada-ausente-cuenta-como-aprobada) · `aprobada` ausente cuenta como aprobada
+- [D-27](06-decisiones.md#d-27--el-creador-se-guarda-como-huella-no-como-uid) · El creador se guarda como huella, no como uid
+- [D-28](06-decisiones.md#d-28--aprobar-es-una-escritura-más-la-autoridad-es-el-claim-admin) · Aprobar es una escritura más: la autoridad es el claim `admin`
+- [D-29](06-decisiones.md#d-29--la-aprobación-se-hace-por-script-no-por-ui--superada-por-b-06b-25) · La aprobación se hace por script, no por UI — superada por B-06/B-25
+- [D-30](06-decisiones.md#d-30--la-aprobación-filtra-lo-elegible-nunca-la-resolución-de-etiquetas) · La aprobación filtra lo elegible, nunca la resolución de etiquetas
+- [D-36](06-decisiones.md#d-36--la-versión-es-packagejson--sha-del-commit-no-un-timestamp) · La versión es `package.json` + SHA del commit, no un timestamp
+- [D-37](06-decisiones.md#d-37--el-panel-se-recarga-solo-salvo-con-el-formulario-a-medio-cargar) · El panel se recarga solo, salvo con el formulario a medio cargar
+- [D-38](06-decisiones.md#d-38--cabeceras-de-cache-explícitas-en-firebasejson) · Cabeceras de cache explícitas en `firebase.json`
+- [D-46](06-decisiones.md#d-46--las-coordenadas-se-pegan-desde-google-maps-sin-geocoding) · Las coordenadas se pegan desde Google Maps, sin geocoding
+- [D-21](06-decisiones.md#d-21--el-pat-va-por-definesecret-no-por-processenv) · El PAT va por `defineSecret`, no por `process.env`
+- [D-22](06-decisiones.md#d-22--un-solo-workflow-disparado-por-evento-y-a-mano--no-por-push) · Un solo workflow, disparado por evento y a mano — no por push
+- [D-190](06-decisiones.md#d-190--la-cuenta-del-encuentro-se-comparte-la-puerta-de-si-se-muestra-no) · La cuenta del encuentro se comparte; la puerta de si se muestra, no
+- [D-191](06-decisiones.md#d-191--un-evento-que-falta-en-calendar-se-repone-un-404-al-crear-es-un-error) · Un evento que falta en Calendar se repone; un 404 al crear es un error
+- [D-23](06-decisiones.md#d-23--el-backoff-del-rebuild-se-rinde-y-se-rearma-con-el-próximo-cambio) · El backoff del rebuild se rinde, y se rearma con el próximo cambio
+- [D-20](06-decisiones.md#d-20--la-lógica-del-evento-se-comparte-por-alias-no-se-duplica) · La lógica del evento se comparte por alias, no se duplica
+- [D-17](06-decisiones.md#d-17--la-copia-corre-las-fechas-en-semanas-enteras) · La copia corre las fechas en semanas enteras
+- [D-18](06-decisiones.md#d-18--la-copia-se-marca-en-el-título-y-en-el-slug) · La copia se marca en el título y en el slug
+- [D-19](06-decisiones.md#d-19--duplicar-y-borrar-van-en-un-menú-de-acciones) · Duplicar y borrar van en un menú de acciones
+- [D-61](06-decisiones.md#d-61--la-ayuda-es-una-capa-no-una-pantalla-del-panel) · La ayuda es una capa, no una pantalla del panel
+- [D-62](06-decisiones.md#d-62--el-contenido-de-la-ayuda-es-data-tipada-y-testeada) · El contenido de la ayuda es data tipada y testeada
+- [D-63](06-decisiones.md#d-63--las-novedades-viven-en-el-repo-no-en-firestore) · Las novedades viven en el repo, no en Firestore
+- [D-64](06-decisiones.md#d-64--lo-no-leído-se-marca-con-un-id-en-el-navegador-y-el-aviso-es-un-número) · Lo no leído se marca con un id en el navegador, y el aviso es un número
+- [D-65](06-decisiones.md#d-65--guía-y-novedades-comparten-un-botón-con-dos-pestañas) · Guía y novedades comparten un botón, con dos pestañas
+- [D-51](06-decisiones.md#d-51--el-bundle-del-panel-se-corta-en-el-login-no-con-manualchunks) · El bundle del panel se corta en el login, no con `manualChunks`
+- [D-56](06-decisiones.md#d-56--la-analítica-manda-una-proyección-no-el-objeto) · La analítica manda una proyección, no el objeto
+- [D-57](06-decisiones.md#d-57--el-perfil-es-un-identificador-aleatorio-no-el-uid-ni-un-hash-del-mail) · El perfil es un identificador aleatorio, no el uid ni un hash del mail
+- [D-58](06-decisiones.md#d-58--el-sdk-de-analítica-se-carga-diferido-y-su-ausencia-no-rompe-nada) · El SDK de analítica se carga diferido, y su ausencia no rompe nada
+- [D-59](06-decisiones.md#d-59--ocho-eventos-con-nombres-estables-y-uno-por-campo-inválido) · Ocho eventos con nombres estables, y uno por campo inválido
+- [D-60](06-decisiones.md#d-60--el-vocabulario-de-campos-se-deriva-del-schema-no-se-mantiene-a-mano) · El vocabulario de campos se deriva del schema, no se mantiene a mano
+- [D-70](06-decisiones.md#d-70--dos-lentes-sobre-lo-mismo-el-listado-enumera-actividades-el-calendario-enumera-encuentros) · Dos lentes sobre lo mismo: el listado enumera actividades, el calendario enumera encuentros
+- [D-71](06-decisiones.md#d-71--el-estado-de-publicación-se-deriva-y-debeexistir-no-se-reimplementa) · El estado de publicación se deriva, y `debeExistir` no se reimplementa
+- [D-72](06-decisiones.md#d-72--en-el-teléfono-no-hay-grilla-de-mes) · En el teléfono no hay grilla de mes
+- [D-73](06-decisiones.md#d-73--el-listado-ordena-por-lo-que-se-viene-no-por-lo-que-se-tocó) · El listado ordena por lo que se viene, no por lo que se tocó
+- [D-74](06-decisiones.md#d-74--cinco-filtros-y-cuatro-descartados-con-su-motivo) · Cinco filtros, y cuatro descartados con su motivo
+- [D-88](06-decisiones.md#d-88--un-formato-o-un-valor-se-escribe-una-sola-vez-el-otro-lado-lo-importa-y-si-no-puede-queda-atado-por-un-test) · Un formato o un valor se escribe una sola vez: el otro lado lo importa, y si no puede, queda atado por un test
+- [D-98](06-decisiones.md#d-98--toda-lista-duplicada-lleva-guardia-y-la-guardia-más-barata-que-alcance) · Toda lista duplicada lleva guardia, y la guardia más barata que alcance
+- [D-106](06-decisiones.md#d-106--un-chequeo-estructural-pregunta-por-el-grafo-no-por-un-archivo) · Un chequeo estructural pregunta por el grafo, no por un archivo
+- [D-107](06-decisiones.md#d-107--el-mapa-de-trampas-se-verifica-contra-el-repo-no-se-lee) · El mapa de trampas se verifica contra el repo, no se lee
+- [D-108](06-decisiones.md#d-108--un-detector-estático-sigue-la-llamada-y-se-testea-con-cuerpos-sintéticos) · Un detector estático sigue la llamada, y se testea con cuerpos sintéticos
+- [D-99](06-decisiones.md#d-99--la-proyección-de-analítica-no-se-muda-al-lado-diferido) · La proyección de analítica no se muda al lado diferido
+- [D-90](06-decisiones.md#d-90--el-id-del-evento-de-calendar-lo-elige-el-cliente-derivado-del-id-de-sesión) · El id del evento de Calendar lo elige el cliente, derivado del id de sesión
+- [D-91](06-decisiones.md#d-91--el-calendareventid-se-repone-en-toda-operación-y-solo-si-cambió) · El `calendarEventId` se repone en toda operación, y solo si cambió
+- [D-92](06-decisiones.md#d-92--el-rebuild-se-marca-por-contenido-editable-no-por-operaciones-de-calendar) · El rebuild se marca por contenido editable, no por operaciones de Calendar
+- [D-93](06-decisiones.md#d-93--renombrar-una-etiqueta-re-sincroniza-los-eventos-publicados) · Renombrar una etiqueta re-sincroniza los eventos publicados
+- [D-94](06-decisiones.md#d-94--borrar-una-actividad-guarda-su-última-versión-y-no-es-borrado-lógico) · Borrar una actividad guarda su última versión, y no es borrado lógico
+- [D-95](06-decisiones.md#d-95--el-número-del-encuentro-cuenta-también-los-cancelados) · El número del encuentro cuenta también los cancelados
+- [D-100](06-decisiones.md#d-100--la-mitad-cliente-del-42-vive-en-un-módulo-puro-y-los-widgets-no-se-unifican) · La mitad cliente del §4.2 vive en un módulo puro, y los widgets no se unifican
+- [D-101](06-decisiones.md#d-101--la-etiqueta-se-guarda-presentable-el-slug-es-la-identidad) · La etiqueta se guarda presentable; el slug es la identidad
+- [D-102](06-decisiones.md#d-102--la-pantalla-de-taxonomías-renombra-sin-tocar-el-slug-y-borra-sin-tocar-las-actividades) · La pantalla de taxonomías renombra sin tocar el slug, y borra sin tocar las actividades
+- [D-103](06-decisiones.md#d-103--usos-se-cuenta-al-elegir-no-solo-al-crear-y-en-una-transacción-por-campo) · `usos` se cuenta al elegir, no solo al crear, y en una transacción por campo
+- [D-104](06-decisiones.md#d-104--las-opciones-nuevas-nacen-aprobadas-y-la-maquinaria-queda-dormida) · Las opciones nuevas nacen aprobadas, y la maquinaria queda dormida
+- [D-105](06-decisiones.md#d-105--los-tags-se-miden-con-los-mismos-eventos-menos-el-que-no-existe) · Los tags se miden con los mismos eventos, menos el que no existe
+- [D-111](06-decisiones.md#d-111--la-actividad-se-escribe-antes-que-las-etiquetas-nuevas) · La actividad se escribe antes que las etiquetas nuevas
+- [D-112](06-decisiones.md#d-112--la-preselección-del-desplegable-va-en-el-estado-inicial-no-en-un-efecto) · La preselección del desplegable va en el estado inicial, no en un efecto
+- [D-113](06-decisiones.md#d-113--las-escrituras-del-caso-de-uso-de-guardado-entran-como-puertos) · Las escrituras del caso de uso de guardado entran como puertos
+- [D-114](06-decisiones.md#d-114--regenerar-los-encuentros-conserva-la-identidad-de-la-fila) · Regenerar los encuentros conserva la identidad de la fila
+- [D-115](06-decisiones.md#d-115--el-formulario-se-parte-por-sección-y-las-secciones-son-presentación) · El formulario se parte por sección, y las secciones son presentación
+- [D-109](06-decisiones.md#d-109--toda-salida-del-formulario-pasa-por-una-sola-puerta) · Toda salida del formulario pasa por una sola puerta
+- [D-110](06-decisiones.md#d-110--el-reintento-de-un-reporte-es-una-escritura-acotada-no-un-oncall) · El reintento de un reporte es una escritura acotada, no un `onCall`
+- [D-116](06-decisiones.md#d-116--una-lista-de-texto-libre-no-se-edita-con-el-widget-de-una-taxonomía) · Una lista de texto libre no se edita con el widget de una taxonomía
+- [D-117](06-decisiones.md#d-117--un-número-de-versión-que-ya-salió-no-se-reusa-para-lo-que-no-salió) · Un número de versión que ya salió no se reusa para lo que no salió
+- [D-118](06-decisiones.md#d-118--la-trampa-11-entra-al-13-aunque-no-sea-de-dominio) · La trampa 11 entra al §13, aunque no sea de dominio
+- [D-119](06-decisiones.md#d-119--la-única-key-del-proyecto-no-puede-cambiar-qué-es-legible) · La única key del proyecto no puede cambiar qué es legible
+- [D-120](06-decisiones.md#d-120--dos-niveles-de-validación-sobre-un-solo-schema-y-la-línea-es-publicado) · Dos niveles de validación sobre un solo schema, y la línea es «publicado»
+- [D-121](06-decisiones.md#d-121--el-mensaje-de-la-barra-nombra-campos-o-secciones-y-lleva-hasta-ahí) · El mensaje de la barra nombra campos o secciones, y lleva hasta ahí
+- [D-122](06-decisiones.md#d-122--el-autoguardado-vive-en-el-navegador-no-en-firestore) · El autoguardado vive en el navegador, no en Firestore
+- [D-123](06-decisiones.md#d-123--la-guarda-de-credenciales-va-en-la-puerta-no-en-el-paso-del-workflow) · La guarda de credenciales va en la puerta, no en el paso del workflow
+- [D-124](06-decisiones.md#d-124--lo-que-se-recupera-de-un-borrador-no-es-lo-que-se-guardó) · Lo que se recupera de un borrador no es lo que se guardó
+- [D-125](06-decisiones.md#d-125--la-galería-una-lista-un-epígrafe-opcional-y-el-texto-alternativo-del-título) · La galería: una lista, un epígrafe opcional, y el texto alternativo del título
+- [D-126](06-decisiones.md#d-126--el-libro-presentado-es-un-campo-propio-de-dos-textos-y-es-público) · El libro presentado es un campo propio de dos textos, y es público
+- [D-127](06-decisiones.md#d-127--se-llenó-es-un-booleano-se-prende-desde-el-listado-y-no-esconde-el-canal) · «Se llenó» es un booleano, se prende desde el listado, y no esconde el canal
+- [D-128](06-decisiones.md#d-128--solo-el-admin-lee-actividades--desvío-del-53) · Solo el admin lee `/actividades` — desvío del §5.3
+- [D-129](06-decisiones.md#d-129--el-índice-no-lleva-el-link-de-la-reunión-ni-con-urlpublica-true) · El índice no lleva el link de la reunión ni con `urlPublica: true`
+- [D-130](06-decisiones.md#d-130--las-modalidades-son-una-lista-con-su-lugar-adentro-y-las-fechas-todavía-no-salen) · Las modalidades son una lista con su lugar adentro, y las fechas todavía no salen
+- [D-131](06-decisiones.md#d-131--subir-una-imagen-propia-path-opaco-metadatos-afuera-antes-de-subir-y-la-miniatura-para-después) · Subir una imagen propia: path opaco, metadatos afuera antes de subir, y la miniatura para después
+- [D-132](06-decisiones.md#d-132--la-key-de-ci-pasa-a-poder-desplegar-todo--se-revierte-d-119) · La key de CI pasa a poder desplegar todo — se revierte D-119
+- [D-133](06-decisiones.md#d-133--el-texto-de-suscribirse-es-data-testeada-y-ninguna-dirección-se-escribe-en-el-markup) · El texto de «Suscribirse» es data testeada, y ninguna dirección se escribe en el markup
+- [D-134](06-decisiones.md#d-134--la-página-es-suscribirse-y-no-calendario-y-el-bloque-de-la-home-queda-escrito-sin-cablear) · La página es `/suscribirse` y no `/calendario`, y el bloque de la home queda escrito sin cablear
+- [D-135](06-decisiones.md#d-135--la-ayuda-y-el-contacto-del-sitio-son-datos-derivados-no-párrafos-en-la-página) · La ayuda y el contacto del sitio son datos derivados, no párrafos en la página
+- [D-136](06-decisiones.md#d-136--la-ayuda-se-muestra-entera-no-en-un-acordeón) · La ayuda se muestra entera, no en un acordeón
+- [D-137](06-decisiones.md#d-137--el-listado-público-sí-tiene-selector-de-orden--desvío-del-61-del-diseño) · El listado público **sí** tiene selector de orden — desvío del §6.1 del diseño
+- [D-138](06-decisiones.md#d-138--creadoen-es-público--la-fecha-de-alta-no-la-de-edición) · `creadoEn` es público — la fecha de alta, no la de edición
+- [D-139](06-decisiones.md#d-139--el-link-de-la-reunión-tampoco-sale-a-la-página-de-detalle) · El link de la reunión tampoco sale a la página de detalle
+- [D-140](06-decisiones.md#d-140--la-plantilla-no-recibe-el-documento-recibe-un-view-model) · La plantilla no recibe el documento: recibe un view-model
+- [D-141](06-decisiones.md#d-141--el-sitio-se-llama-agenda-leh-y-el-color-del-tipo-se-deriva-del-slug) · El sitio se llama Agenda LEH, y el color del tipo se deriva del slug
+- [D-142](06-decisiones.md#d-142--la-tarjeta-pasa-a-grilla-con-portada-y-cuando-no-hay-imagen-la-portada-se-genera) · La tarjeta pasa a grilla con portada, y cuando no hay imagen la portada se genera
+- [D-143](06-decisiones.md#d-143--los-filtros-de-móvil-lo-que-se-puede-tener-sin-construir-una-capa-modal) · Los filtros de móvil: lo que se puede tener sin construir una capa modal
+- [D-144](06-decisiones.md#d-144--la-portada-va-arriba-y-el-43-del-diseño-se-desvía-por-una-condición) · La portada va arriba, y el §4.3 del diseño se desvía por una condición
+- [D-145](06-decisiones.md#d-145--el-cta-fijo-de-móvil-no-lleva-javascript-y-es-fixed-y-no-sticky) · El CTA fijo de móvil no lleva JavaScript, y es `fixed` y no `sticky`
+- [D-146](06-decisiones.md#d-146--brutalismo-editorial-la-tercera-dirección-visual-y-la-que-se-aprobó) · Brutalismo editorial: la tercera dirección visual, y la que se aprobó
+- [D-147](06-decisiones.md#d-147--ninguna-salida-del-sitio-recorta-una-imagen--se-retira---aspect-portada) · Ninguna salida del sitio recorta una imagen — se retira `--aspect-portada`
+- [D-148](06-decisiones.md#d-148--la-cartelera-es-una-pared-de-afiches-y-se-arma-desde-el-índice) · La cartelera es una pared de afiches, y se arma desde el índice
+- [D-149](06-decisiones.md#d-149--el-peso-de-la-cartelera-sin-la-function-de-recompresión-con-los-números) · El peso de la cartelera sin la Function de recompresión, con los números
+- [D-150](06-decisiones.md#d-150--el-color-del-tipo-de-actividad-vuelve-y-se-elige-desde-opciones--revierte-el-punto-2-de-d-146) · El color del tipo de actividad vuelve, y se elige desde Opciones — revierte el punto 2 de D-146
+- [D-151](06-decisiones.md#d-151--el-arancel-sube-al-segundo-eje-del-sitio-y-lo-que-no-se-paga-va-primero) · El arancel sube al segundo eje del sitio, y lo que no se paga va primero
+- [D-152](06-decisiones.md#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74) · El panel gana el filtro de arancel — se revierte D-74
+- [D-153](06-decisiones.md#d-153--el-color-del-tipo-también-pinta-la-ficha-del-detalle-y-ese-es-otro-par-de-contraste) · El color del tipo también pinta la ficha del detalle, y ese es otro par de contraste
+- [D-158](06-decisiones.md#d-158--se-corrige-la-casilla-no-el-comportamiento-el-link-de-la-reunión-sale-al-calendario) · Se corrige la casilla, no el comportamiento: el link de la reunión sale al calendario
+- [D-159](06-decisiones.md#d-159--la-heurística-del-73-no-sobrevive-en-producción-estuvo-publicada-se-prueba-por-el-historial) · La heurística del §7.3 no sobrevive en producción: «estuvo publicada» se prueba por el historial
+- [D-155](06-decisiones.md#d-155--las-páginas-de-mes-se-desvían-del-22-y-el-75-en-cuatro-puntos) · Las páginas de mes se desvían del §2.2 y el §7.5 en cuatro puntos
+- [D-165](06-decisiones.md#d-165--el-canónico-es-agendalehar-y-el-dominio-se-escribe-una-sola-vez) · El canónico es `agendaleh.ar`, y el dominio se escribe una sola vez
+- [D-166](06-decisiones.md#d-166--el-sitemap-se-genera-a-mano-y-updatedat-viaja-al-lado-de-la-proyección) · El sitemap se genera a mano, y `updatedAt` viaja al lado de la proyección
+- [D-167](06-decisiones.md#d-167--pasadas-sin-atenuar-y-sin-buscador--dos-desvíos-del-45) · `/pasadas` sin atenuar y sin buscador — dos desvíos del §4.5
+- [D-168](06-decisiones.md#d-168--las-secundarias-del-detalle-son-decorativas-y-la-cuenta-se-dice-una-vez-en-el-encabezado) · Las secundarias del detalle son decorativas, y la cuenta se dice una vez en el encabezado
+- [D-170](06-decisiones.md#d-170--cuándo-se-cierra-un-ítem-paraguas-y-cuándo-se-descarta-uno-que-espera-al-dueño) · Cuándo se cierra un ítem paraguas, y cuándo se descarta uno que espera al dueño
+- [D-185](06-decisiones.md#d-185--el-aviso-de-lo-que-falta-para-publicar-no-se-debouncea-y-la-medición-dice-por-qué) · El aviso de «lo que falta para publicar» no se debouncea, y la medición dice por qué
+- [D-186](06-decisiones.md#d-186--el-motivo-del-fallo-lo-produce-el-parseo-no-la-pantalla--y-el-denominador-se-mide) · El motivo del fallo lo produce el parseo, no la pantalla — y el denominador se mide
+- [D-187](06-decisiones.md#d-187--el-aviso-de-la-etiqueta-sin-registrar-vive-en-el-chasis-del-panel-y-nombra-la-etiqueta) · El aviso de la etiqueta sin registrar vive en el chasis del panel, y nombra la etiqueta
+- [D-195](06-decisiones.md#d-195--una-base-de-emulador-por-checkout-no-un-puerto-por-checkout) · Una base de emulador por checkout, no un puerto por checkout
+- [D-196](06-decisiones.md#d-196--la-decisión-de-plomería-del-gate-sale-del-gate) · La decisión de plomería del gate sale del gate
+- [D-197](06-decisiones.md#d-197--el-saneador-del-issue-va-sobre-la-salida-armada-no-sobre-la-entrada) · El saneador del issue va sobre la salida armada, no sobre la entrada
+- [D-198](06-decisiones.md#d-198--los-env-versionados-se-verifican-por-lista-blanca-de-claves-no-de-archivos) · Los `.env` versionados se verifican por lista blanca de claves, no de archivos
+- [D-199](06-decisiones.md#d-199--sin-versión-estampada-es-un-valor-del-vocabulario-no-la-bolsa-de-otro) · «Sin versión estampada» es un valor del vocabulario, no la bolsa de `otro`
+- [D-200](06-decisiones.md#d-200--los-nombres-de-los-meses-se-comparten-el-argumento-para-duplicarlos-no-se-sostiene) · Los nombres de los meses se comparten; el argumento para duplicarlos no se sostiene
+- [D-860](06-decisiones.md#d-860--el-tablero-del-panel-arranca-por-el-catálogo-no-por-las-visitas) · El tablero del panel arranca por el catálogo, no por las visitas
+- [D-175](06-decisiones.md#d-175--la-function-que-optimiza-las-imágenes-propias-la-salida-va-encima-del-original) · La Function que optimiza las imágenes propias: la salida va **encima del original**
+- [D-180](06-decisiones.md#d-180--la-barra-final-va-en-los-href-no-en-la-config-del-host) · La barra final va en los `href`, no en la config del host
+- [D-201](06-decisiones.md#d-201--ga4-va-en-el-sitio-público-porque-es-la-vara-que-un-anunciante-conoce) · GA4 va en el sitio público, porque es la vara que un anunciante conoce
+- [D-250](06-decisiones.md#d-250--b-376--el-banner-es-c3-y-rechazar-no-manda-ni-un-byte) · B-376 — el banner es C3, y «rechazar» no manda ni un byte
+- [D-251](06-decisiones.md#d-251--b-371--se-acepta-el-costo-de-javascript-en-la-página-de-detalle) · B-371 — se acepta el costo de JavaScript en la página de detalle
+- [D-252](06-decisiones.md#d-252--b-372b-375--la-analítica-del-sitio-público-no-hereda-la-del-panel) · B-372/B-375 — la analítica del sitio público no hereda la del panel
+- [D-253](06-decisiones.md#d-253--b-372--ga4-tiene-un-productor-que-este-repo-no-controla-y-hace-falta-un-paso-manual-del-dueño) · B-372 — GA4 tiene un productor que este repo no controla, y hace falta un paso manual del dueño
+- [D-254](06-decisiones.md#d-254--se-saca-el-preconnect-a-ga4-en-vez-de-condicionarlo) · Se saca el `preconnect` a GA4 en vez de condicionarlo
+- [D-273](06-decisiones.md#d-273--el-aviso-ya-paso-se-saca-del-todo-revierte-d-270) · El aviso «ya-paso» se saca del todo (revierte D-270)
+- [D-270](06-decisiones.md#d-270--el-aviso-ya-paso-se-reencuadra-no-es-una-fricción-es-el-archivo-funcionando) · El aviso «ya-paso» se reencuadra: no es una fricción, es el archivo funcionando
+- [D-271](06-decisiones.md#d-271--el-tablero-pasa-a-pestañas-internas-con-el-patrón-de-teclado-que-a-centroayuda-le-faltaba) · El tablero pasa a pestañas internas, con el patrón de teclado que a `CentroAyuda` le faltaba
+- [D-272](06-decisiones.md#d-272--la-pestaña-el-sitio-público-andamiaje-honesto-ni-un-número-inventado) · La pestaña «El sitio público»: andamiaje honesto, ni un número inventado
+- [D-230](06-decisiones.md#d-230--usos-cuenta-contra-el-documento-anterior-no-con-una-lectura-extra) · `usos` cuenta contra el documento anterior, no con una lectura extra
+- [D-231](06-decisiones.md#d-231--la-plataforma-a-confirmar-se-detecta-por-slug-nunca-por-label) · La plataforma «a confirmar» se detecta por slug, nunca por label
+- [D-232](06-decisiones.md#d-232--las-fechas-del-formulario-se-validan-con-el-mismo-parser-que-las-convierte-y-superrefine-en-vez-de-refine) · Las fechas del formulario se validan con el mismo parser que las convierte, y `superRefine` en vez de `refine`
+- [D-292](06-decisiones.md#d-292--la-vista-calendario-del-panel-usa-la-misma-puerta-que-el-evento-público-para-numerar) · La vista calendario del panel usa la misma puerta que el evento público para numerar
+- [D-293](06-decisiones.md#d-293--leer-calendar-de-verdad-es-un-script-que-impersona-la-service-account-no-un-oncall-del-panel) · Leer Calendar de verdad es un script que impersona la service account, no un `onCall` del panel
+- [D-310](06-decisiones.md#d-310--resuelto-es-un-campo-local-del-panel-no-un-espejo-del-cierre-del-issue-en-github) · `resuelto` es un campo local del panel, no un espejo del cierre del issue en GitHub
+- [D-320](06-decisiones.md#d-320--el-tercer-panel-del-tríptico-resta-los-días-ya-contados-salta-de-semana-con-otro-rótulo-y-su-n-más-no-es-un-enlace) · El tercer panel del tríptico resta los días ya contados, salta de semana con otro rótulo, y su «+N más» no es un enlace
+- [D-330](06-decisiones.md#d-330--el-ancho-del-panel-se-decide-por-vista-y-el-listado-es-una-grilla-de-tarjetas--la-decisión-2-acotada-por-d-550) · El ancho del panel se decide por vista, y el listado es una grilla de tarjetas — la decisión 2 acotada por D-550
+- [D-340](06-decisiones.md#d-340--las-tipografías-se-autoalojan-no-se-condicionan) · Las tipografías se autoalojan; no se condicionan
+- [D-341](06-decisiones.md#d-341--la-lectura-de-ga4-va-por-un-documento-de-firestore-no-por-un-oncall) · La lectura de GA4 va por un documento de Firestore, no por un `onCall`
+- [D-350](06-decisiones.md#d-350--el-auditor-caro-se-dispara-solo-cuando-el-diff-toca-una-salida-pública) · El auditor caro se dispara solo cuando el diff toca una salida pública
+- [D-360](06-decisiones.md#d-360--el-calendareventid-lo-escribe-la-function-y-el-panel-lo-relee-b-150) · El `calendarEventId` lo escribe la Function, y el panel lo relee (B-150)
+- [D-361](06-decisiones.md#d-361--las-versiones-huérfanas-se-purgan-por-reloj-y-con-margen-no-al-borrar-b-89) · Las versiones huérfanas se purgan por reloj y con margen, no al borrar (B-89)
+- [D-210](06-decisiones.md#d-210--la-miniatura-del-srcset-se-confirma-contra-storage-un-candidato-que-da-404-rompe-la-imagen-no-degrada) · La miniatura del `srcset` se confirma contra Storage: un candidato que da 404 rompe la imagen, no degrada
+- [D-380](06-decisiones.md#d-380--el-buscador-del-404-es-un-formulario-a-la-home-no-la-island) · El buscador del `/404` es un formulario a la home, no la island
+- [D-381](06-decisiones.md#d-381--el-archivo-tiene-su-propio-buscador-y-lo-que-se-comparte-es-el-match) · El archivo tiene su propio buscador, y lo que se comparte es el match
+- [D-400](06-decisiones.md#d-400--el-tablero-usa-todo-el-ancho-y-el-calendario-todavía-no) · El tablero usa todo el ancho, y el calendario todavía no
+- [D-401](06-decisiones.md#d-401--el-todo-de-una-torta-es-la-suma-de-sus-tajadas) · El todo de una torta es la suma de sus tajadas
+- [D-410](06-decisiones.md#d-410--un-subevent-repite-los-datos-de-su-actividad-y-eso-no-es-inventar) · Un `subEvent` repite los datos de su actividad, y eso no es inventar
+- [D-411](06-decisiones.md#d-411--un-aviso-de-search-console-es-un-dato-no-un-pedido) · Un aviso de Search Console es un dato, no un pedido
+- [D-430](06-decisiones.md#d-430--b-720--la-galería-del-detalle-se-abre-en-una-capa-y-se-acepta-la-primera-island-de-esa-página) · B-720 — la galería del detalle se abre en una capa, y se acepta la primera island de esa página
+- [D-440](06-decisiones.md#d-440--el-texto-alternativo-es-un-campo-de-la-imagen-y-se-pide-una-sola-vez-en-la-portada) · El texto alternativo es un campo **de la imagen**, y se pide una sola vez: en la portada
+- [D-450](06-decisiones.md#d-450--la-sección-comercial-ofrece-un-mail-no-un-plan--y-no-inventa-un-número) · La sección comercial ofrece un mail, no un plan — y no inventa un número
+- [D-460](06-decisiones.md#d-460--la-página-se-llama-apoyar-y-no-donar-ni-colaborar) · La página se llama `/apoyar`, y no `/donar` ni `/colaborar`
+- [D-461](06-decisiones.md#d-461--apoyar-entra-por-el-pie-y-por-el-sitemap-no-por-el-encabezado) · `/apoyar` entra por el pie y por el sitemap, no por el encabezado
+- [D-470](06-decisiones.md#d-470--el-tríptico-cambia-de-ventanas-sortea-dos-por-panel-y-el-pie-lleva-al-filtro) · El tríptico cambia de ventanas, sortea dos por panel, y el pie lleva al filtro
+- [D-480](06-decisiones.md#d-480--el-panel-gana-los-filtros-de-etiquetas-y-destacada--se-revierte-d-74-del-todo) · El panel gana los filtros de etiquetas y destacada — se revierte D-74 del todo
+- [D-490](06-decisiones.md#d-490--el-formulario-de-carga-va-en-pestañas-y-la-barra-de-guardar-sigue-fija) · El formulario de carga va en pestañas, y la barra de guardar sigue fija
+- [D-500](06-decisiones.md#d-500--el-monto-del-arancel-se-publica-en-las-cinco-salidas-que-ya-dicen-el-arancel) · El monto del arancel se publica en las cinco salidas que ya dicen el arancel
+- [D-510](06-decisiones.md#d-510--cada-push-deja-su-tag-y-son-dos-de-distinta-naturaleza) · Cada push deja su tag, y son dos de distinta naturaleza
+- [D-520](06-decisiones.md#d-520--el-número-del-encuentro-se-queda-con-el-total-aun-a-costa-de-reescribir-el-ciclo) · El número del encuentro se queda con el total, aun a costa de reescribir el ciclo
+- [D-530](06-decisiones.md#d-530--las-comisiones-de-un-ciclo-son-un-comisionid-en-cada-encuentro-no-encuentros-anidados) · Las comisiones de un ciclo son un `comisionId` en cada encuentro, no encuentros anidados
+- [D-540](06-decisiones.md#d-540--restaurar-del-historial-valida-el-documento-resultante-en-vez-de-filtrar-campo-por-campo) · Restaurar del historial valida el documento resultante, en vez de filtrar campo por campo
+- [D-550](06-decisiones.md#d-550--el-formulario-tiene-dos-formas-y-las-elige-quien-carga-no-el-navegador) · El formulario tiene dos formas y las elige quien carga, no el navegador
+- [D-560](06-decisiones.md#d-560--los-auditores-corren-a-pedido-con-audit-y-nada-los-dispara-solo) · Los auditores corren a pedido, con `/audit`, y nada los dispara solo
+- [D-570](06-decisiones.md#d-570--la-proyección-pública-de-un-dato-que-envejece-es-un-string-y-la-fecha-es-absoluta) · La proyección pública de un dato que envejece es **un string**, y la fecha es absoluta
+- [D-580](06-decisiones.md#d-580--incluye-sale-a-la-ficha-y-no-al-índice-del-listado-y-no-es-eje-de-filtro) · `incluye` sale a la ficha y **no** al índice del listado, y no es eje de filtro
+- [D-590](06-decisiones.md#d-590--las-fechas-de-una-propuesta-son-strings-no-timestamp) · Las fechas de una propuesta son strings, no `Timestamp`
+- [D-600](06-decisiones.md#d-600--aceptar-una-propuesta-es-una-escritura-y-la-actividad-se-crea-primero) · Aceptar una propuesta es **una** escritura, y la actividad se crea primero
+- [D-610](06-decisiones.md#d-610--la-marca-de-autoría-se-queda-como-está-y-el-mail-no-entra-al-documento) · La marca de autoría se queda como está, y el mail no entra al documento
+- [D-620](06-decisiones.md#d-620--la-lista-de-segmentos-jpeg-también-es-blanca-y-por-firma--se-revierte-lo-que-b-323-dejó-escrito) · La lista de segmentos JPEG también es blanca, y por firma — se revierte lo que B-323 dejó escrito
+- [D-630](06-decisiones.md#d-630--el-usuario-del-sitio-público-es-localstorage-y-nada-más-y-lo-guardado-nace-con-tipo-y-versión) · El «usuario» del sitio público es `localStorage` y nada más, y lo guardado nace con `tipo` y versión
+- [D-640](06-decisiones.md#d-640--el-correo-del-sitio-es-un-form-a-mailchimp-no-una-salida-nueva-y-su-promesa-dice-la-excepción) · El correo del sitio es un `<form>` a Mailchimp, no una salida nueva, y su promesa dice la excepción
+- [D-650](06-decisiones.md#d-650--el-segundo-rol-vive-en-las-reglas-y-el-mail-vive-en-usuarios) · El segundo rol vive en las reglas, y el mail vive en `/usuarios`
+- [D-660](06-decisiones.md#d-660--la-unicidad-del-slug-vive-en-slugs-y-la-subida-acotada-en-resource--null) · La unicidad del slug vive en `/slugs`, y la subida acotada en `resource == null`
+- [D-670](06-decisiones.md#d-670--la-ficha-de-una-suscripción-es-un-product-con-una-offer-sin-precio) · La ficha de una suscripción es un `Product` con una `Offer` **sin precio**
+- [D-680](06-decisiones.md#d-680--la-dirección-de-un-lugar-sale-por-un-flag-y-la-ficha-es-un-place) · La dirección de un lugar sale por un flag, y la ficha es un `Place`
+- [D-690](06-decisiones.md#d-690--el-alcance-por-ciudad-del-publicador-es-un-campo-derivado-y-de-solo-lectura) · El alcance por ciudad del publicador es **un campo derivado y de solo lectura**
+- [D-700](06-decisiones.md#d-700--la-ficha-que-llega-de-un-formulario-público-de-la-guía-nace-sin-fotos) · La ficha que llega de un formulario público de la Guía nace **sin fotos**
+- [D-710](06-decisiones.md#d-710--la-geografía-es-provincia--barrio-o-ciudad-y-las-tres-son-taxonomía) · La geografía es **provincia → barrio *o* ciudad**, y las tres son taxonomía
+- [D-711](06-decisiones.md#d-711--el-gate-corre-contra-el-emulador-así-que-la-red-de-producción-tiene-que-estar-afuera-del-gate) · El gate corre contra el emulador, así que la red de producción tiene que estar afuera del gate
+- [D-720](06-decisiones.md#d-720--el-formato-de-hora-es-presentación-y-la-preferencia-vive-en-localstorage) · El formato de hora es presentación, y la preferencia vive en `localStorage`
+- [D-721](06-decisiones.md#d-721--la-revisión-de-una-propuesta-se-puede-pisar-y-no-se-versiona) · La revisión de una propuesta se puede pisar, y no se versiona
+- [D-722](06-decisiones.md#d-722--app-check-no-se-exige-en-storage-y-sacar-los-bytes-públicos-es-la-precondición) · App Check no se exige en Storage, y sacar los bytes públicos es la precondición
+- [D-723](06-decisiones.md#d-723--las-cuatro-decisiones-del-111-del-sitio-resueltas-con-el-mismo-criterio) · Las cuatro decisiones del §11.1 del sitio, resueltas con el mismo criterio
+- [D-730](06-decisiones.md#d-730--el-aislamiento-del-emulador-por-projectid-cubre-firestore-y-no-cubre-todo) · El aislamiento del emulador por `projectId` cubre Firestore, y **no** cubre todo
+- [D-740](06-decisiones.md#d-740--una-biblioteca-que-presta-su-sala-son-dos-fichas-no-una-con-dos-caras) · Una biblioteca que presta su sala son **dos fichas**, no una con dos caras
+- [D-750](06-decisiones.md#d-750--un-chequeo-se-valida-mutando-todos-sus-sujetos-y-el-recorte-abierto-es-la-firma-de-que-no-valida-nada) · Un chequeo se valida mutando **todos** sus sujetos, y el recorte abierto es la firma de que no valida nada
+- [D-763](06-decisiones.md#d-763--el-instagram-del-evento-de-calendar-se-normaliza-al-mostrar-y-eso-no-reescribe-nada) · El Instagram del evento de Calendar se normaliza al mostrar, y eso no reescribe nada
+- [D-767](06-decisiones.md#d-767--el-instagram-de-una-actividad-se-corrige-al-cargarlo-y-no-se-frena-al-publicarlo) · El Instagram de una actividad se corrige al cargarlo, y no se frena al publicarlo
+- [D-771](06-decisiones.md#d-771--una-mutación-que-queda-verde-no-absuelve-al-chequeo-hay-que-elegir-bien-el-sujeto) · Una mutación que queda verde no absuelve al chequeo: hay que elegir bien el sujeto
+- [D-775](06-decisiones.md#d-775--un-chequeo-de-documentación-compara-lo-que-la-cita-afirma-no-solo-que-el-id-exista--y-lo-compara-binario) · Un chequeo de documentación compara lo que la cita afirma, no solo que el id exista — y lo compara binario
+- [D-800](06-decisiones.md#d-800--el-borrador-del-correo-se-copia-y-se-pega-no-hay-api-de-mailchimp-ni-key-ni-function) · El borrador del correo se copia y se pega: no hay API de Mailchimp, ni key, ni Function
+- [D-801](06-decisiones.md#d-801--el-correo-semanal-se-arma-desde-el-eventsjson-publicado-no-desde-firestore) · El correo semanal se arma desde el `events.json` publicado, no desde Firestore
+- [D-802](06-decisiones.md#d-802--el-correo-registra-aperturas-y-clics-y-la-promesa-lo-dice) · El correo registra aperturas y clics, y la promesa lo dice
+- [D-803](06-decisiones.md#d-803--una-hora-de-24-tipeada-en-el-control-de-12-se-interpreta-no-se-descarta) · Una hora de 24 tipeada en el control de 12 se interpreta, no se descarta
+- [D-810](06-decisiones.md#d-810--el-publicador-crea-etiquetas-por-una-callable-que-verifica-el-array-y-la-regla-de-opciones-no-se-abre) · El publicador crea etiquetas por una callable que verifica el array, y la regla de `/opciones` no se abre
+- [D-811](06-decisiones.md#d-811--el-reuso-aprueba-una-etiqueta-solo-si-quien-la-reusa-es-admin) · El reuso aprueba una etiqueta solo si quien la reusa es admin
+- [D-820](06-decisiones.md#d-820--la-verificación-de-app-check-es-un-estado-del-panel-con-umbral-y-el-fallo-de-guardado-la-usa-para-clasificar) · La verificación de App Check es un estado del panel, con umbral, y el fallo de guardado la usa para clasificar
+- [D-890](06-decisiones.md#d-890--el-original-de-una-aceptada-que-sobra-se-borra-en-el-barrido-diario-no-en-un-trigger-sobre-actividades) · El original de una aceptada que sobra se borra en el barrido diario, no en un trigger sobre `/actividades`
+- [D-895](06-decisiones.md#d-895--qué-de-functions-arrastra-hosting-se-deriva-del-árbol-no-se-enumera-ni-se-invierte) · Qué de `functions/` arrastra Hosting se deriva del árbol, no se enumera ni se invierte
+- [D-900](06-decisiones.md#d-900--el-instagram-que-no-se-reconoce-se-avisa-con-un-cartel-y-el-cartel-no-frena) · El Instagram que no se reconoce se avisa con un cartel, y el cartel no frena
+- [D-910](06-decisiones.md#d-910--la-marca-de-publicada-alguna-vez-de-los-directorios-va-en-el-trigger-de-rebuild-no-en-una-function-propia) · La marca de «publicada alguna vez» de los directorios va en el trigger de rebuild, no en una Function propia
+- [D-911](06-decisiones.md#d-911--slugbloqueado-suma-la-marca-y-el-estado-con--como-la-regla) · `slugBloqueado` suma la marca y el estado con `||`, como la regla
+- [D-915](06-decisiones.md#d-915--la-guía-entra-al-pie-con-una-fila-y-al-404-sección-por-sección-y-solo-las-que-tienen-fichas) · La Guía entra al pie con una fila y al 404 sección por sección, y solo las que tienen fichas
+- [D-925](06-decisiones.md#d-925--la-forma-del-organization-del-sitio) · La forma del `Organization` del sitio
+- [D-930](06-decisiones.md#d-930--convertir-no-escribe-la-actividad-pero-sí-marca-la-propuesta-en-revision) · Convertir no escribe la actividad, pero sí marca la propuesta `en-revision`
+- [D-935](06-decisiones.md#d-935--el-contador-de-precios-para-revisar-muestra-solo-esas-fichas-y-no-prende-ver-publicadas-y-descartadas) · El contador de precios para revisar muestra solo esas fichas, y no prende «Ver publicadas y descartadas»
+- [D-936](06-decisiones.md#d-936--la-bandeja-no-lee-fechas-piderevision-llega-como-campo-de-fichadedirectorio) · La bandeja no lee fechas: `pideRevision` llega como campo de `FichaDeDirectorio`
+- [D-945](06-decisiones.md#d-945--convertir-una-propuesta-a-punto-de-vencer-sin-marca-se-avisa-no-se-renueva) · Convertir una propuesta a punto de vencer sin marca se avisa, no se renueva
+- [D-950](06-decisiones.md#d-950--el-clic-del-banner-de-ciudad-vocabulario-cerrado-copiado-y-el-handler-en-el-componente) · El clic del banner de ciudad: vocabulario cerrado copiado, y el handler en el componente
+- [D-960](06-decisiones.md#d-960--la-reescritura-de-eventos-desactualizados-es-un-flag-aparte---reescribir) · La reescritura de eventos desactualizados es un flag aparte, `--reescribir`
+- [D-965](06-decisiones.md#d-965--el-campo-secundario-de-una-cáscara-se-colapsa-a--en-la-salida-sin-trimear-el-texto) · El campo secundario de una cáscara se colapsa a `''` en la salida, sin trimear el texto
+- [D-985](06-decisiones.md#d-985--el-destino-de-una-inscripción-por-dm-se-deriva-al-mostrar-y-solo-con-esa-vía) · El destino de una inscripción por DM se deriva al mostrar, y solo con esa vía
+- [D-990](06-decisiones.md#d-990--guia-entró-al-sitemap-con-filas-en-camino-y-proponer-no-el-criterio-es-si-la-página-rebota) · `/guia` entró al sitemap con filas en camino, y `/proponer` no: el criterio es si la página rebota
+- [D-991](06-decisiones.md#d-991--la-bandeja-de-los-directorios-recibe-las-fichas-no-las-lee) · La bandeja de los directorios recibe las fichas: no las lee
+- [D-995](06-decisiones.md#d-995--abrir-el-enlace-es-click-con-el-botón-principal-o-auxclick-con-el-del-medio-y-un-solo-módulo-lo-decide) · «Abrir el enlace» es `click` con el botón principal o `auxclick` con el del medio, y un solo módulo lo decide
+- [D-1000](06-decisiones.md#d-1000--volver-a-sin-mirar-es-un-botón-aparte-y-la-conversión-no-lo-hace-sola) · «Volver a sin mirar» es un botón aparte, y la conversión no lo hace sola
+- [D-975](06-decisiones.md#d-975--un-encuentro-cancelado-conserva-su-evento-de-calendar-cancelar-es-un-anuncio-borrar-es-una-corrección) · Un encuentro cancelado conserva su evento de Calendar: cancelar es un anuncio, borrar es una corrección
+- [D-976](06-decisiones.md#d-976--motivocancelacion-público-solo-con-la-cancelación-sin-links-y-fuera-del-índice-y-del-json-ld) · `motivoCancelacion`: público, solo con la cancelación, sin links y fuera del índice y del JSON-LD
+- [D-977](06-decisiones.md#d-977--debeexistir-es-solo-la-actividad-está-publicada-un-cancelado-sin-evento-también-lo-recibe) · `debeExistir` es solo «la actividad está publicada»: un cancelado sin evento también lo recibe
+- [D-980](06-decisiones.md#d-980--un--cierra-solo-si-lo-dice-y-con-dos-marcadores-gana-el-último) · Un ✅ cierra solo si lo dice, y con dos marcadores gana el último
+- [D-981](06-decisiones.md#d-981--los-ids-reservados-se-leen-del-archivo-de-coordinación-de-la-tanda) · Los ids reservados se leen del archivo de coordinación de la tanda
+- [D-1005](06-decisiones.md#d-1005--el-mapa-mira-ocho-semanas-el-día-y-la-franja-miran-todo-lo-que-queda-por-venir) · El mapa mira ocho semanas; el día y la franja miran todo lo que queda por venir
+- [D-1006](06-decisiones.md#d-1006--el-mapa-de-calor-es-una-tabla-el-número-va-en-cada-celda-y-el-contraste-se-mide-de-las-clases) · El mapa de calor es una tabla, el número va en cada celda, y el contraste se mide de las clases
+- [D-1010](06-decisiones.md#d-1010--la-dirección-web-de-una-ficha-de-la-guía-se-verifica-al-publicar-no-se-reserva-al-crear) · La dirección web de una ficha de la Guía se verifica al publicar, no se reserva al crear
+- [D-1011](06-decisiones.md#d-1011--la-galería-de-una-ficha-de-la-guía-sale-por-una-sola-función-que-controla-cada-fila) · La galería de una ficha de la Guía sale por una sola función, que controla cada fila
+- [D-1015](06-decisiones.md#d-1015--el-índice-viejo-se-mide-desde-el-despacho-no-desde-la-marca) · El índice viejo se mide desde el despacho, no desde la marca
+- [D-1020](06-decisiones.md#d-1020--el-projectid-del-emulador-tiene-dos-dueños-firestore-lo-manda-el-checkout-auth-lo-manda-el-emulador-vivo) · El projectId del emulador tiene dos dueños: Firestore lo manda el checkout, Auth lo manda el emulador vivo
+- [D-1025](06-decisiones.md#d-1025--el-aviso-de-imágenes-perdidas-del-historial-comprueba-con-un-img-al-click-y-solo-las-propias-que-hoy-no-están) · El aviso de imágenes perdidas del historial comprueba con un `<img>`, al click, y solo las propias que hoy no están
+- [D-1030](06-decisiones.md#d-1030--el-cierre-de-una-tanda-mira-lo-que-la-tanda-agregó-no-el-repo-entero) · El cierre de una tanda mira lo que la tanda agregó, no el repo entero
+- [D-1035](06-decisiones.md#d-1035--el-autolink-de-la-descripción-devuelve-trozos-no-html) · El autolink de la descripción devuelve trozos, no HTML
+- [D-1036](06-decisiones.md#d-1036--el-link-de-la-reunión-pegado-en-la-descripción-se-reemplaza-por-un-aviso-en-la-página-de-detalle) · El link de la reunión pegado en la descripción se reemplaza por un aviso en la página de detalle
+- [D-1040](06-decisiones.md#d-1040--lo-que-se-pierde-en-google-se-avisa-en-una-fila-propia-de-la-barra-y-no-frena) · Lo que se pierde en Google se avisa en una fila propia de la barra, y no frena
+- [D-1045](06-decisiones.md#d-1045--un-hallazgo-dice-si-es-medido-o-leído-y-uno-leído-no-lleva-la-prioridad-del-efecto) · Un hallazgo dice si es medido o leído, y uno leído no lleva la prioridad del efecto
+- [D-1046](06-decisiones.md#d-1046--el-fan-out-del-formulario-tiene-alarma-en-45-y-las-dos-alarmas-del-13-tienen-test) · El fan-out del formulario tiene alarma en 45, y las dos alarmas del §1.3 tienen test
+- [D-1050](06-decisiones.md#d-1050--el-panel-separa-las-pasadas-en-una-pestaña-con-el-criterio-de-pasadas-y-una-sola-diferencia) · El panel separa las pasadas en una pestaña, con el criterio de `/pasadas` y una sola diferencia
+- [D-1060](06-decisiones.md#d-1060--sin-fechas-cargadas-y-el-eje-fechas-del-panel-solo-en-vigentes) · «Sin fechas cargadas», y el eje «Fechas» del panel solo en «Vigentes»
+- [D-1061](06-decisiones.md#d-1061--la-barra-de-guardar-se-entera-de-qué-campo-se-está-tipeando-escuchando-el-documento) · La barra de guardar se entera de qué campo se está tipeando escuchando el documento
+- [D-1065](06-decisiones.md#d-1065--el-panel-sí-atenúa-con-opacidades-pero-su-piso-es-aa-medido-contra-su-superficie-más-oscura) · El panel sí atenúa con opacidades, pero su piso es AA medido contra su superficie más oscura
+- [D-1070](06-decisiones.md#d-1070--build-contra-emuladormjs-se-parte-en-tres-cortes-y-no-antes-de-poder-correrlo) · `build-contra-emulador.mjs` se parte en tres cortes, y no antes de poder correrlo
+- [D-1075](06-decisiones.md#d-1075--las-cuentas-de-test-llevan-la-huella-del-checkout-en-el-uid-y-en-el-correo-y-tokende-se-niega-sin-ella) · Las cuentas de test llevan la huella del checkout en el uid y en el correo, y `tokenDe()` se niega sin ella
+- [D-1076](06-decisiones.md#d-1076--el-paso-3-del-gate-falla-nombrando-lo-que-hay-a-medias-no-reusa-ni-levanta) · El paso 3 del gate falla nombrando lo que hay a medias; no reusa ni levanta
+- [D-1080](06-decisiones.md#d-1080--los-campos-de-instagram-que-la-guarda-de-calendar-vigila-salen-de-un-registro-atado-a-la-tabla-de-docs03) · Los campos de Instagram que la guarda de Calendar vigila salen de un registro atado a la tabla de docs/03
+- [D-1081](06-decisiones.md#d-1081--el-chequeo-de-b-85-exige-la-guarda-declarada-del-barrido-y-la-red-solo-cuenta-contra-un-margen) · El chequeo de B-85 exige la guarda declarada del barrido, y la red solo cuenta contra un margen
+- [D-1090](06-decisiones.md#d-1090--la-página-de-error-mide-su-canónica-no-la-barra) · La página de error mide su canónica, no la barra
+- [D-1091](06-decisiones.md#d-1091--la-salida-de-una-pasada-es-su-tipo-y-dice-más-) · La salida de una pasada es su tipo, y dice «Más …»
+- [D-1095](06-decisiones.md#d-1095--la-miniatura-del-gate-va-en-la-actividad-de-afuera-con-la-huella-del-checkout-en-el-nombre) · La miniatura del gate va en la actividad de afuera, con la huella del checkout en el nombre
+- [D-1096](06-decisiones.md#d-1096--el-paso-4-reusa-emuladores-solo-si-están-firestore-y-storage-un-firestore-solo-falla-nombrándolo) · El paso 4 reusa emuladores solo si están Firestore y Storage; un Firestore solo falla nombrándolo
+- [D-1105](06-decisiones.md#d-1105--una-fila-del-panel-que-ya-no-rige-se-apaga-con-fondo-y-tinta-nunca-con-opacity-y-el-piso-se-mide-también-sobre-los-tintes) · Una fila del panel que ya no rige se apaga con fondo y tinta, nunca con `opacity`; y el piso se mide también sobre los tintes
+- [D-1110](06-decisiones.md#d-1110--el-registro-de-campos-de-instagram-contesta-salida-por-salida-y-el-crudo-a-propósito-se-declara) · El registro de campos de Instagram contesta salida por salida, y el crudo a propósito se declara
+- [D-1115](06-decisiones.md#d-1115--la-miga-del-detalle-apunta-al-hub-emitido-y-más-talleres-al-ofrecido) · La miga del detalle apunta al hub emitido, y «Más talleres» al ofrecido
+- [D-1120](06-decisiones.md#d-1120--una-canasta-de-la-guía-se-compara-con-la-proyección-de-su-colección-no-con-la-ficha-ni-con-el-marcado) · Una canasta de la Guía se compara con la proyección de su colección, no con la ficha ni con el marcado
+- [D-1125](06-decisiones.md#d-1125--el-tinte-heredado-se-mide-con-dos-redes-el-árbol-jsx-para-todo-el-panel-el-dom-para-los-avisos) · El tinte heredado se mide con dos redes: el árbol JSX para todo el panel, el DOM para los avisos
+- [D-1130](06-decisiones.md#d-1130--un-no-sale-del-registro-de-instagram-se-verifica-ausente-por-nombre-propio-o-dice-por-qué-no) · Un «no sale» del registro de Instagram se verifica ausente por nombre propio, o dice por qué no
+- [D-1135](06-decisiones.md#d-1135--un-solo-reloj-por-build-y-es-el-generadoen-del-índice) · Un solo reloj por build, y es el `generadoEn` del índice
+- [D-1140](06-decisiones.md#d-1140--un-contenedor-con-tinte-que-recibe-hijos-se-deriva-del-fuente-y-se-monta-con-sus-hijos-reales) · Un contenedor con tinte que recibe hijos se deriva del fuente y se monta con sus hijos reales
+- [D-1145](06-decisiones.md#d-1145--un-classname-se-mide-por-combinación-de-ramas-no-juntando-todas) · Un `className` se mide por combinación de ramas, no juntando todas
+- [D-1150](06-decisiones.md#d-1150--el-publicador-con-ciudad-carga-solo-en-su-ciudad-y-la-frontera-es-la-regla) · El publicador con ciudad carga **solo** en su ciudad, y la frontera es la regla
+- [D-1151](06-decisiones.md#d-1151--una-actividad-solo-virtual-se-puede-cargar-desde-una-cuenta-de-ciudad) · Una actividad solo virtual se puede cargar desde una cuenta de ciudad
+- [D-1152](06-decisiones.md#d-1152--el-publicador-general-es-el-claim-sin---ciudad-carga-donde-sea-y-ve-lo-suyo) · El publicador general es el claim sin `--ciudad`: carga donde sea y ve lo suyo
+- [D-1153](06-decisiones.md#d-1153--lo-ya-cargado-fuera-de-la-ciudad-no-se-toca-se-mantiene-pero-no-se-muda) · Lo ya cargado fuera de la ciudad no se toca: se mantiene, pero no se muda
+- [D-1154](06-decisiones.md#d-1154--una-sede-sin-ciudad-no-pasa-por-virtual) · Una sede sin ciudad no pasa por virtual
+- [D-1160](06-decisiones.md#d-1160--el-original-de-una-aceptada-se-borra-a-los-30-días-de-aceptada-el-documento-sigue-sin-vencer) · El original de una aceptada se borra a los 30 días de aceptada; el documento sigue sin vencer
+- [D-1161](06-decisiones.md#d-1161--el-flyer-que-ningún-documento-nombra-se-borra-pasadas-72-horas) · El flyer que ningún documento nombra se borra pasadas 72 horas
+- [D-1162](06-decisiones.md#d-1162--una-sola-decisión-para-la-function-y-el-script-y-la-lectura-entra-por-el-bucket) · Una sola decisión para la Function y el script, y la lectura entra por el bucket
+- [D-1163](06-decisiones.md#d-1163--lo-que-ningún-barrido-va-a-borrar-se-loguea-con-alerta-todos-los-días-y-dos-dueños-no-se-resuelven) · Lo que ningún barrido va a borrar se loguea con `alerta` todos los días, y dos dueños no se resuelven
+- [D-1164](06-decisiones.md#d-1164--el-warn-de-la-transición-deja-de-decir-nadie-la-va-a-borrar-y-pasa-a-decir-corre-el-reloj) · El `warn` de la transición deja de decir «nadie la va a borrar» y pasa a decir «corre el reloj»
+- [D-1170](06-decisiones.md#d-1170--una-efeméride-es-una-colección-propia-y-guarda-día-y-mes-no-una-fecha) · Una efeméride es una colección propia y guarda día y mes, no una fecha
+- [D-1171](06-decisiones.md#d-1171--las-efemérides-son-solo-del-admin-el-publicador-no-las-ve) · Las efemérides son solo del admin: el publicador no las ve
+- [D-1172](06-decisiones.md#d-1172--el-29-de-febrero-se-muestra-el-28-en-los-años-que-no-lo-tienen) · El 29 de febrero se muestra el 28 en los años que no lo tienen
+- [D-1173](06-decisiones.md#d-1173--la-efeméride-de-hoy-la-elige-el-navegador-con-la-hora-de-buenos-aires) · La efeméride de hoy la elige el navegador, con la hora de Buenos Aires
+- [D-1174](06-decisiones.md#d-1174--un-borrador-de-efeméride-no-cuesta-un-build) · Un borrador de efeméride no cuesta un build
+- [D-1180](06-decisiones.md#d-1180--el-slug-repetido-de-una-efeméride-se-avisa-en-el-panel-no-se-reserva-en-una-transacción) · El slug repetido de una efeméride se avisa en el panel, no se reserva en una transacción
+
+## Otras secciones del registro
+
+- [Decidido, sin trabajo pendiente](06-decisiones.md#decidido-sin-trabajo-pendiente)
+- [Pendiente de decidir](06-decisiones.md#pendiente-de-decidir)

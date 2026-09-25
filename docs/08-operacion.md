@@ -66,7 +66,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano y, desde B-631, los que existen pero dicen otra cosa que el código de hoy. `-- --reparar` recrea los borrados; `-- --reescribir` actualiza los desactualizados. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
 | `npm run cors:verificar` | B-1321 — le pregunta **al bucket**, no a `cors.json`, si tiene aplicado el CORS: un `GET` con `Origin` por cada origen del archivo contra una imagen de `events.json`, más un control negativo. Solo lee. Ver «El CORS del bucket» más abajo |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
-| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json`, sobre el HTML de las páginas de detalle (B-110) y —desde B-121— sobre **todos** los archivos publicables del `dist/`, barriéndoles los centinelas |
+| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json`, sobre el HTML de las páginas de detalle (B-110) y —desde B-121— sobre **todos** los archivos publicables del `dist/`, barriéndoles los centinelas. Desde B-1960 los pasos 1 a 10 son **chequeos nombrados**, uno por archivo en `scripts/gate-build/chequeos/` y registrados en orden en `scripts/gate-build/chequeos.mjs`; el rojo lo lleva `scripts/gate-build/resultado.mjs` (`fallo()` lo marca solo) y un chequeo que se cae se reporta con su nombre sin cortar a los demás. Un chequeo nuevo es un archivo más y una línea en `CHEQUEOS`: `tests/gate-build-resultado.test.ts` falla si queda un archivo sin registrar o un chequeo que no se pone rojo sobre un `dist/` vacío |
 | `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
 | `node scripts/project-id-emulador.mjs` | la **base de emulador de este checkout** (`agenda-literaria-<8 hex>`). Es de dónde salen el `projectId` de los tests y el del gate (B-219) |
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
@@ -1986,8 +1986,11 @@ borrado: los 30 días son el margen para el «lo rechacé sin querer» —la ban
 ofrece **Reabrir**— y para que quien propuso pueda repreguntar. Es el mismo
 argumento del margen de rescate de `limpiarVersionesHuerfanas`, con otro número.
 
-**La decisión es pura y vive en `functions/retencion.js`** (`decidirRetencion`),
-con tres salvaguardas:
+**La decisión es pura y vive en `functions/retencion-propuestas.js`**
+(`decidirRetencion`; `functions/retencion.js` es desde M-13 del PRD 6 la fachada que
+reexporta los tres ciclos —propuestas, flyers y fichas—, cada uno con su decisión
+pura y un `-firestore.js` al lado con lo que recibe el `db` o el `bucket`), con
+tres salvaguardas:
 
 - **El plazo de la rechazada se cuenta desde `revision.en`**, o sea desde el
   rechazo y no desde que llegó: una propuesta que estuvo dos meses en la bandeja y
@@ -2421,6 +2424,18 @@ El código es la Function (`dispararRebuild`), su lógica de reintentos
 (`functions/rebuild.js`) y el workflow (`.github/workflows/deploy.yml`). Lo que
 pedía trabajo del dueño eran las **credenciales**: el PAT y la key de service
 account no pueden pasar por un agente ni por el repo (§5.4).
+
+**El rebuild no repite la suite si el commit ya la pasó** (M-14 del PRD 6,
+decisión D). El paso «Si la suite ya pasó para este commit» corre
+`scripts/suite-verde-del-commit.sh`, que le pregunta a la API de Actions si hay una
+corrida de `push-main.yml` con el mismo `head_sha` y el job «Tests y typecheck» en
+`success`. Si la hay, «Tests» se saltea y el log dice `saltear=true` con el número
+de la corrida; si no puede confirmarlo por cualquier motivo —la corrida todavía en
+curso, la API que no contesta, el job renombrado— dice `saltear=false` y la suite
+corre como antes. La taxonomía en la base y «Verificar el artefacto» no se saltean
+nunca. El permiso que usa es `actions: read` del `GITHUB_TOKEN` del workflow, sin
+secretos nuevos. Si se renombra el job en `push-main.yml`, hay que renombrarlo
+también en el script: `tests/suite-verde-del-commit.test.ts` lo ata.
 
 Los cinco pasos, en orden.
 

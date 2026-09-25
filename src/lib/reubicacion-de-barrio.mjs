@@ -40,7 +40,7 @@
  * razón por la que `geografia.mjs` importa así.
  */
 import { esCaba, esProvincia, PROVINCIAS } from './geografia.mjs';
-import { slugify } from './slugify.mjs';
+import { slugify } from '../../functions/slugify.js';
 
 /**
  * Así quedó escrita la provincia de Buenos Aires las 54 veces: con el

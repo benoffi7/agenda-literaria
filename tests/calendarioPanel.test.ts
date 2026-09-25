@@ -747,7 +747,15 @@ describe('la vista no deshace el corte del bundle (B-09, D-51)', () => {
   // para la nueva: la vista calendario lee /actividades, así que un `import`
   // estático devolvería el SDK de Firestore al chunk del login y el build
   // seguiría en verde.
-  const fuente = readFileSync('src/components/admin/AdminApp.tsx', 'utf8');
+  // M-17 — las puertas diferidas salieron de `AdminApp` a `pantallas/diferidas.tsx`,
+  // y el router las monta: el `import()` se busca ahí, y el estático en los tres.
+  const fuente = [
+    'src/components/admin/AdminApp.tsx',
+    'src/components/admin/pantallas/diferidas.tsx',
+    'src/components/admin/pantallas/PantallaDelPanel.tsx',
+  ]
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
 
   it('AdminApp la carga con import() diferido', () => {
     expect(fuente).toMatch(/import\('@\/components\/admin\/CalendarioActividades'\)/);

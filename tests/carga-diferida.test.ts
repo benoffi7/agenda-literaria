@@ -201,14 +201,19 @@ describe('la subida separa «no llegó el módulo» de «Storage dijo no»', () 
 });
 
 /**
- * Los `.tsx` del panel, recursivo. Está en el scope del módulo porque lo usan dos
- * `describe`: el de la promesa del borrador y el de los puntos de carga diferida.
+ * Los `.tsx` y `.ts` del panel, recursivo. Está en el scope del módulo porque lo
+ * usan dos `describe`: el de la promesa del borrador y el de los puntos de carga
+ * diferida.
+ *
+ * **Los `.ts` entran desde M-17**: al partir la bandeja, la conversión —con su
+ * `await import('@/lib/subir-imagen')`— pasó a un hook, que es un `.ts`. Con el
+ * barrido en `.tsx` solo, ese `import()` quedaba fuera del chequeo de su guarda.
  */
 const archivosDelPanel = (dir: string): string[] =>
   readdirSync(`${process.cwd()}/${dir}`, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory()
       ? archivosDelPanel(`${dir}/${e.name}`)
-      : e.name.endsWith('.tsx')
+      : /\.tsx?$/.test(e.name)
         ? [`${dir}/${e.name}`]
         : [],
   );

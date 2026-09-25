@@ -11,6 +11,7 @@
     "backlog:archivar:seco": "node scripts/archivar-backlog.mjs --dry-run",
     "backlog:huerfanos": "node scripts/items-referenciados.mjs",
     "decisiones:huerfanas": "node scripts/decisiones-referenciadas.mjs",
+    "decisiones:indice": "node scripts/indice-de-decisiones.mjs",
     "backlog:contradicciones": "node scripts/estados-referenciados.mjs",
     "docs:anclas": "node scripts/anclas-referenciadas.mjs",
     "build": "astro build",

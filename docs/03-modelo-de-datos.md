@@ -1131,8 +1131,9 @@ Tres consecuencias que conviene tener juntas:
 - **El slug lo produce el `slugify` del proyecto, el mismo que el claim.** Si el
   script que escribe el claim y el panel que escribe el documento normalizaran
   distinto, el permiso no matchearía y nadie entendería por qué (clase de B-88).
-  Por eso la implementación se mudó a `src/lib/slugify.mjs` —node no corre
-  TypeScript— y `src/lib/slugify.ts` la reexporta.
+  Por eso la implementación vive en `functions/slugify.js` —node no corre
+  TypeScript, y las Functions no pueden importar `src/`— y `src/lib/slugify.ts`
+  es su única fachada (M-18).
 - **Una actividad solo virtual queda con `[]`** y no la ve ningún publicador por
   ciudad. Es correcto: no pasa en ninguna ciudad. Y por lo mismo **se puede
   cargar** desde una cuenta de ciudad (D-1151): no pasa fuera de la suya.

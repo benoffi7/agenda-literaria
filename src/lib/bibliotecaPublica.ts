@@ -399,7 +399,7 @@ const VALORES_DEL_EJE: Record<EjeDeBiblioteca, (b: BibliotecaPublica) => string[
    * **La clave es el nombre de la taxonomía y el valor sale del campo**, que no
    * se llaman igual: el documento dice `tipo` y `/opciones/tipo-biblioteca` es
    * el vocabulario. Es la misma asimetría que `tipo-lugar`, y es lo que hace que
-   * `indiceDeBibliotecas` pueda armar los vocabularios recorriendo los ejes sin
+   * `indiceDeDirectorio` pueda armar los vocabularios recorriendo los ejes sin
    * una tabla de traducción — si el eje se llamara `tipo`, buscaría
    * `/opciones/tipo`, que es la taxonomía de una **actividad**.
    */

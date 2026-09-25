@@ -81,7 +81,7 @@ describe('la tabla de plazos de una ficha', () => {
     // coinciden. El aserto está al revés a propósito, para que nadie las una
     // escribiendo `= MARGEN_DE_RETENCION_FICHA_MS` por prolijidad — el día que
     // el dueño mueva una, la otra no tiene por qué moverse.
-    expect(fuente('functions/retencion.js')).toContain(
+    expect(fuente('functions/retencion-fichas.js')).toContain(
       'export const MARGEN_SIN_TOCAR_FICHA_MS = 30 * 24 * 60 * 60 * 1000;',
     );
   });

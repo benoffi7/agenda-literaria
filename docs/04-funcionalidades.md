@@ -31,7 +31,9 @@ no ofrecer lo que va a ser rechazado:
 Quién ve qué está en una tabla pura, `PERMISOS` de
 [`src/lib/rolDelPanel.ts`](../src/lib/rolDelPanel.ts), y una pantalla nueva
 **arranca cerrada**: `tests/rol-del-panel.test.ts` deriva la lista de vistas del
-propio `AdminApp` y se pone en rojo si alguna no decidió quién la ve.
+tipo `Vista` del panel (`src/components/admin/pantallas/vista.ts`, el que
+comparten `AdminApp` y el router de pantallas) y se pone en rojo si alguna no
+decidió quién la ve.
 
 **Cada cuenta se registra al entrar** (`/usuarios`, D-650), con el mail de su
 propio ID token. Es lo que le da nombre a las dos cosas de abajo.
@@ -859,6 +861,14 @@ que cerrar: se apaga al abrir la pestaña de novedades una vez. Si el navegador
 no permite guardar datos (ventana privada), el número reaparece en la próxima
 visita y nada se rompe.
 
+El número se cuenta sobre [`src/lib/novedadesIds.ts`](../src/lib/novedadesIds.ts),
+que son solo los ids en el mismo orden, y no sobre `novedades.ts`: el botón está
+en el chunk inicial del panel —se ve antes del login— y el texto de las
+novedades (~21 KB gzip) solo hace falta al abrir la capa, que es diferida
+(B-1961). Por eso **una novedad nueva suma su id también arriba de
+`NOVEDADES_IDS`**; `tests/novedadesIds.test.ts` falla nombrando el que falta, y
+`tests/bundle-panel.test.ts` falla si `novedades.ts` vuelve al chunk inicial.
+
 **Quién lo mantiene:** la regla de proceso está en
 [`05-patrones.md`](05-patrones.md) — un cambio que se nota al usar el panel
 entra en `novedades.ts`, y un comportamiento que no se adivina entra en
@@ -1352,6 +1362,13 @@ mirarla. «Bajar del sitio» sí es un paso solo.
 `LibreriaFormulario` pide nombre, dirección, **la geografía en cascada**,
 coordenadas, la galería (el mismo editor, con su subida y su optimización) y los
 cuatro contactos públicos.
+
+**Los cuatro formularios de la Guía comparten el esqueleto** (M-10): el estado,
+el aviso de cambios sin guardar, la validación, la guarda del slug, crear o
+guardar, la medición y el alta de etiquetas nuevas viven en
+`useFichaDeDirectorio` y `useEtiquetasNuevas`, y los carteles y los botones en
+`MarcoDeFicha` (`src/components/admin/useFichaDeDirectorio.tsx`). Cada formulario
+pone sus campos y le pasa sus funciones de `lib/<entidad>.ts`.
 
 **La cascada es la misma que la de una actividad desde B-967** (D-710): primero la
 provincia y después el barrio —el mismo desplegable que usan las actividades— o la

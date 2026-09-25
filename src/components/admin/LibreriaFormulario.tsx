@@ -1,20 +1,13 @@
-import { useMemo, useState } from 'react';
-import { textoDeFallo } from '@/lib/fallosDelPanel';
-import { z } from 'zod';
-import {
-  Campo,
-  claseBotonPrimario,
-  claseBotonSecundario,
-  claseInput,
-} from '@/components/campos/Campo';
+import { Campo, claseInput } from '@/components/campos/Campo';
 import { TaxonomiaSelect } from '@/components/admin/campos-del-panel';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
-import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
-import { medirFuncion } from '@/lib/analytics';
+import {
+  MarcoDeFicha,
+  useEtiquetasNuevas,
+  useFichaDeDirectorio,
+} from '@/components/admin/useFichaDeDirectorio';
 import { conProvincia, subdivisionDe } from '@/lib/geografia.mjs';
-import { upsertOpcion } from '@/lib/opciones';
-import { slugBloqueado } from '@/lib/directorios';
 import { libreriaFormSchema, libreriaVacia, slugDeLibreria } from '@/lib/libreria-schema';
 import {
   crearLibreria,
@@ -73,140 +66,54 @@ interface Props {
   onCancelar: () => void;
 }
 
-/** `{ 'geo.lat': 'mensaje' }` — la forma en que `Campo` pide su error. */
-const erroresDe = (issues: z.ZodIssue[]): Record<string, string> =>
-  Object.fromEntries(issues.map((i) => [i.path.join('.'), i.message]));
 
 export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Props) {
-  const [form, setForm] = useState<LibreriaForm>(() =>
-    inicial ? libreriaAFormulario(inicial) : libreriaVacia(),
-  );
-  const [errores, setErrores] = useState<Record<string, string>>({});
-  const [fallo, setFallo] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
-  /**
-   * La etiqueta que se tipeó en «Otro…», para darla de alta **al guardar** — B-914.
-   *
-   * Este formulario **descartaba el segundo argumento** del `onChange`
-   * (`(v) => set('barrio', v)`), que es justamente el label a persistir (D-02). El
-   * síntoma era silencioso y de los caros: el chip aparecía, la ficha guardaba el
-   * slug, y la opción **nunca se daba de alta** en `/opciones/barrio` — así que
-   * ningún desplegable la volvía a ofrecer y el sitio la mostraba des-slugueada
-   * («villa-crespo» en vez de «Villa Crespo»). Es la trampa 6 por el lado que no se
-   * ve: no cuatro variantes de la misma etiqueta, sino ninguna.
-   *
-   * Lo encontró el `auditor-trampas` comparando contra `SuscripcionFormulario`,
-   * que sí las persiste.
-   */
-  const [labelNuevoDeBarrio, setLabelNuevoDeBarrio] = useState<string | null>(null);
-  /**
-   * Lo mismo para la ciudad — B-967. **Entra en el mismo cambio que el control**,
-   * que es la lección de B-914: un `TaxonomiaSelect` cuyo label no se persiste
-   * guarda el slug y no da de alta la opción, así que ningún desplegable la vuelve
-   * a ofrecer y el sitio la muestra des-slugueada.
-   *
-   * La provincia **no lleva buffer y no le falta**: sus 24 valores están sembrados
-   * `fijo: true`, así que «Otro…» no puede crear ninguna.
-   */
-  const [labelNuevoDeCiudad, setLabelNuevoDeCiudad] = useState<string | null>(null);
-  /**
-   * Y la provincia — B-967. **Sus 24 valores están sembrados `fijo: true`, así que
-   * «Otro…» no debería crear ninguna**… pero el control lo ofrece igual mientras
-   * la cuenta pueda escribir `/opciones/*` (`permitirOtro`), así que tirar el
-   * label sería la misma trampa que B-914 esperando a que alguien lo use. Cuesta
-   * tres líneas y no hay que razonar sobre si puede pasar.
-   */
-  const [labelNuevoDeProvincia, setLabelNuevoDeProvincia] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
-
-  useFormularioSucio(form);
-
-  const set = <K extends keyof LibreriaForm>(campo: K, valor: LibreriaForm[K]) =>
-    setForm((f) => ({ ...f, [campo]: valor }));
-
-  const errorDe = (path: string) => errores[path];
-
-  /** La dirección web que va a quedar, con el derivado a la vista antes de guardar. */
-  const slugResultante = useMemo(() => slugDeLibreria(form), [form]);
-
-  const congelado = inicial ? slugBloqueado(inicial) : false;
-
-  const guardar = async (publicar = false) => {
-    const parsed = libreriaFormSchema.safeParse(form);
-    if (!parsed.success) {
-      setErrores(erroresDe(parsed.error.issues));
-      setFallo('Faltan datos o hay algo mal cargado. Mirá los campos marcados.');
-      return;
-    }
-    setErrores({});
-    setGuardando(true);
-    try {
+  const { recordar, registrarUnaPorUna } = useEtiquetasNuevas();
+  const { form, set, errorDe, fallo, aviso, guardando, slugResultante, congelado, guardar } =
+    useFichaDeDirectorio<LibreriaForm, LibreriaConId>({
+      inicial,
+      vacia: libreriaVacia,
+      aFormulario: libreriaAFormulario,
+      schema: libreriaFormSchema,
+      slugDe: slugDeLibreria,
+      slugDisponible: slugDeLibreriaDisponible,
+      slugTomado: 'Ya hay otra librería con esta dirección web.',
+      crear: crearLibreria,
+      guardarExistente: (id, f) => guardarLibreria(id, f),
+      medicion: 'libreria-guardar',
+      respaldo: 'No se pudo guardar la librería',
       /*
-       * La guarda **de aviso** del slug (ver `slugDeLibreriaDisponible`): no es
-       * una garantía —la de B-909 es `asegurarSlugPublicable`, al publicar— pero convierte un
-       * choque en un mensaje con arreglo de una línea en vez de dos fichas con la
-       * misma URL descubiertas tres semanas después.
-       *
-       * Se salta cuando el slug está congelado: ahí no cambió, y preguntarlo
-       * sería una lectura por guardado para una respuesta que ya se sabe.
+       * La provincia entra aunque sus 24 valores estén sembrados `fijo: true`:
+       * el control ofrece «Otro…» mientras la cuenta pueda escribir
+       * `/opciones/*`, así que tirar el label sería B-914 esperando a que alguien
+       * lo use.
        */
-      if (!congelado && !(await slugDeLibreriaDisponible(slugResultante, inicial?.id))) {
-        setErrores({ slug: 'Ya hay otra librería con esta dirección web.' });
-        setFallo('La dirección web está tomada. Cambiala y volvé a guardar.');
-        return;
-      }
-      if (inicial) await guardarLibreria(inicial.id, parsed.data as LibreriaForm);
-      else await crearLibreria(parsed.data as LibreriaForm, publicar);
-      medirFuncion('libreria-guardar');
-      setFallo(null);
-      /*
-       * La etiqueta nueva, **después** de guardar y en su propio `try` — el orden
-       * de `guardarActividad` y por el mismo motivo: primero se escribe la ficha,
-       * que es lo que no se puede perder, y después se siembra la opción.
-       *
-       * Y lo que falla se avisa **por su nombre**, no con un «algo salió mal»: el
-       * arreglo es volver a tipear esa etiqueta (B-177).
-       */
-      for (const [campo, comoSeLlama, label] of [
-        ['barrio', 'barrio', labelNuevoDeBarrio],
-        ['ciudad', 'ciudad', labelNuevoDeCiudad],
-        ['provincia', 'provincia', labelNuevoDeProvincia],
-      ] as const) {
-        if (!label?.trim()) continue;
-        try {
-          await upsertOpcion(campo, label, uid);
-        } catch {
-          setAviso(
-            `Se guardó, pero el ${comoSeLlama} «${label}» no quedó en la lista. ` +
-              'Volvé a tipearlo la próxima vez que edites la ficha.',
-          );
-          return;
-        }
-      }
-      onGuardado();
-    } catch (e: unknown) {
-      setFallo(textoDeFallo(e, { respaldo: 'No se pudo guardar la librería' }));
-    } finally {
-      setGuardando(false);
-    }
-  };
+      registrarEtiquetas: () =>
+        registrarUnaPorUna(
+          [
+            ['barrio', 'barrio'],
+            ['ciudad', 'ciudad'],
+            ['provincia', 'provincia'],
+          ],
+          uid,
+        ),
+      onGuardado,
+    });
 
   return (
-    <section className="flex flex-col gap-6">
-      {fallo && (
-        <p
-          role="alert"
-          className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento"
-        >
-          {fallo}
-        </p>
-      )}
-      {aviso && (
-        <p role="status" className="rounded-md border border-borde bg-black/[0.03] px-3 py-2 text-sm">
-          {aviso}
-        </p>
-      )}
-
+    <MarcoDeFicha
+      esAlta={!inicial}
+      fallo={fallo}
+      aviso={aviso}
+      guardando={guardando}
+      guardar={guardar}
+      onCancelar={onCancelar}
+      pie={{
+        alCrear: 'Sin publicar queda esperando en la lista de librerías, y no se ve en el sitio.',
+        alEditar:
+          'Editar no cambia si está publicada o no. Eso se mueve desde la lista de librerías.',
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Nombre" htmlFor="lib-nombre" requerido error={errorDe('nombre')}>
           <input
@@ -342,7 +249,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
               set('provincia', geo.provincia);
               set('barrio', geo.barrio);
               set('ciudad', geo.ciudad);
-              if (label) setLabelNuevoDeProvincia(label);
+              recordar('provincia', label);
             }}
             placeholder="Elegí la provincia"
           />
@@ -358,7 +265,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
               onChange={(v, label) => {
                 set('barrio', v);
                 // El segundo argumento es el label a persistir, y tirarlo era B-914.
-                if (label) setLabelNuevoDeBarrio(label);
+                recordar('barrio', label);
               }}
               placeholder="Elegí el barrio"
             />
@@ -378,7 +285,7 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
               deshabilitado={!form.provincia}
               onChange={(v, label) => {
                 set('ciudad', v);
-                if (label) setLabelNuevoDeCiudad(label);
+                recordar('ciudad', label);
               }}
               placeholder="Elegí o agregá la ciudad"
             />
@@ -521,56 +428,6 @@ export function LibreriaFormulario({ uid, inicial, onGuardado, onCancelar }: Pro
           </Campo>
         </div>
       </fieldset>
-
-      {/*
-        B-983 — **dos botones al crear, uno solo al editar.**
-
-        Antes había un botón y un aviso que decía «Guardar no la publica»: cargar
-        desde el panel dejaba la ficha en `pendiente` y había que ir a la bandeja
-        a publicarla. Lo reportó el dueño — «no se sube automáticamente, lo tengo
-        que validar después de cargar»—, y el paso era ceremonia: **quien carga
-        desde el panel es el revisor**, no hay tercero a quien revisarle nada.
-
-        **«Guardar sin publicar» se queda**, y no por simetría: los estados del
-        directorio son `pendiente | publicado | rechazado`, **sin `borrador`**, así
-        que es la única forma de guardar una ficha a medio cargar sin que salga al
-        sitio.
-
-        **Al editar no aparecen los dos.** `crearLibreria` es lo único que elige
-        el estado; `guardarLibreria` no lo toca a propósito —el estado de una
-        ficha que ya existe lo mueve la bandeja, que es donde está el historial de
-        revisión—. Poner acá un «publicar» que a veces publica y a veces no sería
-        un botón que miente.
-      */}
-      <div className="flex flex-wrap gap-2">
-        {!inicial && (
-          <button
-            type="button"
-            onClick={() => void guardar(true)}
-            disabled={guardando}
-            className={`${claseBotonPrimario} disabled:opacity-50`}
-          >
-            {guardando ? 'Guardando…' : 'Guardar y publicar'}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => void guardar()}
-          disabled={guardando}
-          className={`${inicial ? claseBotonPrimario : claseBotonSecundario} disabled:opacity-50`}
-        >
-          {guardando ? 'Guardando…' : inicial ? 'Guardar' : 'Guardar sin publicar'}
-        </button>
-        <button type="button" onClick={onCancelar} className={claseBotonSecundario}>
-          Cancelar
-        </button>
-      </div>
-
-      <p className="text-xs text-tinta/65">
-        {inicial
-          ? 'Editar no cambia si está publicada o no. Eso se mueve desde la lista de librerías.'
-          : 'Sin publicar queda esperando en la lista de librerías, y no se ve en el sitio.'}
-      </p>
-    </section>
+    </MarcoDeFicha>
   );
 }

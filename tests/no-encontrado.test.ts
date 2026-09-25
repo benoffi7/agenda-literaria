@@ -214,11 +214,15 @@ describe('`/404` no ve más de lo que necesita — B-310', () => {
      * lista es de **un** símbolo, que entrega `GrupoDeExploracion[]`: pares de
      * ruta y texto, sin una entrada de índice adentro (D-140).
      */
-    const imp = /import \{([^}]*)\} from '@\/lib\/contenidoDelSitio'/.exec(fuente(PAGINA));
-    expect(imp, 'la página tiene que importar del lector con llaves').not.toBeNull();
+    const imports = [
+      ...fuente(PAGINA).matchAll(
+        /import \{([^}]*)\} from '@\/lib\/(contenidoDelSitio|contenidoDeLaGuia)'/g,
+      ),
+    ];
+    expect(imports.length, 'la página tiene que importar de los lectores con llaves').toBe(2);
     expect(
-      imp![1]!
-        .split(',')
+      imports
+        .flatMap((m) => m[1]!.split(','))
         .map((x) => x.trim())
         .filter(Boolean)
         .sort(),
@@ -227,7 +231,7 @@ describe('`/404` no ve más de lo que necesita — B-310', () => {
      * El segundo es de B-900, y entrega **números**: `Record<IdDirectorio,
      * number>`. Es lo mínimo para decidir si una sección de la Guía se sugiere,
      * y no alcanza para publicar nada de una ficha — no hay una ficha adentro.
-     * Con `vistaDeLibrerias` y sus tres hermanas la página habría decidido lo
+     * Con `vistaDeDirectorio` la página habría decidido lo
      * mismo recibiendo las fichas enteras.
      */
   });

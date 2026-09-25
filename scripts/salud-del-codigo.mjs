@@ -285,9 +285,11 @@ export const FORMULARIO = 'src/components/admin/ActividadFormulario.tsx';
  *
  * - `significativas` — B-856: 550 líneas **significativas**, no `wc -l`. Queda
  *   entre el compositor de hoy y la hipertrofia medida (780).
- * - `fanOut` — B-1073: 45 módulos del proyecto. Es **uno más** que lo que hoy
- *   importa `AdminApp.tsx`, el router del panel entero: un formulario que
- *   depende de más piezas que todo el panel ya no compone una pantalla.
+ * - `fanOut` — B-1073: 45 módulos del proyecto. Es **uno más** que lo que
+ *   importaba `AdminApp.tsx` cuando se fijó (44), el router del panel entero:
+ *   un formulario que depende de más piezas que todo el panel ya no compone una
+ *   pantalla. Desde M-17 ese router está partido en `AdminApp.tsx` y
+ *   `pantallas/`, y el número sigue siendo el ancla.
  *
  * Los dos los afirma `tests/salud-del-codigo.test.ts`, y el documento tiene que
  * escribir los mismos números.

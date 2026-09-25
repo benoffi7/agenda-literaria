@@ -18,13 +18,17 @@
  *
  * **Cómo se agrega una entrada** (30 segundos, y es la regla de proceso de
  * `docs/05-patrones.md`): al terminar un cambio que se note al usar el panel,
- * agregar un objeto arriba del array. Nada más. Si el cambio no se nota al
+ * agregar un objeto arriba del array, y su id arriba de `NOVEDADES_IDS` en
+ * `novedadesIds.ts` (B-1961). Si el cambio no se nota al
  * usar el panel, no va: esta lista no es un registro de trabajo.
  */
 
 import { PROMESA_DEL_BORRADOR } from '@/lib/carga-diferida';
 import { nombreDeMes } from '@/lib/meses';
 import { DOMINIO } from '@/lib/rutasPublicas';
+import { CLAVE_VISTO } from '@/lib/novedadesIds';
+
+export { CLAVE_VISTO, leerVisto } from '@/lib/novedadesIds';
 
 export interface Novedad {
   /**
@@ -1012,7 +1016,8 @@ export const NOVEDADES: Novedad[] = [
       'salen de Instagram quedan igual, porque ya vienen bien.',
     donde: 'Formulario, sección «Qué es» — el cargador de imágenes. No hay nada que tocar.',
   },
-  {    id: 'las-demas-imagenes-se-ven',
+  {
+    id: 'las-demas-imagenes-se-ven',
     fecha: '2026-09-02',
     version: '1.6.0',
     titulo: 'Si cargás más de una imagen, ahora se ven todas',
@@ -1656,9 +1661,6 @@ export const NOVEDADES: Novedad[] = [
   },
 ];
 
-/** Dónde se recuerda, por navegador, hasta dónde leyó esta persona. */
-export const CLAVE_VISTO = 'agenda-literaria:novedad-vista';
-
 /**
  * Novedades que esta persona todavía no vio.
  *
@@ -1674,19 +1676,6 @@ export function novedadesNoLeidas(lista: Novedad[], visto: string | null): Noved
   if (!visto) return lista;
   const i = lista.findIndex((n) => n.id === visto);
   return i === -1 ? [] : lista.slice(0, i);
-}
-
-/**
- * Lectura de la marca. Devuelve `null` ante cualquier problema: en una ventana
- * privada de Safari, o con el sitio bloqueado para guardar datos, leer esto
- * lanza una excepción en vez de devolver vacío.
- */
-export function leerVisto(): string | null {
-  try {
-    return window.localStorage.getItem(CLAVE_VISTO);
-  } catch {
-    return null;
-  }
 }
 
 /**

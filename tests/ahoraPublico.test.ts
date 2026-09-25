@@ -1208,7 +1208,7 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
      * **La mitad de la propiedad que no necesita artefacto, y la que hace que la
      * otra signifique algo.** Lo encontró el `auditor-privacidad`: las cuatro
      * utilidades del mapa **también las escriben otros archivos**
-     * —`lg:grid-cols-2` está en `EstadisticasPanel.tsx` y `lg:grid-cols-3` en
+     * —`lg:grid-cols-2` está en `estadisticas/PanelCatalogo.tsx` y `lg:grid-cols-3` en
      * `FiltrosActividades.tsx`—, así que exigirlas en la hoja pasaría verde
      * aunque `components/sitio/estilos.ts` quedara **fuera del scan de
      * Tailwind**, que es justo el modo de falla que esto cubre: la grilla se

@@ -42,11 +42,11 @@ no se pueden deshacer después.
    | 18 | la página comercial `/anunciar` | `src/lib/comercialDelSitio.ts`, `src/lib/enlaces.ts` (la casilla) |
    | 19 | `/mis-favoritos` — lo guardado en el navegador de quien visita | `src/lib/guardadosDelSitio.ts`, `src/lib/guardadoDelNavegador.ts` |
    | 20 | el directorio de librerías: `/librerias.json` + `/guia/librerias` | `src/lib/libreriaPublica.ts` (`libreriaPublica`, `construirIndiceDeLibrerias`, `descripcionDelDirectorio`), `src/lib/contenidoDelSitio.ts` (`libreriasPublicadas` — el `where` y el `.select()`) |
-   | 21 | la ficha `/guia/librerias/{slug}` y su JSON-LD `BookStore` | `src/lib/libreriaPublica.ts` (`fichaDeLibreria`, `datosEstructuradosDeLibreria`, `migasDeLibreria`, `descripcionDeLibreria`), `src/lib/contenidoDelSitio.ts` (`caminosDeLibreria`) |
+   | 21 | la ficha `/guia/librerias/{slug}` y su JSON-LD `BookStore` | `src/lib/libreriaPublica.ts` (`fichaDeLibreria`, `datosEstructuradosDeLibreria`, `migasDeLibreria`, `descripcionDeLibreria`), `src/lib/contenidoDeLaGuia.ts` (`caminosDeDirectorio`) |
    | 22 | el directorio de suscripciones literarias: `/suscripciones.json` + `/guia/suscripciones` | `src/lib/suscripcionPublica.ts` (`suscripcionPublica`, `fraseDePrecio`, `construirIndiceDeSuscripciones`, `descripcionDelDirectorioDeSuscripciones`), `src/lib/contenidoDelSitio.ts` (`suscripcionesPublicadas` — el `where` y el `.select()`) |
-   | 23 | la ficha `/guia/suscripciones/{slug}` y su JSON-LD `Product` **sin precio** | `src/lib/suscripcionPublica.ts` (`fichaDeSuscripcion`, `datosEstructuradosDeSuscripcion`, `migasDeSuscripcion`, `descripcionDeSuscripcion`), `src/lib/contenidoDelSitio.ts` (`caminosDeSuscripcion`) |
+   | 23 | la ficha `/guia/suscripciones/{slug}` y su JSON-LD `Product` **sin precio** | `src/lib/suscripcionPublica.ts` (`fichaDeSuscripcion`, `datosEstructuradosDeSuscripcion`, `migasDeSuscripcion`, `descripcionDeSuscripcion`), `src/lib/contenidoDeLaGuia.ts` (`caminosDeDirectorio`) |
    | 24 | el directorio de lugares para eventos: `/lugares.json` + `/guia/lugares` | `src/lib/lugarPublico.ts` (`lugarPublico`, **`dondeQueSale`** —el par flag + dato del § 6: `direccion` y `geo` salen solo si `direccionPublica`—, `fraseDePrecioDeLugar`, `claseDeCosto`, `construirIndiceDeLugares`, `descripcionDelDirectorioDeLugares`), `src/lib/contenidoDelSitio.ts` (`lugaresPublicados` — el `where` y el `.select()`) |
-   | 25 | la ficha `/guia/lugares/{slug}` y su JSON-LD `Place`, con `address` **solo si la dirección salió** y sin `priceRange` | `src/lib/lugarPublico.ts` (`fichaDeLugar`, `datosEstructuradosDeLugar`, `migasDeLugar`, `descripcionDeLugar`), `src/lib/contenidoDelSitio.ts` (`caminosDeLugar`) |
+   | 25 | la ficha `/guia/lugares/{slug}` y su JSON-LD `Place`, con `address` **solo si la dirección salió** y sin `priceRange` | `src/lib/lugarPublico.ts` (`fichaDeLugar`, `datosEstructuradosDeLugar`, `migasDeLugar`, `descripcionDeLugar`), `src/lib/contenidoDeLaGuia.ts` (`caminosDeDirectorio`) |
    | 26 | el directorio de bibliotecas `/bibliotecas.json` + `/guia/bibliotecas` | `src/lib/bibliotecaPublica.ts`, `src/lib/contenidoDelSitio.ts` |
    | 27 | la ficha `/guia/bibliotecas/{slug}` y su JSON-LD `Library`, sin `openingHours` y sin `Offer` | `src/lib/bibliotecaPublica.ts` |
    | 28 | el formulario público `/guia/bibliotecas/sumar` — no proyecta, pero es HTML indexado que escribe | `src/components/publico/SumarBiblioteca.tsx`, `src/lib/enviar-ficha.ts` |
@@ -70,8 +70,9 @@ no se pueden deshacer después.
    > Pasó de siete a **once** con B-265, B-113, B-109 y B-108, y a **doce** con
    > B-372/B-375. Todas las veces las ató el
    > mismo test (`tests/agentes-y-skills.test.ts`), que compara los números de las
-   > tres tablas: la de `docs/07-seguridad.md`, la de la ficha del
-   > `auditor-privacidad` y ésta.
+   > tablas: la de `docs/07-seguridad.md` y ésta. La ficha del
+   > `auditor-privacidad` ya no copia la suya: la lee de `07-seguridad.md` (M-8),
+   > y lo que sí tiene es la lista de archivos que la despiertan.
 2. **¿Es un dato libre o una taxonomía?** Si es un valor de un conjunto que va a
    crecer, va como `/opciones/{campo}` con el patrón del §4 (slugify + upsert
    transaccional + aprobación), no como string libre.

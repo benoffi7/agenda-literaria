@@ -102,13 +102,11 @@ describe.skipIf(!vivo)('el alta de la callable contra el emulador — B-893', ()
   });
 
   /*
-   * B-1951 — **timeout propio, no el de 5 s de vitest.** Las tres altas compiten
-   * por el mismo documento, así que dos de las tres transacciones abortan y se
-   * reintentan contra el emulador, con espera entre intentos. Con la máquina
-   * cargada (otro checkout corriendo su suite al lado) se pasó de los 5 s en el
-   * gate y pasó sola al reintentar: no era un bug, era un reloj que no contaba
-   * los reintentos. 30 s es lo que usan los otros casos de integración que
-   * esperan más de una ida y vuelta al emulador.
+   * **Timeout propio — B-1951.** Las tres transacciones compiten por el mismo
+   * documento y dos se reintentan contra el emulador; con la máquina cargada (otro
+   * agente corriendo la suite a la vez) pasó de los 5 s por defecto y en el
+   * reintento dio verde. Es lentitud, no un bug: 30 s como los otros casos de
+   * integración que esperan al emulador.
    */
   it('dos altas simultáneas no se pisan: la transacción relee el array', async () => {
     const r = await Promise.all([alta('Uno'), alta('Dos'), alta('Tres')]);

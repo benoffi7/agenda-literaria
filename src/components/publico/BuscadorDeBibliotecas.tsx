@@ -129,7 +129,7 @@ export function BuscadorDeBibliotecas({ version, idListadoEstatico }: Props) {
    * Las fichas filtradas.
    *
    * Las etiquetas salen del propio índice y el hub **no se linkea desde acá**:
-   * cuál barrio tiene página lo sabe el build (`fichasDeBiblioteca`), no el
+   * cuál barrio tiene página lo sabe el build (`lib/contenidoDeLaGuia.ts`), no el
    * navegador. Antes que publicar un enlace a ciegas —que sería un 404 en cada
    * barrio sin actividades— la fila re-renderizada muestra el barrio como texto,
    * igual que la del build cuando el hub no existe.

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { indiceDeLugares } from '@/lib/contenidoDelSitio';
+import { indiceDeDirectorio } from '@/lib/contenidoDeLaGuia';
 
 /**
  * `/lugares.json` — el índice que el listado de `/guia/lugares` filtra en
@@ -34,7 +34,7 @@ import { indiceDeLugares } from '@/lib/contenidoDelSitio';
 export const prerender = true;
 
 export const GET: APIRoute = async () => {
-  const indice = await indiceDeLugares();
+  const indice = await indiceDeDirectorio('lugares');
 
   return new Response(`${JSON.stringify(indice, null, 2)}\n`, {
     headers: {

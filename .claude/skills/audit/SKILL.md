@@ -53,7 +53,8 @@ git status --porcelain | sed 's/^...//' | node scripts/auditores-que-corresponde
 
 Devuelve `privacidad`, `trampas` y `documentacion` en `true`/`false` más los
 archivos que disparan cada uno. La lista de disparadores de cada auditor vive en
-el `description` de su propia ficha (`.claude/agents/auditor-*.md`) y se lee de
+su propia ficha (`.claude/agents/auditor-*.md`: el `description`, o el bloque
+«Los archivos que te despiertan» en la del `auditor-privacidad`) y se lee de
 ahí, así que **agregar un productor a un auditor no requiere tocar este skill**.
 
 - `documentacion` corre **siempre** — su disparador es el cambio, no el archivo.

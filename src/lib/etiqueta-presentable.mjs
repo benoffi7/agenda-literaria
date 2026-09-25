@@ -5,7 +5,7 @@
  * callable que crea la etiqueta del publicador (`functions/alta-de-opcion.js`)
  * tiene que presentarla **igual** que el panel, y `functions/` se despliega con
  * su propio `package.json` y no puede importar `src/` (D-20). Es el mismo reparto
- * que `slugify.mjs` y `geografia.mjs`: una implementación, N runtimes. Ver el
+ * que `slugify.ts` y `geografia.mjs`: una implementación, N runtimes. Ver el
  * docblock de allá.
  *
  * Este archivo queda como fachada para que ni `taxonomia.ts` ni
