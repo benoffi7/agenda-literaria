@@ -7,7 +7,7 @@
  * link, y tiene tres preguntas —dónde queda, cuándo abre y cómo saco un libro—.
  *
  * ── Esta plantilla no ve el documento (D-140) ─────────────────────────────
- * `getStaticPaths` es `caminosDeBiblioteca` (`lib/contenidoDelSitio.ts`), que
+ * `getStaticPaths` es `caminosDeDirectorio('bibliotecas')` (`lib/contenidoDeLaGuia.ts`), que
  * entrega **solo** una `FichaDeBiblioteca`: el view-model que
  * `bibliotecaPublica.ts` armó enumerando campo por campo. Acá no hay una
  * `Biblioteca` ni un documento de Firestore, así que **no se puede interpolar el
@@ -41,7 +41,7 @@
  * que sale el `url` del JSON-LD: tres salidas, un solo origen.
  */
 import Base from '@/layouts/Base.astro';
-import { caminosDeBiblioteca } from '@/lib/contenidoDelSitio';
+import { caminosDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import {
   datosEstructuradosDeBiblioteca,
   descripcionDeBiblioteca,
@@ -59,7 +59,7 @@ export const prerender = true;
  * propio (`{ paginate, rss }`) y con el alias ese objeto caería en el primer
  * parámetro. Es la lección de B-237.
  */
-export const getStaticPaths = () => caminosDeBiblioteca();
+export const getStaticPaths = () => caminosDeDirectorio('bibliotecas');
 
 interface Props {
   ficha: FichaDeBiblioteca;

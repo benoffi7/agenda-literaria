@@ -8,7 +8,7 @@
  * link, y tiene tres preguntas —para cuántos entra, qué tiene y cuánto cuesta—.
  *
  * ── Esta plantilla no ve el documento (D-140), y acá eso es LA defensa ────
- * `getStaticPaths` es `caminosDeLugar` (`lib/contenidoDelSitio.ts`), que entrega
+ * `getStaticPaths` es `caminosDeDirectorio('lugares')` (`lib/contenidoDeLaGuia.ts`), que entrega
  * **solo** una `FichaDeLugar`: el view-model que `lugarPublico.ts` armó
  * enumerando campo por campo. Acá no hay un `Lugar`, así que no se puede
  * interpolar el `contactoDeQuienCargo`, ni el motivo del rechazo, ni el
@@ -41,7 +41,7 @@
  * decirlo (la decisión está discriminada y vive en la ficha de una suscripción).
  */
 import Base from '@/layouts/Base.astro';
-import { caminosDeLugar } from '@/lib/contenidoDelSitio';
+import { caminosDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import {
   datosEstructuradosDeLugar,
   descripcionDeLugar,
@@ -59,7 +59,7 @@ export const prerender = true;
  * (`{ paginate, rss }`) y con el alias ese objeto caería en el primer parámetro.
  * Es la lección de B-237.
  */
-export const getStaticPaths = () => caminosDeLugar();
+export const getStaticPaths = () => caminosDeDirectorio('lugares');
 
 interface Props {
   ficha: FichaDeLugar;

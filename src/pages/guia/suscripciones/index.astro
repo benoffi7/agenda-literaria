@@ -12,7 +12,7 @@
  * build se queda.
  *
  * ── La plantilla no ve el documento (D-140) ───────────────────────────────
- * Recibe `vistaDeSuscripciones()`, que es el view-model: fichas ya proyectadas y
+ * Recibe `vistaDeDirectorio('suscripciones')`, que es el view-model: fichas ya proyectadas y
  * chips de los tres ejes con vocabulario. Acá no hay una `SuscripcionLiteraria`
  * ni nada de Firestore, así que **no se puede interpolar el
  * `contactoDeQuienCargo`** ni el precio crudo: no están en el objeto.
@@ -32,7 +32,7 @@
 import Base from '@/layouts/Base.astro';
 import { BuscadorDeSuscripciones } from '@/components/publico/BuscadorDeSuscripciones';
 import { FichaDeSuscripcionFila } from '@/components/publico/FichaDeSuscripcionFila';
-import { vistaDeSuscripciones } from '@/lib/contenidoDelSitio';
+import { vistaDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import {
   coleccionDeSuscripciones,
   descripcionDelDirectorioDeSuscripciones,
@@ -43,7 +43,7 @@ import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
 
-const { fichas, version } = await vistaDeSuscripciones();
+const { fichas, version } = await vistaDeDirectorio('suscripciones');
 const cuantas = fichas.length;
 
 /** El `id` que la island usa para sacar la lista del build. */

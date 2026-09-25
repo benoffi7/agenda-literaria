@@ -8,7 +8,7 @@
  * link, y tiene tres preguntas —qué me llega, cuánto sale y cómo me suscribo—.
  *
  * ── Esta plantilla no ve el documento (D-140) ─────────────────────────────
- * `getStaticPaths` es `caminosDeSuscripcion` (`lib/contenidoDelSitio.ts`), que
+ * `getStaticPaths` es `caminosDeDirectorio('suscripciones')` (`lib/contenidoDeLaGuia.ts`), que
  * entrega **solo** una `FichaDeSuscripcion`: el view-model que
  * `suscripcionPublica.ts` armó enumerando campo por campo. Acá no hay una
  * `SuscripcionLiteraria`, así que **no se puede interpolar el
@@ -39,7 +39,7 @@
  * precio queda afuera— está en `datosEstructuradosDeSuscripcion`.
  */
 import Base from '@/layouts/Base.astro';
-import { caminosDeSuscripcion } from '@/lib/contenidoDelSitio';
+import { caminosDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import {
   datosEstructuradosDeSuscripcion,
   descripcionDeSuscripcion,
@@ -62,7 +62,7 @@ export const prerender = true;
  * (`{ paginate, rss }`) y con el alias ese objeto caería en el primer parámetro.
  * Es la lección de B-237.
  */
-export const getStaticPaths = () => caminosDeSuscripcion();
+export const getStaticPaths = () => caminosDeDirectorio('suscripciones');
 
 interface Props {
   ficha: FichaDeSuscripcion;

@@ -11,7 +11,7 @@
  * **mismo** componente de fila. Si el fetch falla, la lista del build se queda.
  *
  * ── La plantilla no ve el documento (D-140) ───────────────────────────────
- * Recibe `vistaDeLibrerias()`, que es el view-model: fichas ya proyectadas y
+ * Recibe `vistaDeDirectorio('librerias')`, que es el view-model: fichas ya proyectadas y
  * chips de barrio. Acá no hay una `Libreria` ni nada de Firestore, así que **no
  * se puede interpolar el `contactoDeQuienCargo`**: no está en el objeto. La
  * frontera de privacidad es un tipo, no la disciplina de quien escribe la
@@ -29,7 +29,7 @@
 import Base from '@/layouts/Base.astro';
 import { BuscadorDeLibrerias } from '@/components/publico/BuscadorDeLibrerias';
 import { FichaDeLibreriaFila } from '@/components/publico/FichaDeLibreriaFila';
-import { vistaDeLibrerias } from '@/lib/contenidoDelSitio';
+import { vistaDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import { coleccionDeLibrerias, descripcionDelDirectorio } from '@/lib/libreriaPublica';
 import { NOMBRE } from '@/lib/identidad';
 import { RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_LIBRERIA } from '@/lib/rutasPublicas';
@@ -37,7 +37,7 @@ import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
 
-const { fichas, version } = await vistaDeLibrerias();
+const { fichas, version } = await vistaDeDirectorio('librerias');
 const cuantas = fichas.length;
 
 /** El `id` que la island usa para sacar la lista del build. */
