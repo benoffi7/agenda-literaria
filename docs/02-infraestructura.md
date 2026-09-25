@@ -739,6 +739,9 @@ gcloud projects add-iam-policy-binding agenda-literaria \
 `--condition=None` hace falta porque la política del proyecto ya tiene bindings con
 condición, y sin él gcloud se niega en modo no interactivo.
 
+✅ **Otorgado el 2026-09-25** por el dueño: `calendar-sync@` figura con
+`roles/firebaseauth.viewer` en la política del proyecto.
+
 Sin él el aviso no se apaga: suena `sede-sin-ciudad` con el código del error cada
 vez que aparece una fila así (docs/08-operacion.md § «Cuando suena
 `sede-sin-ciudad`»).
