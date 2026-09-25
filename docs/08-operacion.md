@@ -908,8 +908,21 @@ de la carpeta donde vive, no del directorio desde el que se lo llama.
 Un caso ata el recorte —`--compartidos` sobre el chico es igual que sobre el
 real— y otro decide contra el árbol real sin la variable. Además los casos corren
 concurrentes. Medido: de 16,5 s a ~5 s solo, y de 37 s a ~13 s dentro de la suite
-en paralelo. El piso lo pone el script, no el árbol: cada llamada lanza decenas
+en paralelo. El piso lo ponía el script, no el árbol: cada llamada lanzaba decenas
 de subprocesos, y en macOS eso son ~0,1 s aunque corran a la vez.
+
+**Y el script lanza pocos procesos** (B-1970): la clausura hace **un** `grep`
+por vuelta sobre todos los archivos de esa vuelta —antes era uno por archivo, más
+un `$( … )` para resolver cada nombre—, los paquetes se buscan con un solo `grep`
+sobre todos los compartidos, y «¿esta ruta de `functions/` es compartida?» lo
+contesta el propio bash sin un `grep` por ruta. Ninguna decisión cambió: se
+comparó la salida del script viejo con la del nuevo en las 52 llamadas del test,
+en 200 commits de `main` de a uno más cuatro rangos largos, en cada archivo de
+`functions/` solo, y en árboles de borde (raíz con espacios, `.mjs`/`.cjs`, un
+citado que no existe, un paquete, un ciclo de imports): 393 de 393 iguales.
+Medido: por llamada contra el árbol real, de 0,34 s a 0,20 s (decidir) y de 0,30 s
+a 0,15 s (`--compartidos`, donde ahora casi todo es el `grep -r` de `src/`); el
+test, de ~5 s a ~2,5 s.
 
 **Orden:** reglas → hosting → functions. Las reglas primero porque si el panel
 nuevo escribe campos que las reglas viejas rechazan, el orden inverso deja una
