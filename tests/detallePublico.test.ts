@@ -22,6 +22,7 @@ import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
 import { toPublic } from '@/lib/toPublic';
 import { formADocumento } from '@/lib/actividades';
+import { modalidadResultante } from '@/lib/modalidades';
 import { formularioLleno } from './fixtures/formulario';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
@@ -1447,6 +1448,23 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
       datosEstructurados(detalleDe({ modalidades: ['presencial', 'virtual'] }))!
         .eventAttendanceMode,
     ).toBe('https://schema.org/MixedEventAttendanceMode');
+  });
+
+  it('el modo de asistencia es el de `modalidadResultante`, no una regla propia — B-2150', () => {
+    const MODOS = {
+      presencial: 'https://schema.org/OfflineEventAttendanceMode',
+      virtual: 'https://schema.org/OnlineEventAttendanceMode',
+      hibrido: 'https://schema.org/MixedEventAttendanceMode',
+    } as const;
+    const formas = ['presencial', 'virtual', 'hibrido'] as const;
+    for (const a of formas) {
+      for (const b of formas) {
+        const d = detalleDe({ modalidades: [a, b] });
+        expect(datosEstructurados(d)!.eventAttendanceMode, `${a} + ${b}`).toBe(
+          MODOS[modalidadResultante(d.modalidades)],
+        );
+      }
+    }
   });
 
   it('con dos formas de cursar, location es un array de Place y VirtualLocation', () => {

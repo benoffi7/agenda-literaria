@@ -54,7 +54,7 @@ import {
 import { pluralDeTipo } from '@/lib/hubsPublicos';
 import { imagenesPublicables } from '@/lib/imagenes';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
-import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
+import { SLUG_PLATAFORMA_A_CONFIRMAR, modalidadResultante } from '@/lib/modalidades';
 import { RUTA_AGENDA, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
 import { porComision } from '@/lib/comisiones';
 import { instanteDeIso } from '@/lib/sesiones';
@@ -1717,13 +1717,12 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
   if (conFechas.length === 0) return null;
 
   const subtipo = TIPO_SCHEMA[d.tipo] ?? 'Event';
-  const modalidades = d.modalidades.map((m) => m.modalidad);
-  const modo =
-    modalidades.length === 0
-      ? MODO_ASISTENCIA.presencial
-      : modalidades.every((m) => m === modalidades[0])
-        ? MODO_ASISTENCIA[modalidades[0]!]
-        : MODO_ASISTENCIA.hibrido;
+  /*
+   * La modalidad de la actividad entera es `modalidadResultante` —la misma que
+   * guarda el documento—, no una regla propia. Hasta B-2150 esto se la escribía
+   * con un `every(...)`: daba lo mismo, pero era la clase de B-88.
+   */
+  const modo = MODO_ASISTENCIA[modalidadResultante(d.modalidades)];
 
   /**
    * ¿Esto todavía se puede conseguir? — la regla 4 del §5.3, entera.
