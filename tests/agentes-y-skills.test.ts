@@ -577,6 +577,40 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     ).toEqual([]);
   });
 
+  it('cada fila de la tabla tiene las columnas de su encabezado — B-1942', () => {
+    /*
+     * **La fila 30 de la ficha tenía tres columnas y las demás cuatro.** Le
+     * faltaba la de «Test que la fija», así que el agente no tenía dónde mirar
+     * qué red cubre `/guia`. Nada lo decía: el parseo de arriba toma la celda
+     * del productor por contenido, no por posición, y una fila corta se lee
+     * igual. Markdown tampoco se queja — la celda que falta se pinta vacía.
+     *
+     * Se mide en la ficha y en el skill, que tienen una forma sola. En
+     * `07-seguridad.md` el encabezado declara tres columnas y la mayoría de las
+     * filas trae cuatro, así que ahí este caso estaría en rojo por una deuda
+     * distinta, que queda anotada aparte.
+     *
+     * MUTACIÓN PROBADA: sacarle a la fila 30 de la ficha su última celda pone
+     * este caso en rojo nombrando la fila.
+     */
+    const celdas = (linea: string): number => linea.trim().replace(/^\||\|$/g, '').split('|').length;
+    for (const archivo of [FICHA, SKILL_CAMPO_NUEVO]) {
+      const lineas = fuente(archivo).split('\n');
+      const encabezado = lineas.findIndex((l) => /^\s*\|\s*#\s*\|/.test(l));
+      expect(encabezado, `${archivo} no tiene el encabezado «| # |» de la tabla`).toBeGreaterThan(-1);
+      const esperadas = celdas(lineas[encabezado]!);
+      const cortas: string[] = [];
+      for (let i = encabezado + 2; i < lineas.length && /^\s*\|/.test(lineas[i] ?? ''); i++) {
+        const n = celdas(lineas[i]!);
+        if (n !== esperadas) cortas.push(`fila «${/^\s*\|\s*(\d+)/.exec(lineas[i]!)?.[1] ?? i}» con ${n}`);
+      }
+      expect(
+        cortas,
+        `${archivo}: el encabezado tiene ${esperadas} columnas y estas filas no`,
+      ).toEqual([]);
+    }
+  });
+
   it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {
     /*
      * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
