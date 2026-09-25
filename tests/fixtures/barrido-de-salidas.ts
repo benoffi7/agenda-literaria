@@ -78,7 +78,7 @@ import { CENTINELA_DEL_DIRECTORIO, CENTINELA_DE_BIBLIOTECAS, CENTINELA_DE_LUGARE
  * **Cada centinela del gate, con la ruta de este fixture que mide lo mismo** —
  * B-1761.
  *
- * El paso 9 de `scripts/build-contra-emulador.mjs` barre el `dist/` con sus
+ * El paso 9 del gate (`scripts/gate-build/chequeos/11-barrido.mjs`) barre el `dist/` con sus
  * propias canastas, y una excepción nueva se declaraba «en los dos» de memoria.
  * Falló cuatro veces (B-99, `comisionId`, `incluyeSlug`, el monto): una lista se
  * actualizaba y la otra no, y el gate quedaba rojo por un campo que se publica a
