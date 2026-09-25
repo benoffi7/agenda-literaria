@@ -465,6 +465,13 @@ export const EFECTOS_INCONDICIONALES = [
    * porque la ficha pasó a publicada, no porque el sitio tenga algo que rehacer.
    */
   'marcarPublicada',
+  /*
+   * B-1920 — la corrección de `ciudades` corresponde porque el documento se
+   * escribió con un derivado que no es el de sus filas, no porque el calendario
+   * tenga operaciones: una actividad en borrador también define dónde carga un
+   * publicador (D-1150).
+   */
+  'corregirCiudades',
 ];
 
 
@@ -490,6 +497,8 @@ export const EFECTOS_INCONDICIONALES = [
  */
 export const WRITE_BACKS_CON_GUARDA: Record<string, string> = {
   marcarPublicada: 'faltaMarcarPublicada',
+  // B-1920 — la segunda pasada ve `ciudades` ya alineado y no entra.
+  corregirCiudades: 'ciudadesDesalineadas',
 };
 
 

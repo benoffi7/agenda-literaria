@@ -57,7 +57,18 @@ export const MARCA_DE_PUBLICADA = 'publicadaAlgunaVez';
  *
  * Ante la duda, entonces, se guarda. Un campo nuevo del modelo entra solo.
  */
-const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy', MARCA_DE_PUBLICADA];
+/*
+ * **B-1920 — y `ciudades`.** Lo escribe el panel en cada guardado, pero no lo
+ * tipea nadie: es `ciudadesDe(modalidades)`, y desde B-1920 también lo corrige
+ * `syncCalendar` cuando no coincide con las filas (`corregirCiudades`). Esa
+ * corrección es un write-back al documento que lo disparó (trampa 3): sin esta
+ * entrada costaría una versión de historial y un rebuild. No se pierde nada que
+ * alguien quiera recuperar: cuando `ciudades` cambia de verdad cambian las filas
+ * en la misma escritura, y restaurar las filas lo recalcula
+ * (`src/lib/historial.ts`). Tampoco sale al `events.json`, así que el rebuild que
+ * se ahorra no mostraba nada nuevo.
+ */
+const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy', MARCA_DE_PUBLICADA, 'ciudades'];
 
 /**
  * B-285 — ¿el **campo** afirma que estuvo publicada?
