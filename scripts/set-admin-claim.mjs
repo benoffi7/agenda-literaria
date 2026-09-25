@@ -12,6 +12,7 @@
  *                                                        carga solo ahí (B-921) y
  *                                                        ve lo de ahí (B-919)
  *   npm run admin:claim -- --quitar <uid|email>        → sin claims
+ *   npm run admin:claim -- --ver <uid|email>           → SOLO LEE: rol y ciudad (B-2051)
  *
  * Contra los emuladores exportá antes:
  *   export FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
@@ -49,8 +50,40 @@ import { getAuth } from 'firebase-admin/auth';
  * existir.
  */
 import { slugify } from '../functions/slugify.js';
+import { describirClaims } from './describir-claims.mjs';
 
 const argumentos = process.argv.slice(2);
+
+/**
+ * **`--ver`: el único modo que no escribe** — B-2051.
+ *
+ * La consola de Firebase no muestra los custom claims, y el runbook de
+ * `ciudades-no-coinciden` (`docs/08-operacion.md`) pide comparar la ciudad de
+ * una cuenta contra lo que cargó. Hasta acá la única forma de saberla era
+ * acordarse del comando con que se le dio.
+ *
+ * ── Por qué no pide nada más para mirar producción ────────────────────────
+ * El entorno lo sigue eligiendo el comando, igual que para escribir
+ * (`admin:claim` → emulador, `admin:claim:prod` → producción): leer no pide un
+ * permiso aparte porque no hay nada que proteger de un error de destino —mirar
+ * la cuenta equivocada no cambia nada—. Lo que se protege es lo contrario: que
+ * `--ver` **no pueda escribir**. Por eso se rechaza junto con cualquier flag de
+ * rol (un `--ver --publicador` es un comando que quería otra cosa, y el
+ * default de este script es `admin`) y sale del script **antes** de la rama
+ * que llama a `setCustomUserClaims`. `tests/claim-ver.integracion.test.ts` lo
+ * verifica contra el emulador: los claims de la cuenta quedan byte por byte.
+ */
+const ver = argumentos.includes('--ver');
+if (ver) {
+  const choca = argumentos.filter((a) => ['--publicador', '--quitar', '--ciudad', '--todos'].includes(a));
+  if (choca.length > 0) {
+    console.error(
+      `--ver solo lee y no se combina con ${choca.join(' ')}: ` +
+        'para cambiar el rol, corré el comando sin --ver.',
+    );
+    process.exit(1);
+  }
+}
 
 /**
  * El rol sale de un flag y **el default es `admin`**, que es lo que este comando
@@ -112,7 +145,7 @@ if (iCiudad >= 0) {
   rol.nombre = 'publicador general (carga en cualquier ciudad, ve solo lo suyo)';
 }
 
-const consumidos = new Set([flag, '--ciudad', ciudadCruda].filter(Boolean));
+const consumidos = new Set([flag, '--ciudad', ciudadCruda, ver && '--ver'].filter(Boolean));
 const objetivo = argumentos.find((a) => !consumidos.has(a));
 if (!objetivo) {
   console.error('Uso: npm run admin:claim -- <uid|email>                 (admin)');
@@ -120,6 +153,7 @@ if (!objetivo) {
   console.error('     npm run admin:claim -- --publicador --ciudad "Mar del Plata" <uid|email>');
   console.error('                                                       (carga solo en su ciudad; ve lo suyo + su ciudad, en lectura)');
   console.error('     npm run admin:claim -- --quitar <uid|email>        (le saca el rol)');
+  console.error('     npm run admin:claim -- --ver <uid|email>           (solo lee: rol y ciudad)');
   console.error('     npm run admin:claim -- --todos                     (solo emulador)');
   process.exit(1);
 }
@@ -157,7 +191,8 @@ console.log(
 // Y el rol, por el mismo motivo que el objetivo: `--publicador` es un flag de
 // una palabra en medio de un comando largo, y equivocarse en silencio acá es
 // darle el panel entero a quien tenía que ver solo lo suyo.
-console.log(`Rol: ${rol.nombre.toUpperCase()}`);
+// Con `--ver` no hay rol que anunciar: se anuncia que no se escribe.
+console.log(ver ? 'Modo: SOLO LECTURA (--ver no escribe nada)' : `Rol: ${rol.nombre.toUpperCase()}`);
 
 const auth = getAuth();
 
@@ -182,15 +217,32 @@ const explicarSiNoExiste = (e) => {
     `\nNo existe «${objetivo}» en ${enEmulador ? 'el EMULADOR' : `PRODUCCIÓN (${projectId})`}.\n\n` +
       (enEmulador
         ? '  · Si la cuenta es de producción, el comando es `npm run admin:claim:prod -- ' +
-          `${objetivo}\`: este apunta al emulador.\n`
+          `${ver ? '--ver ' : ''}${objetivo}\`: este apunta al emulador.\n`
         : '  · Si la cuenta es del emulador, el comando es `npm run admin:claim -- ' +
-          `${objetivo}\`.\n`) +
+          `${ver ? '--ver ' : ''}${objetivo}\`.\n`) +
       '  · Y si es la cuenta correcta: con Google el usuario nace en el PRIMER LOGIN.\n' +
       '    Que entre una vez a /admin (va a ver «sin permisos», eso está bien) y\n' +
       '    repetí este comando después.',
   );
   process.exit(1);
 };
+
+if (ver) {
+  const usuario = await (objetivo.includes('@')
+    ? auth.getUserByEmail(objetivo)
+    : auth.getUser(objetivo)
+  ).catch(explicarSiNoExiste);
+  const { nombre, ciudad, avisos } = describirClaims(usuario.customClaims);
+  console.log(`\nCuenta: ${usuario.email ?? '(sin correo)'} (uid ${usuario.uid})`);
+  console.log(`Rol: ${nombre}`);
+  console.log(`Ciudad: ${ciudad || '— (sin alcance por ciudad)'}`);
+  console.log(`Claims: ${JSON.stringify(usuario.customClaims ?? {})}`);
+  for (const aviso of avisos) console.log(`⚠️  ${aviso}`);
+  // Lo que se lee es el claim guardado, no el del token: una sesión que ya
+  // estaba abierta sigue con el anterior hasta volver a entrar (hasta una hora).
+  console.log('\nEs el claim guardado. Una sesión abierta del panel puede tener el anterior hasta volver a entrar.');
+  process.exit(0);
+}
 
 /**
  * `--todos` es comodidad de desarrollo: entrás una vez con el popup del
