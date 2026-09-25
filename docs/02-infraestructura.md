@@ -733,8 +733,11 @@ Es de solo lectura sobre las cuentas; lo otorga el dueño (D-119):
 ```bash
 gcloud projects add-iam-policy-binding agenda-literaria \
   --member="serviceAccount:calendar-sync@agenda-literaria.iam.gserviceaccount.com" \
-  --role="roles/firebaseauth.viewer"
+  --role="roles/firebaseauth.viewer" --condition=None
 ```
+
+`--condition=None` hace falta porque la política del proyecto ya tiene bindings con
+condición, y sin él gcloud se niega en modo no interactivo.
 
 Sin él el aviso no se apaga: suena `sede-sin-ciudad` con el código del error cada
 vez que aparece una fila así (docs/08-operacion.md § «Cuando suena
