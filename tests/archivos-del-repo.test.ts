@@ -116,10 +116,12 @@ describe('nadie llama a `git ls-files` sin pasar por archivosDelRepo — B-964',
     'tests/fixtures/archivos-del-repo.ts': 'es la implementación misma',
     'tests/archivos-del-repo.test.ts':
       'reproduce el `ls-files` plano a propósito, como control de la mutación de arriba',
-    // Los tres de abajo son de otros frentes de la tanda del 2026-09-17 (ver
+    // Los cuatro de abajo son de otros frentes de la tanda del 2026-09-17 (ver
     // `.estado/BRIEF-COMUN.md`): quedan fuera de alcance para este frente y
     // migran en una segunda tanda de B-964.
-    'tests/clases-de-bug.test.ts': 'frente ajeno — segunda tanda de B-964',
+    'tests/fixtures/clases-de-bug.ts': 'frente ajeno — segunda tanda de B-964 (era `tests/clases-de-bug.test.ts`, partido por M-12)',
+    'tests/clases/b-211-doble-de-timestamp.test.ts':
+      'frente ajeno — segunda tanda de B-964 (salió de `tests/clases-de-bug.test.ts` con M-12)',
     'tests/sin-comentarios.test.ts': 'frente ajeno — segunda tanda de B-964',
     'scripts/salud-del-codigo.mjs': 'frente ajeno — segunda tanda de B-964',
   };
