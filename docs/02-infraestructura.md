@@ -127,9 +127,11 @@ misma llamada — y las reglas además tratan un token con los dos como publicad
 
 ```sh
 npm run admin:claim:prod -- <email>                  # admin
-npm run admin:claim:prod -- --publicador <email>     # publicador
+npm run admin:claim:prod -- --publicador <email>     # publicador general: carga en cualquier
+                                                     # ciudad, ve solo lo suyo
 npm run admin:claim:prod -- --publicador --ciudad "Mar del Plata" <email>
-                                                     # publicador + ve (solo lee) lo de esa ciudad
+                                                     # publicador de esa ciudad: carga solo
+                                                     # ahí (B-921), y ve (solo lee) lo de ahí
 npm run admin:claim:prod -- --quitar <email>         # sin rol
 ```
 
