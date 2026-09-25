@@ -45,14 +45,14 @@ palabras `trampa N`.
 | 2 | Ids de sesión por índice | `functions/calendario.js`, `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/modalidades.ts`, `src/lib/formulario/autoguardado.ts` | `tests/calendario.test.ts`, `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts`, `tests/modalidades.test.ts` |
 | 3 | Loop de escritura en la Function | `functions/calendario.js`, `functions/index.js`, `functions/historial.js` | `tests/calendario.test.ts`, `tests/costuras.test.ts`, `tests/reportes.test.ts` |
 | 4 | `firebase-admin` en bundle cliente | `src/lib/firebase-admin.ts`, `src/pages/admin.astro` | `tests/bundle-panel.test.ts` |
-| 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/eventsJson.test.ts`, `tests/barrido-de-salidas-publicas.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
+| 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/eventsJson.test.ts`, `tests/salidas/01-proyeccion-de-la-actividad.test.ts`, `tests/salidas/02-evento-de-calendar.test.ts`, `tests/salidas/06-pagina-de-detalle.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
 | 6 | Taxonomías sin slugify | `src/lib/slugify.ts`, `src/lib/opciones.ts` | `tests/slugify.test.ts` |
 | 7 | Query pública sin `where('estado','==','publicado')` | `firestore.rules` | `tests/actividades.integracion.test.ts` |
-| 8 | Olvidar el rebuild al cambiar `/opciones/*` | `functions/index.js`, `functions/rebuild.js` | `tests/costuras.test.ts`, `tests/clases-de-bug.test.ts` |
+| 8 | Olvidar el rebuild al cambiar `/opciones/*` | `functions/index.js`, `functions/rebuild.js` | `tests/costuras.test.ts`, `tests/clases/descubrimiento-de-triggers.test.ts` |
 | 9 | Cambio de sede que no propaga a las N sesiones | `functions/calendario.js` | `tests/calendario.test.ts`, `tests/modalidades.test.ts` |
 | 10 | Slug mutable | `src/lib/schema.ts`, `src/lib/duplicar.ts`, `src/lib/formulario/autoguardado.ts` | `tests/schema.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts` |
 | 11 | Workflow de Actions que no parsea | `.github/workflows/deploy.yml`, `.github/workflows/push-main.yml` | `tests/workflows.test.ts` |
-| 12 | Un trigger que escribe donde lo dispararon (también en Storage) | `functions/index.js`, `functions/historial-trigger.js`, `functions/imagenes.js`, `functions/imagenes-trigger.js` | `tests/clases-de-bug.test.ts`, `tests/imagenes-function.test.ts` |
+| 12 | Un trigger que escribe donde lo dispararon (también en Storage) | `functions/index.js`, `functions/historial-trigger.js`, `functions/imagenes.js`, `functions/imagenes-trigger.js` | `tests/clases/trampa-12-storage-sin-loop.test.ts`, `tests/imagenes-function.test.ts` |
 | 13 | `allow read` de Storage incluye `list` | `storage.rules`, `src/lib/cartelera.ts`, `functions/imagenes.js` | `tests/storage-reglas.integracion.test.ts`, `tests/cartelera.test.ts`, `tests/imagenes-function.test.ts` |
 
 ## Sin red

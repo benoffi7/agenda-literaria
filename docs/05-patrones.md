@@ -544,6 +544,24 @@ Y tiene guardas de entorno en las dos direcciones:
 Vitest. `npm test` corre todo; los de integración se saltean solos si los
 emuladores no están (`describe.skipIf`).
 
+**En paralelo, salvo el emulador** (PRD 6, M-1). La suite son tres proyectos de
+`vitest.config.ts`: `unidad` y `render` corren con los archivos en paralelo, e
+`integracion` —todo lo que limpia, siembra o lee el emulador, listado en
+`INTEGRACION`— en un solo proceso, de a un archivo. De ahí salen dos reglas para
+un test nuevo: **si habla con el emulador, lleva el sufijo `.integracion`** (lo
+frena `tests/proyectos-de-la-suite.test.ts`), y **no escribe adentro de `tests/`**:
+una mutación temporal va a `os.tmpdir()`, porque los barridos de otros archivos
+recorren el árbol al mismo tiempo y la encuentran a medio borrar (B-1962).
+
+**Los dos registros grandes son un archivo por entrada** (M-12): las clases de
+bug en `tests/clases/` y los barridos de salidas públicas en `tests/salidas/`
+(`NN-` es el número de la salida de `07-seguridad.md` §5). Lo que usan dos o más
+va a `tests/fixtures/clases-de-bug.ts` y `tests/fixtures/barrido-de-salidas.ts`.
+En las rutas viejas, `tests/clases-de-bug.test.ts` y
+`tests/barrido-de-salidas-publicas.test.ts`, quedó el **índice**: una tabla
+archivo → título del `describe`, que un test compara con el directorio. Sumar
+una clase o una salida es un archivo nuevo y su fila en el índice.
+
 **Qué se testea:**
 
 - Cada trampa del §13 tiene al menos un test que la nombra.
@@ -570,7 +588,7 @@ en `10-salud-del-codigo.md` § B-662). Que hayan nacido veinticinco más sin que
 la señal de que el criterio está bien puesto: se usan donde el cableado de DOM **es**
 la pregunta, y no se derramaron al resto. Viven en
 `*.render.test.tsx` y `vitest.config.ts` monta jsdom nada más que para ese
-patrón (`environmentMatchGlobs`); el resto de la suite sigue en `node`. No es
+patrón (el proyecto `render`, desde M-1; antes era `environmentMatchGlobs`); el resto de la suite sigue en `node`. No es
 la puerta abierta a testear cualquier componente: el análisis de B-08 mostró
 que la mayoría de lo que parece pedir render en realidad es una pregunta pura
 (se testea sin DOM) o algo que jsdom no puede medir (el scroll no existe sin

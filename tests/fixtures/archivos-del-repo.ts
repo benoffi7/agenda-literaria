@@ -29,9 +29,21 @@ import { execFileSync } from 'node:child_process';
  * raíz del repo). Sin prefijos, lista el árbol entero. Cada elemento es la
  * ruta tal como la devuelve git, relativa a la raíz del repo.
  */
-export const archivosDelRepo = (...prefijos: string[]): string[] => {
+export const archivosDelRepo = (...prefijos: string[]): string[] =>
+  archivosDelRepoEn(undefined, ...prefijos);
+
+/**
+ * Lo mismo, contra el repo de `cwd` en vez del de la corrida — B-1962.
+ *
+ * Existe para que `tests/archivos-del-repo.test.ts` pruebe el helper por
+ * mutación en un repo de juguete en `os.tmpdir()`, y no escribiendo adentro de
+ * `tests/fixtures/`: con los archivos en paralelo (PRD 6, M-1), los barridos
+ * que recorren el árbol encontraban la mutación a medio borrar y morían con
+ * `ENOENT`. Es la misma implementación, no una segunda.
+ */
+export const archivosDelRepoEn = (cwd: string | undefined, ...prefijos: string[]): string[] => {
   const listar = (args: string[]): string[] =>
-    execFileSync('git', ['ls-files', '-z', ...args, ...prefijos], { encoding: 'utf8' })
+    execFileSync('git', ['ls-files', '-z', ...args, ...prefijos], { encoding: 'utf8', cwd })
       .split('\0')
       .filter(Boolean);
 

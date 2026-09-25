@@ -48,13 +48,18 @@
  * **Cerrado en B-1132**, con el segundo `describe` de este archivo. El párrafo
  * de arriba queda como estaba para que se lea contra lo que lo cerró.
  */
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 const raiz = new URL('..', import.meta.url);
-const ruta = (relativo: string) => fileURLToPath(new URL(relativo, raiz));
+// Una ruta absoluta es la copia sintética de `os.tmpdir()` (B-1962); el resto
+// es relativo a la raíz del repo, como lo devuelve `archivosDelRepo`.
+const ruta = (relativo: string) =>
+  isAbsolute(relativo) ? relativo : fileURLToPath(new URL(relativo, raiz));
 
 const HELPER = 'tests/fixtures/rechazos-del-emulador.ts';
 
@@ -81,8 +86,24 @@ const COPIA = [
   /\/permission\|insufficient\//,
 ];
 
-const candidatos = (): string[] =>
-  archivosDelRepo('tests').filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
+/*
+ * Una copia sintética: el control de mutación de los dos bloques de abajo.
+ *
+ * **Vive en `os.tmpdir()` y no en `tests/fixtures/`** — B-1962. Adentro del
+ * árbol la veía `archivosDelRepo` (B-964) sin más, pero con los archivos en
+ * paralelo (PRD 6, M-1) los barridos de otros archivos la encontraban a medio
+ * borrar y morían con `ENOENT`. Que el helper ve un archivo sin rastrear ya lo
+ * prueba `tests/archivos-del-repo.test.ts`; acá se suma a los candidatos cuando
+ * existe, que es lo mismo que el helper hacía con ella.
+ */
+const DIR_TMP = mkdtempSync(join(tmpdir(), 'mutacion-b1130-'));
+const COPIA_TMP = join(DIR_TMP, 'copia.ts');
+afterAll(() => rmSync(DIR_TMP, { recursive: true, force: true }));
+
+const candidatos = (): string[] => [
+  ...archivosDelRepo('tests').filter((f) => f.endsWith('.ts') || f.endsWith('.tsx')),
+  ...(existsSync(COPIA_TMP) ? [COPIA_TMP] : []),
+];
 
 const infractores = (): string[] =>
   candidatos().filter((f) => {
@@ -90,10 +111,6 @@ const infractores = (): string[] =>
     const fuente = readFileSync(ruta(f), 'utf8');
     return COPIA.some((patron) => patron.test(fuente));
   });
-
-// Una copia sintética, sin rastrear: `archivosDelRepo` la ve (B-964) y el
-// barrido tiene que marcarla. Es el control de mutación del bloque de abajo.
-const COPIA_TMP = 'tests/fixtures/.mutacion-b1130-tmp.ts';
 
 describe('nadie escribe su propio helper de rechazo — B-1130', () => {
   afterEach(() => {

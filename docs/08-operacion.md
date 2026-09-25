@@ -42,6 +42,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
 | `npm test` | la suite completa. **El tamaño lo dice ella al terminar** (`Test Files` / `Tests`) y no se copia acá: el conteo escrito a mano quedó viejo cuatro veces en dos semanas — ver la nota de abajo |
+| `npx vitest run --project unidad --project render` | la suite **sin** lo que habla con el emulador, con los archivos en paralelo: ~30 s. Desde M-1 (PRD 6) la suite son tres proyectos de `vitest.config.ts` —`unidad` (node) y `render` (jsdom) en paralelo, `integracion` en fila y después de los otros dos— y `npm test` corre los tres. Qué va en fila lo dice `INTEGRACION` en el config, y `tests/proyectos-de-la-suite.test.ts` frena el archivo que usa el emulador y quedó afuera |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run tablero` | el tablero del backlog en `http://127.0.0.1:4173` — mira y mueve los dos archivos del backlog sin abrirlos. Ver abajo |
@@ -428,11 +429,16 @@ YAML.
 ./scripts/verificar-todo.sh
 ```
 
+Tarda **menos de dos minutos** desde M-1 y M-2 (PRD 6), medido el 2026-09-25:
+~95 s con los emuladores ya arriba y ~110 s levantándolos, contra ≈ 5 min antes.
+Casi todo es el paso 3 (~50 s) y el 3b (~30 s).
+
 | # | Paso | Por qué está |
 |---|---|---|
 | 1 | marcadores de conflicto (`sin-marcadores-de-conflicto.test.ts`) | es el más barato y ya se commitearon dos veces |
 | 2 | `astro sync` + `tsc --noEmit` | sin `astro sync` el typecheck da doce errores que no son del cambio |
 | 3 | `npm test` con los emuladores arriba y `EXIGIR_EMULADOR=1` | sin eso los tests de integración se saltean **en silencio** y las reglas se pushean sin probar |
+| 3b | `TZ=Asia/Tokyo npx vitest run --project unidad --project render` (se saltea con `SALTEAR_TZ=1`) | el CI corre en UTC y esta máquina en −03: un test que pregunta la fecha sin `timeZone` pasa en una y falla en la otra. Tokio está **adelante** de UTC, así que atrapa los dos sentidos. Desde M-2 (PRD 6) corre solo lo que no usa el emulador, en paralelo: ~30 s en vez de ~140 |
 | 4 | `./scripts/build-contra-emulador.mjs` con Firestore **y Storage** emulados (los que ya están arriba, o un `exec --only firestore,storage` efímero; B-1790) | el build tiene que **leer Firestore de verdad**: siembra **cuatro** actividades —publicada, borrador, y las dos canceladas de B-110: una que estuvo publicada y una que nunca lo estuvo—, buildea, y afirma sobre los **dos** artefactos. Sobre el `dist/events.json`: la publicada está, la borrador y las dos canceladas no, y ningún campo recortado se coló (B-217). Sobre el **HTML**: la cancelada-que-estuvo-publicada tiene su página, con la franja, el `EventCancelled`, sin CTA y sin ningún campo privado (con `urlPublica: true` en el fixture); la que nunca se publicó y el borrador **no tienen archivo** (B-110, y de paso B-241). Desde B-181 el fixture también trae una **opción para sumarse**, y el paso afirma que su etiqueta llega al índice **y** que la página pinta su encabezado y el título «Elegí tu opción»: el agrupado vive en un `.astro` y es lo único que puede mirarlo (D-140) |
 | 5 | `./scripts/verificar-bundle.sh dist` | el gate del artefacto, en sus **dos** mitades; va después del build porque sin `dist/` no verifica nada. La primera es la de siempre (§5.4 / trampa 4): que no haya rastros del Admin SDK. La segunda la agregó **B-868**: que App Check **esté** — la clave de sitio de `.env.production` en el bundle, viajando a `activarAppCheck` con `usarEmuladores` en falso, y el proveedor de Enterprise. Faltaba lo simétrico: un bundle sin clave, con la config de emuladores o con el proveedor cambiado salía verde por la suite y por el gate, y con el enforcement de Firestore puesto (2026-09-10) eso es **el panel y `/proponer` sin poder escribir** |
 
@@ -895,6 +901,15 @@ ese archivo deploye solo la Function. Los casos de clausura, alias partido,
 comillas invertidas y paquete corren sobre árboles sintéticos, con
 `QUE_DEPLOYAR_RAIZ` apuntando a un directorio temporal. El script lee el árbol
 de la carpeta donde vive, no del directorio desde el que se lo llama.
+
+**Los casos de decisión corren sobre un árbol chico** (PRD 6, M-3): una copia en
+`os.tmpdir()` de `astro.config.mjs`, los archivos de `src/` que nombran
+`functions/` y los `.js` de `functions/`, que es todo lo que la derivación lee.
+Un caso ata el recorte —`--compartidos` sobre el chico es igual que sobre el
+real— y otro decide contra el árbol real sin la variable. Además los casos corren
+concurrentes. Medido: de 16,5 s a ~5 s solo, y de 37 s a ~13 s dentro de la suite
+en paralelo. El piso lo pone el script, no el árbol: cada llamada lanza decenas
+de subprocesos, y en macOS eso son ~0,1 s aunque corran a la vez.
 
 **Orden:** reglas → hosting → functions. Las reglas primero porque si el panel
 nuevo escribe campos que las reglas viejas rechazan, el orden inverso deja una

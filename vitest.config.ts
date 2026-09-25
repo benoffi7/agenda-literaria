@@ -1,9 +1,21 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 // B-219 — el projectId del emulador para este working-tree. Se importa y no se
 // deriva acá: el gate (`scripts/verificar-todo.sh`) necesita el mismo valor
 // desde bash, y dos derivaciones del mismo dato es la clase de bug de B-88.
 import { PROJECT_ID_EMULADOR } from './scripts/project-id-emulador.mjs';
+
+/**
+ * Los archivos que hablan con el emulador y por eso corren en fila, en el
+ * proyecto `integracion` (M-1). Casi todos llevan el sufijo; los dos de abajo
+ * no, y llaman a `limpiarFirestore()` igual. Se nombran acá y no se renombran
+ * porque otros tests y docs los citan por ruta.
+ */
+export const INTEGRACION = [
+  'tests/**/*.integracion.test.ts',
+  'tests/emulador-aislado.test.ts',
+  'tests/limpieza-versiones.test.ts',
+];
 
 export default defineConfig({
   resolve: {
@@ -26,14 +38,86 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
-    // B-08 — el único rincón que necesita DOM de verdad: el cableado de una
-    // capa/menú (clic afuera, Escape, foco devuelto), que un test que lee el
-    // fuente no puede verificar sin arriesgarse a un falso verde (B-202 fue
-    // exactamente eso). El resto de la suite se queda en 'node': es más
-    // rápido y casi toda la lógica de este repo es pura a propósito (§05).
-    environmentMatchGlobs: [['tests/**/*.render.test.tsx', 'jsdom']],
-    include: ['tests/**/*.test.ts', 'tests/**/*.render.test.tsx'],
+    /*
+     * La suite en tres proyectos — PRD 6, M-1.
+     *
+     * Hasta acá toda la suite corría en fila india (`fileParallelism: false`)
+     * porque los archivos de integración comparten el emulador, y los otros
+     * ~260 pagaban igual la espera: 138-154 s de reloj contra ~30 s en
+     * paralelo. Ahora solo va en fila lo que habla con el emulador.
+     *
+     *  - `unidad` — node, archivos en paralelo. Es casi toda la suite.
+     *  - `render` — jsdom, en paralelo (B-08: el único rincón que necesita DOM
+     *    de verdad, el cableado de una capa o menú, que un test que lee el
+     *    fuente no puede verificar sin arriesgarse a un falso verde como
+     *    B-202). Es un proyecto aparte porque el entorno es por proyecto; antes
+     *    lo decidía `environmentMatchGlobs`, que vitest 3 marca obsoleto.
+     *  - `integracion` — todo lo que limpia, siembra o lee el emulador, en un
+     *    solo proceso y de a un archivo (`singleFork`). vitest lo corre
+     *    **después** de los otros dos, así que tampoco compite por CPU con el
+     *    paralelo (B-1951).
+     *
+     * `unidad` + `render` son lo que corre el paso de zona horaria del gate
+     * (M-2, `--project unidad --project render`): sin emulador, lo de
+     * integración se saltearía igual.
+     *
+     * Qué es integración lo dice `INTEGRACION`, arriba, y no solo el sufijo:
+     * dos archivos sin `.integracion` en el nombre también vacían la base. El
+     * que un archivo nuevo que usa el emulador quede afuera de la fila lo frena
+     * `tests/proyectos-de-la-suite.test.ts`, que verifica además que cada
+     * archivo de test caiga en exactamente un proyecto.
+     *
+     * **Sin `include` ni `exclude` en la raíz**, a propósito: con
+     * `extends: true` los arrays de la raíz se **concatenan** con los del
+     * proyecto en vez de reemplazarse, y cada proyecto terminaba corriendo la
+     * suite entera.
+     */
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unidad',
+          environment: 'node',
+          // El `include` de la suite entera, y cada proyecto se lleva su parte
+          // con `exclude`. Se escribe acá, completo, porque lo lee
+          // `tests/ayuda.test.ts` (B-1131: los sufijos que la ayuda puede
+          // citar son los que corre vitest).
+          include: ['tests/**/*.test.ts', 'tests/**/*.render.test.tsx'],
+          exclude: [...configDefaults.exclude, 'tests/**/*.render.test.tsx', ...INTEGRACION],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'render',
+          environment: 'jsdom',
+          include: ['tests/**/*.render.test.tsx'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integracion',
+          environment: 'node',
+          include: INTEGRACION,
+          /*
+           * El emulador es estado compartido: los archivos no pueden pisarse
+           * entre sí.
+           *
+           * **Sigue haciendo falta después de B-219**, y conviene decir por
+           * qué: el `projectId` particiona por *working-tree*, así que los
+           * archivos de UNA corrida comparten base entre ellos. Los dos
+           * mecanismos cubren mitades distintas —la fila, los archivos de una
+           * corrida; el projectId, las corridas de dos checkouts— y sacar
+           * cualquiera de los dos reabre la mitad que le toca. Eso es
+           * exactamente lo que dicen la segunda y la cuarta observación de
+           * B-219. Antes la fila era `fileParallelism: false` para toda la
+           * suite; ese no se puede poner por proyecto, `singleFork` sí.
+           */
+          poolOptions: { forks: { singleFork: true } },
+        },
+      },
+    ],
     // Los tests de integración corren contra los emuladores. Config de mentira
     // a propósito: el emulador no valida la API key.
     env: {
@@ -103,17 +187,5 @@ export default defineConfig({
        */
       FIREBASE_STORAGE_EMULATOR_HOST: process.env.FIREBASE_STORAGE_EMULATOR_HOST ?? '127.0.0.1:9199',
     },
-    /*
-     * El emulador es estado compartido: los archivos no pueden pisarse entre sí.
-     *
-     * **Sigue haciendo falta después de B-219**, y conviene decir por qué: el
-     * `projectId` particiona por *working-tree*, así que los archivos de UNA
-     * corrida comparten base entre ellos. Los dos mecanismos cubren mitades
-     * distintas —esta bandera, los archivos de una corrida; el projectId, las
-     * corridas de dos checkouts— y sacar cualquiera de los dos reabre la mitad
-     * que le toca. Eso es exactamente lo que dicen la segunda y la cuarta
-     * observación de B-219.
-     */
-    fileParallelism: false,
   },
 });

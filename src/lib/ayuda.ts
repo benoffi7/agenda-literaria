@@ -184,7 +184,7 @@ export const AVISOS: AvisoAyuda[] = [
       // Y la mitad que la casilla ya no promete: en la página de detalle no sale
       // ni con la casilla tildada (D-139, y el texto corregido por D-158).
       {
-        archivo: 'tests/barrido-de-salidas-publicas.test.ts',
+        archivo: 'tests/salidas/06-pagina-de-detalle.test.ts',
         it: 'con `urlPublica: true` el link de la reunión TAMPOCO sale al detalle (D-139)',
       },
     ],

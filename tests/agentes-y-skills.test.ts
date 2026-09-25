@@ -661,7 +661,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     /*
      * **Lo pidió el `auditor-privacidad` sobre B-600, y es el agujero que dejó
      * pasar el error que él encontró.** El `describe` de cada salida en
-     * `tests/barrido-de-salidas-publicas.test.ts` se **titula** con su número
+     * `tests/salidas/` (M-12) se **titula** con su número
      * («§5, salida 9») y ese número no estaba atado a nada: los tres `it` de
      * arriba comparan las tres tablas **entre sí**, así que doce filas
      * coincidentes y un barrido rotulado con el número equivocado es verde.
@@ -680,7 +680,13 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * MUTACIÓN PROBADA: volver a rotular el `describe` del tríptico como «salida
      * 12» pone este caso en rojo nombrando el título y la fila.
      */
-    const BARRIDO = 'tests/barrido-de-salidas-publicas.test.ts';
+    // Desde M-12 (PRD 6) cada barrido es su archivo en `tests/salidas/`; el de la
+    // ruta vieja es el índice, y no lleva `describe` de salidas.
+    const BARRIDO = 'tests/salidas/';
+    const fuenteDelBarrido = archivosDelRepo(BARRIDO)
+      .filter((f) => f.endsWith('.test.ts'))
+      .map((f) => fuente(f))
+      .join('\n');
 
     /** El texto crudo de la fila `n` de la tabla de `07-seguridad.md`. */
     const filaCruda = (n: number): string => {
@@ -739,7 +745,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
       'para',
     ]);
 
-    const titulos = [...fuente(BARRIDO).matchAll(/describe\('([^']*salida (\d+)[^']*)'/g)].map(
+    const titulos = [...fuenteDelBarrido.matchAll(/describe\('([^']*salida (\d+)[^']*)'/g)].map(
       (m) => ({ titulo: m[1]!, n: Number(m[2]!) }),
     );
 
