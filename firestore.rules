@@ -3171,6 +3171,114 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    /*
+     * ══ EFEMÉRIDES — B-959 ═══════════════════════════════════════════════
+     *
+     * El dato del día —«nació Cortázar»—, sin lugar ni horario. **No es una
+     * actividad y no va al calendario**: por eso es una colección propia y no un
+     * `tipo` de `/actividades` (D-1170). La carga solo un admin desde el panel,
+     * así que el ciclo es el de un borrador (`borrador` → `publicado`) y no el
+     * de un directorio de la Guía: no hay escritura anónima, no hay bandeja.
+     *
+     * Día y mes son **dos enteros** y no un `Timestamp` (trampa 1: una fecha a
+     * la medianoche de Buenos Aires es el día anterior en UTC). El año del hecho
+     * es aparte y opcional. Los topes son los de `src/types/efemeride.ts` y los
+     * ata `tests/efemerides.test.ts`.
+     */
+    function slugDeEfemerideCongelado(previo) {
+      return previo.get('publicadaAlgunaVez', false) == true
+        || previo.get('estado', '') == 'publicado';
+    }
+
+    function fuenteDeEfemerideValida(f) {
+      return f == null
+        || (f is map
+             && f.keys().hasOnly(['texto', 'url'])
+             && f.keys().hasAll(['texto', 'url'])
+             && f.texto is string && f.texto.size() <= 120
+             && f.url is string && f.url.size() <= 500
+             // `javascript:` en un `href` de una página indexada: la defensa va
+             // en el dato y no solo en el saneador del consumidor.
+             && (f.url == '' || f.url.matches('^https?://.*'))
+             && (f.texto != '' || f.url != ''));
+    }
+
+    /**
+     * La forma: lo que vale en **toda** escritura. `publicadaAlgunaVez` está en
+     * `hasOnly` y no en `hasAll`: la escribe el trigger con el Admin SDK, así
+     * que falta en los documentos nuevos; sin ella en `hasOnly`, toda edición
+     * posterior a la primera publicación se rompería.
+     */
+    function formaDeEfemeride() {
+      let d = request.resource.data;
+      let obligatorios = ['titulo', 'slug', 'descripcion', 'dia', 'mes', 'anio',
+                          'fuente', 'estado', 'createdAt', 'updatedAt',
+                          'createdBy', 'updatedBy'];
+      return d.keys().hasOnly(obligatorios.concat(['publicadaAlgunaVez']))
+        && d.keys().hasAll(obligatorios)
+        && d.titulo is string && d.titulo.size() >= 3 && d.titulo.size() <= 120
+        && d.slug is string && d.slug.size() <= 120
+        && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && d.descripcion is string && d.descripcion.size() <= 600
+        && d.mes is int && d.mes >= 1 && d.mes <= 12
+        // El día contra el mes: el 29 de febrero existe, el 31 de abril no.
+        && d.dia is int && d.dia >= 1
+        && d.dia <= [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][d.mes - 1]
+        && (d.anio == null || (d.anio is int && d.anio >= 1 && d.anio <= 2999))
+        && fuenteDeEfemerideValida(d.fuente)
+        && d.estado in ['borrador', 'publicado']
+        // Firma de la edición: el uid propio y la hora del servidor.
+        && d.updatedBy == request.auth.uid
+        && d.updatedAt == request.time;
+    }
+
+    function efemerideValida() {
+      let d = request.resource.data;
+      return formaDeEfemeride()
+        && d.createdBy == request.auth.uid
+        && d.createdAt == request.time
+        // La marca de la trampa 10 no puede nacer puesta.
+        && d.get('publicadaAlgunaVez', false) == false;
+    }
+
+    function efemerideActualizable() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      return formaDeEfemeride()
+        // Quién y cuándo la creó no se reescribe.
+        && d.createdBy == previo.createdBy
+        && d.createdAt == previo.createdAt
+        // Un cliente que pudiera bajar la marca tendría de vuelta el slug de una
+        // efeméride que ya está en Google.
+        && d.get('publicadaAlgunaVez', false) == previo.get('publicadaAlgunaVez', false)
+        // **Cambiar el link de algo ya publicado** — trampa 10.
+        && (!slugDeEfemerideCongelado(previo) || d.slug == previo.slug);
+    }
+
+    match /efemerides/{id} {
+      /*
+       * **Solo el admin, para todo** — D-128 y trampa 13. El sitio no lee de
+       * acá: lee el `efemerides.json` que produce el build con el Admin SDK, así
+       * que no hay nada que abrir. Un `get` condicionado a las publicadas
+       * entregaría el documento **entero** —los uids de `createdBy`/`updatedBy`—
+       * y un `list` abierto, todos los borradores de una sentada.
+       *
+       * **El `publicador` (B-888): nada** — D-1171. No hay «lo suyo» que
+       * gestionar, y decidir qué efemérides publica el sitio es una decisión
+       * editorial del dueño.
+       */
+      allow get: if esAdmin();
+      allow list: if esAdmin();
+      allow create: if esAdmin() && efemerideValida();
+      allow update: if esAdmin() && efemerideActualizable();
+      /*
+       * Borrar sí, y es inmediato: no hay subcolección `/versiones`, así que no
+       * se recupera. El panel lo pregunta antes. Si estaba publicada, el trigger
+       * de rebuild saca su página en el próximo build.
+       */
+      allow delete: if esAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

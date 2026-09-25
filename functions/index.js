@@ -54,6 +54,9 @@ export { rebuildPorLugares } from './directorios-trigger.js';
 // matchea un comodín en el segmento de colección, así que cada directorio nuevo
 // necesita su propio trigger exportado.
 export { rebuildPorBibliotecas } from './directorios-trigger.js';
+// B-959 — el de las efemérides. Es el único trigger de esa colección: no hay
+// sync a Calendar para ellas, porque no son actividades (D-1170).
+export { rebuildPorEfemerides } from './efemerides-trigger.js';
 export { dispararRebuild } from './rebuild-trigger.js';
 export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { limpiarVersionesHuerfanas } from './versiones-limpieza-trigger.js';
