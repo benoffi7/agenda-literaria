@@ -84,6 +84,18 @@ export default defineConfig({
           // citar son los que corre vitest).
           include: ['tests/**/*.test.ts', 'tests/**/*.render.test.tsx'],
           exclude: [...configDefaults.exclude, 'tests/**/*.render.test.tsx', ...INTEGRACION],
+          /*
+           * **Sin `testTimeout` propio, a propósito** — B-2121. Se evaluó
+           * subirlo a 15 s como red para los barridos del repo bajo la carga
+           * del paralelo, y no: de los tres casos que pasaron los 5 s en esta
+           * familia, dos eran bugs de verdad (B-2041 y el de `ciudades.test.ts`:
+           * un barrido que bajaba a `node_modules`) y el timeout fue lo único
+           * que los mostró. Con 15 s habrían quedado verdes y lentos. Además un
+           * test colgado de verdad —un `waitFor` o una promesa que no
+           * resuelve— tardaría el triple en fallar, en cada archivo que lo
+           * tenga. El barrido que es caro **por lo que hace** lleva su límite
+           * en el `it`, con el porqué al lado (el de `sin-comentarios.test.ts`).
+           */
         },
       },
       {
