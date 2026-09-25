@@ -123,6 +123,14 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
 
+### B-2080 · `ayuda-de-seccion.render` › «y la capa scrollea HASTA ese capítulo» falla a veces con la suite en paralelo · P2 — del frente `tiempos` (2026-09-25)
+
+Falló 2 de 10 corridas: `Unable to find role="dialog"` a los 1100 ms.
+`abrirElInterrogante` espera la capa `lazy` con un `waitFor` de 1 s por defecto, y éste
+es el primer caso del archivo que carga ese módulo; con carga, transformar el chunk tarda
+más. Ensucia el gate de forma intermitente. Arreglo: precargar el módulo en un
+`beforeAll`, o un `timeout` explícito en ese `waitFor`.
+
 ### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
 
 > ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
@@ -301,16 +309,17 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 ## P3 — cuando sobre tiempo
 
-### B-2041 · Un barrido de `clases/b-88` se pasa de los 5 s con la suite en paralelo · P4 — del cierre de la tanda del 2026-09-25
+### B-2081 · Un chequeo de clase para el `grep -r` que baja a `functions/` sin excluir `node_modules` · P3 — del frente `tiempos` (2026-09-25)
 
-`tests/clases/b-88-consumidor-y-productor.test.ts` › «B-190 — el slug «a confirmar» no
-se copia a mano» dio `5034ms` en `--project unidad`; solo tarda 2,3 s. No mide tiempo:
-es un barrido del repo que con carga se acerca al límite. En manos del frente `tiempos`.
+Es la tercera vez que aparece el patrón (B-2041 es la última), y en los worktrees queda
+escondido porque `node_modules` es un symlink que `grep -r` no sigue. Un caso en
+`tests/clases/` que barra los `grep -r` de `tests/` y `scripts/` y exija
+`--exclude-dir=node_modules` cuando el alcance incluye `functions/` o la raíz.
 
-### B-2060 · `costo-por-tecla` › «el costo no escala con la cantidad de encuentros» falló una vez en paralelo · P4 — del frente `que-deployar` (2026-09-25)
-
-Pasó 3/3 solo. Es un test de tiempos (B-198) y parece inestable con la carga del
-paralelo de M-1. En manos del frente `tiempos`.
+La cuarta apareció al cerrar esta misma tanda: el barrido de `normalize('NFD')` de
+`tests/ciudades.test.ts` recorría `functions/node_modules` con un `readdirSync`
+recursivo y tardó 6,4 s en paralelo; ya saltea `node_modules`. El chequeo tiene que
+mirar también los `readdirSync` recursivos, no solo `grep -r`.
 
 ### B-2050 · Los otros derivados de `modalidades` no se verifican en el servidor · P3 — de B-1920 (2026-09-25)
 

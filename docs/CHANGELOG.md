@@ -2,6 +2,15 @@
 
 ## Sin publicar
 
+- **El costo por tecla y el barrido de «a-confirmar» dejan de fallar con la suite en
+  paralelo** (B-2060, B-2041). El caso de B-198 comparaba dos tandas cronometradas por
+  separado, y con carga de otro worker podía salir rojo sin que el código cambiara; ahora
+  compara 8 contra 80 encuentros con pares intercalados y la mediana de los cocientes,
+  con un techo de 10× que un costo lineal no puede pasar y uno cuadrático sí (mutación
+  probada: de ~6× a ~50×). La remedición muestra que el costo fijo bajó a un cuarto y lo
+  que queda es lineal, ~1,7 µs por encuentro. El barrido de B-190 recorría los 182 MB de
+  `functions/node_modules` porque le faltaba `--exclude-dir=node_modules`: baja de 0,40 s
+  a 0,015 s.
 - **Correcciones de documentación que dejó el PRD 6** (B-2000, B-2001, B-2070). El comentario de `tests/limpieza-imagenes.test.ts` cita el bloque vigente del CLAUDE.md. 07, la ficha del `auditor-privacidad` y 13-agentes nombran la tabla de 07, la del skill `campo-nuevo` y la lista de disparadores en vez de «estas tablas»; 13-agentes deja de decir que las páginas de texto no se numeran (son las filas 13 a 18). Cada «paso N» del gate, en `13-agentes-no-automatizado.md`, la ficha y el fixture del barrido, nombra el chequeo de `scripts/gate-build/chequeos/` que lo corre.
 - **`scripts/que-deployar.sh` hace lo mismo con la mitad de procesos** (B-1970). Encontrar qué archivos de `functions/` alcanza el build abría un `grep` por archivo en cada vuelta y otro para los paquetes; ahora es uno por vuelta sobre todos a la vez, y ubicar el archivo de cada nombre ya no lanza ningún proceso. Ninguna decisión cambió: el script viejo y el nuevo dieron la misma salida en 393 llamadas. Por llamada, de 0,34 s a 0,20 s; `tests/que-deployar.test.ts`, de ~5 s a ~2,5 s, debajo de los 3 s del PRD 6.
 - **Cuando un navegador del panel no consigue verificarse, ahora te llega un mail** (B-930 paso 3, D-1225 a D-1228). Si el cartel «No pudimos verificar tu navegador» sigue puesto 20 segundos y hay una sesión iniciada, el panel manda una vez el motivo a la Function nueva `reportarVerificacionDelNavegador`, la primera `onRequest` del proyecto, que lo loguea con `alerta: 'verificacion-del-navegador'`; la alerta de GCP lo manda por mail. El reporte lleva solo el motivo (`no-se-activo`, `token-rechazado`, `sin-respuesta` o `renovacion-fallida`): ni uid, ni mail, ni IP, ni user agent. La Function no exige App Check, porque lo que reporta es justamente que no hay token. Frenos: solo POST, cuerpo de hasta 200 bytes, el `Origin` del sitio, 5 logs por minuto con una sola instancia, y como mucho un mail por hora. El triaje está en 08-operacion § «Un navegador del panel sin verificar».

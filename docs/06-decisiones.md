@@ -13959,3 +13959,4 @@ segunda fila con una dirección de otra ciudad y `ciudad: ''` da la misma lista 
 suena nada. No se avisa a propósito: fuera de CABA un admin puede cargar una sede sin
 ciudad (D-1154 la exige solo en el panel del publicador), y avisar por eso sería un mail
 por cada carga legítima. Queda anotado como B-2052.
+

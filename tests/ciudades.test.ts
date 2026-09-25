@@ -308,7 +308,7 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
     const archivos = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
         const ruta = `${dir}/${e.name}`;
-        if (e.isDirectory()) return archivos(ruta);
+        if (e.isDirectory()) return e.name === 'node_modules' ? [] : archivos(ruta);
         return /\.(ts|tsx|mjs|js)$/.test(e.name) ? [ruta] : [];
       });
 

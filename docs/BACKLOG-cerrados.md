@@ -21998,6 +21998,21 @@ cuenta que ya publica sin revisión, y una actividad con `ciudades` mentido qued
 **menos** visible. Arreglo si hace falta: que el trigger del historial recalcule
 `ciudadesDe(modalidades)` y avise al admin si no coincide.
 
+### B-2041 · Un barrido de `clases/b-88` se pasa de los 5 s con la suite en paralelo · P4 — del cierre de la tanda del 2026-09-25 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `aa83811`. El `grep -r` de B-190 bajaba a `functions/node_modules` (182 MB) porque le faltaba el `--exclude-dir=node_modules`: 0,40 s contra 0,015 s en el árbol principal, y con carga pasaba los 5 s. En los worktrees no se reproducía porque `node_modules` es un symlink. Se sacó la causa en vez de subir el timeout; el control sigue en rojo.
+
+`tests/clases/b-88-consumidor-y-productor.test.ts` › «B-190 — el slug «a confirmar» no
+se copia a mano» dio `5034ms` en `--project unidad`; solo tarda 2,3 s. No mide tiempo:
+es un barrido del repo que con carga se acerca al límite. En manos del frente `tiempos`.
+
+### B-2060 · `costo-por-tecla` › «el costo no escala con la cantidad de encuentros» falló una vez en paralelo · P4 — del frente `que-deployar` (2026-09-25) · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `d4227b3`. `proporcion()` intercala 21 pares de 8 y 80 encuentros y toma la mediana de los cocientes, sin milisegundos en el umbral: `< 10×`, que un costo fijo más uno lineal no puede pasar. Contar con un espía no alcanzaba: zod les pasa a los `superRefine` copias ya parseadas. Mutación: una regla de superposición O(n²) lleva la proporción de ~6× a ~50× → rojo. La tabla de B-198, remedida, está en el docblock. 10/10 verdes en paralelo. Ningún otro test del repo mide tiempo de pared contra un umbral.
+
+Pasó 3/3 solo. Es un test de tiempos (B-198) y parece inestable con la carga del
+paralelo de M-1. En manos del frente `tiempos`.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
