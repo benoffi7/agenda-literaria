@@ -35,7 +35,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { reubicacionDe } from '../src/lib/reubicacion-de-barrio.mjs';
 import { ciudadesDe } from '../src/lib/ciudades.mjs';
 import { esCaba } from '../src/lib/geografia.mjs';
-import { slugify } from '../src/lib/slugify.mjs';
+import { slugify } from '../functions/slugify.js';
 
 const aplicar = process.argv.includes('--aplicar');
 const confirmaProduccion = process.argv.includes('--produccion');

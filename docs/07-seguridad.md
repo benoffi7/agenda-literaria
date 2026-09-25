@@ -1457,8 +1457,9 @@ todas las ciudades de sus modalidades— que `formADocumento` escribe en cada
 guardado con **el mismo `slugify`** que usa el claim. Que sea el mismo no es
 prolijidad: si el script y el documento normalizaran distinto, el permiso no
 matchearía y el síntoma sería «no hay actividades de tu ciudad», no «no tenés
-permiso» (clase de B-88). Por eso la implementación vive en `src/lib/slugify.mjs`
-—node no corre TypeScript— y `src/lib/slugify.ts` la reexporta.
+permiso» (clase de B-88). Por eso la implementación vive en `functions/slugify.js`
+—node no corre TypeScript y las Functions no pueden importar `src/`— y
+`src/lib/slugify.ts` es su única fachada (M-18).
 
 **Lo que el rol alcanza, dicho al derecho:** un publicador **publica sin
 revisión**, que es lo que el dueño pidió. O sea que la confianza que el rol

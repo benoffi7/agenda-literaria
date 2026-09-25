@@ -21,7 +21,7 @@ import {
 } from '@/lib/taxonomia';
 import type { CampoTaxonomia, DocOpciones, ValorOpcion } from '@/types/actividad';
 // B-893 — la transformación del alta, compartida con la callable del publicador.
-// Relativo y no con un alias, igual que `slugify.mjs`: es un archivo de
+// Relativo y no con un alias, igual que `slugify.ts`: es un archivo de
 // `functions/` sin dependencias (lo verifica `tests/alta-de-opcion.test.ts`).
 import { valoresConLaEtiqueta } from '../../functions/alta-de-opcion.js';
 

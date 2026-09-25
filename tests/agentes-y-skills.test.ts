@@ -572,7 +572,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
 
     expect(
       equivocadas,
-      `${AGENTES_DOC} dice «${equivocadas.join(', ')} salidas» y la tabla de la ficha tiene ` +
+      `${AGENTES_DOC} dice «${equivocadas.join(', ')} salidas» y la tabla de 07 tiene ` +
         `${cuantas} filas: quien lea el documento para saber qué auditar va a resolver menos ` +
         'celdas de las que hay',
     ).toEqual([]);
@@ -586,20 +586,22 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * del productor por contenido, no por posición, y una fila corta se lee
      * igual. Markdown tampoco se queja — la celda que falta se pinta vacía.
      *
-     * Se medía en la ficha y en el skill. **Desde M-8 la tabla de la ficha es
-     * la de `07-seguridad.md`**, y ahí el encabezado declaraba tres columnas con
-     * la mayoría de las filas en cuatro (B-1950): la cuarta era «Test que la
-     * fija», que solo tenía la copia de la ficha. Al mudarla, el encabezado pasó
-     * a cuatro y las nueve filas cortas ganaron su celda.
+     * Se mide en `07-seguridad.md` y en el skill. `07-seguridad.md` entró con
+     * **B-1950**: su encabezado declaraba tres columnas y veintidós filas traían
+     * cuatro —la de tests, sin título—, y las filas 1 a 10 no la tenían. Ahora
+     * las treinta y dos tienen «Test que la fija». La ficha salió de este caso
+     * con **M-8**: ya no copia la tabla, la lee de 07.
      *
-     * Un `|` escapado (`\|`) no separa celdas: es como la fila 6 escribe
-     * `string \| null`, que sin escape partía la fila en una celda de más.
+     * **Las celdas se cortan en el `|` sin escapar**, que es como las corta
+     * GitHub: un `|` adentro de backticks corta la celda igual, así que el que
+     * va en el texto se escribe `\|` (la fila 6 de `07-seguridad.md` tenía un
+     * `string | null` que partía la celda en dos).
      *
-     * MUTACIÓN PROBADA: sacarle a la fila 30 de 07 su última celda pone este
-     * caso en rojo nombrando la fila.
+     * MUTACIÓN PROBADA: sacarle a la fila 3 de `07-seguridad.md` su celda de
+     * tests pone este caso en rojo nombrando la fila.
      */
     const celdas = (linea: string): number =>
-      linea.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).length;
+      linea.trim().replace(/^\||(?<!\\)\|$/g, '').split(/(?<!\\)\|/).length;
     for (const archivo of [SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       const lineas = fuente(archivo).split('\n');
       const encabezado = lineas.findIndex((l) => /^\s*\|\s*#\s*\|/.test(l));

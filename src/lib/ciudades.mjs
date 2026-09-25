@@ -25,13 +25,13 @@
  * lo correcto: no es «de» ninguna ciudad.
  *
  * ── Por qué esto es `.mjs` ────────────────────────────────────────────────
- * Por lo mismo que `slugify.mjs`, del que sale la normalización: el backfill
+ * Por lo mismo que `functions/slugify.js`, del que sale la normalización: el backfill
  * (`scripts/sembrar-ciudades.mjs`) corre en node y tiene que derivar **exactamente
  * lo mismo** que el panel. Con una copia en el script, un documento sembrado y uno
  * guardado desde el panel podrían tener slugs distintos para la misma ciudad, y el
  * síntoma sería un permiso que no matchea.
  */
-import { slugify } from './slugify.mjs';
+import { slugify } from '../../functions/slugify.js';
 
 /**
  * El slug de una ciudad. Es `slugify` y nada más: existe como nombre propio para

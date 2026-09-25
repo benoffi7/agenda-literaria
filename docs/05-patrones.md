@@ -37,7 +37,7 @@ dos archivos para eso, y son parte de "haber terminado" igual que el changelog:
 
 | Archivo | Qué es | Cuándo se toca |
 |---|---|---|
-| [`src/lib/novedades.ts`](../src/lib/novedades.ts) | "Qué podés hacer ahora que antes no podías", en el idioma de quien carga actividades | cuando el cambio **se nota al usar el panel**. Una entrada arriba del array: id nuevo, fecha, título, dos frases y dónde está. 30 segundos |
+| [`src/lib/novedades.ts`](../src/lib/novedades.ts) | "Qué podés hacer ahora que antes no podías", en el idioma de quien carga actividades | cuando el cambio **se nota al usar el panel**. Una entrada arriba del array: id nuevo, fecha, título, dos frases y dónde está. 30 segundos. Y el mismo id arriba de `NOVEDADES_IDS` en `src/lib/novedadesIds.ts` (B-1961); `tests/novedadesIds.test.ts` dice cuál falta |
 | [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) | La guía: el *para qué* de cada sección y los comportamientos que no se ven | cuando el cambio **agrega o modifica algo que no se adivina** mirando la pantalla: algo que queda fijo, algo que se publica o deja de publicarse, algo que borra o crea eventos |
 
 **No** va a `novedades.ts` lo que no cambia nada para quien carga (un refactor,
