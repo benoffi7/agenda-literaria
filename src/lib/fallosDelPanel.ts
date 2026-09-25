@@ -84,11 +84,14 @@ const TEXTO_POR_MOTIVO: Record<MotivoFallo, string | null> = {
     'pasos del aviso de arriba.',
   'sin-sesion': 'Se cerró tu sesión. Entrá de nuevo y volvé a intentarlo.',
   /*
-   * Los tres de abajo son mensajes **propios**: ya están en castellano y nombran
+   * Los cuatro de abajo son mensajes **propios**: ya están en castellano y nombran
    * el dato concreto. `null` = se muestra el original.
    */
   'fecha-invalida': null,
   'slug-tomado': null,
+  // B-921 — el texto lo arma `textoFueraDeSuCiudad` con el nombre de las
+  // ciudades, que este módulo no tiene.
+  'fuera-de-ciudad': null,
   desconocido: null,
 };
 

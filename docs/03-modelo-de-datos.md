@@ -1112,7 +1112,7 @@ hay salidas —y una regla— que solo pueden decir **una** cosa.
 | `modalidad` | la **unión** de las filas: dos que difieren dan `hibrido` | el `events.json`, la analítica, el texto para redes |
 | `sede` | la de la **primera fila que tenga una** | el `location` del evento (el que dibuja el mapa), el `searchText` del §6, el filtro por barrio |
 | `online` | idem, con el bloque online | el texto para redes |
-| `ciudades: string[]` | los **slugs de todas** las ciudades de las filas, sin repetir y sin las vacías (`ciudadesDe`, `src/lib/ciudades.mjs`) | **una regla de Firestore**: el alcance por ciudad del rol `publicador` (B-919, D-690) |
+| `ciudades: string[]` | los **slugs de todas** las ciudades de las filas, sin repetir y sin las vacías (`ciudadesDe`, `src/lib/ciudades.mjs`) | **una regla de Firestore**: el alcance por ciudad del rol `publicador` (B-919, D-690) — qué ve **y**, desde B-921, dónde carga (D-1150) |
 
 **`ciudades` es el único de los cuatro que no existe para una pantalla**, y eso
 explica su forma. La regla pregunta `token.ciudad in resource.data.ciudades`, y no
@@ -1134,7 +1134,21 @@ Tres consecuencias que conviene tener juntas:
   Por eso la implementación se mudó a `src/lib/slugify.mjs` —node no corre
   TypeScript— y `src/lib/slugify.ts` la reexporta.
 - **Una actividad solo virtual queda con `[]`** y no la ve ningún publicador por
-  ciudad. Es correcto: no pasa en ninguna ciudad.
+  ciudad. Es correcto: no pasa en ninguna ciudad. Y por lo mismo **se puede
+  cargar** desde una cuenta de ciudad (D-1151): no pasa fuera de la suya.
+
+**Desde B-921 el campo también decide dónde se escribe** (D-1150). Una cuenta
+publicadora con ciudad solo puede guardar una actividad cuyas `ciudades` sean la
+suya (o ninguna): la regla pregunta
+`request.resource.data.ciudades.hasOnly([token.ciudad])` en el `create` y en el
+`update`. Una edición que **no cambia** `ciudades` pasa igual, así que lo que ya
+estaba cargado fuera de su ciudad se sigue pudiendo mantener pero no mudar
+(D-1153). Y como una presencial **sin ciudad** también da `[]`, la regla exige
+además que la primera sede (`sede`) tenga ciudad, y el panel que la tengan todas
+(D-1154). Como `ciudades` lo reescribe `formADocumento` en cada guardado, cambiar
+la sede **es** cambiar esta lista — que es lo que hace que «mandar una propia a
+otra ciudad» rebote. El límite es el de todo derivado: la regla confía en que la
+lista diga la verdad sobre `modalidades` (B-1920).
 
 **Opcional a propósito, y con un paso de producción atrás.** Los documentos
 anteriores a B-919 no lo tienen, y el default de lectura —`?? []` en el código,

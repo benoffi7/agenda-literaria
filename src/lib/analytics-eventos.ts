@@ -114,6 +114,9 @@ export const MOTIVOS_FALLO = [
   // B-930 — `unavailable` con el navegador sin token de App Check: no es la red.
   'verificacion',
   'fecha-invalida',
+  // B-921 — un publicador con ciudad intentó guardar una sede fuera de la suya.
+  // Lo frena el panel antes de escribir; la etiqueta no dice qué ciudad.
+  'fuera-de-ciudad',
   'desconocido',
 ] as const;
 export type MotivoFallo = (typeof MOTIVOS_FALLO)[number];

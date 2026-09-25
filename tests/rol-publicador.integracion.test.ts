@@ -1362,4 +1362,259 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       expect(lista.map((a) => a.id)).not.toContain(AJENA_MDQ);
     });
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  10. DÓNDE CARGA — B-921
+  // ══════════════════════════════════════════════════════════════════════
+  /**
+   * **La decisión del dueño, textual:** «un publicador que tiene una ciudad
+   * asignada debería no poder publicar fuera de esa. Puede haber publicadores
+   * generales» (D-1150).
+   *
+   * Lo que se mide son las dos salidas de `dentroDeSuCiudad()` y la cláusula de
+   * «lo ya cargado no se toca» del `update`. Cada negación manda un documento
+   * que la regla aceptaría **si la ciudad fuera la suya** —dueño propio, firmado
+   * por ella—, así que lo único que puede rechazarlo es la cláusula nueva.
+   */
+  describe('el publicador con ciudad carga solo en su ciudad, y el general en cualquiera', () => {
+    const CIUDAD = 'mar-del-plata';
+    const OTRA = 'rosario';
+    const claimConCiudad = { publicador: true, ciudad: CIUDAD };
+    const NUEVA = 'act_b921_nueva';
+    const MIA_MDQ = 'act_b921_mia_mdq';
+    const MIA_ROSARIO_VIEJA = 'act_b921_mia_rosario_de_antes';
+
+    beforeEach(async () => {
+      /*
+       * **Se borra la nueva antes de cada caso, y no es prolijidad.** Si queda
+       * del caso anterior, el `setDoc` del siguiente es un `update` y no un
+       * `create`: el caso que dice medir el alta mediría la cláusula del update,
+       * y sacar `dentroDeSuCiudad()` del `allow create` lo dejaba verde. Lo
+       * mostró la primera tanda de mutaciones.
+       */
+      for (const id of [NUEVA, `${NUEVA}_virtual`]) {
+        await getAdminFirestore(appSiembra!).doc(`actividades/${id}`).delete();
+      }
+      await sembrar(MIA_MDQ, actividadDe(UID_PUB, { slug: 'b921-mia-mdq', ciudades: [CIUDAD] }));
+      /*
+       * Una propia **en otra ciudad**, cargada antes de que existiera la regla:
+       * es «lo ya cargado», que la decisión dice que no se toca.
+       */
+      await sembrar(
+        MIA_ROSARIO_VIEJA,
+        actividadDe(UID_PUB, { slug: 'b921-mia-rosario', ciudades: [OTRA] }),
+      );
+    });
+
+    // ── Los controles positivos, primero ────────────────────────────────
+    it('crea una actividad de su ciudad, y una solo virtual', async () => {
+      /*
+       * **El control positivo del bloque.** Sin él, una regla `if false` en el
+       * `create` satisface todas las negaciones de abajo.
+       *
+       * La virtual (`ciudades: []`) es la decisión D-1151: una reunión por Meet
+       * no pasa en ninguna ciudad, así que no pasa fuera de la suya.
+       * MUTACIÓN PROBADA: cambiar `hasOnly` por `hasAll` (la lista tiene que
+       * contener su ciudad) deja la mitad virtual de este caso en rojo.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await setDoc(doc(db(), 'actividades', NUEVA), actividadDe(UID_PUB, { ciudades: [CIUDAD] }));
+      await setDoc(doc(db(), 'actividades', `${NUEVA}_virtual`), actividadDe(UID_PUB, { ciudades: [] }));
+    });
+
+    it('NO crea una actividad de otra ciudad', async () => {
+      /*
+       * El primer borde de B-921: «una publicadora de Mar del Plata puede cargar
+       * una actividad de Rosario».
+       *
+       * MUTACIÓN PROBADA: sacar `&& dentroDeSuCiudad()` del `allow create` deja
+       * este caso en rojo.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await denegada(
+        setDoc(doc(db(), 'actividades', NUEVA), actividadDe(UID_PUB, { ciudades: [OTRA] })),
+        'crear una actividad de otra ciudad',
+      );
+    });
+
+    it('NO crea una con una sede en su ciudad y otra afuera', async () => {
+      /*
+       * `hasOnly` y no `in`: con «su ciudad está en la lista», una actividad de
+       * Mar del Plata **y** Rosario pasaría, y es media actividad fuera de su
+       * ciudad.
+       *
+       * MUTACIÓN PROBADA: cambiar `.hasOnly([ciudad])` por `ciudad in ciudades`
+       * deja este caso en rojo.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await denegada(
+        setDoc(
+          doc(db(), 'actividades', NUEVA),
+          actividadDe(UID_PUB, { ciudades: [CIUDAD, OTRA] }),
+        ),
+        'crear una actividad con una sede afuera de su ciudad',
+      );
+    });
+
+    it('NO crea una presencial sin ciudad, que se haría pasar por virtual (D-1154)', async () => {
+      /*
+       * Lo encontró el `auditor-privacidad`: fuera de CABA la ciudad no se exige
+       * para publicar, y `ciudadesDe()` descarta las vacías, así que una sede en
+       * Santa Fe sin ciudad deja `ciudades: []` — que `hasOnly` acepta, igual que
+       * a una virtual. La regla lo ve en `sede`, el derivado de la primera fila.
+       *
+       * MUTACIÓN PROBADA: sacar la mitad de `sede` de `dentroDeSuCiudad()` deja
+       * este caso en rojo. El control positivo es la virtual del primer caso, que
+       * no tiene `sede`, y la de su ciudad, abajo.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await denegada(
+        setDoc(
+          doc(db(), 'actividades', NUEVA),
+          actividadDe(UID_PUB, { ciudades: [], sede: { provincia: 'santa-fe', ciudad: '' } }),
+        ),
+        'crear una presencial sin ciudad',
+      );
+      await setDoc(
+        doc(db(), 'actividades', NUEVA),
+        actividadDe(UID_PUB, { ciudades: [CIUDAD], sede: { provincia: 'buenos-aires', ciudad: CIUDAD } }),
+      );
+    });
+
+    it('edita la suya sin moverla, y la puede pasar a otra sede de su ciudad', async () => {
+      // Control positivo del `update`: una regla que tapara todo el update
+      // dejaría verde la negación de abajo.
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await updateDoc(doc(db(), 'actividades', MIA_MDQ), {
+        titulo: 'Cambió el título',
+        updatedBy: UID_PUB,
+      });
+      await updateDoc(doc(db(), 'actividades', MIA_MDQ), {
+        ciudades: [],
+        updatedBy: UID_PUB,
+      });
+    });
+
+    it('NO edita la sede de una suya para mandarla a otra ciudad', async () => {
+      /*
+       * El segundo borde de B-921. `ciudades` lo reescribe `formADocumento` en
+       * cada guardado, así que cambiar la sede **es** cambiar esta lista.
+       *
+       * MUTACIÓN PROBADA: sacar la cláusula de la ciudad del `allow update`
+       * —o reemplazar el disyunto por un `true`— deja este caso en rojo.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await denegada(
+        updateDoc(doc(db(), 'actividades', MIA_MDQ), { ciudades: [OTRA], updatedBy: UID_PUB }),
+        'mover una actividad propia a otra ciudad',
+      );
+    });
+
+    it('lo ya cargado en otra ciudad se sigue pudiendo mantener, pero no mudar a una tercera', async () => {
+      /*
+       * «Lo ya cargado no se toca» (D-1153): la regla aplica a **dónde** se
+       * escribe, no a lo que ya existía. Despublicarla sin moverla pasa.
+       *
+       * MUTACIÓN PROBADA: borrar la mitad
+       * `request.resource.data.get('ciudades', []) == resource.data.get('ciudades', [])`
+       * deja la primera mitad de este caso en rojo; cambiarla por un `true` deja
+       * en rojo la segunda.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await updateDoc(doc(db(), 'actividades', MIA_ROSARIO_VIEJA), {
+        estado: 'borrador',
+        updatedBy: UID_PUB,
+      });
+      await denegada(
+        updateDoc(doc(db(), 'actividades', MIA_ROSARIO_VIEJA), {
+          ciudades: ['cordoba'],
+          updatedBy: UID_PUB,
+        }),
+        'mudar lo ya cargado en otra ciudad a una tercera',
+      );
+    });
+
+    it('una `ciudades` que no es lista rebota, en vez de pasar', async () => {
+      // Escrita a mano: `hasOnly` sobre un string tira, y una regla que tira
+      // deniega. Es la dirección en la que conviene fallar.
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await denegadaOReglaQueTira(
+        setDoc(doc(db(), 'actividades', NUEVA), actividadDe(UID_PUB, { ciudades: OTRA })),
+        'crear con ciudades escrita como texto',
+      );
+    });
+
+    it('el publicador GENERAL (sin ciudad) crea y mueve en cualquier ciudad', async () => {
+      /*
+       * «Puede haber publicadores generales»: `--publicador` sin `--ciudad`.
+       *
+       * MUTACIÓN PROBADA: sacar `request.auth.token.get('ciudad', '') == ''` de
+       * `dentroDeSuCiudad()` deja este caso en rojo —la lista vacía pasaría,
+       * pero Rosario no—.
+       */
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
+      await setDoc(doc(db(), 'actividades', NUEVA), actividadDe(UID_PUB, { ciudades: [OTRA] }));
+      await updateDoc(doc(db(), 'actividades', MIA_MDQ), {
+        ciudades: [OTRA, 'cordoba'],
+        updatedBy: UID_PUB,
+      });
+    });
+
+    it('y el general sigue sin ver lo ajeno: «general» es dónde carga, no qué ve', async () => {
+      // D-1152. Es el caso que se pone rojo el día que alguien le abra la lectura
+      // del catálogo al general sin decidirlo.
+      await sembrar(
+        'act_b921_ajena_rosario',
+        actividadDe(UID_ADMIN, { slug: 'b921-ajena', ciudades: [OTRA] }),
+      );
+      await entrarComo(UID_PUB, { publicador: true }, { email: MAIL_PUB });
+      await denegada(
+        getDoc(doc(db(), 'actividades', 'act_b921_ajena_rosario')),
+        'el general leyendo una ajena',
+      );
+    });
+
+    it('el admin no cambia, aunque alguien le haya puesto una ciudad', async () => {
+      // `esAdmin()` va primero y no mira ciudad. Control de que la cláusula
+      // nueva quedó adentro de la rama del publicador.
+      await entrarComo(UID_ADMIN, { admin: true, ciudad: CIUDAD }, { email: MAIL_ADMIN });
+      await setDoc(doc(db(), 'actividades', NUEVA), actividadDe(UID_ADMIN, { ciudades: [OTRA] }));
+    });
+
+    it('con las funciones del panel: `crearActividad` pasa en su ciudad y rebota en otra', async () => {
+      /*
+       * El camino real: `formADocumento` deriva `ciudades` de la sede, y la
+       * reserva del slug viaja en el mismo batch. Si la regla rechaza la
+       * actividad, **se cae el batch entero**, reserva incluida — o sea que un
+       * rechazo no deja un nombre tomado.
+       */
+      await sembrarEn('slugs/_indice', { sembradoEn: new Date(), actividades: 2 });
+      olvidarCentinela();
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      const conCiudad = (ciudad: string, slug: string) => {
+        const f = formDeCiclo({ slug });
+        return {
+          ...f,
+          modalidades: f.modalidades.map((m) => ({
+            ...m,
+            sede: m.sede && { ...m.sede, provincia: 'buenos-aires', barrio: '', ciudad },
+          })),
+        };
+      };
+      const id = await crearActividad(conCiudad(CIUDAD, 'b921-panel-mdq'), UID_PUB);
+      expect((await getDoc(doc(db(), 'actividades', id))).data()?.ciudades).toEqual([CIUDAD]);
+
+      await denegada(
+        crearActividad(conCiudad(OTRA, 'b921-panel-rosario'), UID_PUB),
+        'crear desde el panel una actividad de otra ciudad',
+      );
+      expect((await getDoc(doc(db(), 'slugs', 'b921-panel-rosario'))).exists()).toBe(false);
+
+      // Y editarle la sede hacia afuera, por la función del panel.
+      await denegada(
+        actualizarActividad(id, conCiudad(OTRA, 'b921-panel-mdq'), UID_PUB),
+        'mover desde el panel una actividad a otra ciudad',
+      );
+    });
+  });
 });
