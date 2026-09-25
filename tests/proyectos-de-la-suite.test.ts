@@ -61,8 +61,14 @@ const usaElEmulador = (fuente: string): boolean =>
     .some((linea) => USA_EL_EMULADOR.test(linea));
 
 describe('el reparto de la suite en proyectos — M-1', () => {
-  it('los tres proyectos están', () => {
+  it('los tres proyectos están, con los nombres que usa el gate', () => {
+    // `scripts/verificar-todo.sh` corre `--project unidad --project render` en
+    // el paso de zona horaria (M-2): un proyecto renombrado dejaría a ese paso
+    // corriendo nada, o a vitest cortando con «No projects matched».
     expect(proyectos.map((p) => p.nombre)).toEqual(['unidad', 'render', 'integracion']);
+    expect(readFileSync('scripts/verificar-todo.sh', 'utf8')).toMatch(
+      /TZ=Asia\/Tokyo npx vitest run --project unidad --project render/,
+    );
   });
 
   it('el barrido encuentra archivos de verdad, de los tres proyectos', () => {

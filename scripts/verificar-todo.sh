@@ -145,7 +145,7 @@ fi
 #
 # Enterarse en el CI es caro: el push ya salió, el deploy ya arrancó y el rojo
 # llega cuando nadie está mirando el cambio. Correr la suite una segunda vez con
-# el reloj movido cuesta unos segundos y lo agarra antes.
+# el reloj movido cuesta medio minuto y lo agarra antes.
 #
 # **`Asia/Tokyo` y no `UTC`**, a propósito: está **adelante** de UTC, así que
 # atrapa los dos sentidos del error. Con UTC solo se detectan los tests que
@@ -153,11 +153,19 @@ fi
 #
 # No hace falta emulador acá: lo que se busca son los tests de fecha, que son
 # puros. Se saltea con `SALTEAR_TZ=1` para una corrida de apuro.
+#
+# **Solo `unidad` y `render`, en paralelo** (PRD 6, M-2; decisión E del dueño).
+# Antes era `npm test` entero en fila, ~140 s, y el proyecto `integracion` o se
+# salteaba (sin emulador, lo normal después del `exec` del paso 3) o corría
+# contra la tanda de otro sin `EXIGIR_EMULADOR`, que no le agregaba nada a lo
+# que el paso 3 ya probó. Así son ~30 s. Los nombres de los proyectos los ata
+# `tests/proyectos-de-la-suite.test.ts`: renombrar uno dejaría este paso
+# corriendo nada.
 if [ "${SALTEAR_TZ:-}" = '1' ]; then
   printf '\n\033[33m⚠ el paso de zona horaria se salteó por SALTEAR_TZ=1.\033[0m\n'
 else
-  paso 'La suite con el reloj en otra zona (TZ=Asia/Tokyo)'
-  TZ=Asia/Tokyo npm test \
+  paso 'La suite con el reloj en otra zona (TZ=Asia/Tokyo), sin integración'
+  TZ=Asia/Tokyo npx vitest run --project unidad --project render \
     || fallo 'la suite no pasa con el reloj de otra zona: hay un test que depende de la zona del runner'
 fi
 
