@@ -42,6 +42,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
 | `npm test` | la suite completa. **El tamaño lo dice ella al terminar** (`Test Files` / `Tests`) y no se copia acá: el conteo escrito a mano quedó viejo cuatro veces en dos semanas — ver la nota de abajo |
+| `npx vitest run --project unidad --project render` | la suite **sin** lo que habla con el emulador, con los archivos en paralelo: ~30 s. Desde M-1 (PRD 6) la suite son tres proyectos de `vitest.config.ts` —`unidad` (node) y `render` (jsdom) en paralelo, `integracion` en fila y después de los otros dos— y `npm test` corre los tres. Qué va en fila lo dice `INTEGRACION` en el config, y `tests/proyectos-de-la-suite.test.ts` frena el archivo que usa el emulador y quedó afuera |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run tablero` | el tablero del backlog en `http://127.0.0.1:4173` — mira y mueve los dos archivos del backlog sin abrirlos. Ver abajo |
