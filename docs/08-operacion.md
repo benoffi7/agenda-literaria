@@ -3047,6 +3047,10 @@ curl -si -X POST \
 con `access-control-allow-origin: https://agendaleh.ar`, y el log quedó escrito como
 `WARNING` con exactamente `{message, motivo: 'sin-respuesta', alerta:
 'verificacion-del-navegador'}`, sin más campos.
+El mail de la política llegó en menos de un minuto. **El asunto no dice qué `alerta`
+sonó**: nombra el servicio de Cloud Run (`reportarverificaciondelnavegador`), que es de
+donde se deduce. Para que diga la `alerta` hay que sumarle a la política un extractor
+de etiqueta (ver «La alerta de todas las `alerta`»).
 
 Tiene que contestar `204`, el log tiene que aparecer con el `gcloud logging read`
 de arriba, y el mail en la hora siguiente. Un `403` con el HTML de Google (no el
