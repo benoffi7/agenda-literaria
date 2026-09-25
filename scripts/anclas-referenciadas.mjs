@@ -129,6 +129,45 @@ export const lineasSinCodigo = (contenido) => {
 };
 
 /**
+ * Los encabezados ATX de un documento, en orden, cada uno con el ancla que le
+ * da GitHub —con el sufijo `-1`, `-2`… de los repetidos—. Lo usa también
+ * `scripts/indice-de-decisiones.mjs` (M-7), que así no deriva el slug por su
+ * cuenta: si derivara distinto, el índice apuntaría a anclas que este barrido
+ * da por rotas.
+ *
+ * @param {string} contenido
+ * @returns {{ linea: number, nivel: number, texto: string, ancla: string }[]}
+ */
+export const encabezadosDe = (contenido) => {
+  /** @type {{ linea: number, nivel: number, texto: string, ancla: string }[]} */
+  const encabezados = [];
+  const usadas = new Set();
+  /** @type {Map<string, number>} */
+  const vistos = new Map();
+  for (const [i, linea] of lineasSinCodigo(contenido).entries()) {
+    for (const m of linea.matchAll(/<a\s+(?:[^>]*\s)?(?:id|name)="([^"]+)"/g)) usadas.add(m[1]);
+    const h = /^\s{0,3}(#{1,6})\s+(.*)$/.exec(linea);
+    if (!h) continue;
+    const texto = textoVisible(h[2]);
+    const base = slugDeGithub(texto);
+    let slug = base;
+    const n = vistos.get(base);
+    if (n !== undefined) {
+      slug = `${base}-${n}`;
+      // `github-slugger` sigue buscando si el sufijado choca con otro existente.
+      let k = n;
+      while (usadas.has(slug)) slug = `${base}-${++k}`;
+      vistos.set(base, k + 1);
+    } else {
+      vistos.set(base, 1);
+    }
+    usadas.add(slug);
+    encabezados.push({ linea: i + 1, nivel: h[1].length, texto, ancla: slug });
+  }
+  return encabezados;
+};
+
+/**
  * Todas las anclas que un documento ofrece: la de cada encabezado ATX, con el
  * sufijo `-1`, `-2`… de GitHub para los repetidos, más las `<a id>`/`<a name>`.
  *
@@ -136,26 +175,9 @@ export const lineasSinCodigo = (contenido) => {
  * @returns {Set<string>}
  */
 export const anclasDe = (contenido) => {
-  const anclas = new Set();
-  /** @type {Map<string, number>} */
-  const vistos = new Map();
+  const anclas = new Set(encabezadosDe(contenido).map((e) => e.ancla));
   for (const linea of lineasSinCodigo(contenido)) {
     for (const m of linea.matchAll(/<a\s+(?:[^>]*\s)?(?:id|name)="([^"]+)"/g)) anclas.add(m[1]);
-    const h = /^\s{0,3}#{1,6}\s+(.*)$/.exec(linea);
-    if (!h) continue;
-    const base = slugDeGithub(textoVisible(h[1]));
-    let slug = base;
-    const n = vistos.get(base);
-    if (n !== undefined) {
-      slug = `${base}-${n}`;
-      // `github-slugger` sigue buscando si el sufijado choca con otro existente.
-      let k = n;
-      while (anclas.has(slug)) slug = `${base}-${++k}`;
-      vistos.set(base, k + 1);
-    } else {
-      vistos.set(base, 1);
-    }
-    anclas.add(slug);
   }
   return anclas;
 };

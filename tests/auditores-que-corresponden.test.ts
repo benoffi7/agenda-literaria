@@ -12,8 +12,9 @@
  *
  * ── La clase, no la instancia ─────────────────────────────────────
  * La lista de archivos que disparan al auditor **no está escrita en el
- * script**: se deriva del `description` de `.claude/agents/auditor-privacidad.md`,
- * que es el mismo lugar que decide si Claude lo invoca por nombre de archivo.
+ * script**: se deriva de `.claude/agents/auditor-privacidad.md` — desde la
+ * decisión B del PRD 6, del bloque «Los archivos que te despiertan» del cuerpo
+ * de la ficha, y no del `description`, que va al prompt de cada sesión.
  * Este archivo ata las dos puntas — si la ficha suma una salida y el
  * disparador no la ve, o al revés, se pone rojo. Es lo que B-216 hizo para la
  * cuenta de salidas públicas, un lugar más adentro.
@@ -43,6 +44,7 @@ import {
   auditoresQueCorresponden,
   frontmatter,
   leerFichas,
+  rutasDeLaFicha,
   rutasQueNombra,
 } from '../scripts/auditores-que-corresponden.mjs';
 
@@ -50,8 +52,7 @@ const raiz = new URL('..', import.meta.url);
 const fichas = leerFichas(raiz) as Record<string, string>;
 
 /** Los archivos que la ficha de un auditor declara mirar. */
-const declarados = (auditor: string): string[] =>
-  rutasQueNombra(frontmatter(fichas[auditor]).description ?? '').archivos;
+const declarados = (auditor: string): string[] => rutasDeLaFicha(fichas[auditor]!).archivos;
 
 const decidir = (rutas: string[]) => auditoresQueCorresponden(rutas, fichas);
 
@@ -276,6 +277,40 @@ describe('la derivación sale de la ficha y no de una lista escondida', () => {
     expect(d.privacidad.disparadores).toEqual(['src/lib/soloEnLaFicha.ts']);
   });
 
+  it('el bloque del cuerpo también dispara, y solo lo que está entre los marcadores — decisión B', () => {
+    /*
+     * La lista del `auditor-privacidad` salió del `description` al cuerpo de la
+     * ficha. El control es el mismo que el de arriba, corrido sobre el bloque:
+     * una ruta del bloque dispara, y una que el cuerpo nombra **afuera** de los
+     * marcadores no — si no, cualquier ruta citada en la prosa de la ficha
+     * pasaría a despertar al modelo caro.
+     */
+    const inventada = [
+      '---',
+      'name: auditor-privacidad',
+      'description: Audita las salidas públicas.',
+      '---',
+      '',
+      'La prosa nombra src/lib/soloEnLaProsa.ts y no dispara.',
+      '<!-- disparadores:inicio -->',
+      '- `src/lib/soloEnElBloque.ts`',
+      '<!-- disparadores:fin -->',
+    ].join('\n');
+    const d = auditoresQueCorresponden(
+      ['src/lib/soloEnElBloque.ts', 'src/lib/soloEnLaProsa.ts'],
+      { ...fichas, privacidad: inventada },
+    );
+    expect(d.privacidad.disparadores).toEqual(['src/lib/soloEnElBloque.ts']);
+  });
+
+  it('el `description` del `auditor-privacidad` ya no lista rutas — decisión B', () => {
+    // Lo que la decisión sacó del prompt de cada sesión. Si vuelve una ruta, el
+    // disparo funciona igual y el costo vuelve en silencio.
+    const descripcion = frontmatter(fichas.privacidad!).description ?? '';
+    expect(rutasQueNombra(descripcion)).toEqual({ archivos: [], prefijos: [] });
+    expect(descripcion.length, 'el description volvió a crecer').toBeLessThan(1500);
+  });
+
   it('una ficha sin frontmatter no dispara nada, y no explota', () => {
     // Un agente con el YAML roto no carga y nadie se entera (B-139). Que su
     // disparador quede en cero es lo correcto: no hay agente que invocar.
@@ -336,8 +371,8 @@ describe('las Functions del dato de un tercero disparan `privacidad`', () => {
      */
     expect(
       decidir([ruta]).privacidad.disparadores,
-      `${ruta} no dispara el auditor de privacidad: agregalo al \`description\` de ` +
-        '`.claude/agents/auditor-privacidad.md`, que es de donde se deriva el disparador',
+      `${ruta} no dispara el auditor de privacidad: agregalo a «Los archivos que te despiertan» ` +
+        'de `.claude/agents/auditor-privacidad.md`, que es de donde se deriva el disparador',
     ).toContain(ruta);
   });
 });

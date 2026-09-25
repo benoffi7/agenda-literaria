@@ -70,8 +70,9 @@ no se pueden deshacer después.
    > Pasó de siete a **once** con B-265, B-113, B-109 y B-108, y a **doce** con
    > B-372/B-375. Todas las veces las ató el
    > mismo test (`tests/agentes-y-skills.test.ts`), que compara los números de las
-   > tres tablas: la de `docs/07-seguridad.md`, la de la ficha del
-   > `auditor-privacidad` y ésta.
+   > tablas: la de `docs/07-seguridad.md` y ésta. La ficha del
+   > `auditor-privacidad` ya no copia la suya: la lee de `07-seguridad.md` (M-8),
+   > y lo que sí tiene es la lista de archivos que la despiertan.
 2. **¿Es un dato libre o una taxonomía?** Si es un valor de un conjunto que va a
    crecer, va como `/opciones/{campo}` con el patrón del §4 (slugify + upsert
    transaccional + aprobación), no como string libre.

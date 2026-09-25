@@ -17,6 +17,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { declaracionDeLaFicha } from '../scripts/auditores-que-corresponden.mjs';
 import { archivosDelRepo } from './fixtures/archivos-del-repo';
 
 const raiz = new URL('..', import.meta.url);
@@ -259,13 +260,12 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
 
   it('el barrido encuentra las dos tablas', () => {
     // Control positivo: si el parseo se rompiera, las comparaciones de abajo
-    // pasarían comparando dos listas vacías entre sí.
-    expect(salidas(FICHA).length).toBeGreaterThanOrEqual(4);
+    // pasarían comparando dos listas vacías entre sí. Desde M-8 las dos tablas
+    // son la de `07-seguridad.md` y la del skill: la ficha la lee de 07.
     expect(salidas(SEGURIDAD).length).toBeGreaterThanOrEqual(4);
-    expect(salidas(FICHA).every((s) => s.archivo !== '(ninguno)')).toBe(true);
-    // Y que el extractor de funciones encuentre algo: si devolviera siempre
-    // vacío, el `it` de abajo compararía dos listas vacías fila por fila.
-    expect(salidas(FICHA).some((s) => s.funciones.length > 0)).toBe(true);
+    expect(salidas(SKILL_CAMPO_NUEVO).length).toBeGreaterThanOrEqual(4);
+    expect(salidas(SEGURIDAD).every((s) => s.archivo !== '(ninguno)')).toBe(true);
+    expect(salidas(SEGURIDAD).some((s) => s.funciones.length > 0)).toBe(true);
   });
 
   /**
@@ -375,10 +375,10 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * Contar las filas con otra implementación sí lo ve, y ve cualquier fila que
      * el parseo deje de reconocer, no solo los dos dígitos.
      *
-     * MUTACIÓN PROBADA: volver a `(\d)` pone este caso en rojo en los tres
+     * MUTACIÓN PROBADA: volver a `(\d)` pone este caso en rojo en los dos
      * archivos.
      */
-    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
+    for (const archivo of [SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       expect(
         salidas(archivo).length,
         `la tabla de ${archivo} tiene filas que el parseo no reconoce: el barrido cortó antes`,
@@ -422,7 +422,8 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * hablando del total.
      */
     for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
-      const cuantas = salidas(archivo).length;
+      // La ficha no tiene tabla propia desde M-8: su prosa se mide contra la de 07.
+      const cuantas = salidas(archivo === FICHA ? SEGURIDAD : archivo).length;
       const correcta = PALABRAS[cuantas];
       expect(correcta, `no hay palabra para ${cuantas} salidas`).toBeDefined();
 
@@ -471,7 +472,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * `docs/12` la llamaba así siguen en verde, porque el marcador está en la
      * misma oración.
      */
-    const cuantas = salidas(FICHA).length;
+    const cuantas = salidas(SEGURIDAD).length;
     /*
      * `definiciones()` lista solo `.claude`, así que los `docs/` se piden aparte —
      * y son la mitad que importa: el drift original vivía en
@@ -523,7 +524,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     ).toEqual([]);
   });
 
-  it('y `docs/13-agentes.md` tampoco, medido contra la tabla de la ficha — B-124', () => {
+  it('y `docs/13-agentes.md` tampoco, medido contra la tabla de 07 — B-124', () => {
     /*
      * **El cuarto lugar donde vive la cuenta, y el único que estaba afuera del
      * lazo.** `docs/13-agentes.md` decía «diez salidas públicas» en **cuatro**
@@ -542,7 +543,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * cuatro frases pone este caso en rojo nombrando la palabra.
      */
     const AGENTES_DOC = 'docs/13-agentes.md';
-    const cuantas = salidas(FICHA).length;
+    const cuantas = salidas(SEGURIDAD).length;
     expect(PALABRAS[cuantas], `no hay palabra para ${cuantas} salidas`).toBeDefined();
 
     const texto = fuente(AGENTES_DOC);
@@ -571,7 +572,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
 
     expect(
       equivocadas,
-      `${AGENTES_DOC} dice «${equivocadas.join(', ')} salidas» y la tabla de la ficha tiene ` +
+      `${AGENTES_DOC} dice «${equivocadas.join(', ')} salidas» y la tabla de 07 tiene ` +
         `${cuantas} filas: quien lea el documento para saber qué auditar va a resolver menos ` +
         'celdas de las que hay',
     ).toEqual([]);
@@ -585,23 +586,23 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * del productor por contenido, no por posición, y una fila corta se lee
      * igual. Markdown tampoco se queja — la celda que falta se pinta vacía.
      *
-     * Se mide en las tres tablas. `07-seguridad.md` entró con **B-1950**: su
-     * encabezado declaraba tres columnas y veintidós filas traían cuatro —la de
-     * tests, sin título—, y las filas 1 a 10 no la tenían. Ahora las treinta y
-     * dos tienen «Test que la fija».
+     * Se mide en `07-seguridad.md` y en el skill. `07-seguridad.md` entró con
+     * **B-1950**: su encabezado declaraba tres columnas y veintidós filas traían
+     * cuatro —la de tests, sin título—, y las filas 1 a 10 no la tenían. Ahora
+     * las treinta y dos tienen «Test que la fija». La ficha salió de este caso
+     * con **M-8**: ya no copia la tabla, la lee de 07.
      *
      * **Las celdas se cortan en el `|` sin escapar**, que es como las corta
      * GitHub: un `|` adentro de backticks corta la celda igual, así que el que
      * va en el texto se escribe `\|` (la fila 6 de `07-seguridad.md` tenía un
      * `string | null` que partía la celda en dos).
      *
-     * MUTACIÓN PROBADA: sacarle a la fila 30 de la ficha su última celda pone
-     * este caso en rojo nombrando la fila; sacarle a la fila 3 de
-     * `07-seguridad.md` su celda de tests, también.
+     * MUTACIÓN PROBADA: sacarle a la fila 3 de `07-seguridad.md` su celda de
+     * tests pone este caso en rojo nombrando la fila.
      */
     const celdas = (linea: string): number =>
       linea.trim().replace(/^\||(?<!\\)\|$/g, '').split(/(?<!\\)\|/).length;
-    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
+    for (const archivo of [SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       const lineas = fuente(archivo).split('\n');
       const encabezado = lineas.findIndex((l) => /^\s*\|\s*#\s*\|/.test(l));
       expect(encabezado, `${archivo} no tiene el encabezado «| # |» de la tabla`).toBeGreaterThan(-1);
@@ -630,7 +631,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * Exigir la secuencia completa lo cierra para cualquier fila que el parseo no
      * entienda, no solo para los dos dígitos.
      */
-    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
+    for (const archivo of [SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       const numeros = salidas(archivo).map((s) => s.n);
       expect(
         numeros,
@@ -639,51 +640,21 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     }
   });
 
-  it('la ficha conoce toda función productora que nombra el documento de seguridad', () => {
+  it('la ficha no volvió a copiar la tabla de salidas — M-8', () => {
     /*
-     * B-212 puso una **segunda** función productora en la salida 1
-     * (`opcionesPublicas`, para `/opciones/*`), se la agregó a
-     * `docs/07-seguridad.md` y **la ficha del agente se quedó atrás**. El `it`
-     * de arriba no lo vio: comparaba solo el primer path del repo de cada fila,
-     * y las dos filas 1 colapsaban a `src/lib/toPublic.ts`, iguales.
+     * **La tabla vivía dos veces, y ya había divergido.** La ficha tenía su
+     * copia (43 KB, ~10.800 tokens por corrida del auditor, que es el de
+     * `opus`) y `07-seguridad.md` la suya; los casos de este describe las
+     * ataban entre sí fila por fila, y la de 07 había quedado sin la columna
+     * de tests en nueve filas (B-1950). Desde M-8 la ficha **lee** la de 07.
      *
-     * O sea: es el modo de falla que este describe vino a cerrar, un nivel más
-     * adentro — el índice envejeció y el test que lo ataba miraba el archivo, no
-     * qué de ese archivo produce la salida. Lo encontró el `auditor-privacidad`
-     * sobre el mismo cambio que lo introdujo.
-     *
-     * ── Por qué es direccional y no una igualdad ──────────────────────────
-     * La primera versión comparaba los dos conjuntos y saltaba con cuatro
-     * desalineaciones legítimas: la ficha nombra `construirDescripcion`,
-     * `construirUbicacion`, `redactar`… y el documento de seguridad no, porque
-     * son documentos con distinto nivel de detalle. La ficha **es** el índice
-     * detallado; puede saber más.
-     *
-     * Lo que no puede pasar es lo contrario: que el documento de seguridad
-     * nombre un productor que la ficha no conoce. Ahí el agente audita con un
-     * índice incompleto, que es exactamente lo que pasó con `opcionesPublicas`.
+     * Este caso impide que la copia vuelva: una fila numerada en la ficha
+     * significa que alguien la pegó de nuevo, y las dos empiezan a divergir el
+     * mismo día. Lo que sí vive en la ficha es la lista de rutas que la
+     * despiertan, que el `it` de abajo ata a esta tabla.
      */
-    const deFicha = salidas(FICHA);
-    const faltantes: string[] = [];
-
-    for (const fila of salidas(SEGURIDAD)) {
-      const enFicha = deFicha.find((s) => s.n === fila.n);
-      if (!enFicha) continue; // la comparación de filas la hace el `it` de arriba
-      for (const f of fila.funciones) {
-        if (!enFicha.funciones.includes(f)) faltantes.push(`salida ${fila.n}: ${f}`);
-      }
-    }
-
-    expect(
-      faltantes,
-      'la ficha del auditor no conoce un productor que 07-seguridad.md sí nombra',
-    ).toEqual([]);
-  });
-
-  it('las dos tablas enumeran las mismas salidas, y en el mismo orden', () => {
-    expect(salidas(SEGURIDAD).map((s) => `${s.n} ${s.archivo}`)).toEqual(
-      salidas(FICHA).map((s) => `${s.n} ${s.archivo}`),
-    );
+    expect(filasCrudas(FICHA), 'la ficha tiene otra vez una tabla numerada').toBe(0);
+    expect(fuente(FICHA)).toContain('docs/07-seguridad.md');
   });
 
   it('el número de salida que se atribuye cada barrido es el de su propia fila — B-600', () => {
@@ -837,24 +808,26 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     ).toEqual(numeros(SEGURIDAD));
   });
 
-  it('el description del agente nombra todos los archivos productores', () => {
-    // Es el punto que hace que el agente se invoque solo. Sin esto, la tabla
-    // puede estar perfecta y el agente no despertarse nunca.
-    const { claves } = frontmatter(fuente(FICHA));
-    const sinNombrar = salidas(FICHA)
+  it('los disparadores de la ficha nombran todos los archivos productores', () => {
+    // Es el punto que hace que el agente corresponda. Sin esto, la tabla puede
+    // estar perfecta y `/audit` no lanzarlo nunca. Desde la decisión B del PRD 6
+    // las rutas viven en el bloque del cuerpo y no en el `description`; lo que
+    // se lee es lo mismo que lee `auditores-que-corresponden.mjs`.
+    const declaracion = declaracionDeLaFicha(fuente(FICHA));
+    const sinNombrar = salidas(SEGURIDAD)
       .flatMap((s) => s.archivos.map((archivo) => `salida ${s.n}: ${archivo}`))
-      .filter((x) => !(claves.description ?? '').includes(x.split(': ')[1]!));
-    expect(sinNombrar, 'productores ausentes del description').toEqual([]);
+      .filter((x) => !declaracion.includes(x.split(': ')[1]!));
+    expect(sinNombrar, 'productores ausentes de «Los archivos que te despiertan»').toEqual([]);
     // Control positivo de la mitad nueva: la fila 2 nombra más de un archivo, y
     // si el barrido volviera a quedarse con el primero esto lo diría.
-    expect(salidas(FICHA).find((s) => s.n === '2')!.archivos.length).toBeGreaterThan(1);
+    expect(salidas(SEGURIDAD).find((s) => s.n === '2')!.archivos.length).toBeGreaterThan(1);
   });
 
   /**
    * Las rutas de la sección «Las puertas» de la ficha — B-819.
    *
    * Se derivan de la **tabla**, que es donde está escrito por qué cada una es una
-   * puerta. Si la lista viviera solo en el `description`, no habría dónde leer el
+   * puerta. Si la lista viviera solo en los disparadores, no habría dónde leer el
    * motivo; si viviera solo en la tabla, no dispararía nada. Los dos asertos de
    * abajo las atan.
    */
@@ -878,7 +851,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
       .flatMap((l) => [...l.matchAll(/`((?:src|functions)\/[\w/.-]+)`/g)].map((m) => m[1]!));
   };
 
-  it('el description del agente nombra también las puertas, no solo las productoras', () => {
+  it('los disparadores nombran también las puertas, no solo las productoras', () => {
     /*
      * **El agujero que este caso cierra.** El aserto de arriba deriva de la tabla
      * de salidas, así que solo cubre **productoras**. `src/lib/historial.ts` no
@@ -895,9 +868,9 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // `filter` de abajo pasaría contra una lista vacía.
     expect(nombradas.length, 'no se encontró la tabla de puertas en la ficha').toBeGreaterThanOrEqual(4);
 
-    const { claves } = frontmatter(fuente(FICHA));
-    const sinNombrar = nombradas.filter((p) => !(claves.description ?? '').includes(p));
-    expect(sinNombrar, 'puertas ausentes del description: no van a disparar nada').toEqual([]);
+    const declaracion = declaracionDeLaFicha(fuente(FICHA));
+    const sinNombrar = nombradas.filter((p) => !declaracion.includes(p));
+    expect(sinNombrar, 'puertas ausentes de los disparadores: no van a disparar nada').toEqual([]);
   });
 
   it('y todas las puertas que nombra existen', () => {
@@ -910,7 +883,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
   it('todos los archivos productores existen', () => {
     // `definiciones()` de arriba lista solo `.claude/`, así que acá se mira el
     // disco: los productores viven en `src/` y en `functions/`.
-    const inexistentes = salidas(FICHA)
+    const inexistentes = salidas(SEGURIDAD)
       .flatMap((s) => s.archivos)
       .filter((archivo) => !existsSync(fileURLToPath(new URL(archivo, raiz))));
     expect(inexistentes).toEqual([]);
@@ -933,7 +906,16 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * MUTACIÓN PROBADA: volver a poner `tests/tarjeta-del-listado.test.ts` en la
      * ficha hace fallar este caso.
      */
-    const nombrados = [...fuente(FICHA).matchAll(/`(tests\/[\w.-]+\.ts)`/g)].map((m) => m[1]!);
+    // La ficha entera y las filas de la tabla de 07, que desde M-8 es la que
+    // tiene la columna de tests. El resto de 07 queda afuera: su prosa cuenta
+    // renombres viejos, y ahí nombrar un test que ya no existe es el registro.
+    const filasDe07 = fuente(SEGURIDAD)
+      .split('\n')
+      .filter((l) => /^\s*\|\s*\d+\s*\|/.test(l))
+      .join('\n');
+    const nombrados = [...`${fuente(FICHA)}\n${filasDe07}`.matchAll(/`(tests\/[\w.-]+\.ts)`/g)].map(
+      (m) => m[1]!,
+    );
     // Control positivo: la ficha nombra tests de verdad, y si el regex dejara de
     // encontrarlos la lista de inexistentes saldría vacía sin haber mirado nada.
     expect(nombrados.length).toBeGreaterThan(5);
