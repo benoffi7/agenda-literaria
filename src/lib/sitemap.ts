@@ -67,6 +67,7 @@ import {
   RUTA_AYUDA,
   RUTA_CARTELERA,
   RUTA_CONTACTO,
+  RUTA_EFEMERIDES,
   RUTA_GRATIS,
   RUTA_GUIA,
   RUTA_ONLINE,
@@ -77,6 +78,7 @@ import {
   rutaDeLibreria,
   rutaDeLugar,
   rutaDeBiblioteca,
+  rutaDeEfemeride,
   rutaDeMes,
   rutaDeSuscripcion,
   urlAbsoluta,
@@ -376,6 +378,8 @@ export interface EntradaDelSitio {
    * rutas dinámicas del chequeo de cobertura.
    */
   bibliotecas?: readonly { slug: string }[];
+  /** B-959 — las efemérides publicadas. Con ninguna, `/efemerides/` no se ofrece. */
+  efemerides?: readonly { slug: string }[];
   /**
    * Las opciones de taxonomía del índice, **para los hubs** — B-108.
    *
@@ -417,6 +421,7 @@ export const rutasDelSitemap = ({
   suscripciones = [],
   lugares = [],
   bibliotecas = [],
+  efemerides = [],
   ahora,
 }: EntradaDelSitio): string[] => [
   ...new Set([
@@ -466,6 +471,14 @@ export const rutasDelSitemap = ({
     // Ídem para el cuarto — B-960. El listado `/guia/bibliotecas/` entra arriba
     // por `directoriosDisponibles`; acá van las fichas.
     ...bibliotecas.filter((b) => b.slug).map((b) => rutaDeBiblioteca(b.slug)),
+    /*
+     * B-959 — las efemérides: el listado **solo si hay alguna** (una página que
+     * dice «todavía no hay ninguna» no es algo que ofrecerle a un buscador) y
+     * una URL por efeméride publicada. Viven fuera de `RUTAS_FIJAS` justamente
+     * por esa condición.
+     */
+    ...(efemerides.some((e) => e.slug) ? [RUTA_EFEMERIDES] : []),
+    ...efemerides.filter((e) => e.slug).map((e) => rutaDeEfemeride(e.slug)),
   ]),
 ];
 

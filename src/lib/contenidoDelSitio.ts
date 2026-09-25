@@ -120,6 +120,16 @@ import {
 } from '@/lib/bibliotecaPublica';
 import { EJES_DE_BIBLIOTECA } from '@/lib/bibliotecaPublica';
 import type { Biblioteca } from '@/types/biblioteca';
+// B-959 — las efemérides: su propia proyección whitelist, como cada directorio.
+import {
+  CAMPOS_DE_LA_PROYECCION_EFEMERIDE,
+  construirIndiceDeEfemerides,
+  efemeridePublica,
+  sinSlugsRepetidos,
+  type EfemeridePublica,
+  type IndiceDeEfemerides,
+} from '@/lib/efemeridePublica';
+import { ESTADO_PUBLICO_EFEMERIDE, type Efemeride } from '@/types/efemeride';
 import type { SuscripcionLiteraria } from '@/types/suscripcion-literaria';
 import type { Lugar } from '@/types/lugar';
 import { INFO_VERSION } from '@/lib/version';
@@ -254,6 +264,15 @@ export interface ContenidoDelSitio {
    * lo reciba y lo trate como un documento crudo.
    */
   lugares: LugarPublico[];
+  /**
+   * **Las efemérides publicadas, ya proyectadas** — B-959.
+   *
+   * Mismo trato que las colecciones de la Guía: su propia query, su propio
+   * campo, su propia proyección. No se mezclan con nada, así que ninguna lista
+   * de actividades puede recibir una efeméride — y por eso tampoco puede llegar
+   * al calendario, que ni siquiera lee de acá.
+   */
+  efemerides: EfemeridePublica[];
 }
 
 /**
@@ -733,6 +752,34 @@ const bibliotecasPublicadas = async (): Promise<BibliotecaPublica[]> => {
     .filter((b) => esSlugDeFicha(b.slug));
 };
 
+/**
+ * **Las efemérides publicadas** — B-959.
+ *
+ * El `where` es el mismo de siempre —la primera de las nueve cosas que se
+ * rompen en silencio: sin él se publica un borrador— y la constante sale del
+ * modelo, no del literal. El `.select()` es su otra mitad (D-159): los uids de
+ * `createdBy`/`updatedBy` no entran ni a la memoria del runner de CI.
+ *
+ * El descarte de lo que no se puede publicar (un slug raro, un día fuera de
+ * rango escrito a mano en la consola) lo hace `efemeridePublica`, que devuelve
+ * `null` en vez de tirar: un documento raro no apaga el build. Y un slug
+ * repetido se resuelve acá, una vez, con `sinSlugsRepetidos`: así el índice, el
+ * listado y las páginas no pueden discrepar sobre cuál quedó.
+ */
+const efemeridesPublicadas = async (): Promise<EfemeridePublica[]> => {
+  const snap = await adminDb()
+    .collection('efemerides')
+    .where('estado', '==', ESTADO_PUBLICO_EFEMERIDE)
+    .select(...CAMPOS_DE_LA_PROYECCION_EFEMERIDE)
+    .get();
+
+  return sinSlugsRepetidos(
+    snap.docs
+      .map((d) => efemeridePublica(d.data() as Efemeride))
+      .filter((e): e is EfemeridePublica => e !== null),
+  );
+};
+
 const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, ValorOpcion[]>>> => {
   const refs = CAMPOS_TAXONOMIA.map((c) => adminDb().doc(`opciones/${c}`));
   const snaps = await adminDb().getAll(...refs);
@@ -753,6 +800,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       suscripciones,
       lugares,
       bibliotecas,
+      efemerides,
     ] = await Promise.all([
       publicadas(),
       canceladas(),
@@ -761,6 +809,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       suscripcionesPublicadas(),
       lugaresPublicados(),
       bibliotecasPublicadas(),
+      efemeridesPublicadas(),
     ]);
     return {
       actividades: publicadasConPagina.actividades,
@@ -772,6 +821,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       suscripciones,
       lugares,
       bibliotecas,
+      efemerides,
     };
   }
 
@@ -806,6 +856,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     suscripciones: [],
     lugares: [],
     bibliotecas: [],
+    efemerides: [],
   };
 };
 
@@ -1335,6 +1386,39 @@ export const vistaDeBibliotecas = async (): Promise<VistaDeBibliotecas> => {
 export const caminosDeBiblioteca = async (): Promise<
   { params: { slug: string }; props: { ficha: FichaDeBiblioteca } }[]
 > => caminosDeFichas('bibliotecas', await fichasDeBiblioteca());
+
+// ─────────────────────────────────────────────────────────────────
+// Las efemérides — B-959
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * `/efemerides.json` — todas las publicadas, en el orden del año, con lo mínimo
+ * para que el navegador elija **la de hoy** (§2.5). Cero lecturas nuevas: sale
+ * del mismo `contenidoDelSitio()` memoizado.
+ */
+export const indiceDeEfemerides = async (): Promise<IndiceDeEfemerides> => {
+  const { efemerides } = await contenidoDelSitio();
+  return construirIndiceDeEfemerides(efemerides);
+};
+
+/**
+ * Las efemérides publicadas ya proyectadas, para `/efemerides/` — el view-model
+ * de la plantilla (D-140): recibe `EfemeridePublica`, nunca el documento.
+ */
+export const efemeridesDelSitio = async (): Promise<EfemeridePublica[]> =>
+  (await contenidoDelSitio()).efemerides;
+
+/**
+ * Los `getStaticPaths` de `/efemerides/[slug]`. Los slugs ya vienen sin
+ * repetir desde la lectura (`sinSlugsRepetidos`), así que hay una página por
+ * efeméride y ninguna se pisa.
+ */
+export const caminosDeEfemeride = async (): Promise<
+  { params: { slug: string }; props: { efemeride: EfemeridePublica; todas: EfemeridePublica[] } }[]
+> => {
+  const todas = await efemeridesDelSitio();
+  return todas.map((efemeride) => ({ params: { slug: efemeride.slug }, props: { efemeride, todas } }));
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Las suscripciones literarias — B-832, tajada 3
@@ -1906,6 +1990,7 @@ export const sitemapDelSitio = async (
     suscripciones,
     lugares,
     bibliotecas,
+    efemerides,
   } = await contenidoDelSitio();
   const instante = relojDelBuild(ahora, indice.generadoEn);
 
@@ -1928,6 +2013,9 @@ export const sitemapDelSitio = async (
     // la sección y no tocó el sitemap, así que las fichas quedaron sin ofrecerle
     // al buscador hasta el pase de auditores.
     bibliotecas: bibliotecas.map((b) => ({ slug: b.slug })),
+    // B-959 — las efemérides publicadas, por el mismo camino: salen de la lectura
+    // filtrada, así que un borrador no puede llegar acá.
+    efemerides: efemerides.map((e) => ({ slug: e.slug })),
     canceladas: canceladas.map((a) => ({
       slug: a.slug,
       editadaEn: canceladasEditadasEn[a.slug] ?? null,

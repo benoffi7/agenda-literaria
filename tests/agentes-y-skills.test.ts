@@ -338,6 +338,13 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * faltaba contar: `/guia` existía desde B-835 sin fila.
      */
     27: 'veintisiete', 28: 'veintiocho', 29: 'veintinueve', 30: 'treinta',
+    /*
+     * B-959 — la tabla pasó a **32** con las efemérides: el índice que baja la
+     * home (con el renglón que lo lee) y la sección con la página de cada una.
+     * Son las dos primeras salidas que no proyectan ni una actividad ni una
+     * ficha de la Guía. Se agregan con colchón, como siempre.
+     */
+    31: 'treinta y una', 32: 'treinta y dos', 33: 'treinta y tres', 34: 'treinta y cuatro',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {

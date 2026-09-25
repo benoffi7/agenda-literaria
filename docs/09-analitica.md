@@ -312,6 +312,8 @@ evento por función.
 | `lugar-guardar` | se guardó un lugar desde el panel, alta o edición | — | — |
 | `bibliotecas-abrir` | se abre la pantalla de bibliotecas de la Guía | — | bibliotecas esperando decisión (B-960) |
 | `biblioteca-guardar` | se guardó una biblioteca desde el panel, alta o edición | — | — |
+| `efemerides-abrir` | se abre la pantalla de efemérides del panel | — | efemérides publicadas (B-959) |
+| `efemeride-guardar` | se guardó una efeméride desde el panel, alta o edición | — | — |
 
 > ⚠️ **El piso del `valor` es negativo por una sola función, y la historia vale.**
 > El 2026-09-07 este documento estrenó una fila que decía que `encuentro-correr`

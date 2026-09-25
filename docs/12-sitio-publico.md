@@ -189,6 +189,9 @@ de los datos.
 | `/guia/bibliotecas/{slug}` | La ficha: los **dos** horarios —mostrador y sala de lectura—, el catálogo online, si hay que asociarse y cuánto sale (con su fecha de carga al lado), los cuatro contactos, la galería completa y el `Library`. **Cero JavaScript** — B-960 | Build (`caminosDeBiblioteca`) |
 | `/guia/bibliotecas/sumar` | El formulario público de la sección, y **la quinta página del sitio que escribe** en Firestore desde el navegador. Lo propio: el costo de asociarse, cuya fecha la pone el servidor — quien carga no elige qué fecha se publica al lado del monto (DEC-12) — B-960 | Build + island (`SumarBiblioteca`, `client:load`) |
 | `/bibliotecas.json` | El índice del directorio, aparte del `events.json` por lo mismo que los otros tres (B-960) | Build (ver [§3](#3-los-datos)) |
+| `/efemerides` | **Las efemérides**, agrupadas por mes y ordenadas por día, cada una con su ancla (`#dia-09-25`). **No estaba en este diseño** — B-959, decisión del dueño del 2026-09-25. Sin island: no hay nada que filtrar. **Vacía va con `noindex` y fuera del sitemap** (el criterio de los hubs vacíos) | Build (`efemeridesDelSitio`) |
+| `/efemerides/{slug}` | La página de una efeméride: el título, «26 de agosto de 1914», el dato, la fuente con su link si tiene, y las otras del mismo mes. **Cero JavaScript**, con `BreadcrumbList` — B-959 | Build (`caminosDeEfemeride`) |
+| `/efemerides.json` | **Todas** las efemérides publicadas, con lo mínimo para el renglón de la home (slug, título, día, mes, año). El navegador elige la de hoy: el build no sabe qué día va a ser (B-959, D-1173) | Build |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
 | `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310). Desde B-900 la tira termina con las secciones de la Guía **que tienen fichas publicadas** | Build. La tira sale de `exploracionDeLaHome` más `grupoDeLaGuia` (con los conteos de `fichasPorDirectorio`); las frases, de `src/lib/noEncontrado.ts` |
@@ -548,6 +551,18 @@ son líneas de 1px en `--color-borde`. Las fechas y los datos duros van en Inter
 los títulos y el nombre de la actividad, en Lora.
 
 ### 4.1 Home — `/`
+
+> ✅ **El renglón de la efeméride del día — B-959 (2026-09-25).** Entre el `<h1>` y
+> el tríptico va, cuando hay una, **una línea**: «Efeméride del día · Un 26 de
+> agosto de 1914: Nace Julio Cortázar», con el título enlazado a su página y un
+> «N más hoy» si hay varias. **Lo pinta el navegador** —`EfemerideDeHoy.astro`, un
+> `<script>` chico y no una island— porque el contenido cambia cada día sin que
+> nadie edite nada, y elegirlo en el build sería un rebuild diario para siempre
+> (D-1173). Sale del build **oculto**: sin JavaScript, si el fetch de
+> `/efemerides.json` falla o si hoy no hay ninguna, no se ve nada. El día se decide
+> en Buenos Aires (`claveDeDia`), no en el reloj del teléfono. Google no ve el
+> enlace, y no hace falta: el camino indexable es la fila «Efemérides» del pie y
+> el sitemap.
 
 > ⚠️ **Al diagrama de abajo le falta la primera sección de la página — ver D-320
 > y D-470 en [`06-decisiones.md`](06-decisiones.md).** Desde **B-600** (2026-09-03), arriba

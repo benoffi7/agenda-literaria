@@ -1169,6 +1169,73 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'efemerides',
+    titulo: 'Las efemérides',
+    paraQue:
+      'Cargar el dato del día —«nació Cortázar», «se publicó Rayuela»— que el sitio muestra en ' +
+      'su sección de Efemérides y, el día que corresponde, en un renglón arriba de la agenda.',
+    impacto:
+      'Una efeméride publicada tiene su página en el sitio y aparece en el listado de ' +
+      'Efemérides, que Google indexa. El día que le toca, la home la muestra en un renglón. ' +
+      '**No va al calendario público**: no es una actividad y no tiene horario.',
+    ejemplo:
+      'Qué pasó: «Nace Julio Cortázar». Día 26, mes agosto, año 1914. Guardar y publicar: desde ' +
+      'el próximo rebuild tiene su página, y cada 26 de agosto aparece en la home.',
+    puntos: [
+      {
+        texto:
+          'Se carga desde el botón «Efemérides» del listado. «Guardar borrador» la deja fuera ' +
+          'del sitio; «Guardar y publicar» la manda. Desde la lista se puede publicar o ' +
+          'despublicar sin abrirla.',
+      },
+      {
+        texto:
+          'Se carga el día y el mes, no una fecha: una efeméride se repite todos los años. El ' +
+          'año del hecho va aparte, es opcional y no decide qué día se muestra.',
+      },
+      {
+        texto:
+          'El día se decide con la hora de Buenos Aires, no con la del teléfono de quien mira: ' +
+          'alguien en Madrid a la madrugada sigue viendo la de hoy mientras acá sea hoy.',
+        atadoA: [
+          {
+            archivo: 'tests/efemeride-publica.test.ts',
+            it: 'el día se decide en Buenos Aires, no en el reloj del navegador',
+          },
+        ],
+      },
+      {
+        texto:
+          'Una efeméride del 29 de febrero se muestra el 28 en los años que no son bisiestos. ' +
+          'Si no, aparecería una vez cada cuatro años. Su página sigue diciendo 29 de febrero.',
+        atadoA: [
+          {
+            archivo: 'tests/efemeride-publica.test.ts',
+            it: 'el 29 de febrero, en un año que no lo tiene, se muestra el 28',
+          },
+        ],
+      },
+      {
+        texto:
+          'Si hay más de una el mismo día, la home muestra la del hecho más viejo y un «N más» ' +
+          'que lleva al listado. Si hoy no hay ninguna, el renglón no aparece.',
+      },
+      {
+        texto:
+          'El link de la efeméride queda fijo desde la primera vez que se publica, aunque ' +
+          'después la despubliques: ese enlace ya puede estar en Google, y cambiarlo lo rompe ' +
+          'sin avisar.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'Borrar no se puede deshacer, y si estaba publicada su página deja de existir en el ' +
+          'próximo rebuild. Para sacarla del sitio sin perderla, despublicala.',
+        cuidado: true,
+      },
+    ],
+  },
+  {
     id: 'lugares',
     titulo: 'Los lugares para hacer eventos',
     paraQue:
@@ -2557,6 +2624,9 @@ export const CAPITULO_POR_CONTEXTO = {
   lugares: 'lugares',
   // B-960 — la cuarta pantalla de la Guía. Mismo motivo que las otras tres.
   bibliotecas: 'bibliotecas',
+  // B-959 — las efemérides. Tampoco son una actividad: abrir la ayuda en el
+  // flujo de carga sería mandar a leer lo que no se está mirando.
+  efemerides: 'efemerides',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;

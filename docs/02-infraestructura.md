@@ -417,7 +417,7 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 ## Cloud Functions (v2)
 
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3;
-`verificarFrescuraDelSitio`, 1). **Son diecisiete**, y el reparto entre ACTIVE y «sin
+`verificarFrescuraDelSitio`, 1). **Son dieciocho** (la última, `rebuildPorEfemerides`, de B-959), y el reparto entre ACTIVE y «sin
 desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
 
 > ⚠️ **Esta línea necesita un re-relevamiento, y lo dice en vez de reafirmar
@@ -472,6 +472,7 @@ desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
 | `rebuildPorLibrerias` | `onDocumentWritten librerias/{id}` | **escrita, sin desplegar todavía** (B-901, 2026-09-11). La misma forma que `rebuildPorOpciones`, para el primer directorio de la Guía: marca `sistema/rebuild.pendiente` cuando cambia un campo que el sitio **publica** (`cambioAmeritaRebuild`, `functions/directorios.js`) y no cuando solo cambia el contacto interno o el motivo de una revisión. Sin IAM nuevo: usa `marcarRebuild`, la misma escritura que ya hacen `rebuildPorOpciones` y `dispararRebuild`. El push a `main` la despliega sola |
 | `rebuildPorSuscripciones` | `onDocumentWritten suscripciones/{id}` | **escrita, sin desplegar todavía** (B-832, 2026-09-11). El hermano de la de arriba para el segundo directorio de la Guía. Una Function por colección porque Firestore no matchea un comodín en el segmento de colección; la **decisión** de si corresponde rebuildear sí es compartida (`cambioAmeritaRebuild`, ahora con la lista de campos publicados **por colección**). Sin IAM nuevo. El push a `main` la despliega sola |
 | `rebuildPorLugares` | `onDocumentWritten lugares/{id}` | **escrita, sin desplegar todavía** (B-833, 2026-09-11). La tercera y última de la familia, para el directorio de lugares de la Guía. Acá el rebuild hace además algo que en los otros dos no: **es lo que vuelve efectivo apagar `direccionPublica`** — sin él, alguien baja la casilla en el panel, el sitio estático no se rehace y la dirección de una casa sigue publicada (§ 6 del PRD 4, trampa 8 con el dato más sensible del proyecto adentro). Sin IAM nuevo. El push a `main` la despliega sola |
+| `rebuildPorEfemerides` | `onDocumentWritten efemerides/{id}` | **escrita, sin desplegar todavía** (B-959, 2026-09-25). El único trigger de `/efemerides` —no hay sync a Calendar para ellas, D-1170—: marca `sistema/rebuild.pendiente` cuando el cambio toca algo **publicado** (`efemerideAmeritaRebuild`, `functions/efemerides.js`; un borrador no cuesta un build, D-1174) y prende `publicadaAlgunaVez` la primera vez que se publica, con la misma guarda anti-loop que los directorios. Sin IAM nuevo. El push a `main` la despliega sola |
 | `guardarVersion` | `onDocumentUpdated actividades/{id}` | ACTIVE |
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | ACTIVE — desplegada a mano el 2026-08-25 |
 | `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |

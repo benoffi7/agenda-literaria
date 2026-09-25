@@ -409,7 +409,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los diecisiete triggers del proyecto', () => {
+  it('encuentra los dieciocho triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -513,6 +513,16 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        * **dejaría de mirarlos sin ponerse rojo**.
        */
       'rebuildPorBibliotecas',
+      /*
+       * B-959 — el rebuild de las efemérides. **Entró solo** por la misma puerta
+       * que los cuatro de la Guía, y pasa los dos chequeos por el mismo camino:
+       * su efecto es `marcarRebuild` (idempotente) y su llamada **domina** el
+       * handler en forma positiva. Lo único distinto es la guarda
+       * (`efemerideAmeritaRebuild`, en `functions/efemerides.js`), que además
+       * deja afuera los borradores. Y escribe la marca de B-905, así que también
+       * es llamador de `marcarPublicada` en el chequeo de la trampa 3.
+       */
+      'rebuildPorEfemerides',
       /*
        * B-901 — el rebuild cuando cambia una ficha de directorio (`/librerias`).
        * Es la trampa 8 con otra cara: sin él se publica una librería desde el
@@ -1908,12 +1918,15 @@ describe('trampa 3 · el write-back al propio documento va detrás de su guarda 
       .map(([efecto, guarda]) => ({ trigger: t, efecto, guarda })),
   );
 
-  it('los llamadores son `syncCalendar` y el rebuild de cada directorio', () => {
+  it('los llamadores son `syncCalendar`, el rebuild de cada directorio y el de las efemérides', () => {
     // Si esto se achica, un directorio dejó de escribir la marca (B-905 otra
     // vez); si crece, hay un trigger nuevo que la escribe y hay que mirarlo.
     expect(llamadas.map((l) => l.trigger.nombre).sort()).toEqual(
       [
         'syncCalendar',
+        // B-959 — no es un directorio (no entra a la retención de la Guía), pero
+        // congela su slug con la misma marca.
+        'rebuildPorEfemerides',
         ...COLECCIONES_DE_DIRECTORIO.map((c) => `rebuildPor${c[0]!.toUpperCase()}${c.slice(1)}`),
       ].sort(),
     );

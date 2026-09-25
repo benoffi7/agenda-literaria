@@ -370,6 +370,22 @@ export const rutaDeBiblioteca = (slug: string): string =>
 export const RUTA_APOYAR = rutaCanonica('/apoyar');
 
 /**
+ * **Las efemérides** — B-959: `/efemerides/` y una página por efeméride.
+ *
+ * **No cuelgan de `/guia/`**, y es a propósito: la Guía es un directorio de
+ * lugares y servicios (dónde comprar, dónde sacar libros), y una efeméride no es
+ * nada de eso — es el dato del día. Es una sección propia, como `/cartelera`.
+ *
+ * La página de cada una va por **slug**, inmutable después de publicar (trampa
+ * 10), y la interpolación no sanea por lo mismo que las fichas de la Guía: la
+ * verificación es `esSlugDeFicha` y le toca a quien produce las páginas.
+ */
+export const PREFIJO_EFEMERIDES = '/efemerides';
+export const RUTA_EFEMERIDES = rutaCanonica(PREFIJO_EFEMERIDES);
+export const rutaDeEfemeride = (slug: string): string =>
+  rutaCanonica(`${PREFIJO_EFEMERIDES}/${slug}`);
+
+/**
  * El archivo: `/pasadas/` — B-109, §4.5 del diseño.
  *
  * Vive acá y no como literal en cada llamador porque tiene **tres** consumidores

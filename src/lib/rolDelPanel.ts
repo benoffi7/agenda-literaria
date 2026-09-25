@@ -82,6 +82,13 @@ export const PANTALLAS_DEL_PANEL = [
    * lista entera, y esa autoridad es justamente la que el publicador no tiene.
    */
   'boletin',
+  /*
+   * B-959 — las efemérides. Dos por el motivo de siempre (el aviso de salida se
+   * decide por la vista del router, B-35). **Solo del admin**, como la Guía: el
+   * `publicador` no las ve ni en el panel ni en las reglas (D-1171).
+   */
+  'efemerides',
+  'efemeride',
 ] as const;
 export type PantallaDelPanel = (typeof PANTALLAS_DEL_PANEL)[number];
 

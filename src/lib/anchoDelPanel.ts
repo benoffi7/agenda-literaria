@@ -137,6 +137,8 @@ const VISTAS_DE_FORMULARIO: readonly string[] = [
    * que el ancho no se estira, se usa (B-621).
    */
   'biblioteca',
+  // B-959 — el formulario de una efeméride, con el mismo trato que los de la Guía.
+  'efemeride',
 ];
 
 /**
