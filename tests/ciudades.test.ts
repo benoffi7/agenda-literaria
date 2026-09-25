@@ -15,8 +15,9 @@
  *  3. **qué se puede tocar y qué no**, que es lo que decide los botones del
  *     panel — y que el panel no ofrezca lo que la regla va a rechazar.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import { ciudadesDe, slugDeCiudad } from '@/lib/ciudades.mjs';
 import { slugify } from '@/lib/slugify';
 import { ciudadDeClaims } from '@/lib/rolDelPanel';
@@ -271,7 +272,7 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
      * `describe` en rojo (éste por el import, el de abajo por el `normalize`).
      */
     expect(readFileSync('scripts/set-admin-claim.mjs', 'utf8')).toContain(
-      "from '../src/lib/slugify.mjs'",
+      "from '../functions/slugify.js'",
     );
     expect(readFileSync('scripts/sembrar-ciudades.mjs', 'utf8')).toContain(
       "from '../src/lib/ciudades.mjs'",
@@ -299,9 +300,8 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
      * **El primero se mudó a `functions/` con B-968**, cuando apareció el cuarto
      * runtime que tiene que normalizar igual: la Function de Calendar, que se
      * despliega con su propio `package.json` y no puede importar `src/` (D-20).
-     * `src/lib/slugify.mjs` sigue existiendo como fachada y no cuenta acá porque
-     * **reexporta** en vez de reimplementar, que es justo la diferencia que este
-     * barrido mide.
+     * `src/lib/slugify.ts` es su fachada y no cuenta acá porque **reexporta** en
+     * vez de reimplementar, que es justo la diferencia que este barrido mide.
      */
     const PERMITIDOS = ['functions/slugify.js', 'src/lib/normalize.ts'];
 
@@ -320,7 +320,7 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
     expect(
       culpables,
       `estos archivos se escribieron su propia normalización: ${culpables.join(', ')}. ` +
-        'Importala de `src/lib/slugify.mjs` (identificadores — la fachada de `functions/slugify.js`) '+
+        'Importala de `@/lib/slugify` (identificadores; desde node, de `functions/slugify.js`) ' +
         'o de `src/lib/normalize.ts` ' +
         '(búsqueda): dos normalizaciones distintas de la misma ciudad son un permiso que no ' +
         'matchea y nadie entiende por qué (B-919).',
@@ -331,12 +331,11 @@ describe('el claim y el documento normalizan con la MISMA función', () => {
     expect(['src', 'functions', 'scripts'].flatMap(archivos).length).toBeGreaterThan(100);
   });
 
-  it('y `src/lib/slugify.ts` sigue siendo la fachada, no una segunda copia', () => {
-    // Los ~veinte `import { slugify } from '@/lib/slugify'` del panel y del sitio
-    // no cambiaron: lo que cambió es dónde vive la implementación.
-    const fachada = readFileSync('src/lib/slugify.ts', 'utf8');
-    expect(fachada).toContain("export { slugify } from './slugify.mjs';");
-    expect(fachada).not.toContain("normalize('NFD')");
+  it('y `src/lib/slugify.ts` es la única fachada, no una segunda copia — M-18', () => {
+    // Un salto a la implementación, no dos: la `.mjs` intermedia se borró.
+    const fachada = sinComentarios(readFileSync('src/lib/slugify.ts', 'utf8'));
+    expect(fachada.trim()).toBe("export { slugify } from '../../functions/slugify.js';");
+    expect(existsSync('src/lib/slugify.mjs')).toBe(false);
   });
 });
 
