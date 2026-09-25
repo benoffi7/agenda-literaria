@@ -17327,6 +17327,72 @@ FIREBASE_STORAGE_EMULATOR_HOST` en la salida del paso 4. **Arreglo:** levantar
 Storage en el paso 4 y sembrar un objeto en `miniaturas/` para afirmar sobre el
 `srcset` del HTML.
 
+### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25) · P2 — vuelto de los cerrados (2026-09-24, B-1580) · ✅ decidido (2026-09-25): no se hace
+
+**✅ Decidido (2026-09-25) por el dueño: no se abre.** `material.items[].tipo`
+sigue siendo una lista cerrada. En un mes hubo un solo pedido de un tipo nuevo
+(newsletter y playlist, ya agregados) y «otro» cubre el caso raro. Se reabre si
+los pedidos de tipos nuevos se vuelven frecuentes.
+
+Reportado por el dueño (2026-08-24), cargando un club de lectura real: *"en
+material adicional son varias cosas: libro, newsletters, guía, playlist… y son al
+inscribirse pero otros durante el mes. Agregar «durante el mes» a la lista de
+opciones"*.
+
+Los dos campos son `z.enum` en `src/lib/schema.ts:62,65`, o sea **cerrados**, a
+diferencia del `tipo` de la actividad que es taxonomía abierta (§4):
+
+| Campo | Hoy | Falta |
+|---|---|---|
+| `TIPOS_MATERIAL` | `lectura`, `guia`, `contexto`, `autor`, `otro` | newsletter, playlist… y «libro», que hoy entra como `lectura` |
+| `ENTREGAS_MATERIAL` | `previo`, `al-inscribirse`, `en-el-encuentro` | **«durante el mes»**, que es el pedido concreto |
+
+**«Durante el mes» es lo interesante del reporte**, y no es solo una opción más:
+dice que la entrega del material no es un instante sino que puede ser progresiva
+a lo largo del ciclo. Encaja con el §2.2 —un club de lectura son ocho encuentros
+con su lectura cada uno— y es exactamente el caso de uso que el §4.1 llama de
+primera clase, como «a la gorra».
+
+**Hecho lo pedido, pendiente la decisión de fondo.** Agregados: `durante-el-mes`
+en las entregas —el pedido concreto—, más `newsletter` y `playlist` en los tipos.
+
+**No se agregó `libro`, y no es un olvido.** El reporte lo nombra, pero `lectura`
+ya es eso: el texto asignado. Tener los dos partiría los datos existentes en dos
+valores que después no se pueden volver a juntar, porque nadie va a saber cuál
+eligió cada uno. Se cambió la **etiqueta** a "Libro o lectura", que es reversible;
+agregar el valor no lo es. Si el dueño prefiere el valor aparte, se hace — pero
+esa es la decisión que hay que tomar a ojos abiertos.
+
+**Y apareció la tercera instancia de la clase de B-76/B-132**: el desplegable de
+tipo de material pintaba el valor crudo, así que decía "guia" y "autor" mientras
+el evento público decía "Guía" y "Sobre el autor". Arreglado importando el mapa de
+`@calendario` en lugar de copiarlo (D-20), y con un chequeo nuevo que afirma que
+**todo** valor de los dos enums tiene etiqueta en las dos pantallas — verificado
+contra un valor inventado para confirmar que lo detecta y que nombra cuál falta.
+`entrega` mantiene dos mapas a propósito: el panel capitaliza, el evento va en
+minúscula a mitad de frase.
+
+**La decisión que queda, y es del dueño:** ¿`material.items[].tipo` pasa a ser
+**taxonomía abierta** como el resto (§4)?
+Abrirlo sale casi gratis —la implementación de `opciones.ts` ya resuelve cinco
+campos con un solo patrón— y evita volver a tocar código la próxima vez que
+aparezca un formato que nadie previó, que en tres reportes ya pasó una vez.
+`entrega`, en cambio, conviene que siga cerrada: son momentos del ciclo de vida
+de la inscripción, no vocabulario libre, y el §5.1 los usa para decidir qué se
+publica.
+
+Ojo con dos cosas al implementarlo: los dos enums tienen mapas de etiquetas en el
+formulario **y** en `functions/calendario.js` —que son prosa para el público, y
+el diagnóstico de salud dijo explícitamente que no hay que unificarlos (§B-70)—
+así que un valor nuevo va en los dos lados, y si falta en uno se publica el valor
+crudo. Y `docs/03-modelo-de-datos.md` más el §3.1 del `CLAUDE.md` quedan
+desactualizados.
+
+> **Vuelto a la lista viva el 2026-09-24 (B-1580).** El archivador lo había mandado a
+> los cerrados por el «✅ parcial»; la mitad que falta es una decisión del dueño —si
+> `material.items[].tipo` pasa a ser taxonomía abierta (§4)— que ningún otro ítem
+> seguía.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -22072,7 +22138,7 @@ fuera de `en-orden`.
 **Desde B-1370 esto también lo hace solo el barrido diario**, una vez desplegada
 la Function: si nadie los borra a mano, la primera corrida se los lleva.
 
-### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3 · ✅ hecho (2026-09-25)
+### B-1124 · Las cinco fichas que B-976 dejó para corregir a mano: ¿siguen cruzadas? — 🟡 una arreglada, dos siguen mal (2026-09-23) · P3 · ✅ hecho (2026-09-25) · ❌ descartado (2026-09-25): el dueño lo descartó; lo que quedaba son ediciones opcionales
 
 **✅ Hecho (2026-09-25), revisado contra el `events.json` publicado** (generado
 2026-09-25 11:23 UTC, 385 actividades). Ya no queda ninguna cruzada que importe:
