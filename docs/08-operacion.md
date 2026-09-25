@@ -2414,6 +2414,18 @@ El código es la Function (`dispararRebuild`), su lógica de reintentos
 pedía trabajo del dueño eran las **credenciales**: el PAT y la key de service
 account no pueden pasar por un agente ni por el repo (§5.4).
 
+**El rebuild no repite la suite si el commit ya la pasó** (M-14 del PRD 6,
+decisión D). El paso «Si la suite ya pasó para este commit» corre
+`scripts/suite-verde-del-commit.sh`, que le pregunta a la API de Actions si hay una
+corrida de `push-main.yml` con el mismo `head_sha` y el job «Tests y typecheck» en
+`success`. Si la hay, «Tests» se saltea y el log dice `saltear=true` con el número
+de la corrida; si no puede confirmarlo por cualquier motivo —la corrida todavía en
+curso, la API que no contesta, el job renombrado— dice `saltear=false` y la suite
+corre como antes. La taxonomía en la base y «Verificar el artefacto» no se saltean
+nunca. El permiso que usa es `actions: read` del `GITHUB_TOKEN` del workflow, sin
+secretos nuevos. Si se renombra el job en `push-main.yml`, hay que renombrarlo
+también en el script: `tests/suite-verde-del-commit.test.ts` lo ata.
+
 Los cinco pasos, en orden.
 
 ### 1 · PAT de GitHub
