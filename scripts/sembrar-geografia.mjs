@@ -21,8 +21,14 @@
  * dejar el **documento** en la forma nueva, y con eso:
  *
  *  - el historial del §12 deja de guardar versiones con dos formas mezcladas;
- *  - `searchText` y `ciudades[]` se reescriben derivados de la forma nueva;
+ *  - los derivados de `modalidades` —`modalidad`, `sede`, `online`, `searchText`
+ *    y `ciudades`— se reescriben con las mismas funciones que usa el panel al
+ *    guardar (`escrituraDeModalidades`, B-2090), así `syncCalendar` no encuentra
+ *    nada que corregir y no suena `derivados-no-coinciden`;
  *  - y quien mire el documento en la consola de Firebase ve lo mismo que el sitio.
+ *
+ * Escribe **solo** `modalidades` y esos cinco derivados. El resto del documento
+ * no se toca (`update`, no `set`).
  *
  * ── Lo que NO hace, y es la parte importante ──────────────────────────────
  * **No inventa la provincia de una ciudad que no sea CABA.** `provinciaDeSede`
@@ -59,14 +65,12 @@
  */
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-// **La misma derivación que el panel y que la proyección pública**, importada y
-// no copiada: con una copia acá, un documento sembrado y uno guardado desde el
-// panel podrían discrepar en el slug de la ciudad — y el síntoma sería una
-// actividad que el filtro del sitio no encuentra. Es la clase de B-88.
-import { geografiaNormalizada } from '../src/lib/geografia.mjs';
-import { ciudadesDe } from '../src/lib/ciudades.mjs';
-// B-976 — para **no** normalizar una sede que se contradice. Ver `modalidadesMigradas`.
-import { reubicacionDe } from '../src/lib/reubicacion-de-barrio.mjs';
+// La decisión —qué sede se normaliza y cuál se saltea— vive aparte para que un
+// test la pueda importar sin conectarse a Firestore (`geografia-a-sembrar.mjs`).
+import { modalidadesMigradas } from './geografia-a-sembrar.mjs';
+// B-2090 — los derivados salen de `functions/derivados.js` y `functions/ciudades.js`,
+// las funciones del panel, y no de una copia acá.
+import { escrituraDeModalidades } from './escritura-de-modalidades.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
 const confirmaProduccion = process.argv.includes('--produccion');
@@ -96,47 +100,6 @@ console.log(
     : `Objetivo: PRODUCCIÓN (${projectId})\n`,
 );
 
-/**
- * Las modalidades con la geografía de cada sede normalizada. Devuelve `null` si
- * no hay nada que cambiar, para que el llamador no escriba de más.
- *
- * Solo se tocan los tres campos de la geografía: el resto de la sede —nombre,
- * dirección, indicaciones, `geo`— se copia tal cual. Un backfill que reescriba
- * un campo que no le toca es un backfill que puede perder datos.
- */
-const modalidadesMigradas = (modalidades = []) => {
-  let cambio = false;
-  const nuevas = modalidades.map((m) => {
-    if (!m?.sede) return m;
-    /*
-     * **Una sede que se contradice se saltea** — B-976.
-     *
-     * `geografiaNormalizada` deduce la provincia de la ciudad, y eso está bien
-     * mientras la sede diga una sola cosa. Cuando dice dos, la deducción **elige
-     * una y la escribe**: la actividad «Basura» tiene `barrio=provincia-de-buenos-aires`
-     * y `ciudad=CABA`, y sin esta guarda quedaría como `caba / caba /
-     * provincia-de-buenos-aires` — o sea, con la contradicción resuelta a la
-     * fuerza, en una dirección, y con pinta de decidida. Eso es peor que el
-     * estado de ahora: el dato malo deja de verse.
-     *
-     * `reubicacionDe` ya sabe reconocer esos casos, así que la guarda es
-     * consultarla. Es el mismo principio que este script declara arriba —«no
-     * inventa la provincia de una ciudad que no sea CABA»— aplicado a la otra
-     * forma de inventar: desempatar.
-     */
-    if (reubicacionDe(m.sede).estado === 'ambiguo') return m;
-    const geo = geografiaNormalizada(m.sede);
-    const igual =
-      (m.sede.provincia ?? '') === geo.provincia &&
-      (m.sede.barrio ?? '') === geo.barrio &&
-      (m.sede.ciudad ?? '') === geo.ciudad;
-    if (igual) return m;
-    cambio = true;
-    return { ...m, sede: { ...m.sede, ...geo } };
-  });
-  return cambio ? nuevas : null;
-};
-
 const actividades = await db.collection('actividades').get();
 
 const aEscribir = [];
@@ -148,14 +111,12 @@ for (const d of actividades.docs) {
     continue;
   }
   /*
-   * `sede` y `ciudades` son **derivados** del array y se recalculan en la misma
-   * escritura. Si no, el documento quedaría con la lista migrada y la sede
-   * derivada con la ciudad vieja — o sea, la actividad se filtraría por una cosa
-   * y se mostraría con otra. La derivada es «la primera fila que tenga sede»
-   * (D-130) y `ciudades` sale de `ciudadesDe`, la misma función que el panel.
+   * Los derivados del array se recalculan en la misma escritura. Si no, el
+   * documento quedaría con la lista migrada y la sede derivada con la ciudad
+   * vieja — o sea, la actividad se filtraría por una cosa y se mostraría con
+   * otra, y `syncCalendar` lo corregiría y avisaría por cada una (B-2050).
    */
-  const sede = modalidades.find((m) => m.sede)?.sede ?? null;
-  aEscribir.push([d.id, { modalidades, sede, ciudades: ciudadesDe(modalidades) }]);
+  aEscribir.push([d.id, escrituraDeModalidades(d.data(), modalidades)]);
 }
 
 console.log(`Actividades: ${actividades.size}`);

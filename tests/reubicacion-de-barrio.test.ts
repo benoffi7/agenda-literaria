@@ -164,7 +164,9 @@ describe('B-976 · reubicacionDe', () => {
  * planificados a la vista. Este caso es lo que evita que vuelva.
  */
 describe('B-976 · el backfill de geografía no toca lo contradictorio', () => {
-  const script = readFileSync('scripts/sembrar-geografia.mjs', 'utf8');
+  // B-2090 — la decisión se mudó a `geografia-a-sembrar.mjs`, que el script
+  // importa; el caso con datos está en `tests/sembrar-geografia.test.ts`.
+  const script = readFileSync('scripts/geografia-a-sembrar.mjs', 'utf8');
 
   it('`sembrar-geografia.mjs` consulta `reubicacionDe` y saltea lo ambiguo', () => {
     expect(script).toContain("from '../src/lib/reubicacion-de-barrio.mjs'");
