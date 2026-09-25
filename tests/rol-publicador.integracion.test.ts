@@ -1456,6 +1456,31 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       );
     });
 
+    it('NO crea una presencial sin ciudad, que se haría pasar por virtual (D-1154)', async () => {
+      /*
+       * Lo encontró el `auditor-privacidad`: fuera de CABA la ciudad no se exige
+       * para publicar, y `ciudadesDe()` descarta las vacías, así que una sede en
+       * Santa Fe sin ciudad deja `ciudades: []` — que `hasOnly` acepta, igual que
+       * a una virtual. La regla lo ve en `sede`, el derivado de la primera fila.
+       *
+       * MUTACIÓN PROBADA: sacar la mitad de `sede` de `dentroDeSuCiudad()` deja
+       * este caso en rojo. El control positivo es la virtual del primer caso, que
+       * no tiene `sede`, y la de su ciudad, abajo.
+       */
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      await denegada(
+        setDoc(
+          doc(db(), 'actividades', NUEVA),
+          actividadDe(UID_PUB, { ciudades: [], sede: { provincia: 'santa-fe', ciudad: '' } }),
+        ),
+        'crear una presencial sin ciudad',
+      );
+      await setDoc(
+        doc(db(), 'actividades', NUEVA),
+        actividadDe(UID_PUB, { ciudades: [CIUDAD], sede: { provincia: 'buenos-aires', ciudad: CIUDAD } }),
+      );
+    });
+
     it('edita la suya sin moverla, y la puede pasar a otra sede de su ciudad', async () => {
       // Control positivo del `update`: una regla que tapara todo el update
       // dejaría verde la negación de abajo.

@@ -330,8 +330,7 @@ service cloud.firestore {
        * asignada debería no poder publicar fuera de esa. Puede haber
        * publicadores generales» (D-1150).
        *
-       * `dentroDeSuCiudad()` mira el documento que **se va a escribir**, y tiene
-       * tres salidas:
+       * `dentroDeSuCiudad()` mira el documento que **se va a escribir**:
        *
        *  1. **Claim sin ciudad → pasa.** Es el publicador **general**
        *     (`--publicador` sin `--ciudad`): carga donde sea. Su lectura no
@@ -344,8 +343,18 @@ service cloud.firestore {
        *     Meet no pasa en ninguna ciudad, así que no pasa fuera de la suya, y
        *     negarla le sacaría a una publicadora de Mar del Plata el club que
        *     hace por Zoom.
-       *  3. **Si no, no.** Una `ciudades` que no sea lista (escrita a mano) hace
-       *     tirar a `hasOnly`, y una regla que tira deniega: falla cerrado.
+       *  3. **Y la primera sede tiene que tener ciudad** (D-1154). Fuera de CABA
+       *     la ciudad no se exige para publicar, y `ciudadesDe()` descarta las
+       *     vacías: sin esta cláusula, una presencial en Santa Fe **sin ciudad**
+       *     quedaba con `ciudades: []` y pasaba por el punto 2 como si fuera
+       *     virtual. Lo encontró el `auditor-privacidad`. Se mira en `sede`, el
+       *     derivado «la primera fila que tenga sede» (D-130), porque es lo único
+       *     de las sedes que una regla puede leer; las filas siguientes las frena
+       *     el panel (`alcanceDeCiudad.ts`) y quedan dentro del límite de abajo.
+       *     `sede` ausente o `null` es una actividad sin sede: la virtual.
+       *  4. **Si no, no.** Una `ciudades` que no sea lista (escrita a mano) hace
+       *     tirar a `hasOnly`, y una `sede` que no sea map hace tirar al `get`: una
+       *     regla que tira deniega, así que falla cerrado.
        *
        * **Mira `ciudades` y no `modalidades`, y ése es el límite.** Es el mismo
        * derivado de D-690 —una regla no puede recorrer un array de maps—, así que
@@ -361,7 +370,9 @@ service cloud.firestore {
        */
       function dentroDeSuCiudad() {
         return request.auth.token.get('ciudad', '') == ''
-          || request.resource.data.get('ciudades', []).hasOnly([request.auth.token.get('ciudad', '')]);
+          || (request.resource.data.get('ciudades', []).hasOnly([request.auth.token.get('ciudad', '')])
+               && (request.resource.data.get('sede', null) == null
+                    || request.resource.data.sede.get('ciudad', '') != ''));
       }
 
       allow create: if esAdmin()
