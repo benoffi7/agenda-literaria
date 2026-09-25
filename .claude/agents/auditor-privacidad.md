@@ -519,6 +519,12 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/components/publico/BuscadorDeLugares.tsx`
 - `functions/directorios.js`
 - `functions/retencion.js`
+- `functions/retencion-propuestas.js`
+- `functions/retencion-propuestas-firestore.js`
+- `functions/retencion-flyers.js`
+- `functions/retencion-flyers-firestore.js`
+- `functions/retencion-fichas.js`
+- `functions/retencion-fichas-firestore.js`
 - `functions/propuestas.js`
 - `functions/propuestas-trigger.js`
 - `functions/flyer-de-propuesta.js`
