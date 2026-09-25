@@ -898,6 +898,15 @@ comillas invertidas y paquete corren sobre árboles sintéticos, con
 `QUE_DEPLOYAR_RAIZ` apuntando a un directorio temporal. El script lee el árbol
 de la carpeta donde vive, no del directorio desde el que se lo llama.
 
+**Los casos de decisión corren sobre un árbol chico** (PRD 6, M-3): una copia en
+`os.tmpdir()` de `astro.config.mjs`, los archivos de `src/` que nombran
+`functions/` y los `.js` de `functions/`, que es todo lo que la derivación lee.
+Un caso ata el recorte —`--compartidos` sobre el chico es igual que sobre el
+real— y otro decide contra el árbol real sin la variable. Además los casos corren
+concurrentes. Medido: de 16,5 s a ~5 s solo, y de 37 s a ~13 s dentro de la suite
+en paralelo. El piso lo pone el script, no el árbol: cada llamada lanza decenas
+de subprocesos, y en macOS eso son ~0,1 s aunque corran a la vez.
+
 **Orden:** reglas → hosting → functions. Las reglas primero porque si el panel
 nuevo escribe campos que las reglas viejas rechazan, el orden inverso deja una
 ventana de escrituras fallidas.
