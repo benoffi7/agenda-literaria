@@ -75,6 +75,10 @@ Solo **si el cambio se nota al usar el panel**. Una entrada arriba del array:
 - `detalle`: dos o tres frases. Si no entra, es ayuda y no novedad.
 - `donde`: dónde está en el panel.
 
+Y el mismo `id` va arriba de `NOVEDADES_IDS` en `src/lib/novedadesIds.ts`: es lo
+que cuenta el número del botón sin traer el texto al chunk inicial (B-1961).
+`tests/novedadesIds.test.ts` dice cuál falta.
+
 Sin `§`, sin nombres de archivo, sin nombres de campo, sin jerga: le habla a
 quien organiza actividades literarias.
 

@@ -859,6 +859,14 @@ que cerrar: se apaga al abrir la pestaña de novedades una vez. Si el navegador
 no permite guardar datos (ventana privada), el número reaparece en la próxima
 visita y nada se rompe.
 
+El número se cuenta sobre [`src/lib/novedadesIds.ts`](../src/lib/novedadesIds.ts),
+que son solo los ids en el mismo orden, y no sobre `novedades.ts`: el botón está
+en el chunk inicial del panel —se ve antes del login— y el texto de las
+novedades (~21 KB gzip) solo hace falta al abrir la capa, que es diferida
+(B-1961). Por eso **una novedad nueva suma su id también arriba de
+`NOVEDADES_IDS`**; `tests/novedadesIds.test.ts` falla nombrando el que falta, y
+`tests/bundle-panel.test.ts` falla si `novedades.ts` vuelve al chunk inicial.
+
 **Quién lo mantiene:** la regla de proceso está en
 [`05-patrones.md`](05-patrones.md) — un cambio que se nota al usar el panel
 entra en `novedades.ts`, y un comportamiento que no se adivina entra en
