@@ -180,7 +180,9 @@ describe('crearManejador — con dobles de req, res y logger', () => {
   const armar = (ahora = () => 1_000_000) => {
     const avisos: { mensaje: string; campos: Record<string, unknown> }[] = [];
     const manejar = crearManejador({
-      avisar: (mensaje: string, campos: Record<string, unknown>) => avisos.push({ mensaje, campos }),
+      avisar: (mensaje: string, campos: { alerta: string; motivo: string }) => {
+        avisos.push({ mensaje, campos });
+      },
       ahora,
     });
     const llamar = (req: Record<string, unknown>) => {

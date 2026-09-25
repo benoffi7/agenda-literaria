@@ -4,8 +4,8 @@
  * `src/lib/reporteDeVerificacion.ts` mira el store de la verificación y la
  * sesión, y manda el motivo a la Function. Lo que se afirma acá:
  *
- * - que reporta **una sola vez por pestaña**, aunque el estado vaya y venga y la
- *   persona recargue (la marca de `sessionStorage`);
+ * - que reporta **una sola vez por carga**, aunque el estado y la sesión vayan
+ *   y vengan;
  * - que **sin sesión no reporta** (el crawler que renderiza `/admin`);
  * - que un token que llega dentro de la gracia **no** reporta;
  * - que lo que viaja es el motivo y nada más, sin cookies ni `Referer`;
@@ -44,10 +44,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Una sesión que el test prende y apaga, y una marca de pestaña en memoria. */
-const armar = ({ marcaInicial = false, enviar }: { marcaInicial?: boolean; enviar?: (m: CausaSinVerificar) => Promise<unknown> } = {}) => {
+/** Una sesión que el test prende y apaga. */
+const armar = ({ enviar }: { enviar?: (m: CausaSinVerificar) => Promise<unknown> } = {}) => {
   let oyenteDeSesion: (hay: boolean) => void = () => {};
-  let marca = marcaInicial;
   const enviados: CausaSinVerificar[] = [];
   iniciarReporteDeVerificacion({
     observarSesion: (oyente) => {
@@ -58,15 +57,10 @@ const armar = ({ marcaInicial = false, enviar }: { marcaInicial?: boolean; envia
       (async (motivo) => {
         enviados.push(motivo);
       }),
-    leerMarca: () => marca,
-    escribirMarca: () => {
-      marca = true;
-    },
   });
   return {
     enviados,
     sesion: (hay: boolean) => oyenteDeSesion(hay),
-    marca: () => marca,
   };
 };
 
@@ -91,7 +85,6 @@ describe('iniciarReporteDeVerificacion', () => {
     expect(r.enviados).toEqual([]);
     await vi.advanceTimersByTimeAsync(1);
     expect(r.enviados).toEqual(['sin-respuesta']);
-    expect(r.marca()).toBe(true);
   });
 
   /**
@@ -115,12 +108,11 @@ describe('iniciarReporteDeVerificacion', () => {
     expect(r.enviados).toEqual(['token-rechazado']);
   });
 
-  it('con la marca de la pestaña puesta (recargó) no reporta de nuevo', async () => {
-    const r = armar({ marcaInicial: true });
-    r.sesion(true);
-    _fijarVerificacion('sin-verificar', 'sin-respuesta');
-    await vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS * 3);
-    expect(r.enviados).toEqual([]);
+  it('no guarda nada en el navegador: una recarga es una carga nueva (D-1227)', () => {
+    // Sin marca en `sessionStorage` ni `localStorage`: si alguien la agrega,
+    // va con su fila en la tabla del §5.1 de `07-seguridad.md` (clase de B-821).
+    const src = sinComentarios(readFileSync('src/lib/reporteDeVerificacion.ts', 'utf8'));
+    expect(src).not.toMatch(/sessionStorage|localStorage/);
   });
 
   it('sin sesión no reporta; cuando la persona entra, sí', async () => {
@@ -178,7 +170,7 @@ describe('iniciarReporteDeVerificacion', () => {
     r.sesion(true);
     _fijarVerificacion('sin-verificar', 'sin-respuesta');
     await expect(vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS)).resolves.not.toThrow();
-    expect(r.marca()).toBe(true);
+    expect(r.enviados).toEqual([]);
   });
 
   it('observarSesion que tira no se propaga', () => {

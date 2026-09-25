@@ -18,10 +18,13 @@
  *    renderiza `/admin` con reCAPTCHA bloqueado, o alguien que abrió el panel
  *    sin cuenta, no es a quien hay que ir a ayudar. **El uid no viaja**: alcanza
  *    con saber que le pasó a alguien que carga.
- * 3. **Una vez por pestaña.** El primer paso del triaje es «recargá», así que
- *    la misma persona puede cargar el panel cinco veces seguidas; con la marca
- *    en `sessionStorage` eso es un reporte y no cinco. Si `sessionStorage` no
- *    anda (modo privado estricto), queda la marca de módulo: una vez por carga.
+ * 3. **Una vez por carga del panel.** El estado puede ir y venir —un token que
+ *    llega, una renovación que falla— y la sesión cerrarse y abrirse: el reporte
+ *    sale una sola vez. **Sin marca en `sessionStorage`, a propósito** (D-1227):
+ *    quien sigue el triaje recarga y vuelve a reportar, pero eso son dos o tres
+ *    líneas de log, y la política de GCP manda como mucho un mail por hora. Una
+ *    marca en el navegador sería una fila más en la tabla del §5.1 de
+ *    `07-seguridad.md` para no ahorrar ningún mail.
  *
  * ── Cómo reporta ──────────────────────────────────────────────────────────
  * Un `fetch` plano, **no** una callable: el SDK de Functions pide el token de
@@ -62,9 +65,6 @@ export const REGION_DEL_REPORTE = 'southamerica-east1';
 export const urlDelReporte = (projectId: string): string =>
   `https://${REGION_DEL_REPORTE}-${projectId}.cloudfunctions.net/${FUNCTION_DEL_REPORTE}`;
 
-/** La marca de «ya se reportó en esta pestaña». */
-export const CLAVE_REPORTADO = 'agenda:verificacion-reportada';
-
 /** ¿Corresponde reportar ahora? Puro. */
 export const debeReportar = ({
   estado,
@@ -78,22 +78,6 @@ export const debeReportar = ({
 
 /** Lo que manda el panel: el motivo, y nada más (la Function rechaza cualquier otra clave). */
 export const cuerpoDelReporte = (motivo: CausaSinVerificar): string => JSON.stringify({ motivo });
-
-const leerMarcaPorDefecto = (): boolean => {
-  try {
-    return window.sessionStorage.getItem(CLAVE_REPORTADO) === '1';
-  } catch {
-    return false;
-  }
-};
-
-const escribirMarcaPorDefecto = (): void => {
-  try {
-    window.sessionStorage.setItem(CLAVE_REPORTADO, '1');
-  } catch {
-    // Sin `sessionStorage` queda la marca de módulo.
-  }
-};
 
 const esperarPorDefecto = (ms: number): Promise<void> =>
   new Promise((resolver) => setTimeout(resolver, ms));
@@ -122,23 +106,19 @@ export const iniciarReporteDeVerificacion = ({
   enviar,
   graciaMs = GRACIA_DEL_REPORTE_MS,
   esperar = esperarPorDefecto,
-  leerMarca = leerMarcaPorDefecto,
-  escribirMarca = escribirMarcaPorDefecto,
 }: {
   /** Se suscribe a la sesión: `true` si hay alguien logueado. */
   observarSesion: (oyente: (haySesion: boolean) => void) => unknown;
   enviar: (motivo: CausaSinVerificar) => Promise<unknown>;
   graciaMs?: number;
   esperar?: (ms: number) => Promise<void>;
-  leerMarca?: () => boolean;
-  escribirMarca?: () => void;
 }): void => {
   if (iniciado) return;
   iniciado = true;
 
   try {
     let haySesion = false;
-    let yaReportado = leerMarca();
+    let yaReportado = false;
     let esperando = false;
 
     const corresponde = () =>
@@ -155,7 +135,6 @@ export const iniciarReporteDeVerificacion = ({
         // a `evaluar` por la suscripción.
         if (!corresponde() || !motivo) return;
         yaReportado = true;
-        escribirMarca();
         return enviar(motivo);
       })
         // Un reporte que falla —la red, la Function caída— no se reintenta ni

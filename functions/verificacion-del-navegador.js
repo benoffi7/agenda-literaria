@@ -23,14 +23,17 @@
  * viene a reportar. Un `fetch` plano no pasa por ningún SDK.
  *
  * ── Por qué no hace falta sesión del lado del servidor — D-1226 ───────────
- * Lo que se loguea no tiene nada de la persona —ni uid, ni mail, ni IP, ni user
- * agent—, así que no hay dato que proteger con un login. Lo único que alguien
+ * Lo que **esta Function** loguea no tiene nada de la persona —ni uid, ni mail,
+ * ni IP, ni user agent—, así que no hay dato que proteger con un login. (Cloud
+ * Run escribe aparte su log de cada pedido, con IP y user agent, y el `warn` lleva
+ * la traza que lleva a ese log: eso es de la plataforma y está dicho en
+ * `docs/02-infraestructura.md` § «El reporte al servidor».) Lo único que alguien
  * puede hacer pegándole a mano es **ruido**: un mail de más. Eso lo acota esto:
  *
  * 1. `motivo` de una lista cerrada, y nada más en el cuerpo: no se puede meter
  *    texto propio en el log ni en el mail.
  * 2. Solo `POST`, cuerpo de a lo sumo `LARGO_MAXIMO_DEL_CUERPO` bytes.
- * 3. `Origin` de los cuatro nombres del sitio (el resto se descarta sin log).
+ * 3. `Origin` de los cuatro nombres del sitio (el resto se descarta sin `warn`).
  *    Un script lo puede falsificar; lo que frena es a otra página web que
  *    mande el pedido desde el navegador de sus visitas.
  * 4. Un tope de `TOPE_POR_MINUTO` logs por minuto por instancia, y
@@ -99,8 +102,9 @@ export const LARGO_MAXIMO_DEL_CUERPO = 200;
 /**
  * Cuántos reportes se loguean por minuto y por instancia. Con dos personas
  * cargando, más de cinco en un minuto no es un problema real sino un loop o
- * alguien pegándole a mano; lo que pase de ahí se descarta **sin log**, para que
- * el spam no se convierta en volumen de Logging.
+ * alguien pegándole a mano; lo que pase de ahí se descarta **sin `warn`**, así
+ * que no llega al mail. El pedido igual deja el log de plataforma de Cloud Run:
+ * el tope frena la alerta, no el tráfico.
  */
 export const TOPE_POR_MINUTO = 5;
 
@@ -176,11 +180,11 @@ const cuerpoComoTexto = (req) => {
  * dobles. La ventana del tope vive en el cierre: una por instancia, que con
  * `maxInstances: 1` es una sola.
  *
- * **Lo único que se loguea es el motivo.** Ni la IP, ni el user agent, ni el
- * `Origin`: para el triaje alcanza con saber que pasó y por cuál de los cuatro
+ * **Lo único que esta Function loguea es el motivo.** Ni la IP, ni el user
+ * agent, ni el `Origin` (los de la plataforma, ver la cabecera): para el triaje alcanza con saber que pasó y por cuál de los cuatro
  * caminos (`docs/08-operacion.md` § «Un navegador sin verificar»).
  *
- * @param {{ avisar: (mensaje: string, campos: object) => void, ahora?: () => number }} deps
+ * @param {{ avisar: (mensaje: string, campos: { alerta: string, motivo: string }) => void, ahora?: () => number }} deps
  */
 export const crearManejador = ({ avisar, ahora = () => Date.now() }) => {
   let ventana = ventanaVacia();
