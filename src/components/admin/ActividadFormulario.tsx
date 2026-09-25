@@ -57,8 +57,7 @@ import {
   type MultivalorNuevos,
 } from '@/lib/formulario/etiquetas';
 import { guardarActividad } from '@/lib/formulario/guardar';
-import { ciudadesFueraDeSuCiudad, textoFueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
-import { ciudadesDe } from '@/lib/ciudades.mjs';
+import { fueraDeSuCiudad, textoFueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
 import { useOpciones } from '@/components/admin/useOpciones';
 import { faltaParaPublicar } from '@/lib/schema';
 import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
@@ -486,25 +485,36 @@ export function ActividadFormulario({
    * distinto. En solo lectura no se avisa nada: no hay guardado posible.
    */
   const ciudadesDeLaCiudad = useOpciones('ciudad');
-  const fueraDeSuCiudad = useMemo(
+  /*
+   * Lo guardado, proyectado a lo único que se mira: las ciudades y la ciudad de
+   * cada sede. Proyectado y no `inicial` entero por lo mismo que `anterior` más
+   * abajo (lo señaló el `auditor-privacidad` en B-340): `inicial` lleva el link
+   * de la reunión, `difusion` y los uids.
+   */
+  const alcanceAntes = useMemo(
+    () =>
+      inicial
+        ? {
+            ciudades: inicial.ciudades,
+            modalidades: inicial.modalidades.map((m) => ({
+              modalidad: m.modalidad,
+              sede: m.sede ? { ciudad: m.sede.ciudad } : null,
+            })),
+          }
+        : null,
+    [inicial],
+  );
+  const fuera = useMemo(
     () =>
       soloLectura
-        ? []
-        : ciudadesFueraDeSuCiudad({
-            ciudad,
-            ciudades: ciudadesDe(form.modalidades),
-            ciudadesAntes: inicial?.ciudades,
-            editando: Boolean(inicial),
-          }),
-    [soloLectura, ciudad, form.modalidades, inicial],
+        ? null
+        : fueraDeSuCiudad({ ciudad, modalidades: form.modalidades, antes: alcanceAntes }),
+    [soloLectura, ciudad, form.modalidades, alcanceAntes],
   );
   const etiquetaDeCiudad = (slug: string) =>
     ciudadesDeLaCiudad.valores.find((v) => v.slug === slug)?.label ??
     labelsPendientes.ciudad?.[slug];
-  const avisoFueraDeSuCiudad =
-    fueraDeSuCiudad.length > 0
-      ? textoFueraDeSuCiudad(fueraDeSuCiudad, ciudad, etiquetaDeCiudad)
-      : null;
+  const avisoFueraDeSuCiudad = fuera ? textoFueraDeSuCiudad(fuera, ciudad, etiquetaDeCiudad) : null;
 
   /**
    * El caso de uso vive en `lib/formulario/guardar.ts` (B-70): validar, chequear
@@ -554,7 +564,7 @@ export function ActividadFormulario({
         multivalorNuevos,
         // B-921 — la misma pregunta que el aviso de arriba, contestada otra vez
         // al guardar: el aviso se puede no leer, el guardado no se saltea.
-        alcance: { ciudad, ciudadesAntes: inicial?.ciudades },
+        alcance: { ciudad, antes: alcanceAntes },
       });
 
       if (r.estado === 'invalido') {
@@ -575,7 +585,7 @@ export function ActividadFormulario({
       }
       if (r.estado === 'fuera-de-ciudad') {
         medicion.guardadoFallido('fuera-de-ciudad', accion);
-        setFallo(textoFueraDeSuCiudad(r.ciudades, ciudad, etiquetaDeCiudad));
+        setFallo(textoFueraDeSuCiudad(r.fuera, ciudad, etiquetaDeCiudad));
         return;
       }
       if (r.estado === 'error') {

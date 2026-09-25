@@ -12,8 +12,7 @@
  * B-71— sin emuladores y sin poder tocar datos de verdad.
  */
 import { actualizarActividad, crearActividad, slugDisponible } from '@/lib/actividades';
-import { ciudadesFueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
-import { ciudadesDe } from '@/lib/ciudades.mjs';
+import { fueraDeSuCiudad, type AlcanceDeCiudad, type FueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
 import { usosAContar } from '@/lib/formulario/etiquetas';
 import { proponerOpcion } from '@/lib/opcion-por-function';
 import { registrarUsos, upsertOpcion, upsertOpciones } from '@/lib/opciones';
@@ -81,15 +80,15 @@ export interface EntradaGuardado {
    * **B-921 — dónde puede cargar quien guarda** (D-1150).
    *
    * `ciudad` es la del claim (`''` para el publicador general y para el admin),
-   * y `ciudadesAntes` las del documento tal como está guardado —ausente al
-   * crear—. Con eso se contesta **antes de escribir** la misma pregunta que
+   * y `antes` las ciudades y las sedes del documento tal como está guardado
+   * —ausente al crear—, proyectadas a lo que se mira: la ciudad de cada sede. Con eso se contesta **antes de escribir** la misma pregunta que
    * `dentroDeSuCiudad()` en `firestore.rules`, para que la persona lea un aviso
    * que dice qué pasa y qué hacer, y no el «no tenés permiso» del servidor.
    *
    * Opcional para que los llamadores sin rol acotado no tengan que decir nada:
    * sin él no se frena nada, y la regla sigue siendo la frontera.
    */
-  alcance?: { ciudad: string; ciudadesAntes?: readonly string[] | null };
+  alcance?: Pick<AlcanceDeCiudad, 'ciudad' | 'antes'>;
   /** Etiquetas tipeadas en "Otro" que todavía no están en `/opciones/*` (D-02). */
   labelsNuevos: readonly LabelNuevo[];
   /**
@@ -105,7 +104,7 @@ export type ResultadoGuardado =
   | { estado: 'invalido'; errores: Record<string, string>; issues: readonly IssueDeForm[] }
   | { estado: 'slug-tomado'; errores: Record<string, string> }
   /** B-921 — las ciudades que la sacan del alcance de quien guarda. No se escribió nada. */
-  | { estado: 'fuera-de-ciudad'; ciudades: readonly string[] }
+  | { estado: 'fuera-de-ciudad'; fuera: FueraDeSuCiudad }
   | {
       estado: 'ok';
       id: string;
@@ -199,18 +198,18 @@ export const guardarActividad = async (
 
   /*
    * B-921 — antes de cualquier lectura o escritura: si la regla lo va a
-   * rechazar, no hay nada que ir a buscar. Se deriva con `ciudadesDe`, la MISMA
-   * función que usa `formADocumento` para escribir `ciudades`: lo que se
-   * pregunta acá es, byte por byte, lo que la regla va a mirar.
+   * rechazar, no hay nada que ir a buscar. `fueraDeSuCiudad` deriva con
+   * `ciudadesDe`, la MISMA función que usa `formADocumento` para escribir
+   * `ciudades`: lo que se pregunta acá es, byte por byte, lo que la regla va a
+   * mirar (y un poco más: ver el punto 4 de su docblock).
    */
   if (alcance) {
-    const fuera = ciudadesFueraDeSuCiudad({
+    const fuera = fueraDeSuCiudad({
       ciudad: alcance.ciudad,
-      ciudades: ciudadesDe(candidato.modalidades),
-      ciudadesAntes: alcance.ciudadesAntes,
-      editando: Boolean(idActual),
+      modalidades: candidato.modalidades,
+      antes: idActual ? (alcance.antes ?? {}) : null,
     });
-    if (fuera.length > 0) return { estado: 'fuera-de-ciudad', ciudades: fuera };
+    if (fuera) return { estado: 'fuera-de-ciudad', fuera };
   }
 
   try {
