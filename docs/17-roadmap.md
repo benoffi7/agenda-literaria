@@ -274,7 +274,7 @@ respuestas.
   lo advierte (fricción 8): **se muestra como comparación entre actividades o no se
   muestra**, y con un piso de vistas por debajo del cual no se opina.
 - **Nota técnica:** `functions/analitica.js` (pedido nuevo con `eventName` ×
-  `pagePath`), pestaña «El sitio público» de `EstadisticasPanel.tsx`.
+  `pagePath`), pestaña «El sitio público» del tablero (`estadisticas/PanelSitioPublico.tsx`).
 
 ### 3.3 · Un número real para `/anunciar` (B-771) — **Próximo (3 de octubre)** · S
 
