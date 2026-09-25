@@ -2,6 +2,16 @@
 
 ## Sin publicar
 
+- **Un publicador con ciudad solo carga en su ciudad, y puede haber publicadores
+  generales** (B-921, B-1921, D-1150 a D-1154). Decisión del dueño: «un publicador que
+  tiene una ciudad asignada debería no poder publicar fuera de esa». La regla de
+  `/actividades` (`dentroDeSuCiudad()`) frena crear o mudar una actividad fuera de la
+  ciudad de la cuenta; una solo virtual pasa, y lo ya cargado afuera se mantiene pero
+  no se muda. Sin `--ciudad` el claim es el de un publicador general: carga en
+  cualquier ciudad y ve solo lo suyo. El panel lo avisa arriba del formulario apenas
+  una sede cae afuera o queda sin ciudad, y el guardado no escribe. El
+  `auditor-privacidad` encontró que una presencial sin ciudad pasaba como virtual, y
+  se cerró en el mismo cambio.
 - **El contraste del panel mide la tinta de un tramo fijo contra cada rama del
   fondo** (B-1871, D-1145). `${abierto ? 'bg-black/5' : ''} text-tinta/65` no lo medía
   ninguna red. Ahora `contraste-del-panel.test.ts` enumera las combinaciones de ramas

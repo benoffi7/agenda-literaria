@@ -573,24 +573,6 @@ aporta al objetivo del proyecto —es contenido indexable de long tail que hoy n
 tenemos— y las otras dos son de uso. Sin esa respuesta se puede escribir el modelo
 y el panel, pero no el sitio.
 
-### B-921 · Un publicador puede cargar una actividad fuera de su ciudad, y editar una la saca del alcance · P2
-
-Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
-
-1. **`create` no mira la ciudad.** Una publicadora de Mar del Plata puede cargar una
-   actividad de Rosario: nace suya, así que la controla entera. No contradice ninguna
-   regla, pero tampoco es lo que el pedido dice literalmente. Si hay que cerrarlo, la
-   cláusula va en el `allow create` y **hay que decidir qué pasa con las que ya
-   cargó**.
-2. **Editar la sede puede sacar la actividad del alcance de otra cuenta**, sin aviso.
-   `ciudades` es derivado, así que cambiarle la ciudad a una actividad hace que deje
-   de verla quien la veía por su ciudad. Es coherente con que el campo sea una
-   proyección y no una segunda fuente de verdad, pero el panel no lo dice en ningún
-   lado.
-
-Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
-puertas, no las abre.
-
 ### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
 
 > ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
@@ -760,6 +742,16 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
 ## P3 — cuando sobre tiempo
+
+### B-1920 · La regla de dónde carga el publicador confía en el derivado `ciudades` · P3 — del `auditor-privacidad` sobre B-921 (2026-09-25)
+
+`dentroDeSuCiudad()` mira `ciudades` y la primera `sede`, no todas las
+`modalidades[]`, porque una regla no puede recorrer un array de maps. Quien arme el
+documento a mano con el SDK puede declarar una ciudad falsa o sumar una segunda sede
+sin ciudad. Por el panel no se puede. **No es una fuga**: es contenido propio de una
+cuenta que ya publica sin revisión, y una actividad con `ciudades` mentido queda
+**menos** visible. Arreglo si hace falta: que el trigger del historial recalcule
+`ciudadesDe(modalidades)` y avise al admin si no coincide.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

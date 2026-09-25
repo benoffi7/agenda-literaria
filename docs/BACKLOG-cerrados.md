@@ -17393,6 +17393,26 @@ desactualizados.
 > `material.items[].tipo` pasa a ser taxonomía abierta (§4)— que ningún otro ítem
 > seguía.
 
+### B-921 · Un publicador puede cargar una actividad fuera de su ciudad, y editar una la saca del alcance · P2 · ✅ hecho (2026-09-25)
+
+**✅ Hecho (2026-09-25).** `cce4992` … `cf57983` (seis commits). Decisión del dueño: «un publicador que tiene una ciudad asignada debería no poder publicar fuera de esa. Puede haber publicadores generales». Los dos bordes se cierran en la regla (`dentroDeSuCiudad()`, D-1150): crear fuera de la ciudad rebota, y editar la sede de una propia hacia afuera también. Lo ya cargado afuera no se toca (D-1153). El panel lo avisa antes de guardar. El publicador general es el claim sin `--ciudad` (D-1152). Tests de reglas contra el emulador con ocho mutaciones. Queda un límite, B-1920.
+
+Dos bordes que B-919 dejó abiertos a propósito y conviene que el dueño mire:
+
+1. **`create` no mira la ciudad.** Una publicadora de Mar del Plata puede cargar una
+   actividad de Rosario: nace suya, así que la controla entera. No contradice ninguna
+   regla, pero tampoco es lo que el pedido dice literalmente. Si hay que cerrarlo, la
+   cláusula va en el `allow create` y **hay que decidir qué pasa con las que ya
+   cargó**.
+2. **Editar la sede puede sacar la actividad del alcance de otra cuenta**, sin aviso.
+   `ciudades` es derivado, así que cambiarle la ciudad a una actividad hace que deje
+   de verla quien la veía por su ciudad. Es coherente con que el campo sea una
+   proyección y no una segunda fuente de verdad, pero el panel no lo dice en ningún
+   lado.
+
+Ninguno de los dos es una fuga: el primero es contenido propio y el segundo cierra
+puertas, no las abre.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -21451,6 +21471,13 @@ reciben hijos, con un registro que falle si aparece uno sin montar.
 Queda afuera `${cond ? 'bg-x' : ''} text-y`: el fondo y la tinta coexisten y no van
 en el mismo grupo. Hoy no hay ninguno abajo del piso. Opción: tratar un template
 como un grupo cuando la tinta está en un tramo fijo.
+
+### B-1921 · Una presencial sin ciudad pasaba como virtual en la regla del publicador de ciudad · P2 — del `auditor-privacidad` sobre B-921 (2026-09-25) · ✅ hecho (2026-09-25)
+
+Fuera de CABA la ciudad no es obligatoria y `ciudadesDe()` descarta las vacías, así
+que una sede en Santa Fe sin ciudad daba `ciudades: []`, que pasaba como virtual.
+**✅ Hecho (2026-09-25)** en `e910b7d` y `724d0e8` (D-1154): la regla exige ciudad en
+la primera sede y el panel en todas.
 
 ## Pendiente de acción manual del dueño
 

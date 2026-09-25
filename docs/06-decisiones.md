@@ -13563,3 +13563,47 @@ sus tramos fijos van en todas las combinaciones; `c ? A : B` da A o B, `a && 'x'
 reposo se mide contra el fondo propio o, si no hay, contra el del ancestro. Un
 identificador sigue sin resolverse (lo mide el render, D-1125), y con más de 64
 combinaciones vuelve a juntar todo: son límites aceptados.
+
+## D-1150 · El publicador con ciudad carga **solo** en su ciudad, y la frontera es la regla
+
+**B-921, 2026-09-25.** Decisión del dueño, textual: «un publicador que tiene una
+ciudad asignada debería no poder publicar fuera de esa. Puede haber publicadores
+generales». `dentroDeSuCiudad()` entra en el `create` y el `update` de
+`/actividades`, en la rama del publicador: con `token.ciudad` no vacío, el documento
+tiene que cumplir `ciudades.hasOnly([token.ciudad])` y tener ciudad en su primera
+sede (D-1154). `hasOnly` y no `in`: con «su ciudad está en la lista», una actividad de
+Mar del Plata **y** Rosario pasaría. Frena también los borradores. El panel lo espeja
+en `src/lib/alcanceDeCiudad.ts` para avisar **antes** de guardar con un texto que dice
+qué hacer, en vez del «no tenés permiso» del servidor; el espejo nunca es más
+permisivo que la regla. El admin no cambia.
+
+## D-1151 · Una actividad solo virtual se puede cargar desde una cuenta de ciudad
+
+**B-921, 2026-09-25.** `ciudades: []` pasa `hasOnly`. Una reunión por Meet no pasa en
+ninguna ciudad, así que no pasa fuera de la suya, y negarla le sacaría a una
+publicadora el club que hace por Zoom, que es el uso normal.
+
+## D-1152 · El publicador general es el claim sin `--ciudad`: carga donde sea y ve lo suyo
+
+**B-921, 2026-09-25.** No hay un claim nuevo. **General es dónde carga, no qué ve**:
+ve y edita solo lo que creó. Abrirle el catálogo entero en lectura sería entregar el
+documento crudo —link de la reunión, `difusion`, uids— de todo el sitio a una cuenta
+que no es admin (D-128), y nadie lo pidió. Como olvidarse el `--ciudad` ahora le
+abre el país entero, el script anuncia «publicador general» antes de escribir.
+
+## D-1153 · Lo ya cargado fuera de la ciudad no se toca: se mantiene, pero no se muda
+
+**B-921, 2026-09-25.** En el `update`, una edición que **no cambia** `ciudades` pasa
+aunque sea de otra ciudad: lo ya cargado se puede despublicar, cancelar o corregir,
+pero no mudar a una tercera ciudad. No se migra ni se borra nada. El borde: un
+documento anterior a B-919 **sin** `ciudades` deja de poder editarse si es de otra
+ciudad hasta que corra `npm run ciudades:sembrar:prod`.
+
+## D-1154 · Una sede sin ciudad no pasa por virtual
+
+**B-921, 2026-09-25.** Lo encontró el `auditor-privacidad`: fuera de CABA la ciudad
+no se exige, y una presencial sin ciudad daba `ciudades: []` y pasaba como virtual.
+La regla exige que la primera sede sea `null` o tenga ciudad, y el panel lo exige en
+**todas** las filas, que es la dirección en la que el espejo puede ser más estricto
+sin que nadie se choque con un rechazo del servidor. En CABA no molesta: la ciudad se
+guarda igual aunque no se pregunte (D-710).

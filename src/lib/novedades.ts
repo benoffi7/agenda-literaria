@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'publicador-carga-en-su-ciudad',
+    fecha: '2026-09-25',
+    version: '1.11.0',
+    titulo: 'Si tu cuenta es de una ciudad, cargás actividades de esa ciudad',
+    detalle:
+      'Apenas elegís una sede en otra ciudad, o dejás una sede sin ciudad, arriba del ' +
+      'formulario aparece un aviso y no se puede guardar. Las actividades solo virtuales se ' +
+      'cargan igual. Lo que ya habías cargado en otra ciudad lo seguís pudiendo editar, pero no ' +
+      'mudar. Si tu cuenta no tiene ciudad, cargás en cualquiera.',
+    donde: 'En el formulario de una actividad, sección Dónde.',
+  },
+  {
     id: 'cancelar-encuentro-avisa',
     fecha: '2026-09-24',
     version: '1.11.0',
