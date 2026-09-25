@@ -35,9 +35,11 @@ concurrency:
   group: deploy-produccion
   cancel-in-progress: true
 
-# Este workflow no escribe nada en el repo.
+# Este workflow no escribe nada en el repo. `actions: read` es para preguntar
+# si la suite ya pasó en `push-main.yml` para este mismo commit (M-14).
 permissions:
   contents: read
+  actions: read
 
 jobs:
   deploy:
@@ -87,7 +89,34 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Si la suite ya pasó para este commit
+        # **M-14 del PRD 6, decisión D del dueño.** Este workflow corre en cada
+        # rebuild por contenido, y el commit casi siempre es el mismo que ya
+        # pasó el job «Tests y typecheck» de `push-main.yml` —que además es más
+        # estricto: corre con emuladores y con `tsc`—. Los tests no leen la base
+        # de producción, así que repetirlos sobre el mismo commit no puede dar
+        # otra cosa y cuesta ~2,5 minutos por cada edición de una actividad.
+        #
+        # **Falla cerrada**: el script dice `saltear=true` solo si confirma una
+        # corrida de `push-main.yml` con este `head_sha` y el job de la suite en
+        # `success`. Sin token, sin respuesta, con la corrida en curso o con el
+        # job renombrado, dice `false` y la suite corre. Y el paso lleva
+        # `continue-on-error`: si se cae entero, la salida queda vacía, que no es
+        # `'true'`, y la suite corre igual. Lo cubre
+        # `tests/suite-verde-del-commit.test.ts`.
+        #
+        # Lo que depende del contenido NO se saltea: la taxonomía en la base y
+        # «Verificar el artefacto» corren siempre, más abajo.
+        id: suite
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: ./scripts/suite-verde-del-commit.sh | tee -a "$GITHUB_OUTPUT"
+
       - name: Tests
+        if: steps.suite.outputs.saltear != 'true'
         # Los tests de integración se saltean solos si no hay emuladores
         # (`describe.skipIf`), así que acá corre la lógica pura.
         #
