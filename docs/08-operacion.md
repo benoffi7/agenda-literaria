@@ -2883,13 +2883,100 @@ severity>=WARNING
 
 Toma cualquier log que traiga el campo `alerta`, sea cual sea su valor:
 `flyer-de-propuesta-sin-borrar`, `rebuild-agotado`, `sitio-atrasado`,
-`sitio-sin-indice`, `frescura-sin-canal` y las dos de la analítica. Por eso una
+`sitio-sin-indice`, `frescura-sin-canal`, las dos de la analítica y
+`verificacion-del-navegador` (B-930). Por eso una
 `alerta` nueva en una Function **ya tiene aviso** sin tocar la consola. Manda como
 mucho un mail por hora. El valor de `alerta` que trae el mail dice qué sección de
 este documento leer.
 
-**No cubre lo que pasa en el navegador**, como el App Check que no entrega token
-(B-930): eso no llega a ningún log del servidor.
+**Lo que pasa en el navegador no lo ve, salvo lo que el panel reporta.** Desde
+el paso 3 de B-930, un navegador del panel que no consigue token de App Check
+llega como `alerta: 'verificacion-del-navegador'` (§ siguiente). El resto —un
+error de JavaScript, el formulario público sin token— sigue sin llegar a ningún
+log del servidor.
+
+## Un navegador del panel sin verificar (B-930)
+
+**Qué es el mail.** Alguien con sesión iniciada en el panel tuvo el cartel «No
+pudimos verificar tu navegador» durante más de veinte segundos: su navegador no
+consigue el token de App Check, y sin token **no puede leer ni guardar nada**. El
+panel lo reportó una vez por carga a `reportarVerificacionDelNavegador`
+(`functions/verificacion-del-navegador.js`), que lo logueó. **No dice quién**:
+el reporte no lleva uid, mail, IP ni user agent (D-1226), así que la pregunta
+«¿a quién le pasó?» se contesta por fuera — con dos o tres personas cargando,
+casi siempre es mandar un mensaje. (El log de plataforma de Cloud Run sí tiene la
+IP del pedido, a un clic por la traza: § «El reporte al servidor» de
+`02-infraestructura.md`. Preguntar es mejor que ir a buscarla.)
+
+Leer el motivo, que es lo único que trae:
+
+```bash
+gcloud logging read \
+  'jsonPayload.alerta="verificacion-del-navegador"' \
+  --project agenda-literaria --freshness 1d --limit 20 \
+  --format='value(timestamp, jsonPayload.motivo)'
+```
+
+| `motivo` | Qué pasó | Por dónde empezar |
+|---|---|---|
+| `sin-respuesta` | `getToken` no volvió en diez segundos. **Es el caso de la extensión** que bloquea el script de reCAPTCHA | paso 2 del triaje: incógnito sin extensiones |
+| `token-rechazado` | el intercambio con App Check falló: un 403 (score bajo: VPN, red compartida, navegador muy blindado) o la red cortando `firebaseappcheck.googleapis.com` | paso 3: datos móviles en vez del wifi |
+| `renovacion-fallida` | tenía token y a mitad de la sesión se quedó sin ninguno (B-1250): cambió de red, prendió una VPN | paso 1: recargar |
+| `no-se-activo` | `initializeAppCheck` tiró en ese navegador | paso 4: la consola; si le pasa a más de una persona, es del deploy |
+
+**El triaje es el de B-930**, el mismo que el cartel le muestra a la persona —así
+que muchas veces, para cuando leés el mail, ya lo resolvió sola—:
+
+1. **Que recargue.** Si vuelve a andar, fue transitorio. No hay nada que hacer.
+2. **Ventana de incógnito, sin extensiones.** Si ahí anda, es una extensión de su
+   navegador. Que la apague para el panel.
+3. **Otro navegador, o el celular con datos móviles.** Si con datos anda y con su
+   wifi no, es la red de ella (oficina, VPN, portal cautivo).
+4. **Si falla en las tres**, que abra la consola y mire la petición a
+   `firebaseappcheck.googleapis.com/…/exchangeRecaptchaEnterpriseToken`: 403 es
+   token rechazado; bloqueada o fallida es extensión o red.
+
+**Cuándo sí es del sistema.** Varios mails seguidos con motivos parecidos, de
+personas distintas, o que le pase también a vos: ahí no es un navegador, es
+reCAPTCHA o la clave. Mirar primero § «Los dominios permitidos» de
+[`02-infraestructura.md`](02-infraestructura.md) —un dominio que falta en la clave
+produce `token-rechazado` para todo el que entre por ese nombre— y después el
+estado de reCAPTCHA Enterprise. La salida de emergencia es poner Cloud Firestore
+en `Unenforced`, **con su costo**: abre también las escrituras anónimas de
+`/proponer` y de las guías (§ «Qué pasa si se cae» de `02-infraestructura.md`).
+
+**Lo que el mail no puede decir.** Que llegue uno no prueba que le pasó a una
+persona: el endpoint es público y sin token (D-1225), así que alguien puede
+pegarle a mano. Lo que puede hacer así es ruido, no daño: el motivo es de una
+lista cerrada, el log no lleva texto libre, el endpoint loguea como mucho cinco
+por minuto y la política manda como mucho un mail por hora. Si llegan muchos sin
+que nadie se queje, es eso: mirar `resource.labels.service_name="reportarverificaciondelnavegador"`
+en Logging para ver el volumen.
+
+**Y lo que no reporta**: a quien no inició sesión (el login con el cartel puesto
+no manda nada), la segunda vez en la misma carga del panel, y un token que llega dentro
+de los veinte segundos. Con emuladores el panel ni se engancha.
+
+**Probarlo de punta a punta después del primer deploy** — manda un mail de
+verdad, así que conviene hacerlo una vez y avisado:
+
+```bash
+curl -si -X POST \
+  -H 'Origin: https://agendaleh.ar' \
+  --data '{"motivo":"sin-respuesta"}' \
+  https://southamerica-east1-agenda-literaria.cloudfunctions.net/reportarVerificacionDelNavegador
+```
+
+Tiene que contestar `204`, el log tiene que aparecer con el `gcloud logging read`
+de arriba, y el mail en la hora siguiente. Un `403` con el HTML de Google (no el
+vacío de la Function) es que el `allUsers` como invocador no quedó puesto —una
+política de la organización que prohíbe `allUsers` hace eso—, y se corrige con:
+
+```bash
+gcloud run services add-iam-policy-binding reportarverificaciondelnavegador \
+  --region southamerica-east1 --project agenda-literaria \
+  --member=allUsers --role=roles/run.invoker
+```
 
 ## Alerta de rebuild agotado (B-21)
 

@@ -192,7 +192,7 @@ sigue sin listar mails ni uids: los publica el repo y esta sección es pública.
 | Para qué hace falta | los cuatro formularios públicos de [`prd/`](prd/README.md) abren la primera escritura anónima del proyecto. Un formulario público sin login **es un endpoint de escritura a Firestore**: sin App Check, un script llena la bandeja y la factura (el plan es Blaze) |
 | Qué protege | Firestore (exigido en la consola) y la callable `subirFlyerDePropuesta` (exigido por función, fila siguiente). **Cloud Storage no**, y ya no está previsto: esta fila decía «Firestore y Cloud Storage», porque DEC-11 deja subir la imagen, pero desde B-896 el flyer no se sube a Storage desde el navegador —`storage.rules` tiene `create: if false` en `propuestas/`— y exigir App Check en `firebasestorage` rompería las lecturas públicas de las imágenes (B-872) |
 | Cloud Functions (`cloudfunctions`) | 🟢 **exigido en `subirFlyerDePropuesta`** con `enforceAppCheck: true` (`functions/flyer-de-propuesta-trigger.js`, B-896 paso 1). **No hace falta ponerlo en `ENFORCED` en la consola**, y es el punto: la opción es **por función** y la Function rechaza sola la llamada sin token válido, así que exigir acá no toca ningún otro servicio ni ninguna lectura de imagen. Es lo que hace que el flyer quede atestado sin pagar el costo de exigir en Storage |
-| Qué **no** protege | el build con el Admin SDK, ni las Functions que no son callables (los triggers de Firestore y Storage y las programadas): no reciben pedidos de un navegador, así que no hay token que mirar |
+| Qué **no** protege | el build con el Admin SDK, ni las Functions que no son callables (los triggers de Firestore y Storage y las programadas): no reciben pedidos de un navegador, así que no hay token que mirar. **Ni `reportarVerificacionDelNavegador`**, la única HTTP, que existe justamente para cuando no hay token (D-1225) |
 | Costo | Enterprise tiene **su propia cuota facturable** arriba del free tier, aparte de Firebase. Entra en el budget alert del §2.3 — y el volumen esperado de un formulario público es chico, pero el de un script que lo abusa no |
 | Que el **artefacto publicado** lo lleve | `scripts/verificar-bundle.sh`, gate bloqueante de los dos workflows y paso 5 de `verificar-todo.sh` (**B-868**). Verifica sobre `dist/` que la clave de `.env.production` esté en un chunk, que viaje a `activarAppCheck` con `usarEmuladores` en falso, y que el proveedor sea el de Enterprise. Antes nada lo sostenía: `tests/appcheck.test.ts` mira el **fuente** y el gate solo buscaba el Admin SDK, así que un bundle sin clave —o con el proveedor cambiado— pasaba verde de punta a punta |
 | **Dominios permitidos** | ⬜ **sin verificar.** Es la configuración de la que depende que App Check sirva para algo, y no está en el repo — ver abajo |
@@ -289,8 +289,10 @@ reCAPTCHA es un servicio de Google fuera del proyecto. Si no responde, el SDK no
 consigue token y **con enforcement activo la escritura se rechaza**: el formulario
 público deja de aceptar propuestas y el panel deja de guardar. No hay
 degradación parcial ni cola local — el modo de falla es «no se puede escribir».
-Del lado de operación sigue sin haber alerta: el aviso llega por donde llegue el
-reclamo (es el paso 3 de B-930, que sigue abierto).
+Del lado de operación, **desde el paso 3 de B-930 hay alerta**: el panel reporta
+el navegador sin verificar a `reportarVerificacionDelNavegador` y el mail llega
+por la política de las `alerta` (§ «El reporte al servidor», abajo). Lo que no
+avisa es el formulario público: `/proponer` no reporta nada.
 
 **Lo que el SDK dice no es lo que pasó.** Firestore no informa que le faltó el
 token: acumula fallos de canal, se declara offline, y el error es el mismo
@@ -339,6 +341,42 @@ vos**, en la misma versión del panel.
   dos primeros son caminos deliberados; `sin-clave` es una configuración
   incompleta del deploy, y el triaje de la persona no la resuelve (ya tiene su
   `console.warn`).
+
+### El reporte al servidor — B-930 paso 3
+
+El cartel se lo dice a la persona; **esto se lo dice al dueño**. Si el navegador
+sigue `sin-verificar` veinte segundos (`GRACIA_DEL_REPORTE_MS`) con una sesión
+iniciada, `src/lib/reporteDeVerificacion.ts` manda **el motivo y nada más** a la
+Function `reportarVerificacionDelNavegador`, que lo loguea con
+`alerta: 'verificacion-del-navegador'`. La política de GCP de las `alerta`
+([`08-operacion.md`](08-operacion.md) § «La alerta de todas las `alerta`») manda
+el mail sin tocar la consola. Qué hacer cuando llega: `08-operacion.md` § «Un
+navegador del panel sin verificar».
+
+| | |
+|---|---|
+| Endpoint | `https://southamerica-east1-agenda-literaria.cloudfunctions.net/reportarVerificacionDelNavegador` — la URL derivable de una v2, que sale de región, proyecto y nombre (`urlDelReporte`), así que no vive en ningún `.env` |
+| Cuerpo | `{"motivo": …}` con uno de cuatro: `no-se-activo`, `token-rechazado`, `sin-respuesta`, `renovacion-fallida` (`MOTIVOS_DE_VERIFICACION`). Cualquier otra clave o valor es un 400 |
+| Qué se loguea | la `alerta` y el `motivo`. **Ni uid, ni mail, ni IP, ni user agent, ni `Origin`** |
+| Sin App Check | a propósito: lo que reporta es que no hay token (**D-1225**). Tampoco es una callable, porque el SDK de Functions pide el token antes de mandar y con reCAPTCHA bloqueado ese pedido no vuelve |
+| Frenos | solo `POST`; cuerpo de a lo sumo 200 bytes; `Origin` de los cuatro nombres del sitio (los mismos de la clave de reCAPTCHA, `ORIGENES_PERMITIDOS`); tope de 5 logs por minuto por instancia con `maxInstances: 1`; y la política manda como mucho un mail por hora (**D-1226**) |
+| Cuándo reporta el panel | una vez por carga del panel (sin marca en el navegador: una recarga vuelve a reportar, y la política igual manda un mail por hora), con sesión iniciada, y solo si el estado dura la gracia: un token que llega a los doce segundos no es un mail (**D-1227**) |
+
+**Un dominio nuevo del sitio va en `ORIGENES_PERMITIDOS`** además de en la clave
+de reCAPTCHA. Sin lo primero, ese dominio reporta y la Function lo descarta con
+un 403 que nadie lee.
+
+**Lo que la plataforma loguea igual, y hay que decirlo sin suavizar.** Cloud Run
+escribe su propio log de **cada** pedido (`run.googleapis.com/requests`) con la IP
+y el user agent —también de los rechazados y de los que pasan el tope—, igual que
+para las dos callables: eso no lo decide la Function y vive los 30 días de
+retención por defecto. El `jsonPayload` del `warn` no los lleva, **pero lleva la
+traza del pedido** (`logging.googleapis.com/trace`, que agrega `firebase-functions`
+solo), así que desde el log de la alerta se llega en un clic al pedido con la IP y
+el user agent de quien carga. Con dos personas cargando, eso la identifica. Lo
+ve solo quien tiene acceso a Logging del proyecto, que es el dueño. Y el tope por
+minuto frena los `warn` y el mail, **no** los pedidos: un script que le pega igual
+genera ese log de plataforma.
 
 **Triaje cuando le pasa a otra persona**, en orden de lo que más descarta por
 minuto. Los tres primeros son los que el cartel le muestra, así que casi siempre
@@ -417,7 +455,7 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 ## Cloud Functions (v2)
 
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3;
-`verificarFrescuraDelSitio`, 1). **Son dieciocho** (la última, `rebuildPorEfemerides`, de B-959), y el reparto entre ACTIVE y «sin
+`verificarFrescuraDelSitio` y `reportarVerificacionDelNavegador`, 1). **Son diecinueve** (la última, `reportarVerificacionDelNavegador`, de B-930), y el reparto entre ACTIVE y «sin
 desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
 
 > ⚠️ **Esta línea necesita un re-relevamiento, y lo dice en vez de reafirmar
@@ -484,6 +522,7 @@ desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
 | `borrarFichasVencidas` | `onSchedule every 24 hours` | **sin relevar contra GCP** (B-904/B-912/B-917, 2026-09-15) — el push a `main` la despliega sola. Borra las fichas vencidas de las **tres** guías, recorriendo `COLECCIONES_DE_DIRECTORIO` (`functions/directorios.js`), así que la cuarta guía entra sola: la `rechazado` a los 30 días del rechazo, la `pendiente` a los 30 días sin que nadie la toque, y la `publicado` no vence. **Sin IAM nuevo y sin Storage**: necesita `datastore.user` —que `calendar-sync@` ya tiene— y nada más, porque las fotos de una ficha viven en `imagenes/` y las levanta `limpiarImagenesHuerfanas` (desde **B-922**, que es el cambio que lo hizo cierto). Borra con precondición sobre la versión que leyó, como su vecina, y acá la ventana queda cubierta **entera**: sin objeto que borrar no existe el final `la-tocaron-tarde`. ⚠️ Cada corrida que borre algo dispara el trigger de rebuild de su colección, aunque la ficha nunca haya estado publicada — ver `08-operacion.md` § «`borrarFichasVencidas`». Ver también `07-seguridad.md` § «Las cuatro escrituras anónimas» |
 | `borrarImagenAlCerrar` | `onDocumentWritten propuestas/{id}` | **escrita, sin desplegar todavía** (B-830 paso 8, DEC-11, 2026-09-09; ampliada por **B-863**, 2026-09-10) — **cerrar** una propuesta borra la foto que mandó el tercero: al **rechazarla**, en el acto; al **aceptarla**, después de verificar que la copia promovida a `imagenes/` existe (en el documento de la actividad y en el bucket). Es un solo trigger y no dos porque dos `onDocumentWritten` sobre el mismo path serían dos handlers peleándose el mismo objeto (B-89). Lee `/actividades` con `fieldMask: ['imagenes']`, así que además de `storage.objects.delete` necesita el `datastore.user` que `calendar-sync@` ya tiene. La despliega CI en el push, como su vecina. **Se llamaba `borrarImagenAlRechazar`**: si llegó a desplegarse con ese nombre hay que borrar la vieja a mano — ver el aviso de `08-operacion.md` § «La imagen de una propuesta» |
 | `verificarFrescuraDelSitio` | `onSchedule every 30 minutes` | **escrita, sin desplegar todavía** (B-882, 2026-09-11) — el chequeo de frescura: pide `https://agendaleh.ar/events.json` y compara el **conjunto de slugs** que publica contra el de las actividades `publicado` de Firestore. Y, desde B-886, el `generadoEn` del índice contra `despacho.cubreHasta` de `sistema/rebuild`, que es lo que ve la edición de una actividad ya listada. Si hay una diferencia más vieja que la ventana de 40 minutos, abre un issue con la etiqueta `frescura` y loguea `alerta: 'sitio-atrasado'`. Escribe `sistema/frescura`. Sin IAM nuevo: corre con `calendar-sync@`, que ya tiene `datastore.user`, y usa el `GITHUB_TOKEN` que ya existe. Lo único que hace falta del lado del dueño es **crear las dos etiquetas** del repo y que la salida a internet esté (Blaze). Ver § «El chequeo de frescura» más abajo |
+| `reportarVerificacionDelNavegador` | `onRequest` (HTTP, `invoker: 'public'`) | **escrita, sin desplegar todavía** (B-930 paso 3, 2026-09-25). **La primera `onRequest` del proyecto**: el panel le manda el motivo de un navegador que no consiguió token de App Check y ella loguea `logger.warn` con `alerta: 'verificacion-del-navegador'`. Sin `enforceAppCheck` (D-1225), `maxInstances: 1`, CORS solo para los cuatro nombres del sitio. **Sin IAM nuevo**: no toca Firestore ni ninguna API; el `allUsers` como invocador lo pone el deploy, y `deploy-ci@` puede porque tiene `run.admin`. El push a `main` la despliega sola. Ver § «El reporte al servidor» arriba |
 | `traerAnaliticaDelSitio` | `onSchedule every day 07:00` | ACTIVE — **faltaba en esta tabla**, agregada el 2026-09-07. Lee GA4 y Search Console con `calendar-sync@` y escribe `sistema/analitica-sitio`, que es de donde lee la pestaña «El sitio público» del panel. Los cuatro pasos de consola quedaron hechos el 2026-09-07 y se verificó forzando una corrida: el log dice `analítica del sitio actualizada` (B-790, `16-analitica-del-sitio.md` §9.4) |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
