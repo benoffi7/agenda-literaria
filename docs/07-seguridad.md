@@ -1779,6 +1779,15 @@ y son solo `create`:** `/propuestas` (B-896, 2026-09-11), `/librerias`,
 lo que separa un buzón de una bandeja, y es lo que hace que abrir la escritura no
 sea abrir la publicación.
 
+**Y hay un quinto camino, que no es una colección sino el log** (B-930 paso 3,
+D-1225, D-1226): `reportarVerificacionDelNavegador`
+(`functions/verificacion-del-navegador.js`) es una `onRequest` sin App Check que
+cualquiera puede llamar y que escribe un `logger.warn` con `alerta` y un `motivo` de
+cuatro valores cerrados. Toda su garantía es que el log lleva **solo** eso —ni uid, ni
+mail, ni IP, ni user agent—, y la fija un `toEqual` en
+`tests/verificacion-del-navegador-reporte.test.ts`. Un campo nuevo en ese log es
+materia de este documento.
+
 **Y eso está fijado, no supuesto.** `tests/escritura-anonima.integracion.test.ts`
 (B-836) afirma la propiedad contra el emulador: ni un anónimo ni alguien logueado
 **sin** el claim puede crear, actualizar ni borrar nada, en ninguna de las

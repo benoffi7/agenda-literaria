@@ -545,4 +545,7 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `functions/efemerides.js`
 - `functions/efemerides-trigger.js`
 - `firestore.rules`
+- `functions/verificacion-del-navegador.js`
+- `functions/verificacion-del-navegador-trigger.js`
+- `src/lib/reporteDeVerificacion.ts`
 <!-- disparadores:fin -->
