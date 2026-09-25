@@ -424,7 +424,7 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
   const GUARDAS_DE_BARRIDO: Record<string, GuardaDeBarrido> = {
     borrarPropuestasVencidas: {
       guarda: 'precondicion',
-      donde: 'functions/retencion.js',
+      donde: 'functions/retencion-propuestas-firestore.js',
       marcas: [/\.delete\(\{\s*lastUpdateTime/, /ahora\.updateTime\.isEqual\(visto\)/],
       ventana: 'cubierta',
       porque:
@@ -444,7 +444,7 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
     },
     borrarFichasVencidas: {
       guarda: 'precondicion',
-      donde: 'functions/retencion.js',
+      donde: 'functions/retencion-fichas-firestore.js',
       marcas: [
         /borrarFicha = async \(db, coleccion, \{ id, visto \}\)/,
         /await ref\.delete\(\{ lastUpdateTime: visto \}\)/,
@@ -473,7 +473,7 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
         'objeto viejo que alguien empieza a referenciar mientras el barrido corre se borra ' +
         'igual. Se acepta porque el daño es una fila de galería que hay que volver a subir, y ' +
         'porque `file().delete()` no admite la precondición que Firestore sí tiene (lo dice ' +
-        '`borrarPropuesta` en `retencion.js` para la misma mitad).',
+        '`borrarPropuesta` en `retencion-propuestas-firestore.js` para la misma mitad).',
     },
     limpiarVersionesHuerfanas: {
       guarda: 'margen',
