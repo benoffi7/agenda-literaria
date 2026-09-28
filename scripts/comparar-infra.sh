@@ -24,6 +24,10 @@
 # de todo pedía parsear prosa, y un comparador que se equivoca al leer la doc es
 # peor que ninguno.
 #
+# Desde el roadmap 5.1 compara también el respaldo de la base y su protección
+# contra borrado: no mintieron nunca, pero son lo único del inventario cuya falta
+# no se entera nadie hasta el día que hace falta.
+#
 # Sale con 0 si la doc dice la verdad, 1 si encontró divergencias, 2 si no pudo
 # leer el documento. Falla hacia el lado de avisar.
 set -euo pipefail
@@ -79,6 +83,14 @@ doc_secretos_en() {
     dentro && /^#{2,3} / { exit }
     dentro { print }' "$DOC" |
     awk -F'|' '/^\| `[A-Z_]+` \|/ && $4 ~ /existe/ { gsub(/[` ]/, "", $2); print $2 }'
+}
+
+# El respaldo y la protección de la base: filas de la tabla de Firestore con el
+# valor en la primera celda de código — `| Respaldo | `diario 7d` — … |`. Pueden ser
+# varias filas de respaldo, una por programa.
+doc_celda_de() {
+  awk -F'|' -v fila="$1" '$2 ~ "^ *" fila " *$" { print $3 }' "$DOC" |
+    sed -n 's/^[^`]*`\([^`]*\)`.*/\1/p'
 }
 
 real() { printf '%s\n' "$REAL" | awk -v k="$1" -F'=' '$1 == k { print $2 }'; }
@@ -141,10 +153,40 @@ else
   done
 fi
 
+# ── Respaldo de Firestore ─────────────────────────────────────────
+# El de la base es el único dato del inventario cuya falta no se nota hasta el día
+# que hace falta (roadmap 5.1): un programa borrado desde la consola no rompe ningún
+# deploy ni ningún test. Por eso entra al comparador aunque todavía no haya mentido.
+# Se compara solo si alguna de las dos puntas lo menciona, así un documento de test
+# que no tiene estas filas no inventa una divergencia.
+echo 'Respaldo de Firestore'
+REAL_RESPALDOS=$(real respaldo | tr ' ' '_' | sort -u)
+DOC_RESPALDOS=$(doc_celda_de 'Respaldo' | tr ' ' '_' | sort -u)
+if printf '%s\n' "$REAL_RESPALDOS" | grep -qx '?no-se-pudo-leer'; then
+  echo '  · sin verificar: no se pudieron leer los programas de respaldo'
+else
+  for r in $DOC_RESPALDOS; do
+    printf '%s\n' "$REAL_RESPALDOS" | grep -qx "$r" ||
+      aviso "la doc dice que hay un respaldo \`${r//_/ }\` y la base no lo tiene programado"
+  done
+  for r in $REAL_RESPALDOS; do
+    printf '%s\n' "$DOC_RESPALDOS" | grep -qx "$r" ||
+      aviso "la base tiene un respaldo \`${r//_/ }\` que la doc no declara"
+  done
+fi
+
+REAL_PROTECCION=$(real proteccion | head -1)
+DOC_PROTECCION=$(doc_celda_de 'Protección contra borrado' | head -1)
+if [ "$REAL_PROTECCION" = '?no-se-pudo-leer' ]; then
+  echo '  · sin verificar: no se pudo leer la protección contra borrado'
+elif [ -n "$REAL_PROTECCION$DOC_PROTECCION" ] && [ "$REAL_PROTECCION" != "$DOC_PROTECCION" ]; then
+  aviso "la protección contra borrado de la base está \`${REAL_PROTECCION:-sin relevar}\` y la doc dice \`${DOC_PROTECCION:-nada}\`"
+fi
+
 # ── Cierre ────────────────────────────────────────────────────────
 if [ "$DIVERGENCIAS" -eq 0 ]; then
   echo
-  echo "✓ el inventario dice la verdad sobre Functions, roles y secretos."
+  echo "✓ el inventario dice la verdad sobre Functions, roles, secretos y respaldo."
   exit 0
 fi
 

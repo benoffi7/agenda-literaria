@@ -223,6 +223,16 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
 
+### B-2162 · Probar una restauración del respaldo de la base · P2
+
+El respaldo diario existe desde el 2026-09-28 (roadmap 5.1) y **no se probó
+restaurarlo**: el primer respaldo aparece recién al día siguiente de crear el
+programa. Un respaldo que nunca se restauró es una hipótesis. Hacerlo una vez,
+con los comandos de `02-infraestructura.md` § «El respaldo de la base»: restaurar
+a `restaurada-<fecha>`, contar los documentos de `/actividades` contra la base
+viva, y **borrar la base restaurada en el mismo día** (tiene los datos personales,
+07-seguridad.md). Se cierra anotando la fecha y cuánto tardó.
+
 ## P3 — cuando sobre tiempo
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3

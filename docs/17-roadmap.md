@@ -465,7 +465,13 @@ que va marcado como decisión.
 
 ## Eje 5 · Control y calidad de datos
 
-### 5.1 · Copia de seguridad automática de la base — **Ahora** · M · 🟨 Decisión
+### 5.1 · Copia de seguridad automática de la base — ✅ Hecho (2026-09-28) · M · 🟨 Decisión
+
+> **Hecho el 2026-09-28**, con un cambio sobre la recomendación: **7 días y no 30**.
+> Las dos retenciones se suman —un contacto borrado el día 30 sigue en el respaldo
+> de la víspera—, así que 30 días de respaldo convertían la promesa de «30 días» en
+> 60. Es el respaldo programado de Firestore (sin bucket ni Function), con la base
+> protegida contra borrado. Falta probar una restauración: **B-2162**.
 
 - **Qué gana:** que un error, un script mal corrido o una cuenta comprometida no
   se lleven un año de carga. Hoy la base es la única fuente de verdad (el
@@ -603,7 +609,7 @@ las novedades del panel ya existen como mecanismo.
 | # | Propuesta | Eje | Tamaño | Prioridad | Decisión del dueño |
 |---|---|---|---|---|---|
 | 3.1 | Interruptores de GA4 (B-874, B-773) | Analítica | S | ✅ Hecho (2026-09-25) | — (es cumplir lo prometido) |
-| 5.1 | Copia de seguridad de la base | Datos | M | **Ahora** | 🟨 ¿Respaldo diario a 30 días? → sí |
+| 5.1 | Copia de seguridad de la base | Datos | M | ✅ Hecho (2026-09-28) | 🟨 ¿Respaldo diario a 30 días? → sí, a 7 |
 | 5.2 | Encuentro cancelado avisa (B-98) | Datos / sitio | M | ✅ Hecho (2026-09-24) | ya aprobada |
 | 1.1 | Compartir y agendar en el detalle | Sitio | S | **Ahora** | — |
 | 4.1 | El lunes de difusión | Redes | S–M | **Ahora** | — |

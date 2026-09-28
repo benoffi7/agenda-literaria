@@ -69,6 +69,26 @@ estado() {
   gcloud secrets list --project "$PROYECTO" --format='value(name)' 2>/dev/null |
     while read -r s; do printf 'secreto=%s\n' "$s"; done
 
+  # El respaldo de la base (roadmap 5.1), como `diario 7d` o `semanal-MON 14d`.
+  # `dailyRecurrence` es un objeto vacío y no se imprime: lo que distingue un
+  # programa diario es que no tiene día de la semana.
+  if PROGRAMAS=$(gcloud firestore backups schedules list --database='(default)' \
+      --project "$PROYECTO" --format='value(retention,weeklyRecurrence.day)' 2>/dev/null); then
+    printf '%s\n' "$PROGRAMAS" | while read -r retencion dia; do
+      [ -n "$retencion" ] || continue
+      dias=$(( ${retencion%s} / 86400 ))
+      printf 'respaldo=%s %sd\n' "$([ -n "$dia" ] && echo "semanal-$dia" || echo diario)" "$dias"
+    done
+  else
+    echo 'respaldo=?no-se-pudo-leer'
+  fi
+  case "$(gcloud firestore databases describe --database='(default)' --project "$PROYECTO" \
+      --format='value(deleteProtectionState)' 2>/dev/null)" in
+    DELETE_PROTECTION_ENABLED) echo 'proteccion=activada' ;;
+    DELETE_PROTECTION_DISABLED) echo 'proteccion=desactivada' ;;
+    *) echo 'proteccion=?no-se-pudo-leer' ;;
+  esac
+
   # Los secrets de GitHub no viven en GCP. Sin `gh` o sin permiso, se saltea con
   # aviso en vez de inventar que no hay ninguno: "no pude ver" y "no existe" no son
   # lo mismo, y confundirlos es lo que haría que el comparador mienta.

@@ -2148,6 +2148,27 @@ no se escribe, que un anónimo lee lo publicado pero no un borrador, y que la
 proyección no filtra. `tests/calendario.test.ts` verifica lo mismo para el
 evento.
 
+## El respaldo de la base (roadmap 5.1)
+
+Desde el 2026-09-28 Firestore guarda **un respaldo por día de la base entera, y
+cada uno vive 7 días** (`02-infraestructura.md` § «El respaldo de la base»). Es,
+como el historial de versiones de abajo, **el documento entero y sin proyectar**
+—`difusion`, `online.url`, los uids, el contacto de quien propone—, y eso está
+bien por el mismo motivo: **no es una salida**. No lo lee el build, ni el sitio,
+ni ninguna Function; se ve solo con permisos de IAM sobre el proyecto, que son
+los del dueño.
+
+**Lo que sí cambia es un plazo prometido, y hay que decirlo.** Los formularios
+de la Guía y de propuestas prometen «tu contacto se borra a los 30 días». La base
+lo cumple (`borrarPropuestasVencidas`, `borrarFichasVencidas`), pero el respaldo
+de la víspera del borrado lo conserva **hasta 7 días más**. Por eso la retención
+del respaldo es 7 y no los 30 que proponía el roadmap: con 30, el «30 días» real
+pasaba a ser 60. Si alguna vez se alarga la retención del respaldo, esta cuenta
+se hace de nuevo antes, no después.
+
+Restaurar crea **una base nueva** con los datos personales adentro: se usa para
+copiar lo necesario y se borra en el mismo día.
+
 ## Historial de versiones
 
 `guardarVersion` escribe el documento anterior completo en

@@ -17854,6 +17854,17 @@ pregunta que contesta es «qué etiqueta conviene cargar o retirar». Un `barrio
 se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta que
 sobra, y hoy eso no se puede saber.
 
+### B-2163 · La tabla de Functions decía «sin desplegar» de ocho que estaban vivas · P2 — ✅ hecho (2026-09-28)
+
+`relevar-infra.sh` dio 11 divergencias al sumarle el respaldo: ocho Functions
+(`rebuildPorLibrerias`, `rebuildPorSuscripciones`, `rebuildPorLugares`,
+`rebuildPorEfemerides`, `borrarPropuestasVencidas`, `borrarFichasVencidas`,
+`borrarImagenAlCerrar`, `verificarFrescuraDelSitio`) figuraban «escrita, sin
+desplegar» o «sin relevar» y estaban `ACTIVE`, y tres (`rebuildPorBibliotecas`,
+`subirFlyerDePropuesta`, `crearOpcionDelPanel`) ni figuraban. Es el drift que B-123
+describe —se despliega por CI y nadie vuelve al documento— y el comparador lo
+atrapa solo si alguien lo corre. Arreglado en la tabla; el relevamiento da verde.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

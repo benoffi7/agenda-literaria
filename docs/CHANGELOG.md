@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- **La base tiene respaldo** (roadmap 5.1). Firestore guarda un respaldo por día de
+  la base entera, y cada uno se guarda 7 días; la base, además, quedó protegida
+  contra el borrado. Son 7 días y no 30 porque el respaldo conserva los contactos que
+  el sitio promete borrar a los 30 días, y las dos retenciones se suman
+  (07-seguridad.md). `relevar-infra.sh` compara el programa y la protección contra
+  `02-infraestructura.md`, con cinco tests nuevos. Probar una restauración queda en
+  **B-2162**. Al correrlo, la tabla de Functions resultó tener once filas
+  desactualizadas (**B-2163**), corregidas.
 - **El desglose de «Filtros que no encuentran nada» solo muestra opciones que existen**
   (B-2161). La Function `traerAnaliticaDelSitio` lee `/opciones/*` y descarta el slug que
   no es una opción aprobada de su filtro: un `?barrio=lo-que-sea` escrito a mano en la URL

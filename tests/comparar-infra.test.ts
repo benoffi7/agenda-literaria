@@ -170,3 +170,52 @@ describe('un documento ilegible no pasa por verde', () => {
     expect(codigo).toBe(2);
   });
 });
+
+describe('el respaldo de la base — roadmap 5.1', () => {
+  /** La tabla de Firestore con las dos filas que lee el comparador. */
+  const conRespaldo = (respaldo = 'diario 7d', proteccion = 'activada') =>
+    doc() +
+    [
+      '| | |',
+      '|---|---|',
+      '| Base | `(default)` |',
+      `| Respaldo | \`${respaldo}\` — se guarda una semana |`,
+      `| Protección contra borrado | \`${proteccion}\` |`,
+      '',
+    ].join('\n');
+
+  it('no reporta nada cuando el programa y la protección coinciden', () => {
+    const r = comparar(REAL_COMPLETO + real(['respaldo=diario 7d', 'proteccion=activada']), conRespaldo());
+    expect(r.salida).not.toContain('✗');
+    expect(r.codigo).toBe(0);
+  });
+
+  it('avisa cuando alguien borró el programa desde la consola', () => {
+    // Es el caso para el que entra al comparador: nada más se rompe cuando pasa.
+    const r = comparar(REAL_COMPLETO + real(['proteccion=activada']), conRespaldo());
+    expect(r.salida).toContain('hay un respaldo `diario 7d` y la base no lo tiene programado');
+    expect(r.codigo).toBe(1);
+  });
+
+  it('avisa cuando cambió la retención y la doc no', () => {
+    const r = comparar(REAL_COMPLETO + real(['respaldo=diario 30d', 'proteccion=activada']), conRespaldo());
+    expect(r.salida).toContain('la base tiene un respaldo `diario 30d` que la doc no declara');
+    expect(r.codigo).toBe(1);
+  });
+
+  it('avisa cuando se desactivó la protección contra borrado', () => {
+    const r = comparar(REAL_COMPLETO + real(['respaldo=diario 7d', 'proteccion=desactivada']), conRespaldo());
+    expect(r.salida).toContain('está `desactivada` y la doc dice `activada`');
+    expect(r.codigo).toBe(1);
+  });
+
+  it('«no pude leer» deja el respaldo sin verificar y no inventa una divergencia', () => {
+    const r = comparar(
+      REAL_COMPLETO + real(['respaldo=?no-se-pudo-leer', 'proteccion=?no-se-pudo-leer']),
+      conRespaldo(),
+    );
+    expect(r.salida).toContain('sin verificar: no se pudieron leer los programas de respaldo');
+    expect(r.salida).not.toContain('✗');
+    expect(r.codigo).toBe(0);
+  });
+});
