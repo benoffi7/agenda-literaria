@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La página de cada actividad y «Mis favoritos» invitan a anotarse al correo**
+  (roadmap 4.4). Una línea —«¿Querés que te llegue lo de cada semana? Anotate al
+  correo»— que lleva a la sección de alta de `/suscribirse`. Es un link y no un segundo
+  formulario, así que la promesa y el `<form>` siguen siendo uno solo. El ancla de la
+  sección pasa a ser una constante (`ANCLA_DEL_CORREO`) que usan la sección y los links.
 - **Un mail por día con lo que entró a la bandeja** (roadmap 2.1). A las 9, un workflow
   programado manda a la casilla de avisos el título de cada propuesta y el nombre de
   cada ficha de la Guía que entraron desde el día anterior, con el link al panel; si

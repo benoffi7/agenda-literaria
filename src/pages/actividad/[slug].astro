@@ -117,6 +117,7 @@ export const prerender = true;
  * No lo vio ningún test unitario —todos la llaman bien—: lo encontró el build de
  * verdad contra el emulador (B-237).
  */
+import { invitacionAlCorreo } from '@/lib/boletinDelSitio';
 export const getStaticPaths = () => caminosDeDetalle();
 
 interface Props {
@@ -140,6 +141,8 @@ interface Props {
 }
 
 const { detalle, urlMiniaturaPortada } = Astro.props as Props;
+/** Roadmap 4.4 — la invitación al correo, o `null` si la lista no existe. */
+const invitacion = invitacionAlCorreo();
 const jsonLd = datosEstructurados(detalle);
 const migas = migasDeDetalle(detalle);
 
@@ -1277,6 +1280,17 @@ const gruposDeEncuentros =
           >
             Compartir por WhatsApp
           </a>
+          {/*
+            Roadmap 4.4 — quien llegó hasta la ficha ya mostró interés: una línea
+            que lleva a la sección de alta de /suscribirse, y no un segundo
+            formulario (ver `invitacionAlCorreo`).
+          */}
+          {invitacion && (
+            <p class="body-sm text-super">
+              {invitacion.texto}{' '}
+              <a class={claseEnlace} href={invitacion.href}>{invitacion.enlace}</a>.
+            </p>
+          )}
           {detalle.agendarProximo && (
             <p class="body-sm text-super">
               Agendar el próximo encuentro:{' '}

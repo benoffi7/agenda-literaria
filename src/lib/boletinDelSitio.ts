@@ -61,6 +61,7 @@
  * El de `suscripcion.ts`: le habla a quien va a un taller de escritura.
  */
 import { CONTACTO, LISTA_DE_CORREO, campoTrampaDelBoletin, urlDeAltaAlBoletin } from '@/lib/enlaces';
+import { RUTA_ALTA_AL_CORREO } from '@/lib/rutasPublicas';
 
 /**
  * Una promesa de la sección: lo que la persona puede esperar si se anota.
@@ -207,6 +208,29 @@ export interface FormularioDelBoletin {
  * sobre una lista que nadie puede cumplir. Ver `LISTA_DE_CORREO` en
  * `enlaces.ts`: es el orden que dejó escrito B-780 con `/apoyar`.
  */
+/**
+ * **La invitación a anotarse, desde donde alguien ya mostró interés** — roadmap
+ * 4.4: al pie de la ficha de cada actividad y en «Mis favoritos».
+ *
+ * **Un link a la sección de alta y no un segundo formulario.** Un `<form>` más
+ * que postee a Mailchimp desde otras páginas sería otra copia de la promesa
+ * («hasta que no lo confirmes no quedás anotado», el trato de `EL_FORMULARIO`) que
+ * puede quedar vieja, y en la página de detalle, que no lleva JavaScript, un
+ * formulario más para auditar. Con el link hay **un** formulario y **una**
+ * promesa, y quien llega la lee entera antes de anotarse.
+ *
+ * `null` mientras la lista no exista, por lo mismo que `formularioDelBoletin`:
+ * invitar a una sección que no se dibuja sería mandar a la gente a nada.
+ */
+export const invitacionAlCorreo = (): { texto: string; enlace: string; href: string } | null =>
+  LISTA_DE_CORREO === null
+    ? null
+    : {
+        texto: '¿Querés que te llegue lo de cada semana?',
+        enlace: 'Anotate al correo',
+        href: RUTA_ALTA_AL_CORREO,
+      };
+
 export const formularioDelBoletin = (): FormularioDelBoletin | null =>
   LISTA_DE_CORREO === null
     ? null

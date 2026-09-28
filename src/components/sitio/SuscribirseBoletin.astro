@@ -45,6 +45,8 @@
  * marcado de esta página o de sus componentes.
  */
 import { EL_BOLETIN, EL_FORMULARIO, formularioDelBoletin, tratoEnOrden } from '@/lib/boletinDelSitio';
+// Roadmap 4.4 — el ancla a la que llevan las invitaciones de otras páginas.
+import { ANCLA_DEL_CORREO } from '@/lib/rutasPublicas';
 import {
   claseBloque,
   claseBotonPrimario,
@@ -59,9 +61,9 @@ const trato = tratoEnOrden();
 
 {
   formulario && (
-    <section aria-labelledby="por-mail" class="mt-14 regla-gruesa-arriba pt-8">
+    <section aria-labelledby={ANCLA_DEL_CORREO} class="mt-14 regla-gruesa-arriba pt-8 scroll-mt-4">
       <p class={claseRotulo}>La otra forma</p>
-      <h2 id="por-mail" class="mt-2 headline-sm text-acento">
+      <h2 id={ANCLA_DEL_CORREO} class="mt-2 headline-sm text-acento">
         {EL_BOLETIN.titulo}
       </h2>
       <p class="body-lectura mt-2 max-w-[65ch] text-super">{EL_BOLETIN.paraQuien}</p>

@@ -47,6 +47,9 @@ import { claseEnlace, claseSalto } from '@/components/sitio/estilos';
 import { NOMBRE } from '@/lib/identidad';
 import { RUTA_AGENDA } from '@/lib/rutasPublicas';
 import { INFO_VERSION } from '@/lib/version';
+import { invitacionAlCorreo } from '@/lib/boletinDelSitio';
+
+const invitacion = invitacionAlCorreo();
 
 export const prerender = true;
 
@@ -106,5 +109,16 @@ const TITULO = 'Mis favoritos';
 
       <MisGuardados client:only="react" version={INFO_VERSION.version} />
     </div>
+
+    {/*
+      Roadmap 4.4 — quien guarda favoritos es quien más quiere que no se le pase
+      nada: la invitación al correo, como link a la sección de alta.
+    */}
+    {invitacion && (
+      <p class="body-md regla-gruesa-arriba mt-12 pt-6 text-super">
+        {invitacion.texto}{' '}
+        <a class={claseEnlace} href={invitacion.href}>{invitacion.enlace}</a>.
+      </p>
+    )}
   </main>
 </Base>

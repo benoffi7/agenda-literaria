@@ -444,7 +444,11 @@ que va marcado como decisión.
   imagen con 5-7 títulos y días), y no una por actividad: el flyer del organizador
   ya es la imagen de cada una, y la semanal es la que hoy no existe.
 
-### 4.4 · Invitar al correo en los lugares donde alguien ya mostró interés — **Próximo** · S
+### 4.4 · Invitar al correo en los lugares donde alguien ya mostró interés — ✅ Hecho (2026-09-28) · S
+
+> **Hecho el 2026-09-28** en la ficha del detalle y en «Mis favoritos», como un
+> **link** a la sección de alta y no como un segundo formulario: la misma promesa,
+> escrita una sola vez.
 
 - **Qué gana:** más suscriptores sin pedirle nada más a nadie. Hoy el alta vive en
   `/suscribirse`; tiene sentido una línea al pie del detalle de una actividad y en
@@ -675,7 +679,7 @@ las novedades del panel ya existen como mecanismo.
 | 2.3 | El formulario pide lo que Google quiere (B-813) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 2.4 | Aviso de precio en las cuatro bandejas (B-1410/1411) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 4.3 | Imagen semanal para redes | Redes | M | Próximo | 🟨 ¿Plantilla propia? → una sola, semanal |
-| 4.4 | Invitar al correo desde el detalle | Newsletter | S | Próximo | — |
+| 4.4 | Invitar al correo desde el detalle | Newsletter | S | ✅ Hecho (2026-09-28) | — |
 | 5.4 | Posibles duplicados | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 6.5 | Guía para publicadoras | Otros | S | Próximo | — |

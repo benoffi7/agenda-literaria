@@ -658,3 +658,30 @@ describe('el resto del sitio no quedó diciendo lo contrario', () => {
     expect(d.privacidad.corresponde, `${MODULO} no está en la ficha del auditor`).toBe(true);
   });
 });
+
+describe('la invitación al correo desde otras páginas — roadmap 4.4', async () => {
+  const { invitacionAlCorreo } = await import('@/lib/boletinDelSitio');
+  const { ANCLA_DEL_CORREO, RUTA_ALTA_AL_CORREO, RUTA_SUSCRIBIRSE } = await import('@/lib/rutasPublicas');
+  const { readFileSync } = await import('node:fs');
+
+  it('lleva a la sección de alta de /suscribirse, no a un formulario propio', () => {
+    const inv = invitacionAlCorreo();
+    expect(inv).not.toBeNull();
+    expect(inv!.href).toBe(RUTA_ALTA_AL_CORREO);
+    expect(RUTA_ALTA_AL_CORREO).toBe(`${RUTA_SUSCRIBIRSE}#${ANCLA_DEL_CORREO}`);
+  });
+
+  it('el ancla del link es el id de la sección: una sola constante para los dos', () => {
+    const seccion = readFileSync('src/components/sitio/SuscribirseBoletin.astro', 'utf8');
+    expect(seccion).toContain('id={ANCLA_DEL_CORREO}');
+    expect(seccion).not.toContain('id="por-mail"');
+  });
+
+  it('está en la ficha de cada actividad y en «Mis favoritos», sin un segundo <form>', () => {
+    for (const pagina of ['src/pages/actividad/[slug].astro', 'src/pages/mis-favoritos.astro']) {
+      const fuente = readFileSync(pagina, 'utf8');
+      expect(fuente, pagina).toContain('invitacionAlCorreo()');
+      expect(fuente, pagina).not.toMatch(/<form\b/);
+    }
+  });
+});

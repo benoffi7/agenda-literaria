@@ -2193,6 +2193,13 @@ link de Instagram, dentro de un navegador embebido.
   > encuentro»** en cada encuentro que puede pasar y en la ficha: el link a la
   > plantilla de Google Calendar y un `.ics` de un solo evento que genera el build
   > (`src/lib/agendarEncuentro.ts`). Es la salida 33 de `07-seguridad.md`.
+  >
+  > **Y la invitación al correo (roadmap 4.4):** en la ficha, abajo de «Compartir»,
+  > «¿Querés que te llegue lo de cada semana? Anotate al correo», que lleva a la
+  > sección de alta de `/suscribirse` (`RUTA_ALTA_AL_CORREO`). La misma línea va al
+  > pie de «Mis favoritos». Es un **link y no un segundo formulario**: una sola
+  > promesa escrita, un solo `<form>` que postea a Mailchimp (`invitacionAlCorreo`,
+  > en `boletinDelSitio.ts`). No aparece mientras la lista no exista.
 - Presupuesto: **la página de detalle, 0 KB de JavaScript**. La home, solo la
   island de filtros.
 

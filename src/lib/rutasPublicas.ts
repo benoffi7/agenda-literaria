@@ -190,6 +190,14 @@ export const RUTA_AGENDA = rutaCanonica('/');
 export const ANCLA_RESULTADOS = 'resultados';
 export const RUTA_CARTELERA = rutaCanonica('/cartelera');
 export const RUTA_SUSCRIBIRSE = rutaCanonica('/suscribirse');
+/**
+ * Roadmap 4.4 — el ancla de la sección de alta al correo en `/suscribirse`. La
+ * usan la sección (`SuscribirseBoletin.astro`, su `id`) y los links que invitan a
+ * anotarse desde otras páginas: escrita dos veces, el día que la sección cambie de
+ * nombre los links caerían arriba de la página y nada fallaría.
+ */
+export const ANCLA_DEL_CORREO = 'por-mail';
+export const RUTA_ALTA_AL_CORREO = `${RUTA_SUSCRIBIRSE}#${ANCLA_DEL_CORREO}`;
 export const RUTA_AYUDA = rutaCanonica('/ayuda');
 export const RUTA_CONTACTO = rutaCanonica('/contacto');
 
