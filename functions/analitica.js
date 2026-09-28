@@ -170,7 +170,8 @@ export const RUTA_DEL_PANEL = '/admin';
  * Lo encontró el `auditor-privacidad`, y es el invariante del §5.3 de
  * `docs/16-analitica-del-sitio.md` visto **del lado que lee**, que hasta acá no
  * estaba protegido por nada. Del lado que emite sí lo está: `ubicacionSinQuery`
- * recorta la query del `page_location` y del `page_referrer` (D-253), porque el
+ * recorta la query del `page_location` y del `page_referrer` (D-253) —salvo, en el
+ * `page_location`, la pareja de campaña de una lista cerrada (D-1272)—, porque el
  * texto que alguien tipeó en el buscador viaja en `?q=…` (`aQuery` de
  * `listadoPublico.ts`).
  *

@@ -245,6 +245,23 @@ Tres cosas del diseño que conviene saber:
 cabeceras, que un rechazo se distinga de una respuesta vacía, y el desdoblado del
 ICS— sin tocar la red.
 
+### De dónde vino la gente: los links con campaña (roadmap 3.8)
+
+El sitio le cuenta a GA4 por qué puerta entró alguien **solo** si el link trae una
+de estas parejas (`CAMPANAS`, en `src/lib/analyticsSitio.ts`); cualquier otra
+etiqueta se descarta:
+
+| Link | Cómo se arma |
+|---|---|
+| cada fila y el pie del correo semanal | solo (`utm_source=correo&utm_medium=semanal`) |
+| el link del texto para redes | solo (`utm_source=instagram&utm_medium=posteo`) |
+| **el link de la bio de Instagram** | **a mano**: `https://agendaleh.ar/?utm_source=instagram&utm_medium=bio` |
+| un link en una historia | a mano: `…?utm_source=instagram&utm_medium=historia` |
+
+En GA4 se ven en *Adquisición → Adquisición de tráfico*, por «Fuente / medio de la
+sesión». Para sumar otra puerta (otro medio, otra red) hay que agregarla a
+`CAMPANAS`: un link con una pareja que no está ahí llega como si no tuviera nada.
+
 ### El resumen diario de la bandeja (roadmap 2.1)
 
 Todos los días a las **9 de Buenos Aires**, `.github/workflows/resumen-diario.yml`

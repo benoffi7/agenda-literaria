@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **GA4 ya puede decir si la gente vino del correo o de Instagram** (roadmap 3.8). El
+  recorte de la URL deja pasar `utm_source` y `utm_medium` solo si la pareja está en una
+  lista cerrada (`CAMPANAS`: instagram con posteo/historia/bio, correo con semanal); todo
+  lo demás se sigue recortando. Los links del correo y del texto para redes llevan su
+  campaña solos; el de la bio se arma a mano (`08-operacion.md`).
 - **Ayuda nueva: «Cómo cargar bien una actividad»** (roadmap 6.5). Lo que el dueño sabía
   y una cuenta nueva no: la descripción que Google corta, el flyer entero, cada contacto
   en su campo (una cuenta de Instagram en «Web» o en un «Formulario» no lleva a ningún

@@ -105,6 +105,8 @@ export const debeMedirSitio = (entorno: {
   entorno.consentimiento === 'aceptado';
 
 // ── El invariante del §5.3: la URL que se manda nunca lleva la query ────
+//    (salvo la pareja de campaña de una lista cerrada — ver `consultaDeCampana`
+//    y D-1272; `ubicacionSinQuery` sigue cortando todo)
 //
 // El `page_view` automático de gtag.js manda `page_location` con la URL
 // completa. La island de filtros escribe el texto del buscador en la query
@@ -118,8 +120,9 @@ export const debeMedirSitio = (entorno: {
 // no depende de acordarse de sumar un eje nuevo el día que se agregue uno.
 
 /**
- * `page_location` sin query ni hash. Es la única forma en la que este módulo
- * deja escapar una URL hacia GA4.
+ * `page_location` sin query ni hash. Es la base de las dos formas en que este
+ * módulo deja escapar una URL hacia GA4: ésta, para el `page_referrer`, y
+ * `ubicacionAMedir`, que le suma la campaña si es de la lista (D-1272).
  */
 export const ubicacionSinQuery = (href: string): string => {
   const url = new URL(href);
@@ -145,10 +148,73 @@ que da lo mismo pasarla relativa o absoluta. Sin `rutaFija`, es
 `ubicacionSinQuery`.
  */
 export const ubicacionAMedir = (href: string, rutaFija: string | null = null): string => {
-  if (rutaFija === null) return ubicacionSinQuery(href);
+  if (rutaFija === null) return ubicacionSinQuery(href) + consultaDeCampana(href);
   const { origin } = new URL(href);
   const { pathname } = new URL(rutaFija, origin);
   return `${origin}${pathname}`;
+};
+
+// ── De dónde vino la gente: las etiquetas de campaña (roadmap 3.8) ────
+//
+// El recorte de arriba corta **toda** la query, y con eso también las etiquetas
+// de campaña que llevan los links del correo y de Instagram: el correo llegaba a
+// GA4 como «directo», y no había forma de saber si un posteo trajo a alguien.
+// Decisión del dueño: dejar pasar **solo** `utm_source` y `utm_medium`, y solo si
+// **la pareja** está en esta lista cerrada. No son datos de una persona: dicen
+// por qué puerta entró, y la puerta la armamos nosotros.
+//
+// **Una lista de parejas y no dos listas sueltas**: con dos listas pasaría
+// `correo`+`bio`, que no es ningún link que armemos, y lo que no armamos no se
+// manda. Un valor fuera de la lista no se reemplaza por `otro`: **se descarta la
+// etiqueta entera**, así lo que alguien escriba a mano en la barra no llega nunca.
+
+/** Las campañas que existen: de dónde, y por cuál de sus puertas. */
+export const CAMPANAS = {
+  instagram: ['posteo', 'historia', 'bio'],
+  correo: ['semanal'],
+} as const satisfies Record<string, readonly string[]>;
+
+export type FuenteDeCampana = keyof typeof CAMPANAS;
+export type Campana = { [F in FuenteDeCampana]: { fuente: F; medio: (typeof CAMPANAS)[F][number] } }[FuenteDeCampana];
+
+/**
+ * La campaña de una URL, o `null` si no trae una de la lista (o trae otra cosa).
+ *
+ * **Lo que devuelve sale de `CAMPANAS` y nunca de la barra** (lo pidió el
+ * `auditor-privacidad`): se busca la pareja en la lista y se devuelve **ese**
+ * elemento. Hoy daría lo mismo —la comparación es exacta—, pero el día que
+ * alguien la haga tolerante a mayúsculas, devolver lo leído empezaría a mandar a
+ * GA4 lo que vino escrito. Y `Object.hasOwn` y no `in`: con `in`,
+ * `?utm_source=toString` encontraba una función heredada y tiraba, y el `catch`
+ * de `cargarGtag` apagaba la medición de esa visita.
+ */
+export const campanaDe = (href: string): Campana | null => {
+  const q = new URL(href).searchParams;
+  const fuente = q.get('utm_source');
+  const medio = q.get('utm_medium');
+  if (!fuente || !medio || !Object.hasOwn(CAMPANAS, fuente)) return null;
+  const f = (Object.keys(CAMPANAS) as FuenteDeCampana[]).find((k) => k === fuente)!;
+  const m = (CAMPANAS[f] as readonly string[]).find((x) => x === medio);
+  return m ? ({ fuente: f, medio: m } as Campana) : null;
+};
+
+/** `?utm_source=…&utm_medium=…` si la campaña es de la lista, o `''`. */
+export const consultaDeCampana = (href: string): string => {
+  const c = campanaDe(href);
+  return c ? `?utm_source=${c.fuente}&utm_medium=${c.medio}` : '';
+};
+
+/**
+ * Un link nuestro con su campaña puesta — la otra mitad: lo usan el correo
+ * semanal y el texto para redes. (El posteo de la semana no: imprime el dominio,
+ * sin link, porque en una caption no se toca.) Tipado contra `CAMPANAS`, así no se
+ * puede armar un link con una pareja que el recorte después descartaría.
+ */
+export const conCampana = (url: string, campana: Campana): string => {
+  const u = new URL(url);
+  u.searchParams.set('utm_source', campana.fuente);
+  u.searchParams.set('utm_medium', campana.medio);
+  return u.toString();
 };
 
 // ── Vocabulario de los eventos propios (B-375) ──────────────────────

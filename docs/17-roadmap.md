@@ -349,7 +349,11 @@ respuestas.
 Lo primero que va a preguntar quien tiene su banner es si le sirve. Un cuarto
 evento propio con la ciudad como único dato.
 
-### 3.8 · De dónde vino la gente: Instagram, el correo o Google — **Próximo** · S · 🟨 Decisión
+### 3.8 · De dónde vino la gente: Instagram, el correo o Google — ✅ Hecho (2026-09-28) · S · 🟨 Decisión
+
+> **Hecho el 2026-09-28** con la recomendación: lista cerrada **de parejas**
+> fuente/medio, no de valores sueltos. El link de la bio se arma a mano
+> (`08-operacion.md`).
 
 - **Qué gana el dueño:** saber si el correo o un posteo trajeron gente, que es la
   única forma de saber si conviene seguir haciéndolos.
@@ -676,7 +680,7 @@ las novedades del panel ya existen como mecanismo.
 | 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | ✅ Hecho (2026-09-28) | — |
 | 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | ✅ Hecho (2026-09-25) | — |
 | 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | ✅ Hecho (2026-09-24) | — |
-| 3.8 | Etiquetas de campaña | Analítica | S | Próximo | 🟨 ¿Dejarlas pasar con lista cerrada? → sí |
+| 3.8 | Etiquetas de campaña | Analítica | S | ✅ Hecho (2026-09-28) | 🟨 ¿Dejarlas pasar con lista cerrada? → sí |
 | 1.4 | Efemérides (B-959) | Sitio | L | ✅ Hecho (2026-09-25) | 🟨 ¿Dónde se ven? → sección propia + home |
 | 1.5 | Páginas por organizador | Sitio | L | Próximo | ya decidido el cómo |
 | 2.3 | El formulario pide lo que Google quiere (B-813) | Panel | S | ✅ Hecho (2026-09-24) | — |

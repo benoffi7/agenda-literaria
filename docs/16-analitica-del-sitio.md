@@ -244,6 +244,16 @@ Las tres consecuencias, en orden de probabilidad:
    actividades literarias se convierte en telemetría. Hay que verificar qué
    escribe hoy `aQuery` y, si escribe el texto, **excluirlo del `page_location`
    que se manda** o sacarlo de la query.
+
+   > **La única excepción, desde el roadmap 3.8 (2026-09-28):** `utm_source` y
+   > `utm_medium`, y solo si **la pareja** está en `CAMPANAS`
+   > (`analyticsSitio.ts`): `instagram` con `posteo`, `historia` o `bio`, y
+   > `correo` con `semanal`. Todo lo demás de la query se sigue recortando, y una
+   > pareja que no está en la lista se descarta entera —no se reemplaza por
+   > `otro`—, así lo que alguien escriba a mano en la barra no llega. Son las
+   > etiquetas de los links que armamos nosotros (el correo y el texto para
+   > redes, con `conCampana`), y sin ellas el correo llegaba a GA4 como «directo».
+   > El `page_referrer` no las lleva: sigue recortado entero.
 3. **El `<title>` viaja igual que la URL** (`page_title`), y lo arma
    `Base.astro`. Es el mismo dato que la salida 6 ya publica, así que no agrega
    nada — pero cuando aparezca una página nueva, el `<head>` es parte de lo que

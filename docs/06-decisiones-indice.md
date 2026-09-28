@@ -334,6 +334,7 @@ cambio.
 - [D-1254](06-decisiones.md#d-1254--sede-sin-ciudad-avisa-solo-de-publicadoras-con-ciudad-y-solo-por-filas-nuevas) · `sede-sin-ciudad` avisa solo de publicadoras con ciudad, y solo por filas nuevas
 - [D-1270](06-decisiones.md#d-1270--el-proyecto-unidad-no-sube-su-testtimeout-un-barrido-caro-lleva-su-límite-en-el-it) · El proyecto `unidad` no sube su `testTimeout`; un barrido caro lleva su límite en el `it`
 - [D-1271](06-decisiones.md#d-1271--el-panel-le-pide-a-ga4-eje-y-slug-y-el-desglose-es-el-único-informe-con-tres-dimensiones) · El panel le pide a GA4 `eje` y `slug`, y el desglose es el único informe con tres dimensiones
+- [D-1272](06-decisiones.md#d-1272--la-query-se-sigue-recortando-entera-salvo-la-pareja-de-campaña-de-una-lista-cerrada) · La query se sigue recortando entera, salvo la pareja de campaña de una lista cerrada
 
 ## Otras secciones del registro
 

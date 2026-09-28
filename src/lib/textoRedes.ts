@@ -45,7 +45,7 @@
  * | `sede.provincia` | **sí**, como **etiqueta** | B-950. Es lo que hace legible una sede de afuera de CABA —«Av. Luro 3000, Mar del Plata» no dice si es la de acá— y es una etiqueta geográfica: no dice nada de nadie. Adentro de CABA se colapsa sola, porque es la misma etiqueta que la ciudad |
  * | `sede.ciudad` | **sí**, como **etiqueta** y nunca el slug | B-950. Ya salía; lo que cambió es que dejó de ser texto libre, así que sin resolver este posteo diría «caba» o «mar-del-plata» — y un posteo copiado no se despublica |
  * | `createdBy` / `updatedBy` | **no** | uids |
- * | `slug` | **sí**, dentro del link y **solo con la actividad publicada** | B-312: es la URL pública, la misma que ya sale al `events.json`, al sitemap y a la canónica. Nunca suelto: lo que se imprime es el link |
+ * | `slug` | **sí**, dentro del link y **solo con la actividad publicada** | B-312: es la URL pública, la misma que ya sale al `events.json`, al sitemap y a la canónica. Nunca suelto: lo que se imprime es el link, con la cola de campaña constante `?utm_source=instagram&utm_medium=posteo` desde el roadmap 3.8 (D-1272) |
  *
  * **El link a la página de la actividad sí va**, desde B-312 — y hasta hace
  * unos días no iba, con un motivo que caducó: la página no existía y el dominio
@@ -71,6 +71,7 @@
  * recordatorio depende de cuál es el próximo encuentro, y un test no puede
  * depender de qué día es hoy.
  */
+import { conCampana } from '@/lib/analyticsSitio';
 import { desSlug } from '@calendario';
 import { admiteMonto, montoLegible } from '@/lib/arancel';
 import { formADocumento } from '@/lib/actividades';
@@ -689,7 +690,9 @@ export const construirTextoRedes = (
    * poner nada.
    */
   if (yaTienePagina && actividad.slug?.trim()) {
-    bloques.push(urlDeDetalle(actividad.slug.trim()));
+    // Roadmap 3.8 — con la campaña puesta, así GA4 sabe que vino de un posteo en
+    // vez de contarlo como «directo». La pareja sale de la lista cerrada.
+    bloques.push(conCampana(urlDeDetalle(actividad.slug.trim()), { fuente: 'instagram', medio: 'posteo' }));
   }
 
   const handles = handlesDe(actividad);

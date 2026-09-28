@@ -7051,7 +7051,8 @@ propios tests.
    telemetría hacia un tercero por el solo hecho de instalar el tag. Se
    recorta la query **entera** y no un parámetro con nombre, porque es más
    simple de auditar y no depende de acordarse de sumar un eje nuevo el día
-   que se agregue uno a la query.
+   que se agregue uno a la query. **Desvío desde D-1272:** la pareja de campaña
+   de una lista cerrada pasa; todo lo demás se sigue recortando.
 2. **El clic de inscripción manda la vía, nunca el destino** — `via` se
    agregó a `AccionDeInscripcion` (`detallePublico.ts`) para que la plantilla
    pueda poner un `data-via="mail"` sin tener que derivarlo del `href`
@@ -12498,8 +12499,9 @@ queda atado es el texto: `tests/boletin-del-sitio.test.ts`,
 tres promesas nombren las aperturas y los clics.
 
 **Lo que no cambia:** si se prende además el «Google Analytics link tracking»,
-los `utm_*` no llegan a GA4, porque `ubicacionSinQuery` recorta la query del
-`page_location` y del `page_referrer` (salida 12).
+sus `utm_*` no llegan a GA4. Desde **D-1272** el `page_location` sí deja pasar una
+pareja de campaña, pero solo de una lista cerrada, y la de Mailchimp
+(`utm_medium=email`) no está; el `page_referrer` sigue recortado entero (salida 12).
 
 ---
 
@@ -14057,4 +14059,37 @@ Costo aceptado: hasta que la ventana de 28 días quede entera después del 2026-
 fila más alta del desglose es «Sin filtro identificado», que junta los eventos anteriores al
 registro (GA4 no es retroactivo) con los ceros que ningún filtro solo explica. La pantalla
 lo dice debajo de la lista.
+
+## D-1272 · La query se sigue recortando entera, salvo la pareja de campaña de una lista cerrada
+
+**Roadmap 3.8, decisión del dueño («sí, con lista cerrada»).** Es un desvío
+explícito del punto 1 de la decisión que recortó el `page_location` («la query
+entera, no un parámetro a la vez»), y se escribe como tal para que nadie lea
+aquella y crea que sigue igual.
+
+**Qué cambia:** `ubicacionAMedir` le suma a la ruta `?utm_source=F&utm_medium=M`
+**solo si la pareja** está en `CAMPANAS` (`analyticsSitio.ts`): `instagram` con
+`posteo`, `historia` o `bio`; `correo` con `semanal`. Todo lo demás de la query se
+sigue cortando, el `page_referrer` sigue cortado entero y la página de error no
+lleva campaña.
+
+**Por qué es seguro, en tres reglas:**
+
+1. **Parejas y no valores sueltos.** `correo`+`bio` no es ningún link que armemos,
+   y con dos listas separadas pasaría.
+2. **Lo que se manda sale de la lista, nunca de la barra.** `campanaDe` devuelve el
+   elemento de `CAMPANAS` que coincidió, así que aflojar la comparación mañana no
+   empieza a mandar lo que alguien escribió. `Object.hasOwn` y no `in`, porque con
+   `in` una propiedad heredada (`toString`) tiraba y apagaba la medición.
+3. **Una pareja ajena se descarta entera**, no se reemplaza por `otro`: un
+   `otro` diría que alguien escribió algo, y ni eso tiene que viajar.
+
+`tests/campanas.test.ts` lo fija con una lista de consultas hostiles —repetidas,
+codificadas, heredadas, con mayúsculas— contra la propiedad «lo que se agrega es
+siempre una pareja de la lista».
+
+**Lo que no cambia de la decisión del link tracking de Mailchimp:** sus `utm_*`
+(`utm_medium=email`) no están en la lista y se siguen descartando. Si Mailchimp
+agregara una segunda pareja a un link que ya trae la nuestra, gana la primera
+(`URLSearchParams.get`), que es la nuestra.
 

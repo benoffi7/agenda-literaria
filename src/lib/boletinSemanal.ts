@@ -60,6 +60,7 @@
  * en su versión más cara: llega a la casilla de todos los suscriptos y no se
  * corrige.
  */
+import { conCampana } from '@/lib/analyticsSitio';
 import { arancelDeTarjeta, lugarDeTarjeta } from '@/lib/tarjetaPublica';
 import {
   claveDeDia,
@@ -82,6 +83,9 @@ import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
  * tríptico de la home resolvió con ventanas relativas al reloj (B-600).
  */
 export const DIAS_DEL_BOLETIN = 7;
+
+/** Roadmap 3.8 — la etiqueta de campaña de cada link del correo. */
+const CAMPANA_DEL_CORREO = { fuente: 'correo', medio: 'semanal' } as const;
 
 /**
  * Roadmap 4.2 — cuántas recomendadas van arriba. «Las dos o tres que el equipo
@@ -212,7 +216,8 @@ export const boletinSemanal = (
         encuentro: {
           dia: clave,
           clave: `${e.slug}#${e.sesionId}`,
-          url: urlDeDetalle(e.slug),
+          // Roadmap 3.8 — la campaña del correo, para que GA4 no lo cuente como «directo».
+          url: conCampana(urlDeDetalle(e.slug), CAMPANA_DEL_CORREO),
           hora: horaDe(d),
           titulo: entrada.titulo,
           tipoEtiqueta: etiquetaDe(etiquetas, 'tipo', entrada.tipo),
@@ -274,7 +279,7 @@ export const boletinSemanal = (
     total,
     desde: fechaLargaDeDia(dias[0] ?? ''),
     hasta: fechaLargaDeDia(dias[dias.length - 1] ?? ''),
-    urlDeLaAgenda: urlAbsoluta(RUTA_AGENDA),
+    urlDeLaAgenda: conCampana(urlAbsoluta(RUTA_AGENDA), CAMPANA_DEL_CORREO),
   };
 };
 
