@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **«El lunes de difusión»: el correo, el posteo de la semana y los recordatorios en una
+  sola pantalla** (roadmap 4.1). Abajo del correo, «Para redes»: el posteo «Esta semana
+  en la agenda» (del índice publicado, como el correo; se corta a los 2200 caracteres
+  de Instagram y dice cuántos faltan) y cada encuentro de la semana con «Armar
+  recordatorio», que lee esa actividad y arma el texto del formulario para ese
+  encuentro puntual. `src/lib/difusionDeLaSemana.ts` pasa a ser productor de la salida 5.
 - **El correo semanal arranca por las destacadas** (roadmap 4.2). Un bloque
   «Recomendadas de la semana» con hasta tres actividades marcadas «Destacada» que
   tengan un encuentro en los siete días, con el día adelante; ese encuentro sale de la

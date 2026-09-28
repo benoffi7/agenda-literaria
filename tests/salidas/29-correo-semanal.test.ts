@@ -6,6 +6,7 @@
  * todos está en ese archivo; lo que comparten, en
  * `tests/fixtures/barrido-de-salidas.ts`.
  */
+import { posteoDeLaSemana } from '@/lib/difusionDeLaSemana';
 import { describe, expect, it } from 'vitest';
 import { toPublic } from '@/lib/toPublic';
 import { construirIndice } from '@/lib/eventsJson';
@@ -141,6 +142,15 @@ describe('barrido del correo semanal (§5, salida 29, B-1230)', () => {
 
     barrer('correo semanal (HTML)', htmlDelBoletin(b), permitidoEnElCuerpo);
     barrer('correo semanal (texto plano)', textoPlanoDelBoletin(b), permitidoEnElCuerpo);
+    // Roadmap 4.1 — el posteo de la semana sale del mismo borrador: no puede
+    // publicar nada que el cuerpo del correo no publique. Y sin el slug, porque
+    // no lleva links por fila (en una caption no se tocan): si algún día los
+    // imprimiera, esto se pone en rojo y hay que decidirlo.
+    barrer(
+      'posteo de la semana (salida 5)',
+      posteoDeLaSemana(b),
+      permitidoEnElCuerpo.map((g) => ({ ...g, centinelas: g.centinelas.filter((c) => c !== 'slug') })),
+    );
   });
 
   it('el barrido detecta la fuga si alguien mete la entrada entera en la fila', () => {

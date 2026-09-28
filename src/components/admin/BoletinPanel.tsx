@@ -10,6 +10,16 @@ import {
   type Boletin,
 } from '@/lib/boletinSemanal';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
+import {
+  LIMITE_DEL_POSTEO,
+  posteoDeLaSemana,
+  recordatorioDeEncuentro,
+  recordatoriosDeLaSemana,
+  type EncuentroARecordar,
+} from '@/lib/difusionDeLaSemana';
+import { leerActividad } from '@/lib/actividades';
+import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
+import type { ActividadParaRedes } from '@/lib/textoRedes';
 import { fechaCompleta, hora } from '@/lib/fechasPublicas';
 import { RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
 import { LISTA_DE_CORREO } from '@/lib/enlaces';
@@ -169,6 +179,58 @@ function VistaPrevia({ boletin }: { boletin: Boletin }) {
   );
 }
 
+/**
+ * Roadmap 4.1 — el recordatorio de un encuentro, **a pedido**: se lee esa
+ * actividad de la base recién cuando se toca el botón, porque el texto necesita
+ * los handles a etiquetar y el canal de inscripción, que el índice no trae. El
+ * texto lo arma `recordatorioDeEncuentro`, que es la función del formulario.
+ */
+function Recordatorio({ e, idDe }: { e: EncuentroARecordar; idDe: (slug: string) => string | null }) {
+  const labels = useLabelsTaxonomia();
+  const [estado, setEstado] = useState<
+    { tipo: 'nada' } | { tipo: 'cargando' } | { tipo: 'listo'; texto: string } | { tipo: 'error'; motivo: string }
+  >({ tipo: 'nada' });
+
+  const armar = async () => {
+    const id = idDe(e.slug);
+    if (!id) return setEstado({ tipo: 'error', motivo: 'No encontré esa actividad en el índice publicado.' });
+    setEstado({ tipo: 'cargando' });
+    try {
+      const actividad = await leerActividad(id);
+      if (!actividad) return setEstado({ tipo: 'error', motivo: 'Esa actividad ya no está en la base.' });
+      const r = recordatorioDeEncuentro(actividad as unknown as ActividadParaRedes, e.sesionId, labels, e.slug);
+      setEstado(r.ok ? { tipo: 'listo', texto: r.texto } : { tipo: 'error', motivo: r.motivo });
+    } catch {
+      setEstado({ tipo: 'error', motivo: 'No pude leer la actividad. Probá de nuevo.' });
+    }
+  };
+
+  return (
+    <li className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-sm">
+          <span className="font-semibold">{e.titulo}</span>
+          <span className="block text-xs text-tinta/65">{e.detalle}</span>
+        </span>
+        {estado.tipo !== 'listo' && (
+          <button type="button" className={claseBotonSecundario} onClick={armar} disabled={estado.tipo === 'cargando'}>
+            {estado.tipo === 'cargando' ? 'Armando…' : 'Armar recordatorio'}
+          </button>
+        )}
+      </div>
+      {estado.tipo === 'error' && <p className="text-xs text-acento">{estado.motivo}</p>}
+      {estado.tipo === 'listo' && (
+        <ParaCopiar
+          etiqueta={`Recordatorio de «${e.titulo}»`}
+          ayuda="Para publicar el día antes. Es el mismo texto que da el formulario de la actividad, con los arrobados."
+          texto={estado.texto}
+          filas={8}
+        />
+      )}
+    </li>
+  );
+}
+
 export function BoletinPanel() {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
 
@@ -269,6 +331,42 @@ export function BoletinPanel() {
             texto={textoPlanoDelBoletin(boletin)}
             filas={16}
           />
+
+          {/*
+            Roadmap 4.1 — «el lunes de difusión»: el posteo de la semana y los
+            recordatorios, en la misma pantalla que el correo. Todo sale del mismo
+            borrador, o sea del índice publicado (D-801).
+          */}
+          <section className="flex flex-col gap-3 border-t border-borde pt-6">
+            <h2 className="font-serif text-lg font-semibold">Para redes</h2>
+            <ParaCopiar
+              etiqueta="Posteo de la semana"
+              ayuda={`«Esta semana en la agenda», con las mismas filas que el correo. Si no entra en los ${LIMITE_DEL_POSTEO} caracteres de Instagram, se corta al final y lo dice.`}
+              texto={posteoDeLaSemana(boletin)}
+              filas={12}
+            />
+            <h3 className="font-serif text-base font-semibold">Recordatorios, día por día</h3>
+            <p className="text-xs text-tinta/65">
+              Para publicar el día antes de cada encuentro. «Armar recordatorio» lee esa actividad y
+              arma el mismo texto que da su formulario, con los arrobados.
+            </p>
+            {recordatoriosDeLaSemana(boletin).map((d) => (
+              <div key={d.dia} className="flex flex-col gap-2">
+                <h4 className="border-b border-borde pb-1 text-xs font-bold tracking-wider text-tinta/70 uppercase">
+                  {d.rotulo}
+                </h4>
+                <ul className="flex flex-col gap-3">
+                  {d.encuentros.map((e) => (
+                    <Recordatorio
+                      key={e.clave}
+                      e={e}
+                      idDe={(slug) => carga.indice.actividades.find((a) => a.slug === slug)?.id ?? null}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </section>
 
           <p className={`${claseCaja} text-tinta/65`}>
             Esto es un borrador: la curaduría es tuya. Sacá lo que no quieras, cambiá el orden,

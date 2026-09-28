@@ -391,7 +391,11 @@ Nada manda nada solo, y eso es una decisión (D-800): **se automatiza el bloque 
 datos, la voz sigue siendo de quien escribe**. Todo lo de acá la respeta salvo lo
 que va marcado como decisión.
 
-### 4.1 · «El lunes de difusión»: una pantalla para toda la semana — **Ahora** · S–M
+### 4.1 · «El lunes de difusión»: una pantalla para toda la semana — ✅ Hecho (2026-09-28) · S–M
+
+> **Hecho el 2026-09-28**, dentro de la pantalla del correo: el posteo semanal sale
+> del índice publicado y cada recordatorio lee su actividad a pedido y usa
+> `construirTextoRedes`, así que no hay una segunda regla de qué entra a un posteo.
 
 - **Qué gana quien carga:** abre una sola pantalla el lunes y tiene, en orden: el
   correo de la semana, **un texto para un posteo de «esta semana en la agenda»**, y
@@ -645,7 +649,7 @@ las novedades del panel ya existen como mecanismo.
 | 5.1 | Copia de seguridad de la base | Datos | M | ✅ Hecho (2026-09-28) | 🟨 ¿Respaldo diario a 30 días? → sí, a 7 |
 | 5.2 | Encuentro cancelado avisa (B-98) | Datos / sitio | M | ✅ Hecho (2026-09-24) | ya aprobada |
 | 1.1 | Compartir y agendar en el detalle | Sitio | S | ✅ Hecho (2026-09-28) | — |
-| 4.1 | El lunes de difusión | Redes | S–M | **Ahora** | — |
+| 4.1 | El lunes de difusión | Redes | S–M | ✅ Hecho (2026-09-28) | — |
 | 4.2 | El correo arranca por las destacadas | Newsletter | S | ✅ Hecho (2026-09-28) | — |
 | 1.2 | Links tocables en la descripción (B-980) | Sitio | S | ✅ Hecho (2026-09-24) | ya decidida |
 | 2.1 | Aviso por mail de propuestas nuevas | Panel | M | **Ahora** | 🟨 ¿Uno por uno o diario? → diario |

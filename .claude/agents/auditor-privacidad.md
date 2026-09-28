@@ -458,6 +458,7 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/lib/bannerDeCiudad.ts`
 - `src/components/publico/BannerDeCiudad.tsx`
 - `src/lib/textoRedes.ts`
+- `src/lib/difusionDeLaSemana.ts`
 - `src/lib/handle-instagram.mjs`
 - `functions/handle-instagram.js`
 - `functions/geografia.js`

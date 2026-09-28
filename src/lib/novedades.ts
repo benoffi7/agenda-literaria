@@ -65,6 +65,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'lunes-de-difusion',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'El correo, el posteo de la semana y los recordatorios, en una sola pantalla',
+    detalle:
+      'Abajo del correo semanal ahora está «Para redes»: el posteo «Esta semana en la agenda» ' +
+      'listo para copiar, y cada encuentro de la semana con un botón que arma su recordatorio ' +
+      'para publicar el día antes, con los arrobados. Es lo mismo que da el formulario de cada ' +
+      'actividad, sin tener que abrirlas de a una.',
+    donde: 'Correo → «Para redes».',
+  },
+  {
     id: 'correo-arranca-por-destacadas',
     fecha: '2026-09-28',
     version: '1.11.0',

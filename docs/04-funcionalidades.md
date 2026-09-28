@@ -988,6 +988,20 @@ destacada con fecha en la semana, el correo es el de siempre y la vista previa l
 dice. **Lo que decide qué va arriba es la marca «Destacada» de cada actividad**, la
 misma que usa el sitio: se elige desde el formulario, no desde el correo.
 
+**Y lo de redes, en la misma pantalla** (roadmap 4.1, «el lunes de difusión»). Abajo
+del correo, un bloque «Para redes» con:
+
+- **el posteo de la semana** —«Esta semana en la agenda: N encuentros»—, con las
+  mismas filas que el correo, las recomendadas arriba y la agenda al final. Sale del
+  mismo borrador, o sea del índice publicado, y **no lee la base** (D-801). Si no
+  entra en los 2200 caracteres de Instagram se corta al final y dice «…y N más en la
+  agenda»;
+- **los recordatorios, día por día**: cada encuentro de la semana con un botón
+  «Armar recordatorio» que lee **esa** actividad y arma el mismo texto que da su
+  formulario —con los arrobados y el canal de inscripción—, para el encuentro de ese
+  día aunque sea el tercero de un ciclo. La lista sale del índice; el texto, de
+  `construirTextoRedes`. Lo arma `src/lib/difusionDeLaSemana.ts`.
+
 **Siete días corridos y no la semana calendario.** Un correo que sale el miércoles y
 abarca de lunes a domingo habla de dos días que ya pasaron y calla los dos
 siguientes. Es la misma decisión que el tríptico de la home tomó con sus ventanas
