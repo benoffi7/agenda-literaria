@@ -472,3 +472,48 @@ export const zonaDeSede = (sede, resolver) =>
     .map((t) => (t ?? '').trim())
     .filter(Boolean)
     .join(', ');
+
+/**
+ * **¿Esta sede tiene una geografía que no cierra?** — roadmap 5.3.
+ *
+ * Devuelve el motivo, o `null`. Es la pregunta que el tablero hace para el aviso
+ * «Publicadas con un lugar que no cierra», y vive acá y no en el tablero porque
+ * las piezas que la contestan —`esCaba`, `esProvincia`, la regla de qué subdivide
+ * a qué— ya viven acá: escribirla en otro lado es la segunda copia de la cascada.
+ *
+ * Tres casos, y los tres **se publican mal** (por eso son un aviso y no un
+ * pendiente de prolijidad):
+ *
+ *  - `barrio-es-provincia` — el barrio es una de las 24 provincias. Es lo que
+ *    dejó la migración de B-976 («Buenos Aires» como barrio de una sede porteña).
+ *  - `caba-y-otra-ciudad` — la provincia dice CABA y la ciudad otra cosa, o al
+ *    revés. En CABA la ciudad **es** CABA (`conProvincia` la completa sola), así
+ *    que cualquier otra combinación contradice lo que el formulario escribe.
+ *  - `barrio-fuera-de-caba` — un barrio cargado fuera de CABA. El formulario no
+ *    lo pide ahí, así que viene de datos viejos, y `piezasDeLugar` lo muestra
+ *    primero porque esconder un dato cargado es peor: «Palermo, Avellaneda» es
+ *    exactamente el caso de B-1124. También sin provincia cargada, si la ciudad
+ *    es de afuera: es el mismo dato viejo antes del backfill.
+ *
+ * **No señala lo que falta**: una sede porteña sin barrio o una sin provincia no
+ * contradicen nada, y la ficha cae a la ciudad, que es la respuesta menos mala. Un
+ * aviso que listara todo lo incompleto sería el que se aprende a ignorar.
+ *
+ * @param {SedeGeografica | null | undefined} sede
+ * @returns {'barrio-es-provincia' | 'caba-y-otra-ciudad' | 'barrio-fuera-de-caba' | null}
+ */
+export const geografiaQueNoCierra = (sede) => {
+  if (!sede) return null;
+  const { provincia, barrio, ciudad } = geografiaNormalizada(sede);
+  // «Provincia de Buenos Aires» es como quedó escrita en B-976, y slugifica a
+  // `provincia-de-buenos-aires`, que no está en `PROVINCIAS` con ese nombre.
+  if (barrio && (esProvincia(barrio) || esProvincia(slugify(barrio).replace(/^provincia-de-/, ''))))
+    return 'barrio-es-provincia';
+  if (provincia && ciudad && esCaba(provincia) !== esCaba(ciudad)) return 'caba-y-otra-ciudad';
+  if (barrio && provincia && !esCaba(provincia)) return 'barrio-fuera-de-caba';
+  // Documento anterior a B-950: sin provincia, `provinciaDeSede` solo infiere CABA
+  // de la ciudad, así que «Palermo, Mar del Plata» quedaba invisible por cómo se
+  // completa el default y no porque falte un dato (lo cobró el `auditor-trampas`).
+  if (barrio && !provincia && ciudad && !esCaba(ciudad)) return 'barrio-fuera-de-caba';
+  return null;
+};

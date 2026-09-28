@@ -41,6 +41,10 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
+- **B-2166** — corregir la sede con un barrio «Rosario» sobrante en Rosario (la ciudad
+  ya lo dice): desde el 2026-09-28 el aviso «Publicadas con un lugar que no cierra» del
+  tablero la señala. Dejar el barrio vacío, o completarlo con el barrio real si la sede
+  lo tiene.
 - **B-2165** — corregir en el panel las webs de organizador mal cargadas, **primero
   la que tiene un mail personal**: desde el arreglo ya no sale como link, pero la
   página de detalle la sigue mostrando como texto, así que el mail sigue publicado
@@ -229,6 +233,16 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-500** | El aviso «ya-paso»: el dueño no entendía por qué el tablero marcaba como problema algo que es el archivo funcionando bien | ✅ hecho (2026-09-03) — primero reencuadrado (D-270), después **sacado del todo** (D-273): el dueño señaló que la lista crece sin techo y no pide ninguna acción para casi nada. Queda la cobertura acotada «cuántas tienen fecha futura», no la lista |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
+
+### B-2166 · Una sede con el barrio «Rosario» sobrante en Rosario · P3 — pendiente del dueño
+
+Lo encontró el aviso nuevo «Publicadas con un lugar que no cierra» (roadmap 5.3) la
+primera vez que se midió contra el `events.json` publicado, el 2026-09-28: es la única
+actividad con fecha por venir que marca. Es el caso que B-1124 ya había nombrado
+(«Lectura y análisis de Mariana Pineda»): el barrio repite la ciudad, y como
+`piezasDeLugar` muestra un barrio cargado fuera de CABA, la ficha dice el lugar dos
+veces. Se corrige en el panel dejando el barrio vacío. Se cierra cuando el aviso deje de
+marcarla.
 
 ### B-2164 · Dibujar la serie de fotos del tablero · P3 — vigilado hasta que haya tres fotos
 

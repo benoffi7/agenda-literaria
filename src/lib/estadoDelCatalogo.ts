@@ -1,6 +1,7 @@
 import { admiteMonto } from '@/lib/arancel';
 import { urlSegura } from '@/lib/enlaceSeguro';
 import { tieneFuturo } from '@/lib/filtrosActividades';
+import { geografiaQueNoCierra } from '@/lib/geografia.mjs';
 import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { instanteDeTimestamp } from '@/lib/sesiones';
@@ -85,6 +86,7 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
  */
 export const CLASES_DE_AVISO = [
   'inscripcion-cerrada',
+  'lugar-que-no-cierra',
   'sin-flyer',
   'sin-etiquetas',
   'descripcion-corta',
@@ -118,6 +120,23 @@ const TEXTO: Record<ClaseDeAviso, { titulo: string; porque: string }> = {
     titulo: 'Publicadas con la inscripción ya cerrada y encuentros por venir',
     porque:
       'El sitio las sigue ofreciendo. Alguien va a escribir y no va a poder entrar.',
+  },
+  /**
+   * Roadmap 5.3 — la regla es `geografiaQueNoCierra` (`geografia.mjs`), sobre
+   * **cada** fila de «Dónde» y no sobre la sede derivada: una actividad con una
+   * fila bien y otra cruzada publica mal la segunda. Solo las que tienen fecha por
+   * venir, porque el dueño decidió que lo pasado no se corrige (B-1124).
+   *
+   * **Va segundo** por el criterio de la lista —lo que le hace perder algo a
+   * alguien de afuera—: el daño principal no es que no se encuentre filtrando
+   * (eso es `sin-etiquetas`, más abajo), es que alguien vaya a otro lugar.
+   */
+  'lugar-que-no-cierra': {
+    titulo: 'Publicadas con un lugar que no cierra',
+    porque:
+      'El barrio, la ciudad y la provincia se contradicen (un barrio porteño en otra ciudad, ' +
+      'una provincia como barrio): el sitio muestra un lugar equivocado, y alguien puede ir ' +
+      'adonde no es. Tampoco aparece al filtrar por el lugar de verdad.',
   },
   'sin-flyer': {
     titulo: 'Publicadas sin imagen',
@@ -408,9 +427,14 @@ export const publicaPrecio = (a: Pick<Actividad, 'arancel'>): boolean =>
  * Se cae a `sede` solo si no hay ninguna fila, que es la forma de los documentos
  * anteriores a B-224 — el mismo respaldo que usa `porModalidad`.
  */
-const barriosQueOfrece = (a: ActividadConId): string[] => {
+/** Las sedes de todas las filas de «Dónde», o la derivada si el documento es anterior a B-224. */
+const sedesDe = (a: ActividadConId) => {
   const filas = a.modalidades ?? [];
-  const barrios = (filas.length > 0 ? filas.map((f) => f.sede) : [a.sede])
+  return filas.length > 0 ? filas.map((f) => f.sede) : [a.sede];
+};
+
+const barriosQueOfrece = (a: ActividadConId): string[] => {
+  const barrios = sedesDe(a)
     .map((sede) => (sede?.barrio ?? '').trim())
     .filter((barrio) => barrio !== '');
   return [...new Set(barrios)];
@@ -449,6 +473,9 @@ export const estadoDelCatalogo = (
     // El peor de los seis: el sitio ofrece algo a lo que no se puede entrar.
     'inscripcion-cerrada': publicadas.filter(
       (a) => tieneFuturo(a, ahora) && inscripcionCerrada(a, ahora),
+    ),
+    'lugar-que-no-cierra': publicadas.filter(
+      (a) => tieneFuturo(a, ahora) && sedesDe(a).some((s) => geografiaQueNoCierra(s) !== null),
     ),
     'sin-flyer': publicadas.filter((a) => faltaElFlyer(imagenesDe(a))),
     'sin-etiquetas': publicadas.filter((a) => (a.tags ?? []).length === 0),

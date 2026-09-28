@@ -65,6 +65,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'lugar-que-no-cierra',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'El tablero avisa cuando el lugar de una actividad no cierra',
+    detalle:
+      'Si el barrio, la ciudad y la provincia de una actividad publicada se contradicen —una ' +
+      'provincia cargada como barrio, o un barrio porteño con una ciudad de afuera—, aparece en ' +
+      'el aviso «Publicadas con un lugar que no cierra». El sitio muestra ese lugar mal y la ' +
+      'actividad no sale al filtrar por el lugar de verdad. Tocá el título para corregirla.',
+    donde: 'Estadísticas → «El catálogo».',
+  },
+  {
     id: 'web-organizador-detecta-instagram-y-mail',
     fecha: '2026-09-28',
     version: '1.11.0',

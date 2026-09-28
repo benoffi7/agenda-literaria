@@ -542,3 +542,35 @@ describe('B-970 · conFiltroDeGeografia', () => {
     expect(conFiltroDeGeografia({ barrio: 'boedo' }, 'barrio', 'boedo').barrio).toBeUndefined();
   });
 });
+
+describe('geografiaQueNoCierra — roadmap 5.3', async () => {
+  const { geografiaQueNoCierra } = await import('@/lib/geografia.mjs');
+  const sede = (barrio: string, ciudad: string, provincia: string) => ({ barrio, ciudad, provincia });
+
+  it('una provincia cargada como barrio, también como quedó escrita en B-976', () => {
+    expect(geografiaQueNoCierra(sede('buenos-aires', 'caba', 'caba'))).toBe('barrio-es-provincia');
+    expect(geografiaQueNoCierra(sede('provincia-de-buenos-aires', 'caba', 'caba'))).toBe('barrio-es-provincia');
+  });
+
+  it('CABA con otra ciudad, y otra provincia con la ciudad CABA', () => {
+    expect(geografiaQueNoCierra(sede('almagro', 'avellaneda', 'caba'))).toBe('caba-y-otra-ciudad');
+    expect(geografiaQueNoCierra(sede('', 'caba', 'buenos-aires'))).toBe('caba-y-otra-ciudad');
+    // Los alias de CABA (B-967) son CABA: no contradicen nada.
+    expect(geografiaQueNoCierra(sede('boedo', 'ciudad-de-buenos-aires', 'caba'))).toBeNull();
+  });
+
+  it('un barrio fuera de CABA, con provincia o en un documento anterior a B-950', () => {
+    expect(geografiaQueNoCierra(sede('palermo', 'avellaneda', 'buenos-aires'))).toBe('barrio-fuera-de-caba');
+    expect(geografiaQueNoCierra(sede('Palermo', 'Mar del Plata', ''))).toBe('barrio-fuera-de-caba');
+  });
+
+  it('lo que cierra o solo está incompleto da null', () => {
+    expect(geografiaQueNoCierra(sede('boedo', 'caba', 'caba'))).toBeNull();
+    expect(geografiaQueNoCierra(sede('', 'caba', 'caba'))).toBeNull();
+    expect(geografiaQueNoCierra(sede('', 'mar-del-plata', 'buenos-aires'))).toBeNull();
+    expect(geografiaQueNoCierra(sede('', 'Mar del Plata', ''))).toBeNull();
+    // Documento viejo porteño: la ciudad CABA hace de provincia (D-26).
+    expect(geografiaQueNoCierra(sede('boedo', 'CABA', ''))).toBeNull();
+    expect(geografiaQueNoCierra(null)).toBeNull();
+  });
+});

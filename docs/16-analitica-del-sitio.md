@@ -130,6 +130,7 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | 7 | **Un filtro que se aplica y deja cero resultados** | un evento propio en la island de filtros, con la combinación que quedó vacía | retirar el eje, o cargar lo que falta. Un eje que da cero seguido es un eje que estorba | 🟡 **el evento está y mide** (B-375, con el eje desde B-798) — falta registrar `eje` como dimensión para poder consultarlo (paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)) |
 | 8 | **Una actividad que se abre mucho y no genera ni un mensaje** | vistas de página (GA4) + clic en el botón de inscripción (evento propio) | revisar la descripción, el precio o la forma de anotarse de **esa** actividad | ❌ el clic ya se mide (B-375); falta la otra mitad del cruce — las vistas por actividad, que son **B-374** y un mes de datos |
 | 9 | **Una actividad publicada con una web del organizador que no enlaza** — está cargada y no es una dirección | catálogo | corregirla: suele ser un espacio o una palabra de más. Mientras tanto las tres salidas la tiran sin decir nada — la página de detalle la muestra como texto plano, el JSON-LD no emite `organizer.url` y el texto para redes tampoco la enlaza | ✅ **B-813** |
+| 10 | **Una actividad publicada con un lugar que no cierra** — el barrio, la ciudad y la provincia se contradicen | catálogo | corregir la fila de «Dónde»: casi siempre es un dato viejo, de antes de la cascada de B-950. Mientras tanto el sitio muestra un lugar equivocado | ✅ **roadmap 5.3** |
 
 **La 9 llegó después que las ocho, y de otro lado** (**B-813**, 2026-09-08): no
 salió de pensar fricciones sino del informe «Eventos» de Search Console, que
@@ -983,9 +984,10 @@ qué se está ofreciendo y qué le falta.
 
 Debajo, tres bloques, en el orden de lo que hay que hacer primero:
 
-1. **Los avisos** — las **seis** fricciones detectables del
-   [§4](#4--las-fricciones-a-detectar-traducidas) (las cinco originales, más la
-   web del organizador que no enlaza que sumó **B-813**), cada una con las
+1. **Los avisos** — las **siete** fricciones detectables del
+   [§4](#4--las-fricciones-a-detectar-traducidas) (las cinco originales, la web
+   del organizador que no enlaza que sumó **B-813**, y el lugar que no cierra que
+   sumó el **roadmap 5.3**), cada una con las
    actividades que la disparan y un click para
    abrirlas. Van primero porque son lo accionable, y entre ellas el orden es por
    **gravedad y no por cantidad**: arriba lo que le hace perder algo a alguien de

@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **El tablero avisa cuando el lugar de una actividad no cierra** (roadmap 5.3). Aviso
+  nuevo, «Publicadas con un lugar que no cierra», para las que tienen fecha por venir y
+  en alguna fila de «Dónde» el barrio es una provincia, CABA tiene otra ciudad, o hay un
+  barrio fuera de CABA. La regla es `geografiaQueNoCierra` en `functions/geografia.js`,
+  junto a la cascada. Contra el `events.json` del 2026-09-28 marca una sola (un barrio
+  «Rosario» sobrante en Rosario); lo incompleto, como una sede porteña sin barrio, no se
+  señala.
 - **Un script revisa los links rotos del sitio** (roadmap 5.5). `npm run links:revisar`
   recorre las páginas del sitemap publicado, prueba cada link a un sitio de afuera una
   vez y deja un informe con qué está roto y en qué página. Lee el sitio y no la base,

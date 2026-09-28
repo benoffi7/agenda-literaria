@@ -1038,7 +1038,7 @@ pueden pasar: no cuentan los cancelados ni los de una actividad cancelada.
 
 **Después, los avisos, y van primero porque son lo accionable.** Un tablero que
 abre con gráficos y esconde «hay tres publicadas a las que no se puede entrar»
-tiene el orden al revés. Son seis clases, ordenadas **por gravedad y no por
+tiene el orden al revés. Son siete clases, ordenadas **por gravedad y no por
 cantidad** —arriba lo que le hace perder algo a alguien de afuera, abajo lo que
 nos hace perder algo a nosotros— y solo aparece la que tiene al menos una
 actividad:
@@ -1046,6 +1046,7 @@ actividad:
 | Aviso | Qué cuesta que pase |
 |---|---|
 | Publicadas con la inscripción ya cerrada y encuentros por venir | el sitio las sigue ofreciendo: alguien va a escribir y no va a poder entrar. **Estar completa no cuenta** como inscripción cerrada — mostrar el canal con el cupo lleno es lo que B-97 decidió, porque siempre hay lista de espera y las bajas existen |
+| Publicadas con un lugar que no cierra (roadmap 5.3) | el barrio, la ciudad y la provincia se contradicen —una provincia como barrio, CABA con otra ciudad, un barrio cargado fuera de CABA—: el sitio muestra un lugar equivocado y la actividad no aparece al filtrar por el de verdad. Mira **cada** fila de «Dónde» y solo las que tienen fecha por venir (B-1124: lo pasado no se corrige). **No** señala lo incompleto —una sede porteña sin barrio—, que no contradice nada. La regla es `geografiaQueNoCierra` (`geografia.mjs`) |
 | Publicadas sin imagen | no aparecen en la cartelera, y el link compartido sale con la imagen genérica del sitio |
 | Publicadas sin etiquetas | están en el sitio pero no se encuentran filtrando por etiqueta |
 | Publicadas con una descripción muy corta | menos de **80 caracteres**: el resultado en Google queda flaco, y es lo que decide el clic |

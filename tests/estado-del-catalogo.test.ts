@@ -934,3 +934,66 @@ describe('el aviso de la web que no enlaza (B-813)', () => {
     expect(clases([b])).toEqual([]);
   });
 });
+
+describe('el aviso del lugar que no cierra (roadmap 5.3)', () => {
+  const futuro = [sesion('2026-09-20T19:00:00Z')];
+  const pasado = [sesion('2026-08-20T19:00:00Z')];
+  const sede = (barrio: string, ciudad: string, provincia: string) => ({
+    nombre: 'Casa X',
+    direccion: 'Calle 1',
+    barrio,
+    ciudad,
+    provincia,
+    indicaciones: '',
+    geo: null,
+  });
+  const en = (id: string, s: ReturnType<typeof sede>, sesiones = futuro, extra: unknown[] = []) =>
+    acto({
+      id,
+      sesiones,
+      modalidades: [
+        { id: 'm1', modalidad: 'presencial', inicio: null, fin: null, sede: s, online: null },
+        ...extra,
+      ],
+      sede: s,
+    } as Partial<ActividadConId> & { id: string });
+
+  it('señala los tres casos que se publican mal', () => {
+    // Los casos reales de B-1124: una provincia como barrio, y «Palermo, Avellaneda».
+    const lista = [
+      en('provincia-como-barrio', sede('provincia-de-buenos-aires', 'caba', 'caba')),
+      en('caba-en-otra-ciudad', sede('almagro', 'avellaneda', 'caba')),
+      en('barrio-fuera', sede('palermo', 'avellaneda', 'buenos-aires')),
+    ];
+    expect(aviso(lista, 'lugar-que-no-cierra')?.actividades.map((a) => a.id)).toEqual([
+      'barrio-fuera',
+      'caba-en-otra-ciudad',
+      'provincia-como-barrio',
+    ]);
+  });
+
+  it('NO señala lo que cierra ni lo que solo está incompleto', () => {
+    const lista = [
+      en('porteña', sede('boedo', 'caba', 'caba')),
+      en('marplatense', sede('', 'mar-del-plata', 'buenos-aires')),
+      // Sin barrio en CABA: falta un dato, no se contradice. La ficha cae a la ciudad.
+      en('porteña-sin-barrio', sede('', 'caba', 'caba')),
+      // Documento anterior a B-950: sin provincia no hay contra qué medir.
+      en('vieja', sede('', 'Mar del Plata', '')),
+    ];
+    expect(clases(lista)).not.toContain('lugar-que-no-cierra');
+  });
+
+  it('mira cada fila de «Dónde» y no solo la primera', () => {
+    const cruzada = { id: 'm2', modalidad: 'presencial', inicio: null, fin: null, sede: sede('palermo', 'avellaneda', 'buenos-aires'), online: null };
+    expect(clases([en('dos-lugares', sede('boedo', 'caba', 'caba'), futuro, [cruzada])])).toContain(
+      'lugar-que-no-cierra',
+    );
+  });
+
+  it('NO señala lo que ya pasó: el dueño decidió que lo pasado no se corrige (B-1124)', () => {
+    expect(clases([en('pasada', sede('palermo', 'avellaneda', 'buenos-aires'), pasado)])).not.toContain(
+      'lugar-que-no-cierra',
+    );
+  });
+});

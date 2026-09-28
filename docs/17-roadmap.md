@@ -515,14 +515,18 @@ que va marcado como decisión.
 - **Nota técnica:** `debeExistir` y `construirEvento` en `functions/calendario.js`,
   `SesionesEditor.tsx`, aviso `cancelar-encuentro` de `src/lib/ayuda.ts`.
 
-### 5.3 · «Datos para revisar»: la geografía que no cierra — **Ahora** · S
+### 5.3 · «Datos para revisar»: la geografía que no cierra — ✅ Hecho (2026-09-28) · S
 
-- **Qué gana quien carga:** el tablero le dice «2 actividades tienen un barrio de
-  CABA con una ciudad de provincia» con el link a cada una, en vez de que se
-  encuentre mirando el sitio.
-- **Qué ya existe:** el tablero con sus avisos de un clic; y el caso concreto de
-  B-1124: dos fichas siguen cruzadas hoy («Basura» y la feria FINDE), más nueve
-  sedes que dejó un backfill.
+> **Hecho el 2026-09-28**: aviso «Publicadas con un lugar que no cierra» en el
+> tablero, con la regla `geografiaQueNoCierra` junto a la cascada. Hoy marca una
+> actividad; FINDE ya pasó y queda afuera por lo que decidió el dueño en B-1124.
+
+- **Qué gana quien carga:** el tablero señala, con el link a cada una, la actividad
+  publicada cuya geografía se contradice, en vez de que se encuentre mirando el sitio.
+- **Qué ya existe:** el tablero con sus avisos de un clic. La feria FINDE, el caso que
+  motivó B-1124, ya pasó y por eso queda afuera del aviso (lo pasado no se corrige); lo
+  que el aviso marca hoy contra el catálogo real es otro caso —un barrio «Rosario»
+  sobrante en Rosario (B-2166)—.
 - **Riesgo / costo:** ninguno; es una regla más del tablero, con la cascada de
   geografía que ya existe.
 - **Nota técnica:** `src/lib/estadoDelCatalogo.ts`, `src/lib/geografia.mjs`.
@@ -632,7 +636,7 @@ las novedades del panel ya existen como mecanismo.
 | 2.1 | Aviso por mail de propuestas nuevas | Panel | M | **Ahora** | 🟨 ¿Uno por uno o diario? → diario |
 | 2.2 | Pasadas fuera del listado (B-101) | Panel | S | ✅ Hecho (2026-09-24) | 🟨 ¿Pestaña o filtro? → filtro |
 | 3.4 | Dibujar el ritmo del catálogo (B-1081) | Analítica | S | ✅ Hecho (2026-09-24) | 🟨 ¿Dibujar o borrar? → dibujar |
-| 5.3 | Aviso de geografía que no cierra | Datos | S | **Ahora** | — |
+| 5.3 | Aviso de geografía que no cierra | Datos | S | ✅ Hecho (2026-09-28) | — |
 | 5.7 | Las dos fichas cruzadas (B-1124) | Datos | S | ❌ Descartado (2026-09-25) | (edición del dueño) |
 | 6.1 | Que el backlog no pierda aprobadas | Otros | S | ✅ Hecho (2026-09-24) | — |
 | 3.2 | Vistas contra mensajes por actividad | Analítica | M | Próximo (3/10) | — |
