@@ -58,6 +58,8 @@ export interface OpcionesDeEntrada {
   /** ISO del alta, que es la clave del orden «Recién agregadas». */
   creadoEn?: string;
   imagenUrl?: string | null;
+  /** Roadmap 4.2 — la marca «Destacada», que el correo pone arriba. */
+  destacado?: boolean;
 }
 
 const sesion = (iso: string, i: number, cancelada: boolean): Sesion => ({
@@ -135,7 +137,7 @@ export const actividadDePrueba = (o: OpcionesDeEntrada = {}): Actividad => {
     difusion: { arrobar: [], notas: '' },
     estado: 'publicado',
     tags: o.tags ?? [],
-    destacado: false,
+    destacado: o.destacado ?? false,
     searchText: '',
     createdAt: ts(o.creadoEn ?? '2026-08-01T00:00:00Z'),
     updatedAt: ts('2026-08-02T00:00:00Z'),

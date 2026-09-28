@@ -405,7 +405,10 @@ que va marcado como decisión.
 - **Nota técnica:** `src/lib/boletinSemanal.ts`, `src/lib/textoRedes.ts`,
   `BoletinPanel.tsx`, `TextoRedes.tsx`.
 
-### 4.2 · El correo arranca por las destacadas — **Ahora** · S
+### 4.2 · El correo arranca por las destacadas — ✅ Hecho (2026-09-28) · S
+
+> **Hecho el 2026-09-28**: bloque «Recomendadas de la semana» con hasta tres, arriba
+> de los días. Lo decide la marca «Destacada» de cada actividad.
 
 - **Qué gana quien lee el correo:** arriba, las dos o tres que el equipo
   recomienda; abajo, el resto por día. Un correo con curaduría se abre; una lista,
@@ -643,7 +646,7 @@ las novedades del panel ya existen como mecanismo.
 | 5.2 | Encuentro cancelado avisa (B-98) | Datos / sitio | M | ✅ Hecho (2026-09-24) | ya aprobada |
 | 1.1 | Compartir y agendar en el detalle | Sitio | S | ✅ Hecho (2026-09-28) | — |
 | 4.1 | El lunes de difusión | Redes | S–M | **Ahora** | — |
-| 4.2 | El correo arranca por las destacadas | Newsletter | S | **Ahora** | — |
+| 4.2 | El correo arranca por las destacadas | Newsletter | S | ✅ Hecho (2026-09-28) | — |
 | 1.2 | Links tocables en la descripción (B-980) | Sitio | S | ✅ Hecho (2026-09-24) | ya decidida |
 | 2.1 | Aviso por mail de propuestas nuevas | Panel | M | **Ahora** | 🟨 ¿Uno por uno o diario? → diario |
 | 2.2 | Pasadas fuera del listado (B-101) | Panel | S | ✅ Hecho (2026-09-24) | 🟨 ¿Pestaña o filtro? → filtro |

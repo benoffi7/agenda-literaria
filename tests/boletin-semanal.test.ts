@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   AVISO_DE_CAMBIOS,
   DIAS_DEL_BOLETIN,
+  MAXIMO_DE_DESTACADAS,
+  TITULO_DE_DESTACADAS,
   boletinSemanal,
+  metadatosDeDestacada,
   htmlDelBoletin,
   textoPlanoDelBoletin,
   ventanaDelBoletin,
@@ -408,5 +411,75 @@ describe('el cuerpo del correo', () => {
     const texto = textoPlanoDelBoletin(boletinSemanal(indice, manana('2026-09-14'), ETIQUETAS)!);
     expect(texto).toContain('Café & letras');
     expect(texto).not.toContain('&amp;');
+  });
+});
+
+describe('las recomendadas arriba — roadmap 4.2', () => {
+  const ahora = manana('2026-09-14');
+
+  it('van arriba, en orden de fecha, y su encuentro no se repite en el día', () => {
+    const b = boletinSemanal(
+      indiceDePrueba([
+        encuentro(1, '2026-09-15T22:00:00Z'),
+        encuentro(2, '2026-09-17T22:00:00Z', { destacado: true }),
+        encuentro(3, '2026-09-16T22:00:00Z', { destacado: true }),
+      ]),
+      ahora,
+      ETIQUETAS,
+    )!;
+    expect(b.destacadas.map((e) => e.titulo)).toEqual(['Actividad 3', 'Actividad 2']);
+    expect(b.dias.flatMap((d) => d.encuentros.map((e) => e.titulo))).toEqual(['Actividad 1']);
+    // Los días que quedaron vacíos no salen: el 16 y el 17 solo tenían destacadas.
+    expect(b.dias.map((d) => d.clave)).toEqual(['2026-09-15']);
+    // El número del asunto sigue contando todo.
+    expect(b.total).toBe(3);
+    expect(b.preencabezado.startsWith('Actividad 3 · Actividad 2')).toBe(true);
+  });
+
+  it('un ciclo destacado con dos fechas en la semana sale arriba con la primera y la otra sigue en su día', () => {
+    const b = boletinSemanal(
+      indiceDePrueba([encuentro(1, '2026-09-15T22:00:00Z', { destacado: true, fechas: ['2026-09-15T22:00:00Z', '2026-09-18T22:00:00Z'] })]),
+      ahora,
+      ETIQUETAS,
+    )!;
+    expect(b.destacadas).toHaveLength(1);
+    expect(b.destacadas[0]!.dia).toBe('2026-09-15');
+    expect(b.dias.map((d) => d.clave)).toEqual(['2026-09-18']);
+  });
+
+  it(`como mucho ${MAXIMO_DE_DESTACADAS}: las demás destacadas siguen en su día`, () => {
+    const b = boletinSemanal(
+      indiceDePrueba([1, 2, 3, 4].map((i) => encuentro(i, `2026-09-1${4 + i}T22:00:00Z`, { destacado: true }))),
+      ahora,
+      ETIQUETAS,
+    )!;
+    expect(b.destacadas).toHaveLength(MAXIMO_DE_DESTACADAS);
+    expect(b.dias.flatMap((d) => d.encuentros.map((e) => e.titulo))).toEqual(['Actividad 4']);
+  });
+
+  it('sin destacadas en la semana, el correo es el de siempre y no lleva el bloque', () => {
+    const b = boletinSemanal(indiceDePrueba([encuentro(1, '2026-09-15T22:00:00Z')]), ahora, ETIQUETAS)!;
+    expect(b.destacadas).toEqual([]);
+    expect(textoPlanoDelBoletin(b)).not.toContain(TITULO_DE_DESTACADAS.toUpperCase());
+    expect(htmlDelBoletin(b)).not.toContain(TITULO_DE_DESTACADAS);
+  });
+
+  it('los dos cuerpos la dicen con el día adelante, y el bloque va antes que los días', () => {
+    const b = boletinSemanal(
+      indiceDePrueba([
+        encuentro(1, '2026-09-15T22:00:00Z'),
+        encuentro(2, '2026-09-17T22:00:00Z', { destacado: true }),
+      ]),
+      ahora,
+      ETIQUETAS,
+    )!;
+    const fila = metadatosDeDestacada(b.destacadas[0]!);
+    expect(fila.startsWith(`${fechaLargaDeDia('2026-09-17')}, `)).toBe(true);
+    const texto = textoPlanoDelBoletin(b);
+    expect(texto).toContain(fila);
+    expect(texto.indexOf(TITULO_DE_DESTACADAS.toUpperCase())).toBeLessThan(texto.indexOf(fechaLargaDeDia('2026-09-15').toUpperCase()));
+    const html = htmlDelBoletin(b);
+    expect(html).toContain(TITULO_DE_DESTACADAS);
+    expect(html.indexOf(TITULO_DE_DESTACADAS)).toBeLessThan(html.indexOf(fechaLargaDeDia('2026-09-15')));
   });
 });

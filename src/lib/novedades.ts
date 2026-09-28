@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'correo-arranca-por-destacadas',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'El correo semanal arranca por las destacadas',
+    detalle:
+      'Arriba del correo va «Recomendadas de la semana»: hasta tres actividades marcadas ' +
+      '«Destacada» que tengan un encuentro en los siete días. Para elegir qué va ahí, marcá ' +
+      '«Destacada» en el formulario de la actividad. Sin ninguna, el correo sale como siempre.',
+    donde: 'Correo → «Lo que va a decir».',
+  },
+  {
     id: 'filtro-posibles-duplicados',
     fecha: '2026-09-28',
     version: '1.11.0',

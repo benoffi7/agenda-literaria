@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El correo semanal arranca por las destacadas** (roadmap 4.2). Un bloque
+  «Recomendadas de la semana» con hasta tres actividades marcadas «Destacada» que
+  tengan un encuentro en los siete días, con el día adelante; ese encuentro sale de la
+  lista por día, y la vista previa de la bandeja arranca por ellas. Sin destacadas, el
+  correo no cambia. Va en los dos cuerpos y en la vista previa del panel.
 - **«Compartir por WhatsApp» y «Agendar este encuentro» en la página de cada
   actividad** (roadmap 1.1). En la ficha, un link que abre WhatsApp con el título y la
   dirección; en cada encuentro que todavía puede pasar (y en la ficha, el próximo),

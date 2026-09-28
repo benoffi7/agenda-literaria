@@ -4,6 +4,8 @@ import {
   boletinSemanal,
   htmlDelBoletin,
   metadatosDe,
+  metadatosDeDestacada,
+  TITULO_DE_DESTACADAS,
   textoPlanoDelBoletin,
   type Boletin,
 } from '@/lib/boletinSemanal';
@@ -112,6 +114,34 @@ function VistaPrevia({ boletin }: { boletin: Boletin }) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-serif text-base font-semibold">Lo que va a decir</h2>
+      {/*
+        Roadmap 4.2 — las recomendadas salen de lo marcado «Destacada» en cada
+        actividad. Si no aparece ninguna, es que ninguna destacada tiene un
+        encuentro esta semana: se marca desde el formulario, no desde acá.
+      */}
+      {boletin.destacadas.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <h3 className="border-b-2 border-tinta pb-1 text-xs font-bold tracking-wider text-tinta uppercase">
+            {TITULO_DE_DESTACADAS}
+          </h3>
+          <ul className="flex flex-col gap-2 py-1">
+            {boletin.destacadas.map((e) => (
+              <li key={e.clave}>
+                <a href={e.url} target="_blank" rel="noreferrer" className="text-sm font-semibold">
+                  {e.titulo}
+                </a>
+                <p className="text-xs text-tinta/65">{metadatosDeDestacada(e)}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="text-xs text-tinta/65">
+          Ninguna actividad destacada tiene encuentros esta semana, así que el correo no
+          lleva el bloque de recomendadas. Se marca «Destacada» desde el formulario de cada
+          una.
+        </p>
+      )}
       {boletin.dias.map((dia) => (
         <div key={dia.clave} className="flex flex-col gap-1">
           <h3 className="border-b border-borde pb-1 text-xs font-bold tracking-wider text-tinta/70 uppercase">

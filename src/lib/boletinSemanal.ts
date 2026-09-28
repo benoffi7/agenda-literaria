@@ -84,6 +84,13 @@ import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
 export const DIAS_DEL_BOLETIN = 7;
 
 /**
+ * Roadmap 4.2 — cuántas recomendadas van arriba. «Las dos o tres que el equipo
+ * recomienda»: con más, el bloque deja de ser una recomendación y pasa a ser otra
+ * lista. Si hay más destacadas en la semana, las que no entran siguen en su día.
+ */
+export const MAXIMO_DE_DESTACADAS = 3;
+
+/**
  * Un encuentro como lo imprime el correo: **strings ya decididos**, nada que
  * derivar del otro lado.
  *
@@ -106,6 +113,8 @@ export interface EncuentroDelBoletin {
   lugar: string;
   /** `Arancelado · $15.000`, o `` cuando el slug no está en la taxonomía. */
   arancel: string;
+  /** `2026-09-26` — el día del encuentro. Lo usa la fila de una destacada. */
+  dia: string;
 }
 
 /** Un día del correo, con sus encuentros en orden de horario. */
@@ -130,8 +139,17 @@ export interface Boletin {
    * títulos, que es lo que se ve al lado del asunto antes de abrir.
    */
   preencabezado: string;
+  /**
+   * Roadmap 4.2 — **las recomendadas**, arriba del resto: hasta
+   * `MAXIMO_DE_DESTACADAS` actividades marcadas `destacado` con un encuentro en la
+   * ventana, en orden de fecha. Cada una va con **su primer encuentro** de la
+   * semana, y ese encuentro sale de `dias` para no decirlo dos veces; si tiene
+   * otro esa misma semana, ése queda en su día. Vacío si no hay ninguna, y el
+   * correo es el de siempre.
+   */
+  destacadas: EncuentroDelBoletin[];
   dias: DiaDelBoletin[];
-  /** Cuántos encuentros entraron, sumando los días. */
+  /** Cuántos encuentros entraron, sumando los días y las destacadas. */
   total: number;
   /** `viernes 25 de septiembre` — el primer día de la ventana (hoy). */
   desde: string;
@@ -188,7 +206,11 @@ export const boletinSemanal = (
     return [
       {
         clave,
+        instante: d.getTime(),
+        destacada: entrada.destacado === true,
+        slug: e.slug,
         encuentro: {
+          dia: clave,
           clave: `${e.slug}#${e.sesionId}`,
           url: urlDeDetalle(e.slug),
           hora: horaDe(d),
@@ -204,6 +226,24 @@ export const boletinSemanal = (
   if (resueltos.length === 0) return null;
 
   /*
+   * Roadmap 4.2 — las recomendadas: el primer encuentro de la semana de cada
+   * actividad destacada, por fecha, hasta el tope. Se eligen por **encuentro** y
+   * no por actividad para que un ciclo destacado con dos fechas en la semana no
+   * pierda la segunda: sale arriba con la primera y la otra sigue en su día.
+   */
+  const yaElegidas = new Set<string>();
+  const destacadas = [...resueltos]
+    .sort((a, b) => a.instante - b.instante)
+    .filter((r) => {
+      if (!r.destacada || yaElegidas.has(r.slug)) return false;
+      yaElegidas.add(r.slug);
+      return true;
+    })
+    .slice(0, MAXIMO_DE_DESTACADAS)
+    .map((r) => r.encuentro);
+  const arriba = new Set(destacadas.map((e) => e.clave));
+
+  /*
    * **Sin tope por día**, a diferencia del tríptico de la home.
    *
    * Allá el tope existe porque el listado completo está unos centímetros más
@@ -215,16 +255,21 @@ export const boletinSemanal = (
     .map((clave) => ({
       clave,
       rotulo: fechaLargaDeDia(clave),
-      encuentros: resueltos.filter((r) => r.clave === clave).map((r) => r.encuentro),
+      encuentros: resueltos
+        .filter((r) => r.clave === clave && !arriba.has(r.encuentro.clave))
+        .map((r) => r.encuentro),
     }))
     .filter((d) => d.encuentros.length > 0);
 
-  const total = agrupados.reduce((n, d) => n + d.encuentros.length, 0);
-  const titulos = agrupados.flatMap((d) => d.encuentros.map((e) => e.titulo));
+  const total = destacadas.length + agrupados.reduce((n, d) => n + d.encuentros.length, 0);
+  // La vista previa de la casilla arranca por las recomendadas: es lo que se ve
+  // antes de abrir, y es lo que el equipo eligió mostrar.
+  const titulos = [...destacadas, ...agrupados.flatMap((d) => d.encuentros)].map((e) => e.titulo);
 
   return {
     asunto: `Esta semana: ${total} ${total === 1 ? 'encuentro literario' : 'encuentros literarios'}`,
-    preencabezado: titulos.slice(0, 3).join(' · '),
+    preencabezado: [...new Set(titulos)].slice(0, 3).join(' · '),
+    destacadas,
     dias: agrupados,
     total,
     desde: fechaLargaDeDia(dias[0] ?? ''),
@@ -263,6 +308,18 @@ export const metadatosDe = (e: EncuentroDelBoletin): string =>
   [e.hora, e.tipoEtiqueta, e.lugar, e.arancel].filter(Boolean).join(' · ');
 
 /**
+ * La fila de una recomendada: la misma de `metadatosDe` con el día adelante
+ * —`sábado 26 de septiembre, 19:00 · Taller · …`—, porque arriba no hay un
+ * rótulo de día que lo diga. Exportada por el mismo motivo que `metadatosDe`: la
+ * vista previa del panel imprime esta y no una copia.
+ */
+export const metadatosDeDestacada = (e: EncuentroDelBoletin): string =>
+  `${fechaLargaDeDia(e.dia)}, ${metadatosDe(e)}`;
+
+/** El rótulo del bloque de recomendadas, en los dos cuerpos y en la vista previa. */
+export const TITULO_DE_DESTACADAS = 'Recomendadas de la semana';
+
+/**
  * El borrador **en texto plano**, para el cuerpo de texto de la campaña.
  *
  * **`textoPlanoDelBoletin` y no `textoDelBoletin`**, que era el nombre con el que
@@ -282,6 +339,13 @@ export const textoPlanoDelBoletin = (b: Boletin): string =>
     '',
     `Del ${b.desde} al ${b.hasta}.`,
     '',
+    ...(b.destacadas.length > 0
+      ? [
+          TITULO_DE_DESTACADAS.toUpperCase(),
+          ...b.destacadas.flatMap((e) => [`· ${e.titulo}`, `  ${metadatosDeDestacada(e)}`, `  ${e.url}`]),
+          '',
+        ]
+      : []),
     ...b.dias.flatMap((d) => [
       d.rotulo.toUpperCase(),
       ...d.encuentros.flatMap((e) => [`· ${e.titulo}`, `  ${metadatosDe(e)}`, `  ${e.url}`]),
@@ -341,6 +405,26 @@ export const htmlDelBoletin = (b: Boletin): string => {
       '      </tr>',
     ].join('\n');
 
+  const destacada = (e: EncuentroDelBoletin): string =>
+    [
+      '      <tr>',
+      '        <td style="padding:0 0 18px 0;">',
+      `          <a href="${escaparHtml(e.url)}" style="color:#1a1a1a;font-size:19px;font-weight:700;text-decoration:none;">${escaparHtml(e.titulo)}</a>`,
+      `          <div style="color:#666666;font-size:14px;padding-top:4px;">${escaparHtml(metadatosDeDestacada(e))}</div>`,
+      '        </td>',
+      '      </tr>',
+    ].join('\n');
+
+  const bloqueDeDestacadas =
+    b.destacadas.length === 0
+      ? []
+      : [
+          '      <tr>',
+          `        <td style="border-bottom:2px solid #1a1a1a;color:#1a1a1a;font-size:13px;font-weight:700;letter-spacing:0.08em;padding:14px 0 10px 0;text-transform:uppercase;">${escaparHtml(TITULO_DE_DESTACADAS)}</td>`,
+          '      </tr>',
+          b.destacadas.map(destacada).join('\n'),
+        ];
+
   const dia = (d: DiaDelBoletin): string =>
     [
       '      <tr>',
@@ -355,6 +439,7 @@ export const htmlDelBoletin = (b: Boletin): string => {
     '    <td>',
     `      <p style="color:#666666;font-family:Helvetica,Arial,sans-serif;font-size:14px;margin:0 0 20px 0;">Del ${escaparHtml(b.desde)} al ${escaparHtml(b.hasta)}.</p>`,
     '      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">',
+    ...bloqueDeDestacadas,
     b.dias.map(dia).join('\n'),
     '      </table>',
     `      <p style="color:#666666;font-family:Helvetica,Arial,sans-serif;font-size:13px;margin:24px 0 0 0;">${escaparHtml(AVISO_DE_CAMBIOS)}</p>`,

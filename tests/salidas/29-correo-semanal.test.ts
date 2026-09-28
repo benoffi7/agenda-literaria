@@ -114,8 +114,11 @@ describe('barrido del correo semanal (§5, salida 29, B-1230)', () => {
 
   it('sobreviven exactamente los centinelas que una fila del correo necesita', () => {
     const b = armar();
-    // Control positivo: el barrido tiene que estar mirando una fila de verdad.
-    expect(b.dias.flatMap((d) => d.encuentros)).toHaveLength(1);
+    // Control positivo: el barrido tiene que estar mirando una fila de verdad. El
+    // fixture de centinelas es `destacado: true`, así que desde el roadmap 4.2 su
+    // fila sale en las recomendadas y no en su día: se cuentan las dos listas.
+    expect([...b.destacadas, ...b.dias.flatMap((d) => d.encuentros)]).toHaveLength(1);
+    expect(b.destacadas).toHaveLength(1);
 
     barrer('correo semanal (el borrador)', JSON.stringify(b), PERMITIDO_EN_EL_CORREO);
   });
@@ -149,6 +152,7 @@ describe('barrido del correo semanal (§5, salida 29, B-1230)', () => {
     const entrada = indice().actividades[0]!;
     const conFuga = {
       ...b,
+      destacadas: b.destacadas.map((e) => ({ ...e, entrada })),
       dias: b.dias.map((d) => ({
         ...d,
         encuentros: d.encuentros.map((e) => ({ ...e, entrada })),

@@ -978,6 +978,16 @@ de lo que va a decir —agrupada por día, con el horario, la categoría, el lug
 arancel de cada encuentro— y **dos cajas para copiar**: el cuerpo en HTML y el
 cuerpo en texto plano.
 
+**Arranca por las recomendadas** (roadmap 4.2). Arriba de los días va un bloque
+«Recomendadas de la semana» con hasta **tres** actividades marcadas «Destacada» que
+tengan un encuentro en los siete días, en orden de fecha y con el día adelante. Ese
+encuentro sale de la lista por día para no decirlo dos veces; si la destacada tiene
+otro esa semana, sigue en su día, y las destacadas que no entran en las tres siguen
+en el suyo. El texto de vista previa de la bandeja arranca por ellas. Sin ninguna
+destacada con fecha en la semana, el correo es el de siempre y la vista previa lo
+dice. **Lo que decide qué va arriba es la marca «Destacada» de cada actividad**, la
+misma que usa el sitio: se elige desde el formulario, no desde el correo.
+
 **Siete días corridos y no la semana calendario.** Un correo que sale el miércoles y
 abarca de lunes a domingo habla de dos días que ya pasaron y calla los dos
 siguientes. Es la misma decisión que el tríptico de la home tomó con sus ventanas
