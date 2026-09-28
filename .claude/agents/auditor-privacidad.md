@@ -185,6 +185,7 @@ también allá, así que sacarla de la lista pone un test en rojo.
 | `src/lib/reportes.ts` | escribe `/reportes/{id}`, que una Function convierte en un issue del repo **público** |
 | `src/lib/propuestas.ts` | `propuestaAFormulario` decide **qué texto de un tercero sin login entra al `ActividadForm`**, y de ahí sale por las productoras 1, 5, 6, 7, 8, 10 y 11. Ya cobró un hallazgo por ese camino: `incluye` se filtra contra la taxonomía porque `actividadFormSchema` lo declara `z.array(texto)` y no filtra nada (B-830) |
 | `src/lib/bandejaDePropuestas.ts` | la **única escritura** del panel sobre `/propuestas`, y los dos `href` que se arman con texto de alguien sin cuenta: el contacto (`enlaceDeContacto`) y la imagen pegada (`enlaceDeImagen`). Un `href` es donde un string ajeno deja de ser texto |
+| `scripts/resumen-de-la-bandeja.mjs` | lee `/propuestas` y las cuatro colecciones de la Guía con la key del build y manda un mail (roadmap 2.1): **el `select` es la guarda** de que el contacto de un tercero no salga a una casilla, donde no se borra nunca |
 | `functions/retencion.js` | decide **cuánto tiempo sigue existiendo** el único dato personal de un tercero del proyecto, y qué objeto de Storage se va con él. Es la otra mitad de la misma pregunta que las puertas de arriba —ellas deciden qué valor entra, ésta cuándo sale— y corre con el **Admin SDK**, así que `firestore.rules` no la alcanza: la guarda del prefijo `propuestas/` vive acá o no vive (B-838) |
 | `functions/propuestas.js` + `functions/propuestas-trigger.js` | deciden **cuándo se destruye** la foto que mandó un tercero: al rechazar la propuesta, en el acto; al aceptarla, cuando la copia promovida ya la reemplaza (B-863). Es la misma pregunta que `retencion.js` —cuándo sale el dato— del lado del cierre y no del vencimiento, y corren con el **Admin SDK**, así que ni `firestore.rules` ni `storage.rules` los alcanzan. **Faltaban en esta tabla hasta el 2026-09-17**, y el motivo de que importe está medido: la auditoría de B-926 se despertó de casualidad por dos archivos de `src/lib/`; un cambio que tocara **solo** estas Functions no habría disparado nada |
 | `functions/flyer-de-propuesta.js` + `functions/flyer-de-propuesta-trigger.js` | el saneado del flyer **del lado del servidor** (B-896 paso 1): es el que le saca a la foto el **EXIF con las coordenadas de la casa** donde se hace el taller, y el trigger es el **único endpoint de escritura anónimo** del proyecto que recibe bytes. Que el saneo corriera solo en el cliente era el bug que ese ítem cerró, así que este archivo **es** la garantía — si deja de sanear, no hay segunda capa. También faltaba acá |
@@ -459,6 +460,7 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/components/publico/BannerDeCiudad.tsx`
 - `src/lib/textoRedes.ts`
 - `src/lib/difusionDeLaSemana.ts`
+- `scripts/resumen-de-la-bandeja.mjs`
 - `src/lib/handle-instagram.mjs`
 - `functions/handle-instagram.js`
 - `functions/geografia.js`

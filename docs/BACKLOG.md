@@ -253,6 +253,17 @@ la base. Hueco que queda: el aviso «web que no enlaza» del tablero mira solo
 `organizador.web` y no el destino de una inscripción por formulario, así que este caso
 no aparecía en el tablero. Se cierra cuando `links:revisar` dé cero rotos.
 
+### B-2170 · El resumen diario lee con la key que más puede · P3
+
+El resumen de la bandeja (roadmap 2.1) lee `/propuestas` y las fichas con
+`FIREBASE_SERVICE_ACCOUNT`, que es `deploy-ci@`: además de leer, despliega reglas,
+Hosting y Functions (02-infraestructura § Roles). Se eligió así para no crear una
+credencial nueva, y la key vive en el `env` de un solo paso. Lo señaló el
+`auditor-privacidad`: una **cuenta aparte con solo `datastore.viewer`** achicaría lo
+que expone un job diario y desatendido. Costo: una service account más, su key en un
+secret de Actions y una fila en 02-infraestructura. Decidirlo si el resumen crece o
+si aparece otro job programado con la misma key.
+
 ### B-2169 · El tema de un encuentro puede llevar el link de una reunión y sale a tres salidas sin sanear · P2
 
 Lo señaló el `auditor-privacidad` sobre el roadmap 1.1, y **es previo**: el `tema` de

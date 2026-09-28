@@ -831,7 +831,10 @@ sobre el proyecto entero: es el único secreto que la Function necesita leer.
 ### Roles de `deploy-ci@`
 
 ```
-roles/datastore.viewer                     leer Firestore en build time (§2.4)
+roles/datastore.viewer                     leer Firestore en build time (§2.4); lee TODO,
+                                           /propuestas y el contacto de las fichas incluidos,
+                                           y desde el roadmap 2.1 lo usa el resumen diario
+                                           (resumen-diario.yml) para los títulos de la bandeja
 roles/firebasehosting.admin                desplegar el sitio y el panel
 roles/serviceusage.serviceUsageConsumer    el chequeo de "¿está la API habilitada?"
 roles/firebaserules.admin                  desplegar firestore.rules y storage.rules

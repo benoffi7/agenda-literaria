@@ -524,12 +524,14 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
      * nombre del permiso o el trigger, el barrido de abajo se quedaría en cero
      * y pasaría sin mirar nada. Estas dos listas son lo que lo impide.
      */
-    expect(archivos.filter(loDisparaUnaMaquina), 'no se encontró ningún workflow sin humano detrás')
-      .toEqual(['deploy.yml']);
+    // Roadmap 2.1 — `resumen-diario.yml` corre por `schedule`, así que también es
+    // un workflow que nadie mira, con su propio aviso de falla.
+    expect(archivos.filter(loDisparaUnaMaquina).sort(), 'no se encontró ningún workflow sin humano detrás')
+      .toEqual(['deploy.yml', 'resumen-diario.yml']);
     expect(
       archivos.flatMap((a) => avisos(a).map(([n]) => `${a} · ${n}`)).sort(),
       'no se encontró ningún job que pueda dejar el aviso',
-    ).toEqual(['deploy.yml · avisar', 'deploy.yml · avisar-recuperado']);
+    ).toEqual(['deploy.yml · avisar', 'deploy.yml · avisar-recuperado', 'resumen-diario.yml · avisar']);
   });
 
   it.each(archivos)('%s: si lo dispara una máquina, avisa cuando falla', (archivo) => {

@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Un mail por día con lo que entró a la bandeja** (roadmap 2.1). A las 9, un workflow
+  programado manda a la casilla de avisos el título de cada propuesta y el nombre de
+  cada ficha de la Guía que entraron desde el día anterior, con el link al panel; si
+  no entró nada, no sale. Nunca el contacto de quien propuso (la lectura lo excluye con
+  `select`). Usa la casilla y la cuenta del build que ya existían —que no es de solo
+  lectura; acá solo lee—: ninguna credencial nueva (una cuenta aparte es B-2170). Si
+  falla, avisa.
 - **«El lunes de difusión»: el correo, el posteo de la semana y los recordatorios en una
   sola pantalla** (roadmap 4.1). Abajo del correo, «Para redes»: el posteo «Esta semana
   en la agenda» (del índice publicado, como el correo; se corta a los 2200 caracteres

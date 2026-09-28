@@ -184,7 +184,13 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 
 ## Eje 2 · Panel de admin
 
-### 2.1 · Un aviso por mail cuando entra una propuesta o una ficha de la Guía — **Ahora** · M
+### 2.1 · Un aviso por mail cuando entra una propuesta o una ficha de la Guía — ✅ Hecho (2026-09-28) · M
+
+> **Hecho el 2026-09-28**, resumen diario a las 9 desde la casilla de agendaleh
+> (decisión del dueño). Con un cambio sobre la nota técnica: no es una Function con
+> la contraseña en Secret Manager sino un **workflow programado** que usa la casilla
+> y la cuenta del build que ya existían, así que no hay credencial nueva. No
+> suma lo del 5.3: ese aviso ya está en el tablero.
 
 - **Qué gana quien carga:** no tiene que acordarse de abrir la bandeja; la
   propuesta de un organizador se contesta el mismo día y no a la semana, que es
@@ -652,7 +658,7 @@ las novedades del panel ya existen como mecanismo.
 | 4.1 | El lunes de difusión | Redes | S–M | ✅ Hecho (2026-09-28) | — |
 | 4.2 | El correo arranca por las destacadas | Newsletter | S | ✅ Hecho (2026-09-28) | — |
 | 1.2 | Links tocables en la descripción (B-980) | Sitio | S | ✅ Hecho (2026-09-24) | ya decidida |
-| 2.1 | Aviso por mail de propuestas nuevas | Panel | M | **Ahora** | 🟨 ¿Uno por uno o diario? → diario |
+| 2.1 | Aviso por mail de propuestas nuevas | Panel | M | ✅ Hecho (2026-09-28) | 🟨 ¿Uno por uno o diario? → diario |
 | 2.2 | Pasadas fuera del listado (B-101) | Panel | S | ✅ Hecho (2026-09-24) | 🟨 ¿Pestaña o filtro? → filtro |
 | 3.4 | Dibujar el ritmo del catálogo (B-1081) | Analítica | S | ✅ Hecho (2026-09-24) | 🟨 ¿Dibujar o borrar? → dibujar |
 | 5.3 | Aviso de geografía que no cierra | Datos | S | ✅ Hecho (2026-09-28) | — |

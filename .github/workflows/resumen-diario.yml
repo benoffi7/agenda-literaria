@@ -1,0 +1,87 @@
+# El resumen diario de la bandeja — roadmap 2.1.
+#
+# Todos los días a las 9 de Buenos Aires manda un mail con lo que entró por los
+# formularios públicos desde el día anterior: el título de cada propuesta y el
+# nombre de cada ficha de la Guía, y el link al panel. Nunca el contacto de quien
+# propuso. Si no entró nada, no manda nada. Todo el criterio vive en
+# `scripts/resumen-de-la-bandeja.mjs`, que se puede correr a mano con `--seco`.
+#
+# Usa la casilla de avisos que ya existe (B-1140) y la cuenta del build
+# (`deploy-ci@`, que NO es de solo lectura; acá solo lee): ninguna credencial nueva.
+# La key va en el `env` del único paso que la necesita, no en el de `npm ci`.
+name: Resumen diario de la bandeja
+
+on:
+  schedule:
+    # 12:00 UTC son las 9 en Buenos Aires (UTC-3, sin horario de verano).
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resumen-diario
+  cancel-in-progress: false
+
+jobs:
+  resumen:
+    name: Armar y mandar el resumen
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Leer la bandeja y mandar el mail
+        # El texto del mail no se imprime: el log de un repo público es público,
+        # y los títulos los escribe cualquiera. El script dice cuántas, nada más.
+        run: node scripts/resumen-de-la-bandeja.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          MAIL_AVISOS_DESTINO: ${{ secrets.MAIL_AVISOS_DESTINO }}
+          MAIL_AVISOS_USUARIO: ${{ secrets.MAIL_AVISOS_USUARIO }}
+          MAIL_AVISOS_PASSWORD: ${{ secrets.MAIL_AVISOS_PASSWORD }}
+
+  # Si el resumen falla, nadie lo está mirando: corre solo, a las 9 (B-883). Sin
+  # esto, un día sin mail se leería como «no entró nada».
+  avisar:
+    name: Avisar por mail que el resumen falló
+    needs: [resumen]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Un rojo de este job no puede tapar al rojo de verdad (punto 3 de B-883).
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mandar el mail
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MAIL_AVISOS_DESTINO: ${{ secrets.MAIL_AVISOS_DESTINO }}
+          MAIL_AVISOS_USUARIO: ${{ secrets.MAIL_AVISOS_USUARIO }}
+          MAIL_AVISOS_PASSWORD: ${{ secrets.MAIL_AVISOS_PASSWORD }}
+        run: |
+          set -uo pipefail
+          ASUNTO='Agenda LEH: el resumen diario de la bandeja fallo'
+          CUERPO=$(cat <<TEXTO
+          El resumen de las 9 no se pudo armar, así que hoy no llegó.
+          Puede haber propuestas o fichas esperando en la bandeja del panel.
+
+          La corrida: $RUN_URL
+
+          Aviso automatico del repo (roadmap 2.1).
+          TEXTO
+          )
+          ./scripts/mail-de-aviso.sh "$ASUNTO" "$CUERPO"
+          exit 0

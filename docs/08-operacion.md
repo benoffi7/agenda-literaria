@@ -245,6 +245,36 @@ Tres cosas del diseño que conviene saber:
 cabeceras, que un rechazo se distinga de una respuesta vacía, y el desdoblado del
 ICS— sin tocar la red.
 
+### El resumen diario de la bandeja (roadmap 2.1)
+
+Todos los días a las **9 de Buenos Aires**, `.github/workflows/resumen-diario.yml`
+manda un mail a la casilla de avisos con lo que entró por los formularios
+públicos desde el día anterior: el **título** de cada propuesta de actividad y el
+**nombre** de cada ficha de la Guía (librerías, suscripciones, lugares,
+bibliotecas), cuántas esperan en total y el link al panel. **Si no entró nada, no
+manda nada.** Si el workflow falla, llega otro mail diciéndolo (B-883).
+
+- **Nunca lleva el contacto de quien propuso**: la lectura pide solo el título (o
+  el nombre de la ficha) y la fecha (`select`), así que el contacto no sale de la base
+  (`tests/resumen-de-la-bandeja.test.ts` lo fija sobre el fuente).
+- **No hay credencial nueva**: usa la casilla de B-1140 (`MAIL_AVISOS_*`) y la
+  cuenta del build (`FIREBASE_SERVICE_ACCOUNT`, o sea `deploy-ci@`). **Esa cuenta no
+  es de solo lectura** —despliega reglas, Hosting y Functions (02-infraestructura §
+  Roles)—; el resumen solo la usa para leer. Una cuenta aparte con solo lectura es
+  **B-2170**. El roadmap pedía
+  una Function con la contraseña en Secret Manager; eso la habría copiado a un
+  segundo lugar.
+- **El texto no se imprime en el log** del workflow, que es público.
+
+A mano, sin mandar nada (solo imprime cuántas):
+
+```bash
+node scripts/resumen-de-la-bandeja.mjs --seco
+```
+
+Para mandarlo ya sin esperar a las 9: *Actions → Resumen diario de la bandeja →
+Run workflow*.
+
 ### Revisar los links rotos (roadmap 5.5)
 
 ```bash
