@@ -192,6 +192,9 @@ export const fechaCortaDeDia = (clave: string): string => fechaCorta(anclaDeDia(
  */
 export const fechaLargaDeDia = (clave: string): string => fechaLarga(anclaDeDia(clave));
 
+/** `15 de septiembre` — `diaYMes` a partir de la clave del día (roadmap 5.4). */
+export const diaYMesDeDia = (clave: string): string => diaYMes(anclaDeDia(clave));
+
 /**
  * `{ mes: 'Septiembre', anio: '2026' }` — el marcador de mes del listado, **en
  * dos piezas** — B-260.

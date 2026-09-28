@@ -531,13 +531,19 @@ que va marcado como decisión.
   geografía que ya existe.
 - **Nota técnica:** `src/lib/estadoDelCatalogo.ts`, `src/lib/geografia.mjs`.
 
-### 5.4 · Posibles duplicados — **Próximo** · M
+### 5.4 · Posibles duplicados — ✅ Hecho (2026-09-28) · M
+
+> **Hecho el 2026-09-28**: aviso «¿Ya está cargada?» arriba del formulario, que no
+> frena. Compara contra el `events.json` publicado y no contra la base (cero
+> lecturas de más), así que solo ve lo publicado. Contra el catálogo real encontró
+> 11 pares, casi todos duplicados de verdad: la lista está en **B-2167**.
 
 - **Qué gana quien carga:** al convertir una propuesta o al guardar, el panel avisa
   «se parece a *Club de lectura La Fonseca*, que ya está cargado el mismo día».
   Con cuatro formularios públicos abiertos, el mismo taller va a llegar dos veces.
-- **Qué ya existe:** la búsqueda sin acentos del panel y el catálogo entero ya en
-  memoria.
+- **Qué ya existe:** la búsqueda sin acentos del panel (`normalize`) y el
+  `events.json` publicado, que el correo semanal ya lee sin pasar por Firestore
+  (D-801): el aviso reusa ese patrón en vez de cargar el catálogo entero en el panel.
 - **Riesgo / costo:** falsos positivos; tiene que ser un aviso que no frena, nunca
   un bloqueo.
 
@@ -651,7 +657,7 @@ las novedades del panel ya existen como mecanismo.
 | 2.4 | Aviso de precio en las cuatro bandejas (B-1410/1411) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 4.3 | Imagen semanal para redes | Redes | M | Próximo | 🟨 ¿Plantilla propia? → una sola, semanal |
 | 4.4 | Invitar al correo desde el detalle | Newsletter | S | Próximo | — |
-| 5.4 | Posibles duplicados | Datos | M | Próximo | — |
+| 5.4 | Posibles duplicados | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 6.5 | Guía para publicadoras | Otros | S | Próximo | — |
 | 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | Más adelante | — |

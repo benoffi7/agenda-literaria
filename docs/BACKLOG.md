@@ -41,6 +41,8 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
+- **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas
+  (la lista está en el ítem): dejar una de cada par que sea la misma.
 - **B-2166** — corregir la sede con un barrio «Rosario» sobrante en Rosario (la ciudad
   ya lo dice): desde el 2026-09-28 el aviso «Publicadas con un lugar que no cierra» del
   tablero la señala. Dejar el barrio vacío, o completarlo con el barrio real si la sede
@@ -233,6 +235,20 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-500** | El aviso «ya-paso»: el dueño no entendía por qué el tablero marcaba como problema algo que es el archivo funcionando bien | ✅ hecho (2026-09-03) — primero reencuadrado (D-270), después **sacado del todo** (D-273): el dueño señaló que la lista crece sin techo y no pide ninguna acción para casi nada. Queda la cobertura acotada «cuántas tienen fecha futura», no la lista |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
+
+### B-2167 · Once pares de actividades publicadas que parecen duplicadas · P2 — pendiente del dueño
+
+El aviso de posibles duplicados (roadmap 5.4), medido contra el `events.json`
+publicado del 2026-09-28, encontró 11 pares que se parecen el mismo día. La mayoría
+parecen la misma actividad cargada dos veces —«Festival argentino de historieta» y
+«…de la Historieta», los dos «Borges salvaje», «El buen mal» en el mismo lugar y hora,
+las dos «Lectura silenciosa», las dos «Gran Barata de libros», «El misterio del
+cuento» con y sin «Octubre»— y una es la misma cargada una vez por modalidad
+(«Alto viaje», presencial y virtual), que desde B-224 es **una** actividad con dos
+filas de «Dónde». Otros pueden ser distintos a propósito (FILBA y un evento de FILBA).
+**Qué hacer:** abrir cada par, y si es la misma, dejar una y cancelar o borrar la otra.
+El aviso aparece al abrir cualquiera de las dos en el panel. Para volver a medir, el
+cálculo es `posiblesDuplicados` de cada actividad contra el índice.
 
 ### B-2166 · Una sede con el barrio «Rosario» sobrante en Rosario · P3 — pendiente del dueño
 

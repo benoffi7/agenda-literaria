@@ -2205,6 +2205,12 @@ build. Con `no-cache` no hace falta para el CDN, pero blinda contra un
 intermediario mal configurado que sirva el JSON del build anterior contra el HTML
 del nuevo, que es la única forma de que el sitio se contradiga consigo mismo.
 
+**Desde el roadmap 5.4 hay otro lector en el panel:** el formulario pide
+`/events.json?t=<ahora>` con `no-store`, una vez cada 15 minutos por pestaña, para
+avisar posibles duplicados (`src/components/admin/useIndicePublicado.ts`). No usa
+`VERSION_APP` porque no es un pedido del sitio: comparte la promesa de frescura del
+correo semanal (D-801), no la del cache del listado.
+
 Otras reglas:
 
 - Fuentes: ya vienen de Google Fonts con `preconnect` y `display=swap` en

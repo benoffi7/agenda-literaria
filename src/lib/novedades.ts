@@ -65,6 +65,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'posible-duplicado',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'El formulario avisa si la actividad ya parece estar cargada',
+    detalle:
+      'Si ya hay una actividad publicada el mismo día con un título parecido, o en el mismo ' +
+      'lugar y a la misma hora, arriba del formulario aparece «¿Ya está cargada?» con el link ' +
+      'para mirarla. Si es la misma, conviene editar esa en vez de cargar otra. No frena nada: ' +
+      'si no es la misma, seguí.',
+    donde: 'Formulario de una actividad, arriba de todo.',
+  },
+  {
     id: 'lugar-que-no-cierra',
     fecha: '2026-09-28',
     version: '1.11.0',

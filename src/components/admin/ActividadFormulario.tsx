@@ -61,6 +61,10 @@ import { fueraDeSuCiudad, textoFueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
 import { useOpciones } from '@/components/admin/useOpciones';
 import { faltaParaPublicar } from '@/lib/schema';
 import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
+import { posiblesDuplicados } from '@/lib/formulario/duplicados';
+import { useIndicePublicado } from '@/components/admin/useIndicePublicado';
+import { diaYMesDeDia } from '@/lib/fechasPublicas';
+import { rutaDeDetalle } from '@/lib/rutasPublicas';
 import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { ActividadConId, ActividadForm, CampoMultivalor } from '@/types/actividad';
 
@@ -342,6 +346,24 @@ export function ActividadFormulario({
    * poder publicar», y sin decir nada el campo se quedaba vacío (2 de 42).
    */
   const recomendaciones = useMemo(() => recomendacionesDelFormulario(form), [form]);
+  /*
+   * Roadmap 5.4 — «¿esto ya está cargado?». Contra el `events.json` publicado y
+   * no contra Firestore: el porqué está en `formulario/duplicados.ts`. Solo mira
+   * título, fechas y sede, así que no se recalcula por cada tecla de la
+   * descripción.
+   */
+  const indicePublicado = useIndicePublicado(!soloLectura);
+  const duplicados = useMemo(
+    () =>
+      indicePublicado
+        ? posiblesDuplicados(
+            { titulo: form.titulo, sesiones: form.sesiones, modalidades: form.modalidades },
+            indicePublicado.actividades,
+            inicial?.id ?? null,
+          )
+        : [],
+    [indicePublicado, form.titulo, form.sesiones, form.modalidades, inicial?.id],
+  );
 
   /**
    * B-813 — lo que Google no va a mostrar de esta actividad si se publica así:
@@ -732,6 +754,41 @@ export function ActividadFormulario({
         la foto de un tercero que se queda en la propuesta (la aceptación borra el
         original solo si la actividad tiene una copia propia, B-863).
       */}
+      {/*
+        Roadmap 5.4 — un aviso y no un bloqueo: dos clubes distintos pueden leer
+        el mismo libro el mismo sábado. El link va al sitio y en otra pestaña,
+        porque abrir la otra en el panel haría perder lo que se está cargando.
+      */}
+      {duplicados.length > 0 && (
+        <div
+          data-aviso="posible-duplicado"
+          className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2.5 text-xs"
+        >
+          <p className="font-medium text-acento">¿Ya está cargada? Se parece a:</p>
+          <ul className="mt-1 list-disc pl-4 text-tinta/75">
+            {duplicados.map((d) => (
+              <li key={d.id}>
+                <a
+                  href={rutaDeDetalle(d.slug)}
+                  target="_blank"
+                  rel="noopener"
+                  className="underline decoration-dotted underline-offset-2"
+                >
+                  {d.titulo}
+                </a>
+                {' — '}
+                {d.motivo === 'titulo' ? 'un título parecido' : 'el mismo lugar y a la misma hora'}, el{' '}
+                {diaYMesDeDia(d.dia)}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-tinta/70">
+            Si es la misma, conviene editar esa en vez de cargar otra. Si no, seguí: esto no frena
+            nada.
+          </p>
+        </div>
+      )}
+
       {copia && origenDeLaCopia === 'propuesta' && imagenNoPromovida && (
         <div
           role="alert"

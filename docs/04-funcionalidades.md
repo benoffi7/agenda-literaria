@@ -408,6 +408,18 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   tener y no frena nada. Hoy hay uno solo —el flyer— y está redactado al revés
   que los otros dos: dice **qué se pierde** («sin imagen no entra en la cartelera
   y el link se comparte sin nada que mirar»), no qué falta.
+- **«¿Ya está cargada?»: el formulario avisa un posible duplicado** (roadmap 5.4).
+  Si hay una actividad **publicada el mismo día** con un título parecido —o en el
+  mismo lugar, a la misma hora y con alguna palabra del título en común—, arriba del
+  formulario aparece «¿Ya está cargada? Se parece a…» con el link a la otra en el
+  sitio, en otra pestaña. **Nunca frena**: dos clubes pueden leer el mismo libro el
+  mismo sábado. Compara contra el `events.json` publicado —no contra la base, para no
+  leer la colección entera en cada formulario—, así que solo ve lo publicado, con el
+  atraso del rebuild, y lo vuelve a pedir cada 15 minutos. Para que no salte todos los sábados, el título se compara sin
+  las palabras que no distinguen nada en el circuito («club», «lectura», «feria»,
+  los meses, los días, las fechas y el `@handle`). La regla es
+  `src/lib/formulario/duplicados.ts`; medida contra el catálogo del 2026-09-28 avisa
+  en 11 pares de 415 actividades, casi todos duplicados de verdad (**B-2167**).
 - **El formulario se guarda solo en el navegador mientras se escribe**, y al
   abrirlo ofrece lo que haya quedado sin guardar, con la fecha y un botón para
   descartarlo. No toca la base: es del dispositivo donde se estaba cargando, se
@@ -1245,6 +1257,10 @@ esperan decisión al lado (B-830, paso 7 de la tajada 1). Es la contracara del
 formulario público `/proponer`, que **ya está escrito y todavía no se anuncia**
 (paso 9, ver más abajo): hoy la colección `/propuestas` solo la puede escribir un
 admin, porque la escritura anónima espera que App Check esté exigiendo (B-836a).
+
+El aviso «¿Ya está cargada?» (roadmap 5.4) también sale al convertir una propuesta:
+convertir abre el mismo formulario, así que si la propuesta se parece a algo ya
+publicado el mismo día, el aviso aparece antes de guardar.
 
 > ⚠️ **Eso ya no es así desde el 2026-09-11 (B-896), y la mitad del flyer nunca
 > lo fue del todo.** El `create` anónimo de `/propuestas` en Firestore se abrió

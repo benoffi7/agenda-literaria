@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El formulario avisa un posible duplicado** (roadmap 5.4). Si hay una actividad
+  publicada el mismo día con un título parecido, o en el mismo lugar y hora con alguna
+  palabra en común, arriba del formulario aparece «¿Ya está cargada? Se parece a…» con
+  el link. No frena nada. Compara contra el `events.json` publicado, una vez por pestaña,
+  sin leer la base (`src/lib/formulario/duplicados.ts`). Medido contra el catálogo real:
+  11 pares de 415, casi todos duplicados de verdad (**B-2167**).
 - **El tablero avisa cuando el lugar de una actividad no cierra** (roadmap 5.3). Aviso
   nuevo, «Publicadas con un lugar que no cierra», para las que tienen fecha por venir y
   en alguna fila de «Dónde» el barrio es una provincia, CABA tiene otra ciudad, o hay un
