@@ -393,7 +393,7 @@ ni una lectura de Firestore de más. Ver la fila correspondiente en «Qué NO se
 > —dice cuál de las cuatro situaciones explica el vacío, o sea si los pasos de
 > consola están bien—, así que el costo de construirla dejó de depender de que
 > alguien la abra. `estadisticas-abrir` sigue midiendo, y sigue siendo el número
-> que decide si el tablero **crece** (B-378, B-379) o se retira. Ver el §9.3bis
+> que decide si el tablero **crece** (B-379; B-378 ya se construyó, 2026-09-28) o se retira. Ver el §9.3bis
 > de [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md).
 
 `seccion-abrir` se instrumentó en el componente `Seccion`, así que **una sección

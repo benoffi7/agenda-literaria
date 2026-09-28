@@ -15,6 +15,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
 | `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |
 | `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | cada cuenta el suyo, **al entrar**, con el mail de su propio ID token (`AdminApp` lo llama desde el observador de auth) |
+| `/fotosDelCatalogo/{mes}` | la foto mensual del tablero: los conteos de `estadoDelCatalogo`, sin ninguna actividad nombrada (B-378) | el panel de un **admin**, la primera vez que carga el catálogo en el mes; nadie la reescribe ni la borra |
 | `/slugs/{slug}` | el índice de direcciones web: `{ actividadId, porUid, creadoEn }` (B-888, D-660) | el panel, **en el mismo `writeBatch` que la actividad**; y `scripts/sembrar-slugs.mjs` con el Admin SDK, que además deja el centinela `_indice` |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `provincia`,
@@ -73,6 +74,33 @@ así antes de la sexta: `barrio` vive en `sede.barrio` y `plataforma` en
 `incluye`— y es a propósito: los PRDs traen `incluye-suscripcion` e
 `incluye-lugar`, y «merienda» y «proyector» no pertenecen a la misma lista
 ([`prd/README.md`](prd/README.md) § 3).
+
+### `/fotosDelCatalogo/{mes}` — la foto mensual del tablero (B-378)
+
+Un documento por mes, con id `AAAA-MM` en la hora del proyecto (trampa 1):
+
+```
+mes: string          // == el id
+version: number      // VERSION_DE_FOTO: la forma de `catalogo`
+tomadaEn: Timestamp  // serverTimestamp(): el primer día del mes en que un admin abrió el panel
+catalogo: {...}      // EstadoDelCatalogo, con `avisos` reducido a [{ clase, cantidad }]
+```
+
+Existe porque **el tablero es una foto y no una serie**: el catálogo de un mes que
+pasó no se puede reconstruir —las actividades se editan y se borran—, así que la
+tendencia solo existe si se guarda a tiempo. Todavía no hay pantalla que la
+dibuje; se guarda desde ya porque la foto que no se sacó no se recupera.
+
+**La saca el panel y no una Function**, porque los números tienen que ser los del
+tablero y `estadoDelCatalogo` vive en `src/` (D-20): una Function tendría que
+reescribir «¿ya pasó?», que es la clase de B-88. El costo: la foto es del primer
+día del mes **en que un admin abrió el panel**, no del día 1, y por eso guarda
+`tomadaEn`. Solo la saca un admin (`useActividades`, con rol `admin`): un
+publicador ve una parte del catálogo y sacaría la foto de esa parte. Lo decide
+`src/lib/fotoDelCatalogo.ts`.
+
+Si cambia la forma de `EstadoDelCatalogo` de un modo que un lector viejo no
+entendería, sube `VERSION_DE_FOTO`: la serie va a mezclar versiones.
 
 ### `/sistema/rebuild`
 

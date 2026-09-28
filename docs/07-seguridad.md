@@ -1361,11 +1361,18 @@ match /propuestas/{id} {         // B-830
   allow update: if esAdmin() && revisionValida();    // solo `estado` + `revision`
   allow delete: if false;       // la borra la Function de retención (DEC-13)
 }
+match /fotosDelCatalogo/{mes} {  // B-378 — la foto mensual del tablero
+  allow read:   if esAdmin();    // conteos, sin ninguna actividad nombrada
+  allow create: if esAdmin() && fotoValida();   // mes AAAA-MM == id, 4 claves, tomadaEn == request.time
+  allow update, delete: if false;               // una serie corregible para atrás no es una serie
+}
 ```
 
-*(Los nombres `esSuya()`, `naceSuya()`, `dueñoIntacto()` y `firmaPropia()` son de
-este resumen y no del archivo: allá las cláusulas están escritas en línea, con su
-comentario al lado. Significan, en orden: el documento **previo** tiene mi uid en
+*(Los nombres `esSuya()`, `naceSuya()`, `dueñoIntacto()`, `firmaPropia()` y
+`fotoValida()` son de este resumen y no del archivo: allá las cláusulas están
+escritas en línea, con su comentario al lado. `fotoValida()` es: el mes `AAAA-MM`
+coincide con el id, las cuatro claves son exactas y `tomadaEn == request.time`.
+Los otros cuatro significan, en orden: el documento **previo** tiene mi uid en
 `createdBy`; el documento **nuevo** lo tiene; el `createdBy` no cambia entre los
 dos; y el `updatedBy` del documento nuevo es mío.)*
 

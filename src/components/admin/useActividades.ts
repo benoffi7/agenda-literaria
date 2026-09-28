@@ -57,6 +57,22 @@ import type { ActividadConId } from '@/types/actividad';
  * **solo lo suyo**, que es el comportamiento anterior al alcance por ciudad — o
  * sea el bug silencioso, no el ruidoso.
  */
+/**
+ * **La foto mensual del tablero se saca acá** — B-378.
+ *
+ * Es el único lugar donde un admin carga el catálogo **entero** sin tener que
+ * abrir el tablero: el listado es la pantalla de entrada del panel. Con
+ * `import()` para que el cálculo del tablero no entre al bundle inicial (B-09).
+ * Cuántas veces se intenta lo decide `sacarFotoSiToca`, del lado del módulo: una
+ * vez por mes si sale bien, y en cada carga del listado si falla. No puede frenar
+ * ni ensuciar el listado: el fallo queda en la consola.
+ */
+const sacarLaFotoDelMes = (actividades: ActividadConId[]) => {
+  import('@/lib/fotoDelCatalogo')
+    .then((m) => m.sacarFotoSiToca(actividades, new Date()))
+    .catch((e: unknown) => console.warn('[fotoDelCatalogo] no se pudo sacar la foto del mes', e));
+};
+
 export const useActividades = (
   version: number,
   rol: RolDelPanel,
@@ -71,7 +87,10 @@ export const useActividades = (
     let vivo = true;
     setCargando(true);
     listarActividades(rol, uid, ciudad)
-      .then((as) => vivo && setActividades(as))
+      .then((as) => {
+        if (vivo) setActividades(as);
+        if (rol === 'admin') sacarLaFotoDelMes(as);
+      })
       .catch((e: unknown) => vivo && setFallo(textoDeFallo(e, { respaldo: 'Error al listar' })))
       .finally(() => vivo && setCargando(false));
     return () => {

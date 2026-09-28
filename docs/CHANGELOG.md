@@ -2,6 +2,16 @@
 
 ## Sin publicar
 
+- **El panel guarda una foto por mes del tablero** (B-378, roadmap 3.5). La primera vez
+  que un admin carga el catálogo en el mes, el panel guarda en
+  `/fotosDelCatalogo/{AAAA-MM}` los mismos conteos que muestra el tablero —sin ninguna
+  actividad nombrada—, para poder ver después la tendencia: el catálogo de un mes que
+  pasó no se puede reconstruir. La saca el panel y no una Function para que los números
+  sean los del tablero (D-20). La regla nueva deja crearla solo al admin y no deja
+  reescribirla ni borrarla; trece tests, cinco contra el emulador. Lo auditaron los tres
+  auditores: la foto se reintenta si falla y con el panel abierto de un mes al otro, y un
+  barrido sobre un catálogo poblado frena cualquier campo que no sea un número o un slug. Dibujar la serie
+  queda en **B-2164**, cuando haya tres fotos.
 - **La base tiene respaldo** (roadmap 5.1). Firestore guarda un respaldo por día de
   la base entera, y cada uno se guarda 7 días; la base, además, quedó protegida
   contra el borrado. Son 7 días y no 30 porque el respaldo conserva los contactos que

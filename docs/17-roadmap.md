@@ -301,7 +301,13 @@ respuestas.
   **Recomiendo dibujarlo**, como tercera pestaña del tablero o bloque al final de
   «El catálogo»: es barato y es la única vista de oferta futura que tiene el panel.
 
-### 3.5 · El tablero guarda una foto por mes (B-378) — **Próximo** · S–M
+### 3.5 · El tablero guarda una foto por mes (B-378) — ✅ Hecho (2026-09-28) · S–M
+
+> **Hecho el 2026-09-28**, con un cambio sobre la nota: la foto no la saca una
+> Function programada sino el **panel de un admin**, la primera vez que carga el
+> catálogo en el mes. El cálculo del tablero vive en `src/` y `functions/` no lo
+> puede importar (D-20); una Function habría tenido que reescribirlo, y dos
+> cálculos de «¿ya pasó?» se desalinean en silencio. Dibujar la serie: **B-2164**.
 
 - **Qué gana el dueño:** ver la tendencia («en septiembre publicamos 40, en octubre
   55; las gratis pasaron del 30 al 45 %»), que es lo que un anunciante o un
@@ -623,7 +629,7 @@ las novedades del panel ya existen como mecanismo.
 | 6.1 | Que el backlog no pierda aprobadas | Otros | S | ✅ Hecho (2026-09-24) | — |
 | 3.2 | Vistas contra mensajes por actividad | Analítica | M | Próximo (3/10) | — |
 | 3.3 | Número real en `/anunciar` (B-771) | Analítica | S | Próximo (3/10) | — |
-| 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | Próximo | — |
+| 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | ✅ Hecho (2026-09-28) | — |
 | 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | ✅ Hecho (2026-09-25) | — |
 | 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | ✅ Hecho (2026-09-24) | — |
 | 3.8 | Etiquetas de campaña | Analítica | S | Próximo | 🟨 ¿Dejarlas pasar con lista cerrada? → sí |

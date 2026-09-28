@@ -1110,8 +1110,10 @@ retirado a propósito.
 
 ### 8.3 · Dos cosas que no hace, y una que sí
 
-- **No tiene serie temporal.** Es una foto de hoy, no una tendencia: para decir
-  «hace un mes había 3 sin imagen y hoy hay 12» hay que guardar la foto → **B-378**.
+- **No dibuja ninguna serie temporal, aunque desde el 2026-09-28 la foto ya se
+  guarda** (B-378): el panel de un admin la saca sola, la primera vez que carga
+  el catálogo en el mes, en `/fotosDelCatalogo/{AAAA-MM}`. Con una sola foto no
+  hay tendencia que mostrar; dibujarla cuando haya tres es **B-2164**.
 - **No calcula del lado del servidor.** Agrupa 46 documentos en el navegador, que
   es instantáneo. Con unos miles conviene un agregado → **B-379**.
 - **Sí manda un evento**, y uno solo: `funcion_usada` con
@@ -1536,7 +1538,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos **y ya miden**, con B-372 y B-480 cerrados |
 | **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
 | **B-377** | El **inventario publicitario**: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
-| **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | 🔵 futuro |
+| **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | ✅ hecho (2026-09-28) — se guarda en `/fotosDelCatalogo/{AAAA-MM}`, la saca el panel de un admin. Dibujar la serie es **B-2164** |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Era bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ✅ **hecho (2026-09-03)**, y con dos apagados más que aparecieron al configurarlo: los `page_view` por historial de navegación —el buscador reescribe la URL en cada filtro— y el borrado de la clave de consulta `q` en «Ocultar datos», que es la red durable |
 | **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) eran una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la elimina | ✅ **hecho (2026-09-03)** — servidas desde `/fuentes/`, **cero terceros** en el load y un pedido menos, con los números en [§7.4ter](#74ter--las-tipografías-autoalojadas-b-481). D-340 |

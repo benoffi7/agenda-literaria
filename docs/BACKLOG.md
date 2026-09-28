@@ -215,13 +215,22 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-375** | Los eventos propios: el clic en inscripción y el filtro que deja cero | ✅ construidos (`clic_inscripcion`, `filtro_sin_resultados`) y **ya miden**, con B-372/B-480 cerrados |
 | **B-376** | **Decisión del dueño:** el aviso de privacidad y el consentimiento, entre las tres opciones del §7 | ✅ resuelto — **C3** (D-250), banner construido en `src/components/sitio/AvisoDeCookies.astro` |
 | **B-377** | El inventario publicitario: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
-| **B-378** | El tablero del catálogo es una foto y no una serie | 🔵 futuro |
+| **B-378** | El tablero del catálogo es una foto y no una serie | ✅ hecho (2026-09-28) — la **guarda**: `/fotosDelCatalogo/{AAAA-MM}` con los conteos de `estadoDelCatalogo`, la saca el panel de un admin la primera vez que carga el catálogo en el mes (`src/lib/fotoDelCatalogo.ts`, `03-modelo-de-datos.md`). Dibujar la serie es **B-2164** |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | — ✅ hecho (2026-09-03). El dueño apagó en la consola de GA4 (flujo `G-9CFMHSSGRC`, Enhanced Measurement) **«Búsquedas en el sitio»** y **«Clics salientes»**, y —al configurarlo— dos cosas más que aparecieron: **desactivó los `page_view` basados en el historial de navegación** (el buscador reescribe la URL con `replaceState` en cada filtro, así que sin esto cada toque contaba una vista con el texto de `q` en la URL), y en **Ocultar datos** activó el borrado de la clave de consulta **`q`** —el parámetro donde viaja el texto del buscador—, que es la red durable: GA4 lo borra al recibirlo pase por donde pase. Con esto B-372 queda cerrado. | ✅ hecho (2026-09-03) |
 | **B-481** | **Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son, hoy, una conexión a un tercero en el load** — el mismo `preconnect` que D-254 sacó para GA4, pero decidido antes de que hubiera un banner y sin la lupa del consentimiento encima. Autoalojarlas (servir los `.woff2` desde el propio dominio) la eliminaría del todo. No es privacidad en el mismo sentido que B-480 —una tipografía no manda datos de la persona—, es la misma clase de dato de red (que este navegador entró al sitio) que ya se decidió aceptar para las fuentes, y conviene tenerlo escrito ahora que el tema está sobre la mesa | ✅ **hecho (2026-09-03)** — autoalojadas en `public/fuentes/`, servidas con `@font-face` desde `src/styles/global.css` y precargadas en `Base.astro`. **Cero terceros en el load** y un pedido menos; el `preconnect` a `fonts.googleapis.com` ya no está. La decisión es **D-340**. Lo encontró `npm run backlog:contradicciones` (B-1170, B-1220): el documento lo decía bien y este registro no |
 | **B-500** | El aviso «ya-paso»: el dueño no entendía por qué el tablero marcaba como problema algo que es el archivo funcionando bien | ✅ hecho (2026-09-03) — primero reencuadrado (D-270), después **sacado del todo** (D-273): el dueño señaló que la lista crece sin techo y no pide ninguna acción para casi nada. Queda la cobertura acotada «cuántas tienen fecha futura», no la lista |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
+
+### B-2164 · Dibujar la serie de fotos del tablero · P3 — vigilado hasta que haya tres fotos
+
+Desde el 2026-09-28 el panel guarda una foto por mes del catálogo (B-378). Con
+una sola foto no hay tendencia que mostrar; con tres (**enero de 2027**, si el
+panel se abre en octubre, noviembre y diciembre) vale dibujar «publicadas por
+mes» y «% gratis por mes» en la pestaña «El catálogo». Al dibujarla, decir el día
+de `tomadaEn` si alguna foto se sacó tarde en el mes, y tener en cuenta
+`version` si cambió la forma.
 
 ### B-2162 · Probar una restauración del respaldo de la base · P2
 

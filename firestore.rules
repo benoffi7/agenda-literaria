@@ -3279,6 +3279,30 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    match /fotosDelCatalogo/{mes} {
+      /*
+       * **La foto mensual del tablero** — B-378. Son conteos del catálogo, sin
+       * ninguna actividad nombrada (`src/lib/fotoDelCatalogo.ts`), pero se leen
+       * como el tablero: solo el admin. La saca el panel de un admin porque el
+       * cálculo vive en `src/` (D-20), y **no se reescribe ni se borra**: una
+       * serie que se puede corregir para atrás deja de ser una serie. La
+       * segunda pestaña que intenta sacarla el mismo mes cae en `update` y se
+       * rechaza, que es lo que se quiere.
+       *
+       * El publicador no la saca ni la lee: ve una parte del catálogo, y su foto
+       * sería la de esa parte.
+       */
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+        && mes.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && request.resource.data.keys().hasOnly(['mes', 'version', 'tomadaEn', 'catalogo'])
+        && request.resource.data.mes == mes
+        && request.resource.data.version is int
+        && request.resource.data.tomadaEn == request.time
+        && request.resource.data.catalogo is map;
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
