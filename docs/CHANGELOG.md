@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Filtro «Posibles duplicados» en el listado del panel** (roadmap 5.4, pedido del
+  dueño). Deja las actividades que se parecen a otra el mismo día, con la misma regla
+  que el aviso del formulario (`seParecen`), contra el catálogo entero en memoria y
+  sin lecturas de más. Borradores incluidos, canceladas no.
 - **El formulario avisa un posible duplicado** (roadmap 5.4). Si hay una actividad
   publicada el mismo día con un título parecido, o en el mismo lugar y hora con alguna
   palabra en común, arriba del formulario aparece «¿Ya está cargada? Se parece a…» con

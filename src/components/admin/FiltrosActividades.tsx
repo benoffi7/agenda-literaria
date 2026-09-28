@@ -2,6 +2,9 @@ import { useId, useMemo, useRef, useState } from 'react';
 import { Campo, claseBotonChip, claseBotonChipActivo, claseInput } from '@/components/campos/Campo';
 import {
   DESTACADOS,
+  DUPLICADOS,
+  ETIQUETA_DUPLICADOS,
+  type FiltroDuplicados,
   ETIQUETA_CUANDO,
   ETIQUETA_DESTACADO,
   ETIQUETA_ESTADO,
@@ -446,6 +449,31 @@ export function FiltrosActividades({
                 </select>
               </Campo>
             )}
+
+            {/*
+              Roadmap 5.4 — siempre a la vista, a diferencia de «Destacada»: un
+              duplicado puede existir en cualquier catálogo, y el desplegable es la
+              forma de saberlo. Compara contra el catálogo entero, no contra lo que
+              dejaron los demás filtros.
+            */}
+            <Campo
+              label="Posibles duplicados"
+              htmlFor={`${id}-duplicados`}
+              ayuda="Las que se parecen a otra el mismo día: título parecido, o el mismo lugar y hora. Con el orden «Próxima fecha», las de cada par quedan cerca."
+            >
+              <select
+                id={`${id}-duplicados`}
+                className={claseInput}
+                value={filtros.duplicados ?? ''}
+                onChange={(e) => cambiar('duplicados', e.target.value as FiltroDuplicados)}
+              >
+                {DUPLICADOS.map((d) => (
+                  <option key={d} value={d}>
+                    {ETIQUETA_DUPLICADOS[d]}
+                  </option>
+                ))}
+              </select>
+            </Campo>
           </div>
 
           {/*

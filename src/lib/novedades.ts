@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'filtro-posibles-duplicados',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'Un filtro para ver de una vez las que parecen duplicadas',
+    detalle:
+      'En los filtros del listado, «Posibles duplicados» → «Solo las que se parecen a otra» ' +
+      'muestra las actividades que tienen una parecida el mismo día, borradores incluidos. ' +
+      'Con el orden «Próxima fecha» cada par queda cerca: si son la misma, dejá una.',
+    donde: 'Listado de actividades → Filtros.',
+  },
+  {
     id: 'posible-duplicado',
     fecha: '2026-09-28',
     version: '1.11.0',

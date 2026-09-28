@@ -11,6 +11,7 @@
 
 /** Lo más nuevo arriba, igual que `NOVEDADES`. */
 export const NOVEDADES_IDS: readonly string[] = [
+  'filtro-posibles-duplicados',
   'posible-duplicado',
   'lugar-que-no-cierra',
   'web-organizador-detecta-instagram-y-mail',

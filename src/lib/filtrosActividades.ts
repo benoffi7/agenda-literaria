@@ -16,6 +16,7 @@
  * un test no puede depender de qué día es hoy.
  */
 import { primeroSinCosto } from '@/lib/arancel';
+import { idsConPosibleDuplicado } from '@/lib/formulario/duplicados';
 import type { Chip } from '@/lib/chip';
 // El mismo respaldo que reexporta este módulo como `legible`, importado acá
 // porque un `export ... from` no crea un binding local que se pueda llamar.
@@ -63,6 +64,18 @@ export const ETIQUETA_CUANDO: Record<Cuando, string> = {
   cualquiera: 'Cualquier fecha',
   'por-venir': 'Con algo por venir',
   'sin-fechas': 'Sin fechas cargadas',
+};
+
+/**
+ * Roadmap 5.4 — «Posibles duplicados». Dos valores y no tres: «solo las que no
+ * se parecen a ninguna» no es una pregunta que alguien se haga.
+ */
+export const DUPLICADOS = ['', 'si'] as const;
+export type FiltroDuplicados = (typeof DUPLICADOS)[number];
+
+export const ETIQUETA_DUPLICADOS: Record<FiltroDuplicados, string> = {
+  '': 'Cualquiera',
+  si: 'Solo las que se parecen a otra',
 };
 
 export const DESTACADOS = ['', 'si', 'no'] as const;
@@ -161,6 +174,13 @@ export interface Filtros {
    */
   autor: string;
   /**
+   * Roadmap 5.4 — `'si'` deja solo las que se parecen a otra del catálogo el
+   * mismo día. La regla es `idsConPosibleDuplicado` (`formulario/duplicados.ts`),
+   * la misma que el aviso del formulario: con dos, el listado y el formulario
+   * podrían contestar distinto sobre el mismo par.
+   */
+  duplicados: FiltroDuplicados;
+  /**
    * B-101 — la pestaña, **que no es un filtro**: `filtrar` no la mira,
    * `cantidadDeFiltros` no la cuenta y «Limpiar filtros» no la toca. Vive acá
    * solo para heredar lo de B-955: `Filtros` es el estado que `AdminApp`
@@ -183,6 +203,7 @@ export const FILTROS_VACIOS: Filtros = {
   destacado: '',
   tags: [],
   autor: '',
+  duplicados: '',
   pestana: 'vigentes',
 };
 
@@ -211,7 +232,8 @@ export const cantidadDeFiltros = (f: Filtros): number =>
   (f.tags.length > 0 ? 1 : 0) +
   // B-888 — cuenta como uno más: es un desplegable de valor suelto, como los
   // otros seis.
-  (f.autor ? 1 : 0);
+  (f.autor ? 1 : 0) +
+  (f.duplicados ? 1 : 0);
 
 /** ¿Hay algo filtrando, texto incluido? Decide el mensaje del listado vacío. */
 export const hayFiltros = (f: Filtros): boolean =>
@@ -375,8 +397,16 @@ export const filtrar = (
   // §6 — la misma normalización que va a usar el sitio público: "cronica"
   // encuentra "Crónica".
   const texto = normalize(filtros.texto.trim());
+  /*
+   * Roadmap 5.4 — sobre `actividades` entera y **antes** de filtrar: «se parece a
+   * otra» es una pregunta sobre el catálogo, no sobre lo que quedó después de los
+   * demás filtros. Si no, filtrar por «Borrador» escondería que un borrador
+   * duplica algo publicado. Solo se calcula si el filtro está puesto.
+   */
+  const conDuplicado = filtros.duplicados === 'si' ? idsConPosibleDuplicado(actividades) : null;
 
   return actividades.filter((a) => {
+    if (conDuplicado && !conDuplicado.has(a.id)) return false;
     if (texto && !(a.searchText ?? '').includes(texto)) return false;
     if (filtros.estado && a.estado !== filtros.estado) return false;
     if (filtros.tipo && a.tipo !== filtros.tipo) return false;

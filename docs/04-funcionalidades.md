@@ -81,6 +81,17 @@ actividades de más de una cuenta **y** esas cuentas ya entraron al panel; con e
 rol acotado no aparece nunca, sin necesidad de una rama por rol, porque su listado
 ya trae una sola.
 
+Y **«Posibles duplicados»** (roadmap 5.4, pedido del dueño el 2026-09-28): «Solo las
+que se parecen a otra» deja las actividades que tienen una pareja el mismo día
+—título parecido, o el mismo lugar y hora con alguna palabra en común—. Es **la
+misma regla** que el aviso «¿Ya está cargada?» del formulario (`seParecen`, en
+`formulario/duplicados.ts`), pero acá compara contra el catálogo **entero** que el
+listado ya tiene en memoria, borradores incluidos, sin pedir nada: el formulario
+no tiene esa lista y por eso usa el `events.json`. Se calcula sobre todo el
+catálogo y no sobre lo que dejaron los demás filtros, así que filtrar además por
+«Borrador» muestra el borrador que duplica algo publicado. Las canceladas quedan
+afuera. Siempre está a la vista, a diferencia de «Destacada».
+
 Cada fila dice además cuándo es su próximo encuentro y lleva hasta tres marcas
 más: **«Cupo completo»** (B-97), **«Destacada»** (B-622) y **«Sin flyer»**
 (B-264), esta última solo en las **publicadas** que no tienen imagen — una

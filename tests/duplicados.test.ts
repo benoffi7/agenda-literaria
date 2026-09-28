@@ -136,3 +136,39 @@ describe('diaYMesDeDia — cómo dice el aviso el día', async () => {
     expect(diaYMesDeDia('2026-10-12')).toBe('12 de octubre');
   });
 });
+
+describe('el filtro «Posibles duplicados» del listado', async () => {
+  const { idsConPosibleDuplicado } = await import('@/lib/formulario/duplicados');
+  const { FILTROS_VACIOS, filtrar, cantidadDeFiltros } = await import('@/lib/filtrosActividades');
+  const { ts } = await import('./fixtures/tiempo');
+  const doc = (id: string, titulo: string, iso: string, estado = 'publicado', sede = 'Casa X') =>
+    ({
+      id,
+      titulo,
+      estado,
+      slug: id,
+      sesiones: [{ id: `ses_${id}`, inicio: ts(iso), fin: ts(new Date(new Date(iso).getTime() + 7_200_000).toISOString()), cancelada: false }],
+      modalidades: [{ id: 'm1', modalidad: 'presencial', inicio: null, fin: null, sede: { nombre: sede }, online: null }],
+    }) as never;
+
+  const catalogo = [
+    doc('a', 'Festival argentino de historieta', '2026-09-05T18:00:00Z'),
+    doc('b', 'Festival argentino de la Historieta', '2026-09-05T20:00:00Z', 'borrador'),
+    doc('c', 'Club de lectura: Rayuela', '2026-09-05T18:00:00Z'),
+    doc('d', 'Festival argentino de historieta', '2026-09-06T18:00:00Z'),
+    doc('e', 'Festival argentino de historieta', '2026-09-05T18:00:00Z', 'cancelado'),
+  ];
+
+  it('marca los dos lados de cada par, borradores incluidos, y no las canceladas', () => {
+    expect([...idsConPosibleDuplicado(catalogo)].sort()).toEqual(['a', 'b']);
+  });
+
+  it('filtra contra el catálogo entero: un borrador que duplica una publicada aparece aunque se filtre por «Borrador»', () => {
+    const r = filtrar(catalogo, { ...FILTROS_VACIOS, duplicados: 'si', estado: 'borrador' }, new Date('2026-09-01T12:00:00Z'));
+    expect(r.map((a: { id: string }) => a.id)).toEqual(['b']);
+  });
+
+  it('cuenta como un filtro puesto', () => {
+    expect(cantidadDeFiltros({ ...FILTROS_VACIOS, duplicados: 'si' })).toBe(1);
+  });
+});

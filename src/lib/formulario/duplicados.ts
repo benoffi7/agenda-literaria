@@ -2,8 +2,8 @@ import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { claveDeDia } from '@/lib/fechasPublicas';
 import { MESES } from '@/lib/meses';
 import { normalize } from '@/lib/normalize';
-import { deDatetimeLocal } from '@/lib/sesiones';
-import type { ActividadForm } from '@/types/actividad';
+import { deDatetimeLocal, instanteDeTimestamp } from '@/lib/sesiones';
+import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
 /**
  * **¿Esta actividad ya está cargada?** — roadmap 5.4.
@@ -118,6 +118,88 @@ export interface PosibleDuplicado {
 const MAXIMO = 3;
 
 /**
+ * Lo mínimo que se compara, sea un formulario, una entrada del índice o un
+ * documento del listado: **una sola regla** para las tres fuentes. Con dos copias
+ * del criterio, el aviso del formulario y el filtro del listado podrían contestar
+ * distinto sobre el mismo par, y nadie lo notaría.
+ */
+export interface Comparable {
+  id: string | null;
+  slug: string;
+  titulo: string;
+  /** Los comienzos de los encuentros no cancelados. */
+  inicios: Date[];
+  /** Los nombres de las sedes de todas las filas de «Dónde». */
+  sedes: string[];
+}
+
+/** El motivo por el que `b` se parece a `a`, y el primer día en que coinciden; o `null`. */
+export const seParecen = (
+  a: Comparable,
+  b: Comparable,
+): { motivo: PosibleDuplicado['motivo']; dia: string } | null => {
+  if (a.id !== null && a.id === b.id) return null;
+  const dias = new Set(a.inicios.map(claveDeDia));
+  const coinciden = b.inicios.filter((d) => dias.has(claveDeDia(d)));
+  if (coinciden.length === 0) return null;
+  const dia = claveDeDia(coinciden[0]!);
+
+  if (a.titulo.trim() && parecidoDeTitulos(a.titulo, b.titulo) >= UMBRAL_DE_TITULO) {
+    return { motivo: 'titulo', dia };
+  }
+  const mismoLugar = a.sedes.some((n) => b.sedes.some((m) => mismaSede(n, m)));
+  if (!mismoLugar) return null;
+  // El nombre del lugar escrito en los dos títulos («… - La Libre») no dice que
+  // sean la misma actividad: dice que son en el mismo lugar, que ya se sabe.
+  const delLugar = new Set(b.sedes.flatMap((n) => [...palabrasDelTitulo(n)]));
+  if (parecidoDeTitulos(a.titulo, b.titulo, delLugar) < UMBRAL_CON_LUGAR_Y_HORA) return null;
+  const mismaHora = coinciden.some((d) =>
+    a.inicios.some((i) => Math.abs(i.getTime() - d.getTime()) < MS_MISMA_HORA),
+  );
+  return mismaHora ? { motivo: 'lugar-y-hora', dia } : null;
+};
+
+/** El formulario, como `Comparable`: sus fechas son `datetime-local` del navegador. */
+export const comparableDelFormulario = (
+  form: Pick<ActividadForm, 'titulo' | 'sesiones' | 'modalidades'>,
+  id: string | null,
+): Comparable => ({
+  id,
+  slug: '',
+  titulo: form.titulo,
+  inicios: form.sesiones
+    .filter((s) => !s.cancelada)
+    .map((s) => deDatetimeLocal(s.inicio))
+    .filter((d): d is Date => d !== null),
+  sedes: (form.modalidades ?? []).map((m) => m.sede?.nombre ?? '').filter((n) => n.trim()),
+});
+
+/** Una entrada del `events.json`: sus fechas son ISO. */
+export const comparableDelIndice = (
+  e: Pick<EntradaDeIndice, 'id' | 'slug' | 'titulo' | 'sesiones' | 'sede'>,
+): Comparable => ({
+  id: e.id,
+  slug: e.slug,
+  titulo: e.titulo,
+  inicios: (e.sesiones ?? []).filter((s) => !s.cancelada).map((s) => new Date(s.inicio)),
+  sedes: e.sede?.nombre ? [e.sede.nombre] : [],
+});
+
+/** Un documento del listado del panel: sus fechas son `Timestamp`. */
+export const comparableDelDocumento = (a: ActividadConId): Comparable => ({
+  id: a.id,
+  slug: a.slug ?? '',
+  titulo: a.titulo ?? '',
+  inicios: (a.sesiones ?? [])
+    .filter((s) => !s.cancelada)
+    .map((s) => instanteDeTimestamp(s.inicio))
+    .filter((d): d is Date => d !== null),
+  sedes: ((a.modalidades ?? []).length > 0 ? (a.modalidades ?? []).map((m) => m.sede) : [a.sede])
+    .map((sede) => sede?.nombre ?? '')
+    .filter((n) => n.trim()),
+});
+
+/**
  * Las actividades publicadas que se parecen a este formulario. Pura: el índice
  * entra por parámetro. `idPropio` es el de la actividad que se edita, para no
  * avisar que se parece a sí misma; `null` si todavía no se guardó.
@@ -127,37 +209,49 @@ export const posiblesDuplicados = (
   actividades: readonly Pick<EntradaDeIndice, 'id' | 'slug' | 'titulo' | 'sesiones' | 'sede'>[],
   idPropio: string | null,
 ): PosibleDuplicado[] => {
-  const inicios = form.sesiones
-    .filter((s) => !s.cancelada)
-    .map((s) => deDatetimeLocal(s.inicio))
-    .filter((d): d is Date => d !== null);
-  if (inicios.length === 0) return [];
-  const dias = new Set(inicios.map(claveDeDia));
-  const sedes = (form.modalidades ?? []).map((m) => m.sede?.nombre ?? '').filter((n) => n.trim());
-
+  const propia = comparableDelFormulario(form, idPropio);
+  if (propia.inicios.length === 0) return [];
   const salida: PosibleDuplicado[] = [];
-  for (const otra of actividades) {
-    if (otra.id === idPropio) continue;
-    const suyas = (otra.sesiones ?? []).filter((s) => !s.cancelada).map((s) => new Date(s.inicio));
-    const coinciden = suyas.filter((d) => dias.has(claveDeDia(d)));
-    if (coinciden.length === 0) continue;
-    const dia = claveDeDia(coinciden[0]!);
-
-    if (form.titulo.trim() && parecidoDeTitulos(form.titulo, otra.titulo) >= UMBRAL_DE_TITULO) {
-      salida.push({ id: otra.id, slug: otra.slug, titulo: otra.titulo, motivo: 'titulo', dia });
-      continue;
-    }
-    const mismoLugar = sedes.some((n) => mismaSede(n, otra.sede?.nombre ?? ''));
-    // El nombre del lugar escrito en los dos títulos («… - La Libre») no dice que
-    // sean la misma actividad: dice que son en el mismo lugar, que ya se sabe.
-    const delLugar = palabrasDelTitulo(otra.sede?.nombre ?? '');
-    if (parecidoDeTitulos(form.titulo, otra.titulo, delLugar) < UMBRAL_CON_LUGAR_Y_HORA) continue;
-    const mismaHora = coinciden.some((d) =>
-      inicios.some((i) => Math.abs(i.getTime() - d.getTime()) < MS_MISMA_HORA),
-    );
-    if (mismoLugar && mismaHora) {
-      salida.push({ id: otra.id, slug: otra.slug, titulo: otra.titulo, motivo: 'lugar-y-hora', dia });
-    }
+  for (const e of actividades) {
+    const otra = comparableDelIndice(e);
+    const r = seParecen(propia, otra);
+    if (r) salida.push({ id: e.id, slug: e.slug, titulo: e.titulo, ...r });
   }
   return salida.slice(0, MAXIMO);
+};
+
+/**
+ * **El filtro «Posibles duplicados» del listado** — los ids de las actividades
+ * que se parecen a alguna otra del catálogo. A diferencia del aviso del
+ * formulario, acá el catálogo entero ya está en memoria (lo cargó el listado),
+ * así que compara contra **todo**, borradores incluidos, sin pedir nada.
+ *
+ * Deja afuera las canceladas: una cancelada que se parece a una viva no es un
+ * duplicado a limpiar, es la que ya se limpió.
+ *
+ * Se comparan solo los pares que comparten un día, agrupando por día primero:
+ * con 400 actividades, todos contra todos son 80.000 pares por render; por día,
+ * unos cientos.
+ */
+export const idsConPosibleDuplicado = (actividades: readonly ActividadConId[]): Set<string> => {
+  const vivas = actividades.filter((a) => a.estado !== 'cancelado').map(comparableDelDocumento);
+  const porDia = new Map<string, Comparable[]>();
+  for (const c of vivas) {
+    for (const dia of new Set(c.inicios.map(claveDeDia))) {
+      porDia.set(dia, [...(porDia.get(dia) ?? []), c]);
+    }
+  }
+  const ids = new Set<string>();
+  for (const grupo of porDia.values()) {
+    for (let i = 0; i < grupo.length; i += 1) {
+      for (let j = 0; j < grupo.length; j += 1) {
+        if (i === j) continue;
+        if (seParecen(grupo[i]!, grupo[j]!)) {
+          ids.add(grupo[i]!.id!);
+          ids.add(grupo[j]!.id!);
+        }
+      }
+    }
+  }
+  return ids;
 };

@@ -41,8 +41,9 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
-- **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas
-  (la lista está en el ítem): dejar una de cada par que sea la misma.
+- **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas:
+  el filtro «Posibles duplicados» del listado los muestra juntos. Dejar una de cada
+  par que sea la misma.
 - **B-2166** — corregir la sede con un barrio «Rosario» sobrante en Rosario (la ciudad
   ya lo dice): desde el 2026-09-28 el aviso «Publicadas con un lugar que no cierra» del
   tablero la señala. Dejar el barrio vacío, o completarlo con el barrio real si la sede
@@ -246,9 +247,10 @@ las dos «Lectura silenciosa», las dos «Gran Barata de libros», «El misterio
 cuento» con y sin «Octubre»— y una es la misma cargada una vez por modalidad
 («Alto viaje», presencial y virtual), que desde B-224 es **una** actividad con dos
 filas de «Dónde». Otros pueden ser distintos a propósito (FILBA y un evento de FILBA).
-**Qué hacer:** abrir cada par, y si es la misma, dejar una y cancelar o borrar la otra.
-El aviso aparece al abrir cualquiera de las dos en el panel. Para volver a medir, el
-cálculo es `posiblesDuplicados` de cada actividad contra el índice.
+**Qué hacer:** en el listado, Filtros → «Posibles duplicados» → «Solo las que se
+parecen a otra» los muestra todos juntos (y el aviso aparece también al abrir
+cualquiera de las dos). Si son la misma, dejar una y cancelar o borrar la otra. Se
+cierra cuando el filtro no muestre ninguno que sea de verdad el mismo.
 
 ### B-2166 · Una sede con el barrio «Rosario» sobrante en Rosario · P3 — pendiente del dueño
 
