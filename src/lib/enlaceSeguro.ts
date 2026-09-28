@@ -44,6 +44,11 @@
  *  - **usuario o contraseña en la URL** («alguien@ejemplo.com» se lee como el
  *    usuario `alguien` en `ejemplo.com`): es un mail, y linkearlo manda a la
  *    portada del proveedor.
+ *  - **un texto que empieza con `@`** (B-2168): es un handle, tenga o no puntos.
+ *    «@sol.reviews» pasaba las tres reglas de arriba —`new URL` descarta el `@`
+ *    como un usuario vacío— y salía como `https://sol.reviews/`. Casi todos los
+ *    links rotos de la primera corrida eran esto, en el destino de una
+ *    inscripción «por formulario».
  *
  * `localhost` y una IPv6 entre corchetes pasan aunque no tengan punto: son las
  * URLs de las imágenes del emulador de Storage, y sin ellas el panel en
@@ -54,7 +59,7 @@
  */
 export const urlSegura = (crudo: string | null | undefined): string | null => {
   const texto = (crudo ?? '').trim();
-  if (!texto) return null;
+  if (!texto || texto.startsWith('@')) return null;
   const candidato = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(texto) ? texto : `https://${texto}`;
   try {
     const url = new URL(candidato);

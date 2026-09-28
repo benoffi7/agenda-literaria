@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Un `@usuario` ya no se publica como link, aunque tenga puntos** (B-2168). Los
+  links rotos de la primera corrida de `links:revisar` eran casi todos inscripciones
+  «por formulario» con un handle de Instagram de destino, no webs de organizador:
+  `@sol.reviews` salía como `https://sol.reviews/`. `urlSegura` rechaza ahora un texto
+  que empieza con `@`, y `scripts/corregir-contactos-mal-cargados.mjs` corrige los datos
+  (36 inscripciones pasan a «mensaje por Instagram» y 3 webs se arreglan; 2 destinos
+  quedan para revisar a mano).
 - **Filtro «Posibles duplicados» en el listado del panel** (roadmap 5.4, pedido del
   dueño). Deja las actividades que se parecen a otra el mismo día, con la misma regla
   que el aviso del formulario (`seParecen`), contra el catálogo entero en memoria y

@@ -155,6 +155,13 @@ describe('urlSegura — lo único que puede terminar en un href', () => {
     expect(urlSegura(crudo)).toBeNull();
   });
 
+  it.each(['@sol.reviews', '@preferiaria.estar.leyendo', '@amiacultura'])(
+    'rechaza %s: un handle con arroba, aunque tenga puntos (B-2168)',
+    (crudo) => {
+      expect(urlSegura(crudo)).toBeNull();
+    },
+  );
+
   it('sigue aceptando lo que es una dirección, con subdominio, ruta o puerto', () => {
     expect(urlSegura('www.casabrandon.com.ar/talleres?x=1')).toBe('https://www.casabrandon.com.ar/talleres?x=1');
     expect(urlSegura('forms.gle/abc123')).toBe('https://forms.gle/abc123');

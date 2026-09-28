@@ -265,14 +265,26 @@ la suscripción al calendario) ni Instagram y afines, que contestan mal a cualqu
 robot: esos se cuentan como «sin verificar».
 
 **Qué hacer con un roto:** abrir la página del informe, buscar la actividad o la
-ficha en el panel y corregir el campo. Casi siempre es la web del organizador.
+ficha en el panel y corregir el campo: la web del organizador, o el destino de una
+inscripción «por formulario».
 
 La primera corrida (2026-09-28) encontró 14 rotos en 18 páginas y **ninguno era un
-sitio caído**: eran handles de Instagram y un mail cargados en el campo web, que
-`urlSegura` convertía en `https://handle/`. Eso se arregló en el saneador
-(**B-2165**); lo que queda son textos con forma de dominio —casi seguro handles de
-Instagram con puntos— que el saneador no puede distinguir de una web, y ésos solo
-los puede encontrar este script.
+sitio caído**. Se leyeron como webs de organizador mal cargadas (**B-2165**), pero
+mirado contra la base eran casi todos **inscripciones «por formulario» con un
+`@usuario` de Instagram de destino**: `urlSegura("@amiacultura")` daba
+`https://amiacultura/`, y un `@sol.reviews` con punto salía como
+`https://sol.reviews/`. El saneador rechaza ahora cualquier texto que empiece con
+`@` (**B-2168**), y los datos se corrigen con:
+
+```bash
+node scripts/corregir-contactos-mal-cargados.mjs                          # informa, no escribe
+node scripts/corregir-contactos-mal-cargados.mjs --aplicar --produccion   # escribe
+```
+
+Pasa esas inscripciones a la vía «mensaje por Instagram» (`dm`), mueve a su campo
+una web que es un handle, deja la URL de una web que la trae entre texto y vacía el
+resto (un mail, «Enlace en la descripción»). Lo que no puede decidir solo —un
+destino como «buscando»— lo lista para corregir a mano. No toca Calendar.
 
 No es parte de ningún gate: depende de la red y de sitios ajenos (B-180). Si
 resulta útil, el paso siguiente es programarlo. `tests/links-rotos.test.ts` cubre

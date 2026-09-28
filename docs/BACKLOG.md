@@ -48,13 +48,12 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
   ya lo dice): desde el 2026-09-28 el aviso «Publicadas con un lugar que no cierra» del
   tablero la señala. Dejar el barrio vacío, o completarlo con el barrio real si la sede
   lo tiene.
-- **B-2165** — corregir en el panel las webs de organizador mal cargadas, **primero
-  la que tiene un mail personal**: desde el arreglo ya no sale como link, pero la
-  página de detalle la sigue mostrando como texto, así que el mail sigue publicado
-  hasta que se corrija el dato. El tablero las lista en «web que no enlaza»: pasar
-  el handle al campo de Instagram y dejar la web vacía si no tienen. Correr después
-  `npm run links:revisar`: quedan tres que tienen punto —casi seguro handles de
-  Instagram con puntos— y que el filtro no puede distinguir de un dominio.
+- **B-2168** — correr `node scripts/corregir-contactos-mal-cargados.mjs --aplicar
+  --produccion` (corrige 36 inscripciones y 3 webs de una vez, entre ellas la del mail
+  personal; reemplaza la corrección a mano de B-2165), y corregir en el panel los dos
+  destinos que lista al final: «buscando» en *Club Pino presenta: Al margen de los
+  libros*, y un @usuario y un mail juntos en *Buenos Aires desde los
+  ojos de Roberto Arlt*. Después `npm run links:revisar` tendría que dar cero rotos.
 - **B-1235** — convertir en el panel de producción una propuesta con foto y
   confirmar que la actividad reabre con el flyer. Está en manos de la socia del
   dueño desde el 2026-09-25.
@@ -236,6 +235,23 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 | **B-500** | El aviso «ya-paso»: el dueño no entendía por qué el tablero marcaba como problema algo que es el archivo funcionando bien | ✅ hecho (2026-09-03) — primero reencuadrado (D-270), después **sacado del todo** (D-273): el dueño señaló que la lista crece sin techo y no pide ninguna acción para casi nada. Queda la cobertura acotada «cuántas tienen fecha futura», no la lista |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» y «El sitio público» — para que entre sin scroll infinito | ✅ hecho (2026-09-03) — `EstadisticasPanel.tsx`, D-271 |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin un solo número inventado | ✅ hecho (2026-09-03) — estado vacío deliberado, con la fecha de arranque de la medición (3 de septiembre de 2026) y qué falta para que deje de estar vacío. D-272 |
+
+### B-2168 · Los links rotos eran inscripciones «por formulario» con un @usuario · P2 — pendiente de correr el script
+
+B-2165 leyó los 14 links rotos del 2026-09-28 como webs de organizador mal cargadas.
+Mirado contra la base, solo 3 webs estaban mal (un mail personal, un texto con un link
+de Passline adentro y «Enlace en la descripción»); **los 14 rotos venían del destino de
+la inscripción**: 36 actividades con vía «formulario» y un `@usuario` de Instagram de
+destino, que `urlSegura` convertía en `https://usuario/`. Las tres «con forma de
+dominio» que B-2165 daba por imposibles de detectar llevaban la arroba adelante
+(`@sol.reviews`, `@savetheday.leer`, `@preferiaria.estar.leyendo`): `new URL` la
+descarta como un usuario vacío. **Arreglado en el sitio:** `urlSegura` rechaza un texto
+que empieza con `@` (test en `tests/detallePublico.test.ts`). **Falta el dato:**
+`scripts/corregir-contactos-mal-cargados.mjs` lo corrige; su corrida en producción
+quedó para el dueño porque la sesión que lo escribió no tenía permiso de escritura a
+la base. Hueco que queda: el aviso «web que no enlaza» del tablero mira solo
+`organizador.web` y no el destino de una inscripción por formulario, así que este caso
+no aparecía en el tablero. Se cierra cuando `links:revisar` dé cero rotos.
 
 ### B-2167 · Once pares de actividades publicadas que parecen duplicadas · P2 — pendiente del dueño
 
