@@ -149,7 +149,7 @@ const TEXTO: Record<ClaseDeAviso, { titulo: string; porque: string }> = {
     titulo: 'Publicadas con una web del organizador que no enlaza',
     porque:
       'Está cargada pero no es una dirección: el sitio la muestra como texto y ' +
-      'Google no la recibe. Suele ser un espacio o una palabra de más.',
+      'Google no la recibe. Suele ser una cuenta de Instagram o un mail pegado por error, o un espacio de más.',
   },
   esperando: {
     titulo: `Sin publicar y sin tocarse hace más de ${DIAS_ESPERANDO} días`,

@@ -76,7 +76,7 @@ const acto = (over: Partial<ActividadConId> = {}): ActividadConId =>
     sede: null,
     online: null,
     sesiones: [],
-    imagenes: [{ id: 'img_1', url: 'https://x/y.jpg', epigrafe: '', origen: 'externa', portada: true } as Imagen],
+    imagenes: [{ id: 'img_1', url: 'https://x.test/y.jpg', epigrafe: '', origen: 'externa', portada: true } as Imagen],
     arancel: { tipo: 'gratis', notas: '' },
     inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: null },
     createdBy: 'uid-propio',

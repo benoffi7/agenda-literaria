@@ -17865,6 +17865,21 @@ desplegar» o «sin relevar» y estaban `ACTIVE`, y tres (`rebuildPorBibliotecas
 describe —se despliega por CI y nadie vuelve al documento— y el comparador lo
 atrapa solo si alguien lo corre. Arreglado en la tabla; el relevamiento da verde.
 
+### B-2165 · El campo web publicaba handles de Instagram como links que no llevan a nada · P2 — ✅ hecho (2026-09-28)
+
+La primera corrida de `scripts/links-rotos.mjs` (roadmap 5.5) dio 14 links rotos en
+18 páginas de actividad, y **ninguno era un sitio caído**: eran handles de Instagram
+(de instituciones y de clubes de lectura) y un mail cargados en `organizador.web`.
+`urlSegura` les anteponía `https://` y los aceptaba, así que el sitio publicaba
+`https://<handle>/`. Arreglado en el saneador, que es el que usan todos los
+campos de link: rechaza un host sin punto, con `_`, o con usuario en la URL (el
+mail), y deja pasar `localhost` para el emulador. Consecuencia en el sitio: esas
+webs dejan de ser un link, **pero la página de detalle las sigue mostrando como
+texto** (lo señaló el `auditor-privacidad`: el mail sigue publicado hasta que se
+corrija el dato; no es nuevo, antes era el texto del link); en el panel, las actividades pasan al aviso «web que no
+enlaza» del tablero, que es de donde se corrigen. Tests en
+`tests/detallePublico.test.ts`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

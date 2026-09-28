@@ -100,14 +100,15 @@ describe('la portada es exactamente una', () => {
      * público. Acá se fija su contrato; la atadura con la salida está en
      * `tests/flyer-en-el-panel.test.ts`.
      *
-     * Ojo con el caso «no-es-una-url»: `urlSegura` le antepone `https://` y lo
-     * acepta, porque quien carga escribe «casabrandon.com» y pedirle el esquema
-     * es trasladarle un detalle nuestro. Va acá para que se vea que la función
-     * **no** valida que la imagen exista, solo que el `src` no sea un esquema
-     * peligroso o basura impareseable.
+     * Ojo con el caso «ok.test/sin-esquema.jpg»: `urlSegura` le antepone
+     * `https://` y lo acepta, porque quien carga escribe «casabrandon.com» y
+     * pedirle el esquema es trasladarle un detalle nuestro. Va acá para que se
+     * vea que la función **no** valida que la imagen exista, solo que el `src`
+     * no sea un esquema peligroso o algo que no es una dirección. Desde B-2165,
+     * «no-es-una-url» —un host sin punto— ya no pasa.
      */
-    const pasa = ['https://ok.test/a.jpg', 'http://127.0.0.1:9199/o/x.jpg', 'no-es-una-url'];
-    const no = ['', '   ', 'javascript:alert(1)', 'data:image/png;base64,AAAA', 'mi flyer.jpg'];
+    const pasa = ['https://ok.test/a.jpg', 'http://127.0.0.1:9199/o/x.jpg', 'ok.test/sin-esquema.jpg'];
+    const no = ['', '   ', 'javascript:alert(1)', 'data:image/png;base64,AAAA', 'mi flyer.jpg', 'no-es-una-url'];
     for (const url of pasa) expect(imagenesPublicables([img({ url })]), url).toHaveLength(1);
     for (const url of no) expect(imagenesPublicables([img({ url })]), url).toHaveLength(0);
     expect(imagenesPublicables()).toEqual([]);

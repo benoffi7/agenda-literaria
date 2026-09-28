@@ -65,6 +65,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'web-organizador-detecta-instagram-y-mail',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'El aviso de «la web no enlaza» ahora agarra más casos',
+    detalle:
+      'Si en la web del organizador quedó cargada una cuenta de Instagram o un mail en vez de ' +
+      'una dirección, el panel lo detecta: al tipear aparece «no es una dirección» y, si ya está ' +
+      'publicada, la actividad entra en el aviso del tablero. Antes esos casos pasaban sin avisar ' +
+      'y el sitio los publicaba como un link que no llevaba a ningún lado.',
+    donde: 'Formulario, sección «Quién» — y en Estadísticas → «El catálogo».',
+  },
+  {
     id: 'filtros-sin-resultados-cual',
     fecha: '2026-09-25',
     version: '1.11.0',

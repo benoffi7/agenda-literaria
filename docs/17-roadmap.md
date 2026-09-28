@@ -537,7 +537,15 @@ que va marcado como decisión.
 - **Riesgo / costo:** falsos positivos; tiene que ser un aviso que no frena, nunca
   un bloqueo.
 
-### 5.5 · Revisar los links que se rompieron — **Próximo** · M
+### 5.5 · Revisar los links que se rompieron — ✅ Hecho (2026-09-28) · M
+
+> **Hecho el 2026-09-28** como script a pedido, `npm run links:revisar`
+> (`08-operacion.md`). Lee el sitio publicado y no la base, así que no puede ver un
+> link privado. La primera corrida encontró 14 rotos, y la mayoría era el mismo
+> bug: handles de Instagram y un mail cargados como web, que el saneador publicaba
+> como link (**B-2165**, arreglado). Quedan tres con forma de dominio que ningún
+> filtro puede distinguir (ver `BACKLOG.md`). Programarlo queda para cuando se vea
+> que sirve.
 
 - **Qué gana quien visita:** que el formulario de inscripción, la web del
   organizador o el link del material de lectura no den error. Hoy nadie se entera
@@ -640,7 +648,7 @@ las novedades del panel ya existen como mecanismo.
 | 4.3 | Imagen semanal para redes | Redes | M | Próximo | 🟨 ¿Plantilla propia? → una sola, semanal |
 | 4.4 | Invitar al correo desde el detalle | Newsletter | S | Próximo | — |
 | 5.4 | Posibles duplicados | Datos | M | Próximo | — |
-| 5.5 | Links rotos | Datos | M | Próximo | — |
+| 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 6.5 | Guía para publicadoras | Otros | S | Próximo | — |
 | 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | Más adelante | — |
 | 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | Más adelante | 🟨 ¿Solo publicadas? → sí, antes de darla |

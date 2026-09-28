@@ -2,6 +2,16 @@
 
 ## Sin publicar
 
+- **Un script revisa los links rotos del sitio** (roadmap 5.5). `npm run links:revisar`
+  recorre las páginas del sitemap publicado, prueba cada link a un sitio de afuera una
+  vez y deja un informe con qué está roto y en qué página. Lee el sitio y no la base,
+  así que no puede tocar un link privado. La primera corrida encontró 14 rotos en 18
+  páginas, y la mayoría no era un sitio caído sino el bug de abajo (**B-2165**).
+- **Una web de organizador que no es una dirección ya no se publica como link**
+  (B-2165). Handles de Instagram y un mail cargados en el campo web salían como
+  `https://<handle>/`. `urlSegura` rechaza ahora un host sin punto, con `_` o con
+  usuario en la URL; la página de detalle las muestra como texto y no como link, y esas
+  actividades aparecen en el aviso «web que no enlaza» del tablero para corregirlas.
 - **El panel guarda una foto por mes del tablero** (B-378, roadmap 3.5). La primera vez
   que un admin carga el catálogo en el mes, el panel guarda en
   `/fotosDelCatalogo/{AAAA-MM}` los mismos conteos que muestra el tablero —sin ninguna

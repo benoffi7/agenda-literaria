@@ -175,6 +175,15 @@ fila siga siendo cierta.
   la razón de `verificar-produccion.mjs` y no por la de
   `taxonomias-en-produccion.mjs`: pega contra el CDN de Storage sin credencial
   del build, y el CORS se rompe en la consola, no en un deploy. Solo lee.
+- **Que los links del sitio publicado a sitios de terceros sigan andando**
+  (necesita golpear la web ajena, que es justo lo que un agente no debe hacer
+  solo). Mismo criterio que las viñetas de arriba, **script a pedido**:
+  `scripts/links-rotos.mjs` (`npm run links:revisar`, roadmap 5.5, B-2165). Lee
+  el sitio publicado y no Firestore, así que no puede ver un link privado y no
+  necesita credenciales. **No entra a ningún gate**, por la razón de
+  `verificar-produccion.mjs`: depende de la red y de sitios ajenos (B-180). Lo
+  que decide —qué host se prueba, cómo se lee la respuesta, el texto del
+  informe— tiene test sin red (`tests/links-rotos.test.ts`).
 - **Enterarse de que un deploy falló** — ✅ **resuelto el 2026-09-11, y no con un
   agente ni con un test: con el workflow mismo** (**B-883**). Es la viñeta que
   mejor muestra el criterio de este documento, porque los dos candidatos

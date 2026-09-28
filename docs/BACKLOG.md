@@ -41,6 +41,13 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
+- **B-2165** — corregir en el panel las webs de organizador mal cargadas, **primero
+  la que tiene un mail personal**: desde el arreglo ya no sale como link, pero la
+  página de detalle la sigue mostrando como texto, así que el mail sigue publicado
+  hasta que se corrija el dato. El tablero las lista en «web que no enlaza»: pasar
+  el handle al campo de Instagram y dejar la web vacía si no tienen. Correr después
+  `npm run links:revisar`: quedan tres que tienen punto —casi seguro handles de
+  Instagram con puntos— y que el filtro no puede distinguir de un dominio.
 - **B-1235** — convertir en el panel de producción una propuesta con foto y
   confirmar que la actividad reabre con el flyer. Está en manos de la socia del
   dueño desde el 2026-09-25.

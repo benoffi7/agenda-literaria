@@ -30,6 +30,27 @@
  * Sin esquema se asume `https://`: quien carga escribe «casabrandon.com», y
  * pedirle el `https://` en el formulario para que el link ande es trasladarle un
  * detalle nuestro.
+ *
+ * **Y por eso tiene que parecer una dirección de verdad** (B-2165). Con el
+ * `https://` de regalo, `new URL` acepta casi todo: «centrocultural» —un handle de
+ * Instagram pegado en el campo web— daba `https://centrocultural/`, y el sitio lo
+ * publicaba como un link que no lleva a ningún lado. Lo encontró
+ * `scripts/links-rotos.mjs` el 2026-09-28 en 18 páginas. Se rechaza:
+ *
+ *  - **un host sin punto** («centrocultural», «fundacionx»): ningún sitio
+ *    público se llama así;
+ *  - **un host con `_`** («club_de_lectura_x»): es un handle, y un nombre
+ *    de dominio no puede llevarlo;
+ *  - **usuario o contraseña en la URL** («alguien@ejemplo.com» se lee como el
+ *    usuario `alguien` en `ejemplo.com`): es un mail, y linkearlo manda a la
+ *    portada del proveedor.
+ *
+ * `localhost` y una IPv6 entre corchetes pasan aunque no tengan punto: son las
+ * URLs de las imágenes del emulador de Storage, y sin ellas el panel en
+ * desarrollo no mostraría ni un flyer.
+ *
+ * Un dominio que tiene la forma pero no existe («algo.leer») no se puede
+ * saber sin preguntarle a la red: eso es de `links-rotos.mjs`, no de acá.
  */
 export const urlSegura = (crudo: string | null | undefined): string | null => {
   const texto = (crudo ?? '').trim();
@@ -37,7 +58,12 @@ export const urlSegura = (crudo: string | null | undefined): string | null => {
   const candidato = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(texto) ? texto : `https://${texto}`;
   try {
     const url = new URL(candidato);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    const host = url.hostname.replace(/\.$/, '');
+    const local = host === 'localhost' || host.startsWith('[');
+    if ((!host.includes('.') && !local) || host.includes('_') || url.username || url.password)
+      return null;
+    return url.toString();
   } catch {
     return null;
   }

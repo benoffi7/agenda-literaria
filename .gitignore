@@ -65,3 +65,7 @@ functions/.env.*.local
 # la movió de sección. Mientras el hook exista, la línea es lo que evita que el
 # directorio ajeno aparezca en cada `git status`. Ver B-857.
 .mdd/
+
+# Informes locales de scripts a pedido (links-rotos.mjs): nombran páginas y
+# sitios de terceros, y son del momento en que se corrieron — no se versionan.
+.informes/

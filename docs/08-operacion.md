@@ -73,6 +73,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
 | `node scripts/salud-del-codigo.mjs` | remide `docs/10-salud-del-codigo.md` (§1.1, §1.2, §1.4, §1.5, §1.6) e imprime las tablas en markdown listas para pegar. Con `--json`, para otro programa (B-311) |
 | `node scripts/etiquetas-github.mjs` | crea o actualiza en GitHub las etiquetas que el panel le pone a sus issues, derivándolas de `functions/reportes.js`. Idempotente y con verificación. Con `--dry-run` no toca nada (B-33) |
+| `npm run links:revisar` | **los links del sitio que se rompieron** (roadmap 5.5): recorre las páginas del `sitemap.xml` publicado, prueba cada link a un sitio de afuera una vez y deja el informe en `.informes/links-rotos-<fecha>.md`. Ver abajo |
 | `node scripts/verificar-produccion.mjs` | **lee el sistema real** (B-116): escritura y lectura anónimas rechazadas con su control positivo, las cabeceras de cache contra lo que declara `firebase.json`, la versión publicada, y —con `GOOGLE_CALENDAR_ICS_PRIVADO` en el entorno— que el ICS no lleve el link de la reunión. Ver abajo |
 
 > **El conteo de tests no se escribe a mano en ninguna parte, y es una decisión.**
@@ -243,6 +244,39 @@ Tres cosas del diseño que conviene saber:
 `tests/verificar-produccion.test.ts` cubre lo que decide —la derivación de las
 cabeceras, que un rechazo se distinga de una respuesta vacía, y el desdoblado del
 ICS— sin tocar la red.
+
+### Revisar los links rotos (roadmap 5.5)
+
+```bash
+npm run links:revisar                       # todo el sitio, ~20 segundos
+node scripts/links-rotos.mjs --solo=guia    # solo una sección
+SITIO=https://agenda-literaria.web.app npm run links:revisar
+```
+
+Lee **el sitio publicado**, no Firestore: así solo puede ver lo que ya es público,
+y el link privado de una reunión no está en ninguna página para que lo pida. No
+necesita credenciales. Deja un informe en `.informes/` (no se versiona: nombra
+páginas y sitios de terceros, y es del momento).
+
+Tres veredictos: **roto** (404, 410, un dominio que no existe), **dudoso** (403,
+429, 5xx, timeout — puede ser el antibot del sitio y no el link; se mira a mano) y
+el resto anda. **No prueba** lo nuestro, lo que arma el sitio (el mapa, compartir,
+la suscripción al calendario) ni Instagram y afines, que contestan mal a cualquier
+robot: esos se cuentan como «sin verificar».
+
+**Qué hacer con un roto:** abrir la página del informe, buscar la actividad o la
+ficha en el panel y corregir el campo. Casi siempre es la web del organizador.
+
+La primera corrida (2026-09-28) encontró 14 rotos en 18 páginas y **ninguno era un
+sitio caído**: eran handles de Instagram y un mail cargados en el campo web, que
+`urlSegura` convertía en `https://handle/`. Eso se arregló en el saneador
+(**B-2165**); lo que queda son textos con forma de dominio —casi seguro handles de
+Instagram con puntos— que el saneador no puede distinguir de una web, y ésos solo
+los puede encontrar este script.
+
+No es parte de ningún gate: depende de la red y de sitios ajenos (B-180). Si
+resulta útil, el paso siguiente es programarlo. `tests/links-rotos.test.ts` cubre
+lo que decide sin tocar la red.
 
 ### Remedir la salud del código (B-311)
 

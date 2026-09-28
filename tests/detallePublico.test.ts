@@ -140,6 +140,33 @@ describe('urlSegura — lo único que puede terminar en un href', () => {
     expect(urlSegura('casabrandon.com')).toBe('https://casabrandon.com/');
   });
 
+  it.each([
+    ['centrocultural', 'un handle de Instagram pegado en el campo web'],
+    ['https://fundacionx/', 'un host sin punto, aunque traiga el esquema'],
+    ['club_de_lectura_x', 'un handle con guiones bajos'],
+    ['alguien@ejemplo.com', 'un mail: se leería como el usuario de ejemplo.com'],
+    ['https://user:clave@casabrandon.com', 'usuario y contraseña en la URL'],
+  ])('rechaza %s — %s (B-2165)', (crudo) => {
+    /*
+     * Los cinco llegaban al sitio como `https://centrocultural/` y afines: un link
+     * que no lleva a ningún lado. `scripts/links-rotos.mjs` encontró 14 en 18
+     * páginas el 2026-09-28.
+     */
+    expect(urlSegura(crudo)).toBeNull();
+  });
+
+  it('sigue aceptando lo que es una dirección, con subdominio, ruta o puerto', () => {
+    expect(urlSegura('www.casabrandon.com.ar/talleres?x=1')).toBe('https://www.casabrandon.com.ar/talleres?x=1');
+    expect(urlSegura('forms.gle/abc123')).toBe('https://forms.gle/abc123');
+    expect(urlSegura('https://casabrandon.com:8443/')).toBe('https://casabrandon.com:8443/');
+    expect(urlSegura('mi-sitio.com.')).toBe('https://mi-sitio.com./');
+  });
+
+  it('deja pasar localhost: son las imágenes del emulador de Storage', () => {
+    expect(urlSegura('http://localhost:9199/v0/b/x/o/a.jpg')).toBe('http://localhost:9199/v0/b/x/o/a.jpg');
+    expect(urlSegura('http://[::1]:9199/a.jpg')).toBe('http://[::1]:9199/a.jpg');
+  });
+
   it('vacío o basura da null en vez de un link roto', () => {
     expect(urlSegura('')).toBeNull();
     expect(urlSegura('   ')).toBeNull();
