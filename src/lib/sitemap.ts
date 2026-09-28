@@ -58,7 +58,7 @@
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { directoriosDisponibles } from '@/lib/directorios';
 import { estadoDe } from '@/lib/listadoPublico';
-import { hubsOfrecidos } from '@/lib/hubsPublicos';
+import { CLASES_DE_TAXONOMIA, hubsOfrecidos } from '@/lib/hubsPublicos';
 import { mesesEnlazables } from '@/lib/mesPublico';
 import {
   RUTA_AGENDA,
@@ -428,8 +428,13 @@ export const rutasDelSitemap = ({
     ...RUTAS_FIJAS,
     /*
      * **Los hubs de taxonomía: los que tienen algo vigente** — B-108. Los dos
-     * temáticos ya están en `RUTAS_FIJAS`, así que acá entran solo `/tipo/*` y
-     * `/barrio/*`; el `Set` de afuera cubriría el solapamiento igual.
+     * temáticos ya están en `RUTAS_FIJAS`, así que acá entran los de
+     * `CLASES_DE_TAXONOMIA`; el `Set` de afuera cubriría el solapamiento igual.
+     *
+     * **Por la lista y no por nombre** (B-2171): hasta el 2026-09-28 el filtro
+     * decía `tipo || barrio`, y cuando B-951 sumó `/ciudad/*` las ciudades se
+     * emitieron indexables y nunca entraron al sitemap. Nombrar las clases a mano
+     * es lo que dejaba a la tercera afuera sin que nada fallara.
      *
      * Sale de `hubsOfrecidos` y **no** de `hubsDelSitio`, que es la misma
      * distinción que `mesesEnlazables` contra `mesesDelSitio` una línea más
@@ -443,7 +448,7 @@ export const rutasDelSitemap = ({
      * hubs para tirarlos.
      */
     ...hubsOfrecidos(entradas, opciones, {}, ahora)
-      .filter((h) => h.clase === 'tipo' || h.clase === 'barrio')
+      .filter((h) => (CLASES_DE_TAXONOMIA as readonly string[]).includes(h.clase))
       .map((h) => h.ruta),
     ...mesesEnlazables(entradas, ahora).map((m) => rutaDeMes(m.clave)),
     ...rutasDePublicadas(entradas, ahora),

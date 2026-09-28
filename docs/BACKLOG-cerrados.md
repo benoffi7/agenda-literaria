@@ -17880,6 +17880,17 @@ corrija el dato; no es nuevo, antes era el texto del link); en el panel, las act
 enlaza» del tablero, que es de donde se corrigen. Tests en
 `tests/detallePublico.test.ts`.
 
+### B-2171 · Las páginas de ciudad no estaban en el sitemap · P2 — ✅ hecho (2026-09-28)
+
+`/ciudad/*` existe desde B-951 y se emite indexable, pero `rutasDelSitemap`
+filtraba los hubs por nombre (`tipo || barrio`), así que **ninguna ciudad llegó
+nunca al sitemap**: medido contra producción el 2026-09-28, `/ciudad/mar-del-plata/`
+da 200 y el sitemap no tiene ninguna ruta `/ciudad/`. Rompía el invariante «en el
+sitemap si y solo si no lleva `noindex`», y su test estaba en verde porque el
+fixture no tenía ninguna ciudad. Lo encontró el relevamiento para las páginas por
+organizador (roadmap 1.5), que iban a repetir el mismo filtro. Arreglado filtrando
+por `CLASES_DE_TAXONOMIA`, y el test exige ahora un hub indexable de **cada** clase.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

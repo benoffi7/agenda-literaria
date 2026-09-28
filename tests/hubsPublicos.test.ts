@@ -300,6 +300,9 @@ describe('ofrecer, indexar y el sitemap son la misma decisión', () => {
   const conVacio = () => [
     entradaDePrueba({ id: 'a', slug: 'a', tipo: 'taller', fechas: [PROXIMA] }),
     entradaDePrueba({ id: 'v', slug: 'v', tipo: 'charla', fechas: [PASADA] }),
+    // B-2171 — una de cada clase de taxonomía con algo vigente: sin la ciudad, el
+    // invariante de abajo no podía ver que el sitemap dejaba afuera `/ciudad/*`.
+    entradaDePrueba({ id: 'm', slug: 'm', tipo: 'taller', fechas: [PROXIMA], provincia: 'buenos-aires', ciudad: 'mar-del-plata' }),
   ];
 
   it('el hub con algo vigente se ofrece; el vacío no', () => {
@@ -334,6 +337,12 @@ describe('ofrecer, indexar y el sitemap son la misma decisión', () => {
     // Control positivo: hay hubs de los dos lados, así que las dos direcciones se
     // ejercitan de verdad.
     expect(todos.filter(esIndexable).length).toBeGreaterThan(0);
+    // Y de **cada** clase de taxonomía hay uno indexable — B-2171: el sitemap
+    // filtraba por nombre (`tipo || barrio`) y la ciudad, la tercera, quedaba
+    // afuera con el test en verde porque el fixture no tenía ninguna.
+    for (const clase of CLASES_DE_TAXONOMIA) {
+      expect(todos.some((h) => h.clase === clase && esIndexable(h)), `sin hub indexable de ${clase}`).toBe(true);
+    }
     expect(todos.filter((h) => !esIndexable(h)).length).toBeGreaterThan(0);
 
     for (const hub of todos) {

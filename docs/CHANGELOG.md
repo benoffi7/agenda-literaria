@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Las páginas de ciudad entran al sitemap** (B-2171). `/ciudad/*` se publicaba
+  indexable desde B-951 y nunca llegó al sitemap, porque el filtro nombraba a mano
+  `tipo` y `barrio`. Ahora filtra por la lista de clases, y el test del invariante
+  sitemap ⇔ `noindex` exige un hub de cada clase.
 - **GA4 ya puede decir si la gente vino del correo o de Instagram** (roadmap 3.8). El
   recorte de la URL deja pasar `utm_source` y `utm_medium` solo si la pareja está en una
   lista cerrada (`CAMPANAS`: instagram con posteo/historia/bio, correo con semanal); todo
