@@ -1,4 +1,5 @@
 import { geografiaNormalizada } from '@/lib/geografia.mjs';
+import { slugDeOrganizador } from '@/lib/organizador.mjs';
 import { esTonoElegible } from '@/lib/identidad';
 import { admiteMonto } from '@/lib/arancel';
 import { imagenesDe } from '@/lib/imagenes';
@@ -309,7 +310,8 @@ export interface ActividadPublica {
    * atravesado el passthrough del arancel sin un solo rojo. Los dos son todo
    * strings hoy; el riesgo es del próximo campo.
    */
-  organizador: { nombre: string; instagram: string; web: string };
+  /** `slug` — roadmap 1.5: la clave de `/organiza/{slug}`, derivada del nombre en los documentos viejos. */
+  organizador: { nombre: string; instagram: string; web: string; slug: string };
   tallerista: { nombre: string; bio: string; instagram: string } | null;
   libro: LibroPublico | null;
   esCiclo: boolean;
@@ -696,6 +698,8 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
     nombre: a.organizador.nombre,
     instagram: a.organizador.instagram,
     web: a.organizador.web,
+    // Roadmap 1.5 — el guardado, o el del nombre en un documento viejo (D-26).
+    slug: slugDeOrganizador(a.organizador),
   },
   /*
    * **La condición es el nombre y no el objeto** — B-861, la hermana de B-854 del

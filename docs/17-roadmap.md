@@ -144,7 +144,11 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
   propia con página por efeméride + un renglón en la home.** La sección es la que
   suma al objetivo (Google); el renglón es el que hace que alguien la vea.
 
-### 1.5 · Páginas por organizador — «todo lo de Casa Brandon» — **Próximo** · L
+### 1.5 · Páginas por organizador — «todo lo de Casa Brandon» — **En curso** (tramo A, 2026-09-28) · L
+
+> **Decidido el 2026-09-28:** el modelo completo de D-723, con el organizador en una
+> caja de texto libre que autocompleta (no un desplegable). Sin migrar actividades:
+> el slug se deriva del nombre. El tramo A está hecho; lo que falta, en **B-2172**.
 
 - **Qué gana quien visita:** seguir a un espacio o a una tallerista que le gustó y
   ver todo lo que hace, pasado y futuro. Para el organizador, una página propia

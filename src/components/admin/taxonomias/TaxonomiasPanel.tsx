@@ -41,6 +41,7 @@ const TITULO: Record<CampoTaxonomia, string> = {
   // alguna vez hiciera falta, la etiqueta.
   provincia: 'Provincias',
   ciudad: 'Ciudades',
+  organizador: 'Organizadores',
   plataforma: 'Plataformas',
   tags: 'Etiquetas',
   'incluye-actividad': 'Qué se llevan',
@@ -69,6 +70,8 @@ const DONDE: Record<CampoTaxonomia, string> = {
     'Se elige en «Dónde» cuando la provincia es CABA, y viaja al evento del calendario.',
   provincia: 'Se elige en «Dónde», y es lo primero de la cascada: de ella depende si después se pide el barrio o la ciudad.',
   ciudad: 'Se elige en «Dónde» cuando la provincia no es CABA. Es uno de los filtros del sitio.',
+  organizador:
+    'Se escribe en «Quién» y el panel sugiere los que ya existen. Cada uno tiene su página en el sitio (/organiza/…): renombrarlo acá cambia el nombre en todas.',
   plataforma: 'Se elige en «Dónde» cuando la actividad es virtual.',
   tags: 'Se escriben en «Opcional». Son los filtros del sitio público.',
   'incluye-actividad':

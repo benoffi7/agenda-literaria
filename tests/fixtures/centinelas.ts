@@ -89,6 +89,8 @@ const RUTAS = [
   'organizador.nombre',
   'organizador.instagram',
   'organizador.web',
+  // Roadmap 1.5 — la clave de `/organiza/{slug}`. Pública a propósito: es una URL.
+  'organizador.slug',
   'tallerista.nombre',
   'tallerista.bio',
   'tallerista.instagram',
@@ -440,7 +442,7 @@ export const VALORES_NO_TEXTO: Record<string, string> = {
  * B-950 y la proyección lo copia tal cual, así que su centinela uniforme
  * atraviesa entero. Meterlo sería cambiarle el valor sin ningún motivo.
  */
-const RUTAS_SLUG: readonly RutaCentinela[] = ['sede.provincia', 'sede.ciudad'];
+const RUTAS_SLUG: readonly RutaCentinela[] = ['sede.provincia', 'sede.ciudad', 'organizador.slug'];
 
 /** `titulo` → `CENTINELA.titulo`. El valor dice de qué campo salió. */
 export const CENTINELA = Object.fromEntries(
@@ -621,6 +623,7 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
     nombre: CENTINELA['organizador.nombre'],
     instagram: CENTINELA['organizador.instagram'],
     web: CENTINELA['organizador.web'],
+    slug: CENTINELA['organizador.slug'],
   },
   tallerista: {
     nombre: CENTINELA['tallerista.nombre'],

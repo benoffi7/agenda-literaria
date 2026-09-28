@@ -58,6 +58,13 @@ export const CAMPOS_TAXONOMIA = [
  * atar sin exigir que sea idéntica.
  */
 export const TAXONOMIAS_FUERA_DEL_EVENTO = [
+  /*
+   * **El organizador** — roadmap 1.5. El evento dice el nombre guardado, como
+   * siempre (`construirDescripcion`, «Organiza:»): pedir la lista entera en cada
+   * sync para resolver una etiqueta que casi siempre es igual al nombre no paga,
+   * y renombrarlo se ve en el evento en el próximo guardado de la actividad.
+   */
+  'organizador',
   'incluye-actividad',
   /*
    * **Los seis de las suscripciones literarias** (B-832), y acá el motivo es más

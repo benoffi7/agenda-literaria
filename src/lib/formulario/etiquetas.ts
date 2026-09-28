@@ -32,6 +32,9 @@ export type CampoLabelUnico =
   // la dejaría sin buffer el día que alguien agregue una jurisdicción.
   | 'provincia'
   | 'ciudad'
+  // Roadmap 1.5 — el organizador, de un solo slug: lo que se tipea en «Quién» se
+  // da de alta como opción al guardar, por el mismo buffer que las demás.
+  | 'organizador'
   | 'plataforma'
   // B-832 — los tres campos de **un solo slug** de una suscripción literaria. No
   // los usa el formulario de actividad (viven en `SuscripcionFormulario`), y

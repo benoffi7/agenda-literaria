@@ -70,9 +70,20 @@ export const ENTREGAS_MATERIAL = [
 export type EntregaMaterial = (typeof ENTREGAS_MATERIAL)[number];
 
 export interface Organizador {
+  /**
+   * Lo que se tipeó, o la etiqueta de la opción elegida al guardar. Es el
+   * **respaldo** del nombre que se muestra: las salidas muestran la etiqueta de
+   * `/opciones/organizador` si hay una (`nombreDeOrganizador`, roadmap 1.5).
+   */
   nombre: string;
   instagram: string;
   web: string;
+  /**
+   * Roadmap 1.5 — el valor de `/opciones/organizador`: la clave de su página
+   * `/organiza/{slug}`. **Opcional**: los documentos anteriores no lo tienen y se
+   * lee con `slugDeOrganizador`, que lo deriva del nombre (D-26).
+   */
+  slug?: string;
 }
 
 /** Tallerista, o autor invitado en presentaciones y charlas (§11). */
@@ -926,6 +937,14 @@ export const CAMPOS_TAXONOMIA = [
    * tiene encuentros.
    */
   'tipo-biblioteca',
+  /*
+   * Roadmap 1.5 (D-723 punto 8) — el organizador, que era texto libre y no podía
+   * tener página. De valor único. **No viaja al índice ni al evento** con su lista
+   * (ver `TAXONOMIAS_FUERA_DEL_INDICE` y `functions/etiquetas.js`): un organizador
+   * suele ser una persona, y la lista incluye los de borradores sin publicar. Y
+   * `/opciones/organizador` no es de lectura pública (`firestore.rules`).
+   */
+  'organizador',
 ] as const;
 export type CampoTaxonomia = (typeof CAMPOS_TAXONOMIA)[number];
 

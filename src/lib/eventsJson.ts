@@ -1,4 +1,5 @@
 import { urlSegura } from '@/lib/enlaceSeguro';
+import { nombreDeOrganizador } from '@/lib/organizador.mjs';
 import { imagenesPublicables, portadaDe } from '@/lib/imagenes';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { opcionesPublicas, type ActividadPublica, type OpcionPublica } from '@/lib/toPublic';
@@ -145,8 +146,13 @@ export interface EntradaDeIndice {
    * `toPublic` a propósito.
    */
   arancel: { tipo: string; monto: number | null };
-  /** **Strings, no objetos**: el Instagram y la bio son del detalle. */
+  /**
+   * **Strings, no objetos**: el Instagram y la bio son del detalle. Desde el
+   * roadmap 1.5 es el nombre **resuelto** contra `/opciones/organizador`.
+   */
   organizador: string;
+  /** Roadmap 1.5 — la clave de `/organiza/{slug}`; `''` sin organizador. */
+  organizadorSlug: string;
   /**
    * El nombre, o `null` si no hay tallerista — y «no hay tallerista» es **que no
    * tenga nombre**, no que falte el objeto (B-861).
@@ -265,6 +271,13 @@ export const encuentrosDelIndice = (
  */
 export const TAXONOMIAS_FUERA_DEL_INDICE: readonly CampoTaxonomia[] = [
   'incluye-actividad',
+  /*
+   * **El organizador** — roadmap 1.5. Su lista incluye los de borradores sin
+   * publicar, y un organizador suele ser una persona: el índice no la lleva.
+   * Cada entrada ya trae su organizador resuelto (nombre y slug), que es todo lo
+   * que el listado y las páginas necesitan.
+   */
+  'organizador',
   /*
    * **Los seis de las suscripciones literarias** — B-832. Es el mismo argumento
    * un paso más lejos: aquélla no viaja porque no es eje de filtro **de la
@@ -427,7 +440,15 @@ const zonasDe = (a: ActividadPublica): ZonasDeIndice => {
 };
 
 /** Una `ActividadPublica` recortada a lo que el listado necesita. */
-export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
+export const entradaDeIndice = (
+  a: ActividadPublica,
+  /**
+   * Roadmap 1.5 — la etiqueta de un organizador en `/opciones/organizador`. La
+   * lista no viaja al índice (`TAXONOMIAS_FUERA_DEL_INDICE`), así que el nombre se
+   * resuelve acá, al armarlo. Sin resolver, sale el nombre guardado.
+   */
+  etiquetaDeOrganizador: (slug: string) => string | null | undefined = () => null,
+): EntradaDeIndice => ({
   id: a.id,
   slug: a.slug,
   titulo: a.titulo,
@@ -448,7 +469,8 @@ export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
     : null,
   zonas: zonasDe(a),
   arancel: { tipo: a.arancel.tipo, monto: a.arancel.monto ?? null },
-  organizador: a.organizador.nombre,
+  organizador: nombreDeOrganizador(a.organizador, etiquetaDeOrganizador),
+  organizadorSlug: a.organizador.slug,
   tallerista: a.tallerista?.nombre ?? null,
   tags: a.tags,
   destacado: a.destacado,
@@ -490,6 +512,8 @@ export const construirIndice = ({
       .filter(([campo]) => !TAXONOMIAS_FUERA_DEL_INDICE.includes(campo as CampoTaxonomia))
       .map(([campo, valores]) => [campo, opcionesPublicas(valores ?? [])]),
   ),
-  actividades: actividades.map(entradaDeIndice),
+  actividades: actividades.map((a) =>
+    entradaDeIndice(a, (slug) => (opciones.organizador ?? []).find((o) => o.slug === slug)?.label),
+  ),
   encuentros: encuentrosDelIndice(actividades, generadoEn),
 });

@@ -85,7 +85,8 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
     },
     {
       nombre: 'quién, solo el nombre',
-      centinelas: ['organizador.nombre', 'tallerista.nombre'],
+      // Roadmap 1.5 — más el slug del organizador, que es la clave de su página.
+      centinelas: ['organizador.nombre', 'organizador.slug', 'tallerista.nombre'],
       porque:
         '§3.1 — en el índice son strings y no objetos. El Instagram, la web y la bio ' +
         'quedan en el detalle: servir los handles de terceros en lote es distinto de ' +

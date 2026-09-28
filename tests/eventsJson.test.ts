@@ -151,6 +151,7 @@ describe('la entrada del índice recorta lo que el listado no usa (§3.1)', () =
       'modalidades[]',
       'online.plataforma',
       'organizador',
+      'organizadorSlug',
       'resumen',
       'searchText',
       'sede.barrio',

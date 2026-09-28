@@ -327,6 +327,8 @@ export const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
       'organizador.nombre',
       'organizador.instagram',
       'organizador.web',
+      // Roadmap 1.5 — la clave de `/organiza/{slug}`: una URL, pública por definición.
+      'organizador.slug',
       'tallerista.nombre',
       'tallerista.bio',
       'tallerista.instagram',

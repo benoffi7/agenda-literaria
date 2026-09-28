@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Páginas por organizador, tramo A: el organizador pasa a ser taxonomía** (roadmap
+  1.5, B-2172). Sin cambios visibles todavía. `/opciones/organizador` existe (vacía),
+  el slug se deriva del nombre en los documentos viejos (`functions/organizador.js`),
+  y `toPublic`, el índice (`organizadorSlug`) y el detalle ya lo llevan, mostrando la
+  etiqueta de la opción cuando la haya. Lo que falta está en B-2172.
 - **Las páginas de ciudad entran al sitemap** (B-2171). `/ciudad/*` se publicaba
   indexable desde B-951 y nunca llegó al sitemap, porque el filtro nombraba a mano
   `tipo` y `barrio`. Ahora filtra por la lista de clases, y el test del invariante

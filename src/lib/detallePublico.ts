@@ -37,6 +37,7 @@
  */
 // `resumenDe` vive en `eventsJson.ts` porque nació con el índice: se importa para
 // que la tarjeta del listado y la `meta description` del detalle recorten igual.
+import { nombreDeOrganizador } from '@/lib/organizador.mjs';
 import { NOMBRE, colorDeTipo } from '@/lib/identidad';
 import { piezasDeLugar, provinciaDeSede } from '@/lib/geografia.mjs';
 import { admiteMonto, montoLegible } from '@/lib/arancel';
@@ -1541,7 +1542,9 @@ export const detalleDeActividad = (
     inscripcion,
 
     organizador: {
-      nombre: a.organizador.nombre,
+      // Roadmap 1.5 — la etiqueta de `/opciones/organizador` si la hay (renombrarla
+      // cambia todas las páginas), y si no el nombre guardado.
+      nombre: nombreDeOrganizador(a.organizador, (slug) => etiquetas.organizador?.[slug]),
       instagram: arrobaInstagram(a.organizador.instagram),
       instagramUrl: enlaceInstagram(a.organizador.instagram),
       web: a.organizador.web,

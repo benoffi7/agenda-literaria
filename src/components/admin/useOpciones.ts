@@ -263,6 +263,9 @@ export function useTodasLasOpciones(): {
   // B-960 — la de las bibliotecas, por el mismo motivo que las de arriba: esta
   // pantalla la **administra**.
   const tipoBiblioteca = useOpciones('tipo-biblioteca');
+  // Roadmap 1.5 — el organizador: esta pantalla lo administra (renombrar una
+  // opción cambia el nombre en todas sus páginas).
+  const organizador = useOpciones('organizador');
 
   return useMemo(
     () => ({
@@ -285,6 +288,7 @@ export function useTodasLasOpciones(): {
         'incluye-lugar': incluyeLugar.valores,
         'condicion-de-uso': condicionDeUso.valores,
         'tipo-biblioteca': tipoBiblioteca.valores,
+        organizador: organizador.valores,
       },
       cargando:
         arancel.cargando ||
@@ -301,7 +305,8 @@ export function useTodasLasOpciones(): {
         alcanceEnvio.cargando ||
         tipoLugar.cargando ||
         incluyeLugar.cargando ||
-        condicionDeUso.cargando,
+        condicionDeUso.cargando ||
+        organizador.cargando,
     }),
     [
       arancel,
@@ -319,6 +324,7 @@ export function useTodasLasOpciones(): {
       tipoLugar,
       incluyeLugar,
       condicionDeUso,
+      organizador,
     ],
   );
 }

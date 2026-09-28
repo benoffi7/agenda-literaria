@@ -70,7 +70,7 @@ describe('barrido de la proyección de la actividad (§5.2, `toPublic`)', () => 
         ...PERMITIDO_EN_LA_PROYECCION.filter((g) => g.nombre !== 'quién'),
         {
           nombre: 'quién, sin el tallerista',
-          centinelas: ['organizador.nombre', 'organizador.instagram', 'organizador.web'],
+          centinelas: ['organizador.nombre', 'organizador.instagram', 'organizador.web', 'organizador.slug'],
           porque:
             'B-861 — el organizador sale como siempre; del tallerista no sale nada porque ' +
             'no tiene nombre, y «hay tallerista» es que tenga nombre (B-854). Las tres ' +
