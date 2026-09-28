@@ -611,6 +611,16 @@ export const actividadDePrueba = (slug, estado) => ({
  * B-1761 un test de aquel archivo compara las dos —y las del índice y la
  * cartelera— con `RUTA_DEL_CENTINELA_DEL_GATE` como traducción de nombres. Las cuatro de la Guía se comparan desde B-1812 con `RUTA_EN_LA_GUIA`, contra las listas de `tests/fixtures/canastas-de-la-guia.ts`.
  */
+/**
+ * Roadmap 1.1 — lo que puede llevar el `.ics` de «Agendar este encuentro»
+ * (`actividad/<slug>/<encuentro>.ics`). Vive bajo `actividad/` pero **no** es la
+ * página: lleva el título con el tema del encuentro (`tituloDeEvento`) y el lugar
+ * (`construirUbicacion`: la dirección, sin las indicaciones), y como descripción
+ * solo el link a la página. Ni la descripción, ni la lectura, ni el canal de
+ * inscripción: si alguno aparece, el `.ics` se armó con algo que no es suyo.
+ */
+export const CENTINELA_DEL_ICS = ['direccion', 'tema'];
+
 export const CENTINELA_DEL_DETALLE = [
   'descripcion',
   'destino',

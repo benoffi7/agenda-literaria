@@ -253,6 +253,19 @@ la base. Hueco que queda: el aviso «web que no enlaza» del tablero mira solo
 `organizador.web` y no el destino de una inscripción por formulario, así que este caso
 no aparecía en el tablero. Se cierra cuando `links:revisar` dé cero rotos.
 
+### B-2169 · El tema de un encuentro puede llevar el link de una reunión y sale a tres salidas sin sanear · P2
+
+Lo señaló el `auditor-privacidad` sobre el roadmap 1.1, y **es previo**: el `tema` de
+cada encuentro es texto libre, sale a la página de detalle (6), al `summary` del
+evento del calendario público (2) y ahora al título del evento que se agenda (33), y
+**nadie lo pasa por `sinLinksDeReunion`** —el calendario sanea la descripción, no el
+título—. Un «Cap. 3 — entrá por zoom.us/j/…» se publicaría en las tres, y en la 33 es
+peor: un `.ics` bajado no se actualiza nunca. La etiqueta de comisión ya tiene esa
+guarda en el schema y el tema no. **Arreglo propuesto:** la misma regla en el origen
+—`src/lib/schema.ts`, junto a la de la etiqueta, en `MENSAJES_DE_PRIVACIDAD`—, y no en
+cada salida (sanear solo una haría que deriven por separado, la clase de B-88). Test:
+«el tema de un encuentro no puede llevar la dirección de una reunión con página».
+
 ### B-2167 · Once pares de actividades publicadas que parecen duplicadas · P2 — pendiente del dueño
 
 El aviso de posibles duplicados (roadmap 5.4), medido contra el `events.json`

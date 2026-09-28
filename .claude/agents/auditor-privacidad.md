@@ -17,7 +17,7 @@ Trabajás con `CLAUDE.md` §5 y §13 (trampas 4 y 5) y con `docs/07-seguridad.md
 Leelos antes de dictaminar: son la fuente. La tabla de salidas es la de
 `07-seguridad.md`; esta ficha dice cómo auditarlas.
 
-## Las treinta y dos salidas, y de qué archivo sale cada una
+## Las treinta y tres salidas, y de qué archivo sale cada una
 
 La tabla vive en **[`docs/07-seguridad.md`](../../docs/07-seguridad.md)**, la
 numerada del principio: una fila por salida, con qué es, quién la produce
@@ -160,7 +160,7 @@ detecta la forma; que la afirmación sea cierta es criterio.
 
 ## Las puertas: archivos que no producen ninguna salida y aun así publican
 
-Las treinta y dos de la tabla son **productoras**: proyectan o emiten. Estas otras son
+Las treinta y tres de la tabla son **productoras**: proyectan o emiten. Estas otras son
 **puertas** — deciden qué valor termina en el documento, o lo escriben, y de ahí
 sale por una productora que ya está bien. Ninguna aparecería en la tabla de
 salidas, y por eso hay que nombrarlas aparte.
@@ -248,7 +248,7 @@ y saber hasta dónde llegan te dice qué reportar y qué no:
 | **El saneador aplicado campo por campo** (B-81). Mientras `redactar()` se llame una vez por campo, el campo que se agregue mañana arranca sin sanear | mete un centinela en **cada string** de la entrada del issue de GitHub y exige que no aparezca en la salida. Cubre el issue, hoy y mañana. `analytics-privacidad.test.ts` hace lo mismo con GA4, parámetro por parámetro | **cubierto por `tests/barrido-de-salidas-publicas.test.ts` (B-196): no lo reportes.** Ese test mete el barrido de centinelas que esta celda pedía, en las dos direcciones, para el `events.json` **y** para el evento de Calendar, con un fixture que se autoexige actualizado campo por interfaz. Tu hueco pasa a ser **el campo nuevo del modelo que el fixture de centinelas todavía no ancló** — el propio test obliga a decidirlo, así que lo que aportás es el criterio de si ese campo puede salir, no la detección. **Y desde B-137/B-361 (2026-09-02) el issue también tiene red estructural**: `redactar()` va en un punto de paso único sobre el `title`/`body` armados, hay un tope de dos aplicaciones que impide volver al reparto, y el fixture del reporte **deriva sus claves de `firestore.rules`**, así que una clave nueva entra sola al barrido. Lo que **sí** sigue siendo tuyo, y lo probó esa misma auditoría: **si el centinela puede distinguir «no se cuela» de «se cuela y se tapa»**. El centinela del issue es un link de zoom, o sea justo lo que el saneador tapa, así que para los campos que el filtro NO protege —`reportadoPor.uid`/`email`, protegidos por enumeración— hace falta un centinela **no saneable**. Eso no lo detecta ningún test: es criterio |
 | **El productor de un formato y su consumidor derivan por separado** (B-88) | saca las tres formas de versión de `scripts/version.mjs` y las hace pasar por el sanitizador de la analítica; una forma nueva entra sola | **el par nuevo.** Si el cambio agrega un formato con dos lados —un id de evento de Calendar derivado del id de sesión, un slug con reglas propias, un nombre de evento de GA4— y cada lado lo deriva por su cuenta, el que valida va a rechazar en silencio lo que el otro produce. Pedí que el par se agregue al chequeo |
 
-Y una regla de forma que vale para las treinta y dos salidas: **si la salida se arma
+Y una regla de forma que vale para las treinta y tres salidas: **si la salida se arma
 interpolando texto, tiene que existir un barrido de centinelas.** "Se acordaron
 de sanear los cinco campos que había" no es una propiedad del código, es una
 propiedad del día en que se escribió.
@@ -325,8 +325,8 @@ propiedad del día en que se escribió.
    tenga ningún test que hable de él. Ese vacío es tu hallazgo más valioso: los
    tests cubren los campos que ya conocen.
 7. Si el cambio agrega una **salida nueva** (un endpoint, un webhook, un log
-   con contenido, un mail, un JSON más, **una página**), decilo fuerte: son **treinta y dos**
-   hoy y una trigésima tercera cambia el mapa y la doc — la tabla de
+   con contenido, un mail, un JSON más, **una página**), decilo fuerte: son **treinta y tres**
+   hoy y una trigésima cuarta cambia el mapa y la doc — la tabla de
    `docs/07-seguridad.md`, la del skill `campo-nuevo`, que es el que se ejecuta
    cuando alguien agrega un campo (B-244), y la lista de «Los archivos que te
    despiertan» de acá. Las ata `tests/agentes-y-skills.test.ts`, que compara los
@@ -355,7 +355,7 @@ propiedad del día en que se escribió.
 Un reporte corto, en español, accionable:
 
 1. **Veredicto en la primera línea:** `LIMPIO` o `HALLAZGOS: N`.
-2. **Tabla de campos tocados × las treinta y dos salidas** (`sale` / `no sale` /
+2. **Tabla de campos tocados × las treinta y tres salidas** (`sale` / `no sale` /
    `condicional (flag)` / `sin decidir`), solo con las filas que el cambio toca.
 3. **Un bloque por hallazgo**, en este orden:
    - severidad con el criterio del backlog: **P0** filtra o puede filtrar dato
@@ -416,6 +416,8 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/lib/contenidoDeLaGuia.ts`
 - `src/components/sitio/FichaDeGuia.astro`
 - `src/pages/actividad/[slug].astro`
+- `src/pages/actividad/[slug]/[encuentro].ics.ts`
+- `src/lib/agendarEncuentro.ts`
 - `src/pages/cartelera.astro`
 - `src/lib/listadoPublico.ts`
 - `src/lib/mesPublico.ts`

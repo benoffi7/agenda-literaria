@@ -670,6 +670,40 @@ const gruposDeEncuentros =
                             </p>
                           )
                         }
+
+                        {
+                          /*
+                            Roadmap 1.1 — agendar **este** encuentro, sin suscribirse a
+                            la agenda entera. Dos links y ningún script: la plantilla
+                            de Google, y el `.ics` que abre el calendario del iPhone y
+                            Outlook. Solo en los que todavía pueden pasar (el
+                            view-model lo decide). El nombre accesible dice cuál
+                            encuentro: diez «Google Calendar» seguidos no se distinguen.
+                          */
+                          e.agendar && (
+                            <p class="text-sm leading-6 text-super">
+                              Agendar:{' '}
+                              <a
+                                class={claseEnlace}
+                                href={e.agendar.google}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                                aria-label={`Agendar el encuentro ${e.numero} en Google Calendar`}
+                              >
+                                Google Calendar
+                              </a>
+                              {' · '}
+                              <a
+                                class={claseEnlace}
+                                href={e.agendar.ics}
+                                download
+                                aria-label={`Agendar el encuentro ${e.numero} en el calendario del teléfono (iPhone, Outlook)`}
+                              >
+                                iPhone u Outlook
+                              </a>
+                            </p>
+                          )
+                        }
                       </div>
                     </li>
                   ))}
@@ -1222,6 +1256,41 @@ const gruposDeEncuentros =
           «en ningún lado del servidor») porque una negación absoluta sobre
           tratamiento de datos es la que nace falsa (B-781).
         */}
+        {/*
+          ══ Compartir y agendar — roadmap 1.1 ═══════════════════════════════
+
+          **Links, no botones con script.** El navegador interno de Instagram, que
+          es por donde llega la mayoría, no ofrece «compartir» cómodo, y la Web
+          Share API pediría JavaScript en la página que no lo lleva. Un `wa.me` sin
+          número abre el selector de contactos con el título y la dirección. Nada
+          de WhatsApp ni de Google se carga hasta que alguien toca.
+
+          «Agendar el próximo encuentro» va acá además de en cada fila porque una
+          actividad de un solo encuentro sin tema no muestra la lista.
+        */}
+        <div class="regla-fina flex flex-col gap-2 px-4 pt-3 pb-3">
+          <a
+            href={detalle.compartirPorWhatsApp}
+            rel="noopener noreferrer"
+            target="_blank"
+            class={`${claseBotonBloque} w-full justify-center`}
+          >
+            Compartir por WhatsApp
+          </a>
+          {detalle.agendarProximo && (
+            <p class="body-sm text-super">
+              Agendar el próximo encuentro:{' '}
+              <a class={claseEnlace} href={detalle.agendarProximo.google} rel="noopener noreferrer" target="_blank">
+                Google Calendar
+              </a>
+              {' · '}
+              <a class={claseEnlace} href={detalle.agendarProximo.ics} download>
+                iPhone u Outlook
+              </a>
+            </p>
+          )}
+        </div>
+
         <div class="regla-fina px-4 pt-3 pb-4">
           <button
             type="button"

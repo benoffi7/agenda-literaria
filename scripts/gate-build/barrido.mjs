@@ -29,6 +29,7 @@ import {
   MONTO_EN_EL_ARTEFACTO,
   PAGINAS_CON_TARJETA,
   pintaLaTarjeta,
+  CENTINELA_DEL_ICS,
 } from './semilla.mjs';
 
 /**
@@ -47,6 +48,8 @@ import {
 export const canastaDe = (relativa) => {
   const deLaGuia = (coleccion) =>
     relativa === `${coleccion}.json` || relativa.startsWith(`guia/${coleccion}/`);
+  // Antes que la página: el `.ics` vive bajo `actividad/` y lleva mucho menos.
+  if (relativa.startsWith('actividad/') && relativa.endsWith('.ics')) return CENTINELA_DEL_ICS;
   if (relativa.startsWith('actividad/')) return CENTINELA_DEL_DETALLE;
   if (relativa === 'events.json') return CENTINELA_DEL_INDICE;
   if (relativa.startsWith('cartelera/')) return CENTINELA_DE_LA_CARTELERA;
@@ -56,6 +59,18 @@ export const canastaDe = (relativa) => {
   if (deLaGuia('bibliotecas')) return CENTINELA_DE_BIBLIOTECAS;
   return [];
 };
+
+/**
+ * **El `.ics` se barre desplegado y sin escapes** — roadmap 1.1. `icsDeEvento`
+ * pliega cada línea a 75 bytes (CRLF + espacio) y escapa `,` `;` `\\` como pide el
+ * RFC 5545, así que un centinela puede quedar partido o con una barra adentro y
+ * `includes` no lo ve: el primer barrido de los `.ics` pasaba en verde sin haber
+ * podido ver el tema del encuentro (lo midió el `auditor-privacidad`).
+ *
+ * @param {string} ics
+ */
+export const textoDelIcs = (ics) =>
+  ics.replace(/\r\n[ \t]/g, '').replace(/\\([,;\\])/g, '$1').replace(/\\n/gi, '\n');
 
 /**
  * @param {{ relativa: string, contenido: string }[]} archivos
@@ -81,8 +96,9 @@ export const barrerArtefacto = (archivos) => {
   const hallazgos = [];
   /** Dónde apareció cada forma del monto — B-804. Es el control positivo. */
   const vistos = new Map(MONTO_EN_EL_ARTEFACTO.map((f) => [f.campo, []]));
-  for (const { relativa, contenido } of archivos) {
+  for (const { relativa, contenido: crudo } of archivos) {
     const permitido = canastaDe(relativa);
+    const contenido = relativa.endsWith('.ics') ? textoDelIcs(crudo) : crudo;
     for (const [campo, valor] of Object.entries(CENTINELA)) {
       if (!permitido.includes(campo) && contenido.includes(valor)) {
         hallazgos.push(`    ${relativa} → ${campo} (${valor})`);

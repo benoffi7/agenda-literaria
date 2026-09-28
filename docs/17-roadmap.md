@@ -87,7 +87,13 @@ día pasa al primer lugar del eje de analítica.
 
 ## Eje 1 · Sitio público
 
-### 1.1 · Compartir y agendar desde la página de la actividad — **Ahora** · S
+### 1.1 · Compartir y agendar desde la página de la actividad — ✅ Hecho (2026-09-28) · S
+
+> **Hecho el 2026-09-28**, como links y sin JavaScript: «Compartir por WhatsApp» en
+> la ficha y «Agendar» (Google Calendar o `.ics`) en cada encuentro que puede
+> pasar. Una diferencia con la nota técnica: el evento **no** reusa la descripción
+> del calendario, que se arma desde el documento crudo; lleva el título y el lugar
+> con las mismas funciones, y como descripción el link a la página.
 
 - **Qué gana quien visita:** con un toque manda el taller por WhatsApp a la amiga
   con la que va, y con otro se lo agenda en su calendario sin suscribirse a la
@@ -635,7 +641,7 @@ las novedades del panel ya existen como mecanismo.
 | 3.1 | Interruptores de GA4 (B-874, B-773) | Analítica | S | ✅ Hecho (2026-09-25) | — (es cumplir lo prometido) |
 | 5.1 | Copia de seguridad de la base | Datos | M | ✅ Hecho (2026-09-28) | 🟨 ¿Respaldo diario a 30 días? → sí, a 7 |
 | 5.2 | Encuentro cancelado avisa (B-98) | Datos / sitio | M | ✅ Hecho (2026-09-24) | ya aprobada |
-| 1.1 | Compartir y agendar en el detalle | Sitio | S | **Ahora** | — |
+| 1.1 | Compartir y agendar en el detalle | Sitio | S | ✅ Hecho (2026-09-28) | — |
 | 4.1 | El lunes de difusión | Redes | S–M | **Ahora** | — |
 | 4.2 | El correo arranca por las destacadas | Newsletter | S | **Ahora** | — |
 | 1.2 | Links tocables en la descripción (B-980) | Sitio | S | ✅ Hecho (2026-09-24) | ya decidida |

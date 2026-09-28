@@ -29,6 +29,7 @@ import * as efemerides from './chequeos/09-efemerides.mjs';
 import * as motivo from './chequeos/10-motivo-de-cancelacion.mjs';
 import * as barrido from './chequeos/11-barrido.mjs';
 import * as seo from './chequeos/12-seo.mjs';
+import * as agendar from './chequeos/13-agendar.mjs';
 
 /** En el orden en que corrían adentro del `try`. */
 export const CHEQUEOS = [
@@ -44,6 +45,7 @@ export const CHEQUEOS = [
   motivo,
   barrido,
   seo,
+  agendar,
 ];
 
 /**

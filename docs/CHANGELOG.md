@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **«Compartir por WhatsApp» y «Agendar este encuentro» en la página de cada
+  actividad** (roadmap 1.1). En la ficha, un link que abre WhatsApp con el título y la
+  dirección; en cada encuentro que todavía puede pasar (y en la ficha, el próximo),
+  «Agendar: Google Calendar · iPhone u Outlook». Son links, sin JavaScript. El evento
+  lleva el mismo título que el calendario público, el lugar y el link a la página, y
+  **no** la descripción ni el link de la reunión. El build genera un `.ics` por
+  encuentro (`/actividad/{slug}/{encuentro}.ics`), que el gate barre con su propia
+  canasta; el barrido del `dist/` no miraba los `.ics` y ahora sí, desplegados (las
+  líneas plegadas escondían un dato partido). Un chequeo nuevo del gate (el 13) exige
+  que haya `.ics` y que cada link tenga su archivo; los `.ics` van con `no-cache`. Es
+  la salida pública 33. El riesgo previo de un link de reunión en el tema del
+  encuentro, que ahora alcanza también a esta salida, queda en **B-2169**.
 - **Un `@usuario` ya no se publica como link, aunque tenga puntos** (B-2168). Los
   links rotos de la primera corrida de `links:revisar` eran casi todos inscripciones
   «por formulario» con un handle de Instagram de destino, no webs de organizador:

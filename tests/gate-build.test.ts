@@ -13,7 +13,8 @@ import { describe, expect, it } from 'vitest';
 
 import { urlDeMiniaturaSiExiste } from '@/lib/imagenes';
 
-import { barrerArtefacto, canastaDe } from '../scripts/gate-build/barrido.mjs';
+import { barrerArtefacto, canastaDe, textoDelIcs } from '../scripts/gate-build/barrido.mjs';
+import { icsDeEvento } from '@/lib/agendarEncuentro';
 import { datoConFecha, verificarDirectorio } from '../scripts/gate-build/directorio.mjs';
 import {
   CENTINELA,
@@ -28,6 +29,7 @@ import {
   PREFIJO,
   documentosDeLaSemilla,
   rutaDeLaMiniaturaDelGate,
+  CENTINELA_DEL_ICS,
 } from '../scripts/gate-build/semilla.mjs';
 
 type Archivo = { relativa: string; contenido: string };
@@ -80,6 +82,7 @@ describe('la semilla del gate es datos puros', () => {
       CENTINELA_DE_SUSCRIPCIONES,
       CENTINELA_DE_LUGARES,
       CENTINELA_DE_BIBLIOTECAS,
+      CENTINELA_DEL_ICS,
     };
     for (const [nombre, canasta] of Object.entries(canastas)) {
       expect(
@@ -232,5 +235,39 @@ describe('el verificador de directorios, sin build', () => {
     );
     expect(con).toEqual(['a.html', 'b.html']);
     expect(huerfanos).toEqual(['    b.html']);
+  });
+});
+
+
+describe('el .ics de «Agendar» en el barrido — roadmap 1.1', () => {
+  it('tiene su canasta y no la del detalle, aunque viva bajo actividad/', () => {
+    // Si la línea del `.ics` quedara debajo de la del detalle en `canastaDe`, el
+    // `.ics` heredaría el permiso de publicar la descripción y las indicaciones.
+    expect(canastaDe('actividad/x/ses_1.ics')).toBe(CENTINELA_DEL_ICS);
+    expect(canastaDe('actividad/x/index.html')).toBe(CENTINELA_DEL_DETALLE);
+  });
+
+  it('un centinela partido por el plegado o con un escape adentro igual se detecta', () => {
+    // El caso que midió el `auditor-privacidad`: la línea se pliega a 75 bytes, y
+    // un centinela largo queda cortado por un CRLF + espacio.
+    const ics = icsDeEvento({
+      uid: 'ses_1@x',
+      // `SUMMARY:` son 8 bytes: con 62 más, el centinela empieza en el byte 71 y el
+      // corte de los 75 cae adentro.
+      titulo: 'x'.repeat(62) + CENTINELA.indicaciones,
+      inicioIso: '2026-10-10T22:00:00.000Z',
+      finIso: '2026-10-11T00:00:00.000Z',
+      ubicacion: `Sede, ${CENTINELA.descripcion}`,
+      url: 'https://agendaleh.ar/actividad/x/',
+      generadoIso: '2026-09-28T12:00:00.000Z',
+    });
+    expect(ics).not.toContain(CENTINELA.indicaciones);
+    expect(textoDelIcs(ics)).toContain(CENTINELA.indicaciones);
+    const fallos = barrerArtefacto([
+      ...Array.from({ length: 5 }, (_, i) => ({ relativa: `relleno-${i}.html`, contenido: '' })),
+      { relativa: 'actividad/x/ses_1.ics', contenido: ics },
+    ]).join('\n');
+    expect(fallos).toContain('actividad/x/ses_1.ics → indicaciones');
+    expect(fallos).toContain('actividad/x/ses_1.ics → descripcion');
   });
 });

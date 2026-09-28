@@ -20,7 +20,7 @@ fragmentos de código son ilustrativos.
 > |---|---|
 > | §3 los datos · §3.2 credenciales | ✅ — las tres salidas del build salen de **un solo lector**, `src/lib/contenidoDelSitio.ts`. Desde B-110 son **dos queries** —una por estado— y no la lectura única que dibuja el §3; ver el desvío 7 |
 > | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
-> | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
+> | §4.3 detalle | ✅ — menos la barra fija de móvil. «Compartir» y «Agendar este encuentro» están desde el roadmap 1.1 (2026-09-28), como **links** y no como el botón con `navigator.share` que describe el §8: ver el desvío ahí |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/ciudad/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02, y **la quinta clase con B-951** (2026-09-16). Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cinco clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
 > | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**, y **desde B-292 tiene su buscador** — D-381), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
@@ -2186,6 +2186,13 @@ link de Instagram, dentro de un navegador embebido.
 - El navegador embebido de Instagram no tiene barra de direcciones ni "compartir"
   cómodo: en el detalle va un botón "Compartir" que usa `navigator.share` si
   existe y copia el link si no.
+  > **Desvío (roadmap 1.1, 2026-09-28):** es un **link** «Compartir por WhatsApp»
+  > (`wa.me` con el título y la dirección) y no un botón con `navigator.share`:
+  > el presupuesto de abajo dice 0 KB de JavaScript para el detalle, y un link anda
+  > en el navegador de Instagram sin script. Junto a él, **«Agendar este
+  > encuentro»** en cada encuentro que puede pasar y en la ficha: el link a la
+  > plantilla de Google Calendar y un `.ics` de un solo evento que genera el build
+  > (`src/lib/agendarEncuentro.ts`). Es la salida 33 de `07-seguridad.md`.
 - Presupuesto: **la página de detalle, 0 KB de JavaScript**. La home, solo la
   island de filtros.
 
@@ -2198,6 +2205,7 @@ link de Instagram, dentro de un navegador embebido.
 | `/_astro/**` | `max-age=31536000, immutable` | ya está: llevan hash |
 | HTML | `no-cache` | ya está: revalida en cada visita, así un rebuild se ve |
 | `/events.json` | `no-cache` | **cierra B-37.** No lleva hash en el nombre y cambia en cada rebuild. Un `max-age` corto haría que la lista del JSON contradiga al HTML |
+| `**/*.ics` | `no-cache` | **roadmap 1.1.** El `.ics` de un encuentro tiene URL fija (el id de sesión no cambia) y su contenido cambia si se edita la fecha o la sede: sin esto, alguien podía agendarse el horario viejo desde la caché. Lo señaló el `auditor-trampas` |
 | `/og/*.png` | `max-age=31536000, immutable` | archivos fijos del repo |
 
 La island pide `/events.json?v={VERSION_APP}` — la misma versión que estampa el

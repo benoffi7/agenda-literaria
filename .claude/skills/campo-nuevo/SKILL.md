@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **treinta y dos** salidas, una por una:
+1. **¿Es público?** Resolvé las **treinta y tres** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -54,6 +54,7 @@ no se pueden deshacer después.
    | 30 | la **Guía** `/guia` — no proyecta ningún documento: un campo nuevo no llega acá salvo que se escriba en la página a mano | `src/pages/guia/index.astro`, `src/lib/directorios.ts` |
    | 31 | el índice de efemérides `/efemerides.json` y el renglón de la home — no es de `/actividades`: un campo de una actividad no llega acá | `src/lib/efemeridePublica.ts`, `src/lib/contenidoDelSitio.ts`, `src/pages/efemerides.json.ts`, `src/components/sitio/EfemerideDeHoy.astro` |
    | 32 | la sección `/efemerides` y la página de cada una — ídem: proyecta `/efemerides`, no una actividad | `src/lib/efemeridePublica.ts`, `src/pages/efemerides/index.astro`, `src/pages/efemerides/[slug].astro` |
+   | 33 | «Agendar este encuentro» (el `.ics` de cada encuentro y el link a Google Calendar) y «Compartir por WhatsApp» en el detalle — solo título con tema, lugar y el link a la página: un campo nuevo de la actividad **no** llega salvo que cambie `tituloDeEvento` o `construirUbicacion` | `src/lib/agendarEncuentro.ts`, `src/lib/detallePublico.ts`, `src/pages/actividad/[slug]/[encuentro].ics.ts` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

@@ -58,7 +58,7 @@
  *      que vitest no renderiza.
  *   6. **B-121** — el barrido de centinelas sobre **todo** el `dist/`, y no sobre
  *      un puñado de páginas elegidas a mano. Se recorre lo que el build escribió
- *      (`.html`, `.json`, `.xml`, `.txt`) y se barre cada archivo, con las
+ *      (`.html`, `.json`, `.xml`, `.txt` y, desde el roadmap 1.1, `.ics`) y se barre cada archivo, con las
  *      excepciones declaradas por salida. Es lo que el ítem pedía desde el
  *      principio —«el grep sobre `dist/`»— y lo que hace que una página nueva
  *      entre al barrido sin que nadie se acuerde: el listado, la cartelera, las
@@ -338,7 +338,9 @@ const { fallo } = resultado;
 const leerElDist = async () => {
   const raiz = new URL('../dist/', import.meta.url);
   const rutas = (await readdir(raiz, { recursive: true })).filter((r) =>
-    /\.(html|json|txt|xml)$/.test(r),
+    // `.ics` desde el roadmap 1.1: «Agendar este encuentro» es una salida pública
+    // más, y una que se escapa de este filtro no la barre nadie.
+    /\.(html|json|txt|xml|ics)$/.test(r),
   );
   return Promise.all(
     rutas.map(async (relativa) => ({

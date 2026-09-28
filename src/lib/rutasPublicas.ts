@@ -447,6 +447,16 @@ export const PREFIJO_ACTIVIDAD = '/actividad';
 export const rutaDeDetalle = (slug: string): string =>
   rutaCanonica(`${PREFIJO_ACTIVIDAD}/${slug}`);
 
+/**
+ * La ruta del `.ics` de un encuentro: `/actividad/{slug}/{sesionId}.ics` —
+ * roadmap 1.1. Es **la** forma de escribirla: la usan el link de la página
+ * (`detallePublico.ts`) y el chequeo del gate que verifica que cada link tenga su
+ * archivo (el endpoint la genera por los `params` de Astro, que es otra
+ * convención, y por eso el gate las compara sobre el `dist/` real).
+ */
+export const rutaDelIcs = (slug: string, sesionId: string): string =>
+  `${rutaDeDetalle(slug)}${sesionId}.ics`;
+
 /** El prefijo de la ruta de una página de mes — B-113, §2.2 del diseño. */
 export const PREFIJO_MES = '/agenda';
 

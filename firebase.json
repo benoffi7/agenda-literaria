@@ -57,6 +57,15 @@
         ]
       },
       {
+        "source": "**/*.ics",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/librerias.json",
         "headers": [
           {

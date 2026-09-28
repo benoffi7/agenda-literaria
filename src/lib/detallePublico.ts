@@ -55,14 +55,16 @@ import { pluralDeTipo } from '@/lib/hubsPublicos';
 import { imagenesPublicables } from '@/lib/imagenes';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { SLUG_PLATAFORMA_A_CONFIRMAR, modalidadResultante } from '@/lib/modalidades';
-import { RUTA_AGENDA, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
+import { DOMINIO, RUTA_AGENDA, rutaDelIcs, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
 import { porComision } from '@/lib/comisiones';
 import { instanteDeIso } from '@/lib/sesiones';
+import { linkDeGoogleCalendar, linkParaCompartirPorWhatsApp, type EventoParaAgendar } from '@/lib/agendarEncuentro';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad, ViaInscripcion } from '@/types/actividad';
 import {
   ETIQUETA_TIPO_MATERIAL,
   construirLinkMapa,
+  construirUbicacion,
   desSlug,
   etiquetaDeComision as etiquetaSaneada,
   tituloDeEvento,
@@ -151,6 +153,14 @@ export interface EncuentroDeDetalle {
    * repo evita. En un ciclo empezado es la única fila que importa de la lista.
    */
   esProximo: boolean;
+  /**
+   * Roadmap 1.1 — «Agendar este encuentro»: el link a la plantilla de Google
+   * Calendar y la ruta del `.ics` que genera el build. `null` si ya pasó o está
+   * cancelado: agendar algo que no va a pasar es el error que el aviso de
+   * cancelación existe para evitar. El `evento` viaja para el endpoint del `.ics`;
+   * todo lo que lleva ya es público (ver `agendarEncuentro.ts`).
+   */
+  agendar: { google: string; ics: string; evento: EventoParaAgendar } | null;
 }
 
 /**
@@ -260,6 +270,18 @@ export interface AvisoDeEstado {
 }
 
 export interface DetallePublico {
+  /**
+   * Roadmap 1.1 — «Compartir por WhatsApp»: el título y la dirección de la página,
+   * nada más. Ver `linkParaCompartirPorWhatsApp`.
+   */
+  compartirPorWhatsApp: string;
+  /**
+   * Roadmap 1.1 — el `agendar` del próximo encuentro, para la ficha: una
+   * actividad de un solo encuentro sin tema no muestra la lista de encuentros, y
+   * sin esto no tendría dónde agendarse. Derivado de `encuentros`, no un cálculo
+   * aparte.
+   */
+  agendarProximo: EncuentroDeDetalle['agendar'];
   /**
    * **La actividad entera está cancelada** — B-110, §7.3 del diseño.
    *
@@ -1100,6 +1122,13 @@ const mesEnlazable = (
  * `{}` dejaría al detalle derivando del slug mientras el listado usa lo elegido,
  * o sea el bug de vuelta, en silencio y solo para los tipos pintados a mano.
  */
+/** Roadmap 1.1 — las dos formas de agendar un encuentro. */
+const agendarDe = (evento: EventoParaAgendar, ics: string) => ({
+  google: linkDeGoogleCalendar(evento),
+  ics,
+  evento,
+});
+
 export const detalleDeActividad = (
   a: ActividadPublica,
   etiquetas: MapaDeEtiquetas,
@@ -1207,6 +1236,12 @@ export const detalleDeActividad = (
   const claveDe = (comisionId: string | null): string =>
     comisionId && etiquetaDeComision.has(comisionId) ? comisionId : '';
   const contados = new Map<string, number>();
+  /*
+   * Roadmap 1.1 — el lugar del evento que se agenda: la misma función que el
+   * calendario público, sobre la sede ya proyectada (el derivado «primera fila
+   * con sede», igual que allá).
+   */
+  const ubicacion = construirUbicacion({ sede: a.sede, modalidad: a.modalidad }, etiquetas) ?? '';
 
   const enOrden: EncuentroDeDetalle[] = ordenadas.map((s) => {
     const inicio = instanteDeIso(s.inicio);
@@ -1250,6 +1285,22 @@ export const detalleDeActividad = (
       paso: Boolean(fin && fin.getTime() < ahora.getTime()),
       // Se resuelve en la segunda pasada: «el próximo» depende de todos.
       esProximo: false,
+      agendar:
+        // Ni el encuentro cancelado ni la actividad cancelada entera (B-110),
+        // cuyos encuentros no vienen marcados uno por uno.
+        inicio && fin && !s.cancelada && !cancelada && fin.getTime() >= ahora.getTime()
+          ? agendarDe({
+              uid: `${s.id}@${DOMINIO}`,
+              // El mismo título que el evento del calendario público (D-520).
+              titulo: tituloDeEvento(a.titulo, etiqueta || null, s.tema),
+              inicioIso: inicio.toISOString(),
+              finIso: fin.toISOString(),
+              ubicacion,
+              url: urlDeDetalle(a.slug),
+              // El reloj del build (B-1850), no el del momento en que corre el endpoint.
+              generadoIso: ahora.toISOString(),
+            }, rutaDelIcs(a.slug, s.id))
+          : null,
     };
   });
 
@@ -1410,6 +1461,8 @@ export const detalleDeActividad = (
   };
 
   return {
+    agendarProximo: encuentros.find((e) => e.esProximo)?.agendar ?? null,
+    compartirPorWhatsApp: linkParaCompartirPorWhatsApp(a.titulo, urlDeDetalle(a.slug)),
     cancelada,
     slug: a.slug,
     titulo: a.titulo,
