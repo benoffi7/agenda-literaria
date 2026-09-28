@@ -642,7 +642,10 @@ pueden usar, con esta licencia» invita a que otros (medios, bibliotecas, apps)
 lo reusen y citen la agenda. Cuesta un texto y una licencia; el riesgo es que
 alguien dependa de un formato que después se quiere cambiar.
 
-### 6.5 · Un «cómo cargar bien» para las publicadoras nuevas — **Próximo** · S
+### 6.5 · Un «cómo cargar bien» para las publicadoras nuevas — ✅ Hecho (2026-09-28) · S
+
+> **Hecho el 2026-09-28**: capítulo «Cómo cargar bien una actividad» en la ayuda del
+> panel, con lo que el tablero y los links rotos de hoy mostraron que se carga mal.
 
 Con el rol publicador y las ciudades nuevas, lo que hoy sabe el dueño (qué es una
 buena descripción, por qué el flyer entero, qué hace «completo») tiene que estar
@@ -682,7 +685,7 @@ las novedades del panel ya existen como mecanismo.
 | 4.4 | Invitar al correo desde el detalle | Newsletter | S | ✅ Hecho (2026-09-28) | — |
 | 5.4 | Posibles duplicados | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
-| 6.5 | Guía para publicadoras | Otros | S | Próximo | — |
+| 6.5 | Guía para publicadoras | Otros | S | ✅ Hecho (2026-09-28) | — |
 | 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | Más adelante | — |
 | 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | Más adelante | 🟨 ¿Solo publicadas? → sí, antes de darla |
 | 3.9 | Resumen para organizadores | Analítica | M | Más adelante | 🟨 ¿Ofrecer números? → a los 3 meses |

@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **Ayuda nueva: «Cómo cargar bien una actividad»** (roadmap 6.5). Lo que el dueño sabía
+  y una cuenta nueva no: la descripción que Google corta, el flyer entero, cada contacto
+  en su campo (una cuenta de Instagram en «Web» o en un «Formulario» no lleva a ningún
+  lado, que es lo que causó los links rotos de B-2165 y B-2168), el lugar de arriba para
+  abajo, cancelar en vez de borrar, «cupo completo», etiquetas, el aviso de posible
+  duplicado y la vista previa. Con su novedad del panel.
 - **La página de cada actividad y «Mis favoritos» invitan a anotarse al correo**
   (roadmap 4.4). Una línea —«¿Querés que te llegue lo de cada semana? Anotate al
   correo»— que lleva a la sección de alta de `/suscribirse`. Es un link y no un segundo

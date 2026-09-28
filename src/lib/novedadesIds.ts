@@ -11,6 +11,7 @@
 
 /** Lo más nuevo arriba, igual que `NOVEDADES`. */
 export const NOVEDADES_IDS: readonly string[] = [
+  'como-cargar-bien',
   'lunes-de-difusion',
   'correo-arranca-por-destacadas',
   'filtro-posibles-duplicados',

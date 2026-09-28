@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'como-cargar-bien',
+    fecha: '2026-09-28',
+    version: '1.11.0',
+    titulo: 'Nueva sección de ayuda: cómo cargar bien una actividad',
+    detalle:
+      'Lo que conviene saber antes de cargar: qué hace que una actividad se encuentre en Google ' +
+      'y en los filtros, por qué el flyer entero, dónde va cada contacto y qué hacer cuando se ' +
+      'llena o se cancela un encuentro. Sirve sobre todo si tu cuenta es nueva.',
+    donde: 'Ayuda → «Cómo cargar bien una actividad».',
+  },
+  {
     id: 'lunes-de-difusion',
     fecha: '2026-09-28',
     version: '1.11.0',

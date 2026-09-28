@@ -852,6 +852,78 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    /*
+     * Roadmap 6.5 — lo que el dueño sabe y una cuenta nueva no: escrito antes de
+     * la tercera cuenta, no después. Cada punto dice **qué se pierde** y es
+     * verificable mirando el sitio o el tablero, igual que las recomendaciones del
+     * formulario (B-264).
+     */
+    id: 'como-cargar-bien',
+    titulo: 'Cómo cargar bien una actividad',
+    paraQue:
+      'Lo que conviene saber antes de tu primera carga: qué hace que una actividad se encuentre, se entienda y no haya que corregirla después.',
+    puntos: [
+      {
+        texto:
+          'La descripción es lo que Google muestra debajo del título, y es lo que decide si ' +
+          'alguien entra. Con menos de 80 caracteres el resultado queda flaco, y el tablero la ' +
+          'marca como «descripción muy corta». Dos o tres frases alcanzan: qué es, para quién y ' +
+          'qué se hace en el encuentro.',
+      },
+      {
+        texto:
+          'Subí el flyer entero, sin recortarlo. El sitio lo muestra completo, así que la fecha y ' +
+          'el título que están escritos adentro se leen. Sin imagen, la actividad no entra en la ' +
+          'cartelera y el link se comparte sin nada que mirar.',
+      },
+      {
+        texto:
+          'Cada cosa en su campo. La cuenta de Instagram del organizador va en «Instagram», no en ' +
+          '«Web»; una web es una dirección como casabrandon.com. Y si la inscripción es por ' +
+          'mensaje de Instagram, elegí la vía «DM al Instagram» con la cuenta; «Formulario» es ' +
+          'para el link a un formulario. Una cuenta de Instagram cargada donde va un link no lleva ' +
+          'a ningún lado.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'El lugar se carga de arriba para abajo: primero la provincia, y después el barrio si ' +
+          'es CABA o la ciudad si es otra. Es lo que hace que la actividad aparezca al filtrar por ' +
+          'su zona. Si el barrio no cierra con la ciudad, el tablero lo marca como «un lugar que ' +
+          'no cierra».',
+      },
+      {
+        texto:
+          'Cargá todos los encuentros con su fecha, uno por uno. «Generar N encuentros» ayuda con la ' +
+          'repetición, pero cada fecha queda editable: si uno se saltea un feriado, corregilo ahí. ' +
+          'Si un encuentro no se hace, marcalo cancelado en vez de borrarlo: así quien lo tenía ' +
+          'agendado se entera.',
+      },
+      {
+        texto:
+          'Cuando se llenan los lugares, «Marcar cupo completo» desde el listado. El contacto de ' +
+          'inscripción sigue a la vista con el cartel al lado, porque siempre hay quien quiere ' +
+          'anotarse por si se cae alguien.',
+      },
+      {
+        texto:
+          'Poné etiquetas. Son las que hacen que la actividad aparezca cuando alguien filtra por ' +
+          'tema; sin ellas existe en el sitio pero no se encuentra.',
+      },
+      {
+        texto:
+          'Si arriba del formulario aparece «¿Ya está cargada?», mirá el link antes de seguir: ' +
+          'puede ser la misma actividad que ya cargó otra persona. Si lo es, conviene editar esa. ' +
+          'Si no, seguí: el aviso no frena nada.',
+      },
+      {
+        texto:
+          'Antes de publicar, mirá «Vista previa del evento», al final del formulario: muestra el ' +
+          'evento del calendario tal como va a salir, con el lugar y el link del mapa armados.',
+      },
+    ],
+  },
+  {
     id: 'librerias',
     titulo: 'Las librerías de la Guía',
     paraQue:
