@@ -2237,6 +2237,12 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'El organizador se escribe y el campo te sugiere los que ya están cargados. Si aparece, ' +
+          'elegilo: así todas sus actividades quedan juntas. Si abajo dice que es nuevo, se suma a ' +
+          'la lista al guardar; fijate antes que no esté escrito de otra forma.',
+      },
+      {
+        texto:
           'La bio sale completa en el sitio y en el evento del calendario. Dos o tres líneas ' +
           'alcanzan; es una presentación, no un curriculum.',
       },

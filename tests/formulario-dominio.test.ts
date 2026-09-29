@@ -548,6 +548,8 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       // que su uso se cuenta como el de cualquier otra; lo que importa acá es que
       // va **en el mismo tramo final** y no antes de sembrar (B-168, D-103).
       'registrarUsos:incluye-actividad:merienda,material-de-lectura',
+      // Roadmap 1.5 (B-2172) — el organizador, que desde el paso 2 es taxonomía.
+      'registrarUsos:organizador:centinela-organizador-casa-brandon',
     ]);
   });
 
@@ -614,6 +616,10 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       // cuenta nada. Con esto desalineado, `incluye` se contaría siempre y el
       // caso mediría lo contrario de lo que dice.
       incluye: ['merienda', 'material-de-lectura'],
+      // Roadmap 1.5 (B-2172) — el de `formularioLleno`, por lo mismo. **Sin
+      // `slug`**, como un documento anterior al campo: el «antes» se lee con
+      // `slugDeOrganizador`, que lo deriva del nombre (D-26).
+      organizador: { nombre: 'CENTINELA-ORGANIZADOR Casa Brandon' },
       ...over,
     });
 
@@ -629,6 +635,7 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
         plataforma: ['zoom'],
         tags: ['narrativa'],
         'incluye-actividad': ['merienda', 'material-de-lectura'],
+        organizador: ['centinela-organizador-casa-brandon'],
       });
     });
 

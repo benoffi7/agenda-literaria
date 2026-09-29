@@ -253,7 +253,7 @@ corregir a mano. Hueco que queda: el aviso «web que no enlaza» del tablero mir
 `organizador.web` y no el destino de una inscripción por formulario, así que este caso
 no aparecía en el tablero. Se cierra cuando se corrijan esos dos.
 
-### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A y paso 1 hechos, 2026-09-29)
+### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A y pasos 1–2 hechos, 2026-09-29)
 
 Roadmap 1.5, con el modelo completo de D-723 (decisión del dueño del 2026-09-28) y
 una condición de interfaz suya: **el organizador se escribe en una caja de texto
@@ -273,10 +273,14 @@ muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vací
 1. ✅ **Reglas** (2026-09-29): `/opciones/organizador` legible solo desde el panel
    (`campo != 'organizador' || esDelPanel()`), con su test contra el emulador en
    `opciones.integracion.test.ts` y la mutación a `if true` probada en rojo.
-2. **Formulario:** el campo «Organiza» de «Quién» pasa a caja de texto con
-   autocompletado (§4.2): si lo tipeado normaliza a un slug que existe, reusa esa
-   etiqueta; si no, la da de alta al guardar (el publicador, sin aprobar, por
-   `crearOpcionDelPanel`). `formADocumento` escribe `organizador.slug`.
+2. ✅ **Formulario** (2026-09-29): «Organiza» es `TextoConSugerencias`;
+   `resolverOrganizador` reusa la opción al guardar (por slug o por el slug de su
+   etiqueta renombrada) o la da de alta por el buffer de D-02 —el publicador por
+   `crearOpcionDelPanel`, que ahora acepta `organizador`—. `formADocumento`
+   escribe `organizador.slug` y `usosAContar` lo cuenta. En el camino, el
+   `auditor-trampas` encontró que guardar antes de que cargue la lista reescribía el
+   nombre con otra mayúscula («Casa brandon»); arreglado en el mismo cambio
+   (`listaCargada`), con su test.
 3. **Sembrar la lista** en producción con `vocabulario:prod --campo=organizador` (solo
    escribe `/opciones/organizador`, no toca actividades), con la etiqueta de la
    variante más usada.

@@ -468,9 +468,10 @@ salen al público. La visibilidad solo necesita comparar igualdad. Ver
 
 Las dos puertas corren **la misma** transformación (`valoresConLaEtiqueta`), así
 que un elemento creado por una y por otra tienen la misma forma. La callable
-además: acepta solo los campos del formulario de actividad que ofrecen «Otro…»
+además: acepta solo los campos del formulario de actividad que ofrecen «Otro…» o
+autocompletan
 (`CAMPOS_CREABLES_POR_FUNCTION`: arancel, tipo, barrio, ciudad, plataforma, tags,
-incluye-actividad — **no** provincia, B-972), corta la etiqueta en 80
+incluye-actividad y organizador — **no** provincia, B-972), corta la etiqueta en 80
 caracteres, frena en 25 pendientes propias por campo, y **no crea el documento**
 si no existe (sembrarlo le pediría una copia de `opciones-base.json`). Escribe con
 `update({ valores })`, y como `rebuildPorOpciones` es un trigger de Firestore,
@@ -491,6 +492,28 @@ Aprobar es una escritura más del documento, así que la autoridad es el claim
 panel (B-06/B-25, botón «Aprobar») o con `scripts/aprobar-opciones.mjs` — ver
 [`08-operacion.md`](08-operacion.md). D-29, que decía que no había UI, quedó
 superada el 2026-08-24.
+
+### `organizador` — la taxonomía que se escribe (roadmap 1.5, B-2172)
+
+El organizador es un valor de `/opciones/organizador`, pero en el formulario **no
+es un desplegable**: «Organiza» es una caja de texto libre que autocompleta
+(`TextoConSugerencias`), porque son cientos y la condición del dueño fue que se
+escriba. Lo que se guarda lo decide `resolverOrganizador`
+(`src/lib/formulario/organizador.ts`) **al guardar**, no al tipear —así cubre
+también lo que llega de una propuesta o de un duplicado—:
+
+- si lo escrito normaliza a una opción que existe —por su slug, o por el slug de
+  su etiqueta, que es lo que queda escrito después de renombrarla—, el documento
+  lleva su `slug` y su `label` como `nombre`;
+- si no, lleva el slug de lo escrito y la etiqueta entra al buffer de D-02, que
+  la da de alta después de escribir la actividad por la puerta de cada rol.
+
+`formADocumento` escribe `organizador.slug` (el resuelto, o el del nombre si
+nadie lo resolvió) y **no lo escribe** si no hay nombre. Los documentos anteriores
+no lo tienen y se leen con `slugDeOrganizador`, que lo deriva del nombre (D-26):
+no hay migración. `usosAContar` cuenta el organizador como las demás. La lista
+**no es pública** (`firestore.rules`, B-2172 paso 1) y no viaja al `events.json`
+(`TAXONOMIAS_FUERA_DEL_INDICE`).
 
 ### Advertencia: las etiquetas se ven en público
 

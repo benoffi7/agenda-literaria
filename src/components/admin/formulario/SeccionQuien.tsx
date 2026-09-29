@@ -3,13 +3,13 @@
  * libro presentado en presentación y charla (DEC-1).
  */
 import { useState } from 'react';
-import { Seccion } from '@/components/admin/campos-del-panel';
+import { Seccion, TextoConSugerencias } from '@/components/admin/campos-del-panel';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { handleInstagram } from '@/lib/enlaceSeguro';
 import { muestraLibro } from '@/lib/formulario/condicionales';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
-type Props = Omit<PropsSeccion, 'uid'> & {
+type Props = PropsSeccion & {
   esTaller: boolean;
   esCharla: boolean;
   /** "Tallerista" o "Autor o autora invitada", según el tipo. */
@@ -155,7 +155,7 @@ const alSalirDelInstagram = (crudo: string, guardar: (saneado: string) => void):
   if (saneado !== crudo) guardar(saneado);
 };
 
-export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePersona }: Props) {
+export function SeccionQuien({ form, set, errorDe, uid, esTaller, esCharla, nombrePersona }: Props) {
   // B-1190 — qué campo de Instagram se está tipeando ahora, para no avisar a
   // medio escribir. Uno solo alcanza: el foco está en un campo por vez.
   const [editando, setEditando] = useState<'org' | 'persona' | null>(null);
@@ -164,11 +164,18 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
     <Seccion ancla="quien" titulo="Quién" conAyuda>
       <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
         <Campo label="Organizador" htmlFor="org-nombre" requerido error={errorDe('organizador.nombre')}>
-          <input
+          {/*
+            Roadmap 1.5 (B-2172) — se escribe, no se elige: la caja autocompleta
+            contra `/opciones/organizador`, y al guardar `resolverOrganizador`
+            reusa la opción que ya existe o da de alta la nueva.
+          */}
+          <TextoConSugerencias
+            campo="organizador"
+            uid={uid}
             id="org-nombre"
-            className={claseInput}
             value={form.organizador.nombre}
-            onChange={(e) => set('organizador', { ...form.organizador, nombre: e.target.value })}
+            onChange={(nombre) => set('organizador', { ...form.organizador, nombre })}
+            avisoDeNuevo="Es nuevo: se suma a la lista de organizadores al guardar."
           />
         </Campo>
         <Campo label="Instagram del organizador" htmlFor="org-instagram" ayuda={AYUDA_INSTAGRAM}>

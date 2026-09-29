@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **«Organiza» autocompleta contra la lista de organizadores** (roadmap 1.5, B-2172,
+  paso 2). El campo sigue siendo texto libre, ahora con sugerencias y un aviso de si lo
+  escrito ya existe o es nuevo (`TextoConSugerencias`). Al guardar, `resolverOrganizador`
+  reusa la opción —por slug, o por el de su etiqueta si se renombró— o la da de alta
+  por el buffer de D-02; el publicador, por la callable, que ahora acepta
+  `organizador`. `formADocumento` escribe `organizador.slug` y `usosAContar` lo cuenta.
+
 - **La lista de organizadores ya no se lee sin sesión** (roadmap 1.5, B-2172, paso 1).
   `/opciones/organizador` es la única taxonomía que no es vocabulario público: un
   organizador suele ser una persona y la lista junta los de los borradores. La regla la

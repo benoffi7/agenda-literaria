@@ -1892,7 +1892,8 @@ que lee solo el panel porque un organizador suele ser una persona y la lista
 incluye borradores (B-2172)— y de escritura directa solo con claim `admin`. Aprobar una opción (`aprobada: true`) es una escritura más de ese
 documento, así que **cualquiera de las cuentas con el claim puede aprobar**
 (D-28). **Y desde B-893 hay un segundo camino**: el publicador crea por la
-callable `crearOpcionDelPanel` (D-810), siempre sin aprobar. El reuso de B-29 la aprueba **solo si quien la
+callable `crearOpcionDelPanel` (D-810), siempre sin aprobar —desde B-2172 también
+en `organizador`, cuya lista no es pública—. El reuso de B-29 la aprueba **solo si quien la
 reusa es admin** (D-811): dos publicadores que tipean la misma etiqueta no
 alcanzan para publicarla. No hay una regla más fina porque las reglas no pueden comparar el array
 `valores` elemento por elemento contra el anterior: no hay forma de verificar

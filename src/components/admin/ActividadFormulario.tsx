@@ -57,6 +57,7 @@ import {
   type MultivalorNuevos,
 } from '@/lib/formulario/etiquetas';
 import { guardarActividad } from '@/lib/formulario/guardar';
+import { resolverOrganizador } from '@/lib/formulario/organizador';
 import { fueraDeSuCiudad, textoFueraDeSuCiudad } from '@/lib/alcanceDeCiudad';
 import { useOpciones } from '@/components/admin/useOpciones';
 import { faltaParaPublicar } from '@/lib/schema';
@@ -507,6 +508,8 @@ export function ActividadFormulario({
    * distinto. En solo lectura no se avisa nada: no hay guardado posible.
    */
   const ciudadesDeLaCiudad = useOpciones('ciudad');
+  // Roadmap 1.5 (B-2172) — para resolver «Organiza» contra la lista al guardar.
+  const organizadores = useOpciones('organizador', uid);
   /*
    * Lo guardado, proyectado a lo único que se mira: las ciudades y la ciudad de
    * cada sede. Proyectado y no `inicial` entero por lo mismo que `anterior` más
@@ -549,8 +552,19 @@ export function ActividadFormulario({
     const accion = estadoDestino === 'borrador' ? 'borrador' : 'submit';
     setGuardando(true);
     try {
+      /*
+       * Roadmap 1.5 (B-2172) — lo escrito en «Organiza», resuelto contra la
+       * lista: reusa la opción si ya existe y si no la suma al buffer de D-02,
+       * que la da de alta después de escribir la actividad. Acá y no al tipear:
+       * ver el docblock de `resolverOrganizador`.
+       */
+      const { organizador, labelNuevo } = resolverOrganizador(
+        form.organizador,
+        organizadores.valores,
+        { listaCargada: !organizadores.cargando },
+      );
       const r = await guardarActividad({
-        form,
+        form: { ...form, organizador },
         uid,
         rol,
         estadoDestino,
@@ -581,8 +595,11 @@ export function ActividadFormulario({
           // `usosAContar` volvería a sumar en cada guardado lo que ya estaba,
           // que es exactamente lo que B-340 vino a arreglar.
           incluye: inicial.incluye,
+          // Roadmap 1.5 — ídem para el organizador. Solo nombre y slug: el
+          // Instagram y la web no los cuenta nadie.
+          organizador: { nombre: inicial.organizador?.nombre, slug: inicial.organizador?.slug },
         },
-        labelsNuevos,
+        labelsNuevos: labelNuevo ? [...labelsNuevos, labelNuevo] : labelsNuevos,
         multivalorNuevos,
         // B-921 — la misma pregunta que el aviso de arriba, contestada otra vez
         // al guardar: el aviso se puede no leer, el guardado no se saltea.
@@ -913,6 +930,7 @@ export function ActividadFormulario({
               form={form}
               set={set}
               errorDe={errorDe}
+              uid={uid}
               esTaller={esTaller(form)}
               esCharla={esCharla(form)}
               nombrePersona={nombrePersona(form)}

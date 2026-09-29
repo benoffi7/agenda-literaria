@@ -274,7 +274,7 @@ describe('la lista de campos de la callable (B-893)', () => {
     const sinOtro = new Set<string>();
     for (const archivo of archivos) {
       const src = sinComentarios(fuente(archivo));
-      for (const m of src.matchAll(/<(?:TaxonomiaSelect|TagsInput)\b([\s\S]*?)\/>/g)) {
+      for (const m of src.matchAll(/<(?:TaxonomiaSelect|TagsInput|TextoConSugerencias)\b([\s\S]*?)\/>/g)) {
         const campo = /campo="([^"]+)"/.exec(m[1]!)?.[1];
         if (!campo) continue;
         (/permitirOtro=\{false\}/.test(m[1]!) ? sinOtro : conOtro).add(campo);

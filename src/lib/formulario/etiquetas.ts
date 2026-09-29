@@ -10,6 +10,7 @@
  * Puro: es el reducer del buffer más la proyección al mapa que consume
  * `lib/vistaPreviaEvento.ts`. Estaba dentro del `.tsx` (B-70).
  */
+import { slugDeOrganizador } from '@/lib/organizador.mjs';
 import { slugify } from '@/lib/slugify';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import { CAMPOS_MULTIVALOR, type CampoMultivalor } from '@/types/actividad';
@@ -139,6 +140,8 @@ interface DatosDeUsos {
   tags: readonly string[];
   /** B-830 — opcional en el tipo por lo mismo que el `?? []` de abajo. */
   incluye?: readonly string[];
+  /** Roadmap 1.5 — opcional por lo mismo; sin `slug`, se deriva del nombre (D-26). */
+  organizador?: { nombre?: string; slug?: string };
 }
 
 /**
@@ -197,6 +200,10 @@ const elegidosDe = (datos: DatosDeUsos) => ({
   plataforma: [...new Set((datos.modalidades ?? []).map((m) => m.online?.plataforma ?? ''))],
   tags: [...(datos.tags ?? [])],
   'incluye-actividad': [...(datos.incluye ?? [])],
+  // Roadmap 1.5 (B-2172) — `usos` ordena las sugerencias de «Organiza» y señala
+  // el typo colgado (§4.3), igual que en las demás. `slugDeOrganizador` y no el
+  // `slug` a secas: el `anterior` de un documento viejo no lo tiene.
+  organizador: [slugDeOrganizador(datos.organizador)],
 });
 
 /**

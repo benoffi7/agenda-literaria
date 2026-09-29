@@ -41,6 +41,7 @@ import { useOpciones } from '@/components/admin/useOpciones';
 import { Seccion as SeccionBase, type AlmacenDeSecciones } from '@/components/campos/Seccion';
 import { TagsInput as TagsInputBase } from '@/components/campos/TagsInput';
 import { TaxonomiaSelect as TaxonomiaSelectBase } from '@/components/campos/TaxonomiaSelect';
+import { TextoConSugerencias as TextoConSugerenciasBase } from '@/components/campos/TextoConSugerencias';
 import { medirFuncion, medirSeccion } from '@/lib/analytics';
 // B-888 — el rol de la sesión, como store de módulo. Acá es donde el panel ata
 // sus taxonomías, así que es el único lugar donde hay que decidir si se ofrece
@@ -138,6 +139,32 @@ export function TagsInput({
       onMedir={medirFuncion}
       // Mismo criterio que arriba (B-888, B-1240): las props cierran, no abren.
       permitirOtro={(props.permitirOtro ?? true) && puedeCrearEtiquetas()}
+    />
+  );
+}
+
+type PropsTextoBase = ComponentProps<typeof TextoConSugerenciasBase>;
+
+/**
+ * Ídem para la caja de texto que autocompleta (roadmap 1.5, B-2172).
+ *
+ * Sin `permitirOtro`: lo escrito **es** el valor, así que no hay un «Otro…» que
+ * apagar. Que el publicador pueda dar de alta lo nuevo lo decide el guardado
+ * (la callable, D-810), y la lista de la callable lo nombra.
+ */
+export function TextoConSugerencias({
+  campo,
+  uid,
+  ...props
+}: Omit<PropsTextoBase, 'valores' | 'elegibles' | 'onMedir'> & { uid: string }) {
+  const { valores, elegibles } = useOpciones(campo, uid);
+  return (
+    <TextoConSugerenciasBase
+      {...props}
+      campo={campo}
+      valores={valores}
+      elegibles={elegibles}
+      onMedir={medirFuncion}
     />
   );
 }

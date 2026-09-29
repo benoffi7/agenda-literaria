@@ -75,6 +75,8 @@ export interface EntradaGuardado {
     }[];
     tags: readonly string[];
     incluye?: readonly string[];
+    /** Roadmap 1.5 (B-2172) — para no volver a contar el organizador que ya estaba. */
+    organizador?: { nombre?: string; slug?: string };
   };
   /**
    * **B-921 — dónde puede cargar quien guarda** (D-1150).

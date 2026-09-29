@@ -201,7 +201,23 @@ export const formADocumento = (
    */
   const conHandle = (crudo: string): string => handleInstagram(crudo) ?? crudo.trim();
 
-  const organizador = { ...f.organizador, instagram: conHandle(f.organizador.instagram) };
+  /*
+   * Roadmap 1.5 (B-2172) — el `slug` del organizador lo pone el formulario al
+   * guardar (`resolverOrganizador`), que es quien sabe si reusó una opción. Si
+   * llega sin él —otro llamador—, sale del nombre, que es lo mismo que deriva
+   * `slugDeOrganizador` al leer un documento viejo. Sin nombre no va slug: uno
+   * que sobreviviera a borrar el nombre apuntaría a una página ajena. Y va
+   * ausente, no `undefined`: Firestore rechaza el documento entero por eso.
+   */
+  const { slug: slugGuardado, ...orgSinSlug } = f.organizador;
+  const slugOrganizador = slugify(f.organizador.nombre)
+    ? slugGuardado || slugify(f.organizador.nombre)
+    : '';
+  const organizador = {
+    ...orgSinSlug,
+    instagram: conHandle(f.organizador.instagram),
+    ...(slugOrganizador ? { slug: slugOrganizador } : {}),
+  };
   const talleristaCrudo = f.tallerista?.nombre?.trim() ? f.tallerista : null;
   const tallerista = talleristaCrudo
     ? { ...talleristaCrudo, instagram: conHandle(talleristaCrudo.instagram) }

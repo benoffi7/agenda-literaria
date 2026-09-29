@@ -393,6 +393,11 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   resuelve solo, pero ofrece el botón que los abre, que es lo que el mensaje ya
   pedía hacer a mano. La medición sigue sirviendo para lo que queda: si aun así el
   link corto es la mitad de los fallos, ahí sí se justifica la Function.
+- **«Organiza» autocompleta** contra la lista de organizadores (roadmap 1.5,
+  B-2172): se escribe libre, sugiere mientras se tipea, y debajo avisa si lo
+  escrito ya está en la lista —«casa brandon» es «Casa Brandon», y se usa ésa— o
+  si es nuevo, en cuyo caso se suma a la lista al guardar. Lo nuevo de un
+  publicador entra sin aprobar, como cualquier etiqueta suya (D-810).
 - El **Instagram del organizador y de quien está adelante se prolija solo**: se
   pega el link del perfil —o lo que copia el botón «Compartir» de Instagram, con
   el `?igsh=` y todo— y al salir del campo queda el usuario solo, «casabrandon»

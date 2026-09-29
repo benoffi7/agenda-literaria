@@ -386,6 +386,10 @@ export const CAMPOS_CREABLES_POR_FUNCTION = [
   'plataforma',
   'tags',
   'incluye-actividad',
+  // Roadmap 1.5 (B-2172) — «Organiza» es una caja que autocompleta
+  // (`TextoConSugerencias`) y no un desplegable con «Otro…», pero hace lo mismo:
+  // lo que no está en la lista se da de alta al guardar.
+  'organizador',
 ];
 
 /**

@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'organizador-autocompleta',
+    fecha: '2026-09-29',
+    version: '1.11.0',
+    titulo: 'El organizador te sugiere los que ya están cargados',
+    detalle:
+      'Mientras escribís el organizador aparecen los que ya existen, y abajo te dice si lo que ' +
+      'escribiste ya está en la lista o es nuevo. Elegir el que ya está hace que todas sus ' +
+      'actividades queden juntas.',
+    donde: 'Al cargar una actividad → «Quién» → «Organizador».',
+  },
+  {
     id: 'como-cargar-bien',
     fecha: '2026-09-28',
     version: '1.11.0',
