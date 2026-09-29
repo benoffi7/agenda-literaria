@@ -1,0 +1,12 @@
+{
+  "confirmada": false,
+  "nota": "EJEMPLO con nombres inventados (B-2178). La tabla de verdad es `organizadores-a-unir.local.json`, que git ignora: se arma con nombres de todas las actividades, borradores incluidos, y el repo es público. Copiá este archivo con ese nombre, completalo con la corrida en seco (`npm run organizadores:unir:prod`) y poné `confirmada: true`; sin eso, `--aplicar` no escribe. `unir` es { slug origen: slug destino }; `noSeUnen`, grupos que se miraron y quedan separados.",
+  "unir": {
+    "hormiga": "hormiga-libros",
+    "museo-ceibo": "ceibo",
+    "hojas-sueltass": "hojas-sueltas"
+  },
+  "noSeUnen": {
+    "tilo-ceiba": "actividad conjunta de dos casas que tienen su propia página"
+  }
+}

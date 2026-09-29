@@ -107,6 +107,10 @@ describe('las guardas de los scripts que escriben — B-630', () => {
       // Escribe siempre y además **borra** con `--reparar`, así que la guarda de
       // los dos flags le corresponde entera.
       'scripts/sembrar-slugs.mjs',
+      // B-2178 — junta los organizadores que son la misma casa. Reescribe el
+      // `organizador` de unas 60 actividades, con versión del §12 y un update de
+      // Calendar por sesión en las publicadas (el nombre va en la descripción).
+      'scripts/unir-organizadores.mjs',
       /*
        * B-975 — el vocabulario de lugar que las actividades ya usan. Entró por
        * esta puerta como todos los anteriores: apareció acá en rojo el día que se

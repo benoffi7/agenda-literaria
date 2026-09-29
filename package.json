@@ -39,7 +39,9 @@
     "taxonomias:verificar": "node scripts/taxonomias-en-produccion.mjs",
     "opciones:sembrar:prod": "node scripts/preparar-produccion.mjs --solo-opciones",
     "vocabulario": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/vocabulario-desde-actividades.mjs",
-    "vocabulario:prod": "node scripts/vocabulario-desde-actividades.mjs --produccion"
+    "vocabulario:prod": "node scripts/vocabulario-desde-actividades.mjs --produccion",
+    "organizadores:unir": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/unir-organizadores.mjs",
+    "organizadores:unir:prod": "node scripts/unir-organizadores.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.5",

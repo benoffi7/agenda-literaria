@@ -69,3 +69,7 @@ functions/.env.*.local
 # Informes locales de scripts a pedido (links-rotos.mjs): nombran páginas y
 # sitios de terceros, y son del momento en que se corrieron — no se versionan.
 .informes/
+
+# B-2178 — la tabla real de unión de organizadores: nombres de todas las
+# actividades, borradores incluidos, y el repo es público.
+scripts/datos/organizadores-a-unir.local.json
