@@ -61,9 +61,6 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## P0 — rompe algo o pierde datos
 
-Sin ítems abiertos desde el 2026-09-23. Los ya arreglados, con su prosa, están
-en [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md) § «P0 — rompe algo o pierde datos».
-
 ## P1 — bloquean el objetivo del proyecto
 
 ### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 arreglado y verificado por partes, falta una conversión real (2026-09-24)

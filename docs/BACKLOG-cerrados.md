@@ -9151,6 +9151,31 @@ escrita: el sujeto del chequeo estaba mal elegido).
 lo que **B-1146** ya recomendaba por otro motivo: el diff queda en decenas de
 líneas en vez de en decenas de miles.
 
+### B-2177 · El `pre-push` desde un worktree le rompe la config a todo el repo · P0 — ✅ hecho (2026-09-29)
+
+Pasó pusheando B-2175 desde un worktree: la suite falló con 50 archivos en rojo
+(«el `git ls-files` falló», `ENOENT: archivo.txt`) y, peor, dejó en
+`.git/config` —la que comparten la carpeta principal y todos los worktrees—
+`core.bare = true` y `user.name = Test` / `user.email = test@example.com`, y tres
+commits de mentira («commit inicial», «wip: guardado por scripts/wip.sh») encima
+de la rama. La carpeta principal quedó con «fatal: this operation must be run in
+a work tree», con otra sesión trabajando adentro.
+
+**Causa:** git le pasa `GIT_DIR` al hook, y en un worktree es una ruta absoluta.
+`tests/wip.test.ts` y `tests/archivos-del-repo.test.ts` arman repos de juguete en
+carpetas temporales con `execFileSync('git', …, { cwd })`, que hereda esa
+variable: el `git init`, el `git config` y el `git commit` caían en el repo de
+verdad. Desde la carpeta principal el `GIT_DIR` es `.git`, relativo, y cae en la
+carpeta temporal: por eso nunca se había visto.
+
+**Arreglo:** `scripts/verificar-todo.sh` hace `unset` de las `GIT_*` de entorno
+después de pararse en la raíz. Reparado a mano: `core.bare = false`, el usuario
+de siempre (`Gonzalo Benoffi`, el mail `noreply` de `benoffi7`, sacado de los
+commits de `origin/main`) y la rama devuelta a su commit.
+
+Sin ítems abiertos desde el 2026-09-23. Los ya arreglados, con su prosa, están
+en [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md) § «P0 — rompe algo o pierde datos».
+
 ## P1 — bloquean el objetivo del proyecto
 
 ### DEC-14 · ¿El correo registra quién lo abrió y qué clickeó? — ✅ resuelta (2026-09-23, D-802) · P1

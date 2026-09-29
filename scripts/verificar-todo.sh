@@ -25,6 +25,17 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+# B-2177 — desde un hook, git le pasa a este script `GIT_DIR` (y en un worktree,
+# **absoluto**). La suite arma repos de juguete en carpetas temporales
+# (`tests/wip.test.ts`, `tests/archivos-del-repo.test.ts`), y con esa variable
+# heredada su `git init` / `git config` / `git commit` no caen en la carpeta
+# temporal sino en el repo de verdad: el 2026-09-29 un push desde un worktree dejó
+# `core.bare = true` y `user.name = Test` en la config compartida —la de todos
+# los worktrees— y le metió tres commits de mentira a la rama. Desde la carpeta
+# principal no se notaba porque ahí el `GIT_DIR` es `.git`, relativo, y cae en la
+# carpeta temporal. Ya estamos parados en la raíz: git la descubre solo.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX GIT_OBJECT_DIRECTORY
+
 PASO=0
 paso() {
   PASO=$((PASO + 1))

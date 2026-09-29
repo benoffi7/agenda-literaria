@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El gate de `pre-push` ya no le rompe la config al repo cuando se pushea desde un
+  worktree** (B-2177). Git le pasa `GIT_DIR` absoluto al hook, y los tests que arman un
+  repo de juguete en una carpeta temporal lo heredaban: su `git init`/`config`/`commit`
+  caían en el repo de verdad (`core.bare = true`, `user.name = Test`, commits de
+  mentira en la rama). `verificar-todo.sh` limpia las `GIT_*` de entorno al arrancar.
+
 - **Un encuentro se puede cargar sin hora: «Horario a confirmar por el organizador»**
   (B-2175). Pedido de una publicadora que carga ferias de una cuenta que anuncia los días
   y no los horarios. Una casilla por encuentro: tildada, se pide solo el día y se guarda el
