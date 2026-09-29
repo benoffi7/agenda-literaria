@@ -29,7 +29,14 @@
  * así un test puede pararse en cualquier momento sin esperar a que llegue la
  * fecha.
  */
-import { TIMEZONE, debeExistir, elEventoNumeraElCiclo, numeroDeEncuentro } from '@calendario';
+import {
+  HORARIO_A_CONFIRMAR,
+  TIMEZONE,
+  debeExistir,
+  elEventoNumeraElCiclo,
+  numeroDeEncuentro,
+  sinHorario,
+} from '@calendario';
 import { nombreDeMes } from '@/lib/meses';
 import { instanteDeTimestamp as instante } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, Estado, Sesion } from '@/types/actividad';
@@ -83,6 +90,23 @@ export const horaLegible = (instante: Date): string =>
  */
 export const fechaHoraLegible = (instante: Date): string =>
   `${diaLegible(claveDia(instante))} · ${horaLegible(instante)}`;
+
+/**
+ * B-2175 — lo que va en la columna de la hora del calendario del panel cuando el
+ * encuentro no tiene horario. Seis caracteres, que es lo que entra en esa
+ * columna; la frase entera está en `cuandoLegible`.
+ */
+export const HORA_SIN_HORARIO = '¿hora?';
+
+/**
+ * `fechaHoraLegible`, salvo que el horario sea a confirmar (B-2175): ahí la
+ * medianoche es un relleno y lo que se dice es la frase. La usan el listado del
+ * panel y el texto para redes, que es público.
+ */
+export const cuandoLegible = (instante: Date, aConfirmar: boolean): string =>
+  aConfirmar
+    ? `${diaLegible(claveDia(instante))} · ${HORARIO_A_CONFIRMAR.toLowerCase()}`
+    : fechaHoraLegible(instante);
 
 
 
@@ -302,8 +326,10 @@ export interface Encuentro {
   fin: Date;
   /** `'AAAA-MM-DD'` en la zona del proyecto. */
   dia: string;
-  /** `'19:00'` en la zona del proyecto. */
+  /** `'19:00'` en la zona del proyecto, o `HORA_SIN_HORARIO` (B-2175). */
   hora: string;
+  /** B-2175 — el organizador no dijo la hora: `inicio` es la medianoche del día. */
+  horarioAConfirmar: boolean;
   tema: string | null;
   cancelada: boolean;
   /**
@@ -388,7 +414,8 @@ export const encuentrosDe = (actividades: ActividadConId[]): Encuentro[] => {
         inicio,
         fin: instante(sesion.fin) ?? inicio,
         dia: claveDia(inicio),
-        hora: horaLegible(inicio),
+        hora: sinHorario(sesion) ? HORA_SIN_HORARIO : horaLegible(inicio),
+        horarioAConfirmar: sinHorario(sesion),
         tema: sesion.tema ?? null,
         cancelada: sesion.cancelada,
         indice: numero?.indice ?? 1,

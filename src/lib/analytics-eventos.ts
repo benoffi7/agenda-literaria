@@ -212,6 +212,12 @@ export const FUNCIONES = [
    * o sea el que más se nota afuera.
    */
   'encuentro-cancelar',
+  /**
+   * B-2175 — tildar «Horario a confirmar por el organizador» en una fila. `1` al
+   * prender, `0` al apagar, como `encuentro-cancelar`. Contesta cuánto se carga
+   * sin horario: si es mucho, vale buscar a la cuenta que no los publica.
+   */
+  'encuentro-horario-a-confirmar',
   // B-97 — prender o apagar «se llenó» desde el menú del listado. La pregunta
   // que contesta es si la función se usa: si nadie la toca, el cartel de cupo
   // completo no existe en la práctica y el sitio sigue mintiendo el cupo.
@@ -594,6 +600,7 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'sesiones.N.calendarEventId',
   'sesiones.N.cancelada',
   'sesiones.N.comisionId',
+  'sesiones.N.horarioAConfirmar',
   'sesiones.N.fin',
   'sesiones.N.id',
   'sesiones.N.inicio',

@@ -63,6 +63,46 @@ export const TIMEZONE = 'America/Argentina/Buenos_Aires';
  * Todo el resto de lo que se carga en el formulario sí va a la descripción.
  */
 
+/**
+ * ── B-2175 · el encuentro con «horario a confirmar» ───────────────────────
+ *
+ * El organizador dijo el día y no la hora. El documento guarda el día entero
+ * (00:00 a 23:59 de Buenos Aires) y **esas horas no se imprimen nunca**: el
+ * texto es éste, en todas las salidas. Vive acá, en `@calendario`, porque es la
+ * lógica que comparten la Function y el sitio (D-20): una frase por salida sería
+ * la clase de B-72.
+ */
+export const HORARIO_A_CONFIRMAR = 'Horario a confirmar por el organizador';
+/** La forma corta, para donde la larga no entra: el renglón de una tarjeta, el tríptico. */
+export const HORARIO_A_CONFIRMAR_CORTO = 'Horario a confirmar';
+
+/** ¿Este encuentro tiene el horario a confirmar? `false` si el documento no tiene el campo (D-26). */
+export const sinHorario = (sesion) => sesion?.horarioAConfirmar === true;
+
+/**
+ * El día calendario (`AAAA-MM-DD`) de un instante, **en la zona del proyecto**.
+ * `en-CA` es la configuración regional que formatea en ese orden.
+ */
+export const diaEnZona = (t) => {
+  const d = typeof t?.toDate === 'function' ? t.toDate() : new Date(t);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+};
+
+/**
+ * El día siguiente a una clave `AAAA-MM-DD`. Sobre el mediodía UTC, así no hay
+ * medianoche que se corra por el offset (el mismo ancla que `fechasPublicas.ts`).
+ * Es el `end.date` **exclusivo** de un evento de día completo de Calendar.
+ */
+export const diaSiguiente = (dia) => {
+  const [a, m, d] = dia.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, d + 1, 12)).toISOString().slice(0, 10);
+};
+
 /** Formatea una fecha en la zona del proyecto. */
 const fecha = (t, opciones) => {
   const d = typeof t?.toDate === 'function' ? t.toDate() : new Date(t);
@@ -947,15 +987,30 @@ export const construirEvento = (actividad, sesion, labels = {}) => {
   const titulo = tituloDeEvento(actividad.titulo, etiquetaDeComision(comision), sesion.tema);
   const descripcion = construirDescripcion(actividad, sesion, labels);
   const cancelada = sesion.cancelada === true;
+  /*
+   * B-2175 — sin horario, el evento es de **día completo**: `date` y no
+   * `dateTime`, con el `end` exclusivo (el día siguiente), que es la forma de
+   * la API. Un evento de 00:00 a 23:59 le taparía la agenda entera a quien se
+   * suscribió y le mandaría el recordatorio a medianoche. La frase va arriba de
+   * la descripción, donde la lee el mail del recordatorio.
+   *
+   * Todo acá adentro, como la cancelación: así entra al payload que compara la
+   * guarda anti-loop y tildar o destildar la casilla es un `actualizar` (§7.1).
+   */
+  const aConfirmar = sinHorario(sesion);
+  const cuerpo = aConfirmar
+    ? [`${HORARIO_A_CONFIRMAR}.`, descripcion].filter(Boolean).join('\n\n')
+    : descripcion;
+  const dia = aConfirmar ? diaEnZona(sesion.inicio) : null;
 
   return {
     summary: cancelada ? `${PREFIJO_CANCELADO}${titulo}` : titulo,
     description: cancelada
-      ? [avisoDeCancelacion(sesion), descripcion].filter(Boolean).join('\n\n')
-      : descripcion,
+      ? [avisoDeCancelacion(sesion), cuerpo].filter(Boolean).join('\n\n')
+      : cuerpo,
     location: construirUbicacion(actividad, labels),
-    start: { dateTime: aIso(sesion.inicio), timeZone: TIMEZONE },
-    end: { dateTime: aIso(sesion.fin), timeZone: TIMEZONE },
+    start: dia ? { date: dia } : { dateTime: aIso(sesion.inicio), timeZone: TIMEZONE },
+    end: dia ? { date: diaSiguiente(dia) } : { dateTime: aIso(sesion.fin), timeZone: TIMEZONE },
   };
 };
 

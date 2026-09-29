@@ -61,6 +61,7 @@ import {
   claveDeDia,
   diaDeSemana,
   diaDesplazado,
+  encuentroPorVenir,
   fechaCorta,
   fechaCortaDeDia,
   hora,
@@ -68,6 +69,7 @@ import {
 } from '@/lib/fechasPublicas';
 import { cuandoDeDias, etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
+import { HORARIO_A_CONFIRMAR_CORTO } from '@calendario';
 import { ANCLA_RESULTADOS, RUTA_AGENDA, rutaDeDetalle } from '@/lib/rutasPublicas';
 import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
 
@@ -438,7 +440,8 @@ export const panelesDeAhora = (
        * costo es que una actividad que empezó hace diez minutos desaparece del
        * panel mientras sigue en el listado.
        */
-      if (!d || d.getTime() < ahora.getTime()) return false;
+      // B-2175 — sin horario, sigue en «Hoy» hasta que termina el día.
+      if (!d || !encuentroPorVenir(d, e.horarioAConfirmar === true, ahora)) return false;
       return dias.includes(claveDeDia(d));
     });
 
@@ -472,7 +475,7 @@ export const panelesDeAhora = (
           clave: `${e.slug}#${e.sesionId}`,
           ruta: rutaDeDetalle(e.slug),
           iso: e.inicio,
-          hora: hora(d),
+          hora: e.horarioAConfirmar ? HORARIO_A_CONFIRMAR_CORTO : hora(d),
           dia: dias.length > 1 ? `${partes.diaSemana} ${partes.dia}` : null,
           titulo: entrada.titulo,
           tipo: entrada.tipo,

@@ -93,6 +93,18 @@ const partes = (d: Date): Record<string, string> =>
       .map((p) => [p.type, p.value]),
   );
 
+/**
+ * ¿Un encuentro del eje plano (B-99) todavía no pasó, con el reloj de quien mira?
+ *
+ * Con horario, es que no arrancó: el criterio de siempre del tríptico y del
+ * correo. **Sin horario** (B-2175) el `inicio` es la medianoche del día —un
+ * relleno—, así que medirlo contra el reloj daría por pasada a las nueve de la
+ * mañana una feria que nadie sabe a qué hora abre. Ahí se mide por el día: sigue
+ * en pie hasta que termina.
+ */
+export const encuentroPorVenir = (inicio: Date, sinHorario: boolean, ahora: Date): boolean =>
+  sinHorario ? claveDeDia(inicio) >= claveDeDia(ahora) : inicio.getTime() >= ahora.getTime();
+
 /** `2026-09` — la clave con la que el listado agrupa por mes. */
 export const claveDeMes = (d: Date): string => {
   const p = partes(d);

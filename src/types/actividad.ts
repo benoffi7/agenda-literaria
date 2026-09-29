@@ -144,6 +144,23 @@ export interface Sesion {
    * el evento numeraría contra un conjunto que no es el suyo.
    */
   comisionId?: string | null;
+  /**
+   * **El organizador no dijo a qué hora** — B-2175. Pedido de una publicadora
+   * que carga ferias de una cuenta que anuncia los días y no los horarios, y no
+   * contesta: «un tilde que diga "horario a confirmar por el organizador" y me
+   * deje seguir sin horario».
+   *
+   * La fecha sí se sabe, así que `inicio` y `fin` se siguen guardando como
+   * `Timestamp` (trampa 1): el día a las 00:00 y a las 23:59, hora de Buenos
+   * Aires, que es lo que escribe `formADocumento`. **Esas horas no son un dato**
+   * y ninguna salida las imprime: el sitio dice «Horario a confirmar por el
+   * organizador», el JSON-LD lleva solo la fecha y el evento de Calendar es de
+   * día completo.
+   *
+   * Opcional porque los documentos anteriores no lo tienen, y se leen como
+   * `false`: con horario (D-26).
+   */
+  horarioAConfirmar?: boolean;
 }
 
 /**
@@ -641,6 +658,13 @@ export interface SesionForm {
   calendarEventId: string | null;
   /** B-181 — de qué comisión es. `null` es «este ciclo no tiene comisiones». */
   comisionId: string | null;
+  /**
+   * B-2175 — «horario a confirmar por el organizador». Con `true` el formulario
+   * pide solo el día, e `inicio`/`fin` quedan en ese día a las 00:00 y a las
+   * 23:59 (`ventanaDeDiaCompleto`). Opcional como `motivoCancelacion`: ausente
+   * es `false`.
+   */
+  horarioAConfirmar?: boolean;
 }
 
 /**

@@ -260,6 +260,13 @@ const sesionSchema = z
      * de la actividad, que es el único nivel que ve los dos.
      */
     comisionId: z.string().nullable().default(null),
+    /*
+     * B-2175 — «horario a confirmar por el organizador». No afloja la forma de
+     * las fechas: con la casilla, el formulario pone el día entero (00:00 a
+     * 23:59), así que inicio y fin siguen siendo dos `datetime-local` válidos y
+     * en orden. Lo único que cambia es qué se pide: el día, sin horas.
+     */
+    horarioAConfirmar: z.boolean().default(false),
   })
   /*
    * B-200 — antes esto era un `.refine` sin más: `new Date(s.fin) >

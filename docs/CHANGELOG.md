@@ -2,6 +2,17 @@
 
 ## Sin publicar
 
+- **Un encuentro se puede cargar sin hora: «Horario a confirmar por el organizador»**
+  (B-2175). Pedido de una publicadora que carga ferias de una cuenta que anuncia los días
+  y no los horarios. Una casilla por encuentro: tildada, se pide solo el día y se guarda el
+  día entero (00:00 a 23:59, `Timestamp` como siempre). Ninguna salida imprime esas horas:
+  el sitio dice la frase (corta en la tarjeta, el tríptico y el correo), el JSON-LD lleva
+  solo la fecha, y el evento de Calendar, el `.ics` y «Agendar en Google» son de día
+  completo. El flag entra al payload del evento, así que tildarlo o destildarlo es un
+  `actualizar` de ese encuentro y de ningún otro (§7.1). `verificar-calendario` compara
+  también los eventos de día completo. Con `tests/horario-a-confirmar.test.ts`, la ayuda de
+  «Encuentros» y su novedad del panel.
+
 - **«Organiza» autocompleta contra la lista de organizadores** (roadmap 1.5, B-2172,
   paso 2). El campo sigue siendo texto libre, ahora con sugerencias y un aviso de si lo
   escrito ya existe o es nuevo (`TextoConSugerencias`). Al guardar, `resolverOrganizador`

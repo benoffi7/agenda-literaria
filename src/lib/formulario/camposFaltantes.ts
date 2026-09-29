@@ -137,6 +137,7 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   // («Opción») y no la del modelo («comisión»): es el texto que la barra de abajo
   // le lee al que está cargando.
   'sesiones.N.comisionId': { etiqueta: 'Opción del encuentro', seccion: 'encuentros' },
+  'sesiones.N.horarioAConfirmar': { etiqueta: 'Horario a confirmar', seccion: 'encuentros' },
   comisiones: { etiqueta: 'Opciones para sumarse', seccion: 'encuentros' },
   'comisiones.N': { etiqueta: 'Opción', seccion: 'encuentros' },
   'comisiones.N.id': { etiqueta: 'Opción', seccion: 'encuentros' },

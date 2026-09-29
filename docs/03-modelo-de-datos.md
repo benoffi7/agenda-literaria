@@ -159,9 +159,34 @@ sesiones: [{
   cancelada: boolean,
   motivoCancelacion: string | null, // B-98 — por qué se canceló; null si no está cancelado
   calendarEventId: string | null,
-  comisionId: string | null   // B-181 — de qué comisión es, o null
+  comisionId: string | null,  // B-181 — de qué comisión es, o null
+  horarioAConfirmar: boolean  // B-2175 — el organizador dijo el día y no la hora
 }]
 ```
+
+### Un encuentro sin horario (B-2175)
+
+**`horarioAConfirmar: true` es «se sabe el día, no la hora».** `inicio` y `fin`
+siguen siendo `Timestamp` —no hay una segunda forma de fecha en el modelo—, puestos
+en el día entero: 00:00 y 23:59 de Buenos Aires, que es lo que escribe
+`formADocumento` aunque la fila traiga otras horas. **Esas dos horas son un
+relleno y ninguna salida las imprime**: lo que decide qué se muestra es el flag,
+nunca la hora. El encuentro cuenta como «por venir» hasta que termina el día (el
+tríptico y el correo miden por el día, `encuentroPorVenir`).
+
+| Salida | Qué dice |
+|---|---|
+| tarjeta, tríptico, correo | «Horario a confirmar» (`HORARIO_A_CONFIRMAR_CORTO`) |
+| página de detalle, texto para redes | «Horario a confirmar por el organizador» (`HORARIO_A_CONFIRMAR`), sin hora de fin |
+| JSON-LD | `startDate`/`endDate` con **solo la fecha** (`2026-10-03`) |
+| evento de Calendar, `.ics`, «Agendar en Google» | **de día completo** (`date`, fin exclusivo); la frase arriba de la descripción del evento |
+| calendario del panel | `¿hora?` en la columna de la hora |
+
+Las dos frases viven en `functions/calendario.js` (`@calendario`), con `diaEnZona`
+y `diaSiguiente`, porque las comparten la Function y el sitio (D-20). En el
+índice (`events.json`) el campo sale **solo cuando es `true`**, en las sesiones de
+cada actividad y en el eje plano de encuentros. Un documento anterior al campo se
+lee con horario (D-26).
 
 ### Un encuentro cancelado (B-98)
 

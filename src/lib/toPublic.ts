@@ -78,6 +78,13 @@ export interface SesionPublica {
    * el campo ya está decidido y no entra de contrabando.
    */
   comisionId: string | null;
+  /**
+   * **El organizador no dijo la hora** — B-2175. Público a propósito: es lo que
+   * la página, la tarjeta y el evento dicen en lugar de la hora («Horario a
+   * confirmar por el organizador»). Sin él, el `inicio` de las 00:00 —que es un
+   * relleno— se publicaría como si fuera la hora del encuentro.
+   */
+  horarioAConfirmar: boolean;
 }
 
 /**
@@ -591,6 +598,8 @@ const sesionPublica = (s: Sesion): SesionPublica => ({
   motivoCancelacion: motivoDeCancelacion(s),
   // B-181 — `?? null` para los documentos anteriores al campo (D-26).
   comisionId: s.comisionId ?? null,
+  // B-2175 — `false` para los documentos anteriores al campo (D-26).
+  horarioAConfirmar: s.horarioAConfirmar === true,
 });
 
 /** §5.1 — la comisión, campo por campo. Ver `ComisionPublica`. */

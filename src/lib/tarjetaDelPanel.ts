@@ -44,7 +44,8 @@
  */
 import { esSinCosto } from '@/lib/arancel';
 import { zonaDeSede } from '@/lib/geografia.mjs';
-import { fechaHoraLegible } from '@/lib/calendarioPanel';
+import { cuandoLegible } from '@/lib/calendarioPanel';
+import { instanteDeTimestamp } from '@/lib/sesiones';
 import {
   ETIQUETA_MODALIDAD,
   legible,
@@ -162,6 +163,15 @@ export const datosDeTarjeta = (
   { labels, ahora, uid, mailes = new Map() }: ContextoDeTarjeta,
 ): TarjetaDelPanel => {
   const proximo = proximoEncuentro(a, ahora);
+  // B-2175 — si el próximo no tiene horario, su medianoche no es una hora.
+  const proximoSinHorario =
+    proximo !== null &&
+    (a.sesiones ?? []).some(
+      (s) =>
+        s.horarioAConfirmar === true &&
+        !s.cancelada &&
+        instanteDeTimestamp(s.inicio)?.getTime() === proximo.getTime(),
+    );
   /*
    * B-224 — la modalidad **resultante**, la misma derivación que usan el filtro
    * y el `events.json`: con dos filas que difieren, la tarjeta dice «Presencial
@@ -202,7 +212,9 @@ export const datosDeTarjeta = (
     sinCosto: esSinCosto(slugArancel),
     // B-96 — la fecha que importa es la que viene, no la última modificación: es
     // lo que hace accionable el listado.
-    cuando: proximo ? `Próximo: ${fechaHoraLegible(proximo)}` : 'Sin encuentros por venir',
+    cuando: proximo
+      ? `Próximo: ${cuandoLegible(proximo, proximoSinHorario)}`
+      : 'Sin encuentros por venir',
     hayProximo: proximo !== null,
     marcas: [
       // B-97 — lo que se publica se ve desde el panel: el sitio y el calendario

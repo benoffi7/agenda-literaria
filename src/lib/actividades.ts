@@ -23,7 +23,13 @@ import {
 } from '@/lib/slugs';
 import { libroVacio } from '@/lib/formulario/estadoInicial';
 import { buildSearchText } from '@/lib/normalize';
-import { deDatetimeLocal, aDatetimeLocal, instanteDeTimestamp } from '@/lib/sesiones';
+import {
+  deDatetimeLocal,
+  aDatetimeLocal,
+  diaDeDatetimeLocal,
+  instanteDeTimestamp,
+  ventanaDeDiaCompleto,
+} from '@/lib/sesiones';
 import { imagenesDe } from '@/lib/imagenes';
 import { idItemMaterialMigrado } from '@/lib/material';
 import {
@@ -87,6 +93,12 @@ const aTimestamp = (s: string): Timestamp => {
 
 const limpiar = (s: string): string => s.trim();
 const nuloSiVacio = (s: string): string | null => (s.trim() ? s.trim() : null);
+
+/** B-2175 — las fechas de una fila tal como se guardan: el día entero si el horario es a confirmar. */
+const fechasAGuardar = (s: SesionForm): { inicio: string; fin: string } =>
+  s.horarioAConfirmar
+    ? ventanaDeDiaCompleto(diaDeDatetimeLocal(s.inicio))
+    : { inicio: s.inicio, fin: s.fin };
 
 /** Form → documento de Firestore. */
 export const formADocumento = (
@@ -298,8 +310,15 @@ export const formADocumento = (
       // El id viene del cliente y se conserva tal cual: es la llave del diff
       // contra Calendar (§7.2, trampa 2).
       id: s.id,
-      inicio: aTimestamp(s.inicio),
-      fin: aTimestamp(s.fin),
+      /*
+       * B-2175 — con «horario a confirmar» las horas se reescriben acá al día
+       * entero, aunque el formulario ya las ponga así: el relleno de 00:00 a
+       * 23:59 es lo que el resto del sistema da por sentado, y una fila armada
+       * por otro camino (un borrador viejo, una propuesta) no puede guardar un
+       * «a confirmar» con las 19:00 de antes adentro.
+       */
+      inicio: aTimestamp(fechasAGuardar(s).inicio),
+      fin: aTimestamp(fechasAGuardar(s).fin),
       tema: nuloSiVacio(s.tema),
       lectura: nuloSiVacio(s.lectura),
       cancelada: s.cancelada,
@@ -316,6 +335,8 @@ export const formADocumento = (
       // la ausencia del campo, y omitirlo dejaría documentos de dos formas
       // distintas según cuándo se guardaron.
       comisionId: s.comisionId ?? null,
+      // B-2175 — se escribe siempre, como `comisionId`: `false` es «tiene horario».
+      horarioAConfirmar: s.horarioAConfirmar === true,
     })),
 
     /*
@@ -433,6 +454,8 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
       // B-181 — `?? null` para los documentos anteriores al campo (D-26): se
       // leen como «este ciclo no tiene comisiones», que es lo que son.
       comisionId: s.comisionId ?? null,
+      // B-2175 — `?? false`: un documento anterior al campo tiene horario (D-26).
+      horarioAConfirmar: s.horarioAConfirmar ?? false,
     }),
   ),
   /** B-181 — `?? []` por lo mismo: sin el campo, no hay comisiones. */

@@ -65,9 +65,11 @@ import { arancelDeTarjeta, lugarDeTarjeta } from '@/lib/tarjetaPublica';
 import {
   claveDeDia,
   diaDesplazado,
+  encuentroPorVenir,
   fechaLargaDeDia,
   hora as horaDe,
 } from '@/lib/fechasPublicas';
+import { HORARIO_A_CONFIRMAR_CORTO } from '@calendario';
 import { etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
 import { RUTA_AGENDA, SITIO, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
@@ -195,7 +197,8 @@ export const boletinSemanal = (
      * el borrador pasan minutos u horas. Sin esto, un correo escrito a la noche
      * anunciaría el taller de las siete de esa misma tarde.
      */
-    if (!d || d.getTime() < ahora.getTime()) return [];
+    // B-2175 — sin horario, el `inicio` es la medianoche: se mide por el día.
+    if (!d || !encuentroPorVenir(d, e.horarioAConfirmar === true, ahora)) return [];
     const clave = claveDeDia(d);
     if (!enLaVentana.has(clave)) return [];
     /*
@@ -218,7 +221,7 @@ export const boletinSemanal = (
           clave: `${e.slug}#${e.sesionId}`,
           // Roadmap 3.8 — la campaña del correo, para que GA4 no lo cuente como «directo».
           url: conCampana(urlDeDetalle(e.slug), CAMPANA_DEL_CORREO),
-          hora: horaDe(d),
+          hora: e.horarioAConfirmar ? HORARIO_A_CONFIRMAR_CORTO : horaDe(d),
           titulo: entrada.titulo,
           tipoEtiqueta: etiquetaDe(etiquetas, 'tipo', entrada.tipo),
           lugar: lugarDeTarjeta(entrada, etiquetas),

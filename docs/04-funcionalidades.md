@@ -533,6 +533,17 @@ filas cada X días. Reemplaza la lista actual y las fechas quedan **editables un
 por una**: los ciclos siempre tienen excepciones (un feriado, una semana que se
 corre).
 
+**«Horario a confirmar por el organizador»** (B-2175): una casilla por encuentro
+para lo que se anuncia con el día y sin la hora —las ferias, sobre todo—. Tildada,
+la fila pide solo el **día** y guarda el día entero (00:00 a 23:59 de Buenos
+Aires); destildada, el inicio queda en ese día a las 00:00 y el fin vacío, para
+que se cargue la hora de verdad. El sitio dice «Horario a confirmar por el
+organizador» (en la tarjeta y el tríptico, «Horario a confirmar») donde iría la
+hora; el JSON-LD lleva solo la fecha; el evento de Calendar, el `.ics` y el link
+«Agendar» son de **día completo**; el texto para redes y el calendario del panel
+tampoco imprimen la medianoche. Duplicar la fila y «Generar N encuentros» copian
+la casilla del encuentro base, y una fila nueva la hereda de la anterior.
+
 Marcar un encuentro como cancelado **no lo borra del calendario** (B-98, desvío
 del §7.3): su evento queda en el calendario de quien lo tenía agendado, titulado
 «CANCELADO — …» y con el motivo arriba de la descripción. Al tildar «Cancelado»

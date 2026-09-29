@@ -360,6 +360,18 @@ viva, y **borrar la base restaurada en el mismo día** (tiene los datos personal
 
 ## P3 — cuando sobre tiempo
 
+### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
+
+En el mismo mensaje que pidió B-2175 (2026-09-29) agregó «y algunos etiquetados
+menos», sin más. Revisado: **nada del panel exige etiquetar ni arrobar a nadie**
+para guardar o publicar (el schema no tiene ninguna regla sobre `tags` ni sobre
+`difusion.arrobar`). Lo que sí pasa solo es que el texto para redes suma al pie,
+además de «Arrobar al publicar», **la cuenta de Instagram del organizador y la del
+tallerista** (`handlesDe` en `src/lib/textoRedes.ts`), y hoy no hay forma de
+sacarlas del posteo sin borrar el campo. Si el pedido es ése —no arrobar a una
+cuenta que no contesta—, es decisión de producto. Se cierra preguntándole qué
+quiso decir.
+
 ### B-2174 · `lista-actividades.render.test.tsx` falla intermitente con la suite entera · P3
 
 El 2026-09-29, en el `pre-push` de B-2173, falló «y suma la modalidad y el arancel…»

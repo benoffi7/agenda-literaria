@@ -56,6 +56,11 @@ import { desSlug } from '@calendario';
 export interface EstadoDeEntrada {
   /** La próxima sesión no cancelada que todavía no terminó, o `null`. */
   proxima: Date | null;
+  /**
+   * B-2175 — la próxima tiene el horario a confirmar: su `proxima` es la
+   * medianoche del día, un relleno, y la tarjeta no puede imprimirlo como hora.
+   */
+  proximaSinHorario: boolean;
   /** La primera y la última sesión no cancelada: el rango del ciclo. */
   desde: Date | null;
   hasta: Date | null;
@@ -91,6 +96,14 @@ export const estadoDe = (e: EntradaDeIndice, ahora: Date): EstadoDeEntrada => {
     })),
     ahora,
   );
+  const proximaSinHorario =
+    proxima !== null &&
+    e.sesiones.some(
+      (s) =>
+        s.horarioAConfirmar === true &&
+        !s.cancelada &&
+        instanteDeIso(s.inicio)?.getTime() === proxima.getTime(),
+    );
   const fechas = fechasDe(e);
   const desde = fechas[0] ?? null;
   const hasta = fechas[fechas.length - 1] ?? null;
@@ -98,6 +111,7 @@ export const estadoDe = (e: EntradaDeIndice, ahora: Date): EstadoDeEntrada => {
 
   return {
     proxima,
+    proximaSinHorario,
     desde,
     hasta,
     paso: proxima === null,

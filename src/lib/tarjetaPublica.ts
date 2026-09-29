@@ -32,6 +32,7 @@
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { zonaDeSede } from '@/lib/geografia.mjs';
 import { diaYMes, hora, partesDeFecha, partesDeMes } from '@/lib/fechasPublicas';
+import { HORARIO_A_CONFIRMAR_CORTO } from '@calendario';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { admiteMonto, esSinCosto, montoLegible } from '@/lib/arancel';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -131,7 +132,8 @@ export const bloqueDeFecha = (estado: EstadoDeEntrada): BloqueDeFecha => {
     dia,
     diaSemana,
     mes,
-    hora: hora(estado.proxima),
+    // B-2175 — la medianoche de un encuentro sin horario es un relleno.
+    hora: estado.proximaSinHorario ? HORARIO_A_CONFIRMAR_CORTO : hora(estado.proxima),
     iso: estado.proxima.toISOString(),
   };
 };

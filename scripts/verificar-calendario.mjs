@@ -132,11 +132,16 @@ export const camposDivergentes = (esperado, enCalendar) => {
     const a = esperado[clave];
     const b = enCalendar?.[clave];
     const esFecha = a != null && typeof a === 'object' && 'dateTime' in a;
+    // B-2175 — el encuentro con horario a confirmar es de día completo: `date`
+    // (`AAAA-MM-DD`) y sin zona, que Calendar devuelve igual que se mandó.
+    const esDia = a != null && typeof a === 'object' && 'date' in a;
     const iguales = esFecha
       ? milisDe(a.dateTime) !== null &&
         milisDe(a.dateTime) === milisDe(b?.dateTime) &&
         a.timeZone === b?.timeZone
-      : vacio(a) === vacio(b);
+      : esDia
+        ? a.date === b?.date && b?.dateTime == null
+        : vacio(a) === vacio(b);
     if (!iguales) distintos.push(clave);
   }
   return distintos;

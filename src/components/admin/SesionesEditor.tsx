@@ -13,12 +13,15 @@ import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
 import { CampoDeFechaYHora } from '@/components/campos/CampoDeFechaYHora';
 import {
   aDatetimeLocal,
+  conHorarioAConfirmar,
   deDatetimeLocal,
+  diaDeDatetimeLocal,
   duplicarSesion,
   duracionMinutos,
   generarSesiones,
   ordenarPorInicio,
   sesionVacia,
+  ventanaDeDiaCompleto,
 } from '@/lib/sesiones';
 import type { Comision, SesionForm } from '@/types/actividad';
 
@@ -256,7 +259,8 @@ export function SesionesEditor({
     const deLaComision = paraGenerar
       ? sesiones.filter((s) => s.comisionId === paraGenerar.id)
       : sesiones;
-    const inicio = deLaComision[0]?.inicio ?? primera?.inicio ?? aDatetimeLocal(new Date());
+    const base = deLaComision[0] ?? primera;
+    const inicio = base?.inicio ?? aDatetimeLocal(new Date());
     medirFuncion('encuentros-generar', undefined, cantidad);
     const generadas = generarSesiones({
       cantidad,
@@ -268,6 +272,9 @@ export function SesionesEditor({
       // recreaba los ocho eventos, y con ellos los recordatorios de la gente.
       previas: deLaComision,
       comisionId: paraGenerar?.id ?? null,
+      // B-2175 — las horas salen del encuentro base, y si son un dato o el
+      // relleno del día entero, también.
+      horarioAConfirmar: base?.horarioAConfirmar ?? false,
     });
     onChange(
       paraGenerar
@@ -301,11 +308,18 @@ export function SesionesEditor({
          * una nueva (se elige una vez y sigue). Con `null` habría que elegirla
          * en cada una de las ocho filas.
          */
-        return sesionVacia(
+        const vacia = sesionVacia(
           siguiente,
           duracion * 60_000,
           ultima?.comisionId ?? comisiones[0]?.id ?? null,
         );
+        /*
+         * B-2175 — una feria sin horarios se carga de corrido: si la última fila
+         * es «a confirmar», la siguiente nace igual, con el día entero.
+         */
+        return ultima?.horarioAConfirmar && siguiente
+          ? conHorarioAConfirmar(vacia, true)
+          : vacia;
       }}
       duplicar={(s) => duplicarSesion(s, 7)}
       alCambiarCantidad={(accion, cantidadResultante) =>
@@ -455,26 +469,50 @@ export function SesionesEditor({
             */}
             <div data-bloque="fecha-y-tema" className={s.cancelada ? claseTintaApagada : undefined}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <CampoDeFechaYHora
-                  label="Inicio"
-                  id={`sesion-inicio-${s.id}`}
-                  requerido
-                  error={errorDe(ruta('inicio'))}
-                  value={s.inicio}
-                  onChange={(v) => reemplazar(s.id, (x) => conInicioNuevo(x, v))}
-                  formato={hora.formato}
-                  vista={hora.vista}
-                />
-                <CampoDeFechaYHora
-                  label="Fin"
-                  id={`sesion-fin-${s.id}`}
-                  requerido
-                  error={errorDe(ruta('fin'))}
-                  value={s.fin}
-                  onChange={(v) => editar({ fin: v })}
-                  formato={hora.formato}
-                  vista={hora.vista}
-                />
+                {s.horarioAConfirmar ? (
+                  /*
+                    B-2175 — sin horario, se pide solo el día. Inicio y fin los
+                    arma `ventanaDeDiaCompleto`: el día entero, que ninguna salida
+                    imprime como hora.
+                  */
+                  <Campo
+                    label="Día"
+                    htmlFor={`sesion-dia-${s.id}`}
+                    requerido
+                    error={errorDe(ruta('inicio'))}
+                  >
+                    <input
+                      id={`sesion-dia-${s.id}`}
+                      type="date"
+                      value={diaDeDatetimeLocal(s.inicio)}
+                      onChange={(e) => editar(ventanaDeDiaCompleto(e.target.value))}
+                      className={claseInput}
+                    />
+                  </Campo>
+                ) : (
+                  <>
+                    <CampoDeFechaYHora
+                      label="Inicio"
+                      id={`sesion-inicio-${s.id}`}
+                      requerido
+                      error={errorDe(ruta('inicio'))}
+                      value={s.inicio}
+                      onChange={(v) => reemplazar(s.id, (x) => conInicioNuevo(x, v))}
+                      formato={hora.formato}
+                      vista={hora.vista}
+                    />
+                    <CampoDeFechaYHora
+                      label="Fin"
+                      id={`sesion-fin-${s.id}`}
+                      requerido
+                      error={errorDe(ruta('fin'))}
+                      value={s.fin}
+                      onChange={(v) => editar({ fin: v })}
+                      formato={hora.formato}
+                      vista={hora.vista}
+                    />
+                  </>
+                )}
                 <label className="flex flex-col gap-1 text-xs">
                   Tema
                   <input
@@ -568,12 +606,35 @@ export function SesionesEditor({
                     resumen.finAntesDelInicio ? 'font-medium text-acento' : 'text-tinta/65'
                   }`}
                 >
-                  {resumen.finAntesDelInicio
-                    ? `Cae ${resumen.dia}, pero el fin no es posterior al inicio.`
-                    : `Cae ${resumen.dia}${resumen.duracion ? `, dura ${resumen.duracion}` : ''}.`}
+                  {s.horarioAConfirmar
+                    ? // B-2175 — «dura 23 h 59 min» sería leer el relleno como un dato.
+                      `Cae ${resumen.dia}, con el horario a confirmar.`
+                    : resumen.finAntesDelInicio
+                      ? `Cae ${resumen.dia}, pero el fin no es posterior al inicio.`
+                      : `Cae ${resumen.dia}${resumen.duracion ? `, dura ${resumen.duracion}` : ''}.`}
                 </p>
               )}
             </div>
+
+            {/*
+              B-2175 — pedido de una publicadora que carga ferias de una cuenta
+              que anuncia los días y no los horarios: «un tilde que diga
+              "horario a confirmar por el organizador" y me deje seguir sin
+              horario». Se tilda por encuentro: en una feria de tres jornadas
+              puede haber una con horario y dos sin.
+            */}
+            <label className="mt-2 flex min-h-touch items-center gap-2 text-xs text-tinta/70">
+              <input
+                type="checkbox"
+                checked={s.horarioAConfirmar === true}
+                onChange={(e) => {
+                  medirFuncion('encuentro-horario-a-confirmar', undefined, e.target.checked ? 1 : 0);
+                  reemplazar(s.id, (x) => conHorarioAConfirmar(x, e.target.checked));
+                }}
+              />
+              Horario a confirmar por el organizador — se carga solo el día, y el sitio y el
+              calendario lo dicen así
+            </label>
 
             <label className="mt-2 flex items-center gap-2 text-xs text-tinta/70">
               <input

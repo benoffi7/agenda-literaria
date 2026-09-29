@@ -317,6 +317,16 @@ el dato **sí** pasa por infraestructura nuestra, hay un endpoint de escritura
 anónimo (la conversación de App Check de B-836a) y corresponde volver a hacer
 esta cuenta.
 
+### «Horario a confirmar» sale, y es un booleano (B-2175)
+
+`sesiones[].horarioAConfirmar` es **público a propósito**: es lo que hace que las
+salidas digan «Horario a confirmar por el organizador» en lugar de la medianoche
+de relleno que guarda el documento. Llega a `toPublic`, al índice (solo cuando es
+`true`), a la página y su JSON-LD, al evento de Calendar, al `.ics`, al tríptico,
+al correo y al texto para redes. No es contenido de nadie: no dice nada que el
+propio encuentro no diga. Su celda del fixture de centinelas está en
+`VALORES_NO_TEXTO`, y el caso `true` lo recorre `tests/horario-a-confirmar.test.ts`.
+
 ## Qué NUNCA sale
 
 | Campo | Motivo | Dónde se filtra |

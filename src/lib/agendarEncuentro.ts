@@ -30,6 +30,7 @@
  */
 
 import { DOMINIO } from '@/lib/rutasPublicas';
+import { diaSiguiente } from '@calendario';
 
 /** Lo que hace falta para agendar un encuentro. Todo ya es público. */
 export interface EventoParaAgendar {
@@ -38,6 +39,12 @@ export interface EventoParaAgendar {
   titulo: string;
   inicioIso: string;
   finIso: string;
+  /**
+   * B-2175 — `AAAA-MM-DD` cuando el horario es a confirmar: el evento se agenda
+   * **de día completo** y `inicioIso`/`finIso` —el relleno de 00:00 a 23:59— no
+   * se usan. Ausente, el evento tiene hora.
+   */
+  dia?: string;
   ubicacion: string;
   /** La página de la actividad, absoluta. Es la descripción entera. */
   url: string;
@@ -55,6 +62,18 @@ export const fechaCompacta = (iso: string): string =>
 
 const descripcionDe = (e: EventoParaAgendar) => `Más información e inscripción: ${e.url}`;
 
+/** `2026-10-03` → `20261003`: la forma `DATE` del `.ics` y de la plantilla de Google. */
+const diaCompacto = (dia: string): string => dia.replace(/-/g, '');
+
+/**
+ * Las dos fechas del evento, ya en forma compacta. De día completo (B-2175) el fin
+ * es **exclusivo** —el día siguiente—, que es lo que piden las dos formas.
+ */
+const fechasCompactas = (e: EventoParaAgendar): { desde: string; hasta: string } =>
+  e.dia
+    ? { desde: diaCompacto(e.dia), hasta: diaCompacto(diaSiguiente(e.dia)) }
+    : { desde: fechaCompacta(e.inicioIso), hasta: fechaCompacta(e.finIso) };
+
 /**
  * La plantilla de evento de Google Calendar. Las fechas van en UTC (`…Z`), que
  * no depende de ninguna zona: es el instante exacto (trampa 1).
@@ -63,7 +82,7 @@ export const linkDeGoogleCalendar = (e: EventoParaAgendar): string => {
   const q = new URLSearchParams({
     action: 'TEMPLATE',
     text: e.titulo,
-    dates: `${fechaCompacta(e.inicioIso)}/${fechaCompacta(e.finIso)}`,
+    dates: `${fechasCompactas(e).desde}/${fechasCompactas(e).hasta}`,
     details: descripcionDe(e),
     ...(e.ubicacion ? { location: e.ubicacion } : {}),
     ctz: 'America/Argentina/Buenos_Aires',
@@ -108,8 +127,9 @@ export const icsDeEvento = (e: EventoParaAgendar): string =>
     'BEGIN:VEVENT',
     `UID:${e.uid}`,
     `DTSTAMP:${fechaCompacta(e.generadoIso)}`,
-    `DTSTART:${fechaCompacta(e.inicioIso)}`,
-    `DTEND:${fechaCompacta(e.finIso)}`,
+    // B-2175 — `VALUE=DATE` es el evento de día completo del RFC 5545 §3.3.4.
+    e.dia ? `DTSTART;VALUE=DATE:${fechasCompactas(e).desde}` : `DTSTART:${fechasCompactas(e).desde}`,
+    e.dia ? `DTEND;VALUE=DATE:${fechasCompactas(e).hasta}` : `DTEND:${fechasCompactas(e).hasta}`,
     `SUMMARY:${escaparTexto(e.titulo)}`,
     `DESCRIPTION:${escaparTexto(descripcionDe(e))}`,
     ...(e.ubicacion ? [`LOCATION:${escaparTexto(e.ubicacion)}`] : []),

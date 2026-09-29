@@ -17901,6 +17901,20 @@ pasar a CABA y volver servía como arreglo a la vista. **Arreglo:** fuera de CAB
 sede tiene barrio, «Dónde» lo muestra de solo lectura con «Quitar el barrio»
 (`ModalidadesEditor.tsx`). Test: `tests/barrio-sobrante.render.test.tsx`.
 
+### B-2175 · Cargar un encuentro con «Horario a confirmar por el organizador» · P2 — ✅ hecho (2026-09-29)
+
+Pedido de una publicadora, 2026-09-29: «Me podrías hacer un tilde que diga
+"horario a confirmar por el organizador" y me deje seguir sin horario? Porque esta
+cuenta cuenta las ferias pero no dice horarios y no responde». Sin la casilla, la
+única salida era inventar una hora, que después se publicaba en la tarjeta, la
+página, el JSON-LD y el calendario como si fuera cierta.
+
+Hecho: `sesiones[].horarioAConfirmar`, por encuentro. El documento guarda el día
+entero y ninguna salida imprime esas horas (tabla en `03-modelo-de-datos.md`
+§ «Un encuentro sin horario»). Tests en `tests/horario-a-confirmar.test.ts`.
+
+Lo que quedó abierto del mismo mensaje («y algunos etiquetados menos») es B-2176.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

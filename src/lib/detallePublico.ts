@@ -67,7 +67,9 @@ import {
   construirLinkMapa,
   construirUbicacion,
   desSlug,
+  diaEnZona,
   etiquetaDeComision as etiquetaSaneada,
+  HORARIO_A_CONFIRMAR,
   tituloDeEvento,
 } from '@calendario';
 
@@ -120,7 +122,15 @@ export interface EncuentroDeDetalle {
   inicioIso: string;
   finIso: string;
   fecha: string;
+  /** `19:00`, o «Horario a confirmar por el organizador» (B-2175). */
   hora: string;
+  /**
+   * B-2175 — el organizador no dijo la hora. `inicioIso`/`finIso` son entonces
+   * el día entero (00:00 a 23:59), un relleno que ninguna salida imprime: la
+   * página dice la frase, el JSON-LD lleva solo la fecha y agendarlo es un
+   * evento de día completo.
+   */
+  horarioAConfirmar: boolean;
   /**
    * Las tres piezas del **bloque de fecha** —día de la semana, número y mes— para
    * el rectángulo de tinta plena con el texto calado que abre cada encuentro
@@ -849,9 +859,20 @@ const dondeCorto = (modalidades: ModalidadDeDetalle[]): PiezaDeDonde[] => {
 
 /** La hora de fin del encuentro, para «19:00 a 21:00». */
 const horaDeFin = (e: EncuentroDeDetalle): string => {
+  if (e.horarioAConfirmar) return '';
   const fin = instanteDeIso(e.finIso);
   return fin ? hora(fin) : '';
 };
+
+/**
+ * B-2175 — la fecha que va al JSON-LD. Sin horario, **solo el día**
+ * (`2026-10-03`), que schema.org admite como `Date`: un `startDate` con las
+ * 00:00 le diría a Google que la feria abre a medianoche.
+ */
+const inicioLd = (e: EncuentroDeDetalle): string =>
+  e.horarioAConfirmar ? diaEnZona(e.inicioIso) : e.inicioIso;
+const finLd = (e: EncuentroDeDetalle): string =>
+  e.horarioAConfirmar ? diaEnZona(e.inicioIso) : e.finIso;
 
 /**
  * `Ciclo de 8 encuentros · 3 sep – 22 oct`, o `null` si no hay nada que decir.
@@ -1274,7 +1295,8 @@ export const detalleDeActividad = (
       inicioIso: inicio ? isoConOffset(inicio) : '',
       finIso: fin ? isoConOffset(fin) : '',
       fecha: inicio ? fechaLarga(inicio) : '',
-      hora: inicio ? hora(inicio) : '',
+      hora: s.horarioAConfirmar ? HORARIO_A_CONFIRMAR : inicio ? hora(inicio) : '',
+      horarioAConfirmar: s.horarioAConfirmar === true,
       bloque: inicio ? partesDeFecha(inicio) : { dia: '', diaSemana: '', mes: '' },
       tema: s.tema,
       lectura: s.lectura,
@@ -1296,6 +1318,8 @@ export const detalleDeActividad = (
               titulo: tituloDeEvento(a.titulo, etiqueta || null, s.tema),
               inicioIso: inicio.toISOString(),
               finIso: fin.toISOString(),
+              // B-2175 — sin horario, se agenda el día entero.
+              ...(s.horarioAConfirmar ? { dia: diaEnZona(inicio) } : {}),
               ubicacion,
               url: urlDeDetalle(a.slug),
               // El reloj del build (B-1850), no el del momento en que corre el endpoint.
@@ -1914,8 +1938,8 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     return {
       ...comun,
       '@type': subtipo,
-      startDate: conFechas[0]!.inicioIso,
-      endDate: conFechas[0]!.finIso,
+      startDate: inicioLd(conFechas[0]!),
+      endDate: finLd(conFechas[0]!),
     };
   }
 
@@ -2023,8 +2047,8 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     '@type': 'EventSeries',
     // La serie arranca en la fecha original, aunque ya haya empezado: no se
     // reescribe la historia para que parezca que empieza ahora (§7.2).
-    startDate: conFechas[0]!.inicioIso,
-    endDate: conFechas[conFechas.length - 1]!.finIso,
+    startDate: inicioLd(conFechas[0]!),
+    endDate: finLd(conFechas[conFechas.length - 1]!),
     subEvent: conFecha
       .map((e) => {
         // Con la actividad cancelada lo están **todos** sus encuentros, aunque
@@ -2065,8 +2089,8 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
            * filas. Un ancla ahí afirmaría que el precio es de ese encuentro.
            */
           url: `${urlDeDetalle(d.slug)}#${e.id}`,
-          startDate: e.inicioIso,
-          endDate: e.finIso,
+          startDate: inicioLd(e),
+          endDate: finLd(e),
           eventStatus: cancelado ? CANCELADO : PROGRAMADO,
           ...(offers && !cancelado && !e.paso ? { offers } : {}),
         };

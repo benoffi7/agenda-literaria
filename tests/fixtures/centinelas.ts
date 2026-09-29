@@ -359,6 +359,10 @@ export const VALORES_NO_TEXTO: Record<string, string> = {
   'imagenes[].portada':
     'D-125 — booleano: señala cuál de las imágenes es la de Open Graph. Sale al índice como ' +
     '«la portada» y no como el flag.',
+  'sesiones[].horarioAConfirmar':
+    'B-2175 — booleano, y en `false` para que el fixture tenga horario. Es público a ' +
+    'propósito (la página dice «Horario a confirmar por el organizador» en vez de la hora); ' +
+    'el caso `true` lo mide `tests/horario-a-confirmar.test.ts` sobre cada salida.',
   'sesiones[].cancelada':
     '§7.3 — booleano, en `false` para que el encuentro exista en las salidas. El caso `true` ' +
     'es su propio caso del barrido.',
@@ -530,6 +534,8 @@ const sesionesCentinela = (): Actividad['sesiones'] =>
        * encuentros, y perder la mitad en cada grupo debilita esas aserciones.
        */
       comisionId: `com_${CENTINELA['comisiones.id']}`,
+      // B-2175 — con horario: el caso sin horario es su propio barrido.
+      horarioAConfirmar: false,
     };
   });
 

@@ -48,6 +48,12 @@ export interface SesionDeIndice {
   inicio: string;
   fin: string;
   cancelada: boolean;
+  /**
+   * B-2175 — solo presente, y en `true`, cuando el encuentro tiene el horario a
+   * confirmar: la tarjeta tiene que decirlo en vez de «00:00». Ausente es «tiene
+   * horario», así el índice no engorda con un `false` por cada encuentro.
+   */
+  horarioAConfirmar?: true;
 }
 
 /** La sede en el índice: sin dirección, sin indicaciones y sin coordenadas. */
@@ -205,6 +211,12 @@ export interface EncuentroDeIndice {
   sesionId: string;
   /** ISO del inicio. El índice va ordenado ascendente por este campo. */
   inicio: string;
+  /**
+   * B-2175 — igual que en `SesionDeIndice`: solo cuando es `true`. El tríptico y
+   * el correo lo necesitan para no escribir «00:00», y para no darlo por pasado
+   * a la mañana del mismo día (el `inicio` es la medianoche).
+   */
+  horarioAConfirmar?: true;
 }
 
 export interface Indice {
@@ -236,8 +248,15 @@ export const encuentrosDelIndice = (
   actividades
     .flatMap((a) =>
       a.sesiones
-        .filter((s) => !s.cancelada && s.inicio >= generadoEn)
-        .map((s) => ({ slug: a.slug, sesionId: s.id, inicio: s.inicio })),
+        // B-2175 — sin horario, el encuentro sigue en pie hasta que termina el
+        // día: se mide por el `fin` (las 23:59), no por la medianoche del inicio.
+        .filter((s) => !s.cancelada && (s.horarioAConfirmar ? s.fin : s.inicio) >= generadoEn)
+        .map((s) => ({
+          slug: a.slug,
+          sesionId: s.id,
+          inicio: s.inicio,
+          ...(s.horarioAConfirmar ? { horarioAConfirmar: true as const } : {}),
+        })),
     )
     .sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -402,7 +421,12 @@ const imagenUrlDe = (a: ActividadPublica): string | null => {
  */
 const sesionesDeIndice = (a: ActividadPublica): SesionDeIndice[] =>
   [...a.sesiones]
-    .map((s) => ({ inicio: s.inicio, fin: s.fin, cancelada: s.cancelada }))
+    .map((s) => ({
+      inicio: s.inicio,
+      fin: s.fin,
+      cancelada: s.cancelada,
+      ...(s.horarioAConfirmar ? { horarioAConfirmar: true as const } : {}),
+    }))
     .sort((x, y) => x.inicio.localeCompare(y.inicio));
 
 /**

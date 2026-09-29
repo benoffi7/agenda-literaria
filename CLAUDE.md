@@ -154,7 +154,8 @@ sesiones: [{
   cancelada: boolean,
   motivoCancelacion: string | null,   // D-976
   calendarEventId: string | null,
-  comisionId: string | null     // D-530
+  comisionId: string | null,    // D-530
+  horarioAConfirmar: boolean    // B-2175: día sin hora; inicio/fin = el día entero
 }]
 comisiones: [{ id, etiqueta }]  // D-530: «opciones para sumarse»
 

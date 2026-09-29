@@ -2069,6 +2069,18 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Si el organizador dijo el día pero no la hora —pasa con las ferias—, tildá «Horario a ' +
+          'confirmar por el organizador» en ese encuentro: se carga solo el día. El sitio dice ' +
+          '«Horario a confirmar por el organizador» donde iría la hora, y en el calendario queda ' +
+          'como un evento de todo el día. Cuando sepas la hora, destildalo y cargala.',
+        atadoA: [
+          { archivo: 'tests/horario-a-confirmar.test.ts', it: 'tildar la casilla conserva el día y pone el día entero' },
+          { archivo: 'tests/horario-a-confirmar.test.ts', it: 'es de día completo, con el fin exclusivo, y dice la frase arriba de la descripción' },
+          { archivo: 'tests/horario-a-confirmar.test.ts', it: 'la página dice la frase entera, sin hora de fin' },
+        ],
+      },
+      {
+        texto:
           'Marcar un encuentro como cancelado no lo saca del calendario: su evento pasa a decir ' +
           '«CANCELADO» y, si lo escribís, el motivo, que es público. Borrarlo, en cambio, lo saca ' +
           'del calendario y de acá.',

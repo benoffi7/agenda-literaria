@@ -294,6 +294,7 @@ evento por función.
 | `duplicar-desmarcar` | se confirma el modal de duplicar | — | casillas destildadas (B-199) |
 | `encuentro-correr` | se corre un encuentro con los botones | — | días, **con signo**: los saltos hacia atrás son negativos (B-186, B-797) |
 | `encuentro-cancelar` | se tilda o destilda "Cancelado" en una fila | — | `1` al prender, `0` al apagar (B-58) |
+| `encuentro-horario-a-confirmar` | se tilda o destilda "Horario a confirmar por el organizador" en una fila | — | `1` al prender, `0` al apagar (B-2175) |
 | `actividad-cupo-completo` | se prende o apaga "se llenó" desde el menú ⋯ | — | `1` al prender, `0` al apagar (B-97) |
 | `coordenadas-pegar` | se pega un link de Google Maps en la sede | — | — |
 | `coordenadas-fallo` | ese link no se pudo resolver | el modo de fallo | — |

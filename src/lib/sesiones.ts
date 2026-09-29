@@ -34,6 +34,51 @@ export const deDatetimeLocal = (s: string): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
+/**
+ * ── B-2175 · «Horario a confirmar por el organizador» ─────────────────────
+ *
+ * Un encuentro del que se sabe el día y no la hora. El documento sigue teniendo
+ * `inicio` y `fin` como `Timestamp` —no hay dos formas de fecha en el modelo, y
+ * todo lo que ordena, filtra o decide «ya pasó» sigue andando igual—, puestos en
+ * el día entero: de las 00:00 a las 23:59. Así el encuentro cuenta como «por
+ * venir» hasta que termina ese día, que es lo que se sabe de verdad.
+ *
+ * Las dos horas son un **relleno**, no un dato: ninguna salida las imprime. Es
+ * el flag el que decide qué se muestra, nunca la hora (una actividad que de
+ * verdad empieza a medianoche no se confunde con esto).
+ */
+export const HORA_DE_INICIO_SIN_HORARIO = '00:00';
+export const HORA_DE_FIN_SIN_HORARIO = '23:59';
+
+/** El día (`AAAA-MM-DD`) de un `datetime-local`, o `''` si no tiene uno legible. */
+export const diaDeDatetimeLocal = (s: string): string =>
+  /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
+
+/** El encuentro de día entero de B-2175, como strings del formulario. */
+export const ventanaDeDiaCompleto = (dia: string): { inicio: string; fin: string } =>
+  dia
+    ? { inicio: `${dia}T${HORA_DE_INICIO_SIN_HORARIO}`, fin: `${dia}T${HORA_DE_FIN_SIN_HORARIO}` }
+    : { inicio: '', fin: '' };
+
+/**
+ * Tilda o destilda «Horario a confirmar» en una fila, **conservando el día**.
+ *
+ * Al tildar, las horas pasan a ser el día entero. Al destildar, el inicio queda
+ * en ese día a las 00:00 y el **fin vacío**: no hay una hora que devolverle —la
+ * que tenía antes de tildar ya se pisó— y un fin inventado se guardaría sin que
+ * nadie lo mire (B-957). Vacío, el schema pide «Falta la fecha de fin».
+ */
+export const conHorarioAConfirmar = (s: SesionForm, aConfirmar: boolean): SesionForm => {
+  const dia = diaDeDatetimeLocal(s.inicio);
+  if (aConfirmar) return { ...s, horarioAConfirmar: true, ...ventanaDeDiaCompleto(dia) };
+  return {
+    ...s,
+    horarioAConfirmar: false,
+    inicio: dia ? `${dia}T${HORA_DE_INICIO_SIN_HORARIO}` : '',
+    fin: '',
+  };
+};
+
 export const sesionVacia = (
   inicio?: Date,
   duracionMs = DOS_HORAS_MS,
@@ -72,6 +117,7 @@ export const sesionVacia = (
       motivoCancelacion: '',
       calendarEventId: null,
       comisionId,
+      horarioAConfirmar: false,
     };
   }
   const desde = inicio;
@@ -85,6 +131,7 @@ export const sesionVacia = (
     motivoCancelacion: '',
     calendarEventId: null,
     comisionId,
+    horarioAConfirmar: false,
   };
 };
 
@@ -148,8 +195,24 @@ export const generarSesiones = (opts: {
    * casualidad.
    */
   comisionId?: string | null;
+  /**
+   * B-2175 — si el encuentro base tiene «horario a confirmar». **Todas** las
+   * filas generadas lo copian, las viejas también: el generador saca las horas
+   * del encuentro base, así que saca de ahí mismo si esas horas son un dato o el
+   * relleno del día entero. Heredar el flag de cada fila vieja daría ocho
+   * encuentros de 00:00 a 23:59 que dicen tener horario.
+   */
+  horarioAConfirmar?: boolean;
 }): SesionForm[] => {
-  const { cantidad, inicio, duracionMinutos, cadaDias = 7, previas = [], comisionId = null } = opts;
+  const {
+    cantidad,
+    inicio,
+    duracionMinutos,
+    cadaDias = 7,
+    previas = [],
+    comisionId = null,
+    horarioAConfirmar = false,
+  } = opts;
   const primera = deDatetimeLocal(inicio);
   if (!primera || cantidad < 1) return [];
 
@@ -226,6 +289,7 @@ export const generarSesiones = (opts: {
        * los martes produciría ocho filas que el schema no deja publicar.
        */
       comisionId: previa?.comisionId ?? comisionId ?? null,
+      horarioAConfirmar,
     };
   });
 };

@@ -75,7 +75,7 @@ import { conCampana } from '@/lib/analyticsSitio';
 import { desSlug } from '@calendario';
 import { admiteMonto, montoLegible } from '@/lib/arancel';
 import { formADocumento } from '@/lib/actividades';
-import { encuentrosDe, fechaHoraLegible } from '@/lib/calendarioPanel';
+import { cuandoLegible, encuentrosDe, fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_MODALIDAD, proximoEncuentro } from '@/lib/filtrosActividades';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { agregarChips } from '@/lib/formulario/chips';
@@ -581,7 +581,9 @@ export const construirTextoRedes = (
     const libro = bloqueLibro(actividad);
     if (libro) bloques.push(libro);
 
-    bloques.push(['Cuándo:', ...fechas.map((e) => `- ${fechaHoraLegible(e.inicio)}`)].join('\n'));
+    bloques.push(
+      ['Cuándo:', ...fechas.map((e) => `- ${cuandoLegible(e.inicio, e.horarioAConfirmar)}`)].join('\n'),
+    );
   } else {
     /**
      * Cuál es "el próximo" no se decide acá: lo decide `proximoEncuentro`, que
@@ -611,7 +613,9 @@ export const construirTextoRedes = (
       bloqueEncabezado(
         actividad,
         titulo,
-        [tipo, posicion, fechaHoraLegible(encuentro.inicio)].filter(Boolean).join(' · '),
+        [tipo, posicion, cuandoLegible(encuentro.inicio, encuentro.horarioAConfirmar)]
+          .filter(Boolean)
+          .join(' · '),
       ),
     );
 

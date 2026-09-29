@@ -65,6 +65,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'horario-a-confirmar',
+    fecha: '2026-09-29',
+    version: '1.11.0',
+    titulo: 'Un encuentro se puede cargar sin hora: «Horario a confirmar por el organizador»',
+    detalle:
+      'Para las ferias y todo lo que se anuncia con el día y sin la hora. Tildás la casilla en ' +
+      'el encuentro y se carga solo el día: el sitio dice «Horario a confirmar por el ' +
+      'organizador» y en el calendario queda como un evento de todo el día. Cuando sepas la ' +
+      'hora, la destildás y la cargás.',
+    donde: 'Formulario → Encuentros, en cada encuentro.',
+  },
+  {
     id: 'organizador-autocompleta',
     fecha: '2026-09-29',
     version: '1.11.0',
