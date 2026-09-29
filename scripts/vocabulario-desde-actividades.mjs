@@ -7,6 +7,9 @@
  *   node scripts/vocabulario-desde-actividades.mjs --aplicar --produccion   # producción
  *   node scripts/vocabulario-desde-actividades.mjs --aplicar --campo=ciudad # solo ese campo
  *
+ * Desde B-2172 también siembra `organizador` (roadmap 1.5): la lista con la
+ * variante más escrita de cada uno. La decisión vive en `vocabulario-a-sembrar.mjs`.
+ *
  * ── El problema ───────────────────────────────────────────────────────────
  * `/opciones/ciudad` tenía **un** valor —`caba`, el que sembró
  * `opciones-base.json`— mientras las actividades cargadas nombraban treinta
@@ -45,14 +48,15 @@
  */
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-/*
- * **El mismo `slugify` que el panel**, importado y no copiado: con una copia acá,
- * una ciudad sembrada por este script y la misma tipeada en el formulario podrían
- * dar slugs distintos, y el síntoma sería una opción duplicada en el desplegable
- * — exactamente lo que el §4.2 existe para evitar.
- */
-import { slugify } from '../functions/slugify.js';
-import { etiquetaPresentable } from '../src/lib/etiqueta-presentable.mjs';
+// Qué se siembra y con qué slug —el mismo `slugify` que el panel, importado y no
+// copiado (§4.2)— vive en el módulo puro, que es lo que el test mira.
+import {
+  CAMPOS,
+  CAMPOS_LEIDOS,
+  sedesDe,
+  usosPorCampo,
+  valoresNuevos,
+} from './vocabulario-a-sembrar.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
 const produccion = process.argv.includes('--produccion');
@@ -78,69 +82,39 @@ const projectId = process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria';
 initializeApp({ credential: applicationDefault(), projectId });
 const db = getFirestore();
 
-/** Los tres campos de lugar que viven en una sede y son taxonomía (§4, D-710). */
-const TODOS = ['provincia', 'barrio', 'ciudad'];
-
 /*
  * `--campo=ciudad` acota a uno, y **no es comodidad**: lo que este script
  * encuentra «en uso y sin ofrecer» no siempre es algo que convenga ofrecer. En
  * `barrio` lo que aparece es sobre todo basura de cuando era el único campo de
  * lugar —`"Villa Crespo, CABA"`, una provincia entera—, y agregarla al
- * desplegable empeora justo lo que hay que limpiar. Informar los tres y **dejar
+ * desplegable empeora justo lo que hay que limpiar. Informar todos y **dejar
  * elegir cuál se escribe** es lo que separa el diagnóstico de la decisión.
  */
 const pedido = process.argv.find((a) => a.startsWith('--campo='))?.slice('--campo='.length);
-if (pedido && !TODOS.includes(pedido)) {
-  console.error(`\`--campo=${pedido}\` no es uno de: ${TODOS.join(', ')}.`);
+if (pedido && !CAMPOS.includes(pedido)) {
+  console.error(`\`--campo=${pedido}\` no es uno de: ${CAMPOS.join(', ')}.`);
   process.exit(1);
 }
-const CAMPOS = TODOS;
-/** Sobre cuáles se escribe. Se informa siempre sobre los tres. */
-const A_ESCRIBIR = pedido ? [pedido] : TODOS;
+/** Sobre cuáles se escribe. Se informa siempre sobre todos. */
+const A_ESCRIBIR = pedido ? [pedido] : CAMPOS;
 
-const snap = await db.collection('actividades').select('modalidades', 'sede').get();
+const snap = await db.collection('actividades').select(...CAMPOS_LEIDOS).get();
+const actividades = snap.docs.map((d) => d.data());
+const usos = usosPorCampo(actividades);
+const filasConSede = actividades.reduce((n, a) => n + sedesDe(a).length, 0);
 
-/** Cada sede de cada actividad: las filas de `modalidades`, más la `sede` suelta de los documentos viejos. */
-const sedes = snap.docs.flatMap((d) => {
-  const a = d.data();
-  return [...(a.modalidades ?? []).map((m) => m?.sede).filter(Boolean), ...(a.sede ? [a.sede] : [])];
-});
-
-/*
- * El conteo es **por actividad y no por fila de sede**: una actividad con dos
- * modalidades en Mar del Plata usa Mar del Plata una vez, no dos. Es la misma
- * definición que `elegidosDe` (el `new Set` por documento), y tiene que serlo:
- * si los dos contaran distinto, el `usos` quedaría torcido apenas alguien edite.
- */
-const usosPorCampo = Object.fromEntries(CAMPOS.map((c) => [c, new Map()]));
-for (const d of snap.docs) {
-  const a = d.data();
-  const delDoc = [...(a.modalidades ?? []).map((m) => m?.sede).filter(Boolean), ...(a.sede ? [a.sede] : [])];
-  for (const campo of CAMPOS) {
-    const slugs = new Set(delDoc.map((s) => slugify(s?.[campo] ?? '')).filter(Boolean));
-    for (const slug of slugs) {
-      const previo = usosPorCampo[campo].get(slug) ?? { usos: 0, crudo: '' };
-      /* Se guarda **un** valor tal como se tipeó, para poder proponer la etiqueta. */
-      const crudo = previo.crudo || delDoc.map((s) => s?.[campo]).find((v) => v && slugify(v) === slug) || '';
-      usosPorCampo[campo].set(slug, { usos: previo.usos + 1, crudo });
-    }
-  }
-}
-
-console.log(`actividades: ${snap.size} · filas con sede: ${sedes.length} · base: ${produccion ? 'PRODUCCIÓN' : process.env.FIRESTORE_EMULATOR_HOST}\n`);
+console.log(`actividades: ${snap.size} · filas con sede: ${filasConSede} · base: ${produccion ? 'PRODUCCIÓN' : process.env.FIRESTORE_EMULATOR_HOST}\n`);
 
 let algoQueEscribir = false;
 
 for (const campo of CAMPOS) {
   const ref = db.doc(`opciones/${campo}`);
   const existentes = (await ref.get()).data()?.valores ?? [];
-  const conocidos = new Set(existentes.map((v) => v.slug));
-  const encontrados = [...usosPorCampo[campo]].sort((a, b) => b[1].usos - a[1].usos);
-  const faltan = encontrados.filter(([slug]) => !conocidos.has(slug));
+  const faltan = valoresNuevos(usos[campo], existentes);
 
-  console.log(`/opciones/${campo} — ${existentes.length} en el vocabulario, ${encontrados.length} en uso, ${faltan.length} sin ofrecer`);
-  for (const [slug, { usos, crudo }] of faltan) {
-    console.log(`    + ${slug.padEnd(30)} "${etiquetaPresentable(crudo || slug)}"  (${usos} actividad${usos === 1 ? '' : 'es'})`);
+  console.log(`/opciones/${campo} — ${existentes.length} en el vocabulario, ${usos[campo].size} en uso, ${faltan.length} sin ofrecer`);
+  for (const { slug, label, usos: n } of faltan) {
+    console.log(`    + ${slug.padEnd(30)} "${label}"  (${n} actividad${n === 1 ? '' : 'es'})`);
   }
 
   if (faltan.length === 0) continue;
@@ -151,28 +125,7 @@ for (const campo of CAMPOS) {
   algoQueEscribir = true;
   if (!aplicar) continue;
 
-  /*
-   * `orden: 99` es el de las opciones creadas con «Otro» (§4.1): el orden real lo
-   * decide `ordenarValores`, que ordena por `usos` cuando el `orden` empata — que
-   * es justo lo que se quiere acá, porque el `usos` que se escribe es el de verdad.
-   *
-   * `aprobada: true`: son ciudades que **ya están publicadas en el sitio**, dentro
-   * de actividades que alguien cargó y revisó. Dejarlas pendientes las escondería
-   * del desplegable de los demás (§4.3) justo a las que más se usan.
-   *
-   * Sin `huellaCreador`: nadie las creó tipeando, se derivan del catálogo. Y esa
-   * huella no se publica (§5.1), así que inventar una sería agregar un dato de
-   * persona a un valor que no lo tiene.
-   */
-  const nuevos = faltan.map(([slug, { usos, crudo }]) => ({
-    slug,
-    label: etiquetaPresentable(crudo || slug),
-    orden: 99,
-    fijo: false,
-    usos,
-    aprobada: true,
-  }));
-
+  // La forma de cada valor, y por qué `aprobada: true`: `valoresNuevos`.
   await db.runTransaction(async (tx) => {
     /*
      * En transacción y releyendo adentro, por lo mismo que `upsertOpcion` del
@@ -182,11 +135,13 @@ for (const campo of CAMPOS) {
      */
     const actual = (await tx.get(ref)).data()?.valores ?? [];
     const yaEstan = new Set(actual.map((v) => v.slug));
-    const aAgregar = nuevos.filter((v) => !yaEstan.has(v.slug));
+    const aAgregar = faltan.filter((v) => !yaEstan.has(v.slug));
     if (aAgregar.length === 0) return;
-    tx.update(ref, { valores: FieldValue.arrayUnion(...aAgregar) });
+    // `set` con `merge` y no `update`: si el documento no existe todavía en esa
+    // base, `update` fallaría.
+    tx.set(ref, { valores: FieldValue.arrayUnion(...aAgregar) }, { merge: true });
   });
-  console.log(`  → ${nuevos.length} agregada(s) a /opciones/${campo}`);
+  console.log(`  → ${faltan.length} agregada(s) a /opciones/${campo}`);
 }
 
 if (!algoQueEscribir) {

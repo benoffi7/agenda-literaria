@@ -41,6 +41,11 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
+- **B-2172 paso 3** — sembrar la lista de organizadores en producción. Primero en
+  seco, para ver qué etiqueta propone para cada uno:
+  `npm run vocabulario:prod -- --campo=organizador`; si cierra, lo mismo con
+  `--aplicar`. Solo escribe `/opciones/organizador` (no toca actividades) y dispara
+  un rebuild. El entorno de los agentes no puede correr scripts contra producción.
 - **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas:
   el filtro «Posibles duplicados» del listado los muestra juntos. Dejar una de cada
   par que sea la misma.
@@ -278,9 +283,13 @@ muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vací
    `auditor-trampas` encontró que guardar antes de que cargue la lista reescribía el
    nombre con otra mayúscula («Casa brandon»); arreglado en el mismo cambio
    (`listaCargada`), con su test.
-3. **Sembrar la lista** en producción con `vocabulario:prod --campo=organizador` (solo
-   escribe `/opciones/organizador`, no toca actividades), con la etiqueta de la
-   variante más usada.
+3. 🟡 **Sembrar la lista** en producción (script listo el 2026-09-29, falta
+   correrlo: ver «Pendiente de acción manual del dueño»). El script no conocía
+   `organizador` —solo los tres campos de sede— y ahora sí:
+   `scripts/vocabulario-a-sembrar.mjs` (puro, con test) junta las variantes por slug
+   (`slugDeOrganizador`) y propone la más escrita, a igualdad la de más mayúsculas;
+   crea el documento si no existe. Probado en el emulador: crea la lista y la
+   segunda corrida no escribe nada.
 4. **Las páginas `/organiza/{slug}`**: clase de hub nueva, con lo por venir y lo que
    ya pasó; al sitemap solo si tiene algo por venir; link «Todo lo de X» desde el
    detalle.

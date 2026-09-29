@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El script de vocabulario también siembra los organizadores** (roadmap 1.5, B-2172,
+  paso 3). `vocabulario-desde-actividades` solo conocía provincia, barrio y ciudad;
+  ahora `--campo=organizador` junta las variantes de cada uno por slug y propone la más
+  escrita. La decisión pasó a un módulo puro con test (`scripts/vocabulario-a-sembrar.mjs`),
+  y la escritura crea el documento si no existe. Falta correrlo en producción.
+
 - **El gate de `pre-push` ya no le rompe la config al repo cuando se pushea desde un
   worktree** (B-2177). Git le pasa `GIT_DIR` absoluto al hook, y los tests que arman un
   repo de juguete en una carpeta temporal lo heredaban: su `git init`/`config`/`commit`
