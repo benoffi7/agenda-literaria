@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El barrio sobrante fuera de CABA ahora se ve y se quita en el formulario** (B-2173).
+  El tablero señalaba «Rosario» como barrio de una sede de Rosario (B-2166) y el
+  formulario no mostraba el campo fuera de CABA, así que no había qué corregir. Ahora
+  «Dónde» lo muestra con «Quitar el barrio».
 - **Páginas por organizador, tramo A: el organizador pasa a ser taxonomía** (roadmap
   1.5, B-2172). Sin cambios visibles todavía. `/opciones/organizador` existe (vacía),
   el slug se deriva del nombre en los documentos viejos (`functions/organizador.js`),

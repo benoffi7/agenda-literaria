@@ -17891,6 +17891,16 @@ fixture no tenía ninguna ciudad. Lo encontró el relevamiento para las páginas
 organizador (roadmap 1.5), que iban a repetir el mismo filtro. Arreglado filtrando
 por `CLASES_DE_TAXONOMIA`, y el test exige ahora un hub indexable de **cada** clase.
 
+### B-2173 · El barrio cargado fuera de CABA no se podía ver ni sacar en el formulario · P2 — ✅ hecho (2026-09-29)
+
+Lo reportó el dueño al ir a corregir B-2166: «revisé y no veo el error». La cascada de
+B-950 muestra el campo «Barrio» solo si la provincia es CABA, pero `piezasDeLugar`
+publica un barrio cargado en cualquier provincia y `geografiaQueNoCierra` lo señala en el
+tablero: el aviso mandaba a corregir un dato que el formulario escondía. Ni el rodeo de
+pasar a CABA y volver servía como arreglo a la vista. **Arreglo:** fuera de CABA, si la
+sede tiene barrio, «Dónde» lo muestra de solo lectura con «Quitar el barrio»
+(`ModalidadesEditor.tsx`). Test: `tests/barrio-sobrante.render.test.tsx`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

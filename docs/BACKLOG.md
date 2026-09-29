@@ -46,8 +46,9 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
   par que sea la misma.
 - **B-2166** — corregir la sede con un barrio «Rosario» sobrante en Rosario (la ciudad
   ya lo dice): desde el 2026-09-28 el aviso «Publicadas con un lugar que no cierra» del
-  tablero la señala. Dejar el barrio vacío, o completarlo con el barrio real si la sede
-  lo tiene.
+  tablero la señala. En la actividad, «Dónde» → abajo de «Ciudad» aparece «Barrio» con
+  el botón **«Quitar el barrio»** (hasta B-2173 ese campo no se veía fuera de CABA);
+  quitarlo y guardar.
 - **B-2168** — corregir en el panel los dos destinos de inscripción que el script no
   pudo decidir solo: «buscando» en *Club Pino presenta: Al margen de los libros*, y un
   @usuario y un mail juntos en *Buenos Aires desde los ojos de Roberto Arlt*. El resto
@@ -330,8 +331,9 @@ primera vez que se midió contra el `events.json` publicado, el 2026-09-28: es l
 actividad con fecha por venir que marca. Es el caso que B-1124 ya había nombrado
 («Lectura y análisis de Mariana Pineda»): el barrio repite la ciudad, y como
 `piezasDeLugar` muestra un barrio cargado fuera de CABA, la ficha dice el lugar dos
-veces. Se corrige en el panel dejando el barrio vacío. Se cierra cuando el aviso deje de
-marcarla.
+veces. Se corrige en el panel con «Quitar el barrio», que aparece en «Dónde» desde
+B-2173 (antes el formulario no mostraba el barrio fuera de CABA y no había qué tocar). Se
+cierra cuando el aviso deje de marcarla.
 
 ### B-2164 · Dibujar la serie de fotos del tablero · P3 — vigilado hasta que haya tres fotos
 
@@ -353,6 +355,16 @@ viva, y **borrar la base restaurada en el mismo día** (tiene los datos personal
 07-seguridad.md). Se cierra anotando la fecha y cuánto tardó.
 
 ## P3 — cuando sobre tiempo
+
+### B-2174 · `lista-actividades.render.test.tsx` falla intermitente con la suite entera · P3
+
+El 2026-09-29, en el `pre-push` de B-2173, falló «y suma la modalidad y el arancel…»
+(B-620) con `Unable to find an element with the text: Club de lectura de Saer`; la
+corrida anterior de la misma suite lo había pasado, y solo pasa 3 de 3. `tarjetaDe()`
+busca con `getByText`, que es sincrónico: si la lista todavía no pintó (con la máquina
+cargada por los emuladores), no la encuentra. Sospecha, sin confirmar: esperar la
+primera tarjeta con `findByText` antes de buscarla. Se cierra cuando la causa esté
+confirmada y arreglada.
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 

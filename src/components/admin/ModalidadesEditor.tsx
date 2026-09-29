@@ -20,7 +20,7 @@
 import { TaxonomiaSelect } from '@/components/admin/campos-del-panel';
 import { CampoDeFechaYHora } from '@/components/campos/CampoDeFechaYHora';
 import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
-import { Campo, claseInput } from '@/components/campos/Campo';
+import { Campo, claseBotonFila, claseInput } from '@/components/campos/Campo';
 import { FilasEditor } from '@/components/campos/FilasEditor';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { ETIQUETA_MODALIDAD } from '@/components/admin/formulario/etiquetasUI';
@@ -281,6 +281,41 @@ export function ModalidadesEditor({
                     />
                   </Campo>
                 )}
+                {/*
+                  B-2173 — **el barrio sobrante fuera de CABA tiene que poder
+                  sacarse.** La cascada no pide barrio fuera de CABA, así que el
+                  campo no estaba en pantalla; pero `piezasDeLugar` muestra un
+                  barrio cargado (esconder un dato escrito es peor), y el tablero
+                  lo señala con `geografiaQueNoCierra`. Sin esto el aviso mandaba
+                  a corregir algo que el formulario no dejaba ver (B-2166).
+                */}
+                {subdivisionDe(fila.sede.provincia) === 'ciudad' && fila.sede.barrio ? (
+                  <Campo
+                    label="Barrio"
+                    htmlFor={campoId('sede-barrio')}
+                    ayuda="Fuera de CABA el barrio no se pide, y la ficha lo muestra antes que la ciudad. Viene de una carga vieja: quitalo, salvo que sea el barrio real de la sede."
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="min-w-0 flex-1">
+                        <TaxonomiaSelect
+                          id={campoId('sede-barrio')}
+                          campo="barrio"
+                          uid={uid}
+                          value={fila.sede.barrio}
+                          deshabilitado
+                          onChange={() => {}}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => editar({ sede: { ...fila.sede!, barrio: '' } })}
+                        className={`${claseBotonFila} shrink-0 text-acento hover:bg-acento/10`}
+                      >
+                        Quitar el barrio
+                      </button>
+                    </div>
+                  </Campo>
+                ) : null}
                 <Campo
                   label="Cómo llegar"
                   htmlFor={campoId('sede-indicaciones')}
