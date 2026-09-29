@@ -14,7 +14,9 @@
  * alguien la teclea en Google como frase y si el contenido resultante es
  * distinto, no un subconjunto arbitrario» (§2.1). Lo que quedó afuera y por qué
  * está en la tabla del §2.3 — modalidad presencial, cada tipo de arancel, los
- * temas, el organizador, la ciudad.
+ * temas. (La ciudad y el organizador quedaron afuera al principio y hoy existen:
+ * `/ciudad/*` desde B-951 y `/organiza/*` desde B-2172, éste en
+ * `organizadorPublico.ts` y no acá.)
  *
  * ── Los dos cortes, y son distintos: **emitir** y **ofrecer** ─────────────
  * Es la forma de `mesPublico.ts` (`mesesDelSitio` / `mesesEnlazables`) aplicada a

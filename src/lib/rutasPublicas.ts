@@ -500,6 +500,16 @@ export const rutaDeBarrio = (slug: string): string => rutaCanonica(`${PREFIJO_BA
 export const rutaDeCiudad = (slug: string): string => rutaCanonica(`${PREFIJO_CIUDAD}/${slug}`);
 
 /**
+ * Roadmap 1.5 (B-2172) — `/organiza/hormiga-libros/`: todo lo de un organizador.
+ * El segmento es el slug de `/opciones/organizador`, nunca el nombre (trampa 10).
+ */
+export const PREFIJO_ORGANIZA = '/organiza';
+
+/** `/organiza/hormiga-libros/` — la página de un organizador (roadmap 1.5). */
+export const rutaDeOrganizador = (slug: string): string =>
+  rutaCanonica(`${PREFIJO_ORGANIZA}/${slug}`);
+
+/**
  * Los dos hubs temáticos: `/online/` y `/gratis/` — B-108.
  *
  * No salen de ninguna taxonomía: juntan varios slugs a propósito («virtual» +

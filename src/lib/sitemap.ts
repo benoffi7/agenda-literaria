@@ -60,6 +60,8 @@ import { directoriosDisponibles } from '@/lib/directorios';
 import { estadoDe } from '@/lib/listadoPublico';
 import { CLASES_DE_TAXONOMIA, hubsOfrecidos } from '@/lib/hubsPublicos';
 import { mesesEnlazables } from '@/lib/mesPublico';
+import { paginasDeOrganizador } from '@/lib/organizadorPublico';
+import type { ValorOpcion } from '@/types/actividad';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
@@ -394,6 +396,14 @@ export interface EntradaDelSitio {
    * taxonomía en el sitemap. El lado inofensivo del error.
    */
   opciones?: Readonly<Record<string, readonly { slug: string }[]>>;
+  /**
+   * Roadmap 1.5 (B-2172) — `/opciones/organizador` **completa**, para las
+   * páginas de organizador. No viaja en el índice (es privada), así que no puede
+   * salir de `opciones`; la lee el build con el Admin SDK. El filtro por
+   * aprobación lo hace `paginasDeOrganizador`, igual que el de los hubs. Mismo
+   * default inofensivo: ninguna.
+   */
+  organizadores?: readonly ValorOpcion[];
   ahora: Date;
 }
 
@@ -422,6 +432,7 @@ export const rutasDelSitemap = ({
   lugares = [],
   bibliotecas = [],
   efemerides = [],
+  organizadores = [],
   ahora,
 }: EntradaDelSitio): string[] => [
   ...new Set([
@@ -451,6 +462,12 @@ export const rutasDelSitemap = ({
       .filter((h) => (CLASES_DE_TAXONOMIA as readonly string[]).includes(h.clase))
       .map((h) => h.ruta),
     ...mesesEnlazables(entradas, ahora).map((m) => rutaDeMes(m.clave)),
+    // Roadmap 1.5 (B-2172) — las páginas de organizador con algo por venir: el
+    // mismo par sitemap ⇔ sin `noindex` que los hubs. Las que solo tienen pasado
+    // se emiten con `noindex` y no se ofrecen.
+    ...paginasDeOrganizador(entradas, organizadores, ahora)
+      .filter((p) => p.indexable)
+      .map((p) => p.ruta),
     ...rutasDePublicadas(entradas, ahora),
     ...rutasDeCanceladas(canceladas, ahora),
     /*

@@ -990,6 +990,19 @@ const gruposDeEncuentros =
                 ))
             }
           </p>
+          {/*
+            Roadmap 1.5 (B-2172) — la página del organizador, solo si existe:
+            `ruta` es `null` cuando el build no la emite, así que no hay 404.
+          */}
+          {
+            detalle.organizador.ruta && (
+              <p class="body-md mt-2">
+                <a class={claseEnlace} href={detalle.organizador.ruta}>
+                  Todo lo de {detalle.organizador.nombre}
+                </a>
+              </p>
+            )
+          }
         </section>
 
         {

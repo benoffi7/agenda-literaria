@@ -63,6 +63,11 @@ import {
   type GrupoDeExploracion,
   type Hub,
 } from '@/lib/hubsPublicos';
+import {
+  paginasDeOrganizador,
+  slugsConPaginaDeOrganizador,
+  type PaginaDeOrganizador,
+} from '@/lib/organizadorPublico';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
 import { pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { rutaDeBarrio, rutaDeCiudad, rutaDeMes } from '@/lib/rutasPublicas';
@@ -1202,6 +1207,13 @@ const detallesDelSitio = async (
    * Es el mismo criterio con el que la ficha de un lugar de la Guía decide su
    * `rutaDelBarrio` (`lib/contenidoDeLaGuia.ts`).
    */
+  /*
+   * Roadmap 1.5 (B-2172) — qué organizadores tienen página, para «Todo lo de…».
+   * La misma función que emite `/organiza/*`, con la lista de la lectura del
+   * build (no viaja en el índice): el detalle no puede enlazar una que no existe.
+   */
+  const organizadoresConPagina = await slugsDeOrganizadorConPagina();
+
   const zonasConHub: Record<string, Set<string>> = {
     barrio: new Set(slugsConHub('barrio', indice.actividades, indice.opciones)),
     ciudad: new Set(slugsConHub('ciudad', indice.actividades, indice.opciones)),
@@ -1239,6 +1251,7 @@ const detallesDelSitio = async (
           tiposConHub.has(a.tipo),
           rutaDeZona,
           tiposOfrecidos.has(a.tipo),
+          organizadoresConPagina,
         ),
       )
   );
@@ -1448,6 +1461,7 @@ export const sitemapDelSitio = async (
     canceladas,
     canceladasEditadasEn,
     publicadasEditadasEn,
+    opciones: opcionesCompletas,
     librerias,
     suscripciones,
     lugares,
@@ -1486,6 +1500,10 @@ export const sitemapDelSitio = async (
     // ofrecerle al buscador la URL de un barrio que todavía es un typo sin
     // revisar es el error caro de esta salida.
     opciones: indice.opciones,
+    // Roadmap 1.5 (B-2172) — la lista de organizadores **no** está en el índice
+    // (es privada): sale de la lectura del build. `paginasDeOrganizador` filtra
+    // por aprobación y el sitemap solo recibe rutas.
+    organizadores: opcionesCompletas.organizador ?? [],
     ahora: instante,
   });
 
@@ -1700,6 +1718,56 @@ export const vistaDeHubTematico = async (
    */
   if (!hub) throw new Error(`El hub temático «${clase}» no se generó, y siempre debería.`);
   return vistaDelHub(hub, ctx);
+};
+
+/**
+ * La vista de una página de organizador — roadmap 1.5, B-2172.
+ *
+ * La forma de `VistaDeHub` sin la tira: 267 organizadores no entran en «Explorá
+ * por», y lo que enlaza estas páginas es el detalle de cada actividad.
+ */
+export interface VistaDeOrganizador {
+  pagina: PaginaDeOrganizador;
+  etiquetas: MapaDeEtiquetas;
+  tonos: TonosDeTipo;
+  /** El reloj del build, en ISO. La plantilla lo reconstituye a `Date`. */
+  generadoEn: string;
+}
+
+/**
+ * Los caminos de `/organiza/[slug]`: uno por organizador **aprobado** con alguna
+ * actividad publicada, vigente o pasada.
+ *
+ * La lista de organizadores sale de la lectura del build (`contenidoDelSitio`) y
+ * no del índice, que no la lleva (es privada). Todo lo demás —entradas, reloj,
+ * etiquetas, matices— es lo mismo que usan los hubs, del mismo `indiceDelSitio()`
+ * memoizado: cero lecturas nuevas. `ahora` tolerante por B-237.
+ */
+export const caminosDeOrganizador = async (
+  ahora?: unknown,
+): Promise<{ params: { slug: string }; props: { vista: VistaDeOrganizador } }[]> => {
+  const indice = await indiceDelSitio();
+  const { opciones } = await contenidoDelSitio();
+  const instante = relojDelBuild(ahora, indice.generadoEn);
+  const etiquetas = mapaDeEtiquetas(indice.opciones);
+  const tonos = tonosDeTipo(indice.opciones);
+  return paginasDeOrganizador(indice.actividades, opciones.organizador ?? [], instante).map(
+    (pagina) => ({
+      params: { slug: pagina.slug },
+      props: { vista: { pagina, etiquetas, tonos, generadoEn: indice.generadoEn } },
+    }),
+  );
+};
+
+/**
+ * Los slugs de organizador **con página**, para el link «Todo lo de…» del
+ * detalle. Sale de la misma función que los caminos, así que el detalle no puede
+ * enlazar una página que el build no emitió.
+ */
+export const slugsDeOrganizadorConPagina = async (): Promise<Set<string>> => {
+  const indice = await indiceDelSitio();
+  const { opciones } = await contenidoDelSitio();
+  return new Set(slugsConPaginaDeOrganizador(indice.actividades, opciones.organizador ?? []));
 };
 
 /**

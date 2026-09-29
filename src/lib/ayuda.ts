@@ -1796,6 +1796,16 @@ export const CAPITULOS: CapituloAyuda[] = [
           'revisó nadie — si las dos repitieron el mismo error de tipeo, se renombra o se borra ' +
           'como cualquier otra.',
       },
+      {
+        texto:
+          'Los organizadores aprobados tienen una página pública con todo lo que organizan, ' +
+          'que se enlaza desde cada actividad suya y Google puede encontrar. Si uno de la lista ' +
+          'no es un organizador de verdad —«A conf», «Buscando»—, borralo: así no tiene página. ' +
+          'Pero corregí también el organizador de esas actividades: si no, la próxima vez que ' +
+          'se guarde una vuelve a la lista, y con ella la página. Lo mismo si una persona pide ' +
+          'que saquen la suya.',
+        cuidado: true,
+      },
     ],
   },
   {

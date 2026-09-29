@@ -56,7 +56,15 @@ import { pluralDeTipo } from '@/lib/hubsPublicos';
 import { imagenesPublicables } from '@/lib/imagenes';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { SLUG_PLATAFORMA_A_CONFIRMAR, modalidadResultante } from '@/lib/modalidades';
-import { DOMINIO, RUTA_AGENDA, rutaDelIcs, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
+import {
+  DOMINIO,
+  RUTA_AGENDA,
+  rutaDelIcs,
+  rutaDeOrganizador,
+  rutaDeTipo,
+  urlAbsoluta,
+  urlDeDetalle,
+} from '@/lib/rutasPublicas';
 import { porComision } from '@/lib/comisiones';
 import { instanteDeIso } from '@/lib/sesiones';
 import { linkDeGoogleCalendar, linkParaCompartirPorWhatsApp, type EventoParaAgendar } from '@/lib/agendarEncuentro';
@@ -549,6 +557,11 @@ export interface DetallePublico {
     instagramUrl: string | null;
     web: string;
     webUrl: string | null;
+    /**
+     * Roadmap 1.5 (B-2172) — `/organiza/{slug}`, **solo si el build la emite**:
+     * el link «Todo lo de…» no puede llevar a un 404. `null` en el resto.
+     */
+    ruta: string | null;
   };
   tallerista: {
     nombre: string;
@@ -1214,6 +1227,12 @@ export const detalleDeActividad = (
    * demás: quien lo omita pierde un enlace, no manda a nadie a una lista vacía.
    */
   tipoOfrecido = false,
+  /**
+   * Roadmap 1.5 (B-2172) — los organizadores **con página**. Lo decide el lector
+   * con `slugsConPaginaDeOrganizador`, la misma función que emite las páginas.
+   * Default vacío, el mismo lado seguro que los demás: sin él no se enlaza nada.
+   */
+  organizadoresConPagina: ReadonlySet<string> = new Set(),
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -1573,6 +1592,10 @@ export const detalleDeActividad = (
       instagramUrl: enlaceInstagram(a.organizador.instagram),
       web: a.organizador.web,
       webUrl: urlSegura(a.organizador.web),
+      ruta:
+        a.organizador.slug && organizadoresConPagina.has(a.organizador.slug)
+          ? rutaDeOrganizador(a.organizador.slug)
+          : null,
     },
     /*
      * **La condición es el nombre y no el objeto** — B-854.

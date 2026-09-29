@@ -11,6 +11,7 @@
 
 /** Lo más nuevo arriba, igual que `NOVEDADES`. */
 export const NOVEDADES_IDS: readonly string[] = [
+  'pagina-de-organizador',
   'horario-a-confirmar',
   'organizador-autocompleta',
   'como-cargar-bien',

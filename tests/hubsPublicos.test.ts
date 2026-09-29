@@ -434,7 +434,9 @@ describe('slugsOfrecidos — el corte de ofrecer, para quien enlaza desde afuera
      */
     const src = sinComentarios(fuente('src/lib/contenidoDelSitio.ts'));
     expect(src).toMatch(/slugsOfrecidos\(\s*'tipo'/);
-    expect(src).toMatch(/rutaDeZona,\s*tiposOfrecidos\.has\(a\.tipo\),?\s*\)/);
+    // B-2172 — después va `organizadoresConPagina`: lo que se fija es el orden de
+    // los dos de tipo, no que `tiposOfrecidos` sea el último.
+    expect(src).toMatch(/rutaDeZona,\s*tiposOfrecidos\.has\(a\.tipo\),\s*(?:organizadoresConPagina,?\s*)?\)/);
   });
 });
 

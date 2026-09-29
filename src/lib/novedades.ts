@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'pagina-de-organizador',
+    fecha: '2026-09-29',
+    version: '1.11.0',
+    titulo: 'Cada organizador tiene su página en el sitio',
+    detalle:
+      'Lo que organiza cada casa, lo que viene y lo que ya pasó, en una página que se enlaza ' +
+      'desde sus actividades. Existe solo para los organizadores aprobados de la lista: uno ' +
+      'que no es un organizador de verdad se borra de la lista y deja de tener página.',
+    donde: 'En el sitio: «Todo lo de…» debajo de «Organiza». En el panel: Opciones → Organizador.',
+  },
+  {
     id: 'horario-a-confirmar',
     fecha: '2026-09-29',
     version: '1.11.0',

@@ -1,0 +1,85 @@
+---
+/**
+ * `/organiza/{slug}` — todo lo de un organizador. Roadmap 1.5, B-2172 paso 4.
+ *
+ * Qué se emite, qué entra y qué dice lo decide `lib/organizadorPublico.ts`; acá
+ * queda el markup. Dos listas —lo que viene y lo que ya pasó— y el `noindex`
+ * cuando no hay nada por venir, que es la otra mitad del par con el sitemap.
+ *
+ * Sin la tira «Explorá por»: con 267 organizadores no entran, y lo que enlaza
+ * esta página es el «Todo lo de…» del detalle de cada actividad suya.
+ */
+import Base from '@/layouts/Base.astro';
+import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import { claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+import { caminosDeOrganizador, type VistaDeOrganizador } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+
+export const prerender = true;
+
+// Envuelta y no aliasada (B-237): ver `src/pages/tipo/[tipo].astro`.
+export const getStaticPaths = () => caminosDeOrganizador();
+
+interface Props {
+  vista: VistaDeOrganizador;
+}
+
+const { vista } = Astro.props;
+const { pagina, etiquetas, tonos } = vista;
+// El reloj del índice, el mismo con el que se partió entre «viene» y «pasó».
+const ahora = new Date(vista.generadoEn);
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${pagina.titulo} · ${NOMBRE}`}
+  descripcion={pagina.descripcion}
+  noIndex={!pagina.indexable}
+>
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">{pagina.titulo}</h1>
+      <p class="body-md mt-3 text-super">{pagina.bajada}</p>
+    </div>
+
+    <section aria-labelledby="viene" class="mt-10 sm:mt-12">
+      <h2 id="viene" class={claseRotulo}>Lo que viene</h2>
+      {
+        pagina.proximas.length > 0 ? (
+          <div class="mt-4">
+            <ListaDeActividades
+              entradas={pagina.proximas}
+              ahora={ahora}
+              etiquetas={etiquetas}
+              tonos={tonos}
+            />
+          </div>
+        ) : (
+          <div class="regla-gruesa-arriba mt-4 px-4 py-12 text-center">
+            <p class="body-md text-super">{pagina.avisoSinProximas}</p>
+            <p class="body-md mt-3 text-super">
+              <a class={claseEnlace} href={RUTA_AGENDA}>Mirá toda la agenda</a>.
+            </p>
+          </div>
+        )
+      }
+    </section>
+
+    {
+      pagina.pasadas.length > 0 && (
+        <section aria-labelledby="paso" class="mt-12 sm:mt-16">
+          <h2 id="paso" class={claseRotulo}>Lo que ya pasó</h2>
+          <div class="mt-4">
+            <ListaDeActividades
+              entradas={pagina.pasadas}
+              ahora={ahora}
+              etiquetas={etiquetas}
+              tonos={tonos}
+            />
+          </div>
+        </section>
+      )
+    }
+  </main>
+</Base>

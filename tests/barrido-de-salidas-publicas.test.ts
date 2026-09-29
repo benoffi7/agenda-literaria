@@ -35,6 +35,7 @@
  * | `tests/salidas/10-pasadas.test.ts` | barrido de `/pasadas` (§5, salida 10, B-109) |
  * | `tests/salidas/16-no-encontrado.test.ts` | barrido de la página de error `/404` (§5, B-310 — su fila del índice es B-654) |
  * | `tests/salidas/11-hubs-de-busqueda.test.ts` | barrido de los hubs de búsqueda (§5, salida 11, B-108) |
+ * | `tests/salidas/11-paginas-de-organizador.test.ts` | barrido de las páginas de organizador (§5, salida 11, B-2172) |
  * | `tests/salidas/01-que-hay-ahora.test.ts` | barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º productor, B-600) |
  * | `tests/salidas/29-correo-semanal.test.ts` | barrido del correo semanal (§5, salida 29, B-1230) |
  *
