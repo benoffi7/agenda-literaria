@@ -121,14 +121,17 @@ let algoQueEscribir = false;
 for (const campo of CAMPOS) {
   const ref = db.doc(`opciones/${campo}`);
   const existentes = (await ref.get()).data()?.valores ?? [];
-  const faltan = valoresNuevos(usos[campo], existentes, EXCLUIR);
-  const excluidos = EXCLUIR.filter((s) => usos[campo].has(s));
-  if (excluidos.length) console.log(`  (no se siembran, por --excluir: ${excluidos.join(', ')})`);
+  // `--excluir` vale para lo que se escribe: con `--campo=organizador`, un
+  // «boedo» de relleno no puede sacar al barrio Boedo del informe de barrios.
+  const excluirAca = A_ESCRIBIR.includes(campo) ? EXCLUIR : [];
+  const faltan = valoresNuevos(usos[campo], existentes, excluirAca);
+  const excluidos = excluirAca.filter((s) => usos[campo].has(s));
 
   console.log(`/opciones/${campo} — ${existentes.length} en el vocabulario, ${usos[campo].size} en uso, ${faltan.length} sin ofrecer`);
   for (const { slug, label, usos: n } of faltan) {
     console.log(`    + ${slug.padEnd(30)} "${label}"  (${n} actividad${n === 1 ? '' : 'es'})`);
   }
+  if (excluidos.length) console.log(`  (no se siembran, por --excluir: ${excluidos.join(', ')})`);
 
   if (faltan.length === 0) continue;
   if (!A_ESCRIBIR.includes(campo)) {

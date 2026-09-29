@@ -41,12 +41,6 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
-- **B-2172 paso 3** — sembrar la lista de organizadores **sin el relleno**:
-  `npm run vocabulario:prod -- --campo=organizador --excluir=<slugs de relleno>
-  --aplicar`. `--excluir` (2026-09-29) evita que el relleno nazca aprobado y con
-  página en el build siguiente; la lista de slugs sale de la corrida en seco y no se
-  versiona. La unión de B-2178 ya se aplicó. El entorno de los agentes no puede
-  correr scripts contra producción.
 - **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas:
   el filtro «Posibles duplicados» del listado los muestra juntos. Dejar una de cada
   par que sea la misma.
@@ -270,7 +264,7 @@ que pide que saquen su página no alcanza**: basta con que alguien vuelva a carg
 `aprobada: false`— que el reuso de `upsertOpcion` y de la callable no pise, y un
 botón en Opciones. Test: una opción marcada no recupera la página al reusarse.
 
-### B-2178 · Organizadores que el slug no junta, y valores que no son organizadores · P2 — unión aplicada en producción (2026-09-29), falta el relleno
+### B-2178 · Organizadores que el slug no junta, y valores que no son organizadores · P2 — unión aplicada y relleno sin sembrar (2026-09-29); quedan los grupos dudosos
 
 **Hecho (2026-09-29): el script de unión.** `npm run organizadores:unir:prod`
 (`scripts/unir-organizadores.mjs`) lee la tabla `scripts/datos/organizadores-a-unir.local.json`
@@ -297,7 +291,7 @@ afuera a propósito los grupos dudosos (la nota de la tabla local los nombra).
 **Falta (lo de antes, ya resuelto salvo el relleno):** que el dueño corra el informe contra producción, complete y corrija la
 tabla, ponga `confirmada: true` y lo aplique (fuera de hora, por Calendar). Después,
 borrar desde el panel las opciones de los orígenes que queden en la lista (el
-informe las nombra). Y los valores de relleno de abajo, que el script no toca.
+informe las nombra). Y los valores de relleno de abajo, que el script no toca: **no se sembraron** (`--excluir`, 2026-09-29), así que no tienen página; sus actividades siguen con el nombre de relleno hasta que alguien las corrija, y guardarlas lo vuelve a dar de alta (B-2179).
 
 La corrida en seco de `vocabulario:prod -- --campo=organizador` del 2026-09-29 (457
 actividades, **267 organizadores**) muestra lo que ese número ya anunciaba en
@@ -324,7 +318,7 @@ publicada tiene página. La defensa es borrar la opción desde el panel (ayuda d
 Opciones) o corregir antes la actividad, no un filtro de código. Un
 `/organiza/a-conf` indexado es peor que no tener la página.
 
-### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A y pasos 1, 2, 4 y 5 hechos; falta la acción manual del paso 3, 2026-09-29)
+### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (todos los pasos hechos el 2026-09-29; falta verificar las páginas en producción)
 
 Roadmap 1.5, con el modelo completo de D-723 (decisión del dueño del 2026-09-28) y
 una condición de interfaz suya: **el organizador se escribe en una caja de texto
@@ -352,8 +346,8 @@ muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vací
    `auditor-trampas` encontró que guardar antes de que cargue la lista reescribía el
    nombre con otra mayúscula («Casa brandon»); arreglado en el mismo cambio
    (`listaCargada`), con su test.
-3. 🟡 **Sembrar la lista** en producción (script listo el 2026-09-29, falta
-   correrlo: ver «Pendiente de acción manual del dueño»). El script no conocía
+3. ✅ **Sembrar la lista** en producción (2026-09-29): 234 organizadores, sin el
+   relleno (`--excluir`), después de la unión de B-2178. El script no conocía
    `organizador` —solo los tres campos de sede— y ahora sí:
    `scripts/vocabulario-a-sembrar.mjs` (puro, con test) junta las variantes por slug
    (`slugDeOrganizador`) y propone la más escrita, a igualdad la de más mayúsculas;
