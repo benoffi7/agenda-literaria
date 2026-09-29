@@ -318,57 +318,6 @@ publicada tiene página. La defensa es borrar la opción desde el panel (ayuda d
 Opciones) o corregir antes la actividad, no un filtro de código. Un
 `/organiza/a-conf` indexado es peor que no tener la página.
 
-### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (todos los pasos hechos el 2026-09-29; falta verificar las páginas en producción)
-
-Roadmap 1.5, con el modelo completo de D-723 (decisión del dueño del 2026-09-28) y
-una condición de interfaz suya: **el organizador se escribe en una caja de texto
-libre que autocompleta** contra `/opciones/organizador`; no se elige de una lista.
-Medido ese día: 441 actividades, **266 organizadores distintos** (193 con una sola
-actividad, 8 con variantes de tipeo que el slug ya junta, y casos como «Mandolina» /
-«Mandolina Libros» que solo une una persona).
-
-**Hecho (tramo A):** `organizador` es taxonomía (`CAMPOS_TAXONOMIA`, `CampoLabelUnico`,
-fuera del índice y del evento); `functions/organizador.js` (`slugDeOrganizador`, que
-deriva el slug del nombre en los documentos viejos —por eso **no hay migración de
-actividades**—, y `nombreDeOrganizador`, que muestra la etiqueta de la opción);
-`toPublic` y el índice llevan el slug (`organizadorSlug`), y el índice y el detalle
-muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vacía.
-
-**Falta, en orden:**
-1. ✅ **Reglas** (2026-09-29): `/opciones/organizador` legible solo desde el panel
-   (`campo != 'organizador' || esDelPanel()`), con su test contra el emulador en
-   `opciones.integracion.test.ts` y la mutación a `if true` probada en rojo.
-2. ✅ **Formulario** (2026-09-29): «Organiza» es `TextoConSugerencias`;
-   `resolverOrganizador` reusa la opción al guardar (por slug o por el slug de su
-   etiqueta renombrada) o la da de alta por el buffer de D-02 —el publicador por
-   `crearOpcionDelPanel`, que ahora acepta `organizador`—. `formADocumento`
-   escribe `organizador.slug` y `usosAContar` lo cuenta. En el camino, el
-   `auditor-trampas` encontró que guardar antes de que cargue la lista reescribía el
-   nombre con otra mayúscula («Casa brandon»); arreglado en el mismo cambio
-   (`listaCargada`), con su test.
-3. ✅ **Sembrar la lista** en producción (2026-09-29): 234 organizadores, sin el
-   relleno (`--excluir`), después de la unión de B-2178. El script no conocía
-   `organizador` —solo los tres campos de sede— y ahora sí:
-   `scripts/vocabulario-a-sembrar.mjs` (puro, con test) junta las variantes por slug
-   (`slugDeOrganizador`) y propone la más escrita, a igualdad la de más mayúsculas;
-   crea el documento si no existe. Probado en el emulador: crea la lista y la
-   segunda corrida no escribe nada.
-   La corrida en seco del 2026-09-29 dio 267 organizadores, con variantes que el
-   slug no junta y valores de relleno: B-2178, a resolver antes de sembrar.
-4. ✅ **Las páginas `/organiza/{slug}`** (2026-09-29): módulo propio
-   (`organizadorPublico.ts`) y no una clase de hub —no es eje del filtro, muestra el
-   pasado, no entra en «Explorá por»—, con las dos defensas de los hubs (opción
-   aprobada con alguna publicada; sitemap ⇔ sin `noindex`). «Todo lo de…» en el
-   detalle solo si la página existe. Barrido de centinelas en la salida 11.
-5. ✅ Docs (04, 07 fila de la salida 11, 12 §2.3), ayuda de Opciones, novedad del panel
-   y auditores (2026-09-29).
-6. **El orden de la acción manual del dueño**: (a) completar y confirmar la tabla de
-   B-2178 y correr `organizadores:unir:prod -- --aplicar --produccion`, fuera de hora;
-   (b) sembrar con `vocabulario:prod -- --campo=organizador --aplicar`; (c) borrar en
-   el panel los valores de relleno y los orígenes que queden. Los de relleno nacen
-   aprobados con el script y, desde el paso 4, tienen página pública en el build
-   siguiente a sembrar: entre (b) y (c) no debería pasar un build, o se corrigen antes.
-
 ### B-2170 · El resumen diario lee con la key que más puede · P3
 
 El resumen de la bandeja (roadmap 2.1) lee `/propuestas` y las fichas con
