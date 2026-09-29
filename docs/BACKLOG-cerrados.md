@@ -15627,6 +15627,20 @@ Firestore en `Unenforced` en la consola destraba el panel en el acto — pero ab
 también las escrituras anónimas de `/proponer` y de las tres guías, que es la capa
 que las sostiene. Es una decisión con costo, no un botón de reinicio.
 
+### B-2180 · Los deploys de `main` frenados por una taxonomía sin sembrar · P1 — ✅ hecho (2026-09-29)
+
+Desde el tramo A de B-2172 (`8da7932`) **todos los deploys de `main` fallaron**: el
+paso «Que toda taxonomía declarada exista en la base»
+(`scripts/taxonomias-en-produccion.mjs`, job «Sitio y panel» de `push-main.yml`)
+decía «✗ organizador: NO EXISTE». La causa es la de `08-operacion.md` § «Sembrar una
+taxonomía NUEVA»: el tramo A agregó `organizador` a `CAMPOS_TAXONOMIA` y no la sembró
+en producción en el mismo cambio. La red funcionó —frenó el deploy en vez de publicar
+un sitio con una taxonomía que no existe—; lo que faltó fue el paso manual. Lo
+destrabó el dueño con `npm run opciones:sembrar:prod` (creó el documento con 0
+valores, sin tocar ningún otro) y otra sesión relanzó `push-main.yml` con
+`forzar_todo=true`: verde entero, y todo lo de B-2172 hasta `21183e1` en producción.
+Lo reportó esa sesión; se anota acá porque el BACKLOG estaba tomado.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
