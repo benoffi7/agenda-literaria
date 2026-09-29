@@ -1134,6 +1134,21 @@ const gruposDeEncuentros =
                   )}
                 </>
               ))}
+              {/*
+                La dirección, y es el link al mapa: lo primero que se busca
+                después de «dónde queda». Solo con un lugar (ver
+                `DetallePublico.mapaDeFicha`); con dos, cada uno tiene el suyo en
+                «Cómo se cursa».
+              */}
+              {
+                detalle.mapaDeFicha && (
+                  <span class="mt-1 block text-super">
+                    <a href={detalle.mapaDeFicha.href} rel="noopener noreferrer" class={claseEnlace}>
+                      {detalle.mapaDeFicha.texto}
+                    </a>
+                  </span>
+                )
+              }
             </dd>
           </div>
 

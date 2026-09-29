@@ -2189,6 +2189,14 @@ título y la fecha, que en un flyer están tipografiados adentro del JPEG. Lo qu
 resuelve el tope de alto y no la proporción fija (**D-144**, corregido por D-147).
 Sin imagen no hay hueco: la ficha es lo primero.
 
+**En la ficha, «Dónde» lleva la dirección, y la dirección es el link al mapa**
+(pedido del dueño, 2026-09-29): «Mandolina · Belgrano» y abajo «Manuel Ugarte
+2439», que abre Google Maps. Si hay coordenadas y no dirección, dice «Ver en el
+mapa». Solo con un único lugar: con dos sedes no se sabe a cuál lleva, y cada una
+conserva su «Ver en el mapa» en «Cómo se cursa». El link es el mismo `sede.mapa` de
+allá (`construirLinkMapa`, el del evento de Calendar), así que no hay un segundo
+armador (`mapaDeFicha` en `detallePublico.ts`).
+
 **Desde B-321, la portada también pide la miniatura de 480px (B-220) como
 candidato chico de `srcset`, con el original como candidato grande y como
 `src`.** En un teléfono, donde la portada se pinta a ~343px CSS, eso baja el

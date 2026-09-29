@@ -440,6 +440,17 @@ export interface DetallePublico {
    * `·` y pinta un `<a>` donde haya `href`.
    */
   donde: PiezaDeDonde[];
+  /**
+   * El link al mapa **en la ficha**, debajo de «Dónde»: la dirección como texto
+   * («Manuel Ugarte 2439»), o «Ver en el mapa» si hay coordenadas y no dirección.
+   * Lo pidió el dueño: la ficha es lo primero que se ve, y el link vivía solo
+   * abajo, en «Cómo se cursa».
+   *
+   * **Solo con un único lugar.** Con dos sedes no se sabe a cuál lleva; cada una
+   * conserva su «Ver en el mapa» en «Cómo se cursa». El `href` es el mismo
+   * `sede.mapa` de allá, así que no hay un segundo armador de links.
+   */
+  mapaDeFicha: { texto: string; href: string } | null;
 
   /**
    * B-114 — `monto` es el número crudo y `precio` la frase ya armada. Los dos,
@@ -846,6 +857,20 @@ const itemDeDetalle = (i: ItemMaterialPublico): MaterialDeDetalle => ({
  * correcto ahora que son piezas: dos sedes en la misma ciudad dicen la ciudad una
  * vez, y antes habrían dicho «Casa Brandon · Boedo · Otra casa · Boedo».
  */
+/** Ver `DetallePublico.mapaDeFicha`. */
+export const mapaDeFicha = (
+  modalidades: readonly ModalidadDeDetalle[],
+): { texto: string; href: string } | null => {
+  // Las sedes, **tengan mapa o no**: con dos lugares y solo uno con mapa, la
+  // ficha diría los dos en «Dónde» y enlazaría uno solo (auditor-privacidad).
+  const sedes = modalidades.map((m) => m.sede).filter((s) => s !== null);
+  const distintas = new Set(sedes.map((s) => s.mapa ?? `${s.nombre}|${s.direccion}`));
+  if (distintas.size !== 1) return null;
+  const sede = sedes[0]!;
+  if (!sede.mapa) return null;
+  return { texto: sede.direccion?.trim() || 'Ver en el mapa', href: sede.mapa };
+};
+
 const dondeCorto = (modalidades: ModalidadDeDetalle[]): PiezaDeDonde[] => {
   const piezas: PiezaDeDonde[] = [];
   for (const m of modalidades) {
@@ -1554,6 +1579,7 @@ export const detalleDeActividad = (
 
     modalidades,
     donde,
+    mapaDeFicha: mapaDeFicha(modalidades),
 
     arancel: (() => {
       const etiqueta = etiquetaDe(etiquetas, 'arancel', a.arancel.tipo);

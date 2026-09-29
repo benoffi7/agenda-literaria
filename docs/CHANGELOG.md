@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- **La ficha de cada actividad lleva la dirección, con el link a Google Maps** debajo de
+  «Dónde» (pedido del dueño). Solo con un único lugar; con dos, cada uno sigue con su
+  «Ver en el mapa» en «Cómo se cursa». Mismo link que el evento de Calendar.
+- **Los deploys de `main` estuvieron frenados del tramo A de B-2172 al 2026-09-29**
+  (B-2180): `organizador` entró a `CAMPOS_TAXONOMIA` sin sembrarse en producción, y el
+  chequeo «que toda taxonomía declarada exista en la base» frenó cada deploy. Se
+  destrabó sembrando `/opciones/organizador` vacío (`opciones:sembrar:prod`).
+
 - **Cada organizador tiene su página: `/organiza/{slug}`** (roadmap 1.5, B-2172, paso
   4). Lo que viene y lo que ya pasó, enlazada desde «Todo lo de…» en el detalle de cada
   actividad suya. Existe solo para las opciones aprobadas con alguna actividad
