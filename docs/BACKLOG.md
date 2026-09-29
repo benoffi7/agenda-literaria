@@ -253,7 +253,7 @@ corregir a mano. Hueco que queda: el aviso «web que no enlaza» del tablero mir
 `organizador.web` y no el destino de una inscripción por formulario, así que este caso
 no aparecía en el tablero. Se cierra cuando se corrijan esos dos.
 
-### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A hecho, 2026-09-28)
+### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A y paso 1 hechos, 2026-09-29)
 
 Roadmap 1.5, con el modelo completo de D-723 (decisión del dueño del 2026-09-28) y
 una condición de interfaz suya: **el organizador se escribe en una caja de texto
@@ -270,9 +270,9 @@ actividades**—, y `nombreDeOrganizador`, que muestra la etiqueta de la opción
 muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vacía.
 
 **Falta, en orden:**
-1. **Reglas:** `/opciones/organizador` legible solo desde el panel (un organizador
-   suele ser una persona y la lista incluye borradores), con su test contra el
-   emulador.
+1. ✅ **Reglas** (2026-09-29): `/opciones/organizador` legible solo desde el panel
+   (`campo != 'organizador' || esDelPanel()`), con su test contra el emulador en
+   `opciones.integracion.test.ts` y la mutación a `if true` probada en rojo.
 2. **Formulario:** el campo «Organiza» de «Quién» pasa a caja de texto con
    autocompletado (§4.2): si lo tipeado normaliza a un slug que existe, reusa esa
    etiqueta; si no, la da de alta al guardar (el publicador, sin aprobar, por

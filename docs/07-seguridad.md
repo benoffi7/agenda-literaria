@@ -1876,7 +1876,8 @@ es que `slugDisponible()` (`src/lib/actividades.ts`), que barre la colección si
 `where`, **no funciona con ese rol** — está anotado en B-888.
 
 Para el admin nada cambió: su rama es `esAdmin()` puro, sin condición sobre
-contenido, y `/opciones/*` sigue en `if true`. La advertencia también sigue
+contenido, y `/opciones/*` sigue en `if true` salvo `organizador`, que lee solo
+el panel (B-2172). La advertencia también sigue
 valiendo para el caso que la trajo: el día que B-01 necesite lectura en vivo desde
 el cliente, la forma que D-128 recomienda (una subcolección `privado/`) reintroduce
 exactamente este mecanismo. El contraste está fijado en el `describe('trampa 7 —
@@ -1886,8 +1887,9 @@ sin depender de cuál sea la regla viva.
 
 ### Aprobar taxonomías (§4.3)
 
-`/opciones/{campo}` es de **lectura pública** y de escritura directa solo con
-claim `admin`. Aprobar una opción (`aprobada: true`) es una escritura más de ese
+`/opciones/{campo}` es de **lectura pública** —salvo `/opciones/organizador`,
+que lee solo el panel porque un organizador suele ser una persona y la lista
+incluye borradores (B-2172)— y de escritura directa solo con claim `admin`. Aprobar una opción (`aprobada: true`) es una escritura más de ese
 documento, así que **cualquiera de las cuentas con el claim puede aprobar**
 (D-28). **Y desde B-893 hay un segundo camino**: el publicador crea por la
 callable `crearOpcionDelPanel` (D-810), siempre sin aprobar. El reuso de B-29 la aprueba **solo si quien la

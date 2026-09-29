@@ -599,7 +599,17 @@ service cloud.firestore {
     }
 
     match /opciones/{campo} {
-      allow read: if true;
+      /*
+       * Roadmap 1.5 (B-2172) — **`organizador` es la única taxonomía que no se
+       * lee sin sesión.** Las demás son vocabulario del sitio y sus chips salen
+       * al público (§4.4); ésta no: un organizador suele ser **una persona**, y
+       * la lista junta los de todas las actividades, borradores incluidos. El
+       * índice ya la deja afuera (`TAXONOMIAS_FUERA_DEL_INDICE`) y el build la
+       * lee con el Admin SDK, así que la única lectura de cliente que queda es
+       * la del panel (`useOpciones`). Con `if true`, la lista entera salía por un
+       * `getDoc` anónimo con la API key pública, sin pasar por ningún build.
+       */
+      allow read: if campo != 'organizador' || esDelPanel();
 
       // §4.3 — `aprobada` decide si una opción creada con "Otro" entra al
       // desplegable de las demás cuentas. Aprobar es, a nivel de reglas, una

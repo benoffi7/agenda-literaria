@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **La lista de organizadores ya no se lee sin sesión** (roadmap 1.5, B-2172, paso 1).
+  `/opciones/organizador` es la única taxonomía que no es vocabulario público: un
+  organizador suele ser una persona y la lista junta los de los borradores. La regla la
+  deja leer solo al panel (admin y publicador); las demás siguen públicas. Con su test
+  contra el emulador (anónimo y cuenta sin rol, rechazados), con la mutación probada.
+
 - **El barrio sobrante fuera de CABA ahora se ve y se quita en el formulario** (B-2173).
   El tablero señalaba «Rosario» como barrio de una sede de Rosario (B-2166) y el
   formulario no mostraba el campo fuera de CABA, así que no había qué corregir. Ahora

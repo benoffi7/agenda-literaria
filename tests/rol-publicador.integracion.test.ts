@@ -512,6 +512,9 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * este caso se pone roja.
        */
       await getDoc(doc(db(), 'opciones', 'arancel'));
+      // B-2172 — la de organizadores no es pública, pero el panel la necesita
+      // para autocompletar «Organiza».
+      await getDoc(doc(db(), 'opciones', 'organizador'));
       await denegada(
         setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }),
         'reescribir la taxonomía compartida',

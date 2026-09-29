@@ -407,7 +407,7 @@ match /actividades/{id} {
   allow write: if request.auth.token.admin == true;
 }
 match /opciones/{campo} {
-  allow read:  if true;
+  allow read:  if campo != 'organizador' || esDelPanel();   // B-2172
   allow write: if request.auth.token.admin == true;
 }
 ```
@@ -426,8 +426,10 @@ El custom claim se setea una vez con el Admin SDK desde un script local:
 **Ojo:** un `allow read` con condición sobre `resource.data` obliga a que toda
 query incluya esa condición en su `where`, si no Firestore rechaza la query
 entera (la trampa 7 del §13). Con D-128 dejó de aplicar a `/actividades`: sin
-lectura anónima, no hay query pública que se rechace. `/opciones/*` tiene
-`allow read: if true`, sin condición, así que tampoco. Vuelve a importar el día
+lectura anónima, no hay query pública que se rechace. `/opciones/*` es de
+lectura pública salvo `organizador` —suele ser una persona, B-2172—, y esa
+condición es sobre el id del documento y no sobre `resource.data`, así que
+tampoco. Vuelve a importar el día
 que una colección abra la lectura con una condición.
 
 ### 5.4 `firebase-admin` nunca al cliente

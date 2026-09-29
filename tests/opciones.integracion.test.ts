@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { entrarComo, uidDe } from './fixtures/credenciales-del-emulador';
+import { signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 // `db` sale de firestore-client desde el corte del bundle (B-09).
@@ -27,6 +28,7 @@ import {
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
+import { denegada } from './fixtures/rechazos-del-emulador';
 
 /*
  * B-174 — el `firestore.rules` de ESTE checkout, empujado por la API del
@@ -440,5 +442,45 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
     expect((await valoresCrudos('tags')).find((v) => v.slug === 'narrativa')!.aprobada).toBe(
       false,
     );
+  });
+});
+
+/**
+ * Roadmap 1.5 (B-2172) — la lista de organizadores no se lee sin sesión.
+ *
+ * Es la única de `/opciones/*` que no es vocabulario público: un organizador
+ * suele ser una persona y la lista junta los de los borradores. El control
+ * positivo va primero —el mismo anónimo lee otra taxonomía—, porque una
+ * denegación es también lo que devuelve un emulador sin reglas.
+ *
+ * Mutación: volver `allow read` de `/opciones` a `if true`. Los dos rechazos se
+ * ponen rojos.
+ */
+describe.skipIf(!vivo)('la lista de organizadores es del panel — B-2172', () => {
+  beforeAll(async () => {
+    await limpiarFirestore();
+    await cargarReglas(REGLAS);
+    await entrarComoAdmin(UID);
+    await setDoc(doc(db(), 'opciones', 'organizador'), {
+      valores: [{ slug: 'ana-perez', label: 'Ana Pérez', orden: 99, fijo: false, usos: 1 }],
+    });
+  }, 30_000);
+
+  it('el panel la lee', async () => {
+    await entrarComoAdmin(UID);
+    expect((await valoresCrudos('organizador')).map((v) => v.slug)).toEqual(['ana-perez']);
+  });
+
+  it('un anónimo lee las demás taxonomías, pero no ésta', async () => {
+    await signOut(auth());
+    await getDoc(doc(db(), 'opciones', 'arancel'));
+    await denegada(getDoc(doc(db(), 'opciones', 'organizador')), 'leer organizadores anónimo');
+  });
+
+  it('una cuenta sin rol tampoco: la API key es pública y cualquiera se crea una', async () => {
+    const sinRol = uidDe('uid_test_sin_rol');
+    await entrarComo(sinRol, {}, { email: `${sinRol}@test.local` });
+    await getDoc(doc(db(), 'opciones', 'arancel'));
+    await denegada(getDoc(doc(db(), 'opciones', 'organizador')), 'leer organizadores sin rol');
   });
 });
