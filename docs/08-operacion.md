@@ -966,6 +966,40 @@ Si el script avisa `⚠️ «x» lo usan dos actividades`, eso **ya estaba** en 
 catálogo y hay que resolverlo a mano antes de publicar las dos: el índice se queda
 con la primera.
 
+## Juntar organizadores que son la misma casa (B-2178)
+
+El slug junta las variantes de tipeo, no los nombres distintos: «Hormiga» y
+«Hormiga Libros» son dos slugs y, con `/organiza/{slug}`, dos páginas. Renombrar o
+borrar la opción no las junta (el slug sale del `organizador` de cada actividad,
+D-26): hay que reescribir ese `organizador`. Lo hace este script, con una tabla
+`slug origen → slug destino` que decide el dueño en
+`scripts/datos/organizadores-a-unir.local.json` (ignorada por git: lleva nombres de borradores; el ejemplo con nombres inventados es `organizadores-a-unir.ejemplo.json`).
+
+```bash
+npm run organizadores:unir                                  # informa, en el emulador
+npm run organizadores:unir:prod                             # informa qué escribiría en producción
+npm run organizadores:unir:prod -- --aplicar --produccion   # lo escribe
+```
+
+El informe da, por destino, cuántas actividades cambian de cada origen; los orígenes
+que no aparecen en ninguna actividad (un slug mal copiado); los slugs **parecidos**
+que la tabla no nombra (para completar un grupo), y los orígenes que siguen como
+opción de la lista, que se borran desde el panel después de unir.
+
+- **Valida la tabla antes de conectarse**: un destino que es a su vez origen, un
+  origen igual a su destino o un slug que no es `slugify` de sí mismo abortan sin
+  tocar nada.
+- **`--aplicar` exige `confirmada: true` en la tabla.** Se entregó como propuesta.
+- Escribe `organizador.nombre` (la etiqueta del destino en `/opciones/organizador`, o
+  la variante más escrita), `organizador.slug` y el `searchText`, con `update` y la
+  hora de lectura como precondición. Instagram y web no se tocan. Es idempotente.
+
+> ⚠️ **Esta corrida reescribe eventos de Calendar.** La guarda del §7.1 compara el
+> payload, y la descripción del evento dice «Organiza: {nombre}»: cada actividad
+> publicada cuyo nombre cambia manda un `actualizar` por sesión (ni altas ni bajas).
+> Correrlo una vez, fuera de hora. Deja además una versión del §12 por actividad y
+> un rebuild; el `searchText` va escrito para que no suene `derivados-no-coinciden`.
+
 ## Entornos
 
 Vite carga `.env.production` en `build` y `.env.development` en `dev`. La

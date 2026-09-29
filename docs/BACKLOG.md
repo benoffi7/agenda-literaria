@@ -41,11 +41,17 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
-- **B-2172 paso 3** — sembrar la lista de organizadores en producción. Primero en
-  seco, para ver qué etiqueta propone para cada uno:
-  `npm run vocabulario:prod -- --campo=organizador`; si cierra, lo mismo con
-  `--aplicar`. Solo escribe `/opciones/organizador` (no toca actividades) y dispara
-  un rebuild. El entorno de los agentes no puede correr scripts contra producción.
+- **B-2178** — confirmar la tabla de `scripts/datos/organizadores-a-unir.local.json` (está en tu máquina; git la ignora)
+  (completar los grupos que faltan, poner `confirmada: true`) y correr
+  `npm run organizadores:unir:prod -- --aplicar --produccion` fuera de hora:
+  actualiza los eventos de Calendar de esas actividades («Organiza: …»), sin crear
+  ni borrar ninguno.
+- **B-2172 paso 3** — **después de B-2178**, sembrar la lista de organizadores:
+  `npm run vocabulario:prod -- --campo=organizador --aplicar` (la corrida en seco ya
+  se hizo el 2026-09-29). Solo escribe `/opciones/organizador` y dispara un rebuild.
+  **En seguida**, borrar desde el panel los valores de relleno («A conf», «Buscando»,
+  etc., B-2178): desde que existen las páginas, nacen aprobados y con página. El
+  entorno de los agentes no puede correr scripts contra producción.
 - **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas:
   el filtro «Posibles duplicados» del listado los muestra juntos. Dejar una de cada
   par que sea la misma.
@@ -255,7 +261,71 @@ corregir a mano. Hueco que queda: el aviso «web que no enlaza» del tablero mir
 `organizador.web` y no el destino de una inscripción por formulario, así que este caso
 no aparecía en el tablero. Se cierra cuando se corrijan esos dos.
 
-### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A y pasos 1–2 hechos, 2026-09-29)
+### B-2179 · Sacarle la página a un organizador no es permanente · P2
+
+Lo encontró el `auditor-privacidad` sobre B-2172. Borrar la opción de
+`/opciones/organizador` saca la página `/organiza/{slug}` en el build siguiente,
+pero **vuelve sola** la próxima vez que se guarde una actividad con ese nombre:
+`resolverOrganizador` la da de alta otra vez, y el alta del admin nace aprobada
+(`upsertOpcion`). Y no hay «desaprobar» en el panel. Para el relleno alcanza con
+corregir las actividades (la ayuda de Opciones lo dice), pero **para una persona
+que pide que saquen su página no alcanza**: basta con que alguien vuelva a cargarla.
+
+**Arreglo propuesto:** una marca en la opción —`sinPagina: true`, o poder dejarla
+`aprobada: false`— que el reuso de `upsertOpcion` y de la callable no pise, y un
+botón en Opciones. Test: una opción marcada no recupera la página al reusarse.
+
+### B-2178 · Organizadores que el slug no junta, y valores que no son organizadores · P2 — script listo, falta la tabla confirmada (2026-09-29)
+
+**Hecho (2026-09-29): el script de unión.** `npm run organizadores:unir:prod`
+(`scripts/unir-organizadores.mjs`) lee la tabla `scripts/datos/organizadores-a-unir.local.json`
+y a cada actividad de un origen le escribe `organizador.nombre` (la etiqueta del
+destino en `/opciones/organizador`, o su variante más escrita), `organizador.slug` y
+el `searchText`. Sin `--aplicar` informa; `--aplicar` fuera del emulador pide
+`--produccion` y además `confirmada: true` en la tabla. Deja una versión del §12 por
+actividad, un rebuild y, en las publicadas cuyo nombre cambia, **un update de
+Calendar por sesión**: la descripción del evento lleva «Organiza: {nombre}».
+
+**La tabla no se versiona** (lo cobró el `auditor-privacidad`): se arma con los
+nombres de todas las actividades, borradores incluidos, y muchos organizadores son
+personas; el repo es público. La real es `scripts/datos/organizadores-a-unir.local.json`,
+que git ignora y quedó armada como propuesta en la máquina del dueño (14 uniones,
+2 grupos que no se unen porque son actividades conjuntas, 6 por completar y 3 dudas
+de grafía). En el repo queda `organizadores-a-unir.ejemplo.json`, con nombres
+inventados. **Nombres reales de organizadores no van a ningún archivo del repo**
+(este ítem incluido): un borrador no es público.
+
+**Falta:** que el dueño corra el informe contra producción, complete y corrija la
+tabla, ponga `confirmada: true` y lo aplique (fuera de hora, por Calendar). Después,
+borrar desde el panel las opciones de los orígenes que queden en la lista (el
+informe las nombra). Y los valores de relleno de abajo, que el script no toca.
+
+La corrida en seco de `vocabulario:prod -- --campo=organizador` del 2026-09-29 (457
+actividades, **267 organizadores**) muestra lo que ese número ya anunciaba en
+B-2172: el slug junta las variantes de tipeo, pero no los nombres distintos de la
+misma casa. Con las páginas ya construidas (B-2172 paso 4), **cada uno es una
+página pública aparte** en cuanto se siembre la lista, así que hay que decidirlo
+antes de sembrar.
+
+**Unos 20 grupos parecen la misma casa** con dos o tres nombres —la sucursal, la
+fundación y el museo, la casa con y sin «Libros», un typo que el slug no junta—, y
+**unos 10 valores no son un organizador**: texto de relleno («A conf», 6
+actividades, casi seguro un «a confirmar»; «Buscando»), lugares, un nombre cortado,
+uno con un `|` al final y una cuenta de Instagram en lugar de un nombre. La lista
+con los nombres es la de la corrida en seco, que no se versiona.
+
+**Cómo se arregla, y por qué no alcanza con la lista.** Renombrar o borrar la opción
+no toca las actividades: su slug sale de su propio nombre (D-26), así que la página
+aparte seguiría existiendo. Juntar dos organizadores es **reescribir el
+`organizador` de esas actividades** al mismo nombre. O a mano desde el panel —son
+unas 60 actividades—, o con un script que tome una tabla `slug → slug` decidida por
+el dueño (con la guarda de producción de los demás y versión del §12 por cada
+documento). **El paso 4 no distingue el relleno**: quien está aprobado y tiene una
+publicada tiene página. La defensa es borrar la opción desde el panel (ayuda de
+Opciones) o corregir antes la actividad, no un filtro de código. Un
+`/organiza/a-conf` indexado es peor que no tener la página.
+
+### B-2172 · Páginas por organizador: los tramos que faltan · P2 — en curso (tramo A y pasos 1, 2, 4 y 5 hechos; falta la acción manual del paso 3, 2026-09-29)
 
 Roadmap 1.5, con el modelo completo de D-723 (decisión del dueño del 2026-09-28) y
 una condición de interfaz suya: **el organizador se escribe en una caja de texto
@@ -290,10 +360,21 @@ muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vací
    (`slugDeOrganizador`) y propone la más escrita, a igualdad la de más mayúsculas;
    crea el documento si no existe. Probado en el emulador: crea la lista y la
    segunda corrida no escribe nada.
-4. **Las páginas `/organiza/{slug}`**: clase de hub nueva, con lo por venir y lo que
-   ya pasó; al sitemap solo si tiene algo por venir; link «Todo lo de X» desde el
-   detalle.
-5. Docs (03, 04, 07 fila por salida, 12), ayuda, novedad y los tres auditores.
+   La corrida en seco del 2026-09-29 dio 267 organizadores, con variantes que el
+   slug no junta y valores de relleno: B-2178, a resolver antes de sembrar.
+4. ✅ **Las páginas `/organiza/{slug}`** (2026-09-29): módulo propio
+   (`organizadorPublico.ts`) y no una clase de hub —no es eje del filtro, muestra el
+   pasado, no entra en «Explorá por»—, con las dos defensas de los hubs (opción
+   aprobada con alguna publicada; sitemap ⇔ sin `noindex`). «Todo lo de…» en el
+   detalle solo si la página existe. Barrido de centinelas en la salida 11.
+5. ✅ Docs (04, 07 fila de la salida 11, 12 §2.3), ayuda de Opciones, novedad del panel
+   y auditores (2026-09-29).
+6. **El orden de la acción manual del dueño**: (a) completar y confirmar la tabla de
+   B-2178 y correr `organizadores:unir:prod -- --aplicar --produccion`, fuera de hora;
+   (b) sembrar con `vocabulario:prod -- --campo=organizador --aplicar`; (c) borrar en
+   el panel los valores de relleno y los orígenes que queden. Los de relleno nacen
+   aprobados con el script y, desde el paso 4, tienen página pública en el build
+   siguiente a sembrar: entre (b) y (c) no debería pasar un build, o se corrigen antes.
 
 ### B-2170 · El resumen diario lee con la key que más puede · P3
 

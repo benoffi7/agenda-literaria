@@ -2324,6 +2324,24 @@ del filtro ya preaplicado, con un link `?tipo=taller` a la home para sacarlo.
 La navegación entre hubs —y hacia los meses— es la tira **«Explorá por»**, ver
 más abajo.
 
+### `/organiza/{slug}` — todo lo de un organizador (roadmap 1.5, B-2172)
+
+Una página por organizador: **lo que viene** y, abajo, **lo que ya pasó**. La
+enlaza el «Todo lo de…» del bloque «Organiza» del detalle de cada actividad suya, y
+solo si la página existe. **No es un hub**: no es un chip del filtro de la home,
+muestra también el pasado y no entra en «Explorá por» (serían cientos). Vive en
+`src/lib/organizadorPublico.ts` + `src/pages/organiza/[slug].astro`.
+
+| | |
+|---|---|
+| cuándo existe | la opción de `/opciones/organizador` está **aprobada** y tiene al menos una actividad publicada, vigente o pasada. Un organizador tipeado y sin aprobar no tiene página; **borrar la opción en el panel le saca la página** (no hay «desaprobar») (así se apagan los de relleno de B-2178) |
+| sitemap e indexación | si tiene algo por venir. Con solo pasado se emite con `noindex` y fuera del sitemap: el mismo par que los hubs |
+| el nombre | el que muestra el detalle (la etiqueta de la opción), leído de la entrada del índice y no de la lista, que es privada |
+| la URL | el slug de la opción, nunca el nombre (trampa 10) |
+
+La lista de organizadores no viaja en el índice: la lee el build
+(`contenidoDelSitio`) y la reciben `caminosDeOrganizador`, el sitemap y el detalle.
+
 ### `/cartelera` — la pared de afiches (B-265)
 
 Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada uno

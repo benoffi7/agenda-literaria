@@ -430,6 +430,8 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/lib/sitemap.ts`
 - `src/lib/hubsPublicos.ts`
 - `src/pages/ciudad/[ciudad].astro`
+- `src/lib/organizadorPublico.ts`
+- `src/pages/organiza/[slug].astro`
 - `src/lib/geografia.mjs`
 - `src/lib/pasadasPublicas.ts`
 - `src/lib/enlaces.ts`

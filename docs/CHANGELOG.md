@@ -2,6 +2,23 @@
 
 ## Sin publicar
 
+- **Cada organizador tiene su página: `/organiza/{slug}`** (roadmap 1.5, B-2172, paso
+  4). Lo que viene y lo que ya pasó, enlazada desde «Todo lo de…» en el detalle de cada
+  actividad suya. Existe solo para las opciones aprobadas con alguna actividad
+  publicada, y entra al sitemap si tiene algo por venir (sin nada, `noindex`). Módulo
+  propio (`organizadorPublico.ts`), con su barrido de centinelas en la salida 11.
+
+- **Un script para juntar los organizadores que son la misma casa** (B-2178, roadmap
+  1.5). `scripts/unir-organizadores.mjs` lee una tabla `slug → slug`
+  (`scripts/datos/organizadores-a-unir.local.json`, ignorada por git porque lleva nombres de borradores) y reescribe `organizador.nombre`,
+  `organizador.slug` y el `searchText` de las actividades de cada origen; Instagram y
+  web no se tocan. Sin `--aplicar` solo informa, por grupo, cuántas cambian, qué
+  orígenes no aparecen y qué slugs parecidos quedan fuera de la tabla. La tabla se
+  entrega como **propuesta** con 14 uniones y `confirmada: false`: `--aplicar` no
+  escribe hasta que el dueño la confirme. Escribir el nombre actualiza los eventos de
+  Calendar de las publicadas (la descripción dice «Organiza: …»). Decisión pura en
+  `scripts/unir-organizadores-decision.mjs`, con `tests/unir-organizadores.test.ts`.
+
 - **El script de vocabulario también siembra los organizadores** (roadmap 1.5, B-2172,
   paso 3). `vocabulario-desde-actividades` solo conocía provincia, barrio y ciudad;
   ahora `--campo=organizador` junta las variantes de cada uno por slug y propone la más
