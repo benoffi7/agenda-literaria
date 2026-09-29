@@ -41,17 +41,12 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
-- **B-2178** — confirmar la tabla de `scripts/datos/organizadores-a-unir.local.json` (está en tu máquina; git la ignora)
-  (completar los grupos que faltan, poner `confirmada: true`) y correr
-  `npm run organizadores:unir:prod -- --aplicar --produccion` fuera de hora:
-  actualiza los eventos de Calendar de esas actividades («Organiza: …»), sin crear
-  ni borrar ninguno.
-- **B-2172 paso 3** — **después de B-2178**, sembrar la lista de organizadores:
-  `npm run vocabulario:prod -- --campo=organizador --aplicar` (la corrida en seco ya
-  se hizo el 2026-09-29). Solo escribe `/opciones/organizador` y dispara un rebuild.
-  **En seguida**, borrar desde el panel los valores de relleno («A conf», «Buscando»,
-  etc., B-2178): desde que existen las páginas, nacen aprobados y con página. El
-  entorno de los agentes no puede correr scripts contra producción.
+- **B-2172 paso 3** — sembrar la lista de organizadores **sin el relleno**:
+  `npm run vocabulario:prod -- --campo=organizador --excluir=<slugs de relleno>
+  --aplicar`. `--excluir` (2026-09-29) evita que el relleno nazca aprobado y con
+  página en el build siguiente; la lista de slugs sale de la corrida en seco y no se
+  versiona. La unión de B-2178 ya se aplicó. El entorno de los agentes no puede
+  correr scripts contra producción.
 - **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas:
   el filtro «Posibles duplicados» del listado los muestra juntos. Dejar una de cada
   par que sea la misma.
@@ -275,7 +270,7 @@ que pide que saquen su página no alcanza**: basta con que alguien vuelva a carg
 `aprobada: false`— que el reuso de `upsertOpcion` y de la callable no pise, y un
 botón en Opciones. Test: una opción marcada no recupera la página al reusarse.
 
-### B-2178 · Organizadores que el slug no junta, y valores que no son organizadores · P2 — script listo, falta la tabla confirmada (2026-09-29)
+### B-2178 · Organizadores que el slug no junta, y valores que no son organizadores · P2 — unión aplicada en producción (2026-09-29), falta el relleno
 
 **Hecho (2026-09-29): el script de unión.** `npm run organizadores:unir:prod`
 (`scripts/unir-organizadores.mjs`) lee la tabla `scripts/datos/organizadores-a-unir.local.json`
@@ -295,7 +290,11 @@ de grafía). En el repo queda `organizadores-a-unir.ejemplo.json`, con nombres
 inventados. **Nombres reales de organizadores no van a ningún archivo del repo**
 (este ítem incluido): un borrador no es público.
 
-**Falta:** que el dueño corra el informe contra producción, complete y corrija la
+**Aplicado el 2026-09-29:** la tabla confirmada por el dueño (21 uniones) reescribió
+32 actividades en producción, 31 publicadas, con sus eventos de Calendar. Quedaron
+afuera a propósito los grupos dudosos (la nota de la tabla local los nombra).
+
+**Falta (lo de antes, ya resuelto salvo el relleno):** que el dueño corra el informe contra producción, complete y corrija la
 tabla, ponga `confirmada: true` y lo aplique (fuera de hora, por Calendar). Después,
 borrar desde el panel las opciones de los orígenes que queden en la lista (el
 informe las nombra). Y los valores de relleno de abajo, que el script no toca.

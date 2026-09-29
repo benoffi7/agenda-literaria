@@ -46,6 +46,11 @@ describe('usosPorCampo', () => {
 });
 
 describe('valoresNuevos', () => {
+  it('no siembra lo excluido: el relleno nacería aprobado y con página (B-2178)', () => {
+    const u = usosPorCampo([conSede({}, { nombre: 'A conf' }), conSede({}, { nombre: 'Ana Pérez' })]);
+    expect(valoresNuevos(u.organizador, [], ['a-conf']).map((v) => v.slug)).toEqual(['ana-perez']);
+  });
+
   it('solo lo que falta, por uso, aprobado y sin huella', () => {
     const u = usosPorCampo([
       conSede({}, { nombre: 'Casa Brandon' }),

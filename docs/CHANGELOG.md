@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El script de vocabulario acepta `--excluir`** (B-2178): slugs que se usan y no se
+  siembran. Es para el relleno de los organizadores («A conf», «Buscando»), que
+  sembrado nacería aprobado y con página pública. Y la unión de organizadores de B-2178
+  quedó aplicada en producción: 32 actividades.
+
 - **La ficha de cada actividad lleva la dirección, con el link a Google Maps** debajo de
   «Dónde» (pedido del dueño). Solo con un único lugar; con dos, cada uno sigue con su
   «Ver en el mapa» en «Cómo se cursa». Mismo link que el evento de Calendar.

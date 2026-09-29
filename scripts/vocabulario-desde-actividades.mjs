@@ -7,6 +7,8 @@
  *   node scripts/vocabulario-desde-actividades.mjs --aplicar --produccion   # producción
  *   node scripts/vocabulario-desde-actividades.mjs --aplicar --campo=ciudad # solo ese campo
  *
+ *   node scripts/vocabulario-desde-actividades.mjs --excluir=a-conf,buscando   # no sembrar esos slugs
+ *
  * Desde B-2172 también siembra `organizador` (roadmap 1.5): la lista con la
  * variante más escrita de cada uno. La decisión vive en `vocabulario-a-sembrar.mjs`.
  *
@@ -95,6 +97,15 @@ if (pedido && !CAMPOS.includes(pedido)) {
   console.error(`\`--campo=${pedido}\` no es uno de: ${CAMPOS.join(', ')}.`);
   process.exit(1);
 }
+/*
+ * `--excluir=a-conf,buscando` — slugs que se usan y no se siembran (B-2178): el
+ * relleno, que sembrado nacería aprobado y con página de organizador.
+ */
+const EXCLUIR = (process.argv.find((a) => a.startsWith('--excluir='))?.slice('--excluir='.length) ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 /** Sobre cuáles se escribe. Se informa siempre sobre todos. */
 const A_ESCRIBIR = pedido ? [pedido] : CAMPOS;
 
@@ -110,7 +121,9 @@ let algoQueEscribir = false;
 for (const campo of CAMPOS) {
   const ref = db.doc(`opciones/${campo}`);
   const existentes = (await ref.get()).data()?.valores ?? [];
-  const faltan = valoresNuevos(usos[campo], existentes);
+  const faltan = valoresNuevos(usos[campo], existentes, EXCLUIR);
+  const excluidos = EXCLUIR.filter((s) => usos[campo].has(s));
+  if (excluidos.length) console.log(`  (no se siembran, por --excluir: ${excluidos.join(', ')})`);
 
   console.log(`/opciones/${campo} — ${existentes.length} en el vocabulario, ${usos[campo].size} en uso, ${faltan.length} sin ofrecer`);
   for (const { slug, label, usos: n } of faltan) {

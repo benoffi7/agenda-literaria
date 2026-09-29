@@ -109,11 +109,16 @@ export const usosPorCampo = (actividades, campos = CAMPOS) => {
  * escondería del desplegable de los demás (§4.3) justo a las más usadas. Sin
  * `huellaCreador`: nadie las tipeó, se derivan del catálogo.
  *
+ * `excluir` son slugs que se usan y **no** se siembran: los valores de relleno de
+ * B-2178 («A conf», «Buscando»). Sembrados, nacerían aprobados y, desde las
+ * páginas de organizador, con página pública en el build siguiente.
+ *
  * @param {Map<string, { usos: number, crudo: string }>} usos
  * @param {readonly { slug: string }[]} existentes
+ * @param {readonly string[]} [excluir]
  */
-export const valoresNuevos = (usos, existentes) => {
-  const conocidos = new Set(existentes.map((v) => v.slug));
+export const valoresNuevos = (usos, existentes, excluir = []) => {
+  const conocidos = new Set([...existentes.map((v) => v.slug), ...excluir]);
   return [...usos]
     .filter(([slug]) => !conocidos.has(slug))
     .sort((a, b) => b[1].usos - a[1].usos)
