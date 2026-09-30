@@ -274,6 +274,10 @@ inventados. **Nombres reales de organizadores no van a ningún archivo del repo*
 32 actividades en producción, 31 publicadas, con sus eventos de Calendar. Quedaron
 afuera a propósito los grupos dudosos (la nota de la tabla local los nombra).
 
+**Segunda tanda, aplicada el 2026-09-30:** dos uniones más confirmadas por el dueño
+(2 actividades); tres grupos decididos como distintos y dos que el dueño está
+averiguando. La nota de la tabla local los nombra.
+
 **Falta (lo de antes, ya resuelto salvo el relleno):** que el dueño corra el informe contra producción, complete y corrija la
 tabla, ponga `confirmada: true` y lo aplique (fuera de hora, por Calendar). Después,
 borrar desde el panel las opciones de los orígenes que queden en la lista (el
