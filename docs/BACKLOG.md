@@ -132,6 +132,14 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
 
+### B-2184 · `corregir-contactos-mal-cargados.mjs` escribe todo en un solo lote · P3
+
+Lo señaló el `auditor-trampas`: `scripts/corregir-contactos-mal-cargados.mjs` hace un
+único `batch` sin partir en 400, así que con más de 500 actividades a corregir el
+`commit()` falla entero. Es ruidoso, no parcial, y el script es idempotente, así que
+no pierde nada. **Arreglo:** el mismo `for (i += 400)` que `sembrar-ciudades.mjs` y
+`reubicar-barrios.mjs`.
+
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
 > ⚠️ **Este bloque estaba dentro de un bloque de código, y con él B-780 a B-786.**

@@ -162,7 +162,7 @@ describe('decidirLimpieza — qué objeto está huérfano', () => {
   });
 
   it('el tope de la corrida corta la lista y deja el resto marcado como pendiente', () => {
-    // Mismo criterio que `MAX_EVENTOS_RESYNC` en `index.js` (B-04): un bug en
+    // Mismo criterio que el tope que tenía el re-sync de etiquetas (B-04): un bug en
     // `referenciados` no puede vaciar el bucket entero de una vez.
     //
     // Mutación: sacar el corte del tope. `aBorrar.length` sale

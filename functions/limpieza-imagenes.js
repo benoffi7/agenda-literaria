@@ -48,7 +48,7 @@ export const MARGEN_DE_GRACIA_MS = 72 * 60 * 60 * 1000;
 
 /**
  * Tope de borrados por corrida. Es la misma clase de salvaguarda que
- * `MAX_EVENTOS_RESYNC` en `opciones-trigger.js` (B-04): un bug en `referenciados` —una
+ * el tope que tenía el re-sync de etiquetas (B-04): un bug en `referenciados` —una
  * lectura de Firestore que vino vacía, por ejemplo— no puede vaciar el bucket
  * entero en una sola pasada. Lo que sobra queda para la corrida de mañana, y
  * lo dice el log.

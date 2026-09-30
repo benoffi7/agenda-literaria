@@ -18063,6 +18063,16 @@ eso es lo que se busca: el link al texto va en «Material», que tiene su propio
 `publico`. Hay que avisarlo en el mensaje. Test: «la lectura de un encuentro no
 puede llevar un link con página».
 
+### B-2183 · El re-sync de Calendar por renombre de etiqueta se cortaba a los 150 eventos · P2 — ✅ hecho (2026-09-30)
+
+> ✅ **Hecho** con D-1273: corta por tiempo y no por cantidad, con el timeout en 540 s.
+> Tests en `tests/sincronizacion.test.ts` (`aplicarConPresupuesto`).
+
+Lo encontró el `auditor-trampas` en un barrido del repo. Medido contra producción el
+2026-09-30: 451 actividades publicadas, 888 eventos. Renombrar «Arancelado» son 584 y
+«Taller», 314; con el tope de 150 (`MAX_EVENTOS_RESYNC`, `functions/opciones-trigger.js`)
+más de la mitad quedaba con la etiqueta vieja en el calendario público, sin reintento.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

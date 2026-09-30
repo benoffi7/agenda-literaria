@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   ALFABETO_ID_CALENDAR,
+  aplicarConPresupuesto,
   decidirAnteFallo,
   idDeEvento,
   mapaDeEtiquetas,
@@ -643,5 +644,68 @@ describe('la taxonomía que no sale al evento no re-sincroniza el calendario —
     expect(src, 'el trigger enumera los campos a mano').not.toMatch(
       /includes\(\s*['"]incluye-actividad['"]/,
     );
+  });
+});
+
+/**
+ * D-1273 — el re-sync por renombre de etiqueta se corta por **tiempo**, no por
+ * cantidad. El tope de 150 se había calculado con 20 actividades publicadas;
+ * el 2026-09-30 había 451, y renombrar «Arancelado» eran 584 eventos.
+ */
+describe('aplicarConPresupuesto — D-1273', () => {
+  /** Un reloj que avanza `paso` ms por cada operación aplicada. */
+  const reloj = (paso: number) => {
+    let t = 0;
+    return { ahora: () => t, avanzar: () => (t += paso) };
+  };
+
+  it('584 eventos a 200 ms entran en el presupuesto: ninguno queda con la etiqueta vieja', async () => {
+    // Con el tope de 150 que había hasta D-1273, quedaban 434 sin reescribir.
+    const r = reloj(200);
+    const ops = Array.from({ length: 584 }, (_, i) => i);
+    const hechas: number[] = [];
+    const res = await aplicarConPresupuesto(
+      ops,
+      async (op) => {
+        hechas.push(op);
+        r.avanzar();
+      },
+      { presupuestoMs: 450_000, ahora: r.ahora },
+    );
+    expect(res).toEqual({ aplicadas: 584, fallidas: 0, pendientes: 0 });
+    expect(hechas).toEqual(ops);
+  });
+
+  it('pasado el presupuesto corta, en orden, y cuenta lo que quedó', async () => {
+    const r = reloj(1000);
+    const res = await aplicarConPresupuesto(
+      ['a', 'b', 'c', 'd', 'e'],
+      async () => {
+        r.avanzar();
+      },
+      { presupuestoMs: 3000, ahora: r.ahora },
+    );
+    expect(res).toEqual({ aplicadas: 3, fallidas: 0, pendientes: 2 });
+  });
+
+  it('una que falla no frena las demás, se avisa y no cuenta como pendiente', async () => {
+    const fallos: string[] = [];
+    const res = await aplicarConPresupuesto(
+      ['a', 'b', 'c'],
+      async (op) => {
+        if (op === 'b') throw new Error('404');
+      },
+      { presupuestoMs: 1000, ahora: () => 0, alFallar: (op) => fallos.push(op) },
+    );
+    expect(res).toEqual({ aplicadas: 2, fallidas: 1, pendientes: 0 });
+    expect(fallos).toEqual(['b']);
+  });
+
+  it('el trigger corta con margen antes de su timeout, que es lo que el tope protegía', () => {
+    const src = fuenteDeLaFunction('rebuildPorOpciones');
+    expect(src).toContain('timeoutSeconds: TIMEOUT_RESYNC_S');
+    expect(src).toContain('presupuestoMs: PRESUPUESTO_RESYNC_MS');
+    const modulo = readFileSync(new URL('../functions/opciones-trigger.js', import.meta.url), 'utf8');
+    expect(modulo).toMatch(/PRESUPUESTO_RESYNC_MS = \(TIMEOUT_RESYNC_S - \d+\) \* 1000/);
   });
 });

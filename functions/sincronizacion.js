@@ -214,6 +214,44 @@ export const mismasEtiquetas = (antes = {}, despues = {}) => {
  * del diff, y renombrar una etiqueta no cambia qué encuentros tienen que estar
  * en el calendario.
  */
+/**
+ * D-1273 — aplica las operaciones **mientras quede presupuesto de tiempo**, en
+ * orden y de a una, y cuenta lo que quedó afuera. Reemplaza al tope fijo de 150
+ * eventos, que se había calculado con 20 actividades publicadas: con 451, un
+ * renombre de «Arancelado» son 584 eventos y más de la mitad quedaba con la
+ * etiqueta vieja. El presupuesto termina **antes** del timeout de la Function,
+ * que es lo que el tope protegía: una corrida que vence se reintenta.
+ *
+ * Un fallo de una operación no frena las demás (igual que en el diff) y no se
+ * cuenta como pendiente: queda en el log por `alFallar`.
+ *
+ * @param {readonly T[]} ops
+ * @param {(op: T) => Promise<unknown>} aplicar
+ * @param {{ presupuestoMs: number, ahora?: () => number, alFallar?: (op: T, e: unknown) => void }} opciones
+ * @returns {Promise<{ aplicadas: number, fallidas: number, pendientes: number }>}
+ * @template T
+ */
+export const aplicarConPresupuesto = async (
+  ops,
+  aplicar,
+  { presupuestoMs, ahora = Date.now, alFallar = () => {} },
+) => {
+  const fin = ahora() + presupuestoMs;
+  let aplicadas = 0;
+  let fallidas = 0;
+  for (let i = 0; i < ops.length; i++) {
+    if (ahora() >= fin) return { aplicadas, fallidas, pendientes: ops.length - i };
+    try {
+      await aplicar(ops[i]);
+      aplicadas += 1;
+    } catch (e) {
+      fallidas += 1;
+      alFallar(ops[i], e);
+    }
+  }
+  return { aplicadas, fallidas, pendientes: 0 };
+};
+
 export const replanificarPorEtiquetas = (actividad, labelsAntes, labelsDespues) => {
   const ops = [];
   for (const sesion of actividad?.sesiones ?? []) {

@@ -2003,6 +2003,9 @@ alcanza, se loguea `error` con cuántos quedaron: el sitio ya está al día y ca
 actividad se pone al día sola con su próxima edición. Es un tope de seguridad
 para que un renombre no deje la Function reintentando en loop.
 
+> **Superado por D-1273 (2026-09-30):** el tope pasó a ser de tiempo. Con 451
+> actividades publicadas, renombrar «Arancelado» son 584 eventos.
+
 ---
 
 ## D-94 · Borrar una actividad guarda su última versión, y no es borrado lógico
@@ -14093,4 +14096,29 @@ siempre una pareja de la lista».
 (`utm_medium=email`) no están en la lista y se siguen descartando. Si Mailchimp
 agregara una segunda pareja a un link que ya trae la nuestra, gana la primera
 (`URLSearchParams.get`), que es la nuestra.
+
+---
+
+## D-1273 · El re-sync por renombre de etiqueta corta por tiempo, no por cantidad
+
+**El costo aceptado de D-93 se calculó con 20 actividades publicadas, y el
+2026-09-30 había 451.** Con 888 eventos en el calendario público, renombrar
+«Arancelado» son 584 y «Taller», 314. Con el tope de 150, más de la mitad quedaba
+con la etiqueta vieja hasta que alguien editara cada actividad, y solo quedaba un
+`logger.error`. Lo encontró el `auditor-trampas` y se midió contra producción.
+
+**Qué cambia:** `rebuildPorOpciones` reescribe de a uno, en orden, mientras quede
+presupuesto (`aplicarConPresupuesto` en `functions/sincronizacion.js`), y el
+timeout sube de 300 a 540 s, el máximo de un trigger de Firestore v2. El
+presupuesto termina 90 s antes del timeout (`PRESUPUESTO_RESYNC_MS`).
+
+**Qué no cambia:** el motivo del tope. Lo que protegía era que la corrida no
+venza, porque una que vence se reintenta y vuelve a reescribir. El presupuesto de
+tiempo protege lo mismo sin un número que envejece con el catálogo. Sigue siendo
+secuencial, a propósito: en paralelo se llega a la cuota por minuto de Calendar.
+
+**Qué queda afuera:** a ~200 ms por evento entran unos 2.000. Si un día se
+alcanza, el log dice `se cortó por el tiempo` con cuántos faltaron, igual que
+antes. Retomarlos en otra corrida pediría una marca persistente y un barrido
+programado; hoy no hace falta.
 

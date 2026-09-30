@@ -574,8 +574,9 @@ Dos consecuencias:
    `rebuildPorOpciones` compara las etiquetas de antes con las de después y, si
    alguna cambió, reescribe los eventos de las actividades publicadas que la
    usan (D-93). Antes solo marcaba el rebuild del sitio y el calendario quedaba
-   con el texto anterior hasta la próxima edición de la actividad. El tope es de
-   150 eventos por corrida: lo que sobre se pone al día con la próxima edición.
+   con el texto anterior hasta la próxima edición de la actividad. Corta por tiempo,
+   90 s antes del timeout de 540 s (D-1273): lo que sobre se pone al día con la
+   próxima edición. Hasta el 2026-09-30 era un tope de 150 eventos.
 
 ## `inscripcion.completo` — «se llenó» (B-97)
 

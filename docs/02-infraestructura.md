@@ -562,7 +562,7 @@ desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
 | Función | Trigger | Estado |
 |---|---|---|
 | `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; los cambios de B-80/B-82/B-83 están vivos |
-| `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; el cambio de B-04 está vivo (`timeoutSeconds: 300`) |
+| `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; el cambio de B-04 está vivo. **D-1273 (2026-09-30) le sube el timeout a 540 s**: se ve desplegado cuando `gcloud functions describe` dice `timeoutSeconds: 540` |
 | `rebuildPorLibrerias` | `onDocumentWritten librerias/{id}` | ACTIVE — **desplegada**, relevado el 2026-09-28 con `relevar-infra.sh` (la tabla decía «escrita, sin desplegar todavía»). Lo que sigue es de cuando se escribió: (B-901, 2026-09-11). La misma forma que `rebuildPorOpciones`, para el primer directorio de la Guía: marca `sistema/rebuild.pendiente` cuando cambia un campo que el sitio **publica** (`cambioAmeritaRebuild`, `functions/directorios.js`) y no cuando solo cambia el contacto interno o el motivo de una revisión. Sin IAM nuevo: usa `marcarRebuild`, la misma escritura que ya hacen `rebuildPorOpciones` y `dispararRebuild`. El push a `main` la despliega sola |
 | `rebuildPorSuscripciones` | `onDocumentWritten suscripciones/{id}` | ACTIVE — **desplegada**, relevado el 2026-09-28 con `relevar-infra.sh` (la tabla decía «escrita, sin desplegar todavía»). Lo que sigue es de cuando se escribió: (B-832, 2026-09-11). El hermano de la de arriba para el segundo directorio de la Guía. Una Function por colección porque Firestore no matchea un comodín en el segmento de colección; la **decisión** de si corresponde rebuildear sí es compartida (`cambioAmeritaRebuild`, ahora con la lista de campos publicados **por colección**). Sin IAM nuevo. El push a `main` la despliega sola |
 | `rebuildPorLugares` | `onDocumentWritten lugares/{id}` | ACTIVE — **desplegada**, relevado el 2026-09-28 con `relevar-infra.sh` (la tabla decía «escrita, sin desplegar todavía»). Lo que sigue es de cuando se escribió: (B-833, 2026-09-11). La tercera y última de la familia, para el directorio de lugares de la Guía. Acá el rebuild hace además algo que en los otros dos no: **es lo que vuelve efectivo apagar `direccionPublica`** — sin él, alguien baja la casilla en el panel, el sitio estático no se rehace y la dirección de una casa sigue publicada (§ 6 del PRD 4, trampa 8 con el dato más sensible del proyecto adentro). Sin IAM nuevo. El push a `main` la despliega sola |
@@ -584,10 +584,11 @@ desplegar» de esta línea **no está relevado**: ver el aviso de abajo.
 | `crearOpcionDelPanel` | `onCall` | ACTIVE — **faltaba en esta tabla**, agregada el 2026-09-28 (B-893, D-810). El alta de una opción de taxonomía desde el panel del publicador; `functions/alta-de-opcion-trigger.js` |
 | `traerAnaliticaDelSitio` | `onSchedule every day 07:00` | ACTIVE — **faltaba en esta tabla**, agregada el 2026-09-07. Lee GA4 y Search Console con `calendar-sync@` y escribe `sistema/analitica-sitio`. Desde B-2161 (2026-09-25) lee además seis documentos de `/opciones/*` por corrida, para contrastar el desglose de `filtro_sin_resultados`: sin IAM nuevo, porque `calendar-sync@` ya tiene `datastore.user`. `sistema/analitica-sitio` es de donde lee la pestaña «El sitio público» del panel. Los cuatro pasos de consola quedaron hechos el 2026-09-07 y se verificó forzando una corrida: el log dice `analítica del sitio actualizada` (B-790, `16-analitica-del-sitio.md` §9.4) |
 
-`rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
-solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
-las actividades publicadas, que son N round trips a Calendar (con un tope de 150
-eventos por corrida). **Las demás las declara explícitas en su propio trigger**
+`rebuildPorOpciones` lleva `timeoutSeconds: 540` (`TIMEOUT_RESYNC_S`) porque desde
+B-04 no solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de
+todas las actividades publicadas, que son N round trips a Calendar. Desde D-1273
+corta por **tiempo** (`PRESUPUESTO_RESYNC_MS`, 90 s antes del timeout) y no por
+un tope de 150 eventos. Hasta el 2026-09-30 el timeout era de 300 s. **Las demás las declara explícitas en su propio trigger**
 (`functions/opciones-trigger.js`), igual que el resto de las Functions desde
 B-77: ya nada hereda del `setGlobalOptions` de `index.js`, porque los imports de
 ESM se evalúan antes del cuerpo del importador y ninguna Function definida en

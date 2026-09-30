@@ -1735,7 +1735,7 @@ docblock de `limpieza-imagenes.js`.
   esto, subir una imagen y no llegar a guardar la actividad todavía —o
   guardarla mientras el barrido corre en el medio— la borraría.
 - **Tope de 20 borrados por corrida** (`MAX_BORRADOS_POR_CORRIDA`), misma clase
-  de salvaguarda que `MAX_EVENTOS_RESYNC` en `index.js` (B-04): un bug en la
+  de salvaguarda que el tope que tenía el re-sync de etiquetas (B-04): un bug en la
   lectura de `/actividades` no puede vaciar el bucket entero de una sola
   pasada. Lo que sobra queda marcado en el log y se retoma en la corrida
   siguiente.
@@ -1814,7 +1814,7 @@ de este repo, así que está verificada contra el emulador en
   versión con la fecha ilegible **bloquea** la purga de esa actividad: falla
   cerrado, porque lo que está en juego es la única copia de algo ya borrado.
 - **Tope de 20 actividades por corrida** (`MAX_ACTIVIDADES_POR_CORRIDA`), misma
-  clase de salvaguarda que `MAX_EVENTOS_RESYNC` (B-04): un bug en la lectura de
+  clase de salvaguarda que el tope que tenía el re-sync de etiquetas (B-04): un bug en la lectura de
   qué actividades existen no puede borrar el historial de todas de una pasada. El
   corte es por actividad y no por documento a propósito — media subcolección
   huérfana es peor que la entera.

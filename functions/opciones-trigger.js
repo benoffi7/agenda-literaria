@@ -16,18 +16,29 @@ import { CALENDAR_ID, calendario } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
 import { TAXONOMIAS_FUERA_DEL_EVENTO, cargarLabels, invalidarLabels } from './etiquetas.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
-import { mapaDeEtiquetas, mismasEtiquetas, replanificarPorEtiquetas } from './sincronizacion.js';
+import {
+  aplicarConPresupuesto,
+  mapaDeEtiquetas,
+  mismasEtiquetas,
+  replanificarPorEtiquetas,
+} from './sincronizacion.js';
+
+/** El timeout de la Function: el máximo de un trigger de Firestore v2. */
+export const TIMEOUT_RESYNC_S = 540;
 
 /**
- * Cuántos eventos se reescriben como máximo al renombrar una etiqueta (B-04).
+ * D-1273 — cuánto tiempo se reescriben eventos al renombrar una etiqueta, y no
+ * cuántos. Hasta el 2026-09-30 era un tope de 150 eventos (B-04), calculado con
+ * 20 actividades publicadas; con 451, renombrar «Arancelado» son 584 eventos, y
+ * más de la mitad quedaba con la etiqueta vieja en el calendario público.
  *
- * Es un tope de seguridad, no una regla de negocio: con 30 actividades
- * publicadas de 8 encuentros ya son 240 round trips a Calendar, y la Function
- * tiene un timeout. Si se alcanza, se loguea `error` con lo que faltó: cada
- * actividad se pone al día sola con su próxima edición, y el sitio (que sí
- * muestra la etiqueta nueva) ya se rebuildeó.
+ * Deja 90 s de margen antes del timeout: lo que el tope protegía es que la
+ * corrida no venza, porque una que vence se reintenta y reescribe de nuevo. A
+ * ~200 ms por evento, entran unos 2.000. Si igual se alcanza, se loguea `error`
+ * con lo que faltó: cada actividad se pone al día con su próxima edición, y el
+ * sitio (que sí muestra la etiqueta nueva) ya se rebuildeó.
  */
-export const MAX_EVENTOS_RESYNC = 150;
+export const PRESUPUESTO_RESYNC_MS = (TIMEOUT_RESYNC_S - 90) * 1000;
 
 export const rebuildPorOpciones = onDocumentWritten(
   {
@@ -37,7 +48,7 @@ export const rebuildPorOpciones = onDocumentWritten(
     document: 'opciones/{campo}',
     // Renombrar una etiqueta reescribe los eventos de todas las actividades
     // publicadas (B-04): son N round trips a Calendar, no una escritura.
-    timeoutSeconds: 300,
+    timeoutSeconds: TIMEOUT_RESYNC_S,
   },
   async (event) => {
     const db = getFirestore();
@@ -101,42 +112,41 @@ export const rebuildPorOpciones = onDocumentWritten(
     // Solo las publicadas: las demás no tienen eventos (§7.3).
     const snap = await db.collection('actividades').where('estado', '==', 'publicado').get();
     const cal = await calendario();
-    let reescritos = 0;
-    let pendientes = 0;
+    const ops = snap.docs.flatMap((doc) =>
+      replanificarPorEtiquetas(doc.data(), labelsAntes, labels).map((op) => ({
+        ...op,
+        actividad: doc.id,
+      })),
+    );
 
-    for (const doc of snap.docs) {
-      const ops = replanificarPorEtiquetas(doc.data(), labelsAntes, labels);
-      for (const op of ops) {
-        if (reescritos >= MAX_EVENTOS_RESYNC) {
-          pendientes += 1;
-          continue;
-        }
-        try {
-          await cal.events.update({
-            calendarId: CALENDAR_ID,
-            eventId: op.eventId,
-            requestBody: op.evento,
-          });
-          reescritos += 1;
-        } catch (e) {
-          // Un evento que falla no puede dejar los otros sin actualizar, igual
-          // que en el diff.
+    const { aplicadas: reescritos, pendientes } = await aplicarConPresupuesto(
+      ops,
+      (op) =>
+        cal.events.update({
+          calendarId: CALENDAR_ID,
+          eventId: op.eventId,
+          requestBody: op.evento,
+        }),
+      {
+        presupuestoMs: PRESUPUESTO_RESYNC_MS,
+        // Un evento que falla no puede dejar los otros sin actualizar, igual
+        // que en el diff.
+        alFallar: (op, e) =>
           logger.error('falló la re-sincronización de un evento', {
             campo,
-            actividad: doc.id,
+            actividad: op.actividad,
             sesion: op.id,
             error: e?.message,
-          });
-        }
-      }
-    }
+          }),
+      },
+    );
 
     if (pendientes > 0) {
-      logger.error('la re-sincronización por etiquetas se cortó por el tope', {
+      logger.error('la re-sincronización por etiquetas se cortó por el tiempo', {
         campo,
         reescritos,
         pendientes,
-        tope: MAX_EVENTOS_RESYNC,
+        presupuestoMs: PRESUPUESTO_RESYNC_MS,
       });
     } else if (reescritos > 0) {
       logger.info('eventos re-sincronizados por un cambio de etiqueta', { campo, reescritos });

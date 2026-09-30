@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Renombrar una etiqueta muy usada actualiza el calendario entero** (D-1273, B-2183): el
+  re-sync de eventos cortaba a los 150, y renombrar «Arancelado» son 584 hoy. Ahora corta
+  por tiempo, 90 s antes de un timeout que subió de 300 a 540 s. **Hace falta deployar
+  Functions** (lo hace el push a `main`).
 - **Doc al día con el código** (barrido del `auditor-documentacion`): `slugs-a-reconciliar.mjs`
   y `describir-claims.mjs` nombrados al lado de los comandos que los usan, y la decisión
   que ubicaba `slugify` en un archivo que ya no existe lleva la nota de B-968.
