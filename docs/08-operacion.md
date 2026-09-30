@@ -59,7 +59,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run geografia:sembrar` | informa qué `provincia`/`barrio`/`ciudad` normalizaría en el emulador (B-950, D-710) |
 | `npm run geografia:sembrar:prod` | informa qué escribiría en producción. `-- --aplicar --produccion` lo escribe. **Ojo: esta corrida reescribe los eventos de Calendar** |
 | `npm run admin:claim:prod -- --quitar <uid\|email>` | le saca el rol a una cuenta |
-| `npm run admin:claim:prod -- --ver <uid\|email>` | **solo lee**: imprime el rol (admin / publicador general / publicador de `<ciudad>` / sin rol), la ciudad y el objeto de claims crudo, y avisa si tiene un estado que el script no produce (los dos roles, una ciudad vacía). No escribe nada, así que no pide ningún flag más. `admin:claim -- --ver` lo mismo en el emulador (B-2051) |
+| `npm run admin:claim:prod -- --ver <uid\|email>` | **solo lee**: imprime el rol (admin / publicador general / publicador de `<ciudad>` / sin rol), la ciudad y el objeto de claims crudo, y avisa si tiene un estado que el script no produce (los dos roles, una ciudad vacía). No escribe nada, así que no pide ningún flag más. `admin:claim -- --ver` lo mismo en el emulador (B-2051). El texto lo arma `scripts/describir-claims.mjs`, puro y testeado aparte |
 | `npm run slugs:sembrar -- --aplicar` | siembra el índice de direcciones web en el emulador (B-888, D-660) |
 | `npm run slugs:sembrar:prod` | informa qué sembraría en producción. `-- --aplicar --produccion` lo escribe; `--reparar` además borra las reservas huérfanas |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |

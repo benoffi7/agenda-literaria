@@ -16,7 +16,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |
 | `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | cada cuenta el suyo, **al entrar**, con el mail de su propio ID token (`AdminApp` lo llama desde el observador de auth) |
 | `/fotosDelCatalogo/{mes}` | la foto mensual del tablero: los conteos de `estadoDelCatalogo`, sin ninguna actividad nombrada (B-378) | el panel de un **admin**, la primera vez que carga el catálogo en el mes; nadie la reescribe ni la borra |
-| `/slugs/{slug}` | el índice de direcciones web: `{ actividadId, porUid, creadoEn }` (B-888, D-660) | el panel, **en el mismo `writeBatch` que la actividad**; y `scripts/sembrar-slugs.mjs` con el Admin SDK, que además deja el centinela `_indice` |
+| `/slugs/{slug}` | el índice de direcciones web: `{ actividadId, porUid, creadoEn }` (B-888, D-660) | el panel, **en el mismo `writeBatch` que la actividad**; y `scripts/sembrar-slugs.mjs` con el Admin SDK, que además deja el centinela `_indice`. Qué escribir y qué borrar lo decide `scripts/slugs-a-reconciliar.mjs`, puro y testeado aparte |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `provincia`,
 `ciudad`, `plataforma`, `tags`, `incluye-actividad` — más los seis de las

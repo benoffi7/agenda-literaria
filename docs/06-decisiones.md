@@ -11081,7 +11081,8 @@ Es exactamente la clase de B-88: la misma pregunta contestada por dos derivacion
 que se separan sin que nada falle.
 
 La implementación pasó a `src/lib/slugify.mjs` y `src/lib/slugify.ts` la
-reexporta, así que los ~veinte `import { slugify } from '@/lib/slugify'` del panel
+reexporta (**superado por B-968**: hoy la implementación vive en
+`functions/slugify.js`, y `src/lib/slugify.ts` es la fachada), así que los ~veinte `import { slugify } from '@/lib/slugify'` del panel
 y del sitio no cambiaron. Es el mismo reparto que `@calendario`: una
 implementación, dos runtimes. Y hay un **chequeo de clase** que lo sostiene
 (`tests/ciudades.test.ts`): ningún script de `scripts/` puede contener

@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Doc al día con el código** (barrido del `auditor-documentacion`): `slugs-a-reconciliar.mjs`
+  y `describir-claims.mjs` nombrados al lado de los comandos que los usan, y la decisión
+  que ubicaba `slugify` en un archivo que ya no existe lleva la nota de B-968.
 - **El aviso de App Check ya no salta por un panel que quedó abierto de noche** (B-2181):
   la espera de 20 s antes de reportar no corre con la pestaña oculta o sin red, y al
   volver arranca entera. Si el token se recupera solo al volver, no llega ningún mail.
