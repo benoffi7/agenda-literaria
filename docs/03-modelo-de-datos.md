@@ -155,7 +155,7 @@ sesiones: [{
   inicio: Timestamp,
   fin: Timestamp,         // la duración sale de acá
   tema: string | null,    // B-2169 — con página, sin links de la reunión
-  lectura: string | null,
+  lectura: string | null, // B-2182 — con página, sin ningún link
   cancelada: boolean,
   motivoCancelacion: string | null, // B-98 — por qué se canceló; null si no está cancelado
   calendarEventId: string | null,
@@ -172,6 +172,14 @@ línea «Tema: …»— y al título del `.ics`, que una vez bajado no se actual
 en el tema de **cualquier** encuentro, con `MENSAJES_DE_PRIVACIDAD.temaConLink`; en
 borrador no traba. La regla está en el origen y no en cada salida, para que no
 deriven por separado (B-88).
+
+**La `lectura`, tampoco, y ahí no pasa ningún link** (B-2182). Sale a la página, a
+la descripción del evento público y al texto para redes. Lo natural en ese campo
+es pegar el link al texto, y un PDF así publicaría lo que
+`material.items[].publico: false` esconde: el link va en «Material». Con página el
+schema rechaza cualquier URL o host de videollamada (`lecturaConLink`). En el
+editor, el campo aparece también cuando el tipo no lo pide pero tiene algo escrito,
+porque se guarda y se publica igual.
 
 ### Un encuentro sin horario (B-2175)
 

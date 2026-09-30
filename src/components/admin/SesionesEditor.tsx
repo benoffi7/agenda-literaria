@@ -556,16 +556,25 @@ export function SesionesEditor({
                     </select>
                   </Campo>
                 )}
-                {mostrarLectura !== false && (
-                  <label className="flex flex-col gap-1 text-xs">
-                    Lectura asignada
+                {/*
+                  B-2182 — también aparece si tiene algo escrito aunque el tipo no
+                  la pida: se guarda y se publica igual, y el error de abajo no
+                  tendría dónde verse.
+                */}
+                {(mostrarLectura !== false || s.lectura.trim() !== '') && (
+                  <Campo
+                    label="Lectura asignada"
+                    htmlFor={`sesion-lectura-${s.id}`}
+                    error={errorDe(ruta('lectura'))}
+                  >
                     <input
+                      id={`sesion-lectura-${s.id}`}
                       value={s.lectura}
                       onChange={(e) => editar({ lectura: e.target.value })}
                       placeholder="Cap. 1-4"
                       className={claseInput}
                     />
-                  </label>
+                  </Campo>
                 )}
               </div>
 

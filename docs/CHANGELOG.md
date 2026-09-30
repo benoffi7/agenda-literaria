@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La lectura de un encuentro no puede llevar ningún link** (B-2182): con página, el
+  formulario lo rechaza y dice que el link al texto va en «Material», que es donde se
+  decide si es público. Sale a la página, al evento del calendario público y al texto
+  para redes. El campo «Lectura asignada» se muestra también si el tipo no lo pide pero
+  tiene algo escrito. En producción no había ninguna (12 lecturas revisadas).
 - **El tema de un encuentro no puede llevar el link de una reunión** (B-2169): con página
   (publicada o cancelada) el formulario rechaza una URL o el host de una videollamada en
   el tema, con el error debajo del campo. El tema sale a la página, al título del evento

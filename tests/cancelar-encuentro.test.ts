@@ -174,6 +174,34 @@ describe('el tema de un encuentro (B-2169)', () => {
   });
 });
 
+/**
+ * B-2182 — la lectura sale a la página, a la descripción del evento público y al
+ * texto para redes. Se rechaza cualquier link, no solo el de una reunión: un PDF
+ * en la lectura publicaría lo que `material.items[].publico: false` esconde.
+ */
+describe('la lectura de un encuentro (B-2182)', () => {
+  it('la lectura de un encuentro no puede llevar un link con página', () => {
+    for (const estado of ['publicado', 'cancelado'] as const) {
+      for (const lectura of ['Cap. 3 — por zoom.us/j/123', 'https://drive.google.com/file/d/abc']) {
+        const form = formDeCiclo({ estado, sesiones: [encuentro(), encuentro({ lectura })] });
+        expect(rutasDeRechazo(form), `${estado} · ${lectura}`).toContain('sesiones.1.lectura');
+      }
+    }
+    expect(MENSAJES_DE_PRIVACIDAD.lecturaConLink).toMatch(/Material/);
+  });
+
+  it('en borrador no traba, y una lectura sin link pasa', () => {
+    const conLink = encuentro({ lectura: 'https://drive.google.com/file/d/abc' });
+    expect(
+      rutasDeRechazo(formDeCiclo({ estado: 'borrador', sesiones: [encuentro(), conLink] })),
+    ).not.toContain('sesiones.1.lectura');
+    const sinLink = encuentro({ lectura: 'Saer, «La mayor», cap. 1-4' });
+    expect(
+      rutasDeRechazo(formDeCiclo({ estado: 'publicado', sesiones: [encuentro(), sinLink] })),
+    ).not.toContain('sesiones.1.lectura');
+  });
+});
+
 describe('ida y vuelta formulario ⇄ documento (B-98)', () => {
   it('el motivo de un cancelado se guarda recortado y vuelve igual', () => {
     const form = formDeCiclo({

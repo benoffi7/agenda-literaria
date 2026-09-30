@@ -132,24 +132,6 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
 
-### B-2182 · La lectura de un encuentro puede llevar un link y sale a tres salidas sin sanear · P2
-
-Lo señaló el `auditor-privacidad` al revisar B-2169: es el mismo problema, en el campo
-de al lado. `sesiones[].lectura` es texto libre y sale a la página de detalle
-(`toPublic`, `detallePublico`), a la descripción del evento del calendario público
-(`functions/calendario.js`, la línea de la lectura, que `sinLinksDeReunion` no sanea)
-y al texto para redes. Un «Cap. 3 — por zoom.us/j/…» se publicaría en las tres. **Y
-tiene un caso propio:** lo natural en ese campo es el texto a leer, así que un link a
-un PDF de Drive publica lo que `material.items[].publico: false` esconde. Es un flag
-que esconde un dato, esquivado por un campo vecino.
-
-**Arreglo propuesto:** la misma regla que el tema, en `src/lib/schema.ts`
-(`MENSAJES_DE_PRIVACIDAD.lecturaConLink`), con el error en el campo «Lectura
-asignada». `llevaLinkDeReunion` ya rechaza cualquier `https://`, y para la lectura
-eso es lo que se busca: el link al texto va en «Material», que tiene su propio
-`publico`. Hay que avisarlo en el mensaje. Test: «la lectura de un encuentro no
-puede llevar un link con página».
-
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
 > ⚠️ **Este bloque estaba dentro de un bloque de código, y con él B-780 a B-786.**

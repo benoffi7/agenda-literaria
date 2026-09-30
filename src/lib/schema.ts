@@ -179,6 +179,9 @@ export const MENSAJES_DE_PRIVACIDAD = {
   // B-2169 — el tema sale a la página, al título del evento público y al .ics.
   temaConLink:
     'Acá va solo el tema («Cap. 1-4»): el link de la reunión se envía a quienes se inscriban',
+  // B-2182 — la lectura sale a la página, al evento público y al texto para redes.
+  lecturaConLink:
+    'Acá va solo qué se lee («Cap. 1-4»): el link al texto va en «Material», que decide si es público',
 } as const;
 
 /** Los mensajes de arriba, para preguntar si un rechazo es de esta clase. */
@@ -707,6 +710,16 @@ export const actividadFormSchema = z
          */
         if (llevaLinkDeReunion(ses.tema)) {
           faltaSiempre(['sesiones', i, 'tema'], MENSAJES_DE_PRIVACIDAD.temaConLink);
+        }
+        /*
+         * B-2182 — **y la lectura**, por lo mismo y por algo más: lo natural ahí
+         * es pegar el link al texto, y un PDF de Drive en la lectura publica lo
+         * que `material.items[].publico: false` esconde. Por eso se rechaza
+         * cualquier link y no solo el de una reunión (`llevaLinkDeReunion` ya lo
+         * hace): el link al texto tiene su lugar en «Material».
+         */
+        if (llevaLinkDeReunion(ses.lectura)) {
+          faltaSiempre(['sesiones', i, 'lectura'], MENSAJES_DE_PRIVACIDAD.lecturaConLink);
         }
       });
 

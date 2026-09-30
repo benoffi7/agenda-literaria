@@ -18043,6 +18043,26 @@ guarda en el schema y el tema no. **Arreglo propuesto:** la misma regla en el or
 cada salida (sanear solo una haría que deriven por separado, la clase de B-88). Test:
 «el tema de un encuentro no puede llevar la dirección de una reunión con página».
 
+### B-2182 · La lectura de un encuentro puede llevar un link y sale a tres salidas sin sanear · P2 — ✅ hecho (2026-09-30)
+
+> ✅ **Hecho** como se propuso: `MENSAJES_DE_PRIVACIDAD.lecturaConLink` en `src/lib/schema.ts`, al lado del tema, rechaza cualquier link con página. El error se ve en «Lectura asignada», que ahora aparece también cuando tiene algo escrito aunque el tipo no lo pida. Tests en `tests/cancelar-encuentro.test.ts`. En producción, ninguna de las 12 lecturas tenía link.
+
+Lo señaló el `auditor-privacidad` al revisar B-2169: es el mismo problema, en el campo
+de al lado. `sesiones[].lectura` es texto libre y sale a la página de detalle
+(`toPublic`, `detallePublico`), a la descripción del evento del calendario público
+(`functions/calendario.js`, la línea de la lectura, que `sinLinksDeReunion` no sanea)
+y al texto para redes. Un «Cap. 3 — por zoom.us/j/…» se publicaría en las tres. **Y
+tiene un caso propio:** lo natural en ese campo es el texto a leer, así que un link a
+un PDF de Drive publica lo que `material.items[].publico: false` esconde. Es un flag
+que esconde un dato, esquivado por un campo vecino.
+
+**Arreglo propuesto:** la misma regla que el tema, en `src/lib/schema.ts`
+(`MENSAJES_DE_PRIVACIDAD.lecturaConLink`), con el error en el campo «Lectura
+asignada». `llevaLinkDeReunion` ya rechaza cualquier `https://`, y para la lectura
+eso es lo que se busca: el link al texto va en «Material», que tiene su propio
+`publico`. Hay que avisarlo en el mensaje. Test: «la lectura de un encuentro no
+puede llevar un link con página».
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
