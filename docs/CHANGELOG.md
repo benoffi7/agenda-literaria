@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El script de unión de organizadores tiene `--ver=slug,slug`** (B-2178): solo lee, y
+  lista las actividades de esos organizadores con título, estado, Instagram, web y
+  sede, para decidir quién organiza de verdad las cargadas con un nombre de relleno.
+
 - **El script de vocabulario acepta `--excluir`** (B-2178): slugs que se usan y no se
   siembran. Es para el relleno de los organizadores («A conf», «Buscando»), que
   sembrado nacería aprobado y con página pública. Y la unión de organizadores de B-2178

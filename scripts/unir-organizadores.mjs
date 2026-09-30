@@ -5,6 +5,7 @@
  *   node scripts/unir-organizadores.mjs                          # informar (no escribe)
  *   node scripts/unir-organizadores.mjs --aplicar                # escribe, en el emulador
  *   node scripts/unir-organizadores.mjs --aplicar --produccion   # escribe, en producción
+ *   node scripts/unir-organizadores.mjs --ver=a-conf,buscando    # solo lista las actividades de esos organizadores
  *   node scripts/unir-organizadores.mjs --tabla=otra.json        # otra tabla (default: scripts/datos/organizadores-a-unir.local.json, ignorada por git)
  *
  * El slug de un organizador junta las variantes de tipeo («Casa Brandon» y
@@ -50,6 +51,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { slugDeOrganizador } from '../functions/organizador.js';
 import { planDeUnion, problemasDeLaTabla, tablaConfirmada } from './unir-organizadores-decision.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
@@ -69,6 +71,39 @@ if (aplicar && !enEmulador && !confirmaProduccion) {
 if (confirmaProduccion && enEmulador) {
   console.error('`--produccion` con FIRESTORE_EMULATOR_HOST seteado. Elegí uno. Abortando.');
   process.exit(1);
+}
+
+/*
+ * `--ver=a-conf,buscando` — **solo lee**: lista las actividades de esos
+ * organizadores con lo que ayuda a saber quién organiza de verdad (título,
+ * estado, Instagram, web, sede). Es para el relleno de B-2178, que no tiene un
+ * destino obvio. No necesita la tabla. Lo que imprime puede nombrar a personas:
+ * se lee en la terminal y no se copia al repo.
+ */
+const ver = process.argv.find((a) => a.startsWith('--ver='))?.slice('--ver='.length);
+if (ver !== undefined) {
+  if (aplicar) {
+    console.error('`--ver` solo lee: no va con `--aplicar`. Abortando.');
+    process.exit(1);
+  }
+  const buscados = new Set(ver.split(',').map((s) => s.trim()).filter(Boolean));
+  initializeApp(enEmulador ? { projectId } : { credential: applicationDefault(), projectId });
+  const snapVer = await getFirestore().collection('actividades').get();
+  console.log(enEmulador ? `Objetivo: EMULADOR (${process.env.FIRESTORE_EMULATOR_HOST})\n` : `Objetivo: PRODUCCIÓN (${projectId})\n`);
+  for (const slug of buscados) {
+    const suyas = snapVer.docs.filter((d) => slugDeOrganizador(d.data().organizador) === slug);
+    console.log(`── ${slug} — ${suyas.length} actividad(es)`);
+    for (const d of suyas) {
+      const a = d.data();
+      const sede = (a.modalidades ?? []).map((m) => m?.sede?.nombre).find(Boolean) ?? a.sede?.nombre ?? '';
+      console.log(`  · [${a.estado}] ${a.titulo}  (${a.slug})`);
+      console.log(
+        `      organizador: «${a.organizador?.nombre ?? ''}» · ig: ${a.organizador?.instagram || '—'} · ` +
+          `web: ${a.organizador?.web || '—'} · sede: ${sede || '—'}`,
+      );
+    }
+  }
+  process.exit(0);
 }
 
 /* La tabla, validada antes de conectarse: un error acá no tiene por qué tocar la base. */
