@@ -365,7 +365,9 @@ mes» y «% gratis por mes» en la pestaña «El catálogo». Al dibujarla, deci
 de `tomadaEn` si alguna foto se sacó tarde en el mes, y tener en cuenta
 `version` si cambió la forma.
 
-### B-2162 · Probar una restauración del respaldo de la base · P2
+### B-2162 · Probar una restauración del respaldo de la base · P2 — 🟡 restaurada y verificada, falta borrar la copia (2026-09-30)
+
+> 🟡 **Restaurado el 2026-09-30 en 13 min 37 s** (el respaldo de las 04:36 UTC, a `restaurada-2026-09-30`). La copia tiene las diez colecciones y 470 actividades contra 477: las 7 que faltan son exactamente las creadas después del respaldo, y no tiene nada que la base viva no tenga. **Falta borrar la copia**, que tiene los datos personales; nace con protección contra borrado, así que primero hay que sacársela (comandos en `02-infraestructura.md`). Se cierra cuando esté borrada.
 
 El respaldo diario existe desde el 2026-09-28 (roadmap 5.1) y **no se probó
 restaurarlo**: el primer respaldo aparece recién al día siguiente de crear el

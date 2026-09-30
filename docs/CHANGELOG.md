@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El respaldo de la base se probó restaurándolo** (B-2162): 13 min 37 s. La copia tenía
+  todo lo de la base viva hasta la hora del respaldo, y nada más. En `02-infraestructura.md`
+  quedan tres cosas que los comandos no dicen: el progreso marca mal, la copia nace
+  protegida contra borrado y las consultas con filtro tardan un rato más en andar.
 - **Renombrar una etiqueta muy usada actualiza el calendario entero** (D-1273, B-2183): el
   re-sync de eventos cortaba a los 150, y renombrar «Arancelado» son 584 hoy. Ahora corta
   por tiempo, 90 s antes de un timeout que subió de 300 a 540 s. **Hace falta deployar

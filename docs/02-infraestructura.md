@@ -84,15 +84,26 @@ gcloud firestore backups list --project agenda-literaria --format='table(name,sn
 gcloud firestore databases restore --project agenda-literaria \
   --source-backup=projects/agenda-literaria/locations/southamerica-east1/backups/<ID> \
   --destination-database=restaurada-<fecha>
-# … copiar lo necesario, y borrar la base restaurada: es otra copia de los datos personales
+# … copiar lo necesario, y borrar la base restaurada: es otra copia de los datos personales.
+# Nace con la protección contra borrado de la original, así que primero se saca:
+gcloud firestore databases update --database=restaurada-<fecha> --no-delete-protection --project agenda-literaria
 gcloud firestore databases delete --database=restaurada-<fecha> --project agenda-literaria
 ```
 
 La base restaurada **no tiene las reglas de `firestore.rules`** hasta que se le
 desplieguen, y nada del proyecto la lee; pero es una copia más de los datos
-personales, así que se borra al terminar. La primera restauración de prueba
-está pendiente (**B-2162**): el primer respaldo recién existe al día siguiente
-de crear el programa.
+personales, así que se borra al terminar. **Probado el 2026-09-30 (B-2162):** el respaldo de las 04:36 UTC restauró en
+**13 min 37 s**, con las mismas diez colecciones. Tenía 470 actividades contra 477
+de la base viva, y las 7 que faltaban eran exactamente las creadas después del
+respaldo. Tres cosas que no dicen los comandos:
+
+- **el progreso miente**: `gcloud firestore operations list` dijo 30 % durante casi
+  todo el proceso, y la operación terminó bien. Hay que esperar `done: True`;
+- **la base restaurada nace con la protección contra borrado** de la original, así
+  que para borrarla hay que sacársela primero;
+- **después de `done`, una consulta con filtro todavía puede fallar** con
+  `Cannot serve requests when the database is undergoing a restore`, mientras se
+  arman los índices. Los conteos sin filtro ya andaban.
 
 **Costo:** el almacenamiento del respaldo se cobra por GiB y la base pesa pocos
 MB: centavos por mes, dentro del budget alert. Restaurar se cobra por GiB leído.
