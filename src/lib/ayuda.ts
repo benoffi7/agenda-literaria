@@ -1799,11 +1799,12 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Los organizadores aprobados tienen una página pública con todo lo que organizan, ' +
-          'que se enlaza desde cada actividad suya y Google puede encontrar. Si uno de la lista ' +
-          'no es un organizador de verdad —«A conf», «Buscando»—, borralo: así no tiene página. ' +
-          'Pero corregí también el organizador de esas actividades: si no, la próxima vez que ' +
-          'se guarde una vuelve a la lista, y con ella la página. Lo mismo si una persona pide ' +
-          'que saquen la suya.',
+          'que se enlaza desde cada actividad suya y Google puede encontrar. Si una persona pide ' +
+          'que saquen la suya, usá «Sacar la página»: queda en la lista, sus actividades la ' +
+          'siguen nombrando y la página desaparece en unos minutos. No la borres para eso: ' +
+          'borrada, vuelve a la lista —y con ella la página— la próxima vez que alguien guarde ' +
+          'una actividad suya. Borrar es para lo que no es un organizador de verdad («A conf», ' +
+          '«Buscando»), y ahí hay que corregir también esas actividades.',
         cuidado: true,
       },
     ],

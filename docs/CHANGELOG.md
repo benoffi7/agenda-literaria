@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **«Sacar la página» en Opciones → Organizador** (B-2179): le apaga para siempre la
+  página `/organiza/{slug}` a un organizador sin borrarlo, para cuando una persona lo
+  pide. Borrarlo no alcanzaba: el próximo guardado de una actividad suya lo recreaba.
+  Es una marca en la opción (`sinPagina`) que el reuso conserva.
+
 - **El script de unión de organizadores tiene `--ver=slug,slug`** (B-2178): solo lee, y
   lista las actividades de esos organizadores con título, estado, Instagram, web y
   sede, para decidir quién organiza de verdad las cargadas con un nombre de relleno.

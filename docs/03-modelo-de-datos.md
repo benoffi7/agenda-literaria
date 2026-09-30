@@ -540,6 +540,11 @@ no hay migración. `usosAContar` cuenta el organizador como las demás. La lista
 **no es pública** (`firestore.rules`, B-2172 paso 1) y no viaja al `events.json`
 (`TAXONOMIAS_FUERA_DEL_INDICE`).
 
+**`sinPagina`** (B-2179), solo en `organizador`: la opción no tiene página
+`/organiza/{slug}` aunque esté aprobada y en uso. La pone «Sacar la página» en Opciones
+(`marcarSinPagina`) y sobrevive al reuso, que conserva el elemento y suma un uso; por
+eso existe en lugar de borrar, que el próximo guardado deshace. Ausente es `false`.
+
 ### Advertencia: las etiquetas se ven en público
 
 La descripción de los eventos de Calendar muestra la **etiqueta**, no el slug.

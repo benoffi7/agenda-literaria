@@ -250,20 +250,6 @@ corregir a mano. Hueco que queda: el aviso «web que no enlaza» del tablero mir
 `organizador.web` y no el destino de una inscripción por formulario, así que este caso
 no aparecía en el tablero. Se cierra cuando se corrijan esos dos.
 
-### B-2179 · Sacarle la página a un organizador no es permanente · P2
-
-Lo encontró el `auditor-privacidad` sobre B-2172. Borrar la opción de
-`/opciones/organizador` saca la página `/organiza/{slug}` en el build siguiente,
-pero **vuelve sola** la próxima vez que se guarde una actividad con ese nombre:
-`resolverOrganizador` la da de alta otra vez, y el alta del admin nace aprobada
-(`upsertOpcion`). Y no hay «desaprobar» en el panel. Para el relleno alcanza con
-corregir las actividades (la ayuda de Opciones lo dice), pero **para una persona
-que pide que saquen su página no alcanza**: basta con que alguien vuelva a cargarla.
-
-**Arreglo propuesto:** una marca en la opción —`sinPagina: true`, o poder dejarla
-`aprobada: false`— que el reuso de `upsertOpcion` y de la callable no pise, y un
-botón en Opciones. Test: una opción marcada no recupera la página al reusarse.
-
 ### B-2178 · Organizadores que el slug no junta, y valores que no son organizadores · P2 — unión aplicada y relleno sin sembrar (2026-09-29); quedan los grupos dudosos
 
 **Hecho (2026-09-29): el script de unión.** `npm run organizadores:unir:prod`

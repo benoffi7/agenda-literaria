@@ -344,6 +344,34 @@ export const aprobarOpcion = async (campo: CampoTaxonomia, slug: string): Promis
  */
 export const CAMPO_CON_COLOR: CampoTaxonomia = 'tipo';
 
+/**
+ * B-2179 — la única taxonomía con página por valor que se puede apagar: la del
+ * organizador. Los hubs de tipo, barrio y ciudad son vocabulario del sitio; una
+ * página de organizador puede ser la de una persona.
+ */
+export const CAMPO_CON_PAGINA: CampoTaxonomia = 'organizador';
+
+/**
+ * B-2179 — le saca (o le devuelve) la página `/organiza/{slug}` a un organizador,
+ * sin borrarlo de la lista. Ver `ValorOpcion.sinPagina`: borrarlo no alcanza,
+ * porque el próximo guardado lo recrea. Devolverla **saca la clave** en vez de
+ * escribir `false` —Firestore no acepta `undefined` y un `false` explícito no dice
+ * nada que la ausencia no diga—. El rebuild lo marca `rebuildPorOpciones`, como
+ * cualquier escritura de `/opciones/*`.
+ */
+export const marcarSinPagina = async (
+  campo: CampoTaxonomia,
+  slug: string,
+  sinPagina: boolean,
+): Promise<void> => {
+  if (campo !== CAMPO_CON_PAGINA) {
+    throw new Error(`«${campo}» no tiene páginas por valor que se puedan apagar.`);
+  }
+  await editarValor(campo, slug, ({ sinPagina: _anterior, ...v }) =>
+    sinPagina ? { ...v, sinPagina: true } : v,
+  );
+};
+
 export const pintarOpcion = async (
   campo: CampoTaxonomia,
   slug: string,

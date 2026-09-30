@@ -13,6 +13,7 @@ import {
   estaAprobada,
   borrarOpcion,
   leerOpciones,
+  marcarSinPagina,
   opcionesVisibles,
   pintarOpcion,
   renombrarOpcion,
@@ -475,6 +476,32 @@ describe.skipIf(!vivo)('la lista de organizadores es del panel — B-2172', () =
     await signOut(auth());
     await getDoc(doc(db(), 'opciones', 'arancel'));
     await denegada(getDoc(doc(db(), 'opciones', 'organizador')), 'leer organizadores anónimo');
+  });
+
+  it('«sin página» sobrevive a que alguien vuelva a usar el organizador (B-2179)', async () => {
+    /*
+     * Es todo el punto de la marca: borrar la opción no dura, porque el próximo
+     * guardado la recrea aprobada. La marca sí, porque el reuso suma un uso y
+     * conserva el resto del elemento.
+     *
+     * Mutación: que `upsertOpcion` reconstruya el elemento en vez de extenderlo
+     * pierde la marca y pone esto en rojo.
+     */
+    await entrarComoAdmin(UID);
+    await marcarSinPagina('organizador', 'ana-perez', true);
+    await upsertOpcion('organizador', 'Ana Pérez', UID);
+    const ana = (await valoresCrudos('organizador')).find((v) => v.slug === 'ana-perez')!;
+    expect(ana.sinPagina).toBe(true);
+    expect(ana.usos).toBe(2);
+
+    // Devolverla saca la clave: Firestore no acepta `undefined`.
+    await marcarSinPagina('organizador', 'ana-perez', false);
+    const devuelta = (await valoresCrudos('organizador')).find((v) => v.slug === 'ana-perez')!;
+    expect('sinPagina' in devuelta).toBe(false);
+  });
+
+  it('solo el organizador tiene páginas que se puedan apagar', async () => {
+    await expect(marcarSinPagina('barrio', 'palermo', true)).rejects.toThrow(/no tiene páginas/);
   });
 
   it('una cuenta sin rol tampoco: la API key es pública y cualquiera se crea una', async () => {

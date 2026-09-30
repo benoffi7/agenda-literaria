@@ -53,6 +53,12 @@ describe('slugsConPaginaDeOrganizador', () => {
     expect(slugsConPaginaDeOrganizador(ENTRADAS, OPCIONES)).toEqual(['casa-brandon', 'hormiga']);
   });
 
+  it('una opción marcada «sin página» no tiene página, aunque esté aprobada y en uso (B-2179)', () => {
+    // Mutación: sacar el `!o.sinPagina` del filtro le devuelve la página.
+    const conMarca = OPCIONES.map((o) => (o.slug === 'casa-brandon' ? { ...o, sinPagina: true } : o));
+    expect(slugsConPaginaDeOrganizador(ENTRADAS, conMarca)).toEqual(['hormiga']);
+  });
+
   it('sin la lista no hay ninguna: el lado inofensivo del error', () => {
     expect(slugsConPaginaDeOrganizador(ENTRADAS, [])).toEqual([]);
   });

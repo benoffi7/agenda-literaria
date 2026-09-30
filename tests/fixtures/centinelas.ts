@@ -383,6 +383,8 @@ export const VALORES_NO_TEXTO: Record<string, string> = {
   'opcion.aprobada': 'ídem `fijo`.',
   'opcion.aprobadaPorReuso':
     'B-29 — ídem, y no identifica a nadie: dice algo de la etiqueta, no de quién la escribió.',
+  'opcion.sinPagina':
+    'B-2179 — ídem `fijo`: booleano de gestión, solo de `organizador` (que no viaja en el índice).',
 
   // ── `null`: el caso base lo deja vacío, y el caso que lo llena está aparte ─
   imagenUrl:
@@ -863,6 +865,9 @@ export const opcionCentinela = (over: Partial<ValorOpcion> = {}): ValorOpcion =>
    * que el sitio necesita, no lo que el documento tiene.
    */
   aprobadaPorReuso: false,
+  // B-2179 — solo `organizador`. Booleano, sin centinela, como `aprobada`: que no
+  // salga lo fija el chequeo de claves de la proyección, no un valor buscado.
+  sinPagina: false,
   huellaCreador: CENTINELA['opcion.huellaCreador'],
   /*
    * D-150 — el matiz elegido. No lleva centinela porque es un número: el barrido

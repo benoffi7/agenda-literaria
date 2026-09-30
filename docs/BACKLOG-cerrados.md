@@ -18007,6 +18007,27 @@ muestran el nombre resuelto. Sin cambios visibles todavía: la lista está vací
    aprobados con el script y, desde el paso 4, tienen página pública en el build
    siguiente a sembrar: entre (b) y (c) no debería pasar un build, o se corrigen antes.
 
+### B-2179 · Sacarle la página a un organizador no es permanente · P2 — ✅ hecho (2026-09-30)
+
+> ✅ **Hecho**: `sinPagina` en la opción, puesto con «Sacar la página» / «Devolver la
+> página» en Opciones → Organizador (`marcarSinPagina`, solo admin por las reglas).
+> `slugsConPaginaDeOrganizador` lo excluye, así que tampoco sale al sitemap ni al
+> «Todo lo de…». Sobrevive al reuso de `upsertOpcion` y de la callable, que extienden
+> el elemento: lo fija `opciones.integracion.test.ts`. La ayuda de Opciones ya no
+> manda a borrar para esto.
+
+Lo encontró el `auditor-privacidad` sobre B-2172. Borrar la opción de
+`/opciones/organizador` saca la página `/organiza/{slug}` en el build siguiente,
+pero **vuelve sola** la próxima vez que se guarde una actividad con ese nombre:
+`resolverOrganizador` la da de alta otra vez, y el alta del admin nace aprobada
+(`upsertOpcion`). Y no hay «desaprobar» en el panel. Para el relleno alcanza con
+corregir las actividades (la ayuda de Opciones lo dice), pero **para una persona
+que pide que saquen su página no alcanza**: basta con que alguien vuelva a cargarla.
+
+**Arreglo propuesto:** una marca en la opción —`sinPagina: true`, o poder dejarla
+`aprobada: false`— que el reuso de `upsertOpcion` y de la callable no pise, y un
+botón en Opciones. Test: una opción marcada no recupera la página al reusarse.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

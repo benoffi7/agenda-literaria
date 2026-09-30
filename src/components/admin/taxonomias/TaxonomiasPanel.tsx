@@ -12,7 +12,9 @@ import {
 } from '@/components/admin/useOpciones';
 import {
   CAMPO_CON_COLOR,
+  CAMPO_CON_PAGINA,
   aprobarOpcion,
+  marcarSinPagina,
   borrarOpcion,
   estaAprobada,
   pintarOpcion,
@@ -242,6 +244,14 @@ export function TaxonomiasPanel() {
                   la usaron dos cuentas
                 </span>
               )}
+              {campo === CAMPO_CON_PAGINA && v.sinPagina === true && (
+                <span
+                  className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/65"
+                  title="No tiene página en el sitio, aunque tenga actividades publicadas. Sus actividades lo siguen nombrando."
+                >
+                  sin página
+                </span>
+              )}
             </p>
             <p className="text-xs text-tinta/65">
               <code>{v.slug}</code> · {v.usos === 1 ? '1 uso' : `${v.usos} usos`}
@@ -289,6 +299,21 @@ export function TaxonomiasPanel() {
                   onClick={() => void correr(() => aprobarOpcion(campo, v.slug))}
                 >
                   {pendiente ? 'Aprobar' : 'Ya la miré'}
+                </button>
+              )}
+              {/*
+                B-2179 — sacarle la página a un organizador **sin borrarlo**:
+                borrarlo no dura, el próximo guardado lo recrea. Es lo que se usa
+                cuando una persona pide que saquen la suya.
+              */}
+              {campo === CAMPO_CON_PAGINA && !v.fijo && (
+                <button
+                  type="button"
+                  className={claseBotonFila}
+                  disabled={ocupado}
+                  onClick={() => void correr(() => marcarSinPagina(campo, v.slug, !v.sinPagina))}
+                >
+                  {v.sinPagina ? 'Devolver la página' : 'Sacar la página'}
                 </button>
               )}
               {!v.fijo && (

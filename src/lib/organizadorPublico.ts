@@ -86,7 +86,8 @@ export const slugsConPaginaDeOrganizador = (
 ): string[] => {
   const usados = new Set(entradas.map((e) => e.organizadorSlug).filter(Boolean));
   return opciones
-    .filter((o) => estaAprobada(o) && usados.has(o.slug))
+    // B-2179 — `sinPagina`: lo pidió la persona o lo decidió el dueño.
+    .filter((o) => estaAprobada(o) && !o.sinPagina && usados.has(o.slug))
     .map((o) => o.slug)
     .sort();
 };

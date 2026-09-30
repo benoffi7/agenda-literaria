@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'sacar-la-pagina-de-un-organizador',
+    fecha: '2026-09-30',
+    version: '1.11.0',
+    titulo: 'Se le puede sacar la página a un organizador sin borrarlo',
+    detalle:
+      'Si alguien pide que saquen su página del sitio, «Sacar la página» la apaga para siempre: ' +
+      'el organizador sigue en la lista y en sus actividades. Borrarlo no alcanzaba, porque ' +
+      'volvía la próxima vez que se guardaba una de sus actividades.',
+    donde: 'Opciones → Organizador → «Sacar la página».',
+  },
+  {
     id: 'pagina-de-organizador',
     fecha: '2026-09-29',
     version: '1.11.0',

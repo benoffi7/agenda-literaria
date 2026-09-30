@@ -810,6 +810,18 @@ export interface ValorOpcion {
    */
   huellaCreador?: string;
   /**
+   * B-2179 — **solo `organizador`**: este organizador no tiene página
+   * `/organiza/{slug}`, aunque esté aprobado y tenga actividades publicadas. Es
+   * lo que se usa cuando una persona pide que saquen la suya.
+   *
+   * **Por qué una marca y no borrar la opción**: borrarla saca la página hasta que
+   * alguien guarde una actividad con ese nombre, y ahí el alta la recrea aprobada.
+   * La marca sobrevive al reuso —`upsertOpcion` y la callable hacen
+   * `{ ...v, usos + 1 }`— así que queda puesta. Ausente es `false`. No sale al
+   * público: `organizador` no viaja en el índice, y `opcionesPublicas` es whitelist.
+   */
+  sinPagina?: boolean;
+  /**
    * §4.1 · D-150 — el **matiz** elegido para esta opción, en grados de OKLCH
    * (entero de 0 a 359). Hoy solo lo pinta `tipo`, en la cajita de la categoría
    * del listado público.

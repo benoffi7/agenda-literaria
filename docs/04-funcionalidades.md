@@ -2342,7 +2342,7 @@ muestra también el pasado y no entra en «Explorá por» (serían cientos). Viv
 
 | | |
 |---|---|
-| cuándo existe | la opción de `/opciones/organizador` está **aprobada** y tiene al menos una actividad publicada, vigente o pasada. Un organizador tipeado y sin aprobar no tiene página; **borrar la opción en el panel le saca la página** (no hay «desaprobar») (así se apagan los de relleno de B-2178) |
+| cuándo existe | la opción de `/opciones/organizador` está **aprobada** y tiene al menos una actividad publicada, vigente o pasada. Un organizador tipeado y sin aprobar no tiene página; **«Sacar la página» en Opciones** la apaga para siempre (`sinPagina`, B-2179): es lo que se usa si una persona lo pide. Borrar la opción también la saca, pero dura hasta que alguien guarde una actividad con ese nombre —el alta la recrea—; sirve para el relleno de B-2178 si además se corrigen sus actividades |
 | sitemap e indexación | si tiene algo por venir. Con solo pasado se emite con `noindex` y fuera del sitemap: el mismo par que los hubs |
 | el nombre | el que muestra el detalle (la etiqueta de la opción), leído de la entrada del índice y no de la lista, que es privada |
 | la URL | el slug de la opción, nunca el nombre (trampa 10) |
