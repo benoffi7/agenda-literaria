@@ -389,6 +389,23 @@ viva, y **borrar la base restaurada en el mismo día** (tiene los datos personal
 
 ## P3 — cuando sobre tiempo
 
+### B-2181 · El aviso de App Check salta por un panel que quedó abierto de noche · P3
+
+El 2026-09-30 a las 03:00 (Buenos Aires) llegó un `renovacion-fallida` de
+`reportarVerificacionDelNavegador`; en la semana hubo cuatro avisos sueltos (dos
+`renovacion-fallida`, dos `sin-respuesta` el 2026-09-25), así que **no es el deploy**:
+el triaje de `08-operacion.md` lo da por transitorio («que recargue»). El de la
+madrugada es casi seguro una pestaña del panel en una compu que se durmió: el token
+vence sin red, y `iniciarReporteDeVerificacion` (`src/lib/reporteDeVerificacion.ts`)
+avisa si a los 20 s sigue sin verificar, sin mirar si la pestaña estaba oculta o el
+navegador sin red.
+
+**Arreglo propuesto:** no contar la gracia mientras `document.visibilityState` sea
+`hidden` o `navigator.onLine` sea `false`; reportar recién si sigue sin verificar 20 s
+después de volver a estar visible y en línea. Menos mails que no piden nada, y el que
+llega es de alguien que de verdad estaba usando el panel. Con test del caso «oculta
+toda la noche, vuelve y verifica sola: no avisa».
+
 ### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
 
 En el mismo mensaje que pidió B-2175 (2026-09-29) agregó «y algunos etiquetados
