@@ -638,6 +638,15 @@ corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
 
 ### B-734 · Con más de una fila de modalidad, el `location` de cada `subEvent` afirma más de lo que sabe — 🟡 hecho a medias (2026-09-09) · P3
 
+> 👁 **Apareció la primera actividad con más de una fila (revisado el 2026-09-30), y
+> no alcanza para decidir.** Es un festival publicado, ya pasado, con **cuatro filas
+> presenciales sin `inicio` ni `fin`** (una sala y tres filas con el mismo centro
+> cultural). Sin ventana en ninguna fila no hay con qué repartir los encuentros, así
+> que publicar esos dos campos no cambiaría nada en el único caso real. Lo que hace
+> hoy la página es lo correcto para ese caso: la raíz nombra los lugares y cada
+> `subEvent` no dice en cuál ocurre. **La condición pasa a ser más fina:** decidirlo
+> el día que haya una actividad con dos o más filas **que tengan ventana**.
+
 > ✅ **Hecho con la primera de las dos salidas: el `subEvent` deja de heredar
 > `location` cuando hay más de una fila.** La raíz lo sigue publicando —el conjunto
 > de lugares es de la actividad y es cierto—, así que el item vuelve al estado
