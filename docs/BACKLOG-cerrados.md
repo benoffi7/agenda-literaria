@@ -18028,6 +18028,21 @@ que pide que saquen su página no alcanza**: basta con que alguien vuelva a carg
 `aprobada: false`— que el reuso de `upsertOpcion` y de la callable no pise, y un
 botón en Opciones. Test: una opción marcada no recupera la página al reusarse.
 
+### B-2169 · El tema de un encuentro puede llevar el link de una reunión y sale a tres salidas sin sanear · P2 — ✅ hecho (2026-09-30)
+
+> ✅ **Hecho.** La regla está en `src/lib/schema.ts`, junto a la del motivo (`MENSAJES_DE_PRIVACIDAD.temaConLink`), en todo encuentro y solo con página. El editor muestra el error en el campo «Tema». Los tests están en `tests/cancelar-encuentro.test.ts`. En producción no había ningún tema con link, así que no traba ninguna actividad existente.
+
+Lo señaló el `auditor-privacidad` sobre el roadmap 1.1, y **es previo**: el `tema` de
+cada encuentro es texto libre, sale a la página de detalle (6), al `summary` del
+evento del calendario público (2) y ahora al título del evento que se agenda (33), y
+**nadie lo pasa por `sinLinksDeReunion`** —el calendario sanea la descripción, no el
+título—. Un «Cap. 3 — entrá por zoom.us/j/…» se publicaría en las tres, y en la 33 es
+peor: un `.ics` bajado no se actualiza nunca. La etiqueta de comisión ya tiene esa
+guarda en el schema y el tema no. **Arreglo propuesto:** la misma regla en el origen
+—`src/lib/schema.ts`, junto a la de la etiqueta, en `MENSAJES_DE_PRIVACIDAD`—, y no en
+cada salida (sanear solo una haría que deriven por separado, la clase de B-88). Test:
+«el tema de un encuentro no puede llevar la dirección de una reunión con página».
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

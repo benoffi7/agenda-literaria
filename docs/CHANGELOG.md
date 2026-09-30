@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El tema de un encuentro no puede llevar el link de una reunión** (B-2169): con página
+  (publicada o cancelada) el formulario rechaza una URL o el host de una videollamada en
+  el tema, con el error debajo del campo. El tema sale a la página, al título del evento
+  del calendario público y al `.ics`, y ninguna de las tres lo saneaba. En producción no
+  había ninguno (477 actividades revisadas el 2026-09-30).
 - **La tabla de unión de organizadores acepta `porActividad`** (B-2178): el nombre del
   organizador actividad por actividad, para el relleno («A conf» son varias actividades
   de casas distintas, y `unir` va por organizador). Se resuelve contra la lista como en

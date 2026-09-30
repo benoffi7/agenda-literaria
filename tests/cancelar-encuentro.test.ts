@@ -147,6 +147,33 @@ describe('el schema (B-98)', () => {
   });
 });
 
+/**
+ * B-2169 — el tema sale a la página, al título del evento público (que sanea la
+ * descripción y no el título) y al título del `.ics`. Misma guarda que el motivo,
+ * pero en **todo** encuentro: el tema sale aunque no esté cancelado.
+ */
+describe('el tema de un encuentro (B-2169)', () => {
+  it('el tema de un encuentro no puede llevar la dirección de una reunión con página', () => {
+    for (const estado of ['publicado', 'cancelado'] as const) {
+      for (const tema of ['Cap. 3 — entrá por zoom.us/j/123', 'Cap. 3 https://meet.google.com/abc']) {
+        const form = formDeCiclo({ estado, sesiones: [encuentro(), encuentro({ tema })] });
+        expect(rutasDeRechazo(form), `${estado} · ${tema}`).toContain('sesiones.1.tema');
+      }
+    }
+    expect(MENSAJES_DE_PRIVACIDAD.temaConLink).toMatch(/link/);
+  });
+
+  it('en borrador no traba, y un tema sin link pasa', () => {
+    const conLink = encuentro({ tema: 'Cap. 3 — zoom.us/j/123' });
+    expect(
+      rutasDeRechazo(formDeCiclo({ estado: 'borrador', sesiones: [encuentro(), conLink] })),
+    ).not.toContain('sesiones.1.tema');
+    expect(
+      rutasDeRechazo(formDeCiclo({ estado: 'publicado', sesiones: [encuentro(), encuentro()] })),
+    ).not.toContain('sesiones.1.tema');
+  });
+});
+
 describe('ida y vuelta formulario ⇄ documento (B-98)', () => {
   it('el motivo de un cancelado se guarda recortado y vuelve igual', () => {
     const form = formDeCiclo({

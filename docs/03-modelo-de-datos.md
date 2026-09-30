@@ -154,7 +154,7 @@ sesiones: [{
   id: 'ses_<uuid>',       // generado en el cliente, NUNCA por índice
   inicio: Timestamp,
   fin: Timestamp,         // la duración sale de acá
-  tema: string | null,
+  tema: string | null,    // B-2169 — con página, sin links de la reunión
   lectura: string | null,
   cancelada: boolean,
   motivoCancelacion: string | null, // B-98 — por qué se canceló; null si no está cancelado
@@ -163,6 +163,15 @@ sesiones: [{
   horarioAConfirmar: boolean  // B-2175 — el organizador dijo el día y no la hora
 }]
 ```
+
+**El `tema` no puede llevar el link de una reunión** (B-2169). Sale a la página de
+detalle, al JSON-LD, al texto para redes, al título y a la descripción del evento
+de Calendar —`sinLinksDeReunion` sanea solo la descripción de la actividad, no la
+línea «Tema: …»— y al título del `.ics`, que una vez bajado no se actualiza. Con página
+(`publicado` o `cancelado`) el schema rechaza una URL o el host de una videollamada
+en el tema de **cualquier** encuentro, con `MENSAJES_DE_PRIVACIDAD.temaConLink`; en
+borrador no traba. La regla está en el origen y no en cada salida, para que no
+deriven por separado (B-88).
 
 ### Un encuentro sin horario (B-2175)
 

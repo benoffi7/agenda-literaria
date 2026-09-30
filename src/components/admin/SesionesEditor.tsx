@@ -513,15 +513,16 @@ export function SesionesEditor({
                     />
                   </>
                 )}
-                <label className="flex flex-col gap-1 text-xs">
-                  Tema
+                {/* B-2169 — el tema sale al título del evento público: sin links de la reunión. */}
+                <Campo label="Tema" htmlFor={`sesion-tema-${s.id}`} error={errorDe(ruta('tema'))}>
                   <input
+                    id={`sesion-tema-${s.id}`}
                     value={s.tema}
                     onChange={(e) => editar({ tema: e.target.value })}
                     placeholder="Ejercicio de voz"
                     className={claseInput}
                   />
-                </label>
+                </Campo>
                 {/*
                   B-181 — de qué opción es este encuentro. Aparece **solo si hay
                   opciones**, que es la mitad del diseño: una actividad normal no

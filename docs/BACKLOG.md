@@ -132,6 +132,24 @@ barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
 
+### B-2182 · La lectura de un encuentro puede llevar un link y sale a tres salidas sin sanear · P2
+
+Lo señaló el `auditor-privacidad` al revisar B-2169: es el mismo problema, en el campo
+de al lado. `sesiones[].lectura` es texto libre y sale a la página de detalle
+(`toPublic`, `detallePublico`), a la descripción del evento del calendario público
+(`functions/calendario.js`, la línea de la lectura, que `sinLinksDeReunion` no sanea)
+y al texto para redes. Un «Cap. 3 — por zoom.us/j/…» se publicaría en las tres. **Y
+tiene un caso propio:** lo natural en ese campo es el texto a leer, así que un link a
+un PDF de Drive publica lo que `material.items[].publico: false` esconde. Es un flag
+que esconde un dato, esquivado por un campo vecino.
+
+**Arreglo propuesto:** la misma regla que el tema, en `src/lib/schema.ts`
+(`MENSAJES_DE_PRIVACIDAD.lecturaConLink`), con el error en el campo «Lectura
+asignada». `llevaLinkDeReunion` ya rechaza cualquier `https://`, y para la lectura
+eso es lo que se busca: el link al texto va en «Material», que tiene su propio
+`publico`. Hay que avisarlo en el mensaje. Test: «la lectura de un encuentro no
+puede llevar un link con página».
+
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
 > ⚠️ **Este bloque estaba dentro de un bloque de código, y con él B-780 a B-786.**
@@ -321,19 +339,6 @@ credencial nueva, y la key vive en el `env` de un solo paso. Lo señaló el
 que expone un job diario y desatendido. Costo: una service account más, su key en un
 secret de Actions y una fila en 02-infraestructura. Decidirlo si el resumen crece o
 si aparece otro job programado con la misma key.
-
-### B-2169 · El tema de un encuentro puede llevar el link de una reunión y sale a tres salidas sin sanear · P2
-
-Lo señaló el `auditor-privacidad` sobre el roadmap 1.1, y **es previo**: el `tema` de
-cada encuentro es texto libre, sale a la página de detalle (6), al `summary` del
-evento del calendario público (2) y ahora al título del evento que se agenda (33), y
-**nadie lo pasa por `sinLinksDeReunion`** —el calendario sanea la descripción, no el
-título—. Un «Cap. 3 — entrá por zoom.us/j/…» se publicaría en las tres, y en la 33 es
-peor: un `.ics` bajado no se actualiza nunca. La etiqueta de comisión ya tiene esa
-guarda en el schema y el tema no. **Arreglo propuesto:** la misma regla en el origen
-—`src/lib/schema.ts`, junto a la de la etiqueta, en `MENSAJES_DE_PRIVACIDAD`—, y no en
-cada salida (sanear solo una haría que deriven por separado, la clase de B-88). Test:
-«el tema de un encuentro no puede llevar la dirección de una reunión con página».
 
 ### B-2167 · Once pares de actividades publicadas que parecen duplicadas · P2 — pendiente del dueño
 

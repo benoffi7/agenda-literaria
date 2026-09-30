@@ -176,6 +176,9 @@ export const MENSAJES_DE_PRIVACIDAD = {
   // B-98 — el motivo de un encuentro cancelado sale arriba del evento público.
   motivoConLink:
     'Acá va solo el motivo («se pasa al jueves 12»): el link de la reunión se envía a quienes se inscriban',
+  // B-2169 — el tema sale a la página, al título del evento público y al .ics.
+  temaConLink:
+    'Acá va solo el tema («Cap. 1-4»): el link de la reunión se envía a quienes se inscriban',
 } as const;
 
 /** Los mensajes de arriba, para preguntar si un rechazo es de esta clase. */
@@ -693,6 +696,17 @@ export const actividadFormSchema = z
       v.sesiones.forEach((ses, i) => {
         if (ses.cancelada && llevaLinkDeReunion(ses.motivoCancelacion)) {
           faltaSiempre(['sesiones', i, 'motivoCancelacion'], MENSAJES_DE_PRIVACIDAD.motivoConLink);
+        }
+        /*
+         * B-2169 — **el tema tampoco**, y en todos los encuentros: sale a la
+         * página, al título y a la descripción del evento público —el
+         * saneador de Calendar solo corre sobre la descripción de la actividad,
+         * no sobre la línea «Tema: …»—, al texto para redes, al JSON-LD y al
+         * título del `.ics` que se baja, que no se actualiza nunca. La regla va acá, en el origen, y no en cada salida: sanear una
+         * sola haría que deriven por separado (la clase de B-88).
+         */
+        if (llevaLinkDeReunion(ses.tema)) {
+          faltaSiempre(['sesiones', i, 'tema'], MENSAJES_DE_PRIVACIDAD.temaConLink);
         }
       });
 
