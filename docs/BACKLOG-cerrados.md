@@ -18073,6 +18073,18 @@ Lo encontró el `auditor-trampas` en un barrido del repo. Medido contra producci
 «Taller», 314; con el tope de 150 (`MAX_EVENTOS_RESYNC`, `functions/opciones-trigger.js`)
 más de la mitad quedaba con la etiqueta vieja en el calendario público, sin reintento.
 
+### B-2162 · Probar una restauración del respaldo de la base · P2 — ✅ hecho (2026-09-30)
+
+> ✅ **Restaurado el 2026-09-30 en 13 min 37 s** (el respaldo de las 04:36 UTC, a `restaurada-2026-09-30`). La copia tiene las diez colecciones y 470 actividades contra 477: las 7 que faltan son exactamente las creadas después del respaldo, y no tiene nada que la base viva no tenga. **La copia se borró el mismo día** (21:06 UTC), después de sacarle la protección contra borrado con la que nace; en el proyecto queda solo `(default)`.
+
+El respaldo diario existe desde el 2026-09-28 (roadmap 5.1) y **no se probó
+restaurarlo**: el primer respaldo aparece recién al día siguiente de crear el
+programa. Un respaldo que nunca se restauró es una hipótesis. Hacerlo una vez,
+con los comandos de `02-infraestructura.md` § «El respaldo de la base»: restaurar
+a `restaurada-<fecha>`, contar los documentos de `/actividades` contra la base
+viva, y **borrar la base restaurada en el mismo día** (tiene los datos personales,
+07-seguridad.md). Se cierra anotando la fecha y cuánto tardó.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
