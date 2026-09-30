@@ -18085,6 +18085,16 @@ a `restaurada-<fecha>`, contar los documentos de `/actividades` contra la base
 viva, y **borrar la base restaurada en el mismo día** (tiene los datos personales,
 07-seguridad.md). Se cierra anotando la fecha y cuánto tardó.
 
+### B-2184 · `corregir-contactos-mal-cargados.mjs` escribe todo en un solo lote · P3 — ✅ hecho (2026-09-30)
+
+> ✅ **Hecho:** parte en lotes de 400, como `sembrar-ciudades.mjs`.
+
+Lo señaló el `auditor-trampas`: `scripts/corregir-contactos-mal-cargados.mjs` hace un
+único `batch` sin partir en 400, así que con más de 500 actividades a corregir el
+`commit()` falla entero. Es ruidoso, no parcial, y el script es idempotente, así que
+no pierde nada. **Arreglo:** el mismo `for (i += 400)` que `sembrar-ciudades.mjs` y
+`reubicar-barrios.mjs`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

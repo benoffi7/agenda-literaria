@@ -120,7 +120,13 @@ if (!aplicar) {
   process.exit(0);
 }
 
-const batch = db.batch();
-for (const f of aEscribir) batch.update(db.doc(`actividades/${f.id}`), f.cambios);
-await batch.commit();
+// B-2184 — un `batch` admite 500 operaciones; se parte de a 400 para dejar
+// margen, igual que `sembrar-ciudades.mjs`. Si un lote falla, los anteriores ya
+// quedaron escritos, y correrlo de nuevo solo toca lo que falta: recalcula desde
+// lo que hay en la base.
+for (let i = 0; i < aEscribir.length; i += 400) {
+  const batch = db.batch();
+  for (const f of aEscribir.slice(i, i + 400)) batch.update(db.doc(`actividades/${f.id}`), f.cambios);
+  await batch.commit();
+}
 console.log(`\nListo: ${aEscribir.length} escritas. Se disparan una versión del §12 por actividad y un rebuild.`);

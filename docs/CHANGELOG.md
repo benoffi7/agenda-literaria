@@ -2,6 +2,8 @@
 
 ## Sin publicar
 
+- **`corregir-contactos-mal-cargados.mjs` escribe en lotes de 400** (B-2184): con más de
+  500 actividades a corregir, el lote único fallaba entero.
 - **El respaldo de la base se probó restaurándolo** (B-2162): 13 min 37 s. La copia tenía
   todo lo de la base viva hasta la hora del respaldo, y nada más. En `02-infraestructura.md`
   quedan tres cosas que los comandos no dicen: el progreso marca mal, la copia nace
