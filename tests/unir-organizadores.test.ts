@@ -5,6 +5,7 @@ import { buildSearchText } from '../functions/busqueda.js';
 import {
   cambiosDe,
   cambiosPorActividad,
+  proximaFecha,
   etiquetasDeDestinos,
   planDeUnion,
   problemasDeLaTabla,
@@ -246,5 +247,29 @@ describe('porActividad — el organizador de una actividad puntual (el relleno)'
   it('la tabla valida `porActividad`', () => {
     expect(problemasDeLaTabla({ unir: {}, porActividad: { 'Club 1': 'X', ok: '  ' } })).toHaveLength(2);
     expect(problemasDeLaTabla({ unir: {}, porActividad: { 'club-1': 'Casa' } })).toEqual([]);
+  });
+});
+
+describe('proximaFecha — qué cuenta como vigente para --solo-vigentes', () => {
+  const AHORA = Date.parse('2026-09-30T15:00:00Z');
+  const ses = (inicio: string, fin: string, cancelada = false) => ({
+    inicio: new Date(inicio),
+    fin: new Date(fin),
+    cancelada,
+  });
+
+  it('la primera sesión no cancelada que todavía no terminó', () => {
+    const a = { sesiones: [ses('2026-10-07T22:00Z', '2026-10-08T00:00Z'), ses('2026-09-01T22:00Z', '2026-09-02T00:00Z')] };
+    expect(proximaFecha(a, AHORA)).toBe(Date.parse('2026-10-07T22:00Z'));
+  });
+
+  it('una en curso (empezó y no terminó) sigue vigente', () => {
+    expect(proximaFecha({ sesiones: [ses('2026-09-30T14:00Z', '2026-09-30T16:00Z')] }, AHORA)).not.toBeNull();
+  });
+
+  it('todo pasado, o lo que queda está cancelado: ya pasó', () => {
+    const a = { sesiones: [ses('2026-09-01T22:00Z', '2026-09-02T00:00Z'), ses('2026-10-07T22:00Z', '2026-10-08T00:00Z', true)] };
+    expect(proximaFecha(a, AHORA)).toBeNull();
+    expect(proximaFecha({}, AHORA)).toBeNull();
   });
 });

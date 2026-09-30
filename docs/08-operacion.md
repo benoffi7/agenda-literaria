@@ -979,7 +979,8 @@ D-26): hay que reescribir ese `organizador`. Lo hace este script, con una tabla
 npm run organizadores:unir                                  # informa, en el emulador
 npm run organizadores:unir:prod                             # informa qué escribiría en producción
 npm run organizadores:unir:prod -- --aplicar --produccion   # lo escribe
-npm run organizadores:unir:prod -- --ver=a-conf,buscando    # solo lista las actividades de esos organizadores
+npm run organizadores:unir:prod -- --ver=a-conf,buscando    # solo lista las actividades de esos organizadores, y si están vigentes
+npm run organizadores:unir:prod -- --aplicar --produccion --solo-vigentes   # no toca lo que ya pasó
 ```
 
 El informe da, por destino, cuántas actividades cambian de cada origen; los orígenes

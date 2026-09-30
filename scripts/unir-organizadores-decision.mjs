@@ -18,6 +18,7 @@ import { slugDeOrganizador } from '../functions/organizador.js';
 import { derivadosDe } from '../functions/derivados.js';
 import { etiquetaPresentable } from '../src/lib/etiqueta-presentable.mjs';
 import { usosPorCampo } from './vocabulario-a-sembrar.mjs';
+import { milisDe } from '../functions/calendario.js';
 
 /** ¿Es un slug tal como lo escribe `slugify`? — `''` no lo es. */
 const esSlug = (s) => typeof s === 'string' && s !== '' && slugify(s) === s;
@@ -144,6 +145,26 @@ export const cambiosDe = (actividad, unir, etiquetas) => {
       searchText: derivadosDe({ ...actividad, organizador }).searchText,
     },
   };
+};
+
+/**
+ * La próxima fecha de la actividad —el inicio del primer encuentro no cancelado
+ * que todavía no terminó—, o `null` si ya pasó toda. Es «vigente» para
+ * `--solo-vigentes` (pedido del dueño el 2026-09-30: corregir el relleno solo en lo
+ * que todavía se muestra como por venir). `milisDe` es el mismo lector de fechas
+ * que usan las Functions (Timestamp, Date, número o string).
+ *
+ * @param {any} actividad
+ * @param {number} ahora  en milisegundos
+ * @returns {number | null}
+ */
+export const proximaFecha = (actividad, ahora) => {
+  const proximas = (actividad?.sesiones ?? [])
+    .filter((s) => !s?.cancelada && (milisDe(s?.fin) ?? milisDe(s?.inicio) ?? -Infinity) > ahora)
+    .map((s) => milisDe(s?.inicio))
+    .filter((m) => m !== null)
+    .sort((a, b) => a - b);
+  return proximas[0] ?? null;
 };
 
 /**

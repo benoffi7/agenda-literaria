@@ -6,6 +6,7 @@
  *   node scripts/unir-organizadores.mjs --aplicar                # escribe, en el emulador
  *   node scripts/unir-organizadores.mjs --aplicar --produccion   # escribe, en producción
  *   node scripts/unir-organizadores.mjs --ver=a-conf,buscando    # solo lista las actividades de esos organizadores
+ *   node scripts/unir-organizadores.mjs --solo-vigentes          # no toca las actividades que ya pasaron
  *   node scripts/unir-organizadores.mjs --tabla=otra.json        # otra tabla (default: scripts/datos/organizadores-a-unir.local.json, ignorada por git)
  *
  * El slug de un organizador junta las variantes de tipeo («Casa Brandon» y
@@ -52,7 +53,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { slugDeOrganizador } from '../functions/organizador.js';
-import { planDeUnion, problemasDeLaTabla, tablaConfirmada } from './unir-organizadores-decision.mjs';
+import {
+  planDeUnion,
+  problemasDeLaTabla,
+  proximaFecha,
+  tablaConfirmada,
+} from './unir-organizadores-decision.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
 const confirmaProduccion = process.argv.includes('--produccion');
@@ -81,6 +87,19 @@ if (confirmaProduccion && enEmulador) {
  * se lee en la terminal y no se copia al repo.
  */
 const ver = process.argv.find((a) => a.startsWith('--ver='))?.slice('--ver='.length);
+/*
+ * `--solo-vigentes` — escribe solo las actividades con algún encuentro por delante
+ * (`proximaFecha`). Pedido del dueño el 2026-09-30 para el relleno: lo que ya pasó
+ * no se corrige.
+ */
+const soloVigentes = process.argv.includes('--solo-vigentes');
+const AHORA = Date.now();
+const fecha = (ms) =>
+  new Date(ms).toLocaleDateString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: 'numeric',
+    month: 'short',
+  });
 if (ver !== undefined) {
   if (aplicar) {
     console.error('`--ver` solo lee: no va con `--aplicar`. Abortando.');
@@ -96,7 +115,10 @@ if (ver !== undefined) {
     for (const d of suyas) {
       const a = d.data();
       const sede = (a.modalidades ?? []).map((m) => m?.sede?.nombre).find(Boolean) ?? a.sede?.nombre ?? '';
-      console.log(`  · [${a.estado}] ${a.titulo}  (${a.slug})`);
+      const proxima = proximaFecha(a, AHORA);
+      console.log(
+        `  · [${a.estado}] ${proxima === null ? 'YA PASÓ' : `vigente, próxima ${fecha(proxima)}`} · ${a.titulo}  (${a.slug})`,
+      );
       console.log(
         `      organizador: «${a.organizador?.nombre ?? ''}» · ig: ${a.organizador?.instagram || '—'} · ` +
           `web: ${a.organizador?.web || '—'} · sede: ${sede || '—'}`,
@@ -178,6 +200,12 @@ if (plan.origenesEnLaLista.length) {
   );
 }
 
+if (soloVigentes) {
+  const datoDe = new Map(snap.docs.map((d) => [d.id, d.data()]));
+  const antes = plan.aEscribir.length;
+  plan.aEscribir = plan.aEscribir.filter((f) => proximaFecha(datoDe.get(f.id), AHORA) !== null);
+  console.log(`--solo-vigentes: ${antes - plan.aEscribir.length} actividad(es) que ya pasaron quedan como están.`);
+}
 const publicadas = plan.aEscribir.filter((f) => f.estado === 'publicado').length;
 console.log(`\nA escribir: ${plan.aEscribir.length} actividad(es), ${publicadas} publicada(s) (esas actualizan sus eventos de Calendar si el nombre cambia).`);
 for (const f of plan.aEscribir) {
