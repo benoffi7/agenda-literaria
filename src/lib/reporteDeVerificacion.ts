@@ -18,7 +18,13 @@
  *    renderiza `/admin` con reCAPTCHA bloqueado, o alguien que abrió el panel
  *    sin cuenta, no es a quien hay que ir a ayudar. **El uid no viaja**: alcanza
  *    con saber que le pasó a alguien que carga.
- * 3. **Una vez por carga del panel.** El estado puede ir y venir —un token que
+ * 3. **Con la pestaña a la vista y el navegador en línea** (B-2181). Una pestaña
+ *    del panel en una compu que se durmió pierde el token sin red, y a la
+ *    madrugada llegaba un mail que no pedía nada. La gracia no corre mientras la
+ *    pestaña está oculta o sin red: si se corta a la mitad, se descarta, y al
+ *    volver arranca entera. El mail que llega es de alguien que de verdad
+ *    estaba usando el panel.
+ * 4. **Una vez por carga del panel.** El estado puede ir y venir —un token que
  *    llega, una renovación que falla— y la sesión cerrarse y abrirse: el reporte
  *    sale una sola vez. **Sin marca en `sessionStorage`, a propósito** (D-1227):
  *    quien sigue el triaje recarga y vuelve a reportar, pero eso son dos o tres
@@ -86,6 +92,20 @@ export const cuerpoDelReporte = (motivo: CausaSinVerificar): string => JSON.stri
 const esperarPorDefecto = (ms: number): Promise<void> =>
   new Promise((resolver) => setTimeout(resolver, ms));
 
+/** B-2181 — ¿la pestaña está a la vista y el navegador en línea? Sin DOM, sí. */
+export const estaPresentePorDefecto = (): boolean =>
+  (typeof document === 'undefined' || document.visibilityState !== 'hidden') &&
+  (typeof navigator === 'undefined' || navigator.onLine !== false);
+
+/** B-2181 — avisa cuando cambia la visibilidad de la pestaña o la conexión. */
+export const observarPresenciaPorDefecto = (oyente: () => void): void => {
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', oyente);
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', oyente);
+    window.addEventListener('offline', oyente);
+  }
+};
+
 /** El envío de verdad: `fetch` plano, sin cookies ni `Referer`, sin leer la respuesta. */
 export const enviarReportePorFetch =
   (url: string, hacerFetch: typeof fetch = fetch) =>
@@ -110,12 +130,17 @@ export const iniciarReporteDeVerificacion = ({
   enviar,
   graciaMs = GRACIA_DEL_REPORTE_MS,
   esperar = esperarPorDefecto,
+  estaPresente = estaPresentePorDefecto,
+  observarPresencia = observarPresenciaPorDefecto,
 }: {
   /** Se suscribe a la sesión: `true` si hay alguien logueado. */
   observarSesion: (oyente: (haySesion: boolean) => void) => unknown;
   enviar: (motivo: CausaSinVerificar) => Promise<unknown>;
   graciaMs?: number;
   esperar?: (ms: number) => Promise<void>;
+  /** B-2181 — la pestaña a la vista y el navegador en línea. */
+  estaPresente?: () => boolean;
+  observarPresencia?: (oyente: () => void) => unknown;
 }): void => {
   if (iniciado) return;
   iniciado = true;
@@ -124,14 +149,19 @@ export const iniciarReporteDeVerificacion = ({
     let haySesion = false;
     let yaReportado = false;
     let esperando = false;
+    // B-2181 — sube cada vez que la presencia cambia: una espera que empezó
+    // antes de ocultarse la pestaña ya no cuenta, aunque termine después.
+    let tanda = 0;
 
     const corresponde = () =>
-      debeReportar({ estado: estadoDeVerificacion(), haySesion, yaReportado });
+      estaPresente() && debeReportar({ estado: estadoDeVerificacion(), haySesion, yaReportado });
 
     const evaluar = (): void => {
       if (esperando || !corresponde()) return;
       esperando = true;
+      const esta = tanda;
       void esperar(graciaMs).then(() => {
+        if (esta !== tanda) return;
         esperando = false;
         const motivo = causaSinVerificar();
         // Se vuelve a mirar después de la gracia: si el token llegó o la
@@ -147,6 +177,11 @@ export const iniciarReporteDeVerificacion = ({
     };
 
     observarVerificacion(evaluar);
+    observarPresencia(() => {
+      tanda++;
+      esperando = false;
+      evaluar();
+    });
     observarSesion((hay) => {
       haySesion = hay;
       evaluar();

@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El aviso de App Check ya no salta por un panel que quedó abierto de noche** (B-2181):
+  la espera de 20 s antes de reportar no corre con la pestaña oculta o sin red, y al
+  volver arranca entera. Si el token se recupera solo al volver, no llega ningún mail.
 - **El test de la grilla del panel ya no falla de a ratos** (B-2174): `montar()` esperaba
   la lista, que se pinta vacía mientras carga, y no las tarjetas. Con la carga demorada
   30 ms fallaban 11 de 17; ahora espera la primera tarjeta y pasan todos.

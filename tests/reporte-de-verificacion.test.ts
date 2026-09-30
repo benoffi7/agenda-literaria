@@ -185,6 +185,85 @@ describe('iniciarReporteDeVerificacion', () => {
   });
 });
 
+/**
+ * B-2181 — una pestaña del panel en una compu que se durmió pierde el token sin
+ * red, y a la madrugada llegaba un mail que no pedía nada. La gracia corre solo
+ * con la pestaña a la vista y en línea.
+ */
+describe('la pestaña oculta o sin red (B-2181)', () => {
+  const armarConPresencia = () => {
+    let oyenteDeSesion: (hay: boolean) => void = () => {};
+    let oyenteDePresencia: () => void = () => {};
+    let presente = true;
+    const enviados: CausaSinVerificar[] = [];
+    iniciarReporteDeVerificacion({
+      observarSesion: (o) => {
+        oyenteDeSesion = o;
+      },
+      enviar: async (m) => {
+        enviados.push(m);
+      },
+      estaPresente: () => presente,
+      observarPresencia: (o) => {
+        oyenteDePresencia = o;
+      },
+    });
+    return {
+      enviados,
+      sesion: (hay: boolean) => oyenteDeSesion(hay),
+      presencia: (hay: boolean) => {
+        presente = hay;
+        oyenteDePresencia();
+      },
+    };
+  };
+
+  /*
+   * MUTACIÓN PROBADA: sacando `estaPresente() &&` de `corresponde` y el
+   * `if (esta !== tanda) return;`, este test manda el reporte a la madrugada.
+   */
+  it('oculta toda la noche, vuelve y verifica sola: no avisa', async () => {
+    const r = armarConPresencia();
+    r.sesion(true);
+    r.presencia(false);
+    _fijarVerificacion('sin-verificar', 'renovacion-fallida');
+    await vi.advanceTimersByTimeAsync(8 * 60 * 60 * 1000);
+    expect(r.enviados).toEqual([]);
+
+    r.presencia(true);
+    await vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS / 4);
+    _fijarVerificacion('verificado');
+    await vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS * 2);
+    expect(r.enviados).toEqual([]);
+  });
+
+  it('una espera cortada por ocultarse no cuenta: al volver, la gracia arranca entera', async () => {
+    const r = armarConPresencia();
+    r.sesion(true);
+    _fijarVerificacion('sin-verificar', 'sin-respuesta');
+    await vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS - 1000);
+    r.presencia(false);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(r.enviados).toEqual([]);
+
+    r.presencia(true);
+    await vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS - 1);
+    expect(r.enviados).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(r.enviados).toEqual(['sin-respuesta']);
+  });
+
+  it('a la vista y en línea sin token: reporta como siempre', async () => {
+    const r = armarConPresencia();
+    r.sesion(true);
+    r.presencia(false);
+    r.presencia(true);
+    _fijarVerificacion('sin-verificar', 'token-rechazado');
+    await vi.advanceTimersByTimeAsync(GRACIA_DEL_REPORTE_MS);
+    expect(r.enviados).toEqual(['token-rechazado']);
+  });
+});
+
 describe('lo que viaja', () => {
   it('el motivo y nada más, sin cookies ni Referer', async () => {
     const llamadas: [string, RequestInit][] = [];

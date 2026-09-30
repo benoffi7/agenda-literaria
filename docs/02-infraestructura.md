@@ -401,7 +401,8 @@ vos**, en la misma versión del panel.
 
 El cartel se lo dice a la persona; **esto se lo dice al dueño**. Si el navegador
 sigue `sin-verificar` veinte segundos (`GRACIA_DEL_REPORTE_MS`) con una sesión
-iniciada, `src/lib/reporteDeVerificacion.ts` manda **el motivo y nada más** a la
+iniciada, **con la pestaña a la vista y en línea** (B-2181: oculta o sin red, la
+gracia no corre, y al volver arranca entera), `src/lib/reporteDeVerificacion.ts` manda **el motivo y nada más** a la
 Function `reportarVerificacionDelNavegador`, que lo loguea con
 `alerta: 'verificacion-del-navegador'`. La política de GCP de las `alerta`
 ([`08-operacion.md`](08-operacion.md) § «La alerta de todas las `alerta`») manda

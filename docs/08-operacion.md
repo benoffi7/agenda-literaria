@@ -3257,8 +3257,10 @@ que nadie se queje, es eso: mirar `resource.labels.service_name="reportarverific
 en Logging para ver el volumen.
 
 **Y lo que no reporta**: a quien no inició sesión (el login con el cartel puesto
-no manda nada), la segunda vez en la misma carga del panel, y un token que llega dentro
-de los veinte segundos. Con emuladores el panel ni se engancha.
+no manda nada), la segunda vez en la misma carga del panel, un token que llega dentro
+de los veinte segundos, y una pestaña oculta o sin red (B-2181): el panel que quedó
+abierto en una compu dormida ya no manda el mail de la madrugada, y los veinte
+segundos se cuentan desde que la pestaña vuelve a estar a la vista y en línea. Con emuladores el panel ni se engancha.
 
 **Probarlo de punta a punta después del primer deploy** — manda un mail de
 verdad, así que conviene hacerlo una vez y avisado:
