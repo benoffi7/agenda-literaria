@@ -174,10 +174,19 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** Monta y espera a que `listarActividades()` resuelva. */
+/**
+ * Monta y espera a que `listarActividades()` resuelva.
+ *
+ * B-2174 — **espera las tarjetas, no la lista.** El `<ul>` se pinta siempre, también
+ * vacío mientras carga, así que `findByRole('list')` volvía en el primer intento y
+ * los `getByText` de después dependían de que la carga ya hubiera llegado: con la
+ * máquina cargada por los emuladores, a veces no. Con la carga demorada 30 ms
+ * fallaban once de los diecisiete tests de este archivo.
+ */
 const montar = async () => {
   render(<ConFiltros {...props} />);
-  return await screen.findByRole('list');
+  await screen.findAllByRole('listitem');
+  return screen.getByRole('list');
 };
 
 const tarjetaDe = (titulo: string): HTMLElement => {

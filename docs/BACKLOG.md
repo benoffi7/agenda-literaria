@@ -398,16 +398,6 @@ sacarlas del posteo sin borrar el campo. Si el pedido es ése —no arrobar a un
 cuenta que no contesta—, es decisión de producto. Se cierra preguntándole qué
 quiso decir.
 
-### B-2174 · `lista-actividades.render.test.tsx` falla intermitente con la suite entera · P3
-
-El 2026-09-29, en el `pre-push` de B-2173, falló «y suma la modalidad y el arancel…»
-(B-620) con `Unable to find an element with the text: Club de lectura de Saer`; la
-corrida anterior de la misma suite lo había pasado, y solo pasa 3 de 3. `tarjetaDe()`
-busca con `getByText`, que es sincrónico: si la lista todavía no pintó (con la máquina
-cargada por los emuladores), no la encuentra. Sospecha, sin confirmar: esperar la
-primera tarjeta con `findByText` antes de buscarla. Se cierra cuando la causa esté
-confirmada y arreglada.
-
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 
 **Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del

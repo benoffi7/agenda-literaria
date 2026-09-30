@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El test de la grilla del panel ya no falla de a ratos** (B-2174): `montar()` esperaba
+  la lista, que se pinta vacía mientras carga, y no las tarjetas. Con la carga demorada
+  30 ms fallaban 11 de 17; ahora espera la primera tarjeta y pasan todos.
 - **La lectura de un encuentro no puede llevar ningún link** (B-2182): con página, el
   formulario lo rechaza y dice que el link al texto va en «Material», que es donde se
   decide si es público. Sale a la página, al evento del calendario público y al texto

@@ -22443,6 +22443,18 @@ cosas chicas, y ninguna filtraba:
 2. **El `slug` del desglose se validaba por forma, no contra la taxonomía.** Un
    `?barrio=lo-que-sea` escrito a mano en la URL llegaba al panel.
 
+### B-2174 · `lista-actividades.render.test.tsx` falla intermitente con la suite entera · P3 — ✅ hecho (2026-09-30)
+
+> ✅ **Causa confirmada y arreglada.** No era `tarjetaDe()` sino `montar()`: esperaba `findByRole('list')`, y el `<ul>` de la grilla se pinta siempre, vacío mientras carga, así que la espera volvía en el primer intento. Reproducido demorando 30 ms el mock de `listarActividades` (fallaron 11 de 17); con `montar()` esperando `findAllByRole('listitem')` pasan los 17, con demora y sin ella.
+
+El 2026-09-29, en el `pre-push` de B-2173, falló «y suma la modalidad y el arancel…»
+(B-620) con `Unable to find an element with the text: Club de lectura de Saer`; la
+corrida anterior de la misma suite lo había pasado, y solo pasa 3 de 3. `tarjetaDe()`
+busca con `getByText`, que es sincrónico: si la lista todavía no pintó (con la máquina
+cargada por los emuladores), no la encuentra. Sospecha, sin confirmar: esperar la
+primera tarjeta con `findByText` antes de buscarla. Se cierra cuando la causa esté
+confirmada y arreglada.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
