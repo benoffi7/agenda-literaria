@@ -276,12 +276,15 @@ afuera a propósito los grupos dudosos (la nota de la tabla local los nombra).
 
 **Segunda tanda, aplicada el 2026-09-30:** dos uniones más confirmadas por el dueño
 (2 actividades); tres grupos decididos como distintos y dos que el dueño está
-averiguando. La nota de la tabla local los nombra.
+averiguando. La nota de la tabla local los nombra. Las dos opciones de origen que
+quedaban en `/opciones/organizador` se borraron el mismo día, después de revisar las
+477 actividades y ver que ninguna las usaba: el `usos: 1` que les quedó era el
+contador viejo, porque la unión no lo descuenta.
 
 **Falta (lo de antes, ya resuelto salvo el relleno):** que el dueño corra el informe contra producción, complete y corrija la
-tabla, ponga `confirmada: true` y lo aplique (fuera de hora, por Calendar). Después,
-borrar desde el panel las opciones de los orígenes que queden en la lista (el
-informe las nombra). Y los valores de relleno de abajo, que el script no toca: **no se sembraron** (`--excluir`, 2026-09-29), así que no tienen página; sus actividades siguen con el nombre de relleno hasta que alguien las corrija, y guardarlas lo vuelve a dar de alta (B-2179).
+tabla, ponga `confirmada: true` y lo aplique (fuera de hora, por Calendar). Después
+de cada tanda, borrar las opciones de los orígenes que queden en la lista (el
+informe las nombra; las de las dos primeras tandas ya están borradas). Y los valores de relleno de abajo, que el script no toca: **no se sembraron** (`--excluir`, 2026-09-29), así que no tienen página; sus actividades siguen con el nombre de relleno hasta que alguien las corrija, y guardarlas lo vuelve a dar de alta (B-2179).
 
 La corrida en seco de `vocabulario:prod -- --campo=organizador` del 2026-09-29 (457
 actividades, **267 organizadores**) muestra lo que ese número ya anunciaba en
