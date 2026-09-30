@@ -63,6 +63,17 @@ export const problemasDeLaTabla = (tabla) => {
   for (const slug of Object.keys(tabla.porCompletar ?? {})) {
     if (!esSlug(slug)) problemas.push(`\`porCompletar\`: «${slug}» no es un slug`);
   }
+  const porActividad = tabla.porActividad ?? {};
+  if (typeof porActividad !== 'object' || Array.isArray(porActividad)) {
+    problemas.push('`porActividad` tiene que ser { "<slug de la actividad>": "Nombre del organizador" }');
+  } else {
+    for (const [actividad, nombre] of Object.entries(porActividad)) {
+      if (!esSlug(actividad)) problemas.push(`\`porActividad\`: «${actividad}» no es el slug de una actividad`);
+      if (typeof nombre !== 'string' || !slugify(nombre)) {
+        problemas.push(`\`porActividad\`: la actividad «${actividad}» no dice qué organizador le va`);
+      }
+    }
+  }
   return problemas;
 };
 
@@ -136,6 +147,47 @@ export const cambiosDe = (actividad, unir, etiquetas) => {
 };
 
 /**
+ * **El organizador de una actividad puntual** — `porActividad` (B-2178, el relleno).
+ *
+ * `unir` trabaja por organizador: todas las actividades de un origen van al mismo
+ * destino. El relleno no se deja: «A conf» son seis actividades de seis casas
+ * distintas. Acá la tabla dice, actividad por actividad, **el nombre** que le va
+ * —un nombre y no un slug, porque el organizador correcto puede no estar todavía
+ * en la lista—, y se resuelve como en el formulario (`resolverOrganizador`): si
+ * normaliza a una opción que existe —por su slug, o por el slug de su etiqueta
+ * renombrada—, queda con esa etiqueta y ese slug; si no, con el nombre
+ * presentable. `null` si no hay nada que cambiar.
+ *
+ * @param {any} actividad
+ * @param {Record<string, string>} porActividad
+ * @param {readonly { slug: string, label?: string }[]} opciones
+ */
+export const cambiosPorActividad = (actividad, porActividad, opciones) => {
+  const pedido = porActividad[actividad?.slug];
+  if (typeof pedido !== 'string') return null;
+  const escrito = slugify(pedido);
+  if (!escrito) return null;
+  const opcion =
+    opciones.find((v) => v.slug === escrito) ??
+    opciones.find((v) => slugify(v.label ?? '') === escrito);
+  const destino = opcion?.slug ?? escrito;
+  const nombre = opcion?.label?.trim() || etiquetaPresentable(pedido);
+  const origen = slugDeOrganizador(actividad.organizador);
+  if (origen === destino && (actividad.organizador?.nombre ?? '').trim() === nombre) return null;
+  const organizador = { ...actividad.organizador, nombre, slug: destino };
+  return {
+    origen,
+    destino,
+    nueva: !opcion,
+    cambios: {
+      'organizador.nombre': nombre,
+      'organizador.slug': destino,
+      searchText: derivadosDe({ ...actividad, organizador }).searchText,
+    },
+  };
+};
+
+/**
  * ¿`slug` contiene a `otro` como palabras enteras? «faro-norte-libros-x» contiene
  * a «faro-norte»; «farola» no contiene a «faro».
  */
@@ -168,10 +220,14 @@ export const planDeUnion = (tabla, actividades, opciones) => {
 
   const aEscribir = [];
   const enUso = new Set();
+  const porActividad = tabla.porActividad ?? {};
   for (const { id, data } of actividades) {
     const slug = slugDeOrganizador(data?.organizador);
     if (slug) enUso.add(slug);
-    const c = cambiosDe(data, unir, etiquetas);
+    // `porActividad` manda sobre `unir`: es la decisión más puntual.
+    const c = Object.hasOwn(porActividad, data?.slug)
+      ? cambiosPorActividad(data, porActividad, opciones)
+      : cambiosDe(data, unir, etiquetas);
     if (c) aEscribir.push({ id, estado: data?.estado, slug: data?.slug, ...c });
     if (Object.hasOwn(unir, slug)) {
       const g = grupos.get(unir[slug]);
@@ -198,5 +254,17 @@ export const planDeUnion = (tabla, actividades, opciones) => {
     if (hallados.length) parecidos.set(destino, hallados);
   }
 
-  return { grupos, aEscribir, origenesSinUso, destinosSinEtiqueta, destinosSinUso, origenesEnLaLista, parecidos };
+  const slugsDeActividades = new Set(datos.map((a) => a?.slug));
+  const actividadesQueNoEstan = Object.keys(porActividad).filter((s) => !slugsDeActividades.has(s));
+
+  return {
+    grupos,
+    aEscribir,
+    origenesSinUso,
+    destinosSinEtiqueta,
+    destinosSinUso,
+    origenesEnLaLista,
+    parecidos,
+    actividadesQueNoEstan,
+  };
 };

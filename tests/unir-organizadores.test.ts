@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSearchText } from '../functions/busqueda.js';
 import {
   cambiosDe,
+  cambiosPorActividad,
   etiquetasDeDestinos,
   planDeUnion,
   problemasDeLaTabla,
@@ -190,5 +191,60 @@ describe('planDeUnion', () => {
     // «faro-norteado» no es «faro-norte» (mutación probada: con un `includes` suelto entra); «tilo-ceiba» está en noSeUnen y no se repite.
     expect(plan.parecidos.get('faro-norte')).toEqual(['faro-norte-libros-palermo']);
     expect(plan.parecidos.get('ceibo')).toBeUndefined();
+  });
+});
+
+describe('porActividad — el organizador de una actividad puntual (el relleno)', () => {
+  /*
+   * «A conf» son varias actividades de casas distintas: `unir` (por organizador)
+   * no alcanza. La tabla dice el **nombre** por actividad, y se resuelve contra
+   * la lista como en el formulario.
+   */
+  const opciones = [
+    { slug: 'hormiga-libros', label: 'Hormiga Libros' },
+    { slug: 'tilo', label: 'Fundación Tilo' }, // renombrada: el slug no cambió
+  ];
+
+  it('reusa la opción que ya existe, aunque se escriba distinto', () => {
+    const c = cambiosPorActividad(act('a conf', { slug: 'club-1' }), { 'club-1': 'hormiga libros' }, opciones);
+    expect(c).toMatchObject({ origen: 'a-conf', destino: 'hormiga-libros', nueva: false });
+    expect(c!.cambios['organizador.nombre']).toBe('Hormiga Libros');
+  });
+
+  it('reconoce una opción renombrada por su etiqueta', () => {
+    const c = cambiosPorActividad(act('a conf', { slug: 'club-1' }), { 'club-1': 'Fundación Tilo' }, opciones);
+    expect(c?.destino).toBe('tilo');
+  });
+
+  it('un nombre que no está en la lista queda como se escribió, marcado nuevo', () => {
+    const c = cambiosPorActividad(act('a conf', { slug: 'club-1' }), { 'club-1': 'Casa Nueva' }, opciones);
+    expect(c).toMatchObject({ destino: 'casa-nueva', nueva: true });
+    expect(c!.cambios.searchText).toContain('casa nueva');
+  });
+
+  it('si ya está así, no hay nada que escribir (idempotente)', () => {
+    const a = act('Hormiga Libros', { slug: 'club-1', organizador: { nombre: 'Hormiga Libros', slug: 'hormiga-libros' } });
+    expect(cambiosPorActividad(a, { 'club-1': 'Hormiga Libros' }, opciones)).toBeNull();
+  });
+
+  it('manda sobre `unir`, y avisa de las actividades que no existen', () => {
+    const plan = planDeUnion(
+      { unir: { 'a-conf': 'hormiga-libros' }, porActividad: { 'club-2': 'Casa Nueva', 'no-existe': 'X' } },
+      [
+        { id: '1', data: act('a conf', { slug: 'club-1' }) },
+        { id: '2', data: act('a conf', { slug: 'club-2' }) },
+      ],
+      opciones,
+    );
+    expect(plan.aEscribir.map((f) => [f.slug, f.destino])).toEqual([
+      ['club-1', 'hormiga-libros'],
+      ['club-2', 'casa-nueva'],
+    ]);
+    expect(plan.actividadesQueNoEstan).toEqual(['no-existe']);
+  });
+
+  it('la tabla valida `porActividad`', () => {
+    expect(problemasDeLaTabla({ unir: {}, porActividad: { 'Club 1': 'X', ok: '  ' } })).toHaveLength(2);
+    expect(problemasDeLaTabla({ unir: {}, porActividad: { 'club-1': 'Casa' } })).toEqual([]);
   });
 });

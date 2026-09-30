@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La tabla de unión de organizadores acepta `porActividad`** (B-2178): el nombre del
+  organizador actividad por actividad, para el relleno («A conf» son varias actividades
+  de casas distintas, y `unir` va por organizador). Se resuelve contra la lista como en
+  el formulario, y el informe marca los nombres nuevos.
+
 - **«Sacar la página» en Opciones → Organizador** (B-2179): le apaga para siempre la
   página `/organiza/{slug}` a un organizador sin borrarlo, para cuando una persona lo
   pide. Borrarlo no alcanzaba: el próximo guardado de una actividad suya lo recreaba.

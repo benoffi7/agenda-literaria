@@ -181,7 +181,21 @@ if (plan.origenesEnLaLista.length) {
 const publicadas = plan.aEscribir.filter((f) => f.estado === 'publicado').length;
 console.log(`\nA escribir: ${plan.aEscribir.length} actividad(es), ${publicadas} publicada(s) (esas actualizan sus eventos de Calendar si el nombre cambia).`);
 for (const f of plan.aEscribir) {
-  console.log(`  · [${f.estado}] ${f.slug}  ${f.origen} → ${f.destino}  «${f.cambios['organizador.nombre']}»`);
+  console.log(
+    `  · [${f.estado}] ${f.slug}  ${f.origen} → ${f.destino}  «${f.cambios['organizador.nombre']}»` +
+      (f.nueva ? '  (nuevo: no está en la lista)' : ''),
+  );
+}
+if (plan.actividadesQueNoEstan.length) {
+  console.log(
+    `\n⚠️  \`porActividad\` nombra actividades que no existen (¿slug mal copiado?):\n  · ${plan.actividadesQueNoEstan.join('\n  · ')}`,
+  );
+}
+if (plan.aEscribir.some((f) => f.nueva)) {
+  console.log(
+    '\nℹ️  Los «nuevo» no están en /opciones/organizador: no tienen página hasta que se\n' +
+      '   siembren (`vocabulario:prod -- --campo=organizador --aplicar`) o se guarde la actividad.',
+  );
 }
 
 if (!aplicar) {
