@@ -1269,7 +1269,9 @@ Con números, la pestaña muestra tres bloques:
   cada una contra la mediana de las demás, solo entre las que tienen 30 vistas o más
   en los 28 días, y nada si son menos de tres (la pantalla dice cuántas hay). Las
   que quedan por debajo de la mitad de la mediana van marcadas: ahí conviene revisar
-  la descripción, el precio o cómo anotarse. Sale de un informe de GA4 más
+  la descripción, el precio o cómo anotarse. **Cada actividad se nombra por su
+  título** y no por su ruta (2026-10-06, `tituloDeRuta`, con la lista que el panel ya
+  cargó), igual que «Las páginas más vistas». Sale de un informe de GA4 más
   (`conversion`: página × evento, solo `/actividad/…`); la cuenta la hace
   `comparacionDeConversion`.
 - **«¿Google nos encuentra?»** (B-373) — de Search Console, que no usa cookies ni

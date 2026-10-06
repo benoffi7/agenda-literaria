@@ -10,6 +10,7 @@ import { rutaDeDetalle } from '@/lib/rutasPublicas';
 import {
   ctrLegible,
   periodoLegible,
+  tituloDeRuta,
   duracionLegible,
   engancheLegible,
   variacionLegible,
@@ -147,7 +148,13 @@ const porcentaje = (tasa: number): string =>
  * actividades sobre el piso tampoco: la pantalla dice por qué en vez de mostrar
  * una lista que engaña.
  */
-function ComparacionDeConversion({ conversion }: { conversion: ConversionDelSitio }) {
+function ComparacionDeConversion({
+  conversion,
+  tituloDe,
+}: {
+  conversion: ConversionDelSitio;
+  tituloDe: (slug: string) => string | null;
+}) {
   if (conversion.mediana === null) {
     return (
       <p className="mt-2 text-xs text-tinta/65">
@@ -176,7 +183,7 @@ function ComparacionDeConversion({ conversion }: { conversion: ConversionDelSiti
               rel="noreferrer"
               title={f.slug}
             >
-              {f.slug}
+              {tituloDe(f.slug) ?? f.slug}
             </a>
             <span className="shrink-0 text-xs tabular-nums text-tinta/80">
               {f.vistas} vistas · {f.clics} {f.clics === 1 ? 'clic' : 'clics'} ·{' '}
@@ -320,11 +327,14 @@ function RankingDelSitio({
   nota,
   filas,
   vacio,
+  nombreDe = () => null,
 }: {
   titulo: string;
   nota: string;
   filas: FilaDeRanking[];
   vacio: string;
+  /** El título de una fila que es una página de actividad, o `null`. */
+  nombreDe?: (clave: string) => string | null;
 }) {
   const tope = filas[0]?.valor ?? 0;
   return (
@@ -339,7 +349,7 @@ function RankingDelSitio({
             <li key={f.clave} className="min-w-0">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="truncate text-sm" title={f.clave}>
-                  {f.clave}
+                  {nombreDe(f.clave) ?? f.clave}
                 </span>
                 <span className="shrink-0 text-sm font-medium tabular-nums">{f.valor}</span>
               </div>
@@ -415,7 +425,14 @@ function QueFalta({
  * veían iguales. Las distingue `lib/resumenDelSitio.ts`, que es puro; acá solo
  * se acomoda.
  */
-export function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
+export function PanelSitioPublico({
+  resumen,
+  titulos = new Map(),
+}: {
+  resumen: ResumenDelSitio;
+  /** `slug → título` de las actividades que el panel ya cargó: los nombres en vez de las rutas. */
+  titulos?: ReadonlyMap<string, string>;
+}) {
   const { ga4, searchConsole } = resumen;
   const hayNumerosDeGa4 = ga4.situacion === 'ok';
   const periodo = periodoLegible(ga4.ventana);
@@ -528,6 +545,7 @@ export function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
               titulo="Las páginas más vistas"
               nota="Qué se mira más: el inicio, la cartelera, la agenda por mes, el detalle."
               filas={ga4.paginas}
+              nombreDe={(ruta) => tituloDeRuta(ruta, titulos)}
               vacio="Todavía no hay ninguna página con vistas."
             />
             <RankingDelSitio
@@ -604,7 +622,10 @@ export function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
           <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">
             Se miran y casi no generan mensajes
           </h3>
-          <ComparacionDeConversion conversion={ga4.conversion} />
+          <ComparacionDeConversion
+            conversion={ga4.conversion}
+            tituloDe={(slug) => titulos.get(slug) ?? null}
+          />
         </section>
       )}
 

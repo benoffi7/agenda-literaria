@@ -5,7 +5,7 @@ import {
   comparacionDeConversion,
   pedidosGa4,
 } from '../functions/analitica.js';
-import { leerResumenDelSitio } from '@/lib/resumenDelSitio';
+import { leerResumenDelSitio, tituloDeRuta } from '@/lib/resumenDelSitio';
 
 /**
  * Roadmap 3.2 — «qué actividades se miran y no generan mensajes»: vistas contra
@@ -105,5 +105,20 @@ describe('el panel lee la comparación', () => {
       },
     });
     expect(r.ga4.conversion.filas).toEqual([{ slug: 'a', vistas: 100, clics: 1, tasa: 0.01 }]);
+  });
+});
+
+describe('tituloDeRuta — el nombre en vez de la ruta en el tablero', () => {
+  const titulos = new Map([['club-saer', 'Club de lectura de Saer']]);
+
+  it('una página de actividad conocida da su título, con o sin barra final', () => {
+    expect(tituloDeRuta('/actividad/club-saer/', titulos)).toBe('Club de lectura de Saer');
+    expect(tituloDeRuta('/actividad/club-saer', titulos)).toBe('Club de lectura de Saer');
+  });
+
+  it('otra página, o una actividad que ya no está, da null: queda la ruta', () => {
+    expect(tituloDeRuta('/cartelera/', titulos)).toBeNull();
+    expect(tituloDeRuta('/actividad/borrada/', titulos)).toBeNull();
+    expect(tituloDeRuta('/actividad/club-saer/foto/', titulos)).toBeNull();
   });
 });

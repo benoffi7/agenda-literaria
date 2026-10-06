@@ -466,3 +466,20 @@ export const engancheLegible = (tasa: number): string => `${Math.round(tasa * 10
 /** `0.0437` → `4,4 %`. Coma decimal, que es la del idioma del proyecto. */
 export const ctrLegible = (ctr: number): string =>
   `${(Math.round(ctr * 1000) / 10).toFixed(1).replace('.', ',')} %`;
+
+/**
+ * **El título de una página de actividad**, para que el tablero no muestre
+ * `/actividad/club-de-lectura-…` sino el nombre (pedido del 2026-10-06).
+ *
+ * Recibe la ruta tal como la manda GA4 y el mapa `slug → título` de las
+ * actividades que el panel ya tiene cargadas. `null` si la ruta no es de una
+ * actividad o si esa actividad ya no está (borrada): ahí la pantalla deja la
+ * ruta, que es lo único que se sabe.
+ */
+export const tituloDeRuta = (
+  ruta: string,
+  titulos: ReadonlyMap<string, string>,
+): string | null => {
+  const m = /^\/actividad\/([^/?#]+)\/?$/.exec(ruta);
+  return m ? (titulos.get(m[1]!) ?? null) : null;
+};

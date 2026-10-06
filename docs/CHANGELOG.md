@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El tablero nombra las actividades por su título**: en «Las páginas más vistas» y en
+  «Se miran y casi no generan mensajes» dice «Club de lectura de Saer» y no
+  `/actividad/club-de-lectura-de-saer/`. Sale de la lista que el panel ya carga, sin
+  lecturas de más; una actividad borrada queda con su ruta.
+
 - **El tablero avisa cuando el organizador cargado no es un organizador** (B-2178):
   «A conf», «Buscando», una cuenta de Instagram, el barrio o la ciudad de la propia
   sede, o un nombre con un `|`. Lo que en septiembre apareció recién al sembrar la

@@ -167,6 +167,12 @@ export function EstadisticasPanel({ onEditar }: Props) {
   }, [pestania, resumenDelSitio]);
 
   const estado = useMemo(() => estadoDelCatalogo(actividades, ahora), [actividades, ahora]);
+  // `slug → título`, para que «El sitio público» diga el nombre de cada actividad
+  // y no su ruta. Sale de la misma lista: cero lecturas de más.
+  const titulos = useMemo(
+    () => new Map(actividades.filter((a) => a.slug).map((a) => [a.slug, a.titulo])),
+    [actividades],
+  );
 
   /*
    * B-1081 — sobre `encuentrosDe`, el mismo aplanado que alimenta la grilla del
@@ -278,7 +284,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
             tonosDeTipo={tonos}
           />
         ) : resumenDelSitio ? (
-          <PanelSitioPublico resumen={resumenDelSitio} />
+          <PanelSitioPublico resumen={resumenDelSitio} titulos={titulos} />
         ) : (
           <p className="text-sm text-tinta/65">Cargando…</p>
         )}
