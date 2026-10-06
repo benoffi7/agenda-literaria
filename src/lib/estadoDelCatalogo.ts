@@ -4,6 +4,7 @@ import { tieneFuturo } from '@/lib/filtrosActividades';
 import { geografiaQueNoCierra } from '@/lib/geografia.mjs';
 import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
+import { organizadorDeRelleno } from '@/lib/organizadorDeRelleno';
 import { instanteDeTimestamp } from '@/lib/sesiones';
 import { ESTADOS, MODALIDADES } from '@/types/actividad';
 import type { Actividad, ActividadConId, Estado, Modalidad } from '@/types/actividad';
@@ -87,6 +88,7 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
 export const CLASES_DE_AVISO = [
   'inscripcion-cerrada',
   'lugar-que-no-cierra',
+  'organizador-que-no-es',
   'sin-flyer',
   'sin-etiquetas',
   'descripcion-corta',
@@ -131,6 +133,19 @@ const TEXTO: Record<ClaseDeAviso, { titulo: string; porque: string }> = {
    * alguien de afuera—: el daño principal no es que no se encuentre filtrando
    * (eso es `sin-etiquetas`, más abajo), es que alguien vaya a otro lugar.
    */
+  /**
+   * Lo que enseñó B-2178: «A conf», «Buscando», una cuenta de Instagram, el barrio
+   * o la ciudad cargados como organizador. La regla es `organizadorDeRelleno`. Va
+   * después del lugar: es una página pública mal y una línea «Organiza» que no
+   * dice quién, pero no manda a nadie a otro lugar.
+   */
+  'organizador-que-no-es': {
+    titulo: 'Publicadas con un organizador que no es un organizador',
+    porque:
+      'Dice «A conf», «Buscando», una cuenta de Instagram o el barrio en vez de quién organiza. ' +
+      'La ficha no dice quién la hace, y el organizador sale con página propia en el sitio. ' +
+      'Corregilo en «Quién».',
+  },
   'lugar-que-no-cierra': {
     titulo: 'Publicadas con un lugar que no cierra',
     porque:
@@ -476,6 +491,14 @@ export const estadoDelCatalogo = (
     ),
     'lugar-que-no-cierra': publicadas.filter(
       (a) => tieneFuturo(a, ahora) && sedesDe(a).some((s) => geografiaQueNoCierra(s) !== null),
+    ),
+    'organizador-que-no-es': publicadas.filter(
+      (a) =>
+        tieneFuturo(a, ahora) &&
+        organizadorDeRelleno(
+          a.organizador?.nombre,
+          sedesDe(a).flatMap((s) => [s?.barrio ?? '', s?.ciudad ?? '']).filter(Boolean),
+        ) !== null,
     ),
     'sin-flyer': publicadas.filter((a) => faltaElFlyer(imagenesDe(a))),
     'sin-etiquetas': publicadas.filter((a) => (a.tags ?? []).length === 0),

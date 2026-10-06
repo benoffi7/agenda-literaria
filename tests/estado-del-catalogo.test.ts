@@ -997,3 +997,34 @@ describe('el aviso del lugar que no cierra (roadmap 5.3)', () => {
     );
   });
 });
+
+describe('el aviso del organizador que no es un organizador (B-2178)', () => {
+  const futuro = [sesion('2026-09-20T19:00:00Z')];
+  const pasado = [sesion('2026-08-20T19:00:00Z')];
+  const sede = { nombre: 'Casa X', direccion: 'Calle 1', barrio: 'boedo', ciudad: 'caba', provincia: 'caba', indicaciones: '', geo: null };
+  const con = (id: string, nombre: string, sesiones = futuro) =>
+    acto({
+      id,
+      sesiones,
+      organizador: { nombre, instagram: '', web: '' },
+      modalidades: [{ id: 'm1', modalidad: 'presencial', inicio: null, fin: null, sede, online: null }],
+      sede,
+    } as Partial<ActividadConId> & { id: string });
+
+  it('señala el relleno, la cuenta, el lugar y los caracteres raros — lo que apareció en producción', () => {
+    const lista = [
+      con('a-conf', 'a conf'),
+      con('cuenta', '@laraliteraria'),
+      con('barrio', 'Boedo'),
+      con('pipe', 'Biblioteca Central|'),
+      con('bien', 'Casa Brandon'),
+    ];
+    expect(aviso(lista, 'organizador-que-no-es')?.actividades.map((a) => a.id).sort()).toEqual(
+      ['a-conf', 'barrio', 'cuenta', 'pipe'],
+    );
+  });
+
+  it('NO señala lo que ya pasó (B-1124), igual que el aviso del lugar', () => {
+    expect(clases([con('pasada', 'A conf', pasado)])).not.toContain('organizador-que-no-es');
+  });
+});

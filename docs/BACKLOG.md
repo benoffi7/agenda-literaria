@@ -274,6 +274,11 @@ inventados. **Nombres reales de organizadores no van a ningún archivo del repo*
 32 actividades en producción, 31 publicadas, con sus eventos de Calendar. Quedaron
 afuera a propósito los grupos dudosos (la nota de la tabla local los nombra).
 
+**Para que no vuelva a juntarse (2026-10-06):** el tablero tiene el aviso
+«Publicadas con un organizador que no es un organizador» (`organizadorDeRelleno`): el
+relleno, una cuenta, el barrio o la ciudad, o caracteres raros, al día siguiente de
+cargarlos.
+
 **Segunda tanda, aplicada el 2026-09-30:** dos uniones más confirmadas por el dueño
 (2 actividades); tres grupos decididos como distintos y dos que el dueño está
 averiguando. La nota de la tabla local los nombra. Las dos opciones de origen que

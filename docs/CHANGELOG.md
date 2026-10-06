@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El tablero avisa cuando el organizador cargado no es un organizador** (B-2178):
+  «A conf», «Buscando», una cuenta de Instagram, el barrio o la ciudad de la propia
+  sede, o un nombre con un `|`. Lo que en septiembre apareció recién al sembrar la
+  lista, ahora sale al día siguiente de cargarlo (`organizadorDeRelleno`).
+
 - **La página de cada organizador muestra su Instagram y su web**, debajo del título:
   los de sus actividades publicadas, el más repetido, y solo si se pueden enlazar con
   seguridad. Así sirve como ficha y no solo como lista. Con su caso en el barrido de la
