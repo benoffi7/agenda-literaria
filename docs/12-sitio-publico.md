@@ -1976,6 +1976,13 @@ se puede entrar.
 - **Es vigente**: tiene sesiones futuras. Ordena por su **próxima** sesión.
 - La tarjeta dice: `Ciclo de 8 encuentros · empezó el 3 de sep · próximo mié 24`.
   Decir solo "empieza el 3 de septiembre" en octubre es información falsa.
+- **Antes de empezar** (roadmap 1.6, 2026-10-06): si el primer encuentro de un ciclo
+  cae en los próximos siete días y se puede anotar —inscripción abierta, sin cupo
+  completo—, la tarjeta dice «**Empieza hoy / mañana / el jueves**» (`empiezaPronto`).
+  **Solo con el reloj del navegador**: lo pinta la fila cuando la dibuja una island
+  (`enVivo`: la home y «Mis favoritos»), nunca el HTML del build, que lo diría viejo
+  al día siguiente. Un evento de una sola fecha no lo lleva (el bloque de fecha ya lo
+  dice), y no dice «quedan lugares», que no sabemos.
 - El aviso "**Ya empezó — se puede entrar**" se muestra cuando quedan sesiones
   **y** la inscripción está abierta. Eso último es lo más cerca que estamos del
   dato real: hoy no hay un campo que diga "acepta incorporaciones tardías", y

@@ -57,6 +57,8 @@ interface Props {
    * fila, que con ella recalcula lo que deriva de las sesiones para hablar de ese
    * mes y no del ciclo entero.
    */
+  /** Roadmap 1.6 — ver `FilaDeActividad.enVivo`. Solo lo pasa una island. */
+  enVivo?: boolean;
   mes?: string;
 }
 
@@ -79,6 +81,7 @@ export function ListaDeActividades({
   tonos,
   agrupar = true,
   mes,
+  enVivo = false,
 }: Props) {
   /*
    * Las filas se arman en un solo lugar y las tres formas lo reusan: escrito tres
@@ -94,6 +97,7 @@ export function ListaDeActividades({
         etiquetas={etiquetas}
         tonos={tonos}
         mes={mes}
+        enVivo={enVivo}
       />
     ));
 

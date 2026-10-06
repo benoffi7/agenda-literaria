@@ -31,7 +31,15 @@
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { zonaDeSede } from '@/lib/geografia.mjs';
-import { diaYMes, hora, partesDeFecha, partesDeMes } from '@/lib/fechasPublicas';
+import {
+  claveDeDia,
+  diaDeSemana,
+  diaDesplazado,
+  diaYMes,
+  hora,
+  partesDeFecha,
+  partesDeMes,
+} from '@/lib/fechasPublicas';
 import { HORARIO_A_CONFIRMAR_CORTO } from '@calendario';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { admiteMonto, esSinCosto, montoLegible } from '@/lib/arancel';
@@ -337,6 +345,48 @@ export const cicloDelMes = (
  */
 export const enCursoDeTarjeta = (estado: EstadoDeEntrada): string | null =>
   estado.enCurso && !estado.inscripcionCerrada ? 'Ya empezó — se puede entrar' : null;
+
+/**
+ * **«Empieza el jueves»** — roadmap 1.6.
+ *
+ * Para un ciclo o un taller que **todavía no empezó** y cuyo primer encuentro cae
+ * en los próximos siete días, con la inscripción abierta: es el empujón a escribir
+ * hoy y no el domingo. Las condiciones, una por una:
+ *
+ *  - **más de un encuentro**: en un evento de una fecha el bloque de fecha ya dice
+ *    cuándo, y «empieza» sobra;
+ *  - **todavía no empezó**: el que ya arrancó tiene su línea, «Ya empezó — se puede
+ *    entrar» (`enCursoDeTarjeta`);
+ *  - **se puede anotar**: con la inscripción cerrada o el cupo completo, empujar a
+ *    escribir es empujar a una puerta cerrada. Sin inscripción, no hay a quién
+ *    escribirle.
+ *
+ * **No dice «quedan lugares»** (lo que el roadmap esbozaba): no sabemos cuántos
+ * hay (§4.2, la misma razón que `avisoDeTarjeta`).
+ *
+ * **Solo con el reloj del navegador**: un «empieza mañana» impreso en el HTML del
+ * build envejece al día siguiente. Por eso la fila lo pinta solo cuando la dibuja
+ * una island (`enVivo`), igual que el tríptico de «¿Qué hay ahora?». El día se
+ * cuenta en la zona del proyecto (`claveDeDia`), no en la del navegador.
+ */
+export const empiezaPronto = (
+  entrada: EntradaDeIndice,
+  estado: EstadoDeEntrada,
+  ahora: Date,
+): string | null => {
+  if (estado.paso || estado.enCurso || !estado.proxima || estado.encuentros < 2) return null;
+  if (!entrada.inscripcion.requiere || estado.inscripcionCerrada || entrada.inscripcion.completo) {
+    return null;
+  }
+  const hoy = claveDeDia(ahora);
+  const dia = claveDeDia(estado.proxima);
+  if (dia === hoy) return 'Empieza hoy';
+  if (dia === diaDesplazado(hoy, 1)) return 'Empieza mañana';
+  if (dia > diaDesplazado(hoy, 6)) return null;
+  return `Empieza el ${DIAS_DE_LA_SEMANA[diaDeSemana(dia)]}`;
+};
+
+const DIAS_DE_LA_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
 // ─────────────────────────────────────────────────────────────────
 // La inscripción

@@ -184,6 +184,7 @@ export function MisGuardados({ version }: Props) {
                     etiquetas={etiquetas}
                     tonos={tonos}
                     accion={quitar}
+                    enVivo
                   />
                 ) : (
                   /*

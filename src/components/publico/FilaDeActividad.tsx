@@ -63,6 +63,7 @@ import {
   bloqueDeFecha,
   cicloDelMes,
   cicloDeTarjeta,
+  empiezaPronto,
   enCursoDeTarjeta,
   formasDeCursar,
   lugarDeTarjeta,
@@ -85,6 +86,12 @@ interface Props {
    * de esa página — el bloque de fecha, «ya empezó» y la línea del ciclo, las
    * tres. Sin la prop, la fila es exactamente la de la home.
    */
+  /**
+   * Roadmap 1.6 — **la dibuja una island con el reloj del navegador**. Solo así se
+   * pinta «Empieza el jueves»: en el HTML del build ese texto envejecería al día
+   * siguiente. Default `false`, el lado que no dice nada viejo.
+   */
+  enVivo?: boolean;
   mes?: string;
   /**
    * Un control propio de la fila, **fuera del enlace** — B-848.
@@ -104,7 +111,7 @@ interface Props {
   accion?: ReactNode;
 }
 
-export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes, accion }: Props) {
+export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes, accion, enVivo = false }: Props) {
   /*
    * En una página de mes todo lo que sale de las sesiones se calcula sobre el
    * recorte, así que habla de ese mes **sin que ninguna frase tenga que
@@ -123,6 +130,7 @@ export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes, accion 
     ? cicloDelMes(entrada, estado, estadoDe(entrada, ahora), mes)
     : cicloDeTarjeta(entrada, estado);
   const enCurso = enCursoDeTarjeta(estado);
+  const empieza = enVivo ? empiezaPronto(entrada, estado, ahora) : null;
   const aviso = avisoDeTarjeta(entrada, estado);
   const arancel = arancelDeTarjeta(entrada, etiquetas);
   const formas = formasDeCursar(entrada);
@@ -215,6 +223,7 @@ export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes, accion 
           {ciclo && <p className="body-sm mt-1 text-super">{ciclo}</p>}
 
           {enCurso && <p className="body-sm mt-1 font-semibold text-acento">{enCurso}</p>}
+          {empieza && <p className="body-sm mt-1 font-semibold text-acento">{empieza}</p>}
 
           {/*
             El aviso de inscripción. `alerta` frena y va en terracota; `apagado`

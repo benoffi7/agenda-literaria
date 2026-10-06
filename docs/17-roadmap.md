@@ -164,7 +164,11 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 - **Nota técnica:** patrón de D-710 (`src/lib/geografia.mjs`,
   `scripts/sembrar-geografia.mjs`) y de los hubs (`src/lib/hubsPublicos.ts`).
 
-### 1.6 · Avisar en el sitio cuando una actividad arranca «esta semana» con lugar — **Más adelante** · S
+### 1.6 · Avisar en el sitio cuando una actividad arranca «esta semana» con lugar — ✅ Hecho (2026-10-06) · S
+
+> **Hecho el 2026-10-06**: «Empieza el jueves» en la tarjeta, decidido por el
+> navegador (solo en las islands), y sin «quedan lugares», que no sabemos.
+
 
 - **Qué gana quien visita:** en la tarjeta, «Empieza el jueves · quedan lugares»
   empuja a escribir hoy y no el domingo.
@@ -709,7 +713,7 @@ las novedades del panel ya existen como mecanismo.
 | 5.4 | Posibles duplicados | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 6.5 | Guía para publicadoras | Otros | S | ✅ Hecho (2026-09-28) | — |
-| 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | Más adelante | — |
+| 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | ✅ Hecho (2026-10-06) | — |
 | 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | Más adelante | 🟨 ¿Solo publicadas? → sí, antes de darla |
 | 3.9 | Resumen para organizadores | Analítica | M | Más adelante | 🟨 ¿Ofrecer números? → a los 3 meses |
 | 4.5 | Correo automático desde un feed | Newsletter | M | Más adelante | 🟨 ¿Solo o a mano? → a mano |

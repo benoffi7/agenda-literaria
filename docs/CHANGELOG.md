@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La tarjeta dice «Empieza el jueves»** (roadmap 1.6) cuando un ciclo que todavía no
+  arrancó tiene su primer encuentro en los próximos siete días y se puede anotar. Lo
+  decide el navegador —solo en la home y en «Mis favoritos»—, porque impreso en el HTML
+  envejecería al día siguiente. No dice «quedan lugares»: no lo sabemos.
+
 - **La imagen «Esta semana en la agenda», lista para bajar** (roadmap 4.3). En la
   pantalla del correo, al lado del posteo: una imagen para el feed o para la historia
   con los encuentros de la semana, dibujada en el navegador con las tipografías y los

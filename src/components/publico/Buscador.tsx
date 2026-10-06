@@ -918,6 +918,7 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
                 etiquetas={etiquetas}
                 tonos={tonos}
                 agrupar={orden === 'proxima'}
+                enVivo
               />
             ) : (
               /*
