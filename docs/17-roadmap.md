@@ -144,7 +144,7 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
   propia con página por efeméride + un renglón en la home.** La sección es la que
   suma al objetivo (Google); el renglón es el que hace que alguien la vea.
 
-### 1.5 · Páginas por organizador — «todo lo de Casa Brandon» — **En curso** (tramo A y páginas hechas, 2026-09-29; falta sembrar y unir, B-2172/B-2178) · L
+### 1.5 · Páginas por organizador — «todo lo de Casa Brandon» — ✅ Hecho (2026-09-29; queda el relleno de B-2178) · L
 
 > **Decidido el 2026-09-28:** el modelo completo de D-723, con el organizador en una
 > caja de texto libre que autocompleta (no un desplegable). Sin migrar actividades:
@@ -710,7 +710,7 @@ las novedades del panel ya existen como mecanismo.
 | 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | ✅ Hecho (2026-09-24) | — |
 | 3.8 | Etiquetas de campaña | Analítica | S | ✅ Hecho (2026-09-28) | 🟨 ¿Dejarlas pasar con lista cerrada? → sí |
 | 1.4 | Efemérides (B-959) | Sitio | L | ✅ Hecho (2026-09-25) | 🟨 ¿Dónde se ven? → sección propia + home |
-| 1.5 | Páginas por organizador | Sitio | L | En curso | páginas hechas; falta sembrar y unir (B-2172, B-2178) |
+| 1.5 | Páginas por organizador | Sitio | L | ✅ Hecho (2026-09-29) | queda el relleno de 3 actividades (B-2178) |
 | 2.3 | El formulario pide lo que Google quiere (B-813) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 2.4 | Aviso de precio en las cuatro bandejas (B-1410/1411) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 4.3 | Imagen semanal para redes | Redes | M | ✅ Hecho (2026-10-06) | 🟨 ¿Plantilla propia? → una sola, semanal |
