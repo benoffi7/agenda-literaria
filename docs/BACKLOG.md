@@ -329,6 +329,10 @@ si aparece otro job programado con la misma key.
 
 ### B-2167 · Once pares de actividades publicadas que parecen duplicadas · P2 — pendiente del dueño
 
+> **2026-10-06 — el filtro puede mostrar más pares desde la 2.7**: la regla suma «el
+> mismo organizador, el mismo día, a la misma hora», que no necesita títulos
+> parecidos. Al revisar los once, mirá también los nuevos que aparezcan.
+
 El aviso de posibles duplicados (roadmap 5.4), medido contra el `events.json`
 publicado del 2026-09-28, encontró 11 pares que se parecen el mismo día. La mayoría
 parecen la misma actividad cargada dos veces —«Festival argentino de historieta» y

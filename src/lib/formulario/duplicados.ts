@@ -2,6 +2,7 @@ import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { claveDeDia } from '@/lib/fechasPublicas';
 import { MESES } from '@/lib/meses';
 import { normalize } from '@/lib/normalize';
+import { slugDeOrganizador } from '@/lib/organizador.mjs';
 import { deDatetimeLocal, instanteDeTimestamp } from '@/lib/sesiones';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
@@ -109,7 +110,7 @@ export interface PosibleDuplicado {
   id: string;
   slug: string;
   titulo: string;
-  motivo: 'titulo' | 'lugar-y-hora';
+  motivo: 'titulo' | 'lugar-y-hora' | 'organizador-y-hora';
   /** `2026-10-12`: el primer día en que coinciden. */
   dia: string;
 }
@@ -131,6 +132,11 @@ export interface Comparable {
   inicios: Date[];
   /** Los nombres de las sedes de todas las filas de «Dónde». */
   sedes: string[];
+  /**
+   * Roadmap 2.7 — el slug del organizador (`slugDeOrganizador`), o `''`. Opcional
+   * para los llamadores que no lo tienen: sin él, ese criterio no opina.
+   */
+  organizador?: string;
 }
 
 /** El motivo por el que `b` se parece a `a`, y el primer día en que coinciden; o `null`. */
@@ -147,6 +153,21 @@ export const seParecen = (
   if (a.titulo.trim() && parecidoDeTitulos(a.titulo, b.titulo) >= UMBRAL_DE_TITULO) {
     return { motivo: 'titulo', dia };
   }
+  /*
+   * **Roadmap 2.7 — el mismo organizador, el mismo día, a la misma hora.** Es la
+   * forma de casi todos los pares de B-2167: la misma actividad cargada dos veces
+   * con el título escrito distinto («Club de lectura: X» y «X – club»), que el
+   * criterio del título no ve. **La hora es la condición**: el mismo organizador el
+   * mismo día no alcanza —una librería hace un club a la mañana y una
+   * presentación a la noche—, pero dos actividades suyas que empiezan a la misma
+   * hora son casi siempre la misma.
+   */
+  if (a.organizador && a.organizador === b.organizador) {
+    const mismaHoraDelOrganizador = coinciden.some((d) =>
+      a.inicios.some((i) => Math.abs(i.getTime() - d.getTime()) < MS_MISMA_HORA),
+    );
+    if (mismaHoraDelOrganizador) return { motivo: 'organizador-y-hora', dia };
+  }
   const mismoLugar = a.sedes.some((n) => b.sedes.some((m) => mismaSede(n, m)));
   if (!mismoLugar) return null;
   // El nombre del lugar escrito en los dos títulos («… - La Libre») no dice que
@@ -161,12 +182,15 @@ export const seParecen = (
 
 /** El formulario, como `Comparable`: sus fechas son `datetime-local` del navegador. */
 export const comparableDelFormulario = (
-  form: Pick<ActividadForm, 'titulo' | 'sesiones' | 'modalidades'>,
+  form: Pick<ActividadForm, 'titulo' | 'sesiones' | 'modalidades'> & {
+    organizador?: { nombre?: string };
+  },
   id: string | null,
 ): Comparable => ({
   id,
   slug: '',
   titulo: form.titulo,
+  organizador: slugDeOrganizador(form.organizador),
   inicios: form.sesiones
     .filter((s) => !s.cancelada)
     .map((s) => deDatetimeLocal(s.inicio))
@@ -176,11 +200,14 @@ export const comparableDelFormulario = (
 
 /** Una entrada del `events.json`: sus fechas son ISO. */
 export const comparableDelIndice = (
-  e: Pick<EntradaDeIndice, 'id' | 'slug' | 'titulo' | 'sesiones' | 'sede'>,
+  e: Pick<EntradaDeIndice, 'id' | 'slug' | 'titulo' | 'sesiones' | 'sede'> & {
+    organizadorSlug?: string;
+  },
 ): Comparable => ({
   id: e.id,
   slug: e.slug,
   titulo: e.titulo,
+  organizador: e.organizadorSlug ?? '',
   inicios: (e.sesiones ?? []).filter((s) => !s.cancelada).map((s) => new Date(s.inicio)),
   sedes: e.sede?.nombre ? [e.sede.nombre] : [],
 });
@@ -190,6 +217,7 @@ export const comparableDelDocumento = (a: ActividadConId): Comparable => ({
   id: a.id,
   slug: a.slug ?? '',
   titulo: a.titulo ?? '',
+  organizador: slugDeOrganizador(a.organizador),
   inicios: (a.sesiones ?? [])
     .filter((s) => !s.cancelada)
     .map((s) => instanteDeTimestamp(s.inicio))
@@ -205,8 +233,12 @@ export const comparableDelDocumento = (a: ActividadConId): Comparable => ({
  * avisar que se parece a sí misma; `null` si todavía no se guardó.
  */
 export const posiblesDuplicados = (
-  form: Pick<ActividadForm, 'titulo' | 'sesiones' | 'modalidades'>,
-  actividades: readonly Pick<EntradaDeIndice, 'id' | 'slug' | 'titulo' | 'sesiones' | 'sede'>[],
+  form: Pick<ActividadForm, 'titulo' | 'sesiones' | 'modalidades'> & {
+    organizador?: { nombre?: string };
+  },
+  actividades: readonly (Pick<EntradaDeIndice, 'id' | 'slug' | 'titulo' | 'sesiones' | 'sede'> & {
+    organizadorSlug?: string;
+  })[],
   idPropio: string | null,
 ): PosibleDuplicado[] => {
   const propia = comparableDelFormulario(form, idPropio);

@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El aviso de duplicado reconoce al mismo organizador a la misma hora** (roadmap 2.7),
+  aunque el título se haya escrito distinto: la forma de los pares de B-2167. Una hora
+  de margen, porque una casa puede hacer dos cosas el mismo día. Vale para el aviso del
+  formulario y para el filtro «Posibles duplicados» del listado, que usan la misma regla.
+
 - **El organizador trae su Instagram y su web de antes** (roadmap 2.6). Al elegir uno
   que ya existe, el formulario ofrece los de sus otras actividades y «Completar» los
   pone en los campos vacíos. La regla del más repetido pasó a un módulo chico

@@ -435,7 +435,9 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   y el link se comparte sin nada que mirar»), no qué falta.
 - **«¿Ya está cargada?»: el formulario avisa un posible duplicado** (roadmap 5.4).
   Si hay una actividad **publicada el mismo día** con un título parecido —o en el
-  mismo lugar, a la misma hora y con alguna palabra del título en común—, arriba del
+  mismo lugar, a la misma hora y con alguna palabra del título en común, o **del mismo
+  organizador a la misma hora** (roadmap 2.7, 2026-10-06: la forma de los pares de
+  B-2167, cargados con el título escrito distinto)—, arriba del
   formulario aparece «¿Ya está cargada? Se parece a…» con el link a la otra en el
   sitio, en otra pestaña. **Nunca frena**: dos clubes pueden leer el mismo libro el
   mismo sábado. Compara contra el `events.json` publicado —no contra la base, para no

@@ -172,3 +172,44 @@ describe('el filtro «Posibles duplicados» del listado', async () => {
     expect(cantidadDeFiltros({ ...FILTROS_VACIOS, duplicados: 'si' })).toBe(1);
   });
 });
+
+describe('el mismo organizador, el mismo día, a la misma hora — roadmap 2.7', () => {
+  const H = '2026-10-10T22:00:00Z';
+  const conOrg = (titulo: string, inicios: string[], nombre: string) => ({
+    ...form(titulo, inicios),
+    organizador: { nombre },
+  });
+  const deOrg = (id: string, titulo: string, inicios: string[], organizadorSlug: string) => ({
+    ...publicada(id, titulo, inicios),
+    organizadorSlug,
+  });
+
+  it('avisa aunque el título se haya escrito distinto: la forma de B-2167', () => {
+    const r = posiblesDuplicados(
+      // Títulos que el criterio del título no junta: el hueco que éste cubre.
+      conOrg('Encuentro de octubre', [H], 'Casa Libra'),
+      [deOrg('a', 'Club de lectura: Las iracundas de Julián López', [H], 'casa-libra')],
+      null,
+    );
+    expect(r.map((d) => d.motivo)).toEqual(['organizador-y-hora']);
+  });
+
+  it('el mismo organizador el mismo día a otra hora, no: un club a la mañana y una presentación a la noche', () => {
+    // Mutación: sacar la condición de la hora pone esto en rojo.
+    const r = posiblesDuplicados(
+      conOrg('Club de lectura', ['2026-10-10T13:00:00Z'], 'Casa Libra'),
+      [deOrg('a', 'Presentación de un libro', [H], 'casa-libra')],
+      null,
+    );
+    expect(r).toEqual([]);
+  });
+
+  it('otro organizador a la misma hora, no', () => {
+    const r = posiblesDuplicados(
+      conOrg('Taller de poesía', [H], 'Casa Libra'),
+      [deOrg('a', 'Club de novela negra', [H], 'mandolina-libros')],
+      null,
+    );
+    expect(r).toEqual([]);
+  });
+});

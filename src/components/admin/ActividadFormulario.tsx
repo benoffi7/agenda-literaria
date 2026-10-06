@@ -358,12 +358,18 @@ export function ActividadFormulario({
     () =>
       indicePublicado
         ? posiblesDuplicados(
-            { titulo: form.titulo, sesiones: form.sesiones, modalidades: form.modalidades },
+            {
+              titulo: form.titulo,
+              sesiones: form.sesiones,
+              modalidades: form.modalidades,
+              // Roadmap 2.7 — el mismo organizador a la misma hora también avisa.
+              organizador: form.organizador,
+            },
             indicePublicado.actividades,
             inicial?.id ?? null,
           )
         : [],
-    [indicePublicado, form.titulo, form.sesiones, form.modalidades, inicial?.id],
+    [indicePublicado, form.titulo, form.sesiones, form.modalidades, form.organizador, inicial?.id],
   );
 
   /**

@@ -274,7 +274,12 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 - **Cómo:** debajo de «Organizador», «Sus otras actividades dicen … — Completar», con
   un clic. Nada se completa solo: no puede pisar lo que alguien escribió.
 
-### 2.7 · Avisar del duplicado al guardar, no solo en el listado — **Próximo** · S–M
+### 2.7 · Avisar del duplicado al guardar, no solo en el listado — ✅ Hecho (2026-10-06) · S–M
+
+> **Hecho el 2026-10-06**: la regla de duplicados suma «el mismo organizador, el
+> mismo día, a la misma hora» (una hora de margen), en el aviso del formulario y en
+> el filtro del listado, que comparten la regla.
+
 
 - **Qué gana:** que el segundo par no nazca. Los once de B-2167 se cargaron sin que
   nadie viera el primero. El formulario ya avisa contra el índice publicado (5.4); falta
@@ -745,7 +750,7 @@ las novedades del panel ya existen como mecanismo.
 | 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | ✅ Hecho (2026-10-06) | — |
 | 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | ✅ Hecho (2026-10-06) | 🟨 ¿Solo publicadas? → sí, antes de darla |
 | 2.6 | Ofrecer el Instagram y la web del organizador | Panel | S | ✅ Hecho (2026-10-06) | — |
-| 2.7 | Duplicado al guardar | Panel | S–M | Próximo | — |
+| 2.7 | Duplicado al guardar | Panel | S–M | ✅ Hecho (2026-10-06) | — |
 | 2.8 | Cancelar desde los recordatorios | Panel | M | Próximo | — |
 | 3.9 | Resumen para organizadores | Analítica | M | Más adelante | 🟨 ¿Ofrecer números? → a los 3 meses |
 | 4.5 | Correo automático desde un feed | Newsletter | M | Más adelante | 🟨 ¿Solo o a mano? → a mano |
