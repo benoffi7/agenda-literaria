@@ -216,11 +216,11 @@ El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | El ítem paraguas y el documento de arquitectura | 🟡 el tablero (con pestañas, B-500/B-501), el banner, el tag, los eventos y B-480 están; **falta B-373 y B-374** |
+| **B-370** | El ítem paraguas y el documento de arquitectura | ✅ el tablero (con pestañas, B-500/B-501), el banner, el tag, los eventos, B-480, **y desde el 2026-09-03 B-373 y B-374** (`bcba7c6`: la Function diaria que lee GA4 y Search Console). Quedan en futuro B-377 y B-379. *Corregido el 2026-10-06: esta fila decía que faltaban B-373 y B-374 un mes después de construidos* |
 | **B-371** | **Decisión del dueño:** aceptar el costo de JavaScript en la página de detalle, que hoy tiene cero | ✅ resuelto — **aceptado** (D-251), con el número medido en el §6bis del documento |
 | **B-372** | Instalar el tag de GA4 en las páginas públicas — la mitad vendible entera | ✅ hecho (2026-09-03) — código, enganche en `Base.astro` y **B-480 resuelto** en la consola. En el camino se encontró y corrigió un `preconnect` a `googletagmanager.com` sin condicionar al consentimiento (D-254), con un test que lee el `dist/` y frena cualquier tercero previo al consentimiento; B-481 anota lo que ese hallazgo dejó pendiente |
-| **B-373** | Search Console: conectar el dominio y leerlo | 🟡 **conectado el 2026-09-03 por el dueño** — el histórico ya empezó a acumular, que era la parte sensible al calendario. **Queda la lectura al panel**: traer sus datos (qué búsquedas traen gente, qué páginas rankean) a una vista del tablero. Es código y depende de datos acumulados, igual que B-374, así que va con esa tanda. Conviene además cargar el `sitemap.xml` (ya existe, B-109) en Search Console para que Google descubra las páginas más rápido |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen del panel | ⛔ depende de un mes de datos (B-372 y B-480 ya están) |
+| **B-373** | Search Console: conectar el dominio y leerlo | ✅ **conectado el 2026-09-03 por el dueño, y leído al panel el mismo día** (`bcba7c6`, `traerAnaliticaDelSitio`: «¿Google nos encuentra?» en la pestaña «El sitio público») |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen del panel | ✅ hecho el 2026-09-03 (`bcba7c6`); con un mes de datos ya alimenta la 3.2 y la 3.3 del roadmap (2026-10-06) |
 | **B-375** | Los eventos propios: el clic en inscripción y el filtro que deja cero | ✅ construidos (`clic_inscripcion`, `filtro_sin_resultados`) y **ya miden**, con B-372/B-480 cerrados |
 | **B-376** | **Decisión del dueño:** el aviso de privacidad y el consentimiento, entre las tres opciones del §7 | ✅ resuelto — **C3** (D-250), banner construido en `src/components/sitio/AvisoDeCookies.astro` |
 | **B-377** | El inventario publicitario: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
