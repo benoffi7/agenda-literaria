@@ -2367,6 +2367,12 @@ muestra también el pasado y no entra en «Explorá por» (serían cientos). Viv
 | Instagram y web | desde el 2026-10-06, debajo del título: los de sus actividades publicadas (el más repetido, comparando el handle normalizado), **solo si se pueden enlazar con seguridad** (`enlaceInstagram`, `urlSegura`, los del detalle). Es lo mismo que el bloque «Organiza» de cada actividad ya publica (`contactoDeOrganizador`) |
 | la URL | el slug de la opción, nunca el nombre (trampa 10) |
 
+**«Quién organiza» (`/organiza/`, 2026-10-06)** es el índice: todas las páginas de
+organizador en orden alfabético, cada una con cuántas actividades tiene por venir
+(`indiceDeOrganizadores`). Se enlaza desde el pie y desde cada página de organizador;
+se genera siempre (el enlace del pie no puede dar 404) y entra al sitemap solo si
+alguna página de organizador se ofrece, si no lleva `noindex`.
+
 La lista de organizadores no viaja en el índice: la lee el build
 (`contenidoDelSitio`) y la reciben `caminosDeOrganizador`, el sitemap y el detalle.
 

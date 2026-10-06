@@ -1,0 +1,64 @@
+---
+/**
+ * `/organiza/` — «Quién organiza»: todas las casas con página (2026-10-06).
+ *
+ * Qué entra lo decide `indiceDeOrganizadores` (`lib/organizadorPublico.ts`), sobre
+ * las mismas páginas que el build emite: no puede listar una que no existe. Se
+ * genera **siempre**, para que el enlace del pie no dé 404 en un build sin datos;
+ * vacía, sale con `noindex` y no entra al sitemap (que la pide solo si alguna
+ * página de organizador se ofrece).
+ */
+import Base from '@/layouts/Base.astro';
+import { claseEnlace } from '@/components/sitio/estilos';
+import { indiceDeOrganizadoresDelSitio } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+
+export const prerender = true;
+
+const organizadores = await indiceDeOrganizadoresDelSitio();
+const conAlgoPorVenir = organizadores.filter((o) => o.porVenir > 0).length;
+const titulo = 'Quién organiza';
+const descripcion =
+  organizadores.length > 0
+    ? `Las librerías, editoriales, espacios y personas que organizan actividades literarias en la agenda: ${organizadores.length}, ${conAlgoPorVenir} con algo por venir.`
+    : 'Las librerías, editoriales, espacios y personas que organizan actividades literarias en la agenda.';
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${titulo} · ${NOMBRE}`}
+  descripcion={descripcion}
+  noIndex={conAlgoPorVenir === 0}
+>
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">{titulo}</h1>
+      <p class="body-md mt-3 text-super">
+        Las librerías, editoriales, espacios y personas que organizan lo que está en la
+        agenda. Cada una con todo lo suyo: lo que viene y lo que ya hizo.
+      </p>
+    </div>
+
+    {
+      organizadores.length === 0 ? (
+        <p class="body-md regla-gruesa-arriba mt-10 px-4 py-12 text-center text-super">
+          Todavía no hay organizadores con página. <a class={claseEnlace} href={RUTA_AGENDA}>Mirá la agenda</a>.
+        </p>
+      ) : (
+        <ul class="regla-gruesa-arriba mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
+          {organizadores.map((o) => (
+            <li class="border-b border-borde py-2">
+              <a class={`${claseEnlace} body-md`} href={o.ruta}>{o.nombre}</a>
+              {o.porVenir > 0 && (
+                <span class="body-sm text-super">
+                  {' '}· {o.porVenir} por venir
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </main>
+</Base>

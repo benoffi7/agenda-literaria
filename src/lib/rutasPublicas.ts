@@ -505,6 +505,9 @@ export const rutaDeCiudad = (slug: string): string => rutaCanonica(`${PREFIJO_CI
  */
 export const PREFIJO_ORGANIZA = '/organiza';
 
+/** `/organiza/` — «Quién organiza»: todas las casas con página (2026-10-06). */
+export const RUTA_ORGANIZADORES = rutaCanonica(PREFIJO_ORGANIZA);
+
 /** `/organiza/hormiga-libros/` — la página de un organizador (roadmap 1.5). */
 export const rutaDeOrganizador = (slug: string): string =>
   rutaCanonica(`${PREFIJO_ORGANIZA}/${slug}`);

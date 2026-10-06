@@ -314,6 +314,11 @@ describe('las páginas fijas', () => {
        */
       '/efemerides/':
         'entra al sitemap solo con alguna efeméride publicada; vacía va con `noindex` (B-959)',
+      // «Quién organiza» (2026-10-06): lo mismo que `/efemerides/`. Entra desde
+      // `rutasDelSitemap` si alguna página de organizador se ofrece; si no, la
+      // página sale con `noindex`. Lo afirma `organizadorPublico.test.ts`.
+      '/organiza/':
+        'entra al sitemap solo si alguna página de organizador se ofrece; si no, `noindex`',
       '/mis-favoritos/':
         'lo que muestra sale del `localStorage` de quien la abre, así que para Google está ' +
         'siempre vacía: `noindex` y fuera del sitemap, sin `Disallow` (B-848)',

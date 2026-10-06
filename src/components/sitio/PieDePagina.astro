@@ -63,6 +63,7 @@ import {
   RUTA_EFEMERIDES,
   RUTA_GUIA,
   RUTA_MIS_FAVORITOS,
+  RUTA_ORGANIZADORES,
   RUTA_PASADAS,
   RUTA_PROPONER,
   RUTA_SUSCRIBIRSE,
@@ -139,6 +140,14 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             ancho con lo que sí se busca.
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_PASADAS}>Lo que ya pasó</a>
+        </li>
+        <li class="break-inside-avoid">
+          {/*
+            «Quién organiza» (2026-10-06): el índice de las páginas de organizador.
+            Al pie y no a la barra, por el criterio de `/pasadas`: se llega buscando
+            una casa, no navegando.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_ORGANIZADORES}>Quién organiza</a>
         </li>
         <li class="break-inside-avoid">
           {/*

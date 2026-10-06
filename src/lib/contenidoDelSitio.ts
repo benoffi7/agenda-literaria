@@ -64,8 +64,10 @@ import {
   type Hub,
 } from '@/lib/hubsPublicos';
 import {
+  indiceDeOrganizadores,
   paginasDeOrganizador,
   slugsConPaginaDeOrganizador,
+  type OrganizadorDelIndice,
   type PaginaDeOrganizador,
 } from '@/lib/organizadorPublico';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
@@ -1796,6 +1798,21 @@ export const caminosDeOrganizador = async (
       params: { slug: pagina.slug },
       props: { vista: { pagina, etiquetas, tonos, generadoEn: indice.generadoEn } },
     }),
+  );
+};
+
+/**
+ * «Quién organiza» — el índice `/organiza/`. Las mismas páginas que
+ * `caminosDeOrganizador` emite, resumidas a nombre, ruta y cuántas por venir.
+ */
+export const indiceDeOrganizadoresDelSitio = async (
+  ahora?: unknown,
+): Promise<OrganizadorDelIndice[]> => {
+  const indice = await indiceDelSitio();
+  const { opciones } = await contenidoDelSitio();
+  const instante = relojDelBuild(ahora, indice.generadoEn);
+  return indiceDeOrganizadores(
+    paginasDeOrganizador(indice.actividades, opciones.organizador ?? [], instante),
   );
 };
 

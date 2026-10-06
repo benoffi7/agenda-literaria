@@ -14,7 +14,7 @@ import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseEnlace, claseRotulo } from '@/components/sitio/estilos';
 import { caminosDeOrganizador, type VistaDeOrganizador } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
-import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import { RUTA_AGENDA, RUTA_ORGANIZADORES } from '@/lib/rutasPublicas';
 
 export const prerender = true;
 
@@ -102,5 +102,9 @@ const ahora = new Date(vista.generadoEn);
         </section>
       )
     }
+
+    <p class="body-md mt-12 text-super">
+      <a class={claseEnlace} href={RUTA_ORGANIZADORES}>Todos los que organizan</a>
+    </p>
   </main>
 </Base>

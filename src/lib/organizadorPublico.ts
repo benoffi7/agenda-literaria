@@ -221,3 +221,27 @@ export const paginasDeOrganizador = (
   slugsConPaginaDeOrganizador(entradas, opciones)
     .map((slug) => paginaDeOrganizador(slug, entradas, ahora, actividades))
     .filter((p): p is PaginaDeOrganizador => p !== null);
+
+/** Una fila de «Quién organiza». */
+export interface OrganizadorDelIndice {
+  nombre: string;
+  ruta: string;
+  /** Cuántas actividades tiene por venir. */
+  porVenir: number;
+}
+
+/**
+ * **«Quién organiza»** — el índice `/organiza/` (2026-10-06): todas las páginas de
+ * organizador, en orden alfabético del nombre (en castellano: los acentos y las
+ * mayúsculas no desordenan). Es el enlace interno que les faltaba a las páginas de
+ * organizador además del «Todo lo de…» de cada actividad.
+ *
+ * Sale de las mismas páginas que el build emite (`paginasDeOrganizador`), así que
+ * no puede listar una que no existe.
+ */
+export const indiceDeOrganizadores = (
+  paginas: readonly PaginaDeOrganizador[],
+): OrganizadorDelIndice[] =>
+  paginas
+    .map((p) => ({ nombre: p.nombre, ruta: p.ruta, porVenir: p.proximas.length }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));

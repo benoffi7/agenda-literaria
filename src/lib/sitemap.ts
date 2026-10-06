@@ -65,6 +65,7 @@ import type { ValorOpcion } from '@/types/actividad';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
+  RUTA_ORGANIZADORES,
   RUTA_APOYAR,
   RUTA_AYUDA,
   RUTA_CARTELERA,
@@ -465,9 +466,16 @@ export const rutasDelSitemap = ({
     // Roadmap 1.5 (B-2172) — las páginas de organizador con algo por venir: el
     // mismo par sitemap ⇔ sin `noindex` que los hubs. Las que solo tienen pasado
     // se emiten con `noindex` y no se ofrecen.
-    ...paginasDeOrganizador(entradas, organizadores, ahora)
-      .filter((p) => p.indexable)
-      .map((p) => p.ruta),
+    ...(() => {
+      const indexables = paginasDeOrganizador(entradas, organizadores, ahora).filter(
+        (p) => p.indexable,
+      );
+      // «Quién organiza» (`/organiza/`) entra si hay al menos una página que se
+      // ofrece: un índice de páginas que no se indexan sería una lista de noindex.
+      return indexables.length > 0
+        ? [RUTA_ORGANIZADORES, ...indexables.map((p) => p.ruta)]
+        : [];
+    })(),
     ...rutasDePublicadas(entradas, ahora),
     ...rutasDeCanceladas(canceladas, ahora),
     /*

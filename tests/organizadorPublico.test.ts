@@ -4,8 +4,9 @@ import {
   paginasDeOrganizador,
   slugsConPaginaDeOrganizador,
   contactoDeOrganizador,
+  indiceDeOrganizadores,
 } from '@/lib/organizadorPublico';
-import { rutaDeOrganizador } from '@/lib/rutasPublicas';
+import { RUTA_ORGANIZADORES, rutaDeOrganizador } from '@/lib/rutasPublicas';
 import { rutasDelSitemap } from '@/lib/sitemap';
 import type { ValorOpcion } from '@/types/actividad';
 import { entradaDePrueba } from './fixtures/indice';
@@ -164,5 +165,33 @@ describe('contactoDeOrganizador — la página como ficha', () => {
       instagram: null,
       web: null,
     });
+  });
+});
+
+describe('«Quién organiza» — el índice /organiza/', () => {
+  it('en orden alfabético en castellano, con cuántas por venir', () => {
+    const paginas = paginasDeOrganizador(ENTRADAS, OPCIONES, AHORA);
+    expect(indiceDeOrganizadores(paginas)).toEqual([
+      { nombre: 'Casa Brandon', ruta: rutaDeOrganizador('casa-brandon'), porVenir: 2 },
+      { nombre: 'Hormiga', ruta: rutaDeOrganizador('hormiga'), porVenir: 0 },
+    ]);
+  });
+
+  it('las mayúsculas y los acentos no desordenan', () => {
+    const p = (nombre: string) => ({ nombre, ruta: '/', proximas: [] }) as never;
+    expect(indiceDeOrganizadores([p('Ñandú'), p('álamo'), p('Nube'), p('Zeta')]).map((o) => o.nombre)).toEqual([
+      'álamo',
+      'Nube',
+      'Ñandú',
+      'Zeta',
+    ]);
+  });
+
+  it('el sitemap lo pide si y solo si alguna página de organizador se indexa', () => {
+    const con = rutasDelSitemap({ entradas: ENTRADAS, canceladas: [], organizadores: OPCIONES, ahora: AHORA });
+    expect(con).toContain(RUTA_ORGANIZADORES);
+    const soloPasado = [opcion('hormiga', 'Hormiga')];
+    const sin = rutasDelSitemap({ entradas: ENTRADAS, canceladas: [], organizadores: soloPasado, ahora: AHORA });
+    expect(sin).not.toContain(RUTA_ORGANIZADORES);
   });
 });

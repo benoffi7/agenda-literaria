@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **«Quién organiza»: el índice `/organiza/`**. Todas las casas con página, en orden
+  alfabético, con cuántas actividades tiene cada una por venir. Se enlaza desde el pie
+  y desde cada página de organizador, que hasta ahora solo tenían el «Todo lo de…» de
+  cada actividad como enlace interno. Al sitemap si alguna se ofrece.
+
 - **El tablero nombra las actividades por su título**: en «Las páginas más vistas» y en
   «Se miran y casi no generan mensajes» dice «Club de lectura de Saer» y no
   `/actividad/club-de-lectura-de-saer/`. Sale de la lista que el panel ya carga, sin
