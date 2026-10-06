@@ -81,7 +81,7 @@ import {
   tituloDeEvento,
 } from '@calendario';
 
-import { handleInstagram, arrobaInstagram, urlSegura } from '@/lib/enlaceSeguro';
+import { handleInstagram, arrobaInstagram, enlaceInstagram, urlSegura } from '@/lib/enlaceSeguro';
 
 /*
  * Los dos saneadores de `href` **se mudaron a `lib/enlaceSeguro.ts`** (B-830,
@@ -97,11 +97,9 @@ import { handleInstagram, arrobaInstagram, urlSegura } from '@/lib/enlaceSeguro'
 export { handleInstagram, arrobaInstagram, urlSegura };
 
 
-/** La URL del perfil, o `null` si el handle no es uno. El texto se muestra igual. */
-export const enlaceInstagram = (crudo: string | null | undefined): string | null => {
-  const handle = handleInstagram(crudo);
-  return handle ? `https://instagram.com/${handle}` : null;
-};
+// `enlaceInstagram` vive en `enlaceSeguro.ts` desde el 2026-10-06; se reexporta
+// para no cambiarle el import a nadie.
+export { enlaceInstagram };
 
 // ─────────────────────────────────────────────────────────────────
 // El view-model

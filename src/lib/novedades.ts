@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'contacto-del-organizador',
+    fecha: '2026-10-06',
+    version: '1.11.0',
+    titulo: 'El organizador trae su Instagram y su web de antes',
+    detalle:
+      'Si elegís un organizador que ya cargaste, debajo aparecen el Instagram y la web que ' +
+      'dicen sus otras actividades. «Completar» los pone en los campos vacíos: no hay que ' +
+      'volver a tipearlos.',
+    donde: 'Al cargar una actividad → «Quién» → debajo de «Organizador».',
+  },
+  {
     id: 'organizador-de-relleno',
     fecha: '2026-10-06',
     version: '1.11.0',

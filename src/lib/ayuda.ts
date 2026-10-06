@@ -2264,7 +2264,9 @@ export const CAPITULOS: CapituloAyuda[] = [
           'elegilo: así todas sus actividades quedan juntas. Si abajo dice que es nuevo, se suma a ' +
           'la lista al guardar; fijate antes que no esté escrito de otra forma. Si escribís algo ' +
           'que no es un organizador —«A conf», una cuenta de Instagram, el barrio—, el campo ' +
-          'te avisa: no frena el guardado, pero así sale en el sitio.',
+          'te avisa: no frena el guardado, pero así sale en el sitio. Y si es uno que ya cargaste ' +
+          'antes, abajo te ofrece su Instagram y su web: «Completar» los pone, sin pisar lo que ' +
+          'ya escribiste.',
       },
       {
         texto:

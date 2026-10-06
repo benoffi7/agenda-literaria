@@ -401,6 +401,12 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   **Y avisa del relleno** (2026-10-06): «A conf», una cuenta de Instagram, el barrio o
   la ciudad, o un nombre con un `|` muestran un cartel debajo del campo con qué hacer
   (`avisoDelFormulario`, la misma regla que el aviso del tablero). No frena el guardado.
+  **Y ofrece su contacto** (roadmap 2.6): si lo escrito es un organizador que ya
+  existe y falta su Instagram o su web, debajo dice «Sus otras actividades dicen …» con
+  un botón **Completar**, que llena solo los campos vacíos. Nada se completa solo. Lee
+  las actividades una vez por sesión y a pedido, con la misma `listarActividades` del
+  listado (respeta lo que cada rol puede ver), y elige con `contactoDeOrganizador`, la
+  regla de la página del organizador.
 - El **Instagram del organizador y de quien está adelante se prolija solo**: se
   pega el link del perfil —o lo que copia el botón «Compartir» de Instagram, con
   el `?igsh=` y todo— y al salir del campo queda el usuario solo, «casabrandon»

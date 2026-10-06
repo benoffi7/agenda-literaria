@@ -437,14 +437,21 @@ describe('la carga de la colección no se vuelve a copiar — B-215', () => {
    *   referencia y no es motivo para bloquear el formulario— y depende de `[]` y
    *   no de `[version]`, porque el formulario no se refresca al guardar. El hook
    *   le daría un `fallo` que esa pantalla no quiere mostrar.
+   * - `useContactoDeOrganizador.ts` (roadmap 2.6) la llama para ofrecer el
+   *   Instagram y la web de un organizador. El hook no le sirve por tres cosas:
+   *   lee **solo cuando hay algo que ofrecer** (no al montar), **una vez por
+   *   sesión del panel** (memoria por cuenta, entre aperturas del formulario) y
+   *   **se come el error** —la oferta es opcional, igual que el desplegable del
+   *   reporte—.
    *
-   * Si aparece un cuarto, la pregunta es si le sirve el hook. Si le sirve, usarlo;
+   * Si aparece un quinto, la pregunta es si le sirve el hook. Si le sirve, usarlo;
    * si no, agregarlo acá **con el motivo escrito**, que es lo que esta lista es.
    */
   const PUEDEN_LLAMARLA = [
     'src/components/admin/useActividades.ts',
     'src/components/admin/EstadisticasPanel.tsx',
     'src/components/admin/ReporteFormulario.tsx',
+    'src/components/admin/useContactoDeOrganizador.ts',
   ];
 
   /**

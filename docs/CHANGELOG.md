@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El organizador trae su Instagram y su web de antes** (roadmap 2.6). Al elegir uno
+  que ya existe, el formulario ofrece los de sus otras actividades y «Completar» los
+  pone en los campos vacíos. La regla del más repetido pasó a un módulo chico
+  (`contactoDeOrganizador.ts`) que comparten el panel y la página del organizador.
+
 - **El campo «Organizador» avisa cuando lo escrito no es un organizador** («A conf», una
   cuenta de Instagram, el barrio, un `|`), con qué hacer en cada caso. La misma regla que
   el aviso del tablero, pero en el momento de cargar; no frena el guardado.

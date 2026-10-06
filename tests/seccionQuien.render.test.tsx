@@ -81,6 +81,7 @@ function Arnes({ escrituras }: { escrituras: { n: number } }) {
       }}
       errorDe={() => undefined}
       uid="uid_test"
+      rol="admin"
       esTaller
       esCharla={false}
       nombrePersona="Tallerista"
@@ -238,6 +239,7 @@ function ArnesConValor({ instagram }: { instagram: string }) {
       set={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
       errorDe={() => undefined}
       uid="uid_test"
+      rol="admin"
       esTaller
       esCharla={false}
       nombrePersona="Tallerista"

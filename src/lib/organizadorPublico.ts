@@ -45,69 +45,22 @@ import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { ORDEN_PUBLICO_POR_DEFECTO, estadoDe, ordenarPublico } from '@/lib/listadoPublico';
 import { pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { rutaDeOrganizador } from '@/lib/rutasPublicas';
-import { arrobaInstagram, enlaceInstagram, handleInstagram, urlSegura } from '@/lib/detallePublico';
+import {
+  contactoDeOrganizador,
+  type ActividadConOrganizador,
+  type ContactoDeOrganizador,
+} from '@/lib/contactoDeOrganizador';
 import { estaAprobada } from '@/lib/taxonomia';
 import type { ValorOpcion } from '@/types/actividad';
 
-/** Un dato de contacto con su link ya saneado. */
-export interface EnlaceDeContacto {
-  texto: string;
-  href: string;
-}
-
-/**
- * Cómo se lo encuentra: su Instagram y su web — pedido del 2026-10-06, para que la
- * página sirva como ficha y no solo como lista.
- */
-export interface ContactoDeOrganizador {
-  instagram: EnlaceDeContacto | null;
-  web: EnlaceDeContacto | null;
-}
-
-/** La forma mínima de una actividad proyectada que necesita `contactoDeOrganizador`. */
-export interface ActividadConOrganizador {
-  organizador: { slug?: string; instagram?: string; web?: string };
-}
-
-const masRepetido = (valores: string[]): string | null => {
-  const cuenta = new Map<string, number>();
-  for (const v of valores) cuenta.set(v, (cuenta.get(v) ?? 0) + 1);
-  let mejor: string | null = null;
-  let max = 0;
-  for (const [v, n] of cuenta) if (n > max) [mejor, max] = [v, n];
-  return mejor;
-};
-
-/**
- * El Instagram y la web del organizador, sacados de **sus actividades publicadas**
- * (`ActividadPublica`, la proyección de `toPublic`): son los mismos datos que el
- * bloque «Organiza» de cada una ya publica, así que la página no dice nada nuevo.
- *
- * Si sus actividades no coinciden —una cargó la cuenta y otra no, o con otra
- * forma—, **el más repetido**, comparando el handle normalizado y no lo tipeado.
- * Y **solo lo que se puede enlazar con seguridad** (`enlaceInstagram`, `urlSegura`,
- * los mismos del detalle, importados y no copiados): en la ficha de una actividad
- * un texto sin link se muestra igual porque es la única copia del dato; acá es un
- * resumen, y un «@algo» sin link no le sirve a nadie.
- */
-export const contactoDeOrganizador = (
-  slug: string,
-  actividades: readonly ActividadConOrganizador[],
-): ContactoDeOrganizador => {
-  const suyas = actividades.filter((a) => a.organizador?.slug === slug);
-  const handle = masRepetido(
-    suyas.map((a) => handleInstagram(a.organizador.instagram)).filter((h): h is string => !!h),
-  );
-  const web = masRepetido(
-    suyas.map((a) => (urlSegura(a.organizador.web) ? a.organizador.web!.trim() : '')).filter(Boolean),
-  );
-  const instagramUrl = handle ? enlaceInstagram(handle) : null;
-  const webUrl = web ? urlSegura(web) : null;
-  return {
-    instagram: handle && instagramUrl ? { texto: arrobaInstagram(handle), href: instagramUrl } : null,
-    web: web && webUrl ? { texto: web, href: webUrl } : null,
-  };
-};
+// El contacto (Instagram y web) vive en su módulo, compartido con el panel
+// (roadmap 2.6). Se reexporta para no cambiarle el import a nadie.
+export {
+  contactoDeOrganizador,
+  type ActividadConOrganizador,
+  type ContactoDeOrganizador,
+  type EnlaceDeContacto,
+} from '@/lib/contactoDeOrganizador';
 
 export interface PaginaDeOrganizador {
   /** El slug de `/opciones/organizador`: lo que direcciona (trampa 10). */

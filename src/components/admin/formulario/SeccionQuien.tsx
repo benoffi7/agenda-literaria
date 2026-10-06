@@ -8,9 +8,16 @@ import { Campo, claseInput } from '@/components/campos/Campo';
 import { handleInstagram } from '@/lib/enlaceSeguro';
 import { muestraLibro } from '@/lib/formulario/condicionales';
 import { avisoDelFormulario } from '@/lib/organizadorDeRelleno';
+import { opcionDeOrganizador } from '@/lib/formulario/organizador';
+import { useOpciones } from '@/components/admin/useOpciones';
+import { useContactoDeOrganizador } from '@/components/admin/useContactoDeOrganizador';
+import type { RolDelPanel } from '@/lib/rolDelPanel';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 type Props = PropsSeccion & {
+  /** Roadmap 2.6 — para leer, con lo que esta cuenta puede ver, el contacto de sus otras actividades. */
+  rol: RolDelPanel;
+  ciudad?: string;
   esTaller: boolean;
   esCharla: boolean;
   /** "Tallerista" o "Autor o autora invitada", según el tipo. */
@@ -156,11 +163,38 @@ const alSalirDelInstagram = (crudo: string, guardar: (saneado: string) => void):
   if (saneado !== crudo) guardar(saneado);
 };
 
-export function SeccionQuien({ form, set, errorDe, uid, esTaller, esCharla, nombrePersona }: Props) {
+export function SeccionQuien({
+  form,
+  set,
+  errorDe,
+  uid,
+  rol,
+  ciudad = '',
+  esTaller,
+  esCharla,
+  nombrePersona,
+}: Props) {
   // B-1190 — qué campo de Instagram se está tipeando ahora, para no avisar a
   // medio escribir. Uno solo alcanza: el foco está en un campo por vez.
   const [editando, setEditando] = useState<'org' | 'persona' | null>(null);
   const instagramPersona = form.tallerista?.instagram ?? '';
+  /*
+   * Roadmap 2.6 — si lo escrito es un organizador que ya existe y falta su
+   * Instagram o su web, se ofrecen los de sus otras actividades. Solo se pide la
+   * lectura cuando hay algo que ofrecer (ver `useContactoDeOrganizador`).
+   */
+  const { valores: organizadores } = useOpciones('organizador', uid);
+  const existente = opcionDeOrganizador(form.organizador.nombre, organizadores);
+  const sinInstagram = !form.organizador.instagram.trim();
+  const sinWeb = !form.organizador.web.trim();
+  const contacto = useContactoDeOrganizador(
+    existente && (sinInstagram || sinWeb) ? existente.slug : null,
+    rol,
+    uid,
+    ciudad,
+  );
+  const ofrecerInstagram = sinInstagram ? (contacto?.instagram ?? null) : null;
+  const ofrecerWeb = sinWeb ? (contacto?.web ?? null) : null;
   const avisoOrganizador = avisoDelFormulario(
     form.organizador.nombre,
     form.modalidades.flatMap((m) => [m.sede?.barrio ?? '', m.sede?.ciudad ?? '']).filter(Boolean),
@@ -190,6 +224,29 @@ export function SeccionQuien({ form, set, errorDe, uid, esTaller, esCharla, nomb
           {avisoOrganizador && (
             <p id="org-nombre-aviso" role="status" className="text-xs font-medium text-tinta/70">
               {avisoOrganizador}
+            </p>
+          )}
+          {/*
+            Roadmap 2.6 — se ofrece, no se completa solo: rellenar a escondidas
+            podría pisar algo sin que nadie lo note. Solo los campos vacíos.
+          */}
+          {(ofrecerInstagram || ofrecerWeb) && (
+            <p className="text-xs text-tinta/70">
+              Sus otras actividades dicen{' '}
+              {[ofrecerInstagram?.texto, ofrecerWeb?.texto].filter(Boolean).join(' · ')}.{' '}
+              <button
+                type="button"
+                className="font-medium underline underline-offset-2"
+                onClick={() =>
+                  set('organizador', {
+                    ...form.organizador,
+                    instagram: ofrecerInstagram ? ofrecerInstagram.texto : form.organizador.instagram,
+                    web: ofrecerWeb ? ofrecerWeb.texto : form.organizador.web,
+                  })
+                }
+              >
+                Completar
+              </button>
             </p>
           )}
         </Campo>

@@ -85,3 +85,15 @@ export const urlSegura = (crudo: string | null | undefined): string | null => {
  * consumidor con el handle y sin la forma de mostrarlo.
  */
 export { handleInstagram, arrobaInstagram } from '@/lib/handle-instagram.mjs';
+import { handleInstagram as handleParaEnlace } from '@/lib/handle-instagram.mjs';
+
+/**
+ * La URL del perfil, o `null` si el handle no es uno. El texto se muestra igual.
+ * Vive acá desde el 2026-10-06 (antes en `detallePublico.ts`, que la reexporta):
+ * la usan también la página del organizador y el panel, que no tienen por qué
+ * arrastrar el view-model del detalle.
+ */
+export const enlaceInstagram = (crudo: string | null | undefined): string | null => {
+  const handle = handleParaEnlace(crudo);
+  return handle ? `https://instagram.com/${handle}` : null;
+};

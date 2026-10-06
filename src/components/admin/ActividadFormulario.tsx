@@ -931,6 +931,8 @@ export function ActividadFormulario({
               set={set}
               errorDe={errorDe}
               uid={uid}
+              rol={rol}
+              ciudad={ciudad}
               esTaller={esTaller(form)}
               esCharla={esCharla(form)}
               nombrePersona={nombrePersona(form)}

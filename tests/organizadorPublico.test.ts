@@ -195,3 +195,12 @@ describe('«Quién organiza» — el índice /organiza/', () => {
     expect(sin).not.toContain(RUTA_ORGANIZADORES);
   });
 });
+
+describe('contactoDeOrganizador con documentos viejos, sin slug guardado (roadmap 2.6)', () => {
+  it('deriva el slug del nombre, como la lectura (D-26)', () => {
+    const c = contactoDeOrganizador('casa-brandon', [
+      { organizador: { nombre: 'Casa Brandon', instagram: 'casabrandon', web: '' } },
+    ]);
+    expect(c.instagram?.texto).toBe('@casabrandon');
+  });
+});
