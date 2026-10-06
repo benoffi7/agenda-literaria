@@ -1151,10 +1151,24 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
        * bloque 1.
        */
       await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      // B-920 — con el `where` de `estado`, que es lo que la regla ahora exige.
       const deLaCiudad = await getDocs(
-        query(collection(db(), 'actividades'), where('ciudades', 'array-contains', CIUDAD)),
+        query(
+          collection(db(), 'actividades'),
+          where('ciudades', 'array-contains', CIUDAD),
+          where('estado', '==', 'publicado'),
+        ),
       );
       expect(deLaCiudad.docs.map((d) => d.id).sort()).toEqual([AJENA_MDQ, MIA_MDQ].sort());
+      /*
+       * Y **sin** ese `where` la query entera se rechaza: es la trampa 7 medida,
+       * y la razón de que `listarActividades` lo lleve. Si este aserto se pone
+       * rojo, la regla dejó de exigir el estado.
+       */
+      await denegada(
+        getDocs(query(collection(db(), 'actividades'), where('ciudades', 'array-contains', CIUDAD))),
+        'listar lo de su ciudad sin el where de estado',
+      );
     });
 
     it('y sigue pudiendo todo lo suyo: el alcance suma, no reemplaza', async () => {
@@ -1168,28 +1182,17 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       await deleteDoc(doc(db(), 'actividades', MIA_MDQ));
     });
 
-    it('lee un BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro', async () => {
+    it('NO lee un BORRADOR ajeno de su ciudad: de lo ajeno, solo lo publicado (B-920)', async () => {
       /*
-       * **Este caso no celebra nada: deja escrito qué incluye ese `read`**, para
-       * que el día que el dueño decida recortarlo haya un aserto que dar vuelta en
-       * vez de una ausencia que nadie encuentra. Lo pidió el `auditor-privacidad`.
+       * **Este caso estaba al revés hasta el 2026-10-06, y a propósito**: dejaba
+       * escrito qué incluía el `read` del disyunto de la ciudad —el documento
+       * crudo de un borrador ajeno, con su link de reunión y sus notas internas—
+       * para que el día del recorte hubiera un aserto que dar vuelta. El dueño lo
+       * decidió antes de dar la segunda cuenta (roadmap 2.5): de lo ajeno de su
+       * ciudad, solo lo publicado.
        *
-       * Una regla es **todo-o-nada por documento**: no proyecta (D-128). Así que
-       * el disyunto de la ciudad no autoriza «la vista de `toPublic` de las
-       * actividades de mi ciudad», autoriza **el documento crudo** — y sin
-       * cláusula de `estado`, o sea que alcanza también a los borradores ajenos,
-       * de los que nunca salió nada a ninguna parte.
-       *
-       * Se acepta, y el razonamiento está en `docs/07-seguridad.md` § «Los dos
-       * roles del panel»: recortar por campo no es expresable en una regla, y la
-       * única alternativa —una Function que proyecte en el camino de lectura del
-       * panel— es la que D-660 descartó.
-       *
-       * **Para recortarlo**, la cláusula es sumarle
-       * `resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad
-       * (más el `where` correspondiente en la segunda query, y medirlo: trampa 7).
-       * Con eso puesto, este caso se pone rojo — que es exactamente para lo que
-       * está.
+       * Mutación: sacar `estado == 'publicado'` del disyunto de la ciudad pone
+       * esto en rojo.
        */
       await sembrar(
         BORRADOR_AJENO,
@@ -1203,13 +1206,14 @@ describe.skipIf(!vivo)('la frontera del rol publicador — B-888', () => {
       );
 
       await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
-      const leido = await getDoc(doc(db(), 'actividades', BORRADOR_AJENO));
-      expect(leido.exists()).toBe(true);
-      const datos = leido.data()!;
-      expect(datos.estado).toBe('borrador');
-      // Lo que el `read` entrega, enumerado a propósito.
-      expect(datos.online.url).toBe('https://meet.example/privado');
-      expect(datos.difusion.notas).toBe('Pedirle el flyer a la librería');
+      await denegada(getDoc(doc(db(), 'actividades', BORRADOR_AJENO)), 'leer un borrador ajeno de su ciudad');
+    });
+
+    it('y su propio borrador lo sigue leyendo entero', async () => {
+      const MIO = 'act_borrador_propio_b920';
+      await sembrar(MIO, actividadDe(UID_PUB, { slug: 'borrador-propio-mdq', estado: 'borrador', ciudades: [CIUDAD] }));
+      await entrarComo(UID_PUB, claimConCiudad, { email: MAIL_PUB });
+      expect((await getDoc(doc(db(), 'actividades', MIO))).exists()).toBe(true);
     });
 
     // ── Y ahora lo que NO puede ─────────────────────────────────────────

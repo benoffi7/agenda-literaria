@@ -515,36 +515,6 @@ una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
 > **A «Vigilado» el 2026-09-24 (triage):** diferido a propósito por el propio ítem, que dice cuándo vuelve.
 
-### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2
-
-**Lo marcó el `auditor-privacidad` sobre B-919 y la decisión es del dueño.** Una
-regla de Firestore es **todo-o-nada por documento**: el alcance por ciudad no
-autoriza «la vista pública de las actividades de mi ciudad», autoriza **el
-documento crudo**. O sea que de una actividad ajena de su ciudad, esa cuenta lee
-también `online.url` con `urlPublica: false`, `difusion`, `inscripcion.destino`,
-la URL del material privado, los uids y `imagenes[].storagePath`. Y **sin cláusula
-de `estado`**, así que alcanza a los **borradores** ajenos, de los que no salió
-nunca nada a ninguna parte.
-
-**Se aceptó, con tres motivos**: el claim lo entrega el dueño de a una cuenta por
-vez con un script; el alcance es estrictamente menor que el del `admin`, que ya lee
-todo; y recortar por campo **no es expresable en una regla** (la alternativa es una
-Function que proyecte en el camino de lectura del panel, que es lo que D-660
-descartó). El panel además no se lo pone adelante: la ficha en solo lectura no
-muestra «Difusión».
-
-**Vuelve cuando entre la segunda publicadora**, que el propio pedido anticipa
-(«puede ser que no sea la única»): ahí deja de ser una cuenta mirando y pasa a ser
-N cuentas cruzadas.
-
-La ruta de recorte ya está escrita y medida a medias: sumarle
-`resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, más el
-`where('estado','==','publicado')` correspondiente en la segunda query de
-`listarActividades` — y **medirlo contra el emulador, no suponerlo** (trampa 7). El
-testigo que hay que dar vuelta ya existe y **enumera lo que lee**: `it('lee un
-BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro')`
-en `tests/rol-publicador.integracion.test.ts`.
-
 ### B-786 · P3 — el `Referer` a Cafecito, y cuándo habría que volver a decidirlo
 
 El enlace sale con el `Referer` por defecto

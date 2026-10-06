@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **La publicadora ya no lee borradores ajenos de su ciudad** (B-920, roadmap 2.5).
+  De lo que cargaron otras cuentas en su ciudad ve solo lo publicado; lo suyo lo sigue
+  viendo entero. Decidido antes de dar la segunda cuenta: una regla entrega el
+  documento crudo, y un borrador ajeno trae el link de la reunión y las notas
+  internas. Con el `where` de `estado` en el listado e índice compuesto nuevo.
+
 - **La tarjeta dice «Empieza el jueves»** (roadmap 1.6) cuando un ciclo que todavía no
   arrancó tiene su primer encuentro en los próximos siete días y se puede anotar. Lo
   decide el navegador —solo en la home y en «Mis favoritos»—, porque impreso en el HTML

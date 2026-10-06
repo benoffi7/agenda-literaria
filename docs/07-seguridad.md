@@ -1414,7 +1414,7 @@ mismo modo de falla que D-128 cerró: una puerta que ninguna proyección atravie
 | ¿Puede leer lo que no es suyo? | **Lo de su ciudad, y solo leerlo** (B-919) | `read` mira `createdBy` **o** `token.ciudad in resource.data.ciudades`. `update` y `delete` **no cambiaron**: siguen pidiendo `createdBy == uid`. Y como `read` incluye `list` y la condición es ahora una **disyunción**, ninguna query la satisface entera: el listado hace **dos** —`where('createdBy','==',uid)` y `where('ciudades','array-contains',ciudad)`— y las une en memoria (trampa 7: Firestore no filtra, rechaza) |
 | ¿Puede colarse en otra ciudad? | **No** | El `array-contains` de una ciudad que no es la del claim se rechaza **entero**, y el `get` de un documento de otra ciudad también. Medido contra el emulador |
 | **¿Qué incluye ese `read`?** | **El documento entero, no la vista de `toPublic`** | Una regla es **todo-o-nada por documento**: no proyecta (es el argumento de D-128, acá aplicado a un principal nuevo). O sea que de una actividad ajena de su ciudad lee también `online.url` con `urlPublica:false`, `difusion.arrobar` y `difusion.notas`, `inscripcion.destino`, la URL del material con `publico:false`, los uids y `imagenes[].storagePath`. Ver el párrafo de abajo: es una decisión, no un descuido |
-| ¿Alcanza a los **borradores** ajenos de su ciudad? | **Sí** | No hay cláusula de `estado` en el disyunto. De una publicada, casi todo eso ya salió por el `events.json` y la página de detalle; de un borrador ajeno **no salió nada nunca**, y ése es el subconjunto que hay que tener presente |
+| ¿Alcanza a los **borradores** ajenos de su ciudad? | **No, desde el 2026-10-06** (B-920, roadmap 2.5) | El disyunto de la ciudad lleva `resource.data.get('estado','') == 'publicado'`, decidido por el dueño **antes** de dar la segunda cuenta. De una publicada, casi todo lo que el `read` entrega ya salió por el `events.json` y la página de detalle; de un borrador ajeno no salió nada nunca, y ya no lo lee. La segunda query de `listarActividades` lleva el `where('estado','==','publicado')` —sin él Firestore rechaza la query entera (trampa 7), y el test lo mide— y su índice compuesto está en `firestore.indexes.json`. Lo propio lo sigue viendo entero, en cualquier estado |
 | ¿Y si no tiene ciudad en el claim? | **Ve lo suyo y nada más** | Es el rol de B-888 tal cual. Y hay una cláusula propia —`token.ciudad != ''`— para que una lista `ciudades: ['']` escrita a mano en la consola no le abra nada: `ciudadesDe()` filtra los vacíos, pero la regla no se confía de eso |
 | ¿Puede **cargar** fuera de su ciudad? (B-921) | **No, si tiene ciudad** | `dentroDeSuCiudad()` en el `create` y el `update`: `ciudades.hasOnly([token.ciudad])`. Una sede en su ciudad no «tapa» otra afuera. Una solo virtual (`[]`) pasa (D-1151). Una `ciudades` que no sea lista hace tirar a `hasOnly` y la regla deniega |
 | ¿Y una presencial **sin ciudad**, que daría `ciudades: []` como una virtual? | **No** (D-1154) | La regla exige además que la primera sede (el derivado `sede`) tenga ciudad; el panel lo exige en **todas** las filas. Lo encontró el `auditor-privacidad`: fuera de CABA la ciudad no es obligatoria para publicar, y sin esto una presencial en Santa Fe sin ciudad pasaba como virtual |
@@ -1457,13 +1457,13 @@ Dos cosas que salen de ahí y que conviene tener juntas:
   **no muestra la sección «Difusión»** —los handles a etiquetar y las notas
   internas—, que es la única puramente interna. No es la frontera (quien quiera
   leerla la lee desde la consola con su propia sesión), es no ofrecerlo.
-- **Si el dueño prefiere recortar**, la cláusula es sumarle
-  `resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, con el
-  `where('estado','==','publicado')` correspondiente en la segunda query de
-  `listarActividades` — y hay que **medirlo contra el emulador**, no suponerlo
-  (trampa 7). El testigo que habría que dar vuelta ya está escrito y nombra lo que
-  lee: `it('lee un BORRADOR ajeno de su ciudad, con su link de reunión y sus notas
-  internas adentro')`.
+- **Y el dueño recortó** (B-920, 2026-10-06): de lo ajeno de su ciudad, solo lo
+  publicado. La cláusula de `estado` en el disyunto y el `where` en la segunda query
+  de `listarActividades`, medidos contra el emulador: el testigo que se dio vuelta
+  ahora dice `it('NO lee un BORRADOR ajeno de su ciudad: de lo ajeno, solo lo
+  publicado (B-920)')`, y el del listado afirma que **sin** el `where` la query se
+  rechaza. Lo que sigue valiendo de este párrafo es para lo ajeno **publicado**: el
+  documento entero, no la vista pública.
 
 **Y la ciudad no está donde parece.** Vive en `modalidades[].sede.ciudad` —una
 **lista**, porque una actividad puede ser presencial en una librería y virtual por

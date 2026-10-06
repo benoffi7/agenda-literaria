@@ -23968,3 +23968,41 @@ y cada salto está explicado acá.
 > descubrió por el `git status` del working tree, antes de que ninguno de los dos
 > commiteara. Es el argumento más concreto que hay a favor de mirar el árbol
 > completo y no solo los archivos propios antes de reservar un número.
+
+## Vigilado — sin trabajo hasta que se cumpla su condición
+
+### B-920 · ¿Qué debería ver el publicador de una actividad ajena de su ciudad? · P2 — ✅ hecho (2026-10-06)
+
+> ✅ **Recortado, decidido por el dueño (roadmap 2.5)**: de lo ajeno de su ciudad,
+> solo lo publicado. Cláusula de `estado` en el disyunto de la ciudad, `where` en la
+> segunda query de `listarActividades` e índice compuesto; el testigo se dio vuelta y
+> el del listado mide que sin el `where` la query se rechaza (trampa 7). Mutación de
+> la regla probada.
+
+**Lo marcó el `auditor-privacidad` sobre B-919 y la decisión es del dueño.** Una
+regla de Firestore es **todo-o-nada por documento**: el alcance por ciudad no
+autoriza «la vista pública de las actividades de mi ciudad», autoriza **el
+documento crudo**. O sea que de una actividad ajena de su ciudad, esa cuenta lee
+también `online.url` con `urlPublica: false`, `difusion`, `inscripcion.destino`,
+la URL del material privado, los uids y `imagenes[].storagePath`. Y **sin cláusula
+de `estado`**, así que alcanza a los **borradores** ajenos, de los que no salió
+nunca nada a ninguna parte.
+
+**Se aceptó, con tres motivos**: el claim lo entrega el dueño de a una cuenta por
+vez con un script; el alcance es estrictamente menor que el del `admin`, que ya lee
+todo; y recortar por campo **no es expresable en una regla** (la alternativa es una
+Function que proyecte en el camino de lectura del panel, que es lo que D-660
+descartó). El panel además no se lo pone adelante: la ficha en solo lectura no
+muestra «Difusión».
+
+**Vuelve cuando entre la segunda publicadora**, que el propio pedido anticipa
+(«puede ser que no sea la única»): ahí deja de ser una cuenta mirando y pasa a ser
+N cuentas cruzadas.
+
+La ruta de recorte ya está escrita y medida a medias: sumarle
+`resource.data.get('estado','') == 'publicado'` al disyunto de la ciudad, más el
+`where('estado','==','publicado')` correspondiente en la segunda query de
+`listarActividades` — y **medirlo contra el emulador, no suponerlo** (trampa 7). El
+testigo que hay que dar vuelta ya existe y **enumera lo que lee**: `it('lee un
+BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro')`
+en `tests/rol-publicador.integracion.test.ts`.

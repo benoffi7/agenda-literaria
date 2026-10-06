@@ -284,11 +284,23 @@ service cloud.firestore {
        * El índice `ciudades ARRAY_CONTAINS, updatedAt DESC` está en
        * `firestore.indexes.json` por el `orderBy` de esa segunda query.
        */
+      /*
+       * ── De lo ajeno de su ciudad, **solo lo publicado** (B-920, roadmap 2.5) ──
+       * Decisión del dueño, tomada **antes** de dar la segunda cuenta: una regla
+       * es todo-o-nada por documento, así que el disyunto de la ciudad entregaba
+       * el documento crudo —link de la reunión, `difusion`, uids— también de los
+       * **borradores** ajenos, de los que nunca salió nada a ninguna parte. Con la
+       * cláusula de `estado`, lo ajeno que ve ya era público en su mayor parte; lo
+       * propio lo sigue viendo entero, en cualquier estado. La segunda query de
+       * `listarActividades` lleva el mismo `where` (trampa 7), y su índice está
+       * en `firestore.indexes.json`.
+       */
       allow read: if esAdmin()
         || (esPublicador()
              && (resource.data.get('createdBy', '') == request.auth.uid
                   || (request.auth.token.get('ciudad', '') != ''
-                       && request.auth.token.get('ciudad', '') in resource.data.get('ciudades', []))));
+                       && request.auth.token.get('ciudad', '') in resource.data.get('ciudades', [])
+                       && resource.data.get('estado', '') == 'publicado')));
 
       /*
        * ── Las tres escrituras, separadas porque el dueño se verifica distinto ──

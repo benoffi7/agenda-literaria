@@ -244,7 +244,12 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
 - **Qué ya existe:** el aviso y el botón «Lo revisé» en suscripciones y lugares
   (B-913, de hoy). Falta bibliotecas y el contador.
 
-### 2.5 · Qué pasa con la segunda publicadora (B-920, B-921) — **Más adelante** · S–M · 🟨 Decisión
+### 2.5 · Qué pasa con la segunda publicadora (B-920, B-921) — ✅ Hecho (2026-10-06) · S–M · 🟨 Decisión
+
+> **Hecho el 2026-10-06**: de lo ajeno de su ciudad, solo lo publicado (B-920),
+> antes de dar la segunda cuenta. La otra mitad —cargar fuera de su ciudad— ya la
+> resolvía B-921 con su aviso en el formulario.
+
 
 - **Qué gana:** que sumar publicadoras en otras ciudades no abra la puerta a leer
   borradores ajenos con el link de la reunión adentro.
@@ -714,7 +719,7 @@ las novedades del panel ya existen como mecanismo.
 | 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 6.5 | Guía para publicadoras | Otros | S | ✅ Hecho (2026-09-28) | — |
 | 1.6 | «Empieza esta semana» en la tarjeta | Sitio | S | ✅ Hecho (2026-10-06) | — |
-| 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | Más adelante | 🟨 ¿Solo publicadas? → sí, antes de darla |
+| 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | ✅ Hecho (2026-10-06) | 🟨 ¿Solo publicadas? → sí, antes de darla |
 | 3.9 | Resumen para organizadores | Analítica | M | Más adelante | 🟨 ¿Ofrecer números? → a los 3 meses |
 | 4.5 | Correo automático desde un feed | Newsletter | M | Más adelante | 🟨 ¿Solo o a mano? → a mano |
 | 4.6 | Correo por ciudad | Newsletter | M | Más adelante | 🟨 ¿Segmentar? → todavía no |

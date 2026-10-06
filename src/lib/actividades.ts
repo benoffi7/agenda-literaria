@@ -618,6 +618,10 @@ export const listarActividades = async (
           query(
             collection(db(), COL),
             where('ciudades', 'array-contains', ciudad),
+            // B-920 — la regla solo deja leer lo ajeno de su ciudad si está
+            // publicado; sin este `where`, Firestore rechaza la query entera
+            // (trampa 7) en vez de devolver menos.
+            where('estado', '==', 'publicado'),
             orderBy('updatedAt', 'desc'),
           ),
         ]
