@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La página de cada organizador muestra su Instagram y su web**, debajo del título:
+  los de sus actividades publicadas, el más repetido, y solo si se pueden enlazar con
+  seguridad. Así sirve como ficha y no solo como lista. Con su caso en el barrido de la
+  salida 11.
+
 - **La publicadora ya no lee borradores ajenos de su ciudad** (B-920, roadmap 2.5).
   De lo que cargaron otras cuentas en su ciudad ve solo lo publicado; lo suyo lo sigue
   viendo entero. Decidido antes de dar la segunda cuenta: una regla entrega el

@@ -2361,6 +2361,7 @@ muestra también el pasado y no entra en «Explorá por» (serían cientos). Viv
 | cuándo existe | la opción de `/opciones/organizador` está **aprobada** y tiene al menos una actividad publicada, vigente o pasada. Un organizador tipeado y sin aprobar no tiene página; **«Sacar la página» en Opciones** la apaga para siempre (`sinPagina`, B-2179): es lo que se usa si una persona lo pide. Borrar la opción también la saca, pero dura hasta que alguien guarde una actividad con ese nombre —el alta la recrea—; sirve para el relleno de B-2178 si además se corrigen sus actividades |
 | sitemap e indexación | si tiene algo por venir. Con solo pasado se emite con `noindex` y fuera del sitemap: el mismo par que los hubs |
 | el nombre | el que muestra el detalle (la etiqueta de la opción), leído de la entrada del índice y no de la lista, que es privada |
+| Instagram y web | desde el 2026-10-06, debajo del título: los de sus actividades publicadas (el más repetido, comparando el handle normalizado), **solo si se pueden enlazar con seguridad** (`enlaceInstagram`, `urlSegura`, los del detalle). Es lo mismo que el bloque «Organiza» de cada actividad ya publica (`contactoDeOrganizador`) |
 | la URL | el slug de la opción, nunca el nombre (trampa 10) |
 
 La lista de organizadores no viaja en el índice: la lee el build

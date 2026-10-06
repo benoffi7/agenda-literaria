@@ -41,6 +41,27 @@ const ahora = new Date(vista.generadoEn);
     <div class="max-w-3xl">
       <h1 class="headline-md text-balance text-tinta">{pagina.titulo}</h1>
       <p class="body-md mt-3 text-super">{pagina.bajada}</p>
+      {/*
+        Cómo encontrarlo: su Instagram y su web, si sus actividades los traen y se
+        pueden enlazar (`contactoDeOrganizador`). Los mismos datos que el bloque
+        «Organiza» de cada actividad ya publica.
+      */}
+      {
+        (pagina.contacto.instagram || pagina.contacto.web) && (
+          <p class="body-md mt-3 flex flex-wrap gap-x-5 gap-y-1">
+            {pagina.contacto.instagram && (
+              <a href={pagina.contacto.instagram.href} rel="noopener noreferrer" class={claseEnlace}>
+                {pagina.contacto.instagram.texto}
+              </a>
+            )}
+            {pagina.contacto.web && (
+              <a href={pagina.contacto.web.href} rel="noopener noreferrer" class={claseEnlace}>
+                {pagina.contacto.web.texto}
+              </a>
+            )}
+          </p>
+        )
+      }
     </div>
 
     <section aria-labelledby="viene" class="mt-10 sm:mt-12">

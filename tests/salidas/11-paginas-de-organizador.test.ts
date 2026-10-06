@@ -103,6 +103,55 @@ describe('barrido de las páginas de organizador (§5, salida 11, B-2172)', () =
     }], { insensible: true });
   });
 
+  it('el contacto (Instagram y web) no trae nada más de la actividad', () => {
+    /*
+     * La página muestra el Instagram y la web del organizador, sacados de sus
+     * actividades proyectadas por `toPublic`. Con los dos campos reales —los
+     * centinelas de esos campos no son un handle ni una URL, y por eso se pisan—,
+     * lo único que puede aparecer es eso: ninguna otra cosa de la actividad.
+     *
+     * Mutación: armar el texto del Instagram con `organizador.nombre` pone esto
+     * en rojo nombrando el centinela del nombre fuera del texto permitido.
+     */
+    const base = actividadCentinela();
+    const publicas = ['act_org_1', 'act_org_2'].map((id) =>
+      toPublic(
+        actividadCentinela({
+          organizador: { ...base.organizador, instagram: 'casa.real', web: 'https://casa.example/' },
+        }),
+        id,
+      ),
+    );
+    const p = paginaDeOrganizador(CENTINELA['organizador.slug'], entradas, AHORA, publicas)!;
+    expect(p.contacto.instagram?.texto).toBe('@casa.real');
+    expect(p.contacto.web?.href).toBe('https://casa.example/');
+    barrer('página de organizador (contacto)', JSON.stringify(p.contacto), [], { insensible: true });
+  });
+
+  it('con los centinelas crudos, del contacto sale solo la web del organizador', () => {
+    /*
+     * El centinela del Instagram no es un handle (no se enlaza); el de la web sí
+     * pasa `urlSegura` como dominio sin esquema, igual que «casa.com». Es el mismo
+     * dato que el bloque «Organiza» del detalle ya publica, y es lo único que
+     * puede aparecer.
+     */
+    const publicas = [toPublic(actividadCentinela(), 'act_org_1')];
+    const p = paginaDeOrganizador(CENTINELA['organizador.slug'], entradas, AHORA, publicas)!;
+    expect(p.contacto.instagram).toBeNull();
+    barrer(
+      'página de organizador (contacto con centinelas)',
+      JSON.stringify(p.contacto),
+      [
+        {
+          nombre: 'la web del organizador',
+          centinelas: ['organizador.web'],
+          porque: 'Ya es pública en el bloque «Organiza» del detalle de cada actividad suya.',
+        },
+      ],
+      { insensible: true },
+    );
+  });
+
   it('y el slug va en la ruta, no en el texto (trampa 10)', () => {
     const p = paginaDeOrganizador(CENTINELA['organizador.slug'], entradas, AHORA)!;
     expect(p.ruta).toContain(CENTINELA['organizador.slug']);

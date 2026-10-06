@@ -3,6 +3,7 @@ import {
   paginaDeOrganizador,
   paginasDeOrganizador,
   slugsConPaginaDeOrganizador,
+  contactoDeOrganizador,
 } from '@/lib/organizadorPublico';
 import { rutaDeOrganizador } from '@/lib/rutasPublicas';
 import { rutasDelSitemap } from '@/lib/sitemap';
@@ -133,5 +134,35 @@ describe('la plantilla de /organiza — B-237', () => {
     const src = readFileSync('src/pages/organiza/[slug].astro', 'utf8');
     expect(src).toMatch(/getStaticPaths = \(\) =>/);
     expect(src).not.toMatch(/getStaticPaths = caminosDeOrganizador\s*;/);
+  });
+});
+
+describe('contactoDeOrganizador — la página como ficha', () => {
+  const act = (slug: string, instagram = '', web = '') => ({ organizador: { slug, instagram, web } });
+
+  it('el Instagram más repetido, comparando el handle y no lo tipeado', () => {
+    const c = contactoDeOrganizador('casa', [
+      act('casa', 'https://instagram.com/casa.brandon/'),
+      act('casa', '@casa.brandon'),
+      act('casa', 'otra.cuenta'),
+      act('otra', 'otra.cuenta'),
+      act('otra', 'otra.cuenta'),
+    ]);
+    expect(c.instagram).toEqual({ texto: '@casa.brandon', href: 'https://instagram.com/casa.brandon' });
+  });
+
+  it('la web solo si se puede enlazar con seguridad', () => {
+    expect(contactoDeOrganizador('casa', [act('casa', '', 'https://casa.com.ar')]).web).toEqual({
+      texto: 'https://casa.com.ar',
+      href: 'https://casa.com.ar/',
+    });
+    expect(contactoDeOrganizador('casa', [act('casa', '', 'javascript:alert(1)')]).web).toBeNull();
+  });
+
+  it('sin datos, nada; y no toma los de otro organizador', () => {
+    expect(contactoDeOrganizador('casa', [act('otra', 'otra', 'https://otra.com')])).toEqual({
+      instagram: null,
+      web: null,
+    });
   });
 });

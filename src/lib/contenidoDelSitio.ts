@@ -1785,11 +1785,13 @@ export const caminosDeOrganizador = async (
   ahora?: unknown,
 ): Promise<{ params: { slug: string }; props: { vista: VistaDeOrganizador } }[]> => {
   const indice = await indiceDelSitio();
-  const { opciones } = await contenidoDelSitio();
+  const { opciones, actividades } = await contenidoDelSitio();
   const instante = relojDelBuild(ahora, indice.generadoEn);
   const etiquetas = mapaDeEtiquetas(indice.opciones);
   const tonos = tonosDeTipo(indice.opciones);
-  return paginasDeOrganizador(indice.actividades, opciones.organizador ?? [], instante).map(
+  // `actividades` son las publicadas ya proyectadas por `toPublic`: de ahí salen
+  // el Instagram y la web del organizador, los mismos que el detalle publica.
+  return paginasDeOrganizador(indice.actividades, opciones.organizador ?? [], instante, actividades).map(
     (pagina) => ({
       params: { slug: pagina.slug },
       props: { vista: { pagina, etiquetas, tonos, generadoEn: indice.generadoEn } },
